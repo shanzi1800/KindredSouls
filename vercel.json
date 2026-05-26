@@ -4,6 +4,15 @@
   "outputDirectory": "dist",
   "devCommand": "expo start --web",
   "installCommand": "npm install",
+  "framework": "expo",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
