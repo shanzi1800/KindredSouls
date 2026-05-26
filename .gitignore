@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+site/
+
+# Expo
+.expo/
+.expo-shared/
+expo-env.d.ts
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.pem
+*.key
