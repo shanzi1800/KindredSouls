@@ -4,7 +4,6 @@
   "outputDirectory": "dist",
   "devCommand": "expo start --web",
   "installCommand": "npm install",
-  "framework": "expo",
   "headers": [
     {
       "source": "/(.*)",
