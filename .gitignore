@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-dist/
+# dist/ (commented out for GitHub Pages deployment)
 site/
 
 # Expo
