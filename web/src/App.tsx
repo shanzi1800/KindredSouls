@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -7,46 +7,91 @@ import './App.css';
 
 /* ── Input Page ── */
 /* Simple date input — user types their own birthday */
+/* ── Custom Date Picker (minimalist, no "Today" button) ── */
 function DateInput({ value, onChange, inputId }: { value: string; onChange: (v: string) => void; inputId?: string }) {
   const { i18n } = useTranslation();
   const lang = i18n.language;
-  // Custom placeholder text per language (browsers ignore lang attr on date inputs)
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Placeholder text per language
   const ph = lang === 'zh' ? '年 / 月 / 日'
     : lang === 'fr' ? 'JJ / MM / AAAA'
     : lang === 'es' ? 'DD / MM / AAAA'
     : 'YYYY / MM / DD';
-  const ref = useRef<HTMLInputElement>(null);
 
-  // Hide "Today" button in WebKit date picker popup via shadow-DOM penetration
+  // Month names
+  const months = lang === 'zh' ? ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
+    : lang === 'fr' ? ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+    : lang === 'es' ? ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Parse current value
+  const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split('-')[0]) : new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split('-')[1]) - 1 : new Date().getMonth());
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const tryHideToday = () => {
-      try {
-        // WebKit exposes the picker through open property in some versions
-        const shadow = el.shadowRoot || (el as any).webkitShadowRoot;
-        if (shadow) {
-          const todayBtn = shadow.querySelector('[value="today"], [aria-label*="oday"], .today-button');
-          if (todayBtn) (todayBtn as HTMLElement).style.display = 'none';
-        }
-      } catch { /* cross-origin shadow DOM */ }
-    };
-    el.addEventListener('focus', tryHideToday, { once: true });
-    return () => { el.removeEventListener('focus', tryHideToday); };
-  }, []);
+    if (value) {
+      const [y, m] = value.split('-').map(Number);
+      setViewYear(y);
+      setViewMonth(m - 1);
+    }
+  }, [value]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  // Generate calendar grid
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const days: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
+  const selectDay = (d: number) => {
+    const m = String(viewMonth + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    onChange(`${viewYear}-${m}-${day}`);
+    setOpen(false);
+  };
+
+  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); };
+
+  const weekdays = lang === 'zh' ? ['日','一','二','三','四','五','六']
+    : lang === 'fr' ? ['Di','Lu','Ma','Me','Je','Ve','Sa']
+    : lang === 'es' ? ['Do','Lu','Ma','Mi','Ju','Vi','Sá']
+    : ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
   return (
-    <div style={{ position: 'relative' }}>
-      <input
-        id={inputId}
-        ref={ref}
-        type="date"
-        className="date-input"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onFocus={e => { e.target.showPicker?.(); }}
-      />
-      {!value && <span className="date-ph">{ph}</span>}
+    <div ref={ref} className="date-picker-wrapper">
+      <div className="date-display" onClick={() => setOpen(o => !o)}>
+        <span className={value ? 'date-value' : 'date-placeholder'}>
+          {value || ph}
+        </span>
+        <span className="date-icon">📅</span>
+      </div>
+      {open && (
+        <div className="date-panel">
+          <div className="date-header">
+            <button type="button" className="date-nav" onClick={prevMonth}>‹</button>
+            <span className="date-title">{months[viewMonth]} {viewYear}</span>
+            <button type="button" className="date-nav" onClick={nextMonth}>›</button>
+          </div>
+          <div className="date-weekdays">{weekdays.map(w => <span key={w} className="date-wd">{w}</span>)}</div>
+          <div className="date-grid">
+            {days.map((d, i) => (
+              <span key={i} className={`date-cell ${d === null ? 'empty' : ''} ${d && value === `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` ? 'selected' : ''}`}
+                onClick={() => d && selectDay(d)}>{d}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -69,6 +114,12 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   return (
     <div className="page input-page">
+      {/* Video Background */}
+      <video className="video-bg" autoPlay muted loop playsInline>
+        <source src="https://cdn.coverr.co/videos/coverr-aerial-view-of-ocean-waves-5763/1080p.mp4" type="video/mp4" />
+      </video>
+      <div className="video-overlay" />
+      
       <button className="lang-switch" onClick={cycleLang}>🌐 {i18n.language === 'zh' ? '中文' : i18n.language === 'en' ? 'EN' : i18n.language === 'es' ? 'ES' : 'FR'}</button>
       <h1 className="title">{t('input.title')}</h1>
       <p className="subtitle">{t('app.name')}</p>
