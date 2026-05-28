@@ -1,0 +1,22 @@
+{
+  "name_a": "Chloé",
+  "name_b": "Antoine",
+  "date_a": "1990-03-15",
+  "date_b": "1985-10-26",
+  "overall": 82,
+  "engines": {
+    "bazi": 77,
+    "zodiac": 81,
+    "iching": 92
+  },
+  "dimensions": {
+    "love": 82,
+    "communication": 81,
+    "chemistry": 81,
+    "stability": 82
+  },
+  "insight": "Con una puntuación de 82 en todas las dimensiones clave, su conexión tiene una base sólida y equilibrada. La química entre su sensibilidad de Piscis y la intensidad de Escorpio crea una danza emocional única, donde la comprensión mutua fluye de forma natural. La energía del I Ching «泽雷随» les invita a moverse juntos con flexibilidad, aceptando los cambios con confianza. En su relación, la comunicación no es solo palabras, sino un lenguaje silencioso que ambos ya dominan. Sigan nutriendo esa chispa con pequeños gestos diarios, pues su compatibilidad es un jardín que florece con cuidado mutuo.",
+  "audio_path": "/Users/apple/Desktop/KindredSouls/output/voice/insight_20260527_171958.mp3",
+  "voice": "spanish_female",
+  "generated_at": "2026-05-27T17:20:00.646127"
+}
