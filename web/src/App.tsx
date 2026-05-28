@@ -8,7 +8,7 @@ import './App.css';
 /* ── Input Page ── */
 /* Simple date input — user types their own birthday */
 function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const lang = i18n.language;
   // Custom placeholder text per language (browsers ignore lang attr on date inputs)
   const ph = lang === 'zh' ? '年 / 月 / 日'
@@ -225,6 +225,24 @@ function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; u
     { key: 'iching', label: t('result.engines.iching'), e: engines.iching },
   ];
 
+  // ── Auto-save to Supabase ──
+  useEffect(() => {
+    if (!userId) return;
+    fetch('/api/save-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        dob1: result._d1!,
+        dob2: result._d2!,
+        overall_score: overall,
+        dimensions,
+        engines,
+        language: lang,
+      }),
+    }).catch(() => {});
+  }, [userId, result._d1, result._d2]);
+
   return (
     <div className="page result-page">
       <button className="back-btn" onClick={onBack}>← {t('result.back')}</button>
@@ -241,8 +259,8 @@ function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; u
       </div>
 
       <AIInsightBlock
-        d1={result._d1}
-        d2={result._d2}
+        d1={result._d1!}
+        d2={result._d2!}
         overall={overall}
         dims={dimensions}
         bazi={engines.bazi.detail}
@@ -251,26 +269,7 @@ function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; u
         lang={lang}
       />
 
-      
-  // ── Auto-save to Supabase ──
-  useEffect(() => {
-    if (!userId) return;
-    fetch('/api/save-result', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId,
-        dob1: result._d1,
-        dob2: result._d2,
-        overall_score: overall,
-        dimensions,
-        engines,
-        language: lang,
-      }),
-    }).catch(() => {}); // Silent fail — save is best-effort
-  }, [userId, result._d1, result._d2]);
-
-{(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
+      {(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
         <div className="aspects">
           {result.luckyAspects.length > 0 && (
             <div className="aspect-group">

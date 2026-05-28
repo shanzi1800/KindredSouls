@@ -35,4 +35,6 @@ export interface CompatibilityResult {
   luckyAspects: string[];   // 有利方面
   challengingAspects: string[]; // 需要注意的方面
   dimensions: DimensionScore;  // 四维度评分
+  _d1?: string;
+  _d2?: string;
 }

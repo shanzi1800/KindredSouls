@@ -136,7 +136,7 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo): EngineResult {
     // 对宫（180°冲相）
     phaseScore = 58;
     phaseDesc = `对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异`;
-  } else if (phaseDist === 3 || phaseDist === 9 % 12 < 3 ? false : phaseDist === 3) {
+  } else if (phaseDist === 3 || phaseDist === 9) {
     // 四分相（90°）
     const isSquare = SQUARES[z1] === z2 || Object.values(SQUARES).includes(z1);
     if (isSquare || phaseDist === 3) {
