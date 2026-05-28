@@ -6,46 +6,16 @@ import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
 /* ── Input Page ── */
-/* Three text inputs: Year / Month / Day — keyboard friendly */
-function DateInput({ value: _value, onChange }: { value: string; onChange: (v: string) => void; inputId?: string }) {
-  // Use internal state only — no useEffect sync loop
-  const [year, setYear] = useState('');
-  const [month, setMonth] = useState('');
-  const [day, setDay] = useState('');
-
-  const build = () => {
-    const y = year.replace(/\D/g, '').slice(0, 4);
-    const m = month.replace(/\D/g, '').slice(0, 2);
-    const d = day.replace(/\D/g, '').slice(0, 2);
-    if (y && m && d) {
-      onChange(`${y.padStart(4,'0')}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
-    } else {
-      onChange('');
-    }
-  };
-
+/* Simple native date input — clean & minimal */
+function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="date-selects">
-      <input className="input date-sel date-sel-year" type="text"
-        inputMode="numeric" maxLength={4} placeholder="1990"
-        value={year} onChange={e => { setYear(e.target.value.replace(/\D/g,'').slice(0,4)); setTimeout(build, 0); }} />
-      <span className="date-sep">/</span>
-      <input className="input date-sel date-sel-month" type="text"
-        inputMode="numeric" maxLength={2} placeholder="06"
-        value={month} onChange={e => {
-          const v = e.target.value.replace(/\D/g,'').slice(0,2);
-          setMonth(v);
-          if (v.length >= 2) {
-            const el = (e.target as HTMLElement).nextElementSibling?.nextElementSibling as HTMLInputElement | null;
-            el?.focus();
-          }
-          setTimeout(build, 0);
-        }} />
-      <span className="date-sep">/</span>
-      <input className="input date-sel date-sel-day" type="text"
-        inputMode="numeric" maxLength={2} placeholder="15"
-        value={day} onChange={e => { setDay(e.target.value.replace(/\D/g,'').slice(0,2)); setTimeout(build, 0); }} />
-    </div>
+    <input
+      className="input date-input"
+      type="date"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder="yyyy-mm-dd"
+    />
   );
 }
 
@@ -77,11 +47,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
       <div className="form">
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} inputId="d1" />
+          <DateInput value={d1} onChange={setD1} />
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} inputId="d2" />
+          <DateInput value={d2} onChange={setD2} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
