@@ -115,10 +115,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   return (
     <div className="page input-page">
       {/* Video Background */}
-      <video className="video-bg" autoPlay muted loop playsInline>
-        <source src="https://cdn.coverr.co/videos/coverr-aerial-view-of-ocean-waves-5763/1080p.mp4" type="video/mp4" />
-      </video>
-      <div className="video-overlay" />
+      <div className="gradient-bg" />
       
       <button className="lang-switch" onClick={cycleLang}>🌐 {i18n.language === 'zh' ? '中文' : i18n.language === 'en' ? 'EN' : i18n.language === 'es' ? 'ES' : 'FR'}</button>
       <h1 className="title">{t('input.title')}</h1>
@@ -368,7 +365,7 @@ function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; u
 /* ── App ── */
 export default function App() {
   const { t } = useTranslation();
-  const [page, setPage] = useState<'input' | 'loading' | 'result'>('input');
+  const [_page, _setPage] = useState<'input' | 'loading' | 'result'>('input');
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [err, setErr] = useState('');
   const [userId, setUserId] = useState<string | null>(() => {
@@ -380,7 +377,7 @@ export default function App() {
 
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
-    setPage('loading');
+    _setPage('loading');
     // Ensure we have a user_id
     let uid = userId;
     if (!uid) {
@@ -392,23 +389,23 @@ export default function App() {
       const res = calculateCompatibility(d1, d2);
       if ('error' in res) {
         setErr(t('common.errorFormat'));
-        setPage('input');
+        _setPage('input');
       } else {
         // Attach dates for AI insight call
         const r = res as CompatibilityResult & { _d1: string; _d2: string };
         r._d1 = d1;
         r._d2 = d2;
         setResult(r);
-        setPage('result');
+        _setPage('result');
       }
     }, 800);
   };
 
   return (
     <div className="app">
-      {page === 'input' && <InputPage onSubmit={handleCalculate} />}
-      {page === 'loading' && <LoadingPage />}
-      {page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { setResult(null); setPage('input'); }} />}
+      { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
+      { _page === 'loading' && <LoadingPage />}
+      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { setResult(null); _setPage('input'); }} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );

@@ -20,14 +20,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   padding-top: 40px; position: relative; overflow: hidden; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center;
 }
-/* Video background */
-.video-bg {
-  position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover;
-  z-index: -3; pointer-events: none;
+/* Animated gradient background (no external video dependency) */
+.gradient-bg {
+  position: fixed; inset: 0; z-index: -3; pointer-events: none;
+  background: linear-gradient(135deg, #0D0D1A 0%, #1A1F4B 25%, #0f1a2e 50%, #162243 75%, #0D0D1A 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
 }
-.video-overlay {
-  position: fixed; inset: 0; background: linear-gradient(180deg, rgba(13,13,26,0.3) 0%, rgba(13,13,26,0.5) 50%, rgba(13,13,26,0.7) 100%);
-  z-index: -2; pointer-events: none;
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 100%; }
+  100% { background-position: 0% 50%; }
 }
 /* Floating particles overlay */
 .input-page::after {
@@ -210,3 +215,4 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .w90 { width: 90%; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .insight-error { font-size: 12px; color: #aaa; font-style: italic; }
+/* v2 */

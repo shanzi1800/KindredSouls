@@ -1,1 +1,24 @@
-{"version": 2, "buildCommand": "cd web && npm install && npm run build", "outputDirectory": "web/dist", "routes": [{"src": "/api/(.*)", "dest": "/api/index.js"}, {"src": "/assets/(.*)", "dest": "/assets/$1"}, {"src": "/(.*)", "dest": "/index.html"}]}
+{
+  "version": 2,
+  "buildCommand": "cd web && npm install && npm run build",
+  "outputDirectory": "web/dist",
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
