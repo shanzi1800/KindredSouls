@@ -5,17 +5,39 @@ import { calculateCompatibility } from './lib/algos';
 import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
-/* ── Input Page ── */
-/* Simple native date input — clean & minimal */
+/* ── Manual Date Input: YYYY / MM / DD ── */
+/* Three separate text fields — fully manual, no native picker */
 function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // Parse "YYYY-MM-DD" into parts (or empty)
+  const parts = value ? value.split('-') : ['', '', ''];
+  const [year, month, day] = parts;
+
+  const update = (idx: number, val: string) => {
+    const p = [...parts];
+    // Auto-pad / clamp
+    let cleaned = val.replace(/\D/g, '');
+    if (idx === 0) { /* year: max 4 digits */ p[0] = cleaned.slice(0, 4); }
+    else if (idx === 1) { /* month: max 2 digits, 01-12 */ p[1] = cleaned.slice(0, 2); if (p[1].length === 2 && parseInt(p[1]) > 12) p[1] = '12'; }
+    else { /* day: max 2 digits, 01-31 */ p[2] = cleaned.slice(0, 2); if (p[2].length === 2 && parseInt(p[2]) > 31) p[2] = '31'; }
+    // Auto-advance to next field
+    const newVal = p.filter(Boolean).join('-');
+    onChange(newVal);
+  };
+
   return (
-    <input
-      className="input date-input"
-      type="date"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder="yyyy-mm-dd"
-    />
+    <div className="date-manual">
+      <input className="date-part date-year" type="text" inputMode="numeric"
+        maxLength={4} placeholder="YYYY" value={year}
+        onChange={e => update(0, e.target.value)} />
+      <span className="date-slash">/</span>
+      <input className="date-part date-month" type="text" inputMode="numeric"
+        maxLength={2} placeholder="MM" value={month}
+        onChange={e => update(1, e.target.value)} />
+      <span className="date-slash">/</span>
+      <input className="date-part date-day" type="text" inputMode="numeric"
+        maxLength={2} placeholder="DD" value={day}
+        onChange={e => update(2, e.target.value)} />
+    </div>
   );
 }
 
@@ -37,8 +59,12 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   return (
     <div className="page input-page">
-      {/* Video Background */}
-      <div className="gradient-bg" />
+      {/* Cinematic Video Background */}
+      <video className="video-bg" autoPlay muted loop playsInline
+        poster="">
+        <source src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4" type="video/mp4" />
+      </video>
+      <div className="video-overlay" />
       
       <button className="lang-switch" onClick={cycleLang}>🌐 {i18n.language === 'zh' ? '中文' : i18n.language === 'en' ? 'EN' : i18n.language === 'es' ? 'ES' : 'FR'}</button>
       <h1 className="title">{t('input.title')}</h1>

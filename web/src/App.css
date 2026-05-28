@@ -15,69 +15,95 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .subtitle { font-size: 15px; color: #81D8D0; font-weight: 600; margin-bottom: 20px; }
 .desc { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 28px; }
 
-/* ── Input Page ── */
+/* ── Input Page — Cinematic Video Background ── */
 .input-page {
   padding-top: 60px; position: relative; z-index: 2; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center;
-  background: transparent;
+  background: #050812; overflow: hidden;
 }
-/* Deep space gradient - KindredSouls brand palette */
-.gradient-bg {
-  position: fixed; inset: 0; pointer-events: none;
+
+/* Full-screen video background */
+.video-bg {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0; pointer-events: none;
+}
+
+/* Dark overlay for text readability + brand tint */
+.video-overlay {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
   background:
-    radial-gradient(ellipse 120% 100% at 20% 0%, #141836 0%, transparent 60%),
-    radial-gradient(ellipse 80% 80% at 80% 100%, #0d1025 0%, transparent 55%),
-    radial-gradient(circle at 50% 50%, #111630 0%, #0a0e1f 70%, #050812 100%);
-  background-size: 100% 100%;
-/* Starfield overlay - multi-layer twinkling stars */
-.input-page::before {
-  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    /* Layer 1: tiny distant stars */
-    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.7) 50%, transparent 100%),
-    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.5) 50%, transparent 100%),
-    radial-gradient(1px 1px at 45% 10%, rgba(255,255,255,0.6) 50%, transparent 100%),
-    radial-gradient(1px 1px at 65% 25%, rgba(255,255,255,0.4) 50%, transparent 100%),
-    radial-gradient(1px 1px at 85% 45%, rgba(255,255,255,0.5) 50%, transparent 100%),
-    radial-gradient(1px 1px at 15% 65%, rgba(255,255,255,0.6) 50%, transparent 100%),
-    radial-gradient(1px 1px at 35% 85%, rgba(255,255,255,0.4) 50%, transparent 100%),
-    radial-gradient(1px 1px at 55% 55%, rgba(255,255,255,0.5) 50%, transparent 100%),
-    radial-gradient(1px 1px at 75% 75%, rgba(255,255,255,0.7) 50%, transparent 100%),
-    radial-gradient(1px 1px at 95% 20%, rgba(255,255,255,0.5) 50%, transparent 100%),
-    radial-gradient(1px 1px at 5% 90%, rgba(255,255,255,0.4) 50%, transparent 100%),
-    radial-gradient(1px 1px at 40% 42%, rgba(255,255,255,0.6) 50%, transparent 100%),
-    radial-gradient(1px 1px at 70% 8%, rgba(255,255,255,0.5) 50%, transparent 100%),
-    radial-gradient(1px 1px at 90% 92%, rgba(255,255,255,0.4) 50%, transparent 100%),
-    /* Layer 2: medium teal-tinted stars (brand accent) */
-    radial-gradient(1.5px 1.5px at 18% 22%, rgba(129,216,208,0.6) 50%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 52% 68%, rgba(129,216,208,0.5) 50%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 78% 32%, rgba(129,216,208,0.4) 50%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 32% 78%, rgba(129,216,208,0.5) 50%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 88% 58%, rgba(129,216,208,0.6) 50%, transparent 100%),
-    /* Layer 3: golden accent stars (rare, premium feel) */
-    radial-gradient(2px 2px at 28% 48%, rgba(212,175,55,0.35) 50%, transparent 100%),
-    radial-gradient(2px 2px at 72% 18%, rgba(212,175,55,0.3) 50%, transparent 100%),
-    radial-gradient(2px 2px at 58% 88%, rgba(212,175,55,0.25) 50%, transparent 100%),
-    /* Layer 4: soft nebula glow areas */
-    radial-gradient(200px 150px at 15% 20%, rgba(26,31,75,0.4) 0%, transparent 70%),
-    radial-gradient(180px 220px at 82% 70%, rgba(20,24,60,0.35) 0%, transparent 70%),
-    radial-gradient(140px 100px at 50% 40%, rgba(129,216,208,0.04) 0%, transparent 70%);
-  animation: twinkle 6s ease-in-out infinite alternate;
+    linear-gradient(180deg,
+      rgba(5,8,18,0.35) 0%,
+      rgba(5,8,18,0.15) 30%,
+      rgba(5,8,18,0.25) 60%,
+      rgba(5,8,18,0.6) 95%,
+      rgba(5,8,18,0.85) 100%
+    ),
+    radial-gradient(circle at 50% 30%, rgba(26,31,75,0.25) 0%, transparent 60%);
 }
-/* Dark text on video background */
-.input-page .title { color: #fff; text-shadow: 0 2px 30px rgba(0,0,0,0.4); position: relative; z-index: 5; }
-.input-page .subtitle { color: #81D8D0; text-shadow: 0 1px 15px rgba(0,0,0,0.3); position: relative; z-index: 5; }
-.input-page .desc { color: rgba(255,255,255,0.8); position: relative; z-index: 5; }
-.input-page .date-label { color: rgba(255,255,255,0.9); }
-.form { display: flex; flex-direction: column; gap: 12px; }
+/* Cinematic typography over video */
+.input-page .title {
+  color: #fff; text-shadow: 0 2px 40px rgba(0,0,0,0.5), 0 0 80px rgba(129,216,208,0.15);
+  position: relative; z-index: 5; letter-spacing: -0.8px;
+}
+.input-page .subtitle {
+  color: #81D8D0; text-shadow: 0 1px 20px rgba(0,0,0,0.4), 0 0 40px rgba(129,216,208,0.2);
+  position: relative; z-index: 5;
+}
+.input-page .desc {
+  color: rgba(255,255,255,0.85); position: relative; z-index: 5;
+  text-shadow: 0 1px 12px rgba(0,0,0,0.3);
+}
+.input-page .date-label { color: rgba(255,255,255,0.9); text-shadow: 0 1px 8px rgba(0,0,0,0.3); }
+.form {
+  display: flex; flex-direction: column; gap: 16px;
+  width: 100%;
+  padding: 24px 20px 20px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+}
 .input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
 .input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
 .input::placeholder { color: #bbb; }
 
-.btn { width: 100%; height: 52px; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+/* ── Manual Date Input (YYYY / MM / DD) ── */
+.date-manual {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%;
+}
+.date-part {
+  flex: 1; height: 54px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 14px;
+  padding: 0 14px; font-size: 17px; font-weight: 500;
+  color: #fff; background: rgba(255,255,255,0.1);
+  outline: none; text-align: center;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit;
+}
+.date-part:focus {
+  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.25), 0 8px 32px rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.16);
+}
+.date-part::placeholder { color: rgba(255,255,255,0.38); }
+.date-year { flex: 1.5; }
+.date-month { flex: 1; }
+.date-day { flex: 1; }
+.date-slash {
+  color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 200;
+  user-select: none; flex-shrink: 0;
+}
+
+.btn { width: 100%; height: 54px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s; letter-spacing: 0.3px; }
 .btn:active { transform: scale(0.98); }
-.btn-primary { background: linear-gradient(135deg, #81D8D0, #5cc5bb); color: #fff; }
-.btn-primary:hover { opacity: 0.92; }
+.btn-primary {
+  background: linear-gradient(135deg, #81D8D0 0%, #5cc5bb 50%, #4ab8ad 100%);
+  color: #0a1a18; box-shadow: 0 4px 20px rgba(129,216,208,0.35), 0 0 60px rgba(129,216,208,0.1);
+}
+.btn-primary:hover { opacity: 0.92; box-shadow: 0 6px 28px rgba(129,216,208,0.45), 0 0 80px rgba(129,216,208,0.15); }
 .btn-secondary { background: #fff; color: #81D8D0; border: 2px solid #81D8D0; margin-top: 20px; }
 .btn-secondary:hover { background: rgba(129,216,208,0.06); }
 
