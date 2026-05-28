@@ -144,7 +144,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .date-ph {
   position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
   font-size: 15px; color: #bbb; pointer-events: none;
-  z-index: 1;
+  z-index: -1;
 }
 .date-input:focus ~ .date-ph,
 .date-input:valid ~ .date-ph { display: none; }

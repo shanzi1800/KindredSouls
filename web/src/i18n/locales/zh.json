@@ -6,8 +6,8 @@
   "input": {
     "title": "缘分天定",
     "subtitle": "输入双方生日，测算缘分指数",
-    "yourBirthday": "你的生日（如 1990-01-01）",
-    "theirBirthday": "TA的生日（如 1992-05-20）",
+    "yourBirthday": "你的生日",
+    "theirBirthday": "TA的生日",
     "calculate": "测算缘分",
     "placeholder1": "YYYY-MM-DD",
     "placeholder2": "YYYY-MM-DD"

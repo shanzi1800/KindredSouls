@@ -6,8 +6,8 @@
   "input": {
     "title": "Fate Written in the Stars",
     "subtitle": "Enter both birth dates to reveal your compatibility",
-    "yourBirthday": "Your birthday (e.g., 1990-01-01)",
-    "theirBirthday": "Their birthday (e.g., 1992-05-20)",
+    "yourBirthday": "Your birthday",
+    "theirBirthday": "Their birthday",
     "calculate": "Reveal Compatibility",
     "placeholder1": "YYYY-MM-DD",
     "placeholder2": "YYYY-MM-DD"

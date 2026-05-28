@@ -6,8 +6,8 @@
   "input": {
     "title": "El Destino Está Escrito",
     "subtitle": "Ingresa ambas fechas de nacimiento para revelar tu compatibilidad",
-    "yourBirthday": "Tu fecha de nacimiento (ej., 1990-01-01)",
-    "theirBirthday": "Su fecha de nacimiento (ej., 1992-05-20)",
+    "yourBirthday": "Tu fecha de nacimiento",
+    "theirBirthday": "Su fecha de nacimiento",
     "calculate": "Revelar Compatibilidad",
     "placeholder1": "DD/MM/AAAA",
     "placeholder2": "DD/MM/AAAA"

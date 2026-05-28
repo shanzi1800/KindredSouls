@@ -7,7 +7,7 @@ import './App.css';
 
 /* ── Input Page ── */
 /* Simple date input — user types their own birthday */
-function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function DateInput({ value, onChange, inputId }: { value: string; onChange: (v: string) => void; inputId?: string }) {
   const { i18n } = useTranslation();
   const lang = i18n.language;
   // Custom placeholder text per language (browsers ignore lang attr on date inputs)
@@ -18,6 +18,7 @@ function DateInput({ value, onChange }: { value: string; onChange: (v: string) =
   return (
     <div style={{ position: 'relative' }}>
       <input
+        id={inputId}
         type="date"
         className="date-input"
         value={value}
@@ -52,12 +53,12 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
       <p className="desc">{t('input.subtitle')}</p>
       <div className="form">
         <div className="date-field">
-          <label className="date-label">{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} />
+          <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
+          <DateInput value={d1} onChange={setD1} inputId="d1" />
         </div>
         <div className="date-field">
-          <label className="date-label">{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} />
+          <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
+          <DateInput value={d2} onChange={setD2} inputId="d2" />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
