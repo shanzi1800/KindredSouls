@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "KindredSouls",
+    "tagline": "Discover Your Cosmic Connection"
+  },
+  "input": {
+    "title": "Fate Written in the Stars",
+    "subtitle": "Enter both birth dates to reveal your compatibility",
+    "yourBirthday": "Your birthday (e.g., 1990-01-01)",
+    "theirBirthday": "Their birthday (e.g., 1992-05-20)",
+    "calculate": "Reveal Compatibility",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD"
+  },
+  "result": {
+    "title": "Compatibility Result",
+    "score": "Compatibility Score",
+    "overall": "Overall Match",
+    "loading": "Reading the cosmos...",
+    "back": "Check Another Pair",
+    "luckyAspects": "Lucky Aspects",
+    "challengingAspects": "Challenging Aspects",
+    "engines": {
+      "bazi": "Chinese Astrology (BaZi)",
+      "zodiac": "Western Zodiac",
+      "iching": "I Ching Wisdom",
+      "aiInsight": "AI Relationship Insight"
+    }
+  },
+  "nav": {
+    "language": "Language",
+    "settings": "Settings"
+  },
+  "common": {
+    "errorIncomplete": "Please enter both birthdays",
+    "errorFormat": "Please use YYYY-MM-DD format"
+  }
+}

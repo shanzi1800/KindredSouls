@@ -1,0 +1,170 @@
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Segoe UI', Roboto, sans-serif; background: #fafafa; min-height: 100vh; color: #222; }
+
+/* ── Layout ── */
+.app { display: flex; justify-content: center; padding: 24px 16px 60px; min-height: 100vh; }
+.page { width: 100%; max-width: 420px; position: relative; }
+
+/* ── Language Switcher ── */
+.lang-switch { position: absolute; top: -4px; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #888; z-index: 10; }
+.lang-switch:hover { border-color: #81D8D0; color: #333; }
+
+/* ── Typography ── */
+.title { font-size: 28px; font-weight: 800; color: #1A1F4B; margin-bottom: 4px; letter-spacing: -0.5px; }
+.subtitle { font-size: 15px; color: #81D8D0; font-weight: 600; margin-bottom: 20px; }
+.desc { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 28px; }
+
+/* ── Input Page ── */
+.input-page { padding-top: 40px; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
+.input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
+.input::placeholder { color: #bbb; }
+
+.btn { width: 100%; height: 52px; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: linear-gradient(135deg, #81D8D0, #5cc5bb); color: #fff; }
+.btn-primary:hover { opacity: 0.92; }
+.btn-secondary { background: #fff; color: #81D8D0; border: 2px solid #81D8D0; margin-top: 20px; }
+.btn-secondary:hover { background: rgba(129,216,208,0.06); }
+
+/* ── Loading ── */
+.loading-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
+.spinner { width: 44px; height: 44px; border: 3px solid #eee; border-top-color: #81D8D0; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 18px; color: #999; font-size: 14px; }
+
+/* ── Result Page ── */
+.result-page { padding-top: 20px; }
+
+/* Score Ring */
+.score-ring { width: 130px; height: 130px; margin: 20px auto 8px; }
+.score-ring svg { width: 100%; height: 100%; }
+
+/* Engine Cards */
+.engine-cards { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+.engine-info { display: flex; flex-direction: column; gap: 3px; text-align: left; flex: 1; }
+.engine-name { font-size: 13px; font-weight: 600; color: #1A1F4B; }
+.engine-summary { font-size: 12px; color: #888; line-height: 1.4; }
+.engine-score { font-size: 20px; font-weight: 800; color: #1A1F4B; }
+
+/* AI Insight */
+.ai-insight { background: linear-gradient(135deg, #f0f7ff, #faf5ff); border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 18px; border: 1px solid rgba(129,216,208,0.2); }
+.ai-insight h3 { font-size: 14px; color: #1A1F4B; margin-bottom: 8px; }
+.ai-insight p { font-size: 13px; color: #555; line-height: 1.65; }
+
+/* Aspects Tags */
+.aspects { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.aspect-group { text-align: left; }
+.aspect-group h4 { font-size: 13px; color: #555; margin-bottom: 8px; }
+.tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin: 0 6px 6px 0; }
+.tag-good { background: rgba(129,216,208,0.15); color: #2a8a7a; }
+.tag-warn { background: rgba(212,175,55,0.15); color: #b8860b; }
+
+/* Error */
+.error-msg { color: #e74c3c; font-size: 13px; marginTop: 12px; }
+
+/* ── Back Button ── */
+.back-btn { background: none; border: none; cursor: pointer; color: #81D8D0; font-size: 14px; font-weight: 600; padding: 0; margin-bottom: 16px; }
+.back-btn:hover { opacity: 0.7; }
+
+/* ── Score Label ── */
+.score-label { text-align: center; font-size: 13px; color: #888; font-weight: 500; margin-bottom: 20px; letter-spacing: 0.5px; }
+
+/* ── Four Dimensions ── */
+.dim-section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid #eee; }
+.section-title { font-size: 13px; font-weight: 700; color: #1A1F4B; margin-bottom: 14px; }
+.dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dim-row:last-child { margin-bottom: 0; }
+.dim-label { font-size: 12px; color: #666; width: 52px; flex-shrink: 0; text-align: left; }
+.dim-bar-bg { flex: 1; height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+.dim-bar-fill { height: 100%; background: linear-gradient(90deg, #81D8D0, #5cc5bb); border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+.dim-val { font-size: 13px; font-weight: 700; color: #1A1F4B; width: 26px; text-align: right; }
+
+/* ── Engine Cards (interactive) ── */
+.engine-card { background: #fff; border-radius: 14px; border: 1px solid #eee; margin-bottom: 10px; overflow: hidden; }
+.engine-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; }
+.engine-card-header:active { background: #fafafa; }
+.engine-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.engine-icon { font-size: 20px; flex-shrink: 0; }
+.engine-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.chevron { font-size: 20px; color: #ccc; transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(90deg); color: #81D8D0; }
+.engine-detail { padding: 0 16px 16px; border-top: 1px solid #f0f0f0; animation: slideDown 0.2s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.detail-heading { font-size: 12px; font-weight: 700; color: #1A1F4B; margin-top: 12px; margin-bottom: 4px; }
+.detail-line { font-size: 12px; color: #555; line-height: 1.65; margin-bottom: 2px; }
+
+/* ── Date Field ── */
+.date-field { position: relative; }
+.date-label { display: block; font-size: 12px; color: #888; font-weight: 500; margin-bottom: 6px; margin-left: 4px; }
+
+/* ── Custom date selects (year/month/day) ── */
+.date-selects {
+  display: flex; gap: 8px;
+}
+.date-sel {
+  flex: 1; height: 52px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+  padding: 0 12px; font-size: 15px; color: #222; background: #fff;
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.date-sel:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
+.date-sel-year { min-width: 90px; }
+.date-sel-month { min-width: 70px; }
+.date-sel-day { min-width: 70px; }
+
+/* Keep original date-input for any fallback usage */
+/* ── Date Input (native <input type="date">) ── */
+/* Hide the broken system-language placeholder */
+.date-input::placeholder { color: transparent; }
+.date-input:focus::placeholder { color: transparent; }
+/* WebKit date input uses -webkit-datetime-edit as pseudo-placeholder */
+.date-input::-webkit-datetime-edit { color: transparent; }
+.date-input:focus::-webkit-datetime-edit { color: #222; }
+.date-input:not(:focus):not(:valid)::-webkit-datetime-edit { color: transparent; }
+
+.date-input {
+  width: 100%; height: 52px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+  padding: 0 16px; font-size: 15px; color: #222; background: #fff;
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none; appearance: none;
+  font-family: inherit;
+}
+.date-input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
+
+/* Custom placeholder overlay — shown only when input is empty */
+.date-field { position: relative; }
+.date-ph {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  font-size: 15px; color: #bbb; pointer-events: none;
+  z-index: 1;
+}
+.date-input:focus ~ .date-ph,
+.date-input:valid ~ .date-ph { display: none; }
+
+/* Calendar icon */
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer; opacity: 0.5; transition: opacity 0.2s;
+}
+.date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+/* ── AI Insight Loading Skeleton ── */
+.insight-skeleton { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.skeleton-line {
+  height: 14px; border-radius: 7px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+.w60 { width: 60%; }
+.w80 { width: 80%; }
+.w90 { width: 90%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.insight-error { font-size: 12px; color: #aaa; font-style: italic; }

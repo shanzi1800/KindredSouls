@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "缘分天定",
+    "tagline": "发现你们的宇宙连接"
+  },
+  "input": {
+    "title": "缘分天定",
+    "subtitle": "输入双方生日，测算缘分指数",
+    "yourBirthday": "你的生日（如 1990-01-01）",
+    "theirBirthday": "TA的生日（如 1992-05-20）",
+    "calculate": "测算缘分",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD"
+  },
+  "result": {
+    "title": "缘分测算结果",
+    "score": "缘分指数",
+    "overall": "综合匹配度",
+    "loading": "正在解读星象...",
+    "back": "重新测算",
+    "luckyAspects": "有利方面",
+    "challengingAspects": "注意方面",
+    "engines": {
+      "bazi": "八字命理",
+      "zodiac": "西方星座",
+      "iching": "易经智慧",
+      "aiInsight": "AI情感洞察"
+    }
+  },
+  "nav": {
+    "language": "语言",
+    "settings": "设置"
+  },
+  "common": {
+    "errorIncomplete": "请输入双方生日",
+    "errorFormat": "请使用 YYYY-MM-DD 格式"
+  }
+}

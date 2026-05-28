@@ -24,3 +24,8 @@ npm-debug.log*
 # Misc
 *.pem
 *.key
+.vercel
+
+# Environment variables
+.env
+api/.env

@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "KindredSouls",
+    "tagline": "Descubre tu conexión cósmica"
+  },
+  "input": {
+    "title": "El Destino Está Escrito",
+    "subtitle": "Ingresa ambas fechas de nacimiento para revelar tu compatibilidad",
+    "yourBirthday": "Tu fecha de nacimiento (ej., 1990-01-01)",
+    "theirBirthday": "Su fecha de nacimiento (ej., 1992-05-20)",
+    "calculate": "Revelar Compatibilidad",
+    "placeholder1": "DD/MM/AAAA",
+    "placeholder2": "DD/MM/AAAA"
+  },
+  "result": {
+    "title": "Resultado de Compatibilidad",
+    "score": "Puntuación de Compatibilidad",
+    "overall": "Compatibilidad General",
+    "loading": "Leyendo el cosmos...",
+    "back": "Probar Otra Pareja",
+    "luckyAspects": "Aspectos Favorables",
+    "challengingAspects": "Aspectos Desafiantes",
+    "engines": {
+      "bazi": "Astrología China (BaZi)",
+      "zodiac": "Zodiaco Occidental",
+      "iching": "Sabiduría I Ching",
+      "aiInsight": "Perspectiva IA sobre la Relación"
+    }
+  },
+  "nav": {
+    "language": "Idioma",
+    "settings": "Configuración"
+  },
+  "common": {
+    "errorIncomplete": "Por favor ingresa ambas fechas de nacimiento",
+    "errorFormat": "Por favor usa el formato DD/MM/AAAA"
+  }
+}

@@ -2,20 +2,24 @@
   "version": 2,
   "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
-  "devCommand": "expo start --web",
-  "installCommand": "npm install",
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
-      ]
+  "installCommand": "npm install && cd api && npm install 2>/dev/null || true",
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs22.x"
     }
-  ],
-  "rewrites": [
+  },
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/$1"
+    },
+    {
+      "src": "/.*",
+      "dest": "/dist/index.html"
     }
   ]
 }
