@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -8,7 +8,7 @@ import './App.css';
 /* ── Input Page ── */
 /* Simple date input — user types their own birthday */
 /* ── Custom Date Picker (minimalist, no "Today" button) ── */
-function DateInput({ value, onChange, inputId }: { value: string; onChange: (v: string) => void; inputId?: string }) {
+function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void; inputId?: string }) {
   const { i18n } = useTranslation();
   const lang = i18n.language;
   const [open, setOpen] = useState(false);
