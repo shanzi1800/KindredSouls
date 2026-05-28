@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -15,14 +15,36 @@ function DateInput({ value, onChange, inputId }: { value: string; onChange: (v: 
     : lang === 'fr' ? 'JJ / MM / AAAA'
     : lang === 'es' ? 'DD / MM / AAAA'
     : 'YYYY / MM / DD';
+  const ref = useRef<HTMLInputElement>(null);
+
+  // Hide "Today" button in WebKit date picker popup via shadow-DOM penetration
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const tryHideToday = () => {
+      try {
+        // WebKit exposes the picker through open property in some versions
+        const shadow = el.shadowRoot || (el as any).webkitShadowRoot;
+        if (shadow) {
+          const todayBtn = shadow.querySelector('[value="today"], [aria-label*="oday"], .today-button');
+          if (todayBtn) (todayBtn as HTMLElement).style.display = 'none';
+        }
+      } catch { /* cross-origin shadow DOM */ }
+    };
+    el.addEventListener('focus', tryHideToday, { once: true });
+    return () => { el.removeEventListener('focus', tryHideToday); };
+  }, []);
+
   return (
     <div style={{ position: 'relative' }}>
       <input
         id={inputId}
+        ref={ref}
         type="date"
         className="date-input"
         value={value}
         onChange={e => onChange(e.target.value)}
+        onFocus={e => { e.target.showPicker?.(); }}
       />
       {!value && <span className="date-ph">{ph}</span>}
     </div>
