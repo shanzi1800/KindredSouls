@@ -10,7 +10,7 @@ const supabase =
     : null;
 
 // ── CORS helper ──
-function setCors(res: any, req: any) {
+function setCors(res, req) {
   const origin = req.headers.origin || "";
   const allowed = [
     "http://localhost:5173",
@@ -29,7 +29,7 @@ function setCors(res: any, req: any) {
 const insightCache = new Map<string, string>();
 const MAX_CACHE = 200;
 
-function cacheKey(d1: string, d2: string, overall: number, dims: any, lang: string) {
+function cacheKey(d1, d2, overall, dims, lang) {
   return crypto
     .createHash("sha256")
     .update(`${d1}|${d2}|${overall}|${JSON.stringify(dims)}|${lang}`)
@@ -38,8 +38,8 @@ function cacheKey(d1: string, d2: string, overall: number, dims: any, lang: stri
 }
 
 function buildPrompt(
-  d1: string, d2: string, overall: number, dims: any,
-  bazi: string, zodiac: string, iching: string, lang = "en"
+  d1, d2, overall, dims,
+  bazi, zodiac, iching, lang = "en"
 ) {
   const isZh = lang === "zh";
   const isFr = lang === "fr";
@@ -65,7 +65,7 @@ function buildPrompt(
 }
 
 // ── Main Handler (Vercel Serverless Function) ──
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   setCors(res, req);
 
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -182,7 +182,7 @@ export default async function handler(req: any, res: any) {
     }
 
     return res.status(404).json({ error: "Not found", path });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Handler error:", err);
     return res.status(500).json({ error: "Internal server error", detail: err.message });
   }

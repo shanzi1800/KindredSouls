@@ -1,25 +1,28 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:web",
-  "outputDirectory": "dist",
-  "installCommand": "npm install && cd api && npm install 2>/dev/null || true",
-  "functions": {
-    "api/index.ts": {
-      "runtime": "nodejs22.x"
+  "builds": [
+    {
+      "src": "web/**",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/$1"
-    },
-    {
-      "src": "/.*",
-      "dest": "/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }
