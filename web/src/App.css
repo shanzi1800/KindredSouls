@@ -1,6 +1,6 @@
 /* ── Reset ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Segoe UI', Roboto, sans-serif; background: #fafafa; min-height: 100vh; color: #222; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Segoe UI', Roboto, sans-serif; background: transparent; min-height: 100vh; color: #222; }
 
 /* ── Layout ── */
 .app { display: flex; justify-content: center; padding: 24px 16px 60px; min-height: 100vh; }
@@ -11,18 +11,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .lang-switch:hover { border-color: #81D8D0; color: #fff; }
 
 /* ── Typography ── */
-.title { font-size: 28px; font-weight: 800; color: #1A1F4B; margin-bottom: 4px; letter-spacing: -0.5px; }
+.title { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 .subtitle { font-size: 15px; color: #81D8D0; font-weight: 600; margin-bottom: 20px; }
 .desc { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 28px; }
 
 /* ── Input Page ── */
 .input-page {
-  padding-top: 40px; position: relative; overflow: hidden; min-height: 100vh;
+  padding-top: 60px; position: relative; z-index: 2; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center;
+  background: transparent;
 }
 /* Animated gradient background (no external video dependency) */
 .gradient-bg {
-  position: fixed; inset: 0; z-index: -3; pointer-events: none;
+  position: fixed; inset: 0; pointer-events: none;
   background: linear-gradient(135deg, #0D0D1A 0%, #1A1F4B 25%, #0f1a2e 50%, #162243 75%, #0D0D1A 100%);
   background-size: 400% 400%;
   animation: gradientShift 15s ease infinite;
@@ -50,9 +51,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   100% { transform: translateY(-30px) translateX(15px); }
 }
 /* Dark text on video background */
-.input-page .title { color: #fff; text-shadow: 0 2px 30px rgba(0,0,0,0.4); }
-.input-page .subtitle { color: #81D8D0; text-shadow: 0 1px 15px rgba(0,0,0,0.3); }
-.input-page .desc { color: rgba(255,255,255,0.8); }
+.input-page .title { color: #fff; text-shadow: 0 2px 30px rgba(0,0,0,0.4); position: relative; z-index: 5; }
+.input-page .subtitle { color: #81D8D0; text-shadow: 0 1px 15px rgba(0,0,0,0.3); position: relative; z-index: 5; }
+.input-page .desc { color: rgba(255,255,255,0.8); position: relative; z-index: 5; }
 .input-page .date-label { color: rgba(255,255,255,0.9); }
 .form { display: flex; flex-direction: column; gap: 12px; }
 .input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
@@ -137,25 +138,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .date-field { position: relative; }
 .date-label { display: block; font-size: 12px; color: #888; font-weight: 500; margin-bottom: 6px; margin-left: 4px; }
 
-/* ── Custom date selects (year/month/day) ── */
+/* ── Date inputs (year/month/day text fields) ── */
 .date-selects {
-  display: flex; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.date-sep {
+  color: rgba(255,255,255,0.4); font-size: 18px; font-weight: 300;
+  user-select: none; flex-shrink: 0;
 }
 .date-sel {
-  flex: 1; height: 52px; border: 1.5px solid #e0e0e0; border-radius: 12px;
-  padding: 0 12px; font-size: 15px; color: #222; background: #fff;
+  flex: 1; height: 52px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
+  padding: 0 14px; font-size: 16px; color: #fff; background: rgba(255,255,255,0.12);
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
   -webkit-appearance: none; appearance: none;
-  font-family: inherit; cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
+  font-family: inherit; text-align: center;
+  backdrop-filter: blur(10px);
 }
-.date-sel:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
-.date-sel-year { min-width: 90px; }
-.date-sel-month { min-width: 70px; }
-.date-sel-day { min-width: 70px; }
+.date-sel:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.2); }
+.date-sel::placeholder { color: rgba(255,255,255,0.35); }
+.date-sel-year { flex: 1.4; min-width: 0; }
+.date-sel-month { flex: 0.9; min-width: 0; }
+.date-sel-day { flex: 0.9; min-width: 0; }
 
 /* Keep original date-input for any fallback usage */
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -6,92 +6,45 @@ import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
 /* ── Input Page ── */
-/* Simple date input — user types their own birthday */
-/* ── Custom Date Picker (minimalist, no "Today" button) ── */
-function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void; inputId?: string }) {
-  const { i18n } = useTranslation();
-  const lang = i18n.language;
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+/* Three text inputs: Year / Month / Day — keyboard friendly */
+function DateInput({ value: _value, onChange }: { value: string; onChange: (v: string) => void; inputId?: string }) {
+  // Use internal state only — no useEffect sync loop
+  const [year, setYear] = useState('');
+  const [month, setMonth] = useState('');
+  const [day, setDay] = useState('');
 
-  // Placeholder text per language
-  const ph = lang === 'zh' ? '年 / 月 / 日'
-    : lang === 'fr' ? 'JJ / MM / AAAA'
-    : lang === 'es' ? 'DD / MM / AAAA'
-    : 'YYYY / MM / DD';
-
-  // Month names
-  const months = lang === 'zh' ? ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
-    : lang === 'fr' ? ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-    : lang === 'es' ? ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-    : ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  // Parse current value
-  const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split('-')[0]) : new Date().getFullYear());
-  const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split('-')[1]) - 1 : new Date().getMonth());
-
-  useEffect(() => {
-    if (value) {
-      const [y, m] = value.split('-').map(Number);
-      setViewYear(y);
-      setViewMonth(m - 1);
+  const build = () => {
+    const y = year.replace(/\D/g, '').slice(0, 4);
+    const m = month.replace(/\D/g, '').slice(0, 2);
+    const d = day.replace(/\D/g, '').slice(0, 2);
+    if (y && m && d) {
+      onChange(`${y.padStart(4,'0')}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+    } else {
+      onChange('');
     }
-  }, [value]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [open]);
-
-  // Generate calendar grid
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const days: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let d = 1; d <= daysInMonth; d++) days.push(d);
-
-  const selectDay = (d: number) => {
-    const m = String(viewMonth + 1).padStart(2, '0');
-    const day = String(d).padStart(2, '0');
-    onChange(`${viewYear}-${m}-${day}`);
-    setOpen(false);
   };
 
-  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); };
-  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); };
-
-  const weekdays = lang === 'zh' ? ['日','一','二','三','四','五','六']
-    : lang === 'fr' ? ['Di','Lu','Ma','Me','Je','Ve','Sa']
-    : lang === 'es' ? ['Do','Lu','Ma','Mi','Ju','Vi','Sá']
-    : ['Su','Mo','Tu','We','Th','Fr','Sa'];
-
   return (
-    <div ref={ref} className="date-picker-wrapper">
-      <div className="date-display" onClick={() => setOpen(o => !o)}>
-        <span className={value ? 'date-value' : 'date-placeholder'}>
-          {value || ph}
-        </span>
-        <span className="date-icon">📅</span>
-      </div>
-      {open && (
-        <div className="date-panel">
-          <div className="date-header">
-            <button type="button" className="date-nav" onClick={prevMonth}>‹</button>
-            <span className="date-title">{months[viewMonth]} {viewYear}</span>
-            <button type="button" className="date-nav" onClick={nextMonth}>›</button>
-          </div>
-          <div className="date-weekdays">{weekdays.map(w => <span key={w} className="date-wd">{w}</span>)}</div>
-          <div className="date-grid">
-            {days.map((d, i) => (
-              <span key={i} className={`date-cell ${d === null ? 'empty' : ''} ${d && value === `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` ? 'selected' : ''}`}
-                onClick={() => d && selectDay(d)}>{d}</span>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="date-selects">
+      <input className="input date-sel date-sel-year" type="text"
+        inputMode="numeric" maxLength={4} placeholder="1990"
+        value={year} onChange={e => { setYear(e.target.value.replace(/\D/g,'').slice(0,4)); setTimeout(build, 0); }} />
+      <span className="date-sep">/</span>
+      <input className="input date-sel date-sel-month" type="text"
+        inputMode="numeric" maxLength={2} placeholder="06"
+        value={month} onChange={e => {
+          const v = e.target.value.replace(/\D/g,'').slice(0,2);
+          setMonth(v);
+          if (v.length >= 2) {
+            const el = (e.target as HTMLElement).nextElementSibling?.nextElementSibling as HTMLInputElement | null;
+            el?.focus();
+          }
+          setTimeout(build, 0);
+        }} />
+      <span className="date-sep">/</span>
+      <input className="input date-sel date-sel-day" type="text"
+        inputMode="numeric" maxLength={2} placeholder="15"
+        value={day} onChange={e => { setDay(e.target.value.replace(/\D/g,'').slice(0,2)); setTimeout(build, 0); }} />
     </div>
   );
 }
