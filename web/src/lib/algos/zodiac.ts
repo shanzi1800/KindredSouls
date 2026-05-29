@@ -132,21 +132,33 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   if (phaseDist === 0) {
     // 同星座
     phaseScore = 88;
-    phaseDesc = '同星座（0°合相），彼此深度理解，但也容易放大相同弱点';
+    phaseDesc = lang === 'zh' ? '同星座（0°合相），彼此深度理解，但也容易放大相同弱点' :
+      lang === 'en' ? 'Same sign (0° conjunction) — deep mutual understanding, but can amplify shared weaknesses' :
+      lang === 'es' ? 'Mismo signo (0° conjunción) — comprensión mutua profunda, pero puede amplificar debilidades compartidas' :
+      'Même signe (0° conjonction) — compréhension mutuelle profonde, mais peut amplifier les faiblesses partagées';
   } else if (phaseDist === 6) {
     // 对宫（180°冲相）
     phaseScore = 58;
-    phaseDesc = `对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异`;
+    phaseDesc = lang === 'zh' ? `对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异` :
+      lang === 'en' ? `Opposition (${z1En} ↔ ${z2En}) — intense attraction but requires balancing differences` :
+      lang === 'es' ? `Oposición (${z1En} ↔ ${z2En}) — atracción intensa pero requiere equilibrar diferencias` :
+      `Opposition (${z1En} ↔ ${z2En}) — attraction intense mais nécessite d'équilibrer les différences`;
   } else if (phaseDist === 3 || phaseDist === 9) {
     // 四分相（90°）
     const isSquare = SQUARES[z1] === z2 || Object.values(SQUARES).includes(z1);
     if (isSquare || phaseDist === 3) {
       phaseScore = 62;
-      phaseDesc = `四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固`;
+      phaseDesc = lang === 'zh' ? `四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固` :
+      lang === 'en' ? `Square (${z1En} □ ${z2En}) — growth tension exists, more solid after adjustment` :
+      lang === 'es' ? `Cuadratura (${z1En} □ ${z2En}) — existe tensión de crecimiento, más sólido tras ajuste` :
+      `Carré (${z1En} □ ${z2En}) — tension de croissance existe, plus solide après ajustement`;
     } else {
       // 三分相（120°）
       phaseScore = 82;
-      phaseDesc = `三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快`;
+      phaseDesc = lang === 'zh' ? `三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快` :
+      lang === 'en' ? `Trine (${z1En} △ ${z2En}) — energy flows harmoniously, relaxed and pleasant` :
+      lang === 'es' ? `Trígono (${z1En} △ ${z2En}) — energía fluye armoniosamente, relajado y agradable` :
+      `Trigone (${z1En} △ ${z2En}) — énergie circule harmonieusement, détendu et agréable`;
     }
   } else if (phaseDist === 4 || phaseDist === 8) {
     // 三分相（120°）
@@ -155,11 +167,17 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   } else if (phaseDist === 2 || phaseDist === 10) {
     // 六分相（60°）
     phaseScore = 76;
-    phaseDesc = `六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利`;
+    phaseDesc = lang === 'zh' ? `六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利` :
+      lang === 'en' ? `Sextile (${z1En} ⚹ ${z2En}) — many coincidences, cooperation goes smoothly` :
+      lang === 'es' ? `Sextil (${z1En} ⚹ ${z2En}) — muchas coincidencias, cooperación fluye suavemente` :
+      `Sextile (${z1En} ⚹ ${z2En}) — beaucoup de coïncidences, coopération se déroule sans accroc`;
   } else {
     // 其他距离（30°/150°）
     phaseScore = 68;
-    phaseDesc = `特殊相位（角度差${phaseDist * 30}°），有独特吸引力`;
+    phaseDesc = lang === 'zh' ? `特殊相位（角度差${phaseDist * 30}°），有独特吸引力` :
+      lang === 'en' ? `Special aspect (${phaseDist * 30}° apart) — unique attraction` :
+      lang === 'es' ? `Aspecto especial (a ${phaseDist * 30}°), atracción única` :
+      `Aspect spécial (à ${phaseDist * 30}°), attraction unique`;
   }
 
   // ── 3. 元素和谐度 ──
@@ -170,16 +188,25 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
 
   if (elem1 === elem2) {
     elementBonus = 5;
-    elementDesc = `同属${elem1}象，价值观底层一致，但可能缺乏新鲜刺激`;
+    elementDesc = lang === 'zh' ? `同属${elem1}象，价值观底层一致，但可能缺乏新鲜刺激` :
+      lang === 'en' ? `Both ${elem1En} — core values align, but may lack fresh stimulation` :
+      lang === 'es' ? `Ambos ${elem1En} — valores centrales alinean, pero puede faltar estímulo fresco` :
+      `Tous deux ${elem1En} — valeurs de base alignment, mais peut manquer stimulation fraîche`;
   } else {
     // 检查元素相生关系
     const SHENG_MAP: Record<string, string> = { '火': '土', '土': '金', '金': '水', '水': '木', '木': '火' };
     if (SHENG_MAP[elem1] === elem2 || SHENG_MAP[elem2] === elem1) {
       elementBonus = 8;
-      elementDesc = `${elem1}与${elem2}相生，天然互补，互相滋养`;
+      elementDesc = lang === 'zh' ? `${elem1}与${elem2}相生，天然互补，互相滋养` :
+      lang === 'en' ? `${elem1En} and ${elem2En} nurture each other — natural complement, mutual nourishment` :
+      lang === 'es' ? `${elem1En} y ${elem2En} se nutren mutuamente — complemento natural, nutrición mutua` :
+      `${elem1En} et ${elem2En} se nourrissent mutuellement — complément naturel, nourishment mutuel`;
     } else {
       elementBonus = 3;
-      elementDesc = `${elem1}与${elem2}不同象，差异带来成长空间`;
+      elementDesc = lang === 'zh' ? `${elem1}与${elem2}不同象，差异带来成长空间` :
+      lang === 'en' ? `${elem1En} and ${elem2En} differ — differences create growth space` :
+      lang === 'es' ? `${elem1En} y ${elem2En} difieren — las diferencias crean espacio de crecimiento` :
+      `${elem1En} et ${elem2En} diffèrent — les différences créent espace de croissance`;
     }
   }
 
@@ -193,10 +220,14 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   // ── 5. 守护星互动 ──
   const ruler1 = SIGN_RULER[z1];
   const ruler2 = SIGN_RULER[z2];
-  const rulerDesc = `${z1}守护星${ruler1}遇上${z2}守护星${ruler2}`;
+  const rulerDesc = lang === 'zh' ? `${z1}守护星${ruler1}遇上${z2}守护星${ruler2}` :
+      lang === 'en' ? `${z1En}'s ruler ${ruler1En} meets ${z2En}'s ruler ${ruler2En}` :
+      lang === 'es' ? `Regente de ${z1En} ${ruler1En} encuentra regente de ${z2En} ${ruler2En}` :
+      `Maître de ${z1En} ${ruler1En} rencontre maître de ${z2En} ${ruler2En}`;
+
+  // 基础45% + 相位30% + 元素15% + 模式10%
 
   // ── 综合评分 ──
-  // 基础45% + 相位30% + 元素15% + 模式10%
   const rawScore = Math.round(
     baseScore * 0.45 +
     phaseScore * 0.30 +
