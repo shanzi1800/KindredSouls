@@ -58,7 +58,9 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
     const langs = ['en', 'zh', 'es', 'fr'];
     const base = (i18n.language || 'en').split('-')[0];
     const idx = langs.indexOf(base);
-    i18n.changeLanguage(langs[(idx + 1) % langs.length]);
+    const next = langs[(idx + 1) % langs.length];
+    setCurrentLang(next);  // sync React state immediately
+    i18n.changeLanguage(next);
   };
 
   return (
@@ -239,10 +241,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; userId?: string; onBack: () => void }) {
-  const { t, i18n } = useTranslation();
+function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityResult; userId?: string; onBack: () => void; lang: string }) {
+  const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
-  const lang = i18n.language;
 
   const engineList = [
     { key: 'bazi', label: t('result.engines.bazi'), e: engines.bazi },
@@ -328,6 +329,13 @@ export default function App() {
     }
     return null;
   });
+  // Track current language in React state (always in sync with i18n)
+  const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ks_user_id');
+    }
+    return null;
+  });
 
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
@@ -339,10 +347,8 @@ export default function App() {
       localStorage.setItem('ks_user_id', uid);
       setUserId(uid);
     }
-    // Read i18n.language at call-time (not inside setTimeout) to avoid stale closure
-    const langAtCall = i18n.language || 'en';
     setTimeout(() => {
-      const currentLang = langAtCall;
+      // currentLang is React state — always correct
       console.log('[KindredSouls Debug] lang=' + currentLang);
       const res = calculateCompatibility(d1, d2, currentLang);
       if ('error' in res) {
@@ -363,7 +369,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { setResult(null); _setPage('input'); }} />}
+      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { setResult(null); _setPage('input'); }} lang={currentLang} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
