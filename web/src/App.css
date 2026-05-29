@@ -22,24 +22,56 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   background: #050812; overflow: hidden;
 }
 
-/* Full-screen video background */
-.video-bg {
-  position: fixed; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 0; pointer-events: none;
+/* ── Cinematic Animated Gradient Background (replaces video) ── */
+.cinema-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(26,31,75,0.9) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(80,200,120,0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 60% 80%, rgba(129,216,208,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 10%, rgba(212,175,55,0.08) 0%, transparent 40%),
+    linear-gradient(170deg, #0a0d1a 0%, #0d1024 25%, #111830 50%, #0c1222 75%, #080c18 100%);
+  animation: bgDrift 20s ease-in-out infinite alternate;
+}
+@keyframes bgDrift {
+  0%   { filter: hue-rotate(0deg) brightness(1); }
+  33%  { filter: hue-rotate(3deg) brightness(1.02); }
+  66%  { filter: hue-rotate(-2deg) brightness(0.98); }
+  100% { filter: hue-rotate(0deg) brightness(1); }
+}
+/* Subtle star particles overlay */
+.cinema-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.6) 50%, transparent 50%),
+    radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.4) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 40% 25%, rgba(255,255,255,0.7) 50%, transparent 50%),
+    radial-gradient(1px 1px at 55% 65%, rgba(255,255,255,0.3) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 70% 35%, rgba(129,216,208,0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 15% 75%, rgba(255,255,255,0.35) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 90% 10%, rgba(212,175,55,0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 35% 85%, rgba(255,255,255,0.3) 50%, transparent 50%),
+    radial-gradient(1px 1px at 60% 5%, rgba(129,216,208,0.4) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 78% 82%, rgba(255,255,255,0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 5% 40%, rgba(255,255,255,0.25) 50%, transparent 50%),
+    radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.2) 50%, transparent 50%);
+  animation: twinkle 4s ease-in-out infinite alternate;
 }
 
-/* Dark overlay for text readability + brand tint */
+/* Dark overlay for text readability */
 .video-overlay {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
   background:
     linear-gradient(180deg,
-      rgba(5,8,18,0.35) 0%,
-      rgba(5,8,18,0.15) 30%,
-      rgba(5,8,18,0.25) 60%,
-      rgba(5,8,18,0.6) 95%,
-      rgba(5,8,18,0.85) 100%
+      rgba(5,8,18,0.4) 0%,
+      rgba(5,8,18,0.12) 25%,
+      rgba(5,8,18,0.2) 55%,
+      rgba(5,8,18,0.55) 88%,
+      rgba(5,8,18,0.82) 100%
     ),
-    radial-gradient(circle at 50% 30%, rgba(26,31,75,0.25) 0%, transparent 60%);
+    radial-gradient(circle at 50% 28%, rgba(26,31,75,0.2) 0%, transparent 55%);
 }
 /* Cinematic typography over video */
 .input-page .title {
@@ -56,44 +88,46 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 .input-page .date-label { color: rgba(255,255,255,0.9); text-shadow: 0 1px 8px rgba(0,0,0,0.3); }
 .form {
-  display: flex; flex-direction: column; gap: 16px;
+  display: flex; flex-direction: column; gap: 18px;
   width: 100%;
-  padding: 24px 20px 20px;
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.14);
+  padding: 22px 18px 18px;
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 20px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 80px rgba(129,216,208,0.04);
 }
 .input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
 .input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
 .input::placeholder { color: #bbb; }
 
-/* ── Manual Date Input (YYYY / MM / DD) ── */
+/* ── Manual Date Input (YYYY / MM / DD) — mobile-safe ── */
 .date-manual {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 4px;
   width: 100%;
 }
 .date-part {
-  flex: 1; height: 54px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 14px;
-  padding: 0 14px; font-size: 17px; font-weight: 500;
+  height: 50px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 12px;
+  padding: 0 10px; font-size: 15px; font-weight: 600;
   color: #fff; background: rgba(255,255,255,0.1);
   outline: none; text-align: center;
   transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   -webkit-appearance: none; appearance: none;
   font-family: inherit;
+  min-width: 0;
 }
+.date-year { flex: 1.6; min-width: 0; }
+.date-month { flex: 0.85; min-width: 0; }
+.date-day { flex: 0.85; min-width: 0; }
 .date-part:focus {
-  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.25), 0 8px 32px rgba(0,0,0,0.2);
+  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.25);
   background: rgba(255,255,255,0.16);
 }
 .date-part::placeholder { color: rgba(255,255,255,0.38); }
-.date-year { flex: 1.5; }
-.date-month { flex: 1; }
-.date-day { flex: 1; }
 .date-slash {
-  color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 200;
+  color: rgba(255,255,255,0.4); font-size: 18px; font-weight: 200;
   user-select: none; flex-shrink: 0;
 }
 

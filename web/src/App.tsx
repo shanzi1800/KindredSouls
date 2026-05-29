@@ -60,10 +60,8 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   return (
     <div className="page input-page">
       {/* Cinematic Video Background */}
-      <video className="video-bg" autoPlay muted loop playsInline
-        poster="">
-        <source src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4" type="video/mp4" />
-      </video>
+      {/* Cinematic gradient background — no video (cleaner, faster, works everywhere) */}
+      <div className="cinema-bg" />
       <div className="video-overlay" />
       
       <button className="lang-switch" onClick={cycleLang}>🌐 {i18n.language === 'zh' ? '中文' : i18n.language === 'en' ? 'EN' : i18n.language === 'es' ? 'ES' : 'FR'}</button>
