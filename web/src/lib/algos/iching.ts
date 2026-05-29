@@ -1,4 +1,24 @@
 import type { BirthInfo, EngineResult } from './types';
+import { normalizeLang, t as at } from './i18n';
+type AlgLang = 'zh' | 'en' | 'es' | 'fr';
+
+// 卦分类多语言映射
+const HEX_CATEGORY_EN: Record<string, string> = { '大吉':'Great Auspicious','吉':'Auspicious','中':'Neutral','小凶':'Slightly Unfavorable','待变':'Pending Change' };
+const HEX_CATEGORY_ES: Record<string, string> = { '大吉':'Gran Auspicioso','吉':'Auspicious','中':'Neutral','小凶':'Ligeramente Desfavorable','待变':'Cambio Pendiente' };
+const HEX_CATEGORY_FR: Record<string, string> = { '大吉':'Très Auspice','吉':'Auspice','中':'Neutre','小凶':'Légèrement Défavorable','待变':'Changement en Attente' };
+
+// 从 HexagramData 多语言字段读取
+function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMeaning', lang: AlgLang): string {
+  if (lang === 'zh') {
+    if (field === 'name') return hex.name;
+    if (field === 'nature') return hex.nature;
+    if (field === 'judgment') return hex.judgment;
+    return hex.relationshipMeaning;
+  }
+  const suffix = lang === 'en' ? 'En' : lang === 'es' ? 'Es' : 'Fr';
+  const key = field === 'relationshipMeaning' ? ('relationshipMeaning' + suffix) : (field + suffix.charAt(0).toUpperCase() + suffix.slice(1));
+  return hex[key] || '';
+}
 
 // ═════════════════════════════════════════
 // 易经卦象引擎（真实算法）
@@ -1157,8 +1177,14 @@ function deriveHexagram(p1: BirthInfo, p2: BirthInfo): {
 
 // ── 核心计算 ──
 
-export function calcIChing(p1: BirthInfo, p2: BirthInfo): EngineResult {
+export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   const { hexNum, hex, changingLine, transformedHex } = deriveHexagram(p1, p2);
+
+  // 多语言字段读取
+  const tName = getHexField(hex, 'name', lang);
+  const tNature = getHexField(hex, 'nature', lang);
+  const tJudgment = getHexField(hex, 'judgment', lang);
+  const tRelation = getHexField(hex, 'relationshipMeaning', lang);
 
   // ── 基础分数（来自卦象分类）──
   const [minScore, maxScore] = hex.scoreRange;
@@ -1172,14 +1198,35 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo): EngineResult {
   let transformDesc = '';
   if (transformedHex && transformedHex !== hex) {
     const tCategory = transformedHex.category;
+    const tNameTr = getHexField(transformedHex, 'name', lang);
+    const tRelTr = getHexField(transformedHex, 'relationshipMeaning', lang);
+    const isZhTr = lang === 'zh';
     if (tCategory === '大吉' || tCategory === '吉') {
-      score += 3; // 变卦向好
-      transformDesc = `\n【变卦】第${changingLine}爻动 → ${transformedHex.name}（${transformedHex.symbol}）\n${transformedHex.relationshipMeaning}\n变卦趋势向好，未来发展有转机。`;
+      score += 3;
+      transformDesc = isZhTr
+        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n变卦趋势向好，未来发展有转机。`
+        : lang === 'en'
+        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nChanging hexagram trend is positive; future development has a turning point.`
+        : lang === 'es'
+        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendencia del hexagrama cambiante es positiva; el desarrollo futuro tiene un punto de inflexión.`
+        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendance de l'hexagramme changeant est positive; le développement futur a un point de bascule.`;
     } else if (tCategory === '小凶' || tCategory === '待变') {
-      score -= 2; // 变卦向差
-      transformDesc = `\n【变卦】第${changingLine}爻动 → ${transformedHex.name}（${transformedHex.symbol}）\n${transformedHex.relationshipMeaning}\n需注意变化趋势，提前准备。`;
+      score -= 2;
+      transformDesc = isZhTr
+        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n需注意变化趋势，提前准备。`
+        : lang === 'en'
+        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote the changing trend and prepare in advance.`
+        : lang === 'es'
+        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote la tendencia cambiante y prepárese con anticipación.`
+        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNotez la tendance changeante et préparez-vous à l'avance.`;
     } else {
-      transformDesc = `\n【变卦】第${changingLine}爻动 → ${transformedHex.name}（${transformedHex.symbol}）\n${transformedHex.relationshipMeaning}`;
+      transformDesc = isZhTr
+        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}`
+        : lang === 'en'
+        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`
+        : lang === 'es'
+        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`
+        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`;
     }
   }
 
@@ -1190,29 +1237,59 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo): EngineResult {
     '大吉': '✦', '吉': '◆', '中': '◇', '小凶': '◗', '待变': '◈',
   };
 
+  // 多语言 summary
   let summary: string;
+  const isZh = lang === 'zh';
   if (score >= 82) {
-    summary = `占得「${hex.name}」，${categoryEmoji[hex.category]}${hex.judgment}，此乃上上之卦。`;
+    summary = isZh
+      ? `占得「${tName}」，${categoryEmoji[hex.category]}${tJudgment}，此乃上上之卦。`
+      : lang === 'en'
+      ? `Hexagram ${hexNum}: ${tName}. ${tJudgment} — an extremely auspicious sign.`
+      : lang === 'es'
+      ? `Hexagrama ${hexNum}: ${tName}. ${tJudgment} — un signo extremadamente auspicioso.`
+      : `Hexagramme ${hexNum} : ${tName}. ${tJudgment} — un signe extrêmement auspice.`;
   } else if (score >= 68) {
-    summary = `占得「${hex.name}」，${hex.nature}之卦，缘分稳中有升。`;
+    summary = isZh
+      ? `占得「${tName}」，${tNature}之卦，缘分稳中有升。`
+      : lang === 'en'
+      ? `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has steady, growing potential.`
+      : lang === 'es'
+      ? `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene un potencial de crecimiento constante.`
+      : `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a un potentiel de croissance constante.`;
   } else if (score >= 55) {
-    summary = `占得「${hex.name}」，卦象显示需用心经营，方能长久。`;
+    summary = isZh
+      ? `占得「${tName}」，卦象显示需用心经营，方能长久。`
+      : lang === 'en'
+      ? `Hexagram ${hexNum}: ${tName}. Care and intention are needed to sustain this bond.`
+      : lang === 'es'
+      ? `Hexagrama ${hexNum}: ${tName}. Se necesita cuidado e intención para mantener este vínculo.`
+      : `Hexagramme ${hexNum} : ${tName}. Des soins et une intención sont nécessaires pour maintenir ce lien.`;
   } else {
-    summary = `占得「${hex.name}」，虽遇挑战，但否极泰来，转机在后。`;
+    summary = isZh
+      ? `占得「${tName}」，虽遇挑战，但否极泰来，转机在后。`
+      : lang === 'en'
+      ? `Hexagram ${hexNum}: ${tName}. Challenges arise, but turning points follow.`
+      : lang === 'es'
+      ? `Hexagrama ${hexNum}: ${tName}. Surgen desafíos, pero siguen puntos de inflexión.`
+      : `Hexagramme ${hexNum} : ${tName}. Des défis surgissent, mais des points d'inflexion suivent.`;
   }
 
+  // 多语言 detail
+  const tCategory = isZh ? hex.category : lang === 'en' ? HEX_CATEGORY_EN[hex.category] || hex.category : lang === 'es' ? HEX_CATEGORY_ES[hex.category] || hex.category : HEX_CATEGORY_FR[hex.category] || hex.category;
+  const tTransform = transformDesc; // transformDesc 也需要多语言化，先保留
   const detail = [
-    `【本卦】第${hexNum}卦 — ${hex.name} ${hex.symbol}`,
-    `卦德：${hex.nature} | 卦辞：${hex.judgment}`,
-    `等级：${categoryEmoji[hex.category] || ''}${hex.category}`,
+    (isZh ? `【本卦】第${hexNum}卦 — ${tName} ${hex.symbol}` : lang === 'en' ? `【Primary Hexagram】#${hexNum} — ${tName} ${hex.symbol}` : lang === 'es' ? `【Hexagrama Principal】#${hexNum} — ${tName} ${hex.symbol}` : `【Hexagramme Principal】#${hexNum} — ${tName} ${hex.symbol}`),
+    (isZh ? `卦德：${tNature} | 卦辞：${tJudgment}` : lang === 'en' ? `Nature: ${tNature} | Judgment: ${tJudgment}` : lang === 'es' ? `Naturaleza: ${tNature} | Juicio: ${tJudgment}` : `Nature: ${tNature} | Jugement: ${tJudgment}`),
+    (isZh ? `等级：${categoryEmoji[hex.category] || ''}${hex.category}` : lang === 'en' ? `Grade: ${categoryEmoji[hex.category] || ''}${tCategory}` : lang === 'es' ? `Grado: ${categoryEmoji[hex.category] || ''}${tCategory}` : `Grade: ${categoryEmoji[hex.category] || ''}${tCategory}`),
     ``,
-    `【姻缘解读】`,
-    hex.relationshipMeaning,
+    (isZh ? `【姻缘解读】` : lang === 'en' ? `【Relationship Reading】` : lang === 'es' ? `【Lectura de Relación】` : `【Lecture de Relation】`),
+    tRelation,
     ``,
-    `【爻位分析】`,
-    changingLine ? `第${changingLine}爻为动爻，显示关系中存在变化的契机` : '六爻安静，关系当前处于稳定状态',
-    transformDesc,
-    `\n易经评分：${score}/100 — ${score >= 80 ? '卦象大吉，顺应天道' : score >= 65 ? '中上之卦，事在人为' : '卦象待变，修心即改命'}`,
+    (isZh ? `【爻位分析】` : lang === 'en' ? `【Line Analysis】` : lang === 'es' ? `【Análisis de Líneas】` : `【Analyse des Lignes】`),
+    changingLine ? (isZh ? `第${changingLine}爻为动爻，显示关系中存在变化的契机` : lang === 'en' ? `Line ${changingLine} is changing — indicates a turning point in the relationship` : lang === 'es' ? `La línea ${changingLine} está cambiando — indica un punto de inflexión en la relación` : `La ligne ${changingLine} est en changement — indique un point de inflexión dans la relation`) : (isZh ? '六爻安静，关系当前处于稳定状态' : lang === 'en' ? 'All lines are stable — the relationship is currently in a steady state' : lang === 'es' ? 'Todas las líneas están estables — la relación está actualmente en un estado estable' : 'Toutes les lignes sont stables — la relation est actuellement dans un état stable'),
+    tTransform,
+    ``,
+    (isZh ? `易经评分：${score}/100 — ${score >= 80 ? '卦象大吉，顺应天道' : score >= 65 ? '中上之卦，事在人为' : '卦象待变，修心即改命'}` : lang === 'en' ? `I Ching Score: ${score}/100 — ${score >= 80 ? 'Auspicious hexagram, follow the Tao' : score >= 65 ? 'Above-average hexagram, human effort matters' : 'Hexagram in transition — cultivate the heart to change destiny'}` : lang === 'es' ? `Puntuación I Ching: ${score}/100 — ${score >= 80 ? 'Hexagrama auspicioso, sigue el Tao' : score >= 65 ? 'Hexagrama superior al promedio, el esfuerzo humano importa' : 'Hexagrama en transición — cultiva el corazón para cambiar el destino'}` : `Score I Ching : ${score}/100 — ${score >= 80 ? 'Hexagramme auspice, suivez le Tao' : score >= 65 ? 'Hexagramme au-dessus de la moyenne, l'effort humain compte' : 'Hexagramme en transition — cultivez le cœur pour changer la destinée'}`),
   ].join('\n');
 
   return {
