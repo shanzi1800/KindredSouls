@@ -339,8 +339,11 @@ export default function App() {
       localStorage.setItem('ks_user_id', uid);
       setUserId(uid);
     }
-    const currentLang = i18n.language; // capture current language for algorithm output
+    // Read i18n.language at call-time (not inside setTimeout) to avoid stale closure
+    const langAtCall = i18n.language || 'en';
     setTimeout(() => {
+      const currentLang = langAtCall;
+      console.log('[KindredSouls Debug] lang=' + currentLang);
       const res = calculateCompatibility(d1, d2, currentLang);
       if ('error' in res) {
         setErr(t('common.errorFormat'));
