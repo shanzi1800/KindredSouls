@@ -1,40 +1,43 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
 import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
-/* ── Manual Date Input: YYYY / MM / DD ── */
-/* Three separate text fields — fully manual, no native picker */
+/* ── Manual Date Input: YYYY / MM / DD with auto-advance ── */
 function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // Parse "YYYY-MM-DD" into parts (or empty)
   const parts = value ? value.split('-') : ['', '', ''];
   const [year, month, day] = parts;
+  const yrRef = React.useRef<HTMLInputElement>(null);
+  const moRef = React.useRef<HTMLInputElement>(null);
+  const daRef = React.useRef<HTMLInputElement>(null);
 
   const update = (idx: number, val: string) => {
     const p = [...parts];
-    // Auto-pad / clamp
     let cleaned = val.replace(/\D/g, '');
-    if (idx === 0) { /* year: max 4 digits */ p[0] = cleaned.slice(0, 4); }
-    else if (idx === 1) { /* month: max 2 digits, 01-12 */ p[1] = cleaned.slice(0, 2); if (p[1].length === 2 && parseInt(p[1]) > 12) p[1] = '12'; }
-    else { /* day: max 2 digits, 01-31 */ p[2] = cleaned.slice(0, 2); if (p[2].length === 2 && parseInt(p[2]) > 31) p[2] = '31'; }
-    // Auto-advance to next field
+    if (idx === 0) { p[0] = cleaned.slice(0, 4); }
+    else if (idx === 1) { p[1] = cleaned.slice(0, 2); if (p[1].length === 2 && parseInt(p[1]) > 12) p[1] = '12'; }
+    else { p[2] = cleaned.slice(0, 2); if (p[2].length === 2 && parseInt(p[2]) > 31) p[2] = '31'; }
     const newVal = p.filter(Boolean).join('-');
     onChange(newVal);
+
+    /* Auto-advance to next field when current is filled */
+    if (idx === 0 && cleaned.length === 4) moRef.current?.focus();
+    if (idx === 1 && cleaned.length === 2) daRef.current?.focus();
   };
 
   return (
     <div className="date-manual">
-      <input className="date-part date-year" type="text" inputMode="numeric"
+      <input ref={yrRef} className="date-part date-year" type="text" inputMode="numeric"
         maxLength={4} placeholder="YYYY" value={year}
         onChange={e => update(0, e.target.value)} />
       <span className="date-slash">/</span>
-      <input className="date-part date-month" type="text" inputMode="numeric"
+      <input ref={moRef} className="date-part date-month" type="text" inputMode="numeric"
         maxLength={2} placeholder="MM" value={month}
         onChange={e => update(1, e.target.value)} />
       <span className="date-slash">/</span>
-      <input className="date-part date-day" type="text" inputMode="numeric"
+      <input ref={daRef} className="date-part date-day" type="text" inputMode="numeric"
         maxLength={2} placeholder="DD" value={day}
         onChange={e => update(2, e.target.value)} />
     </div>
@@ -53,18 +56,18 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   const cycleLang = () => {
     const langs = ['en', 'zh', 'es', 'fr'];
-    const idx = langs.indexOf(i18n.language);
+    const base = (i18n.language || 'en').split('-')[0];
+    const idx = langs.indexOf(base);
     i18n.changeLanguage(langs[(idx + 1) % langs.length]);
   };
 
   return (
     <div className="page input-page">
-      {/* Cinematic Video Background */}
-      {/* Cinematic gradient background — no video (cleaner, faster, works everywhere) */}
-      <div className="cinema-bg" />
+      {/* Pure CSS animated starfield — no external video dependency */}
+      <div className="starfield" />
       <div className="video-overlay" />
       
-      <button className="lang-switch" onClick={cycleLang}>🌐 {i18n.language === 'zh' ? '中文' : i18n.language === 'en' ? 'EN' : i18n.language === 'es' ? 'ES' : 'FR'}</button>
+      <button className="lang-switch" onClick={cycleLang}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':'FR'; })() }</button>
       <h1 className="title">{t('input.title')}</h1>
       <p className="subtitle">{t('app.name')}</p>
       <p className="desc">{t('input.subtitle')}</p>
@@ -112,15 +115,19 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 /* ── Dimension Bar ── */
-const DIM_LABELS_ZH = ['爱情', '沟通', '默契', '稳定'];
-const DIM_LABELS_EN = ['Love', 'Communication', 'Chemistry', 'Stability'];
+const DIM_LABELS: Record<string, string[]> = {
+  zh: ['爱情', '沟通', '默契', '稳定'],
+  en: ['Love', 'Communication', 'Chemistry', 'Stability'],
+  es: ['Amor', 'Comunicación', 'Química', 'Estabilidad'],
+  fr: ['Amour', 'Communication', 'Chimie', 'Stabilité'],
+};
 const DIM_KEYS = ['love', 'communication', 'chemistry', 'stability'] as const;
 
 function DimensionBars({ dims, lang }: { dims: CompatibilityResult['dimensions']; lang: string }) {
-  const labels = lang === 'zh' ? DIM_LABELS_ZH : DIM_LABELS_EN;
+  const labels = DIM_LABELS[lang] || DIM_LABELS.en;
   return (
     <div className="dim-section">
-      <h4 className="section-title">{lang === 'zh' ? '四维深度分析' : 'Four-Dimension Breakdown'}</h4>
+      <h4 className="section-title">{lang==='zh'?'四维深度分析':lang==='es'?'Análisis en 4 Dimensiones':'Four-Dimension Breakdown'}</h4>
       {DIM_KEYS.map((key, i) => {
         const val = dims[key];
         return (
@@ -209,11 +216,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       });
 
     return () => { cancelled = true; };
-  }, [d1, d2, overall, dims]);
+  }, [d1, d2, overall, dims, lang, bazi, zodiac, iching]);
 
   return (
     <div className="ai-insight">
-      <h3>✨ {lang === 'zh' ? 'AI 深度洞察' : 'AI Insight'}</h3>
+      <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
       {insight === null && error === null && (
         <div className="insight-skeleton">
           <div className="skeleton-line w80" />
@@ -224,7 +231,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       {insight !== null && <p>{insight}</p>}
       {error !== null && (
         <p className="insight-error">
-          {lang === 'zh' ? 'AI 洞察暂时不可用' : 'AI insight unavailable right now'}
+          {lang==='zh'?'AI 洞察暂时不可用':lang==='es'?'Perspectiva AI no disponible ahora':'AI insight unavailable right now'}
         </p>
       )}
     </div>
@@ -311,7 +318,7 @@ function ResultPage({ result, userId, onBack }: { result: CompatibilityResult; u
 
 /* ── App ── */
 export default function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [_page, _setPage] = useState<'input' | 'loading' | 'result'>('input');
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [err, setErr] = useState('');
@@ -332,8 +339,9 @@ export default function App() {
       localStorage.setItem('ks_user_id', uid);
       setUserId(uid);
     }
+    const currentLang = i18n.language; // capture current language for algorithm output
     setTimeout(() => {
-      const res = calculateCompatibility(d1, d2);
+      const res = calculateCompatibility(d1, d2, currentLang);
       if ('error' in res) {
         setErr(t('common.errorFormat'));
         _setPage('input');

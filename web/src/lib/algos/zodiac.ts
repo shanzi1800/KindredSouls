@@ -1,4 +1,5 @@
 import type { BirthInfo, EngineResult } from './types';
+type AlgLang = 'zh' | 'en' | 'es' | 'fr';
 
 // ═════════════════════════════════════════
 // 星座合盘引擎（真实算法）
@@ -115,7 +116,7 @@ function getPhaseDistance(z1: ZodiacSign, z2: ZodiacSign): number {
 
 // ── 核心算法 ──
 
-export function calcZodiac(p1: BirthInfo, p2: BirthInfo): EngineResult {
+export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   const z1 = getZodiac(p1.month, p1.day);
   const z2 = getZodiac(p2.month, p2.day);
 
@@ -204,43 +205,115 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo): EngineResult {
   );
   const score = Math.max(40, Math.min(99, rawScore));
 
+  // ── i18n helpers ──
+  const zEn: Record<ZodiacSign, string> = {
+    '白羊座': 'Aries', '金牛座': 'Taurus', '双子座': 'Gemini', '巨蟹座': 'Cancer',
+    '狮子座': 'Leo', '处女座': 'Virgo', '天秤座': 'Libra', '天蝎座': 'Scorpio',
+    '射手座': 'Sagittarius', '摩羯座': 'Capricorn', '水瓶座': 'Aquarius', '双鱼座': 'Pisces',
+  };
+  const zEs: Record<ZodiacSign, string> = {
+    '白羊座': 'Aries', '金牛座': 'Tauro', '双子座': 'Géminis', '巨蟹座': 'Cáncer',
+    '狮子座': 'Leo', '处女座': 'Virgo', '天秤座': 'Libra', '天蝎座': 'Escorpio',
+    '射手座': 'Sagitario', '摩羯座': 'Capricornio', '水瓶座': 'Acuario', '双鱼座': 'Piscis',
+  };
+  const zFr: Record<ZodiacSign, string> = {
+    '白羊座': 'Bélier', '金牛座': 'Taureau', '双子座': 'Gémeaux', '巨蟹座': 'Cancer',
+    '狮子座': 'Lion', '处女座': 'Vierge', '天秤座': 'Balance', '天蝎座': 'Scorpion',
+    '射手座': 'Sagittaire', '摩羯座': 'Capricorne', '水瓶座': 'Verseau', '双鱼座': 'Poissons',
+  };
+  const z1En = lang === 'en' ? zEn[z1] : lang === 'es' ? zEs[z1] : lang === 'fr' ? zFr[z1] : z1;
+  const z2En = lang === 'en' ? zEn[z2] : lang === 'es' ? zEs[z2] : lang === 'fr' ? zFr[z2] : z2;
+
+  const eEn: Record<string, string> = { '火': 'Fire', '土': 'Earth', '风': 'Air', '水': 'Water' };
+  const eEs: Record<string, string> = { '火': 'Fuego', '土': 'Tierra', '风': 'Aire', '水': 'Agua' };
+  const eFr: Record<string, string> = { '火': 'Feu', '土': 'Terre', '风': 'Air', '水': 'Eau' };
+  const elem1En = lang === 'en' ? eEn[elem1] : lang === 'es' ? eEs[elem1] : lang === 'fr' ? eFr[elem1] : elem1;
+  const elem2En = lang === 'en' ? eEn[elem2] : lang === 'es' ? eEs[elem2] : lang === 'fr' ? eFr[elem2] : elem2;
+
+  const modeEn: Record<string, string> = { '本位': 'Cardinal', '固定': 'Fixed', '变动': 'Mutable' };
+  const modeEs: Record<string, string> = { '本位': 'Cardinal', '固定': 'Fijo', '变动': 'Mutable' };
+  const modeFr: Record<string, string> = { '本位': 'Cardinal', '固定': 'Fixe', '变动': 'Mutable' };
+  const mode1En = lang === 'en' ? modeEn[mode1] : lang === 'es' ? modeEs[mode1] : lang === 'fr' ? modeFr[mode1] : mode1;
+  const mode2En = lang === 'en' ? modeEn[mode2] : lang === 'es' ? modeEs[mode2] : lang === 'fr' ? modeFr[mode2] : mode2;
+
+  const rulerEn: Record<string, string> = {
+    '火星': 'Mars', '金星': 'Venus', '水星': 'Mercury', '月亮': 'Moon', '太阳': 'Sun',
+    '木星': 'Jupiter', '土星': 'Saturn', '天王星': 'Uranus', '海王星': 'Neptune', '冥王星': 'Pluto',
+  };
+  const rulerEs: Record<string, string> = {
+    '火星': 'Marte', '金星': 'Venus', '水星': 'Mercurio', '月亮': 'Luna', '太阳': 'Sol',
+    '木星': 'Júpiter', '土星': 'Saturno', '天王星': 'Urano', '海王星': 'Neptuno', '冥王星': 'Plutón',
+  };
+  const rulerFr: Record<string, string> = {
+    '火星': 'Mars', '金星': 'Vénus', '水星': 'Mercure', '月亮': 'Lune', '太阳': 'Soleil',
+    '木星': 'Jupiter', '土星': 'Saturne', '天王星': 'Uranus', '海王星': 'Neptune', '冥王星': 'Pluton',
+  };
+  const ruler1En = lang === 'en' ? rulerEn[ruler1] : lang === 'es' ? rulerEs[ruler1] : lang === 'fr' ? rulerFr[ruler1] : ruler1;
+  const ruler2En = lang === 'en' ? rulerEn[ruler2] : lang === 'es' ? rulerEs[ruler2] : lang === 'fr' ? rulerFr[ruler2] : ruler2;
+
   // ── 解读文案 ──
   let summary: string;
   if (score >= 82) {
-    summary = `${z1}与${z2}的配置堪称黄金配对，星星都在为你们让路。`;
+    summary = lang === 'zh' ? `${z1}与${z2}的配置堪称黄金配对，星星都在为你们让路。` :
+      lang === 'en' ? `${z1En} and ${z2En} form a golden pairing — the stars align for you both.` :
+      lang === 'es' ? `${z1En} y ${z2En} forman un par dorado — las estrellas se alinean para ambos.` :
+      `${z1En} et ${z2En} forment un couple doré — les étoiles s'alignent pour vous deux.`;
   } else if (score >= 70) {
-    summary = `${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。`;
+    summary = lang === 'zh' ? `${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。` :
+      lang === 'en' ? `${z1En} (you) meets ${z2En} (partner) — cosmic energies spark fascinating chemistry.` :
+      lang === 'es' ? `${z1En} (tú) encuentra ${z2En} (pareja) — las energías cósmicas crean química fascinante.` :
+      `${z1En} (vous) rencontre ${z2En} (partenaire) — les énergies cosmiques créent une chimie fascinante.`;
   } else if (score >= 58) {
-    summary = `${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。`;
+    summary = lang === 'zh' ? `${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。` :
+      lang === 'en' ? `${z1En} and ${z2En} need more understanding, but differences fuel attraction.` :
+      lang === 'es' ? `${z1En} y ${z2En} necesitan más comprensión, pero las diferencias alimentan la atracción.` :
+      `${z1En} et ${z2En} nécessitent plus de compréhension, mais les différences alimentent l'attraction.`;
   } else {
-    summary = `对宫相遇，强烈的对立感背后是等量的吸引力。`;
+    summary = lang === 'zh' ? `对宫相遇，强烈的对立感背后是等量的吸引力。` :
+      lang === 'en' ? `Opposing signs meet — strong polarity hides equal attraction.` :
+      lang === 'es' ? `Signos opuestos se encuentran — fuerte polaridad esconde igual atracción.` :
+      `Signes opposés se rencontrent — forte polarité cache une égale attraction.`;
   }
 
+  const labels = {
+    sunSign: lang === 'zh' ? '【太阳星座】' : lang === 'en' ? '[Sun Sign]' : lang === 'es' ? '[Signo Solar]' : '[Signe Solaire]',
+    you: lang === 'zh' ? '你' : lang === 'en' ? 'You' : lang === 'es' ? 'Tú' : 'Vous',
+    ta: lang === 'zh' ? 'TA' : lang === 'en' ? 'Partner' : lang === 'es' ? 'Pareja' : 'Partenaire',
+    element: lang === 'zh' ? '象' : lang === 'en' ? 'element' : lang === 'es' ? 'elemento' : 'élément',
+    ruler: lang === 'zh' ? '守护星' : lang === 'en' ? 'ruler' : lang === 'es' ? 'regente' : 'maître',
+    phaseTitle: lang === 'zh' ? '【相位分析】' : lang === 'en' ? '[Aspect Analysis]' : lang === 'es' ? '[Análisis de Aspecto]' : '[Analyse d\'Aspect]',
+    elemTitle: lang === 'zh' ? '【元素互动】' : lang === 'en' ? '[Element Interaction]' : lang === 'es' ? '[Interacción Elemental]' : '[Interaction Élémentaire]',
+    rulerTitle: lang === 'zh' ? '【守护星互动】' : lang === 'en' ? '[Ruler Interaction]' : lang === 'es' ? '[Interacción Regente]' : '[Interaction Maître]',
+    bestMatch: lang === 'zh' ? `${z1}与${z2}在经典配对表中属于最佳组合之一` : lang === 'en' ? `${z1En} and ${z2En} are one of the classic best matches` : lang === 'es' ? `${z1En} y ${z2En} son una de las mejores parejas clásicas` : `${z1En} et ${z2En} forment un des meilleurs couples classiques`,
+    opposite: lang === 'zh' ? `${z1}与${z2}互为对宫，吸引力与挑战并存` : lang === 'en' ? `${z1En} and ${z2En} are opposite signs — attraction meets challenge` : lang === 'es' ? `${z1En} y ${z2En} son signos opuestos — atracción encuentra desafío` : `${z1En} et ${z2En} sont des signes opposés — l'attraction rencontre le défi`,
+    unique: lang === 'zh' ? `${z1}与${z2}构成独特配置，不走寻常路` : lang === 'en' ? `${z1En} and ${z2En} form a unique configuration — not the usual path` : lang === 'es' ? `${z1En} y ${z2En} forman una configuración única — no es el camino usual` : `${z1En} et ${z2En} forment une configuration unique — pas le chemin habituel`,
+    scoreLabel: lang === 'zh' ? '综合评分' : lang === 'en' ? 'Overall Score' : lang === 'es' ? 'Puntuación General' : 'Score Global',
+    scoreHigh: lang === 'zh' ? '星辰为证，缘分深厚' : lang === 'en' ? 'Stars bear witness — deep connection' : lang === 'es' ? 'Las estrellas atestiguan — conexión profunda' : 'Les étoiles en témoignent — connexion profonde',
+    scoreMid: lang === 'zh' ? '星光指引，值得期待' : lang === 'en' ? 'Starlight guides — something to look forward to' : lang === 'es' ? 'La luz de las estrellas guía — algo que esperar' : 'La lumière des étoiles guide — à attendre',
+    scoreLow: lang === 'zh' ? '星途虽有挑战，携手可越' : lang === 'en' ? 'Starry path has challenges — together you can overcome' : lang === 'es' ? 'El camino estelar tiene desafíos — juntos pueden superar' : 'Le chemin étoilé a des défis — ensemble vous pouvez surmonter',
+  };
+
   const detail = [
-    `【太阳星座】`,
-    `你：${z1}（${p1.month}月${p1.day}日）— ${elem1}象 · ${mode1} · 守护星${ruler1}`,
-    `TA：${z2}（${p2.month}月${p2.day}日）— ${elem2}象 · ${mode2} · 守护星${ruler2}`,
+    `${labels.sunSign}`,
+    `${labels.you}：${z1En}（${p1.month}/${p1.day}）— ${elem1En} ${labels.element} · ${mode1En} · ${labels.ruler} ${ruler1En}`,
+    `${labels.ta}：${z2En}（${p2.month}/${p2.day}）— ${elem2En} ${labels.element} · ${mode2En} · ${labels.ruler} ${ruler2En}`,
     ``,
-    `【相位分析】`,
+    `${labels.phaseTitle}`,
     phaseDesc,
     ``,
-    `【元素互动】`,
+    `${labels.elemTitle}`,
     elementDesc,
     ``,
-    `【守护星互动】`,
-    rulerDesc,
+    `${labels.rulerTitle}`,
+    `${z1En} ${labels.ruler} ${ruler1En} meets ${z2En} ${labels.ruler} ${ruler2En}`,
     ``,
-    isBestMatch
-      ? `✨ ${z1}与${z2}在经典配对表中属于最佳组合之一`
-      : OPPOSITES[z1] === z2
-        ? `⚡ ${z1}与${z2}互为对宫，吸引力与挑战并存`
-        : `◆ ${z1}与${z2}构成独特配置，不走寻常路`,
-    `\n综合评分：${score}/100 — ${score >= 80 ? '星辰为证，缘分深厚' : score >= 65 ? '星光指引，值得期待' : '星途虽有挑战，携手可越'}`,
+    isBestMatch ? `✨ ${labels.bestMatch}` : OPPOSITES[z1] === z2 ? `⚡ ${labels.opposite}` : `◆ ${labels.unique}`,
+    `\n${labels.scoreLabel}：${score}/100 — ${score >= 80 ? labels.scoreHigh : score >= 65 ? labels.scoreMid : labels.scoreLow}`,
   ].join('\n');
 
   return {
     score,
-    title: '西方星座',
+    title: lang === 'zh' ? '西方星座' : lang === 'en' ? 'Western Zodiac' : lang === 'es' ? 'Zodiaco Occidental' : 'Zodiaque Occidental',
     summary,
     detail,
   };

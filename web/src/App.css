@@ -7,58 +7,81 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .page { width: 100%; max-width: 420px; position: relative; }
 
 /* ── Language Switcher ── */
-.lang-switch { position: absolute; top: -4px; right: 0; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: rgba(255,255,255,0.8); z-index: 10; backdrop-filter: blur(10px); }
+.lang-switch { position: absolute; top: 8px; right: 0; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: rgba(255,255,255,0.85); z-index: 10; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .lang-switch:hover { border-color: #81D8D0; color: #fff; }
 
 /* ── Typography ── */
-.title { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-.subtitle { font-size: 15px; color: #81D8D0; font-weight: 600; margin-bottom: 20px; }
-.desc { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 28px; }
+.title { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 2px; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+.subtitle { font-size: 14px; color: #81D8D0; font-weight: 600; margin-bottom: 14px; }
+.desc { font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 18px; }
 
-/* ── Input Page — Cinematic Video Background ── */
+/* ── Input Page ── */
 .input-page {
-  padding-top: 60px; position: relative; z-index: 2; min-height: 100vh;
+  padding-top: 56px; position: relative; z-index: 2; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center;
-  background: #050812; overflow: hidden;
+  background: transparent; overflow: hidden;
+}
+/* Prevent iOS Safari zoom-on-input */
+@media screen and (max-width: 500px) {
+  .date-part { font-size: 16px !important; }
 }
 
-/* ── Cinematic Animated Gradient Background (replaces video) ── */
-.cinema-bg {
+/* ── Pure CSS Animated Starfield (works on ALL devices) ── */
+.starfield {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden; min-height: 100vh; min-width: 100vw;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(26,31,75,0.9) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 20%, rgba(80,200,120,0.12) 0%, transparent 45%),
-    radial-gradient(ellipse at 60% 80%, rgba(129,216,208,0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 10%, rgba(212,175,55,0.08) 0%, transparent 40%),
-    linear-gradient(170deg, #0a0d1a 0%, #0d1024 25%, #111830 50%, #0c1222 75%, #080c18 100%);
-  animation: bgDrift 20s ease-in-out infinite alternate;
+    /* Deep space base */
+    radial-gradient(ellipse at 20% 30%, #141e3d 0%, #090f1e 60%),
+    /* Mint glow bottom-right */
+    radial-gradient(ellipse at 82% 78%, rgba(129,216,208,0.15) 0%, transparent 45%),
+    /* Gold sparkle top-left */
+    radial-gradient(ellipse at 12% 15%, rgba(212,175,55,0.08) 0%, transparent 35%),
+    /* Teal accent top-right */
+    radial-gradient(ellipse at 88% 12%, rgba(80,200,120,0.06) 0%, transparent 30%),
+    linear-gradient(175deg, #0c1225 0%, #111b33 30%, #152642 55%, #0d1528 80%, #080e1c 100%);
 }
-@keyframes bgDrift {
-  0%   { filter: hue-rotate(0deg) brightness(1); }
-  33%  { filter: hue-rotate(3deg) brightness(1.02); }
-  66%  { filter: hue-rotate(-2deg) brightness(0.98); }
-  100% { filter: hue-rotate(0deg) brightness(1); }
-}
-/* Subtle star particles overlay */
-.cinema-bg::after {
+/* Layer 1: Large bright stars — clearly visible */
+.starfield::before {
   content: '';
   position: absolute; inset: 0;
   background-image:
-    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.6) 50%, transparent 50%),
-    radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.4) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 40% 25%, rgba(255,255,255,0.7) 50%, transparent 50%),
-    radial-gradient(1px 1px at 55% 65%, rgba(255,255,255,0.3) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 70% 35%, rgba(129,216,208,0.5) 50%, transparent 50%),
-    radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1px 1px at 15% 75%, rgba(255,255,255,0.35) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 90% 10%, rgba(212,175,55,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 35% 85%, rgba(255,255,255,0.3) 50%, transparent 50%),
-    radial-gradient(1px 1px at 60% 5%, rgba(129,216,208,0.4) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 78% 82%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1px 1px at 5% 40%, rgba(255,255,255,0.25) 50%, transparent 50%),
-    radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.2) 50%, transparent 50%);
-  animation: twinkle 4s ease-in-out infinite alternate;
+    radial-gradient(2.5px 2.5px at 10% 15%, rgba(255,255,255,0.95) 50%, transparent 50%),
+    radial-gradient(3px 3px at 88% 8%, rgba(129,216,208,0.9) 50%, transparent 50%),
+    radial-gradient(2px 2px at 45% 10%, rgba(255,255,255,0.9) 50%, transparent 50%),
+    radial-gradient(2.5px 2.5px at 75% 72%, rgba(212,175,55,0.7) 50%, transparent 50%),
+    radial-gradient(2px 2px at 8% 68%, rgba(255,255,255,0.85) 50%, transparent 50%),
+    radial-gradient(2.5px 2.5px at 62% 35%, rgba(129,216,208,0.8) 50%, transparent 50%),
+    radial-gradient(2px 2px at 28% 88%, rgba(255,255,255,0.7) 50%, transparent 50%),
+    radial-gradient(2px 2px at 92% 42%, rgba(255,255,255,0.65) 50%, transparent 50%);
+  -webkit-animation: starTwinkle1 4s ease-in-out infinite alternate;
+          animation: starTwinkle1 4s ease-in-out infinite alternate;
 }
+/* Layer 2: Medium stars */
+.starfield::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.8px 1.8px at 35% 52%, rgba(255,255,255,0.7) 50%, transparent 50%),
+    radial-gradient(1.8px 1.8px at 70% 58%, rgba(255,255,255,0.6) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 18% 42%, rgba(255,255,255,0.65) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 55% 85%, rgba(129,216,208,0.6) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 82% 25%, rgba(255,255,255,0.55) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 38% 22%, rgba(255,255,255,0.5) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 68% 8%, rgba(255,255,255,0.5) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 48% 65%, rgba(255,255,255,0.45) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 5% 92%, rgba(212,175,55,0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 22% 72%, rgba(129,216,208,0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 95% 65%, rgba(255,255,255,0.35) 50%, transparent 50%),
+    radial-gradient(1px 1px at 14% 28%, rgba(255,255,255,0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 78% 48%, rgba(255,255,255,0.35) 50%, transparent 50%);
+  -webkit-animation: starTwinkle2 5s ease-in-out infinite alternate-reverse;
+          animation: starTwinkle2 5s ease-in-out infinite alternate-reverse;
+}
+@-webkit-keyframes starTwinkle1 { from { opacity: 0.5; } to { opacity: 1; } }
+@keyframes starTwinkle1        { from { opacity: 0.5; } to { opacity: 1; } }
+@-webkit-keyframes starTwinkle2 { from { opacity: 0.3; } to { opacity: 0.9; } }
+@keyframes starTwinkle2        { from { opacity: 0.3; } to { opacity: 0.9; } }
 
 /* Dark overlay for text readability */
 .video-overlay {
@@ -86,30 +109,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   color: rgba(255,255,255,0.85); position: relative; z-index: 5;
   text-shadow: 0 1px 12px rgba(0,0,0,0.3);
 }
-.input-page .date-label { color: rgba(255,255,255,0.9); text-shadow: 0 1px 8px rgba(0,0,0,0.3); }
+.input-page .date-label { color: rgba(255,255,255,0.88); text-shadow: 0 1px 8px rgba(0,0,0,0.3); font-size: 12px; margin-bottom: 2px; }
+/* ── Form Card — compact & bright glass ── */
 .form {
-  display: flex; flex-direction: column; gap: 18px;
+  display: flex; flex-direction: column; gap: 12px;
   width: 100%;
-  padding: 22px 18px 18px;
-  background: rgba(255,255,255,0.07);
-  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 20px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08),
-    0 0 80px rgba(129,216,208,0.04);
+  padding: 14px 14px 12px;
+  background: rgba(129,216,208,0.08);
+  backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(129,216,208,0.2);
+  border-radius: 16px;
+  box-shadow:
+    0 6px 28px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 0 50px rgba(129,216,208,0.06);
 }
 .input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
 .input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
 .input::placeholder { color: #bbb; }
 
-/* ── Manual Date Input (YYYY / MM / DD) — mobile-safe ── */
+/* ── Manual Date Input (YYYY / MM / DD) — compact ── */
 .date-manual {
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 3px;
   width: 100%;
 }
 .date-part {
-  height: 50px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 12px;
-  padding: 0 10px; font-size: 15px; font-weight: 600;
+  height: 40px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 10px;
+  padding: 0 7px; font-size: 15px; font-weight: 600;
   color: #fff; background: rgba(255,255,255,0.1);
   outline: none; text-align: center;
   transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
@@ -131,13 +157,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   user-select: none; flex-shrink: 0;
 }
 
-.btn { width: 100%; height: 54px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s; letter-spacing: 0.3px; }
+.btn { width: 100%; height: 46px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; -webkit-tap-highlight-color: transparent; }
 .btn:active { transform: scale(0.98); }
+/* Vibrant Blue — brighter, more blue than old #81D8D0 */
 .btn-primary {
-  background: linear-gradient(135deg, #81D8D0 0%, #5cc5bb 50%, #4ab8ad 100%);
-  color: #0a1a18; box-shadow: 0 4px 20px rgba(129,216,208,0.35), 0 0 60px rgba(129,216,208,0.1);
+  background: #4AA3DF;
+  color: #fff;
+  box-shadow:
+    0 4px 20px rgba(74,163,223,0.5),
+    inset 0 2px 0 rgba(255,255,255,0.6);
+  border: none;
 }
-.btn-primary:hover { opacity: 0.92; box-shadow: 0 6px 28px rgba(129,216,208,0.45), 0 0 80px rgba(129,216,208,0.15); }
+.btn-primary:hover, .btn-primary:active {
+  background: #5BB5EA;
+  box-shadow:
+    0 6px 28px rgba(74,163,223,0.65),
+    inset 0 2px 0 rgba(255,255,255,0.7);
+}
 .btn-secondary { background: #fff; color: #81D8D0; border: 2px solid #81D8D0; margin-top: 20px; }
 .btn-secondary:hover { background: rgba(129,216,208,0.06); }
 

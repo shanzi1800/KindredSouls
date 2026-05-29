@@ -1,4 +1,6 @@
 import type { BirthInfo, EngineResult } from './types';
+import { bt } from './i18n';
+type AlgLang = 'zh' | 'en' | 'es' | 'fr';
 
 // ═════════════════════════════════════════
 // 八字合婚引擎（真实算法）
@@ -166,14 +168,14 @@ function paipan(info: BirthInfo): SiZhu {
     month: [mTG, mDZ],
     day: [dTG, dDZ],
     dayMaster: dTG,
-    dayPillar: `${dTG}${dDZ}日`,
+    dayPillar: `${dTG}${dDZ}`,
   };
 }
 
 // ── 合婚评分引擎 ──
 
 
-export function calcBaZi(p1: BirthInfo, p2: BirthInfo): EngineResult {
+export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   const sz1 = paipan(p1);
   const sz2 = paipan(p2);
 
@@ -212,10 +214,18 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo): EngineResult {
       // 一方明显多，另一方少 → 互补潜力
       if (diff > 0) {
         wuxingBonus += 3;
-        wuxingDetails.push(`你${w}旺，对方可受益于你的${w}气`);
+        const labels = lang === 'zh' ? { you: '你', ta: '对方', qi: '气' } :
+          lang === 'en' ? { you: 'Your', ta: 'partner\'s', qi: ' element is strong' } :
+          lang === 'es' ? { you: 'Tu', ta: 'de tu pareja', qi: ' es fuerte' } :
+          { you: 'Votre', ta: 'de votre partenaire', qi: ' est fort' };
+        wuxingDetails.push(`${labels.you}${w}${labels.qi}, ${labels.ta} can benefit`);
       } else {
         wuxingBonus += 3;
-        wuxingDetails.push(`对方${w}旺，你可受益于对方的${w}气`);
+        const labels = lang === 'zh' ? { you: '对方', ta: '你', qi: '气' } :
+          lang === 'en' ? { you: 'Partner\'s', ta: 'your', qi: ' element is strong' } :
+          lang === 'es' ? { you: 'De tu pareja', ta: 'tuyo', qi: ' es fuerte' } :
+          { you: 'De votre partenaire', ta: 'votre', qi: ' est fort' };
+        wuxingDetails.push(`${labels.you}${w}${labels.qi}, ${labels.ta} can benefit`);
       }
     }
   }
@@ -228,7 +238,11 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo): EngineResult {
   // 天干六合检查
   if (TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster) {
     hehunBonus += 12;
-    hehunDetails.push(`日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强`);
+    const liuheLabel = lang === 'zh' ? `日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强` :
+      lang === 'en' ? `Day Stems ${sz1.dayMaster} & ${sz2.dayMaster} form a Six Harmony — powerful emotional bond` :
+      lang === 'es' ? `Tallos ${sz1.dayMaster} y ${sz2.dayMaster} forman Seis Armonías — vínculo emocional poderoso` :
+      `Tiges ${sz1.dayMaster} et ${sz2.dayMaster} forment une Six Harmonies — lien émotionnel puissant`;
+    hehunDetails.push(liheLabel);
   }
 
   // 地支六合/三合检查（年支、月支、日支）
@@ -240,13 +254,21 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo): EngineResult {
     const sanhe = DZHI_SANHE[dz1];
     if (sanhe && sanhe.partners.includes(dz2)) {
       hehunBonus += 10;
-      hehunDetails.push(`${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`);
+      const sanheLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固` :
+        lang === 'en' ? `${label} Branch ${dz1} & ${dz2} form Three-Element ${sanhe.element} Combination — solid foundation` :
+        lang === 'es' ? `Rama ${label} ${dz1} y ${dz2} forman Tres Elementos ${sanhe.element} — base sólida` :
+        `Branche ${label} ${dz1} et ${dz2} forment Trois Éléments ${sanhe.element} — fondation solide`;
+      hehunDetails.push(sanheLabel);
     }
 
     // 六冲（扣分）
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
-      hehunDetails.push(`${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`);
+      const liuchongLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式` :
+        lang === 'en' ? `${label} Branch ${dz1} & ${dz2} form a Six Clash — mindful communication needed` :
+        lang === 'es' ? `Rama ${label} ${dz1} y ${dz2} forman Choque Seis — se necesita comunicación consciente` :
+        `Branche ${label} ${dz1} et ${dz2} forment un Choc Six — une communication attentionnée est nécessaire`;
+      hehunDetails.push(liuchongLabel);
     }
   }
 
@@ -262,32 +284,79 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo): EngineResult {
   // ── 5. 生成解读文案 ──
   const allDetails = [...wuxingDetails, ...hehunDetails];
 
+  // i18n labels
+  const labels = {
+    sipanTitle: lang === 'zh' ? '【四柱排盘】' : lang === 'en' ? '[Four Pillars Chart]' : lang === 'es' ? '[Carta Cuatro Pilares]' : '[Carte Quatre Piliers]',
+    you: lang === 'zh' ? '你' : lang === 'en' ? 'You' : lang === 'es' ? 'Tú' : 'Vous',
+    ta: lang === 'zh' ? 'TA' : lang === 'en' ? 'Partner' : lang === 'es' ? 'Pareja' : 'Partenaire',
+    yearPillar: lang === 'zh' ? '年柱' : lang === 'en' ? 'Year' : lang === 'es' ? 'Año' : 'Année',
+    monthPillar: lang === 'zh' ? '月柱' : lang === 'en' ? 'Month' : lang === 'es' ? 'Mes' : 'Mois',
+    dayPillar: lang === 'zh' ? '日柱' : lang === 'en' ? 'Day' : lang === 'es' ? 'Día' : 'Jour',
+    rishiTitle: lang === 'zh' ? '【日主分析】' : lang === 'en' ? '[Day Master Analysis]' : lang === 'es' ? '[Análisis Maestro Día]' : '[Analyse Maître Jour]',
+    hehunTitle: lang === 'zh' ? '【合婚关系】' : lang === 'en' ? '[Marital Harmony]' : lang === 'es' ? '[Armonía Matrimonial]' : '[Harmonie Conjugale]',
+    scoreLabel: lang === 'zh' ? '综合评分' : lang === 'en' ? 'Overall Score' : lang === 'es' ? 'Puntuación' : 'Score',
+    element: lang === 'zh' ? '五行' : lang === 'en' ? 'element' : lang === 'es' ? 'elemento' : 'élément',
+    dayMaster: lang === 'zh' ? '日主' : lang === 'en' ? 'Day Master' : lang === 'es' ? 'Maestro Día' : 'Maître Jour',
+  };
+
   // 根据分数段选择 summary 模板
   let summary: string;
   if (score >= 85) {
-    summary = `日主${sz1.dayMaster}遇${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。`;
+    summary = lang === 'zh' ? `日主${sz1.dayMaster}遇${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。` :
+      lang === 'en' ? `Day Master ${sz1.dayMaster} meets ${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.` :
+      lang === 'es' ? `Maestro Día ${sz1.dayMaster} encuentra ${sz2.dayMaster} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.` :
+      `Maître Jour ${sz1.dayMaster} rencontre ${sz2.dayMaster} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`;
   } else if (score >= 72) {
-    summary = `日柱${sz1.dayPillar}与${sz2.dayPillar}五行互根，彼此能互相成就。`;
+    summary = lang === 'zh' ? `日柱${sz1.dayPillar}与${sz2.dayPillar}五行互根，彼此能互相成就。` :
+      lang === 'en' ? `Day Pillar ${sz1.dayPillar} and ${sz2.dayPillar} share elemental roots — each empowers the other.` :
+      lang === 'es' ? `Pilar Día ${sz1.dayPillar} y ${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.` :
+      `Pilier Jour ${sz1.dayPillar} et ${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`;
   } else if (score >= 60) {
-    summary = `命盘显示性格互补空间大，用心经营可渐入佳境。`;
+    summary = lang === 'zh' ? `命盘显示性格互补空间大，用心经营可渐入佳境。` :
+      lang === 'en' ? `Charts show strong complementary potential — with care, this relationship blossoms.` :
+      lang === 'es' ? `Los gráficos muestran fuerte potencial complementario — con cuidado, esta relación florece.` :
+      `Les graphiques montrent un fort potentiel complémentaire — avec soin, cette relation s'épanouit.`;
   } else {
-    summary = `五行配置差异较大，但差异正是成长契机，关键在包容。`;
+    summary = lang === 'zh' ? `五行配置差异较大，但差异正是成长契机，关键在包容。` :
+      lang === 'en' ? `Elemental configurations differ notably, but differences are growth opportunities. Tolerance is key.` :
+      lang === 'es' ? `Las configuraciones elementales difieren notablemente, pero las diferencias son oportunidades de crecimiento. La tolerancia es clave.` :
+      `Les configurations élémentaires diffèrent notablement, mais les différences sont des opportunités de croissance. La tolérance est la clé.`;
   }
 
+  // rishi analysis phrase
+  const rishiPhrase = rishiBase >= 80 ?
+    (lang === 'zh' ? '两者性质相近，默契天然。' : lang === 'en' ? 'Similar natures — natural rapport from the start.' :
+     lang === 'es' ? 'Naturalezas similares — rapport natural desde el inicio.' : 'Natures similaires — naturellement en phase dès le départ.') :
+    rishiBase >= 70 ?
+    (lang === 'zh' ? '性质不同但能互补，互相激发潜能。' : lang === 'en' ? 'Different yet complementary — each brings out the other\'s potential.' :
+     lang === 'es' ? 'Diferentes pero complementarios — cada uno saca el potencial del otro.' : 'Différents mais complémentaires — chacun libère le potentiel de l\'autre.') :
+    (lang === 'zh' ? '性质差异较大，需要更多理解和磨合。' : lang === 'en' ? 'Notable differences — requires more understanding and patience.' :
+     lang === 'es' ? 'Diferencias notables — requiere más comprensión y paciencia.' : 'Différences notables — nécessite plus de compréhension et de patience.');
+
+  // score phrase
+  const scorePhrase = score >= 80 ?
+    (lang === 'zh' ? '缘分深厚，珍惜彼此' : lang === 'en' ? 'Deep bond — cherish each other' :
+     lang === 'es' ? 'Vínculo profundo — apreciense mutuamente' : 'Lien profond — chérissez-vous mutuellement') :
+    score >= 65 ?
+    (lang === 'zh' ? '基础良好，用心经营' : lang === 'en' ? 'Solid foundation — nurture it' :
+     lang === 'es' ? 'Base sólida — cuídenla' : 'Base solide — entretenez-la') :
+    (lang === 'zh' ? '需要磨合，但值得努力' : lang === 'en' ? 'Needs work, but worth the effort' :
+     lang === 'es' ? 'Requiere trabajo, pero vale la pena' : 'Nécessite du travail, mais en vaut la peine');
+
   const detail = [
-    `【四柱排盘】`,
-    `你：年柱${sz1.year[0]}${sz1.year[1]} 月柱${sz1.month[0]}${sz1.month[1]} 日柱${sz1.dayPillar}`,
-    `TA：年柱${sz2.year[0]}${sz2.year[1]} 月柱${sz2.month[0]}${sz2.month[1]} 日柱${sz2.dayPillar}`,
+    `${labels.sipanTitle}`,
+    `${labels.you}：${labels.yearPillar}${sz1.year[0]}${sz1.year[1]} ${labels.monthPillar}${sz1.month[0]}${sz1.month[1]} ${labels.dayPillar}${sz1.dayPillar}`,
+    `${labels.ta}：${labels.yearPillar}${sz2.year[0]}${sz2.year[1]} ${labels.monthPillar}${sz2.month[0]}${sz2.month[1]} ${labels.dayPillar}${sz2.dayPillar}`,
     ``,
-    `【日主分析】`,
-    `你日主${sz1.dayMaster}（${TG_WUXING[sz1.dayMaster]}），TA日主${sz2.dayMaster}（${TG_WUXING[sz2.dayMaster]}）。${rishiBase >= 80 ? '两者性质相近，默契天然。' : rishiBase >= 70 ? '性质不同但能互补，互相激发潜能。' : '性质差异较大，需要更多理解和磨合。'}`,
-    ...allDetails.length > 0 ? [`\n【合婚关系】`, ...allDetails] : [],
-    `\n综合评分：${score}/100 — ${score >= 80 ? '缘分深厚，珍惜彼此' : score >= 65 ? '基础良好，用心经营' : '需要磨合，但值得努力'}`,
+    `${labels.rishiTitle}`,
+    `${labels.you}${labels.dayMaster} ${sz1.dayMaster}（${TG_WUXING[sz1.dayMaster]}${lang === 'zh' ? '' : ' ' + labels.element}），${labels.ta}${labels.dayMaster} ${sz2.dayMaster}（${TG_WUXING[sz2.dayMaster]}${lang === 'zh' ? '' : ' ' + labels.element}）。${rishiPhrase}`,
+    ...allDetails.length > 0 ? [`\n${labels.hehunTitle}`, ...allDetails] : [],
+    `\n${labels.scoreLabel}：${score}/100 — ${scorePhrase}`,
   ].join('\n');
 
   return {
     score,
-    title: '八字命理',
+    title: lang === 'zh' ? '八字命理' : lang === 'en' ? 'BaZi (Chinese Astrology)' : lang === 'es' ? 'BaZi (Astrología China)' : 'BaZi (Astrologie Chinoise)',
     summary,
     detail,
   };
