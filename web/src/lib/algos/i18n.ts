@@ -7,7 +7,7 @@
 export type AlgLang = 'zh' | 'en' | 'es' | 'fr';
 
 // ── Shared keys ──
-const SHARED: Record<AlgLang, Record<string, string>> = {
+export const SHARED: Record<AlgLang, Record<string, string>> = {
   zh: {
     // Scores
     deep_fate: '缘分深厚，相遇概率极低',
@@ -89,7 +89,7 @@ const SHARED: Record<AlgLang, Record<string, string>> = {
 };
 
 // ── BaZi specific ──
-const BAZI_TEMPLATES: Record<AlgLang, {
+export const BAZI_TEMPLATES: Record<AlgLang, {
   summary_high: string;
   summary_mid: string;
   summary_low: string;
@@ -167,7 +167,7 @@ const BAZI_TEMPLATES: Record<AlgLang, {
 };
 
 // ── Zodiac specific ──
-const ZODIAC_TEMPLATES: Record<AlgLang, {
+export const ZODIAC_TEMPLATES: Record<AlgLang, {
   summary_high: string;
   summary_mid: string;
   summary_low: string;
@@ -240,7 +240,7 @@ const ZODIAC_TEMPLATES: Record<AlgLang, {
 };
 
 // ── I Ching specific ──
-const ICHING_TEMPLATES: Record<AlgLang, {
+export const ICHING_TEMPLATES: Record<AlgLang, {
   summary_high: string;
   summary_mid: string;
   summary_low: string;
