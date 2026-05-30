@@ -27,6 +27,26 @@ const DZ_WUXING: Record<string, string> = {
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
 };
 
+/** 天干拼音（用于非中文输出）*/
+const TG_PINYIN: Record<string, string> = {
+  '甲': 'Jiǎ', '乙': 'Yǐ',
+  '丙': 'Bǐng', '丁': 'Dīng',
+  '戊': 'Wù', '己': 'Jǐ',
+  '庚': 'Gēng', '辛': 'Xīn',
+  '壬': 'Rén', '癸': 'Guǐ',
+};
+
+/** 地支拼音（用于非中文输出）*/
+const DZ_PINYIN: Record<string, string> = {
+  '子': 'Zǐ', '丑': 'Chǒu', '寅': 'Yín', '卯': 'Mǎo', '辰': 'Chén', '巳': 'Sì',
+  '午': 'Wǔ', '未': 'Wèi', '申': 'Shēn', '酉': 'Yǒu', '戌': 'Xū', '亥': 'Hài',
+};
+
+/** 五行英文 */
+const WUXING_EN: Record<string, string> = {
+  '木': 'Wood', '火': 'Fire', '土': 'Earth', '金': 'Metal', '水': 'Water',
+};
+
 
 /** 五行相克：A 克 B */
 
@@ -175,6 +195,11 @@ function paipan(info: BirthInfo): SiZhu {
 
 
 export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+  // Helper: translate gan/zhi/wuxing for non-zh
+  const tg = (g: string) => lang === 'zh' ? g : (TG_PINYIN[g] || g);
+  const dz_ = (z: string) => lang === 'zh' ? z : (DZ_PINYIN[z] || z);
+  const wx = (w: string) => lang === 'zh' ? w : (WUXING_EN[w] || w);
+
   const sz1 = paipan(p1);
   const sz2 = paipan(p2);
 
@@ -214,17 +239,17 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       if (diff > 0) {
         wuxingBonus += 3;
         const labels = lang === 'zh' ? { you: '你', ta: '对方', qi: '气' } :
-          lang === 'en' ? { you: 'Your', ta: 'partner\'s', qi: ' element is strong' } :
+          lang === 'en' ? { you: 'Your', ta: "partner's", qi: ' element is strong' } :
           lang === 'es' ? { you: 'Tu', ta: 'de tu pareja', qi: ' es fuerte' } :
           { you: 'Votre', ta: 'de votre partenaire', qi: ' est fort' };
-        wuxingDetails.push(`${labels.you}${w}${labels.qi}, ${labels.ta} can benefit`);
+        wuxingDetails.push(`${labels.you}${wx(w)}${labels.qi}, ${labels.ta} can benefit`);
       } else {
         wuxingBonus += 3;
         const labels = lang === 'zh' ? { you: '对方', ta: '你', qi: '气' } :
-          lang === 'en' ? { you: 'Partner\'s', ta: 'your', qi: ' element is strong' } :
+          lang === 'en' ? { you: "Partner's", ta: 'your', qi: ' element is strong' } :
           lang === 'es' ? { you: 'De tu pareja', ta: 'tuyo', qi: ' es fuerte' } :
           { you: 'De votre partenaire', ta: 'votre', qi: ' est fort' };
-        wuxingDetails.push(`${labels.you}${w}${labels.qi}, ${labels.ta} can benefit`);
+        wuxingDetails.push(`${labels.you}${wx(w)}${labels.qi}, ${labels.ta} can benefit`);
       }
     }
   }
@@ -238,9 +263,9 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   if (TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster) {
     hehunBonus += 12;
     const liuheLabel = lang === 'zh' ? `日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强` :
-      lang === 'en' ? `Day Stems ${sz1.dayMaster} & ${sz2.dayMaster} form a Six Harmony — powerful emotional bond` :
-      lang === 'es' ? `Tallos ${sz1.dayMaster} y ${sz2.dayMaster} forman Seis Armonías — vínculo emocional poderoso` :
-      `Tiges ${sz1.dayMaster} et ${sz2.dayMaster} forment une Six Harmonies — lien émotionnel puissant`;
+      lang === 'en' ? `Day Stems ${tg(sz1.dayMaster)} & ${tg(sz2.dayMaster)} form a Six Harmony — powerful emotional bond` :
+      lang === 'es' ? `Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso` :
+      `Tiges ${tg(sz1.dayMaster)} et ${tg(sz2.dayMaster)} forment une Six Harmonies — lien émotionnel puissant`;
     hehunDetails.push(liuheLabel);
   }
 
@@ -254,9 +279,9 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     if (sanhe && sanhe.partners.includes(dz2)) {
       hehunBonus += 10;
       const sanheLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固` :
-        lang === 'en' ? `${label} Branch ${dz1} & ${dz2} form Three-Element ${sanhe.element} Combination — solid foundation` :
-        lang === 'es' ? `Rama ${label} ${dz1} y ${dz2} forman Tres Elementos ${sanhe.element} — base sólida` :
-        `Branche ${label} ${dz1} et ${dz2} forment Trois Éléments ${sanhe.element} — fondation solide`;
+        lang === 'en' ? `${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation` :
+        lang === 'es' ? `Rama ${label} ${dz_(dz1)} y ${dz_(dz2)} forman Tres Elementos ${wx(sanhe.element)} — base sólida` :
+        `Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`;
       hehunDetails.push(sanheLabel);
     }
 
@@ -264,9 +289,9 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
       const liuchongLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式` :
-        lang === 'en' ? `${label} Branch ${dz1} & ${dz2} form a Six Clash — mindful communication needed` :
-        lang === 'es' ? `Rama ${label} ${dz1} y ${dz2} forman Choque Seis — se necesita comunicación consciente` :
-        `Branche ${label} ${dz1} et ${dz2} forment un Choc Six — une communication attentionnée est nécessaire`;
+        lang === 'en' ? `${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed` :
+        lang === 'es' ? `Rama ${label} ${dz_(dz1)} y ${dz_(dz2)} forman Choque Seis — se necesita comunicación consciente` :
+        `Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment un Choc Six — une communication attentionnée est nécessaire`;
       hehunDetails.push(liuchongLabel);
     }
   }
@@ -344,11 +369,11 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
 
   const detail = [
     `${labels.sipanTitle}`,
-    `${labels.you}：${labels.yearPillar}${sz1.year[0]}${sz1.year[1]} ${labels.monthPillar}${sz1.month[0]}${sz1.month[1]} ${labels.dayPillar}${sz1.dayPillar}`,
-    `${labels.ta}：${labels.yearPillar}${sz2.year[0]}${sz2.year[1]} ${labels.monthPillar}${sz2.month[0]}${sz2.month[1]} ${labels.dayPillar}${sz2.dayPillar}`,
+    `${labels.you}：${labels.yearPillar}${tg(sz1.year[0])}${dz_(sz1.year[1])} ${labels.monthPillar}${tg(sz1.month[0])}${dz_(sz1.month[1])} ${labels.dayPillar}${tg(sz1.day[0])}${dz_(sz1.day[1])}`,
+    `${labels.ta}：${labels.yearPillar}${tg(sz2.year[0])}${dz_(sz2.year[1])} ${labels.monthPillar}${tg(sz2.month[0])}${dz_(sz2.month[1])} ${labels.dayPillar}${tg(sz2.day[0])}${dz_(sz2.day[1])}`,
     ``,
     `${labels.rishiTitle}`,
-    `${labels.you}${labels.dayMaster} ${sz1.dayMaster}（${TG_WUXING[sz1.dayMaster]}${lang === 'zh' ? '' : ' ' + labels.element}），${labels.ta}${labels.dayMaster} ${sz2.dayMaster}（${TG_WUXING[sz2.dayMaster]}${lang === 'zh' ? '' : ' ' + labels.element}）。${rishiPhrase}`,
+    `${labels.you}${labels.dayMaster} ${tg(sz1.dayMaster)}（${wx(TG_WUXING[sz1.dayMaster])}${lang === 'zh' ? '' : ' ' + labels.element}），${labels.ta}${labels.dayMaster} ${tg(sz2.dayMaster)}（${wx(TG_WUXING[sz2.dayMaster])}${lang === 'zh' ? '' : ' ' + labels.element}）。${rishiPhrase}`,
     ...allDetails.length > 0 ? [`\n${labels.hehunTitle}`, ...allDetails] : [],
     `\n${labels.scoreLabel}：${score}/100 — ${scorePhrase}`,
   ].join('\n');

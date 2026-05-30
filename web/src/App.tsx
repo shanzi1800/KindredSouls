@@ -6,13 +6,19 @@ import { normalizeLang } from './lib/algos/i18n';
 import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
-/* ── Manual Date Input: YYYY / MM / DD with auto-advance ── */
-function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const parts = value ? value.split('-') : ['', '', ''];
-  const [year, month, day] = parts;
-  const yrRef = React.useRef<HTMLInputElement>(null);
-  const moRef = React.useRef<HTMLInputElement>(null);
-  const daRef = React.useRef<HTMLInputElement>(null);
+/* ── Manual Date Input: configurable part order, auto-advance ── */
+function DateInput({ value, onChange, onLastFilled, firstFieldRef }: { value: string; onChange: (v: string) => void; onLastFilled?: () => void; firstFieldRef?: React.RefObject<HTMLInputElement | null> }) {
+  const { i18n } = useTranslation();
+  const baseLang = (i18n.language || 'en').split('-')[0];
+  const isZh = baseLang === 'zh';
+  const partDefs = isZh
+    ? [{ key: 0, max: 4, ph: 'YYYY' }, { key: 1, max: 2, ph: 'MM' }, { key: 2, max: 2, ph: 'DD' }]
+    : [{ key: 2, max: 2, ph: 'DD' }, { key: 1, max: 2, ph: 'MM' }, { key: 0, max: 4, ph: 'YYYY' }];
+
+  const parts = (value ? value.split('-') : ['', '', '']).map(s => s || '');
+  const refs = [React.useRef<HTMLInputElement>(null), React.useRef<HTMLInputElement>(null), React.useRef<HTMLInputElement>(null)];
+
+  React.useImperativeHandle(firstFieldRef, () => refs[0].current!, []);
 
   const update = (idx: number, val: string) => {
     const p = [...parts];
@@ -20,27 +26,35 @@ function DateInput({ value, onChange }: { value: string; onChange: (v: string) =
     if (idx === 0) { p[0] = cleaned.slice(0, 4); }
     else if (idx === 1) { p[1] = cleaned.slice(0, 2); if (p[1].length === 2 && parseInt(p[1]) > 12) p[1] = '12'; }
     else { p[2] = cleaned.slice(0, 2); if (p[2].length === 2 && parseInt(p[2]) > 31) p[2] = '31'; }
-    const newVal = p.filter(Boolean).join('-');
+    const newVal = p.join('-');
     onChange(newVal);
+  };
 
-    /* Auto-advance to next field when current is filled */
-    if (idx === 0 && cleaned.length === 4) moRef.current?.focus();
-    if (idx === 1 && cleaned.length === 2) daRef.current?.focus();
+  const handleFieldChange = (partIdx: number, val: string) => {
+    const def = partDefs[partIdx];
+    update(def.key, val);
+    const digits = val.replace(/\D/g, '').length;
+    if (digits === def.max) {
+      if (partIdx < partDefs.length - 1) {
+        // Jump to next field in visual order
+        refs[partIdx + 1].current?.focus();
+      } else if (partIdx === partDefs.length - 1) {
+        // Last field of this row → trigger callback
+        onLastFilled?.();
+      }
+    }
   };
 
   return (
     <div className="date-manual">
-      <input ref={yrRef} className="date-part date-year" type="text" inputMode="numeric"
-        maxLength={4} placeholder="YYYY" value={year}
-        onChange={e => update(0, e.target.value)} />
-      <span className="date-slash">/</span>
-      <input ref={moRef} className="date-part date-month" type="text" inputMode="numeric"
-        maxLength={2} placeholder="MM" value={month}
-        onChange={e => update(1, e.target.value)} />
-      <span className="date-slash">/</span>
-      <input ref={daRef} className="date-part date-day" type="text" inputMode="numeric"
-        maxLength={2} placeholder="DD" value={day}
-        onChange={e => update(2, e.target.value)} />
+      {partDefs.map((def, pi) => (
+        <React.Fragment key={def.key}>
+          {pi > 0 && <span className="date-slash">/</span>}
+          <input ref={refs[pi]} className="date-part" type="text" inputMode="numeric"
+            maxLength={def.max} placeholder={def.ph} value={parts[def.key]}
+            onChange={e => handleFieldChange(pi, e.target.value)} />
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -49,6 +63,8 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const { t, i18n } = useTranslation();
   const [d1, setD1] = useState('');
   const [d2, setD2] = useState('');
+  const d2StartRef = React.useRef<HTMLInputElement>(null);
+  const jumpToD2 = () => { setTimeout(() => d2StartRef.current?.focus(), 0); };
 
   const submit = () => {
     if (!d1 || !d2) { alert(t('common.errorIncomplete')); return; }
@@ -66,7 +82,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   return (
     <div className="page input-page">
       {/* Video background */}
-      <video className="bg-video" autoPlay loop muted playsInline>
+      <video className="bg-video" autoPlay loop muted playsInline onError={e => { (e.target as HTMLVideoElement).style.display = 'none'; }}>
         <source src="/bg-video.mp4" type="video/mp4" />
       </video>
       <div className="video-overlay" />
@@ -78,11 +94,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
       <div className="form">
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} />
+          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} />
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} />
+          <DateInput value={d2} onChange={setD2} firstFieldRef={d2StartRef} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
@@ -277,6 +293,8 @@ function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityRes
 
       <ScoreRing score={overall} />
       <p className="score-label">{t('result.overall')}</p>
+      <p style={{fontSize:'12px',color:'#888',margin:'2px 0 8px'}}>lang: {lang}</p>
+      <p className="debug-lang" style={{fontSize:'12px',color:'#888',margin:'4px 0'}}>debug lang: {lang}</p>
 
       <DimensionBars dims={dimensions} lang={lang} />
 
