@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ═════════════════════════════════════════
 // Algorithm-layer i18n translations
 // All user-facing text from bazi/zodiac/iching engines

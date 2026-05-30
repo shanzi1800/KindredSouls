@@ -59,7 +59,6 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
     const base = (i18n.language || 'en').split('-')[0];
     const idx = langs.indexOf(base);
     const next = langs[(idx + 1) % langs.length];
-    setCurrentLang(next);  // sync React state immediately
     i18n.changeLanguage(next);
   };
 
@@ -331,11 +330,11 @@ export default function App() {
   });
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ks_user_id');
-    }
-    return null;
-  });
+  React.useEffect(() => {
+    const handler = (lng: string) => setCurrentLang(lng);
+    i18n.on('languageChanged', handler);
+    return () => { i18n.off('languageChanged', handler); };
+  }, [i18n]);
 
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
@@ -347,10 +346,11 @@ export default function App() {
       localStorage.setItem('ks_user_id', uid);
       setUserId(uid);
     }
+    // Read language directly from i18n instance (not React state) to avoid stale closure
+    const lang = (i18n.language || 'en').split('-')[0];
     setTimeout(() => {
-      // currentLang is React state — always correct
-      console.log('[KindredSouls Debug] lang=' + currentLang);
-      const res = calculateCompatibility(d1, d2, currentLang);
+      console.log('[KindredSouls Debug] lang=' + lang);
+      const res = calculateCompatibility(d1, d2, lang);
       if ('error' in res) {
         setErr(t('common.errorFormat'));
         _setPage('input');

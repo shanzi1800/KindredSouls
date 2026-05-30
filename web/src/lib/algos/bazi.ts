@@ -1,5 +1,4 @@
 import type { BirthInfo, EngineResult } from './types';
-import { bt } from './i18n';
 type AlgLang = 'zh' | 'en' | 'es' | 'fr';
 
 // ═════════════════════════════════════════
@@ -242,7 +241,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       lang === 'en' ? `Day Stems ${sz1.dayMaster} & ${sz2.dayMaster} form a Six Harmony — powerful emotional bond` :
       lang === 'es' ? `Tallos ${sz1.dayMaster} y ${sz2.dayMaster} forman Seis Armonías — vínculo emocional poderoso` :
       `Tiges ${sz1.dayMaster} et ${sz2.dayMaster} forment une Six Harmonies — lien émotionnel puissant`;
-    hehunDetails.push(liheLabel);
+    hehunDetails.push(liuheLabel);
   }
 
   // 地支六合/三合检查（年支、月支、日支）

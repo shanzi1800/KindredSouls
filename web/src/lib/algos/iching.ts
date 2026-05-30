@@ -1,5 +1,4 @@
 import type { BirthInfo, EngineResult } from './types';
-import { normalizeLang, t as at } from './i18n';
 type AlgLang = 'zh' | 'en' | 'es' | 'fr';
 
 // 卦分类多语言映射
@@ -30,10 +29,22 @@ function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMe
 
 interface HexagramData {
   name: string;           // 卦名
+  nameEn?: string;
+  nameEs?: string;
+  nameFr?: string;
   symbol: string;         // 上下卦符号（如 ☰☷）
   nature: string;         // 卦德/属性
+  natureEn?: string;
+  natureEs?: string;
+  natureFr?: string;
   judgment: string;       // 卦辞摘要
+  judgmentEn?: string;
+  judgmentEs?: string;
+  judgmentFr?: string;
   relationshipMeaning: string; // 感姻解读
+  relationshipMeaningEn?: string;
+  relationshipMeaningEs?: string;
+  relationshipMeaningFr?: string;
   category: '大吉' | '吉' | '中' | '小凶' | '待变';
   scoreRange: [number, number]; // 分数范围
 }
@@ -1289,7 +1300,10 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     changingLine ? (isZh ? `第${changingLine}爻为动爻，显示关系中存在变化的契机` : lang === 'en' ? `Line ${changingLine} is changing — indicates a turning point in the relationship` : lang === 'es' ? `La línea ${changingLine} está cambiando — indica un punto de inflexión en la relación` : `La ligne ${changingLine} est en changement — indique un point de inflexión dans la relation`) : (isZh ? '六爻安静，关系当前处于稳定状态' : lang === 'en' ? 'All lines are stable — the relationship is currently in a steady state' : lang === 'es' ? 'Todas las líneas están estables — la relación está actualmente en un estado estable' : 'Toutes les lignes sont stables — la relation est actuellement dans un état stable'),
     tTransform,
     ``,
-    (isZh ? `易经评分：${score}/100 — ${score >= 80 ? '卦象大吉，顺应天道' : score >= 65 ? '中上之卦，事在人为' : '卦象待变，修心即改命'}` : lang === 'en' ? `I Ching Score: ${score}/100 — ${score >= 80 ? 'Auspicious hexagram, follow the Tao' : score >= 65 ? 'Above-average hexagram, human effort matters' : 'Hexagram in transition — cultivate the heart to change destiny'}` : lang === 'es' ? `Puntuación I Ching: ${score}/100 — ${score >= 80 ? 'Hexagrama auspicioso, sigue el Tao' : score >= 65 ? 'Hexagrama superior al promedio, el esfuerzo humano importa' : 'Hexagrama en transición — cultiva el corazón para cambiar el destino'}` : `Score I Ching : ${score}/100 — ${score >= 80 ? 'Hexagramme auspice, suivez le Tao' : score >= 65 ? 'Hexagramme au-dessus de la moyenne, l'effort humain compte' : 'Hexagramme en transition — cultivez le cœur pour changer la destinée'}`),
+    score >= 80 ? (isZh ? '卦象大吉，顺应天道' : lang === 'en' ? 'Auspicious hexagram, follow the Tao' : lang === 'es' ? 'Hexagrama auspicioso, sigue el Tao' : 'Hexagramme auspice, suivez le Tao')
+      : score >= 65 ? (isZh ? '中上之卦，事在人为' : lang === 'en' ? 'Above-average hexagram, human effort matters' : lang === 'es' ? 'Hexagrama superior al promedio, el esfuerzo humano importa' : 'Hexagramme au-dessus de la moyenne, l\'effort humain compte')
+      : (isZh ? '卦象待变，修心即改命' : lang === 'en' ? 'Hexagram in transition — cultivate the heart to change destiny' : lang === 'es' ? 'Hexagrama en transición — cultiva el corazón para cambiar el destino' : 'Hexagramme en transition — cultivez le cœur pour changer la destinée'),
+    ``,
   ].join('\n');
 
   return {
