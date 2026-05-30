@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
+import { normalizeLang } from './lib/algos/i18n';
 import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
@@ -348,8 +349,10 @@ export default function App() {
       localStorage.setItem('ks_user_id', uid);
       setUserId(uid);
     }
-    // Read language directly from i18n instance (not React state) to avoid stale closure
-    const lang = (i18n.language || 'en').split('-')[0];
+    // Always normalize to supported lang to avoid SHARED[lang] undefined
+    const rawLang = (i18n.language || 'en').split('-')[0];
+    const lang = normalizeLang(rawLang);
+    console.log('[KindredSouls Debug] rawLang=' + rawLang + ' normalized=' + lang);
     setTimeout(() => {
       console.log('[KindredSouls Debug] lang=' + lang);
       const res = calculateCompatibility(d1, d2, lang);
