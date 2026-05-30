@@ -7,13 +7,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .page { width: 100%; max-width: 420px; position: relative; }
 
 /* ── Language Switcher ── */
-.lang-switch { position: absolute; top: 8px; right: 0; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: rgba(255,255,255,0.85); z-index: 10; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.lang-switch:hover { border-color: #81D8D0; color: #fff; }
+.lang-switch { position: absolute; top: 8px; right: 0; background: #fff !important; border: 2px solid #a855f7 !important; border-radius: 20px; padding: 5px 14px; font-size: 12px; cursor: pointer; color: #81D8D0; font-weight: 700; z-index: 9999; }
+.lang-switch:hover { background: #ede9fe; border-color: #c084fc !important; box-shadow: 0 0 12px rgba(168,85,247,0.4); }
 
 /* ── Typography ── */
 .title { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 2px; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-.subtitle { font-size: 14px; color: #81D8D0; font-weight: 600; margin-bottom: 14px; }
-.desc { font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 18px; }
+.subtitle { font-size: 14px; color: #a855f7; font-weight: 600; margin-bottom: 14px; }
+.desc { font-size: 13px; color: #a855f7; line-height: 1.6; margin-bottom: 18px; }
 
 /* ── Input Page ── */
 .input-page {
@@ -61,43 +61,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 /* Dark overlay for text readability */
 .video-overlay {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    linear-gradient(180deg,
-      rgba(5,8,18,0.65) 0%,
-      rgba(5,8,18,0.35) 25%,
-      rgba(5,8,18,0.4) 55%,
-      rgba(5,8,18,0.7) 88%,
-      rgba(5,8,18,0.9) 100%
-    ),
-    radial-gradient(circle at 50% 28%, rgba(26,31,75,0.3) 0%, transparent 55%);
+  background: transparent;
 }
 /* Cinematic typography over video */
 .input-page .title {
-  color: #fff; text-shadow: 0 2px 40px rgba(0,0,0,0.8), 0 0 80px rgba(129,216,208,0.3), 0 0 4px rgba(255,255,255,0.5);
+  color: #81D8D0; text-shadow: 0 2px 20px rgba(129,216,208,0.4), 0 0 40px rgba(129,216,208,0.15);
   position: relative; z-index: 5; letter-spacing: -0.8px;
 }
 .input-page .subtitle {
-  color: #81D8D0; text-shadow: 0 1px 20px rgba(0,0,0,0.8), 0 0 40px rgba(129,216,208,0.4);
+  color: #7c3aed; text-shadow: 0 1px 16px rgba(124,58,237,0.35);
   position: relative; z-index: 5;
 }
 .input-page .desc {
-  color: rgba(255,255,255,0.9); position: relative; z-index: 5;
-  text-shadow: 0 1px 16px rgba(0,0,0,0.5);
+  color: #6d28d9; position: relative; z-index: 5;
+  font-weight: 500;
 }
-.input-page .date-label { color: rgba(255,255,255,0.92); text-shadow: 0 1px 10px rgba(0,0,0,0.5); font-size: 12px; margin-bottom: 2px; }
+.input-page .date-label { color: #0891b2; font-size: 12px; margin-bottom: 2px; font-weight: 700; }
 /* ── Form Card — compact & bright glass ── */
 .form {
   display: flex; flex-direction: column; gap: 12px;
   width: 100%;
   padding: 14px 14px 12px;
-  background: rgba(26,31,75,0.92);
-  backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(129,216,208,0.3);
+  background: transparent;
+  border: 2px solid #0891b2;
   border-radius: 16px;
   box-shadow:
-    0 6px 28px rgba(0,0,0,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    0 0 50px rgba(129,216,208,0.06);
+    0 4px 24px rgba(8,145,178,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .input { width: 100%; height: 50px; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 0 16px; font-size: 15px; color: #222; background: #fff; outline: none; transition: border-color 0.2s; }
 .input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
@@ -109,42 +99,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   width: 100%;
 }
 .date-part {
-  flex: 1; height: 40px; border: 1.5px solid rgba(129,216,208,0.4); border-radius: 10px;
-  padding: 0 7px; font-size: 15px; font-weight: 600;
-  color: #fff; background: rgba(255,255,255,0.15);
+  flex: 1; height: 52px; border: 2px solid #0891b2; border-radius: 12px;
+  padding: 0 14px; font-size: 16px; font-weight: 600;
+  color: #a855f7 !important; background: #fff !important;
   outline: none; text-align: center;
-  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.2s, box-shadow 0.2s;
   -webkit-appearance: none; appearance: none;
   font-family: inherit;
   min-width: 0;
 }
 .date-part:focus {
-  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.25);
-  background: rgba(255,255,255,0.16);
+  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.2);
 }
-.date-part::placeholder { color: rgba(255,255,255,0.38); }
+.date-part::placeholder { color: #c4b5fd; }
 .date-slash {
-  color: rgba(255,255,255,0.4); font-size: 18px; font-weight: 200;
+  color: rgba(46,203,247,0.5); font-size: 18px; font-weight: 200;
   user-select: none; flex-shrink: 0;
 }
 
 .btn { width: 100%; height: 46px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; -webkit-tap-highlight-color: transparent; }
 .btn:active { transform: scale(0.98); }
-/* Vibrant Blue — brighter, more blue than old #81D8D0 */
+/* Brand Blue — no glow, pure & flat */
 .btn-primary {
-  background: #4AA3DF;
+  background: #2ECBF7;
   color: #fff;
-  box-shadow:
-    0 4px 20px rgba(74,163,223,0.5),
-    inset 0 2px 0 rgba(255,255,255,0.6);
   border: none;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
 .btn-primary:hover, .btn-primary:active {
-  background: #5BB5EA;
-  box-shadow:
-    0 6px 28px rgba(74,163,223,0.65),
-    inset 0 2px 0 rgba(255,255,255,0.7);
+  background: #4AD8FF;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.3);
 }
 .btn-secondary { background: #fff; color: #81D8D0; border: 2px solid #81D8D0; margin-top: 20px; }
 .btn-secondary:hover { background: rgba(129,216,208,0.06); }
@@ -197,7 +182,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .section-title { font-size: 13px; font-weight: 700; color: #1A1F4B; margin-bottom: 14px; }
 .dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .dim-row:last-child { margin-bottom: 0; }
-.dim-label { font-size: 12px; color: #666; width: 110px; flex-shrink: 0; text-align: left; }
+.dim-label { font-size: 12px; color: #1a1a1a; width: 110px; flex-shrink: 0; text-align: left; font-family: 'SimHei', 'Heiti SC', sans-serif; font-weight: 900; }
 .dim-bar-bg { flex: 1; height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
 .dim-bar-fill { height: 100%; background: linear-gradient(90deg, #81D8D0, #5cc5bb); border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
 .dim-val { font-size: 13px; font-weight: 700; color: #1A1F4B; width: 26px; text-align: right; }
@@ -225,19 +210,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   display: flex; align-items: center; gap: 6px;
 }
 .date-sep {
-  color: rgba(255,255,255,0.4); font-size: 18px; font-weight: 300;
+  color: rgba(46,203,247,0.5); font-size: 18px; font-weight: 300;
   user-select: none; flex-shrink: 0;
 }
 .date-sel {
-  flex: 1; height: 52px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
-  padding: 0 14px; font-size: 16px; color: #fff; background: rgba(255,255,255,0.12);
+  flex: 1; height: 52px; border: 2px solid #0891b2; border-radius: 12px;
+  padding: 0 14px; font-size: 16px; color: #a855f7 !important; background: #fff;
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
   -webkit-appearance: none; appearance: none;
-  font-family: inherit; text-align: center;
-  backdrop-filter: blur(10px);
+  font-family: inherit; text-align: center; font-weight: 600;
 }
 .date-sel:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.2); }
-.date-sel::placeholder { color: rgba(255,255,255,0.35); }
+.date-sel::placeholder { color: #c4b5fd; }
 .date-sel-year { flex: 1.4; min-width: 0; }
 .date-sel-month { flex: 0.9; min-width: 0; }
 .date-sel-day { flex: 0.9; min-width: 0; }

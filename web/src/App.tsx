@@ -7,7 +7,7 @@ import type { CompatibilityResult } from './lib/algos/types';
 import './App.css';
 
 /* ── Manual Date Input: configurable part order, auto-advance ── */
-function DateInput({ value, onChange, onLastFilled, firstFieldRef }: { value: string; onChange: (v: string) => void; onLastFilled?: () => void; firstFieldRef?: React.RefObject<HTMLInputElement | null> }) {
+function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus }: { value: string; onChange: (v: string) => void; onLastFilled?: () => void; firstFieldRef?: React.RefObject<HTMLInputElement | null>; autoFocus?: boolean }) {
   const { i18n } = useTranslation();
   const baseLang = (i18n.language || 'en').split('-')[0];
   const isZh = baseLang === 'zh';
@@ -36,10 +36,8 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef }: { value: st
     const digits = val.replace(/\D/g, '').length;
     if (digits === def.max) {
       if (partIdx < partDefs.length - 1) {
-        // Jump to next field in visual order
         refs[partIdx + 1].current?.focus();
       } else if (partIdx === partDefs.length - 1) {
-        // Last field of this row → trigger callback
         onLastFilled?.();
       }
     }
@@ -52,7 +50,8 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef }: { value: st
           {pi > 0 && <span className="date-slash">/</span>}
           <input ref={refs[pi]} className="date-part" type="text" inputMode="numeric"
             maxLength={def.max} placeholder={def.ph} value={parts[def.key]}
-            onChange={e => handleFieldChange(pi, e.target.value)} />
+            onChange={e => handleFieldChange(pi, e.target.value)}
+            autoFocus={autoFocus && pi === 0} />
         </React.Fragment>
       ))}
     </div>
@@ -63,8 +62,9 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const { t, i18n } = useTranslation();
   const [d1, setD1] = useState('');
   const [d2, setD2] = useState('');
-  const d2StartRef = React.useRef<HTMLInputElement>(null);
-  const jumpToD2 = () => { setTimeout(() => d2StartRef.current?.focus(), 0); };
+  const [d2Key, setD2Key] = React.useState(0);
+  const d2FirstRef = React.useRef<HTMLInputElement>(null);
+  const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
 
   const submit = () => {
     if (!d1 || !d2) { alert(t('common.errorIncomplete')); return; }
@@ -83,7 +83,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
     <div className="page input-page">
       {/* Video background */}
       <video className="bg-video" autoPlay loop muted playsInline onError={e => { (e.target as HTMLVideoElement).style.display = 'none'; }}>
-        <source src="/bg-video.mp4" type="video/mp4" />
+        <source src="/rose-petals.mp4" type="video/mp4" />
       </video>
       <div className="video-overlay" />
       
@@ -94,11 +94,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
       <div className="form">
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} />
+          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus />
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} firstFieldRef={d2StartRef} />
+          <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
@@ -293,8 +293,6 @@ function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityRes
 
       <ScoreRing score={overall} />
       <p className="score-label">{t('result.overall')}</p>
-      <p style={{fontSize:'12px',color:'#888',margin:'2px 0 8px'}}>lang: {lang}</p>
-      <p className="debug-lang" style={{fontSize:'12px',color:'#888',margin:'4px 0'}}>debug lang: {lang}</p>
 
       <DimensionBars dims={dimensions} lang={lang} />
 
@@ -325,7 +323,7 @@ function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityRes
           )}
           {result.challengingAspects.length > 0 && (
             <div className="aspect-group">
-              <h4>🔔 {t('result.challengingAspects')}</h4>
+              <h4>⚡ {t('result.challengingAspects')}</h4>
               {result.challengingAspects.map((a, i) => <span className="tag tag-warn" key={i}>{a}</span>)}
             </div>
           )}
