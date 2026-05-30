@@ -64,8 +64,10 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   return (
     <div className="page input-page">
-      {/* Pure CSS animated starfield — no external video dependency */}
-      <div className="starfield" />
+      {/* Video background */}
+      <video className="bg-video" autoPlay loop muted playsInline>
+        <source src="/bg-video.mp4" type="video/mp4" />
+      </video>
       <div className="video-overlay" />
       
       <button className="lang-switch" onClick={cycleLang}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':'FR'; })() }</button>

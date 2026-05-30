@@ -26,42 +26,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .date-part { font-size: 16px !important; }
 }
 
-/* ── Pure CSS Animated Starfield (works on ALL devices) ── */
-.starfield {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  overflow: hidden; min-height: 100vh; min-width: 100vw;
-  background:
-    /* Deep space base */
-    radial-gradient(ellipse at 20% 30%, #141e3d 0%, #090f1e 60%),
-    /* Mint glow bottom-right */
-    radial-gradient(ellipse at 82% 78%, rgba(129,216,208,0.15) 0%, transparent 45%),
-    /* Gold sparkle top-left */
-    radial-gradient(ellipse at 12% 15%, rgba(212,175,55,0.08) 0%, transparent 35%),
-    /* Teal accent top-right */
-    radial-gradient(ellipse at 88% 12%, rgba(80,200,120,0.06) 0%, transparent 30%),
-    linear-gradient(175deg, #0c1225 0%, #111b33 30%, #152642 55%, #0d1528 80%, #080e1c 100%);
+/* ── Background Video ── */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
 }
-/* Layer 1: Large bright stars — clearly visible */
-.starfield::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image:
-    radial-gradient(2.5px 2.5px at 10% 15%, rgba(255,255,255,0.95) 50%, transparent 50%),
-    radial-gradient(3px 3px at 88% 8%, rgba(129,216,208,0.9) 50%, transparent 50%),
-    radial-gradient(2px 2px at 45% 10%, rgba(255,255,255,0.9) 50%, transparent 50%),
-    radial-gradient(2.5px 2.5px at 75% 72%, rgba(212,175,55,0.7) 50%, transparent 50%),
-    radial-gradient(2px 2px at 8% 68%, rgba(255,255,255,0.85) 50%, transparent 50%),
-    radial-gradient(2.5px 2.5px at 62% 35%, rgba(129,216,208,0.8) 50%, transparent 50%),
-    radial-gradient(2px 2px at 28% 88%, rgba(255,255,255,0.7) 50%, transparent 50%),
-    radial-gradient(2px 2px at 92% 42%, rgba(255,255,255,0.65) 50%, transparent 50%);
-  -webkit-animation: starTwinkle1 4s ease-in-out infinite alternate;
-          animation: starTwinkle1 4s ease-in-out infinite alternate;
-}
-/* Layer 2: Medium stars */
-.starfield::after {
-  content: '';
-  position: absolute; inset: 0;
-  background-image:
     radial-gradient(1.8px 1.8px at 35% 52%, rgba(255,255,255,0.7) 50%, transparent 50%),
     radial-gradient(1.8px 1.8px at 70% 58%, rgba(255,255,255,0.6) 50%, transparent 50%),
     radial-gradient(1.5px 1.5px at 18% 42%, rgba(255,255,255,0.65) 50%, transparent 50%),
@@ -73,15 +47,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
     radial-gradient(1.2px 1.2px at 5% 92%, rgba(212,175,55,0.4) 50%, transparent 50%),
     radial-gradient(1px 1px at 22% 72%, rgba(129,216,208,0.4) 50%, transparent 50%),
     radial-gradient(1px 1px at 95% 65%, rgba(255,255,255,0.35) 50%, transparent 50%),
-    radial-gradient(1px 1px at 14% 28%, rgba(255,255,255,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 78% 48%, rgba(255,255,255,0.35) 50%, transparent 50%);
-  -webkit-animation: starTwinkle2 5s ease-in-out infinite alternate-reverse;
-          animation: starTwinkle2 5s ease-in-out infinite alternate-reverse;
-}
-@-webkit-keyframes starTwinkle1 { from { opacity: 0.5; } to { opacity: 1; } }
-@keyframes starTwinkle1        { from { opacity: 0.5; } to { opacity: 1; } }
-@-webkit-keyframes starTwinkle2 { from { opacity: 0.3; } to { opacity: 0.9; } }
-@keyframes starTwinkle2        { from { opacity: 0.3; } to { opacity: 0.9; } }
+
 
 /* Dark overlay for text readability */
 .video-overlay {
