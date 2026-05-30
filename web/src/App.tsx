@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
 import type { CompatibilityResult } from './lib/algos/types';
+import CelestialBackground from './components/CelestialBackground';
 import './App.css';
 
 /* ── Manual Date Input: configurable part order, auto-advance ── */
@@ -82,10 +83,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   return (
     <div className="page input-page">
       {/* Video background */}
-      <video className="bg-video" autoPlay loop muted playsInline onError={e => { (e.target as HTMLVideoElement).style.display = 'none'; }}>
-        <source src="/rose-petals.mp4" type="video/mp4" />
-      </video>
-      <div className="video-overlay" />
+      <CelestialBackground />
       
       <button className="lang-switch" onClick={cycleLang}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':'FR'; })() }</button>
       <h1 className="title">{t('input.title')}</h1>
