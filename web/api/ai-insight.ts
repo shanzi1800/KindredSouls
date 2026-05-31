@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import fetch from 'node-fetch';
+// Node 18+ has native fetch, no need for node-fetch
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    const response = await fetch(DEEPSEEK_API, {
+    const response = await globalThis.fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
