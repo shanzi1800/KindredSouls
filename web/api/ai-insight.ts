@@ -1,4 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Vercel provides req/res types natively — no import needed
+interface VercelRequest {
+  method?: string;
+  body?: Record<string, unknown>;
+}
+interface VercelResponse {
+  status(code: number): VercelResponse;
+  json(data: unknown): unknown;
+}
 // Node 18+ has native fetch, no need for node-fetch
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';

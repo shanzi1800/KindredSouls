@@ -1,4 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Vercel provides req/res types natively — no import needed
+interface VercelRequest {
+  method?: string;
+  body?: Record<string, unknown>;
+}
+interface VercelResponse {
+  status(code: number): VercelResponse;
+  json(data: unknown): unknown;
+}
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
