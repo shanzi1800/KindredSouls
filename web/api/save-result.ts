@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const uid = user_id || crypto.randomUUID();
+    const uid = user_id || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     const { data, error } = await supabase
       .from('compatibility_results')
