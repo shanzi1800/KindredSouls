@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const DEEPSEEK_API = "https://api.deepseek.com/chat/completions";
@@ -26,7 +26,7 @@ function setCors(res, req) {
 }
 
 // ── Cache ──
-const insightCache = new Map<string, string>();
+const insightCache = new Map();
 const MAX_CACHE = 200;
 
 function cacheKey(d1, d2, overall, dims, lang) {
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
       if (!insight) return res.status(502).json({ error: "Empty response from AI" });
 
       const clean = insight.replace(/[\u2640-\u26FF]/g, "").replace(/[\u2700-\u27BF]/g, "");
-      if (insightCache.size >= MAX_CACHE) insightCache.delete(insightCache.keys().next().value!);
+      if (insightCache.size >= MAX_CACHE) insightCache.delete(insightCache.keys().next().value);
       insightCache.set(key, clean);
 
       return res.status(200).json({ insight: clean, cached: false });
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const uid = req.body.user_id || crypto.randomUUID();
+      const uid = req.body.user_id || randomUUID();
 
       const { data, error } = await supabase
         .from("compatibility_results")
