@@ -1,15 +1,17 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 /**
- * CelestialBackground — 星尘显化粒子动画
+ * CelestialBackground — 视频背景 + 星尘粒子双层动画 v3
  * 
- * 视觉概念：两颗星核 + 引力轨道 + 粉紫星云交融
- * 技术方案：Canvas 2D（轻量，无 WebGL 依赖，<100KB）
- * 配色：午夜蓝底 + 日落粉/迷幻紫/香槟金
+ * 底层：cosmic_bg.mp4 循环播放（粉紫星河视频）
+ * 上层：Canvas 粒子动画（半透明，视频透出来）
+ * 中央粒子密集区自然覆盖视频水印位置
  */
 export default function CelestialBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const animRef = useRef<number>(0);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -18,19 +20,6 @@ export default function CelestialBackground() {
     let W = 0, H = 0;
     let t = 0;
 
-    // ── Color palette ──
-    const C = {
-      midnight: '#0a0a1a',
-      nebulaPink: 'rgba(220,120,180,0.12)',
-      nebulaPurple: 'rgba(140,80,200,0.10)',
-      sunsetRose: '#e8a0b8',
-      auraPurple: '#9b7ed8',
-      champagneGold: '#d4af37',
-      starWhite: 'rgba(255,255,255,0.85)',
-      dustSoft: 'rgba(232,160,184,0.4)',
-    };
-
-    // ── Particles ──
     interface Particle {
       x: number; y: number;
       vx: number; vy: number;
@@ -38,191 +27,165 @@ export default function CelestialBackground() {
       alpha: number;
       alphaSpeed: number;
       color: string;
-      type: 'star' | 'dust' | 'sparkle';
+      type: 'star' | 'dust' | 'sparkle' | 'nebula';
+    }
+
+    interface ShootingStar {
+      x: number; y: number;
+      vx: number; vy: number;
+      life: number; maxLife: number;
+      length: number;
     }
 
     let particles: Particle[] = [];
-
-    // ── Two celestial cores (orbit centers) ──
-    interface Core {
-      cx: number; cy: number;
-      orbitRadius: number;
-      orbitSpeed: number;
-      orbitPhase: number;
-      size: number;
-      glowSize: number;
-      color: string;
-      glowColor: string;
-    }
-
-    const coreA: Core = {
-      cx: 0, cy: 0,
-      orbitRadius: 0,
-      orbitSpeed: 0.0003,
-      orbitPhase: 0,
-      size: 3,
-      glowSize: 60,
-      color: C.sunsetRose,
-      glowColor: 'rgba(232,160,184,0.15)',
-    };
-
-    const coreB: Core = {
-      cx: 0, cy: 0,
-      orbitRadius: 0,
-      orbitSpeed: 0.0004,
-      orbitPhase: Math.PI,
-      size: 2.5,
-      glowSize: 50,
-      color: C.auraPurple,
-      glowColor: 'rgba(155,126,216,0.12)',
-    };
+    let shootingStars: ShootingStar[] = [];
 
     function resize() {
       W = canvas.width = window.innerWidth * (window.devicePixelRatio || 1);
       H = canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
-      
-      // Position cores
-      coreA.cx = W * 0.38;
-      coreA.cy = H * 0.45;
-      coreA.orbitRadius = Math.min(W, H) * 0.08;
-      
-      coreB.cx = W * 0.62;
-      coreB.cy = H * 0.5;
-      coreB.orbitRadius = Math.min(W, H) * 0.065;
-      
       initParticles();
     }
 
     function initParticles() {
       particles = [];
-      const count = Math.min(Math.floor((W * H) / 8000), 280);
+      shootingStars = [];
       
+      const density = (W * H) / 3000;
+      const count = Math.min(Math.floor(density), 600);
+      
+      // 大量星尘粒子 — 中央区域加密（覆盖视频水印）
+      const cx = W / 2, cy = H / 2;
       for (let i = 0; i < count; i++) {
         const rand = Math.random();
         let type: Particle['type'] = 'dust';
-        if (rand > 0.92) type = 'sparkle';
-        else if (rand > 0.75) type = 'star';
+        if (rand > 0.93) type = 'sparkle';
+        else if (rand > 0.7) type = 'star';
+
+        // 中央区域（水印位置）粒子密度翻倍
+        let px: number, py: number;
+        if (Math.random() < 0.35) {
+          // 集中在中央 40% 区域
+          px = cx + (Math.random() - 0.5) * W * 0.4;
+          py = cy + (Math.random() - 0.5) * H * 0.35;
+        } else {
+          px = Math.random() * W;
+          py = Math.random() * H;
+        }
         
-        const colors = [C.dustSoft, `rgba(155,126,216,0.35)`, `rgba(212,175,55,0.3)`, 'rgba(255,255,255,0.25)'];
+        const colors = {
+          dust: [
+            'rgba(232,160,184,0.5)',
+            'rgba(155,126,216,0.45)',
+            'rgba(212,175,55,0.35)',
+            'rgba(255,200,220,0.4)',
+            'rgba(180,140,255,0.4)',
+            'rgba(255,255,255,0.3)',
+          ],
+          star: [
+            'rgba(255,220,240,0.8)',
+            'rgba(200,170,255,0.8)',
+            'rgba(212,175,55,0.7)',
+            'rgba(255,255,255,0.9)',
+          ],
+          sparkle: [
+            'rgba(255,200,240,0.9)',
+            'rgba(170,140,255,0.9)',
+            'rgba(255,215,0,0.85)',
+          ],
+        };
         
+        const pool = colors[type];
         particles.push({
-          x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.25 - 0.1, // slight upward drift
-          size: type === 'sparkle' ? Math.random() * 2.5 + 0.5 : type === 'star' ? Math.random() * 1.8 + 0.5 : Math.random() * 1.2 + 0.3,
-          alpha: Math.random() * 0.8 + 0.2,
-          alphaSpeed: Math.random() * 0.02 + 0.005,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          x: px, y: py,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.3 - 0.15,
+          size: type === 'sparkle' ? Math.random() * 3 + 1 : type === 'star' ? Math.random() * 2 + 0.8 : Math.random() * 1.5 + 0.3,
+          alpha: Math.random() * 0.7 + 0.3,
+          alphaSpeed: Math.random() * 0.03 + 0.008,
+          color: pool[Math.floor(Math.random() * pool.length)],
           type,
         });
       }
-      
-      // Add orbital dust around each core
-      for (let c = 0; c < 2; c++) {
-        const core = c === 0 ? coreA : coreB;
-        for (let i = 0; i < 20; i++) {
-          const angle = (Math.PI * 2 / 20) * i + Math.random() * 0.5;
-          const r = core.orbitRadius * (0.6 + Math.random() * 0.8);
-          particles.push({
-            x: core.cx + Math.cos(angle) * r,
-            y: core.cy + Math.sin(angle) * r,
-            vx: 0, vy: 0,
-            size: Math.random() * 1.5 + 0.4,
-            alpha: Math.random() * 0.6 + 0.3,
-            alphaSpeed: Math.random() * 0.03 + 0.01,
-            color: c === 0 ? C.dustSoft : `rgba(155,126,216,0.45)`,
-            type: 'dust',
-          });
-        }
+
+      // 星云团块 — 大面积半透明光晕
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.05,
+          vy: (Math.random() - 0.5) * 0.03,
+          size: Math.random() * 150 + 100,
+          alpha: Math.random() * 0.06 + 0.03,
+          alphaSpeed: Math.random() * 0.005 + 0.002,
+          color: i % 3 === 0 ? 'rgba(220,120,180,0.06)' : i % 3 === 1 ? 'rgba(140,80,200,0.05)' : 'rgba(100,60,160,0.04)',
+          type: 'nebula',
+        });
       }
     }
 
+    function drawBackground() {
+      // 半透明深空底 — 让视频透出来
+      ctx.clearRect(0, 0, W, H);
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, 'rgba(7,0,20,0.35)');
+      bg.addColorStop(0.3, 'rgba(13,13,43,0.25)');
+      bg.addColorStop(0.6, 'rgba(18,13,36,0.2)');
+      bg.addColorStop(1, 'rgba(26,13,46,0.3)');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+    }
+
     function drawNebula() {
-      // Soft pink-purple nebula clouds (gradient blobs)
-      const nx1 = W * 0.3 + Math.sin(t * 0.0002) * W * 0.05;
-      const ny1 = H * 0.35 + Math.cos(t * 0.00015) * H * 0.03;
+      // 固定位置的大星云光晕 — 粉紫色弥漫
+      const positions = [
+        { x: W * 0.25, y: H * 0.3, r: W * 0.45, c1: 'rgba(200,100,170,0.10)', c2: 'rgba(160,80,200,0.04)' },
+        { x: W * 0.7, y: H * 0.5, r: W * 0.4, c1: 'rgba(140,70,210,0.08)', c2: 'rgba(180,100,180,0.03)' },
+        { x: W * 0.5, y: H * 0.7, r: W * 0.5, c1: 'rgba(180,90,190,0.07)', c2: 'rgba(120,60,180,0.03)' },
+        { x: W * 0.35, y: H * 0.8, r: W * 0.35, c1: 'rgba(220,130,180,0.06)', c2: 'transparent' },
+      ];
       
-      const g1 = ctx.createRadialGradient(nx1, ny1, 0, nx1, ny1, W * 0.4);
-      g1.addColorStop(0, 'rgba(220,120,180,0.08)');
-      g1.addColorStop(0.5, 'rgba(180,100,200,0.04)');
-      g1.addColorStop(1, 'transparent');
-      ctx.fillStyle = g1;
-      ctx.fillRect(0, 0, W, H);
-      
-      const nx2 = W * 0.65 + Math.cos(t * 0.00018) * W * 0.06;
-      const ny2 = H * 0.55 + Math.sin(t * 0.00022) * H * 0.04;
-      
-      const g2 = ctx.createRadialGradient(nx2, ny2, 0, nx2, ny2, W * 0.35);
-      g2.addColorStop(0, 'rgba(140,80,200,0.07)');
-      g2.addColorStop(0.6, 'rgba(200,130,180,0.03)');
-      g2.addColorStop(1, 'transparent');
-      ctx.fillStyle = g2;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    function drawCore(core: Core, phaseOffset: number) {
-      const wobbleX = Math.sin(t * core.orbitSpeed + core.orbitPhase) * core.orbitRadius;
-      const wobbleY = Math.cos(t * core.orbitSpeed * 0.7 + core.orbitPhase) * core.orbitRadius * 0.6;
-      const x = core.cx + wobbleX;
-      const y = core.cy + wobbleY;
-      
-      // Pulsing glow
-      const pulse = 1 + Math.sin(t * 0.0015 + phaseOffset) * 0.25;
-      const gs = core.glowSize * pulse;
-      
-      // Outer glow
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, gs);
-      glow.addColorStop(0, core.glowColor);
-      glow.addColorStop(0.4, core.color.replace(')', ',0.08)').replace('rgb', 'rgba'));
-      glow.addColorStop(1, 'transparent');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(x, y, gs, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Bright center
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = core.color;
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = core.color;
-      ctx.beginPath();
-      ctx.arc(x, y, core.size * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 1;
-      
-      return { x, y };
-    }
-
-    function drawOrbitPath(cx: number, cy: number, radius: number, color: string) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 0.5;
-      ctx.globalAlpha = 0.12;
-      ctx.setLineDash([4, 8]);
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
+      for (const n of positions) {
+        const nx = n.x + Math.sin(t * 0.0002 + n.x) * W * 0.02;
+        const ny = n.y + Math.cos(t * 0.00018 + n.y) * H * 0.015;
+        const g = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.r);
+        g.addColorStop(0, n.c1);
+        g.addColorStop(0.5, n.c2);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
     }
 
     function drawParticle(p: Particle) {
-      p.alpha += Math.sin(t * p.alphaSpeed) * 0.008;
-      p.alpha = Math.max(0.08, Math.min(1, p.alpha));
+      if (p.type === 'nebula') {
+        // 大星云团块
+        const nx = p.x + Math.sin(t * 0.0003 + p.x * 0.01) * 20;
+        const ny = p.y + Math.cos(t * 0.00025 + p.y * 0.01) * 15;
+        p.alpha += Math.sin(t * p.alphaSpeed) * 0.002;
+        p.alpha = Math.max(0.02, Math.min(0.1, p.alpha));
+        
+        const g = ctx.createRadialGradient(nx, ny, 0, nx, ny, p.size);
+        g.addColorStop(0, p.color);
+        g.addColorStop(0.6, p.color.replace(/[\d.]+\)$/, (parseFloat(p.color.match(/[\d.]+\)$/)?.[0] || '0.04') * 0.4).toFixed(3) + ')'));
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(nx - p.size, ny - p.size, p.size * 2, p.size * 2);
+        
+        p.x += p.vx;
+        p.y += p.vy;
+        return;
+      }
       
-      // Gentle drift toward center (gravity feel)
-      const centerX = W * 0.5;
-      const centerY = H * 0.45;
-      p.vx += (centerX - p.x) * 0.00002;
-      p.vy += (centerY - p.y) * 0.000015;
+      p.alpha += Math.sin(t * p.alphaSpeed) * 0.01;
+      p.alpha = Math.max(0.05, Math.min(1, p.alpha));
       
+      // 缓慢漂移
       p.x += p.vx;
       p.y += p.vy;
       
-      // Wrap around edges
+      // 边界循环
       if (p.x < -10) p.x = W + 10;
       if (p.x > W + 10) p.x = -10;
       if (p.y < -10) p.y = H + 10;
@@ -231,15 +194,16 @@ export default function CelestialBackground() {
       ctx.globalAlpha = p.alpha;
       
       if (p.type === 'sparkle') {
-        // Crystal prism effect — 4-point star
-        const sparkleSize = p.size * (1 + Math.sin(t * 0.005 + p.x) * 0.5);
+        // 晶体折射 — 彩虹色4角星
+        const sparkleSize = p.size * (1 + Math.sin(t * 0.008 + p.x * 0.1) * 0.6);
         ctx.save();
         ctx.translate(p.x, p.y);
-        ctx.rotate(t * 0.001 + p.x * 0.01);
+        ctx.rotate(t * 0.002 + p.x * 0.01);
         
-        // Light leak rainbow
-        const hue = (t * 0.02 + p.y * 0.1) % 360;
-        ctx.fillStyle = `hsla(${hue}, 70%, 75%, ${p.alpha * 0.6})`;
+        const hue = (t * 0.05 + p.y * 0.15) % 360;
+        ctx.fillStyle = `hsla(${hue}, 80%, 78%, ${p.alpha * 0.7})`;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = `hsla(${hue}, 80%, 70%, 0.5)`;
         ctx.beginPath();
         for (let i = 0; i < 4; i++) {
           const angle = (Math.PI / 2) * i;
@@ -247,24 +211,23 @@ export default function CelestialBackground() {
           const sy = Math.sin(angle) * sparkleSize;
           if (i === 0) ctx.moveTo(sx, sy);
           else ctx.lineTo(sx, sy);
-          const mx = Math.cos(angle + Math.PI / 4) * sparkleSize * 0.35;
-          const my = Math.sin(angle + Math.PI / 4) * sparkleSize * 0.35;
+          const mx = Math.cos(angle + Math.PI / 4) * sparkleSize * 0.3;
+          const my = Math.sin(angle + Math.PI / 4) * sparkleSize * 0.3;
           ctx.lineTo(mx, my);
         }
         ctx.closePath();
         ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.restore();
       } else if (p.type === 'star') {
-        // Soft round star with glow
         ctx.fillStyle = p.color;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = C.starWhite;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       } else {
-        // Dust — tiny soft dot
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -274,100 +237,166 @@ export default function CelestialBackground() {
       ctx.globalAlpha = 1;
     }
 
-    function drawEnergyBridge(posA: { x: number; y: number }, posB: { x: number; y: number }) {
-      // Energy connection between two cores when close
-      const dx = posB.x - posA.x;
-      const dy = posB.y - posA.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = Math.min(W, H) * 0.4;
+    function updateShootingStars() {
+      // 随机生成流星
+      if (Math.random() < 0.008) {
+        const sx = Math.random() * W * 0.8;
+        const sy = Math.random() * H * 0.4;
+        const angle = Math.PI * 0.15 + Math.random() * Math.PI * 0.2;
+        const speed = 4 + Math.random() * 4;
+        shootingStars.push({
+          x: sx, y: sy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0,
+          maxLife: 30 + Math.random() * 30,
+          length: 60 + Math.random() * 80,
+        });
+      }
       
+      // 更新和绘制流星
+      shootingStars = shootingStars.filter(s => {
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life++;
+        
+        const progress = s.life / s.maxLife;
+        const alpha = progress < 0.2 ? progress * 5 : (1 - progress) * 1.25;
+        
+        const tailX = s.x - (s.vx / Math.sqrt(s.vx * s.vx + s.vy * s.vy)) * s.length;
+        const tailY = s.y - (s.vy / Math.sqrt(s.vx * s.vx + s.vy * s.vy)) * s.length;
+        
+        const grad = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
+        grad.addColorStop(0, `rgba(255,230,250,${alpha * 0.9})`);
+        grad.addColorStop(0.3, `rgba(220,160,200,${alpha * 0.5})`);
+        grad.addColorStop(1, 'transparent');
+        
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(tailX, tailY);
+        ctx.stroke();
+        
+        // 流星头部光点
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#fff';
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = 'rgba(255,200,240,0.8)';
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        
+        return s.life < s.maxLife;
+      });
+    }
+
+    function drawEnergyOrbs() {
+      // 两个脉动能量核 — 粉色和紫色
+      const pulseA = 1 + Math.sin(t * 0.002) * 0.3;
+      const pulseB = 1 + Math.sin(t * 0.0025 + 2) * 0.3;
+      
+      const ax = W * 0.42 + Math.sin(t * 0.0005) * W * 0.04;
+      const ay = H * 0.45 + Math.cos(t * 0.0004) * H * 0.03;
+      const bx = W * 0.58 + Math.cos(t * 0.0006) * W * 0.04;
+      const by = H * 0.52 + Math.sin(t * 0.0005) * H * 0.03;
+      
+      const rA = 80 * pulseA;
+      const rB = 70 * pulseB;
+      
+      // 能量核A — 玫瑰粉
+      const gA = ctx.createRadialGradient(ax, ay, 0, ax, ay, rA);
+      gA.addColorStop(0, 'rgba(255,150,200,0.25)');
+      gA.addColorStop(0.3, 'rgba(220,120,180,0.12)');
+      gA.addColorStop(0.7, 'rgba(180,100,200,0.04)');
+      gA.addColorStop(1, 'transparent');
+      ctx.fillStyle = gA;
+      ctx.fillRect(ax - rA, ay - rA, rA * 2, rA * 2);
+      
+      // 亮核
+      ctx.globalAlpha = 0.8 * pulseA;
+      ctx.fillStyle = '#ff96c8';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ff96c8';
+      ctx.beginPath();
+      ctx.arc(ax, ay, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      
+      // 能量核B — 紫色
+      const gB = ctx.createRadialGradient(bx, by, 0, bx, by, rB);
+      gB.addColorStop(0, 'rgba(160,100,255,0.22)');
+      gB.addColorStop(0.3, 'rgba(140,80,220,0.10)');
+      gB.addColorStop(0.7, 'rgba(120,60,200,0.03)');
+      gB.addColorStop(1, 'transparent');
+      ctx.fillStyle = gB;
+      ctx.fillRect(bx - rB, by - rB, rB * 2, rB * 2);
+      
+      ctx.globalAlpha = 0.75 * pulseB;
+      ctx.fillStyle = '#a064ff';
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#a064ff';
+      ctx.beginPath();
+      ctx.arc(bx, by, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      
+      // 连线 — 两核之间的能量丝
+      const dist = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+      const maxDist = Math.min(W, H) * 0.5;
       if (dist < maxDist) {
         const intensity = 1 - dist / maxDist;
-        const midX = (posA.x + posB.x) / 2;
-        const midY = (posA.y + posB.y) / 2;
+        const midX = (ax + bx) / 2;
+        const midY = (ay + by) / 2;
         
-        // Pulsing energy field at midpoint
-        const pulseSize = 30 + Math.sin(t * 0.002) * 15;
-        const bridge = ctx.createRadialGradient(midX, midY, 0, midX, midY, pulseSize * intensity);
-        bridge.addColorStop(0, `rgba(232,160,184,${0.15 * intensity})`);
-        bridge.addColorStop(0.5, `rgba(155,126,216,${0.08 * intensity})`);
-        bridge.addColorStop(1, 'transparent');
-        ctx.fillStyle = bridge;
+        const gM = ctx.createRadialGradient(midX, midY, 0, midX, midY, 40 * intensity);
+        gM.addColorStop(0, `rgba(232,160,184,${0.15 * intensity})`);
+        gM.addColorStop(0.5, `rgba(155,126,216,${0.08 * intensity})`);
+        gM.addColorStop(1, 'transparent');
+        ctx.fillStyle = gM;
         ctx.beginPath();
-        ctx.arc(midX, midY, pulseSize * intensity, 0, Math.PI * 2);
+        ctx.arc(midX, midY, 40 * intensity, 0, Math.PI * 2);
         ctx.fill();
         
-        // Subtle connecting line
-        ctx.globalAlpha = 0.06 * intensity;
-        ctx.strokeStyle = C.champagneGold;
-        ctx.lineWidth = 0.8;
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.moveTo(posA.x, posA.y);
-        ctx.lineTo(posB.x, posB.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        // 多条能量丝
+        for (let i = 0; i < 3; i++) {
+          const offset = (i - 1) * 8;
+          ctx.globalAlpha = 0.08 * intensity;
+          ctx.strokeStyle = i === 1 ? '#d4af37' : '#e8a0b8';
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          const cpx = midX + Math.sin(t * 0.003 + i) * 30;
+          const cpy = midY + offset + Math.cos(t * 0.004 + i) * 15;
+          ctx.quadraticCurveTo(cpx, cpy, bx, by);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
       }
     }
 
     function animate() {
       t++;
       
-      // Clear with midnight base
-      ctx.fillStyle = C.midnight;
-      ctx.fillRect(0, 0, W, H);
-      
-      // Nebula background layers
+      drawBackground();
       drawNebula();
       
-      // Draw non-orbital particles first (background layer)
-      particles.filter(p => !(p.vx === 0 && p.vy === 0)).forEach(drawParticle);
+      // 星云粒子（最后面）
+      particles.filter(p => p.type === 'nebula').forEach(drawParticle);
       
-      // Orbit paths
-      drawOrbitPath(coreA.cx, coreA.cy, coreA.orbitRadius, C.sunsetRose);
-      drawOrbitPath(coreB.cx, coreB.cy, coreB.orbitRadius, C.auraPurple);
+      // 普通粒子
+      particles.filter(p => p.type !== 'nebula').forEach(drawParticle);
       
-      // Cores with position
-      const posA = drawCore(coreA, 0);
-      const posB = drawCore(coreB, Math.PI);
+      // 能量核
+      drawEnergyOrbs();
       
-      // Energy bridge between cores
-      drawEnergyBridge(posA, posB);
-      
-      // Orbital particles (foreground)
-      particles.filter(p => p.vx === 0 && p.vy === 0).forEach((p, i) => {
-        // Animate orbital particles along their core's orbit
-        const core = i < 20 ? coreA : coreB;
-        const idx = i < 20 ? i : i - 20;
-        const angle = (Math.PI * 2 / 20) * idx + t * 0.0008 * (i < 20 ? 1 : -1);
-        const r = core.orbitRadius * (0.6 + ((idx * 17) % 10) / 10 * 0.8);
-        p.x = core.cx + Math.cos(angle + t * core.orbitSpeed * (i < 20 ? 1 : 1.3)) * r;
-        p.y = core.cy + Math.sin(angle + t * core.orbitSpeed * (i < 20 ? 1 : 1.3)) * r * 0.6;
-        p.alpha = 0.4 + Math.sin(t * 0.003 + idx) * 0.3;
-        
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      });
-      
-      // Occasional shooting star
-      if (Math.random() < 0.002) {
-        const sx = Math.random() * W * 0.7;
-        const sy = Math.random() * H * 0.3;
-        const grad = ctx.createLinearGradient(sx, sy, sx + 80, sy + 40);
-        grad.addColorStop(0, 'rgba(255,255,255,0.7)');
-        grad.addColorStop(1, 'transparent');
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + 80, sy + 40);
-        ctx.stroke();
-      }
+      // 流星
+      updateShootingStars();
       
       animRef.current = requestAnimationFrame(animate);
     }
@@ -382,17 +411,54 @@ export default function CelestialBackground() {
     };
   }, []);
 
+  // 首次用户交互取消静音（浏览器政策要求）
+  useEffect(() => {
+    const unmute = () => {
+      setIsMuted(false);
+      document.removeEventListener('click', unmute);
+      document.removeEventListener('touchstart', unmute);
+    };
+    document.addEventListener('click', unmute);
+    document.addEventListener('touchstart', unmute);
+    return () => {
+      document.removeEventListener('click', unmute);
+      document.removeEventListener('touchstart', unmute);
+    };
+  }, []);
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }}
-    />
+    <>
+      {/* 底层：视频背景 */}
+      <video
+        ref={videoRef}
+        src="/cosmic_bg.mp4"
+        autoPlay
+        loop
+        playsInline
+        muted={isMuted}
+        volume={1.0}
+        onClick={() => setIsMuted(m => !m)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'cover',
+          zIndex: 0,
+        }}
+      />
+      {/* 上层：粒子动画（半透明，覆盖水印） */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 1,
+          pointerEvents: 'none',
+        }}
+      />
+    </>
   );
 }
