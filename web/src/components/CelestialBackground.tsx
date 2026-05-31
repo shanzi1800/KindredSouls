@@ -14,6 +14,10 @@ export default function CelestialBackground() {
   const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = 1.0;
+  }, [isMuted]);
+
+  useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     
@@ -436,7 +440,6 @@ export default function CelestialBackground() {
         loop
         playsInline
         muted={isMuted}
-        volume={1.0}
         onClick={() => setIsMuted(m => !m)}
         style={{
           position: 'fixed',
