@@ -8,10 +8,8 @@ const insightCache = new Map<string, string>();
 const MAX_CACHE = 200;
 
 function cacheKey(d1: string, d2: string, overall: number, dims: Record<string,number>, lang: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256')
-    .update(`${d1}|${d2}|${overall}|${JSON.stringify(dims)}|${lang}`)
-    .digest('hex').slice(0, 16);
+  // Simple key for Vercel serverless (crypto not available via require)
+  return `${d1}|${d2}|${overall}|${JSON.stringify(dims)}|${lang}`;
 }
 
 // ── Build prompt ──
