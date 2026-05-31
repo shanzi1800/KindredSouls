@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fetch from 'node-fetch';
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
@@ -41,29 +42,30 @@ function buildPrompt(
   return { systemPrompt, userPrompt };
 }
 
-// Vercel Serverless Function entry point
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const body = await req.json() as Record<string, unknown>;
-  const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = body;
+  const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
   if (!d1 || !d2 || !dims) {
-    return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'DeepSeek API key not configured' }), { status: 500 });
+    return res.status(500).json({ error: 'DeepSeek API key not configured' });
   }
 
-  const key = cacheKey(d1 as string, d2 as string, overall as number, dims as Record<string, number>, lang as string);
+  const key = cacheKey(d1, d2, overall, dims, lang);
   if (insightCache.has(key)) {
-    return new Response(JSON.stringify({ insight: insightCache.get(key), cached: true }), { status: 200 });
+    return res.status(200).json({ insight: insightCache.get(key), cached: true });
   }
 
-  const { systemPrompt, userPrompt } = buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang as string);
+  const { systemPrompt, userPrompt } = buildPrompt(
+    { d1, d2, overall, dims, bazi, zodiac, iching },
+    lang
+  );
 
   try {
     const response = await fetch(DEEPSEEK_API, {
@@ -80,13 +82,15 @@ export default async function handler(req: Request): Promise<Response> {
     if (!response.ok) {
       const errText = await response.text();
       console.error('DeepSeek API error:', response.status, errText);
-      return new Response(JSON.stringify({ error: 'AI service unavailable' }), { status: 502 });
+      return res.status(502).json({ error: 'AI service unavailable' });
     }
 
-    const data = await response.json() as { choices?: { message?: { content?: string } }[] };
+    const data = await response.json() as {
+      choices?: { message?: { content?: string } }[];
+    };
     const insight = data.choices?.[0]?.message?.content?.trim();
     if (!insight) {
-      return new Response(JSON.stringify({ error: 'Empty response from AI' }), { status: 502 });
+      return res.status(502).json({ error: 'Empty response from AI' });
     }
 
     const clean = insight
@@ -99,12 +103,9 @@ export default async function handler(req: Request): Promise<Response> {
     }
     insightCache.set(key, clean);
 
-    return new Response(JSON.stringify({ insight: clean, cached: false }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json({ insight: clean, cached: false });
   } catch (err) {
     console.error('ai-insight handler error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

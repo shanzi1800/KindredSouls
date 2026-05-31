@@ -1,18 +1,17 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    res.statusCode = 405;
-    return res.end(JSON.stringify({ error: 'Method not allowed' }));
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (!supabase) {
-    res.statusCode = 503;
-    return res.end(JSON.stringify({ error: 'Database not configured' }));
+    return res.status(503).json({ error: 'Database not configured' });
   }
 
   const {
@@ -27,8 +26,7 @@ export default async function handler(req: any, res: any) {
   } = req.body;
 
   if (!dob1 || !dob2 || overall_score === undefined) {
-    res.statusCode = 400;
-    return res.end(JSON.stringify({ error: 'Missing required fields: dob1, dob2, overall_score' }));
+    return res.status(400).json({ error: 'Missing required fields: dob1, dob2, overall_score' });
   }
 
   try {
@@ -56,16 +54,12 @@ export default async function handler(req: any, res: any) {
 
     if (error) {
       console.error('Supabase insert error:', error);
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: 'Failed to save result', detail: error.message }));
+      return res.status(500).json({ error: 'Failed to save result', detail: error.message });
     }
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ success: true, id: (data as Record<string, unknown>)?.id, user_id: uid }));
+    return res.status(200).json({ success: true, id: (data as Record<string, unknown>)?.id, user_id: uid });
   } catch (err) {
     console.error('save-result handler error:', err);
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Internal server error' }));
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
