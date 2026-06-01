@@ -12,6 +12,7 @@ export default function CelestialBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const animRef = useRef<number>(0);
   const [isMuted, setIsMuted] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.volume = 1.0;
@@ -432,7 +433,7 @@ export default function CelestialBackground() {
 
   return (
     <>
-      {/* 底层：视频背景 */}
+      {/* 底层：视频背景 — 懒加载，加载完再淡入 */}
       <video
         ref={videoRef}
         src="/cosmic_bg.mp4"
@@ -441,6 +442,7 @@ export default function CelestialBackground() {
         playsInline
         muted={isMuted}
         onClick={() => setIsMuted(m => !m)}
+        onCanPlay={() => setVideoReady(true)}
         style={{
           position: 'fixed',
           inset: 0,
@@ -448,6 +450,8 @@ export default function CelestialBackground() {
           height: '100vh',
           objectFit: 'cover',
           zIndex: 0,
+          opacity: videoReady ? 1 : 0,
+          transition: 'opacity 1.5s ease-in-out',
         }}
       />
       {/* 上层：粒子动画（半透明，覆盖水印） */}
