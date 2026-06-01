@@ -77,19 +77,20 @@ export default function AuthButton({ onAuthSuccess, lang = 'en' }: AuthButtonPro
 
   return (
     <div className="auth-paywall" style={{
-      background: 'rgba(26,31,75,0.95)',
+      background: 'rgba(20, 25, 60, 0.98)',
       borderRadius: '16px',
       padding: '28px 24px',
       textAlign: 'center',
       backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(212,175,55,0.2)',
+      border: '2px solid rgba(212,175,55,0.5)',
       maxWidth: '380px',
       margin: '20px auto',
+      boxShadow: '0 8px 32px rgba(212,175,55,0.15), 0 0 60px rgba(212,175,55,0.08)',
     }}>
-      <div style={{ fontSize: '18px', fontWeight: 700, color: '#D4AF37', marginBottom: '6px' }}>
+      <div style={{ fontSize: '20px', fontWeight: 800, color: '#D4AF37', marginBottom: '6px', textShadow: '0 0 20px rgba(212,175,55,0.4)' }}>
         🔮 {t.signIn}
       </div>
-      <div style={{ fontSize: '13px', color: '#999', marginBottom: '20px' }}>
+      <div style={{ fontSize: '14px', color: '#bbb', marginBottom: '20px', lineHeight: 1.5 }}>
         {lang === 'zh' 
           ? '解锁 AI 洞察 · 获取专属情感解读' 
           : 'Unlock AI Insight · Get Your Personalized Reading'}
@@ -107,20 +108,21 @@ export default function AuthButton({ onAuthSuccess, lang = 'en' }: AuthButtonPro
         disabled={loading}
         style={{
           width: '100%',
-          padding: '12px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255,255,255,0.15)',
+          padding: '14px',
+          borderRadius: '12px',
+          border: '2px solid rgba(255,255,255,0.25)',
           background: loading ? '#333' : '#fff',
           color: loading ? '#666' : '#1a1a1a',
-          fontSize: '14px',
-          fontWeight: 600,
+          fontSize: '15px',
+          fontWeight: 700,
           cursor: loading ? 'not-allowed' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
-          marginBottom: '10px',
-          transition: 'all 0.2s',
+          gap: '10px',
+          marginBottom: '12px',
+          transition: 'all 0.25s',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
         }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24">
