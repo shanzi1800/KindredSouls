@@ -1,3 +1,6 @@
+// Force Node.js 20 runtime (avoid Edge crypto issue)
+export const runtime = 'nodejs20.x';
+
 // Vercel provides req/res types natively — no import needed
 interface VercelRequest {
   method?: string;
@@ -8,6 +11,8 @@ interface VercelResponse {
   json(data: unknown): unknown;
 }
 import { createClient } from '@supabase/supabase-js';
+// Force Node.js 20 runtime (avoid Edge crypto issue)
+export const runtime = 'nodejs20.x';
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)

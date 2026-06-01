@@ -1,3 +1,6 @@
+// Force Node.js 20 runtime (avoid Edge crypto issue)
+export const runtime = 'nodejs20.x';
+
 // Vercel provides req/res types natively — no import needed
 interface VercelRequest {
   method?: string;
@@ -76,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    const response = await globalThis.fetch(DEEPSEEK_API, {
+    const response = await fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -96,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await response.json() as {
       choices?: { message?: { content?: string } }[];
     };
+
     const insight = data.choices?.[0]?.message?.content?.trim();
     if (!insight) {
       return res.status(502).json({ error: 'Empty response from AI' });
