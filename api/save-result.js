@@ -12,8 +12,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Debug: log env status (remove after fix)
+  console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL ? 'set' : 'MISSING');
+  console.log('[save-result] SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? 'set (' + process.env.SUPABASE_SERVICE_KEY.slice(0,10) + '...)' : 'MISSING');
+
   if (!supabase) {
-    return res.status(503).json({ error: 'Database not configured' });
+    return res.status(503).json({ error: 'Database not configured', debug: { hasUrl: !!process.env.SUPABASE_URL, hasKey: !!process.env.SUPABASE_SERVICE_KEY } });
   }
 
   const {
@@ -62,6 +66,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, id: data?.id, user_id: uid });
   } catch (err) {
     console.error('save-result handler error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', detail: err.message, stack: err.stack });
   }
 }
