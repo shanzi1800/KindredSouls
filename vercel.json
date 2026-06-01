@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "cd web && npm install && npm run build",
   "outputDirectory": "web/dist",
-  "functions": {
-    "web/api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "routes": [
     {
       "handle": "filesystem"
