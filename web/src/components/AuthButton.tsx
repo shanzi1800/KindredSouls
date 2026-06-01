@@ -27,7 +27,7 @@ const i18n: Record<string, Record<string, string>> = {
   },
 };
 
-export default function AuthButton({ onAuthSuccess, lang = 'en' }: AuthButtonProps) {
+export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' }: AuthButtonProps) {
   const t = i18n[lang] || i18n.en;
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');

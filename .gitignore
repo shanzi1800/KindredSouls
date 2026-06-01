@@ -29,3 +29,9 @@ npm-debug.log*
 # Environment variables
 .env
 api/.env
+
+# Media files - only ignore backups and unused videos
+web/public/bg-video.mp4
+web/public/romantic_bg.mp4
+web/public/rose-petals.mp4
+web/public/test_background.mp4
