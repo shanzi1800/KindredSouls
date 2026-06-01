@@ -5,6 +5,8 @@ import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
+import AuthButton from './components/AuthButton';
+import { supabase } from './lib/supabase';
 import './App.css';
 
 /* ── Manual Date Input: configurable part order, auto-advance ── */
@@ -202,7 +204,7 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
   );
 }
 
-/* ── AI Insight (async fetch from DeepSeek) ── */
+/* ── AI Insight (button-triggered + Auth Paywall) ── */
 function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
@@ -211,45 +213,161 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 }) {
   const [insight, setInsight] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
+  // Check auth session on mount
   useEffect(() => {
-    let cancelled = false;
-    setInsight(null);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessionChecked(true);
+      setShowPaywall(!session?.user);
+    });
+  }, []);
+
+  // Listen for auth state changes (user just logged in via paywall)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setShowPaywall(false);
+        // Auto-trigger the insight after login
+        triggerInsight(session.access_token);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const triggerInsight = async (token?: string) => {
+    setLoading(true);
     setError(null);
-
-    fetch('/api/ai-insight', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (!cancelled) {
-          if (data.insight) setInsight(data.insight);
-          else setError(data.error || 'Unable to generate insight');
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError('Network error — please check your connection');
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
+      const res = await fetch('/api/ai-insight', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang }),
       });
+      const data = await res.json();
+      
+      if (data.insight) setInsight(data.insight);
+      else setError(data.error || 'Unable to generate insight');
+    } catch {
+      setError('Network error — please check your connection');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => { cancelled = true; };
-  }, [d1, d2, overall, dims, lang, bazi, zodiac, iching]);
+  // Show paywall if not logged in
+  if (!sessionChecked) {
+    return (
+      <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
+        <div className="insight-skeleton">
+          <div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" />
+        </div>
+      </div>
+    );
+  }
 
+  if (showPaywall && insight === null) {
+    return (
+      <div className="ai-insight">
+        <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        {/* Blurred preview */}
+        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{
+            filter: 'blur(8px)',
+            opacity: 0.4,
+            padding: '16px',
+            background: 'rgba(212,175,55,0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(212,175,55,0.15)',
+          }}>
+            <p>{lang==='zh'
+              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。建议在满月期间进行深度对话，这是你们能量场最同步的时刻。'
+              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples. When you both open up fully, a near-telepathic chemistry emerges. Full moon conversations are your most energetically aligned moments.'}
+            </p>
+          </div>
+          {/* CTA overlay */}
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 10,
+          }}>
+            <AuthButton lang={lang} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Logged in — show button or result
   return (
     <div className="ai-insight">
       <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-      {insight === null && error === null && (
-        <div className="insight-skeleton">
-          <div className="skeleton-line w80" />
-          <div className="skeleton-line w60" />
-          <div className="skeleton-line w90" />
+      
+      {!insight && !loading && !error && (
+        <button
+          onClick={() => triggerInsight()}
+          style={{
+            width: '100%',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            border: 'none',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
+            color: '#fff',
+            fontSize: '15px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
+          }}
+        >
+          ✨ {lang==='zh'?'生成 AI 洞察':lang==='es'?'Generar Perspectiva AI':'Generate AI Insight'}
+        </button>
+      )}
+      
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '24px' }}>
+          <div className="spinner" style={{ margin: '0 auto 12px' }} />
+          <p style={{ color: '#D4AF37', fontSize: '14px' }}>
+            {lang==='zh'?'宇宙正在解读你们的星盘…':lang==='es'?'Leyendo los astros…':'Reading the cosmos…'}
+          </p>
         </div>
       )}
-      {insight !== null && <p>{insight}</p>}
+      
+      {insight !== null && (
+        <div style={{
+          padding: '18px',
+          background: 'rgba(212,175,55,0.06)',
+          borderRadius: '12px',
+          border: '1px solid rgba(212,175,55,0.2)',
+          animation: 'fadeIn 0.6s ease',
+        }}>
+          <p style={{ lineHeight: 1.7, margin: 0 }}>{insight}</p>
+        </div>
+      )}
+      
       {error !== null && (
         <p className="insight-error">
-          {lang==='zh'?'AI 洞察暂时不可用':lang==='es'?'Perspectiva AI no disponible ahora':'AI insight unavailable right now'}
+          ⚠️ {error}
+          <br/>
+          <button
+            onClick={() => triggerInsight()}
+            style={{
+              marginTop: '8px',
+              padding: '6px 16px',
+              borderRadius: '8px',
+              border: '1px solid #D4AF37',
+              background: 'transparent',
+              color: '#D4AF37',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {lang==='zh'?'重试':'Retry'}
+          </button>
         </p>
       )}
     </div>

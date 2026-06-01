@@ -2,17 +2,7 @@
   "version": 2,
   "buildCommand": "cd web && npm install && npm run build",
   "outputDirectory": "web/dist",
-  "routes": [
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
