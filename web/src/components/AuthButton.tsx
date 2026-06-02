@@ -41,11 +41,13 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     try {
       // ✅ 正确方案：redirectTo 用【干净 URL】（不含 hash）
       // Google OAuth 会吞掉 # 号及后面的内容，所以不能把 #/result 传进去
-      const redirectUrl = window.location.origin + '/';  // 例如：https://www.kindredsouls.com.au/
+      const redirectUrl = window.location.origin;  // 例如：https://www.kindredsouls.com.au
       
-      // ✅ 用 localStorage 存当前页面（OAuth 回调后还在）
-      // sessionStorage 在 OAuth 跨域跳转后会被清空，必须用 localStorage
-      localStorage.setItem('ks_redirect_after_login', window.location.href);
+      // ✅ 存完整 URL（含 hash）到 localStorage
+      // Google OAuth 会吞掉 # 号，所以必须存完整 URL，回调后手动跳回去
+      localStorage.setItem('ks_return_url', window.location.href);
+      localStorage.setItem('ks_return_to_result', 'true');  // 标志位
+      console.log('[KindredSouls] Saved return URL:', window.location.href);
       
       console.log('[KindredSouls Debug] Google login redirectTo (clean):', redirectUrl);
       console.log('[KindredSouls Debug] Saved to sessionStorage:', window.location.href);

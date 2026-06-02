@@ -232,6 +232,23 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         setShowAuthWall(false);
         // Check if user has paid
         checkPaidStatus(session.access_token);
+        // ✅ 恢复 result 页面（OAuth 回调后从 localStorage 读回）
+        const shouldReturn = localStorage.getItem('ks_return_to_result');
+        if (shouldReturn === 'true') {
+          const saved = localStorage.getItem('ks_result');
+          if (saved) {
+            try {
+              const r = JSON.parse(saved);
+              setResult(r);
+              _setPage('result');
+              localStorage.removeItem('ks_return_to_result');
+              localStorage.removeItem('ks_result');
+              console.log('[KindredSouls Debug] Restored result page from localStorage');
+            } catch (e) {
+              console.error('[KindredSouls Debug] Failed to restore result:', e);
+            }
+          }
+        }
       }
     });
   }, []);
@@ -241,29 +258,31 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
       
-      // ✅ 读 localStorage（OAuth 跨域跳转后 sessionStorage 会清空，必须用 localStorage）
-      const returnUrl = localStorage.getItem('ks_redirect_after_login');
-      
-      // ⚠️ 只在 OAuth 登录成功 (SIGNED_IN) 时才跳回结果页
-      // ⚠️ 不对 INITIAL_SESSION 跳转（避免页面加载时误跳转）
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
-        
-        // 从 localStorage 读回调地址
-        if (returnUrl) {
-          localStorage.removeItem('ks_redirect_after_login');
-          console.log('[KindredSouls Debug] Restoring from localStorage:', returnUrl);
-          window.location.href = returnUrl;
-          return;
-        }
-        
         checkPaidStatus(session.access_token);
+        // ✅ 恢复 result 页面
+        const shouldReturn = localStorage.getItem('ks_return_to_result');
+        if (shouldReturn === 'true') {
+          const saved = localStorage.getItem('ks_result');
+          if (saved) {
+            try {
+              const r = JSON.parse(saved);
+              setResult(r);
+              _setPage('result');
+              localStorage.removeItem('ks_return_to_result');
+              localStorage.removeItem('ks_result');
+              console.log('[KindredSouls Debug] Restored result page from onAuthStateChange');
+            } catch (e) {
+              console.error('[KindredSouls Debug] Failed to restore result:', e);
+            }
+          }
+        }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
         setInsight(null);
       } else if (event === 'INITIAL_SESSION') {
-        // 初始加载：只检查登录状态，不跳转
         if (session?.user) {
           setShowAuthWall(false);
           checkPaidStatus(session.access_token);
@@ -684,9 +703,10 @@ export default function App() {
         r._d2 = d2;
         setResult(r);
         _setPage('result');
-        // 立刻存 URL（含 #/result），比 AuthButton 点击早，100% 可靠
-        localStorage.setItem('ks_redirect_after_login', window.location.href);
-        console.log('[KindredSouls Debug] Saved redirect URL:', window.location.href);
+        // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
+        localStorage.setItem('ks_result', JSON.stringify(r));
+        localStorage.setItem('ks_return_to_result', 'true');
+        console.log('[KindredSouls Debug] Saved result to localStorage');
       }
     }, 800);
   };
