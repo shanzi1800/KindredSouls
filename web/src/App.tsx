@@ -240,6 +240,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             try {
               const r = JSON.parse(saved);
               setResult(r);
+              window.location.hash = "#/result";
               _setPage('result');
               localStorage.removeItem('ks_return_to_result');
               localStorage.removeItem('ks_result');
@@ -269,6 +270,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             try {
               const r = JSON.parse(saved);
               setResult(r);
+              window.location.hash = "#/result";
               _setPage('result');
               localStorage.removeItem('ks_return_to_result');
               localStorage.removeItem('ks_result');
@@ -703,6 +705,8 @@ export default function App() {
         r._d2 = d2;
         setResult(r);
         _setPage('result');
+        // ✅ 更新 URL hash，确保 OAuth 回调后能跳回正确页面
+        window.location.hash = '#/result';
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
         localStorage.setItem('ks_return_to_result', 'true');
