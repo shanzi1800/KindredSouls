@@ -265,12 +265,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   }, []);
 
   const checkPaidStatus = async (token: string) => {
-    // TODO: Re-enable paywall after full flow validation
-    // Temporarily bypass paywall for testing
-    setPaidStatus(true);
-    setShowPaywall(false);
-    return;
-
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
@@ -285,10 +279,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         setPaidStatus(false);
         setShowPaywall(true);
       }
-    } catch {
-      // If check fails, allow through (graceful fallback)
-      setPaidStatus(true);
-      setShowPaywall(false);
+    } catch (err) {
+      console.error('[KindredSouls Debug] checkPaidStatus error:', err);
+      setPaidStatus(false);
+      setShowPaywall(true);
     }
   };
 
