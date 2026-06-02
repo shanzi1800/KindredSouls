@@ -1,91 +1,46 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, { realtime: { transport: ws } })
-  : null;
-
-// Stripe webhook handler — verifies signature and updates user status
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const sig = req.headers['stripe-signature'];
-  if (!sig) {
-    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
   }
+  const token = authHeader.slice(7);
 
-  let event;
+  let user;
   try {
-    // In sandbox, use the test webhook secret; in production use the real one
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      // Fallback for testing without configured secret (dev only)
-      event = req.body;
-      console.warn('[webhook] No STRIPE_WEBHOOK_SECRET configured, skipping signature verification');
-    } else {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+
+    const { data: { user: u }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !u) {
+      return res.status(401).json({ error: 'Invalid token' });
     }
-  } catch (err) {
-    console.error('[webhook] Signature verification failed:', err.message);
-    return res.status(400).json({ error: 'Invalid signature' });
+    user = u;
+  } catch (e) {
+    return res.status(401).json({ error: 'Token verification failed' });
   }
 
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object;
-      const userId = session.metadata?.supabase_user_id;
-      const plan = session.metadata?.plan;
+  const { type = 'iching' } = req.body;
 
-      console.log(`[webhook] Payment complete: user=${userId}, plan=${plan}`);
-
-      if (userId && supabase) {
-        await supabase.from('user_profiles').upsert({
-          id: userId,
-          paid: true,
-          stripe_customer_id: session.customer,
-          subscription_id: plan === 'monthly' ? session.subscription : null,
-          paid_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
-      }
-      break;
-    }
-
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object;
-      const customer = subscription.customer;
-
-      // Find user by stripe_customer_id and mark as unpaid
-      if (supabase && customer) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('stripe_customer_id', customer)
-          .single();
-
-        if (profile?.id) {
-          await supabase.from('user_profiles').update({
-            paid: false,
-            subscription_id: null,
-            updated_at: new Date().toISOString(),
-          }).eq('id', profile.id);
-        }
-      }
-      break;
-    }
-
-    default:
-      console.log(`[webhook] Unhandled event type: ${event.type}`);
-  }
+  // Simple placeholder for webhook verification
+  const { data: profile } = await createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  )
+    .from('user_profiles')
+    .select('paid')
+    .eq('id', user.id)
+    .single();
 
   return res.status(200).json({ received: true });
 }

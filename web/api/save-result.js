@@ -1,21 +1,15 @@
-// Force Node.js 20 runtime (avoid Edge crypto issue)
+// Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
-
-const PRICE = {
-  insight_once: 499,
-  monthly: 499,
-};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1. Extract and verify JWT
-  const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
+  // 1. Extract and verify JWT using service_role key
+  const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing authorization token' });
   }
@@ -23,34 +17,25 @@ export default async function handler(req, res) {
 
   let user;
   try {
-    const supabaseAuth = createClient(
+    const supabaseAdmin = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY,
-      { realtime: { transport: ws } }
+      process.env.SUPABASE_SERVICE_KEY
     );
 
-    const { error: setSessionError } = await supabaseAuth.auth.setSession({
-      access_token: token,
-      refresh_token: '',
-    });
-    if (setSessionError) {
-      console.error('[save-result] setSession error:', setSessionError.message);
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    const { data: { user: u }, error: userError } = await supabaseAuth.auth.getUser();
+    // supabase-js v2: getUser(jwt) works with service_role key
+    const { data: { user: u }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !u) {
       console.error('[save-result] getUser error:', userError?.message);
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: 'Invalid token: ' + (userError?.message || 'unknown') });
     }
     user = u;
     console.log('[save-result] user verified:', user.id);
   } catch (e) {
     console.error('[save-result] auth exception:', e.message);
-    return res.status(401).json({ error: 'Token verification failed' });
+    return res.status(401).json({ error: 'Token verification failed: ' + e.message });
   }
 
-  // 2. Extract fields from body (user_id comes from JWT, NOT from body)
+  // 2. Extract fields from body
   const {
     dob1,
     dob2,
@@ -66,10 +51,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data, error } = await supabaseAuth
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+
+    const { data, error } = await supabaseAdmin
       .from('compatibility_results')
       .insert({
-        user_id: user.id,  // ✅ use JWT-verified user ID
+        user_id: user.id,
         dob1,
         dob2,
         overall_score,
