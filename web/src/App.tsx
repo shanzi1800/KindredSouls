@@ -285,10 +285,20 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   };
 
   const handlePurchase = async (plan: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    // Try to refresh session first to ensure token is valid
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      console.log('[KindredSouls Debug] refreshSession failed:', refreshError.message);
+    }
+    
+    const session = refreshData?.session;
     console.log('[KindredSouls Debug] handlePurchase session:', !!session, !!session?.access_token);
     if (!session?.access_token) {
       console.log('[KindredSouls Debug] no session, aborting');
+      // Session expired — force re-login
+      setShowAuthWall(true);
+      setShowPaywall(false);
+      setPaidStatus(null);
       return;
     }
     
@@ -299,6 +309,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ plan }),
       });
+      if (res.status === 401) {
+        // Token rejected — force re-login
+        console.log('[KindredSouls Debug] 401 from server, forcing re-login');
+        setShowAuthWall(true);
+        setShowPaywall(false);
+        setPaidStatus(null);
+        return;
+      }
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;  // Redirect to Stripe Checkout
