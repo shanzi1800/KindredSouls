@@ -3,37 +3,52 @@ export const runtime = 'nodejs20.x';
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
-  : null;
+const PRICE = {
+  insight_once: 499,
+  monthly: 499,
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Debug: log env status (remove after fix)
-  console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL ? 'set' : 'MISSING');
-  console.log('[save-result] SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? 'set (' + process.env.SUPABASE_SERVICE_KEY.slice(0,10) + '...)' : 'MISSING');
-
-  if (!supabase) {
-    return res.status(503).json({ error: 'Database not configured', debug: { hasUrl: !!process.env.SUPABASE_URL, hasKey: !!process.env.SUPABASE_SERVICE_KEY } });
+  // 1. Extract and verify JWT
+  const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
   }
+  const token = authHeader.slice(7);
 
-  // Extract user_id from JWT (do NOT trust client-supplied user_id)
-  let userId;
+  let user;
   try {
-    const authHeader = req.headers.get ? req.headers.get('Authorization') : req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Missing authorization token' });
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    userId = payload.sub;
-    if (!userId) return res.status(401).json({ error: 'Invalid token: no sub claim' });
+    const supabaseAuth = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+
+    const { error: setSessionError } = await supabaseAuth.auth.setSession({
+      access_token: token,
+      refresh_token: '',
+    });
+    if (setSessionError) {
+      console.error('[save-result] setSession error:', setSessionError.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { data: { user: u }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !u) {
+      console.error('[save-result] getUser error:', userError?.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    user = u;
+    console.log('[save-result] user verified:', user.id);
   } catch (e) {
-    console.error('[save-result] token decode error:', e.message);
-    return res.status(401).json({ error: 'Invalid token', detail: e.message });
+    console.error('[save-result] auth exception:', e.message);
+    return res.status(401).json({ error: 'Token verification failed' });
   }
 
+  // 2. Extract fields from body (user_id comes from JWT, NOT from body)
   const {
     dob1,
     dob2,
@@ -49,13 +64,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const uid = user_id || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAuth
       .from('compatibility_results')
       .insert({
-        user_id: userId,  // use JWT-verified user ID
-        dob1,
+        user_id: user.id,  // ✅ use JWT-verified user ID
         dob1,
         dob2,
         overall_score,
@@ -73,13 +85,13 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('Supabase insert error:', error);
+      console.error('[save-result] Supabase insert error:', error);
       return res.status(500).json({ error: 'Failed to save result', detail: error.message });
     }
 
-    return res.status(200).json({ success: true, id: data?.id, user_id: uid });
+    return res.status(200).json({ success: true, id: data?.id, user_id: user.id });
   } catch (err) {
-    console.error('save-result handler error:', err);
-    return res.status(500).json({ error: 'Internal server error', detail: err.message, stack: err.stack });
+    console.error('[save-result] handler error:', err);
+    return res.status(500).json({ error: 'Internal server error', detail: err.message });
   }
 }

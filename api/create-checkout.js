@@ -6,11 +6,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
-  : null;
-
-// Price points (AUD cents)
 const PRICES = {
   insight_once: 499,    // $4.99 one-time AI insight
   monthly: 499,         // $4.99/month unlimited
@@ -21,58 +16,60 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1. Verify JWT from Supabase
+  // 1. Extract Bearer token from Authorization header
   const authHeader = req.headers.authorization;
-  console.log('[create-checkout] auth header:', authHeader ? 'present (' + authHeader.substring(0, 20) + '...)' : 'MISSING');
-  console.log('[create-checkout] supabase client:', supabase ? 'initialized' : 'NULL!');
-  
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-
   const token = authHeader.slice(7);
-  console.log('[create-checkout] token length:', token.length, 'prefix:', token.substring(0, 15));
+  console.log('[create-checkout] token prefix:', token.substring(0, 15));
 
-  let user;
+  // 2. Verify token by setting session on a fresh supabase client
+  // supabase-js v2: getUser() reads from internal session, so we setSession first
   try {
-    // supabase-js v2: getUser() does NOT accept a token parameter
-    // Correct approach: decode JWT to get user ID, then verify with admin API
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    const userId = payload.sub;
-    console.log('[create-checkout] JWT sub:', userId);
-    if (!userId) return res.status(401).json({ error: 'Invalid token: no sub claim' });
+    const supabaseAuth = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
 
-    const { data: { user: u }, error } = await supabase.auth.admin.getUserById(userId);
-    console.log('[create-checkout] admin.getUserById error:', error?.message || 'null', 'user:', !!u);
-    if (error || !u) return res.status(401).json({ error: 'Invalid token', detail: error?.message });
-    user = u;
-  } catch (e) {
-    console.error('[create-checkout] token decode exception:', e.message);
-    return res.status(401).json({ error: 'Token verification failed', detail: e.message });
-  }
-
-  // 2. Check if user already has active subscription
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('paid, stripe_customer_id, subscription_id')
-    .eq('id', user.id)
-    .single();
-
-  const isPaid = profile?.paid === true && profile?.subscription_id;
-
-  // 3. Determine what to sell
-  const { plan = 'insight_once' } = req.body; // 'insight_once' | 'monthly'
-
-  // If already subscribed, just grant access (no charge)
-  if (isPaid) {
-    return res.status(200).json({
-      already_paid: true,
-      message: 'Already subscribed',
+    const { error: setSessionError } = await supabaseAuth.auth.setSession({
+      access_token: token,
+      refresh_token: '',
     });
-  }
 
-  try {
-    // Create or retrieve Stripe customer
+    if (setSessionError) {
+      console.error('[create-checkout] setSession error:', setSessionError.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      console.error('[create-checkout] getUser error:', userError?.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    console.log('[create-checkout] user verified:', user.id);
+
+    // 3. Check if user already has active subscription
+    const { data: profile } = await supabaseAuth
+      .from('user_profiles')
+      .select('paid, stripe_customer_id, subscription_id')
+      .eq('id', user.id)
+      .single();
+
+    const isPaid = profile?.paid === true && profile?.subscription_id;
+
+    const { plan = 'insight_once' } = req.body;
+
+    // If already subscribed, just grant access
+    if (isPaid) {
+      return res.status(200).json({
+        already_paid: true,
+        message: 'Already subscribed',
+      });
+    }
+
+    // 4. Create or retrieve Stripe customer
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -81,17 +78,14 @@ export default async function handler(req, res) {
       });
       customerId = customer.id;
 
-      // Save customer ID to Supabase
-      if (supabase) {
-        await supabase.from('user_profiles').upsert({
-          id: user.id,
-          stripe_customer_id: customerId,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
-      }
+      await supabaseAuth.from('user_profiles').upsert({
+        id: user.id,
+        stripe_customer_id: customerId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
     }
 
-    // Create Checkout Session
+    // 5. Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
@@ -120,6 +114,7 @@ export default async function handler(req, res) {
     });
 
     return res.status(200).json({ url: session.url, sessionId: session.id });
+
   } catch (err) {
     console.error('[create-checkout] error:', err);
     return res.status(500).json({ error: 'Failed to create checkout session', detail: err.message });
