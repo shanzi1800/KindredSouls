@@ -1,5 +1,7 @@
 {
-  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "functions": {
     "api/*.js": {
       "runtime": "nodejs20.x"
