@@ -23,17 +23,25 @@ export default async function handler(req, res) {
 
   // 1. Verify JWT from Supabase
   const authHeader = req.headers.authorization;
+  console.log('[create-checkout] auth header:', authHeader ? 'present (' + authHeader.substring(0, 20) + '...)' : 'MISSING');
+  console.log('[create-checkout] supabase client:', supabase ? 'initialized' : 'NULL!');
+  
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
+  const token = authHeader.slice(7);
+  console.log('[create-checkout] token length:', token.length, 'prefix:', token.substring(0, 15));
+
   let user;
   try {
-    const { data: { user: u }, error } = await supabase.auth.getUser(authHeader.slice(7));
-    if (error || !u) return res.status(401).json({ error: 'Invalid token' });
+    const { data: { user: u }, error } = await supabase.auth.getUser(token);
+    console.log('[create-checkout] getUser error:', error?.message || 'null', 'user:', !!u);
+    if (error || !u) return res.status(401).json({ error: 'Invalid token', detail: error?.message });
     user = u;
   } catch (e) {
-    return res.status(401).json({ error: 'Token verification failed' });
+    console.error('[create-checkout] getUser exception:', e.message);
+    return res.status(401).json({ error: 'Token verification failed', detail: e.message });
   }
 
   // 2. Check if user already has active subscription
