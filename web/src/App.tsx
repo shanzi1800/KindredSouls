@@ -221,7 +221,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   // Check auth + payment status on mount
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
+    supabase.auth.getSession().then(({ data: { session }, error }: any) => {
+      console.log('[KindredSouls Debug] getSession result:', !!session?.user, error);
       setSessionChecked(true);
       if (!session?.user) {
         setShowAuthWall(true);
