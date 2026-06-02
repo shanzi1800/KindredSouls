@@ -265,6 +265,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   }, []);
 
   const checkPaidStatus = async (token: string) => {
+    // TODO: Re-enable paywall after full flow validation
+    // Temporarily bypass paywall for testing
+    setPaidStatus(true);
+    setShowPaywall(false);
+    return;
+
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
