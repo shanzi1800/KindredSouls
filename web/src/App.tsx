@@ -670,6 +670,9 @@ export default function App() {
         r._d2 = d2;
         setResult(r);
         _setPage('result');
+        // 立刻存 URL（含 #/result），比 AuthButton 点击早，100% 可靠
+        localStorage.setItem('ks_redirect_after_login', window.location.href);
+        console.log('[KindredSouls Debug] Saved redirect URL:', window.location.href);
       }
     }, 800);
   };
