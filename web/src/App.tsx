@@ -241,17 +241,22 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
       
+      // ✅ 读 localStorage（OAuth 跨域跳转后 sessionStorage 会清空，必须用 localStorage）
+      const returnUrl = localStorage.getItem('ks_redirect_after_login');
+      
       // ⚠️ 只在 OAuth 登录成功 (SIGNED_IN) 时才跳回结果页
       // ⚠️ 不对 INITIAL_SESSION 跳转（避免页面加载时误跳转）
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
-        const redirectUrl = localStorage.getItem('ks_redirect_after_login');
-        if (redirectUrl) {
+        
+        // 从 localStorage 读回调地址
+        if (returnUrl) {
           localStorage.removeItem('ks_redirect_after_login');
-          console.log('[KindredSouls Debug] Restoring pre-login page:', redirectUrl);
-          window.location.href = redirectUrl;
+          console.log('[KindredSouls Debug] Restoring from localStorage:', returnUrl);
+          window.location.href = returnUrl;
           return;
         }
+        
         checkPaidStatus(session.access_token);
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
