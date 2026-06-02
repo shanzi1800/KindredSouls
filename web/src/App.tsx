@@ -296,7 +296,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     }
   }, []);
 
-  const checkPaidStatus = async (token: string) => {
+  const checkPaidStatus = async (_token?: string) => {
     try {
       // Query user_profiles directly via Supabase client (no API call needed)
       const { data: profile, error } = await supabase
