@@ -6,6 +6,7 @@
     "node": ">=20.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.8"
+    "@supabase/supabase-js": "^2.49.8",
+    "stripe": "^22.2.0"
   }
 }

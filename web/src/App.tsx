@@ -204,7 +204,7 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
   );
 }
 
-/* ── AI Insight (button-triggered + Auth Paywall) ── */
+/* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
 function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
@@ -214,28 +214,100 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   const [insight, setInsight] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [showAuthWall, setShowAuthWall] = useState(false);   // not logged in
+  const [showPaywall, setShowPaywall] = useState(false);     // logged in but not paid
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
 
-  // Check auth session on mount
+  // Check auth + payment status on mount
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessionChecked(true);
-      setShowPaywall(!session?.user);
+      if (!session?.user) {
+        setShowAuthWall(true);
+      } else {
+        setShowAuthWall(false);
+        // Check if user has paid
+        checkPaidStatus(session.access_token);
+      }
     });
   }, []);
 
-  // Listen for auth state changes (user just logged in via paywall)
+  // Listen for auth state changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        setShowPaywall(false);
-        // Auto-trigger the insight after login
-        triggerInsight(session.access_token);
+        setShowAuthWall(false);
+        checkPaidStatus(session.access_token);
+      } else if (event === 'SIGNED_OUT') {
+        setShowAuthWall(true);
+        setPaidStatus(null);
+        setInsight(null);
       }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check URL for payment success on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      // Payment just completed — mark as paid and trigger insight
+      setPaidStatus(true);
+      setShowPaywall(false);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const checkPaidStatus = async (token: string) => {
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan: 'check' }),
+      });
+      const data = await res.json();
+      if (data.already_paid) {
+        setPaidStatus(true);
+        setShowPaywall(false);
+      } else {
+        setPaidStatus(false);
+        setShowPaywall(true);
+      }
+    } catch {
+      // If check fails, allow through (graceful fallback)
+      setPaidStatus(true);
+      setShowPaywall(false);
+    }
+  };
+
+  const handlePurchase = async (plan: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;  // Redirect to Stripe Checkout
+      } else if (data.already_paid) {
+        setPaidStatus(true);
+        setShowPaywall(false);
+      } else {
+        setError(data.error || 'Checkout failed');
+      }
+    } catch {
+      setError('Network error — please check your connection');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const triggerInsight = async (token?: string) => {
     setLoading(true);
@@ -260,8 +332,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     }
   };
 
-  // Show paywall if not logged in
-  if (!sessionChecked) {
+  // Loading state
+  if (!sessionChecked || paidStatus === null && !showAuthWall) {
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
         <div className="insight-skeleton">
@@ -271,11 +343,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     );
   }
 
-  if (showPaywall && insight === null) {
+  // Auth wall — not logged in
+  if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
         <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-        {/* Blurred preview */}
         <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{
             filter: 'blur(8px)',
@@ -290,12 +362,75 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
               : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples. When you both open up fully, a near-telepathic chemistry emerges. Full moon conversations are your most energetically aligned moments.'}
             </p>
           </div>
-          {/* CTA overlay */}
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            zIndex: 10,
-          }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
             <AuthButton lang={lang} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Stripe paywall — logged in but not paid
+  if (showPaywall && insight === null) {
+    return (
+      <div className="ai-insight">
+        <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{
+            filter: 'blur(8px)',
+            opacity: 0.4,
+            padding: '16px',
+            background: 'rgba(212,175,55,0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(212,175,55,0.15)',
+          }}>
+            <p>{lang==='zh'
+              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。建议在满月期间进行深度对话，这是你们能量场最同步的时刻。'
+              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples. When you both open up fully, a near-telepathic chemistry emerges. Full moon conversations are your most energetically aligned moments.'}
+            </p>
+          </div>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, width: '85%', maxWidth: '320px' }}>
+            <div style={{ background: 'rgba(26,31,75,0.95)', borderRadius: '14px', padding: '24px 20px', textAlign: 'center', backdropFilter: 'blur(12px)', border: '1px solid rgba(212,175,55,0.25)' }}>
+              <p style={{ color: '#D4AF37', fontSize: '15px', fontWeight: 700, margin: '0 0 8px' }}>
+                🔓 {lang==='zh'?'解锁完整洞察':'Unlock Full Insight'}
+              </p>
+              <p style={{ color: '#aaa', fontSize: '13px', margin: '0 0 18px', lineHeight: 1.5 }}>
+                {lang==='zh'
+                  ? 'AI 将为你们的合盘生成专属深度解读，揭示隐藏的情感模式与未来走向。'
+                  : 'AI will generate an exclusive deep reading revealing hidden patterns & future trajectories.'}
+              </p>
+              {/* One-time purchase */}
+              <button
+                onClick={() => handlePurchase('insight_once')}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '13px 20px', borderRadius: '10px', border: 'none',
+                  background: loading ? '#666' : 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
+                  color: '#fff', fontSize: '15px', fontWeight: 700,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '10px', transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 16px rgba(212,175,55,0.25)',
+                }}
+              >
+                {loading ? '⏳ ...' : `💫 $4.99 ${lang==='zh'?'单次解锁':'One-time'}`}
+              </button>
+              {/* Subscription */}
+              <button
+                onClick={() => handlePurchase('monthly')}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '11px 20px', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.35)',
+                  background: 'transparent', color: '#D4AF37', fontSize: '14px', fontWeight: 600,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                ✨ $4.99/{lang==='zh'?'月':'mo'} · {lang==='zh'?'无限次解读':'Unlimited'}
+              </button>
+              <p style={{ color: '#666', fontSize: '11px', margin: '12px 0 0' }}>
+                🔒 {lang==='zh'?'安全支付由 Stripe 提供支持':'Secured by Stripe'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
