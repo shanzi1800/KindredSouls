@@ -40,7 +40,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setError('');
     try {
       // 回调后回到当前页面（保留完整路径，不跳首页）
-      const currentUrl = window.location.href.split('#')[0];
+      const currentUrl = window.location.href;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
