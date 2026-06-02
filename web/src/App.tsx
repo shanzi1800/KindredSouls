@@ -346,6 +346,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   }
 
   // Auth wall — not logged in
+  console.log('[KindredSouls Debug] render check:', { sessionChecked, paidStatus, showAuthWall, showPaywall, hasInsight: insight !== null });
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
@@ -374,6 +375,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   // Stripe paywall — logged in but not paid
   if (showPaywall && insight === null) {
+    console.log('[KindredSouls Debug] showing PAYWALL');
     return (
       <div className="ai-insight">
         <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
