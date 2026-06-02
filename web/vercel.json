@@ -1,1 +1,11 @@
-{"framework": "vite", "functions": {"api/*.ts": {"runtime": "nodejs20.x"}}}
+{
+  "framework": "vite",
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
