@@ -242,6 +242,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
+        // 跳回登录前的页面（OAuth 回调后恢复 hash 路由）
+        const redirectUrl = sessionStorage.getItem('ks_redirect_after_login');
+        if (redirectUrl) {
+          sessionStorage.removeItem('ks_redirect_after_login');
+          window.location.href = redirectUrl;
+          return;
+        }
         checkPaidStatus(session.access_token);
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
