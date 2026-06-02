@@ -39,15 +39,18 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
-      // 回调后回到当前页面（保留完整路径含hash，不跳首页）
-      const currentUrl = window.location.href;
+      // 记住当前页面（含 hash 路由），登录后跳回来（用 localStorage 持久化，跨页面保持）
+      localStorage.setItem('ks_redirect_after_login', window.location.href);
+      // OAuth 回调到首页即可，App.tsx 会负责跳回结果页
+      const redirectUrl = window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: currentUrl,
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;
+      // OAuth 跳转中，当前页面会卸载，无需处理后续
     } catch (err: any) {
       setError(err.message || 'Google login failed');
     } finally {

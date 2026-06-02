@@ -241,12 +241,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
       
-      // 只要有 session 且 sessionStorage 有存 URL，就跳回去（覆盖 SIGNED_IN / INITIAL_SESSION 所有情况）
+      // 只要有 session 且 localStorage 有存 URL，就跳回去
       if (session?.user) {
         setShowAuthWall(false);
-        const redirectUrl = sessionStorage.getItem('ks_redirect_after_login');
+        const redirectUrl = localStorage.getItem('ks_redirect_after_login');
         if (redirectUrl) {
-          sessionStorage.removeItem('ks_redirect_after_login');
+          localStorage.removeItem('ks_redirect_after_login');
           console.log('[KindredSouls Debug] Restoring pre-login page:', redirectUrl);
           window.location.href = redirectUrl;
           return;
