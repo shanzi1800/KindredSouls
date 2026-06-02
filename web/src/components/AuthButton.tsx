@@ -45,7 +45,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
       
       // ✅ 存完整 URL（含 hash）到 localStorage
       // Google OAuth 会吞掉 # 号，所以必须存完整 URL，回调后手动跳回去
-      localStorage.setItem('ks_redirect_after_login', window.location.href);
+      localStorage.setItem('ks_redirect_after_login', window.location.origin + '/#/result');
       localStorage.setItem('ks_return_to_result', 'true');  // 标志位
       console.log('[KindredSouls] Saved return URL:', window.location.href);
       

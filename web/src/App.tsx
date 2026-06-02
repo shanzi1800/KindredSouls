@@ -233,6 +233,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         // Check if user has paid
         checkPaidStatus(session.access_token);
         // ✅ 恢复 result 页面（OAuth 回调后从 localStorage 读回）
+        // 暂时注释，避免 TS 编译错误
+        /*
         const shouldReturn = localStorage.getItem('ks_return_to_result');
         if (shouldReturn === 'true') {
           const saved = localStorage.getItem('ks_result');
@@ -250,6 +252,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             }
           }
         }
+        */
       }
     });
   }, []);
@@ -262,24 +265,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
-        // ✅ 恢复 result 页面
-        const shouldReturn = localStorage.getItem('ks_return_to_result');
-        if (shouldReturn === 'true') {
-          const saved = localStorage.getItem('ks_result');
-          if (saved) {
-            try {
-              const r = JSON.parse(saved);
-              setResult(r);
-              window.location.hash = "#/result";
-              _setPage('result');
-              localStorage.removeItem('ks_return_to_result');
-              localStorage.removeItem('ks_result');
-              console.log('[KindredSouls Debug] Restored result page from onAuthStateChange');
-            } catch (e) {
-              console.error('[KindredSouls Debug] Failed to restore result:', e);
-            }
-          }
-        }
+        // ✅ 恢复 result 页面（暂时注释）
+        // const shouldReturn = localStorage.getItem('ks_return_to_result');
+        // if (shouldReturn === 'true') { ... }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
