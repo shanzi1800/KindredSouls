@@ -35,12 +35,19 @@ export default async function handler(req, res) {
 
   let user;
   try {
-    const { data: { user: u }, error } = await supabase.auth.getUser(token);
-    console.log('[create-checkout] getUser error:', error?.message || 'null', 'user:', !!u);
+    // supabase-js v2: getUser() does NOT accept a token parameter
+    // Correct approach: decode JWT to get user ID, then verify with admin API
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    const userId = payload.sub;
+    console.log('[create-checkout] JWT sub:', userId);
+    if (!userId) return res.status(401).json({ error: 'Invalid token: no sub claim' });
+
+    const { data: { user: u }, error } = await supabase.auth.admin.getUserById(userId);
+    console.log('[create-checkout] admin.getUserById error:', error?.message || 'null', 'user:', !!u);
     if (error || !u) return res.status(401).json({ error: 'Invalid token', detail: error?.message });
     user = u;
   } catch (e) {
-    console.error('[create-checkout] getUser exception:', e.message);
+    console.error('[create-checkout] token decode exception:', e.message);
     return res.status(401).json({ error: 'Token verification failed', detail: e.message });
   }
 

@@ -20,8 +20,21 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Database not configured', debug: { hasUrl: !!process.env.SUPABASE_URL, hasKey: !!process.env.SUPABASE_SERVICE_KEY } });
   }
 
+  // Extract user_id from JWT (do NOT trust client-supplied user_id)
+  let userId;
+  try {
+    const authHeader = req.headers.get ? req.headers.get('Authorization') : req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Missing authorization token' });
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    userId = payload.sub;
+    if (!userId) return res.status(401).json({ error: 'Invalid token: no sub claim' });
+  } catch (e) {
+    console.error('[save-result] token decode error:', e.message);
+    return res.status(401).json({ error: 'Invalid token', detail: e.message });
+  }
+
   const {
-    user_id,
     dob1,
     dob2,
     overall_score,
@@ -41,7 +54,8 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from('compatibility_results')
       .insert({
-        user_id: uid,
+        user_id: userId,  // use JWT-verified user ID
+        dob1,
         dob1,
         dob2,
         overall_score,
