@@ -298,13 +298,19 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   const checkPaidStatus = async (token: string) => {
     try {
-      const res = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan: 'check' }),
-      });
-      const data = await res.json();
-      if (data.already_paid) {
+      // Query user_profiles directly via Supabase client (no API call needed)
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('paid')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+      if (error) {
+        console.error('[KindredSouls Debug] checkPaidStatus error:', error);
+        setPaidStatus(false);
+        setShowPaywall(true);
+        return;
+      }
+      if (profile?.paid) {
         setPaidStatus(true);
         setShowPaywall(false);
       } else {
