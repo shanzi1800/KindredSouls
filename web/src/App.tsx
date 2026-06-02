@@ -286,7 +286,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   const handlePurchase = async (plan: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
+    console.log('[KindredSouls Debug] handlePurchase session:', !!session, !!session?.access_token);
+    if (!session?.access_token) {
+      console.log('[KindredSouls Debug] no session, aborting');
+      return;
+    }
     
     setLoading(true);
     try {
