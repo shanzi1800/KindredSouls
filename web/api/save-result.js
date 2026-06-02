@@ -2,6 +2,7 @@
 export const runtime = 'nodejs20.x';
 
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 const PRICE = {
   insight_once: 499,
@@ -24,7 +25,8 @@ export default async function handler(req, res) {
   try {
     const supabaseAuth = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
+      process.env.SUPABASE_SERVICE_KEY,
+      { realtime: { transport: ws } }
     );
 
     const { error: setSessionError } = await supabaseAuth.auth.setSession({

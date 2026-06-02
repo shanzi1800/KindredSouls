@@ -3,11 +3,12 @@ export const runtime = 'nodejs20.x';
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, { realtime: { transport: ws } })
   : null;
 
 // Stripe webhook handler — verifies signature and updates user status

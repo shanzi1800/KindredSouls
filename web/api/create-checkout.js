@@ -3,6 +3,7 @@ export const runtime = 'nodejs20.x';
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -29,7 +30,8 @@ export default async function handler(req, res) {
   try {
     const supabaseAuth = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
+      process.env.SUPABASE_SERVICE_KEY,
+      { realtime: { transport: ws } }
     );
 
     const { error: setSessionError } = await supabaseAuth.auth.setSession({
