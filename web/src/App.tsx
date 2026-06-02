@@ -240,12 +240,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
-      if (event === 'SIGNED_IN' && session?.user) {
+      
+      // 只要有 session 且 sessionStorage 有存 URL，就跳回去（覆盖 SIGNED_IN / INITIAL_SESSION 所有情况）
+      if (session?.user) {
         setShowAuthWall(false);
-        // 跳回登录前的页面（OAuth 回调后恢复 hash 路由）
         const redirectUrl = sessionStorage.getItem('ks_redirect_after_login');
         if (redirectUrl) {
           sessionStorage.removeItem('ks_redirect_after_login');
+          console.log('[KindredSouls Debug] Restoring pre-login page:', redirectUrl);
           window.location.href = redirectUrl;
           return;
         }
