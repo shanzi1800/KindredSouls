@@ -39,10 +39,12 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
+      // 回调后回到当前页面（保留完整路径，不跳首页）
+      const currentUrl = window.location.href.split('#')[0];
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: currentUrl,
         },
       });
       if (error) throw error;

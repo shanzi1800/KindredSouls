@@ -236,9 +236,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     });
   }, []);
 
-  // Listen for auth state changes
+  // Listen for auth state changes (critical: catches OAuth callback return)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
