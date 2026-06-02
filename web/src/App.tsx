@@ -12,8 +12,9 @@ import './App.css';
 /* ── Manual Date Input: configurable part order, auto-advance ── */
 function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus }: { value: string; onChange: (v: string) => void; onLastFilled?: () => void; firstFieldRef?: React.RefObject<HTMLInputElement | null>; autoFocus?: boolean }) {
   const { i18n } = useTranslation();
-  const baseLang = (i18n.language || 'en').split('-')[0];
-  const isZh = baseLang === 'zh';
+  const lang = i18n.language || '';
+  // 宽松匹配：任何 zh 开头（zh/zh-CN/zh-TW）都用年-月-日顺序
+  const isZh = lang.startsWith('zh') || lang.includes('Chinese');
   const partDefs = isZh
     ? [{ key: 0, max: 4, ph: 'YYYY' }, { key: 1, max: 2, ph: 'MM' }, { key: 2, max: 2, ph: 'DD' }]
     : [{ key: 2, max: 2, ph: 'DD' }, { key: 1, max: 2, ph: 'MM' }, { key: 0, max: 4, ph: 'YYYY' }];
