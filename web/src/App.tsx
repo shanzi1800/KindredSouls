@@ -5,7 +5,8 @@ import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
-import AuthButton from './components/AuthButton';
+import PaywallCard from './components/PaywallCard';
+import AuthWallCard from './components/AuthWallCard';
 import { supabase } from './lib/supabase';
 import './App.css';
 
@@ -395,20 +396,25 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
-        <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
+        <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{
-            filter: 'blur(8px)', opacity: 0.4, padding: '16px',
-            background: 'rgba(212,175,55,0.05)', borderRadius: '12px',
-            border: '1px solid rgba(212,175,55,0.15)',
+            filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
+            background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
+            border: '1px solid rgba(212,175,55,0.12)',
           }}>
-            <p>{lang==='zh'
-              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。建议在满月期间进行深度对话，这是你们能量场最同步的时刻。'
-              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples. When you both open up fully, a near-telepathic chemistry emerges. Full moon conversations are your most energetically aligned moments.'}
+            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{lang==='zh'
+              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。'
+              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.'}
             </p>
           </div>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-            <AuthButton lang={lang} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
+            borderRadius: '16px',
+          }}>
+            <AuthWallCard lang={lang} />
           </div>
         </div>
       </div>
@@ -418,55 +424,25 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   if (showPaywall && insight === null) {
     return (
       <div className="ai-insight">
-        <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
+        <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginBottom: '20px' }}>
           <div style={{
-            filter: 'blur(8px)', opacity: 0.4, padding: '16px',
-            background: 'rgba(212,175,55,0.05)', borderRadius: '12px',
-            border: '1px solid rgba(212,175,55,0.15)',
+            filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
+            background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
+            border: '1px solid rgba(212,175,55,0.12)',
           }}>
-            <p>{lang==='zh'
-              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。建议在满月期间进行深度对话，这是你们能量场最同步的时刻。'
-              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples. When you both open up fully, a near-telepathic chemistry emerges. Full moon conversations are your most energetically aligned moments.'}
+            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{lang==='zh'
+              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。'
+              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.'}
             </p>
           </div>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, width: '85%', maxWidth: '320px' }}>
-            <div style={{ background: 'rgba(26,31,75,0.95)', borderRadius: '14px', padding: '24px 20px', textAlign: 'center', backdropFilter: 'blur(12px)', border: '1px solid rgba(212,175,55,0.25)' }}>
-              <p style={{ color: '#D4AF37', fontSize: '15px', fontWeight: 700, margin: '0 0 8px' }}>
-                🔓 {lang==='zh'?'解锁完整洞察':'Unlock Full Insight'}
-              </p>
-              <p style={{ color: '#aaa', fontSize: '13px', margin: '0 0 18px', lineHeight: 1.5 }}>
-                {lang==='zh'
-                  ? 'AI 将为你们的合盘生成专属深度解读，揭示隐藏的情感模式与未来走向。'
-                  : 'AI will generate an exclusive deep reading revealing hidden patterns & future trajectories.'}
-              </p>
-              <button
-                onClick={() => handlePurchase('insight_once')}
-                disabled={loading}
-                style={{
-                  width: '100%', padding: '13px 20px', borderRadius: '10px', border: 'none',
-                  background: loading ? '#666' : 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
-                  color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '10px', transition: 'all 0.3s ease', boxShadow: '0 4px 16px rgba(212,175,55,0.25)',
-                }}
-              >
-                {loading ? '⏳ ...' : `💫 $4.99 ${lang==='zh'?'单次解锁':'One-time'}`}
-              </button>
-              <button
-                onClick={() => handlePurchase('monthly')}
-                disabled={loading}
-                style={{
-                  width: '100%', padding: '11px 20px', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.35)',
-                  background: 'transparent', color: '#D4AF37', fontSize: '14px', fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
-                }}
-              >
-                ✨ $4.99/{lang==='zh'?'月':'mo'} · {lang==='zh'?'无限次解读':'Unlimited'}
-              </button>
-              <p style={{ color: '#666', fontSize: '11px', margin: '12px 0 0' }}>
-                🔒 {lang==='zh'?'安全支付由 Stripe 提供支持':'Secured by Stripe'}
-              </p>
-            </div>
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
+            borderRadius: '16px',
+          }}>
+            <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
           </div>
         </div>
       </div>
