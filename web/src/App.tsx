@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -206,19 +206,21 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, showAuthWall, setShowAuthWall, paidStatus, setPaidStatus }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   lang: string;
+  showAuthWall: boolean;
+  setShowAuthWall: (v: boolean) => void;
+  paidStatus: boolean | null;
+  setPaidStatus: (v: boolean | null) => void;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showAuthWall, setShowAuthWall] = useState(false);   // not logged in
   const [showPaywall, setShowPaywall] = useState(false);     // logged in but not paid
   const [sessionChecked, setSessionChecked] = useState(false);
-  const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
 
   // Check auth + payment status on mount
   useEffect(() => {
@@ -703,8 +705,37 @@ export default function App() {
     }
     return null;
   });
+  // Auth state (lifted from AIInsightBlock for OAuth redirect recovery)
+  const [showAuthWall, setShowAuthWall] = useState(false);
+  const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
+  // ✅ Restore result page after OAuth login (showAuthWall true→false)
+  const prevAuthRef = useRef(showAuthWall);
+  useEffect(() => {
+    const prev = prevAuthRef.current;
+    prevAuthRef.current = showAuthWall;
+    if (prev === true && showAuthWall === false) {
+      const shouldReturn = localStorage.getItem('ks_return_to_result');
+      if (shouldReturn === 'true') {
+        const saved = localStorage.getItem('ks_result');
+        if (saved) {
+          try {
+            const r = JSON.parse(saved);
+            setResult(r);
+            _setPage('result');
+            window.location.hash = '#/result';
+            localStorage.removeItem('ks_return_to_result');
+            localStorage.removeItem('ks_result');
+            console.log('[KindredSouls Debug] Restored result page after OAuth login');
+          } catch (e) {
+            console.error('[KindredSouls Debug] Failed to restore:', e);
+          }
+        }
+      }
+    }
+  }, [showAuthWall]);
+
   React.useEffect(() => {
     const handler = (lng: string) => setCurrentLang(lng);
     i18n.on('languageChanged', handler);
