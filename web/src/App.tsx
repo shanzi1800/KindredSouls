@@ -570,21 +570,16 @@ export default function App() {
 
   // ✅ Restore result page after OAuth login (check on mount + auth change)
   useEffect(() => {
-    const shouldReturn = localStorage.getItem('ks_return_to_result');
-    if (shouldReturn === 'true') {
-      const saved = localStorage.getItem('ks_result');
-      if (saved) {
-        try {
-          const r = JSON.parse(saved);
-          setResult(r);
-          _setPage('result');
-          window.location.hash = '#/result';
-          console.log('[KindredSouls Debug] Restored result page from localStorage');
-        } catch (e) {
-          console.error('[KindredSouls Debug] Failed to restore:', e);
-          localStorage.removeItem('ks_return_to_result');
-          localStorage.removeItem('ks_result');
-        }
+    const saved = localStorage.getItem('ks_result');
+    if (saved) {
+      try {
+        const r = JSON.parse(saved);
+        setResult(r);
+        _setPage('result');
+        window.location.hash = '#/result';
+        console.log('[KindredSouls Debug] Restored result page from localStorage');
+      } catch (e) {
+        localStorage.removeItem('ks_result');
       }
     }
   }, []);
@@ -627,7 +622,6 @@ export default function App() {
         window.location.hash = '#/result';
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
-        localStorage.setItem('ks_return_to_result', 'true');
         console.log('[KindredSouls Debug] Saved result to localStorage');
       }
     }, 800);
