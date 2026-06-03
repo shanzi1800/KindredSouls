@@ -298,19 +298,37 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   const checkPaidStatus = async (_token?: string) => {
     try {
-      // Query user_profiles directly via Supabase client (no API call needed)
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('paid')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-      if (error) {
-        console.error('[KindredSouls Debug] checkPaidStatus error:', error);
+      // Use raw fetch to avoid Supabase client 406 issues with user_profiles
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         setPaidStatus(false);
         setShowPaywall(true);
         return;
       }
-      if (profile?.paid) {
+      
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=paid&id=eq.${user.id}`,
+        {
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!res.ok) {
+        console.log('[KindredSouls Debug] checkPaidStatus: profile not found or no access (defaulting to unpaid)');
+        setPaidStatus(false);
+        setShowPaywall(true);
+        return;
+      }
+      
+      const profiles = await res.json();
+      const paid = profiles?.[0]?.paid === true;
+      
+      if (paid) {
         setPaidStatus(true);
         setShowPaywall(false);
       } else {

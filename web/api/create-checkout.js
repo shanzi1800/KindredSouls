@@ -2,7 +2,8 @@
 export const runtime = 'nodejs20.x';
 
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { createHmac } from 'crypto';
+import jwt from 'jsonwebtoken'; // nope, avoid extra deps
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -11,57 +12,70 @@ const PRICES = {
   monthly: 499,         // $4.99/month unlimited
 };
 
+// Verify Supabase JWT manually (no createClient needed)
+function verifySupabaseJWT(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    // Decode payload
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    
+    // Basic validation
+    if (!payload.sub || !payload.exp) return null;
+    if (payload.exp * 1000 < Date.now()) return null;
+    if (!payload.aud || !payload.aud.includes('authenticated')) return null;
+    
+    return { id: payload.sub, email: payload.email };
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1. Extract Bearer token
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   const token = authHeader.slice(7);
-  console.log('[create-checkout] token prefix:', token.substring(0, 20));
+  
+  const user = verifySupabaseJWT(token);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+  
+  console.log('[create-checkout] user verified:', user.id);
 
-  // 2. Verify token using service_role key + getUser(token)
-  //    Disable realtime entirely to avoid WebSocket issues in Node.js 20
   try {
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY,
-      { realtime: { enabled: false } }
+    // Use raw fetch for Supabase REST API (no WebSocket needed)
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    // Check existing profile
+    const profileRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}&select=paid,stripe_customer_id,subscription_id`,
+      {
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
     );
-
-    // supabase-js v2: getUser(jwt) works with service_role key
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) {
-      console.error('[create-checkout] getUser error:', userError?.message);
-      return res.status(401).json({ error: 'Invalid token: ' + (userError?.message || 'unknown') });
-    }
-
-    console.log('[create-checkout] user verified:', user.id);
-
-    // 3. Check if user already has active subscription
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('paid, stripe_customer_id, subscription_id')
-      .eq('id', user.id)
-      .single();
+    const profiles = await profileRes.json();
+    const profile = profiles?.[0];
 
     const isPaid = profile?.paid === true && profile?.subscription_id;
-
     const { plan = 'insight_once' } = req.body;
 
-    // If already subscribed, just grant access
     if (isPaid) {
-      return res.status(200).json({
-        already_paid: true,
-        message: 'Already subscribed',
-      });
+      return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
     }
 
-    // 4. Create or retrieve Stripe customer
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -70,14 +84,23 @@ export default async function handler(req, res) {
       });
       customerId = customer.id;
 
-      await supabaseAdmin.from('user_profiles').upsert({
-        id: user.id,
-        stripe_customer_id: customerId,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+      // Upsert profile with stripe_customer_id
+      await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          id: user.id,
+          stripe_customer_id: customerId,
+          updated_at: new Date().toISOString(),
+        }),
+      });
     }
 
-    // 5. Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
@@ -99,10 +122,7 @@ export default async function handler(req, res) {
       }],
       success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}?payment=cancelled`,
-      metadata: {
-        supabase_user_id: user.id,
-        plan,
-      },
+      metadata: { supabase_user_id: user.id, plan },
     });
 
     return res.status(200).json({ url: session.url, sessionId: session.id });

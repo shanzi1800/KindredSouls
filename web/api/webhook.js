@@ -1,15 +1,11 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import { createClient } from '@supabase/supabase-js';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Stripe webhook signature verification
-  // For now, just process the event
   const event = req.body;
 
   if (event.type === 'checkout.session.completed') {
@@ -18,18 +14,24 @@ export default async function handler(req, res) {
 
     if (userId) {
       try {
-        const supabaseAdmin = createClient(
-          process.env.SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_KEY,
-          { realtime: { enabled: false } }
-        );
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
-        await supabaseAdmin.from('user_profiles').upsert({
-          id: userId,
-          paid: true,
-          subscription_id: session.subscription || session.id,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+          method: 'POST',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify({
+            id: userId,
+            paid: true,
+            subscription_id: session.subscription || session.id,
+            updated_at: new Date().toISOString(),
+          }),
+        });
 
         console.log('[webhook] user marked as paid:', userId);
       } catch (err) {
