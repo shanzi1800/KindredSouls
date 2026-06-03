@@ -265,22 +265,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
-        // ✅ 恢复 result 页面（OAuth 回调后从 localStorage 读回）
-        const shouldReturn = localStorage.getItem('ks_return_to_result');
-        if (shouldReturn === 'true') {
-          const saved = localStorage.getItem('ks_result');
-          if (saved) {
-            try {
-              const r = JSON.parse(saved);
-              setResult(r);
-              _setPage('result');
-              window.location.hash = '#/result';
-              console.log('[KindredSouls Debug] Restored result page from localStorage');
-            } catch (e) {
-              console.error('[KindredSouls Debug] Failed to restore result:', e);
-            }
-          }
-        }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
@@ -296,6 +280,30 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // ✅ Restore result page after OAuth login (when showAuthWall changes from true→false)
+  const prevShowAuthWallRef = useRef(showAuthWall);
+  useEffect(() => {
+    const prev = prevShowAuthWallRef.current;
+    prevShowAuthWallRef.current = showAuthWall;
+    if (prev === true && showAuthWall === false) {
+      const shouldReturn = localStorage.getItem('ks_return_to_result');
+      if (shouldReturn === 'true') {
+        const saved = localStorage.getItem('ks_result');
+        if (saved) {
+          try {
+            const r = JSON.parse(saved);
+            setResult(r);
+            _setPage('result');
+            window.location.hash = '#/result';
+            console.log('[KindredSouls Debug] Restored result page after OAuth login');
+          } catch (e) {
+            console.error('[KindredSouls Debug] Failed to restore:', e);
+          }
+        }
+      }
+    }
+  }, [showAuthWall]);
 
   // Check URL for payment success on mount
   useEffect(() => {
