@@ -580,6 +580,27 @@ export default function App() {
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
 
+  // ✅ Restore result page after OAuth login (check on mount + auth change)
+  useEffect(() => {
+    const shouldReturn = localStorage.getItem('ks_return_to_result');
+    if (shouldReturn === 'true') {
+      const saved = localStorage.getItem('ks_result');
+      if (saved) {
+        try {
+          const r = JSON.parse(saved);
+          setResult(r);
+          _setPage('result');
+          window.location.hash = '#/result';
+          console.log('[KindredSouls Debug] Restored result page from localStorage');
+        } catch (e) {
+          console.error('[KindredSouls Debug] Failed to restore:', e);
+          localStorage.removeItem('ks_return_to_result');
+          localStorage.removeItem('ks_result');
+        }
+      }
+    }
+  }, []);
+
   React.useEffect(() => {
     const handler = (lng: string) => setCurrentLang(lng);
     i18n.on('languageChanged', handler);
