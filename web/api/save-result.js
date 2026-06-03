@@ -19,10 +19,10 @@ export default async function handler(req, res) {
   try {
     const supabaseAdmin = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
+      process.env.SUPABASE_SERVICE_KEY,
+      { realtime: { enabled: false } }
     );
 
-    // supabase-js v2: getUser(jwt) works with service_role key
     const { data: { user: u }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !u) {
       console.error('[save-result] getUser error:', userError?.message);
@@ -53,7 +53,8 @@ export default async function handler(req, res) {
   try {
     const supabaseAdmin = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
+      process.env.SUPABASE_SERVICE_KEY,
+      { realtime: { enabled: false } }
     );
 
     const { data, error } = await supabaseAdmin

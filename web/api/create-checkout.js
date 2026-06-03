@@ -25,10 +25,12 @@ export default async function handler(req, res) {
   console.log('[create-checkout] token prefix:', token.substring(0, 20));
 
   // 2. Verify token using service_role key + getUser(token)
+  //    Disable realtime entirely to avoid WebSocket issues in Node.js 20
   try {
     const supabaseAdmin = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
+      process.env.SUPABASE_SERVICE_KEY,
+      { realtime: { enabled: false } }
     );
 
     // supabase-js v2: getUser(jwt) works with service_role key
