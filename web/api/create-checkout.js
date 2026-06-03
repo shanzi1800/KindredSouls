@@ -2,8 +2,6 @@
 export const runtime = 'nodejs20.x';
 
 import Stripe from 'stripe';
-import { createHmac } from 'crypto';
-import jwt from 'jsonwebtoken'; // nope, avoid extra deps
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
