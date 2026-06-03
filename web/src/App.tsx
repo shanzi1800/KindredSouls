@@ -690,6 +690,31 @@ export default function App() {
     return () => { i18n.off('languageChanged', handler); };
   }, [i18n]);
 
+
+  /* ── Restore result page after OAuth callback ── */
+  React.useEffect(() => {
+    const restore = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const flag = localStorage.getItem('ks_return_to_result');
+        if (flag !== 'true') return;
+        const saved = localStorage.getItem('ks_result');
+        if (!saved) return;
+        const r = JSON.parse(saved);
+        setResult(r);
+        _setPage('result');
+        window.location.hash = '#/result';
+        localStorage.removeItem('ks_return_to_result');
+        localStorage.removeItem('ks_result');
+        console.log('[KindredSouls] Restored result page after OAuth');
+      } catch (e) {
+        console.error('[KindredSouls] Restore failed:', e);
+      }
+    };
+    restore();
+  }, []);
+
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
     _setPage('loading');
