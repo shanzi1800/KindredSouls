@@ -47,6 +47,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
       // Google OAuth 会吞掉 # 号，所以必须存完整 URL，回调后手动跳回去
       localStorage.setItem('ks_redirect_after_login', window.location.origin + '/#/result');
       localStorage.setItem('ks_return_to_result', 'true');  // 标志位
+      localStorage.setItem('ks_pending_checkout', 'true');  // ✅ 登录后自动触发 Checkout
       console.log('[KindredSouls] Saved return URL:', window.location.href);
       
       console.log('[KindredSouls Debug] Google login redirectTo (clean):', redirectUrl);
@@ -74,6 +75,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
+      localStorage.setItem('ks_pending_checkout', 'true');  // ✅ 登录后自动触发 Checkout
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {

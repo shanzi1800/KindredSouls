@@ -240,6 +240,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
+        // ✅ 自动触发 Checkout（如果标志位存在）
+        const pending = localStorage.getItem('ks_pending_checkout');
+        if (pending === 'true') {
+          localStorage.removeItem('ks_pending_checkout');
+          handlePurchase('insight_once');
+        }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
@@ -248,6 +254,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         if (session?.user) {
           setShowAuthWall(false);
           checkPaidStatus(session.access_token);
+          // ✅ 自动触发 Checkout（如果标志位存在）
+          const pending = localStorage.getItem('ks_pending_checkout');
+          if (pending === 'true') {
+            localStorage.removeItem('ks_pending_checkout');
+            handlePurchase('insight_once');
+          }
         } else {
           setShowAuthWall(true);
         }
