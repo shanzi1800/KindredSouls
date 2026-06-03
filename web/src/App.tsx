@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
@@ -206,22 +206,19 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, showAuthWall, setShowAuthWall, paidStatus, setPaidStatus }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   lang: string;
-  showAuthWall: boolean;
-  setShowAuthWall: (v: boolean) => void;
-  paidStatus: boolean | null;
-  setPaidStatus: (v: boolean | null) => void;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);     // logged in but not paid
+  const [showAuthWall, setShowAuthWall] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
-
+  const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // Check auth + payment status on mount
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
@@ -232,38 +229,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
         setShowAuthWall(true);
       } else {
         setShowAuthWall(false);
-        // Check if user has paid
         checkPaidStatus(session.access_token);
-        // ✅ 恢复 result 页面（OAuth 回调后从 localStorage 读回）
-        // 暂时注释，避免 TS 编译错误
-        /*
-        const shouldReturn = localStorage.getItem('ks_return_to_result');
-        if (shouldReturn === 'true') {
-          const saved = localStorage.getItem('ks_result');
-          if (saved) {
-            try {
-              const r = JSON.parse(saved);
-              setResult(r);
-              window.location.hash = "#/result";
-              _setPage('result');
-              localStorage.removeItem('ks_return_to_result');
-              localStorage.removeItem('ks_result');
-              console.log('[KindredSouls Debug] Restored result page from localStorage');
-            } catch (e) {
-              console.error('[KindredSouls Debug] Failed to restore result:', e);
-            }
-          }
-        }
-        */
       }
     });
   }, []);
-
   // Listen for auth state changes (critical: catches OAuth callback return)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
-      
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
@@ -282,53 +255,23 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
     });
     return () => subscription.unsubscribe();
   }, []);
-
-  // ✅ Restore result page after OAuth login (when showAuthWall changes from true→false)
-  const prevShowAuthWallRef = useRef(showAuthWall);
-  useEffect(() => {
-    const prev = prevShowAuthWallRef.current;
-    prevShowAuthWallRef.current = showAuthWall;
-    if (prev === true && showAuthWall === false) {
-      const shouldReturn = localStorage.getItem('ks_return_to_result');
-      if (shouldReturn === 'true') {
-        const saved = localStorage.getItem('ks_result');
-        if (saved) {
-          try {
-            const r = JSON.parse(saved);
-            setResult(r);
-            _setPage('result');
-            window.location.hash = '#/result';
-            console.log('[KindredSouls Debug] Restored result page after OAuth login');
-          } catch (e) {
-            console.error('[KindredSouls Debug] Failed to restore:', e);
-          }
-        }
-      }
-    }
-  }, [showAuthWall]);
-
   // Check URL for payment success on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') === 'success') {
-      // Payment just completed — mark as paid and trigger insight
       setPaidStatus(true);
       setShowPaywall(false);
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
-
   const checkPaidStatus = async (_token?: string) => {
     try {
-      // Use raw fetch to avoid Supabase client 406 issues with user_profiles
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setPaidStatus(false);
         setShowPaywall(true);
         return;
       }
-      
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=paid&id=eq.${user.id}`,
@@ -340,17 +283,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
           },
         }
       );
-      
       if (!res.ok) {
-        console.log('[KindredSouls Debug] checkPaidStatus: profile not found or no access (defaulting to unpaid)');
         setPaidStatus(false);
         setShowPaywall(true);
         return;
       }
-      
       const profiles = await res.json();
       const paid = profiles?.[0]?.paid === true;
-      
       if (paid) {
         setPaidStatus(true);
         setShowPaywall(false);
@@ -364,25 +303,23 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       setShowPaywall(true);
     }
   };
-
   const handlePurchase = async (plan: string) => {
-    // Try to refresh session first to ensure token is valid
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) {
       console.log('[KindredSouls Debug] refreshSession failed:', refreshError.message);
-    }
-    
-    const session = refreshData?.session;
-    console.log('[KindredSouls Debug] handlePurchase session:', !!session, !!session?.access_token);
-    if (!session?.access_token) {
-      console.log('[KindredSouls Debug] no session, aborting');
-      // Session expired — force re-login
       setShowAuthWall(true);
       setShowPaywall(false);
       setPaidStatus(null);
       return;
     }
-    
+    const session = refreshData?.session;
+    if (!session?.access_token) {
+      console.log('[KindredSouls Debug] no session, aborting');
+      setShowAuthWall(true);
+      setShowPaywall(false);
+      setPaidStatus(null);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/create-checkout', {
@@ -391,7 +328,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
         body: JSON.stringify({ plan }),
       });
       if (res.status === 401) {
-        // Token rejected — force re-login
         console.log('[KindredSouls Debug] 401 from server, forcing re-login');
         setShowAuthWall(true);
         setShowPaywall(false);
@@ -400,7 +336,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       }
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;  // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else if (data.already_paid) {
         setPaidStatus(true);
         setShowPaywall(false);
@@ -413,21 +349,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       setLoading(false);
     }
   };
-
   const triggerInsight = async (token?: string) => {
     setLoading(true);
     setError(null);
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      
       const res = await fetch('/api/ai-insight', {
         method: 'POST',
         headers,
         body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang }),
       });
       const data = await res.json();
-      
       if (data.insight) setInsight(data.insight);
       else setError(data.error || 'Unable to generate insight');
     } catch {
@@ -436,9 +369,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       setLoading(false);
     }
   };
-
   // Loading state
-  if (!sessionChecked || paidStatus === null && !showAuthWall) {
+  if (!sessionChecked || (paidStatus === null && !showAuthWall)) {
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
         <div className="insight-skeleton">
@@ -447,20 +379,15 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       </div>
     );
   }
-
   // Auth wall — not logged in
-  console.log('[KindredSouls Debug] render check:', { sessionChecked, paidStatus, showAuthWall, showPaywall, hasInsight: insight !== null });
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
         <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
         <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{
-            filter: 'blur(8px)',
-            opacity: 0.4,
-            padding: '16px',
-            background: 'rgba(212,175,55,0.05)',
-            borderRadius: '12px',
+            filter: 'blur(8px)', opacity: 0.4, padding: '16px',
+            background: 'rgba(212,175,55,0.05)', borderRadius: '12px',
             border: '1px solid rgba(212,175,55,0.15)',
           }}>
             <p>{lang==='zh'
@@ -475,20 +402,15 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       </div>
     );
   }
-
   // Stripe paywall — logged in but not paid
   if (showPaywall && insight === null) {
-    console.log('[KindredSouls Debug] showing PAYWALL');
     return (
       <div className="ai-insight">
         <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
         <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{
-            filter: 'blur(8px)',
-            opacity: 0.4,
-            padding: '16px',
-            background: 'rgba(212,175,55,0.05)',
-            borderRadius: '12px',
+            filter: 'blur(8px)', opacity: 0.4, padding: '16px',
+            background: 'rgba(212,175,55,0.05)', borderRadius: '12px',
             border: '1px solid rgba(212,175,55,0.15)',
           }}>
             <p>{lang==='zh'
@@ -506,30 +428,25 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
                   ? 'AI 将为你们的合盘生成专属深度解读，揭示隐藏的情感模式与未来走向。'
                   : 'AI will generate an exclusive deep reading revealing hidden patterns & future trajectories.'}
               </p>
-              {/* One-time purchase */}
               <button
                 onClick={() => handlePurchase('insight_once')}
                 disabled={loading}
                 style={{
                   width: '100%', padding: '13px 20px', borderRadius: '10px', border: 'none',
                   background: loading ? '#666' : 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
-                  color: '#fff', fontSize: '15px', fontWeight: 700,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '10px', transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 16px rgba(212,175,55,0.25)',
+                  color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '10px', transition: 'all 0.3s ease', boxShadow: '0 4px 16px rgba(212,175,55,0.25)',
                 }}
               >
                 {loading ? '⏳ ...' : `💫 $4.99 ${lang==='zh'?'单次解锁':'One-time'}`}
               </button>
-              {/* Subscription */}
               <button
                 onClick={() => handlePurchase('monthly')}
                 disabled={loading}
                 style={{
                   width: '100%', padding: '11px 20px', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.35)',
                   background: 'transparent', color: '#D4AF37', fontSize: '14px', fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease',
+                  cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
                 }}
               >
                 ✨ $4.99/{lang==='zh'?'月':'mo'} · {lang==='zh'?'无限次解读':'Unlimited'}
@@ -543,74 +460,29 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, sho
       </div>
     );
   }
-  
   // Logged in — show button or result
   return (
     <div className="ai-insight">
       <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-      
       {!insight && !loading && !error && (
         <button
           onClick={() => triggerInsight()}
           style={{
-            width: '100%',
-            padding: '14px 24px',
-            borderRadius: '12px',
-            border: 'none',
+            width: '100%', padding: '14px 24px', borderRadius: '12px', border: 'none',
             background: 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
-            color: '#fff',
-            fontSize: '15px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
+            color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.3s ease', boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
           }}
         >
           ✨ {lang==='zh'?'生成 AI 洞察':lang==='es'?'Generar Perspectiva AI':'Generate AI Insight'}
         </button>
       )}
-      
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '24px' }}>
-          <div className="spinner" style={{ margin: '0 auto 12px' }} />
-          <p style={{ color: '#D4AF37', fontSize: '14px' }}>
-            {lang==='zh'?'宇宙正在解读你们的星盘…':lang==='es'?'Leyendo los astros…':'Reading the cosmos…'}
-          </p>
+      {loading && <div className="insight-skeleton"><div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" /><div className="skeleton-line w70" /></div>}
+      {error && <p style={{ color: '#ff6b6b', marginTop: '8px' }}>{error}</p>}
+      {insight && (
+        <div className="insight-result">
+          <p>{insight}</p>
         </div>
-      )}
-      
-      {insight !== null && (
-        <div style={{
-          padding: '18px',
-          background: 'rgba(212,175,55,0.06)',
-          borderRadius: '12px',
-          border: '1px solid rgba(212,175,55,0.2)',
-          animation: 'fadeIn 0.6s ease',
-        }}>
-          <p style={{ lineHeight: 1.7, margin: 0 }}>{insight}</p>
-        </div>
-      )}
-      
-      {error !== null && (
-        <p className="insight-error">
-          ⚠️ {error}
-          <br/>
-          <button
-            onClick={() => triggerInsight()}
-            style={{
-              marginTop: '8px',
-              padding: '6px 16px',
-              borderRadius: '8px',
-              border: '1px solid #D4AF37',
-              background: 'transparent',
-              color: '#D4AF37',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
-          >
-            {lang==='zh'?'重试':'Retry'}
-          </button>
-        </p>
       )}
     </div>
   );
@@ -705,36 +577,8 @@ export default function App() {
     }
     return null;
   });
-  // Auth state (lifted from AIInsightBlock for OAuth redirect recovery)
-  const [showAuthWall, setShowAuthWall] = useState(false);
-  const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
-  // ✅ Restore result page after OAuth login (showAuthWall true→false)
-  const prevAuthRef = useRef(showAuthWall);
-  useEffect(() => {
-    const prev = prevAuthRef.current;
-    prevAuthRef.current = showAuthWall;
-    if (prev === true && showAuthWall === false) {
-      const shouldReturn = localStorage.getItem('ks_return_to_result');
-      if (shouldReturn === 'true') {
-        const saved = localStorage.getItem('ks_result');
-        if (saved) {
-          try {
-            const r = JSON.parse(saved);
-            setResult(r);
-            _setPage('result');
-            window.location.hash = '#/result';
-            localStorage.removeItem('ks_return_to_result');
-            localStorage.removeItem('ks_result');
-            console.log('[KindredSouls Debug] Restored result page after OAuth login');
-          } catch (e) {
-            console.error('[KindredSouls Debug] Failed to restore:', e);
-          }
-        }
-      }
-    }
-  }, [showAuthWall]);
 
   React.useEffect(() => {
     const handler = (lng: string) => setCurrentLang(lng);
