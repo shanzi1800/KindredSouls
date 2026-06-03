@@ -118,8 +118,8 @@ export default async function handler(req, res) {
         },
         quantity: 1,
       }],
-      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}?payment=cancelled`,
+      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/#/result?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/#/result?payment=cancelled`,
       metadata: { supabase_user_id: user.id, plan },
     });
 
