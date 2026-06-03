@@ -265,9 +265,22 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       if (event === 'SIGNED_IN' && session?.user) {
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
-        // ✅ 恢复 result 页面（暂时注释）
-        // const shouldReturn = localStorage.getItem('ks_return_to_result');
-        // if (shouldReturn === 'true') { ... }
+        // ✅ 恢复 result 页面（OAuth 回调后从 localStorage 读回）
+        const shouldReturn = localStorage.getItem('ks_return_to_result');
+        if (shouldReturn === 'true') {
+          const saved = localStorage.getItem('ks_result');
+          if (saved) {
+            try {
+              const r = JSON.parse(saved);
+              setResult(r);
+              _setPage('result');
+              window.location.hash = '#/result';
+              console.log('[KindredSouls Debug] Restored result page from localStorage');
+            } catch (e) {
+              console.error('[KindredSouls Debug] Failed to restore result:', e);
+            }
+          }
+        }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
@@ -691,30 +704,6 @@ export default function App() {
   }, [i18n]);
 
 
-  /* ── Restore result page after OAuth callback ── */
-  React.useEffect(() => {
-    const restore = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
-        const flag = localStorage.getItem('ks_return_to_result');
-        if (flag !== 'true') return;
-        const saved = localStorage.getItem('ks_result');
-        if (!saved) return;
-        const r = JSON.parse(saved);
-        setResult(r);
-        _setPage('result');
-        window.location.hash = '#/result';
-        localStorage.removeItem('ks_return_to_result');
-        localStorage.removeItem('ks_result');
-        console.log('[KindredSouls] Restored result page after OAuth');
-      } catch (e) {
-        console.error('[KindredSouls] Restore failed:', e);
-      }
-    };
-    restore();
-  }, []);
-
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
     _setPage('loading');
@@ -756,7 +745,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { setResult(null); _setPage('input'); }} lang={currentLang} />}
+      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
