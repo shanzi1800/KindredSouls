@@ -567,22 +567,26 @@ export default function App() {
   });
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
-
-  // ✅ Restore result page after OAuth login (check on mount + auth change)
-  useEffect(() => {
-    const saved = localStorage.getItem('ks_result');
-    if (saved) {
-      try {
-        const r = JSON.parse(saved);
-        setResult(r);
-        _setPage('result');
-        window.location.hash = '#/result';
-        console.log('[KindredSouls Debug] Restored result page from localStorage');
-      } catch (e) {
-        localStorage.removeItem('ks_result');
-      }
-    }
-  }, []);
+ // ✅ Restore result page only after OAuth login (not every refresh)
+ useEffect(() => {
+ const justLoggedIn = sessionStorage.getItem('ks_just_logged_in');
+ if (justLoggedIn && window.location.hash === '#/result') {
+ const saved = localStorage.getItem('ks_result');
+ if (saved) {
+ try {
+ const r = JSON.parse(saved);
+ setResult(r);
+ _setPage('result');
+ console.log('[KindredSouls Debug] Restored result page after OAuth login');
+ } catch (e) {
+ localStorage.removeItem('ks_result');
+ }
+ }
+ sessionStorage.removeItem('ks_just_logged_in');
+ } else {
+ localStorage.removeItem('ks_result');
+ }
+ }, []);
 
   React.useEffect(() => {
     const handler = (lng: string) => setCurrentLang(lng);
@@ -622,6 +626,7 @@ export default function App() {
         window.location.hash = '#/result';
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
+		sessionStorage.setItem('ks_just_logged_in', '1');
         console.log('[KindredSouls Debug] Saved result to localStorage');
       }
     }, 800);
