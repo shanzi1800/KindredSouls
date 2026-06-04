@@ -233,7 +233,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       // 🛑 核心拦截点：只有 token 明确存在时，才更新全局状态
       if (session?.access_token) {
         setCurrentAccessToken(session.access_token);
-        setUserId(session.user.id);
       } else {
         setCurrentAccessToken(null);
       }
