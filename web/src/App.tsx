@@ -247,6 +247,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
           localStorage.removeItem('ks_pending_checkout');
           handlePurchase('insight_once');
         }
+        // ✅ Auto-save result to Supabase (session token guaranteed here)
+        const saved = localStorage.getItem('ks_result');
+        if (saved) {
+          try {
+            const data = JSON.parse(saved);
+            fetch('/api/save-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+              body: JSON.stringify({ ...data, user_id: session.user.id }),
+            }).catch(() => {});
+          } catch {}
+        }
       } else if (event === 'SIGNED_OUT') {
         setShowAuthWall(true);
         setPaidStatus(null);
@@ -260,6 +272,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
           if (pending === 'true') {
             localStorage.removeItem('ks_pending_checkout');
             handlePurchase('insight_once');
+          }
+          // ✅ Auto-save result to Supabase (session token guaranteed here)
+          const saved = localStorage.getItem('ks_result');
+          if (saved) {
+            try {
+              const data = JSON.parse(saved);
+              fetch('/api/save-result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                body: JSON.stringify({ ...data, user_id: session.user.id }),
+              }).catch(() => {});
+            } catch {}
           }
         } else {
           setShowAuthWall(true);
@@ -487,31 +511,7 @@ function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityRes
     { key: 'iching', label: t('result.engines.iching'), e: engines.iching },
   ];
 
-  // ── Auto-save to Supabase ──
-  useEffect(() => {
-    if (!userId) return;
-    // Get fresh token; if not available yet, skip (SIGNED_IN handler will retry)
-    supabase.auth.getSession().then(({ data }) => {
-      const token = data.session?.access_token;
-      if (!token) return; // wait for session to be ready
-      fetch('/api/save-result', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          dob1: result._d1!,
-          dob2: result._d2!,
-          overall_score: overall,
-          dimensions,
-          engines,
-          language: lang,
-        }),
-      }).catch(() => {});
-    });
-  }, [userId, result._d1, result._d2]);
+
 
   return (
     <div className="page result-page">
