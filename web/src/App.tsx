@@ -471,7 +471,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     );
   }
   // Stripe paywall — logged in but not paid
-  if (showPaywall && insight === null) {
+  // ── 付费墙：已登录未付费时显示（无论 insight 是否有预览）──
+  console.log('[KindredSouls Debug] AIInsightBlock render: showPaywall=', showPaywall, 'showAuthWall=', showAuthWall, 'insight=', !!insight);
+  if (showPaywall) {
     return (
       <div className="ai-insight">
         <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
@@ -491,11 +493,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
             borderRadius: '16px',
-            pointerEvents: 'none',
           }}>
-            <div style={{ pointerEvents: 'auto' }}>
-              <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
-            </div>
+            <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
           </div>
         </div>
       </div>
