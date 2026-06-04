@@ -233,8 +233,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       // 🛑 核心拦截点：只有 token 明确存在时，才更新全局状态
       if (session?.access_token) {
         setCurrentAccessToken(session.access_token);
+        sessionStorage.setItem('ks_access_token', session.access_token);
       } else {
         setCurrentAccessToken(null);
+        sessionStorage.removeItem('ks_access_token');
       }
 
       if (event === 'SIGNED_IN' && session?.access_token) {
@@ -299,6 +301,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         } catch (e) {
           console.error('[KindredSouls Debug] Failed to restore result after payment:', e);
         }
+      }
+      // ✅ Auto-trigger AI insight generation after payment
+      const token = sessionStorage.getItem('ks_access_token') || currentAccessToken;
+      if (token) {
+        console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
+        setTimeout(() => triggerInsight(token), 500);
       }
       window.history.replaceState({}, '', window.location.pathname + '#/result');
     }
@@ -618,23 +626,25 @@ export default function App() {
   });
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
- // ✅ Restore result page only after OAuth login (not every refresh)
+ // ✅ Restore result page after OAuth login or payment success (not every refresh)
  useEffect(() => {
  const justLoggedIn = sessionStorage.getItem('ks_just_logged_in');
- if (justLoggedIn && window.location.hash === '#/result') {
+ const paymentSuccess = window.location.hash.includes('payment=success');
+ if ((justLoggedIn || paymentSuccess) && window.location.hash.includes('#/result')) {
  const saved = localStorage.getItem('ks_result');
  if (saved) {
  try {
  const r = JSON.parse(saved);
  setResult(r);
  _setPage('result');
- console.log('[KindredSouls Debug] Restored result page after OAuth login');
+ console.log('[KindredSouls Debug] Restored result page after OAuth/payment');
  } catch (e) {
  localStorage.removeItem('ks_result');
  }
  }
- sessionStorage.removeItem('ks_just_logged_in');
- } else {
+ if (justLoggedIn) sessionStorage.removeItem('ks_just_logged_in');
+ } else if (!paymentSuccess) {
+ // Only clear ks_result if NOT returning from payment
  localStorage.removeItem('ks_result');
  }
  }, []);
