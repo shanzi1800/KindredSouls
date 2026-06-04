@@ -289,6 +289,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     }
   }, []);
   const checkPaidStatus = async (_token?: string) => {
+    console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -315,9 +316,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       const profiles = await res.json();
       const paid = profiles?.[0]?.paid === true;
       if (paid) {
+        console.log('[KindredSouls Debug] checkPaidStatus: user is PAID');
         setPaidStatus(true);
         setShowPaywall(false);
       } else {
+        console.log('[KindredSouls Debug] checkPaidStatus: user is NOT paid, showPaywall=true');
         setPaidStatus(false);
         setShowPaywall(true);
       }

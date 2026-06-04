@@ -102,7 +102,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
 
       {/* 主按钮 */}
       <button
-        onClick={() => onPurchase('insight_once')}
+        onClick={() => { console.log('[KindredSouls Debug] PaywallCard button clicked, loading:', loading); onPurchase('insight_once'); }}}
         disabled={loading}
         style={{
           width: '100%',
