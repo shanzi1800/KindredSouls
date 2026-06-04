@@ -103,6 +103,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       {/* 主按钮 */}
       <button
         onClick={() => { console.log('[KindredSouls Debug] PaywallCard button clicked, loading:', loading); onPurchase('insight_once'); }}
+        onMouseDown={() => console.log('[KindredSouls Debug] PaywallCard mousedown')}
+        onTouchStart={() => console.log('[KindredSouls Debug] PaywallCard touchstart')}
         disabled={loading}
         style={{
           width: '100%',

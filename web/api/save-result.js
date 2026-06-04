@@ -34,11 +34,9 @@ export default async function handler(req, res) {
   
   console.log('[save-result] user verified:', user.id);
 
-  // Extract fields
+  // Extract fields (all optional now)
   const { dob1, dob2, overall_score, dimensions, engines, ai_insight, language } = req.body;
-  if (!dob1 || !dob2 || overall_score === undefined) {
-    return res.status(400).json({ error: 'Missing required fields: dob1, dob2, overall_score' });
-  }
+  // dob1/dob2/overall_score no longer required — save-result works for free users too
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
