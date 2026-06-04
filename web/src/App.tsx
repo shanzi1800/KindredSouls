@@ -228,7 +228,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(`[KindredSouls Debug] onAuthStateChange event: ${event}`, !!session);
+      console.log(`[KindredSouls Debug] onAuthStateChange event: ${event}`, !!session, 'token:', !!session?.access_token, 'paidStatus:', paidStatus);
 
       // 🛑 核心拦截点：只有 token 明确存在时，才更新全局状态
       if (session?.access_token) {
@@ -375,7 +375,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
   // ── handlePurchase 入口：优先用全局 token，兜底 getSession ──
   const handlePurchase = async (plan: string) => {
-    console.log('[KindredSouls Debug] handlePurchase called. currentAccessToken:', !!currentAccessToken);
+    console.log('[KindredSouls Debug] handlePurchase called. currentAccessToken:', !!currentAccessToken, 'paidStatus:', paidStatus, 'showPaywall:', showPaywall, 'showAuthWall:', showAuthWall);
 
     let token = currentAccessToken;
 
