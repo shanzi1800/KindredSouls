@@ -222,6 +222,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ks_user_id');
+    }
+    return null;
+  });
 
   // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
@@ -576,12 +582,6 @@ export default function App() {
   const [_page, _setPage] = useState<'input' | 'loading' | 'result'>('input');
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [err, setErr] = useState('');
-  const [userId, setUserId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ks_user_id');
-    }
-    return null;
-  });
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
  // ✅ Restore result page only after OAuth login (not every refresh)
