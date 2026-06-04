@@ -459,8 +459,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
             borderRadius: '16px',
+            pointerEvents: 'none',
           }}>
-            <AuthWallCard lang={lang} />
+            <div style={{ pointerEvents: 'auto' }}>
+              <AuthWallCard lang={lang} />
+            </div>
           </div>
         </div>
       </div>
@@ -487,8 +490,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
             borderRadius: '16px',
+            pointerEvents: 'none',
           }}>
-            <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
+            <div style={{ pointerEvents: 'auto' }}>
+              <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
+            </div>
           </div>
         </div>
       </div>
