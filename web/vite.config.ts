@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   build: {
     cssMinify: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
+      },
+    },
   },
   server: {
     proxy: {

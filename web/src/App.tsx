@@ -220,76 +220,64 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   const [showPaywall, setShowPaywall] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
-  // Check auth + payment status on mount
+  // 🔑 状态驱动：全局持有受信任的 access token
+  const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
+
+  // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
-    supabase.auth.getSession().then(({ data: { session }, error }: any) => {
-      console.log('[KindredSouls Debug] getSession result:', !!session?.user, error);
-      setSessionChecked(true);
-      if (!session?.user) {
-        setShowAuthWall(true);
-      } else {
-        setShowAuthWall(false);
-        checkPaidStatus(session.access_token);
-      }
-    });
-  }, []);
-  // Listen for auth state changes (critical: catches OAuth callback return)
-  useEffect(() => {
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[KindredSouls Debug] onAuthStateChange:', event, !!session?.user);
-      if (event === 'SIGNED_IN' && session?.user) {
+      console.log(`[KindredSouls Debug] onAuthStateChange event: ${event}`, !!session);
+
+      // 🛑 核心拦截点：只有 token 明确存在时，才更新全局状态
+      if (session?.access_token) {
+        setCurrentAccessToken(session.access_token);
+        setUserId(session.user.id);
+      } else {
+        setCurrentAccessToken(null);
+      }
+
+      if (event === 'SIGNED_IN' && session?.access_token) {
+        // 🚀 只有 SIGNED_IN 阶段 Token 才 100% Ready
+        setSessionChecked(true);
         setShowAuthWall(false);
         checkPaidStatus(session.access_token);
-        // ✅ 自动触发 Checkout（如果标志位存在）
+        // 自动触发 Checkout（如果标志位存在）
         const pending = localStorage.getItem('ks_pending_checkout');
         if (pending === 'true') {
           localStorage.removeItem('ks_pending_checkout');
-          handlePurchase('insight_once');
+          handlePurchaseWithToken(session.access_token, 'insight_once');
         }
-        // ✅ Auto-save result to Supabase (session token guaranteed here)
-        const saved = localStorage.getItem('ks_result');
-        if (saved) {
-          try {
-            const data = JSON.parse(saved);
-            fetch('/api/save-result', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-              body: JSON.stringify({ ...data, user_id: session.user.id }),
-            }).catch(() => {});
-          } catch {}
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setShowAuthWall(true);
-        setPaidStatus(null);
-        setInsight(null);
+        // Auto-save result to Supabase
+        triggerSaveResult(session.access_token, session.user.id);
       } else if (event === 'INITIAL_SESSION') {
-        if (session?.user) {
+        setSessionChecked(true);
+        if (session?.access_token) {
+          // INITIAL_SESSION 有 token 时也可以执行高权限操作
           setShowAuthWall(false);
           checkPaidStatus(session.access_token);
-          // ✅ 自动触发 Checkout（如果标志位存在）
           const pending = localStorage.getItem('ks_pending_checkout');
           if (pending === 'true') {
             localStorage.removeItem('ks_pending_checkout');
-            handlePurchase('insight_once');
+            handlePurchaseWithToken(session.access_token, 'insight_once');
           }
-          // ✅ Auto-save result to Supabase (session token guaranteed here)
-          const saved = localStorage.getItem('ks_result');
-          if (saved) {
-            try {
-              const data = JSON.parse(saved);
-              fetch('/api/save-result', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ ...data, user_id: session.user.id }),
-              }).catch(() => {});
-            } catch {}
-          }
+          triggerSaveResult(session.access_token, session.user.id);
+        } else if (session?.user) {
+          // 有 user 但没 token → 静默等待 SIGNED_IN 触发
+          setShowAuthWall(false);
+          console.log('[KindredSouls Debug] INITIAL_SESSION has user but no token, waiting for SIGNED_IN...');
         } else {
           setShowAuthWall(true);
         }
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentAccessToken(null);
+        setShowAuthWall(true);
+        setPaidStatus(null);
+        setInsight(null);
       }
     });
+
     return () => subscription.unsubscribe();
   }, []);
   // Check URL for payment success on mount
@@ -340,32 +328,31 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       setShowPaywall(true);
     }
   };
-  const handlePurchase = async (plan: string) => {
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) {
-      console.log('[KindredSouls Debug] refreshSession failed:', refreshError.message);
-      setShowAuthWall(true);
-      setShowPaywall(false);
-      setPaidStatus(null);
-      return;
-    }
-    const session = refreshData?.session;
-    if (!session?.access_token) {
-      console.log('[KindredSouls Debug] no session, aborting');
-      setShowAuthWall(true);
-      setShowPaywall(false);
-      setPaidStatus(null);
-      return;
-    }
+  // ── Save result to Supabase（只在有 token 时调用）──
+  const triggerSaveResult = (token: string, uid: string) => {
+    const saved = localStorage.getItem('ks_result');
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      fetch('/api/save-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ...data, user_id: uid }),
+      }).catch(() => {});
+    } catch {}
+  };
+
+  // ── handlePurchase 核心逻辑（接收明确的 token 参数）──
+  const handlePurchaseWithToken = async (token: string, plan: string) => {
     setLoading(true);
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),
       });
       if (res.status === 401) {
-        console.log('[KindredSouls Debug] 401 from server, forcing re-login');
+        console.log('[KindredSouls Debug] 401 from create-checkout, forcing re-login');
         setShowAuthWall(true);
         setShowPaywall(false);
         setPaidStatus(null);
@@ -385,6 +372,28 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ── handlePurchase 入口：优先用全局 token，兜底 getSession ──
+  const handlePurchase = async (plan: string) => {
+    console.log('[KindredSouls Debug] handlePurchase called. currentAccessToken:', !!currentAccessToken);
+
+    let token = currentAccessToken;
+
+    if (!token) {
+      // 兜底：从 client 缓存捞一次
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token || null;
+      console.log('[KindredSouls Debug] getSession fallback token:', !!token);
+    }
+
+    if (!token) {
+      console.warn('[KindredSouls Debug] No token found, showing AuthWall');
+      setShowAuthWall(true);
+      return;
+    }
+
+    return handlePurchaseWithToken(token, plan);
   };
   const triggerInsight = async (token?: string) => {
     setLoading(true);
