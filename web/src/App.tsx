@@ -290,9 +290,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   }, []);
   const checkPaidStatus = async (_token?: string) => {
     console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
+    
+    // 5秒超时，避免卡死首页
+    const timeout = setTimeout(() => {
+      console.log('[KindredSouls Debug] checkPaidStatus timeout, showing paywall');
+      setPaidStatus(false);
+      setShowPaywall(true);
+    }, 5000);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        clearTimeout(timeout);
         setPaidStatus(false);
         setShowPaywall(true);
         return;
@@ -308,6 +317,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
           },
         }
       );
+      clearTimeout(timeout);
       if (!res.ok) {
         setPaidStatus(false);
         setShowPaywall(true);
@@ -325,6 +335,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         setShowPaywall(true);
       }
     } catch (err) {
+      clearTimeout(timeout);
       console.error('[KindredSouls Debug] checkPaidStatus error:', err);
       setPaidStatus(false);
       setShowPaywall(true);
