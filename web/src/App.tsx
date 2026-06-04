@@ -490,19 +490,27 @@ function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityRes
   // ── Auto-save to Supabase ──
   useEffect(() => {
     if (!userId) return;
-    fetch('/api/save-result', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId,
-        dob1: result._d1!,
-        dob2: result._d2!,
-        overall_score: overall,
-        dimensions,
-        engines,
-        language: lang,
-      }),
-    }).catch(() => {});
+    // Get fresh token; if not available yet, skip (SIGNED_IN handler will retry)
+    supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token;
+      if (!token) return; // wait for session to be ready
+      fetch('/api/save-result', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          dob1: result._d1!,
+          dob2: result._d2!,
+          overall_score: overall,
+          dimensions,
+          engines,
+          language: lang,
+        }),
+      }).catch(() => {});
+    });
   }, [userId, result._d1, result._d2]);
 
   return (
