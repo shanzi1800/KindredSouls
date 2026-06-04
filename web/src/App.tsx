@@ -501,7 +501,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, userId, onBack, lang }: { result: CompatibilityResult; userId?: string; onBack: () => void; lang: string }) {
+function ResultPage({ result, onBack, lang }: { result: CompatibilityResult; onBack: () => void; lang: string }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
 
@@ -644,7 +644,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} userId={userId || undefined} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} />}
+      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
