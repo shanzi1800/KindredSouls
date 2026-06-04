@@ -477,11 +477,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     return (
       <div className="ai-insight">
         <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginBottom: '20px' }}>
+        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', marginBottom: '20px', minHeight: '420px' }}>
           <div style={{
             filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
             background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
             border: '1px solid rgba(212,175,55,0.12)',
+            position: 'absolute', inset: 0,
           }}>
             <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{lang==='zh'
               ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。'
@@ -489,10 +490,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             </p>
           </div>
           <div style={{
-            position: 'absolute', inset: 0,
+            position: 'relative', zIndex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
-            borderRadius: '16px',
+            padding: '20px 0',
           }}>
             <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
           </div>
