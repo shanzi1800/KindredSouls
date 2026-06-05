@@ -301,7 +301,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
       }
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=paid&id=eq.${user.id}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=paid&user_id=eq.${user.id}`,
         {
           headers: {
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
