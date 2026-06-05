@@ -121,15 +121,16 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
       {/* Google Login */}
       <button
         onClick={handleGoogleLogin}
+        onTouchStart={(e) => { e.preventDefault(); handleGoogleLogin(); }}
         disabled={loading}
         style={{
           width: '100%',
-          padding: '14px',
+          padding: '16px 14px',
           borderRadius: '12px',
           border: '2px solid rgba(255,255,255,0.25)',
           background: loading ? '#333' : '#fff',
           color: loading ? '#666' : '#1a1a1a',
-          fontSize: '15px',
+          fontSize: '16px',
           fontWeight: 700,
           cursor: loading ? 'not-allowed' : 'pointer',
           display: 'flex',
@@ -138,7 +139,9 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
           gap: '10px',
           marginBottom: '12px',
           transition: 'all 0.25s',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation',
         }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24">

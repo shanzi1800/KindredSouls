@@ -19,19 +19,20 @@ const AuthWallCard = ({ lang }: AuthWallCardProps) => {
 
   return (
     <div style={{
-      width: '92%', maxWidth: '340px',
+      width: '94%', maxWidth: '380px',
       background: 'linear-gradient(168deg, rgba(26,31,75,0.97) 0%, rgba(18,22,55,0.99) 100%)',
-      borderRadius: '18px',
-      padding: '28px 22px 22px',
-      border: '1px solid rgba(212,175,55,0.35)',
-      boxShadow: '0 0 40px rgba(212,175,55,0.12), 0 8px 32px rgba(0,0,0,0.4)',
+      borderRadius: '20px',
+      padding: '32px 24px 24px',
+      border: '1px solid rgba(212,175,55,0.4)',
+      boxShadow: '0 0 50px rgba(212,175,55,0.15), 0 12px 40px rgba(0,0,0,0.5)',
       textAlign: 'center',
     }}>
-      <div style={{ fontSize: '36px', marginBottom: '10px', filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.5))' }}>✨</div>
-      <div style={{ fontSize: '16px', fontWeight: 800, color: '#D4AF37', marginBottom: '6px' }}>
+      {/* 星星装饰 */}
+      <div style={{ fontSize: '42px', marginBottom: '12px', filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.6))' }}>✨</div>
+      <div style={{ fontSize: '18px', fontWeight: 800, color: '#D4AF37', marginBottom: '8px', letterSpacing: '0.3px' }}>
         {c.title}
       </div>
-      <div style={{ fontSize: '12px', color: '#9a9ab0', marginBottom: '20px', lineHeight: 1.5 }}>
+      <div style={{ fontSize: '13px', color: '#a0a0c0', marginBottom: '24px', lineHeight: 1.6 }}>
         {c.subtitle}
       </div>
       <AuthButton lang={lang} />

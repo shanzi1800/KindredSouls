@@ -40,36 +40,36 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
 
   return (
     <div style={{
-      width: '92%', maxWidth: '340px',
+      width: '94%', maxWidth: '380px',
       background: 'linear-gradient(168deg, rgba(26,31,75,0.97) 0%, rgba(18,22,55,0.99) 100%)',
-      borderRadius: '18px',
-      padding: '28px 22px 22px',
-      border: '1px solid rgba(212,175,55,0.35)',
-      boxShadow: '0 0 60px rgba(212,175,55,0.10), 0 8px 32px rgba(0,0,0,0.5)',
+      borderRadius: '20px',
+      padding: '32px 24px 24px',
+      border: '1px solid rgba(212,175,55,0.4)',
+      boxShadow: '0 0 60px rgba(212,175,55,0.15), 0 12px 40px rgba(0,0,0,0.5)',
       textAlign: 'center',
     }}>
       {/* 图标 */}
       <div style={{
-        fontSize: '36px',
-        marginBottom: '10px',
-        filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.5))',
+        fontSize: '42px',
+        marginBottom: '12px',
+        filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.6))',
       }}>🔮</div>
 
       {/* 标题 */}
       <div style={{
-        fontSize: '17px',
+        fontSize: '19px',
         fontWeight: 800,
         color: '#D4AF37',
-        marginBottom: '6px',
+        marginBottom: '8px',
         letterSpacing: '0.3px',
       }}>{c.title}</div>
 
       {/* 副标题 */}
       <div style={{
-        fontSize: '12px',
-        color: '#9a9ab0',
-        marginBottom: '18px',
-        lineHeight: 1.5,
+        fontSize: '13px',
+        color: '#a0a0c0',
+        marginBottom: '22px',
+        lineHeight: 1.6,
       }}>{c.subtitle}</div>
 
       {/* 价值点 */}
