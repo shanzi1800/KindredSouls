@@ -437,7 +437,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
     return (
       <div className="ai-insight">
         <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
-        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', minHeight: '460px' }}>
           <div style={{
             filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
             background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
@@ -449,15 +449,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
             </p>
           </div>
           <div style={{
-            position: 'absolute', inset: 0,
+            position: 'relative', zIndex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(10,12,28,0.55)', backdropFilter: 'blur(6px)',
-            borderRadius: '16px',
-            pointerEvents: 'none',
+            padding: '20px 0',
           }}>
-            <div style={{ pointerEvents: 'auto' }}>
-              <AuthWallCard lang={lang} />
-            </div>
+            <AuthWallCard lang={lang} />
           </div>
         </div>
       </div>
