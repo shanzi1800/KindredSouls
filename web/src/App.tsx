@@ -207,11 +207,13 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onTriggerInsight, pendingInsightTrigger }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   lang: string;
+  onTriggerInsight?: () => void;
+  pendingInsightTrigger?: boolean;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +224,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
+
+  // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
+  useEffect(() => {
+    if (pendingInsightTrigger) {
+      console.log('[KindredSouls Debug] pendingInsightTrigger=true, calling triggerInsight');
+      triggerInsight();
+    }
+  }, [pendingInsightTrigger]);
 
   // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
@@ -414,7 +424,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
         body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang }),
       });
       const data = await res.json();
-      if (data.insight) setInsight(data.insight);
+      if (data.insight) {
+        setInsight(data.insight);
+        onTriggerInsight?.();
+      }
       else setError(data.error || 'Unable to generate insight');
     } catch {
       setError('Network error — please check your connection');
@@ -518,7 +531,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, onBack, lang }: { result: CompatibilityResult; onBack: () => void; lang: string }) {
+function ResultPage({ result, onBack, lang, pendingInsightTrigger }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
 
@@ -554,6 +567,7 @@ function ResultPage({ result, onBack, lang }: { result: CompatibilityResult; onB
         zodiac={engines.zodiac.detail}
         iching={engines.iching.detail}
         lang={lang}
+        pendingInsightTrigger={pendingInsightTrigger}
       />
 
       {(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
@@ -592,7 +606,8 @@ export default function App() {
   });
   // Track current language in React state (always in sync with i18n)
   const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
- // ✅ Restore result page after OAuth login or payment success (not every refresh)
+// ✅ Restore result page after OAuth login or payment success (not every refresh)
+ const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
  const justLoggedIn = sessionStorage.getItem('ks_just_logged_in');
  const hash = window.location.hash;
@@ -610,7 +625,7 @@ export default function App() {
  if (paymentSuccess) {
  setTimeout(() => {
  console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
- triggerInsight();
+ setPendingInsightTrigger(true);
  }, 800);
  }
  } catch (e) {
@@ -675,7 +690,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} />}
+      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
