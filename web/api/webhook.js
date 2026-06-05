@@ -1,17 +1,69 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
+// Disable body parsing so we can verify Stripe signature with raw body
+export const config = { api: { bodyParser: false } };
+
+import crypto from 'crypto';
+
+function verifyStripeSignature(rawBody, signature, secret) {
+  try {
+    const elements = Object.fromEntries(
+      signature.split(',').map(part => {
+        const [k, v] = part.split('=');
+        return [k, v];
+      })
+    );
+    const timestamp = elements['t'];
+    const expectedSig = elements['v1'];
+    
+    const payload = `${timestamp}.${rawBody}`;
+    const computed = crypto
+      .createHmac('sha256', secret)
+      .update(payload, 'utf8')
+      .digest('hex');
+    
+    return computed === expectedSig;
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const event = req.body;
+  // Read raw body for Stripe signature verification
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  const rawBody = Buffer.concat(chunks).toString();
+  
+  // Verify Stripe signature
+  const signature = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  
+  if (webhookSecret && signature) {
+    if (!verifyStripeSignature(rawBody, signature, webhookSecret)) {
+      console.error('[webhook] Invalid Stripe signature');
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    console.log('[webhook] Signature verified ✅');
+  } else if (!webhookSecret) {
+    console.warn('[webhook] STRIPE_WEBHOOK_SECRET not set, skipping signature verification');
+  }
+
+  let event;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON' });
+  }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.supabase_user_id;
-    // ✅ 抓 Stripe 的 email（checkout 时用户填的）
     const email = session.customer_details?.email || null;
 
     console.log('[webhook] payment success for user:', userId, 'email:', email);
@@ -28,7 +80,6 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString(),
         };
         
-        // ✅ 写入 email（如果 email 列存在则写入，不存在则静默忽略）
         if (email) {
           updatePayload.email = email;
         }
@@ -46,7 +97,6 @@ export default async function handler(req, res) {
 
         if (!res2.ok) {
           const err = await res2.json();
-          // 如果报错是关于 email 列不存在，忽略（列可能还没加）
           const isEmailColError = err?.details?.includes('email') || err?.message?.includes('email');
           if (!isEmailColError) {
             console.error('[webhook] failed to update profile:', err);
