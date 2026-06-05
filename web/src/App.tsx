@@ -281,36 +281,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang }: {
 
     return () => subscription.unsubscribe();
   }, []);
-  // Check URL for payment success on mount (Stripe redirects back to #/result?payment=success)
-  useEffect(() => {
-    // Stripe puts params AFTER the hash: /#/result?payment=success
-    const hash = window.location.hash;
-    const hashParams = new URLSearchParams(hash.split('?')[1] || '');
-    if (hashParams.get('payment') === 'success') {
-      console.log('[KindredSouls Debug] Payment success detected from URL hash');
-      setPaidStatus(true);
-      setShowPaywall(false);
-      // ✅ Restore result page state after Stripe redirect
-      const saved = localStorage.getItem('ks_result');
-      if (saved) {
-        try {
-          const r = JSON.parse(saved);
-          setResult(r);
-          _setPage('result');
-          console.log('[KindredSouls Debug] Result restored after payment success');
-        } catch (e) {
-          console.error('[KindredSouls Debug] Failed to restore result after payment:', e);
-        }
-      }
-      // ✅ Auto-trigger AI insight generation after payment
-      const token = sessionStorage.getItem('ks_access_token') || currentAccessToken;
-      if (token) {
-        console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
-        setTimeout(() => triggerInsight(token), 500);
-      }
-      window.history.replaceState({}, '', window.location.pathname + '#/result');
-    }
-  }, []);
   const checkPaidStatus = async (_token?: string) => {
     console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
     
