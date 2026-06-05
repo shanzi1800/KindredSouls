@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
     // Check existing profile
     const profileRes = await fetch(
-      `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}&select=paid,stripe_customer_id,subscription_id`,
+      `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${user.id}&select=paid,stripe_customer_id,subscription_id`,
       {
         headers: {
           'apikey': serviceKey,
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
           'Prefer': 'resolution=merge-duplicates',
         },
         body: JSON.stringify({
-          id: user.id,
+          user_id: user.id,
           stripe_customer_id: customerId,
           updated_at: new Date().toISOString(),
         }),

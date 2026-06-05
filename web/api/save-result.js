@@ -42,6 +42,22 @@ export default async function handler(req, res) {
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
+    // ── Upsert user_profiles with birth dates (for future interactions & campaigns) ──
+    await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+      method: 'POST',
+      headers: {
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        birth_date: dob1 || null,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
     const insertRes = await fetch(`${supabaseUrl}/rest/v1/compatibility_results`, {
       method: 'POST',
       headers: {

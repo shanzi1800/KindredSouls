@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
         const updatePayload = {
-          id: userId,
+          user_id: userId,
           paid: true,
           subscription_id: session.subscription || session.id,
           updated_at: new Date().toISOString(),
