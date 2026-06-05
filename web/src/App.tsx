@@ -595,22 +595,34 @@ export default function App() {
  // ✅ Restore result page after OAuth login or payment success (not every refresh)
  useEffect(() => {
  const justLoggedIn = sessionStorage.getItem('ks_just_logged_in');
- const paymentSuccess = window.location.hash.includes('payment=success');
- if ((justLoggedIn || paymentSuccess) && window.location.hash.includes('#/result')) {
+ const hash = window.location.hash;
+ const paymentSuccess = hash.includes('payment=success');
+ console.log('[KindredSouls Debug] Payment restore check:', { justLoggedIn, paymentSuccess, hash, hasResult: !!localStorage.getItem('ks_result') });
+ if ((justLoggedIn || paymentSuccess) && (hash.includes('#/result') || paymentSuccess)) {
  const saved = localStorage.getItem('ks_result');
  if (saved) {
  try {
  const r = JSON.parse(saved);
  setResult(r);
  _setPage('result');
- console.log('[KindredSouls Debug] Restored result page after OAuth/payment');
+ console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
+ // 🚀 If returning from payment success, auto-trigger AI insight after a short delay
+ if (paymentSuccess) {
+ setTimeout(() => {
+ console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
+ triggerInsight();
+ }, 800);
+ }
  } catch (e) {
+ console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
  localStorage.removeItem('ks_result');
  }
+ } else {
+ console.warn('[KindredSouls Debug] payment=success but no ks_result in localStorage');
  }
  if (justLoggedIn) sessionStorage.removeItem('ks_just_logged_in');
- } else if (!paymentSuccess) {
- // Only clear ks_result if NOT returning from payment
+ } else if (!paymentSuccess && !justLoggedIn) {
+ // Only clear ks_result if NOT returning from payment or login
  localStorage.removeItem('ks_result');
  }
  }, []);
