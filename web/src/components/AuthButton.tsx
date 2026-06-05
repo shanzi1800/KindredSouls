@@ -36,32 +36,22 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
   const [error, setError] = useState('');
 
   const handleGoogleLogin = async () => {
+    console.log('[KindredSouls Debug] Google login button CLICKED');
     setLoading(true);
     setError('');
     try {
-      // ✅ 正确方案：redirectTo 用【干净 URL】（不含 hash）
-      // Google OAuth 会吞掉 # 号及后面的内容，所以不能把 #/result 传进去
-      const redirectUrl = window.location.origin;  // 例如：https://www.kindredsouls.com.au
-      
-      // ✅ 存完整 URL（含 hash）到 localStorage
-      // Google OAuth 会吞掉 # 号，所以必须存完整 URL，回调后手动跳回去
+      const redirectUrl = window.location.origin;
       localStorage.setItem('ks_redirect_after_login', window.location.origin + '/#/result');
-      localStorage.setItem('ks_return_to_result', 'true');  // 标志位
-      localStorage.setItem('ks_pending_checkout', 'true');  // ✅ 登录后自动触发 Checkout
-      console.log('[KindredSouls] Saved return URL:', window.location.href);
-      
-      console.log('[KindredSouls Debug] Google login redirectTo (clean):', redirectUrl);
-      console.log('[KindredSouls Debug] Saved to sessionStorage:', window.location.href);
-      
+      localStorage.setItem('ks_return_to_result', 'true');
+      localStorage.setItem('ks_pending_checkout', 'true');
+      console.log('[KindredSouls Debug] Google login redirectTo:', redirectUrl);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
+        options: { redirectTo: redirectUrl },
       });
       if (error) throw error;
-      // OAuth 跳转中，当前页面会卸载，无需处理后续
     } catch (err: any) {
+      console.error('[KindredSouls Debug] Google login ERROR:', err);
       setError(err.message || 'Google login failed');
     } finally {
       setLoading(false);
