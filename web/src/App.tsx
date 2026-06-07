@@ -391,21 +391,51 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     }
   };
 
-  // ── handlePurchase 入口：优先用全局 token，兜底 getSession ──
+  // ── handlePurchase 入口：优先用全局 token，兜底 refreshSession ──
   const handlePurchase = async (plan: string) => {
     console.log('[KindredSouls Debug] handlePurchase called. currentAccessToken:', !!currentAccessToken, 'paidStatus:', paidStatus, 'showPaywall:', showPaywall, 'showAuthWall:', showAuthWall);
 
     let token = currentAccessToken;
 
     if (!token) {
-      // 兜底：从 client 缓存捞一次
+      // 兜底：先 refreshSession（处理过期 token），再 getSession
+      console.log('[KindredSouls Debug] No currentAccessToken, trying refreshSession...');
+      try {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        token = refreshed?.access_token || null;
+        console.log('[KindredSouls Debug] refreshSession token:', !!token);
+      } catch (e) {
+        console.warn('[KindredSouls Debug] refreshSession failed, falling back to getSession');
+      }
+    }
+
+    if (!token) {
       const { data: { session } } = await supabase.auth.getSession();
       token = session?.access_token || null;
       console.log('[KindredSouls Debug] getSession fallback token:', !!token);
     }
 
+    // 如果仍然没有 token，等待最多 3 秒让 SIGNED_IN 事件触发
     if (!token) {
-      console.warn('[KindredSouls Debug] No token found, showing AuthWall');
+      console.log('[KindredSouls Debug] No token yet, waiting for SIGNED_IN event (max 3s)...');
+      token = await new Promise<string | null>((resolve) => {
+        let done = false;
+        const t = setTimeout(() => {
+          if (!done) { done = true; resolve(null); }
+        }, 3000);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.access_token) {
+            clearTimeout(t);
+            if (!done) { done = true; subscription.unsubscribe(); }
+            resolve(session.access_token);
+          }
+        });
+      });
+      console.log('[KindredSouls Debug] After waiting, token:', !!token);
+    }
+
+    if (!token) {
+      console.warn('[KindredSouls Debug] No token found after waiting, showing AuthWall');
       setShowAuthWall(true);
       return;
     }
