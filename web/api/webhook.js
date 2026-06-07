@@ -84,16 +84,38 @@ export default async function handler(req, res) {
           updatePayload.email = email;
         }
 
-        const res2 = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
-          method: 'POST',
+        // First try to update existing record, then insert if not found
+        const patchRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+          method: 'PATCH',
           headers: {
             'apikey': serviceKey,
             'Authorization': `Bearer ${serviceKey}`,
             'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates',
           },
-          body: JSON.stringify(updatePayload),
+          body: JSON.stringify({ paid: true, subscription_id: session.subscription || session.id, updated_at: new Date().toISOString(), ...(email ? { email } : {}) }),
         });
+
+        const patchData = await patchRes.json();
+        if (!Array.isArray(patchData) || patchData.length === 0) {
+          // No existing record, insert new one
+          const res2 = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+            method: 'POST',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatePayload),
+          });
+          if (!res2.ok) {
+            const err = await res2.json();
+            console.error('[webhook] failed to insert profile:', err);
+          } else {
+            console.log('[webhook] inserted new profile with paid=true');
+          }
+        } else {
+          console.log('[webhook] updated existing profile to paid=true, count:', patchData.length);
+        }
 
         if (!res2.ok) {
           const err = await res2.json();

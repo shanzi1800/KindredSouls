@@ -328,7 +328,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       }
       const profiles = await res.json();
       console.log('[KindredSouls Debug] checkPaidStatus profiles:', profiles);
-      const paid = profiles?.[0]?.paid === true;
+      const paid = Array.isArray(profiles) && profiles.some(p => p.paid === true);
       if (paid) {
         console.log('[KindredSouls Debug] checkPaidStatus: user is PAID');
         setPaidStatus(true);
