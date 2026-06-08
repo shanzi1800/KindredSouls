@@ -41,8 +41,42 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       subscription: 'mo · Unlimited',
       secure: 'Secure Payment · Instant AI · Refundable',
     },
+    es: {
+      title: 'Desbloquea Tu Código Alma',
+      subtitle: 'La IA revela las verdades ocultas de su conexión',
+      features: [
+        '🌑 Análisis Profundo de Resonancia Alma',
+        '🔥 Mapa de Flujo de Energía Emocional',
+        '🌟 Trayectoria de los Próximos 6 Meses',
+        '💫 3 Consejos de Crecimiento Personalizados',
+      ],
+      bonus: '🎁 Bonus por Tiempo Limitado',
+      bonusDesc: 'Desbloquea Lectura de Tarot en Tiempo Real',
+      bonusDetail: 'Descubre qué piensan realmente de ti ahora',
+      priceLabel: 'una vez',
+      unlock: 'Desbloquear Ahora',
+      subscription: 'mes · Ilimitado',
+      secure: 'Pago Seguro · IA Instantánea · Reembolsable',
+    },
+    fr: {
+      title: 'Débloquez Votre Code Âme',
+      subtitle: "L'IA révèle les vérités cachées de votre connexion",
+      features: [
+        '🌑 Analyse Profonde de Résonance Âme',
+        '🔥 Carte du Flux d\'Énergie Émotionnelle',
+        '🌟 Trajectoire des 6 Prochains Mois',
+        '💫 3 Conseils de Croissance Personnalisés',
+      ],
+      bonus: '🎁 Bonus à Durée Limitée',
+      bonusDesc: 'Débloquez la Lecture de Tarot en Temps Réel',
+      bonusDetail: 'Découvrez ce qu\'ils pensent vraiment de vous maintenant',
+      priceLabel: 'une fois',
+      unlock: 'Débloquer Maintenant',
+      subscription: 'mois · Illimité',
+      secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
+    },
   };
-  const c = t[lang === 'zh' ? 'zh' : 'en'];
+  const c = t[lang] || t.en;
 
   return (
     <div style={{
