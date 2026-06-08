@@ -1,12 +1,12 @@
 {
   "outputDirectory": "web/dist",
+  "regions": ["sin1"],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/*.js": {
-      "runtime": "nodejs20.x",
-      "regions": ["hkg1"]
+      "runtime": "nodejs20.x"
     }
   }
 }
