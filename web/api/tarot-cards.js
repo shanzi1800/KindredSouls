@@ -380,4 +380,4 @@ const MAJOR_ARCANA = [
   }
 ];
 
-module.exports = { MAJOR_ARCANA };
+export { MAJOR_ARCANA };
