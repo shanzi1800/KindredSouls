@@ -76,7 +76,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
     },
   };
-  const c = t[lang] || t.en;
+  const c = t[lang as keyof typeof t] || t.en;
 
   return (
     <div style={{
@@ -133,7 +133,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
 
       {/* 价值点 */}
       <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-        {c.features.map((item, i) => (
+        {c.features.map((item: string, i: number) => (
           <div key={i} style={{
             fontSize: '12.5px',
             color: '#c8c8e0',
@@ -216,7 +216,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         justifyContent: 'center',
         gap: '12px',
       }}>
-        {c.secure.split(' · ').map((s, i) => (
+        {c.secure.split(' · ').map((s: string, i: number) => (
           <span key={i}>{s}</span>
         ))}
       </div>
