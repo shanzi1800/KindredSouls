@@ -16,6 +16,9 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         '🌟 未来6个月关系走向',
         '💫 专属提升建议（3条）',
       ],
+      bonus: '🎁 今日限时加赠',
+      bonusDesc: '额外解锁【实时塔罗牌阵】',
+      bonusDetail: '看透TA此时此刻对你的真实想法',
       priceLabel: '单次',
       unlock: '立即解锁',
       subscription: '月 · 无限次解读',
@@ -30,6 +33,9 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         '🌟 Next 6 Months Trajectory',
         '💫 3 Personalized Growth Tips',
       ],
+      bonus: '🎁 Limited Time Bonus',
+      bonusDesc: 'Unlock Real-Time Tarot Reading',
+      bonusDetail: 'See what they truly think about you now',
       priceLabel: 'one-time',
       unlock: 'Unlock Now',
       subscription: 'mo · Unlimited',
@@ -71,6 +77,25 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         marginBottom: '22px',
         lineHeight: 1.6,
       }}>{c.subtitle}</div>
+
+      {/* 限时加赠 */}
+      <div style={{
+        marginBottom: '16px',
+        padding: '10px 14px',
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(240,208,96,0.04) 100%)',
+        borderRadius: '10px',
+        border: '1px solid rgba(212,175,55,0.25)',
+      }}>
+        <div style={{ fontSize: '11px', color: '#D4AF37', fontWeight: 700, marginBottom: '4px' }}>
+          ✨ {c.bonus}
+        </div>
+        <div style={{ fontSize: '12.5px', color: '#e0e0f0', fontWeight: 600, marginBottom: '2px' }}>
+          {c.bonusDesc}
+        </div>
+        <div style={{ fontSize: '11px', color: '#8888aa', lineHeight: 1.5 }}>
+          {c.bonusDetail}
+        </div>
+      </div>
 
       {/* 价值点 */}
       <div style={{ textAlign: 'left', marginBottom: '20px' }}>
