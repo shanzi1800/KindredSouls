@@ -10,21 +10,19 @@ const PRICES = {
   monthly: 499,         // $4.99/month unlimited
 };
 
-// Verify Supabase JWT manually (no createClient needed)
-function verifySupabaseJWT(token) {
+// Verify Supabase JWT via official SDK (handles revocation/disabled users/etc)
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+async function verifySupabaseJWT(token) {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    // Decode payload
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    
-    // Basic validation
-    if (!payload.sub || !payload.exp) return null;
-    if (payload.exp * 1000 < Date.now()) return null;
-    if (!payload.aud || !payload.aud.includes('authenticated')) return null;
-    
-    return { id: payload.sub, email: payload.email };
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return null;
+    return { id: user.id, email: user.email };
   } catch {
     return null;
   }
@@ -41,7 +39,7 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7);
   
-  const user = verifySupabaseJWT(token);
+  const user = await verifySupabaseJWT(token);
   if (!user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }

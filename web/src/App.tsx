@@ -240,20 +240,15 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
 
-    // 🔑 先从 URL hash 手动提取 access_token（如果存在）
-    const hash = window.location.hash;
-    const tokenMatch = hash.match(/access_token=([^&]+)/);
-    if (tokenMatch) {
-      const tokenFromUrl = tokenMatch[1];
-      console.log('[KindredSouls Debug] 🔑 Extracted token from URL hash:', !!tokenFromUrl);
-      setCurrentAccessToken(tokenFromUrl);
-      sessionStorage.setItem('ks_access_token', tokenFromUrl);
-    }
+    // ── Auth 状态监听（唯一入口，含 OAuth 回调嗅探防呆）──
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // 核心防呆：判断当前 URL 是不是刚从 OAuth 回调回来的战场
+      const isOAuthCallback = window.location.hash.includes('access_token=') ||
+                                window.location.search.includes('code=');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(`[KindredSouls Debug] onAuthStateChange event: ${event}`, !!session, 'token:', !!session?.access_token, 'paidStatus:', paidStatus);
+      console.log(`[KindredSouls Auth] Event: ${event}, Session Exists: ${!!session}, IsCallback: ${isOAuthCallback}`);
 
-      // 🛑 核心拦截点：只有 token 明确存在时，才更新全局状态
+      // 🛑 Token 更新（统一入口）
       if (session?.access_token) {
         setCurrentAccessToken(session.access_token);
         sessionStorage.setItem('ks_access_token', session.access_token);
@@ -262,24 +257,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         sessionStorage.removeItem('ks_access_token');
       }
 
-      if (event === 'SIGNED_IN' && session?.access_token) {
-        // 🚀 只有 SIGNED_IN 阶段 Token 才 100% Ready
-        setSessionChecked(true);
-        setShowAuthWall(false);
-        checkPaidStatus(session.access_token);
-        // 自动触发 Checkout（如果标志位存在）
-        const pending = localStorage.getItem('ks_pending_checkout');
-        if (pending === 'true') {
-          localStorage.removeItem('ks_pending_checkout');
-          handlePurchaseWithToken(session.access_token, 'insight_once');
-        }
-        // Auto-save result to Supabase
-        triggerSaveResult(session.access_token, session.user.id);
-      } else if (event === 'INITIAL_SESSION') {
+      if (event === 'INITIAL_SESSION') {
         setSessionChecked(true);
         if (session?.access_token) {
-          // INITIAL_SESSION 有 token 时也可以执行高权限操作
+          // ✅ 有活跃 session → 直接放行
           setShowAuthWall(false);
+          setIsAuthParsing(false);
           checkPaidStatus(session.access_token);
           const pending = localStorage.getItem('ks_pending_checkout');
           if (pending === 'true') {
@@ -287,51 +270,55 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
             handlePurchaseWithToken(session.access_token, 'insight_once');
           }
           triggerSaveResult(session.access_token, session.user.id);
-        } else if (session?.user) {
-          // 有 user 但没 token → 静默等待 SIGNED_IN 触发
+        } else if (isOAuthCallback) {
+          // 🌟 绝杀卡点：发现是 OAuth 回调 → 锁死加载状态，绝对不显示登录墙！
+          setIsAuthParsing(true);
           setShowAuthWall(false);
-          console.log('[KindredSouls Debug] INITIAL_SESSION has user but no token, waiting for SIGNED_IN...');
+          console.log('[KindredSouls Auth] OAuth callback detected, locking loading state...');
+
+          // 保底补查：给 SDK 最后机会
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            console.log('[KindredSouls Auth] getSession backup also null, 500ms safety net...');
+            setTimeout(() => {
+              const stillNoSession = !supabase.auth.session();
+              if (stillNoSession) {
+                console.log('[KindredSouls Auth] Safety net expired, showing auth wall');
+                setShowAuthWall(true);
+              }
+              setIsAuthParsing(false);
+            }, 500);
+          } else {
+            console.log('[KindredSouls Auth] getSession backup found session!');
+            setIsAuthParsing(false);
+          }
         } else {
+          // ❌ 真正未登录的用户 → 显示登录墙
           setShowAuthWall(true);
+          setIsAuthParsing(false);
         }
+      } else if (event === 'SIGNED_IN') {
+        console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, releasing paywall');
+        setIsAuthParsing(false);
+        setSessionChecked(true);
+        setShowAuthWall(false);
+        checkPaidStatus(session!.access_token);
+        const pending = localStorage.getItem('ks_pending_checkout');
+        if (pending === 'true') {
+          localStorage.removeItem('ks_pending_checkout');
+          handlePurchaseWithToken(session!.access_token, 'insight_once');
+        }
+        triggerSaveResult(session!.access_token, session!.user.id);
       } else if (event === 'SIGNED_OUT') {
         setCurrentAccessToken(null);
         setShowAuthWall(true);
+        setIsAuthParsing(false);
         setPaidStatus(null);
         setInsight(null);
       }
     });
 
     return () => subscription.unsubscribe();
-
-    // 🔑 OAuth 回调时，URL hash 里带有 access_token，Supabase 还没来得及解析
-    // 直接从 URL hash 提取 token，不依赖 getSession()（它在 INITIAL_SESSION 时返回 null）
-    const hash2 = window.location.hash;
-    const match = hash2.match(/access_token=([^&]+)/);
-    // @ts-ignore: match narrowed by condition
-    if (match && match[1]) {
-// @ts-ignore: match[1] is non-null here
-
-      const token = decodeURIComponent(match[1]);
-      console.log('[KindredSouls Debug] Extracted access_token from URL hash, setting auth state');
-      setCurrentAccessToken(token);
-      sessionStorage.setItem('ks_access_token', token);
-      setSessionChecked(true);
-      setShowAuthWall(false);
-      checkPaidStatus(token);
-    } else {
-      // 非 OAuth 回调场景：检查现有 session
-      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-        if (currentSession?.access_token) {
-          console.log('[KindredSouls Debug] getSession found active session');
-          setCurrentAccessToken(currentSession.access_token);
-          sessionStorage.setItem('ks_access_token', currentSession.access_token);
-          setSessionChecked(true);
-          setShowAuthWall(false);
-          checkPaidStatus(currentSession.access_token);
-        }
-      });
-    }
   }, []);
   const checkPaidStatus = async (_token?: string) => {
     console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
