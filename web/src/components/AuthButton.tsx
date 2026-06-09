@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 
 // Deterministic tarot card from birthdays + today
-function useTarot(d1, d2) {
+function useTarot(d1: string, d2: string) {
   const today = new Date().toISOString().slice(0, 10);
   let hash = 0;
   const str = d1 + '|' + d2 + '|' + today;
@@ -73,7 +73,7 @@ const i18n: Record<string, Record<string, string>> = {
   },
 };
 
-export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' }: AuthButtonProps) {
+export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en', dob1, dob2 }: AuthButtonProps) {
   const resultData = (() => {
     try {
       const raw = localStorage.getItem('ks_result_data');
@@ -96,8 +96,8 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = window.location.origin + '/?redirectTo=/result';
-      localStorage.setItem('ks_redirect_after_login', window.location.origin + '/?redirectTo=/result');
+      const redirectUrl = window.location.origin + '/result';
+      localStorage.setItem('ks_redirect_after_login', redirectUrl);
       localStorage.setItem('ks_return_to_result', 'true');
       localStorage.setItem('ks_pending_checkout', 'true');
       console.log('[KindredSouls Debug] Google login redirectTo:', redirectUrl);

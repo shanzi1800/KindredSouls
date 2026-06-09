@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './i18n';
 
-// ── URL 拦截净化：修复 OAuth 回调后的双 # 问题 ──
-// 如果发现 /result#access_token=... 格式，强制洗成 /#/result#access_token=...
-if (typeof window !== 'undefined') {
-  const path = window.location.pathname;
-  const hash = window.location.hash;
-  if (path === '/result' && hash.includes('access_token')) {
-    console.log('[KindredSouls Debug] 🔧 URL fix: /result#access_token → /#/result#access_token');
-    window.location.replace(window.location.origin + '/' + hash);
-  }
-}
+
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
@@ -753,7 +744,12 @@ export default function App() {
     sessionStorage.removeItem('ks_access_token');
     window.location.reload();
   };
-  const [_page, _setPage] = useState<'input' | 'loading' | 'result'>('input');
+  const [_page, _setPage] = useState<'input' | 'loading' | 'result'>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/result') {
+      return 'result';
+    }
+    return 'input';
+  });
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [err, setErr] = useState('');
   const [userId, setUserId] = useState<string | null>(() => {
@@ -767,21 +763,21 @@ export default function App() {
 // ✅ Restore result page after OAuth login or payment success (not every refresh)
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
- const hash = window.location.hash;
  const search = window.location.search;
- const paymentSuccess = hash.includes('payment=success');
+ const paymentSuccess = searchParams.get('payment') === 'success';
  // Detect OAuth callback: Supabase returns with access_token or code in URL hash
- const isOAuthCallback = hash.includes('access_token=') || hash.includes('type=') || search.includes('code=');
+ const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
  const savedResult = localStorage.getItem('ks_result');
- console.log('[KindredSouls Debug] Restore check:', { isOAuthCallback, paymentSuccess, justLoggedIn, hash, hasResult: !!savedResult });
+ console.log('[KindredSouls Debug] Restore check:', { isOAuthCallback, paymentSuccess, justLoggedIn, pathname: window.location.pathname, hasResult: !!savedResult });
  // Restore result page if returning from OAuth or payment
  if ((isOAuthCallback || justLoggedIn || paymentSuccess) && savedResult) {
  try {
  const r = JSON.parse(savedResult);
  setResult(r);
  _setPage('result');
- window.location.hash = '#/result';
+ // Clean URL: remove OAuth hash + query params
+ window.history.replaceState({}, '', '/result');
  console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
  if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
  if (paymentSuccess) {
@@ -835,7 +831,7 @@ export default function App() {
         setResult(r);
         _setPage('result');
         // ✅ 更新 URL hash，确保 OAuth 回调后能跳回正确页面
-        window.location.hash = '#/result';
+        window.history.pushState({}, '', '/result');
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
 		sessionStorage.setItem('ks_just_logged_in', '1');
@@ -849,7 +845,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.location.hash = '#/'; }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} onLogout={handleLogout} />}
+      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} onLogout={handleLogout} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
