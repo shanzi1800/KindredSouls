@@ -571,7 +571,8 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger }: { result: C
     { key: 'iching', label: t('result.engines.iching'), e: engines.iching },
   ];
 
-
+  // ── Collapsible state for mobile ──
+  const [showDetails, setShowDetails] = useState(false);
 
   return (
     <div className="page result-page">
@@ -582,10 +583,53 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger }: { result: C
 
       <DimensionBars dims={dimensions} lang={lang} />
 
-      <div className="engine-cards">
-        {engineList.map(item => (
-          <EngineCard item={item} key={item.key} />
-        ))}
+      {/* ── Collapsible Details (Engine Cards + Aspects) ── */}
+      <div style={{ marginTop: '24px' }}>
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid rgba(26,31,75,0.15)',
+            background: showDetails ? 'rgba(26,31,75,0.05)' : '#fff',
+            color: '#1A1F4B',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{showDetails ? (lang==='zh'?'收起详情 ▲':'Hide Details ▲') : (lang==='zh'?'查看完整分析 ▼':'View Full Analysis ▼')}</span>
+        </button>
+        {showDetails && (
+          <div style={{ marginTop: '16px' }}>
+            <div className="engine-cards">
+              {engineList.map(item => (
+                <EngineCard item={item} key={item.key} />
+              ))}
+            </div>
+
+            {(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
+              <div className="aspects" style={{ marginTop: '20px' }}>
+                {result.luckyAspects.length > 0 && (
+                  <div className="aspect-group">
+                    <h4>🌟 {t('result.luckyAspects')}</h4>
+                    {result.luckyAspects.map((a, i) => <span className="tag tag-good" key={i}>{a}</span>)}
+                  </div>
+                )}
+                {result.challengingAspects.length > 0 && (
+                  <div className="aspect-group">
+                    <h4>⚡ {t('result.challengingAspects')}</h4>
+                    {result.challengingAspects.map((a, i) => <span className="tag tag-warn" key={i}>{a}</span>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <AIInsightBlock
@@ -600,24 +644,7 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger }: { result: C
         pendingInsightTrigger={pendingInsightTrigger}
       />
 
-      {(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
-        <div className="aspects">
-          {result.luckyAspects.length > 0 && (
-            <div className="aspect-group">
-              <h4>🌟 {t('result.luckyAspects')}</h4>
-              {result.luckyAspects.map((a, i) => <span className="tag tag-good" key={i}>{a}</span>)}
-            </div>
-          )}
-          {result.challengingAspects.length > 0 && (
-            <div className="aspect-group">
-              <h4>⚡ {t('result.challengingAspects')}</h4>
-              {result.challengingAspects.map((a, i) => <span className="tag tag-warn" key={i}>{a}</span>)}
-            </div>
-          )}
-        </div>
-      )}
-
-      <button className="btn btn-secondary" onClick={onBack}>{t('result.back')}</button>
+      <button className="btn btn-secondary" onClick={onBack} style={{ marginTop: '20px' }}>{t('result.back')}</button>
     </div>
   );
 }
