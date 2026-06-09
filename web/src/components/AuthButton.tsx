@@ -40,7 +40,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = window.location.origin;
+      const redirectUrl = window.location.origin + '/#/result'; // must include hash route
       localStorage.setItem('ks_redirect_after_login', window.location.origin + '/#/result');
       localStorage.setItem('ks_return_to_result', 'true');
       localStorage.setItem('ks_pending_checkout', 'true');
