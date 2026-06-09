@@ -17,7 +17,9 @@ function selectTarotCard(d1, d2, lang = 'en') {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
 
-  const combinedStr = str1 + str2 + dateStr;
+  // Sort birthdates to ensure same couple always gets same card (order-independent)
+  const sorted = [str1, str2].sort();
+  const combinedStr = sorted[0] + sorted[1] + dateStr;
   let hash = 0;
   for (let i = 0; i < combinedStr.length; i++) {
     hash = combinedStr.charCodeAt(i) + ((hash << 5) - hash);
@@ -42,7 +44,9 @@ function selectTarotCard(d1, d2, lang = 'en') {
 }
 
 function cacheKey(d1, d2, overall, dims, lang) {
-  return `${d1}|${d2}|${overall}|${JSON.stringify(dims)}|${lang}`;
+  // Sort birthdates to ensure same couple = same cache key
+  const sorted = [d1, d2].sort();
+  return `${sorted[0]}|${sorted[1]}|${overall}|${JSON.stringify(dims)}|${lang}`;
 }
 
 // ── Build prompt ──
