@@ -67,7 +67,7 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
 内容规则：
 1. 不要写三个模块（八字一段、星座一段、易经一段），要融成一段
 2. 三个体系的术语要打通——用同一个比喻把它们串起来
-3. 塔罗牌是洞察的终点，不是附录——用塔罗牌的意象收尾，落在具体的情感画面上
+3. 正文中禁止出现任何塔罗牌名字或意象，塔罗指引由系统在末尾统一添加
 4. 语言要有文采，但不掉书袋
 5. 永远给希望，永远不预测分手
 6. 100-180字，有料、有温度、有逻辑`
@@ -83,7 +83,7 @@ OUTPUT FORMAT RULES (must obey):
 Content rules:
 1. Do NOT write three separate sections. Weave into ONE flowing narrative.
 2. Find the ONE relationship truth, build one metaphor.
-3. The tarot card is the CLOSING insight, not a footnote.
+3. Do NOT mention any tarot card by name. The tarot guidance is appended by the system at the end—never write it yourself.
 4. Poetic but not pedantic.
 5. Always hopeful, NEVER predict breakup.
 6. 80-150 words.`;
@@ -107,14 +107,14 @@ Content rules:
 八字: ${bazi}
 易经: ${iching}
 
-请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。正文最后用塔罗牌的意象自然收尾。`
+请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
 Bazi: ${bazi}
 I Ching: ${iching}
 
-Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). Close with the tarot card's emotional image naturally.`;
+Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). `;
 
   return {
     systemPrompt,
