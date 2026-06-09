@@ -240,10 +240,21 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
 
+    // 🌟 关键：在 SDK 注册监听之前，先捕获 hash 状态存为标志位
+    // 因为 Supabase SDK 会在触发 onAuthStateChange 之前消费并清理 hash
+    const _hadOAuthHash = window.location.hash.includes('access_token=') || window.location.hash.includes('type=');
+    const _hadOAuthCode = window.location.search.includes('code=');
+    if (_hadOAuthHash || _hadOAuthCode) {
+      console.log('[KindredSouls Auth] Pre-captured OAuth callback indicator:', { _hadOAuthHash, _hadOAuthCode });
+      sessionStorage.setItem('ks_oauth_in_progress', '1');
+    }
+
     // ── Auth 状态监听（唯一入口，含 OAuth 回调嗅探防呆）──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // 核心防呆：判断当前 URL 是不是刚从 OAuth 回调回来的战场
-      const isOAuthCallback = window.location.hash.includes('access_token=') ||
+      // 核心防呆：判断当前是否处于 OAuth 回调中
+      // 优先用 sessionStorage 标志位（因为 SDK 可能已清理 hash）
+      const isOAuthCallback = sessionStorage.getItem('ks_oauth_in_progress') === '1' ||
+                                window.location.hash.includes('access_token=') ||
                                 window.location.search.includes('code=');
 
       console.log(`[KindredSouls Auth] Event: ${event}, Session Exists: ${!!session}, IsCallback: ${isOAuthCallback}`);
@@ -261,6 +272,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setSessionChecked(true);
         if (session?.access_token) {
           // ✅ 有活跃 session → 直接放行
+          sessionStorage.removeItem('ks_oauth_in_progress');
           setShowAuthWall(false);
           setIsAuthParsing(false);
           checkPaidStatus(session.access_token);
@@ -294,11 +306,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           }
         } else {
           // ❌ 真正未登录的用户 → 显示登录墙
+          sessionStorage.removeItem('ks_oauth_in_progress');
           setShowAuthWall(true);
           setIsAuthParsing(false);
         }
       } else if (event === 'SIGNED_IN') {
         console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, releasing paywall');
+        sessionStorage.removeItem('ks_oauth_in_progress');
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
