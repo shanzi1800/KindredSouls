@@ -152,7 +152,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        temperature: 0.7,
+        temperature: 0,  // deterministic: same input = same output
         max_tokens: 450,
       }),
     });
