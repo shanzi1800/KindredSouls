@@ -707,19 +707,23 @@ export default function App() {
 // ✅ Restore result page after OAuth login or payment success (not every refresh)
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
- const justLoggedIn = sessionStorage.getItem('ks_just_logged_in');
  const hash = window.location.hash;
+ const search = window.location.search;
  const paymentSuccess = hash.includes('payment=success');
- console.log('[KindredSouls Debug] Payment restore check:', { justLoggedIn, paymentSuccess, hash, hasResult: !!localStorage.getItem('ks_result') });
- if ((justLoggedIn || paymentSuccess) && (hash.includes('#/result') || paymentSuccess)) {
- const saved = localStorage.getItem('ks_result');
- if (saved) {
+ // Detect OAuth callback: Supabase returns with access_token or code in URL hash
+ const isOAuthCallback = hash.includes('access_token=') || hash.includes('type=') || search.includes('code=');
+ const justLoggedIn = localStorage.getItem('ks_just_logged_in');
+ const savedResult = localStorage.getItem('ks_result');
+ console.log('[KindredSouls Debug] Restore check:', { isOAuthCallback, paymentSuccess, justLoggedIn, hash, hasResult: !!savedResult });
+ // Restore result page if returning from OAuth or payment
+ if ((isOAuthCallback || justLoggedIn || paymentSuccess) && savedResult) {
  try {
- const r = JSON.parse(saved);
+ const r = JSON.parse(savedResult);
  setResult(r);
  _setPage('result');
+ window.location.hash = '#/result';
  console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
- // 🚀 If returning from payment success, auto-trigger AI insight after a short delay
+ if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
  if (paymentSuccess) {
  setTimeout(() => {
  console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
@@ -730,12 +734,8 @@ export default function App() {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
  localStorage.removeItem('ks_result');
  }
- } else {
- console.warn('[KindredSouls Debug] payment=success but no ks_result in localStorage');
- }
- if (justLoggedIn) sessionStorage.removeItem('ks_just_logged_in');
- } else if (!paymentSuccess && !justLoggedIn) {
- // Only clear ks_result if NOT returning from payment or login
+ } else if (!isOAuthCallback && !justLoggedIn && !paymentSuccess) {
+ // Only clear ks_result if NOT returning from OAuth/payment
  localStorage.removeItem('ks_result');
  }
  }, []);
@@ -779,6 +779,7 @@ export default function App() {
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
 		sessionStorage.setItem('ks_just_logged_in', '1');
+		localStorage.setItem('ks_just_logged_in', '1');
         console.log('[KindredSouls Debug] Saved result to localStorage');
       }
     }, 800);
