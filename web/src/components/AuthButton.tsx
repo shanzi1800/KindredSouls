@@ -1,9 +1,55 @@
 import { supabase } from '../lib/supabase';
 import { useState } from 'react';
 
+
+// Deterministic tarot card from birthdays + today
+function useTarot(d1, d2) {
+  const today = new Date().toISOString().slice(0, 10);
+  let hash = 0;
+  const str = d1 + '|' + d2 + '|' + today;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const cardId = Math.abs(hash) % 22;
+  const reversed = Math.floor(Math.abs(hash) / 22) % 2 === 1;
+  const cards = [
+    {name:'愚人', meaning:'踏上未知旅程的勇气，新可能的开启'},
+    {name:'魔术师', meaning:'创造显化，意志与行动力的觉醒'},
+    {name:'女祭司', meaning:'直觉与秘密，等待揭晓的答案'},
+    {name:'女皇', meaning:'丰盛与滋养，爱的温柔绽放'},
+    {name:'皇帝', meaning:'秩序与守护，稳稳托住的力量'},
+    {name:'教皇', meaning:'指引与信念，灵魂层面的契合'},
+    {name:'恋人', meaning:'抉择与诱惑，关系来到十字路口'},
+    {name:'战车', meaning:'意志与征服，携手跨越障碍'},
+    {name:'力量', meaning:'内在勇气，柔韧却不可战胜'},
+    {name:'隐士', meaning:'独处与内观，答案在内心深处'},
+    {name:'命运之轮', meaning:'转变与循环，命运正在转动'},
+    {name:'正义', meaning:'因果与平衡，宇宙在精准回应'},
+    {name:'倒吊人', meaning:'放下与臣服，另一种视角的智慧'},
+    {name:'死神', meaning:'结束与蜕变，旧篇章的翻页'},
+    {name:'节制', meaning:'平衡与调和，在两极间找到节奏'},
+    {name:'恶魔', meaning:'束缚与执念，看见阴影才能超越'},
+    {name:'塔', meaning:'突变的觉醒，打碎幻象见真相'},
+    {name:'星星', meaning:'希望与灵感，宇宙的疗愈之光'},
+    {name:'月亮', meaning:'幻象与恐惧，直面内心深处的不安'},
+    {name:'太阳', meaning:'喜悦与成功，生命力全面绽放'},
+    {name:'审判', meaning:'重生与宽恕，灵魂被唤醒'},
+    {name:'世界', meaning:'完成与圆满，达成内在的和谐'},
+  ];
+  const card = cards[cardId] || cards[0];
+  return {
+    name: card.name + (reversed ? '（逆位）' : ''),
+    meaning: card.meaning,
+    orientation: reversed ? '逆位' : '正位'
+  };
+}
+
 interface AuthButtonProps {
   onAuthSuccess?: () => void;
   lang?: string;
+  dob1?: string;
+  dob2?: string;
 }
 
 const i18n: Record<string, Record<string, string>> = {
@@ -28,6 +74,16 @@ const i18n: Record<string, Record<string, string>> = {
 };
 
 export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' }: AuthButtonProps) {
+  const resultData = (() => {
+    try {
+      const raw = localStorage.getItem('ks_result_data');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+  const d1 = dob1 || (resultData ? resultData.dob1 : '') || '';
+  const d2 = dob2 || (resultData ? resultData.dob2 : '') || '';
+  const tarot = (d1 && d2) ? useTarot(d1, d2) : null;
+
   const t = i18n[lang] || i18n.en;
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -93,6 +149,30 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
       margin: '20px auto',
       boxShadow: '0 8px 32px rgba(212,175,55,0.15), 0 0 60px rgba(212,175,55,0.08)',
     }}>
+      {tarot && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '14px 12px',
+          background: 'rgba(75,45,115,0.5)',
+          borderRadius: '12px',
+          border: '1px solid rgba(212,175,55,0.3)',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '1px', marginBottom: '6px', textTransform: 'uppercase' }}>
+            🔮 今日塔罗指引
+          </div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+            {tarot.name}
+          </div>
+          <div style={{ fontSize: '12px', color: '#ccc', lineHeight: 1.5 }}>
+            {tarot.meaning}
+          </div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '8px' }}>
+            {lang === 'zh' ? '→ 登录解锁完整AI情感解读' : '→ Sign in to unlock full AI insight'}
+          </div>
+        </div>
+      )}
+
       <div style={{ fontSize: '20px', fontWeight: 800, color: '#D4AF37', marginBottom: '6px', textShadow: '0 0 20px rgba(212,175,55,0.4)' }}>
         🔮 {t.signIn}
       </div>
