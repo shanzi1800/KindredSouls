@@ -96,8 +96,8 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en' 
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = window.location.origin + '/#/result'; // must include hash route
-      localStorage.setItem('ks_redirect_after_login', window.location.origin + '/#/result');
+      const redirectUrl = window.location.origin + '/?redirectTo=/result';
+      localStorage.setItem('ks_redirect_after_login', window.location.origin + '/?redirectTo=/result');
       localStorage.setItem('ks_return_to_result', 'true');
       localStorage.setItem('ks_pending_checkout', 'true');
       console.log('[KindredSouls Debug] Google login redirectTo:', redirectUrl);

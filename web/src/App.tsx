@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './i18n';
+
+// ── URL 拦截净化：修复 OAuth 回调后的双 # 问题 ──
+// 如果发现 /result#access_token=... 格式，强制洗成 /#/result#access_token=...
+if (typeof window !== 'undefined') {
+  const path = window.location.pathname;
+  const hash = window.location.hash;
+  if (path === '/result' && hash.includes('access_token')) {
+    console.log('[KindredSouls Debug] 🔧 URL fix: /result#access_token → /#/result#access_token');
+    window.location.replace(window.location.origin + '/' + hash);
+  }
+}
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
@@ -237,6 +248,16 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
+
+    // 🔑 先从 URL hash 手动提取 access_token（如果存在）
+    const hash = window.location.hash;
+    const tokenMatch = hash.match(/access_token=([^&]+)/);
+    if (tokenMatch) {
+      const tokenFromUrl = tokenMatch[1];
+      console.log('[KindredSouls Debug] 🔑 Extracted token from URL hash:', !!tokenFromUrl);
+      setCurrentAccessToken(tokenFromUrl);
+      sessionStorage.setItem('ks_access_token', tokenFromUrl);
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`[KindredSouls Debug] onAuthStateChange event: ${event}`, !!session, 'token:', !!session?.access_token, 'paidStatus:', paidStatus);
@@ -505,13 +526,33 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       setLoading(false);
     }
   };
-  // Loading state
+  // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
+  const urlHasToken = typeof window !== 'undefined' && window.location.hash.includes('access_token=');
   if (!sessionChecked || (paidStatus === null && !showAuthWall)) {
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
         <div className="insight-skeleton">
           <div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" />
         </div>
+        {urlHasToken && (
+          <p style={{ marginTop: '16px', fontSize: '14px', color: '#888' }}>
+            {lang === 'zh' ? '🔮 正在链接命运星盘，请稍候...' : '🔮 Connecting to your cosmic profile...'}
+          </p>
+        )}
+      </div>
+    );
+  }
+  // 🔒 如果 URL 有 token 但 session 未就绪，继续等待，不显示登录墙
+  if (urlHasToken && !currentAccessToken && !sessionChecked) {
+    console.log('[KindredSouls Debug] URL has token but session not ready, waiting...');
+    return (
+      <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
+        <div className="insight-skeleton">
+          <div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" />
+        </div>
+        <p style={{ marginTop: '16px', fontSize: '14px', color: '#888' }}>
+          {lang === 'zh' ? '🔒 正在安全验证您的账户...' : '🔒 Verifying your account...'}
+        </p>
       </div>
     );
   }
