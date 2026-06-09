@@ -292,17 +292,31 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 
     return () => subscription.unsubscribe();
 
-    // 🔑 立即检查当前 session（onAuthStateChange 只监听未来事件，不回放当前状态）
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (currentSession?.access_token) {
-        console.log('[KindredSouls Debug] getSession found active session, user already logged in');
-        setCurrentAccessToken(currentSession.access_token);
-        sessionStorage.setItem('ks_access_token', currentSession.access_token);
-        setSessionChecked(true);
-        setShowAuthWall(false);
-        checkPaidStatus(currentSession.access_token);
-      }
-    });
+    // 🔑 OAuth 回调时，URL hash 里带有 access_token，Supabase 还没来得及解析
+    // 直接从 URL hash 提取 token，不依赖 getSession()（它在 INITIAL_SESSION 时返回 null）
+    const hash = window.location.hash;
+    const match = hash.match(/access_token=([^&]+)/);
+    if (match && match[1]) {
+      const token = decodeURIComponent(match[1]);
+      console.log('[KindredSouls Debug] Extracted access_token from URL hash, setting auth state');
+      setCurrentAccessToken(token);
+      sessionStorage.setItem('ks_access_token', token);
+      setSessionChecked(true);
+      setShowAuthWall(false);
+      checkPaidStatus(token);
+    } else {
+      // 非 OAuth 回调场景：检查现有 session
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        if (currentSession?.access_token) {
+          console.log('[KindredSouls Debug] getSession found active session');
+          setCurrentAccessToken(currentSession.access_token);
+          sessionStorage.setItem('ks_access_token', currentSession.access_token);
+          setSessionChecked(true);
+          setShowAuthWall(false);
+          checkPaidStatus(currentSession.access_token);
+        }
+      });
+    }
   }, []);
   const checkPaidStatus = async (_token?: string) => {
     console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
