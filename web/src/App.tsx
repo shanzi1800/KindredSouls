@@ -291,6 +291,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     });
 
     return () => subscription.unsubscribe();
+
+    // 🔑 立即检查当前 session（onAuthStateChange 只监听未来事件，不回放当前状态）
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (currentSession?.access_token) {
+        console.log('[KindredSouls Debug] getSession found active session, user already logged in');
+        setCurrentAccessToken(currentSession.access_token);
+        sessionStorage.setItem('ks_access_token', currentSession.access_token);
+        setSessionChecked(true);
+        setShowAuthWall(false);
+        checkPaidStatus(currentSession.access_token);
+      }
+    });
   }, []);
   const checkPaidStatus = async (_token?: string) => {
     console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
