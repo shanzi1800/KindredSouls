@@ -44,9 +44,10 @@ function selectTarotCard(d1, d2, lang = 'en') {
 }
 
 function cacheKey(d1, d2, overall, dims, lang) {
-  // Sort birthdates to ensure same couple = same cache key
+  // Sort birthdates to ensure same couple = same cache key (order-independent)
+  // v2: cache key version bump — force invalidate old order-dependent cache entries
   const sorted = [d1, d2].sort();
-  return `${sorted[0]}|${sorted[1]}|${overall}|${JSON.stringify(dims)}|${lang}`;
+  return `v2:${sorted[0]}|${sorted[1]}|${overall}|${JSON.stringify(dims)}|${lang}`;
 }
 
 // ── Build prompt ──
