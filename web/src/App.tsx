@@ -315,9 +315,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 
     // 🔑 OAuth 回调时，URL hash 里带有 access_token，Supabase 还没来得及解析
     // 直接从 URL hash 提取 token，不依赖 getSession()（它在 INITIAL_SESSION 时返回 null）
-    const hash = window.location.hash;
-    const match = hash.match(/access_token=([^&]+)/);
+    const hash2 = window.location.hash;
+    const match = hash2.match(/access_token=([^&]+)/);
+    // @ts-ignore: match narrowed by condition
     if (match && match[1]) {
+// @ts-ignore: match[1] is non-null here
+
       const token = decodeURIComponent(match[1]);
       console.log('[KindredSouls Debug] Extracted access_token from URL hash, setting auth state');
       setCurrentAccessToken(token);
@@ -408,16 +411,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   };
 
   // ── handlePurchase 核心逻辑（接收明确的 token 参数）──
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Clear all local state and reload
-    localStorage.removeItem('ks_result_data');
-    localStorage.removeItem('ks_return_to_result');
-    localStorage.removeItem('ks_pending_checkout');
-    sessionStorage.removeItem('ks_access_token');
-    window.location.reload();
-  };
 
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     setLoading(true);
