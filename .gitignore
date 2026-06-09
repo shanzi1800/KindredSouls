@@ -36,3 +36,6 @@ web/public/romantic_bg.mp4
 web/public/rose-petals.mp4
 web/public/test_background.mp4
 .env.production
+web/api/webhook.fixed.js
+web/api/webhook.js.bak
+web/src/App.tsx.bak
