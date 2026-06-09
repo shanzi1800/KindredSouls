@@ -223,6 +223,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   const [loading, setLoading] = useState(false);
   const [showAuthWall, setShowAuthWall] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [isAuthParsing, setIsAuthParsing] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
@@ -292,10 +293,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           const { data } = await supabase.auth.getSession();
           if (!data.session) {
             console.log('[KindredSouls Auth] getSession backup also null, 500ms safety net...');
-            setTimeout(() => {
-              const stillNoSession = !supabase.auth.session();
-              if (stillNoSession) {
+            setTimeout(async () => {
+              const { data: { session: snapSession } } = await supabase.auth.getSession();
+              if (!snapSession) {
                 console.log('[KindredSouls Auth] Safety net expired, showing auth wall');
+                sessionStorage.removeItem('ks_oauth_in_progress');
                 setShowAuthWall(true);
               }
               setIsAuthParsing(false);
@@ -512,8 +514,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     }
   };
   // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
-  const urlHasToken = typeof window !== 'undefined' && window.location.hash.includes('access_token=');
-  if (!sessionChecked || (paidStatus === null && !showAuthWall)) {
+  const urlHasToken = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
+  if (!sessionChecked || (paidStatus === null && !showAuthWall) || isAuthParsing) {
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
         <div className="insight-skeleton">
@@ -765,7 +767,7 @@ export default function App() {
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
  const search = window.location.search;
- const paymentSuccess = searchParams.get('payment') === 'success';
+ const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
  // Detect OAuth callback: Supabase returns with access_token or code in URL hash
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
