@@ -59,8 +59,6 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
 - 禁止使用 **粗体**、*斜体* 等 Markdown 符号
 - 禁止使用 ---、*** 等分隔线
 - 用自然换行分段，不要用任何格式符号
-- 塔罗牌信息必须写在正文最后，格式：【今日塔罗指引】牌名（正位/逆位）：一句话解读
-
 内容规则：
 1. 不要写三个模块（八字一段、星座一段、易经一段），要融成一段
 2. 三个体系的术语要打通——用同一个比喻把它们串起来
@@ -77,8 +75,6 @@ OUTPUT FORMAT RULES (must obey):
 - NO **bold**, NO *italic*, NO Markdown symbols
 - NO --- or *** dividers
 - Use natural line breaks only, no formatting symbols
-- Tarot card info MUST appear at the end, format: [Tarot Guidance] Card Name (Upright/Reversed): one-sentence insight
-
 Content rules:
 1. Do NOT write three separate sections. Weave into ONE flowing narrative.
 2. Find the ONE relationship truth, build one metaphor.
@@ -92,8 +88,12 @@ Content rules:
     selectTarotCard(d1, d2, lang);
 
   const tarotLine = isZh
-    ? `\\n\\n【今日塔罗指引】${cardEmoji} ${cardName}（${orientation}）：${cardMeaning}`
-    : `\\n\\n[Tarot Guidance] ${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`;
+    ? `
+
+【今日塔罗指引】${cardEmoji} ${cardName}（${orientation}）：${cardMeaning}`
+    : `
+
+[Tarot Guidance] ${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`;
 
   const userPrompt = isZh
     ? `你的生日: ${d1}，TA的生日: ${d2}
@@ -102,14 +102,14 @@ Content rules:
 八字: ${bazi}
 易经: ${iching}
 
-请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。最后必须在正文末尾另起一行，写上【今日塔罗指引】并包含牌名、正逆位和牌意解读。`
+请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。正文最后用塔罗牌的意象自然收尾。`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
 Bazi: ${bazi}
 I Ching: ${iching}
 
-Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). You MUST end with a [Tarot Guidance] line containing the card name, orientation, and meaning.`;
+Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). Close with the tarot card's emotional image naturally.`;
 
   return {
     systemPrompt,
