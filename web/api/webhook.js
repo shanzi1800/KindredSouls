@@ -5,25 +5,39 @@ export const config = { api: { bodyParser: false } };
 
 import crypto from 'crypto';
 
-function verifyStripeSignature(rawBody, signature, secret) {
+/**
+ * Verify Stripe webhook signature (correct implementation)
+ * Stripe uses: HMAC_SHA256(webhook_secret, timestamp + "." + raw_body)
+ * Signature header format: t=timestamp,v1=signature1,v0=signature0
+ */
+function verifyStripeSignature(rawBody, stripeSignature, webhookSecret) {
   try {
-    const elements = Object.fromEntries(
-      signature.split(',').map(part => {
-        const [k, v] = part.split('=');
-        return [k, v];
-      })
-    );
-    const timestamp = elements['t'];
-    const expectedSig = elements['v1'];
-    
+    const elements = stripeSignature.split(',').map(part => {
+      const [k, v] = part.split('=');
+      return [k, v];
+    });
+    const timestamp = elements.find(([k]) => k === 't')?.[1];
+    const v1Sig = elements.find(([k]) => k === 'v1')?.[1];
+
+    if (!timestamp || !v1Sig) {
+      console.error('[webhook] Missing t or v1 in signature header');
+      return false;
+    }
+
+    // Stripe's signature: HMAC_SHA256(webhook_secret, timestamp + "." + raw_body)
     const payload = `${timestamp}.${rawBody}`;
-    const computed = crypto
-      .createHmac('sha256', secret)
+    const computedSig = crypto
+      .createHmac('sha256', webhookSecret)
       .update(payload, 'utf8')
       .digest('hex');
-    
-    return computed === expectedSig;
-  } catch {
+
+    // Use timing-safe comparison
+    const sigBuffer = Buffer.from(computedSig, 'hex');
+    const v1Buffer = Buffer.from(v1Sig, 'hex');
+    if (sigBuffer.length !== v1Buffer.length) return false;
+    return crypto.timingSafeEqual(sigBuffer, v1Buffer);
+  } catch (err) {
+    console.error('[webhook] Signature verification error:', err.message);
     return false;
   }
 }
@@ -39,19 +53,19 @@ export default async function handler(req, res) {
     chunks.push(chunk);
   }
   const rawBody = Buffer.concat(chunks).toString();
-  
+
   // Verify Stripe signature
   const signature = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
   if (webhookSecret && signature) {
     if (!verifyStripeSignature(rawBody, signature, webhookSecret)) {
       console.error('[webhook] Invalid Stripe signature');
       return res.status(400).json({ error: 'Invalid signature' });
     }
-    console.log('[webhook] Signature verified ✅');
+    console.log('[webhook] ✅ Signature verified');
   } else if (!webhookSecret) {
-    console.warn('[webhook] STRIPE_WEBHOOK_SECRET not set, skipping signature verification');
+    console.warn('[webhook] STRIPE_WEBHOOK_SECRET not set, SKIPPING verification (dev only)');
   }
 
   let event;
@@ -66,70 +80,67 @@ export default async function handler(req, res) {
     const userId = session.metadata?.supabase_user_id;
     const email = session.customer_details?.email || null;
 
-    console.log('[webhook] payment success for user:', userId, 'email:', email);
+    console.log('[webhook] ✅ payment success for user:', userId, 'email:', email);
 
     if (userId) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
-        const updatePayload = {
-          user_id: userId,
-          paid: true,
-          subscription_id: session.subscription || session.id,
-          updated_at: new Date().toISOString(),
-        };
-        
-        if (email) {
-          updatePayload.email = email;
-        }
-
-        // First try to update existing record, then insert if not found
-        const patchRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ paid: true, subscription_id: session.subscription || session.id, updated_at: new Date().toISOString(), ...(email ? { email } : {}) }),
-        });
+        const patchRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify({
+              paid: true,
+              stripe_customer_id: session.customer || null,
+              subscription_id: session.subscription || session.id,
+              updated_at: new Date().toISOString(),
+              ...(email ? { email } : {}),
+            }),
+          }
+        );
 
         const patchData = await patchRes.json();
+
         if (!Array.isArray(patchData) || patchData.length === 0) {
-          // No existing record, insert new one
-          const res2 = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+          // No existing record, INSERT new one
+          const insertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
             method: 'POST',
             headers: {
               'apikey': serviceKey,
               'Authorization': `Bearer ${serviceKey}`,
               'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
             },
-            body: JSON.stringify(updatePayload),
+            body: JSON.stringify({
+              user_id: userId,
+              paid: true,
+              stripe_customer_id: session.customer || null,
+              subscription_id: session.subscription || session.id,
+              email: email || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
           });
-          if (!res2.ok) {
-            const err = await res2.json();
-            console.error('[webhook] failed to insert profile:', err);
-          } else {
-            console.log('[webhook] inserted new profile with paid=true');
-          }
-        } else {
-          console.log('[webhook] updated existing profile to paid=true, count:', patchData.length);
-        }
 
-        if (!res2.ok) {
-          const err = await res2.json();
-          const isEmailColError = err?.details?.includes('email') || err?.message?.includes('email');
-          if (!isEmailColError) {
-            console.error('[webhook] failed to update profile:', err);
+          if (!insertRes.ok) {
+            const err = await insertRes.json();
+            console.error('[webhook] ❌ Failed to INSERT profile:', err);
           } else {
-            console.warn('[webhook] email column missing in user_profiles, skipping email write');
+            console.log('[webhook] ✅ Inserted new profile with paid=true');
           }
         } else {
-          console.log('[webhook] user profile updated with paid=true and email:', email);
+          console.log('[webhook] ✅ Updated existing profile to paid=true, rows:', patchData.length);
         }
       } catch (err) {
-        console.error('[webhook] error updating user:', err);
+        console.error('[webhook] ❌ Error updating user:', err.message);
       }
     }
   }
