@@ -6,7 +6,8 @@ import { useState } from 'react';
 function useTarot(d1: string, d2: string) {
   const today = new Date().toISOString().slice(0, 10);
   let hash = 0;
-  const str = d1 + '|' + d2 + '|' + today;
+  const sorted = [d1, d2].sort();
+  const str = sorted[0] + '|' + sorted[1] + '|' + today;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
     hash |= 0;

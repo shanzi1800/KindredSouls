@@ -241,16 +241,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   useEffect(() => {
     console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
 
-    // 🌟 关键：在 SDK 注册监听之前，先捕获 hash 状态存为标志位
-    // 因为 Supabase SDK 会在触发 onAuthStateChange 之前消费并清理 hash
-    const _hadOAuthHash = window.location.hash.includes('access_token=') || window.location.hash.includes('type=');
-    const _hadOAuthCode = window.location.search.includes('code=');
-    if (_hadOAuthHash || _hadOAuthCode) {
-      console.log('[KindredSouls Auth] Pre-captured OAuth callback indicator:', { _hadOAuthHash, _hadOAuthCode });
-      sessionStorage.setItem('ks_oauth_in_progress', '1');
-    }
-
-    // ── Auth 状态监听（唯一入口，含 OAuth 回调嗅探防呆）──
+    // ── Auth 状态监听（唯一入口）──
+    // 注意：OAuth pre-capture 已移到 supabase.ts（模块加载时，createClient 之前）
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       // 核心防呆：判断当前是否处于 OAuth 回调中
       // 优先用 sessionStorage 标志位（因为 SDK 可能已清理 hash）
