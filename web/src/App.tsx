@@ -770,27 +770,28 @@ export default function App() {
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
  const search = window.location.search;
- const paymentSuccess = window.location.hash.includes('payment=success');
+ const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
  // Detect OAuth callback: Supabase returns with access_token or code in URL hash
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
- const savedResult = localStorage.getItem('ks_result');
+ const savedResult = localStorage.getItem('ks_result') || sessionStorage.getItem('ks_result');
  console.log('[KindredSouls Debug] Restore check:', { isOAuthCallback, paymentSuccess, justLoggedIn, pathname: window.location.pathname, hasResult: !!savedResult });
  // Restore result page if returning from OAuth or payment
+ if (paymentSuccess) {
+ // Stripe payment callback — set flag for auto-trigger, then clean URL
+ sessionStorage.setItem('ks_payment_success', '1');
+ console.log('[KindredSouls Debug] ✅ Payment success detected, set ks_payment_success flag');
+ // Clean payment param from URL without full reload
+ const cleanUrl = window.location.pathname;
+ window.history.replaceState({}, '', cleanUrl);
+ }
  if ((isOAuthCallback || justLoggedIn || paymentSuccess) && savedResult) {
  try {
  const r = JSON.parse(savedResult);
  setResult(r);
  _setPage('result');
- // Clean URL: remove OAuth hash + query params
-    // ⚠️ 暂不清空 URL！OAuth 回调期间必须保留 hash 让 Supabase SDK 消费
  console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
  if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
- if (paymentSuccess) {
- sessionStorage.setItem('ks_payment_success', '1');
- window.location.href = '/result';
- return;
- }
  } catch (e) {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
  localStorage.removeItem('ks_result');
@@ -839,6 +840,7 @@ export default function App() {
         window.history.pushState({}, '', '/result');
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
+ttsessionStorage.setItem('ks_result', JSON.stringify(r));
 		sessionStorage.setItem('ks_just_logged_in', '1');
 		localStorage.setItem('ks_just_logged_in', '1');
         console.log('[KindredSouls Debug] Saved result to localStorage');
