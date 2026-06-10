@@ -304,15 +304,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.3) !important;
 }
 
-.error-tip {
-  color: rgba(239, 68, 68, 0.9);
-  font-size: 0.85rem;
-  margin-top: 6px;
-  text-align: center;
-  letter-spacing: 1px;
-  font-family: 'KaiTi', 'STKaiti', serif;
-  animation: fadeIn 0.4s ease-out;
-}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }

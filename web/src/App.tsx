@@ -36,8 +36,8 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
     const p = [...parts];
     let cleaned = val.replace(/\D/g, '');
     if (idx === 0) { p[0] = cleaned.slice(0, 4); }
-    else if (idx === 1) { p[1] = cleaned.slice(0, 2); if (p[1].length === 2 && parseInt(p[1]) > 12) p[1] = '12'; }
-    else { p[2] = cleaned.slice(0, 2); if (p[2].length === 2 && parseInt(p[2]) > 31) p[2] = '31'; }
+    else if (idx === 1) { p[1] = cleaned.slice(0, 2); }
+    else { p[2] = cleaned.slice(0, 2); }
     const newVal = p.join('-');
     onChange(newVal);
   };
@@ -104,11 +104,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   const submit = () => {
     setDateError('');
-    if (!d1 || !d2) { setDateError(t('common.errorIncomplete')); shake(!d1 ? 1 : 2); return; }
+    if (!d1 || !d2) { shake(!d1 ? 1 : 2); return; }
     const err1 = validateDate(d1);
-    if (err1) { setDateError(err1); shake(1); return; }
+    if (err1) { shake(1); return; }
     const err2 = validateDate(d2);
-    if (err2) { setDateError(err2); shake(2); return; }
+    if (err2) { shake(2); return; }
     onSubmit(d1, d2);
   };
 
@@ -139,7 +139,6 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
-        {dateError && <div className="error-tip">{dateError}</div>}
       </div>
     </div>
   );
