@@ -770,7 +770,7 @@ export default function App() {
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
  const search = window.location.search;
- const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
+ const paymentSuccess = window.location.hash.includes('payment=success');
  // Detect OAuth callback: Supabase returns with access_token or code in URL hash
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
