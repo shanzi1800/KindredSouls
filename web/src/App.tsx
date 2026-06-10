@@ -303,11 +303,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           setShowAuthWall(false);
           setIsAuthParsing(false);
           checkPaidStatus(session.access_token);
-          const pending = localStorage.getItem('ks_pending_checkout');
-          if (pending === 'true') {
-            localStorage.removeItem('ks_pending_checkout');
-            handlePurchaseWithToken(session.access_token, 'insight_once');
-          }
           triggerSaveResult(session.access_token, session.user.id);
         } else if (isOAuthCallback) {
           // 🌟 绝杀卡点：发现是 OAuth 回调 → 锁死加载状态，绝对不显示登录墙！
@@ -347,11 +342,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setSessionChecked(true);
         setShowAuthWall(false);
         checkPaidStatus(session!.access_token);
-        const pending = localStorage.getItem('ks_pending_checkout');
-        if (pending === 'true') {
-          localStorage.removeItem('ks_pending_checkout');
-          handlePurchaseWithToken(session!.access_token, 'insight_once');
-        }
         triggerSaveResult(session!.access_token, session!.user.id);
       } else if (event === 'SIGNED_OUT') {
         setCurrentAccessToken(null);
