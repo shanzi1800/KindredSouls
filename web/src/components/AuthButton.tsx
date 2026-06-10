@@ -126,7 +126,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: window.location.origin + '/result',
         },
       });
       if (error) throw error;
