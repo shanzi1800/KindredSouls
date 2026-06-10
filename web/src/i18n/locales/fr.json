@@ -32,10 +32,10 @@
     "settings": "Paramètres"
   },
   "common": {
-    "errorIncomplete": "Both anchors needed to cast your stars",
-    "errorFormat": "Veuillez utiliser YYYY-MM-DD pour caler votre fréquence",
-    "errorInvalidDate": "Cette date dépasse le voile temporel — veuillez corriger",
-    "errorFutureDate": "Votre date de naissance ne peut pas être écrite dans le futur",
-    "errorTooOld": "Même les étoiles ont leurs limites — veuillez vérifier l'année"
+    "errorIncomplete": "🔮 Deux étoiles pour ancrer le destin",
+    "errorFormat": "✨ Utilisez YYYY-MM-DD pour caler votre fréquence cosmique",
+    "errorInvalidDate": "🔮 Débordement de l'ancre temporelle — veuillez corriger",
+    "errorFutureDate": "⏳ La roue du destin n'est pas encore là — dates futures invalides",
+    "errorTooOld": "🌟 Même les étoiles ont des limites — veuillez vérifier l'année"
   }
 }

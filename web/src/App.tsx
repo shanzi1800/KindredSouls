@@ -83,8 +83,8 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const d2Ref = React.useRef<HTMLDivElement>(null);
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
   const shake = (which: 1 | 2) => {
-    if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 500); }
-    else { setShaking2(true); setTimeout(() => setShaking2(false), 500); }
+    if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 300); }
+    else { setShaking2(true); setTimeout(() => setShaking2(false), 300); }
   };
 
   const validateDate = (val: string): string => {
@@ -139,7 +139,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
-        {dateError && <p className="date-error">{dateError}</p>}
+        {dateError && <div className="error-tip">{dateError}</div>}
       </div>
     </div>
   );

@@ -32,10 +32,10 @@
     "settings": "设置"
   },
   "common": {
-    "errorIncomplete": "需要两颗星辰锚定命运",
-    "errorFormat": "请用 YYYY-MM-DD 格式校准你的时空频率",
-    "errorInvalidDate": "时空锚点溢出，请修正您的尘世生日",
-    "errorFutureDate": "生日尚未写入星辰，请勿填入未来",
-    "errorTooOld": "星辰亦有寿数，请核查年份"
+    "errorIncomplete": "🔮 需要两颗星辰锚定命运",
+    "errorFormat": "✨ 请用 YYYY-MM-DD 格式校准你的时空频率",
+    "errorInvalidDate": "🔮 时空锚点溢出，请修正您的尘世生日",
+    "errorFutureDate": "⏳ 命运之轮未到此处，请勿输入未来节点",
+    "errorTooOld": "🌟 星辰亦有寿数，请核查年份"
   }
 }

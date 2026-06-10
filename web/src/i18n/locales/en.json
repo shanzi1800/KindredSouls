@@ -32,10 +32,10 @@
     "settings": "Settings"
   },
   "common": {
-    "errorIncomplete": "Both anchors are needed to cast your stars",
-    "errorFormat": "Please use YYYY-MM-DD to tune your frequency",
-    "errorInvalidDate": "This date lies beyond the temporal veil — please correct",
-    "errorFutureDate": "Your birthday cannot be written in the future",
-    "errorTooOld": "Even the stars have their limits — please recheck the year"
+    "errorIncomplete": "🔮 Two stars needed to anchor fate",
+    "errorFormat": "✨ Use YYYY-MM-DD to calibrate your cosmic frequency",
+    "errorInvalidDate": "🔮 Temporal anchor overflow — please correct your earthly birth",
+    "errorFutureDate": "⏳ Destiny wheel not yet here — future dates invalid",
+    "errorTooOld": "🌟 Even stars have limits — please verify the year"
   }
 }
