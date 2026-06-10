@@ -640,7 +640,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, onBack, lang, pendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean; onLogout?: () => void }) {
+function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean; onLogout?: () => void }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
 
@@ -652,6 +652,15 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger, onLogout }: {
 
   // ── Collapsible state for mobile ──
   const [showDetails, setShowDetails] = useState(false);
+
+  // Auto-trigger AI insight after Stripe payment success
+  useEffect(() => {
+    if (sessionStorage.getItem('ks_payment_success') === '1') {
+      sessionStorage.removeItem('ks_payment_success');
+      console.log('[KindredSouls Debug] Auto-triggering AI insight after payment success');
+      setPendingInsightTrigger(true);
+    }
+  }, []);
 
   return (
     <div className="page result-page">
@@ -778,10 +787,9 @@ export default function App() {
  console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
  if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
  if (paymentSuccess) {
- setTimeout(() => {
- console.log('[KindredSouls Debug] Auto-triggering AI insight after payment');
- setPendingInsightTrigger(true);
- }, 800);
+ sessionStorage.setItem('ks_payment_success', '1');
+ window.location.href = '/result';
+ return;
  }
  } catch (e) {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
