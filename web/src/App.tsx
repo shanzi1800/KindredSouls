@@ -302,7 +302,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           sessionStorage.removeItem('ks_oauth_in_progress');
           setShowAuthWall(false);
           setIsAuthParsing(false);
-          checkPaidStatus(session.access_token);
+          // 🛡️ 防呆：刚支付成功回来时跳过 checkPaidStatus，直接标记已付费
+          if (sessionStorage.getItem('ks_payment_success') === '1') {
+            setPaidStatus(true);
+            setShowPaywall(false);
+          } else {
+            checkPaidStatus(session.access_token);
+          }
           triggerSaveResult(session.access_token, session.user.id);
         } else if (isOAuthCallback) {
           // 🌟 绝杀卡点：发现是 OAuth 回调 → 锁死加载状态，绝对不显示登录墙！
@@ -562,6 +568,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     );
   }
   // Auth wall — not logged in
+  // 🎯 明牌流：先弹价格，用户愿意付费才登录
+  const [showPricePreview, setShowPricePreview] = useState(false);
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
@@ -582,7 +590,44 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '20px 0',
           }}>
-            <AuthWallCard lang={lang} />
+            {!showPricePreview ? (
+              <div style={{ width: '94%', maxWidth: '380px', textAlign: 'center' }}>
+                <div style={{ fontSize: '42px', marginBottom: '12px', filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.6))' }}>🔮</div>
+                <div style={{ fontSize: '19px', fontWeight: 800, color: '#D4AF37', marginBottom: '8px' }}>
+                  {lang==='zh'?'解锁你们的灵魂密码':lang==='es'?'Desbloquea Tu Código Alma':'Unlock Your Soul Code'}
+                </div>
+                <div style={{ fontSize: '13px', color: '#a0a0c0', marginBottom: '6px', lineHeight: 1.6 }}>
+                  {lang==='zh'?'AI 将为你揭示这段关系中被隐藏的真相':'AI reveals the hidden truths of your connection'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#8888aa', marginBottom: '20px' }}>
+                  🌑 灵魂共鸣分析 &nbsp;·&nbsp; 🔥 情感能量图谱 &nbsp;·&nbsp; 🌟 未来走向
+                </div>
+                <div style={{ marginBottom: '18px' }}>
+                  <span style={{ fontSize: '28px', fontWeight: 900, color: '#fff' }}>$4.99</span>
+                  <span style={{ fontSize: '12px', color: '#888', marginLeft: '4px' }}>{lang==='zh'?'单次':'one-time'}</span>
+                </div>
+                <button
+                  onClick={() => setShowPricePreview(true)}
+                  style={{
+                    width: '100%', padding: '14px 20px', borderRadius: '12px', border: 'none',
+                    background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 50%, #D4AF37 100%)',
+                    color: '#1a1a2e', fontSize: '15px', fontWeight: 800, cursor: 'pointer',
+                    boxShadow: '0 4px 20px rgba(212,175,55,0.35)',
+                  }}
+                >
+                  ✨ {lang==='zh'?'立即解锁':'Unlock Now'}
+                </button>
+                <div style={{ fontSize: '10px', color: '#666', marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                  <span>{lang==='zh'?'安全支付':'Secure'}</span>
+                  <span>·</span>
+                  <span>{lang==='zh'?'即时生成':'Instant'}</span>
+                  <span>·</span>
+                  <span>{lang==='zh'?'支持退款':'Refundable'}</span>
+                </div>
+              </div>
+            ) : (
+              <AuthWallCard lang={lang} />
+            )}
           </div>
         </div>
       </div>
