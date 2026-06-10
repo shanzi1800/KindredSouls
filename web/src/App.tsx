@@ -640,7 +640,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean; onLogout?: () => void }) {
+function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
 
@@ -658,7 +658,7 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, onLog
     if (sessionStorage.getItem('ks_payment_success') === '1') {
       sessionStorage.removeItem('ks_payment_success');
       console.log('[KindredSouls Debug] Auto-triggering AI insight after payment success');
-      setPendingInsightTrigger(true);
+      setPendingInsightTrigger && setPendingInsightTrigger(true);
     }
   }, []);
 
@@ -850,7 +850,7 @@ export default function App() {
     <div className="app">
       { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} onLogout={handleLogout} />}
+      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
       {err && <p className="error-msg">{err}</p>}
     </div>
   );
