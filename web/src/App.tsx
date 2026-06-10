@@ -13,7 +13,12 @@ import { supabase } from './lib/supabase';
 import './App.css';
 
 /* ── Manual Date Input: configurable part order, auto-advance ── */
-function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus }: { value: string; onChange: (v: string) => void; onLastFilled?: () => void; firstFieldRef?: React.RefObject<HTMLInputElement | null>; autoFocus?: boolean }) {
+function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, containerRef, shake, hasError }: {
+  value: string; onChange: (v: string) => void; onLastFilled?: () => void;
+  firstFieldRef?: React.RefObject<HTMLInputElement | null>; autoFocus?: boolean;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
+  shake?: boolean; hasError?: boolean;
+}) {
   const { i18n } = useTranslation();
   const lang = i18n.language || '';
   // 宽松匹配：任何 zh 开头（zh/zh-CN/zh-TW）都用年-月-日顺序
@@ -51,11 +56,11 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus }: 
   };
 
   return (
-    <div className="date-manual">
+    <div ref={containerRef} className={`date-manual${shake ? ' shake' : ''}${hasError ? ' date-error-border' : ''}`}>
       {partDefs.map((def, pi) => (
         <React.Fragment key={def.key}>
           {pi > 0 && <span className="date-slash">/</span>}
-          <input ref={refs[pi]} className="date-part" type="text" inputMode="numeric"
+          <input ref={refs[pi]} className={`date-part${hasError ? ' date-part-error' : ''}`} type="text" inputMode="numeric"
             maxLength={def.max} placeholder={def.ph} value={parts[def.key]}
             onChange={e => handleFieldChange(pi, e.target.value)}
             autoFocus={autoFocus && pi === 0} />
@@ -71,8 +76,16 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const [d2, setD2] = useState('');
   const [d2Key, setD2Key] = React.useState(0);
   const [dateError, setDateError] = useState('');
+  const [shaking1, setShaking1] = useState(false);
+  const [shaking2, setShaking2] = useState(false);
   const d2FirstRef = React.useRef<HTMLInputElement>(null);
+  const d1Ref = React.useRef<HTMLDivElement>(null);
+  const d2Ref = React.useRef<HTMLDivElement>(null);
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
+  const shake = (which: 1 | 2) => {
+    if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 500); }
+    else { setShaking2(true); setTimeout(() => setShaking2(false), 500); }
+  };
 
   const validateDate = (val: string): string => {
     if (!val) return t('common.errorIncomplete');
@@ -91,11 +104,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   const submit = () => {
     setDateError('');
-    if (!d1 || !d2) { setDateError(t('common.errorIncomplete')); return; }
+    if (!d1 || !d2) { setDateError(t('common.errorIncomplete')); shake(!d1 ? 1 : 2); return; }
     const err1 = validateDate(d1);
-    if (err1) { setDateError(err1); return; }
+    if (err1) { setDateError(err1); shake(1); return; }
     const err2 = validateDate(d2);
-    if (err2) { setDateError(err2); return; }
+    if (err2) { setDateError(err2); shake(2); return; }
     onSubmit(d1, d2);
   };
 
@@ -119,11 +132,11 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
       <div className="form">
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus />
+          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} />
+          <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
         {dateError && <p className="date-error">{dateError}</p>}

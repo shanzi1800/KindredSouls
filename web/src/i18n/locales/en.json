@@ -32,10 +32,10 @@
     "settings": "Settings"
   },
   "common": {
-    "errorIncomplete": "Please enter both birthdays",
-    "errorFormat": "Please use YYYY-MM-DD format",
-    "errorInvalidDate": "Invalid date — please check and re-enter",
-    "errorFutureDate": "Birth date cannot be in the future",
-    "errorTooOld": "That year seems too far back — please check"
+    "errorIncomplete": "Both anchors are needed to cast your stars",
+    "errorFormat": "Please use YYYY-MM-DD to tune your frequency",
+    "errorInvalidDate": "This date lies beyond the temporal veil — please correct",
+    "errorFutureDate": "Your birthday cannot be written in the future",
+    "errorTooOld": "Even the stars have their limits — please recheck the year"
   }
 }

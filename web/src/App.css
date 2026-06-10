@@ -288,7 +288,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .w90 { width: 90%; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .insight-error { font-size: 12px; color: #aaa; font-style: italic; }
-/* v2 */
+/* v3: shake error + cosmic copy */
 
 @keyframes twinkle {
   0% { opacity: 1; }
@@ -296,15 +296,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   100% { opacity: 1; }
 }
 
+/* Shake animation on the date-input container */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-5px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+
+.date-manual.shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97);
+}
+
+/* Error border on the input group */
+.date-manual.date-error-border .date-part {
+  border-color: #ff4757 !important;
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.4) !important;
+}
+
+/* Input focus glow — already good, keep */
+.date-part:focus {
+  border-color: rgba(212, 175, 55, 0.9) !important;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5) !important;
+}
+
+/* Cosmic inline error message */
 .date-error {
-  color: #ff6b6b;
+  color: rgba(212, 175, 55, 0.9);
   font-size: 13px;
   margin-top: 8px;
   text-align: center;
-  animation: shake 0.4s ease;
+  font-family: 'KaiTi', 'STKaiti', serif;
+  letter-spacing: 0.03em;
+  animation: fadeInUp 0.35s ease;
 }
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

@@ -32,10 +32,10 @@
     "settings": "Paramètres"
   },
   "common": {
-    "errorIncomplete": "Veuillez entrer les deux dates de naissance",
-    "errorFormat": "Veuillez utiliser le format JJ/MM/AAAA",
-    "errorInvalidDate": "Date invalide — veuillez vérifier",
-    "errorFutureDate": "La date de naissance ne peut pas être dans le futur",
-    "errorTooOld": "L'année est trop ancienne — veuillez vérifier"
+    "errorIncomplete": "Both anchors needed to cast your stars",
+    "errorFormat": "Veuillez utiliser YYYY-MM-DD pour caler votre fréquence",
+    "errorInvalidDate": "Cette date dépasse le voile temporel — veuillez corriger",
+    "errorFutureDate": "Votre date de naissance ne peut pas être écrite dans le futur",
+    "errorTooOld": "Même les étoiles ont leurs limites — veuillez vérifier l'année"
   }
 }
