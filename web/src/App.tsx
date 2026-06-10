@@ -840,7 +840,7 @@ export default function App() {
         window.history.pushState({}, '', '/result');
         // ✅ 存 result 到 localStorage（OAuth 回调后恢复页面用）
         localStorage.setItem('ks_result', JSON.stringify(r));
-ttsessionStorage.setItem('ks_result', JSON.stringify(r));
+sessionStorage.setItem('ks_result', JSON.stringify(r));
 		sessionStorage.setItem('ks_just_logged_in', '1');
 		localStorage.setItem('ks_just_logged_in', '1');
         console.log('[KindredSouls Debug] Saved result to localStorage');
