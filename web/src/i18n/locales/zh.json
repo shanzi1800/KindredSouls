@@ -33,6 +33,9 @@
   },
   "common": {
     "errorIncomplete": "请输入双方生日",
-    "errorFormat": "请使用 YYYY-MM-DD 格式"
+    "errorFormat": "请使用 YYYY-MM-DD 格式",
+    "errorInvalidDate": "日期无效，请检查后重新输入",
+    "errorFutureDate": "生日不能是未来日期",
+    "errorTooOld": "年份太早了，请检查输入"
   }
 }

@@ -70,11 +70,32 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const [d1, setD1] = useState('');
   const [d2, setD2] = useState('');
   const [d2Key, setD2Key] = React.useState(0);
+  const [dateError, setDateError] = useState('');
   const d2FirstRef = React.useRef<HTMLInputElement>(null);
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
 
+  const validateDate = (val: string): string => {
+    if (!val) return t('common.errorIncomplete');
+    const parts = val.split('-');
+    if (parts.length !== 3 || parts.some(p => !p)) return t('common.errorFormat');
+    const [y, m, d] = parts.map(Number);
+    const year = y, month = m, day = d;
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return t('common.errorFormat');
+    if (year < 1900) return t('common.errorTooOld');
+    const dateObj = new Date(year, month - 1, day);
+    if (dateObj.getFullYear() !== year || dateObj.getMonth() !== month - 1 || dateObj.getDate() !== day) return t('common.errorInvalidDate');
+    const now = new Date(); now.setHours(0,0,0,0);
+    if (dateObj > now) return t('common.errorFutureDate');
+    return '';
+  };
+
   const submit = () => {
-    if (!d1 || !d2) { alert(t('common.errorIncomplete')); return; }
+    setDateError('');
+    if (!d1 || !d2) { setDateError(t('common.errorIncomplete')); return; }
+    const err1 = validateDate(d1);
+    if (err1) { setDateError(err1); return; }
+    const err2 = validateDate(d2);
+    if (err2) { setDateError(err2); return; }
     onSubmit(d1, d2);
   };
 
@@ -105,6 +126,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} />
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
+        {dateError && <p className="date-error">{dateError}</p>}
       </div>
     </div>
   );

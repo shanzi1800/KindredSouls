@@ -33,6 +33,9 @@
   },
   "common": {
     "errorIncomplete": "Por favor ingresa ambas fechas de nacimiento",
-    "errorFormat": "Por favor usa el formato DD/MM/AAAA"
+    "errorFormat": "Por favor usa el formato DD/MM/AAAA",
+    "errorInvalidDate": "Fecha inválida — por favor verifica",
+    "errorFutureDate": "La fecha de nacimiento no puede ser futura",
+    "errorTooOld": "El año parece muy antiguo — por favor verifica"
   }
 }

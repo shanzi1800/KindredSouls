@@ -33,6 +33,9 @@
   },
   "common": {
     "errorIncomplete": "Please enter both birthdays",
-    "errorFormat": "Please use YYYY-MM-DD format"
+    "errorFormat": "Please use YYYY-MM-DD format",
+    "errorInvalidDate": "Invalid date — please check and re-enter",
+    "errorFutureDate": "Birth date cannot be in the future",
+    "errorTooOld": "That year seems too far back — please check"
   }
 }

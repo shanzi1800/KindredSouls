@@ -33,6 +33,9 @@
   },
   "common": {
     "errorIncomplete": "Veuillez entrer les deux dates de naissance",
-    "errorFormat": "Veuillez utiliser le format JJ/MM/AAAA"
+    "errorFormat": "Veuillez utiliser le format JJ/MM/AAAA",
+    "errorInvalidDate": "Date invalide — veuillez vérifier",
+    "errorFutureDate": "La date de naissance ne peut pas être dans le futur",
+    "errorTooOld": "L'année est trop ancienne — veuillez vérifier"
   }
 }
