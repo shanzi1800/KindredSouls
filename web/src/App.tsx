@@ -307,6 +307,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       } else if (event === 'SIGNED_IN') {
         console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, releasing paywall');
         sessionStorage.removeItem('ks_oauth_in_progress');
+        // ✅ Session 已建立，安全清除 URL hash
+        window.history.replaceState({}, '', '/result');
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
@@ -772,7 +774,7 @@ export default function App() {
  setResult(r);
  _setPage('result');
  // Clean URL: remove OAuth hash + query params
- window.history.replaceState({}, '', '/result');
+    // ⚠️ 暂不清空 URL！OAuth 回调期间必须保留 hash 让 Supabase SDK 消费
  console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
  if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
  if (paymentSuccess) {
