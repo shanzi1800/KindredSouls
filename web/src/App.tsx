@@ -416,16 +416,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     }
   };
   // ── Save result to Supabase（只在有 token 时调用）──
-  const triggerSaveResult = (token: string, uid: string) => {
+  const triggerSaveResult = async (token: string, uid: string) => {
     const saved = localStorage.getItem('ks_result');
     if (!saved) return;
     try {
       const data = JSON.parse(saved);
-      fetch('/api/save-result', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ ...data, user_id: uid }),
-      }).catch(() => {});
+      const { error } = await supabase
+        .from('compatibility_results')
+        .upsert(
+          { user_id: uid, ...data },
+          { onConflict: 'user_id,d1,d2' }
+        );
+      if (error) console.error('[KindredSouls Debug] saveResult error:', error);
     } catch {}
   };
 
