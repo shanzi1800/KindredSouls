@@ -310,7 +310,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           } else {
             checkPaidStatus(session.access_token);
           }
-          triggerSaveResult(session.access_token, session.user.id);
+          triggerSaveResult(session.user.id);
         } else if (isOAuthCallback) {
           // 🌟 绝杀卡点：发现是 OAuth 回调 → 锁死加载状态，绝对不显示登录墙！
           setIsAuthParsing(true);
@@ -355,7 +355,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           console.log('[KindredSouls Auth] ks_pending_checkout=1, triggering auto-checkout');
           setShowPaywall(true);
           checkPaidStatus(session!.access_token);
-          triggerSaveResult(session!.access_token, session!.user.id);
+          triggerSaveResult(session!.user.id);
           // 自动触发 checkout（500ms 后，等状态稳定）
           setTimeout(() => {
             handlePurchase('single');
@@ -364,7 +364,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         }
 
         checkPaidStatus(session!.access_token);
-        triggerSaveResult(session!.access_token, session!.user.id);
+        triggerSaveResult(session!.user.id);
       } else if (event === 'SIGNED_OUT') {
         setCurrentAccessToken(null);
         setShowAuthWall(true);
@@ -423,7 +423,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     }
   };
   // ── Save result to Supabase（只在有 token 时调用）──
-  const triggerSaveResult = async (token: string, uid: string) => {
+  const triggerSaveResult = async (uid: string) => {
     const saved = localStorage.getItem('ks_result');
     if (!saved) return;
     try {
