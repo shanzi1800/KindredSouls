@@ -262,6 +262,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
+  const [showPricePreview, setShowPricePreview] = useState(false);
 
   // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
   useEffect(() => {
@@ -569,7 +570,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   }
   // Auth wall — not logged in
   // 🎯 明牌流：先弹价格，用户愿意付费才登录
-  const [showPricePreview, setShowPricePreview] = useState(false);
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
