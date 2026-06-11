@@ -851,8 +851,9 @@ export default function App() {
  sessionStorage.setItem('ks_payment_success', '1');
  console.log('[KindredSouls Debug] ✅ Payment success detected, set ks_payment_success flag');
  // Clean payment param from URL without full reload
- const cleanUrl = window.location.pathname;
- window.history.replaceState({}, '', cleanUrl);
+ // 🛡️ Don't clear URL hash immediately — let Supabase SDK consume the OAuth token first.
+ // Hash will be cleaned after SIGNED_IN event fires (line ~347).
+ // Only clean search params (not hash) here.
  }
  if ((isOAuthCallback || justLoggedIn || paymentSuccess) && savedResult) {
  try {
