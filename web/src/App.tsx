@@ -341,13 +341,28 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           setIsAuthParsing(false);
         }
       } else if (event === 'SIGNED_IN') {
-        console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, releasing paywall');
+        console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, session established');
         sessionStorage.removeItem('ks_oauth_in_progress');
         // ✅ Session 已建立，安全清除 URL hash
         window.history.replaceState({}, '', '/result');
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
+
+        // ── 魔法链接登录后自动触发 checkout（ks_pending_checkout）──
+        if (sessionStorage.getItem('ks_pending_checkout') === '1') {
+          sessionStorage.removeItem('ks_pending_checkout');
+          console.log('[KindredSouls Auth] ks_pending_checkout=1, triggering auto-checkout');
+          setShowPaywall(true);
+          checkPaidStatus(session!.access_token);
+          triggerSaveResult(session!.access_token, session!.user.id);
+          // 自动触发 checkout（500ms 后，等状态稳定）
+          setTimeout(() => {
+            handlePurchase('single');
+          }, 500);
+          return;
+        }
+
         checkPaidStatus(session!.access_token);
         triggerSaveResult(session!.access_token, session!.user.id);
       } else if (event === 'SIGNED_OUT') {
@@ -361,16 +376,15 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 
     return () => subscription.unsubscribe();
   }, []);
+  // ── 查询付费状态（使用 Supabase JS 客户端，受 RLS 保护）──
   const checkPaidStatus = async (_token?: string) => {
-    console.log('[KindredSouls Debug] checkPaidStatus called, token exists:', !!_token);
-    
+    console.log('[KindredSouls Debug] checkPaidStatus called');
     // 15秒超时，Supabase偶尔慢
     const timeout = setTimeout(() => {
       console.log('[KindredSouls Debug] checkPaidStatus timeout, showing paywall');
       setPaidStatus(false);
       setShowPaywall(true);
     }, 15000);
-    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -379,32 +393,25 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setShowPaywall(true);
         return;
       }
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=paid&user_id=eq.${user.id}`,
-        {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // ✅ 用 Supabase JS 客户端（受 RLS 保护），精确查当前用户的 paid 字段
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('paid')
+        .eq('user_id', user.id)
+        .maybeSingle();
       clearTimeout(timeout);
-      if (!res.ok) {
+      if (error) {
+        console.error('[KindredSouls Debug] checkPaidStatus RLS/error:', error);
         setPaidStatus(false);
         setShowPaywall(true);
         return;
       }
-      const profiles = await res.json();
-      console.log('[KindredSouls Debug] checkPaidStatus profiles:', profiles);
-      const paid = Array.isArray(profiles) && profiles.some(p => p.paid === true);
+      const paid = data?.paid === true;
+      console.log('[KindredSouls Debug] checkPaidStatus result: paid=', paid, 'data=', data);
       if (paid) {
-        console.log('[KindredSouls Debug] checkPaidStatus: user is PAID');
         setPaidStatus(true);
         setShowPaywall(false);
       } else {
-        console.log('[KindredSouls Debug] checkPaidStatus: user is NOT paid, showPaywall=true');
         setPaidStatus(false);
         setShowPaywall(true);
       }
