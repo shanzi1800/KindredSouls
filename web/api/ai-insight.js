@@ -7,11 +7,26 @@ const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 import { MAJOR_ARCANA } from './tarot-cards.js';
 
 // ── Supabase client (server-side, service role) ──
-import { createClient } from '@supabase/supabase-js';
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// NOTE: Supabase JS client removed — broken in Vercel serverless (returns null).
+// Using direct REST API calls via supabaseRest() helper instead.
+// import { createClient } from '@supabase/supabase-js';
+// NOTE: Supabase JS client (createClient) fails silently in Vercel serverless —
+// it returns null for queries despite service_role key being loaded.
+// We use direct REST API calls instead.
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Helper: direct REST query to Supabase (bypasses broken JS client)
+async function supabaseRest(table, query) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    },
+  });
+  return res.json();
+}
 
 // ── In-memory cache ──
 const insightCache = new Map();
@@ -150,52 +165,22 @@ export default async function handler(req, res) {
   }
   console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
 
-  // 调试：用 direct REST API 测试 service_role key 是否真的能查到数据
-  const restTestUrl = `${process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${user.id}&select=paid,user_id,email`;
-  const restTestRes = await fetch(restTestUrl, {
-    headers: {
-      'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
-    },
-  });
-  const restTestData = await restTestRes.json();
-  console.log('[ai-insight] Debug - direct REST test:', JSON.stringify(restTestData));
+  // Check paid status via direct REST API (JS client is broken in Vercel)
+  const profileRows = await supabaseRest('user_profiles', `user_id=eq.${user.id}&select=paid,user_id,email`);
+  const profile = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
+  console.log('[ai-insight] Debug - REST profile query result:', JSON.stringify(profile));
 
-  // Check paid status
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('paid, user_id, email')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  console.log('[ai-insight] Debug - profile query result:', { profile, profileError, userId: user.id });
-
-  if (profileError || !profile || !profile.paid) {
-    // Fallback: try to find by email (in case user.id changed)
-    const { data: profileByEmail } = await supabase
-      .from('user_profiles')
-      .select('paid, user_id, email')
-      .eq('email', user.email)
-      .maybeSingle();
-    console.log('[ai-insight] Debug - fallback by email:', profileByEmail);
+  if (!profile || !profile.paid) {
+    // Fallback: try by email
+    const profileByEmailRows = await supabaseRest('user_profiles', `email=eq.${encodeURIComponent(user.email)}&select=paid,user_id,email`);
+    const profileByEmail = Array.isArray(profileByEmailRows) && profileByEmailRows.length > 0 ? profileByEmailRows[0] : null;
+    console.log('[ai-insight] Debug - REST fallback by email:', JSON.stringify(profileByEmail));
     if (profileByEmail?.paid) {
-      console.log('[ai-insight] ✅ Paid status found by email fallback');
+      console.log('[ai-insight] ✅ Paid status found by email fallback (REST)');
     } else {
-      // 军师调试补丁：把后端现场全部空投到前端
       return res.status(402).json({
         error: 'Payment required to unlock AI insight',
-        meta_debug: {
-          msg: '来自军师的真实现场还原',
-          backend_received_uid: user?.id || '未拿到uid',
-          backend_received_email: user?.email || '未拿到email',
-          is_service_key_loaded: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-          service_key_prefix: process.env.SUPABASE_SERVICE_ROLE_KEY
-            ? process.env.SUPABASE_SERVICE_ROLE_KEY.slice(0, 10) + '...'
-            : 'NONE - 环境变量未加载！',
-          db_profile_by_uid: profile || 'null',
-          db_profile_by_email: profileByEmail || 'null',
-          rest_test: restTestData || 'null',
-          supabase_url: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'MISSING',
-        },
+        debug: { userId: user.id, email: user.email, profile, profileByEmail },
       });
     }
   }
