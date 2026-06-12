@@ -307,6 +307,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           if (sessionStorage.getItem('ks_payment_success') === '1') {
             setPaidStatus(true);
             setShowPaywall(false);
+          } else if (sessionStorage.getItem('ks_pending_checkout') === '1') {
+            // ── Google OAuth 回调 + 待支付意图 → 直接触发 checkout，不等 checkPaidStatus ──
+            sessionStorage.removeItem('ks_pending_checkout');
+            console.log('[KindredSouls Auth] INITIAL_SESSION + ks_pending_checkout, auto-checkout');
+            setShowPaywall(true); // 仍显示付费墙作为 fallback
+            setTimeout(() => {
+              handlePurchase('insight_once');
+            }, 1000); // 给 Supabase SDK 时间稳定 session
           } else {
             checkPaidStatus(session.access_token);
           }
@@ -528,8 +536,15 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     setLoading(true);
     setError(null);
     try {
+      // 🔧 Auto-refresh token if not provided or expired
+      let useToken = token || currentAccessToken;
+      if (!useToken) {
+        const { data: { session } } = await supabase.auth.getSession();
+        useToken = session?.access_token ?? null;
+        if (useToken) setCurrentAccessToken(useToken);
+      }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (useToken) headers['Authorization'] = `Bearer ${useToken}`;
       const res = await fetch('/api/ai-insight', {
         method: 'POST',
         headers,
@@ -539,6 +554,16 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       if (data.insight) {
         setInsight(data.insight);
         onTriggerInsight?.();
+      }
+      else if (res.status === 401 || data.error?.includes('authorization') || data.error?.includes('token')) {
+        // Token expired → fallback to paywall + re-login flow
+        console.log('[KindredSouls] Token expired, redirecting to auth/paywall');
+        setShowPaywall(true);
+        setPaidStatus(false);
+        setError(null);
+        // Sign out stale session
+        await supabase.auth.signOut();
+        sessionStorage.removeItem('ks_access_token');
       }
       else setError(data.error || 'Unable to generate insight');
     } catch {

@@ -100,7 +100,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
       const redirectUrl = window.location.origin + '/result';
       localStorage.setItem('ks_redirect_after_login', redirectUrl);
       localStorage.setItem('ks_return_to_result', 'true');
-      localStorage.setItem('ks_pending_checkout', 'true');
+      sessionStorage.setItem('ks_pending_checkout', '1');
       console.log('[KindredSouls Debug] Google login redirectTo:', redirectUrl);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -122,7 +122,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
     setLoading(true);
     setError('');
     try {
-      localStorage.setItem('ks_pending_checkout', 'true');  // ✅ 登录后自动触发 Checkout
+      sessionStorage.setItem('ks_pending_checkout', '1');  // ✅ 登录后自动触发 Checkout
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
