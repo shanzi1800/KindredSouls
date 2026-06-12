@@ -464,6 +464,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
     }
   };
   // ── Save result to Supabase（只在有 token 时调用）──
+  // 注意：localStorage 用 d1/d2，数据库列名是 dob1/dob2，需要映射
   const triggerSaveResult = async (uid: string) => {
     const saved = localStorage.getItem('ks_result');
     if (!saved) return;
@@ -472,11 +473,27 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       const { error } = await supabase
         .from('compatibility_results')
         .upsert(
-          { user_id: uid, ...data },
-          { onConflict: 'user_id,d1,d2' }
+          {
+            user_id: uid,
+            dob1: data.d1,
+            dob2: data.d2,
+            overall_score: data.overall,
+            love_score: data.dims?.love,
+            communication_score: data.dims?.communication,
+            chemistry_score: data.dims?.chemistry,
+            stability_score: data.dims?.stability,
+            bazi_detail: data.bazi,
+            zodiac_detail: data.zodiac,
+            iching_detail: data.iching,
+            ai_insight: data.ai_insight,
+            language: data.lang,
+          },
+          { onConflict: 'user_id,dob1,dob2' }
         );
       if (error) console.error('[KindredSouls Debug] saveResult error:', error);
-    } catch {}
+    } catch (err) {
+      console.error('[KindredSouls Debug] saveResult exception:', err);
+    }
   };
 
   // ── handlePurchase 核心逻辑（接收明确的 token 参数）──
