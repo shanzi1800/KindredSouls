@@ -379,14 +379,26 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       } else if (event === 'SIGNED_IN') {
         console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, session established');
         sessionStorage.removeItem('ks_oauth_in_progress');
-        // ✅ Session 已建立，安全清除 URL hash
         window.history.replaceState({}, '', '/result');
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
 
-        checkPaidStatus(session!.access_token);
-        triggerSaveResult(session!.user.id);
+        // 🎯 直接检查 URL 参数（不依赖 ref 时序）
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPendingCheckout = urlParams.get('intent') === 'checkout';
+
+        if (isPendingCheckout && !hasTriggeredCheckout.current) {
+          // ✅ URL 有 checkout 意图 → 直接触发 Stripe，跳过 checkPaidStatus
+          console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout detected in URL, triggering checkout directly...');
+          hasTriggeredCheckout.current = true;
+          handlePurchaseWithToken(session!.access_token, 'insight_once');
+        } else if (hasTriggeredCheckout.current) {
+          console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping checkPaidStatus');
+        } else {
+          checkPaidStatus(session!.access_token);
+          triggerSaveResult(session!.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
         setCurrentAccessToken(null);
         setShowAuthWall(true);
@@ -428,9 +440,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         .maybeSingle();
       clearTimeout(timeout);
       if (error) {
-        console.error('[KindredSouls Debug] checkPaidStatus RLS/error:', error);
-        setPaidStatus(false);
-        setShowPaywall(true);
+        // RLS/权限错误时，跳过付费墙——让 checkout API 来判断真实状态
+        console.warn('[KindredSouls Debug] checkPaidStatus RLS/error, skipping paywall:', error?.message || error?.code);
+        clearTimeout(timeout);
+        setPaidStatus(null);
+        setShowPaywall(false); // 不显示付费墙，让 checkout API 决定
         return;
       }
       const paid = data?.paid === true;
@@ -470,11 +484,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     setLoading(true);
     try {
+      console.log('[KindredSouls Debug] handlePurchaseWithToken: calling /api/create-checkout...');
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),
       });
+      console.log('[KindredSouls Debug] handlePurchaseWithToken: API response status=', res.status);
       if (res.status === 401) {
         console.log('[KindredSouls Debug] 401 from create-checkout, forcing re-login');
         setShowAuthWall(true);
@@ -483,7 +499,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         return;
       }
       const data = await res.json();
+      console.log('[KindredSouls Debug] handlePurchaseWithToken: API response data=', data);
       if (data.url) {
+        console.log('[KindredSouls Debug] handlePurchaseWithToken: REDIRECTING to Stripe:', data.url);
         window.location.href = data.url;
       } else if (data.already_paid) {
         setPaidStatus(true);
@@ -491,7 +509,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       } else {
         setError(data.error || 'Checkout failed');
       }
-    } catch {
+    } catch (err) {
+      console.error('[KindredSouls Debug] handlePurchaseWithToken ERROR:', err);
       setError('Network error — please check your connection');
     } finally {
       setLoading(false);
