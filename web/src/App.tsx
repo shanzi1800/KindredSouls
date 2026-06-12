@@ -361,13 +361,13 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         if (sessionStorage.getItem('ks_pending_checkout') === '1') {
           sessionStorage.removeItem('ks_pending_checkout');
           console.log('[KindredSouls Auth] ks_pending_checkout=1, triggering auto-checkout');
+          console.log('[KindredSouls Auth] session.access_token exists:', !!session?.access_token);
           setShowPaywall(true);
           checkPaidStatus(session!.access_token);
           triggerSaveResult(session!.user.id);
-          // 自动触发 checkout（500ms 后，等状态稳定）
-          setTimeout(() => {
-            handlePurchase('single');
-          }, 500);
+          // ✅ 直接传 token 给 handlePurchaseWithToken（同步，不依赖状态更新）
+          console.log('[KindredSouls Auth] Calling handlePurchaseWithToken directly (sync)...');
+          handlePurchaseWithToken(session!.access_token, 'insight_once');
           return;
         }
 
