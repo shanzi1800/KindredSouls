@@ -69,6 +69,23 @@ export default async function handler(req, res) {
     const { plan = 'insight_once' } = req.body;
 
     if (isPaid) {
+      // ✅ Ensure user_profiles row exists with paid=true
+      await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          email: user.email,
+          paid: true,
+          updated_at: new Date().toISOString(),
+        }),
+      }).catch(err => console.error('[create-checkout] Upsert error (non-fatal):', err));
+      
       return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
     }
 
