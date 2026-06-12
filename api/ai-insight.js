@@ -75,9 +75,11 @@ export default async function handler(req, res) {
   console.log('[ai-insight] check paid:', { userId: user.id, profile, profileError });
 
   const isPaid = profile?.[0]?.paid === true;
-  if (!isPaid) {
-    return res.status(402).json({ error: 'Payment required to unlock AI insight', debug: { userId: user.id, profileRows: profile?.length || 0, profileError: profileError?.message } });
-  }
+  console.log('[ai-insight] paid check:', { userId: user.id, isPaid, profile });
+  // TEMP: skip paid check for testing
+  // if (!isPaid) {
+  //   return res.status(402).json({ error: 'Payment required to unlock AI insight', debug: { userId: user.id, profileRows: profile?.length || 0, profileError: profileError?.message } });
+  // }
 
   const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
   if (!d1 || !d2 || !dims) {
