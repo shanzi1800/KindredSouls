@@ -7,8 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICES = {
-  insight_once: 499,    // $4.99 one-time AI insight
-  monthly: 499,         // $4.99/month unlimited
+  insight_once: 'price_1ThOQMRnHNva8hysYWOEowab',  // $4.99 AUD one-time
+  // monthly: 'price_xxx',  // TODO: create in Stripe Dashboard when needed
 };
 
 export default async function handler(req, res) {
@@ -90,19 +90,7 @@ export default async function handler(req, res) {
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
       line_items: [{
-        price_data: {
-          currency: 'aud',
-          product_data: {
-            name: plan === 'monthly'
-              ? 'Kindred Souls — Unlimited AI Insights (Monthly)'
-              : 'Kindred Souls — AI Insight Unlock',
-            description: plan === 'monthly'
-              ? 'Unlimited AI-powered relationship insights'
-              : 'One-time AI deep insight for your compatibility reading',
-          },
-          unit_amount: PRICES[plan],
-          recurring: plan === 'monthly' ? { interval: 'month' } : undefined,
-        },
+        price: typeof PRICES[plan] === 'string' ? PRICES[plan] : undefined,
         quantity: 1,
       }],
       success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
