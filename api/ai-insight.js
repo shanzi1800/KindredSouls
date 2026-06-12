@@ -3,7 +3,7 @@ export const runtime = 'nodejs20.x';
 
 // Node 18+ has native fetch, no need for node-fetch
 
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 const supabase = createClient(
@@ -62,15 +62,17 @@ export default async function handler(req, res) {
   }
 
   // Check paid status
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('paid')
+    .select('paid, user_id')
     .eq('user_id', user.id)
     .limit(1);
 
+  console.log('[ai-insight] check paid:', { userId: user.id, profile, profileError });
+
   const isPaid = profile?.[0]?.paid === true;
   if (!isPaid) {
-    return res.status(402).json({ error: 'Payment required to unlock AI insight' });
+    return res.status(402).json({ error: 'Payment required to unlock AI insight', debug: { userId: user.id, profileRows: profile?.length || 0, profileError: profileError?.message } });
   }
 
   const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
