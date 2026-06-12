@@ -522,6 +522,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       } else if (data.already_paid) {
         setPaidStatus(true);
         setShowPaywall(false);
+        // ✅ already_paid → 自动触发 AI 洞察生成
+        console.log('[KindredSouls Debug] already_paid=true, auto-triggering AI insight');
+        triggerInsight(token);
       } else {
         setError(data.error || 'Checkout failed');
       }
