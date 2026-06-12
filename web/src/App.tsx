@@ -400,6 +400,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   }, []);
   // ── 查询付费状态（使用 Supabase JS 客户端，受 RLS 保护）──
   const checkPaidStatus = async (_token?: string) => {
+    // 🛡️ 竞态守卫：主动防御已触发 checkout 时，跳过付费状态检查
+    if (hasTriggeredCheckout.current) {
+      console.log('[KindredSouls Debug] checkPaidStatus skipped — checkout already in progress');
+      return;
+    }
     console.log('[KindredSouls Debug] checkPaidStatus called');
     // 15秒超时，Supabase偶尔慢
     const timeout = setTimeout(() => {
