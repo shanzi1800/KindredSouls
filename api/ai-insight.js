@@ -3,7 +3,13 @@ export const runtime = 'nodejs20.x';
 
 // Node 18+ has native fetch, no need for node-fetch
 
+import { createClient } from '@supabase/supabase-js';
+
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY
+);
 
 // ── In-memory cache ──
 const insightCache = new Map();
@@ -41,6 +47,30 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // ── Auth check ──
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  }
+  const token = authHeader.slice(7);
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  // Check paid status
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('paid')
+    .eq('user_id', user.id)
+    .limit(1);
+
+  const isPaid = profile?.[0]?.paid === true;
+  if (!isPaid) {
+    return res.status(402).json({ error: 'Payment required to unlock AI insight' });
   }
 
   const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
