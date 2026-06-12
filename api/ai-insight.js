@@ -6,10 +6,14 @@ export const runtime = 'nodejs20.x';
 const { createClient } = require('@supabase/supabase-js');
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY
-);
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('[ai-insight] supabase init:', {
+  url: supabaseUrl?.substring(0, 40),
+  keyType: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE_KEY' : process.env.SUPABASE_SERVICE_KEY ? 'SERVICE_KEY' : 'VITE',
+  keyPrefix: supabaseKey?.substring(0, 20)
+});
 
 // ── In-memory cache ──
 const insightCache = new Map();
