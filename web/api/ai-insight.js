@@ -148,16 +148,29 @@ export default async function handler(req, res) {
   if (authError || !user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
+  console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
 
   // Check paid status
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('paid')
+    .select('paid, user_id, email')
     .eq('user_id', user.id)
     .maybeSingle();
+  console.log('[ai-insight] Debug - profile query result:', { profile, profileError, userId: user.id });
 
   if (profileError || !profile || !profile.paid) {
-    return res.status(402).json({ error: 'Payment required to unlock AI insight' });
+    // Fallback: try to find by email (in case user.id changed)
+    const { data: profileByEmail } = await supabase
+      .from('user_profiles')
+      .select('paid, user_id, email')
+      .eq('email', user.email)
+      .maybeSingle();
+    console.log('[ai-insight] Debug - fallback by email:', profileByEmail);
+    if (profileByEmail?.paid) {
+      console.log('[ai-insight] ✅ Paid status found by email fallback');
+    } else {
+      return res.status(402).json({ error: 'Payment required to unlock AI insight', debug: { userId: user.id, email: user.email, profile, profileByEmail } });
+    }
   }
 
   const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
