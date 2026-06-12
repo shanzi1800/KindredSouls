@@ -437,17 +437,17 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         .from('user_profiles')
         .select('paid')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .select('paid')
+        .limit(1);
       clearTimeout(timeout);
       if (error) {
         // RLS/权限错误时，跳过付费墙——让 checkout API 来判断真实状态
         console.warn('[KindredSouls Debug] checkPaidStatus RLS/error, skipping paywall:', error?.message || error?.code);
-        clearTimeout(timeout);
         setPaidStatus(null);
-        setShowPaywall(false); // 不显示付费墙，让 checkout API 决定
+        setShowPaywall(false);
         return;
       }
-      const paid = data?.paid === true;
+      const paid = data?.[0]?.paid === true;
       console.log('[KindredSouls Debug] checkPaidStatus result: paid=', paid, 'data=', data);
       if (paid) {
         setPaidStatus(true);
@@ -472,7 +472,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       const data = JSON.parse(saved);
       const { error } = await supabase
         .from('compatibility_results')
-        .upsert(
+        .insert(
           {
             user_id: uid,
             dob1: data.d1,
@@ -487,8 +487,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
             iching_detail: data.iching,
             ai_insight: data.ai_insight,
             language: data.lang,
-          },
-          { onConflict: 'user_id,dob1,dob2' }
+          }
         );
       if (error) console.error('[KindredSouls Debug] saveResult error:', error);
     } catch (err) {
