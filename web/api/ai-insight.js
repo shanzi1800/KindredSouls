@@ -169,7 +169,22 @@ export default async function handler(req, res) {
     if (profileByEmail?.paid) {
       console.log('[ai-insight] ✅ Paid status found by email fallback');
     } else {
-      return res.status(402).json({ error: 'Payment required to unlock AI insight', debug: { userId: user.id, email: user.email, profile, profileByEmail } });
+      // 军师调试补丁：把后端现场全部空投到前端
+      return res.status(402).json({
+        error: 'Payment required to unlock AI insight',
+        meta_debug: {
+          msg: '来自军师的真实现场还原',
+          backend_received_uid: user?.id || '未拿到uid',
+          backend_received_email: user?.email || '未拿到email',
+          is_service_key_loaded: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+          service_key_prefix: process.env.SUPABASE_SERVICE_ROLE_KEY
+            ? process.env.SUPABASE_SERVICE_ROLE_KEY.slice(0, 10) + '...'
+            : 'NONE - 环境变量未加载！',
+          db_profile_by_uid: profile || 'null',
+          db_profile_by_email: profileByEmail || 'null',
+          supabase_url: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'MISSING',
+        },
+      });
     }
   }
 
