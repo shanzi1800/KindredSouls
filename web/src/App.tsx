@@ -609,9 +609,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setInsight(data.insight);
         onTriggerInsight?.();
       }
-      else if (res.status === 401 || data.error?.includes('authorization') || data.error?.includes('token')) {
-        // Token expired → fallback to paywall + re-login flow
-        console.log('[KindredSouls] Token expired, redirecting to auth/paywall');
+      else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {
+        // Token expired or not paid → fallback to paywall + re-login flow
+        console.log('[KindredSouls] Auth/paywall issue (status', res.status, '), redirecting to paywall');
         setShowPaywall(true);
         setPaidStatus(false);
         setError(null);
