@@ -97,11 +97,11 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = window.location.origin + '/result';
+      // 🎯 军师方案：把购买意图挂在 URL 参数里，不用 sessionStorage
+      const redirectUrl = window.location.origin + '/result?intent=checkout';
       localStorage.setItem('ks_redirect_after_login', redirectUrl);
       localStorage.setItem('ks_return_to_result', 'true');
-      sessionStorage.setItem('ks_pending_checkout', '1');
-      console.log('[KindredSouls Debug] Google login redirectTo:', redirectUrl);
+      console.log('[KindredSouls Debug] Google login redirectTo (with intent):', redirectUrl);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: redirectUrl },
@@ -122,11 +122,13 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
     setLoading(true);
     setError('');
     try {
-      sessionStorage.setItem('ks_pending_checkout', '1');  // ✅ 登录后自动触发 Checkout
+      // 🎯 军师方案：把购买意图挂在 URL 参数里
+      const redirectUrl = window.location.origin + '/result?intent=checkout';
+      console.log('[KindredSouls Debug] Email login redirectTo (with intent):', redirectUrl);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin + '/result',
+          emailRedirectTo: redirectUrl,
         },
       });
       if (error) throw error;

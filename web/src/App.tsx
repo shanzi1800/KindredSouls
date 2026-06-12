@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './i18n';
 
 
@@ -263,6 +263,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
   const [showPricePreview, setShowPricePreview] = useState(false);
+  // 🎯 军师方案：防止重复触发 checkout 的 ref
+  const hasTriggeredCheckout = useRef(false);
 
   // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
   useEffect(() => {
@@ -271,6 +273,40 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
+
+  // 🎯 军师方案：主动防御 —— 不依赖事件监听时序，主动解析 URL + 主动拿 session
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPendingCheckout = urlParams.get('intent') === 'checkout';
+
+    if (!isPendingCheckout || hasTriggeredCheckout.current) return;
+
+    console.log('[KindredSouls Auth] 🎯 Active defense: URL has intent=checkout, actively getting session...');
+
+    // 1. 主动拿 session（不等待事件）
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        console.log('[KindredSouls Auth] 🎯 Active defense: Got session, triggering checkout...');
+        hasTriggeredCheckout.current = true;
+        handlePurchaseWithToken(session.access_token, 'insight_once');
+        window.history.replaceState({}, '', '/result');
+      } else {
+        console.log('[KindredSouls Auth] 🎯 Active defense: No session yet, setting up fallback listener...');
+        // 2. 兜底：临时事件监听器等待 SIGNED_IN / INITIAL_SESSION
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session?.access_token && !hasTriggeredCheckout.current) {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+              console.log(`[KindredSouls Auth] 🎯 Fallback: Got session via ${event}, triggering checkout...`);
+              hasTriggeredCheckout.current = true;
+              handlePurchaseWithToken(session.access_token, 'insight_once');
+              window.history.replaceState({}, '', '/result');
+              subscription.unsubscribe();
+            }
+          }
+        });
+      }
+    });
+  }, []);
 
   // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
@@ -307,14 +343,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           if (sessionStorage.getItem('ks_payment_success') === '1') {
             setPaidStatus(true);
             setShowPaywall(false);
-          } else if (sessionStorage.getItem('ks_pending_checkout') === '1') {
-            // ── Google OAuth 回调 + 待支付意图 → 直接触发 checkout，不等 checkPaidStatus ──
-            sessionStorage.removeItem('ks_pending_checkout');
-            console.log('[KindredSouls Auth] INITIAL_SESSION + ks_pending_checkout, auto-checkout');
-            setShowPaywall(true); // 仍显示付费墙作为 fallback
-            setTimeout(() => {
-              handlePurchase('insight_once');
-            }, 1000); // 给 Supabase SDK 时间稳定 session
           } else {
             checkPaidStatus(session.access_token);
           }
@@ -356,20 +384,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
-
-        // ── 魔法链接登录后自动触发 checkout（ks_pending_checkout）──
-        if (sessionStorage.getItem('ks_pending_checkout') === '1') {
-          sessionStorage.removeItem('ks_pending_checkout');
-          console.log('[KindredSouls Auth] ks_pending_checkout=1, triggering auto-checkout');
-          console.log('[KindredSouls Auth] session.access_token exists:', !!session?.access_token);
-          setShowPaywall(true);
-          checkPaidStatus(session!.access_token);
-          triggerSaveResult(session!.user.id);
-          // ✅ 直接传 token 给 handlePurchaseWithToken（同步，不依赖状态更新）
-          console.log('[KindredSouls Auth] Calling handlePurchaseWithToken directly (sync)...');
-          handlePurchaseWithToken(session!.access_token, 'insight_once');
-          return;
-        }
 
         checkPaidStatus(session!.access_token);
         triggerSaveResult(session!.user.id);
