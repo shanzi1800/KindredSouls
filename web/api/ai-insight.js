@@ -150,6 +150,17 @@ export default async function handler(req, res) {
   }
   console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
 
+  // 调试：用 direct REST API 测试 service_role key 是否真的能查到数据
+  const restTestUrl = `${process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${user.id}&select=paid,user_id,email`;
+  const restTestRes = await fetch(restTestUrl, {
+    headers: {
+      'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
+    },
+  });
+  const restTestData = await restTestRes.json();
+  console.log('[ai-insight] Debug - direct REST test:', JSON.stringify(restTestData));
+
   // Check paid status
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
@@ -182,6 +193,7 @@ export default async function handler(req, res) {
             : 'NONE - 环境变量未加载！',
           db_profile_by_uid: profile || 'null',
           db_profile_by_email: profileByEmail || 'null',
+          rest_test: restTestData || 'null',
           supabase_url: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'MISSING',
         },
       });
