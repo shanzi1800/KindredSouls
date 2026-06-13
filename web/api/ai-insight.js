@@ -159,9 +159,11 @@ export default async function handler(req, res) {
   const token = authHeader.slice(7);
 
   // Verify token with Supabase Auth REST API (JS client removed)
+  // Note: /auth/v1/user needs anon key as apikey, user token as Authorization
+  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
-      'apikey': SUPABASE_SERVICE_KEY,
+      'apikey': SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY,
       'Authorization': `Bearer ${token}`,
     },
   });
