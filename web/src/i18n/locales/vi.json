@@ -1,30 +1,30 @@
 {
   "app": {
     "name": "KindredSouls",
-    "tagline": "Khám phá kết nối vũ trụ của bạn"
+    "tagline": "Khai mở sợi dây liên kết vũ trụ của bạn"
   },
   "input": {
-    "title": "Định mệnh đã được viết trên trời",
-    "subtitle": "Nhập cả hai ngày sinh để khám phá độ hợp nhau",
+    "title": "Vận mệnh an bài trên ngàn tinh tú",
+    "subtitle": "Nhập ngày sinh của cả hai để hé lộ độ hòa hợp thiên định",
     "yourBirthday": "Ngày sinh của bạn",
-    "theirBirthday": "Ngày sinh của họ",
-    "calculate": "Khám phá độ hợp nhau",
+    "theirBirthday": "Ngày sinh của đối phương",
+    "calculate": "Khai mở duyên phận",
     "placeholder1": "YYYY-MM-DD",
     "placeholder2": "YYYY-MM-DD"
   },
   "result": {
-    "title": "Kết quả độ hợp nhau",
-    "score": "Điểm số hợp nhau",
-    "overall": "Độ hợp tổng thể",
-    "loading": "Đang đọc vũ trụ...",
-    "back": "Kiểm tra cặp khác",
-    "luckyAspects": "Khía cạnh thuận lợi",
-    "challengingAspects": "Khía cạnh thử thách",
+    "title": "Kết quả độ hòa hợp",
+    "score": "Điểm số duyên phận",
+    "overall": "Độ tương hợp tổng quan",
+    "loading": "Đang giải mã thông điệp từ vũ trụ...",
+    "back": "Xem duyên phận cặp khác",
+    "luckyAspects": "Điểm cát tường thiên định",
+    "challengingAspects": "Điểm xung khắc cần lưu ý",
     "engines": {
-      "bazi": "Chiêm tinh Trung Hoa (Ba Tử)",
-      "zodiac": "Hoàng đạo phương Tây",
+      "bazi": "Tử vi Đông Phương (Bát Tự)",
+      "zodiac": "Cung hoàng đạo Tây Phương",
       "iching": "Trí tuệ Kinh Dịch",
-      "aiInsight": "Phân tích mối quan hệ bởi AI"
+      "aiInsight": "Thấu thị mối quan hệ bằng AI Duyên Phận"
     }
   },
   "nav": {
@@ -32,10 +32,10 @@
     "settings": "Cài đặt"
   },
   "common": {
-    "errorIncomplete": "🔮 Cần hai vì sao để neo giữ định mệnh",
-    "errorFormat": "✨ Vui lòng dùng định dạng YYYY-MM-DD để hiệu chỉnh tần số vũ trụ",
-    "errorInvalidDate": "🔮 Tràn bộ đệm thời gian — vui lòng sửa ngày sinh",
-    "errorFutureDate": "⏳ Bánh xe định mệnh chưa đến — không được dùng ngày tương lai",
-    "errorTooOld": "🌟 Ngay cả các vì sao cũng có giới hạn — vui lòng kiểm tra năm"
+    "errorIncomplete": "🔮 Cần hội tụ đủ hai vì sao để định vị sợi dây mệnh vận",
+    "errorFormat": "✨ Vui lòng dùng định dạng YYYY-MM-DD để hiệu chuẩn tần số vũ trụ của bạn",
+    "errorInvalidDate": "🔮 Mốc thời gian phàm trần bị lệch hướng — Vui lòng điều chỉnh lại ngày sinh",
+    "errorFutureDate": "⏳ Bánh xe vận mệnh chưa quay đến — Không thể bói trước tương lai",
+    "errorTooOld": "🌟 Ngay cả tinh tú cũng có giới hạn — Vui lòng kiểm tra lại năm sinh"
   }
 }
