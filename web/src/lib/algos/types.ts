@@ -18,7 +18,7 @@ export interface DimensionScore {
 /** 单引擎计算结果 */
 export interface EngineResult {
   score: number;       // 0-100 匹配分
-  title: string;        // 如 "八字命理"
+  title: string | Record<string, string>;  // 如 "八字命理" 或 {zh:'八字命理',en:'...',...}
   summary: string;      // 1-2句解读文案
   detail: string;       // 详细解读（结果页展开用）
 }

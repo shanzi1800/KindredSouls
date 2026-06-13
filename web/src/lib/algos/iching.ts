@@ -1554,7 +1554,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   }
 
   // 多语言 detail
-  const tCategory = isZh ? hex.category : lang === 'en' ? HEX_CATEGORY_EN[hex.category] || hex.category : lang === 'es' ? HEX_CATEGORY_ES[hex.category] || hex.category : HEX_CATEGORY_FR[hex.category] || hex.category;
+  const tCategory = HEX_CATEGORY[hex.category]?.[lang] || hex.category;
   const tTransform = transformDesc; // transformDesc 也需要多语言化，先保留
   const detail = [
     (isZh ? `【本卦】第${hexNum}卦 — ${tName} ${hex.symbol}` : lang === 'en' ? `【Primary Hexagram】#${hexNum} — ${tName} ${hex.symbol}` : lang === 'es' ? `【Hexagrama Principal】#${hexNum} — ${tName} ${hex.symbol}` : `【Hexagramme Principal】#${hexNum} — ${tName} ${hex.symbol}`),

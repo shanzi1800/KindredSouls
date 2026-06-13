@@ -297,7 +297,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const sanhe = DZHI_SANHE[dz1];
     if (sanhe && sanhe.partners.includes(dz2)) {
       hehunBonus += 10;
-      const sanheLabel: Record<string,string> = {
+      const sanheLabel = {
         zh:`${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`,
         en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
         es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
@@ -311,7 +311,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     // 六冲（扣分）
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
-      const liuchongLabel: Record<string,string> = {
+      const liuchongLabel = {
         zh:`${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`,
         en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
         es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
@@ -435,6 +435,18 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const scorePhrase = score >= 80 ? (SCORE_HI[lang] || SCORE_HI['en']) :
     score >= 65 ? (SCORE_MED[lang] || SCORE_MED['en']) :
     (SCORE_LO[lang] || SCORE_LO['en']);
+
+  const labels = {
+    sipanTitle: { zh:'四柱分析', en:'Four Pillars Analysis', es:'Análisis de los Cuatro Pilares', fr:'Analyse des Quatre Piliers', th:'การวิเคราะห์สี่เสาหลัก', vi:'Phân tích Tứ Trụ' },
+    you: { zh:'你', en:'You', es:'Tú', fr:'Vous', th:'คุณ', vi:'Bạn' },
+    ta: { zh:'对方', en:'Partner', es:'Tu pareja', fr:'Votre partenaire', th:'คู่ครอง', vi:'Đối phương' },
+    yearPillar: { zh:'年柱', en:'Year Pillar', es:'Pilar del Año', fr:'Pilier de l\'Année', th:'เสาปี', vi:'Trụ Năm' },
+    monthPillar: { zh:'月柱', en:'Month Pillar', es:'Pilar del Mes', fr:'Pilier du Mois', th:'เสาเดือน', vi:'Trụ Tháng' },
+    dayPillar: { zh:'日柱', en:'Day Pillar', es:'Pilar del Día', fr:'Pilier du Jour', th:'เสาวัน', vi:'Trụ Ngày' },
+    rishiTitle: { zh:'日主分析', en:'Day Master Analysis', es:'Análisis del Maestro del Día', fr:'Analyse du Maître du Jour', th:'การวิเคราะห์วัน', vi:'Phân tích Nhật Chủ' },
+    hehunTitle: { zh:'合婚分析', en:'Marriage Compatibility', es:'Compatibilidad', fr:'Compatibilité', th:'การวิเคราะห์การสมรส', vi:'Phân tích Hợp Hôn' },
+    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación Total', fr:'Score Global', th:'คะแนนรวม', vi:'Điểm Tổng' },
+  };
 
   const detail = [
     `${labels.sipanTitle}`,
