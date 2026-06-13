@@ -1,5 +1,5 @@
 import type { BirthInfo, EngineResult } from './types';
-type AlgLang = 'zh' | 'en' | 'es' | 'fr';
+import type { AlgLang } from './i18n';
 
 // ═════════════════════════════════════════
 // 八字合婚引擎（真实算法）

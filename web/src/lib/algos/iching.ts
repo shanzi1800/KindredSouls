@@ -1,5 +1,5 @@
 import type { BirthInfo, EngineResult } from './types';
-type AlgLang = 'zh' | 'en' | 'es' | 'fr';
+import type { AlgLang } from './i18n';
 
 // 卦分类多语言映射
 const HEX_CATEGORY_EN: Record<string, string> = { '大吉':'Great Auspicious','吉':'Auspicious','中':'Neutral','小凶':'Slightly Unfavorable','待变':'Pending Change' };

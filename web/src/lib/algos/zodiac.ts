@@ -1,5 +1,5 @@
 import type { BirthInfo, EngineResult } from './types';
-type AlgLang = 'zh' | 'en' | 'es' | 'fr';
+import type { AlgLang } from './i18n';
 
 // ═════════════════════════════════════════
 // 星座合盘引擎（真实算法）
