@@ -1,7 +1,7 @@
 import AuthButton from './AuthButton';
 
 interface AuthWallCardProps {
-  lang: string;
+  lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
 }
 
 const AuthWallCard = ({ lang }: AuthWallCardProps) => {
@@ -14,8 +14,24 @@ const AuthWallCard = ({ lang }: AuthWallCardProps) => {
       title: 'Sign in to Unlock AI Insight',
       subtitle: 'Continue with Google or email to purchase AI deep reading',
     },
+    es: {
+      title: 'Inicia sesión para desbloquear IA',
+      subtitle: 'Usa Google o email para comprar lectura profunda de IA',
+    },
+    fr: {
+      title: 'Connectez-vous pour débloquer l\'IA',
+      subtitle: 'Utilisez Google ou email pour acheter une lecture IA profonde',
+    },
+    th: {
+      title: 'เข้าสู่ระบบเพื่อปลดล็อก AI',
+      subtitle: 'ใช้ Google หรืออีเมลเพื่อซื้อการวิเคราะห์ AI เชิงลึก',
+    },
+    vi: {
+      title: 'Đăng nhập để mở khóa AI',
+      subtitle: 'Sử dụng Google hoặc email để mua góc nhìn AI chuyên sâu',
+    },
   };
-  const c = t[lang === 'zh' ? 'zh' : 'en'];
+  const c = t[lang] || t.en;
 
   return (
     <div style={{

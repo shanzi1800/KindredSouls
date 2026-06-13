@@ -13,6 +13,44 @@ import LangModal from './components/LangModal';
 import { supabase } from './lib/supabase';
 import './App.css';
 
+  // ── 6语言文案映射（避免三元链漏语言）──
+  const TXT = {
+    sectionTitle: { zh:'四维深度分析', en:'Four-Dimension Breakdown', es:'Análisis en 4 Dimensiones', fr:'Analyse en 4 Dimensions', th:'การวิเคราะห์ 4 มิติ', vi:'Phân tích 4 Chiều' },
+    aiTitle: { zh:'AI 深度洞察' , en:'AI Insight', es:'Perspectiva AI', fr:'Perspective IA', th:'วิเคราะห์ AI', vi:'AI Thấu thị' },
+    loading: { zh:'🔮 正在链接命运星盘，请稍候...', en:'🔮 Connecting to your cosmic profile...', es:'🔮 Conectando con tu perfil cósmico...', fr:'🔮 Connexion à votre profil cosmique...', th:'🔮 กำลังเชื่อมต่อกับโปรไฟล์ทางดาว...', vi:'🔮 Đang kết nối với hồ sơ vũ trụ của bạn...' },
+    verifying: { zh:'🔒 正在安全验证您的账户...', en:'🔒 Verifying your account...', es:'🔒 Verificando tu cuenta...', fr:'🔒 Vérification de votre compte...', th:'🔒 กำลังตรวจสอบบัญชีของคุณ...', vi:'🔒 Đang xác minh tài khoản của bạn...' },
+    previewTitle: { zh:'解锁你们的灵魂密码', en:'Unlock Your Soul Code', es:'Desbloquea Tu Código Alma', fr:'Débloquez Votre Code Âme', th:'ปลดล็อกรหัสวิญญาณของคุณ', vi:'Mở khóa Mật mã Linh hồn' },
+    previewSubtitle: { zh:'AI 将为你揭示这段关系中被隐藏的真相', en:'AI reveals the hidden truths of your connection', es:'La IA revela las verdades ocultas de su conexión', fr:"L'IA révèle les vérités cachées de votre connexion", th:'AI จะเปิดเผยความจริงที่ซ่อนอยู่ในความสัมพันธ์นี้', vi:'AI sẽ tiết lộ những sự thật ẩn giấu trong mối quan hệ này' },
+    featureItems: {
+      zh: ['🌑 灵魂共鸣深度分析','🔥 情感能量流动图谱','🌟 未来6个月关系走向','💫 专属提升建议（3条）'],
+      en: ['🌑 Soul Resonance Deep Dive','🔥 Emotional Energy Flow Map','🌟 Next 6 Months Trajectory','💫 3 Personalized Growth Tips'],
+      es: ['🌑 Análisis Profundo de Resonancia Alma','🔥 Mapa de Flujo de Energía Emocional','🌟 Trayectoria de los Próximos 6 Meses','💫 3 Consejos de Crecimiento Personalizados'],
+      fr: ['🌑 Analyse Profonde de Résonnance Âme','🔥 Carte du Flux d\'Énergie Émotionnelle','🌟 Trajectoire des 6 Prochains Mois','💫 3 Conseils de Croissance Personnalisés'],
+      th: ['🌑 วิเคราะห์จิตวิญญาณเชิงลึก','🔥 แผนผังพลังงานอารมณ์','🌟 แนวทาง 6 เดือนข้างหน้า','💫 3 คำแนะนำการเติบโตส่วนบุคคล'],
+      vi: ['🌑 Phân tích Cộng hưởng Linh hồn Sâu','🔥 Bản đồ Dòng chảy Năng lượng Cảm xúc','🌟 Quỹ đạo 6 Tháng tới','💫 3 Lời khuyên Phát triển Cá nhân hóa'],
+    },
+    bonus: { zh:'🎁 今日限时加赠', en:'🎁 Limited Time Bonus', es:'🎁 Bonus por Tiempo Limitado', fr:'🎁 Bonus à Durée Limitée', th:'🎁 ของแถมจำกัดเวลา', vi:'🎁 Quà tặng Thời hạn' },
+    bonusDesc: { zh:'额外解锁【实时塔罗牌阵】', en:'Unlock Real-Time Tarot Reading', es:'Desbloquea Lectura de Tarot en Tiempo Real', fr:'Débloquez la Lecture de Tarot en Temps Réel', th:'ปลดล็อกการอ่านไพ่ทาโรต์แบบเรียลไทม์', vi:'Mở khóa Góc nhìn Tarot Thời gian thực' },
+    bonusDetail: { zh:'看透TA此时此刻对你的真实想法', en:'See what they truly think about you now', es:'Descubre qué piensan realmente de ti ahora', fr:'Découvrez ce qu\'ils pensent vraiment de vous maintenant', th:'ดูสิ่งที่พวกเขาคิดเกี่ยวกับคุณตอนนี้', vi:'Xem họ thực sự nghĩ gì về bạn ngay bây giờ' },
+    priceLabel: { zh:'单次', en:'one-time', es:'una vez', fr:'une fois', th:'ครั้งเดียว', vi:'lần dùng' },
+    unlockBtn: { zh:'立即解锁', en:'Unlock Now', es:'Desbloquear Ahora', fr:'Débloquer Maintenant', th:'ปลดล็อกเลย', vi:'Mở khóa ngay' },
+    subscription: { zh:'月 · 无限次解读', en:'mo · Unlimited', es:'mes · Ilimitado', fr:'mois · Illimité', th:'เดือน · ไม่จำกัด', vi:'tháng · Không giới hạn' },
+    trustItems: {
+      zh: ['安全支付','即时生成','支持退款'],
+      en: ['Secure','Instant','Refundable'],
+      es: ['Seguro','Instantáneo','Reembolsable'],
+      fr: ['Sécurisé','Instantané','Remboursable'],
+      th: ['ปลอดภัย','ทันที','คืนเงินได้'],
+      vi: ['An toàn','Tức thì','Hoàn tiền được'],
+    },
+    blurredPreview: { zh:'🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。', en:'🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.', es:'🌙 Existe una resonancia de alma rara entre ustedes dos… El aspecto Luna-Venus sugiere una conexión emocional profunda que solo el 3% de las parejas tienen.', fr:"🌙 Une résonnance d'âme rare existe entre vous deux… L'aspect Lune-Vénus suggère une connexion émotionnelle profonde que seul 3% des couples ont.", th:'🌙 มีการจับคลื่นวิญญาณที่หายากระหว่างคุณทั้งสอง… มุมจันทร์-ศุกร์บ่งบอกถึงการเชื่อมต่อทางอารมณ์ที่ลึกซึ้งที่พบได้ในเพียง 3% ของคู่รัก', vi:'🌙 Có một cộng hưởng linh hồn hiếm thấy giữa hai bạn… Khía cạnh Mặt trăng-Sao Kim gợi ý một kết nối cảm xúc sâu sắc chỉ có ở 3% các cặp đôi.' },
+    genBtn: { zh:'生成 AI 洞察', en:'Generate AI Insight', es:'Generar Perspectiva AI', fr:'Générer Perspective IA', th:'วิเคราะห์ AI', vi:'Tạo AI Thấu thị' },
+    signOut: { zh:'退出登录', en:'Sign Out', es:'Cerrar Sesión', fr:'Déconnexion', th:'ออกจากระบบ', vi:'Đăng xuất' },
+    detailHide: { zh:'收起详情 ▲', en:'Hide Details ▲', es:'Ocultar ▲', fr:'Masquer ▲', th:'ย่อข้อมูล ▲', vi:'Thu gọn ▲' },
+    detailShow: { zh:'查看完整分析 ▼', en:'View Full Analysis ▼', es:'Ver Análisis Completo ▼', fr:'Voir Analyse Complète ▼', th:'ดูการวิเคราะห์เต็ม ▼', vi:'Xem Phân tích đầy đủ ▼' },
+  } as const;
+
+
 /* ── Manual Date Input: configurable part order, auto-advance ── */
 function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, containerRef, shake, hasError }: {
   value: string; onChange: (v: string) => void; onLastFilled?: () => void;
@@ -175,14 +213,16 @@ const DIM_LABELS: Record<string, string[]> = {
   en: ['Love', 'Communication', 'Chemistry', 'Stability'],
   es: ['Amor', 'Comunicación', 'Química', 'Estabilidad'],
   fr: ['Amour', 'Communication', 'Chimie', 'Stabilité'],
+  th: ['ความรัก', 'การสื่อสาร', 'เคมี', 'ความมั่นคง'],
+  vi: ['Tình yêu', 'Giao tiếp', 'Hóa học', 'Ổn định'],
 };
 const DIM_KEYS = ['love', 'communication', 'chemistry', 'stability'] as const;
 
-function DimensionBars({ dims, lang }: { dims: CompatibilityResult['dimensions']; lang: string }) {
+function DimensionBars({ dims, lang }: { dims: CompatibilityResult['dimensions']; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi' }) {
   const labels = DIM_LABELS[lang] || DIM_LABELS.en;
   return (
     <div className="dim-section">
-      <h4 className="section-title">{lang==='zh'?'四维深度分析':lang==='es'?'Análisis en 4 Dimensiones':'Four-Dimension Breakdown'}</h4>
+      <h4 className="section-title">{TXT.sectionTitle?.[lang] || TXT.sectionTitle?.en || 'Four-Dimension Breakdown'}</h4>
       {DIM_KEYS.map((key, i) => {
         const val = dims[key];
         return (
@@ -244,7 +284,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
-  lang: string;
+  lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
   onLogout?: () => void;
@@ -636,7 +676,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         </div>
         {urlHasToken && (
           <p style={{ marginTop: '16px', fontSize: '14px', color: '#888' }}>
-            {lang === 'zh' ? '🔮 正在链接命运星盘，请稍候...' : '🔮 Connecting to your cosmic profile...'}
+            {TXT.loading[lang] || TXT.loading.en}
           </p>
         )}
       </div>
@@ -651,7 +691,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
           <div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" />
         </div>
         <p style={{ marginTop: '16px', fontSize: '14px', color: '#888' }}>
-          {lang === 'zh' ? '🔒 正在安全验证您的账户...' : '🔒 Verifying your account...'}
+          {TXT.verifying[lang] || TXT.verifying.en}
         </p>
       </div>
     );
@@ -661,16 +701,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   if (showAuthWall && insight === null) {
     return (
       <div className="ai-insight">
-        <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        <h3 style={{ marginBottom: '18px' }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
         <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', minHeight: '460px' }}>
           <div style={{
             filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
             background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
             border: '1px solid rgba(212,175,55,0.12)',
           }}>
-            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{lang==='zh'
-              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。当你们真正敞开心扉时，会产生一种近乎「心灵感应」的默契。'
-              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.'}
+            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{TXT.blurredPreview[lang] || TXT.blurredPreview.en}
             </p>
           </div>
           <div style={{
@@ -682,17 +720,17 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
               <div style={{ width: '94%', maxWidth: '380px', textAlign: 'center' }}>
                 <div style={{ fontSize: '42px', marginBottom: '12px', filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.6))' }}>🔮</div>
                 <div style={{ fontSize: '19px', fontWeight: 800, color: '#D4AF37', marginBottom: '8px' }}>
-                  {lang==='zh'?'解锁你们的灵魂密码':lang==='es'?'Desbloquea Tu Código Alma':'Unlock Your Soul Code'}
+                  {TXT.previewTitle[lang] || TXT.previewTitle.en}
                 </div>
                 <div style={{ fontSize: '13px', color: '#a0a0c0', marginBottom: '6px', lineHeight: 1.6 }}>
-                  {lang==='zh'?'AI 将为你揭示这段关系中被隐藏的真相':'AI reveals the hidden truths of your connection'}
+                  {TXT.previewSubtitle[lang] || TXT.previewSubtitle.en}
                 </div>
                 <div style={{ fontSize: '12px', color: '#8888aa', marginBottom: '20px' }}>
                   🌑 灵魂共鸣分析 &nbsp;·&nbsp; 🔥 情感能量图谱 &nbsp;·&nbsp; 🌟 未来走向
                 </div>
                 <div style={{ marginBottom: '18px' }}>
                   <span style={{ fontSize: '28px', fontWeight: 900, color: '#fff' }}>$4.99</span>
-                  <span style={{ fontSize: '12px', color: '#888', marginLeft: '4px' }}>{lang==='zh'?'单次':'one-time'}</span>
+                  <span style={{ fontSize: '12px', color: '#888', marginLeft: '4px' }}>{TXT.priceLabel[lang] || TXT.priceLabel.en}</span>
                 </div>
                 <button
                   onClick={() => setShowPricePreview(true)}
@@ -703,14 +741,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
                     boxShadow: '0 4px 20px rgba(212,175,55,0.35)',
                   }}
                 >
-                  ✨ {lang==='zh'?'立即解锁':'Unlock Now'}
+                  ✨ {TXT.unlockBtn[lang] || TXT.unlockBtn.en}
                 </button>
                 <div style={{ fontSize: '10px', color: '#666', marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                  <span>{lang==='zh'?'安全支付':'Secure'}</span>
+                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[0]}</span>
                   <span>·</span>
-                  <span>{lang==='zh'?'即时生成':'Instant'}</span>
+                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[1]}</span>
                   <span>·</span>
-                  <span>{lang==='zh'?'支持退款':'Refundable'}</span>
+                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[2]}</span>
                 </div>
               </div>
             ) : (
@@ -727,7 +765,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   if (showPaywall) {
     return (
       <div className="ai-insight">
-        <h3 style={{ marginBottom: '18px' }}>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+        <h3 style={{ marginBottom: '18px' }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
         <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', marginBottom: '20px', minHeight: '420px' }}>
           <div style={{
             filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
@@ -735,9 +773,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
             border: '1px solid rgba(212,175,55,0.12)',
             position: 'absolute', inset: 0,
           }}>
-            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{lang==='zh'
-              ? '🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。'
-              : '🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.'}
+            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{TXT.blurredPreview[lang] || TXT.blurredPreview.en}
             </p>
           </div>
           <div style={{
@@ -754,7 +790,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   // Logged in — show button or result
   return (
     <div className="ai-insight">
-      <h3>✨ {lang==='zh'?'AI 深度洞察':lang==='es'?'Perspectiva AI':'AI Insight'}</h3>
+      <h3>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
       {!insight && !loading && !error && (
         <button
           onClick={() => triggerInsight()}
@@ -765,7 +801,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
             transition: 'all 0.3s ease', boxShadow: '0 4px 20px rgba(212,175,55,0.3)',
           }}
         >
-          ✨ {lang==='zh'?'生成 AI 洞察':lang==='es'?'Generar Perspectiva AI':'Generate AI Insight'}
+          ✨ {TXT.genBtn[lang] || TXT.genBtn.en}
         </button>
       )}
       {loading && <div className="insight-skeleton"><div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" /><div className="skeleton-line w70" /></div>}
@@ -788,7 +824,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
               margin: '16px auto 0',
             }}
           >
-            {lang === 'zh' ? '退出登录' : 'Sign Out'}
+            {TXT.signOut[lang] || TXT.signOut.en}
           </button>
         </div>
       )}
@@ -797,7 +833,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: string; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; onLogout?: () => void }) {
+function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions } = result;
 
@@ -847,7 +883,7 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
             alignItems: 'center',
           }}
         >
-          <span>{showDetails ? (lang==='zh'?'收起详情 ▲':'Hide Details ▲') : (lang==='zh'?'查看完整分析 ▼':'View Full Analysis ▼')}</span>
+          <span>{showDetails ? (TXT.detailHide[lang] || TXT.detailHide.en) : (TXT.detailShow[lang] || TXT.detailShow.en)}</span>
         </button>
         {showDetails && (
           <div style={{ marginTop: '16px' }}>
@@ -922,7 +958,7 @@ export default function App() {
     return null;
   });
   // Track current language in React state (always in sync with i18n)
-  const [currentLang, setCurrentLang] = useState<string>(() => i18n.language || 'en');
+  const [currentLang, setCurrentLang] = useState<'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'>(() => (i18n.language as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi') || 'en');
 // ✅ Restore result page after OAuth login or payment success (not every refresh)
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
  useEffect(() => {
@@ -961,7 +997,7 @@ export default function App() {
  }, []);
 
   React.useEffect(() => {
-    const handler = (lng: string) => setCurrentLang(lng);
+    const handler = (lng: string) => setCurrentLang(lng as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi');
     i18n.on('languageChanged', handler);
     return () => { i18n.off('languageChanged', handler); };
   }, [i18n]);

@@ -1,6 +1,6 @@
 
 interface PaywallCardProps {
-  lang: string;
+  lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   loading: boolean;
   onPurchase: (plan: string) => void;
 }
@@ -74,6 +74,40 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       unlock: 'Débloquer Maintenant',
       subscription: 'mois · Illimité',
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
+    },
+    th: {
+      title: 'ปลดล็อกรหัสวิญญาณของคุณ',
+      subtitle: 'AI จะเปิดเผยความจริงที่ซ่อนอยู่ในความสัมพันธ์นี้',
+      features: [
+        '🌑 วิเคราะห์จิตวิญญาณเชิงลึก',
+        '🔥 แผนผังพลังงานอารมณ์',
+        '🌟 แนวทาง 6 เดือนข้างหน้า',
+        '💫 3 คำแนะนำการเติบโตส่วนบุคคล',
+      ],
+      bonus: '🎁 ของแถมจำกัดเวลา',
+      bonusDesc: 'ปลดล็อกการอ่านไพ่ทาโรต์แบบเรียลไทม์',
+      bonusDetail: 'ดูสิ่งที่พวกเขาคิดเกี่ยวกับคุณตอนนี้',
+      priceLabel: 'ครั้งเดียว',
+      unlock: 'ปลดล็อกเลย',
+      subscription: 'เดือน · ไม่จำกัด',
+      secure: 'ชำระเงินปลอดภัย · AI ทันที · คืนเงินได้',
+    },
+    vi: {
+      title: 'Mở khóa Mật mã Linh hồn',
+      subtitle: 'AI sẽ tiết lộ những sự thật ẩn giấu trong mối quan hệ này',
+      features: [
+        '🌑 Phân tích Cộng hưởng Linh hồn Sâu',
+        '🔥 Bản đồ Dòng chảy Năng lượng Cảm xúc',
+        '🌟 Quỹ đạo 6 Tháng tới',
+        '💫 3 Lời khuyên Phát triển Cá nhân hóa',
+      ],
+      bonus: '🎁 Quà tặng Thời hạn',
+      bonusDesc: 'Mở khóa Góc nhìn Tarot Thời gian thực',
+      bonusDetail: 'Xem họ thực sự nghĩ gì về bạn ngay bây giờ',
+      priceLabel: 'lần dùng',
+      unlock: 'Mở khóa ngay',
+      subscription: 'tháng · Không giới hạn',
+      secure: 'Thanh toán An toàn · AI Tức thì · Hoàn tiền được',
     },
   };
   const c = t[lang as keyof typeof t] || t.en;
