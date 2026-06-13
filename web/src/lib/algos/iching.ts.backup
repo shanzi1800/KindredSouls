@@ -20,8 +20,8 @@ function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMe
     if (field === 'judgment') return hex.judgment;
     return hex.relationshipMeaning;
   }
-  // en/es/fr/th/vi 都有翻译
-  const suffixMap: Record<string, string> = { en: 'En', es: 'Es', fr: 'Fr', th: 'Th', vi: 'Vi' };
+  // en/es/fr 有翻译，th/vi 暂时 fallback 到英文
+  const suffixMap: Record<string, string> = { en: 'En', es: 'Es', fr: 'Fr', th: 'En', vi: 'En' };
   const suffix = suffixMap[lang] || 'En';
   const key = field === 'relationshipMeaning' ? ('relationshipMeaning' + suffix) : (field + suffix.charAt(0).toUpperCase() + suffix.slice(1));
   return hex[key] || hex[field] || '';
@@ -40,8 +40,6 @@ interface HexagramData {
   nameEn?: string;
   nameEs?: string;
   nameFr?: string;
-  nameTh?: string;
-  nameVi?: string;
   symbol: string;         // 上下卦符号（如 ☰☷）
   nature: string;         // 卦德/属性
   natureEn?: string;
@@ -55,8 +53,6 @@ interface HexagramData {
   relationshipMeaningEn?: string;
   relationshipMeaningEs?: string;
   relationshipMeaningFr?: string;
-  relationshipMeaningTh?: string;
-  relationshipMeaningVi?: string;
   category: '大吉' | '吉' | '中' | '小凶' | '待变';
   scoreRange: [number, number]; // 分数范围
 }
@@ -67,8 +63,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "The Creative / Heaven",
     nameEs: "Lo Creativo / El Cielo",
     nameFr: "Le Créatif / Le Ciel",
-    nameTh: 'ฉียน (ฟ้า)',
-    nameVi: 'Càn Vi Thiên',
     symbol: "☰☰",
     nature: "刚健",
     natureEn: "Strong & Vigorous",
@@ -76,10 +70,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Force / Vigueur",
     judgment: "元亨利贞",
     judgmentEn: "Success. The noble person has a successful conclusion.",
-    relationshipMeaning: '大吉。充满活力与激情，彼此吸引力强，但需防刚愎自用导致争执，宜多包容。',
-    relationshipMeaningEn: 'Highly auspicious. Full of energy and passion with strong attraction. Avoid stubbornness to prevent conflicts; mutual tolerance is key.',
-    relationshipMeaningTh: 'เป็นมงคลยิ่ง มีพลังและความดึงดูดใจสูง หลีกเลี่ยงความดื้อรั้นเพื่อป้องกันการขัดแย้ง ควรยอมรับและผ่อนปรนให้กัน',
-    relationshipMeaningVi: 'Đại cát. Đầy năng lượng và đam mê, sức hút đôi bên mạnh mẽ. Cần phòng tự cao tự đại dẫn đến tranh chấp, nên bao dung lẫn nhau.',
+    relationshipMeaning: "天行健，双方都有强烈的目标感，互相激励成长",
+    relationshipMeaningEn: "Emotions are accumulating, not yet at the breakthrough point. Let it flow gently like a stream.",
     category: "大吉",
     scoreRange: [85, 96]
   },
@@ -88,8 +80,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "The Receptive / Earth",
     nameEs: "Lo Receptivo / La Tierra",
     nameFr: "Le Réceptif / La Terre",
-    nameTh: 'คุน (ดิน)',
-    nameVi: 'Khôn Vi Địa',
     symbol: "☷☷",
     nature: "柔顺",
     natureEn: "Yielding & Receptive",
@@ -97,10 +87,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Docilité / Soumission",
     judgment: "元亨，利牝马之贞",
     judgmentEn: "Supreme success. Furthering through perseverance. No blame.",
-    relationshipMeaning: '吉。性格互补，关系包容稳定，细水长流。女方主顺，男方主护，感情能开花结果。',
-    relationshipMeaningEn: 'Auspicious. Complementary personalities bring stability and tolerance. A gentle and protective bond that leads to a fruitful marriage.',
-    relationshipMeaningTh: 'โชคดี นิสัยเกื้อกูลกัน ความสัมพันธ์มั่นคงและยอมรับในตัวตนของกันและกัน ความรักที่อ่อนโยนและดูแลกันจะนำไปสู่ความสำเร็จ',
-    relationshipMeaningVi: 'Cát. Tính cách bù trừ, quan hệ bao dung ổn định, bền vững lâu dài. Nữ thuận theo, nam che chở, tình cảm sẽ đơm hoa kết trái.',
+    relationshipMeaning: "地势坤，包容滋养，适合长久稳定的陪伴关系",
+    relationshipMeaningEn: "Nurturing your love with care. This soft caution brings a deeper stability.",
     category: "大吉",
     scoreRange: [82, 94]
   },
@@ -109,8 +97,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Difficulty at the Beginning",
     nameEs: "La Dificultad Inicial",
     nameFr: "La Difficulté Initiale",
-    nameTh: 'ทุน (ความยากลำบากเริ่มต้น)',
-    nameVi: 'Thuỷ Lôi Truân',
     symbol: "☵☳",
     nature: "初生",
     natureEn: "Beginning of Life",
@@ -118,10 +104,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Commencement / Bourgeonnement",
     judgment: "元亨利贞，勿用有攸往",
     judgmentEn: "Great success. Advantageous to cross the great river.",
-    relationshipMeaning: '平。创业或感情初期充满波折与阻碍，不可操之过急，需耐心培植感情，静待转机。',
-    relationshipMeaningEn: 'Neutral. Initial stages are full of twists and obstacles. Do not rush; build the relationship with patience and wait for the turning point.',
-    relationshipMeaningTh: 'ปานกลาง ช่วงเริ่มต้นเต็มไปด้วยอุปสรรคและความผันผวน ไม่ควรรีบร้อน ต้องอาศัยความอดทนและรอคอยจังหวะเวลาที่ดี',
-    relationshipMeaningVi: 'Bình. Giai đoạn đầu nhiều sóng gió và trở ngại, không được nôn nóng, cần kiên nhẫn bồi đắp tình cảm, chờ đợi thời cơ chuyển biến.',
+    relationshipMeaning: "关系萌芽期，虽有挑战但根基可立，需耐心培育",
+    relationshipMeaningEn: "Yin and yang intersect, heaven and earth connect. This is the sign of an excellent marriage.",
     category: "中",
     scoreRange: [58, 72]
   },
@@ -130,8 +114,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Youthful Folly",
     nameEs: "La Necedad Juvenil / La Inmadurez",
     nameFr: "La Folie Juvénile / L'Obscurité",
-    nameTh: 'เหมิง (ความเขลาของเยาว์วัย)',
-    nameVi: 'Sơn Thuỷ Mông',
     symbol: "☶☳",
     nature: "启蒙",
     natureEn: "Unaware & Naive",
@@ -139,10 +121,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Éveil / Initiation",
     judgment: "亨。匪我求童蒙，童蒙求我",
     judgmentEn: "Washing hands but not yet offering. Sincere devotion, solemnity.",
-    relationshipMeaning: '凶。沟通不畅，充满误解与迷茫，一方可能较为幼稚或隐瞒真相。宜坦诚相待，寻求长辈指引。',
-    relationshipMeaningEn: 'Inauspicious. Poor communication leading to misunderstandings. One party may be immature or hiding the truth. Be honest and seek elders' guidance.',
-    relationshipMeaningTh: 'ไม่ดี การสื่อสารไม่เข้าใจกัน เต็มไปด้วยความไม่รู้หรือความเข้าใจผิด ฝ่ายใดฝ่ายหนึ่งอาจยังไม่โตพอ ควรเปิดใจคุยกันและขอคำแนะนำจากผู้ใหญ่',
-    relationshipMeaningVi: 'Hung. Giao tiếp không thông suốt, đầy hiểu lầm và mơ hồ, một bên có thể khá non nớt hoặc che giấu sự thật. Nên thành thật và xin lời khuyên từ người lớn.',
+    relationshipMeaning: "彼此在学习如何去爱，坦诚沟通是关键",
+    relationshipMeaningEn: "Temporary estrangement, but it doesn't mean the end, and it's time to proactively break the ice.",
     category: "中",
     scoreRange: [60, 74]
   },
@@ -151,8 +131,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Waiting (Nourishment)",
     nameEs: "La Espera",
     nameFr: "L'Attente",
-    nameTh: 'ซวี (การรอคอย)',
-    nameVi: 'Thuỷ Thiên Nhu',
     symbol: "☵☰",
     nature: "等待",
     natureEn: "Patient Waiting",
@@ -160,10 +138,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Attente",
     judgment: "有孚，光亨贞吉",
     judgmentEn: "Success. Advantageous for litigation.",
-    relationshipMeaning: '平。时机未到，不可强求。感情需经历时间的考验，保持定力，顺其自然，终有光明结果。',
-    relationshipMeaningEn: 'Neutral. The time is not ripe yet; do not force it. The relationship needs to stand the test of time. Be patient, and a bright outcome will follow.',
-    relationshipMeaningTh: 'ปานกลาง จังหวะเวลายังมาไม่ถึง ไม่ควรฝืน ความรักต้องผ่านการพิสูจน์ด้วยเวลา จงรักษาความมั่นคงแล้วจะสมหวังในที่สุด',
-    relationshipMeaningVi: 'Bình. Thời cơ chưa đến, không thể khiên cưỡng. Tình cảm cần trải qua thử thách của thời gian, giữ vững định lực, thuận theo tự nhiên sẽ có kết quả tốt đẹp.',
+    relationshipMeaning: "缘分需要时间发酵，急不得，顺其自然最好",
+    relationshipMeaningEn: "Like-minded, shared values. Easy to build deep connection.",
     category: "吉",
     scoreRange: [70, 82]
   },
@@ -172,8 +148,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Conflict",
     nameEs: "El Conflicto / El Pleito",
     nameFr: "Le Conflit / Le Litige",
-    nameTh: 'ซ่ง (การโต้เถียง)',
-    nameVi: 'Thiên Thuỷ Tụng',
     symbol: "☰☵",
     nature: "争辩",
     natureEn: "Conflict & Dispute",
@@ -181,10 +155,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Dispute / Contestation",
     judgment: "有孚窒惕，中吉",
     judgmentEn: "Success. Minor advantages in movement.",
-    relationshipMeaning: '凶。意见严重不合，口舌争吵不断，甚至有分离之忧。各不相让只会流向两败俱伤，宜退让和解。',
-    relationshipMeaningEn: 'Inauspicious. Severe disagreement and constant arguments, risking separation. Stubbornness leads to mutual ruin; compromise and withdrawal are advised.',
-    relationshipMeaningTh: 'ไม่ดี ความคิดเห็นขัดแย้งกันอย่างรุนแรง มีปากเสียงไม่เว้นแต่ละวัน หากไม่ยอมลดราวาศอกจะนำไปสู่ความแตกหัก ควรประนีประนอม',
-    relationshipMeaningVi: 'Hung. Ý kiến bất đồng sâu sắc, khẩu thiệt tranh cãi không ngừng, thậm chí có nguy cơ chia ly. Không ai nhường ai sẽ dẫn đến lưỡng bại câu thương, nên lùi bước hòa giải.',
+    relationshipMeaning: "可能有误解或分歧，但只要坦诚相待终能化解",
+    relationshipMeaningEn: "A relationship at its peak, full of vitality and hope.",
     category: "小凶",
     scoreRange: [48, 62]
   },
@@ -193,8 +165,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "The Army",
     nameEs: "El Ejército",
     nameFr: "L'Armée",
-    nameTh: 'ซือ (กองทัพ)',
-    nameVi: 'Địa Thuỷ Sư',
     symbol: "☷☵",
     nature: "统领",
     natureEn: "Disciplined Force",
@@ -202,10 +172,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Commandement / Direction",
     judgment: "贞丈人吉无咎",
     judgmentEn: "Advantageous to persevere. Not eating at home - good fortune.",
-    relationshipMeaning: '平。感情带有强烈的控制欲或竞争色彩，需要严格的自我约束。主导者需以德服人，避免流于冷战。',
-    relationshipMeaningEn: 'Neutral. Relationship involves strong control or competition, requiring self-discipline. The dominant partner must lead with virtue to avoid cold wars.',
-    relationshipMeaningTh: 'ปานกลาง ความสัมพันธ์มีความต้องการควบคุมหรือการแข่งขันสูง ต้องมีวินัยในตนเอง ฝ่ายที่นำควรใช้ความเข้าใจและความถูกต้องมากกว่าใช้อำนาจ',
-    relationshipMeaningVi: 'Bình. Tình cảm mang tính kiểm soát hoặc cạnh tranh mạnh mẽ, cần tự kỷ luật nghiêm ngặt. Người làm chủ cần phục chúng bằng đức, tránh rơi vào chiến tranh lạnh.',
+    relationshipMeaning: "一方可能主导关系节奏，需要平衡权力动态",
+    relationshipMeaningEn: "Mutual humility and tolerance. The relationship is long-lasting and stable.",
     category: "中",
     scoreRange: [56, 70]
   },
@@ -214,8 +182,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Holding Together",
     nameEs: "La Unión / La Solidaridad",
     nameFr: "L'Union / La Solidarité",
-    nameTh: 'ปี่ (การเคียงคู่)',
-    nameVi: 'Thuỷ Địa Tỷ',
     symbol: "☵☷",
     nature: "亲辅",
     natureEn: "Close Support",
@@ -223,10 +189,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Affinité / Entraide",
     judgment: "吉。原筮元永贞无咎",
     judgmentEn: "Divination auspicious. Observe the jaws, provide for yourself.",
-    relationshipMeaning: '吉。亲密无间，相亲相爱，互依互靠。单身者易遇良缘，恋爱者利于谈婚论嫁，是一段和乐融融的关系。',
-    relationshipMeaningEn: 'Auspicious. Close and affectionate, relying mutually on each other. Singles find good matches; couples will find it ideal for marriage discussion.',
-    relationshipMeaningTh: 'โชคดี ความสัมพันธ์ใกล้ชิด สนิทสนมและพึ่งพาอาศัยกัน คนโสดมีเกณฑ์พบเนื้อคู่ คนมีคู่เหมาะแก่การเจรจาเรื่องแต่งงานและสร้างครอบครัว',
-    relationshipMeaningVi: 'Cát. Thân mật khăng khít, tương thân tương ái, nương tựa lẫn nhau. Người độc thân dễ gặp lương duyên, người đang yêu lợi cho việc bàn tính hôn nhân.',
+    relationshipMeaning: "亲密互助的关系，彼此支持，天然亲近",
+    relationshipMeaningEn: "Pleasant and relaxed together, but beware of stagnation from too much comfort.",
     category: "吉",
     scoreRange: [76, 88]
   },
@@ -235,8 +199,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Small Taming",
     nameEs: "La Fuerza Domesticadora de lo Pequeño",
     nameFr: "Le Pouvoir d'Apprivoisement du Petit",
-    nameTh: 'เสี่ยวชู่ (การสะสมเล็กน้อย)',
-    nameVi: 'Phong Thiên Tiểu Súc',
     symbol: "☴☰",
     nature: "蓄养",
     natureEn: "Nourishing Accumulation",
@@ -244,10 +206,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Accumulation Mineure / Élevage",
     judgment: "亨。密云不雨",
     judgmentEn: "The ridgepole sags. Advantageous to move. Success.",
-    relationshipMeaning: '平。感情虽有微小进展，但阻力犹存，常因生活琐事产生摩擦。不可急于求成，需耐心积累感情。',
-    relationshipMeaningEn: 'Neutral. Slight progress but resistance remains. Friction often arises from trivial matters. Do not rush; build affection gradually.',
-    relationshipMeaningTh: 'ปานกลาง มีความคืบหน้าเล็กน้อยแต่ยังมีแรงต้าน มักขัดแย้งด้วยเรื่องเล็กๆ น้อยๆ ในชีวิตประจำวัน อย่าใจร้อน ต้องค่อยๆ สะสมความรู้สึกที่ดีต่อกัน',
-    relationshipMeaningVi: 'Bình. Tình cảm tuy có tiến triển nhỏ nhưng trở ngại vẫn còn, thường vì chuyện vặt vãnh mà ma sát. Không được nôn nóng thành công, cần kiên nhẫn tích lũy tình cảm.',
+    relationshipMeaning: "感情在积累中，尚未到爆发点，细水长流",
+    relationshipMeaningEn: "A natural, flowing relationship. No forcing, everything just right.",
     category: "中",
     scoreRange: [62, 75]
   },
@@ -256,8 +216,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Treading (Conduct)",
     nameEs: "El Pisar / La Conducta",
     nameFr: "Le Pas / La Conduite",
-    nameTh: 'ลู่ (การย่างก้าวด้วยความระมัดระวัง)',
-    nameVi: 'Thiên Trạch Lý',
     symbol: "☰☱",
     nature: "践行",
     natureEn: "Practice & Action",
@@ -265,10 +223,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Pratique / Mettre en œuvre",
     judgment: "履虎尾，不咥人亨",
     judgmentEn: "Advantageous to persevere. Success.",
-    relationshipMeaning: '平。步步惊心，关系中存在一定阶层感或压力。必须相敬如宾，遵守礼节，谨言慎行方能相安无事。',
-    relationshipMeaningEn: 'Neutral. Walking on thin ice; the relationship has underlying pressure or inequality. Respecting boundaries and acting cautiously ensure harmony.',
-    relationshipMeaningTh: 'ปานกลาง ความสัมพันธ์มีความกดดันหรือความเหลื่อมล้ำ ต้องให้เกียรติซึ่งกันและกัน รักษามารยาทและระวังคำพูดเพื่อประคองความสงบสุข',
-    relationshipMeaningVi: 'Bình. Như đi trên băng mỏng, quan hệ có áp lực hoặc cảm giác thứ bậc. Phải tương kính như tân, tuân thủ lễ tiết, cẩn ngôn thận hành mới có thể bình an vô sự.',
+    relationshipMeaning: "小心翼翼地经营感情，谨慎反而带来安稳",
+    relationshipMeaningEn: "You may need to repair or rebuild certain parts of your bond, but it will grow even stronger.",
     category: "吉",
     scoreRange: [68, 80]
   },
@@ -277,8 +233,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Peace",
     nameEs: "La Paz / La Armonía",
     nameFr: "La Paix / La Prospérité",
-    nameTh: 'ไท้ (ความสงบสุข)',
-    nameVi: 'Địa Thiên Thái',
     symbol: "☷☰",
     nature: "通泰",
     natureEn: "Harmonious Flow",
@@ -286,10 +240,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Harmonie / Fluidité",
     judgment: "小往大来吉亨",
     judgmentEn: "Success, prosperity, perseverance. Marrying a maiden is auspicious.",
-    relationshipMeaning: '大吉。阴阳交泰，沟通顺畅，彼此心意相通。感情甜蜜融洽，极为利于订婚、结婚等喜事。',
-    relationshipMeaningEn: 'Highly auspicious. Perfect harmony and smooth communication; hearts are aligned. Sweet and harmonious relationship, ideal for engagement or marriage.',
-    relationshipMeaningTh: 'เป็นมงคลยิ่ง หยินหยางสมดุล สื่อสารราบรื่นและใจตรงกัน ความรักหวานชื่นและลงตัว เหมาะมากสำหรับการหมั้นหมายหรือแต่งงาน',
-    relationshipMeaningVi: 'Đại cát. Âm dương giao hòa, giao tiếp thông suốt, tâm ý tương thông. Tình cảm ngọt ngào hòa hợp, cực kỳ có lợi cho việc đính hôn, kết hôn.',
+    relationshipMeaning: "阴阳交感，天地相通，此乃上等姻缘之象",
+    relationshipMeaningEn: "The relationship is in a growth period, bright future ahead. Worth investing actively.",
     category: "大吉",
     scoreRange: [88, 97]
   },
@@ -298,8 +250,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Standstill (Stagnation)",
     nameEs: "El Estancamiento / La Obstrucción",
     nameFr: "La Stagnation / L'Obstruction",
-    nameTh: 'ผี่ (ความหยุดชะงัก)',
-    nameVi: 'Thiên Địa Bĩ',
     symbol: "☰☷",
     nature: "闭塞",
     natureEn: "Blocked & Stagnant",
@@ -307,10 +257,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Blocage / Fermeture",
     judgment: "否之匪人，不利君子贞",
     judgmentEn: "Success, no blame. Advantageous to persevere.",
-    relationshipMeaning: '凶。沟通闭塞，冷战对立，想法背道而驰。感情陷入僵局，若不积极打破隔阂，恐面临分手。',
-    relationshipMeaningEn: 'Inauspicious. Blocked communication, cold war, and divergent goals. The relationship is stagnant; without breaking the barrier, break-up is likely.',
-    relationshipMeaningTh: 'ไม่ดี การสื่อสารปิดตาย เกิดสงครามเย็นและความคิดเห็นสวนทางกัน ความสัมพันธ์หยุดชะงัก หากไม่เปิดใจแก้ไขอาจต้องเลิกรากัน',
-    relationshipMeaningVi: 'Hung. Giao tiếp bế tắc, chiến tranh lạnh đối lập, suy nghĩ đi ngược lại nhau. Tình cảm rơi vào bế tắc, nếu không tích cực phá vỡ rào cản sẽ dễ đối mặt với chia tay.',
+    relationshipMeaning: "暂时有隔阂，但不代表终结，需要主动打破僵局",
+    relationshipMeaningEn: "Need to resolve some obstacles to move forward, but obstacles are also opportunities.",
     category: "小凶",
     scoreRange: [45, 58]
   },
@@ -319,8 +267,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Fellowship with Men",
     nameEs: "La Comunidad con los Hombres",
     nameFr: "La Communauté / L'Union des Hommes",
-    nameTh: 'ถงเหริน (มิตรสหาย)',
-    nameVi: 'Thiên Hỏa Đồng Nhân',
     symbol: "☰☲",
     nature: "聚合",
     natureEn: "Gathering Together",
@@ -328,10 +274,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Rassemblement / Convergence",
     judgment: "同人于野亨",
     judgmentEn: "Success. Minor advantages in firmness.",
-    relationshipMeaning: '吉。志同道合，既是爱人又是知己，拥有共同的目标与圈子。公开恋情能获得大众的祝福。',
-    relationshipMeaningEn: 'Auspicious. Like-minded partners who are both lovers and soulmates. Sharing common goals and social circles; opening the relationship brings public blessings.',
-    relationshipMeaningTh: 'โชคดี เป็นทั้งคนรักและมิตรแท้ที่มีอุดมการณ์เดียวกัน มีเป้าหมายและสังคมร่วมกัน การเปิดเผยความสัมพันธ์จะได้รับการยินดีจากรอบข้าง',
-    relationshipMeaningVi: 'Cát. Chí đồng đạo hợp, vừa là người yêu vừa là tri kỷ, có chung mục tiêu và vòng bạn bè. Công khai tình cảm sẽ nhận được sự chúc phúc của mọi người.',
+    relationshipMeaning: "志同道合，价值观一致，容易建立深层连接",
+    relationshipMeaningEn: "Surface harmony and beauty. Need to pay attention to inner substance.",
     category: "吉",
     scoreRange: [78, 90]
   },
@@ -340,8 +284,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Great Possession",
     nameEs: "La Gran Posesión / La Abundancia",
     nameFr: "Le Grand Avoir / La Grande Possession",
-    nameTh: 'ต้าโหย่ว (ความมั่งคั่งยิ่งใหญ่)',
-    nameVi: 'Hỏa Thiên Đại Hữu',
     symbol: "☲☰",
     nature: "丰盛",
     natureEn: "Full Abundance",
@@ -349,10 +291,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Abondance / Plénitude",
     judgment: "元亨",
     judgmentEn: "Advantageous to persevere.",
-    relationshipMeaning: '大吉。感情丰富且物质基础雄厚，彼此相处融洽，充满正能量。此时利于共筑未来，走向美满婚姻。',
-    relationshipMeaningEn: 'Highly auspicious. Rich affection backed by a strong material foundation. Mutual positive energy leads to a happy, prosperous future and marriage.',
-    relationshipMeaningTh: 'เป็นมงคลยิ่ง ความรักเบ่งบานพร้อมฐานะที่มั่นคง ทั้งสองฝ่ายเข้ากันได้ดีและเต็มไปด้วยพลังบวก เหมาะแก่การสร้างอนาคตร่วมกันสู่การแต่งงาน',
-    relationshipMeaningVi: 'Đại cát. Tình cảm phong phú lại có nền tảng vật chất vững chắc, đôi bên chung sống hòa hợp, đầy năng lượng tích cực. Lợi cho việc cùng xây tương lai, hướng tới hôn nhân viên mãn.',
+    relationshipMeaning: "如日中天的关系，充满活力与希望",
+    relationshipMeaningEn: "Something is fading away, perhaps an old pattern, making space for new birth.",
     category: "大吉",
     scoreRange: [84, 95]
   },
@@ -361,8 +301,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Modesty",
     nameEs: "La Modestia",
     nameFr: "La Modestie",
-    nameTh: 'เชียน (ความอ่อนน้อมถ่อมตน)',
-    nameVi: 'Địa Sơn Khiêm',
     symbol: "☷☶",
     nature: "谦逊",
     natureEn: "Humble Modesty",
@@ -370,10 +308,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Humilité / Modestie",
     judgment: "亨君子有终",
     judgmentEn: "The prosperous lord uses gift horses, multiplying them.",
-    relationshipMeaning: '吉。相处缺乏激情但极为安全稳固。彼此懂得低头与退让，相敬如宾，能够平平安安走到最后。',
-    relationshipMeaningEn: 'Auspicious. Lacks wild passion but offers extreme safety and stability. Mutual humility and compromise ensure a peaceful, lifelong journey together.',
-    relationshipMeaningTh: 'โชคดี แม้จะขาดความหวือหวาแต่มีความมั่นคงและปลอดภัยสูง ต่างฝ่ายต่างรู้จักยอมและให้อภัยกัน จะสามารถประคองคู่กันไปได้ยาวนาน',
-    relationshipMeaningVi: 'Cát. Chung sống thiếu đi sự cuồng nhiệt nhưng cực kỳ an toàn và vững chắc. Đôi bên biết nhường nhịn và cúi đầu, tương kính như tân, có thể bình an đi đến cuối con đường.',
+    relationshipMeaning: "彼此谦让包容，关系长久稳定",
+    relationshipMeaningEn: "A turning point has appeared. The relationship may restart or enter a new phase.",
     category: "吉",
     scoreRange: [77, 89]
   },
@@ -382,8 +318,6 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nameEn: "Enthusiasm",
     nameEs: "El Entusiasmo",
     nameFr: "L'Enthousiasme",
-    nameTh: 'อวี้ (ความสุขสำราญ)',
-    nameVi: 'Lôi Địa Dự',
     symbol: "☳☷",
     nature: "安乐",
     natureEn: "Peace & Joy",
@@ -391,10 +325,8 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureFr: "Joie / Quiétude",
     judgment: "利建侯行师",
     judgmentEn: "Great good fortune. Success.",
-    relationshipMeaning: '吉。快乐、充满情调与欢愉的恋爱关系。但需注意流于享乐而忽视现实问题，避免虚荣与喜新厌旧。',
-    relationshipMeaningEn: 'Auspicious. A joyful, romantic, and pleasurable relationship. However, beware of overindulgence in pleasure while ignoring practical realities and vanity.',
-    relationshipMeaningTh: 'โชคดี ความสัมพันธ์เต็มไปด้วยความสุข ความโรแมนติกและความสนุกสนาน แต่ต้องระวังการเพลิดเพลินกับความสุขจนละเลยความจริงหรือความรับผิดชอบ',
-    relationshipMeaningVi: 'Cát. Mối quan hệ vui vẻ, đầy tình điệu và hoan hỷ. Nhưng cần chú ý tránh sa đà vào hưởng lạc mà bỏ qua vấn đề thực tế, tránh hư vinh và cả thèm chóng chán.',
+    relationshipMeaning: "相处愉快轻松，但需警惕过于安逸导致停滞",
+    relationshipMeaningEn: "Staying true to each other makes everything flow naturally.",
     category: "吉",
     scoreRange: [73, 85]
   },
