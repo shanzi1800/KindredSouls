@@ -158,9 +158,18 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7);
 
-  // Verify token with Supabase
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
+  // Verify token with Supabase Auth REST API (JS client removed)
+  const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!authRes.ok) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+  const user = await authRes.json();
+  if (!user || !user.id) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
   console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
