@@ -27,24 +27,43 @@ const DZ_WUXING: Record<string, string> = {
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
 };
 
-/** 天干拼音（用于非中文输出）*/
-const TG_PINYIN: Record<string, string> = {
-  '甲': 'Jiǎ', '乙': 'Yǐ',
-  '丙': 'Bǐng', '丁': 'Dīng',
-  '戊': 'Wù', '己': 'Jǐ',
-  '庚': 'Gēng', '辛': 'Xīn',
-  '壬': 'Rén', '癸': 'Guǐ',
+/** 天干多语言名称 */
+const TIAN_GAN_NAMES: Record<string, Record<string, string>> = {
+  '甲': { zh: '甲', en: 'Jia', es: 'Jia', fr: 'Jia', th: 'เจีย', vi: 'Giáp' },
+  '乙': { zh: '乙', en: 'Yi', es: 'Yi', fr: 'Yi', th: 'อี้', vi: 'Ất' },
+  '丙': { zh: '丙', en: 'Bing', es: 'Bing', fr: 'Bing', th: 'ปิง', vi: 'Bính' },
+  '丁': { zh: '丁', en: 'Ding', es: 'Ding', fr: 'Ding', th: 'ติง', vi: 'Đinh' },
+  '戊': { zh: '戊', en: 'Wu', es: 'Wu', fr: 'Wu', th: 'อู๋', vi: 'Mậu' },
+  '己': { zh: '己', en: 'Ji', es: 'Ji', fr: 'Ji', th: 'จี้', vi: 'Kỷ' },
+  '庚': { zh: '庚', en: 'Geng', es: 'Geng', fr: 'Geng', th: 'เกิง', vi: 'Canh' },
+  '辛': { zh: '辛', en: 'Xin', es: 'Xin', fr: 'Xin', th: 'ซิน', vi: 'Tân' },
+  '壬': { zh: '壬', en: 'Ren', es: 'Ren', fr: 'Ren', th: 'เรน', vi: 'Nhâm' },
+  '癸': { zh: '癸', en: 'Gui', es: 'Gui', fr: 'Gui', th: 'กุ้ย', vi: 'Quý' },
 };
 
-/** 地支拼音（用于非中文输出）*/
-const DZ_PINYIN: Record<string, string> = {
-  '子': 'Zǐ', '丑': 'Chǒu', '寅': 'Yín', '卯': 'Mǎo', '辰': 'Chén', '巳': 'Sì',
-  '午': 'Wǔ', '未': 'Wèi', '申': 'Shēn', '酉': 'Yǒu', '戌': 'Xū', '亥': 'Hài',
+/** 地支多语言名称 */
+const DI_ZHI_NAMES: Record<string, Record<string, string>> = {
+  '子': { zh: '子', en: 'Zi', es: 'Zi', fr: 'Zi', th: 'จื้อ', vi: 'Tý' },
+  '丑': { zh: '丑', en: 'Chou', es: 'Chou', fr: 'Chou', th: 'โฉ่ว', vi: 'Sửu' },
+  '寅': { zh: '寅', en: 'Yin', es: 'Yin', fr: 'Yin', th: 'อิ่น', vi: 'Dần' },
+  '卯': { zh: '卯', en: 'Mao', es: 'Mao', fr: 'Mao', th: 'เหมา', vi: 'Mão' },
+  '辰': { zh: '辰', en: 'Chen', es: 'Chen', fr: 'Chen', th: 'เฉิน', vi: 'Thìn' },
+  '巳': { zh: '巳', en: 'Si', es: 'Si', fr: 'Si', th: 'ซื่อ', vi: 'Tỵ' },
+  '午': { zh: '午', en: 'Wu', es: 'Wu', fr: 'Wu', th: 'อู๋', vi: 'Ngọ' },
+  '未': { zh: '未', en: 'Wei', es: 'Wei', fr: 'Wei', th: 'เหว่ย์', vi: 'Mùi' },
+  '申': { zh: '申', en: 'Shen', es: 'Shen', fr: 'Shen', th: 'เชิน', vi: 'Thân' },
+  '酉': { zh: '酉', en: 'You', es: 'You', fr: 'You', th: 'โย่ว', vi: 'Dậu' },
+  '戌': { zh: '戌', en: 'Xu', es: 'Xu', fr: 'Xu', th: 'ซวี่', vi: 'Tuất' },
+  '亥': { zh: '亥', en: 'Hai', es: 'Hai', fr: 'Hai', th: 'ไห่', vi: 'Hợi' },
 };
 
-/** 五行英文 */
-const WUXING_EN: Record<string, string> = {
-  '木': 'Wood', '火': 'Fire', '土': 'Earth', '金': 'Metal', '水': 'Water',
+/** 五行多语言名称 */
+const WU_XING_NAMES: Record<string, Record<string, string>> = {
+  '木': { zh: '木', en: 'Wood', es: 'Madera', fr: 'Bois', th: 'ไม้', vi: 'Mộc' },
+  '火': { zh: '火', en: 'Fire', es: 'Fuego', fr: 'Feu', th: 'ไฟ', vi: 'Hỏa' },
+  '土': { zh: '土', en: 'Earth', es: 'Tierra', fr: 'Terre', th: 'ดิน', vi: 'Thổ' },
+  '金': { zh: '金', en: 'Metal', es: 'Metal', fr: 'Métal', th: 'โลหะ', vi: 'Kim' },
+  '水': { zh: '水', en: 'Water', es: 'Agua', fr: 'Eau', th: 'น้ำ', vi: 'Thủy' },
 };
 
 
@@ -195,10 +214,10 @@ function paipan(info: BirthInfo): SiZhu {
 
 
 export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
-  // Helper: translate gan/zhi/wuxing for non-zh
-  const tg = (g: string) => lang === 'zh' ? g : (TG_PINYIN[g] || g);
-  const dz_ = (z: string) => lang === 'zh' ? z : (DZ_PINYIN[z] || z);
-  const wx = (w: string) => lang === 'zh' ? w : (WUXING_EN[w] || w);
+  // Helper: translate gan/zhi/wuxing for target lang
+  const tg = (g: string) => TIAN_GAN_NAMES[g]?.[lang] || g;
+  const dz_ = (z: string) => DI_ZHI_NAMES[z]?.[lang] || z;
+  const wx = (w: string) => WU_XING_NAMES[w]?.[lang] || w;
 
   const sz1 = paipan(p1);
   const sz2 = paipan(p2);
@@ -238,18 +257,16 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       // 一方明显多，另一方少 → 互补潜力
       if (diff > 0) {
         wuxingBonus += 3;
-        const labels = lang === 'zh' ? { you: '你', ta: '对方', qi: '气' } :
-          lang === 'en' ? { you: 'Your', ta: "partner's", qi: ' element is strong' } :
-          lang === 'es' ? { you: 'Tu', ta: 'de tu pareja', qi: ' es fuerte' } :
-          { you: 'Votre', ta: 'de votre partenaire', qi: ' est fort' };
-        wuxingDetails.push(`${labels.you}${wx(w)}${labels.qi}, ${labels.ta} can benefit`);
+        const labels = { you: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
+          ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
+          qi: { zh:'气', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' } };
+        wuxingDetails.push(`${labels.you[lang]}${wx(w)}${labels.qi[lang]}, ${labels.ta[lang]} can benefit`);
       } else {
         wuxingBonus += 3;
-        const labels = lang === 'zh' ? { you: '对方', ta: '你', qi: '气' } :
-          lang === 'en' ? { you: "Partner's", ta: 'your', qi: ' element is strong' } :
-          lang === 'es' ? { you: 'De tu pareja', ta: 'tuyo', qi: ' es fuerte' } :
-          { you: 'De votre partenaire', ta: 'votre', qi: ' est fort' };
-        wuxingDetails.push(`${labels.you}${wx(w)}${labels.qi}, ${labels.ta} can benefit`);
+        const labels = { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
+          ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' },
+          qi: { zh:'气', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' } };
+        wuxingDetails.push(`${labels.you[lang]}${wx(w)}${labels.qi[lang]}, ${labels.ta[lang]} can benefit`);
       }
     }
   }
@@ -262,10 +279,12 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   // 天干六合检查
   if (TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster) {
     hehunBonus += 12;
-    const liuheLabel = lang === 'zh' ? `日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强` :
-      lang === 'en' ? `Day Stems ${tg(sz1.dayMaster)} & ${tg(sz2.dayMaster)} form a Six Harmony — powerful emotional bond` :
-      lang === 'es' ? `Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso` :
-      `Tiges ${tg(sz1.dayMaster)} et ${tg(sz2.dayMaster)} forment une Six Harmonies — lien émotionnel puissant`;
+    const liuheLabel = { zh:`日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强`,
+      en:`Day Stems ${tg(sz1.dayMaster)} & ${tg(sz2.dayMaster)} form a Six Harmony — powerful emotional bond`,
+      es:`Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso`,
+      fr:`Tiges ${tg(sz1.dayMaster)} et ${tg(sz2.dayMaster)} forment Six Harmonies — lien émotionnel puissant`,
+      th:`ธาตุ ${tg(sz1.dayMaster)} และ ${tg(sz2.dayMaster)} สร้างหกสามัคคี — พันธะอารมณ์ที่ทรงพลัง`,
+      vi:`Ngày ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} tạo Lục Hợp — liên kết cảm xúc mạnh mẽ` }[lang] || '';
     hehunDetails.push(liuheLabel);
   }
 
@@ -278,20 +297,28 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const sanhe = DZHI_SANHE[dz1];
     if (sanhe && sanhe.partners.includes(dz2)) {
       hehunBonus += 10;
-      const sanheLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固` :
-        lang === 'en' ? `${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation` :
-        lang === 'es' ? `Rama ${label} ${dz_(dz1)} y ${dz_(dz2)} forman Tres Elementos ${wx(sanhe.element)} — base sólida` :
-        `Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`;
+      const sanheLabel: Record<string,string> = {
+        zh:`${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`,
+        en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
+        es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
+        fr:`Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`,
+        th:`${label} สาขา ${dz_(dz1)} และ ${dz_(dz2)} สร้างธาตุ ${wx(sanhe.element)} — รากฐานมั่นคง`,
+        vi:`${label} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Tam Hợp ${wx(sanhe.element)} — nền tảng vững chắc`,
+      }[lang] || '';
       hehunDetails.push(sanheLabel);
     }
 
     // 六冲（扣分）
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
-      const liuchongLabel = lang === 'zh' ? `${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式` :
-        lang === 'en' ? `${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed` :
-        lang === 'es' ? `Rama ${label} ${dz_(dz1)} y ${dz_(dz2)} forman Choque Seis — se necesita comunicación consciente` :
-        `Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment un Choc Six — une communication attentionnée est nécessaire`;
+      const liuchongLabel: Record<string,string> = {
+        zh:`${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`,
+        en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
+        es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
+        fr:`Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment un Choc Six — une communication attentionnée est nécessaire`,
+        th:`${label} สาขา ${dz_(dz1)} และ ${dz_(dz2)} ขัดแย้ง — ต้องสื่อสารอย่างระมัดระวัง`,
+        vi:`${label} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Lục Xung — cần giao tiếp cẩn thận`,
+      }[lang] || '';
       hehunDetails.push(liuchongLabel);
     }
   }
@@ -309,63 +336,105 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const allDetails = [...wuxingDetails, ...hehunDetails];
 
   // i18n labels
-  const labels = {
-    sipanTitle: lang === 'zh' ? '【四柱排盘】' : lang === 'en' ? '[Four Pillars Chart]' : lang === 'es' ? '[Carta Cuatro Pilares]' : '[Carte Quatre Piliers]',
-    you: lang === 'zh' ? '你' : lang === 'en' ? 'You' : lang === 'es' ? 'Tú' : 'Vous',
-    ta: lang === 'zh' ? 'TA' : lang === 'en' ? 'Partner' : lang === 'es' ? 'Pareja' : 'Partenaire',
-    yearPillar: lang === 'zh' ? '年柱' : lang === 'en' ? 'Year' : lang === 'es' ? 'Año' : 'Année',
-    monthPillar: lang === 'zh' ? '月柱' : lang === 'en' ? 'Month' : lang === 'es' ? 'Mes' : 'Mois',
-    dayPillar: lang === 'zh' ? '日柱' : lang === 'en' ? 'Day' : lang === 'es' ? 'Día' : 'Jour',
-    rishiTitle: lang === 'zh' ? '【日主分析】' : lang === 'en' ? '[Day Master Analysis]' : lang === 'es' ? '[Análisis Maestro Día]' : '[Analyse Maître Jour]',
-    hehunTitle: lang === 'zh' ? '【合婚关系】' : lang === 'en' ? '[Marital Harmony]' : lang === 'es' ? '[Armonía Matrimonial]' : '[Harmonie Conjugale]',
-    scoreLabel: lang === 'zh' ? '综合评分' : lang === 'en' ? 'Overall Score' : lang === 'es' ? 'Puntuación' : 'Score',
-    element: lang === 'zh' ? '五行' : lang === 'en' ? 'element' : lang === 'es' ? 'elemento' : 'élément',
-    dayMaster: lang === 'zh' ? '日主' : lang === 'en' ? 'Day Master' : lang === 'es' ? 'Maestro Día' : 'Maître Jour',
+  const BAZI_LABELS = {
+    sipanTitle: { zh:'【四柱排盘】', en:'[Four Pillars Chart]', es:'[Carta Cuatro Pilares]', fr:'[Carte Quatre Piliers]', th:'[แผนภูมิสี่เสา]', vi:'[Tứ Trụ]' },
+    you: { zh:'你', en:'You', es:'Tú', fr:'Vous', th:'คุณ', vi:'Bạn' },
+    ta: { zh:'TA', en:'Partner', es:'Pareja', fr:'Partenaire', th:'คู่ครอง', vi:'Đối phương' },
+    yearPillar: { zh:'年柱', en:'Year', es:'Año', fr:'Année', th:'ปี', vi:'Năm' },
+    monthPillar: { zh:'月柱', en:'Month', es:'Mes', fr:'Mois', th:'เดือน', vi:'Tháng' },
+    dayPillar: { zh:'日柱', en:'Day', es:'Día', fr:'Jour', th:'วัน', vi:'Ngày' },
+    rishiTitle: { zh:'【日主分析】', en:'[Day Master Analysis]', es:'[Análisis Maestro Día]', fr:'[Analyse Maître Jour]', th:'[วิเคราะห์วันเจ้า]', vi:'[Phân tích Nhật Chủ]' },
+    hehunTitle: { zh:'【合婚关系】', en:'[Marital Harmony]', es:'[Armonía Matrimonial]', fr:'[Harmonie Conjugale]', th:'[ความสามัคคีสมรส]', vi:'[Hợp Hôn]' },
+    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación', fr:'Score', th:'คะแนนรวม', vi:'Điểm tổng' },
+    element: { zh:'五行', en:'element', es:'elemento', fr:'élément', th:'ธาตุ', vi:'nguyên tố' },
+    dayMaster: { zh:'日主', en:'Day Master', es:'Maestro Día', fr:'Maître Jour', th:'วันเจ้า', vi:'Nhật Chủ' },
+    detailYou: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
+    detailTa: { zh:'TA', en:"Partner's", es:'Pareja', fr:'Partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
   };
 
   // 根据分数段选择 summary 模板
   let summary: string;
   if (score >= 85) {
-    summary = lang === 'zh' ? `日主${sz1.dayMaster}遇${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。` :
-      lang === 'en' ? `Day Master ${sz1.dayMaster} meets ${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.` :
-      lang === 'es' ? `Maestro Día ${sz1.dayMaster} encuentra ${sz2.dayMaster} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.` :
-      `Maître Jour ${sz1.dayMaster} rencontre ${sz2.dayMaster} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`;
+    const SUMMARY_85: Record<string,string> = {
+      zh:`日主\${sz1.dayMaster}遇\${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。`,
+      en:`Day Master \${sz1.dayMaster} meets \${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.`,
+      es:`Maestro Día \${sz1.dayMaster} encuentra \${sz2.dayMaster} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.`,
+      fr:`Maître Jour \${sz1.dayMaster} rencontre \${sz2.dayMaster} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`,
+      th:`เจ้า \${sz1.dayMaster} พบ \${sz2.dayMaster} — กิ่งฟ้าปรองดอง กิ่งดินลงรอย ชะตาชีวิตระดับสูง`,
+      vi:`Nhật Chủ \${sz1.dayMaster} gặp \${sz2.dayMaster} — thiên can hòa hợp địa chi thuận duyên duyên phần trời`,
+    };
+    summary = SUMMARY_85[lang] || SUMMARY_85['en'];
   } else if (score >= 72) {
-    summary = lang === 'zh' ? `日柱${sz1.dayPillar}与${sz2.dayPillar}五行互根，彼此能互相成就。` :
-      lang === 'en' ? `Day Pillar ${sz1.dayPillar} and ${sz2.dayPillar} share elemental roots — each empowers the other.` :
-      lang === 'es' ? `Pilar Día ${sz1.dayPillar} y ${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.` :
-      `Pilier Jour ${sz1.dayPillar} et ${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`;
+    const SUMMARY_72: Record<string,string> = {
+      zh:`日柱\${sz1.dayPillar}与\${sz2.dayPillar}五行互根，彼此能互相成就。`,
+      en:`Day Pillar \${sz1.dayPillar} and \${sz2.dayPillar} share elemental roots — each empowers the other.`,
+      es:`Pilar Día \${sz1.dayPillar} y \${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.`,
+      fr:`Pilier Jour \${sz1.dayPillar} et \${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`,
+      th:`เสา \${sz1.dayPillar} และ \${sz2.dayPillar} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
+      vi:`Trụ \${sz1.dayPillar} và \${sz2.dayPillar} cùng nguyên tố — mỗi người giúp đỡ người kia`,
+    };
+    summary = SUMMARY_72[lang] || SUMMARY_72['en'];
   } else if (score >= 60) {
-    summary = lang === 'zh' ? `命盘显示性格互补空间大，用心经营可渐入佳境。` :
-      lang === 'en' ? `Charts show strong complementary potential — with care, this relationship blossoms.` :
-      lang === 'es' ? `Los gráficos muestran fuerte potencial complementario — con cuidado, esta relación florece.` :
-      `Les graphiques montrent un fort potentiel complémentaire — avec soin, cette relation s'épanouit.`;
+    const SUMMARY_60: Record<string,string> = {
+      zh:`命盘显示性格互补空间大，用心经营可渐入佳境。`,
+      en:`Charts show strong complementary potential — with care, this relationship blossoms.`,
+      es:`Los gráficos muestran fuerte potencial complementario — con cuidado, esta relación florece.`,
+      fr:`Les graphiques montrent un fort potentiel complémentaire — avec soin, cette relation s'épanouit.`,
+      th:`แผนชะตามีศักยภาพเสริมกันสูง — ดูแลดี๊ ความสัมพันธ์จะเบ่งบาน`,
+      vi:`Bản đồ cho thấy tiềm năng bổ trợ mạnh — chăm sóc tốt, quan hệ sẽ nở hoa`,
+    };
+    summary = SUMMARY_60[lang] || SUMMARY_60['en'];
   } else {
-    summary = lang === 'zh' ? `五行配置差异较大，但差异正是成长契机，关键在包容。` :
-      lang === 'en' ? `Elemental configurations differ notably, but differences are growth opportunities. Tolerance is key.` :
-      lang === 'es' ? `Las configuraciones elementales difieren notablemente, pero las diferencias son oportunidades de crecimiento. La tolerancia es clave.` :
-      `Les configurations élémentaires diffèrent notablement, mais les différences sont des opportunités de croissance. La tolérance est la clé.`;
+    const SUMMARY_LT: Record<string,string> = {
+      zh:`五行配置差异较大，但差异正是成长契机，关键在包容。`,
+      en:`Elemental configurations differ notably, but differences are growth opportunities. Tolerance is key.`,
+      es:`Las configuraciones elementales difieren notablemente, pero las diferencias son oportunidades de crecimiento. La tolerancia es clave.`,
+      fr:`Les configurations élémentaires diffèrent notablement, mais les différences sont des opportunités de croissance. La tolérance est la clé.`,
+      th:`ธาตุต่างกันมาก แต่ความต่างคือโอกาสเติบโต ความอดทนคือกุญแจ`,
+      vi:`Nguyên tố khác nhau nhiều, nhưng khác biệt là cơ hội phát triển. Sự khoan dung là chìa khóa`,
+    };
+    summary = SUMMARY_LT[lang] || SUMMARY_LT['en'];
   }
 
   // rishi analysis phrase
-  const rishiPhrase = rishiBase >= 80 ?
-    (lang === 'zh' ? '两者性质相近，默契天然。' : lang === 'en' ? 'Similar natures — natural rapport from the start.' :
-     lang === 'es' ? 'Naturalezas similares — rapport natural desde el inicio.' : 'Natures similaires — naturellement en phase dès le départ.') :
-    rishiBase >= 70 ?
-    (lang === 'zh' ? '性质不同但能互补，互相激发潜能。' : lang === 'en' ? 'Different yet complementary — each brings out the other\'s potential.' :
-     lang === 'es' ? 'Diferentes pero complementarios — cada uno saca el potencial del otro.' : 'Différents mais complémentaires — chacun libère le potentiel de l\'autre.') :
-    (lang === 'zh' ? '性质差异较大，需要更多理解和磨合。' : lang === 'en' ? 'Notable differences — requires more understanding and patience.' :
-     lang === 'es' ? 'Diferencias notables — requiere más comprensión y paciencia.' : 'Différences notables — nécessite plus de compréhension et de patience.');
+  const RISHI_HI: Record<string,string> = {
+    zh:'两者性质相近，默契天然。', en:'Similar natures — natural rapport from the start.',
+    es:'Naturalezas similares — rapport natural desde el inicio.', fr:'Natures similaires — naturellement en phase dès le départ.',
+    th:'ธัมย์ใกล้เคียงกัน — ความเข้าใจต่อกันอย่างเป็นธรรมชาติ', vi:'Bản chất tương đồng — ăn ý tự nhiên từ đầu',
+  };
+  const RISHI_MED: Record<string,string> = {
+    zh:'性质不同但能互补，互相激发潜能。', en:"Different yet complementary — each brings out the other's potential.",
+    es:'Diferentes pero complementarios — cada uno saca el potencial del otro.', fr:"Différents mais complémentaires — chacun libère le potentiel de l'autre.",
+    th:'ต่างกันแต่เสริมกัน — ช่วยปลดปล่อยศักยภาพซึ่งกันและกัน', vi:'Khác nhau nhưng bổ trợ — mỗi người giúp đỡ phát huy tiềm năng của người kia',
+  };
+  const RISHI_LO: Record<string,string> = {
+    zh:'性质差异较大，需要更多理解和磨合。', en:'Notable differences — requires more understanding and patience.',
+    es:'Diferencias notables — requiere más comprensión y paciencia.', fr:'Différences notables — nécessite plus de compréhension et de patience.',
+    th:'ความแตกต่างชัดเจน — ต้องเข้าใจและอดทนมากขึ้น', vi:'Khác biệt rõ ràng — cần thêm sự thấu hiểu và kiên nhẫn',
+  };
+  const rishiPhrase = rishiBase >= 80 ? (RISHI_HI[lang] || RISHI_HI['en']) :
+    rishiBase >= 70 ? (RISHI_MED[lang] || RISHI_MED['en']) :
+    (RISHI_LO[lang] || RISHI_LO['en']);
 
   // score phrase
-  const scorePhrase = score >= 80 ?
-    (lang === 'zh' ? '缘分深厚，珍惜彼此' : lang === 'en' ? 'Deep bond — cherish each other' :
-     lang === 'es' ? 'Vínculo profundo — apreciense mutuamente' : 'Lien profond — chérissez-vous mutuellement') :
-    score >= 65 ?
-    (lang === 'zh' ? '基础良好，用心经营' : lang === 'en' ? 'Solid foundation — nurture it' :
-     lang === 'es' ? 'Base sólida — cuídenla' : 'Base solide — entretenez-la') :
-    (lang === 'zh' ? '需要磨合，但值得努力' : lang === 'en' ? 'Needs work, but worth the effort' :
-     lang === 'es' ? 'Requiere trabajo, pero vale la pena' : 'Nécessite du travail, mais en vaut la peine');
+  const SCORE_HI: Record<string,string> = {
+    zh:'缘分深厚，珍惜彼此', en:'Deep bond — cherish each other',
+    es:'Vínculo profundo — apreciense mutuamente', fr:'Lien profond — chérissez-vous mutuellement',
+    th:'สายเชื่อมลึก — หวงแหนกัน', vi:'Duyên sâu sắc — trân trọng nhau',
+  };
+  const SCORE_MED: Record<string,string> = {
+    zh:'基础良好，用心经营', en:'Solid foundation — nurture it',
+    es:'Base sólida — cuídenla', fr:'Base solide — entretenez-la',
+    th:'ฐานมั่นคง — ดูแลให้ดี', vi:'Nền tảng vững — chăm sóc thật tốt',
+  };
+  const SCORE_LO: Record<string,string> = {
+    zh:'需要磨合，但值得努力', en:'Needs work, but worth the effort',
+    es:'Requiere trabajo, pero vale la pena', fr:'Nécessite du travail, mais en vaut la peine',
+    th:'ต้องปรับตัว แต่คุ้มค่าที่จะพยายาม', vi:'Cần điều chỉnh, nhưng đáng để cố gắng',
+  };
+  const scorePhrase = score >= 80 ? (SCORE_HI[lang] || SCORE_HI['en']) :
+    score >= 65 ? (SCORE_MED[lang] || SCORE_MED['en']) :
+    (SCORE_LO[lang] || SCORE_LO['en']);
 
   const detail = [
     `${labels.sipanTitle}`,
@@ -373,14 +442,14 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     `${labels.ta}：${labels.yearPillar}${tg(sz2.year[0])}${dz_(sz2.year[1])} ${labels.monthPillar}${tg(sz2.month[0])}${dz_(sz2.month[1])} ${labels.dayPillar}${tg(sz2.day[0])}${dz_(sz2.day[1])}`,
     ``,
     `${labels.rishiTitle}`,
-    `${labels.you}${labels.dayMaster} ${tg(sz1.dayMaster)}（${wx(TG_WUXING[sz1.dayMaster])}${lang === 'zh' ? '' : ' ' + labels.element}），${labels.ta}${labels.dayMaster} ${tg(sz2.dayMaster)}（${wx(TG_WUXING[sz2.dayMaster])}${lang === 'zh' ? '' : ' ' + labels.element}）。${rishiPhrase}`,
+    `${BAZI_LABELS.detailYou[lang]}${BAZI_LABELS.dayMaster[lang]} ${tg(sz1.dayMaster)}（${wx(TG_WUXING[sz1.dayMaster])}${lang === 'zh' ? '' : ' ' + BAZI_LABELS.element[lang]}），${BAZI_LABELS.detailTa[lang]}${BAZI_LABELS.dayMaster[lang]} ${tg(sz2.dayMaster)}（${wx(TG_WUXING[sz2.dayMaster])}${lang === 'zh' ? '' : ' ' + BAZI_LABELS.element[lang]}）。${rishiPhrase}`,
     ...allDetails.length > 0 ? [`\n${labels.hehunTitle}`, ...allDetails] : [],
     `\n${labels.scoreLabel}：${score}/100 — ${scorePhrase}`,
   ].join('\n');
 
   return {
     score,
-    title: lang === 'zh' ? '八字命理' : lang === 'en' ? 'BaZi (Chinese Astrology)' : lang === 'es' ? 'BaZi (Astrología China)' : 'BaZi (Astrologie Chinoise)',
+    title: { zh:'八字命理', en:'BaZi (Chinese Astrology)', es:'BaZi (Astrología China)', fr:'BaZi (Astrologie Chinoise)', th:'BaZi (โหราศาสตร์จีน)', vi:'BaZi (Tử Vi Trung Hoa)' },
     summary,
     detail,
   };

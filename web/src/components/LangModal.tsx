@@ -9,6 +9,7 @@ interface LangModalProps {
 const LANG_LIST = [
   { code: 'en', label: 'English',       flag: '🇺🇸' },
   { code: 'zh', label: '简体中文',     flag: '🇨🇳' },
+  { code: 'es', label: 'Español',      flag: '🇪🇸' },
   { code: 'fr', label: 'Français',     flag: '🇫🇷' },
   { code: 'th', label: 'ไทย',          flag: '🇹🇭' },
   { code: 'vi', label: 'Tiếng Việt',   flag: '🇻🇳' },
@@ -44,7 +45,7 @@ export default function LangModal({ open, onClose }: LangModalProps) {
     <div className="lang-modal-backdrop" onClick={handleBackdrop}>
       <div className="lang-modal" ref={modalRef}>
         <button className="lang-modal-close" onClick={onClose}>✕</button>
-        <div className="lang-modal-title">{i18n.language === 'zh' ? '选择语言' : i18n.language === 'th' ? 'เลือกภาษา' : i18n.language === 'vi' ? 'Chọn ngôn ngữ' : 'Select Language'}</div>
+        <div className="lang-modal-title">{i18n.language === 'zh' ? '选择语言' : i18n.language === 'es' ? 'Seleccionar idioma' : i18n.language === 'fr' ? 'Choisir la langue' : i18n.language === 'th' ? 'เลือกภาษา' : i18n.language === 'vi' ? 'Chọn ngôn ngữ' : 'Select Language'}</div>
         {LANG_LIST.map(({ code, label, flag }) => (
           <button
             key={code}
