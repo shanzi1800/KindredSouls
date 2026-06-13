@@ -9,6 +9,7 @@ import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
 import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
+import LangModal from './components/LangModal';
 import { supabase } from './lib/supabase';
 import './App.css';
 
@@ -81,6 +82,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const d2FirstRef = React.useRef<HTMLInputElement>(null);
   const d1Ref = React.useRef<HTMLDivElement>(null);
   const d2Ref = React.useRef<HTMLDivElement>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
   const shake = (which: 1 | 2) => {
     if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 300); }
@@ -112,20 +114,15 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
     onSubmit(d1, d2);
   };
 
-  const cycleLang = () => {
-    const langs = ['en', 'zh', 'es', 'fr'];
-    const base = (i18n.language || 'en').split('-')[0];
-    const idx = langs.indexOf(base);
-    const next = langs[(idx + 1) % langs.length];
-    i18n.changeLanguage(next);
-  };
+  const toggleModal = () => setModalOpen(v => !v);
 
   return (
     <div className="page input-page">
       {/* Video background */}
       <CelestialBackground />
       
-      <button className="lang-switch" onClick={cycleLang}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':'FR'; })() }</button>
+      <button className="lang-switch" onClick={toggleModal}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':b==='fr'?'FR':b==='th'?'ไทย':b==='vi'?'VI':b; })()}</button>
+      {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
       <h1 className="title">{t('input.title')}</h1>
       <p className="subtitle">{t('app.name')}</p>
       <p className="desc">{t('input.subtitle')}</p>

@@ -1,0 +1,41 @@
+{
+  "app": {
+    "name": "KindredSouls",
+    "tagline": "Khám phá kết nối vũ trụ của bạn"
+  },
+  "input": {
+    "title": "Định mệnh đã được viết trên trời",
+    "subtitle": "Nhập cả hai ngày sinh để khám phá độ hợp nhau",
+    "yourBirthday": "Ngày sinh của bạn",
+    "theirBirthday": "Ngày sinh của họ",
+    "calculate": "Khám phá độ hợp nhau",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD"
+  },
+  "result": {
+    "title": "Kết quả độ hợp nhau",
+    "score": "Điểm số hợp nhau",
+    "overall": "Độ hợp tổng thể",
+    "loading": "Đang đọc vũ trụ...",
+    "back": "Kiểm tra cặp khác",
+    "luckyAspects": "Khía cạnh thuận lợi",
+    "challengingAspects": "Khía cạnh thử thách",
+    "engines": {
+      "bazi": "Chiêm tinh Trung Hoa (Ba Tử)",
+      "zodiac": "Hoàng đạo phương Tây",
+      "iching": "Trí tuệ Kinh Dịch",
+      "aiInsight": "Phân tích mối quan hệ bởi AI"
+    }
+  },
+  "nav": {
+    "language": "Ngôn ngữ",
+    "settings": "Cài đặt"
+  },
+  "common": {
+    "errorIncomplete": "🔮 Cần hai vì sao để neo giữ định mệnh",
+    "errorFormat": "✨ Vui lòng dùng định dạng YYYY-MM-DD để hiệu chỉnh tần số vũ trụ",
+    "errorInvalidDate": "🔮 Tràn bộ đệm thời gian — vui lòng sửa ngày sinh",
+    "errorFutureDate": "⏳ Bánh xe định mệnh chưa đến — không được dùng ngày tương lai",
+    "errorTooOld": "🌟 Ngay cả các vì sao cũng có giới hạn — vui lòng kiểm tra năm"
+  }
+}

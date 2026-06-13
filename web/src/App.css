@@ -309,3 +309,106 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Language Modal (glassmorphism) ── */
+.lang-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.lang-modal {
+  position: relative;
+  width: 280px;
+  padding: 28px 0 16px;
+  border-radius: 18px;
+  background: rgba(26, 31, 75, 0.72);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55), 0 0 60px rgba(80, 60, 180, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  animation: modalSlideUp 0.25s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.lang-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+.lang-modal-close:hover { color: #fff; }
+
+.lang-modal-title {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(212, 175, 55, 0.7);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  font-family: 'Helvetica Neue', sans-serif;
+}
+
+.lang-modal-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 22px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.lang-modal-option:hover {
+  background: rgba(212, 175, 55, 0.1);
+  color: #fff;
+}
+
+.lang-modal-option-active {
+  color: #D4AF37;
+  background: rgba(212, 175, 55, 0.08);
+}
+.lang-modal-option-active:hover {
+  background: rgba(212, 175, 55, 0.14);
+}
+
+.lang-modal-flag {
+  font-size: 22px;
+  line-height: 1;
+  width: 30px;
+  text-align: center;
+}
+
+.lang-modal-label {
+  flex: 1;
+  font-family: 'Helvetica Neue', sans-serif;
+  letter-spacing: 0.3px;
+}
+
+.lang-modal-check {
+  color: #D4AF37;
+  font-size: 15px;
+  font-weight: 700;
+}

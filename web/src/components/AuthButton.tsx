@@ -157,7 +157,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
       localStorage.setItem('ks_return_to_result', 'true');
       console.log('[KindredSouls Debug] OAuth redirectTo:', redirectUrl, 'provider:', provider);
       const { error } = await supabase.auth.signInWithOAuth({
-        provider,
+        provider: provider as any,
         options: { redirectTo: redirectUrl },
       });
       if (error) throw error;

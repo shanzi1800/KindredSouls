@@ -6,12 +6,16 @@ import en from './locales/en.json';
 import zh from './locales/zh.json';
 import es from './locales/es.json';
 import fr from './locales/fr.json';
+import th from './locales/th.json';
+import vi from './locales/vi.json';
 
 const resources = {
   en: { translation: en },
   zh: { translation: zh },
   es: { translation: es },
   fr: { translation: fr },
+  th: { translation: th },
+  vi: { translation: vi },
 };
 
 i18n
@@ -20,7 +24,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    supportedLngs: ['en', 'zh', 'es', 'fr'],
+    supportedLngs: ['en', 'zh', 'es', 'fr', 'th', 'vi'],
     detection: {
       // 优先级：URL参数 > localStorage > navigator.language > 系统语言
       order: ['querystring', 'localStorage', 'navigator'],
