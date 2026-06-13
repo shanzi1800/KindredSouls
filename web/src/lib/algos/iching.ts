@@ -140,7 +140,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgment: "亨。匪我求童蒙，童蒙求我",
     judgmentEn: "Washing hands but not yet offering. Sincere devotion, solemnity.",
     relationshipMeaning: '凶。沟通不畅，充满误解与迷茫，一方可能较为幼稚或隐瞒真相。宜坦诚相待，寻求长辈指引。',
-    relationshipMeaningEn: 'Inauspicious. Poor communication leading to misunderstandings. One party may be immature or hiding the truth. Be honest and seek elders' guidance.',
+    relationshipMeaningEn: 'Inauspicious. Poor communication leading to misunderstandings. One party may be immature or hiding the truth. Be honest and seek elders guidance.',
     relationshipMeaningTh: 'ไม่ดี การสื่อสารไม่เข้าใจกัน เต็มไปด้วยความไม่รู้หรือความเข้าใจผิด ฝ่ายใดฝ่ายหนึ่งอาจยังไม่โตพอ ควรเปิดใจคุยกันและขอคำแนะนำจากผู้ใหญ่',
     relationshipMeaningVi: 'Hung. Giao tiếp không thông suốt, đầy hiểu lầm và mơ hồ, một bên có thể khá non nớt hoặc che giấu sự thật. Nên thành thật và xin lời khuyên từ người lớn.',
     category: "中",
@@ -623,7 +623,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgment: "贞吉。观颐自求口实",
     judgmentEn: "Success. Fear brings blessing.",
     relationshipMeaning: '平。注重言语沟通与生活照料。祸从口出，需防口舌摩擦。多关心彼此的身心健康与精神滋养，感情方能长久。',
-    relationshipMeaningEn: 'Neutral. Focus on verbal communication and mutual care. Guard against sharp words causing friction. Nurture each other's physical and mental well-being for longevity.',
+    relationshipMeaningEn: 'Neutral. Focus on verbal communication and mutual care. Guard against sharp words causing friction. Nurture each others physical and mental well-being for longevity.',
     relationshipMeaningTh: 'ปานกลาง เน้นการสื่อสารและการดูแลเอาใจใส่ชีวิตความเป็นอยู่ ระวังคำพูดที่อาจบาดหมางน้ำใจ ควรเติมเต็มพลังกายและใจให้กัน ความรักจึงจะยั่งยืน',
     relationshipMeaningVi: 'Bình. Chú trọng giao tiếp ngôn từ và chăm sóc cuộc sống. Họa từ miệng mà ra, cần phòng ma sát khẩu thiệt. Quan tâm nhiều hơn đến sức khỏe thể chất lẫn tinh thần của nhau thì tình cảm mới bền lâu.',
     category: "中",
@@ -938,7 +938,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgment: "利有攸往利涉大川",
     judgmentEn: "Advantageous to go forward, advantageous to cross the great river.",
     relationshipMeaning: '大吉。相辅相成，共同成长。彼此在精神与物质上都能带给对方好运，关系极具建设性。是携手共创未来、订婚结婚的绝佳时机。',
-    relationshipMeaningEn: 'Highly auspicious. Mutual growth and support. Both partners bring good fortune and constructiveness to each other's lives. Excellent time for marriage.',
+    relationshipMeaningEn: 'Highly auspicious. Mutual growth and support. Both partners bring good fortune and constructiveness to each others lives. Excellent time for marriage.',
     relationshipMeaningTh: 'เป็นมงคลยิ่ง ส่งเสริมและเติบโตร่วมกัน นำพาโชคคลาภและความสุขมาให้แก่กัน ความสัมพันธ์ก้าวหน้าอย่างมาก เหมาะแก่การจัดงานมงคลหมั้นหมาย',
     relationshipMeaningVi: 'Đại cát. Tương phụ tương thành, cùng nhau trưởng thành. Đôi bên đem lại vận may cho nhau cả về tinh thần lẫn vật chất. Là thời cơ tuyệt vời để hướng tới hôn nhân viên mãn.',
     category: "吉",
@@ -1087,7 +1087,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '吉。顺应时势，洗心革面。感情将迎来彻底的转变（如改变相处模式、告别过去甚至旧情换新颜）。顺应变化、摒弃旧习方大吉。',
     relationshipMeaningEn: 'Auspicious. Adapt to changes and renew yourself. The relationship faces a thorough transformation (e.g., changing patterns or leaving the past behind). Embrace the change.',
     relationshipMeaningTh: 'โชคดี ถึงเวลาปฏิวัติและเปลี่ยนแปลงความสัมพันธ์ไปสู่สิ่งใหม่ ปรับเปลี่ยนพฤติกรรมเดิมๆ แล้วจะเกิดผลดีอย่างคาดไม่ถึง',
-    relationshipMeaningVi: 'Cát. Thuận theo thời thế, cải cách đổi mới. Tình cảm sẽ đón nhận sự chuyển biến triệt để (như thay đổi cách ứng xử, từ biệt quá khứ). Thuận theo biến đổi mới đại cát.','
+    relationshipMeaningVi: 'Cát. Thuận theo thời thế, cải cách đổi mới. Tình cảm sẽ đón nhận sự chuyển biến triệt để (như thay đổi cách ứng xử, từ biệt quá khứ). Thuận theo biến đổi mới đại cát.',
     category: "中",
     scoreRange: [61, 75]
   },
@@ -1108,7 +1108,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '大吉。三足鼎立，稳如泰山。感情不仅稳固，而且能互相成就，物质与精神双丰收。极利于确立关系或步入婚姻殿堂。',
     relationshipMeaningEn: 'Highly auspicious. Exceptionally stable and supportive. Both parties achieve mutual success, flourishing materially and spiritually. Ideal for marriage.',
     relationshipMeaningTh: 'เป็นมงคลยิ่ง มั่นคงดั่งหม้อสามขา ความสัมพันธ์เกื้อหนุนกันให้เจริญรุ่งเรือง ทั้งฐานะและจิตใจ ดีเลิศสำหรับการแต่งงานสร้างครอบครัว',
-    relationshipMeaningVi: 'Đại cát. Tam túc đỉnh lập, vững như Thái Sơn. Tình cảm không chỉ vững chắc mà còn tương trợ lẫn nhau cùng thành công, vật chất lẫn tinh thần đều mỹ mãn. Cực lợi cho kết hôn.','
+    relationshipMeaningVi: 'Đại cát. Tam túc đỉnh lập, vững như Thái Sơn. Tình cảm không chỉ vững chắc mà còn tương trợ lẫn nhau cùng thành công, vật chất lẫn tinh thần đều mỹ mãn. Cực lợi cho kết hôn.',
     category: "吉",
     scoreRange: [75, 87]
   },
@@ -1129,7 +1129,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '平。惊天动地，突生波澜。感情中常有突发性的争吵、震惊事件或外界冲击。虽令人惊恐，但只要保持镇定，反能震醒迷局，带来转机。',
     relationshipMeaningEn: 'Neutral. Sudden shocks and unexpected waves. Intense arguments or external shocks may alarm you, but staying calm can awaken the relationship and bring a turning point.',
     relationshipMeaningTh: 'ปานกลาง มีเรื่องตื่นเต้นหรือปากเสียงเข้ามาอย่างกะทันหันดั่งเสียงฟ้าผ่า แต่ต้องอย่าตื่นตระหนก หากมีสติจะสามารถผ่านพ้นและเข้าใจกันมากขึ้น',
-    relationshipMeaningVi: 'Bình. Kinh thiên động địa, đột ngột nổi sóng. Tình cảm thường có tranh cãi bột phát, sự cố gây sốc hoặc xung kích từ bên ngoài. Chỉ cần bình tĩnh, ngược lại sẽ tỉnh ngộ và mang lại chuyển biến.','
+    relationshipMeaningVi: 'Bình. Kinh thiên động địa, đột ngột nổi sóng. Tình cảm thường có tranh cãi bột phát, sự cố gây sốc hoặc xung kích từ bên ngoài. Chỉ cần bình tĩnh, ngược lại sẽ tỉnh ngộ và mang lại chuyển biến.',
     category: "中",
     scoreRange: [60, 74]
   },
@@ -1150,7 +1150,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '平。动辄得咎，时止则止。感情进入停滞不前的冷淡期，彼此存在隔阂，沟通困难。此时不宜强求推进，静止思考、各留空间才是上策。',
     relationshipMeaningEn: 'Neutral. Stagnation and emotional distance. Communication is difficult; do not force progress. Internal reflection and giving each other space is the best strategy.',
     relationshipMeaningTh: 'ปานกลาง ความสัมพันธ์ชั่วคราวนิ่งสนิทและเหินห่างเหมือนมีภูเขากั้น ไม่ควรกดดันหรือฝืนเดินหน้า ควรให้เวลาและพื้นที่ส่วนตัวแก่กันและกัน',
-    relationshipMeaningVi: 'Bình. Động thì dễ lỗi, nên dừng thì dừng. Tình cảm bước vào giai đoạn trì trệ lạnh nhạt, đôi bên có rào cản, giao tiếp khó khăn. Lúc này không nên khiên cưỡng, giữ không gian riêng mới là thượng sách.','
+    relationshipMeaningVi: 'Bình. Động thì dễ lỗi, nên dừng thì dừng. Tình cảm bước vào giai đoạn trì trệ lạnh nhạt, đôi bên có rào cản, giao tiếp khó khăn. Lúc này không nên khiên cưỡng, giữ không gian riêng mới là thượng sách.',
     category: "中",
     scoreRange: [63, 77]
   },
@@ -1171,7 +1171,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '大吉。循序渐进，细水长流。如同鸿雁飞翔有序，感情发展完全符合传统礼节，步步扎实。是一段能白头偕老、顺理成章的良缘。',
     relationshipMeaningEn: 'Highly auspicious. Gradual and steady progress. The relationship develops naturally and orderly, following traditions perfectly. Leads to a solid, lifelong marriage.',
     relationshipMeaningTh: 'เป็นมงคลยิ่ง ความรักก้าวหน้าอย่างเป็นขั้นเป็นตอนและมั่นคง ไม่หวือหวาแต่ยั่งยืนตามประเพณีอันดีงาม เป็นคู่แท้ที่จะได้แต่งงานและอยู่ด้วยกันจนแก่เฒ่า',
-    relationshipMeaningVi: 'Đại cát. Tuần tự nhi tiến, bền vững lâu dài. Tình cảm phát triển hoàn toàn phù hợp với lễ tiết, từng bước vững chắc. Là lương duyên thuận lý thành chương, bạc đầu giai lão.','
+    relationshipMeaningVi: 'Đại cát. Tuần tự nhi tiến, bền vững lâu dài. Tình cảm phát triển hoàn toàn phù hợp với lễ tiết, từng bước vững chắc. Là lương duyên thuận lý thành chương, bạc đầu giai lão.',
     category: "吉",
     scoreRange: [72, 84]
   },
@@ -1381,7 +1381,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: "水火既济，阴阳调和，万事俱备的圆满状态",
     relationshipMeaningEn: "A time of meaningful connection: water and fire in balance — a fulfilled and complete bond.",
     relationshipMeaningTh: 'โชคดี สมหวังทุกประการ ความรักบรรลุเป้าหมายที่ตั้งไว้ (เช่น ได้แต่งงาน) แต่ต้องระวังความเฉื่อยชาหลังจากความสำเร็จ ควรเติมความใส่ใจให้กันเสมอ',
-    relationshipMeaningVi: 'Cát. Công đức viên mãn, thủy hỏa tương tế. Tình cảm đạt được mục tiêu lý tưởng (như thuận lợi kết hôn). Nhưng phòng 'đầu cát đuôi loạn', sau thành công dễ sinh lười biếng.',
+    relationshipMeaningVi: 'Cát. Công đức viên mãn, thủy hỏa tương tế. Tình cảm đạt được mục tiêu lý tưởng (như thuận lợi kết hôn). Nhưng phòng đầu cát đuôi loạn, sau thành công dễ sinh lười biếng.',
     category: "大吉",
     scoreRange: [87, 98]
   },
