@@ -4,38 +4,38 @@
     "tagline": "Descubre tu conexión cósmica"
   },
   "input": {
-    "title": "El Destino Está Escrito",
-    "subtitle": "Ingresa ambas fechas de nacimiento para revelar tu compatibilidad",
+    "title": "Tu destino escrito en las estrellas",
+    "subtitle": "Introduce ambas fechas de nacimiento para revelar tu compatibilidad sagrada",
     "yourBirthday": "Tu fecha de nacimiento",
     "theirBirthday": "Su fecha de nacimiento",
-    "calculate": "Revelar Compatibilidad",
-    "placeholder1": "DD/MM/AAAA",
-    "placeholder2": "DD/MM/AAAA"
+    "calculate": "Revelar nuestro destino",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD"
   },
   "result": {
-    "title": "Resultado de Compatibilidad",
-    "score": "Puntuación de Compatibilidad",
-    "overall": "Compatibilidad General",
-    "loading": "Leyendo el cosmos...",
-    "back": "Probar Otra Pareja",
-    "luckyAspects": "Aspectos Favorables",
-    "challengingAspects": "Aspectos Desafiantes",
+    "title": "Revelación de compatibilidad",
+    "score": "Puntaje de afinidad cósmica",
+    "overall": "Alineación total",
+    "loading": "Sintonizando con el cosmos...",
+    "back": "Consultar otra alma",
+    "luckyAspects": "Lazos sagrados y bendiciones",
+    "challengingAspects": "Desafíos y pruebas kármicas",
     "engines": {
-      "bazi": "Astrología China (BaZi)",
-      "zodiac": "Zodiaco Occidental",
-      "iching": "Sabiduría I Ching",
-      "aiInsight": "Perspectiva IA sobre la Relación"
+      "bazi": "Astrología china (BaZi)",
+      "zodiac": "Zodíaco occidental",
+      "iching": "Sabiduría del I Ching",
+      "aiInsight": "Análisis de relación por IA"
     }
   },
   "nav": {
     "language": "Idioma",
-    "settings": "Configuración"
+    "settings": "Ajustes"
   },
   "common": {
-    "errorIncomplete": "🔮 Dos estrellas necesitan anclar el destino",
+    "errorIncomplete": "🔮 Se necesitan dos estrellas para sellar el destino",
     "errorFormat": "✨ Usa YYYY-MM-DD para calibrar tu frecuencia cósmica",
-    "errorInvalidDate": "🔮 Desbordamiento del ancla temporal — por favor corrige tu fecha",
-    "errorFutureDate": "⏳ La rueda del destino aún no llega — fechas futuras inválidas",
-    "errorTooOld": "🌟 Incluso las estrellas tienen límites — por favor verifica el año"
+    "errorInvalidDate": "🔮 Desajuste en el ancla temporal — por favor, corrige tu nacimiento terrenal",
+    "errorFutureDate": "⏳ La rueda del destino aún no gira aquí — las fechas futuras no existen",
+    "errorTooOld": "🌟 Incluso las estrellas tienen límites — por favor, verifica el año"
   }
 }

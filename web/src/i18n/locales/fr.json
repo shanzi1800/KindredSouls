@@ -1,41 +1,41 @@
 {
   "app": {
     "name": "KindredSouls",
-    "tagline": "Découvrez votre connexion cosmique"
+    "tagline": "Révélez votre connexion cosmique"
   },
   "input": {
-    "title": "Le Destin Est Écrit",
-    "subtitle": "Entrez les deux dates de naissance pour révéler votre compatibilité",
+    "title": "Votre destinée écrite dans les étoiles",
+    "subtitle": "Saisissez vos deux dates de naissance pour dévoiler votre alchimie céleste",
     "yourBirthday": "Votre date de naissance",
     "theirBirthday": "Sa date de naissance",
-    "calculate": "Révéler la Compatibilité",
-    "placeholder1": "JJ/MM/AAAA",
-    "placeholder2": "JJ/MM/AAAA"
+    "calculate": "Dévoiler notre destin",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD"
   },
   "result": {
-    "title": "Résultat de Compatibilité",
-    "score": "Score de Compatibilité",
-    "overall": "Compatibilité Générale",
-    "loading": "Lecture du cosmos en cours...",
-    "back": "Tester un Autre Couple",
-    "luckyAspects": "Aspects Favorables",
-    "challengingAspects": "Aspects Défis",
+    "title": "Verdict des astres",
+    "score": "Score d'affinité cosmique",
+    "overall": "Harmonie globale",
+    "loading": "Décryptage du cosmos en cours...",
+    "back": "Interroger les astres pour un autre duo",
+    "luckyAspects": "Aspects de grâce céleste",
+    "challengingAspects": "Défis et leçons karmiques",
     "engines": {
-      "bazi": "Astrologie Chinoise (BaZi)",
-      "zodiac": "Zodiaque Occidental",
+      "bazi": "Astrologie chinoise (BaZi)",
+      "zodiac": "Zodiaque occidental",
       "iching": "Sagesse du Yi Jing",
-      "aiInsight": "Perspective IA sur la Relation"
+      "aiInsight": "Clarté relationnelle par l'IA"
     }
   },
   "nav": {
     "language": "Langue",
-    "settings": "Paramètres"
+    "settings": "Réglages"
   },
   "common": {
-    "errorIncomplete": "🔮 Deux étoiles pour ancrer le destin",
-    "errorFormat": "✨ Utilisez YYYY-MM-DD pour caler votre fréquence cosmique",
-    "errorInvalidDate": "🔮 Débordement de l'ancre temporelle — veuillez corriger",
-    "errorFutureDate": "⏳ La roue du destin n'est pas encore là — dates futures invalides",
-    "errorTooOld": "🌟 Même les étoiles ont des limites — veuillez vérifier l'année"
+    "errorIncomplete": "🔮 Deux étoiles sont nécessaires pour aligner le destin",
+    "errorFormat": "✨ Utilisez YYYY-MM-DD pour calibrer votre fréquence cosmique",
+    "errorInvalidDate": "🔮 Rupture de l'ancre temporelle — veuillez corriger votre naissance terrestre",
+    "errorFutureDate": "⏳ La roue du destin n'a pas encore tourné — date future impossible",
+    "errorTooOld": "🌟 Même les astres ont des limites — veuillez vérifier l'année"
   }
 }
