@@ -1,10 +1,16 @@
 import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
 
-// 卦分类多语言映射
-const HEX_CATEGORY_EN: Record<string, string> = { '大吉':'Great Auspicious','吉':'Auspicious','中':'Neutral','小凶':'Slightly Unfavorable','待变':'Pending Change' };
-const HEX_CATEGORY_ES: Record<string, string> = { '大吉':'Gran Auspicioso','吉':'Auspicious','中':'Neutral','小凶':'Ligeramente Desfavorable','待变':'Cambio Pendiente' };
-const HEX_CATEGORY_FR: Record<string, string> = { '大吉':'Très Auspice','吉':'Auspice','中':'Neutre','小凶':'Légèrement Défavorable','待变':'Changement en Attente' };
+// 卦分类多语言映射（字典方案）
+type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+
+const HEX_CATEGORY: Record<string, Record<LangKey, string>> = {
+  '大吉': { zh: '大吉', en: 'Great Auspicious', es: 'Gran Auspicioso', fr: 'Très Auspice', th: 'มหามงคล', vi: 'Đại Cát' },
+  '吉': { zh: '吉', en: 'Auspicious', es: 'Auspicious', fr: 'Auspice', th: 'มงคล', vi: 'Cát' },
+  '中': { zh: '中', en: 'Neutral', es: 'Neutral', fr: 'Neutre', th: 'กลาง', vi: 'Trung' },
+  '小凶': { zh: '小凶', en: 'Slightly Unfavorable', es: 'Ligeramente Desfavorable', fr: 'Légèrement Défavorable', th: 'เล็กน้อยไม่ดี', vi: 'Tiểu Hung' },
+  '待变': { zh: '待变', en: 'Pending Change', es: 'Cambio Pendiente', fr: 'Changement en Attente', th: 'รอการเปลี่ยนแปลง', vi: 'Đợi Biến' },
+};
 
 // 从 HexagramData 多语言字段读取
 function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMeaning', lang: AlgLang): string {
@@ -14,9 +20,11 @@ function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMe
     if (field === 'judgment') return hex.judgment;
     return hex.relationshipMeaning;
   }
-  const suffix = lang === 'en' ? 'En' : lang === 'es' ? 'Es' : 'Fr';
+  // en/es/fr 有翻译，th/vi 暂时 fallback 到英文
+  const suffixMap: Record<string, string> = { en: 'En', es: 'Es', fr: 'Fr', th: 'En', vi: 'En' };
+  const suffix = suffixMap[lang] || 'En';
   const key = field === 'relationshipMeaning' ? ('relationshipMeaning' + suffix) : (field + suffix.charAt(0).toUpperCase() + suffix.slice(1));
-  return hex[key] || '';
+  return hex[key] || hex[field] || '';
 }
 
 // ═════════════════════════════════════════

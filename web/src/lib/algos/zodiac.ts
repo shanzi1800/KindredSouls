@@ -114,13 +114,252 @@ function getPhaseDistance(z1: ZodiacSign, z2: ZodiacSign): number {
   return dist;
 }
 
+// ═════════════════════════════════════════
+// 🌍 i18n 字典（军师方案：算法与文案解耦）
+// ═════════════════════════════════════════
+
+type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+
+/** 获取翻译，fallback 到英文 */
+function t(dict: Record<LangKey, string>, lang: AlgLang): string {
+  return dict[lang as LangKey] || dict['en'];
+}
+
+// ── 星座名 ──
+const ZODIAC_NAMES: Record<ZodiacSign, Record<LangKey, string>> = {
+  '白羊座': { zh: '白羊座', en: 'Aries', es: 'Aries', fr: 'Bélier', th: 'เมษ', vi: 'Bạch Dương' },
+  '金牛座': { zh: '金牛座', en: 'Taurus', es: 'Tauro', fr: 'Taureau', th: 'พฤษภ', vi: 'Kim Ngưu' },
+  '双子座': { zh: '双子座', en: 'Gemini', es: 'Géminis', fr: 'Gémeaux', th: 'เมถุน', vi: 'Song Tử' },
+  '巨蟹座': { zh: '巨蟹座', en: 'Cancer', es: 'Cáncer', fr: 'Cancer', th: 'กรกฎ', vi: 'Cự Giải' },
+  '狮子座': { zh: '狮子座', en: 'Leo', es: 'Leo', fr: 'Lion', th: 'สิงห์', vi: 'Sư Tử' },
+  '处女座': { zh: '处女座', en: 'Virgo', es: 'Virgo', fr: 'Vierge', th: 'กันย์', vi: 'Xử Nữ' },
+  '天秤座': { zh: '天秤座', en: 'Libra', es: 'Libra', fr: 'Balance', th: 'ตุลย์', vi: 'Thiên Bình' },
+  '天蝎座': { zh: '天蝎座', en: 'Scorpio', es: 'Escorpio', fr: 'Scorpion', th: 'พิจิก', vi: 'Bọ Cạp' },
+  '射手座': { zh: '射手座', en: 'Sagittarius', es: 'Sagitario', fr: 'Sagittaire', th: 'ธนู', vi: 'Nhân Mã' },
+  '摩羯座': { zh: '摩羯座', en: 'Capricorn', es: 'Capricornio', fr: 'Capricorne', th: 'มังกร', vi: 'Ma Kết' },
+  '水瓶座': { zh: '水瓶座', en: 'Aquarius', es: 'Acuario', fr: 'Verseau', th: 'กุมภ์', vi: 'Bảo Bình' },
+  '双鱼座': { zh: '双鱼座', en: 'Pisces', es: 'Piscis', fr: 'Poissons', th: 'มีน', vi: 'Song Ngư' },
+};
+
+// ── 元素名 ──
+const ELEMENT_NAMES: Record<string, Record<LangKey, string>> = {
+  '火': { zh: '火象', en: 'Fire', es: 'Fuego', fr: 'Feu', th: 'ธาตุไฟ', vi: 'Hỏa' },
+  '土': { zh: '土象', en: 'Earth', es: 'Tierra', fr: 'Terre', th: 'ธาตุดิน', vi: 'Thổ' },
+  '风': { zh: '风象', en: 'Air', es: 'Aire', fr: 'Air', th: 'ธาตุลม', vi: 'Phong' },
+  '水': { zh: '水象', en: 'Water', es: 'Agua', fr: 'Eau', th: 'ธาตุน้ำ', vi: 'Thủy' },
+};
+
+// ── 模式名 ──
+const MODE_NAMES: Record<string, Record<LangKey, string>> = {
+  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Kiến Tạo' },
+  '固定': { zh: '固定宫', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cố Định' },
+  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Biến Đổi' },
+};
+
+// ── 守护星名 ──
+const RULER_NAMES: Record<string, Record<LangKey, string>> = {
+  '火星': { zh: '火星', en: 'Mars', es: 'Marte', fr: 'Mars', th: 'ดาวอังคาร', vi: 'Sao Hỏa' },
+  '金星': { zh: '金星', en: 'Venus', es: 'Venus', fr: 'Vénus', th: 'ดาวศุกร์', vi: 'Sao Kim' },
+  '水星': { zh: '水星', en: 'Mercury', es: 'Mercurio', fr: 'Mercure', th: 'ดาวพุธ', vi: 'Sao Thủy' },
+  '月亮': { zh: '月亮', en: 'Moon', es: 'Luna', fr: 'Lune', th: 'ดวงจันทร์', vi: 'Mặt Trăng' },
+  '太阳': { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดวงอาทิตย์', vi: 'Mặt Trời' },
+  '木星': { zh: '木星', en: 'Jupiter', es: 'Júpiter', fr: 'Jupiter', th: 'ดาวพฤหัสบดี', vi: 'Sao Mộc' },
+  '土星': { zh: '土星', en: 'Saturn', es: 'Saturno', fr: 'Saturne', th: 'ดาวเสาร์', vi: 'Sao Thổ' },
+  '天王星': { zh: '天王星', en: 'Uranus', es: 'Urano', fr: 'Uranus', th: 'ดาวยูเรนัส', vi: 'Sao Thiên Vương' },
+  '海王星': { zh: '海王星', en: 'Neptune', es: 'Neptuno', fr: 'Neptune', th: 'ดาวเนปจูน', vi: 'Sao Hải Vương' },
+  '冥王星': { zh: '冥王星', en: 'Pluto', es: 'Plutón', fr: 'Pluton', th: 'ดาวพลูโต', vi: 'Sao Diêm Vương' },
+};
+
+// ── 相位描述 ──
+const PHASE_DESCS = {
+  sameSign: {
+    zh: '同星座（0°合相），彼此深度理解，但也容易放大相同弱点',
+    en: 'Same sign (0° conjunction) — deep mutual understanding, but can amplify shared weaknesses',
+    es: 'Mismo signo (0° conjunción) — comprensión mutua profunda, pero puede amplificar debilidades compartidas',
+    fr: 'Même signe (0° conjonction) — compréhension mutuelle profonde, mais peut amplifier les faiblesses partagées',
+    th: 'ราศีเดียวกัน (0° ร่วม) — เข้าใจซึ่งกันและกันอย่างลึกซึ้ง แต่อาจขยายจุดอ่อนร่วมกัน',
+    vi: 'Cùng cung (0° hợp) — hiểu nhau sâu sắc nhưng có thể làm trầm trọng điểm yếu chung',
+  },
+  opposition: {
+    zh: '对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异',
+    en: 'Opposition (${z1} ↔ ${z2}) — intense attraction but requires balancing differences',
+    es: 'Oposición (${z1} ↔ ${z2}) — atracción intensa pero requiere equilibrar diferencias',
+    fr: 'Opposition (${z1} ↔ ${z2}) — attraction intense mais nécessite d\'équibrer les différences',
+    th: 'ตรงข้าม (${z1} ↔ ${z2}) — แรงดึงดูดแรงกล้า แต่ต้องสมดุลความแตกต่าง',
+    vi: 'Đối nghịch (${z1} ↔ ${z2}) — hấp dẫn mạnh nhưng cần cân bằng khác biệt',
+  },
+  square: {
+    zh: '四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固',
+    en: 'Square (${z1} □ ${z2}) — growth tension exists, more solid after adjustment',
+    es: 'Cuadratura (${z1} □ ${z2}) — existe tensión de crecimiento, más sólido tras ajuste',
+    fr: 'Carré (${z1} □ ${z2}) — tension de croissance existe, plus solide après ajustement',
+    th: 'สี่เหลี่ยม (${z1} □ ${z2}) — มีแรงตึงเครียดเพื่อการเติบโต มั่นคงขึ้นหลังปรับตัว',
+    vi: 'Vuông góc (${z1} □ ${z2}) — căng thẳng phát triển, vững chắc hơn sau điều chỉnh',
+  },
+  trine: {
+    zh: '三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快',
+    en: 'Trine (${z1} △ ${z2}) — energy flows harmoniously, relaxed and pleasant',
+    es: 'Trígono (${z1} △ ${z2}) — energía fluye armoniosamente, relajado y agradable',
+    fr: 'Trigone (${z1} △ ${z2}) — énergie circule harmonieusement, détendu et agréable',
+    th: 'สามเหลี่ยม (${z1} △ ${z2}) — พลังงานไหลลงตัว ผ่อนคลายและน่าพอใจ',
+    vi: 'Tam hợp (${z1} △ ${z2}) — năng lượng chảy hài hòa, thoải mái và dễ chịu',
+  },
+  sextile: {
+    zh: '六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利',
+    en: 'Sextile (${z1} ⚹ ${z2}) — many coincidences, cooperation goes smoothly',
+    es: 'Sextil (${z1} ⚹ ${z2}) — muchas coincidencias, cooperación fluye suavemente',
+    fr: 'Sextile (${z1} ⚹ ${z2}) — beaucoup de coïncidences, coopération se déroule sans accroc',
+    th: 'หกเหลี่ยม (${z1} ⚹ ${z2}) — โอกาสมากมาย ความร่วมมือราบรื่น',
+    vi: 'Lục hợp (${z1} ⚹ ${z2}) — trùng hợp nhiều, hợp tác suôn sẻ',
+  },
+  special: {
+    zh: '特殊相位（角度差${deg}°），有独特吸引力',
+    en: 'Special aspect (${deg}° apart) — unique attraction',
+    es: 'Aspecto especial (a ${deg}°), atracción única',
+    fr: 'Aspect spécial (à ${deg}°), attraction unique',
+    th: 'มุมพิเศษ (${deg}°) — แรงดึงดูดเฉพาะตัว',
+    vi: 'Góc đặc biệt (${deg}°) — hấp dẫn độc đáo',
+  },
+};
+
+// ── 元素描述 ──
+const ELEMENT_DESCS = {
+  same: {
+    zh: '同属${elem}象，价值观底层一致，但可能缺乏新鲜刺激',
+    en: 'Both ${elem} — core values align, but may lack fresh stimulation',
+    es: 'Ambos ${elem} — valores centrales alinean, pero puede faltar estímulo fresco',
+    fr: 'Tous deux ${elem} — valeurs de base alignées, mais peut manquer stimulation fraîche',
+    th: 'ทั้งคู่${elem} — ค่านิยมตรงกัน แต่อาจขาดการกระตุ้นใหม่',
+    vi: 'Cả hai đều ${elem} — giá trị cốt lõi phù hợp, nhưng có thể thiếu kích thích mới',
+  },
+  nurturing: {
+    zh: '${elem1}与${elem2}相生，天然互补，互相滋养',
+    en: '${elem1} and ${elem2} nurture each other — natural complement, mutual nourishment',
+    es: '${elem1} y ${elem2} se nutren mutuamente — complemento natural, nutrición mutua',
+    fr: '${elem1} et ${elem2} se nourrissent mutuellement — complément naturel, nourishment mutuel',
+    th: '${elem1}และ${elem2}หล่อเลี้ยงซึ่งกัน — เสริมกันตามธรรมชาติ',
+    vi: '${elem1}và${elem2}nuôi dưỡng nhau — bổ trợ tự nhiên',
+  },
+  different: {
+    zh: '${elem1}与${elem2}不同象，差异带来成长空间',
+    en: '${elem1} and ${elem2} differ — differences create growth space',
+    es: '${elem1} y ${elem2} difieren — las diferencias crean espacio de crecimiento',
+    fr: '${elem1} et ${elem2} diffèrent — les différences créent espace de croissance',
+    th: '${elem1}และ${elem2}แตกต่างกัน — ความต่างสร้างพื้นที่เติบโต',
+    vi: '${elem1}và${elem2}khác nhau — khác biệt tạo không gian phát triển',
+  },
+};
+
+// ── 总结描述 ──
+const SUMMARY_DESCS = {
+  golden: {
+    zh: '${z1}与${z2}的配置堪称黄金配对，星星都在为你们让路。',
+    en: '${z1} and ${z2} form a golden pairing — the stars align for you both.',
+    es: '${z1} y ${z2} forman un par dorado — las estrellas se alinean para ambos.',
+    fr: '${z1} et ${z2} forment un couple doré — les étoiles s\'alignent pour vous deux.',
+    th: '${z1}และ${z2}คู่ที่เข้ากันอย่างลงตัว — ดวงดาวเอื้ออำนวย',
+    vi: '${z1}và${z2}cặp đôi hoàn hảo — các vì sao sắp xếp cho cả hai.',
+  },
+  chemistry: {
+    zh: '${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。',
+    en: '${z1} (you) meets ${z2} (partner) — cosmic energies spark fascinating chemistry.',
+    es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
+    fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
+    th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลปะทะกัน สนใจน่าตื่นเต้น',
+    vi: '${z1}(bạn)gặp${z2}(đối phương) — năng lượng vũ trụ bùng nổ hóa học thú vị.',
+  },
+  understanding: {
+    zh: '${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。',
+    en: '${z1} and ${z2} need more understanding, but differences fuel attraction.',
+    es: '${z1} y ${z2} necesitan más comprensión, pero las diferencias alimentan la atracción.',
+    fr: '${z1} et ${z2} nécessitent plus de compréhension, mais les différences alimentent l\'attraction.',
+    th: '${z1}และ${z2}ต้องการความเข้าใจมากขึ้น แต่ความต่างคือแรงดึงดูด',
+    vi: '${z1}và${z2}cần thêm sự thấu hiểu, nhưng khác biệt nuôi dưỡng sự hấp dẫn.',
+  },
+  opposite: {
+    zh: '对宫相遇，强烈的对立感背后是等量的吸引力。',
+    en: 'Opposing signs meet — strong polarity hides equal attraction.',
+    es: 'Signos opuestos se encuentran — fuerte polaridad esconde igual atracción.',
+    fr: 'Signes opposés se rencontrent — forte polarité cache une égale attraction.',
+    th: 'ราศีตรงข้ามพบกัน — ขั้วตรงข้ามซ่อนแรงดึงดูดเท่ากัน',
+    vi: 'Cung đối nghịch gặp nhau — đối lập ẩn chứa hấp dẫn ngang nhau.',
+  },
+};
+
+// ── UI Labels ──
+const UI_LABELS = {
+  title: {
+    zh: '西方星座', en: 'Western Zodiac', es: 'Zodiaco Occidental', fr: 'Zodiaque Occidental',
+    th: 'ราศีตะวันตก', vi: 'Cung Hoàng Đạo',
+  },
+  sunSign: {
+    zh: '【太阳星座】', en: '[Sun Sign]', es: '[Signo Solar]', fr: '[Signe Solaire]',
+    th: '[ราศีสุริยะ]', vi: '[Cung Mặt Trời]',
+  },
+  you: { zh: '你', en: 'You', es: 'Tú', fr: 'Vous', th: 'คุณ', vi: 'Bạn' },
+  ta: { zh: 'TA', en: 'Partner', es: 'Pareja', fr: 'Partenaire', th: 'คู่ครอง', vi: 'Đối phương' },
+  element: { zh: '象', en: 'element', es: 'elemento', fr: 'élément', th: 'ธาตุ', vi: 'nguyên tố' },
+  ruler: { zh: '守护星', en: 'ruler', es: 'regente', fr: 'maître', th: 'ดาวพิทักษ์', vi: 'sao bảo hộ' },
+  phaseTitle: {
+    zh: '【相位分析】', en: '[Aspect Analysis]', es: '[Análisis de Aspecto]', fr: '[Analyse d\'Aspect]',
+    th: '[วิเคราะห์มุม]', vi: '[Phân Tích Góc]',
+  },
+  elemTitle: {
+    zh: '【元素互动】', en: '[Element Interaction]', es: '[Interacción Elemental]', fr: '[Interaction Élémentaire]',
+    th: '[ปฏิสัมพันธ์ธาตุ]', vi: '[Tương Tác Nguyên Tố]',
+  },
+  rulerTitle: {
+    zh: '【守护星互动】', en: '[Ruler Interaction]', es: '[Interacción Regente]', fr: '[Interaction Maître]',
+    th: '[ปฏิสัมพันธ์ดาวพิทักษ์]', vi: '[Tương Tác Sao Bảo Hộ]',
+  },
+  bestMatch: {
+    zh: '${z1}与${z2}在经典配对表中属于最佳组合之一',
+    en: '${z1} and ${z2} are one of the classic best matches',
+    es: '${z1} y ${z2} son una de las mejores parejas clásicas',
+    fr: '${z1} et ${z2} forment un des meilleurs couples classiques',
+    th: '${z1}และ${z2}เป็นหนึ่งในคู่ที่เข้ากันได้ดีที่สุดแบบคลาสสิก',
+    vi: '${z1}và${z2}là một trong những cặp đôi hoàn hảo kinh điển',
+  },
+  oppositeMatch: {
+    zh: '${z1}与${z2}互为对宫，吸引力与挑战并存',
+    en: '${z1} and ${z2} are opposite signs — attraction meets challenge',
+    es: '${z1} y ${z2} son signos opuestos — atracción encuentra desafío',
+    fr: '${z1} et ${z2} sont des signes opposés — l\'attraction rencontre le défi',
+    th: '${z1}และ${z2}เป็นราศีตรงข้ามกัน — แรงดึงดูดพบกับความท้าทาย',
+    vi: '${z1}và${z2}là cung đối nghịch — hấp dẫn gặp thách thức',
+  },
+  unique: {
+    zh: '${z1}与${z2}构成独特配置，不走寻常路',
+    en: '${z1} and ${z2} form a unique configuration — not the usual path',
+    es: '${z1} y ${z2} forman una configuración única — no es el camino usual',
+    fr: '${z1} et ${z2} forment une configuration unique — pas le chemin habituel',
+    th: '${z1}และ${z2}สร้างการกำหนดค่าที่ไม่ซ้ำใคร',
+    vi: '${z1}và${z2}tạo cấu hình độc đáo',
+  },
+  scoreLabel: { zh: '综合评分', en: 'Overall Score', es: 'Puntuación General', fr: 'Score Global', th: 'คะแนนรวม', vi: 'Điểm tổng' },
+  scoreHigh: {
+    zh: '星辰为证，缘分深厚', en: 'Stars bear witness — deep connection',
+    es: 'Las estrellas atestiguan — conexión profunda', fr: 'Les étoiles en témoignent — connexion profonde',
+    th: 'ดวงดาวเป็นพยาน — ความเชื่อมโยงลึกซึ้ง', vi: 'Các vì sao làm chứng — kết nối sâu sắc',
+  },
+  scoreMid: {
+    zh: '星光指引，值得期待', en: 'Starlight guides — something to look forward to',
+    es: 'La luz de las estrellas guía — algo que esperar', fr: 'La lumière des étoiles guide — à attendre',
+    th: 'แสงดาวนำทาง — มีสิ่งที่ต้องตั้งตารอคอย', vi: 'Ánh sao dẫn lối — có điều đáng để trông chờ',
+  },
+  scoreLow: {
+    zh: '星途虽有挑战，携手可越', en: 'Starry path has challenges — together you can overcome',
+    es: 'El camino estelar tiene desafíos — juntos pueden superar', fr: 'Le chemin étoilé a des défis — ensemble vous pouvez surmonter',
+    th: 'เส้นทางดาวมีความท้าทาย — ร่วมกันคุณสามารถฝ่าฟัน', vi: 'Đường sao có thách thức — cùng nhau vượt qua',
+  },
+};
+
 // ── 核心算法 ──
 
 export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   const z1 = getZodiac(p1.month, p1.day);
   const z2 = getZodiac(p2.month, p2.day);
 
-  // ── Pre-compute for i18n ──
   const elem1 = SIGN_ELEMENT[z1];
   const elem2 = SIGN_ELEMENT[z2];
   const mode1 = SIGN_MODE[z1];
@@ -128,54 +367,15 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const ruler1 = SIGN_RULER[z1];
   const ruler2 = SIGN_RULER[z2];
 
-// ── i18n helpers ──
-  const ZODIAC_NAMES: Record<ZodiacSign, Record<string, string>> = {
-    '白羊座': { zh:'白羊座', en:'Aries', es:'Aries', fr:'Bélier', th:'แกะ', vi:'Bạch Dương' },
-    '金牛座': { zh:'金牛座', en:'Taurus', es:'Tauro', fr:'Taureau', th:'พันธุ์', vi:'Kim Ngưu' },
-    '双子座': { zh:'双子座', en:'Gemini', es:'Géminis', fr:'Gémeaux', th:'คนคู่', vi:'Song Tử' },
-    '巨蟹座': { zh:'巨蟹座', en:'Cancer', es:'Cáncer', fr:'Cancer', th:'ปู', vi:'Cự Giải' },
-    '狮子座': { zh:'狮子座', en:'Leo', es:'Leo', fr:'Lion', th:'สิงโต', vi:'Sư Tử' },
-    '处女座': { zh:'处女座', en:'Virgo', es:'Virgo', fr:'Vierge', th:'หญิงสาว', vi:'Xử Nữ' },
-    '天秤座': { zh:'天秤座', en:'Libra', es:'Libra', fr:'Balance', th:'คันชั่ง', vi:'Thiên Xứng' },
-    '天蝎座': { zh:'天蝎座', en:'Scorpio', es:'Escorpio', fr:'Scorpion', th:'แมงป่อง', vi:'Thiên Yết' },
-    '射手座': { zh:'射手座', en:'Sagittarius', es:'Sagitario', fr:'Sagittaire', th:'นักธนู', vi:'Nhân Mã' },
-    '摩羯座': { zh:'摩羯座', en:'Capricorn', es:'Capricornio', fr:'Capricorne', th:'แพะ', vi:'Ma Kết' },
-    '水瓶座': { zh:'水瓶座', en:'Aquarius', es:'Acuario', fr:'Verseau', th:'ถังน้ำ', vi:'Bảo Bình' },
-    '双鱼座': { zh:'双鱼座', en:'Pisces', es:'Piscis', fr:'Poissons', th:'ปลา', vi:'Song Ngư' },
-  };
-  const ELEM_NAMES: Record<string, Record<string, string>> = {
-    '火': { zh:'火', en:'Fire', es:'Fuego', fr:'Feu', th:'ไฟ', vi:'Hỏa' },
-    '土': { zh:'土', en:'Earth', es:'Tierra', fr:'Terre', th:'ดิน', vi:'Thổ' },
-    '风': { zh:'风', en:'Air', es:'Aire', fr:'Air', th:'ลม', vi:'Phong' },
-    '水': { zh:'水', en:'Water', es:'Agua', fr:'Eau', th:'น้ำ', vi:'Thủy' },
-  };
-  const MODE_NAMES: Record<string, Record<string, string>> = {
-    '本位': { zh:'本位', en:'Cardinal', es:'Cardinal', fr:'Cardinal', th:'ดาวเคราะห์', vi:'Cương' },
-    '固定': { zh:'固定', en:'Fixed', es:'Fijo', fr:'Fixe', th:'คงที่', vi:'Cố Định' },
-    '变动': { zh:'变动', en:'Mutable', es:'Mutable', fr:'Mutable', th:'เปลี่ยนแปลง', vi:'Biến Đổi' },
-  };
-  const RULER_NAMES: Record<string, Record<string, string>> = {
-    '火星': { zh:'火星', en:'Mars', es:'Marte', fr:'Mars', th:'ดาวอังคาร', vi:'Hỏa Tinh' },
-    '金星': { zh:'金星', en:'Venus', es:'Venus', fr:'Vénus', th:'ดาวศุกร์', vi:'Kim Tinh' },
-    '水星': { zh:'水星', en:'Mercury', es:'Mercurio', fr:'Mercure', th:'ดาวพุธ', vi:'Thủy Tinh' },
-    '月亮': { zh:'月亮', en:'Moon', es:'Luna', fr:'Lune', th:'ดวงจันทร์', vi:'Nguyệt Tinh' },
-    '太阳': { zh:'太阳', en:'Sun', es:'Sol', fr:'Soleil', th:'ดวงอาทิตย์', vi:'Nhật Tinh' },
-    '木星': { zh:'木星', en:'Jupiter', es:'Júpiter', fr:'Jupiter', th:'ดาวพฤหัส', vi:'Mộc Tinh' },
-    '土星': { zh:'土星', en:'Saturn', es:'Saturno', fr:'Saturne', th:'ดาวเสาร์', vi:'Thổ Tinh' },
-    '天王星': { zh:'天王星', en:'Uranus', es:'Urano', fr:'Uranus', th:'ดาวยูเรนัส', vi:'Thiên Vương' },
-    '海王星': { zh:'海王星', en:'Neptune', es:'Neptuno', fr:'Neptune', th:'ดาวเนปจูน', vi:'Hải Vương' },
-    '冥王星': { zh:'冥王星', en:'Pluto', es:'Plutón', fr:'Pluton', th:'ดาวพลูโต', vi:'Minh Vương' },
-  };
-  const z1Name = ZODIAC_NAMES[z1]?.[lang] || ZODIAC_NAMES[z1]?.['en'] || z1;
-  const z2Name = ZODIAC_NAMES[z2]?.[lang] || ZODIAC_NAMES[z2]?.['en'] || z2;
-  const elem1Name = ELEM_NAMES[elem1]?.[lang] || elem1;
-  const elem2Name = ELEM_NAMES[elem2]?.[lang] || elem2;
-  const mode1Name = MODE_NAMES[mode1]?.[lang] || mode1;
-  const mode2Name = MODE_NAMES[mode2]?.[lang] || mode2;
-  const ruler1Name = RULER_NAMES[ruler1]?.[lang] || ruler1;
-  const ruler2Name = RULER_NAMES[ruler2]?.[lang] || ruler2;
-
-
+  // ── 获取翻译后的名称 ──
+  const z1Name = t(ZODIAC_NAMES[z1], lang);
+  const z2Name = t(ZODIAC_NAMES[z2], lang);
+  const elem1Name = t(ELEMENT_NAMES[elem1], lang);
+  const elem2Name = t(ELEMENT_NAMES[elem2], lang);
+  const mode1Name = t(MODE_NAMES[mode1], lang);
+  const mode2Name = t(MODE_NAMES[mode2], lang);
+  const ruler1Name = t(RULER_NAMES[ruler1], lang);
+  const ruler2Name = t(RULER_NAMES[ruler2], lang);
 
   // ── 1. 基础配对分 ──
   const isBestMatch = BEST_MATCHES[z1]?.includes(z2) ?? false;
@@ -187,59 +387,40 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   let phaseDesc = '';
 
   if (phaseDist === 0) {
-    // 同星座
     phaseScore = 88;
-    phaseDesc = lang === 'zh' ? '同星座（0°合相），彼此深度理解，但也容易放大相同弱点' :
-      lang === 'en' ? 'Same sign (0° conjunction) — deep mutual understanding, but can amplify shared weaknesses' :
-      lang === 'es' ? 'Mismo signo (0° conjunción) — comprensión mutua profunda, pero puede amplificar debilidades compartidas' :
-      'Même signe (0° conjonction) — compréhension mutuelle profonde, mais peut amplifier les faiblesses partagées',
-      th: '相同座（0°合相）— ความเข้าใจซึ่งกันและกันลึกซึ้ง แต่อาจขยายจุดอ่อนเดียวกัน',
-      vi: 'Cùng cung (0° hợp) — hiểu nhau sâu sắc nhưng có thể làm trầm trọng điểm yếu chung';
+    phaseDesc = t(PHASE_DESCS.sameSign, lang);
   } else if (phaseDist === 6) {
-    // 对宫（180°冲相）
     phaseScore = 58;
-    phaseDesc = lang === 'zh' ? `对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异` :
-      lang === 'en' ? `Opposition (${z1Name} ↔ ${z2Name}) — intense attraction but requires balancing differences` :
-      lang === 'es' ? `Oposición (${z1Name} ↔ ${z2Name}) — atracción intensa pero requiere equilibrar diferencias` :
-      `Opposition (${z1Name} ↔ ${z2Name}) — attraction intense mais nécessite d'équilibrer les différences`;
+    phaseDesc = t(PHASE_DESCS.opposition, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else if (phaseDist === 3 || phaseDist === 9) {
-    // 四分相（90°）
     const isSquare = SQUARES[z1] === z2 || Object.values(SQUARES).includes(z1);
     if (isSquare || phaseDist === 3) {
       phaseScore = 62;
-      phaseDesc = lang === 'zh' ? `四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固` :
-      lang === 'en' ? `Square (${z1Name} □ ${z2Name}) — growth tension exists, more solid after adjustment` :
-      lang === 'es' ? `Cuadratura (${z1Name} □ ${z2Name}) — existe tensión de crecimiento, más sólido tras ajuste` :
-      `Carré (${z1Name} □ ${z2Name}) — tension de croissance existe, plus solide après ajustement`;
+      phaseDesc = t(PHASE_DESCS.square, lang)
+        .replace('${z1}', z1Name)
+        .replace('${z2}', z2Name);
     } else {
-      // 三分相（120°）
       phaseScore = 82;
-      phaseDesc = lang === 'zh' ? `三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快` :
-      lang === 'en' ? `Trine (${z1Name} △ ${z2Name}) — energy flows harmoniously, relaxed and pleasant` :
-      lang === 'es' ? `Trígono (${z1Name} △ ${z2Name}) — energía fluye armoniosamente, relajado y agradable` :
-      `Trigone (${z1Name} △ ${z2Name}) — énergie circule harmonieusement, détendu et agréable`;
+      phaseDesc = t(PHASE_DESCS.trine, lang)
+        .replace('${z1}', z1Name)
+        .replace('${z2}', z2Name);
     }
   } else if (phaseDist === 4 || phaseDist === 8) {
-    // 三分相（120°）
     phaseScore = 82;
-    phaseDesc = lang === 'zh' ? `三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快` :
-      lang === 'en' ? `Trine (${z1Name} △ ${z2Name}) — energy flows harmoniously, relaxed and pleasant` :
-      lang === 'es' ? `Trígono (${z1Name} △ ${z2Name}) — energía fluye armoniosamente, relajado y agradable` :
-      `Trigone (${z1Name} △ ${z2Name}) — énergie circule harmonieusement, détendu et agréable`;
+    phaseDesc = t(PHASE_DESCS.trine, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else if (phaseDist === 2 || phaseDist === 10) {
-    // 六分相（60°）
     phaseScore = 76;
-    phaseDesc = lang === 'zh' ? `六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利` :
-      lang === 'en' ? `Sextile (${z1Name} ⚹ ${z2Name}) — many coincidences, cooperation goes smoothly` :
-      lang === 'es' ? `Sextil (${z1Name} ⚹ ${z2Name}) — muchas coincidencias, cooperación fluye suavemente` :
-      `Sextile (${z1Name} ⚹ ${z2Name}) — beaucoup de coïncidences, coopération se déroule sans accroc`;
+    phaseDesc = t(PHASE_DESCS.sextile, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else {
-    // 其他距离（30°/150°）
     phaseScore = 68;
-    phaseDesc = lang === 'zh' ? `特殊相位（角度差${phaseDist * 30}°），有独特吸引力` :
-      lang === 'en' ? `Special aspect (${phaseDist * 30}° apart) — unique attraction` :
-      lang === 'es' ? `Aspecto especial (a ${phaseDist * 30}°), atracción única` :
-      `Aspect spécial (à ${phaseDist * 30}°), attraction unique`;
+    phaseDesc = t(PHASE_DESCS.special, lang)
+      .replace('${deg}', String(phaseDist * 30));
   }
 
   // ── 3. 元素和谐度 ──
@@ -248,37 +429,26 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
 
   if (elem1 === elem2) {
     elementBonus = 5;
-    elementDesc = lang === 'zh' ? `同属${elem1}象，价值观底层一致，但可能缺乏新鲜刺激` :
-      lang === 'en' ? `Both ${elem1Name} — core values align, but may lack fresh stimulation` :
-      lang === 'es' ? `Ambos ${elem1Name} — valores centrales alinean, pero puede faltar estímulo fresco` :
-      `Tous deux ${elem1Name} — valeurs de base alignment, mais peut manquer stimulation fraîche`;
+    elementDesc = t(ELEMENT_DESCS.same, lang).replace('${elem}', elem1Name);
   } else {
-    // 检查元素相生关系
     const SHENG_MAP: Record<string, string> = { '火': '土', '土': '金', '金': '水', '水': '木', '木': '火' };
     if (SHENG_MAP[elem1] === elem2 || SHENG_MAP[elem2] === elem1) {
       elementBonus = 8;
-      elementDesc = lang === 'zh' ? `${elem1}与${elem2}相生，天然互补，互相滋养` :
-      lang === 'en' ? `${elem1Name} and ${elem2Name} nurture each other — natural complement, mutual nourishment` :
-      lang === 'es' ? `${elem1Name} y ${elem2Name} se nutren mutuamente — complemento natural, nutrición mutua` :
-      `${elem1Name} et ${elem2Name} se nourrissent mutuellement — complément naturel, nourishment mutuel`;
+      elementDesc = t(ELEMENT_DESCS.nurturing, lang)
+        .replace('${elem1}', elem1Name)
+        .replace('${elem2}', elem2Name);
     } else {
       elementBonus = 3;
-      elementDesc = lang === 'zh' ? `${elem1}与${elem2}不同象，差异带来成长空间` :
-      lang === 'en' ? `${elem1Name} and ${elem2Name} differ — differences create growth space` :
-      lang === 'es' ? `${elem1Name} y ${elem2Name} difieren — las diferencias crean espacio de crecimiento` :
-      `${elem1Name} et ${elem2Name} diffèrent — les différences créent espace de croissance`;
+      elementDesc = t(ELEMENT_DESCS.different, lang)
+        .replace('${elem1}', elem1Name)
+        .replace('${elem2}', elem2Name);
     }
   }
 
   // ── 4. 模式和谐度 ──
   let modeBonus = 0;
-  if (mode1 === mode2) modeBonus = 4; // 同模式=理解对方行为模式
-  else modeBonus = 2; // 不同模式=互补
-
-  // ── 5. 守护星互动 ──
-
-
-  // 基础45% + 相位30% + 元素15% + 模式10%
+  if (mode1 === mode2) modeBonus = 4;
+  else modeBonus = 2;
 
   // ── 综合评分 ──
   const rawScore = Math.round(
@@ -289,48 +459,41 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   );
   const score = Math.max(40, Math.min(99, rawScore));
 
-  
-
   // ── 解读文案 ──
   let summary: string;
   if (score >= 82) {
-    summary = lang === 'zh' ? `${z1}与${z2}的配置堪称黄金配对，星星都在为你们让路。` :
-      lang === 'en' ? `${z1Name} and ${z2Name} form a golden pairing — the stars align for you both.` :
-      lang === 'es' ? `${z1Name} y ${z2Name} forman un par dorado — las estrellas se alinean para ambos.` :
-      `${z1Name} et ${z2Name} forment un couple doré — les étoiles s'alignent pour vous deux.`;
+    summary = t(SUMMARY_DESCS.golden, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else if (score >= 70) {
-    summary = lang === 'zh' ? `${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。` :
-      lang === 'en' ? `${z1Name} (you) meets ${z2Name} (partner) — cosmic energies spark fascinating chemistry.` :
-      lang === 'es' ? `${z1Name} (tú) encuentra ${z2Name} (pareja) — las energías cósmicas crean química fascinante.` :
-      `${z1Name} (vous) rencontre ${z2Name} (partenaire) — les énergies cosmiques créent une chimie fascinante.`;
+    summary = t(SUMMARY_DESCS.chemistry, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else if (score >= 58) {
-    summary = lang === 'zh' ? `${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。` :
-      lang === 'en' ? `${z1Name} and ${z2Name} need more understanding, but differences fuel attraction.` :
-      lang === 'es' ? `${z1Name} y ${z2Name} necesitan más comprensión, pero las diferencias alimentan la atracción.` :
-      `${z1Name} et ${z2Name} nécessitent plus de compréhension, mais les différences alimentent l'attraction.`;
+    summary = t(SUMMARY_DESCS.understanding, lang)
+      .replace('${z1}', z1Name)
+      .replace('${z2}', z2Name);
   } else {
-    summary = lang === 'zh' ? `对宫相遇，强烈的对立感背后是等量的吸引力。` :
-      lang === 'en' ? `Opposing signs meet — strong polarity hides equal attraction.` :
-      lang === 'es' ? `Signos opuestos se encuentran — fuerte polaridad esconde igual atracción.` :
-      `Signes opposés se rencontrent — forte polarité cache une égale attraction.`;
+    summary = t(SUMMARY_DESCS.opposite, lang);
   }
 
+  // ── 构建详情 ──
   const labels = {
-    sunSign: { zh:'【太阳星座】', en:'[Sun Sign]', es:'[Signo Solar]', fr:'[Signe Solaire]', th:'[ราศีอาทิตย์]', vi:'[Mặt Trời]' },
-    you: { zh:'你', en:'You', es:'Tú', fr:'Vous', th:'คุณ', vi:'Bạn' },
-    ta: { zh:'TA', en:'Partner', es:'Pareja', fr:'Partenaire', th:'คู่ครอง', vi:'Đối phương' },
-    element: { zh:'象', en:'element', es:'elemento', fr:'élément', th:'ธาตุ', vi:'nguyên tố' },
-    ruler: { zh:'守护星', en:'ruler', es:'regente', fr:'maître', th:'ดาวพิทักษ์', vi:'sao bảo hộ' },
-    phaseTitle: { zh:'【相位分析】', en:'[Aspect Analysis]', es:'[Análisis de Aspecto]', fr:'[Analyse d\'Aspect]', th:'[การวิเคราะห์มุม]', vi:'[Phân tích Góc]' },
-    elemTitle: { zh:'【元素互动】', en:'[Element Interaction]', es:'[Interacción Elemental]', fr:'[Interaction Élémentaire]', th:'[ปฏิสัมพันธ์ธาตุ]', vi:'[Tương tác Nguyên tố]' },
-    rulerTitle: { zh:'【守护星互动】', en:'[Ruler Interaction]', es:'[Interacción Regente]', fr:'[Interaction Maître]', th:'[ปฏิสัมพันธ์ดาวพิทักษ์]', vi:'[Tương tác Sao Bảo Hộ]' },
-    bestMatch: { zh:'${z1}与${z2}在经典配对表中属于最佳组合之一', en:'${z1Name} and ${z2Name} are one of the classic best matches', es:'${z1Name} y ${z2Name} son una de las mejores parejas clásicas', fr:'${z1Name} et ${z2Name} forment un des meilleurs couples classiques', th:'${z1Name} และ ${z2Name} เป็นหนึ่งในคู่ที่เข้ากันได้ดีที่สุดแบบคลาสสิก', vi:'${z1Name} và ${z2Name} là một trong những cặp đôi hoàn hảo kinh điển' },
-    opposite: { zh:'${z1}与${z2}互为对宫，吸引力与挑战并存', en:'${z1Name} and ${z2Name} are opposite signs — attraction meets challenge', es:'${z1Name} y ${z2Name} son signos opuestos — atracción encuentra desafío', fr:'${z1Name} et ${z2Name} sont des signes opposés — l\'attraction rencontre le défi', th:'${z1Name} และ ${z2Name} เป็นราศีตรงข้ามกัน — แรงดึงดูดพบกับความท้าทาย', vi:'${z1Name} và ${z2Name} là cung đối nghịch — hấp dẫn gặp thách thức' },
-    unique: lang === 'zh' ? `${z1}与${z2}构成独特配置，不走寻常路` : lang === 'en' ? `${z1Name} and ${z2Name} form a unique configuration — not the usual path` : lang === 'es' ? `${z1Name} y ${z2Name} forman una configuración única — no es el camino usual` : `${z1Name} et ${z2Name} forment une configuration unique — pas le chemin habituel`,
-    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación General', fr:'Score Global', th:'คะแนนรวม', vi:'Điểm tổng' },
-    scoreHigh: { zh:'星辰为证，缘分深厚', en:'Stars bear witness — deep connection', es:'Las estrellas atestiguan — conexión profunda', fr:'Les étoiles en témoignent — connexion profonde', th:'ดวงดาวเป็นพยาน — ความเชื่อมโยงลึกซึ้ง', vi:'Các vì sao làm chứng — kết nối sâu sắc' },
-    scoreMid: { zh:'星光指引，值得期待', en:'Starlight guides — something to look forward to', es:'La luz de las estrellas guía — algo que esperar', fr:'La lumière des étoiles guide — à attendre', th:'แสงดาวนำทาง — มีสิ่งที่ต้องตั้งตารอคอย', vi:'Ánh sao dẫn lối — có điều đáng để trông chờ' },
-    scoreLow: { zh:'星途虽有挑战，携手可越', en:'Starry path has challenges — together you can overcome', es:'El camino estelar tiene desafíos — juntos pueden superar', fr:'Le chemin étoilé a des défis — ensemble vous pouvez surmonter', th:'เส้นทางดวงดาวมีความท้าทาย — ร่วมกันเราสามารถผ่านพ้น', vi:'Con đường sao có thử thách — cùng nhau vượt qua được' },
+    sunSign: t(UI_LABELS.sunSign, lang),
+    you: t(UI_LABELS.you, lang),
+    ta: t(UI_LABELS.ta, lang),
+    element: t(UI_LABELS.element, lang),
+    ruler: t(UI_LABELS.ruler, lang),
+    phaseTitle: t(UI_LABELS.phaseTitle, lang),
+    elemTitle: t(UI_LABELS.elemTitle, lang),
+    rulerTitle: t(UI_LABELS.rulerTitle, lang),
+    bestMatch: t(UI_LABELS.bestMatch, lang).replace('${z1}', z1Name).replace('${z2}', z2Name),
+    oppositeMatch: t(UI_LABELS.oppositeMatch, lang).replace('${z1}', z1Name).replace('${z2}', z2Name),
+    unique: t(UI_LABELS.unique, lang).replace('${z1}', z1Name).replace('${z2}', z2Name),
+    scoreLabel: t(UI_LABELS.scoreLabel, lang),
+    scoreHigh: t(UI_LABELS.scoreHigh, lang),
+    scoreMid: t(UI_LABELS.scoreMid, lang),
+    scoreLow: t(UI_LABELS.scoreLow, lang),
   };
 
   const detail = [
@@ -347,13 +510,13 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     `${labels.rulerTitle}`,
     `${z1Name} ${labels.ruler} ${ruler1Name} meets ${z2Name} ${labels.ruler} ${ruler2Name}`,
     ``,
-    isBestMatch ? `✨ ${labels.bestMatch}` : OPPOSITES[z1] === z2 ? `⚡ ${labels.opposite}` : `◆ ${labels.unique}`,
+    isBestMatch ? `✨ ${labels.bestMatch}` : OPPOSITES[z1] === z2 ? `⚡ ${labels.oppositeMatch}` : `◆ ${labels.unique}`,
     `\n${labels.scoreLabel}：${score}/100 — ${score >= 80 ? labels.scoreHigh : score >= 65 ? labels.scoreMid : labels.scoreLow}`,
   ].join('\n');
 
   return {
     score,
-    title: { zh:'西方星座', en:'Western Zodiac', es:'Zodiaco Occidental', fr:'Zodiaque Occidental', th:'ดวงชะตาราศี', vi:'Tử Vi (Chiêm tinh học phương Tây)' },
+    title: t(UI_LABELS.title, lang),
     summary,
     detail,
   };
