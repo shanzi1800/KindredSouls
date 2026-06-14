@@ -255,19 +255,15 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const diff = (wx1[w] || 0) - (wx2[w] || 0);
     if (Math.abs(diff) >= 2 && (wx1[w] || 0) + (wx2[w] || 0) >= 3) {
       // 一方明显多，另一方少 → 互补潜力
-      if (diff > 0) {
-        wuxingBonus += 3;
-        const labels = { you: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
-          ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
-          qi: { zh:'气', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' } };
-        wuxingDetails.push(`${labels.you[lang]}${wx(w)}${labels.qi[lang]}, ${labels.ta[lang]} can benefit`);
-      } else {
-        wuxingBonus += 3;
-        const labels = { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
-          ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' },
-          qi: { zh:'气', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' } };
-        wuxingDetails.push(`${labels.you[lang]}${wx(w)}${labels.qi[lang]}, ${labels.ta[lang]} can benefit`);
-      }
+      const wxLabels: Record<string, Record<string,string>> = diff > 0
+        ? { you: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
+            ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' } }
+        : { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
+            ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' } };
+      const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' };
+      const wxBenefit: Record<string,string> = { zh:', 对方可以受益', en:', partner can benefit', es:', tu pareja puede beneficiarse', fr:', votre partenaire peut en bénéficier', th:', คู่ครองได้ประโยชน์', vi:', đối phương được lợi' };
+      wuxingDetails.push(`${wxLabels.you[lang]}${wx(w)}${wxQi[lang]}${wxBenefit[lang]}`);
+      wuxingBonus += 3;
     }
   }
   const wuxingScore = Math.min(100, 60 + wuxingBonus + (wuxingDetails.length > 0 ? 5 : 0));
@@ -289,21 +285,27 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   }
 
   // 地支六合/三合检查（年支、月支、日支）
+  const PILLAR_LABELS: Record<string, Record<string,string>> = {
+    '年': { zh:'年', en:'Year', es:'Año', fr:'Année', th:'ปี', vi:'Năm' },
+    '月': { zh:'月', en:'Month', es:'Mes', fr:'Mois', th:'เดือน', vi:'Tháng' },
+    '日': { zh:'日', en:'Day', es:'Día', fr:'Jour', th:'วัน', vi:'Ngày' },
+  };
   for (const label of ['年', '月', '日']) {
     const dz1 = label === '年' ? sz1.year[1] : label === '月' ? sz1.month[1] : sz1.day[1];
     const dz2 = label === '年' ? sz2.year[1] : label === '月' ? sz2.month[1] : sz2.day[1];
+    const pLabel = PILLAR_LABELS[label]?.[lang] || PILLAR_LABELS[label]?.['en'] || label;
 
     // 三合局
     const sanhe = DZHI_SANHE[dz1];
     if (sanhe && sanhe.partners.includes(dz2)) {
       hehunBonus += 10;
       const sanheLabel = {
-        zh:`${label}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`,
-        en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
-        es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
-        fr:`Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`,
-        th:`${label} สาขา ${dz_(dz1)} และ ${dz_(dz2)} สร้างธาตุ ${wx(sanhe.element)} — รากฐานมั่นคง`,
-        vi:`${label} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Tam Hợp ${wx(sanhe.element)} — nền tảng vững chắc`,
+        zh:`${pLabel}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`,
+        en:`${pLabel} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
+        es:`Rama ${pLabel} ${dz_(dz1)} y ${dz_(dz2)} forman Combinación de Tres Elementos de ${wx(sanhe.element)} — base sólida`,
+        fr:`Branche ${pLabel} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`,
+        th:`${pLabel} สาขา ${dz_(dz1)} และ ${dz_(dz2)} สร้างธาตุ ${wx(sanhe.element)} — รากฐานมั่นคง`,
+        vi:`${pLabel} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Tam Hợp ${wx(sanhe.element)} — nền tảng vững chắc`,
       }[lang] || '';
       hehunDetails.push(sanheLabel);
     }
@@ -312,12 +314,12 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
       const liuchongLabel = {
-        zh:`${label}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`,
-        en:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
-        es:`${label} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
-        fr:`Branche ${label} ${dz_(dz1)} et ${dz_(dz2)} forment un Choc Six — une communication attentionnée est nécessaire`,
-        th:`${label} สาขา ${dz_(dz1)} และ ${dz_(dz2)} ขัดแย้ง — ต้องสื่อสารอย่างระมัดระวัง`,
-        vi:`${label} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Lục Xung — cần giao tiếp cẩn thận`,
+        zh:`${pLabel}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`,
+        en:`${pLabel} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
+        es:`Rama ${pLabel} ${dz_(dz1)} y ${dz_(dz2)} forman un Choque Seis — se necesita comunicación cuidadosa`,
+        fr:`Branche ${pLabel} ${dz_(dz1)} et ${dz_(dz2)} forment un Choc Six — une communication attentionnée est nécessaire`,
+        th:`${pLabel} สาขา ${dz_(dz1)} และ ${dz_(dz2)} ขัดแย้ง — ต้องสื่อสารอย่างระมัดระวัง`,
+        vi:`${pLabel} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Lục Xung — cần giao tiếp cẩn thận`,
       }[lang] || '';
       hehunDetails.push(liuchongLabel);
     }

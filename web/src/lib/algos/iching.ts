@@ -20,11 +20,14 @@ function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMe
     if (field === 'judgment') return hex.judgment;
     return hex.relationshipMeaning;
   }
-  // en/es/fr/th/vi 都有翻译
+  // en/es/fr/th/vi 都有翻译；缺失时回退到英文（非中文）
   const suffixMap: Record<string, string> = { en: 'En', es: 'Es', fr: 'Fr', th: 'Th', vi: 'Vi' };
   const suffix = suffixMap[lang] || 'En';
   const key = field === 'relationshipMeaning' ? ('relationshipMeaning' + suffix) : (field + suffix.charAt(0).toUpperCase() + suffix.slice(1));
-  return hex[key] || hex[field] || '';
+  if (hex[key]) return hex[key];
+  // 回退到英文，再回退到中文
+  const enKey = field === 'relationshipMeaning' ? 'relationshipMeaningEn' : (field + 'En');
+  return hex[enKey] || hex[field] || '';
 }
 
 // ═════════════════════════════════════════
@@ -1459,124 +1462,143 @@ function deriveHexagram(p1: BirthInfo, p2: BirthInfo): {
 export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   const { hexNum, hex, changingLine, transformedHex } = deriveHexagram(p1, p2);
 
-  // 多语言字段读取
+  // 多语言字段读取（已支持 6 语言）
   const tName = getHexField(hex, 'name', lang);
   const tNature = getHexField(hex, 'nature', lang);
   const tJudgment = getHexField(hex, 'judgment', lang);
   const tRelation = getHexField(hex, 'relationshipMeaning', lang);
 
-  // ── 基础分数（来自卦象分类）──
+  // ── 基础分数 ──
   const [minScore, maxScore] = hex.scoreRange;
-  // 用日期微调分数（同输入→同输出）
   const seed = (p1.year * 10000 + p1.month * 100 + p1.day)
              + (p2.year * 10000 + p2.month * 100 + p2.day);
   const fineTune = (seed % (maxScore - minScore + 1));
   let score = minScore + fineTune;
 
-  // ── 变卦调整 ──
+  // ── 变卦调整（6 语言） ──
   let transformDesc = '';
   if (transformedHex && transformedHex !== hex) {
     const tCategory = transformedHex.category;
     const tNameTr = getHexField(transformedHex, 'name', lang);
     const tRelTr = getHexField(transformedHex, 'relationshipMeaning', lang);
-    const isZhTr = lang === 'zh';
     if (tCategory === '大吉' || tCategory === '吉') {
       score += 3;
-      transformDesc = isZhTr
-        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n变卦趋势向好，未来发展有转机。`
-        : lang === 'en'
-        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nChanging hexagram trend is positive; future development has a turning point.`
-        : lang === 'es'
-        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendencia del hexagrama cambiante es positiva; el desarrollo futuro tiene un punto de inflexión.`
-        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendance de l'hexagramme changeant est positive; le développement futur a un point de bascule.`;
+      const T_DESC_HI: Record<string,string> = {
+        zh: `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n变卦趋势向好，未来发展有转机。`,
+        en: `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nChanging hexagram trend is positive; future development has a turning point.`,
+        es: `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendencia del hexagrama cambiante es positiva; el desarrollo futuro tiene un punto de inflexión.`,
+        fr: `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendance de l'hexagramme changeant est positive; le développement futur a un point de bascule.`,
+        th: `\n[แผนภูมิเปลี่ยน] เส้น${changingLine}เปลี่ยน → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nแนวโน้มแผนภูมิเปลี่ยนไปในเชิงบวก จุดเปลี่ยนกำลังจะมาถึง`,
+        vi: `\n[Quẻ Biến] Hào ${changingLine} động → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nQuẻ biến chuyển theo hướng tích cực; tương lai có điểmson chuyển.`,
+      };
+      transformDesc = T_DESC_HI[lang] || T_DESC_HI['en'];
     } else if (tCategory === '小凶' || tCategory === '待变') {
       score -= 2;
-      transformDesc = isZhTr
-        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n需注意变化趋势，提前准备。`
-        : lang === 'en'
-        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote the changing trend and prepare in advance.`
-        : lang === 'es'
-        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote la tendencia cambiante y prepárese con anticipación.`
-        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNotez la tendance changeante et préparez-vous à l'avance.`;
+      const T_DESC_LO: Record<string,string> = {
+        zh: `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}\n需注意变化趋势，提前准备。`,
+        en: `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote the changing trend and prepare in advance.`,
+        es: `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNote la tendencia cambiante y prepárese con anticipación.`,
+        fr: `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nNotez la tendance changeante et préparez-vous à l'avance.`,
+        th: `\n[แผนภูมิเปลี่ยน] เส้น${changingLine}เปลี่ยน → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nสังเกตแนวโน้มและเตรียมตัวล่วงหน้า`,
+        vi: `\n[Quẻ Biến] Hào ${changingLine} động → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nChú ý xu hướng biến đổi và chuẩn bị từ trước.`,
+      };
+      transformDesc = T_DESC_LO[lang] || T_DESC_LO['en'];
     } else {
-      transformDesc = isZhTr
-        ? `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}`
-        : lang === 'en'
-        ? `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`
-        : lang === 'es'
-        ? `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`
-        : `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`;
+      const T_DESC_MID: Record<string,string> = {
+        zh: `\n【变卦】第${changingLine}爻动 → ${tNameTr}（${transformedHex.symbol}）\n${tRelTr}`,
+        en: `\n[Changing Hex] Line ${changingLine} changes → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`,
+        es: `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`,
+        fr: `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`,
+        th: `\n[แผนภูมิเปลี่ยน] เส้น${changingLine}เปลี่ยน → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`,
+        vi: `\n[Quẻ Biến] Hào ${changingLine} động → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}`,
+      };
+      transformDesc = T_DESC_MID[lang] || T_DESC_MID['en'];
     }
   }
 
   score = Math.max(35, Math.min(99, score));
 
-  // ── 解读文案 ──
+  // ── 解读文案（6 语言映射） ──
   const categoryEmoji: Record<string, string> = {
     '大吉': '✦', '吉': '◆', '中': '◇', '小凶': '◗', '待变': '◈',
   };
 
-  // 多语言 summary
-  let summary: string;
-  const isZh = lang === 'zh';
-  if (score >= 82) {
-    summary = isZh
-      ? `占得「${tName}」，${categoryEmoji[hex.category]}${tJudgment}，此乃上上之卦。`
-      : lang === 'en'
-      ? `Hexagram ${hexNum}: ${tName}. ${tJudgment} — an extremely auspicious sign.`
-      : lang === 'es'
-      ? `Hexagrama ${hexNum}: ${tName}. ${tJudgment} — un signo extremadamente auspicioso.`
-      : `Hexagramme ${hexNum} : ${tName}. ${tJudgment} — un signe extrêmement auspice.`;
-  } else if (score >= 68) {
-    summary = isZh
-      ? `占得「${tName}」，${tNature}之卦，缘分稳中有升。`
-      : lang === 'en'
-      ? `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has steady, growing potential.`
-      : lang === 'es'
-      ? `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene un potencial de crecimiento constante.`
-      : `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a un potentiel de croissance constante.`;
-  } else if (score >= 55) {
-    summary = isZh
-      ? `占得「${tName}」，卦象显示需用心经营，方能长久。`
-      : lang === 'en'
-      ? `Hexagram ${hexNum}: ${tName}. Care and intention are needed to sustain this bond.`
-      : lang === 'es'
-      ? `Hexagrama ${hexNum}: ${tName}. Se necesita cuidado e intención para mantener este vínculo.`
-      : `Hexagramme ${hexNum} : ${tName}. Des soins et une intención sont nécessaires pour maintenir ce lien.`;
-  } else {
-    summary = isZh
-      ? `占得「${tName}」，虽遇挑战，但否极泰来，转机在后。`
-      : lang === 'en'
-      ? `Hexagram ${hexNum}: ${tName}. Challenges arise, but turning points follow.`
-      : lang === 'es'
-      ? `Hexagrama ${hexNum}: ${tName}. Surgen desafíos, pero siguen puntos de inflexión.`
-      : `Hexagramme ${hexNum} : ${tName}. Des défis surgissent, mais des points d'inflexion suivent.`;
-  }
+  const SUMMARY_82: Record<string,string> = {
+    zh: `占得「${tName}」，${categoryEmoji[hex.category] || ''}${tJudgment}，此乃上上之卦。`,
+    en: `Hexagram ${hexNum}: ${tName}. ${tJudgment} — an extremely auspicious sign.`,
+    es: `Hexagrama ${hexNum}: ${tName}. ${tJudgment} — un signo extremadamente auspicioso.`,
+    fr: `Hexagramme ${hexNum} : ${tName}. ${tJudgment} — un signe extrêmement auspice.`,
+    th: `ได่พบแผนภูมิ「${tName}」${categoryEmoji[hex.category] || ''}${tJudgment} — ลางมงคลสูงสุด`,
+    vi: `Gặp quẻ «${tName}» ${categoryEmoji[hex.category] || ''}${tJudgment} — điềm cực kỳ cát tường`,
+  };
+  const SUMMARY_68: Record<string,string> = {
+    zh: `占得「${tName}」，${tNature}之卦，缘分稳中有升。`,
+    en: `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has steady, growing potential.`,
+    es: `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene un potencial de crecimiento constante.`,
+    fr: `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a un potentiel de croissance constante.`,
+    th: `ได่พบแผนภูมิ「${tName}」(${tNature}) — ความสัมพันธ์มั่นคงและเติบโต`,
+    vi: `Gặp quẻ «${tName}» (${tNature}) — mối quan hệ vững chắc, tiềm năng tăng trưởng`,
+  };
+  const SUMMARY_55: Record<string,string> = {
+    zh: `占得「${tName}」，卦象显示需用心经营，方能长久。`,
+    en: `Hexagram ${hexNum}: ${tName}. Care and intention are needed to sustain this bond.`,
+    es: `Hexagrama ${hexNum}: ${tName}. Se necesita cuidado e intención para mantener este vínculo.`,
+    fr: `Hexagramme ${hexNum} : ${tName}. Des soins et une intención sont nécessaires pour maintenir ce lien.`,
+    th: `ได่พบแผนภูมิ「${tName}」— ตองใส่ใจดูแลจึงจะยั่งยืน`,
+    vi: `Gặp quẻ «${tName}» — cần sự tận tâm và chủ ý mới duy trì được mối quan hệ`,
+  };
+  const SUMMARY_LO: Record<string,string> = {
+    zh: `占得「${tName}」，虽遇挑战，但否极泰来，转机在后。`,
+    en: `Hexagram ${hexNum}: ${tName}. Challenges arise, but turning points follow.`,
+    es: `Hexagrama ${hexNum}: ${tName}. Surgen desafíos, pero siguen puntos de inflexión.`,
+    fr: `Hexagramme ${hexNum} : ${tName}. Des défis surgissent, mais des points de bascule suivent.`,
+    th: `ได่พบแผนภูมิ「${tName}」— มีความทาทาย แต่จุดเปลี่ยนกำลังมาถึง`,
+    vi: `Gặp quẻ «${tName}» — có thử thách, nhưng điểmson chuyển sẽ đến`,
+  };
 
-  // 多语言 detail
+  let summary: string;
+  if (score >= 82) { summary = SUMMARY_82[lang] || SUMMARY_82['en']; }
+  else if (score >= 68) { summary = SUMMARY_68[lang] || SUMMARY_68['en']; }
+  else if (score >= 55) { summary = SUMMARY_55[lang] || SUMMARY_55['en']; }
+  else { summary = SUMMARY_LO[lang] || SUMMARY_LO['en']; }
+
+  // ── 多语言 detail（6 语言标签映射） ──
   const tCategory = HEX_CATEGORY[hex.category]?.[lang] || hex.category;
-  const tTransform = transformDesc; // transformDesc 也需要多语言化，先保留
+  const D_LABEL = {
+    primaryHex:   { zh:'【本卦】', en:'[Primary Hex]', es:'[Hex Principal]', fr:'[Hex Principal]', th:'[แผนภูมิหลัก]', vi:'[Quẻ Chính]' },
+    nature:       { zh:'卦德', en:'Nature', es:'Naturaleza', fr:'Nature', th:'ธรรมชาติ', vi:'Tính chất' },
+    judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำพิพากษ์', vi:'Lời phán' },
+    grade:        { zh:'等级', en:'Grade', es:'Grado', fr:'Grade', th:'ระดับ', vi:'Cấp độ' },
+    relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Duyên nghiệp]' },
+    lineAnalysis: { zh:'【爻位分析】', en:'[Line Analysis]', es:'[Análisis Líneas]', fr:'[Analyse Lignes]', th:'[วิเคราะห์เส้น]', vi:'[Phân tích Hào]' },
+    changing:     { zh:`第${changingLine}爻为动爻，显示关系中存在变化的契机`, en:`Line ${changingLine} is changing — indicates a turning point`, es:`La línea ${changingLine} está cambiando — indica un punto de inflexión`, fr:`La ligne ${changingLine} change — point de bascule`, th:`เส้น${changingLine}เปลี่ยน — จุดเปลี่ยนในความสัมพันธ์`, vi:`Hào ${changingLine} động — điểmson chuyển trong quan hệ` },
+    stable:       { zh:'六爻安静，关系当前处于稳定状态', en:'All lines stable — relationship in steady state', es:'Todas las líneas estables', fr:'Toutes les lignes stables', th:'ทุกเส้นนิ่ง — ความสัมพันธ์มั่นคง', vi:'Tất cả hào tĩnh — quan hệ đang ổn định' },
+    scoreHi:      { zh:'卦象大吉，顺应天道', en:'Auspicious hexagram, follow the Tao', es:'Hexagrama auspicioso, sigue el Tao', fr:'Hexagramme auspice, suivez le Tao', th:'ลางมงคล ปฏิบัติตามธรรมชาติ', vi:'Quẻ cát tường, thuận theo Thiên Đạo' },
+    scoreMid:     { zh:'中上之卦，事在人为', en:'Above-average hexagram, human effort matters', es:'Hexagrama superior, el esfuerzo importa', fr:"Hexagramme au-dessus, l'effort compte", th:'แผนภูมิระดับดี มนุษย์ยินแปร', vi:'Quẻ khá tốt, nỗ lực con người quyết định' },
+    scoreLo:      { zh:'卦象待变，修心即改命', en:'Hexagram in transition — cultivate heart to change destiny', es:'Hexagrama en transición — cultiva el corazón', fr:'Hexagramme en transition — cultivez le cœur', th:'แผนภูมิกำลังเปลี่ยน — ฝึกจิตเพื่อเปลี่ยนชะตา', vi:'Quẻ đang chuyển — tu tâm để đổi mệnh' },
+  };
+  const tTransform = transformDesc;
   const detail = [
-    (isZh ? `【本卦】第${hexNum}卦 — ${tName} ${hex.symbol}` : lang === 'en' ? `【Primary Hexagram】#${hexNum} — ${tName} ${hex.symbol}` : lang === 'es' ? `【Hexagrama Principal】#${hexNum} — ${tName} ${hex.symbol}` : `【Hexagramme Principal】#${hexNum} — ${tName} ${hex.symbol}`),
-    (isZh ? `卦德：${tNature} | 卦辞：${tJudgment}` : lang === 'en' ? `Nature: ${tNature} | Judgment: ${tJudgment}` : lang === 'es' ? `Naturaleza: ${tNature} | Juicio: ${tJudgment}` : `Nature: ${tNature} | Jugement: ${tJudgment}`),
-    (isZh ? `等级：${categoryEmoji[hex.category] || ''}${hex.category}` : lang === 'en' ? `Grade: ${categoryEmoji[hex.category] || ''}${tCategory}` : lang === 'es' ? `Grado: ${categoryEmoji[hex.category] || ''}${tCategory}` : `Grade: ${categoryEmoji[hex.category] || ''}${tCategory}`),
+    const hexNumLabel: Record<string, Record<string,string>> = {
+      zh: `第${hexNum}卦`, en: `Hexagram ${hexNum}`, es: `Hexagrama ${hexNum}`, fr: `Hexagramme ${hexNum}`, th: `แผนภูมิ ${hexNum}`, vi: `Quẻ ${hexNum}` };
+    `${D_LABEL.primaryHex[lang] || D_LABEL.primaryHex['en']}${hexNumLabel[lang] || hexNumLabel['en']} — ${tName} ${hex.symbol}`,
+    `${D_LABEL.nature[lang] || D_LABEL.nature['en']}: ${tNature} | ${D_LABEL.judgment[lang] || D_LABEL.judgment['en']}: ${tJudgment}`,
+    `${D_LABEL.grade[lang] || D_LABEL.grade['en']}: ${categoryEmoji[hex.category] || ''}${tCategory}`,
     ``,
-    (isZh ? `【姻缘解读】` : lang === 'en' ? `【Relationship Reading】` : lang === 'es' ? `【Lectura de Relación】` : `【Lecture de Relation】`),
+    D_LABEL.relation[lang] || D_LABEL.relation['en'],
     tRelation,
     ``,
-    (isZh ? `【爻位分析】` : lang === 'en' ? `【Line Analysis】` : lang === 'es' ? `【Análisis de Líneas】` : `【Analyse des Lignes】`),
-    changingLine ? (isZh ? `第${changingLine}爻为动爻，显示关系中存在变化的契机` : lang === 'en' ? `Line ${changingLine} is changing — indicates a turning point in the relationship` : lang === 'es' ? `La línea ${changingLine} está cambiando — indica un punto de inflexión en la relación` : `La ligne ${changingLine} est en changement — indique un point de inflexión dans la relation`) : (isZh ? '六爻安静，关系当前处于稳定状态' : lang === 'en' ? 'All lines are stable — the relationship is currently in a steady state' : lang === 'es' ? 'Todas las líneas están estables — la relación está actualmente en un estado estable' : 'Toutes les lignes sont stables — la relation est actuellement dans un état stable'),
+    D_LABEL.lineAnalysis[lang] || D_LABEL.lineAnalysis['en'],
+    changingLine ? (D_LABEL.changing[lang] || D_LABEL.changing['en']) : (D_LABEL.stable[lang] || D_LABEL.stable['en']),
     tTransform,
     ``,
-    score >= 80 ? (isZh ? '卦象大吉，顺应天道' : lang === 'en' ? 'Auspicious hexagram, follow the Tao' : lang === 'es' ? 'Hexagrama auspicioso, sigue el Tao' : 'Hexagramme auspice, suivez le Tao')
-      : score >= 65 ? (isZh ? '中上之卦，事在人为' : lang === 'en' ? 'Above-average hexagram, human effort matters' : lang === 'es' ? 'Hexagrama superior al promedio, el esfuerzo humano importa' : 'Hexagramme au-dessus de la moyenne, l\'effort humain compte')
-      : (isZh ? '卦象待变，修心即改命' : lang === 'en' ? 'Hexagram in transition — cultivate the heart to change destiny' : lang === 'es' ? 'Hexagrama en transición — cultiva el corazón para cambiar el destino' : 'Hexagramme en transition — cultivez le cœur pour changer la destinée'),
+    score >= 80 ? (D_LABEL.scoreHi[lang] || D_LABEL.scoreHi['en']) : score >= 65 ? (D_LABEL.scoreMid[lang] || D_LABEL.scoreMid['en']) : (D_LABEL.scoreLo[lang] || D_LABEL.scoreLo['en']),
     ``,
   ].join('\n');
 
   return {
     score,
-    title: '易经智慧',
+    title: { zh:'易经智慧', en:'I Ching Wisdom', es:'Sabiduría I Ching', fr:'Sagesse Yi Jing', th:'ภูมิปัญญาอี้จิง', vi:'Trí tuệ Dịch Kinh' }[lang] || 'I Ching Wisdom',
     summary,
     detail,
   };
