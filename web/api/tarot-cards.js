@@ -19,7 +19,7 @@ const MAJOR_ARCANA = [
       en: "They're a bit lost in the fog right now, babe. The distance? It's not you — it's them retreating from something. Pull them in gently.",
       fr: "Iels se perdent un peu dans le brouillard. La distance ? C'est pas toi — c'est iels qui fuient quelque chose. Rapproche-les doucement. 👁️",
       es: "Se sienten un poco perdidos en la niebla, linda. ¿La distancia? No eres tú — es ellxs huyendo de algo. Acércate con calma. 💫",
-      th: "การขาดความรับผิดชอบหรือความประมาท",
+      th: "เสียงก้องในหมอก — เค้ากำลังถอยออกจากบางสิ่ง อย่าคิดว่าเป็นความผิดของเธอ เข้าหาเค้าอย่างนุ่มนวล",
       vi: "Thiếu trách nhiệm hoặc bất cẩn"
     }
   },
@@ -40,7 +40,7 @@ const MAJOR_ARCANA = [
       en: "A little voice is whispering: something might be a bit performative here. Don't overthink it — just stay curious, babe.",
       fr: "Une petite voix murmure : quelque chose pourrait être légèrement performatif ici. Ne rumine pas — reste curieuse. 👁️",
       es: "Un bichito te dice que algo aquí puede ser un poquito performativo. No te rayes — solo mantente alerta con cariño. 💫",
-      th: "การใช้พลังในทางที่ผิด",
+      th: "พลังที่ซ่อนอยู่หลังม่าน — บางทักษะอาจเป็นเกม อย่าเพิ่งด่วนตัดสิน แค่สังเกตแล้วปล่อย",
       vi: "Lạm dụng quyền lực"
     }
   },
@@ -61,7 +61,7 @@ const MAJOR_ARCANA = [
       en: "Your gut is actually onto something here. They do care — they're just not the best at showing it. Read between the lines, babe.",
       fr: "Ton instinct a raison. Iel tient à toi — iel ne sait juste pas bien comment le montrer. Lis entre les lignes. 👁️",
       es: "Tu intuición tiene razón, linda. Sí les importas — solo que no saben bien cómo demostrarlo. Lee entre líneas. 💫",
-      th: "ความล่าช้าและความผิดหวัง",
+      th: "เสียงเงียบที่ยังคงดัง — ความลับซ่อนอยู่ เส้นทางที่ยังไม่ชัด จงให้เวลากับการรอคอย",
       vi: "Trì hoãn và thất vọng"
     }
   },
@@ -82,7 +82,7 @@ const MAJOR_ARCANA = [
       en: "Their need for control? It's coming from somewhere deep inside, babe. More warmth and reassurance will do wonders.",
       fr: "Leur besoin de contrôle ? Ça vient de quelque part profonde. Plus de douceur et de réassurance, et ça fait des miracles. 👁️",
       es: "¿Su necesidad de control? Viene de algún lugar profundo, linda. Más calidez y certeza van a hacer milagros. 💫",
-      th: "ความไม่มั่นคงทางอารมณ์",
+      th: "เมฆบังแสงจันทร์ — ความอบอุ่นยังอยู่แต่ซ่อนอยู่ ความรู้สึกที่ไม่แน่นอนต้องการพื้นที่",
       vi: "Bất ổn cảm xúc"
     }
   },
@@ -103,7 +103,7 @@ const MAJOR_ARCANA = [
       en: "Their rigid side is starting to feel a little heavy for you, babe. When the rhythm is off, the vibe shifts — and you feel it.",
       fr: "Leur côté rigide commence à peser un peu pour toi. Quand le rythme est décalé, le vibe change — et tu le sens. 👁️",
       es: "Su lado rígido está empezando a sentirse pesado, linda. Cuando el ritmo no cuadra, todo se siente fuera de lugar — y tú lo sientes. 💫",
-      th: "ความเผด็จการและการขาดความยืดหยุ่น",
+      th: "ราชันที่แข็งเกินไป — กำแพงที่เค้าสร้างไว้อาจเป็นเพื่อปกป้องตัวเอง ไม่ใช่เพื่อกั้นเธอ",
       vi: "Độc đoán và thiếu linh hoạt"
     }
   },
@@ -124,7 +124,7 @@ const MAJOR_ARCANA = [
       en: "They're a bit caught up in what tradition says. But babe, you two write your own rules — don't let old scripts define your story.",
       fr: "Iel est un peu coincé·e dans ce que la tradition dicte. Mais you two, vous écrivez vos propres règles — ne laissez pas de vieux schémas décider. 👁️",
       es: "Se dejaron llevar un poquito por lo que la tradición dicta. Pero mirá, ustedes escriben sus propias reglas — no dejes que viejo guiones definan su historia. 💫",
-      th: "การตัดสินใจที่ผิดพลาด",
+      th: "เข็มทิศที่หลงทาง — การเลือกเส้นทางผิดครั้งนี้อาจเป็นบทเรียนที่สวยงาม อย่าโทษตัวเองมาก",
       vi: "Quyết định sai từ lời khuyên"
     }
   },
@@ -145,7 +145,7 @@ const MAJOR_ARCANA = [
       en: "A crossroads just showed up, babe. External noise might be making this harder than it needs to be — trust the bond, not the pressure.",
       fr: "Un carrefour vient d'apparaître. Le bruit externe pourrait compliquer les choses — fais confiance à votre lien, pas à la pression. 👁️",
       es: "Un cruce de caminos apareció, linda. El ruido externo puede estar haciendo esto más difícil de lo necesario — confía en el vínculo, no en la presión. 💫",
-      th: "ความขัดแย้งในความสัมพันธ์",
+      th: "รอยร้าวที่ยังซ่อมได้ — ความขัดแย้งคือการเติบโต ไม่ใช่จุดจบ ความรักที่ผ่านพ้นจะแข็งแกร่งกว่าเดิม",
       vi: "Xung đột trong mối quan hệ"
     }
   },
@@ -166,7 +166,7 @@ const MAJOR_ARCANA = [
       en: "The momentum stalled a little, babe. When both people pull in different directions, everything feels out of sync — that's what you're sensing.",
       fr: "L'élan s'est un peu enlisé. Quand deux personnes tirent dans des directions opposées, tout est désynchronisé — c'est ce que tu ressens. 👁️",
       es: "El impulso se estancó un poquito, linda. Cuando ambas personas tiran para lados diferentes, todo se siente fuera de sincronía — eso es lo que estás sintiendo. 💫",
-      th: "การขาดแบบแผนหรือการสูญเสียการควบคุม",
+      th: "รถราที่แล่นเร็วเกินไป — เค้าอาจต้องการเวลาให้ทุกอย่างนิ่งลง อย่าเร่งด่วน ให้พลังงานไหลตามธรรมชาติ",
       vi: "Thiếu kế hoạch hoặc mất kiểm soát"
     }
   },
@@ -187,7 +187,7 @@ const MAJOR_ARCANA = [
       en: "They're running on empty, babe. The small stuff is hitting harder than it should — what they need most is you, steady and soft.",
       fr: "Iel roule sur la réserve. Les petites choses tapent plus fort qu'elles ne devraient — ce dont iel a le plus besoin, c'est toi, steady and soft. 👁️",
       es: "Van con las luces de reserva, linda. Las cosas chiquitas pegan más fuerte de lo que deberían — lo que más necesitan es a vos, firme y gentil. 💫",
-      th: "ความกลัวและความอ่อนแอ",
+      th: "สิ่งที่อ่อนแอคือสิ่งที่แท้จริง — ความกลัวไม่ใช่จุดอ่อน มันคือพื้นที่ที่รอการเติบโต",
       vi: "Sợ hãi và yếu đuối"
     }
   },
@@ -208,7 +208,7 @@ const MAJOR_ARCANA = [
       en: "They've been retreating a bit — and the silence is loud, babe. Sometimes the one who reaches out first changes everything.",
       fr: "Iel s'est un peu retiré·e — et le silence est lourd. Parfois, celle qui tend la main en premier change tout. 👁️",
       es: "Se han estado recluyendo — y el silencio se siente pesado, linda. A veces la que da el primer paso lo cambia todo. 💫",
-      th: "การหลงทางหรือการถอยกลับ",
+      th: "ป้อมปราการที่ซ่อนตัว — เค้ากำลังหาแสงเทียนในความมืด แค่ให้เค้ารู้ว่าเธอยังอยู่ตรงนี้",
       vi: "Đi lạc hoặc rút lui"
     }
   },
@@ -229,7 +229,7 @@ const MAJOR_ARCANA = [
       en: "Something unexpected just flipped the script, babe. Plans shifted fast — but hey, adaptability is literally your superpower.",
       fr: "Quelque chose d'inattendu vient de retourner le scénario. Les plans ont changé vite — mais hey, l'adaptabilité, c'est littéralement ton superpouvoir. 👁️",
       es: "Algo inesperado acaba de cambiar el guion, linda. Los planes cambiaron rápido — pero mirá, la adaptabilidad es literalmente tu superpoder. 💫",
-      th: "อุปสรรคที่หยุดยั้งการเคลื่อนไหว",
+      th: "ล้อที่หมุนช้าลง — ช่วงนี้อาจหนักหน่วง แต่ทุกการหยุดคือจังหวะก่อนก้าวใหม่",
       vi: "Trở ngại cản trở tiến bộ"
     }
   },
@@ -250,7 +250,7 @@ const MAJOR_ARCANA = [
       en: "They're weighing things carefully — and taking time is actually a sign of respect, babe. They're trying not to hurt you in the process.",
       fr: "Iel pèse les choses soigneusement — et prendre son temps, c'est réellement un signe de respect. Iel essaie de ne pas te blesser en chemin. 👁️",
       es: "Están ponderando todo con cuidado — y tomarse su tiempo es un signo de respeto, linda. Están tratando de no lastimarte en el proceso. 💫",
-      th: "การตัดสินที่ไม่เป็นธรรมและความลำเอียง",
+      th: "ความจริงที่ยังซ่อนอยู่ — บางเรื่องต้องให้เวลา ความอยุติธรรมจะปรากฏเมื่อถึงเวลาของมัน",
       vi: "Phán xét không công bằng"
     }
   },
@@ -271,7 +271,7 @@ const MAJOR_ARCANA = [
       en: "They might feel a bit stuck in their own story, babe. A little perspective shift — yours or theirs — could be the whole unlock.",
       fr: "Iel se sent peut-être coincé·e dans sa propre histoire. Un petit changement de perspective — le tien ou le sien — pourrait tout déclencher. 👁️",
       es: "Se sienten un poquito atrapados en su propia historia, linda. Un pequeño cambio de perspectiva — tuyo o de ellxs — podría ser la clave. 💫",
-      th: "ความวิตกกังวลและการหยุดชะงัก",
+      th: "การแขวนที่ยังไม่สมบูรณ์ — ความลนลานคือสัญญาณว่าหัวใจยังใส่ใจ จงใช้ช่วงนี้เรียนรู้ตัวเอง",
       vi: "Lo lắng và trì trệ"
     }
   },
@@ -292,7 +292,7 @@ const MAJOR_ARCANA = [
       en: "Holding onto what was is human, babe — but resisting only stretches the pain. Letting the old chapter close is how the new one begins.",
       fr: "S'accrocher à ce qui était, c'est humain — mais résister ne fait qu'étirer la douleur. Laisser le vieux chapitre se fermer, c'est comme le nouveau commence. 👁️",
       es: "Agarrarse a lo que fue es humano, linda — pero resistir solo estira el dolor. Dejar que el capítulo viejo se cierre es cómo empieza el nuevo. 💫",
-      th: "ความกลัวการเปลี่ยนแปลงและการยึดติด",
+      th: "ไม่มีความตายที่ไม่นำไปสู่การเกิดใหม่ — การเปลี่ยนแปลงน่ากลัวเสมอ แต่มันคือทางของจักรวาล",
       vi: "Sợ thay đổi và bám víu"
     }
   },
@@ -313,7 +313,7 @@ const MAJOR_ARCANA = [
       en: "They're going a little extreme — either pouring in too much or pulling back too hard. The scale just needs a gentle recalibration, babe.",
       fr: "Iel part un peu dans les extrêmes — soit trop d'investissement, soit trop de recul. L'équilibre a juste besoin d'un petit réajustement doux. 👁️",
       es: "Se van a los extremos — o meten demasiado o se guardan demasiado. La balanza solo necesita un pequeño reacomodo gentil, linda. 💫",
-      th: "ความขัดแย้งภายในและการตัดสินใจลำบาก",
+      th: "โซ่ที่พร้อมจะหลุด — เค้าอาจรู้สึกติดอยู่ แต่การหลุดพ้นเริ่มจากการมองออกไปนอกกรอบ",
       vi: "Xung đột nội tâm và quyết định khó khăn"
     }
   },
@@ -334,7 +334,7 @@ const MAJOR_ARCANA = [
       en: "There's a little dependency loop between you two, babe. Healthy boundaries here aren't walls — they're actually the most loving thing you can build.",
       fr: "I y a une petite boucle de dépendance entre vous. Des frontières saines ici, ce sont pas des murs — c'est vraiment la chose la plus aimante que vous puissiez construire. 👁️",
       es: "Hay un pequeño ciclo de dependencia entre ustedes dos, linda. Límites saludables no son muros — son lo más amoroso que pueden construir. 💫",
-      th: "ความล้มเหลวจากการสูญเสียความเชื่อมั่น",
+      th: "ซากปรักหักพังที่พร้อมสร้างใหม่ — ความพังทลายคือการเคลียร์พื้นที่ให้สิ่งที่ดีกว่าเข้ามา",
       vi: "Thất bại từ mất niềm tin"
     }
   },
@@ -355,7 +355,7 @@ const MAJOR_ARCANA = [
       en: "The fallout is real and it needs space to heal, babe. They're quietly re-assessing what matters — give them that room without pressure.",
       fr: "Les dégâts sont réels et ont besoin d'espace pour guérir. Iel réassigne discrètement ce qui compte — laisse-lui cet espace sans pression. 👁️",
       es: "El impacto es real y necesita espacio para sanar, linda. Están reevaluando silenciosamente qué importa — déjalos sin presión. 💫",
-      th: "ความสับสนและความกลัวในความมืด",
+      th: "ดวงดาวที่ซ่อนอยู่หลังเมฆ — แม้ท้องฟ้ามืดลง ดวงดาวไม่เคยหายไป มันเพียงถูกบดบังชั่วคราว",
       vi: "Bối rối và sợ hãi"
     }
   },
@@ -376,7 +376,7 @@ const MAJOR_ARCANA = [
       en: "They've been giving a lot — maybe too much — and forgot to fill their own cup, babe. A little energetic rebalancing would do everyone good.",
       fr: "Iel a beaucoup donné — peut-être trop — et a oublié de remplir son propre verre. Un petit rééquilibrage énergétique ferait du bien à tout le monde. 👁️",
       es: "Han dado mucho — quizás demasiado — y olvidaron llenarse su propio vaso, linda. Un poco de reequilibrio energético le haría bien a todos. 💫",
-      th: "ความเคว้งคว้างทางอารมณ์และภาพลวงตา",
+      th: "หมอกที่เริ่มจางลง — ความเข้าใจผิดบางครั้งเกิดจากความรู้สึกที่ไม่ชัด ค่อยๆ ลงหลัก",
       vi: "Dao động cảm xúc và ảo tưởng"
     }
   },
@@ -397,7 +397,7 @@ const MAJOR_ARCANA = [
       en: "Illusions and anxiety might be clouding the picture, babe. What helps? Honest conversation — the messy kind that's actually real.",
       fr: "Illusions et anxiété pourraient brouiller le tableau. Ce qui aide ? La conversation honnête — celle qui est un peu désordonnée mais vraiment réelle. 👁️",
       es: "Ilusiones y ansiedad pueden estar nublando el panorama, linda. ¿Qué ayuda? Conversación honesta — de la desordenada pero genuinamente real. 💫",
-      th: "ความรู้สึกถูกทำให้อับอายหรือขาดความมั่นใจ",
+      th: "แสงแดดที่ยังคงส่อง — ความอับอายเป็นเมฆบัง ไม่ใช่การดับ ให้เวลากับการรับแสงใหม่",
       vi: "Cảm thấy xấu hổ hoặc thiếu tự tin"
     }
   },
@@ -418,7 +418,7 @@ const MAJOR_ARCANA = [
       en: "The light is still there, babe — but a little dimmer. A hint of pride or self-absorption might be creeping in. Time to reconnect with the original spark.",
       fr: "La lumière est toujours là — mais un peu plus terne. Une pointe de fierté ou d'autoabsorption pourrait s'infiltrer. Il est temps de se reconnecter à l'étincelle initiale. 👁️",
       es: "La luz sigue ahí, linda — pero un poquito más tenue. Un poquito de orgullo o autoabsorción puede estar colándose. Es hora de reconectarse con la chispa original. 💫",
-      th: "ความรู้สึกถูกทำให้อับอายหรือขาดความมั่นใจ",
+      th: "แสงแดดที่ยังคงส่อง — ความอับอายเป็นเมฆบัง ไม่ใช่การดับ ให้เวลากับการรับแสงใหม่",
       vi: "Cảm thấy xấu hổ hoặc thiếu tự tin"
     }
   },
@@ -439,7 +439,7 @@ const MAJOR_ARCANA = [
       en: "They're quietly waiting for something — a sign, a feeling, a moment. This one needs time, babe. Don't rush what wants to arrive naturally.",
       fr: "Iel attend silencieusement quelque chose — un signe, un ressenti, un moment. Celui-ci a besoin de temps. Ne force pas ce qui veut arriver naturellement. 👁️",
       es: "Están esperando algo tranquilamente — un signo, un feeling, un momento. Este necesita tiempo, linda. No apures lo que quiere llegar naturalmente. 💫",
-      th: "ความรู้สึกผิดและการตัดสินตัวเอง",
+      th: "เสียงเรียกที่ยังไม่ได้ยิน — บางครั้งเราตัดสินตัวเองรุนแรงเกินไป จงให้อภัยกับตัวเอง",
       vi: "Tự trách và tự phán xét"
     }
   },
@@ -460,7 +460,7 @@ const MAJOR_ARCANA = [
       en: "They feel settled but maybe a little restless for what's next, babe. Setting a new shared goal together? That's how you keep the spark alive.",
       fr: "Iel se sent apaisé·e mais peut-être un peu agité·e pour la suite. Se fixer un nouvel objectif ensemble ? C'est comme ça que l'étincelle reste vive. 👁️",
       es: "Se sienten tranquilos pero quizás un poquito inquietos por lo que sigue, linda. ¿Fijarse una nueva meta compartida? Así es como la chispa se mantiene viva. 💫",
-      th: "ความรู้สึกไม่เป็นส่วนหนึ่งและความไม่สมดุล",
+      th: "วงจรที่เกือบเ�闭环แต่ยังไม่สมบูรณ์ — ความรู้สึกว่าขาดอะไรบางอย่างคือสัญญาณว่าคุณใกล้จะสมบูรณ์แล้ว",
       vi: "Cảm giác không thuộc về và mất cân bằng"
     }
   }
