@@ -1578,9 +1578,9 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     scoreLo:      { zh:'卦象待变，修心即改命', en:'Hexagram in transition — cultivate heart to change destiny', es:'Hexagrama en transición — cultiva el corazón', fr:'Hexagramme en transition — cultivez le cœur', th:'แผนภูมิกำลังเปลี่ยน — ฝึกจิตเพื่อเปลี่ยนชะตา', vi:'Quẻ đang chuyển — tu tâm để đổi mệnh' },
   };
   const tTransform = transformDesc;
-  const detail = [
-    const hexNumLabel: Record<string, Record<string,string>> = {
+  const hexNumLabel: Record<string, Record<string,string>> = {
       zh: `第${hexNum}卦`, en: `Hexagram ${hexNum}`, es: `Hexagrama ${hexNum}`, fr: `Hexagramme ${hexNum}`, th: `แผนภูมิ ${hexNum}`, vi: `Quẻ ${hexNum}` };
+  const detail = [
     `${D_LABEL.primaryHex[lang] || D_LABEL.primaryHex['en']}${hexNumLabel[lang] || hexNumLabel['en']} — ${tName} ${hex.symbol}`,
     `${D_LABEL.nature[lang] || D_LABEL.nature['en']}: ${tNature} | ${D_LABEL.judgment[lang] || D_LABEL.judgment['en']}: ${tJudgment}`,
     `${D_LABEL.grade[lang] || D_LABEL.grade['en']}: ${categoryEmoji[hex.category] || ''}${tCategory}`,
