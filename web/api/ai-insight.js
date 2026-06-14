@@ -409,7 +409,7 @@ export default async function handler(req, res) {
     }
 
     // Strip any remaining markdown symbols defensively
-    const clean = insight
+    let postProcessed = insight
       .replace(/^###?\s*/gm, '')   // remove ### headers
       .replace(/\*\*(.*?)\*\*/g, '$1')  // remove **bold**
       .replace(/\*(.*?)\*/g, '$1')       // remove *italic*
@@ -417,8 +417,25 @@ export default async function handler(req, res) {
       .replace(/[\u2640-\u26FF]/g, '')   // misc symbols
       .replace(/[\u2700-\u27BF]/g, '');  // dingbats
 
+    // ── TH anti-machine-translation: physical backend replacement ──
+    if (lang === 'th') {
+      postProcessed = postProcessed
+        .replace(/วันเจ้า/g, 'ธาตุเจ้าเรือน (ดิถี)')
+        .replace(/ดิน ธาตุ/g, 'ธาตุดิน')
+        .replace(/น้ำ ธาตุ/g, 'ธาตุน้ำ')
+        .replace(/ไฟ ธาตุ/g, 'ธาตุไฟ')
+        .replace(/ลม ธาตุ/g, 'ธาตุลม')
+        .replace(/ได้ประโยชน์/g, 'ช่วยเกื้อหนุนดวงชะตา')
+        .replace(/คำพิพากษ์/g, 'คำทำนายหลัก')
+        .replace(/หกเหลี่ยม/g, 'มุมเกื้อหนุน (Sextile ⚹)')
+        .replace(/meets(?=\s+(?:ธนู|ตุลย์|พิจิก|สิงโต|กรกฎ|พฤษภ|เมถุน|ทับ|มกร|มีน|กุมภา|เมษายน|พฤศจิกายน|ธันวาคม))/g, 'โคจรมาพบกับ')
+        .replace(/meets/g, 'มาพบกัน')
+        .replace(/แนวโน้ม[^.]+/g, 'พลังงานกำลังไหลไปในทิศทางที่ดี จุดเปลี่ยนกำลังมา');
+    }
+
+
     // Append tarot line (guaranteed to appear)
-    const finalInsight = clean + tarotLine;
+    const finalInsight = postProcessed + tarotLine;
 
     if (insightCache.size >= MAX_CACHE) {
       const firstKey = insightCache.keys().next().value;
