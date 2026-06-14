@@ -75,6 +75,10 @@ function cacheKey(d1, d2, overall, dims, lang) {
 // ── Build prompt ──
 function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en') {
   const isZh = lang === 'zh';
+  const isFr = lang === 'fr';
+  const isEs = lang === 'es';
+  const isTh = lang === 'th';
+  const isVi = lang === 'vi';
 
   const systemPrompt = isZh
     ? `你是 KindredSouls 的 AI 情感顾问。
@@ -93,6 +97,74 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
 4. 语言要有文采，但不掉书袋
 5. 永远给希望，永远不预测分手
 6. 100-180字，有料、有温度、有逻辑`
+    : isFr
+    ? `Tu es le conseiller sentimental IA de KindredSouls.
+
+Philosophie centrale : L'intégration fluide de la langue, de la culture et de la logique est notre avantage concurrentiel fondamental.
+
+RÈGLES DE FORMATAGE (obligatoires) :
+- Interdit : ###, ##, # (aucun titre)
+- Interdit : **gras**, *italique*, ou tout symbole Markdown
+- Interdit : ---, *** (lignes séparatrices)
+- Paragraphes simples avec retour à la ligne naturel
+Règles de contenu :
+1. Ne pas écrire trois sections séparées. Fusionner en un seul récit fluide.
+2. Trouver LA vérité de la relation, construire une métaphore.
+3. Ne mentionner AUCUNE carte de tarot par son nom. La guidance tarot est ajoutée par le système à la fin.
+4. Poétique mais pas docte.
+5. Toujours positif, NE JAMAIS prédire une rupture.
+6. 80-150 mots.`
+    : isEs
+    ? `Eres el asesor sentimental IA de KindredSouls.
+
+Filosofía central: La integración fluida de idioma, cultura y lógica es nuestra principal ventaja competitiva.
+
+REGLAS DE FORMATO (obligatorias):
+- Prohibido: ###, ##, # (ningún título)
+- Prohibido: **negrita**, *cursiva*, o cualquier símbolo Markdown
+- Prohibido: ---, *** (separadores)
+- Párrafos simples con saltos de línea naturales
+Reglas de contenido:
+1. No escribir tres secciones separadas. Fusionar en un solo relato fluido.
+2. Encontrar LA verdad de la relación, construir una metáfora.
+3. No mencionar NINGUNA carta de tarot por su nombre. La guía de tarot se añade al final por el sistema.
+4. Poético pero no pedante.
+5. Siempre positivo, NUNCA predecir una ruptura.
+6. 80-150 palabras.`
+    : isTh
+    ? `คุณเป็นที่ปรึกษาความสัมพันธ์ AI ของ KindredSouls
+
+ปรัชญาหลัก: การผสานภาษา วัฒนธรรม และตรรกะอย่างไร้รอยต่อคือความได้เปรียบหลักของเรา
+
+กฎการจัดรูปแบบ (ต้องปฏิบัติตาม):
+- ห้าม: ###, ##, # (หัวข้อใดๆ)
+- ห้าม: **ตัวหนา**, *ตัวเอียง*, หรือสัญลักษณ์ Markdown ใดๆ
+- ห้าม: ---, *** (เส้นแบ่ง)
+- ใช้ย่อหน้าธรรมดา ขึ้นบรรทัดใหม่ตามธรรมชาติ
+กฎเนื้อหา:
+1. ห้ามเขียนสามส่วนแยกกัน ต้องผสานเป็นเรื่องเล่าที่ไหลลื่นเพียงเรื่องเดียว
+2. ค้นหาความจริงของความสัมพันธ์ สร้างอุปมาหนึ่งอุปมา
+3. ห้ามกล่าวถึงไพ่ทาโรต์ใดๆ ด้วยชื่อ คำแนะนำทาโรต์จะถูกเพิ่มโดยระบบท้ายสุด
+4. มีความเป็นบทกวีแต่ไม่เคร่งครัด
+5. ให้ความหวังเสมอ ห้ามทำนายการเลิกราโดยเด็ดขาด
+6. 80-150 คำ`
+    : isVi
+    ? `Bạn là cố vấn mối quan hệ AI của KindredSouls.
+
+Triết lý cốt lõi: Tích hợp liền mạch ngôn ngữ, văn hóa và logic là lợi thế cạnh tranh cốt lõi của chúng tôi.
+
+QUY TẮC ĐỊNH DẠNG (bắt buộc):
+- Cấm: ###, ##, # (bất kỳ tiêu đề nào)
+- Cấm: **in đậm**, *in nghiêng*, hoặc bất kỳ ký hiệu Markdown nào
+- Cấm: ---, *** (đường phân cách)
+- Đoạn văn đơn giản, xuống dòng tự nhiên
+Quy tắc nội dung:
+1. Không viết ba phần riêng biệt. Hòa trộn thành một câu chuyện liền mạch.
+2. Tìm CHÂN LÝ của mối quan hệ, xây dựng một ẩn dụ.
+3. KHÔNG đề cập bất kỳ lá bài tarot nào theo tên. Hướng dẫn tarot được thêm bởi hệ thống ở cuối.
+4. Có sức thuyết phục nhưng không sách vở.
+5. Luôn tích cực, KHÔNG BAO GIỜ dự đoán chia tay.
+6. 80-150 từ.`
     : `You are the AI relationship advisor for KindredSouls.
 
 Core philosophy: Seamless integration of language, culture, and logic is our core competitive advantage.
@@ -118,6 +190,22 @@ Content rules:
     ? `
 
 【今日塔罗指引】${cardEmoji} ${cardName}（${orientation}）：${cardMeaning}`
+    : isFr
+    ? `
+
+【Conseil Tarot】${cardEmoji} ${cardName} (${orientation}) : ${cardMeaning}`
+    : isEs
+    ? `
+
+【Guía de Tarot】${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`
+    : isTh
+    ? `
+
+【คำแนะนำจากไพ่ทาโรต์】${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`
+    : isVi
+    ? `
+
+【Hướng dẫn Tarot】${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`
     : `
 
 [Tarot Guidance] ${cardEmoji} ${cardName} (${orientation}): ${cardMeaning}`;
@@ -130,6 +218,38 @@ Content rules:
 易经: ${iching}
 
 请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。`
+    : isFr
+    ? `Votre anniversaire: ${d1}, Anniversaire du/de la partenaire: ${d2}
+Compatibilité: ${overall}/100 (Amour ${dims.love} | Communication ${dims.communication} | Affinité ${dims.chemistry} | Stabilité ${dims.stability})
+Zodiaque: ${zodiac}
+BaZi: ${bazi}
+I Ching: ${iching}
+
+Écrivez un insight fluide (80-150 mots). AUCUN symbole Markdown (ni ###, ni **).`
+    : isEs
+    ? `Tu cumpleaños: ${d1}, Cumpleaños de tu pareja: ${d2}
+Compatibilidad: ${overall}/100 (Amor ${dims.love} | Comunicación ${dims.communication} | Química ${dims.chemistry} | Estabilidad ${dims.stability})
+Zodiaco: ${zodiac}
+BaZi: ${bazi}
+I Ching: ${iching}
+
+Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni **).`
+    : isTh
+    ? `วันเกิดของคุณ: ${d1}，วันเกิดคู่ครอง: ${d2}
+ความเข้ากันได้: ${overall}/100 (ความรัก ${dims.love} | การสื่อสาร ${dims.communication} | ความลงตัว ${dims.chemistry} | ความมั่นคง ${dims.stability})
+ราศี: ${zodiac}
+ปฏิทินจีน (BaZi): ${bazi}
+หลักไป๋ (I Ching): ${iching}
+
+เขียนข้อความเชิงลึกที่ไหลลื่น (80-150 คำ) ห้ามใช้สัญลักษณ์ Markdown (ห้าม ### หรือ **)`
+    : isVi
+    ? `Sinh nhật của bạn: ${d1}, Sinh nhật của đối phương: ${d2}
+Độ tương thích: ${overall}/100 (Tình yêu ${dims.love} | Giao tiếp ${dims.communication} | Hòa hợp ${dims.chemistry} | Ổn định ${dims.stability})
+Cung hoàng đạo: ${zodiac}
+BaZi: ${bazi}
+I Ching: ${iching}
+
+Viết một insight mượt mà (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **).`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
