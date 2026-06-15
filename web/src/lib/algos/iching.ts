@@ -915,7 +915,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '吉。声势浩大，充满力量与冲劲。但需注意大壮利贞，切忌过度强势、任性冲动或对伴侣施加压力，柔和相处方能持久。',
     relationshipMeaningEn: 'Auspicious. Powerful and full of momentum. However, avoid being overly dominant or impulsive; softening your approach ensures longevity.',
     relationshipMeaningTh: 'โชคดี มีพลังและแรงขับเคลื่อนสูงมาก แต่ต้องระวังอย่าทำตัวเป็นใหญ่หรือใช้อารมณ์ข่มคนรัก ความอ่อนโยนจะช่วยให้รักยั่งยืน',
-    relationshipMeaningVi: 'Cát. Thanh thế vang dội, đầy sức mạnh và xung lực. Nhưng cần chú ý tránh quá mức mạnh mẽ, tùy hứng bốc đồng hoặc gây áp lực cho đối phương, dịu dàng mới có thể bền lâu.',
+    relationshipMeaningVi: 'Cát. Thanh thế vang dội, đầy sức mạnh và xung lực. Nhưng cần chú ý tránh quá mức mạnh mẽ, tùy hứng bốc đồng hoặc gây áp lực cho người ấy, dịu dàng mới có thể bền lâu.',
     category: "吉",
     scoreRange: [74, 86]
   },

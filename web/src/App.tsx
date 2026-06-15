@@ -27,7 +27,7 @@ import './App.css';
       es: ['🌑 Análisis Profundo de Resonancia Alma','🔥 Mapa de Flujo de Energía Emocional','🌟 Trayectoria de los Próximos 6 Meses','💫 3 Consejos de Crecimiento Personalizados'],
       fr: ['🌑 Analyse Profonde de Résonnance Âme','🔥 Carte du Flux d\'Énergie Émotionnelle','🌟 Trajectoire des 6 Prochains Mois','💫 3 Conseils de Croissance Personnalisés'],
       th: ['🌑 วิเคราะห์จิตวิญญาณเชิงลึก','🔥 แผนผังพลังงานอารมณ์','🌟 แนวทาง 6 เดือนข้างหน้า','💫 3 คำแนะนำการเติบโตส่วนบุคคล'],
-      vi: ['🌑 Phân tích Cộng hưởng Linh hồn Sâu','🔥 Bản đồ Dòng chảy Năng lượng Cảm xúc','🌟 Quỹ đạo 6 Tháng tới','💫 3 Lời khuyên Phát triển Cá nhân hóa'],
+      vi: ['🌑 Phân tích Cộng hưởng Linh hồn Sâu','🔥 Dòng chảy Năng lượng Cảm xúc','🌟 Quỹ đạo 6 Tháng tới','💫 3 Lời khuyên Phát triển Cá nhân hóa'],
     },
     bonus: { zh:'🎁 今日限时加赠', en:'🎁 Limited Time Bonus', es:'🎁 Bonus por Tiempo Limitado', fr:'🎁 Bonus à Durée Limitée', th:'🎁 ของแถมจำกัดเวลา', vi:'🎁 Quà tặng Thời hạn' },
     bonusDesc: { zh:'额外解锁【实时塔罗牌阵】', en:'Unlock Real-Time Tarot Reading', es:'Desbloquea Lectura de Tarot en Tiempo Real', fr:'Débloquez la Lecture de Tarot en Temps Réel', th:'ปลดล็อกการอ่านไพ่ทาโรต์แบบเรียลไทม์', vi:'Mở khóa Góc nhìn Tarot Thời gian thực' },

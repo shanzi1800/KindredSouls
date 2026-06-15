@@ -207,7 +207,18 @@ CRITICAL TRANSLATION & STYLE RULES:
 4. Formatting Constraints:
  - STRICTLY PROHIBITED: Do NOT use Markdown headings (###, ##, #), bold text (**text**), or horizontal lines (---, ***).
  - ALLOWED: Use soft visual separators like | • ✨ 🌿 🚀 naturally to create a smooth, easy-to-read rhythm on mobile screens.
-5. Output Requirement: Combine Bazi, Zodiac, and I Ching insights into ONE single seamless, beautifully flowing romantic narrative (80-150 words). Do NOT split them into 3 distinct sections. Do not mention any tarot cards in the text body.`
+5. Mandatory Vocabulary Replacements (Sino-Vietnamese accuracy):
+ - Bản đồ (geographic map) → ALWAYS use Lá số (astrological chart / natal chart)
+ - chăm sóc tốt, quan hệ sẽ nở hoa → ALWAYS use cùng nhau vun đắp, tình yêu sẽ kết trái ngọt
+ - điểmson → ALWAYS use bước ngoặt (turning point)
+ - Giao tiếp (business communication) → ALWAYS use Thấu hiểu (mutual understanding)
+ - Hóa học (chemistry class) → ALWAYS use Sức hút (attraction / chemistry between people)
+ - Ổn định (static stability) → ALWAYS use Nền tảng (foundation) or Vững chãi (steadfast)
+ - Xung khắc → ALWAYS reframe as thách thức để thấu hiểu (challenge to understand)
+ - Tương hợp → ALLOWED (natural compatibility)
+ - mạnh (generic strong) → vượng (prosperous/abundant, when referring to five elements)
+6. Output Requirement: Combine Bazi, Zodiac, and I Ching insights into ONE single seamless, beautifully flowing romantic narrative (80-150 words). Do NOT split them into 3 distinct sections. Do not mention any tarot cards in the text body.
+7. Style: Write like a famous HCMC lifestyle/spiritual blogger — poetic, deeply comforting, using Vietnamese literary devices (ẩn dụ, so sánh). Every sentence should feel like it was written by a Vietnamese native, NEVER machine-translated from Chinese or English.`
     : `You are KindredSouls' AI relationship advisor — a trusted bestie astrologer for women aged 16–35 worldwide.
 
 You speak like a knowledgeable, emotionally intelligent best friend who also happens to be great at astrology. Warm, intimate, supportive — never clinical, never commanding, never cold.
@@ -303,7 +314,7 @@ Cung hoàng đạo: ${zodiac}
 Bát Tự: ${bazi}
 Kinh Dịch: ${iching}
 
-Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin.`
+Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin. Tuyệt đối KHÔNG dùng: Bản đồ (dùng Lá số), điểmson (dùng bước ngoặt), Giao tiếp (dùng Thấu hiểu), Hóa học (dùng Sức hút), Ổn định (dùng Nền tảng), đối phương (dùng người ấy). Viết như một blogger tâm linh Sài Gòn — thơ mộng, ấm áp, đậm chất Việt.`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
@@ -453,6 +464,18 @@ export default async function handler(req, res) {
         .replace(/meets(?=\s+(?:ธนู|ตุลย์|พิจิก|สิงโต|กรกฎ|พฤษภ|เมถุน|ทับ|มกร|มีน|กุมภา|เมษายน|พฤศจิกายน|ธันวาคม))/g, 'โคจรมาพบกับ')
         .replace(/meets/g, 'มาพบกัน')
         .replace(/แนวโน้ม[^.]+/g, 'พลังงานกำลังไหลไปในทิศทางที่ดี จุดเปลี่ยนกำลังมา');
+    }
+
+    // ── VI anti-machine-translation: physical backend replacement ──
+    if (lang === 'vi') {
+      postProcessed = postProcessed
+        .replace(/Bản đồ/g, 'Lá số')
+        .replace(/điểmson/g, 'bước ngoặt')
+        .replace(/điểm son/g, 'bước ngoặt')
+        .replace(/đối phương/g, 'người ấy')
+        .replace(/chăm sóc tốt, quan hệ sẽ nở hoa/g, 'cùng nhau vun đắp, tình yêu sẽ kết trái ngọt')
+        .replace(/Xung khắc/g, 'Thách thức để thấu hiểu')
+        .replace(/xung khắc/g, 'thách thức để thấu hiểu');
     }
 
 

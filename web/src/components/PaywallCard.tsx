@@ -97,7 +97,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       subtitle: 'AI sẽ tiết lộ những sự thật ẩn giấu trong mối quan hệ này',
       features: [
         '🌑 Phân tích Cộng hưởng Linh hồn Sâu',
-        '🔥 Bản đồ Dòng chảy Năng lượng Cảm xúc',
+        '🔥 Dòng chảy Năng lượng Cảm xúc',
         '🌟 Quỹ đạo 6 Tháng tới',
         '💫 3 Lời khuyên Phát triển Cá nhân hóa',
       ],
