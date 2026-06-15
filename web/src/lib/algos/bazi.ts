@@ -262,9 +262,9 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
             ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' } };
       const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' };
 
-      const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', เลี้ยงดู', vi:', mang lại năng lượng nuôi dưỡng cho ' };
+      const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', ช่วยเลี้ยงดู', vi:', mang lại năng lượng nuôi dưỡng cho ' };
       // vi: 'cho' + 'của bạn' = double preposition bug; use bare form without 'của'
-      const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th:wxLabels.ta.th, vi: diff > 0 ? 'đối phương' : 'bạn' };
+      const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th: diff > 0 ? 'คู่ครอง' : 'คู่ครอง', vi: diff > 0 ? 'đối phương' : 'bạn' };
       wuxingDetails.push(`${wxLabels.you[lang]} ${wx(w)}${wxQi[lang]}${wxNourish[lang]}${wxTaBare[lang]}`);
       wuxingBonus += 3;
     }

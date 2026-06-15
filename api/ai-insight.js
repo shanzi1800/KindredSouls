@@ -130,7 +130,10 @@ export default async function handler(req, res) {
     const clean = insight
       .replace(/[\u2640-\u26FF]/g, '')
       .replace(/[\u2700-\u27BF]/g, '')
-      .replace(/[\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+      .replace(/[\u4e00-\u9fff\u3400-\u4dbf]/g, '')
+      .replace(/【คำแนะนำจากไพ่ทาโรต์】[\s\S]*$/g, '')  // Remove AI-hallucinated tarot in Thai
+      .replace(/【Recommendation from Tarot】[\s\S]*$/g, '')  // Remove AI-hallucinated tarot in English
+      .replace(/【คำแนะนำจากไพ่ทาโรต์】/g, '');
 
     if (insightCache.size >= MAX_CACHE) {
       const firstKey = insightCache.keys().next().value;
