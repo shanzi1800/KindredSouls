@@ -260,7 +260,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
             ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của người ấy' } }
         : { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của người ấy' },
             ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' } };
-      const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' };
+      const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' vượng' };
 
       const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', ช่วยเลี้ยงดู', vi:', nuôi dưỡng và hỗ trợ cho ' };
       // vi: 'cho' + 'của bạn' = double preposition bug; use bare form without 'của'
@@ -386,7 +386,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       es:`Los gráficos muestran fuerte potencial complementario — con cuidado, esta relación florece.`,
       fr:`Les graphiques montrent un fort potentiel complémentaire — avec soin, cette relation s'épanouit.`,
       th:`แผนชะตาส่งเสริมกันอย่างดี — หากใส่ใจกัน ความรักจะยิ่งหวานชื่น`,
-      vi:`Bản đồ cho thấy tiềm năng bổ trợ mạnh — chăm sóc tốt, quan hệ sẽ nở hoa`,
+      vi:`Lá số cho thấy tiềm năng tương hợp cao — cùng nhau vun đắp, tình yêu sẽ kết trái ngọt`,
     };
     summary = SUMMARY_60[lang] || SUMMARY_60['en'];
   } else {

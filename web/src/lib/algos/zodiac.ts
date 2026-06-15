@@ -151,9 +151,9 @@ const ELEMENT_NAMES: Record<string, Record<LangKey, string>> = {
 
 // ── 模式名 ──
 const MODE_NAMES: Record<string, Record<LangKey, string>> = {
-  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Thống Lĩnh' },
+  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Cung Thống Lĩnh' },
   '固定': { zh: '固定宫', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cố Định' },
-  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Linh Hoạt' },
+  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Cung Linh Hoạt' },
 };
 
 // ── 守护星名 ──
@@ -266,7 +266,7 @@ const SUMMARY_DESCS = {
     es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
     fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
     th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลดึงดูดกัน เคมีเข้ากันน่าตื่นเต้น',
-    vi: '${z1} (bạn) gặp ${z2} (người ấy) — năng lượng vũ trụ bùng nổ phản ứng hóa học đầy thú vị.',
+    vi: '${z1} (bạn) gặp ${z2} (người ấy) — năng lượng vũ trụ tương hợp, phản ứng hóa học đầy thú vị.',
   },
   understanding: {
     zh: '${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。',

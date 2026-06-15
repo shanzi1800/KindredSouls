@@ -64,7 +64,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     es: 'Buena Estabilidad a Largo Plazo',
     fr: 'Bonne Stabilité à Long Terme',
     th: 'ความมั่นคงระยะยาวดีเยี่ยม',
-    vi: 'Ổn định dài hạn tốt đẹp',
+    vi: 'Nền tảng vững chãi',
   },
   comm_patience: {
     zh: '沟通需耐心',
@@ -72,7 +72,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     es: 'Paciencia Necesaria en la Comunicación',
     fr: 'Patience Nécessaire dans la Communication',
     th: 'ต้องใช้ความอดทนในการสื่อสาร',
-    vi: 'Giao tiếp cần kiên nhẫn',
+    vi: 'Cần thêm sự thấu hiểu và kiên nhẫn',
   },
   stability_goal: {
     zh: '稳定需共同目标',
@@ -80,7 +80,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     es: 'La Estabilidad Necesita Objetivos Compartidos',
     fr: 'La Stabilité Nécessite des Objectifs Communs',
     th: 'ความมั่นคงต้องการเป้าหมายร่วมกัน',
-    vi: 'Ổn định cần mục tiêu chung',
+    vi: 'Cần xây dựng nền tảng chung',
   },
   chemistry_cultivate: {
     zh: '亲密感可培养',

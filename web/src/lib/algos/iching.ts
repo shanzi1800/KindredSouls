@@ -165,7 +165,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '凶。沟通不畅，充满误解与迷茫，一方可能较为幼稚或隐瞒真相。宜坦诚相待，寻求长辈指引。',
     relationshipMeaningEn: 'Inauspicious. Poor communication leading to misunderstandings. One party may be immature or hiding the truth. Be honest and seek elders guidance.',
     relationshipMeaningTh: 'ไม่ดี การสื่อสารไม่เข้าใจกัน เต็มไปด้วยความไม่รู้หรือความเข้าใจผิด ฝ่ายใดฝ่ายหนึ่งอาจยังไม่โตพอ ควรเปิดใจคุยกันและขอคำแนะนำจากผู้ใหญ่',
-    relationshipMeaningVi: 'Hung. Giao tiếp không thông suốt, đầy hiểu lầm và mơ hồ, một bên có thể khá non nớt hoặc che giấu sự thật. Nên thành thật và xin lời khuyên từ người lớn.',
+    relationshipMeaningVi: 'Hung. Sự thấu hiểu chưa thông suốt, đầy hiểu lầm và mơ hồ, một bên có thể khá non nớt hoặc che giấu sự thật. Nên thành thật và xin lời khuyên từ người lớn.',
     category: "中",
     scoreRange: [60, 74]
   },
@@ -365,7 +365,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     relationshipMeaning: '凶。沟通闭塞，冷战对立，想法背道而驰。感情陷入僵局，若不积极打破隔阂，恐面临分手。',
     relationshipMeaningEn: 'Inauspicious. Blocked communication, cold war, and divergent goals. The relationship is stagnant; without breaking the barrier, break-up is likely.',
     relationshipMeaningTh: 'ไม่ดี การสื่อสารปิดตาย เกิดสงครามเย็นและความคิดเห็นสวนทางกัน ความสัมพันธ์หยุดชะงัก หากไม่เปิดใจแก้ไขอาจต้องเลิกรากัน',
-    relationshipMeaningVi: 'Hung. Giao tiếp bế tắc, chiến tranh lạnh đối lập, suy nghĩ đi ngược lại nhau. Tình cảm rơi vào bế tắc, nếu không tích cực phá vỡ rào cản sẽ dễ đối mặt với chia tay.',
+    relationshipMeaningVi: 'Hung. Sự thấu hiểu bế tắc, chiến tranh lạnh đối lập, suy nghĩ đi ngược lại nhau. Tình cảm rơi vào bế tắc, nếu không tích cực phá vỡ rào cản sẽ dễ đối mặt với chia tay.',
     category: "小凶",
     scoreRange: [45, 58]
   },
@@ -1505,7 +1505,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     nature: "喜悦",
     natureEn: "Joyful Communication",
     natureTh: "สื่อสารด้วยความยินดี",
-    natureVi: "Giao tiếp vui vẻ",
+    natureVi: "Sự thấu hiểu vui vẻ",
     natureEs: "Alegría / Regocijo",
     natureFr: "Joie / Plaisir",
     judgment: "亨利贞",
@@ -1749,7 +1749,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
         es: `\n[Hex Cambiante] La línea ${changingLine} cambia → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendencia del hexagrama cambiante es positiva; el desarrollo futuro tiene un punto de inflexión.`,
         fr: `\n[Hex Changeant] La ligne ${changingLine} change → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nLa tendance de l'hexagramme changeant est positive; le développement futur a un point de bascule.`,
         th: `\n[แผนภูมิเปลี่ยน] เส้น${changingLine}เปลี่ยน → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nแนวโน้มแผนภูมิเปลี่ยนไปในเชิงบวก จุดเปลี่ยนกำลังจะมาถึง`,
-        vi: `\n[Quẻ Biến] Hào ${changingLine} động → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nQuẻ biến chuyển theo hướng tích cực; tương lai có điểmson chuyển.`,
+        vi: `\n[Quẻ Biến] Hào ${changingLine} động → ${tNameTr} (${transformedHex.symbol})\n${tRelTr}\nQuẻ biến chuyển theo hướng tích cực; tương lai có bước ngoặt.`,
       };
       transformDesc = T_DESC_HI[lang] || T_DESC_HI['en'];
     } else if (tCategory === '小凶' || tCategory === '待变') {
@@ -1813,7 +1813,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     es: `Hexagrama ${hexNum}: ${tName}. Surgen desafíos, pero siguen puntos de inflexión.`,
     fr: `Hexagramme ${hexNum} : ${tName}. Des défis surgissent, mais des points de bascule suivent.`,
     th: `ได้พบแผนภูมิ「${tName}」— มีความทาทาย แต่จุดเปลี่ยนกำลังมาถึง`,
-    vi: `Gặp quẻ «${tName}» — có thử thách, nhưng điểmson chuyển sẽ đến`,
+    vi: `Gặp quẻ «${tName}» — có thử thách, nhưng bước ngoặt sẽ đến`,
   };
 
   let summary: string;
@@ -1831,7 +1831,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     grade:        { zh:'等级', en:'Grade', es:'Grado', fr:'Grade', th:'ระดับ', vi:'Cấp độ' },
     relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Luận giải mối quan hệ]' },
     lineAnalysis: { zh:'【爻位分析】', en:'[Line Analysis]', es:'[Análisis Líneas]', fr:'[Analyse Lignes]', th:'[วิเคราะห์เส้น]', vi:'[Phân tích Hào]' },
-    changing:     { zh:`第${changingLine}爻为动爻，显示关系中存在变化的契机`, en:`Line ${changingLine} is changing — indicates a turning point`, es:`La línea ${changingLine} está cambiando — indica un punto de inflexión`, fr:`La ligne ${changingLine} change — point de bascule`, th:`เส้น${changingLine}เปลี่ยน — จุดเปลี่ยนในความสัมพันธ์`, vi:`Hào ${changingLine} động — điểmson chuyển trong quan hệ` },
+    changing:     { zh:`第${changingLine}爻为动爻，显示关系中存在变化的契机`, en:`Line ${changingLine} is changing — indicates a turning point`, es:`La línea ${changingLine} está cambiando — indica un punto de inflexión`, fr:`La ligne ${changingLine} change — point de bascule`, th:`เส้น${changingLine}เปลี่ยน — จุดเปลี่ยนในความสัมพันธ์`, vi:`Hào ${changingLine} động — bước ngoặt trong quan hệ` },
     stable:       { zh:'六爻安静，关系当前处于稳定状态', en:'All lines stable — relationship in steady state', es:'Todas las líneas estables', fr:'Toutes les lignes stables', th:'ทุกเส้นนิ่ง — ความสัมพันธ์มั่นคง', vi:'Tất cả hào tĩnh — quan hệ đang ổn định' },
     scoreHi:      { zh:'卦象大吉，顺应天道', en:'Auspicious hexagram, follow the Tao', es:'Hexagrama auspicioso, sigue el Tao', fr:'Hexagramme auspice, suivez le Tao', th:'ลางมงคล ปฏิบัติตามธรรมชาติ', vi:'Quẻ cát tường, thuận theo Thiên Đạo' },
     scoreMid:     { zh:'中上之卦，事在人为', en:'Above-average hexagram, human effort matters', es:'Hexagrama superior, el esfuerzo importa', fr:"Hexagramme au-dessus, l'effort compte", th:'แผนภูมิระดับดี มนุษย์ยินแปร', vi:'Quẻ khá tốt, nỗ lực con người quyết định' },
