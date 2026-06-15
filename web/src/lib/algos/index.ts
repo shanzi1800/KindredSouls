@@ -127,9 +127,9 @@ function generateAIInsight(
   // 维度名称（按语言）
   const dimNames: Record<string, Record<AlgLang, string>> = {
     love:         { zh: '情感吸引力', en: 'Love & Attraction', es: 'Amor y Atracción', fr: 'Amour et Attraction', th: 'ความดึงดูดทางอารมณ์', vi: 'Sức hút tình cảm' },
-    communication: { zh: '沟通理解',   en: 'Communication',     es: 'Comunicación',       fr: 'Communication',       th: 'การสื่อสาร',          vi: 'Giao tiếp' },
+    communication: { zh: '沟通理解',   en: 'Communication',     es: 'Comunicación',       fr: 'Communication',       th: 'ความเข้าใจและการสื่อสาร',          vi: 'Giao tiếp' },
     chemistry:     { zh: '身心默契',   en: 'Chemistry',        es: 'Química',            fr: 'Chimie',              th: 'เคมี',               vi: 'Hóa học' },
-    stability:     { zh: '长期稳定',   en: 'Long-term Stability', es: 'Estabilidad a Largo Plazo', fr: 'Stabilité à Long Terme', th: 'ความมั่นคงระยะยาว', vi: 'Ổn định dài hạn' },
+    stability:     { zh: '长期稳定',   en: 'Long-term Stability', es: 'Estabilidad a Largo Plazo', fr: 'Stabilité à Long Terme', th: 'ความผูกพันและรากฐานที่มั่นคง', vi: 'Ổn định dài hạn' },
   };
 
   // 维度分析（挑最强和最弱给建议）
