@@ -482,8 +482,8 @@ export default async function handler(req, res) {
     }
 
 
-    // Append tarot line (guaranteed to appear)
-    const finalInsight = postProcessed + tarotLine;
+    // Append tarot line (guaranteed to appear, with line break)
+    const finalInsight = postProcessed + '\n\n' + tarotLine;
 
     if (insightCache.size >= MAX_CACHE) {
       const firstKey = insightCache.keys().next().value;

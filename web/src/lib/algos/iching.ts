@@ -1386,11 +1386,11 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgment: "女归吉利贞",
     judgmentEn: "The maiden returns — auspicious, advantageous to persevere.",
     judgmentTh: "หญิงสาวกลับคืน — เป็นมงคล อดทนเป็นผลดี",
-    judgmentVi: "Thiếu nữ trở về — cát tường, kiên trì có lợi",
+    judgmentVi: "Thiếu nữ vu quy — đại cát tường, kiên trì có lợi",
     relationshipMeaning: '大吉。循序渐进，细水长流。如同鸿雁飞翔有序，感情发展完全符合传统礼节，步步扎实。是一段能白头偕老、顺理成章的良缘。',
     relationshipMeaningEn: 'Highly auspicious. Gradual and steady progress. The relationship develops naturally and orderly, following traditions perfectly. Leads to a solid, lifelong marriage.',
     relationshipMeaningTh: 'เป็นมงคลยิ่ง ความรักก้าวหน้าอย่างเป็นขั้นเป็นตอนและมั่นคง ไม่หวือหวาแต่ยั่งยืนตามประเพณีอันดีงาม เป็นคู่แท้ที่จะได้แต่งงานและอยู่ด้วยกันจนแก่เฒ่า',
-    relationshipMeaningVi: 'Đại cát. Tuần tự nhi tiến, bền vững lâu dài. Tình cảm phát triển hoàn toàn phù hợp với lễ tiết, từng bước vững chắc. Là lương duyên thuận lý thành chương, bạc đầu giai lão.',
+    relationshipMeaningVi: 'Đại cát. Tiến triển tuần tự, bền vững lâu dài. Tình cảm phát triển hoàn toàn phù hợp với lễ tiết, từng bước vững chắc. Là lương duyên thuận lý thành chương, bạc đầu giai lão.',
     category: "吉",
     scoreRange: [72, 84]
   },
