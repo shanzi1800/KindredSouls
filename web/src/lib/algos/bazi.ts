@@ -261,7 +261,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
         : { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
             ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' } };
       const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' };
-      const wxBenefit: Record<string,string> = { zh:', 对方可以受益', en:', partner can benefit', es:', tu pareja puede beneficiarse', fr:', votre partenaire peut en bénéficier', th:', คู่ครองได้ประโยชน์', vi:', đối phương được lợi' };
+      const wxBenefit: Record<string,string> = { zh:', 滋养对方', en:', nourishes your partner', es:', nutre a tu pareja', fr:', nourrit votre partenaire', th:', เลี้ยงดูคู่ครอง', vi:', mang lại năng lượng nuôi dưỡng cho đối phương' };
       wuxingDetails.push(`${wxLabels.you[lang]} ${wx(w)}${wxQi[lang]}${wxBenefit[lang]}`);
       wuxingBonus += 3;
     }
