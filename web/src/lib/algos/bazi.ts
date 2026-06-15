@@ -376,7 +376,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       es:`Pilar Día ${sz1.dayPillar} y ${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.`,
       fr:`Pilier Jour ${sz1.dayPillar} et ${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`,
       th:`เสา ${sz1.dayPillar} และ ${sz2.dayPillar} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
-      vi:`Trụ ${sz1.dayPillar} và ${sz2.dayPillar} cùng nguyên tố — mỗi người giúp đỡ người kia`,
+      vi:`Nhật Chủ ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} — mỗi người giúp đỡ phát huy tiềm năng của người kia`,
     };
     summary = SUMMARY_72[lang] || SUMMARY_72['en'];
   } else if (score >= 60) {

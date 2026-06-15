@@ -2,7 +2,7 @@ import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
 
 // ═════════════════════════════════════════
-// 星座合盘引擎（真实算法）
+// 星座合盘引擎(真实算法)
 // 输入：双方月日 → 太阳星座配对 + 相位分析 + 元素和谐度
 // 权重：40%
 // ═════════════════════════════════════════
@@ -24,7 +24,7 @@ const SIGN_ELEMENT: Record<ZodiacSign, string> = {
   '巨蟹座': '水', '天蝎座': '水', '双鱼座': '水',
 };
 
-/** 星座模式（基本/固定/变动） */
+/** 星座模式(基本/固定/变动) */
 const SIGN_MODE: Record<ZodiacSign, string> = {
   '白羊座': '基本', '巨蟹座': '基本', '天秤座': '基本', '摩羯座': '基本',
   '金牛座': '固定', '狮子座': '固定', '天蝎座': '固定', '水瓶座': '固定',
@@ -60,7 +60,7 @@ const ZODIAC_DATES: DateRange[] = [
 
 // ── 配对关系数据 ──
 
-/** 最佳配对（高契合） */
+/** 最佳配对(高契合) */
 const BEST_MATCHES: Record<ZodiacSign, ZodiacSign[]> = {
   '白羊座': ['狮子座', '射手座', '双子座'],
   '金牛座': ['处女座', '摩羯座', '巨蟹座'],
@@ -76,7 +76,7 @@ const BEST_MATCHES: Record<ZodiacSign, ZodiacSign[]> = {
   '双鱼座': ['巨蟹座', '天蝎座', '摩羯座'],
 };
 
-/** 冲突配对（对宫，180°相位） */
+/** 冲突配对(对宫，180°相位) */
 const OPPOSITES: Record<ZodiacSign, ZodiacSign> = {
   '白羊座': '天秤座', '天秤座': '白羊座',
   '金牛座': '天蝎座', '天蝎座': '金牛座',
@@ -86,7 +86,7 @@ const OPPOSITES: Record<ZodiacSign, ZodiacSign> = {
   '处女座': '双鱼座', '双鱼座': '处女座',
 };
 
-/** 四分相（90°，张力相位） */
+/** 四分相(90°，张力相位) */
 const SQUARES: Record<ZodiacSign, ZodiacSign> = {
   '白羊座': '巨蟹座', '巨蟹座': '摩羯座',
   '金牛座': '狮子座', '狮子座': '天蝎座',
@@ -105,7 +105,7 @@ function getZodiac(month: number, day: number): ZodiacSign {
   return '摩羯座';
 }
 
-/** 计算两个星座的相位差（0-6，每个单位=30°） */
+/** 计算两个星座的相位差(0-6，每个单位=30°) */
 function getPhaseDistance(z1: ZodiacSign, z2: ZodiacSign): number {
   const idx1 = ZODIAC_SIGNS.indexOf(z1);
   const idx2 = ZODIAC_SIGNS.indexOf(z2);
@@ -115,7 +115,7 @@ function getPhaseDistance(z1: ZodiacSign, z2: ZodiacSign): number {
 }
 
 // ═════════════════════════════════════════
-// 🌍 i18n 字典（军师方案：算法与文案解耦）
+// 🌍 i18n 字典(军师方案：算法与文案解耦)
 // ═════════════════════════════════════════
 
 type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
@@ -173,7 +173,7 @@ const RULER_NAMES: Record<string, Record<LangKey, string>> = {
 // ── 相位描述 ──
 const PHASE_DESCS = {
   sameSign: {
-    zh: '同星座（0°合相），彼此深度理解，但也容易放大相同弱点',
+    zh: '同星座(0°合相)，彼此深度理解，但也容易放大相同弱点',
     en: 'Same sign (0° conjunction) — deep mutual understanding, but can amplify shared weaknesses',
     es: 'Mismo signo (0° conjunción) — comprensión mutua profunda, pero puede amplificar debilidades compartidas',
     fr: 'Même signe (0° conjonction) — compréhension mutuelle profonde, mais peut amplifier les faiblesses partagées',
@@ -181,7 +181,7 @@ const PHASE_DESCS = {
     vi: 'Cùng cung (Góc trùng 0°) — thấu hiểu sâu sắc nhưng có thể làm trầm trọng điểm yếu chung',
   },
   opposition: {
-    zh: '对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异',
+    zh: '对宫相位(${z1} ↔ ${z2})，吸引力极强但需平衡差异',
     en: 'Opposition (${z1} ↔ ${z2}) — intense attraction but requires balancing differences',
     es: 'Oposición (${z1} ↔ ${z2}) — atracción intensa pero requiere equilibrar diferencias',
     fr: 'Opposition (${z1} ↔ ${z2}) — attraction intense mais nécessite d\'équibrer les différences',
@@ -189,7 +189,7 @@ const PHASE_DESCS = {
     vi: 'Đối đỉnh (${z1} ↔ ${z2}) — sức hút mãnh liệt nhưng cần cân bằng khác biệt',
   },
   square: {
-    zh: '四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固',
+    zh: '四分相位(${z1} □ ${z2})，存在成长张力，磨合后更稳固',
     en: 'Square (${z1} □ ${z2}) — growth tension exists, more solid after adjustment',
     es: 'Cuadratura (${z1} □ ${z2}) — existe tensión de crecimiento, más sólido tras ajuste',
     fr: 'Carré (${z1} □ ${z2}) — tension de croissance existe, plus solide après ajustement',
@@ -197,7 +197,7 @@ const PHASE_DESCS = {
     vi: 'Vuông góc (${z1} □ ${z2}) — căng thẳng thúc đẩy trưởng thành, vững chắc hơn sau điều chỉnh',
   },
   trine: {
-    zh: '三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快',
+    zh: '三分相位(${z1} △ ${z2})，能量和谐流动，轻松愉快',
     en: 'Trine (${z1} △ ${z2}) — energy flows harmoniously, relaxed and pleasant',
     es: 'Trígono (${z1} △ ${z2}) — energía fluye armoniosamente, relajado y agradable',
     fr: 'Trigone (${z1} △ ${z2}) — énergie circule harmonieusement, détendu et agréable',
@@ -205,7 +205,7 @@ const PHASE_DESCS = {
     vi: 'Tam hợp (${z1} △ ${z2}) — dòng chảy năng lượng hài hòa, tự nhiên và dễ chịu',
   },
   sextile: {
-    zh: '六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利',
+    zh: '六分相位(${z1} ⚹ ${z2})，机缘巧合多，合作顺利',
     en: 'Sextile (${z1} ⚹ ${z2}) — many coincidences, cooperation goes smoothly',
     es: 'Sextil (${z1} ⚹ ${z2}) — muchas coincidencias, cooperación fluye suavemente',
     fr: 'Sextile (${z1} ⚹ ${z2}) — beaucoup de coïncidences, coopération se déroule sans accroc',
@@ -213,7 +213,7 @@ const PHASE_DESCS = {
     vi: 'Lục hợp (${z1} ⚹ ${z2}) — tương hợp cao, hợp tác và đồng hành suôn sẻ',
   },
   special: {
-    zh: '特殊相位（角度差${deg}°），有独特吸引力',
+    zh: '特殊相位(角度差${deg}°)，有独特吸引力',
     en: 'Special aspect (${deg}° apart) — unique attraction',
     es: 'Aspecto especial (a ${deg}°), atracción única',
     fr: 'Aspect spécial (à ${deg}°), attraction unique',
@@ -261,7 +261,7 @@ const SUMMARY_DESCS = {
     vi: '${z1} và ${z2} là cặp đôi hoàn hảo — các vì sao đã an bài cho hai bạn.',
   },
   chemistry: {
-    zh: '${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。',
+    zh: '${z1}(你)遇上${z2}(TA)，星座能量形成有趣的化学反应。',
     en: '${z1} (you) meets ${z2} (partner) — cosmic energies spark fascinating chemistry.',
     es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
     fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
@@ -500,8 +500,8 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
 
   const detail = [
     `${labels.sunSign}`,
-    `${labels.you}：${z1Name}（${p1.month}/${p1.day}）— ${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
-    `${labels.ta}：${z2Name}（${p2.month}/${p2.day}）— ${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
+    `${labels.you}：${z1Name}(${p1.month}/${p1.day})— ${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
+    `${labels.ta}：${z2Name}(${p2.month}/${p2.day})— ${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
     ``,
     `${labels.phaseTitle}`,
     phaseDesc,
