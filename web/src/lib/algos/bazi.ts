@@ -215,8 +215,8 @@ function paipan(info: BirthInfo): SiZhu {
 
 export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   // Helper: translate gan/zhi/wuxing for target lang
-  const tg = (g: string) => lang === 'zh' ? (TIAN_GAN_NAMES[g]?.[lang] || g) : `${TIAN_GAN_NAMES[g]?.[lang] || g}(${WU_XING_NAMES[TG_WUXING[g]]?.[lang] || ''})`;
-  const dz_ = (z: string) => lang === 'zh' ? (DI_ZHI_NAMES[z]?.[lang] || z) : `${DI_ZHI_NAMES[z]?.[lang] || z}(${WU_XING_NAMES[DZ_WUXING[z]]?.[lang] || ''})`;
+  const tg = (g: string) => lang === 'zh' ? (TIAN_GAN_NAMES[g]?.[lang] || g) : `${TIAN_GAN_NAMES[g]?.[lang] || g} (${WU_XING_NAMES[TG_WUXING[g]]?.[lang] || ''})`;
+  const dz_ = (z: string) => lang === 'zh' ? (DI_ZHI_NAMES[z]?.[lang] || z) : `${DI_ZHI_NAMES[z]?.[lang] || z} (${WU_XING_NAMES[DZ_WUXING[z]]?.[lang] || ''})`;
   const wx = (w: string) => WU_XING_NAMES[w]?.[lang] || w;
 
   const sz1 = paipan(p1);
@@ -455,8 +455,8 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
 
   const detail = [
     `${labels.sipanTitle[lang]}`,
-    `${labels.you[lang]}：${labels.yearPillar[lang]} ${tg(sz1.year[0])}${dz_(sz1.year[1])} ${labels.monthPillar[lang]} ${tg(sz1.month[0])}${dz_(sz1.month[1])} ${labels.dayPillar[lang]} ${tg(sz1.day[0])}${dz_(sz1.day[1])}`,
-    `${labels.ta[lang]}：${labels.yearPillar[lang]} ${tg(sz2.year[0])}${dz_(sz2.year[1])} ${labels.monthPillar[lang]} ${tg(sz2.month[0])}${dz_(sz2.month[1])} ${labels.dayPillar[lang]} ${tg(sz2.day[0])}${dz_(sz2.day[1])}`,
+    `${labels.you[lang]}：${labels.yearPillar[lang]}: ${tg(sz1.year[0])} ${dz_(sz1.year[1])} | ${labels.monthPillar[lang]}: ${tg(sz1.month[0])} ${dz_(sz1.month[1])} | ${labels.dayPillar[lang]}: ${tg(sz1.day[0])} ${dz_(sz1.day[1])}`,
+    `${labels.ta[lang]}：${labels.yearPillar[lang]}: ${tg(sz2.year[0])} ${dz_(sz2.year[1])} | ${labels.monthPillar[lang]}: ${tg(sz2.month[0])} ${dz_(sz2.month[1])} | ${labels.dayPillar[lang]}: ${tg(sz2.day[0])} ${dz_(sz2.day[1])}`,
     ``,
     `${labels.rishiTitle[lang]}`,
     `${BAZI_LABELS.detailYou[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz1.dayMaster)}（${lang==='th' ? BAZI_LABELS.element[lang]+wx(TG_WUXING[sz1.dayMaster]) : wx(TG_WUXING[sz1.dayMaster])+(lang === 'zh' ? '' : ' '+BAZI_LABELS.element[lang])}），${BAZI_LABELS.detailTa[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz2.dayMaster)}（${lang==='th' ? BAZI_LABELS.element[lang]+wx(TG_WUXING[sz2.dayMaster]) : wx(TG_WUXING[sz2.dayMaster])+(lang === 'zh' ? '' : ' '+BAZI_LABELS.element[lang])}）。${rishiPhrase}`,
