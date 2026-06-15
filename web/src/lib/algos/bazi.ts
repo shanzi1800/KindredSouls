@@ -361,22 +361,22 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   let summary: string;
   if (score >= 85) {
     const SUMMARY_85: Record<string,string> = {
-      zh:`日主\${sz1.dayMaster}遇\${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。`,
-      en:`Day Master \${sz1.dayMaster} meets \${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.`,
-      es:`Maestro Día \${sz1.dayMaster} encuentra \${sz2.dayMaster} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.`,
-      fr:`Maître Jour \${sz1.dayMaster} rencontre \${sz2.dayMaster} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`,
-      th:`เจ้า \${sz1.dayMaster} พบ \${sz2.dayMaster} — กิ่งฟ้าปรองดอง กิ่งดินลงรอย ชะตาชีวิตระดับสูง`,
-      vi:`Nhật Chủ \${sz1.dayMaster} gặp \${sz2.dayMaster} — thiên can hòa hợp địa chi thuận duyên duyên phần trời`,
+      zh:`日主${sz1.dayMaster}遇${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。`,
+      en:`Day Master ${sz1.dayMaster} meets ${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.`,
+      es:`Maestro Día ${sz1.dayMaster} encuentra ${sz2.dayMaster} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.`,
+      fr:`Maître Jour ${sz1.dayMaster} rencontre ${sz2.dayMaster} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`,
+      th:`เจ้า ${sz1.dayMaster} พบ ${sz2.dayMaster} — กิ่งฟ้าปรองดอง กิ่งดินลงรอย ชะตาชีวิตระดับสูง`,
+      vi:`Nhật Chủ ${sz1.dayMaster} gặp ${sz2.dayMaster} — thiên can hòa hợp địa chi thuận duyên duyên phần trời`,
     };
     summary = SUMMARY_85[lang] || SUMMARY_85['en'];
   } else if (score >= 72) {
     const SUMMARY_72: Record<string,string> = {
-      zh:`日柱\${sz1.dayPillar}与\${sz2.dayPillar}五行互根，彼此能互相成就。`,
-      en:`Day Pillar \${sz1.dayPillar} and \${sz2.dayPillar} share elemental roots — each empowers the other.`,
-      es:`Pilar Día \${sz1.dayPillar} y \${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.`,
-      fr:`Pilier Jour \${sz1.dayPillar} et \${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`,
-      th:`เสา \${sz1.dayPillar} และ \${sz2.dayPillar} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
-      vi:`Trụ \${sz1.dayPillar} và \${sz2.dayPillar} cùng nguyên tố — mỗi người giúp đỡ người kia`,
+      zh:`日柱${sz1.dayPillar}与${sz2.dayPillar}五行互根，彼此能互相成就。`,
+      en:`Day Pillar ${sz1.dayPillar} and ${sz2.dayPillar} share elemental roots — each empowers the other.`,
+      es:`Pilar Día ${sz1.dayPillar} y ${sz2.dayPillar} comparten raíces elementales — cada uno potencia al otro.`,
+      fr:`Pilier Jour ${sz1.dayPillar} et ${sz2.dayPillar} partagent des racines élémentaires — chacun renforce l'autre.`,
+      th:`เสา ${sz1.dayPillar} และ ${sz2.dayPillar} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
+      vi:`Trụ ${sz1.dayPillar} và ${sz2.dayPillar} cùng nguyên tố — mỗi người giúp đỡ người kia`,
     };
     summary = SUMMARY_72[lang] || SUMMARY_72['en'];
   } else if (score >= 60) {

@@ -204,6 +204,7 @@ CRITICAL TRANSLATION & STYLE RULES:
  - 卦辞 -> Lời chiêm giải cốt lõi (NEVER use "Bản án" or "Phán quyết")
 2. Relationship Intimacy Guardrail: NEVER call the partner "đối phương" (sounds like an opponent/stranger). Always refer to the partner as "người ấy" or "nửa kia" to maintain an intimate, romantic, and warm feeling.
 3. Framing Challenges: Never use doom-predicting words like "Xung khắc" or "Chia tay". Frame all elemental clashes or opposing configurations as "Thách thức để thấu hiểu và cùng nhau trưởng thành" (Challenges to understand and grow together). Every analysis must end with a hopeful, psychological anchor (e.g., "Thấu hiểu để bao dung", "Vận mệnh đang mỉm cười với hai bạn").
+4. ABSOLUTE PRONOUN RULE: NEVER use "em" (sounds like flirting/talking down to the user). ALWAYS use "bạn" (neutral, respectful, like a close friend). Using "em" is a serious tone violation that makes the app sound unprofessional and inappropriate.
 4. Formatting Constraints:
  - STRICTLY PROHIBITED: Do NOT use Markdown headings (###, ##, #), bold text (**text**), or horizontal lines (---, ***).
  - ALLOWED: Use soft visual separators like | • ✨ 🌿 🚀 naturally to create a smooth, easy-to-read rhythm on mobile screens.
@@ -314,7 +315,7 @@ Cung hoàng đạo: ${zodiac}
 Bát Tự: ${bazi}
 Kinh Dịch: ${iching}
 
-Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin. Tuyệt đối KHÔNG dùng: Bản đồ (dùng Lá số), điểmson (dùng bước ngoặt), Giao tiếp (dùng Thấu hiểu), Hóa học (dùng Sức hút), Ổn định (dùng Nền tảng), đối phương (dùng người ấy). Viết như một blogger tâm linh Sài Gòn — thơ mộng, ấm áp, đậm chất Việt.`
+Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin. TUYỆT ĐỐI cấm dùng "em" (luôn dùng "bạn"). Tuyệt đối KHÔNG dùng: Bản đồ (dùng Lá số), điểmson (dùng bước ngoặt), Giao tiếp (dùng Thấu hiểu), Hóa học (dùng Sức hút), Ổn định (dùng Nền tảng), đối phương (dùng người ấy). Viết như một blogger tâm linh Sài Gòn — thơ mộng, ấm áp, đậm chất Việt.`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
@@ -475,7 +476,9 @@ export default async function handler(req, res) {
         .replace(/đối phương/g, 'người ấy')
         .replace(/chăm sóc tốt, quan hệ sẽ nở hoa/g, 'cùng nhau vun đắp, tình yêu sẽ kết trái ngọt')
         .replace(/Xung khắc/g, 'Thách thức để thấu hiểu')
-        .replace(/xung khắc/g, 'thách thức để thấu hiểu');
+        .replace(/xung khắc/g, 'thách thức để thấu hiểu')
+        .replace(/\bem\b/g, 'bạn')  // force respectful pronoun
+        .replace(/\bEm\b/g, 'Bạn');  // capitalize variant
     }
 
 

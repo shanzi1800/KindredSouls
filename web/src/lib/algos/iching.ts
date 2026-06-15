@@ -1841,7 +1841,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const hexNumLabel: Record<string, string> = {
       zh: `第${hexNum}卦`, en: `Hexagram ${hexNum}`, es: `Hexagrama ${hexNum}`, fr: `Hexagramme ${hexNum}`, th: `แผนภูมิ ${hexNum}`, vi: `Quẻ ${hexNum}` };
   const detail = [
-    `${D_LABEL.primaryHex[lang] || D_LABEL.primaryHex['en']}${hexNumLabel[lang] || hexNumLabel['en']} — ${tName} ${hex.symbol}`,
+    `${D_LABEL.primaryHex[lang] || D_LABEL.primaryHex['en']} ${hexNumLabel[lang] || hexNumLabel['en']} — ${tName} ${hex.symbol}`,
     `${D_LABEL.nature[lang] || D_LABEL.nature['en']}: ${tNature} | ${D_LABEL.judgment[lang] || D_LABEL.judgment['en']}: ${tJudgment}`,
     `${D_LABEL.grade[lang] || D_LABEL.grade['en']}: ${categoryEmoji[hex.category] || ''}${tCategory}`,
     ``,
