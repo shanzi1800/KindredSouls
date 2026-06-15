@@ -319,33 +319,48 @@ export default async function handler(req, res) {
   }
 
   // ── Auth check: verify Bearer token ──
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid authorization token' });
-  }
-  const token = authHeader.slice(7);
+  let user;
+  const isTestMode = process.env.ENABLE_TEST_INSIGHT === 'true';
 
-  // Verify token with Supabase Auth REST API (JS client removed)
-  // Note: /auth/v1/user needs anon key as apikey, user token as Authorization
-  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-  if (!authRes.ok) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  if (isTestMode) {
+    // Test mode: skip auth, use mock user for profile lookup bypass
+    user = { id: 'test-user', email: 'test@example.com' };
+    console.log('[ai-insight] TEST MODE - auth bypassed');
+  } else {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization token' });
+    }
+    const token = authHeader.slice(7);
+
+    // Verify token with Supabase Auth REST API (JS client removed)
+    // Note: /auth/v1/user needs anon key as apikey, user token as Authorization
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!authRes.ok) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    user = await authRes.json();
+    if (!user || !user.id) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
   }
-  const user = await authRes.json();
-  if (!user || !user.id) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-  console.log('[ai-insight] Debug - user.id:', user.id, 'user.email:', user.email);
 
   // Check paid status via direct REST API (JS client is broken in Vercel)
-  const profileRows = await supabaseRest('user_profiles', `user_id=eq.${user.id}&select=paid,user_id,email`);
-  const profile = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
+  let profile = null;
+  if (isTestMode) {
+    profile = { paid: true, user_id: 'test-user', email: 'test@example.com' };
+    console.log('[ai-insight] TEST MODE - paid check bypassed');
+  } else {
+    const profileRows = await supabaseRest('user_profiles', `user_id=eq.${user.id}&select=paid,user_id,email`);
+    profile = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
+  }
   console.log('[ai-insight] Debug - REST profile query result:', JSON.stringify(profile));
 
   if (!profile || !profile.paid) {
