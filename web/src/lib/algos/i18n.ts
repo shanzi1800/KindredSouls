@@ -31,7 +31,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     en: 'Zodiac Harmonious Resonance',
     es: 'Resonancia Armoniosa del Zodíaco',
     fr: 'Résonance Harmonieuse du Zodiaque',
-    th: 'ความสันติสูงจากราศี',
+    th: 'เคมีดวงดาวที่ราบรื่นและเข้ากันได้ดี',
     vi: 'Cung hoàng đạo hài hòa cộng hưởng',
   },
   iching_trend: {
@@ -39,7 +39,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     en: 'I Ching Auspicious Trend',
     es: 'Tendencia Auspiciosa del I Ching',
     fr: 'Tendance Auspicieuse du Yi Jing',
-    th: 'แนวโน้มแห่งความเจริมจากอี้จิง',
+    th: 'คำชี้แนะแห่งความเติบโตจากอี้จิง',
     vi: 'Xu hướng cát lợi Kinh Dịch',
   },
   attraction_strong: {
@@ -119,7 +119,7 @@ const DICT: Record<string, Record<AlgLang, string>> = {
     en: 'Keep Freshness Alive',
     es: 'Mantener Viva la Frescura',
     fr: 'Garder la Fraîcheur Vivante',
-    th: 'รักษาความสดชื่นให้คงอยู่',
+    th: 'เติมไฟและรักษาความตื่นเต้นในความรัก',
     vi: 'Giữ gìn sự mới mẻ',
   },
 };
