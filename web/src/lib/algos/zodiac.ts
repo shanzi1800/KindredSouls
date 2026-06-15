@@ -495,6 +495,7 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     scoreHigh: t(UI_LABELS.scoreHigh, lang),
     scoreMid: t(UI_LABELS.scoreMid, lang),
     scoreLow: t(UI_LABELS.scoreLow, lang),
+    meetVerb: t(UI_LABELS.meetVerb, lang),
   };
 
   const detail = [
