@@ -213,7 +213,7 @@ const DIM_LABELS: Record<string, string[]> = {
   en: ['Love', 'Communication', 'Chemistry', 'Stability'],
   es: ['Amor', 'Comunicación', 'Química', 'Estabilidad'],
   fr: ['Amour', 'Communication', 'Chimie', 'Stabilité'],
-  th: ['ความรัก', 'ความเข้าใจและการสื่อสาร', 'เคมี', 'ความผูกพันและรากฐานที่มั่นคง'],
+  th: ['ความรัก', 'ความเข้าใจกัน', 'เคมี', 'รากฐานความรัก'],
   vi: ['Tình yêu', 'Giao tiếp', 'Hóa học', 'Ổn định'],
 };
 const DIM_KEYS = ['love', 'communication', 'chemistry', 'stability'] as const;
