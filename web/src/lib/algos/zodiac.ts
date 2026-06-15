@@ -209,7 +209,7 @@ const PHASE_DESCS = {
     en: 'Sextile (${z1} ⚹ ${z2}) — many coincidences, cooperation goes smoothly',
     es: 'Sextil (${z1} ⚹ ${z2}) — muchas coincidencias, cooperación fluye suavemente',
     fr: 'Sextile (${z1} ⚹ ${z2}) — beaucoup de coïncidences, coopération se déroule sans accroc',
-    th: 'หกเหลี่ยม (${z1} ⚹ ${z2}) — โอกาสมากมาย ความร่วมมือราบรื่น',
+    th: 'มุมเกื้อหนุน (${z1} ⚹ ${z2}) — โอกาสมากมาย ความร่วมมือราบรื่น',
     vi: 'Lục hợp (${z1} ⚹ ${z2}) — trùng hợp nhiều, hợp tác suôn sẻ',
   },
   special: {

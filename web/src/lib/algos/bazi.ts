@@ -459,7 +459,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     `${labels.ta[lang]}：${labels.yearPillar[lang]} ${tg(sz2.year[0])}${dz_(sz2.year[1])} ${labels.monthPillar[lang]} ${tg(sz2.month[0])}${dz_(sz2.month[1])} ${labels.dayPillar[lang]} ${tg(sz2.day[0])}${dz_(sz2.day[1])}`,
     ``,
     `${labels.rishiTitle[lang]}`,
-    `${BAZI_LABELS.detailYou[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz1.dayMaster)}（${wx(TG_WUXING[sz1.dayMaster])}${lang === 'zh' ? '' : ' ' + BAZI_LABELS.element[lang]}），${BAZI_LABELS.detailTa[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz2.dayMaster)}（${wx(TG_WUXING[sz2.dayMaster])}${lang === 'zh' ? '' : ' ' + BAZI_LABELS.element[lang]}）。${rishiPhrase}`,
+    `${BAZI_LABELS.detailYou[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz1.dayMaster)}（${lang==='th' ? BAZI_LABELS.element[lang]+wx(TG_WUXING[sz1.dayMaster]) : wx(TG_WUXING[sz1.dayMaster])+(lang === 'zh' ? '' : ' '+BAZI_LABELS.element[lang])}），${BAZI_LABELS.detailTa[lang]} ${BAZI_LABELS.dayMaster[lang]} ${tg(sz2.dayMaster)}（${lang==='th' ? BAZI_LABELS.element[lang]+wx(TG_WUXING[sz2.dayMaster]) : wx(TG_WUXING[sz2.dayMaster])+(lang === 'zh' ? '' : ' '+BAZI_LABELS.element[lang])}）。${rishiPhrase}`,
     ...allDetails.length > 0 ? [`\n${labels.hehunTitle[lang]}`, ...allDetails] : [],
     `\n${labels.scoreLabel[lang]}：${score}/100 — ${scorePhrase}`,
   ].join('\n');
