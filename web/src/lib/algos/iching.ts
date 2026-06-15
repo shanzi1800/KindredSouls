@@ -5,10 +5,10 @@ import type { AlgLang } from './i18n';
 type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
 
 const HEX_CATEGORY: Record<string, Record<LangKey, string>> = {
-  '大吉': { zh: '大吉', en: 'Great Auspicious', es: 'Gran Auspicioso', fr: 'Très Auspice', th: 'มหามงคล', vi: 'Đại Cát' },
-  '吉': { zh: '吉', en: 'Auspicious', es: 'Auspicious', fr: 'Auspice', th: 'มงคล', vi: 'Cát' },
+  '大吉': { zh: '大吉', en: 'Highly Favorable', es: 'Muy Favorable', fr: 'Très Favorable', th: 'มหามงคล', vi: 'Đại Cát' },
+  '吉': { zh: '吉', en: 'Favorable', es: 'Favorable', fr: 'Favorable', th: 'มงคล', vi: 'Cát' },
   '中': { zh: '中', en: 'Neutral', es: 'Neutral', fr: 'Neutre', th: 'กลาง', vi: 'Trung' },
-  '小凶': { zh: '小凶', en: 'Slightly Unfavorable', es: 'Ligeramente Desfavorable', fr: 'Légèrement Défavorable', th: 'เล็กน้อยไม่ดี', vi: 'Tiểu Hung' },
+  '小凶': { zh: '小凶', en: 'Slightly Challenging', es: 'Ligeramente Desafiante', fr: 'Légèrement Complexe', th: 'เล็กน้อยไม่ดี', vi: 'Tiểu Hung' },
   '待变': { zh: '待变', en: 'Pending Change', es: 'Cambio Pendiente', fr: 'Changement en Attente', th: 'รอการเปลี่ยนแปลง', vi: 'Đợi Biến' },
 };
 
@@ -1788,7 +1788,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     en: `Hexagram ${hexNum}: ${tName}. ${tJudgment} — an extremely auspicious sign.`,
     es: `Hexagrama ${hexNum}: ${tName}. ${tJudgment} — un signo extremadamente auspicioso.`,
     fr: `Hexagramme ${hexNum} : ${tName}. ${tJudgment} — un signe extrêmement auspice.`,
-    th: `ได่พบแผนภูมิ「${tName}」${categoryEmoji[hex.category] || ''}${tJudgment} — ลางมงคลสูงสุด`,
+    th: `ได้พบแผนภูมิ「${tName}」${categoryEmoji[hex.category] || ''}${tJudgment} — ลางมงคลสูงสุด`,
     vi: `Gặp quẻ «${tName}» ${categoryEmoji[hex.category] || ''}${tJudgment} — điềm cực kỳ cát tường`,
   };
   const SUMMARY_68: Record<string,string> = {
@@ -1796,7 +1796,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     en: `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has steady, growing potential.`,
     es: `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene un potencial de crecimiento constante.`,
     fr: `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a un potentiel de croissance constante.`,
-    th: `ได่พบแผนภูมิ「${tName}」(${tNature}) — ความสัมพันธ์มั่นคงและเติบโต`,
+    th: `ได้พบแผนภูมิ「${tName}」(${tNature}) — ความสัมพันธ์มั่นคงและเติบโต`,
     vi: `Gặp quẻ «${tName}» (${tNature}) — mối quan hệ vững chắc, tiềm năng tăng trưởng`,
   };
   const SUMMARY_55: Record<string,string> = {
@@ -1804,7 +1804,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     en: `Hexagram ${hexNum}: ${tName}. Care and intention are needed to sustain this bond.`,
     es: `Hexagrama ${hexNum}: ${tName}. Se necesita cuidado e intención para mantener este vínculo.`,
     fr: `Hexagramme ${hexNum} : ${tName}. Des soins et une intención sont nécessaires pour maintenir ce lien.`,
-    th: `ได่พบแผนภูมิ「${tName}」— ตองใส่ใจดูแลจึงจะยั่งยืน`,
+    th: `ได้พบแผนภูมิ「${tName}」— ตองใส่ใจดูแลจึงจะยั่งยืน`,
     vi: `Gặp quẻ «${tName}» — cần sự tận tâm và chủ ý mới duy trì được mối quan hệ`,
   };
   const SUMMARY_LO: Record<string,string> = {
@@ -1812,7 +1812,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     en: `Hexagram ${hexNum}: ${tName}. Challenges arise, but turning points follow.`,
     es: `Hexagrama ${hexNum}: ${tName}. Surgen desafíos, pero siguen puntos de inflexión.`,
     fr: `Hexagramme ${hexNum} : ${tName}. Des défis surgissent, mais des points de bascule suivent.`,
-    th: `ได่พบแผนภูมิ「${tName}」— มีความทาทาย แต่จุดเปลี่ยนกำลังมาถึง`,
+    th: `ได้พบแผนภูมิ「${tName}」— มีความทาทาย แต่จุดเปลี่ยนกำลังมาถึง`,
     vi: `Gặp quẻ «${tName}» — có thử thách, nhưng điểmson chuyển sẽ đến`,
   };
 
