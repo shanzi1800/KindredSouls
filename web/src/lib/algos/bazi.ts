@@ -385,7 +385,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       en:`Charts show strong complementary potential — with care, this relationship blossoms.`,
       es:`Los gráficos muestran fuerte potencial complementario — con cuidado, esta relación florece.`,
       fr:`Les graphiques montrent un fort potentiel complémentaire — avec soin, cette relation s'épanouit.`,
-      th:`แผนชะตามีศักยภาพเสริมกันสูง — ดูแลดี๊ ความสัมพันธ์จะเบ่งบาน`,
+      th:`แผนชะตาส่งเสริมกันอย่างดี — หากใส่ใจกัน ความรักจะยิ่งหวานชื่น`,
       vi:`Bản đồ cho thấy tiềm năng bổ trợ mạnh — chăm sóc tốt, quan hệ sẽ nở hoa`,
     };
     summary = SUMMARY_60[lang] || SUMMARY_60['en'];

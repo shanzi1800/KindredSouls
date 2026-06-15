@@ -414,7 +414,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgmentVi: "Kiên trì có lợi",
     relationshipMeaning: '大吉。感情丰富且物质基础雄厚，彼此相处融洽，充满正能量。此时利于共筑未来，走向美满婚姻。',
     relationshipMeaningEn: 'Highly auspicious. Rich affection backed by a strong material foundation. Mutual positive energy leads to a happy, prosperous future and marriage.',
-    relationshipMeaningTh: 'เป็นมงคลยิ่ง ความรักเบ่งบานพร้อมฐานะที่มั่นคง ทั้งสองฝ่ายเข้ากันได้ดีและเต็มไปด้วยพลังบวก เหมาะแก่การสร้างอนาคตร่วมกันสู่การแต่งงาน',
+    relationshipMeaningTh: 'เป็นมงคลยิ่ง ความรักเหลืองหวานพร้อมฐานะที่มั่นคง ทั้งสองฝ่ายเข้ากันได้ดีและเต็มไปด้วยพลังบวก เหมาะแก่การสร้างอนาคตร่วมกันสู่การแต่งงาน',
     relationshipMeaningVi: 'Đại cát. Tình cảm phong phú lại có nền tảng vật chất vững chắc, đôi bên chung sống hòa hợp, đầy năng lượng tích cực. Lợi cho việc cùng xây tương lai, hướng tới hôn nhân viên mãn.',
     category: "大吉",
     scoreRange: [84, 95]
@@ -1439,7 +1439,7 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     judgmentVi: "Thành công — vua chẳng lo, hợp lúc chính ngọ",
     relationshipMeaning: "关系如日中天，但要保持清醒不要得意忘形",
     relationshipMeaningEn: "A time of meaningful connection: like a shared journey — rich experiences but needs direction.",
-    relationshipMeaningTh: 'โชคดี ความรักเบ่งบานและหวานชื่นถึงขีดสุดเป็นที่อิจฉาของใครๆ แต่ต้องระวังว่าเมื่อขึ้นถึงจุดสูงสุดแล้วอาจถดถอย ควรประคองความรู้สึกให้สม่ำเสมอ',
+    relationshipMeaningTh: 'โชคดี ความรักหวานชื่นถึงขีดสุดเป็นที่อิจฉาของใครๆ แต่ต้องระวังว่าเมื่อขึ้นถึงจุดสูงสุดแล้วอาจถดถอย ควรประคองความรู้สึกให้สม่ำเสมอ',
     relationshipMeaningVi: 'Cát. Thịnh đại phong mãn, quang huy xán lạn. Tình cảm đang ở giai đoạn nồng nhiệt đỉnh cao, khiến người ngưỡng mộ. Nhưng vật cực tất phản, cần phòng thịnh cực sinh suy.',
     category: "吉",
     scoreRange: [78, 90]

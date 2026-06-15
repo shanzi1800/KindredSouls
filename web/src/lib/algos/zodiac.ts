@@ -265,7 +265,7 @@ const SUMMARY_DESCS = {
     en: '${z1} (you) meets ${z2} (partner) — cosmic energies spark fascinating chemistry.',
     es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
     fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
-    th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลปะทะกัน สนใจน่าตื่นเต้น',
+    th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลดึงดูดกัน เคมีเข้ากันน่าตื่นเต้น',
     vi: '${z1}(bạn)gặp${z2}(đối phương) — năng lượng vũ trụ bùng nổ hóa học thú vị.',
   },
   understanding: {
