@@ -238,7 +238,7 @@ const ELEMENT_DESCS = {
     es: '${elem1} y ${elem2} se nutren mutuamente — complemento natural, nutrición mutua',
     fr: '${elem1} et ${elem2} se nourrissent mutuellement — complément naturel, nourishment mutuel',
     th: '${elem1}และ${elem2}หล่อเลี้ยงซึ่งกัน — เสริมกันตามธรรมชาติ',
-    vi: '${elem1}và${elem2}nuôi dưỡng nhau — bổ trợ tự nhiên',
+    vi: '${elem1} và ${elem2}nuôi dưỡng nhau — bổ trợ tự nhiên',
   },
   different: {
     zh: '${elem1}与${elem2}不同象，差异带来成长空间',
@@ -246,7 +246,7 @@ const ELEMENT_DESCS = {
     es: '${elem1} y ${elem2} difieren — las diferencias crean espacio de crecimiento',
     fr: '${elem1} et ${elem2} diffèrent — les différences créent espace de croissance',
     th: '${elem1}และ${elem2}แตกต่างกัน — ความต่างสร้างพื้นที่เติบโต',
-    vi: '${elem1}và${elem2}khác nhau — khác biệt tạo không gian phát triển',
+    vi: '${elem1} và ${elem2}khác nhau — khác biệt tạo không gian phát triển',
   },
 };
 
@@ -258,7 +258,7 @@ const SUMMARY_DESCS = {
     es: '${z1} y ${z2} forman un par dorado — las estrellas se alinean para ambos.',
     fr: '${z1} et ${z2} forment un couple doré — les étoiles s\'alignent pour vous deux.',
     th: '${z1}และ${z2}คู่ที่เข้ากันอย่างลงตัว — ดวงดาวเอื้ออำนวย',
-    vi: '${z1}và${z2}cặp đôi hoàn hảo — các vì sao sắp xếp cho cả hai.',
+    vi: '${z1} và ${z2}cặp đôi hoàn hảo — các vì sao sắp xếp cho cả hai.',
   },
   chemistry: {
     zh: '${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。',
@@ -274,7 +274,7 @@ const SUMMARY_DESCS = {
     es: '${z1} y ${z2} necesitan más comprensión, pero las diferencias alimentan la atracción.',
     fr: '${z1} et ${z2} nécessitent plus de compréhension, mais les différences alimentent l\'attraction.',
     th: '${z1}และ${z2}ต้องการความเข้าใจมากขึ้น แต่ความต่างคือแรงดึงดูด',
-    vi: '${z1}và${z2}cần thêm sự thấu hiểu, nhưng khác biệt nuôi dưỡng sự hấp dẫn.',
+    vi: '${z1} và ${z2}cần thêm sự thấu hiểu, nhưng khác biệt nuôi dưỡng sự hấp dẫn.',
   },
   opposite: {
     zh: '对宫相遇，强烈的对立感背后是等量的吸引力。',
@@ -319,7 +319,7 @@ const UI_LABELS = {
     es: '${z1} y ${z2} son una de las mejores parejas clásicas',
     fr: '${z1} et ${z2} forment un des meilleurs couples classiques',
     th: '${z1}และ${z2}เป็นหนึ่งในคู่ที่เข้ากันได้ดีที่สุดแบบคลาสสิก',
-    vi: '${z1}và${z2}là một trong những cặp đôi hoàn hảo kinh điển',
+    vi: '${z1} và ${z2}là một trong những cặp đôi hoàn hảo kinh điển',
   },
   oppositeMatch: {
     zh: '${z1}与${z2}互为对宫，吸引力与挑战并存',
@@ -327,7 +327,7 @@ const UI_LABELS = {
     es: '${z1} y ${z2} son signos opuestos — atracción encuentra desafío',
     fr: '${z1} et ${z2} sont des signes opposés — l\'attraction rencontre le défi',
     th: '${z1}และ${z2}เป็นราศีตรงข้ามกัน — แรงดึงดูดพบกับความท้าทาย',
-    vi: '${z1}và${z2}là cung đối nghịch — hấp dẫn gặp thách thức',
+    vi: '${z1} và ${z2}là cung đối nghịch — hấp dẫn gặp thách thức',
   },
   unique: {
     zh: '${z1}与${z2}构成独特配置，不走寻常路',
@@ -335,7 +335,7 @@ const UI_LABELS = {
     es: '${z1} y ${z2} forman una configuración única — no es el camino usual',
     fr: '${z1} et ${z2} forment une configuration unique — pas le chemin habituel',
     th: '${z1}และ${z2}สร้างการกำหนดค่าที่ไม่ซ้ำใคร',
-    vi: '${z1}và${z2}tạo cấu hình độc đáo',
+    vi: '${z1} và ${z2}tạo cấu hình độc đáo',
   },
   scoreLabel: { zh: '综合评分', en: 'Overall Score', es: 'Puntuación General', fr: 'Score Global', th: 'คะแนนรวม', vi: 'Điểm tổng' },
   scoreHigh: {
