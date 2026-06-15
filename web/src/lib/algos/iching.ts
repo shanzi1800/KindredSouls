@@ -1827,9 +1827,9 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const D_LABEL = {
     primaryHex:   { zh:'【本卦】', en:'[Primary Hex]', es:'[Hex Principal]', fr:'[Hex Principal]', th:'[แผนภูมิหลัก]', vi:'[Quẻ Chính]' },
     nature:       { zh:'卦德', en:'Nature', es:'Naturaleza', fr:'Nature', th:'ธรรมชาติ', vi:'Tính chất' },
-    judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำพิพากษ์', vi:'Lời phán' },
+    judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำพิพากษ์', vi:'Lời chiêm giải cốt lõi' },
     grade:        { zh:'等级', en:'Grade', es:'Grado', fr:'Grade', th:'ระดับ', vi:'Cấp độ' },
-    relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Duyên nghiệp]' },
+    relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Luận giải mối quan hệ]' },
     lineAnalysis: { zh:'【爻位分析】', en:'[Line Analysis]', es:'[Análisis Líneas]', fr:'[Analyse Lignes]', th:'[วิเคราะห์เส้น]', vi:'[Phân tích Hào]' },
     changing:     { zh:`第${changingLine}爻为动爻，显示关系中存在变化的契机`, en:`Line ${changingLine} is changing — indicates a turning point`, es:`La línea ${changingLine} está cambiando — indica un punto de inflexión`, fr:`La ligne ${changingLine} change — point de bascule`, th:`เส้น${changingLine}เปลี่ยน — จุดเปลี่ยนในความสัมพันธ์`, vi:`Hào ${changingLine} động — điểmson chuyển trong quan hệ` },
     stable:       { zh:'六爻安静，关系当前处于稳定状态', en:'All lines stable — relationship in steady state', es:'Todas las líneas estables', fr:'Toutes les lignes stables', th:'ทุกเส้นนิ่ง — ความสัมพันธ์มั่นคง', vi:'Tất cả hào tĩnh — quan hệ đang ổn định' },

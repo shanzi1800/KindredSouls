@@ -5,23 +5,23 @@
   },
   "input": {
     "title": "Vận mệnh an bài trên ngàn tinh tú",
-    "subtitle": "Nhập ngày sinh của cả hai để hé lộ độ hòa hợp thiên định",
+    "subtitle": "Điền ngày sinh của cả hai để giải mã duyên phận thiên định",
     "yourBirthday": "Ngày sinh của bạn",
-    "theirBirthday": "Ngày sinh của đối phương",
-    "calculate": "Khai mở duyên phận",
+    "theirBirthday": "Ngày sinh của người ấy",
+    "calculate": "Giải mã duyên phận 🌟",
     "placeholder1": "YYYY-MM-DD",
     "placeholder2": "YYYY-MM-DD"
   },
   "result": {
     "title": "Kết quả độ hòa hợp",
-    "score": "Điểm số duyên phận",
+    "score": "Chỉ số duyên phận",
     "overall": "Độ tương hợp tổng quan",
     "loading": "Đang giải mã thông điệp từ vũ trụ...",
     "back": "Xem duyên phận cặp khác",
     "luckyAspects": "Điểm cát tường thiên định",
-    "challengingAspects": "Điểm xung khắc cần lưu ý",
+    "challengingAspects": "Góc nhìn thách thức cần lưu ý",
     "engines": {
-      "bazi": "Tử vi Đông Phương (Bát Tự)",
+      "bazi": "Bát Tự (Tử Vi Đông Phương)",
       "zodiac": "Cung hoàng đạo Tây Phương",
       "iching": "Trí tuệ Kinh Dịch",
       "aiInsight": "Thấu thị mối quan hệ bằng AI Duyên Phận"

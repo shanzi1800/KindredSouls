@@ -151,9 +151,9 @@ const ELEMENT_NAMES: Record<string, Record<LangKey, string>> = {
 
 // ── 模式名 ──
 const MODE_NAMES: Record<string, Record<LangKey, string>> = {
-  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Kiến Tạo' },
+  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Thống Lĩnh' },
   '固定': { zh: '固定宫', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cố Định' },
-  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Biến Đổi' },
+  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Linh Hoạt' },
 };
 
 // ── 守护星名 ──
@@ -178,7 +178,7 @@ const PHASE_DESCS = {
     es: 'Mismo signo (0° conjunción) — comprensión mutua profunda, pero puede amplificar debilidades compartidas',
     fr: 'Même signe (0° conjonction) — compréhension mutuelle profonde, mais peut amplifier les faiblesses partagées',
     th: 'ราศีเดียวกัน (0° ร่วม) — เข้าใจซึ่งกันและกันอย่างลึกซึ้ง แต่อาจขยายจุดอ่อนร่วมกัน',
-    vi: 'Cùng cung (0° hợp) — hiểu nhau sâu sắc nhưng có thể làm trầm trọng điểm yếu chung',
+    vi: 'Cùng cung (Góc trùng 0°) — thấu hiểu sâu sắc nhưng có thể làm trầm trọng điểm yếu chung',
   },
   opposition: {
     zh: '对宫相位（${z1} ↔ ${z2}），吸引力极强但需平衡差异',
@@ -186,7 +186,7 @@ const PHASE_DESCS = {
     es: 'Oposición (${z1} ↔ ${z2}) — atracción intensa pero requiere equilibrar diferencias',
     fr: 'Opposition (${z1} ↔ ${z2}) — attraction intense mais nécessite d\'équibrer les différences',
     th: 'ตรงข้าม (${z1} ↔ ${z2}) — แรงดึงดูดแรงกล้า แต่ต้องสมดุลความแตกต่าง',
-    vi: 'Đối nghịch (${z1} ↔ ${z2}) — hấp dẫn mạnh nhưng cần cân bằng khác biệt',
+    vi: 'Đối đỉnh (${z1} ↔ ${z2}) — sức hút mãnh liệt nhưng cần cân bằng khác biệt',
   },
   square: {
     zh: '四分相位（${z1} □ ${z2}），存在成长张力，磨合后更稳固',
@@ -194,7 +194,7 @@ const PHASE_DESCS = {
     es: 'Cuadratura (${z1} □ ${z2}) — existe tensión de crecimiento, más sólido tras ajuste',
     fr: 'Carré (${z1} □ ${z2}) — tension de croissance existe, plus solide après ajustement',
     th: 'สี่เหลี่ยม (${z1} □ ${z2}) — มีแรงตึงเครียดเพื่อการเติบโต มั่นคงขึ้นหลังปรับตัว',
-    vi: 'Vuông góc (${z1} □ ${z2}) — căng thẳng phát triển, vững chắc hơn sau điều chỉnh',
+    vi: 'Vuông góc (${z1} □ ${z2}) — căng thẳng thúc đẩy trưởng thành, vững chắc hơn sau điều chỉnh',
   },
   trine: {
     zh: '三分相位（${z1} △ ${z2}），能量和谐流动，轻松愉快',
@@ -202,7 +202,7 @@ const PHASE_DESCS = {
     es: 'Trígono (${z1} △ ${z2}) — energía fluye armoniosamente, relajado y agradable',
     fr: 'Trigone (${z1} △ ${z2}) — énergie circule harmonieusement, détendu et agréable',
     th: 'สามเหลี่ยม (${z1} △ ${z2}) — พลังงานไหลลงตัว ผ่อนคลายและน่าพอใจ',
-    vi: 'Tam hợp (${z1} △ ${z2}) — năng lượng chảy hài hòa, thoải mái và dễ chịu',
+    vi: 'Tam hợp (${z1} △ ${z2}) — dòng chảy năng lượng hài hòa, tự nhiên và dễ chịu',
   },
   sextile: {
     zh: '六分相位（${z1} ⚹ ${z2}），机缘巧合多，合作顺利',
@@ -210,7 +210,7 @@ const PHASE_DESCS = {
     es: 'Sextil (${z1} ⚹ ${z2}) — muchas coincidencias, cooperación fluye suavemente',
     fr: 'Sextile (${z1} ⚹ ${z2}) — beaucoup de coïncidences, coopération se déroule sans accroc',
     th: 'มุมเกื้อหนุน (${z1} ⚹ ${z2}) — โอกาสมากมาย ความร่วมมือราบรื่น',
-    vi: 'Lục hợp (${z1} ⚹ ${z2}) — trùng hợp nhiều, hợp tác suôn sẻ',
+    vi: 'Lục hợp (${z1} ⚹ ${z2}) — tương hợp cao, hợp tác và đồng hành suôn sẻ',
   },
   special: {
     zh: '特殊相位（角度差${deg}°），有独特吸引力',
@@ -230,7 +230,7 @@ const ELEMENT_DESCS = {
     es: 'Ambos ${elem} — valores centrales alinean, pero puede faltar estímulo fresco',
     fr: 'Tous deux ${elem} — valeurs de base alignées, mais peut manquer stimulation fraîche',
     th: 'ทั้งคู่${elem} — ค่านิยมตรงกัน แต่อาจขาดการกระตุ้นใหม่',
-    vi: 'Cả hai đều ${elem} — giá trị cốt lõi phù hợp, nhưng có thể thiếu kích thích mới',
+    vi: 'Cả hai đều thuộc nhóm ${elem} — giá trị cốt lõi đồng điệu, nhưng cần thêm kích thích mới',
   },
   nurturing: {
     zh: '${elem1}与${elem2}相生，天然互补，互相滋养',
@@ -238,7 +238,7 @@ const ELEMENT_DESCS = {
     es: '${elem1} y ${elem2} se nutren mutuamente — complemento natural, nutrición mutua',
     fr: '${elem1} et ${elem2} se nourrissent mutuellement — complément naturel, nourishment mutuel',
     th: '${elem1}และ${elem2}หล่อเลี้ยงซึ่งกัน — เสริมกันตามธรรมชาติ',
-    vi: '${elem1} và ${elem2}nuôi dưỡng nhau — bổ trợ tự nhiên',
+    vi: '${elem1} và ${elem2} nuôi dưỡng nhau — tương sinh bổ trợ tự nhiên',
   },
   different: {
     zh: '${elem1}与${elem2}不同象，差异带来成长空间',
@@ -246,7 +246,7 @@ const ELEMENT_DESCS = {
     es: '${elem1} y ${elem2} difieren — las diferencias crean espacio de crecimiento',
     fr: '${elem1} et ${elem2} diffèrent — les différences créent espace de croissance',
     th: '${elem1}และ${elem2}แตกต่างกัน — ความต่างสร้างพื้นที่เติบโต',
-    vi: '${elem1} và ${elem2}khác nhau — khác biệt tạo không gian phát triển',
+    vi: '${elem1} và ${elem2} mang năng lượng khác biệt — tạo không gian để cùng nhau trưởng thành',
   },
 };
 
@@ -258,7 +258,7 @@ const SUMMARY_DESCS = {
     es: '${z1} y ${z2} forman un par dorado — las estrellas se alinean para ambos.',
     fr: '${z1} et ${z2} forment un couple doré — les étoiles s\'alignent pour vous deux.',
     th: '${z1}และ${z2}คู่ที่เข้ากันอย่างลงตัว — ดวงดาวเอื้ออำนวย',
-    vi: '${z1} và ${z2}cặp đôi hoàn hảo — các vì sao sắp xếp cho cả hai.',
+    vi: '${z1} và ${z2} là cặp đôi hoàn hảo — các vì sao đã an bài cho hai bạn.',
   },
   chemistry: {
     zh: '${z1}（你）遇上${z2}（TA），星座能量形成有趣的化学反应。',
@@ -266,7 +266,7 @@ const SUMMARY_DESCS = {
     es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
     fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
     th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลดึงดูดกัน เคมีเข้ากันน่าตื่นเต้น',
-    vi: '${z1}(bạn)gặp${z2}(đối phương) — năng lượng vũ trụ bùng nổ hóa học thú vị.',
+    vi: '${z1} (bạn) gặp ${z2} (người ấy) — năng lượng vũ trụ bùng nổ phản ứng hóa học đầy thú vị.',
   },
   understanding: {
     zh: '${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。',
@@ -274,7 +274,7 @@ const SUMMARY_DESCS = {
     es: '${z1} y ${z2} necesitan más comprensión, pero las diferencias alimentan la atracción.',
     fr: '${z1} et ${z2} nécessitent plus de compréhension, mais les différences alimentent l\'attraction.',
     th: '${z1}และ${z2}ต้องการความเข้าใจมากขึ้น แต่ความต่างคือแรงดึงดูด',
-    vi: '${z1} và ${z2}cần thêm sự thấu hiểu, nhưng khác biệt nuôi dưỡng sự hấp dẫn.',
+    vi: '${z1} và ${z2} cần thêm sự thấu hiểu, nhưng chính sự khác biệt lại nuôi dưỡng sức hút.',
   },
   opposite: {
     zh: '对宫相遇，强烈的对立感背后是等量的吸引力。',
@@ -297,7 +297,7 @@ const UI_LABELS = {
     th: '[ราศีสุริยะ]', vi: '[Cung Mặt Trời]',
   },
   you: { zh: '你', en: 'You', es: 'Tú', fr: 'Vous', th: 'คุณ', vi: 'Bạn' },
-  ta: { zh: 'TA', en: 'Partner', es: 'Pareja', fr: 'Partenaire', th: 'คู่ครอง', vi: 'Đối phương' },
+  ta: { zh: 'TA', en: 'Partner', es: 'Pareja', fr: 'Partenaire', th: 'คู่ครอง', vi: 'Người ấy' },
   element: { zh: '', en: 'element', es: 'elemento', fr: 'élément', th: 'ธาตุ', vi: 'nguyên tố' },
   ruler: { zh: '守护星', en: 'ruler', es: 'regente', fr: 'maître', th: 'ดาวพิทักษ์', vi: 'sao bảo hộ' },
   meetVerb: { zh: '遇上', en: 'meets', es: 'se encuentra con', fr: 'rencontre', th: 'พบกับ', vi: 'gặp' },
@@ -319,7 +319,7 @@ const UI_LABELS = {
     es: '${z1} y ${z2} son una de las mejores parejas clásicas',
     fr: '${z1} et ${z2} forment un des meilleurs couples classiques',
     th: '${z1}และ${z2}เป็นหนึ่งในคู่ที่เข้ากันได้ดีที่สุดแบบคลาสสิก',
-    vi: '${z1} và ${z2}là một trong những cặp đôi hoàn hảo kinh điển',
+    vi: '${z1} và ${z2} là một trong những cặp đôi tương hợp kinh điển nhất',
   },
   oppositeMatch: {
     zh: '${z1}与${z2}互为对宫，吸引力与挑战并存',
@@ -327,7 +327,7 @@ const UI_LABELS = {
     es: '${z1} y ${z2} son signos opuestos — atracción encuentra desafío',
     fr: '${z1} et ${z2} sont des signes opposés — l\'attraction rencontre le défi',
     th: '${z1}และ${z2}เป็นราศีตรงข้ามกัน — แรงดึงดูดพบกับความท้าทาย',
-    vi: '${z1} và ${z2}là cung đối nghịch — hấp dẫn gặp thách thức',
+    vi: '${z1} và ${z2} là hai cung đối đỉnh — sức hút đi kèm với thách thức',
   },
   unique: {
     zh: '${z1}与${z2}构成独特配置，不走寻常路',
@@ -335,9 +335,9 @@ const UI_LABELS = {
     es: '${z1} y ${z2} forman una configuración única — no es el camino usual',
     fr: '${z1} et ${z2} forment une configuration unique — pas le chemin habituel',
     th: '${z1}และ${z2}สร้างการกำหนดค่าที่ไม่ซ้ำใคร',
-    vi: '${z1} và ${z2}tạo cấu hình độc đáo',
+    vi: '${z1} và ${z2} tạo cấu hình độc đáo',
   },
-  scoreLabel: { zh: '综合评分', en: 'Overall Score', es: 'Puntuación General', fr: 'Score Global', th: 'คะแนนรวม', vi: 'Điểm tổng' },
+  scoreLabel: { zh: '综合评分', en: 'Overall Score', es: 'Puntuación General', fr: 'Score Global', th: 'คะแนนรวม', vi: 'Chỉ số hòa hợp' },
   scoreHigh: {
     zh: '星辰为证，缘分深厚', en: 'Stars bear witness — deep connection',
     es: 'Las estrellas atestiguan — conexión profunda', fr: 'Les étoiles en témoignent — connexion profonde',

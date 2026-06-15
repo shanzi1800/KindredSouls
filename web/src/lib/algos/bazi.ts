@@ -257,14 +257,14 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       // 一方明显多，另一方少 → 互补潜力
       const wxLabels: Record<string, Record<string,string>> = diff > 0
         ? { you: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
-            ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' } }
-        : { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
+            ta: { zh:'对方', en:"partner's", es:'de tu pareja', fr:'de votre partenaire', th:'ของคู่ครอง', vi:'của người ấy' } }
+        : { you: { zh:'对方', en:"Partner's", es:'De tu pareja', fr:'De votre partenaire', th:'ของคู่ครอง', vi:'của người ấy' },
             ta: { zh:'你', en:'your', es:'tuyo', fr:'votre', th:'ของคุณ', vi:'của bạn' } };
       const wxQi: Record<string,string> = { zh:'气强', en:' element is strong', es:' es fuerte', fr:' est fort', th:' แข็งแกร่ง', vi:' mạnh' };
 
-      const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', ช่วยเลี้ยงดู', vi:', mang lại năng lượng nuôi dưỡng cho ' };
+      const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', ช่วยเลี้ยงดู', vi:', nuôi dưỡng và hỗ trợ cho ' };
       // vi: 'cho' + 'của bạn' = double preposition bug; use bare form without 'của'
-      const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th: diff > 0 ? 'คู่ครอง' : 'คู่ครอง', vi: diff > 0 ? 'đối phương' : 'bạn' };
+      const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th: diff > 0 ? 'คู่ครอง' : 'คู่ครอง', vi: diff > 0 ? 'người ấy' : 'bạn' };
       wuxingDetails.push(`${wxLabels.you[lang]} ${wx(w)}${wxQi[lang]}${wxNourish[lang]}${wxTaBare[lang]}`);
       wuxingBonus += 3;
     }
@@ -344,17 +344,17 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const BAZI_LABELS = {
     sipanTitle: { zh:'【四柱排盘】', en:'[Four Pillars Chart]', es:'[Carta Cuatro Pilares]', fr:'[Carte Quatre Piliers]', th:'[แผนภูมิสี่เสา]', vi:'[Tứ Trụ]' },
     you: { zh:'你', en:'You', es:'Tú', fr:'Vous', th:'คุณ', vi:'Bạn' },
-    ta: { zh:'TA', en:'Partner', es:'Pareja', fr:'Partenaire', th:'คู่ครอง', vi:'Đối phương' },
+    ta: { zh:'TA', en:'Partner', es:'Pareja', fr:'Partenaire', th:'คู่ครอง', vi:'Người ấy' },
     yearPillar: { zh:'年柱', en:'Year', es:'Año', fr:'Année', th:'ปี', vi:'Năm' },
     monthPillar: { zh:'月柱', en:'Month', es:'Mes', fr:'Mois', th:'เดือน', vi:'Tháng' },
     dayPillar: { zh:'日柱', en:'Day', es:'Día', fr:'Jour', th:'วัน', vi:'Ngày' },
     rishiTitle: { zh:'【日主分析】', en:'[Day Master Analysis]', es:'[Análisis Maestro Día]', fr:'[Analyse Maître Jour]', th:'[วิเคราะห์วันเจ้า]', vi:'[Phân tích Nhật Chủ]' },
     hehunTitle: { zh:'【合婚关系】', en:'[Marital Harmony]', es:'[Armonía Matrimonial]', fr:'[Harmonie Conjugale]', th:'[ความสามัคคีสมรส]', vi:'[Hợp Hôn]' },
-    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación', fr:'Score', th:'คะแนนรวม', vi:'Điểm tổng' },
+    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación', fr:'Score', th:'คะแนนรวม', vi:'Chỉ số hòa hợp' },
     element: { zh:'五行', en:'element', es:'elemento', fr:'élément', th:'ธาตุ', vi:'nguyên tố' },
     dayMaster: { zh:'日主', en:'Day Master', es:'Maestro Día', fr:'Maître Jour', th:'วันเจ้า', vi:'Nhật Chủ' },
     detailYou: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
-    detailTa: { zh:'TA', en:"Partner's", es:'Pareja', fr:'Partenaire', th:'ของคู่ครอง', vi:'của đối phương' },
+    detailTa: { zh:'TA', en:"Partner's", es:'Pareja', fr:'Partenaire', th:'ของคู่ครอง', vi:'của người ấy' },
   };
 
   // 根据分数段选择 summary 模板
@@ -430,7 +430,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const SCORE_MED: Record<string,string> = {
     zh:'基础良好，用心经营', en:'Solid foundation — nurture it',
     es:'Base sólida — cuídenla', fr:'Base solide — entretenez-la',
-    th:'ฐานมั่นคง — ดูแลให้ดี', vi:'Nền tảng vững — chăm sóc thật tốt',
+    th:'ฐานมั่นคง — ดูแลให้ดี', vi:'Nền tảng vững chãi — cùng nhau vun đắp',
   };
   const SCORE_LO: Record<string,string> = {
     zh:'需要磨合，但值得努力', en:'Needs work, but worth the effort',
@@ -444,13 +444,13 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const labels = {
     sipanTitle: { zh:'四柱分析', en:'Four Pillars Analysis', es:'Análisis de los Cuatro Pilares', fr:'Analyse des Quatre Piliers', th:'การวิเคราะห์สี่เสาหลัก', vi:'Phân tích Tứ Trụ' },
     you: { zh:'你', en:'You', es:'Tú', fr:'Vous', th:'คุณ', vi:'Bạn' },
-    ta: { zh:'对方', en:'Partner', es:'Tu pareja', fr:'Votre partenaire', th:'คู่ครอง', vi:'Đối phương' },
+    ta: { zh:'对方', en:'Partner', es:'Tu pareja', fr:'Votre partenaire', th:'คู่ครอง', vi:'Người ấy' },
     yearPillar: { zh:'年柱', en:'Year Pillar', es:'Pilar del Año', fr:'Pilier de l\'Année', th:'เสาปี', vi:'Trụ Năm' },
     monthPillar: { zh:'月柱', en:'Month Pillar', es:'Pilar del Mes', fr:'Pilier du Mois', th:'เสาเดือน', vi:'Trụ Tháng' },
     dayPillar: { zh:'日柱', en:'Day Pillar', es:'Pilar del Día', fr:'Pilier du Jour', th:'เสาวัน', vi:'Trụ Ngày' },
     rishiTitle: { zh:'日主分析', en:'Day Master Analysis', es:'Análisis del Maestro del Día', fr:'Analyse du Maître du Jour', th:'การวิเคราะห์วัน', vi:'Phân tích Nhật Chủ' },
     hehunTitle: { zh:'合婚分析', en:'Marriage Compatibility', es:'Compatibilidad', fr:'Compatibilité', th:'การวิเคราะห์การสมรส', vi:'Phân tích Hợp Hôn' },
-    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación Total', fr:'Score Global', th:'คะแนนรวม', vi:'Điểm Tổng' },
+    scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación Total', fr:'Score Global', th:'คะแนนรวม', vi:'Chỉ số hòa hợp' },
   };
 
   const detail = [
