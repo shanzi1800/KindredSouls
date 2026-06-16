@@ -417,7 +417,18 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     es:'Diferencias notables — requiere más comprensión y paciencia.', fr:'Différences notables — nécessite plus de compréhension et de patience.',
     th:'ความแตกต่างชัดเจน — ต้องเข้าใจและอดทนมากขึ้น', vi:'Khác biệt rõ ràng — cần thêm sự thấu hiểu và kiên nhẫn',
   };
-  const rishiPhrase = rishiBase >= 88 ? (RISHI_HI[lang] || RISHI_HI['en']) :
+  // 天干六合覆盖：如果日主形成六合，即使元素不同也不说"明显不同"
+  const hasLiuHe = TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster || TIANGAN_LIUHE[sz2.dayMaster] === sz1.dayMaster;
+  const RISHI_LIUHE: Record<string,string> = {
+    zh:'虽元素不同，但天干六合，天然吸引力强',
+    en:'Different elements yet Six Harmony — a natural, powerful attraction',
+    es:'Elementos distintos pero Seis Armonías — atracción natural y poderosa',
+    fr:'Éléments différents mais Six Harmonies — attraction naturelle puissante',
+    th:'ธาตุต่างแต่หกสามัคคี — แรงดึงดูดตามธรรมชาติที่ทรงพลัง',
+    vi:'Thiên Can Ngũ Hợp — mang lại sức hút tự nhiên và duyên phận sâu sắc',
+  };
+  const rishiPhrase = hasLiuHe ? (RISHI_LIUHE[lang] || RISHI_LIUHE['en']) :
+    rishiBase >= 88 ? (RISHI_HI[lang] || RISHI_HI['en']) :
     rishiBase >= 70 ? (RISHI_MED[lang] || RISHI_MED['en']) :
     (RISHI_LO[lang] || RISHI_LO['en']);
 

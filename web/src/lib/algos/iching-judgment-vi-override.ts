@@ -26,6 +26,9 @@ const ICHING_JUDGMENT_VI_OVERRIDE: Record<number, string> = {
   /** 第46卦 地风升：原"Sâng"(拼音杂交)→Thăng(正确汉越) */
   46: "Từng bước đi lên — thuận buồm xuôi gió, gặp gỡ quý nhân",
 
+  /** 第6卦 天水讼：原"Có phước bị ngăn trở"(机翻)→精校版 */
+  6: "Bất đồng ý kiến — dễ sinh tranh chấp, cần nhường nhịn để vẹn toàn",
+
   // ── 待校对（逐步添加）──
   // 1: "",
   // 2: "",
