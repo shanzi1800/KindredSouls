@@ -130,7 +130,7 @@ const MAJOR_ARCANA = [
   },
   {
     id: 6,
-    name: { zh: "恋人", en: "The Lovers", fr: "Les Amoureux", es: "Los Amantes", th: "ราชินีแห่งคู่รัก", vi: "Nữ Hoàng Tình Yêu" },
+    name: { zh: "恋人", en: "The Lovers", fr: "Les Amoureux", es: "Los Amantes", th: "คู่รัก", vi: "Tình Nhân" },
     emoji: "💕",
     upright: {
       zh: "你们之间有极强的化学反应和价值观共鸣，TA视你为灵魂伴侣。",
@@ -256,7 +256,7 @@ const MAJOR_ARCANA = [
   },
   {
     id: 12,
-    name: { zh: "倒吊人", en: "The Hanged Man", fr: "Le Pendu", es: "El Colgado", th: "ผู้ถูกตัดหัว", vi: "Người Bị Mất Đầu" },
+    name: { zh: "倒吊人", en: "The Hanged Man", fr: "Le Pendu", es: "El Colgado", th: "คนแขวนคอ", vi: "Người Treo Ngược" },
     emoji: "🗼",
     upright: {
       zh: "TA愿意为这段关系暂停自我，牺牲是TA无声的爱的表达。",
@@ -298,7 +298,7 @@ const MAJOR_ARCANA = [
   },
   {
     id: 14,
-    name: { zh: "节制", en: "Temperance", fr: "La Tempérance", es: "La Templanza", th: "ปีศาจ", vi: "Sự Cân Bằng" },
+    name: { zh: "节制", en: "Temperance", fr: "La Tempérance", es: "La Templanza", th: "การสมดุล", vi: "Sự Cân Bằng" },
     emoji: "⚖️",
     upright: {
       zh: "TA在关系中扮演调节者的角色，TA在寻找你们之间的平衡点。",
@@ -319,7 +319,7 @@ const MAJOR_ARCANA = [
   },
   {
     id: 15,
-    name: { zh: "恶魔", en: "The Devil", fr: "Le Diable", es: "El Diablo", th: "หอคอย", vi: "Con Quỷ" },
+    name: { zh: "恶魔", en: "The Devil", fr: "Le Diable", es: "El Diablo", th: "ปีศาจ", vi: "Con Quỷ" },
     emoji: "⛓️",
     upright: {
       zh: "TA感到被某种执念束缚，可能是物质，可能是旧习惯，这需要被正视。",
@@ -340,7 +340,7 @@ const MAJOR_ARCANA = [
   },
   {
     id: 16,
-    name: { zh: "塔", en: "The Tower", fr: "La Maison-Dieu", es: "La Torre", th: "ดาว", vi: "Tháp" },
+    name: { zh: "塔", en: "The Tower", fr: "La Maison-Dieu", es: "La Torre", th: "หอคอย", vi: "Tháp" },
     emoji: "🗼",
     upright: {
       zh: "突然的震动正在瓦解虚假的根基，真正的连接才会显现。",
