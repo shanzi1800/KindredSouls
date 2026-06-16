@@ -1722,6 +1722,17 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const meta: string[] = [];
   const { hexNum, hex, changingLine, transformedHex } = deriveHexagram(p1, p2);
 
+  // ── Meta 标签注入（供 AI prompt 使用）──
+  meta.push(`HEXAGRAM_${hexNum}`);
+  if (changingLine != null && changingLine > 0) {
+    meta.push(`CHANGING_LINE_${changingLine}`);
+  }
+  // TODO: transformedHex 编号反查待补充
+  // if (transformedHex && transformedHex !== hex) {
+  //   const transformedIdx = Object.keys(HEXAGRAMS).findIndex(k => HEXAGRAMS[Number(k)] === transformedHex) + 1;
+  //   meta.push(`TRANSFORMED_HEXAGRAM_${transformedIdx}`);
+  // }
+
   // 多语言字段读取（已支持 6 语言）
   const tName = getHexField(hex, 'name', lang);
   const tNature = getHexField(hex, 'nature', lang);
