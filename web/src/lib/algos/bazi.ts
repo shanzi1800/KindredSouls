@@ -358,7 +358,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
 
   // ── 地支自刑检测 ──
   // 自刑地支：亥、辰、午、酉、申
-  const ZIXING_BRANCHES = ['亥','辰','午','酉','申'];
+  const ZIXING_BRANCHES = ['亥','辰','午','酉'];
   for (const b of ZIXING_BRANCHES) {
     const countP1 = p1Dz.filter(d => d === b).length;
     const countP2 = p2Dz.filter(d => d === b).length;
