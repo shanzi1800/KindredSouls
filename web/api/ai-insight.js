@@ -453,6 +453,8 @@ export default async function handler(req, res) {
   );
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -460,16 +462,18 @@ export default async function handler(req, res) {
         model: 'deepseek-chat',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         temperature: 0,  // deterministic: same input = same output
-        max_tokens: 450,
+        max_tokens: 600,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
+      clearTimeout(timeoutId);
       console.error('DeepSeek API error:', response.status, errText);
       return res.status(502).json({ error: 'AI service unavailable' });
     }
 
+    clearTimeout(timeoutId);
     const data = await response.json();
     let insight = data.choices?.[0]?.message?.content?.trim();
     if (!insight) {
@@ -527,7 +531,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ insight: finalInsight, tarotLine, cached: false, tarot: tarotCard });
   } catch (err) {
+    clearTimeout(timeoutId);
     console.error('ai-insight handler error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    const msg = err?.name === 'AbortError' ? 'AI service timeout' : 'Internal server error';
+    return res.status(504).json({ error: msg });
   }
 }
