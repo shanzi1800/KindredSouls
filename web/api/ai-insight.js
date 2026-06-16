@@ -73,18 +73,18 @@ function cacheKey(d1, d2, overall, dims, lang) {
 }
 
 // ── Build structured meta tags for AI prompt ──
+// 用 function 声明确保 hoisting（军师指导：避免 TDZ 报错）
 function buildMetaTags(bazi, zodiac, iching, lang = 'en') {
-  const parts = [];
-  if (bazi?.meta?.length) {
-    parts.push(`Bazi: [${bazi.meta.join(', ')}]`);
+  try {
+    const baziMeta = (bazi && bazi.meta) ? bazi.meta : [];
+    const zodiacMeta = (zodiac && zodiac.meta) ? zodiac.meta : [];
+    const ichingMeta = (iching && iching.meta) ? iching.meta : [];
+    const allTags = [...baziMeta, ...zodiacMeta, ...ichingMeta];
+    return allTags.filter(Boolean).join(', ');
+  } catch (error) {
+    console.error('Error in buildMetaTags:', error);
+    return '';
   }
-  if (zodiac?.meta?.length) {
-    parts.push(`Zodiac: [${zodiac.meta.join(', ')}]`);
-  }
-  if (iching?.meta?.length) {
-    parts.push(`IChing: [${iching.meta.join(', ')}]`);
-  }
-  return parts.length > 0 ? parts.join(' | ') : '(none)';
 }
 
 // ── Build prompt ──
@@ -105,7 +105,7 @@ function buildMetaTags(bazi, zodiac, iching, lang = 'en') {
  * 📋  泰语/越南语终审日期：2026-06-15（军师)
  * ═══════════════════════════════════════════════════════════════════
  */
-function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en') {
+function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching, metaTags }, lang = 'en') {
   const isZh = lang === 'zh';
   const isFr = lang === 'fr';
   const isEs = lang === 'es';
@@ -485,9 +485,11 @@ I Ching: ${iching}
 
 Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). \n\n🃏 Tarot Oracle — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Weave this Tarot oracle naturally into your narrative — like a mystical whisper, not a copy-paste.`;
 
-  // ── 注入 meta 标签（所有语言统一追加）──
-  const metaBlock = `\n\n[结构化标签] ${buildMetaTags(bazi, zodiac, iching, lang)}`;
-  userPrompt += metaBlock;
+  // ── 注入 meta 标签（军师方案：XML 标签隔离，大模型对 XML 边界感天然敬畏）──
+  if (metaTags) {
+    const metaInjection = `\n\n<analysis_meta_tags>\n${metaTags}\n</analysis_meta_tags>\n\n[Nhiệm vụ AI]: Hãy đọc kỹ các nhãn trong <analysis_meta_tags>. Nếu phát hiện các cặp xung-hợp đặc biệt, hãy dùng chúng làm "chìa khóa" để giải mã mâu thuẫn trong dữ liệu mệnh lý. Tuyệt đối KHÔNG ĐƯỢC tự ý hiển thị các từ tiếng Anh trong thẻ meta ra bài viết, hãy chuyển hóa chúng thành lời luận giải uyển chuyển, sâu sắc.`;
+    userPrompt += metaInjection;
+  }
 
   return {
     systemPrompt,
@@ -562,7 +564,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en' } = req.body;
+  const { d1, d2, overall, dims, bazi, zodiac, iching, lang = 'en', baziMeta, zodiacMeta, ichingMeta } = req.body;
   if (!d1 || !d2 || !dims) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -578,8 +580,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ insight: cached, cached: true });
   }
 
+  // ── 构建 meta tags（前端传入 baziMeta/zodiacMeta/ichingMeta）──
+  const metaTags = buildMetaTags(
+    baziMeta ? { meta: baziMeta } : null,
+    zodiacMeta ? { meta: zodiacMeta } : null,
+    ichingMeta ? { meta: ichingMeta } : null,
+    lang
+  );
+
   const { systemPrompt, userPrompt, tarotCard, tarotLine } = buildPrompt(
-    { d1, d2, overall, dims, bazi, zodiac, iching },
+    { d1, d2, overall, dims, bazi, zodiac, iching, metaTags },
     lang
   );
 

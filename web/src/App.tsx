@@ -280,10 +280,11 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
+  baziMeta?: string[]; zodiacMeta?: string[]; ichingMeta?: string[];
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
@@ -647,7 +648,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       const res = await fetch('/api/ai-insight', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang }),
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta }),
       });
       const data = await res.json();
       if (data.insight) {
@@ -937,6 +938,9 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         bazi={engines.bazi.detail}
         zodiac={engines.zodiac.detail}
         iching={engines.iching.detail}
+        baziMeta={engines.bazi.meta}
+        zodiacMeta={engines.zodiac.meta}
+        ichingMeta={engines.iching.meta}
         lang={lang}
         pendingInsightTrigger={pendingInsightTrigger}
         onLogout={onLogout}
