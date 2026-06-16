@@ -75,21 +75,7 @@ const TIANGAN_LIUHE: Record<string, string> = {
   '丙': '辛', '辛': '丙', '丁': '壬', '壬': '丁', '戊': '癸', '癸': '戊',
 };
 
-/** 地支三合局 */
-const DZHI_SANHE: Record<string, { partners: string; element: string }> = {
-  '申': { partners: '子辰', element: '水' },
-  '子': { partners: '申辰', element: '水' },
-  '辰': { partners: '申子', element: '水' },
-  '寅': { partners: '午戌', element: '火' },
-  '午': { partners: '寅戌', element: '火' },
-  '戌': { partners: '寅午', element: '火' },
-  '亥': { partners: '卯未', element: '木' },
-  '卯': { partners: '亥未', element: '木' },
-  '未': { partners: '亥卯', element: '木' },
-  '巳': { partners: '酉丑', element: '金' },
-  '酉': { partners: '巳丑', element: '金' },
-  '丑': { partners: '巳酉', element: '金' },
-};
+// DZHI_SANHE removed — 三合检测已改为全局6支凑齐逻辑
 
 /** 地支六冲 */
 const DZHI_LIUCHONG: Record<string, string> = {
@@ -287,7 +273,34 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     hehunDetails.push(liuheLabel);
   }
 
-  // 地支六合/三合检查（年支、月支、日支）
+  // ── 三合局全局检测（修复：必须凑齐三个地支才算三合成局）──
+  // 收集两人全部6个地支
+  const allDz = [sz1.year[1], sz1.month[1], sz1.day[1], sz2.year[1], sz2.month[1], sz2.day[1]];
+  // 遍历所有三合局定义，检查是否凑齐
+  const SANHE_DEFS = [
+    { branches: ['申','子','辰'], element: '水' },
+    { branches: ['寅','午','戌'], element: '火' },
+    { branches: ['亥','卯','未'], element: '木' },
+    { branches: ['巳','酉','丑'], element: '金' },
+  ];
+  for (const def of SANHE_DEFS) {
+    const hasAll = def.branches.every(b => allDz.includes(b));
+    if (hasAll) {
+      hehunBonus += 10;
+      const sanheLabel = {
+        zh:`八字中【三合${def.element}局】成局（${def.branches.map(dz_).join('、')}），根基稳固`,
+        en:`Three-Element ${wx(def.element)} Combination formed (${def.branches.map(dz_).join(', ')}), solid foundation`,
+        es:`Combinación de Tres Elementos de ${wx(def.element)} formada (${def.branches.map(dz_).join(', ')}), base sólida`,
+        fr:`Trois Éléments ${wx(def.element)} formés (${def.branches.map(dz_).join(', ')}), fondation solide`,
+        th:`ธาตุ ${wx(def.element)} สามัคคี (${def.branches.map(dz_).join(', ')}), รากฐานมั่นคง`,
+        vi:`Tam Hợp ${wx(def.element)} thành cục (${def.branches.map(dz_).join(', ')}), nền tảng vững chắc`,
+      }[lang] || '';
+      hehunDetails.push(sanheLabel);
+      break; // 只取第一个成局的三合
+    }
+  }
+
+  // 地支六合检查（年支、月支、日支）
   const PILLAR_LABELS: Record<string, Record<string,string>> = {
     '年': { zh:'年', en:'Year', es:'Año', fr:'Année', th:'ปี', vi:'Năm' },
     '月': { zh:'月', en:'Month', es:'Mes', fr:'Mois', th:'เดือน', vi:'Tháng' },
@@ -297,21 +310,6 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const dz1 = label === '年' ? sz1.year[1] : label === '月' ? sz1.month[1] : sz1.day[1];
     const dz2 = label === '年' ? sz2.year[1] : label === '月' ? sz2.month[1] : sz2.day[1];
     const pLabel = PILLAR_LABELS[label]?.[lang] || PILLAR_LABELS[label]?.['en'] || label;
-
-    // 三合局
-    const sanhe = DZHI_SANHE[dz1];
-    if (sanhe && sanhe.partners.includes(dz2)) {
-      hehunBonus += 10;
-      const sanheLabel = {
-        zh:`${pLabel}支${dz1}与${dz2}参与【三合${sanhe.element}局】，根基稳固`,
-        en:`${pLabel} Branch ${dz_(dz1)} & ${dz_(dz2)} form Three-Element ${wx(sanhe.element)} Combination — solid foundation`,
-        es:`Rama ${pLabel} ${dz_(dz1)} y ${dz_(dz2)} forman Combinación de Tres Elementos de ${wx(sanhe.element)} — base sólida`,
-        fr:`Branche ${pLabel} ${dz_(dz1)} et ${dz_(dz2)} forment Trois Éléments ${wx(sanhe.element)} — fondation solide`,
-        th:`${pLabel} สาขา ${dz_(dz1)} และ ${dz_(dz2)} สร้างธาตุ ${wx(sanhe.element)} — รากฐานมั่นคง`,
-        vi:`${pLabel} Trụ ${dz_(dz1)} và ${dz_(dz2)} tạo Tam Hợp ${wx(sanhe.element)} — nền tảng vững chắc`,
-      }[lang] || '';
-      hehunDetails.push(sanheLabel);
-    }
 
     // 六冲（扣分）
     if (DZHI_LIUCHONG[dz1] === dz2) {

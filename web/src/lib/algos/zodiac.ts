@@ -500,10 +500,15 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
 
   const needsSpace = lang !== 'zh' && lang !== 'th';
 
+  // 日期格式：越南/法国/泰国/西班牙用DD/MM，英语/中文用MM/DD
+  const fmtDate = (m: number, d: number) => (lang === 'vi' || lang === 'fr' || lang === 'th' || lang === 'es')
+    ? `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`
+    : `${m}/${d}`;
+
   const detail = [
     `${labels.sunSign}`,
-    `${labels.you}：${z1Name}${needsSpace ? ' ' : ''}(${p1.month}/${p1.day})${needsSpace ? ' — ' : '—'}${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
-    `${labels.ta}：${z2Name}${needsSpace ? ' ' : ''}(${p2.month}/${p2.day})${needsSpace ? ' — ' : '—'}${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
+    `${labels.you}：${z1Name}${needsSpace ? ' ' : ''}(${fmtDate(p1.month, p1.day)})${needsSpace ? ' — ' : '—'}${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
+    `${labels.ta}：${z2Name}${needsSpace ? ' ' : ''}(${fmtDate(p2.month, p2.day)})${needsSpace ? ' — ' : '—'}${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
     ``,
     `${labels.phaseTitle}`,
     phaseDesc,

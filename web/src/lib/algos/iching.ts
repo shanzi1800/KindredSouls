@@ -1790,13 +1790,23 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     th: `ได้พบแผนภูมิ「${tName}」${categoryEmoji[hex.category] || ''}${tJudgment} — ลางมงคลสูงสุด`,
     vi: `Gặp quẻ «${tName}» ${categoryEmoji[hex.category] || ''}${tJudgment} — điềm cực kỳ cát tường`,
   };
+  // SUMMARY_68: 根据卦象category动态选词，避免"中"卦贴"稳固"标签
+  // "中"卦（如贲卦=粉饰）不应该说"稳固"，应直接用卦辞
+  const SUMMARY_68_TAIL: Record<string,Record<string,string>> = {
+    '大吉': { zh:'缘分稳中有升', en:'steady, growing potential', es:'potencial de crecimiento constante', fr:'potentiel de croissance constante', th:'มั่นคงและเติบโต', vi:'mối quan hệ vững chắc, tiềm năng tăng trưởng' },
+    '吉':   { zh:'缘分稳中有升', en:'steady, growing potential', es:'potencial de crecimiento constante', fr:'potentiel de croissance constante', th:'มั่นคงและเติบโต', vi:'mối quan hệ vững chắc, tiềm năng tăng trưởng' },
+    '中':   { zh:'需用心经营', en:'needs intention to deepen', es:'necesita intención para profundizar', fr:'nécessite de l\'intention pour approfondir', th:'ต้องตั้งใจดูแลให้ลึกซึ้ง', vi:`${tJudgment}` },
+    '小凶': { zh:'虽遇波折但有转机', en:'bumps ahead but turning points follow', es:'baches pero llegan puntos de inflexión', fr:'des bosses mais des tournants suivent', th:'มีอุปสรรคแต่จุดเปลี่ยนตามมา', vi:'có thử thách nhưng bước ngoặt sẽ đến' },
+    '待变': { zh:'待变之象，静候转机', en:'pending change, await turning points', es:'cambio pendiente, esperen puntos de inflexión', fr:'changement en attente', th:'รอการเปลี่ยนแปลง', vi:'đang chờ biến chuyển, hãy kiên nhẫn' },
+  };
+  const tail = SUMMARY_68_TAIL[hex.category]?.[lang] || SUMMARY_68_TAIL[hex.category]?.['en'] || SUMMARY_68_TAIL['中']?.[lang] || '';
   const SUMMARY_68: Record<string,string> = {
-    zh: `占得「${tName}」，${tNature}之卦，缘分稳中有升。`,
-    en: `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has steady, growing potential.`,
-    es: `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene un potencial de crecimiento constante.`,
-    fr: `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a un potentiel de croissance constante.`,
-    th: `ได้พบแผนภูมิ「${tName}」(${tNature}) — ความสัมพันธ์มั่นคงและเติบโต`,
-    vi: `Gặp quẻ «${tName}» (${tNature}) — mối quan hệ vững chắc, tiềm năng tăng trưởng`,
+    zh: `占得「${tName}」，${tNature}之卦，${tail}。`,
+    en: `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has ${tail}.`,
+    es: `Hexagrama ${hexNum}: ${tName} (${tNature}). Su conexión tiene ${tail}.`,
+    fr: `Hexagramme ${hexNum} : ${tName} (${tNature}). Votre connexion a ${tail}.`,
+    th: `ได้พบแผนภูมิ「${tName}」(${tNature}) — ${tail}`,
+    vi: `Gặp quẻ «${tName}» (${tNature}) — ${tail}`,
   };
   const SUMMARY_55: Record<string,string> = {
     zh: `占得「${tName}」，卦象显示需用心经营，方能长久。`,
