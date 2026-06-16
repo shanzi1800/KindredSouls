@@ -246,7 +246,8 @@ CRITICAL TRANSLATION & STYLE RULES:
  - Xung khắc → ALWAYS reframe as thách thức để thấu hiểu (challenge to understand)
  - Tương hợp → ALLOWED (natural compatibility)
  - mạnh (generic strong) → vượng (prosperous/abundant, when referring to five elements)
-6. Output Requirement: Combine Bazi, Zodiac, and I Ching insights into ONE single seamless, beautifully flowing romantic narrative (80-150 words). Do NOT split them into 3 distinct sections. Do not mention any tarot cards in the text body.
+6. Output Requirement: Combine Bazi, Zodiac, I Ching AND the Tarot oracle into ONE single seamless, beautifully flowing romantic narrative (80-150 words). Do NOT split them into 4 distinct sections. You MUST naturally weave the Tarot oracle message into the narrative as a mystical blessing or spiritual sign.
+- Tarot Integration Rule: The Tarot oracle paragraph is sacred context — do NOT copy it word-for-word. Instead, absorb its emotional core and naturally echo it in your narrative. Let it feel like a spiritual whisper woven into the story, not a bolted-on paragraph.
 7. Style: Write like a famous HCMC lifestyle/spiritual blogger — poetic, deeply comforting, using Vietnamese literary devices (ẩn dụ, so sánh). Every sentence should feel like it was written by a Vietnamese native, NEVER machine-translated from Chinese or English.`
     : `You are KindredSouls' AI relationship advisor — a trusted bestie astrologer for women aged 16–35 worldwide.
 
@@ -264,7 +265,7 @@ STRICT FORMATTING RULES:
 CONTENT RULES:
 1. Do NOT write three separate sections (Bazi / Western Astrology / I-Ching). Weave everything into ONE flowing, intimate narrative.
 2. Find the ONE relationship truth, build ONE vivid metaphor.
-3. NEVER mention any tarot card by name in the main text. Tarot guidance is added by the system at the end.
+3. NEVER copy-paste the Tarot oracle paragraph. Instead, weave its spiritual message naturally into your flowing narrative — let it feel like a mystical whisper, not a bolted-on quote.
 4. Poetic but not pretentious. Conversational but not shallow.
 5. Always positive, ALWAYS give hope — NEVER predict breakups.
 6. 100–180 words. Warm, intimate, real.
@@ -311,7 +312,7 @@ Use "babe", "girl", or first-name energy. Be their wise, warm, astrology-savvy b
 八字: ${bazi}
 易经: ${iching}
 
-请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。`
+请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。\n\n🃏 今日塔罗神谕 — ${cardName}（${orientation}）：\n${cardMeaning}\n\n→ 请将塔罗神谕自然融入洞察中，如宇宙的低语，不可照搬原文。`
     : isFr
     ? `Votre anniversaire: ${d1}, Anniversaire du/de la partenaire: ${d2}
 Compatibilité: ${overall}/100 (Amour ${dims.love} | Communication ${dims.communication} | Affinité ${dims.chemistry} | Stabilité ${dims.stability})
@@ -319,7 +320,7 @@ Zodiaque: ${zodiac}
 BaZi: ${bazi}
 I Ching: ${iching}
 
-Écrivez un insight fluide (80-150 mots). AUCUN symbole Markdown (ni ###, ni **).`
+Écrivez un insight fluide (80-150 mots). AUCUN symbole Markdown (ni ###, ni **).\n\n🃏 Oracle Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Intégrez cet oracle tarot naturellement dans votre texte — comme un murmure mystique, pas un copié-collé.
     : isEs
     ? `Tu cumpleaños: ${d1}, Cumpleaños de tu pareja: ${d2}
 Compatibilidad: ${overall}/100 (Amor ${dims.love} | Comunicación ${dims.communication} | Química ${dims.chemistry} | Estabilidad ${dims.stability})
@@ -327,7 +328,7 @@ Zodiaco: ${zodiac}
 BaZi: ${bazi}
 I Ching: ${iching}
 
-Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni **).`
+Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni **).\n\n🃏 Oráculo Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Teje este oráculo del tarot naturalmente en tu narrativa — como un susurro místico, no un copia y pega.
     : isTh
     ? `วันเกิดของคุณ: ${d1}，วันเกิดคู่ครอง: ${d2}
 ความเข้ากันได้: ${overall}/100 (ความรัก ${dims.love} | การสื่อสาร ${dims.communication} | ความลงตัว ${dims.chemistry} | ความมั่นคง ${dims.stability})
@@ -335,7 +336,7 @@ Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni 
 ปฏิทินจีน (BaZi): ${bazi}
 หลักไป๋ (I Ching): ${iching}
 
-เขียนข้อความเชิงลึกที่ไหลลื่น (80-150 คำ) ห้ามใช้สัญลักษณ์ Markdown (ห้าม ### หรือ **)`
+เขียนข้อความเชิงลึกที่ไหลลื่น (80-150 คำ) ห้ามใช้สัญลักษณ์ Markdown (ห้าม ### หรือ **).\n\n🃏 สายลับทาโรต์ — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ ถ่ายทอดพลังจากไพ่ทาโรต์นี้ลงไปในข้อความอย่างเป็นธรรมชาติ เหมือนเสียงกระซิบจากจักรวาล ไม่ใช่การคัดลอกมาวาง
     : isVi
     ? `Ngày sinh của bạn: ${d1}, Ngày sinh của người ấy: ${d2}
 Độ tương hợp: ${overall}/100 (Tình yêu ${dims.love} | Giao tiếp ${dims.communication} | Hòa hợp ${dims.chemistry} | Ổn định ${dims.stability})
@@ -343,14 +344,19 @@ Cung hoàng đạo: ${zodiac}
 Bát Tự: ${bazi}
 Kinh Dịch: ${iching}
 
-Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin. TUYỆT ĐỐI cấm dùng "em" (luôn dùng "bạn"). Tuyệt đối KHÔNG dùng: Bản đồ (dùng Lá số), điểmson (dùng bước ngoặt), Giao tiếp (dùng Thấu hiểu), Hóa học (dùng Sức hút), Ổn định (dùng Nền tảng), đối phương (dùng người ấy). Viết như một blogger tâm linh Sài Gòn — thơ mộng, ấm áp, đậm chất Việt.`
+Hãy viết một đoạn thấu hiểu mượt mà, thơ mộng và sâu sắc (80-150 từ). KHÔNG dùng ký hiệu Markdown (không ###, không **). Luôn tích cực và cho niềm tin. TUYỆT ĐỐI cấm dùng "em" (luôn dùng "bạn"). Tuyệt đối KHÔNG dùng: Bản đồ (dùng Lá số), điểmson (dùng bước ngoặt), Giao tiếp (dùng Thấu hiểu), Hóa học (dùng Sức hút), Ổn định (dùng Nền tảng), đối phương (dùng người ấy). Viết như một blogger tâm linh Sài Gòn — thơ mộng, ấm áp, đậm chất Việt.
+
+🃏 Lời Nguyền Tarot — ${cardName} (${orientation}):
+${cardMeaning}
+
+→ Bạn PHẢI dung hòa thông điệp Tarot linh thiêng này vào đoạn viết trên một cách tự nhiên, như một lời thì thầm từ vũ trụ, không sao chép nguyên văn. Hãy để nó hòa quyện cùng Bát Tự, Cung hoàng đạo và Kinh Dịch thành một bản nhạc duy nhất.`
     : `Your birthday: ${d1}, TA's birthday: ${d2}
 Compatibility: ${overall}/100 (Love ${dims.love} | Comms ${dims.communication} | Chemistry ${dims.chemistry} | Stability ${dims.stability})
 Zodiac: ${zodiac}
 Bazi: ${bazi}
 I Ching: ${iching}
 
-Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). `;
+Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). \n\n🃏 Tarot Oracle — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Weave this Tarot oracle naturally into your narrative — like a mystical whisper, not a copy-paste.`;
 
   return {
     systemPrompt,
