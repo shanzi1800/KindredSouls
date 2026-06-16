@@ -291,6 +291,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
 }) {
   const [insight, setInsight] = useState<string | null>(null);
   const [tarotLine, setTarotLine] = useState<string | null>(null);
+  const [tarotCard, setTarotCard] = useState<{id:number,name:string,emoji:string,isReversed:boolean,orientation:string} | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAuthWall, setShowAuthWall] = useState(false);
@@ -444,6 +445,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setPaidStatus(null);
         setInsight(null);
         setTarotLine(null);
+        setTarotCard(null);
+        setTarotCard(null);
       }
     });
 
@@ -650,6 +653,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       if (data.insight) {
         setInsight(data.insight);
         setTarotLine(data.tarotLine || null);
+        setTarotCard(data.tarot || null);
         onTriggerInsight?.();
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {
@@ -812,6 +816,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       {insight && (
         <div className="insight-result">
           <p>{insight}</p>
+          {tarotCard && (
+            <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '8px', transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
+              <div style={{ fontWeight: 700, color: '#D4AF37', fontSize: '15px' }}>{tarotCard.name} {tarotCard.isReversed ? '(Reversed)' : '(Upright)'}</div>
+            </div>
+          )}
           {tarotLine && (
             <p style={{ marginTop: '12px', fontStyle: 'italic', opacity: 0.85, fontSize: '13px' }}>{tarotLine}</p>
           )}
