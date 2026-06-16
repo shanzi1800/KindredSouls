@@ -320,7 +320,7 @@ Zodiaque: ${zodiac}
 BaZi: ${bazi}
 I Ching: ${iching}
 
-Écrivez un insight fluide (80-150 mots). AUCUN symbole Markdown (ni ###, ni **).\n\n🃏 Oracle Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Intégrez cet oracle tarot naturellement dans votre texte — comme un murmure mystique, pas un copié-collé.
+Écrivez un insight fluide (80-150 mots). AUCUN symbole Markdown (ni ###, ni **).\n\n🃏 Oracle Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Intégrez cet oracle tarot naturellement dans votre texte — comme un murmure mystique, pas un copié-collé.`
     : isEs
     ? `Tu cumpleaños: ${d1}, Cumpleaños de tu pareja: ${d2}
 Compatibilidad: ${overall}/100 (Amor ${dims.love} | Comunicación ${dims.communication} | Química ${dims.chemistry} | Estabilidad ${dims.stability})
@@ -328,7 +328,7 @@ Zodiaco: ${zodiac}
 BaZi: ${bazi}
 I Ching: ${iching}
 
-Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni **).\n\n🃏 Oráculo Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Teje este oráculo del tarot naturalmente en tu narrativa — como un susurro místico, no un copia y pega.
+Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni **).\n\n🃏 Oráculo Tarot — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Teje este oráculo del tarot naturalmente en tu narrativa — como un susurro místico, no un copia y pega.`
     : isTh
     ? `วันเกิดของคุณ: ${d1}，วันเกิดคู่ครอง: ${d2}
 ความเข้ากันได้: ${overall}/100 (ความรัก ${dims.love} | การสื่อสาร ${dims.communication} | ความลงตัว ${dims.chemistry} | ความมั่นคง ${dims.stability})
@@ -336,7 +336,7 @@ Escribe un insight fluido (80-150 palabras). SIN símbolos Markdown (ni ###, ni 
 ปฏิทินจีน (BaZi): ${bazi}
 หลักไป๋ (I Ching): ${iching}
 
-เขียนข้อความเชิงลึกที่ไหลลื่น (80-150 คำ) ห้ามใช้สัญลักษณ์ Markdown (ห้าม ### หรือ **).\n\n🃏 สายลับทาโรต์ — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ ถ่ายทอดพลังจากไพ่ทาโรต์นี้ลงไปในข้อความอย่างเป็นธรรมชาติ เหมือนเสียงกระซิบจากจักรวาล ไม่ใช่การคัดลอกมาวาง
+เขียนข้อความเชิงลึกที่ไหลลื่น (80-150 คำ) ห้ามใช้สัญลักษณ์ Markdown (ห้าม ### หรือ **).\n\n🃏 สายลับทาโรต์ — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ ถ่ายทอดพลังจากไพ่ทาโรต์นี้ลงไปในข้อความอย่างเป็นธรรมชาติ เหมือนเสียงกระซิบจากจักรวาล ไม่ใช่การคัดลอกมาวาง`
     : isVi
     ? `Ngày sinh của bạn: ${d1}, Ngày sinh của người ấy: ${d2}
 Độ tương hợp: ${overall}/100 (Tình yêu ${dims.love} | Giao tiếp ${dims.communication} | Hòa hợp ${dims.chemistry} | Ổn định ${dims.stability})
