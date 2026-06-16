@@ -417,7 +417,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     es:'Diferencias notables — requiere más comprensión y paciencia.', fr:'Différences notables — nécessite plus de compréhension et de patience.',
     th:'ความแตกต่างชัดเจน — ต้องเข้าใจและอดทนมากขึ้น', vi:'Khác biệt rõ ràng — cần thêm sự thấu hiểu và kiên nhẫn',
   };
-  const rishiPhrase = rishiBase >= 80 ? (RISHI_HI[lang] || RISHI_HI['en']) :
+  const rishiPhrase = rishiBase >= 88 ? (RISHI_HI[lang] || RISHI_HI['en']) :
     rishiBase >= 70 ? (RISHI_MED[lang] || RISHI_MED['en']) :
     (RISHI_LO[lang] || RISHI_LO['en']);
 
