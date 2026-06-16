@@ -358,6 +358,7 @@ const UI_LABELS = {
 // ── 核心算法 ──
 
 export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+  const meta: string[] = [];
   const z1 = getZodiac(p1.month, p1.day);
   const z2 = getZodiac(p2.month, p2.day);
 
@@ -528,5 +529,6 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     title: t(UI_LABELS.title, lang),
     summary,
     detail,
+    meta,
   };
 }

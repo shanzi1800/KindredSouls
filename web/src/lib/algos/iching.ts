@@ -1719,6 +1719,7 @@ function deriveHexagram(p1: BirthInfo, p2: BirthInfo): {
 // ── 核心计算 ──
 
 export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+  const meta: string[] = [];
   const { hexNum, hex, changingLine, transformedHex } = deriveHexagram(p1, p2);
 
   // 多语言字段读取（已支持 6 语言）
@@ -1870,5 +1871,6 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     title: { zh:'易经智慧', en:'I Ching Wisdom', es:'Sabiduría I Ching', fr:'Sagesse Yi Jing', th:'ภูมิปัญญาอี้จิง', vi:'Trí tuệ Dịch Kinh' }[lang] || 'I Ching Wisdom',
     summary,
     detail,
+    meta,
   };
 }
