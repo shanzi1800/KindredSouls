@@ -208,9 +208,17 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   const sz1 = paipan(p1);
   const sz2 = paipan(p2);
 
+  // meta tags for AI prompt injection (structured conflict/resonance labels)
+  const meta: string[] = [];
+
   // ── 1. 日主关系评分（核心）──
   const rishiBase = RISHI_RELATION[sz1.dayMaster]?.[sz2.dayMaster] ?? 70;
   let rishiScore = rishiBase;
+
+  // meta: 日主关系标签
+  if (sz1.dayMaster === sz2.dayMaster) meta.push('DM_SAME');
+  else if (rishiBase >= 78) meta.push('DM_PRODUCE');  // 相生
+  else if (rishiBase <= 62) meta.push('DM_CONTROL'); // 相克
 
   // ── 2. 五行互补分析 ──
   const p1Wuxing = [
@@ -252,6 +260,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       // vi 说明："tương hỗ và điều hòa" 为中性表述，同时适用于相生与相克关系，避免在同性元素（如 Thổ-Thủy）时用错“滋养”
       const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th: diff > 0 ? 'คู่ครอง' : 'คู่ครอง', vi: diff > 0 ? 'người ấy' : 'bạn' };
       wuxingDetails.push(`${wxLabels.you[lang]} ${wx(w)}${wxQi[lang]}${wxNourish[lang]}${wxTaBare[lang]}`);
+      meta.push(`ELEMENT_EXCESS_${w}`);
       wuxingBonus += 3;
     }
   }
@@ -264,6 +273,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   // 天干六合检查
   if (TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster) {
     hehunBonus += 12;
+    meta.push('LIUHE_DAY_STEM');
     const liuheLabel = { zh:`日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强`,
       en:`Day Stems ${tg(sz1.dayMaster)} & ${tg(sz2.dayMaster)} form a Six Harmony — powerful emotional bond`,
       es:`Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso`,
@@ -287,6 +297,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const hasAll = def.branches.every(b => allDz.includes(b));
     if (hasAll) {
       hehunBonus += 10;
+      meta.push(`SANHE_${def.element}`);
       const sanheLabel = {
         zh:`八字中【三合${def.element}局】成局（${def.branches.map(dz_).join('、')}），根基稳固`,
         en:`Three-Element ${wx(def.element)} Combination formed (${def.branches.map(dz_).join(', ')}), solid foundation`,
@@ -314,6 +325,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     // 六冲（扣分）
     if (DZHI_LIUCHONG[dz1] === dz2) {
       hehunBonus -= 8;
+      meta.push(`LIUCHONG_${label}`);
       const liuchongLabel = {
         zh:`${pLabel}支${dz1}与${dz2}形成【六冲】，需注意沟通方式`,
         en:`${pLabel} Branch ${dz_(dz1)} & ${dz_(dz2)} form a Six Clash — mindful communication needed`,
@@ -341,6 +353,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       if (i === j) continue; // 跳过同柱（已在楼上检查过）
       if (DZHI_LIUCHONG[p1Dz[i]] === p2Dz[j]) {
         hehunBonus -= 6;
+        meta.push('CROSS_LIUCHONG');
         const p1Lbl = PILLAR_LABELS_MAP[pLabels[i]]?.[lang] || pLabels[i];
         const p2Lbl = PILLAR_LABELS_MAP[pLabels[j]]?.[lang] || pLabels[j];
         const detail = {
@@ -365,6 +378,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     const total = countP1 + countP2;
     if (total >= 2) {
       hehunBonus -= 4;
+      meta.push(`ZIXING_${b}`);
       const selfLabel = {
         zh:`八字中${b}出现${total}次，形成【${b}${b}自刑】，情感敏感需用心呵护`,
         en:`${b} appears ${total}x in both charts — self-punishment pattern, emotional sensitivity needs nurturing`,
@@ -529,5 +543,6 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     title: { zh:'八字命理', en:'BaZi (Chinese Astrology)', es:'BaZi (Astrología China)', fr:'BaZi (Astrologie Chinoise)', th:'BaZi (โหราศาสตร์จีน)', vi:'BaZi (Tử Vi Trung Hoa)' },
     summary,
     detail,
+    meta,
   };
 }

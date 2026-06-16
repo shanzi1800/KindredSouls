@@ -21,6 +21,7 @@ export interface EngineResult {
   title: string | Record<string, string>;  // 如 "八字命理" 或 {zh:'八字命理',en:'...',...}
   summary: string;      // 1-2句解读文案
   detail: string;       // 详细解读（结果页展开用）
+  meta?: string[];     // 结构化标签（供 AI prompt 注入）
 }
 
 /** 三引擎 + AI 汇总结果 */
