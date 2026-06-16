@@ -389,8 +389,8 @@ const MAJOR_ARCANA = [
       en: "The fog is thick right now, babe. What they're not saying? It's probably weighing on them more than you'd think. Patient love cuts through.",
       fr: "Le brouillard est épais en ce moment. Ce qu'iel ne dit pas ? Ça pèse probablement sur ellxs plus qu'on ne croit. L'amour patient traverse tout. 🪐",
       es: "La niebla está gruesa ahora, linda. ¿Lo que no están diciendo? Probablemente les pesa más de lo que pensás. El amor paciente atraviesa todo. 💖",
-      th: "การฟื้นฟูและการเริ่มต้นใหม่",
-      vi: "Mặt Trăng mang đến thông điệp về sự hồi sinh và khởi đầu mới đầy bí ẩn, báo hiệu rằng người kia đang trải qua giai đoạn chuyển đổi nội tâm sâu sắc. Đây là biểu tượng của trực giác và cảm xúc thầm kín, nơi mà những bí mật bên trong đang dần hé lộ trong ánh trăng mờ ảo. Hãy để tâm trí bình yên để đón nhận những thông điệp từ vô thức."
+      th: "หมอกควันกำลังหนาทึบ — สิ่งที่อีกฝ่ายไม่ได้พูดออกไปกำลังกดดันเขาอยู่มากกว่าที่คุณคิด ความรักที่อดทนจะทะลุผ่านทุกหมอกควัน",
+      vi: "Mặt Trăng mang đến thông điệp về những nỗi bất an mơ hồ và sự nhạy cảm tiềm ẩn đang bao vây tâm trí người kia — những điều họ chưa dám nói ra đang âm thầm chi phối cảm xúc. Trong màn sương cảm xúc dày đặc, trực giác nhạy bén chính là ngọn đèn duy nhất dẫn lối bạn đến thế giới nội tâm sâu kín nhất của họ."
     },
     reversed: {
       zh: "TA可能被幻觉和不安所误导，你们需要更坦诚的对话来消除误会。",

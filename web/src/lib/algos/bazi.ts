@@ -326,6 +326,57 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     }
   }
 
+  // ── 跨柱六冲检测 ──
+  // 检查两人所有地支的跨柱十二支六冲（如你的年支巳 vs 对方的月支亥）
+  const p1Dz = [sz1.year[1], sz1.month[1], sz1.day[1]];
+  const p2Dz = [sz2.year[1], sz2.month[1], sz2.day[1]];
+  const pLabels = ['年','月','日'];
+  const PILLAR_LABELS_MAP: Record<string, Record<string,string>> = {
+    '年': { vi:'Năm', zh:'年', en:'Year', es:'Año', fr:'Année', th:'ปี' },
+    '月': { vi:'Tháng', zh:'月', en:'Month', es:'Mes', fr:'Mois', th:'เดือน' },
+    '日': { vi:'Ngày', zh:'日', en:'Day', es:'Día', fr:'Jour', th:'วัน' },
+  };
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      if (i === j) continue; // 跳过同柱（已在楼上检查过）
+      if (DZHI_LIUCHONG[p1Dz[i]] === p2Dz[j]) {
+        hehunBonus -= 6;
+        const p1Lbl = PILLAR_LABELS_MAP[pLabels[i]]?.[lang] || pLabels[i];
+        const p2Lbl = PILLAR_LABELS_MAP[pLabels[j]]?.[lang] || pLabels[j];
+        const detail = {
+          zh:`跨柱${p1Lbl}支${p1Dz[i]}与对方${p2Lbl}支${p2Dz[j]}形成【六冲】，爱恨交织需加倍包容`,
+          en:`Cross-pillar: Your ${p1Lbl} Branch ${dz_(p1Dz[i])} & their ${p2Lbl} Branch ${dz_(p2Dz[j])} form a Six Clash — intense passion with hidden friction`,
+          vi:`Xuyên trụ: ${p1Lbl} Trụ ${dz_(p1Dz[i])} của bạn xung với ${p2Lbl} Trụ ${dz_(p2Dz[j])} của người ấy — sức hút mãnh liệt nhưng dễ tổn thương lẫn nhau`,
+          es:`Choque entre tu Rama ${p1Lbl} ${dz_(p1Dz[i])} y su Rama ${p2Lbl} ${dz_(p2Dz[j])} — pasión intensa con fricción oculta`,
+          fr:`Choc entre ta Branche ${p1Lbl} ${dz_(p1Dz[i])} et sa Branche ${p2Lbl} ${dz_(p2Dz[j])} — passion intense mais friction cachée`,
+          th:`ขัดแย้งระหว่าง ${p1Lbl} สาขา ${dz_(p1Dz[i])} ของคุณกับ ${p2Lbl} สาขา ${dz_(p2Dz[j])} ของคู่ครอง — แรงดึงดูดรุนแรงแต่แอบมีความขัดแย้ง`,
+        }[lang] || '';
+        if (detail) hehunDetails.push(detail);
+      }
+    }
+  }
+
+  // ── 地支自刑检测 ──
+  // 自刑地支：亥、辰、午、酉、申
+  const ZIXING_BRANCHES = ['亥','辰','午','酉','申'];
+  for (const b of ZIXING_BRANCHES) {
+    const countP1 = p1Dz.filter(d => d === b).length;
+    const countP2 = p2Dz.filter(d => d === b).length;
+    const total = countP1 + countP2;
+    if (total >= 2) {
+      hehunBonus -= 4;
+      const selfLabel = {
+        zh:`八字中${b}出现${total}次，形成【${b}${b}自刑】，情感敏感需用心呵护`,
+        en:`${b} appears ${total}x in both charts — self-punishment pattern, emotional sensitivity needs nurturing`,
+        vi:`Địa chi ${dz_(b)} xuất hiện ${total} lần — tạo ${dz_(b)} Tự Hình, cảm xúc dễ tổn thương, cần nâng niu`,
+        es:`${b} aparece ${total} veces — patrón de auto-castigo, sensibilidad emocional necesita cuidado`,
+        fr:`${b} apparaît ${total} fois — motif d'auto-punition, sensibilité émotionnelle à choyer`,
+        th:`${b} ปรากฏ ${total} ครั้ง — รูปแบบการลงโทษตัวเอง ความอ่อนไหวทางอารมณ์ต้องการการดูแล`,
+      }[lang] || '';
+      if (selfLabel) hehunDetails.push(selfLabel);
+    }
+  }
+
   // ── 4. 综合评分 ──
   // 日主50% + 五行30% + 合婚20%
   const rawScore = Math.round(

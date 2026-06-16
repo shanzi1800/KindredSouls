@@ -292,9 +292,6 @@ CRITICAL TRANSLATION & STYLE RULES:
    - 若两日主同元素（如 Kim-Kim, Mộc-Mộc），禁用 "phát huy tiềm năng" (相生用语)
    - 同性必须用： "đồng điệu tự nhiên", "thấu hiểu đồng cảm", "như hai người tri kỷ"
    - 异性相生才用： "nuôi dưỡng", "hỗ trợ và nâng đỡ"
-3.5 STRICT MODULE ISOLATION:
-   - 禁止在 Bazi/I-Ching 卡片文本中拼接 Tarot 卡名或意象
-   - Tarot 指引只能出现在系统末尾统一添加的 [Hướng dẫn Tarot] 行
 5.5 HEXAGRAM CONSISTENCY RULE:
    - 若 Bazi/I-Ching 输入中出现 "Hung", "Đại hung" 或 "大凶"，AI 结尾禁用积极评语
    - ❌ "Quẻ khá tốt, nỗ lực con người quyết định"
