@@ -266,7 +266,7 @@ const SUMMARY_DESCS = {
     es: '${z1} (tú) encuentra ${z2} (pareja) — las energías cósmicas crean química fascinante.',
     fr: '${z1} (vous) rencontre ${z2} (partenaire) — les énergies cosmiques créent une chimie fascinante.',
     th: '${z1}(คุณ)พบ${z2}(คู่ครอง) — พลังจักรวาลดึงดูดกัน เคมีเข้ากันน่าตื่นเต้น',
-    vi: '${z1} (bạn) gặp ${z2} (người ấy) — năng lượng vũ trụ tương hợp, phản ứng hóa học đầy thú vị.',
+    vi: '${z1} (bạn) gặp ${z2} (người ấy) — năng lượng vũ trụ tương hợp, sức hút mãnh liệt đầy lý thú.',
   },
   understanding: {
     zh: '${z1}与${z2}的组合需要更多理解，但差异正是吸引力的来源。',
