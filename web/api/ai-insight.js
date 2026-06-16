@@ -72,6 +72,21 @@ function cacheKey(d1, d2, overall, dims, lang) {
   return `v2:${sorted[0]}|${sorted[1]}|${overall}|${JSON.stringify(dims)}|${lang}`;
 }
 
+// ── Build structured meta tags for AI prompt ──
+function buildMetaTags(bazi, zodiac, iching, lang = 'en') {
+  const parts = [];
+  if (bazi?.meta?.length) {
+    parts.push(`Bazi: [${bazi.meta.join(', ')}]`);
+  }
+  if (zodiac?.meta?.length) {
+    parts.push(`Zodiac: [${zodiac.meta.join(', ')}]`);
+  }
+  if (iching?.meta?.length) {
+    parts.push(`IChing: [${iching.meta.join(', ')}]`);
+  }
+  return parts.length > 0 ? parts.join(' | ') : '(none)';
+}
+
 // ── Build prompt ──
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -421,6 +436,9 @@ Use "babe", "girl", or first-name energy. Be their wise, warm, astrology-savvy b
 八字: ${bazi}
 易经: ${iching}
 
+【结构化标签】
+${buildMetaTags(bazi, zodiac, iching, lang)}
+
 请写一段丝滑融合的洞察（100-180字），禁止任何 Markdown 格式符号（###、**等）。\n\n🃏 今日塔罗神谕 — ${cardName}（${orientation}）：\n${cardMeaning}\n\n→ 请将塔罗神谕自然融入洞察中，如宇宙的低语，不可照搬原文。`
     : isFr
     ? `Votre anniversaire: ${d1}, Anniversaire du/de la partenaire: ${d2}
@@ -466,6 +484,10 @@ Bazi: ${bazi}
 I Ching: ${iching}
 
 Write one flowing insight (80-150 words). NO Markdown symbols (no ###, no **). \n\n🃏 Tarot Oracle — ${cardName} (${orientation}):\n${cardMeaning}\n\n→ Weave this Tarot oracle naturally into your narrative — like a mystical whisper, not a copy-paste.`;
+
+  // ── 注入 meta 标签（所有语言统一追加）──
+  const metaBlock = `\n\n[结构化标签] ${buildMetaTags(bazi, zodiac, iching, lang)}`;
+  userPrompt += metaBlock;
 
   return {
     systemPrompt,
