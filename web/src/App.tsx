@@ -16,7 +16,7 @@ import './App.css';
   // ── 6语言文案映射（避免三元链漏语言）──
   const TXT = {
     sectionTitle: { zh:'四维深度分析', en:'Four-Dimension Breakdown', es:'Análisis en 4 Dimensiones', fr:'Analyse en 4 Dimensions', th:'การวิเคราะห์ 4 มิติ', vi:'Phân tích 4 Chiều' },
-    aiTitle: { zh:'AI 深度洞察' , en:'AI Insight', es:'Perspectiva AI', fr:'Perspective IA', th:'วิเคราะห์ AI', vi:'AI Thấu thị' },
+    aiTitle: { zh:'AI 深度洞察' , en:'AI Insight', es:'Perspectiva AI', fr:'Perspective IA', th:'วิเคราะห์ AI', vi:'Luận giải AI' },
     loading: { zh:'🔮 正在链接命运星盘，请稍候...', en:'🔮 Connecting to your cosmic profile...', es:'🔮 Conectando con tu perfil cósmico...', fr:'🔮 Connexion à votre profil cosmique...', th:'🔮 กำลังเชื่อมต่อกับโปรไฟล์ทางดาว...', vi:'🔮 Đang kết nối với hồ sơ vũ trụ của bạn...' },
     verifying: { zh:'🔒 正在安全验证您的账户...', en:'🔒 Verifying your account...', es:'🔒 Verificando tu cuenta...', fr:'🔒 Vérification de votre compte...', th:'🔒 กำลังตรวจสอบบัญชีของคุณ...', vi:'🔒 Đang xác minh tài khoản của bạn...' },
     previewTitle: { zh:'解锁你们的灵魂密码', en:'Unlock Your Soul Code', es:'Desbloquea Tu Código Alma', fr:'Débloquez Votre Code Âme', th:'ปลดล็อกรหัสวิญญาณของคุณ', vi:'Mở khóa Mật mã Linh hồn' },
@@ -44,10 +44,10 @@ import './App.css';
       vi: ['An toàn','Tức thì','Hoàn tiền được'],
     },
     blurredPreview: { zh:'🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。', en:'🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.', es:'🌙 Existe una resonancia de alma rara entre ustedes dos… El aspecto Luna-Venus sugiere una conexión emocional profunda que solo el 3% de las parejas tienen.', fr:"🌙 Une résonnance d'âme rare existe entre vous deux… L'aspect Lune-Vénus suggère une connexion émotionnelle profonde que seul 3% des couples ont.", th:'🌙 มีการจับคลื่นวิญญาณที่หายากระหว่างคุณทั้งสอง… มุมจันทร์-ศุกร์บ่งบอกถึงการเชื่อมต่อทางอารมณ์ที่ลึกซึ้งที่พบได้ในเพียง 3% ของคู่รัก', vi:'🌙 Có một cộng hưởng linh hồn hiếm thấy giữa hai bạn… Khía cạnh Mặt trăng-Sao Kim gợi ý một kết nối cảm xúc sâu sắc chỉ có ở 3% các cặp đôi.' },
-    genBtn: { zh:'生成 AI 洞察', en:'Generate AI Insight', es:'Generar Perspectiva AI', fr:'Générer Perspective IA', th:'วิเคราะห์ AI', vi:'Tạo AI Thấu thị' },
+    genBtn: { zh:'生成 AI 洞察', en:'Generate AI Insight', es:'Generar Perspectiva AI', fr:'Générer Perspective IA', th:'วิเคราะห์ AI', vi:'Xem Luận giải AI' },
     signOut: { zh:'退出登录', en:'Sign Out', es:'Cerrar Sesión', fr:'Déconnexion', th:'ออกจากระบบ', vi:'Đăng xuất' },
     detailHide: { zh:'收起详情 ▲', en:'Hide Details ▲', es:'Ocultar ▲', fr:'Masquer ▲', th:'ซ่อนรายละเอียด ▲', vi:'Thu gọn ▲' },
-    detailShow: { zh:'查看完整分析 ▼', en:'View Full Analysis ▼', es:'Ver Análisis Completo ▼', fr:'Voir Analyse Complète ▼', th:'ดูการวิเคราะห์เต็ม ▼', vi:'Xem Phân tích đầy đủ ▼' },
+    detailShow: { zh:'查看完整分析 ▼', en:'View Full Analysis ▼', es:'Ver Análisis Completo ▼', fr:'Voir Analyse Complète ▼', th:'ดูการวิเคราะห์เต็ม ▼', vi:'Xem chi tiết ▼' },
   } as const;
 
 
