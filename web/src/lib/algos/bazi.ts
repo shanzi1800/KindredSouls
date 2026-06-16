@@ -269,7 +269,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       es:`Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso`,
       fr:`Tiges ${tg(sz1.dayMaster)} et ${tg(sz2.dayMaster)} forment Six Harmonies — lien émotionnel puissant`,
       th:`ธาตุ ${tg(sz1.dayMaster)} และ ${tg(sz2.dayMaster)} สร้างหกสามัคคี — พันธะอารมณ์ที่ทรงพลัง`,
-      vi:`Ngày ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} tạo Lục Hợp — liên kết cảm xúc mạnh mẽ` }[lang] || '';
+      vi:`Ngày ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} tạo Ngũ Hợp — liên kết cảm xúc mạnh mẽ` }[lang] || '';
     hehunDetails.push(liuheLabel);
   }
 
