@@ -498,10 +498,12 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     meetVerb: t(UI_LABELS.meetVerb, lang),
   };
 
+  const needsSpace = lang !== 'zh' && lang !== 'th';
+
   const detail = [
     `${labels.sunSign}`,
-    `${labels.you}：${z1Name}(${p1.month}/${p1.day})— ${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
-    `${labels.ta}：${z2Name}(${p2.month}/${p2.day})— ${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
+    `${labels.you}：${z1Name}${needsSpace ? ' ' : ''}(${p1.month}/${p1.day})${needsSpace ? ' — ' : '—'}${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
+    `${labels.ta}：${z2Name}${needsSpace ? ' ' : ''}(${p2.month}/${p2.day})${needsSpace ? ' — ' : '—'}${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
     ``,
     `${labels.phaseTitle}`,
     phaseDesc,

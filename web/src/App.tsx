@@ -290,6 +290,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
   onLogout?: () => void;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
+  const [tarotLine, setTarotLine] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAuthWall, setShowAuthWall] = useState(false);
@@ -442,6 +443,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
         setIsAuthParsing(false);
         setPaidStatus(null);
         setInsight(null);
+        setTarotLine(null);
       }
     });
 
@@ -647,6 +649,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       const data = await res.json();
       if (data.insight) {
         setInsight(data.insight);
+        setTarotLine(data.tarotLine || null);
         onTriggerInsight?.();
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {
@@ -809,6 +812,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, lang, onT
       {insight && (
         <div className="insight-result">
           <p>{insight}</p>
+          {tarotLine && (
+            <p style={{ marginTop: '12px', fontStyle: 'italic', opacity: 0.85, fontSize: '13px' }}>{tarotLine}</p>
+          )}
           <button
             onClick={onLogout}
             style={{

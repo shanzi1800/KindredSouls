@@ -501,8 +501,8 @@ export default async function handler(req, res) {
     }
 
 
-    // Append tarot line (guaranteed to appear, with line break)
-    const finalInsight = postProcessed + '\n\n' + tarotLine;
+    // tarotLine 不再拼进 insight，由前端单独渲染为 [Hướng dẫn Tarot] 区块
+    const finalInsight = postProcessed;
 
     if (insightCache.size >= MAX_CACHE) {
       const firstKey = insightCache.keys().next().value;
@@ -510,7 +510,7 @@ export default async function handler(req, res) {
     }
     insightCache.set(key, finalInsight);
 
-    return res.status(200).json({ insight: finalInsight, cached: false, tarot: tarotCard });
+    return res.status(200).json({ insight: finalInsight, tarotLine, cached: false, tarot: tarotCard });
   } catch (err) {
     console.error('ai-insight handler error:', err);
     return res.status(500).json({ error: 'Internal server error' });
