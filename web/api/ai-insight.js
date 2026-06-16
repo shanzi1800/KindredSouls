@@ -211,6 +211,15 @@ CRITICAL TRANSLATION & STYLE RULES:
 3.5 STRICT MODULE ISOLATION:
    - 禁止在 Bazi/I-Ching 卡片文本中拼接 Tarot 卡名或意象
    - Tarot 指引只能出现在系统末尾统一添加的 [Hướng dẫn Tarot] 行
+5.5 HEXAGRAM CONSISTENCY RULE:
+   - 若 Bazi/I-Ching 输入中出现 "Hung", "Đại hung" 或 "大凶"，AI 结尾禁用积极评语
+   - ❌ "Quẻ khá tốt, nỗ lực con người quyết định"
+   - ✅ "Quẻ nhắc nhở cẩn trọng, khéo léo dung hòa"
+   - AI 结尾必须与卦象凶吉一致，不得前后矛盾
+6.5 DATA ISOLATION RULE:
+   - 只分析当前输入的 Bazi/Zodiac/I-Ching 数据
+   - 禁止引用上一轮或之前测试的数据（如 Nhâm Thủy、Tỵ Hỏa 等非当前输入的日主）
+   - 日主信息必须严格来自 user prompt 中的数据，不得自行编造或记忆残留
 4.5 TYPOGRAPHY CLEANING:
    - 清除所有中文全角标点 （： （ ））
    - 替换为半角标点 （ : ( ) ）
