@@ -1,5 +1,5 @@
-// Force Node.js 20 runtime (avoid Edge crypto issue)
-export const runtime = 'nodejs20.x';
+// Use Node.js runtime (Edge has crypto issues)
+export const runtime = 'nodejs';
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 
