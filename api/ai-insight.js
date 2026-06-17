@@ -151,6 +151,13 @@ export default async function handler(req, res) {
     lang
   );
 
+  // ── DEBUG: Print actual prompts sent to DeepSeek ──
+  console.log('[ai-insight] === PROMPTS SENT TO DEEPSEEK ===');
+  console.log('[ai-insight] lang:', lang);
+  console.log('[ai-insight] systemPrompt (first 200 chars):', systemPrompt?.substring(0, 200));
+  console.log('[ai-insight] userPrompt (FULL):', userPrompt);
+  console.log('[ai-insight] === END PROMPTS ===');
+
   try {
     const response = await fetch(DEEPSEEK_API, {
       method: 'POST',
@@ -170,9 +177,54 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const insight = data.choices?.[0]?.message?.content?.trim();
+    let insight = data.choices?.[0]?.message?.content?.trim();
     if (!insight) {
       return res.status(502).json({ error: 'Empty response from AI' });
+    }
+
+    // ── Language detection & retry (prevents English fallback) ──
+    const isVietnamese = (text) => /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text);
+    const isThai = (text) => /[฀-๿]/i.test(text);
+    const isFrench = (text) => /[àâäçéèêëïîôùûüÿñæœ]/i.test(text);
+    const isSpanish = (text) => /[áéíóúñ¿¡]/i.test(text);
+    
+    let wrongLang = false;
+    if (lang === 'vi') wrongLang = !isVietnamese(insight);
+    else if (lang === 'th') wrongLang = !isThai(insight);
+    else if (lang === 'fr') wrongLang = !isFrench(insight);
+    else if (lang === 'es') wrongLang = !isSpanish(insight);
+
+    if (wrongLang) {
+      console.log('[ai-insight] ⚠️ Wrong language detected! lang=', lang, ' insight=', insight.substring(0, 100));
+      console.log('[ai-insight] Retrying with stronger language lock...');
+      
+      // Retry with stronger Prompt (put language lock in separate message)
+      const retryMessages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `🔒 LANGUAGE LOCK: You MUST respond in ${lang}. ${antiFallback}` },
+        { role: 'assistant', content: `OK, I will respond in ${lang}.` },
+        { role: 'user', content: userPrompt }
+      ];
+      
+      const retryResponse = await fetch(DEEPSEEK_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: retryMessages,
+          temperature: 0.05,  // Even lower temperature for retry
+          max_tokens: 400,
+        }),
+      });
+      
+      if (retryResponse.ok) {
+        const retryData = await retryResponse.json();
+        const retryInsight = retryData.choices?.[0]?.message?.content?.trim();
+        if (retryInsight) {
+          console.log('[ai-insight] ✅ Retry succeeded!');
+          insight = retryInsight;
+        }
+      }
     }
 
     const clean = insight
