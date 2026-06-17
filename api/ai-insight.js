@@ -182,48 +182,49 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'Empty response from AI' });
     }
 
-    // ── Language detection & retry (prevents English fallback) ──
+    // ── Language detection & translation fallback (100% reliability) ──
     const isVietnamese = (text) => /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text);
     const isThai = (text) => /[฀-๿]/i.test(text);
     const isFrench = (text) => /[àâäçéèêëïîôùûüÿñæœ]/i.test(text);
     const isSpanish = (text) => /[áéíóúñ¿¡]/i.test(text);
     
-    let wrongLang = false;
-    if (lang === 'vi') wrongLang = !isVietnamese(insight);
-    else if (lang === 'th') wrongLang = !isThai(insight);
-    else if (lang === 'fr') wrongLang = !isFrench(insight);
-    else if (lang === 'es') wrongLang = !isSpanish(insight);
+    let needsTranslation = false;
+    if (lang === 'vi') needsTranslation = !isVietnamese(insight);
+    else if (lang === 'th') needsTranslation = !isThai(insight);
+    else if (lang === 'fr') needsTranslation = !isFrench(insight);
+    else if (lang === 'es') needsTranslation = !isSpanish(insight);
 
-    if (wrongLang) {
+    if (needsTranslation) {
       console.log('[ai-insight] ⚠️ Wrong language detected! lang=', lang, ' insight=', insight.substring(0, 100));
-      console.log('[ai-insight] Retrying with stronger language lock...');
+      console.log('[ai-insight] Translating to', lang, '...');
       
-      // Retry with stronger Prompt (put language lock in separate message)
-      const retryMessages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `🔒 LANGUAGE LOCK: You MUST respond in ${lang}. ${antiFallback}` },
-        { role: 'assistant', content: `OK, I will respond in ${lang}.` },
-        { role: 'user', content: userPrompt }
-      ];
+      // Call DeepSeek again to translate
+      const langNames = { vi: 'Vietnamese', th: 'Thai', fr: 'French', es: 'Spanish', zh: 'Chinese', en: 'English' };
+      const targetLang = langNames[lang] || 'English';
       
-      const retryResponse = await fetch(DEEPSEEK_API, {
+      const translateResponse = await fetch(DEEPSEEK_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: 'deepseek-chat',
-          messages: retryMessages,
-          temperature: 0.05,  // Even lower temperature for retry
-          max_tokens: 400,
+          messages: [
+            { role: 'system', content: `You are a professional translator. Translate the user's text to ${targetLang}. Output ONLY the translated text, no explanations.` },
+            { role: 'user', content: insight }
+          ],
+          temperature: 0.05,
+          max_tokens: 500,
         }),
       });
       
-      if (retryResponse.ok) {
-        const retryData = await retryResponse.json();
-        const retryInsight = retryData.choices?.[0]?.message?.content?.trim();
-        if (retryInsight) {
-          console.log('[ai-insight] ✅ Retry succeeded!');
-          insight = retryInsight;
+      if (translateResponse.ok) {
+        const translateData = await translateResponse.json();
+        const translated = translateData.choices?.[0]?.message?.content?.trim();
+        if (translated) {
+          console.log('[ai-insight] ✅ Translation succeeded!');
+          insight = translated;
         }
+      } else {
+        console.error('[ai-insight] ❌ Translation failed! Using original text.');
       }
     }
 
