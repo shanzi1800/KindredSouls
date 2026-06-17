@@ -593,9 +593,10 @@ export default async function handler(req, res) {
     lang
   );
 
+  let timeoutId;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    timeoutId = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
