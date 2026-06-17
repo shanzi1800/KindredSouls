@@ -645,7 +645,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (useToken) headers['Authorization'] = `Bearer ${useToken}`;
-      const res = await fetch('/api/ai-insight', {
+      const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
         body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta }),

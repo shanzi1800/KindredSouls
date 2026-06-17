@@ -1,156 +1,42 @@
-// Force Node.js 20 runtime
-export const runtime = 'nodejs20.x';
-
-// ── Supabase REST helpers (Vercel serverless compatible) ──
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-const SB_HEADERS = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation',
-};
-
-async function sbGet(table, query) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: SB_HEADERS });
-  if (!r.ok) { const t = await r.text(); throw new Error(`SB GET ${table} ${r.status}: ${t}`); }
-  return r.json();
-}
-
-async function sbUpsert(table, body) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) { const t = await r.text(); throw new Error(`SB UPSERT ${table} ${r.status}: ${t}`); }
-  return r.json();
-}
-
-async function sbPatch(table, id, body) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) { const t = await r.text(); throw new Error(`SB PATCH ${table} ${r.status}: ${t}`); }
-}
-
-
-// ═══════════════════════════════════════════════════
-// KindredSouls Phase 2 — AI Advisor (Streaming)
-// 基于 ai_context 的情感顾问，temperature=0，确定性输出
-// ═══════════════════════════════════════════════════
+export const runtime = 'nodejs';
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 
-// ── Prompt 模板 ──
-
-const PROMPT_TEMPLATES = {
-  ta_thinking: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls, an astrology-powered relationship insight app.
-
-RULES:
-1. NEVER use absolute fatalistic language ("destined to fail", "will never", "impossible")
-2. Translate astrological terms into psychological motivations
-3. Your response MUST end with ONE specific, actionable advice
-4. Keep output between 200-300 words
-5. Tone: warm, insightful, empowering — never preachy
-6. Use "relationship insight" framing, NOT "psychological counseling"
-7. Base ALL interpretations on the provided Context data, do not invent information
-8. NEVER mention that you are an AI or language model
-9. Use the partner's zodiac/moon sign traits to explain their likely emotional state
-
-CONTEXT STRUCTURE:
-- static_profile: immutable birth chart & synastry data
-- dynamic_daily: today's transit & weather indicators
-
-FOCUS: What is the partner likely thinking/feeling today, based on their moon sign, transit impact, and communication index.`,
-    userPrompt: `Based on the context, describe what the partner might be thinking or feeling right now, and what the user should do about it.`
-  },
-
-  weather: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls.
-
-SAME RULES AS ABOVE.
-
-FOCUS: Interpret today's relationship weather for this couple. Explain the weather status, what it means for their day, and provide 3 dos and 3 don'ts. Make the weather metaphor vivid and relatable.`,
-    userPrompt: `Describe today's relationship weather and provide actionable guidance based on the context.`
-  },
-
-  action_timing: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls.
-
-SAME RULES AS ABOVE.
-
-FOCUS: Based on attraction index, transit impact, and communication index, recommend the best time and approach for the user to take a specific relationship action today. Be specific about WHEN (morning/afternoon/evening) and HOW (direct/gentle/playful).`,
-    userPrompt: `What's the best action timing today? When should the user reach out, confess, apologize, or give space?`
-  }
-};
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { resultId, questionType = 'ta_thinking' } = req.body;
-  if (!resultId) {
-    return res.status(400).json({ error: 'Missing resultId' });
-  }
-
-  if (!PROMPT_TEMPLATES[questionType]) {
-    return res.status(400).json({ error: 'Invalid questionType. Must be: ta_thinking, weather, action_timing' });
-  }
-
   try {
-  // 1. 查合盘记录
-  const records = await sbGet('compatibility_results', `id=eq.${resultId}&select=ai_context,ai_query_count,ai_query_date,user_id`);
-  if (!records || records.length === 0) {
-    return res.status(404).json({ error: 'Result not found' });
-  }
-  const record = records[0];
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-  if (!record.ai_context) {
-    return res.status(400).json({
-      error: 'No AI context available. Please run daily-weather first.',
-      code: 'NO_CONTEXT'
-    });
-  }
+    // Vercel Node.js runtime: req.body may be pre-parsed or use raw
+    let body = req.body;
+    if (!body || typeof body !== 'object') {
+      try {
+        // Fallback: try to read as text and parse
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        const raw = Buffer.concat(chunks).toString();
+        body = JSON.parse(raw);
+      } catch (e) {
+        return res.status(400).json({ error: 'Cannot parse body' });
+      }
+    }
 
-  // 2. Rate Limit 逻辑
-  const today = new Date().toISOString().slice(0, 10);
-  let count = record.ai_query_count || 0;
-  if (record.ai_query_date !== today) {
-    count = 0;
-  }
+    const { d1, d2, overall, dims, lang = 'en' } = body;
+    if (!d1 || !d2) {
+      return res.status(400).json({ error: 'Missing d1 or d2' });
+    }
 
-  // TODO: 检查订阅状态（Step 5 实现 checkSubscription 后接入）
-  const isPremium = false; // 暂时全部免费
-  const dailyLimit = isPremium ? Infinity : 3;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API key not configured' });
+    }
 
-  if (count >= dailyLimit) {
-    return res.status(429).json({
-      error: 'Daily limit reached',
-      code: 'RATE_LIMITED',
-      remaining: 0,
-      upgradePrompt: !isPremium,
-    });
-  }
-
-  // 3. 更新计数
-  await sbPatch('compatibility_results', resultId, { ai_query_count: count + 1, ai_query_date: today });
-
-  // 4. 选择 Prompt
-  const template = PROMPT_TEMPLATES[questionType];
-  const contextStr = JSON.stringify(record.ai_context);
-
-  // 5. 调用 DeepSeek Streaming
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'AI service not configured' });
-  }
-
-  try {
     const response = await fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: {
@@ -160,71 +46,29 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: template.systemPrompt },
-          { role: 'user', content: `${template.userPrompt}\n\nContext: ${contextStr}` },
+          { role: 'system', content: 'You are a relationship advisor. Give warm, positive advice in 2-3 sentences.' },
+          { role: 'user', content: `Two people born on ${d1} and ${d2} have compatibility score ${overall}/100. Give brief relationship advice.` },
         ],
-        temperature: 0,
-        max_tokens: 500,
-        stream: true,
+        temperature: 0.7,
+        max_tokens: 200,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[ai-advisor] DeepSeek error:', response.status, errText);
-      return res.status(502).json({ error: 'AI service unavailable' });
+      return res.status(502).json({ error: 'AI service error', details: errText });
     }
 
-    // 6. SSE Streaming 响应
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
+    const data = await response.json();
+    const insight = data.choices?.[0]?.message?.content?.trim();
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // 解析 DeepSeek SSE 格式并转发
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              res.write('data: [DONE]\n\n');
-              continue;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                // 转发为标准 SSE
-                res.write(`data: ${JSON.stringify({ content })}\n\n`);
-              }
-            } catch (e) {
-              // 忽略解析错误
-            }
-          }
-        }
-      }
-    } finally {
-      res.end();
-    }
-
-  } catch (err) {
-    console.error('[ai-advisor] DeepSeek error:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    res.end();
-  }
-  } catch (err) {
-    console.error('[ai-advisor] handler error:', err);
-    return res.status(500).json({ error: 'Internal server error', detail: err.message });
+    return res.status(200).json({
+      insight: insight || 'Unable to generate insight at this time.',
+      cached: false,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 }
