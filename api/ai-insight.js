@@ -183,6 +183,9 @@ export default async function handler(req, res) {
     }
 
     // ── Language detection & translation fallback (100% reliability) ──
+    console.log('[ai-insight] 🔍 Checking language... lang=', lang);
+    console.log('[ai-insight] 🔍 insight text (first 200 chars):', insight?.substring(0, 200));
+    
     const isVietnamese = (text) => /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text);
     const isThai = (text) => /[฀-๿]/i.test(text);
     const isFrench = (text) => /[àâäçéèêëïîôùûüÿñæœ]/i.test(text);
@@ -193,10 +196,12 @@ export default async function handler(req, res) {
     else if (lang === 'th') needsTranslation = !isThai(insight);
     else if (lang === 'fr') needsTranslation = !isFrench(insight);
     else if (lang === 'es') needsTranslation = !isSpanish(insight);
+    
+    console.log('[ai-insight] 🔍 needsTranslation=', needsTranslation, ' (lang=', lang, ')');
 
     if (needsTranslation) {
       console.log('[ai-insight] ⚠️ Wrong language detected! lang=', lang, ' insight=', insight.substring(0, 100));
-      console.log('[ai-insight] Translating to', lang, '...');
+      console.log('[ai-insight] 🌐 Translating to', lang, '...');
       
       // Call DeepSeek again to translate
       const langNames = { vi: 'Vietnamese', th: 'Thai', fr: 'French', es: 'Spanish', zh: 'Chinese', en: 'English' };
