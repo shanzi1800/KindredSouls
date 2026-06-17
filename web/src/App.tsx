@@ -5,6 +5,7 @@ import './i18n';
 import { useTranslation } from 'react-i18next';
 import { calculateCompatibility } from './lib/algos';
 import { normalizeLang } from './lib/algos/i18n';
+import { getTarot } from './lib/tarot';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
 import PaywallCard from './components/PaywallCard';
@@ -645,16 +646,20 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (useToken) headers['Authorization'] = `Bearer ${useToken}`;
+      // Compute tarot card deterministically (same logic as AuthButton)
+      const tarot = getTarot(d1, d2, lang);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta }),
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, tarot }),
       });
       const data = await res.json();
       if (data.insight) {
         setInsight(data.insight);
-        setTarotLine(data.tarotLine || null);
-        setTarotCard(data.tarot || null);
+        // Use the freshly computed tarot, not the API response (API echoes it back too)
+        setTarotLine(tarot.meaning);
+        const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido'].some(s => tarot.orientation.includes(s));
+        setTarotCard({ id: tarot.id, name: tarot.name, emoji: tarot.emoji, isReversed, orientation: tarot.orientation });
         onTriggerInsight?.();
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {

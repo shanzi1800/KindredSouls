@@ -122,7 +122,7 @@ export default async function handler(req, res) {
   const template = PROMPT_TEMPLATES[questionType];
   const contextStr = JSON.stringify(record.ai_context);
 
-  // 5. 调用 DeepSeek Streaming
+  // 5. 调用 DeepSeek（非流式，以便翻译兜底）
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: 'AI service not configured' });
@@ -142,8 +142,8 @@ export default async function handler(req, res) {
           { role: 'user', content: `${template.userPrompt}\n\nContext: ${contextStr}` },
         ],
         temperature: 0,
-        max_tokens: 500,
-        stream: true,
+        max_tokens: 600,
+        stream: false,  // ← 非流式，方便翻译兜底
       }),
     });
 
@@ -153,52 +153,70 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'AI service unavailable' });
     }
 
-    // 6. SSE Streaming 响应
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
+    const aiData = await response.json();
+    let insight = aiData.choices?.[0]?.message?.content?.trim();
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // 解析 DeepSeek SSE 格式并转发
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              res.write('data: [DONE]\n\n');
-              continue;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                // 转发为标准 SSE
-                res.write(`data: ${JSON.stringify({ content })}\n\n`);
-              }
-            } catch (e) {
-              // 忽略解析错误
-            }
-          }
-        }
-      }
-    } finally {
-      res.end();
+    if (!insight) {
+      return res.status(502).json({ error: 'Empty response from AI' });
     }
+
+    console.log('[ai-advisor] Raw insight (first 100):', insight.substring(0, 100));
+    console.log('[ai-advisor] lang param:', req.body.lang);
+
+    // ── 翻译兜底：检测语言，如果不匹配则翻译 ──
+    const targetLang = req.body.lang || 'en';
+    const isVietnamese = (text) => /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text);
+    const isThai = (text) => /[฀-๿]/i.test(text);
+    const isFrench = (text) => /[àâäçéèêëïîôùûüÿñæœ]/i.test(text);
+    const isSpanish = (text) => /[áéíóúñ¿¡]/i.test(text);
+    const isChinese = (text) => /[\u4e00-\u9fff\u3400-\u4dbf]/i.test(text);
+
+    let needsTranslation = false;
+    if (targetLang === 'vi') needsTranslation = !isVietnamese(insight) && !isChinese(insight);
+    else if (targetLang === 'th') needsTranslation = !isThai(insight) && !isChinese(insight);
+    else if (targetLang === 'fr') needsTranslation = !isFrench(insight);
+    else if (targetLang === 'es') needsTranslation = !isSpanish(insight);
+    // en: always needs translation if it's not English
+    else if (targetLang === 'en') needsTranslation = isVietnamese(insight) || isThai(insight) || isFrench(insight) || isSpanish(insight) || isChinese(insight);
+
+    console.log('[ai-advisor] needsTranslation:', needsTranslation, '(target=', targetLang, ')');
+
+    if (needsTranslation) {
+      const langNames = { vi: 'Vietnamese', th: 'Thai', fr: 'French', es: 'Spanish', zh: 'Chinese', en: 'English' };
+      const tl = langNames[targetLang] || 'English';
+      console.log('[ai-advisor] 🌐 Translating to', tl, '...');
+
+      const translateResponse = await fetch(DEEPSEEK_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: `You are a professional translator. Translate the user's text to ${tl}. Output ONLY the translated text, no explanations, no quotes.` },
+            { role: 'user', content: insight }
+          ],
+          temperature: 0.05,
+          max_tokens: 600,
+        }),
+      });
+
+      if (translateResponse.ok) {
+        const translateData = await translateResponse.json();
+        const translated = translateData.choices?.[0]?.message?.content?.trim();
+        if (translated) {
+          console.log('[ai-advisor] ✅ Translation succeeded!');
+          insight = translated;
+        }
+      } else {
+        console.error('[ai-advisor] ❌ Translation failed, using original.');
+      }
+    }
+
+    // 6. 返回完整 JSON
+    return res.status(200).json({ insight, tarot });
 
   } catch (err) {
     console.error('[ai-advisor] handler error:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    res.end();
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
