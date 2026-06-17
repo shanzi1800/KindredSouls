@@ -383,19 +383,39 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const isBestMatch = BEST_MATCHES[z1]?.includes(z2) ?? false;
   const baseScore = isBestMatch ? 85 : 65;
 
+  // ── Meta 标签（供 AI Prompt 注入）──
+  meta.push(`ZODIAC_${z1}`);
+  meta.push(`ZODIAC_${z2}`);
+  meta.push(`ELEM_${elem1}`);
+  meta.push(`ELEM_${elem2}`);
+  if (elem1 === elem2) meta.push('SAME_ELEMENT');
+  if (mode1 === mode2) meta.push('SAME_MODE');
+  if (isBestMatch) meta.push('BEST_MATCH');
+  if (phaseTag) meta.push(phaseTag);
+  // 冲突型相位（对宫/刑）：制造叙事张力
+  if (phaseTag === 'PHASE_OPPOSITION' || phaseTag === 'PHASE_SQUARE') meta.push('ZODIAC_TENSION');
+  // 元素对立：水火不相容，风土/火风亦需调和
+  const SHENG_MAP: Record<string, string> = { '火': '土', '土': '金', '金': '水', '水': '木', '木': '火' };
+  const KE_MAP: Record<string, string> = { '火': '水', '水': '火', '木': '金', '金': '木', '土': '木', '木': '土' };
+  if (KE_MAP[elem1] === elem2 || KE_MAP[elem2] === elem1) meta.push('ELEMENT_CLASH');
+  if (OPPOSITES[z1] === z2) meta.push('ZODIAC_OPPOSITION');
+
   // ── 2. 相位分析 ──
   const phaseDist = getPhaseDistance(z1, z2);
   let phaseScore = 70;
   let phaseDesc = '';
+  let phaseTag = '';
 
   if (phaseDist === 0) {
     phaseScore = 88;
     phaseDesc = t(PHASE_DESCS.sameSign, lang);
+    phaseTag = 'PHASE_SAME';
   } else if (phaseDist === 6) {
     phaseScore = 58;
     phaseDesc = t(PHASE_DESCS.opposition, lang)
       .replace('${z1}', z1Name)
       .replace('${z2}', z2Name);
+    phaseTag = 'PHASE_OPPOSITION';
   } else if (phaseDist === 3 || phaseDist === 9) {
     const isSquare = SQUARES[z1] === z2 || Object.values(SQUARES).includes(z1);
     if (isSquare || phaseDist === 3) {
@@ -403,26 +423,31 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
       phaseDesc = t(PHASE_DESCS.square, lang)
         .replace('${z1}', z1Name)
         .replace('${z2}', z2Name);
+      phaseTag = 'PHASE_SQUARE';
     } else {
       phaseScore = 82;
       phaseDesc = t(PHASE_DESCS.trine, lang)
         .replace('${z1}', z1Name)
         .replace('${z2}', z2Name);
+      phaseTag = 'PHASE_TRINE';
     }
   } else if (phaseDist === 4 || phaseDist === 8) {
     phaseScore = 82;
     phaseDesc = t(PHASE_DESCS.trine, lang)
       .replace('${z1}', z1Name)
       .replace('${z2}', z2Name);
+    phaseTag = 'PHASE_TRINE';
   } else if (phaseDist === 2 || phaseDist === 10) {
     phaseScore = 76;
     phaseDesc = t(PHASE_DESCS.sextile, lang)
       .replace('${z1}', z1Name)
       .replace('${z2}', z2Name);
+    phaseTag = 'PHASE_SEXTILE';
   } else {
     phaseScore = 68;
     phaseDesc = t(PHASE_DESCS.special, lang)
       .replace('${deg}', String(phaseDist * 30));
+    phaseTag = 'PHASE_OTHER';
   }
 
   // ── 3. 元素和谐度 ──

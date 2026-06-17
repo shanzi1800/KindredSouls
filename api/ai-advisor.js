@@ -122,6 +122,39 @@ export default async function handler(req, res) {
   const template = PROMPT_TEMPLATES[questionType];
   const contextStr = JSON.stringify(record.ai_context);
 
+  // ── 提取 Meta 标签（来自 req.body，前端已计算好）──
+  const baziMeta: string[] = req.body.baziMeta || [];
+  const zodiacMeta: string[] = req.body.zodiacMeta || [];
+  const ichingMeta: string[] = req.body.ichingMeta || [];
+  const allMeta = [...baziMeta, ...zodiacMeta, ...ichingMeta];
+  console.log('[ai-advisor] Meta tags received:', allMeta.length, 'tags:', allMeta);
+
+  // ── 构建结构化 Meta 注入字符串 ──
+  const META_STR = allMeta.length > 0
+    ? `\n\n[META_TAGS]\n${allMeta.map(t => `  - ${t}`).join('\n')}\n[/META_TAGS]`
+    : '';
+
+  // ── Meta → 隐喻合成规则（供 AI 参考的玄学→叙事映射）──
+  const META_SYNTHESIS_RULES = `
+[META_SYNTHESIS_RULES]
+When META_TAGS contain specific patterns, weave them into a coherent dramatic narrative:
+- LIUCHONG_* + HEXAGRAM_1 → "冲突是表象，命运在深层绑定你们"
+- LIUCHONG_* + HEXAGRAM_19 → "家庭观念差异，但缘分让你们无法分开"
+- ELEMENT_EXCESS_火 + (ZODIAC_CAPRICORN|SCORPIO|ARIES) → "火旺需要水来调节，冲动时记得给对方空间"
+- ELEMENT_EXCESS_水 + PHASE_OPPOSITION → "水多善感，对宫引力让感情像潮汐忽冷忽热"
+- ELEMENT_CLASH + PHASE_SQUARE → "元素对立+刑克相位，张力是成长的燃料，不是障碍"
+- SANHE_* + PHASE_TRINE → "三合局+三合相位，命运之轮在推你们向同一方向"
+- ZODIAC_OPPOSITION + HEXAGRAM_* → "对宫吸引——你们的差异是最大的磁场，也是最好的老师"
+- PHASE_SAME + SAME_ELEMENT → "同元素同相位，你们像同一棵树上的两片叶子，默契是天生的"
+- CROSS_LIUCHONG → "跨柱六冲意味着——爱恨都是深刻的，只是需要更成熟的表达方式"
+- HEX_TRANSFORMS + HEX_TRANSFORM_BETTER → "变卦向好，当前的关系正经历蜕变，痛苦之后是更深的理解"
+- HEX_THEME_OBSTACLE + PHASE_OPPOSITION → "卦象显示阻碍，星象显示拉扯——这恰恰是你们必须共同跨越的课题"
+- DM_CONTROL + PHASE_SQUARE → "日主相克+刑克相位，某一方总是在主导，关系需要重新谈判边界"
+- LIUHE_DAY_STEM + BEST_MATCH → "天干六合+最佳配对，你们的相遇像是宇宙精心安排的双人舞"
+- HEX_THEME_HARMONY + PHASE_TRINE → "和谐卦+三合相，两人共振如同自然节律，关系可以很轻松"
+- ZIXING_* + ZODIAC_TENSION → "自刑+星象张力，关系中最大的敌人是你们自己的内在矛盾"
+[/META_SYNTHESIS_RULES]`;
+
   // 5. 调用 DeepSeek（非流式，以便翻译兜底）
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -139,7 +172,7 @@ export default async function handler(req, res) {
         model: 'deepseek-chat',
         messages: [
           { role: 'system', content: template.systemPrompt },
-          { role: 'user', content: `${template.userPrompt}\n\nContext: ${contextStr}` },
+          { role: 'user', content: `${template.userPrompt}\n\nContext: ${contextStr}${META_STR}${META_SYNTHESIS_RULES}` },
         ],
         temperature: 0,
         max_tokens: 600,

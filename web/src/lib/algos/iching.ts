@@ -1727,11 +1727,40 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   if (changingLine != null && changingLine > 0) {
     meta.push(`CHANGING_LINE_${changingLine}`);
   }
-  // TODO: transformedHex 编号反查待补充
-  // if (transformedHex && transformedHex !== hex) {
-  //   const transformedIdx = Object.keys(HEXAGRAMS).findIndex(k => HEXAGRAMS[Number(k)] === transformedHex) + 1;
-  //   meta.push(`TRANSFORMED_HEXAGRAM_${transformedIdx}`);
-  // }
+  // 上卦/下卦标签（☰乾☱兑☲离☳震☴巽☵坎☶艮☷坤）
+  const trigramMap: Record<string, string> = { '☰': 'QIAN', '☱': 'DUI', '☲': 'LI', '☳': 'ZHEN', '☴': 'XUN', '☵': 'KAN', '☶': 'GEN', '☷': 'KUN' };
+  const syms = hex.symbol.split('');
+  const lowerTrigram = syms[0] ? (trigramMap[syms[0]] || '') : '';
+  const upperTrigram = syms[1] ? (trigramMap[syms[1]] || '') : '';
+  if (lowerTrigram) meta.push(`LOWER_${lowerTrigram}`);
+  if (upperTrigram) meta.push(`UPPER_${upperTrigram}`);
+  // 卦象分类（大吉/吉/平/小凶/待变）
+  meta.push(`HEX_CAT_${hex.category}`);
+  // 变爻数量（1爻动 vs 多爻动 → 变数多少）
+  if (changingLine != null) {
+    if (changingLine >= 5) meta.push('HEX_MANY_CHANGES');
+    else if (changingLine >= 3) meta.push('HEX_SOME_CHANGES');
+    else meta.push('HEX_FEW_CHANGES');
+    // 变爻位置（初爻动=根基变化，三爻动=转折点，五爻动=高峰）
+    const linePos: Record<number, string> = { 1: 'FIRST_LINE', 2: 'SECOND_LINE', 3: 'THIRD_LINE', 4: 'FOURTH_LINE', 5: 'FIFTH_LINE', 6: 'TOP_LINE' };
+    if (linePos[changingLine]) meta.push(linePos[changingLine]);
+  }
+  // 主题标签：从 nature/judgment 提取关键词
+  const natureLower = (hex.nature || '').toLowerCase();
+  if (/进入|渐|升/i.test(natureLower)) meta.push('HEX_THEME_ENTER');
+  if (/阻碍|困|蹇/i.test(natureLower)) meta.push('HEX_THEME_OBSTACLE');
+  if (/和谐|和|谐/i.test(natureLower)) meta.push('HEX_THEME_HARMONY');
+  if (/分离|散|离/i.test(natureLower)) meta.push('HEX_THEME_SEPARATION');
+  if (/决策|决|断/i.test(natureLower)) meta.push('HEX_THEME_DECISION');
+  if (/等待|待|等/i.test(natureLower)) meta.push('HEX_THEME_WAIT');
+  // 变卦标签
+  if (transformedHex && transformedHex !== hex) {
+    const tCat = transformedHex.category;
+    meta.push('HEX_TRANSFORMS');
+    if (tCat === '大吉' || tCat === '吉') meta.push('HEX_TRANSFORM_BETTER');
+    else if (tCat === '凶' || tCat === '小凶') meta.push('HEX_TRANSFORM_WORSE');
+    else meta.push('HEX_TRANSFORM_NEUTRAL');
+  }
 
   // 多语言字段读取（已支持 6 语言）
   const tName = getHexField(hex, 'name', lang);
