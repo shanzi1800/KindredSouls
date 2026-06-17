@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   
   try {
     console.log('[ai-insight] Parsing body...');
-    const body = req.body;
+    const body = await req.json();
     console.log('[ai-insight] Body:', JSON.stringify(body));
     
     const { d1, d2, overall, dims, lang = 'en' } = body;
