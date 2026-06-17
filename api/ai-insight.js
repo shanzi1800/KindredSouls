@@ -44,14 +44,27 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
     ? { compat: 'Dữ liệu tương hợp :\n', p1: 'Ngày sinh Người 1 : ', p2: 'Ngày sinh Người 2 : ', score: 'Điểm tổng hợp : ', dims: 'Điểm các chiều : ', bazi: 'Phân tích Bát Tự : ', zodiac: 'Phân tích Cung Hoàng Đạo : ', iching: 'Quẻ Kinh Dịch : ' }
     : { compat: 'Compatibility data :\n', p1: 'Person 1 birthday: ', p2: 'Person 2 birthday: ', score: 'Overall score: ', dims: 'Dimension scores: ', bazi: 'Bazi analysis: ', zodiac: 'Zodiac analysis: ', iching: 'I Ching reading: ' };
 
+  // ── Strong language lock + contradiction handling (appended to userPrompt) ──
+  const antiFallback = isZh
+    ? '\n【语言锁死】你必须用中文回答。绝对不能混用英文。当八字、星座、易经出现矛盾指示时，你必须把它们编织成一个戏剧性的灵性叙事，把矛盾当作命中注定的课题。'
+    : isFr
+    ? '\n🔒 VERROUILLAGE LINGUISTIQUE : Tu DOIS répondre en français. JAMAIS en anglais. Si le Bazi, le Zodiaque et le I Ching donnent des indications contradictoires, tu DOIS les tisser en un récit spirituel dramatique.'
+    : isEs
+    ? '\n🔒 BLOQUEO LINGÜÍSTICO : Debes responder en español. NUNCA en inglés. Si el Bazi, el Zodiaco y el I Ching dan indicaciones contradictorias, DEBES tejerlas en una narrativa espiritual dramática.'
+    : isTh
+    ? '\n🔒 ล็อคภาษา : คุณตองตอบด้วยภาษาไทยเท่านั้น ห้ามใช้อังกฤษเด็ดขาด เมื่อบาซี ลางแห่งราศี และอิชิงมีขอมูลขัดแย้ง คุณตองสานเขาอยางเป็ นเรื่องราวจิตวิญญาณที่น่าตื่นเต้น'
+    : isVi
+    ? '\n🔒 KHÓA NGÔN NGỮ & CHỐNG THOÁT HIỂM: Bạn PHẢI xuất ra 100% bằng tiếng Việt. TUYỆT ĐỐI KHÔNG ĐƯỢC trả về tiếng Anh hoặc lời khuyên chung chung. Khi Bát Tự, Cung Hoàng Đạo và Kinh Dịch có chỉ báo mâu thuẫn, bạn PHẢI dệt chúng thành một câu chuyện tâm linh kịch tính, coi mâu thuẫn là bài học định mệnh.'
+    : '\n🔒 LANGUAGE LOCK: You MUST output 100% in English. Under NO circumstances fallback to other languages. When Bazi, Zodiac, I Ching present contradictory indicators, you MUST weave them into a dramatic spiritual narrative.';
+
   let userPrompt = '';
   if (bazi || zodiac || iching) {
-    userPrompt = labels.compat;
+    userPrompt = labels.compat + antiFallback + '\n\n';
     if (d1 && d2) userPrompt += `${labels.p1}${d1}, ${labels.p2}${d2}\n`;
     if (overall) userPrompt += `${labels.score}${overall}\n`;
     if (dims) {
       const dimLabels = isZh ? { love: '爱情', comm: '沟通', chem: '化学反应', stab: '稳定性' } : isFr ? { love: 'Amour', comm: 'Communication', chem: 'Chimie', stab: 'Stabilité' } : isEs ? { love: 'Amor', comm: 'Comunicación', chem: 'Química', stab: 'Estabilidad' } : isTh ? { love: 'ความรัก', comm: 'การสื่อสาร', chem: 'เคมีความสัมพันธ์', stab: 'ความมั่นคง' } : isVi ? { love: 'Tình yêu', comm: 'Giao tiếp', chem: 'Hóa học', stab: 'Sự ổn định' } : { love: 'Love', comm: 'Communication', chem: 'Chemistry', stab: 'Stability' };
-      userPrompt += `${labels.dims}${dimLabels.love}=${dims.love}, ${dimLabels.comm}=${dims.communication}, ${dimLabels.chem}=${dims.chemistry}, ${dimLabels.stab}=${dims.stability}\n`;
+      userPrompt += `${labels.dims}${dimLabels.love}=${dims.love}, ${dimLabels.comm}=${dims.communication}, ${dimLabels.chem}=${dims.chemistry}, ${dimLabels.stab}=${dims.stability}\n\n${antiFallback}`;
     }
     if (bazi) userPrompt += `${labels.bazi}${JSON.stringify(bazi)}\n`;
     if (zodiac) userPrompt += `${labels.zodiac}${JSON.stringify(zodiac)}\n`;
