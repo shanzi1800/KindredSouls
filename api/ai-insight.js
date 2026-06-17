@@ -59,16 +59,19 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
 
   let userPrompt = '';
   if (bazi || zodiac || iching) {
-    userPrompt = labels.compat + antiFallback + '\n\n';
+    userPrompt = labels.compat;
     if (d1 && d2) userPrompt += `${labels.p1}${d1}, ${labels.p2}${d2}\n`;
     if (overall) userPrompt += `${labels.score}${overall}\n`;
     if (dims) {
       const dimLabels = isZh ? { love: '爱情', comm: '沟通', chem: '化学反应', stab: '稳定性' } : isFr ? { love: 'Amour', comm: 'Communication', chem: 'Chimie', stab: 'Stabilité' } : isEs ? { love: 'Amor', comm: 'Comunicación', chem: 'Química', stab: 'Estabilidad' } : isTh ? { love: 'ความรัก', comm: 'การสื่อสาร', chem: 'เคมีความสัมพันธ์', stab: 'ความมั่นคง' } : isVi ? { love: 'Tình yêu', comm: 'Giao tiếp', chem: 'Hóa học', stab: 'Sự ổn định' } : { love: 'Love', comm: 'Communication', chem: 'Chemistry', stab: 'Stability' };
-      userPrompt += `${labels.dims}${dimLabels.love}=${dims.love}, ${dimLabels.comm}=${dims.communication}, ${dimLabels.chem}=${dims.chemistry}, ${dimLabels.stab}=${dims.stability}\n\n${antiFallback}`;
+      userPrompt += `${labels.dims}${dimLabels.love}=${dims.love}, ${dimLabels.comm}=${dims.communication}, ${dimLabels.chem}=${dims.chemistry}, ${dimLabels.stab}=${dims.stability}\n`;
     }
     if (bazi) userPrompt += `${labels.bazi}${JSON.stringify(bazi)}\n`;
     if (zodiac) userPrompt += `${labels.zodiac}${JSON.stringify(zodiac)}\n`;
     if (iching) userPrompt += `${labels.iching}${JSON.stringify(iching)}\n`;
+    
+    // ── Append language lock at the VERY END (model pays most attention to end) ──
+    userPrompt += `\n\n${antiFallback}`;
   }
 
   const systemPrompt = isZh
