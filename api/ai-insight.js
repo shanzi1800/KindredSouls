@@ -31,16 +31,31 @@ function buildPrompt({ d1, d2, overall, dims, bazi, zodiac, iching }, lang = 'en
   const isTh = lang === 'th';
   const isVi = lang === 'vi';
 
-  // ── Build user prompt from actual calculation data ──
+  // ── Build user prompt from actual calculation data (localized) ──
+  const labels = isZh
+    ? { compat: '命理数据：', p1: 'Person 1 birthday: ', p2: 'Person 2 birthday: ', score: '综合评分：', dims: '维度评分：', bazi: '八字分析：', zodiac: '星座分析：', iching: '易经卦象：' }
+    : isFr
+    ? { compat: 'Données de compatibilité :\n', p1: 'Date de naissance Personne 1 : ', p2: 'Date de naissance Personne 2 : ', score: 'Score global : ', dims: 'Scores dimensionnels : ', bazi: 'Analyse Bazi : ', zodiac: 'Analyse Zodiaque : ', iching: 'Lecture I Ching : ' }
+    : isEs
+    ? { compat: 'Datos de compatibilidad :\n', p1: 'Fecha de nacimiento Persona 1 : ', p2: 'Fecha de nacimiento Persona 2 : ', score: 'Puntuación global : ', dims: 'Puntuaciones dimensionales : ', bazi: 'Análisis Bazi : ', zodiac: 'Análisis Zodiaco : ', iching: 'Lectura I Ching : ' }
+    : isTh
+    ? { compat: 'ข้อมูลความสัมพันธ์ :\n', p1: 'วันเกิดคนที่ 1 : ', p2: 'วันเกิดคนที่ 2 : ', score: 'คะแนนรวม : ', dims: 'คะแนนมิติต่างๆ : ', bazi: 'การวิเคราะห์บาซี : ', zodiac: 'การวิเคราะห์ราศี : ', iching: 'การพยากรณ์อิชิง : ' }
+    : isVi
+    ? { compat: 'Dữ liệu tương hợp :\n', p1: 'Ngày sinh Người 1 : ', p2: 'Ngày sinh Người 2 : ', score: 'Điểm tổng hợp : ', dims: 'Điểm các chiều : ', bazi: 'Phân tích Bát Tự : ', zodiac: 'Phân tích Cung Hoàng Đạo : ', iching: 'Quẻ Kinh Dịch : ' }
+    : { compat: 'Compatibility data :\n', p1: 'Person 1 birthday: ', p2: 'Person 2 birthday: ', score: 'Overall score: ', dims: 'Dimension scores: ', bazi: 'Bazi analysis: ', zodiac: 'Zodiac analysis: ', iching: 'I Ching reading: ' };
+
   let userPrompt = '';
   if (bazi || zodiac || iching) {
-    userPrompt = `Compatibility data:\n`;
-    if (d1 && d2) userPrompt += `Person 1 birthday: ${d1}, Person 2 birthday: ${d2}\n`;
-    if (overall) userPrompt += `Overall score: ${overall}\n`;
-    if (dims) userPrompt += `Dimension scores: Love=${dims.love}, Communication=${dims.communication}, Chemistry=${dims.chemistry}, Stability=${dims.stability}\n`;
-    if (bazi) userPrompt += `Bazi analysis: ${JSON.stringify(bazi)}\n`;
-    if (zodiac) userPrompt += `Zodiac analysis: ${JSON.stringify(zodiac)}\n`;
-    if (iching) userPrompt += `I Ching reading: ${JSON.stringify(iching)}\n`;
+    userPrompt = labels.compat;
+    if (d1 && d2) userPrompt += `${labels.p1}${d1}, ${labels.p2}${d2}\n`;
+    if (overall) userPrompt += `${labels.score}${overall}\n`;
+    if (dims) {
+      const dimLabels = isZh ? { love: '爱情', comm: '沟通', chem: '化学反应', stab: '稳定性' } : isFr ? { love: 'Amour', comm: 'Communication', chem: 'Chimie', stab: 'Stabilité' } : isEs ? { love: 'Amor', comm: 'Comunicación', chem: 'Química', stab: 'Estabilidad' } : isTh ? { love: 'ความรัก', comm: 'การสื่อสาร', chem: 'เคมีความสัมพันธ์', stab: 'ความมั่นคง' } : isVi ? { love: 'Tình yêu', comm: 'Giao tiếp', chem: 'Hóa học', stab: 'Sự ổn định' } : { love: 'Love', comm: 'Communication', chem: 'Chemistry', stab: 'Stability' };
+      userPrompt += `${labels.dims}${dimLabels.love}=${dims.love}, ${dimLabels.comm}=${dims.communication}, ${dimLabels.chem}=${dims.chemistry}, ${dimLabels.stab}=${dims.stability}\n`;
+    }
+    if (bazi) userPrompt += `${labels.bazi}${JSON.stringify(bazi)}\n`;
+    if (zodiac) userPrompt += `${labels.zodiac}${JSON.stringify(zodiac)}\n`;
+    if (iching) userPrompt += `${labels.iching}${JSON.stringify(iching)}\n`;
   }
 
   const systemPrompt = isZh
@@ -127,7 +142,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        temperature: 0.3,
+        temperature: 0.1,  // Lower temperature for more deterministic output (prevents language fallback)
         max_tokens: 400,
       }),
     });
