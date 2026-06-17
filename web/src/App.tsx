@@ -461,38 +461,41 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       console.log('[KindredSouls Debug] checkPaidStatus skipped — checkout already in progress');
       return;
     }
-    console.log('[KindredSouls Debug] checkPaidStatus called');
-    // 15秒超时，Supabase偶尔慢
-    const timeout = setTimeout(() => {
-      console.log('[KindredSouls Debug] checkPaidStatus timeout, showing paywall');
-      setPaidStatus(false);
-      setShowPaywall(true);
-    }, 15000);
+    console.log('[KindredSouls Debug] checkPaidStatus called (REST API)');
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        clearTimeout(timeout);
-        setPaidStatus(false);
-        setShowPaywall(true);
-        return;
-      }
-      // ✅ 用 Supabase JS 客户端（受 RLS 保护），精确查当前用户的 paid 字段
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('paid')
-        .eq('user_id', user.id)
-        .select('paid')
-        .limit(1);
-      clearTimeout(timeout);
-      if (error) {
-        // RLS/权限错误时，跳过付费墙——让 checkout API 来判断真实状态
-        console.warn('[KindredSouls Debug] checkPaidStatus RLS/error, skipping paywall:', error?.message || error?.code);
+      // 1. 用 Auth REST API 获取当前用户
+      const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: { 'Authorization': `Bearer ${_token || ''}`, 'apikey': supabaseAnonKey }
+      });
+      if (!authRes.ok) {
+        console.warn('[KindredSouls Debug] checkPaidStatus auth failed:', authRes.status);
         setPaidStatus(null);
         setShowPaywall(false);
         return;
       }
-      const paid = data?.[0]?.paid === true;
-      console.log('[KindredSouls Debug] checkPaidStatus result: paid=', paid, 'data=', data);
+      const authData = await authRes.json();
+      const userId = authData?.id;
+      if (!userId) {
+        setPaidStatus(null);
+        setShowPaywall(false);
+        return;
+      }
+      // 2. 用 PostgREST 查 paid 状态（RLS 由 anon token 保护）
+      const dbRes = await fetch(
+        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid&limit=1`,
+        { headers: { 'Authorization': `Bearer ${_token || ''}`, 'apikey': supabaseAnonKey } }
+      );
+      if (!dbRes.ok) {
+        console.warn('[KindredSouls Debug] checkPaidStatus db query failed:', dbRes.status);
+        setPaidStatus(null);
+        setShowPaywall(false);
+        return;
+      }
+      const dbData = await dbRes.json();
+      const paid = dbData?.[0]?.paid === true;
+      console.log('[KindredSouls Debug] checkPaidStatus REST result: paid=', paid);
       if (paid) {
         setPaidStatus(true);
         setShowPaywall(false);
@@ -501,10 +504,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         setShowPaywall(true);
       }
     } catch (err) {
-      clearTimeout(timeout);
-      console.error('[KindredSouls Debug] checkPaidStatus error:', err);
-      setPaidStatus(false);
-      setShowPaywall(true);
+      console.error('[KindredSouls Debug] checkPaidStatus REST error:', err);
+      // 出错时不弹付费墙，让 checkout API 来判断
+      setPaidStatus(null);
+      setShowPaywall(false);
     }
   };
   // ── Save result to Supabase（只在有 token 时调用）──

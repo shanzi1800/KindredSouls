@@ -1758,7 +1758,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     const tCat = transformedHex.category;
     meta.push('HEX_TRANSFORMS');
     if (tCat === '大吉' || tCat === '吉') meta.push('HEX_TRANSFORM_BETTER');
-    else if (tCat === '凶' || tCat === '小凶') meta.push('HEX_TRANSFORM_WORSE');
+    else if (tCat === '小凶') meta.push('HEX_TRANSFORM_WORSE');
     else meta.push('HEX_TRANSFORM_NEUTRAL');
   }
 

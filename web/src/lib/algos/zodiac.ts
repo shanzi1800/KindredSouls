@@ -391,16 +391,12 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   if (elem1 === elem2) meta.push('SAME_ELEMENT');
   if (mode1 === mode2) meta.push('SAME_MODE');
   if (isBestMatch) meta.push('BEST_MATCH');
-  if (phaseTag) meta.push(phaseTag);
-  // 冲突型相位（对宫/刑）：制造叙事张力
-  if (phaseTag === 'PHASE_OPPOSITION' || phaseTag === 'PHASE_SQUARE') meta.push('ZODIAC_TENSION');
   // 元素对立：水火不相容，风土/火风亦需调和
-  const SHENG_MAP: Record<string, string> = { '火': '土', '土': '金', '金': '水', '水': '木', '木': '火' };
-  const KE_MAP: Record<string, string> = { '火': '水', '水': '火', '木': '金', '金': '木', '土': '木', '木': '土' };
+  const KE_MAP: Record<string, string> = { '火': '水', '水': '土', '金': '火', '木': '金', '土': '木' };
   if (KE_MAP[elem1] === elem2 || KE_MAP[elem2] === elem1) meta.push('ELEMENT_CLASH');
   if (OPPOSITES[z1] === z2) meta.push('ZODIAC_OPPOSITION');
 
-  // ── 2. 相位分析 ──
+  // ── 2. 相位分析（phaseTag 在此声明并赋值）──
   const phaseDist = getPhaseDistance(z1, z2);
   let phaseScore = 70;
   let phaseDesc = '';
@@ -448,6 +444,12 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     phaseDesc = t(PHASE_DESCS.special, lang)
       .replace('${deg}', String(phaseDist * 30));
     phaseTag = 'PHASE_OTHER';
+  }
+
+  // ── Meta 注入（phaseTag 赋值完毕后）──
+  meta.push(phaseTag);
+  if (phaseTag === 'PHASE_OPPOSITION' || phaseTag === 'PHASE_SQUARE') {
+    meta.push('ZODIAC_TENSION');
   }
 
   // ── 3. 元素和谐度 ──
