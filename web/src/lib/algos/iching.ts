@@ -1879,6 +1879,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     nature:       { zh:'卦德', en:'Nature', es:'Naturaleza', fr:'Nature', th:'ธรรมชาติ', vi:'Tính chất' },
     judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำพิพากษ์', vi:'Lời chiêm giải cốt lõi' },
     grade:        { zh:'等级', en:'Grade', es:'Grado', fr:'Grade', th:'ระดับ', vi:'Cấp độ' },
+    score:        { zh:'易经得分', en:'I Ching Score', es:'Puntuación I Ching', fr:'Score Yi Jing', th:'คะแนนอี้จิง', vi:'Điểm Kinh Dịch' },
     relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Luận giải mối quan hệ]' },
     lineAnalysis: { zh:'【爻位分析】', en:'[Line Analysis]', es:'[Análisis Líneas]', fr:'[Analyse Lignes]', th:'[วิเคราะห์เส้น]', vi:'[Phân tích Hào]' },
     changing:     { zh:`第${changingLine}爻为动爻，显示关系中存在变化的契机`, en:`Line ${changingLine} is changing — indicates a turning point`, es:`La línea ${changingLine} está cambiando — indica un punto de inflexión`, fr:`La ligne ${changingLine} change — point de bascule`, th:`เส้น${changingLine}เปลี่ยน — จุดเปลี่ยนในความสัมพันธ์`, vi:`Hào ${changingLine} động — bước ngoặt trong mối quan hệ` },
@@ -1894,6 +1895,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     `${D_LABEL.primaryHex[lang] || D_LABEL.primaryHex['en']} ${hexNumLabel[lang] || hexNumLabel['en']} — ${tName} ${hex.symbol}`,
     `${D_LABEL.nature[lang] || D_LABEL.nature['en']}: ${tNature} | ${D_LABEL.judgment[lang] || D_LABEL.judgment['en']}: ${tJudgment}`,
     `${D_LABEL.grade[lang] || D_LABEL.grade['en']}: ${categoryEmoji[hex.category] || ''}${tCategory}`,
+    `${D_LABEL.score[lang] || D_LABEL.score['en']}: ${score}/100`,
     ``,
     D_LABEL.relation[lang] || D_LABEL.relation['en'],
     tRelation,
@@ -1906,6 +1908,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     ``,
   ].join('\n');
 
+  meta.push(`ICHING_SCORE_${score}`);
   return {
     score,
     title: { zh:'易经智慧', en:'I Ching Wisdom', es:'Sabiduría I Ching', fr:'Sagesse Yi Jing', th:'ภูมิปัญญาอี้จิง', vi:'Trí tuệ Dịch Kinh' }[lang] || 'I Ching Wisdom',

@@ -143,6 +143,29 @@ export default async function handler(req, res) {
 
     const cfg = getLanguageConfig(lang);
 
+    // ── NARRATIVE TONE LOCK: Adjust tone based on tarot orientation ──
+    const tarotOrient = tarot?.orientation || '';
+    const isReversed = /Reversed|Ngược|กลับด้าน|Inversé|Invertido|逆位/i.test(tarotOrient);
+
+    const toneLock = lang === 'zh'
+      ? `【叙事基调锁】塔罗牌当前为【${isReversed ? '逆位' : '正位'}】。Section 4 的开篇基调必须与塔罗牌一致：\n- 正位(Upright)→希望与勇气的热切叙事，开篇积极向上\n- 逆位(Reversed)→挑战与转化的审慎基调，开篇深沉，直面问题本质，给予破局指引\n严格遵守。\n\n`
+      : lang === 'th'
+      ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'} บทที่ 4:
+${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอนเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}
+\n\n`
+      : lang === 'vi'
+      ? `[KHÓA GIỌNG] Bài Tarot = ${isReversed ? 'Ngược (Reversed)' : 'Thuận (Upright)'}. Section 4: Upright→giọng hy vọng; Reversed→giọng đối mặt thử thách, phải đưa ra hướng giải quyết cụ thể.\n\n`
+      : `[TONE LOCK] Tarot = ${isReversed ? 'Reversed' : 'Upright'}. Section 4: Upright→hopeful tone; Reversed→challenge + transformation tone, must provide concrete solution.\n\n`;
+
+    // ── FORCED DATA LOCK: Use EXACT scores from input ──
+    const scoreLock = lang === 'zh'
+      ? `【强制数据锁 — 必须严格使用以下数值】\n综合评分 = ${overall}（直接复制，不得计算/四舍五入）\n塔罗牌 = "${tarot?.name || ''} ${tarotOrient}"（必须照抄正位/逆位标签）\n\n【Section 4 强制要求】在最后一部分必须明确引用以下四项数值，缺一不可：\n1. 综合评分 ${overall}/100\n2. 八字系统的分数\n3. 星座系统的分数\n4. 易经得分（请在 [KINH DỊCH / I CHING] 部分查找"易经得分"或"I Ching Score"）\n\n`
+      : lang === 'th'
+      ? `[ข้อมูลบังคับ ห้ามตัด ห้ามเปลี่ยน ห้ามสร้างเอง]\nคะแนนรวม = ${overall}\nไพ่ทาโรต์ = "${tarot?.name || ''} ${tarotOrient}"\nในบทที่ 4 ต้องกลับมาอ้างคะแนนทั้ง 4 ดวงชะตา (บาซี / ราศี / อี้จิง / ไพ่ทาโรต์) ให้ครบถ้วน ห้ามตัดทิ้ง\nห้ามใช้คะแนนหรือชื่อแผนภูมิที่ไม่ปรากฏในข้อมูลนี้ (ห้ามนำคะแนน/แผนภูมิจากการคำนวณก่อนหน้ามาใช้)\nหมายเหตุ: คะแนนอี้จิง ให้ค้นหา "I Ching Score" หรือ "คะแนนอี้จิง" ในส่วน [I CHING]\n\n`
+      : lang === 'vi'
+      ? `[BẮT BUỘC] Điểm tổng = ${overall} | Tarot = "${tarot?.name || ''} ${tarotOrient}"\nTrong phần kết luận (Section 4), PHẢI đề cập đầy đủ 4 điểm số: Tổng hợp (${overall}/100), Bát Tự, Cung Hoàng Đạo, và Điểm Kinh Dịch (tìm "Điểm Kinh Dịch" hoặc "I Ching Score" trong phần [KINH DỊCH / I CHING]).\n\n`
+      : `[MANDATORY LOCK] Overall=${overall} | Tarot="${tarot?.name || ''} ${tarotOrient}"\nIn Section 4, you MUST reference all four scores: Overall (${overall}/100), Bazi, Zodiac, and I Ching Score (find "I Ching Score" in the [I CHING] section). Do not omit any.\n\n`;
+
     // Build the data section for the prompt
     let dataSection = '';
     if (bazi) dataSection += `\n[BÁI TỬ / BAZI]\n${bazi}`;
@@ -153,7 +176,7 @@ export default async function handler(req, res) {
     if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
     if (tarot) dataSection += `\n\n[THÁNH DIỆU ĐẠI ARCANUM / TAROT]\n${tarot.name}${tarot.orientation} — ${tarot.meaning}`;
 
-    const userPrompt = `${cfg.intro}
+    const userPrompt = toneLock + scoreLock + `${cfg.intro}
 ${dataSection}
 
 Overall compatibility: ${overall}/100
@@ -173,7 +196,7 @@ ${cfg.system}`;
           { role: 'system', content: cfg.system },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.7,
+        temperature: 0.1,
         max_tokens: 1600,
       }),
     });
