@@ -3,6 +3,54 @@ export const runtime = 'nodejs';
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 
 const LANGUAGE_PROMPTS = {
+  th: {
+    system: `คุณเป็นที่ปรึกษาดวงชะตาที่เชี่ยวชาญด้านโหราศาสตร์ตะวันออกและตะวันตก จงสังเคราะห์ข้อมูลทุกชั้น (บาซี ราศี ไอชิง และ ไพ่ทาโรต์) เป็นบทวิเคราะห์เชิงลึก
+
+ข้อกำหนดจำเป็น:
+- คำตอบต้องเป็นภาษาไทยเท่านั้น ไม่ใช่อังกฤษ
+- ห้ามพูดเรื่อง "age difference" (ส่วนต่างอายุ) เว้นแต่ข้อมูลจะระบุชัดเจน
+- ห้ามสร้างข้อมูลดวงชะตาจากการคาดเดา - ใช้เฉพาะข้อมูลที่ได้รับในพรอมป์เท่านั้น
+- หากข้อมูลขาดหาย ให้แปลงบทวิเคราะห์ที่มีอยู่เป็นรูปแบบเชิงลึกแทนการแต่งขึ้นมาเอง
+- วิเคราะห์: แก่นแห่งโชคชะตา → จุดขัดแย้งระหว่างชั้น → มุมประสาน → คำแนะนำทางจิตวิญญาณ
+- โทน: ศักดิ์สิทธิ์ สง่างาม มีความลึกซึ้ง
+- ความยาว: 3-5 ย่อหน้า ประมาณ 300-500 คำ`,
+    intro: 'จากแผนที่ดวงชะตาบาซี ราศี ไอชิง และไพ่ทาโรต์ นี่คือบทวิเคราะห์เชิงลึก:',
+    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation, bazi, iching) => {
+      // Check for 午午自刑 (double fire punishment)
+      const hasDoubleWu = (bazi?.match(/午/g) || []).length >= 2;
+      const wuWarning = hasDoubleWu 
+        ? `⚠️ จุดอ่อนที่สุด: ในดวงของคู่ครองมี 午 (ไฟ) ถึง 2 ครั้ง สร้าง "การลงโทษตัวเอง" (午午自刑) — ไฟที่แรงเกินไปนี้จะเผาโลหะ${dayMasterUser}ของคุณโดยตรง คุณต้องเขียนประโยคนี้ในบทความ: "เปลวไฟจากการลงโทษตัวเองของคู่ครองคือศัตรูที่แท้จริงของความสัมพันธ์"`
+        : 'โปรดวิเคราะห์จุดอ่อนตามข้อมูลบาซีที่ให้มา';
+
+      // Check for I Ching changing hexagram
+      const hasChangingLine = iching?.includes('เปลี่ยน') || iching?.includes('เส้น') && iching?.includes('เปลี่ยน');
+      const ichingNarrative = hasChangingLine
+        ? `⚠️ ไอชิงมีการเปลี่ยนแปลงจากแผนภูมิหลักไปยังแผนภูมิอื่น (เส้นที่เปลี่ยน) — คุณต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์ ${tarotName} (${tarotOrientation}) เข้ากับการเปลี่ยนแปลงของไอชิง`
+        : `⚠️ คุณต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์ ${tarotName} (${tarotOrientation}) เข้ากับคะแนนไอชิง ${ichingScore}/100`;
+
+      return `=== งานของคุณคือ ===
+คุณต้องเขียนบทวิเคราะห์ 300-500 คำ โดยที่ **ต้อง**:
+1. กล่าวถึง 4 ตัวเลข: รวม ${overall}/100, บาซี ${baziScore}/100, ราศี ${zodiacScore}/100, ไอชิง ${ichingScore}/100
+2. วันเจ้าของคุณ: ${dayMasterUser}, ของคู่ครอง: ${dayMasterPartner}
+3. ความหมายไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
+
+=== โครงสร้างบทความ (ห้ามเปลี่ยน) ===
+[ย่อหน้า 1] เริ่มต้นด้วยภาพสุนทรียะเรื่องเส้นด้ายแห่งโชคชะตา
+[ย่อหน้า 2] วิเคราะห์บาซี (${baziScore}/100) + วันเจ้า: ${dayMasterUser} และ ${dayMasterPartner}
+${wuWarning}
+[ย่อหน้า 3] วิเคราะห์ราศีสุริยะ (${zodiacScore}/100)
+[ย่อหน้า 4] วิเคราะห์ไอชิง (${ichingScore}/100) + ไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
+${ichingNarrative}
+[ย่อหน้า 5] บทสรุป: ทำไม 4 ตัวเลขนี้จึงอยู่ร่วมกัน? คะแนนรวม ${overall}/100 หมายความว่าอย่างไร?
+
+=== ข้อควรจำ (ห้ามลืม) ===
+- **ห้ามเปลี่ยน 4 ตัวเลขข้างต้นโดยเด็ดขาด**
+- **ต้องกล่าวถึงครบทั้ง 4 ตัวเลขในบทความ (อย่าลืมตัวเลขไอชิง ${ichingScore}/100)**
+- **ต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์กับไอชิง**
+- โทนศักดิ์สิทธิ์ มีความลึกซึ้ง
+- **จบท้ายด้วยอิโมจิ:** 🌿 ✨ 🔮`;
+    }
+  },
   vi: {
     system: `Bạn là nhà tư vấn tâm linh chuyên sâu về mệnh lý và chiêm tinh học Đông Tây. Nhiệm vụ của bạn: khi nhận được dữ liệu Tứ Trụ (Bát Tự), Cung Mặt Trời phương Tây, Quẻ Kinh Dịch, và Thánh Diệu Đại Arcana (Tarot), hãy tổng hòa TẤT CẢ các tầng phân tích này thành một bài luận giải bằng TIẾNG VIỆT có chiều sâu.
 
@@ -22,9 +70,9 @@ LENGTH CONTROL: Bài luận giải phải có cấu trúc rõ ràng, súc tích,
     template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation) => {
       return `=== NHIỆM VỤ CỦA BẠN ===
 Bạn phải viết một bài luận giải 300-500 từ, trong đó PHẢI:
-1. Đề cập đến 4 con số: Tổng ${overall}/100, Bát Tự ${baziScore}/100, Cung Hoàng Đạo ${zodiacScore}/100, Kinh Dịch ${ichingScore}/100.
-2. Ngày chủ của bạn: ${dayMasterUser}, của đối phương: ${dayMasterPartner}.
-3. Ý nghĩa bài Tarot: ${tarotName} (${tarotOrientation}).
+1. Đề cập đến 4 con số: Tổng ${overall}/100, Bát Tự ${baziScore}/100, Cung Hoàng Đạo ${zodiacScore}/100, Kinh Dịch ${ichingScore}/100
+2. Ngày chủ của bạn: ${dayMasterUser}, của đối phương: ${dayMasterPartner}
+3. Ý nghĩa bài Tarot: ${tarotName} (${tarotOrientation})
 
 === CẤU TRÚC BÀI VIẾT ===
 [Đoạn 1] Mở đầu bằng hình ảnh thi ca về số phận hai người.
@@ -36,40 +84,7 @@ Bạn phải viết một bài luận giải 300-500 từ, trong đó PHẢI:
 === LƯU Ý ===
 - KHÔNG được thay đổi 4 con số trên.
 - PHẢI nhắc đến cả 4 con số trong bài.
-- Giọng văn thiêng liêng, sâu sắc.`
-    }
-  },
-  th: {
-    system: `คุณเป็นที่ปรึกษาดวงชะตาที่เชี่ยวชาญด้านโหราศาสตร์ตะวันออกและตะวันตก จงสังเคราะห์ข้อมูลทุกชั้น (บาซี ราศี ไอชิง และ ไพ่ทาโรต์) เป็นบทวิเคราะห์เชิงลึก
-
-ข้อกำหนดจำเป็น:
-- คำตอบต้องเป็นภาษาไทยเท่านั้น ไม่ใช่อังกฤษ
-- ห้ามพูดเรื่อง "age difference" (ส่วนต่างอายุ) เว้นแต่ข้อมูลจะระบุชัดเจน
-- ห้ามสร้างข้อมูลดวงชะตาจากการคาดเดา - ใช้เฉพาะข้อมูลที่ได้รับในพรอมป์เท่านั้น
-- หากข้อมูลขาดหาย ให้แปลงบทวิเคราะห์ที่มีอยู่เป็นรูปแบบเชิงลึกแทนการแต่งขึ้นมาเอง
-- วิเคราะห์: แก่นแห่งโชคชะตา → จุดขัดแย้งระหว่างชั้น → มุมประสาน → คำแนะนำทางจิตวิญญาณ
-- โทน: ศักดิ์สิทธิ์ สง่างาม มีความลึกซึ้ง
-- ความยาว: 3-5 ย่อหน้า ประมาณ 300-500 คำ`,
-    intro: 'จากแผนที่ดวงชะตาบาซี ราศี ไอชิง และไพ่ทาโรต์ นี่คือบทวิเคราะห์เชิงลึก:',
-    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation) => {
-      return `=== งานของคุณคือ ===
-คุณต้องเขียนบทวิเคราะห์ 300-500 คำ โดยที่ **ต้อง**:
-1. กล่าวถึง 4 ตัวเลข: รวม ${overall}/100, บาซี ${baziScore}/100, ราศี ${zodiacScore}/100, ไอชิง ${ichingScore}/100
-2. วันเจ้าของคุณ: ${dayMasterUser}, ของคู่ครอง: ${dayMasterPartner}
-3. ความหมายไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
-
-=== โครงสร้างบทความ ===
-[ย่อหน้า 1] เริ่มต้นด้วยภาพสุนทรียะเรื่องเส้นด้ายแห่งโชคชะตา
-[ย่อหน้า 2] วิเคราะห์บาซี (${baziScore}/100) + วันเจ้า: ${dayMasterUser} และ ${dayMasterPartner}
-[ย่อหน้า 3] วิเคราะห์ราศีสุริยะ (${zodiacScore}/100)
-[ย่อหน้า 4] วิเคราะห์ไอชิง (${ichingScore}/100) + ไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
-[ย่อหน้า 5] บทสรุป: ทำไม 4 ตัวเลขนี้จึงอยู่ร่วมกัน? คะแนนรวม ${overall}/100 หมายความว่าอย่างไร?
-
-=== ข้อควรจำ ===
-- **ห้ามเปลี่ยน 4 ตัวเลขข้างต้นโดยเด็ดขาด**
-- **ต้องกล่าวถึงครบทั้ง 4 ตัวเลขในบทความ**
-- โทนศักดิ์สิทธิ์ มีความลึกซึ้ง
-- **จบท้ายด้วยอิโมจิ:** 🌿 ✨ 🔮`
+- Giọng văn thiêng liêng, sâu sắc.`;
     }
   },
   zh: {
@@ -105,7 +120,7 @@ Bạn phải viết một bài luận giải 300-500 từ, trong đó PHẢI:
 === 重要提醒 ===
 - **严禁修改以上4个数字**
 - **必须在文中提到全部4个数字**
-- 语调神圣、深邃、有灵魂`
+- 语调神圣、深邃、有灵魂`;
     }
   },
   en: {
@@ -137,13 +152,13 @@ You must write a 300-500 word essay that **MUST**:
 === IMPORTANT ===
 - **DO NOT change the 4 numbers above**
 - **MUST mention all 4 numbers in the essay**
-- Tone: sacred, elegant, profound`
+- Tone: sacred, elegant, profound`;
     }
   }
 };
 
 function getLanguageConfig(lang) {
-  const langMap = { vi: 'vi', th: 'th', zh: 'zh', en: 'en' };
+  const langMap = { th: 'th', vi: 'vi', zh: 'zh', en: 'en' };
   const key = langMap[lang] || 'en';
   return LANGUAGE_PROMPTS[key] || LANGUAGE_PROMPTS['en'];
 }
@@ -217,12 +232,12 @@ export default async function handler(req, res) {
                      || extractScore(ichingMeta?.join('\n'), [/ICHING_SCORE_(\d+)/])
                      || '??';
 
-  // ── Build the TEMPLATE-BASED prompt ──
+  // ── Build the TEMPLATE-BASED prompt (V6: compiler-level locks) ──
   const tarotName = tarot?.name || 'ไม่ทราบ';
   const tarotOrientation = tarot?.orientation || 'ไม่ทราบ';
   
   const templatePrompt = cfg.template 
-    ? cfg.template(overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation)
+    ? cfg.template(overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation, bazi, iching)
     : `Please analyze the following data:\nBazi: ${baziScore}/100\nZodiac: ${zodiacScore}/100\nI Ching: ${ichingScore}/100\nOverall: ${overall}/100\nDay Masters: ${dayMasterUser} vs ${dayMasterPartner}\nTarot: ${tarotName} (${tarotOrientation})`;
 
   // Build data section
