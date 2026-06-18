@@ -26,7 +26,7 @@ LENGTH CONTROL: Bài luận giải phải có cấu trúc rõ ràng, súc tích,
 ข้อกำหนดจำเป็น:
 - คำตอบต้องเป็นภาษาไทยเท่านั้น ไม่ใช่อังกฤษ
 - ห้ามพูดเรื่อง "age difference" (ส่วนต่างอายุ) เว้นแต่ข้อมูลจะระบุชัดเจน
-- ห้ามสร้างข้อมูลดวงชะตาจากการคาดเดา - ใช้เฉพาะข้อมูลที่ได้รับในพรอมม์เท่านั้น
+- ห้ามสร้างข้อมูลดวงชะตาจากการคาดเดา - ใช้เฉพาะข้อมูลที่ได้รับในพรอมป์เท่านั้น
 - หากข้อมูลขาดหาย ให้แปลงบทวิเคราะห์ที่มีอยู่เป็นรูปแบบเชิงลึกแทนการแต่งขึ้นมาเอง
 - วิเคราะห์: แก่นแห่งโชคชะตา → จุดขัดแย้งระหว่างชั้น → มุมประสาน → คำแนะนำทางจิตวิญญาณ
 - โทน: ศักดิ์สิทธิ์ สง่างาม มีความลึกซึ้ง
@@ -38,8 +38,8 @@ LENGTH CONTROL: Bài luận giải phải có cấu trúc rõ ràng, súc tích,
 
 RÈGLES ABSOLUES:
 - Réponse OBLIGATOIRE en français, pas en anglais ni aucune autre langue.
-- Interdiction ABSOLUE de mentionner "difference d'âge" sauf si les données de naissance indiquent clairement un écart spécifique.
-- Interdiction de générer des informations Bâzì, Zodiaque ou I Ching par speculation - utiliser UNIQUEMENT les données fournies.
+- Interdiction ABSOLUE de mentionner "différence d'âge" sauf si les données de naissance indiquent clairement un écart spécifique.
+- Interdiction de générer des informations Bâzì, Zodiaque ou I Ching par spéculation - utiliser UNIQUEMENT les données fournies.
 - Si des champs sont manquants, TRADUIRE les analyses disponibles en style narratif profond plutôt que d'inventer.
 - Structure: essence du destin → conflits inter-couches → angle d'harmonie → guidance spirituelle.
 - Ton: sacré, élégant, profond.
@@ -60,21 +60,21 @@ ABSOLUTE RULES:
     intro: "Based on the Bazi, Zodiac, I Ching and Tarot readings, here is the in-depth analysis"
   },
   es: {
-    system: `Eres un asesor espiritual experto en astrologia oriental y occidental. Sintetiza TODAS las capas de analisis (Bazi, Zodiaco, I Ching, Tarot) en un ensayo profundo y significativo en ESPANOL.
+    system: `Eres un asesor espiritual experto en astrología oriental y occidental. Sintetiza TODAS las capas de análisis (Bazi, Zodiaco, I Ching, Tarot) en un ensayo profundo y significativo en ESPANOL.
 
 REGLAS ABSOLUTAS:
-- La respuesta DEBE ser en espanol, nunca en ingles ni en otro idioma.
-- PROHIBIDO mencionar diferencia de edad a menos que los datos de nacimiento indiquen claramente una brecha especifica.
-- PROHIBIDO generar informacion de Bazi, Zodiaco o I Ching por especulacion -- usar SOLO los datos proporcionados.
-- Si faltan campos, traducir los analisis disponibles a estilo narrativo profundo en lugar de inventar.
-- Estructura: esencia del destino, conflictos entre capas, angulos de armonia, guia espiritual.
+- La respuesta DEBE ser en español, nunca en inglés ni en otro idioma.
+- PROHIBIDO mencionar diferencia de edad a menos que los datos de nacimiento indiquen claramente una brecha específica.
+- PROHIBIDO generar información de Bazi, Zodiaco o I Ching por especulación -- usar SOLO los datos proporcionados.
+- Si faltan campos, traducir los análisis disponibles a estilo narrativo profundo en lugar de inventar.
+- Estructura: esencia del destino, conflictos entre capas, ángulos de armonía, guía espiritual.
 - Tono: sagrado, elegante, profundo.
-- Extension: 3-5 parrafos, aproximadamente 300-500 palabras.
+- Extensión: 3-5 párrafos, aproximadamente 300-500 palabras.
 
-TONE AND STYLE: Eres un asesor espiritual profundo, mistico y profundamente empatico. NUNCA uses aperturas mecanicas como Estimado lector o A continuacion analizamos. Comienza DIRECTAMENTE con una imagen poetica o una vision espiritual impactante sobre el hilo cosmico que conecta a las dos almas.
+TONE AND STYLE: Eres un asesor espiritual profundo, místico y profundamente empático. NUNCA uses aperturas mecánicas como Estimado lector o A continuación analizamos. Comienza DIRECTAMENTE con una imagen poética o una visión espiritual impactante sobre el hilo cósmico que conecta a las dos almas.
 
-LENGTH CONTROL: El ensayo debe ser estructurado, contundente y COMPLETAMENTE TERMINADO en 450 palabras. Cada oracion debe estar completa. PROHIBIDO terminar con una frase a medio terminar o sin punto final.`,
-    intro: 'Desde el mapa del destino Bazi, el Zodiaco, el I Ching y el Tarot, esta es la sintesis profunda:'
+LENGTH CONTROL: El ensayo debe ser estructurado, contundente y COMPLETAMENTE TERMINADO en 450 palabras. Cada oración debe estar completa. PROHIBIDO terminar con una frase a medio terminar o sin punto final.`,
+    intro: 'Desde el mapa del destino Bazi, el Zodiaco, el I Ching y el Tarot, esta es la síntesis profunda:'
   },
   zh: {
     system: `你是一位深谙东方与西方命理玄学的灵魂导师。你的使命是将所有分析层次八字星座易经塔罗融会贯通写成一篇有深度有灵魂的中文长文。
@@ -137,6 +137,16 @@ export default async function handler(req, res) {
 
   const cfg = getLanguageConfig(lang);
 
+  // ── 提取日主五行（防穿帮） ──
+  let dayMasterLock = '';
+  if (lang === 'th' && bazi) {
+    const userDM = bazi.match(/เสาวัน:\s*(\S+)\s*\((\S+)\)/);
+    const partnerDM = bazi.match(/คู่ครอง[\s\S]*?เสาวัน:\s*(\S+)\s*\((\S+)\)/);
+    if (userDM || partnerDM) {
+      dayMasterLock = `\n[วันเจ้าที่ต้องใช้ในบทวิเคราะห์ — ห้ามสลับ]\nวันเจ้าของคุณ: ${userDM ? userDM[1] + ' (' + userDM[2] + ')' : 'ไม่ทราบ'}\nวันเจ้าของคู่ครอง: ${partnerDM ? partnerDM[1] + ' (' + partnerDM[2] + ')' : 'ไม่ทราบ'}\n⚠️ สำคัญ: ห้ามสลับวินัยธาตุของวันเจ้ากับเสาอื่น — วันเจ้าคือธาตุหลัก\n`;
+    }
+  }
+
   // ── NARRATIVE TONE LOCK: Adjust tone based on tarot orientation ──
   const tarotOrient = tarot?.orientation || '';
   const isReversed = /Reversed|Ngược|กลับด้าน|Inversé|Invertido|逆位/i.test(tarotOrient);
@@ -144,63 +154,48 @@ export default async function handler(req, res) {
   const toneLock = lang === 'zh'
     ? `【叙事基调锁】塔罗牌当前为【${isReversed ? '逆位' : '正位'}】。Section 4 的开篇基调必须与塔罗牌一致：\n- 正位(Upright)→希望与勇气的热切叙事，开篇积极向上\n- 逆位(Reversed)→挑战与转化的审慎基调，开篇深沉，直面问题本质，给予破局指引\n严格遵守。\n\n`
     : lang === 'th'
-    ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'} บทที่ 4:
-${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอนเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}
-\n\n`
+    ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'}. บทที่ 4:\n${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอนเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}\n\n`
     : lang === 'vi'
     ? `[KHÓA GIỌNG] Bài Tarot = ${isReversed ? 'Ngược (Reversed)' : 'Thuận (Upright)'}. Section 4: Upright→giọng hy vọng; Reversed→giọng đối mặt thử thách, phải đưa ra hướng giải quyết cụ thể.\n\n`
     : `[TONE LOCK] Tarot = ${isReversed ? 'Reversed' : 'Upright'}. Section 4: Upright→hopeful tone; Reversed→challenge + transformation tone, must provide concrete solution.\n\n`;
 
-  // ── 提取八字/星座/易经分数用于硬锁 ──
-  const baziScoreMatch = bazi?.match(/คะแนนรวม[：:]\s*(\d+)/);
-  const baziScore = baziScoreMatch ? baziScoreMatch[1] : (baziMeta?.find(m => m.includes('BAZI_SCORE'))?.match(/BAZI_SCORE_(\d+)/)?.[1] || null);
+  // ── 提取八字/星座/易经分数用于硬锁（多备选正则） ──
+  const extractScore = (text, patterns) => {
+    for (const p of patterns) {
+      const m = text?.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  };
   
-  const zodiacScoreMatch = zodiac?.match(/คะแนนรวม[：:]\s*(\d+)/);
-  const zodiacScore = zodiacScoreMatch ? zodiacScoreMatch[1] : (zodiacMeta?.find(m => m.includes('ZODIAC_SCORE'))?.match(/ZODIAC_SCORE_(\d+)/)?.[1] || null);
-  
-  const ichingScoreMatch = iching?.match(/คะแนนอี้จิง[：:]\s*(\d+)/);
-  const ichingScore = ichingScoreMatch ? ichingScoreMatch[1] : (ichingMeta?.find(m => m.includes('ICHING_SCORE'))?.match(/ICHING_SCORE_(\d+)/)?.[1] || null);
+  const baziScore = extractScore(bazi, [/คะแนนรวม[：:]\s*(\d+)/, /(\d+)\/100/, /得分[：:]\s*(\d+)/]) || extractScore(baziMeta?.join('\n'), [/BAZI_SCORE_(\d+)/]);
+  const zodiacScore = extractScore(zodiac, [/คะแนนรวม[：:]\s*(\d+)/, /(\d+)\/100/, /得分[：:]\s*(\d+)/]) || extractScore(zodiacMeta?.join('\n'), [/ZODIAC_SCORE_(\d+)/]);
+  const ichingScore = extractScore(iching, [/คะแนนไอชิง[：:]\s*(\d+)/, /易经得分[：:]\s*(\d+)/, /(\d+)\/100/]) || extractScore(ichingMeta?.join('\n'), [/ICHING_SCORE_(\d+)/]);
 
   // ── FORCED DATA LOCK: Use EXACT scores from input ──
   const scoreLock = lang === 'zh'
     ? `【强制数据锁 — 必须严格使用以下数值】\n综合评分 = ${overall}（直接复制，不得计算/四舍五入）\n塔罗牌 = "${tarot?.name || ''} ${tarotOrient}"（必须照抄正位/逆位标签）\n\n【Section 4 强制要求】在最后一部分必须明确引用以下四项数值，缺一不可：\n1. 综合评分 ${overall}/100\n2. 八字系统的分数\n3. 星座系统的分数\n4. 易经得分（请在 [KINH DỊCH / I CHING] 部分查找"易经得分"或"I Ching Score"）\n\n`
     : lang === 'th'
-    ? `[ข้อมูลบังคับ ห้ามตัด ห้ามเปลี่ยน ห้ามสร้างเอง]
-คะแนนรวม = ${overall}/100
-${baziScore ? `คะแนนบาซี = ${baziScore}/100` : ''}
-${zodiacScore ? `คะแนนราศี = ${zodiacScore}/100` : ''}
-${ichingScore ? `คะแนนอี้จิง = ${ichingScore}/100` : ''}
-ไพ่ทาโรต์ = "${tarot?.name || ''} ${tarotOrient}"
-${!ichingScore ? 'หมายเหตุ: คะแนนอี้จิง ให้ค้นหา "I Ching Score" หรือ "คะแนนอี้จิง" ในส่วน [I CHING]' : ''}
-
-[ข้อบังคับในบทที่ 4]
-- ต้องกลับมาอ้างคะแนนทั้ง 4 ดวงชะตาให้ครบถ้วน: บาซี / ราศี / อี้จิง / ไพ่ทาโรต์
-- ห้ามตัดทิ้ง ห้ามสร้างคะแนนเอง ห้ามใช้คะแนนอื่นนอกจากนี้
-- ห้ามนำคะแนนจาก "ราดาร์ 4 มิติ" (dims) มาใช้ในบทที่ 4 — นั่นคือคะแนนย่อยเฉพาะด้าน ไม่ใช่คะแนนระบบหลัก
-- หากคะแนนอี้จิง = 60 แต่ไพ่ทาโรต์ = 82 ต้องอธิบายความขัดแย้งนี้อย่างมีเหตุผล ห้ามละเลย
-
-`
+    ? `[ข้อมูลบังคับ ห้ามตัด ห้ามเปลี่ยน ห้ามสร้างเอง — อ่านให้จบแล้วอย่าลืม]\n⚠️ คะแนนทั้ง 4 นี้เด็ดขาดห้ามลืมในบทที่ 4:\n- คะแนนรวม = ${overall}/100\n- คะแนนบาซี = ${baziScore ? `${baziScore}/100` : '⚠️ หาในข้อความบาซี: "คะแนนรวม：X/100"'}\n- คะแนนราศี = ${zodiacScore ? `${zodiacScore}/100` : '⚠️ หาในข้อความราศี: "คะแนนรวม：X/100"'}\n- คะแนนไอชิง = ${ichingScore ? `${ichingScore}/100` : '⚠️ หาในข้อความไอชิง: "คะแนนไอชิง：X/100"'}\n- ไพ่ทาโรต์ = "${tarot?.name || ''} ${tarotOrient}"\n\n[ตัวอย่างการอ้างถึงคะแนนในบทที่ 4 — ต้องเขียนคล้ายนี้]\n"จากบาซี (${baziScore || '?'}/100) เราจะเห็นว่า... อย่างไรก็ตาม เมื่อพิจารณาระบบราศีสุริยะ (${zodiacScore || '?'}/100) จะพบว่า... ส่วนไอชิงนั้นได้คะแนนสูงถึง ${ichingScore || '?'}/100 จากแผนภูมิ... สุดท้าย โดยรวมแล้วทั้งสองมีคะแนนความเข้ากันได้ ${overall}/100..."\n\n[ข้อบังคับในบทที่ 4 — อ่านแล้วทำตาม]\n- ⚠️ ต้องกล่าวถึงคะแนนทั้ง 4 นี้ให้ครบถ้วน (บาซี / ราศี / ไอชิง / ไพ่ทาโรต์)\n- ⚠️ ห้ามตัดทิ้ง ห้ามสร้างคะแนนเอง ห้ามใช้คะแนนอื่นนอกจากนี้\n- ⚠️ ห้ามนำคะแนนจาก "เรดาร์ 4 มิติ" (dims) มาใช้ในบทที่ 4 — นั่นคือคะแนนย่อยเฉพาะด้าน ไม่ใช่คะแนนระบบหลัก\n- ⚠️ หากคะแนนไอชิง = 60 แต่ไพ่ทาโรต์ = 82 ต้องอธิบายความขัดแย้งนี้อย่างมีเหตุผล ห้ามละเลย\n- ⚠️ ตรงจำ: นี่คือข้อมูลจริง ห้ามเปลี่ยนแปลง\n\n`
     : lang === 'vi'
     ? `[BẮT BUỘC] Điểm tổng = ${overall} | Tarot = "${tarot?.name || ''} ${tarotOrient}"\nTrong phần kết luận (Section 4), PHẢI đề cập đầy đủ 4 điểm số: Tổng hợp (${overall}/100), Bát Tự, Cung Hoàng Đạo, và Điểm Kinh Dịch (tìm "Điểm Kinh Dịch" hoặc "I Ching Score" trong phần [KINH DỊCH / I CHING]).\n\n`
     : `[MANDATORY LOCK] Overall=${overall} | Tarot="${tarot?.name || ''} ${tarotOrient}"\nIn Section 4, you MUST reference all four scores: Overall (${overall}/100), Bazi, Zodiac, and I Ching Score (find "I Ching Score" in the [I CHING] section). Do not omit any.\n\n`;
 
   // Build the data section for the prompt
   let dataSection = '';
-  if (bazi) dataSection += `\n[BÁI TỬ / BAZI]\n${bazi}`;
+  
+  // ── 日主五行硬锁（必须在第一位）──
+  if (dayMasterLock) dataSection += dayMasterLock + '\n';
+  
+  if (bazi) dataSection += `\n[บาซี / BAZI]\n${bazi}`;
   if (baziMeta && baziMeta.length > 0) dataSection += `\n${baziMeta.join('\n')}`;
-  if (zodiac) dataSection += `\n\n[CUNG MẶT TRỜI / ZODIAC]\n${zodiac}`;
+  if (zodiac) dataSection += `\n\n[ราศีสุริยะ / ZODIAC]\n${zodiac}`;
   if (zodiacMeta && zodiacMeta.length > 0) dataSection += `\n${zodiacMeta.join('\n')}`;
-  if (iching) dataSection += `\n\n[KINH DỊCH / I CHING]\n${iching}`;
+  if (iching) dataSection += `\n\n[ไอชิง / I CHING]\n${iching}`;
   if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
-  if (tarot) dataSection += `\n\n[THÁNH DIỆU ĐẠI ARCANUM / TAROT]\n${tarot.name}${tarot.orientation} — ${tarot.meaning}`;
+  if (tarot) dataSection += `\n\n[ไพ่ทาโรต์ / TAROT]\n${tarot.name} ${tarot.orientation} — ${tarot.meaning}`;
 
-  const userPrompt = toneLock + scoreLock + `${cfg.intro}
-${dataSection}
-
-Overall compatibility: ${overall}/100
-${dims ? `4-D scores: ${JSON.stringify(dims)}` : ''}
-
-${cfg.system}`;
+  const userPrompt = toneLock + scoreLock + `${cfg.intro}\n${dataSection}\n\nOverall compatibility: ${overall}/100\n${dims ? `4-D scores: ${JSON.stringify(dims)}` : ''}\n\n${cfg.system}`;
 
   const response = await fetch(DEEPSEEK_API, {
     method: 'POST',
