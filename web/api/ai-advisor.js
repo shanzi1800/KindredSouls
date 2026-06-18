@@ -195,7 +195,8 @@ export default async function handler(req, res) {
   if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
   if (tarot) dataSection += `\n\n[ไพ่ทาโรต์ / TAROT]\n${tarot.name} ${tarot.orientation} — ${tarot.meaning}`;
 
-  const userPrompt = toneLock + scoreLock + `${cfg.intro}\n${dataSection}\n\nOverall compatibility: ${overall}/100\n${dims ? `4-D scores: ${JSON.stringify(dims)}` : ''}\n\n${cfg.system}`;
+  // ── 构建最终 prompt：锁定数据块必须在 AI 阅读的第一眼位置 ──
+  const userPrompt = `${cfg.intro}\n\n=== ข้อมูลที่ต้องใช้ (อ่านให้จบก่อนเขียน) ===\n${dayMasterLock}\n${scoreLock}\n${dataSection}\n\n=== จบส่วนข้อมูล ===\n\nคะแนนรวม: ${overall}/100${dims ? ` | 4-D: ${JSON.stringify(dims)}` : ''}\n\n${cfg.system}`;
 
   const response = await fetch(DEEPSEEK_API, {
     method: 'POST',
