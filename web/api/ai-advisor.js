@@ -260,7 +260,7 @@ export default async function handler(req, res) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v3',
       messages: [
         { role: 'system', content: cfg.system },
         { role: 'user', content: userPrompt },
