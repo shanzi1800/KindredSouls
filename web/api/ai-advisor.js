@@ -154,7 +154,7 @@ export default async function handler(req, res) {
   const toneLock = lang === 'zh'
     ? `【叙事基调锁】塔罗牌当前为【${isReversed ? '逆位' : '正位'}】。Section 4 的开篇基调必须与塔罗牌一致：\n- 正位(Upright)→希望与勇气的热切叙事，开篇积极向上\n- 逆位(Reversed)→挑战与转化的审慎基调，开篇深沉，直面问题本质，给予破局指引\n严格遵守。\n\n`
     : lang === 'th'
-    ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'}. บทที่ 4:\n${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอนเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}\n\n`
+    ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'}. บทที่ 4:\n${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอ็นเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}\n\n`
     : lang === 'vi'
     ? `[KHÓA GIỌNG] Bài Tarot = ${isReversed ? 'Ngược (Reversed)' : 'Thuận (Upright)'}. Section 4: Upright→giọng hy vọng; Reversed→giọng đối mặt thử thách, phải đưa ra hướng giải quyết cụ thể.\n\n`
     : `[TONE LOCK] Tarot = ${isReversed ? 'Reversed' : 'Upright'}. Section 4: Upright→hopeful tone; Reversed→challenge + transformation tone, must provide concrete solution.\n\n`;
@@ -184,9 +184,6 @@ export default async function handler(req, res) {
   // Build the data section for the prompt
   let dataSection = '';
   
-  // ── 日主五行硬锁（必须在第一位）──
-  if (dayMasterLock) dataSection += dayMasterLock + '\n';
-  
   if (bazi) dataSection += `\n[บาซี / BAZI]\n${bazi}`;
   if (baziMeta && baziMeta.length > 0) dataSection += `\n${baziMeta.join('\n')}`;
   if (zodiac) dataSection += `\n\n[ราศีสุริยะ / ZODIAC]\n${zodiac}`;
@@ -196,7 +193,7 @@ export default async function handler(req, res) {
   if (tarot) dataSection += `\n\n[ไพ่ทาโรต์ / TAROT]\n${tarot.name} ${tarot.orientation} — ${tarot.meaning}`;
 
   // ── 构建最终 prompt：锁定数据块必须在 AI 阅读的第一眼位置 ──
-  const userPrompt = `${cfg.intro}\n\n=== ข้อมูลที่ต้องใช้ (อ่านให้จบก่อนเขียน) ===\n${dayMasterLock}\n${scoreLock}\n${dataSection}\n\n=== จบส่วนข้อมูล ===\n\nคะแนนรวม: ${overall}/100${dims ? ` | 4-D: ${JSON.stringify(dims)}` : ''}\n\n${cfg.system}`;
+  const userPrompt = `⚠️⚠️⚠️ สิ่งสำคัญที่สุด: อ่านข้อมูลด้านล่างให้จบก่อนเขียน ⚠️⚠️⚠️\n\n${dayMasterLock ? dayMasterLock + '\n' : ''}${scoreLock}${dataSection}\n\n=== จบส่วนข้อมูล — ตอนนี้คุณต้องเขียนบทวิเคราะห์ ===\n\nก่อนเขียน Section 4: คุณต้องอ่านคะแนนทั้ง 4 (บาซี/ราศี/ไอชิง/ไพ่ทาโรต์) และวันเจ้าที่ถูกล็อคไว้ด้านบน แล้วเขียน Section 4 โดยอ้างถึงคะแนนทั้ง 4 นี้ให้ครบถ้วน\n\n${cfg.intro}\n\nคะแนนรวม: ${overall}/100${dims ? ` | 4-D: ${JSON.stringify(dims)}` : ''}\n\n${cfg.system}\n\n[ข้อกำหนดสุดท้ายก่อนเขียน]\n- ⚠️ ห้ามลืมอ้างถึงคะแนนทั้ง 4 ใน Section 4\n- ⚠️ ห้ามสลับวันเจ้าของคุณและคู่ครอง\n- ⚠️ ห้ามเขียน "โชคเอ็นเข้าหาคุณ" หรือ "วงล้อจะหมุนกลับ" หากไพ่ทาโรต์คือ Reversed`;
 
   const response = await fetch(DEEPSEEK_API, {
     method: 'POST',
