@@ -98,103 +98,95 @@ LENGTH CONTROL: El ensayo debe ser estructurado, contundente y COMPLETAMENTE TER
 function getLanguageConfig(lang) {
   const langMap = { vi: 'vi', th: 'th', fr: 'fr', en: 'en', es: 'es', zh: 'zh' };
   const key = langMap[lang] || 'en';
-  return LANGUAGE_PROMPTS[key] || LANGUAGE_PROMPTS['en'];
+  return LANGUAGE_PROMPTS[key];
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  let body = req.body;
-  if (!body && req.method === 'POST') {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    try {
-      const raw = Buffer.concat(chunks).toString();
-      body = JSON.parse(raw);
-    } catch (e) {
-      return res.status(400).json({ error: 'Cannot parse body' });
+  try {
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
     }
-  }
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-  const {
-    d1, d2, overall, dims,
-    bazi, zodiac, iching,
-    baziMeta, zodiacMeta, ichingMeta,
-    tarot,
-    lang = 'en'
-  } = body;
+    let body = req.body;
+    if (!body || typeof body !== 'object') {
+      try {
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        const raw = Buffer.concat(chunks).toString();
+        body = JSON.parse(raw);
+      } catch (e) {
+        return res.status(400).json({ error: 'Cannot parse body' });
+      }
+    }
 
-  if (!d1 || !d2) {
-    return res.status(400).json({ error: 'Missing d1 or d2' });
-  }
+    const {
+      d1, d2, overall, dims,
+      bazi, zodiac, iching,
+      baziMeta, zodiacMeta, ichingMeta,
+      tarot,
+      lang = 'en'
+    } = body;
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured' });
-  }
+    if (!d1 || !d2) {
+      return res.status(400).json({ error: 'Missing d1 or d2' });
+    }
 
-  const cfg = getLanguageConfig(lang);
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API key not configured' });
+    }
 
-  // ── NARRATIVE TONE LOCK: Adjust tone based on tarot orientation ──
-  const tarotOrient = tarot?.orientation || '';
-  const isReversed = /Reversed|Ngược|กลับด้าน|Inversé|Invertido|逆位/i.test(tarotOrient);
+    const cfg = getLanguageConfig(lang);
 
-  const toneLock = lang === 'zh'
-    ? `【叙事基调锁】塔罗牌当前为【${isReversed ? '逆位' : '正位'}】。Section 4 的开篇基调必须与塔罗牌一致：\n- 正位(Upright)→希望与勇气的热切叙事，开篇积极向上\n- 逆位(Reversed)→挑战与转化的审慎基调，开篇深沉，直面问题本质，给予破局指引\n严格遵守。\n\n`
-    : lang === 'th'
-    ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'} บทที่ 4:
+    // ── NARRATIVE TONE LOCK: Adjust tone based on tarot orientation ──
+    const tarotOrient = tarot?.orientation || '';
+    const isReversed = /Reversed|Ngược|กลับด้าน|Inversé|Invertido|逆位/i.test(tarotOrient);
+
+    const toneLock = lang === 'zh'
+      ? `【叙事基调锁】塔罗牌当前为【${isReversed ? '逆位' : '正位'}】。Section 4 的开篇基调必须与塔罗牌一致：\n- 正位(Upright)→希望与勇气的热切叙事，开篇积极向上\n- 逆位(Reversed)→挑战与转化的审慎基调，开篇深沉，直面问题本质，给予破局指引\n严格遵守。\n\n`
+      : lang === 'th'
+      ? `[ล็อคโทน] ไพ่ทาโรต์ = ${isReversed ? 'กลับด้าน (Reversed)' : 'ตั้งตรง (Upright)'} บทที่ 4:
 ${isReversed ? 'กลับด้าน→โทนต้องเผชิญความท้าทาย ห้ามเขียน "โชคเอนเข้าหาคุณ" "วงล้อจะหมุนกลับตั้งตรง" "ทุกอย่างจะดีขึ้น" หรือคำที่เป็นความหวังแบบตั้งตรง — กลับด้าน = กรรมติดขัด/วัฏจักรซ้ำ/เปลี่ยนแปลงที่ไม่อาจควบคุม/เจ็บแต่จำเป็น ต้องเขียนเสียงท้าทายจากจักรวาล + วิธีเปลี่ยนวงจรเก่าให้เป็นพลังเติบโต' : 'ตั้งตรง→โทนหวังและมีความกล้า'}
 \n\n`
-    : lang === 'vi'
-    ? `[KHÓA GIỌNG] Bài Tarot = ${isReversed ? 'Ngược (Reversed)' : 'Thuận (Upright)'}. Section 4: Upright→giọng hy vọng; Reversed→giọng đối mặt thử thách, phải đưa ra hướng giải quyết cụ thể.\n\n`
-    : `[TONE LOCK] Tarot = ${isReversed ? 'Reversed' : 'Upright'}. Section 4: Upright→hopeful tone; Reversed→challenge + transformation tone, must provide concrete solution.\n\n`;
+      : lang === 'vi'
+      ? `[KHÓA GIỌNG] Bài Tarot = ${isReversed ? 'Ngược (Reversed)' : 'Thuận (Upright)'}. Section 4: Upright→giọng hy vọng; Reversed→giọng đối mặt thử thách, phải đưa ra hướng giải quyết cụ thể.\n\n`
+      : `[TONE LOCK] Tarot = ${isReversed ? 'Reversed' : 'Upright'}. Section 4: Upright→hopeful tone; Reversed→challenge + transformation tone, must provide concrete solution.\n\n`;
 
-  // ── 提取八字/星座/易经分数用于硬锁 ──
-  const baziScoreMatch = bazi?.match(/คะแนนรวม[：:]\s*(\d+)/);
-  const baziScore = baziScoreMatch ? baziScoreMatch[1] : (baziMeta?.find(m => m.includes('BAZI_SCORE'))?.match(/BAZI_SCORE_(\d+)/)?.[1] || null);
-  
-  const zodiacScoreMatch = zodiac?.match(/คะแนนรวม[：:]\s*(\d+)/);
-  const zodiacScore = zodiacScoreMatch ? zodiacScoreMatch[1] : (zodiacMeta?.find(m => m.includes('ZODIAC_SCORE'))?.match(/ZODIAC_SCORE_(\d+)/)?.[1] || null);
-  
-  const ichingScoreMatch = iching?.match(/คะแนนอี้จิง[：:]\s*(\d+)/);
-  const ichingScore = ichingScoreMatch ? ichingScoreMatch[1] : (ichingMeta?.find(m => m.includes('ICHING_SCORE'))?.match(/ICHING_SCORE_(\d+)/)?.[1] || null);
+    // ── 提取八字/星座/易经分数用于硬锁 ──
+    const baziScoreMatch = bazi?.match(/คะแนนรวม[：:]\s*(\d+)/);
+    const baziScore = baziScoreMatch ? baziScoreMatch[1] : (baziMeta?.find(m => m.includes('BAZI_SCORE'))?.match(/BAZI_SCORE_(\d+)/)?.[1] || null);
+    
+    const zodiacScoreMatch = zodiac?.match(/คะแนนรวม[：:]\s*(\d+)/);
+    const zodiacScore = zodiacScoreMatch ? zodiacScoreMatch[1] : (zodiacMeta?.find(m => m.includes('ZODIAC_SCORE'))?.match(/ZODIAC_SCORE_(\d+)/)?.[1] || null);
+    
+    const ichingScoreMatch = iching?.match(/คะแนนอี้จิง[：:]\s*(\d+)/);
+    const ichingScore = ichingScoreMatch ? ichingScoreMatch[1] : (ichingMeta?.find(m => m.includes('ICHING_SCORE'))?.match(/ICHING_SCORE_(\d+)/)?.[1] || null);
+    
+    // ── FORCED DATA LOCK: Use EXACT scores from input ──
+    const scoreLock = lang === 'zh'
+      ? `【强制数据锁 — 必须严格使用以下数值】\n综合评分 = ${overall}（直接复制，不得计算/四舍五入）\n塔罗牌 = "${tarot?.name || ''} ${tarotOrient}"（必须照抄正位/逆位标签）\n\n【Section 4 强制要求】在最后一部分必须明确引用以下四项数值，缺一不可：\n1. 综合评分 ${overall}/100\n2. 八字系统的分数\n3. 星座系统的分数\n4. 易经得分（请在 [KINH DỊCH / I CHING] 部分查找"易经得分"或"I Ching Score"）\n\n`
+      : lang === 'th'
+      ? `[ข้อมูลบังคับ ห้ามตัด ห้ามเปลี่ยน ห้ามสร้างเอง]\nคะแนนรวม = ${overall}\nไพ่ทาโรต์ = "${tarot?.name || ''} ${tarotOrient}"\nในบทที่ 4 ต้องกลับมาอ้างคะแนนทั้ง 4 ดวงชะตา (บาซี / ราศี / อี้จิง / ไพ่ทาโรต์) ให้ครบถ้วน ห้ามตัดทิ้ง\nห้ามใช้คะแนนหรือชื่อแผนภูมิที่ไม่ปรากฏในข้อมูลนี้ (ห้ามนำคะแนน/แผนภูมิจากการคำนวณก่อนหน้ามาใช้)\nหมายเหตุ: คะแนนอี้จิง ให้ค้นหา "I Ching Score" หรือ "คะแนนอี้จิง" ในส่วน [I CHING]\n\n`
+      : lang === 'vi'
+      ? `[BẮT BUỘC] Điểm tổng = ${overall} | Tarot = "${tarot?.name || ''} ${tarotOrient}"\nTrong phần kết luận (Section 4), PHẢI đề cập đầy đủ 4 điểm số: Tổng hợp (${overall}/100), Bát Tự, Cung Hoàng Đạo, và Điểm Kinh Dịch (tìm "Điểm Kinh Dịch" hoặc "I Ching Score" trong phần [KINH DỊCH / I CHING]).\n\n`
+      : `[MANDATORY LOCK] Overall=${overall} | Tarot="${tarot?.name || ''} ${tarotOrient}"\nIn Section 4, you MUST reference all four scores: Overall (${overall}/100), Bazi, Zodiac, and I Ching Score (find "I Ching Score" in the [I CHING] section). Do not omit any.\n\n`;
 
-  // ── FORCED DATA LOCK: Use EXACT scores from input ──
-  const scoreLock = lang === 'zh'
-    ? `【强制数据锁 — 必须严格使用以下数值】\n综合评分 = ${overall}（直接复制，不得计算/四舍五入）\n塔罗牌 = "${tarot?.name || ''} ${tarotOrient}"（必须照抄正位/逆位标签）\n\n【Section 4 强制要求】在最后一部分必须明确引用以下四项数值，缺一不可：\n1. 综合评分 ${overall}/100\n2. 八字系统的分数\n3. 星座系统的分数\n4. 易经得分（请在 [KINH DỊCH / I CHING] 部分查找"易经得分"或"I Ching Score"）\n\n`
-    : lang === 'th'
-    ? `[ข้อมูลบังคับ ห้ามตัด ห้ามเปลี่ยน ห้ามสร้างเอง]
-คะแนนรวม = ${overall}/100
-${baziScore ? `คะแนนบาซี = ${baziScore}/100` : ''}
-${zodiacScore ? `คะแนนราศี = ${zodiacScore}/100` : ''}
-${ichingScore ? `คะแนนอี้จิง = ${ichingScore}/100` : ''}
-ไพ่ทาโรต์ = "${tarot?.name || ''} ${tarotOrient}"
-${!ichingScore ? 'หมายเหตุ: คะแนนอี้จิง ให้ค้นหา "I Ching Score" หรือ "คะแนนอี้จิง" ในส่วน [I CHING]' : ''}
+    // Build the data section for the prompt
+    let dataSection = '';
+    if (bazi) dataSection += `\n[BÁI TỬ / BAZI]\n${bazi}`;
+    if (baziMeta && baziMeta.length > 0) dataSection += `\n${baziMeta.join('\n')}`;
+    if (zodiac) dataSection += `\n\n[CUNG MẶT TRỜI / ZODIAC]\n${zodiac}`;
+    if (zodiacMeta && zodiacMeta.length > 0) dataSection += `\n${zodiacMeta.join('\n')}`;
+    if (iching) dataSection += `\n\n[KINH DỊCH / I CHING]\n${iching}`;
+    if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
+    if (tarot) dataSection += `\n\n[THÁNH DIỆU ĐẠI ARCANUM / TAROT]\n${tarot.name}${tarot.orientation} — ${tarot.meaning}`;
 
-[ข้อบังคับในบทที่ 4]
-- ต้องกลับมาอ้างคะแนนทั้ง 4 ดวงชะตาให้ครบถ้วน: บาซี / ราศี / อี้จิง / ไพ่ทาโรต์
-- ห้ามตัดทิ้ง ห้ามสร้างคะแนนเอง ห้ามใช้คะแนนอื่นนอกจากนี้
-- ห้ามนำคะแนนจาก "ราดาร์ 4 มิติ" (dims) มาใช้ในบทที่ 4 — นั่นคือคะแนนย่อยเฉพาะด้าน ไม่ใช่คะแนนระบบหลัก
-- หากคะแนนอี้จิง = 60 แต่ไพ่ทาโรต์ = 82 ต้องอธิบายความขัดแย้งนี้อย่างมีเหตุผล ห้ามละเลย
-
-`
-    : lang === 'vi'
-    ? `[BẮT BUỘC] Điểm tổng = ${overall} | Tarot = "${tarot?.name || ''} ${tarotOrient}"\nTrong phần kết luận (Section 4), PHẢI đề cập đầy đủ 4 điểm số: Tổng hợp (${overall}/100), Bát Tự, Cung Hoàng Đạo, và Điểm Kinh Dịch (tìm "Điểm Kinh Dịch" hoặc "I Ching Score" trong phần [KINH DỊCH / I CHING]).\n\n`
-    : `[MANDATORY LOCK] Overall=${overall} | Tarot="${tarot?.name || ''} ${tarotOrient}"\nIn Section 4, you MUST reference all four scores: Overall (${overall}/100), Bazi, Zodiac, and I Ching Score (find "I Ching Score" in the [I CHING] section). Do not omit any.\n\n`;
-
-  // Build the data section for the prompt
-  let dataSection = '';
-  if (bazi) dataSection += `\n[BÁI TỬ / BAZI]\n${bazi}`;
-  if (baziMeta && baziMeta.length > 0) dataSection += `\n${baziMeta.join('\n')}`;
-  if (zodiac) dataSection += `\n\n[CUNG MẶT TRỜI / ZODIAC]\n${zodiac}`;
-  if (zodiacMeta && zodiacMeta.length > 0) dataSection += `\n${zodiacMeta.join('\n')}`;
-  if (iching) dataSection += `\n\n[KINH DỊCH / I CHING]\n${iching}`;
-  if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
-  if (tarot) dataSection += `\n\n[THÁNH DIỆU ĐẠI ARCANUM / TAROT]\n${tarot.name}${tarot.orientation} — ${tarot.meaning}`;
-
-  const userPrompt = toneLock + scoreLock + `${cfg.intro}
+    const userPrompt = toneLock + scoreLock + `${cfg.intro}
 ${dataSection}
 
 Overall compatibility: ${overall}/100
@@ -202,35 +194,40 @@ ${dims ? `4-D scores: ${JSON.stringify(dims)}` : ''}
 
 ${cfg.system}`;
 
-  const response = await fetch(DEEPSEEK_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: cfg.system },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 1600,
-    }),
-  });
+    const response = await fetch(DEEPSEEK_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: cfg.system },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 1600,
+      }),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    return res.status(502).json({ error: 'AI service error', details: errText });
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(502).json({ error: 'AI service error', details: errText });
+    }
+
+    const data = await response.json();
+    const insight = data.choices?.[0]?.message?.content?.trim();
+
+    return res.status(200).json({
+      insight: insight || 'Unable to generate insight at this time.',
+      cached: false,
+      tarotLine: tarot?.meaning || null,
+      tarot: tarot || null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+    });
   }
-
-  const data = await response.json();
-  const insight = data.choices?.[0]?.message?.content?.trim();
-
-  return res.status(200).json({
-    insight: insight || 'Unable to generate insight at this time.',
-    cached: false,
-    tarotLine: tarot?.meaning || null,
-    tarot: tarot || null,
-  });
 }

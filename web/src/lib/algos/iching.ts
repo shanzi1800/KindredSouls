@@ -1,5 +1,7 @@
 import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
+import ICHING_JUDGMENT_VI_OVERRIDE from './iching-judgment-vi-override';
+import ICHING_JUDGMENT_TH_OVERRIDE from './iching-judgment-th-override';
 
 // 卦分类多语言映射（字典方案）
 type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
@@ -20,6 +22,20 @@ function getHexField(hex: any, field: 'name'|'nature'|'judgment'|'relationshipMe
     if (field === 'judgment') return hex.judgment;
     return hex.relationshipMeaning;
   }
+  
+  // ── 泰语/越南语 judgment 优先查 override 字典 ──
+  if (field === 'judgment') {
+    const hexNum = Object.keys(HEXAGRAMS).find(key => HEXAGRAMS[Number(key)] === hex);
+    if (hexNum) {
+      if (lang === 'th' && ICHING_JUDGMENT_TH_OVERRIDE[Number(hexNum)]) {
+        return ICHING_JUDGMENT_TH_OVERRIDE[Number(hexNum)];
+      }
+      if (lang === 'vi' && ICHING_JUDGMENT_VI_OVERRIDE[Number(hexNum)]) {
+        return ICHING_JUDGMENT_VI_OVERRIDE[Number(hexNum)];
+      }
+    }
+  }
+  
   // en/es/fr/th/vi 都有翻译；缺失时回退到英文（非中文）
   const suffixMap: Record<string, string> = { en: 'En', es: 'Es', fr: 'Fr', th: 'Th', vi: 'Vi' };
   const suffix = suffixMap[lang] || 'En';
@@ -634,9 +650,9 @@ const HEXAGRAMS: Record<number, HexagramData> = {
     natureEs: "Desprendimiento / Desgaste",
     natureFr: "Effritement / Détachement",
     judgment: "不利有攸往",
-    judgmentEn: "The king arrives at the temple. Success.",
-    judgmentTh: "กษัตริย์เสด็จถึงวัด สำเร็จ",
-    judgmentVi: "Bất lợi có thể tiến.",
+    judgmentEn: "Not advantageous to go forward. Foundations are crumbling.",
+    judgmentTh: "ไม่เป็นผลดีที่จะก้าวไปข้างหน้า รากฐานกำลังสั่นคลอน",
+    judgmentVi: "Bất lợi để tiến lên, nền tảng đang lung lay.",
     relationshipMeaning: '大凶。基础动摇，感情面临分崩离析、背叛或小人破坏。不宜盲目挽留，此时静守、保护自己才是上策。',
     relationshipMeaningEn: 'Highly inauspicious. Foundations are shaken; relationship faces disintegration, betrayal, or sabotage by backstabbers. Do not force it; keeping quiet and self-preservation is best.',
     relationshipMeaningTh: 'ไม่ดีอย่างยิ่ง รากฐานสั่นคลอน ความสัมพันธ์เสี่ยงต่อการแตกหัก การทรยศ หรือถูกยุแยง ไม่ควรรั้งไว้โดยไร้สติ การนิ่งสงบและปกป้องตนเองคือทางออกที่ดีที่สุด',
