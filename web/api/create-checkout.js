@@ -3,7 +3,15 @@ export const runtime = 'nodejs20.x';
 
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+let stripeInstance = null;
+function getStripe() {
+  if (!stripeInstance) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
+    stripeInstance = new Stripe(key);
+  }
+  return stripeInstance;
+}
 
 const PRICES = {
   insight_once: 499,    // $4.99 one-time AI insight
@@ -91,7 +99,7 @@ export default async function handler(req, res) {
 
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
       });
@@ -114,7 +122,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
       line_items: [{
