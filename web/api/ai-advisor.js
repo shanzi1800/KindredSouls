@@ -95,7 +95,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียดในชีวิตจริง]`,
         ``,
-        `💡 **ทางออก:** [2 ประโยค: ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
+        `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยคต่อจากนี้โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
         ``,
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -117,7 +117,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}暴露的核心矛盾]`,
         ``,
-        `💡 **破局建议:** [2句话：易经${ichingScore}与塔罗${cardName}(${statusText})，围绕"${coreKeyword}"给出在现实生活中的具体相处建议，严禁迷信仪式]`,
+        `💡 **破局建议:** 易经${ichingScore}与塔罗${cardName}(${statusText}) [写2句话继续，围绕"${coreKeyword}"给出在现实生活中的具体相处建议，严禁迷信仪式]`,
         ``,
         `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -140,7 +140,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
         ``,
-        `💡 **Đề xuất thực tế:** [2 câu: Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
+        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -169,7 +169,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]`,
         ``,
-        `💡 **Path Forward:** [2 sentences: IChing ${ichingScore} and Tarot ${cardName}(${statusText}) based on core "${coreKeyword}" — give practical relationship advice for real life. No superstitious rituals.]`,
+        `💡 **Path Forward:** IChing ${ichingScore} and Tarot ${cardName}(${statusText}) [2 sentences continuing from here, based on core "${coreKeyword}" — give practical relationship advice for real life. No superstitious rituals.]`,
         ``,
         `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -198,7 +198,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} revelan fricción]`,
         ``,
-        `💡 **Camino adelante:** [2 oraciones: IChing ${ichingScore} y Tarot ${cardName}(${statusText}) basado en "${coreKeyword}" — dar consejo práctico de relación real. Sin rituales supersticiosos.]`,
+        `💡 **Camino adelante:** IChing ${ichingScore} y Tarot ${cardName}(${statusText}) [2 oraciones continuando desde aquí, basado en "${coreKeyword}" — dar consejo práctico de relación real. Sin rituales supersticiosos.]`,
         ``,
         `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -222,7 +222,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]`,
         ``,
-        `💡 **Voie à suivre:** [2 phrases: YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) basé sur "${coreKeyword}" — donner des conseils relationnels pratiques. Pas de rituels superstitieux.]`,
+        `💡 **Voie à suivre:** YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) [2 phrases continuant depuis ici, basé sur "${coreKeyword}" — donner des conseils relationnels pratiques. Pas de rituels superstitieux.]`,
         ``,
         `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
       ].join('\n');
