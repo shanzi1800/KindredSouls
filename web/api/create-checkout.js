@@ -1,32 +1,10 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
-
 const PRICES = {
   insight_once: 499,    // $4.99 one-time AI insight
   monthly: 499,         // $4.99/month unlimited
 };
-
-// Verify Supabase JWT via official SDK
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || ''
-);
-
-async function verifySupabaseJWT(token) {
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return null;
-    return { id: user.id, email: user.email };
-  } catch {
-    return null;
-  }
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -39,14 +17,25 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7);
 
-  const user = await verifySupabaseJWT(token);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  console.log('[create-checkout] user verified:', user.id);
-
   try {
+    // Dynamic imports - avoid ESM init crash
+    const { createClient } = await import('@supabase/supabase-js');
+    const Stripe = (await import('stripe')).default;
+
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_KEY || ''
+    );
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+
+    // Verify JWT
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    console.log('[create-checkout] user verified:', user.id);
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
