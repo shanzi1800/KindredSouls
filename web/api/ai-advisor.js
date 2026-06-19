@@ -41,10 +41,9 @@ const LANGUAGE_CONFIGS = {
 - ความหมายไพ่เชิงลึก: ${tarot?.meaning || ''}
 
 [คำสั่งควบคุมขั้นเด็ดขาด]
-จงเขียนข้อความในส่วน "4、✨ วิเคราะห์ AI" โดยอธิบายเหตุผลอย่างมีตรรกะว่าทำไมตัวเลขทั้ง 4 ชุดนี้ถึงเชื่อมโยงกันอย่างเป็นระบบ และจงประสานพลังงานที่ขัดแย้งระหว่างคะแนนอี้จิงและไพ่ทาโรต์ให้เป็นเนื้อเรื่องเดียวกัน ห้ามสรุปคะแนนใหม่ ห้ามทิ้งคำแนะนำเชิงจิตวิญญาณ และต้องปิดท้ายด้วย Emoji สามตัวนี้เสมอ: 🌿 ✨ 🔮
+จงเขียนข้อความในส่วนวิเคราะห์ AI โดยอธิบายเหตุผลอย่างมีตรรกะว่าทำไมตัวเลขทั้ง 4 ชุดนี้ถึงเชื่อมโยงกันอย่างเป็นระบบ และจงประสานพลังงานที่ขัดแย้งระหว่างคะแนนอี้จิงและไพ่ทาโรต์ให้เป็นเนื้อเรื่องเดียวกัน ห้ามสรุปคะแนนใหม่ ห้ามทิ้งคำแนะนำเชิงจิตวิญญาณ และต้องปิดท้ายด้วย Emoji สามตัวนี้เสมอ: 🌿 ✨ 🔮
 
-[รูปแบบผลลัพธ์ที่คุณต้องกรอกข้อความขยายความ]
-4、✨ วิเคราะห์ AI
+[รูปแบบผลลัพธ์ — ห้ามเขียนหัวข้อหรือหมายเลขข้อ เขียนเฉพาะเนื้อหา]
 ภายใต้ผืนฟ้าแห่งโชคชะตา คะแนนความเข้ากันได้โดยรวมที่ **${overall} คะแนน** คือ... [โปรดเขียนบทวิเคราะห์ความยาว 300-500 คำขยายความจากตรงนี้ โดยใช้ข้อมูลคะแนนบาซี ${baziScore} คะแนน, ราศี ${zodiacScore} คะแนน, และอี้จิง ${ichingScore} คะแนน รวมถึงความหมายของไพ่ ${tarot?.name || ''} (${tarot?.orientation || ''}) มาร้อยเรียงให้สมบูรณ์แบบ] 🌿 ✨ 🔮
 `
   },
@@ -55,8 +54,7 @@ const LANGUAGE_CONFIGS = {
 - 塔罗牌: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? '逆位' : '正位'})
 - 牌意内核: ${tarot?.meaning || ''}
 
-[输出格式约束]
-4、✨ AI 洞察
+[输出格式约束 — 不要写标题或序号，只写正文]
 在命运的星空下，你们的综合评分 **${overall} 分** 是... [请在此处续写300-500字的灵魂大作文，深度融合八字 ${baziScore}分、星座 ${zodiacScore}分、易经 ${ichingScore}分与塔罗牌 ${tarot?.name || ''} 的挣扎与解法。必须提到全部四个分数。] 🌿 ✨ 🔮
 `
   },
@@ -67,8 +65,7 @@ const LANGUAGE_CONFIGS = {
 - Bài Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Ngược' : 'Xuôi'})
 - Ý nghĩa Tarot: ${tarot?.meaning || ''}
 
-[Định dạng đầu ra]
-4、✨ AI Thấu thị
+[Định dạng đầu ra — Không viết tiêu đề hay số thứ tự, chỉ viết nội dung]
 Dưới bầu trời số phận, điểm tương hợp tổng thể **${overall} điểm** là... [Hãy viết tiếp 300-500 từ phân tích kết hợp Bát Tự ${baziScore} điểm, Chiêm tinh ${zodiacScore} điểm, Kinh Dịch ${ichingScore} điểm và bài Tarot ${tarot?.name || ''}. Phải nhắc đến cả 4 con số.] 🌿 ✨ 🔮
 `
   },
@@ -79,8 +76,7 @@ Dưới bầu trời số phận, điểm tương hợp tổng thể **${overall
 - Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Reversed' : 'Upright'})
 - Tarot Meaning: ${tarot?.meaning || ''}
 
-[OUTPUT FORMAT]
-4、✨ AI Analysis
+[OUTPUT FORMAT — No title or numbering, content only]
 Under the cosmic tapestry, your overall compatibility score of **${overall} points** indicates... [Please extend into a 300-500 word narrative explaining how Bazi (${baziScore}), Zodiac (${zodiacScore}), and I Ching (${ichingScore}) scores interplay with the Tarot card ${tarot?.name || ''}. Must reference all 4 scores.] 🌿 ✨ 🔮
 `
   },
@@ -90,8 +86,7 @@ Under the cosmic tapestry, your overall compatibility score of **${overall} poin
 [BLOQUEO DE DATOS] General = ${overall}/100, Bazi = ${baziScore}/100, Horóscopo = ${zodiacScore}/100, I Ching = ${ichingScore}/100
 - Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Invertido' : 'Derecho'})
 
-[FORMATO DE SALIDA]
-4、✨ Análisis AI
+[FORMATO DE SALIDA — Sin título ni numeración, solo contenido]
 Bajo el tapiz cósmico, su puntuación de compatibilidad general de **${overall} puntos** indica... [Continúe con un análisis de 300-500 palabras combinando Bazi (${baziScore}), Horóscopo (${zodiacScore}), I Ching (${ichingScore}) y el Tarot ${tarot?.name || ''}. Debe mencionar las 4 puntuaciones.] 🌿 ✨ 🔮
 `
   },
@@ -101,8 +96,7 @@ Bajo el tapiz cósmico, su puntuación de compatibilidad general de **${overall}
 [VERROUILLAGE DES DONNÉES] Global = ${overall}/100, Bazi = ${baziScore}/100, Horoscope = ${zodiacScore}/100, Yi Jing = ${ichingScore}/100
 - Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Inversé' : 'Droit'})
 
-[FORMAT DE SORTIE]
-4、✨ Analyse AI
+[FORMAT DE SORTIE — Pas de titre ni de numérotation, uniquement le contenu]
 Sous la tapisserie cosmique, votre score de compatibilité globale de **${overall} points** indique... [Rédigez une analyse de 300-500 mots combinant Bazi (${baziScore}), Horoscope (${zodiacScore}), Yi Jing (${ichingScore}) et le Tarot ${tarot?.name || ''}. Doit mentionner les 4 scores.] 🌿 ✨ 🔮
 `
   }
@@ -197,9 +191,8 @@ export default async function handler(req, res) {
 
     // 后端守门：确保切分锚点存在
     let finalInsight = aiText || 'Unable to generate insight at this time.';
-    if (!finalInsight.startsWith('4、')) {
-      finalInsight = `4、✨ AI Analysis\n${finalInsight}`;
-    }
+    // Strip any AI-generated numbering prefix
+    finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
 
     // 严守 API 契约：返回 { insight }
     return res.status(200).json({
