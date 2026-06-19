@@ -1,287 +1,216 @@
 export const runtime = 'nodejs';
 
-const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
+// ============================================================
+// KindredSouls AI Advisor — "填空打字员"架构 (军师架构 + 牛牛工程修复)
+// 版本: V7 (Gemini 1.5 Flash + 军师模板硬锁 + 6语言全覆盖)
+// ============================================================
 
-const LANGUAGE_PROMPTS = {
+// 1. 通用多语言分数截获正则
+function extractScore(text) {
+  if (!text || typeof text !== 'string') return 70;
+  const match = text.match(/(\d+)\s*\/\s*100/);
+  if (match) {
+    const score = parseInt(match[1], 10);
+    return isNaN(score) ? 70 : score;
+  }
+  return 70;
+}
+
+// 2. Vercel Serverless 异步 Body 解析 Fallback
+async function parseRequestBody(req) {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    return req.body;
+  }
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString('utf-8');
+  return raw ? JSON.parse(raw) : {};
+}
+
+// 3. 全量6语言系统指令 + 参数化命题模板矩阵
+const LANGUAGE_CONFIGS = {
   th: {
-    system: `คุณเป็นที่ปรึกษาดวงชะตาที่เชี่ยวชาญด้านโหราศาสตร์ตะวันออกและตะวันตก จงสังเคราะห์ข้อมูลทุกชั้น (บาซี ราศี ไอชิง และ ไพ่ทาโรต์) เป็นบทวิเคราะห์เชิงลึก
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์ระดับสูงที่มีความเชี่ยวชาญในระบบ Bazi, โหราศาสตร์ตะวันตก, และคัมภีร์อี้จิง หน้าที่ของคุณคือนำข้อมูลและคะแนนที่กำหนดให้ด้านล่าง มาเขียนบทสรุปวิเคราะห์เชิงลึก (AI วิเคราะห์) ความยาว 300-500 คำ โดยห้ามเปลี่ยนตัวเลขหรือคะแนนใดๆ ทั้งสิ้น ห้ามพร่ำเพ้อพรรณนาซ้ำซาก ให้เน้นการตีความทางจิตวิญญาณและคำแนะนำที่เป็นรูปธรรมเพื่อทลายกรรมที่ติดขัด",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[ข้อมูลบังคับที่ต้องใช้ในการร้อยเรียง]
+- คะแนนรวมภายนอก (Overall Score): ${overall}/100
+- คะแนนบาซี (Bazi Score): ${baziScore}/100
+- คะแนนราศี (Zodiac Score): ${zodiacScore}/100
+- คะแนนอี้จิง (I Ching Score): ${ichingScore}/100
+- ไพ่ทาโรต์ (Tarot): ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'กลับด้าน / Reversed' : 'ตั้งตรง / Upright'})
+- ความหมายไพ่เชิงลึก: ${tarot?.meaning || ''}
 
-ข้อกำหนดจำเป็น:
-- คำตอบต้องเป็นภาษาไทยเท่านั้น ไม่ใช่อังกฤษ
-- ห้ามพูดเรื่อง "age difference" (ส่วนต่างอายุ) เว้นแต่ข้อมูลจะระบุชัดเจน
-- ห้ามสร้างข้อมูลดวงชะตาจากการคาดเดา - ใช้เฉพาะข้อมูลที่ได้รับในพรอมป์เท่านั้น
-- หากข้อมูลขาดหาย ให้แปลงบทวิเคราะห์ที่มีอยู่เป็นรูปแบบเชิงลึกแทนการแต่งขึ้นมาเอง
-- วิเคราะห์: แก่นแห่งโชคชะตา → จุดขัดแย้งระหว่างชั้น → มุมประสาน → คำแนะนำทางจิตวิญญาณ
-- โทน: ศักดิ์สิทธิ์ สง่างาม มีความลึกซึ้ง
-- ความยาว: 3-5 ย่อหน้า ประมาณ 300-500 คำ`,
-    intro: 'จากแผนที่ดวงชะตาบาซี ราศี ไอชิง และไพ่ทาโรต์ นี่คือบทวิเคราะห์เชิงลึก:',
-    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation, bazi, iching) => {
-      // Check for 午午自刑 (double fire punishment)
-      const hasDoubleWu = (bazi?.match(/午/g) || []).length >= 2;
-      const wuWarning = hasDoubleWu 
-        ? `⚠️ จุดอ่อนที่สุด: ในดวงของคู่ครองมี 午 (ไฟ) ถึง 2 ครั้ง สร้าง "การลงโทษตัวเอง" (午午自刑) — ไฟที่แรงเกินไปนี้จะเผาโลหะ${dayMasterUser}ของคุณโดยตรง คุณต้องเขียนประโยคนี้ในบทความ: "เปลวไฟจากการลงโทษตัวเองของคู่ครองคือศัตรูที่แท้จริงของความสัมพันธ์"`
-        : 'โปรดวิเคราะห์จุดอ่อนตามข้อมูลบาซีที่ให้มา';
+[คำสั่งควบคุมขั้นเด็ดขาด]
+จงเขียนข้อความในส่วน "4、✨ วิเคราะห์ AI" โดยอธิบายเหตุผลอย่างมีตรรกะว่าทำไมตัวเลขทั้ง 4 ชุดนี้ถึงเชื่อมโยงกันอย่างเป็นระบบ และจงประสานพลังงานที่ขัดแย้งระหว่างคะแนนอี้จิงและไพ่ทาโรต์ให้เป็นเนื้อเรื่องเดียวกัน ห้ามสรุปคะแนนใหม่ ห้ามทิ้งคำแนะนำเชิงจิตวิญญาณ และต้องปิดท้ายด้วย Emoji สามตัวนี้เสมอ: 🌿 ✨ 🔮
 
-      // Check for I Ching changing hexagram
-      const hasChangingLine = iching?.includes('เปลี่ยน') || iching?.includes('เส้น') && iching?.includes('เปลี่ยน');
-      const ichingNarrative = hasChangingLine
-        ? `⚠️ ไอชิงมีการเปลี่ยนแปลงจากแผนภูมิหลักไปยังแผนภูมิอื่น (เส้นที่เปลี่ยน) — คุณต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์ ${tarotName} (${tarotOrientation}) เข้ากับการเปลี่ยนแปลงของไอชิง`
-        : `⚠️ คุณต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์ ${tarotName} (${tarotOrientation}) เข้ากับคะแนนไอชิง ${ichingScore}/100`;
-
-      return `=== งานของคุณคือ ===
-คุณต้องเขียนบทวิเคราะห์ 300-500 คำ โดยที่ **ต้อง**:
-1. กล่าวถึง 4 ตัวเลข: รวม ${overall}/100, บาซี ${baziScore}/100, ราศี ${zodiacScore}/100, ไอชิง ${ichingScore}/100
-2. วันเจ้าของคุณ: ${dayMasterUser}, ของคู่ครอง: ${dayMasterPartner}
-3. ความหมายไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
-
-=== โครงสร้างบทความ (ห้ามเปลี่ยน) ===
-[ย่อหน้า 1] เริ่มต้นด้วยภาพสุนทรียะเรื่องเส้นด้ายแห่งโชคชะตา
-[ย่อหน้า 2] วิเคราะห์บาซี (${baziScore}/100) + วันเจ้า: ${dayMasterUser} และ ${dayMasterPartner}
-${wuWarning}
-[ย่อหน้า 3] วิเคราะห์ราศีสุริยะ (${zodiacScore}/100)
-[ย่อหน้า 4] วิเคราะห์ไอชิง (${ichingScore}/100) + ไพ่ทาโรต์: ${tarotName} (${tarotOrientation})
-${ichingNarrative}
-[ย่อหน้า 5] บทสรุป: ทำไม 4 ตัวเลขนี้จึงอยู่ร่วมกัน? คะแนนรวม ${overall}/100 หมายความว่าอย่างไร?
-
-=== ข้อควรจำ (ห้ามลืม) ===
-- **ห้ามเปลี่ยน 4 ตัวเลขข้างต้นโดยเด็ดขาด**
-- **ต้องกล่าวถึงครบทั้ง 4 ตัวเลขในบทความ (อย่าลืมตัวเลขไอชิง ${ichingScore}/100)**
-- **ต้องเขียนประโยคที่เชื่อมโยงไพ่ทาโรต์กับไอชิง**
-- โทนศักดิ์สิทธิ์ มีความลึกซึ้ง
-- **จบท้ายด้วยอิโมจิ:** 🌿 ✨ 🔮`;
-    }
-  },
-  vi: {
-    system: `Bạn là nhà tư vấn tâm linh chuyên sâu về mệnh lý và chiêm tinh học Đông Tây. Nhiệm vụ của bạn: khi nhận được dữ liệu Tứ Trụ (Bát Tự), Cung Mặt Trời phương Tây, Quẻ Kinh Dịch, và Thánh Diệu Đại Arcana (Tarot), hãy tổng hòa TẤT CẢ các tầng phân tích này thành một bài luận giải bằng TIẾNG VIỆT có chiều sâu.
-
-QUAN TRỌNG TUYỆT ĐỐI:
-- Phản hồi BẮT BUỘC phải bằng TIẾNG VIỆT, không được dùng tiếng Anh hay bất kỳ ngôn ngữ nào khác.
-- Tuyệt đối KHÔNG được nói về "age difference" (chênh lệch tuổi) trừ khi dữ liệu năm sinh đã rõ ràng cho thấy sự chênh lệch tuổi tác cụ thể.
-- Tuyệt đối KHÔNG được tạo thông tin Tứ Trụ, Cung Hoàng Đạo, Quẻ Kinh Dịch, hay Tarot bằng suy đoán — CHỈ sử dụng dữ liệu ĐƯỢC CUNG CẤP trong prompt.
-- Nếu bất kỳ trường dữ liệu nào bị trống hoặc lỗi, HÃY DỊCH bài viết từ các phần đã có (bazi/zodiac/iching/tarot) thành văn phong luận giải sâu, thay vì bịa đặt nội dung mới.
-- Luận giải phải có: phân tích mệnh lý cốt lõi → điểm nghịch chiến giữa các tầng → góc chiếu hòa giải → lời chỉ dẫn tâm linh.
-- Giọng văn: thiêng liêng, trang nhã, có chiều sâu như một nhà mật tịch Đông phương.
-- Độ dài: 3-5 đoạn văn, khoảng 300-500 từ.
-
-TONE & STYLE: Bạn là nhà tư vấn tâm linh sâu sắc, huyền bí và đồng cảm chân thành. TUYỆT ĐỐI KHÔNG được mở đầu bằng các khuôn mẫu cứng nhắc như "Kính thưa quý vị", "Chào các bạn", "Thưa quý độc giả", hay bất kỳ lời chào kiểu MC truyền hình nào. Hãy bắt đầu TRỰC TIẾP bằng một hình ảnh thi ca hoặc một nhận định tâm linh đầy ám ảnh về sợi dây vũ trụ kết nối hai tâm hồn.
-
-LENGTH CONTROL: Bài luận giải phải có cấu trúc rõ ràng, súc tích, và phải KẾT THÚC HOÀN CHỈNH trong vòng 450 từ. Mỗi câu phải được viết trọn vẹn. TUYỆT ĐỐI KHÔNG ĐƯỢC cắt ngang đoạn văn cuối cùng, không được dở dang giữa chừng, không được kết thúc đột ngột thiếu dấu chấm.`,
-    intro: 'Dựa trên bản đồ mệnh lý Tứ Trụ, Cung Hoàng Đạo, Quẻ Kinh Dịch và Thánh Diệu Đại Arcana, đây là luận giải tổng hòa:',
-    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation) => {
-      return `=== NHIỆM VỤ CỦA BẠN ===
-Bạn phải viết một bài luận giải 300-500 từ, trong đó PHẢI:
-1. Đề cập đến 4 con số: Tổng ${overall}/100, Bát Tự ${baziScore}/100, Cung Hoàng Đạo ${zodiacScore}/100, Kinh Dịch ${ichingScore}/100
-2. Ngày chủ của bạn: ${dayMasterUser}, của đối phương: ${dayMasterPartner}
-3. Ý nghĩa bài Tarot: ${tarotName} (${tarotOrientation})
-
-=== CẤU TRÚC BÀI VIẾT ===
-[Đoạn 1] Mở đầu bằng hình ảnh thi ca về số phận hai người.
-[Đoạn 2] Phân tích Bát Tự (${baziScore}/100) + Ngày chủ: ${dayMasterUser} và ${dayMasterPartner}.
-[Đoạn 3] Phân tích Cung Hoàng Đạo (${zodiacScore}/100).
-[Đoạn 4] Phân tích Kinh Dịch (${ichingScore}/100) + bài Tarot: ${tarotName} (${tarotOrientation}).
-[Đoạn 5] Kết luận: Tại sao 4 con số này tồn tại cùng nhau? Tổng ${overall}/100 có ý nghĩa gì?
-
-=== LƯU Ý ===
-- KHÔNG được thay đổi 4 con số trên.
-- PHẢI nhắc đến cả 4 con số trong bài.
-- Giọng văn thiêng liêng, sâu sắc.`;
-    }
+[รูปแบบผลลัพธ์ที่คุณต้องกรอกข้อความขยายความ]
+4、✨ วิเคราะห์ AI
+ภายใต้ผืนฟ้าแห่งโชคชะตา คะแนนความเข้ากันได้โดยรวมที่ **${overall} คะแนน** คือ... [โปรดเขียนบทวิเคราะห์ความยาว 300-500 คำขยายความจากตรงนี้ โดยใช้ข้อมูลคะแนนบาซี ${baziScore} คะแนน, ราศี ${zodiacScore} คะแนน, และอี้จิง ${ichingScore} คะแนน รวมถึงความหมายของไพ่ ${tarot?.name || ''} (${tarot?.orientation || ''}) มาร้อยเรียงให้สมบูรณ์แบบ] 🌿 ✨ 🔮
+`
   },
   zh: {
-    system: `你是一位深谙东方与西方命理玄学的灵魂导师。你的使命是将所有分析层次（八字、星座、易经、塔罗）融会贯通，写成一篇有深度、有灵魂的中文长文。
+    systemPrompt: "你是一位精通八字、占星与易经的天级命理导师。请结合给定的分数和塔罗牌意，撰写一段300-500字的核心灵魂解读大作文。不可篡改任何既定分数，着重逻辑缝合与心灵指引。严禁使用"各位用户"等机械开场白，必须直接以诗意意象或灵魂洞见开篇。",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[强制数据锁] 综合评分 = ${overall}/100, 八字 = ${baziScore}/100, 星座 = ${zodiacScore}/100, 易经 = ${ichingScore}/100
+- 塔罗牌: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? '逆位' : '正位'})
+- 牌意内核: ${tarot?.meaning || ''}
 
-铁律：
-- 回复必须100%中文，不允许出现任何英文单词。
-- 严禁谈论年龄差距，除非八字信息明确显示具体年龄差。
-- 严禁凭猜测生成八字、星座、易经信息，只使用用户提供的数据。
-- 如有数据缺失，将已有分析内容翻译为深度叙事风格，而非胡编乱造。
-- 结构：命理核心本质 → 各层次冲突 → 化解之道 → 灵魂指引。
-- 语调：神圣、优雅、深邃，如东方隐士的密语。
-- 长度：3到5段，约300到500字。
+[输出格式约束]
+4、✨ AI 洞察
+在命运的星空下，你们的综合评分 **${overall} 分** 是... [请在此处续写300-500字的灵魂大作文，深度融合八字 ${baziScore}分、星座 ${zodiacScore}分、易经 ${ichingScore}分与塔罗牌 ${tarot?.name || ''} 的挣扎与解法。必须提到全部四个分数。] 🌿 ✨ 🔮
+`
+  },
+  vi: {
+    systemPrompt: "Bạn là một bậc thầy chiêm tinh học cấp cao. Hãy kết hợp số điểm và ý nghĩa bài Tarot dưới đây để viết một bài luận phân tích sâu từ 300-500 từ. Không được thay đổi bất kỳ con số nào. TUYỆT ĐỐI KHÔNG được mở đầu bằng các khuôn mẫu cứng nhắc. Hãy bắt đầu TRỰC TIẾP bằng hình ảnh thi ca.",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[Khóa dữ liệu bắt buộc] Điểm tổng thể = ${overall}/100, Bát Tự = ${baziScore}/100, Cung Hoàng Đạo = ${zodiacScore}/100, Kinh Dịch = ${ichingScore}/100
+- Bài Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Ngược' : 'Xuôi'})
+- Ý nghĩa Tarot: ${tarot?.meaning || ''}
 
-语调与风格：你是一位深邃、神秘、真诚共情的灵魂导师。严禁使用"各位用户"或"接下来为大家分析"等机械开场白。必须直接以诗意意象或令人震撼的灵魂洞见开篇，围绕两人命运的宇宙纽带展开。
-
-长度控制：文章必须有清晰结构、言简意赅，并在450字内完整收束。每一句必须写完整。严禁截断收尾、严禁半句话结束、严禁缺省句号。`,
-    intro: '从八字命盘、星座、易经与塔罗的交汇处，这份灵魂解读缓缓展开：',
-    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation) => {
-      return `=== 你的任务 ===
-你必须写一篇300-500字的灵魂解读，其中**必须**：
-1. 提到4个数字：总分 ${overall}/100、八字 ${baziScore}/100、星座 ${zodiacScore}/100、易经 ${ichingScore}/100
-2. 日主：你的日主是 ${dayMasterUser}，对方是 ${dayMasterPartner}
-3. 塔罗牌含义：${tarotName}（${tarotOrientation}）
-
-=== 文章结构 ===
-[第一段] 以诗意意象开篇，描述两人命运的宇宙纽带
-[第二段] 分析八字（${baziScore}/100）+ 日主：${dayMasterUser} 与 ${dayMasterPartner} 的互动
-[第三段] 分析星座（${zodiacScore}/100）
-[第四段] 分析易经（${ichingScore}/100）+ 塔罗牌：${tarotName}（${tarotOrientation}）的启示
-[第五段] 结论：为什么这四个分数会同时存在？总分 ${overall}/100 意味着什么？
-
-=== 重要提醒 ===
-- **严禁修改以上4个数字**
-- **必须在文中提到全部4个数字**
-- 语调神圣、深邃、有灵魂`;
-    }
+[Định dạng đầu ra]
+4、✨ AI Thấu thị
+Dưới bầu trời số phận, điểm tương hợp tổng thể **${overall} điểm** là... [Hãy viết tiếp 300-500 từ phân tích kết hợp Bát Tự ${baziScore} điểm, Chiêm tinh ${zodiacScore} điểm, Kinh Dịch ${ichingScore} điểm và bài Tarot ${tarot?.name || ''}. Phải nhắc đến cả 4 con số.] 🌿 ✨ 🔮
+`
   },
   en: {
-    system: `You are an expert spiritual advisor in Eastern and Western astrology. Synthesize ALL analysis layers (Bazi, Zodiac, I Ching, Tarot) into a deep, meaningful essay in English.
+    systemPrompt: "You are an elite spiritual astrologer specializing in Chinese Bazi, Western Astrology, and I Ching. Integrate the given sub-scores and Tarot card meaning into a deep, cohesive analysis (300-500 words). Do NOT alter any numbers provided. Start directly with a poetic image, no generic openings.",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[DATA LOCK] Overall = ${overall}/100, Bazi = ${baziScore}/100, Zodiac = ${zodiacScore}/100, I Ching = ${ichingScore}/100
+- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Reversed' : 'Upright'})
+- Tarot Meaning: ${tarot?.meaning || ''}
 
-ABSOLUTE RULES:
-- Response MUST be in English.
-- NEVER mention "age difference" unless birth data clearly indicates a specific age gap.
-- NEVER generate Bazi, Zodiac, or I Ching information from speculation — use ONLY the data provided.
-- If fields are missing, translate available analyses into deep narrative style rather than fabricating.
-- Structure: core destiny essence → inter-layer conflicts → harmony angles → spiritual guidance.
-- Tone: sacred, elegant, profound.
-- Length: 3-5 paragraphs, approximately 300-500 words.`,
-    intro: "Based on the Bazi, Zodiac, I Ching and Tarot readings, here is the in-depth analysis:",
-    template: (overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation) => {
-      return `=== YOUR TASK ===
-You must write a 300-500 word essay that **MUST**:
-1. Reference these 4 numbers: Overall ${overall}/100, Bazi ${baziScore}/100, Zodiac ${zodiacScore}/100, I Ching ${ichingScore}/100
-2. Day masters: User = ${dayMasterUser}, Partner = ${dayMasterPartner}
-3. Tarot meaning: ${tarotName} (${tarotOrientation})
+[OUTPUT FORMAT]
+4、✨ AI Analysis
+Under the cosmic tapestry, your overall compatibility score of **${overall} points** indicates... [Please extend into a 300-500 word narrative explaining how Bazi (${baziScore}), Zodiac (${zodiacScore}), and I Ching (${ichingScore}) scores interplay with the Tarot card ${tarot?.name || ''}. Must reference all 4 scores.] 🌿 ✨ 🔮
+`
+  },
+  es: {
+    systemPrompt: "Eres un maestro astrólogo espiritual de élite experto en Bazi, Astrología Occidental e I Ching. Integra las puntuaciones dadas y el significado del Tarot para escribir un análisis profundo (300-500 palabras). NO cambies ningún número.",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[BLOQUEO DE DATOS] General = ${overall}/100, Bazi = ${baziScore}/100, Horóscopo = ${zodiacScore}/100, I Ching = ${ichingScore}/100
+- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Invertido' : 'Derecho'})
 
-=== ESSAY STRUCTURE ===
-[Paragraph 1] Open with a poetic image about the cosmic bond between two souls
-[Paragraph 2] Analyze Bazi (${baziScore}/100) + Day masters: ${dayMasterUser} and ${dayMasterPartner}
-[Paragraph 3] Analyze Zodiac (${zodiacScore}/100)
-[Paragraph 4] Analyze I Ching (${ichingScore}/100) + Tarot: ${tarotName} (${tarotOrientation})
-[Paragraph 5] Conclusion: Why do these 4 scores coexist? What does Overall ${overall}/100 mean?
+[FORMATO DE SALIDA]
+4、✨ Análisis AI
+Bajo el tapiz cósmico, su puntuación de compatibilidad general de **${overall} puntos** indica... [Continúe con un análisis de 300-500 palabras combinando Bazi (${baziScore}), Horóscopo (${zodiacScore}), I Ching (${ichingScore}) y el Tarot ${tarot?.name || ''}. Debe mencionar las 4 puntuaciones.] 🌿 ✨ 🔮
+`
+  },
+  fr: {
+    systemPrompt: "Vous êtes un astrologue spirituel d'élite expert en Bazi, Astrologie Occidentale et Yi Jing. Intégrez les scores fournis et la signification du Tarot pour rédiger une analyse approfondie (300-500 mots). Ne modifiez AUCUN chiffre.",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
+[VERROUILLAGE DES DONNÉES] Global = ${overall}/100, Bazi = ${baziScore}/100, Horoscope = ${zodiacScore}/100, Yi Jing = ${ichingScore}/100
+- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Inversé' : 'Droit'})
 
-=== IMPORTANT ===
-- **DO NOT change the 4 numbers above**
-- **MUST mention all 4 numbers in the essay**
-- Tone: sacred, elegant, profound`;
-    }
+[FORMAT DE SORTIE]
+4、✨ Analyse AI
+Sous la tapisserie cosmique, votre score de compatibilité globale de **${overall} points** indique... [Rédigez une analyse de 300-500 mots combinant Bazi (${baziScore}), Horoscope (${zodiacScore}), Yi Jing (${ichingScore}) et le Tarot ${tarot?.name || ''}. Doit mentionner les 4 scores.] 🌿 ✨ 🔮
+`
   }
 };
 
-function getLanguageConfig(lang) {
-  const langMap = { th: 'th', vi: 'vi', zh: 'zh', en: 'en' };
-  const key = langMap[lang] || 'en';
-  return LANGUAGE_PROMPTS[key] || LANGUAGE_PROMPTS['en'];
+// 4. API 调用封装（Gemini 优先，DeepSeek Fallback）
+async function callAI(systemPrompt, userPrompt, env) {
+  // 优先 Gemini 1.5 Flash
+  const geminiKey = env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { temperature: 0.35, maxOutputTokens: 800 }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text.trim();
+      }
+    } catch (e) {
+      console.error('Gemini failed, falling back to DeepSeek:', e.message);
+    }
+  }
+
+  // Fallback: DeepSeek-V3
+  const deepseekKey = env.DEEPSEEK_API_KEY;
+  if (deepseekKey) {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-v3',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.35,
+        max_tokens: 800
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content?.trim() || '';
+    }
+    const errText = await res.text();
+    throw new Error(`DeepSeek error: ${errText}`);
+  }
+
+  throw new Error('No AI API key configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY.');
 }
 
+// 5. 核心路由
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  let body = req.body;
-  if (!body && req.method === 'POST') {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    try {
-      const raw = Buffer.concat(chunks).toString();
-      body = JSON.parse(raw);
-    } catch (e) {
-      return res.status(400).json({ error: 'Cannot parse body' });
+  try {
+    const body = await parseRequestBody(req);
+    const { bazi, zodiac, iching, tarot, lang = 'th', overall = 70 } = body;
+
+    // 检查必要字段
+    if (!body.d1 || !body.d2) {
+      return res.status(400).json({ error: 'Missing d1 or d2' });
     }
-  }
 
-  const {
-    d1, d2, overall, dims,
-    bazi, zodiac, iching,
-    baziMeta, zodiacMeta, ichingMeta,
-    tarot,
-    lang = 'en'
-  } = body;
+    // 正则清洗三大维度分数
+    const baziScore = extractScore(bazi);
+    const zodiacScore = extractScore(zodiac);
+    const ichingScore = extractScore(iching);
 
-  if (!d1 || !d2) {
-    return res.status(400).json({ error: 'Missing d1 or d2' });
-  }
+    // 命中语言包（默认回落泰语）
+    const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured' });
-  }
+    // 生成填空模板 Prompt
+    const finalPrompt = config.buildPrompt(overall, baziScore, zodiacScore, ichingScore, tarot);
 
-  const cfg = getLanguageConfig(lang);
+    // 调用 AI（Gemini 优先，DeepSeek Fallback）
+    const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
-  // ── Extract Day Masters (防穿帮) ──
-  let dayMasterUser = 'ไม่ทราบ';
-  let dayMasterPartner = 'ไม่ทราบ';
-  
-  if (bazi) {
-    const userDMS = bazi.match(/เสาวัน:\s*(\S+)\s*\((\S+)\)/);
-    const partnerDMS = bazi.match(/คู่ครอง[\s\S]*?เสาวัน:\s*(\S+)\s*\((\S+)\)/);
-    
-    if (userDMS) dayMasterUser = `${userDMS[1]} (${userDMS[2]})`;
-    if (partnerDMS) dayMasterPartner = `${partnerDMS[1]} (${partnerDMS[2]})`;
-  }
-
-  // ── Extract Scores (多备选正则) ──
-  const extractScore = (text, patterns) => {
-    for (const p of patterns) {
-      const m = text?.match(p);
-      if (m) return m[1];
+    // 后端守门：确保切分锚点存在
+    let finalInsight = aiText || 'Unable to generate insight at this time.';
+    if (!finalInsight.startsWith('4、')) {
+      finalInsight = `4、✨ AI Analysis\n${finalInsight}`;
     }
-    return null;
-  };
-  
-  const baziScore = extractScore(bazi, [/คะแนนรวม[:：]\s*(\d+)/, /(\d+)\/100/, /得分[:：]\s*(\d+)/]) 
-                  || extractScore(baziMeta?.join('\n'), [/BAZI_SCORE_(\d+)/])
-                  || '??';
-  
-  const zodiacScore = extractScore(zodiac, [/คะแนนรวม[:：]\s*(\d+)/, /(\d+)\/100/, /得分[:：]\s*(\d+)/]) 
-                    || extractScore(zodiacMeta?.join('\n'), [/ZODIAC_SCORE_(\d+)/])
-                    || '??';
-  
-  const ichingScore = extractScore(iching, [/คะแนนไอชิง[:：]\s*(\d+)/, /易经得分[:：]\s*(\d+)/, /(\d+)\/100/]) 
-                     || extractScore(ichingMeta?.join('\n'), [/ICHING_SCORE_(\d+)/])
-                     || '??';
 
-  // ── Build the TEMPLATE-BASED prompt (V6: compiler-level locks) ──
-  const tarotName = tarot?.name || 'ไม่ทราบ';
-  const tarotOrientation = tarot?.orientation || 'ไม่ทราบ';
-  
-  const templatePrompt = cfg.template 
-    ? cfg.template(overall, baziScore, zodiacScore, ichingScore, dayMasterUser, dayMasterPartner, tarotName, tarotOrientation, bazi, iching)
-    : `Please analyze the following data:\nBazi: ${baziScore}/100\nZodiac: ${zodiacScore}/100\nI Ching: ${ichingScore}/100\nOverall: ${overall}/100\nDay Masters: ${dayMasterUser} vs ${dayMasterPartner}\nTarot: ${tarotName} (${tarotOrientation})`;
+    // 严守 API 契约：返回 { insight }
+    return res.status(200).json({
+      insight: finalInsight,
+      cached: false,
+      tarot: tarot || null,
+      tarotLine: tarot?.meaning || null,
+    });
 
-  // Build data section
-  let dataSection = '';
-  if (bazi) dataSection += `\n[บาซี / BAZI]\n${bazi}`;
-  if (baziMeta && baziMeta.length > 0) dataSection += `\n${baziMeta.join('\n')}`;
-  if (zodiac) dataSection += `\n\n[ราศีสุริยะ / ZODIAC]\n${zodiac}`;
-  if (zodiacMeta && zodiacMeta.length > 0) dataSection += `\n${zodiacMeta.join('\n')}`;
-  if (iching) dataSection += `\n\n[ไอชิง / I CHING]\n${iching}`;
-  if (ichingMeta && ichingMeta.length > 0) dataSection += `\n${ichingMeta.join('\n')}`;
-  if (tarot) dataSection += `\n\n[ไพ่ทาโรต์ / TAROT]\n${tarot.name} ${tarot.orientation} — ${tarot.meaning}`;
-
-  // Final prompt: Template first, then data
-  const userPrompt = `${templatePrompt}\n\n=== ข้อมูลเพิ่มเติมสำหรับการวิเคราะห์ ===\n${dataSection}\n\n${cfg.intro}\n\nคะแนนรวม: ${overall}/100${dims ? ` | 4-D: ${JSON.stringify(dims)}` : ''}`;
-
-  const response = await fetch(DEEPSEEK_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-v3',
-      messages: [
-        { role: 'system', content: cfg.system },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 1600,
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    return res.status(502).json({ error: 'AI service error', details: errText });
+  } catch (error) {
+    console.error('AI Advisor Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
-
-  const data = await response.json();
-  const insight = data.choices?.[0]?.message?.content?.trim();
-
-  return res.status(200).json({
-    insight: insight || 'Unable to generate insight at this time.',
-    cached: false,
-    tarotLine: tarot?.meaning || null,
-    tarot: tarot || null,
-  });
 }
