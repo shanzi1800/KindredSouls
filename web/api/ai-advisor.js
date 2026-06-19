@@ -128,7 +128,7 @@ const LANGUAGE_CONFIGS = {
         `Lõi bài: ${coreKeyword}`,
         ``,
         `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]\n- Nếu Trạng thái = \"Ngược\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Mọi nhắc đến bài tarot phải dùng đúng trạng thái: ${statusText}.\n- Nếu Trạng thái = \"Xuôi\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Ngược\".\n- Kiểm tra kỹ trạng thái bài trước khi viết từng đoạn.\n\n[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
-        - Quan trọng: Khi phân tích xung đột cung hoàng đạo, PHẢI tham chiếu đặc điểm thực tế của hai cung cụ thể trong kết quả (ví dụ: Xử Nữ thì hay phê bình/chỉn chu, Thiên Bình thì do dự/cân bằng). CẤM ĐOẠN chỉnh sửa đặc điểm tính cách.
+        `- Quan trọng: Khi phân tích xung đột cung hoàng đạo, PHẢI tham chiếu đặc điểm thực tế của hai cung cụ thể trong kết quả (ví dụ: Xử Nữ thì hay phê bình/chỉn chu, Thiên Bình thì do dự/cân bằng). CẤM ĐOẠN chỉnh sửa đặc điểm tính cách.`,
         `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
