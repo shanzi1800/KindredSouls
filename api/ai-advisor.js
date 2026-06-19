@@ -1,255 +1,301 @@
-// Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import { createClient } from '@supabase/supabase-js';
+// ============================================================
+// KindredSouls AI Advisor — "填空打字员"架构 (军师架构 + 牛牛工程修复)
+// 版本: V9 (总分后端重算 + 正逆位绝对锁 + 塔罗牌意意图约束 + 6语言)
+// ============================================================
 
-// ═══════════════════════════════════════════════════
-// KindredSouls Phase 2 — AI Advisor (Streaming)
-// 基于 ai_context 的情感顾问，temperature=0，确定性输出
-// ═══════════════════════════════════════════════════
+// 1. 通用多语言分数截获正则
+function extractScore(text) {
+  if (!text || typeof text !== 'string') return 70;
+  const match = text.match(/(\d+)\s*\/\s*100/);
+  if (match) {
+    const score = parseInt(match[1], 10);
+    return isNaN(score) ? 70 : score;
+  }
+  return 70;
+}
 
-const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
+// 2. Vercel Serverless 异步 Body 解析 Fallback
+async function parseRequestBody(req) {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    return req.body;
+  }
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString('utf-8');
+  return raw ? JSON.parse(raw) : {};
+}
 
-// ── Prompt 模板 ──
+// 3. 工具函数：正逆位本地化文本
+const ORIENT_MAP = {
+  th: { up: 'ตั้งตรง', rev: 'กลับด้าน' },
+  zh: { up: '正位', rev: '逆位' },
+  vi: { up: 'Xuôi', rev: 'Ngược' },
+  en: { up: 'Upright', rev: 'Reversed' },
+  es: { up: 'Derecho', rev: 'Invertido' },
+  fr: { up: 'Droit', rev: 'Inversé' },
+};
 
-const PROMPT_TEMPLATES = {
-  ta_thinking: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls, an astrology-powered relationship insight app.
+function getOrientText(tarot, lang) {
+  const m = ORIENT_MAP[lang] || ORIENT_MAP['en'];
+  return tarot?.orientation === 'Reversed' ? m.rev : m.up;
+}
 
-RULES:
-1. NEVER use absolute fatalistic language ("destined to fail", "will never", "impossible")
-2. Translate astrological terms into psychological motivations
-3. Your response MUST end with ONE specific, actionable advice
-4. Keep output between 200-300 words
-5. Tone: warm, insightful, empowering — never preachy
-6. Use "relationship insight" framing, NOT "psychological counseling"
-7. Base ALL interpretations on the provided Context data, do not invent information
-8. NEVER mention that you are an AI or language model
-9. Use the partner's zodiac/moon sign traits to explain their likely emotional state
-10. 🔒 LANGUAGE LOCK: You MUST respond in the same language as the Context data. If the Context contains Vietnamese text, you MUST respond in Vietnamese. If it contains Thai, respond in Thai. UNDER NO CIRCUMSTANCES use English if the Context is in another language.
+// 4. 工具函数：从 tarot.meaning 提取核心关键词（给 AI 的意图约束，防止瞎编仪式）
+function getTarotCoreKeyword(meaning, lang) {
+  if (!meaning) return '';
+  // meaning 格式: "Creation and Expression — ..." or "关键词 — 详细解释"
+  const core = meaning.split('—')[0].trim();
+  if (lang === 'th') {
+    // 泰语meaning的常见核心词翻译
+    if (core.includes('Creation') || core.includes('Expression')) return 'การสร้างสรรค์และการแสดงออก';
+    if (core.includes('Nurturing') || core.includes('Abundance')) return 'การหล่อเลี้ยงและความอุดมสมบูรณ์';
+    if (core.includes('Intuition') || core.includes('Mystery')) return 'สัญชาตญาณและความลึกลับ';
+    if (core.includes('Balance') || core.includes('Harmony')) return 'ความสมดุลและความประสาน';
+    if (core.includes('Power') || core.includes('Authority')) return 'พลังและอำนาจ';
+    if (core.includes('Love') || core.includes('Union')) return 'ความรักและการรวมเป็นหนึ่ง';
+    if (core.includes('Transformation') || core.includes('Death')) return 'การเปลี่ยนแปลงและการตาย';
+    if (core.includes('Reward') || core.includes('Harvest')) return 'ผลตอบแทนและการเก็บเกี่ยว';
+    if (core.includes('Hope') || core.includes('Illumination')) return 'ความหวังและแสงสว่าง';
+    if (core.includes('Journey') || core.includes('Road')) return 'การเดินทางและเส้นทาง';
+    return core;
+  }
+  return core;
+}
 
-CONTEXT STRUCTURE:
-- static_profile: immutable birth chart & synastry data
-- dynamic_daily: today's transit & weather indicators
-
-FOCUS: What is the partner likely thinking/feeling today, based on their moon sign, transit impact, and communication index.`,
-    userPrompt: `Based on the context, describe what the partner might be thinking or feeling right now, and what the user should do about it.`
+// 5. 全量6语言系统指令 + 参数化命题模板矩阵 (V9)
+const LANGUAGE_CONFIGS = {
+  th: {
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียนคำแนะนำพิธีกรรมทางไสยศาสตร์ (เช่น เผากระดาษ ทำบุญทิ้ง สวดมนต์) รวมความยาวไม่เกิน 200 คำ",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'th');
+      const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
+      return [
+        `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}`,
+        `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
+        `แก่นไพ่(ต้องใช้ใน💡): ${coreKeyword}`,
+        ``,
+        `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ ห้ามเพิ่มเติม ห้ามเขียนหัวข้อเช่น "4、✨ วิเคราะห์ AI" หรือหัวข้อบนเว็บเพจอื่นใดก่อน 🎯 เป็นอันขาด]`,
+        `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์จากคะแนนรวม ${overall} ให้ตรงกับข้อมูลจริง]`,
+        ``,
+        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียดในชีวิตจริง]`,
+        ``,
+        `💡 **ทางออก:** [2 ประโยค: ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
+        ``,
+        `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
   },
-
-  weather: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls.
-
-SAME RULES AS ABOVE.
-
-FOCUS: Interpret today's relationship weather for this couple. Explain the weather status, what it means for their day, and provide 3 dos and 3 don'ts. Make the weather metaphor vivid and relatable.`,
-    userPrompt: `Describe today's relationship weather and provide actionable guidance based on the context.`
+  zh: {
+    systemPrompt: "你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'zh');
+      const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
+      return [
+        `[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${cardName}, 正逆位=${statusText}`,
+        `牌意: ${tarot?.meaning || ''}`,
+        `牌核(用于💡): ${coreKeyword}`,
+        ``,
+        `[输出结构 — 严格执行，不改emoji和标题]`,
+        `🎯 **核心结论:** [1句话，根据综合评分${overall}直接定性这段关系]`,
+        ``,
+        `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}暴露的核心矛盾]`,
+        ``,
+        `💡 **破局建议:** [2句话：易经${ichingScore}与塔罗${cardName}(${statusText})，围绕"${coreKeyword}"给出在现实生活中的具体相处建议，严禁迷信仪式]`,
+        ``,
+        `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
   },
-
-  action_timing: {
-    systemPrompt: `You are an AI Relationship Advisor for KindredSouls.
-
-SAME RULES AS ABOVE.
-
-FOCUS: Based on attraction index, transit impact, and communication index, recommend the best time and approach for the user to take a specific relationship action today. Be specific about WHEN (morning/afternoon/evening) and HOW (direct/gentle/playful).`,
-    userPrompt: `What's the best action timing today? When should the user reach out, confess, apologize, or give space?`
+  vi: {
+    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. Không viết lời mở đầu, không số thứ tự. Không thay đổi bất kỳ số điểm nào. Không viết sai trạng thái xuôi/ngược của bài Tarot. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép).",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'vi');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      return [
+        `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
+        `Ý nghĩa: ${tarot?.meaning || ''}`,
+        `Lõi bài: ${coreKeyword}`,
+        ``,
+        `[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
+        `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
+        ``,
+        `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
+        ``,
+        `💡 **Đề xuất thực tế:** [2 câu: Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
+        ``,
+        `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
+  },
+  en: {
+    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation. Never suggest superstitious rituals (burning paper, chanting, spells).",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'en');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      return [
+        `[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
+        `Meaning: ${tarot?.meaning || ''}`,
+        `Core keyword (for 💡): ${coreKeyword}`,
+        ``,
+        `[MANDATORY STRUCTURE — do not change emojis or headers]`,
+        `🎯 **Core Verdict:** [1 sentence summarizing the relationship based on score ${overall}]`,
+        ``,
+        `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]`,
+        ``,
+        `💡 **Path Forward:** [2 sentences: IChing ${ichingScore} and Tarot ${cardName}(${statusText}) based on core "${coreKeyword}" — give practical relationship advice for real life. No superstitious rituals.]`,
+        ``,
+        `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
+  },
+  es: {
+    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. Nunca cambies la orientación del tarot. Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'es');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      return [
+        `[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientación=${statusText}`,
+        `Significado: ${tarot?.meaning || ''}`,
+        `Palabra clave central: ${coreKeyword}`,
+        ``,
+        `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
+        `🎯 **Veredicto central:** [1 oración resumiendo la relación según puntuación ${overall}]`,
+        ``,
+        `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} revelan fricción]`,
+        ``,
+        `💡 **Camino adelante:** [2 oraciones: IChing ${ichingScore} y Tarot ${cardName}(${statusText}) basado en "${coreKeyword}" — dar consejo práctico de relación real. Sin rituales supersticiosos.]`,
+        ``,
+        `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
+  },
+  fr: {
+    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).",
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+      const statusText = getOrientText(tarot, 'fr');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      return [
+        `[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
+        `Signification: ${tarot?.meaning || ''}`,
+        `Mot-clé central: ${coreKeyword}`,
+        ``,
+        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
+        `🎯 **Verdict central:** [1 phrase résumant la relation selon le score ${overall}]`,
+        ``,
+        `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]`,
+        ``,
+        `💡 **Voie à suivre:** [2 phrases: YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) basé sur "${coreKeyword}" — donner des conseils relationnels pratiques. Pas de rituels superstitieux.]`,
+        ``,
+        `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
+      ].join('\n');
+    }
   }
 };
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+// 6. API 调用封装（Gemini 优先，DeepSeek Fallback）
+async function callAI(systemPrompt, userPrompt, env) {
+  const geminiKey = env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { temperature: 0.35, maxOutputTokens: 1500 }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text.trim();
+      }
+    } catch (e) {
+      console.error('Gemini failed, falling back to DeepSeek:', e.message);
+    }
   }
 
-  const { resultId, questionType = 'ta_thinking' } = req.body;
-  if (!resultId) {
-    return res.status(400).json({ error: 'Missing resultId' });
-  }
-
-  if (!PROMPT_TEMPLATES[questionType]) {
-    return res.status(400).json({ error: 'Invalid questionType. Must be: ta_thinking, weather, action_timing' });
-  }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
-
-  // 1. 查合盘记录
-  const { data: record, error: fetchError } = await supabase
-    .from('compatibility_results')
-    .select('ai_context, ai_query_count, ai_query_date, user_id')
-    .eq('id', resultId)
-    .single();
-
-  if (fetchError || !record) {
-    return res.status(404).json({ error: 'Result not found' });
-  }
-
-  if (!record.ai_context) {
-    return res.status(400).json({
-      error: 'No AI context available. Please run daily-weather first.',
-      code: 'NO_CONTEXT'
-    });
-  }
-
-  // 2. Rate Limit 逻辑
-  const today = new Date().toISOString().slice(0, 10);
-  let count = record.ai_query_count || 0;
-  if (record.ai_query_date !== today) {
-    count = 0;
-  }
-
-  // TODO: 检查订阅状态（Step 5 实现 checkSubscription 后接入）
-  const isPremium = false; // 暂时全部免费
-  const dailyLimit = isPremium ? Infinity : 3;
-
-  if (count >= dailyLimit) {
-    return res.status(429).json({
-      error: 'Daily limit reached',
-      code: 'RATE_LIMITED',
-      remaining: 0,
-      upgradePrompt: !isPremium,
-    });
-  }
-
-  // 3. 更新计数
-  await supabase
-    .from('compatibility_results')
-    .update({ ai_query_count: count + 1, ai_query_date: today })
-    .eq('id', resultId);
-
-  // 4. 选择 Prompt
-  const template = PROMPT_TEMPLATES[questionType];
-  const contextStr = JSON.stringify(record.ai_context);
-
-  // ── 提取 Meta 标签（来自 req.body，前端已计算好）──
-  const baziMeta: string[] = req.body.baziMeta || [];
-  const zodiacMeta: string[] = req.body.zodiacMeta || [];
-  const ichingMeta: string[] = req.body.ichingMeta || [];
-  const allMeta = [...baziMeta, ...zodiacMeta, ...ichingMeta];
-  console.log('[ai-advisor] Meta tags received:', allMeta.length, 'tags:', allMeta);
-
-  // ── 构建结构化 Meta 注入字符串 ──
-  const META_STR = allMeta.length > 0
-    ? `\n\n[META_TAGS]\n${allMeta.map(t => `  - ${t}`).join('\n')}\n[/META_TAGS]`
-    : '';
-
-  // ── Meta → 隐喻合成规则（供 AI 参考的玄学→叙事映射）──
-  const META_SYNTHESIS_RULES = `
-[META_SYNTHESIS_RULES]
-When META_TAGS contain specific patterns, weave them into a coherent dramatic narrative:
-- LIUCHONG_* + HEXAGRAM_1 → "冲突是表象，命运在深层绑定你们"
-- LIUCHONG_* + HEXAGRAM_19 → "家庭观念差异，但缘分让你们无法分开"
-- ELEMENT_EXCESS_火 + (ZODIAC_CAPRICORN|SCORPIO|ARIES) → "火旺需要水来调节，冲动时记得给对方空间"
-- ELEMENT_EXCESS_水 + PHASE_OPPOSITION → "水多善感，对宫引力让感情像潮汐忽冷忽热"
-- ELEMENT_CLASH + PHASE_SQUARE → "元素对立+刑克相位，张力是成长的燃料，不是障碍"
-- SANHE_* + PHASE_TRINE → "三合局+三合相位，命运之轮在推你们向同一方向"
-- ZODIAC_OPPOSITION + HEXAGRAM_* → "对宫吸引——你们的差异是最大的磁场，也是最好的老师"
-- PHASE_SAME + SAME_ELEMENT → "同元素同相位，你们像同一棵树上的两片叶子，默契是天生的"
-- CROSS_LIUCHONG → "跨柱六冲意味着——爱恨都是深刻的，只是需要更成熟的表达方式"
-- HEX_TRANSFORMS + HEX_TRANSFORM_BETTER → "变卦向好，当前的关系正经历蜕变，痛苦之后是更深的理解"
-- HEX_THEME_OBSTACLE + PHASE_OPPOSITION → "卦象显示阻碍，星象显示拉扯——这恰恰是你们必须共同跨越的课题"
-- DM_CONTROL + PHASE_SQUARE → "日主相克+刑克相位，某一方总是在主导，关系需要重新谈判边界"
-- LIUHE_DAY_STEM + BEST_MATCH → "天干六合+最佳配对，你们的相遇像是宇宙精心安排的双人舞"
-- HEX_THEME_HARMONY + PHASE_TRINE → "和谐卦+三合相，两人共振如同自然节律，关系可以很轻松"
-- ZIXING_* + ZODIAC_TENSION → "自刑+星象张力，关系中最大的敌人是你们自己的内在矛盾"
-[/META_SYNTHESIS_RULES]`;
-
-  // 5. 调用 DeepSeek（非流式，以便翻译兜底）
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'AI service not configured' });
-  }
-
-  try {
-    const response = await fetch(DEEPSEEK_API, {
+  const deepseekKey = env.DEEPSEEK_API_KEY;
+  if (deepseekKey) {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${deepseekKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages: [
-          { role: 'system', content: template.systemPrompt },
-          { role: 'user', content: `${template.userPrompt}\n\nContext: ${contextStr}${META_STR}${META_SYNTHESIS_RULES}` },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0,
-        max_tokens: 600,
-        stream: false,  // ← 非流式，方便翻译兜底
-      }),
+        temperature: 0.35,
+        max_tokens: 1500
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content?.trim() || '';
+    }
+    const errText = await res.text();
+    throw new Error(`DeepSeek error: ${errText}`);
+  }
+
+  throw new Error('No AI API key configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY.');
+}
+
+// 7. 核心路由
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+
+  try {
+    const body = await parseRequestBody(req);
+    const { bazi, zodiac, iching, tarot, lang = 'th' } = body;
+
+    if (!body.d1 || !body.d2) {
+      return res.status(400).json({ error: 'Missing d1 or d2' });
+    }
+
+    // V9: 后端重算总分，不用前端传来的 overall（防止前端传错）
+    const baziScore = extractScore(bazi);
+    const zodiacScore = extractScore(zodiac);
+    const ichingScore = extractScore(iching);
+    // 三维度加权重算: 八字45% + 星座35% + 易经20%
+    const computedOverall = Math.round(baziScore * 0.45 + zodiacScore * 0.35 + ichingScore * 0.20);
+
+    const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
+    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot);
+
+    const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
+
+    let finalInsight = aiText || 'Unable to generate insight at this time.';
+    finalInsight = finalInsight.replace(/(🎯|⚡|💡|🌿)/g, '\n\n$1').trim();
+    finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
+    finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
+
+    return res.status(200).json({
+      insight: finalInsight,
+      cached: false,
+      tarot: tarot || null,
+      tarotLine: tarot?.meaning || null,
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('[ai-advisor] DeepSeek error:', response.status, errText);
-      return res.status(502).json({ error: 'AI service unavailable' });
-    }
-
-    const aiData = await response.json();
-    let insight = aiData.choices?.[0]?.message?.content?.trim();
-
-    if (!insight) {
-      return res.status(502).json({ error: 'Empty response from AI' });
-    }
-
-    console.log('[ai-advisor] Raw insight (first 100):', insight.substring(0, 100));
-    console.log('[ai-advisor] lang param:', req.body.lang);
-
-    // ── 翻译兜底：检测语言，如果不匹配则翻译 ──
-    const targetLang = req.body.lang || 'en';
-    const isVietnamese = (text) => /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text);
-    const isThai = (text) => /[฀-๿]/i.test(text);
-    const isFrench = (text) => /[àâäçéèêëïîôùûüÿñæœ]/i.test(text);
-    const isSpanish = (text) => /[áéíóúñ¿¡]/i.test(text);
-    const isChinese = (text) => /[\u4e00-\u9fff\u3400-\u4dbf]/i.test(text);
-
-    let needsTranslation = false;
-    if (targetLang === 'vi') needsTranslation = !isVietnamese(insight) && !isChinese(insight);
-    else if (targetLang === 'th') needsTranslation = !isThai(insight) && !isChinese(insight);
-    else if (targetLang === 'fr') needsTranslation = !isFrench(insight);
-    else if (targetLang === 'es') needsTranslation = !isSpanish(insight);
-    // en: always needs translation if it's not English
-    else if (targetLang === 'en') needsTranslation = isVietnamese(insight) || isThai(insight) || isFrench(insight) || isSpanish(insight) || isChinese(insight);
-
-    console.log('[ai-advisor] needsTranslation:', needsTranslation, '(target=', targetLang, ')');
-
-    if (needsTranslation) {
-      const langNames = { vi: 'Vietnamese', th: 'Thai', fr: 'French', es: 'Spanish', zh: 'Chinese', en: 'English' };
-      const tl = langNames[targetLang] || 'English';
-      console.log('[ai-advisor] 🌐 Translating to', tl, '...');
-
-      const translateResponse = await fetch(DEEPSEEK_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: `You are a professional translator. Translate the user's text to ${tl}. Output ONLY the translated text, no explanations, no quotes.` },
-            { role: 'user', content: insight }
-          ],
-          temperature: 0.05,
-          max_tokens: 600,
-        }),
-      });
-
-      if (translateResponse.ok) {
-        const translateData = await translateResponse.json();
-        const translated = translateData.choices?.[0]?.message?.content?.trim();
-        if (translated) {
-          console.log('[ai-advisor] ✅ Translation succeeded!');
-          insight = translated;
-        }
-      } else {
-        console.error('[ai-advisor] ❌ Translation failed, using original.');
-      }
-    }
-
-    // 6. 返回完整 JSON
-    return res.status(200).json({ insight, tarot });
-
-  } catch (err) {
-    console.error('[ai-advisor] handler error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    console.error('AI Advisor Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 }
