@@ -30,74 +30,99 @@ async function parseRequestBody(req) {
 // 3. 全量6语言系统指令 + 参数化命题模板矩阵
 const LANGUAGE_CONFIGS = {
   th: {
-    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์ระดับสูงที่มีความเชี่ยวชาญในระบบ Bazi, โหราศาสตร์ตะวันตก, และคัมภีร์อี้จิง หน้าที่ของคุณคือนำข้อมูลและคะแนนที่กำหนดให้ด้านล่าง มาเขียนบทสรุปวิเคราะห์เชิงลึก (AI วิเคราะห์) ความยาว 300-500 คำ โดยห้ามเปลี่ยนตัวเลขหรือคะแนนใดๆ ทั้งสิ้น ห้ามพร่ำเพ้อพรรณนาซ้ำซาก ให้เน้นการตีความทางจิตวิญญาณและคำแนะนำที่เป็นรูปธรรมเพื่อทลายกรรมที่ติดขัด",
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข รวมความยาวไม่เกิน 200 คำ",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[ข้อมูลบังคับที่ต้องใช้ในการร้อยเรียง]
-- คะแนนรวมภายนอก (Overall Score): ${overall}/100
-- คะแนนบาซี (Bazi Score): ${baziScore}/100
-- คะแนนราศี (Zodiac Score): ${zodiacScore}/100
-- คะแนนอี้จิง (I Ching Score): ${ichingScore}/100
-- ไพ่ทาโรต์ (Tarot): ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'กลับด้าน / Reversed' : 'ตั้งตรง / Upright'})
-- ความหมายไพ่เชิงลึก: ${tarot?.meaning || ''}
+[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'กลับด้าน' : 'ตั้งตรง'})
+ไพ่เชิงลึก: ${tarot?.meaning || ''}
 
-[คำสั่งควบคุมขั้นเด็ดขาด]
-จงเขียนข้อความในส่วนวิเคราะห์ AI โดยอธิบายเหตุผลอย่างมีตรรกะว่าทำไมตัวเลขทั้ง 4 ชุดนี้ถึงเชื่อมโยงกันอย่างเป็นระบบ และจงประสานพลังงานที่ขัดแย้งระหว่างคะแนนอี้จิงและไพ่ทาโรต์ให้เป็นเนื้อเรื่องเดียวกัน ห้ามสรุปคะแนนใหม่ ห้ามทิ้งคำแนะนำเชิงจิตวิญญาณ และต้องปิดท้ายด้วย Emoji สามตัวนี้เสมอ: 🌿 ✨ 🔮
+[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ]
+🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์โดยอิงคะแนนรวม ${overall}]
 
-[รูปแบบผลลัพธ์ — ห้ามเขียนหัวข้อหรือหมายเลขข้อ เขียนเฉพาะเนื้อหา]
-ภายใต้ผืนฟ้าแห่งโชคชะตา คะแนนความเข้ากันได้โดยรวมที่ **${overall} คะแนน** คือ... [โปรดเขียนบทวิเคราะห์ความยาว 300-500 คำขยายความจากตรงนี้ โดยใช้ข้อมูลคะแนนบาซี ${baziScore} คะแนน, ราศี ${zodiacScore} คะแนน, และอี้จิง ${ichingScore} คะแนน รวมถึงความหมายของไพ่ ${tarot?.name || ''} (${tarot?.orientation || ''}) มาร้อยเรียงให้สมบูรณ์แบบ] 🌿 ✨ 🔮
+⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียด]
+
+💡 **ทางออก:** [2 ประโยค: ใช้อี้จิง ${ichingScore} กับไพ่ ${tarot?.name || ''} ให้คำแนะนำเป็นรูปธรรม]
+
+🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจ] 🌿 ✨ 🔮
 `
   },
   zh: {
-    systemPrompt: "你是一位精通八字、占星与易经的天级命理导师。请结合给定的分数和塔罗牌意，撰写一段300-500字的核心灵魂解读大作文。不可篡改任何既定分数，着重逻辑缝合与心灵指引。严禁使用'各位用户'等机械开场白，必须直接以诗意意象或灵魂洞见开篇。",
+    systemPrompt: "你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号。严禁篡改任何分数。",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[强制数据锁] 综合评分 = ${overall}/100, 八字 = ${baziScore}/100, 星座 = ${zodiacScore}/100, 易经 = ${ichingScore}/100
-- 塔罗牌: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? '逆位' : '正位'})
-- 牌意内核: ${tarot?.meaning || ''}
+[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? '逆位' : '正位'})
+牌意: ${tarot?.meaning || ''}
 
-[输出格式约束 — 不要写标题或序号，只写正文]
-在命运的星空下，你们的综合评分 **${overall} 分** 是... [请在此处续写300-500字的灵魂大作文，深度融合八字 ${baziScore}分、星座 ${zodiacScore}分、易经 ${ichingScore}分与塔罗牌 ${tarot?.name || ''} 的挣扎与解法。必须提到全部四个分数。] 🌿 ✨ 🔮
+[输出结构 — 严格执行，不改emoji和标题]
+🎯 **核心结论:** [1句话，根据综合评分${overall}直接定性这段关系]
+
+⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}暴露的核心矛盾]
+
+💡 **破局建议:** [2句话：易经${ichingScore}与塔罗${tarot?.name || ''}给出的现实相处建议]
+
+🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮
 `
   },
   vi: {
-    systemPrompt: "Bạn là một bậc thầy chiêm tinh học cấp cao. Hãy kết hợp số điểm và ý nghĩa bài Tarot dưới đây để viết một bài luận phân tích sâu từ 300-500 từ. Không được thay đổi bất kỳ con số nào. TUYỆT ĐỐI KHÔNG được mở đầu bằng các khuôn mẫu cứng nhắc. Hãy bắt đầu TRỰC TIẾP bằng hình ảnh thi ca.",
+    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. Không viết lời mở đầu, không số thứ tự. Không thay đổi bất kỳ số điểm nào.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[Khóa dữ liệu bắt buộc] Điểm tổng thể = ${overall}/100, Bát Tự = ${baziScore}/100, Cung Hoàng Đạo = ${zodiacScore}/100, Kinh Dịch = ${ichingScore}/100
-- Bài Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Ngược' : 'Xuôi'})
-- Ý nghĩa Tarot: ${tarot?.meaning || ''}
+[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Ngược' : 'Xuôi'})
+Ý nghĩa: ${tarot?.meaning || ''}
 
-[Định dạng đầu ra — Không viết tiêu đề hay số thứ tự, chỉ viết nội dung]
-Dưới bầu trời số phận, điểm tương hợp tổng thể **${overall} điểm** là... [Hãy viết tiếp 300-500 từ phân tích kết hợp Bát Tự ${baziScore} điểm, Chiêm tinh ${zodiacScore} điểm, Kinh Dịch ${ichingScore} điểm và bài Tarot ${tarot?.name || ''}. Phải nhắc đến cả 4 con số.] 🌿 ✨ 🔮
+[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]
+🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]
+
+⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]
+
+💡 **Đề xuất thực tế:** [2 câu: Kinh Dịch ${ichingScore} và Tarot ${tarot?.name || ''} gợi ý cách kết nối]
+
+🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮
 `
   },
   en: {
-    systemPrompt: "You are an elite spiritual astrologer specializing in Chinese Bazi, Western Astrology, and I Ching. Integrate the given sub-scores and Tarot card meaning into a deep, cohesive analysis (300-500 words). Do NOT alter any numbers provided. Start directly with a poetic image, no generic openings.",
+    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[DATA LOCK] Overall = ${overall}/100, Bazi = ${baziScore}/100, Zodiac = ${zodiacScore}/100, I Ching = ${ichingScore}/100
-- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Reversed' : 'Upright'})
-- Tarot Meaning: ${tarot?.meaning || ''}
+[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Reversed' : 'Upright'})
+Meaning: ${tarot?.meaning || ''}
 
-[OUTPUT FORMAT — No title or numbering, content only]
-Under the cosmic tapestry, your overall compatibility score of **${overall} points** indicates... [Please extend into a 300-500 word narrative explaining how Bazi (${baziScore}), Zodiac (${zodiacScore}), and I Ching (${ichingScore}) scores interplay with the Tarot card ${tarot?.name || ''}. Must reference all 4 scores.] 🌿 ✨ 🔮
+[MANDATORY STRUCTURE — do not change emojis or headers]
+🎯 **Core Verdict:** [1 sentence summarizing the relationship based on score ${overall}]
+
+⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]
+
+💡 **Path Forward:** [2 sentences: actionable advice from IChing ${ichingScore} and Tarot ${tarot?.name || ''}]
+
+🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮
 `
   },
   es: {
-    systemPrompt: "Eres un maestro astrólogo espiritual de élite experto en Bazi, Astrología Occidental e I Ching. Integra las puntuaciones dadas y el significado del Tarot para escribir un análisis profundo (300-500 palabras). NO cambies ningún número.",
+    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[BLOQUEO DE DATOS] General = ${overall}/100, Bazi = ${baziScore}/100, Horóscopo = ${zodiacScore}/100, I Ching = ${ichingScore}/100
-- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Invertido' : 'Derecho'})
+[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Invertido' : 'Derecho'})
+Significado: ${tarot?.meaning || ''}
 
-[FORMATO DE SALIDA — Sin título ni numeración, solo contenido]
-Bajo el tapiz cósmico, su puntuación de compatibilidad general de **${overall} puntos** indica... [Continúe con un análisis de 300-500 palabras combinando Bazi (${baziScore}), Horóscopo (${zodiacScore}), I Ching (${ichingScore}) y el Tarot ${tarot?.name || ''}. Debe mencionar las 4 puntuaciones.] 🌿 ✨ 🔮
+[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]
+🎯 **Veredicto central:** [1 oración resumiendo la relación según puntuación ${overall}]
+
+⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} revelan fricción]
+
+💡 **Camino adelante:** [2 oraciones: consejo práctico desde IChing ${ichingScore} y Tarot ${tarot?.name || ''}]
+
+🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮
 `
   },
   fr: {
-    systemPrompt: "Vous êtes un astrologue spirituel d'élite expert en Bazi, Astrologie Occidentale et Yi Jing. Intégrez les scores fournis et la signification du Tarot pour rédiger une analyse approfondie (300-500 mots). Ne modifiez AUCUN chiffre.",
+    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
-[VERROUILLAGE DES DONNÉES] Global = ${overall}/100, Bazi = ${baziScore}/100, Horoscope = ${zodiacScore}/100, Yi Jing = ${ichingScore}/100
-- Tarot: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Inversé' : 'Droit'})
+[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? 'Inversé' : 'Droit'})
+Signification: ${tarot?.meaning || ''}
 
-[FORMAT DE SORTIE — Pas de titre ni de numérotation, uniquement le contenu]
-Sous la tapisserie cosmique, votre score de compatibilité globale de **${overall} points** indique... [Rédigez une analyse de 300-500 mots combinant Bazi (${baziScore}), Horoscope (${zodiacScore}), Yi Jing (${ichingScore}) et le Tarot ${tarot?.name || ''}. Doit mentionner les 4 scores.] 🌿 ✨ 🔮
+[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]
+🎯 **Verdict central:** [1 phrase résumant la relation selon le score ${overall}]
+
+⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]
+
+💡 **Voie à suivre:** [2 phrases: conseils pratiques depuis YiJing ${ichingScore} et Tarot ${tarot?.name || ''}]
+
+🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮
 `
   }
 };
