@@ -18,30 +18,32 @@ export default async function handler(req, res) {
   const token = authHeader.slice(7);
 
   try {
-    // Dynamic imports - avoid ESM init crash
-    const { createClient } = await import('@supabase/supabase-js');
-    const Stripe = (await import('stripe')).default;
-
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_KEY || ''
-    );
-
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
-
-    // Verify JWT
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-    console.log('[create-checkout] user verified:', user.id);
-
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
 
-    // Check existing profile
+    // Verify JWT via Supabase Auth REST API (no supabase-js needed)
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': anonKey || serviceKey,
+      },
+    });
+
+    if (!userRes.ok) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const { id: userId, email } = await userRes.json();
+    if (!userId) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    console.log('[create-checkout] user verified:', userId);
+
+    // Check existing profile via REST API
     const profileRes = await fetch(
-      `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${user.id}&select=paid,stripe_customer_id,subscription_id`,
+      `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid,stripe_customer_id,subscription_id`,
       {
         headers: {
           'apikey': serviceKey,
@@ -57,6 +59,7 @@ export default async function handler(req, res) {
     const { plan = 'insight_once' } = req.body;
 
     if (isPaid) {
+      // Upsert to ensure row exists
       await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
         method: 'POST',
         headers: {
@@ -66,8 +69,8 @@ export default async function handler(req, res) {
           'Prefer': 'resolution=merge-duplicates',
         },
         body: JSON.stringify({
-          user_id: user.id,
-          email: user.email,
+          user_id: userId,
+          email: email,
           paid: true,
           updated_at: new Date().toISOString(),
         }),
@@ -76,11 +79,15 @@ export default async function handler(req, res) {
       return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
     }
 
+    // Dynamic import Stripe (avoid ESM init crash)
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { supabase_user_id: user.id },
+        email: email,
+        metadata: { supabase_user_id: userId },
       });
       customerId = customer.id;
 
@@ -93,7 +100,7 @@ export default async function handler(req, res) {
           'Prefer': 'resolution=merge-duplicates',
         },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: userId,
           stripe_customer_id: customerId,
           updated_at: new Date().toISOString(),
         }),
@@ -121,7 +128,7 @@ export default async function handler(req, res) {
       }],
       success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/?payment=success`,
       cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/#/result?payment=cancelled`,
-      metadata: { supabase_user_id: user.id, plan },
+      metadata: { supabase_user_id: userId, plan },
     });
 
     return res.status(200).json({ url: session.url, sessionId: session.id });
