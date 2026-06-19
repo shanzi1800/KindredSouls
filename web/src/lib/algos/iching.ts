@@ -1893,7 +1893,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const D_LABEL = {
     primaryHex:   { zh:'【本卦】', en:'[Primary Hex]', es:'[Hex Principal]', fr:'[Hex Principal]', th:'[แผนภูมิหลัก]', vi:'[Quẻ Chính]' },
     nature:       { zh:'卦德', en:'Nature', es:'Naturaleza', fr:'Nature', th:'ธรรมชาติ', vi:'Tính chất' },
-    judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำพิพากษ์', vi:'Lời chiêm giải cốt lõi' },
+    judgment:     { zh:'卦辞', en:'Judgment', es:'Juicio', fr:'Jugement', th:'คำทำนาย', vi:'Lời chiêm giải cốt lõi' },
     grade:        { zh:'等级', en:'Grade', es:'Grado', fr:'Grade', th:'ระดับ', vi:'Cấp độ' },
     score:        { zh:'易经得分', en:'I Ching Score', es:'Puntuación I Ching', fr:'Score Yi Jing', th:'คะแนนอี้จิง', vi:'Điểm Kinh Dịch' },
     relation:     { zh:'【姻缘解读】', en:'[Relationship]', es:'[Relación]', fr:'[Relation]', th:'[การอ่านความสัมพันธ์]', vi:'[Luận giải mối quan hệ]' },
