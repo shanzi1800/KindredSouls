@@ -121,7 +121,7 @@ async function callAI(systemPrompt, userPrompt, env) {
         body: JSON.stringify({
           contents: [{ parts: [{ text: userPrompt }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { temperature: 0.35, maxOutputTokens: 800 }
+          generationConfig: { temperature: 0.35, maxOutputTokens: 1500 }
         })
       });
       if (res.ok) {
@@ -150,7 +150,7 @@ async function callAI(systemPrompt, userPrompt, env) {
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.35,
-        max_tokens: 800
+        max_tokens: 1500
       })
     });
     if (res.ok) {
