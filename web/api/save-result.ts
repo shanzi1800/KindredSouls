@@ -25,11 +25,12 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!userRes.ok) {
-      const errorData = await userRes.json();
+      const errorData: any = await userRes.json();
       return res.status(401).json({ error: errorData.error_description || 'Invalid token' });
     }
 
-    const { id: userId } = await userRes.json();
+    const userData: any = await userRes.json();
+    const userId = userData.id;
 
     // 2. Save result to Supabase via REST API
     const resultData = req.body;
@@ -48,7 +49,7 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!saveRes.ok) {
-      const errorData = await saveRes.json();
+      const errorData: any = await saveRes.json();
       console.error('Supabase save error:', errorData);
       return res.status(500).json({ error: errorData.message || 'Failed to save result' });
     }
