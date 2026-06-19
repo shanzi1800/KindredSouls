@@ -49,7 +49,7 @@ const LANGUAGE_CONFIGS = {
 `
   },
   zh: {
-    systemPrompt: "你是一位精通八字、占星与易经的天级命理导师。请结合给定的分数和塔罗牌意，撰写一段300-500字的核心灵魂解读大作文。不可篡改任何既定分数，着重逻辑缝合与心灵指引。严禁使用"各位用户"等机械开场白，必须直接以诗意意象或灵魂洞见开篇。",
+    systemPrompt: "你是一位精通八字、占星与易经的天级命理导师。请结合给定的分数和塔罗牌意，撰写一段300-500字的核心灵魂解读大作文。不可篡改任何既定分数，着重逻辑缝合与心灵指引。严禁使用'各位用户'等机械开场白，必须直接以诗意意象或灵魂洞见开篇。",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => `
 [强制数据锁] 综合评分 = ${overall}/100, 八字 = ${baziScore}/100, 星座 = ${zodiacScore}/100, 易经 = ${ichingScore}/100
 - 塔罗牌: ${tarot?.name || ''} (${tarot?.orientation === 'Reversed' ? '逆位' : '正位'})
