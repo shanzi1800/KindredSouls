@@ -423,9 +423,11 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   // 根据分数段选择 summary 模板
   let summary: string;
   if (score >= 85) {
+    const dm1 = `${tg(sz1.dayMaster)}${lang !== 'zh' ? ` (${wx(TG_WUXING[sz1.dayMaster])})` : ''}`;
+    const dm2 = `${tg(sz2.dayMaster)}${lang !== 'zh' ? ` (${wx(TG_WUXING[sz2.dayMaster])})` : ''}`;
     const SUMMARY_85: Record<string,string> = {
       zh:`日主${sz1.dayMaster}遇${sz2.dayMaster}，天干有情，地支有合，属上等姻缘。`,
-      en:`Day Master ${sz1.dayMaster} meets ${sz2.dayMaster} — heavenly stems harmonize, earthly branches align. A superior match.`,
+      en:`Day Master ${dm1} meets ${dm2} — heavenly stems harmonize, earthly branches align. A superior match.`,
       es:`Maestro Día ${tg(sz1.dayMaster)} encuentra ${tg(sz2.dayMaster)} — tallos celestiales armonizan, ramas terrestres se alinean. Unión superior.`,
       fr:`Maître Jour ${tg(sz1.dayMaster)} rencontre ${tg(sz2.dayMaster)} — tiges célestes s'harmonisent, branches terrestres s'alignent. Union supérieure.`,
       th:`เจ้า ${tg(sz1.dayMaster)} พบ ${tg(sz2.dayMaster)} — กิ่งฟ้าปรองดอง กิ่งดินลงรอย ชะตาชีวิตระดับสูง`,
@@ -433,12 +435,14 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     };
     summary = SUMMARY_85[lang] || SUMMARY_85['en'];
   } else if (score >= 72) {
+    const dp1 = `${tg(sz1.day[0])} ${dz_(sz1.day[1])}`;
+    const dp2 = `${tg(sz2.day[0])} ${dz_(sz2.day[1])}`;
     const SUMMARY_72: Record<string,string> = {
       zh:`日柱${sz1.dayPillar}与${sz2.dayPillar}五行互根，彼此能互相成就。`,
-      en:`Day Pillar ${sz1.dayPillar} and ${sz2.dayPillar} share elemental roots — each empowers the other.`,
-      es:`Pilar Día ${tg(sz1.day[0]) + ' ' + dz_(sz1.day[1])} y ${tg(sz2.day[0]) + ' ' + dz_(sz2.day[1])} comparten raíces elementales — cada uno potencia al otro.`,
-      fr:`Pilier Jour ${tg(sz1.day[0]) + ' ' + dz_(sz1.day[1])} et ${tg(sz2.day[0]) + ' ' + dz_(sz2.day[1])} partagent des racines élémentaires — chacun renforce l'autre.`,
-      th:`วัน ${tg(sz1.day[0]) + ' ' + dz_(sz1.day[1])} และ ${tg(sz2.day[0]) + ' ' + dz_(sz2.day[1])} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
+      en:`Day Pillar ${dp1} and ${dp2} share elemental roots — each empowers the other.`,
+      es:`Pilar Día ${dp1} y ${dp2} comparten raíces elementales — cada uno potencia al otro.`,
+      fr:`Pilier Jour ${dp1} et ${dp2} partagent des racines élémentaires — chacun renforce l'autre.`,
+      th:`วัน ${dp1} และ ${dp2} มีรากธาตุเดียวกัน — ช่วยเสริมกัน`,
       vi:`Nhật Chủ ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} — mỗi người giúp đỡ phát huy tiềm năng của người kia`,
     };
     summary = SUMMARY_72[lang] || SUMMARY_72['en'];
