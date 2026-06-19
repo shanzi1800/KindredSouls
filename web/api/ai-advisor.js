@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 // ============================================================
 // KindredSouls AI Advisor — "填空打字员"架构 (军师架构 + 牛牛工程修复)
-// 版本: V8 (正逆位绝对防御锁 + 6语言全覆盖)
+// 版本: V9 (总分后端重算 + 正逆位绝对锁 + 塔罗牌意意图约束 + 6语言)
 // ============================================================
 
 // 1. 通用多语言分数截获正则
@@ -27,7 +27,7 @@ async function parseRequestBody(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
-// 3. 全量6语言系统指令 + 参数化命题模板矩阵 (V8: 正逆位 statusText 绝对锁)
+// 3. 工具函数：正逆位本地化文本
 const ORIENT_MAP = {
   th: { up: 'ตั้งตรง', rev: 'กลับด้าน' },
   zh: { up: '正位', rev: '逆位' },
@@ -42,122 +42,157 @@ function getOrientText(tarot, lang) {
   return tarot?.orientation === 'Reversed' ? m.rev : m.up;
 }
 
+// 4. 工具函数：从 tarot.meaning 提取核心关键词（给 AI 的意图约束，防止瞎编仪式）
+function getTarotCoreKeyword(meaning, lang) {
+  if (!meaning) return '';
+  // meaning 格式: "Creation and Expression — ..." or "关键词 — 详细解释"
+  const core = meaning.split('—')[0].trim();
+  if (lang === 'th') {
+    // 泰语meaning的常见核心词翻译
+    if (core.includes('Creation') || core.includes('Expression')) return 'การสร้างสรรค์และการแสดงออก';
+    if (core.includes('Nurturing') || core.includes('Abundance')) return 'การหล่อเลี้ยงและความอุดมสมบูรณ์';
+    if (core.includes('Intuition') || core.includes('Mystery')) return 'สัญชาตญาณและความลึกลับ';
+    if (core.includes('Balance') || core.includes('Harmony')) return 'ความสมดุลและความประสาน';
+    if (core.includes('Power') || core.includes('Authority')) return 'พลังและอำนาจ';
+    if (core.includes('Love') || core.includes('Union')) return 'ความรักและการรวมเป็นหนึ่ง';
+    if (core.includes('Transformation') || core.includes('Death')) return 'การเปลี่ยนแปลงและการตาย';
+    if (core.includes('Reward') || core.includes('Harvest')) return 'ผลตอบแทนและการเก็บเกี่ยว';
+    if (core.includes('Hope') || core.includes('Illumination')) return 'ความหวังและแสงสว่าง';
+    if (core.includes('Journey') || core.includes('Road')) return 'การเดินทางและเส้นทาง';
+    return core;
+  }
+  return core;
+}
+
+// 5. 全量6语言系统指令 + 参数化命题模板矩阵 (V9)
 const LANGUAGE_CONFIGS = {
   th: {
-    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุใน[ข้อมูลบังคับ] รวมความยาวไม่เกิน 200 คำ",
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียนคำแนะนำพิธีกรรมทางไสยศาสตร์ (เช่น เผากระดาษ ทำบุญทิ้ง สวดมนต์) รวมความยาวไม่เกิน 200 คำ",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
       return [
         `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}`,
         `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
+        `แก่นไพ่(ต้องใช้ใน💡): ${coreKeyword}`,
         ``,
-        `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ]`,
-        `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์โดยอิงคะแนนรวม ${overall}]`,
+        `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ ห้ามเพิ่มเติม]`,
+        `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์จากคะแนนรวม ${overall} ให้ตรงกับข้อมูลจริง]`,
         ``,
-        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียด]`,
+        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียดในชีวิตจริง]`,
         ``,
-        `💡 **ทางออก:** [2 ประโยค: ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) ให้คำแนะนำเป็นรูปธรรม]`,
+        `💡 **ทางออก:** [2 ประโยค: ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
         ``,
-        `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจ] 🌿 ✨ 🔮`,
+        `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
       ].join('\n');
     }
   },
   zh: {
-    systemPrompt: "你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。",
+    systemPrompt: "你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
       return [
         `[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${cardName}, 正逆位=${statusText}`,
         `牌意: ${tarot?.meaning || ''}`,
+        `牌核(用于💡): ${coreKeyword}`,
         ``,
         `[输出结构 — 严格执行，不改emoji和标题]`,
         `🎯 **核心结论:** [1句话，根据综合评分${overall}直接定性这段关系]`,
         ``,
         `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}暴露的核心矛盾]`,
         ``,
-        `💡 **破局建议:** [2句话：易经${ichingScore}与塔罗${cardName}(${statusText})给出的现实相处建议]`,
+        `💡 **破局建议:** [2句话：易经${ichingScore}与塔罗${cardName}(${statusText})，围绕"${coreKeyword}"给出在现实生活中的具体相处建议，严禁迷信仪式]`,
         ``,
         `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
       ].join('\n');
     }
   },
   vi: {
-    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. Không viết lời mở đầu, không số thứ tự. Không thay đổi bất kỳ số điểm nào. Không viết sai trạng thái xuôi/ngược của bài Tarot.",
+    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. Không viết lời mở đầu, không số thứ tự. Không thay đổi bất kỳ số điểm nào. Không viết sai trạng thái xuôi/ngược của bài Tarot. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép).",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
       return [
         `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
         `Ý nghĩa: ${tarot?.meaning || ''}`,
+        `Lõi bài: ${coreKeyword}`,
         ``,
         `[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
         `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
         ``,
-        `💡 **Đề xuất thực tế:** [2 câu: Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) gợi ý cách kết nối]`,
+        `💡 **Đề xuất thực tế:** [2 câu: Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].join('\n');
     }
   },
   en: {
-    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation from what is given in [DATA LOCK].",
+    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation. Never suggest superstitious rituals (burning paper, chanting, spells).",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
       return [
         `[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
         `Meaning: ${tarot?.meaning || ''}`,
+        `Core keyword (for 💡): ${coreKeyword}`,
         ``,
         `[MANDATORY STRUCTURE — do not change emojis or headers]`,
         `🎯 **Core Verdict:** [1 sentence summarizing the relationship based on score ${overall}]`,
         ``,
         `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]`,
         ``,
-        `💡 **Path Forward:** [2 sentences: actionable advice from IChing ${ichingScore} and Tarot ${cardName}(${statusText})]`,
+        `💡 **Path Forward:** [2 sentences: IChing ${ichingScore} and Tarot ${cardName}(${statusText}) based on core "${coreKeyword}" — give practical relationship advice for real life. No superstitious rituals.]`,
         ``,
         `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
       ].join('\n');
     }
   },
   es: {
-    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. Nunca cambies la orientación del tarot de la indicada en [BLOQUEO DE DATOS].",
+    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. Nunca cambies la orientación del tarot. Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
       return [
         `[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientación=${statusText}`,
         `Significado: ${tarot?.meaning || ''}`,
+        `Palabra clave central: ${coreKeyword}`,
         ``,
         `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
         `🎯 **Veredicto central:** [1 oración resumiendo la relación según puntuación ${overall}]`,
         ``,
         `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} revelan fricción]`,
         ``,
-        `💡 **Camino adelante:** [2 oraciones: consejo práctico desde IChing ${ichingScore} y Tarot ${cardName}(${statusText})]`,
+        `💡 **Camino adelante:** [2 oraciones: IChing ${ichingScore} y Tarot ${cardName}(${statusText}) basado en "${coreKeyword}" — dar consejo práctico de relación real. Sin rituales supersticiosos.]`,
         ``,
         `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
       ].join('\n');
     }
   },
   fr: {
-    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot indiquée dans [VERROUILLAGE DES DONNÉES].",
+    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
       return [
         `[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
         `Signification: ${tarot?.meaning || ''}`,
+        `Mot-clé central: ${coreKeyword}`,
         ``,
         `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
         `🎯 **Verdict central:** [1 phrase résumant la relation selon le score ${overall}]`,
         ``,
         `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]`,
         ``,
-        `💡 **Voie à suivre:** [2 phrases: conseils pratiques depuis YiJing ${ichingScore} et Tarot ${cardName}(${statusText})]`,
+        `💡 **Voie à suivre:** [2 phrases: YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) basé sur "${coreKeyword}" — donner des conseils relationnels pratiques. Pas de rituels superstitieux.]`,
         ``,
         `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
       ].join('\n');
@@ -165,9 +200,8 @@ const LANGUAGE_CONFIGS = {
   }
 };
 
-// 4. API 调用封装（Gemini 优先，DeepSeek Fallback）
+// 6. API 调用封装（Gemini 优先，DeepSeek Fallback）
 async function callAI(systemPrompt, userPrompt, env) {
-  // 优先 Gemini 1.5 Flash
   const geminiKey = env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
@@ -191,7 +225,6 @@ async function callAI(systemPrompt, userPrompt, env) {
     }
   }
 
-  // Fallback: DeepSeek-V4 Flash
   const deepseekKey = env.DEEPSEEK_API_KEY;
   if (deepseekKey) {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -221,7 +254,7 @@ async function callAI(systemPrompt, userPrompt, env) {
   throw new Error('No AI API key configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY.');
 }
 
-// 5. 核心路由
+// 7. 核心路由
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -231,37 +264,29 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseRequestBody(req);
-    const { bazi, zodiac, iching, tarot, lang = 'th', overall = 70 } = body;
+    const { bazi, zodiac, iching, tarot, lang = 'th' } = body;
 
-    // 检查必要字段
     if (!body.d1 || !body.d2) {
       return res.status(400).json({ error: 'Missing d1 or d2' });
     }
 
-    // 正则清洗三大维度分数
+    // V9: 后端重算总分，不用前端传来的 overall（防止前端传错）
     const baziScore = extractScore(bazi);
     const zodiacScore = extractScore(zodiac);
     const ichingScore = extractScore(iching);
+    // 三维度加权重算: 八字45% + 星座35% + 易经20%
+    const computedOverall = Math.round(baziScore * 0.45 + zodiacScore * 0.35 + ichingScore * 0.20);
 
-    // 命中语言包（默认回落泰语）
     const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
+    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot);
 
-    // 生成填空模板 Prompt
-    const finalPrompt = config.buildPrompt(overall, baziScore, zodiacScore, ichingScore, tarot);
-
-    // 调用 AI（Gemini 优先，DeepSeek Fallback）
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
-    // 后端守门：确保切分锚点存在
     let finalInsight = aiText || 'Unable to generate insight at this time.';
-    // Ensure proper paragraph spacing between sections
     finalInsight = finalInsight.replace(/(🎯|⚡|💡|🌿)/g, '\n\n$1').trim();
-    // Strip any AI-generated numbering prefix
     finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
-    // Strip tarot card info block if AI appended it (🦋 ...)
     finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
 
-    // 严守 API 契约：返回 { insight }
     return res.status(200).json({
       insight: finalInsight,
       cached: false,
