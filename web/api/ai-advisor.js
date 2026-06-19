@@ -137,7 +137,7 @@ const LANGUAGE_CONFIGS = {
     }
   },
   en: {
-    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation. Never suggest superstitious rituals (burning paper, chanting, spells).",
+    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation — if Orientation is \"Reversed\", you are STRICTLY FORBIDDEN from writing the word \"upright\" anywhere in your analysis. All references to the tarot card must exactly match the given Orientation status. Never suggest superstitious rituals (burning paper, chanting, spells, meditation). Focus on practical relationship advice for real life.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
@@ -147,7 +147,12 @@ const LANGUAGE_CONFIGS = {
         `Meaning: ${tarot?.meaning || ''}`,
         `Core keyword (for 💡): ${coreKeyword}`,
         ``,
-        `[MANDATORY STRUCTURE — do not change emojis or headers]`,
+        `[CRITICAL ORIENTATION LOCK — read before writing]
+- If Orientation = "Reversed", you are STRICTLY FORBIDDEN from using the word "upright" anywhere in your analysis. Every reference to the tarot card must use the exact status: ${statusText} — no synonyms, no substitutions.
+- If Orientation = "Upright", you must NOT write "Reversed".
+- Double-check the card status before writing each paragraph.
+
+[MANDATORY STRUCTURE — do not change emojis or headers]`,
         `🎯 **Core Verdict:** [1 sentence summarizing the relationship based on score ${overall}]`,
         ``,
         `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]`,
