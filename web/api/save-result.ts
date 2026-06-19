@@ -1,28 +1,60 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { VercelRequest, VercelResponse } from 'types';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Missing token' });
+  try {
+    // 1. Verify JWT token
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Missing authorization token' });
+    }
 
-  // Verify user with Supabase Auth
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
-
-  // Save result
-  const { error } = await supabase
-    .from('compatibility_results')
-    .insert({
-      user_id: user.id,
-      ...req.body,
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': SUPABASE_SERVICE_KEY,
+      },
     });
 
-  if (error) return res.status(500).json({ error: error.message });
-  return res.status(200).json({ success: true });
+    if (!userRes.ok) {
+      const errorData = await userRes.json();
+      return res.status(401).json({ error: errorData.error_description || 'Invalid token' });
+    }
+
+    const { id: userId } = await userRes.json();
+
+    // 2. Save result to Supabase via REST API
+    const resultData = req.body;
+    const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/compatibility_results`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        ...resultData,
+      }),
+    });
+
+    if (!saveRes.ok) {
+      const errorData = await saveRes.json();
+      console.error('Supabase save error:', errorData);
+      return res.status(500).json({ error: errorData.message || 'Failed to save result' });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error('Unexpected error in save-result:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
 }
