@@ -1,29 +1,21 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-let stripeModule = null;
-async function getStripe() {
-  if (!stripeModule) {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
-    // Dynamic import to avoid ESM init crash on Vercel
-    const Stripe = (await import('stripe')).default;
-    stripeModule = new Stripe(key);
-  }
-  return stripeModule;
-}
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 const PRICES = {
   insight_once: 499,    // $4.99 one-time AI insight
   monthly: 499,         // $4.99/month unlimited
 };
 
-// Verify Supabase JWT via official SDK (handles revocation/disabled users/etc)
+// Verify Supabase JWT via official SDK
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
 );
 
 async function verifySupabaseJWT(token) {
@@ -46,16 +38,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   const token = authHeader.slice(7);
-  
+
   const user = await verifySupabaseJWT(token);
   if (!user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
-  
+
   console.log('[create-checkout] user verified:', user.id);
 
   try {
-    // Use raw fetch for Supabase REST API (no WebSocket needed)
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -77,7 +68,6 @@ export default async function handler(req, res) {
     const { plan = 'insight_once' } = req.body;
 
     if (isPaid) {
-      // ✅ Ensure user_profiles row exists with paid=true
       await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
         method: 'POST',
         headers: {
@@ -93,20 +83,18 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString(),
         }),
       }).catch(err => console.error('[create-checkout] Upsert error (non-fatal):', err));
-      
+
       return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
     }
 
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
-      const stripe = await getStripe();
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
 
-      // Upsert profile with stripe_customer_id
       await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
         method: 'POST',
         headers: {
@@ -123,7 +111,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const stripe = await getStripe();
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
