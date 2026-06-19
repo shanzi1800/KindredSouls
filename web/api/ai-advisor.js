@@ -216,8 +216,12 @@ export default async function handler(req, res) {
 
     // 后端守门：确保切分锚点存在
     let finalInsight = aiText || 'Unable to generate insight at this time.';
+    // Ensure proper paragraph spacing between sections
+    finalInsight = finalInsight.replace(/(🎯|⚡|💡|🌿)/g, '\n\n$1').trim();
     // Strip any AI-generated numbering prefix
     finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
+    // Strip tarot card info block if AI appended it (🦋 ...)
+    finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
 
     // 严守 API 契约：返回 { insight }
     return res.status(200).json({
