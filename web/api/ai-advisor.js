@@ -225,7 +225,7 @@ const LANGUAGE_CONFIGS = {
 
 // 6. API 调用封装（Gemini 优先，DeepSeek Fallback）
 async function callAI(systemPrompt, userPrompt, env) {
-  const geminiKey = env.GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
@@ -248,7 +248,7 @@ async function callAI(systemPrompt, userPrompt, env) {
     }
   }
 
-  const deepseekKey = env.DEEPSEEK_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
   if (deepseekKey) {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -257,7 +257,7 @@ async function callAI(systemPrompt, userPrompt, env) {
         'Authorization': `Bearer ${deepseekKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-chat',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
