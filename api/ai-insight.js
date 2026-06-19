@@ -346,8 +346,6 @@ export default async function handler(req, res) {
     console.warn('[ai-insight] Invalid tarot orientation:', iching.tarot.orientation);
     // Don't fail - just log a warning, AI can handle unknown orientation
   }
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
