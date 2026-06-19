@@ -144,7 +144,7 @@ async function callAI(systemPrompt, userPrompt, env) {
         'Authorization': `Bearer ${deepseekKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-v3',
+        model: 'deepseek-v4-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
