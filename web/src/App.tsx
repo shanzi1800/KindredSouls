@@ -387,7 +387,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           } else {
             checkPaidStatus(session.access_token);
           }
-          triggerSaveResult(session.user.id);
+          triggerSaveResult();
         } else if (isOAuthCallback) {
           // 🌟 绝杀卡点：发现是 OAuth 回调 → 锁死加载状态，绝对不显示登录墙！
           setIsAuthParsing(true);
@@ -438,7 +438,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping checkPaidStatus');
         } else {
           checkPaidStatus(session!.access_token);
-          triggerSaveResult(session!.user.id);
+          triggerSaveResult();
         }
       } else if (event === 'SIGNED_OUT') {
         setCurrentAccessToken(null);
@@ -511,7 +511,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     }
   };
   // ── Save result via REST API（只在有 token 时调用）──
-  const triggerSaveResult = async (uid: string) => {
+  const triggerSaveResult = async () => {
     const saved = localStorage.getItem('ks_result');
     if (!saved) return;
     try {
