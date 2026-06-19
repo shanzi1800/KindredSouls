@@ -1,16 +1,16 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import Stripe from 'stripe';
-
-let stripeInstance = null;
-function getStripe() {
-  if (!stripeInstance) {
+let stripeModule = null;
+async function getStripe() {
+  if (!stripeModule) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
-    stripeInstance = new Stripe(key);
+    // Dynamic import to avoid ESM init crash on Vercel
+    const Stripe = (await import('stripe')).default;
+    stripeModule = new Stripe(key);
   }
-  return stripeInstance;
+  return stripeModule;
 }
 
 const PRICES = {
@@ -99,7 +99,8 @@ export default async function handler(req, res) {
 
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
-      const customer = await getStripe().customers.create({
+      const stripe = await getStripe();
+      const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
       });
@@ -122,7 +123,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const session = await getStripe().checkout.sessions.create({
+    const stripe = await getStripe();
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: plan === 'monthly' ? 'subscription' : 'payment',
       line_items: [{
