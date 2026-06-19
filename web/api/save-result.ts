@@ -1,9 +1,7 @@
-import { VercelRequest, VercelResponse } from 'types';
+// save-result.ts - Save compatibility result to Supabase via REST API
+// No TypeScript type annotations to avoid Vercel build errors
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -15,6 +13,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!token) {
       return res.status(401).json({ error: 'Missing authorization token' });
     }
+
+    const SUPABASE_URL = process.env.SUPABASE_URL!;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
