@@ -1,7 +1,7 @@
-// save-result.ts - Save compatibility result to Supabase via REST API
-// No TypeScript type annotations to avoid Vercel build errors
+// save-result.js - Save compatibility result to Supabase via REST API
+// Pure JavaScript (no TypeScript syntax) to avoid Vercel build errors
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -14,8 +14,12 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Missing authorization token' });
     }
 
-    const SUPABASE_URL = process.env.SUPABASE_URL!;
-    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return res.status(500).json({ error: 'Missing Supabase configuration' });
+    }
 
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
@@ -25,11 +29,11 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!userRes.ok) {
-      const errorData: any = await userRes.json();
+      const errorData = await userRes.json();
       return res.status(401).json({ error: errorData.error_description || 'Invalid token' });
     }
 
-    const userData: any = await userRes.json();
+    const userData = await userRes.json();
     const userId = userData.id;
 
     // 2. Save result to Supabase via REST API
@@ -49,13 +53,13 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!saveRes.ok) {
-      const errorData: any = await saveRes.json();
+      const errorData = await saveRes.json();
       console.error('Supabase save error:', errorData);
       return res.status(500).json({ error: errorData.message || 'Failed to save result' });
     }
 
     return res.status(200).json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Unexpected error in save-result:', error);
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
