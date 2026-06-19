@@ -824,7 +824,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       {error && <p style={{ color: '#ff6b6b', marginTop: '8px' }}>{error}</p>}
       {insight && (
         <div className="insight-result">
-          <p>{insight}</p>
+          {insight.split('\n\n').map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
           {tarotCard && (
             <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '12px', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '8px', transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
