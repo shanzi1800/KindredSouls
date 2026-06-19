@@ -89,7 +89,7 @@ const LANGUAGE_CONFIGS = {
     }
   },
   zh: {
-    systemPrompt: "你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。",
+    systemPrompt: `你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。`,
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
