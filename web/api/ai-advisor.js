@@ -128,6 +128,7 @@ const LANGUAGE_CONFIGS = {
         `Lõi bài: ${coreKeyword}`,
         ``,
         `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]\n- Nếu Trạng thái = \"Ngược\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Mọi nhắc đến bài tarot phải dùng đúng trạng thái: ${statusText}.\n- Nếu Trạng thái = \"Xuôi\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Ngược\".\n- Kiểm tra kỹ trạng thái bài trước khi viết từng đoạn.\n\n[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
+        - Quan trọng: Khi phân tích xung đột cung hoàng đạo, PHẢI tham chiếu đặc điểm thực tế của hai cung cụ thể trong kết quả (ví dụ: Xử Nữ thì hay phê bình/chỉn chu, Thiên Bình thì do dự/cân bằng). CẤM ĐOẠN chỉnh sửa đặc điểm tính cách.
         `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
@@ -150,7 +151,9 @@ const LANGUAGE_CONFIGS = {
         `Core keyword (for 💡): ${coreKeyword}`,
         ``,
         `[CRITICAL ORIENTATION LOCK — read before writing]
-- If Orientation = "Reversed", you are STRICTLY FORBIDDEN from using the word "upright" anywhere in your analysis. Every reference to the tarot card must use the exact status: ${statusText} — no synonyms, no substitutions.
+- If Orientation = "Reversed"
+        - CRITICAL: When analyzing zodiac conflicts, you MUST reference the actual traits of the two specific zodiac signs shown in the results (e.g., Virgo = critical/precise, Libra = indecisive/balanced). Do NOT invent personality traits.
+, you are STRICTLY FORBIDDEN from using the word "upright" anywhere in your analysis. Every reference to the tarot card must use the exact status: ${statusText} — no synonyms, no substitutions.
 - If Orientation = "Upright", you must NOT write "Reversed".
 - Double-check the card status before writing each paragraph.
 
@@ -177,7 +180,9 @@ const LANGUAGE_CONFIGS = {
         `Palabra clave central: ${coreKeyword}`,
         ``,
         `[BLOQUEO DE ORIENTACIÓN CRÍTICO — leer antes de escribir]
-- Si Orientación = "Invertido", ESTRICTAMENTE PROHIBIDO usar "en derecho", "al derecho" o cualquier sinónimo de posición normal. Toda referencia a la carta debe usar exactamene: ${statusText}.
+- Si Orientación = "Invertido"
+        - CRÍTICO: Al analizar conflictos de zodiaco, DEBES referenciar los rasgos reales de los dos signos específicos en los resultados (ej. Virgo = crítico/preciso, Libra = indeciso/equilibrado). PROHIBIDO inventar rasgos.
+, ESTRICTAMENTE PROHIBIDO usar "en derecho", "al derecho" o cualquier sinónimo de posición normal. Toda referencia a la carta debe usar exactamene: ${statusText}.
 - Si Orientación = "Derecho", PROHIBIDO escribir "invertido".
 - Verificar dos veces el estado de la carta antes de escribir cada párrafo.
 
@@ -203,7 +208,9 @@ const LANGUAGE_CONFIGS = {
         `Signification: ${tarot?.meaning || ''}`,
         `Mot-clé central: ${coreKeyword}`,
         ``,
-        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
+        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]
+        - CRITIQUE: En analysant les conflits du zodiaque, vous DEVEZ vous référer aux traits réels des deux signes spécifiques dans les résultats (ex. Vierge = critique/précis, Balance = indécis/équilibré). INTERDIT d'inventer des traits.
+`,
         `🎯 **Verdict central:** [1 phrase résumant la relation selon le score ${overall}]`,
         ``,
         `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]`,
