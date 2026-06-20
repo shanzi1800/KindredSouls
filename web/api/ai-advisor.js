@@ -150,40 +150,45 @@ function getTarotCoreKeyword(meaning, lang) {
 // 5. 全量6语言系统指令 + 参数化命题模板矩阵 (V9)
 const LANGUAGE_CONFIGS = {
   th: {
-    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการขึ้นย่อหน้าใหม่] ทุกส่วนต้องขึ้นย่อหน้าใหม่ด้วยบรรทัดเปล่าหนึ่งบรรทัด (empty line) ห้ามเขียนต่อเนื่องกัน",
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการสะกดคำ] ตรวจสอบการสะกดภาษาไทยก่อนตอบ ห้ามใช้คำผิด\n\n[บังคับราศีคะแนนสูง] หากราศีได้คะแนนสูง (>75) แต่อธิบายว่ายังมีความขัดแย้ง กรุณาอธิบายด้านมืด (dark side) ของมุมมองนั้น: ความกลมกลืนที่ผิวเผินซ่อนความขัดแย้งภายใน หรือพลังงานที่เหมือนกันเกินไปขาดแรงกระตุ้น",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
       const sign1 = zodiacMeta?.[0] || '';
       const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
       return [
         `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}`,
         `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
         `แก่นไพ่(ต้องใช้ใน💡): ${coreKeyword}`,
         `ราศีจริง: ${sign1} และ ${sign2}`,
+        luckyText ? `ด้านที่เกื้อหนุน: ${luckyText}` : '',
+        challengeText ? `ด้านที่ต้องระวัง: ${challengeText}` : '',
         ``,
         `[คำสั่งบังคับเด็ดขาด — อ่านก่อนเขียน]`,
         `- 🔴 CRITICAL ด้านสถานะไพ่ (Orientation Lock):`,
         `  - ห้ามคิดคำว่า (ตั้งตรง) เองเด็ดขาด! ต้องอ่านสถานะไพ่จาก [ข้อมูลบังคับ] ว่า=${statusText} แล้วเขียนสถานะนั้นทุกตัวอักษร`,
         `  - หาก ${statusText} = "กลับด้าน" (Reversed): ห้ามเขียน "ตั้งตรง" เด็ดขาด`,
-        `  - หาก ${statusText} = "ตั้งตรง" (Upright): ห้ามเขียน "กลับด้าน" หรือ "หากกลับด้าน" เด็ดขาด! ทั้ง AI 洞察และ牌意段落ต้องพูดแค่ Xuôi เท่านั้น`,
+        `  - หาก ${statusText} = "ตั้งตรง" (Upright): ห้ามเขียน "กลับด้าน" หรือ "หากกลับด้าน" เด็ดขาด! ต้องวิเคราะห์แต่ด้านตั้งตรงเท่านั้น`,
         `  - ตรวจสอบสถานะไพ่ก่อนเขียนทุกย่อหน้า`,
         `- 🔴 CRITICAL ด้านราศี (Zodiac Lock):`,
         `  - ห้ามใช้ราศีอื่นนอกจาก ${sign1} และ ${sign2} เด็ดขาด!`,
         `  - ห้ามนำราศีจากรอบก่อนหน้ามาใช้`,
         `- ห้ามแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด`,
         `- หาก baziScore === zodiacScore ห้ามใช้คำว่าขัดแย้ง แต่ให้เขียนว่าพลังงานสมดุล`,
+        `${zodiacScore >= 75 ? `[หมายเหตุพิเศษ] ราศี ${zodiacScore} คะแนนสูงแต่ต้องวิเคราะห์ด้านมืดของมุมมองนี้ — เช่น ความกลมกลืนผิวเผินซ่อนความขัดแย้งภายใน หรือพลังงานเหมือนกันเกินไปขาดแรงกระตุ้น` : ''}`,
         ``,
         `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ]`,
         `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์จากคะแนนรวม ${overall} ให้ตรงกับข้อมูลจริง]`,
         ``,
-        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} (${sign1} vs ${sign2}) สะท้อนความตึงเครียดในชีวิตจริง]`,
+        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} (${sign1} vs ${sign2}) สะท้อนความตึงเครียดในชีวิตจริง${luckyText ? ` แม้จะมีด้านเกื้อหนุนเช่น ${luckyText}` : ''}${challengeText ? ` แต่ด้านที่ต้องระวังคือ ${challengeText}` : ''}]`,
         ``,
-        `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยคต่อจากนี้โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
+        `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยคต่อจากนี้โดยอิงจากแก่นไพ่"${coreKeyword}"${luckyText ? `. บังคับเน้นด้านเกื้อหนุน: ${luckyText}` : ''}${challengeText ? `. บังคับแก้ไขด้านที่ต้องระวัง: ${challengeText}` : ''} ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
         ``,
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
-      ].join('\n');
+      ].filter(Boolean).join('\n');
     }
   },
   zh: {
@@ -216,7 +221,7 @@ const LANGUAGE_CONFIGS = {
     }
   },
   vi: {
-    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", bài học là về mặt hạn chế, ảo tưởng, hoặc sự suy giảm — không phải là 'tạm thời có mây che'. Phân tích đúng nghĩa thực sự của lá bài khi ngược. CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật.",
+    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", bài học là về mặt hạn chế, ảo tưởng, hoặc sự suy giảm — không phải là 'tạm thời có mây che'. Phân tích đúng nghĩa thực sự của lá bài khi ngược. CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật. Kiểm tra chính tả kỹ trước khi trả lời — đặc biệt: 'nhàm chán' (không phải 'nhàm chám'), 'trì trệ' (không phải 'tồi tệ'), 'ý nghĩa' (đúng chính tả). Nếu Cung Hoàng Đạo điểm cao (>75) nhưng vẫn có xung đột, hãy giải thích mặt tối của góc chiếu: phân tích mặt hạn chế trong sự hài hòa bề mặt.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
@@ -247,6 +252,7 @@ const LANGUAGE_CONFIGS = {
         `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} (${sign1} vs ${sign2}) phản ánh mâu thuẫn gì]`,
+        `${zodiacScore >= 75 ? `[LƯU Ý: Cung Hoàng Đạo ${zodiacScore} điểm cao nhưng cần phân tích mặt tối của góc chiếu — ví dụ: sự hài hòa bề mặt che giấu mâu thuẫn nội tại, hoặc năng lượng quá đồng nhất thiếu kích thích]` : ''}`,
         ``,
         `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}"${luckyText ? `. BẮT BUỘC tập trung vào khía cạnh thuận lợi: ${luckyText}` : ''}${challengeText ? `. BẮT BUỘC giải quyết khía cạnh cần lưu ý: ${challengeText}` : ''}. Đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
