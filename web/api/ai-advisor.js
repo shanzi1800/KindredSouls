@@ -68,32 +68,34 @@ function getTarotCoreKeyword(meaning, lang) {
 const LANGUAGE_CONFIGS = {
   th: {
     systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการขึ้นย่อหน้าใหม่] ทุกส่วนต้องขึ้นย่อหน้าใหม่ด้วยบรรทัดเปล่าหนึ่งบรรทัด (empty line) ห้ามเขียนต่อเนื่องกัน",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}`,
         `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
         `แก่นไพ่(ต้องใช้ใน💡): ${coreKeyword}`,
+        `ราศีจริง: ${sign1} และ ${sign2}`,
         ``,
-        `[คำสั่งบังคับเด็ดขาด — อ่านก่อนเขียน]
-- 🔴 CRITICAL ด้านสถานะไพ่ (Orientation Lock):
-  - ห้ามคิดคำว่า (ตั้งตรง) เองเด็ดขาด! ต้องอ่านสถานะไพ่จาก [ข้อมูลบังคับ] ว่า=${statusText} แล้วเขียนสถานะนั้นทุกตัวอักษร ไม่มากไม่น้อย
-  - หาก ${statusText} = "กลับด้าน" (Reversed): ห้ามเขียน "ตั้งตรง" หรือคำใดๆ ที่หมายถึงตำแหน่งปกติเด็ดขาด! ต้องใช้งานคำว่า "กลับด้าน" เท่านั้น
-  - หาก ${statusText} = "ตั้งตรง" (Upright): ห้ามเขียน "กลับด้าน" เด็ดขาด
-  - ตรวจสอบสถานะไพ่ก่อนเขียนทุกย่อหน้า จับผิดตัวเองก่อนส่งออก
-- 🔴 CRITICAL ด้านการล้างแคชข้อมูลราศี (Zodiac Cache Isolation):
-  - ก่อนเขียนส่วน ⚡ จุดขัดแย้ง 你必须ล้างแคชราศีจากการวิเคราะห์รอบก่อนหน้าทิ้ง bothหมด ห้ามนำข้อความรอบก่อนมาใช้ซ้ำเด็ดขาด
-  - 你必须อ้างอิงราศีสองราศีที่แสดงในผลลัพธ์นี้เท่านั้น (เช่น ตุลย์ กับ ธนู) ห้ามเขียนราศีอื่น (เช่น กันย์) ไม่ว่าจะเกิดขึ้นในรอบก่อนหน้าอย่างไร
-  - ตัวอย่างที่ถูกต้อง: ตุลย์ = หริ่มหนวก/ต้องการสมดุล, ธนู = เสรีภาพ/พูดตรง 你必须ใช้ลักษณะจริงนี้เท่านั้น
-- ห้ามแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ ทำบุญ ให้เขียนคำแนะนำที่คู่รักใช้ชีวิตร่วมกันในโลกจริงได้ทันที
-- สำคัญ: หากคะแนนบาซีและราศีเท่ากัน (baziScore === zodiacScore) ห้ามใช้คำว่าขัดแย้งหรือตรงข้าม แต่ให้เขียนว่า พลังงานสมดุลสูง ทั้งสองฝ่ายต้องการการกระตุ้นจากภายนอกเพื่อ打破沉闷
-
-[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ ห้ามเพิ่มเติม ห้ามเขียนหัวข้อเช่น "4、✨ วิเคราะห์ AI" หรือหัวข้อบนเว็บเพจอื่นใดก่อน 🎯 เป็นอันขาด]`,
+        `[คำสั่งบังคับเด็ดขาด — อ่านก่อนเขียน]`,
+        `- 🔴 CRITICAL ด้านสถานะไพ่ (Orientation Lock):`,
+        `  - ห้ามคิดคำว่า (ตั้งตรง) เองเด็ดขาด! ต้องอ่านสถานะไพ่จาก [ข้อมูลบังคับ] ว่า=${statusText} แล้วเขียนสถานะนั้นทุกตัวอักษร`,
+        `  - หาก ${statusText} = "กลับด้าน" (Reversed): ห้ามเขียน "ตั้งตรง" เด็ดขาด`,
+        `  - หาก ${statusText} = "ตั้งตรง" (Upright): ห้ามเขียน "กลับด้าน" หรือ "หากกลับด้าน" เด็ดขาด! ทั้ง AI 洞察และ牌意段落ต้องพูดแค่ Xuôi เท่านั้น`,
+        `  - ตรวจสอบสถานะไพ่ก่อนเขียนทุกย่อหน้า`,
+        `- 🔴 CRITICAL ด้านราศี (Zodiac Lock):`,
+        `  - ห้ามใช้ราศีอื่นนอกจาก ${sign1} และ ${sign2} เด็ดขาด!`,
+        `  - ห้ามนำราศีจากรอบก่อนหน้ามาใช้`,
+        `- ห้ามแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด`,
+        `- หาก baziScore === zodiacScore ห้ามใช้คำว่าขัดแย้ง แต่ให้เขียนว่าพลังงานสมดุล`,
+        ``,
+        `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ]`,
         `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์จากคะแนนรวม ${overall} ให้ตรงกับข้อมูลจริง]`,
         ``,
-        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} สะท้อนความตึงเครียดในชีวิตจริง]`,
+        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} (${sign1} vs ${sign2}) สะท้อนความตึงเครียดในชีวิตจริง]`,
         ``,
         `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยคต่อจากนี้โดยอิงจากแก่นไพ่"${coreKeyword}" ให้คำแนะนำการอยู่ร่วมกันในชีวิตประจำวันที่จับต้องได้จริง ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
         ``,
@@ -103,19 +105,26 @@ const LANGUAGE_CONFIGS = {
   },
   zh: {
     systemPrompt: `你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。`,
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${cardName}, 正逆位=${statusText}`,
         `牌意: ${tarot?.meaning || ''}`,
         `牌核(用于💡): ${coreKeyword}`,
+        `实际星座: ${sign1} 和 ${sign2}`,
         ``,
-        `[输出结构 — 严格执行，不改emoji和标题]`,
+        `[关键规则]`,
+        `- 正位时牌意段落严禁出现“逆位”字样`,
+        `- 冲突分析必须用 ${sign1} 和 ${sign2}, 严禁用其他星座`,
+        ``,
+        `[输出结构 — 严格执行]`,
         `🎯 **核心结论:** [1句话，根据综合评分${overall}直接定性这段关系]`,
         ``,
-        `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}暴露的核心矛盾]`,
+        `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}(${sign1} vs ${sign2})暴露的核心矛盾]`,
         ``,
         `💡 **破局建议:** 易经${ichingScore}与塔罗${cardName}(${statusText}) [写2句话继续，围绕"${coreKeyword}"给出在现实生活中的具体相处建议，严禁迷信仪式]`,
         ``,
@@ -125,20 +134,31 @@ const LANGUAGE_CONFIGS = {
   },
   vi: {
     systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật.",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
         `Ý nghĩa: ${tarot?.meaning || ''}`,
         `Lõi bài: ${coreKeyword}`,
+        `Cung hoàng đạo thực tế: ${sign1} và ${sign2}`,
         ``,
-        `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]\n- Nếu Trạng thái = \"Ngược\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Mọi nhắc đến bài tarot phải dùng đúng trạng thái: ${statusText}.\n- Nếu Trạng thái = \"Xuôi\": CẤM ĐOẠN tuyệt đối cấm dùng từ \"Ngược\".\n- Kiểm tra kỹ trạng thái bài trước khi viết từng đoạn.\n\n[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
-        `- Quan trọng: Khi phân tích xung đột cung hoàng đạo, PHẢI tham chiếu đặc điểm thực tế của hai cung cụ thể trong kết quả (ví dụ: Xử Nữ thì hay phê bình/chỉn chu, Thiên Bình thì do dự/cân bằng). CẤM ĐOẠN chỉnh sửa đặc điểm tính cách.`,
+        `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]`,
+        `- Nếu Trạng thái = "Ngược": CẤM ĐOẠN tuyệt đối cấm dùng từ "Xuôi" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Mọi nhắc đến bài tarot phải dùng đúng trạng thái: ${statusText}.`,
+        `- Nếu Trạng thái = "Xuôi": CẤM ĐOẠN tuyệt đối cấm dùng từ "Ngược" hoặc "Nếu xuất hiện ngược". Khi lá bài ở trạng thái Xuôi, TOÀN BỘ đoạn giải thích牌意 PHẢI chỉ nói về ý nghĩa Xuôi, CẤM ĐOẠN nhắc đến "ngược" hoặc "nếu ngược".`,
+        `- Kiểm tra kỹ trạng thái bài trước khi viết từng đoạn.`,
+        ``,
+        `[QUAN TRỌNG: Cung hoàng đạo]`,
+        `- Khi phân tích xung đột, BẮT BUỘC dùng đúng hai cung hoàng đạo đã cho: ${sign1} và ${sign2}.`,
+        `- CẤM ĐOẠN dùng cung hoàng đạo khác hoặc tự bịa ra.`,
+        ``,
+        `[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
         `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ dựa trên điểm ${overall}]`,
         ``,
-        `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} phản ánh mâu thuẫn gì]`,
+        `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} (${sign1} vs ${sign2}) phản ánh mâu thuẫn gì]`,
         ``,
         `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
@@ -148,26 +168,26 @@ const LANGUAGE_CONFIGS = {
   },
   en: {
     systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation — if Orientation is \"Reversed\", you are STRICTLY FORBIDDEN from writing the word \"upright\" anywhere in your analysis. All references to the tarot card must exactly match the given Orientation status. Never suggest superstitious rituals (burning paper, chanting, spells, meditation). Focus on practical relationship advice for real life.",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
         `Meaning: ${tarot?.meaning || ''}`,
         `Core keyword (for 💡): ${coreKeyword}`,
+        `Actual zodiac signs: ${sign1} and ${sign2}`,
         ``,
-        `[CRITICAL ORIENTATION LOCK — read before writing]
-- If Orientation = "Reversed"
-        - CRITICAL: When analyzing zodiac conflicts, you MUST reference the actual traits of the two specific zodiac signs shown in the results (e.g., Virgo = critical/precise, Libra = indecisive/balanced). Do NOT invent personality traits.
-, you are STRICTLY FORBIDDEN from using the word "upright" anywhere in your analysis. Every reference to the tarot card must use the exact status: ${statusText} — no synonyms, no substitutions.
-- If Orientation = "Upright", you must NOT write "Reversed".
-- Double-check the card status before writing each paragraph.
-
-[MANDATORY STRUCTURE — do not change emojis or headers]`,
+        `[CRITICAL RULES]`,
+        `- If Orientation = "Upright": Entire card explanation MUST ONLY describe upright meaning. BAN all "Reversed" or "if reversed" sentences.`,
+        `- Zodiac analysis MUST use ${sign1} and ${sign2} only. BAN other signs from previous rounds.`,
+        ``,
+        `[MANDATORY STRUCTURE — do not change emojis or headers]`,
         `🎯 **Core Verdict:** [1 sentence summarizing the relationship based on score ${overall}]`,
         ``,
-        `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} reveal core friction]`,
+        `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} (${sign1} vs ${sign2}) reveal core friction]`,
         ``,
         `💡 **Path Forward:** IChing ${ichingScore} and Tarot ${cardName}(${statusText}) [2 sentences continuing from here, based on core "${coreKeyword}" — give practical relationship advice for real life. No superstitious rituals.]`,
         ``,
@@ -177,26 +197,26 @@ const LANGUAGE_CONFIGS = {
   },
   es: {
     systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientación=${statusText}`,
         `Significado: ${tarot?.meaning || ''}`,
         `Palabra clave central: ${coreKeyword}`,
+        `Signos zodiacales reales: ${sign1} y ${sign2}`,
         ``,
-        `[BLOQUEO DE ORIENTACIÓN CRÍTICO — leer antes de escribir]
-- Si Orientación = "Invertido"
-        - CRÍTICO: Al analizar conflictos de zodiaco, DEBES referenciar los rasgos reales de los dos signos específicos en los resultados (ej. Virgo = crítico/preciso, Libra = indeciso/equilibrado). PROHIBIDO inventar rasgos.
-, ESTRICTAMENTE PROHIBIDO usar "en derecho", "al derecho" o cualquier sinónimo de posición normal. Toda referencia a la carta debe usar exactamene: ${statusText}.
-- Si Orientación = "Derecho", PROHIBIDO escribir "invertido".
-- Verificar dos veces el estado de la carta antes de escribir cada párrafo.
-
-[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
+        `[REGLAS CRÍTICAS]`,
+        `- Si Orientación = "Derecho": Todo la explicación de la carta DEBE describir SOLO el significado derecho. PROHIBIDO escribir "Invertido" o "si aparece invertido".`,
+        `- Análisis zodiacal DEBE usar solo ${sign1} y ${sign2}. PROHIBIDO usar otros signos.`,
+        ``,
+        `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
         `🎯 **Veredicto central:** [1 oración resumiendo la relación según puntuación ${overall}]`,
         ``,
-        `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} revelan fricción]`,
+        `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} (${sign1} vs ${sign2}) revelan fricción]`,
         ``,
         `💡 **Camino adelante:** IChing ${ichingScore} y Tarot ${cardName}(${statusText}) [2 oraciones continuando desde aquí, basado en "${coreKeyword}" — dar consejo práctico de relación real. Sin rituales supersticiosos.]`,
         ``,
@@ -206,21 +226,26 @@ const LANGUAGE_CONFIGS = {
   },
   fr: {
     systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
       return [
         `[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}`,
         `Signification: ${tarot?.meaning || ''}`,
         `Mot-clé central: ${coreKeyword}`,
+        `Signes zodiacaux réels: ${sign1} et ${sign2}`,
         ``,
-        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]
-        - CRITIQUE: En analysant les conflits du zodiaque, vous DEVEZ vous référer aux traits réels des deux signes spécifiques dans les résultats (ex. Vierge = critique/précis, Balance = indécis/équilibré). INTERDIT d'inventer des traits.
-`,
+        `[RÈGLES CRITIQUES]`,
+        `- Si Orientation = "Droit": Toute l'explication de la carte DOIT décrire UNIQUEMENT le sens droit. INTERDIT d'écrire "Inversé" ou "si inversé".`,
+        `- L'analyse zodiacale DOIT utiliser uniquement ${sign1} et ${sign2}. INTERDIT d'utiliser d'autres signes.`,
+        ``,
+        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
         `🎯 **Verdict central:** [1 phrase résumant la relation selon le score ${overall}]`,
         ``,
-        `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} révèlent des frictions]`,
+        `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} (${sign1} vs ${sign2}) révèlent des frictions]`,
         ``,
         `💡 **Voie à suivre:** YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) [2 phrases continuant depuis ici, basé sur "${coreKeyword}" — donner des conseils relationnels pratiques. Pas de rituels superstitieux.]`,
         ``,
@@ -294,7 +319,7 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseRequestBody(req);
-    const { bazi, zodiac, iching, tarot, lang = 'th' } = body;
+    const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta } = body;
 
     if (!body.d1 || !body.d2) {
       return res.status(400).json({ error: 'Missing d1 or d2' });
@@ -304,11 +329,11 @@ export default async function handler(req, res) {
     const baziScore = extractScore(bazi);
     const zodiacScore = extractScore(zodiac);
     const ichingScore = extractScore(iching);
-    // 三维度加权重算: 八字45% + 星座35% + 易经20%
-    const computedOverall = Math.round(baziScore * 0.45 + zodiacScore * 0.35 + ichingScore * 0.20);
+    // 三维度加权重算: 八字40% + 星座40% + 易经20%（与前端 algos/index.ts 保持一致）
+    const computedOverall = Math.round(baziScore * 0.40 + zodiacScore * 0.40 + ichingScore * 0.20);
 
     const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
-    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot);
+    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta);
 
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
