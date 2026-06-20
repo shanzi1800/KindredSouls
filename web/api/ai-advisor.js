@@ -16,7 +16,57 @@ function extractScore(text) {
   return 70;
 }
 
-// 2. Vercel Serverless 异步 Body 解析 Fallback
+// 2. 塔罗牌意过滤：根据 orientation 截取正位或逆位部分
+function filterTarotMeaning(meaning, orientation, lang) {
+  if (!meaning) return '';
+  
+  // 判断是否为逆位
+  const reversedKeywords = {
+    vi: ['Ngược', 'ngược'],
+    th: ['กลับด้าน'],
+    zh: ['逆位', '逆'],
+    en: ['Reversed', 'reversed'],
+    es: ['Invertido', 'invertido'],
+    fr: ['Inversé', 'inversé']
+  };
+  
+  const keywords = reversedKeywords[lang] || [];
+  const isReversed = keywords.some(k => orientation.includes(k));
+  
+  // 逆位关键词（各语言）
+  const reversedMarkers = {
+    vi: ['Nếu xuất hiện ngược', 'Nếu lá bài xuất hiện ngược', 'ngược', 'Nếu ngược'],
+    th: ['เมื่ออยู่ในตำแหน่งกลับด้าน', 'กลับด้าน', 'หากกลับด้าน'],
+    zh: ['逆位时', '逆位', '如果逆位'],
+    en: ['Reversed,', 'Reversed.', 'If reversed', 'When reversed'],
+    es: ['Invertido,', 'Invertido.', 'Si aparece invertido', 'Cuando está invertido'],
+    fr: ['Inversé,', 'Inversé.', 'Si inversé', 'Quand inversé']
+  };
+  
+  const markers = reversedMarkers[lang] || [];
+  
+  if (isReversed) {
+    // 逆位：从第一个逆位标记开始截取
+    for (const marker of markers) {
+      const idx = meaning.indexOf(marker);
+      if (idx !== -1) {
+        return meaning.substring(idx).trim();
+      }
+    }
+    // 如果找不到逆位标记，返回原文
+    return meaning;
+  } else {
+    // 正位：截取到第一个逆位标记之前
+    for (const marker of markers) {
+      const idx = meaning.indexOf(marker);
+      if (idx !== -1) {
+        return meaning.substring(0, idx).trim();
+      }
+    }
+    // 如果找不到逆位标记，返回原文
+    return meaning;
+  }
+}
 async function parseRequestBody(req) {
   if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
     return req.body;
@@ -68,7 +118,7 @@ function getTarotCoreKeyword(meaning, lang) {
 const LANGUAGE_CONFIGS = {
   th: {
     systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการขึ้นย่อหน้าใหม่] ทุกส่วนต้องขึ้นย่อหน้าใหม่ด้วยบรรทัดเปล่าหนึ่งบรรทัด (empty line) ห้ามเขียนต่อเนื่องกัน",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
@@ -105,7 +155,7 @@ const LANGUAGE_CONFIGS = {
   },
   zh: {
     systemPrompt: `你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。`,
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
@@ -134,17 +184,22 @@ const LANGUAGE_CONFIGS = {
   },
   vi: {
     systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật.",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
       const sign1 = zodiacMeta?.[0] || '';
       const sign2 = zodiacMeta?.[1] || '';
+      // 军师要求：Tag 融入建议段落
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
       return [
         `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
         `Ý nghĩa: ${tarot?.meaning || ''}`,
         `Lõi bài: ${coreKeyword}`,
         `Cung hoàng đạo thực tế: ${sign1} và ${sign2}`,
+        luckyText ? `Khía cạnh thuận lợi: ${luckyText}` : '',
+        challengeText ? `Khía cạnh cần lưu ý: ${challengeText}` : '',
         ``,
         `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]`,
         `- Nếu Trạng thái = "Ngược": CẤM ĐOẠN tuyệt đối cấm dùng từ "Xuôi" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Mọi nhắc đến bài tarot phải dùng đúng trạng thái: ${statusText}.`,
@@ -160,15 +215,15 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} (${sign1} vs ${sign2}) phản ánh mâu thuẫn gì]`,
         ``,
-        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}" đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
+        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}"${luckyText ? `, tập trung vào khía cạnh thuận lợi như ${luckyText}` : ''}${challengeText ? `, giải quyết khía cạnh cần lưu ý như ${challengeText}` : ''}, đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
-      ].join('\n');
+      ].filter(Boolean).join('\n');
     }
   },
   en: {
     systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation — if Orientation is \"Reversed\", you are STRICTLY FORBIDDEN from writing the word \"upright\" anywhere in your analysis. All references to the tarot card must exactly match the given Orientation status. Never suggest superstitious rituals (burning paper, chanting, spells, meditation). Focus on practical relationship advice for real life.",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -197,7 +252,7 @@ const LANGUAGE_CONFIGS = {
   },
   es: {
     systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -226,7 +281,7 @@ const LANGUAGE_CONFIGS = {
   },
   fr: {
     systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).",
-    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta) => {
+    buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -319,7 +374,7 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseRequestBody(req);
-    const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta } = body;
+    const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta, luckyAspects, challengingAspects } = body;
 
     if (!body.d1 || !body.d2) {
       return res.status(400).json({ error: 'Missing d1 or d2' });
@@ -333,7 +388,7 @@ export default async function handler(req, res) {
     const computedOverall = Math.round(baziScore * 0.40 + zodiacScore * 0.40 + ichingScore * 0.20);
 
     const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
-    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta);
+    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects);
 
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
@@ -342,11 +397,14 @@ export default async function handler(req, res) {
     finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
     finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
 
+    // 过滤牌意：正位只保留正位部分，逆位只保留逆位部分
+    const filteredMeaning = filterTarotMeaning(tarot?.meaning, tarot?.orientation, lang);
+
     return res.status(200).json({
       insight: finalInsight,
       cached: false,
       tarot: tarot || null,
-      tarotLine: tarot?.meaning || null,
+      tarotLine: filteredMeaning,
     });
 
   } catch (error) {

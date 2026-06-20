@@ -281,11 +281,12 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   baziMeta?: string[]; zodiacMeta?: string[]; ichingMeta?: string[];
+  luckyAspects?: string[]; challengingAspects?: string[];
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
@@ -654,7 +655,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, tarot }),
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot }),
       });
       const data = await res.json();
       if (data.insight) {
@@ -862,7 +863,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
 /* ── Result Page ── */
 function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
-  const { overall, engines, dimensions } = result;
+  const { overall, engines, dimensions, luckyAspects, challengingAspects } = result;
 
   const engineList = [
     { key: 'bazi', label: t('result.engines.bazi'), e: engines.bazi },
@@ -951,6 +952,8 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         baziMeta={engines.bazi.meta}
         zodiacMeta={engines.zodiac.meta}
         ichingMeta={engines.iching.meta}
+        luckyAspects={luckyAspects}
+        challengingAspects={challengingAspects}
         lang={lang}
         pendingInsightTrigger={pendingInsightTrigger}
         onLogout={onLogout}
