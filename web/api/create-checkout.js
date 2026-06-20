@@ -4,6 +4,9 @@ export const runtime = 'nodejs20.x';
 const PRICES = {
   insight_once: 499,    // $4.99 one-time AI insight
   monthly: 499,         // $4.99/month unlimited
+  // 财富模块价格
+  wealth_monthly: 799,  // $7.99/month 财富解码月卡
+  wealth_yearly: 7999,  // $79.99/年 财富解码年卡
 };
 
 export default async function handler(req, res) {
@@ -109,24 +112,35 @@ export default async function handler(req, res) {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: plan === 'monthly' ? 'subscription' : 'payment',
+      mode: isSubscription ? 'subscription' : 'payment',
+      // 产品名称映射
+      const PRODUCT_NAMES = {
+        insight_once:   'Kindred Souls — AI Insight Unlock',
+        monthly:        'Kindred Souls — Unlimited AI Insights (Monthly)',
+        wealth_monthly: 'Kindred Souls — Wealth Oracle (Monthly)',
+        wealth_yearly:  'Kindred Souls — Wealth Oracle (Yearly)',
+      };
+      const PRODUCT_DESCS = {
+        insight_once:   'One-time AI deep insight for your compatibility reading',
+        monthly:       'Unlimited AI-powered relationship insights',
+        wealth_monthly:'Unlock your 180-day wealth & career blueprint — monthly access',
+        wealth_yearly: 'Full-year access to wealth oracle + all future features',
+      };
+      const isSubscription = plan === 'monthly' || plan === 'wealth_monthly';
+
       line_items: [{
         price_data: {
           currency: 'aud',
           product_data: {
-            name: plan === 'monthly'
-              ? 'Kindred Souls — Unlimited AI Insights (Monthly)'
-              : 'Kindred Souls — AI Insight Unlock',
-            description: plan === 'monthly'
-              ? 'Unlimited AI-powered relationship insights'
-              : 'One-time AI deep insight for your compatibility reading',
+            name: PRODUCT_NAMES[plan] || PRODUCT_NAMES.insight_once,
+            description: PRODUCT_DESCS[plan] || PRODUCT_DESCS.insight_once,
           },
-          unit_amount: PRICES[plan],
-          recurring: plan === 'monthly' ? { interval: 'month' } : undefined,
+          unit_amount: PRICES[plan] || PRICES.insight_once,
+          recurring: isSubscription ? { interval: plan === 'wealth_monthly' ? 'month' : 'month' } : undefined,
         },
         quantity: 1,
       }],
-      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/?payment=success`,
+      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/?payment=success&plan=${plan}`,
       cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/#/result?payment=cancelled`,
       metadata: { supabase_user_id: userId, plan },
     });
