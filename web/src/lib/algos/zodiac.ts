@@ -384,8 +384,8 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const baseScore = isBestMatch ? 85 : 65;
 
   // ── Meta 标签（供 AI Prompt 注入）──
-  meta.push(`ZODIAC_${z1}`);
-  meta.push(`ZODIAC_${z2}`);
+  meta.push(z1Name);
+  meta.push(z2Name);
   meta.push(`ELEM_${elem1}`);
   meta.push(`ELEM_${elem2}`);
   if (elem1 === elem2) meta.push('SAME_ELEMENT');

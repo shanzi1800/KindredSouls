@@ -89,7 +89,11 @@ const ORIENT_MAP = {
 
 function getOrientText(tarot, lang) {
   const m = ORIENT_MAP[lang] || ORIENT_MAP['en'];
-  return tarot?.orientation === 'Reversed' ? m.rev : m.up;
+  // orientation 字段格式：" (Ngược)" 或 " (Thuận)"（越南语）
+  // 需要判断是否包含逆位关键词
+  const orient = tarot?.orientation || '';
+  const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','逆位'].some(s => orient.includes(s));
+  return isReversed ? m.rev : m.up;
 }
 
 // 4. 工具函数：从 tarot.meaning 提取核心关键词（给 AI 的意图约束，防止瞎编仪式）
@@ -194,7 +198,7 @@ const LANGUAGE_CONFIGS = {
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
       return [
-        `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
+        `[Khóa dữ liệu] Tổng=${overall} (điểm tổng kết = Bát Tự*0.4 + Cung Hoàng Đạo*0.4 + Kinh Dịch*0.2), Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}`,
         `Ý nghĩa: ${tarot?.meaning || ''}`,
         `Lõi bài: ${coreKeyword}`,
         `Cung hoàng đạo thực tế: ${sign1} và ${sign2}`,
@@ -215,7 +219,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} (${sign1} vs ${sign2}) phản ánh mâu thuẫn gì]`,
         ``,
-        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}"${luckyText ? `, tập trung vào khía cạnh thuận lợi như ${luckyText}` : ''}${challengeText ? `, giải quyết khía cạnh cần lưu ý như ${challengeText}` : ''}, đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
+        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu tiếp theo, dựa trên lõi "${coreKeyword}"${luckyText ? `. BẮT BUỘC tập trung vào khía cạnh thuận lợi: ${luckyText}` : ''}${challengeText ? `. BẮT BUỘC giải quyết khía cạnh cần lưu ý: ${challengeText}` : ''}. Đưa ra gợi ý kết nối thực tế trong cuộc sống hằng ngày, không có nghi lễ mê tín]`,
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
