@@ -990,7 +990,8 @@ export default function App() {
   });
 
   const navigate = (path: string) => {
-    setWealthPath(path);
+    const [pathname] = path.split('?');
+    setWealthPath(pathname);
     window.history.pushState({}, '', path);
   };
 
@@ -1110,7 +1111,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
   return (
     <div className="app">
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
-      {wealthPath === '/wealth/report' && <WealthReportPage onNavigate={navigate} />}
+      {wealthPath?.startsWith('/wealth/report') && <WealthReportPage onNavigate={navigate} />}
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
