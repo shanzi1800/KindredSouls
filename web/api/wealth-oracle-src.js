@@ -2,7 +2,7 @@
 // 版本: v1.1 (中英双语铁骨版 · 6语言全量同步)
 // 路由: POST /api/wealth-oracle
 
-export const runtime = 'nodejs';
+export const runtime = 'nodejs20.x';
 
 import { getIndividualData } from '../src/lib/algos/index.js';
 import { getWealthTarot } from '../src/lib/tarot.js';

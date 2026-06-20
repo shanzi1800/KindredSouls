@@ -1,5 +1,3 @@
-export const runtime = "nodejs20.x";
-
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
 var DIZHI = ["\u5B50", "\u4E11", "\u5BC5", "\u536F", "\u8FB0", "\u5DF3", "\u5348", "\u672A", "\u7533", "\u9149", "\u620C", "\u4EA5"];
@@ -2145,8 +2143,8 @@ function getWealthTarot(birthDate, lang = "zh") {
   };
 }
 
-// api/wealth-oracle.js
-var runtime = "nodejs";
+// api/wealth-oracle-src.js
+var runtime = "nodejs20.x";
 var ZH_SYSTEM = `# Role: KindredSouls \u5168\u7403\u8D22\u5BCC\u4E0E\u4E8B\u4E1A\u7EC8\u6781\u89E3\u76D8 AI \u987E\u95EE
 
 ## Profile:
