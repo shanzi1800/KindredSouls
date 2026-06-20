@@ -46,11 +46,40 @@ function filterTarotMeaning(meaning, orientation, lang) {
   const markers = reversedMarkers[lang] || [];
   
   if (isReversed) {
-    // 逆位：从第一个逆位标记开始截取
+    // 逆位：从第一个逆位标记开始截取，并改写成直接陈述
     for (const marker of markers) {
       const idx = meaning.indexOf(marker);
       if (idx !== -1) {
-        return meaning.substring(idx).trim();
+        let reversedText = meaning.substring(idx).trim();
+        // 去掉假设性语句，改写成直接陈述
+        // 越南语: "Nếu xuất hiện ngược, hãy..." -> "Hiện tại..."
+        // 泰语: "เมื่ออยู่ในตำแหน่งกลับด้าน..." -> "ขณะนี้..."
+        // 英语: "If reversed..." / "Reversed, it..." -> "Currently..."
+        // 西班牙语: "Si aparece invertido..." -> "Actualmente..."
+        // 法语: "Si inversé..." -> "Actuellement..."
+        // 中文: "如果逆位..." / "逆位时..." -> "当前..."
+        const rewriteRules = [
+          { pattern: /^Nếu xuất hiện ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
+          { pattern: /^Nếu lá bài xuất hiện ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
+          { pattern: /^Nếu ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
+          { pattern: /^เมื่ออยู่ในตำแหน่งกลับด้าน,?/i, replacement: 'ขณะนี้,' },
+          { pattern: /^หากกลับด้าน,?/i, replacement: 'ขณะนี้,' },
+          { pattern: /^If reversed,?\s*/i, replacement: 'Currently, ' },
+          { pattern: /^When reversed,?\s*/i, replacement: 'Currently, ' },
+          { pattern: /^Reversed,?\s*/i, replacement: 'Currently, ' },
+          { pattern: /^Si aparece invertido,?\s*/i, replacement: 'Actualmente, ' },
+          { pattern: /^Cuando está invertido,?\s*/i, replacement: 'Actualmente, ' },
+          { pattern: /^Invertido,?\s*/i, replacement: 'Actualmente, ' },
+          { pattern: /^Si inversé,?\s*/i, replacement: 'Actuellement, ' },
+          { pattern: /^Quand inversé,?\s*/i, replacement: 'Actuellement, ' },
+          { pattern: /^Inversé,?\s*/i, replacement: 'Actuellement, ' },
+          { pattern: /^如果逆位[，,]?\s*/i, replacement: '当前，' },
+          { pattern: /^逆位时[，,]?\s*/i, replacement: '当前，' },
+        ];
+        for (const rule of rewriteRules) {
+          reversedText = reversedText.replace(rule.pattern, rule.replacement);
+        }
+        return reversedText;
       }
     }
     // 如果找不到逆位标记，返回原文
