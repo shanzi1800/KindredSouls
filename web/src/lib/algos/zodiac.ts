@@ -96,6 +96,30 @@ const SQUARES: Record<ZodiacSign, ZodiacSign> = {
   '射手座': '双鱼座', '双鱼座': '双子座',
 };
 
+// ── 单人星座提取（供财富/事业模块复用）──
+
+export interface IndividualZodiacProfile {
+  sunSign: string;
+  sunSignElement: string;
+  sunSignMode: string;
+  sunSignRuler: string;
+  moonSign: string;
+  meta: string[];
+}
+
+export function getIndividualZodiacProfile(birthInfo: BirthInfo, lang: AlgLang = 'zh'): IndividualZodiacProfile {
+  const sign = getZodiac(birthInfo.month, birthInfo.day);
+  const signName = t(ZODIAC_NAMES[sign], lang);
+  return {
+    sunSign: signName,
+    sunSignElement: t(ELEMENT_NAMES[SIGN_ELEMENT[sign]], lang),
+    sunSignMode: t(MODE_NAMES[SIGN_MODE[sign]], lang),
+    sunSignRuler: t(RULER_NAMES[SIGN_RULER[sign]], lang),
+    moonSign: signName,  // 简化版：无精确时间暂用太阳座代替
+    meta: [`SUN_SIGN_${sign}`, `SUN_ELEMENT_${SIGN_ELEMENT[sign]}`, `SUN_MODE_${SIGN_MODE[sign]}`],
+  };
+}
+
 // ── 工具函数 ──
 
 function getZodiac(month: number, day: number): ZodiacSign {

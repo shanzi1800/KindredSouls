@@ -27,6 +27,18 @@
       "aiInsight": "AI Relationship Insight"
     }
   },
+  "wealth": {
+    "title": "Wealth & Career Oracle",
+    "subtitle": "Unlock your wealth code for the next 180 days",
+    "inputLabel": "Enter your birth date",
+    "cta": "🔮 Start Decoding",
+    "loading": "Summoning wealth code...",
+    "reportTitle": "Wealth Oracle Report",
+    "paywallTitle": "🔒 AI Deep Insight",
+    "priceMonthly": "$7.99 / month",
+    "priceYearly": "$79.99 / year",
+    "unlock": "Unlock full report"
+  },
   "nav": {
     "language": "Language",
     "settings": "Settings"

@@ -377,3 +377,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 }
+
+
+// NOTE: v1.1 multilingual prompts embedded above
+// Refer to git commit 3611e3d for the full source

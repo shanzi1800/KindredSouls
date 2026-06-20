@@ -218,3 +218,29 @@ export function getTarot(d1: string, d2: string, lang: string = 'en'): TarotCard
     orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed),
   };
 }
+
+/**
+ * 单人商业塔罗（供财富/事业模块复用）
+ * 基于单人出生日期 + 今日日期，从22张大阿卡纳中确定性抽取
+ * 复用已有牌面数据（由财富Prompt负责商业方向诠释）
+ */
+export function getWealthTarot(birthDate: string, lang: string = 'zh'): TarotCard {
+  const today = new Date().toISOString().slice(0, 10);
+  let hash = 0;
+  const str = birthDate + '|' + today;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const cardId = Math.abs(hash) % 22;
+  const reversed = Math.floor(Math.abs(hash) / 22) % 2 === 1;
+  const card = CARDS[cardId] || CARDS[0];
+  const L = (lang in card.name) ? lang : 'en';
+  return {
+    id: card.id,
+    name: card.name[L] || card.name.en,
+    meaning: card.meaning[L] || card.meaning.en,
+    emoji: card.emoji,
+    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed),
+  };
+}

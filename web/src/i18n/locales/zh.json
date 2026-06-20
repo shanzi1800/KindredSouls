@@ -27,6 +27,18 @@
       "aiInsight": "AI情感洞察"
     }
   },
+  "wealth": {
+    "title": "财富与事业解码",
+    "subtitle": "解锁你180天内的财富密码",
+    "inputLabel": "输入你的出生日期",
+    "cta": "🔮 开始解码",
+    "loading": "正在召唤财富密码……",
+    "reportTitle": "财富解码报告",
+    "paywallTitle": "🔒 AI 深度洞察",
+    "priceMonthly": "$7.99 / 月",
+    "priceYearly": "$79.99 / 年",
+    "unlock": "解锁完整报告"
+  },
   "nav": {
     "language": "语言",
     "settings": "设置"

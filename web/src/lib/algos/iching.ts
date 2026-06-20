@@ -1933,3 +1933,47 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     meta,
   };
 }
+// ── 单人本命卦（供财富/事业模块复用）──
+
+export interface IndividualIChingProfile {
+  hexNum: number;
+  hexName: string;
+  hexNature: string;
+  hexSymbol: string;
+  hexJudgment: string;
+  changingLine: number | null;
+  transformedHexNum: number | null;
+  transformedHexName: string | null;
+  meta: string[];
+}
+
+/**
+ * 单人本命卦：基于个人生日数字起卦（不与双人函数冲突）
+ * 上卦 = (年 + 月) % 8, 下卦 = (月 + 日) % 8, 动爻 = (年 + 月 + 日) % 6
+ */
+export function getIndividualIChingProfile(birthInfo: BirthInfo, lang: AlgLang = 'zh'): IndividualIChingProfile {
+  const upperGuaNum = ((birthInfo.year + birthInfo.month) % 8 + 8) % 8;
+  const lowerGuaNum = ((birthInfo.month + birthInfo.day) % 8 + 8) % 8;
+  const hexIndex = (upperGuaNum * 8 + lowerGuaNum) % 64 + 1;
+  const totalSum = birthInfo.year + birthInfo.month + birthInfo.day;
+  const changingLine = (totalSum % 6) + 1;
+
+  const hex = HEXAGRAMS[hexIndex] || HEXAGRAMS[23];
+  const transformedIdx = (hexIndex + changingLine) % 64 + 1;
+  const transformedHex = transformedIdx !== hexIndex ? HEXAGRAMS[transformedIdx] : null;
+
+  const meta: string[] = [`HEXAGRAM_${hexIndex}`];
+  if (changingLine > 0) meta.push(`CHANGING_LINE_${changingLine}`);
+
+  return {
+    hexNum: hexIndex,
+    hexName: getHexField(hex, 'name', lang),
+    hexNature: getHexField(hex, 'nature', lang),
+    hexSymbol: hex.symbol || '',
+    hexJudgment: getHexField(hex, 'judgment', lang),
+    changingLine,
+    transformedHexNum: transformedHex ? transformedIdx : null,
+    transformedHexName: transformedHex ? getHexField(transformedHex, 'name', lang) : null,
+    meta,
+  };
+}

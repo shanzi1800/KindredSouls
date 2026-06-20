@@ -1,7 +1,10 @@
 import type { BirthInfo, CompatibilityResult, EngineResult } from './types';
-import { calcBaZi } from './bazi';
-import { calcZodiac } from './zodiac';
-import { calcIChing } from './iching';
+import { calcBaZi, getIndividualBaZiProfile } from './bazi';
+import type { IndividualBaZiProfile } from './bazi';
+import { calcZodiac, getIndividualZodiacProfile } from './zodiac';
+import type { IndividualZodiacProfile } from './zodiac';
+import { calcIChing, getIndividualIChingProfile } from './iching';
+import type { IndividualIChingProfile } from './iching';
 import { normalizeLang, t as at } from './i18n';
 import type { AlgLang } from './i18n';
 
@@ -290,5 +293,38 @@ export function calculateCompatibility(
     luckyAspects: lucky,
     challengingAspects: challenging,
     dimensions: dims,
+  };
+}
+
+// ═════════════════════════════════════════
+// 单人数据提取（供财富/事业/情感顾问模块复用）
+// 从现有引擎中剥离单人维度，不改变合婚算法
+// ═════════════════════════════════════════
+
+export interface IndividualData {
+  birthInfo: BirthInfo;
+  bazi: IndividualBaZiProfile;
+  zodiac: IndividualZodiacProfile;
+  iching: IndividualIChingProfile;
+  meta: string[];
+}
+
+/**
+ * 从一套八字+星座引擎中提取单人数据
+ * 单人财富/事业/情感分析时调用此函数
+ * 不依赖任何合婚结果
+ */
+export function getIndividualData(birthInfo: BirthInfo, lang?: string): IndividualData {
+  const algLang = normalizeLang(lang || 'zh');
+  const bazi = getIndividualBaZiProfile(birthInfo);
+  const zodiac = getIndividualZodiacProfile(birthInfo, algLang);
+  const iching = getIndividualIChingProfile(birthInfo, algLang);
+
+  return {
+    birthInfo,
+    bazi,
+    zodiac,
+    iching,
+    meta: [...bazi.meta, ...zodiac.meta, ...iching.meta],
   };
 }

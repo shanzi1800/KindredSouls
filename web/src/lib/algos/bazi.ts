@@ -170,7 +170,7 @@ function dayStemBranch(year: number, month: number, day: number): [string, strin
 
 // ── 四柱排盘 ──
 
-interface SiZhu {
+export interface SiZhu {
   year: [string, string];  // [天干, 地支]
   month: [string, string];
   day: [string, string];
@@ -198,6 +198,32 @@ function paipan(info: BirthInfo): SiZhu {
 
 // ── 合婚评分引擎 ──
 
+
+// ── 单人八字提取（供财富/事业模块复用）──
+
+export interface IndividualBaZiProfile {
+  sizhu: SiZhu;
+  wuxing: Record<string, number>;
+  dayMasterWuxing: string;
+  meta: string[];
+}
+
+export function getIndividualBaZiProfile(birthInfo: BirthInfo): IndividualBaZiProfile {
+  const sz = paipan(birthInfo);
+  const wuxingElements = [
+    TG_WUXING[sz.year[0]], DZ_WUXING[sz.year[1]],
+    TG_WUXING[sz.month[0]], DZ_WUXING[sz.month[1]],
+    TG_WUXING[sz.day[0]], DZ_WUXING[sz.day[1]],
+  ];
+  const wx: Record<string, number> = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
+  for (const w of wuxingElements) wx[w] = (wx[w] || 0) + 1;
+  return {
+    sizhu: sz,
+    wuxing: wx,
+    dayMasterWuxing: TG_WUXING[sz.dayMaster],
+    meta: [`DAY_MASTER_${sz.dayMaster}`, `DM_ELEMENT_${TG_WUXING[sz.dayMaster]}`],
+  };
+}
 
 export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
   // Helper: translate gan/zhi/wuxing for target lang

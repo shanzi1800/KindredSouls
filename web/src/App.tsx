@@ -12,6 +12,8 @@ import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import { supabase } from './lib/supabase';
+import WealthPage from './pages/WealthPage';
+import WealthReportPage from './pages/WealthReportPage';
 import './App.css';
 
   // ── 6语言文案映射（避免三元链漏语言）──
@@ -976,6 +978,22 @@ export default function App() {
     sessionStorage.removeItem('ks_access_token');
     window.location.reload();
   };
+
+  // ── Wealth module path state ──
+  const [wealthPath, setWealthPath] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path === '/wealth') return '/wealth';
+      if (path === '/wealth/report') return '/wealth/report';
+    }
+    return null;
+  });
+
+  const navigate = (path: string) => {
+    setWealthPath(path);
+    window.history.pushState({}, '', path);
+  };
+
   const [_page, _setPage] = useState<'input' | 'loading' | 'result'>(() => {
     if (typeof window !== 'undefined' && window.location.pathname === '/result') {
       return 'result';
@@ -1035,6 +1053,20 @@ export default function App() {
     return () => { i18n.off('languageChanged', handler); };
   }, [i18n]);
 
+  // ── Handle browser back/forward for wealth paths ──
+  useEffect(() => {
+    const handlePopstate = () => {
+      const path = window.location.pathname;
+      if (path === '/wealth' || path === '/wealth/report') {
+        setWealthPath(path);
+      } else {
+        setWealthPath(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
+  }, []);
+
 
   const handleCalculate = (d1: string, d2: string) => {
     setErr('');
@@ -1077,10 +1109,12 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
 
   return (
     <div className="app">
-      { _page === 'input' && <InputPage onSubmit={handleCalculate} />}
-      { _page === 'loading' && <LoadingPage />}
-      { _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
-      {err && <p className="error-msg">{err}</p>}
+      {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
+      {wealthPath === '/wealth/report' && <WealthReportPage onNavigate={navigate} />}
+      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} />}
+      {!wealthPath && _page === 'loading' && <LoadingPage />}
+      {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
+      {!wealthPath && err && <p className="error-msg">{err}</p>}
     </div>
   );
 }
