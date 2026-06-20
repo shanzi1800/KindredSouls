@@ -393,7 +393,11 @@ export default async function handler(req, res) {
 
     const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
     console.log('[DEBUG] lang=', lang, 'luckyAspects=', luckyAspects, 'challengingAspects=', challengingAspects);
-    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects);
+    
+    // 过滤塔罗牌意：正位只保留正位部分，逆位只保留逆位部分
+    const filteredTarot = tarot ? { ...tarot, meaning: filterTarotMeaning(tarot.meaning, tarot.orientation, lang) } : tarot;
+    
+    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects);
 
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
@@ -402,14 +406,11 @@ export default async function handler(req, res) {
     finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
     finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
 
-    // 过滤牌意：正位只保留正位部分，逆位只保留逆位部分
-    const filteredMeaning = filterTarotMeaning(tarot?.meaning, tarot?.orientation, lang);
-
     return res.status(200).json({
       insight: finalInsight,
       cached: false,
       tarot: tarot || null,
-      tarotLine: filteredMeaning,
+      tarotLine: filteredTarot?.meaning || '',
     });
 
   } catch (error) {
