@@ -661,7 +661,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       if (data.insight) {
         setInsight(data.insight);
         // Use the freshly computed tarot, not the API response (API echoes it back too)
-        setTarotLine(tarot.meaning);
+        setTarotLine(data.tarotLine || tarot.meaning);
         const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido'].some(s => tarot.orientation.includes(s));
         setTarotCard({ id: tarot.id, name: tarot.name, emoji: tarot.emoji, isReversed, orientation: tarot.orientation });
         onTriggerInsight?.();

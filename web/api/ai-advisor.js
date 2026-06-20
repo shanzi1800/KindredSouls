@@ -59,9 +59,9 @@ function filterTarotMeaning(meaning, orientation, lang) {
         // 法语: "Si inversé..." -> "Actuellement..."
         // 中文: "如果逆位..." / "逆位时..." -> "当前..."
         const rewriteRules = [
-          { pattern: /^Nếu xuất hiện ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
-          { pattern: /^Nếu lá bài xuất hiện ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
-          { pattern: /^Nếu ngược, hãy /i, replacement: 'Hiện tại, hãy ' },
+          { pattern: /^Nếu xuất hiện ngược, /i, replacement: 'Hiện tại, ' },
+          { pattern: /^Nếu lá bài xuất hiện ngược, /i, replacement: 'Hiện tại, ' },
+          { pattern: /^Nếu ngược, /i, replacement: 'Hiện tại, ' },
           { pattern: /^เมื่ออยู่ในตำแหน่งกลับด้าน,?/i, replacement: 'ขณะนี้,' },
           { pattern: /^หากกลับด้าน,?/i, replacement: 'ขณะนี้,' },
           { pattern: /^If reversed,?\s*/i, replacement: 'Currently, ' },
