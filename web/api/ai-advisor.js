@@ -388,6 +388,7 @@ export default async function handler(req, res) {
     const computedOverall = Math.round(baziScore * 0.40 + zodiacScore * 0.40 + ichingScore * 0.20);
 
     const config = LANGUAGE_CONFIGS[lang] || LANGUAGE_CONFIGS['th'];
+    console.log('[DEBUG] lang=', lang, 'luckyAspects=', luckyAspects, 'challengingAspects=', challengingAspects);
     const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects);
 
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
