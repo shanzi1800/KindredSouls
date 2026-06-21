@@ -110,24 +110,23 @@ export default async function handler(req, res) {
       });
     }
 
+    const PRODUCT_NAMES = {
+      insight_once:   'Kindred Souls — AI Insight Unlock',
+      monthly:        'Kindred Souls — Unlimited AI Insights (Monthly)',
+      wealth_monthly: 'Kindred Souls — Wealth Oracle (Monthly)',
+      wealth_yearly:  'Kindred Souls — Wealth Oracle (Yearly)',
+    };
+    const PRODUCT_DESCS = {
+      insight_once:   'One-time AI deep insight for your compatibility reading',
+      monthly:       'Unlimited AI-powered relationship insights',
+      wealth_monthly:'Unlock your 180-day wealth & career blueprint — monthly access',
+      wealth_yearly: 'Full-year access to wealth oracle + all future features',
+    };
+    const isSubscription = plan === 'monthly' || plan === 'wealth_monthly';
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: isSubscription ? 'subscription' : 'payment',
-      // 产品名称映射
-      const PRODUCT_NAMES = {
-        insight_once:   'Kindred Souls — AI Insight Unlock',
-        monthly:        'Kindred Souls — Unlimited AI Insights (Monthly)',
-        wealth_monthly: 'Kindred Souls — Wealth Oracle (Monthly)',
-        wealth_yearly:  'Kindred Souls — Wealth Oracle (Yearly)',
-      };
-      const PRODUCT_DESCS = {
-        insight_once:   'One-time AI deep insight for your compatibility reading',
-        monthly:       'Unlimited AI-powered relationship insights',
-        wealth_monthly:'Unlock your 180-day wealth & career blueprint — monthly access',
-        wealth_yearly: 'Full-year access to wealth oracle + all future features',
-      };
-      const isSubscription = plan === 'monthly' || plan === 'wealth_monthly';
-
       line_items: [{
         price_data: {
           currency: 'aud',
@@ -136,7 +135,7 @@ export default async function handler(req, res) {
             description: PRODUCT_DESCS[plan] || PRODUCT_DESCS.insight_once,
           },
           unit_amount: PRICES[plan] || PRICES.insight_once,
-          recurring: isSubscription ? { interval: plan === 'wealth_monthly' ? 'month' : 'month' } : undefined,
+          recurring: isSubscription ? { interval: 'month' } : undefined,
         },
         quantity: 1,
       }],
