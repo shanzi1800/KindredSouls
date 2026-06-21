@@ -823,7 +823,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           ✨ {TXT.genBtn[lang] || TXT.genBtn.en}
         </button>
       )}
-      {loading && <div className="insight-skeleton"><div className="skeleton-line w80" /><div className="skeleton-line w60" /><div className="skeleton-line w90" /><div className="skeleton-line w70" /></div>}
+      {loading && (
+        <div className="golden-transition">
+          <div className="golden-orb" />
+          <div className="golden-title">{lang === 'zh' ? '🔮 正在生成你的灵魂洞察' : lang === 'en' ? '🔮 Generating Your Soul Insight' : lang === 'es' ? '🔮 Generando Tu Perspectiva Alma' : lang === 'fr' ? '🔮 Génération de Votre Perspective Âme' : lang === 'th' ? '🔮 กำลังสร้างความเข้าใจจิตวิญญาณของคุณ' : '🔮 Đang tạo Luận giải Linh hồn'}</div>
+          <div className="golden-dots"><span /><span /><span /></div>
+          <div className="golden-subtitle">{lang === 'zh' ? 'AI 正在深度解读你们的星盘…' : lang === 'en' ? 'AI is reading your cosmic connection…' : lang === 'es' ? 'AI está leyendo su conexión cósmica…' : lang === 'fr' ? "L'IA lit votre connexion cosmique…" : lang === 'th' ? 'AI กำลังอ่านการเชื่อมต่อทางจักรวาลของคุณ…' : 'AI đang giải mã kết nối vũ trụ của bạn…'}</div>
+        </div>
+      )}
       {error && <p style={{ color: '#ff6b6b', marginTop: '8px' }}>{error}</p>}
       {insight && (
         <div className="insight-result">
