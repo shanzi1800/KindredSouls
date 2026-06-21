@@ -122,7 +122,14 @@ export default async function handler(req, res) {
       wealth_monthly:'Unlock your 180-day wealth & career blueprint — monthly access',
       wealth_yearly: 'Full-year access to wealth oracle + all future features',
     };
-    const isSubscription = plan === 'monthly' || plan === 'wealth_monthly';
+    const isSubscription = plan === 'monthly' || plan === 'wealth_monthly' || plan === 'wealth_yearly';
+    const isWealth = plan.startsWith('wealth_');
+    const successPath = isWealth
+      ? '/wealth/report?payment=success'
+      : '/?payment=success';
+    const cancelPath = isWealth
+      ? '/wealth/report?payment=cancelled'
+      : '/#/result?payment=cancelled';
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -135,12 +142,12 @@ export default async function handler(req, res) {
             description: PRODUCT_DESCS[plan] || PRODUCT_DESCS.insight_once,
           },
           unit_amount: PRICES[plan] || PRICES.insight_once,
-          recurring: isSubscription ? { interval: 'month' } : undefined,
+          recurring: isSubscription ? { interval: plan === 'wealth_yearly' ? 'year' : 'month' } : undefined,
         },
         quantity: 1,
       }],
-      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/?payment=success&plan=${plan}`,
-      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}/#/result?payment=cancelled`,
+      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}${successPath}&plan=${plan}`,
+      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}${cancelPath}`,
       metadata: { supabase_user_id: userId, plan },
     });
 

@@ -112,8 +112,9 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
   );
 }
 
-function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void }) {
+function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2: string) => void, onNavigateToWealth: () => void }) {
   const { t, i18n } = useTranslation();
+  const [mode, setMode] = useState<'landing' | 'compatibility' | 'wealth'>('landing');
   const [d1, setD1] = useState('');
   const [d2, setD2] = useState('');
   const [d2Key, setD2Key] = React.useState(0);
@@ -124,6 +125,7 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
   const d1Ref = React.useRef<HTMLDivElement>(null);
   const d2Ref = React.useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showModeModal, setShowModeModal] = useState(false);
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
   const shake = (which: 1 | 2) => {
     if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 300); }
@@ -157,13 +159,69 @@ function InputPage({ onSubmit }: { onSubmit: (d1: string, d2: string) => void })
 
   const toggleModal = () => setModalOpen(v => !v);
 
+  const handleModeSelect = (selectedMode: 'compatibility' | 'wealth') => {
+    setMode(selectedMode);
+    setModalOpen(false);
+  };
+
+  // ── Langing mode (minimalist) ──
+  if (mode === 'landing') {
+    return (
+      <div className="page input-page">
+        <CelestialBackground />
+        <button className="lang-switch" onClick={toggleModal}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':b==='fr'?'FR':b==='th'?'ไทย':b==='vi'?'VI':b; })()}</button>
+        {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
+        {showModeModal && (
+          <div className="mode-modal-overlay" onClick={() => setShowModeModal(false)}>
+            <div className="mode-modal" onClick={e => e.stopPropagation()}>
+              <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
+              <button className="mode-option" onClick={() => { setMode('compatibility'); setShowModeModal(false); }}>
+                <span className="mode-icon">💞</span>
+                <span className="mode-label">{t('input.compatibilityMode')}</span>
+                <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+              </button>
+              <button className="mode-option" onClick={() => { onNavigateToWealth(); setShowModeModal(false); }}>
+                <span className="mode-icon">💰</span>
+                <span className="mode-label">{t('input.wealthMode')}</span>
+                <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="landing-container">
+          <h1 className="title">{t('input.title')}</h1>
+          <p className="subtitle">{t('app.name')}</p>
+          <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mode selection modal ──
+  const modeModal = modalOpen && mode === 'landing' ? (
+    <div className="mode-modal-overlay" onClick={() => setModalOpen(false)}>
+      <div className="mode-modal" onClick={e => e.stopPropagation()}>
+        <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
+        <button className="mode-option" onClick={() => handleModeSelect('compatibility')}>
+          <span className="mode-icon">💞</span>
+          <span className="mode-label">{t('input.compatibilityMode')}</span>
+          <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+        </button>
+        <button className="mode-option" onClick={() => handleModeSelect('wealth')}>
+          <span className="mode-icon">💰</span>
+          <span className="mode-label">{t('input.wealthMode')}</span>
+          <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // ── Compatibility input mode ──
   return (
     <div className="page input-page">
-      {/* Video background */}
       <CelestialBackground />
-      
-      <button className="lang-switch" onClick={toggleModal}>🌐 {(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'中文':b==='en'?'EN':b==='es'?'ES':b==='fr'?'FR':b==='th'?'ไทย':b==='vi'?'VI':b; })()}</button>
       {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
+      {modeModal}
       <h1 className="title">{t('input.title')}</h1>
       <p className="subtitle">{t('app.name')}</p>
       <p className="desc">{t('input.subtitle')}</p>
@@ -306,7 +364,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
-  const [showPricePreview, setShowPricePreview] = useState(false);
+  // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
 
@@ -317,6 +375,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
+
+  // 🎯 Paywall auto-show: when paidStatus becomes false, show paywall
+  useEffect(() => {
+    if (paidStatus === false) {
+      console.log('[KindredSouls Debug] paidStatus=false, showing paywall');
+      setShowPaywall(true);
+    }
+  }, [paidStatus]);
 
   // 🎯 军师方案：主动防御 —— 不依赖事件监听时序，主动解析 URL + 主动拿 session
   useEffect(() => {
@@ -415,9 +481,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             setIsAuthParsing(false);
           }
         } else {
-          // ❌ 真正未登录的用户 → 显示登录墙
+          // ❌ 真正未登录的用户 → 先显示付费墙（明牌流：先给价格，再登录）
           sessionStorage.removeItem('ks_oauth_in_progress');
-          setShowAuthWall(true);
+          setPaidStatus(false);
+          setShowPaywall(true);
           setIsAuthParsing(false);
         }
       } else if (event === 'SIGNED_IN') {
@@ -633,6 +700,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
 
     if (!token) {
       console.warn('[KindredSouls Debug] No token found after waiting, showing AuthWall');
+      setShowPaywall(false);
       setShowAuthWall(true);
       return;
     }
@@ -715,84 +783,33 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       </div>
     );
   }
-  // Auth wall — not logged in
-  // 🎯 明牌流：先弹价格，用户愿意付费才登录
-  if (showAuthWall && insight === null) {
-    return (
-      <div className="ai-insight">
-        <h3 style={{ marginBottom: '18px' }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
-        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', minHeight: '460px' }}>
-          <div style={{
-            filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
-            background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
-            border: '1px solid rgba(212,175,55,0.12)',
-          }}>
-            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{TXT.blurredPreview[lang] || TXT.blurredPreview.en}
-            </p>
-          </div>
-          <div style={{
-            position: 'relative', zIndex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '20px 0',
-          }}>
-            {!showPricePreview ? (
-              <div style={{ width: '94%', maxWidth: '380px', textAlign: 'center' }}>
-                <div style={{ fontSize: '42px', marginBottom: '12px', filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.6))' }}>🔮</div>
-                <div style={{ fontSize: '19px', fontWeight: 800, color: '#D4AF37', marginBottom: '8px' }}>
-                  {TXT.previewTitle[lang] || TXT.previewTitle.en}
-                </div>
-                <div style={{ fontSize: '13px', color: '#a0a0c0', marginBottom: '6px', lineHeight: 1.6 }}>
-                  {TXT.previewSubtitle[lang] || TXT.previewSubtitle.en}
-                </div>
-                <div style={{ fontSize: '12px', color: '#8888aa', marginBottom: '20px' }}>
-                  🌑 灵魂共鸣分析 &nbsp;·&nbsp; 🔥 情感能量图谱 &nbsp;·&nbsp; 🌟 未来走向
-                </div>
-                <div style={{ marginBottom: '18px' }}>
-                  <span style={{ fontSize: '28px', fontWeight: 900, color: '#fff' }}>$4.99</span>
-                  <span style={{ fontSize: '12px', color: '#888', marginLeft: '4px' }}>{TXT.priceLabel[lang] || TXT.priceLabel.en}</span>
-                </div>
-                <button
-                  onClick={() => setShowPricePreview(true)}
-                  style={{
-                    width: '100%', padding: '14px 20px', borderRadius: '12px', border: 'none',
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 50%, #D4AF37 100%)',
-                    color: '#1a1a2e', fontSize: '15px', fontWeight: 800, cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(212,175,55,0.35)',
-                  }}
-                >
-                  ✨ {TXT.unlockBtn[lang] || TXT.unlockBtn.en}
-                </button>
-                <div style={{ fontSize: '10px', color: '#666', marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[0]}</span>
-                  <span>·</span>
-                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[1]}</span>
-                  <span>·</span>
-                  <span>{(TXT.trustItems[lang] || TXT.trustItems.en)[2]}</span>
-                </div>
-              </div>
-            ) : (
-              <AuthWallCard lang={lang} />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
   // Stripe paywall — logged in but not paid
-  // ── 付费墙：已登录未付费时显示（无论 insight 是否有预览）──
+  // 🎯 明牌流：先弹价格，用户愿意付费才登录
+  // ── 付费墙：优先显示（无论登录状态）──
   console.log('[KindredSouls Debug] AIInsightBlock render: showPaywall=', showPaywall, 'showAuthWall=', showAuthWall, 'insight=', !!insight);
   if (showPaywall) {
     return (
-      <div className="ai-insight">
-        <h3 style={{ marginBottom: '18px' }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
-        <div style={{ position: 'relative', borderRadius: '16px', overflow: 'visible', marginBottom: '20px', minHeight: '420px' }}>
+      <div className="ai-insight ai-insight-dark">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
           <div style={{
-            filter: 'blur(10px)', opacity: 0.35, padding: '20px 16px',
-            background: 'rgba(212,175,55,0.04)', borderRadius: '16px',
-            border: '1px solid rgba(212,175,55,0.12)',
+            width: '36px', height: '36px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 38% 38%, rgba(129,216,208,0.35) 0%, rgba(26,31,75,0.6) 45%, rgba(13,13,26,0.9) 100%)',
+            border: '1.5px solid rgba(129,216,208,0.25)',
+            boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '20px',
+          }}>🔮</div>
+          <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
+        </div>
+        <div style={{ position: 'relative', borderRadius: '22px', overflow: 'visible', marginBottom: '20px' }}>
+          <div style={{
+            filter: 'blur(6px)', opacity: 0.55, padding: '24px 18px',
+            background: 'linear-gradient(135deg, rgba(129,216,208,0.08) 0%, rgba(168,85,247,0.06) 100%)', borderRadius: '22px',
+            border: '1px solid rgba(129,216,208,0.15)',
             position: 'absolute', inset: 0,
           }}>
-            <p style={{ fontSize: '13px', lineHeight: 1.7 }}>{TXT.blurredPreview[lang] || TXT.blurredPreview.en}
+            <p style={{ fontSize: '14px', lineHeight: 1.8, color: 'rgba(200,200,240,0.9)', fontWeight: 500 }}>{TXT.blurredPreview[lang] || TXT.blurredPreview.en}
             </p>
           </div>
           <div style={{
@@ -802,6 +819,28 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           }}>
             <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
           </div>
+        </div>
+      </div>
+    );
+  }
+  // Auth wall — not logged in (ONLY shown after user clicked "解锁" on paywall)
+  if (showAuthWall && insight === null) {
+    return (
+      <div className="ai-insight ai-insight-dark">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
+          <div style={{
+            width: '36px', height: '36px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 38% 38%, rgba(129,216,208,0.35) 0%, rgba(26,31,75,0.6) 45%, rgba(13,13,26,0.9) 100%)',
+            border: '1.5px solid rgba(129,216,208,0.25)',
+            boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '20px',
+          }}>🔮</div>
+          <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <AuthWallCard onClose={() => setShowAuthWall(false)} />
         </div>
       </div>
     );
@@ -1115,11 +1154,16 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
     }, 800);
   };
 
+  const handleNavigateToWealth = () => {
+    setWealthPath('/wealth');
+    window.history.pushState({}, '', '/wealth');
+  };
+
   return (
     <div className="app">
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
       {wealthPath?.startsWith('/wealth/report') && <WealthReportPage onNavigate={navigate} />}
-      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} />}
+      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
       {!wealthPath && err && <p className="error-msg">{err}</p>}

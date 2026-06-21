@@ -10,7 +10,13 @@
     "theirBirthday": "TA的生日",
     "calculate": "测算缘分",
     "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD"
+    "placeholder2": "YYYY-MM-DD",
+    "start": "开始测算",
+    "selectMode": "选择模式",
+    "compatibilityMode": "合婚密码",
+    "compatibilityModeDesc": "解锁双人关系密码",
+    "wealthMode": "财富解码",
+    "wealthModeDesc": "解密先天财库"
   },
   "result": {
     "title": "缘分测算结果",

@@ -37,24 +37,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   pointer-events: none;
 }
 
-/* Starfield fallback (shown when video fails to load) */
+/* Aurora gradient fallback (shown when video fails to load) */
 .starfield-fallback {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(1.8px 1.8px at 35% 52%, rgba(255,255,255,0.7) 50%, transparent 50%),
-    radial-gradient(1.8px 1.8px at 70% 58%, rgba(255,255,255,0.6) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 18% 42%, rgba(255,255,255,0.65) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 55% 85%, rgba(129,216,208,0.6) 50%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 82% 25%, rgba(255,255,255,0.55) 50%, transparent 50%),
-    radial-gradient(1.2px 1.2px at 38% 22%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1.2px 1.2px at 68% 8%, rgba(255,255,255,0.5) 50%, transparent 50%),
-    radial-gradient(1.2px 1.2px at 48% 65%, rgba(255,255,255,0.45) 50%, transparent 50%),
-    radial-gradient(1.2px 1.2px at 5% 92%, rgba(212,175,55,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 22% 72%, rgba(129,216,208,0.4) 50%, transparent 50%),
-    radial-gradient(1px 1px at 95% 65%, rgba(255,255,255,0.35) 50%, transparent 50%),
-    #0a0a18;
-  background-size: 100% 100%;
-  animation: twinkle 4s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at 20% 50%, #0F0E26 0%, #0A0914 50%, #0A0914 100%);
+  background-size: 200% 200%;
+}
+
+/* Aurora purple particle glow */
+.starfield-fallback::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 30% 40%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(129, 216, 208, 0.02) 0%, transparent 50%);
+  animation: aurora-drift 8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes aurora-drift {
+  0% { transform: translateX(-5%) translateY(-3%); }
+  100% { transform: translateX(5%) translateY(3%); }
 }
 
 
@@ -163,6 +168,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ai-insight { background: linear-gradient(135deg, #f0f7ff, #faf5ff); border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 18px; border: 1px solid rgba(129,216,208,0.2); }
 .ai-insight h3 { font-size: 14px; color: #1A1F4B; margin-bottom: 8px; }
 .ai-insight p { font-size: 13px; color: #555; line-height: 1.65; }
+/* Dark variant for paywall sections — matches deep space aesthetic */
+.ai-insight-dark { background: linear-gradient(170deg, #0e1028 0%, #0a0c1e 40%, #0D0D1A 100%) !important; border: 1px solid rgba(129,216,208,0.12) !important; }
+.ai-insight-dark h3 { color: #81D8D0 !important; text-shadow: 0 2px 20px rgba(129,216,208,0.3); }
+@keyframes paywallOrbFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
 
 /* AI Insight result — tight paragraph spacing */
 .insight-result { text-align: left; }
@@ -475,4 +487,116 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @keyframes goldenDot {
   0%, 100% { opacity: 0.3; transform: translateY(0); }
   50% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* ── Landing Page (minimalist mode) ── */
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.landing-start-btn {
+  margin-top: 32px;
+  padding: 16px 48px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0A0914;
+  background: linear-gradient(135deg, #D4AF37 0%, #F0D060 100%);
+  border: none;
+  border-radius: 28px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+}
+
+.landing-start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 30px rgba(212, 175, 55, 0.6);
+}
+
+/* ── Mode Selection Modal ── */
+.mode-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 9, 20, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.mode-modal {
+  background: linear-gradient(168deg, rgba(26, 31, 75, 0.97) 0%, rgba(18, 22, 55, 0.99) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 20px;
+  padding: 32px 24px;
+  max-width: 340px;
+  width: 100%;
+  animation: slideUp 0.4s ease-out;
+}
+
+.mode-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #D4AF37;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.mode-option:hover {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.5);
+  transform: translateX(4px);
+}
+
+.mode-icon {
+  font-size: 32px;
+  line-height: 1;
+  width: 48px;
+  text-align: center;
+}
+
+.mode-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  display: block;
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: #a0a0c0;
+  margin-top: 4px;
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

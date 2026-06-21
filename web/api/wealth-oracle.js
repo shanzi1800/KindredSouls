@@ -1,3 +1,9 @@
+// ── Supabase client (for insight cache) ──
+import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY || '';
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
 var DIZHI = ["\u5B50", "\u4E11", "\u5BC5", "\u536F", "\u8FB0", "\u5DF3", "\u5348", "\u672A", "\u7533", "\u9149", "\u620C", "\u4EA5"];
@@ -1926,11 +1932,79 @@ function getIndividualData(birthInfo, lang) {
   const bazi = getIndividualBaZiProfile(birthInfo);
   const zodiac = getIndividualZodiacProfile(birthInfo, algLang);
   const iching = getIndividualIChingProfile(birthInfo, algLang);
+
+  // ── Translate bazi fields for non-zh langs ──
+  const WX_TR = {
+    en: {'木':'Wood','火':'Fire','土':'Earth','金':'Metal','水':'Water'},
+    es: {'木':'Madera','火':'Fuego','土':'Tierra','金':'Metal','水':'Agua'},
+    fr: {'木':'Bois','火':'Feu','土':'Terre','金':'Métal','水':'Eau'},
+    th: {'木':'ไม้','火':'ไฟ','土':'ดิน','金':'โลหะ','水':'น้ำ'},
+    vi: {'木':'Mộc','火':'Hỏa','土':'Thổ','金':'Kim','水':'Thủy'}
+  };
+  const TG_TR = {
+    en: {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'},
+    es: {'甲':'Madera','乙':'Madera','丙':'Fuego','丁':'Fuego','戊':'Tierra','己':'Tierra','庚':'Metal','辛':'Metal','壬':'Agua','癸':'Agua'},
+    fr: {'甲':'Bois','乙':'Bois','丙':'Feu','丁':'Feu','戊':'Terre','己':'Terre','庚':'Métal','辛':'Métal','壬':'Eau','癸':'Eau'},
+    th: {'甲':'ไม้','乙':'ไม้','丙':'ไฟ','丁':'ไฟ','戊':'ดิน','己':'ดิน','庚':'โลหะ','辛':'โลหะ','壬':'น้ำ','癸':'น้ำ'},
+    vi: {'甲':'Mộc','乙':'Mộc','丙':'Hỏa','丁':'Hỏa','戊':'Thổ','己':'Thổ','庚':'Kim','辛':'Kim','壬':'Thủy','癸':'Thủy'}
+  };
+  const DZ_TR = {
+    en: {'子':'Rat','丑':'Ox','寅':'Tiger','卯':'Rabbit','辰':'Dragon','巳':'Snake','午':'Horse','未':'Goat','申':'Monkey','酉':'Rooster','戌':'Dog','亥':'Pig'},
+    es: {'子':'Rata','丑':'Buey','寅':'Tigre','卯':'Conejo','辰':'Dragón','巳':'Serpiente','午':'Caballo','未':'Cabra','申':'Mono','酉':'Gallo','戌':'Perro','亥':'Cerdo'},
+    fr: {'子':'Rat','丑':'Bœuf','寅':'Tigre','卯':'Lapin','辰':'Dragon','巳':'Serpent','午':'Cheval','未':'Chèvre','申':'Singe','酉':'Coq','戌':'Chien','亥':'Cochon'},
+    th: {'子':'หนู','丑':'วัว','寅':'เสือ','卯':'กระต่าย','辰':'มังกร','巳':'งู','午':'ม้า','未':'แพะ','申':'ลิง','酉':'ไก่','戌':'หมา','亥':'หมู'},
+    vi: {'子':'Tý','丑':'Sửu','寅':'Dần','卯':'Mão','辰':'Thìn','巳':'Tỵ','午':'Ngọ','未':'Mùi','申':'Thân','酉':'Dậu','戌':'Tuất','亥':'Hợi'}
+  };
+  const ORI_TR = {
+    en: {'正位':'Upright','逆位':'Reversed'},
+    es: {'正位':'Upright','逆位':'Reversed'},
+    fr: {'正位':'Upright','逆位':'Reversed'},
+    th: {'正位':'Upright','逆位':'Reversed'},
+    vi: {'正位':'Upright','逆位':'Reversed'}
+  };
+  const LINE_TR = {zh:'爻动',en:'line moving',es:'línea móvil',fr:'ligne mobile',th:'เส้นเคลื่อน',vi:'đổi tua'};
+  const LINE_SUFFIX = {1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th'};
+
+  let baziOut = bazi;
+  if (algLang !== 'zh') {
+    const wtr = WX_TR[algLang] || WX_TR.en;
+    const ttr = TG_TR[algLang] || TG_TR.en;
+    const dtr = DZ_TR[algLang] || DZ_TR.en;
+    const wxTranslated = {};
+    for (const [k, v] of Object.entries(bazi.wuxing)) {
+      wxTranslated[wtr[k] || k] = v;
+    }
+    const sz = bazi.sizhu;
+    const translatePillar = (arr) => arr.map(c => ttr[c] || dtr[c] || c).join(' ');
+    const dayPillarTranslated = `${ttr[sz.dayMaster] || sz.dayMaster} ${dtr[sz.day[1]] || sz.day[1]}`;
+    baziOut = {
+      ...bazi,
+      sizhu: {
+        ...sz,
+        year: [ttr[sz.year[0]] || sz.year[0], dtr[sz.year[1]] || sz.year[1]],
+        month: [ttr[sz.month[0]] || sz.month[0], dtr[sz.month[1]] || sz.month[1]],
+        day: [ttr[sz.day[0]] || sz.day[0], dtr[sz.day[1]] || sz.day[1]],
+        dayMaster: ttr[sz.dayMaster] || sz.dayMaster,
+        dayPillar: dayPillarTranslated,
+      },
+      wuxing: wxTranslated,
+      dayMasterWuxing: wtr[bazi.dayMasterWuxing] || bazi.dayMasterWuxing
+    };
+  }
+
+  // ── Add changingLineDesc for iching ──
+  let ichingOut = iching;
+  if (iching.changingLine) {
+    const lineNum = parseInt(iching.changingLine) || 0;
+    const suffix = algLang === 'zh' ? `${iching.changingLine}爻动` : `${LINE_SUFFIX[lineNum] || iching.changingLine} ${LINE_TR[algLang] || LINE_TR.en}`;
+    ichingOut = { ...iching, changingLineDesc: suffix };
+  }
+
   return {
     birthInfo,
-    bazi,
+    bazi: baziOut,
     zodiac,
-    iching,
+    iching: ichingOut,
     meta: [...bazi.meta, ...zodiac.meta, ...iching.meta]
   };
 }
@@ -2319,48 +2393,108 @@ Chuy\xEAn gia t\u01B0 v\u1EA5n th\u01B0\u01A1ng m\u1EA1i cao c\u1EA5p chuy\xEAn 
 
 <h2>\u{1F33F} Gi\xE1c ng\u1ED9 Cu\u1ED1i c\xF9ng cho Linh h\u1ED3n Ti\u1EC1n b\u1EA1c c\u1EE7a B\u1EA1n</h2>
 <p>[M\u1ED9t c\xE2u k\u1EBFt l\u1EA1nh l\xF9ng nh\u01B0ng trao quy\u1EC1n \u2014 kh\xF4ng m\u1EC1m y\u1EBFu, kh\xF4ng c\xE2u c\u0169.]</p>`;
-function buildPrompt(data, tarot) {
+function buildPrompt(data, tarot, lang = 'zh') {
   const { bazi, zodiac, iching } = data;
-  const dayMasterMap = { \u7532: "\u7532\u6728", \u4E59: "\u4E59\u6728", \u4E19: "\u4E19\u706B", \u4E01: "\u4E01\u706B", \u620A: "\u620A\u571F", \u5DF1: "\u5DF1\u571F", \u5E9A: "\u5E9A\u91D1", \u8F9B: "\u8F9B\u91D1", \u58EC: "\u58EC\u6C34", \u7678: "\u7678\u6C34" };
-  const dayMaster = bazi.sizhu.dayMaster || "";
-  const dayMasterDisplay = dayMasterMap[dayMaster] || dayMaster;
   const wuxing = bazi.wuxing || {};
-  const metal = Math.max(wuxing["\u91D1\u5C5E"] || 0, wuxing["\u91D1"] || 0);
-  const fire = wuxing["\u706B"] || 0;
-  const wood = wuxing["\u6728"] || 0;
-  const water = wuxing["\u6C34"] || 0;
-  let fortunePattern = "\u8EAB\u5F3A\u8D22\u5F31";
-  if (fire >= 3 && (wood >= 1 || water >= 1)) fortunePattern = "\u98DF\u4F24\u751F\u8D22\u683C";
-  else if (metal >= 2 && (water >= 1 || fire >= 2)) fortunePattern = "\u504F\u8D22\u683C";
-  else if (metal >= 1 && fire >= 2) fortunePattern = "\u6B63\u8D22\u683C";
-  const zodiacScore = zodiac.sunSign && zodiac.sunSign.includes("\u5904\u5973") ? 82 : 70;
+
+  // Universal wuxing extraction (works for any language)
+  const getWX = (keys) => { for (const k of keys) { if (wuxing[k] !== undefined) return wuxing[k]; } return 0; };
+  const metal = getWX(['Metal','Madera','Métal','โลหะ','Kim','金','金屬']);
+  const fire  = getWX(['Fire','Fuego','Feu','ไฟ','Hỏa','火']);
+  const wood  = getWX(['Wood','Madera','Bois','ไม้','Mộc','木']);
+  const water = getWX(['Water','Agua','Eau','น้ำ','Thủy','水']);
+  const earth = getWX(['Earth','Tierra','Terre','ดิน','Thổ','土']);
+
+  let fortunePattern = '';
+  if (fire >= 3 && (wood >= 1 || water >= 1)) fortunePattern = 'food-fire-wealth';
+  else if (metal >= 2 && (water >= 1 || fire >= 2)) fortunePattern = 'partial-wealth';
+  else if (metal >= 1 && fire >= 2) fortunePattern = 'proper-wealth';
+  else fortunePattern = 'strong-body-weak-wealth';
+
+  const zodiacScore = 70; // base score
+  const dayMaster = bazi.sizhu.dayMaster || '';
+
+  const LABELS = {
+    zh: {
+      userData: '用户数据', baziDim: '八字维度', dayMaster: '日主', yearPillar: '年柱', monthPillar: '月柱', dayPillar: '日柱',
+      wuxingDist: '五行分布', fortuneType: '财格判定', zodiacDim: '星盘维度', sunSign: '太阳星座',
+      signElement: '星座元素', signMode: '星座模式', ruler: '守护星', careerScore: '职业潜力评分',
+      tarotDim: '商业塔罗', drawn: '抽牌', ichingDim: '易经职业卦', hexagram: '本卦',
+      changedHex: '变卦', judgment: '卦辞', none: '无', instruct: '请严格按上述 Output Format 输出中文财富分析报告。',
+      fp: { 'food-fire-wealth': '食伤生财格', 'partial-wealth': '偏财格', 'proper-wealth': '正财格', 'strong-body-weak-wealth': '身强财弱' }
+    },
+    en: {
+      userData: 'User Data', baziDim: 'BaZi Dimension', dayMaster: 'Day Master', yearPillar: 'Year Pillar', monthPillar: 'Month Pillar', dayPillar: 'Day Pillar',
+      wuxingDist: 'Five Elements', fortuneType: 'Wealth Pattern', zodiacDim: 'Zodiac Dimension', sunSign: 'Sun Sign',
+      signElement: 'Sign Element', signMode: 'Sign Mode', ruler: 'Ruling Planet', careerScore: 'Career Potential Score',
+      tarotDim: 'Business Tarot', drawn: 'Drawn Card', ichingDim: 'I Ching Career Hexagram', hexagram: 'Hexagram',
+      changedHex: 'Transformed', judgment: 'Judgment', none: 'None', instruct: 'Output the wealth analysis report in English strictly following the Output Format above.',
+      fp: { 'food-fire-wealth': 'Food-Fire Generates Wealth', 'partial-wealth': 'Indirect Wealth', 'proper-wealth': 'Direct Wealth', 'strong-body-weak-wealth': 'Strong Self, Weak Wealth' }
+    },
+    es: {
+      userData: 'Datos del Usuario', baziDim: 'Dimensión BaZi', dayMaster: 'Maestro del Día', yearPillar: 'Pilar del Año', monthPillar: 'Pilar del Mes', dayPillar: 'Pilar del Día',
+      wuxingDist: 'Cinco Elementos', fortuneType: 'Patrón de Riqueza', zodiacDim: 'Dimensión Zodiacal', sunSign: 'Signo Solar',
+      signElement: 'Elemento', signMode: 'Modalidad', ruler: 'Planeta Regente', careerScore: 'Puntuación de Potencial Profesional',
+      tarotDim: 'Tarot de Negocios', drawn: 'Carta', ichingDim: 'Hexagrama I Ching Profesional', hexagram: 'Hexagrama',
+      changedHex: 'Transformado', judgment: 'Juicio', none: 'Ninguno', instruct: 'Genera el informe de análisis de riqueza en español siguiendo estrictamente el Formato de Salida anterior.',
+      fp: { 'food-fire-wealth': 'Fuego Genera Riqueza', 'partial-wealth': 'Riqueza Indirecta', 'proper-wealth': 'Riqueza Directa', 'strong-body-weak-wealth': 'Yo Fuerte, Riqueza Débil' }
+    },
+    fr: {
+      userData: 'Données Utilisateur', baziDim: 'Dimension BaZi', dayMaster: 'Maître du Jour', yearPillar: 'Pilière Année', monthPillar: 'Pilière Mois', dayPillar: 'Pilière Jour',
+      wuxingDist: 'Cinq Éléments', fortuneType: 'Type de Richesse', zodiacDim: 'Dimension Zodiacale', sunSign: 'Signe Solaire',
+      signElement: 'Élément', signMode: 'Modalité', ruler: 'Planète Maîtresse', careerScore: 'Score de Potentiel Professionnel',
+      tarotDim: 'Tarot Professionnel', drawn: 'Carte Tirée', ichingDim: 'Hexagramme I Ching Carrière', hexagram: 'Hexagramme',
+      changedHex: 'Transformé', judgment: 'Jugement', none: 'Aucun', instruct: 'Générez le rapport d\'analyse de richesse en français en suivant strictement le Format de Sortie ci-dessus.',
+      fp: { 'food-fire-wealth': 'Feu Génère Richesse', 'partial-wealth': 'Richesse Indirecte', 'proper-wealth': 'Richesse Directe', 'strong-body-weak-wealth': 'Soi Fort, Richesse Faible' }
+    },
+    th: {
+      userData: 'ข้อมูลผู้ใช้', baziDim: 'มิติป้าจือ', dayMaster: 'วันมาสเตอร์', yearPillar: 'เสาปี', monthPillar: 'เสาเดือน', dayPillar: 'เสาวัน',
+      wuxingDist: 'ธาตุทั้งห้า', fortuneType: 'รูปแบบโชคลาภ', zodiacDim: 'มิติจักรราศี', sunSign: 'ราศีสุริยะ',
+      signElement: 'ธาตุ', signMode: 'ลักษณะ', ruler: 'ดาวครอง', careerScore: 'คะแนนศักยภาพอาชีพ',
+      tarotDim: 'ทาโรต์ธุรกิจ', drawn: 'ไพ่ที่หยิบ', ichingDim: 'อี้จิงหัวข้ออาชีพ', hexagram: 'หมวด',
+      changedHex: 'เปลี่ยนแปลง', judgment: 'คำพยากรณ์', none: 'ไม่มี', instruct: 'สร้างรายงานวิเคราะห์โชคลาภเป็นภาษาไทยตามรูปแบบผลลัพธ์ข้างต้นอย่างเคร่งครัด',
+      fp: { 'food-fire-wealth': 'ไฟสร้างโชคลาภ', 'partial-wealth': 'โชคลาภทางอ้อม', 'proper-wealth': 'โชคลาภทางตรง', 'strong-body-weak-wealth': 'ตัวเข้มโชคลาภอ่อน' }
+    },
+    vi: {
+      userData: 'Dữ liệu người dùng', baziDim: 'Chiều Bát Tự', dayMaster: 'Nhật Chủ', yearPillar: 'Trụ Năm', monthPillar: 'Trụ Tháng', dayPillar: 'Trụ Ngày',
+      wuxingDist: 'Ngũ Hành', fortuneType: 'Cách Cục Tài', zodiacDim: 'Chiều Hoàng Đạo', sunSign: 'Cung Mặt Trời',
+      signElement: 'Nguyên Tố', signMode: 'Phương Thức', ruler: 'Sao Chiếu Mệnh', careerScore: 'Điểm Tiềm Năng Nghề Nghiệp',
+      tarotDim: 'Tarot Kinh Doanh', drawn: 'Lá Bài', ichingDim: 'Quẻ I Ching Nghề Nghiệp', hexagram: 'Quẻ',
+      changedHex: 'Biến Quẻ', judgment: 'Thoán Từ', none: 'Không', instruct: 'Xuất báo cáo phân tích tài chính bằng tiếng Việt tuân thủ nghiêm ngặt Định dạng Đầu ra phía trên.',
+      fp: { 'food-fire-wealth': 'Thực Thương Sinh Tài', 'partial-wealth': 'Thiên Tài', 'proper-wealth': 'Chính Tài', 'strong-body-weak-wealth': 'Thân Cường Tài Nhược' }
+    }
+  };
+
+  const L = LABELS[lang] || LABELS.en;
+  const fpLabel = L.fp[fortunePattern] || fortunePattern;
+
   return `
-## \u7528\u6237\u6570\u636E
+## ${L.userData}
 
-### \u516B\u5B57\u7EF4\u5EA6
-- \u65E5\u4E3B\uFF1A${dayMasterDisplay}
-- \u5E74\u67F1\uFF1A${bazi.sizhu.year.join("")}
-- \u6708\u67F1\uFF1A${bazi.sizhu.month.join("")}
-- \u65E5\u67F1\uFF1A${bazi.sizhu.day.join("")}
-- \u4E94\u884C\u5206\u5E03\uFF1A\u6728${wuxing["\u6728"] || 0} \u706B${wuxing["\u706B"] || 0} \u571F${wuxing["\u571F"] || 0} \u91D1${metal} \u6C34${wuxing["\u6C34"] || 0}
-- \u8D22\u683C\u5224\u5B9A\uFF1A${fortunePattern}
+### ${L.baziDim}
+- ${L.dayMaster}: ${dayMaster}
+- ${L.yearPillar}: ${bazi.sizhu.year.join(' ')}
+- ${L.monthPillar}: ${bazi.sizhu.month.join(' ')}
+- ${L.dayPillar}: ${bazi.sizhu.day.join(' ')}
+- ${L.wuxingDist}: Wood=${wood} Fire=${fire} Earth=${earth} Metal=${metal} Water=${water}
+- ${L.fortuneType}: ${fpLabel}
 
-### \u661F\u76D8\u7EF4\u5EA6
-- \u592A\u9633\u661F\u5EA7\uFF1A${zodiac.sunSign || ""}
-- \u661F\u5EA7\u5143\u7D20\uFF1A${zodiac.sunSignElement || ""}
-- \u661F\u5EA7\u6A21\u5F0F\uFF1A${zodiac.sunSignMode || ""}
-- \u5B88\u62A4\u661F\uFF1A${zodiac.sunSignRuler || ""}
-- \u804C\u4E1A\u6F5C\u529B\u8BC4\u5206\uFF1A${zodiacScore}
+### ${L.zodiacDim}
+- ${L.sunSign}: ${zodiac.sunSign || ''}
+- ${L.signElement}: ${zodiac.sunSignElement || ''}
+- ${L.signMode}: ${zodiac.sunSignMode || ''}
+- ${L.ruler}: ${zodiac.sunSignRuler || ''}
+- ${L.careerScore}: ${zodiacScore}
 
-### \u5546\u4E1A\u5854\u7F57
-- \u62BD\u724C\uFF1A${tarot.name} \u2014 ${tarot.orientation}
+### ${L.tarotDim}
+- ${L.drawn}: ${tarot.name} — ${tarot.orientation}
 
-### \u6613\u7ECF\u804C\u4E1A\u5366
-- \u672C\u5366\uFF1A${iching.hexName || ""}\uFF08${iching.hexSymbol || ""}\uFF09
-- \u53D8\u5366\uFF1A${iching.transformedHexName || "\u65E0"}
-- \u5366\u8F9E\uFF1A${iching.hexJudgment || ""}
+### ${L.ichingDim}
+- ${L.hexagram}: ${iching.hexName || ''} (${iching.hexSymbol || ''})
+- ${L.changedHex}: ${iching.transformedHexName || L.none}
+- ${L.judgment}: ${iching.hexJudgment || ''}
 
-\u8BF7\u4E25\u683C\u6309\u4E0A\u8FF0 Output Format \u8F93\u51FA\u4E2D\u6587\u8D22\u5BCC\u5206\u6790\u62A5\u544A\u3002`;
+${L.instruct}`;
 }
 var SYSTEM_PROMPTS = {
   zh: ZH_SYSTEM,
@@ -2442,8 +2576,45 @@ async function handler(req, res) {
     const individualData = getIndividualData(birthInfo, normalizedLang);
     const tarotData = getWealthTarot(birthDate, normalizedLang);
     const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
-    const userPrompt = buildPrompt(individualData, tarotData);
-    const insight = await callAI(systemPrompt, userPrompt, process.env);
+    const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
+
+    // ── Check cache first (24h, max 3 calls) ──
+    let insight = null;
+    if (supabase) {
+      const { data: cached } = await supabase
+        .from('wealth_insights_cache')
+        .select('insight, call_count')
+        .eq('birth_date', birthDate)
+        .eq('lang', normalizedLang)
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .single();
+      if (cached?.insight && (cached.call_count || 0) >= 3) {
+        console.log('[Wealth Oracle] Cache hit (3 calls used):', birthDate, normalizedLang);
+        insight = cached.insight;
+      }
+    }
+
+    if (!insight) {
+      insight = await callAI(systemPrompt, userPrompt, process.env);
+      // Save/update cache with call count
+      if (supabase) {
+        const { data: existing } = await supabase
+          .from('wealth_insights_cache')
+          .select('call_count')
+          .eq('birth_date', birthDate)
+          .eq('lang', normalizedLang)
+          .single();
+        const newCount = (existing?.call_count || 0) + 1;
+        await supabase
+          .from('wealth_insights_cache')
+          .upsert(
+            { birth_date: birthDate, lang: normalizedLang, insight, model: 'deepseek-v3', call_count: newCount },
+            { onConflict: 'birth_date,lang' }
+          );
+        console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
+      }
+    }
+
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
     const crossLink = referrer === "compatibility" ? '<p>\u{1F4A1} \u4F60\u7684\u8D22\u5BCC\u8FD0\u52BF\u548C\u611F\u60C5\u80FD\u91CF\u573A\u662F\u8054\u52A8\u7684\u2014\u2014\u5F53\u611F\u60C5\u72B6\u6001\u7A33\u5B9A\u65F6\uFF0C\u5438\u91D1\u80FD\u529B\u81EA\u7136\u63D0\u5347\u3002\u5982\u679C\u4F60\u6709\u4F34\u4FA3\uFF0C\u5EFA\u8BAE\u5BF9\u6BD4\u4F60\u4EEC\u7684\u5408\u76D8\uFF0C\u770B\u770BTA\u7684\u516B\u5B57\u662F\u5426\u6B63\u5728\u5E2E\u4F60\u8865\u8D22\u661F\u7F3A\u53E3\u3002<a href="/">\u2192 \u56DE\u5408\u5A5A\u62A5\u544A</a></p>' : "";
     const finalOutput = cleanInsight + crossLink;

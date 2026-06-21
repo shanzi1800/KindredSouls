@@ -39,40 +39,65 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // Read URL parameters on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const birth = params.get('birth');
+    let birth = params.get('birth');
     const langParam = params.get('lang');
 
     if (!birth) {
-      // No birth date provided, redirect to wealth input page
-      onNavigate('/wealth');
-      return;
+      // Try session storage (payment return)
+      birth = sessionStorage.getItem('wealth_birth') || '';
+      if (!birth) {
+        onNavigate('/wealth');
+        return;
+      }
     }
+
+    // Save birth to sessionStorage for payment return flow
+    sessionStorage.setItem('wealth_birth', birth);
+    sessionStorage.setItem('wealth_lang', langParam || i18n.language || 'en');
 
     setBirthDate(birth);
     setLang(langParam || i18n.language || 'en');
 
+    // If returning from successful payment, force re-check paid status
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment') === 'success';
+
     // Check auth status
-    checkAuthAndLoad(birth, langParam || i18n.language || 'en');
+    checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
   }, []);
 
-  const checkAuthAndLoad = async (birth: string, lang: string) => {
+  const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false) => {
+    let token: string | undefined;
     try {
-      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.access_token) {
-        setCurrentToken(session.access_token);
-        // Check paid status
-        await checkPaidStatus(session.access_token);
+      token = session?.access_token;
+      if (token) {
+        setCurrentToken(token);
+        await checkPaidStatus(token);
+      } else if (forceRecheck) {
+        // Payment just succeeded but session not ready yet — wait briefly
+        await new Promise(r => setTimeout(r, 2000));
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (s2?.access_token) {
+          setCurrentToken(s2.access_token);
+          await checkPaidStatus(s2.access_token);
+        } else {
+          setIsUnlocked(false);
+          setShowPaywall(true);
+        }
+      } else {
+        // Not logged in → show paywall
+        setIsUnlocked(false);
+        setShowPaywall(true);
       }
-
-      // Load wealth data (always show preview data)
-      await loadWealthData(birth, lang, session?.access_token);
     } catch (err) {
-      console.error('[WealthReport] Error checking auth:', err);
-      // Still try to load data (might show paywall)
-      await loadWealthData(birth, lang);
+      console.error('[WealthReport] Auth check failed:', err);
+      setIsUnlocked(false);
+      setShowPaywall(true);
     }
+
+    // Always load data (preview is free)
+    await loadWealthData(birth, lang, token);
   };
 
   const checkPaidStatus = async (token: string) => {
@@ -179,6 +204,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         provider: 'google',
         options: {
           redirectTo: window.location.href,
+          queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang },
         },
       });
       if (error) {
@@ -305,21 +331,41 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     );
   }
 
-  // Main report UI
+  // ── Map API raw data → display/subDisplay for DataGrid ──
   const baziField = reportData?.data?.bazi
-    ? { label: '', value: reportData.data.bazi.display, subValue: reportData.data.bazi.subDisplay }
+    ? (() => {
+        const b = reportData.data.bazi as any;
+        const sz = b.sizhu;
+        const dm = sz?.dayMaster || '';
+        const dp = sz?.dayPillar || '';
+        const display = dp ? `${b.dayMasterWuxing || dm} · ${dp}` : (dm || '--');
+        const wx = b.wuxing;
+        const subDisplay = wx
+          ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${k}${v}`).join(' ')
+          : '';
+        return { label: '', value: display, subValue: subDisplay };
+      })()
     : { label: '', value: '--', subValue: '' };
 
   const zodiacField = reportData?.data?.zodiac
-    ? { label: '', value: reportData.data.zodiac.display, subValue: reportData.data.zodiac.subDisplay }
+    ? (() => {
+        const z = reportData.data.zodiac as any;
+        return { label: '', value: `${z.sunSign} · ${z.sunSignElement}`, subValue: `${z.sunSignMode} · ${z.sunSignRuler}` };
+      })()
     : { label: '', value: '--', subValue: '' };
 
   const ichingField = reportData?.data?.iching
-    ? { label: '', value: reportData.data.iching.display, subValue: reportData.data.iching.subDisplay }
+    ? (() => {
+        const ic = reportData.data.iching as any;
+        return { label: '', value: `${ic.hexName} #${ic.hexNum}`, subValue: `${ic.hexNature} · ${ic.changingLineDesc || ic.changingLine} → ${ic.transformedHexName}` };
+      })()
     : { label: '', value: '--', subValue: '' };
 
   const tarotField = reportData?.data?.tarot
-    ? { label: '', value: reportData.data.tarot.display, subValue: reportData.data.tarot.subDisplay }
+    ? (() => {
+        const t = reportData.data.tarot as any;
+        return { label: '', value: `${t.emoji || '🃏'} ${t.name}`, subValue: `${t.orientation || ''} · ${t.meaning}` };
+      })()
     : { label: '', value: '--', subValue: '' };
 
   return (

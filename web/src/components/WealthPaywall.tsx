@@ -20,6 +20,7 @@ const I18N = {
     already: '已有账户？登录',
     secure: '安全支付',
     instant: '即时生成',
+    features: '财富密码 · 事业能量 · 180天运势',
     refund: '支持退款',
   },
   en: {
@@ -33,6 +34,7 @@ const I18N = {
     already: 'Already have an account? Log in',
     secure: 'Secure payment',
     instant: 'Instant generation',
+    features: 'Wealth Code · Career Energy · 180-Day Forecast',
     refund: 'Refundable',
   },
   es: {
@@ -46,6 +48,7 @@ const I18N = {
     already: '¿Ya tienes una cuenta? Inicia sesión',
     secure: 'Pago seguro',
     instant: 'Generación instantánea',
+    features: 'Código de Riqueza · Energía Profesional · Pronóstico 180 días',
     refund: 'Reembolsable',
   },
   fr: {
@@ -59,6 +62,7 @@ const I18N = {
     already: 'Déjà un compte ? Connectez-vous',
     secure: 'Paiement sécurisé',
     instant: 'Génération instantanée',
+    features: 'Code de Richesse · Énergie Carrière · Prévision 180 jours',
     refund: 'Remboursable',
   },
   th: {
@@ -72,6 +76,7 @@ const I18N = {
     already: 'มีบัญชีแล้ว? เข้าสู่ระบบ',
     secure: 'การชำระเงินที่ปลอดภัย',
     instant: 'สร้างทันที',
+    features: 'รหัสความร่ำรวย · พลังงานอาชีพ · พยากรณ์ 180 วัน',
     refund: 'ขอคืนเงินได้',
   },
   vi: {
@@ -85,6 +90,7 @@ const I18N = {
     already: 'Đã có tài khoản? Đăng nhập',
     secure: 'Thanh toán an toàn',
     instant: 'Tạo ngay lập tức',
+    features: 'Mã Tài Lộc · Năng Lượng Sự Nghiệp · Dự Báo 180 Ngày',
     refund: 'Hoàn tiền được',
   },
 } as const;
@@ -167,7 +173,7 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
             color: '#8888aa',
             marginBottom: '24px',
           }}>
-            💰 财富密码 · 🔥 事业能量 · 🌟 180天运势
+            💰 {t.features}
           </div>
 
           {/* Pricing */}

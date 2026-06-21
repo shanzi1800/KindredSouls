@@ -207,7 +207,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
   const [error, setError] = useState('');
 
   const handleOAuthLogin = async (provider: 'google' | 'apple' | 'facebook' | 'tiktok') => {
-    console.log('[KindredSouls Debug] OAuth login button CLICKED:', provider);
+    console.log('[KindredSouls Debug] OAuth login button CLICKED:', provider, 'lang:', lang, 'hl:', lang === 'zh' ? 'zh-CN' : lang);
     setLoading(true);
     setError('');
     try {
@@ -217,7 +217,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
       console.log('[KindredSouls Debug] OAuth redirectTo:', redirectUrl, 'provider:', provider);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: provider as any,
-        options: { redirectTo: redirectUrl },
+        options: { redirectTo: redirectUrl, queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang } },
       });
       if (error) throw error;
     } catch (err: any) {
