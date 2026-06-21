@@ -198,7 +198,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2
   }
 
   // ── Mode selection modal ──
-  const modeModal = modalOpen && mode === 'landing' ? (
+  const modeModal = modalOpen && (mode as 'landing' | 'compatibility' | 'wealth') === 'landing' ? (
     <div className="mode-modal-overlay" onClick={() => setModalOpen(false)}>
       <div className="mode-modal" onClick={e => e.stopPropagation()}>
         <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
@@ -840,7 +840,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <AuthWallCard onClose={() => setShowAuthWall(false)} />
+          <AuthWallCard lang={lang} />
         </div>
       </div>
     );
