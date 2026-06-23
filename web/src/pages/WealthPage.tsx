@@ -208,7 +208,6 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           <DateInput
             value={birthDate}
             onChange={setBirthDate}
-            onLastFilled={handleSubmit}
             autoFocus
             shake={shaking}
             hasError={!!dateError && shaking}

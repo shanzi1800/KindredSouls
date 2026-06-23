@@ -62,11 +62,23 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment') === 'success';
 
-    // Check auth status
-    checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
+    // 🎯 检测 OAuth 返回后的 intent=checkout（用户已登录，需自动触发 Stripe）
+    const intentCheckout = urlParams.get('intent') === 'checkout';
+    const intentPlan = urlParams.get('plan') || '';
+
+    if (intentCheckout && intentPlan && !paymentSuccess) {
+      // 清除 URL 参数避免重复触发
+      const cleanUrl = window.location.pathname.split('?')[0];
+      window.history.replaceState({}, '', cleanUrl + '?birth=' + birth + '&lang=' + (langParam || i18n.language || 'en'));
+
+      // 检查 session 并自动触发 checkout
+      checkAuthAndLoad(birth, langParam || i18n.language || 'en', false, intentPlan);
+    } else {
+      checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
+    }
   }, []);
 
-  const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false) => {
+  const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
     let token: string | undefined;
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -74,6 +86,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       if (token) {
         setCurrentToken(token);
         await checkPaidStatus(token);
+        // 🎯 有 pendingPlan → 等待 checkPaidStatus 后自动触发 checkout
+        if (pendingPlan) {
+          setTimeout(() => handlePurchase(pendingPlan as any, token), 100);
+        }
       } else if (forceRecheck) {
         // Payment just succeeded but session not ready yet — wait briefly
         await new Promise(r => setTimeout(r, 2000));
@@ -250,13 +266,31 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report') => {
-    if (!currentToken) {
-      // Need to login first
+  const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
+    let token = forceToken || currentToken;
+
+    if (!token) {
+      // 🎯 来自 OAuth 回调（intent=checkout），currentToken 可能还没更新 → 直接拿 session
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthReturn = urlParams.get('intent') === 'checkout';
+      if (isOAuthReturn) {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || null;
+        if (token) setCurrentToken(token);
+      }
+    }
+
+    if (!token) {
+      // 真没登录 → 保存购买意图到 URL，OAuth 回来后自动触发 Stripe
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('intent', 'checkout');
+      currentUrl.searchParams.set('plan', plan);
+      const redirectUrl = currentUrl.toString();
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.href,
+          redirectTo: redirectUrl,
           queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang },
         },
       });
@@ -271,7 +305,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ plan }),
       });
@@ -284,7 +318,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         setShowPaywall(false);
         // Reload insight if needed
         if (reportData && !reportData.insight) {
-          loadWealthData(birthDate, lang, currentToken);
+          loadWealthData(birthDate, lang, token);
         }
       } else {
         setError(data.detail || data.error || 'Checkout failed');
