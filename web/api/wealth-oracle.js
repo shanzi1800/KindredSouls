@@ -5,7 +5,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ── Config (prompt version control) ──
-import { PROMPT_VERSION } from '../../config.js';
+import { PROMPT_VERSION } from '../config.js';
 
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
