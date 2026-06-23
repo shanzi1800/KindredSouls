@@ -124,7 +124,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       const dbRes = await fetch(
-        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid&limit=1`,
+        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
         { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
       );
 
@@ -135,9 +135,55 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       const dbData = await dbRes.json();
-      const paid = dbData?.[0]?.paid === true;
+      const rawPlans = dbData?.[0]?.paid_plans;
+      const now = Date.now();
 
-      if (paid) {
+      // 统一兼容两种存储格式：
+      //   数组格式：["wealth_once"] 或 [{"plan":"wealth_once", ...}]
+      //   对象格式：{"wealth_once": true, "star_monthly_vip": {...}}
+      const planMap: Record<string, any> = {};
+      if (Array.isArray(rawPlans)) {
+        for (const p of rawPlans) {
+          if (typeof p === 'string') {
+            planMap[p] = true;
+          } else if (typeof p === 'object' && p !== null) {
+            const pk = p.plan;
+            if (pk) planMap[pk] = p;
+          }
+        }
+      } else if (typeof rawPlans === 'object' && rawPlans !== null) {
+        Object.assign(planMap, rawPlans);
+      }
+
+      // 兼容性检查（与 create-checkout 服务端逻辑一致）
+      const isWealthPaid = (() => {
+        // 直接放行：key === true
+        if (planMap.wealth_once === true) return true;
+        if (planMap.wealth_yearly_report === true) return true;
+        if (planMap.wealth_monthly_report === true) return true;
+
+        // all_pass_yearly 检查 expires_at
+        const ap = planMap.all_pass_yearly;
+        if (ap) {
+          const expiresAt = ap.expires_at || ap.all_pass_expires_at;
+          if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
+        }
+
+        // star_monthly_vip 检查财富配额
+        const sv = planMap.star_monthly_vip;
+        if (sv && typeof sv === 'object') {
+          const used = sv.star_monthly_wealth_used ?? 0;
+          const allowance = sv.star_monthly_wealth_allowance;
+          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+          if (typeof allowance === 'number' && used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) {
+            return true;
+          }
+        }
+
+        return false;
+      })();
+
+      if (isWealthPaid) {
         setIsUnlocked(true);
         setShowPaywall(false);
       } else {
@@ -174,6 +220,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }),
       });
 
+      if (res.status === 402) {
+        // Paywall: not paid yet
+        setError(null);
+        setIsUnlocked(false);
+        setShowPaywall(true);
+        return;
+      }
       if (!res.ok) {
         throw new Error(`API error: ${res.status}`);
       }
@@ -197,7 +250,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handlePurchase = async (plan: 'monthly' | 'yearly') => {
+  const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report') => {
     if (!currentToken) {
       // Need to login first
       const { error } = await supabase.auth.signInWithOAuth({
@@ -220,7 +273,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`,
         },
-        body: JSON.stringify({ plan: `wealth_${plan}` }),
+        body: JSON.stringify({ plan }),
       });
 
       const data = await res.json();
@@ -234,7 +287,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           loadWealthData(birthDate, lang, currentToken);
         }
       } else {
-        setError(data.error || 'Checkout failed');
+        setError(data.detail || data.error || 'Checkout failed');
       }
     } catch (err) {
       console.error('[WealthReport] Purchase error:', err);

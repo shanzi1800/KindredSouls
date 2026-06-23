@@ -1,5 +1,13 @@
 export const runtime = 'nodejs';
 
+// ── Cache config ──
+const CACHE_TTL_HOURS = 24;
+const PROMPT_VERSION = 'v1.0';
+
+function cacheKey(d1, d2, lang) {
+  return `compat:${d1}|${d2}|${lang}`;
+}
+
 // ============================================================
 // KindredSouls AI Advisor — "填空打字员"架构 (军师架构 + 牛牛工程修复)
 // 版本: V9 (总分后端重算 + 正逆位绝对锁 + 塔罗牌意意图约束 + 6语言)
@@ -411,6 +419,102 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
+  // ── Per-plan access control: compatibility AI insight ──
+  let paidPlans = {};
+  let currentUserId = null;
+  let usingMonthlyAllowance = false;
+
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey || serviceKey },
+    });
+    if (!userRes.ok) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    const { id: userId } = await userRes.json();
+    currentUserId = userId;
+
+    const profileRes = await fetch(
+      `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
+      { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
+    );
+    const profiles = await profileRes.json();
+    paidPlans = profiles?.[0]?.paid_plans || {};
+
+    const now = new Date();
+    let hasAccess = false;
+
+    // 1. Direct one-time access
+    if (paidPlans.compatibility_once === true || paidPlans.insight_once === true) {
+      hasAccess = true;
+    }
+
+    // 2. Legacy monthly subscription (the old 'monthly' plan)
+    if (!hasAccess && paidPlans.monthly === true) {
+      hasAccess = true;
+    }
+
+    // 3. All-pass yearly (not expired)
+    if (!hasAccess && paidPlans.all_pass_yearly === true) {
+      const expiresAt = paidPlans.all_pass_expires_at;
+      if (!expiresAt || now < new Date(expiresAt)) {
+        hasAccess = true;
+      }
+    }
+
+    // 4. Wealth monthly has a monthly allowance for compatibility readings
+    if (!hasAccess && paidPlans.wealth_monthly === true) {
+      const used = paidPlans.compatibility_monthly_used || 0;
+      const allowance = paidPlans.compatibility_monthly_allowance || 0;
+      const resetsAt = paidPlans.compatibility_monthly_resets_at;
+      if (used < allowance && resetsAt && now < new Date(resetsAt)) {
+        hasAccess = true;
+        usingMonthlyAllowance = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once' });
+    }
+
+    // If access is via monthly allowance, increment compatibility_monthly_used before proceeding
+    if (usingMonthlyAllowance && currentUserId) {
+      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+      const updatedPlans = {
+        ...paidPlans,
+        compatibility_monthly_used: (paidPlans.compatibility_monthly_used || 0) + 1,
+        compatibility_monthly_resets_at: paidPlans.compatibility_monthly_resets_at || nextMonthStart.toISOString(),
+      };
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ paid_plans: updatedPlans }),
+        });
+      } catch (incrErr) {
+        console.error('[ai-advisor] Failed to increment compatibility_monthly_used:', incrErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[ai-advisor] access check error:', err);
+    return res.status(500).json({ error: 'Access check failed' });
+  }
+
   try {
     const body = await parseRequestBody(req);
     const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta, luckyAspects, challengingAspects } = body;
@@ -434,12 +538,66 @@ export default async function handler(req, res) {
     
     const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects);
 
+    // ── Check Supabase cache (before AI call) ──
+    const cKey = cacheKey(body.d1, body.d2, lang);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+    if (supabaseUrl && serviceKey) {
+      try {
+        const cacheRes = await fetch(
+          `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cKey)}&select=insight,prompt_version&limit=1`,
+          { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+        );
+        if (cacheRes.ok) {
+          const rows = await cacheRes.json();
+          const cached = rows?.[0];
+          if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
+            console.log('[ai-advisor] Cache HIT:', cKey);
+            return res.status(200).json({
+              insight: cached.insight,
+              cached: true,
+              tarot: tarot || null,
+              tarotLine: filteredTarot?.meaning || '',
+            });
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('[ai-advisor] Cache check failed, falling through:', cacheErr.message);
+      }
+    }
+
     const aiText = await callAI(config.systemPrompt, finalPrompt, process.env);
 
     let finalInsight = aiText || 'Unable to generate insight at this time.';
     finalInsight = finalInsight.replace(/(🎯|⚡|💡|🌿)/g, '\n\n$1').trim();
     finalInsight = finalInsight.replace(/^[\d]+[、.．]\s*/, '');
     finalInsight = finalInsight.replace(/\n*🦋[\s\S]*$/, '');
+
+    // ── Save to Supabase cache ──
+    if (supabaseUrl && serviceKey) {
+      try {
+        await fetch(
+          `${supabaseUrl}/rest/v1/ai_insights_cache`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates',
+            },
+            body: JSON.stringify({
+              cache_key: cKey,
+              insight: finalInsight,
+              prompt_version: PROMPT_VERSION,
+            })
+          }
+        );
+        console.log('[ai-advisor] Cache saved:', cKey);
+      } catch (saveErr) {
+        console.warn('[ai-advisor] Cache save failed:', saveErr.message);
+      }
+    }
 
     return res.status(200).json({
       insight: finalInsight,

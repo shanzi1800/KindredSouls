@@ -398,7 +398,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       if (session?.access_token) {
         console.log('[KindredSouls Auth] 🎯 Active defense: Got session, triggering checkout...');
         hasTriggeredCheckout.current = true;
-        handlePurchaseWithToken(session.access_token, 'insight_once');
+        handlePurchaseWithToken(session.access_token, 'compatibility_once');
         window.history.replaceState({}, '', '/result');
       } else {
         console.log('[KindredSouls Auth] 🎯 Active defense: No session yet, setting up fallback listener...');
@@ -408,7 +408,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
               console.log(`[KindredSouls Auth] 🎯 Fallback: Got session via ${event}, triggering checkout...`);
               hasTriggeredCheckout.current = true;
-              handlePurchaseWithToken(session.access_token, 'insight_once');
+              handlePurchaseWithToken(session.access_token, 'compatibility_once');
               window.history.replaceState({}, '', '/result');
               subscription.unsubscribe();
             }
@@ -449,8 +449,16 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           sessionStorage.removeItem('ks_oauth_in_progress');
           setShowAuthWall(false);
           setIsAuthParsing(false);
-          // 🛡️ 防呆：刚支付成功回来时跳过 checkPaidStatus，直接标记已付费
-          if (sessionStorage.getItem('ks_payment_success') === '1') {
+          // 🛡️ 防呆：URL 带着 intent=checkout → 跳过 checkPaidStatus，等 Active Defense 触发 Stripe
+          const urlParams_ = new URLSearchParams(window.location.search);
+          const isPendingCheckout_ = urlParams_.get('intent') === 'checkout';
+          const isPaymentSuccess_ = sessionStorage.getItem('ks_payment_success') === '1';
+          if (isPendingCheckout_ && !hasTriggeredCheckout.current) {
+            // 让 Active Defense useEffect 处理，不弹付费墙
+            setPaidStatus(null);
+            setShowPaywall(false);
+          } else if (isPaymentSuccess_) {
+            // 刚支付成功回来时跳过 checkPaidStatus，直接标记已付费
             setPaidStatus(true);
             setShowPaywall(false);
           } else {
@@ -503,7 +511,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           // ✅ URL 有 checkout 意图 → 直接触发 Stripe，跳过 checkPaidStatus
           console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout detected in URL, triggering checkout directly...');
           hasTriggeredCheckout.current = true;
-          handlePurchaseWithToken(session!.access_token, 'insight_once');
+          handlePurchaseWithToken(session!.access_token, 'compatibility_once');
         } else if (hasTriggeredCheckout.current) {
           console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping checkPaidStatus');
         } else {
@@ -552,9 +560,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         setShowPaywall(false);
         return;
       }
-      // 2. 用 PostgREST 查 paid 状态（RLS 由 anon token 保护）
+      // 2. 用 PostgREST 查 paid_plans 状态（RLS 由 anon token 保护）
       const dbRes = await fetch(
-        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid&limit=1`,
+        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
         { headers: { 'Authorization': `Bearer ${_token || ''}`, 'apikey': supabaseAnonKey } }
       );
       if (!dbRes.ok) {
@@ -564,9 +572,56 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         return;
       }
       const dbData = await dbRes.json();
-      const paid = dbData?.[0]?.paid === true;
-      console.log('[KindredSouls Debug] checkPaidStatus REST result: paid=', paid);
-      if (paid) {
+      const rawPlans = dbData?.[0]?.paid_plans;
+      const now = Date.now();
+
+      // 3. 统一兼容两种存储格式：
+      //    数组格式：["compatibility_once"] 或 [{"plan":"compatibility_once", ...}]
+      //    对象格式：{"compatibility_once": true, "all_pass_yearly": {...}}
+      //    webhook 写入的是对象格式，旧格式是数组
+      const planMap: Record<string, any> = {};
+      if (Array.isArray(rawPlans)) {
+        for (const p of rawPlans) {
+          if (typeof p === 'string') {
+            planMap[p] = true;
+          } else if (typeof p === 'object' && p !== null) {
+            const pk = p.plan;
+            if (pk) planMap[pk] = p;
+          }
+        }
+      } else if (typeof rawPlans === 'object' && rawPlans !== null) {
+        Object.assign(planMap, rawPlans);
+      }
+
+      // 兼容性检查（与 create-checkout 服务端逻辑一致）
+      const isCompatibilityPaid = (() => {
+        // 直接放行：key === true 或字符串形式
+        const directKeys = ['compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report', 'compatibility_free_coupon'];
+        for (const k of directKeys) {
+          if (planMap[k] === true || planMap[k] === k) return true;
+        }
+
+        // all_pass_yearly：检查不过期
+        const ap = planMap.all_pass_yearly;
+        if (ap) {
+          const expiresAt = ap.expires_at || ap.all_pass_expires_at || (ap === true ? null : null);
+          if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
+        }
+
+        // star_monthly_vip：检查兼容性配额
+        const sv = planMap.star_monthly_vip;
+        if (sv && typeof sv === 'object') {
+          const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
+          const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
+          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+          if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+        }
+
+        return false;
+      })();
+
+      console.log('[KindredSouls Debug] checkPaidStatus REST result: paid=', isCompatibilityPaid, 'planMap=', JSON.stringify(planMap));
+      if (isCompatibilityPaid) {
         setPaidStatus(true);
         setShowPaywall(false);
       } else {

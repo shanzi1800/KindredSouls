@@ -5,6 +5,78 @@ export const config = { api: { bodyParser: false } };
 
 import crypto from 'crypto';
 
+// ── Date helpers for plan expiration / reset ──
+function computeNextMonthStartUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0)).toISOString();
+}
+
+function computeOneYearLaterUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear() + 1, now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)).toISOString();
+}
+
+/**
+ * Build the paid_plans fragment for a given plan.
+ * Merge these into existing paid_plans — do not overwrite unrelated flags.
+ */
+function buildPlanPayload(plan) {
+  const resetAt = computeNextMonthStartUTC();
+  const yearLater = computeOneYearLaterUTC();
+
+  switch (plan) {
+    case 'compatibility_once':
+      return { compatibility_once: true };
+
+    case 'wealth_once':
+      return { wealth_once: true };
+
+    case 'compatibility_monthly_report':
+      return { compatibility_monthly_report: true };
+
+    case 'wealth_monthly_report':
+      return { wealth_monthly_report: true };
+
+    case 'compatibility_yearly_report':
+      return { compatibility_yearly_report: true };
+
+    case 'wealth_yearly_report':
+      return { wealth_yearly_report: true };
+
+    case 'star_monthly_vip':
+      return {
+        star_monthly_vip: true,
+        star_monthly_wealth_allowance: 5,
+        star_monthly_wealth_used: 0,
+        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_used: 0,
+        star_monthly_resets_at: resetAt,
+      };
+
+    case 'all_pass_yearly':
+      return {
+        all_pass_yearly: true,
+        all_pass_expires_at: yearLater,
+        star_monthly_wealth_allowance: 5,
+        star_monthly_wealth_used: 0,
+        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_used: 0,
+        star_monthly_resets_at: resetAt,
+      };
+
+    default:
+      return { [plan]: true };
+  }
+}
+
+// ── Mapping: old plan IDs → new plan IDs (for legacy Stripe products) ──
+const PLAN_MIGRATION = {
+  'insight_once':  null,  // removed (replaced by compatibility_once)
+  'monthly':       null,  // removed (replaced by star_monthly_vip)
+  'wealth_montly': 'wealth_monthly_report', // typo fix
+  'wealth_yearly': null,  // removed (solo wealth yearly subscription removed)
+};
+
 /**
  * Verify Stripe webhook signature (correct implementation)
  * Stripe uses: HMAC_SHA256(webhook_secret, timestamp + "." + raw_body)
@@ -79,13 +151,39 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const userId = session.metadata?.supabase_user_id;
     const email = session.customer_details?.email || null;
+    const plan = session.metadata?.plan || 'compatibility_once';
 
-    console.log('[webhook] ✅ payment success for user:', userId, 'email:', email);
+    console.log('[webhook] ✅ payment success for user:', userId, 'email:', email, 'plan:', plan);
 
     if (userId) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+        // ── Fetch current paid_plans so we merge rather than overwrite ──
+        let currentPlans = {};
+        try {
+          const profileRes = await fetch(
+            `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans`,
+            {
+              headers: {
+                'apikey': serviceKey,
+                'Authorization': `Bearer ${serviceKey}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          if (profileRes.ok) {
+            const profiles = await profileRes.json();
+            currentPlans = profiles?.[0]?.paid_plans || {};
+          }
+        } catch (profileErr) {
+          console.warn('[webhook] Could not read current paid_plans, starting fresh:', profileErr.message);
+        }
+
+        // Build the plan payload and merge with existing (do not overwrite unrelated flags)
+        const planPayload = buildPlanPayload(plan);
+        const updatedPlans = { ...currentPlans, ...planPayload };
 
         const patchRes = await fetch(
           `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
@@ -99,6 +197,7 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
               paid: true,
+              paid_plans: updatedPlans,
               stripe_customer_id: session.customer || null,
               subscription_id: session.subscription || session.id,
               updated_at: new Date().toISOString(),
@@ -111,6 +210,8 @@ export default async function handler(req, res) {
 
         if (!Array.isArray(patchData) || patchData.length === 0) {
           // No existing record, INSERT new one
+          const planPayload = buildPlanPayload(plan);
+          const newPlans = { ...planPayload };
           const insertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
             method: 'POST',
             headers: {
@@ -122,6 +223,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               user_id: userId,
               paid: true,
+              paid_plans: newPlans,
               stripe_customer_id: session.customer || null,
               subscription_id: session.subscription || session.id,
               email: email || null,
@@ -134,10 +236,10 @@ export default async function handler(req, res) {
             const err = await insertRes.json();
             console.error('[webhook] ❌ Failed to INSERT profile:', err);
           } else {
-            console.log('[webhook] ✅ Inserted new profile with paid=true');
+            console.log('[webhook] ✅ Inserted new profile with paid_plans:', newPlans);
           }
         } else {
-          console.log('[webhook] ✅ Updated existing profile to paid=true, rows:', patchData.length);
+          console.log('[webhook] ✅ Updated existing profile paid_plans:', updatedPlans, 'rows:', patchData.length);
         }
       } catch (err) {
         console.error('[webhook] ❌ Error updating user:', err.message);

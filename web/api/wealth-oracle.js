@@ -2705,8 +2705,8 @@ async function handler(req, res) {
         .eq('lang', normalizedLang)
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .single();
-      // Only use cache if prompt_version matches current version
-      if (cached?.insight && cached?.prompt_version === PROMPT_VERSION && (cached.call_count || 0) >= 3) {
+      // Use cache if prompt_version matches current version
+      if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
         console.log('[Wealth Oracle] Cache hit (version', PROMPT_VERSION, '):', birthDate, normalizedLang);
         insight = cached.insight;
       } else {

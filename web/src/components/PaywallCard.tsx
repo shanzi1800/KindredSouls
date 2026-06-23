@@ -219,7 +219,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
 
       {/* 主按钮 — 薄荷→青蓝 */}
       <button
-        onClick={() => { console.log('[KindredSouls Debug] PaywallCard button clicked, loading:', loading); onPurchase('insight_once'); }}
+        onClick={() => { console.log('[KindredSouls Debug] PaywallCard button clicked, loading:', loading); onPurchase('compatibility_once'); }}
         onMouseDown={() => console.log('[KindredSouls Debug] PaywallCard mousedown')}
         onTouchStart={() => console.log('[KindredSouls Debug] PaywallCard touchstart')}
         disabled={loading}
@@ -248,7 +248,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
 
       {/* 订阅按钮 — 金色边框 */}
       <button
-        onClick={() => onPurchase('monthly')}
+        onClick={() => onPurchase('star_monthly_vip')}
         disabled={loading}
         style={{
           width: '100%',
