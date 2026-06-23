@@ -4,6 +4,7 @@ export const runtime = 'nodejs20.x';
 // Node 18+ has native fetch, no need for node-fetch
 
 import { createClient } from '@supabase/supabase-js';
+import { PROMPT_VERSION } from '../config.js';
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY;
@@ -353,8 +354,26 @@ export default async function handler(req, res) {
   }
 
   const key = cacheKey(d1, d2, overall, dims, lang);
+
+  // ── L1: In-memory cache (fast) ──
   if (insightCache.has(key)) {
     return res.status(200).json({ insight: insightCache.get(key), cached: true });
+  }
+
+  // ── L2: Supabase cache (persistent, with version check) ──
+  if (supabase) {
+    const { data: cached } = await supabase
+      .from('ai_insights_cache')
+      .select('insight, prompt_version')
+      .eq('cache_key', key)
+      .single();
+    if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
+      console.log('[ai-insight] Supabase cache hit (version', PROMPT_VERSION, '):', key);
+      // Save to L1 cache
+      insightCache.set(key, cached.insight);
+      if (insightCache.size > MAX_CACHE) insightCache.clear();
+      return res.status(200).json({ insight: cached.insight, cached: true });
+    }
   }
 
   const { systemPrompt, userPrompt } = buildPrompt(
@@ -457,6 +476,17 @@ export default async function handler(req, res) {
       insightCache.delete(firstKey);
     }
     insightCache.set(key, clean);
+
+    // ── Save to Supabase cache (persistent, with version) ──
+    if (supabase) {
+      await supabase
+        .from('ai_insights_cache')
+        .upsert(
+          { cache_key: key, insight: clean, prompt_version: PROMPT_VERSION },
+          { onConflict: 'cache_key' }
+        );
+      console.log('[ai-insight] Saved to Supabase cache:', key);
+    }
 
     return res.status(200).json({ insight: clean, cached: false });
   } catch (err) {
