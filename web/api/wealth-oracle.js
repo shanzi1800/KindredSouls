@@ -4,6 +4,9 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY || '';
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
+// ── Config (prompt version control) ──
+import { PROMPT_VERSION } from '../../config.js';
+
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
 var DIZHI = ["\u5B50", "\u4E11", "\u5BC5", "\u536F", "\u8FB0", "\u5DF3", "\u5348", "\u672A", "\u7533", "\u9149", "\u620C", "\u4EA5"];
@@ -2575,6 +2578,120 @@ async function handler(req, res) {
     const normalizedLang = normalizeLang(lang) || "zh";
     const individualData = getIndividualData(birthInfo, normalizedLang);
     const tarotData = getWealthTarot(birthDate, normalizedLang);
+
+    // ── Per-plan access control: wealth AI insight ──
+    let paidPlans = {};
+    let hasWealthAccess = false;
+    let wealthAccessMethod = null; // 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report' | 'star_monthly_vip' | 'all_pass_yearly'
+    let currentUserId = null;
+    const now = new Date();
+
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (token) {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+        const anonKey = process.env.SUPABASE_ANON_KEY;
+
+        const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey || serviceKey },
+        });
+        if (userRes.ok) {
+          const { id: userId } = await userRes.json();
+          currentUserId = userId;
+          const profileRes = await fetch(
+            `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
+            { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
+          );
+          const profiles = await profileRes.json();
+          paidPlans = profiles?.[0]?.paid_plans || {};
+
+          // ── Access check chain: first match wins ──
+
+          // ① wealth_once (one-time)
+          if (paidPlans.wealth_once === true) {
+            hasWealthAccess = true;
+            wealthAccessMethod = 'wealth_once';
+          }
+
+          // ② wealth_monthly_report (one-time, standalone)
+          if (!hasWealthAccess && paidPlans.wealth_monthly_report === true) {
+            hasWealthAccess = true;
+            wealthAccessMethod = 'wealth_monthly_report';
+          }
+
+          // ③ wealth_yearly_report (one-time, standalone)
+          if (!hasWealthAccess && paidPlans.wealth_yearly_report === true) {
+            hasWealthAccess = true;
+            wealthAccessMethod = 'wealth_yearly_report';
+          }
+
+          // ④ star_monthly_vip with remaining wealth quota
+          if (!hasWealthAccess && paidPlans.star_monthly_vip === true) {
+            const used = paidPlans.star_monthly_wealth_used || 0;
+            const allowance = paidPlans.star_monthly_wealth_allowance || 0;
+            const resetsAt = paidPlans.star_monthly_resets_at;
+            if (used < allowance && resetsAt && now < new Date(resetsAt)) {
+              hasWealthAccess = true;
+              wealthAccessMethod = 'star_monthly_vip';
+            }
+          }
+
+          // ⑤ all_pass_yearly (not expired)
+          if (!hasWealthAccess && paidPlans.all_pass_yearly === true) {
+            const expiresAt = paidPlans.all_pass_expires_at;
+            if (!expiresAt || now < new Date(expiresAt)) {
+              hasWealthAccess = true;
+              wealthAccessMethod = 'all_pass_yearly';
+            }
+          }
+        }
+      }
+    } catch (accessErr) {
+      console.warn('[Wealth Oracle] access check error:', accessErr.message);
+    }
+
+    if (!hasWealthAccess) {
+      return res.status(402).json({
+        error: 'Payment required',
+        requiredPlan: 'wealth_monthly_report',
+        data: {
+          bazi: individualData.bazi,
+          zodiac: individualData.zodiac,
+          iching: individualData.iching,
+          tarot: tarotData
+        },
+        preview: true,
+      });
+    }
+
+    // If access is via star_monthly_vip quota, increment the counter before calling AI
+    if (wealthAccessMethod === 'star_monthly_vip' && currentUserId) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+      const updatedPlans = {
+        ...paidPlans,
+        star_monthly_wealth_used: (paidPlans.star_monthly_wealth_used || 0) + 1,
+        star_monthly_resets_at: paidPlans.star_monthly_resets_at || nextMonthStart.toISOString(),
+      };
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ paid_plans: updatedPlans }),
+        });
+      } catch (incrErr) {
+        console.error('[Wealth Oracle] Failed to increment star_monthly_wealth_used:', incrErr.message);
+      }
+    }
+
     const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
     const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
 
@@ -2583,14 +2700,17 @@ async function handler(req, res) {
     if (supabase) {
       const { data: cached } = await supabase
         .from('wealth_insights_cache')
-        .select('insight, call_count')
+        .select('insight, call_count, prompt_version')
         .eq('birth_date', birthDate)
         .eq('lang', normalizedLang)
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .single();
-      if (cached?.insight && (cached.call_count || 0) >= 3) {
-        console.log('[Wealth Oracle] Cache hit (3 calls used):', birthDate, normalizedLang);
+      // Only use cache if prompt_version matches current version
+      if (cached?.insight && cached?.prompt_version === PROMPT_VERSION && (cached.call_count || 0) >= 3) {
+        console.log('[Wealth Oracle] Cache hit (version', PROMPT_VERSION, '):', birthDate, normalizedLang);
         insight = cached.insight;
+      } else {
+        console.log('[Wealth Oracle] Cache miss or version mismatch:', cached?.prompt_version, '!==', PROMPT_VERSION);
       }
     }
 
@@ -2608,7 +2728,7 @@ async function handler(req, res) {
         await supabase
           .from('wealth_insights_cache')
           .upsert(
-            { birth_date: birthDate, lang: normalizedLang, insight, model: 'deepseek-v3', call_count: newCount },
+            { birth_date: birthDate, lang: normalizedLang, insight, model: 'deepseek-v3', call_count: newCount, prompt_version: PROMPT_VERSION },
             { onConflict: 'birth_date,lang' }
           );
         console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
