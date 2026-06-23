@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 // ── Cache config ──
-const CACHE_TTL_HOURS = 24;
+const CACHE_TTL_HOURS = 336; // 14天
 const PROMPT_VERSION = 'v1.0';
 
 function cacheKey(d1, d2, lang) {
@@ -544,8 +544,9 @@ export default async function handler(req, res) {
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
     if (supabaseUrl && serviceKey) {
       try {
+        const cacheCutoff = new Date(Date.now() - CACHE_TTL_HOURS * 3600000).toISOString();
         const cacheRes = await fetch(
-          `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cKey)}&select=insight,prompt_version&limit=1`,
+          `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cKey)}&created_at=gte.${encodeURIComponent(cacheCutoff)}&select=insight,prompt_version&limit=1`,
           { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
         );
         if (cacheRes.ok) {

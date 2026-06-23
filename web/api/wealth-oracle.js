@@ -2703,7 +2703,7 @@ async function handler(req, res) {
         .select('insight, call_count, prompt_version')
         .eq('birth_date', birthDate)
         .eq('lang', normalizedLang)
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gte('created_at', new Date(Date.now() - 336 * 60 * 60 * 1000).toISOString()) // 14天
         .single();
       // Use cache if prompt_version matches current version
       if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
