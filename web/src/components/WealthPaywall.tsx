@@ -32,7 +32,7 @@ const I18N = {
   en: {
     title: '🔒 AI Deep Insight',
     subtitle: 'Decode Your Innate Wealth Blueprint & Career DNA',
-    preview: '🔮 Wealth Blueprint Preview: Your innate energy is in a "Hidden Gem Ready to Shine" state. Your wealth star has deep roots, but monthly magnetic interference keeps the monetization path brewing. This decoding will reveal your core cards:'
+    preview: '🔮 Wealth Blueprint Preview: Your innate energy is in a "Hidden Gem Ready to Shine" state. Your wealth star has deep roots, but monthly magnetic interference keeps the monetization path brewing. This decoding will reveal your core cards:',
     once: '$4.99 One-Time — Unlock Your Wealth Blueprint',
     onceDesc: 'Lifetime access · Deep dive into your financial DNA',
     monthly: '$9.99 / month — Dual Engine Star VIP Card',
