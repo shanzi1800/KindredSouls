@@ -2515,6 +2515,7 @@ async function callAI(systemPrompt, userPrompt, env) {
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           contents: [{ parts: [{ text: userPrompt }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -2535,6 +2536,7 @@ async function callAI(systemPrompt, userPrompt, env) {
     const res = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${dsKey}` },
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [

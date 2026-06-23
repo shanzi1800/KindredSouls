@@ -95,8 +95,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         await new Promise(r => setTimeout(r, 2000));
         const { data: { session: s2 } } = await supabase.auth.getSession();
         if (s2?.access_token) {
-          setCurrentToken(s2.access_token);
-          await checkPaidStatus(s2.access_token);
+          token = s2.access_token;
+          setCurrentToken(token);
+          await checkPaidStatus(token);
         } else {
           setIsUnlocked(false);
           setShowPaywall(true);
@@ -244,7 +245,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
       if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        // 尝试读取服务器返回的错误详情
+        const errBody = await res.text().catch(() => '');
+        console.error('[WealthReport] API error body:', res.status, errBody);
+        throw new Error(`API error: ${res.status}${errBody ? ' - ' + errBody.substring(0, 200) : ''}`);
       }
 
       const data: WealthOracleResponse = await res.json();
