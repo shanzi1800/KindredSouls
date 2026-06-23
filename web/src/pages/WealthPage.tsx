@@ -184,7 +184,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           marginBottom: '32px',
           textAlign: 'center',
         }}>
-          {lang === 'zh' ? '解锁你180天内的财富密码' : 'Unlock your wealth code for the next 180 days'}
+          {lang === 'zh' ? '终极破译你的先天财富格局与事业基因' : 'Decode Your Innate Wealth Blueprint & Career DNA'}
         </p>
 
         {/* Input Card */}

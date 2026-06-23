@@ -13,43 +13,43 @@ interface WealthPaywallProps {
 const I18N = {
   zh: {
     title: '🔒 AI 深度洞察',
-    subtitle: '解锁你180天内的财富密码',
+    subtitle: '终极破译你的先天财富格局与事业基因',
     preview: '你的财富运势和事业能量场存在特殊的共振模式……这种配置在人群中仅占 5%。',
-    once: '$4.99 单次解锁',
-    onceDesc: '获取完整财富报告',
-    monthly: '$9.99 / 月',
-    monthlyDesc: 'VIP 无限次生成（含婚恋+财富）',
+    once: '$4.99 一次性解锁先天财富大盘',
+    onceDesc: '终身可看 · 深度透析你的底层搞钱基因',
+    monthly: '$9.99 / 月 — 双引擎星运特权卡',
+    monthlyDesc: '每月 5 次财富 AI 动态洞察 + 1 次合婚特权 · 锁定流月财运预警',
     yearly: '$99.99 / 年',
     yearlyBadge: '省17%',
-    vipLabel: '✨ VIP 套餐',
-    unlock: '解锁全部报告 + 无限次生成',
+    vipLabel: '✨ 会员特享',
+    unlock: '解锁全部报告 · 每月 5 次财富洞察 · 附赠合婚特权',
     already: '已有账户？登录',
     secure: '安全支付',
     instant: '即时生成',
-    features: '财富密码 · 事业能量 · 180天运势',
+    features: '财富密码 · 事业能量 · 先天格局',
     refund: '支持退款',
   },
   en: {
     title: '🔒 AI Deep Insight',
-    subtitle: 'Unlock your wealth code for the next 180 days',
+    subtitle: 'Decode Your Innate Wealth Blueprint & Career DNA',
     preview: 'Your wealth trajectory and career energy field show a rare resonance pattern… This configuration appears in only 5% of people.',
-    once: '$4.99 One-Time',
-    onceDesc: 'Get your full wealth report',
-    monthly: '$9.99 / month',
-    monthlyDesc: 'VIP unlimited (includes compatibility)',
+    once: '$4.99 One-Time — Unlock Your Wealth Blueprint',
+    onceDesc: 'Lifetime access · Deep dive into your financial DNA',
+    monthly: '$9.99 / month — Dual Engine Star VIP Card',
+    monthlyDesc: '5 monthly wealth AI insights + 1 monthly compatibility · Monthly fortune alerts',
     yearly: '$99.99 / year',
     yearlyBadge: 'Save 17%',
-    vipLabel: '✨ VIP Plans',
-    unlock: 'Unlock full report + unlimited generations',
+    vipLabel: '✨ VIP Benefits',
+    unlock: 'Full reports · 5 monthly wealth insights · 1 free compatibility',
     already: 'Already have an account? Log in',
     secure: 'Secure payment',
     instant: 'Instant generation',
-    features: 'Wealth Code · Career Energy · 180-Day Forecast',
+    features: 'Wealth Code · Career Energy · Innate Blueprint',
     refund: 'Refundable',
   },
   es: {
     title: '🔒 Perspectiva AI Profunda',
-    subtitle: 'Desbloquea tu código de riqueza para los próximos 180 días',
+    subtitle: 'Descifra tu patrón innato de riqueza y ADN profesional',
     preview: 'Tu trayectoria de riqueza y campo de energía profesional muestran un patrón de resonancia raro… Esta configuración aparece en solo el 5% de las personas.',
     once: '$4.99 Pago Único',
     onceDesc: 'Obtén tu informe completo',
@@ -62,12 +62,12 @@ const I18N = {
     already: '¿Ya tienes una cuenta? Inicia sesión',
     secure: 'Pago seguro',
     instant: 'Generación instantánea',
-    features: 'Código de Riqueza · Energía Profesional · Pronóstico 180 días',
+    features: 'Código de Riqueza · Energía Profesional · Plano Innato',
     refund: 'Reembolsable',
   },
   fr: {
     title: '🔒 Perspective IA Profonde',
-    subtitle: 'Débloquez votre code de richesse pour les 180 prochains jours',
+    subtitle: 'Décodez votre plan de richesse inné et votre ADN de carrière',
     preview: 'Votre trajectoire de richesse et champ d\'énergie professionnel montrent un pattern de résonance rare… Cette configuration apparaît chez seulement 5% des personnes.',
     once: '$4.99 Paiement Unique',
     onceDesc: 'Obtenez votre rapport complet',
@@ -80,12 +80,12 @@ const I18N = {
     already: 'Déjà un compte ? Connectez-vous',
     secure: 'Paiement sécurisé',
     instant: 'Génération instantanée',
-    features: 'Code de Richesse · Énergie Carrière · Prévision 180 jours',
+    features: 'Code de Richesse · Énergie Carrière · Plan Inné',
     refund: 'Remboursable',
   },
   th: {
     title: '🔒 ไอคิวซีกลับลึก',
-    subtitle: 'ปลดล็อกรหัสความร่ำรวยของคุณสำหรับ 180 วันข้างหน้า',
+    subtitle: 'ถอดรหัสแผนทรัพย์สินโดยกำเนิดและดีเอ็นเออาชีพของคุณ',
     preview: 'เส้นทางความร่ำรวยและสนามพลังงานอาชีพของคุณแสดงรูปแบบการสั่นพ้องที่หายาก… การกำหนดค่านี้ปรากฏในเพียง 5% ของประชาชน',
     once: ' $4.99 จ่ายครั้งเดียว',
     onceDesc: 'รับรายงานฉบับเต็ม',
@@ -98,12 +98,12 @@ const I18N = {
     already: 'มีบัญชีแล้ว? เข้าสู่ระบบ',
     secure: 'การชำระเงินที่ปลอดภัย',
     instant: 'สร้างทันที',
-    features: 'รหัสความร่ำรวย · พลังงานอาชีพ · พยากรณ์ 180 วัน',
+    features: 'รหัสความร่ำรวย · พลังงานอาชีพ · แผนโดยกำเนิด',
     refund: 'ขอคืนเงินได้',
   },
   vi: {
     title: '🔒 Phân tích AI Sâu',
-    subtitle: 'Mở khóa mã tài lộc của bạn cho 180 ngày tới',
+    subtitle: 'Giải mã bản đồ tài lộc bẩm sinh và DNA sự nghiệp của bạn',
     preview: 'Quỹ đạo tài lộc và trường năng lượng sự nghiệp của bạn cho thấy một mẫu hình cộng hưởng hiếm thấy… Cấu hình này chỉ xuất hiện ở 5% mọi người.',
     once: '$4.99 Một Lần',
     onceDesc: 'Nhận báo cáo đầy đủ',
@@ -116,7 +116,7 @@ const I18N = {
     already: 'Đã có tài khoản? Đăng nhập',
     secure: 'Thanh toán an toàn',
     instant: 'Tạo ngay lập tức',
-    features: 'Mã Tài Lộc · Năng Lượng Sự Nghiệp · Dự Báo 180 Ngày',
+    features: 'Mã Tài Lộc · Năng Lượng Sự Nghiệp · Bản Đồ Bẩm Sinh',
     refund: 'Hoàn tiền được',
   },
 } as const;
@@ -271,7 +271,8 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
                 e.currentTarget.style.background = 'rgba(212, 175, 55, 0.02)';
               }}
             >
-              {loading ? '⏳ Processing...' : `${t.monthly} — ${t.monthlyDesc}`}
+              {loading ? '⏳ Processing...' : t.monthly}
+            <div style={{ fontSize: '11px', fontWeight: 400, marginTop: '2px', color: '#b0b0d0' }}>{t.monthlyDesc}</div>
             </button>
 
             {/* Yearly VIP (recommended) */}
@@ -315,7 +316,8 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
                 padding: '2px 6px',
                 borderRadius: '6px',
               }}>{t.yearlyBadge}</span>
-              {loading ? '⏳ Processing...' : `${t.yearly} — ${t.unlock}`}
+              {loading ? '⏳ Processing...' : t.yearly}
+            <div style={{ fontSize: '11px', fontWeight: 400, marginTop: '2px', color: '#b0b0d0' }}>{t.unlock}</div>
             </button>
           </div>
 
