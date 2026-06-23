@@ -14,7 +14,7 @@ const I18N = {
   zh: {
     title: '🔒 AI 深度洞察',
     subtitle: '终极破译你的先天财富格局与事业基因',
-    preview: '你的财富运势和事业能量场存在特殊的共振模式……这种配置在人群中仅占 5%。',
+    preview: '🔮 财富格局初判：你的先天能量正处于「明珠蒙尘·蓄势待发」的搞钱质感。命中财星有根，但受流月磁场干扰，变现路径尚在酝酿。这份解码将为你撕开以下核心底牌：',
     once: '$4.99 一次性解锁先天财富大盘',
     onceDesc: '终身可看 · 深度透析你的底层搞钱基因',
     monthly: '$9.99 / 月 — 双引擎星运特权卡',
@@ -32,7 +32,7 @@ const I18N = {
   en: {
     title: '🔒 AI Deep Insight',
     subtitle: 'Decode Your Innate Wealth Blueprint & Career DNA',
-    preview: 'Your wealth trajectory and career energy field show a rare resonance pattern… This configuration appears in only 5% of people.',
+    preview: '🔮 Wealth Blueprint Preview: Your innate energy is in a "Hidden Gem Ready to Shine" state. Your wealth star has deep roots, but monthly magnetic interference keeps the monetization path brewing. This decoding will reveal your core cards:'
     once: '$4.99 One-Time — Unlock Your Wealth Blueprint',
     onceDesc: 'Lifetime access · Deep dive into your financial DNA',
     monthly: '$9.99 / month — Dual Engine Star VIP Card',
@@ -50,7 +50,7 @@ const I18N = {
   es: {
     title: '🔒 Perspectiva AI Profunda',
     subtitle: 'Descifra tu patrón innato de riqueza y ADN profesional',
-    preview: 'Tu trayectoria de riqueza y campo de energía profesional muestran un patrón de resonancia raro… Esta configuración aparece en solo el 5% de las personas.',
+    preview: '🔮 Vista previa del plan de riqueza: Tu energía innata está en un estado de "Gema oculta lista para brillar". Tu estrella de riqueza tiene raíces profundas, pero la interferencia magnética mensual mantiene el camino de monetización en preparación. Esta decodificación revelará tus cartas clave:',
     once: '$4.99 Pago Único',
     onceDesc: 'Obtén tu informe completo',
     monthly: '$9.99 / mes',
@@ -68,7 +68,7 @@ const I18N = {
   fr: {
     title: '🔒 Perspective IA Profonde',
     subtitle: 'Décodez votre plan de richesse inné et votre ADN de carrière',
-    preview: 'Votre trajectoire de richesse et champ d\'énergie professionnel montrent un pattern de résonance rare… Cette configuration apparaît chez seulement 5% des personnes.',
+    preview: '🔮 Aperçu du plan de richesse: Votre énergie innée est dans un état "Pierre précieuse cachée prête à briller". Votre étoile de richesse a des racines profondes, mais l\'interférence magnétique mensuelle garde le chemin de monétisation en préparation. Ce décodage révélera vos cartes principales:',
     once: '$4.99 Paiement Unique',
     onceDesc: 'Obtenez votre rapport complet',
     monthly: '$9.99 / mois',
@@ -86,7 +86,7 @@ const I18N = {
   th: {
     title: '🔒 ไอคิวซีกลับลึก',
     subtitle: 'ถอดรหัสแผนทรัพย์สินโดยกำเนิดและดีเอ็นเออาชีพของคุณ',
-    preview: 'เส้นทางความร่ำรวยและสนามพลังงานอาชีพของคุณแสดงรูปแบบการสั่นพ้องที่หายาก… การกำหนดค่านี้ปรากฏในเพียง 5% ของประชาชน',
+    preview: '🔮 ภาพรวมแผนทรัพย์สิน: พลังงานโดยกำเนิดของคุณอยู่ในสถานะ "อัญมณีที่ซ่อนอยู่พร้อมเปล่งประกาย" ดาวทรัพย์สินของคุณมีรากลึก แต่การรบกวนสนามแม่เหล็กรายเดือนทำให้เส้นทางการสร้างรายได้ยังคงเก็บงำ การถอดรหัสนี้จะเปิดเผยไพ่หลักของคุณ:',
     once: ' $4.99 จ่ายครั้งเดียว',
     onceDesc: 'รับรายงานฉบับเต็ม',
     monthly: '$9.99 / เดือน',
@@ -104,7 +104,7 @@ const I18N = {
   vi: {
     title: '🔒 Phân tích AI Sâu',
     subtitle: 'Giải mã bản đồ tài lộc bẩm sinh và DNA sự nghiệp của bạn',
-    preview: 'Quỹ đạo tài lộc và trường năng lượng sự nghiệp của bạn cho thấy một mẫu hình cộng hưởng hiếm thấy… Cấu hình này chỉ xuất hiện ở 5% mọi người.',
+    preview: '🔮 Xem trước bản đồ tài lộc: Năng lượng bẩm sinh của bạn đang ở trạng thái "Viên ngọc ẩn giấu sẵn sàng tỏa sáng". Sao tài lộc của bạn có gốc rễ sâu, nhưng nhiễu động từ trường hàng tháng khiến đường dẫn kiếm tiền vẫn đang ủi. Bài giải mã này sẽ tiết lộ các lá bài cốt lõi của bạn:',
     once: '$4.99 Một Lần',
     onceDesc: 'Nhận báo cáo đầy đủ',
     monthly: '$9.99 / tháng',
