@@ -238,7 +238,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
 
       if (res.status === 402) {
-        // Paywall: not paid yet
+        // Paywall: not paid yet — 但把 preview 数据存起来，四宫格要显示
+        try {
+          const errData = await res.json();
+          if (errData?.data) {
+            setReportData({
+              success: true,
+              birthDate: birth,
+              lang,
+              data: errData.data,
+              insight: errData.preview ? errData.preview : '',
+              referrer: 'standalone',
+            } as any);
+          }
+        } catch (_) {}
         setError(null);
         setIsUnlocked(false);
         setShowPaywall(true);
