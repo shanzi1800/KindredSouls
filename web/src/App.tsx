@@ -8,6 +8,7 @@ import { normalizeLang } from './lib/algos/i18n';
 import { getTarot } from './lib/tarot';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
+import DailyDashboard from './components/DailyDashboard';
 import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
@@ -193,6 +194,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2
           <p className="subtitle">{t('app.name')}</p>
           <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
         </div>
+        <DailyDashboard lang={(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'zh':b==='en'?'en':b==='es'?'es':b==='fr'?'fr':b==='th'?'th':b==='vi'?'vi':'en'; })()} />
       </div>
     );
   }
