@@ -2694,18 +2694,43 @@ async function handler(req, res) {
       }
     }
 
-    if (reportType === 'yearly' && currentUserId) {
-      const lastYearlyGen = paidPlans.yearly_wealth_report_generated_at;
-      if (lastYearlyGen) {
-        const lastGenDate = new Date(lastYearlyGen);
+    if (reportType === 'yearly' && currentUserId && paidPlans) {
+      // Solar Return 锚定：年报周期 = 用户生日的月-日 → 次年同一天
+      // 需要从 user_profiles.birth_date 获取用户生日
+      const userBirthDate = paidPlans.birth_date || null;
+      if (userBirthDate) {
+        const [birthYear, birthMonth, birthDay] = userBirthDate.split('-').map(Number);
         const nowDate = new Date();
-        const sameYear = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear();
-        if (sameYear) {
-          return res.status(403).json({
-            error: 'Yearly wealth report already generated this year',
-            code: 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED',
-            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear() + 1, 0, 1)).toISOString()
-          });
+        const currentYear = nowDate.getUTCFullYear();
+        
+        // 计算今年的 Solar Return 日期（用户生日的月-日）
+        const thisYearSolarReturn = new Date(Date.UTC(currentYear, birthMonth - 1, birthDay, 0, 0, 0, 0));
+        
+        // 确定当前所处的 Solar Return 周期
+        let cycleStart, cycleEnd;
+        if (nowDate >= thisYearSolarReturn) {
+          // 当前日期在生日当天或之后，使用今年的 Solar Return 作为起点
+          cycleStart = thisYearSolarReturn;
+          cycleEnd = new Date(Date.UTC(currentYear + 1, birthMonth - 1, birthDay, 0, 0, 0, 0));
+        } else {
+          // 当前日期在生日之前，说明还处于上一个 Solar Return 周期
+          cycleStart = new Date(Date.UTC(currentYear - 1, birthMonth - 1, birthDay, 0, 0, 0, 0));
+          cycleEnd = thisYearSolarReturn;
+        }
+        
+        const lastYearlyGen = paidPlans.yearly_wealth_report_generated_at;
+        if (lastYearlyGen) {
+          const lastGenDate = new Date(lastYearlyGen);
+          // 检查上次生成是否在当前 Solar Return 周期内
+          if (lastGenDate >= cycleStart && lastGenDate < cycleEnd) {
+            return res.status(403).json({
+              error: 'Yearly wealth report already generated for this Solar Return cycle',
+              code: 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED',
+              solarReturnStart: cycleStart.toISOString(),
+              solarReturnEnd: cycleEnd.toISOString(),
+              nextAvailable: cycleEnd.toISOString()
+            });
+          }
         }
       }
     }

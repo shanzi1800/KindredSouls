@@ -889,18 +889,37 @@ export default async function handler(req, res) {
       }
     }
 
-    if (reportType === 'yearly' && currentUserId) {
-      const lastYearlyGen = paidPlans.yearly_report_generated_at;
-      if (lastYearlyGen) {
-        const lastGenDate = new Date(lastYearlyGen);
+    // Solar Return 锚定：年报周期 = 用户生日的月-日 → 次年同一天
+    if (reportType === 'yearly' && currentUserId && paidPlans) {
+      const userBirthDate = paidPlans.birth_date || null;
+      if (userBirthDate) {
+        const [birthYear, birthMonth, birthDay] = userBirthDate.split('-').map(Number);
         const nowDate = new Date();
-        const sameYear = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear();
-        if (sameYear) {
-          return res.status(403).json({
-            error: 'Yearly report already generated this year',
-            code: 'YEARLY_REPORT_QUOTA_EXHAUSTED',
-            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear() + 1, 0, 1)).toISOString()
-          });
+        const currentYear = nowDate.getUTCFullYear();
+        
+        const thisYearSolarReturn = new Date(Date.UTC(currentYear, birthMonth - 1, birthDay, 0, 0, 0, 0));
+        
+        let cycleStart, cycleEnd;
+        if (nowDate >= thisYearSolarReturn) {
+          cycleStart = thisYearSolarReturn;
+          cycleEnd = new Date(Date.UTC(currentYear + 1, birthMonth - 1, birthDay, 0, 0, 0, 0));
+        } else {
+          cycleStart = new Date(Date.UTC(currentYear - 1, birthMonth - 1, birthDay, 0, 0, 0, 0));
+          cycleEnd = thisYearSolarReturn;
+        }
+        
+        const lastYearlyGen = paidPlans.yearly_report_generated_at;
+        if (lastYearlyGen) {
+          const lastGenDate = new Date(lastYearlyGen);
+          if (lastGenDate >= cycleStart && lastGenDate < cycleEnd) {
+            return res.status(403).json({
+              error: 'Yearly report already generated for this Solar Return cycle',
+              code: 'YEARLY_REPORT_QUOTA_EXHAUSTED',
+              solarReturnStart: cycleStart.toISOString(),
+              solarReturnEnd: cycleEnd.toISOString(),
+              nextAvailable: cycleEnd.toISOString()
+            });
+          }
         }
       }
     }
