@@ -30,8 +30,9 @@ function checkRateLimit(ip) {
 const CACHE_TTL_HOURS = 336; // 14天
 const PROMPT_VERSION = 'v1.0';
 
-function cacheKey(d1, d2, lang) {
-  return `compat:${d1}|${d2}|${lang}`;
+function cacheKey(d1, d2, lang, reportType) {
+  const base = `compat:${d1}|${d2}|${lang}`;
+  return reportType ? `${base}|${reportType}` : base;
 }
 
 // ============================================================
@@ -741,8 +742,56 @@ export default async function handler(req, res) {
       }
     }
 
+    // 6. Monthly report buyers have direct access
+    if (!hasAccess && paidPlans.compatibility_monthly_report === true) {
+      hasAccess = true;
+    }
+
+    // 7. Yearly report buyers have direct access (or all_pass_yearly already covered in #3)
+    if (!hasAccess && paidPlans.compatibility_yearly_report === true) {
+      hasAccess = true;
+    }
+
     if (!hasAccess) {
       return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once', code: 'PAYMENT_REQUIRED' });
+    }
+
+    // ── Global rate limit: max 10 calls per user per day (军师裁决三) ──
+    const dailyCallCount = paidPlans.daily_ai_call_count || 0;
+    const dailyCallResetAt = paidPlans.daily_ai_call_resets_at;
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
+    
+    if (isSameDay && dailyCallCount >= 10) {
+      return res.status(429).json({
+        error: 'Daily AI call limit exceeded',
+        code: 'DAILY_RATE_LIMIT_EXCEEDED',
+        limit: 10,
+        resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
+      });
+    }
+
+    // Update daily call counter
+    const updatedDailyPlans = {
+      ...paidPlans,
+      daily_ai_call_count: isSameDay ? (dailyCallCount + 1) : 1,
+      daily_ai_call_resets_at: todayUTC.toISOString(),
+    };
+    
+    try {
+      await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ paid_plans: updatedDailyPlans }),
+      });
+    } catch (updateErr) {
+      console.error('[ai-advisor] Failed to update daily call counter:', updateErr.message);
     }
 
     // If access is via monthly allowance, increment the used counter before proceeding
@@ -822,6 +871,40 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing d1 or d2' });
     }
 
+    // ── Report generation quota check (军师裁决二) ──
+    if (reportType === 'monthly' && currentUserId) {
+      const lastMonthlyGen = paidPlans.monthly_report_generated_at;
+      if (lastMonthlyGen) {
+        const lastGenDate = new Date(lastMonthlyGen);
+        const nowDate = new Date();
+        const sameMonth = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear() &&
+                          lastGenDate.getUTCMonth() === nowDate.getUTCMonth();
+        if (sameMonth) {
+          return res.status(403).json({
+            error: 'Monthly report already generated this month',
+            code: 'MONTHLY_REPORT_QUOTA_EXHAUSTED',
+            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth() + 1, 1)).toISOString()
+          });
+        }
+      }
+    }
+
+    if (reportType === 'yearly' && currentUserId) {
+      const lastYearlyGen = paidPlans.yearly_report_generated_at;
+      if (lastYearlyGen) {
+        const lastGenDate = new Date(lastYearlyGen);
+        const nowDate = new Date();
+        const sameYear = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear();
+        if (sameYear) {
+          return res.status(403).json({
+            error: 'Yearly report already generated this year',
+            code: 'YEARLY_REPORT_QUOTA_EXHAUSTED',
+            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear() + 1, 0, 1)).toISOString()
+          });
+        }
+      }
+    }
+
     // V9: 后端重算总分，不用前端传来的 overall（防止前端传错）
     const baziScore = extractScore(bazi);
     const zodiacScore = extractScore(zodiac);
@@ -840,7 +923,7 @@ export default async function handler(req, res) {
       : config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects);
 
     // ── Check Supabase cache (before AI call) ──
-    const cKey = cacheKey(body.d1, body.d2, lang);
+    const cKey = cacheKey(body.d1, body.d2, lang, reportType);
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
     if (supabaseUrl && serviceKey) {
@@ -898,6 +981,29 @@ export default async function handler(req, res) {
         console.log('[ai-advisor] Cache saved:', cKey);
       } catch (saveErr) {
         console.warn('[ai-advisor] Cache save failed:', saveErr.message);
+      }
+    }
+
+    // ── Update report generation timestamp (军师裁决二) ──
+    if (reportType && currentUserId) {
+      const timestampField = reportType === 'monthly' ? 'monthly_report_generated_at' : 'yearly_report_generated_at';
+      const updatedPlans = {
+        ...paidPlans,
+        [timestampField]: new Date().toISOString(),
+      };
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ paid_plans: updatedPlans }),
+        });
+      } catch (updateErr) {
+        console.error('[ai-advisor] Failed to update report generation timestamp:', updateErr.message);
       }
     }
 
