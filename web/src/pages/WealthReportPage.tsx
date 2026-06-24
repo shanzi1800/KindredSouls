@@ -172,40 +172,28 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   const checkPaidStatus = async (token: string) => {
     try {
-      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-      const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
-
-      const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey },
-      });
-
-      if (!authRes.ok) {
+      // 用 supabase SDK 的 getUser() 替代直接 REST API 调用（更稳定，避免 ERR_CONNECTION_CLOSED）
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
         setIsUnlocked(false);
         setShowPaywall(true);
         return;
       }
 
-      const authData = await authRes.json();
-      const userId = authData?.id;
-      if (!userId) {
+      const { data: profiles, error: dbError } = await supabase
+        .from('user_profiles')
+        .select('paid_plans')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (dbError) {
+        console.error('[WealthReport] DB query error:', dbError);
         setIsUnlocked(false);
         setShowPaywall(true);
         return;
       }
 
-      const dbRes = await fetch(
-        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
-      );
-
-      if (!dbRes.ok) {
-        setIsUnlocked(false);
-        setShowPaywall(true);
-        return;
-      }
-
-      const dbData = await dbRes.json();
-      const rawPlans = dbData?.[0]?.paid_plans;
+      const rawPlans = profiles?.[0]?.paid_plans;
       const now = Date.now();
 
       // 统一兼容两种存储格式：

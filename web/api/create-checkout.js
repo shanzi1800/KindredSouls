@@ -164,11 +164,12 @@ export default async function handler(req, res) {
       all_pass_yearly:              'Everything — wealth oracle, compatibility, all future features',
     };
     const isSubscription = plan === 'star_monthly_vip' || plan === 'all_pass_yearly';
-    const isWealth = plan.startsWith('wealth_');
-    const successPath = isWealth
+    // VIP plans cover wealth too — redirect to wealth page after payment
+    const coversWealth = plan.startsWith('wealth_') || plan === 'star_monthly_vip' || plan === 'all_pass_yearly';
+    const successPath = coversWealth
       ? '/wealth/report?payment=success'
       : '/?payment=success';
-    const cancelPath = isWealth
+    const cancelPath = coversWealth
       ? '/wealth/report?payment=cancelled'
       : '/#/result?payment=cancelled';
 
