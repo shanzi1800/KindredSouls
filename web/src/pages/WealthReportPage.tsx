@@ -69,11 +69,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     console.log('[WealthReport] OAuth return check:', { href: window.location.href, search: window.location.search, hash: window.location.hash, intentCheckout, intentPlan, paymentSuccess });
 
     if (intentCheckout && intentPlan && !paymentSuccess) {
-      // 清除 URL 参数避免重复触发
-      const cleanUrl = window.location.pathname.split('?')[0];
-      window.history.replaceState({}, '', cleanUrl + '?birth=' + birth + '&lang=' + (langParam || i18n.language || 'en'));
-
-      // 检查 session 并自动触发 checkout（等待 Supabase SDK 处理 OAuth hash）
+      // ⚠️ 不要在这里 replaceState！Supabase SDK 还没消费 URL hash 中的 access_token
+      // 延迟到 checkAuthAndLoad 拿到 token 后再清理
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', true, intentPlan);
     } else {
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
@@ -102,6 +99,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       if (token) {
         setCurrentToken(token);
+        // ✅ Token 拿到了，现在安全清理 URL（不清 hash，让 SDK 自己消费）
+        const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
+        window.history.replaceState({}, '', cleanUrl);
         await checkPaidStatus(token);
         // 🎯 有 pendingPlan → 自动触发 checkout
         if (pendingPlan) {
@@ -337,7 +337,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang },
+          queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang, access_type: 'offline', prompt: 'consent' },
+          flowType: 'pkce',
         },
       });
       if (error) {
