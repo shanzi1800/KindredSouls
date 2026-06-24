@@ -604,7 +604,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         />
 
         {/* Paywall or Insight */}
-        {authChecking ? null : (!isUnlocked && showPaywall && (
+        {!authChecking && !isUnlocked && showPaywall && (
           <WealthPaywall
             lang={currentLang}
             onPurchase={handlePurchase}
