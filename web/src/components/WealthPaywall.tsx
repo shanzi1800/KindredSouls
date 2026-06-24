@@ -248,13 +248,13 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
               disabled={loading}
               style={{
                 width: '100%',
-                padding: '12px 20px',
-                borderRadius: '10px',
-                border: '1px solid rgba(212, 175, 55, 0.15)',
-                background: 'rgba(212, 175, 55, 0.02)',
-                color: '#C8C4D9',
-                fontSize: '13px',
-                fontWeight: 600,
+                padding: '14px 20px',
+                borderRadius: '12px',
+                border: '2px solid rgba(212, 175, 55, 0.4)',
+                background: 'rgba(212, 175, 55, 0.08)',
+                color: '#E8E4D9',
+                fontSize: '15px',
+                fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 marginBottom: '8px',
                 transition: 'all 0.3s ease',
@@ -262,13 +262,13 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.3)';
-                  e.currentTarget.style.background = 'rgba(212, 175, 55, 0.06)';
+                  e.currentTarget.style.borderColor = '#D4AF37';
+                  e.currentTarget.style.background = 'rgba(212, 175, 55, 0.15)';
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.15)';
-                e.currentTarget.style.background = 'rgba(212, 175, 55, 0.02)';
+                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+                e.currentTarget.style.background = 'rgba(212, 175, 55, 0.08)';
               }}
             >
               {loading ? '⏳ Processing...' : t.monthly}
@@ -281,13 +281,13 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
               disabled={loading}
               style={{
                 width: '100%',
-                padding: '12px 20px',
-                borderRadius: '10px',
-                border: '1px solid rgba(212, 175, 55, 0.15)',
-                background: 'rgba(212, 175, 55, 0.02)',
-                color: '#C8C4D9',
-                fontSize: '13px',
-                fontWeight: 600,
+                padding: '14px 20px',
+                borderRadius: '12px',
+                border: '2px solid rgba(212, 175, 55, 0.4)',
+                background: 'rgba(212, 175, 55, 0.08)',
+                color: '#E8E4D9',
+                fontSize: '15px',
+                fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 marginBottom: '20px',
                 transition: 'all 0.3s ease',
@@ -296,13 +296,13 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.3)';
-                  e.currentTarget.style.background = 'rgba(212, 175, 55, 0.06)';
+                  e.currentTarget.style.borderColor = '#D4AF37';
+                  e.currentTarget.style.background = 'rgba(212, 175, 55, 0.15)';
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.15)';
-                e.currentTarget.style.background = 'rgba(212, 175, 55, 0.02)';
+                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+                e.currentTarget.style.background = 'rgba(212, 175, 55, 0.08)';
               }}
             >
               <span style={{
