@@ -185,61 +185,32 @@ export default async function handler(req, res) {
         const planPayload = buildPlanPayload(plan);
         const updatedPlans = { ...currentPlans, ...planPayload };
 
-        const patchRes = await fetch(
-          `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'apikey': serviceKey,
-              'Authorization': `Bearer ${serviceKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify({
-              paid: true,
-              paid_plans: updatedPlans,
-              stripe_customer_id: session.customer || null,
-              subscription_id: session.subscription || session.id,
-              updated_at: new Date().toISOString(),
-              ...(email ? { email } : {}),
-            }),
-          }
-        );
+        // ── UPSERT: UNIQUE constraint on user_id handles insert-or-update ──
+        const upsertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+          method: 'POST',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=representation',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            paid: true,
+            paid_plans: updatedPlans,
+            stripe_customer_id: session.customer || null,
+            subscription_id: session.subscription || session.id,
+            email: email || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        });
 
-        const patchData = await patchRes.json();
-
-        if (!Array.isArray(patchData) || patchData.length === 0) {
-          // No existing record, INSERT new one
-          const planPayload = buildPlanPayload(plan);
-          const newPlans = { ...planPayload };
-          const insertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
-            method: 'POST',
-            headers: {
-              'apikey': serviceKey,
-              'Authorization': `Bearer ${serviceKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              paid: true,
-              paid_plans: newPlans,
-              stripe_customer_id: session.customer || null,
-              subscription_id: session.subscription || session.id,
-              email: email || null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }),
-          });
-
-          if (!insertRes.ok) {
-            const err = await insertRes.json();
-            console.error('[webhook] ❌ Failed to INSERT profile:', err);
-          } else {
-            console.log('[webhook] ✅ Inserted new profile with paid_plans:', newPlans);
-          }
+        if (!upsertRes.ok) {
+          const errBody = await upsertRes.text().catch(() => '');
+          console.error('[webhook] ❌ UPSERT failed:', upsertRes.status, errBody);
         } else {
-          console.log('[webhook] ✅ Updated existing profile paid_plans:', updatedPlans, 'rows:', patchData.length);
+          console.log('[webhook] ✅ UPSERT success for user', userId.substring(0, 8), 'plan:', plan);
         }
       } catch (err) {
         console.error('[webhook] ❌ Error updating user:', err.message);

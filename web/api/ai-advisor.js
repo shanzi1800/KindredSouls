@@ -1,5 +1,31 @@
 export const runtime = 'nodejs';
 
+// ── In-memory rate limit (IP per minute) ──
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 分钟
+const RATE_LIMIT_MAX = 10; // 每 IP 每分钟最多 10 次
+
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || req.headers['x-real-ip']
+    || req.socket?.remoteAddress
+    || '127.0.0.1';
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.resetAt > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  return { allowed: true };
+}
+
 // ── Cache config ──
 const CACHE_TTL_HOURS = 336; // 14天
 const PROMPT_VERSION = 'v1.0';
@@ -419,6 +445,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
+  // ── Rate limit check ──
+  const clientIP = getClientIP(req);
+  const rl = checkRateLimit(clientIP);
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests. Please wait.', retryAfter: rl.retryAfter });
+  }
+
   // ── Per-plan access control: compatibility AI insight ──
   let paidPlans = {};
   let currentUserId = null;
@@ -497,11 +530,27 @@ export default async function handler(req, res) {
     }
 
     if (!hasAccess) {
-      return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once' });
+      return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once', code: 'PAYMENT_REQUIRED' });
     }
 
     // If access is via monthly allowance, increment the used counter before proceeding
     if (usingMonthlyAllowance && currentUserId) {
+      // Monthly allowance was consumed — needs increment. If allowance is already exhausted, return specific code
+      const wasUsed = usingStarVip
+        ? (paidPlans.star_monthly_compatibility_used || 0)
+        : (paidPlans.compatibility_monthly_used || 0);
+      const wasAllowed = usingStarVip
+        ? (paidPlans.star_monthly_compatibility_allowance || 0)
+        : (paidPlans.compatibility_monthly_allowance || 0);
+      if (wasUsed >= wasAllowed) {
+        return res.status(402).json({
+          error: 'Allowance exhausted',
+          code: 'ALLOWANCE_EXHAUSTED',
+          plan: usingStarVip ? 'star_monthly_vip' : 'wealth_monthly',
+          upgradeOptions: ['compatibility_once', 'all_pass_yearly']
+        });
+      }
+
       const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
 
       if (usingStarVip) {
