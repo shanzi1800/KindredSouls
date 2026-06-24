@@ -1,3 +1,6 @@
+// Force Edge Runtime to bypass 10s timeout limit
+export const runtime = 'edge';
+
 // ── Supabase client (for insight cache) ──
 import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
@@ -2221,7 +2224,6 @@ function getWealthTarot(birthDate, lang = "zh") {
 }
 
 // api/wealth-oracle-src.js
-var runtime = "nodejs20.x";
 var ZH_SYSTEM = `# Role: KindredSouls \u5168\u7403\u8D22\u5BCC\u4E0E\u4E8B\u4E1A\u7EC8\u6781\u89E3\u76D8 AI \u987E\u95EE
 
 ## Profile:
@@ -2924,6 +2926,5 @@ async function handler(req, res) {
   }
 }
 export {
-  handler as default,
-  runtime
+  handler as default
 };
