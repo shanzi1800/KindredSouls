@@ -338,7 +338,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         options: {
           redirectTo: redirectUrl,
           queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang, access_type: 'offline', prompt: 'consent' },
-          flowType: 'pkce',
         },
       });
       if (error) {
