@@ -1087,7 +1087,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           {paidPlansLocal && (paidPlansLocal.compatibility_monthly_report || paidPlansLocal.compatibility_yearly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
             <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
               <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
-                📊 {lang === 'zh' ? '专属报告' : lang === 'en' ? 'Exclusive Reports' : lang === 'es' ? 'Informes Exclusivos' : lang === 'fr' ? 'Rapports Exclusifs' : lang === 'th' ? 'รายงานเฉพาะ' : 'Báo cáo Độc quyền'}
+                🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
+              </div>
+              <div style={{ fontSize: '11px', color: 'rgba(212,175,55,0.6)', marginBottom: '8px' }}>
+                {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
               </div>
               {(paidPlansLocal.compatibility_monthly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
                 <button

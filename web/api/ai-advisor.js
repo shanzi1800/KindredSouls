@@ -1026,6 +1026,27 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 无感写入：把用户生日永久绑定到 user_profiles（合婚模块使用 d1 作为主要生日）──
+    if (currentUserId && body.d1) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ birth_date: body.d1 }),
+        });
+        console.log('[ai-advisor] Birth date saved to user_profiles:', body.d1);
+      } catch (saveErr) {
+        console.error('[ai-advisor] Failed to save birth_date:', saveErr.message);
+      }
+    }
+
     return res.status(200).json({
       insight: finalInsight,
       cached: false,
