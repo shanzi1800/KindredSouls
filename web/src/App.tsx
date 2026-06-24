@@ -343,14 +343,13 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, paidPlans: paidPlansProp, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   baziMeta?: string[]; zodiacMeta?: string[]; ichingMeta?: string[];
   luckyAspects?: string[]; challengingAspects?: string[];
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
-  paidPlans?: Record<string, any>;
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
   onLogout?: () => void;
@@ -1085,12 +1084,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
           {/* 报告生成区 */}
-          {(paidPlansProp || paidPlansLocal) && ((paidPlansProp || paidPlansLocal).compatibility_monthly_report || (paidPlansProp || paidPlansLocal).compatibility_yearly_report || (paidPlansProp || paidPlansLocal).all_pass_yearly || (paidPlansProp || paidPlansLocal).star_monthly_vip) && (
+          {paidPlansLocal && (paidPlansLocal.compatibility_monthly_report || paidPlansLocal.compatibility_yearly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
             <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
               <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
                 📊 {lang === 'zh' ? '专属报告' : lang === 'en' ? 'Exclusive Reports' : lang === 'es' ? 'Informes Exclusivos' : lang === 'fr' ? 'Rapports Exclusifs' : lang === 'th' ? 'รายงานเฉพาะ' : 'Báo cáo Độc quyền'}
               </div>
-              {((paidPlansProp || paidPlansLocal).compatibility_monthly_report || (paidPlansProp || paidPlansLocal).all_pass_yearly || (paidPlansProp || paidPlansLocal).star_monthly_vip) && (
+              {(paidPlansLocal.compatibility_monthly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
                 <button
                   onClick={() => generateReport('monthly')}
                   disabled={!!reportLoading}
@@ -1104,7 +1103,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
                   {reportLoading === 'monthly' ? '⏳...' : (lang === 'zh' ? '📅 生成月报' : '📅 Monthly Report')}
                 </button>
               )}
-              {((paidPlansProp || paidPlansLocal).compatibility_yearly_report || (paidPlansProp || paidPlansLocal).all_pass_yearly) && (
+              {(paidPlansLocal.compatibility_yearly_report || paidPlansLocal.all_pass_yearly) && (
                 <button
                   onClick={() => generateReport('yearly')}
                   disabled={!!reportLoading}
@@ -1227,7 +1226,6 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         luckyAspects={luckyAspects}
         challengingAspects={challengingAspects}
         lang={lang}
-        paidPlans={paidPlans}
         pendingInsightTrigger={pendingInsightTrigger}
         onLogout={onLogout}
       />
