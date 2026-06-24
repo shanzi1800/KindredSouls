@@ -2602,7 +2602,7 @@ async function handler(req, res) {
     const now = new Date();
 
     try {
-      const authHeader = req.headers.authorization;
+      const authHeader = req.headers.get('authorization');
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
       if (token) {
         const supabaseUrl = process.env.SUPABASE_URL;
