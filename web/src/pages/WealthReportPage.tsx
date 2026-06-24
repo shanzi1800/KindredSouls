@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
@@ -35,6 +35,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const loadingRef = useRef(false); // 防止重复请求
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -215,6 +216,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
+    if (loadingRef.current) {
+      console.log('[WealthReport] Duplicate request blocked by lock');
+      return;
+    }
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -280,6 +286,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       );
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -348,6 +355,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   const handleTriggerInsight = async () => {
     if (!currentToken || !reportData) return;
+    if (loadingRef.current) {
+      console.log('[WealthReport] handleTriggerInsight blocked by lock');
+      return;
+    }
+    loadingRef.current = true;
 
     try {
       const res = await fetch('/api/wealth-oracle', {
@@ -370,6 +382,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error('[WealthReport] Error triggering insight:', err);
+    } finally {
+      loadingRef.current = false;
     }
   };
 

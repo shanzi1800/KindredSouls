@@ -369,6 +369,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
+  const insightLockRef = useRef(false);
 
   // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
   useEffect(() => {
@@ -765,6 +766,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     return handlePurchaseWithToken(token, plan);
   };
   const triggerInsight = async (token?: string) => {
+    if (insightLockRef.current) {
+      console.log('[AIInsightBlock] Duplicate triggerInsight blocked by lock');
+      return;
+    }
+    insightLockRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -808,10 +814,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       setError('Network error — please check your connection');
     } finally {
       setLoading(false);
+      insightLockRef.current = false;
     }
   };
-  // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
-  const urlHasToken = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
+  // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ── = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
   if (!sessionChecked || (paidStatus === null && !showAuthWall) || isAuthParsing) {
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>

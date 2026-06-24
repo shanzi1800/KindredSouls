@@ -2668,44 +2668,19 @@ async function handler(req, res) {
       });
     }
 
-    // If access is via star_monthly_vip quota, increment the counter before calling AI
-    if (wealthAccessMethod === 'star_monthly_vip' && currentUserId) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-      const updatedPlans = {
-        ...paidPlans,
-        star_monthly_wealth_used: (paidPlans.star_monthly_wealth_used || 0) + 1,
-        star_monthly_resets_at: paidPlans.star_monthly_resets_at || nextMonthStart.toISOString(),
-      };
-      try {
-        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({ paid_plans: updatedPlans }),
-        });
-      } catch (incrErr) {
-        console.error('[Wealth Oracle] Failed to increment star_monthly_wealth_used:', incrErr.message);
-      }
-    }
-
     const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
     const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
 
-    // ── Check cache first (24h, max 3 calls) ──
+    // ── Check cache first (24h TTL from config.js) ──
     let insight = null;
     if (supabase) {
+      const cacheTTL = (typeof CACHE_TTL_HOURS === 'number' ? CACHE_TTL_HOURS : 24) * 60 * 60 * 1000;
       const { data: cached } = await supabase
         .from('wealth_insights_cache')
         .select('insight, call_count, prompt_version')
         .eq('birth_date', birthDate)
         .eq('lang', normalizedLang)
-        .gte('created_at', new Date(Date.now() - 336 * 60 * 60 * 1000).toISOString()) // 14天
+        .gte('created_at', new Date(Date.now() - cacheTTL).toISOString())
         .single();
       // Use cache if prompt_version matches current version
       if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
@@ -2716,7 +2691,34 @@ async function handler(req, res) {
       }
     }
 
+    // ── Only call AI and increment quota if cache miss ──
     if (!insight) {
+      // 💰 Deduct quota BEFORE calling AI (prevent double-spend)
+      if (wealthAccessMethod === 'star_monthly_vip' && currentUserId) {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+        const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+        const updatedPlans = {
+          ...paidPlans,
+          star_monthly_wealth_used: (paidPlans.star_monthly_wealth_used || 0) + 1,
+          star_monthly_resets_at: paidPlans.star_monthly_resets_at || nextMonthStart.toISOString(),
+        };
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({ paid_plans: updatedPlans }),
+          });
+        } catch (incrErr) {
+          console.error('[Wealth Oracle] Failed to increment star_monthly_wealth_used:', incrErr.message);
+        }
+      }
+
       insight = await callAI(systemPrompt, userPrompt, process.env);
       // Save/update cache with call count
       if (supabase) {
@@ -2735,6 +2737,8 @@ async function handler(req, res) {
           );
         console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
       }
+    } else {
+      console.log('[Wealth Oracle] Cache hit — skipping AI call, no quota deducted');
     }
 
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
