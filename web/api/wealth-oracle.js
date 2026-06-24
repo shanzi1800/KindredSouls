@@ -2567,7 +2567,7 @@ async function callAI(systemPrompt, userPrompt, env) {
 async function handler(req, res) {
   console.log('[wealth-oracle] DEEPSEEK_API_KEY exists:', !!process.env.DEEPSEEK_API_KEY, 'length:', process.env.DEEPSEEK_API_KEY?.length);
   console.log('[wealth-oracle] GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY, 'length:', process.env.GEMINI_API_KEY?.length);
-  
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
