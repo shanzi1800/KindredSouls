@@ -1,5 +1,5 @@
-// Force Edge Runtime to bypass 10s timeout limit
-export const runtime = 'edge';
+// Force Node.js 20 runtime (avoid Edge API mismatch)
+export const runtime = 'nodejs20.x';
 
 // ── Supabase client (for insight cache) ──
 import { createClient } from '@supabase/supabase-js';
@@ -2602,7 +2602,7 @@ async function handler(req, res) {
     const now = new Date();
 
     try {
-      const authHeader = req.headers.get('authorization');
+      const authHeader = req.headers.authorization;
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
       if (token) {
         const supabaseUrl = process.env.SUPABASE_URL;
