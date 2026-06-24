@@ -913,6 +913,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     try {
       const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
       if (!token) throw new Error('No session');
+      const tarot = getTarot(d1, d2, lang);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
