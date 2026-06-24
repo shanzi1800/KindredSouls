@@ -2738,7 +2738,7 @@ async function handler(req, res) {
     // ── Global rate limit: max 10 calls per user per day ──
     const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
     const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
-    const now = new Date();
+    // 复用前面已声明的 now 变量（line 2597）
     const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
     const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
 
