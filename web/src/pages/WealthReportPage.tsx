@@ -136,7 +136,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return;
         }
 
-        await checkPaidStatus(token);
+        await checkPaidStatus();
       } else if (forceRecheck) {
         // Fallback: poll session (shouldn't reach here if hash has token)
         for (let i = 0; i < 10; i++) {
@@ -145,7 +145,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     if (s2?.access_token) {
             token = s2.access_token;
             setCurrentToken(token);
-            await checkPaidStatus(token);
+            await checkPaidStatus();
             break;
           }
         }
@@ -170,7 +170,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     await loadWealthData(birth, lang, token);
   };
 
-  const checkPaidStatus = async (token: string) => {
+  const checkPaidStatus = async () => {
     try {
       // 用 supabase SDK 的 getUser() 替代直接 REST API 调用（更稳定，避免 ERR_CONNECTION_CLOSED）
       const { data: { user }, error: userError } = await supabase.auth.getUser();
