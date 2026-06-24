@@ -21,6 +21,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: '单次',
       unlock: '立即解锁',
       subscription: '月 · 无限次解读',
+      yearly: '年 · 全通卡',
+      yearlyPrice: '$99.99/年',
       secure: '安全支付 · 即时生成 · 支持退款',
     },
     en: {
@@ -38,6 +40,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: 'one-time',
       unlock: 'Unlock Now',
       subscription: 'mo · Unlimited',
+      yearly: 'yr · All-Access',
+      yearlyPrice: '$99.99/yr',
       secure: 'Secure Payment · Instant AI · Refundable',
     },
     es: {
@@ -55,7 +59,9 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: 'una vez',
       unlock: 'Desbloquear Ahora',
       subscription: 'mes · Ilimitado',
-      secure: 'Pago Seguro · IA Instantánea · Reembolsable',
+      yearly: 'año · Acceso Total',
+      yearlyPrice: '$99.99/año',
+      secure: 'Pago · IA Instantánea · Reembolsable',
     },
     fr: {
       title: 'Débloquez Votre Code Âme',
@@ -72,6 +78,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: 'une fois',
       unlock: 'Débloquer Maintenant',
       subscription: 'mois · Illimité',
+      yearly: 'an · Accès Total',
+      yearlyPrice: '$99.99/an',
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
     },
     th: {
@@ -89,6 +97,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: 'ครั้งเดียว',
       unlock: 'ปลดล็อกเลย',
       subscription: 'เดือน · ไม่จำกัด',
+      yearly: 'ปี · ใช้งานได้ทั้งหมด',
+      yearlyPrice: '$99.99/ปี',
       secure: 'ชำระเงินปลอดภัย · AI ทันที · คืนเงินได้',
     },
     vi: {
@@ -106,6 +116,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       priceLabel: 'lần dùng',
       unlock: 'Mở khóa ngay',
       subscription: 'tháng · Không giới hạn',
+      yearly: 'năm · Toàn quyền',
+      yearlyPrice: '$99.99/năm',
       secure: 'Thanh toán An toàn · AI Tức thì · Hoàn tiền được',
     },
   };
@@ -265,6 +277,33 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         }}
       >
         💎 $4.99/{c.subscription}
+      </button>
+
+      {/* 年卡按钮 — 金色渐变 */}
+      <button
+        onClick={() => onPurchase('all_pass_yearly')}
+        disabled={loading}
+        style={{
+          width: '100%',
+          padding: '12px 20px',
+          borderRadius: '14px',
+          border: '2px solid rgba(212,175,55,0.6)',
+          background: loading
+            ? '#444'
+            : 'linear-gradient(135deg, #D4AF37 0%, #F0D060 50%, #D4AF37 100%)',
+          color: '#0D0D1A',
+          fontSize: '15px',
+          fontWeight: 800,
+          cursor: loading ? 'not-allowed' : 'pointer',
+          marginBottom: '10px',
+          transition: 'all 0.25s ease',
+          boxShadow: loading ? 'none' : '0 4px 24px rgba(212,175,55,0.3)',
+          letterSpacing: '0.3px',
+        }}
+        onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+        onMouseLeave={e => { (e.target as HTMLButtonElement).style.transform = 'translateY(0)'; }}
+      >
+        {loading ? '⏳ ...' : `🏆 ${c.yearlyPrice}`}
       </button>
 
       {/* 信任标识 — 提亮与bonusDetail同色 */}

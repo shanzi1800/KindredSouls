@@ -184,7 +184,7 @@ function getTarotCoreKeyword(meaning, lang) {
 // 5. 全量6语言系统指令 + 参数化命题模板矩阵 (V9)
 const LANGUAGE_CONFIGS = {
   th: {
-    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการสะกดคำ] ตรวจสอบการสะกดภาษาไทยก่อนตอบ ห้ามใช้คำผิด\n\n[บังคับราศีคะแนนสูง] หากราศีได้คะแนนสูง (>75) แต่อธิบายว่ายังมีความขัดแย้ง กรุณาอธิบายด้านมืด (dark side) ของมุมมองนั้น: ความกลมกลืนที่ผิวเผินซ่อนความขัดแย้งภายใน หรือพลังงานที่เหมือนกันเกินไปขาดแรงกระตุ้น",
+    systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการสะกดคำ] ตรวจสอบการสะกดภาษาไทยก่อนตอบ ห้ามใช้คำผิด\n\n[บังคับราศีคะแนนสูง] หากราศีได้คะแนนสูง (>75) แต่อธิบายว่ายังมีความขัดแย้ง กรุณาอธิบายด้านมืด (dark side) ของมุมมองนั้น: ความกลมกลืนที่ผิวเผินซ่อนความขัดแย้งภายใน หรือพลังงานที่เหมือนกันเกินไปขาดแรงกระตุ้น\n\n【โหมดรายงานรายเดือน/รายปี】คุณกำลังเขียนรายงานความสัมพันธ์รายเดือนหรือรายปี ต้องเน้นคำแนะนำเฉพาะช่วงเวลาที่กำหนด (รายเดือน=30วันข้างหน้า รายปี=12เดือนข้างหน้า) ห้ามพูดกว้างๆ",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
@@ -224,9 +224,49 @@ const LANGUAGE_CONFIGS = {
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'th');
+      const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
+      const timeText = reportType === 'monthly' ? '30 วันข้างหน้า' : '12 เดือนข้างหน้า';
+      return [
+        `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}, ช่วงเวลา=${timeText}`,
+        `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
+        `แก่นไพ่(ต้องใช้ใน💡): ${coreKeyword}`,
+        `ราศีจริง: ${sign1} และ ${sign2}`,
+        luckyText ? `ด้านที่เกื้อหนุน: ${luckyText}` : '',
+        challengeText ? `ด้านที่ต้องระวัง: ${challengeText}` : '',
+        ``,
+        `[คำสั่งบังคับเด็ดขาด — อ่านก่อนเขียน]`,
+        `- 🔴 CRITICAL ด้านสถานะไพ่ (Orientation Lock):`,
+        `  - ห้ามคิดคำว่า (ตั้งตรง) เองเด็ดขาด! ต้องอ่านสถานะไพ่จาก [ข้อมูลบังคับ] ว่า=${statusText} แล้วเขียนสถานะนั้นทุกตัวอักษร`,
+        `  - หาก ${statusText} = "กลับด้าน" (Reversed): ห้ามเขียน "ตั้งตรง" เด็ดขาด`,
+        `  - หาก ${statusText} = "ตั้งตรง" (Upright): ห้ามเขียน "กลับด้าน" หรือ "หากกลับด้าน" เด็ดขาด!`,
+        `  - ตรวจสอบสถานะไพ่ก่อนเขียนทุกย่อหน้า`,
+        `- 🔴 CRITICAL ด้านราศี (Zodiac Lock):`,
+        `  - ห้ามใช้ราศีอื่นนอกจาก ${sign1} และ ${sign2} เด็ดขาด!`,
+        `- ห้ามแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด`,
+        `${zodiacScore >= 75 ? `[หมายเหตุพิเศษ] ราศี ${zodiacScore} คะแนนสูงแต่ต้องวิเคราะห์ด้านมืดของมุมมองนี้` : ''}`,
+        ``,
+        `[โครงสร้างบังคับ — เขียนตามนี้ทุกประการ ห้ามเปลี่ยน emoji หรือหัวข้อ]`,
+        `🎯 **บทสรุปหลัก:** [1 ประโยคสรุปความสัมพันธ์ในช่วง ${timeText} จากคะแนนรวม ${overall}]`,
+        ``,
+        `⚡ **จุดขัดแย้ง:** [2 ประโยค: ทำไมบาซี ${baziScore} กับราศี ${zodiacScore} (${sign1} vs ${sign2}) อาจส่งผลต่อความสัมพันธ์ใน ${timeText}${luckyText ? ` แม้จะมีด้านเกื้อหนุนเช่น ${luckyText}` : ''}${challengeText ? ` แต่ด้านที่ต้องระวังคือ ${challengeText}` : ''}]`,
+        ``,
+        `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยค โดยอิงจากแก่นไพ่"${coreKeyword}" เน้นคำแนะนำเฉพาะ ${timeText}${luckyText ? `. บังคับเน้นด้านเกื้อหนุน: ${luckyText}` : ''}${challengeText ? `. บังคับแก้ไขด้านที่ต้องระวัง: ${challengeText}` : ''}. ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
+        ``,
+        `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจสำหรับ ${timeText}] 🌿 ✨ 🔮`,
+      ].filter(Boolean).join('
+');
+    }
+
   },
   zh: {
-    systemPrompt: `你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。`,
+    systemPrompt: `你是精通八字、占星与易经的命理导师。严格按照4段结构输出，每段2-3句话，总字数不超过200字。第一句直接给结论，不要废话前缀，不要标题序号（如"4、"），严禁在🎯前加任何其他标题或前缀。严禁篡改任何分数。严禁写错塔罗牌正逆位状态。严禁写任何迷信仪式（如烧纸、做法、诵经）。\n【月报/年报模式】你正在撰写月度或年度关系报告，必须聚焦指定时间范围内（月报=未来30天，年报=未来12个月）的具体建议，不得泛泛而谈。`,
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
@@ -253,9 +293,38 @@ const LANGUAGE_CONFIGS = {
         `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
       ].join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'zh');
+      const cardName = tarot?.name || '';
+      const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const timeText = reportType === 'monthly' ? '未来30天' : '未来12个月';
+      return [
+        `[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${cardName}, 正逆位=${statusText}, 报告类型=${timeText}`,
+        `牌意: ${tarot?.meaning || ''}`,
+        `牌核(用于💡): ${coreKeyword}`,
+        `实际星座: ${sign1} 和 ${sign2}`,
+        ``,
+        `[关键规则]`,
+        `- 正位时严禁出现"逆位"字样`,
+        `- 冲突分析必须用 ${sign1} 和 ${sign2}`,
+        ``,
+        `[输出结构 — 严格执行]`,
+        `🎯 **核心结论:** [1句话，根据综合评分${overall}定性${timeText}的关系走向]`,
+        ``,
+        `⚡ **命运冲突:** [2句话：八字${baziScore}与星座${zodiacScore}(${sign1} vs ${sign2})在${timeText}可能产生的核心矛盾]`,
+        ``,
+        `💡 **破局建议:** 易经${ichingScore}与塔罗${cardName}(${statusText}) [写2句话，围绕"${coreKeyword}"给出${timeText}内的具体相处建议，严禁迷信仪式]`,
+        ``,
+        `🌿 **灵性指引:** [1句话为${timeText}收尾祝福] 🌿 ✨ 🔮`,
+      ].join('
+');
+    }
+
   },
   vi: {
-    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", bài học là về mặt hạn chế, ảo tưởng, hoặc sự suy giảm — không phải là 'tạm thời có mây che'. Phân tích đúng nghĩa thực sự của lá bài khi ngược. CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật. Kiểm tra chính tả kỹ trước khi trả lời — đặc biệt: 'nhàm chán' (không phải 'nhàm chám'), 'trì trệ' (không phải 'tồi tệ'), 'ý nghĩa' (đúng chính tả). Nếu Cung Hoàng Đạo điểm cao (>75) nhưng vẫn có xung đột, hãy giải thích mặt tối của góc chiếu: phân tích mặt hạn chế trong sự hài hòa bề mặt.",
+    systemPrompt: "Bạn là bậc thầy chiêm tinh cấp cao. Viết theo cấu trúc 4 phần, mỗi phần 2-3 câu, tổng không quá 200 từ. KHÔNG được thay đổi bất kỳ con số nào. CRITICAL: Nếu trạng thái bài Tarot là \"Ngược\", bài học là về mặt hạn chế, ảo tưởng, hoặc sự suy giảm — không phải là 'tạm thời có mây che'. Phân tích đúng nghĩa thực sự của lá bài khi ngược. CẤM ĐOẠN tuyệt đối không được viết từ \"Xuôi\" hoặc bất kỳ từ nào có nghĩa là vị trí bình thường. Nếu trạng thái là \"Xuôi\", CẤM ĐOẠN tuyệt đối không được viết \"Ngược\". PHẢI kiểm tra trạng thái bài trước khi viết từng đoạn. Không viết lễ nghi mê tín (đốt vàng mã, tụng kinh, làm phép). Tập trung vào lời khuyên thực tế cho đời sống thật. Kiểm tra chính tả kỹ trước khi trả lời — đặc biệt: 'nhàm chán' (không phải 'nhàm chám'), 'trì trệ' (không phải 'tồi tệ'), 'ý nghĩa' (đúng chính tả). Nếu Cung Hoàng Đạo điểm cao (>75) nhưng vẫn có xung đột, hãy giải thích mặt tối của góc chiếu: phân tích mặt hạn chế trong sự hài hòa bề mặt.\n\n[Chế độ báo cáo hàng tháng/hàng năm] Bạn đang viết báo cáo mối quan hệ hàng tháng hoặc hàng năm, phải tập trung vào khuyến nghị cụ thể trong khoảng thời gian xác định (hàng tháng=30 ngày tới, hàng năm=12 tháng tới), không nói chung chung.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
@@ -293,9 +362,43 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'vi');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
+      const timeText = reportType === 'monthly' ? '30 ngày tới' : '12 tháng tới';
+      return [
+        `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}, Loại báo cáo=${timeText}`,
+        `Ý nghĩa: ${tarot?.meaning || ''}`,
+        `Lõi bài: ${coreKeyword}`,
+        `Cung hoàng đạo thực tế: ${sign1} và ${sign2}`,
+        luckyText ? `Khía cạnh thuận lợi: ${luckyText}` : '',
+        challengeText ? `Khía cạnh cần lưu ý: ${challengeText}` : '',
+        ``,
+        `[KHÓA TRẠNG THÁI BÀI TAROT — đọc kỹ trước khi viết]`,
+        `- Nếu Trạng thái = "Ngược": CẤM tuyệt đối dùng từ "Xuôi".`,
+        `- Nếu Trạng thái = "Xuôi": CẤM tuyệt đối dùng từ "Ngược".`,
+        ``,
+        `[Cấu trúc bắt buộc — không đổi emoji hay tiêu đề]`,
+        `🎯 **Kết luận cốt lõi:** [1 câu tóm tắt mối quan hệ trong ${timeText} dựa trên điểm ${overall}]`,
+        ``,
+        `⚡ **Điểm xung đột:** [2 câu: Bát Tự ${baziScore} và Cung Hoàng Đạo ${zodiacScore} (${sign1} vs ${sign2}) ảnh hưởng thế nào trong ${timeText}${luckyText ? `. Thuận lợi: ${luckyText}` : ''}${challengeText ? `. Cần lưu ý: ${challengeText}` : ''}]`,
+        `${zodiacScore >= 75 ? `[LƯU Ý: Cung Hoàng Đạo ${zodiacScore} điểm cao nhưng cần phân tích mặt tối]` : ''}`,
+        ``,
+        `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu, dựa trên lõi "${coreKeyword}", tập trung vào ${timeText}${luckyText ? `. Thuận lợi: ${luckyText}` : ''}${challengeText ? `. Giải quyết: ${challengeText}` : ''}]`,
+        ``,
+        `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc cho ${timeText}] 🌿 ✨ 🔮`,
+      ].filter(Boolean).join('
+');
+    }
+
   },
   en: {
-    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation — if Orientation is \"Reversed\", you are STRICTLY FORBIDDEN from writing the word \"upright\" anywhere in your analysis. All references to the tarot card must exactly match the given Orientation status. Never suggest superstitious rituals (burning paper, chanting, spells, meditation). Focus on practical relationship advice for real life.",
+    systemPrompt: "You are an elite spiritual astrologer. Write in exactly 4 sections, 2-3 sentences each, under 200 words total. No preamble, no numbering. Never alter any scores. Never change the tarot orientation — if Orientation is \"Reversed\", you are STRICTLY FORBIDDEN from writing the word \"upright\" anywhere in your analysis. All references to the tarot card must exactly match the given Orientation status. Never suggest superstitious rituals (burning paper, chanting, spells, meditation). Focus on practical relationship advice for real life.\n\n[Monthly/Yearly Report Mode] You are writing a monthly or yearly relationship report. You MUST focus on specific advice within the defined time window (monthly=next 30 days, yearly=next 12 months). Do not give generic advice.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
@@ -322,9 +425,43 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
       ].join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'en');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
+      const timeText = reportType === 'monthly' ? 'next 30 days' : 'next 12 months';
+      return [
+        `[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}, Report period=${timeText}`,
+        `Meaning: ${tarot?.meaning || ''}`,
+        `Core keyword (for 💡): ${coreKeyword}`,
+        `Actual zodiac signs: ${sign1} and ${sign2}`,
+        luckyText ? `Lucky aspects: ${luckyText}` : '',
+        challengeText ? `Challenging aspects: ${challengeText}` : '',
+        ``,
+        `[CRITICAL RULES]`,
+        `- If Orientation = "Upright": BAN all "Reversed" sentences.`,
+        `- If Orientation = "Reversed": BAN all "Upright" sentences.`,
+        `- Zodiac analysis MUST use ${sign1} and ${sign2} only.`,
+        ``,
+        `[MANDATORY STRUCTURE — do not change emojis or headers]`,
+        `🎯 **Core Verdict:** [1 sentence: relationship outlook for ${timeText} based on score ${overall}]`,
+        ``,
+        `⚡ **Tension Points:** [2 sentences: how Bazi ${baziScore} and Zodiac ${zodiacScore} (${sign1} vs ${sign2}) may create tension during ${timeText}${luckyText ? `. Lucky: ${luckyText}` : ''}${challengeText ? `. Watch out: ${challengeText}` : ''}]`,
+        ``,
+        `💡 **Path Forward:** IChing ${ichingScore} and Tarot ${cardName}(${statusText}) [2 sentences based on "${coreKeyword}", specific to ${timeText}${luckyText ? `. Lean into: ${luckyText}` : ''}${challengeText ? `. Address: ${challengeText}` : ''}. No superstitious rituals.]`,
+        ``,
+        `🌿 **Spiritual Guidance:** [1 closing blessing for ${timeText}] 🌿 ✨ 🔮`,
+      ].join('
+');
+    }
+
   },
   es: {
-    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).",
+    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).\n\n[Modo informe mensual/anual] Estás escribiendo un informe de relación mensual o anual. DEBES enfocarte en consejos específicos dentro del período definido (mensual=próximos 30 días, anual=próximos 12 meses). No des consejos genéricos.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
@@ -351,9 +488,43 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
       ].join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'es');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
+      const timeText = reportType === 'monthly' ? 'próximos 30 días' : 'próximos 12 meses';
+      return [
+        `[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientación=${statusText}, Período=${timeText}`,
+        `Significado: ${tarot?.meaning || ''}`,
+        `Palabra clave central: ${coreKeyword}`,
+        `Signos zodiacales reales: ${sign1} y ${sign2}`,
+        luckyText ? `Aspectos favorables: ${luckyText}` : '',
+        challengeText ? `Aspectos a cuidar: ${challengeText}` : '',
+        ``,
+        `[REGLAS CRÍTICAS]`,
+        `- Si Orientación = "Derecho": PROHIBIDO escribir "Invertido".`,
+        `- Si Orientación = "Invertido": PROHIBIDO escribir "Derecho".`,
+        `- Análisis zodiacal DEBE usar solo ${sign1} y ${sign2}.`,
+        ``,
+        `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
+        `🎯 **Veredicto central:** [1 oración: perspectiva de relación para ${timeText} según puntuación ${overall}]`,
+        ``,
+        `⚡ **Puntos de tensión:** [2 oraciones: cómo Bazi ${baziScore} y Horóscopo ${zodiacScore} (${sign1} vs ${sign2}) pueden afectar en ${timeText}${luckyText ? `. A favor: ${luckyText}` : ''}${challengeText ? `. Cuidado: ${challengeText}` : ''}]`,
+        ``,
+        `💡 **Camino adelante:** IChing ${ichingScore} y Tarot ${cardName}(${statusText}) [2 oraciones basadas en "${coreKeyword}", específicas para ${timeText}${luckyText ? `. Favorecer: ${luckyText}` : ''}${challengeText ? `. Atender: ${challengeText}` : ''}. Sin rituales supersticiosos.]`,
+        ``,
+        `🌿 **Guía espiritual:** [1 bendición final para ${timeText}] 🌿 ✨ 🔮`,
+      ].join('
+');
+    }
+
   },
   fr: {
-    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).",
+    systemPrompt: "Vous êtes un astrologue spirituel d'élite. Écrivez en exactement 4 sections, 2-3 phrases chacune, sous 200 mots. Pas de préambule, pas de numérotation. Ne modifiez aucun score. Ne changez jamais l'orientation du tarot. Ne suggérez jamais de rituels superstitieux (brûler du papier, prières, sorts).\n\n[Rapport mensuel/annuel] Vous rédigez un rapport de relation mensuel ou annuel. Vous DEVEZ vous concentrer sur des conseils spécifiques dans la période définie (mensuel=30 prochains jours, annuel=12 prochains mois). Pas de conseils génériques.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
@@ -380,6 +551,40 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
       ].join('\n');
     }
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+      const statusText = getOrientText(tarot, 'fr');
+      const cardName = tarot?.name || '';
+      const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
+      const sign1 = zodiacMeta?.[0] || '';
+      const sign2 = zodiacMeta?.[1] || '';
+      const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
+      const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
+      const timeText = reportType === 'monthly' ? '30 prochains jours' : '12 prochains mois';
+      return [
+        `[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}, Période=${timeText}`,
+        `Signification: ${tarot?.meaning || ''}`,
+        `Mot-clé central: ${coreKeyword}`,
+        `Signes zodiacaux réels: ${sign1} et ${sign2}`,
+        luckyText ? `Aspects favorables: ${luckyText}` : '',
+        challengeText ? `Aspects à surveiller: ${challengeText}` : '',
+        ``,
+        `[RÈGLES CRITIQUES]`,
+        `- Si Orientation = "Droit": INTERDIT d'écrire "Inversé".`,
+        `- Si Orientation = "Inversé": INTERDIT d'écrire "Droit".`,
+        `- Analyse zodiacale DOIT utiliser uniquement ${sign1} et ${sign2}.`,
+        ``,
+        `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
+        `🎯 **Verdict central:** [1 phrase: perspective relationnelle pour ${timeText} selon le score ${overall}]`,
+        ``,
+        `⚡ **Points de tension:** [2 phrases: comment Bazi ${baziScore} et Horoscope ${zodiacScore} (${sign1} vs ${sign2}) peuvent créer des frictions pendant ${timeText}${luckyText ? `. Favoriser: ${luckyText}` : ''}${challengeText ? `. Surveiller: ${challengeText}` : ''}]`,
+        ``,
+        `💡 **Voie à suivre:** YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) [2 phrases basées sur "${coreKeyword}", spécifiques pour ${timeText}${luckyText ? `. Miser sur: ${luckyText}` : ''}${challengeText ? `. Résoudre: ${challengeText}` : ''}. Pas de rituels superstitieux.]`,
+        ``,
+        `🌿 **Guidance spirituelle:** [1 bénédiction finale pour ${timeText}] 🌿 ✨ 🔮`,
+      ].join('
+');
+    }
+
   }
 };
 
@@ -611,7 +816,7 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseRequestBody(req);
-    const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta, luckyAspects, challengingAspects } = body;
+    const { bazi, zodiac, iching, tarot, lang = 'th', zodiacMeta, luckyAspects, challengingAspects, reportType } = body;
 
     if (!body.d1 || !body.d2) {
       return res.status(400).json({ error: 'Missing d1 or d2' });
@@ -630,7 +835,9 @@ export default async function handler(req, res) {
     // 过滤塔罗牌意：正位只保留正位部分，逆位只保留逆位部分
     const filteredTarot = tarot ? { ...tarot, meaning: filterTarotMeaning(tarot.meaning, tarot.orientation, lang) } : tarot;
     
-    const finalPrompt = config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects);
+    const finalPrompt = reportType
+      ? config.buildReportPrompt(reportType, computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects)
+      : config.buildPrompt(computedOverall, baziScore, zodiacScore, ichingScore, filteredTarot, zodiacMeta, luckyAspects, challengingAspects);
 
     // ── Check Supabase cache (before AI call) ──
     const cKey = cacheKey(body.d1, body.d2, lang);

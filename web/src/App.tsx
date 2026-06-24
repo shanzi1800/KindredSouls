@@ -366,6 +366,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   const [paidStatus, setPaidStatus] = useState<boolean | null>(null);
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
+  const [paidPlans, setPaidPlans] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState<string | false>(false);
+  const [reportText, setReportText] = useState<string | null>(null);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -723,6 +726,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         return false;
       })();
 
+      setPaidPlans(rawPlans);
       if (isCompatibilityPaid) {
         setPaidStatus(true);
         setShowPaywall(false);
@@ -902,6 +906,35 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       insightLockRef.current = false;
     }
   };
+  const generateReport = async (type: 'monthly' | 'yearly') => {
+    if (reportLoading) return;
+    setReportLoading(type);
+    setReportText(null);
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      if (!token) throw new Error('No session');
+      const res = await fetch('/api/ai-advisor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          d1, d2, lang,
+          bazi, zodiac, iching, tarot,
+          reportType: type,
+        }),
+      });
+      const data = await res.json();
+      if (data.insight) {
+        setReportText(data.insight);
+      } else {
+        setReportText(lang === 'zh' ? '生成报告失败，请重试。' : 'Failed to generate report. Please try again.');
+      }
+    } catch (err) {
+      console.error('[AIInsightBlock] generateReport error:', err);
+      setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
   // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
   const urlHasToken = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
   if (!sessionChecked || (paidStatus === null && !showAuthWall) || isAuthParsing) {
@@ -1049,6 +1082,49 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           >
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
+          {/* 报告生成区 */}
+          {paidPlans && (paidPlans.compatibility_monthly_report || paidPlans.compatibility_yearly_report) && (
+            <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
+              <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
+                📊 {lang === 'zh' ? '专属报告' : lang === 'en' ? 'Exclusive Reports' : lang === 'es' ? 'Informes Exclusivos' : lang === 'fr' ? 'Rapports Exclusifs' : lang === 'th' ? 'รายงานเฉพาะ' : 'Báo cáo Độc quyền'}
+              </div>
+              {paidPlans.compatibility_monthly_report && (
+                <button
+                  onClick={() => generateReport('monthly')}
+                  disabled={!!reportLoading}
+                  style={{
+                    marginRight: '8px', marginBottom: '6px',
+                    padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)',
+                    background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)',
+                    color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {reportLoading === 'monthly' ? '⏳...' : (lang === 'zh' ? '📅 生成月报' : '📅 Monthly Report')}
+                </button>
+              )}
+              {paidPlans.compatibility_yearly_report && (
+                <button
+                  onClick={() => generateReport('yearly')}
+                  disabled={!!reportLoading}
+                  style={{
+                    marginBottom: '6px',
+                    padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)',
+                    background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)',
+                    color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {reportLoading === 'yearly' ? '⏳...' : (lang === 'zh' ? '📆 生成年报' : '📆 Yearly Report')}
+                </button>
+              )}
+              {reportText && (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
+                  {reportText.split('\n\n').map((para, i) => (
+                    <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
