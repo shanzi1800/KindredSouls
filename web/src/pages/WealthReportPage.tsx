@@ -66,6 +66,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🎯 检测 OAuth 返回后的 intent=checkout（用户已登录，需自动触发 Stripe）
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
+    console.log('[WealthReport] OAuth return check:', { href: window.location.href, search: window.location.search, hash: window.location.hash, intentCheckout, intentPlan, paymentSuccess });
 
     if (intentCheckout && intentPlan && !paymentSuccess) {
       // 清除 URL 参数避免重复触发
