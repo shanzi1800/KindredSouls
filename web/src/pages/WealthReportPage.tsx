@@ -131,12 +131,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         // 🎯 有 pendingPlan → 跳过 checkPaidStatus，直接去 Stripe
         // 此时 authChecking 保持 true，显示 loading 不闪付费墙
+        // 如果 handlePurchase 成功会跳转到 Stripe（页面关掉），失败则继续走到 setAuthChecking(false)
         if (pendingPlan) {
-          handlePurchase(pendingPlan as any, token);
-          return;
+          await handlePurchase(pendingPlan as any, token);
+        } else {
+          await checkPaidStatus();
         }
-
-        await checkPaidStatus();
       } else if (forceRecheck) {
         // Fallback: poll session (shouldn't reach here if hash has token)
         for (let i = 0; i < 10; i++) {
