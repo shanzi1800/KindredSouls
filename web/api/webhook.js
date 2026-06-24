@@ -185,32 +185,61 @@ export default async function handler(req, res) {
         const planPayload = buildPlanPayload(plan);
         const updatedPlans = { ...currentPlans, ...planPayload };
 
-        // ── UPSERT: UNIQUE constraint on user_id handles insert-or-update ──
-        const upsertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
-          method: 'POST',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates,return=representation',
-          },
-          body: JSON.stringify({
-            user_id: userId,
-            paid: true,
-            paid_plans: updatedPlans,
-            stripe_customer_id: session.customer || null,
-            subscription_id: session.subscription || session.id,
-            email: email || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
-        });
+        // ── Try PATCH first (update existing row), fallback to POST if row doesn't exist ──
+        const patchRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              paid: true,
+              paid_plans: updatedPlans,
+              stripe_customer_id: session.customer || null,
+              subscription_id: session.subscription || session.id,
+              email: email || null,
+              updated_at: new Date().toISOString(),
+            }),
+          }
+        );
 
-        if (!upsertRes.ok) {
-          const errBody = await upsertRes.text().catch(() => '');
-          console.error('[webhook] ❌ UPSERT failed:', upsertRes.status, errBody);
+        if (patchRes.ok) {
+          console.log('[webhook] ✅ PATCH success for user', userId.substring(0, 8), 'plan:', plan);
+        } else if (patchRes.status === 406 || patchRes.status === 404) {
+          // Row doesn't exist, create new one
+          console.log('[webhook] Row not found, creating new user profile...');
+          const insertRes = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+            method: 'POST',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              paid: true,
+              paid_plans: updatedPlans,
+              stripe_customer_id: session.customer || null,
+              subscription_id: session.subscription || session.id,
+              email: email || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+          });
+          if (!insertRes.ok) {
+            const errBody = await insertRes.text().catch(() => '');
+            console.error('[webhook] ❌ POST failed:', insertRes.status, errBody);
+          } else {
+            console.log('[webhook] ✅ POST success for user', userId.substring(0, 8), 'plan:', plan);
+          }
         } else {
-          console.log('[webhook] ✅ UPSERT success for user', userId.substring(0, 8), 'plan:', plan);
+          const errBody = await patchRes.text().catch(() => '');
+          console.error('[webhook] ❌ PATCH failed:', patchRes.status, errBody);
         }
       } catch (err) {
         console.error('[webhook] ❌ Error updating user:', err.message);
