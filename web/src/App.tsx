@@ -374,7 +374,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
   useEffect(() => {
     if (pendingInsightTrigger) {
-      console.log('[KindredSouls Debug] pendingInsightTrigger=true, calling triggerInsight');
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
@@ -382,7 +381,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   // 🎯 Paywall auto-show: when paidStatus becomes false, show paywall
   useEffect(() => {
     if (paidStatus === false) {
-      console.log('[KindredSouls Debug] paidStatus=false, showing paywall');
       setShowPaywall(true);
     }
   }, [paidStatus]);
@@ -423,7 +421,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
 
   // ── Auth 状态监听（唯一入口）──
   useEffect(() => {
-    console.log('[KindredSouls Debug] Supabase URL:', (import.meta as any).env?.VITE_SUPABASE_URL || 'MISSING');
 
     // ── Auth 状态监听（唯一入口）──
     // 注意：OAuth pre-capture 已移到 supabase.ts（模块加载时，createClient 之前）
@@ -539,10 +536,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   const checkPaidStatus = async (_token?: string) => {
     // 🛡️ 竞态守卫：主动防御已触发 checkout 时，跳过付费状态检查
     if (hasTriggeredCheckout.current) {
-      console.log('[KindredSouls Debug] checkPaidStatus skipped — checkout already in progress');
       return;
     }
-    console.log('[KindredSouls Debug] checkPaidStatus called (REST API)');
     const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
     const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
     try {
@@ -623,7 +618,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         return false;
       })();
 
-      console.log('[KindredSouls Debug] checkPaidStatus REST result: paid=', isCompatibilityPaid, 'planMap=', JSON.stringify(planMap));
       if (isCompatibilityPaid) {
         setPaidStatus(true);
         setShowPaywall(false);
@@ -675,30 +669,24 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     setLoading(true);
     try {
-      console.log('[KindredSouls Debug] handlePurchaseWithToken: calling /api/create-checkout...');
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),
       });
-      console.log('[KindredSouls Debug] handlePurchaseWithToken: API response status=', res.status);
       if (res.status === 401) {
-        console.log('[KindredSouls Debug] 401 from create-checkout, forcing re-login');
         setShowAuthWall(true);
         setShowPaywall(false);
         setPaidStatus(null);
         return;
       }
       const data = await res.json();
-      console.log('[KindredSouls Debug] handlePurchaseWithToken: API response data=', data);
       if (data.url) {
-        console.log('[KindredSouls Debug] handlePurchaseWithToken: REDIRECTING to Stripe:', data.url);
         window.location.href = data.url;
       } else if (data.already_paid) {
         setPaidStatus(true);
         setShowPaywall(false);
         // ✅ already_paid → 自动触发 AI 洞察生成
-        console.log('[KindredSouls Debug] already_paid=true, auto-triggering AI insight');
         triggerInsight(token);
       } else {
         setError(data.error || 'Checkout failed');
@@ -715,17 +703,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
 
 
   const handlePurchase = async (plan: string) => {
-    console.log('[KindredSouls Debug] handlePurchase called. currentAccessToken:', !!currentAccessToken, 'paidStatus:', paidStatus, 'showPaywall:', showPaywall, 'showAuthWall:', showAuthWall);
 
     let token = currentAccessToken;
 
     if (!token) {
       // 兜底：先 refreshSession（处理过期 token），再 getSession
-      console.log('[KindredSouls Debug] No currentAccessToken, trying refreshSession...');
       try {
         const { data: { session: refreshed } } = await supabase.auth.refreshSession();
         token = refreshed?.access_token || null;
-        console.log('[KindredSouls Debug] refreshSession token:', !!token);
       } catch (e) {
         console.warn('[KindredSouls Debug] refreshSession failed, falling back to getSession');
       }
@@ -734,12 +719,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     if (!token) {
       const { data: { session } } = await supabase.auth.getSession();
       token = session?.access_token || null;
-      console.log('[KindredSouls Debug] getSession fallback token:', !!token);
     }
 
     // 如果仍然没有 token，等待最多 3 秒让 SIGNED_IN 事件触发
     if (!token) {
-      console.log('[KindredSouls Debug] No token yet, waiting for SIGNED_IN event (max 3s)...');
       token = await new Promise<string | null>((resolve) => {
         let done = false;
         const t = setTimeout(() => {
@@ -753,7 +736,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           }
         });
       });
-      console.log('[KindredSouls Debug] After waiting, token:', !!token);
     }
 
     if (!token) {
@@ -767,7 +749,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   };
   const triggerInsight = async (token?: string) => {
     if (insightLockRef.current) {
-      console.log('[AIInsightBlock] Duplicate triggerInsight blocked by lock');
       return;
     }
     insightLockRef.current = true;
@@ -801,7 +782,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {
         // Token expired or not paid → fallback to paywall + re-login flow
-        console.log('[KindredSouls] Auth/paywall issue (status', res.status, '), redirecting to paywall');
         setShowPaywall(true);
         setPaidStatus(false);
         setError(null);
@@ -835,7 +815,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   }
   // 🔒 如果 URL 有 token 但 session 未就绪，继续等待，不显示登录墙
   if (urlHasToken && !currentAccessToken && !sessionChecked) {
-    console.log('[KindredSouls Debug] URL has token but session not ready, waiting...');
     return (
       <div className="ai-insight" style={{ textAlign: 'center', padding: '20px' }}>
         <div className="insight-skeleton">
@@ -850,7 +829,6 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   // Stripe paywall — logged in but not paid
   // 🎯 明牌流：先弹价格，用户愿意付费才登录
   // ── 付费墙：优先显示（无论登录状态）──
-  console.log('[KindredSouls Debug] AIInsightBlock render: showPaywall=', showPaywall, 'showAuthWall=', showAuthWall, 'insight=', !!insight);
   if (showPaywall) {
     return (
       <div className="ai-insight ai-insight-dark">
@@ -990,7 +968,6 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
   useEffect(() => {
     if (sessionStorage.getItem('ks_payment_success') === '1') {
       sessionStorage.removeItem('ks_payment_success');
-      console.log('[KindredSouls Debug] Auto-triggering AI insight after payment success');
       setPendingInsightTrigger && setPendingInsightTrigger(true);
     }
   }, []);
@@ -1130,12 +1107,10 @@ export default function App() {
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
  const savedResult = localStorage.getItem('ks_result') || sessionStorage.getItem('ks_result');
- console.log('[KindredSouls Debug] Restore check:', { isOAuthCallback, paymentSuccess, justLoggedIn, pathname: window.location.pathname, hasResult: !!savedResult });
  // Restore result page if returning from OAuth or payment
  if (paymentSuccess) {
  // Stripe payment callback — set flag for auto-trigger, then clean URL
  sessionStorage.setItem('ks_payment_success', '1');
- console.log('[KindredSouls Debug] ✅ Payment success detected, set ks_payment_success flag');
  // Clean payment param from URL without full reload
  // 🛡️ Don't clear URL hash immediately — let Supabase SDK consume the OAuth token first.
  // Hash will be cleaned after SIGNED_IN event fires (line ~347).
@@ -1146,7 +1121,6 @@ export default function App() {
  const r = JSON.parse(savedResult);
  setResult(r);
  _setPage('result');
- console.log('[KindredSouls Debug] ✅ Restored result page after OAuth/payment');
  if (justLoggedIn) localStorage.removeItem('ks_just_logged_in');
  } catch (e) {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
@@ -1192,9 +1166,7 @@ export default function App() {
     // Always normalize to supported lang to avoid SHARED[lang] undefined
     const rawLang = (i18n.language || 'en').split('-')[0];
     const lang = normalizeLang(rawLang);
-    console.log('[KindredSouls Debug] rawLang=' + rawLang + ' normalized=' + lang);
     setTimeout(() => {
-      console.log('[KindredSouls Debug] lang=' + lang);
       const res = calculateCompatibility(d1, d2, lang);
       if ('error' in res) {
         setErr(t('common.errorFormat'));
@@ -1213,7 +1185,6 @@ export default function App() {
 sessionStorage.setItem('ks_result', JSON.stringify(r));
 		sessionStorage.setItem('ks_just_logged_in', '1');
 		localStorage.setItem('ks_just_logged_in', '1');
-        console.log('[KindredSouls Debug] Saved result to localStorage');
       }
     }, 800);
   };

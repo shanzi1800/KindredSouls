@@ -66,8 +66,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🎯 检测 OAuth 返回后的 intent=checkout（用户已登录，需自动触发 Stripe）
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
-    console.log('[WealthReport] OAuth return check:', { href: window.location.href, search: window.location.search, hash: window.location.hash, intentCheckout, intentPlan, paymentSuccess });
-
+    
     if (intentCheckout && intentPlan && !paymentSuccess) {
       // ⚠️ 不要在这里 replaceState！Supabase SDK 还没消费 URL hash 中的 access_token
       // 延迟到 checkAuthAndLoad 拿到 token 后再清理
@@ -86,15 +85,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const hashTokenMatch = hash.match(/access_token=([^&]+)/);
       if (hashTokenMatch) {
         token = hashTokenMatch[1];
-        console.log('[WealthReport] Got token from URL hash directly');
-      }
+              }
 
       if (!token) {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('[WealthReport] getSession:', !!session?.access_token, 'forceRecheck:', forceRecheck, 'pendingPlan:', pendingPlan);
         token = session?.access_token;
       } else {
-        console.log('[WealthReport] Using hash token, skipping getSession poll');
       }
 
       if (token) {
@@ -112,16 +108,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         for (let i = 0; i < 10; i++) {
           await new Promise(r => setTimeout(r, 500));
           const { data: { session: s2 } } = await supabase.auth.getSession();
-          console.log('[WealthReport] poll', i, 'session:', !!s2?.access_token);
-          if (s2?.access_token) {
+                    if (s2?.access_token) {
             token = s2.access_token;
             setCurrentToken(token);
             await checkPaidStatus(token);
             break;
           }
         }
-        console.log('[WealthReport] poll done, token:', !!token);
-        if (!token) {
+                if (!token) {
           setIsUnlocked(false);
           setShowPaywall(true);
         }
@@ -239,8 +233,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
     if (loadingRef.current) {
-      console.log('[WealthReport] Duplicate request blocked by lock');
-      return;
+            return;
     }
     loadingRef.current = true;
     setLoading(true);
@@ -378,8 +371,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const handleTriggerInsight = async () => {
     if (!currentToken || !reportData) return;
     if (loadingRef.current) {
-      console.log('[WealthReport] handleTriggerInsight blocked by lock');
-      return;
+            return;
     }
     loadingRef.current = true;
 
