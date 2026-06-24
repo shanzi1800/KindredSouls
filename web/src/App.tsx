@@ -1083,12 +1083,12 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
           {/* 报告生成区 */}
-          {paidPlans && (paidPlans.compatibility_monthly_report || paidPlans.compatibility_yearly_report) && (
+          {paidPlans && (paidPlans.compatibility_monthly_report || paidPlans.compatibility_yearly_report || paidPlans.all_pass_yearly || paidPlans.star_monthly_vip) && (
             <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
               <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
                 📊 {lang === 'zh' ? '专属报告' : lang === 'en' ? 'Exclusive Reports' : lang === 'es' ? 'Informes Exclusivos' : lang === 'fr' ? 'Rapports Exclusifs' : lang === 'th' ? 'รายงานเฉพาะ' : 'Báo cáo Độc quyền'}
               </div>
-              {paidPlans.compatibility_monthly_report && (
+              {(paidPlans.compatibility_monthly_report || paidPlans.all_pass_yearly || paidPlans.star_monthly_vip) && (
                 <button
                   onClick={() => generateReport('monthly')}
                   disabled={!!reportLoading}
@@ -1102,7 +1102,7 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
                   {reportLoading === 'monthly' ? '⏳...' : (lang === 'zh' ? '📅 生成月报' : '📅 Monthly Report')}
                 </button>
               )}
-              {paidPlans.compatibility_yearly_report && (
+              {(paidPlans.compatibility_yearly_report || paidPlans.all_pass_yearly) && (
                 <button
                   onClick={() => generateReport('yearly')}
                   disabled={!!reportLoading}
