@@ -603,13 +603,21 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           const expiresAt = ap.expires_at || ap.all_pass_expires_at;
           if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
         }
-        // star_monthly_vip
+        // star_monthly_vip (布尔值或对象)
         const sv = planMap.star_monthly_vip;
-        if (sv && typeof sv === 'object') {
-          const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
-          const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
-          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
-          if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+        if (sv) {
+          if (typeof sv === 'object') {
+            const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
+            const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
+            const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+            if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+          } else {
+            // sv === true → 同级 key 存放配额
+            const allowance = planMap.star_monthly_compatibility_allowance ?? planMap.compatibility_monthly_allowance ?? 0;
+            const used = planMap.star_monthly_compatibility_used ?? planMap.compatibility_monthly_used ?? 0;
+            const resetsAt = planMap.star_monthly_resets_at;
+            if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+          }
         }
         return false;
       })();
@@ -698,11 +706,18 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
 
         // star_monthly_vip：检查兼容性配额
         const sv = planMap.star_monthly_vip;
-        if (sv && typeof sv === 'object') {
-          const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
-          const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
-          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
-          if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+        if (sv) {
+          if (typeof sv === 'object') {
+            const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
+            const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
+            const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+            if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+          } else {
+            const allowance = planMap.star_monthly_compatibility_allowance ?? planMap.compatibility_monthly_allowance ?? 0;
+            const used = planMap.star_monthly_compatibility_used ?? planMap.compatibility_monthly_used ?? 0;
+            const resetsAt = planMap.star_monthly_resets_at;
+            if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+          }
         }
 
         return false;
