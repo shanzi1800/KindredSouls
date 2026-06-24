@@ -423,6 +423,7 @@ export default async function handler(req, res) {
   let paidPlans = {};
   let currentUserId = null;
   let usingMonthlyAllowance = false;
+  let usingStarVip = false;
 
   try {
     const authHeader = req.headers.authorization;
@@ -472,7 +473,19 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Wealth monthly has a monthly allowance for compatibility readings
+    // 4. Star VIP monthly has a monthly allowance for compatibility readings
+    if (!hasAccess && paidPlans.star_monthly_vip === true) {
+      const used = paidPlans.star_monthly_compatibility_used || 0;
+      const allowance = paidPlans.star_monthly_compatibility_allowance || 0;
+      const resetsAt = paidPlans.star_monthly_resets_at;
+      if (used < allowance && resetsAt && now < new Date(resetsAt)) {
+        hasAccess = true;
+        usingMonthlyAllowance = true;
+        usingStarVip = true;
+      }
+    }
+
+    // 5. Wealth monthly has a monthly allowance for compatibility readings
     if (!hasAccess && paidPlans.wealth_monthly === true) {
       const used = paidPlans.compatibility_monthly_used || 0;
       const allowance = paidPlans.compatibility_monthly_allowance || 0;
@@ -487,27 +500,52 @@ export default async function handler(req, res) {
       return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once' });
     }
 
-    // If access is via monthly allowance, increment compatibility_monthly_used before proceeding
+    // If access is via monthly allowance, increment the used counter before proceeding
     if (usingMonthlyAllowance && currentUserId) {
       const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-      const updatedPlans = {
-        ...paidPlans,
-        compatibility_monthly_used: (paidPlans.compatibility_monthly_used || 0) + 1,
-        compatibility_monthly_resets_at: paidPlans.compatibility_monthly_resets_at || nextMonthStart.toISOString(),
-      };
-      try {
-        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({ paid_plans: updatedPlans }),
-        });
-      } catch (incrErr) {
-        console.error('[ai-advisor] Failed to increment compatibility_monthly_used:', incrErr.message);
+
+      if (usingStarVip) {
+        // star_monthly_vip — uses star_monthly_compatibility_* fields
+        const updatedPlans = {
+          ...paidPlans,
+          star_monthly_compatibility_used: (paidPlans.star_monthly_compatibility_used || 0) + 1,
+          star_monthly_resets_at: paidPlans.star_monthly_resets_at || nextMonthStart.toISOString(),
+        };
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({ paid_plans: updatedPlans }),
+          });
+        } catch (incrErr) {
+          console.error('[ai-advisor] Failed to increment star_monthly_compatibility_used:', incrErr.message);
+        }
+      } else {
+        // wealth_monthly — uses compatibility_monthly_* fields
+        const updatedPlans = {
+          ...paidPlans,
+          compatibility_monthly_used: (paidPlans.compatibility_monthly_used || 0) + 1,
+          compatibility_monthly_resets_at: paidPlans.compatibility_monthly_resets_at || nextMonthStart.toISOString(),
+        };
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({ paid_plans: updatedPlans }),
+          });
+        } catch (incrErr) {
+          console.error('[ai-advisor] Failed to increment compatibility_monthly_used:', incrErr.message);
+        }
       }
     }
   } catch (err) {

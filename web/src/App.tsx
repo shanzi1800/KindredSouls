@@ -395,12 +395,22 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     console.log('[KindredSouls Auth] 🎯 Active defense: URL has intent=checkout, actively getting session...');
 
     // 1. 主动拿 session（不等待事件）
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.access_token) {
         console.log('[KindredSouls Auth] 🎯 Active defense: Got session, triggering checkout...');
         hasTriggeredCheckout.current = true;
-        handlePurchaseWithToken(session.access_token, 'compatibility_once');
-        window.history.replaceState({}, '', '/result');
+        // 🛡️ 先检查是否已有 cover，有则跳过 Stripe
+        const planFromUrl = new URLSearchParams(window.location.search).get('plan') || 'compatibility_once';
+        const alreadyCovered = await checkCoverageInline(session.access_token, planFromUrl);
+        if (alreadyCovered) {
+          console.log('[KindredSouls Auth] 🎯 Already covered by existing plan, skipping Stripe checkout');
+          setPaidStatus(true);
+          setShowPaywall(false);
+          window.history.replaceState({}, '', '/result');
+        } else {
+          handlePurchaseWithToken(session.access_token, planFromUrl);
+          window.history.replaceState({}, '', '/result');
+        }
       } else {
         console.log('[KindredSouls Auth] 🎯 Active defense: No session yet, setting up fallback listener...');
         // 2. 兜底：临时事件监听器等待 SIGNED_IN / INITIAL_SESSION
@@ -508,10 +518,21 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
         const isPendingCheckout = urlParams.get('intent') === 'checkout';
 
         if (isPendingCheckout && !hasTriggeredCheckout.current) {
-          // ✅ URL 有 checkout 意图 → 直接触发 Stripe，跳过 checkPaidStatus
-          console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout detected in URL, triggering checkout directly...');
-          hasTriggeredCheckout.current = true;
-          handlePurchaseWithToken(session!.access_token, 'compatibility_once');
+          // ✅ URL 有 checkout 意图 → 先检查是否已有 cover
+          console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout detected in URL, checking existing coverage...');
+          const planFromUrl = urlParams.get('plan') || 'compatibility_once';
+          const alreadyCovered = await checkCoverageInline(session!.access_token, planFromUrl);
+          if (alreadyCovered) {
+            console.log('[KindredSouls Auth] SIGNED_IN: Already covered, skipping Stripe checkout');
+            hasTriggeredCheckout.current = true;
+            setPaidStatus(true);
+            setShowPaywall(false);
+            window.history.replaceState({}, '', '/result');
+          } else {
+            console.log('[KindredSouls Auth] SIGNED_IN: No existing coverage, triggering Stripe checkout...');
+            hasTriggeredCheckout.current = true;
+            handlePurchaseWithToken(session!.access_token, planFromUrl);
+          }
         } else if (hasTriggeredCheckout.current) {
           console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping checkPaidStatus');
         } else {
@@ -533,6 +554,75 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     return () => subscription.unsubscribe();
   }, []);
   // ── 查询付费状态（使用 Supabase JS 客户端，受 RLS 保护）──
+  // ── 快速检查：用户是否已有某个计划覆盖当前付费功能（不设 state，只返回 bool）──
+  const checkCoverageInline = async (token: string, plan: string): Promise<boolean> => {
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+    try {
+      // 1. 获取用户 ID
+      const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey }
+      });
+      if (!authRes.ok) return false;
+      const authData = await authRes.json();
+      const userId = authData?.id;
+      if (!userId) return false;
+
+      // 2. 查 paid_plans
+      const dbRes = await fetch(
+        `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${userId}&select=paid_plans&limit=1`,
+        { headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseAnonKey } }
+      );
+      if (!dbRes.ok) return false;
+      const dbData = await dbRes.json();
+      const rawPlans = dbData?.[0]?.paid_plans;
+      if (!rawPlans) return false;
+
+      // 3. 统一为对象格式
+      const planMap: Record<string, any> = {};
+      if (Array.isArray(rawPlans)) {
+        for (const p of rawPlans) {
+          if (typeof p === 'string') planMap[p] = true;
+          else if (typeof p === 'object' && p?.plan) planMap[p.plan] = p;
+        }
+      } else if (typeof rawPlans === 'object' && rawPlans !== null) {
+        Object.assign(planMap, rawPlans);
+      }
+
+      const now = Date.now();
+
+      // 4. 检查兼容性覆盖
+      const isCompatibilityCovered = (() => {
+        const directKeys = ['compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report', 'compatibility_free_coupon'];
+        for (const k of directKeys) {
+          if (planMap[k] === true || planMap[k] === k) return true;
+        }
+        // all_pass_yearly
+        const ap = planMap.all_pass_yearly;
+        if (ap) {
+          const expiresAt = ap.expires_at || ap.all_pass_expires_at;
+          if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
+        }
+        // star_monthly_vip
+        const sv = planMap.star_monthly_vip;
+        if (sv && typeof sv === 'object') {
+          const allowance = sv.compatibility_monthly_allowance ?? sv.star_monthly_compatibility_allowance ?? 0;
+          const used = sv.compatibility_monthly_used ?? sv.star_monthly_compatibility_used ?? 0;
+          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+          if (used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) return true;
+        }
+        return false;
+      })();
+
+      if (plan.startsWith('compatibility') || plan === 'star_monthly_vip') {
+        return isCompatibilityCovered;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const checkPaidStatus = async (_token?: string) => {
     // 🛡️ 竞态守卫：主动防御已触发 checkout 时，跳过付费状态检查
     if (hasTriggeredCheckout.current) {
