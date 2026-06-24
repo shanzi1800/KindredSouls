@@ -2510,7 +2510,8 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
-  const dsKey = env.DEEPSEEK_API_KEY;
+  // 战时兜底：如果环境变量读不到，直接用硬编码 Key
+  const dsKey = env.DEEPSEEK_API_KEY || "sk-9307f02599b44612b6767996a7839ab5";
   if (dsKey) {
     try {
       const res = await fetch("https://api.deepseek.com/chat/completions", {
