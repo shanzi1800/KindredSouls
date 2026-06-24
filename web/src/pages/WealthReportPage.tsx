@@ -83,18 +83,32 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
     let token: string | undefined;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('[WealthReport] getSession:', !!session?.access_token, 'forceRecheck:', forceRecheck, 'pendingPlan:', pendingPlan);
-      token = session?.access_token;
+      // 💡 OAuth 回来时 URL hash 里有 access_token，但 Supabase SDK 异步 exchange 需要时间
+      // 直接从 hash 解析 token，不走 getSession()
+      const hash = window.location.hash;
+      const hashTokenMatch = hash.match(/access_token=([^&]+)/);
+      if (hashTokenMatch) {
+        token = hashTokenMatch[1];
+        console.log('[WealthReport] Got token from URL hash directly');
+      }
+
+      if (!token) {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[WealthReport] getSession:', !!session?.access_token, 'forceRecheck:', forceRecheck, 'pendingPlan:', pendingPlan);
+        token = session?.access_token;
+      } else {
+        console.log('[WealthReport] Using hash token, skipping getSession poll');
+      }
+
       if (token) {
         setCurrentToken(token);
         await checkPaidStatus(token);
-        // 🎯 有 pendingPlan → 等待 checkPaidStatus 后自动触发 checkout
+        // 🎯 有 pendingPlan → 自动触发 checkout
         if (pendingPlan) {
           setTimeout(() => handlePurchase(pendingPlan as any, token), 100);
         }
       } else if (forceRecheck) {
-        // OAuth return or payment callback — session may not be ready yet, poll up to 5s
+        // Fallback: poll session (shouldn't reach here if hash has token)
         for (let i = 0; i < 10; i++) {
           await new Promise(r => setTimeout(r, 500));
           const { data: { session: s2 } } = await supabase.auth.getSession();
