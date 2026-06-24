@@ -2241,7 +2241,7 @@ var ZH_SYSTEM = `# Role: KindredSouls \u5168\u7403\u8D22\u5BCC\u4E0E\u4E8B\u4E1A
 ## Output Format (\u4E25\u683C\u6309\u4EE5\u4E0B HTML \u7ED3\u6784\u6E32\u67D3\uFF0C\u4E25\u7981\u5305\u542B\u4EFB\u4F55 Markdown \u7B26\u53F7):
 
 <h1>\u{1F3AF} \u6838\u5FC3\u641E\u94B1\u5B9A\u6027</h1>
-<p>[\u4E00\u53E5\u8BDD\u5B9A\u6027\u5F53\u524D180\u5929\u5185\u7684\u8D22\u5BCC\u72B6\u6001]</p>
+<p>[\u4E00\u53E5\u8BDD\u5B9A\u6027\u7528\u6237\u5148\u5929\u8D22\u5BCC\u683C\u5C40]</p>
 
 <h2>\u26A1 \u804C\u573A\u4E0E\u8D22\u52A1\u6838\u5FC3\u51B2\u7A81</h2>
 <p>[\u9488\u5BF9\u9AD8\u5206\u6697\u9762\u8FDB\u884C\u5265\u79BB\u3002\u5206\u6790\u5176\u8868\u9762\u987A\u9042\u4E0B\u9690\u85CF\u7684\u81F4\u547D\u6027\u683C\u7F3A\u9677\u6216\u7ED3\u6784\u6027\u98CE\u9669]</p>
@@ -2270,7 +2270,7 @@ A senior commercial advisor specializing in modern business psychology, career c
 ## Output Format (HTML ONLY \u2014 zero Markdown symbols):
 
 <h1>\u{1F3AF} Core Wealth Verdict</h1>
-<p>[One-sentence diagnosis of next 180-day financial state]</p>
+<p>[One-sentence diagnosis of user innate wealth blueprint]</p>
 
 <h2>\u26A1 Career & Financial Core Conflict</h2>
 <p>[Strip away the surface. Expose the fatal personality flaw or structural risk hiding beneath apparent success.]</p>
@@ -2299,7 +2299,7 @@ Asesor comercial s\xE9nior especializado en psicolog\xEDa empresarial moderna, c
 ## Formato de Salida (SOLO HTML \u2014 cero Markdown):
 
 <h1>\u{1F3AF} Veredicto Financiero Central</h1>
-<p>[Una oraci\xF3n de diagn\xF3stico del estado financiero en los pr\xF3ximos 180 d\xEDas]</p>
+<p>[Una oraci\xF3n de diagn\xF3stico del plan de riqueza innato del usuario]</p>
 
 <h2>\u26A1 Conflicto Central de Carrera y Finanzas</h2>
 <p>[Quita la superficie. Exp\xF3n el defecto fatal de personalidad o riesgo estructural oculto bajo el \xE9xito aparente.]</p>
@@ -2328,7 +2328,7 @@ Conseiller commercial s\xE9nior sp\xE9cialis\xE9 en psychologie des affaires mod
 ## Format de Sortie (HTML SEULEMENT \u2014 z\xE9ro Markdown):
 
 <h1>\u{1F3AF} Verdict Financier Central</h1>
-<p>[Une phrase de diagnostic de l'\xE9tat financier des 180 prochains jours]</p>
+<p>[Une phrase de diagnostic du plan de richesse inn\xE9 de l'utilisateur]</p>
 
 <h2>\u26A1 Conflit Central Carri\xE8re & Finances</h2>
 <p>[\xD4tez la surface. Exposez le d\xE9faut de personnalit\xE9 fatal ou le risque structurel cach\xE9 sous le succ\xE8s apparent.]</p>
@@ -2357,7 +2357,7 @@ var TH_SYSTEM = `# \u0E1A\u0E17\u0E1A\u0E32\u0E17: \u0E17\u0E35\u0E48\u0E1B\u0E2
 ## \u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E40\u0E2D\u0E32\u0E15\u0E4C\u0E1E\u0E38\u0E15 (HTML \u0E40\u0E17\u0E48\u0E32\u0E19\u0E31\u0E49\u0E19 \u2014 \u0E44\u0E21\u0E48\u0E21\u0E35 Markdown):
 
 <h1>\u{1F3AF} \u0E04\u0E33\u0E27\u0E34\u0E19\u0E34\u0E08\u0E09\u0E31\u0E22\u0E42\u0E0A\u0E04\u0E25\u0E32\u0E20\u0E2B\u0E25\u0E31\u0E01</h1>
-<p>[\u0E1B\u0E23\u0E30\u0E42\u0E22\u0E04\u0E40\u0E14\u0E35\u0E22\u0E27\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E2A\u0E16\u0E32\u0E19\u0E30\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19 180 \u0E27\u0E31\u0E19\u0E02\u0E49\u0E32\u0E07\u0E2B\u0E19\u0E49\u0E32]</p>
+<p>[\u0E1B\u0E23\u0E30\u0E42\u0E22\u0E04\u0E40\u0E14\u0E35\u0E22\u0E27\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E41\u0E1C\u0E19\u0E42\u0E0A\u0E04\u0E25\u0E32\u0E20\u0E42\u0E14\u0E22\u0E01\u0E33\u0E40\u0E19\u0E34\u0E14\u0E02\u0E2D\u0E07\u0E1C\u0E39\u0E49\u0E43\u0E0A\u0E49]</p>
 
 <h2>\u26A1 \u0E04\u0E27\u0E32\u0E21\u0E02\u0E31\u0E14\u0E41\u0E22\u0E49\u0E07\u0E2B\u0E25\u0E31\u0E01\u0E02\u0E2D\u0E07\u0E2D\u0E32\u0E0A\u0E35\u0E1E\u0E41\u0E25\u0E30\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19</h2>
 <p>[\u0E02\u0E08\u0E31\u0E14\u0E1C\u0E34\u0E27\u0E40\u0E1C\u0E34\u0E19\u0E2D\u0E2D\u0E01 \u0E40\u0E1B\u0E34\u0E14\u0E40\u0E1C\u0E22\u0E02\u0E49\u0E2D\u0E1A\u0E01\u0E1E\u0E23\u0E48\u0E2D\u0E07\u0E1A\u0E38\u0E04\u0E25\u0E34\u0E01\u0E20\u0E32\u0E1E\u0E17\u0E35\u0E48\u0E23\u0E49\u0E32\u0E22\u0E41\u0E23\u0E07\u0E2B\u0E23\u0E37\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E40\u0E2A\u0E35\u0E48\u0E22\u0E07\u0E40\u0E0A\u0E34\u0E07\u0E42\u0E04\u0E23\u0E07\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E17\u0E35\u0E48\u0E0B\u0E48\u0E2D\u0E19\u0E2D\u0E22\u0E39\u0E48\u0E20\u0E32\u0E22\u0E43\u0E15\u0E49\u0E04\u0E27\u0E32\u0E21\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08]</p>
@@ -2386,7 +2386,7 @@ Chuy\xEAn gia t\u01B0 v\u1EA5n th\u01B0\u01A1ng m\u1EA1i cao c\u1EA5p chuy\xEAn 
 ## \u0110\u1ECBnh d\u1EA1ng \u0110\u1EA7u ra (CH\u1EC8 HTML \u2014 kh\xF4ng c\xF3 Markdown):
 
 <h1>\u{1F3AF} Ph\xE1n quy\u1EBFt T\xE0i ch\xEDnh C\u1ED1t l\xF5i</h1>
-<p>[M\u1ED9t c\xE2u ch\u1EA9n \u0111o\xE1n t\xECnh tr\u1EA1ng t\xE0i ch\xEDnh 180 ng\xE0y t\u1EDBi]</p>
+<p>[M\u1ED9t c\xE2u ch\u1EA9n \u0111o\xE1n b\u1EA3n \u0111\u1ED3 t\xE0i l\u1ED9c b\u1EA9m sinh c\u1EE7a ng\u01B0\u1EDDi d\xF9ng]</p>
 
 <h2>\u26A1 Xung \u0111\u1ED9t C\u1ED1t l\xF5i c\u1EE7a S\u1EF1 nghi\u1EC7p & T\xE0i ch\xEDnh</h2>
 <p>[Lo\u1EA1i b\u1ECF l\u1EDBp v\u1ECF b\u1EC1 ngo\xE0i. V\u1EA1ch tr\u1EA7n khuy\u1EBFt \u0111i\u1EC3m t\xEDnh c\xE1ch ch\xED m\u1EA1ng ho\u1EB7c r\u1EE7i ro c\u1EA5u tr\xFAc \u1EA9n gi\u1EA5u d\u01B0\u1EDBi v\u1EBB th\xE0nh c\xF4ng.]</p>
