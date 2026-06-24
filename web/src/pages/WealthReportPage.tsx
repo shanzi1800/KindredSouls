@@ -229,10 +229,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         // star_monthly_vip 检查财富配额
         const sv = planMap.star_monthly_vip;
-        if (sv && typeof sv === 'object') {
-          const used = sv.star_monthly_wealth_used ?? 0;
-          const allowance = sv.star_monthly_wealth_allowance;
-          const resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+        if (sv) {
+          let used: number, allowance: number, resetsAt: string | undefined;
+          if (typeof sv === 'object') {
+            used = sv.star_monthly_wealth_used ?? 0;
+            allowance = sv.star_monthly_wealth_allowance;
+            resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
+          } else {
+            // sv === true → 同级 key
+            used = planMap.star_monthly_wealth_used ?? 0;
+            allowance = planMap.star_monthly_wealth_allowance;
+            resetsAt = planMap.star_monthly_resets_at;
+          }
           if (typeof allowance === 'number' && used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) {
             return true;
           }
