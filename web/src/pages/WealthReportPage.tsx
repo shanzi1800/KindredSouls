@@ -84,6 +84,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     let token: string | undefined;
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[WealthReport] getSession:', !!session?.access_token, 'forceRecheck:', forceRecheck, 'pendingPlan:', pendingPlan);
       token = session?.access_token;
       if (token) {
         setCurrentToken(token);
@@ -97,6 +98,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         for (let i = 0; i < 10; i++) {
           await new Promise(r => setTimeout(r, 500));
           const { data: { session: s2 } } = await supabase.auth.getSession();
+          console.log('[WealthReport] poll', i, 'session:', !!s2?.access_token);
           if (s2?.access_token) {
             token = s2.access_token;
             setCurrentToken(token);
@@ -104,6 +106,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             break;
           }
         }
+        console.log('[WealthReport] poll done, token:', !!token);
         if (!token) {
           setIsUnlocked(false);
           setShowPaywall(true);
