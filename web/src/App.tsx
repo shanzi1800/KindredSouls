@@ -343,13 +343,14 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, paidPlans, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   baziMeta?: string[]; zodiacMeta?: string[]; ichingMeta?: string[];
   luckyAspects?: string[]; challengingAspects?: string[];
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+  paidPlans?: Record<string, any>;
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
   onLogout?: () => void;
@@ -1226,6 +1227,7 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         luckyAspects={luckyAspects}
         challengingAspects={challengingAspects}
         lang={lang}
+        paidPlans={paidPlans}
         pendingInsightTrigger={pendingInsightTrigger}
         onLogout={onLogout}
       />
