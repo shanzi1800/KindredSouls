@@ -5,6 +5,32 @@ import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import { supabase } from '../lib/supabase';
 
+// ── Loading Spinner ──
+const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
+  <div style={{
+    position: 'fixed',
+    inset: 0,
+    background: '#080810',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  }}>
+    <div style={{
+      width: 36,
+      height: 36,
+      border: '3px solid rgba(212,175,55,0.15)',
+      borderTop: '3px solid #D4AF37',
+      borderRadius: '50%',
+      animation: 'ks-spin 0.7s linear infinite',
+      marginBottom: 16,
+    }} />
+    <p style={{ color: '#8B8778', fontSize: 14 }}>{message}</p>
+    <style>{`@keyframes ks-spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
 // ── Types ──
 interface WealthOracleResponse {
   success: boolean;
@@ -34,6 +60,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const loadingRef = useRef(false); // 防止重复请求
 
@@ -74,6 +101,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     } else {
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
     }
+
+    // 安全网：10秒后强制关掉 loading（防止 handlePurchase 失败导致无限 loading）
+    setTimeout(() => setAuthChecking(false), 10000);
   }, []);
 
   const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
@@ -98,11 +128,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         // ✅ Token 拿到了，现在安全清理 URL（不清 hash，让 SDK 自己消费）
         const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
         window.history.replaceState({}, '', cleanUrl);
-        await checkPaidStatus(token);
-        // 🎯 有 pendingPlan → 自动触发 checkout
+
+        // 🎯 有 pendingPlan → 跳过 checkPaidStatus，直接去 Stripe
+        // 此时 authChecking 保持 true，显示 loading 不闪付费墙
         if (pendingPlan) {
-          setTimeout(() => handlePurchase(pendingPlan as any, token), 100);
+          handlePurchase(pendingPlan as any, token);
+          return;
         }
+
+        await checkPaidStatus(token);
       } else if (forceRecheck) {
         // Fallback: poll session (shouldn't reach here if hash has token)
         for (let i = 0; i < 10; i++) {
@@ -129,6 +163,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setIsUnlocked(false);
       setShowPaywall(true);
     }
+
+    setAuthChecking(false);
 
     // Always load data (preview is free)
     await loadWealthData(birth, lang, token);
@@ -335,6 +371,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
       if (error) {
         setError('Login failed. Please try again.');
+        setAuthChecking(false);
       }
       return;
     }
@@ -361,10 +398,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }
       } else {
         setError(data.detail || data.error || 'Checkout failed');
+        setAuthChecking(false);
       }
     } catch (err) {
       console.error('[WealthReport] Purchase error:', err);
       setError('Network error. Please check your connection.');
+      setAuthChecking(false);
     }
   };
 
@@ -501,7 +540,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     : { label: '', value: '--', subValue: '' };
 
   return (
-    <div style={{
+    <>
+      {authChecking && <LoadingOverlay message={currentLang === 'zh' ? '正在验证...' : 'Verifying...'} />}
+
+      <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #080810 0%, #0D0D1A 100%)',
       padding: '56px 16px 60px',
@@ -562,7 +604,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         />
 
         {/* Paywall or Insight */}
-        {!isUnlocked && showPaywall && (
+        {authChecking ? null : (!isUnlocked && showPaywall && (
           <WealthPaywall
             lang={currentLang}
             onPurchase={handlePurchase}
@@ -601,6 +643,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
