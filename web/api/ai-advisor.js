@@ -385,6 +385,36 @@ const LANGUAGE_CONFIGS = {
 
 // 6. API 调用封装（Gemini 优先，DeepSeek Fallback）
 async function callAI(systemPrompt, userPrompt, env) {
+  const dsKey = process.env.DEEPSEEK_API_KEY;
+  if (dsKey) {
+    try {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${dsKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.35,
+          max_tokens: 1500
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content?.trim() || '';
+      }
+      const errText = await res.text();
+      console.error('DeepSeek failed, trying Gemini:', errText);
+    } catch (e) {
+      console.error('DeepSeek threw, trying Gemini:', e.message);
+    }
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
@@ -404,37 +434,14 @@ async function callAI(systemPrompt, userPrompt, env) {
         if (text) return text.trim();
       }
     } catch (e) {
-      console.error('Gemini failed, falling back to DeepSeek:', e.message);
+      console.error('Gemini fallback also failed:', e.message);
     }
   }
 
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (deepseekKey) {
-    const res = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${deepseekKey}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.35,
-        max_tokens: 1500
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content?.trim() || '';
-    }
-    const errText = await res.text();
-    throw new Error(`DeepSeek error: ${errText}`);
+  if (dsKey) {
+    throw new Error('Both DeepSeek and Gemini failed');
   }
-
-  throw new Error('No AI API key configured. Set GEMINI_API_KEY or DEEPSEEK_API_KEY.');
+  throw new Error('No AI API key configured. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.');
 }
 
 // 7. 核心路由

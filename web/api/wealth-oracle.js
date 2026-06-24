@@ -2508,6 +2508,34 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
+  const dsKey = env.DEEPSEEK_API_KEY;
+  if (dsKey) {
+    try {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${dsKey}` },
+        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 1200
+        })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        return d.choices?.[0]?.message?.content?.trim() || "";
+      }
+      const errText = await res.text();
+      // DeepSeek failed (likely balance) → fall through to Gemini
+      console.error("DeepSeek failed, trying Gemini:", errText);
+    } catch (e) {
+      console.error("DeepSeek threw, trying Gemini:", e.message);
+    }
+  }
   const geminiKey = env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
@@ -2528,33 +2556,13 @@ async function callAI(systemPrompt, userPrompt, env) {
         if (text) return text.trim();
       }
     } catch (e) {
-      console.error("Gemini failed, trying DeepSeek:", e.message);
+      console.error("Gemini fallback also failed:", e.message);
     }
   }
-  const dsKey = env.DEEPSEEK_API_KEY;
   if (dsKey) {
-    const res = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${dsKey}` },
-      signal: AbortSignal.timeout(8000),
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1200
-      })
-    });
-    if (res.ok) {
-      const d = await res.json();
-      return d.choices?.[0]?.message?.content?.trim() || "";
-    }
-    const errText = await res.text();
-    throw new Error(`DeepSeek error: ${errText}`);
+    throw new Error("Both DeepSeek and Gemini failed");
   }
-  throw new Error("No AI API key. Set GEMINI_API_KEY or DEEPSEEK_API_KEY.");
+  throw new Error("No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.");
 }
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
