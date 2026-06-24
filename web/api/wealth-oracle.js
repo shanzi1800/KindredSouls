@@ -2860,24 +2860,45 @@ async function handler(req, res) {
       }
     }
 
-    // ── 无感写入：把用户输入的生日永久绑定到 user_profiles ──
+    // ── 主星盘死锁逻辑（军师终局裁决）──
+    // 1. 首次测算：写入 birth_date 作为【宿命主星盘】
+    // 2. 他人客盘：放行生成，但绝对不刷库！
     if (currentUserId && birthDate) {
       const supabaseUrl = process.env.SUPABASE_URL;
       const serviceKey = process.env.SUPABASE_SERVICE_KEY;
       try {
-        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({ birth_date: birthDate }),
-        });
-        console.log('[Wealth Oracle] Birth date saved to user_profiles:', birthDate);
+        // 查询当前用户的主星盘生日
+        const profileRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}&select=birth_date&limit=1`,
+          {
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+          }
+        );
+        const profileData = await profileRes.json();
+        const existingBirthDate = profileData?.[0]?.birth_date;
+
+        if (!existingBirthDate) {
+          // 首次落锁：写入主星盘生日
+          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({ birth_date: birthDate }),
+          });
+          console.log('[Wealth Oracle] 🔒 Master Chart locked:', birthDate);
+        } else if (existingBirthDate !== birthDate) {
+          // 他人客盘测算：保护主星盘，不刷库
+          console.log('[Wealth Oracle] 🌟 Guest calculation detected. Protecting Master Chart birth_date:', existingBirthDate);
+        }
       } catch (saveErr) {
-        console.error('[Wealth Oracle] Failed to save birth_date:', saveErr.message);
+        console.error('[Wealth Oracle] Failed to check/save birth_date:', saveErr.message);
       }
     }
 

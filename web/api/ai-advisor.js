@@ -224,7 +224,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
@@ -261,8 +261,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **ทางออก:** ใช้อี้จิง ${ichingScore} กับไพ่${cardName}(${statusText}) [2 ประโยค โดยอิงจากแก่นไพ่"${coreKeyword}" เน้นคำแนะนำเฉพาะ ${timeText}${luckyText ? `. บังคับเน้นด้านเกื้อหนุน: ${luckyText}` : ''}${challengeText ? `. บังคับแก้ไขด้านที่ต้องระวัง: ${challengeText}` : ''}. ห้ามมีพิธีกรรมทางไสยศาสตร์]`,
         ``,
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจสำหรับ ${timeText}] 🌿 ✨ 🔮`,
-      ].filter(Boolean).join('
-');
+      ].filter(Boolean).join('\n');
     }
 
   },
@@ -293,7 +292,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
       ].join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
@@ -319,8 +318,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **破局建议:** 易经${ichingScore}与塔罗${cardName}(${statusText}) [写2句话，围绕"${coreKeyword}"给出${timeText}内的具体相处建议，严禁迷信仪式]`,
         ``,
         `🌿 **灵性指引:** [1句话为${timeText}收尾祝福] 🌿 ✨ 🔮`,
-      ].join('
-');
+      ].join('\n');
     }
 
   },
@@ -362,7 +360,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
@@ -393,8 +391,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **Đề xuất thực tế:** Kinh Dịch ${ichingScore} và Tarot ${cardName}(${statusText}) [2 câu, dựa trên lõi "${coreKeyword}", tập trung vào ${timeText}${luckyText ? `. Thuận lợi: ${luckyText}` : ''}${challengeText ? `. Giải quyết: ${challengeText}` : ''}]`,
         ``,
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc cho ${timeText}] 🌿 ✨ 🔮`,
-      ].filter(Boolean).join('
-');
+      ].filter(Boolean).join('\n');
     }
 
   },
@@ -425,7 +422,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
       ].join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
@@ -456,8 +453,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **Path Forward:** IChing ${ichingScore} and Tarot ${cardName}(${statusText}) [2 sentences based on "${coreKeyword}", specific to ${timeText}${luckyText ? `. Lean into: ${luckyText}` : ''}${challengeText ? `. Address: ${challengeText}` : ''}. No superstitious rituals.]`,
         ``,
         `🌿 **Spiritual Guidance:** [1 closing blessing for ${timeText}] 🌿 ✨ 🔮`,
-      ].join('
-');
+      ].join('\n');
     }
 
   },
@@ -488,7 +484,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
       ].join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
@@ -519,8 +515,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **Camino adelante:** IChing ${ichingScore} y Tarot ${cardName}(${statusText}) [2 oraciones basadas en "${coreKeyword}", específicas para ${timeText}${luckyText ? `. Favorecer: ${luckyText}` : ''}${challengeText ? `. Atender: ${challengeText}` : ''}. Sin rituales supersticiosos.]`,
         ``,
         `🌿 **Guía espiritual:** [1 bendición final para ${timeText}] 🌿 ✨ 🔮`,
-      ].join('
-');
+      ].join('\n');
     }
 
   },
@@ -551,7 +546,7 @@ const LANGUAGE_CONFIGS = {
         ``,
         `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
       ].join('\n');
-    }
+    },
     buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
@@ -582,8 +577,7 @@ const LANGUAGE_CONFIGS = {
         `💡 **Voie à suivre:** YiJing ${ichingScore} et Tarot ${cardName}(${statusText}) [2 phrases basées sur "${coreKeyword}", spécifiques pour ${timeText}${luckyText ? `. Miser sur: ${luckyText}` : ''}${challengeText ? `. Résoudre: ${challengeText}` : ''}. Pas de rituels superstitieux.]`,
         ``,
         `🌿 **Guidance spirituelle:** [1 bénédiction finale pour ${timeText}] 🌿 ✨ 🔮`,
-      ].join('
-');
+      ].join('\n');
     }
 
   }
@@ -759,8 +753,8 @@ export default async function handler(req, res) {
     // ── Global rate limit: max 10 calls per user per day (军师裁决三) ──
     const dailyCallCount = paidPlans.daily_ai_call_count || 0;
     const dailyCallResetAt = paidPlans.daily_ai_call_resets_at;
-    const now = new Date();
-    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const nowTime = new Date();
+    const todayUTC = new Date(Date.UTC(nowTime.getUTCFullYear(), nowTime.getUTCMonth(), nowTime.getUTCDate(), 0, 0, 0, 0));
     const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
     
     if (isSameDay && dailyCallCount >= 10) {
@@ -1026,24 +1020,45 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 无感写入：把用户生日永久绑定到 user_profiles（合婚模块使用 d1 作为主要生日）──
+    // ── 主星盘死锁逻辑（合婚模块使用 d1 作为主要生日）──
+    // 1. 首次测算：写入 birth_date 作为【宿命主星盘】
+    // 2. 他人客盘：放行生成，但绝对不刷库！
     if (currentUserId && body.d1) {
       const supabaseUrl = process.env.SUPABASE_URL;
       const serviceKey = process.env.SUPABASE_SERVICE_KEY;
       try {
-        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': serviceKey,
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({ birth_date: body.d1 }),
-        });
-        console.log('[ai-advisor] Birth date saved to user_profiles:', body.d1);
+        // 查询当前用户的主星盘生日
+        const profileRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}&select=birth_date&limit=1`,
+          {
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+          }
+        );
+        const profileData = await profileRes.json();
+        const existingBirthDate = profileData?.[0]?.birth_date;
+
+        if (!existingBirthDate) {
+          // 首次落锁：写入主星盘生日
+          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({ birth_date: body.d1 }),
+          });
+          console.log('[ai-advisor] 🔒 Master Chart locked:', body.d1);
+        } else if (existingBirthDate !== body.d1) {
+          // 他人客盘测算：保护主星盘，不刷库
+          console.log('[ai-advisor] 🌟 Guest calculation detected. Protecting Master Chart birth_date:', existingBirthDate);
+        }
       } catch (saveErr) {
-        console.error('[ai-advisor] Failed to save birth_date:', saveErr.message);
+        console.error('[ai-advisor] Failed to check/save birth_date:', saveErr.message);
       }
     }
 
