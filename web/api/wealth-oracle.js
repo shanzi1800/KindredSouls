@@ -2579,7 +2579,7 @@ async function handler(req, res) {
       for await (const chunk of req) chunks.push(chunk);
       body = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
     }
-    const { birthDate, lang = "zh", referrer = "standalone" } = body;
+    const { birthDate, lang = "zh", referrer = "standalone", reportType } = body;
     if (!birthDate) {
       return res.status(400).json({ error: "Missing birthDate (format: YYYY-MM-DD)" });
     }
@@ -2676,6 +2676,64 @@ async function handler(req, res) {
       });
     }
 
+    // ── Report generation quota check (年卡至尊权益落地) ──
+    if (reportType === 'monthly' && currentUserId) {
+      const lastMonthlyGen = paidPlans.monthly_wealth_report_generated_at;
+      if (lastMonthlyGen) {
+        const lastGenDate = new Date(lastMonthlyGen);
+        const nowDate = new Date();
+        const sameMonth = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear() &&
+                         lastGenDate.getUTCMonth() === nowDate.getUTCMonth();
+        if (sameMonth) {
+          return res.status(403).json({
+            error: 'Monthly wealth report already generated this month',
+            code: 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED',
+            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth() + 1, 1)).toISOString()
+          });
+        }
+      }
+    }
+
+    if (reportType === 'yearly' && currentUserId) {
+      const lastYearlyGen = paidPlans.yearly_wealth_report_generated_at;
+      if (lastYearlyGen) {
+        const lastGenDate = new Date(lastYearlyGen);
+        const nowDate = new Date();
+        const sameYear = lastGenDate.getUTCFullYear() === nowDate.getUTCFullYear();
+        if (sameYear) {
+          return res.status(403).json({
+            error: 'Yearly wealth report already generated this year',
+            code: 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED',
+            nextAvailable: new Date(Date.UTC(nowDate.getUTCFullYear() + 1, 0, 1)).toISOString()
+          });
+        }
+      }
+    }
+
+    // ── Global rate limit: max 10 calls per user per day ──
+    const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
+    const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
+
+    if (isSameDay && dailyCallCount >= 10) {
+      return res.status(429).json({
+        error: 'Daily wealth AI call limit exceeded',
+        code: 'DAILY_WEALTH_RATE_LIMIT_EXCEEDED',
+        limit: 10,
+        resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
+      });
+    }
+
+    // Update daily call counter
+    const updatedDailyPlans = {
+      ...paidPlans,
+      daily_wealth_call_count: isSameDay ? (dailyCallCount + 1) : 1,
+      daily_wealth_call_resets_at: todayUTC.toISOString(),
+    };
+    paidPlans = updatedDailyPlans;
+
     const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
     const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
 
@@ -2688,6 +2746,7 @@ async function handler(req, res) {
         .select('insight, call_count, prompt_version')
         .eq('birth_date', birthDate)
         .eq('lang', normalizedLang)
+        .eq('report_type', reportType || null)
         .gte('created_at', new Date(Date.now() - cacheTTL).toISOString())
         .single();
       // Use cache if prompt_version matches current version
@@ -2735,13 +2794,14 @@ async function handler(req, res) {
           .select('call_count')
           .eq('birth_date', birthDate)
           .eq('lang', normalizedLang)
+          .eq('report_type', reportType || null)
           .single();
         const newCount = (existing?.call_count || 0) + 1;
         await supabase
           .from('wealth_insights_cache')
           .upsert(
-            { birth_date: birthDate, lang: normalizedLang, insight, model: 'deepseek-v3', call_count: newCount, prompt_version: PROMPT_VERSION },
-            { onConflict: 'birth_date,lang' }
+            { birth_date: birthDate, lang: normalizedLang, report_type: reportType || null, insight, model: 'deepseek-v3', call_count: newCount, prompt_version: PROMPT_VERSION },
+            { onConflict: 'birth_date,lang,report_type' }
           );
         console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
       }
@@ -2752,6 +2812,29 @@ async function handler(req, res) {
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
     const crossLink = referrer === "compatibility" ? '<p>\u{1F4A1} \u4F60\u7684\u8D22\u5BCC\u8FD0\u52BF\u548C\u611F\u60C5\u80FD\u91CF\u573A\u662F\u8054\u52A8\u7684\u2014\u2014\u5F53\u611F\u60C5\u72B6\u6001\u7A33\u5B9A\u65F6\uFF0C\u5438\u91D1\u80FD\u529B\u81EA\u7136\u63D0\u5347\u3002\u5982\u679C\u4F60\u6709\u4F34\u4FA3\uFF0C\u5EFA\u8BAE\u5BF9\u6BD4\u4F60\u4EEC\u7684\u5408\u76D8\uFF0C\u770B\u770BTA\u7684\u516B\u5B57\u662F\u5426\u6B63\u5728\u5E2E\u4F60\u8865\u8D22\u661F\u7F3A\u53E3\u3002<a href="/">\u2192 \u56DE\u5408\u5A5A\u62A5\u544A</a></p>' : "";
     const finalOutput = cleanInsight + crossLink;
+    // ── Update report generation timestamp (if reportType specified) ──
+    if (reportType && currentUserId) {
+      const timestampField = reportType === 'monthly' ? 'monthly_wealth_report_generated_at' : 'yearly_wealth_report_generated_at';
+      const updatedPlans = {
+        ...paidPlans,
+        [timestampField]: new Date().toISOString(),
+      };
+      try {
+        await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': process.env.SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ paid_plans: updatedPlans }),
+        });
+      } catch (updateErr) {
+        console.error('[Wealth Oracle] Failed to update report timestamp:', updateErr.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       birthDate,
