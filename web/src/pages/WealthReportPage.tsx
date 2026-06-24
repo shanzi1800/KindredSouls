@@ -103,7 +103,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             break;
           }
         }
-        } else {
+        if (!token) {
           setIsUnlocked(false);
           setShowPaywall(true);
         }
