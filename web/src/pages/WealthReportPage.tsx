@@ -72,8 +72,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const cleanUrl = window.location.pathname.split('?')[0];
       window.history.replaceState({}, '', cleanUrl + '?birth=' + birth + '&lang=' + (langParam || i18n.language || 'en'));
 
-      // 检查 session 并自动触发 checkout
-      checkAuthAndLoad(birth, langParam || i18n.language || 'en', false, intentPlan);
+      // 检查 session 并自动触发 checkout（等待 Supabase SDK 处理 OAuth hash）
+      checkAuthAndLoad(birth, langParam || i18n.language || 'en', true, intentPlan);
     } else {
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
     }
@@ -92,13 +92,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           setTimeout(() => handlePurchase(pendingPlan as any, token), 100);
         }
       } else if (forceRecheck) {
-        // Payment just succeeded but session not ready yet — wait briefly
-        await new Promise(r => setTimeout(r, 2000));
-        const { data: { session: s2 } } = await supabase.auth.getSession();
-        if (s2?.access_token) {
-          token = s2.access_token;
-          setCurrentToken(token);
-          await checkPaidStatus(token);
+        // OAuth return or payment callback — session may not be ready yet, poll up to 5s
+        for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const { data: { session: s2 } } = await supabase.auth.getSession();
+          if (s2?.access_token) {
+            token = s2.access_token;
+            setCurrentToken(token);
+            await checkPaidStatus(token);
+            break;
+          }
+        }
         } else {
           setIsUnlocked(false);
           setShowPaywall(true);
