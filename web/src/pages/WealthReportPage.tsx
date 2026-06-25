@@ -16,7 +16,7 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
-  }}>
+  }>
     <div style={{
       width: 36,
       height: 36,
@@ -26,7 +26,7 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
       animation: 'ks-spin 0.7s linear infinite',
       marginBottom: 16,
     }} />
-    <p style={{ color: '#8B8778', fontSize: 14 }}>{message}</p>
+    <p style={{ color: '#8B8778', fontSize: 14 }>{message}</p>
     <style>{`@keyframes ks-spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
@@ -62,6 +62,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [paidPlans, setPaidPlans] = useState<any>(null); // 用户付费计划
+  const [wealthReportText, setWealthReportText] = useState<string>(\);
+  const [reportLoading, setReportLoading] = useState<string>(\); // wealth_monthly | wealth_yearly | \
   const loadingRef = useRef(false); // 防止重复请求
 
   // Read URL parameters on mount
@@ -248,6 +251,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         return false;
       })();
+
+      setPaidPlans(rawPlans);
 
       if (isWealthPaid) {
         setIsUnlocked(true);
@@ -436,6 +441,46 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
+  const generateWealthReport = async (type: 'monthly' | 'yearly') => {
+    if (!currentToken) return;
+    setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
+    setWealthReportText('');
+    try {
+      const res = await fetch('/api/wealth-oracle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({
+          birthDate,
+          lang,
+          referrer: 'standalone',
+          reportType: type,
+          includeInsight: false,
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 402) {
+          // 没有权限 → 触发购买
+          await handlePurchase(
+            type === 'monthly' ? 'wealth_monthly_report' : 'wealth_yearly_report',
+            currentToken
+          );
+          return;
+        }
+        throw new Error('API error: ' + res.status);
+      }
+      const data = await res.json();
+      setWealthReportText(data.report || data.insight || '');
+    } catch (err) {
+      console.error('[WealthReport] generateWealthReport error:', err);
+      setWealthReportText(currentLang === 'zh' ? '生成报告失败，请重试。' : 'Failed to generate report.');
+    } finally {
+      setReportLoading('');
+    }
+  };
+
   const currentLang = (lang || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
 
   // Loading state
@@ -449,7 +494,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-      }}>
+      }>
         <div style={{
           width: '48px',
           height: '48px',
@@ -459,7 +504,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           animation: 'spin 1s linear infinite',
           marginBottom: '16px',
         }} />
-        <p style={{ color: '#D4AF37', fontSize: '14px' }}>
+        <p style={{ color: '#D4AF37', fontSize: '14px' }>
           {currentLang === 'zh' ? '正在召唤财富密码……' : 'Summoning wealth code...'}
         </p>
       </div>
@@ -477,8 +522,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-      }}>
-        <p style={{ color: '#E05C5C', fontSize: '14px', marginBottom: '16px' }}>{error}</p>
+      }>
+        <p style={{ color: '#E05C5C', fontSize: '14px', marginBottom: '16px' }>{error}</p>
         <button
           onClick={() => loadWealthData(birthDate, lang, currentToken || undefined)}
           style={{
@@ -544,7 +589,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       background: 'linear-gradient(180deg, #080810 0%, #0D0D1A 100%)',
       padding: '56px 16px 60px',
       position: 'relative',
-    }}>
+    }>
       {/* Background stars */}
       <div style={{
         position: 'fixed',
@@ -558,9 +603,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         zIndex: 0,
       }} />
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto' }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto' }>
         {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '24px' }>
           <button
             onClick={() => onNavigate('/wealth')}
             style={{
@@ -582,10 +627,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             fontWeight: 800,
             color: '#D4AF37',
             marginBottom: '4px',
-          }}>
+          }>
             {currentLang === 'zh' ? '财富解码报告' : 'Wealth Oracle Report'}
           </h1>
-          <p style={{ fontSize: '12px', color: '#8B8778' }}>
+          <p style={{ fontSize: '12px', color: '#8B8778' }>
             {currentLang === 'zh' ? '出生日期: ' : 'Birth Date: '}{birthDate}
           </p>
         </div>
@@ -613,6 +658,49 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           />
         )}
 
+        {/* 📊 财富年鉴区块（洞察解锁后始终显示） */}
+        {isUnlocked && reportData && (
+          <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
+            <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
+              📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(212,175,55,0.6)', marginBottom: '8px' }}>
+              {currentLang === 'zh' ? '基于您的先天财富格局，推演未来运势曲线' : currentLang === 'en' ? 'Based on your innate wealth blueprint, project future fortune trends.' : currentLang === 'es' ? 'Basado en tu plan de riqueza innato, proyecta tendencias futuras.' : currentLang === 'fr' ? 'Basé sur votre plan de richesse inné, projete des tendences futures.' : currentLang === 'th' ? 'อิงจากแผนความมั่งคั่งตามธรรมชํติ ทํายนนโนมไลน์ความมั่งคั่งในอนาคต' : 'Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai.'}
+            </div>
+            {/* 年卡/VIP → 免费生成 */}
+            {paidPlans?.all_pass_yearly === true ? (<>
+              <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                {reportLoading === 'wealth_monthly' ? '⏳...' : (currentLang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
+              </button>
+              <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                {reportLoading === 'wealth_yearly' ? '⏳...' : (currentLang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
+              </button>
+              <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
+            </>) : (
+              /* 非VIP → 加购按钮触发 Stripe Checkout */
+              <>
+                <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  📅 {currentLang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
+                </button>
+                <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  📆 {currentLang === 'zh' ? '解锁年度报告 $14.99' : 'Unlock Yearly $14.99'}
+                </button>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
+                  💡 {currentLang === 'zh' ? '升级 $99.99 全通年卡，年报告及全年月报永久免费' : '💡 Upgrade to $99.99 Annual for full access'}
+                </div>
+              </>
+            )}
+            {/* 报告结果展示 */}
+            {wealthReportText && (
+              <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
+                {wealthReportText.split('\n\n').map((para, i) => (
+                  <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {isUnlocked && !reportData?.insight && (
           <button
             onClick={handleTriggerInsight}
@@ -635,7 +723,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         {/* Error display */}
         {error && (
-          <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }}>{error}</p>
+          <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }>{error}</p>
         )}
       </div>
     </div>

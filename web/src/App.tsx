@@ -1083,8 +1083,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           >
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
-          {/* 报告生成区 */}
-          {paidPlansLocal && (paidPlansLocal.compatibility_monthly_report || paidPlansLocal.compatibility_yearly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
+          {/* 🎂 宇宙生日年鉴（AI 洞察解锁后始终显示） */}
+          {insight && paidPlansLocal && (
             <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
               <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
@@ -1092,33 +1092,28 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
               <div style={{ fontSize: '11px', color: 'rgba(212,175,55,0.6)', marginBottom: '8px' }}>
                 {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
               </div>
-              {(paidPlansLocal.compatibility_monthly_report || paidPlansLocal.all_pass_yearly || paidPlansLocal.star_monthly_vip) && (
-                <button
-                  onClick={() => generateReport('monthly')}
-                  disabled={!!reportLoading}
-                  style={{
-                    marginRight: '8px', marginBottom: '6px',
-                    padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)',
-                    background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)',
-                    color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {reportLoading === 'monthly' ? '⏳...' : (lang === 'zh' ? '📅 生成月报' : '📅 Monthly Report')}
+              {/* 年卡/VIP → 免费生成 */}
+              {paidPlansLocal.all_pass_yearly === true ? (<>
+                <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成月报' : '📅 Monthly Report')}
                 </button>
-              )}
-              {(paidPlansLocal.compatibility_yearly_report || paidPlansLocal.all_pass_yearly) && (
-                <button
-                  onClick={() => generateReport('yearly')}
-                  disabled={!!reportLoading}
-                  style={{
-                    marginBottom: '6px',
-                    padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)',
-                    background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)',
-                    color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {reportLoading === 'yearly' ? '⏳...' : (lang === 'zh' ? '📆 生成年报' : '📆 Yearly Report')}
+                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成年报' : '📆 Yearly Report')}
                 </button>
+                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
+              </>) : (
+                /* 非VIP → 加购按钮触发 Stripe Checkout */
+                <>
+                  <button onClick={() => handlePurchase('compatibility_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    📅 {lang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
+                  </button>
+                  <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    📆 {lang === 'zh' ? '解锁年度报告 $14.99' : 'Unlock Yearly $14.99'}
+                  </button>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
+                    💡 {lang === 'zh' ? '升级 $99.99 全通年卡，12 个月月报及年报告永久免费' : '💡 Upgrade to $99.99 Annual for full access'}
+                  </div>
+                </>
               )}
               {reportText && (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
