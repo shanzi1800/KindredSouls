@@ -6,8 +6,8 @@ const PRICES = {
   wealth_once:                  499,  // $4.99  one-time wealth reading
   compatibility_monthly_report:  299, // $2.99  relationship monthly report
   wealth_monthly_report:        299,  // $2.99  wealth monthly report
-  compatibility_yearly_report:  1499, // $14.99 yearly relationship forecast
-  wealth_yearly_report:        1499,  // $14.99 yearly wealth forecast
+  compatibility_yearly_report:  2999, // $29.99 yearly relationship forecast
+  wealth_yearly_report:        2999,  // $29.99 yearly wealth forecast
   star_monthly_vip:             999,  // $9.99/month  star monthly vip (5x wealth + 1x compatibility)
   all_pass_yearly:            9999,   // $99.99/year  all-pass yearly
 };

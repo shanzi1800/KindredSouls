@@ -683,7 +683,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   📅 {currentLang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
                 </button>
                 <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  📆 {currentLang === 'zh' ? '解锁年度报告 $14.99' : 'Unlock Yearly $14.99'}
+                  📆 {currentLang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
                 </button>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
                   💡 {currentLang === 'zh' ? '升级 $99.99 全通年卡，年报告及全年月报永久免费' : '💡 Upgrade to $99.99 Annual for full access'}
