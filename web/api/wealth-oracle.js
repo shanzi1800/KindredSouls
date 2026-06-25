@@ -2511,34 +2511,30 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
-  // 战时兜底：如果环境变量读不到，直接用硬编码 Key (deployed: 2026-06-25-0953)
-  const dsKey = env.DEEPSEEK_API_KEY || "sk-9307f02599b44612b6767996a7839ab5";
-  if (dsKey) {
-    try {
-      const res = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${dsKey}` },
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 1200
-        })
-      });
-      if (res.ok) {
-        const d = await res.json();
-        return d.choices?.[0]?.message?.content?.trim() || "";
-      }
-      const errText = await res.text();
-      // DeepSeek failed (likely balance) → fall through to Gemini
-      console.error("DeepSeek failed, trying Gemini:", errText);
-    } catch (e) {
-      console.error("DeepSeek threw, trying Gemini:", e.message);
+  // 🎯 走 Cloudflare Worker 代理（绕开 Vercel 出站网络问题）
+  const workerUrl = "https://rough-bush-3e49.shanzi1800.workers.dev";
+  try {
+    const res = await fetch(workerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1200
+      })
+    });
+    if (res.ok) {
+      const d = await res.json();
+      return d.choices?.[0]?.message?.content?.trim() || "";
     }
+    const errText = await res.text();
+    console.error("[callAI] Cloudflare Worker failed, trying Gemini directly:", errText);
+  } catch (e) {
+    console.error("[callAI] Cloudflare Worker threw, trying Gemini directly:", e.message);
   }
   const geminiKey = env.GEMINI_API_KEY;
   if (geminiKey) {
@@ -2569,9 +2565,6 @@ async function callAI(systemPrompt, userPrompt, env) {
   throw new Error("No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.");
 }
 async function handler(req, res) {
-  console.log('[wealth-oracle] DEEPSEEK_API_KEY exists:', !!process.env.DEEPSEEK_API_KEY, 'length:', process.env.DEEPSEEK_API_KEY?.length);
-  console.log('[wealth-oracle] GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY, 'length:', process.env.GEMINI_API_KEY?.length);
-
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");

@@ -583,36 +583,32 @@ const LANGUAGE_CONFIGS = {
   }
 };
 
-// 6. API 调用封装（Gemini 优先，DeepSeek Fallback）
+// 6. API 调用封装（Cloudflare Worker 代理 DeepSeek → Gemini Fallback）
 async function callAI(systemPrompt, userPrompt, env) {
-  const dsKey = process.env.DEEPSEEK_API_KEY;
-  if (dsKey) {
-    try {
-      const res = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${dsKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.35,
-          max_tokens: 1500
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content?.trim() || '';
-      }
-      const errText = await res.text();
-      console.error('DeepSeek failed, trying Gemini:', errText);
-    } catch (e) {
-      console.error('DeepSeek threw, trying Gemini:', e.message);
+  // 🎯 走 Cloudflare Worker 代理（绕开 Vercel 出站网络问题）
+  const workerUrl = 'https://rough-bush-3e49.shanzi1800.workers.dev';
+  try {
+    const res = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.35,
+        max_tokens: 1500
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content?.trim() || '';
     }
+    const errText = await res.text();
+    console.error('[callAI] Cloudflare Worker failed, trying Gemini directly:', errText);
+  } catch (e) {
+    console.error('[callAI] Cloudflare Worker threw, trying Gemini directly:', e.message);
   }
 
   const geminiKey = process.env.GEMINI_API_KEY;
