@@ -20,14 +20,11 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7);
 
-  // 🚧 临时禁用 token 验证（调试用）
   // 🔍 调试：打印环境变量（前10字符）
-  // console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL?.substring(0, 30));
-  // console.log('[save-result] SERVICE_KEY prefix:', process.env.SUPABASE_SERVICE_KEY?.substring(0, 10));
-  
-  let user = { id: 'debug-user-123' }; // 硬编码 user ID（调试用）
-  console.log('[save-result] 🚧 Token verification DISABLED, using debug user:', user.id);
-  // let user;
+  console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL?.substring(0, 30));
+  console.log('[save-result] SERVICE_KEY prefix:', process.env.SUPABASE_SERVICE_KEY?.substring(0, 10));
+
+  let user;
   try {
     // ✅ 正确方法：用 Supabase Admin API 验证 JWT
     const supabaseAdmin = createClient(
