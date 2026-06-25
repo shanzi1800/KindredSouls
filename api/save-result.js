@@ -32,14 +32,19 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_KEY
     );
 
-    // 方法1：尝试用 getUser() 验证 token（需要传 token）
+    // 方法：用 getUser() 验证 token
     const { data: { user: u }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
     
-    if (verifyError || !u) {
-      console.error('[save-result] Token verification failed:', verifyError?.message, verifyError);
-      // 额外调试：检查 token 前20个字符
-      console.error('[save-result] Token prefix:', token?.substring(0, 20));
-      return res.status(401).json({ error: 'Invalid token', detail: verifyError?.message });
+    if (verifyError) {
+      console.error('[save-result] Token verification failed:', verifyError.message, verifyError);
+      // 详细打印错误对象
+      console.error('[save-result] Full error object:', JSON.stringify(verifyError, null, 2));
+      return res.status(401).json({ error: 'Invalid token', detail: verifyError.message });
+    }
+    
+    if (!u) {
+      console.error('[save-result] No user returned from getUser');
+      return res.status(401).json({ error: 'Invalid token - no user' });
     }
     
     user = u;
