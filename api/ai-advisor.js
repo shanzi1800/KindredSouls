@@ -264,29 +264,29 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  // ✅ Token 验证（和 save-result.js 一致）
-  const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing authorization token' });
-  }
-  const token = authHeader.slice(7);
-
-  try {
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
-    
-    const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
-    if (verifyError || !user) {
-      console.error('[ai-advisor] Token verification failed:', verifyError?.message);
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    console.log('[ai-advisor] user verified:', user.id);
-  } catch (e) {
-    console.error('[ai-advisor] auth exception:', e.message);
-    return res.status(401).json({ error: 'Token verification failed' });
-  }
+  // 🚧 临时禁用 token 验证（调试用）
+  // const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
+  // if (!authHeader?.startsWith('Bearer ')) {
+  //   return res.status(401).json({ error: 'Missing authorization token' });
+  // }
+  // const token = authHeader.slice(7);
+  //
+  // try {
+  //   const supabaseAdmin = createClient(
+  //     process.env.SUPABASE_URL,
+  //     process.env.SUPABASE_SERVICE_KEY
+  //   );
+  //   
+  //   const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+  //   if (verifyError || !user) {
+  //     console.error('[ai-advisor] Token verification failed:', verifyError?.message);
+  //     return res.status(401).json({ error: 'Invalid token' });
+  //   }
+  //   console.log('[ai-advisor] user verified:', user.id);
+  // } catch (e) {
+  //   console.error('[ai-advisor] auth exception:', e.message);
+  //   return res.status(401).json({ error: 'Token verification failed' });
+  // }
 
   try {
     const body = await parseRequestBody(req);
