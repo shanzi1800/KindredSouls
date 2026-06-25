@@ -471,9 +471,9 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             setPaidStatus(null);
             setShowPaywall(false);
           } else if (isPaymentSuccess_) {
-            // 刚支付成功回来时跳过 checkPaidStatus，直接标记已付费
-            setPaidStatus(true);
-            setShowPaywall(false);
+            // 支付成功回来时，也要检查付费状态（获取 paid_plans）
+            sessionStorage.removeItem('ks_payment_success');
+            checkPaidStatus(session.access_token);
           } else {
             checkPaidStatus(session.access_token);
           }
