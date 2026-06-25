@@ -634,7 +634,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
               📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
             </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+            <div style={{ fontSize: '11px', color: 'rgb(255,255,255)', marginBottom: '8px' }}>
               {currentLang === 'zh' ? '基于您的先天财富格局，推演未来运势曲线' : currentLang === 'en' ? 'Based on your innate wealth blueprint, project future fortune trends.' : currentLang === 'es' ? 'Basado en tu plan de riqueza innato, proyecta tendencias futuras.' : currentLang === 'fr' ? 'Basé sur votre plan de richesse inné, projete des tendences futures.' : currentLang === 'th' ? 'อิงจากแผนความมั่งคั่งตามธรรมชํติ ทํายนนโนมไลน์ความมั่งคั่งในอนาคต' : 'Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai.'}
             </div>
             {paidPlans?.all_pass_yearly === true ? (
