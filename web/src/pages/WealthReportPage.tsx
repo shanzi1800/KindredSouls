@@ -16,7 +16,7 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
-  }>
+  }}>
     <div style={{
       width: 36,
       height: 36,
@@ -26,7 +26,7 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
       animation: 'ks-spin 0.7s linear infinite',
       marginBottom: 16,
     }} />
-    <p style={{ color: '#8B8778', fontSize: 14 }>{message}</p>
+    <p style={{ color: '#8B8778', fontSize: 14 }}>{message}</p>
     <style>{`@keyframes ks-spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
@@ -50,15 +50,14 @@ interface WealthReportPageProps {
   onNavigate: (path: string) => void;
 }
 
-
-// ── Upgrade hint text (6 languages) ──
-const UPGRADE_HINT: Record<string, string> = {
-  zh: `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。`,
-  en: `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.`,
-  es: `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.`,
-  fr: `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.`,
-  th: `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด`,
-  vi: `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`,
+// 🛡️ KindredSouls 战时黄金文案防弹装甲：6国语言至尊跃迁提示
+const UPGRADE_HINTS: Record<string, string> = {
+  zh: "您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。",
+  en: "Your supreme all-access channel is active. Having unlocked your basic chart, you now hold the cosmic privilege to upgrade directly to [$99.99/Year Ultimate VIP], fully revealing the next 12 months of your 'Solar Return Almanac' and all high-tier algorithms.",
+  fr: "Votre canal d'accès suprême est activé. Ayant débloqué votre thème de base, vous disposez du privilège cosmique de passer directement au [VIP Ultime à 99,99 $/an], révélant l'Almanach du Retour Solaire des 12 prochains mois.",
+  es: "Su canal supremo de acceso total está activo. Habiendo desbloqueado su carta básica, ahora tiene el privilegio cósmico de actualizar directamente a [VIP Definitivo de $99.99/año], revelando su Almanaque de Retorno Solar.",
+  th: "ช่องทางเข้าถึงระดับสูงสุดของคุณเปิดใช้งานแล้ว ข้อมูลพื้นฐานได้รับการปลดล็อกแล้ว ตอนนี้คุณได้รับสิทธิ์ในการอัปเกรดเป็น [$99.99/ปี Ultimate VIP] เพื่อเปิดเผย 'สมุดบันทึกโซลาร์รีเทิร์น' ในอีก 12 เดือนข้างหน้า",
+  vi: "Kênh truy cập tối cao của bạn đã được kích hoạt. Sau khi mở khóa lá số cơ bản, bạn có đặc quyền vũ trụ để nâng cấp trực tiếp lên [VIP Tối Thượng $99.99/Năm], tiết lộ 'Niên Giám Solar Return' cho 12 tháng tới.",
 };
 
 // ── Component ──
@@ -73,10 +72,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
-  const [paidPlans, setPaidPlans] = useState<any>(null); // 用户付费计划
+  const [paidPlans, setPaidPlans] = useState<any>(null);
   const [wealthReportText, setWealthReportText] = useState<string>('');
-  const [reportLoading, setReportLoading] = useState<string>(''); // wealth_monthly | wealth_yearly | ''
-  const loadingRef = useRef(false); // 防止重复请求
+  const [reportLoading, setReportLoading] = useState<string>('');
+  const loadingRef = useRef(false);
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -85,7 +84,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const langParam = params.get('lang');
 
     if (!birth) {
-      // Try session storage (payment return)
       birth = sessionStorage.getItem('wealth_birth') || '';
       if (!birth) {
         onNavigate('/wealth');
@@ -93,82 +91,68 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
     }
 
-    // Save birth to sessionStorage for payment return flow
     sessionStorage.setItem('wealth_birth', birth);
     sessionStorage.setItem('wealth_lang', langParam || i18n.language || 'en');
 
     setBirthDate(birth);
     setLang(langParam || i18n.language || 'en');
 
-    // If returning from successful payment, force re-check paid status
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment') === 'success';
-
-    // 🎯 检测 OAuth 返回后的 intent=checkout（用户已登录，需自动触发 Stripe）
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
     
     if (intentCheckout && intentPlan && !paymentSuccess) {
-      // ⚠️ 不要在这里 replaceState！Supabase SDK 还没消费 URL hash 中的 access_token
-      // 延迟到 checkAuthAndLoad 拿到 token 后再清理
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', true, intentPlan);
     } else {
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', paymentSuccess);
     }
 
-    // 安全网：10秒后强制关掉 loading（防止 handlePurchase 失败导致无限 loading）
     setTimeout(() => setAuthChecking(false), 10000);
   }, []);
 
   const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
     let token: string | undefined;
     try {
-      // 💡 OAuth 回来时 URL hash 里有 access_token，但 Supabase SDK 异步 exchange 需要时间
-      // 直接从 hash 解析 token，不走 getSession()
       const hash = window.location.hash;
       const hashTokenMatch = hash.match(/access_token=([^&]+)/);
       if (hashTokenMatch) {
         token = hashTokenMatch[1];
-              }
+      }
 
       if (!token) {
         const { data: { session } } = await supabase.auth.getSession();
         token = session?.access_token;
       } else {
+        // 有 token from hash，但不在这里清理 URL
       }
 
       if (token) {
         setCurrentToken(token);
-        // ✅ Token 拿到了，现在安全清理 URL（不清 hash，让 SDK 自己消费）
         const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
         window.history.replaceState({}, '', cleanUrl);
 
-        // 🎯 有 pendingPlan → 跳过 checkPaidStatus，直接去 Stripe
-        // 此时 authChecking 保持 true，显示 loading 不闪付费墙
-        // 如果 handlePurchase 成功会跳转到 Stripe（页面关掉），失败则继续走到 setAuthChecking(false)
         if (pendingPlan) {
           await handlePurchase(pendingPlan as any, token);
         } else {
           await checkPaidStatus();
         }
       } else if (forceRecheck) {
-        // Fallback: poll session (shouldn't reach here if hash has token)
         for (let i = 0; i < 10; i++) {
           await new Promise(r => setTimeout(r, 500));
           const { data: { session: s2 } } = await supabase.auth.getSession();
-                    if (s2?.access_token) {
+          if (s2?.access_token) {
             token = s2.access_token;
             setCurrentToken(token);
             await checkPaidStatus();
             break;
           }
         }
-                if (!token) {
+        if (!token) {
           setIsUnlocked(false);
           setShowPaywall(true);
         }
       } else {
-        // Not logged in → show paywall
         setIsUnlocked(false);
         setShowPaywall(true);
       }
@@ -179,14 +163,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     setAuthChecking(false);
-
-    // Always load data (preview is free)
     await loadWealthData(birth, lang, token);
   };
 
   const checkPaidStatus = async () => {
     try {
-      // 用 supabase SDK 的 getUser() 替代直接 REST API 调用（更稳定，避免 ERR_CONNECTION_CLOSED）
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user?.id) {
         setIsUnlocked(false);
@@ -210,9 +191,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const rawPlans = profiles?.[0]?.paid_plans;
       const now = Date.now();
 
-      // 统一兼容两种存储格式：
-      //   数组格式：["wealth_once"] 或 [{"plan":"wealth_once", ...}]
-      //   对象格式：{"wealth_once": true, "star_monthly_vip": {...}}
       const planMap: Record<string, any> = {};
       if (Array.isArray(rawPlans)) {
         for (const p of rawPlans) {
@@ -227,21 +205,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         Object.assign(planMap, rawPlans);
       }
 
-      // 兼容性检查（与 create-checkout 服务端逻辑一致）
       const isWealthPaid = (() => {
-        // 直接放行：key === true
         if (planMap.wealth_once === true) return true;
         if (planMap.wealth_yearly_report === true) return true;
         if (planMap.wealth_monthly_report === true) return true;
 
-        // all_pass_yearly 检查 expires_at
         const ap = planMap.all_pass_yearly;
         if (ap) {
           const expiresAt = ap.expires_at || ap.all_pass_expires_at;
           if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
         }
 
-        // star_monthly_vip 检查财富配额
         const sv = planMap.star_monthly_vip;
         if (sv) {
           let used: number, allowance: number, resetsAt: string | undefined;
@@ -250,7 +224,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             allowance = sv.star_monthly_wealth_allowance;
             resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
           } else {
-            // sv === true → 同级 key
             used = planMap.star_monthly_wealth_used ?? 0;
             allowance = planMap.star_monthly_wealth_allowance;
             resetsAt = planMap.star_monthly_resets_at;
@@ -281,7 +254,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
     if (loadingRef.current) {
-            return;
+      return;
     }
     loadingRef.current = true;
     setLoading(true);
@@ -307,7 +280,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
 
       if (res.status === 402) {
-        // Paywall: not paid yet — 但把 preview 数据存起来，四宫格要显示
         try {
           const errData = await res.json();
           if (errData?.data) {
@@ -327,7 +299,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
       if (!res.ok) {
-        // 尝试读取服务器返回的错误详情
         const errBody = await res.text().catch(() => '');
         console.error('[WealthReport] API error body:', res.status, errBody);
         throw new Error(`API error: ${res.status}${errBody ? ' - ' + errBody.substring(0, 200) : ''}`);
@@ -357,7 +328,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     let token = forceToken || currentToken;
 
     if (!token) {
-      // 🎯 来自 OAuth 回调（intent=checkout），currentToken 可能还没更新 → 直接拿 session
       const urlParams = new URLSearchParams(window.location.search);
       const isOAuthReturn = urlParams.get('intent') === 'checkout';
       if (isOAuthReturn) {
@@ -368,7 +338,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     if (!token) {
-      // 真没登录 → 保存购买意图到 URL，OAuth 回来后自动触发 Stripe
       const currentUrl = new URL(window.location.href);
       currentUrl.searchParams.set('intent', 'checkout');
       currentUrl.searchParams.set('plan', plan);
@@ -404,7 +373,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } else if (data.already_paid) {
         setIsUnlocked(true);
         setShowPaywall(false);
-        // Reload insight if needed
         if (reportData && !reportData.insight) {
           loadWealthData(birthDate, lang, token);
         }
@@ -422,7 +390,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const handleTriggerInsight = async () => {
     if (!currentToken || !reportData) return;
     if (loadingRef.current) {
-            return;
+      return;
     }
     loadingRef.current = true;
 
@@ -473,7 +441,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
       if (!res.ok) {
         if (res.status === 402) {
-          // 没有权限 → 触发购买
           await handlePurchase(
             type === 'monthly' ? 'wealth_monthly_report' : 'wealth_yearly_report',
             currentToken
@@ -494,7 +461,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   const currentLang = (lang || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
 
-  // Loading state
   if (loading) {
     return (
       <div style={{
@@ -505,7 +471,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-      }>
+      }}>
         <div style={{
           width: '48px',
           height: '48px',
@@ -515,14 +481,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           animation: 'spin 1s linear infinite',
           marginBottom: '16px',
         }} />
-        <p style={{ color: '#D4AF37', fontSize: '14px' }>
+        <p style={{ color: '#D4AF37', fontSize: '14px' }}>
           {currentLang === 'zh' ? '正在召唤财富密码……' : 'Summoning wealth code...'}
         </p>
       </div>
     );
   }
 
-  // Error state
   if (error && !reportData) {
     return (
       <div style={{
@@ -533,8 +498,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-      }>
-        <p style={{ color: '#E05C5C', fontSize: '14px', marginBottom: '16px' }>{error}</p>
+      }}>
+        <p style={{ color: '#E05C5C', fontSize: '14px', marginBottom: '16px' }}>{error}</p>
         <button
           onClick={() => loadWealthData(birthDate, lang, currentToken || undefined)}
           style={{
@@ -554,7 +519,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     );
   }
 
-  // ── Map API raw data → display/subDisplay for DataGrid ──
   const baziField = reportData?.data?.bazi
     ? (() => {
         const b = reportData.data.bazi as any;
@@ -600,8 +564,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       background: 'linear-gradient(180deg, #080810 0%, #0D0D1A 100%)',
       padding: '56px 16px 60px',
       position: 'relative',
-    }>
-      {/* Background stars */}
+    }}>
       <div style={{
         position: 'fixed',
         inset: 0,
@@ -614,9 +577,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         zIndex: 0,
       }} />
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto' }>
-        {/* Header */}
-        <div style={{ marginBottom: '24px' }>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '24px' }}>
           <button
             onClick={() => onNavigate('/wealth')}
             style={{
@@ -638,15 +600,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             fontWeight: 800,
             color: '#D4AF37',
             marginBottom: '4px',
-          }>
+          }}>
             {currentLang === 'zh' ? '财富解码报告' : 'Wealth Oracle Report'}
           </h1>
-          <p style={{ fontSize: '12px', color: '#8B8778' }>
+          <p style={{ fontSize: '12px', color: '#8B8778' }}>
             {currentLang === 'zh' ? '出生日期: ' : 'Birth Date: '}{birthDate}
           </p>
         </div>
 
-        {/* Data Grid */}
         <WealthDataGrid
           bazi={baziField}
           zodiac={zodiacField}
@@ -655,7 +616,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           lang={currentLang}
         />
 
-        {/* Paywall or Insight */}
         {!authChecking && !isUnlocked && showPaywall && (
           <WealthPaywall
             lang={currentLang}
@@ -669,7 +629,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           />
         )}
 
-        {/* 📊 财富年鉴区块（洞察解锁后始终显示） */}
         {isUnlocked && reportData && (
           <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
@@ -678,17 +637,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: '11px', color: 'rgba(212,175,55,0.6)', marginBottom: '8px' }}>
               {currentLang === 'zh' ? '基于您的先天财富格局，推演未来运势曲线' : currentLang === 'en' ? 'Based on your innate wealth blueprint, project future fortune trends.' : currentLang === 'es' ? 'Basado en tu plan de riqueza innato, proyecta tendencias futuras.' : currentLang === 'fr' ? 'Basé sur votre plan de richesse inné, projete des tendences futures.' : currentLang === 'th' ? 'อิงจากแผนความมั่งคั่งตามธรรมชํติ ทํายนนโนมไลน์ความมั่งคั่งในอนาคต' : 'Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai.'}
             </div>
-            {/* 年卡/VIP → 免费生成 */}
-            {paidPlans?.all_pass_yearly === true ? (<>
-              <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                {reportLoading === 'wealth_monthly' ? '⏳...' : (currentLang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
-              </button>
-              <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                {reportLoading === 'wealth_yearly' ? '⏳...' : (currentLang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
-              </button>
-              <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
-            </>) : (
-              /* 非VIP → 加购按钮触发 Stripe Checkout */
+            {paidPlans?.all_pass_yearly === true ? (
+              <>
+                <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading === 'wealth_monthly' ? '⏳...' : (currentLang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
+                </button>
+                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading === 'wealth_yearly' ? '⏳...' : (currentLang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
+                </button>
+                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
+              </>
+            ) : (
               <>
                 <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   📅 {currentLang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
@@ -697,11 +656,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   📆 {currentLang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
                 </button>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
-                  💡 {UPGRADE_HINT[currentLang] || UPGRADE_HINT['en']}
+                  💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
                 </div>
               </>
             )}
-            {/* 报告结果展示 */}
             {wealthReportText && (
               <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
                 {wealthReportText.split('\n\n').map((para, i) => (
@@ -732,9 +690,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </button>
         )}
 
-        {/* Error display */}
         {error && (
-          <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }>{error}</p>
+          <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }}>{error}</p>
         )}
       </div>
     </div>
