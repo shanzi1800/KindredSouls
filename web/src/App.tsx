@@ -748,14 +748,22 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     try {
       const data = JSON.parse(saved);
       // 强制刷新 session 获取最新 token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
-        console.error('[saveResult] No valid session:', sessionError);
+      let token: string | null = null;
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      token = refreshData?.session?.access_token || null;
+      if (refreshError || !token) {
+        console.error('[saveResult] Token refresh failed:', refreshError);
+        // fallback: 用 getSession
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || null;
+      }
+      if (!token) {
+        console.error('[saveResult] No valid token after refresh+fallback');
         return;
       }
       const res = await fetch('/api/save-result', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           dob1: data.d1,
           dob2: data.d2,
@@ -915,7 +923,16 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
     setReportLoading(type);
     setReportText(null);
     try {
-      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      // 强制刷新 session 获取最新 token
+      let token: string | null = null;
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      token = refreshData?.session?.access_token || null;
+      if (refreshError || !token) {
+        console.error('[generateReport] Token refresh failed:', refreshError);
+        // fallback: 用 getSession
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || null;
+      }
       if (!token) throw new Error('No session');
       const tarot = getTarot(d1, d2, lang);
       const res = await fetch('/api/ai-advisor', {
