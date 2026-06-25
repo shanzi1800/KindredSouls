@@ -63,8 +63,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null); // 用户付费计划
-  const [wealthReportText, setWealthReportText] = useState<string>(\);
-  const [reportLoading, setReportLoading] = useState<string>(\); // wealth_monthly | wealth_yearly | \
+  const [wealthReportText, setWealthReportText] = useState<string>('');
+  const [reportLoading, setReportLoading] = useState<string>(''); // wealth_monthly | wealth_yearly | ''
   const loadingRef = useRef(false); // 防止重复请求
 
   // Read URL parameters on mount
