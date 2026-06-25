@@ -1,3 +1,4 @@
+// VERCEL_REDEPLOY_TRIGGER_1782355647180
 // Force Node.js 20 runtime (avoid Edge API mismatch)
 export const runtime = 'nodejs20.x';
 
