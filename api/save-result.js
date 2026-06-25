@@ -20,6 +20,10 @@ export default async function handler(req, res) {
   }
   const token = authHeader.slice(7);
 
+  // 🔍 调试：打印环境变量（前10字符）
+  console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL?.substring(0, 30));
+  console.log('[save-result] SERVICE_KEY prefix:', process.env.SUPABASE_SERVICE_KEY?.substring(0, 10));
+
   let user;
   try {
     // ✅ 正确方法：用 Supabase Admin API 验证 JWT
@@ -32,14 +36,16 @@ export default async function handler(req, res) {
     const { data: { user: u }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
     
     if (verifyError || !u) {
-      console.error('[save-result] Token verification failed:', verifyError?.message);
-      return res.status(401).json({ error: 'Invalid token' });
+      console.error('[save-result] Token verification failed:', verifyError?.message, verifyError);
+      // 额外调试：检查 token 前20个字符
+      console.error('[save-result] Token prefix:', token?.substring(0, 20));
+      return res.status(401).json({ error: 'Invalid token', detail: verifyError?.message });
     }
     
     user = u;
     console.log('[save-result] user verified:', user.id);
   } catch (e) {
-    console.error('[save-result] auth exception:', e.message);
+    console.error('[save-result] auth exception:', e.message, e.stack);
     return res.status(401).json({ error: 'Token verification failed' });
   }
 
