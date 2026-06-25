@@ -642,7 +642,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : (currentLang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
                 </button>
-                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.6)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.2)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_yearly' ? '⏳...' : (currentLang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
                 </button>
                 <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
