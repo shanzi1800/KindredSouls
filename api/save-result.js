@@ -29,7 +29,10 @@ export default async function handler(req, res) {
     console.log('[save-result] 🔍 token (first 20 chars):', token?.slice(0, 20));
     
     const verifyRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: process.env.SUPABASE_ANON_KEY,  // ✅ 必须加 anon key
+      },
     });
 
     console.log('[save-result] 🔍 verifyRes.status:', verifyRes.status);
