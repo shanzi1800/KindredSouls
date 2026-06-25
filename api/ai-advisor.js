@@ -1,5 +1,7 @@
 export const runtime = 'nodejs20.x';
 
+import { createClient } from '@supabase/supabase-js';
+
 // ============================================================
 // KindredSouls AI Advisor — "填空打字员"架构 (军师架构 + 牛牛工程修复)
 // 版本: V9 (总分后端重算 + 正逆位绝对锁 + 塔罗牌意意图约束 + 6语言)
@@ -261,6 +263,30 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+
+  // ✅ Token 验证（和 save-result.js 一致）
+  const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  }
+  const token = authHeader.slice(7);
+
+  try {
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+    
+    const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+    if (verifyError || !user) {
+      console.error('[ai-advisor] Token verification failed:', verifyError?.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.log('[ai-advisor] user verified:', user.id);
+  } catch (e) {
+    console.error('[ai-advisor] auth exception:', e.message);
+    return res.status(401).json({ error: 'Token verification failed' });
+  }
 
   try {
     const body = await parseRequestBody(req);

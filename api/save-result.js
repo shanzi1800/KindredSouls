@@ -22,25 +22,20 @@ export default async function handler(req, res) {
 
   let user;
   try {
-    const supabaseAuth = createClient(
+    // ✅ 正确方法：用 Supabase Admin API 验证 JWT
+    const supabaseAdmin = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_KEY
     );
 
-    const { error: setSessionError } = await supabaseAuth.auth.setSession({
-      access_token: token,
-      refresh_token: '',
-    });
-    if (setSessionError) {
-      console.error('[save-result] setSession error:', setSessionError.message);
+    // 方法1：尝试用 getUser() 验证 token（需要传 token）
+    const { data: { user: u }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (verifyError || !u) {
+      console.error('[save-result] Token verification failed:', verifyError?.message);
       return res.status(401).json({ error: 'Invalid token' });
     }
-
-    const { data: { user: u }, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !u) {
-      console.error('[save-result] getUser error:', userError?.message);
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+    
     user = u;
     console.log('[save-result] user verified:', user.id);
   } catch (e) {
