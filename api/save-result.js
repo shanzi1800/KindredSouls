@@ -24,10 +24,16 @@ export default async function handler(req, res) {
   try {
     // ✅ 正确方法：直接调 Supabase Auth REST API 验证 token
     const supabaseUrl = process.env.SUPABASE_URL;
+    console.log('[save-result] 🔍 Starting token verification...');
+    console.log('[save-result] 🔍 supabaseUrl:', supabaseUrl);
+    console.log('[save-result] 🔍 token (first 20 chars):', token?.slice(0, 20));
+    
     const verifyRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
+    console.log('[save-result] 🔍 verifyRes.status:', verifyRes.status);
+    
     if (!verifyRes.ok) {
       const errText = await verifyRes.text();
       console.error('[save-result] Token verify HTTP error:', verifyRes.status, errText);
