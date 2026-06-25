@@ -1,5 +1,5 @@
 // 临时调试端点：测试 DeepSeek 和 Gemini 是否可用
-export const runtime = 'nodejs20.x';
+const runtime = 'nodejs';
 
 async function testDeepSeek(key) {
   const start = Date.now();
@@ -51,7 +51,7 @@ async function testGemini(key) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
 
   res.status(200).json({
     timestamp: new Date().toISOString(),
-    runtime: 'nodejs20.x',
+    runtime: runtime,
     deepseek_env: { keyExists: !!dsKey, keyLength: dsKey.length, prefix: dsKey.substring(0, 8) },
     gemini_env: { keyExists: !!gmKey, keyLength: gmKey.length, prefix: gmKey.substring(0, 8) },
     hardcoded_key: { keyLength: hardcodedDs.length, prefix: hardcodedDs.substring(0, 8) },
@@ -79,4 +79,4 @@ export default async function handler(req, res) {
       hardcoded_key: hardcodedResult,
     }
   });
-}
+};
