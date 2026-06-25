@@ -2510,7 +2510,7 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
-  // 战时兜底：如果环境变量读不到，直接用硬编码 Key
+  // 战时兜底：如果环境变量读不到，直接用硬编码 Key (deployed: 2026-06-25-0953)
   const dsKey = env.DEEPSEEK_API_KEY || "sk-9307f02599b44612b6767996a7839ab5";
   if (dsKey) {
     try {
