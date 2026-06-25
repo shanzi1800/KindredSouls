@@ -50,6 +50,17 @@ interface WealthReportPageProps {
   onNavigate: (path: string) => void;
 }
 
+
+// ── Upgrade hint text (6 languages) ──
+const UPGRADE_HINT: Record<string, string> = {
+  zh: `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。`,
+  en: `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.`,
+  es: `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.`,
+  fr: `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.`,
+  th: `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด`,
+  vi: `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`,
+};
+
 // ── Component ──
 const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const { i18n } = useTranslation();
@@ -686,7 +697,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   📆 {currentLang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
                 </button>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
-                  💡 {currentLang === 'zh' ? `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。` : currentLang === 'en' ? `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.` : currentLang === 'es' ? `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.` : currentLang === 'fr' ? `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.` : currentLang === 'th' ? `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด` : `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`}
+                  💡 {UPGRADE_HINT[currentLang] || UPGRADE_HINT['en']}
                 </div>
               </>
             )}
