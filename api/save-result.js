@@ -13,42 +13,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1. Extract and verify JWT
+  // 1. Extract and verify JWT via Supabase Auth REST API
   const authHeader = req.headers.authorization || (req.headers.get && req.headers.get('Authorization'));
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing authorization token' });
   }
   const token = authHeader.slice(7);
 
-  // 🔍 调试：打印环境变量（前10字符）
-  console.log('[save-result] SUPABASE_URL:', process.env.SUPABASE_URL?.substring(0, 30));
-  console.log('[save-result] SERVICE_KEY prefix:', process.env.SUPABASE_SERVICE_KEY?.substring(0, 10));
-
   let user;
   try {
-    // ✅ 正确方法：用 Supabase Admin API 验证 JWT
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
+    // ✅ 正确方法：直接调 Supabase Auth REST API 验证 token
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const verifyRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    // 方法：用 getUser() 验证 token
-    const { data: { user: u }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (verifyError) {
-      console.error('[save-result] Token verification failed:', verifyError.message, verifyError);
-      // 详细打印错误对象
-      console.error('[save-result] Full error object:', JSON.stringify(verifyError, null, 2));
-      return res.status(401).json({ error: 'Invalid token', detail: verifyError.message });
+    if (!verifyRes.ok) {
+      const errText = await verifyRes.text();
+      console.error('[save-result] Token verify HTTP error:', verifyRes.status, errText);
+      return res.status(401).json({ error: 'Invalid token' });
     }
-    
-    if (!u) {
-      console.error('[save-result] No user returned from getUser');
-      return res.status(401).json({ error: 'Invalid token - no user' });
+
+    const userData = await verifyRes.json();
+    if (!userData?.id) {
+      console.error('[save-result] No user ID in verify response');
+      return res.status(401).json({ error: 'Invalid token - no user ID' });
     }
-    
-    user = u;
-    console.log('[save-result] user verified:', user.id);
+
+    user = { id: userData.id };
+    console.log('[save-result] user verified via REST:', user.id);
   } catch (e) {
     console.error('[save-result] auth exception:', e.message, e.stack);
     return res.status(401).json({ error: 'Token verification failed' });
@@ -70,7 +63,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data, error } = await supabaseAuth
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+
+    const { data, error } = await supabaseAdmin
       .from('compatibility_results')
       .insert({
         user_id: user.id,  // ✅ use JWT-verified user ID
