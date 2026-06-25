@@ -661,11 +661,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
-                {wealthReportText.split('\n\n').map((para, i) => (
-                  <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
-                ))}
-              </div>
+              <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}
+                dangerouslySetInnerHTML={{ __html: wealthReportText }}
+              />
             )}
           </div>
         )}
