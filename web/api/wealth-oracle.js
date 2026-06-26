@@ -2830,10 +2830,13 @@ async function handler(req, res) {
       paidPlans = updatedDailyPlans;
     }
 
-    // ── 🛡️ 军师级主星盘死锁：wealth_once 永久缓存防线 ──
-    // wealth_once 用户：按 user_id 永久缓存，后续访问 0 AI 消耗，0 计数
+    // ── 🛡️ 军师级主星盘死锁：wealth_once / all_pass_yearly 永久缓存防线 ──
+    // wealth_once 用户 + 年卡用户：按 user_id 永久缓存，后续访问 0 AI 消耗，0 计数
+    // 只有客盘（换生日/帮别人测）才消耗月配额
     let insight = null;
-    if (wealthAccessMethod === 'wealth_once' && currentUserId && supabase) {
+    const isPermanentCacheUser = wealthAccessMethod === 'wealth_once' || wealthAccessMethod === 'all_pass_yearly';
+    
+    if (isPermanentCacheUser && currentUserId && supabase) {
       const { data: permanentCache } = await supabase
         .from('wealth_insights_cache')
         .select('insight')
@@ -2841,10 +2844,10 @@ async function handler(req, res) {
         .eq('is_permanent', true)
         .single();
       if (permanentCache?.insight) {
-        console.log('[Wealth Oracle] 🛡️ wealth_once 永久缓存命中 — 0 Token 消耗:', currentUserId);
+        console.log('[Wealth Oracle] 🛡️ 永久缓存命中 — 0 Token 消耗:', currentUserId, 'accessMethod:', wealthAccessMethod);
         insight = permanentCache.insight;
       } else {
-        console.log('[Wealth Oracle] 🛡️ wealth_once 首次生成，永久锁定中...');
+        console.log('[Wealth Oracle] 🛡️ 首次生成，永久锁定中...');
       }
     }
 
@@ -2921,15 +2924,15 @@ async function handler(req, res) {
       }
       // Save/update cache
       if (supabase) {
-        if (wealthAccessMethod === 'wealth_once' && currentUserId) {
-          // 🛡️ wealth_once 永久缓存：按 user_id 写入，不限 TTL
+        if (isPermanentCacheUser && currentUserId) {
+          // 🛡️ wealth_once / all_pass_yearly 永久缓存：按 user_id 写入，不限 TTL
           await supabase
             .from('wealth_insights_cache')
             .upsert(
               { user_id: currentUserId, birth_date: birthDate, lang: normalizedLang, report_type: reportType || null, insight, model: 'deepseek-v3', call_count: 1, prompt_version: PROMPT_VERSION, is_permanent: true },
               { onConflict: 'user_id,is_permanent' }
             );
-          console.log('[Wealth Oracle] 🛡️ wealth_once 永久缓存已锁定:', currentUserId);
+          console.log('[Wealth Oracle] 🛡️ 永久缓存已锁定:', currentUserId, 'accessMethod:', wealthAccessMethod);
         } else {
           // 普通用户：24h TTL 缓存
           const { data: existing } = await supabase
