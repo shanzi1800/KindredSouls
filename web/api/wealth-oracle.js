@@ -2759,12 +2759,26 @@ async function handler(req, res) {
     };
     paidPlans = updatedDailyPlans;
 
-    const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
-    const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
-
-    // ── Check cache first (24h TTL from config.js) ──
+    // ── 🛡️ 军师级主星盘死锁：wealth_once 永久缓存防线 ──
+    // wealth_once 用户：按 user_id 永久缓存，后续访问 0 AI 消耗，0 计数
     let insight = null;
-    if (supabase) {
+    if (wealthAccessMethod === 'wealth_once' && currentUserId && supabase) {
+      const { data: permanentCache } = await supabase
+        .from('wealth_insights_cache')
+        .select('insight')
+        .eq('user_id', currentUserId)
+        .eq('is_permanent', true)
+        .single();
+      if (permanentCache?.insight) {
+        console.log('[Wealth Oracle] 🛡️ wealth_once 永久缓存命中 — 0 Token 消耗:', currentUserId);
+        insight = permanentCache.insight;
+      } else {
+        console.log('[Wealth Oracle] 🛡️ wealth_once 首次生成，永久锁定中...');
+      }
+    }
+
+    // ── 普通缓存逻辑（24h TTL，供其他付费用户使用）─
+    if (!insight && supabase) {
       const cacheTTL = (typeof CACHE_TTL_HOURS === 'number' ? CACHE_TTL_HOURS : 24) * 60 * 60 * 1000;
       const { data: cached } = await supabase
         .from('wealth_insights_cache')
@@ -2772,9 +2786,9 @@ async function handler(req, res) {
         .eq('birth_date', birthDate)
         .eq('lang', normalizedLang)
         .eq('report_type', reportType || null)
+        .is('is_permanent', null)
         .gte('created_at', new Date(Date.now() - cacheTTL).toISOString())
         .single();
-      // Use cache if prompt_version matches current version
       if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
         console.log('[Wealth Oracle] Cache hit (version', PROMPT_VERSION, '):', birthDate, normalizedLang);
         insight = cached.insight;
@@ -2796,7 +2810,7 @@ async function handler(req, res) {
           star_monthly_resets_at: paidPlans.star_monthly_resets_at || nextMonthStart.toISOString(),
         };
         try {
-          await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
             method: 'PATCH',
             headers: {
               'apikey': serviceKey,
@@ -2812,26 +2826,40 @@ async function handler(req, res) {
       }
 
       insight = await callAI(systemPrompt, userPrompt, process.env);
-      // Save/update cache with call count
+      // Save/update cache
       if (supabase) {
-        const { data: existing } = await supabase
-          .from('wealth_insights_cache')
-          .select('call_count')
-          .eq('birth_date', birthDate)
-          .eq('lang', normalizedLang)
-          .eq('report_type', reportType || null)
-          .single();
-        const newCount = (existing?.call_count || 0) + 1;
-        await supabase
-          .from('wealth_insights_cache')
-          .upsert(
-            { birth_date: birthDate, lang: normalizedLang, report_type: reportType || null, insight, model: 'deepseek-v3', call_count: newCount, prompt_version: PROMPT_VERSION },
-            { onConflict: 'birth_date,lang,report_type' }
-          );
-        console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
+        if (wealthAccessMethod === 'wealth_once' && currentUserId) {
+          // 🛡️ wealth_once 永久缓存：按 user_id 写入，不限 TTL
+          await supabase
+            .from('wealth_insights_cache')
+            .upsert(
+              { user_id: currentUserId, birth_date: birthDate, lang: normalizedLang, report_type: reportType || null, insight, model: 'deepseek-v3', call_count: 1, prompt_version: PROMPT_VERSION, is_permanent: true },
+              { onConflict: 'user_id,is_permanent' }
+            );
+          console.log('[Wealth Oracle] 🛡️ wealth_once 永久缓存已锁定:', currentUserId);
+        } else {
+          // 普通用户：24h TTL 缓存
+          const { data: existing } = await supabase
+            .from('wealth_insights_cache')
+            .select('call_count')
+            .eq('birth_date', birthDate)
+            .eq('lang', normalizedLang)
+            .eq('report_type', reportType || null)
+            .is('is_permanent', null)
+            .single();
+          const newCount = (existing?.call_count || 0) + 1;
+          await supabase
+            .from('wealth_insights_cache')
+            .upsert(
+              { birth_date: birthDate, lang: normalizedLang, report_type: reportType || null, insight, model: 'deepseek-v3', call_count: newCount, prompt_version: PROMPT_VERSION },
+              { onConflict: 'birth_date,lang,report_type' }
+            );
+          console.log('[Wealth Oracle] Cache saved:', birthDate, normalizedLang, 'call #', newCount);
+        }
       }
     } else {
       console.log('[Wealth Oracle] Cache hit — skipping AI call, no quota deducted');
+    }
     }
 
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
