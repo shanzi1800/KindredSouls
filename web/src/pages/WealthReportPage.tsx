@@ -488,7 +488,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         );
         return;
       }
-      setWealthReportText(data.report || data.insight || '');
+      const rawText = data.report || data.insight || '';
+      // 🔧 清理 HTML：移除空白段落、隐藏元素、多余换行
+      const cleanText = rawText
+        .replace(/<p><br\s*\/?><\/p>/gi, '')
+        .replace(/<p>\s*<\/p>/gi, '')
+        .replace(/<p[^>]*>\s*<\/p>/gi, '')
+        .replace(/<[^>]*style=["'][^"']*color:\s*transparent[^"']*["'][^>]*>.*?<\/[^>]+>/gi, '')
+        .replace(/<[^>]*style=["'][^"']*opacity:\s*0[^"']*["'][^>]*>.*?<\/[^>]+>/gi, '')
+        .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
+        .replace(/^\s+/, '')
+        .replace(/\s+$/, '');
+      setWealthReportText(cleanText);
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
       setWealthReportText(currentLang === 'zh' ? '网络错误，请检查网络连接后重试。' : 'Network error, please try again.');
@@ -700,7 +711,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             )}
             {wealthReportText && (
               <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.6, wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br\s*\/?><\/p>/gi, '<p>').replace(/(<\/p>)\s+(<p>)/g, '$1$2') }}
+                dangerouslySetInnerHTML={{ __html: wealthReportText
+                  .replace(/<p><br\s*\/?><\/p>/gi, '')
+                  .replace(/<p>\s*<\/p>/gi, '')
+                  .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
+                  .replace(/^\s+|\s+$/g, '')
+                  .replace(/(<\/p>)\s+(<p>)/g, '$1$2')
+                }}
               />
             )}
           </div>
