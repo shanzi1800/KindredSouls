@@ -2591,6 +2591,8 @@ async function handler(req, res) {
     const normalizedLang = normalizeLang(lang) || "zh";
     const individualData = getIndividualData(birthInfo, normalizedLang);
     const tarotData = getWealthTarot(birthDate, normalizedLang);
+    const systemPrompt = SYSTEM_PROMPTS[normalizedLang] || SYSTEM_PROMPTS["zh"];
+    const userPrompt = buildPrompt(individualData, tarotData, normalizedLang);
 
     // ── Per-plan access control: wealth AI insight ──
     let paidPlans = {};
