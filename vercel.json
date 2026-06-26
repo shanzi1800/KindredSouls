@@ -1,6 +1,8 @@
 {
+  "buildCommand": "npm install && cd web && npm install && npm run build:web",
   "outputDirectory": "web/dist",
   "regions": ["sin1"],
+  "framework": null,
   "functions": {
     "api/*.js": {
       "runtime": "nodejs20.x",
