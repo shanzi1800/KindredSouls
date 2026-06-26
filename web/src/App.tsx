@@ -1116,10 +1116,10 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
               {/* 年卡/VIP → 免费生成 */}
               {paidPlansLocal.all_pass_yearly === true ? (<>
                 <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报' : '📅 Monthly Emotion Report')}
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
                 </button>
                 <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报' : '📆 Yearly Emotion Report')}
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
                 </button>
                 <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
               </>) : (

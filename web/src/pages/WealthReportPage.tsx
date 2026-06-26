@@ -421,7 +421,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
-    if (!currentToken) return;
+    if (!currentToken) {
+      setWealthReportText(currentLang === 'zh' ? '请先登录后再生成报告' : 'Please log in first to generate report.');
+      return;
+    }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReportText('');
     try {
@@ -450,10 +453,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         throw new Error('API error: ' + res.status);
       }
       const data = await res.json();
+      if (!res.ok) {
+        console.error('[WealthReport] API error response:', res.status, data);
+        setWealthReportText(
+          currentLang === 'zh'
+            ? `生成失败 (${res.status}): ${data?.error || data?.message || '未知错误'}`
+            : `Generation failed (${res.status}): ${data?.error || data?.message || 'Unknown error'}`
+        );
+        return;
+      }
       setWealthReportText(data.report || data.insight || '');
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
-      setWealthReportText(currentLang === 'zh' ? '生成报告失败，请重试。' : 'Failed to generate report.');
+      setWealthReportText(currentLang === 'zh' ? '网络错误，请检查网络连接后重试。' : 'Network error, please try again.');
     } finally {
       setReportLoading('');
     }
@@ -634,7 +646,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
               📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
             </div>
-            <div style={{ fontSize: '11px', color: 'rgb(255,255,255)', marginBottom: '8px' }}>
+            <div style={{ fontSize: '11px', color: 'rgba(129,216,208,0.8)', marginBottom: '8px' }}>
               {currentLang === 'zh' ? '基于您的先天财富格局，推演未来运势曲线' : currentLang === 'en' ? 'Based on your innate wealth blueprint, project future fortune trends.' : currentLang === 'es' ? 'Basado en tu plan de riqueza innato, proyecta tendencias futuras.' : currentLang === 'fr' ? 'Basé sur votre plan de richesse inné, projete des tendences futures.' : currentLang === 'th' ? 'อิงจากแผนความมั่งคั่งตามธรรมชํติ ทํายนนโนมไลน์ความมั่งคั่งในอนาคต' : 'Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai.'}
             </div>
             {paidPlans?.all_pass_yearly === true ? (
