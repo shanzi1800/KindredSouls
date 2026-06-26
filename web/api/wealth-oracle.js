@@ -2,6 +2,9 @@
 // Force Node.js 20 runtime (avoid Edge API mismatch)
 export const runtime = 'nodejs';
 
+// Debug: log module init
+console.log('[wealth-oracle] Module loading, runtime set');
+
 // ── Supabase client (for insight cache) ──
 import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
@@ -2565,12 +2568,16 @@ async function callAI(systemPrompt, userPrompt, env) {
   throw new Error("No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.");
 }
 async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  console.log('[wealth-oracle] Handler invoked, method:', req.method);
   try {
+    // EARLY EXIT: 测试函数是否能到达这里
+    return res.status(200).json({ test: 'handler reached', method: req.method });
+
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") return res.status(200).end();
+    if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
     let body;
     if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
       body = req.body;
