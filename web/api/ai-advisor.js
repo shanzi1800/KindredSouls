@@ -746,42 +746,46 @@ export default async function handler(req, res) {
       return res.status(402).json({ error: 'Payment required', requiredPlan: 'compatibility_once', code: 'PAYMENT_REQUIRED' });
     }
 
-    // ── Global rate limit: max 10 calls per user per day (军师裁决三) ──
-    const dailyCallCount = paidPlans.daily_ai_call_count || 0;
-    const dailyCallResetAt = paidPlans.daily_ai_call_resets_at;
-    const nowTime = new Date();
-    const todayUTC = new Date(Date.UTC(nowTime.getUTCFullYear(), nowTime.getUTCMonth(), nowTime.getUTCDate(), 0, 0, 0, 0));
-    const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
-    
-    if (isSameDay && dailyCallCount >= 10) {
-      return res.status(429).json({
-        error: 'Daily AI call limit exceeded',
-        code: 'DAILY_RATE_LIMIT_EXCEEDED',
-        limit: 10,
-        resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
-      });
-    }
+    // ── Global rate limit: max 10 calls per user per day (非一次性付费用户) ──
+    // 🛡️ compatibility_once 用户走永久缓存，0计数，0限制
+    const isCompatOnce = (paidPlans.compatibility_once === true || paidPlans.insight_once === true);
+    if (!isCompatOnce) {
+      const dailyCallCount = paidPlans.daily_ai_call_count || 0;
+      const dailyCallResetAt = paidPlans.daily_ai_call_resets_at;
+      const nowTime = new Date();
+      const todayUTC = new Date(Date.UTC(nowTime.getUTCFullYear(), nowTime.getUTCMonth(), nowTime.getUTCDate(), 0, 0, 0, 0));
+      const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
 
-    // Update daily call counter
-    const updatedDailyPlans = {
-      ...paidPlans,
-      daily_ai_call_count: isSameDay ? (dailyCallCount + 1) : 1,
-      daily_ai_call_resets_at: todayUTC.toISOString(),
-    };
-    
-    try {
-      await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': serviceKey,
-          'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({ paid_plans: updatedDailyPlans }),
-      });
-    } catch (updateErr) {
-      console.error('[ai-advisor] Failed to update daily call counter:', updateErr.message);
+      if (isSameDay && dailyCallCount >= 10) {
+        return res.status(429).json({
+          error: 'Daily AI call limit exceeded',
+          code: 'DAILY_RATE_LIMIT_EXCEEDED',
+          limit: 10,
+          resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
+        });
+      }
+
+      // Update daily call counter
+      const updatedDailyPlans = {
+        ...paidPlans,
+        daily_ai_call_count: isSameDay ? (dailyCallCount + 1) : 1,
+        daily_ai_call_resets_at: todayUTC.toISOString(),
+      };
+
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': serviceKey,
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ paid_plans: updatedDailyPlans }),
+        });
+      } catch (updateErr) {
+        console.error('[ai-advisor] Failed to update daily call counter:', updateErr.message);
+      }
     }
 
     // If access is via monthly allowance, increment the used counter before proceeding
@@ -935,24 +939,50 @@ export default async function handler(req, res) {
     const cKey = cacheKey(body.d1, body.d2, lang, reportType);
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+    const isCompatOnce = (paidPlans.compatibility_once === true || paidPlans.insight_once === true);
+
     if (supabaseUrl && serviceKey) {
       try {
-        const cacheCutoff = new Date(Date.now() - CACHE_TTL_HOURS * 3600000).toISOString();
-        const cacheRes = await fetch(
-          `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cKey)}&created_at=gte.${encodeURIComponent(cacheCutoff)}&select=insight,prompt_version&limit=1`,
-          { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
-        );
-        if (cacheRes.ok) {
-          const rows = await cacheRes.json();
-          const cached = rows?.[0];
-          if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
-            console.log('[ai-advisor] Cache HIT:', cKey);
-            return res.status(200).json({
-              insight: cached.insight,
-              cached: true,
-              tarot: tarot || null,
-              tarotLine: filteredTarot?.meaning || '',
-            });
+        // 🛡️ 军师级：compatibility_once 永久缓存防线
+        if (isCompatOnce && currentUserId) {
+          const permCacheKey = `PERM:compat:${currentUserId}`;
+          const permCacheRes = await fetch(
+            `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(permCacheKey)}&select=insight,prompt_version&limit=1`,
+            { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+          );
+          if (permCacheRes.ok) {
+            const permRows = await permCacheRes.json();
+            const permCached = permRows?.[0];
+            if (permCached?.insight) {
+              console.log('[ai-advisor] 🛡️ compatibility_once 永久缓存命中 — 0 Token 消耗:', currentUserId);
+              return res.status(200).json({
+                insight: permCached.insight,
+                cached: true,
+                tarot: tarot || null,
+                tarotLine: filteredTarot?.meaning || '',
+              });
+            }
+          }
+          console.log('[ai-advisor] 🛡️ compatibility_once 首次生成，永久锁定中...');
+        } else {
+          // 普通用户：24h TTL 缓存
+          const cacheCutoff = new Date(Date.now() - CACHE_TTL_HOURS * 3600000).toISOString();
+          const cacheRes = await fetch(
+            `${supabaseUrl}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cKey)}&created_at=gte.${encodeURIComponent(cacheCutoff)}&select=insight,prompt_version&limit=1`,
+            { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+          );
+          if (cacheRes.ok) {
+            const rows = await cacheRes.json();
+            const cached = rows?.[0];
+            if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
+              console.log('[ai-advisor] Cache HIT:', cKey);
+              return res.status(200).json({
+                insight: cached.insight,
+                cached: true,
+                tarot: tarot || null,
+                tarotLine: filteredTarot?.meaning || '',
+              });
+            }
           }
         }
       } catch (cacheErr) {
@@ -970,6 +1000,10 @@ export default async function handler(req, res) {
     // ── Save to Supabase cache ──
     if (supabaseUrl && serviceKey) {
       try {
+        // 🛡️ compatibility_once 用户：永久缓存（按 user_id）
+        const finalCacheKey = (isCompatOnce && currentUserId)
+          ? `PERM:compat:${currentUserId}`
+          : cKey;
         await fetch(
           `${supabaseUrl}/rest/v1/ai_insights_cache`,
           {
@@ -981,12 +1015,15 @@ export default async function handler(req, res) {
               'Prefer': 'resolution=merge-duplicates',
             },
             body: JSON.stringify({
-              cache_key: cKey,
+              cache_key: finalCacheKey,
               insight: finalInsight,
               prompt_version: PROMPT_VERSION,
             })
           }
         );
+        if (isCompatOnce && currentUserId) {
+          console.log('[ai-advisor] 🛡️ compatibility_once 永久缓存已锁定:', currentUserId);
+        }
         console.log('[ai-advisor] Cache saved:', cKey);
       } catch (saveErr) {
         console.warn('[ai-advisor] Cache save failed:', saveErr.message);
