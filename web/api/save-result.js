@@ -1,5 +1,5 @@
 // Force Node.js 20 runtime (avoid Edge crypto issue)
-export const runtime = 'nodejs20.x';
+export const runtime = 'nodejs';
 
 import { createClient } from '@supabase/supabase-js';
 

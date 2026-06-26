@@ -1,5 +1,5 @@
 // Force Node.js 20 runtime
-export const runtime = 'nodejs20.x';
+export const runtime = 'nodejs';
 
 const PRICES = {
   compatibility_once:           499,  // $4.99  one-time compatibility reading

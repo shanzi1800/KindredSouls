@@ -1,5 +1,5 @@
 // Force Node.js 20 runtime
-export const runtime = 'nodejs20.x';
+export const runtime = 'nodejs';
 // Disable body parsing so we can verify Stripe signature with raw body
 export const config = { api: { bodyParser: false } };
 

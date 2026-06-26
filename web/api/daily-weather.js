@@ -1,5 +1,5 @@
 // Force Node.js 20 runtime
-export const runtime = 'nodejs20.x';
+export const runtime = 'nodejs';
 
 // ── Supabase REST helpers (Vercel serverless compatible) ──
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
