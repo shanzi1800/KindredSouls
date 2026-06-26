@@ -3,7 +3,14 @@
   "regions": ["sin1"],
   "functions": {
     "api/*.js": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "web/api/*.js": {
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 60
     }
   }
 }
