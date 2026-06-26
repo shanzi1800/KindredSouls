@@ -2561,7 +2561,7 @@ async function callAI(systemPrompt, userPrompt, env) {
       console.error("Gemini fallback also failed:", e.message);
     }
   }
-  if (dsKey) {
+  if (geminiKey) {
     throw new Error("Both DeepSeek and Gemini failed");
   }
   throw new Error("No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.");
