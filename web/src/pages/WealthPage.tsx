@@ -165,6 +165,23 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
       }} />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
+        {/* 返回按钮 */}
+        <button
+          onClick={() => onNavigate('/')}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: '8px',
+            padding: '6px 12px',
+            color: '#8B8778',
+            fontSize: '12px',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          ← {lang === 'zh' ? '返回' : 'Back'}
+        </button>
+
         {/* Title */}
         <h1 style={{
           fontSize: '26px',
