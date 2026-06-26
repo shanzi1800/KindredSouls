@@ -454,10 +454,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return;
         }
         // 403/429 等其他错误：显示具体原因
-        const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
-        const userMsg = currentLang === 'zh'
-          ? `生成失败: ${errMsg}`
-          : `Generation failed: ${errMsg}`;
+        const errCode = (errData as any)?.code || '';
+        let userMsg: string;
+        if (errCode === 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
+          userMsg = currentLang === 'zh'
+            ? '📅 本月财富月报已生成，请下个月再来（每月1日重置）'
+            : `Monthly wealth report already generated this month. Next available: ${(errData as any)?.nextAvailable || 'next month'}`;
+        } else if (errCode === 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
+          userMsg = currentLang === 'zh'
+            ? '📆 本年度财富年报已生成，请明年再来'
+            : `Yearly wealth report already generated. Next available: ${(errData as any)?.nextAvailable || 'next year'}`;
+        } else {
+          const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
+          userMsg = currentLang === 'zh'
+            ? `生成失败: ${errMsg}`
+            : `Generation failed: ${errMsg}`;
+        }
         setWealthReportText(userMsg);
         return;
       }
@@ -656,7 +668,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {isUnlocked && reportData && (
-          <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
+          <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
               📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
             </div>
@@ -687,8 +699,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '10px', padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br><\/p>/g, '<p>').replace(/<\/p>\s*<p>/g, '</p><p>') }}
+              <div style={{ marginTop: '8px', padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br\s*\/?><\/p>/gi, '<p>').replace(/(<\/p>)\s+(<p>)/g, '$1$2') }}
               />
             )}
           </div>
