@@ -1,30 +1,32 @@
-// VERCEL_REDEPLOY_TRIGGER
-// 纯 CommonJS 写法，避免 ESM 模块加载崩溃
+// 🛡️ 战时最高防弹规格：双保险导出，干碎 Vercel 模块识别 Bug
 
-module.exports = async function handler(req, res) {
-  console.log("[wealth-oracle] Request received");
+const runtime = 'nodejs20.x';
+
+async function mainHandler(req, res) {
+  console.log("[wealth-oracle] === REQUEST STARTED ===");
   
   try {
-    // 动态引入
+    // 🔮 所有依赖在函数内部动态加载
     const { createClient } = require('@supabase/supabase-js');
     
     // 环境变量检查
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     
     console.log("[wealth-oracle] Env check:", {
       SUPABASE_URL: supabaseUrl ? 'OK' : 'MISSING',
-      SUPABASE_SERVICE_KEY: supabaseKey ? 'OK' : 'MISSING',
+      SUPABASE_SERVICE_KEY: supabaseKey ? 'OK' : 'MISSING', 
       DEEPSEEK_API_KEY: deepseekKey ? 'OK' : 'MISSING'
     });
     
     if (!supabaseUrl || !supabaseKey) {
       return res.status(200).json({
-        error: "Missing Supabase Config",
+        error: "DEBUG_MODE_ACTIVE",
+        message: "环境变量未成功注入！",
         debug: {
-          SUPABASE_URL: supabaseUrl ? "OK" : "MISSING",
-          SUPABASE_SERVICE_KEY: supabaseKey ? "OK" : "MISSING"
+          SUPABASE_URL: supabaseUrl ? 'OK' : 'MISSING',
+          SUPABASE_SERVICE_KEY: supabaseKey ? 'OK' : 'MISSING'
         }
       });
     }
@@ -35,6 +37,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     if (req.method === 'OPTIONS') {
+      console.log("[wealth-oracle] OPTIONS request, returning 200");
       return res.status(200).end();
     }
     
@@ -50,19 +53,28 @@ module.exports = async function handler(req, res) {
       } else {
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
-        body = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+        const rawBody = Buffer.concat(chunks).toString('utf-8');
+        console.log("[wealth-oracle] Raw body:", rawBody.substring(0, 200));
+        body = JSON.parse(rawBody);
       }
     } catch (parseErr) {
-      return res.status(200).json({ error: "JSON parse error", message: parseErr.message });
+      console.error("[wealth-oracle] Parse error:", parseErr.message);
+      return res.status(200).json({ 
+        error: "JSON_PARSE_ERROR", 
+        message: parseErr.message 
+      });
     }
     
-    const { birthDate, lang = 'zh' } = body;
+    console.log("[wealth-oracle] Parsed body:", body);
+    
+    const { birthDate, lang = 'zh' } = body || {};
     
     if (!birthDate) {
-      return res.status(400).json({ error: 'Missing birthDate' });
+      return res.status(200).json({ 
+        error: "MISSING_BIRTHDATE",
+        message: "请提供出生日期 (YYYY-MM-DD)"
+      });
     }
-    
-    console.log("[wealth-oracle] Processing:", birthDate);
     
     // 简化的八字计算
     const [year, month, day] = birthDate.split('-').map(Number);
@@ -73,7 +85,8 @@ module.exports = async function handler(req, res) {
     const yTG = TIANGAN[(year - 4) % 10];
     const yDZ = DIZHI[(year - 4) % 12];
     const mDZ = DIZHI[(month + 1) % 12];
-    const [dTG, dDZ] = [TIANGAN[0], DIZHI[0]]; // 简化
+    const dTG = TIANGAN[0];
+    const dDZ = DIZHI[0];
     
     const bazi = {
       year: `${yTG}${yDZ}`,
@@ -83,11 +96,13 @@ module.exports = async function handler(req, res) {
     };
     
     // 星座
-    const signs = ['摩羯座', '水瓶座', '双鱼座', '白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座'];
-    let zodiacIdx = Math.floor((month + 9) % 12);
+    const signs = ['摩羯座', '水瓶座', '双鱼座', '白羊座', '金牛座', '双子座', 
+                   '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座'];
+    const zodiacIdx = Math.floor((month + 9) % 12);
     
     const result = {
       status: 'success',
+      message: '🎉 宇宙大闸顺利通车！',
       data: {
         bazi,
         zodiac: { sign: signs[zodiacIdx] },
@@ -96,19 +111,34 @@ module.exports = async function handler(req, res) {
       },
       debug: {
         timestamp: new Date().toISOString(),
-        env: 'OK'
+        env: {
+          SUPABASE_URL: 'OK',
+          SUPABASE_SERVICE_KEY: 'OK',
+          DEEPSEEK_API_KEY: deepseekKey ? 'OK' : 'MISSING'
+        }
       }
     };
     
-    console.log("[wealth-oracle] Success");
+    console.log("[wealth-oracle] === SUCCESS ===");
     return res.status(200).json(result);
     
-  } catch (err) {
-    console.error("[CRITICAL ERROR]", err);
+  } catch (globalError) {
+    console.error("[wealth-oracle] CRITICAL ERROR:", globalError);
     return res.status(200).json({
-      error: "Internal Error",
-      message: err.message,
-      stack: err.stack
+      error: "SYSTEM_TRY_CATCH_CRASH",
+      message: globalError.message || String(globalError),
+      stack: globalError.stack || "",
+      timestamp: new Date().toISOString()
     });
   }
-};
+}
+
+// ✨ 史诗级双保险导出（兼容 ESM 和 CommonJS）
+module.exports = mainHandler;
+module.exports.default = mainHandler;
+
+// 同时支持 ESM export（如果 Vercel 当作 ESM 加载）
+if (typeof exports !== 'undefined') {
+  exports.default = mainHandler;
+  exports.runtime = runtime;
+}
