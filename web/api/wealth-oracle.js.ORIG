@@ -1,10 +1,21 @@
-// VERCEL_REDEPLOY_TRIGGER_1782473985
+// VERCEL_REDEPLOY_TRIGGER_1782355647180
 // Force Node.js 20 runtime (avoid Edge API mismatch)
 export const runtime = 'nodejs';
+
+// ULTRA-DEBUG: log at the very start of module execution
+console.log('[WO] STEP 1: module starting');
 
 // ── Supabase client (for insight cache) ──
 import { createClient } from '@supabase/supabase-js';
 import { PROMPT_VERSION } from '../config.js';
+
+// ════════════════════════════════════════════════════════════════════════
+// ⚠️  临时禁用所有大块数据，看看 handler 能否到达
+// ════════════════════════════════════════════════════════════════════════
+// 暂时注释掉 bazi/zodiac/iching/tarot/prompts，等待确认
+// ════════════════════════════════════════════════════════════════════════
+
+const PROMPT_VERSION_LOCAL = 'v1.0'; // 避免 import
 
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
@@ -2919,6 +2930,7 @@ async function handler(req, res) {
       }
     } else {
       console.log('[Wealth Oracle] Cache hit — skipping AI call, no quota deducted');
+    }
     }
 
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
