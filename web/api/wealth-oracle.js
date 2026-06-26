@@ -2519,7 +2519,7 @@ async function callAI(systemPrompt, userPrompt, env) {
     const res = await fetch(workerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
         messages: [
           { role: "system", content: systemPrompt },
@@ -2545,7 +2545,7 @@ async function callAI(systemPrompt, userPrompt, env) {
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(45000),
         body: JSON.stringify({
           contents: [{ parts: [{ text: userPrompt }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },

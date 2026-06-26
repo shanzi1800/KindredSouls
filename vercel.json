@@ -1,5 +1,13 @@
 {
   "buildCommand": "cd web && npm install && npm run build:web",
   "outputDirectory": "web/dist",
-  "framework": null
+  "framework": null,
+  "functions": {
+    "web/api/wealth-oracle.js": {
+      "maxDuration": 60
+    },
+    "web/api/ai-advisor.js": {
+      "maxDuration": 60
+    }
+  }
 }
