@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm install && npm install --prefix web && npm run --prefix web build:web",
-  "outputDirectory": "web/dist",
+  "buildCommand": "npm install && npm run build:web",
+  "outputDirectory": "dist",
   "framework": null,
   "functions": {
     "api/*.js": {
