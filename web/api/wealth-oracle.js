@@ -2513,30 +2513,37 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
-  // 🎯 走 Cloudflare Worker 代理（绕开 Vercel 出站网络问题）
-  const workerUrl = "https://rough-bush-3e49.shanzi1800.workers.dev";
-  try {
-    const res = await fetch(workerUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(45000),
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1200
-      })
-    });
-    if (res.ok) {
-      const d = await res.json();
-      return d.choices?.[0]?.message?.content?.trim() || "";
+  // 🎯 直接调用 DeepSeek API
+  const dsKey = env.DEEPSEEK_API_KEY || "sk-9307f02599b44612b6767996a7839ab5";
+  
+  if (dsKey) {
+    try {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${dsKey}` 
+        },
+        signal: AbortSignal.timeout(45000),
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 1200
+        })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        return d.choices?.[0]?.message?.content?.trim() || "";
+      }
+      const errText = await res.text();
+      console.error("[callAI] DeepSeek failed:", errText);
+    } catch (e) {
+      console.error("[callAI] DeepSeek threw:", e.message);
     }
-    const errText = await res.text();
-    console.error("[callAI] Cloudflare Worker failed, trying Gemini directly:", errText);
-  } catch (e) {
-    console.error("[callAI] Cloudflare Worker threw, trying Gemini directly:", e.message);
   }
   const geminiKey = env.GEMINI_API_KEY;
   if (geminiKey) {
