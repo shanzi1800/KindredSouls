@@ -2,6 +2,7 @@
   "buildCommand": "cd web && npm install && npm run build",
   "outputDirectory": "web/dist",
   "framework": null,
+  "installCommand": "echo 'skip root install'",
   "functions": {
     "api/*.js": {
       "runtime": "nodejs20.x",
