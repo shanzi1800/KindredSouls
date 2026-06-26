@@ -454,7 +454,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return;
         }
         // 403/429 等其他错误：显示具体原因
-        const errMsg = errData?.error || errData?.message || `错误码 ${res.status}`;
+        const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
         const userMsg = currentLang === 'zh'
           ? `生成失败: ${errMsg}`
           : `Generation failed: ${errMsg}`;
