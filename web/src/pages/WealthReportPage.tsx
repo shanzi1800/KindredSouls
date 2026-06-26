@@ -668,7 +668,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {isUnlocked && reportData && (
-          <div style={{ marginTop: '8px', padding: '12px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
+          <div style={{ marginTop: '4px', padding: '10px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
               📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
             </div>
@@ -699,7 +699,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '6px', padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+              <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.6, wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br\s*\/?><\/p>/gi, '<p>').replace(/(<\/p>)\s+(<p>)/g, '$1$2') }}
               />
             )}
