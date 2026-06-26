@@ -167,7 +167,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
         {/* 返回按钮 */}
         <button
-          onClick={() => onNavigate('/')}
+          onClick={() => onNavigate('/?showMode=true')}
           style={{
             background: 'rgba(255,255,255,0.08)',
             border: '1px solid rgba(255,255,255,0.15)',

@@ -133,6 +133,14 @@ function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2
     else { setShaking2(true); setTimeout(() => setShaking2(false), 300); }
   };
 
+  // 🔄 从财富页面返回时，自动弹出选择模式弹窗
+  React.useEffect(() => {
+    if (localStorage.getItem('ks_show_mode_modal') === '1') {
+      localStorage.removeItem('ks_show_mode_modal');
+      setShowModeModal(true);
+    }
+  }, []);
+
   const validateDate = (val: string): string => {
     if (!val) return t('common.errorIncomplete');
     const parts = val.split('-');
@@ -1278,10 +1286,14 @@ export default function App() {
   });
 
   const navigate = (path: string) => {
-    const [pathname] = path.split('?');
+    const [pathname, search] = path.split('?');
     if (pathname === '/' || pathname === '') {
       // 返回首页：清空 wealthPath
       setWealthPath(null);
+      // 如果带 ?showMode=true 参数，设置标记让 InputPage 自动弹出选择模式
+      if (search?.includes('showMode=true')) {
+        localStorage.setItem('ks_show_mode_modal', '1');
+      }
     } else {
       setWealthPath(pathname);
     }
