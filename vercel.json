@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install --prefix ./web && npm run build --prefix ./web",
+  "buildCommand": "bash build.sh",
   "outputDirectory": "web/dist",
   "regions": ["sin1"],
   "framework": null,
