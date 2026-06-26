@@ -678,7 +678,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.85)', fontSize: '13px', lineHeight: 1.6 }}
+              <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.8, maxWidth: '100%', wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 dangerouslySetInnerHTML={{ __html: wealthReportText }}
               />
             )}
