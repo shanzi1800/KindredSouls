@@ -1,5 +1,5 @@
 {
-  "buildCommand": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd) && npm --prefix \"$ROOT/web\" install && npm run build --prefix \"$ROOT/web\"",
+  "buildCommand": "npm install --prefix ./web && npm run build --prefix ./web",
   "outputDirectory": "web/dist",
   "regions": ["sin1"],
   "framework": null,
