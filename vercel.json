@@ -1,7 +1,6 @@
 {
-  "buildCommand": "bash build.sh",
-  "outputDirectory": "dist",
-  "regions": ["sin1"],
+  "buildCommand": "cd web && npm install && npm run build",
+  "outputDirectory": "web/dist",
   "framework": null,
   "functions": {
     "api/*.js": {
@@ -14,4 +13,3 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
-// Redeploy trigger 1782457147
