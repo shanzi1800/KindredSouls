@@ -2648,10 +2648,34 @@ async function handler(req, res) {
             }
           }
 
-          // ⑤ all_pass_yearly (not expired)
+          // ⑤ all_pass_yearly (每月5次虚拟配额，可累计，封顶60次)
           if (!hasWealthAccess && paidPlans.all_pass_yearly === true) {
             const expiresAt = paidPlans.all_pass_expires_at;
             if (!expiresAt || now < new Date(expiresAt)) {
+              // 虚拟配额：按激活月份无感计算
+              const activatedAt = paidPlans.all_pass_activated_at
+                ? new Date(paidPlans.all_pass_activated_at)
+                : new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+              const monthsSinceActivation = Math.max(0,
+                (now.getUTCFullYear() - activatedAt.getUTCFullYear()) * 12 +
+                (now.getUTCMonth() - activatedAt.getUTCMonth())
+              );
+              const currentTotalQuota = Math.min((monthsSinceActivation + 1) * 5, 60);
+              const usedCount = paidPlans.all_pass_wealth_used || 0;
+              if (usedCount >= currentTotalQuota) {
+                const nextQuotaDate = new Date(
+                  activatedAt.getUTCFullYear(),
+                  activatedAt.getUTCMonth() + monthsSinceActivation + 1, 1
+                );
+                return res.status(429).json({
+                  error: 'Monthly quota exhausted',
+                  code: 'ALL_PASS_WEALTH_MONTHLY_QUOTA_EXCEEDED',
+                  message: '您的本月 VIP 客盘配额已用完。下月 1 日将自动注入新一轮 5 次额度。',
+                  nextInjection: nextQuotaDate.toISOString(),
+                  quotaUsed: usedCount,
+                  quotaTotal: currentTotalQuota,
+                });
+              }
               hasWealthAccess = true;
               wealthAccessMethod = 'all_pass_yearly';
             }
@@ -2826,6 +2850,28 @@ async function handler(req, res) {
       }
 
       insight = await callAI(systemPrompt, userPrompt, process.env);
+      // ⑥ 记录 all_pass_yearly 配额消耗
+      if (wealthAccessMethod === 'all_pass_yearly' && currentUserId) {
+        try {
+          await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(currentUserId)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': process.env.SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              paid_plans: {
+                ...paidPlans,
+                all_pass_wealth_used: (paidPlans.all_pass_wealth_used || 0) + 1,
+              }
+            }),
+          });
+        } catch (quotaErr) {
+          console.error('[Wealth Oracle] Failed to record all_pass quota:', quotaErr.message);
+        }
+      }
       // Save/update cache
       if (supabase) {
         if (wealthAccessMethod === 'wealth_once' && currentUserId) {
