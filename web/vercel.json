@@ -1,5 +1,43 @@
 {
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/wealth-oracle.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "api/ai-advisor.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "api/tarot-cards.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "api/create-checkout.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/webhook.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/daily-weather.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/ai-support.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/save-result.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/debug-ai.js": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  }
 }
