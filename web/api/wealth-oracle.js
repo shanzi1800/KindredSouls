@@ -2798,28 +2798,31 @@ async function handler(req, res) {
     }
 
     // ── Global rate limit: max 10 calls per user per day ──
-    const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
-    const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
-    // 复用前面已声明的 now 变量（line 2597）
-    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-    const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
+    // ⚠️ 年卡用户豁免每日限制
+    if (!isAllPassYearly) {
+      const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
+      const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
+      // 复用前面已声明的 now 变量（line 2597）
+      const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      const isSameDay = dailyCallResetAt && new Date(dailyCallResetAt).getTime() === todayUTC.getTime();
 
-    if (isSameDay && dailyCallCount >= 10) {
-      return res.status(429).json({
-        error: 'Daily wealth AI call limit exceeded',
-        code: 'DAILY_WEALTH_RATE_LIMIT_EXCEEDED',
-        limit: 10,
-        resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
-      });
-    }
+      if (isSameDay && dailyCallCount >= 10) {
+        return res.status(429).json({
+          error: 'Daily wealth AI call limit exceeded',
+          code: 'DAILY_WEALTH_RATE_LIMIT_EXCEEDED',
+          limit: 10,
+          resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)).toISOString()
+        });
+      }
 
-    // Update daily call counter
-    const updatedDailyPlans = {
-      ...paidPlans,
-      daily_wealth_call_count: isSameDay ? (dailyCallCount + 1) : 1,
-      daily_wealth_call_resets_at: todayUTC.toISOString(),
-    };
-    paidPlans = updatedDailyPlans;
+      // Update daily call counter
+      const updatedDailyPlans = {
+        ...paidPlans,
+        daily_wealth_call_count: isSameDay ? (dailyCallCount + 1) : 1,
+        daily_wealth_call_resets_at: todayUTC.toISOString(),
+      };
+      paidPlans = updatedDailyPlans;
+    } // end if (!isAllPassYearly)
 
     // ── 🛡️ 军师级主星盘死锁：wealth_once 永久缓存防线 ──
     // wealth_once 用户：按 user_id 永久缓存，后续访问 0 AI 消耗，0 计数
