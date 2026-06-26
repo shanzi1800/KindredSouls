@@ -1,7 +1,41 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import { createClient } from '@supabase/supabase-js';
+// ── Supabase REST helpers (Vercel serverless compatible) ──
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const SB_HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
+};
+
+async function sbGet(table, query) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: SB_HEADERS });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB GET ${table} ${r.status}: ${t}`); }
+  return r.json();
+}
+
+async function sbUpsert(table, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB UPSERT ${table} ${r.status}: ${t}`); }
+  return r.json();
+}
+
+async function sbPatch(table, id, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB PATCH ${table} ${r.status}: ${t}`); }
+}
+
 
 // ═══════════════════════════════════════════════════
 // KindredSouls Phase 2 — AI Support (非 Streaming)
@@ -78,16 +112,11 @@ const TOOLS = [
 
 // ── Tool 执行器 ──
 
-async function executeTool(name, args, supabase) {
+async function executeTool(name, args) {
   switch (name) {
     case 'check_subscription': {
-      // TODO: subscriptions 表建立后接入
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('paid, user_id')
-        .eq('user_id', args.user_id)
-        .limit(1);
-      return { subscription: data?.[0] || null, note: 'Full subscription table pending' };
+      const rows = await sbGet('user_profiles', `user_id=eq.${args.user_id}&select=paid,user_id&limit=1`);
+      return { subscription: rows?.[0] || null, note: 'Full subscription table pending' };
     }
 
     case 'check_payment_status': {
@@ -127,23 +156,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or message' });
   }
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
-
+  try {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: 'AI service not configured' });
   }
 
   // ── Rate Limit ──
-  const { data: profile } = await supabase
-    .from('compatibility_results')
-    .select('ai_support_count, ai_support_date')
-    .eq('user_id', userId)
-    .limit(1)
-    .single();
+  const profiles = await sbGet('compatibility_results', `user_id=eq.${userId}&select=ai_support_count,ai_support_date&limit=1`);
+  const profile = profiles?.[0] || null;
 
   const today = new Date().toISOString().slice(0, 10);
   let supportCount = profile?.ai_support_count || 0;
@@ -168,12 +189,8 @@ export default async function handler(req, res) {
   // ── 退款挽留检测 ──
   let retentionOffered = false;
   if (detectRefundIntent(message)) {
-    const { data: resultRow } = await supabase
-      .from('compatibility_results')
-      .select('refund_retention_used')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    const resultRows = await sbGet('compatibility_results', `user_id=eq.${userId}&select=refund_retention_used&limit=1`);
+    const resultRow = resultRows?.[0] || null;
 
     if (resultRow && !resultRow.refund_retention_used) {
       retentionOffered = true;
@@ -226,7 +243,7 @@ export default async function handler(req, res) {
       for (const toolCall of toolCalls) {
         const toolName = toolCall.function.name;
         const toolArgs = JSON.parse(toolCall.function.arguments);
-        const toolResult = await executeTool(toolName, toolArgs, supabase);
+        const toolResult = await executeTool(toolName, toolArgs);
 
         messages.push({
           role: 'tool',
@@ -257,10 +274,11 @@ export default async function handler(req, res) {
     }
 
     // 更新计数
-    await supabase
-      .from('compatibility_results')
-      .update({ ai_support_count: supportCount + 1, ai_support_date: today })
-      .eq('user_id', userId);
+    await fetch(`${SUPABASE_URL}/rest/v1/compatibility_results?user_id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ ai_support_count: supportCount + 1, ai_support_date: today }),
+    });
 
     // 如果提供了挽留且用户接受了，标记 retention
     const finalContent = assistantMessage?.content || '';
@@ -277,7 +295,11 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
+    console.error('[ai-support] DeepSeek error:', err);
+    return res.status(502).json({ error: 'AI service unavailable' });
+  }
+  } catch (err) {
     console.error('[ai-support] handler error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', detail: err.message });
   }
 }

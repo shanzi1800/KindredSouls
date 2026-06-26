@@ -1,7 +1,41 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs20.x';
 
-import { createClient } from '@supabase/supabase-js';
+// ── Supabase REST helpers (Vercel serverless compatible) ──
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const SB_HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
+};
+
+async function sbGet(table, query) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: SB_HEADERS });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB GET ${table} ${r.status}: ${t}`); }
+  return r.json();
+}
+
+async function sbUpsert(table, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB UPSERT ${table} ${r.status}: ${t}`); }
+  return r.json();
+}
+
+async function sbPatch(table, id, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(`SB PATCH ${table} ${r.status}: ${t}`); }
+}
+
 
 // ═══════════════════════════════════════════════════
 // KindredSouls Phase 2 — Daily Weather API
@@ -407,72 +441,56 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing resultId' });
   }
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
+  try {
+    // 1. 查合盘记录
+    const records = await sbGet('compatibility_results', `id=eq.${resultId}&select=*`);
+    if (!records || records.length === 0) {
+      return res.status(404).json({ error: 'Result not found' });
+    }
+    const record = records[0];
 
-  // 1. 查合盘记录
-  const { data: record, error: fetchError } = await supabase
-    .from('compatibility_results')
-    .select('*')
-    .eq('id', resultId)
-    .single();
+    const today = date || new Date().toISOString().slice(0, 10);
 
-  if (fetchError || !record) {
-    return res.status(404).json({ error: 'Result not found' });
-  }
+    // 2. 查缓存
+    const cached = await sbGet('daily_weather_logs', `result_id=eq.${resultId}&log_date=eq.${today}&select=dynamic_daily`);
+    if (cached && cached.length > 0 && cached[0].dynamic_daily) {
+      return res.status(200).json({
+        dynamic_daily: cached[0].dynamic_daily,
+        from_cache: true,
+      });
+    }
 
-  const today = date || new Date().toISOString().slice(0, 10);
+    // 3. 构建 static_profile
+    let staticProfile;
+    if (record.ai_context?.static_profile) {
+      staticProfile = record.ai_context.static_profile;
+    } else {
+      staticProfile = buildStaticProfile(record);
+    }
 
-  // 2. 查缓存
-  const { data: cached } = await supabase
-    .from('daily_weather_logs')
-    .select('dynamic_daily')
-    .eq('result_id', resultId)
-    .eq('log_date', today)
-    .single();
+    // 4. 计算动态气象
+    const dynamicDaily = calculateDailyWeather(staticProfile, today);
 
-  if (cached?.dynamic_daily) {
-    return res.status(200).json({
-      dynamic_daily: cached.dynamic_daily,
-      from_cache: true,
-    });
-  }
-
-  // 3. 构建 static_profile（如果 ai_context 已有则复用）
-  let staticProfile;
-  if (record.ai_context?.static_profile) {
-    staticProfile = record.ai_context.static_profile;
-  } else {
-    staticProfile = buildStaticProfile(record);
-  }
-
-  // 4. 计算动态气象
-  const dynamicDaily = calculateDailyWeather(staticProfile, today);
-
-  // 5. 写入 daily_weather_logs
-  await supabase
-    .from('daily_weather_logs')
-    .upsert({
+    // 5. 写入 daily_weather_logs (upsert via POST with merge-duplicates)
+    await sbUpsert('daily_weather_logs', {
       result_id: resultId,
       user_id: record.user_id,
       log_date: today,
       dynamic_daily: dynamicDaily,
-    }, { onConflict: 'result_id,log_date' });
+    });
 
-  // 6. 更新 compatibility_results.ai_context
-  const aiContext = record.ai_context || { schema_version: 1 };
-  aiContext.static_profile = staticProfile;
-  aiContext.dynamic_daily = dynamicDaily;
+    // 6. 更新 compatibility_results.ai_context
+    const aiContext = record.ai_context || { schema_version: 1 };
+    aiContext.static_profile = staticProfile;
+    aiContext.dynamic_daily = dynamicDaily;
+    await sbPatch('compatibility_results', resultId, { ai_context: aiContext });
 
-  await supabase
-    .from('compatibility_results')
-    .update({ ai_context: aiContext })
-    .eq('id', resultId);
-
-  return res.status(200).json({
-    dynamic_daily: dynamicDaily,
-    from_cache: false,
-  });
+    return res.status(200).json({
+      dynamic_daily: dynamicDaily,
+      from_cache: false,
+    });
+  } catch (err) {
+    console.error('daily-weather error:', err);
+    return res.status(500).json({ error: 'Internal server error', detail: err.message });
+  }
 }
