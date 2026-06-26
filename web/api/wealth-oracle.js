@@ -2513,8 +2513,8 @@ var SYSTEM_PROMPTS = {
   vi: VI_SYSTEM
 };
 async function callAI(systemPrompt, userPrompt, env) {
-  // 🎯 直接调用 DeepSeek API
-  const dsKey = env.DEEPSEEK_API_KEY || "sk-9307f02599b44612b6767996a7839ab5";
+  // 🎯 优先读环境变量，找不到再 fallback 到硬编码
+  const dsKey = env.DEEPSEEK_API_KEY;
   
   if (dsKey) {
     try {
