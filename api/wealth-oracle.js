@@ -1,6 +1,9 @@
-// 🛡️ 战时紧急版本：硬编码关键配置（仅测试用）
+// 🛡️ 战时紧急版本：正确的 ES Module 语法
+// api/package.json 设置了 "type": "module"
 
-async function mainHandler(req, res) {
+const runtime = 'nodejs20.x';
+
+export default async function handler(req, res) {
   console.log("[wealth-oracle] === REQUEST STARTED ===");
   
   // ⚠️ 硬编码配置（紧急测试）
@@ -9,13 +12,10 @@ async function mainHandler(req, res) {
   const DEEPSEEK_API_KEY = "sk-9307f02599b44612b6767996a7839ab5";
   
   try {
-    const { createClient } = require('@supabase/supabase-js');
+    // 动态 import（ESM）
+    const { createClient } = await import('@supabase/supabase-js');
     
-    console.log("[wealth-oracle] Env check:", {
-      SUPABASE_URL: 'HARDCODED',
-      SUPABASE_SERVICE_KEY: 'HARDCODED',
-      DEEPSEEK_API_KEY: 'HARDCODED'
-    });
+    console.log("[wealth-oracle] Env check: HARDCODED (for testing)");
     
     // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -45,8 +45,8 @@ async function mainHandler(req, res) {
     if (!birthDate) {
       return res.status(200).json({ 
         status: 'success',
-        message: 'API 正常运行！环境变量已硬编码注入',
-        hint: '请提供 birthDate 参数进行完整测试'
+        message: 'API 正常运行！请提供 birthDate 参数',
+        test: true
       });
     }
     
@@ -57,19 +57,28 @@ async function mainHandler(req, res) {
     
     const yTG = TIANGAN[(year - 4) % 10];
     const yDZ = DIZHI[(year - 4) % 12];
+    const mDZ = DIZHI[(month + 1) % 12];
+    const signs = ['摩羯座', '水瓶座', '双鱼座', '白羊座', '金牛座', '双子座', 
+                   '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座'];
+    const zodiacIdx = Math.floor((month + 9) % 12);
     
     const result = {
       status: 'success',
-      message: '🎉 宇宙大闸通车！硬编码版本成功！',
+      message: '🎉 宇宙大闸通车！ESM 版本成功！',
       data: {
         bazi: {
           year: `${yTG}${yDZ}`,
-          month: `${TIANGAN[0]}${DIZHI[(month + 1) % 12]}`,
+          month: `${TIANGAN[0]}${mDZ}`,
           day: `${TIANGAN[0]}${DIZHI[0]}`,
           dayMaster: TIANGAN[0]
         },
+        zodiac: { sign: signs[zodiacIdx] },
         birthDate,
         lang
+      },
+      debug: {
+        timestamp: new Date().toISOString(),
+        env: 'HARDCODED'
       }
     };
     
@@ -85,6 +94,3 @@ async function mainHandler(req, res) {
     });
   }
 }
-
-module.exports = mainHandler;
-module.exports.default = mainHandler;
