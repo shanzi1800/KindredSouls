@@ -6,6 +6,13 @@ export const runtime = 'nodejs';
 import { createClient } from '@supabase/supabase-js';
 import { PROMPT_VERSION } from '../config.js';
 
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY || '';
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+// DEBUG: 验证模块级 supabase 客户端状态
+console.log('[WO-MODULE] supabase init:', { url: !!supabaseUrl, key: !!supabaseKey, client: !!supabase });
+
 // src/lib/algos/bazi.ts
 var TIANGAN = ["\u7532", "\u4E59", "\u4E19", "\u4E01", "\u620A", "\u5DF1", "\u5E9A", "\u8F9B", "\u58EC", "\u7678"];
 var DIZHI = ["\u5B50", "\u4E11", "\u5BC5", "\u536F", "\u8FB0", "\u5DF3", "\u5348", "\u672A", "\u7533", "\u9149", "\u620C", "\u4EA5"];
