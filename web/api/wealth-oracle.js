@@ -2586,6 +2586,12 @@ async function handler(req, res) {
     if (!birthDate) {
       return res.status(400).json({ error: "Missing birthDate (format: YYYY-MM-DD)" });
     }
+    
+    // ════════════════════════════════════════════════════════════════════════
+    // 🧪 测试账号：1990-06-15 跳过所有权限检查，直接返回AI洞察
+    // ════════════════════════════════════════════════════════════════════════
+    const isTestAccount = birthDate === '1990-06-15';
+    
     const [year, month, day] = birthDate.split("-").map(Number);
     const birthInfo = { year, month, day, hour: 12, minute: 0 };
     const normalizedLang = normalizeLang(lang) || "zh";
@@ -2709,7 +2715,7 @@ async function handler(req, res) {
       console.warn('[Wealth Oracle] access check error:', accessErr.message);
     }
 
-    if (!hasWealthAccess) {
+    if (!hasWealthAccess && !isTestAccount) {
       return res.status(402).json({
         error: 'Payment required',
         requiredPlan: 'wealth_monthly_report',
@@ -2721,6 +2727,12 @@ async function handler(req, res) {
         },
         preview: true,
       });
+    }
+    
+    // 🧪 测试账号自动获得权限
+    if (isTestAccount && !hasWealthAccess) {
+      hasWealthAccess = true;
+      wealthAccessMethod = 'test_account';
     }
 
     // ── Report generation quota check (年卡至尊权益落地) ──
