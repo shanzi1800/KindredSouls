@@ -1,6 +1,6 @@
 {
-  "buildCommand": "bash \"$PWD/build.sh\"",
-  "outputDirectory": "web/dist",
+  "buildCommand": "bash build.sh",
+  "outputDirectory": "dist",
   "regions": ["sin1"],
   "framework": null,
   "functions": {
