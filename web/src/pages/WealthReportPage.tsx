@@ -668,7 +668,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {isUnlocked && reportData && (
-          <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
+          <div style={{ marginTop: '8px', padding: '12px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
             <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
               📊 {currentLang === 'zh' ? '财富年鉴' : currentLang === 'en' ? 'Wealth Almanac' : currentLang === 'es' ? 'Almanaque de Riqueza' : currentLang === 'fr' ? 'Almanach de Richesse' : currentLang === 'th' ? 'ปฏิทินความมั่งคั่ง' : 'Niên Ký Tài Lộc'}
             </div>
@@ -677,29 +677,29 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             </div>
             {paidPlans?.all_pass_yearly === true ? (
               <>
-                <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : (currentLang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
                 </button>
-                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_yearly' ? '⏳...' : (currentLang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
                 </button>
-                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
+                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {currentLang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
               </>
             ) : (
               <>
-                <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   📅 {currentLang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
                 </button>
-                <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   📆 {currentLang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
                 </button>
-                <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '6px' }}>
+                <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px' }}>
                   💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
                 </div>
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '8px', padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+              <div style={{ marginTop: '6px', padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br\s*\/?><\/p>/gi, '<p>').replace(/(<\/p>)\s+(<p>)/g, '$1$2') }}
               />
             )}
