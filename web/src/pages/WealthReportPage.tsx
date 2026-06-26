@@ -593,9 +593,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const ichingField = reportData?.data?.iching
     ? (() => {
         const ic = reportData.data.iching as any;
-        return { label: '', value: `${ic.hexName} #${ic.hexNum}`, subValue: `${ic.hexNature} · ${ic.changingLineDesc || ic.changingLine} → ${ic.transformedHexName}` };
+        return {
+          label: '',
+          value: `${ic.hexName} #${ic.hexNum}`,
+          subValue: `${ic.hexNature} · ${ic.changingLineDesc || ic.changingLine} → ${ic.transformedHexName}`,
+          detail: ic.hexJudgment || '', // 卦辞作为展开详情
+        };
       })()
-    : { label: '', value: '--', subValue: '' };
+    : { label: '', value: '--', subValue: '', detail: '' };
 
   const tarotField = reportData?.data?.tarot
     ? (() => {

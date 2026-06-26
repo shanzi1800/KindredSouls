@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // ── Types ──
 interface DataField {
   label: string;
   value: string;
   subValue?: string;
+  detail?: string; // 展开后显示的详细信息（如卦辞）
 }
 
 interface WealthDataGridProps {
@@ -64,32 +65,44 @@ const CARD_CONFIG = [
 // ── Component ──
 const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, tarot, lang }) => {
   const refs = useStaggeredFadeIn(4);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const fields: Record<string, DataField> = { bazi, zodiac, iching, tarot };
+
+  const toggleExpand = (key: string) => {
+    setExpandedCard(prev => prev === key ? null : key);
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '20px 0' }}>
       {CARD_CONFIG.map((card, i) => {
         const field = fields[card.key];
         const ref = (el: HTMLDivElement | null) => { refs.current[i] = el; };
+        const isExpanded = expandedCard === card.key;
+        const hasDetail = field.detail && field.detail.trim().length > 0;
+
         return (
           <div
             key={card.key}
             ref={ref}
+            onClick={() => hasDetail ? toggleExpand(card.key) : null}
             style={{
               background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)',
               border: '1px solid rgba(212, 175, 55, 0.25)',
               borderRadius: '12px',
-              padding: '16px',
-              cursor: 'pointer',
+              padding: isExpanded ? '16px 16px 20px 16px' : '16px',
+              cursor: hasDetail ? 'pointer' : 'default',
               transition: 'all 0.3s ease',
               position: 'relative',
               overflow: 'hidden',
+              minHeight: isExpanded ? '140px' : 'auto',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.6)';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(212, 175, 55, 0.2)';
+              if (!isExpanded) {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(212, 175, 55, 0.2)';
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.25)';
@@ -121,6 +134,40 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
             {field.subValue && (
               <div style={{ fontSize: '11px', color: '#8B8778', marginTop: '4px', lineHeight: 1.4 }}>
                 {field.subValue}
+              </div>
+            )}
+
+            {/* 展开区域：显示详细信息 */}
+            {hasDetail && (
+              <div
+                style={{
+                  maxHeight: isExpanded ? '500px' : '0',
+                  overflow: 'hidden',
+                  transition: 'max-height 0.4s ease-out, opacity 0.3s ease-out',
+                  opacity: isExpanded ? 1 : 0,
+                  marginTop: isExpanded ? '12px' : '0',
+                  paddingTop: isExpanded ? '12px' : '0',
+                  borderTop: isExpanded ? '1px solid rgba(212, 175, 55, 0.15)' : 'none',
+                }}
+              >
+                <div style={{ fontSize: '12px', color: '#B8B49A', lineHeight: 1.6, textAlign: 'left' as const }}>
+                  {field.detail}
+                </div>
+              </div>
+            )}
+
+            {/* 展开/收起提示 */}
+            {hasDetail && (
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#8B8778',
+                  marginTop: '8px',
+                  textAlign: 'center' as const,
+                  opacity: 0.7,
+                }}
+              >
+                {isExpanded ? (lang === 'zh' ? '点击收起 ▲' : 'Click to collapse ▲') : (lang === 'zh' ? '点击展开 ▼' : 'Click to expand ▼')}
               </div>
             )}
           </div>
