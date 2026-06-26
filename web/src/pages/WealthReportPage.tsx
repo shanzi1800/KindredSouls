@@ -452,7 +452,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }
         throw new Error('API error: ' + res.status);
       }
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
         console.error('[WealthReport] API error response:', res.status, data);
         setWealthReportText(
