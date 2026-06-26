@@ -1,15 +1,5 @@
 {
-  "buildCommand": "npm install && npm run build:web",
-  "outputDirectory": "dist",
-  "framework": null,
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "buildCommand": "cd web && npm install && npm run build:web",
+  "outputDirectory": "web/dist",
+  "framework": null
 }
