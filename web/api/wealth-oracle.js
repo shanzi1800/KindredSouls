@@ -2607,6 +2607,12 @@ async function handler(req, res) {
     let currentUserId = null;
     const now = new Date();
 
+    // 🧪 测试账号白名单：1990-06-15 跳过所有权限检查
+    if (isTestAccount) {
+      hasWealthAccess = true;
+      wealthAccessMethod = 'test_account';
+    }
+
     try {
       const authHeader = req.headers.authorization;
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -2739,7 +2745,7 @@ async function handler(req, res) {
     // ⚠️ 年卡用户豁免月报/年报生成频率限制
     const isAllPassYearly = paidPlans.all_pass_yearly === true;
     
-    if (reportType === 'monthly' && currentUserId && !isAllPassYearly) {
+    if (reportType === 'monthly' && currentUserId && !isAllPassYearly && !isTestAccount) {
       const lastMonthlyGen = paidPlans.monthly_wealth_report_generated_at;
       if (lastMonthlyGen) {
         const lastGenDate = new Date(lastMonthlyGen);
@@ -2756,7 +2762,7 @@ async function handler(req, res) {
       }
     }
 
-    if (reportType === 'yearly' && currentUserId && paidPlans && !isAllPassYearly) {
+    if (reportType === 'yearly' && currentUserId && paidPlans && !isAllPassYearly && !isTestAccount) {
       // Solar Return 锚定：年报周期 = 用户生日的月-日 → 次年同一天
       // 需要从 user_profiles.birth_date 获取用户生日
       const userBirthDate = paidPlans.birth_date || null;
@@ -2798,8 +2804,8 @@ async function handler(req, res) {
     }
 
     // ── Global rate limit: max 10 calls per user per day ──
-    // ⚠️ 年卡用户豁免每日限制
-    if (!isAllPassYearly) {
+    // 🧪 测试账号豁免每日限制
+    if (!isTestAccount) {
       const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
       const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
       // 复用前面已声明的 now 变量（line 2597）
@@ -2822,7 +2828,7 @@ async function handler(req, res) {
         daily_wealth_call_resets_at: todayUTC.toISOString(),
       };
       paidPlans = updatedDailyPlans;
-    } // end if (!isAllPassYearly)
+    }
 
     // ── 🛡️ 军师级主星盘死锁：wealth_once 永久缓存防线 ──
     // wealth_once 用户：按 user_id 永久缓存，后续访问 0 AI 消耗，0 计数
