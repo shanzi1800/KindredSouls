@@ -2804,8 +2804,8 @@ async function handler(req, res) {
     }
 
     // ── Global rate limit: max 10 calls per user per day ──
-    // 🧪 测试账号豁免每日限制
-    if (!isTestAccount) {
+    // 🧪 测试账号豁免 | 🏆 年卡用户豁免（只有非付费用户受限制）
+    if (!isTestAccount && !isAllPassYearly && !paidPlans.star_monthly_vip && !paidPlans.wealth_once) {
       const dailyCallCount = paidPlans.daily_wealth_call_count || 0;
       const dailyCallResetAt = paidPlans.daily_wealth_call_resets_at;
       // 复用前面已声明的 now 变量（line 2597）
