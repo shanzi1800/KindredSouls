@@ -1279,7 +1279,12 @@ export default function App() {
 
   const navigate = (path: string) => {
     const [pathname] = path.split('?');
-    setWealthPath(pathname);
+    if (pathname === '/' || pathname === '') {
+      // 返回首页：清空 wealthPath
+      setWealthPath(null);
+    } else {
+      setWealthPath(pathname);
+    }
     window.history.pushState({}, '', path);
   };
 
