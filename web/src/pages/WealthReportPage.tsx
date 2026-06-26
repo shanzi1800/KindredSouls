@@ -443,6 +443,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }),
       });
       if (!res.ok) {
+        let errData = {};
+        try { errData = await res.json(); } catch {}
+        console.error('[WealthReport] API error:', res.status, errData);
         if (res.status === 402) {
           await handlePurchase(
             type === 'monthly' ? 'wealth_monthly_report' : 'wealth_yearly_report',
@@ -450,7 +453,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           );
           return;
         }
-        throw new Error('API error: ' + res.status);
+        // 403/429 等其他错误：显示具体原因
+        const errMsg = errData?.error || errData?.message || `错误码 ${res.status}`;
+        const userMsg = currentLang === 'zh'
+          ? `生成失败: ${errMsg}`
+          : `Generation failed: ${errMsg}`;
+        setWealthReportText(userMsg);
+        return;
       }
       let data;
       try {
@@ -678,8 +687,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.8, maxWidth: '100%', wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: wealthReportText }}
+              <div style={{ marginTop: '10px', padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                dangerouslySetInnerHTML={{ __html: wealthReportText.replace(/<p><br><\/p>/g, '<p>').replace(/<\/p>\s*<p>/g, '</p><p>') }}
               />
             )}
           </div>
