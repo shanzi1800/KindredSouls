@@ -2724,7 +2724,10 @@ async function handler(req, res) {
     }
 
     // ── Report generation quota check (年卡至尊权益落地) ──
-    if (reportType === 'monthly' && currentUserId) {
+    // ⚠️ 年卡用户豁免月报/年报生成频率限制
+    const isAllPassYearly = paidPlans.all_pass_yearly === true;
+    
+    if (reportType === 'monthly' && currentUserId && !isAllPassYearly) {
       const lastMonthlyGen = paidPlans.monthly_wealth_report_generated_at;
       if (lastMonthlyGen) {
         const lastGenDate = new Date(lastMonthlyGen);
@@ -2741,7 +2744,7 @@ async function handler(req, res) {
       }
     }
 
-    if (reportType === 'yearly' && currentUserId && paidPlans) {
+    if (reportType === 'yearly' && currentUserId && paidPlans && !isAllPassYearly) {
       // Solar Return 锚定：年报周期 = 用户生日的月-日 → 次年同一天
       // 需要从 user_profiles.birth_date 获取用户生日
       const userBirthDate = paidPlans.birth_date || null;
