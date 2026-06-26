@@ -1,18 +1,31 @@
 {
-  "buildCommand": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd) && npm --prefix \"$ROOT\" install && npm --prefix \"$ROOT/web\" install && npm run build --prefix \"$ROOT/web\"",
-  "outputDirectory": "web/dist",
+  "buildCommand": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd) && npm --prefix \"$ROOT/web\" install && npm run build --prefix \"$ROOT/web\"",
+  "outputDirectory": "dist",
   "regions": ["sin1"],
   "framework": null,
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
   "functions": {
-    "api/*.js": {
+    "api/wealth-oracle.js": {
       "runtime": "nodejs20.x",
       "memory": 1024,
       "maxDuration": 60
     },
-    "web/api/*.js": {
+    "api/ai-advisor.js": {
       "runtime": "nodejs20.x",
       "memory": 1024,
       "maxDuration": 60
+    },
+    "api/tarot-cards.js": {
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "api/*.js": {
+      "runtime": "nodejs20.x",
+      "memory": 512,
+      "maxDuration": 30
     }
   }
 }
