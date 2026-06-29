@@ -1317,31 +1317,6 @@ export default function App() {
 
 
 
-  // ── handlePurchaseWithToken: uses App-level state ──
-  const handlePurchaseWithToken = async (token: string, plan: string) => {
-    const res = await fetch('/api/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ plan }),
-    });
-    if (res.status === 401) {
-      setShowAuthWall(true);
-      setShowPaywall(false);
-      setPaidStatus(null);
-      return;
-    }
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else if (data.already_paid) {
-      setPaidStatus(true);
-      setShowPaywall(false);
-      triggerInsight(token);
-    } else {
-      setError(data.error || 'Checkout failed');
-    }
-  };
-
   // 🐮 监听 supabase.ts 分发的自定义登录成功事件
   useEffect(() => {
     const handleAuthReady = (e: any) => {
