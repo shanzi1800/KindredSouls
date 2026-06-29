@@ -38,7 +38,7 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: '2026-06-29b' });
 });
 
 // ── /api/create-checkout ──
