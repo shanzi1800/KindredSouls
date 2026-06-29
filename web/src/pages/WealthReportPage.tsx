@@ -5,24 +5,6 @@ import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import { supabase } from '../lib/supabase';
 
-// ── 简易登录模态框组件 ──
-const LoginModal: React.FC<{ onLogin: () => void; onClose: () => void; lang: string }> = ({ onLogin, onClose, lang }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    setLoading(true);
-    setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      onLogin();
-    }
-  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
@@ -215,7 +197,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     setAuthChecking(false);
-    await loadWealthData(birth, lang, token);
+    await loadWealthData(birth, lang, token ?? undefined);
   };
 
   const checkPaidStatus = async () => {
@@ -476,7 +458,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         setIsUnlocked(true);
         setShowPaywall(false);
         if (reportData && !reportData.insight) {
-          loadWealthData(birthDate, lang, token);
+          loadWealthData(birthDate, lang, token ?? undefined);
         }
       } else {
         setError(data.detail || data.error || 'Checkout failed');
