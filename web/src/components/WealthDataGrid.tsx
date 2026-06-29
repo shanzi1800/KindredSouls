@@ -6,6 +6,7 @@ interface DataField {
   value: string;
   subValue?: string;
   detail?: string; // 展开后显示的详细信息（如卦辞）
+  oneLiner?: string; // 灵魂释义（军师一句话天机）
 }
 
 interface WealthDataGridProps {
@@ -134,6 +135,23 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
             {field.subValue && (
               <div style={{ fontSize: '11px', color: '#8B8778', marginTop: '4px', lineHeight: 1.4 }}>
                 {field.subValue}
+              </div>
+            )}
+            {/* 灵魂释义（军师一句话天机） */}
+            {field.oneLiner && (
+              <div style={{ 
+                marginTop: '12px', 
+                padding: '10px 12px', 
+                background: 'rgba(212, 175, 55, 0.08)',
+                borderRadius: '8px',
+                borderLeft: '3px solid #D4AF37',
+                fontSize: '12px', 
+                color: '#D4AF37', 
+                lineHeight: 1.6, 
+                fontStyle: 'italic',
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+              }}>
+                {field.oneLiner}
               </div>
             )}
 

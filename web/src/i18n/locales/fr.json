@@ -10,7 +10,17 @@
     "theirBirthday": "Sa date de naissance",
     "calculate": "Dévoiler notre destin",
     "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD"
+    "placeholder2": "YYYY-MM-DD",
+    "start": "Commencer",
+    "compatibilityMode": "Code de Compatibilité",
+    "compatibilityModeDesc": "Déverrouiller le code relationnel",
+    "wealthMode": "Décodage de Richesse",
+    "wealthModeDesc": "Décoder votre coffre-fort Inné de richesse",
+    "selectMode": "Sélectionner le mode",
+    "back": "Retour",
+    "legalFooter": "En cliquant sur \"{{calculate}}\", vous acceptez nos {terms} et notre {privacy}.",
+    "termsOfService": "Conditions d'Utilisation",
+    "privacyPolicy": "Politique de Confidentialité"
   },
   "result": {
     "title": "Verdict des astres",
@@ -37,5 +47,35 @@
     "errorInvalidDate": "🔮 Rupture de l'ancre temporelle — veuillez corriger votre naissance terrestre",
     "errorFutureDate": "⏳ La roue du destin n'a pas encore tourné — date future impossible",
     "errorTooOld": "🌟 Même les astres ont des limites — veuillez vérifier l'année"
+  },
+  "wealth": {
+    "title": "Oracle Fortune et Carrière",
+    "subtitle": "Décodez vos blueprints Innés de richesse et ADN de carrière",
+    "cta": "🔮 Décoder maintenant",
+    "loading": "Invocation du code fortune...",
+    "reportTitle": "Rapport de l'Oracle Fortune"
+  },
+  "wealthInput": {
+    "title": "Oracle Fortune et Carrière",
+    "subtitle": "Décodez votre blueprint Innée de richesse et ADN de carrière",
+    "birthdayLabel": "Entrez votre date de naissance",
+    "birthdayPh": "YYYY-MM-DD",
+    "startBtn": "🔮 Commencer le Décodage",
+    "unlockTip": "Votre trajectoire financière est liée à votre énergie relationnelle. Débloquez pour voir aussi l'analyse de richesse dans les rapports de compatibilité."
+  },
+  "wealthReport": {
+    "reportTitle": "Rapport de l'Oracle Fortune",
+    "monthlyReport": "📅 Rapport Mensuel de Fortune",
+    "yearlyReport": "📆 Rapport Annuel de Fortune",
+    "vipFree": "Accès VIP gratuit",
+    "unlockMonthly": "Débloquer Mensuel $2.99",
+    "unlockYearly": "Débloquer Annuel $29.99",
+    "generateAI": "✨ Générer l'Insight IA",
+    "alreadyGeneratedMonthly": "Rapport mensuel de fortune déjà généré ce mois. Prochain disponible: mois prochain",
+    "alreadyGeneratedYearly": "Rapport annuel de fortune déjà généré. Prochain disponible: année prochaine",
+    "generateFail": "Échec de génération",
+    "loginFirst": "Veuillez vous connecter d'abord pour générer le rapport.",
+    "almanac": "Almanach de Richesse",
+    "almanacDesc": "Basé sur votre plan de richesse inné, projete des tendences futures."
   }
 }

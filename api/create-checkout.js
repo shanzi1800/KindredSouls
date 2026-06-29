@@ -204,8 +204,8 @@ export default async function handler(req, res) {
         },
         quantity: 1,
       }],
-      success_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}${successPath}&plan=${plan}`,
-      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com.au'}${cancelPath}`,
+      success_url: `${req.headers.origin || 'https://www.kindredsouls.com'}${successPath}&plan=${plan}`,
+      cancel_url: `${req.headers.origin || 'https://www.kindredsouls.com'}${cancelPath}`,
       metadata: { supabase_user_id: userId, plan },
     });
 

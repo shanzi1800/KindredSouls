@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing in…</title>
+  <style>
+    body {
+      background: #0D0D1A;
+      color: #D4AF37;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(212,175,55,0.2);
+      border-top-color: #D4AF37;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #8B8778; margin: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p id="msg">Authenticating…</p>
+  <script type="module">
+    // ── Supabase 公钥配置（静态文件无法用 import.meta.env，此处直接硬编码）──
+    const SUPABASE_URL = 'https://wfkxqhlcgrikxoofjvas.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv';
+
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // ── Magic Link：存储原始页面 URL（callback 会替换当前 tab，需返回）──
+    // 检测：如果 window.opener 已关闭 = 同 tab 打开的 Magic Link
+    const isMagicLinkSameTab = window.opener && window.opener.closed;
+    if (isMagicLinkSameTab) {
+      // 当前 tab 会被替换，存入 localStorage 让父窗口 reload 后读到
+      const referrer = document.referrer || localStorage.getItem('ks_auth_origin_page') || window.location.origin;
+      localStorage.setItem('ks_auth_origin_page', referrer);
+    }
+
+    // ── 用 IIFE + async 包装，避免顶级 await 在模块块内可能引发的兼容问题 ──
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const errorParam = params.get('error');
+      const errorDescription = params.get('error_description');
+      const msg = document.getElementById('msg');
+
+      if (errorParam) {
+        msg.textContent = 'Auth error: ' + errorParam + (errorDescription ? ' - ' + errorDescription : '');
+        console.error('[KS Auth Callback] Error:', errorParam, errorDescription);
+        setTimeout(() => window.close(), 3000);
+        return;
+      }
+
+      if (!code) {
+        msg.textContent = 'No auth code found';
+        console.error('[KS Auth Callback] Missing auth code');
+        setTimeout(() => window.close(), 2000);
+        return;
+      }
+
+      try {
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { flowType: 'pkce', autoRefreshToken: true, persistSession: true },
+        });
+
+        // 交换 code → session（SDK 自动写入 localStorage，与父窗口共享同源存储）
+        const { data, error: exchangeErr } = await sb.auth.exchangeCodeForSession(code);
+        if (exchangeErr) throw exchangeErr;
+
+        console.log('[KS Auth Callback] ✅ Session established:', data.session?.user?.email);
+
+        // ── Magic Link（同 tab）处理：强制 reload 回原始页面 ──
+        // window.opener.closed = true 说明是在同一个 tab 打开，无父窗口
+        if (isMagicLinkSameTab) {
+          msg.textContent = '✅ Redirecting back…';
+          const originPage = localStorage.getItem('ks_auth_origin_page') || window.location.origin;
+          localStorage.removeItem('ks_auth_origin_page');
+          // 强制 reload 回原始页面（加时间戳绕过缓存）
+          window.location.href = originPage + '?_t=' + Date.now();
+          return;
+        }
+
+        // ── OAuth Popup 处理：通知父窗口后关闭弹窗 ──
+        msg.textContent = '✅ Session established, closing…';
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'KS_AUTH_SUCCESS', token: data.session?.access_token }, '*');
+          }
+        } catch (e) {
+          // postMessage 非关键路径，静默忽略
+        }
+
+        setTimeout(() => window.close(), 800);
+      } catch (e) {
+        console.error('[KS Auth Callback] ❌ Exchange failed:', e);
+        msg.textContent = 'Session error: ' + (e.message || 'unknown');
+        setTimeout(() => window.close(), 3000);
+      }
+    })();
+  </script>
+</body>
+</html>

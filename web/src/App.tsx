@@ -519,18 +519,47 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       } else if (event === 'SIGNED_IN') {
         console.log('[KindredSouls Auth] 🎉 SIGNED_IN captured, session established');
         sessionStorage.removeItem('ks_oauth_in_progress');
-        window.history.replaceState({}, '', '/result');
         setIsAuthParsing(false);
         setSessionChecked(true);
         setShowAuthWall(false);
 
-        // 🎯 直接检查 URL 参数（不依赖 ref 时序）
+        // ── Magic Link / OAuth 回调：parent 窗口 reload 后 Supabase 自动触发 SIGNED_IN ──
+        // 此时 onAuthStateChange 在 App.tsx 里触发，直接 reload 页面让各子组件重新拿 session
+        if (localStorage.getItem('ks_auth_callback_pending') === '1') {
+          localStorage.removeItem('ks_auth_callback_pending');
+          console.log('[KindredSouls Auth] Auth callback reload detected, refreshing page...');
+          window.location.reload();
+          return;
+        }
+
+        // ── 检查意图：有 checkout 意图才跳 /result；否则留在当前页 ──
         const urlParams = new URLSearchParams(window.location.search);
         const isPendingCheckout = urlParams.get('intent') === 'checkout';
+        const pendingPlanFromStorage = localStorage.getItem('ks_pending_checkout_plan');
+
+        if (pendingPlanFromStorage && !hasTriggeredCheckout.current) {
+          // 🐮 军师方案：localStorage 兜底，有待处理 plan → 触发 Stripe
+          console.log('[KindredSouls Auth] 🐮 SIGNED_IN: Restored pending checkout from localStorage:', pendingPlanFromStorage);
+          localStorage.removeItem('ks_pending_checkout_plan');
+          const alreadyCovered = await checkCoverageInline(session!.access_token, pendingPlanFromStorage);
+          if (alreadyCovered) {
+            console.log('[KindredSouls Auth] SIGNED_IN: Already covered, skipping Stripe checkout');
+            hasTriggeredCheckout.current = true;
+            setPaidStatus(true);
+            setShowPaywall(false);
+            // 有购买意图 → 跳 result
+            window.history.replaceState({}, '', '/result');
+          } else {
+            console.log('[KindredSouls Auth] SIGNED_IN: No existing coverage, triggering Stripe checkout...');
+            hasTriggeredCheckout.current = true;
+            handlePurchaseWithToken(session!.access_token, pendingPlanFromStorage);
+          }
+          return;
+        }
 
         if (isPendingCheckout && !hasTriggeredCheckout.current) {
-          // ✅ URL 有 checkout 意图 → 先检查是否已有 cover
-          console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout detected in URL, checking existing coverage...');
+          // URL 有 checkout 意图 → 先检查是否已有 cover
+          console.log('[KindredSouls Auth] SIGNED_IN: intent=checkout in URL, checking coverage...');
           const planFromUrl = urlParams.get('plan') || 'compatibility_once';
           const alreadyCovered = await checkCoverageInline(session!.access_token, planFromUrl);
           if (alreadyCovered) {
@@ -544,9 +573,14 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
             hasTriggeredCheckout.current = true;
             handlePurchaseWithToken(session!.access_token, planFromUrl);
           }
-        } else if (hasTriggeredCheckout.current) {
-          console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping checkPaidStatus');
+          return;
+        }
+
+        if (hasTriggeredCheckout.current) {
+          console.log('[KindredSouls Auth] SIGNED_IN: checkout already in progress, skipping');
         } else {
+          // ❌ 无 checkout 意图：只更新状态，留在当前页（不强制跳转 /result）
+          console.log('[KindredSouls Auth] SIGNED_IN: No checkout intent, staying on current page');
           checkPaidStatus(session!.access_token);
           triggerSaveResult();
         }
@@ -831,50 +865,21 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
   // ── handlePurchase 入口：优先用全局 token，兜底 refreshSession ──
 
 
-  const handlePurchase = async (plan: string) => {
-
-    let token = currentAccessToken;
-
-    if (!token) {
-      // 兜底：先 refreshSession（处理过期 token），再 getSession
-      try {
-        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
-        token = refreshed?.access_token || null;
-      } catch (e) {
-        console.warn('[KindredSouls Debug] refreshSession failed, falling back to getSession');
+  // 🐮 简化版：只存 localStorage + 弹登录墙，不返回 Promise
+  const handlePurchase = (plan: string) => {
+    // 先检查是否已登录
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        // 已登录，直接触发 Stripe
+        handlePurchaseWithToken(session.access_token, plan);
+      } else {
+        // 没登录：存意图 + 弹登录墙
+        localStorage.setItem('ks_pending_checkout_plan', plan);
+        setShowPaywall(false);
+        setShowAuthWall(true);
+        console.log('[KindredSouls Debug] 🐮 Stored pending plan:', plan);
       }
-    }
-
-    if (!token) {
-      const { data: { session } } = await supabase.auth.getSession();
-      token = session?.access_token || null;
-    }
-
-    // 如果仍然没有 token，等待最多 3 秒让 SIGNED_IN 事件触发
-    if (!token) {
-      token = await new Promise<string | null>((resolve) => {
-        let done = false;
-        const t = setTimeout(() => {
-          if (!done) { done = true; resolve(null); }
-        }, 3000);
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.access_token) {
-            clearTimeout(t);
-            if (!done) { done = true; subscription.unsubscribe(); }
-            resolve(session.access_token);
-          }
-        });
-      });
-    }
-
-    if (!token) {
-      console.warn('[KindredSouls Debug] No token found after waiting, showing AuthWall');
-      setShowPaywall(false);
-      setShowAuthWall(true);
-      return;
-    }
-
-    return handlePurchaseWithToken(token, plan);
+    });
   };
   const triggerInsight = async (token?: string) => {
     if (insightLockRef.current) {
@@ -1318,6 +1323,53 @@ export default function App() {
   const [currentLang, setCurrentLang] = useState<'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'>(() => (i18n.language as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi') || 'en');
 // ✅ Restore result page after OAuth login or payment success (not every refresh)
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
+
+  // 🐮 监听 supabase.ts 分发的自定义登录成功事件
+  useEffect(() => {
+    const handleAuthReady = (e) => {
+      const { token, plan } = e.detail;
+      console.log("[KindredSouls Debug] 🐮 Custom event ks-checkout-ready captured:", plan);
+      handlePurchaseWithToken(token, plan);
+    };
+    window.addEventListener("ks-checkout-ready", handleAuthReady);
+    return () => window.removeEventListener("ks-checkout-ready", handleAuthReady);
+  }, []);
+
+
+  // 🐮 军师方案：冷启动扫雷雷达（捡漏重定向回来的订单）
+  useEffect(() => {
+    // 双重保险：getSession + onAuthStateChange 监听
+    let done = false;
+    
+    // 方法1：立刻检查
+    const scanNow = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const pendingPlan = localStorage.getItem("ks_pending_checkout_plan");
+      if (session?.access_token && pendingPlan && !done) {
+        done = true;
+        console.log("[KindredSouls Debug] 🐮 Cold start detected pending order:", pendingPlan);
+        localStorage.removeItem("ks_pending_checkout_plan");
+        handlePurchaseWithToken(session.access_token, pendingPlan);
+      }
+    };
+    scanNow();
+    
+    // 方法2：监听 INITIAL_SESSION（SDK 恢复 session 时触发）
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.access_token && !done) {
+        const pendingPlan = localStorage.getItem("ks_pending_checkout_plan");
+        if (pendingPlan) {
+          done = true;
+          console.log("[KindredSouls Debug] 🐮 Auth event detected pending order:", event, pendingPlan);
+          localStorage.removeItem("ks_pending_checkout_plan");
+          handlePurchaseWithToken(session.access_token, pendingPlan);
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
  useEffect(() => {
  const search = window.location.search;
  const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
@@ -1368,6 +1420,20 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopstate);
     return () => window.removeEventListener('popstate', handlePopstate);
+  }, []);
+
+  // ── Magic Link / OAuth Popup 回调：监听子窗口 postMessage ──
+  // 父窗口打开的 callback.html 完成后会发 KS_AUTH_SUCCESS，触发页面刷新
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'KS_AUTH_SUCCESS') {
+        console.log('[KindredSouls Auth] 📡 Received KS_AUTH_SUCCESS from child window');
+        localStorage.setItem('ks_auth_callback_pending', '1');
+        window.location.reload();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
 

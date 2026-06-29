@@ -2216,14 +2216,140 @@ function getWealthTarot(birthDate, lang = "zh") {
   const cardId = Math.abs(hash) % 22;
   const reversed = Math.floor(Math.abs(hash) / 22) % 2 === 1;
   const card = CARDS[cardId] || CARDS[0];
-  const L = lang in card.name ? lang : "en";
+  // 🛡️ lang归一化：把 zh-CN / en-US 等格式转成 zh / en
+  const normalizedLang = (lang || 'en').split('-')[0];
+  const L = normalizedLang in card.name ? normalizedLang : "en";
+  // Wealth-focused meaning (avoid relationship text leakage)
+  var wealthMeaning = {
+    en: getWealthTarotMeaning(card.id, reversed),
+    zh: getWealthTarotMeaningZh(card.id, reversed)
+  };
   return {
     id: card.id,
     name: card.name[L] || card.name.en,
-    meaning: card.meaning[L] || card.meaning.en,
+    meaning: wealthMeaning[L] || wealthMeaning.en, // Use wealth meaning instead of relationship meaning
     emoji: card.emoji,
-    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX["en"])(reversed)
+    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX["en"])(reversed),
+    oneLiner: getTarotOneLiner(card.id, reversed, L) // Soul one-liner for four-card grid
   };
+}
+
+// Wealth-focused tarot meanings (avoid relationship text leakage)
+function getWealthTarotMeaning(cardId, reversed) {
+  var meanings = {
+    0: reversed ? "Reckless spending ahead — pause before impulse investments." : "New financial adventure begins — take calculated risks.",
+    1: reversed ? "Wasted potential — your skills aren't converting to income." : "Manifest wealth now — your talents are ready to monetize.",
+    2: reversed ? "Intuition blocked — financial gut feeling is wrong today." : "Trust financial intuition — hidden opportunities await.",
+    3: reversed ? "Financial neglect — stop ignoring money management." : "Abundance flows — wealth grows with patient nurturing.",
+    4: reversed ? "Financial control issues — debts or overspending trap." : "Build wealth structure — solid financial foundation established.",
+    5: reversed ? "Financial dogma blinds you — question money beliefs." : "Wealth aligns with values — ethical money path clear.",
+    6: reversed ? "Financial choice paralysis — pick one investment path." : "Wealth choice point — follow your financial heart.",
+    7: reversed ? "Financial direction scattered — focus or lose momentum." : "Wealth chariot moves — determined financial action wins.",
+    8: reversed ? "Financial weakness — build money confidence now." : "Inner financial strength — gentle wealth power awakens.",
+    9: reversed ? "Financial isolation — seek wealth mentor or advisor." : "Wealth wisdom within — solitude brings money insights.",
+    10: reversed ? "Financial luck stagnant — force change now." : "Wealth cycle turns — fortune favors bold money moves.",
+    11: reversed ? "Financial imbalance — audit money flow now." : "Wealth justice — money karma balances perfectly.",
+    12: reversed ? "Financial obsession — let go of money fixation." : "Wealth perspective shift — new money vision needed.",
+    13: reversed ? "Financial death — old money patterns must end." : "Wealth transformation — old financial you dies, new emerges.",
+    14: reversed ? "Financial extremes — find middle money path." : "Wealth balance — moderate money approach wins.",
+    15: reversed ? "Financial freedom begins — break money chains now." : "Wealth shadow work — face money demons to win.",
+    16: reversed ? "Financial tower falls — rebuild wealth smarter." : "Wealth breakthrough — sudden money shift incoming.",
+    17: reversed ? "Financial hope lost — keep faith in money path." : "Wealth star guides — hope returns to money journey.",
+    18: reversed ? "Financial illusion — see money truth clearly now." : "Wealth intuition peaks — lunar money magic works.",
+    19: reversed ? "Financial sunshine blocked — wealth still growing." : "Wealth sun shines — financial success bright ahead.",
+    20: reversed ? "Financial awakening delayed — listen to money calling." : "Wealth calling heard — financial rebirth approaches.",
+    21: reversed ? "Financial completion denied — finish money business." : "Wealth cycle complete — financial world transforms."
+  };
+  return meanings[cardId] || "Wealth insight unavailable.";
+}
+
+// Chinese wealth-focused tarot meanings
+function getWealthTarotMeaningZh(cardId, reversed) {
+  var meanings = {
+    0: reversed ? "冲动消费警报——在做风险投资前先停一停。" : "新的财务冒险开启——谨慎计算后可以出手。",
+    1: reversed ? "潜力被浪费——你的技能没有转化为收入。" : "财富显化时机已到——你的才华可以变现了。",
+    2: reversed ? "财务直觉受阻——今天的投资直觉不准。" : "信任财务直觉——隐藏的机会在等你。",
+    3: reversed ? "财务被忽视——别再忽视理财了。" : "财富正在流动——耐心培育下金钱会增长。",
+    4: reversed ? "财务控制出问题——债务或超支陷阱。" : "建立财富结构——稳固的财务基础已建立。",
+    5: reversed ? "财务教条蒙蔽你——质疑你的金钱观。" : "财富与价值观对齐——符合伦理的搞钱路清晰。",
+    6: reversed ? "财务选择瘫痪——选定一条投资路吧。" : "财富选择关口——跟随你的财务直觉走。",
+    7: reversed ? "财务方向分散——不专注就会失去动力。" : "财富战车前进——坚定的财务行动致胜。",
+    8: reversed ? "财务软弱——现在建立金钱自信。" : "内在财务力量——温和的财富力量正在觉醒。",
+    9: reversed ? "财务孤立——寻找财富导师或顾问。" : "财富智慧在内心——独处带来金钱洞见。",
+    10: reversed ? "财运停滞——现在就强制改变。" : "财富周期转动——运气眷顾大胆的财务行动。",
+    11: reversed ? "财务失衡——现在审计资金流向。" : "财富因果平衡——金钱业力完美清算。",
+    12: reversed ? "财务执念——放下对金钱的痴迷。" : "财富视角转变——新的金钱视野出现。",
+    13: reversed ? "抗拒财务死亡——旧的金钱模式必须终结。" : "财富蜕变——旧的财务你死亡，新的诞生。",
+    14: reversed ? "财务走极端——找到中庸之道。" : "财富平衡——适度的金钱策略致胜。",
+    15: reversed ? "财务自由开始——现在打破金钱枷锁。" : "财富阴影功课——直面金钱心魔才能赢。",
+    16: reversed ? "财务崩塌在即——更聪明地重建财富。" : "财富突破——突然的金钱转折正在到来。",
+    17: reversed ? "财务希望失落——对金钱之路保持信心。" : "财富之星指引——希望回到财富旅程中。",
+    18: reversed ? "财务幻象——现在看清金钱真相。" : "财务直觉达到峰值——月相金钱魔法生效。",
+    19: reversed ? "财务阳光被挡——财富仍在增长。" : "财富阳光照耀——财务成功在前方闪耀。",
+    20: reversed ? "财务觉醒延迟——倾听金钱的呼唤。" : "财富觉醒被听见——财务重生正在靠近。",
+    21: reversed ? "财务未完成——现在结束金钱事务。" : "财富周期完成——财务世界正在蜕变。"
+  };
+  return meanings[cardId] || "财富洞见暂时不可用。";
+}
+
+// One-liner soul meaning for four-card grid
+function getTarotOneLiner(cardId, reversed, lang) {
+  var oneLiners = {
+    en: {
+      0: reversed ? "Daily Catalyst: The Fool reversed warns against impulse spending — pause before risky financial moves." : "Daily Catalyst: The Fool signals a new financial adventure — take calculated risks today.",
+      1: reversed ? "Daily Catalyst: The Magician reversed warns of wasted financial potential — activate your money skills now." : "Daily Catalyst: The Magician signals wealth manifestation power — your financial tools are ready.",
+      2: reversed ? "Daily Catalyst: The High Priestess reversed warns of blocked financial intuition — double-check money decisions." : "Daily Catalyst: The High Priestess signals financial intuition peak — trust your money gut today.",
+      3: reversed ? "Daily Catalyst: The Empress reversed warns of financial neglect — tend to your money garden now." : "Daily Catalyst: The Empress signals financial abundance flowing — wealth grows with patient care.",
+      4: reversed ? "Daily Catalyst: The Emperor reversed warns of financial control issues — audit your money structure." : "Daily Catalyst: The Emperor signals solid financial foundation — build wealth with clear rules.",
+      5: reversed ? "Daily Catalyst: The Hierophant reversed warns of financial dogma — question your money beliefs." : "Daily Catalyst: The Hierophant signals wealth alignment — your money path matches your values.",
+      6: reversed ? "Daily Catalyst: The Lovers reversed warns of financial choice paralysis — pick one path now." : "Daily Catalyst: The Lovers signals financial choice point — follow your money heart.",
+      7: reversed ? "Daily Catalyst: The Chariot reversed warns of scattered financial direction — focus your money energy." : "Daily Catalyst: The Chariot (Upright) signals unstoppable financial momentum — execute wealth decisions with confidence.",
+      8: reversed ? "Daily Catalyst: Strength reversed warns of financial weakness — build money confidence now." : "Daily Catalyst: Strength signals inner financial power — gentle wealth strength awakens.",
+      9: reversed ? "Daily Catalyst: The Hermit reversed warns of financial isolation — seek wealth mentor." : "Daily Catalyst: The Hermit signals financial wisdom within — solitude brings money insights.",
+      10: reversed ? "Daily Catalyst: Wheel of Fortune reversed warns of stagnant financial luck — force change now." : "Daily Catalyst: Wheel of Fortune signals financial cycle turning — fortune favors bold money moves.",
+      11: reversed ? "Daily Catalyst: Justice reversed warns of financial imbalance — audit money flow now." : "Daily Catalyst: Justice signals financial karma balancing — money justice arrives.",
+      12: reversed ? "Daily Catalyst: The Hanged Man reversed warns of financial obsession — let go of money fixation." : "Daily Catalyst: The Hanged Man signals financial perspective shift — new money vision needed.",
+      13: reversed ? "Daily Catalyst: Death reversed warns of resisting financial death — old money patterns must end." : "Daily Catalyst: Death signals financial transformation — old financial you dies, new emerges.",
+      14: reversed ? "Daily Catalyst: Temperance reversed warns of financial extremes — find middle money path." : "Daily Catalyst: Temperance signals financial balance — moderate money approach wins.",
+      15: reversed ? "Daily Catalyst: The Devil reversed signals financial freedom begins — break money chains now." : "Daily Catalyst: The Devil warns of financial shadow work — face money demons to win.",
+      16: reversed ? "Daily Catalyst: The Tower reversed warns of delaying financial collapse — rebuild wealth smarter." : "Daily Catalyst: The Tower signals financial breakthrough — sudden money shift incoming.",
+      17: reversed ? "Daily Catalyst: The Star reversed warns of lost financial hope — keep faith in money path." : "Daily Catalyst: The Star signals financial hope returns — wealth star guides your journey.",
+      18: reversed ? "Daily Catalyst: The Moon reversed warns of financial illusion — see money truth clearly." : "Daily Catalyst: The Moon signals financial intuition peaks — lunar money magic works.",
+      19: reversed ? "Daily Catalyst: The Sun reversed warns of blocked financial sunshine — wealth still growing." : "Daily Catalyst: The Sun signals financial success bright ahead — wealth sunshine blesses you.",
+      20: reversed ? "Daily Catalyst: Judgement reversed warns of delayed financial awakening — listen to money calling." : "Daily Catalyst: Judgement signals financial rebirth — wealth calling heard.",
+      21: reversed ? "Daily Catalyst: The World reversed warns of financial incompletion — finish money business now." : "Daily Catalyst: The World signals financial cycle complete — wealth world transforms."
+    },
+    zh: {
+      0: reversed ? "今日催化剂：愚人逆位——市场在给你最后一课，今天别碰任何新资金盘。" : "今日催化剂：愚人——今天适合砸开一扇没试过的门，小额试错成本最低。",
+      1: reversed ? "今日催化剂：魔术师逆位——你手里有牌但不会打，今天先列清楚你的可用资源。" : "今日催化剂：魔术师——今天你手头工具足够撬动一个项目，直接动手别等。",
+      2: reversed ? "今日催化剂：女祭司逆位——直觉离线了，今天不做超3万的决定。" : "今日催化剂：女祭司——你第六感今天比财报准，信它一次。",
+      3: reversed ? "今日催化剂：女皇逆位——你在透支现金流，今天查账户算清还剩多少余粮。" : "今日催化剂：女皇——今天适合收割你之前种下的项目，果实该摘了。",
+      4: reversed ? "今日催化剂：皇帝逆位——你的财务纪律崩了，今天必须重建收支框架。" : "今日催化剂：皇帝——今天拍板一个决策，把人管住钱理清。",
+      5: reversed ? "今日催化剂：教皇逆位——别人说的赚钱路子全是坑，今天只听自己的判断。" : "今日催化剂：教皇——今天找个比你赚得多的人聊，问题可能出在认知圈。",
+      6: reversed ? "今日催化剂：恋人逆位——两条路都不完美，今天必须选一条，犹豫就是亏。" : "今日催化剂：恋人——今天跟钱有关的选择，选让你心跳加速那条。",
+      7: reversed ? "今日催化剂：战车逆位——今天管住手，任何操作都不如不动。" : "今日催化剂：战车——今天全速推进，犹豫一秒都是对财运的不尊重。",
+      8: reversed ? "今日催化剂：力量逆位——你今天容易犯怂，盯住那个最怕的决定，直接上。" : "今日催化剂：力量——今天要么搞定那笔钱，要么搞定那个不敢谈价的人。",
+      9: reversed ? "今日催化剂：隐士逆位——别一个人硬扛财务问题，今天打给懂行的人。" : "今日催化剂：隐士——今天关掉消息提醒，花30分钟盘你的财务底牌。",
+      10: reversed ? "今日催化剂：命运之轮逆位——今天不适合赌运气，守住本金比赚钱重要。" : "今日催化剂：命运之轮——你的财运拐点到了，今天必须做一次主动出击。",
+      11: reversed ? "今日催化剂：正义逆位——你欠的账（金钱或人情）今天不去还，利息会翻倍。" : "今日催化剂：正义——今天做一件正确但难开口的事，跟合伙人谈分成。",
+      12: reversed ? "今日催化剂：倒吊人逆位——别再为沉没成本加注了，今天割了就割了。" : "今日催化剂：倒吊人——停下来的勇气比冲的勇气值钱。",
+      13: reversed ? "今日催化剂：死神逆位——你抱住不放的老项目在吸血，今天必须松手。" : "今日催化剂：死神——清理一个拖你后腿的财务包袱，结束才有新生。",
+      14: reversed ? "今日催化剂：节制逆位——你在消费和投资上都在走极端，今天必须踩刹车。" : "今日催化剂：节制——今天最适合做资产配置的一步调整。",
+      15: reversed ? "今日催化剂：恶魔逆位——消费贷和赌性投资的锁正在松，今天是断舍离窗口。" : "今日催化剂：恶魔——直视你最上瘾的那笔消费或投资，那是你财务的病灶。",
+      16: reversed ? "今日催化剂：高塔逆位——如果今天有崩盘信号，别救，让它塌。" : "今日催化剂：高塔——打破一个旧的收入结构，制造一次主动破坏。",
+      17: reversed ? "今日催化剂：星星逆位——别因为短期倒霉就放弃长期规划，熬过今天就好。" : "今日催化剂：星星——今天适合定下一个长期目标，钱是信念的副产品。",
+      18: reversed ? "今日催化剂：月亮逆位——有人对你隐瞒了财务信息，今天必须追问到底。" : "今日催化剂：月亮——赚钱机会藏在模糊信息里，今天把它扒出来。",
+      19: reversed ? "今日催化剂：太阳逆位——别因为情绪不好就放弃一个好机会，它依然是机会。" : "今日催化剂：太阳——今天是亮牌日，把价值show出来，钱自然跟来。",
+      20: reversed ? "今日催化剂：审判逆位——你的财务模式在重复错误，今天必须换打法。" : "今日催化剂：审判——复盘一次过去的财务失误，把教训变成行动规则。",
+      21: reversed ? "今日催化剂：世界逆位——差最后一哆嗦，今天用最粗暴的方式收尾。" : "今日催化剂：世界——一个财务周期结束了，今天奖励自己，同时为下轮布局。"
+    }
+  };
+  // Simplified fallback: try zh first (for Chinese users), then en, then default
+  var normalizedLang = (lang || 'en').split('-')[0];
+  var langData = oneLiners[normalizedLang] || {};
+  var enData = oneLiners["en"] || {};
+  var result = langData[cardId] || enData[cardId] || "Wealth insight for today.";
+  return result;
 }
 
 // api/wealth-oracle-src.js
@@ -2568,13 +2694,17 @@ async function callAI(systemPrompt, userPrompt, env) {
       console.error("Gemini fallback also failed:", e.message);
     }
   }
-  if (geminiKey) {
-    throw new Error("Both DeepSeek and Gemini failed");
-  }
-  throw new Error("No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.");
+  // Both failed
+  throw new Error("Both DeepSeek and Gemini failed");
 }
 async function handler(req, res) {
   console.log('[wealth-oracle] Handler invoked, method:', req.method);
+  // 🛡️ Pre-check: ensure at least one AI API key is configured
+  const hasAiKey = !!(process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY);
+  if (!hasAiKey) {
+    console.error('[wealth-oracle] FATAL: No AI API key configured (DEEPSEEK_API_KEY or GEMINI_API_KEY)');
+    return res.status(500).json({ error: 'Internal Server Error', message: 'No AI API key. Set DEEPSEEK_API_KEY or GEMINI_API_KEY.' });
+  }
   try {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

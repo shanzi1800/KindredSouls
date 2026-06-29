@@ -235,13 +235,15 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
     setLoading(true);
     setError('');
     try {
-      // 🎯 军师方案：把购买意图挂在 URL 参数里
-      const redirectUrl = window.location.origin + '/result?intent=checkout';
-      console.log('[KindredSouls Debug] Email login redirectTo (with intent):', redirectUrl);
+      // 🎯 军师方案：把购买意图存在 localStorage，让 Supabase 重定向后能从 localStorage 读到
+      // （Supabase 魔法链接的 redirectTo 会被仪表盘 Site URL 覆盖，不可靠）
+      localStorage.setItem('ks_pending_checkout_plan', plan);
+      console.log('[KindredSouls Debug] Email login: saved plan to localStorage:', plan);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: redirectUrl,
+          // 🚀 不用 redirectTo（会被 Supabase 仪表盘覆盖），用 state 参数携带信息
+          // state 会原样返回在 URL hash 里
         },
       });
       if (error) throw error;

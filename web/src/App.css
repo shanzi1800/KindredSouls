@@ -604,3 +604,78 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Legal Footer Disclaimer ── */
+.legal-footer {
+  font-size: 9px;
+  color: rgba(200, 195, 170, 0.9);
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.legal-footer a {
+  color: rgba(200, 195, 170, 0.9);
+  text-decoration: underline;
+}
+
+/* ── Policy Pages ── */
+.policy-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #080810 0%, #0D0D1A 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 16px 60px;
+  position: relative;
+}
+.policy-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+}
+.policy-back-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #8B8778;
+  font-size: 12px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+.policy-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #D4AF37;
+  text-align: center;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 20px rgba(212,175,55,0.4);
+}
+.policy-date {
+  font-size: 11px;
+  color: rgba(139,135,120,0.6);
+  text-align: center;
+  margin-bottom: 24px;
+}
+.policy-content {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 24px 20px;
+  color: rgba(232,228,217,0.85);
+}
+.policy-content h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #D4AF37;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(212,175,55,0.2);
+}
+.policy-content p {
+  font-size: 12px;
+  color: rgba(232,228,217,0.75);
+  line-height: 1.7;
+  margin: 0 0 16px 0;
+}

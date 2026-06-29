@@ -179,7 +179,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             marginBottom: '16px',
           }}
         >
-          ← {lang === 'zh' ? '返回' : 'Back'}
+          ← {t('input.back') || (lang === 'zh' ? '返回' : 'Back')}
         </button>
 
         {/* Title */}
@@ -191,7 +191,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           textAlign: 'center',
           textShadow: '0 2px 20px rgba(212,175,55,0.4)',
         }}>
-          💰 {lang === 'zh' ? '财富与事业解码' : 'Wealth & Career Oracle'}
+          💰 {t('wealthInput.title')}
         </h1>
 
         <p style={{
@@ -201,7 +201,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           marginBottom: '32px',
           textAlign: 'center',
         }}>
-          {lang === 'zh' ? '终极破译你的先天财富格局与事业基因' : 'Decode Your Innate Wealth Blueprint & Career DNA'}
+          {t('wealthInput.subtitle')}
         </p>
 
         {/* Input Card */}
@@ -219,7 +219,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             fontWeight: 700,
             marginBottom: '12px',
           }}>
-            {lang === 'zh' ? '输入你的出生日期' : 'Enter your birth date'}
+            {t('wealthInput.birthdayLabel')}
           </label>
 
           <DateInput
@@ -252,7 +252,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
               boxShadow: '0 4px 20px rgba(212,175,55,0.35)',
             }}
           >
-            {lang === 'zh' ? '🔮 开始解码' : '🔮 Start Decoding'}
+            {t('wealthInput.startBtn')}
           </button>
         </div>
 
@@ -266,8 +266,24 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           color: '#81D8D0',
           lineHeight: 1.6,
         }}>
-          💡 {lang === 'zh' ? '你的财富运势和感情能量场是联动的。解锁后还可查看合婚报告中的财富分析。' : 'Your wealth trajectory is connected to your relationship energy. Unlock to also see wealth analysis in compatibility reports.'}
+          💡 {t('wealthInput.unlockTip')}
         </div>
+
+        {/* ── Legal Footer Disclaimer ── */}
+        <p style={{
+          fontSize: '10px',
+          color: 'rgba(200,195,170,0.9)',
+          textAlign: 'center',
+          marginTop: '16px',
+          lineHeight: 1.5,
+        }}>
+          {i18n.language && i18n.language.indexOf('zh') === 0 ? <>点击&ldquo;{t('wealthInput.startBtn')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>服务条款</a>和<a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>隐私政策</a>。</> : null}
+          {i18n.language && i18n.language.indexOf('es') === 0 ? <>Al hacer clic en &ldquo;{t('wealthInput.startBtn')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>Política de Privacidad</a>.</> : null}
+          {i18n.language && i18n.language.indexOf('fr') === 0 ? <>En cliquant sur &ldquo;{t('wealthInput.startBtn')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>Conditions d'Utilisation</a> et notre <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>Politique de Confidentialité</a>.</> : null}
+          {i18n.language && i18n.language.indexOf('th') === 0 ? <>การคลิก &ldquo;{t('wealthInput.startBtn')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
+          {i18n.language && i18n.language.indexOf('vi') === 0 ? <>Bằng cách nhấp vào &ldquo;{t('wealthInput.startBtn')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>Chính Sách Bảo Mật</a> của chúng tôi.</> : null}
+          {!i18n.language || (i18n.language.indexOf('zh') !== 0 && i18n.language.indexOf('es') !== 0 && i18n.language.indexOf('fr') !== 0 && i18n.language.indexOf('th') !== 0 && i18n.language.indexOf('vi') !== 0) ? <>By clicking &ldquo;{t('wealthInput.startBtn')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/terms-of-service';}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={(e)=>{e.preventDefault();window.location.href='/privacy-policy';}}>Privacy Policy</a>.</> : null}
+        </p>
       </div>
     </div>
   );

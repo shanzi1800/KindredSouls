@@ -10,7 +10,17 @@
     "theirBirthday": "Ngày sinh của người ấy",
     "calculate": "Giải mã duyên phận 🌟",
     "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD"
+    "placeholder2": "YYYY-MM-DD",
+    "start": "Bắt đầu",
+    "compatibilityMode": "Mã Duyên Phận",
+    "compatibilityModeDesc": "Giải mã mã mối quan hệ",
+    "wealthMode": "Giải Mã Tài Lộc",
+    "wealthModeDesc": "Giải mã két bạc bẩm sinh của bạn",
+    "selectMode": "Chọn chế độ",
+    "back": "Quay lại",
+    "legalFooter": "Bằng cách nhấp vào \"{{calculate}}\", bạn đồng ý với {terms} và {privacy} của chúng tôi.",
+    "termsOfService": "Điều Khoản Dịch Vụ",
+    "privacyPolicy": "Chính Sách Bảo Mật"
   },
   "result": {
     "title": "Kết quả độ hòa hợp",
@@ -37,5 +47,35 @@
     "errorInvalidDate": "🔮 Mốc thời gian phàm trần bị lệch hướng — Vui lòng điều chỉnh lại ngày sinh",
     "errorFutureDate": "⏳ Bánh xe vận mệnh chưa quay đến — Không thể bói trước tương lai",
     "errorTooOld": "🌟 Ngay cả tinh tú cũng có giới hạn — Vui lòng kiểm tra lại năm sinh"
+  },
+  "wealth": {
+    "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
+    "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
+    "cta": "🔮 Giải mã ngay",
+    "loading": "Đang triệu hồi mã tài lộc...",
+    "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc"
+  },
+  "wealthInput": {
+    "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
+    "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
+    "birthdayLabel": "Nhập ngày sinh của bạn",
+    "birthdayPh": "YYYY-MM-DD",
+    "startBtn": "🔮 Bắt đầu giải mã",
+    "unlockTip": "Quỹ đạo tài lộc của bạn kết nối với năng lượng quan hệ của bạn. Mở khóa để xem thêm phân tích tài lộc trong báo cáo duyên phận."
+  },
+  "wealthReport": {
+    "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc",
+    "monthlyReport": "📅 Báo cáo Tài Lộc Tháng",
+    "yearlyReport": "📆 Báo cáo Tài Lộc Năm",
+    "vipFree": "Quyền truy cập VIP miễn phí",
+    "unlockMonthly": "Mở khóa Tháng $2.99",
+    "unlockYearly": "Mở khóa Năm $29.99",
+    "generateAI": "✨ Tạo AI Insight",
+    "alreadyGeneratedMonthly": "Báo cáo tài lộc tháng đã được tạo trong tháng này. Lần tiếp theo: tháng sau",
+    "alreadyGeneratedYearly": "Báo cáo tài lộc năm đã được tạo trong năm nay. Lần tiếp theo: năm sau",
+    "generateFail": "Tạo thất bại",
+    "loginFirst": "Vui lòng đăng nhập trước để tạo báo cáo.",
+    "almanac": "Niên Ký Tài Lộc",
+    "almanacDesc": "Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai."
   }
 }

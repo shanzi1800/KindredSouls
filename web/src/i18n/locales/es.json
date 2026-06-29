@@ -10,7 +10,17 @@
     "theirBirthday": "Su fecha de nacimiento",
     "calculate": "Revelar nuestro destino",
     "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD"
+    "placeholder2": "YYYY-MM-DD",
+    "start": "Comenzar",
+    "compatibilityMode": "Código de Compatibilidad",
+    "compatibilityModeDesc": "Desbloquea el código de relación",
+    "wealthMode": "Decodificación de Riqueza",
+    "wealthModeDesc": "Descodifica tu bóveda Innata de riqueza",
+    "selectMode": "Seleccionar modo",
+    "back": "Volver",
+    "legalFooter": "Al hacer clic en \"{{calculate}}\", aceptas nuestros {terms} y {privacy}.",
+    "termsOfService": "Términos de Servicio",
+    "privacyPolicy": "Política de Privacidad"
   },
   "result": {
     "title": "Revelación de compatibilidad",
@@ -37,5 +47,35 @@
     "errorInvalidDate": "🔮 Desajuste en el ancla temporal — por favor, corrige tu nacimiento terrenal",
     "errorFutureDate": "⏳ La rueda del destino aún no gira aquí — las fechas futuras no existen",
     "errorTooOld": "🌟 Incluso las estrellas tienen límites — por favor, verifica el año"
+  },
+  "wealth": {
+    "title": "Oráculo de Riqueza y Carrera",
+    "subtitle": "Decodifica tu blueprints Innato de riqueza y ADN de carrera",
+    "cta": "🔮 Decodificar ahora",
+    "loading": "Invocando código de riqueza...",
+    "reportTitle": "Informe del Oráculo de Riqueza"
+  },
+  "wealthInput": {
+    "title": "Oráculo de Riqueza y Carrera",
+    "subtitle": "Decodifica tu blueprint Innegado de riqueza y ADN de carrera",
+    "birthdayLabel": "Ingresa tu fecha de nacimiento",
+    "birthdayPh": "YYYY-MM-DD",
+    "startBtn": "🔮 Comenzar Decodificación",
+    "unlockTip": "Tu trayectoria de riqueza está conectada a tu energía relacional. Desbloquea para ver también análisis de riqueza en informes de compatibilidad."
+  },
+  "wealthReport": {
+    "reportTitle": "Informe del Oráculo de Riqueza",
+    "monthlyReport": "📅 Informe Mensual de Riqueza",
+    "yearlyReport": "📆 Informe Anual de Riqueza",
+    "vipFree": "Acceso VIP gratuito",
+    "unlockMonthly": "Desbloquear Mensual $2.99",
+    "unlockYearly": "Desbloquear Anual $29.99",
+    "generateAI": "✨ Generar Insight de IA",
+    "alreadyGeneratedMonthly": "Informe mensual de riqueza ya generado este mes. Próximo disponible: próximo mes",
+    "alreadyGeneratedYearly": "Informe anual de riqueza ya generado. Próximo disponible: próximo año",
+    "generateFail": "Generación fallida",
+    "loginFirst": "Por favor inicia sesión primero para generar el informe.",
+    "almanac": "Almanaque de Riqueza",
+    "almanacDesc": "Basado en tu plan de riqueza innato, proyecta tendencias futuras."
   }
 }

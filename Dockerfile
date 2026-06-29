@@ -15,7 +15,7 @@ ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 COPY . .
 
 # 1. 根目录安装 Node.js 服务端依赖
-RUN npm install && npm install express @supabase/supabase-js stripe
+RUN npm install && npm install express stripe
 
 # 2. 🔥 核心绝杀：进入前端 web 目录，强制清除旧的 dist，现场暴力构建！
 RUN cd web && rm -rf dist && npm install && npm run build
