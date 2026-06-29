@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# 🛡️ Cache bust - 每次 push 都加个时间戳，强制 Docker 重新执行所有层
+ARG CACHEBUST=1
+
 WORKDIR /app
 
 # 🛡️ 战时最高防御：在 COPY 和安装依赖前，把全盘变量直接拍进容器全局变量！
