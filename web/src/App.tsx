@@ -15,6 +15,7 @@ import LangModal from './components/LangModal';
 import { supabase } from './lib/supabase';
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
+import PolicyPage from './pages/PolicyPage';
 import './App.css';
 
   // ── 6语言文案映射（避免三元链漏语言）──
@@ -1278,6 +1279,22 @@ export default function App() {
     return null;
   });
 
+  // ── Policy page routing (terms-of-service / privacy-policy) ──
+  const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
+
+  useEffect(() => {
+    const handlePolicyRoute = () => {
+      const path = window.location.pathname;
+      if (path === '/terms-of-service') setPolicyPage('terms');
+      else if (path === '/privacy-policy') setPolicyPage('privacy');
+      else setPolicyPage(null);
+    };
+    handlePolicyRoute();
+    window.addEventListener('popstate', handlePolicyRoute);
+    return () => window.removeEventListener('popstate', handlePolicyRoute);
+  }, []);
+
+
   const navigate = (path: string) => {
     const [pathname, search] = path.split('?');
     if (pathname === '/' || pathname === '') {
@@ -1479,6 +1496,15 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
       {!wealthPath && err && <p className="error-msg">{err}</p>}
+      {policyPage && (
+        <PolicyPage
+          type={policyPage}
+          onBack={() => {
+            setPolicyPage(null);
+            window.history.pushState({}, '', '/');
+          }}
+        />
+      )}
     </div>
   );
 }
