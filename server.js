@@ -33,6 +33,9 @@ app.get('/api/debug-env', (req, res) => {
     SUPABASE_URL: process.env.SUPABASE_URL ? '✓ set' : '✗ missing',
     SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? '✓ set' : '✗ missing',
     STRIPE: process.env.STRIPE_SECRET_KEY ? '✓ set' : '✗ missing',
+    serverVersion: 't4-debug-2026-06-29c',
+    tarotHasName: typeof TAROT_CARDS !== 'undefined' && TAROT_CARDS[0] && !!TAROT_CARDS[0].name,
+    fileSize: require('fs').readFileSync(__filename).length,
   });
 });
 
