@@ -6,24 +6,6 @@ import WealthInsightCard from '../components/WealthInsightCard';
 import { supabase } from '../lib/supabase';
 
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-      <div style={{ background: '#0D0D1A', border: '1px solid rgba(212,175,55,0.3)', borderRadius: 12, padding: 32, width: 400 }}>
-        <h3 style={{ color: '#D4AF37', marginTop: 0 }}>{lang === 'zh' ? '登录' : 'Login'}</h3>
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 12, background: '#1A1F4B', border: '1px solid #333', borderRadius: 6, color: '#E5E5E5' }} />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 12, background: '#1A1F4B', border: '1px solid #333', borderRadius: 6, color: '#E5E5E5' }} />
-        {error && <p style={{ color: '#EF4444', fontSize: 12 }}>{error}</p>}
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '8px 16px', background: '#333', color: '#E5E5E5', border: 'none', borderRadius: 6, cursor: 'pointer' }}>{lang === 'zh' ? '取消' : 'Cancel'}</button>
-          <button onClick={handleLogin} disabled={loading} style={{ flex: 1, padding: '8px 16px', background: '#D4AF37', color: '#0D0D1A', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 }}>
-            {loading ? '...' : (lang === 'zh' ? '登录' : 'Login')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ── Loading Spinner ──
 const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
   <div style={{
@@ -92,7 +74,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [reportLoading, setReportLoading] = useState<string>('');
   const loadingRef = useRef(false);
