@@ -237,6 +237,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
     try {
       // 🎯 军师方案：把购买意图存在 localStorage，让 Supabase 重定向后能从 localStorage 读到
       // （Supabase 魔法链接的 redirectTo 会被仪表盘 Site URL 覆盖，不可靠）
+      const plan = localStorage.getItem('ks_pending_checkout_plan') || 'compatibility_once';
       localStorage.setItem('ks_pending_checkout_plan', plan);
       console.log('[KindredSouls Debug] Email login: saved plan to localStorage:', plan);
       const { error } = await supabase.auth.signInWithOtp({
