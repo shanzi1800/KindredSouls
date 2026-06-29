@@ -111,7 +111,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [reportLoading, setReportLoading] = useState<string>('');
   const loadingRef = useRef(false);
@@ -563,7 +562,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           userMsg = `${t('wealthReport.alreadyGeneratedMonthly')} ${(errData as any)?.nextAvailable || ''}`;
         } else if (errCode === 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
           userMsg = currentLang === 'zh'
-            `${t('wealthReport.alreadyGeneratedYearly')} ${(errData as any)?.nextAvailable || ''}`;
+            ? `${t('wealthReport.alreadyGeneratedYearly')} ${(errData as any)?.nextAvailable || ''}`
+            : `${t('wealthReport.alreadyGeneratedYearlyEn') || 'Yearly report already generated'} ${(errData as any)?.nextAvailable || ''}`;
         } else {
           const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
           userMsg = `${t('wealthReport.generateFail')}: ${errMsg}`;
