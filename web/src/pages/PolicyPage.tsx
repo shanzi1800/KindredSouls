@@ -82,7 +82,7 @@ const TermsContent: React.FC<{ lang: string }> = ({ lang }) => {
 };
 
 const PolicyPage: React.FC<PolicyPageProps> = ({ type, onBack }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const lang = (i18n.language || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   const isZh = lang === 'zh';
 
