@@ -1402,7 +1402,7 @@ export default function App() {
  const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
  const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly'];
  if (wealthPlans.includes(pendingPlan || '')) {
-   const birthDate = r?.data?.birthDate || localStorage.getItem('wealth_birth') || '';
+   const birthDate = r?.birthDate || localStorage.getItem('wealth_birth') || '';
    const lang = r?.lang || localStorage.getItem('wealth_lang') || 'en';
    window.location.href = `/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}&intent=checkout&plan=${pendingPlan}`;
  } else {
