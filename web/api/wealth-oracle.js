@@ -3081,7 +3081,7 @@ async function handler(req, res) {
         .eq('is_permanent', true)
         .single();
       if (permanentCache?.insight) {
-        console.log('[Wealth Oracle] 🛡️ 永久缓存命中 — 0 Token 消耗:', currentUserId, 'accessMethod:', wealthAccessMethod);
+        console.log('[Wealth Oracle] 🛡️ 永久缓存命中 — 0 Token 消耗:', currentUserId, 'accessMethod:', wealthAccessMethod, 'insight length:', permanentCache.insight.length);
         insight = permanentCache.insight;
       } else {
         console.log('[Wealth Oracle] 🛡️ 首次生成，永久锁定中...');
@@ -3101,10 +3101,11 @@ async function handler(req, res) {
         .gte('created_at', new Date(Date.now() - cacheTTL).toISOString())
         .single();
       if (cached?.insight && cached?.prompt_version === PROMPT_VERSION) {
-        console.log('[Wealth Oracle] Cache hit (version', PROMPT_VERSION, '):', birthDate, normalizedLang);
+        console.log('[Wealth Oracle] Cache hit (version', PROMPT_VERSION, '):', birthDate, normalizedLang, 'call_count:', cached?.call_count);
         insight = cached.insight;
       } else {
-        console.log('[Wealth Oracle] Cache miss or version mismatch:', cached?.prompt_version, '!==', PROMPT_VERSION);
+        const missReason = !cached ? 'NO_CACHED_DATA' : (cached.prompt_version !== PROMPT_VERSION ? `VERSION_MISMATCH (cached:${cached.prompt_version} vs current:${PROMPT_VERSION})` : 'UNKNOWN');
+        console.log('[Wealth Oracle] Cache MISS:', birthDate, normalizedLang, 'reason:', missReason);
       }
     }
 
@@ -3135,6 +3136,16 @@ async function handler(req, res) {
           console.error('[Wealth Oracle] Failed to increment star_monthly_wealth_used:', incrErr.message);
         }
       }
+
+      // 🛡️ 缓存穿透调试日志：打印最终参数（用于比对缓存 key）
+      console.log('[Wealth Oracle] 💸 AI 调用前参数:', {
+        birthDate,
+        lang: normalizedLang,
+        reportType,
+        promptVersion: PROMPT_VERSION,
+        wealthAccessMethod,
+        hasInsight: !!insight
+      });
 
       insight = await callAI(systemPrompt, userPrompt, process.env);
       // ⑥ 记录 all_pass_yearly 月配额消耗（自然月清零制）
