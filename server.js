@@ -291,9 +291,10 @@ app.use('/api/ai-advisor', async (req, res) => {
       return res.json({ insight: cached[0].insight, cached: true });
     }
 
+    const LANG_NAME = {zh:'中文',en:'English',es:'Español',fr:'Français',th:'ภาษาไทย',vi:'Tiếng Việt'};
     const prompt = reportType === 'compatibility'
-      ? `请分析 ${d1} 和 ${d2} 的命理合盘，用${lang === 'zh' ? '中文' : lang === 'en' ? '英文' : '中文'}给出温暖、积极的情感解读。`
-      : `请分析 ${d1} 的财富格局，用${lang === 'zh' ? '中文' : '英文'}给出专业的财富建议。`;
+      ? `分析 ${d1} 和 ${d2} 的命理合盘。必须用 ${LANG_NAME[lang]||'Tiếng Việt'} 输出，温暖、积极的情感解读，禁止输出其他语言，禁止重复塔罗牌名称。数据：${JSON.stringify({d1,d2})}`
+      : `分析 ${d1} 的财富格局。必须用 ${LANG_NAME[lang]||'English'} 输出，专业的财富建议，禁止输出其他语言，禁止重复塔罗牌名称。数据：${JSON.stringify({d1,lang})}`
 
     // ── DeepSeek 直连，失败自动切 Gemini 免费层 ──
     let insight = '';
