@@ -6,7 +6,7 @@ import WealthInsightCard from '../components/WealthInsightCard';
 import { supabase } from '../lib/supabase';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
-  tTarotName, tOrientation,
+  tTarotName, tOrientation, tZodiacMode, tRuler, tChanging, tTiangan,
   type AlgLang,
 } from '../lib/algos/i18n';
 
@@ -638,7 +638,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const sz = b.sizhu;
         const dm = sz?.dayMaster || '';
         const dp = sz?.dayPillar || '';
-        const display = dp ? `${tWuxing(b.dayMasterWuxing || dm, currentLang as AlgLang)} · ${dp}` : (dm || '--');
+        const display = dp
+          ? `${tTiangan(dm, currentLang as AlgLang)}${b.dayMasterWuxing ? ' · ' + tWuxing(b.dayMasterWuxing, currentLang as AlgLang) : ''} · ${dp}`
+          : (dm || '--');
         const wx = b.wuxing;
         const subDisplay = wx
           ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${tWuxing(k, currentLang as AlgLang)}${v}`).join(' ')
@@ -676,7 +678,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           ? 'Động lực Sao Thủy: Tâm trí bạn thay đổi như gió, cho phép bạn nhìn thấy các cơ hội tài chính có lợi nhuận cao nhanh hơn 95% đám đông.'
           : 'Mercury Dynamic: Your mind shifts like the wind, allowing you to spot high-yield financial opportunities faster than 95% of the crowd.';
         
-        return { label: '', value: `${tZodiacSign(z.sunSign, currentLang as AlgLang)} · ${tZodiacElement(z.sunSignElement, currentLang as AlgLang)}`, subValue: `${z.sunSignMode} · ${z.sunSignRuler}`, oneLiner: oneLinerZodiac };
+        return { label: '', value: `${tZodiacSign(z.sunSign, currentLang as AlgLang)} · ${tZodiacElement(z.sunSignElement, currentLang as AlgLang)}`, subValue: `${tZodiacMode(z.sunSignMode, currentLang as AlgLang)} · ${tRuler(z.sunSignRuler, currentLang as AlgLang)}`, oneLiner: oneLinerZodiac };
       })()
     : { label: '', value: '--', subValue: '', oneLiner: '' };
 
@@ -699,7 +701,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return {
             label: '',
             value: `${tHexagram(ic.hexName, currentLang as AlgLang)} #${ic.hexNum}`,
-            subValue: `${tBagua(ic.hexNature, currentLang as AlgLang)} · ${ic.changingLineDesc || ic.changingLine} → ${tHexagram(ic.transformedHexName, currentLang as AlgLang)}`,
+            subValue: `${tBagua(ic.hexNature, currentLang as AlgLang)} · ${tChanging(ic.changingLineDesc || ic.changingLine, currentLang as AlgLang)} → ${tHexagram(ic.transformedHexName, currentLang as AlgLang)}`,
             detail: '',
             oneLiner: oneLinerIChing
           };

@@ -148,6 +148,52 @@ const ORIENTATION_LABELS: Record<AlgLang, { upright: string; reversed: string }>
   vi: { upright: 'Thuận', reversed: 'Nghịch' },
 };
 
+// ── 星座模式（基本/固定/变动）─
+const ZODIAC_MODES: Record<string, Record<AlgLang, string>> = {
+  '基本': { zh: '基本', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Cung Thống Lĩnh' },
+  '固定': { zh: '固定', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cung Cố Định' },
+  '变动': { zh: '变动', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Cung Linh Hoạt' },
+};
+
+// ── 行星守护星 ──
+const RULER_NAMES: Record<string, Record<AlgLang, string>> = {
+  '火星': { zh: '火星', en: 'Mars', es: 'Marte', fr: 'Mars', th: 'ดาวอังคาร', vi: 'Sao Hỏa' },
+  '金星': { zh: '金星', en: 'Venus', es: 'Venus', fr: 'Vénus', th: 'ดาวศุกร์', vi: 'Sao Kim' },
+  '水星': { zh: '水星', en: 'Mercury', es: 'Mercurio', fr: 'Mercure', th: 'ดาวพุธ', vi: 'Sao Thủy' },
+  '月亮': { zh: '月亮', en: 'Moon', es: 'Luna', fr: 'Lune', th: 'ดวงจันทร์', vi: 'Mặt Trăng' },
+  '太阳': { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดวงอาทิตย์', vi: 'Mặt Trời' },
+  '木星': { zh: '木星', en: 'Jupiter', es: 'Júpiter', fr: 'Jupiter', th: 'ดาวพฤหัสบดี', vi: 'Sao Mộc' },
+  '土星': { zh: '土星', en: 'Saturn', es: 'Saturno', fr: 'Saturne', th: 'ดาวเสาร์', vi: 'Sao Thổ' },
+  '天王星': { zh: '天王星', en: 'Uranus', es: 'Urano', fr: 'Uranus', th: 'ดาวยูเรนัส', vi: 'Sao Thiên Vương' },
+  '海王星': { zh: '海王星', en: 'Neptune', es: 'Neptuno', fr: 'Neptune', th: 'ดาวเนปจูน', vi: 'Sao Hải Vương' },
+  '冥王星': { zh: '冥王星', en: 'Pluto', es: 'Plutón', fr: 'Pluton', th: 'ดาวพลูโต', vi: 'Sao Diêm Vương' },
+};
+
+// ── 变爻描述翻译（处理"第2爻动"→"Hào 2 động"）──
+function tChangingLine(s: string | number, lang: AlgLang): string {
+  if (typeof s === 'number') return String(s); // 纯数字不翻译
+  if (lang === 'zh') return s;
+  if (lang === 'en') return s.replace(/第(\d+)爻动/g, (_, n) => `Line ${n} changes`);
+  if (lang === 'es') return s.replace(/第(\d+)爻动/g, (_, n) => `Línea ${n} cambia`);
+  if (lang === 'fr') return s.replace(/第(\d+)爻动/g, (_, n) => `Ligne ${n} change`);
+  if (lang === 'th') return s.replace(/第(\d+)爻动/g, (_, n) => `เส้นที่ ${n} เปลี่ยน`);
+  if (lang === 'vi') return s.replace(/第(\d+)爻动/g, (_, n) => `Hào ${n} động`);
+  return s;
+}
+
+export function tZodiacMode(mode: string, lang: AlgLang): string {
+  return ZODIAC_MODES[mode]?.[lang] ?? mode;
+}
+
+export function tRuler(ruler: string, lang: AlgLang): string {
+  return RULER_NAMES[ruler]?.[lang] ?? ruler;
+}
+
+export function tChanging(s: string | number, lang: AlgLang): string {
+  return tChangingLine(s, lang);
+}
+
+
 export function tTarotName(cardId: number, lang: AlgLang): string {
   return TAROT_CARD_NAMES[cardId]?.[lang] ?? TAROT_CARD_NAMES[cardId]?.en ?? `Card ${cardId}`;
 }
