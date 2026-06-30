@@ -119,20 +119,22 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const { birthDate, lang = 'zh' } = req.body;
     if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
 
-    const TIANGAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-    const DIZHI   = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+    const TIANGAN = { zh:['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'], en:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], es:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], fr:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], th:['เจีย','อี้','ปิง','ติง','อู๋','จี','เกิง','ซิน','เหริน','กุ่ย'], vi:['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'] };
+    const DIZHI = { zh:['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'], en:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], es:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], fr:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], th:['จื่อ','โฉ่ว','อิน','เม้า','เฉิน','ซื่อ','อู๋','เว่ย','เซิน','โย่ว','สวี่','ไห่'], vi:['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'] };
+    const WUXING = { zh:['金','木','水','火','土'], en:['Metal','Wood','Water','Fire','Earth'], es:['Metal','Madera','Agua','Fuego','Tierra'], fr:['Métal','Bois','Eau','Feu','Terre'], th:['โลหะ','ไม้','น้ำ','ไฟ','ดิน'], vi:['Kim','Mộc','Thủy','Hỏa','Thổ'] };
     const WUXING_TG = { '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水' };
     const WUXING_DZ = { '子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水' };
     const DAY_MASTER_EL = { '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水' };
+    const t = (dict, key, lang) => (dict[lang] && dict[lang][key] !== undefined) ? dict[lang][key] : (dict.zh ? dict.zh[key] : dict[key]);
 
     // ── 1. 八字 ──
     const [year, month, day] = birthDate.split('-').map(Number);
-    const yTG = TIANGAN[(year - 4) % 10];
-    const yDZ = DIZHI[(year - 4) % 12];
-    const mTG = TIANGAN[(month + 1) % 10];
-    const mDZ = DIZHI[(month + 1) % 12];
-    const dTG = TIANGAN[((year - 1900) * 5 + (month - 1) * 30 + day - 15) % 10];
-    const dDZ = DIZHI[((year - 1900) * 12 + (month - 1) * 30 + day - 15) % 12];
+    const yTG = TIANGAN.zh[(year - 4) % 10]; const yTGDisplay = t(TIANGAN, (year - 4) % 10, lang);
+    const yDZ = DIZHI.zh[(year - 4) % 12]; const yDZDisplay = t(DIZHI, (year - 4) % 12, lang);
+    const mTG = TIANGAN.zh[(month + 1) % 10]; const mTGDisplay = t(TIANGAN, (month + 1) % 10, lang);
+    const mDZ = DIZHI.zh[(month + 1) % 12]; const mDZDisplay = t(DIZHI, (month + 1) % 12, lang);
+    const dTGIdx = ((year - 1900) * 5 + (month - 1) * 30 + day - 15) % 10; const dTG = TIANGAN.zh[dTGIdx]; const dTGDisplay = t(TIANGAN, dTGIdx, lang);
+    const dDZIdx = ((year - 1900) * 12 + (month - 1) * 30 + day - 15) % 12; const dDZ = DIZHI.zh[dDZIdx]; const dDZDisplay = t(DIZHI, dDZIdx, lang);
     const dayMasterEl = DAY_MASTER_EL[dTG];
     const dayMasterName = `${dTG}·${dayMasterEl}`;
 
@@ -167,19 +169,18 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const sunSignRuler = rulers[zodiacIdx];
 
     // ── 3. 易经 ──
-    const HEXNAMES = ['乾','兑','离','震','巽','坎','艮','坤'];
-    const HEXNAMES_EN = ['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun'];
-    const HEXNATURES = ['天','泽','火','雷','风','水','山','地'];
+    const HEXNAMES = { zh:['乾','兑','离','震','巽','坎','艮','坤'], en:['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun'], es:['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun'], fr:['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun'], th:['เฉียน','ตุ้ย','หลี่','เจิ้น','ซุน','ขั้น','เคิ่น','คุ่น'], vi:['Càn','Đoái','Ly','Chấn','Tốn','Khảm','Cấn','Khôn'] };
+    const HEXNATURES = { zh:['天','泽','火','雷','风','水','山','地'], en:['Heaven','Lake','Fire','Thunder','Wind','Water','Mountain','Earth'], es:['Cielo','Lago','Fuego','Trueno','Viento','Agua','Montaña','Tierra'], fr:['Ciel','Lac','Feu','Tonnerre','Vent','Eau','Montagne','Terre'], th:['สวรรค์','บึง','ไฟ','ฟ้าร้อง','ลม','น้ำ','ภูเขา','ดิน'], vi:['Trờ','Đầm','Lửa','Sấm','Gió','Nước','Núi','Đất'] };
     const hash = ((year * 31 + month * 17 + day * 7) % 64) + 1;
     const upper = Math.floor((hash - 1) / 8) + 1;
     const lower = (hash - 1) % 8 + 1;
-    const hexName = HEXNAMES[upper - 1];
-    const hexNameEn = HEXNAMES_EN[upper - 1];
-    const hexNature = HEXNATURES[upper - 1];
+    const hexName = HEXNAMES[lang] ? HEXNAMES[lang][upper - 1] : HEXNAMES.zh[upper - 1];
+    const hexNameEn = HEXNAMES.en[upper - 1];
+    const hexNature = HEXNATURES[lang] ? HEXNATURES[lang][upper - 1] : HEXNATURES.zh[upper - 1];
     const changingLine = ((year + month + day) % 6) + 1;
     const transformedHex = upper === 8 ? 2 : upper + 1;
-    const transformedHexName = HEXNAMES[transformedHex - 1];
-    const transformedHexNameEn = HEXNAMES_EN[transformedHex - 1];
+    const transformedHexName = HEXNAMES[lang] ? HEXNAMES[lang][transformedHex - 1] : HEXNAMES.zh[transformedHex - 1];
+    const transformedHexNameEn = HEXNAMES.en[transformedHex - 1];
 
     // ── 4. 塔罗 ──
     const tarotId = ((year * 13 + month * 3 + day) % 22);
@@ -187,31 +188,32 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // 22张大阿卡纳：id → {name(中), nameEn(英), emoji, meaning(中), meaningEn(英)}
     const TAROT_CARDS = [
-      { name:'愚人', nameEn:'The Fool', emoji:'🃏', meaning:'新的财务冒险即将开始，适合小额试错。', meaningEn:'A new financial adventure begins. Calculated risks favor you today.' },
-      { name:'魔术师', nameEn:'The Magician', emoji:'🎩', meaning:'你手头资源足以搅动一个项目，直接动手。', meaningEn:'Your financial tools are ready. Manifest wealth with focus.' },
-      { name:'女祭司', nameEn:'The High Priestess', emoji:'🌙', meaning:'直觉今天比财报准，信任你第六感。', meaningEn:'Financial intuition peaks. Trust your money gut today.' },
-      { name:'女皇', nameEn:'The Empress', emoji:'👑', meaning:'适合收割之前种下的项目，果实该摘了。', meaningEn:'Financial abundance flows. Harvest what you planted.' },
-      { name:'皇帝', nameEn:'The Emperor', emoji:'🏛️', meaning:'拍板一个决策，把人管住，钱理清。', meaningEn:'Solid financial foundation. Build wealth with clear rules.' },
-      { name:'教皇', nameEn:'The Hierophant', emoji:'📜', meaning:'找个比你赚得多的人聊，问题可能出在认知圈。', meaningEn:'Seek a wealth mentor. Your money path needs guidance.' },
-      { name:'恋人', nameEn:'The Lovers', emoji:'💞', meaning:'跟钱有关的选择，选让你心跳加速的那条。', meaningEn:'Financial choice point. Follow your money heart.' },
-      { name:'战车', nameEn:'The Chariot', emoji:'🏇', meaning:'全速推进，犹豫一秒都是对财运的不尊重。', meaningEn:'Unstoppable financial momentum. Execute with confidence.' },
-      { name:'力量', nameEn:'Strength', emoji:'🦁', meaning:'今天要么搞定那笔钱，要么搞定那个不敢谈价的人。', meaningEn:'Inner financial power. Gentle wealth strength awakens.' },
-      { name:'隐士', nameEn:'The Hermit', emoji:'🏮', meaning:'关掉消息提醒，花30分钟盘你的财务底牌。', meaningEn:'Financial wisdom within. Solitude brings money insights.' },
-      { name:'命运之轮', nameEn:'Wheel of Fortune', emoji:'🎡', meaning:'你的财运拐点到了，今天必须做一次主动出击。', meaningEn:'Financial cycle turning. Fortune favors bold money moves.' },
-      { name:'正义', nameEn:'Justice', emoji:'⚖️', meaning:'做一件正确但难开口的事，跟合伙人谈分成。', meaningEn:'Financial karma balancing. Money justice arrives.' },
-      { name:'倒吊人', nameEn:'The Hanged Man', emoji:'🙃', meaning:'停下来的勇气比冲的勇气值钱。', meaningEn:'Financial perspective shift. New money vision needed.' },
-      { name:'死神', nameEn:'Death', emoji:'💀', meaning:'清理一个拖你后腿的财务包袱，结束才有新生。', meaningEn:'Financial transformation. Old you dies, new emerges.' },
-      { name:'节制', nameEn:'Temperance', emoji:'🍷', meaning:'今天最适合做资产配置的一步调整。', meaningEn:'Financial balance. Moderate money approach wins.' },
-      { name:'恶魔', nameEn:'The Devil', emoji:'😈', meaning:'直视你最上瘾的那笔消费或投资。', meaningEn:'Financial shadow work. Face money demons to win.' },
-      { name:'高塔', nameEn:'The Tower', emoji:'🗼', meaning:'打破一个旧的收入结构，制造一次主动破坏。', meaningEn:'Financial breakthrough. Sudden money shift incoming.' },
-      { name:'星星', nameEn:'The Star', emoji:'⭐', meaning:'今天适合定下一个长期目标。', meaningEn:'Financial hope returns. Wealth star guides your journey.' },
-      { name:'月亮', nameEn:'The Moon', emoji:'🌕', meaning:'赚钱机会藏在模糊信息里。', meaningEn:'Financial intuition peaks. Lunar money magic works.' },
-      { name:'太阳', nameEn:'The Sun', emoji:'☀️', meaning:'今天是亮牌日，把价值show出来。', meaningEn:'Financial success bright ahead. Wealth sunshine blesses you.' },
-      { name:'审判', nameEn:'Judgement', emoji:'📯', meaning:'复盘一次过去的财务失误。', meaningEn:'Financial rebirth. Wealth calling heard.' },
-      { name:'世界', nameEn:'The World', emoji:'🌍', meaning:'一个财务周期结束了，今天奖励自己。', meaningEn:'Financial cycle complete. Wealth world transforms.' }
+      { id:0, emoji:'🃏', name:{zh:'愚人',en:'The Fool',es:'El Loco',fr:'Le Mat',th:'เดอะฟูล',vi:'Kẻ Khờ'}, meaning:{zh:'新的财务冒险即将开始，适合小额试错。',en:'A new financial adventure begins. Calculated risks favor you today.',es:'Nueva aventura financiera — toma riesgos calculados.',fr:'Nouvelle aventure financière — prends des risques calculés.',th:'การเสี่ยงทางการเงินใหม่ — คำนวณความเสี่ยงก่อน',vi:'Cuộc phiêu lưu tài chính mới — tính toán rủi ro trước。'} },
+      { id:1, emoji:'🎩', name:{zh:'魔术师',en:'The Magician',es:'El Mago',fr:'Le Bateleur',th:'เดอะเมจิเชี่ยน',vi:'Ảo Thuật Gia'}, meaning:{zh:'你手头资源足以搅动一个项目，直接动手。',en:'Your financial tools are ready. Manifest wealth with focus.',es:'Manifiesta riqueza ahora — tus talentos están listos.',fr:'Manifester la richesse maintenant — vos talents sont prêts.',th:'สร้างความมั่งคั่งตอนนี้ — พรสวรรค์พร้อมแล้ว',vi:'Thể hiện của cải ngay bây giờ — tài năng sẵn sàng。'} },
+      { id:2, emoji:'🌙', name:{zh:'女祭司',en:'The High Priestess',es:'La Sacerdotisa',fr:'La Papesse',th:'เดอะไฮพรีสเตส',vi:'Nữ Tư Tế'}, meaning:{zh:'直觉今天比财报准，信任你第六感。',en:'Financial intuition peaks. Trust your money gut today.',es:'Confía en tu intuición financiera — oportunidades ocultas te esperan.',fr:'Faites confiance à votre intuition — des opportunités vous attendent.',th:'ไว้ใจสัญชาตญาณ — โอกาสซ่อนอยู่รอคุณอยู่',vi:'Tin vào trực giác tài chính — cơ hội ẩn đang chờ bạn。'} },
+      { id:3, emoji:'👑', name:{zh:'女皇',en:'The Empress',es:'La Emperatriz',fr:'L\'Impératrice',th:'เดอะเอมเพรส',vi:'Nữ Hoàng'}, meaning:{zh:'适合收割之前种下的项目，果实该摘了。',en:'Financial abundance flows. Harvest what you planted.',es:'La abundancia fluye — la riqueza crece con paciencia.',fr:'L\'abondance circule — la richesse grandit avec patience.',th:'เงินไหลมา — ความมั่งคั่งเติบโตด้วยความอดทน',vi:'Cải tạo dồi dào — của cải lớn lên nhờ kiên nhẫn。'} },
+      { id:4, emoji:'🏛️', name:{zh:'皇帝',en:'The Emperor',es:'El Emperador',fr:'L\'Empereur',th:'เดอะเอมเพอเรอร์',vi:'Hoàng Đế'}, meaning:{zh:'拍板一个决策，把人管住，钱理清。',en:'Solid financial foundation. Build wealth with clear rules.',es:'Construye estructura de riqueza — base financiera sólida.',fr:'Construire la structure financière — base solide établie.',th:'สร้างโครงสร้างความมั่งคั่ง — ฐานะมั่นคงแล้ว',vi:'Xây dựng cấu trúc tài sản — nền tảng vững chắc rồi。'} },
+      { id:5, emoji:'📜', name:{zh:'教皇',en:'The Hierophant',es:'El Papa',fr:'Le Pape',th:'เดอะไฮโรแฟนต์',vi:'Giáo Hoàng'}, meaning:{zh:'找个比你赚得多的人聊，问题可能出在认知圈。',en:'Seek a wealth mentor. Your money path needs guidance.',es:'Riqueza alineada con valores — camino ético claro.',fr:'Richesse alignée avec vos valeurs — chemin éthique clair.',th:'ความมั่งคั่งสอดคล้องค่านิยม — ทางที่ถูกต้องชัดเจน',vi:'Củả phù hợp giá trị — con đường kiếm tiền đạo đức rõ ràng。'} },
+      { id:6, emoji:'💞', name:{zh:'恋人',en:'The Lovers',es:'Los Enamorados',fr:'Les Amoureux',th:'เดอะเลิฟเวอร์ส',vi:'Tình Nhân'}, meaning:{zh:'跟钱有关的选择，选让你心跳加速的那条。',en:'Financial choice point. Follow your money heart.',es:'Punto de decisión financiera — sigue tu corazón.',fr:'Point de choix financier — suivez votre cœur.',th:'จุดตัดสินใจเรื่องเงิน — ทำตามหัวใจ',vi:'Điểm quyết định tài chính — theo trái tim tài chính của bạn。'} },
+      { id:7, emoji:'🏇', name:{zh:'战车',en:'The Chariot',es:'El Carro',fr:'Le Chariot',th:'เดอะแชริออต',vi:'Chiến Xe'}, meaning:{zh:'全速推进，犹豫一秒都是对财运的不尊重。',en:'Unstoppable financial momentum. Execute with confidence.',es:'El carro de la riqueza avanza — la acción decisiva gana.',fr:'Le char de la richesse avance — l\'action déterminée gagne.',th:'รถม้าความมั่งคั่งวิ่ง — ความมุ่งมั่นชนะ',vi:'Xe tài chính tiến — hành động kiên quyết thắng。'} },
+      { id:8, emoji:'🦁', name:{zh:'力量',en:'Strength',es:'La Fuerza',fr:'La Force',th:'สเตรงธ์',vi:'Sức Mạnh'}, meaning:{zh:'今天要么搞定那笔钱，要么搞定那个不敢谈价的人。',en:'Inner financial power. Gentle wealth strength awakens.',es:'Fortaleza financiera interior — poder gentil despierta.',fr:'Force financière intérieure — pouvoir doux s\'éveille.',th:'พลังการเงินภายใน — พลังอ่อนโยนตื่น',vi:'Sức mạnh tài chính bên trong — năng lượng dịu dàng thức tỉnh。'} },
+      { id:9, emoji:'🏮', name:{zh:'隐士',en:'The Hermit',es:'El Ermitaño',fr:'L\'Ermite',th:'เดอะเฮอร์มิต',vi:'Ẩn Sĩ'}, meaning:{zh:'关掉消息提醒，花30分钟盘你的财务底牌。',en:'Financial wisdom within. Solitude brings money insights.',es:'Sabiduría financiera interior — la soledad trae perspectivas.',fr:'Sagesse financière intérieure — la solitude apporte des perspectives.',th:'ปัญญาความมั่งคั่งภายใน — ความสันโดษให้มุมมองใหม่',vi:'Trí tuệ giàu có bên trong — một mình mang lại góc nhìn mới。'} },
+      { id:10, emoji:'🎡', name:{zh:'命运之轮',en:'Wheel of Fortune',es:'La Rueda de la Fortuna',fr:'La Roue de Fortune',th:'วีลออฟฟอร์จูน',vi:'Bánh Xe Số Phận'}, meaning:{zh:'你的财运拐点到了，今天必须做一次主动出击。',en:'Financial cycle turning. Fortune favors bold money moves.',es:'El ciclo de riqueza gira — la fortuna favorece movimientos audaces.',fr:'Le cycle de richesse tourne — la fortune favorise les audacieux.',th:'วงจรความมั่งคั่งหมุน — โชคสนับสนุนผู้กล้า',vi:'Chu kỳ giàu có quay — vận may ủng hộ người dám làm。'} },
+      { id:11, emoji:'⚖️', name:{zh:'正义',en:'Justice',es:'La Justicia',fr:'La Justice',th:'จัสติซ',vi:'Công Lý'}, meaning:{zh:'做一件正确但难开口的事，跟合伙人谈分成。',en:'Financial karma balancing. Money justice arrives.',es:'Justicia financiera — el karma del dinero se equilibra.',fr:'Justice financière — le karma de l\'argent s\'équilibre.',th:'ความยุติธรรมทางการเงิน — กรรมเงินสมดุล',vi:'Công lý tài chính — nghiệp tiền cân bằng hoàn hảo。'} },
+      { id:12, emoji:'🙃', name:{zh:'倒吊人',en:'The Hanged Man',es:'El Colgado',fr:'Le Pendu',th:'เดอะแฮงค์แมน',vi:'Ngước Treo'}, meaning:{zh:'停下来的勇气比冲的勇气值钱。',en:'Financial perspective shift. New money vision needed.',es:'Cambio de perspectiva financiera — nueva visión del dinero.',fr:'Changement de perspective — nouvelle vision nécessaire.',th:'มุมมองทางการเงินเปลี่ยน — ต้องการวิสัยทัศน์ใหม่',vi:'Góc nhìn tài chính chuyển đổi — cần tầm nhìn mới về tiền。'} },
+      { id:13, emoji:'💀', name:{zh:'死神',en:'Death',es:'La Muerte',fr:'La Mort',th:'เดธ',vi:'Cái Chết'}, meaning:{zh:'清理一个拖你后腿的财务包袱，结束才有新生。',en:'Financial transformation. Old you dies, new emerges.',es:'Transformación de riqueza — el viejo tú financiero muere.',fr:'Transformation financière — le vieil vous meurt.',th:'การเปลี่ยนแปลงความมั่งคั่ง — ตายแล้วเกิดใหม่',vi:'Chuyển đổi giàu có — người tài chính cũ chết, người mới ra đời。'} },
+      { id:14, emoji:'🍷', name:{zh:'节制',en:'Temperance',es:'La Templanza',fr:'La Tempérance',th:'เทมเปอแรนซ์',vi:'Điều Độ'}, meaning:{zh:'今天最适合做资产配置的一步调整。',en:'Financial balance. Moderate money approach wins.',es:'Equilibrio financiero — la moderación gana.',fr:'Équilibre financier — la modération gagne.',th:'สมดุลความมั่งคั่ง — ทางเลือกปานกลางชนะ',vi:'Cân bằng giàu có — chiến lược tiền bạc vừa phải thắng。'} },
+      { id:15, emoji:'😈', name:{zh:'恶魔',en:'The Devil',es:'El Diablo',fr:'Le Diable',th:'เดอะเดวิล',vi:'Ác Ma'}, meaning:{zh:'直视你最上瘾的那笔消费或投资。',en:'Financial shadow work. Face money demons to win.',es:'Trabajo con la sombra financiera — enfrenta tus demonios.',fr:'Travail sur l\'ombre — affrontez vos démons.',th:'ทำงานกับเงาทางการเงิน — เผชิญปีศาจเงิน',vi:'Làm việc với bóng tối tài chính — đối mặt quỷ tiền bạc để thắng。'} },
+      { id:16, emoji:'🗼', name:{zh:'高塔',en:'The Tower',es:'La Torre',fr:'La Maison Dieu',th:'เดอะทาวเวอร์',vi:'Tháp Đổ'}, meaning:{zh:'打破一个旧的收入结构，制造一次主动破坏。',en:'Financial breakthrough. Sudden money shift incoming.',es:'Quiebre financiero — cambio repentino de dinero.',fr:'Percée financière — changement soudain.',th:'การทะลุทางการเงิน — เงินเปลี่ยนทิศฉับพลัน',vi:'Đột phá tài chính — chuyển đổi tiền bạc đột ngột。'} },
+      { id:17, emoji:'⭐', name:{zh:'星星',en:'The Star',es:'La Estrella',fr:'L\'Étoile',th:'เดอะสตาร์',vi:'Ngôi Sao'}, meaning:{zh:'今天适合定下一个长期目标。',en:'Financial hope returns. Wealth star guides your journey.',es:'La estrella financiera guía — la esperanza regresa.',fr:'L\'étoile financière guide — l\'espoir revient.',th:'ดาวนำทางความมั่งคั่ง — ความหวังกลับมา',vi:'Ngôi sao dẫn đường giàu có — hy vọng quay lại。'} },
+      { id:18, emoji:'🌕', name:{zh:'月亮',en:'The Moon',es:'La Luna',fr:'La Lune',th:'เดอะมูน',vi:'Mặt Trăng'}, meaning:{zh:'赚钱机会藏在模糊信息里。',en:'Financial intuition peaks. Lunar money magic works.',es:'Intuición financiera en su punto máximo — magia lunar.',fr:'Intuition financière à son apogée — magie lunaire.',th:'สัญชาตญาณทางการเงินสูงสุด — เวทมนตร์จันทรคติ',vi:'Trực giác tài chính đạt đỉnh — phép thuật trăng tròn。'} },
+      { id:19, emoji:'☀️', name:{zh:'太阳',en:'The Sun',es:'El Sol',fr:'Le Soleil',th:'เดอะซัน',vi:'Mặt Trời'}, meaning:{zh:'今天是亮牌日，把价值show出来。',en:'Financial success bright ahead. Wealth sunshine blesses you.',es:'El sol financiero brilla — éxito brillante adelante.',fr:'Le soleil financier brille — succès brillant devant.',th:'ดวงอาทิตย์ทางการเงินส่อง — ความสำเร็จรุ่งโรจน์',vi:'Ánh dương tài chính chiếu sáng — thành công rực rỡ phía trước。'} },
+      { id:20, emoji:'📯', name:{zh:'审判',en:'Judgement',es:'El Juicio',fr:'Le Jugement',th:'จัดเมนต์',vi:'Phán Xét'}, meaning:{zh:'复盘一次过去的财务失误。',en:'Financial rebirth. Wealth calling heard.',es:'El llamado de la riqueza es escuchado — renacimiento.',fr:'L\'appel de la richesse entendu — renaissance.',th:'เสียงเรียกความมั่งคั่งดังแล้ว — การเกิดใหม่ใกล้',vi:'Tiếng gọi giàu có được nghe — tái sinh đang đến gần。'} },
+      { id:21, emoji:'🌍', name:{zh:'世界',en:'The World',es:'El Mundo',fr:'Le Monde',th:'เดอะเวิร์ลด์',vi:'Thế Giới'}, meaning:{zh:'一个财务周期结束了，今天奖励自己。',en:'Financial cycle complete. Wealth world transforms.',es:'Ciclo financiero completo — transformación total.',fr:'Cycle financier complet — transformation mondiale.',th:'วงจรความมั่งคั่งสมบูรณ์ — โลกการเงินเปลี่ยน',vi:'Chu kỳ giàu có hoàn tất — thế giới tài chính chuyển đổi。'} }
     ];
     const card = TAROT_CARDS[tarotId];
-    const cardMeaning = lang === 'zh' ? card.meaning : card.meaningEn;
+    const cardMeaning = (card.meaning[lang] || card.meaning.en);
+    const cardName = (card.name[lang] || card.name.en);
 
     const result = {
       success: true,
@@ -222,10 +224,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
       data: {
         bazi: {
           sizhu: {
-            yearPillar: `${yTG}${yDZ}`,
-            monthPillar: `${mTG}${mDZ}`,
-            dayPillar: `${dTG}${dDZ}`,
-            dayMaster: dayMasterName,
+            yearPillar: `${yTGDisplay}${yDZDisplay}`,
+            monthPillar: `${mTGDisplay}${mDZDisplay}`,
+            dayPillar: `${dTGDisplay}${dDZDisplay}`,
+            dayMaster: dTGDisplay,
             dayMasterWuxing: dayMasterEl
           },
           wuxing
@@ -234,8 +236,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         iching: { hexName, hexNameEn, hexNum: hash, hexNature, changingLine, transformedHexName, transformedHexNameEn },
         tarot: {
           id: tarotId,
-          name: card.name,
-          nameEn: card.nameEn,
+          name: cardName,
+          nameEn: card.name.en,
           emoji: card.emoji,
           meaning: cardMeaning,
           orientation: tarotReversed ? 'Reversed' : 'Upright'
