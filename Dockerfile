@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # 🛡️ Cache bust - 每次 push 都加个时间戳，强制 Docker 重新执行所有层
-ARG CACHEBUST=20260630b
+ARG CACHEBUST=20260630c
 
 WORKDIR /app
 
