@@ -1,6 +1,8 @@
 // Force Node.js 20 runtime
 export const runtime = 'nodejs';
 
+const crypto = require('crypto');
+
 // ── Supabase REST helpers (Vercel serverless compatible) ──
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -156,6 +158,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or message' });
   }
 
+  // 🛡️ 防线 1 & 3：检查缓存（仅当无上下文时）
+  const shouldCheckCache = !conversationHistory || conversationHistory.length <= 2;
+  if (shouldCheckCache && userId) {
+    const cacheKey = crypto.createHash('md5').update(`${userId}:${message.toLowerCase().trim()}`).digest('hex');
+    try {
+      const cached = await sbGet('ai_support_cache', `cache_key=eq.${cacheKey}&select=reply,created_at&limit=1`);
+      if (cached && cached[0] && (new Date() - new Date(cached[0].created_at)) < 24 * 60 * 60 * 1000) {
+        console.log('[ai-support] 🛡️ 缓存命中，跳过 AI 调用和 rate limit 扣除');
+        return res.status(200).json({
+          reply: cached[0].reply,
+          cached: true,
+          retention_offered: false,
+          retention_accepted: false,
+        });
+      }
+    } catch (cacheErr) {
+      console.error('[ai-support] Cache read error:', cacheErr.message);
+    }
+  }
+
   try {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -273,8 +295,33 @@ export default async function handler(req, res) {
       toolCalls = assistantMessage?.tool_calls;
     }
 
-    // 更新计数
-    await fetch(`${SUPABASE_URL}/rest/v1/compatibility_results?user_id=eq.${userId}`, {
+    // 🛡️ 防线 2：检查是否触发 Tool Calling（如果触发，标记不写缓存）
+    const hasToolCalls = !!(assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0);
+
+    // 🛡️ 写入缓存（仅当未触发 Tool Calling 且是穿透请求时）
+    if (!hasToolCalls && userId) {
+      const cacheKey = crypto.createHash('md5').update(`${userId}:${message.toLowerCase().trim()}`).digest('hex');
+      try {
+        await sbUpsert('ai_support_cache', {
+          user_id: userId,
+          message: message.toLowerCase().trim(),
+          reply: finalContent,
+          cache_key: cacheKey,
+          created_at: new Date().toISOString(),
+        }, 'cache_key');
+            user_id: userId,
+            message: message.toLowerCase().trim(),
+            reply: finalContent,
+            cache_key: cacheKey,
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'cache_key' });
+        console.log('[ai-support] 💾 缓存已写入:', cacheKey);
+      } catch (cacheWriteErr) {
+        console.error('[ai-support] Cache write error:', cacheWriteErr.message);
+      }
+    }
+
+    // 更新计数`${SUPABASE_URL}/rest/v1/compatibility_results?user_id=eq.${userId}`, {
       method: 'PATCH',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ ai_support_count: supportCount + 1, ai_support_date: today }),
