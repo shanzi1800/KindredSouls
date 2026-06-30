@@ -4,6 +4,11 @@ import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import { supabase } from '../lib/supabase';
+import {
+  tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
+  tTarotName, tOrientation,
+  type AlgLang,
+} from '../lib/algos/i18n';
 
 
 // ── Loading Spinner ──
@@ -633,10 +638,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const sz = b.sizhu;
         const dm = sz?.dayMaster || '';
         const dp = sz?.dayPillar || '';
-        const display = dp ? `${b.dayMasterWuxing || dm} · ${dp}` : (dm || '--');
+        const display = dp ? `${tWuxing(b.dayMasterWuxing || dm, currentLang as AlgLang)} · ${dp}` : (dm || '--');
         const wx = b.wuxing;
         const subDisplay = wx
-          ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${k}${v}`).join(' ')
+          ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${tWuxing(k, currentLang as AlgLang)}${v}`).join(' ')
           : '';
         // oneLiner 多语言切换
         const oneLinerBazi = currentLang === 'zh' 
@@ -671,7 +676,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           ? 'Động lực Sao Thủy: Tâm trí bạn thay đổi như gió, cho phép bạn nhìn thấy các cơ hội tài chính có lợi nhuận cao nhanh hơn 95% đám đông.'
           : 'Mercury Dynamic: Your mind shifts like the wind, allowing you to spot high-yield financial opportunities faster than 95% of the crowd.';
         
-        return { label: '', value: `${z.sunSign} · ${z.sunSignElement}`, subValue: `${z.sunSignMode} · ${z.sunSignRuler}`, oneLiner: oneLinerZodiac };
+        return { label: '', value: `${tZodiacSign(z.sunSign, currentLang as AlgLang)} · ${tZodiacElement(z.sunSignElement, currentLang as AlgLang)}`, subValue: `${z.sunSignMode} · ${z.sunSignRuler}`, oneLiner: oneLinerZodiac };
       })()
     : { label: '', value: '--', subValue: '', oneLiner: '' };
 
@@ -693,10 +698,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           
           return {
             label: '',
-            value: `${ic.hexName} #${ic.hexNum}`,
-            subValue: `${ic.hexNature} · ${ic.changingLineDesc || ic.changingLine} → ${ic.transformedHexName}`,
-            detail: '', // 不设详情，避免折叠UI（卦辞太短不值得展开）
-            oneLiner: oneLinerIChing // 多语言
+            value: `${tHexagram(ic.hexName, currentLang as AlgLang)} #${ic.hexNum}`,
+            subValue: `${tBagua(ic.hexNature, currentLang as AlgLang)} · ${ic.changingLineDesc || ic.changingLine} → ${tHexagram(ic.transformedHexName, currentLang as AlgLang)}`,
+            detail: '',
+            oneLiner: oneLinerIChing
           };
       })()
     : { label: '', value: '--', subValue: '', detail: '', oneLiner: '' };
@@ -783,8 +788,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         return { 
           label: '', 
-          value: `${t.emoji || '🃏'} ${t.name}`, 
-          subValue: `${t.orientation || ''} · ${t.meaning}`,
+          value: `${t.emoji || '🃏'} ${tTarotName(cardId, currentLang as AlgLang)}`,
+          subValue: `${tOrientation(t.orientation || 'upright', currentLang as AlgLang)} · ${t.meaning}`,
           oneLiner: oneLiner
         };
       })()
