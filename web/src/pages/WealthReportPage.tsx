@@ -636,11 +636,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     ? (() => {
         const b = reportData.data.bazi as any;
         const sz = b.sizhu;
-        const dm = sz?.dayMaster || '';
-        const dp = sz?.dayPillar || '';
+        const dmRaw = sz?.dayMaster || '';  // 可能是 "甲·木" 或 "甲"
+        const dp = sz?.dayPillar || '';      // 例如 "甲午"
+        // 从 dp 提取日主天干（首字），从 dmRaw 提取五行（第一个 "·" 后的字）
+        const dmStem = dp ? dp[0] : (dmRaw.split('·')[0] || '');
+        const dmWuxing = dmRaw.includes('·') ? dmRaw.split('·')[1] : (b.dayMasterWuxing || '');
         const display = dp
-          ? `${tTiangan(dm, currentLang as AlgLang)}${b.dayMasterWuxing ? ' · ' + tWuxing(b.dayMasterWuxing, currentLang as AlgLang) : ''} · ${dp}`
-          : (dm || '--');
+          ? `${tTiangan(dmStem, currentLang as AlgLang)}${dmWuxing ? ' · ' + tWuxing(dmWuxing, currentLang as AlgLang) : ''} · ${dp}`
+          : (dmRaw || '--');
         const wx = b.wuxing;
         const subDisplay = wx
           ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${tWuxing(k, currentLang as AlgLang)}${v}`).join(' ')

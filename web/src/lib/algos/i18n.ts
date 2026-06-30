@@ -97,8 +97,9 @@ export function tTiangan(cn: string, lang: AlgLang): string {
   return TIANGAN[cn]?.[lang] ?? cn;
 }
 
-// ── 易经八卦（八经卦） ──
+// ── 易经八卦（八经卦，含卦名 + 象名） ──
 const BAGUA: Record<string, Record<AlgLang, string>> = {
+  // 卦名（本名）
   乾: { zh: '乾', en: 'Qian (Heaven)',  es: 'Qian (Cielo)',    fr: 'Qian (Ciel)',    th: 'เชียน (สวรรค์)', vi: 'Càn (Thiên)' },
   坤: { zh: '坤', en: 'Kun (Earth)',   es: 'Kun (Tierra)',    fr: 'Kun (Terre)',    th: 'คุน (ดิน)',     vi: 'Khôn (Địa)' },
   震: { zh: '震', en: 'Zhen (Thunder)', es: 'Zhen (Trueno)',   fr: 'Zhen (Tonnerre)',th: 'ต้าน (อินทรี)', vi: 'Chấn (Lôi)' },
@@ -107,6 +108,15 @@ const BAGUA: Record<string, Record<AlgLang, string>> = {
   巽: { zh: '巽', en: 'Xun (Wind)',    es: 'Xun (Viento)',     fr: 'Xun (Vent)',     th: 'ซุน (ลม)',     vi: 'Tốn (Phong)' },
   离: { zh: '离', en: 'Li (Fire)',     es: 'Li (Fuego)',       fr: 'Li (Feu)',       th: 'ลี่ (ไฟ)',     vi: 'Ly (Hỏa)' },
   兑: { zh: '兑', en: 'Dui (Lake)',    es: 'Dui (Lago)',       fr: 'Dui (Lac)',      th: 'ตุย (ทะเลสาบ)',vi: 'Đoài (Trạch)' },
+  // 象名（自然现象，后端 hexNature 用此名）
+  天: { zh: '天', en: 'Heaven',  es: 'Cielo',    fr: 'Ciel',    th: 'สวรรค์',  vi: 'Thiên (Trời)' },
+  地: { zh: '地', en: 'Earth',   es: 'Tierra',   fr: 'Terre',   th: 'ดิน',     vi: 'Địa (Đất)' },
+  雷: { zh: '雷', en: 'Thunder', es: 'Trueno',   fr: 'Tonnerre',th: 'อินทรี',  vi: 'Lôi (Sấm Sét)' },
+  水: { zh: '水', en: 'Water',   es: 'Agua',     fr: 'Eau',     th: 'น้ำ',     vi: 'Thủy (Nước)' },
+  山: { zh: '山', en: 'Mountain',es: 'Montaña',  fr: 'Montagne',th: 'เขา',     vi: 'Sơn (Núi)' },
+  风: { zh: '风', en: 'Wind',    es: 'Viento',   fr: 'Vent',    th: 'ลม',      vi: 'Phong (Gió)' },
+  火: { zh: '火', en: 'Fire',    es: 'Fuego',    fr: 'Feu',     th: 'ไฟ',      vi: 'Hỏa (Lửa)' },
+  泽: { zh: '泽', en: 'Lake',    es: 'Lago',     fr: 'Lac',     th: 'ทะเลสาบ', vi: 'Trạch (Hồ)' },
 };
 
 export function tBagua(cn: string, lang: AlgLang): string {
@@ -169,16 +179,24 @@ const RULER_NAMES: Record<string, Record<AlgLang, string>> = {
   '冥王星': { zh: '冥王星', en: 'Pluto', es: 'Plutón', fr: 'Pluton', th: 'ดาวพลูโต', vi: 'Sao Diêm Vương' },
 };
 
-// ── 变爻描述翻译（处理"第2爻动"→"Hào 2 động"）──
+// ── 变爻描述翻译（处理"第2爻动"或纯数字）──
+const CHANGING_LINE_LABELS: Record<AlgLang, { prefix: string; suffix: string }> = {
+  zh: { prefix: '第', suffix: '爻动' },
+  en: { prefix: 'Line ', suffix: ' changes' },
+  es: { prefix: 'Línea ', suffix: ' cambia' },
+  fr: { prefix: 'Ligne ', suffix: ' change' },
+  th: { prefix: 'เส้นที่ ', suffix: ' เปลี่ยน' },
+  vi: { prefix: 'Hào ', suffix: ' động' },
+};
+
 function tChangingLine(s: string | number, lang: AlgLang): string {
-  if (typeof s === 'number') return String(s); // 纯数字不翻译
+  if (typeof s === 'number') {
+    const lbl = CHANGING_LINE_LABELS[lang];
+    return `${lbl.prefix}${s}${lbl.suffix}`;
+  }
   if (lang === 'zh') return s;
-  if (lang === 'en') return s.replace(/第(\d+)爻动/g, (_, n) => `Line ${n} changes`);
-  if (lang === 'es') return s.replace(/第(\d+)爻动/g, (_, n) => `Línea ${n} cambia`);
-  if (lang === 'fr') return s.replace(/第(\d+)爻动/g, (_, n) => `Ligne ${n} change`);
-  if (lang === 'th') return s.replace(/第(\d+)爻动/g, (_, n) => `เส้นที่ ${n} เปลี่ยน`);
-  if (lang === 'vi') return s.replace(/第(\d+)爻动/g, (_, n) => `Hào ${n} động`);
-  return s;
+  // 处理中文描述里的数字
+  return s.replace(/第(\d+)爻动/g, (_, n) => `${CHANGING_LINE_LABELS[lang].prefix}${n}${CHANGING_LINE_LABELS[lang].suffix}`);
 }
 
 export function tZodiacMode(mode: string, lang: AlgLang): string {
