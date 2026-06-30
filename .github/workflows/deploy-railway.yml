@@ -1,0 +1,42 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --detach --service kindredsouls
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        timeout-minutes: 10
+
+      - name: Verify deployment
+        run: |
+          sleep 30
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "https://kindredsouls-production.up.railway.app/api/health" --max-time 15)
+          if [ "$HEALTH" = "200" ]; then
+            echo "✅ Railway health check passed"
+            curl -s "https://kindredsouls-production.up.railway.app/api/health"
+          else
+            echo "❌ Railway health check failed: HTTP $HEALTH"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed for commit ${{ github.sha }}"
+          echo "Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
