@@ -62,7 +62,7 @@ app.get('/api/debug-env', (req, res) => {
     STRIPE: process.env.STRIPE_SECRET_KEY ? '✓ set' : '✗ missing',
     serverVersion: 't4-debug-2026-06-29c',
     tarotHasName: typeof TAROT_CARDS !== 'undefined' && TAROT_CARDS[0] && !!TAROT_CARDS[0].name,
-    fileSize: require('fs').readFileSync(__filename).length,
+    fileSize: readFileSync(__filename).length,
   });
 });
 
