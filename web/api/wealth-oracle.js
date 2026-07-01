@@ -3273,6 +3273,9 @@ async function handler(req, res) {
       }
     }
 
+    // 🧪 测试账号在前端状态里标记
+    const responseExtras = isTestAccount ? { isTestAccount: true } : {};
+
     return res.status(200).json({
       success: true,
       birthDate,
@@ -3284,7 +3287,8 @@ async function handler(req, res) {
         tarot: tarotData
       },
       insight: finalOutput,
-      referrer
+      referrer,
+      ...responseExtras
     });
   } catch (error) {
     console.error("Wealth Oracle Error:", error);

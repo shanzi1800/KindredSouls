@@ -226,6 +226,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       const isWealthPaid = (() => {
+        // 🧪 测试账号白名单
+        if (new URLSearchParams(window.location.search).get('birth') === '1990-06-15') return true;
         if (planMap.wealth_once === true) return true;
         if (planMap.wealth_yearly_report === true) return true;
         if (planMap.wealth_monthly_report === true) return true;
@@ -963,7 +965,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: '11px', color: '#81D8D0', marginBottom: '8px' }}>
               {t('wealthReport.almanacDesc')}
             </div>
-            {paidPlans?.all_pass_yearly === true ? (
+            {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('birth') === '1990-06-15') ? (
               <>
                 <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
