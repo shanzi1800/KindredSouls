@@ -103,7 +103,25 @@ async function callAI(systemPrompt, userPrompt, env) {
 }
 
 // ── Wealth Report Prompt Builder (按军师框架) ──
-function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
+function buildCompatibilityReportPrompt(d1, d2, lang, reportType) {
+  const langInstructions = {
+    zh: '',
+    en: `\n\n[Language Style: English] You are a top-tier relationship astrologer and Jungian psychologist. Use terms like Shadow Self, Synastry Alignment, Karmic Tether. Write in sophisticated, soul-stirring English.`,
+    es: `\n\n[Language Style: Spanish] Eres un astrólogo de relaciones élite. Usa términos profesionales. Escríbelo en español sofisticado y místico.`,
+    fr: `\n\n[Language Style: French] Vous êtes un maître astrologue relationnel parisien. Utilisez un ton romantique, philosophique. Écrivez en français élégant.`,
+    th: `\n\n[Language Style: Thai] คุณคือโหราจารย์ความสัมพันธ์ชั้นนำที่ผสมผสานศาสนาพุทธและโหราศาสตร์ไทย เขียนในภาษาไทยที่ทรงพลัง`,
+    vi: `\n\n[Language Style: Vietnamese] Bạn là một chiêm tinh gia quan hệ hàng đầu kết hợp Đạo giáo và chiêm tinh học Việt Nam. Viết bằng tiếng Việt trang trọng.`,
+  };
+
+  const instruction = langInstructions[lang] || langInstructions.en;
+
+  if (reportType === 'monthly') {
+    return `Generate a ${lang} monthly compatibility report for two people (birth dates: ${d1} and ${d2}) for July 2026.\n\nCRITICAL REQUIREMENTS:\n1. Total length: STRICTLY 1200-1500 words (${lang})\n2. Style: Fast-consuming, card-style, romantic\n3. MUST have 3 sections:\n\nSection 1 (300 words): 双人流月磁场 - synergy overview\nSection 2 (500 words): 恋爱破冰/激情日 - give 2 specific golden days in July\nSection 3 (400 words): 安全气囊熔断日 - warn about 1 specific high-risk day\n\nOUTPUT FORMAT (STRICT JSON):\n{\n  "headline": "...",\n  "weeks": [\n    {"type": "spark", "tag": "💖 Spark Week", "dateRange": "Jul 1-7", "text": "...(min 150 words)", "keyDay": "Jul 5"},\n    {"type": "risk", "tag": "⚡ Karmic Friction", "dateRange": "Jul 8-14", "text": "...(min 150 words)", "keyDay": "Jul 11"},\n    {"type": "flow", "tag": "🔵 Flow Week", "dateRange": "Jul 15-21", "text": "...(min 150 words)", "keyDay": "Jul 18"},\n    {"type": "spark", "tag": "💖 Spark Week", "dateRange": "Jul 22-31", "text": "...(min 150 words)", "keyDay": "Jul 28"}\n  ],\n  "silent_treatment": {"tag": "⚠️ Silent Treatment Day", "dateRange": "...", "text": "...(min 100 words)"}\n}\n\nIMPORTANT:\n- Each week's text MUST be at least 150 words\n- Write in ${lang} with native relationship astrological terms\n- NO markdown formatting in text fields\n- Focus on emotions, intimacy, communication patterns`;
+  } else if (reportType === 'yearly') {
+    return `Generate a ${lang} yearly compatibility almanac for two people (birth dates: ${d1} and ${d2}) for 2026-2027.\n\nCRITICAL REQUIREMENTS:\n1. Total length: 6000-8000 words (${lang})\n2. Style: Epic, destiny-filled, premium\n3. Must include 5 chapters:\n\nChapter 1 (1200 words): Annual Synergy Matrix - karmic tether analysis\nChapter 2 (3000 words): 12-Month Relationship Calendar - detail EVERY month\nChapter 3 (1000 words): Shadow Self & Hidden Crises\nChapter 4 (1000 words): Money & Home Conflicts\nChapter 5 (800 words): Cosmic Guide for the Year\n\nOUTPUT FORMAT: Markdown with 5 chapters.\n\nWrite in ${lang}. Use native ${lang} relationship astrological terms.`;
+  }
+  return `分析 ${d1} 和 ${d2} 的命理合盘。必须用 ${lang} 输出，温暖、积极的情感解读。`;
+}
   const langInstructions = {
     zh: '',
     en: `\n\n[Language Style: English] You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment). Write in sophisticated, soul-stirring English.`,
@@ -423,6 +441,28 @@ app.get('/api/test-gemini', async (req, res) => {
 app.use('/api/ai-advisor', async (req, res) => {
   try {
     const { d1, d2, lang = 'zh', reportType = 'compatibility' } = req.body || {};
+    
+    // ── 月报/年报生成（AI 调用）──
+    if (reportType === 'monthly' || reportType === 'yearly') {
+      try {
+        console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
+        const prompt = buildCompatibilityReportPrompt(d1, d2, lang, reportType);
+        
+        const insight = await callAI(
+          `You are a relationship astrologer generating a ${reportType} report.`,
+          prompt,
+          process.env
+        );
+        
+        console.log('[AI Advisor] Report generated, length:', insight.length);
+        return res.json({ insight, cached: false });
+      } catch (aiError) {
+        console.error('[AI Advisor] AI generation failed:', aiError.message);
+        return res.status(500).json({ error: 'AI generation failed: ' + aiError.message });
+      }
+    }
+    
+    // ── 普通合盘洞察（旧逻辑）──
     const cacheKey = `${d1 || ''}|${d2 || ''}|${lang}|${reportType}`;
     const since = new Date(Date.now() - 24*3600*1000).toISOString();
 
