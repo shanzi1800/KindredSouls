@@ -267,6 +267,15 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
       }
     };
+    // ── 🧪 测试账号月报/年报 ──
+    const { reportType } = req.body || {};
+    if (reportType && birthDate === '1990-06-15') {
+      const reportContent = reportType === 'monthly'
+        ? '<p>🌙 <strong>2026年7月财富月报</strong></p><p>本月受木星与金星正向相位影响，财务能量上升通道。重点：正财稳增、偏财小试。</p><p><strong>本月核心：</strong>稳中求进，不宜激进投资。</p><p><strong>贵人方位：</strong>东南方向。</p>'
+        : '<p>📅 <strong>2026年度财富年报</strong></p><p>2026全年土星与天王星四分相，财务能量波动。上半年以守为主，下半年可适度拓展。</p><p><strong>年度核心：</strong>核心能力支撑稳固，但需主动突破舒适区。</p><p><strong>关键月份：</strong>3月、8月、11月是决策节点。</p>';
+      return res.json({ ...result, report: reportContent, insight: '' });
+    }
+
     res.json(result);
   } catch (err) {
     console.error('[wealth-oracle]', err.message, err.stack);
