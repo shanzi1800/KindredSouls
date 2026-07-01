@@ -103,7 +103,8 @@ async function callAI(systemPrompt, userPrompt, env) {
 }
 
 // ── Wealth Report Prompt Builder (按军师框架) ──
-const langInstructions = {
+function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
+  const langInstructions = {
     zh: '',
     en: `\n\n[Language Style: English] You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment). Write in sophisticated, soul-stirring English.`,
     es: `\n\n[Language Style: Spanish] Eres un astrólogo de élite. Usa términos profesionales. Escríbelo en español sofisticado y místico.`,
@@ -128,6 +129,13 @@ const langInstructions = {
   return null;
 }
 
+// ── Compatibility Report Prompt Builder ──
+function buildCompatibilityReportPrompt(d1, d2, lang, reportType) {
+  if (reportType === 'monthly') {
+    return `Generate a ${lang} monthly compatibility report for two people (birth dates: ${d1} and ${d2}) for July 2026.\n\nREQUIREMENTS:\n1. Total length: 1200-1500 words\n2. Style: Romantic, card-style\n3. MUST have 4 weeks\n\nOUTPUT FORMAT (JSON): {\n  \"headline\": \"...\",\n  \"weeks\": [...]\n}`;
+  }
+  return `分析 ${d1} 和 ${d2} 的命理合盘。`;
+}
 
 // ── Stripe Price ID 映射表 ──
 // ⚠️ 需要替换为真实的 Stripe Price ID（从 Stripe Dashboard 获取）
