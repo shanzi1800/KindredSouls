@@ -44,15 +44,36 @@ app.use('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30' });
 });
 
+
+// ── Stripe Price ID 映射表 ──
+// ⚠️ 需要替换为真实的 Stripe Price ID（从 Stripe Dashboard 获取）
+const STRIPE_PRICE_MAP = {
+  wealth_once:           'price_1Tl4pBRnHNva8hys1s5WC3uR',  // $4.99 财富单次
+  wealth_monthly_report: 'price_1Tl56VRnHNva8hysQBWuVd5t',  // $2.99 财富月报
+  wealth_yearly_report:  'price_1Tl5BCRnHNva8hysRm3BfIHs',  // $29.99 财富年报
+  compatibility_once:    'price_1Tl4lGRnHNva8hypsp2Q17TfN',  // $4.99 合婚单次
+  compatibility_monthly_report: 'price_1Tl51rRnHNva8hysoA4erWmn',  // $2.99 合婚月报
+  compatibility_yearly_report:  'price_1Tl59QRnHNva8hysEXDUGyEI',  // $29.99 合婚年报
+  star_monthly_vip:      'price_1Tl5EjRnHNva8hysoVOryjQN',  // $9.99 双引擎月卡
+  all_pass_yearly:       'price_1Tl5IFRnHNva8hysWa0ndl9A',  // $99.99 全通年卡
+};
 // ── /api/create-checkout ──
 app.post('/api/create-checkout', async (req, res) => {
   try {
     const { plan, successUrl, cancelUrl } = req.body;
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
+    
+    // 🛡️ 映射计划名 → Stripe Price ID
+    const priceId = STRIPE_PRICE_MAP[plan] || plan; // 兼容直接传 Price ID 的情况
+    if (!STRIPE_PRICE_MAP[plan] && !plan.startsWith('price_')) {
+      console.error('[create-checkout] Unknown plan:', plan);
+      return res.status(400).json({ error: 'Unknown plan: ' + plan });
+    }
+    
     const sessionParams = {
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: plan, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl || `${req.headers.origin || 'https://kindredsouls.com'}/result?session_id={CHECKOUT_SESSION_ID}&paid=true`,
       cancel_url: cancelUrl || `${req.headers.origin || 'https://kindredsouls.com'}/result?canceled=true`,
     };
