@@ -70,8 +70,10 @@ app.post('/api/create-checkout', async (req, res) => {
       return res.status(400).json({ error: 'Unknown plan: ' + plan });
     }
     
+    // 🛡️ 根据 plan 决定 mode：单次产品用 payment，订阅用 subscription
+    const SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly']);
     const sessionParams = {
-      mode: 'subscription',
+      mode: SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl || `${req.headers.origin || 'https://kindredsouls.com'}/result?session_id={CHECKOUT_SESSION_ID}&paid=true`,
