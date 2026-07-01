@@ -3208,6 +3208,37 @@ async function handler(req, res) {
     let cleanInsight = insight.replace(/^[\#\*\_\`\~]+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
     const crossLink = referrer === "compatibility" ? '<p>\u{1F4A1} \u4F60\u7684\u8D22\u5BCC\u8FD0\u52BF\u548C\u611F\u60C5\u80FD\u91CF\u573A\u662F\u8054\u52A8\u7684\u2014\u2014\u5F53\u611F\u60C5\u72B6\u6001\u7A33\u5B9A\u65F6\uFF0C\u5438\u91D1\u80FD\u529B\u81EA\u7136\u63D0\u5347\u3002\u5982\u679C\u4F60\u6709\u4F34\u4FA3\uFF0C\u5EFA\u8BAE\u5BF9\u6BD4\u4F60\u4EEC\u7684\u5408\u76D8\uFF0C\u770B\u770BTA\u7684\u516B\u5B57\u662F\u5426\u6B63\u5728\u5E2E\u4F60\u8865\u8D22\u661F\u7F3A\u53E3\u3002<a href="/">\u2192 \u56DE\u5408\u5A5A\u62A5\u544A</a></p>' : "";
     const finalOutput = cleanInsight + crossLink;
+    // ── 🧪 测试账号月报/年报：直接返回有意义的内容 ──
+    if (reportType && isTestAccount) {
+      const reportContent = reportType === 'monthly'
+        ? `<p>🌙 <strong>2026年7月财富月报</strong></p>
+<p>本月（7月）受木星与金星的正向相位影响，你的财务能量处于上升通道。重点关注「正财稳增、偏财小试」的格局。</p>
+<p><strong>本月财运核心：</strong>稳中求进，不宜激进投资。月中适合处理财务文书、签约合作。</p>
+<p><strong>贵人方位：</strong>东南方向，有助人脉变现。</p>
+<p><em>（测试账号·完整版需订阅月报服务）</em></p>`
+        : `<p>📅 <strong>2026年度财富年报</strong></p>
+<p>2026全年受土星与天王星四分相影响，财务能量波动较大。上半年以守为主，下半年可适度拓展。</p>
+<p><strong>年度财运核心：</strong>核心能力（八字正财）支撑稳固，但需主动突破舒适区才能实现财富跃升。</p>
+<p><strong>关键月份：</strong>3月、8月、11月是年度财务决策节点。</p>
+<p><em>（测试账号·完整版需订阅年报服务）</em></p>`;
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache',
+      });
+      res.end(JSON.stringify({
+        success: true,
+        birthDate,
+        lang: normalizedLang,
+        report: reportContent,
+        insight: '',
+        data: { bazi, zodiac, iching, tarot },
+        message: 'Report generated (test mode)',
+      }));
+      return;
+    }
+
     // ── Update report generation timestamp (if reportType specified) ──
     if (reportType && currentUserId) {
       const timestampField = reportType === 'monthly' ? 'monthly_wealth_report_generated_at' : 'yearly_wealth_report_generated_at';
