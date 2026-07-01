@@ -98,7 +98,9 @@ const highlightKeywords = (text: string): React.ReactNode => {
   return <>{parts}</>;
 };
 
-const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
+const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ content, lang }) => {
+  // lang 校验
+  const safeLang = (['zh','en','es','fr','th','vi'].includes(lang) ? lang : 'en') as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   // Try to parse as JSON (monthly report format)
   let data: MonthlyReportData | null = null;
   try {
@@ -124,28 +126,43 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
     );
   }
 
+
+
+  // ── UI 翻译字典 ──
+  const UI = {
+    badge: {
+      peak:    { zh:'🟢 财富充能周', en:'🟢 Wealth Peak', es:'🟢 Expansión', fr:'🟢 Flux', th:'🟢 เติบโต', vi:'🟢 Tài Lộc' },
+      risk:    { zh:'🔴 高危熔断周', en:'🔴 High Risk', es:'🔴 Riesgo', fr:'🔴 Risque', th:'🔴 เสี่ยง', vi:'🔴 Rủi Ro' },
+      flow:    { zh:'🔵 顺流蓄力周', en:'🔵 Flow', es:'🔵 Flujo', fr:'🔵 Flux', th:'🔵 ไหลลื่น', vi:'🔵 Thành Công' },
+      default: { zh:'💫 机遇窗口', en:'💫 Opportunity', es:'💫 Oportunidad', fr:'💫 Opportunité', th:'💫 โอกาส', vi:'💫 Cơ Hội' },
+    },
+    theme:  { zh:'🔮 本月命运主题', en:'🔮 Monthly Theme', es:'🔮 Tema', fr:'🔮 Thème', th:'🔮 ธีม', vi:'🔮 Chủ Đề' },
+    keyDay: { zh:'💫 核心天机', en:'💫 Key Day', es:'💫 Día Clave', fr:'💫 Jour Clé', th:'💫 วันสำคัญ', vi:'💫 Ngày Quan Trọng' },
+    order:  { zh:'🛑 防弹硬核指令', en:'🛑 Hard Order', es:'🛑 Orden', fr:'🛑 Ordre', th:'🛑 คำสั่ง', vi:'🛑 Lệnh Khẩn' },
+    orderTxt: { zh:'执行【全面戒严】！超过 <b>5000元</b> 必须等 <b>24小时</b>！', en:'Full alert! Expense > <b>$700</b> wait <b>24h</b>!', es:'¡Alerta! Gasto > <b>$700</b> esperar <b>24h</b>!', fr:'Alerte! Dépense > <b>700€</b> attendre <b>24h</b>!', th:'แจ้งเตือน! ค่าใช้จ่าย > <b>฿25000</b> รอ <b>24ชม.</b>!', vi:'Báo động! Chi > <b>3.5M₫</b> đợi <b>24giờ</b>!' },
+  };
   // Render as cards
   const getCardStyle = (type: string) => {
     switch (type) {
       case 'peak': return { 
         border: '#4CAF50', 
         bg: 'linear-gradient(135deg, rgba(76,175,80,0.12) 0%, rgba(76,175,80,0.04) 100%)',
-        badge: '🟢 财富充能周'
+        badge: UI.badge.peak[safeLang] || UI.badge.peak.en
       };
       case 'risk': return { 
         border: '#FF4D4F', 
         bg: 'linear-gradient(135deg, rgba(255,77,79,0.12) 0%, rgba(255,77,79,0.04) 100%)',
-        badge: '🔴 高危熔断周'
+        badge: UI.badge.risk[safeLang] || UI.badge.risk.en
       };
       case 'flow': return { 
         border: '#64B5F6', 
         bg: 'linear-gradient(135deg, rgba(100,181,246,0.12) 0%, rgba(100,181,246,0.04) 100%)',
-        badge: '🔵 顺流蓄力周'
+        badge: UI.badge.flow[safeLang] || UI.badge.flow.en
       };
       default: return { 
         border: '#D4AF37', 
         bg: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)',
-        badge: '💫 机遇窗口周'
+        badge: UI.badge.default[safeLang] || UI.badge.default.en
       };
     }
   };
@@ -163,7 +180,7 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
         boxShadow: '0 4px 20px rgba(212,175,55,0.15)'
       }}>
         <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
-          🔮 本月命运主题
+          {UI.theme[safeLang] || UI.theme.en}
         </div>
         <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.4, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
           {data.headline}
@@ -220,7 +237,7 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
               border: '1px solid rgba(212,175,55,0.2)'
             }}>
               <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
-                💫 核心天机（Key Day）
+                {UI.keyDay[safeLang] || UI.keyDay.en}
               </div>
               <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>
                 {week.keyDay}
@@ -270,7 +287,7 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
                 {data.expense_trap.tag}
               </div>
               <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                核心熔断隔离区 {data.expense_trap.dateRange}
+                {UI.order[safeLang] || UI.order.en} {data.expense_trap.dateRange}
               </div>
             </div>
             <div style={{ marginLeft: 'auto', fontSize: '16px' }}>
@@ -301,7 +318,7 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
             border: '1px solid rgba(255,77,79,0.4)'
           }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#FF4D4F', marginBottom: '6px' }}>
-              🛑 防弹硬核指令（立即执行）
+              {UI.order[safeLang] || UI.order.en}
             </div>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
               这三天执行【全面戒严】！任何超过 <span style={{ color: '#FFD700', fontWeight: 700 }}>5000元</span> 的支出，必须强制等待 <span style={{ color: '#FFD700', fontWeight: 700 }}>24小时</span> 后再做决定！
@@ -1720,7 +1737,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 const trimmed = wealthReportText.trim();
                 if (trimmed.startsWith('{')) {
                   // 月报：JSON 格式 → 卡片式
-                  return <MonthlyReportCard content={wealthReportText} />;
+                  return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
                 } else {
                   // 年报：Markdown 格式 → 先知天书版
                   return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
