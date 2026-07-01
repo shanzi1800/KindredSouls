@@ -1414,6 +1414,17 @@ export default function App() {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
  localStorage.removeItem('ks_result');
  }
+ } else if ((isOAuthCallback || justLoggedIn || paymentSuccess) && !savedResult) {
+   // 🧪 兜底：reportData 未加载时，直接用 ks_oauth_back_url 回跳财富页
+   const backUrl = localStorage.getItem('ks_oauth_back_url');
+   const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
+   const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly'];
+   if (backUrl && wealthPlans.includes(pendingPlan || '')) {
+     const sep = backUrl.includes('?') ? '&' : '?';
+     window.location.href = backUrl + sep + 'intent=checkout&plan=' + pendingPlan;
+   } else if (backUrl) {
+     window.location.href = backUrl;
+   }
  } else if (!isOAuthCallback && !justLoggedIn && !paymentSuccess) {
  // Only clear ks_result if NOT returning from OAuth/payment
  localStorage.removeItem('ks_result');

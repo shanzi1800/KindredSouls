@@ -356,9 +356,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       // 🛡️ 军师破局总督令：同步占位弹窗 + 父窗口主动轮询
       console.log('[WealthReport] 🔒 散客未登录，启动同步弹窗+轮询装甲...');
 
-      // ── 战术动作零：存 plan + 算命结果（给 OAuth 回调用）──
+      // ── 战术动作零：存 plan + 算命结果 + 当前页面 URL（给 OAuth 回调用）──
       localStorage.setItem('ks_pending_checkout_plan', plan);
       if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
+      // 兜底：保存当前页面 URL，OAuth 回来后直接跳转这里（不依赖 reportData）
+      const backUrl = `${window.location.pathname}?birth=${encodeURIComponent(birthDate)}&lang=${encodeURIComponent(lang)}`;
+      localStorage.setItem('ks_oauth_back_url', backUrl);
 
       // ── 战术动作一：0ms 同步打开 about:blank（浏览器 100% 放行）──
       const popup = window.open('about:blank', 'KindredSouls Auth', 'width=500,height=600');
