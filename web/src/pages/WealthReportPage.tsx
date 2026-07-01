@@ -411,15 +411,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (triggerRaw) {
             try {
               const trigger = JSON.parse(triggerRaw);
+              console.log('[WealthReport] 🛡️ OAuth信号检测到, plan:', trigger.plan, 'expected:', plan);
               if (trigger.plan === plan) {
                 clearInterval(pollTimer);
                 localStorage.removeItem('ks_auth_success_trigger');
+                popup.close();
+                // setTimeout(0) 让 Supabase SDK 有机会完成 session 持久化
+                await new Promise(r => setTimeout(r, 300));
                 const { data: { session: s } } = await supabase.auth.getSession();
+                console.log('[WealthReport] Session after OAuth:', s?.user?.email, 'token?', !!s?.access_token);
                 if (s?.access_token) {
                   token = s.access_token;
                   setCurrentToken(token);
                 }
-                popup.close();
                 resolve();
               }
             } catch (_) { /* ignore */ }
@@ -436,11 +440,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     // ── 阶段C：拿 token 调 Stripe ──
+    console.log('[WealthReport] StageC: token available?', !!token, 'plan:', plan);
     if (!token) {
       const { data: { session: s } } = await supabase.auth.getSession();
       token = s?.access_token || null;
       if (token) setCurrentToken(token);
     }
+    console.log('[WealthReport] Token confirmed?', !!token);
 
     if (!token) {
       setError('Authentication failed. Please try again.');
@@ -454,7 +460,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         body: JSON.stringify({ plan }),
       });
       const data = await res.json();
+      console.log('[WealthReport] Stripe response status:', res.status, 'data:', JSON.stringify(data));
+      
+      if (res.status === 401) {
+        // 🛡️ Token 失效：清掉强制重 OAuth
+        console.warn('[WealthReport] ⚠️ Token 失效，强制重 OAuth');
+        setCurrentToken(null);
+        localStorage.removeItem('ks_pending_checkout_plan');
+        localStorage.removeItem('ks_auth_success_trigger');
+        setError(currentLang === 'zh' ? '登录已过期，正在重新登录...' : 'Session expired, please re-login');
+        // 递归重试（重新走 OAuth）
+        setTimeout(() => handlePurchase(plan), 500);
+        return;
+      }
+      
       if (data.url) {
+        console.log('[WealthReport] Redirecting to Stripe:', data.url);
         window.location.href = data.url;
       } else if (data.already_paid) {
         setIsUnlocked(true);
@@ -463,8 +484,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           loadWealthData(birthDate, lang, token ?? undefined);
         }
       } else {
+        console.error('[WealthReport] Checkout failed:', data);
         setError(data.detail || data.error || 'Checkout failed');
-        setAuthChecking(false);
       }
     } catch (err) {
       console.error('[WealthReport] Purchase error:', err);
