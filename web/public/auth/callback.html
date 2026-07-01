@@ -92,16 +92,22 @@
         }
 
         // ── OAuth Popup 处理：通知父窗口后关闭弹窗 ──
-        msg.textContent = '✅ Session established, closing…';
+        msg.textContent = '✅ Session established, redirecting to checkout…';
         try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({ type: 'KS_AUTH_SUCCESS', token: data.session?.access_token }, '*');
+          const opener = window.opener;
+          if (opener && !opener.closed) {
+            const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
+            if (pendingPlan) {
+              // 关键路径：直接从 callback 通知父窗口 redirect，避免事件丢失
+              opener.postMessage({ type: 'KS_CHECKOUT', plan: pendingPlan }, '*');
+            }
           }
         } catch (e) {
-          // postMessage 非关键路径，静默忽略
+          console.error('[KS Auth Callback] postMessage error:', e);
         }
 
-        setTimeout(() => window.close(), 800);
+        // 弹窗自关闭（父窗口收到消息后会自己 redirect）
+        setTimeout(() => window.close(), 500);
       } catch (e) {
         console.error('[KS Auth Callback] ❌ Exchange failed:', e);
         msg.textContent = 'Session error: ' + (e.message || 'unknown');

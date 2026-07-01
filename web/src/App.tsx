@@ -124,10 +124,15 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
       });
       const data = await res.json();
       if (data.url) {
+        console.log('[KindredSouls] Redirecting to Stripe:', data.url);
         window.location.href = data.url;
+      } else {
+        console.error('[KindredSouls] Stripe checkout failed:', data);
+        alert('Payment initiation failed. Please try again or contact support.');
       }
     } catch (err) {
       console.error('[KindredSouls] handlePurchaseWithToken error:', err);
+      alert('Network error during payment. Please try again.');
     }
   };
 
@@ -1336,13 +1341,39 @@ export default function App() {
 
   // 🐮 监听 supabase.ts 分发的自定义登录成功事件
   useEffect(() => {
+    // ── 直接 redirect Stripe（auth/callback.html 发 KS_CHECKOUT 事件）──
+    const handleKSCheckout = (e: MessageEvent) => {
+      if (e.data?.type === 'KS_CHECKOUT' && e.data?.plan) {
+        console.log("[KindredSouls Debug] 🐮 KS_CHECKOUT event, calling handlePurchaseWithToken with plan:", e.data.plan);
+        // 直接用已有的 session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.access_token) {
+            handlePurchaseWithToken(session.access_token, e.data.plan);
+          } else {
+            // session 还没好，500ms 后重试
+            setTimeout(() => {
+              supabase.auth.getSession().then(({ data: { session: s2 } }) => {
+                if (s2?.access_token) handlePurchaseWithToken(s2.access_token, e.data.plan);
+                else console.error('[KindredSouls] No session after OAuth, cannot redirect to Stripe');
+              });
+            }, 500);
+          }
+        });
+      }
+    };
+    window.addEventListener('message', handleKSCheckout);
+
+    // ── ks-checkout-ready 兜底（supabase.ts 分发）──
     const handleAuthReady = (e: any) => {
       const { token, plan } = e.detail;
       console.log("[KindredSouls Debug] 🐮 Custom event ks-checkout-ready captured:", plan);
       handlePurchaseWithToken(token, plan);
     };
     window.addEventListener("ks-checkout-ready", handleAuthReady);
-    return () => window.removeEventListener("ks-checkout-ready", handleAuthReady);
+    return () => {
+      window.removeEventListener('message', handleKSCheckout);
+      window.removeEventListener("ks-checkout-ready", handleAuthReady);
+    };
   }, []);
 
 
