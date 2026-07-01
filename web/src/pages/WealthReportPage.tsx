@@ -25,6 +25,79 @@ interface MonthlyReportData {
   expense_trap?: { tag: string; dateRange: string; text: string };
 }
 
+// 智能分段：按破折号、日期、关键句分割
+const splitTextToBlocks = (text: string): string[] => {
+  // 先按句子分割（句号、感叹号、问号）
+  const sentences = text.split(/(?<=[。！？])/);
+  const blocks: string[] = [];
+  let currentBlock = '';
+  
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    
+    // 如果当前块已经很长，或者遇到特定标记，就截断
+    if (currentBlock.length > 80 || 
+        trimmed.includes('—') || 
+        /^\d+月\d+日/.test(trimmed) ||
+        trimmed.includes('阴影自我') ||
+        trimmed.includes('警告') ||
+        trimmed.includes('建议') ||
+        trimmed.includes('转运')) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = trimmed;
+    } else {
+      currentBlock += trimmed;
+    }
+  }
+  if (currentBlock) blocks.push(currentBlock);
+  return blocks.filter(b => b.length > 0);
+};
+
+// 高亮关键词
+const highlightKeywords = (text: string): React.ReactNode => {
+  const keywords = [
+    { pattern: /(报复性消费|消费冷静期|财务黑洞|破产级|致命性)/g, color: '#FF4D4F', bg: 'rgba(255,77,79,0.15)' },
+    { pattern: /(机会基金|流动契约|财富祝福|财务觉醒)/g, color: '#FFD700', bg: 'rgba(255,215,0,0.15)' },
+    { pattern: /(深度尽职调查|边界的确立|全面戒严|物理超度)/g, color: '#D4AF37', bg: 'rgba(212,175,55,0.1)' },
+    { pattern: /(\d+月\d+日)/g, color: '#D4AF37', bg: 'transparent' },
+  ];
+  
+  let parts: React.ReactNode[] = [text];
+  
+  keywords.forEach(({ pattern, color, bg }) => {
+    const newParts: React.ReactNode[] = [];
+    parts.forEach(part => {
+      if (typeof part !== 'string') {
+        newParts.push(part);
+        return;
+      }
+      const matches = part.split(pattern);
+      const matchResults = part.match(pattern) || [];
+      
+      matches.forEach((segment, i) => {
+        if (segment) newParts.push(segment);
+        if (matchResults[i]) {
+          newParts.push(
+            <span key={`${i}-${matchResults[i]}`} style={{ 
+              color, 
+              background: bg,
+              padding: bg !== 'transparent' ? '1px 4px' : '0',
+              borderRadius: '3px',
+              fontWeight: 600,
+            }}>
+              {matchResults[i]}
+            </span>
+          );
+        }
+      });
+    });
+    parts = newParts;
+  });
+  
+  return <>{parts}</>;
+};
+
 const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
   // Try to parse as JSON (monthly report format)
   let data: MonthlyReportData | null = null;
@@ -52,90 +125,187 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
   }
 
   // Render as cards
-  const getCardColor = (type: string) => {
+  const getCardStyle = (type: string) => {
     switch (type) {
-      case 'peak': return { border: '#4CAF50', bg: 'rgba(76,175,80,0.08)' };
-      case 'risk': return { border: '#FF6B6B', bg: 'rgba(255,107,107,0.08)' };
-      case 'flow': return { border: '#64B5F6', bg: 'rgba(100,181,246,0.08)' };
-      default: return { border: '#D4AF37', bg: 'rgba(212,175,55,0.08)' };
+      case 'peak': return { 
+        border: '#4CAF50', 
+        bg: 'linear-gradient(135deg, rgba(76,175,80,0.12) 0%, rgba(76,175,80,0.04) 100%)',
+        badge: '🟢 财富充能周'
+      };
+      case 'risk': return { 
+        border: '#FF4D4F', 
+        bg: 'linear-gradient(135deg, rgba(255,77,79,0.12) 0%, rgba(255,77,79,0.04) 100%)',
+        badge: '🔴 高危熔断周'
+      };
+      case 'flow': return { 
+        border: '#64B5F6', 
+        bg: 'linear-gradient(135deg, rgba(100,181,246,0.12) 0%, rgba(100,181,246,0.04) 100%)',
+        badge: '🔵 顺流蓄力周'
+      };
+      default: return { 
+        border: '#D4AF37', 
+        bg: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)',
+        badge: '💫 机遇窗口周'
+      };
     }
   };
 
   return (
     <div style={{ marginTop: '16px' }}>
-      {/* Headline */}
+      {/* 🔮 Headline - 命运主题 */}
       <div style={{ 
-        background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.05) 100%)',
-        border: '1px solid rgba(212,175,55,0.3)',
-        borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '16px',
-        textAlign: 'center'
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(139,69,19,0.1) 100%)',
+        border: '2px solid rgba(212,175,55,0.4)',
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '20px',
+        textAlign: 'center',
+        boxShadow: '0 4px 20px rgba(212,175,55,0.15)'
       }}>
-        <div style={{ fontSize: '11px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
-          🌙 本月财富主题
+        <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
+          🔮 本月命运主题
         </div>
-        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', lineHeight: 1.4 }}>
+        <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.4, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
           {data.headline}
         </div>
       </div>
 
-      {/* Week Cards */}
+      {/* Week Cards - 战时财富指标卡 */}
       {data.weeks.map((week, idx) => {
-        const colors = getCardColor(week.type);
+        const style = getCardStyle(week.type);
+        const textBlocks = splitTextToBlocks(week.text);
+        
         return (
           <div key={idx} style={{
-            background: colors.bg,
-            border: `1px solid ${colors.border}`,
-            borderRadius: '10px',
-            padding: '14px',
-            marginBottom: '12px',
+            background: style.bg,
+            border: `2px solid ${style.border}`,
+            borderRadius: '14px',
+            padding: '16px',
+            marginBottom: '16px',
+            boxShadow: `0 2px 12px ${style.border}20`
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ 
-                fontSize: '11px', 
-                fontWeight: 700, 
-                color: colors.border,
-                background: 'rgba(0,0,0,0.3)',
-                padding: '3px 8px',
-                borderRadius: '4px'
-              }}>
-                {week.tag}
-              </span>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+            {/* 战时指标卡头 */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '12px',
+              paddingBottom: '10px',
+              borderBottom: `1px dashed ${style.border}40`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 800, 
+                  color: '#fff',
+                  background: style.border,
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  boxShadow: `0 2px 8px ${style.border}50`
+                }}>
+                  {style.badge}
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
                 {week.dateRange}
               </span>
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '8px' }}>
-              {week.text}
+
+            {/* 核心天机 - Key Day */}
+            <div style={{
+              background: 'rgba(0,0,0,0.25)',
+              borderRadius: '10px',
+              padding: '12px',
+              marginBottom: '12px',
+              border: '1px solid rgba(212,175,55,0.2)'
+            }}>
+              <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
+                💫 核心天机（Key Day）
+              </div>
+              <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>
+                {week.keyDay}
+              </div>
             </div>
-            <div style={{ fontSize: '10px', color: '#D4AF37', textAlign: 'right' }}>
-              💫 关键日: {week.keyDay}
+
+            {/* 豆腐块文字 - 乱刀斩断 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {textBlocks.map((block, bidx) => (
+                <div key={bidx} style={{ 
+                  fontSize: '12px', 
+                  color: 'rgba(255,255,255,0.9)', 
+                  lineHeight: 1.8,
+                  padding: '8px 0',
+                  borderBottom: bidx < textBlocks.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none'
+                }}>
+                  {highlightKeywords(block)}
+                </div>
+              ))}
             </div>
           </div>
         );
       })}
 
-      {/* Expense Trap */}
+      {/* ⚠️ Expense Trap - 消费陷阱熔断区 */}
       {data.expense_trap && (
         <div style={{
-          background: 'rgba(255,107,107,0.1)',
-          border: '1px dashed rgba(255,107,107,0.5)',
-          borderRadius: '10px',
-          padding: '14px',
-          marginTop: '16px',
+          background: 'linear-gradient(135deg, rgba(255,77,79,0.15) 0%, rgba(139,0,0,0.08) 100%)',
+          border: '2px dashed #FF4D4F',
+          borderRadius: '14px',
+          padding: '18px',
+          marginTop: '20px',
+          boxShadow: '0 4px 16px rgba(255,77,79,0.2)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px' }}>⚠️</span>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FF6B6B' }}>
-              {data.expense_trap.tag}
-            </span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginLeft: 'auto' }}>
-              {data.expense_trap.dateRange}
-            </span>
+          {/* 高危指标头 */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px',
+            marginBottom: '14px',
+            paddingBottom: '12px',
+            borderBottom: '1px dashed rgba(255,77,79,0.3)'
+          }}>
+            <span style={{ fontSize: '20px' }}>☠️</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#FF4D4F' }}>
+                {data.expense_trap.tag}
+              </div>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+                核心熔断隔离区 {data.expense_trap.dateRange}
+              </div>
+            </div>
+            <div style={{ marginLeft: 'auto', fontSize: '16px' }}>
+              {'☠️'.repeat(5)}
+            </div>
           </div>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
-            {data.expense_trap.text}
+
+          {/* 陷阱内容 - 乱刀斩断 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {splitTextToBlocks(data.expense_trap.text).map((block, idx) => (
+              <div key={idx} style={{ 
+                fontSize: '12px', 
+                color: 'rgba(255,255,255,0.85)', 
+                lineHeight: 1.8,
+                padding: '6px 0',
+              }}>
+                {highlightKeywords(block)}
+              </div>
+            ))}
+          </div>
+
+          {/* 防弹硬核指令 */}
+          <div style={{
+            marginTop: '14px',
+            padding: '12px',
+            background: 'rgba(255,77,79,0.2)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255,77,79,0.4)'
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#FF4D4F', marginBottom: '6px' }}>
+              🛑 防弹硬核指令（立即执行）
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+              这三天执行【全面戒严】！任何超过 <span style={{ color: '#FFD700', fontWeight: 700 }}>5000元</span> 的支出，必须强制等待 <span style={{ color: '#FFD700', fontWeight: 700 }}>24小时</span> 后再做决定！
+            </div>
           </div>
         </div>
       )}
