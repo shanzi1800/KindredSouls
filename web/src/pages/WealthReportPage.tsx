@@ -313,6 +313,379 @@ const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// ── 先知天书：年报渲染器（军师满级超神版）──
+// ═══════════════════════════════════════════════════════════════════════
+
+interface YearlyChapter {
+  title: string;
+  content: string;
+}
+
+interface MonthBlock {
+  month: string;       // "M1"
+  dateRange: string;   // "2026年7月"
+  zodiac: string;     // "巨蟹座新月"
+  state: 'peak' | 'risk' | 'flow';
+  stateLabel: string;
+  cosmicPhase: string;
+  paragraphs: string[];
+  wealthAction: string[];
+  shadowWork: string[];
+}
+
+// ── Markdown 解析核心 ──
+const parseYearlyReport = (markdown: string, _birthDate: string): {
+  title: string;
+  chapters: YearlyChapter[];
+  months: MonthBlock[];
+  rawContent: string;
+} => {
+  const lines = markdown.split('\n');
+  const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富年报';
+  const months: MonthBlock[] = [];
+  const chapters: YearlyChapter[] = [];
+  
+  let currentMonth: Partial<MonthBlock> | null = null;
+  let currentSection: 'paragraphs' | 'wealthAction' | 'shadowWork' = 'paragraphs';
+  let currentChapter = { title: '', content: '' };
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('# ') || trimmed === '---') continue;
+    
+    // 检测月份 (### M1: 2026年7月 · 巨蟹座新月)
+    const monthMatch = trimmed.match(/^###?\s*(M\d+):?\s*(.*?)\s*[·|—]\s*(.+)$/);
+    if (monthMatch) {
+      if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+      const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
+        ? 'peak' : trimmed.includes('高风险') || trimmed.includes('🔴') || trimmed.includes('Risk')
+        ? 'risk' : 'flow';
+      const stateLabel = state === 'peak' ? '🟢 财富充能月' : state === 'risk' ? '🔴 高危熔断月' : '🔵 顺流蓄力月';
+      currentMonth = {
+        month: monthMatch[1],
+        dateRange: monthMatch[2].trim(),
+        zodiac: monthMatch[3].trim(),
+        state,
+        stateLabel,
+        cosmicPhase: '',
+        paragraphs: [],
+        wealthAction: [],
+        shadowWork: [],
+      };
+      currentSection = 'paragraphs';
+      continue;
+    }
+    
+    // 检测财富行动
+    if (trimmed.includes('■ 财富行动') || trimmed.includes('财富行动：')) {
+      currentSection = 'wealthAction';
+      const text = trimmed.replace(/^[■◆●]\s*/, '').replace('财富行动：', '').replace('财富行动', '');
+      if (text) (currentMonth || { paragraphs: [] }).paragraphs!.push(text);
+      continue;
+    }
+    
+    // 检测阴影觉察
+    if (trimmed.includes('⚠️ 心理学阴影觉察') || trimmed.includes('✨ 荣格核心心法') || 
+        trimmed.includes('阴影觉察') || trimmed.includes('Shadow Work')) {
+      currentSection = 'shadowWork';
+      const text = trimmed.replace(/^[⚠️✨]\s*/, '').replace(/心理学阴影觉察[：:]/, '').replace(/荣格核心心法高亮[：:]/, '').replace('阴影觉察', '');
+      if (text) (currentMonth || { paragraphs: [] }).paragraphs!.push(text);
+      continue;
+    }
+    
+    // 检测章节
+    if (trimmed.startsWith('## ')) {
+      if (currentChapter.title) chapters.push(currentChapter);
+      currentChapter = { title: trimmed.replace('## ', ''), content: '' };
+      if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+      currentMonth = null;
+      continue;
+    }
+    
+    // 宇宙相位行
+    if (trimmed.includes('🌌') || trimmed.includes('宇宙相位') || /[🌌🔮⭐]/.test(trimmed)) {
+      if (currentMonth) currentMonth.cosmicPhase = trimmed;
+      continue;
+    }
+    
+    // 普通段落
+    if (currentMonth) {
+      const clean = trimmed.replace(/^[-*]\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1');
+      if (clean && currentSection === 'wealthAction') {
+        currentMonth.wealthAction!.push(clean);
+      } else if (clean && currentSection === 'shadowWork') {
+        currentMonth.shadowWork!.push(clean);
+      } else if (clean) {
+        currentMonth.paragraphs!.push(clean);
+      }
+    } else if (currentChapter.title) {
+      currentChapter.content += ' ' + trimmed;
+    }
+  }
+  if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+  if (currentChapter.title) chapters.push(currentChapter);
+  
+  return { title, chapters, months, rawContent: markdown };
+};
+
+// ── 金句高亮器 ──
+const highlightYearlyGold = (text: string): React.ReactNode => {
+  if (!text) return null;
+  const keywords = [
+    { k: /(\d+月\d+日|\d{4}年\d+月)/g, color: '#D4AF37', bold: true },
+    { k: /(木星|土星|金星|火星|水星|冥王星|天王星|海王星)/g, color: '#9B7FD4', bold: true },
+    { k: /(阴影自我|荣格|Shadow Self|集体无意识)/g, color: '#FF4D4F', bold: true },
+    { k: /(财富行动|投资建议|防弹指令|核心熔断)/g, color: '#FFD700', bold: true },
+    { k: /(高危|风险|危机|谨慎|过度)/g, color: '#FF6B6B', bold: false },
+    { k: /(丰盛|充能|爆发|显化|收获)/g, color: '#4CAF50', bold: false },
+  ];
+  
+  let result: React.ReactNode = text;
+  keywords.forEach(({ k, color, bold }) => {
+    const parts = String(result).split(k);
+    const matches = String(result).match(k) || [];
+    if (parts.length <= 1) return;
+    const nodes: React.ReactNode[] = [];
+    parts.forEach((part, i) => {
+      if (part) nodes.push(part);
+      if (matches[i]) nodes.push(
+        <span key={`${i}-${matches[i]}`} style={{ color, fontWeight: bold ? 700 : 400 }}>{matches[i]}</span>
+      );
+    });
+    result = <>{nodes}</>;
+  });
+  return result;
+};
+
+// ── 年报卡片主组件 ──
+const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ content, birthDate }) => {
+  const parsed = parseYearlyReport(content, birthDate);
+  
+  // 获取星座显示（从 birthDate 简单解析）
+  const zodiacDisplay = parsed.months[0]?.zodiac || '双子座';
+  
+  // 月份状态对应的 Badge 样式
+  const getBadgeStyle = (state: string) => {
+    switch (state) {
+      case 'peak': return { border: '#4CAF50', bg: 'rgba(76,175,80,0.15)', color: '#4CAF50', glow: '0 0 15px rgba(76,175,80,0.3)' };
+      case 'risk': return { border: '#FF4D4F', bg: 'rgba(255,77,79,0.15)', color: '#FF4D4F', glow: '0 0 15px rgba(255,77,79,0.3)' };
+      default: return { border: '#64B5F6', bg: 'rgba(100,181,246,0.15)', color: '#64B5F6', glow: '0 0 15px rgba(100,181,246,0.3)' };
+    }
+  };
+  
+  return (
+    <div style={{ marginTop: '16px' }}>
+      {/* ═══ 神圣封面：命运主题 + 仪式感标题 ═══ */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        border: '2px solid rgba(212,175,55,0.4)',
+        borderRadius: '20px',
+        padding: '28px 20px',
+        marginBottom: '24px',
+        textAlign: 'center',
+        boxShadow: '0 8px 32px rgba(212,175,55,0.15), inset 0 0 60px rgba(212,175,55,0.05)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* 装饰角标 */}
+        <div style={{ position: 'absolute', top: '10px', left: '14px', fontSize: '11px', color: 'rgba(212,175,55,0.4)' }}>🔮</div>
+        <div style={{ position: 'absolute', top: '10px', right: '14px', fontSize: '11px', color: 'rgba(212,175,55,0.4)' }}>🌌</div>
+        
+        <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 600 }}>
+          ✦ 先知天书 · 财富天启 ✦
+        </div>
+        <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: '12px', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+          {parsed.title}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
+          <span>👤 出生日期：{birthDate}</span>
+          <span>🌌 盘口：{zodiacDisplay}·太阳回归年</span>
+        </div>
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)', marginBottom: '14px' }} />
+        
+        {/* 神圣引言 */}
+        {parsed.chapters[0] && (
+          <div style={{
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'left',
+            border: '1px solid rgba(212,175,55,0.15)',
+          }}>
+            <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '6px', fontWeight: 600 }}>
+              💡 先知神谕
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+              {highlightYearlyGold(parsed.chapters[0].content.slice(0, 400))}
+              {parsed.chapters[0].content.length > 400 && '...'}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* ═══ 12个月战时能量看板 ═══ */}
+      {parsed.months.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{
+            fontSize: '12px', color: '#D4AF37', fontWeight: 700, letterSpacing: '2px',
+            textTransform: 'uppercase', marginBottom: '14px', paddingBottom: '8px',
+            borderBottom: '1px solid rgba(212,175,55,0.2)'
+          }}>
+            📅 第二章：12个月收入矩阵
+          </div>
+          
+          {parsed.months.map((month, idx) => {
+            const badge = getBadgeStyle(month.state);
+            return (
+              <div key={idx} style={{
+                background: badge.bg,
+                border: `2px solid ${badge.border}`,
+                borderRadius: '16px',
+                padding: '18px',
+                marginBottom: '14px',
+                boxShadow: `0 4px 16px ${badge.glow}`,
+              }}>
+                {/* 月份头：战时状态 Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>
+                      🌑 {month.month}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)' }}>
+                      {month.dateRange}
+                    </span>
+                  </div>
+                  {/* 能量状态胶囊 */}
+                  <div style={{
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    border: `1px solid ${badge.border}`,
+                    background: `${badge.border}20`,
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: badge.color,
+                    boxShadow: `0 0 8px ${badge.border}50`,
+                  }}>
+                    {month.stateLabel}
+                  </div>
+                </div>
+                
+                {/* 星座新月/满月标签 */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  marginBottom: '12px',
+                  fontSize: '11px',
+                  color: 'rgba(255,255,255,0.8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{ color: '#D4AF37' }}>🌌</span>
+                  <span>{month.zodiac}</span>
+                </div>
+                
+                {/* 宇宙相位 */}
+                {month.cosmicPhase && (
+                  <div style={{
+                    fontSize: '10px', color: '#9B7FD4',
+                    marginBottom: '10px',
+                    padding: '6px 10px',
+                    background: 'rgba(155,127,212,0.1)',
+                    borderRadius: '6px',
+                    borderLeft: '3px solid #9B7FD4'
+                  }}>
+                    {month.cosmicPhase}
+                  </div>
+                )}
+                
+                {/* 神谕显化一览卡 */}
+                {month.paragraphs.length > 0 && (
+                  <div style={{
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: '10px',
+                    padding: '12px',
+                    marginBottom: '10px'
+                  }}>
+                    {month.paragraphs.slice(0, 2).map((para, pi) => (
+                      <div key={pi} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8, marginBottom: '6px' }}>
+                        {highlightYearlyGold(para.slice(0, 200))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* 财富行动 + 阴影觉察 双列神谕卡 */}
+                {(month.wealthAction.length > 0 || month.shadowWork.length > 0) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {/* 财富行动 */}
+                    {month.wealthAction.length > 0 && (
+                      <div style={{
+                        background: 'rgba(255,215,0,0.08)',
+                        border: '1px solid rgba(255,215,0,0.25)',
+                        borderRadius: '10px',
+                        padding: '10px',
+                      }}>
+                        <div style={{ fontSize: '9px', color: '#FFD700', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
+                          ⚡ 财富行动
+                        </div>
+                        {month.wealthAction.map((item, qi) => (
+                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '4px' }}>
+                            · {highlightYearlyGold(item)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* 阴影觉察 */}
+                    {month.shadowWork.length > 0 && (
+                      <div style={{
+                        background: 'rgba(255,77,79,0.08)',
+                        border: '1px solid rgba(255,77,79,0.25)',
+                        borderRadius: '10px',
+                        padding: '10px',
+                      }}>
+                        <div style={{ fontSize: '9px', color: '#FF4D4F', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
+                          ⚠️ 阴影觉察
+                        </div>
+                        {month.shadowWork.map((item, qi) => (
+                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '4px' }}>
+                            · {highlightYearlyGold(item)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* 其他章节 */}
+      {parsed.chapters.slice(1).map((ch, idx) => (
+        <div key={idx} style={{
+          background: 'rgba(0,0,0,0.25)',
+          borderRadius: '14px',
+          padding: '18px',
+          marginBottom: '16px',
+          border: '1px solid rgba(212,175,55,0.15)'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#D4AF37', marginBottom: '10px' }}>
+            {ch.title}
+          </div>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+            {highlightYearlyGold(ch.content.slice(0, 600))}
+            {ch.content.length > 600 && '...'}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 
 // ── Loading Spinner ──
 const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
@@ -1343,7 +1716,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <MonthlyReportCard content={wealthReportText} />
+              (() => {
+                const trimmed = wealthReportText.trim();
+                if (trimmed.startsWith('{')) {
+                  // 月报：JSON 格式 → 卡片式
+                  return <MonthlyReportCard content={wealthReportText} />;
+                } else {
+                  // 年报：Markdown 格式 → 先知天书版
+                  return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
+                }
+              })()
             )}
           </div>
         )}
