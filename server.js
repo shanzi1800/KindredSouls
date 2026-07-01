@@ -44,6 +44,91 @@ app.use('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX' });
 });
 
+// ── AI Call Helper (DeepSeek + Gemini fallback) ──
+async function callAI(systemPrompt, userPrompt, env) {
+  const deepseekKey = env.DEEPSEEK_API_KEY;
+  const geminiKey = env.GEMINI_API_KEY;
+
+  // Try DeepSeek first
+  if (deepseekKey) {
+    try {
+      const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${deepseekKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 8000,
+          temperature: 0.7,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.choices[0].message.content;
+      }
+    } catch (e) {
+      console.error('[AI] DeepSeek failed, trying Gemini:', e.message);
+    }
+  }
+
+  // Fallback to Gemini
+  if (geminiKey) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: systemPrompt + '\n\n' + userPrompt }],
+          }],
+          generationConfig: { maxOutputTokens: 8000, temperature: 0.7 },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text;
+      }
+    } catch (e) {
+      console.error('[AI] Gemini failed:', e.message);
+    }
+  }
+
+  throw new Error('All AI providers failed');
+}
+
+// ── Wealth Report Prompt Builder (按军师框架) ──
+function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
+  const langInstructions = {
+    zh: '',
+    en: `\n\n[Language Style: English] You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment). Write in sophisticated, soul-stirring English.`,
+    es: `\n\n[Language Style: Spanish] Eres un astrólogo de élite. Usa términos profesionales. Escríbelo en español sofisticado y místico.`,
+    fr: `\n\n[Language Style: French] Vous êtes un maître astrologue parisien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques. Écrivez en français élégant.`,
+    th: `\n\n[Language Style: Thai] คุณคือโหราจารย์ชั้นนำที่ผสมผสานศาสนาพุทธและโหราศาสตร์ไทย ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง`,
+    vi: `\n\n[Language Style: Vietnamese] Bạn là một chiêm tinh gia hàng đầu kết hợp Đạo giáo và chiêm tinh học Việt Nam. Viết bằng tiếng Việt trang trọng, mang tính định mệnh.`,
+  };
+
+  const instruction = langInstructions[lang] || langInstructions.en;
+
+  if (reportType === 'monthly') {
+    return {
+      system: `You are a wealth astrologer generating a monthly financial report.${instruction}`,
+      user: `Generate a ${lang} monthly wealth report for birth date ${birthDate} (July 2026).\n\nREQUIREMENTS:\n- Total length: 1200-1500 words (${lang})\n- Style: Fast-consuming, card-style, actionable\n- Must include 3 sections:\n\nSection 1 (300 words): Monthly wealth overview\nSection 2 (500 words): 3 Golden Days in July 2026\nSection 3 (400 words): Expense Trap warning\n\nOUTPUT FORMAT (JSON): {\n  "headline": "...",\n  "weeks": [\n    { "type": "peak", "tag": "🟢 Peak Week", "dateRange": "Jul 1-7", "text": "...", "keyDay": "Jul 3" },\n    ...\n  ]\n}\n\nWrite in ${lang}. Use native ${lang} astrological terms.`,
+    };
+  } else if (reportType === 'yearly') {
+    return {
+      system: `You are a master wealth astrologer generating a premium yearly almanac.${instruction}`,
+      user: `Generate a ${lang} yearly wealth almanac for birth date ${birthDate} (2026-2027).\n\nREQUIREMENTS:\n- Total length: 6000-8000 words (${lang})\n- Style: Epic, destiny-filled, premium ($29.99 value)\n- Must include 5 chapters:\n\nChapter 1 (1200 words): Annual Wealth Matrix\nChapter 2 (3000 words): 12-Month Revenue Matrix\nChapter 3 (1000 words): Destiny Career Path\nChapter 4 (1000 words): Debt & Risk Shield\nChapter 5 (800 words): Oracle's Manifestation Guide\n\nOUTPUT FORMAT: Markdown with 5 chapters.\n\nWrite in ${lang}. Use native ${lang} astrological and psychological terms.`,
+    };
+  }
+  return null;
+}
+
 
 // ── Stripe Price ID 映射表 ──
 // ⚠️ 需要替换为真实的 Stripe Price ID（从 Stripe Dashboard 获取）
@@ -267,13 +352,44 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
       }
     };
-    // ── 🧪 测试账号月报/年报 ──
-    const { reportType } = req.body || {};
-    if (reportType && birthDate === '1990-06-15') {
-      const reportContent = reportType === 'monthly'
-        ? '<p>🌙 <strong>2026年7月财富月报</strong></p><p>本月受木星与金星正向相位影响，财务能量上升通道。重点：正财稳增、偏财小试。</p><p><strong>本月核心：</strong>稳中求进，不宜激进投资。</p><p><strong>贵人方位：</strong>东南方向。</p>'
-        : '<p>📅 <strong>2026年度财富年报</strong></p><p>2026全年土星与天王星四分相，财务能量波动。上半年以守为主，下半年可适度拓展。</p><p><strong>年度核心：</strong>核心能力支撑稳固，但需主动突破舒适区。</p><p><strong>关键月份：</strong>3月、8月、11月是决策节点。</p>';
-      return res.json({ ...result, report: reportContent, insight: '' });
+    // ── 报告生成（月报/年报）──
+    const { reportType, includeInsight } = req.body || {};
+    if (reportType === 'monthly' || reportType === 'yearly') {
+      try {
+        console.log('[Wealth Oracle] Generating report:', { birthDate, lang, reportType });
+        const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
+          dayMaster: dTGDisplay,
+          wuxing,
+          sunSign,
+          hexName,
+          cardName,
+        });
+        
+        if (!prompt) {
+          return res.status(400).json({ success: false, error: 'Invalid reportType' });
+        }
+
+        const aiResult = await callAI(prompt.system, prompt.user, process.env);
+        
+        // Parse AI result
+        let reportContent = aiResult;
+        if (reportType === 'monthly') {
+          // Try to parse as JSON, if fails return as markdown
+          try {
+            const parsed = JSON.parse(aiResult);
+            reportContent = JSON.stringify(parsed); // Send JSON to frontend
+          } catch (e) {
+            // Not JSON, treat as markdown
+            reportContent = aiResult;
+          }
+        }
+        
+        console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
+        return res.json({ ...result, report: reportContent, insight: '' });
+      } catch (aiError) {
+        console.error('[Wealth Oracle] AI generation failed:', aiError.message);
+        return res.status(500).json({ success: false, error: 'AI generation failed: ' + aiError.message });
+      }
     }
 
     res.json(result);
