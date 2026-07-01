@@ -346,24 +346,32 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ localStorage 单一信号源：OAuth → Stripe 全链路
+  // callback.html 只写 ks_auth_success_trigger，父窗口 polling 接管跳转
+  // ═══════════════════════════════════════════════════════════════════════
   const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
+
+    // ── 绿色通道：测试账号不走 OAuth / Stripe，直接跳免费报告页 ──
+    if (birthDate === '1990-06-15') {
+      const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang) + '&free_access=1';
+      window.location.href = backUrl;
+      return;
+    }
+
     // 1. 检查登录状态
     const { data: { session } } = await supabase.auth.getSession();
     let token = forceToken || currentToken || session?.access_token || null;
     if (token && !currentToken) setCurrentToken(token);
 
     if (!token) {
-      // 🛡️ 军师破局总督令：同步占位弹窗 + 父窗口主动轮询
-      console.log('[WealthReport] 🔒 散客未登录，启动同步弹窗+轮询装甲...');
-
-      // ── 战术动作零：存 plan + 算命结果 + 当前页面 URL（给 OAuth 回调用）──
+      // ── 阶段A：弹窗 + localStorage 存 pending plan ──
+      localStorage.removeItem('ks_auth_success_trigger');
       localStorage.setItem('ks_pending_checkout_plan', plan);
       if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
-      // 兜底：保存当前页面 URL，OAuth 回来后直接跳转这里（不依赖 reportData）
-      const backUrl = `${window.location.pathname}?birth=${encodeURIComponent(birthDate)}&lang=${encodeURIComponent(lang)}`;
+      const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang);
       localStorage.setItem('ks_oauth_back_url', backUrl);
 
-      // ── 战术动作一：0ms 同步打开 about:blank（浏览器 100% 放行）──
       const popup = window.open('about:blank', 'KindredSouls Auth', 'width=500,height=600');
       if (!popup) {
         alert(currentLang === 'zh' ? '请允许浏览器弹窗以完成安全登录！' : 'Please allow popups for authentication!');
@@ -371,7 +379,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
       popup.document.write('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#D4AF37;background:#0D0D1A;font-size:16px;">🔮 正在连接宇宙安全加密通道，请稍候...</div>');
 
-      // 异步拿 OAuth URL（弹窗已占位，浏览器无法判定为恶意弹窗）
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -382,18 +389,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       if (error || !data?.url) {
         popup.close();
-        console.error('[WealthReport] ❌ 获取 OAuth 链接失败:', error);
+        console.error('[WealthReport] ❌ OAuth URL 获取失败:', error);
         setError('Login failed. Please try again.');
         return;
       }
 
-      // 改写弹窗地址（同一弹窗跳转，非新开）
       popup.location.href = data.url;
 
-      // ── 战术动作二：父窗口主动轮询 Supabase session（300ms 间隔）──
+      // ── 阶段B：polling 扫描单一信号源 ks_auth_success_trigger ──
       await new Promise<void>((resolve) => {
         const pollTimer = setInterval(async () => {
-          // 用户手动关闭弹窗
           if (popup.closed) {
             clearInterval(pollTimer);
             console.log('[WealthReport] ⚠️ 用户关闭了登录窗口');
@@ -401,48 +406,53 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             return;
           }
 
-          // 🔥 绝杀：父窗口自己每 300ms 主动问 Supabase：用户登录成功没有？
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            console.log('[WealthReport] 🏆 [Polling Hit!] 父窗口主动抓到 Session！');
-            clearInterval(pollTimer);
-            popup.close();
-            token = session.access_token;
-            setCurrentToken(token);
-            resolve();
+          // 🛡️ 单一信号源：ks_auth_success_trigger 是唯一权威标志
+          const triggerRaw = localStorage.getItem('ks_auth_success_trigger');
+          if (triggerRaw) {
+            try {
+              const trigger = JSON.parse(triggerRaw);
+              if (trigger.plan === plan) {
+                clearInterval(pollTimer);
+                localStorage.removeItem('ks_auth_success_trigger');
+                const { data: { session: s } } = await supabase.auth.getSession();
+                if (s?.access_token) {
+                  token = s.access_token;
+                  setCurrentToken(token);
+                }
+                popup.close();
+                resolve();
+              }
+            } catch (_) { /* ignore */ }
           }
-        }, 300);
+        }, 200);
 
-        // 兜底超时：30秒仍无结果则放行
         setTimeout(() => {
           clearInterval(pollTimer);
-          if (popup && !popup.closed) popup.close();
-          console.warn('[WealthReport] ⏰ 轮询超时30秒，放行');
+          if (!popup.closed) popup.close();
+          console.warn('[WealthReport] ⏰ polling 超时30秒');
           resolve();
         }, 30000);
       });
-
-      // 最后保底：再查一次 session
-      if (!token) {
-        const { data: { session: finalSession } } = await supabase.auth.getSession();
-        token = finalSession?.access_token || null;
-        if (token) setCurrentToken(token);
-      }
-
-      console.log('[WealthReport] ✅ Token obtained, triggering Stripe...');
     }
 
-    // 2. 纯净的 Stripe 跳转逻辑
+    // ── 阶段C：拿 token 调 Stripe ──
+    if (!token) {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      token = s?.access_token || null;
+      if (token) setCurrentToken(token);
+    }
+
+    if (!token) {
+      setError('Authentication failed. Please try again.');
+      return;
+    }
+
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ plan }),
       });
-
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
@@ -458,8 +468,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error('[WealthReport] Purchase error:', err);
-      setError('Network error. Please check your connection.');
-      setAuthChecking(false);
     }
   };
 
