@@ -10,6 +10,139 @@ import {
   type AlgLang,
 } from '../lib/algos/i18n';
 
+// ── Monthly Report Card Component ──
+interface WeekData {
+  type: string;
+  tag: string;
+  dateRange: string;
+  text: string;
+  keyDay: string;
+}
+
+interface MonthlyReportData {
+  headline: string;
+  weeks: WeekData[];
+  expense_trap?: { tag: string; dateRange: string; text: string };
+}
+
+const MonthlyReportCard: React.FC<{ content: string }> = ({ content }) => {
+  // Try to parse as JSON (monthly report format)
+  let data: MonthlyReportData | null = null;
+  try {
+    data = JSON.parse(content);
+  } catch {
+    // Not JSON, treat as plain text/HTML
+  }
+
+  if (!data || !data.weeks) {
+    // Fallback to plain text rendering
+    return (
+      <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.6, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+        dangerouslySetInnerHTML={{ __html: content
+          .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
+          .replace(/<h2[^>]*>.*?<\/h2>/gi, '')
+          .replace(/<p><br\s*\/?><\/p>/gi, '')
+          .replace(/<p>\s*<\/p>/gi, '')
+          .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
+          .replace(/^\s+|\s+$/g, '')
+          .replace(/(<\/p>)\s+(<p>)/g, '$1$2')
+        }}
+      />
+    );
+  }
+
+  // Render as cards
+  const getCardColor = (type: string) => {
+    switch (type) {
+      case 'peak': return { border: '#4CAF50', bg: 'rgba(76,175,80,0.08)' };
+      case 'risk': return { border: '#FF6B6B', bg: 'rgba(255,107,107,0.08)' };
+      case 'flow': return { border: '#64B5F6', bg: 'rgba(100,181,246,0.08)' };
+      default: return { border: '#D4AF37', bg: 'rgba(212,175,55,0.08)' };
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      {/* Headline */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.05) 100%)',
+        border: '1px solid rgba(212,175,55,0.3)',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '16px',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '11px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
+          🌙 本月财富主题
+        </div>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', lineHeight: 1.4 }}>
+          {data.headline}
+        </div>
+      </div>
+
+      {/* Week Cards */}
+      {data.weeks.map((week, idx) => {
+        const colors = getCardColor(week.type);
+        return (
+          <div key={idx} style={{
+            background: colors.bg,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '10px',
+            padding: '14px',
+            marginBottom: '12px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                color: colors.border,
+                background: 'rgba(0,0,0,0.3)',
+                padding: '3px 8px',
+                borderRadius: '4px'
+              }}>
+                {week.tag}
+              </span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+                {week.dateRange}
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: '8px' }}>
+              {week.text}
+            </div>
+            <div style={{ fontSize: '10px', color: '#D4AF37', textAlign: 'right' }}>
+              💫 关键日: {week.keyDay}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Expense Trap */}
+      {data.expense_trap && (
+        <div style={{
+          background: 'rgba(255,107,107,0.1)',
+          border: '1px dashed rgba(255,107,107,0.5)',
+          borderRadius: '10px',
+          padding: '14px',
+          marginTop: '16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '14px' }}>⚠️</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FF6B6B' }}>
+              {data.expense_trap.tag}
+            </span>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginLeft: 'auto' }}>
+              {data.expense_trap.dateRange}
+            </span>
+          </div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
+            {data.expense_trap.text}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 // ── Loading Spinner ──
 const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
@@ -1040,17 +1173,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               </>
             )}
             {wealthReportText && (
-              <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.6, wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: wealthReportText
-                  .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
-                  .replace(/<h2[^>]*>.*?<\/h2>/gi, '')
-                  .replace(/<p><br\s*\/?><\/p>/gi, '')
-                  .replace(/<p>\s*<\/p>/gi, '')
-                  .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
-                  .replace(/^\s+|\s+$/g, '')
-                  .replace(/(<\/p>)\s+(<p>)/g, '$1$2')
-                }}
-              />
+              <MonthlyReportCard content={wealthReportText} />
             )}
           </div>
         )}
