@@ -341,7 +341,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   -webkit-backdrop-filter: blur(12px);
   animation: fadeIn 0.2s ease-out;
   align-items: flex-start;
-  padding-top: 32px;
+  padding-top: 38px;
 }
 
 .lang-modal {

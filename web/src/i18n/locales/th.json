@@ -13,7 +13,7 @@
     "placeholder2": "YYYY-MM-DD",
     "start": "เริ่มต้น",
     "compatibilityMode": "รหัสความเข้ากันได้",
-    "compatibilityModeDesc": "ปลดล็อกข้อมูลเชิงลึกความสัมพันธ์",
+    "compatibilityModeDesc": "ปลดล็อกรหัสความสัมพันธ์",
     "wealthMode": "กุญแจความมั่งคั่ง",
     "wealthModeDesc": "ปลดล็อกแผนที่ความมั่งคั่งที่ติดตัว",
     "selectMode": "เลือกโหมด",
