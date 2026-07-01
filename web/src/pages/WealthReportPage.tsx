@@ -107,7 +107,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const paymentSuccess = urlParams.get('payment') === 'success';
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
-    
+    const freeAccess = urlParams.get('free_access') === '1' || birth === '1990-06-15';
+
+    if (freeAccess) {
+      // 🧪 测试账号绿色通道：跳过登录校验，直接看报告
+      console.log('[WealthReport] 🧪 绿色通道激活，birth=', birth);
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      setAuthChecking(false);
+    }
+
     if (intentCheckout && intentPlan && !paymentSuccess) {
       checkAuthAndLoad(birth, langParam || i18n.language || 'en', true, intentPlan);
     } else {
