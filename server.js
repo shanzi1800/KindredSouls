@@ -9,7 +9,34 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const app = express();
 
-// ── Middleware ──
+// ═══════════════════════════════════════════════════════════════════════
+// ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）
+// DeepSeek Streaming 时常产生「年份重影」：2026年6月2026年6月6月21日
+// 本函数暴力清洗所有已知的污染模式
+function cleanYearlyTimeline(text) {
+  if (!text) return text;
+  // Pattern 1: 2026年6月2026年6月 → 2026年6月
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年\1)/g, '$1');
+  // Pattern 2: 2026年6月2026年6月6月 → 2026年6月21日
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)(\d{1,2}月)/g, '$1$4');
+  // Pattern 3: 1990年6月2026年6月 → 1990年6月15日
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2$4日');
+  // Pattern 4: 2027年6月2026年6月 → 2027年6月
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2');
+  // Pattern 5: 2026年6月2026年6月21日 → 2026年6月21日
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年\2)(\d{1,2}日)/g, '$1$2$4');
+  // Pattern 6: 2027年6月2026年6月至2027年6月 → 2027年6月
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\1至)(\d{4}年\1)/g, '$1$2');
+  // Pattern 7: 连续两个相同月份 → 保留一个
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\1)(\d{1,2}月)/g, '$1$2');
+  // Pattern 8: 任意位置连续年份重复
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\1)/g, '$1$2');
+  // Pattern 9: 2026年6月2026年6月 → 2026年6月（贪婪清理）
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)/g, '$1');
+  return text;
+}
+
+// // ── Middleware ──
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -123,7 +150,31 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
   } else if (reportType === 'yearly') {
     return {
       system: `You are a master wealth astrologer generating a premium yearly almanac.${instruction}`,
-      user: `Generate a ${lang} yearly wealth almanac for birth date ${birthDate} (2026-2027).\n\nREQUIREMENTS:\n- Total length: 6000-8000 words (${lang})\n- Style: Epic, destiny-filled, premium ($29.99 value)\n- Must include 5 chapters:\n\nChapter 1 (1200 words): Annual Wealth Matrix\nChapter 2 (3000 words): 12-Month Revenue Matrix\nChapter 3 (1000 words): Destiny Career Path\nChapter 4 (1000 words): Debt & Risk Shield\nChapter 5 (800 words): Oracle's Manifestation Guide\n\nOUTPUT FORMAT: Markdown with 5 chapters.\n\nWrite in ${lang}. Use native ${lang} astrological and psychological terms.`,
+      user: `Generate a ${lang} yearly wealth almanac for birth date ${birthDate} (2026-2027).
+
+⛔ TIMELINE RULES (ABSOLUTE - DO NOT VIOLATE):
+- The annual cycle STARTS at summer solstice of 2026 (夏至 2026年6月21日)
+- The annual cycle ENDS exactly at the solar return date in June 2027 (至2027年6月)
+- NEVER write dates like "2026年6月2026年6月" or duplicate/mangled dates
+- NEVER repeat years inside month descriptions (e.g. "2026年6月-7月" is correct, NOT "2026年6月2026年6月-7月")
+- Month entries format: "2026年6月-7月", "2026年7月-8月" etc - CLEAN, NO DUPLICATION
+- The birth date mention "1990年6月15日" in the intro is fine
+- If any date looks corrupted, mangled or duplicated, REWRITE it cleanly
+
+REQUIREMENTS:
+- Total length: 6000-8000 words (${lang})
+- Style: Epic, destiny-filled, premium ($29.99 value)
+- Must include 5 chapters:
+
+Chapter 1 (1200 words): Annual Wealth Matrix
+Chapter 2 (3000 words): 12-Month Revenue Matrix
+Chapter 3 (1000 words): Destiny Career Path
+Chapter 4 (1000 words): Debt & Risk Shield
+Chapter 5 (800 words): Oracle's Manifestation Guide
+
+OUTPUT FORMAT: Markdown with 5 chapters.
+
+Write in ${lang}. Use native ${lang} astrological and psychological terms.`,
     };
   }
   return null;
@@ -377,6 +428,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         const aiResult = await callAI(prompt.system, prompt.user, process.env);
+
+        // ── ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）──
+        if (reportType === 'yearly') {
+          reportContent = cleanYearlyTimeline(aiResult);
+        }
         
         // Parse AI result
         let reportContent = aiResult;
