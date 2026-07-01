@@ -316,6 +316,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
 
       if (res.status === 402) {
+        const isFreeAccess = birth === '1990-06-15';
         try {
           const errData = await res.json();
           if (errData?.data) {
@@ -330,8 +331,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           }
         } catch (_) {}
         setError(null);
-        setIsUnlocked(false);
-        setShowPaywall(true);
+        // 🧪 绿色通道：402 不重置解锁状态，让月报/年报按钮保持显示
+        if (!isFreeAccess) {
+          setIsUnlocked(false);
+          setShowPaywall(true);
+        }
         return;
       }
       if (!res.ok) {
