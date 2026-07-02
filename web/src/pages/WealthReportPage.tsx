@@ -321,7 +321,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
               {UI.order[safeLang] || UI.order.en}
             </div>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
-              这三天执行【全面戒严】！任何超过 <span style={{ color: '#FFD700', fontWeight: 700 }}>5000元</span> 的支出，必须强制等待 <span style={{ color: '#FFD700', fontWeight: 700 }}>24小时</span> 后再做决定！
+              {UI.orderTxt[safeLang] || UI.orderTxt.en}
             </div>
           </div>
         </div>
