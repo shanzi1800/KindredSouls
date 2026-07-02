@@ -1060,8 +1060,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         });
         const rows = await res.json();
                 if (rows.length > 0 && rows[0].insight) {
-          const data = JSON.parse(rows[0].insight);
-          setWealthReport(JSON.stringify(data));
+          const cached = JSON.parse(rows[0].insight);
+          setWealthReport(JSON.stringify(cached));
+          // 同时设置主报告数据（四宫格）
+          if (cached.data) {
+            setReportData({
+              success: true,
+              birthDate: birth,
+              lang: lang,
+              data: cached.data,
+              insight: '',
+              referrer: ''
+            });
+          }
         } else {
           console.warn("[WealthReport] ⚠️ Supabase 无数据");
           setError(currentLang === "zh" ? "无法加载财富报告" : "Failed to load wealth report");
