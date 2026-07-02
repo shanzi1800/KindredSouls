@@ -157,6 +157,18 @@ ASTROGRAPHIC FACTS JULY 2026 (CRITICAL - NEVER VIOLATE):
 • SUN NATAL (1990-06-15): Soleil en GEmeaux (PAS Cancer) — ne melanger jamais signe natal et transit
 • Pour 1990-06-15: NATAL = Soleil en Geaux (24°), transit courant = Soleil en Cancer (juste pour parler des transits)
 
+[THAI - ASTRO RULES]:
+• MERCURY Rx 2026: ดาวพุธวงใน (Mercury Rx) เริ่ม 18 กรกฎาคม 2026 — ห้ามเขียนก่อน 18
+• JUPITER: ดาวพฤหัสบดี in ราศีสิงห์ (Leo) ตลอด July 2026 — ห้ามเขียนว่าอยู่ในราศีธนู
+• NEW MOON: ไม่มีวันไตรมาสใหม่วันที่ 1 หรือ 31 กรกฎาคม 2026
+• NEW MOON จริง: ~14 กรกฎาคม 2026
+
+[VIETNAMESE - ASTRO RULES]:
+• MERCURY Rx 2026: Sao Thủy nghịch bắt đầu 18/7/2026 — cấm viết trước ngày 18/7
+• JUPITER: Sao Mộc ở Sư Tử (Leo) suốt tháng 7/2026 — cấm viết trong cung Nhân Mã
+• NEW MOON: KHÔNG CÓ ngày 1/7 hay 31/7/2026
+• NEW MOON thật: ~14/7/2026
+
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} (July 2026).\n\nCRITICAL REQUIREMENTS:\n1. Total length: STRICTLY 1200-1500 words (${lang}) - COUNT YOUR WORDS BEFORE SUBMITTING\n2. Style: Fast-consuming, card-style, actionable\n3. MUST have 4 weeks (not 3)\n\nSTRUCTURE:\nSection 1 (300 words): Monthly wealth overview - current financial energy, mantra\nSection 2 (400 words): 3 Golden Days in July 2026 with SPECIFIC dates\nSection 3 (300 words): Expense Trap warning with SPECIFIC date\nSection 4 (200 words): Action guide for the month\n\nOUTPUT FORMAT (STRICT JSON):\n{\n  "headline": "...",\n  "weeks": [\n    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "Jul 1-7", "text": "...(minimum 150 words)", "keyDay": "Jul 3"},\n    {"type": "risk", "tag": "🔴 High-Risk Week", "dateRange": "Jul 8-14", "text": "...(minimum 150 words)", "keyDay": "Jul 11"},\n    {"type": "flow", "tag": "🔵 Flow Week", "dateRange": "Jul 15-21", "text": "...(minimum 150 words)", "keyDay": "Jul 18"},\n    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "Jul 22-31", "text": "...(minimum 150 words)", "keyDay": "Jul 28"}\n  ],\n  "expense_trap": {"tag": "⚠️ Expense Trap", "dateRange": "...", "text": "...(minimum 100 words)"}\n}\n\nIMPORTANT: \n- Each week's text MUST be at least 150 words\n- Write in ${lang} with native astrological terms\n- NO markdown formatting in text fields (no **, ##, etc)\n- NO English words in Chinese version (except astrological terms like Jupiter, Saturn)`,
     };
