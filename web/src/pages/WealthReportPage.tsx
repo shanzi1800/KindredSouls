@@ -878,10 +878,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             break;
           }
         }
-        if (!token) {
+        if (!token && new URLSearchParams(window.location.search).get('free_access') !== '1') {
           setIsUnlocked(false);
           setShowPaywall(true);
+        } else if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+          setIsUnlocked(true);
+          setShowPaywall(false);
         }
+      } else if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+        setIsUnlocked(true);
+        setShowPaywall(false);
       } else {
         setIsUnlocked(false);
         setShowPaywall(true);
@@ -970,7 +976,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       setPaidPlans(rawPlans);
 
-      if (isWealthPaid) {
+      if (isWealthPaid || new URLSearchParams(window.location.search).get('free_access') === '1') {
+        setIsUnlocked(true);
+        setShowPaywall(false);
+      } else if (new URLSearchParams(window.location.search).get('free_access') === '1') {
         setIsUnlocked(true);
         setShowPaywall(false);
       } else {
