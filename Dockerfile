@@ -1,7 +1,8 @@
 FROM node:20-alpine
 
-# 🛡️ Cache bust - 每次 push 都加个时间戳，强制 Docker 重新执行所有层
-ARG CACHEBUST=20260701b
+# 🛡️ Cache bust - 每次 push 都改时间戳，BUILD-TIME-RUN 用 ARG 才能 invalidate 所有下游 layer
+ARG CACHEBUST=20260702a
+RUN echo "🔨 Cache bust: $CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 WORKDIR /app
 
