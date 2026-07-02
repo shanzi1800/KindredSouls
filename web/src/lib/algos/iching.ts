@@ -1952,10 +1952,11 @@ export interface IndividualIChingProfile {
  * 上卦 = (年 + 月) % 8, 下卦 = (月 + 日) % 8, 动爻 = (年 + 月 + 日) % 6
  */
 export function getIndividualIChingProfile(birthInfo: BirthInfo, lang: AlgLang = 'zh'): IndividualIChingProfile {
-  const upperGuaNum = ((birthInfo.year + birthInfo.month) % 8 + 8) % 8;
-  const lowerGuaNum = ((birthInfo.month + birthInfo.day) % 8 + 8) % 8;
-  const hexIndex = (upperGuaNum * 8 + lowerGuaNum) % 64 + 1;
+  // 正确算法：hexIndex = (年+月+日) % 64 + 1，上卦=(hexIndex-1) div 8 + 1，下卦=(hexIndex-1) mod 8 + 1
   const totalSum = birthInfo.year + birthInfo.month + birthInfo.day;
+  const hexIndex = totalSum % 64 + 1;
+  const upperGuaNum = Math.floor((hexIndex - 1) / 8) + 1;
+  const lowerGuaNum = ((hexIndex - 1) % 8) + 1;
   const changingLine = (totalSum % 6) + 1;
 
   const hex = HEXAGRAMS[hexIndex] || HEXAGRAMS[23];
