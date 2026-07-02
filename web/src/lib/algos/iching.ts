@@ -1964,6 +1964,8 @@ export function getIndividualIChingProfile(birthInfo: BirthInfo, lang: AlgLang =
   const transformedHex = transformedIdx !== hexIndex ? HEXAGRAMS[transformedIdx] : null;
 
   const meta: string[] = [`HEXAGRAM_${hexIndex}`];
+  meta.push(`UPPER_GUA_${upperGuaNum}`);
+  meta.push(`LOWER_GUA_${lowerGuaNum}`);
   if (changingLine > 0) meta.push(`CHANGING_LINE_${changingLine}`);
 
   return {

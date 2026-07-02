@@ -1915,6 +1915,8 @@ function getIndividualIChingProfile(birthInfo, lang = "zh") {
   const transformedIdx = (hexIndex + changingLine) % 64 + 1;
   const transformedHex = transformedIdx !== hexIndex ? HEXAGRAMS[transformedIdx] : null;
   const meta = [`HEXAGRAM_${hexIndex}`];
+  meta.push(`UPPER_GUA_${upperGuaNum}`);
+  meta.push(`LOWER_GUA_${lowerGuaNum}`);
   if (changingLine > 0) meta.push(`CHANGING_LINE_${changingLine}`);
   return {
     hexNum: hexIndex,
