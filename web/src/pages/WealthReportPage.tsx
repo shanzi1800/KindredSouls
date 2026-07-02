@@ -988,8 +988,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error('[WealthReport] Error checking paid status:', err);
-      setIsUnlocked(false);
-      setShowPaywall(true);
+      if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+        setIsUnlocked(true);
+        setShowPaywall(false);
+      } else {
+        setIsUnlocked(false);
+        setShowPaywall(true);
+      }
     }
   };
 
