@@ -863,6 +863,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
         window.history.replaceState({}, '', cleanUrl);
 
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('birth', birth);
+        newUrl.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', newUrl.toString());
+
         if (pendingPlan) {
           await handlePurchase(pendingPlan as any, token);
         } else {
