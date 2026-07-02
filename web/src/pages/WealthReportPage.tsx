@@ -770,7 +770,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  // 🏅 第一斧：useRef 同步锁定免死金牌，在所有 render 之前抢跑
+  const isGreenChannelRef = useRef<boolean>(
+    typeof window !== 'undefined' && (
+      window.location.search.includes('free_access=1') ||
+      sessionStorage.getItem('⚡_FREE_PASS') === '1'
+    )
+  );
+  // 一旦检测到，立刻往 sessionStorage 打补丁，防止 URL 被 strip 后丢失凭证
+  if (isGreenChannelRef.current && typeof window !== 'undefined') {
+    sessionStorage.setItem('⚡_FREE_PASS', '1');
+  }
+
+  // 🏅 第二斧：isUnlocked 初始值从 ref 读取，拒绝首帧 false
+  const [isUnlocked, setIsUnlocked] = useState(() => isGreenChannelRef.current);
   const [showPaywall, setShowPaywall] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
@@ -806,14 +819,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const freeAccess = urlParams.get('free_access') === '1';  // 🧪 通用测试模式
     console.log('[WealthReport] 🧪 useEffect run: freeAccess=', freeAccess, 'birth=', birth, 'lang=', langParam);
 
-    if (freeAccess) {
-      // 🧪 绿色通道：同步解锁，直接调用 loadWealthData，不走任何 async 中间函数
-      console.log('[WealthReport] 🧪 绿色通道激活，birth=', birth);
+    // 🏅 useEffect 绿色通道：用 ref 判断（同步、常驻、不受竞态影响）
+    if (isGreenChannelRef.current) {
+      console.log('[WealthReport] 🏅 绿色通道Ref激活，birth=', birth, '→ 直接解锁');
       setIsUnlocked(true);
       setShowPaywall(false);
       setAuthChecking(false);
       setCurrentToken('green-channel-test-token');
-      // 直接调用，不 await：React 不会在这个同步块执行完之前 re-render
       loadWealthData(birth, langParam || i18n.language || 'en');
       return;
     }
@@ -910,7 +922,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     await loadWealthData(birth, lang, token ?? undefined);
   };
 
+  // 🏅 第三斧A：checkPaidStatus 物理断路器
   const checkPaidStatus = async () => {
+    // 顶层物理断路：ref 是同步的，不受 React 生命周期影响
+    if (isGreenChannelRef.current) {
+      console.log('[WealthReport] 🏅 绿色通道Ref短路 checkPaidStatus');
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      setAuthChecking(false);
+      setCurrentToken('green-channel-test-token');
+      return true;
+    }
     // 🧪 强制解锁：free_access=1 时跳过所有检查，直接解锁
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
       setIsUnlocked(true);
@@ -1013,7 +1035,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
+  // 🏅 第三斧B：loadWealthData 物理断路器
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
+    // 顶层物理断路：ref 是同步的，React 竞态无法strip
+    if (isGreenChannelRef.current) {
+      console.log('[WealthReport] 🏅 绿色通道Ref短路 loadWealthData，跳过所有API调用');
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      return;
+    }
     // 🧪 强制解锁：free_access=1 时跳过 API，直接显示数据
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
       setIsUnlocked(true);
