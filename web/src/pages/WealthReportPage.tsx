@@ -807,14 +807,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     console.log('[WealthReport] 🧪 useEffect run: freeAccess=', freeAccess, 'birth=', birth, 'lang=', langParam);
 
     if (freeAccess) {
-      // 🧪 测试账号绿色通道：跳过登录校验，直接看报告
-      console.log('[WealthReport] 🧪 绿色通道激活，birth=', birth, '→ 调用 loadWealthData');
+      // 🧪 绿色通道：同步解锁，直接调用 loadWealthData，不走任何 async 中间函数
+      console.log('[WealthReport] 🧪 绿色通道激活，birth=', birth);
       setIsUnlocked(true);
       setShowPaywall(false);
       setAuthChecking(false);
-      // 设一个假 token，让 generateWealthReport 的 !currentToken 检查通过
-      setCurrentToken('green-channel-no-auth-needed');
-      // 直接加载报告数据，不走 checkAuthAndLoad（避免 setIsUnlocked(false) 重置）
+      setCurrentToken('green-channel-test-token');
+      // 直接调用，不 await：React 不会在这个同步块执行完之前 re-render
       loadWealthData(birth, langParam || i18n.language || 'en');
       return;
     }
@@ -863,10 +862,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
         window.history.replaceState({}, '', cleanUrl);
 
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('birth', birth);
-        newUrl.searchParams.set('lang', lang);
-        window.history.replaceState({}, '', newUrl.toString());
+        // free_access=1 时不 replaceState（避免 strip URL 导致二次 render 时 free_access 丢失）
+        if (new URLSearchParams(window.location.search).get('free_access') !== '1') {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('birth', birth);
+          newUrl.searchParams.set('lang', lang);
+          window.history.replaceState({}, '', newUrl.toString());
+        }
 
         if (pendingPlan) {
           await handlePurchase(pendingPlan as any, token);
