@@ -49,18 +49,18 @@ export function tWuxing(cn: string, lang: AlgLang): string {
 
 // ── 星座（12宫） ──
 const ZODIAC_SIGNS: Record<string, Record<AlgLang, string>> = {
-  白羊座: { zh: '白羊座', en: 'Aries',         es: 'Aries',           fr: 'Bélier',           th: 'เมษายน',         vi: 'Bạch Dương' },
-  金牛座: { zh: '金牛座', en: 'Taurus',        es: 'Tauro',            fr: 'Taureau',          th: 'พฤษภาคม',         vi: 'Kim Ngưu' },
-  双子座: { zh: '双子座', en: 'Gemini',        es: 'Géminis',          fr: 'Gémeaux',          th: 'มิถุนายน',        vi: 'Song Tử' },
-  巨蟹座: { zh: '巨蟹座', en: 'Cancer',        es: 'Cáncer',            fr: 'Cancer',           th: 'กรกฎาคม',        vi: 'Cự Giải' },
-  狮子座: { zh: '狮子座', en: 'Leo',           es: 'Leo',               fr: 'Lion',             th: 'สิงหาคม',         vi: 'Sư Tử' },
-  处女座: { zh: '处女座', en: 'Virgo',         es: 'Virgo',             fr: 'Vierge',           th: 'กันยายน',         vi: 'Xử Nữ' },
-  天秤座: { zh: '天秤座', en: 'Libra',        es: 'Libra',             fr: 'Balance',          th: 'ตุลาคม',          vi: 'Thiên Bình' },
-  天蝎座: { zh: '天蝎座', en: 'Scorpio',      es: 'Escorpio',          fr: 'Scorpion',         th: 'พฤศจิกายน',      vi: 'Thiên Xung' },
-  射手座: { zh: '射手座', en: 'Sagittarius',  es: 'Sagitario',         fr: 'Sagittaire',       th: 'ธันวาคม',         vi: 'Nhân Mã' },
-  摩羯座: { zh: '摩羯座', en: 'Capricorn',    es: 'Capricornio',       fr: 'Capricorne',       th: 'มกราคม',          vi: 'Ma Kết' },
-  水瓶座: { zh: '水瓶座', en: 'Aquarius',     es: 'Acuario',           fr: 'Verseau',          th: 'กุมภาพันธ์',      vi: 'Bảo Bình' },
-  双鱼座: { zh: '双鱼座', en: 'Pisces',       es: 'Piscis',            fr: 'Poissons',         th: 'มีนาคม',          vi: 'Song Ngư' },
+  白羊座: { zh: '白羊座', en: 'Aries',         es: 'Aries',           fr: 'Bélier',           th: 'ราศีเมษ',         vi: 'Bạch Dương' },
+  金牛座: { zh: '金牛座', en: 'Taurus',        es: 'Tauro',            fr: 'Taureau',          th: 'ราศีพฤษภ',         vi: 'Kim Ngưu' },
+  双子座: { zh: '双子座', en: 'Gemini',        es: 'Géminis',          fr: 'Gémeaux',          th: 'ราศีมิถุน',        vi: 'Song Tử' },
+  巨蟹座: { zh: '巨蟹座', en: 'Cancer',        es: 'Cáncer',            fr: 'Cancer',           th: 'ราศีกรกฎ',        vi: 'Cự Giải' },
+  狮子座: { zh: '狮子座', en: 'Leo',           es: 'Leo',               fr: 'Lion',             th: 'ราศีสิงห์',         vi: 'Sư Tử' },
+  处女座: { zh: '处女座', en: 'Virgo',         es: 'Virgo',             fr: 'Vierge',           th: 'ราศีกันย์',         vi: 'Xử Nữ' },
+  天秤座: { zh: '天秤座', en: 'Libra',        es: 'Libra',             fr: 'Balance',          th: 'ราศีตุลย์',          vi: 'Thiên Bình' },
+  天蝎座: { zh: '天蝎座', en: 'Scorpio',      es: 'Escorpio',          fr: 'Scorpion',         th: 'ราศีพิจิก',      vi: 'Thiên Xung' },
+  射手座: { zh: '射手座', en: 'Sagittarius',  es: 'Sagitario',         fr: 'Sagittaire',       th: 'ราศีธนู',         vi: 'Nhân Mã' },
+  摩羯座: { zh: '摩羯座', en: 'Capricorn',    es: 'Capricornio',       fr: 'Capricorne',       th: 'ราศีมังกร',          vi: 'Ma Kết' },
+  水瓶座: { zh: '水瓶座', en: 'Aquarius',     es: 'Acuario',           fr: 'Verseau',          th: 'ราศีกุมภ์',      vi: 'Bảo Bình' },
+  双鱼座: { zh: '双鱼座', en: 'Pisces',       es: 'Piscis',            fr: 'Poissons',         th: 'ราศีมีน',          vi: 'Song Ngư' },
 };
 
 export function tZodiacSign(sign: string, lang: AlgLang): string {
