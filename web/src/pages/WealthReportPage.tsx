@@ -791,7 +791,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const [wealthReportText, setWealthReportText] = useState<string>('');
-  const [, forceUpdate] = useState({});
+
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
     setWealthReportText(text);
