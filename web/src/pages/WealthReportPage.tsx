@@ -903,6 +903,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const checkPaidStatus = async () => {
+    // 🧪 强制解锁：free_access=1 时跳过所有检查，直接解锁
+    if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      setAuthChecking(false);
+      return;
+    }
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user?.id) {
