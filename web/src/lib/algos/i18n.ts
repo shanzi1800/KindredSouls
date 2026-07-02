@@ -134,7 +134,7 @@ const TAROT_CARD_NAMES: Record<number, Record<AlgLang, string>> = {
   6:  { zh: '恋人',     en: 'The Lovers',     es: 'Los Enamorados',  fr: 'Les Amoureux',     th: 'The Lovers',          vi: 'Người Yêu' },
   7:  { zh: '战车',     en: 'The Chariot',   es: 'El Carro',         fr: 'Le Char',          th: 'The Chariot',        vi: 'Chiến Xa' },
   8:  { zh: '力量',     en: 'Strength',      es: 'La Fuerza',        fr: 'La Force',         th: 'Strength',            vi: 'Sức Mạnh' },
-  9:  { zh: '隐士',     en: 'The Hermit',    es: 'El Ermitaño',      fr: 'L\'Ermite',        th: 'The Hermit',          vi: 'Ẩn Sĩ' },
+  9:  { zh: '隐士',     en: 'The Hermit',    es: 'El Ermitaño',      fr: 'L\'Ermite',        th: 'ไพ่ฤาษี',          vi: 'Ẩn Sĩ' },
   10: { zh: '命运之轮', en: 'Wheel of Fortune', es: 'La Rueda de la Fortuna', fr: 'La Roue de la Fortune', th: 'Wheel of Fortune', vi: 'Bánh Xe Vận Mệnh' },
   11: { zh: '正义',     en: 'Justice',       es: 'La Justicia',     fr: 'La Justice',        th: 'Justice',            vi: 'Công Lý' },
   12: { zh: '倒吊人',   en: 'The Hanged Man', es: 'El Colgado',      fr: 'Le Pendu',          th: 'The Hanged Man',      vi: 'Người Treo Ngược' },
