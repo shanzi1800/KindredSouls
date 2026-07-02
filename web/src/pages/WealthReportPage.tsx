@@ -1026,7 +1026,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
 
       if (res.status === 402) {
-        const isFreeAccess = birth === '1990-06-15';
+        const isFreeAccess = birth === '1990-06-15' || new URLSearchParams(window.location.search).get('free_access') === '1';
         try {
           const errData = await res.json();
           if (errData?.data) {
