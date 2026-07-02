@@ -803,7 +803,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const paymentSuccess = urlParams.get('payment') === 'success';
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
-    const freeAccess = urlParams.get('free_access') === '1' || birth === '1990-06-15';
+    const freeAccess = urlParams.get('free_access') === '1';  // 🧪 通用测试模式
 
     if (freeAccess) {
       // 🧪 测试账号绿色通道：跳过登录校验，直接看报告
@@ -937,7 +937,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       const isWealthPaid = (() => {
         // 🧪 测试账号白名单
-        if (new URLSearchParams(window.location.search).get('birth') === '1990-06-15') return true;
+        if (new URLSearchParams(window.location.search).get('free_access') === '1') return true;
         if (planMap.wealth_once === true) return true;
         if (planMap.wealth_yearly_report === true) return true;
         if (planMap.wealth_monthly_report === true) return true;
@@ -1067,7 +1067,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
 
     // ── 绿色通道：测试账号不走 OAuth / Stripe，直接跳免费报告页 ──
-    if (birthDate === '1990-06-15') {
+    if (new URLSearchParams(window.location.search).get('free_access') === '1') {
       const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang) + '&free_access=1';
       window.location.href = backUrl;
       return;
@@ -1240,9 +1240,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
-    // 🧪 绿色通道：birth=1990-06-15 时不检查 token
-    const isFreeAccess = birthDate === '1990-06-15' || new URLSearchParams(window.location.search).get('free_access') === '1';
-    if (!currentToken && !isFreeAccess) {
+    // 🧪 绿色通道：free_access=1 时不检查 token
+    const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
+    if (!currentToken && !isFreeTest) {
       setWealthReportText(t('wealthReport.loginFirst'));
       return;
     }
@@ -1712,7 +1712,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: '11px', color: '#81D8D0', marginBottom: '8px' }}>
               {t('wealthReport.almanacDesc')}
             </div>
-            {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('birth') === '1990-06-15') ? (
+            {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>
                 <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
