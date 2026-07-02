@@ -1061,8 +1061,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const rows = await res.json();
                 if (rows.length > 0 && rows[0].insight) {
           const cached = JSON.parse(rows[0].insight);
-          setWealthReport(JSON.stringify(cached));
-          // 同时设置主报告数据（四宫格）
+          // 只设置主报告数据（四宫格），不设置月报（让用户手动点击按钮）
           if (cached.data) {
             setReportData({
               success: true,
@@ -1072,6 +1071,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               insight: '',
               referrer: ''
             });
+          }
+          // 月报数据缓存到 localStorage，用户点击按钮时读取
+          if (cached.weeks && cached.expense_trap) {
+            localStorage.setItem('ks_wealth_monthly_cache_' + birth + '_' + lang, JSON.stringify(cached));
           }
         } else {
           console.warn("[WealthReport] ⚠️ Supabase 无数据");
@@ -1338,8 +1341,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
-    // 🧪 绿色通道：free_access=1 时不检查 token
+    // 🧪 绿色通道：free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
+    if (isFreeTest && type === 'monthly') {
+      const cacheKey = 'ks_wealth_monthly_cache_' + birthDate + '_' + lang;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存');
+        const data = JSON.parse(cached);
+        setWealthReport(JSON.stringify(data));
+        return;
+      }
+    }
+    
     if (!currentToken && !isFreeTest) {
       setWealthReport(t('wealthReport.loginFirst'));
       return;
