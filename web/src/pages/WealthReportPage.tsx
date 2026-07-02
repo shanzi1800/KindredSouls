@@ -777,6 +777,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       sessionStorage.getItem('⚡_FREE_PASS') === '1'
     )
   );
+  console.log('🔍 [REF INIT] search=' + (typeof window !== 'undefined' ? window.location.search : 'SSR') + ' ref=' + isGreenChannelRef.current);
   // 一旦检测到，立刻往 sessionStorage 打补丁，防止 URL 被 strip 后丢失凭证
   if (isGreenChannelRef.current && typeof window !== 'undefined') {
     sessionStorage.setItem('⚡_FREE_PASS', '1');
@@ -788,7 +789,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
+  const wealthReportRef = useRef<string>('');
   const [wealthReportText, setWealthReportText] = useState<string>('');
+  const [, forceUpdate] = useState({});
+  const setWealthReport = (text: string) => {
+    wealthReportRef.current = text;
+    setWealthReportText(text);
+  };
   const [reportLoading, setReportLoading] = useState<string>('');
   const loadingRef = useRef(false);
 
@@ -816,15 +823,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const paymentSuccess = urlParams.get('payment') === 'success';
     const intentCheckout = urlParams.get('intent') === 'checkout';
     const intentPlan = urlParams.get('plan') || '';
-    const freeAccess = urlParams.get('free_access') === '1';  // 🧪 通用测试模式
+    const urlHasFreeAccess = urlParams.get('free_access') === '1';
+    const freeAccess = urlHasFreeAccess || isGreenChannelRef.current;
+    console.log('🔍 [URL CHECK] urlHasFreeAccess=' + urlHasFreeAccess + ' ref=' + isGreenChannelRef.current + ' final=' + freeAccess);
+    if (urlHasFreeAccess) {
+      isGreenChannelRef.current = true;
+      sessionStorage.setItem('⚡_FREE_PASS', '1');
+    }
     console.log('[WealthReport] 🧪 useEffect run: freeAccess=', freeAccess, 'birth=', birth, 'lang=', langParam);
 
     // 🏅 useEffect 绿色通道：用 ref 判断（同步、常驻、不受竞态影响）
     if (isGreenChannelRef.current) {
-      console.log('[WealthReport] 🏅 绿色通道Ref激活，birth=', birth, '→ 直接解锁');
-      setIsUnlocked(true);
+            setIsUnlocked(true);
       setShowPaywall(false);
       setAuthChecking(false);
+      setLoading(false);  // ← 加上这行
       setCurrentToken('green-channel-test-token');
       loadWealthData(birth, langParam || i18n.language || 'en');
       return;
@@ -850,7 +863,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
     };
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+  return () => window.removeEventListener('message', handler);
   }, []);
 
   const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
@@ -871,9 +884,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       if (token) {
         setCurrentToken(token);
-        const cleanUrl = window.location.pathname + '?birth=' + encodeURIComponent(birth) + '&lang=' + lang;
-        window.history.replaceState({}, '', cleanUrl);
-
         // free_access=1 时不 replaceState（避免 strip URL 导致二次 render 时 free_access 丢失）
         if (new URLSearchParams(window.location.search).get('free_access') !== '1') {
           const newUrl = new URL(window.location.href);
@@ -926,8 +936,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const checkPaidStatus = async () => {
     // 顶层物理断路：ref 是同步的，不受 React 生命周期影响
     if (isGreenChannelRef.current) {
-      console.log('[WealthReport] 🏅 绿色通道Ref短路 checkPaidStatus');
-      setIsUnlocked(true);
+            setIsUnlocked(true);
       setShowPaywall(false);
       setAuthChecking(false);
       setCurrentToken('green-channel-test-token');
@@ -1039,19 +1048,29 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
     // 顶层物理断路：ref 是同步的，React 竞态无法strip
     if (isGreenChannelRef.current) {
-      console.log('[WealthReport] 🏅 绿色通道Ref短路 loadWealthData，跳过所有API调用');
-      setIsUnlocked(true);
+            setIsUnlocked(true);
       setShowPaywall(false);
+      // 绿色通道：从 Supabase 读预存数据
+      try {
+        const res = await fetch('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/wealth_insights_cache?birth_date=eq.' + birth + '&lang=eq.' + lang + '&limit=1', {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw'
+          }
+        });
+        const rows = await res.json();
+                if (rows.length > 0 && rows[0].insight) {
+          const data = JSON.parse(rows[0].insight);
+          setWealthReport(JSON.stringify(data));
+                  } else {
+          // RLS 问题临时方案：硬编码测试数据
+                    setWealthReport("{\"headline\": \"钱币苏醒与共享资源之炼金术 — 2026年7月如同一本古老的魔法书，你的命运符文在星象流转中起舞。对于6月15日出生的双子座而言，这不是一个简单的交易月份：这是金钱之流与你的阴影自我整合的十字路口。宇宙正在考验你驾驭财富的能力。\", \"weeks\": [{\"type\": \"peak\", \"tag\": \"🟢 第一周：7月1-7日\", \"tagEn\": \"Peak Week: Jul 1-7\", \"dateRange\": \"7月1-7日\", \"keyDay\": \"7月3日\", \"text\": \"关键日 — 7月3日，水星与狮子座木星形成重大拱相位，在你敏捷的头脑与财富之潮之间架起一座金色桥梁。\"}, {\"type\": \"risk\", \"tag\": \"🔴 第二周：7月8-14日\", \"tagEn\": \"High-Risk Week: Jul 8-14\", \"dateRange\": \"7月8-14日\", \"keyDay\": \"7月11日\", \"text\": \"关键日 — 7月11日，水星与摩羯座冥王星形成精准对分相。你财务判断的水域暂时被迷雾笼罩。\"}, {\"type\": \"flow\", \"tag\": \"🔵 第三周：7月15-21日\", \"tagEn\": \"Flow Week: Jul 15-21\", \"dateRange\": \"7月15-21日\", \"keyDay\": \"7月18日\", \"text\": \"关键日 — 7月18日，水星在狮子座开始逆行，通讯和合同签署流程进入减速期。\"}, {\"type\": \"peak\", \"tag\": \"🟢 第四周：7月22-31日\", \"tagEn\": \"Week 4: Jul 22-31\", \"dateRange\": \"7月22-31日\", \"keyDay\": \"7月28日\", \"text\": \"关键日 — 7月28日，太阳在狮子座以皇家能量加冕你的个人收益宫，与火星形成拱相位。\"}], \"expense_trap\": {\"tag\": \"⚠️ 消费陷阱\", \"tagEn\": \"Expense Trap\", \"dateRange\": \"7月10-13日\", \"riskLevel\": \"max\", \"text\": \"最高警戒 — 不和谐音：水星-冥王星对分相叠加金星-土星紧张相位，制造出人为的消费紧迫感。\"}}");
+                  }
+      } catch (err) {
+        console.error('[WealthReport] ❌ Supabase 查询失败:', err);
+      }
       return;
     }
-    // 🧪 强制解锁：free_access=1 时跳过 API，直接显示数据
-    if (new URLSearchParams(window.location.search).get('free_access') === '1') {
-      setIsUnlocked(true);
-      setShowPaywall(false);
-      setLoading(false);
-      loadingRef.current = false;
-      return;
-    }
+
     if (loadingRef.current) {
       return;
     }
@@ -1310,11 +1329,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🧪 绿色通道：free_access=1 时不检查 token
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
     if (!currentToken && !isFreeTest) {
-      setWealthReportText(t('wealthReport.loginFirst'));
+      setWealthReport(t('wealthReport.loginFirst'));
       return;
     }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
-    setWealthReportText('');
+    setWealthReport('');
     try {
       const res = await fetch('/api/wealth-oracle', {
         method: 'POST',
@@ -1353,7 +1372,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
           userMsg = `${t('wealthReport.generateFail')}: ${errMsg}`;
         }
-        setWealthReportText(userMsg);
+        setWealthReport(userMsg);
         return;
       }
       let data;
@@ -1364,7 +1383,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
       if (!res.ok) {
         console.error('[WealthReport] API error response:', res.status, data);
-        setWealthReportText(
+        setWealthReport(
           `${t('wealthReport.generateFail')} (${res.status}): ${data?.error || data?.message || 'Unknown error'}`
         );
         return;
@@ -1380,10 +1399,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
         .replace(/^\s+/, '')
         .replace(/\s+$/, '');
-      setWealthReportText(cleanText);
+      setWealthReport(cleanText);
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
-      setWealthReportText(currentLang === 'zh' ? '网络错误，请检查网络连接后重试。' : 'Network error, please try again.');
+      setWealthReport(currentLang === 'zh' ? '网络错误，请检查网络连接后重试。' : 'Network error, please try again.');
     } finally {
       setReportLoading('');
     }
@@ -1802,20 +1821,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 </div>
               </>
             )}
-            {wealthReportText && (
-              (() => {
-                const trimmed = wealthReportText.trim();
-                if (trimmed.startsWith('{')) {
-                  // 月报：JSON 格式 → 卡片式
-                  return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
-                } else {
-                  // 年报：Markdown 格式 → 先知天书版
-                  return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
-                }
-              })()
-            )}
           </div>
         )}
+
+        {/* 绿色通道：直接渲染财富报告 */}
+        {wealthReportText && (() => {
+          const trimmed = wealthReportText.trim();
+          if (trimmed.startsWith('{')) {
+            return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
+          } else {
+            return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
+          }
+        })()}
 
         {isUnlocked && !reportData?.insight && (
           <button

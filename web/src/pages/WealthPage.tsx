@@ -135,6 +135,11 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
       birth: birthDate,
       lang: lang,
     });
+    // 保留 free_access 参数（测试模式）
+    const urlFreeAccess = new URLSearchParams(window.location.search).get('free_access');
+    if (urlFreeAccess === '1') {
+      params.set('free_access', '1');
+    }
     onNavigate(`/wealth/report?${params.toString()}`);
   };
 

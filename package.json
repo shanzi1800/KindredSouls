@@ -5,6 +5,7 @@
   "main": "index.ts",
   "dependencies": {
     "babel-preset-expo": "~56.0.0",
+    "docx": "^9.7.1",
     "expo": "~56.0.4",
     "expo-constants": "~17.0.0",
     "expo-linking": "~7.0.0",

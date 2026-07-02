@@ -18,7 +18,7 @@ export default defineConfig({
     proxy: {
       // 开发时: /api → Express server
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://kindredsouls-production.up.railway.app',
         changeOrigin: true,
       },
     },
