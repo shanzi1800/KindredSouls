@@ -321,7 +321,10 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
               {UI.order[safeLang] || UI.order.en}
             </div>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
-              {UI.orderTxt[safeLang] || UI.orderTxt.en}
+              <span
+                style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: UI.orderTxt[safeLang] || UI.orderTxt.en }}
+              />
             </div>
           </div>
         </div>
