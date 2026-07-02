@@ -152,9 +152,16 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
       system: `You are a master wealth astrologer generating a premium yearly almanac.${instruction}`,
       user: `Generate a ${lang} yearly wealth almanac for birth date ${birthDate} (2026-2027).
 
-⛔ TIMELINE RULES (ABSOLUTE - DO NOT VIOLATE):
+⛔ ⛔ TIMELINE RULES (ABSOLUTE - DO NOT VIOLATE):
 - The annual cycle STARTS at summer solstice of 2026 (夏至 2026年6月21日)
 - The annual cycle ENDS exactly at the solar return date in June 2027 (至2027年6月)
+- MERCURY RETROGRADE 2026 (FIXED - NEVER violate these exact dates):
+  • MR#1: 2026年2月9日-3月3日 (已过，忽略)
+  • MR#2: 2026年6月12日-7月7日 (部分重叠)
+  • MR#3: 2026年7月18日-8月11日 (7月18日才是真正的下半年水逆!)
+  • MR#4: 2026年10月7日-10月28日
+- CRITICAL: July 2026 Mercury Rx STARTS July 18, NOT July 1-17. If you mention Mercury Rx in July, it MUST be dated July 18 or later.
+- NEVER write "Mercurio retrógrado en julio" with dates before July 18.
 - NEVER write dates like "2026年6月2026年6月" or duplicate/mangled dates
 - NEVER repeat years inside month descriptions (e.g. "2026年6月-7月" is correct, NOT "2026年6月2026年6月-7月")
 - Month entries format: "2026年6月-7月", "2026年7月-8月" etc - CLEAN, NO DUPLICATION
