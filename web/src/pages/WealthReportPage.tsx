@@ -1006,6 +1006,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
+    // 🧪 强制解锁：free_access=1 时跳过 API，直接显示数据
+    if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      setLoading(false);
+      loadingRef.current = false;
+      return;
+    }
     if (loadingRef.current) {
       return;
     }
