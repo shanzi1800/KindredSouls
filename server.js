@@ -91,7 +91,7 @@ async function callAI(systemPrompt, userPrompt, env) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 8000,
+          max_tokens: 16000,
           temperature: 0.7,
         }),
       });
