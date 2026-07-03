@@ -111,12 +111,18 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
 
   if (!data || !data.weeks) {
     // Fallback to plain text rendering
+    const _fallbackStyle: React.CSSProperties = { marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' };
+    const _sanitized = content
+      .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
+      .replace(/<h2[^>]*>.*?<\/h2>/gi, '')
+      .replace(/<p><br\s*\/?><\/p>/gi, '')
+      .replace(/<p>\s*<\/p>/gi, '')
+      .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
+      .replace(/^\s+|\s+$/g, '')
+      .replace(/(<\/p>)\s+(<p>)/g, '$1$2');
     return (
-      {/* 🛡️ 6国语言防弹装甲 */}
-      <div
-        style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}
-        dangerouslySetInnerHTML={{ __html: content.replace(/<h1[^>]*>.*?<\/h1>/gi, '').replace(/<h2[^>]*>.*?<\/h2>/gi, '').replace(/<p><br\s*\/?><\/p>/gi, '').replace(/<p>\s*<\/p>/gi, '').replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>').replace(/^\s+|\s+$/g, '').replace(/(<\/p>)\s+(<p>)/g, '$1$2') }}
-      />
+      <div style={_fallbackStyle} dangerouslySetInnerHTML={{ __html: _sanitized }}>
+      </div>
     );
   }
 
