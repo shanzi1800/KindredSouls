@@ -113,7 +113,8 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
     // Fallback to plain text rendering
     return (
       {/* 🛡️ 6国语言防弹装甲 */}
-      <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}
+      <div
+        style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}
         dangerouslySetInnerHTML={{ __html: content
           .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
           .replace(/<h2[^>]*>.*?<\/h2>/gi, '')
