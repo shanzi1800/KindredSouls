@@ -1902,9 +1902,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         {/* 🔮 骨架框架流：先框架后内容 */}
         {(reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{'))) && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {wealthReportText && wealthReportText.trim().startsWith('{') ? (
-              <MonthlyReportCard lang={currentLang} content={wealthReportText} />
-            ) : (
+            {/* 流式输出中：骨架框 + 文字实时填充 */}
+            {reportLoading === 'wealth_monthly' && (!wealthReportText || !wealthReportText.trim().startsWith('{')) ? (
               /* 🎨 骨架卡片：暗金流光边框 + 呼吸灯 */
               <div style={{ marginTop: '16px' }}>
                 {/* 骨架 Headline */}
@@ -1950,7 +1949,29 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     </div>
                   );
                 })}
+                
+                {/* 🌊 流式文字实时填充在骨架框内 */}
+                {wealthReportText && (
+                  <div style={{
+                    marginTop: '20px',
+                    padding: '16px',
+                    background: 'rgba(0,0,0,0.3)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(212,175,55,0.2)',
+                    fontSize: '13px',
+                    color: 'rgba(255,255,255,0.9)',
+                    lineHeight: 1.8,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {wealthReportText}
+                  </div>
+                )}
               </div>
+            ) : (
+              {/* JSON 完整后：渲染最终卡片 */}
+              <MonthlyReportCard lang={currentLang} content={wealthReportText} />
             )}
             
             {/* 🌟 魔法光标 */}
