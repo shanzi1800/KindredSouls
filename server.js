@@ -1206,11 +1206,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       for (const char of fullText) {
         res.write(`data: ${JSON.stringify({ text: char })}
 
-`);
-      }
-      res.write('data: [DONE]
+      res.write('data: [DONE]\\n\\n');
 
 ');
+
+`);
+      }
       return res.end();
     }
     
