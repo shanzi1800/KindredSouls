@@ -777,6 +777,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
+  const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
