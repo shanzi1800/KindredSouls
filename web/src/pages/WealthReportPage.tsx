@@ -2018,4 +2018,3 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 };
 
 export default WealthReportPage;
-# Cache bust: 2026-07-03T10:14:34Z
