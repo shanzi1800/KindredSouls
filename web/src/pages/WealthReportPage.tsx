@@ -1951,7 +1951,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 })}
                 
                 {/* 🌊 流式文字实时填充在骨架框内 */}
-                {wealthReportText && (
+                {(() => {
+                  if (wealthReportText) {
+                    console.log('[WealthReport] 渲染流式文字, 长度:', wealthReportText.length, '内容预览:', wealthReportText.substring(0, 50));
+                  }
+                  return wealthReportText;
+                })() && (
                   <div style={{
                     marginTop: '20px',
                     padding: '16px',
