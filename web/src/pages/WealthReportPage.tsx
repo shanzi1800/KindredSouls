@@ -1048,6 +1048,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setIsUnlocked(true);
       setShowPaywall(false);
       // 绿色通道：从 Supabase 读预存数据
+      let hasCacheData = false;
       try {
         const res = await fetch('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/wealth_insights_cache?birth_date=eq.' + birth + '&lang=eq.' + lang + '&limit=1', {
           headers: {
@@ -1068,6 +1069,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               insight: '',
               referrer: ''
             });
+            hasCacheData = true;  // ✅ 标记有缓存数据
           }
           // 月报数据缓存到 localStorage，用户点击按钮时读取
           if (cached.weeks && cached.expense_trap) {
@@ -1079,9 +1081,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] ❌ Supabase 查询失败:', err);
       }
-      setLoading(false);
-      loadingRef.current = false;
-      return;  // 绿色通道直接返回，不走下面的 API 调用
+      
+      // ✅ 只有有缓存数据时才直接返回，否则继续走 API
+      if (hasCacheData) {
+        setLoading(false);
+        loadingRef.current = false;
+        return;
+      }
+      // 无缓存数据，继续执行下面的 API 调用
     }
 
     try {
