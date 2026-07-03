@@ -68,7 +68,7 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '88d840b' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '88d840b', debugBuildTime: 'FRESHBUILD-20260703-1147Z' });
 });
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
