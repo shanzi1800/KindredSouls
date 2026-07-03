@@ -1344,10 +1344,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const cacheKey = 'ks_wealth_monthly_cache_' + birthDate + '_' + lang;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存');
-        const data = JSON.parse(cached);
-        setWealthReport(JSON.stringify(data));
-        return;
+        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存（但强制走流式输出以验证效果）');
+        // ⚠️ 暂时注释掉直接返回，让流式输出也能测试
+        // const data = JSON.parse(cached);
+        // setWealthReport(JSON.stringify(data));
+        // return;
       }
     }
     
