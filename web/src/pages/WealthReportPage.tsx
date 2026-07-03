@@ -1991,12 +1991,23 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                         overflowWrap: 'break-word',
                         whiteSpace: 'pre-wrap'
                       }}>
-                        {weekText || (
-                          <div>
-                            <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '8px' }}/>
-                            <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}/>
-                          </div>
-                        )}
+                        {(() => {
+                          // 优先显示解析后的weekText
+                          if (weekText) return weekText;
+                          
+                          // 如果JSON还没完整，显示原始流式文本（只在第0个卡片显示）
+                          if (i === 0 && wealthReportText && !wealthReportText.trim().startsWith('{')) {
+                            return wealthReportText;
+                          }
+                          
+                          // 否则显示骨架占位符
+                          return (
+                            <div>
+                              <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '8px' }}/>
+                              <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}/>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
