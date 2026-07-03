@@ -1972,113 +1972,126 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   </div>
                 </div>
 
-                {/* 骨架 Week Cards - 逐个出现 + 逐个填充 */}
-                {[0,1,2,3].map(i => {
-                  // 只显示前 visibleWeeks 个卡片
-                  if (i >= visibleWeeks) return null;
-                  
-                  // 判断这个卡片的数据是否已完整
-                  let showCard = false;
-                  let weekText = '';
-                  let weekDate = '';
-                  let keyDay = '';
-                  try {
-                    const parsed = JSON.parse(wealthReportText || '{}');
-                    if (parsed.weeks && parsed.weeks[i] && parsed.weeks[i].text) {
-                      showCard = true;
-                      weekText = parsed.weeks[i].text || '';
-                      weekDate = parsed.weeks[i].dateRange || '';
-                      keyDay = parsed.weeks[i].keyDay || '';
-                    }
-                  } catch {}
-                  
-                  // 如果前一个卡片的数据已完整，显示当前卡片
-                  if (i > 0 && !showCard) {
-                    try {
-                      const parsed = JSON.parse(wealthReportText || '{}');
-                      if (parsed.weeks && parsed.weeks[i-1] && parsed.weeks[i-1].text) {
-                        // 前一个卡片有数据 → 显示当前卡片的骨架框（等待数据）
-                        showCard = true;
-                      }
-                    } catch {}
-                  }
-                  
-                  // 第0个卡片始终显示（流式输出起点）
-                  if (i === 0) showCard = true;
-                  
-                  if (!showCard) return null;
-                  
-                  const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
-                  const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
-                  const border = colors[i];
-                  const badge = types[i];
-                  
-                  // （weekText/weekDate/keyDay 已在上面声明并赋值）
-                  
-                  return (
-                    <div key={i} style={{
-                      background: `linear-gradient(135deg, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.08) 0%, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.02) 100%)`,
-                      border: `2px solid ${border}`,
-                      borderRadius: '14px',
-                      padding: '16px',
-                      marginBottom: '16px',
-                      boxShadow: `0 2px 12px ${border}15`
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: `1px dashed ${border}40` }}>
-                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: border, padding: '4px 10px', borderRadius: '6px' }}>
-                          {badge}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{weekDate}</span>
-                      </div>
-                      
-                      {/* Key Day */}
-                      {keyDay && (
-                        <div style={{
-                          background: 'rgba(0,0,0,0.25)',
-                          borderRadius: '10px',
-                          padding: '12px',
-                          marginBottom: '12px',
-                          border: '1px solid rgba(212,175,55,0.2)'
-                        }}>
-                          <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
-                            {currentLang === 'zh' ? '💫 核心天机' : '💫 Key Day'}
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>{keyDay}</div>
-                        </div>
-                      )}
-                      
-                      {/* 实时填充的文本区域 */}
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: 'rgba(255,255,255,0.9)', 
-                        lineHeight: 1.9, 
-                        minHeight: '60px',
-                        wordBreak: 'break-word',
-                        overflowWrap: 'break-word',
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {(() => {
-                          // 优先显示解析后的weekText
-                          if (weekText) return weekText;
-                          
-                          // 如果JSON还没完整，显示原始流式文本（只在第0个卡片显示）
-                          if (i === 0 && wealthReportText && !wealthReportText.trim().startsWith('{')) {
-                            return wealthReportText;
-                          }
-                          
-                          // 否则显示骨架占位符
-                          return (
-                            <div>
-                              <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '8px' }}/>
-                              <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}/>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  );
-                })}
+                {/* 骨架 Week Cards - 军师方案：纯文本流式显示 */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.2)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginTop: '16px',
+                  border: '1px solid rgba(212,175,55,0.2)'
+                }}>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {wealthReportText || ''}
+                  </div>
+                </div>
                 
+                  //                 {/* 原骨架 Week Cards - 暂时隐藏
+                  //                 {[0,1,2,3].map(i => {
+                  // 只显示前 visibleWeeks 个卡片
+                  //                   if (i >= visibleWeeks) return null;
+                  //                   
+                  // 判断这个卡片的数据是否已完整
+                  //                   let showCard = false;
+                  //                   let weekText = '';
+                  //                   let weekDate = '';
+                  //                   let keyDay = '';
+                  //                   try {
+                  //                     const parsed = JSON.parse(wealthReportText || '{}');
+                  //                     if (parsed.weeks && parsed.weeks[i] && parsed.weeks[i].text) {
+                  //                       showCard = true;
+                  //                       weekText = parsed.weeks[i].text || '';
+                  //                       weekDate = parsed.weeks[i].dateRange || '';
+                  //                       keyDay = parsed.weeks[i].keyDay || '';
+                  //                     }
+                  //                   } catch {}
+                  //                   
+                  // 如果前一个卡片的数据已完整，显示当前卡片
+                  //                   if (i > 0 && !showCard) {
+                  //                     try {
+                  //                       const parsed = JSON.parse(wealthReportText || '{}');
+                  //                       if (parsed.weeks && parsed.weeks[i-1] && parsed.weeks[i-1].text) {
+                        // 前一个卡片有数据 → 显示当前卡片的骨架框（等待数据）
+                  //                         showCard = true;
+                  //                       }
+                  //                     } catch {}
+                  //                   }
+                  //                   
+                  // 第0个卡片始终显示（流式输出起点）
+                  //                   if (i === 0) showCard = true;
+                  //                   
+                  //                   if (!showCard) return null;
+                  //                   
+                  //                   const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
+                  //                   const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
+                  //                   const border = colors[i];
+                  //                   const badge = types[i];
+                  //                   
+                  // （weekText/weekDate/keyDay 已在上面声明并赋值）
+                  //                   
+                  //                   return (
+                  //                     <div key={i} style={{
+                  //                       background: `linear-gradient(135deg, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.08) 0%, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.02) 100%)`,
+                  //                       border: `2px solid ${border}`,
+                  //                       borderRadius: '14px',
+                  //                       padding: '16px',
+                  //                       marginBottom: '16px',
+                  //                       boxShadow: `0 2px 12px ${border}15`
+                  //                     }}>
+                  //                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: `1px dashed ${border}40` }}>
+                  //                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: border, padding: '4px 10px', borderRadius: '6px' }}>
+                  //                           {badge}
+                  //                         </span>
+                  //                         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{weekDate}</span>
+                  //                       </div>
+                  //                       
+                  //                       {/* Key Day */}
+                  //                       {keyDay && (
+                  //                         <div style={{
+                  //                           background: 'rgba(0,0,0,0.25)',
+                  //                           borderRadius: '10px',
+                  //                           padding: '12px',
+                  //                           marginBottom: '12px',
+                  //                           border: '1px solid rgba(212,175,55,0.2)'
+                  //                         }}>
+                  //                           <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
+                  //                             {currentLang === 'zh' ? '💫 核心天机' : '💫 Key Day'}
+                  //                           </div>
+                  //                           <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>{keyDay}</div>
+                  //                         </div>
+                  //                       )}
+                  //                       
+                  //                       {/* 实时填充的文本区域 */}
+                  //                       <div style={{ 
+                  //                         fontSize: '12px', 
+                  //                         color: 'rgba(255,255,255,0.9)', 
+                  //                         lineHeight: 1.9, 
+                  //                         minHeight: '60px',
+                  //                         wordBreak: 'break-word',
+                  //                         overflowWrap: 'break-word',
+                  //                         whiteSpace: 'pre-wrap'
+                  //                       }}>
+                  //                         {(() => {
+                          // 优先显示解析后的weekText
+                  //                           if (weekText) return weekText;
+                  //                           
+                          // 如果JSON还没完整，显示原始流式文本（只在第0个卡片显示）
+                  //                           if (i === 0 && wealthReportText && !wealthReportText.trim().startsWith('{')) {
+                  //                             return wealthReportText;
+                  //                           }
+                  //                           
+                          // 否则显示骨架占位符
+                  //                           return (
+                  //                             <div>
+                  //                               <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '8px' }}/>
+                  //                               <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}/>
+                  //                             </div>
+                  //                           );
+                  //                         })()}
+                  //                       </div>
+                  //                     </div>
+                  //                   );
+                  //                 })}
+                  //                 
                 {/* Expense Trap - 实时解析 */}
                 {(() => {
                   try {
