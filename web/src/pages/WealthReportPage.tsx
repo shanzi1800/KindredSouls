@@ -1348,6 +1348,53 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
+    
+    // 🌊 流式输出开关（开发中，暂用旧接口）
+    const USE_STREAM = false;
+    
+    if (USE_STREAM) {
+      // 🚀 流式接收
+      try {
+        const res = await fetch('/api/wealth-oracle/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ birthDate, lang, reportType: type }),
+        });
+        
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const { value, done } = await reader!.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr === '[DONE]') {
+                break;
+              }
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.text) {
+                  setWealthReport((prev) => prev + parsed.text);
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[WealthReport] Stream error:', err);
+      } finally {
+        setReportLoading('');
+      }
+      return;
+    }
+    
+    // 📡 旧接口（非流式）
     try {
       const res = await fetch('/api/wealth-oracle', {
         method: 'POST',

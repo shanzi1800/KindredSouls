@@ -1173,6 +1173,109 @@ if (existsSync(distPath)) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🌊 流式输出端点：SSE (Server-Sent Events)
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/wealth-oracle/stream', async (req, res) => {
+  const { birthDate, lang = 'zh', reportType = 'monthly' } = req.body;
+  
+  // SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓冲
+  
+  try {
+    // 复用现有 prompt 构建逻辑
+    const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
+      dayMaster: '甲',
+      wuxing: { '金':1, '木':2, '水':1, '火':1, '土':1 },
+      sunSign: '双子座',
+      hexName: '震',
+      cardName: '隐士',
+    });
+    
+    if (!prompt) {
+      res.write(`data: ${JSON.stringify({ error: 'Invalid reportType' })}\n\n`);
+      return res.end();
+    }
+    
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const maxTokens = reportType === 'yearly' ? 16000 : 3500;
+    
+    if (!deepseekKey) {
+      res.write(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}\n\n`);
+      return res.end();
+    }
+    
+    // 🔥 DeepSeek 流式调用
+    const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+        stream: true, // 💥 激活流式
+      }),
+    });
+    
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      res.write(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`);
+      return res.end();
+    }
+    
+    // 🚀 流式读取并推送
+    const reader = aiRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // 保留未完成的行
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6).trim();
+          if (dataStr === '[DONE]') {
+            res.write('data: [DONE]\n\n');
+          } else {
+            try {
+              const parsed = JSON.parse(dataStr);
+              const content = parsed.choices?.[0]?.delta?.content || '';
+              if (content) {
+                res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+              }
+            } catch (e) {
+              // 忽略解析错误
+            }
+          }
+        }
+      }
+    }
+    
+    res.write('data: [DONE]\n\n');
+    res.end();
+    
+  } catch (err) {
+    console.error('[Stream Error]', err.message);
+    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+    res.end();
+  }
+});
+
 // ── Start ──
 app.listen(PORT, () => {
   console.log(`[KindredSouls] 🚄 Railway server running on port ${PORT}`);
