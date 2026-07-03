@@ -1899,19 +1899,61 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 天书展开容器：自动滚动 + 魔法光标 */}
-        {wealthReportText && (
+        {/* 🔮 骨架框架流：先框架后内容 */}
+        {(reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{'))) && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {(() => {
-              const trimmed = wealthReportText.trim();
-              if (trimmed.startsWith('{')) {
-                return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
-              } else {
-                return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
-              }
-            })()}
+            {wealthReportText && wealthReportText.trim().startsWith('{') ? (
+              <MonthlyReportCard lang={currentLang} content={wealthReportText} />
+            ) : (
+              /* 🎨 骨架卡片：暗金流光边框 + 呼吸灯 */
+              <div style={{ marginTop: '16px' }}>
+                {/* 骨架 Headline */}
+                <div style={{ 
+                  background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(139,69,19,0.08) 100%)',
+                  border: '2px solid rgba(212,175,55,0.3)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 20px rgba(212,175,55,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
+                    {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
+                  </div>
+                  <div style={{ height: '24px', background: 'rgba(212,175,55,0.2)', borderRadius: '8px', animation: 'pulse 2s ease-in-out infinite' }}/>
+                </div>
+
+                {/* 骨架 Week Cards */}
+                {[1,2,3,4].map(i => {
+                  const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
+                  const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
+                  const border = colors[i-1];
+                  const badge = types[i-1];
+                  return (
+                    <div key={i} style={{
+                      background: `linear-gradient(135deg, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.08) 0%, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.02) 100%)`,
+                      border: `2px solid ${border}`,
+                      borderRadius: '14px',
+                      padding: '16px',
+                      marginBottom: '16px',
+                      boxShadow: `0 2px 12px ${border}15`,
+                      animation: 'pulse 2.5s ease-in-out infinite'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: `1px dashed ${border}40` }}>
+                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: border, padding: '4px 10px', borderRadius: '6px' }}>
+                          {badge}
+                        </span>
+                        <div style={{ height: '14px', width: '80px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}/>
+                      </div>
+                      <div style={{ height: '60px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', marginBottom: '8px' }}/>
+                      <div style={{ height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}/>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             
-            {/* 🌟 魔法光标：未完待续的神秘光晕 */}
+            {/* 🌟 魔法光标 */}
             {reportLoading && (
               <span style={{
                 display: 'inline-block',
@@ -1922,8 +1964,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 animation: 'pulse 1.5s ease-in-out infinite',
                 boxShadow: '0 0 8px rgba(212,175,55,0.6)',
                 verticalAlign: 'middle',
-              }}/>
-            )}
+              }}/>)}
           </div>
         )}
 
