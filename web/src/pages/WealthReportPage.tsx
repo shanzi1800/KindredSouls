@@ -1380,7 +1380,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  setWealthReport((prev) => prev + parsed.text);
+                  setWealthReportText((prev) => prev + parsed.text);
+                  wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                 }
               } catch {}
             }
