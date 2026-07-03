@@ -1922,7 +1922,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 animation: 'pulse 1.5s ease-in-out infinite',
                 boxShadow: '0 0 8px rgba(212,175,55,0.6)',
                 verticalAlign: 'middle',
-              }}/>)}
+              }}/>
+            )}
           </div>
         )}}
 
