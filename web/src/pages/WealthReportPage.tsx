@@ -780,6 +780,25 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
+  
+  // 🛠️ 军师的流式硬切黑魔法：实时提取 weeks 数据（无需等待 JSON 闭合）
+  const extractStreamingWeeks = (rawText: string): string[] => {
+    const weeks: string[] = ['', '', '', ''];
+    
+    // 正则提取 weeks 数组中的每个 week 的 text
+    const weeksSection = rawText.match(/"weeks"\s*:\s*\[([\s\S]*)/);
+    if (weeksSection) {
+      // 提取每个 week 对象中的 text 字段
+      const textMatches = [...weeksSection[1].matchAll(/"text"\s*:\s*"([^"]*)/g)];
+      textMatches.forEach((match, idx) => {
+        if (idx < 4 && match[1]) {
+          weeks[idx] = match[1];
+        }
+      });
+    }
+    
+    return weeks;
+  };
 
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
@@ -1929,7 +1948,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 骨架框架流：先框架后内容 */}
+        {/* 🔮 骨架框架流：4个卡片实时提取流式数据 */}
         {(() => {
           // 判断月报是否完整（有 expense_trap 字段）
           let isReportComplete = false;
@@ -1941,10 +1960,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return (reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
         })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 流式输出中：骨架框保持 + 文字实时填充 */}
-            {/* 流式报告渲染：纯文本模式 */}
+            {/* 🎨 军师方案：4个骨架卡片 + 流式硬切提取 */}
             {reportLoading ? (
-              /* 🎨 骨架卡片：纯文本流式显示 */
               <div style={{ marginTop: '16px' }}>
                 {/* 骨架 Headline - 实时填充 */}
                 <div style={{ 
@@ -1969,18 +1986,62 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   </div>
                 </div>
 
-                {/* 骨架 Week Cards - 军师方案：纯文本流式显示 */}
-                <div style={{
-                  background: 'rgba(0,0,0,0.2)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginTop: '16px',
-                  border: '1px solid rgba(212,175,55,0.2)'
-                }}>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {wealthReportText || ''}
-                  </div>
-                </div>
+                {/* ⚡ 军师方案：4个暗金卡片实时提取流式数据 */}
+                {(() => {
+                  const weeks = extractStreamingWeeks(wealthReportText || '');
+                  const weekLabels = [
+                    { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Wealth Peak' },
+                    { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: High Risk' },
+                    { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow' },
+                    { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak' },
+                  ];
+                  
+                  return weeks.map((weekText, idx) => (
+                    <div key={idx} style={{
+                      background: `linear-gradient(135deg, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.12) 0%, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.04) 100%)`,
+                      border: `2px solid ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}`,
+                      borderRadius: '14px',
+                      padding: '16px',
+                      marginBottom: '16px',
+                      boxShadow: `0 2px 12px ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}20`
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '12px',
+                        paddingBottom: '10px',
+                        borderBottom: `1px dashed ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}40`
+                      }}>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 800, 
+                          color: '#fff',
+                          background: idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6',
+                          padding: '4px 10px',
+                          borderRadius: '6px'
+                        }}>
+                          {weekLabels[idx][currentLang] || weekLabels[idx].en}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px' }}>
+                        {weekText || <span style={{ color: 'rgba(255,255,255,0.3)' }}>等待数据流...</span>}
+                        {/* 🌟 魔法光标：只在当前正在填充的卡片显示 */}
+                        {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && (
+                          <span style={{
+                            display: 'inline-block',
+                            width: '2px',
+                            height: '1.2em',
+                            background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                            marginLeft: '2px',
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                            boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                            verticalAlign: 'middle',
+                          }}/>)}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             ) : (
               wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
