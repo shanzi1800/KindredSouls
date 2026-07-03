@@ -60,7 +60,7 @@ app.get('/api/debug-env', (req, res) => {
     SUPABASE_URL: process.env.SUPABASE_URL ? '✓ set' : '✗ missing',
     SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? '✓ set' : '✗ missing',
     STRIPE: process.env.STRIPE_SECRET_KEY ? '✓ set' : '✗ missing',
-    serverVersion: 't4-debug-2026-06-29c', gitSha: '88d840b',
+    serverVersion: 't4-debug-2026-06-29c', gitSha: 'bf2d580',
     tarotHasName: typeof TAROT_CARDS !== 'undefined' && TAROT_CARDS[0] && !!TAROT_CARDS[0].name,
     fileSize: readFileSync(__filename).length,
   });
@@ -68,7 +68,7 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '88d840b', debugBuildTime: 'FRESHBUILD-20260703-1147Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'bf2d580', debugBuildTime: 'FRESHBUILD-20260703-1147Z' });
 });
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
