@@ -1350,7 +1350,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setWealthReport('');
     
     // 🌊 流式输出开关（开发中，暂用旧接口）
-    const USE_STREAM = false;
+    const USE_STREAM = true; // 🔥 军师下令：全量开火！
     
     if (USE_STREAM) {
       // 🚀 流式接收
@@ -1375,6 +1375,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             if (line.startsWith('data: ')) {
               const dataStr = line.slice(6).trim();
               if (dataStr === '[DONE]') {
+                // 🎯 军师钩子：流式结束瞬间弹出复购/裂变引导
+                console.log('[WealthReport] 📜 天书刻印完成，触发商业钩子');
                 break;
               }
               try {
@@ -1382,6 +1384,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 if (parsed.text) {
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
+                  
+                  // 🔮 自动滚动锚定（圣旨效果）
+                  setTimeout(() => {
+                    const reportContainer = document.getElementById('wealth-report-container');
+                    if (reportContainer) {
+                      reportContainer.scrollTo({
+                        top: reportContainer.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }, 50);
                 }
               } catch {}
             }
@@ -1886,15 +1899,32 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 绿色通道：直接渲染财富报告 */}
-        {wealthReportText && (() => {
-          const trimmed = wealthReportText.trim();
-          if (trimmed.startsWith('{')) {
-            return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
-          } else {
-            return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
-          }
-        })()}
+        {/* 🔮 天书展开容器：自动滚动 + 魔法光标 */}
+        {wealthReportText && (
+          <div id="wealth-report-container" style={{ position: 'relative' }}>
+            {(() => {
+              const trimmed = wealthReportText.trim();
+              if (trimmed.startsWith('{')) {
+                return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
+              } else {
+                return <YearlyReportCard content={wealthReportText} birthDate={birthDate} />;
+              }
+            })()}
+            
+            {/* 🌟 魔法光标：未完待续的神秘光晕 */}
+            {reportLoading && (
+              <span style={{
+                display: 'inline-block',
+                width: '2px',
+                height: '1.2em',
+                background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                marginLeft: '2px',
+                animation: 'pulse 1.5s ease-in-out infinite',
+                boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                verticalAlign: 'middle',
+              }}/>)}
+          </div>
+        )}}
 
         {isUnlocked && !reportData?.insight && (
           <button
