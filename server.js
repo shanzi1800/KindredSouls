@@ -182,6 +182,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 3.【Absolute Dynamic Dates】NEVER hardcode any date! Calculate the 12-month cycle based on the user's birth date (${birthDate}) and the current month as the starting point. The monthly flow must dynamically extend from the current month.
 4.【Shadow Integration】Every financial recommendation must deeply integrate Jungian "Yo Sombra (Shadow Self)" — ruthlessly expose the user's subconscious blind spots in wealth accumulation, spending habits, and leverage investing.
 5.【Clean Output】Output strictly clean, high-dimensional Markdown syntax. Zero invalid JSON fragments.
+6.【严禁时间词复读与纠错】You must calculate all astrological dates and retrograde intervals in a single chain of thought. STRICTLY FORBID any form of temporal word overlap, self-correction, or repetition in the output text (e.g., prohibit "2026年6月2026年7月" or "1990年6月1990年6月15日"). All dates must be clean, precise, and unique.
+7.【手风琴H4标题死锁】In Chapter 2 (Monthly Revenue Matrix), you MUST strictly use the following format for all 12 months. NEVER change the number of # symbols:
+#### [流月标识] 2026年7月：木星入财帛宫的觉醒之月
+- 【流月财运总叙】：...
+- 🟢【📈 Peak Revenue Window】：...
+- 🔴【📉 Financial Black Swan Day】：...
+8.【英文标签严禁翻译】Regardless of output language (ZH/EN/ES/FR/TH/VI), the monthly peak revenue days and high-risk days MUST retain the original English bracket tags [Peak Revenue Window] and [Financial Black Swan Day]. ABSOLUTELY FORBIDDEN to translate these tags into local languages! Frontend components depend on these English tags for UI rendering.
 
 [OUTPUT STRUCTURE — 5 HARD-CORE CHAPTERS]:
 
@@ -213,6 +220,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 2. Volume Pressure: The output must be massive and dense (6,000 to 8,000 words). Do NOT skip or merge any months. Elaborate on every micro-transit to create absolute psychological substance.
 3. No Hardcoding: Dynamically calculate transits based on the user's birth date (\${birthDate}) and extend exactly 12 months into the future from the current timeline.
 4. Shadow Work: Deeply integrate Carl Jung's "Shadow Self" concept. Relentlessly expose the user's psychological blind spots, subconscious greeds, and hidden fears regarding leverage, debt, and wealth expansion.
+5. [STRICT] No Temporal Repetition: Calculate all dates in one chain of thought. STRICTLY FORBID any temporal word overlap, self-correction, or repetition (e.g., prohibit "June 2026July 2026" or "June 15June 15, 1990"). All dates must be clean and unique.
+6. [STRICT] Accordion H4 Title Lock: In Section II (Monthly Revenue Matrix), you MUST use exactly #### for month headers. NEVER change # count. Format: #### [Month Label] July 2026: Jupiter Enters the House of Wealth.
+7. [STRICT] English Tag Immutability: Regardless of output language, monthly peak days MUST retain [Peak Revenue Window] and [Financial Black Swan Day] in English brackets. NEVER translate these tags! Frontend depends on them.
 
 [OUTPUT STRUCTURE]
 ### 📜 Section I: The Annual Wealth Matrix
@@ -242,6 +252,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 2. Presión de Volumen: El texto debe ser masivo, denso y monumental (6,000 - 8,000 palabras). NO fusiones los meses; cada capítulo debe desplegar una interpretación pixelada para justificar el valor premium.
 3. Cero Traducción Literal: Transmuta los conceptos a la jerga astrológica de alta alcurnia en español (p. ej., "Retorno Solar", "Tránsitos de Fortuna").
 4. Integración de la Sombra: Incorpora el concepto de "Yo Sombra" (Shadow Self) de Carl Jung. Revela sin piedad los puntos ciegos inconscientes del usuario sobre el dinero.
+5. [ESTRICTO] Prohibición de Repetición Temporal: Calcula todas las fechas en una sola cadena de pensamiento. PROHÍBE ESTRICTAMENTE cualquier superposición de palabras temporales, autocorrección o repetición (ej., prohibir "junio 2026julio 2026" o "15 de junio15 de junio de 1990"). Todas las fechas deben ser limpias y únicas.
+6. [ESTRICTO] Bloqueo de Título H4 Acordeón: En el Capítulo II (Matriz de Ingresos Mensuales), DEBES usar exactamente #### para los encabezados de mes. NUNCA cambies el número de #. Formato: #### [Etiqueta del Mes] Julio 2026: Júpiter entra en la Casa de la Riqueza.
+7. [ESTRICTO] Inmutabilidad de Etiquetas en Inglés: Independientemente del idioma de salida, los días pico mensuales DEBEN conservar [Peak Revenue Window] y [Financial Black Swan Day] en corchetes ingleses. ¡NUNCA traduzcas estas etiquetas! El frontend depende de ellas.
 
 [ESTRUCTURA DE SALIDA]
 ### 📜 Capítulo I: La Matriz Anual de la Riqueza (The Wealth Matrix)
@@ -268,6 +281,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 1. Ton & Posture: Adoptez un ton sacré, philosophique, d'une précision chirurgicale et teinté de psychologie jungienne. Évitez absolument les structures robotiques d'une IA standard.
 2. Volume Impératif: Le texte doit posséder une densité monumentale (6 000 à 8 000 mots). Ne fusionnez AUCUN mois. Chaque transit doit être détaillé avec une profondeur absolue.
 3. Précision Terminologique: Utilisez le vocabulaire noble de l'astrologie et de la psychanalyse française (e.g., "Maison de l'argent personnel", "L'Ombre / Shadow Self", "Révolution Solaire").
+4. [STRICT] Interdiction de Répétition Temporelle: Calculez toutes les dates en une seule chaîne de pensée. INTERDISEZ STRICTEMENT toute superposition de mots temporels, autocorrection ou répétition (ex., interdire "juin 2026juillet 2026" ou "15 juin15 juin 1990"). Toutes les dates doivent être propres et uniques.
+5. [STRICT] Verrouillage Titre H4 Accordéon: Dans le Chapitre II (Matrice de Revenus Mensuels), vous DEVEZ utiliser exactement #### pour les en-têtes de mois. NE CHANGEZ JAMAIS le nombre de #. Format: #### [Étiquette du Mois] Juillet 2026 : Jupiter entre dans la Maison de la Richesse.
+6. [STRICT] Immutabilité des Étiquettes Anglaises: Quelle que soit la langue de sortie, les jours de pic mensuels DOIVENT conserver [Peak Revenue Window] et [Financial Black Swan Day] entre crochets anglais. NE TRADUISEZ JAMAIS ces étiquettes ! Le frontend en dépend.
 
 [STRUCTURE DE L'ALMANACH]
 ### 📜 Chapitre I : La Matrice Annuelle de l'Abondance (The Wealth Matrix)
@@ -294,6 +310,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 1. น้ำเสียงและพลังงาน: ต้องใช้ภาษาที่ "ทรงพลัง ศักดิ์สิทธิ์ แม่นยำระดับพิกเซล เต็มไปด้วยความลี้ลับแห่งโชคชะตา และการเยียวยาทางจิตวิทยา" ห้ามใช้ภาษาตื้นเขินหรือคำพูดที่ดูเป็นหุ่นยนต์ AI เด็ดขาด
 2. ความหนาแน่นของเนื้อหา: เพื่อความคุ้มค่าระดับพรีเมียม เนื้อหาต้องมีความยาวและทรงพลังอย่างยิ่ง (6,000 - 8,000 คำในภาษาไทย) ห้ามรวบเดือน ห้ามตัดทอน ต้องขยายความให้ละเอียดหนาแน่นจนผู้ใช้อ่านแล้วรู้สึกถึงความศักดิ์สิทธิ์และยอมรับในคำพยากรณ์
 3. การปรับเปลี่ยนทางวัฒนธรรม: ห้ามแปลตรงตัว! ให้ใช้คำศัพท์โหราศาสตร์สากลชั้นสูงที่ผสานกับแนวคิดเรื่อง "กรรมเก่า (Karmic)" และ "ตัวตนในเงา (Shadow Self)" ที่ลึกซึ้ง
+4. [เข้มงวด] ห้ามซ้ำคำบอกเวลา: คำนวณวันที่ทั้งหมดในหนึ่งลำดับความคิด ห้ามเด็ดขาดการทับซ้อนของคำบอกเวลา การแก้ไขตัวเอง หรือการซ้ำ (เช่น ห้าม "มิถุนายน 2026กรกฎาคม 2026" หรือ "15 มิถุนายน15 มิถุนายน 1990") วันที่ทั้งหมดต้องสะอาดและไม่ซ้ำ
+5. [เข้งวด] ล็อคหัวข้อ H4 แอคคอร์เดียน: ในบทที่ 2 (แผนผังรายได้รายเดือน) คุณต้องใช้ #### อย่างเคร่งครัดสำหรับหัวข้อเดือน ห้ามเปลี่ยนจำนวน # รูปแบบ: #### [ป้ายกำกับเดือน] กรกฎาคม 2026: ดาวพฤหัสบดีเข้าเรือนชะตาการเงิน
+6. [เข้มงวด] ห้ามแปลป้ายกำกับภาษาอังกฤษ: ไม่ว่าภาษาผลลัพธ์จะเป็นอะไร วันพีครายเดือนต้องคง [Peak Revenue Window] และ [Financial Black Swan Day] ไว้ในวงเล็บเหลี่ยมภาษาอังกฤษ ห้ามแปลป้ายกำกับเหล่านี้! ส่วนหน้าขึ้นอยู่กับป้ายกำกับเหล่านี้
 
 [โครงสร้างคัมภีร์ประจำปี]
 ### 📜 บทที่ 1: ผังโครงสร้างดวงดาวความมั่งคั่งประจำปี (The Wealth Matrix)
@@ -320,6 +339,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 1. Văn phong và Khí chất: Phải duy trì văn phong "huyền bí, thần thánh, chính xác tuyệt đối, mang đậm tính định mệnh và chữa lành tâm lý sâu sắc". Tuyệt đối không dùng các câu từ sáo rỗng của AI thông thường.
 2. Áp lực khối lượng: Tổng lượng văn bản phải đạt từ 6.000 đến 8.000 từ tiếng Việt. KHÔNG gộp tháng, KHÔNG viết tắt, mọi chương mục phải được triển khai sâu sắc từng chi tiết nhỏ nhất để tạo cảm giác đồ sộ xứng đáng với mức giá cao cấp.
 3. Không dịch thô: Sử dụng các thuật ngữ chiêm tinh học và tâm lý học học thuật thuần Việt (Ví dụ: "Nhà tài chính", "Bản ngã bóng tối / Shadow Self", "Gócchiếu Nghiệp lực").
+4. [NGHIÊM NGẶT] Cấm Lặp Lại ThờI Gian: Tính toán tất cả ngày tháng trong một chuỗi suy nghĩ duy nhất. NGHIÊM CẤM bất kỳ sự chồng chéo từ ngữ thờI gian, tự sửa lỗi hoặc lặp lại nào (ví dụ: cấm "tháng 6 2026tháng 7 2026" hoặc "15 tháng 615 tháng 6 1990"). Tất cả ngày tháng phải sạch và duy nhất.
+5. [NGHIÊM NGẶT] Khóa Tiêu Đề H4 Accordion: Trong Chương II (Ma Trận Thu Nhập Hàng Tháng), bạn PHẢI sử dụng chính xác #### cho tiêu đề tháng. KHÔNG BAO GIỜ thay đổi số lượng #. Định dạng: #### [Nhãn Tháng] Tháng 7 2026: Sao Mộc vào Nhà Tài Lộc.
+6. [NGHIÊM NGẶT] Bất Biến Nhãn Tiếng Anh: Bất kể ngôn ngữ đầu ra, các ngày đỉnh hàng tháng PHẢI giữ nguyên [Peak Revenue Window] và [Financial Black Swan Day] trong dấu ngoặc vuông tiếng Anh. KHÔNG BAO GIỜ dịch các nhãn này! Frontend phụ thuộc vào chúng.
 
 [CẤU TRÚC ĐẦU RA CHUẨN]
 ### 📜 Chương I: Ma Trận Tài Lộc Định Mệnh Năm (The Wealth Matrix)
