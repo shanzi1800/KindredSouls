@@ -1433,26 +1433,23 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 验证 JSON 完整性，决定显示模式
+        // 🔮 军师铁律：骨架框就是最终卡片，永不卸载
+        // 只在 JSON 完整时更新 visibleWeeks，保持 reportLoading 状态
         setTimeout(() => {
           try {
             const parsed = JSON.parse(wealthReportRef.current || '{}');
-            // ✅ JSON 完整：切换到卡片模式
             if (parsed.weeks && parsed.expense_trap) {
-              setReportLoading('');
-              // 逐个显示卡片（形成节奏感）
+              // ✅ JSON 完整：更新可见卡片数（形成节奏感）
               for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
                 setTimeout(() => setVisibleWeeks(i), i * 300);
               }
-            } else {
-              // ❌ JSON 不完整：保持纯文本模式（不清空 reportLoading，让骨架框架持续显示）
-              console.warn('[WealthReport] ⚠️ JSON 不完整，保持纯文本模式');
             }
+            // ⚠️ 绝对不清空 reportLoading！骨架框就是最终卡片！
           } catch {
-            // ❌ JSON 解析失败：保持纯文本模式
-            console.warn('[WealthReport] ⚠️ JSON 解析失败，保持纯文本模式');
+            // ❌ JSON 解析失败：保持纯文本模式，清空 loading 状态让用户能重新点击
+            setReportLoading('');
           }
-        }, 2000); // 2秒后验证
+        }, 1000); // 1秒后验证
       }
       return;
     }
