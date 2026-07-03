@@ -1064,13 +1064,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             localStorage.setItem('ks_wealth_monthly_cache_' + birth + '_' + lang, JSON.stringify(cached));
           }
         } else {
-          console.warn("[WealthReport] ⚠️ Supabase 无数据");
-          setError(currentLang === "zh" ? "无法加载财富报告" : "Failed to load wealth report");
+          console.warn("[WealthReport] ⚠️ Supabase 无数据 → fallback 到 API");
+          // 🛠️ 修复：绿色通道在无缓存数据时，fallback 到 API 调用而不是直接报错
         }
       } catch (err) {
         console.error('[WealthReport] ❌ Supabase 查询失败:', err);
+        // 🛠️ Supabase 查询异常也走 fallback
       }
-      return;
+      // 🛠️ 绿色通道不再硬 return，fallback 到下面的 API 调用
     }
 
     if (loadingRef.current) {
