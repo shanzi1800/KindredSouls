@@ -1902,8 +1902,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         {/* 🔮 骨架框架流：先框架后内容 */}
         {(reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{'))) && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 流式输出中：骨架框 + 文字实时填充 */}
-            {reportLoading === 'wealth_monthly' && (!wealthReportText || !wealthReportText.trim().startsWith('{')) ? (
+            {/* 流式输出中：骨架框保持 + 文字实时填充 */}
+            {reportLoading === 'wealth_monthly' ? (
               /* 🎨 骨架卡片：暗金流光边框 + 呼吸灯 */
               <div style={{ marginTop: '16px' }}>
                 {/* 骨架 Headline */}
@@ -1970,7 +1970,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 )}
               </div>
             ) : (
-              <MonthlyReportCard lang={currentLang} content={wealthReportText} />
+              wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
             )}
             
             {/* 🌟 魔法光标 */}
