@@ -1990,10 +1990,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 {(() => {
                   const weeks = extractStreamingWeeks(wealthReportText || '');
                   const weekLabels = [
-                    { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Wealth Peak' },
-                    { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: High Risk' },
-                    { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow' },
-                    { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak' },
+                    { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Wealth Peak', es: '🟢 Semana 1: Pico', fr: '🟢 Semaine 1: Pic', th: '🟢 สัปดาห์ 1: รุ่งเรือง', vi: '🟢 Tuần 1: Đỉnh Cao' },
+                    { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: High Risk', es: '🔴 Semana 2: Riesgo', fr: '🔴 Semaine 2: Risque', th: '🔴 สัปดาห์ 2: เสี่ยง', vi: '🔴 Tuần 2: Rủi Ro' },
+                    { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow', es: '🔵 Semana 3: Flujo', fr: '🔵 Semaine 3: Flux', th: '🔵 สัปดาห์ 3: ไหลลื่น', vi: '🔵 Tuần 3: Dòng Chảy' },
+                    { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak', es: '🟢 Semana 4: Pico', fr: '🟢 Semaine 4: Pic', th: '🟢 สัปดาห์ 4: รุ่งเรือง', vi: '🟢 Tuần 4: Đỉnh Cao' },
                   ];
                   
                   return weeks.map((weekText, idx) => (
