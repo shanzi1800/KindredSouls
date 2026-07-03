@@ -211,7 +211,52 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 深度解构用户Shadow Self，无情指出未来一年中最易无意识散财的地方，建立长线资产防火墙。
 
 ### 🔮 第五章：黄金爆发显化锦囊（The Oracle's Manifestation）
-给出宇宙级财富显化实操指南：办公桌/居家能量显化物件、年度利好谈判方位、一句死锁财富心智的能量神谕。`,
+给出宇宙级财富显化实操指南：办公桌/居家能量显化物件、年度利好谈判方位、一句死锁财富心智的能量神谕。
+
+[FORMAT_SPEC — 终极视觉排版规范 · 强制执行]
+你必须严格按照以下排版范式输出，符号/空格/换行/加粗必须与范例完全一致：
+
+1. 顶部身份卡片（引用块神秘感）：
+> ### ✦ 先知天书 · 财富天启 ✦
+>
+> * 👤 **天命宿主**：${birthDate}
+> * 🌌 **年度盘口**：双子座 · 太阳回归年（Solar Return）
+> * 🗝️ **核心命盘密码**：太阳双子 9° / 月亮天秤 / 上升巨蟹
+
+2. 宏观战略数据看板（金银铜铁）：
+### 📊 2026-2027 年度财富核心指标看板
+---
+* 🚀 **年度宏观定调**：【疯狂扩张，但带着契约精神】
+* 🌟 **财富爆发指数**：★★★★★（12年一遇狮子座木星强开财帛宫）
+* ⚠️ **资产熔断风险**：★★★☆☆（白羊座土星严审第十一宫社交契约）
+* 🔮 **天命显化方位**：正南方（ negotiation & power direction ）
+
+3. 12流月沙盘（H4死锁 + 英文标签）：
+#### 📅 2026年7月：木星入财帛宫的觉醒之月
+
+* 🌐 **【流月财运总叙】**：木星刚刚进入你的财帛宫（狮子座），宇宙财富时钟重新校准...
+
+* 🟢 **[Peak Revenue Window]**：**7月5日 - 7月10日**（太阳与木星在狮子座精确合相）。
+ * *执行密令*：向老板提出加薪或启动新项目...
+
+* 🔴 **[Financial Black Swan Day]**：**7月18日**（水星在财帛宫正式逆行）。
+ * *熔断警告*：严禁签署任何合同...
+
+4. 阴影整合（割裂线震撼）：
+### 🛡️ 第四章：消费黑洞与资产防御盾牌
+
+#### 👁️ 潜意识阴影：表演性消费（未整合的虚荣自我）
+> "你内心深处藏着一个不被看见的小孩..."
+---
+* 💡 **深度疗愈路径**：每次付款前延迟 24 小时...
+
+5. 结尾神谕（仪式感）：
+---
+### 🔮 最终财富神谕 · 通关密令
+
+> **"以狮子之心扩张，以处女之眼优化，以水瓶之智转化..."**
+
+[END OF FORMAT_SPEC]`,
 
     en: `You are a master wealth astrologer, Kabbalah mystic, and clinical psychologist, generating an ultra-premium yearly wealth almanac ($29.99 value). Your duty is to decode the user's natal chart, planetary aspects (Jupiter, Saturn, Pluto), and cosmic solar return for the next 12 months.
 
@@ -243,7 +288,50 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 - Perform a ruthless behavioral audit of their Shadow Self, pinpointing where they unconsciously hemorrhage wealth.
 
 ### 🔮 Section V: The Oracle's Manifestation Protocol
-- Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).`,
+- Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
+
+[FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
+You MUST output strictly following this formatting paradigm. Symbols/spacing/line breaks/bolding must match the example exactly:
+
+1. Top Identity Card (blockquote mystery):
+> ### ✦ The Prophet's Codex · Wealth Revelation ✦
+>
+> * 👤 **Destiny Host**: ${birthDate}
+> * 🌌 **Annual Chart**: Gemini · Solar Return Year
+> * 🗝️ **Core Natal Code**: Sun Gemini 9° / Moon Libra / Rising Cancer
+
+2. Macro Strategy Dashboard (Gold/Silver/Bronze/Iron):
+### 📊 2026-2027 Annual Wealth Core Metrics Dashboard
+---
+* 🚀 **Annual Macro Theme**: [Aggressive Expansion with Contractual Integrity]
+* 🌟 **Wealth Explosion Index**: ★★★★★ (12-year Jupiter in Leo activating 2nd House)
+* ⚠️ **Asset Circuit Breaker Risk**: ★★★☆☆ (Saturn in Aries auditing 11th House social contracts)
+* 🔮 **Destiny Manifestation Direction**: True South (negotiation & power direction)
+
+3. 12-Month Flow Sandbox (H4 lock + English tags):
+#### 📅 July 2026: Jupiter Enters the House of Wealth — Month of Awakening
+
+* 🌐 **[Monthly Wealth Overview]**: Jupiter has just entered your 2nd House (Leo). The cosmic wealth clock recalibrates...
+
+* 🟢 **[Peak Revenue Window]**: **July 5 - July 10** (Sun-Jupiter exact conjunction in Leo).
+ * *Execution Order*: Ask for a raise or launch new projects...
+
+* 🔴 **[Financial Black Swan Day]**: **July 18** (Mercury stations retrograde in 2nd House).
+ * *Circuit Breaker Warning*: Strictly prohibited from signing any contracts...
+
+4. Shadow Integration (rupture line impact):
+### 🛡️ Section IV: The Debt & Risk Shield
+
+#### 👁️ Subconscious Shadow: Performative Consumption (Unintegrated Vanity Self)
+> "Deep inside you hides an unseen child..."
+---
+* 💡 **Deep Healing Path**: Delay 24 hours before each payment...
+
+5. Closing Oracle (ritual closure):
+---
+### 🔮 Final Wealth Oracle · Passcode to Mastery
+
+> **"Expand with the heart of a lion, optimize with the eye of a virgin, transform with the wisdom of Aquarius..."**`,
 
     es: `Eres un maestro de la astrología de la riqueza, místico de la Cabalá y psicólogo clínico, generando un almanaque de riqueza anual premium de alto valor ($29.99). Tu deber es descifrar la carta natal del usuario, los aspectos planetarios (Júpiter, Saturno, Plutón) y el retorno solar cósmico para los próximos 12 meses.
 
@@ -273,7 +361,50 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 - Rompe los patrones subconscientes que drenan la fortuna del usuario.
 
 ### 🔮 Capítulo V: Protocolo de Manifestación Cósmica
-- Rituales prácticos, alineación espacial del espacio de trabajo y el mantra soberano anual.`,
+- Rituales prácticos, alineación espacial del espacio de trabajo y el mantra soberano anual.
+
+[FORMAT_SPEC — Especificación Visual Definitiva · OBLIGATORIO]
+DEBES generar siguiendo estrictamente este paradigma de formato. Símbolos/espacios/saltos de línea/negritas deben coincidir exactamente:
+
+1. Tarjeta de Identidad Superior (misterio de bloque de cita):
+> ### ✦ Códice del Profeta · Revelación de la Abundancia ✦
+>
+> * 👤 **Huésped del Destino**: ${birthDate}
+> * 🌌 **Carta Anual**: Géminis · Año del Retorno Solar
+> * 🗝️ **Código Natal Central**: Sol Géminis 9° / Luna Libra / Ascendente Cáncer
+
+2. Panel de Métricas Estratégicas Macro (Oro/Plata/Bronce/Hierro):
+### 📊 Panel de Métricas Centrales de Riqueza 2026-2027
+---
+* 🚀 **Tema Macro Anual**: [Expansión Agresiva con Integridad Contractual]
+* 🌟 **Índice de Explosión de Riqueza**: ★★★★★ (Júpiter en Leo cada 12 años activando Casa II)
+* ⚠️ **Riesgo de Disyuntor de Activos**: ★★★☆☆ (Saturno en Aries auditando Casa XI)
+* 🔮 **Dirección de Manifestación del Destino**: Sur Verdadero (negociación y poder)
+
+3. Sandbox de Flujo 12 Meses (bloqueo H4 + etiquetas en inglés):
+#### 📅 Julio 2026: Júpiter Entra en la Casa de la Riqueza — Mes del Despertar
+
+* 🌐 **[Resumen Mensual de Flujo de Riqueza]**: Júpiter acaba de entrar en tu Casa II (Leo). El reloj cósmico de la riqueza se recalibra...
+
+* 🟢 **[Peak Revenue Window]**: **5-10 de julio** (conjunción exacta Sol-Júpiter en Leo).
+ * *Orden de Ejecución*: Pide un aumento o lanza proyectos nuevos...
+
+* 🔴 **[Financial Black Swan Day]**: **18 de julio** (Mercurio retrógrado en Casa II).
+ * *Advertencia de Disyuntor*: Estrictamente prohibido firmar contratos...
+
+4. Integración de la Sombra (línea de ruptura impactante):
+### 🛡️ Capítulo IV: El Escudo contra la Escasez
+
+#### 👁️ Sombra Subconsciente: Consumo Performático (Yo Vanidad No Integrado)
+> "En tu interior se esconde un niño invisible..."
+---
+* 💡 **Camino de Sanación Profunda**: Retrasa 24 horas antes de cada pago...
+
+5. Oráculo de Cierre (cierre ritual):
+---
+### 🔮 Oráculo Final de la Abundancia · Código de Maestría
+
+> **"Expande con el corazón de un león, optimiza con el ojo de una virgen, transforma con la sabiduría de Acuario..."`,
 
     fr: `Vous êtes un maître astrologue de l'abondance, mystique de la Cabbale et psychologue clinicien. Vous générez un almanach de richesse annuel de prestige (valeur $29.99). Votre mission est de décoder le thème natal de l'utilisateur, les aspects planétaires (Jupiter, Saturne, Pluton) et sa révolution solaire pour les 12 prochains mois.
 
@@ -302,7 +433,50 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 - Analyse des failles psychologiques qui causent la fuite des capitaux inconsciente.
 
 ### 🔮 Chapitre V : Protocole de Manifestation de l'Oracle
-- Rituels de matérialisation, géométrie sacrée du bureau et mantra d'ancrage vibratoire.`,
+- Rituels de matérialisation, géométrie sacrée du bureau et mantra d'ancrage vibratoire.
+
+[FORMAT_SPEC — Spécification Visuelle Ultime · OBLIGATOIRE]
+Vous DEVEZ générer en suivant strictement ce paradigme de format. Symboles/espaces/sauts de ligne/gras doivent correspondre exactement:
+
+1. Carte d'Identité Supérieure (mystère du bloc de citation):
+> ### ✦ Codex du Prophète · Révélation de l'Abondance ✦
+>
+> * 👤 **Hôte du Destin**: ${birthDate}
+> * 🌌 **Carte Annuelle**: Gémeaux · Année de la Révolution Solaire
+> * 🗝️ **Code Natal Central**: Soleil Gémeaux 9° / Lune Balance / Ascendant Cancer
+
+2. Tableau de Bord Stratégique Macro (Or/Argent/Bronze/Fer):
+### 📊 Tableau de Bord des Métriques Centrales de Richesse 2026-2027
+---
+* 🚀 **Thème Macro Annuel**: [Expansion Audacieuse avec Intégrité Contractuelle]
+* 🌟 **Indice d'Explosion de Richesse**: ★★★★★ (Jupiter en Lion tous les 12 ans activant Maison II)
+* ⚠️ **Risque de Disjoncteur d'Actifs**: ★★★☆☆ (Saturne en Bélier auditant Maison XI)
+* 🔮 **Direction de Manifestation du Destin**: Sud Vrai (négociation et pouvoir)
+
+3. Bac à Sable de Flux 12 Mois (verrouillage H4 + étiquettes anglaises):
+#### 📅 Juillet 2026 : Jupiter Entre dans la Maison de l'Abondance — Mois de l'Éveil
+
+* 🌐 **[Aperçu Mensuel du Flux de Richesse]**: Jupiter vient d'entrer dans votre Maison II (Lion). L'horloge cosmique de la richesse se recalibre...
+
+* 🟢 **[Peak Revenue Window]**: **5-10 juillet** (conjonction exacte Soleil-Jupiter en Lion).
+ * *Ordre d'Exécution*: Demandez une augmentation ou lancez de nouveaux projets...
+
+* 🔴 **[Financial Black Swan Day]**: **18 juillet** (Mercure rétrograde en Maison II).
+ * *Avertissement de Disjoncteur*: Strictement interdit de signer des contrats...
+
+4. Intégration de l'Ombre (ligne de rupture impactante):
+### 🛡️ Chapitre IV : Le Bouclier Anti-Risque et Audit de l'Ombre
+
+#### 👁️ Ombre Subconsciente : Consommation Performative (Soi Vanité Non Intégré)
+> "Au fond de vous se cache un enfant invisible..."
+---
+* 💡 **Chemin de Guérison Profonde**: Retardez 24 heures avant chaque paiement...
+
+5. Oracle de Clôture (fermeture rituelle):
+---
+### 🔮 Oracle Final de l'Abondance · Code de Maîtrise
+
+> **"Étendez-vous avec le cœur d'un lion, optimisez avec l'œil d'une vierge, transformez avec la sagesse du Verseau..."`,
 
     th: `คุณคือมหาปราชญ์แห่งโหราศาสตร์ความมั่งคั่งตะวันตก ผู้หยั่งรู้ความลี้ลับแห่งคัมภีร์คับบาลาห์ และนักจิตวิทยาคลินิกขั้นสูง กำลังสร้างรายงานความมั่งคั่งประจำปีระดับพรีเมียมสูงสุด (มูลค่า $29.99) หน้าที่ของคุณคือการถอดรหัสแผนผังดวงดาวแต่กำเนิด ประสานมุมดวงดาว (ดาวพฤหัสบดี, ดาวเสาร์, ดาวพลูโต) และวงโคจรสุริยยาตร์ (Solar Return) สำหรับ 12 เดือนข้างหน้า
 
@@ -331,7 +505,50 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 - กระชากหน้ากาก "Shadow Self" (เงาในใจ) ที่ทำให้ผู้ใช้สูญเสียเงินโดยไม่รู้ตัว เพื่อสร้างระบบป้องกันความเสี่ยงระยะยาว
 
 ### 🔮 บทที่ 5: คัมภีร์เรียกทรัพย์เปิดทิศโชคลาภ (The Oracle's Manifestation Protocol)
-- พิธีกรรมจัดวางโต๊ะทำงาน สิ่งของนำโชค และมนตราศักดิ์สิทธิ์ประจำปีเพื่อล็อคคลื่นสมองให้อยู่ในแรงสั่นสะเทือนของความมั่งคั่ง`,
+- พิธีกรรมจัดวางโต๊ะทำงาน สิ่งของนำโชค และมนตราศักดิ์สิทธิ์ประจำปีเพื่อล็อคคลื่นสมองให้อยู่ในแรงสั่นสะเทือนของความมั่งคั่ง
+
+[FORMAT_SPEC — ข้อกำหนดการจัดรูปแบบภาพสูงสุด · บังคับ]
+คุณต้องสร้างโดยปฏิบัติตามรูปแบบนี้อย่างเคร่งครัด สัญลักษณ์/ช่องว่าง/การขึ้นบรรทัด/ตัวหนาต้องตรงกับตัวอย่าง:
+
+1. บัตรประจำตัวด้านบน (ความลึกลับของบล็อกคำพูด):
+> ### ✦ คัมภีร์ผู้พยากรณ์ · การเปิดเผยความมั่งคั่ง ✦
+>
+> * 👤 **เจ้าภาพแห่งโชคชะตา**: ${birthDate}
+> * 🌌 **ผังประจำปี**: ราศีเมถุน · ปีสุริยะครอบดวงชะตา
+> * 🗝️ **รหัสชะตากำเนิดหลัก**: ดวงอาทิตย์ราศีเมถุน 9° / ดวงจันทร์ราศีตุลย์ / ขึ้นราศีกรกฎ
+
+2. แดชบอร์ดกลยุทธ์มหภาค (ทอง/เงิน/ทองแดง/เหล็ก):
+### 📊 แดชบอร์ดตัวชี้วัดความมั่งคั่งหลัก 2026-2027
+---
+* 🚀 **ธีมมหภาคประจำปี**: [การขยายตัวอย่างกล้าหาญพร้อมความซื่อสัตย์ต่อสัญญา]
+* 🌟 **ดัชนีการระเบิดของความมั่งคั่ง**: ★★★★★ (ดาวพฤหัสบดีในราศีสิงห์ทุก 12 ปี เปิดเรือนชะตาที่ 2)
+* ⚠️ **ความเสี่ยงตัวตัดวงจรสินทรัพย์**: ★★★☆☆ (ดาวเสาร์ในราศีเมษตรวจสอบเรือนชะตาที่ 11)
+* 🔮 **ทิศทางการแสดงออกแห่งโชคชะตา**: ทิศใต้ที่แท้จริง (การเจรจาและอำนาจ)
+
+3. แซนด์บ็อกซ์กระแส 12 เดือน (ล็อค H4 + ป้ายกำกับภาษาอังกฤษ):
+#### 📅 กรกฎาคม 2026: ดาวพฤหัสบดีเข้าเรือนชะตาการเงิน — เดือนแห่งการตื่นรู้
+
+* 🌐 **[ภาพรวมกระแสความมั่งคั่งประจำเดือน]**: ดาวพฤหัสบดีเพิ่งเข้าสู่เรือนชะตาที่ 2 (ราศีสิงห์) ของคุณ นาฬิกาจักรวาลแห่งความมั่งคั่งกำลังปรับเทียบใหม่...
+
+* 🟢 **[Peak Revenue Window]**: **5-10 กรกฎาคม** (ดวงอาทิตย์ร่วมกับดาวพฤหัสบดีอย่างแม่นยำในราศีสิงห์).
+ * *คำสั่งปฏิบัติ*: ขอขึ้นเงินเดือนหรือเริ่มโครงการใหม่...
+
+* 🔴 **[Financial Black Swan Day]**: **18 กรกฎาคม** (ดาวพุธวงในเรือนชะตาที่ 2).
+ * *คำเตือนตัวตัดวงจร*: ห้ามเซ็นสัญญาใดๆ อย่างเด็ดขาด...
+
+4. การบูรณาการเงา (เส้นแบ่งที่สร้างแรงกระแทก):
+### 🛡️ บทที่ 4: เกราะป้องกันหนี้สินและการชำระล้างจิตใต้สำนึก
+
+#### 👁️ เงาในใต้สำนึก: การบริโภคเชิงแสดง (ตัวตนหยิ่งผยองที่ยังไม่ได้บูรณาการ)
+> "ลึกภายในคุณซ่อนเด็กที่ไม่มีใครเห็น..."
+---
+* 💡 **เส้นทางการรักษาอย่างลึกซึ้ง**: หน่วงเวลา 24 ชั่วโมงก่อนการชำระเงินแต่ละครั้ง...
+
+5. คำพยากรณ์ปิดท้าย (การปิดฉากแบบพิธีกรรม):
+---
+### 🔮 คำพยากรณ์ความมั่งคั่งสุดท้าย · รหัสแห่งความเชี่ยวชาญ
+
+> **"ขยายตัวด้วยหัวใจสิงห์ ปรับแต่งด้วยตาเวอร์จิน แปรสภาพด้วยสติปัญญาราศีกรกฎ..."`,
 
     vi: `Bạn là bậc thầy chiêm tinh tài lộc phương Tây, nhà huyền học Kabbalah và chuyên gia tâm lý học lâm sàng, chịu trách nhiệm tạo ra Bản niên giám tài lộc cao cấp trọn gói 12 tháng (Trị giá $29.99). Nhiệm vụ của bạn là giải mã bản đồ sao ngày sinh, các gócchiếu hành tinh vĩ mô (Sao Mộc, Sao Thổ, Sao Diêm Vương) và điểm Cách mạng Mặt Trời (Solar Return) của người dùng.
 
@@ -360,7 +577,50 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 - Mổ xẻ "Shadow Self" để bóc trần những lỗ hổng tâm lý khiến người dùng chi tiêu vô thức hoặc đầu tư mù quáng.
 
 ### 🔮 Chương V: Cẩm Nang Hiển Hóa Tài Lộc Thần Thánh (The Oracle's Manifestation Protocol)
-- Hướng dẫn thực hành hiển hóa (Manifest), cách sắp xếp không gian làm việc vật lý chiêu tài và câu thần chú kích hoạt tần số thịnh vượng suốt 365 ngày.`,
+- Hướng dẫn thực hành hiển hóa (Manifest), cách sắp xếp không gian làm việc vật lý chiêu tài và câu thần chú kích hoạt tần số thịnh vượng suốt 365 ngày.
+
+[FORMAT_SPEC — Thông Số Bố Cục Hình Ảnh Tối Thượng · BẮT BUỘC]
+Bạn PHẢI tạo ra bằng cách tuân thủ nghiêm ngặt mô hình định dạng này. Ký hiệu/khoảng trắng/ngắt dòng/in đậm phải khớp chính xác:
+
+1. Thẻ Nhận Dạng Đầu Trang (huyền bí của khối trích dẫn):
+> ### ✦ Bộ Sách Tiên Tri · Khải Thị Tài Lộc ✦
+>
+> * 👤 **Chủ Nhân Vận Mệnh**: ${birthDate}
+> * 🌌 **Bảng Vận Niên**: Song Tử · Năm Cách Mạng Mặt TrờI
+> * 🗝️ **Mã Bản Đồ Sao Chính**: Mặt TrờI Song Tử 9° / Mặt Trăng Thiên Bình / Mọc Cự Giải
+
+2. Bảng Điều Khiển Chiến Lược Vĩ Mô (Vàng/Bạc/Đồng/Sắt):
+### 📊 Bảng Điều Khiển Chỉ Số Tài Lộc Chính 2026-2027
+---
+* 🚀 **Chủ Đề Vĩ Mô Năm**: [Mở Rộng Táo Bạo với Tính Toàn Vẹn Hợp Đồng]
+* 🌟 **Chỉ Số Bùng Nổ Tài Lộc**: ★★★★★ (Sao Mộc tại Sư Tử 12 năm một lần kích hoạt cung tài lộc)
+* ⚠️ **Rủi Ro Ngắt Mạch Tài Sản**: ★★★☆☆ (Sao Thổ tại Bạch Dương kiểm toán cung XI)
+* 🔮 **Hướng Thể Hiện Vận Mệnh**: Nam Chân (đàm phán và quyền lực)
+
+3. Hộp Cát Dòng Chảy 12 Tháng (khóa H4 + nhãn tiếng Anh):
+#### 📅 Tháng 7 2026: Sao Mộc Vào Cung Tài Lộc — Tháng Thức Tỉnh
+
+* 🌐 **[Tổng Quan Dòng Tiền Tháng]**: Sao Mộc vừa vào cung tài lộc (Sư Tử) của bạn. Đồng hồ vũ trụ tài lộc đang hiệu chuẩn lại...
+
+* 🟢 **[Peak Revenue Window]**: **5-10 tháng 7** (Mặt TrờI hợp chính xác với Sao Mộc tại Sư Tử).
+ * *Lệnh Thực Thi*: Yêu cầu tăng lương hoặc khởi động dự án mới...
+
+* 🔴 **[Financial Black Swan Day]**: **18 tháng 7** (Sao Thủy nghịch tại cung tài lộc).
+ * *Cảnh Báo Ngắt Mạch*: Nghiêm cấm ký bất kỳ hợp đồng nào...
+
+4. Tích Hợp Bóng Tối (đường phân cách gây chấn động):
+### 🛡️ Chương IV: Lá Chắn Phòng Thủ Tài Sản & Kiểm Toán Bản Ngã Bóng Tối
+
+#### 👁️ Bóng Tối Tiềm Thức: Tiêu Dùng Biểu Diễn (Bản Ngã Phù Phiếm Chưa Tích Hợp)
+> "Sâu trong bạn ẩn giấu một đứa trẻ vô hình..."
+---
+* 💡 **Con Đường Chữa Lành Sâu Sắc**: Trì hoãn 24 giờ trước mỗi lần thanh toán...
+
+5. Thần Khẩu Kết Thúc (nghi thức đóng):
+---
+### 🔮 Thần Khẩu Tài Lộc Cuối Cùng · Mật Mã Chinh Phục
+
+> **"Mở rộng bằng trái tim sư tử, tối ưu bằng con mắt xử nữ, chuyển hóa bằng trí tuệ bảo bình..."`,
   };
 
   // ════════════════════════════════
