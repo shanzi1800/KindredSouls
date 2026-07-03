@@ -778,6 +778,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const [wealthReportText, setWealthReportText] = useState<string>('');
+  const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
@@ -1404,6 +1405,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         console.error('[WealthReport] Stream error:', err);
       } finally {
         setReportLoading('');
+                  
+                  // 🔮 逐个显示卡片（形成节奏感）
+                  try {
+                    const parsed = JSON.parse(wealthReportRef.current || '{}');
+                    if (parsed.weeks) {
+                      // 每隔300ms显示一个卡片
+                      for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
+                        setTimeout(() => setVisibleWeeks(i), i * 300);
+                      }
+                    }
+                  } catch {}
       }
       return;
     }
@@ -1931,6 +1943,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
                 {/* 骨架 Week Cards - 逐个出现 + 逐个填充 */}
                 {[0,1,2,3].map(i => {
+                  // 只显示前 visibleWeeks 个卡片
+                  if (i >= visibleWeeks) return null;
+                  
                   // 判断这个卡片的数据是否已完整
                   let showCard = false;
                   let weekText = '';
