@@ -1970,7 +1970,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 )}
               </div>
             ) : (
-              {/* JSON 完整后：渲染最终卡片 */}
               <MonthlyReportCard lang={currentLang} content={wealthReportText} />
             )}
             
