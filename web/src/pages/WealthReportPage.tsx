@@ -112,7 +112,8 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
   if (!data || !data.weeks) {
     // Fallback to plain text rendering
     return (
-      <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.6, wordBreak: 'break-word', overflowWrap: 'break-word' }}
+      {/* 🛡️ 6国语言防弹装甲 */}
+      <div style={{ marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}
         dangerouslySetInnerHTML={{ __html: content
           .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
           .replace(/<h2[^>]*>.*?<\/h2>/gi, '')
@@ -182,7 +183,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
         <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
           {UI.theme[safeLang] || UI.theme.en}
         </div>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.4, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+        <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, textShadow: '0 2px 4px rgba(0,0,0,0.3)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
           {data.headline}
         </div>
       </div>
@@ -239,7 +240,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
               <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
                 {UI.keyDay[safeLang] || UI.keyDay.en}
               </div>
-              <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>
+              <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {week.keyDay}
               </div>
             </div>
@@ -248,9 +249,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {textBlocks.map((block, bidx) => (
                 <div key={bidx} style={{ 
-                  fontSize: '12px', 
-                  color: 'rgba(255,255,255,0.9)', 
-                  lineHeight: 1.8,
+                  fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word',
                   padding: '8px 0',
                   borderBottom: bidx < textBlocks.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none'
                 }}>
@@ -283,10 +282,10 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
           }}>
             <span style={{ fontSize: '20px' }}>☠️</span>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: '#FF4D4F' }}>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#FF4D4F', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {data.expense_trap.tag}
               </div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {UI.order[safeLang] || UI.order.en} {data.expense_trap.dateRange}
               </div>
             </div>
@@ -299,10 +298,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {splitTextToBlocks(data.expense_trap.text).map((block, idx) => (
               <div key={idx} style={{ 
-                fontSize: '12px', 
-                color: 'rgba(255,255,255,0.85)', 
-                lineHeight: 1.8,
-                padding: '6px 0',
+                fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, padding: '6px 0', wordBreak: 'break-word', overflowWrap: 'break-word',
               }}>
                 {highlightKeywords(block)}
               </div>
@@ -320,9 +316,9 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#FF4D4F', marginBottom: '6px' }}>
               {UI.order[safeLang] || UI.order.en}
             </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.8, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               <span
-                style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}
+                style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 dangerouslySetInnerHTML={{ __html: UI.orderTxt[safeLang] || UI.orderTxt.en }}
               />
             </div>
@@ -536,7 +532,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '6px', fontWeight: 600 }}>
               💡 先知神谕
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               {highlightYearlyGold(parsed.chapters[0].content.slice(0, 400))}
               {parsed.chapters[0].content.length > 400 && '...'}
             </div>
@@ -592,17 +588,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                 </div>
                 
                 {/* 星座新月/满月标签 */}
-                <div style={{
-                  background: 'rgba(0,0,0,0.3)',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  marginBottom: '12px',
-                  fontSize: '11px',
-                  color: 'rgba(255,255,255,0.8)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px', marginBottom: '12px', fontSize: '11px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '6px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   <span style={{ color: '#D4AF37' }}>🌌</span>
                   <span>{month.zodiac}</span>
                 </div>
@@ -615,7 +601,9 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                     padding: '6px 10px',
                     background: 'rgba(155,127,212,0.1)',
                     borderRadius: '6px',
-                    borderLeft: '3px solid #9B7FD4'
+                    borderLeft: '3px solid #9B7FD4',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
                   }}>
                     {month.cosmicPhase}
                   </div>
@@ -630,7 +618,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                     marginBottom: '10px'
                   }}>
                     {month.paragraphs.slice(0, 2).map((para, pi) => (
-                      <div key={pi} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8, marginBottom: '6px' }}>
+                      <div key={pi} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, marginBottom: '6px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         {highlightYearlyGold(para.slice(0, 200))}
                       </div>
                     ))}
@@ -652,7 +640,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                           ⚡ 财富行动
                         </div>
                         {month.wealthAction.map((item, qi) => (
-                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '4px' }}>
+                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.9, marginBottom: '4px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                             · {highlightYearlyGold(item)}
                           </div>
                         ))}
@@ -670,7 +658,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                           ⚠️ 阴影觉察
                         </div>
                         {month.shadowWork.map((item, qi) => (
-                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '4px' }}>
+                          <div key={qi} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.9, marginBottom: '4px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                             · {highlightYearlyGold(item)}
                           </div>
                         ))}
@@ -696,7 +684,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           <div style={{ fontSize: '13px', fontWeight: 700, color: '#D4AF37', marginBottom: '10px' }}>
             {ch.title}
           </div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             {highlightYearlyGold(ch.content.slice(0, 600))}
             {ch.content.length > 600 && '...'}
           </div>
