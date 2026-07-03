@@ -785,7 +785,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setWealthReportText(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
-  const loadingRef = useRef(false);
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -1033,7 +1032,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   // 🏅 第三斧B：loadWealthData 物理断路器
+  const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
+    // 🔒 物理锁：如果正在加载，直接返回
+    if (loadingRef.current) {
+      console.log('[WealthReport] ⚠️ loadWealthData 已在执行，跳过重复调用');
+      return;
+    }
+    loadingRef.current = true;
+    
+    try {
     // 顶层物理断路：ref 是同步的，React 竞态无法strip
     if (isGreenChannelRef.current) {
             setIsUnlocked(true);
