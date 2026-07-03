@@ -1946,14 +1946,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     }
                   } catch {}
                   
-                  // 如果这个卡片的数据还没到，不渲染
-                  if (!showCard && i > 0) {
-                    // 检查前一个卡片是否已有数据
+                  // 如果前一个卡片的数据已完整，显示当前卡片
+                  if (i > 0 && !showCard) {
                     try {
                       const parsed = JSON.parse(wealthReportText || '{}');
                       if (parsed.weeks && parsed.weeks[i-1] && parsed.weeks[i-1].text) {
-                        // 前一个卡片有数据，显示当前卡片的骨架框（等待数据）
-                        showCard = false;
+                        // 前一个卡片有数据 → 显示当前卡片的骨架框（等待数据）
+                        showCard = true;
                       }
                     } catch {}
                   }
