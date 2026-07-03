@@ -72,7 +72,8 @@ app.use('/api/health', async (req, res) => {
 });
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
-async function callAI(systemPrompt, userPrompt, env) {
+async function callAI(systemPrompt, userPrompt, env, options = {}) {
+  const { maxTokens = 4000, reportType = 'monthly' } = options;
   const deepseekKey = env.DEEPSEEK_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
 
@@ -91,7 +92,7 @@ async function callAI(systemPrompt, userPrompt, env) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 16000,
+          max_tokens: maxTokens,
           temperature: 0.7,
         }),
       });
@@ -635,12 +636,12 @@ Bạn PHẢI tạo ra bằng cách tuân thủ nghiêm ngặt mô hình định 
 
     // 月报系统提示词（6语言）
     const MONTHLY_SYSTEM = {
-      zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words. If you write less than 1200 words, the report will be rejected.`,
-      en: `You are a wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
-      es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: Debes escribir al menos 1200 palabras.`,
-      fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: Vous devez écrire au moins 1200 mots.`,
-      th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสำคัญ: คุณต้องเขียนอย่างน้อย 1200 คำ`,
-      vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.`,
+      zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write 700-900 words total. Quality over quantity — every paragraph must be dense and actionable.`,
+      en: `You are a wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write 700-900 words total. Quality over quantity — every paragraph must be dense and actionable.`,
+      es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: Debes escribir 700-900 palabras en total.`,
+      fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: Vous devez écrire 700-900 mots au total.`,
+      th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสำคัญ: คุณต้องเขียน 700-900 คำทั้งหมด`,
+      vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết 700-900 từ tổng cộng.`,
     };
 
     const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
@@ -667,7 +668,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW):
 Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
 
 CRITICAL REQUIREMENTS:
-1. Total length: STRICTLY 1200-1500 words (${lang})
+1. Total length: 700-900 words (${lang}) — be concise, no fluff
 2. Style: Fast-consuming, card-style, actionable
 3. MUST have 4 weeks
 
@@ -675,16 +676,16 @@ OUTPUT FORMAT (STRICT JSON):
 {
   "headline": "...",
   "weeks": [
-    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 1-7", "text": "...(minimum 150 words)", "keyDay": "${curMonthName} 3"},
-    {"type": "risk", "tag": "🔴 High-Risk Week", "dateRange": "${curMonthName} 8-14", "text": "...(minimum 150 words)", "keyDay": "${curMonthName} 11"},
-    {"type": "flow", "tag": "🔵 Flow Week", "dateRange": "${curMonthName} 15-21", "text": "...(minimum 150 words)", "keyDay": "${curMonthName} 18"},
-    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 22-31", "text": "...(minimum 150 words)", "keyDay": "${curMonthName} 28"}
+    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 1-7", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 3"},
+    {"type": "risk", "tag": "🔴 High-Risk Week", "dateRange": "${curMonthName} 8-14", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 11"},
+    {"type": "flow", "tag": "🔵 Flow Week", "dateRange": "${curMonthName} 15-21", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 18"},
+    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 22-31", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 28"}
   ],
-  "expense_trap": {"tag": "⚠️ Expense Trap", "dateRange": "${curMonthName} 10-13", "text": "...(minimum 100 words)"}
+  "expense_trap": {"tag": "⚠️ Expense Trap", "dateRange": "${curMonthName} 10-13", "text": "...(minimum 60 words)"}
 }
 
 IMPORTANT:
-- Each week's text MUST be at least 150 words
+- Each week's text: minimum 100 words — be sharp and dense
 - Write in ${lang} with native astrological terms
 - NO markdown formatting in text fields (no **, ##, etc)
 - NO English words in Chinese version (except astrological terms)
@@ -988,7 +989,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
-        const aiResult = await callAI(prompt.system, prompt.user, process.env);
+        const maxTokens = reportType === 'yearly' ? 16000 : 3500;
+        const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
 
         // Parse AI result
         let reportContent = aiResult;
