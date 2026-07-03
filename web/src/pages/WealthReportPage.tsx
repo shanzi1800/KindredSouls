@@ -1904,9 +1904,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           <div id="wealth-report-container" style={{ position: 'relative' }}>
             {/* 流式输出中：骨架框保持 + 文字实时填充 */}
             {reportLoading === 'wealth_monthly' ? (
-              /* 🎨 骨架卡片：暗金流光边框 + 呼吸灯 */
+              /* 🎨 骨架卡片：实时解析JSON + 逐周填充 */
               <div style={{ marginTop: '16px' }}>
-                {/* 骨架 Headline */}
+                {/* 骨架 Headline - 实时填充 */}
                 <div style={{ 
                   background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(139,69,19,0.08) 100%)',
                   border: '2px solid rgba(212,175,55,0.3)',
@@ -1919,15 +1919,36 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
                     {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
                   </div>
-                  <div style={{ height: '24px', background: 'rgba(212,175,55,0.2)', borderRadius: '8px', animation: 'pulse 2s ease-in-out infinite' }}/>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    {(() => {
+                      try {
+                        const parsed = JSON.parse(wealthReportText || '{}');
+                        return parsed.headline || '';
+                      } catch { return ''; }
+                    })()}
+                  </div>
                 </div>
 
-                {/* 骨架 Week Cards */}
-                {[1,2,3,4].map(i => {
+                {/* 骨架 Week Cards - 实时解析填充 */}
+                {[0,1,2,3].map(i => {
                   const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
                   const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
-                  const border = colors[i-1];
-                  const badge = types[i-1];
+                  const border = colors[i];
+                  const badge = types[i];
+                  
+                  // 实时解析对应周的数据
+                  let weekText = '';
+                  let weekDate = '';
+                  let keyDay = '';
+                  try {
+                    const parsed = JSON.parse(wealthReportText || '{}');
+                    if (parsed.weeks && parsed.weeks[i]) {
+                      weekText = parsed.weeks[i].text || '';
+                      weekDate = parsed.weeks[i].dateRange || '';
+                      keyDay = parsed.weeks[i].keyDay || '';
+                    }
+                  } catch {}
+                  
                   return (
                     <div key={i} style={{
                       background: `linear-gradient(135deg, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.08) 0%, rgba(${border === '#4CAF50' ? '76,175,80' : border === '#FF4D4F' ? '255,77,79' : border === '#64B5F6' ? '100,181,246' : '212,175,55'},0.02) 100%)`,
@@ -1935,45 +1956,83 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       borderRadius: '14px',
                       padding: '16px',
                       marginBottom: '16px',
-                      boxShadow: `0 2px 12px ${border}15`,
-                      animation: 'pulse 2.5s ease-in-out infinite'
+                      boxShadow: `0 2px 12px ${border}15`
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: `1px dashed ${border}40` }}>
                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: border, padding: '4px 10px', borderRadius: '6px' }}>
                           {badge}
                         </span>
-                        <div style={{ height: '14px', width: '80px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}/>
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{weekDate}</span>
                       </div>
-                      <div style={{ height: '60px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', marginBottom: '8px' }}/>
-                      <div style={{ height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}/>
+                      
+                      {/* Key Day */}
+                      {keyDay && (
+                        <div style={{
+                          background: 'rgba(0,0,0,0.25)',
+                          borderRadius: '10px',
+                          padding: '12px',
+                          marginBottom: '12px',
+                          border: '1px solid rgba(212,175,55,0.2)'
+                        }}>
+                          <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
+                            {currentLang === 'zh' ? '💫 核心天机' : '💫 Key Day'}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>{keyDay}</div>
+                        </div>
+                      )}
+                      
+                      {/* 实时填充的文本区域 */}
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: 'rgba(255,255,255,0.9)', 
+                        lineHeight: 1.9, 
+                        minHeight: '60px',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {weekText || (
+                          <div>
+                            <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '8px' }}/>
+                            <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}/>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
                 
-                {/* 🌊 流式文字实时填充在骨架框内 */}
+                {/* Expense Trap - 实时解析 */}
                 {(() => {
-                  if (wealthReportText) {
-                    console.log('[WealthReport] 渲染流式文字, 长度:', wealthReportText.length, '内容预览:', wealthReportText.substring(0, 50));
-                  }
-                  return wealthReportText;
-                })() && (
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '16px',
-                    background: 'rgba(0,0,0,0.3)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(212,175,55,0.2)',
-                    fontSize: '13px',
-                    color: 'rgba(255,255,255,0.9)',
-                    lineHeight: 1.8,
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word',
-                    whiteSpace: 'pre-wrap'
-                  }}>
-                    {wealthReportText}
-                  </div>
-                )}
+                  try {
+                    const parsed = JSON.parse(wealthReportText || '{}');
+                    if (parsed.expense_trap) {
+                      return (
+                        <div style={{
+                          background: 'linear-gradient(135deg, rgba(255,77,79,0.12) 0%, rgba(255,77,79,0.04) 100%)',
+                          border: '2px solid #FF4D4F',
+                          borderRadius: '14px',
+                          padding: '16px',
+                          marginBottom: '16px',
+                          boxShadow: '0 2px 12px rgba(255,77,79,0.15)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px dashed rgba(255,77,79,0.4)' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', background: '#FF4D4F', padding: '4px 10px', borderRadius: '6px' }}>
+                              ☠️ {currentLang === 'zh' ? '消费陷阱' : 'Expense Trap'}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginLeft: '12px' }}>{parsed.expense_trap.dateRange}</span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
+                            {parsed.expense_trap.text}
+                          </div>
+                        </div>
+                      );
+                    }
+                  } catch {}
+                  return null;
+                })()}
               </div>
+
             ) : (
               wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
             )}
