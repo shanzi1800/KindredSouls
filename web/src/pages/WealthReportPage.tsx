@@ -781,7 +781,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
   
-  // 🛠️ 军师的流式硬切黑魔法：实时提取 weeks 和 expense_trap 数据（无需等待 JSON 闭合）
+  // 🛠️ 军师的流式硬切黑魔法：实时提取 headline、weeks 和 expense_trap 数据（无需等待 JSON 闭合）
+  const extractStreamingHeadline = (rawText: string): string => {
+    const match = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
+    return match?.[1] || '';
+  };
+  
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
     
@@ -1990,12 +1995,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                    {(() => {
-                      try {
-                        const parsed = JSON.parse(wealthReportText || '{}');
-                        return parsed.headline || '';
-                      } catch { return ''; }
-                    })()}
+                    {extractStreamingHeadline(wealthReportText || '') || <span style={{ color: 'rgba(255,255,255,0.3)' }}>等待命运主题...</span>}
                   </div>
                 </div>
 
@@ -2113,19 +2113,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             ) : (
               wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
             )}
-            
-            {/* 🌟 魔法光标 */}
-            {reportLoading && (
-              <span style={{
-                display: 'inline-block',
-                width: '2px',
-                height: '1.2em',
-                background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                marginLeft: '2px',
-                animation: 'pulse 1.5s ease-in-out infinite',
-                boxShadow: '0 0 8px rgba(212,175,55,0.6)',
-                verticalAlign: 'middle',
-              }}/>)}
           </div>
         )}
 
