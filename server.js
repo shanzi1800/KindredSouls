@@ -1201,6 +1201,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
     const maxTokens = reportType === 'yearly' ? 16000 : 3500;
     
     if (!deepseekKey) {
@@ -1209,7 +1210,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     
     // 🔥 DeepSeek 流式调用
-    const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    let aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1229,6 +1230,40 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     
     if (!aiRes.ok) {
       const errText = await aiRes.text();
+      console.warn(`[wealth-stream] DeepSeek failed (${aiRes.status}), trying Gemini...`);
+      
+      // 🛠️ Gemini fallback（非流式，跳过流式逐字体验）
+      if (geminiKey) {
+        try {
+          const gemRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+                generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+              }),
+            }
+          );
+          if (gemRes.ok) {
+            const gemData = await gemRes.json();
+            const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (fullText) {
+              console.log('[wealth-stream] Gemini fallback succeeded, length:', fullText.length);
+              // 逐字推送（伪流式）
+              for (const char of fullText) {
+                res.write(`data: ${JSON.stringify({ text: char })}\n\n`);
+              }
+              res.write('data: [DONE]\n\n');
+              return res.end();
+            }
+          }
+        } catch (e) {
+          console.error('[wealth-stream] Gemini fallback failed:', e.message);
+        }
+      }
+      
       res.write(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`);
       return res.end();
     }

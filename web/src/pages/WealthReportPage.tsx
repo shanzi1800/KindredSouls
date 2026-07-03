@@ -1432,6 +1432,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               }
               try {
                 const parsed = JSON.parse(dataStr);
+                if (parsed.error) {
+                  console.error('[WealthReport] Stream error:', parsed.error);
+                  setWealthReportText((prev) => prev || `⚠️ AI服务异常：${parsed.error}\n\n请检查后端日志。`);
+                  setReportLoading('');
+                  return;
+                }
                 if (parsed.text) {
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
