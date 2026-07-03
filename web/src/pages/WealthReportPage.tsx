@@ -1912,10 +1912,28 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {/* 🔮 骨架框架流：先框架后内容 */}
-        {(reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{'))) && (
+        {(() => {
+          // 判断月报是否完整（有 expense_trap 字段）
+          let isReportComplete = false;
+          try {
+            const parsed = JSON.parse(wealthReportText || '{}');
+            isReportComplete = !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
+          } catch {}
+          
+          return (reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
+        })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
             {/* 流式输出中：骨架框保持 + 文字实时填充 */}
-            {reportLoading === 'wealth_monthly' ? (
+            {(() => {
+              // 只要文本还在传输，就保持骨架框架
+              let isReportComplete = false;
+              try {
+                const parsed = JSON.parse(wealthReportText || '{}');
+                isReportComplete = !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
+              } catch {}
+              
+              return !isReportComplete;
+            })() ? (
               /* 🎨 骨架卡片：实时解析JSON + 逐周填充 */
               <div style={{ marginTop: '16px' }}>
                 {/* 骨架 Headline - 实时填充 */}
