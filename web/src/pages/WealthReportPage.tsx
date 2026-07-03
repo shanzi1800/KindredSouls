@@ -1032,7 +1032,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   // 🏅 第三斧B：loadWealthData 物理断路器
-  const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
     // 🔒 物理锁：如果正在加载，直接返回
     if (loadingRef.current) {
@@ -1040,11 +1039,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       return;
     }
     loadingRef.current = true;
-    
-    try {
+    setLoading(true);
+    setError(null);
+
     // 顶层物理断路：ref 是同步的，React 竞态无法strip
     if (isGreenChannelRef.current) {
-            setIsUnlocked(true);
+      setIsUnlocked(true);
       setShowPaywall(false);
       // 绿色通道：从 Supabase 读预存数据
       try {
@@ -1055,7 +1055,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           }
         });
         const rows = await res.json();
-                if (rows.length > 0 && rows[0].insight) {
+        if (rows.length > 0 && rows[0].insight) {
           const cached = JSON.parse(rows[0].insight);
           // 只设置主报告数据（四宫格），不设置月报（让用户手动点击按钮）
           if (cached.data) {
@@ -1074,21 +1074,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           }
         } else {
           console.warn("[WealthReport] ⚠️ Supabase 无数据 → fallback 到 API");
-          // 🛠️ 修复：绿色通道在无缓存数据时，fallback 到 API 调用而不是直接报错
         }
       } catch (err) {
         console.error('[WealthReport] ❌ Supabase 查询失败:', err);
-        // 🛠️ Supabase 查询异常也走 fallback
       }
-      // 🛠️ 绿色通道不再硬 return，fallback 到下面的 API 调用
+      setLoading(false);
+      loadingRef.current = false;
+      return;  // 绿色通道直接返回，不走下面的 API 调用
     }
-
-    if (loadingRef.current) {
-      return;
-    }
-    loadingRef.current = true;
-    setLoading(true);
-    setError(null);
 
     try {
       const headers: Record<string, string> = {
