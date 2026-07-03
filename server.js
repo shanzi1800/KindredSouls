@@ -708,13 +708,14 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         const aiResult = await callAI(prompt.system, prompt.user, process.env);
 
+        // Parse AI result
+        let reportContent = aiResult;
+        
         // ── ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）──
         if (reportType === 'yearly') {
           reportContent = cleanYearlyTimeline(aiResult);
         }
         
-        // Parse AI result
-        let reportContent = aiResult;
         if (reportType === 'monthly') {
           // Try to parse as JSON, if fails return as markdown
           try {
