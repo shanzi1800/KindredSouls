@@ -1968,18 +1968,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   const border = colors[i];
                   const badge = types[i];
                   
-                  // 实时解析对应周的数据
-                  let weekText = '';
-                  let weekDate = '';
-                  let keyDay = '';
-                  try {
-                    const parsed = JSON.parse(wealthReportText || '{}');
-                    if (parsed.weeks && parsed.weeks[i]) {
-                      weekText = parsed.weeks[i].text || '';
-                      weekDate = parsed.weeks[i].dateRange || '';
-                      keyDay = parsed.weeks[i].keyDay || '';
-                    }
-                  } catch {}
+                  // （weekText/weekDate/keyDay 已在上面声明并赋值）
                   
                   return (
                     <div key={i} style={{
