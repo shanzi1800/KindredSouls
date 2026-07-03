@@ -1929,8 +1929,41 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   </div>
                 </div>
 
-                {/* 骨架 Week Cards - 实时解析填充 */}
+                {/* 骨架 Week Cards - 逐个出现 + 逐个填充 */}
                 {[0,1,2,3].map(i => {
+                  // 判断这个卡片的数据是否已完整
+                  let showCard = false;
+                  let weekText = '';
+                  let weekDate = '';
+                  let keyDay = '';
+                  try {
+                    const parsed = JSON.parse(wealthReportText || '{}');
+                    if (parsed.weeks && parsed.weeks[i] && parsed.weeks[i].text) {
+                      showCard = true;
+                      weekText = parsed.weeks[i].text || '';
+                      weekDate = parsed.weeks[i].dateRange || '';
+                      keyDay = parsed.weeks[i].keyDay || '';
+                    }
+                  } catch {}
+                  
+                  // 如果这个卡片的数据还没到，不渲染
+                  if (!showCard && i > 0) {
+                    // 检查前一个卡片是否已有数据
+                    try {
+                      const parsed = JSON.parse(wealthReportText || '{}');
+                      if (parsed.weeks && parsed.weeks[i-1] && parsed.weeks[i-1].text) {
+                        // 前一个卡片有数据，显示当前卡片的骨架框（等待数据）
+                        showCard = false;
+                      }
+                    } catch {}
+                  }
+                  
+                  // 第0个卡片始终显示（流式输出起点）
+                  if (i === 0) showCard = true;
+                  
+                  if (!showCard) return null;
+                  
+                  {
                   const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
                   const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
                   const border = colors[i];
