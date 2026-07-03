@@ -1414,22 +1414,26 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 延迟清空 loading 状态，让骨架框架持续显示
-        // 等报告完全渲染后再清空
+        // 🔮 验证 JSON 完整性，决定显示模式
         setTimeout(() => {
-          setReportLoading('');
-          
-          // 逐个显示卡片（形成节奏感）
           try {
             const parsed = JSON.parse(wealthReportRef.current || '{}');
-            if (parsed.weeks) {
-              // 每隔300ms显示一个卡片
+            // ✅ JSON 完整：切换到卡片模式
+            if (parsed.weeks && parsed.expense_trap) {
+              setReportLoading('');
+              // 逐个显示卡片（形成节奏感）
               for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
                 setTimeout(() => setVisibleWeeks(i), i * 300);
               }
+            } else {
+              // ❌ JSON 不完整：保持纯文本模式（不清空 reportLoading，让骨架框架持续显示）
+              console.warn('[WealthReport] ⚠️ JSON 不完整，保持纯文本模式');
             }
-          } catch {}
-        }, 2000); // 2秒后清空（给用户看到完整报告的时间）
+          } catch {
+            // ❌ JSON 解析失败：保持纯文本模式
+            console.warn('[WealthReport] ⚠️ JSON 解析失败，保持纯文本模式');
+          }
+        }, 2000); // 2秒后验证
       }
       return;
     }
