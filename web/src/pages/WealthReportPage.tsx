@@ -781,7 +781,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
   
-  // 🛠️ 军师的流式硬切黑魔法：实时提取 weeks 数据（无需等待 JSON 闭合）
+  // 🛠️ 军师的流式硬切黑魔法：实时提取 weeks 和 expense_trap 数据（无需等待 JSON 闭合）
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
     
@@ -798,6 +798,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     
     return weeks;
+  };
+  
+  // 🛠️ 提取 expense_trap 数据
+  const extractExpenseTrap = (rawText: string): { tag: string; dateRange: string; text: string } | null => {
+    const tagMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"tag"\s*:\s*"([^"]*)"/);
+    const dateRangeMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"dateRange"\s*:\s*"([^"]*)"/);
+    const textMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"text"\s*:\s*"([^"]*)"/);
+    
+    if (tagMatch || dateRangeMatch || textMatch) {
+      return {
+        tag: tagMatch?.[1] || '',
+        dateRange: dateRangeMatch?.[1] || '',
+        text: textMatch?.[1] || ''
+      };
+    }
+    return null;
   };
 
   const setWealthReport = (text: string) => {
@@ -2038,6 +2054,60 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       </div>
                     </div>
                   ));
+                })()}
+                
+                {/* ⚠️ 消费陷阱/熔断警告卡片 */}
+                {(() => {
+                  const trap = extractExpenseTrap(wealthReportText || '');
+                  if (!trap || !trap.text) return null;
+                  
+                  const trapLabels = {
+                    zh: { title: '⚠️ 消费陷阱熔断区', warning: '紧急命令' },
+                    en: { title: '⚠️ Expense Trap Alert', warning: 'URGENT' },
+                    es: { title: '⚠️ Alerta de Trampa de Gastos', warning: 'URGENTE' },
+                    fr: { title: '⚠️ Alerte Piège de Dépenses', warning: 'URGENT' },
+                    th: { title: '⚠️ การเตือนภัยกับดักการใช้จ่าย', warning: 'ด่วน' },
+                    vi: { title: '⚠️ Cảnh Báo Bẫy Chi Tiêu', warning: 'KHẨN CẤP' },
+                  };
+                  const label = trapLabels[currentLang] || trapLabels.en;
+                  
+                  return (
+                    <div style={{
+                      background: 'linear-gradient(135deg, rgba(255,77,79,0.15) 0%, rgba(139,0,0,0.08) 100%)',
+                      border: '2px solid #FF4D4F',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      marginTop: '20px',
+                      boxShadow: '0 4px 20px rgba(255,77,79,0.2)'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '12px',
+                        paddingBottom: '10px',
+                        borderBottom: '1px dashed #FF4D4F40'
+                      }}>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 800, 
+                          color: '#fff',
+                          background: '#FF4D4F',
+                          padding: '4px 10px',
+                          borderRadius: '6px'
+                        }}>
+                          {label.title}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#FF4D4F', fontWeight: 600 }}>
+                          {trap.dateRange}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <span style={{ color: '#FF4D4F', fontWeight: 700 }}>{label.warning}: </span>
+                        {trap.text}
+                      </div>
+                    </div>
+                  );
                 })()}
               </div>
             ) : (
