@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # 🛡️ Cache bust - 每次 push 都改时间戳，BUILD-TIME-RUN 用 ARG 才能 invalidate 所有下游 layer
-ARG CACHEBUST=20260702a
+ARG CACHEBUST=20260703b
 RUN echo "🔨 Cache bust: $CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 WORKDIR /app
@@ -22,7 +22,7 @@ COPY . .
 RUN npm install && npm install express stripe
 
 # 2. 🔥 核心绝杀：进入前端 web 目录，强制清除旧的 dist，现场暴力构建！
-RUN cd web && rm -rf dist && npm install && npm run build
+RUN cd web && rm -rf dist node_modules/.tmp && npm install && npm run build
 
 EXPOSE 3000
 ENV PORT=3000
