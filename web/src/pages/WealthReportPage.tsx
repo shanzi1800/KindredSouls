@@ -1963,7 +1963,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   
                   if (!showCard) return null;
                   
-                  {
                   const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#D4AF37'];
                   const types = ['🟢 财富充能周', '🔴 高危熔断周', '🔵 顺流蓄力周', '💫 机遇窗口'];
                   const border = colors[i];
