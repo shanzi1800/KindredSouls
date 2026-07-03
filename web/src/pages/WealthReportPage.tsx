@@ -1925,7 +1925,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               }}/>
             )}
           </div>
-        )}}
+        )}
 
         {isUnlocked && !reportData?.insight && (
           <button
