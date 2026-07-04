@@ -790,16 +790,39 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
     
-    // 正则提取 weeks 数组中的每个 week 的 text
-    const weeksSection = rawText.match(/"weeks"\s*:\s*\[([\s\S]*)/);
-    if (weeksSection) {
-      // 提取每个 week 对象中的 text 字段
-      const textMatches = [...weeksSection[1].matchAll(/"text"\s*:\s*"([^"]*)/g)];
-      textMatches.forEach((match, idx) => {
-        if (idx < 4 && match[1]) {
-          weeks[idx] = match[1];
+    // 🛠️ 军师黑魔法：手功用括号定位+未闭合字符串提取
+    // 流式 JSON 累积期间，未闭合的 "text" 字段会让 \u6b63\u5219[^"]*\u5b8c\u5168\u5931\u6548
+    // \u8fd9\u91cc\u4e0d\u8981\u6c42\u5b57\u7b26\u4e32\u95ed\u5408\uff0c\u53ea\u8981\u627e\u5230\u5bf9\u5e94\u7684 { \u5757\u91cc\u7684 "text": " \u8d77\u70b9\u5c31\u62ff\u5230\u90a3\u4e2a\u5757\u7684\u5185\u5bb9
+    const weeksStart = rawText.match(/"weeks"\s*:\s*\[/);
+    if (!weeksStart) return weeks;
+    
+    const after = rawText.slice(weeksStart.index! + weeksStart[0].length);
+    let weekIdx = 0;
+    let i = 0;
+    
+    while (weekIdx < 4 && i < after.length) {
+      // \u627e\u4e0b\u4e00\u4e2a { \u5757\u8d77\u70b9
+      const bracePos = after.indexOf('{', i);
+      if (bracePos === -1) break;
+      
+      // \u5728\u8fd9\u4e2a\u5757\u91cc\u627e "text": "
+      const textPos = after.indexOf('"text": "', bracePos);
+      if (textPos === -1) break;
+      
+      // \u63d0\u53d6\u4ece text \u4e4b\u540e\u5230\u9996\u4e2a\u672a\u8f6c\u4e49\u7684 " \u4e3a\u6b62
+      const start = textPos + '"text": "'.length;
+      let j = start;
+      while (j < after.length) {
+        if (after[j] === '\\' && j + 1 < after.length) {
+          j += 2; // \u8df3\u8fc7\u8f6c\u4e49\u5e8f\u5217
+          continue;
         }
-      });
+        if (after[j] === '"') break;
+        j++;
+      }
+      weeks[weekIdx] = after.slice(start, j);
+      weekIdx++;
+      i = j;
     }
     
     return weeks;
