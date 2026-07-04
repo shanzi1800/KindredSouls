@@ -596,7 +596,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
         </div>
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)', marginBottom: '14px' }} />
 
-        {/* 神圣引言 */}
+        {/* 神圣引言 - 军师令：全量平铺，取消截断和滚动 */}
         {parsed.chapters[0] && (
           <div style={{
             background: 'rgba(0,0,0,0.3)',
@@ -604,15 +604,14 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             padding: '16px',
             textAlign: 'left',
             border: '1px solid rgba(212,175,55,0.15)',
-            maxHeight: '280px',
-            overflowY: 'auto',
+            /* 军师v6：取消maxHeight和overflowY，全量平铺展示厚度 */
           }}>
             <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '6px', fontWeight: 600 }}>
               💡 先知神谕
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-              {highlightYearlyGold(parsed.chapters[0].content.slice(0, 1500))}
-              {parsed.chapters[0].content.length > 1500 && '...'}
+              {/* 军师v6：完整渲染，不截断 */}
+              {highlightYearlyGold(parsed.chapters[0].content)}
             </div>
           </div>
         )}
