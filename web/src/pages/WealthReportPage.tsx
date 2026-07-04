@@ -825,38 +825,39 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     return null;
   };
 
-  // 🛠️ 军师方案：用emoji锚点硬切流式文本，直接吐出4周内容
-  const updateStreamingContent = (rawText: string) => {
-    // 提取 headline
-    const hlMatch = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
+  // 🛠️ 军师方案：极简增量追加（每个字符只追加，不做split，等流结束后一次性split）
+  const _buffer = { text: '', weekIdx: 0, weeks: ['', '', '', ''] as string[], trap: '' };
+  const updateStreamingContent = (char: string) => {
+    _buffer.text += char;
+    // headline：首字符开始提取
+    const hlMatch = _buffer.text.match(/"headline"\s*:\s*"([^"]*)"/);
     if (hlMatch?.[1]) setStreamingHeadline(hlMatch[1]);
-
-    // 用 emoji 锚点硬切4周内容（中文锚点）
-    // 顺序：🟢 第1周 → 🔴 第2周 → 🔵 第3周 → 🟢 第4周 → ⚠️ 消费陷阱
-    const weekAnchors = [
-      '🟢 第1周',
-      '🔴 第2周',
-      '🔵 第3周',
-      '🟢 第4周',
-      '⚠️ 消费陷阱',
-    ];
-    const segments = rawText.split(new RegExp(weekAnchors.map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')));
-    // segments[0] = headline前内容, [1]=第1周内容, [2]=第2周, [3]=第3周, [4]=第4周, [5]=消费陷阱
-    const newWeeks: string[] = ['', '', '', ''];
-    let newTrap = '';
-    for (let i = 1; i < segments.length; i++) {
-      if (i <= 4) newWeeks[i - 1] = segments[i].split(new RegExp(weekAnchors.slice(i).map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')))[0];
-      else if (i === 5) newTrap = segments[i];
+    // 按序检测4周锚点
+    const anchors = ['🟢 第1周', '🔴 第2周', '🔵 第3周', '🟢 第4周'];
+    for (let i = _buffer.weekIdx; i < 4; i++) {
+      const idx = _buffer.text.indexOf(anchors[i]);
+      if (idx >= 0) {
+        const seg = _buffer.text.substring(idx + anchors[i].length);
+        const next = anchors[i + 1];
+        const end = next ? seg.indexOf(next) : -1;
+        _buffer.weeks[i] = end > 0 ? seg.substring(0, end) : seg;
+        _buffer.weekIdx = i + 1;
+        setStreamingWeeks([..._buffer.weeks]);
+      }
     }
-    setStreamingWeeks(newWeeks);
-    if (segments[5]) setStreamingTrap(segments[5]);
+    // 消费陷阱
+    if (!_buffer.trap) {
+      const ti = _buffer.text.indexOf('⚠️ 消费陷阱');
+      if (ti >= 0) {
+        _buffer.trap = _buffer.text.substring(ti + 7);
+        setStreamingTrap(_buffer.trap);
+      }
+    }
   };
 
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
     setWealthReportText(text);
-    // 🛠️ 军师方案：每次文本更新时硬切4周内容
-    updateStreamingContent(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
 
@@ -1472,18 +1473,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   return;
                 }
                 if (parsed.text) {
+                  // 🛠️ 军师方案：每个文本块增量追加到4周卡片
+                  updateStreamingContent(parsed.text);
+                  // 同时追加到总文本（供最终JSON解析）
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
-                  
-                  // 🔮 自动滚动锚定（圣旨效果）
+                  // 🔮 自动滚动
                   setTimeout(() => {
                     const reportContainer = document.getElementById('wealth-report-container');
-                    if (reportContainer) {
-                      reportContainer.scrollTo({
-                        top: reportContainer.scrollHeight,
-                        behavior: 'smooth'
-                      });
-                    }
+                    if (reportContainer) reportContainer.scrollTop = reportContainer.scrollHeight;
                   }, 50);
                 }
               } catch {}
