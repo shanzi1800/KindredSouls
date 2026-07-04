@@ -826,6 +826,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setWealthReportText(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
+  const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过——流结束后保持报告可见
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -1399,6 +1400,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
+    setStreamedOnce(false); // 🛡️ 重置：新一轮开始前清空标记
     
     // 🌊 流式输出开关（开发中，暂用旧接口）
     const USE_STREAM = true; // 🔥 军师下令：全量开火！
@@ -1428,6 +1430,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               if (dataStr === '[DONE]') {
                 // 🎯 军师钩子：流式结束瞬间弹出复购/裂变引导
                 console.log('[WealthReport] 📜 天书刻印完成，触发商业钩子');
+                setStreamedOnce(true); // 🛡️ 标记：曾经流过，报告保持可见
                 break;
               }
               try {
@@ -1975,7 +1978,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             isReportComplete = !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
           } catch {}
           
-          return (reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
+          return (reportLoading === 'wealth_monthly' || streamedOnce || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
         })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
             {/* 🎨 军师方案：4个骨架卡片 + 流式硬切提取 */}
