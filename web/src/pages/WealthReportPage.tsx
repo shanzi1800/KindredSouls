@@ -10,6 +10,57 @@ import {
   type AlgLang,
 } from '../lib/algos/i18n';
 
+// 🛠️ 军师方案D完全体：年报单向指针对齐流锚点体系
+const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
+  zh: [
+    { key: 'oracle', match: ['先知神谕', '先知天书', '天命宿主', '盘口'] },
+    { key: 'm1', match: ['2026年7月'] },
+    { key: 'm2', match: ['2026年8月'] },
+    { key: 'm3', match: ['2026年9月'] },
+    { key: 'm4', match: ['2026年10月'] },
+    { key: 'm5', match: ['2026年11月'] },
+    { key: 'm6', match: ['2026年12月'] },
+    { key: 'm7', match: ['2027年1月'] },
+    { key: 'm8', match: ['2027年2月'] },
+    { key: 'm9', match: ['2027年3月'] },
+    { key: 'm10', match: ['2027年4月'] },
+    { key: 'm11', match: ['2027年5月'] },
+    { key: 'm12', match: ['2027年6月'] },
+    { key: 'ch3', match: ['第三章'] },
+    { key: 'ch4', match: ['第四章'] },
+    { key: 'ch5', match: ['第五章'] },
+    { key: 'final', match: ['终极财富神谕', '通关密令', '最终财富神谕'] },
+  ],
+  en: [
+    { key: 'oracle', match: ['oracle', 'host', 'chart'] },
+    { key: 'm1', match: ['july 2026', 'month 1'] },
+    { key: 'm2', match: ['august 2026', 'month 2'] },
+    { key: 'm3', match: ['september 2026', 'month 3'] },
+    { key: 'm4', match: ['october 2026', 'month 4'] },
+    { key: 'm5', match: ['november 2026', 'month 5'] },
+    { key: 'm6', match: ['december 2026', 'month 6'] },
+    { key: 'm7', match: ['january 2027', 'month 7'] },
+    { key: 'm8', match: ['february 2027', 'month 8'] },
+    { key: 'm9', match: ['march 2027', 'month 9'] },
+    { key: 'm10', match: ['april 2027', 'month 10'] },
+    { key: 'm11', match: ['may 2027', 'month 11'] },
+    { key: 'm12', match: ['june 2027', 'month 12'] },
+    { key: 'ch3', match: ['chapter 3'] },
+    { key: 'ch4', match: ['chapter 4'] },
+    { key: 'ch5', match: ['chapter 5'] },
+    { key: 'final', match: ['final oracle', 'final wealth'] },
+  ],
+  es: [], // TODO: 西班牙语锚点
+  fr: [], // TODO: 法语锚点
+  th: [], // TODO: 泰语锚点
+  vi: [], // TODO: 越南语锚点
+};
+
+// 获取当前语言的锚点（回退到中文）
+const getAnchors = (lang: string) => {
+  return YEARLY_ANCHORS[lang] || YEARLY_ANCHORS['zh'];
+};
+
 // ── Monthly Report Card Component ──
 interface WeekData {
   type: string;
@@ -795,6 +846,17 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
     <p style={{ color: '#8B8778', fontSize: 14 }}>{message}</p>
     <style>{`@keyframes ks-spin { to { transform: rotate(360deg); } }`}</style>
     <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scaleX(0.8); } 50% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); } }`}</style>
+    <style>{`
+      @keyframes skeleton-wave {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      .skeleton-wave {
+        background: linear-gradient(90deg, rgba(212,175,55,0.1) 25%, rgba(212,175,55,0.3) 50%, rgba(212,175,55,0.1) 75%);
+        background-size: 200% 100%;
+        animation: skeleton-wave 1.5s ease-in-out infinite;
+      }
+    `}</style>
   </div>
 );
 
@@ -858,6 +920,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
+
+  // 🛠️ 军师方案D完全体：年报单向指针对齐流状态机
+  const [yearlyCardData, setYearlyCardData] = useState<Record<string, string>>({
+    oracle: '',
+    m1: '', m2: '', m3: '', m4: '', m5: '', m6: '',
+    m7: '', m8: '', m9: '', m10: '', m11: '', m12: '',
+    ch3: '', ch4: '', ch5: '',
+    final: ''
+  });
+  const currentActiveKeyRef = useRef<string>('oracle'); // 指针（用ref避免每次chunk重渲染）
+  const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
   // 🛠️ 军师黑魔法:手功从原始 JSON 里提取字段值(支持未闭合字符串)
@@ -1547,13 +1620,47 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 // 🎯 军师钩子:流式结束瞬间弹出复购/裂变引导
                 console.log('[WealthReport] 📜 天书刻印完成,触发商业钩子');
                 setStreamedOnce(true); // 🛡️ 标记:曾经流过,报告保持可见
+                
+                // 🛠️ 军师方案D完全体：年报指针流结束逻辑
+                if (type === 'yearly') {
+                  setYearlyCardsReady(true);
+                  currentActiveKeyRef.current = 'oracle'; // 重置指针
+                  console.log('[WealthReport] ✅ 年报17张卡片流式注入完成');
+                }
+                
                 break;
               }
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  setWealthReportText((prev) => prev + parsed.text);
-                  wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
+                  // 🛠️ 军师方案D完全体：年报单向指针对齐流
+                  if (type === 'yearly') {
+                    // 增量注入：检测锚点 → 移动指针 → 填充对应卡片
+                    const newChunk = parsed.text;
+                    const lowerChunk = newChunk.toLowerCase();
+                    const anchors = getAnchors(lang);
+
+                    // 检测锚点（只检查新chunk，指针单向下移）
+                    for (const anchor of anchors) {
+                      for (const matchStr of anchor.match) {
+                        if (lowerChunk.includes(matchStr.toLowerCase())) {
+                          currentActiveKeyRef.current = anchor.key;
+                          break;
+                        }
+                      }
+                    }
+
+                    // 增量注入到当前激活的卡片
+                    const activeKey = currentActiveKeyRef.current;
+                    setYearlyCardData(prev => ({
+                      ...prev,
+                      [activeKey]: (prev[activeKey] || '') + newChunk
+                    }));
+                  } else {
+                    // 月报：旧逻辑（拼接全文）
+                    setWealthReportText((prev) => prev + parsed.text);
+                    wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
+                  }
 
                   // 🔮 自动滚动锚定(圣旨效果)
                   setTimeout(() => {
@@ -2085,52 +2192,85 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 骨架框架流:4个卡片实时提取流式数据 */}
+        {/* 🔮 年报17卡片指针流 + 月报4卡片 */}
         {(() => {
-          // 🛠️ 军师v2:同时支持月报和年报的流式骨架
-          const isMonthlyComplete = (() => {
-            if (!wealthReportText || !wealthReportText.trim().startsWith('{')) return false;
-            try {
-              const parsed = JSON.parse(wealthReportText);
-              return !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
-            } catch { return false; }
-          })();
-          const isYearlyComplete = wealthReportText && wealthReportText.trim().length > 100 && !wealthReportText.trim().startsWith('{');
-
-          return reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly' || streamedOnce
-            || (wealthReportText && wealthReportText.trim().startsWith('{') && !isMonthlyComplete)
-            || (reportLoading === 'wealth_yearly' && wealthReportText && !isYearlyComplete);
-        })() && (
-          <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 🛠️ 军师v4:流式期间显示已流到的内容 + 加载指示器;流式结束后渲染卡片 */}
-            {(() => {
-              const isLoading = reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly';
-              return isLoading;  // 只有还在流式时才显示纯文本骨架
-            })() ? (
-              <div style={{ marginTop: '16px', padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)', minHeight: '200px' }}>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {wealthReportText}
-                  <span style={{
-                    display: 'inline-block',
-                    width: '2px',
-                    height: '1.2em',
-                    background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                    marginLeft: '2px',
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                    boxShadow: '0 0 8px rgba(212,175,55,0.6)',
-                    verticalAlign: 'middle',
-                  }}/>
+          // 月报逻辑(保持旧逻辑)
+          if (reportLoading === 'wealth_monthly' || (streamedOnce && wealthReportText && wealthReportText.trim().startsWith('{'))) {
+            if (reportLoading === 'wealth_monthly') {
+              // 流式中:显示纯文本骨架
+              return (
+                <div id="wealth-report-container" style={{ marginTop: '16px', padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)', minHeight: '200px' }}>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {wealthReportText}
+                    <span style={{
+                      display: 'inline-block',
+                      width: '2px',
+                      height: '1.2em',
+                      background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                      marginLeft: '2px',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                      boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                      verticalAlign: 'middle',
+                    }}/>
+                  </div>
                 </div>
+              );
+            } else {
+              // 流式结束:渲染月报卡片
+              return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
+            }
+          }
+          
+          // 🛠️ 军师方案D完全体：年报17卡片指针流
+          if (reportLoading === 'wealth_yearly' || (yearlyCardsReady && wealthReportText && !wealthReportText.trim().startsWith('{'))) {
+            const anchors = getAnchors(lang);
+            
+            return (
+              <div id="wealth-report-container" style={{ marginTop: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid rgba(212,175,55,0.2)' }}>
+                  📅 {t('wealthReport.yearlyReportTitle') || '年度财富报告'}
+                </div>
+                
+                {anchors.map((anchor) => {
+                  const cardData = yearlyCardData[anchor.key];
+                  const hasData = cardData && cardData.trim().length > 0;
+                  
+                  return (
+                    <div key={anchor.key} style={{
+                      background: hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.9) 100%)' : 'rgba(0,0,0,0.15)',
+                      border: `2px solid ${hasData ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.2)'}`,
+                      borderRadius: '16px',
+                      padding: hasData ? '18px' : '16px',
+                      marginBottom: '14px',
+                      boxShadow: hasData ? '0 4px 16px rgba(212,175,55,0.15), inset 0 0 60px rgba(212,175,55,0.05)' : 'none',
+                      minHeight: '100px',
+                      transition: 'all 0.5s ease-in-out',
+                    }}>
+                      {hasData ? (
+                        <div>
+                          <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '8px', fontWeight: 600 }}>
+                            {anchor.match[0]}
+                          </div>
+                          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                            {highlightYearlyGold(cardData)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="skeleton-wave" style={{
+                          width: '100%',
+                          height: '80px',
+                          borderRadius: '8px',
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              wealthReportText && wealthReportText.trim().startsWith('{')
-                ? <MonthlyReportCard lang={currentLang} content={wealthReportText} />
-                : wealthReportText && wealthReportText.trim().length > 100
-                ? <YearlyReportCard content={wealthReportText} birthDate={birthDate} />
-                : null
-            )}
-          </div>
-        )}
+            );
+          }
+          
+          return null;
+        })()}
 
         {isUnlocked && !reportData?.insight && (
           <button
