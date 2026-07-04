@@ -2027,26 +2027,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             || (reportLoading === 'wealth_yearly' && wealthReportText && !isYearlyComplete);
         })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 🛠️ 军师v3：流式期间显示已流到的内容 + 加载指示器 */}
+            {/* 🛠️ 军师v4：流式期间显示已流到的内容 + 加载指示器；流式结束后渲染卡片 */}
             {(() => {
               const isLoading = reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly';
-              return isLoading || streamedOnce;
+              return isLoading;  // 只有还在流式时才显示纯文本骨架
             })() ? (
               <div style={{ marginTop: '16px', padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)', minHeight: '200px' }}>
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {wealthReportText}
-                  {reportLoading && (
-                    <span style={{
-                      display: 'inline-block',
-                      width: '2px',
-                      height: '1.2em',
-                      background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                      marginLeft: '2px',
-                      animation: 'pulse 1.5s ease-in-out infinite',
-                      boxShadow: '0 0 8px rgba(212,175,55,0.6)',
-                      verticalAlign: 'middle',
-                    }}/>
-                  )}
+                  <span style={{
+                    display: 'inline-block',
+                    width: '2px',
+                    height: '1.2em',
+                    background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                    marginLeft: '2px',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                    verticalAlign: 'middle',
+                  }}/>
                 </div>
               </div>
             ) : (
