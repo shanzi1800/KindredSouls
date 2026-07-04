@@ -459,8 +459,8 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       const isQuote = trimmed.startsWith('>');
       // 排除：列表项（- 或 * 开头）
       const isListItem = /^[-*]\s/.test(trimmed);
-      // 顶级章节判定：含章节关键字 + 长度<40 + 不是年月 + 不是引用块 + 不是列表项
-      const isNewChapter = isChapterKeyword && trimmed.length < 40 && !isYearMonth && !isQuote && !isListItem;
+      // 顶级章节判定：含章节关键字 + 长度<80（足够容纳"## 第一章：xxx（English Title）"） + 不是年月 + 不是引用块 + 不是列表项
+      const isNewChapter = isChapterKeyword && trimmed.length < 80 && !isYearMonth && !isQuote && !isListItem;
 
       if (isNewChapter) {
         // 提取章节标题（去掉前面的 #）
