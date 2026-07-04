@@ -717,6 +717,7 @@ const LoadingOverlay: React.FC<{ message: string }> = ({ message }) => (
     }} />
     <p style={{ color: '#8B8778', fontSize: 14 }}>{message}</p>
     <style>{`@keyframes ks-spin { to { transform: rotate(360deg); } }`}</style>
+    <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scaleX(0.8); } 50% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); } }`}</style>
   </div>
 );
 
@@ -2035,8 +2036,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
                     {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
                   </div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                    {extractStreamingHeadline(wealthReportText || '') || <span style={{ color: 'rgba(255,255,255,0.15)' }}>⠀</span>}
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word', position: 'relative' }}>
+                    {extractStreamingHeadline(wealthReportText || '') || (
+                      <>
+                        {/* 🌟 军师铁令：标题骨架流光呼吸灯 */}
+                        <span style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: '60%',
+                          height: '2px',
+                          background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.8) 50%, transparent 100%)',
+                          animation: 'pulse 2s ease-in-out infinite',
+                          borderRadius: '1px',
+                          boxShadow: '0 0 16px rgba(212,175,55,0.6)',
+                        }}/>)
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -2078,8 +2095,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                           {weekLabels[idx][currentLang] || weekLabels[idx].en}
                         </span>
                       </div>
-                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px' }}>
-                        {weekText || <span style={{ color: 'rgba(255,255,255,0.15)' }}>⠀</span>}
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px', position: 'relative' }}>
+                        {weekText || (
+                          <>
+                            {/* 🌟 军师铁令：骨架流光呼吸灯 */}
+                            <span style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              width: '80%',
+                              height: '2px',
+                              background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)',
+                              animation: 'pulse 2s ease-in-out infinite',
+                              borderRadius: '1px',
+                              boxShadow: '0 0 12px rgba(212,175,55,0.4)',
+                            }}/>)
+                          </>
+                        )}
                         {/* 🌟 魔法光标：只在当前正在填充的卡片显示（流结束后消失） */}
                         {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && !streamedOnce && (
                           <span style={{
