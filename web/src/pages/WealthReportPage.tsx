@@ -2039,8 +2039,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       </div>
                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px' }}>
                         {weekText || <span style={{ color: 'rgba(255,255,255,0.3)' }}>等待数据流...</span>}
-                        {/* 🌟 魔法光标：只在当前正在填充的卡片显示 */}
-                        {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && (
+                        {/* 🌟 魔法光标：只在当前正在填充的卡片显示（流结束后消失） */}
+                        {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && reportLoading === 'wealth_monthly' && (
                           <span style={{
                             display: 'inline-block',
                             width: '2px',
