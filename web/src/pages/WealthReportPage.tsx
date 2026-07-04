@@ -349,25 +349,34 @@ interface MonthBlock {
   shadowWork: string[];
 }
 
-// ── 清洗时间线重复（补齐军师服务器端 cleanYearlyTimeline 逻辑，应用于流式）──
-function cleanYearlyTimeline(text: string): string {
+// 🛠️ 军师硬核：年报终极日期清洗矩阵（五重斩杀）
+// ⚠️ 注意：此函数必须在流式结束后对完整文本调用，不能在 onStreamChunk 中调用！
+export const cleanYearlyTimeline = (text: string): string => {
   if (!text) return text;
-  // Pattern 1: 2026年6月2026年6月 → 2026年6月
-  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年\1)/g, '$1');
-  // Pattern 2: 2026年6月2026年6月6月 → 2026年6月21日
-  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)(\d{1,2}月)/g, '$1$4');
-  // Pattern 3: 1990年6月2026年6月 → 1990年6月15日
-  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2$4日');
-  // Pattern 4: 2026年6月2026年6月21日 → 2026年6月21日
-  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年\2)(\d{1,2}日)/g, '$1$2$4');
-  // Pattern 5: 连续两个相同月份 → 保留一个
-  text = text.replace(/(\d{4}年)(\d{1,2}月)(\1)(\d{1,2}月)/g, '$1$2');
-  // Pattern 6: 任意位置连续年份重复
-  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\1)/g, '$1$2');
-  // Pattern 7: 2026年6月2026年6月 → 2026年6月（贪婪清理）
-  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)/g, '$1');
-  return text;
-}
+  let cleaned = text;
+
+  // 🎯 斩杀 1：处理生日与流年混杂的连体怪 (如：1995年3月1995年3月2026年7月8日)
+  // 匹配连续重复的旧年份
+  cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+
+  // 🎯 斩杀 2：处理流年区间的疯狂复读 (如：2026年7月2026年7月2027年6月)
+  // 识别形如 A + A + B 的年份连击，直接保留最后结构
+  cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)\1+(\d{4}年\d{1,2}月)/g, '$1至$2');
+
+  // 🎯 斩杀 3：处理月份卡片内部的复读 (如：7月7日7月7日7月22日 -> 7月7日至7月22日)
+  // 如果同一行内出现 "X月Y日X月Y日Z日"，强行格式化为区间
+  cleaned = cleaned.replace(/(\d{1,2}月\d{1,2}日)\1+(\d{1,2}日)/g, '$1至$2');
+  cleaned = cleaned.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
+
+  // 🎯 斩杀 4：擦除年份跨度中莫名其妙死灰复燃的本命生日 (如：至1995年3月2027年6月)
+  // 如果在"至"后面夹杂了历史年份，直接抹去，保留未来的截止流年
+  cleaned = cleaned.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
+
+  // 🎯 斩杀 5：彻底清理多余的空格和错位符号
+  cleaned = cleaned.replace(/(📅\s*\d{4}年\d{1,2}月)\1+/g, '$1');
+
+  return cleaned;
+};
 
 // ── Markdown 解析核心 ──
 const parseYearlyReport = (markdown: string, _birthDate: string): {
