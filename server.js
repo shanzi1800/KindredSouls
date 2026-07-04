@@ -60,7 +60,7 @@ app.get('/api/debug-env', (req, res) => {
     SUPABASE_URL: process.env.SUPABASE_URL ? '✓ set' : '✗ missing',
     SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? '✓ set' : '✗ missing',
     STRIPE: process.env.STRIPE_SECRET_KEY ? '✓ set' : '✗ missing',
-    serverVersion: 't4-debug-2026-06-29c', gitSha: 'b31ab55',
+    serverVersion: 't4-debug-2026-06-29c', gitSha: 'a5042f3',
     tarotHasName: typeof TAROT_CARDS !== 'undefined' && TAROT_CARDS[0] && !!TAROT_CARDS[0].name,
     fileSize: readFileSync(__filename).length,
   });
@@ -68,7 +68,7 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'b31ab55', debugBuildTime: 'FRESHBUILD-20260703-1147Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'a5042f3', debugBuildTime: 'FRESHBUILD-20260703-1147Z' });
 });
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
@@ -1186,37 +1186,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓冲
   
   try {
-    // ══════════════════
-    // ⚡ 缓存层（防重复调用烧钱）
-    const SB_URL = process.env.SUPABASE_URL;
-    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const cacheKey = `${birthDate}|${lang}|${reportType}`;
-    
-    // 检查缓存（24h 内有效）
-    const since = new Date(Date.now() - 24*3600*1000).toISOString();
-    const cacheRes = await fetch(
-      `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&created_at=gte.${since}&select=insight,prompt_version`,
-      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-    );
-    const cached = await cacheRes.json();
-    if (cached?.[0]?.insight) {
-      console.log('[wealth-stream] ✅ Cache hit:', cacheKey, 'version:', cached[0].prompt_version);
-      // 伪流式：逐字推送缓存内容（保持 UX）
-      const fullText = cached[0].insight;
-      for (const char of fullText) {
-        res.write(`data: ${JSON.stringify({ text: char })}
-
-      res.write('data: [DONE]\\n\\n');
-
-');
-
-`);
-      }
-      return res.end();
-    }
-    
-    console.log('[wealth-stream] ⚠️ Cache miss, calling AI:', { birthDate, lang, reportType });
-    
     // 复用现有 prompt 构建逻辑
     const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
       dayMaster: '甲',
