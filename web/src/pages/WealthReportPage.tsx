@@ -25,20 +25,20 @@ interface MonthlyReportData {
   expense_trap?: { tag: string; dateRange: string; text: string };
 }
 
-// 智能分段：按破折号、日期、关键句分割
+// 智能分段:按破折号、日期、关键句分割
 const splitTextToBlocks = (text: string): string[] => {
-  // 先按句子分割（句号、感叹号、问号）
-  const sentences = text.split(/(?<=[。！？])/);
+  // 先按句子分割(句号、感叹号、问号)
+  const sentences = text.split(/(?<=[。!?])/);
   const blocks: string[] = [];
   let currentBlock = '';
-  
+
   for (const sentence of sentences) {
     const trimmed = sentence.trim();
     if (!trimmed) continue;
-    
-    // 如果当前块已经很长，或者遇到特定标记，就截断
-    if (currentBlock.length > 80 || 
-        trimmed.includes('—') || 
+
+    // 如果当前块已经很长,或者遇到特定标记,就截断
+    if (currentBlock.length > 80 ||
+        trimmed.includes('-') ||
         /^\d+月\d+日/.test(trimmed) ||
         trimmed.includes('阴影自我') ||
         trimmed.includes('警告') ||
@@ -62,9 +62,9 @@ const highlightKeywords = (text: string): React.ReactNode => {
     { pattern: /(深度尽职调查|边界的确立|全面戒严|物理超度)/g, color: '#D4AF37', bg: 'rgba(212,175,55,0.1)' },
     { pattern: /(\d+月\d+日)/g, color: '#D4AF37', bg: 'transparent' },
   ];
-  
+
   let parts: React.ReactNode[] = [text];
-  
+
   keywords.forEach(({ pattern, color, bg }) => {
     const newParts: React.ReactNode[] = [];
     parts.forEach(part => {
@@ -74,13 +74,13 @@ const highlightKeywords = (text: string): React.ReactNode => {
       }
       const matches = part.split(pattern);
       const matchResults = part.match(pattern) || [];
-      
+
       matches.forEach((segment, i) => {
         if (segment) newParts.push(segment);
         if (matchResults[i]) {
           newParts.push(
-            <span key={`${i}-${matchResults[i]}`} style={{ 
-              color, 
+            <span key={`${i}-${matchResults[i]}`} style={{
+              color,
               background: bg,
               padding: bg !== 'transparent' ? '1px 4px' : '0',
               borderRadius: '3px',
@@ -94,7 +94,7 @@ const highlightKeywords = (text: string): React.ReactNode => {
     });
     parts = newParts;
   });
-  
+
   return <>{parts}</>;
 };
 
@@ -137,30 +137,30 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
       default: { zh:'💫 机遇窗口', en:'💫 Opportunity', es:'💫 Oportunidad', fr:'💫 Opportunité', th:'💫 โอกาส', vi:'💫 Cơ Hội' },
     },
     theme:  { zh:'🔮 本月命运主题', en:'🔮 Monthly Theme', es:'🔮 Tema', fr:'🔮 Thème', th:'🔮 ธีม', vi:'🔮 Chủ Đề' },
-    keyDay: { zh:'💫 核心天机', en:'💫 Key Day', es:'💫 Día Clave', fr:'💫 Jour Clé', th:'💫 วันสำคัญ', vi:'💫 Ngày Quan Trọng' },
-    order:  { zh:'🛑 防弹硬核指令', en:'🛑 Hard Order', es:'🛑 Orden', fr:'🛑 Ordre', th:'🛑 คำสั่ง', vi:'🛑 Lệnh Khẩn' },
-    orderTxt: { zh:'执行【全面戒严】！超过 <b>5000元</b> 必须等 <b>24小时</b>！', en:'Full alert! Expense > <b>$700</b> wait <b>24h</b>!', es:'¡Alerta! Gasto > <b>$700</b> esperar <b>24h</b>!', fr:'Alerte! Dépense > <b>700€</b> attendre <b>24h</b>!', th:'แจ้งเตือน! ค่าใช้จ่าย > <b>฿25000</b> รอ <b>24ชม.</b>!', vi:'Báo động! Chi > <b>3.5M₫</b> đợi <b>24giờ</b>!' },
+    keyDay: { zh:'💫 核心天机', en:'💫 Key Day', es:'💫 Día Clave', fr:'💫 Jour Clé', th:'💫 วันสําคัญ', vi:'💫 Ngày Quan Trọng' },
+    order:  { zh:'🛑 防弹硬核指令', en:'🛑 Hard Order', es:'🛑 Orden', fr:'🛑 Ordre', th:'🛑 คําสั่ง', vi:'🛑 Lệnh Khẩn' },
+    orderTxt: { zh:'执行【全面戒严】!超过 <b>5000元</b> 必须等 <b>24小时</b>!', en:'Full alert! Expense > <b>$700</b> wait <b>24h</b>!', es:'¡Alerta! Gasto > <b>$700</b> esperar <b>24h</b>!', fr:'Alerte! Dépense > <b>700€</b> attendre <b>24h</b>!', th:'แจ้งเตือน! ค่าใช้จ่าย > <b>฿25000</b> รอ <b>24ชม.</b>!', vi:'Báo động! Chi > <b>3.5M₫</b> đợi <b>24giờ</b>!' },
   };
   // Render as cards
   const getCardStyle = (type: string) => {
     switch (type) {
-      case 'peak': return { 
-        border: '#4CAF50', 
+      case 'peak': return {
+        border: '#4CAF50',
         bg: 'linear-gradient(135deg, rgba(76,175,80,0.12) 0%, rgba(76,175,80,0.04) 100%)',
         badge: UI.badge.peak[safeLang] || UI.badge.peak.en
       };
-      case 'risk': return { 
-        border: '#FF4D4F', 
+      case 'risk': return {
+        border: '#FF4D4F',
         bg: 'linear-gradient(135deg, rgba(255,77,79,0.12) 0%, rgba(255,77,79,0.04) 100%)',
         badge: UI.badge.risk[safeLang] || UI.badge.risk.en
       };
-      case 'flow': return { 
-        border: '#64B5F6', 
+      case 'flow': return {
+        border: '#64B5F6',
         bg: 'linear-gradient(135deg, rgba(100,181,246,0.12) 0%, rgba(100,181,246,0.04) 100%)',
         badge: UI.badge.flow[safeLang] || UI.badge.flow.en
       };
-      default: return { 
-        border: '#D4AF37', 
+      default: return {
+        border: '#D4AF37',
         bg: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)',
         badge: UI.badge.default[safeLang] || UI.badge.default.en
       };
@@ -170,7 +170,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
   return (
     <div style={{ marginTop: '16px' }}>
       {/* 🔮 Headline - 命运主题 */}
-      <div style={{ 
+      <div style={{
         background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(139,69,19,0.1) 100%)',
         border: '2px solid rgba(212,175,55,0.4)',
         borderRadius: '16px',
@@ -191,7 +191,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
       {data.weeks.map((week, idx) => {
         const style = getCardStyle(week.type);
         const textBlocks = splitTextToBlocks(week.text);
-        
+
         return (
           <div key={idx} style={{
             background: style.bg,
@@ -202,18 +202,18 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
             boxShadow: `0 2px 12px ${style.border}20`
           }}>
             {/* 战时指标卡头 */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'space-between',
               marginBottom: '12px',
               paddingBottom: '10px',
               borderBottom: `1px dashed ${style.border}40`
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  fontSize: '12px', 
-                  fontWeight: 800, 
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 800,
                   color: '#fff',
                   background: style.border,
                   padding: '4px 10px',
@@ -247,7 +247,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
             {/* 豆腐块文字 - 乱刀斩断 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {textBlocks.map((block, bidx) => (
-                <div key={bidx} style={{ 
+                <div key={bidx} style={{
                   fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word',
                   padding: '8px 0',
                   borderBottom: bidx < textBlocks.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none'
@@ -271,9 +271,9 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
           boxShadow: '0 4px 16px rgba(255,77,79,0.2)'
         }}>
           {/* 高危指标头 */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '10px',
             marginBottom: '14px',
             paddingBottom: '12px',
@@ -296,7 +296,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
           {/* 陷阱内容 - 乱刀斩断 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {splitTextToBlocks(data.expense_trap.text).map((block, idx) => (
-              <div key={idx} style={{ 
+              <div key={idx} style={{
                 fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, padding: '6px 0', wordBreak: 'break-word', overflowWrap: 'break-word',
               }}>
                 {highlightKeywords(block)}
@@ -329,7 +329,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// ── 先知天书：年报渲染器（军师满级超神版）──
+// ── 先知天书:年报渲染器(军师满级超神版)──
 // ═══════════════════════════════════════════════════════════════════════
 
 interface YearlyChapter {
@@ -360,20 +360,20 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富年报';
   const months: MonthBlock[] = [];
   const chapters: YearlyChapter[] = [];
-  
+
   let currentMonth: Partial<MonthBlock> | null = null;
   let currentSection: 'paragraphs' | 'wealthAction' | 'shadowWork' = 'paragraphs';
   let currentChapter = { title: '', content: '' };
-  
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || /^#\s/.test(trimmed) || trimmed === '---') continue;  // 只跳过顶级标题（# 开头，后面跟空格的）
-    // 注：## 、###、#### 都要进入解析
-    
-    // 检测月份（军师v3：兼容军师排版规范 + 全/半角分隔符）
-    // 新格式：#### 📅 2026年7月：木星入财帛宫的觉醒之月
-    // 旧格式：### M1: 2026年7月 · 巨蟹座新月
-    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·:：—|]\s*(.+)$/);
+    if (!trimmed || /^#\s/.test(trimmed) || trimmed === '---') continue;  // 只跳过顶级标题(# 开头,后面跟空格的)
+    // 注:## 、###、#### 都要进入解析
+
+    // 检测月份(军师v3:兼容军师排版规范 + 全/半角分隔符)
+    // 新格式:#### 📅 2026年7月:木星入财帛宫的觉醒之月
+    // 旧格式:### M1: 2026年7月 · 巨蟹座新月
+    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·::-|]\s*(.+)$/);
     if (monthMatch) {
       if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
       const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
@@ -394,49 +394,65 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       currentSection = 'paragraphs';
       continue;
     }
-    
+
     // 检测财富行动
-    if (trimmed.includes('■ 财富行动') || trimmed.includes('财富行动：')) {
+    if (trimmed.includes('■ 财富行动') || trimmed.includes('财富行动:')) {
       currentSection = 'wealthAction';
-      const text = trimmed.replace(/^[■◆●]\s*/, '').replace('财富行动：', '').replace('财富行动', '');
+      const text = trimmed.replace(/^[■◆●]\s*/, '').replace('财富行动:', '').replace('财富行动', '');
       if (text) (currentMonth || { paragraphs: [] }).paragraphs!.push(text);
       continue;
     }
-    
+
     // 检测阴影觉察
-    if (trimmed.includes('⚠️ 心理学阴影觉察') || trimmed.includes('✨ 荣格核心心法') || 
+    if (trimmed.includes('⚠️ 心理学阴影觉察') || trimmed.includes('✨ 荣格核心心法') ||
         trimmed.includes('阴影觉察') || trimmed.includes('Shadow Work')) {
       currentSection = 'shadowWork';
-      const text = trimmed.replace(/^[⚠️✨]\s*/, '').replace(/心理学阴影觉察[：:]/, '').replace(/荣格核心心法高亮[：:]/, '').replace('阴影觉察', '');
+      const text = trimmed.replace(/^[⚠️✨]\s*/, '').replace(/心理学阴影觉察[::]/, '').replace(/荣格核心心法高亮[::]/, '').replace('阴影觉察', '');
       if (text) (currentMonth || { paragraphs: [] }).paragraphs!.push(text);
       continue;
     }
-    
-    // 检测顶级章节（军师v6：用关键字识别“第N章”、“终极神谕”，不认## 二级以外的子标题）
+
+    // ─────────────────────────────────────────
+    // 检测顶级章节（军师P0 v1升级版：includes软匹配 + 多语种关键字）
+    // 核心思想：只要行包含章节关键字且长度<40字符，即判定为新章节
+    // 无论AI输出##/###/####/或无#前缀，都能兜住
+    // ─────────────────────────────────────────
     if (!monthMatch) {
-      const headingMatch = trimmed.match(/^#{1,4}\s+(?:[🌕🛡⚡🔮📜📅]?\s*)?(.+)$/);
-      if (headingMatch) {
-        const title = headingMatch[1].trim();
-        // 顶级章节关键字：第N章、Chapter、终极神谕、通关密令
-        const isMainChapter = /^第[一二三四五六七八九十百\d]+章/.test(title) 
-          || /终极神谕|通关密令|Chapter\s+[IVX]+/i.test(title)
-          || /^##\s/.test(trimmed);  // ## 二级标题也是顶级章节
-        if (isMainChapter && !title.match(/^[\d{4}年\d{1,2}月]/)) {
-          if (currentChapter.title) chapters.push(currentChapter);
-          currentChapter = { title, content: '' };
-          if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
-          currentMonth = null;
-          continue;
-        }
+      const clean = trimmed.toLowerCase();
+      // 顶级章节关键字（多语种全量覆盖）
+      const CHAPTER_KEYWORDS = [
+        // 中文
+        '第一章','第二章','第三章','第四章','第五章',
+        '终极神谕','通关密令','先知天书',
+        // 英文/法文/西文
+        'chapter','capítulo','chapitre',
+        'final oracle','oráculo final','oracle final',
+        'final wealth','ultimate oracle',
+        // 子标题关键字（这些在月历内有，不触发顶级章节）
+      ];
+      const isChapterKeyword = CHAPTER_KEYWORDS.some(kw => clean.includes(kw.toLowerCase()));
+      // 排除：年份日期（2026年7月）、月份标签
+      const isYearMonth = /\d{4}年\d{1,2}月/.test(trimmed) || /^\d{4}年/.test(trimmed);
+      // 顶级章节判定：含章节关键字 + 长度<40 + 不是年月
+      const isNewChapter = isChapterKeyword && trimmed.length < 40 && !isYearMonth;
+
+      if (isNewChapter) {
+        // 提取章节标题（去掉前面的 #）
+        const title = trimmed.replace(/^#+\s*/, '').trim();
+        if (currentChapter.title) chapters.push(currentChapter);
+        currentChapter = { title, content: '' };
+        if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+        currentMonth = null;
+        continue;
       }
     }
-    
+
     // 宇宙相位行
     if (trimmed.includes('🌌') || trimmed.includes('宇宙相位') || /[🌌🔮⭐]/.test(trimmed)) {
       if (currentMonth) currentMonth.cosmicPhase = trimmed;
       continue;
     }
-    
+
     // 普通段落/子标题
     if (currentMonth) {
       const clean = trimmed.replace(/^[-*]\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1');
@@ -455,7 +471,7 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   }
   if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
   if (currentChapter.title) chapters.push(currentChapter);
-  
+
   return { title, chapters, months, rawContent: markdown };
 };
 
@@ -470,7 +486,7 @@ const highlightYearlyGold = (text: string): React.ReactNode => {
     { k: /(高危|风险|危机|谨慎|过度)/g, color: '#FF6B6B', bold: false },
     { k: /(丰盛|充能|爆发|显化|收获)/g, color: '#4CAF50', bold: false },
   ];
-  
+
   let result: React.ReactNode = text;
   keywords.forEach(({ k, color, bold }) => {
     const parts = String(result).split(k);
@@ -491,10 +507,10 @@ const highlightYearlyGold = (text: string): React.ReactNode => {
 // ── 年报卡片主组件 ──
 const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ content, birthDate }) => {
   const parsed = parseYearlyReport(content, birthDate);
-  
-  // 获取星座显示（从 birthDate 简单解析）
+
+  // 获取星座显示(从 birthDate 简单解析)
   const zodiacDisplay = parsed.months[0]?.zodiac || '双子座';
-  
+
   // 月份状态对应的 Badge 样式
   const getBadgeStyle = (state: string) => {
     switch (state) {
@@ -503,10 +519,10 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
       default: return { border: '#64B5F6', bg: 'rgba(100,181,246,0.15)', color: '#64B5F6', glow: '0 0 15px rgba(100,181,246,0.3)' };
     }
   };
-  
+
   return (
     <div style={{ marginTop: '16px' }}>
-      {/* ═══ 神圣封面：命运主题 + 仪式感标题 ═══ */}
+      {/* ═══ 神圣封面:命运主题 + 仪式感标题 ═══ */}
       <div style={{
         background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
         border: '2px solid rgba(212,175,55,0.4)',
@@ -521,7 +537,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
         {/* 装饰角标 */}
         <div style={{ position: 'absolute', top: '10px', left: '14px', fontSize: '11px', color: 'rgba(212,175,55,0.4)' }}>🔮</div>
         <div style={{ position: 'absolute', top: '10px', right: '14px', fontSize: '11px', color: 'rgba(212,175,55,0.4)' }}>🌌</div>
-        
+
         <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 600 }}>
           ✦ 先知天书 · 财富天启 ✦
         </div>
@@ -529,11 +545,11 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           {parsed.title}
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
-          <span>👤 出生日期：{birthDate}</span>
-          <span>🌌 盘口：{zodiacDisplay}·太阳回归年</span>
+          <span>👤 出生日期:{birthDate}</span>
+          <span>🌌 盘口:{zodiacDisplay}·太阳回归年</span>
         </div>
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)', marginBottom: '14px' }} />
-        
+
         {/* 神圣引言 */}
         {parsed.chapters[0] && (
           <div style={{
@@ -555,7 +571,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           </div>
         )}
       </div>
-      
+
       {/* ═══ 12个月战时能量看板 ═══ */}
       {parsed.months.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
@@ -564,9 +580,9 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             textTransform: 'uppercase', marginBottom: '14px', paddingBottom: '8px',
             borderBottom: '1px solid rgba(212,175,55,0.2)'
           }}>
-            📅 第二章：12个月收入矩阵
+            📅 第二章:12个月收入矩阵
           </div>
-          
+
           {parsed.months.map((month, idx) => {
             const badge = getBadgeStyle(month.state);
             return (
@@ -578,7 +594,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                 marginBottom: '14px',
                 boxShadow: `0 4px 16px ${badge.glow}`,
               }}>
-                {/* 月份头：战时状态 Badge */}
+                {/* 月份头:战时状态 Badge */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>
@@ -602,13 +618,13 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                     {month.stateLabel}
                   </div>
                 </div>
-                
+
                 {/* 星座新月/满月标签 */}
                 <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px', marginBottom: '12px', fontSize: '11px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '6px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   <span style={{ color: '#D4AF37' }}>🌌</span>
                   <span>{month.zodiac}</span>
                 </div>
-                
+
                 {/* 宇宙相位 */}
                 {month.cosmicPhase && (
                   <div style={{
@@ -624,7 +640,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                     {month.cosmicPhase}
                   </div>
                 )}
-                
+
                 {/* 神谕显化一览卡 */}
                 {month.paragraphs.length > 0 && (
                   <div style={{
@@ -640,7 +656,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
                     ))}
                   </div>
                 )}
-                
+
                 {/* 财富行动 + 阴影觉察 双列神谕卡 */}
                 {(month.wealthAction.length > 0 || month.shadowWork.length > 0) && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -687,8 +703,8 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           })}
         </div>
       )}
-      
-      {/* 其他章节：完整渲染，取消截断（军师v6） */}
+
+      {/* 其他章节:完整渲染,取消截断(军师v6) */}
       {parsed.chapters.slice(1).filter(ch => ch.content && ch.content.trim().length > 0).map((ch, idx) => (
         <div key={idx} style={{
           background: 'rgba(0,0,0,0.25)',
@@ -756,9 +772,9 @@ interface WealthReportPageProps {
   onNavigate: (path: string) => void;
 }
 
-// 🛡️ KindredSouls 战时黄金文案防弹装甲：6国语言至尊跃迁提示
+// 🛡️ KindredSouls 战时黄金文案防弹装甲:6国语言至尊跃迁提示
 const UPGRADE_HINTS: Record<string, string> = {
-  zh: "您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。",
+  zh: "您的至尊全通通道已开启。由于您已成功解锁基础格局,现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权,全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。",
   en: "Your supreme all-access channel is active. Having unlocked your basic chart, you now hold the cosmic privilege to upgrade directly to [$99.99/Year Ultimate VIP], fully revealing the next 12 months of your 'Solar Return Almanac' and all high-tier algorithms.",
   fr: "Votre canal d'accès suprême est activé. Ayant débloqué votre thème de base, vous disposez du privilège cosmique de passer directement au [VIP Ultime à 99,99 $/an], révélant l'Almanach du Retour Solaire des 12 prochains mois.",
   es: "Su canal supremo de acceso total está activo. Habiendo desbloqueado su carta básica, ahora tiene el privilegio cósmico de actualizar directamente a [VIP Definitivo de $99.99/año], revelando su Almanaque de Retorno Solar.",
@@ -774,7 +790,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
-  // 🏅 第一斧：useRef 同步锁定免死金牌，在所有 render 之前抢跑
+  // 🏅 第一斧:useRef 同步锁定免死金牌,在所有 render 之前抢跑
   const isGreenChannelRef = useRef<boolean>(
     typeof window !== 'undefined' && (
       window.location.search.includes('free_access=1') ||
@@ -782,26 +798,26 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     )
   );
   console.log('🔍 [REF INIT] search=' + (typeof window !== 'undefined' ? window.location.search : 'SSR') + ' ref=' + isGreenChannelRef.current);
-  // 一旦检测到，立刻往 sessionStorage 打补丁，防止 URL 被 strip 后丢失凭证
+  // 一旦检测到,立刻往 sessionStorage 打补丁,防止 URL 被 strip 后丢失凭证
   if (isGreenChannelRef.current && typeof window !== 'undefined') {
     sessionStorage.setItem('⚡_FREE_PASS', '1');
   }
 
-  // 🏅 第二斧：isUnlocked 初始值从 ref 读取，拒绝首帧 false
+  // 🏅 第二斧:isUnlocked 初始值从 ref 读取,拒绝首帧 false
   const [isUnlocked, setIsUnlocked] = useState(() => isGreenChannelRef.current);
   const [showPaywall, setShowPaywall] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
-  const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
+  const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
-  
-  // 🛠️ 军师的流式硬切黑魔法：实时提取 headline、weeks 和 expense_trap 数据（无需等待 JSON 闭合）
-  // 🛠️ 军师黑魔法：手功从原始 JSON 里提取字段值（支持未闭合字符串）
-  // 流式 JSON 累积期间，未闭合的 "text" 字段会让正则 \u5b8c\u5168\u5931\u6548
-  // 不用正则，手动跳过转义扫描到下一个 "
+
+  // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
+  // 🛠️ 军师黑魔法:手功从原始 JSON 里提取字段值(支持未闭合字符串)
+  // 流式 JSON 累积期间,未闭合的 "text" 字段会让正则 \u5b8c\u5168\u5931\u6548
+  // 不用正则,手动跳过转义扫描到下一个 "
   const extractJsonString = (rawText: string, key: string, startFrom = 0): string => {
     const keyPos = rawText.indexOf(`"${key}": "`, startFrom);
     if (keyPos === -1) return '';
@@ -817,31 +833,31 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     return rawText.slice(start, j);
   };
-  
+
   const extractStreamingHeadline = (rawText: string): string => {
     return extractJsonString(rawText, 'headline');
   };
-  
+
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
-    
+
     // 找 weeks 数组的起点
     const weeksStart = rawText.match(/"weeks"\s*:\s*\[/);
     if (!weeksStart) return weeks;
-    
+
     const after = rawText.slice(weeksStart.index! + weeksStart[0].length);
     let weekIdx = 0;
     let i = 0;
-    
+
     while (weekIdx < 4 && i < after.length) {
       // 找下一个 { 块起点
       const bracePos = after.indexOf('{', i);
       if (bracePos === -1) break;
-      
-      // 在这个块里找 "text": "（手动扫描未闭合字符串）
+
+      // 在这个块里找 "text": "(手动扫描未闭合字符串)
       const textPos = after.indexOf('"text": "', bracePos);
       if (textPos === -1) break;
-      
+
       const start = textPos + '"text": "'.length;
       let j = start;
       while (j < after.length) {
@@ -856,19 +872,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       weekIdx++;
       i = j;
     }
-    
+
     return weeks;
   };
-  
-  // 🛠️ 提取 expense_trap 数据（手功提取 tag/dateRange/text，未闭合也能拿）
+
+  // 🛠️ 提取 expense_trap 数据(手功提取 tag/dateRange/text,未闭合也能拿)
   const extractExpenseTrap = (rawText: string): { tag: string; dateRange: string; text: string } | null => {
     const trapPos = rawText.indexOf('"expense_trap"');
     if (trapPos === -1) return null;
-    
+
     // 找到 expense_trap 后的第一个 { 起点
     const bracePos = rawText.indexOf('{', trapPos);
     if (bracePos === -1) return null;
-    
+
     return {
       tag: extractJsonString(rawText, 'tag', bracePos),
       dateRange: extractJsonString(rawText, 'dateRange', bracePos),
@@ -881,7 +897,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setWealthReportText(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
-  const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过——流结束后保持报告可见
+  const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -916,7 +932,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     console.log('[WealthReport] 🧪 useEffect run: freeAccess=', freeAccess, 'birth=', birth, 'lang=', langParam);
 
-    // 🏅 useEffect 绿色通道：用 ref 判断（同步、常驻、不受竞态影响）
+    // 🏅 useEffect 绿色通道:用 ref 判断(同步、常驻、不受竞态影响)
     if (isGreenChannelRef.current) {
             setIsUnlocked(true);
       setShowPaywall(false);
@@ -936,8 +952,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setTimeout(() => setAuthChecking(false), 10000);
   }, []);
 
-  // ── Magic Link 同 tab 回调监听：callback.html 完成后发 KS_AUTH_SUCCESS ──
-  // 父窗口 reload 后 App.tsx 触发 SIGNED_IN → 有 plan 则走 Stripe，无 plan 则留在当前页
+  // ── Magic Link 同 tab 回调监听:callback.html 完成后发 KS_AUTH_SUCCESS ──
+  // 父窗口 reload 后 App.tsx 触发 SIGNED_IN → 有 plan 则走 Stripe,无 plan 则留在当前页
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'KS_AUTH_SUCCESS') {
@@ -963,12 +979,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const { data: { session } } = await supabase.auth.getSession();
         token = session?.access_token;
       } else {
-        // 有 token from hash，但不在这里清理 URL
+        // 有 token from hash,但不在这里清理 URL
       }
 
       if (token) {
         setCurrentToken(token);
-        // free_access=1 时不 replaceState（避免 strip URL 导致二次 render 时 free_access 丢失）
+        // free_access=1 时不 replaceState(避免 strip URL 导致二次 render 时 free_access 丢失)
         if (new URLSearchParams(window.location.search).get('free_access') !== '1') {
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('birth', birth);
@@ -1016,9 +1032,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     await loadWealthData(birth, lang, token ?? undefined);
   };
 
-  // 🏅 第三斧A：checkPaidStatus 物理断路器
+  // 🏅 第三斧A:checkPaidStatus 物理断路器
   const checkPaidStatus = async () => {
-    // 顶层物理断路：ref 是同步的，不受 React 生命周期影响
+    // 顶层物理断路:ref 是同步的,不受 React 生命周期影响
     if (isGreenChannelRef.current) {
             setIsUnlocked(true);
       setShowPaywall(false);
@@ -1026,7 +1042,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setCurrentToken('green-channel-test-token');
       return true;
     }
-    // 🧪 强制解锁：free_access=1 时跳过所有检查，直接解锁
+    // 🧪 强制解锁:free_access=1 时跳过所有检查,直接解锁
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
       setIsUnlocked(true);
       setShowPaywall(false);
@@ -1128,22 +1144,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  // 🏅 第三斧B：loadWealthData 物理断路器
+  // 🏅 第三斧B:loadWealthData 物理断路器
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
-    // 🔒 物理锁：如果正在加载，直接返回
+    // 🔒 物理锁:如果正在加载,直接返回
     if (loadingRef.current) {
-      console.log('[WealthReport] ⚠️ loadWealthData 已在执行，跳过重复调用');
+      console.log('[WealthReport] ⚠️ loadWealthData 已在执行,跳过重复调用');
       return;
     }
     loadingRef.current = true;
     setLoading(true);
     setError(null);
 
-    // 顶层物理断路：ref 是同步的，React 竞态无法strip
+    // 顶层物理断路:ref 是同步的,React 竞态无法strip
     if (isGreenChannelRef.current) {
       setIsUnlocked(true);
       setShowPaywall(false);
-      // 绿色通道：从 Supabase 读预存数据
+      // 绿色通道:从 Supabase 读预存数据
       let hasCacheData = false;
       try {
         const res = await fetch('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/wealth_insights_cache?birth_date=eq.' + birth + '&lang=eq.' + lang + '&limit=1', {
@@ -1155,7 +1171,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const rows = await res.json();
         if (rows.length > 0 && rows[0].insight) {
           const cached = JSON.parse(rows[0].insight);
-          // 只设置主报告数据（四宫格），不设置月报（让用户手动点击按钮）
+          // 只设置主报告数据(四宫格),不设置月报(让用户手动点击按钮)
           if (cached.data) {
             setReportData({
               success: true,
@@ -1167,7 +1183,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             });
             hasCacheData = true;  // ✅ 标记有缓存数据
           }
-          // 月报数据缓存到 localStorage，用户点击按钮时读取
+          // 月报数据缓存到 localStorage,用户点击按钮时读取
           if (cached.weeks && cached.expense_trap) {
             localStorage.setItem('ks_wealth_monthly_cache_' + birth + '_' + lang, JSON.stringify(cached));
           }
@@ -1177,14 +1193,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] ❌ Supabase 查询失败:', err);
       }
-      
-      // ✅ 只有有缓存数据时才直接返回，否则继续走 API
+
+      // ✅ 只有有缓存数据时才直接返回,否则继续走 API
       if (hasCacheData) {
         setLoading(false);
         loadingRef.current = false;
         return;
       }
-      // 无缓存数据，继续执行下面的 API 调用
+      // 无缓存数据,继续执行下面的 API 调用
     }
 
     try {
@@ -1222,7 +1238,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           }
         } catch (_) {}
         setError(null);
-        // 🧪 绿色通道：402 不重置解锁状态，让月报/年报按钮保持显示
+        // 🧪 绿色通道:402 不重置解锁状态,让月报/年报按钮保持显示
         if (!isFreeAccess) {
           setIsUnlocked(false);
           setShowPaywall(true);
@@ -1236,7 +1252,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       const data: WealthOracleResponse = await res.json();
-      
+
       if (!data.success) {
         throw new Error('API returned failure');
       }
@@ -1245,8 +1261,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error('[WealthReport] Error loading data:', err);
       setError(
-        lang.startsWith('zh') 
-          ? '网络开小差，请重试' 
+        lang.startsWith('zh')
+          ? '网络开小差,请重试'
           : 'Network error, please try again'
       );
     } finally {
@@ -1256,12 +1272,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🛡️ localStorage 单一信号源：OAuth → Stripe 全链路
-  // callback.html 只写 ks_auth_success_trigger，父窗口 polling 接管跳转
+  // 🛡️ localStorage 单一信号源:OAuth → Stripe 全链路
+  // callback.html 只写 ks_auth_success_trigger,父窗口 polling 接管跳转
   // ═══════════════════════════════════════════════════════════════════════
   const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
 
-    // ── 绿色通道：测试账号不走 OAuth / Stripe，直接跳免费报告页 ──
+    // ── 绿色通道:测试账号不走 OAuth / Stripe,直接跳免费报告页 ──
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
       const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang) + '&free_access=1';
       window.location.href = backUrl;
@@ -1274,7 +1290,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (token && !currentToken) setCurrentToken(token);
 
     if (!token) {
-      // ── 阶段A：弹窗 + localStorage 存 pending plan ──
+      // ── 阶段A:弹窗 + localStorage 存 pending plan ──
       localStorage.removeItem('ks_auth_success_trigger');
       localStorage.setItem('ks_pending_checkout_plan', plan);
       if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
@@ -1283,10 +1299,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       const popup = window.open('about:blank', 'KindredSouls Auth', 'width=500,height=600');
       if (!popup) {
-        alert(currentLang === 'zh' ? '请允许浏览器弹窗以完成安全登录！' : 'Please allow popups for authentication!');
+        alert(currentLang === 'zh' ? '请允许浏览器弹窗以完成安全登录!' : 'Please allow popups for authentication!');
         return;
       }
-      popup.document.write('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#D4AF37;background:#0D0D1A;font-size:16px;">🔮 正在连接宇宙安全加密通道，请稍候...</div>');
+      popup.document.write('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#D4AF37;background:#0D0D1A;font-size:16px;">🔮 正在连接宇宙安全加密通道,请稍候...</div>');
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -1305,7 +1321,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       popup.location.href = data.url;
 
-      // ── 阶段B：polling 扫描单一信号源 ks_auth_success_trigger ──
+      // ── 阶段B:polling 扫描单一信号源 ks_auth_success_trigger ──
       await new Promise<void>((resolve) => {
         const pollTimer = setInterval(async () => {
           if (popup.closed) {
@@ -1315,7 +1331,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             return;
           }
 
-          // 🛡️ 单一信号源：ks_auth_success_trigger 是唯一权威标志
+          // 🛡️ 单一信号源:ks_auth_success_trigger 是唯一权威标志
           const triggerRaw = localStorage.getItem('ks_auth_success_trigger');
           if (triggerRaw) {
             try {
@@ -1348,7 +1364,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
     }
 
-    // ── 阶段C：拿 token 调 Stripe ──
+    // ── 阶段C:拿 token 调 Stripe ──
     console.log('[WealthReport] StageC: token available?', !!token, 'plan:', plan);
     if (!token) {
       const { data: { session: s } } = await supabase.auth.getSession();
@@ -1370,19 +1386,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       });
       const data = await res.json();
       console.log('[WealthReport] Stripe response status:', res.status, 'data:', JSON.stringify(data));
-      
+
       if (res.status === 401) {
-        // 🛡️ Token 失效：清掉强制重 OAuth
-        console.warn('[WealthReport] ⚠️ Token 失效，强制重 OAuth');
+        // 🛡️ Token 失效:清掉强制重 OAuth
+        console.warn('[WealthReport] ⚠️ Token 失效,强制重 OAuth');
         setCurrentToken(null);
         localStorage.removeItem('ks_pending_checkout_plan');
         localStorage.removeItem('ks_auth_success_trigger');
-        setError(currentLang === 'zh' ? '登录已过期，正在重新登录...' : 'Session expired, please re-login');
-        // 递归重试（重新走 OAuth）
+        setError(currentLang === 'zh' ? '登录已过期,正在重新登录...' : 'Session expired, please re-login');
+        // 递归重试(重新走 OAuth)
         setTimeout(() => handlePurchase(plan), 500);
         return;
       }
-      
+
       if (data.url) {
         console.log('[WealthReport] Redirecting to Stripe:', data.url);
         window.location.href = data.url;
@@ -1435,31 +1451,31 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
 
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
-    // 🧪 绿色通道：free_access=1 时优先从 localStorage 读取缓存
+    // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
     if (isFreeTest && type === 'monthly') {
       const cacheKey = 'ks_wealth_monthly_cache_' + birthDate + '_' + lang;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存（但强制走流式输出以验证效果）');
-        // ⚠️ 暂时注释掉直接返回，让流式输出也能测试
+        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存(但强制走流式输出以验证效果)');
+        // ⚠️ 暂时注释掉直接返回,让流式输出也能测试
         // const data = JSON.parse(cached);
         // setWealthReport(JSON.stringify(data));
         // return;
       }
     }
-    
+
     if (!currentToken && !isFreeTest) {
       setWealthReport(t('wealthReport.loginFirst'));
       return;
     }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
-    setStreamedOnce(false); // 🛡️ 重置：新一轮开始前清空标记
-    
-    // 🌊 流式输出开关（开发中，暂用旧接口）
-    const USE_STREAM = true; // 🔥 军师下令：全量开火！
-    
+    setStreamedOnce(false); // 🛡️ 重置:新一轮开始前清空标记
+
+    // 🌊 流式输出开关(开发中,暂用旧接口)
+    const USE_STREAM = true; // 🔥 军师下令:全量开火!
+
     if (USE_STREAM) {
       // 🚀 流式接收
       try {
@@ -1468,24 +1484,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ birthDate, lang, reportType: type }),
         });
-        
+
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
-        
+
         while (true) {
           const { value, done } = await reader!.read();
           if (done) break;
-          
+
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
-          
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const dataStr = line.slice(6).trim();
               if (dataStr === '[DONE]') {
-                // 🎯 军师钩子：流式结束瞬间弹出复购/裂变引导
-                console.log('[WealthReport] 📜 天书刻印完成，触发商业钩子');
-                setStreamedOnce(true); // 🛡️ 标记：曾经流过，报告保持可见
+                // 🎯 军师钩子:流式结束瞬间弹出复购/裂变引导
+                console.log('[WealthReport] 📜 天书刻印完成,触发商业钩子');
+                setStreamedOnce(true); // 🛡️ 标记:曾经流过,报告保持可见
                 break;
               }
               try {
@@ -1493,8 +1509,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 if (parsed.text) {
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
-                  
-                  // 🔮 自动滚动锚定（圣旨效果）
+
+                  // 🔮 自动滚动锚定(圣旨效果)
                   setTimeout(() => {
                     const reportContainer = document.getElementById('wealth-report-container');
                     if (reportContainer) {
@@ -1512,28 +1528,28 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 军师铁律：骨架框就是最终卡片，永不卸载
-        // 只在 JSON 完整时更新 visibleWeeks，保持 reportLoading 状态
+        // 🔮 军师铁律:骨架框就是最终卡片,永不卸载
+        // 只在 JSON 完整时更新 visibleWeeks,保持 reportLoading 状态
         setTimeout(() => {
           try {
             const parsed = JSON.parse(wealthReportRef.current || '{}');
             if (parsed.weeks && parsed.expense_trap) {
-              // ✅ JSON 完整：更新可见卡片数（形成节奏感）
+              // ✅ JSON 完整:更新可见卡片数(形成节奏感)
               for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
                 setTimeout(() => setVisibleWeeks(i), i * 300);
               }
             }
-            // ⚠️ 绝对不清空 reportLoading！骨架框就是最终卡片！
+            // ⚠️ 绝对不清空 reportLoading!骨架框就是最终卡片!
           } catch {
-            // ❌ JSON 解析失败：保持纯文本模式，清空 loading 状态让用户能重新点击
+            // ❌ JSON 解析失败:保持纯文本模式,清空 loading 状态让用户能重新点击
             setReportLoading('');
           }
         }, 1000); // 1秒后验证
       }
       return;
     }
-    
-    // 📡 旧接口（非流式）
+
+    // 📡 旧接口(非流式)
     try {
       const res = await fetch('/api/wealth-oracle', {
         method: 'POST',
@@ -1559,7 +1575,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           );
           return;
         }
-        // 403/429 等其他错误：显示具体原因
+        // 403/429 等其他错误:显示具体原因
         const errCode = (errData as any)?.code || '';
         let userMsg: string;
         if (errCode === 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
@@ -1589,7 +1605,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
       const rawText = data.report || data.insight || '';
-      // 🔧 清理 HTML：移除空白段落、隐藏元素、多余换行
+      // 🔧 清理 HTML:移除空白段落、隐藏元素、多余换行
       const cleanText = rawText
         .replace(/<p><br\s*\/?><\/p>/gi, '')
         .replace(/<p>\s*<\/p>/gi, '')
@@ -1602,7 +1618,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setWealthReport(cleanText);
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
-      setWealthReport(currentLang === 'zh' ? '网络错误，请检查网络连接后重试。' : 'Network error, please try again.');
+      setWealthReport(currentLang === 'zh' ? '网络错误,请检查网络连接后重试。' : 'Network error, please try again.');
     } finally {
       setReportLoading('');
     }
@@ -1631,7 +1647,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           marginBottom: '16px',
         }} />
         <p style={{ color: '#D4AF37', fontSize: '14px' }}>
-          {currentLang === 'zh' ? '正在召唤财富密码……' : 'Summoning wealth code...'}
+          {currentLang === 'zh' ? '正在召唤财富密码......' : 'Summoning wealth code...'}
         </p>
       </div>
     );
@@ -1674,7 +1690,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const sz = b.sizhu;
         const dmRaw = sz?.dayMaster || '';  // 可能是 "甲·木" 或 "甲"
         const dp = sz?.dayPillar || '';      // 例如 "甲午"
-        // 从 dp 提取日主天干（首字），从 dmRaw 提取五行（第一个 "·" 后的字）
+        // 从 dp 提取日主天干(首字),从 dmRaw 提取五行(第一个 "·" 后的字)
         const dmStem = dp ? dp[0] : (dmRaw.split('·')[0] || '');
         const dmWuxing = dmRaw.includes('·') ? dmRaw.split('·')[1] : (b.dayMasterWuxing || '');
         const display = dp
@@ -1685,18 +1701,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           ? Object.entries(wx).filter(([,v]: any) => (v as number) > 0).map(([k,v]: any) => `${tWuxing(k, currentLang as AlgLang)}${v}`).join(' ')
           : '';
         // oneLiner 多语言切换
-        const oneLinerBazi = currentLang === 'zh' 
-          ? '五行雷达：你的宇宙签名由核心元素深度驱动，这为你的先天财运注入了顶级的执行力与造富韧性。'
+        const oneLinerBazi = currentLang === 'zh'
+          ? '五行雷达:你的宇宙签名由核心元素深度驱动,这为你的先天财运注入了顶级的执行力与造富韧性。'
           : currentLang === 'es'
           ? 'Radar de Elementos: Tu firma cósmica fluye con elementos clave, impulsando tu base de riqueza.'
           : currentLang === 'fr'
           ? 'Radar Élémentaire : Votre signature cosmique vibre avec les éléments clés, fortifiant vos fondations financières.'
           : currentLang === 'th'
-          ? 'เรดาร์ธาตุเจ้าเรือน: รหัสลับจักรวาลของคุณขับเคลื่อนด้วยธาตุหลัก ประจุพลังแห่งความมั่งคั่งและการลงมือทำอย่างทรงพลัง'
+          ? 'เรดาร์ธาตุเจ้าเรือน: รหัสลับจักรวาลของคุณขับเคลื่อนด้วยธาตุหลัก ประจุพลังแห่งความมั่งคั่งและการลงมือทําอย่างทรงพลัง'
           : currentLang === 'vi'
           ? 'Rada Bản Mệnh: Chữ ký vũ trụ của bạn được thúc đẩy bởi các nguyên tố chủ chốt, định hình nền tảng tài lộc.'
           : 'Element Radar: Your cosmic signature is heavily powered by Metal, injecting elite execution and unbreakable resilience into your foundational wealth luck.';
-        
+
         return { label: '', value: display, subValue: subDisplay, oneLiner: oneLinerBazi };
       })()
     : { label: '', value: '--', subValue: '', oneLiner: '' };
@@ -1705,8 +1721,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     ? (() => {
         const z = reportData.data.zodiac as any;
         // oneLiner 多语言切换
-        const oneLinerZodiac = currentLang === 'zh' 
-          ? '水星动态：你的思维如风般敏捷，这让你能比 95% 的人更快锁定高回报的金融机会。'
+        const oneLinerZodiac = currentLang === 'zh'
+          ? '水星动态:你的思维如风般敏捷,这让你能比 95% 的人更快锁定高回报的金融机会。'
           : currentLang === 'es'
           ? 'Dinámica de Mercurio: Tu mente cambia como el viento, permitiéndote identificar oportunidades financieras de alto rendimiento más rápido que el 95% de la gente.'
           : currentLang === 'fr'
@@ -1716,7 +1732,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           : currentLang === 'vi'
           ? 'Động lực Sao Thủy: Tâm trí bạn thay đổi như gió, cho phép bạn nhìn thấy các cơ hội tài chính có lợi nhuận cao nhanh hơn 95% đám đông.'
           : 'Mercury Dynamic: Your mind shifts like the wind, allowing you to spot high-yield financial opportunities faster than 95% of the crowd.';
-        
+
         return { label: '', value: `${tZodiacSign(z.sunSign, currentLang as AlgLang)} · ${tZodiacElement(z.sunSignElement, currentLang as AlgLang)}`, subValue: `${tZodiacMode(z.sunSignMode, currentLang as AlgLang)} · ${tRuler(z.sunSignRuler, currentLang as AlgLang)}`, oneLiner: oneLinerZodiac };
       })()
     : { label: '', value: '--', subValue: '', oneLiner: '' };
@@ -1725,18 +1741,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     ? (() => {
         const ic = reportData.data.iching as any;
           // oneLiner 多语言切换
-          const oneLinerIChing = currentLang === 'zh' 
-            ? '量子转折：当前卦象警告你资产结构存在隐秘分歧——微微调整赛道，即可解锁指数级增长。'
+          const oneLinerIChing = currentLang === 'zh'
+            ? '量子转折:当前卦象警告你资产结构存在隐秘分歧--微微调整赛道,即可解锁指数级增长。'
             : currentLang === 'es'
-            ? 'El Pivote Cuántico: El hexagramma actual advierte una divergencia oculta—ajusta tu rumbo para desbloquear un crecimiento exponencial.'
+            ? 'El Pivote Cuántico: El hexagramma actual advierte una divergencia oculta-ajusta tu rumbo para desbloquear un crecimiento exponencial.'
             : currentLang === 'fr'
-            ? 'Le Pivot Quantique : L\'hexagramme actuel révèle une divergence cachée—ajustez votre trajectoire pour débloquer une croissance exponentielle.'
+            ? 'Le Pivot Quantique : L\'hexagramme actuel révèle une divergence cachée-ajustez votre trajectoire pour débloquer une croissance exponentielle.'
             : currentLang === 'th'
             ? 'จุดเปลี่ยนควอนตัม: ผังฉลากเตือนถึงรอยแยกที่ซ่อนอยู่ในการเงิน ปรับทิศทางเล็กน้อยจะพบการเติบโตแบบทวีคูณ'
             : currentLang === 'vi'
-            ? 'Bước Ngoặt Lượng Tử: Quẻ dịch cảnh báo một sự chênh lệch ẩn giấu—điều chỉnh lộ trình để bứt phá.'
-            : 'The Quantum Pivot: Hexagram #38 warns of a hidden divergence in your current asset structure—divert your trajectory slightly to unlock exponential growth.';
-          
+            ? 'Bước Ngoặt Lượng Tử: Quẻ dịch cảnh báo một sự chênh lệch ẩn giấu-điều chỉnh lộ trình để bứt phá.'
+            : 'The Quantum Pivot: Hexagram #38 warns of a hidden divergence in your current asset structure-divert your trajectory slightly to unlock exponential growth.';
+
           return {
             label: '',
             value: `${tHexagram(ic.hexName, currentLang as AlgLang)} #${ic.hexNum}`,
@@ -1753,162 +1769,162 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const reversed = (t.orientation || '').toLowerCase().includes('reversed');
         const cardId = t.id || 0;
 
-        // Tarot oneLiner 多语言切换（22张牌全覆盖）
+        // Tarot oneLiner 多语言切换(22张牌全覆盖)
         const tarotOneLiners: Record<string, Record<number, { upright: string; reversed: string }>> = {
           zh: {
-            0: { upright: '今日催化剂：愚人——今天适合砸开一扇没试过的门，小额试错成本最低。', reversed: '今日催化剂：愚人逆位——市场在给你最后一课，今天别碰任何新资金盘。' },
-            1: { upright: '今日催化剂：魔术师——今天你手头工具足够撬动一个项目，直接动手别等。', reversed: '今日催化剂：魔术师逆位——你手里有牌但不会打，今天先列清楚你的可用资源。' },
-            2: { upright: '今日催化剂：女祭司——你第六感今天比财报准，信它一次。', reversed: '今日催化剂：女祭司逆位——直觉离线了，今天不做超3万的决定。' },
-            3: { upright: '今日催化剂：女皇——今天适合收割你之前种下的项目，果实该摘了。', reversed: '今日催化剂：女皇逆位——你在透支现金流，今天查账户算清还剩多少余粮。' },
-            4: { upright: '今日催化剂：皇帝——今天拍板一个决策，把人管住钱理清。', reversed: '今日催化剂：皇帝逆位——你的财务纪律崩了，今天必须重建收支框架。' },
-            5: { upright: '今日催化剂：教皇——今天找个比你赚得多的人聊，问题可能出在认知圈。', reversed: '今日催化剂：教皇逆位——别人说的赚钱路子全是坑，今天只听自己的判断。' },
-            6: { upright: '今日催化剂：恋人——今天跟钱有关的选择，选让你心跳加速那条。', reversed: '今日催化剂：恋人逆位——两条路都不完美，今天必须选一条，犹豫就是亏。' },
-            7: { upright: '今日催化剂：战车——今天全速推进，犹豫一秒都是对财运的不尊重。', reversed: '今日催化剂：战车逆位——今天管住手，任何操作都不如不动。' },
-            8: { upright: '今日催化剂：力量——今天要么搞定那笔钱，要么搞定那个不敢谈价的人。', reversed: '今日催化剂：力量逆位——你今天容易犯怂，盯住那个最怕的决定，直接上。' },
-            9: { upright: '今日催化剂：隐士——今天关掉消息提醒，花30分钟盘你的财务底牌。', reversed: '今日催化剂：隐士逆位——别一个人硬扛财务问题，今天打给懂行的人。' },
-            10: { upright: '今日催化剂：命运之轮——你的财运拐点到了，今天必须做一次主动出击。', reversed: '今日催化剂：命运之轮逆位——今天不适合赌运气，守住本金比赚钱重要。' },
-            11: { upright: '今日催化剂：正义——今天做一件正确但难开口的事，跟合伙人谈分成。', reversed: '今日催化剂：正义逆位——你欠的账（金钱或人情）今天不去还，利息会翻倍。' },
-            12: { upright: '今日催化剂：倒吊人——停下来的勇气比冲的勇气值钱。', reversed: '今日催化剂：倒吊人逆位——别再为沉没成本加注了，今天割了就割了。' },
-            13: { upright: '今日催化剂：死神——清理一个拖你后腿的财务包袱，结束才有新生。', reversed: '今日催化剂：死神逆位——你抱住不放的老项目在吸血，今天必须松手。' },
-            14: { upright: '今日催化剂：节制——今天最适合做资产配置的一步调整。', reversed: '今日催化剂：节制逆位——你在消费和投资上都在走极端，今天必须踩刹车。' },
-            15: { upright: '今日催化剂：恶魔——直视你最上瘾的那笔消费或投资，那是你财务的病灶。', reversed: '今日催化剂：恶魔逆位——消费贷和赌性投资的锁正在松，今天是断舍离窗口。' },
-            16: { upright: '今日催化剂：高塔——打破一个旧的收入结构，制造一次主动破坏。', reversed: '今日催化剂：高塔逆位——如果今天有崩盘信号，别救，让它塌。' },
-            17: { upright: '今日催化剂：星星——今天适合定下一个长期目标，钱是信念的副产品。', reversed: '今日催化剂：星星逆位——别因为短期倒霉就放弃长期规划，熬过今天就好。' },
-            18: { upright: '今日催化剂：月亮——赚钱机会藏在模糊信息里，今天把它扒出来。', reversed: '今日催化剂：月亮逆位——有人对你隐瞒了财务信息，今天必须追问到底。' },
-            19: { upright: '今日催化剂：太阳——今天是亮牌日，把价值show出来，钱自然跟来。', reversed: '今日催化剂：太阳逆位——别因为情绪不好就放弃一个好机会，它依然是机会。' },
-            20: { upright: '今日催化剂：审判——复盘一次过去的财务失误，把教训变成行动规则。', reversed: '今日催化剂：审判逆位——你的财务模式在重复错误，今天必须换打法。' },
-            21: { upright: '今日催化剂：世界——一个财务周期结束了，今天奖励自己，同时为下轮布局。', reversed: '今日催化剂：世界逆位——差最后一哆嗦，今天用最粗暴的方式收尾。' }
+            0: { upright: '今日催化剂:愚人--今天适合砸开一扇没试过的门,小额试错成本最低。', reversed: '今日催化剂:愚人逆位--市场在给你最后一课,今天别碰任何新资金盘。' },
+            1: { upright: '今日催化剂:魔术师--今天你手头工具足够撬动一个项目,直接动手别等。', reversed: '今日催化剂:魔术师逆位--你手里有牌但不会打,今天先列清楚你的可用资源。' },
+            2: { upright: '今日催化剂:女祭司--你第六感今天比财报准,信它一次。', reversed: '今日催化剂:女祭司逆位--直觉离线了,今天不做超3万的决定。' },
+            3: { upright: '今日催化剂:女皇--今天适合收割你之前种下的项目,果实该摘了。', reversed: '今日催化剂:女皇逆位--你在透支现金流,今天查账户算清还剩多少余粮。' },
+            4: { upright: '今日催化剂:皇帝--今天拍板一个决策,把人管住钱理清。', reversed: '今日催化剂:皇帝逆位--你的财务纪律崩了,今天必须重建收支框架。' },
+            5: { upright: '今日催化剂:教皇--今天找个比你赚得多的人聊,问题可能出在认知圈。', reversed: '今日催化剂:教皇逆位--别人说的赚钱路子全是坑,今天只听自己的判断。' },
+            6: { upright: '今日催化剂:恋人--今天跟钱有关的选择,选让你心跳加速那条。', reversed: '今日催化剂:恋人逆位--两条路都不完美,今天必须选一条,犹豫就是亏。' },
+            7: { upright: '今日催化剂:战车--今天全速推进,犹豫一秒都是对财运的不尊重。', reversed: '今日催化剂:战车逆位--今天管住手,任何操作都不如不动。' },
+            8: { upright: '今日催化剂:力量--今天要么搞定那笔钱,要么搞定那个不敢谈价的人。', reversed: '今日催化剂:力量逆位--你今天容易犯怂,盯住那个最怕的决定,直接上。' },
+            9: { upright: '今日催化剂:隐士--今天关掉消息提醒,花30分钟盘你的财务底牌。', reversed: '今日催化剂:隐士逆位--别一个人硬扛财务问题,今天打给懂行的人。' },
+            10: { upright: '今日催化剂:命运之轮--你的财运拐点到了,今天必须做一次主动出击。', reversed: '今日催化剂:命运之轮逆位--今天不适合赌运气,守住本金比赚钱重要。' },
+            11: { upright: '今日催化剂:正义--今天做一件正确但难开口的事,跟合伙人谈分成。', reversed: '今日催化剂:正义逆位--你欠的账(金钱或人情)今天不去还,利息会翻倍。' },
+            12: { upright: '今日催化剂:倒吊人--停下来的勇气比冲的勇气值钱。', reversed: '今日催化剂:倒吊人逆位--别再为沉没成本加注了,今天割了就割了。' },
+            13: { upright: '今日催化剂:死神--清理一个拖你后腿的财务包袱,结束才有新生。', reversed: '今日催化剂:死神逆位--你抱住不放的老项目在吸血,今天必须松手。' },
+            14: { upright: '今日催化剂:节制--今天最适合做资产配置的一步调整。', reversed: '今日催化剂:节制逆位--你在消费和投资上都在走极端,今天必须踩刹车。' },
+            15: { upright: '今日催化剂:恶魔--直视你最上瘾的那笔消费或投资,那是你财务的病灶。', reversed: '今日催化剂:恶魔逆位--消费贷和赌性投资的锁正在松,今天是断舍离窗口。' },
+            16: { upright: '今日催化剂:高塔--打破一个旧的收入结构,制造一次主动破坏。', reversed: '今日催化剂:高塔逆位--如果今天有崩盘信号,别救,让它塌。' },
+            17: { upright: '今日催化剂:星星--今天适合定下一个长期目标,钱是信念的副产品。', reversed: '今日催化剂:星星逆位--别因为短期倒霉就放弃长期规划,熬过今天就好。' },
+            18: { upright: '今日催化剂:月亮--赚钱机会藏在模糊信息里,今天把它扒出来。', reversed: '今日催化剂:月亮逆位--有人对你隐瞒了财务信息,今天必须追问到底。' },
+            19: { upright: '今日催化剂:太阳--今天是亮牌日,把价值show出来,钱自然跟来。', reversed: '今日催化剂:太阳逆位--别因为情绪不好就放弃一个好机会,它依然是机会。' },
+            20: { upright: '今日催化剂:审判--复盘一次过去的财务失误,把教训变成行动规则。', reversed: '今日催化剂:审判逆位--你的财务模式在重复错误,今天必须换打法。' },
+            21: { upright: '今日催化剂:世界--一个财务周期结束了,今天奖励自己,同时为下轮布局。', reversed: '今日催化剂:世界逆位--差最后一哆嗦,今天用最粗暴的方式收尾。' }
           },
           es: {
-            0: { upright: 'Catalizador Diario: El Loco señala una nueva aventura financiera—toma riesgos calculados hoy.', reversed: 'Catalizador Diario: El Loco invertido advierte contra gastos impulsivos—pausa antes de movimientos financieros arriesgados.' },
-            1: { upright: 'Catalizador Diario: El Mago señala el poder de manifestación de riqueza—tus herramientas financieras están listas.', reversed: 'Catalizador Diario: El Mago invertido advierte sobre potencial financiero desperdiciado—activa tus habilidades de dinero.' },
-            2: { upright: 'Catalizador Diario: La Sacerdotisa señala que la intuición financiera alcanza su punto máximo—confía en tu instinto hoy.', reversed: 'Catalizador Diario: La Sacerdotisa invertida advierte sobre intuición financiera bloqueada—verifica decisiones de dinero.' },
-            3: { upright: 'Catalizador Diario: La Emperatriz señala abundancia financiera fluyendo—la riqueza crece con cuidado paciente.', reversed: 'Catalizador Diario: La Emperatriz invertida advierte sobre negligencia financiera—cuida tu jardín de dinero.' },
-            4: { upright: 'Catalizador Diario: El Emperador señala base financiera sólida—construye riqueza con reglas claras.', reversed: 'Catalizador Diario: El Emperador invertido advierte sobre problemas de control financiero—audita tu estructura de dinero.' },
-            5: { upright: 'Catalizador Diario: El Papa señala alineación de riqueza—tu camino del dinero coincide con tus valores.', reversed: 'Catalizador Diario: El Papa invertido advierte sobre dogmatismo financiero—cuestiona tus creencias sobre el dinero.' },
-            6: { upright: 'Catalizador Diario: Los Enamorados señalan punto de decisión financiera—sigue tu corazón del dinero.', reversed: 'Catalizador Diario: Los Enamorados invertidos advierten parálisis de elección financiera—elige un camino ahora.' },
-            7: { upright: 'Catalizador Diario: El Carro (Derecho) señala impulso financiero imparable—ejecuta decisiones de riqueza con confianza.', reversed: 'Catalizador Diario: El Carro invertido advierte dirección financiera dispersa—enfoca tu energía de dinero.' },
-            8: { upright: 'Catalizador Diario: La Fuerza señala poder financiero interior—fortaleza de riqueza gentil despierta.', reversed: 'Catalizador Diario: La Fuerza invertida advierte debilidad financiera—construye confianza en el dinero ahora.' },
-            9: { upright: 'Catalizador Diario: El Ermitaño señala sabiduría financiera interior—la soledad trae perspectivas de dinero.', reversed: 'Catalizador Diario: El Ermitaño invertido advierte aislamiento financiero—busca mentor de riqueza.' },
-            10: { upright: 'Catalizador Diario: La Rueda de la Fortuna señala que el ciclo financiero gira—la fortuna favorece movimientos audaces.', reversed: 'Catalizador Diario: La Rueda invertida advierte suerte financiera estancada—fuerza el cambio ahora.' },
-            11: { upright: 'Catalizador Diario: La Justicia señala equilibrio del karma financiero—la justicia del dinero llega.', reversed: 'Catalizador Diario: La Justicia invertida advierte desequilibrio financiero—audita el flujo de dinero.' },
-            12: { upright: 'Catalizador Diario: El Colgado señala cambio de perspectiva financiera—se necesita nueva visión del dinero.', reversed: 'Catalizador Diario: El Colgado invertido advierte obsesión financiera—suelta la fijación del dinero.' },
-            13: { upright: 'Catalizador Diario: La Muerte señala transformación financiera—el viejo tú financiero muere, el nuevo emerge.', reversed: 'Catalizador Diario: La Muerte invertida advierte resistencia a la muerte financiera—los patrones antiguos deben terminar.' },
-            14: { upright: 'Catalizador Diario: La Templanza señala equilibrio financiero—el enfoque moderado del dinero gana.', reversed: 'Catalizador Diario: La Templanza invertida advierte extremos financieros—encuentra el camino del dinero moderado.' },
-            15: { upright: 'Catalizador Diario: El Diablo señala trabajo con la sombra financiera—enfrenta tus demonios del dinero para ganar.', reversed: 'Catalizador Diario: El Diablo invertido señala libertad financiera comenzando—rompe las cadenas del dinero.' },
-            16: { upright: 'Catalizador Diario: La Torre señala avance financiero—cambio repentino de dinero entrante.', reversed: 'Catalizador Diario: La Torre invertida advierte demora del colapso financiero—reconstruye riqueza más inteligente.' },
-            17: { upright: 'Catalizador Diario: La Estrella señala que la esperanza financiera regresa—la estrella de riqueza guía tu camino.', reversed: 'Catalizador Diario: La Estrella invertida advierte esperanza financiera perdida—mantén fe en tu camino del dinero.' },
-            18: { upright: 'Catalizador Diario: La Luna señala que la intuición financiera alcanza su pico—la magia lunar del dinero funciona.', reversed: 'Catalizador Diario: La Luna invertida advierte ilusión financiera—ve la verdad del dinero claramente.' },
-            19: { upright: 'Catalizador Diario: El Sol señala éxito financiero brillante adelante—la luz del dinero te bendice.', reversed: 'Catalizador Diario: El Sol invertido advierte que la luz financiera está bloqueada—la riqueza aún está creciendo.' },
-            20: { upright: 'Catalizador Diario: El Juicio señala renacimiento financiero—el llamado de la riqueza es escuchado.', reversed: 'Catalizador Diario: El Juicio invertido advierte despertar financiero demorado—escucha el llamado del dinero.' },
-            21: { upright: 'Catalizador Diario: El Mundo señala ciclo financiero completo—el mundo del dinero se transforma.', reversed: 'Catalizador Diario: El Mundo invertido advierte incompleción financiera—termina tus asuntos de dinero.' }
+            0: { upright: 'Catalizador Diario: El Loco señala una nueva aventura financiera-toma riesgos calculados hoy.', reversed: 'Catalizador Diario: El Loco invertido advierte contra gastos impulsivos-pausa antes de movimientos financieros arriesgados.' },
+            1: { upright: 'Catalizador Diario: El Mago señala el poder de manifestación de riqueza-tus herramientas financieras están listas.', reversed: 'Catalizador Diario: El Mago invertido advierte sobre potencial financiero desperdiciado-activa tus habilidades de dinero.' },
+            2: { upright: 'Catalizador Diario: La Sacerdotisa señala que la intuición financiera alcanza su punto máximo-confía en tu instinto hoy.', reversed: 'Catalizador Diario: La Sacerdotisa invertida advierte sobre intuición financiera bloqueada-verifica decisiones de dinero.' },
+            3: { upright: 'Catalizador Diario: La Emperatriz señala abundancia financiera fluyendo-la riqueza crece con cuidado paciente.', reversed: 'Catalizador Diario: La Emperatriz invertida advierte sobre negligencia financiera-cuida tu jardín de dinero.' },
+            4: { upright: 'Catalizador Diario: El Emperador señala base financiera sólida-construye riqueza con reglas claras.', reversed: 'Catalizador Diario: El Emperador invertido advierte sobre problemas de control financiero-audita tu estructura de dinero.' },
+            5: { upright: 'Catalizador Diario: El Papa señala alineación de riqueza-tu camino del dinero coincide con tus valores.', reversed: 'Catalizador Diario: El Papa invertido advierte sobre dogmatismo financiero-cuestiona tus creencias sobre el dinero.' },
+            6: { upright: 'Catalizador Diario: Los Enamorados señalan punto de decisión financiera-sigue tu corazón del dinero.', reversed: 'Catalizador Diario: Los Enamorados invertidos advierten parálisis de elección financiera-elige un camino ahora.' },
+            7: { upright: 'Catalizador Diario: El Carro (Derecho) señala impulso financiero imparable-ejecuta decisiones de riqueza con confianza.', reversed: 'Catalizador Diario: El Carro invertido advierte dirección financiera dispersa-enfoca tu energía de dinero.' },
+            8: { upright: 'Catalizador Diario: La Fuerza señala poder financiero interior-fortaleza de riqueza gentil despierta.', reversed: 'Catalizador Diario: La Fuerza invertida advierte debilidad financiera-construye confianza en el dinero ahora.' },
+            9: { upright: 'Catalizador Diario: El Ermitaño señala sabiduría financiera interior-la soledad trae perspectivas de dinero.', reversed: 'Catalizador Diario: El Ermitaño invertido advierte aislamiento financiero-busca mentor de riqueza.' },
+            10: { upright: 'Catalizador Diario: La Rueda de la Fortuna señala que el ciclo financiero gira-la fortuna favorece movimientos audaces.', reversed: 'Catalizador Diario: La Rueda invertida advierte suerte financiera estancada-fuerza el cambio ahora.' },
+            11: { upright: 'Catalizador Diario: La Justicia señala equilibrio del karma financiero-la justicia del dinero llega.', reversed: 'Catalizador Diario: La Justicia invertida advierte desequilibrio financiero-audita el flujo de dinero.' },
+            12: { upright: 'Catalizador Diario: El Colgado señala cambio de perspectiva financiera-se necesita nueva visión del dinero.', reversed: 'Catalizador Diario: El Colgado invertido advierte obsesión financiera-suelta la fijación del dinero.' },
+            13: { upright: 'Catalizador Diario: La Muerte señala transformación financiera-el viejo tú financiero muere, el nuevo emerge.', reversed: 'Catalizador Diario: La Muerte invertida advierte resistencia a la muerte financiera-los patrones antiguos deben terminar.' },
+            14: { upright: 'Catalizador Diario: La Templanza señala equilibrio financiero-el enfoque moderado del dinero gana.', reversed: 'Catalizador Diario: La Templanza invertida advierte extremos financieros-encuentra el camino del dinero moderado.' },
+            15: { upright: 'Catalizador Diario: El Diablo señala trabajo con la sombra financiera-enfrenta tus demonios del dinero para ganar.', reversed: 'Catalizador Diario: El Diablo invertido señala libertad financiera comenzando-rompe las cadenas del dinero.' },
+            16: { upright: 'Catalizador Diario: La Torre señala avance financiero-cambio repentino de dinero entrante.', reversed: 'Catalizador Diario: La Torre invertida advierte demora del colapso financiero-reconstruye riqueza más inteligente.' },
+            17: { upright: 'Catalizador Diario: La Estrella señala que la esperanza financiera regresa-la estrella de riqueza guía tu camino.', reversed: 'Catalizador Diario: La Estrella invertida advierte esperanza financiera perdida-mantén fe en tu camino del dinero.' },
+            18: { upright: 'Catalizador Diario: La Luna señala que la intuición financiera alcanza su pico-la magia lunar del dinero funciona.', reversed: 'Catalizador Diario: La Luna invertida advierte ilusión financiera-ve la verdad del dinero claramente.' },
+            19: { upright: 'Catalizador Diario: El Sol señala éxito financiero brillante adelante-la luz del dinero te bendice.', reversed: 'Catalizador Diario: El Sol invertido advierte que la luz financiera está bloqueada-la riqueza aún está creciendo.' },
+            20: { upright: 'Catalizador Diario: El Juicio señala renacimiento financiero-el llamado de la riqueza es escuchado.', reversed: 'Catalizador Diario: El Juicio invertido advierte despertar financiero demorado-escucha el llamado del dinero.' },
+            21: { upright: 'Catalizador Diario: El Mundo señala ciclo financiero completo-el mundo del dinero se transforma.', reversed: 'Catalizador Diario: El Mundo invertido advierte incompleción financiera-termina tus asuntos de dinero.' }
           },
           fr: {
-            0: { upright: 'Catalyseur Quotidien: Le Mat signale une nouvelle aventure financière—prends des risques calculés aujourd\'hui.', reversed: 'Catalyseur Quotidien: Le Mat inversé avertit contre les dépenses impulsives—pause avant les mouvements financiers risqués.' },
-            1: { upright: 'Catalyseur Quotidien: Le Bateleur signale le pouvoir de manifestation de richesse—tes outils financiers sont prêts.', reversed: 'Catalyseur Quotidien: Le Bateleur inversé avertit du potentiel financier gaspillé—active tes compétences financières.' },
-            2: { upright: 'Catalyseur Quotidien: La Papesse signale que l\'intuition financière atteint son sommet—fais confiance à ton instinct.', reversed: 'Catalyseur Quotidien: La Papesse inversée avertit de l\'intuition financière bloquée—vérifie tes décisions.' },
-            3: { upright: 'Catalyseur Quotidien: L\'Impératrice signale l\'abondance financière—la richesse croît avec des soins patients.', reversed: 'Catalyseur Quotidien: L\'Impératrice inversée avertit de la négligence financière—prends soin de ton jardin financier.' },
-            4: { upright: 'Catalyseur Quotidien: L\'Empereur signale une base financière solide—construis ta richesse avec des règles claires.', reversed: 'Catalyseur Quotidien: L\'Empereur inversé avertit des problèmes de contrôle financier—vérifie ta structure.' },
-            5: { upright: 'Catalyseur Quotidien: Le Pape signale l\'alignement de richesse—ton chemin financier correspond à tes valeurs.', reversed: 'Catalyseur Quotidien: Le Pape inversé avertit du dogmatisme financier—remets en question tes croyances.' },
-            6: { upright: 'Catalyseur Quotidien: Les Amoureux signalent un point de décision financière—suis ton cœur financier.', reversed: 'Catalyseur Quotidien: Les Amoureux inversés avertissent de la paralysie décisionnelle—choisis un chemin maintenant.' },
-            7: { upright: 'Catalyseur Quotidien: Le Char (Droit) signale un élan financier irrésistible—exécute tes décisions avec confiance.', reversed: 'Catalyseur Quotidien: Le Char inversé avertit d\'une direction financière dispersée—concentre ton énergie.' },
-            8: { upright: 'Catalyseur Quotidien: La Force signale le pouvoir financier intérieur—une force financière douce s\'éveille.', reversed: 'Catalyseur Quotidien: La Force inversée avertit de la faiblesse financière—construis ta confiance maintenant.' },
-            9: { upright: 'Catalyseur Quotidien: L\'Ermite signale la sagesse financière intérieure—la solitude apporte des perspectives.', reversed: 'Catalyseur Quotidien: L\'Ermite inversé avertit de l\'isolement financier—cherche un mentor.' },
-            10: { upright: 'Catalyseur Quotidien: La Roue de Fortune signale que le cycle financier tourne—la fortune favorise les actions audacieuses.', reversed: 'Catalyseur Quotidien: La Roue inversée avertit de la malchance financière—force le changement.' },
-            11: { upright: 'Catalyseur Quotidien: La Justice signale l\'équilibre du karma financier—la justice monétaire arrive.', reversed: 'Catalyseur Quotidien: La Justice inversée avertit du déséquilibre financier—vérifie tes flux.' },
-            12: { upright: 'Catalyseur Quotidien: Le Pendu signale un changement de perspective financière—une nouvelle vision s\'impose.', reversed: 'Catalyseur Quotidien: Le Pendu inversé avertit de l\'obsession financière—lâche prise.' },
-            13: { upright: 'Catalyseur Quotidien: La Mort signale la transformation financière—l\'ancien toi meurt, le nouveau naît.', reversed: 'Catalyseur Quotidien: La Mort inversée avertit de la résistance au changement—termine les vieux schémas.' },
-            14: { upright: 'Catalyseur Quotidien: La Tempérance signale l\'équilibre financier—la modération paie.', reversed: 'Catalyseur Quotidien: La Tempérance inversée avertit des extrêmes financiers—trouve le juste milieu.' },
-            15: { upright: 'Catalyseur Quotidien: Le Diable signale le travail sur l\'ombre financière—affronte tes démons pour gagner.', reversed: 'Catalyseur Quotidien: Le Diable inversé signale la liberté financière—brise tes chaînes.' },
-            16: { upright: 'Catalyseur Quotidien: La Maison Dieu signale une percée financière—changement soudain imminent.', reversed: 'Catalyseur Quotidien: La Maison Dieu inversée avertit de l\'effondrement—reconstruis intelligemment.' },
-            17: { upright: 'Catalyseur Quotidien: L\'Étoile signale le retour de l\'espoir financier—l\'étoile de richesse guide ton chemin.', reversed: 'Catalyseur Quotidien: L\'Étoile inversée avertit de l\'espoir perdu—maintiens ta foi.' },
-            18: { upright: 'Catalyseur Quotidien: La Lune signale que l\'intuition financière culmine—la magie lunaire fonctionne.', reversed: 'Catalyseur Quotidien: La Lune inversée avertit de l\'illusion financière—vois la vérité.' },
-            19: { upright: 'Catalyseur Quotidien: Le Soleil signale un succès financier brillant—la lumière financière te bénit.', reversed: 'Catalyseur Quotidien: Le Soleil inversé avertit que la lumière est bloquée—la richesse grandit encore.' },
-            20: { upright: 'Catalyseur Quotidien: Le Jugement signale la renaissance financière—l\'appel de la richesse est entendu.', reversed: 'Catalyseur Quotidien: Le Jugement inversé avertit de l\'éveil différé—écoute l\'appel.' },
-            21: { upright: 'Catalyseur Quotidien: Le Monde signale la fin d\'un cycle financier—le monde se transforme.', reversed: 'Catalyseur Quotidien: Le Monde inversé avertit de l\'incomplétude—termine tes affaires.' },
+            0: { upright: 'Catalyseur Quotidien: Le Mat signale une nouvelle aventure financière-prends des risques calculés aujourd\'hui.', reversed: 'Catalyseur Quotidien: Le Mat inversé avertit contre les dépenses impulsives-pause avant les mouvements financiers risqués.' },
+            1: { upright: 'Catalyseur Quotidien: Le Bateleur signale le pouvoir de manifestation de richesse-tes outils financiers sont prêts.', reversed: 'Catalyseur Quotidien: Le Bateleur inversé avertit du potentiel financier gaspillé-active tes compétences financières.' },
+            2: { upright: 'Catalyseur Quotidien: La Papesse signale que l\'intuition financière atteint son sommet-fais confiance à ton instinct.', reversed: 'Catalyseur Quotidien: La Papesse inversée avertit de l\'intuition financière bloquée-vérifie tes décisions.' },
+            3: { upright: 'Catalyseur Quotidien: L\'Impératrice signale l\'abondance financière-la richesse croît avec des soins patients.', reversed: 'Catalyseur Quotidien: L\'Impératrice inversée avertit de la négligence financière-prends soin de ton jardin financier.' },
+            4: { upright: 'Catalyseur Quotidien: L\'Empereur signale une base financière solide-construis ta richesse avec des règles claires.', reversed: 'Catalyseur Quotidien: L\'Empereur inversé avertit des problèmes de contrôle financier-vérifie ta structure.' },
+            5: { upright: 'Catalyseur Quotidien: Le Pape signale l\'alignement de richesse-ton chemin financier correspond à tes valeurs.', reversed: 'Catalyseur Quotidien: Le Pape inversé avertit du dogmatisme financier-remets en question tes croyances.' },
+            6: { upright: 'Catalyseur Quotidien: Les Amoureux signalent un point de décision financière-suis ton cœur financier.', reversed: 'Catalyseur Quotidien: Les Amoureux inversés avertissent de la paralysie décisionnelle-choisis un chemin maintenant.' },
+            7: { upright: 'Catalyseur Quotidien: Le Char (Droit) signale un élan financier irrésistible-exécute tes décisions avec confiance.', reversed: 'Catalyseur Quotidien: Le Char inversé avertit d\'une direction financière dispersée-concentre ton énergie.' },
+            8: { upright: 'Catalyseur Quotidien: La Force signale le pouvoir financier intérieur-une force financière douce s\'éveille.', reversed: 'Catalyseur Quotidien: La Force inversée avertit de la faiblesse financière-construis ta confiance maintenant.' },
+            9: { upright: 'Catalyseur Quotidien: L\'Ermite signale la sagesse financière intérieure-la solitude apporte des perspectives.', reversed: 'Catalyseur Quotidien: L\'Ermite inversé avertit de l\'isolement financier-cherche un mentor.' },
+            10: { upright: 'Catalyseur Quotidien: La Roue de Fortune signale que le cycle financier tourne-la fortune favorise les actions audacieuses.', reversed: 'Catalyseur Quotidien: La Roue inversée avertit de la malchance financière-force le changement.' },
+            11: { upright: 'Catalyseur Quotidien: La Justice signale l\'équilibre du karma financier-la justice monétaire arrive.', reversed: 'Catalyseur Quotidien: La Justice inversée avertit du déséquilibre financier-vérifie tes flux.' },
+            12: { upright: 'Catalyseur Quotidien: Le Pendu signale un changement de perspective financière-une nouvelle vision s\'impose.', reversed: 'Catalyseur Quotidien: Le Pendu inversé avertit de l\'obsession financière-lâche prise.' },
+            13: { upright: 'Catalyseur Quotidien: La Mort signale la transformation financière-l\'ancien toi meurt, le nouveau naît.', reversed: 'Catalyseur Quotidien: La Mort inversée avertit de la résistance au changement-termine les vieux schémas.' },
+            14: { upright: 'Catalyseur Quotidien: La Tempérance signale l\'équilibre financier-la modération paie.', reversed: 'Catalyseur Quotidien: La Tempérance inversée avertit des extrêmes financiers-trouve le juste milieu.' },
+            15: { upright: 'Catalyseur Quotidien: Le Diable signale le travail sur l\'ombre financière-affronte tes démons pour gagner.', reversed: 'Catalyseur Quotidien: Le Diable inversé signale la liberté financière-brise tes chaînes.' },
+            16: { upright: 'Catalyseur Quotidien: La Maison Dieu signale une percée financière-changement soudain imminent.', reversed: 'Catalyseur Quotidien: La Maison Dieu inversée avertit de l\'effondrement-reconstruis intelligemment.' },
+            17: { upright: 'Catalyseur Quotidien: L\'Étoile signale le retour de l\'espoir financier-l\'étoile de richesse guide ton chemin.', reversed: 'Catalyseur Quotidien: L\'Étoile inversée avertit de l\'espoir perdu-maintiens ta foi.' },
+            18: { upright: 'Catalyseur Quotidien: La Lune signale que l\'intuition financière culmine-la magie lunaire fonctionne.', reversed: 'Catalyseur Quotidien: La Lune inversée avertit de l\'illusion financière-vois la vérité.' },
+            19: { upright: 'Catalyseur Quotidien: Le Soleil signale un succès financier brillant-la lumière financière te bénit.', reversed: 'Catalyseur Quotidien: Le Soleil inversé avertit que la lumière est bloquée-la richesse grandit encore.' },
+            20: { upright: 'Catalyseur Quotidien: Le Jugement signale la renaissance financière-l\'appel de la richesse est entendu.', reversed: 'Catalyseur Quotidien: Le Jugement inversé avertit de l\'éveil différé-écoute l\'appel.' },
+            21: { upright: 'Catalyseur Quotidien: Le Monde signale la fin d\'un cycle financier-le monde se transforme.', reversed: 'Catalyseur Quotidien: Le Monde inversé avertit de l\'incomplétude-termine tes affaires.' },
           },
           th: {
-            0: { upright: 'ตัวเร่งประจำวัน: เดอะฟูล บ่งบอกการผจญภัยทางการเงินใหม่—ลองเสี่ยงแบบมีการคำนวณวันนี้', reversed: 'ตัวเร่งประจำวัน: เดอะฟูล กลับหลังเตือนเรื่องการใช้จ่ายแบบหุนหันพลันแล่น—หยุดก่อนเสี่ยงทางการเงิน' },
-            1: { upright: 'ตัวเร่งประจำวัน: เดอะเมจิเชี่ยน บ่งบอกพลังแสดงออกทางการเงิน—เครื่องมือทางการเงินของคุณพร้อมแล้ว', reversed: 'ตัวเร่งประจำวัน: เดอะเมจิเชี่ยน กลับหลังเตือนศักยภาพทางการเงินถูกทิ้ง—เปิดใช้ทักษะหาเงินตอนนี้' },
-            2: { upright: 'ตัวเร่งประจำวัน: เดอะไฮพรีสเตส บ่งบอกสัญชาตญาณทางการเงินถึงจุดสูงสุด—ไว้ใจความรู้สึกเรื่องเงินวันนี้', reversed: 'ตัวเร่งประจำวัน: เดอะไฮพรีสเตส กลับหลังเตือนสัญชาตญาณทางการเงินถูกบล็อก—ตรวจสอบการตัดสินใจเรื่องเงิน' },
-            3: { upright: 'ตัวเร่งประจำวัน: เดอะเอมเพรส บ่งบอกเงินไหลมาอย่างอุดมสมบูรณ์—ความมั่งคั่งเติบโตด้วยการดูแลอย่างอดทน', reversed: 'ตัวเร่งประจำวัน: เดอะเอมเพรส กลับหลังเตือนการละเลยทางการเงิน—ดูแลสวนเงินของคุณตอนนี้' },
-            4: { upright: 'ตัวเร่งประจำวัน: เดอะเอมเพอเรอร์ บ่งบอกฐานะทางการเงินมั่นคง—สร้างความมั่งคั่งด้วยกฎที่ชัดเจน', reversed: 'ตัวเร่งประจำวัน: เดอะเอมเพอเรอร์ กลับหลังเตือนปัญหาการควบคุมทางการเงิน—ตรวจสอบโครงสร้างเงินของคุณ' },
-            5: { upright: 'ตัวเร่งประจำวัน: เดอะไฮโรแฟนต์ บ่งบอกทองเส้นทางเงินสอดคล้องค่านิยม—เส้นทางหาเงินที่ถูกจริยธรรมชัดเจน', reversed: 'ตัวเร่งประจำวัน: เดอะไฮโรแฟนต์ กลับหลังเตือนลัทธิทางการเงิน—ตั้งคำถามเกี่ยวกับความเชื่อเรื่องเงิน' },
-            6: { upright: 'ตัวเร่งประจำวัน: เดอะเลิฟเวอร์ส บ่งบอกจุดตัดสินใจทางการเงิน—ทำตามหัวใจเรื่องเงินของคุณ', reversed: 'ตัวเร่งประจำวัน: เดอะเลิฟเวอร์ส กลับหลังเตือนอาการอ่อนล้าจากการเลือกทางการเงิน—เลือกเส้นทางหนึ่งตอนนี้' },
-            7: { upright: 'ตัวเร่งประจำวัน: เดอะแชริออต (ตั้งตรง) บ่งบอกแรงผลักดันทางการเงินที่หยุดไม่ได้—ดำเนินการตัดสินใจด้านความมั่งคั่งอย่างมั่นใจ', reversed: 'ตัวเร่งประจำวัน: เดอะแชริออต กลับหลังเตือนทิศทางทางการเงินกระจัด—โฟกัสพลังงานเงินของคุณตอนนี้' },
-            8: { upright: 'ตัวเร่งประจำวัน: สเตรงธ์ บ่งบอกพลังการเงินภายใน—พลังอ่อนโยนแห่งความมั่งคั่งกำลังตื่น', reversed: 'ตัวเร่งประจำวัน: สเตรงธ์ กลับหลังเตือนความอ่อนแอทางการเงิน—สร้างความมั่นใจเรื่องเงินตอนนี้' },
-            9: { upright: 'ตัวเร่งประจำวัน: เดอะเฮอร์มิต บ่งบอกปัญญาทางการเงินจากภายใน—ความสันโดษให้มุมมองใหม่เรื่องเงิน', reversed: 'ตัวเร่งประจำวัน: เดอะเฮอร์มิต กลับหลังเตือนความโดดเดี่ยวทางการเงิน—หาที่ปรึกษาด้านความมั่งคั่ง' },
-            10: { upright: 'ตัวเร่งประจำวัน: วีลออฟฟอร์จูน บ่งบอกวงจรทางการเงินกำลังหมุน—โชคสนับสนุนการเคลื่อนไหวทางการเงินที่กล้าหาญ', reversed: 'ตัวเร่งประจำวัน: วีลออฟฟอร์จูน กลับหลังเตือนโชคทางการเงินหยุดชะงัก—บังคับการเปลี่ยนแปลงตอนนี้' },
-            11: { upright: 'ตัวเร่งประจำวัน: จัสติซ บ่งบอกการสมดุลกรรมทางการเงิน—ความยุติธรรมของเงินมาถึง', reversed: 'ตัวเร่งประจำวัน: จัสติซ กลับหลังเตือนความไม่สมดุลทางการเงิน—ตรวจสอบกระแสเงินตอนนี้' },
-            12: { upright: 'ตัวเร่งประจำวัน: เดอะแฮงค์แมน บ่งบอกการเปลี่ยนมุมมองทางการเงิน—ต้องการวิสัยทัศน์ใหม่เรื่องเงิน', reversed: 'ตัวเร่งประจำวัน: เดอะแฮงค์แมน กลับหลังเตือนความหมกมุ่นทางการเงิน—ปล่อยวางการยึดติดเรื่องเงิน' },
-            13: { upright: 'ตัวเร่งประจำวัน: เดธ บ่งบอกการเปลี่ยนแปลงทางการเงิน—ตัวตนทางการเงินเดิมตาย ตัวใหม่เกิด', reversed: 'ตัวเร่งประจำวัน: เดธ กลับหลังเตือนการต่อต้านการเปลี่ยนแปลงทางการเงิน—รูปแบบเงินเก่าต้องยุติ' },
-            14: { upright: 'ตัวเร่งประจำวัน: เทมเปอแรนซ์ บ่งบอกความสมดุลทางการเงิน—แนวทางเงินปานกลางชนะ', reversed: 'ตัวเร่งประจำวัน: เทมเปอแรนซ์ กลับหลังเตือนความรุนแรงทางการเงิน—หาเส้นทางเงินตรงกลาง' },
-            15: { upright: 'ตัวเร่งประจำวัน: เดอะเดวิล บ่งบอกการทำงานกับเงาทางการเงิน—เผชิญปีศาจเงินเพื่อชนะ', reversed: 'ตัวเร่งประจำวัน: เดอะเดวิล กลับหลังบ่งบอกอิสรภาพทางการเงินเริ่มต้น—ทำลายโซ่ตรวนเงิน' },
-            16: { upright: 'ตัวเร่งประจำวัน: เดอะทาวเวอร์ บ่งบอกการทะลุทางการเงิน—การเปลี่ยนแปลงทางการเงินฉับพลันกำลังมา', reversed: 'ตัวเร่งประจำวัน: เดอะทาวเวอร์ กลับหลังเตือนการชะลอการล่มสลายทางการเงิน—สร้างความมั่งคั่งใหม่อย่างฉลาดกว่า' },
-            17: { upright: 'ตัวเร่งประจำวัน: เดอะสตาร์ บ่งบอกความหวังทางการเงินกลับมา—ดาวความมั่งคั่งนำทางการเดินทางของคุณ', reversed: 'ตัวเร่งประจำวัน: เดอะสตาร์ กลับหลังเตือนความหวังทางการเงินสูญหาย—รักษาความเชื่อในเส้นทางเงินของคุณ' },
-            18: { upright: 'ตัวเร่งประจำวัน: เดอะมูน บ่งบอกสัญชาตญาณทางการเงินถึงจุดสูงสุด—เวทมนตร์จันทรคติใช้ได้ผลกับเงิน', reversed: 'ตัวเร่งประจำวัน: เดอะมูน กลับหลังเตือนภาพลวงทางการเงิน—เห็นความจริงเรื่องเงินชัดเจน' },
-            19: { upright: 'ตัวเร่งประจำวัน: เดอะซัน บ่งบอกความสำเร็จทางการเงินสุกสว่างข้างหน้า—แสงอาทิตย์ความมั่งคั่งโปรดคุณ', reversed: 'ตัวเร่งประจำวัน: เดอะซัน กลับหลังเตือนแสงทางการเงินถูกบล็อก—ความมั่งคั่งยังคงเติบโต' },
-            20: { upright: 'ตัวเร่งประจำวัน: จัดเมนต์ บ่งบอกการกลับมาของทางการเงิน—เสียงเรียกความมั่งคั่งถูกได้ยิน', reversed: 'ตัวเร่งประจำวัน: จัดเมนต์ กลับหลังเตือนการตื่นทางการเงินล่าช้า—ฟังเสียงเรียกเรื่องเงิน' },
-            21: { upright: 'ตัวเร่งประจำวัน: เดอะเวิร์ลด์ บ่งบอกวงจรทางการเงินสมบูรณ์—โลกทางการเงินกำลังเปลี่ยน', reversed: 'ตัวเร่งประจำวัน: เดอะเวิร์ลด์ กลับหลังเตือนการไม่สมบูรณ์ทางการเงิน—ทำธุรกิจเงินให้เสร็จตอนนี้' }
+            0: { upright: 'ตัวเร่งประจําวัน: เดอะฟูล บ่งบอกการผจญภัยทางการเงินใหม่-ลองเสี่ยงแบบมีการคํานวณวันนี้', reversed: 'ตัวเร่งประจําวัน: เดอะฟูล กลับหลังเตือนเรื่องการใช้จ่ายแบบหุนหันพลันแล่น-หยุดก่อนเสี่ยงทางการเงิน' },
+            1: { upright: 'ตัวเร่งประจําวัน: เดอะเมจิเชี่ยน บ่งบอกพลังแสดงออกทางการเงิน-เครื่องมือทางการเงินของคุณพร้อมแล้ว', reversed: 'ตัวเร่งประจําวัน: เดอะเมจิเชี่ยน กลับหลังเตือนศักยภาพทางการเงินถูกทิ้ง-เปิดใช้ทักษะหาเงินตอนนี้' },
+            2: { upright: 'ตัวเร่งประจําวัน: เดอะไฮพรีสเตส บ่งบอกสัญชาตญาณทางการเงินถึงจุดสูงสุด-ไว้ใจความรู้สึกเรื่องเงินวันนี้', reversed: 'ตัวเร่งประจําวัน: เดอะไฮพรีสเตส กลับหลังเตือนสัญชาตญาณทางการเงินถูกบล็อก-ตรวจสอบการตัดสินใจเรื่องเงิน' },
+            3: { upright: 'ตัวเร่งประจําวัน: เดอะเอมเพรส บ่งบอกเงินไหลมาอย่างอุดมสมบูรณ์-ความมั่งคั่งเติบโตด้วยการดูแลอย่างอดทน', reversed: 'ตัวเร่งประจําวัน: เดอะเอมเพรส กลับหลังเตือนการละเลยทางการเงิน-ดูแลสวนเงินของคุณตอนนี้' },
+            4: { upright: 'ตัวเร่งประจําวัน: เดอะเอมเพอเรอร์ บ่งบอกฐานะทางการเงินมั่นคง-สร้างความมั่งคั่งด้วยกฎที่ชัดเจน', reversed: 'ตัวเร่งประจําวัน: เดอะเอมเพอเรอร์ กลับหลังเตือนปัญหาการควบคุมทางการเงิน-ตรวจสอบโครงสร้างเงินของคุณ' },
+            5: { upright: 'ตัวเร่งประจําวัน: เดอะไฮโรแฟนต์ บ่งบอกทองเส้นทางเงินสอดคล้องค่านิยม-เส้นทางหาเงินที่ถูกจริยธรรมชัดเจน', reversed: 'ตัวเร่งประจําวัน: เดอะไฮโรแฟนต์ กลับหลังเตือนลัทธิทางการเงิน-ตั้งคําถามเกี่ยวกับความเชื่อเรื่องเงิน' },
+            6: { upright: 'ตัวเร่งประจําวัน: เดอะเลิฟเวอร์ส บ่งบอกจุดตัดสินใจทางการเงิน-ทําตามหัวใจเรื่องเงินของคุณ', reversed: 'ตัวเร่งประจําวัน: เดอะเลิฟเวอร์ส กลับหลังเตือนอาการอ่อนล้าจากการเลือกทางการเงิน-เลือกเส้นทางหนึ่งตอนนี้' },
+            7: { upright: 'ตัวเร่งประจําวัน: เดอะแชริออต (ตั้งตรง) บ่งบอกแรงผลักดันทางการเงินที่หยุดไม่ได้-ดําเนินการตัดสินใจด้านความมั่งคั่งอย่างมั่นใจ', reversed: 'ตัวเร่งประจําวัน: เดอะแชริออต กลับหลังเตือนทิศทางทางการเงินกระจัด-โฟกัสพลังงานเงินของคุณตอนนี้' },
+            8: { upright: 'ตัวเร่งประจําวัน: สเตรงธ์ บ่งบอกพลังการเงินภายใน-พลังอ่อนโยนแห่งความมั่งคั่งกําลังตื่น', reversed: 'ตัวเร่งประจําวัน: สเตรงธ์ กลับหลังเตือนความอ่อนแอทางการเงิน-สร้างความมั่นใจเรื่องเงินตอนนี้' },
+            9: { upright: 'ตัวเร่งประจําวัน: เดอะเฮอร์มิต บ่งบอกปัญญาทางการเงินจากภายใน-ความสันโดษให้มุมมองใหม่เรื่องเงิน', reversed: 'ตัวเร่งประจําวัน: เดอะเฮอร์มิต กลับหลังเตือนความโดดเดี่ยวทางการเงิน-หาที่ปรึกษาด้านความมั่งคั่ง' },
+            10: { upright: 'ตัวเร่งประจําวัน: วีลออฟฟอร์จูน บ่งบอกวงจรทางการเงินกําลังหมุน-โชคสนับสนุนการเคลื่อนไหวทางการเงินที่กล้าหาญ', reversed: 'ตัวเร่งประจําวัน: วีลออฟฟอร์จูน กลับหลังเตือนโชคทางการเงินหยุดชะงัก-บังคับการเปลี่ยนแปลงตอนนี้' },
+            11: { upright: 'ตัวเร่งประจําวัน: จัสติซ บ่งบอกการสมดุลกรรมทางการเงิน-ความยุติธรรมของเงินมาถึง', reversed: 'ตัวเร่งประจําวัน: จัสติซ กลับหลังเตือนความไม่สมดุลทางการเงิน-ตรวจสอบกระแสเงินตอนนี้' },
+            12: { upright: 'ตัวเร่งประจําวัน: เดอะแฮงค์แมน บ่งบอกการเปลี่ยนมุมมองทางการเงิน-ต้องการวิสัยทัศน์ใหม่เรื่องเงิน', reversed: 'ตัวเร่งประจําวัน: เดอะแฮงค์แมน กลับหลังเตือนความหมกมุ่นทางการเงิน-ปล่อยวางการยึดติดเรื่องเงิน' },
+            13: { upright: 'ตัวเร่งประจําวัน: เดธ บ่งบอกการเปลี่ยนแปลงทางการเงิน-ตัวตนทางการเงินเดิมตาย ตัวใหม่เกิด', reversed: 'ตัวเร่งประจําวัน: เดธ กลับหลังเตือนการต่อต้านการเปลี่ยนแปลงทางการเงิน-รูปแบบเงินเก่าต้องยุติ' },
+            14: { upright: 'ตัวเร่งประจําวัน: เทมเปอแรนซ์ บ่งบอกความสมดุลทางการเงิน-แนวทางเงินปานกลางชนะ', reversed: 'ตัวเร่งประจําวัน: เทมเปอแรนซ์ กลับหลังเตือนความรุนแรงทางการเงิน-หาเส้นทางเงินตรงกลาง' },
+            15: { upright: 'ตัวเร่งประจําวัน: เดอะเดวิล บ่งบอกการทํางานกับเงาทางการเงิน-เผชิญปีศาจเงินเพื่อชนะ', reversed: 'ตัวเร่งประจําวัน: เดอะเดวิล กลับหลังบ่งบอกอิสรภาพทางการเงินเริ่มต้น-ทําลายโซ่ตรวนเงิน' },
+            16: { upright: 'ตัวเร่งประจําวัน: เดอะทาวเวอร์ บ่งบอกการทะลุทางการเงิน-การเปลี่ยนแปลงทางการเงินฉับพลันกําลังมา', reversed: 'ตัวเร่งประจําวัน: เดอะทาวเวอร์ กลับหลังเตือนการชะลอการล่มสลายทางการเงิน-สร้างความมั่งคั่งใหม่อย่างฉลาดกว่า' },
+            17: { upright: 'ตัวเร่งประจําวัน: เดอะสตาร์ บ่งบอกความหวังทางการเงินกลับมา-ดาวความมั่งคั่งนําทางการเดินทางของคุณ', reversed: 'ตัวเร่งประจําวัน: เดอะสตาร์ กลับหลังเตือนความหวังทางการเงินสูญหาย-รักษาความเชื่อในเส้นทางเงินของคุณ' },
+            18: { upright: 'ตัวเร่งประจําวัน: เดอะมูน บ่งบอกสัญชาตญาณทางการเงินถึงจุดสูงสุด-เวทมนตร์จันทรคติใช้ได้ผลกับเงิน', reversed: 'ตัวเร่งประจําวัน: เดอะมูน กลับหลังเตือนภาพลวงทางการเงิน-เห็นความจริงเรื่องเงินชัดเจน' },
+            19: { upright: 'ตัวเร่งประจําวัน: เดอะซัน บ่งบอกความสําเร็จทางการเงินสุกสว่างข้างหน้า-แสงอาทิตย์ความมั่งคั่งโปรดคุณ', reversed: 'ตัวเร่งประจําวัน: เดอะซัน กลับหลังเตือนแสงทางการเงินถูกบล็อก-ความมั่งคั่งยังคงเติบโต' },
+            20: { upright: 'ตัวเร่งประจําวัน: จัดเมนต์ บ่งบอกการกลับมาของทางการเงิน-เสียงเรียกความมั่งคั่งถูกได้ยิน', reversed: 'ตัวเร่งประจําวัน: จัดเมนต์ กลับหลังเตือนการตื่นทางการเงินล่าช้า-ฟังเสียงเรียกเรื่องเงิน' },
+            21: { upright: 'ตัวเร่งประจําวัน: เดอะเวิร์ลด์ บ่งบอกวงจรทางการเงินสมบูรณ์-โลกทางการเงินกําลังเปลี่ยน', reversed: 'ตัวเร่งประจําวัน: เดอะเวิร์ลด์ กลับหลังเตือนการไม่สมบูรณ์ทางการเงิน-ทําธุรกิจเงินให้เสร็จตอนนี้' }
           },
           vi: {
-            0: { upright: 'Chất xúc tác hàng ngày: Kẻ Khờ báo hiệu cuộc phiêu lưu tài chính mới—thử những rủi ro có tính toán hôm nay.', reversed: 'Chất xúc tác hàng ngày: Kẻ Khờ ngược cảnh báo chi tiêu bốc đồng—tạm dừng trước quyết định tài chính mạo hiểm.' },
-            1: { upright: 'Chất xúc tác hàng ngày: Ảo Thuật Gia báo hiệu năng lượng hiện thực hóa tài lộc—công cụ tài chính của bạn đã sẵn sàng.', reversed: 'Chất xúc tác hàng ngày: Ảo Thuật Gia ngược cảnh báo tiềm năng tài chính bị lãng phí—kích hoạt kỹ năng kiếm tiền ngay.' },
-            2: { upright: 'Chất xúc tác hàng ngày: Nữ Tư Tế báo hiệu trực giác tài chính đạt đỉnh—tin vào bản năng tiền bạc hôm nay.', reversed: 'Chất xúc tác hàng ngày: Nữ Tư Tế ngược cảnh báo trực giác tài chính bị chặn—kiểm tra kỹ quyết định tiền bạc.' },
-            3: { upright: 'Chất xúc tác hàng ngày: Nữ Hoàng báo hiệu tài lộc dồi dào chảy đến—của cải lớn lên nhờ sự kiên nhẫn.', reversed: 'Chất xúc tác hàng ngày: Nữ Hoàng ngược cảnh báo tài chính bị bỏ bê—chăm sóc khu vườn tiền bạc ngay.' },
-            4: { upright: 'Chất xúc tác hàng ngày: Hoàng Đế báo hiệu nền tảng tài chính vững chắc—xây dựng của cải với quy tắc rõ ràng.', reversed: 'Chất xúc tác hàng ngày: Hoàng Đế ngược cảnh báo vấn đề kiểm soát tài chính—kiểm toán cấu trúc tiền bạc.' },
-            5: { upright: 'Chất xúc tác hàng ngày: Giáo Hoàng báo hiệu tài lộc thẳng hàng với giá trị—con đường tiền bạc phù hợp đạo đức rõ ràng.', reversed: 'Chất xúc tác hàng ngày: Giáo Hoàng ngược cảnh báo giáo điều tài chính—đặt câu hỏi về niềm tin tiền bạc.' },
-            6: { upright: 'Chất xúc tác hàng ngày: Tình Nhân báo hiệu điểm quyết định tài chính—theo trái tim tiền bạc của bạn.', reversed: 'Chất xúc tác hàng ngày: Tình Nhân ngược cảnh báo tê liệt chọn lựa tài chính—chọn một hướng đi ngay.' },
-            7: { upright: 'Chất xúc tác hàng ngày: Chiến Xe (thuận) báo hiệu đà tài chính không thể ngăn cản—thực hiện quyết định thịnh vượng với sự tự tin.', reversed: 'Chất xúc tác hàng ngày: Chiến Xe ngược cảnh báo hướng tài chính tan rã—tập trung năng lượng tiền bạc.' },
-            8: { upright: 'Chất xúc tác hàng ngày: Sức Mạnh báo hiệu sức mạnh tài chính bên trong—năng lượng giàu có dịu dàng đang thức tỉnh.', reversed: 'Chất xúc tác hàng ngày: Sức Mạnh ngược cảnh báo sự yếu đuối tài chính—xây dựng sự tự tin tiền bạc ngay.' },
-            9: { upright: 'Chất xúc tác hàng ngày: Ẩn Sĩ báo hiệu trí tuệ tài chính từ bên trong—sự cô độc mang lại góc nhìn tiền bạc mới.', reversed: 'Chất xúc tác hàng ngày: Ẩn Sĩ ngược cảnh báo sự cô lập tài chính—tìm kiếm cố vấn giàu có.' },
-            10: { upright: 'Chất xúc tác hàng ngày: Bánh Xe Số Phận báo hiệu chu kỳ tài lộc đang quay—vận may ủng hộ động thái tài chính táo bạo.', reversed: 'Chất xúc tác hàng ngày: Bánh Xe Số Phận ngược cảnh báo vận may tài chính đình trệ—thay đổi ngay.' },
-            11: { upright: 'Chất xúc tác hàng ngày: Công Lý báo hiệu cân bằng nghiệp tài chính—tiền bạc được đền bù công minh.', reversed: 'Chất xúc tác hàng ngày: Công Lý ngược cảnh báo mất cân bằng tài chính—kiểm toán dòng tiền ngay.' },
-            12: { upright: 'Chất xúc tác hàng ngày: Người Treo báo hiệu chuyển đổi góc nhìn tài chính—cần tầm nhìn tiền bạc mới.', reversed: 'Chất xúc tác hàng ngày: Người Treo ngược cảnh báo ám ảnh tài chính—buông bỏ sự phụ thuộc tiền bạc.' },
-            13: { upright: 'Chất xúc tác hàng ngày: Cái Chết báo hiệu biến đổi tài chính—người tài chính cũ chết, người mới ra đời.', reversed: 'Chất xúc tác hàng ngày: Cái Chết ngược cảnh báo chống lại sự kết thúc tài chính—kết thúc thói quen tiền bạc cũ.' },
-            14: { upright: 'Chất xúc tác hàng ngày: Điều Độ báo hiệu cân bằng tài chính—chiến lược tiền bạc vừa phải chiến thắng.', reversed: 'Chất xúc tác hàng ngày: Điều Độ ngược cảnh báo cực đoan tài chính—tìm con đường tiền bạc trung dung.' },
-            15: { upright: 'Chất xúc tác hàng ngày: Ác Ma báo hiệu công việc với bóng tối tài chính—đối mặt quỷ tiền bạc để chiến thắng.', reversed: 'Chất xúc tác hàng ngày: Ác Ma ngược báo hiệu tự do tài chính bắt đầu—phá vỡ xiềng xích tiền bạc.' },
-            16: { upright: 'Chất xúc tác hàng ngày: Tháp Đổ báo hiệu đột phá tài chính—sự thay đổi tiền bạc đột ngột sắp đến.', reversed: 'Chất xúc tác hàng ngày: Tháp Đổ ngược cảnh báo trì hoãn sụp đổ tài chính—xây dựng lại của cải khôn ngoan hơn.' },
-            17: { upright: 'Chất xúc tác hàng ngày: Ngôi Sao báo hiệu hy vọng tài chính quay lại—sao giàu có dẫn đường hành trình của bạn.', reversed: 'Chất xúc tác hàng ngày: Ngôi Sao ngược cảnh báo hy vọng tài chính mất đi—giữ niềm tin trên con đường tiền bạc.' },
-            18: { upright: 'Chất xúc tác hàng ngày: Mặt Trăng báo hiệu trực giác tài chính đạt đỉnh—phép thuật trăng tròn hiệu quả với tiền bạc.', reversed: 'Chất xúc tác hàng ngày: Mặt Trăng ngược cảnh báo ảo tưởng tài chính—nhìn rõ sự thật tiền bạc.' },
-            19: { upright: 'Chất xúc tác hàng ngày: Mặt Trời báo hiệu thành công tài chính rực rỡ phía trước—ánh dương giàu có ban phước cho bạn.', reversed: 'Chất xúc tác hàng ngày: Mặt Trời ngược cảnh báo ánh dương tài chính bị chặn—của cải vẫn đang lớn lên.' },
-            20: { upright: 'Chất xúc tác hàng ngày: Phán Xét báo hiệu tái sinh tài chính—tiếng gọi giàu có được nghe thấy.', reversed: 'Chất xúc tác hàng ngày: Phán Xét ngược cảnh báo sự thức tỉnh tài chính bị trì hoãn—lắng nghe tiếng gọi tiền bạc.' },
-            21: { upright: 'Chất xúc tác hàng ngày: Thế Giới báo hiệu chu kỳ tài chính hoàn tất—thế giới tiền bạc đang biến đổi.', reversed: 'Chất xúc tác hàng ngày: Thế Giới ngược cảnh báo chưa hoàn thành tài chính—kết thúc công việc tiền bạc ngay.' }
+            0: { upright: 'Chất xúc tác hàng ngày: Kẻ Khờ báo hiệu cuộc phiêu lưu tài chính mới-thử những rủi ro có tính toán hôm nay.', reversed: 'Chất xúc tác hàng ngày: Kẻ Khờ ngược cảnh báo chi tiêu bốc đồng-tạm dừng trước quyết định tài chính mạo hiểm.' },
+            1: { upright: 'Chất xúc tác hàng ngày: Ảo Thuật Gia báo hiệu năng lượng hiện thực hóa tài lộc-công cụ tài chính của bạn đã sẵn sàng.', reversed: 'Chất xúc tác hàng ngày: Ảo Thuật Gia ngược cảnh báo tiềm năng tài chính bị lãng phí-kích hoạt kỹ năng kiếm tiền ngay.' },
+            2: { upright: 'Chất xúc tác hàng ngày: Nữ Tư Tế báo hiệu trực giác tài chính đạt đỉnh-tin vào bản năng tiền bạc hôm nay.', reversed: 'Chất xúc tác hàng ngày: Nữ Tư Tế ngược cảnh báo trực giác tài chính bị chặn-kiểm tra kỹ quyết định tiền bạc.' },
+            3: { upright: 'Chất xúc tác hàng ngày: Nữ Hoàng báo hiệu tài lộc dồi dào chảy đến-của cải lớn lên nhờ sự kiên nhẫn.', reversed: 'Chất xúc tác hàng ngày: Nữ Hoàng ngược cảnh báo tài chính bị bỏ bê-chăm sóc khu vườn tiền bạc ngay.' },
+            4: { upright: 'Chất xúc tác hàng ngày: Hoàng Đế báo hiệu nền tảng tài chính vững chắc-xây dựng của cải với quy tắc rõ ràng.', reversed: 'Chất xúc tác hàng ngày: Hoàng Đế ngược cảnh báo vấn đề kiểm soát tài chính-kiểm toán cấu trúc tiền bạc.' },
+            5: { upright: 'Chất xúc tác hàng ngày: Giáo Hoàng báo hiệu tài lộc thẳng hàng với giá trị-con đường tiền bạc phù hợp đạo đức rõ ràng.', reversed: 'Chất xúc tác hàng ngày: Giáo Hoàng ngược cảnh báo giáo điều tài chính-đặt câu hỏi về niềm tin tiền bạc.' },
+            6: { upright: 'Chất xúc tác hàng ngày: Tình Nhân báo hiệu điểm quyết định tài chính-theo trái tim tiền bạc của bạn.', reversed: 'Chất xúc tác hàng ngày: Tình Nhân ngược cảnh báo tê liệt chọn lựa tài chính-chọn một hướng đi ngay.' },
+            7: { upright: 'Chất xúc tác hàng ngày: Chiến Xe (thuận) báo hiệu đà tài chính không thể ngăn cản-thực hiện quyết định thịnh vượng với sự tự tin.', reversed: 'Chất xúc tác hàng ngày: Chiến Xe ngược cảnh báo hướng tài chính tan rã-tập trung năng lượng tiền bạc.' },
+            8: { upright: 'Chất xúc tác hàng ngày: Sức Mạnh báo hiệu sức mạnh tài chính bên trong-năng lượng giàu có dịu dàng đang thức tỉnh.', reversed: 'Chất xúc tác hàng ngày: Sức Mạnh ngược cảnh báo sự yếu đuối tài chính-xây dựng sự tự tin tiền bạc ngay.' },
+            9: { upright: 'Chất xúc tác hàng ngày: Ẩn Sĩ báo hiệu trí tuệ tài chính từ bên trong-sự cô độc mang lại góc nhìn tiền bạc mới.', reversed: 'Chất xúc tác hàng ngày: Ẩn Sĩ ngược cảnh báo sự cô lập tài chính-tìm kiếm cố vấn giàu có.' },
+            10: { upright: 'Chất xúc tác hàng ngày: Bánh Xe Số Phận báo hiệu chu kỳ tài lộc đang quay-vận may ủng hộ động thái tài chính táo bạo.', reversed: 'Chất xúc tác hàng ngày: Bánh Xe Số Phận ngược cảnh báo vận may tài chính đình trệ-thay đổi ngay.' },
+            11: { upright: 'Chất xúc tác hàng ngày: Công Lý báo hiệu cân bằng nghiệp tài chính-tiền bạc được đền bù công minh.', reversed: 'Chất xúc tác hàng ngày: Công Lý ngược cảnh báo mất cân bằng tài chính-kiểm toán dòng tiền ngay.' },
+            12: { upright: 'Chất xúc tác hàng ngày: Người Treo báo hiệu chuyển đổi góc nhìn tài chính-cần tầm nhìn tiền bạc mới.', reversed: 'Chất xúc tác hàng ngày: Người Treo ngược cảnh báo ám ảnh tài chính-buông bỏ sự phụ thuộc tiền bạc.' },
+            13: { upright: 'Chất xúc tác hàng ngày: Cái Chết báo hiệu biến đổi tài chính-người tài chính cũ chết, người mới ra đời.', reversed: 'Chất xúc tác hàng ngày: Cái Chết ngược cảnh báo chống lại sự kết thúc tài chính-kết thúc thói quen tiền bạc cũ.' },
+            14: { upright: 'Chất xúc tác hàng ngày: Điều Độ báo hiệu cân bằng tài chính-chiến lược tiền bạc vừa phải chiến thắng.', reversed: 'Chất xúc tác hàng ngày: Điều Độ ngược cảnh báo cực đoan tài chính-tìm con đường tiền bạc trung dung.' },
+            15: { upright: 'Chất xúc tác hàng ngày: Ác Ma báo hiệu công việc với bóng tối tài chính-đối mặt quỷ tiền bạc để chiến thắng.', reversed: 'Chất xúc tác hàng ngày: Ác Ma ngược báo hiệu tự do tài chính bắt đầu-phá vỡ xiềng xích tiền bạc.' },
+            16: { upright: 'Chất xúc tác hàng ngày: Tháp Đổ báo hiệu đột phá tài chính-sự thay đổi tiền bạc đột ngột sắp đến.', reversed: 'Chất xúc tác hàng ngày: Tháp Đổ ngược cảnh báo trì hoãn sụp đổ tài chính-xây dựng lại của cải khôn ngoan hơn.' },
+            17: { upright: 'Chất xúc tác hàng ngày: Ngôi Sao báo hiệu hy vọng tài chính quay lại-sao giàu có dẫn đường hành trình của bạn.', reversed: 'Chất xúc tác hàng ngày: Ngôi Sao ngược cảnh báo hy vọng tài chính mất đi-giữ niềm tin trên con đường tiền bạc.' },
+            18: { upright: 'Chất xúc tác hàng ngày: Mặt Trăng báo hiệu trực giác tài chính đạt đỉnh-phép thuật trăng tròn hiệu quả với tiền bạc.', reversed: 'Chất xúc tác hàng ngày: Mặt Trăng ngược cảnh báo ảo tưởng tài chính-nhìn rõ sự thật tiền bạc.' },
+            19: { upright: 'Chất xúc tác hàng ngày: Mặt Trời báo hiệu thành công tài chính rực rỡ phía trước-ánh dương giàu có ban phước cho bạn.', reversed: 'Chất xúc tác hàng ngày: Mặt Trời ngược cảnh báo ánh dương tài chính bị chặn-của cải vẫn đang lớn lên.' },
+            20: { upright: 'Chất xúc tác hàng ngày: Phán Xét báo hiệu tái sinh tài chính-tiếng gọi giàu có được nghe thấy.', reversed: 'Chất xúc tác hàng ngày: Phán Xét ngược cảnh báo sự thức tỉnh tài chính bị trì hoãn-lắng nghe tiếng gọi tiền bạc.' },
+            21: { upright: 'Chất xúc tác hàng ngày: Thế Giới báo hiệu chu kỳ tài chính hoàn tất-thế giới tiền bạc đang biến đổi.', reversed: 'Chất xúc tác hàng ngày: Thế Giới ngược cảnh báo chưa hoàn thành tài chính-kết thúc công việc tiền bạc ngay.' }
           }
         };
 
-        // 默认英文（已覆盖全22张牌）
+        // 默认英文(已覆盖全22张牌)
         const enOneLiners: Record<number, { upright: string; reversed: string }> = {
-          0: { upright: 'Daily Catalyst: The Fool signals a new financial adventure—take calculated risks today.', reversed: 'Daily Catalyst: The Fool reversed warns against impulse spending—pause before risky financial moves.' },
-          1: { upright: 'Daily Catalyst: The Magician signals wealth manifestation power—your financial tools are ready.', reversed: 'Daily Catalyst: The Magician reversed warns of wasted financial potential—activate your money skills now.' },
-          2: { upright: 'Daily Catalyst: The High Priestess signals financial intuition peak—trust your money gut today.', reversed: 'Daily Catalyst: The High Priestess reversed warns of blocked financial intuition—double-check money decisions.' },
-          3: { upright: 'Daily Catalyst: The Empress signals financial abundance flowing—wealth grows with patient care.', reversed: 'Daily Catalyst: The Empress reversed warns of financial neglect—tend to your money garden now.' },
-          4: { upright: 'Daily Catalyst: The Emperor signals solid financial foundation—build wealth with clear rules.', reversed: 'Daily Catalyst: The Emperor reversed warns of financial control issues—audit your money structure.' },
-          5: { upright: 'Daily Catalyst: The Hierophant signals wealth alignment—your money path matches your values.', reversed: 'Daily Catalyst: The Hierophant reversed warns of financial dogma—question your money beliefs.' },
-          6: { upright: 'Daily Catalyst: The Lovers signals financial choice point—follow your money heart.', reversed: 'Daily Catalyst: The Lovers reversed warns of financial choice paralysis—pick one path now.' },
-          7: { upright: 'Daily Catalyst: The Chariot (Upright) signals unstoppable financial momentum—execute wealth decisions with confidence.', reversed: 'Daily Catalyst: The Chariot reversed warns of scattered financial direction—focus your money energy.' },
-          8: { upright: 'Daily Catalyst: Strength signals inner financial power—gentle wealth strength awakens.', reversed: 'Daily Catalyst: Strength reversed warns of financial weakness—build money confidence now.' },
-          9: { upright: 'Daily Catalyst: The Hermit signals financial wisdom within—solitude brings money insights.', reversed: 'Daily Catalyst: The Hermit reversed warns of financial isolation—seek wealth mentor.' },
-          10: { upright: 'Daily Catalyst: Wheel of Fortune signals financial cycle turning—fortune favors bold money moves.', reversed: 'Daily Catalyst: Wheel of Fortune reversed warns of stagnant financial luck—force change now.' },
-          11: { upright: 'Daily Catalyst: Justice signals financial karma balancing—money justice arrives.', reversed: 'Daily Catalyst: Justice reversed warns of financial imbalance—audit money flow now.' },
-          12: { upright: 'Daily Catalyst: The Hanged Man signals financial perspective shift—new money vision needed.', reversed: 'Daily Catalyst: The Hanged Man reversed warns of financial obsession—let go of money fixation.' },
-          13: { upright: 'Daily Catalyst: Death signals financial transformation—old financial you dies, new emerges.', reversed: 'Daily Catalyst: Death reversed warns of resisting financial death—old money patterns must end.' },
-          14: { upright: 'Daily Catalyst: Temperance signals financial balance—moderate money approach wins.', reversed: 'Daily Catalyst: Temperance reversed warns of financial extremes—find middle money path.' },
-          15: { upright: 'Daily Catalyst: The Devil warns of financial shadow work—face money demons to win.', reversed: 'Daily Catalyst: The Devil reversed signals financial freedom begins—break money chains now.' },
-          16: { upright: 'Daily Catalyst: The Tower signals financial breakthrough—sudden money shift incoming.', reversed: 'Daily Catalyst: The Tower reversed warns of delaying financial collapse—rebuild wealth smarter.' },
-          17: { upright: 'Daily Catalyst: The Star signals financial hope returns—wealth star guides your journey.', reversed: 'Daily Catalyst: The Star reversed warns of lost financial hope—keep faith in money path.' },
-          18: { upright: 'Daily Catalyst: The Moon signals financial intuition peaks—lunar money magic works.', reversed: 'Daily Catalyst: The Moon reversed warns of financial illusion—see money truth clearly.' },
-          19: { upright: 'Daily Catalyst: The Sun signals financial success bright ahead—wealth sunshine blesses you.', reversed: 'Daily Catalyst: The Sun reversed warns of blocked financial sunshine—wealth still growing.' },
-          20: { upright: 'Daily Catalyst: Judgement signals financial rebirth—wealth calling heard.', reversed: 'Daily Catalyst: Judgement reversed warns of delayed financial awakening—listen to money calling.' },
-          21: { upright: 'Daily Catalyst: The World signals financial cycle complete—wealth world transforms.', reversed: 'Daily Catalyst: The World reversed warns of financial incompletion—finish money business now.' }
+          0: { upright: 'Daily Catalyst: The Fool signals a new financial adventure-take calculated risks today.', reversed: 'Daily Catalyst: The Fool reversed warns against impulse spending-pause before risky financial moves.' },
+          1: { upright: 'Daily Catalyst: The Magician signals wealth manifestation power-your financial tools are ready.', reversed: 'Daily Catalyst: The Magician reversed warns of wasted financial potential-activate your money skills now.' },
+          2: { upright: 'Daily Catalyst: The High Priestess signals financial intuition peak-trust your money gut today.', reversed: 'Daily Catalyst: The High Priestess reversed warns of blocked financial intuition-double-check money decisions.' },
+          3: { upright: 'Daily Catalyst: The Empress signals financial abundance flowing-wealth grows with patient care.', reversed: 'Daily Catalyst: The Empress reversed warns of financial neglect-tend to your money garden now.' },
+          4: { upright: 'Daily Catalyst: The Emperor signals solid financial foundation-build wealth with clear rules.', reversed: 'Daily Catalyst: The Emperor reversed warns of financial control issues-audit your money structure.' },
+          5: { upright: 'Daily Catalyst: The Hierophant signals wealth alignment-your money path matches your values.', reversed: 'Daily Catalyst: The Hierophant reversed warns of financial dogma-question your money beliefs.' },
+          6: { upright: 'Daily Catalyst: The Lovers signals financial choice point-follow your money heart.', reversed: 'Daily Catalyst: The Lovers reversed warns of financial choice paralysis-pick one path now.' },
+          7: { upright: 'Daily Catalyst: The Chariot (Upright) signals unstoppable financial momentum-execute wealth decisions with confidence.', reversed: 'Daily Catalyst: The Chariot reversed warns of scattered financial direction-focus your money energy.' },
+          8: { upright: 'Daily Catalyst: Strength signals inner financial power-gentle wealth strength awakens.', reversed: 'Daily Catalyst: Strength reversed warns of financial weakness-build money confidence now.' },
+          9: { upright: 'Daily Catalyst: The Hermit signals financial wisdom within-solitude brings money insights.', reversed: 'Daily Catalyst: The Hermit reversed warns of financial isolation-seek wealth mentor.' },
+          10: { upright: 'Daily Catalyst: Wheel of Fortune signals financial cycle turning-fortune favors bold money moves.', reversed: 'Daily Catalyst: Wheel of Fortune reversed warns of stagnant financial luck-force change now.' },
+          11: { upright: 'Daily Catalyst: Justice signals financial karma balancing-money justice arrives.', reversed: 'Daily Catalyst: Justice reversed warns of financial imbalance-audit money flow now.' },
+          12: { upright: 'Daily Catalyst: The Hanged Man signals financial perspective shift-new money vision needed.', reversed: 'Daily Catalyst: The Hanged Man reversed warns of financial obsession-let go of money fixation.' },
+          13: { upright: 'Daily Catalyst: Death signals financial transformation-old financial you dies, new emerges.', reversed: 'Daily Catalyst: Death reversed warns of resisting financial death-old money patterns must end.' },
+          14: { upright: 'Daily Catalyst: Temperance signals financial balance-moderate money approach wins.', reversed: 'Daily Catalyst: Temperance reversed warns of financial extremes-find middle money path.' },
+          15: { upright: 'Daily Catalyst: The Devil warns of financial shadow work-face money demons to win.', reversed: 'Daily Catalyst: The Devil reversed signals financial freedom begins-break money chains now.' },
+          16: { upright: 'Daily Catalyst: The Tower signals financial breakthrough-sudden money shift incoming.', reversed: 'Daily Catalyst: The Tower reversed warns of delaying financial collapse-rebuild wealth smarter.' },
+          17: { upright: 'Daily Catalyst: The Star signals financial hope returns-wealth star guides your journey.', reversed: 'Daily Catalyst: The Star reversed warns of lost financial hope-keep faith in money path.' },
+          18: { upright: 'Daily Catalyst: The Moon signals financial intuition peaks-lunar money magic works.', reversed: 'Daily Catalyst: The Moon reversed warns of financial illusion-see money truth clearly.' },
+          19: { upright: 'Daily Catalyst: The Sun signals financial success bright ahead-wealth sunshine blesses you.', reversed: 'Daily Catalyst: The Sun reversed warns of blocked financial sunshine-wealth still growing.' },
+          20: { upright: 'Daily Catalyst: Judgement signals financial rebirth-wealth calling heard.', reversed: 'Daily Catalyst: Judgement reversed warns of delayed financial awakening-listen to money calling.' },
+          21: { upright: 'Daily Catalyst: The World signals financial cycle complete-wealth world transforms.', reversed: 'Daily Catalyst: The World reversed warns of financial incompletion-finish money business now.' }
         };
 
         const langData = tarotOneLiners[currentLang];
         const cardData = (langData || {})[cardId] || enOneLiners[cardId];
         const oneLiner = cardData ? (reversed ? cardData.reversed : cardData.upright) : (t.oneLiner || '');
 
-        return { 
-          label: '', 
+        return {
+          label: '',
           value: `${t.emoji || '🃏'} ${tTarotName(cardId, currentLang as AlgLang)}`,
           subValue: `${tOrientation(t.orientation || 'upright', currentLang as AlgLang)} · ${tTarotMeaning(cardId, currentLang as AlgLang)}`,
           oneLiner: oneLiner
@@ -2024,9 +2040,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 骨架框架流：4个卡片实时提取流式数据 */}
+        {/* 🔮 骨架框架流:4个卡片实时提取流式数据 */}
         {(() => {
-          // 🛠️ 军师v2：同时支持月报和年报的流式骨架
+          // 🛠️ 军师v2:同时支持月报和年报的流式骨架
           const isMonthlyComplete = (() => {
             if (!wealthReportText || !wealthReportText.trim().startsWith('{')) return false;
             try {
@@ -2035,13 +2051,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             } catch { return false; }
           })();
           const isYearlyComplete = wealthReportText && wealthReportText.trim().length > 100 && !wealthReportText.trim().startsWith('{');
-          
-          return reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly' || streamedOnce 
+
+          return reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly' || streamedOnce
             || (wealthReportText && wealthReportText.trim().startsWith('{') && !isMonthlyComplete)
             || (reportLoading === 'wealth_yearly' && wealthReportText && !isYearlyComplete);
         })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 🛠️ 军师v4：流式期间显示已流到的内容 + 加载指示器；流式结束后渲染卡片 */}
+            {/* 🛠️ 军师v4:流式期间显示已流到的内容 + 加载指示器;流式结束后渲染卡片 */}
             {(() => {
               const isLoading = reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly';
               return isLoading;  // 只有还在流式时才显示纯文本骨架
