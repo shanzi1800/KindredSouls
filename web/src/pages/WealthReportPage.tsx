@@ -369,8 +369,10 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('# ') || trimmed === '---') continue;
     
-    // 检测月份 (### M1: 2026年7月 · 巨蟹座新月)
-    const monthMatch = trimmed.match(/^###?\s*(M\d+):?\s*(.*?)\s*[·|—]\s*(.+)$/);
+    // 检测月份（军师v2：兼容两种格式）
+    // 旧格式：### M1: 2026年7月 · 巨蟹座新月
+    // 新格式：#### 📅 2026年7月：木星入财帛宫的觉醒之月
+    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·:—|]\s*(.+)$/);
     if (monthMatch) {
       if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
       const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
@@ -378,9 +380,9 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
         ? 'risk' : 'flow';
       const stateLabel = state === 'peak' ? '🟢 财富充能月' : state === 'risk' ? '🔴 高危熔断月' : '🔵 顺流蓄力月';
       currentMonth = {
-        month: monthMatch[1],
-        dateRange: monthMatch[2].trim(),
-        zodiac: monthMatch[3].trim(),
+        month: monthMatch[1],  // 2026年7月
+        dateRange: monthMatch[1],  // 同上
+        zodiac: monthMatch[2].trim(),  // 木星入财帛宫的觉醒之月
         state,
         stateLabel,
         cosmicPhase: '',

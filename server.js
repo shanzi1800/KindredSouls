@@ -1254,8 +1254,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               // 逐字推送（伪流式）
               for (const char of fullText) {
                 res.write(`data: ${JSON.stringify({ text: char })}\n\n`);
+                // 🔥 军师令：每 10 字 flush 一次，避免缓冲
+                if (fullText.indexOf(char) % 10 === 0 && typeof res.flush === 'function') {
+                  res.flush();
+                }
               }
               res.write('data: [DONE]\n\n');
+              if (typeof res.flush === 'function') res.flush();
               return res.end();
             }
           }
@@ -1292,6 +1297,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               const content = parsed.choices?.[0]?.delta?.content || '';
               if (content) {
                 res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+                // 🔥 军师令：立即 flush，避免 Railway 代理缓冲
+                if (typeof res.flush === 'function') res.flush();
               }
             } catch (e) {
               // 忽略解析错误
