@@ -779,18 +779,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁：防止重复调用
   const [wealthReportText, setWealthReportText] = useState<string>('');
-  // 🛠️ 军师方案：流式硬切4周内容（emoji锚点）
-  const [streamingWeeks, setStreamingWeeks] = useState<string[]>(['', '', '', '']);
-  const [streamingTrap, setStreamingTrap] = useState<string>('');
-  const [streamingHeadline, setStreamingHeadline] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
   
-  // 🛠️ 军师的流式硬切黑魔法：实时提取 headline、weeks 和 expense_trap 数据（无需等待 JSON 闭合）
-  const extractStreamingHeadline = (rawText: string): string => {
-    const match = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
-    return match?.[1] || '';
-  };
-  
+  // 🛠️ 军师的流式硬切黑魔法：实时提取 weeks 数据（无需等待 JSON 闭合）
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
     
@@ -808,55 +799,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     
     return weeks;
   };
-  
-  // 🛠️ 提取 expense_trap 数据
-  const extractExpenseTrap = (rawText: string): { tag: string; dateRange: string; text: string } | null => {
-    const tagMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"tag"\s*:\s*"([^"]*)"/);
-    const dateRangeMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"dateRange"\s*:\s*"([^"]*)"/);
-    const textMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"text"\s*:\s*"([^"]*)"/);
-    
-    if (tagMatch || dateRangeMatch || textMatch) {
-      return {
-        tag: tagMatch?.[1] || '',
-        dateRange: dateRangeMatch?.[1] || '',
-        text: textMatch?.[1] || ''
-      };
-    }
-    return null;
-  };
-
-  // 🛠️ 军师方案：用emoji锚点硬切流式文本，直接吐出4周内容
-  const updateStreamingContent = (rawText: string) => {
-    // 提取 headline
-    const hlMatch = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
-    if (hlMatch?.[1]) setStreamingHeadline(hlMatch[1]);
-
-    // 用 emoji 锚点硬切4周内容（中文锚点）
-    // 顺序：🟢 第1周 → 🔴 第2周 → 🔵 第3周 → 🟢 第4周 → ⚠️ 消费陷阱
-    const weekAnchors = [
-      '🟢 第1周',
-      '🔴 第2周',
-      '🔵 第3周',
-      '🟢 第4周',
-      '⚠️ 消费陷阱',
-    ];
-    const segments = rawText.split(new RegExp(weekAnchors.map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')));
-    // segments[0] = headline前内容, [1]=第1周内容, [2]=第2周, [3]=第3周, [4]=第4周, [5]=消费陷阱
-    const newWeeks: string[] = ['', '', '', ''];
-    let newTrap = '';
-    for (let i = 1; i < segments.length; i++) {
-      if (i <= 4) newWeeks[i - 1] = segments[i].split(new RegExp(weekAnchors.slice(i).map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')))[0];
-      else if (i === 5) newTrap = segments[i];
-    }
-    setStreamingWeeks(newWeeks);
-    if (segments[5]) setStreamingTrap(segments[5]);
-  };
 
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
     setWealthReportText(text);
-    // 🛠️ 军师方案：每次文本更新时硬切4周内容
-    updateStreamingContent(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
 
@@ -1461,28 +1407,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               if (dataStr === '[DONE]') {
                 // 🎯 军师钩子：流式结束瞬间弹出复购/裂变引导
                 console.log('[WealthReport] 📜 天书刻印完成，触发商业钩子');
-                // 🛠️ 流结束后：一次性从完整 JSON 提取4周+陷阱+标题
-                const finalText = wealthReportRef.current || '';
-                try {
-                  const parsed = JSON.parse(finalText);
-                  if (parsed.headline) setStreamingHeadline(parsed.headline);
-                  if (parsed.weeks && Array.isArray(parsed.weeks)) {
-                    setStreamingWeeks(parsed.weeks.map((w: { text?: string }) => w?.text || ''));
-                  }
-                  if (parsed.expense_trap) setStreamingTrap(parsed.expense_trap.text || '');
-                } catch (e) {
-                  console.warn('[WealthReport] 最终JSON解析失败:', e);
-                }
                 break;
               }
               try {
                 const parsed = JSON.parse(dataStr);
-                if (parsed.error) {
-                  console.error('[WealthReport] Stream error:', parsed.error);
-                  setWealthReportText((prev) => prev || `⚠️ AI服务异常：${parsed.error}\n\n请检查后端日志。`);
-                  setReportLoading('');
-                  return;
-                }
                 if (parsed.text) {
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
@@ -1505,23 +1433,26 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 军师铁律：骨架框就是最终卡片，永不卸载
-        // 只在 JSON 完整时更新 visibleWeeks，保持 reportLoading 状态
+        // 🔮 验证 JSON 完整性，决定显示模式
         setTimeout(() => {
           try {
             const parsed = JSON.parse(wealthReportRef.current || '{}');
+            // ✅ JSON 完整：切换到卡片模式
             if (parsed.weeks && parsed.expense_trap) {
-              // ✅ JSON 完整：更新可见卡片数（形成节奏感）
+              setReportLoading('');
+              // 逐个显示卡片（形成节奏感）
               for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
                 setTimeout(() => setVisibleWeeks(i), i * 300);
               }
+            } else {
+              // ❌ JSON 不完整：保持纯文本模式（不清空 reportLoading，让骨架框架持续显示）
+              console.warn('[WealthReport] ⚠️ JSON 不完整，保持纯文本模式');
             }
-            // ⚠️ 绝对不清空 reportLoading！骨架框就是最终卡片！
           } catch {
-            // ❌ JSON 解析失败：保持纯文本模式，清空 loading 状态让用户能重新点击
-            setReportLoading('');
+            // ❌ JSON 解析失败：保持纯文本模式
+            console.warn('[WealthReport] ⚠️ JSON 解析失败，保持纯文本模式');
           }
-        }, 1000); // 1秒后验证
+        }, 2000); // 2秒后验证
       }
       return;
     }
@@ -2017,48 +1948,62 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 军师方案：4个暗金卡片 + emoji硬切流式文本 */}
-        {(reportLoading === 'wealth_monthly' || streamingWeeks.some(w => w) || streamingHeadline) && (
+        {/* 🔮 骨架框架流：4个卡片实时提取流式数据 */}
+        {(() => {
+          // 判断月报是否完整（有 expense_trap 字段）
+          let isReportComplete = false;
+          try {
+            const parsed = JSON.parse(wealthReportText || '{}');
+            isReportComplete = !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
+          } catch {}
+          
+          return (reportLoading === 'wealth_monthly' || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
+        })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            <div style={{ marginTop: '16px' }}>
-              {/* 🔮 Headline 主题卡 */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(139,69,19,0.08) 100%)',
-                border: '2px solid rgba(212,175,55,0.3)',
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '20px',
-                textAlign: 'center',
-                boxShadow: '0 4px 20px rgba(212,175,55,0.1)'
-              }}>
-                <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
-                  {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
+            {/* 🎨 军师方案：4个骨架卡片 + 流式硬切提取 */}
+            {reportLoading ? (
+              <div style={{ marginTop: '16px' }}>
+                {/* 骨架 Headline - 实时填充 */}
+                <div style={{ 
+                  background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(139,69,19,0.08) 100%)',
+                  border: '2px solid rgba(212,175,55,0.3)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 20px rgba(212,175,55,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
+                    {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    {(() => {
+                      try {
+                        const parsed = JSON.parse(wealthReportText || '{}');
+                        return parsed.headline || '';
+                      } catch { return ''; }
+                    })()}
+                  </div>
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                  {streamingHeadline || <span style={{ color: 'rgba(255,255,255,0.3)' }}>命运刻印中...</span>}
-                </div>
-              </div>
 
-              {/* ⚡ 4个暗金卡片——全部出现 + 内容逐字填充 */}
-              {(() => {
-                const weekLabels = [
-                  { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Peak', es: '🟢 Semana 1', fr: '🟢 Semaine 1', th: '🟢 สัปดาห์ 1', vi: '🟢 Tuần 1' },
-                  { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: Risk', es: '🔴 Semana 2', fr: '🔴 Semaine 2', th: '🔴 สัปดาห์ 2', vi: '🔴 Tuần 2' },
-                  { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow', es: '🔵 Semana 3', fr: '🔵 Semaine 3', th: '🔵 สัปดาห์ 3', vi: '🔵 Tuần 3' },
-                  { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak', es: '🟢 Semana 4', fr: '🟢 Semaine 4', th: '🟢 สัปดาห์ 4', vi: '🟢 Tuần 4' },
-                ];
-                const colors = ['#4CAF50', '#FF4D4F', '#64B5F6', '#4CAF50'];
-                return weekLabels.map((label, idx) => {
-                  const text = streamingWeeks[idx] || '';
-                  const hasText = !!text;
-                  return (
+                {/* ⚡ 军师方案：4个暗金卡片实时提取流式数据 */}
+                {(() => {
+                  const weeks = extractStreamingWeeks(wealthReportText || '');
+                  const weekLabels = [
+                    { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Wealth Peak' },
+                    { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: High Risk' },
+                    { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow' },
+                    { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak' },
+                  ];
+                  
+                  return weeks.map((weekText, idx) => (
                     <div key={idx} style={{
-                      background: `linear-gradient(135deg, ${colors[idx]}15 0%, ${colors[idx]}05 100%)`,
-                      border: `2px solid ${colors[idx]}50`,
+                      background: `linear-gradient(135deg, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.12) 0%, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.04) 100%)`,
+                      border: `2px solid ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}`,
                       borderRadius: '14px',
                       padding: '16px',
                       marginBottom: '16px',
-                      boxShadow: `0 2px 12px ${colors[idx]}20`
+                      boxShadow: `0 2px 12px ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}20`
                     }}>
                       <div style={{ 
                         display: 'flex', 
@@ -2066,74 +2011,54 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                         justifyContent: 'space-between',
                         marginBottom: '12px',
                         paddingBottom: '10px',
-                        borderBottom: `1px dashed ${colors[idx]}40`
+                        borderBottom: `1px dashed ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}40`
                       }}>
                         <span style={{ 
                           fontSize: '12px', 
                           fontWeight: 800, 
                           color: '#fff',
-                          background: colors[idx],
+                          background: idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6',
                           padding: '4px 10px',
                           borderRadius: '6px'
                         }}>
-                          {label[currentLang as keyof typeof label] || label.en}
+                          {(weekLabels[idx] as any)[currentLang] || weekLabels[idx].en}
                         </span>
-                        {/* 🌟 魔法光标：当前正在填充的卡片 */}
-                        {hasText && idx === streamingWeeks.filter(w => w).length - 1 && (
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px' }}>
+                        {weekText || <span style={{ color: 'rgba(255,255,255,0.3)' }}>等待数据流...</span>}
+                        {/* 🌟 魔法光标：只在当前正在填充的卡片显示 */}
+                        {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && (
                           <span style={{
                             display: 'inline-block',
                             width: '2px',
                             height: '1.2em',
                             background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                            marginLeft: '4px',
+                            marginLeft: '2px',
                             animation: 'pulse 1.5s ease-in-out infinite',
-                            boxShadow: '0 0 8px rgba(212,175,55,0.8)',
+                            boxShadow: '0 0 8px rgba(212,175,55,0.6)',
                             verticalAlign: 'middle',
                           }}/>)}
                       </div>
-                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                        {hasText ? text : <span style={{ color: 'rgba(255,255,255,0.25)' }}>命运之流正在汇聚...</span>}
-                      </div>
                     </div>
-                  );
-                });
-              })()}
-
-              {/* ⚠️ 消费陷阱卡片 */}
-              {streamingTrap && (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(255,77,79,0.15) 0%, rgba(139,0,0,0.08) 100%)',
-                  border: '2px solid #FF4D4F',
-                  borderRadius: '14px',
-                  padding: '16px',
-                  marginTop: '20px',
-                  boxShadow: '0 4px 20px rgba(255,77,79,0.2)'
-                }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    marginBottom: '12px',
-                    paddingBottom: '10px',
-                    borderBottom: '1px dashed #FF4D4F40'
-                  }}>
-                    <span style={{ 
-                      fontSize: '12px', 
-                      fontWeight: 800, 
-                      color: '#fff',
-                      background: '#FF4D4F',
-                      padding: '4px 10px',
-                      borderRadius: '6px'
-                    }}>
-                      ⚠️ {currentLang === 'zh' ? '消费陷阱熔断区' : 'Expense Trap'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {streamingTrap}
-                  </div>
-                </div>
-              )}
-            </div>
+                  ));
+                })()}
+              </div>
+            ) : (
+              wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
+            )}
+            
+            {/* 🌟 魔法光标 */}
+            {reportLoading && (
+              <span style={{
+                display: 'inline-block',
+                width: '2px',
+                height: '1.2em',
+                background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                marginLeft: '2px',
+                animation: 'pulse 1.5s ease-in-out infinite',
+                boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                verticalAlign: 'middle',
+              }}/>)}
           </div>
         )}
 
