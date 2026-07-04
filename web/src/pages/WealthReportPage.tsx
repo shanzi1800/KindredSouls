@@ -825,19 +825,38 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     return null;
   };
 
+  // 🛠️ 军师方案：用emoji锚点硬切流式文本，直接吐出4周内容
+  const updateStreamingContent = (rawText: string) => {
+    // 提取 headline
+    const hlMatch = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
+    if (hlMatch?.[1]) setStreamingHeadline(hlMatch[1]);
+
+    // 用 emoji 锚点硬切4周内容（中文锚点）
+    // 顺序：🟢 第1周 → 🔴 第2周 → 🔵 第3周 → 🟢 第4周 → ⚠️ 消费陷阱
+    const weekAnchors = [
+      '🟢 第1周',
+      '🔴 第2周',
+      '🔵 第3周',
+      '🟢 第4周',
+      '⚠️ 消费陷阱',
+    ];
+    const segments = rawText.split(new RegExp(weekAnchors.map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')));
+    // segments[0] = headline前内容, [1]=第1周内容, [2]=第2周, [3]=第3周, [4]=第4周, [5]=消费陷阱
+    const newWeeks: string[] = ['', '', '', ''];
+    let newTrap = '';
+    for (let i = 1; i < segments.length; i++) {
+      if (i <= 4) newWeeks[i - 1] = segments[i].split(new RegExp(weekAnchors.slice(i).map(a => a.replace(/[|\\{}()\[\]^$+*?.]/g, '\\$&')).join('|')))[0];
+      else if (i === 5) newTrap = segments[i];
+    }
+    setStreamingWeeks(newWeeks);
+    if (segments[5]) setStreamingTrap(segments[5]);
+  };
+
   const setWealthReport = (text: string) => {
     wealthReportRef.current = text;
     setWealthReportText(text);
-    // 流结束后：一次性提取4周内容到卡片状态
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed.weeks) {
-        const newWeeks = parsed.weeks.map((w: { text?: string }) => w.text || '');
-        setStreamingWeeks(newWeeks);
-      }
-      if (parsed.expense_trap) setStreamingTrap(parsed.expense_trap.text || '');
-      if (parsed.headline) setStreamingHeadline(parsed.headline);
-    } catch {}
+    // 🛠️ 军师方案：每次文本更新时硬切4周内容
+    updateStreamingContent(text);
   };
   const [reportLoading, setReportLoading] = useState<string>('');
 
@@ -1453,13 +1472,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   return;
                 }
                 if (parsed.text) {
-                  // 每个文本块追加到总文本
                   setWealthReportText((prev) => prev + parsed.text);
                   wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
-                  // 🔮 自动滚动
+                  
+                  // 🔮 自动滚动锚定（圣旨效果）
                   setTimeout(() => {
                     const reportContainer = document.getElementById('wealth-report-container');
-                    if (reportContainer) reportContainer.scrollTop = reportContainer.scrollHeight;
+                    if (reportContainer) {
+                      reportContainer.scrollTo({
+                        top: reportContainer.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }
                   }, 50);
                 }
               } catch {}
