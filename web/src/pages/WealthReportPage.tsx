@@ -367,7 +367,8 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('# ') || trimmed === '---') continue;
+    if (!trimmed || /^#\s/.test(trimmed) || trimmed === '---') continue;  // 只跳过顶级标题（# 开头，后面跟空格的）
+    // 注：## 、###、#### 都要进入解析
     
     // 检测月份（军师v3：兼容军师排版规范 + 全/半角分隔符）
     // 新格式：#### 📅 2026年7月：木星入财帛宫的觉醒之月
@@ -411,13 +412,17 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       continue;
     }
     
-    // 检测章节
-    if (trimmed.startsWith('## ')) {
-      if (currentChapter.title) chapters.push(currentChapter);
-      currentChapter = { title: trimmed.replace('## ', ''), content: '' };
-      if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
-      currentMonth = null;
-      continue;
+    // 检测章节（军师v5：兼容 ## 第一章、### 第一章、### 🌕 终极神谕 等所有级别章节）
+    // 排除月份和年报标题
+    if (!monthMatch) {
+      const chapterMatch = trimmed.match(/^#{1,3}\s+(?:[🌕🛡⚡🔮📜📅]?\s*)?(.+)$/);
+      if (chapterMatch && !chapterMatch[1].match(/^[\d{4}年\d{1,2}月]/)) {
+        if (currentChapter.title) chapters.push(currentChapter);
+        currentChapter = { title: chapterMatch[1].trim(), content: '' };
+        if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+        currentMonth = null;
+        continue;
+      }
     }
     
     // 宇宙相位行
