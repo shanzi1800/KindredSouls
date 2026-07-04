@@ -381,7 +381,7 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       const stateLabel = state === 'peak' ? '🟢 财富充能月' : state === 'risk' ? '🔴 高危熔断月' : '🔵 顺流蓄力月';
       currentMonth = {
         month: monthMatch[1],  // 2026年7月
-        dateRange: monthMatch[1],  // 同上
+        dateRange: '',  // 不重复显示
         zodiac: monthMatch[2].trim(),  // 木星入财帛宫的觉醒之月
         state,
         stateLabel,
@@ -2012,179 +2012,42 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
         {/* 🔮 骨架框架流：4个卡片实时提取流式数据 */}
         {(() => {
-          // 判断月报是否完整（有 expense_trap 字段）
-          let isReportComplete = false;
-          try {
-            const parsed = JSON.parse(wealthReportText || '{}');
-            isReportComplete = !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
-          } catch {}
+          // 🛠️ 军师v2：同时支持月报和年报的流式骨架
+          const isMonthlyComplete = (() => {
+            if (!wealthReportText || !wealthReportText.trim().startsWith('{')) return false;
+            try {
+              const parsed = JSON.parse(wealthReportText);
+              return !!(parsed.expense_trap && parsed.weeks && parsed.weeks.length === 4);
+            } catch { return false; }
+          })();
+          const isYearlyComplete = wealthReportText && wealthReportText.trim().length > 100 && !wealthReportText.trim().startsWith('{');
           
-          return (reportLoading === 'wealth_monthly' || streamedOnce || (wealthReportText && wealthReportText.trim().startsWith('{') && !isReportComplete));
+          return reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly' || streamedOnce 
+            || (wealthReportText && wealthReportText.trim().startsWith('{') && !isMonthlyComplete)
+            || (reportLoading === 'wealth_yearly' && wealthReportText && !isYearlyComplete);
         })() && (
           <div id="wealth-report-container" style={{ position: 'relative' }}>
-            {/* 🎨 军师方案：4个骨架卡片 + 流式硬切提取 */}
-            {reportLoading ? (
-              <div style={{ marginTop: '16px' }}>
-                {/* 骨架 Headline - 实时填充 */}
-                <div style={{ 
-                  background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(139,69,19,0.08) 100%)',
-                  border: '2px solid rgba(212,175,55,0.3)',
-                  borderRadius: '16px',
-                  padding: '20px',
-                  marginBottom: '20px',
-                  textAlign: 'center',
-                  boxShadow: '0 4px 20px rgba(212,175,55,0.1)'
-                }}>
-                  <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
-                    {currentLang === 'zh' ? '🔮 本月命运主题' : '🔮 Monthly Theme'}
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, minHeight: '24px', wordBreak: 'break-word', overflowWrap: 'break-word', position: 'relative' }}>
-                    {extractStreamingHeadline(wealthReportText || '') || (
-                      <>
-                        {/* 🌟 军师铁令：标题骨架流光呼吸灯 */}
-                        <span style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          width: '60%',
-                          height: '2px',
-                          background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.8) 50%, transparent 100%)',
-                          animation: 'pulse 2s ease-in-out infinite',
-                          borderRadius: '1px',
-                          boxShadow: '0 0 16px rgba(212,175,55,0.6)',
-                        }}/>)
-                      </>
-                    )}
-                  </div>
+            {/* 🛠️ 军师v3：流式期间显示已流到的内容 + 加载指示器 */}
+            {(() => {
+              const isLoading = reportLoading === 'wealth_monthly' || reportLoading === 'wealth_yearly';
+              return isLoading || streamedOnce;
+            })() ? (
+              <div style={{ marginTop: '16px', padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)', minHeight: '200px' }}>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {wealthReportText}
+                  {reportLoading && (
+                    <span style={{
+                      display: 'inline-block',
+                      width: '2px',
+                      height: '1.2em',
+                      background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
+                      marginLeft: '2px',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                      boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+                      verticalAlign: 'middle',
+                    }}/>
+                  )}
                 </div>
-
-                {/* ⚡ 军师方案：4个暗金卡片实时提取流式数据 */}
-                {(() => {
-                  const weeks = extractStreamingWeeks(wealthReportText || '');
-                  const weekLabels = [
-                    { zh: '🟢 第1周：财富充能', en: '🟢 Week 1: Wealth Peak', es: '🟢 Semana 1: Pico', fr: '🟢 Semaine 1: Pic', th: '🟢 สัปดาห์ 1: รุ่งเรือง', vi: '🟢 Tuần 1: Đỉnh Cao' },
-                    { zh: '🔴 第2周：高危熔断', en: '🔴 Week 2: High Risk', es: '🔴 Semana 2: Riesgo', fr: '🔴 Semaine 2: Risque', th: '🔴 สัปดาห์ 2: เสี่ยง', vi: '🔴 Tuần 2: Rủi Ro' },
-                    { zh: '🔵 第3周：顺流蓄力', en: '🔵 Week 3: Flow', es: '🔵 Semana 3: Flujo', fr: '🔵 Semaine 3: Flux', th: '🔵 สัปดาห์ 3: ไหลลื่น', vi: '🔵 Tuần 3: Dòng Chảy' },
-                    { zh: '🟢 第4周：财富爆发', en: '🟢 Week 4: Peak', es: '🟢 Semana 4: Pico', fr: '🟢 Semaine 4: Pic', th: '🟢 สัปดาห์ 4: รุ่งเรือง', vi: '🟢 Tuần 4: Đỉnh Cao' },
-                  ];
-                  
-                  return weeks.map((weekText, idx) => (
-                    <div key={idx} style={{
-                      background: `linear-gradient(135deg, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.12) 0%, rgba(${idx === 0 || idx === 3 ? '76,175,80' : idx === 1 ? '255,77,79' : '100,181,246'},0.04) 100%)`,
-                      border: `2px solid ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}`,
-                      borderRadius: '14px',
-                      padding: '16px',
-                      marginBottom: '16px',
-                      boxShadow: `0 2px 12px ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}20`
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        marginBottom: '12px',
-                        paddingBottom: '10px',
-                        borderBottom: `1px dashed ${idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6'}40`
-                      }}>
-                        <span style={{ 
-                          fontSize: '12px', 
-                          fontWeight: 800, 
-                          color: '#fff',
-                          background: idx === 0 || idx === 3 ? '#4CAF50' : idx === 1 ? '#FF4D4F' : '#64B5F6',
-                          padding: '4px 10px',
-                          borderRadius: '6px'
-                        }}>
-                          {weekLabels[idx][currentLang] || weekLabels[idx].en}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '40px', position: 'relative' }}>
-                        {weekText || (
-                          <>
-                            {/* 🌟 军师铁令：骨架流光呼吸灯 */}
-                            <span style={{
-                              position: 'absolute',
-                              top: '50%',
-                              left: '50%',
-                              transform: 'translate(-50%, -50%)',
-                              width: '80%',
-                              height: '2px',
-                              background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)',
-                              animation: 'pulse 2s ease-in-out infinite',
-                              borderRadius: '1px',
-                              boxShadow: '0 0 12px rgba(212,175,55,0.4)',
-                            }}/>)
-                          </>
-                        )}
-                        {/* 🌟 魔法光标：只在当前正在填充的卡片显示（流结束后消失） */}
-                        {weekText && !weeks[idx + 1] && idx === weeks.filter(w => w).length - 1 && !streamedOnce && (
-                          <span style={{
-                            display: 'inline-block',
-                            width: '2px',
-                            height: '1.2em',
-                            background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                            marginLeft: '2px',
-                            animation: 'pulse 1.5s ease-in-out infinite',
-                            boxShadow: '0 0 8px rgba(212,175,55,0.6)',
-                            verticalAlign: 'middle',
-                          }}/>)}
-                      </div>
-                    </div>
-                  ));
-                })()}
-                
-                {/* ⚠️ 消费陷阱/熔断警告卡片 */}
-                {(() => {
-                  const trap = extractExpenseTrap(wealthReportText || '');
-                  if (!trap || !trap.text) return null;
-                  
-                  const trapLabels = {
-                    zh: { title: '⚠️ 消费陷阱熔断区', warning: '紧急命令' },
-                    en: { title: '⚠️ Expense Trap Alert', warning: 'URGENT' },
-                    es: { title: '⚠️ Alerta de Trampa de Gastos', warning: 'URGENTE' },
-                    fr: { title: '⚠️ Alerte Piège de Dépenses', warning: 'URGENT' },
-                    th: { title: '⚠️ การเตือนภัยกับดักการใช้จ่าย', warning: 'ด่วน' },
-                    vi: { title: '⚠️ Cảnh Báo Bẫy Chi Tiêu', warning: 'KHẨN CẤP' },
-                  };
-                  const label = trapLabels[currentLang] || trapLabels.en;
-                  
-                  return (
-                    <div style={{
-                      background: 'linear-gradient(135deg, rgba(255,77,79,0.15) 0%, rgba(139,0,0,0.08) 100%)',
-                      border: '2px solid #FF4D4F',
-                      borderRadius: '14px',
-                      padding: '16px',
-                      marginTop: '20px',
-                      boxShadow: '0 4px 20px rgba(255,77,79,0.2)'
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        marginBottom: '12px',
-                        paddingBottom: '10px',
-                        borderBottom: '1px dashed #FF4D4F40'
-                      }}>
-                        <span style={{ 
-                          fontSize: '12px', 
-                          fontWeight: 800, 
-                          color: '#fff',
-                          background: '#FF4D4F',
-                          padding: '4px 10px',
-                          borderRadius: '6px'
-                        }}>
-                          {label.title}
-                        </span>
-                        <span style={{ fontSize: '11px', color: '#FF4D4F', fontWeight: 600 }}>
-                          {trap.dateRange}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        <span style={{ color: '#FF4D4F', fontWeight: 700 }}>{label.warning}: </span>
-                        {trap.text}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             ) : (
               wealthReportText && wealthReportText.trim().startsWith('{')
