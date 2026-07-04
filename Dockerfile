@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # 🛡️ Cache bust - 每次 push 都改时间戳，BUILD-TIME-RUN 用 ARG 才能 invalidate 所有下游 layer
-ARG CACHEBUST=20260704-stream-fix-final
+ARG CACHEBUST=20260704-P0-FORCE-NEWBUILD
 RUN echo "🔨 Cache bust: $CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 WORKDIR /app
