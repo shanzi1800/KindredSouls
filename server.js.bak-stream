@@ -1178,103 +1178,15 @@ if (existsSync(distPath)) {
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
   const { birthDate, lang = 'zh', reportType = 'monthly' } = req.body;
-
+  
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-
-  // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:${birthDate}:${lang}:${reportType}`;
-  const SB_URL = process.env.SUPABASE_URL;
-  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-  // ═══ 第一道拦截：Cache Hit → 伪流式 ═══
+  res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓冲
+  
   try {
-    if (SB_URL && SB_KEY) {
-      const cacheRes = await fetch(
-        `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
-        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-      );
-      const cacheRows = await cacheRes.json();
-      const cachedText = cacheRows?.[0]?.insight;
-
-      if (cachedText && cachedText.length > 100) {
-        console.log(`[wealth-stream] 🎯 Cache HIT: ${cacheKey}, length=${cachedText.length}, starting pseudo-stream`);
-
-        // 黄金欺骗流：每 15ms 吐 40 字符
-        const CHUNK_SIZE = 40;
-        const INTERVAL_MS = 15;
-        let index = 0;
-
-        const timer = setInterval(() => {
-          try {
-            if (index >= cachedText.length) {
-              res.write('data: [DONE]\n\n');
-              if (typeof res.flush === 'function') res.flush();
-              res.end();
-              clearInterval(timer);
-              console.log(`[wealth-stream] ✅ Cache pseudo-stream complete, ${cachedText.length} chars pushed`);
-              return;
-            }
-
-            const chunk = cachedText.slice(index, index + CHUNK_SIZE);
-            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
-            if (typeof res.flush === 'function') res.flush();
-            index += CHUNK_SIZE;
-          } catch (e) {
-            console.error('[wealth-stream] Cache stream error:', e.message);
-            clearInterval(timer);
-            try { res.end(); } catch {}
-          }
-        }, INTERVAL_MS);
-
-        // 客户端断连清理
-        req.on('close', () => {
-          clearInterval(timer);
-          console.log('[wealth-stream] Client disconnected from cache stream');
-        });
-        return;
-      }
-    }
-  } catch (e) {
-    console.warn('[wealth-stream] Cache check error (fallthrough to AI):', e.message);
-  }
-
-  // ═══ 第二道：Cache Miss → 真流式 + 落库 ═══
-  console.log(`[wealth-stream] ❌ Cache MISS: ${cacheKey}, calling DeepSeek...`);
-
-  // 用于缓存落库的全文本收集器
-  let fullTextCollector = '';
-
-  // 写缓存辅助函数
-  const writeToCache = async (text) => {
-    if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
-    try {
-      const res2 = await fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
-        method: 'POST',
-        headers: {
-          'apikey': SB_KEY,
-          'Authorization': `Bearer ${SB_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=ignore-duplicates'
-        },
-        body: JSON.stringify({
-          cache_key: cacheKey,
-          insight: text,
-          prompt_version: `v1.0.0-stream-${reportType}-${lang}`,
-          model: 'deepseek-chat',
-          created_at: new Date().toISOString(),
-        })
-      });
-      console.log(`[wealth-stream] 💾 Cache write: ${cacheKey}, length=${text.length}, status=${res2.status}`);
-    } catch (e) {
-      console.warn('[wealth-stream] Cache write error:', e.message);
-    }
-  };
-
-  try {
+    // 复用现有 prompt 构建逻辑
     const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
       dayMaster: '甲',
       wuxing: { '金':1, '木':2, '水':1, '火':1, '土':1 },
@@ -1282,21 +1194,22 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       hexName: '震',
       cardName: '隐士',
     });
-
+    
     if (!prompt) {
       res.write(`data: ${JSON.stringify({ error: 'Invalid reportType' })}\n\n`);
       return res.end();
     }
-
+    
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
     const maxTokens = reportType === 'yearly' ? 16000 : 3500;
-
+    
     if (!deepseekKey) {
       res.write(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}\n\n`);
       return res.end();
     }
-
+    
+    // 🔥 DeepSeek 流式调用
     let aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1311,14 +1224,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         ],
         max_tokens: maxTokens,
         temperature: 0.7,
-        stream: true,
+        stream: true, // 💥 激活流式
       }),
     });
-
+    
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       console.warn(`[wealth-stream] DeepSeek failed (${aiRes.status}), trying Gemini...`);
-
+      
+      // 🛠️ Gemini fallback（非流式，跳过流式逐字体验）
       if (geminiKey) {
         try {
           const gemRes = await fetch(
@@ -1337,16 +1251,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (fullText) {
               console.log('[wealth-stream] Gemini fallback succeeded, length:', fullText.length);
+              // 逐字推送（伪流式）
               for (const char of fullText) {
                 res.write(`data: ${JSON.stringify({ text: char })}\n\n`);
-                fullTextCollector += char;
+                // 🔥 军师令：每 10 字 flush 一次，避免缓冲
                 if (fullText.indexOf(char) % 10 === 0 && typeof res.flush === 'function') {
                   res.flush();
                 }
-              }
-              // Gemini 也要落库
-              if (fullTextCollector.length > 100) {
-                writeToCache(fullTextCollector).catch(() => {});
               }
               res.write('data: [DONE]\n\n');
               if (typeof res.flush === 'function') res.flush();
@@ -1357,23 +1268,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           console.error('[wealth-stream] Gemini fallback failed:', e.message);
         }
       }
-
+      
       res.write(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`);
       return res.end();
     }
-
+    
+    // 🚀 流式读取并推送
     const reader = aiRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-
+    
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
+      
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
+      buffer = lines.pop() || ''; // 保留未完成的行
+      
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const dataStr = line.slice(6).trim();
@@ -1385,21 +1297,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               const content = parsed.choices?.[0]?.delta?.content || '';
               if (content) {
                 res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+                // 🔥 军师令：立即 flush，避免 Railway 代理缓冲
                 if (typeof res.flush === 'function') res.flush();
-                fullTextCollector += content;
               }
-            } catch (e) {}
+            } catch (e) {
+              // 忽略解析错误
+            }
           }
         }
       }
     }
-
-    // 🛡️ 军师缓存落库：流式完成后写入 Supabase
-    if (fullTextCollector.length > 100) {
-      writeToCache(fullTextCollector).catch(() => {});
-    }
+    
+    res.write('data: [DONE]\n\n');
     res.end();
-
+    
   } catch (err) {
     console.error('[Stream Error]', err.message);
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
