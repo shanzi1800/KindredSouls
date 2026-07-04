@@ -1461,6 +1461,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               if (dataStr === '[DONE]') {
                 // 🎯 军师钩子：流式结束瞬间弹出复购/裂变引导
                 console.log('[WealthReport] 📜 天书刻印完成，触发商业钩子');
+                // 🛠️ 流结束后：一次性从完整 JSON 提取4周+陷阱+标题
+                const finalText = wealthReportRef.current || '';
+                try {
+                  const parsed = JSON.parse(finalText);
+                  if (parsed.headline) setStreamingHeadline(parsed.headline);
+                  if (parsed.weeks && Array.isArray(parsed.weeks)) {
+                    setStreamingWeeks(parsed.weeks.map((w: { text?: string }) => w?.text || ''));
+                  }
+                  if (parsed.expense_trap) setStreamingTrap(parsed.expense_trap.text || '');
+                } catch (e) {
+                  console.warn('[WealthReport] 最终JSON解析失败:', e);
+                }
                 break;
               }
               try {
