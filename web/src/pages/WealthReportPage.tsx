@@ -782,17 +782,33 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
   
   // 🛠️ 军师的流式硬切黑魔法：实时提取 headline、weeks 和 expense_trap 数据（无需等待 JSON 闭合）
+  // 🛠️ 军师黑魔法：手功从原始 JSON 里提取字段值（支持未闭合字符串）
+  // 流式 JSON 累积期间，未闭合的 "text" 字段会让正则 \u5b8c\u5168\u5931\u6548
+  // 不用正则，手动跳过转义扫描到下一个 "
+  const extractJsonString = (rawText: string, key: string, startFrom = 0): string => {
+    const keyPos = rawText.indexOf(`"${key}": "`, startFrom);
+    if (keyPos === -1) return '';
+    const start = keyPos + `"${key}": "`.length;
+    let j = start;
+    while (j < rawText.length) {
+      if (rawText[j] === '\\' && j + 1 < rawText.length) {
+        j += 2; // 跳过转义
+        continue;
+      }
+      if (rawText[j] === '"') break;
+      j++;
+    }
+    return rawText.slice(start, j);
+  };
+  
   const extractStreamingHeadline = (rawText: string): string => {
-    const match = rawText.match(/"headline"\s*:\s*"([^"]*)"/);
-    return match?.[1] || '';
+    return extractJsonString(rawText, 'headline');
   };
   
   const extractStreamingWeeks = (rawText: string): string[] => {
     const weeks: string[] = ['', '', '', ''];
     
-    // 🛠️ 军师黑魔法：手功用括号定位+未闭合字符串提取
-    // 流式 JSON 累积期间，未闭合的 "text" 字段会让 \u6b63\u5219[^"]*\u5b8c\u5168\u5931\u6548
-    // \u8fd9\u91cc\u4e0d\u8981\u6c42\u5b57\u7b26\u4e32\u95ed\u5408\uff0c\u53ea\u8981\u627e\u5230\u5bf9\u5e94\u7684 { \u5757\u91cc\u7684 "text": " \u8d77\u70b9\u5c31\u62ff\u5230\u90a3\u4e2a\u5757\u7684\u5185\u5bb9
+    // 找 weeks 数组的起点
     const weeksStart = rawText.match(/"weeks"\s*:\s*\[/);
     if (!weeksStart) return weeks;
     
@@ -801,20 +817,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     let i = 0;
     
     while (weekIdx < 4 && i < after.length) {
-      // \u627e\u4e0b\u4e00\u4e2a { \u5757\u8d77\u70b9
+      // 找下一个 { 块起点
       const bracePos = after.indexOf('{', i);
       if (bracePos === -1) break;
       
-      // \u5728\u8fd9\u4e2a\u5757\u91cc\u627e "text": "
+      // 在这个块里找 "text": "（手动扫描未闭合字符串）
       const textPos = after.indexOf('"text": "', bracePos);
       if (textPos === -1) break;
       
-      // \u63d0\u53d6\u4ece text \u4e4b\u540e\u5230\u9996\u4e2a\u672a\u8f6c\u4e49\u7684 " \u4e3a\u6b62
       const start = textPos + '"text": "'.length;
       let j = start;
       while (j < after.length) {
         if (after[j] === '\\' && j + 1 < after.length) {
-          j += 2; // \u8df3\u8fc7\u8f6c\u4e49\u5e8f\u5217
+          j += 2;
           continue;
         }
         if (after[j] === '"') break;
@@ -828,20 +843,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     return weeks;
   };
   
-  // 🛠️ 提取 expense_trap 数据
+  // 🛠️ 提取 expense_trap 数据（手功提取 tag/dateRange/text，未闭合也能拿）
   const extractExpenseTrap = (rawText: string): { tag: string; dateRange: string; text: string } | null => {
-    const tagMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"tag"\s*:\s*"([^"]*)"/);
-    const dateRangeMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"dateRange"\s*:\s*"([^"]*)"/);
-    const textMatch = rawText.match(/"expense_trap"\s*:\s*\{[\s\S]*?"text"\s*:\s*"([^"]*)"/);
+    const trapPos = rawText.indexOf('"expense_trap"');
+    if (trapPos === -1) return null;
     
-    if (tagMatch || dateRangeMatch || textMatch) {
-      return {
-        tag: tagMatch?.[1] || '',
-        dateRange: dateRangeMatch?.[1] || '',
-        text: textMatch?.[1] || ''
-      };
-    }
-    return null;
+    // 找到 expense_trap 后的第一个 { 起点
+    const bracePos = rawText.indexOf('{', trapPos);
+    if (bracePos === -1) return null;
+    
+    return {
+      tag: extractJsonString(rawText, 'tag', bracePos),
+      dateRange: extractJsonString(rawText, 'dateRange', bracePos),
+      text: extractJsonString(rawText, 'text', bracePos),
+    };
   };
 
   const setWealthReport = (text: string) => {
