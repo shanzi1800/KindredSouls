@@ -349,6 +349,26 @@ interface MonthBlock {
   shadowWork: string[];
 }
 
+// ── 清洗时间线重复（补齐军师服务器端 cleanYearlyTimeline 逻辑，应用于流式）──
+function cleanYearlyTimeline(text: string): string {
+  if (!text) return text;
+  // Pattern 1: 2026年6月2026年6月 → 2026年6月
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年\1)/g, '$1');
+  // Pattern 2: 2026年6月2026年6月6月 → 2026年6月21日
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)(\d{1,2}月)/g, '$1$4');
+  // Pattern 3: 1990年6月2026年6月 → 1990年6月15日
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2$4日');
+  // Pattern 4: 2026年6月2026年6月21日 → 2026年6月21日
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年\2)(\d{1,2}日)/g, '$1$2$4');
+  // Pattern 5: 连续两个相同月份 → 保留一个
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\1)(\d{1,2}月)/g, '$1$2');
+  // Pattern 6: 任意位置连续年份重复
+  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\1)/g, '$1$2');
+  // Pattern 7: 2026年6月2026年6月 → 2026年6月（贪婪清理）
+  text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)/g, '$1');
+  return text;
+}
+
 // ── Markdown 解析核心 ──
 const parseYearlyReport = (markdown: string, _birthDate: string): {
   title: string;
@@ -356,8 +376,10 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   months: MonthBlock[];
   rawContent: string;
 } => {
-  const lines = markdown.split('\n');
-  const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富年报';
+  // 清洗时间线重复（流式期间，chunk 拼接可能产生"2026年7月2026年7月"）
+  const cleanedMd = cleanYearlyTimeline(markdown);
+  const lines = cleanedMd.split('\n');
+  const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富报告';
   const months: MonthBlock[] = [];
   const chapters: YearlyChapter[] = [];
 
@@ -420,21 +442,25 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
     if (!monthMatch) {
       const clean = trimmed.toLowerCase();
       // 顶级章节关键字（多语种全量覆盖）
+      // 注意：先知天书 ❌ 排除（在引用块 `> ### ✦ 先知天书` 出现，不是顶级章节）
       const CHAPTER_KEYWORDS = [
         // 中文
         '第一章','第二章','第三章','第四章','第五章',
-        '终极神谕','通关密令','先知天书',
+        '终极神谕','通关密令',
         // 英文/法文/西文
         'chapter','capítulo','chapitre',
         'final oracle','oráculo final','oracle final',
         'final wealth','ultimate oracle',
-        // 子标题关键字（这些在月历内有，不触发顶级章节）
       ];
       const isChapterKeyword = CHAPTER_KEYWORDS.some(kw => clean.includes(kw.toLowerCase()));
       // 排除：年份日期（2026年7月）、月份标签
       const isYearMonth = /\d{4}年\d{1,2}月/.test(trimmed) || /^\d{4}年/.test(trimmed);
-      // 顶级章节判定：含章节关键字 + 长度<40 + 不是年月
-      const isNewChapter = isChapterKeyword && trimmed.length < 40 && !isYearMonth;
+      // 排除：引用块（> 开头是引用，不可能是顶级章节）
+      const isQuote = trimmed.startsWith('>');
+      // 排除：列表项（- 或 * 开头）
+      const isListItem = /^[-*]\s/.test(trimmed);
+      // 顶级章节判定：含章节关键字 + 长度<40 + 不是年月 + 不是引用块 + 不是列表项
+      const isNewChapter = isChapterKeyword && trimmed.length < 40 && !isYearMonth && !isQuote && !isListItem;
 
       if (isNewChapter) {
         // 提取章节标题（去掉前面的 #）
