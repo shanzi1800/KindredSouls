@@ -2185,7 +2185,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 })()}
               </div>
             ) : (
-              wealthReportText && wealthReportText.trim().startsWith('{') && <MonthlyReportCard lang={currentLang} content={wealthReportText} />
+              wealthReportText && wealthReportText.trim().startsWith('{')
+                ? <MonthlyReportCard lang={currentLang} content={wealthReportText} />
+                : wealthReportText && wealthReportText.trim().length > 100
+                ? <YearlyReportCard content={wealthReportText} birthDate={birthDate} />
+                : null
             )}
           </div>
         )}
