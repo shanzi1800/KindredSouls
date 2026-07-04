@@ -369,10 +369,10 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('# ') || trimmed === '---') continue;
     
-    // 检测月份（军师v2：兼容两种格式）
-    // 旧格式：### M1: 2026年7月 · 巨蟹座新月
+    // 检测月份（军师v3：兼容军师排版规范 + 全/半角分隔符）
     // 新格式：#### 📅 2026年7月：木星入财帛宫的觉醒之月
-    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·:—|]\s*(.+)$/);
+    // 旧格式：### M1: 2026年7月 · 巨蟹座新月
+    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·:：—|]\s*(.+)$/);
     if (monthMatch) {
       if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
       const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
