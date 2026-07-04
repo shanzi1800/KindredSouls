@@ -412,16 +412,22 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       continue;
     }
     
-    // 检测章节（军师v5：兼容 ## 第一章、### 第一章、### 🌕 终极神谕 等所有级别章节）
-    // 排除月份和年报标题
+    // 检测顶级章节（军师v6：用关键字识别“第N章”、“终极神谕”，不认## 二级以外的子标题）
     if (!monthMatch) {
-      const chapterMatch = trimmed.match(/^#{1,3}\s+(?:[🌕🛡⚡🔮📜📅]?\s*)?(.+)$/);
-      if (chapterMatch && !chapterMatch[1].match(/^[\d{4}年\d{1,2}月]/)) {
-        if (currentChapter.title) chapters.push(currentChapter);
-        currentChapter = { title: chapterMatch[1].trim(), content: '' };
-        if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
-        currentMonth = null;
-        continue;
+      const headingMatch = trimmed.match(/^#{1,4}\s+(?:[🌕🛡⚡🔮📜📅]?\s*)?(.+)$/);
+      if (headingMatch) {
+        const title = headingMatch[1].trim();
+        // 顶级章节关键字：第N章、Chapter、终极神谕、通关密令
+        const isMainChapter = /^第[一二三四五六七八九十百\d]+章/.test(title) 
+          || /终极神谕|通关密令|Chapter\s+[IVX]+/i.test(title)
+          || /^##\s/.test(trimmed);  // ## 二级标题也是顶级章节
+        if (isMainChapter && !title.match(/^[\d{4}年\d{1,2}月]/)) {
+          if (currentChapter.title) chapters.push(currentChapter);
+          currentChapter = { title, content: '' };
+          if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+          currentMonth = null;
+          continue;
+        }
       }
     }
     
@@ -431,7 +437,7 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       continue;
     }
     
-    // 普通段落
+    // 普通段落/子标题
     if (currentMonth) {
       const clean = trimmed.replace(/^[-*]\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1');
       if (clean && currentSection === 'wealthAction') {
@@ -442,7 +448,9 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
         currentMonth.paragraphs!.push(clean);
       }
     } else if (currentChapter.title) {
-      currentChapter.content += ' ' + trimmed;
+      // 清理子标题的 # 、加粗符号
+      const cleanLine = trimmed.replace(/^#{1,4}\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1');
+      currentChapter.content += (currentChapter.content ? '\n\n' : '') + cleanLine;
     }
   }
   if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
@@ -534,13 +542,15 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             padding: '16px',
             textAlign: 'left',
             border: '1px solid rgba(212,175,55,0.15)',
+            maxHeight: '280px',
+            overflowY: 'auto',
           }}>
             <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '6px', fontWeight: 600 }}>
               💡 先知神谕
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-              {highlightYearlyGold(parsed.chapters[0].content.slice(0, 400))}
-              {parsed.chapters[0].content.length > 400 && '...'}
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+              {highlightYearlyGold(parsed.chapters[0].content.slice(0, 1500))}
+              {parsed.chapters[0].content.length > 1500 && '...'}
             </div>
           </div>
         )}
@@ -678,8 +688,8 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
         </div>
       )}
       
-      {/* 其他章节 */}
-      {parsed.chapters.slice(1).map((ch, idx) => (
+      {/* 其他章节：完整渲染，取消截断（军师v6） */}
+      {parsed.chapters.slice(1).filter(ch => ch.content && ch.content.trim().length > 0).map((ch, idx) => (
         <div key={idx} style={{
           background: 'rgba(0,0,0,0.25)',
           borderRadius: '14px',
@@ -687,12 +697,11 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           marginBottom: '16px',
           border: '1px solid rgba(212,175,55,0.15)'
         }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#D4AF37', marginBottom: '10px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#D4AF37', marginBottom: '12px', lineHeight: 1.4 }}>
             {ch.title}
           </div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-            {highlightYearlyGold(ch.content.slice(0, 600))}
-            {ch.content.length > 600 && '...'}
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+            {highlightYearlyGold(ch.content)}
           </div>
         </div>
       ))}
