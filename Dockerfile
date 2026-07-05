@@ -22,7 +22,9 @@ COPY . .
 RUN npm install && npm install express stripe
 
 # 2. 🔥 核心绝杀：进入前端 web 目录，强制清除旧的 dist，现场暴力构建！
-RUN cd web && rm -rf dist node_modules/.tmp && npm install && npm run build
+# CACHEBUST_V5_FORCE_REBUILD_$(date +%s) 确保每次构建都重新执行这一层
+ARG CACHEBUST_V5=20260705-1116-FORCE-REBUILD-V5-FRONTEND
+RUN echo "🔨 Frontend cache bust: $CACHEBUST_V5" && cd web && rm -rf dist node_modules/.tmp && npm install && npm run build
 
 EXPOSE 3000
 ENV PORT=3000
