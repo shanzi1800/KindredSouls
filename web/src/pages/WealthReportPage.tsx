@@ -461,65 +461,51 @@ const cleanRawReportText = (text: string): string => {
   return c;
 };
 
-// 🛠️ 军师亲授：前端无脑硬切状态机
+// 🛠️ 军师霸权清洗版：前端物理净化器
 const parseYearlyReport = (rawText: string, _birthDate: string): {
   title: string;
   chapters: YearlyChapter[];
   months: MonthBlock[];
   rawContent: string;
 } => {
-  // 🛠️ 军师升级版前置拉回逻辑：剥皮抽筋式清洗
+  if (!rawText) return { title: '', chapters: [], months: [], rawContent: '' };
+
+  // 🎯 军师前置“霸权清洗矩阵”：进来先扒皮，管你 AI 怎么吐，到我这里全部变成标准版！
   let filteredText = rawText
-    .replace(/^>\s*#+/gm, '##')           // 不管是一个井号还是两个井号，只要在 > 后面，全部无脑拉回行首变成 ##
-    .replace(/##\s*✦\s*先知天书.*/gi, '## 先知神谕：年度财富天启')  // 针对"先知天书"幻觉的定向物理爆破
-    .replace(/📅|📊|📕|✦/g, '');          // 顺手把 AI 自作聪明加的 Emoji 全部物理蒸发
+    // 1. 【物理绝杀缝合怪】：管你 > 后面有多少空格、多少井号，只要在行首，全部无脑拍扁成标准二级标题 "## "
+    .replace(/^>\s*#+/gm, '## ')
 
-  // 🛠️ 军师终极清洗机 - 残暴版
-  const cleanRawReportText = (text: string): string => {
-    let c = text;
-    // 1. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
-    c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
-    c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
-    // 2. 清理 AI 因为幻觉吐出来的裸露 ## 符号怪
-    c = c.replace(/^###\s+/gm, '#### ');
-    // 3. 擦除历史生日污染流年的连体婴
-    c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
-    // 4. 新增：斩杀跨格式复读（如 1995年3月1995年3月8日）
-    c = c.replace(/(\d{4}年\d{1,2}月)(\d{4}年\d{1,2}月\d{1,2}日)/g, '$2');
-    // 5. 新增：斩杀带日期的复读（如 2026年7月2026年7月8日）
-    c = c.replace(/(\d{4}年\d{1,2}月)\1+(\d{1,2}日)/g, '$1$2');
-    // 6. 终极兜底：循环清洗10次（军师加码！）
-    let prev = c;
-    for (let i = 0; i < 10; i++) {
-      c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
-      if (c === prev) break;
-      prev = c;
-    }
-    return c;
-  };
+    // 2. 【定点清除“先知天书”幻觉】：截图里疯狂出现的“> ## ✦ 先知天书”，直接物理替换为我们前端需要的绝对硬核锚点
+    .replace(/##\s*✦\s*先知天书.*/gi, '## 先知神谕：年度财富天启')
+    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启') // 顺手干掉那个核心指标看板标题，防止它干扰第一章
 
-  // 🛠️ 军师终极清洗：先对原始8000字完整文本进行残暴大清洗
-  const brutalCleaned = cleanRawReportText(filteredText);
-  // 再调用原有清洗函数
-  const cleanedMd = cleanYearlyTimeline(brutalCleaned);
-  const lines = cleanedMd.split('\n');
+    // 3. 【无脑蒸发干扰符号】：把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
+    .replace(/📅|📊|📕|✦|📌|🔮/g, '')
+
+    // 4. 【终极强制降级】：把所有类似 ### 第一章 这种滑坡标题，在行首强行拉回成标准 ##
+    .replace(/^###\s+(第一章|第二章|第三章|第四章|第五章|最终财富|通关密令)/gm, '## $1');
+
+  // ————————————————————————————————————————————————————————————
+  // 下面进入铁血硬切循环
+  const lines = filteredText.split('\n');
   const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富报告';
   const months: MonthBlock[] = [];
   const chapters: YearlyChapter[] = [];
 
   let currentMonth: Partial<MonthBlock> | null = null;
   let currentSection: 'paragraphs' | 'wealthAction' | 'shadowWork' = 'paragraphs';
-  let currentChapter = { title: '', content: '' };
+  let currentChapterTitle = "先知神谕：年度财富天启"; // 兜底开局卡片
+  let currentChapterContent: string[] = [];
+
+  // 必须同时满足：以 "## " 开头，且包含核心死字
+  const CHAPTER_KEYWORDS = ["先知", "第一章", "第二章", "第三章", "第四章", "第五章", "最终", "密令"];
 
   for (const line of lines) {
     const trimmed = line.trim();
-    // 注意：## 、###、#### 都不跳过，只跳过顶级标题(# )和分隔线
-    if (!trimmed || /^# \s/.test(trimmed) || trimmed === '---') continue;
+    if (!trimmed || trimmed === '---') continue;
 
-    // 检测月份(军师v3:兼容军师排版规范 + 全/半角分隔符)
-    // 新格式:#### 📅 2026年7月:木星入财帛宫的觉醒之月
-    // 旧格式:### M1: 2026年7月 · 巨蟹座新月
-    const monthMatch = trimmed.match(/^#{2,4}\s*(?:📅\s*)?(?:M\d+:?\s*)?(\d{4}年\d{1,2}月)\s*[·::-|]\s*(.+)$/);
+    // 检测月份
+    const monthMatch = trimmed.match(/^#{2,4}\s*(\d{4}年\d{1,2}月)\s*[·::-|]\s*(.+)$/);
     if (monthMatch) {
       if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
       const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
@@ -527,9 +513,9 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
         ? 'risk' : 'flow';
       const stateLabel = state === 'peak' ? '🟢 财富充能月' : state === 'risk' ? '🔴 高危熔断月' : '🔵 顺流蓄力月';
       currentMonth = {
-        month: monthMatch[1],  // 2026年7月
-        dateRange: '',  // 不重复显示
-        zodiac: monthMatch[2].trim(),  // 木星入财帛宫的觉醒之月
+        month: monthMatch[1],
+        dateRange: '',
+        zodiac: monthMatch[2].trim(),
         state,
         stateLabel,
         cosmicPhase: '',
@@ -559,49 +545,44 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
     }
 
     // 🎯 军师绝杀雷达：铁血硬切 - 必须同时满足：1.以 ## 开头；2.包含核心章节关键字
-    if (!monthMatch) {
-      const CHAPTER_KEYWORDS = ["先知", "第一章", "第二章", "第三章", "第四章", "第五章", "最终", "密令", "chapter", "oráculo"];
-      const isStrictNewChapter =
-        trimmed.startsWith('## ') &&
-        CHAPTER_KEYWORDS.some(keyword => trimmed.includes(keyword));
+    const isStrictNewChapter =
+      trimmed.startsWith('## ') &&
+      CHAPTER_KEYWORDS.some(keyword => trimmed.includes(keyword));
 
-      if (isStrictNewChapter) {
-        // 提取章节标题（去掉前面的 ##）
-        const title = trimmed.replace(/^##\s*/, '').trim();
-        if (currentChapter.title) chapters.push(currentChapter);
-        currentChapter = { title, content: '' };
-        if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
-        currentMonth = null;
-        continue;
+    if (isStrictNewChapter) {
+      if (currentChapterContent.length > 0 || chapters.length === 0) {
+        chapters.push({
+          title: currentChapterTitle,
+          content: currentChapterContent.join('\n')
+        });
       }
-    }
-
-    // 宇宙相位行
-    if (trimmed.includes('🌌') || trimmed.includes('宇宙相位') || /[🌌🔮⭐]/.test(trimmed)) {
-      if (currentMonth) currentMonth.cosmicPhase = trimmed;
+      currentChapterTitle = trimmed.replace(/^##\s*/, ''); // 扒掉井号
+      currentChapterContent = [];
+      if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+      currentMonth = null;
       continue;
     }
 
-    // 普通段落/子标题
-    if (currentMonth) {
-      const clean = trimmed.replace(/^[-*]\s*/, '').replace(/\*\*(.+?)\*\*/g, '$1');
-      if (clean && currentSection === 'wealthAction') {
-        currentMonth.wealthAction!.push(clean);
-      } else if (clean && currentSection === 'shadowWork') {
-        currentMonth.shadowWork!.push(clean);
-      } else if (clean) {
-        currentMonth.paragraphs!.push(clean);
-      }
-    } else if (currentChapter.title) {
-      // 清理子标题的 # 、加粗符号
-      const cleanLine = trimmed.replace(/^#{1,4}\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1');
-      currentChapter.content += (currentChapter.content ? '\n\n' : '') + cleanLine;
-    }
+    // 普通内容，无脑累积
+    currentChapterContent.push(line);
   }
-  if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
-  if (currentChapter.title) chapters.push(currentChapter);
 
-  return { title, chapters, months, rawContent: rawText };
+  if (currentChapterContent.length > 0) {
+    chapters.push({
+      title: currentChapterTitle,
+      content: currentChapterContent.join('\n')
+    });
+  }
+
+  if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
+
+  // 🎯 【落闸大总洗】：在把干净数据塞给 UI 前，全量执行日期去重清洗！
+  const finalChapters = chapters.map(ch => ({
+    title: ch.title,
+    content: cleanYearlyTimeline(ch.content) // 此时 2026年7月2026年7月 将在这里被碾成粉末！
+  }));
+
+  return { title, chapters: finalChapters, months, rawContent: rawText };
 };
 
 // ── 金句高亮器 ──

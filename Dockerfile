@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # 🛡️ Cache bust - 每次 push 都改时间戳，BUILD-TIME-RUN 用 ARG 才能 invalidate 所有下游 layer
-ARG CACHEBUST=20260705-1202-FORCE-REBUILD-V6-DOUBLE-KILL
+ARG CACHEBUST=20260705-1238-FORCE-REBUILD-V8-TOTAL-WAR
 RUN echo "🔨 Cache bust: $CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN npm install && npm install express stripe
 
 # 2. 🔥 核心绝杀：进入前端 web 目录，强制清除旧的 dist，现场暴力构建！
 # CACHEBUST_V5_FORCE_REBUILD_$(date +%s) 确保每次构建都重新执行这一层
-ARG CACHEBUST_V5=20260705-1202-FORCE-REBUILD-V7-FRONTEND-NEXT-GEN
+ARG CACHEBUST_V5=20260705-1238-FORCE-REBUILD-V9-FRONTEND-TOTAL-WAR
 RUN echo "🔨 Frontend cache bust: $CACHEBUST_V5" && cd web && rm -rf dist node_modules/.tmp && npm install && npm run build
 
 EXPOSE 3000
