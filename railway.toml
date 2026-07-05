@@ -1,9 +1,3 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
-cleanCache = true
-
-[deploy]
-startCommand = "node server.js"
-healthcheckPath = "/api/health"
-healthcheckInterval = 10
