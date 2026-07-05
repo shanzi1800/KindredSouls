@@ -443,43 +443,42 @@ export const cleanYearlyTimeline = (text: string): string => {
 
 // ── Markdown 解析核心 ──
 // 🛠️ 军师无敌强力清洗机 - 焊死在 parseYearlyReport 入口
-// 🛠️ 军师升级版：万能王水清洗器
+// 🛠️ 军师万能王水 3.0：全面清盘零星符号
 const cleanRawReportText = (text: string): string => {
   if (!text) return '';
   let c = text;
 
-  // 1. 物理粉碎行首和内容里的所有 > ## 缝合怪
-  c = c.replace(/^>\s*#+/gm, '');
-  c = c.replace(/^>\s*\*+/gm, '*'); // 顺手把 > * 变成标准的 *
+  // 1. 【斩草除根】：去掉任何位置（不管是行首还是带空格）的 > 符号
+  c = c.replace(/>+/g, '');
 
-  // 2. 强行蒸发裸露在正文开头的章节和指标看板标题（因为这些已经作为卡片Title了）
-  c = c.replace(/^##\s*先知神谕.*/gm, '');
-  c = c.replace(/^##\s*第一章.*/gm, '');
-  c = c.replace(/^##\s*第二章.*/gm, '');
-  c = c.replace(/^##\s*第三章.*/gm, '');
-  c = c.replace(/^##\s*第四章.*/gm, '');
-  c = c.replace(/^##\s*第五章.*/gm, '');
-  c = c.replace(/##\s*✦\s*先知天书.*/gi, '');
-  c = c.replace(/##\s*📊\s*2026-2027.*/gi, '');
+  // 2. 【定点清除裸露标题】：蒸发正文里残留的 ## 和 #### 指标看板标题
+  c = c.replace(/##\s*先知神谕.*/gi, '');
+  c = c.replace(/##\s*第一章.*/gi, '');
+  c = c.replace(/##\s*第二章.*/gi, '');
+  c = c.replace(/##\s*2026-2027.*/gi, ''); // 💥 物理超度核心指标看板标题！
+  c = c.replace(/####\s*\d+\.\s*年度财富.*/gi, ''); // 💥 物理超度"4. 年度财富冥想"标题！
 
-  // 3. 彻底物理超度干扰 Markdown 排版的 Emoji
+  // 3. 【无脑拍扁残余井号】：正文里如果还有漏网的 ## 或 ###，通通变普通加粗
+  c = c.replace(/^#+/gm, '');
+
+  // 4. 彻底物理超度干扰 Markdown 排版的 Emoji
   c = c.replace(/📅|📊|📕|✦|📌|🔮/g, '');
 
-  // 4. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
+  // 5. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
   c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
-  
-  // 5. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
+
+  // 6. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
   c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
-  
-  // 6. 终极兜底：循环清洗10次
+
+  // 7. 终极兜底：循环清洗10次
   let prev = c;
   for (let i = 0; i < 10; i++) {
     c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
     if (c === prev) break;
     prev = c;
   }
-  
+
   return c.trim();
 };
 
@@ -1696,25 +1695,34 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ 军师方案D完全体：年报单向指针对齐流
+                  // 🛠️ 军师终极收官：模糊语义指针流V2（汉字数字强力吸附）
                   if (type === 'yearly') {
-                    // 增量注入：检测锚点 → 移动指针 → 填充对应卡片
                     const newChunk = parsed.text;
-                    const lowerChunk = newChunk.toLowerCase();
-                    const anchors = getAnchors(lang);
+                    const cleanChunk = newChunk.trim();
 
-                    // 检测锚点（只检查新chunk，指针单向下移）
-                    for (const anchor of anchors) {
-                      for (const matchStr of anchor.match) {
-                        if (lowerChunk.includes(matchStr.toLowerCase())) {
-                          currentActiveKeyRef.current = anchor.key;
-                          break;
+                    // 🎯 雷达 1：流月卡片强力吸附（如流出 "7月"、"M7"、"七月"）
+                    if (cleanChunk.length < 15 && (cleanChunk.includes('月') || /^\s*m\s*\d/i.test(cleanChunk))) {
+                      const monthMatch = cleanChunk.match(/(\d+)/);
+                      if (monthMatch && monthMatch[1]) {
+                        const mNum = parseInt(monthMatch[1]);
+                        if (mNum >= 1 && mNum <= 12) {
+                          currentActiveKeyRef.current = `m${mNum}`; // 指针瞬间吸附到对应月份盒子！
                         }
                       }
                     }
 
-                    // 增量注入到当前激活的卡片
-                    const activeKey = currentActiveKeyRef.current;
+                    // 🎯 雷达 2：大章节卡片强力吸附（只要吐出"第X章"或"最终"）
+                    if ((cleanChunk.includes('章') && cleanChunk.length < 20) || cleanChunk.includes('神谕') || cleanChunk.includes('密令')) {
+                      if (cleanChunk.includes('一')) currentActiveKeyRef.current = 'ch1';
+                      else if (cleanChunk.includes('二')) currentActiveKeyRef.current = 'ch2';
+                      else if (cleanChunk.includes('三')) currentActiveKeyRef.current = 'ch3';
+                      else if (cleanChunk.includes('四')) currentActiveKeyRef.current = 'ch4';
+                      else if (cleanChunk.includes('五')) currentActiveKeyRef.current = 'ch5';
+                      else if (cleanChunk.includes('最终') || cleanChunk.includes('密令')) currentActiveKeyRef.current = 'final';
+                    }
+
+                    // 3. 增量精准分发
+                    const activeKey = currentActiveKeyRef.current || 'oracle';
                     setYearlyCardData(prev => ({
                       ...prev,
                       [activeKey]: (prev[activeKey] || '') + newChunk
@@ -2372,5 +2380,5 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
 export default WealthReportPage;
 
-// FORCE_REBUILD_TIMESTAMP: 2026-07-05-ULTIMATE-VICTORY-V16
-// 军师绝杀：绕过高亮函数内鬼，纯净文本直达渲染
+// FORCE_REBUILD_TIMESTAMP: 2026-07-05-TOTAL-VICTORY-DONE-V17
+// 军师终极收官：万能王水3.0 + 模糊语义指针流V2
