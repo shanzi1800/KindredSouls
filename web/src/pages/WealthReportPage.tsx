@@ -443,23 +443,44 @@ export const cleanYearlyTimeline = (text: string): string => {
 
 // ── Markdown 解析核心 ──
 // 🛠️ 军师无敌强力清洗机 - 焊死在 parseYearlyReport 入口
+// 🛠️ 军师升级版：万能王水清洗器
 const cleanRawReportText = (text: string): string => {
+  if (!text) return '';
   let c = text;
-  // 1. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
+
+  // 1. 物理粉碎行首和内容里的所有 > ## 缝合怪
+  c = c.replace(/^>\s*#+/gm, '');
+  c = c.replace(/^>\s*\*+/gm, '*'); // 顺手把 > * 变成标准的 *
+
+  // 2. 强行蒸发裸露在正文开头的章节和指标看板标题（因为这些已经作为卡片Title了）
+  c = c.replace(/^##\s*先知神谕.*/gm, '');
+  c = c.replace(/^##\s*第一章.*/gm, '');
+  c = c.replace(/^##\s*第二章.*/gm, '');
+  c = c.replace(/^##\s*第三章.*/gm, '');
+  c = c.replace(/^##\s*第四章.*/gm, '');
+  c = c.replace(/^##\s*第五章.*/gm, '');
+  c = c.replace(/##\s*✦\s*先知天书.*/gi, '');
+  c = c.replace(/##\s*📊\s*2026-2027.*/gi, '');
+
+  // 3. 彻底物理超度干扰 Markdown 排版的 Emoji
+  c = c.replace(/📅|📊|📕|✦|📌|🔮/g, '');
+
+  // 4. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
   c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
-  // 2. 清理 AI 因为幻觉吐出来的裸露 ## 符号怪（强制把滑坡的三级标题退到四级）
-  c = c.replace(/^###\s+/gm, '#### ');
-  // 3. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
+  
+  // 5. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
   c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
-  // 4. 终极兜底：循环清洗5次
+  
+  // 6. 终极兜底：循环清洗10次
   let prev = c;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
     if (c === prev) break;
     prev = c;
   }
-  return c;
+  
+  return c.trim();
 };
 
 // 🛠️ 军师霸权清洗版：前端物理净化器
@@ -2277,6 +2298,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   const cardData = yearlyCardData[anchor.key];
                   const hasData = cardData && cardData.trim().length > 0;
                   
+                  // 🛠️ 军师铁血截流：卡片渲染最后一厘米的物理净化
+                  const hyperCleanedContent = hasData 
+                    ? cleanRawReportText(cleanYearlyTimeline(cardData))
+                    : '';
+                  
                   return (
                     <div key={anchor.key} style={{
                       background: hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.9) 100%)' : 'rgba(0,0,0,0.15)',
@@ -2294,7 +2320,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                             {anchor.match[0]}
                           </div>
                           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {highlightYearlyGold(cardData)}
+                            {highlightYearlyGold(hyperCleanedContent)}
                           </div>
                         </div>
                       ) : (
@@ -2344,3 +2370,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 };
 
 export default WealthReportPage;
+
+// FORCE_REBUILD_TIMESTAMP: 2026-07-05-14:00-NUNIU-GOD-MODE-V15
+// 军师终极补刀：渲染层落闸过滤 + 万能王水清洗器
