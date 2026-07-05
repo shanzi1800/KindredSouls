@@ -1,26 +1,25 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# 先复制 package.json 安装依赖
-COPY package*.json ./
-RUN npm install && npm install express stripe
+# 环境变量
+ENV VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
+ENV VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTU4MjEsImV4cCI6MjA5NTIzMTgyMX0.qMyRlkMRTkPccngccWa2GJroGaROqdA6N937XRK2L4g
+ENV SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
+ENV SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw
+ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 
-# 复制前端并构建
-COPY web/package*.json ./web/
-RUN cd web && npm install
-
-# 复制所有源代码
+# 复制所有文件
 COPY . .
 
-# 🔥 强制重新构建 - 每次改这行注释的时间戳
-# TIMESTAMP: 20260705_1320_V13_FORCE_REBUILD_NO_CACHE
-RUN cd web && rm -rf dist node_modules/.cache && npm run build
+# 安装依赖并构建
+RUN npm install && npm install express stripe
+RUN cd web && npm install && npm run build
 
-# 最终镜像
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app .
+# 验证 dist 存在
+RUN ls -la web/dist/
+
 EXPOSE 3000
 ENV PORT=3000
+
 CMD ["node", "server.js"]
