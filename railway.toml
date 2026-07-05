@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm install && npm install express stripe && cd web && npm install && npm run build"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 cleanCache = true
 
 [deploy]
