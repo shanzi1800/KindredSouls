@@ -1,3 +1,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
+
+[deploy]
+port = 3000
+healthcheckPath = "/api/health"
