@@ -637,12 +637,50 @@ const highlightYearlyGold = (text: string): React.ReactNode => {
   return result;
 };
 
+// ── 军师 V20：前端星座辟邪函数 ──
+// 根据出生日期计算真实星座名(中文)
+const getTrueZodiacByDate = (birthDate: string): string => {
+  if (!birthDate) return '白羊座';
+  const m = parseInt(birthDate.split('-')[1] || '1');
+  const d = parseInt(birthDate.split('-')[2] || '1');
+  const ZODIAC_DATES: { m: number; d: number; name: string }[] = [
+    { m: 1, d: 19, name: '摩羯座' }, { m: 2, d: 18, name: '水瓶座' },
+    { m: 3, d: 20, name: '双鱼座' }, { m: 4, d: 19, name: '白羊座' },
+    { m: 5, d: 20, name: '金牛座' }, { m: 6, d: 21, name: '双子座' },
+    { m: 7, d: 22, name: '巨蟹座' }, { m: 8, d: 22, name: '狮子座' },
+    { m: 9, d: 22, name: '处女座' }, { m: 10, d: 23, name: '天秤座' },
+    { m: 11, d: 21, name: '天蝎座' }, { m: 12, d: 21, name: '射手座' },
+  ];
+  // 3月8日 → m=3, d=8, 取 m=3,d=20 双鱼座 (8<=20) ✓
+  let prev = '摩羯座';
+  for (const r of ZODIAC_DATES) {
+    if (m < r.m || (m === r.m && d <= r.d)) return r.name;
+    prev = r.name;
+  }
+  return '摩羯座';
+};
+
+// 年报内容中的星座幻觉辟邪:强制把 AI 瞎编的星座名替换为真实星座
+const sanitizeZodiacHallucination = (text: string, trueZodiac: string): string => {
+  if (!text || !trueZodiac) return text;
+  // AI 可能的错误星座输出
+  const ALL_ZODIAC = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
+  const others = ALL_ZODIAC.filter(z => z !== trueZodiac);
+  return text
+    .replace(/太阳.{0,3}座/gi, `太阳${trueZodiac}`)
+    .replace(/太阳回归年.{0,15}座/gi, `太阳回归年·${trueZodiac}座`)
+    .replace(new RegExp(`(${others.join('|')})·太阳回归年`, 'g'), `${trueZodiac}·太阳回归年`)
+    .replace(new RegExp(`·(${others.join('|')})·`, 'g'), `·${trueZodiac}·`)
+    .replace(new RegExp(`·(${others.join('|')})$`, 'g'), `·${trueZodiac}`);
+};
+
 // ── 年报卡片主组件 ──
 const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ content, birthDate }) => {
   const parsed = parseYearlyReport(content, birthDate);
 
-  // 获取星座显示(从 birthDate 简单解析)
-  const zodiacDisplay = parsed.months[0]?.zodiac || '双子座';
+  // 🛠️ 军师V20: 用真实计算出的星座强制覆盖 AI 瞎编的(前端辟邪)
+  const trueZodiac = getTrueZodiacByDate(birthDate);
+  const zodiacDisplay = trueZodiac; // 不再相信 AI 传的 zodiac
 
   // 月份状态对应的 Badge 样式
   const getBadgeStyle = (state: string) => {
@@ -698,7 +736,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               {/* 军师v6：完整渲染，不截断 */}
-              {highlightYearlyGold(parsed.chapters[0].content)}
+              {highlightYearlyGold(sanitizeZodiacHallucination(parsed.chapters[0].content, trueZodiac))}
             </div>
           </div>
         )}
@@ -849,7 +887,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             {ch.title}
           </div>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-            {highlightYearlyGold(ch.content)}
+            {highlightYearlyGold(sanitizeZodiacHallucination(ch.content, trueZodiac))}
           </div>
         </div>
       ))}
@@ -2335,7 +2373,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
                   // 🛠️ 军师铁血截流：卡片渲染最后一厘米的物理净化
                   const hyperCleanedContent = hasData
-                    ? cleanRawReportText(cleanYearlyTimeline(cardData))
+                    ? sanitizeZodiacHallucination(cleanRawReportText(cleanYearlyTimeline(cardData)), getTrueZodiacByDate(birthDate))
                     : '';
 
                   return (
@@ -2407,5 +2445,5 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
 export default WealthReportPage;
 
-// FORCE_REBUILD_TIMESTAMP: 2026-07-05-MONTH-FIX-FINAL-V19
-// 军师V19: 月份正则修复(年月份映射表)+ch2补全+先知天书黑名单+ch2不独立渲染
+// FORCE_REBUILD_TIMESTAMP: 2026-07-05-ZODIAC-CORRECTION-V20
+// 军师V20: 前端星座辟邪 - getTrueZodiacByDate + sanitizeZodiacHallucination
