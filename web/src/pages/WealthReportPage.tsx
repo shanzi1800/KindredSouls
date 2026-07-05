@@ -14,8 +14,9 @@ import {
 // 🛠️ 军师方案D完全体：年报单向指针对齐流锚点体系
 const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
   zh: [
-    { key: 'oracle', match: ['先知神谕', '先知天书', '天命宿主', '盘口'] },
+    { key: 'oracle', match: ['先知神谕', '天命宿主', '盘口'] },
     { key: 'ch1', match: ['第一章', '年度宿命'] },
+    { key: 'ch2', match: ['第二章', '12个月'] },
     { key: 'm1', match: ['2026年7月'] },
     { key: 'm2', match: ['2026年8月'] },
     { key: 'm3', match: ['2026年9月'] },
@@ -31,7 +32,7 @@ const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
     { key: 'ch3', match: ['第三章'] },
     { key: 'ch4', match: ['第四章'] },
     { key: 'ch5', match: ['第五章'] },
-    { key: 'final', match: ['终极财富神谕', '通关密令', '最终财富神谕'] },
+    { key: 'final', match: ['最终神谕', '通关密令', '最终财富神谕', '狮子之心'] },
   ],
   en: [
     { key: 'oracle', match: ['oracle', 'host', 'chart'] },
@@ -960,6 +961,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [yearlyCardData, setYearlyCardData] = useState<Record<string, string>>({
     oracle: '',
     ch1: '',
+    ch2: '',
     m1: '', m2: '', m3: '', m4: '', m5: '', m6: '',
     m7: '', m8: '', m9: '', m10: '', m11: '', m12: '',
     ch3: '', ch4: '', ch5: '',
@@ -1702,27 +1704,44 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     const newChunk = parsed.text;
                     const cleanChunk = newChunk.trim();
 
-                    // 🎯 雷达 1：流月卡片强力吸附（仅行首触发，如"7月"、"M7"）
-                    const monthLineMatch = cleanChunk.match(/^(?:####?\s*)?(?:M)?\s*(\d{1,2})\s*月/);
-                    if (monthLineMatch) {
-                      const mNum = parseInt(monthLineMatch[1]);
-                      if (mNum >= 1 && mNum <= 12) {
-                        currentActiveKeyRef.current = `m${mNum}`;
+                    // 🎯 雷达 1：流月卡片强力吸附（宽容 "2026年7月" 格式、Emoji、各种前缀）
+                    // 映射表:年月份 → 月份数字
+                    const yearMonthMap: Record<string, number> = {
+                      '2026年7月': 1, '2026年8月': 2, '2026年9月': 3, '2026年10月': 4,
+                      '2026年11月': 5, '2026年12月': 6, '2027年1月': 7, '2027年2月': 8,
+                      '2027年3月': 9, '2027年4月': 10, '2027年5月': 11, '2027年6月': 12,
+                    };
+                    let monthDetected = false;
+                    for (const [ym, num] of Object.entries(yearMonthMap)) {
+                      if (cleanChunk.includes(ym)) {
+                        currentActiveKeyRef.current = `m${num}`;
+                        monthDetected = true;
+                        break;
+                      }
+                    }
+                    // 退路:单纯 "7月" 也能匹配
+                    if (!monthDetected) {
+                      const monthLineMatch = cleanChunk.match(/^[#📅*\s]*(?:M)?\s*(\d{1,2})\s*月/);
+                      if (monthLineMatch) {
+                        const mNum = parseInt(monthLineMatch[1]);
+                        if (mNum >= 1 && mNum <= 12) {
+                          currentActiveKeyRef.current = `m${mNum}`;
+                        }
                       }
                     }
 
                     // 🎯 雷达 2：大章节卡片强力吸附（仅行首触发,不会被正文误判）
-                    const chapterLineMatch = cleanChunk.match(/^(?:####?\s*)?第\s*([一二三四五])\s*章/);
+                    const chapterLineMatch = cleanChunk.match(/^[#*\s]*(?:M)?\s*第\s*([一二三四五])\s*章/);
                     if (chapterLineMatch) {
                       const chMap: Record<string, string> = { '一': 'ch1', '二': 'ch2', '三': 'ch3', '四': 'ch4', '五': 'ch5' };
                       currentActiveKeyRef.current = chMap[chapterLineMatch[1]] || currentActiveKeyRef.current;
                     }
                     // 最终神谕/密令
-                    if (/^(?:####?\s*)?(?:最终财富神谕|通关密令|最终.*神谕)/i.test(cleanChunk)) {
+                    if (/^[#*\s]*(?:最终财富神谕|通关密令|最终.*神谕|狮子之心.*扩张)/i.test(cleanChunk)) {
                       currentActiveKeyRef.current = 'final';
                     }
                     // 先知神谕/先知天书
-                    if (/^(?:####?\s*)?(?:先知神谕|先知天书)/i.test(cleanChunk)) {
+                    if (/^[#*\s]*(?:先知神谕|先知天书)/i.test(cleanChunk)) {
                       currentActiveKeyRef.current = 'oracle';
                     }
 
@@ -2308,14 +2327,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 </div>
                 
                 {anchors.map((anchor) => {
+                  // 🛠️ 军师V19: ch2 不独立渲染 - 12个月份卡片已代替
+                  if (anchor.key === 'ch2') return null;
+
                   const cardData = yearlyCardData[anchor.key];
                   const hasData = cardData && cardData.trim().length > 0;
-                  
+
                   // 🛠️ 军师铁血截流：卡片渲染最后一厘米的物理净化
-                  const hyperCleanedContent = hasData 
+                  const hyperCleanedContent = hasData
                     ? cleanRawReportText(cleanYearlyTimeline(cardData))
                     : '';
-                  
+
                   return (
                     <div key={anchor.key} style={{
                       background: hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.9) 100%)' : 'rgba(0,0,0,0.15)',
@@ -2385,5 +2407,5 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
 export default WealthReportPage;
 
-// FORCE_REBUILD_TIMESTAMP: 2026-07-05-FIX-CH1-CH2-V18
-// 军师V18：修复第一章卡片+先知天书黑名单+行首锚点锁定V3
+// FORCE_REBUILD_TIMESTAMP: 2026-07-05-MONTH-FIX-FINAL-V19
+// 军师V19: 月份正则修复(年月份映射表)+ch2补全+先知天书黑名单+ch2不独立渲染
