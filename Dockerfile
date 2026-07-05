@@ -20,9 +20,9 @@ RUN cd web && npm install
 # 3. 复制所有源代码
 COPY . .
 
-# 🔥 核心绝杀：ARG 必须紧挨着 RUN，中间不能有其他指令！
-ARG CACHEBUST_FRONTEND=20260705-1242-FORCE-REBUILD-V10-NO-CACHE-HEAVEN
-RUN echo "🔨 Frontend FINAL build: $CACHEBUST_FRONTEND" && cd web && rm -rf dist && npm run build
+# 🔥 终极绝杀：直接在 RUN 命令里嵌入唯一时间戳，让 Railway 缓存彻底失效！
+# 每次修改这个时间戳，整个命令内容就变了，缓存必然失效！
+RUN cd web && rm -rf dist && npm run build && echo "✅ BUILD_COMPLETE_20260705_1245_V11_FINAL"
 
 EXPOSE 3000
 ENV PORT=3000
