@@ -461,13 +461,19 @@ const cleanRawReportText = (text: string): string => {
   return c;
 };
 
-const parseYearlyReport = (markdown: string, _birthDate: string): {
+// 🛠️ 军师亲授：前端无脑硬切状态机
+const parseYearlyReport = (rawText: string, _birthDate: string): {
   title: string;
   chapters: YearlyChapter[];
   months: MonthBlock[];
   rawContent: string;
 } => {
-  // 🛠️ 军师无敌强力清洗机 - 焊死在 parseYearlyReport 入口（防止 tree-shaking）
+  // 【核心修复前置】：在进入循环前，直接把 AI 吐出来的 "> ##" 强行剥离，打回原形！
+  let filteredText = rawText
+    .replace(/^>\s*##/gm, '##')      // 强行把包裹在引用块里的标题拉到行首
+    .replace(/^>\s*###/gm, '####');  // 顺便处理三级标题
+
+  // 🛠️ 军师无敌强力清洗机
   const cleanRawReportText = (text: string): string => {
     let c = text;
     // 1. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
@@ -488,7 +494,7 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   };
 
   // 🛠️ 军师终极清洗：先对原始8000字完整文本进行残暴大清洗
-  const brutalCleaned = cleanRawReportText(markdown);
+  const brutalCleaned = cleanRawReportText(filteredText);
   // 再调用原有清洗函数
   const cleanedMd = cleanYearlyTimeline(brutalCleaned);
   const lines = cleanedMd.split('\n');
@@ -547,37 +553,16 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
       continue;
     }
 
-    // ─────────────────────────────────────────
-    // 检测顶级章节（军师P0 v1升级版：includes软匹配 + 多语种关键字）
-    // 核心思想：只要行包含章节关键字且长度<40字符，即判定为新章节
-    // 无论AI输出##/###/####/或无#前缀，都能兜住
-    // ─────────────────────────────────────────
+    // 🎯 军师绝杀雷达：铁血硬切 - 必须同时满足：1.以 ## 开头；2.包含核心章节关键字
     if (!monthMatch) {
-      const clean = trimmed.toLowerCase();
-      // 顶级章节关键字（多语种全量覆盖）
-      // 注意：先知天书 ❌ 排除（在引用块 `> ### ✦ 先知天书` 出现，不是顶级章节）
-      const CHAPTER_KEYWORDS = [
-        // 中文
-        '第一章','第二章','第三章','第四章','第五章',
-        '终极神谕','通关密令',
-        // 英文/法文/西文
-        'chapter','capítulo','chapitre',
-        'final oracle','oráculo final','oracle final',
-        'final wealth','ultimate oracle',
-      ];
-      const isChapterKeyword = CHAPTER_KEYWORDS.some(kw => clean.includes(kw.toLowerCase()));
-      // 排除：年份日期（2026年7月）、月份标签
-      const isYearMonth = /\d{4}年\d{1,2}月/.test(trimmed) || /^\d{4}年/.test(trimmed);
-      // 排除：引用块（> 开头是引用，不可能是顶级章节）
-      const isQuote = trimmed.startsWith('>');
-      // 排除：列表项（- 或 * 开头）
-      const isListItem = /^[-*]\s/.test(trimmed);
-      // 顶级章节判定：含章节关键字 + 长度<80（足够容纳"## 第一章：xxx（English Title）"） + 不是年月 + 不是引用块 + 不是列表项
-      const isNewChapter = isChapterKeyword && trimmed.length < 80 && !isYearMonth && !isQuote && !isListItem;
+      const CHAPTER_KEYWORDS = ["先知", "第一章", "第二章", "第三章", "第四章", "第五章", "最终", "密令", "chapter", "oráculo"];
+      const isStrictNewChapter =
+        trimmed.startsWith('## ') &&
+        CHAPTER_KEYWORDS.some(keyword => trimmed.includes(keyword));
 
-      if (isNewChapter) {
-        // 提取章节标题（去掉前面的 #）
-        const title = trimmed.replace(/^#+\s*/, '').trim();
+      if (isStrictNewChapter) {
+        // 提取章节标题（去掉前面的 ##）
+        const title = trimmed.replace(/^##\s*/, '').trim();
         if (currentChapter.title) chapters.push(currentChapter);
         currentChapter = { title, content: '' };
         if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
@@ -611,7 +596,7 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
   if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
   if (currentChapter.title) chapters.push(currentChapter);
 
-  return { title, chapters, months, rawContent: markdown };
+  return { title, chapters, months, rawContent: rawText };
 };
 
 // ── 金句高亮器 ──

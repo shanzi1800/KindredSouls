@@ -193,19 +193,22 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
 
 [OUTPUT STRUCTURE — 5 HARD-CORE CHAPTERS]:
 
-[STRICT FORMAT - OBLIGATORIO] 章节标题格式死命令：
-1. 顶级章节标题（第一章至第五章、最终财富神谕）必须使用 ## (两个井号 + 空格)
-2. 严禁使用 ### 或 #### 作为顶级章节标题
-3. 严禁使用引用块 > 包裹章节标题
-4. 正确格式示例：
-   ## 第一章：年度宿命财运矩阵
-   ## 第二章：12个月财富流月精准沙盘
-   ## 第三章：天命破局赛道与副业指南
-   ## 第四章：消费黑洞与资产防御盾牌
-   ## 第五章：黄金爆发显化锦囊
-   ## 最终财富神谕 · 通关密令
-5. 月份卡片内部子标题使用 #### (四个井号)
-6. 任何违反此格式的输出将被前端解析器拒绝
+🚨 CRITICAL FORMATTING INSTRUCTIONS (STRICT COMPLIANCE REQUIRED) 🚨
+
+NO EXOTIC HEADERS: EVERY major chapter title MUST start exactly at the beginning of a line with two hashtags and one space (## ). NO EMOJIS, NO SPECIAL CHARACTERS in the main title line.
+The ONLY valid major section headers are:
+
+## 先知神谕：年度财富天启
+## 第一章：年度宿命财运矩阵
+## 第二章：12个月财富流月精准沙盘
+## 第三章：天命破局赛道与副业指南
+## 第四章：消费黑洞与资产防御盾牌
+## 第五章：黄金爆发显化锦囊
+## 最终财富神谕 · 通关密令
+
+PROHIBITED SUTURE: NEVER put any hashtag (#, ##, ###) inside a blockquote (>). Blockquotes are for plain text data only! (e.g., Forbidden: > ## ✦ 先知天书)
+
+NO REPETITION PHANTOM: You have a bug of repeating dates like "2026年7月2026年7月". This is strictly forbidden. State the date ONCE and move on. Double-check your own token sequence before outputting!
 
 请严格按照以下五大硬核乐章输出，每章不得少于1,000字：
 
