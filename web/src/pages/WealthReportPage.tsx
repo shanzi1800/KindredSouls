@@ -1655,9 +1655,37 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 
                 // 🛠️ 军师方案D完全体：年报指针流结束逻辑
                 if (type === 'yearly') {
+                  // 🎯 军师终极补刀：流式结束后，对所有卡片内容进行总清洗！
+                  setYearlyCardData(prev => {
+                    const cleaned: Record<string, string> = {};
+                    for (const [key, content] of Object.entries(prev)) {
+                      let c = content || '';
+                      // 1. 斩杀 > ## 缝合怪
+                      c = c.replace(/^>\s*#+/gm, '##');
+                      // 2. 先知天书定向爆破
+                      c = c.replace(/##\s*✦\s*先知天书.*/gi, '## 先知神谕：年度财富天启');
+                      // 3. Emoji蒸发
+                      c = c.replace(/📅|📊|📕|✦/g, '');
+                      // 4. 日期复读机斩杀
+                      c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+                      c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
+                      c = c.replace(/(\d{4}年\d{1,2}月)(\d{4}年\d{1,2}月\d{1,2}日)/g, '$2');
+                      c = c.replace(/(\d{4}年\d{1,2}月)\1+(\d{1,2}日)/g, '$1$2');
+                      // 5. 循环兜底10次
+                      let prevC = c;
+                      for (let i = 0; i < 10; i++) {
+                        c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+                        if (c === prevC) break;
+                        prevC = c;
+                      }
+                      cleaned[key] = c;
+                    }
+                    return cleaned;
+                  });
+                  
                   setYearlyCardsReady(true);
                   currentActiveKeyRef.current = 'oracle'; // 重置指针
-                  console.log('[WealthReport] ✅ 年报17张卡片流式注入完成');
+                  console.log('[WealthReport] ✅ 年报17张卡片流式注入完成+总清洗完毕');
                 }
                 
                 break;
