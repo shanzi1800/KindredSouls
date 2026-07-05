@@ -6,7 +6,10 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT || 3000;
+// 军师V26铁血修复:强制端口3000!Railway新默认8080导致新容器端口不匹配
+// 域名kindredsouls-production.up.railway.app路由到3000,但新容器跑8080
+// 老容器(跑3000)继续服务,导致V15-V25全部白费!现在强制3000,新老容器一致
+const PORT = 3000;
 const app = express();
 
 // ═══════════════════════════════════════════════════════════════════════
