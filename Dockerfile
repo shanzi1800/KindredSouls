@@ -12,12 +12,15 @@ ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 # 复制所有文件
 COPY . .
 
+# 删除本地 dist（避免干扰）
+RUN rm -rf web/dist
+
 # 安装依赖并构建
 RUN npm install && npm install express stripe
-RUN cd web && npm install && npm run build
+RUN cd web && npm install && npm run build 2>&1
 
 # 验证 dist 存在
-RUN ls -la web/dist/
+RUN ls -la web/dist/ && cat web/dist/index.html | head -5
 
 EXPOSE 3000
 ENV PORT=3000
