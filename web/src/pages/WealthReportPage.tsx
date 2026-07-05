@@ -502,8 +502,8 @@ const parseYearlyReport = (markdown: string, _birthDate: string): {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || /^#\s/.test(trimmed) || trimmed === '---') continue;  // 只跳过顶级标题(# 开头,后面跟空格的)
-    // 注:## 、###、#### 都要进入解析
+    // 注意：## 、###、#### 都不跳过，只跳过顶级标题(# )和分隔线
+    if (!trimmed || /^# \s/.test(trimmed) || trimmed === '---') continue;
 
     // 检测月份(军师v3:兼容军师排版规范 + 全/半角分隔符)
     // 新格式:#### 📅 2026年7月:木星入财帛宫的觉醒之月
