@@ -499,7 +499,7 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
     .replace(/^>\s*#+/gm, '## ')
 
     // 2. 【定点清除“先知天书”幻觉】：截图里疯狂出现的“> ## ✦ 先知天书”，直接物理替换为我们前端需要的绝对硬核锚点
-    .replace(/##\s*✦\s*先知天书.*/gi, '## 先知神谕：年度财富天启')
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
     .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启') // 顺手干掉那个核心指标看板标题，防止它干扰第一章
 
     // 3. 【无脑蒸发干扰符号】：把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
@@ -1006,6 +1006,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     final: ''
   });
   const currentActiveKeyRef = useRef<string>('oracle'); // 指针（用ref避免每次chunk重渲染）
+  const streamingBufferRef = useRef<string>(''); // 军师V21: 滑动窗口buffer，保留最近200字符用于锚点检测(防SSE chunk切分)
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
@@ -1707,7 +1708,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       // 1. 斩杀 > ## 缝合怪
                       c = c.replace(/^>\s*#+/gm, '##');
                       // 2. 先知天书定向爆破
-                      c = c.replace(/##\s*✦\s*先知天书.*/gi, '## 先知神谕：年度财富天启');
+                      c = c.replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启');
                       // 3. Emoji蒸发
                       c = c.replace(/📅|📊|📕|✦/g, '');
                       // 4. 日期复读机斩杀
@@ -1729,6 +1730,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   
                   setYearlyCardsReady(true);
                   currentActiveKeyRef.current = 'oracle'; // 重置指针
+                  streamingBufferRef.current = ''; // 军师V21: 清空buffer
                   console.log('[WealthReport] ✅ 年报17张卡片流式注入完成+总清洗完毕');
                 }
                 
@@ -1737,13 +1739,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ 军师终极收官：锚点锁定指针流V3（只在行首触发，防止正文误判）
+                  // 🛠️ 军师V21: 锚点锁定指针流V4（用滑动窗口buffer检测,防SSE chunk切分）
                   if (type === 'yearly') {
                     const newChunk = parsed.text;
                     const cleanChunk = newChunk.trim();
 
-                    // 🎯 雷达 1：流月卡片强力吸附（宽容 "2026年7月" 格式、Emoji、各种前缀）
-                    // 映射表:年月份 → 月份数字
+                    // 军师V21: 维护滑动窗口 buffer（最近 200 字符）防 SSE chunk 切分
+                    streamingBufferRef.current = (streamingBufferRef.current + newChunk).slice(-200);
+                    const buf = streamingBufferRef.current;
+
+                    // 🎯 雷达 1：流月卡片强力吸附（用 buffer 完整检测 "2026年7月" 等）
                     const yearMonthMap: Record<string, number> = {
                       '2026年7月': 1, '2026年8月': 2, '2026年9月': 3, '2026年10月': 4,
                       '2026年11月': 5, '2026年12月': 6, '2027年1月': 7, '2027年2月': 8,
@@ -1751,15 +1756,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     };
                     let monthDetected = false;
                     for (const [ym, num] of Object.entries(yearMonthMap)) {
-                      if (cleanChunk.includes(ym)) {
+                      if (buf.includes(ym)) {
                         currentActiveKeyRef.current = `m${num}`;
                         monthDetected = true;
+                        // 清空buffer里已消费的部分（保留前8字符防止跨块判定）
+                        const idx = buf.indexOf(ym);
+                        streamingBufferRef.current = buf.slice(Math.max(0, idx - 8));
                         break;
                       }
                     }
-                    // 退路:单纯 "7月" 也能匹配
+                    // 退路:行首匹配 "7月"
                     if (!monthDetected) {
-                      const monthLineMatch = cleanChunk.match(/^[#📅*\s]*(?:M)?\s*(\d{1,2})\s*月/);
+                      const monthLineMatch = buf.match(/(?:^|\n)\s*[#📅*\s]*(?:M)?\s*(\d{1,2})\s*月/);
                       if (monthLineMatch) {
                         const mNum = parseInt(monthLineMatch[1]);
                         if (mNum >= 1 && mNum <= 12) {
@@ -1768,18 +1776,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       }
                     }
 
-                    // 🎯 雷达 2：大章节卡片强力吸附（仅行首触发,不会被正文误判）
-                    const chapterLineMatch = cleanChunk.match(/^[#*\s]*(?:M)?\s*第\s*([一二三四五])\s*章/);
+                    // 🎯 雷达 2：大章节卡片（用 buffer 检测"第N章"）
+                    const chapterLineMatch = buf.match(/(?:^|\n)\s*[#*\s]*(?:M)?\s*第\s*([一二三四五])\s*章/);
                     if (chapterLineMatch) {
                       const chMap: Record<string, string> = { '一': 'ch1', '二': 'ch2', '三': 'ch3', '四': 'ch4', '五': 'ch5' };
                       currentActiveKeyRef.current = chMap[chapterLineMatch[1]] || currentActiveKeyRef.current;
                     }
                     // 最终神谕/密令
-                    if (/^[#*\s]*(?:最终财富神谕|通关密令|最终.*神谕|狮子之心.*扩张)/i.test(cleanChunk)) {
+                    if (/(?:^|\n)\s*[#*\s]*(?:最终财富神谕|通关密令|最终.*神谕|狮子之心.*扩张)/i.test(buf)) {
                       currentActiveKeyRef.current = 'final';
                     }
                     // 先知神谕/先知天书
-                    if (/^[#*\s]*(?:先知神谕|先知天书)/i.test(cleanChunk)) {
+                    if (/(?:^|\n)\s*[#*\s]*(?:先知神谕|先知天书)/i.test(buf)) {
                       currentActiveKeyRef.current = 'oracle';
                     }
 
@@ -2355,7 +2363,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           }
           
           // 🛠️ 军师方案D完全体：年报17卡片指针流
-          if (reportLoading === 'wealth_yearly' || (yearlyCardsReady && wealthReportText && !wealthReportText.trim().startsWith('{'))) {
+          if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const anchors = getAnchors(lang);
             
             return (
