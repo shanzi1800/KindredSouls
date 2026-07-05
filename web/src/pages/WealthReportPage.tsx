@@ -1007,6 +1007,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   });
   const currentActiveKeyRef = useRef<string>('oracle'); // 指针（用ref避免每次chunk重渲染）
   const streamingBufferRef = useRef<string>(''); // 军师V21: 滑动窗口buffer，保留最近200字符用于锚点检测(防SSE chunk切分)
+  const fullYearlyTextRef = useRef<string>(''); // 军师V22: 累积全年报完整流式文本，流式结束后统一解析重对账
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
@@ -1731,6 +1732,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   setYearlyCardsReady(true);
                   currentActiveKeyRef.current = 'oracle'; // 重置指针
                   streamingBufferRef.current = ''; // 军师V21: 清空buffer
+                  fullYearlyTextRef.current = ''; // 军师V22: 重对账完毕后清空累积器
                   console.log('[WealthReport] ✅ 年报17张卡片流式注入完成+总清洗完毕');
                 }
                 
@@ -1739,63 +1741,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ 军师V21: 锚点锁定指针流V4（用滑动窗口buffer检测,防SSE chunk切分）
+                  // 🛠️ 军师V22: 流式稳健方案 —— 累积到 fullYearlyTextRef,流式结束统一解析重对账(彻底规避SSE chunk切分)
                   if (type === 'yearly') {
                     const newChunk = parsed.text;
-                    const cleanChunk = newChunk.trim();
 
-                    // 军师V21: 维护滑动窗口 buffer（最近 200 字符）防 SSE chunk 切分
-                    streamingBufferRef.current = (streamingBufferRef.current + newChunk).slice(-200);
-                    const buf = streamingBufferRef.current;
+                    // 1. 累积完整文本（重对账的基石）
+                    fullYearlyTextRef.current = (fullYearlyTextRef.current || '') + newChunk;
 
-                    // 🎯 雷达 1：流月卡片强力吸附（用 buffer 完整检测 "2026年7月" 等）
-                    const yearMonthMap: Record<string, number> = {
-                      '2026年7月': 1, '2026年8月': 2, '2026年9月': 3, '2026年10月': 4,
-                      '2026年11月': 5, '2026年12月': 6, '2027年1月': 7, '2027年2月': 8,
-                      '2027年3月': 9, '2027年4月': 10, '2027年5月': 11, '2027年6月': 12,
-                    };
-                    let monthDetected = false;
-                    for (const [ym, num] of Object.entries(yearMonthMap)) {
-                      if (buf.includes(ym)) {
-                        currentActiveKeyRef.current = `m${num}`;
-                        monthDetected = true;
-                        // 清空buffer里已消费的部分（保留前8字符防止跨块判定）
-                        const idx = buf.indexOf(ym);
-                        streamingBufferRef.current = buf.slice(Math.max(0, idx - 8));
-                        break;
-                      }
-                    }
-                    // 退路:行首匹配 "7月"
-                    if (!monthDetected) {
-                      const monthLineMatch = buf.match(/(?:^|\n)\s*[#📅*\s]*(?:M)?\s*(\d{1,2})\s*月/);
-                      if (monthLineMatch) {
-                        const mNum = parseInt(monthLineMatch[1]);
-                        if (mNum >= 1 && mNum <= 12) {
-                          currentActiveKeyRef.current = `m${mNum}`;
-                        }
-                      }
-                    }
-
-                    // 🎯 雷达 2：大章节卡片（用 buffer 检测"第N章"）
-                    const chapterLineMatch = buf.match(/(?:^|\n)\s*[#*\s]*(?:M)?\s*第\s*([一二三四五])\s*章/);
-                    if (chapterLineMatch) {
-                      const chMap: Record<string, string> = { '一': 'ch1', '二': 'ch2', '三': 'ch3', '四': 'ch4', '五': 'ch5' };
-                      currentActiveKeyRef.current = chMap[chapterLineMatch[1]] || currentActiveKeyRef.current;
-                    }
-                    // 最终神谕/密令
-                    if (/(?:^|\n)\s*[#*\s]*(?:最终财富神谕|通关密令|最终.*神谕|狮子之心.*扩张)/i.test(buf)) {
-                      currentActiveKeyRef.current = 'final';
-                    }
-                    // 先知神谕/先知天书
-                    if (/(?:^|\n)\s*[#*\s]*(?:先知神谕|先知天书)/i.test(buf)) {
-                      currentActiveKeyRef.current = 'oracle';
-                    }
-
-                    // 3. 增量精准分发
-                    const activeKey = currentActiveKeyRef.current || 'oracle';
+                    // 2. 流式期间:先知神谕卡片实时滚动(保留进度感,其他卡片保持呼吸灯骨架)
                     setYearlyCardData(prev => ({
                       ...prev,
-                      [activeKey]: (prev[activeKey] || '') + newChunk
+                      oracle: (prev.oracle || '') + newChunk
                     }));
                   } else {
                     // 月报：旧逻辑（拼接全文）
@@ -1821,6 +1777,46 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
+        // 🔮 军师V22: 流式结束瞬间重对账(一次性解析 fullYearlyTextRef 重新精准填充各卡片)
+        if (type === 'yearly' && fullYearlyTextRef.current) {
+          try {
+            const fullText = fullYearlyTextRef.current;
+            // 用 parseYearlyReport 解析完整文本（彻底规避 SSE chunk 切分问题）
+            const parsed = parseYearlyReport(fullText, birthDate);
+            const finalData: Record<string, string> = {};
+            // 章节: 包含 oracle(ch0=先知神谕) + ch1, ch3, ch4, ch5 (ch2 被并入 m1-m12)
+            if (parsed.chapters && parsed.chapters.length > 0) {
+              parsed.chapters.forEach((ch, i) => {
+                if (i === 0) finalData.oracle = ch.content || '';
+                else if (['ch1', 'ch3', 'ch4', 'ch5'].includes(i.toString())) {
+                  finalData[`ch${i}`] = ch.content || '';
+                } else {
+                  // 奇数章索引:1=ch1, 3=ch3, 4=ch4, 5=ch5
+                  const keyMap: Record<number, string> = { 1: 'ch1', 3: 'ch3', 4: 'ch4', 5: 'ch5' };
+                  if (keyMap[i]) finalData[keyMap[i]] = ch.content || '';
+                }
+              });
+            }
+            // 12 个月份卡片
+            if (parsed.months && parsed.months.length > 0) {
+              parsed.months.forEach((m, i) => {
+                const key = `m${i + 1}`;
+                finalData[key] = m.paragraphs?.join('\n\n') || '';
+              });
+            }
+            // 最终神谕
+            if (parsed.chapters && parsed.chapters.length > 0) {
+              const lastCh = parsed.chapters[parsed.chapters.length - 1];
+              if (lastCh && /神谕|密令|oracle/i.test(lastCh.title || '')) {
+                finalData.final = lastCh.content || '';
+              }
+            }
+            setYearlyCardData(prev => ({ ...prev, ...finalData }));
+            console.log('[WealthReport] ✅ V22重对账: 章节=' + (parsed.chapters?.length || 0) + ' 月份=' + (parsed.months?.length || 0));
+          } catch (parseErr) {
+            console.error('[WealthReport] V22重对账失败:', parseErr);
+          }
+        }
         // 🔮 军师铁律:骨架框就是最终卡片,永不卸载
         // 只在 JSON 完整时更新 visibleWeeks,保持 reportLoading 状态
         setTimeout(() => {
