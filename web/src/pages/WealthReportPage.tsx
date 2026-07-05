@@ -608,6 +608,103 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
   return { title, chapters: finalChapters, months, rawContent: rawText };
 };
 
+// 🛠️ 军师V23终极切片分流器【极权模糊全量切割机 4.0】
+// 不看行首、只认骨灰的终极杀器——AI 排版乱成一坨屎也能精准大卸 17 块
+// 返回结构: Record<cardKey, cleanedText> 直接对应 yearlyCardData state
+const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
+  // 初始化 17 张卡片的标准空抽屉
+  const cardMap: Record<string, string[]> = {
+    oracle: [], ch1: [], ch3: [], ch4: [], ch5: [], final: [],
+    m1: [], m2: [], m3: [], m4: [], m5: [], m6: [],
+    m7: [], m8: [], m9: [], m10: [], m11: [], m12: []
+  };
+
+  if (!rawText) return Object.fromEntries(Object.keys(cardMap).map(k => [k, '']));
+
+  // 🎯 军师前置“霸权清洗矩阵”：进来先扒皮，管你 AI 怎么吐，到我这里全部变成标准版！
+  const filteredText = rawText
+    // 1. 物理绝杀缝合怪：>后面不管多少空格多少井号，全部拉回行首
+    .replace(/^>\s*#+/gm, '## ')
+    // 2. 定点爆破先知天书（带不带 ✦ 都干掉）
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
+    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启')
+    // 3. 擦除干扰 emoji
+    .replace(/📅|📊|📕|✦|📌|🔮/g, '')
+    // 4. 强制降级：### 第一章 退化成 ## 第一章
+    .replace(/^###\s+(第一章|第二章|第三章|第四章|第五章|最终财富|通关密令)/gm, '## $1');
+
+  const lines = filteredText.split('\n');
+  let currentKey = 'oracle'; // 默认先知神谕接管（开篇章）
+
+  // 12 个月份的模糊字典：年月份 → 卡片 key
+  const yearMonthMap: Record<string, string> = {
+    '2026年7月': 'm1', '2026年8月': 'm2', '2026年9月': 'm3', '2026年10月': 'm4',
+    '2026年11月': 'm5', '2026年12月': 'm6', '2027年1月': 'm7', '2027年2月': 'm8',
+    '2027年3月': 'm9', '2027年4月': 'm10', '2027年5月': 'm11', '2027年6月': 'm12'
+  };
+
+  for (let line of lines) {
+    const cleanLine = line.trim();
+    if (!cleanLine || cleanLine === '---') continue;
+
+    let matched = false;
+
+    // 🎯 极权判定 1：月份拦截（不管前缀是什么 Emoji 还是井号，只要包含标准年月，指针瞬间切换！）
+    for (const [ym, targetKey] of Object.entries(yearMonthMap)) {
+      if (cleanLine.includes(ym)) {
+        currentKey = targetKey;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue; // 这一行是月份标题，不塞入正文
+
+    // 🎯 极权判定 2：大章节拦截（不管在行首还是行中，只要包含核心死字，强行切片！）
+    if (cleanLine.includes('第一章') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
+      currentKey = 'ch1';
+      continue;
+    }
+    if (cleanLine.includes('第二章') || cleanLine.includes('12个月财富') || cleanLine.includes('12个月收入')) {
+      // 第二章内容直接并入 7 月份（m1）开头，防止空卡片裸露
+      currentKey = 'm1';
+      continue;
+    }
+    if (cleanLine.includes('第三章') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
+      currentKey = 'ch3';
+      continue;
+    }
+    if (cleanLine.includes('第四章') || cleanLine.includes('消费黑洞') || cleanLine.includes('资产防御')) {
+      currentKey = 'ch4';
+      continue;
+    }
+    if (cleanLine.includes('第五章') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊')) {
+      currentKey = 'ch5';
+      continue;
+    }
+    if (cleanLine.includes('最终财富') || cleanLine.includes('通关密令') || cleanLine.includes('狮子之心') || cleanLine.includes('终极财富')) {
+      currentKey = 'final';
+      continue;
+    }
+    // 先知神谕/先知天书兜底（如果 AI 漏掉了，不让内容跑空）
+    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书')) {
+      currentKey = 'oracle';
+      continue;
+    }
+
+    // 🎯 3. 没有撞上任何标题锚点，证明是纯正文，无脑灌进当前激活的卡片抽屉里！
+    cardMap[currentKey].push(line);
+  }
+
+  // 🎯 落闸总洗：把各盒子里拼装好的死文本，跑一遍王水清洗和日期去重，打包输出！
+  const finalCleanedMap: Record<string, string> = {};
+  for (const [key, linesArray] of Object.entries(cardMap)) {
+    const joinedText = linesArray.join('\n');
+    finalCleanedMap[key] = cleanRawReportText(cleanYearlyTimeline(joinedText));
+  }
+
+  return finalCleanedMap;
+};
+
 // ── 金句高亮器 ──
 const highlightYearlyGold = (text: string): React.ReactNode => {
   if (!text) return null;
@@ -1777,44 +1874,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 军师V22: 流式结束瞬间重对账(一次性解析 fullYearlyTextRef 重新精准填充各卡片)
+        // 🔮 军师V23: 极权模糊全量切割机 4.0——一把切碎、一把推入
         if (type === 'yearly' && fullYearlyTextRef.current) {
           try {
             const fullText = fullYearlyTextRef.current;
-            // 用 parseYearlyReport 解析完整文本（彻底规避 SSE chunk 切分问题）
-            const parsed = parseYearlyReport(fullText, birthDate);
-            const finalData: Record<string, string> = {};
-            // 章节: 包含 oracle(ch0=先知神谕) + ch1, ch3, ch4, ch5 (ch2 被并入 m1-m12)
-            if (parsed.chapters && parsed.chapters.length > 0) {
-              parsed.chapters.forEach((ch, i) => {
-                if (i === 0) finalData.oracle = ch.content || '';
-                else if (['ch1', 'ch3', 'ch4', 'ch5'].includes(i.toString())) {
-                  finalData[`ch${i}`] = ch.content || '';
-                } else {
-                  // 奇数章索引:1=ch1, 3=ch3, 4=ch4, 5=ch5
-                  const keyMap: Record<number, string> = { 1: 'ch1', 3: 'ch3', 4: 'ch4', 5: 'ch5' };
-                  if (keyMap[i]) finalData[keyMap[i]] = ch.content || '';
-                }
-              });
-            }
-            // 12 个月份卡片
-            if (parsed.months && parsed.months.length > 0) {
-              parsed.months.forEach((m, i) => {
-                const key = `m${i + 1}`;
-                finalData[key] = m.paragraphs?.join('\n\n') || '';
-              });
-            }
-            // 最终神谕
-            if (parsed.chapters && parsed.chapters.length > 0) {
-              const lastCh = parsed.chapters[parsed.chapters.length - 1];
-              if (lastCh && /神谕|密令|oracle/i.test(lastCh.title || '')) {
-                finalData.final = lastCh.content || '';
-              }
-            }
-            setYearlyCardData(prev => ({ ...prev, ...finalData }));
-            console.log('[WealthReport] ✅ V22重对账: 章节=' + (parsed.chapters?.length || 0) + ' 月份=' + (parsed.months?.length || 0));
+            console.log('[WealthReport] 🚨 V23触发流式结束总装，全量=' + fullText.length + '字符');
+            // 1. 拿到完整文本，直接一把切碎分流！
+            const finalMap = parseYearlyReportV23(fullText);
+            // 2. 暴力一把推入 React 状态机（覆盖流式期间的临时数据）
+            setYearlyCardData(finalMap);
+            // 3. 升起准备就绪旗帜，震碎骨架屏！
+            setYearlyCardsReady(true);
+            console.log('[WealthReport] ✅ V23终极总装完成: m1-m12各=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k].length).join(','));
           } catch (parseErr) {
-            console.error('[WealthReport] V22重对账失败:', parseErr);
+            console.error('[WealthReport] V23总装失败:', parseErr);
           }
         }
         // 🔮 军师铁律:骨架框就是最终卡片,永不卸载
