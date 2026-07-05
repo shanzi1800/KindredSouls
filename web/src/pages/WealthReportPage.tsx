@@ -2320,7 +2320,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                             {anchor.match[0]}
                           </div>
                           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {highlightYearlyGold(hyperCleanedContent)}
+                            {/* 🎯 军师绝杀：绕过高亮函数内鬼，直接渲染纯净文本 */}
+                            {hyperCleanedContent}
                           </div>
                         </div>
                       ) : (
@@ -2371,5 +2372,5 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
 export default WealthReportPage;
 
-// FORCE_REBUILD_TIMESTAMP: 2026-07-05-14:00-NUNIU-GOD-MODE-V15
-// 军师终极补刀：渲染层落闸过滤 + 万能王水清洗器
+// FORCE_REBUILD_TIMESTAMP: 2026-07-05-ULTIMATE-VICTORY-V16
+// 军师绝杀：绕过高亮函数内鬼，纯净文本直达渲染
