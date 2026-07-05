@@ -1237,7 +1237,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             }
 
             const chunk = cachedText.slice(index, index + CHUNK_SIZE);
-            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+            res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}
+
+`, "utf-8"));
             if (typeof res.flush === 'function') res.flush();
             index += CHUNK_SIZE;
           } catch (e) {
@@ -1301,7 +1303,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     });
 
     if (!prompt) {
-      res.write(`data: ${JSON.stringify({ error: 'Invalid reportType' })}\n\n`);
+      res.write(Buffer.from(`data: ${JSON.stringify({ error: 'Invalid reportType' })}
+
+`, "utf-8"));
       return res.end();
     }
 
@@ -1310,7 +1314,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const maxTokens = reportType === 'yearly' ? 16000 : 3500;
 
     if (!deepseekKey) {
-      res.write(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}\n\n`);
+      res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
+
+`, "utf-8"));
       return res.end();
     }
 
@@ -1355,7 +1361,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             if (fullText) {
               console.log('[wealth-stream] Gemini fallback succeeded, length:', fullText.length);
               for (const char of fullText) {
-                res.write(`data: ${JSON.stringify({ text: char })}\n\n`);
+                res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}
+
+`, "utf-8"));
                 fullTextCollector += char;
                 if (fullText.indexOf(char) % 10 === 0 && typeof res.flush === 'function') {
                   res.flush();
@@ -1375,7 +1383,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
       }
 
-      res.write(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`);
+      res.write(Buffer.from(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`, 'utf-8'));
       return res.end();
     }
 
@@ -1401,7 +1409,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               const parsed = JSON.parse(dataStr);
               const content = parsed.choices?.[0]?.delta?.content || '';
               if (content) {
-                res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+                res.write(Buffer.from(`data: ${JSON.stringify({ text: content })}
+
+`, "utf-8"));
                 if (typeof res.flush === 'function') res.flush();
                 fullTextCollector += content;
               }
@@ -1419,7 +1429,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
   } catch (err) {
     console.error('[Stream Error]', err.message);
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+    res.write(Buffer.from(`data: ${JSON.stringify({ error: err.message })}
+
+`, "utf-8"));
     res.end();
   }
 });
