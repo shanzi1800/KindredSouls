@@ -441,14 +441,36 @@ export const cleanYearlyTimeline = (text: string): string => {
 };
 
 // ── Markdown 解析核心 ──
+// 🛠️ 军师无敌强力清洗机 - 焊死在 parseYearlyReport 入口
+const cleanRawReportText = (text: string): string => {
+  let c = text;
+  // 1. 斩杀连续重复的年月日连击（如 2026年7月2026年7月）
+  c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+  c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
+  // 2. 清理 AI 因为幻觉吐出来的裸露 ## 符号怪（强制把滑坡的三级标题退到四级）
+  c = c.replace(/^###\s+/gm, '#### ');
+  // 3. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
+  c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
+  // 4. 终极兜底：循环清洗5次
+  let prev = c;
+  for (let i = 0; i < 5; i++) {
+    c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+    if (c === prev) break;
+    prev = c;
+  }
+  return c;
+};
+
 const parseYearlyReport = (markdown: string, _birthDate: string): {
   title: string;
   chapters: YearlyChapter[];
   months: MonthBlock[];
   rawContent: string;
 } => {
-  // 清洗时间线重复（流式期间，chunk 拼接可能产生"2026年7月2026年7月"）
-  const cleanedMd = cleanYearlyTimeline(markdown);
+  // 🛠️ 军师终极清洗：先对原始8000字完整文本进行残暴大清洗
+  const brutalCleaned = cleanRawReportText(markdown);
+  // 再调用原有清洗函数
+  const cleanedMd = cleanYearlyTimeline(brutalCleaned);
   const lines = cleanedMd.split('\n');
   const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富报告';
   const months: MonthBlock[] = [];
