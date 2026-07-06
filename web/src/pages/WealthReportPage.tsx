@@ -1798,38 +1798,43 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 
                 // 🛠️ 军师方案D完全体：年报指针流结束逻辑
                 if (type === 'yearly') {
-                  // 🎯 军师终极补刀：流式结束后，对所有卡片内容进行总清洗！
-                  setYearlyCardData(prev => {
-                    const cleaned: Record<string, string> = {};
-                    for (const [key, content] of Object.entries(prev)) {
-                      let c = content || '';
-                      // 1. 斩杀 > ## 缝合怪
-                      c = c.replace(/^>\s*#+/gm, '##');
-                      // 2. 先知天书定向爆破
-                      c = c.replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启');
-                      // 3. Emoji蒸发
-                      c = c.replace(/📅|📊|📕|✦/g, '');
-                      // 4. 日期复读机斩杀
-                      c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
-                      c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
-                      c = c.replace(/(\d{4}年\d{1,2}月)(\d{4}年\d{1,2}月\d{1,2}日)/g, '$2');
-                      c = c.replace(/(\d{4}年\d{1,2}月)\1+(\d{1,2}日)/g, '$1$2');
-                      // 5. 循环兜底10次
-                      let prevC = c;
-                      for (let i = 0; i < 10; i++) {
-                        c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
-                        if (c === prevC) break;
-                        prevC = c;
-                      }
-                      cleaned[key] = c;
+                  // 🎯 军师V30终极修复: 在 [DONE] 阶段直接用完整文本重新分片到17张卡片
+                  // 之前 V22 在 [DONE] 时清空了 fullYearlyTextRef,导致 finally 阶段 V23 永远拿不到数据
+                  // 现在 [DONE] 阶段直接用 parseYearlyReportV23 重新分片,覆盖流式期间的临时数据
+                  if (fullYearlyTextRef.current && fullYearlyTextRef.current.length > 100) {
+                    try {
+                      const fullText = fullYearlyTextRef.current;
+                      console.log('[WealthReport] 🚨 V30在[DONE]阶段触发总装, 全量=' + fullText.length + '字符');
+                      // 1. 完整文本一把切碎分流到17张卡片
+                      const finalMap = parseYearlyReportV23(fullText);
+                      // 2. 暴力覆盖流式期间的临时数据
+                      setYearlyCardData(finalMap);
+                      console.log('[WealthReport] ✅ V30总装完成: oracle=' + (finalMap.oracle?.length || 0) + ' ch1=' + (finalMap.ch1?.length || 0) + ' m1-m12=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k]?.length || 0).join(','));
+                    } catch (parseErr) {
+                      console.error('[WealthReport] V30总装失败, 回退到单卡片清洗:', parseErr);
+                      // 失败时回退到 V22 单卡片清洗逻辑
+                      setYearlyCardData(prev => {
+                        const cleaned: Record<string, string> = {};
+                        for (const [key, content] of Object.entries(prev)) {
+                          let c = content || '';
+                          c = c.replace(/^>\s*#+/gm, '##');
+                          c = c.replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启');
+                          c = c.replace(/📅|📊|📕|✦/g, '');
+                          c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
+                          c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
+                          cleaned[key] = c;
+                        }
+                        return cleaned;
+                      });
                     }
-                    return cleaned;
-                  });
+                  } else {
+                    console.warn('[WealthReport] ⚠️ fullYearlyTextRef 为空, 无法分片');
+                  }
                   
                   setYearlyCardsReady(true);
                   currentActiveKeyRef.current = 'oracle'; // 重置指针
                   streamingBufferRef.current = ''; // 军师V21: 清空buffer
-                  fullYearlyTextRef.current = ''; // 军师V22: 重对账完毕后清空累积器
+                  // 🔧 V30修复: 不再清空 fullYearlyTextRef, 让 finally 阶段 V23 仍能拿到数据(双保险)
                   console.log('[WealthReport] ✅ 年报17张卡片流式注入完成+总清洗完毕');
                 }
                 
