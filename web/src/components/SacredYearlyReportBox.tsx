@@ -1,4 +1,4 @@
-// 🛠️ V52: 军师决战组件——去react-markdown依赖，纯文本手动渲染
+// 🛠️ V53: 军师决战组件——去react-markdown依赖，纯文本手动渲染
 // 星光呼吸灯/暗金光晕/追光器/归顶/章节硬插 五合一
 import React, { useEffect, useRef } from 'react';
 
@@ -17,7 +17,7 @@ const sacredGlobalStyles = `
 .animate-sacred-glow { animation: sacredGlow 3s infinite ease-in-out; }
 `;
 
-// 🛠️ V50: 章节拦截硬插 + 天理纠偏
+// 🛠️ V53: 章节拦截硬插 + 天理纠偏（根据实际AI输出调整匹配词）
 const cleanAndInjectChapters = (text: string) => {
   if (!text) return '';
   let c = text;
@@ -54,49 +54,45 @@ const cleanAndInjectChapters = (text: string) => {
   c = c.replace(/你的"阴影自我"——对控制的渴望——可能被触发。{2,}/g, '你需保持冷静与觉知。');
   c = c.replace(/你的"阴影自我"——急躁和愤怒——可能被触发。{2,}/g, '你需控制冲动，深思熟虑。');
 
-  // 🌟 章节拦截硬插
-  if (c.includes('2026-2027 年度财富核心指标看板') && !c.includes('第一章：')) {
+  // 🌟 章节拦截硬插（根据实际AI输出调整匹配词）
+  // 第一章：年度财富核心指标看板
+  if (c.includes('年度财富核心指标看板') && !c.includes('第一章')) {
     c = c.replace(
-      /2026-2027 年度财富核心指标看板/g,
-      `【✦ 第一章：年度宿命财运矩阵 ✦】\n\n2026-2027 年度财富核心指标看板`
+      /年度财富核心指标看板/,
+      `【✦ 第一章：年度宿命财运矩阵 ✦】\n\n年度财富核心指标看板`
     );
   }
-  if (c.includes('财富核心相位：木星在狮子座') && !c.includes('第二章：')) {
+  // 第二章：12个月财富流月精准沙盘（AI实际输出）
+  if (c.includes('第二章') && c.includes('12个月财富流月')) {
     c = c.replace(
-      /财富核心相位：木星在狮子座/g,
-      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第二章：星体相位与天命显化 ✦】\n\n财富核心相位：木星在狮子座`
+      /第二章[：:]\s*12个月财富流月精准沙盘/,
+      `━━━━━━━━━━━━━━━━━━\n\n【✦ 第二章：十二流月财富黑天鹅与启示录 ✦】\n\n12个月财富流月精准沙盘`
     );
   }
-  if (c.includes('2026年7月：木星入财帛宫的觉醒之月') && !c.includes('第三章：')) {
+  // 第三章：年度宏观战略定调（从截图看第二章后接的是宏观战略）
+  if (c.includes('年度宏观战略定调') && !c.includes('第三章')) {
     c = c.replace(
-      /2026年7月：木星入财帛宫的觉醒之月/g,
-      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第三章：十二流月财富黑天鹅与启示录 ✦】\n\n2026年7月：木星入财帛宫的觉醒之月`
+      /年度宏观战略定调/,
+      `━━━━━━━━━━━━━━━━━━\n\n【✦ 第三章：年度宏观战略定调 ✦】\n\n年度宏观战略定调`
     );
   }
-  if (c.includes('核心赛道') && !c.includes('第四章：')) {
+  // 第六章：宇宙终极天启通关密令
+  if (c.includes('第六章') || c.includes('宇宙终极天启通关密令')) {
     c = c.replace(
-      /核心赛道：基于水元素（双鱼座）与火元素（狮子座）的财富引擎/g,
-      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第四章：风火引擎与隐藏副业指南 ✦】\n\n核心赛道：基于水元素（双鱼座）与火元素（狮子座）的财富引擎`
+      /【\s*◆\s*第六章[：:]\s*宇宙终极天启通关密令\s*◆\s*】/,
+      `━━━━━━━━━━━━━━━━━━\n\n【✦ 第六章：宇宙终极天启通关密令 ✦】`
     );
-  }
-  if (c.includes('潜意识阴影：表演性消费') && !c.includes('第五章：')) {
     c = c.replace(
-      /潜意识阴影：表演性消费/g,
-      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第五章：潜意识阴影与深度疗愈路径 ✦】\n\n潜意识阴影：表演性消费`
-    );
-  }
-  if (c.includes('最终财富神谕') && !c.includes('第六章：')) {
-    c = c.replace(
-      /最终财富神谕 · 通关密令/g,
-      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第六章：宇宙终极天启通关密令 ✦】\n\n最终财富神谕 · 通关密令`
+      /第六章[：:]\s*宇宙终极天启通关密令/,
+      `━━━━━━━━━━━━━━━━━━\n\n【✦ 第六章：宇宙终极天启通关密令 ✦】`
     );
   }
 
   return c.trim();
 };
 
-// 🛠️ V52: 纯文本手动渲染——支持粗体/**/、分隔线---、标题、列表项
-const renderPlainText = (text: string, isStreaming: boolean) => {
+// 🛠️ V53: 纯文本手动渲染——解析Markdown语法
+const renderPlainText = (text: string) => {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
 
@@ -109,8 +105,8 @@ const renderPlainText = (text: string, isStreaming: boolean) => {
       return;
     }
 
-    // 分隔线
-    if (trimmed.startsWith('━━━━━━━')) {
+    // 分隔线（━或---）
+    if (trimmed.startsWith('━━━━━━━') || trimmed === '---') {
       elements.push(
         <div key={idx} style={{
           height: '1px',
@@ -122,7 +118,7 @@ const renderPlainText = (text: string, isStreaming: boolean) => {
     }
 
     // 标题：【✦ 第X章：xxx ✦】
-    if (trimmed.match(/^【\✦.+\✦】$/)) {
+    if (trimmed.match(/^【\s*✦\s*.+\s*✦\s*】$/)) {
       elements.push(
         <div key={idx} style={{
           color: '#D4AF37',
@@ -132,20 +128,61 @@ const renderPlainText = (text: string, isStreaming: boolean) => {
           letterSpacing: '2px',
           margin: '16px 0 12px',
         }}>
-          {trimmed}
+          {trimmed.replace(/【\s*✦\s*|\s*✦\s*】/g, '')}
         </div>
       );
       return;
     }
 
-    // 子标题：以×××开头（流月月份等关键短语）
-    if (trimmed.match(/^(2026年|2027年|\d+月|年度|财富核心|宏观战略|财富约束|深层变革)/)) {
+    // Markdown标题：### xxx 或 ## xxx → 金色标题
+    if (trimmed.match(/^#{2,3}\s+/)) {
+      const titleText = trimmed.replace(/^#{2,3}\s+/, '');
       elements.push(
         <div key={idx} style={{
-          color: 'rgba(212,175,55,0.85)',
+          color: '#D4AF37',
           fontSize: '13px',
+          fontWeight: 700,
+          textAlign: 'center',
+          letterSpacing: '1px',
+          margin: '14px 0 10px',
+        }}>
+          {titleText}
+        </div>
+      );
+      return;
+    }
+
+    // 表格线 | xxx | xxx | → 不显示或简化显示
+    if (trimmed.match(/^\|[-\s|]+\|$/)) {
+      // 表格分隔线，不显示
+      return;
+    }
+    if (trimmed.match(/^\|.+\|.+\|/)) {
+      // 表格行，简化渲染
+      const cells = trimmed.split('|').filter(c => c.trim()).map(c => c.trim());
+      elements.push(
+        <div key={idx} style={{
+          color: 'rgba(255,255,255,0.8)',
+          fontSize: '12px',
+          lineHeight: 1.6,
+          marginBottom: '4px',
+          borderBottom: '1px solid rgba(212,175,55,0.1)',
+          paddingBottom: '4px',
+        }}>
+          {cells.join(' · ')}
+        </div>
+      );
+      return;
+    }
+
+    // 子标题：以年份/月份/年度开头
+    if (trimmed.match(/^(2026年|2027年|\d+月|年度|财富核心|宏观战略|财富约束|深层变革|先知神谕)/)) {
+      elements.push(
+        <div key={idx} style={{
+          color: 'rgba(212,175,55,0.9)',
+          fontSize: '12.5px',
           fontWeight: 600,
-          margin: '12px 0 8px',
+          margin: '10px 0 6px',
         }}>
           {trimmed}
         </div>
@@ -153,15 +190,15 @@ const renderPlainText = (text: string, isStreaming: boolean) => {
       return;
     }
 
-    // 🟢 Peak Revenue Window 或 🔴熔断警告 → 金色高亮
-    if (trimmed.match(/^🟢|^🔴|^⚠️|^🚀|\[Peak|\[Financial/)) {
+    // 🟢 Peak Revenue Window 或 🔴熔断警告 → 彩色高亮
+    if (trimmed.match(/^🟢|^🔴|^⚠️|^🚀/)) {
       elements.push(
         <div key={idx} style={{
-          color: trimmed.includes('🟢') ? 'rgba(16,185,129,0.9)' :
-                 trimmed.includes('🔴') ? 'rgba(239,68,68,0.9)' : 'rgba(212,175,55,0.85)',
+          color: trimmed.includes('🟢') ? 'rgba(16,185,129,0.95)' :
+                 trimmed.includes('🔴') ? 'rgba(239,68,68,0.95)' : 'rgba(212,175,55,0.9)',
           fontSize: '12px',
           fontWeight: 600,
-          margin: '10px 0 4px',
+          margin: '8px 0 4px',
         }}>
           {trimmed}
         </div>
@@ -169,31 +206,25 @@ const renderPlainText = (text: string, isStreaming: boolean) => {
       return;
     }
 
-    // 列表项（以*或-开头）
-    if (trimmed.match(/^[\*\-]\s/)) {
-      elements.push(
-        <div key={idx} style={{
-          color: 'rgba(255,255,255,0.85)',
-          fontSize: '12.5px',
-          lineHeight: 1.7,
-          paddingLeft: '12px',
-          marginBottom: '4px',
-        }}>
-          {trimmed}
-        </div>
-      );
-      return;
-    }
+    // 默认正文：解析 **粗体**
+    const parseBold = (text: string): React.ReactNode[] => {
+      const parts = text.split(/(\*\*[^*]+\*\*)/g);
+      return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <span key={i} style={{ fontWeight: 700, color: '#D4AF37' }}>{part.slice(2, -2)}</span>;
+        }
+        return <span key={i}>{part}</span>;
+      });
+    };
 
-    // 默认：正文
     elements.push(
       <div key={idx} style={{
         color: 'rgba(255,255,255,0.88)',
         fontSize: '12.5px',
-        lineHeight: 1.9,
+        lineHeight: 1.85,
         marginBottom: '6px',
       }}>
-        {trimmed}
+        {parseBold(trimmed)}
       </div>
     );
   });
@@ -258,7 +289,7 @@ const SacredYearlyReportBox: React.FC<Props> = ({ rawStreamText, yearlyCardsRead
         >
           {displayContent ? (
             <div>
-              {renderPlainText(displayContent, isStreaming)}
+              {renderPlainText(displayContent)}
             </div>
           ) : (
             // 🌌 星光呼吸灯骨架屏
