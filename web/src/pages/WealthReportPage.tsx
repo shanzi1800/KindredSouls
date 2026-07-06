@@ -1188,23 +1188,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
-  // 🛠️ 军师方案D完全体：年报单向指针对齐流状态机
-  const [yearlyCardData, setYearlyCardData] = useState<Record<string, string>>({
-    oracle: '',
-    ch1: '',
-    ch2: '',
-    m1: '', m2: '', m3: '', m4: '', m5: '', m6: '',
-    m7: '', m8: '', m9: '', m10: '', m11: '', m12: '',
-    ch3: '', ch4: '', ch5: '',
-    final: ''
-  });
-  const currentActiveKeyRef = useRef<string>('oracle'); // 指针（用ref避免每次chunk重渲染）
-  const streamingBufferRef = useRef<string>(''); // 军师V21: 滑动窗口buffer，保留最近200字符用于锚点检测(防SSE chunk切分)
-  const fullYearlyTextRef = useRef<string>(''); // 军师V22: 累积全年报完整流式文本，流式结束后统一解析重对账
-  const streamingPhaseRef = useRef<number>(0); // 🛠️ V34 UX状态：0=等待,1=蓄水中,2=加速,3=尾声,4=完成
-  const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
-  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({ oracle: true, ch1: true }); // 🛠️ V35: 默认展开先知神谕和第一章
-  const [yearlyTextTick, setYearlyTextTick] = useState<number>(0); // 🛠️ V38: 强制刷新流式文本显示
+  // 🛠️ V40: 移除所有旧的17卡片蓄水ref，改用单一sacredText状态
+  const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
+  const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态（双通道打字机核心）
+  const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
   // 🛠️ 军师黑魔法:手功从原始 JSON 里提取字段值(支持未闭合字符串)
@@ -1290,6 +1277,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
   const [reportLoading, setReportLoading] = useState<string>('');
   const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
+
+  // 🛠️ V40: 追光器——sacredText变时自动平滑滚动到底部
+  useEffect(() => {
+    if (textContainerRef.current && !yearlyCardsReady && sacredText) {
+      textContainerRef.current.scrollTop = textContainerRef.current.scrollHeight;
+    }
+  }, [sacredText, yearlyCardsReady]);
 
   // Read URL parameters on mount
   useEffect(() => {
@@ -1842,10 +1836,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  // 🛠️ V35下拉折叠：展开/收起切换
-  const toggleExpand = (key: string) => {
-    setExpandedKeys(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // 🛠️ V40: 移除折叠逻辑，改用单框打字机
 
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
@@ -1869,10 +1860,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
     setStreamedOnce(false);
-    // 🛠️ V35重置折叠状态:年报每次新生成都从默认展开状态开始
+    // 🛠️ V40: 每次年报开始前清空打字机容器
     if (type === 'yearly') {
-      setExpandedKeys({ oracle: true, ch1: true });
-      streamingPhaseRef.current = 0;
+      setSacredText('');
+      setYearlyCardsReady(false);
     }
 
     // 🌊 流式输出开关(开发中,暂用旧接口)
@@ -1901,67 +1892,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             if (line.startsWith('data: ')) {
               const dataStr = line.slice(6).trim();
               if (dataStr === '[DONE]') {
-                console.log('[WealthReport] 📜 天书刻印完成,触发商业钩子');
+                console.log('[WealthReport] 🔮 [DONE] 天书刻印完成!');
                 setStreamedOnce(true);
-                streamingPhaseRef.current = 4; // 蓄水完成，进入总装
-
-                // 🛠️ V34铁血总装:流式期间全蓄水,[DONE]一枪轰出17块!
+                // 🛠️ V40: [DONE]即完成，textContainerRef自动处理追光
                 if (type === 'yearly') {
-                  if (fullYearlyTextRef.current && fullYearlyTextRef.current.length > 100) {
-                    try {
-                      const fullText = fullYearlyTextRef.current;
-                      const trueZodiac = getTrueZodiacByDate(birthDate);
-                      console.log('[WealthReport] 🚨 V34在[DONE]阶段触发总装, 全量=' + fullText.length + '字符, 真实星座=' + trueZodiac);
-                      const finalMap = parseYearlyReportV24(fullText, trueZodiac);
-                      setYearlyCardData(finalMap);
-                      console.log('[WealthReport] ✅ V34总装完成: oracle=' + (finalMap.oracle?.length || 0) +
-                        ' ch1=' + (finalMap.ch1?.length || 0) +
-                        ' ch3=' + (finalMap.ch3?.length || 0) +
-                        ' ch4=' + (finalMap.ch4?.length || 0) +
-                        ' ch5=' + (finalMap.ch5?.length || 0) +
-                        ' final=' + (finalMap.final?.length || 0) +
-                        ' m1-m12=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k]?.length || 0).join(','));
-                    } catch (parseErr) {
-                      console.error('[WealthReport] V34总装失败:', parseErr);
-                    }
-                  } else {
-                    console.warn('[WealthReport] ⚠️ fullYearlyTextRef为空,无法分片');
-                  }
                   setYearlyCardsReady(true);
-                  currentActiveKeyRef.current = 'oracle';
-                  console.log('[WealthReport] ✅ 年报V34总装完毕,17张黄金卡片全部就位');
                 }
-
                 break;
               }
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ V34铁血改进:流式期间只蓄水不分配,卡片全部保持骨架灯
+                  // 🛠️ V40: 纯净增量追加到打字机状态（不卡、不死循环）
                   if (type === 'yearly') {
-                    const newChunk = parsed.text;
-                    fullYearlyTextRef.current = (fullYearlyTextRef.current || '') + newChunk;
-                    // 🛠️ V38: 每10个chunk强制刷新一次显示
-                    if (Math.random() < 0.1) setYearlyTextTick(t => t + 1);
-                    // 🛠️ V34 UX进度追踪:蓄水池满了就升级阶段(0→1→2→3→4)
-                    const totalLen = fullYearlyTextRef.current.length;
-                    if (totalLen > 3000 && streamingPhaseRef.current < 2) streamingPhaseRef.current = 2;
-                    else if (totalLen > 800 && streamingPhaseRef.current < 1) streamingPhaseRef.current = 1;
+                    setSacredText(prev => prev + parsed.text);
                   } else {
-                    setWealthReportText((prev) => prev + parsed.text);
+                    setWealthReportText(prev => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                   }
-
-                  // 🔮 自动滚动锚定(圣旨效果)
-                  setTimeout(() => {
-                    const reportContainer = document.getElementById('wealth-report-container');
-                    if (reportContainer) {
-                      reportContainer.scrollTo({
-                        top: reportContainer.scrollHeight,
-                        behavior: 'smooth'
-                      });
-                    }
-                  }, 50);
                 }
               } catch {}
             }
@@ -1970,37 +1918,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 V34: finally块做最终兜底(正常路径已在[DONE]处理完)
-        if (type === 'yearly' && fullYearlyTextRef.current && !yearlyCardsReady) {
-          try {
-            const fullText = fullYearlyTextRef.current;
-            const trueZodiac = getTrueZodiacByDate(birthDate);
-            console.log('[WealthReport] 🚨 V34 finally兜底总装, 全量=' + fullText.length + '字符');
-            const finalMap = parseYearlyReportV24(fullText, trueZodiac);
-            setYearlyCardData(finalMap);
-            setYearlyCardsReady(true);
-            console.log('[WealthReport] ✅ V34 finally兜底完成');
-          } catch (parseErr) {
-            console.error('[WealthReport] V34 finally兜底失败:', parseErr);
-          }
+        // 🛠️ V40: finally只做月报兜底，年报不需要（[DONE]已处理）
+        if (type === 'monthly' && !streamedOnce) {
+          setTimeout(() => setVisibleWeeks(1), 500);
         }
-        // 🔮 军师铁律:骨架框就是最终卡片,永不卸载
-        // 只在 JSON 完整时更新 visibleWeeks,保持 reportLoading 状态
-        setTimeout(() => {
-          try {
-            const parsed = JSON.parse(wealthReportRef.current || '{}');
-            if (parsed.weeks && parsed.expense_trap) {
-              // ✅ JSON 完整:更新可见卡片数(形成节奏感)
-              for (let i = 1; i < Math.min(5, parsed.weeks.length + 1); i++) {
-                setTimeout(() => setVisibleWeeks(i), i * 300);
-              }
-            }
-            // ⚠️ 绝对不清空 reportLoading!骨架框就是最终卡片!
-          } catch {
-            // ❌ JSON 解析失败:保持纯文本模式,清空 loading 状态让用户能重新点击
-            setReportLoading('');
-          }
-        }, 1000); // 1秒后验证
       }
       return;
     }
@@ -2525,35 +2446,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
           }
           
-          // 🛠️ V37: 山子大叔指定单框滚动+金色标题+排版优化
+          // 🛠️ V40: 双通道极简打字机——年报渲染
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
-            const phase = streamingPhaseRef.current;
             const isStreaming = !yearlyCardsReady;
-            // 🛠️ V38: 依赖tick强制刷新流式显示
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const _refreshTick = yearlyTextTick;
-
-            // 拼装完整年报文本
-            const fullRawText = fullYearlyTextRef.current || '';
             const trueZodiac = getTrueZodiacByDate(birthDate);
-            let correctedText = fullRawText;
+            // 🛠️ V40: 直接从sacredText状态渲染，不读任何ref
+            let displayText = sacredText;
             if (trueZodiac && trueZodiac !== '双子座') {
-              correctedText = correctedText.replace(/双子座/g, trueZodiac);
-              correctedText = correctedText.replace(/双子天命/g, trueZodiac + '天命');
-              correctedText = correctedText.replace(/双子守护/g, trueZodiac + '守护');
+              displayText = displayText.replace(/双子座/g, trueZodiac);
+              displayText = displayText.replace(/双子天命/g, trueZodiac + '天命');
             }
-            const sacredContent = cleanRawReportText(cleanYearlyTimeline(correctedText));
-
-            // 🛠️ V39: 简化渲染，避免函数内定义组件导致死循环
-
-            const phaseText = phase === 0 ? ''
-              : phase === 1 ? '🔮 正在链接星盘能量...'
-              : phase >= 2 && phase < 4 ? '📅 正在雕刻流月财富矩阵...'
-              : '';
+            const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
             return (
               <div id="wealth-report-container" style={{ marginTop: '16px' }}>
-                {isStreaming && phaseText && (
+                {/* 仪式感提示 */}
+                {isStreaming && (
                   <div style={{
                     textAlign: 'center', padding: '12px 16px',
                     background: 'rgba(212,175,55,0.08)',
@@ -2561,11 +2469,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     borderRadius: '10px', marginBottom: '12px',
                     fontSize: '12px', color: '#D4AF37', letterSpacing: '0.5px'
                   }}>
-                    {phaseText}
+                    🔮 正在链接星盘能量...
                   </div>
                 )}
 
-                {/* 🛠️ V37单框滚动圣卷 */}
+                {/* 🛠️ V40单框天书圣卷 */}
                 <div style={{
                   borderRadius: '16px',
                   border: '1.5px solid rgba(212,175,55,0.25)',
@@ -2587,26 +2495,29 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  {/* 滚动内容区 */}
-                  <div style={{
-                    height: '450px',
-                    overflowY: 'auto',
-                    padding: '16px 18px',
-                    WebkitOverflowScrolling: 'touch',
-                  }}>
-                    {sacredContent ? (
+                  {/* 🛠️ V40滚动内容区：sacredText驱动，textContainerRef追光 */}
+                  <div
+                    ref={textContainerRef}
+                    style={{
+                      height: '450px',
+                      overflowY: 'auto',
+                      padding: '16px 18px',
+                      WebkitOverflowScrolling: 'touch',
+                    }}
+                  >
+                    {cleaned ? (
                       <div style={{
                         fontSize: '13px',
                         color: 'rgba(255,255,255,0.88)',
-                        lineHeight: 1.85,
+                        lineHeight: 1.9,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                       }}>
-                        {sacredContent}
+                        {cleaned}
                       </div>
-                    ) : (
+                    ) : isStreaming ? (
                       <div className="skeleton-wave" style={{ height: '120px', borderRadius: '8px' }} />
-                    )}
+                    ) : null}
                   </div>
 
                   {/* 底部装饰线 */}
