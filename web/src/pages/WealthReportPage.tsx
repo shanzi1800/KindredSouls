@@ -450,28 +450,37 @@ const cleanRawReportText = (text: string): string => {
   if (!text) return '';
   let c = text;
 
-  // 1. 【斩草除根】：去掉任何位置（不管是行首还是带空格）的 > 符号
+  // 1. 【斩草除根】：去掉任何位置的 > 符号
   c = c.replace(/>+/g, '');
 
-  // 2. 【定点清除裸露标题】：蒸发正文里残留的 ## 和 #### 指标看板标题
-  c = c.replace(/##\s*先知[神天].*/gi, ''); // 💥 同时干掉"先知神谕"和"先知天书"幻觉
-  c = c.replace(/##\s*第[一二三四五]章.*/gi, ''); // 物理超度"## 第一章："等
-  c = c.replace(/##\s*2026-2027.*/gi, ''); // 💥 物理超度核心指标看板标题！
-  c = c.replace(/##\s*最终财富.*/gi, ''); // 干掉"## 最终财富神谕"
-  c = c.replace(/####\s*\d+\.\s*年度财富.*/gi, ''); // 💥 物理超度"4. 年度财富冥想"标题！
+  // 2. 【定点清除裸露标题】：蒸发正文里残留的 ## 和 ####
+  c = c.replace(/##\s*先知[神天].*/gi, '');
+  c = c.replace(/##\s*第[一二三四五]章.*/gi, '');
+  c = c.replace(/##\s*2026-2027.*/gi, '');
+  c = c.replace(/##\s*最终财富.*/gi, '');
+  c = c.replace(/####\s*\d+\.\s*年度财富.*/gi, '');
+  c = c.replace(/##\s*核心看板.*/gi, ''); // 🛠️ V37: 干掉核心看板标题残留
+  c = c.replace(/##\s*通关密令.*/gi, ''); // 🛠️ V37: 干掉通关密令标题残留
 
-  // 3. 【无脑拍扁残余井号】：正文里如果还有漏网的 ## 或 ###，通通变普通加粗
+  // 3. 【无脑拍扁残余井号】
   c = c.replace(/^#+/gm, '');
 
-  // 4. 彻底物理超度干扰 Markdown 排版的 Emoji
-  c = c.replace(/📅|📊|📕|✦|📌|🔮/g, '');
+  // 4. 彻底物理超度 Emoji 和特殊符号
+  c = c.replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟|✨|🎯|📈|💰/g, '');
 
-  // 5. 斩杀连续重复的年月日连击
+  // 5. 斩杀连续重复的年月日
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
   c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
 
-  // 6. 擦除类似于"至1995年3月2027年6月"历史生日污染流年的连体婴
+  // 6. 擦除历史生日污染
   c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
+
+  // 🛠️ V37: 干掉 --- 分隔线
+  c = c.replace(/^---+$/gm, '');
+  c = c.replace(/^\s*[-=]{3,}\s*$/gm, '');
+
+  // 🛠️ V37: 干掉多余的空行（超过2行的压缩成1行）
+  c = c.replace(/\n{3,}/g, '\n\n');
 
   // 7. 终极兜底：循环清洗10次
   let prev = c;
@@ -2513,7 +2522,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
           }
           
-          // 🛠️ V36: 山子大叔指定单框滚动方案
+          // 🛠️ V37: 山子大叔指定单框滚动+金色标题+排版优化
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const phase = streamingPhaseRef.current;
             const isStreaming = !yearlyCardsReady;
@@ -2521,7 +2530,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             // 拼装完整年报文本
             const fullRawText = fullYearlyTextRef.current || '';
             const trueZodiac = getTrueZodiacByDate(birthDate);
-            // 物理纠偏星座幻觉
             let correctedText = fullRawText;
             if (trueZodiac && trueZodiac !== '双子座') {
               correctedText = correctedText.replace(/双子座/g, trueZodiac);
@@ -2530,7 +2538,63 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
             const sacredContent = cleanRawReportText(cleanYearlyTimeline(correctedText));
 
-            // 流式仪式感文案
+            // 🛠️ V37: 将文本按行解析，识别标题并金色高亮
+            const renderFormattedContent = (text: string) => {
+              if (!text) return null;
+              const lines = text.split('\n');
+              return lines.map((line, idx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return <div key={idx} style={{ height: '8px' }} />;
+
+                // 识别各类标题（核心看板、最终神谕、各章节）
+                const isTitle = /^(##\s*)?(先知天书|核心看板|最终神谕|最终财富|通关密令|第一章|第二章|第三章|第四章|第五章|2026-2027|年度财富核心|天命破局|消费黑洞|黄金爆发|财富流月|宿命财运)/i.test(trimmed);
+                const isSubTitle = /^(###\s*)?(一、|二、|三、|四、|五、|\d+月|年度宏观|财富爆发|资产熔断)/i.test(trimmed);
+
+                if (isTitle) {
+                  return (
+                    <div key={idx} style={{
+                      color: '#D4AF37',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      marginTop: '16px',
+                      marginBottom: '12px',
+                      letterSpacing: '1px',
+                    }}>
+                      {trimmed.replace(/^#+\s*/, '')}
+                    </div>
+                  );
+                }
+
+                if (isSubTitle) {
+                  return (
+                    <div key={idx} style={{
+                      color: 'rgba(212,175,55,0.85)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      marginTop: '12px',
+                      marginBottom: '8px',
+                    }}>
+                      {trimmed.replace(/^#+\s*/, '')}
+                    </div>
+                  );
+                }
+
+                // 普通正文
+                return (
+                  <div key={idx} style={{
+                    color: 'rgba(255,255,255,0.88)',
+                    fontSize: '13px',
+                    lineHeight: 1.85,
+                    marginBottom: '6px',
+                    textAlign: 'left',
+                  }}>
+                    {trimmed}
+                  </div>
+                );
+              });
+            };
+
             const phaseText = phase === 0 ? ''
               : phase === 1 ? '🔮 正在链接星盘能量...'
               : phase >= 2 && phase < 4 ? '📅 正在雕刻流月财富矩阵...'
@@ -2538,7 +2602,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
             return (
               <div id="wealth-report-container" style={{ marginTop: '16px' }}>
-                {/* 顶部仪式感提示 */}
                 {isStreaming && phaseText && (
                   <div style={{
                     textAlign: 'center', padding: '12px 16px',
@@ -2551,7 +2614,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   </div>
                 )}
 
-                {/* 🛠️ V36单框滚动圣卷 - 尺寸与四大盘块一致 */}
+                {/* 🛠️ V37单框滚动圣卷 */}
                 <div style={{
                   borderRadius: '16px',
                   border: '1.5px solid rgba(212,175,55,0.25)',
@@ -2573,24 +2636,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  {/* 滚动内容区 - 固定高度约450px */}
+                  {/* 滚动内容区 */}
                   <div style={{
                     height: '450px',
                     overflowY: 'auto',
                     padding: '16px 18px',
                     WebkitOverflowScrolling: 'touch',
                   }}>
-                    {sacredContent ? (
-                      <div style={{
-                        fontSize: '13px',
-                        color: 'rgba(255,255,255,0.88)',
-                        lineHeight: 1.9,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}>
-                        {sacredContent}
-                      </div>
-                    ) : (
+                    {sacredContent ? renderFormattedContent(sacredContent) : (
                       <div className="skeleton-wave" style={{ height: '120px', borderRadius: '8px' }} />
                     )}
                   </div>
