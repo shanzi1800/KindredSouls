@@ -2513,157 +2513,95 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
           }
           
-          // 🛠️ 军师方案D完全体：年报17卡片指针流
+          // 🛠️ V36: 山子大叔指定单框滚动方案
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
-            const anchors = getAnchors(lang);
             const phase = streamingPhaseRef.current;
             const isStreaming = !yearlyCardsReady;
 
-            // 🛠️ V35流式仪式感文案
+            // 拼装完整年报文本
+            const fullRawText = fullYearlyTextRef.current || '';
+            const trueZodiac = getTrueZodiacByDate(birthDate);
+            // 物理纠偏星座幻觉
+            let correctedText = fullRawText;
+            if (trueZodiac && trueZodiac !== '双子座') {
+              correctedText = correctedText.replace(/双子座/g, trueZodiac);
+              correctedText = correctedText.replace(/双子天命/g, trueZodiac + '天命');
+              correctedText = correctedText.replace(/双子守护/g, trueZodiac + '守护');
+            }
+            const sacredContent = cleanRawReportText(cleanYearlyTimeline(correctedText));
+
+            // 流式仪式感文案
             const phaseText = phase === 0 ? ''
-              : phase === 1 ? '🔮 正在链接星盘能量，抽取深层天命数据...'
-              : phase >= 2 && phase < 4 ? '📅 正在雕刻12个月财富暗格，自动归位中...'
+              : phase === 1 ? '🔮 正在链接星盘能量...'
+              : phase >= 2 && phase < 4 ? '📅 正在雕刻流月财富矩阵...'
               : '';
 
             return (
               <div id="wealth-report-container" style={{ marginTop: '16px' }}>
-                <div style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid rgba(212,175,55,0.2)' }}>
-                  📅 {t('wealthReport.yearlyReportTitle') || '年度财富报告'}
-                </div>
-
-                {/* 🛠️ V34仪式感进度条 */}
+                {/* 顶部仪式感提示 */}
                 {isStreaming && phaseText && (
                   <div style={{
-                    textAlign: 'center',
-                    padding: '14px 20px',
-                    background: 'linear-gradient(135deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.8) 100%)',
-                    border: '1px solid rgba(212,175,55,0.3)',
-                    borderRadius: '12px',
-                    marginBottom: '16px',
-                    animation: 'pulse 2s ease-in-out infinite',
-                    fontSize: '13px',
-                    color: 'rgba(212,175,55,0.9)',
-                    letterSpacing: '1px',
-                    fontWeight: 600,
+                    textAlign: 'center', padding: '12px 16px',
+                    background: 'rgba(212,175,55,0.08)',
+                    border: '1px solid rgba(212,175,55,0.2)',
+                    borderRadius: '10px', marginBottom: '12px',
+                    fontSize: '12px', color: '#D4AF37', letterSpacing: '0.5px'
                   }}>
                     {phaseText}
                   </div>
                 )}
-                
-                {anchors.map((anchor) => {
-                  // 🛠️ V35下拉折叠: ch2隐藏(内容并入m1)
-                  if (anchor.key === 'ch2') return null;
 
-                  const cardData = yearlyCardData[anchor.key] || '';
-                  const hyperCleanedContent = sanitizeZodiacHallucination(
-                    cleanRawReportText(cleanYearlyTimeline(cardData)),
-                    getTrueZodiacByDate(birthDate)
-                  );
-                  const hasData = !!hyperCleanedContent.trim();
-                  const isExpanded = !!expandedKeys[anchor.key];
-
-                  const borderColor = isExpanded
-                    ? hasData ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.2)'
-                    : 'rgba(212,175,55,0.1)';
-                  const bgStyle = isExpanded
-                    ? hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.95) 0%, rgba(22,33,62,0.95) 100%)' : 'rgba(13,13,26,0.8)'
-                    : hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.7) 0%, rgba(22,33,62,0.7) 100%)' : 'rgba(0,0,0,0.2)';
-
-                  return (
-                    <div key={anchor.key} style={{
-                      marginBottom: '12px',
-                      borderRadius: '14px',
-                      border: `1.5px solid ${borderColor}`,
-                      background: bgStyle,
-                      overflow: 'hidden',
-                      transition: 'all 0.4s ease',
-                      boxShadow: isExpanded && hasData ? '0 4px 20px rgba(212,175,55,0.1)' : 'none',
-                    }}>
-                      {/* 🛠️ V35下拉折叠表头 */}
-                      <button
-                        onClick={() => toggleExpand(anchor.key)}
-                        style={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '14px 18px',
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          gap: '12px',
-                        }}
-                      >
-                        {/* 左侧: 小圆灯 + 标题 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                          {/* 流式状态指示灯 */}
-                          {hasData ? (
-                            yearlyCardsReady ? (
-                              <span style={{
-                                display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-                                background: '#10B981', boxShadow: '0 0 6px rgba(16,185,129,0.6)', flexShrink: 0
-                              }} />
-                            ) : (
-                              <span style={{
-                                display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-                                background: '#D4AF37', boxShadow: '0 0 8px rgba(212,175,55,0.8)',
-                                animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0
-                              }} />
-                            )
-                          ) : (
-                            <span style={{
-                              display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-                              background: 'rgba(255,255,255,0.2)', flexShrink: 0
-                            }} />
-                          )}
-                          <span style={{
-                            fontSize: '13px', fontWeight: 600, letterSpacing: '1px',
-                            color: isExpanded ? '#D4AF37' : 'rgba(255,255,255,0.7)',
-                            transition: 'color 0.3s',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>
-                            {anchor.match[0]}
-                          </span>
-                        </div>
-                        {/* 右侧: 旋转箭头 */}
-                        <span style={{
-                          fontSize: '12px', color: isExpanded ? '#D4AF37' : 'rgba(255,255,255,0.3)',
-                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.35s ease, color 0.3s',
-                          flexShrink: 0,
-                        }}>
-                          ▼
-                        </span>
-                      </button>
-
-                      {/* 🛠️ V35下拉折叠内容区 */}
-                      <div style={{
-                        maxHeight: isExpanded ? '4000px' : '0',
-                        opacity: isExpanded ? 1 : 0,
-                        overflow: 'hidden',
-                        transition: 'max-height 0.4s ease, opacity 0.3s ease',
-                      }}>
-                        <div style={{
-                          padding: isExpanded ? '14px 18px 18px' : '0 18px',
-                          borderTop: isExpanded && hasData ? '1px solid rgba(212,175,55,0.1)' : 'none',
-                        }}>
-                          {hasData ? (
-                            <div style={{
-                              fontSize: '13px', color: 'rgba(255,255,255,0.88)',
-                              lineHeight: 1.9, whiteSpace: 'pre-wrap',
-                              wordBreak: 'break-word', overflowWrap: 'break-word',
-                            }}>
-                              {hyperCleanedContent}
-                            </div>
-                          ) : isExpanded ? (
-                            <div className="skeleton-wave" style={{ height: '80px', borderRadius: '8px' }} />
-                          ) : null}
-                        </div>
-                      </div>
+                {/* 🛠️ V36单框滚动圣卷 - 尺寸与四大盘块一致 */}
+                <div style={{
+                  borderRadius: '16px',
+                  border: '1.5px solid rgba(212,175,55,0.25)',
+                  background: 'linear-gradient(180deg, rgba(26,26,46,0.9) 0%, rgba(13,13,26,0.95) 100%)',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 0 60px rgba(212,175,55,0.03)',
+                }}>
+                  {/* 表头 */}
+                  <div style={{
+                    padding: '16px 18px 12px',
+                    borderBottom: '1px solid rgba(212,175,55,0.1)',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '2px', marginBottom: '4px' }}>
+                      ✦ 先知天书 · 财富天启 ✦
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                      年度财富报告
+                    </div>
+                  </div>
+
+                  {/* 滚动内容区 - 固定高度约450px */}
+                  <div style={{
+                    height: '450px',
+                    overflowY: 'auto',
+                    padding: '16px 18px',
+                    WebkitOverflowScrolling: 'touch',
+                  }}>
+                    {sacredContent ? (
+                      <div style={{
+                        fontSize: '13px',
+                        color: 'rgba(255,255,255,0.88)',
+                        lineHeight: 1.9,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}>
+                        {sacredContent}
+                      </div>
+                    ) : (
+                      <div className="skeleton-wave" style={{ height: '120px', borderRadius: '8px' }} />
+                    )}
+                  </div>
+
+                  {/* 底部装饰线 */}
+                  <div style={{
+                    height: '3px',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.3) 50%, transparent 100%)',
+                    margin: '0 20%'
+                  }} />
+                </div>
               </div>
             );
           }
