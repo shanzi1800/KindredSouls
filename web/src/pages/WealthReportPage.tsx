@@ -450,6 +450,12 @@ const cleanRawReportText = (text: string): string => {
   if (!text) return '';
   let c = text;
 
+  // 0. 【斩首复读尾巴】：在 "生成 AI 洞察" 处落闸，后面的复读尾巴全部蒸发
+  const aiInsightIdx = c.indexOf('生成 AI 洞察');
+  if (aiInsightIdx !== -1) {
+    c = c.substring(0, aiInsightIdx);
+  }
+
   // 1. 【斩草除根】：去掉任何位置的 > 符号
   c = c.replace(/>+/g, '');
 
@@ -2455,6 +2461,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             if (trueZodiac && trueZodiac !== '双子座') {
               displayText = displayText.replace(/双子座/g, trueZodiac);
               displayText = displayText.replace(/双子天命/g, trueZodiac + '天命');
+              // 🛠️ V41: 斩杀"太阳双子"幻觉（如"太阳双子 9°" → "太阳双鱼座 9°"）
+              displayText = displayText.replace(/太阳双子/g, '太阳' + trueZodiac);
             }
             const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
