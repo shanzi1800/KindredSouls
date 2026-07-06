@@ -1845,20 +1845,27 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ 军师V22: 流式稳健方案 —— 累积到 fullYearlyTextRef,流式结束统一解析重对账(彻底规避SSE chunk切分)
+                  // 🛠️ 年报V33: 边流式边分配到17张卡片,流式结束直接完成
                   if (type === 'yearly') {
                     const newChunk = parsed.text;
-
-                    // 1. 累积完整文本（重对账的基石）
                     fullYearlyTextRef.current = (fullYearlyTextRef.current || '') + newChunk;
-
-                    // 2. 流式期间:先知神谕卡片实时滚动(保留进度感,其他卡片保持呼吸灯骨架)
+                    // 检测锚点,移动指针
+                    const lowerChunk = newChunk.toLowerCase();
+                    const anchors = getAnchors(lang);
+                    for (const anchor of anchors) {
+                      for (const matchStr of anchor.match) {
+                        if (lowerChunk.includes(matchStr.toLowerCase())) {
+                          currentActiveKeyRef.current = anchor.key;
+                          break;
+                        }
+                      }
+                    }
+                    // 增量注入到当前激活的卡片
                     setYearlyCardData(prev => ({
                       ...prev,
-                      oracle: (prev.oracle || '') + newChunk
+                      [currentActiveKeyRef.current]: (prev[currentActiveKeyRef.current] || '') + newChunk
                     }));
                   } else {
-                    // 月报：旧逻辑（拼接全文）
                     setWealthReportText((prev) => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                   }
