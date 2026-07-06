@@ -1,4 +1,5 @@
-// 🛠️ V57: SacredYearlyReportBox - 全inlineStyle五合一，零CSS类依赖
+// 🛠️ V58: SacredYearlyReportBox - 山子大叔9项修改完整版
+// 5.章节金色 6.边框金色+滚动条深色 7.按键金色 8.背景深色 9.标题改"年度财富报告"
 import React, { useEffect, useRef } from 'react';
 
 const SacredYearlyReportBox: React.FC<{
@@ -39,19 +40,40 @@ const SacredYearlyReportBox: React.FC<{
     autoScrollRef.current = atBottom;
   };
 
-  // 解析行
+  // 解析行 - 增强章节名识别
   const parseLine = (line: string): { type: string; content: string } => {
     const t = line.trim();
     if (!t) return { type: 'empty', content: '' };
-    if (t.match(/^\【\s*✦.+\✦\s*】$/)) {
-      return { type: 'chapter', content: t.replace(/\【\s*✦\s*|\s*✦\s*\】/g, '') };
+    
+    // 【✦ 章节名 ✦】格式
+    if (t.match(/^【\s*✦.+✦\s*】$/)) {
+      return { type: 'chapter', content: t.replace(/【\s*✦\s*|\s*✦\s*】/g, '') };
     }
+    
+    // Markdown标题 ## 第一章：xxx
     if (t.match(/^#{2,3}\s+/)) {
       return { type: 'heading', content: t.replace(/^#{2,3}\s+/, '') };
     }
+    
+    // AI输出的章节名（无Markdown标记）
+    const chapterPatterns = [
+      '第一章', '第二章', '第三章', '第四章', '第五章', '最终章',
+      '年度财富核心', '先知神谕', '天命破局', '消费黑洞', '黄金爆发',
+      '财富流月', '宿命财运', '最终财富', '通关密令', '先知天书',
+      '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位'
+    ];
+    if (chapterPatterns.some(p => t.includes(p))) {
+      return { type: 'heading', content: t };
+    }
+    
+    // 月份标题
+    if (t.match(/^(2026年|2027年|\d{4}-\d{4})/)) {
+      return { type: 'subheading', content: t };
+    }
+    
     if (t === '━━━━━━━━━━━━━━━━━━' || t === '---') return { type: 'divider', content: '' };
     if (t.match(/^\|[-\s|]+\|$/)) return { type: 'skip', content: '' };
-    if (t.match(/^\|.+\|/)) {
+    if (t.match(/^\|.+/)) {
       const cells = t.split('|').filter(c => c.trim()).map(c => c.trim());
       return { type: 'table', content: cells.join(' · ') };
     }
@@ -80,18 +102,30 @@ const SacredYearlyReportBox: React.FC<{
           background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)'
         }} />
       );
+      // 章节名 - 金色大标题
       if (type === 'chapter') return (
         <div key={idx} style={{
-          color: '#D4AF37', fontSize: '14px', fontWeight: 700,
-          textAlign: 'center', letterSpacing: '2px', margin: '16px 0 12px'
+          color: '#D4AF37', fontSize: '15px', fontWeight: 700,
+          textAlign: 'center', letterSpacing: '2px', margin: '18px 0 14px',
+          textShadow: '0 0 10px rgba(212,175,55,0.3)'
         }}>
           【✦ {content} ✦】
         </div>
       );
+      // 标题 - 金色
       if (type === 'heading') return (
         <div key={idx} style={{
-          color: '#D4AF37', fontSize: '13px', fontWeight: 700,
-          textAlign: 'center', margin: '14px 0 10px', letterSpacing: '1px'
+          color: '#D4AF37', fontSize: '14px', fontWeight: 700,
+          textAlign: 'center', margin: '16px 0 12px', letterSpacing: '1px'
+        }}>
+          {content}
+        </div>
+      );
+      // 子标题 - 淡金色
+      if (type === 'subheading') return (
+        <div key={idx} style={{
+          color: 'rgba(212,175,55,0.85)', fontSize: '13px', fontWeight: 600,
+          margin: '12px 0 8px', letterSpacing: '0.5px'
         }}>
           {content}
         </div>
@@ -125,11 +159,11 @@ const SacredYearlyReportBox: React.FC<{
     });
   };
 
-  // 🌌 星光呼吸灯骨架 (inline style, no CSS class needed)
+  // 骨架屏
   const SkeletonBar = ({ delay, w }: { delay: number; w: string }) => (
     <div style={{
       height: '14px', width: w, marginBottom: '20px', borderRadius: '8px',
-      background: `linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))`,
+      background: 'linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))',
       border: '1px solid rgba(212,175,55,0.05)',
       animation: `sacredPulse 2s ease-in-out ${delay}s infinite`,
     }} />
@@ -137,7 +171,6 @@ const SacredYearlyReportBox: React.FC<{
 
   return (
     <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 16px' }}>
-      {/* 全局keyframes */}
       <style>{`
         @keyframes sacredPulse {
           0%, 100% { opacity: 0.15; transform: scaleX(0.97); }
@@ -147,30 +180,62 @@ const SacredYearlyReportBox: React.FC<{
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
         }
+        /* 深色滚动条 */
+        .dark-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .dark-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.3);
+          border-radius: 3px;
+        }
+        .dark-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(212,175,55,0.4);
+          border-radius: 3px;
+        }
+        .dark-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(212,175,55,0.6);
+        }
       `}</style>
 
-      {/* 暗晶盒子 */}
+      {/* 暗晶盒子 - 金色边框，深色背景 */}
       <div style={{
         position: 'relative', borderRadius: '16px',
-        border: '1px solid rgba(212,175,55,0.2)',
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,10,15,0.98) 100%)',
-        padding: '24px', boxShadow: '0 0 60px rgba(0,0,0,0.95)',
+        border: '1.5px solid rgba(212,175,55,0.35)',  // 6. 金色边框
+        background: 'linear-gradient(180deg, rgba(10,12,20,0.98) 0%, rgba(5,6,10,0.99) 100%)',  // 8. 深色背景
+        padding: '24px', 
+        boxShadow: '0 0 40px rgba(0,0,0,0.8), inset 0 0 60px rgba(212,175,55,0.02)'
       }}>
-        {/* 顶部标题 */}
-        <div style={{ textAlign: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(212,175,55,0.1)' }}>
-          <h3 style={{ color: '#D4AF37', fontWeight: 700, letterSpacing: '2px', fontSize: '15px', margin: 0 }}>
-            ✦ 先知天书 · 财富天启 ✦
+        {/* 顶部标题 - 9. 改"年度财富报告"，删除英文 */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '16px', 
+          paddingBottom: '12px', 
+          borderBottom: '1px solid rgba(212,175,55,0.15)' 
+        }}>
+          <h3 style={{ 
+            color: '#D4AF37', 
+            fontWeight: 700, 
+            letterSpacing: '3px', 
+            fontSize: '16px', 
+            margin: 0 
+          }}>
+            年度财富报告
           </h3>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '1px', margin: '4px 0 0' }}>
-            TARGET: 1995-03-08 | STATE: {yearlyCardsReady ? 'SEALED ✨' : 'STREAMING 🔮'}
-          </p>
         </div>
 
-        {/* 滚动区 */}
+        {/* 滚动内容区 - 深色滚动条 */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          style={{ height: '470px', overflowY: 'auto', paddingRight: '4px', textAlign: 'left' }}
+          className="dark-scrollbar"
+          style={{ 
+            height: '470px', 
+            overflowY: 'auto', 
+            paddingRight: '8px', 
+            textAlign: 'left',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(212,175,55,0.4) rgba(0,0,0,0.3)'
+          }}
         >
           {!hasContent ? (
             <div style={{ padding: '24px 0' }}>
@@ -188,13 +253,13 @@ const SacredYearlyReportBox: React.FC<{
         {/* 底部暗金光晕 */}
         <div style={{
           position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px',
-          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)',
           animation: 'sacredGlow 3s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', bottom: '-40px', left: '50%', transform: 'translateX(-50%)',
-          width: '80px', height: '80px', background: 'rgba(212,175,55,0.2)',
-          borderRadius: '50%', filter: 'blur(20px)', pointerEvents: 'none',
+          position: 'absolute', bottom: '-35px', left: '50%', transform: 'translateX(-50%)',
+          width: '100px', height: '70px', background: 'rgba(212,175,55,0.15)',
+          borderRadius: '50%', filter: 'blur(25px)', pointerEvents: 'none',
           animation: 'sacredGlow 3s ease-in-out infinite',
         }} />
       </div>
