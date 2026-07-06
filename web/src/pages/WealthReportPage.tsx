@@ -1194,6 +1194,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const fullYearlyTextRef = useRef<string>(''); // 军师V22: 累积全年报完整流式文本，流式结束后统一解析重对账
   const streamingPhaseRef = useRef<number>(0); // 🛠️ V34 UX状态：0=等待,1=蓄水中,2=加速,3=尾声,4=完成
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({ oracle: true, ch1: true }); // 🛠️ V35: 默认展开先知神谕和第一章
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
   // 🛠️ 军师黑魔法:手功从原始 JSON 里提取字段值(支持未闭合字符串)
@@ -1831,6 +1832,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
+  // 🛠️ V35下拉折叠：展开/收起切换
+  const toggleExpand = (key: string) => {
+    setExpandedKeys(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const generateWealthReport = async (type: 'monthly' | 'yearly') => {
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
@@ -1852,7 +1858,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
-    setStreamedOnce(false); // 🛡️ 重置:新一轮开始前清空标记
+    setStreamedOnce(false);
+    // 🛠️ V35重置折叠状态:年报每次新生成都从默认展开状态开始
+    if (type === 'yearly') {
+      setExpandedKeys({ oracle: true, ch1: true });
+      streamingPhaseRef.current = 0;
+    }
 
     // 🌊 流式输出开关(开发中,暂用旧接口)
     const USE_STREAM = true; // 🔥 军师下令:全量开火!
@@ -2508,10 +2519,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             const phase = streamingPhaseRef.current;
             const isStreaming = !yearlyCardsReady;
 
-            // 🛠️ V34仪式感进度条文案
+            // 🛠️ V35流式仪式感文案
             const phaseText = phase === 0 ? ''
-              : phase === 1 ? '🔮 正在链接北斗星盘，抽取天命数据中...'
-              : phase >= 2 && phase < 4 ? '📅 正在雕刻流月财富矩阵，跨越2026-2027沙盘...'
+              : phase === 1 ? '🔮 正在链接星盘能量，抽取深层天命数据...'
+              : phase >= 2 && phase < 4 ? '📅 正在雕刻12个月财富暗格，自动归位中...'
               : '';
 
             return (
@@ -2540,45 +2551,116 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 )}
                 
                 {anchors.map((anchor) => {
-                  // 🛠️ 军师V19: ch2 不独立渲染 - 12个月份卡片已代替
+                  // 🛠️ V35下拉折叠: ch2隐藏(内容并入m1)
                   if (anchor.key === 'ch2') return null;
 
-                  const cardData = yearlyCardData[anchor.key];
-                  const hasData = cardData && cardData.trim().length > 0;
+                  const cardData = yearlyCardData[anchor.key] || '';
+                  const hyperCleanedContent = sanitizeZodiacHallucination(
+                    cleanRawReportText(cleanYearlyTimeline(cardData)),
+                    getTrueZodiacByDate(birthDate)
+                  );
+                  const hasData = !!hyperCleanedContent.trim();
+                  const isExpanded = !!expandedKeys[anchor.key];
 
-                  // 🛠️ 军师铁血截流：卡片渲染最后一厘米的物理净化
-                  const hyperCleanedContent = hasData
-                    ? sanitizeZodiacHallucination(cleanRawReportText(cleanYearlyTimeline(cardData)), getTrueZodiacByDate(birthDate))
-                    : '';
+                  const borderColor = isExpanded
+                    ? hasData ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.2)'
+                    : 'rgba(212,175,55,0.1)';
+                  const bgStyle = isExpanded
+                    ? hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.95) 0%, rgba(22,33,62,0.95) 100%)' : 'rgba(13,13,26,0.8)'
+                    : hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.7) 0%, rgba(22,33,62,0.7) 100%)' : 'rgba(0,0,0,0.2)';
 
                   return (
                     <div key={anchor.key} style={{
-                      background: hasData ? 'linear-gradient(135deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.9) 100%)' : 'rgba(0,0,0,0.15)',
-                      border: `2px solid ${hasData ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.2)'}`,
-                      borderRadius: '16px',
-                      padding: hasData ? '18px' : '16px',
-                      marginBottom: '14px',
-                      boxShadow: hasData ? '0 4px 16px rgba(212,175,55,0.15), inset 0 0 60px rgba(212,175,55,0.05)' : 'none',
-                      minHeight: '100px',
-                      transition: 'all 0.5s ease-in-out',
+                      marginBottom: '12px',
+                      borderRadius: '14px',
+                      border: `1.5px solid ${borderColor}`,
+                      background: bgStyle,
+                      overflow: 'hidden',
+                      transition: 'all 0.4s ease',
+                      boxShadow: isExpanded && hasData ? '0 4px 20px rgba(212,175,55,0.1)' : 'none',
                     }}>
-                      {hasData ? (
-                        <div>
-                          <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '8px', fontWeight: 600 }}>
-                            {anchor.match[0]}
-                          </div>
-                          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {/* 🎯 军师绝杀：绕过高亮函数内鬼，直接渲染纯净文本 */}
-                            {hyperCleanedContent}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="skeleton-wave" style={{
+                      {/* 🛠️ V35下拉折叠表头 */}
+                      <button
+                        onClick={() => toggleExpand(anchor.key)}
+                        style={{
                           width: '100%',
-                          height: '80px',
-                          borderRadius: '8px',
-                        }} />
-                      )}
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 18px',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          gap: '12px',
+                        }}
+                      >
+                        {/* 左侧: 小圆灯 + 标题 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                          {/* 流式状态指示灯 */}
+                          {hasData ? (
+                            yearlyCardsReady ? (
+                              <span style={{
+                                display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
+                                background: '#10B981', boxShadow: '0 0 6px rgba(16,185,129,0.6)', flexShrink: 0
+                              }} />
+                            ) : (
+                              <span style={{
+                                display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
+                                background: '#D4AF37', boxShadow: '0 0 8px rgba(212,175,55,0.8)',
+                                animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0
+                              }} />
+                            )
+                          ) : (
+                            <span style={{
+                              display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
+                              background: 'rgba(255,255,255,0.2)', flexShrink: 0
+                            }} />
+                          )}
+                          <span style={{
+                            fontSize: '13px', fontWeight: 600, letterSpacing: '1px',
+                            color: isExpanded ? '#D4AF37' : 'rgba(255,255,255,0.7)',
+                            transition: 'color 0.3s',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {anchor.match[0]}
+                          </span>
+                        </div>
+                        {/* 右侧: 旋转箭头 */}
+                        <span style={{
+                          fontSize: '12px', color: isExpanded ? '#D4AF37' : 'rgba(255,255,255,0.3)',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.35s ease, color 0.3s',
+                          flexShrink: 0,
+                        }}>
+                          ▼
+                        </span>
+                      </button>
+
+                      {/* 🛠️ V35下拉折叠内容区 */}
+                      <div style={{
+                        maxHeight: isExpanded ? '4000px' : '0',
+                        opacity: isExpanded ? 1 : 0,
+                        overflow: 'hidden',
+                        transition: 'max-height 0.4s ease, opacity 0.3s ease',
+                      }}>
+                        <div style={{
+                          padding: isExpanded ? '14px 18px 18px' : '0 18px',
+                          borderTop: isExpanded && hasData ? '1px solid rgba(212,175,55,0.1)' : 'none',
+                        }}>
+                          {hasData ? (
+                            <div style={{
+                              fontSize: '13px', color: 'rgba(255,255,255,0.88)',
+                              lineHeight: 1.9, whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word', overflowWrap: 'break-word',
+                            }}>
+                              {hyperCleanedContent}
+                            </div>
+                          ) : isExpanded ? (
+                            <div className="skeleton-wave" style={{ height: '80px', borderRadius: '8px' }} />
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
