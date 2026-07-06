@@ -57,8 +57,11 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/土元素：月亮天秤/g, '风元素：月亮天秤');
     cleaned = cleaned.replace(/你的星盘以水元素和火元素为主导/g, '你的星盘以水元素与风元素为主导');
 
-    // 4. V49新增：双鱼座写成风元素（占星铁律）
+    // 4. V50新增：双鱼座写成风元素/风象（占星铁律：水象）
     cleaned = cleaned.replace(/风元素（双鱼座太阳）/g, '水元素（双鱼座太阳）');
+    cleaned = cleaned.replace(/风象（双鱼座太阳）/g, '水象（双鱼座太阳）');
+    // 第三章特殊句式"风象（双鱼座太阳、天秤座月亮）"
+    cleaned = cleaned.replace(/风象（双鱼座太阳、天秤座月亮）/g, '水象（双鱼座太阳）与风象（天秤座月亮）');
 
     // 5. V49新增：双鱼座"擅长信息流"幻觉（双鱼擅长直觉非沟通）
     cleaned = cleaned.replace(/天生擅长“信息的收集与传播”/g, '天生擅长“情感的共鸣与直觉的显化”');
@@ -67,6 +70,16 @@ const SacredYearlyReportBox: React.FC<{
     // 6. V49新增：抹除中文里残留的英文尾巴
     cleaned = cleaned.replace(/（\s*negotiation\s*&\s*power\s*direction\s*）/g, '（正南方）');
     cleaned = cleaned.replace(/\(\s*negotiation\s*&\s*power\s*direction\s*\)/g, '(正南方)');
+
+    // 7. V50新增：天文学硬伤——9月是秋分不是春分
+    cleaned = cleaned.replace(/9月22日（春分点前后/g, '9月22日（秋分能量转换期');
+
+    // 8. V50新增：太阳不可能连续两月进同星座——5月/6月双鱼座混乱
+    cleaned = cleaned.replace(/5月20日（太阳进入双鱼座/g, '5月20日（流年财富能量共振');
+    cleaned = cleaned.replace(/6月（太阳进入双鱼座与你的本命太阳重合/g, '6月（本命年太阳回归周期');
+
+    // 9. V50新增："天秤座"统一"天秤座"（部分AI输出漏字）
+    cleaned = cleaned.replace(/天秤座/g, '天秤座');
 
     // 7. 修复宫位移位
     cleaned = cleaned.replace(/进入水瓶座（你的第九宫）/g, '进入水瓶座（你的第八宫·深层资产与转化之宫）');
