@@ -1,15 +1,15 @@
-// 🛠️ V50: 军师终极决战组件——星光呼吸灯/暗金光晕/追光器/归顶/章节硬插五合一
+// 🛠️ V52: 军师决战组件——去react-markdown依赖，纯文本手动渲染
+// 星光呼吸灯/暗金光晕/追光器/归顶/章节硬插 五合一
 import React, { useEffect, useRef } from 'react';
-import Markdown from 'react-markdown';
 
 const sacredGlobalStyles = `
 @keyframes sacredPulse {
-  0%, 100% { opacity: 0.15; transform: scaleX(0.97); }
-  50% { opacity: 0.85; transform: scaleX(1.03); }
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.85; }
 }
 @keyframes sacredGlow {
-  0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 12px rgba(245,158,11,0.35)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 25px rgba(245,158,11,0.7)); }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
 }
 .pulse-stream-2s { animation: sacredPulse 2s infinite ease-in-out; }
 .pulse-stream-25s { animation: sacredPulse 2.5s infinite ease-in-out; }
@@ -54,51 +54,151 @@ const cleanAndInjectChapters = (text: string) => {
   c = c.replace(/你的"阴影自我"——对控制的渴望——可能被触发。{2,}/g, '你需保持冷静与觉知。');
   c = c.replace(/你的"阴影自我"——急躁和愤怒——可能被触发。{2,}/g, '你需控制冲动，深思熟虑。');
 
-  // 🌟 章节拦截硬插：AI没输出章节名，前端自动插入
-  // 第一章
+  // 🌟 章节拦截硬插
   if (c.includes('2026-2027 年度财富核心指标看板') && !c.includes('第一章：')) {
     c = c.replace(
       /2026-2027 年度财富核心指标看板/g,
-      `## ✦ 第一章：年度宿命财运矩阵 ✦\n\n### 2026-2027 年度财富核心指标看板`
+      `【✦ 第一章：年度宿命财运矩阵 ✦】\n\n2026-2027 年度财富核心指标看板`
     );
   }
-  // 第二章
   if (c.includes('财富核心相位：木星在狮子座') && !c.includes('第二章：')) {
     c = c.replace(
       /财富核心相位：木星在狮子座/g,
-      `---\n\n## ✦ 第二章：星体相位与天命显化 ✦\n\n### 财富核心相位：木星在狮子座`
+      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第二章：星体相位与天命显化 ✦】\n\n财富核心相位：木星在狮子座`
     );
   }
-  // 第三章
   if (c.includes('2026年7月：木星入财帛宫的觉醒之月') && !c.includes('第三章：')) {
     c = c.replace(
       /2026年7月：木星入财帛宫的觉醒之月/g,
-      `---\n\n## ✦ 第三章：十二流月财富黑天鹅与启示录 ✦\n\n### 2026年7月：木星入财帛宫的觉醒之月`
+      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第三章：十二流月财富黑天鹅与启示录 ✦】\n\n2026年7月：木星入财帛宫的觉醒之月`
     );
   }
-  // 第四章
   if (c.includes('核心赛道') && !c.includes('第四章：')) {
     c = c.replace(
       /核心赛道：基于水元素（双鱼座）与火元素（狮子座）的财富引擎/g,
-      `---\n\n## ✦ 第四章：风火引擎与隐藏副业指南 ✦\n\n### 核心赛道：基于水元素（双鱼座）与火元素（狮子座）的财富引擎`
+      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第四章：风火引擎与隐藏副业指南 ✦】\n\n核心赛道：基于水元素（双鱼座）与火元素（狮子座）的财富引擎`
     );
   }
-  // 第五章
   if (c.includes('潜意识阴影：表演性消费') && !c.includes('第五章：')) {
     c = c.replace(
       /潜意识阴影：表演性消费/g,
-      `---\n\n## ✦ 第五章：潜意识阴影与深度疗愈路径 ✦\n\n### 潜意识阴影：表演性消费`
+      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第五章：潜意识阴影与深度疗愈路径 ✦】\n\n潜意识阴影：表演性消费`
     );
   }
-  // 第六章（最终神谕）
   if (c.includes('最终财富神谕') && !c.includes('第六章：')) {
     c = c.replace(
       /最终财富神谕 · 通关密令/g,
-      `---\n\n## ✦ 第六章：宇宙终极天启通关密令 ✦\n\n### 最终财富神谕 · 通关密令`
+      `\n━━━━━━━━━━━━━━━━━━\n\n【✦ 第六章：宇宙终极天启通关密令 ✦】\n\n最终财富神谕 · 通关密令`
     );
   }
 
   return c.trim();
+};
+
+// 🛠️ V52: 纯文本手动渲染——支持粗体/**/、分隔线---、标题、列表项
+const renderPlainText = (text: string, isStreaming: boolean) => {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+
+    // 空行 → 间距
+    if (!trimmed) {
+      elements.push(<div key={idx} style={{ height: '8px' }} />);
+      return;
+    }
+
+    // 分隔线
+    if (trimmed.startsWith('━━━━━━━')) {
+      elements.push(
+        <div key={idx} style={{
+          height: '1px',
+          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
+          margin: '12px 0'
+        }} />
+      );
+      return;
+    }
+
+    // 标题：【✦ 第X章：xxx ✦】
+    if (trimmed.match(/^【\✦.+\✦】$/)) {
+      elements.push(
+        <div key={idx} style={{
+          color: '#D4AF37',
+          fontSize: '14px',
+          fontWeight: 700,
+          textAlign: 'center',
+          letterSpacing: '2px',
+          margin: '16px 0 12px',
+        }}>
+          {trimmed}
+        </div>
+      );
+      return;
+    }
+
+    // 子标题：以×××开头（流月月份等关键短语）
+    if (trimmed.match(/^(2026年|2027年|\d+月|年度|财富核心|宏观战略|财富约束|深层变革)/)) {
+      elements.push(
+        <div key={idx} style={{
+          color: 'rgba(212,175,55,0.85)',
+          fontSize: '13px',
+          fontWeight: 600,
+          margin: '12px 0 8px',
+        }}>
+          {trimmed}
+        </div>
+      );
+      return;
+    }
+
+    // 🟢 Peak Revenue Window 或 🔴熔断警告 → 金色高亮
+    if (trimmed.match(/^🟢|^🔴|^⚠️|^🚀|\[Peak|\[Financial/)) {
+      elements.push(
+        <div key={idx} style={{
+          color: trimmed.includes('🟢') ? 'rgba(16,185,129,0.9)' :
+                 trimmed.includes('🔴') ? 'rgba(239,68,68,0.9)' : 'rgba(212,175,55,0.85)',
+          fontSize: '12px',
+          fontWeight: 600,
+          margin: '10px 0 4px',
+        }}>
+          {trimmed}
+        </div>
+      );
+      return;
+    }
+
+    // 列表项（以*或-开头）
+    if (trimmed.match(/^[\*\-]\s/)) {
+      elements.push(
+        <div key={idx} style={{
+          color: 'rgba(255,255,255,0.85)',
+          fontSize: '12.5px',
+          lineHeight: 1.7,
+          paddingLeft: '12px',
+          marginBottom: '4px',
+        }}>
+          {trimmed}
+        </div>
+      );
+      return;
+    }
+
+    // 默认：正文
+    elements.push(
+      <div key={idx} style={{
+        color: 'rgba(255,255,255,0.88)',
+        fontSize: '12.5px',
+        lineHeight: 1.9,
+        marginBottom: '6px',
+      }}>
+        {trimmed}
+      </div>
+    );
+  });
+
+  return elements;
 };
 
 interface Props {
@@ -112,6 +212,7 @@ const SacredYearlyReportBox: React.FC<Props> = ({ rawStreamText, yearlyCardsRead
   const isAutoScrolling = useRef(true);
 
   const displayContent = cleanAndInjectChapters(rawStreamText);
+  const isStreaming = !yearlyCardsReady;
 
   // 🛠️ V50: 追光器 + 流式结束归顶
   useEffect(() => {
@@ -156,17 +257,11 @@ const SacredYearlyReportBox: React.FC<Props> = ({ rawStreamText, yearlyCardsRead
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {displayContent ? (
-            <Markdown
-              className="prose prose-invert max-w-none
-                prose-h2:text-amber-400 prose-h2:text-center prose-h2:font-bold prose-h2:tracking-widest prose-h2:text-sm prose-h2:mt-8 prose-h2:mb-4
-                prose-h3:text-amber-200/90 prose-h3:font-semibold prose-h3:text-xs prose-h3:mt-5 prose-h3:mb-2
-                prose-p:text-neutral-300 prose-p:text-xs prose-p:leading-relaxed prose-p:mb-3
-                prose-strong:text-amber-300 prose-strong:font-semibold"
-            >
-              {displayContent}
-            </Markdown>
+            <div>
+              {renderPlainText(displayContent, isStreaming)}
+            </div>
           ) : (
-            // 🌌 星光呼吸灯骨架屏：3组不同宽度、不同周期交错脉冲条
+            // 🌌 星光呼吸灯骨架屏
             <div className="space-y-5 py-6">
               <div className="h-3.5 bg-gradient-to-r from-amber-500/15 to-amber-500/5 rounded-full w-11/12 pulse-stream-2s border border-amber-500/5" />
               <div className="h-3.5 bg-gradient-to-r from-amber-500/5 via-amber-500/15 to-transparent rounded-full w-9/12 pulse-stream-25s border border-amber-500/5" />
