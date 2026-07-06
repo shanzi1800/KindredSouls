@@ -2544,62 +2544,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
             const sacredContent = cleanRawReportText(cleanYearlyTimeline(correctedText));
 
-            // 🛠️ V37: 将文本按行解析，识别标题并金色高亮
-            const renderFormattedContent = (text: string) => {
-              if (!text) return null;
-              const lines = text.split('\n');
-              return lines.map((line, idx) => {
-                const trimmed = line.trim();
-                if (!trimmed) return <div key={idx} style={{ height: '8px' }} />;
-
-                // 识别各类标题（核心看板、最终神谕、各章节）
-                const isTitle = /^(##\s*)?(先知天书|核心看板|最终神谕|最终财富|通关密令|第一章|第二章|第三章|第四章|第五章|2026-2027|年度财富核心|天命破局|消费黑洞|黄金爆发|财富流月|宿命财运)/i.test(trimmed);
-                const isSubTitle = /^(###\s*)?(一、|二、|三、|四、|五、|\d+月|年度宏观|财富爆发|资产熔断)/i.test(trimmed);
-
-                if (isTitle) {
-                  return (
-                    <div key={idx} style={{
-                      color: '#D4AF37',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      textAlign: 'center',
-                      marginTop: '16px',
-                      marginBottom: '12px',
-                      letterSpacing: '1px',
-                    }}>
-                      {trimmed.replace(/^#+\s*/, '')}
-                    </div>
-                  );
-                }
-
-                if (isSubTitle) {
-                  return (
-                    <div key={idx} style={{
-                      color: 'rgba(212,175,55,0.85)',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      marginTop: '12px',
-                      marginBottom: '8px',
-                    }}>
-                      {trimmed.replace(/^#+\s*/, '')}
-                    </div>
-                  );
-                }
-
-                // 普通正文
-                return (
-                  <div key={idx} style={{
-                    color: 'rgba(255,255,255,0.88)',
-                    fontSize: '13px',
-                    lineHeight: 1.85,
-                    marginBottom: '6px',
-                    textAlign: 'left',
-                  }}>
-                    {trimmed}
-                  </div>
-                );
-              });
-            };
+            // 🛠️ V39: 简化渲染，避免函数内定义组件导致死循环
 
             const phaseText = phase === 0 ? ''
               : phase === 1 ? '🔮 正在链接星盘能量...'
@@ -2649,7 +2594,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     padding: '16px 18px',
                     WebkitOverflowScrolling: 'touch',
                   }}>
-                    {sacredContent ? renderFormattedContent(sacredContent) : (
+                    {sacredContent ? (
+                      <div style={{
+                        fontSize: '13px',
+                        color: 'rgba(255,255,255,0.88)',
+                        lineHeight: 1.85,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}>
+                        {sacredContent}
+                      </div>
+                    ) : (
                       <div className="skeleton-wave" style={{ height: '120px', borderRadius: '8px' }} />
                     )}
                   </div>
