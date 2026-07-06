@@ -45,6 +45,7 @@ const SacredYearlyReportBox: React.FC<{
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
     cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]*\)/g, ''); // 蒸发 Markdown 图片标记 ![](...)
     cleaned = cleaned.replace(/!\[[^\]]*\]/g, ''); // 蒸发裸 ![alt]
+    cleaned = cleaned.replace(/<\/?br\s*\/?>/g, ''); // 蒸发 <br> / </br> 标签
     cleaned = cleaned.replace(/双鱼座座/g, '双鱼座');
     cleaned = cleaned.replace(/牡羊座/g, '白羊座'); // 统一大中华区译名
 
@@ -118,6 +119,30 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/太阳进入摩羯座（你的第十宫）/g, '太阳进入摩羯座（迎来事业高光）');
     cleaned = cleaned.replace(/太阳进入白羊座（你的第十一宫）/g, '太阳进入白羊座（激发社交与契约能量）');
     cleaned = cleaned.replace(/太阳进入金牛座（你的第十二宫）/g, '太阳进入金牛座');
+
+    // 7.4 V68 方案B：动态星盘校准矩阵（上升巨蟹12宫黄金对照表，精准熔断错误宫位）
+    const cancerHouses: Record<string, string[]> = {
+      '巨蟹': ['1', '一'],
+      '狮子': ['2', '二'],
+      '处女': ['3', '三'],
+      '天秤': ['4', '四'],
+      '天蝎': ['5', '五'],
+      '射手': ['6', '六'],
+      '摩羯': ['7', '七'],
+      '水瓶': ['8', '八'],
+      '双鱼': ['9', '九'],
+      '白羊': ['10', '十'],
+      '金牛': ['11', '十一'],
+      '双子': ['12', '十二']
+    };
+    const houseRegex = /(巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼|白羊|金牛|双子)座第?([0-9]{1,2}|[一二三四五六七八九十]{1,2})宫/g;
+    cleaned = cleaned.replace(houseRegex, (match, sign, houseNum) => {
+      const validHouses = cancerHouses[sign];
+      if (validHouses && validHouses.includes(houseNum)) {
+        return match; // 命中真理，原样保留（如：木星在狮子座第2宫）
+      }
+      return sign + '座'; // 发现穿帮，精准熔断错误宫位，仅保留星座
+    });
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
     const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([A-Za-z]+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
