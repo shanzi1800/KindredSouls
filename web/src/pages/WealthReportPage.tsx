@@ -1284,10 +1284,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [reportLoading, setReportLoading] = useState<string>('');
   const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
 
-  // 🛠️ V40: 追光器——sacredText变时自动平滑滚动到底部
+  // 🛠️ V47: 流式期间追光底部，完成后归顶
   useEffect(() => {
-    if (textContainerRef.current && !yearlyCardsReady && sacredText) {
+    if (!textContainerRef.current) return;
+    if (!yearlyCardsReady && sacredText) {
+      // 流式中：追光底部
       textContainerRef.current.scrollTop = textContainerRef.current.scrollHeight;
+    } else if (yearlyCardsReady) {
+      // 流式结束：滚动条归顶，用户从头读
+      textContainerRef.current.scrollTop = 0;
     }
   }, [sacredText, yearlyCardsReady]);
 
