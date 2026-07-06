@@ -707,6 +707,91 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
   return finalCleanedMap;
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// 🛠️ 军师V34终极切片分流器【全量无脑重装+物理反幻觉】
+// ═══════════════════════════════════════════════════════════════════
+// 铁血设计原则：
+// 1. 流式期间只蓄水，不分配，卡片全部保持骨架灯
+// 2. [DONE]触发后一次性全量切片，绝无时序死锁
+// 3. 前端物理反幻觉——星座由birthDate计算，AI幻觉直接覆盖
+// 4. 正文无脑吸附——没有continue截断，每一行都进抽屉
+const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<string, string> => {
+  const cardMap: Record<string, string[]> = {
+    oracle: [], ch1: [], ch3: [], ch4: [], ch5: [], final: [],
+    m1: [], m2: [], m3: [], m4: [], m5: [], m6: [],
+    m7: [], m8: [], m9: [], m10: [], m11: [], m12: []
+  };
+  if (!rawText) return {};
+
+  // 💥 铁血反幻觉落闸：AI编造的星座，在进切片机之前就物理抹杀！
+  let coreText = rawText;
+  if (realZodiac && realZodiac !== '双子座') {
+    coreText = coreText.replace(/双子座/g, realZodiac);
+    coreText = coreText.replace(/双子天命/g, realZodiac + '天命');
+    coreText = coreText.replace(/双子守护/g, realZodiac + '守护');
+    coreText = coreText.replace(/双子星/g, realZodiac + '星');
+  }
+
+  // 🎯 前置霸权清洗
+  const filteredText = coreText
+    .replace(/^>\s*#+/gm, '## ')
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
+    .replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟/g, '')
+    .replace(/^###\s+(.)/gm, '## $1');
+
+  const lines = filteredText.split('\n');
+  let currentKey = 'oracle';
+
+  const yearMonthMap: Record<string, string> = {
+    '2026年7月': 'm1', '2026年8月': 'm2', '2026年9月': 'm3', '2026年10月': 'm4',
+    '2026年11月': 'm5', '2026年12月': 'm6', '2027年1月': 'm7', '2027年2月': 'm8',
+    '2027年3月': 'm9', '2027年4月': 'm10', '2027年5月': 'm11', '2027年6月': 'm12'
+  };
+
+  for (const line of lines) {
+    const cleanLine = line.trim();
+    if (!cleanLine || cleanLine === '---') continue;
+
+    let switched = false;
+    for (const [ym, targetKey] of Object.entries(yearMonthMap)) {
+      if (cleanLine.includes(ym)) { currentKey = targetKey; switched = true; break; }
+    }
+    if (switched) continue;
+
+    if (cleanLine.includes('第一章') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
+      currentKey = 'ch1'; continue;
+    }
+    if (cleanLine.includes('第二章') || cleanLine.includes('财富流月') || cleanLine.includes('12个月')) {
+      currentKey = 'm1'; continue;
+    }
+    if (cleanLine.includes('第三章') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
+      currentKey = 'ch3'; continue;
+    }
+    if (cleanLine.includes('第四章') || cleanLine.includes('消费黑洞') || cleanLine.includes('财富冥想') || cleanLine.includes('资产防御')) {
+      currentKey = 'ch4'; continue;
+    }
+    if (cleanLine.includes('第五章') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊') || cleanLine.includes('通关锦囊')) {
+      currentKey = 'ch5'; continue;
+    }
+    if (cleanLine.includes('最终财富') || cleanLine.includes('通关密令') || cleanLine.includes('以狮子之心') || cleanLine.includes('终极财富') || cleanLine.includes('最终神谕')) {
+      currentKey = 'final'; continue;
+    }
+    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书') || cleanLine.includes('年度盘口')) {
+      currentKey = 'oracle'; continue;
+    }
+
+    // 🎯 核心防截断天锁：非标题行无脑灌入当前抽屉，绝不丢字符！
+    cardMap[currentKey].push(line);
+  }
+
+  const finalCleanedMap: Record<string, string> = {};
+  for (const [key, linesArray] of Object.entries(cardMap)) {
+    const joinedText = linesArray.join('\n');
+    finalCleanedMap[key] = cleanRawReportText(cleanYearlyTimeline(joinedText)).trim();
+  }
+  return finalCleanedMap;
+};
+
 // ── 金句高亮器 ──
 const highlightYearlyGold = (text: string): React.ReactNode => {
   if (!text) return null;
@@ -1107,6 +1192,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const currentActiveKeyRef = useRef<string>('oracle'); // 指针（用ref避免每次chunk重渲染）
   const streamingBufferRef = useRef<string>(''); // 军师V21: 滑动窗口buffer，保留最近200字符用于锚点检测(防SSE chunk切分)
   const fullYearlyTextRef = useRef<string>(''); // 军师V22: 累积全年报完整流式文本，流式结束后统一解析重对账
+  const streamingPhaseRef = useRef<number>(0); // 🛠️ V34 UX状态：0=等待,1=蓄水中,2=加速,3=尾声,4=完成
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
@@ -1794,77 +1880,50 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             if (line.startsWith('data: ')) {
               const dataStr = line.slice(6).trim();
               if (dataStr === '[DONE]') {
-                // 🎯 军师钩子:流式结束瞬间弹出复购/裂变引导
                 console.log('[WealthReport] 📜 天书刻印完成,触发商业钩子');
-                setStreamedOnce(true); // 🛡️ 标记:曾经流过,报告保持可见
-                
-                // 🛠️ 军师方案D完全体：年报指针流结束逻辑
+                setStreamedOnce(true);
+                streamingPhaseRef.current = 4; // 蓄水完成，进入总装
+
+                // 🛠️ V34铁血总装:流式期间全蓄水,[DONE]一枪轰出17块!
                 if (type === 'yearly') {
-                  // 🎯 军师V30终极修复: 在 [DONE] 阶段直接用完整文本重新分片到17张卡片
-                  // 之前 V22 在 [DONE] 时清空了 fullYearlyTextRef,导致 finally 阶段 V23 永远拿不到数据
-                  // 现在 [DONE] 阶段直接用 parseYearlyReportV23 重新分片,覆盖流式期间的临时数据
                   if (fullYearlyTextRef.current && fullYearlyTextRef.current.length > 100) {
                     try {
                       const fullText = fullYearlyTextRef.current;
-                      console.log('[WealthReport] 🚨 V30在[DONE]阶段触发总装, 全量=' + fullText.length + '字符');
-                      // 1. 完整文本一把切碎分流到17张卡片
-                      const finalMap = parseYearlyReportV23(fullText);
-                      // 2. 暴力覆盖流式期间的临时数据
+                      const trueZodiac = getTrueZodiacByDate(birthDate);
+                      console.log('[WealthReport] 🚨 V34在[DONE]阶段触发总装, 全量=' + fullText.length + '字符, 真实星座=' + trueZodiac);
+                      const finalMap = parseYearlyReportV24(fullText, trueZodiac);
                       setYearlyCardData(finalMap);
-                      console.log('[WealthReport] ✅ V30总装完成: oracle=' + (finalMap.oracle?.length || 0) + ' ch1=' + (finalMap.ch1?.length || 0) + ' m1-m12=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k]?.length || 0).join(','));
+                      console.log('[WealthReport] ✅ V34总装完成: oracle=' + (finalMap.oracle?.length || 0) +
+                        ' ch1=' + (finalMap.ch1?.length || 0) +
+                        ' ch3=' + (finalMap.ch3?.length || 0) +
+                        ' ch4=' + (finalMap.ch4?.length || 0) +
+                        ' ch5=' + (finalMap.ch5?.length || 0) +
+                        ' final=' + (finalMap.final?.length || 0) +
+                        ' m1-m12=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k]?.length || 0).join(','));
                     } catch (parseErr) {
-                      console.error('[WealthReport] V30总装失败, 回退到单卡片清洗:', parseErr);
-                      // 失败时回退到 V22 单卡片清洗逻辑
-                      setYearlyCardData(prev => {
-                        const cleaned: Record<string, string> = {};
-                        for (const [key, content] of Object.entries(prev)) {
-                          let c = content || '';
-                          c = c.replace(/^>\s*#+/gm, '##');
-                          c = c.replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启');
-                          c = c.replace(/📅|📊|📕|✦/g, '');
-                          c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
-                          c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
-                          cleaned[key] = c;
-                        }
-                        return cleaned;
-                      });
+                      console.error('[WealthReport] V34总装失败:', parseErr);
                     }
                   } else {
-                    console.warn('[WealthReport] ⚠️ fullYearlyTextRef 为空, 无法分片');
+                    console.warn('[WealthReport] ⚠️ fullYearlyTextRef为空,无法分片');
                   }
-                  
                   setYearlyCardsReady(true);
-                  currentActiveKeyRef.current = 'oracle'; // 重置指针
-                  streamingBufferRef.current = ''; // 军师V21: 清空buffer
-                  // 🔧 V30修复: 不再清空 fullYearlyTextRef, 让 finally 阶段 V23 仍能拿到数据(双保险)
-                  console.log('[WealthReport] ✅ 年报17张卡片流式注入完成+总清洗完毕');
+                  currentActiveKeyRef.current = 'oracle';
+                  console.log('[WealthReport] ✅ 年报V34总装完毕,17张黄金卡片全部就位');
                 }
-                
+
                 break;
               }
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.text) {
-                  // 🛠️ 年报V33: 边流式边分配到17张卡片,流式结束直接完成
+                  // 🛠️ V34铁血改进:流式期间只蓄水不分配,卡片全部保持骨架灯
                   if (type === 'yearly') {
                     const newChunk = parsed.text;
                     fullYearlyTextRef.current = (fullYearlyTextRef.current || '') + newChunk;
-                    // 检测锚点,移动指针
-                    const lowerChunk = newChunk.toLowerCase();
-                    const anchors = getAnchors(lang);
-                    for (const anchor of anchors) {
-                      for (const matchStr of anchor.match) {
-                        if (lowerChunk.includes(matchStr.toLowerCase())) {
-                          currentActiveKeyRef.current = anchor.key;
-                          break;
-                        }
-                      }
-                    }
-                    // 增量注入到当前激活的卡片
-                    setYearlyCardData(prev => ({
-                      ...prev,
-                      [currentActiveKeyRef.current]: (prev[currentActiveKeyRef.current] || '') + newChunk
-                    }));
+                    // 🛠️ V34 UX进度追踪:蓄水池满了就升级阶段(0→1→2→3→4)
+                    const totalLen = fullYearlyTextRef.current.length;
+                    if (totalLen > 3000 && streamingPhaseRef.current < 2) streamingPhaseRef.current = 2;
+                    else if (totalLen > 800 && streamingPhaseRef.current < 1) streamingPhaseRef.current = 1;
                   } else {
                     setWealthReportText((prev) => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
@@ -1888,20 +1947,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🔮 军师V23: 极权模糊全量切割机 4.0——一把切碎、一把推入
-        if (type === 'yearly' && fullYearlyTextRef.current) {
+        // 🔮 V34: finally块做最终兜底(正常路径已在[DONE]处理完)
+        if (type === 'yearly' && fullYearlyTextRef.current && !yearlyCardsReady) {
           try {
             const fullText = fullYearlyTextRef.current;
-            console.log('[WealthReport] 🚨 V23触发流式结束总装，全量=' + fullText.length + '字符');
-            // 1. 拿到完整文本，直接一把切碎分流！
-            const finalMap = parseYearlyReportV23(fullText);
-            // 2. 暴力一把推入 React 状态机（覆盖流式期间的临时数据）
+            const trueZodiac = getTrueZodiacByDate(birthDate);
+            console.log('[WealthReport] 🚨 V34 finally兜底总装, 全量=' + fullText.length + '字符');
+            const finalMap = parseYearlyReportV24(fullText, trueZodiac);
             setYearlyCardData(finalMap);
-            // 3. 升起准备就绪旗帜，震碎骨架屏！
             setYearlyCardsReady(true);
-            console.log('[WealthReport] ✅ V23终极总装完成: m1-m12各=' + Object.keys(finalMap).filter(k => k.startsWith('m')).map(k => finalMap[k].length).join(','));
+            console.log('[WealthReport] ✅ V34 finally兜底完成');
           } catch (parseErr) {
-            console.error('[WealthReport] V23总装失败:', parseErr);
+            console.error('[WealthReport] V34 finally兜底失败:', parseErr);
           }
         }
         // 🔮 军师铁律:骨架框就是最终卡片,永不卸载
@@ -2448,12 +2505,39 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           // 🛠️ 军师方案D完全体：年报17卡片指针流
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const anchors = getAnchors(lang);
-            
+            const phase = streamingPhaseRef.current;
+            const isStreaming = !yearlyCardsReady;
+
+            // 🛠️ V34仪式感进度条文案
+            const phaseText = phase === 0 ? ''
+              : phase === 1 ? '🔮 正在链接北斗星盘，抽取天命数据中...'
+              : phase >= 2 && phase < 4 ? '📅 正在雕刻流月财富矩阵，跨越2026-2027沙盘...'
+              : '';
+
             return (
               <div id="wealth-report-container" style={{ marginTop: '16px' }}>
                 <div style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid rgba(212,175,55,0.2)' }}>
                   📅 {t('wealthReport.yearlyReportTitle') || '年度财富报告'}
                 </div>
+
+                {/* 🛠️ V34仪式感进度条 */}
+                {isStreaming && phaseText && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '14px 20px',
+                    background: 'linear-gradient(135deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.8) 100%)',
+                    border: '1px solid rgba(212,175,55,0.3)',
+                    borderRadius: '12px',
+                    marginBottom: '16px',
+                    animation: 'pulse 2s ease-in-out infinite',
+                    fontSize: '13px',
+                    color: 'rgba(212,175,55,0.9)',
+                    letterSpacing: '1px',
+                    fontWeight: 600,
+                  }}>
+                    {phaseText}
+                  </div>
+                )}
                 
                 {anchors.map((anchor) => {
                   // 🛠️ 军师V19: ch2 不独立渲染 - 12个月份卡片已代替
