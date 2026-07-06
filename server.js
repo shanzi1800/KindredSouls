@@ -1296,11 +1296,23 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
   };
 
+  // 🔧 V32修复: 根据birthDate计算真实星座(之前硬编码'双子座'导致所有用户都是双子座)
+  const [_, birthMonth, birthDay] = birthDate.split('-').map(Number);
+  const signs = ['摩羯座','水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座'];
+  function getZodiacIdx(m, d) {
+    const cuts = [[1,20,1],[2,19,2],[3,21,3],[4,20,4],[5,21,5],[6,22,6],[7,23,7],[8,23,8],[9,23,9],[10,24,10],[11,22,11],[12,22,0]];
+    for (let i = cuts.length - 1; i >= 0; i--) {
+      if (m > cuts[i][0] || (m === cuts[i][0] && d >= cuts[i][1])) return cuts[i][2];
+    }
+    return 0;
+  }
+  const realSunSign = signs[getZodiacIdx(birthMonth, birthDay)];
+
   try {
     const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
       dayMaster: '甲',
       wuxing: { '金':1, '木':2, '水':1, '火':1, '土':1 },
-      sunSign: '双子座',
+      sunSign: realSunSign, // 🔧 V32: 使用真实星座
       hexName: '震',
       cardName: '隐士',
     });

@@ -660,8 +660,10 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
     if (matched) continue; // 这一行是月份标题，不塞入正文
 
     // 🎯 极权判定 2：大章节拦截（不管在行首还是行中，只要包含核心死字，强行切片！）
+    // 🔧 V32修复: 章节标题本身也要存入对应卡片,不能跳过
     if (cleanLine.includes('第一章') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
       currentKey = 'ch1';
+      cardMap[currentKey].push(line); // 存入章节标题
       continue;
     }
     if (cleanLine.includes('第二章') || cleanLine.includes('12个月财富') || cleanLine.includes('12个月收入')) {
