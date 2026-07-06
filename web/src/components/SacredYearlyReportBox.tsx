@@ -1,5 +1,4 @@
-// 🛠️ V58: SacredYearlyReportBox - 山子大叔9项修改完整版
-// 5.章节金色 6.边框金色+滚动条深色 7.按键金色 8.背景深色 9.标题改"年度财富报告"
+// 🛠️ V59: 修复Markdown符号残留+排版优化
 import React, { useEffect, useRef } from 'react';
 
 const SacredYearlyReportBox: React.FC<{
@@ -13,7 +12,6 @@ const SacredYearlyReportBox: React.FC<{
 
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
 
-  // 追光器
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -25,7 +23,6 @@ const SacredYearlyReportBox: React.FC<{
     }
   }, [rawStreamText, yearlyCardsReady, hasContent, tickRef.current]);
 
-  // 强制刷新tick
   useEffect(() => {
     if (!yearlyCardsReady && hasContent) {
       const iv = setInterval(() => { tickRef.current += 1; }, 300);
@@ -40,131 +37,163 @@ const SacredYearlyReportBox: React.FC<{
     autoScrollRef.current = atBottom;
   };
 
-  // 解析行 - 增强章节名识别
-  const parseLine = (line: string): { type: string; content: string } => {
+  // 清洗Markdown符号
+  const cleanMarkdown = (text: string): string => {
+    return text
+      .replace(/^\*\s*/g, '')           // 行首 * 列表符号
+      .replace(/^-\s*/g, '')            // 行首 - 列表符号
+      .replace(/\*\*/g, '')             // ** 粗体标记
+      .replace(/\*/g, '')               // 剩余 *
+      .replace(/^#{1,3}\s*/g, '')       // ### 标题标记
+      .replace(/^>\s*/g, '')            // > 引用标记
+      .trim();
+  };
+
+  const parseLine = (line: string): { type: string; content: string; icon?: string } => {
     const t = line.trim();
     if (!t) return { type: 'empty', content: '' };
     
-    // 【✦ 章节名 ✦】格式
+    // 检测图标
+    const iconMatch = t.match(/^([🚀⚠️🟢🔴💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
+    const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
+    const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
+    
+    // 【✦ 章节名 ✦】
     if (t.match(/^【\s*✦.+✦\s*】$/)) {
       return { type: 'chapter', content: t.replace(/【\s*✦\s*|\s*✦\s*】/g, '') };
     }
     
-    // Markdown标题 ## 第一章：xxx
-    if (t.match(/^#{2,3}\s+/)) {
-      return { type: 'heading', content: t.replace(/^#{2,3}\s+/, '') };
-    }
-    
-    // AI输出的章节名（无Markdown标记）
+    // 大标题关键词
     const chapterPatterns = [
       '第一章', '第二章', '第三章', '第四章', '第五章', '最终章',
       '年度财富核心', '先知神谕', '天命破局', '消费黑洞', '黄金爆发',
       '财富流月', '宿命财运', '最终财富', '通关密令', '先知天书',
-      '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位'
+      '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位',
+      '累进财富通道', '阴影消耗黑洞'
     ];
-    if (chapterPatterns.some(p => t.includes(p))) {
-      return { type: 'heading', content: t };
+    if (chapterPatterns.some(p => textWithoutIcon.includes(p))) {
+      return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
     }
     
-    // 月份标题
+    // 月份/年份
     if (t.match(/^(2026年|2027年|\d{4}-\d{4})/)) {
-      return { type: 'subheading', content: t };
+      return { type: 'subheading', content: cleanMarkdown(t) };
     }
     
-    if (t === '━━━━━━━━━━━━━━━━━━' || t === '---') return { type: 'divider', content: '' };
+    // 分隔线
+    if (t.match(/^[━\-─=]{3,}$/) || t === '---') return { type: 'divider', content: '' };
+    
+    // 表格
     if (t.match(/^\|[-\s|]+\|$/)) return { type: 'skip', content: '' };
     if (t.match(/^\|.+/)) {
-      const cells = t.split('|').filter(c => c.trim()).map(c => c.trim());
+      const cells = t.split('|').filter(c => c.trim()).map(c => cleanMarkdown(c.trim()));
       return { type: 'table', content: cells.join(' · ') };
     }
-    if (t.match(/^🟢|^🔴|^⚠️|^🚀/)) return { type: 'alert', content: t };
-    return { type: 'text', content: t };
-  };
-
-  const renderBold = (text: string): React.ReactNode[] => {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, i) =>
-      p.startsWith('**') && p.endsWith('**')
-        ? <span key={i} style={{ fontWeight: 700, color: '#D4AF37' }}>{p.slice(2, -2)}</span>
-        : <span key={i}>{p}</span>
-    );
+    
+    // 警告/提示
+    if (t.match(/^🟢|^🔴|^⚠️|^🚀/)) {
+      return { type: 'alert', content: cleanMarkdown(t) };
+    }
+    
+    // 普通列表项（带图标）
+    if (icon) {
+      return { type: 'listItem', content: cleanMarkdown(textWithoutIcon), icon };
+    }
+    
+    return { type: 'text', content: cleanMarkdown(t) };
   };
 
   const renderLines = () => {
     if (!rawStreamText) return null;
     return rawStreamText.split('\n').map((line, idx) => {
-      const { type, content } = parseLine(line);
-      if (type === 'empty') return <div key={idx} style={{ height: '6px' }} />;
+      const { type, content, icon } = parseLine(line);
+      
+      if (type === 'empty') return <div key={idx} style={{ height: '4px' }} />;
       if (type === 'skip') return null;
       if (type === 'divider') return (
         <div key={idx} style={{
-          height: '1px', margin: '12px 0',
-          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)'
+          height: '1px', margin: '10px 0',
+          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)'
         }} />
       );
-      // 章节名 - 金色大标题
+      
       if (type === 'chapter') return (
         <div key={idx} style={{
           color: '#D4AF37', fontSize: '15px', fontWeight: 700,
-          textAlign: 'center', letterSpacing: '2px', margin: '18px 0 14px',
-          textShadow: '0 0 10px rgba(212,175,55,0.3)'
+          textAlign: 'center', letterSpacing: '2px', margin: '16px 0 12px',
+          textShadow: '0 0 8px rgba(212,175,55,0.25)'
         }}>
           【✦ {content} ✦】
         </div>
       );
-      // 标题 - 金色
+      
       if (type === 'heading') return (
         <div key={idx} style={{
-          color: '#D4AF37', fontSize: '14px', fontWeight: 700,
-          textAlign: 'center', margin: '16px 0 12px', letterSpacing: '1px'
+          color: '#D4AF37', fontSize: '13px', fontWeight: 700,
+          textAlign: 'center', margin: '14px 0 10px', letterSpacing: '0.5px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
         }}>
-          {content}
+          {icon && <span>{icon}</span>}
+          <span>{content}</span>
         </div>
       );
-      // 子标题 - 淡金色
+      
       if (type === 'subheading') return (
         <div key={idx} style={{
-          color: 'rgba(212,175,55,0.85)', fontSize: '13px', fontWeight: 600,
-          margin: '12px 0 8px', letterSpacing: '0.5px'
+          color: 'rgba(212,175,55,0.8)', fontSize: '12px', fontWeight: 600,
+          margin: '10px 0 6px', letterSpacing: '0.5px'
         }}>
           {content}
         </div>
       );
+      
       if (type === 'table') return (
         <div key={idx} style={{
-          color: 'rgba(255,255,255,0.8)', fontSize: '12px', lineHeight: 1.6,
-          marginBottom: '4px', borderBottom: '1px solid rgba(212,175,55,0.1)', paddingBottom: '4px'
+          color: 'rgba(255,255,255,0.75)', fontSize: '11px', lineHeight: 1.5,
+          marginBottom: '4px', paddingLeft: '12px'
         }}>
           {content}
         </div>
       );
+      
       if (type === 'alert') {
         const isG = content.includes('🟢'), isR = content.includes('🔴');
         return (
           <div key={idx} style={{
-            color: isG ? 'rgba(16,185,129,0.95)' : isR ? 'rgba(239,68,68,0.95)' : 'rgba(212,175,55,0.9)',
-            fontSize: '12px', fontWeight: 600, margin: '8px 0 4px'
+            color: isG ? 'rgba(16,185,129,0.9)' : isR ? 'rgba(239,68,68,0.9)' : 'rgba(212,175,55,0.85)',
+            fontSize: '11px', fontWeight: 600, margin: '6px 0 4px', paddingLeft: '12px'
           }}>
-            {renderBold(content)}
+            {content}
           </div>
         );
       }
+      
+      if (type === 'listItem') {
+        return (
+          <div key={idx} style={{
+            color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7,
+            marginBottom: '4px', display: 'flex', alignItems: 'flex-start', gap: '8px'
+          }}>
+            <span style={{ flexShrink: 0 }}>{icon}</span>
+            <span style={{ flex: 1 }}>{content}</span>
+          </div>
+        );
+      }
+      
       return (
         <div key={idx} style={{
-          color: 'rgba(255,255,255,0.88)', fontSize: '12.5px', lineHeight: 1.85, marginBottom: '6px'
+          color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px'
         }}>
-          {renderBold(content)}
+          {content}
         </div>
       );
     });
   };
 
-  // 骨架屏
   const SkeletonBar = ({ delay, w }: { delay: number; w: string }) => (
     <div style={{
-      height: '14px', width: w, marginBottom: '20px', borderRadius: '8px',
-      background: 'linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))',
-      border: '1px solid rgba(212,175,55,0.05)',
+      height: '12px', width: w, marginBottom: '16px', borderRadius: '6px',
+      background: 'linear-gradient(90deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04))',
       animation: `sacredPulse 2s ease-in-out ${delay}s infinite`,
     }} />
   );
@@ -173,93 +202,79 @@ const SacredYearlyReportBox: React.FC<{
     <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 16px' }}>
       <style>{`
         @keyframes sacredPulse {
-          0%, 100% { opacity: 0.15; transform: scaleX(0.97); }
-          50% { opacity: 0.85; transform: scaleX(1.03); }
+          0%, 100% { opacity: 0.12; transform: scaleX(0.97); }
+          50% { opacity: 0.7; transform: scaleX(1.02); }
         }
         @keyframes sacredGlow {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.9; }
         }
-        /* 深色滚动条 */
-        .dark-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .dark-scrollbar::-webkit-scrollbar-track {
-          background: rgba(0,0,0,0.3);
-          border-radius: 3px;
-        }
-        .dark-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(212,175,55,0.4);
-          border-radius: 3px;
-        }
-        .dark-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(212,175,55,0.6);
-        }
+        .dark-scrollbar::-webkit-scrollbar { width: 5px; }
+        .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.4); border-radius: 3px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.35); border-radius: 3px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.55); }
       `}</style>
 
-      {/* 暗晶盒子 - 金色边框，深色背景 */}
       <div style={{
-        position: 'relative', borderRadius: '16px',
-        border: '1.5px solid rgba(212,175,55,0.35)',  // 6. 金色边框
-        background: 'linear-gradient(180deg, rgba(10,12,20,0.98) 0%, rgba(5,6,10,0.99) 100%)',  // 8. 深色背景
-        padding: '24px', 
-        boxShadow: '0 0 40px rgba(0,0,0,0.8), inset 0 0 60px rgba(212,175,55,0.02)'
+        position: 'relative', borderRadius: '14px',
+        border: '1.5px solid rgba(212,175,55,0.3)',
+        background: 'linear-gradient(180deg, rgba(12,14,22,0.98) 0%, rgba(6,7,12,0.99) 100%)',
+        padding: '20px', 
+        boxShadow: '0 0 30px rgba(0,0,0,0.85), inset 0 0 40px rgba(212,175,55,0.015)'
       }}>
-        {/* 顶部标题 - 9. 改"年度财富报告"，删除英文 */}
+        {/* 标题 */}
         <div style={{ 
           textAlign: 'center', 
-          marginBottom: '16px', 
-          paddingBottom: '12px', 
-          borderBottom: '1px solid rgba(212,175,55,0.15)' 
+          marginBottom: '14px', 
+          paddingBottom: '10px', 
+          borderBottom: '1px solid rgba(212,175,55,0.12)' 
         }}>
           <h3 style={{ 
             color: '#D4AF37', 
             fontWeight: 700, 
-            letterSpacing: '3px', 
-            fontSize: '16px', 
+            letterSpacing: '4px', 
+            fontSize: '15px', 
             margin: 0 
           }}>
             年度财富报告
           </h3>
         </div>
 
-        {/* 滚动内容区 - 深色滚动条 */}
+        {/* 滚动区 */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
           className="dark-scrollbar"
           style={{ 
-            height: '470px', 
+            height: '460px', 
             overflowY: 'auto', 
-            paddingRight: '8px', 
+            paddingRight: '6px', 
             textAlign: 'left',
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(212,175,55,0.4) rgba(0,0,0,0.3)'
           }}
         >
           {!hasContent ? (
-            <div style={{ padding: '24px 0' }}>
-              <SkeletonBar delay={0} w="92%" />
-              <SkeletonBar delay={1} w="75%" />
-              <SkeletonBar delay={2} w="83%" />
-              <SkeletonBar delay={3} w="67%" />
-              <SkeletonBar delay={4} w="58%" />
+            <div style={{ padding: '20px 0' }}>
+              <SkeletonBar delay={0} w="90%" />
+              <SkeletonBar delay={1} w="72%" />
+              <SkeletonBar delay={2} w="80%" />
+              <SkeletonBar delay={3} w="65%" />
+              <SkeletonBar delay={4} w="55%" />
             </div>
           ) : (
             <div>{renderLines()}</div>
           )}
         </div>
 
-        {/* 底部暗金光晕 */}
+        {/* 底部光晕 */}
         <div style={{
-          position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px',
-          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)',
+          position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '3px',
+          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
           animation: 'sacredGlow 3s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', bottom: '-35px', left: '50%', transform: 'translateX(-50%)',
-          width: '100px', height: '70px', background: 'rgba(212,175,55,0.15)',
-          borderRadius: '50%', filter: 'blur(25px)', pointerEvents: 'none',
+          position: 'absolute', bottom: '-30px', left: '50%', transform: 'translateX(-50%)',
+          width: '80px', height: '60px', background: 'rgba(212,175,55,0.12)',
+          borderRadius: '50%', filter: 'blur(20px)', pointerEvents: 'none',
           animation: 'sacredGlow 3s ease-in-out infinite',
         }} />
       </div>
