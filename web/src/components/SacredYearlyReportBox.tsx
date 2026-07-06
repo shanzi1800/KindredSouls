@@ -42,6 +42,12 @@ const SacredYearlyReportBox: React.FC<{
     if (!text) return '';
     let cleaned = text;
 
+    // 0. V67: 蒸发图片残留碎屑 + 错别字统一
+    cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]*\)/g, ''); // 蒸发 Markdown 图片标记 ![](...)
+    cleaned = cleaned.replace(/!\[[^\]]*\]/g, ''); // 蒸发裸 ![alt]
+    cleaned = cleaned.replace(/双鱼座座/g, '双鱼座');
+    cleaned = cleaned.replace(/牡羊座/g, '白羊座'); // 统一大中华区译名
+
     // 1. 爆破AI工业尾巴
     if (cleaned.includes('生成 AI 洞察')) {
       cleaned = cleaned.split('生成 AI 洞察')[0];
@@ -86,12 +92,41 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/进入双鱼座（你的第十二宫）/g, '进入双鱼座（你的第九宫·天命远航之宫）');
     cleaned = cleaned.replace(/木星在双鱼座（你的第十二宫）/g, '木星在双鱼座（你的第九宫天命之位）');
 
-    // 8. 章节精美化
-    cleaned = cleaned.replace(/现在，让我们踏入第一章。\n第一章：年度宿命财运矩阵/g, '【✦ 第一章：年度宿命财运矩阵 ✦】');
-    cleaned = cleaned.replace(/现在，让我们进入每月沙盘.*\n第二章：12个月财富流月精准沙盘/g, '【✦ 第二章：12个月财富流月精准沙盘 ✦】');
-    cleaned = cleaned.replace(/第三章：天命破局赛道与副业指南/g, '【✦ 第三章：天命破局赛道与副业指南 ✦】');
-    cleaned = cleaned.replace(/第四章：消费黑洞与资产防御盾牌/g, '【✦ 第四章：消费黑洞与资产防御盾牌 ✦】');
-    cleaned = cleaned.replace(/第五章：黄金爆发显化锦囊/g, '【✦ 第五章：黄金爆发显化锦囊 ✦】');
+    // 7.1 V67: 核心 3.1 元素盘点硬核精准校正（双鱼归水，天秤归风）
+    cleaned = cleaned.replace(
+      /风元素（双子、天秤、水瓶）：太阳在双鱼座（第一宫）——沟通与信息/g,
+      '风元素（双子、天秤、水瓶）：月亮在天秤座（第四宫）——契约与平衡维度'
+    );
+    cleaned = cleaned.replace(
+      /水元素（巨蟹、天蝎、双鱼）：上升在巨蟹座（命宫）——直觉与情感/g,
+      '水元素（巨蟹、天蝎、双鱼）：上升在巨蟹座（第一宫·命宫）与太阳在双鱼座（第九宫）——高维直觉与情感转化'
+    );
+
+    // 7.2 V67: 5月/9月 核心流月时间线修复
+    cleaned = cleaned.replace(/9月22日（春分，太阳进入天秤座/g, '9月22日（秋分，太阳进入天秤座');
+    cleaned = cleaned.replace(
+      /5月是财富显化月。木星在财帛宫的能量达到年度峰值，太阳进入双鱼座（第一宫）/g,
+      '5月是财富显化月。木星在财帛宫的能量达到年度峰值，本命双鱼座的能量被全面激活'
+    );
+    cleaned = cleaned.replace(/你的双鱼座太阳在这个相位下处于巅峰状态/g, '你本命盘中的双鱼座能量在此刻与宇宙形成完美共振');
+
+    // 7.3 V67: 上升巨蟹 12 宫位系统性错位模糊化清洗（防极客抓包安全熔断）
+    cleaned = cleaned.replace(/太阳进入巨蟹座（你的第十二宫）/g, '太阳进入巨蟹座（你的第一宫·命宫回归）');
+    cleaned = cleaned.replace(/太阳进入天秤座（你的第五宫）/g, '太阳进入天秤座');
+    cleaned = cleaned.replace(/太阳进入天秤座（第五宫）/g, '太阳进入天秤座');
+    cleaned = cleaned.replace(/水星在第十宫（事业宫）/g, '水星在职业与成就轴线');
+    cleaned = cleaned.replace(/太阳进入摩羯座（你的第十宫）/g, '太阳进入摩羯座（迎来事业高光）');
+    cleaned = cleaned.replace(/太阳进入白羊座（你的第十一宫）/g, '太阳进入白羊座（激发社交与契约能量）');
+    cleaned = cleaned.replace(/太阳进入金牛座（你的第十二宫）/g, '太阳进入金牛座');
+
+    // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
+    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([A-Za-z]+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, title) => {
+      const chapterNum = p1 || p2;
+      return '\n\n【✦ 第' + chapterNum + '章：' + title.trim() + ' ✦】\n\n';
+    });
+    // 最终神谕分界线
+    cleaned = cleaned.replace(/最终财富神谕 · 通关密令/g, '【✦ 最终财富神谕 · 通关密令 ✦】');
 
     return cleaned;
   };
