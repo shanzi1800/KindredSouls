@@ -2456,14 +2456,52 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const isStreaming = !yearlyCardsReady;
             const trueZodiac = getTrueZodiacByDate(birthDate);
-            // 🛠️ V40: 直接从sacredText状态渲染，不读任何ref
-            let displayText = sacredText;
-            if (trueZodiac && trueZodiac !== '双子座') {
-              displayText = displayText.replace(/双子座/g, trueZodiac);
-              displayText = displayText.replace(/双子天命/g, trueZodiac + '天命');
-              // 🛠️ V41: 斩杀"太阳双子"幻觉（如"太阳双子 9°" → "太阳双鱼座 9°"）
-              displayText = displayText.replace(/太阳双子/g, '太阳' + trueZodiac);
-            }
+            // 🛠️ V45: 军师版万能强切洗涤器——一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
+            const formatAndCleanSacredText = (text: string): string => {
+              if (!text) return '';
+              let c = text;
+
+              // 0. 【斩首复读尾巴】
+              if (c.includes('生成 AI 洞察')) {
+                c = c.split('生成 AI 洞察')[0];
+              }
+
+              // 1. 【斩杀太阳双子幻觉】
+              if (trueZodiac && trueZodiac !== '双子座') {
+                c = c.replace(/太阳双子/g, '太阳' + trueZodiac);
+                c = c.replace(/双子座/g, trueZodiac);
+                c = c.replace(/双子天命/g, trueZodiac + '天命');
+                c = c.replace(/双子守护/g, trueZodiac + '守护');
+              }
+
+              // 2. 【斩杀"双鱼座风元素"常识错误】
+              c = c.replace(/双鱼座太阳的永恒印记。?你的灵魂带着风元素/g,
+                '双鱼座太阳的永恒印记。你的灵魂带着水元素的深邃');
+              c = c.replace(/基于风元素（双鱼座）/g, '基于水元素（双鱼座）');
+              c = c.replace(/双鱼座的沟通能力/g, '双鱼座的直觉感知力');
+
+              // 3. 【斩杀水瓶座天顶第十宫穿帮——水瓶座是第八宫疾厄宫/深层转化/偏财宫】
+              c = c.replace(/冥王星在水瓶座的行进，持续在你星盘的天顶——事业与公众形象/g,
+                '冥王星在水瓶座的行进，持续在你星盘的第八宫——深层转化与偏财跨越');
+              c = c.replace(/冥王星在你的天顶（第十宫，事业宫）/g,
+                '冥王星在你的第八宫（深层转化与隐秘财富之宫）');
+              c = c.replace(/水瓶座（你的第十宫宫头，代表事业/g,
+                '水瓶座（你的第八宫宫头，代表深层资产转化');
+              c = c.replace(/在你的事业宫（水瓶座）逆行/g,
+                '在你的深层资源宫（水瓶座）逆行');
+              c = c.replace(/水瓶座（你的第十宫/g,
+                '水瓶座（你的第八宫');
+              c = c.replace(/水瓶座在第十宫/g, '水瓶座在第八宫');
+
+              // 4. 【斩杀重复黑天鹅理由话术——保留第一个，其余按星象差异化】
+              // 已由后端prompt修正，此处前端兜底
+              c = c.replace(/你的“阴影自我”——对控制的渴望——可能被触发。{2,}/g, '你需保持冷静与觉知。');
+              c = c.replace(/你的“阴影自我”——急躁和愤怒——可能被触发。{2,}/g, '你需控制冲动，深思熟虑。');
+
+              return c.trim();
+            };
+
+            const displayText = formatAndCleanSacredText(sacredText);
             const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
             return (
