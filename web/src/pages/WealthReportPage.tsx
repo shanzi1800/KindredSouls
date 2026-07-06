@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
+import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
@@ -2510,119 +2511,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
             return (
-              <div id="wealth-report-container" style={{ marginTop: '16px' }}>
-                {/* 仪式感提示 */}
-                {isStreaming && (
-                  <div style={{
-                    textAlign: 'center', padding: '12px 16px',
-                    background: 'rgba(212,175,55,0.08)',
-                    border: '1px solid rgba(212,175,55,0.2)',
-                    borderRadius: '10px', marginBottom: '12px',
-                    fontSize: '12px', color: '#D4AF37', letterSpacing: '0.5px'
-                  }}>
-                    🔮 正在链接星盘能量...
-                  </div>
-                )}
-
-                {/* 🛠️ V46单框天书圣卷 */}
-                <div style={{
-                  borderRadius: '16px',
-                  border: '1.5px solid rgba(212,175,55,0.25)',
-                  background: 'linear-gradient(180deg, rgba(26,26,46,0.9) 0%, rgba(13,13,26,0.95) 100%)',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 0 60px rgba(212,175,55,0.03)',
-                  position: 'relative',
-                }}>
-                  {/* 表头 */}
-                  <div style={{
-                    padding: '16px 18px 12px',
-                    borderBottom: '1px solid rgba(212,175,55,0.1)',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '2px', marginBottom: '4px' }}>
-                      ✦ 先知天书 · 财富天启 ✦
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
-                      年度财富报告
-                    </div>
-                  </div>
-
-                  {/* 🛠️ V46滚动内容区：追光器+星光呼吸灯骨架 */}
-                  <div
-                    ref={textContainerRef}
-                    style={{
-                      height: '450px',
-                      overflowY: 'auto',
-                      padding: '16px 18px',
-                      WebkitOverflowScrolling: 'touch',
-                    }}
-                  >
-                    {cleaned ? (
-                      <div style={{
-                        fontSize: '13px',
-                        color: 'rgba(255,255,255,0.88)',
-                        lineHeight: 1.9,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}>
-                        {cleaned}
-                      </div>
-                    ) : isStreaming ? (
-                      /* 🛠️ V46星光呼吸灯骨架屏 */
-                      <div className="space-y-4 py-4">
-                        {/* 星光呼吸灯：3行不同宽度的琥珀色骨架条 */}
-                        <div className="space-y-3">
-                          <div className="h-3 bg-amber-500/10 rounded border border-amber-500/10 animate-pulse" style={{ width: '85%', animationDuration: '2s' }} />
-                          <div className="h-3 bg-amber-500/10 rounded border border-amber-500/10 animate-pulse" style={{ width: '70%', animationDuration: '2s', animationDelay: '0.3s' }} />
-                          <div className="h-3 bg-amber-500/10 rounded border border-amber-500/10 animate-pulse" style={{ width: '90%', animationDuration: '2s', animationDelay: '0.6s' }} />
-                          <div className="h-3 bg-amber-500/10 rounded border border-amber-500/10 animate-pulse" style={{ width: '55%', animationDuration: '2s', animationDelay: '0.9s' }} />
-                        </div>
-                        <div className="border-t border-amber-500/10 my-3" />
-                        <div className="space-y-2">
-                          <div className="h-3 bg-amber-500/8 rounded border border-amber-500/8 animate-pulse" style={{ width: '78%', animationDuration: '2.5s' }} />
-                          <div className="h-3 bg-amber-500/8 rounded border border-amber-500/8 animate-pulse" style={{ width: '60%', animationDuration: '2.5s', animationDelay: '0.4s' }} />
-                          <div className="h-3 bg-amber-500/8 rounded border border-amber-500/8 animate-pulse" style={{ width: '88%', animationDuration: '2.5s', animationDelay: '0.8s' }} />
-                        </div>
-                        <div className="border-t border-amber-500/10 my-3" />
-                        <div className="space-y-2">
-                          <div className="h-3 bg-amber-500/6 rounded border border-amber-500/6 animate-pulse" style={{ width: '65%', animationDuration: '3s' }} />
-                          <div className="h-3 bg-amber-500/6 rounded border border-amber-500/6 animate-pulse" style={{ width: '80%', animationDuration: '3s', animationDelay: '0.5s' }} />
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {/* 🛠️ V46底部尊贵暗金光晕边框装饰 */}
-                  <div style={{
-                    height: '4px',
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.4) 30%, rgba(212,175,55,0.6) 50%, rgba(212,175,55,0.4) 70%, transparent 100%)',
-                    margin: '0 15%',
-                    borderRadius: '0 0 16px 16px',
-                    /* 脉冲呼吸灯效果 */
-                    animation: 'sacredGlow 3s ease-in-out infinite',
-                  }} />
-
-                  {/* 底部中心暗金光晕球 */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '80px',
-                    height: '8px',
-                    background: 'radial-gradient(ellipse, rgba(212,175,55,0.25) 0%, transparent 70%)',
-                    animation: 'sacredGlow 3s ease-in-out infinite',
-                  }} />
-                </div>
-
-                {/* 全局呼吸灯keyframes */}
-                <style>{`
-                  @keyframes sacredGlow {
-                    0%, 100% { opacity: 0.6; }
-                    50% { opacity: 1; }
-                  }
-                `}</style>
-              </div>
+              // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
+              <SacredYearlyReportBox
+                rawStreamText={cleaned || ''}
+                yearlyCardsReady={yearlyCardsReady}
+                realSunSign={trueZodiac || '双鱼座'}
+              />
             );
           }
           
