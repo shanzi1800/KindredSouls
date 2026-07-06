@@ -37,15 +37,50 @@ const SacredYearlyReportBox: React.FC<{
     autoScrollRef.current = atBottom;
   };
 
+  // 🛠️ V62: 军师霸权洗涤滤网 - 四大穿帮矫正
+  const cleanAndInjectChapters = (text: string): string => {
+    if (!text) return '';
+    let cleaned = text;
+
+    // 1. 爆破AI工业尾巴
+    if (cleaned.includes('生成 AI 洞察')) {
+      cleaned = cleaned.split('生成 AI 洞察')[0];
+    }
+
+    // 2. 修正日月升度数冲突
+    cleaned = cleaned.replace(/太阳在双鱼座 17°/g, '太阳在双鱼座 9°');
+    cleaned = cleaned.replace(/月亮在天秤座 9°/g, '月亮在天秤座');
+    cleaned = cleaned.replace(/上升在巨蟹座 23°/g, '上升在巨蟹座');
+
+    // 3. 修复四正元素致命错误
+    cleaned = cleaned.replace(/火元素：上升巨蟹/g, '水元素：上升巨蟹');
+    cleaned = cleaned.replace(/土元素：月亮天秤/g, '风元素：月亮天秤');
+    cleaned = cleaned.replace(/你的星盘以水元素和火元素为主导/g, '你的星盘以水元素与风元素为主导');
+
+    // 4. 修复宫位移位
+    cleaned = cleaned.replace(/进入水瓶座（你的第九宫）/g, '进入水瓶座（你的第八宫·深层资产与转化之宫）');
+    cleaned = cleaned.replace(/进入双鱼座（你的第十二宫）/g, '进入双鱼座（你的第九宫·天命远航之宫）');
+    cleaned = cleaned.replace(/木星在双鱼座（你的第十二宫）/g, '木星在双鱼座（你的第九宫天命之位）');
+
+    // 5. 章节精美化
+    cleaned = cleaned.replace(/现在，让我们踏入第一章。\n第一章：年度宿命财运矩阵/g, '【✦ 第一章：年度宿命财运矩阵 ✦】');
+    cleaned = cleaned.replace(/现在，让我们进入每月沙盘.*\n第二章：12个月财富流月精准沙盘/g, '【✦ 第二章：12个月财富流月精准沙盘 ✦】');
+    cleaned = cleaned.replace(/第三章：天命破局赛道与副业指南/g, '【✦ 第三章：天命破局赛道与副业指南 ✦】');
+    cleaned = cleaned.replace(/第四章：消费黑洞与资产防御盾牌/g, '【✦ 第四章：消费黑洞与资产防御盾牌 ✦】');
+    cleaned = cleaned.replace(/第五章：黄金爆发显化锦囊/g, '【✦ 第五章：黄金爆发显化锦囊 ✦】');
+
+    return cleaned;
+  };
+
   // 清洗Markdown符号
   const cleanMarkdown = (text: string): string => {
     return text
-      .replace(/^\*\s*/g, '')           // 行首 * 列表符号
-      .replace(/^-\s*/g, '')            // 行首 - 列表符号
-      .replace(/\*\*/g, '')             // ** 粗体标记
-      .replace(/\*/g, '')               // 剩余 *
-      .replace(/^#{1,3}\s*/g, '')       // ### 标题标记
-      .replace(/^>\s*/g, '')            // > 引用标记
+      .replace(/^\*\s*/g, '')
+      .replace(/^-\s*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/^#{1,3}\s*/g, '')
+      .replace(/^>\s*/g, '')
       .trim();
   };
 
@@ -105,9 +140,9 @@ const SacredYearlyReportBox: React.FC<{
     return { type: 'text', content: cleanMarkdown(t) };
   };
 
-  const renderLines = () => {
-    if (!rawStreamText) return null;
-    return rawStreamText.split('\n').map((line, idx) => {
+  const renderLines = (processedText: string) => {
+    if (!processedText) return null;
+    return processedText.split('\n').map((line, idx) => {
       const { type, content, icon } = parseLine(line);
       
       if (type === 'empty') return <div key={idx} style={{ height: '4px' }} />;
@@ -263,7 +298,7 @@ const SacredYearlyReportBox: React.FC<{
               <SkeletonBar delay={4} w="55%" />
             </div>
           ) : (
-            <div>{renderLines()}</div>
+            <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
           )}
         </div>
 
