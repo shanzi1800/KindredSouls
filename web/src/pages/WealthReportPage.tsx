@@ -2510,13 +2510,183 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             const displayText = formatAndCleanSacredText(sacredText);
             const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
+            // 🛠️ V56: 五合一内联——星光呼吸灯/暗金光晕/追光器/归顶/章节金色
+            const scrollContainerRef = useRef<HTMLDivElement>(null);
+            const isAutoScrolling = useRef(true);
+            const [renderTick, setRenderTick] = useState(0);
+
+            // 追光器：流式期间自动滚底
+            useEffect(() => {
+              const container = scrollContainerRef.current;
+              if (!container) return;
+              if (yearlyCardsReady) {
+                isAutoScrolling.current = false;
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+              } else if (cleaned && isAutoScrolling.current) {
+                container.scrollTop = container.scrollHeight;
+              }
+            }, [cleaned, yearlyCardsReady, renderTick]);
+
+            // 强制刷新确保追光器工作
+            useEffect(() => {
+              if (!yearlyCardsReady && cleaned) {
+                const interval = setInterval(() => setRenderTick(t => t + 1), 300);
+                return () => clearInterval(interval);
+              }
+            }, [yearlyCardsReady, cleaned]);
+
+            // 解析行并渲染
+            const renderContent = () => {
+              if (!cleaned) return null;
+              const lines = cleaned.split('\n');
+              return lines.map((line, idx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return <div key={idx} style={{ height: '6px' }} />;
+                
+                // 章节标题金色
+                if (trimmed.match(/^【\s*✦.+✦\s*】$/)) {
+                  return (
+                    <div key={idx} style={{
+                      color: '#D4AF37', fontSize: '14px', fontWeight: 700,
+                      textAlign: 'center', letterSpacing: '2px', margin: '16px 0 12px'
+                    }}>
+                      {trimmed.replace(/【\s*✦\s*|\s*✦\s*】/g, '')}
+                    </div>
+                  );
+                }
+                // Markdown标题转金色
+                if (trimmed.match(/^#{2,3}\s+/)) {
+                  return (
+                    <div key={idx} style={{
+                      color: '#D4AF37', fontSize: '13px', fontWeight: 700,
+                      textAlign: 'center', margin: '14px 0 10px', letterSpacing: '1px'
+                    }}>
+                      {trimmed.replace(/^#{2,3}\s+/, '')}
+                    </div>
+                  );
+                }
+                // 分隔线
+                if (trimmed === '━━━━━━━━━━━━━━━━━━' || trimmed === '---') {
+                  return (
+                    <div key={idx} style={{
+                      height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
+                      margin: '12px 0'
+                    }} />
+                  );
+                }
+                // 表格线跳过
+                if (trimmed.match(/^\|[-\s|]+\|$/)) return null;
+                // 表格行简化
+                if (trimmed.match(/^\|.+\|/)) {
+                  const cells = trimmed.split('|').filter(c => c.trim()).map(c => c.trim());
+                  return (
+                    <div key={idx} style={{
+                      color: 'rgba(255,255,255,0.8)', fontSize: '12px', lineHeight: 1.6,
+                      marginBottom: '4px', borderBottom: '1px solid rgba(212,175,55,0.1)', paddingBottom: '4px'
+                    }}>{cells.join(' · ')}</div>
+                  );
+                }
+                // 彩色警告
+                if (trimmed.match(/^🟢|^🔴|^⚠️|^🚀/)) {
+                  const isGreen = trimmed.includes('🟢');
+                  const isRed = trimmed.includes('🔴');
+                  return (
+                    <div key={idx} style={{
+                      color: isGreen ? 'rgba(16,185,129,0.95)' : isRed ? 'rgba(239,68,68,0.95)' : 'rgba(212,175,55,0.9)',
+                      fontSize: '12px', fontWeight: 600, margin: '8px 0 4px'
+                    }}>{trimmed}</div>
+                  );
+                }
+                // 普通正文（解析粗体）
+                const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+                return (
+                  <div key={idx} style={{
+                    color: 'rgba(255,255,255,0.88)', fontSize: '12.5px', lineHeight: 1.85, marginBottom: '6px'
+                  }}>
+                    {parts.map((part, i) => {
+                      if (part.startsWith('**') && part.endsWith('**')) {
+                        return <span key={i} style={{ fontWeight: 700, color: '#D4AF37' }}>{part.slice(2, -2)}</span>;
+                      }
+                      return <span key={i}>{part}</span>;
+                    })}
+                  </div>
+                );
+              });
+            };
+
+            // 骨架屏动画样式
+            const skeletonStyle = (delay: number, width: string): React.CSSProperties => ({
+              height: '14px',
+              background: 'linear-gradient(90deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))',
+              borderRadius: '8px',
+              width,
+              marginBottom: '20px',
+              border: '1px solid rgba(212,175,55,0.05)',
+              animation: `sacredPulse ${2 + delay * 0.5}s infinite ease-in-out`,
+              animationDelay: `${delay * 0.3}s`,
+            });
+
             return (
-              // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
-              <SacredYearlyReportBox
-                rawStreamText={cleaned || ''}
-                yearlyCardsReady={yearlyCardsReady}
-                realSunSign={trueZodiac || '双鱼座'}
-              />
+              <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 16px' }}>
+                <style>{`
+                  @keyframes sacredPulse { 0%, 100% { opacity: 0.15; transform: scaleX(0.97); } 50% { opacity: 0.85; transform: scaleX(1.03); } }
+                  @keyframes sacredGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+                `}</style>
+                
+                {/* 暗晶盒子 */}
+                <div style={{
+                  position: 'relative', borderRadius: '16px', border: '1px solid rgba(212,175,55,0.2)',
+                  background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,10,15,0.98) 100%)',
+                  padding: '24px', boxShadow: '0 0 60px rgba(0,0,0,0.95)'
+                }}>
+                  {/* 顶部标题 */}
+                  <div style={{ textAlign: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(212,175,55,0.1)' }}>
+                    <h3 style={{ color: '#D4AF37', fontWeight: 700, letterSpacing: '2px', fontSize: '15px', margin: 0 }}>
+                      ✦ 先知天书 · 财富天启 ✦
+                    </h3>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '1px', margin: '4px 0 0' }}>
+                      TARGET: 1995-03-08 | STATE: {yearlyCardsReady ? 'SEALED ✨' : 'STREAMING 🔮'}
+                    </p>
+                  </div>
+
+                  {/* 滚动内容区 */}
+                  <div
+                    ref={scrollContainerRef}
+                    onScroll={() => {
+                      const container = scrollContainerRef.current;
+                      if (!container || yearlyCardsReady) return;
+                      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+                      isAutoScrolling.current = isAtBottom;
+                    }}
+                    style={{ height: '470px', overflowY: 'auto', paddingRight: '4px', textAlign: 'left' }}
+                  >
+                    {!cleaned ? (
+                      // 🌌 星光呼吸灯骨架屏
+                      <div style={{ padding: '24px 0' }}>
+                        <div style={skeletonStyle(0, '92%')} />
+                        <div style={skeletonStyle(1, '75%')} />
+                        <div style={skeletonStyle(2, '83%')} />
+                        <div style={skeletonStyle(3, '67%')} />
+                        <div style={skeletonStyle(4, '58%')} />
+                      </div>
+                    ) : (
+                      <div>{renderContent()}</div>
+                    )}
+                  </div>
+
+                  {/* 底部暗金光晕 */}
+                  <div style={{
+                    position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px',
+                    background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
+                    animation: 'sacredGlow 3s infinite ease-in-out'
+                  }} />
+                  <div style={{
+                    position: 'absolute', bottom: '-40px', left: '50%', transform: 'translateX(-50%)',
+                    width: '80px', height: '80px', background: 'rgba(212,175,55,0.2)', borderRadius: '50%',
+                    filter: 'blur(20px)', pointerEvents: 'none', animation: 'sacredGlow 3s infinite ease-in-out'
+                  }} />
+                </div>
+              </div>
             );
           }
           
