@@ -63,20 +63,22 @@ const SacredYearlyReportBox: React.FC<{
       return { type: 'chapter', content: t.replace(/【\s*✦\s*|\s*✦\s*】/g, '') };
     }
     
-    // 大标题关键词
+    // 大标题关键词 + 章节编号 (1.4, 2.1 等)
     const chapterPatterns = [
       '第一章', '第二章', '第三章', '第四章', '第五章', '最终章',
       '年度财富核心', '先知神谕', '天命破局', '消费黑洞', '黄金爆发',
-      '财富流月', '宿命财运', '最终财富', '通关密令', '先知天书',
+      '财富流流', '宿命财运', '最终财富', '通关密令', '先知天书',
       '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位',
       '累进财富通道', '阴影消耗黑洞'
     ];
-    if (chapterPatterns.some(p => textWithoutIcon.includes(p))) {
+    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p));
+    const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
+    if (isChapterPattern || isSectionNumber) {
       return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
     }
     
-    // 月份/年份
-    if (t.match(/^(2026年|2027年|\d{4}-\d{4})/)) {
+    // 月份/年份/章节编号 (1.4, 1.1 等)
+    if (t.match(/^(2026年|2027年|\d{4}-\d{4}|\d+\.\d+)/)) {
       return { type: 'subheading', content: cleanMarkdown(t) };
     }
     
