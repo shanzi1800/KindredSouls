@@ -459,14 +459,14 @@ const cleanRawReportText = (text: string): string => {
   // 1. 【斩草除根】：去掉任何位置的 > 符号
   c = c.replace(/>+/g, '');
 
-  // 2. 【定点清除裸露标题】：蒸发正文里残留的 ## 和 ####
-  c = c.replace(/##\s*先知[神天].*/gi, '');
-  c = c.replace(/##\s*第[一二三四五]章.*/gi, '');
-  c = c.replace(/##\s*2026-2027.*/gi, '');
-  c = c.replace(/##\s*最终财富.*/gi, '');
-  c = c.replace(/####\s*\d+\.\s*年度财富.*/gi, '');
-  c = c.replace(/##\s*核心看板.*/gi, ''); // 🛠️ V37: 干掉核心看板标题残留
-  c = c.replace(/##\s*通关密令.*/gi, ''); // 🛠️ V37: 干掉通关密令标题残留
+  // 2. 【定点清除裸露标题】：只去掉##符号，保留章节名称文字
+  c = c.replace(/##\s*(先知[神天].*)/gi, '$1');
+  c = c.replace(/##\s*(第[一二三四五]章.*)/gi, '$1');  // 🛠️ V48: 保留章节名称，只去##
+  c = c.replace(/##\s*(2026-2027.*)/gi, '$1');
+  c = c.replace(/##\s*(最终财富.*)/gi, '$1');
+  c = c.replace(/####\s*(\d+\.\s*年度财富.*)/gi, '$1');
+  c = c.replace(/##\s*(核心看板.*)/gi, '$1');
+  c = c.replace(/##\s*(通关密令.*)/gi, '$1');
 
   // 3. 【无脑拍扁残余井号】
   c = c.replace(/^#+/gm, '');
@@ -2629,7 +2629,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return null;
         })()}
 
-        {isUnlocked && !reportData?.insight && (
+        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮，避免干扰阅读 */}
+        {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && !yearlyCardsReady && (
           <button
             onClick={handleTriggerInsight}
             style={{
