@@ -209,18 +209,18 @@ const SacredYearlyReportBox: React.FC<{
           0%, 100% { opacity: 0.4; }
           50% { opacity: 0.9; }
         }
-        .dark-scrollbar::-webkit-scrollbar { width: 5px; }
-        .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.4); border-radius: 3px; }
-        .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.35); border-radius: 3px; }
-        .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.55); }
+        .dark-scrollbar::-webkit-scrollbar { width: 6px; border-radius: 3px; }
+        .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.75); border-radius: 3px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.9); }
       `}</style>
 
       <div style={{
-        position: 'relative', borderRadius: '14px',
-        border: '1.5px solid rgba(212,175,55,0.3)',
+        position: 'relative', borderRadius: '20px',
+        border: '2px solid rgba(212,175,55,0.4)',
         background: 'linear-gradient(180deg, rgba(12,14,22,0.98) 0%, rgba(6,7,12,0.99) 100%)',
         padding: '20px', 
-        boxShadow: '0 0 30px rgba(0,0,0,0.85), inset 0 0 40px rgba(212,175,55,0.015)'
+        boxShadow: '0 0 30px rgba(0,0,0,0.85), inset 0 0 40px rgba(212,175,55,0.015), 0 0 15px rgba(212,175,55,0.1)'
       }}>
         {/* 标题 */}
         <div style={{ 
