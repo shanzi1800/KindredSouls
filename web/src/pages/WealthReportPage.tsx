@@ -1204,6 +1204,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const streamingPhaseRef = useRef<number>(0); // 🛠️ V34 UX状态：0=等待,1=蓄水中,2=加速,3=尾声,4=完成
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 17个骨架是否已渲染
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({ oracle: true, ch1: true }); // 🛠️ V35: 默认展开先知神谕和第一章
+  const [yearlyTextTick, setYearlyTextTick] = useState<number>(0); // 🛠️ V38: 强制刷新流式文本显示
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
   // 🛠️ 军师黑魔法:手功从原始 JSON 里提取字段值(支持未闭合字符串)
@@ -1940,6 +1941,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   if (type === 'yearly') {
                     const newChunk = parsed.text;
                     fullYearlyTextRef.current = (fullYearlyTextRef.current || '') + newChunk;
+                    // 🛠️ V38: 每10个chunk强制刷新一次显示
+                    if (Math.random() < 0.1) setYearlyTextTick(t => t + 1);
                     // 🛠️ V34 UX进度追踪:蓄水池满了就升级阶段(0→1→2→3→4)
                     const totalLen = fullYearlyTextRef.current.length;
                     if (totalLen > 3000 && streamingPhaseRef.current < 2) streamingPhaseRef.current = 2;
@@ -2526,6 +2529,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const phase = streamingPhaseRef.current;
             const isStreaming = !yearlyCardsReady;
+            // 🛠️ V38: 依赖tick强制刷新流式显示
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const _refreshTick = yearlyTextTick;
 
             // 拼装完整年报文本
             const fullRawText = fullYearlyTextRef.current || '';
