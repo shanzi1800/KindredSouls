@@ -37,7 +37,7 @@ const SacredYearlyReportBox: React.FC<{
     autoScrollRef.current = atBottom;
   };
 
-  // 🛠️ V62: 军师霸权洗涤滤网 - 四大穿帮矫正
+  // 🛠️ V64: 军师天启版洗涤滤网 - 6大穿帮矫正
   const cleanAndInjectChapters = (text: string): string => {
     if (!text) return '';
     let cleaned = text;
@@ -57,12 +57,23 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/土元素：月亮天秤/g, '风元素：月亮天秤');
     cleaned = cleaned.replace(/你的星盘以水元素和火元素为主导/g, '你的星盘以水元素与风元素为主导');
 
-    // 4. 修复宫位移位
+    // 4. V49新增：双鱼座写成风元素（占星铁律）
+    cleaned = cleaned.replace(/风元素（双鱼座太阳）/g, '水元素（双鱼座太阳）');
+
+    // 5. V49新增：双鱼座"擅长信息流"幻觉（双鱼擅长直觉非沟通）
+    cleaned = cleaned.replace(/天生擅长“信息的收集与传播”/g, '天生擅长“情感的共鸣与直觉的显化”');
+    cleaned = cleaned.replace(/天生擅长信息流与沟通/g, '天生擅长灵感捕捉与直觉共鸣');
+
+    // 6. V49新增：抹除中文里残留的英文尾巴
+    cleaned = cleaned.replace(/（\s*negotiation\s*&\s*power\s*direction\s*）/g, '（正南方）');
+    cleaned = cleaned.replace(/\(\s*negotiation\s*&\s*power\s*direction\s*\)/g, '(正南方)');
+
+    // 7. 修复宫位移位
     cleaned = cleaned.replace(/进入水瓶座（你的第九宫）/g, '进入水瓶座（你的第八宫·深层资产与转化之宫）');
     cleaned = cleaned.replace(/进入双鱼座（你的第十二宫）/g, '进入双鱼座（你的第九宫·天命远航之宫）');
     cleaned = cleaned.replace(/木星在双鱼座（你的第十二宫）/g, '木星在双鱼座（你的第九宫天命之位）');
 
-    // 5. 章节精美化
+    // 8. 章节精美化
     cleaned = cleaned.replace(/现在，让我们踏入第一章。\n第一章：年度宿命财运矩阵/g, '【✦ 第一章：年度宿命财运矩阵 ✦】');
     cleaned = cleaned.replace(/现在，让我们进入每月沙盘.*\n第二章：12个月财富流月精准沙盘/g, '【✦ 第二章：12个月财富流月精准沙盘 ✦】');
     cleaned = cleaned.replace(/第三章：天命破局赛道与副业指南/g, '【✦ 第三章：天命破局赛道与副业指南 ✦】');
