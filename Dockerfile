@@ -1,3 +1,4 @@
+# 🔥 V75-FORCE-CACHE-BREAK: 2026-07-07T15:58:00Z - 每次commit强制改Dockerfile首行,让Railway snapshot hash变,逼Docker重跑所有layer
 FROM node:20-alpine
 
 WORKDIR /app
