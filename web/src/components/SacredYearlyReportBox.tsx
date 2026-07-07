@@ -120,28 +120,31 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/太阳进入白羊座（你的第十一宫）/g, '太阳进入白羊座（激发社交与契约能量）');
     cleaned = cleaned.replace(/太阳进入金牛座（你的第十二宫）/g, '太阳进入金牛座');
 
-    // 7.4 V68 方案B：动态星盘校准矩阵（上升巨蟹12宫黄金对照表，精准熔断错误宫位）
-    const cancerHouses: Record<string, string[]> = {
-      '巨蟹': ['1', '一'],
-      '狮子': ['2', '二'],
-      '处女': ['3', '三'],
-      '天秤': ['4', '四'],
-      '天蝎': ['5', '五'],
-      '射手': ['6', '六'],
-      '摩羯': ['7', '七'],
-      '水瓶': ['8', '八'],
-      '双鱼': ['9', '九'],
-      '白羊': ['10', '十'],
-      '金牛': ['11', '十一'],
-      '双子': ['12', '十二']
-    };
-    const houseRegex = /(巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼|白羊|金牛|双子)座第?([0-9]{1,2}|[一二三四五六七八九十]{1,2})宫/g;
-    cleaned = cleaned.replace(houseRegex, (match, sign, houseNum) => {
-      const validHouses = cancerHouses[sign];
-      if (validHouses && validHouses.includes(houseNum)) {
-        return match; // 命中真理，原样保留（如：木星在狮子座第2宫）
+    // 7.4 V69 动态上升自适应校准矩阵（全生日动态星盘对齐，不再硬编码巨蟹）
+    const zodiacOrder = ['白羊', '金牛', '双子', '巨蟹', '狮子', '处女', '天秤', '天蝎', '射手', '摩羯', '水瓶', '双鱼'];
+    const numWords = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+    // 默认上升巨蟹（经典测试盘）；优先从 AI 文本动态侦测本命上升星座
+    let ascendantSign = '巨蟹';
+    const ascMatch = text.match(/上升(?:在|落在)?(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座/);
+    if (ascMatch && ascMatch[1]) {
+      ascendantSign = ascMatch[1];
+    }
+    // 等宫制：从上升星座顺时针轮转推导 12 宫位对照表
+    const dynamicHouseMap: Record<string, string[]> = {};
+    const ascIndex = zodiacOrder.indexOf(ascendantSign);
+    if (ascIndex !== -1) {
+      for (let i = 0; i < 12; i++) {
+        const currentSign = zodiacOrder[(ascIndex + i) % 12];
+        dynamicHouseMap[currentSign] = [(i + 1).toString(), numWords[i]];
       }
-      return sign + '座'; // 发现穿帮，精准熔断错误宫位，仅保留星座
+    }
+    const houseRegex = /(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座第?([0-9]{1,2}|[一二三四五六七八九十]{1,2})宫/g;
+    cleaned = cleaned.replace(houseRegex, (match, sign, houseNum) => {
+      const validHouses = dynamicHouseMap[sign];
+      if (validHouses && validHouses.includes(houseNum)) {
+        return match; // 动态命中真理，完美保留（如：木星在狮子座第2宫）
+      }
+      return sign + '座'; // 穿帮则熔断宫位，留纯星座名
     });
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
