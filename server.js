@@ -1483,6 +1483,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return res.end();
     }
 
+    // 🛠️ V72: 完整生成模式——先累积完整 DeepSeek 流式，校验完整后再伪流式发送，杜绝最终神谕截断+缓存污染
     const reader = aiRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -1498,29 +1499,75 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]') {
-            res.write('data: [DONE]\n\n');
-          } else {
-            try {
-              const parsed = JSON.parse(dataStr);
-              const content = parsed.choices?.[0]?.delta?.content || '';
-              if (content) {
-                res.write(Buffer.from(`data: ${JSON.stringify({ text: content })}
-
-`, "utf-8"));
-                if (typeof res.flush === 'function') res.flush();
-                fullTextCollector += content;
-              }
-            } catch (e) {}
-          }
+          if (dataStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(dataStr);
+            const content = parsed.choices?.[0]?.delta?.content || '';
+            if (content) fullTextCollector += content;
+          } catch (e) {}
         }
       }
     }
 
-    // 🛡️ 军师缓存落库：流式完成后写入 Supabase
-    if (fullTextCollector.length > 100) {
-      writeToCache(fullTextCollector).catch(() => {});
+    let finalText = fullTextCollector;
+    const isComplete = reportType === 'yearly'
+      ? (finalText.includes('最终财富神谕') && finalText.length > 5000)
+      : (finalText.length > 500);
+
+    if (!isComplete && deepseekKey) {
+      console.log('[wealth-stream] ⚠️ 流式截断(' + finalText.length + '字), 非流式补全...');
+      try {
+        const fullRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: prompt.system },
+              { role: 'user', content: prompt.user },
+            ],
+            max_tokens: maxTokens,
+            temperature: 0.7,
+          }),
+        });
+        if (fullRes.ok) {
+          const fdata = await fullRes.json();
+          const ft = fdata.choices?.[0]?.message?.content || '';
+          if (ft && ft.length > finalText.length) {
+            finalText = ft;
+            console.log('[wealth-stream] ✅ 非流式补全成功, ' + finalText.length + '字');
+          }
+        }
+      } catch (e) {
+        console.error('[wealth-stream] 非流式补全失败:', e.message);
+      }
     }
+
+    const PSEUDO_CHUNK = 40, PSEUDO_INTERVAL = 15;
+    let pseudoIdx = 0;
+    const pseudoTimer = setInterval(() => {
+      try {
+        if (pseudoIdx >= finalText.length) {
+          res.write('data: [DONE]\n\n');
+          if (typeof res.flush === 'function') res.flush();
+          res.end();
+          clearInterval(pseudoTimer);
+          return;
+        }
+        const pChunk = finalText.slice(pseudoIdx, pseudoIdx + PSEUDO_CHUNK);
+        res.write(Buffer.from('data: ' + JSON.stringify({ text: pChunk }) + '\n\n', 'utf-8'));
+        if (typeof res.flush === 'function') res.flush();
+        pseudoIdx += PSEUDO_CHUNK;
+      } catch (e) {
+        clearInterval(pseudoTimer);
+        try { res.end(); } catch (e2) {}
+      }
+    }, PSEUDO_INTERVAL);
+
+    if (finalText.length > 100) {
+      writeToCache(finalText).catch(() => {});
+    }
+    return;
     res.end();
 
   } catch (err) {
