@@ -349,11 +349,12 @@ NO REPETITION PHANTOM: You have a bug of repeating dates like "2026年7月2026�
 Use these verified astronomical events. Do NOT invent dates that contradict this sheet:
 - 2026 Mercury Retrograde #1 (Aries): March 14 – April 7, 2026
 - 2026 Mercury Retrograde #2 (Leo): July 18 – August 11, 2026
-- 2026 Mercury Retrograde #3 (Scorpio): November 9 – November 29, 2026
+- 2026 Mercury Retrograde #3 (Scorpio): October 7 – November 29, 2026 (stations retrograde October 7, stations direct ~November 9)
 - 2027 Mercury Retrograde #1 (Aries): March 3 – March 24, 2027
 - 2027 Mercury Retrograde #2 (Leo): July 8 – July 31, 2027
 - 2027 Mercury Retrograde #3 (Scorpio): November 1 – November 21, 2027
 - 2026 Jupiter: In Cancer until ~late June 2026, then enters Leo (2nd House for Cancer Rising) for the 12-year peak wealth cycle.
+- 2027 Jupiter: IN GEMINI from January 2027 onward (NOT Taurus). Jupiter enters Gemini ~January 2027 and stays through ~June 2027. For Cancer Rising, Gemini = 12th House (subconscious, hidden structures, spiritual retreat). This is NOT the same energy as Jupiter in Leo (2nd House, expansion). Never describe Jupiter in Gemini as "wealth explosion" — describe it as "inner alignment and hidden momentum".
 - 2026 Saturn: In Aries (10th House for Cancer Rising) — tests career authority and public reputation.
 - 2026-2027 Pluto: In Aquarius (8th House for Cancer Rising) — deep transformation of shared resources/debt/inheritance.
 - Vernal Equinox 2026: March 20, 2026
@@ -361,6 +362,10 @@ Use these verified astronomical events. Do NOT invent dates that contradict this
 - Winter Solstice 2026: December 21, 2026
 - Summer Solstice 2027: June 21, 2027
 - Mars position: NEVER assume Mars and Saturn are in the same sign during a square aspect. Mars transits signs every ~6-7 weeks. Verify before claiming "Mars square Saturn in [sign]".
+
+[STRICT ASTRONOMICAL CONSTRAINTS - ZERO TOLERANCE]:
+- CONSTRAINT 1: "Jupiter in Taurus" in May 2027 is ABSOLUTELY PROHIBITED. Jupiter is in GEMINI in 2027. NEVER write "Sun conjunct Jupiter in Taurus", "Jupiter in Taurus", or any variation implying Jupiter in Taurus in 2027. For May 2027 Peak Revenue Window, describe Sun in Taurus (11th House of networks) aligning with the natal wealth core — NOT Jupiter alignment.
+- CONSTRAINT 2: Mercury Retrograde #3 2026 STARTS on October 7 (Scorpio). November 9 is the ~station-direct date, NOT the start. NEVER write "November 9 Mercury stations retrograde". Write "November 9 Mercury stations direct" or "Mercury returns direct" for post-retrograde clarity.
 
 [HOUSE SYSTEM LOCK - EQUAL HOUSE FOR CANCER RISING]
 The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
