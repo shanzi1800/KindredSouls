@@ -1349,6 +1349,7 @@ if (existsSync(distPath)) {
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
   const { birthDate, lang = 'zh', reportType = 'monthly' } = req.body;
+  console.log(`[wealth-stream] 🚀 Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -1633,11 +1634,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
 
   } catch (err) {
-    console.error('[Stream Error]', err.message);
-    res.write(Buffer.from(`data: ${JSON.stringify({ error: err.message })}
-
-`, "utf-8"));
-    res.end();
+    console.error('[Stream Error]', err.message, '| Stack:', err.stack?.substring(0, 500));
+    // 找到出错字符串中第13个字符的值
+    const errMsg = err.message;
+    console.error('[Stream Error] char13=', errMsg.charCodeAt(13), '| msg_len=', errMsg.length);
+    // 尝试写入错误（避免中文导致编码问题）
+    const safeErr = err.message.replace(/[^\x00-\x7F]/g, '?');
+    try { res.write(Buffer.from(`data: ${JSON.stringify({ error: safeErr })}\n\n`, 'utf-8')); } catch(e) {}
+    try { res.end(); } catch(e) {}
   }
 });
 
