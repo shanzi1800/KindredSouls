@@ -46,7 +46,8 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]*\)/g, ''); // 蒸发 Markdown 图片标记 ![](...)
     cleaned = cleaned.replace(/!\[[^\]]*\]/g, ''); // 蒸发裸 ![alt]
     cleaned = cleaned.replace(/<\/?br\s*\/?>/g, ''); // 蒸发 <br> / </br> 标签
-    cleaned = cleaned.replace(/双鱼座座/g, '双鱼座');
+    // V71: 全局蒸发「X座座」叠字错别字（双鱼座座/天秤座座/巨蟹座座...全部统一为 X座）
+    cleaned = cleaned.replace(/(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座座/g, '$1座');
     cleaned = cleaned.replace(/牡羊座/g, '白羊座'); // 统一大中华区译名
 
     // 1. 爆破AI工业尾巴
