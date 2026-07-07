@@ -1187,7 +1187,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
-        const maxTokens = reportType === 'yearly' ? 24000 : 4000;
+        const maxTokens = reportType === 'yearly' ? 32000 : 4000;
         const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
 
         // Parse AI result
@@ -1529,7 +1529,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    const maxTokens = reportType === 'yearly' ? 24000 : 4000;
+    const maxTokens = reportType === 'yearly' ? 32000 : 4000;
 
     if (!deepseekKey) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
@@ -1644,8 +1644,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     res.end();
 
     // 后台落库（不阻塞响应）
+    // 年报完成判断：英文用 'Final Wealth Oracle'，中文用 '最终财富神谕'
+    const hasFinalOracle = fullTextCollector.includes('Final Wealth Oracle') ||
+      fullTextCollector.includes('The Final Wealth Oracle') ||
+      fullTextCollector.includes('最终财富神谕');
     const isComplete = reportType === 'yearly'
-      ? (fullTextCollector.includes('最终财富神谕') && fullTextCollector.length > 5000)
+      ? (hasFinalOracle && fullTextCollector.length > 8000)
       : (fullTextCollector.length > 500);
 
     if (isComplete && fullTextCollector.length > 100) {
@@ -1672,11 +1676,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const fdata = await fullRes.json();
           const ft = fdata.choices?.[0]?.message?.content || '';
           if (ft && ft.length > fullTextCollector.length) {
-            console.log(`[wealth-stream] [OK] Completion success, cached ${ft.length} chars`);
+            console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${fullTextCollector.length}, caching full text`);
             writeToCache(ft).catch(() => {});
           } else {
+            console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${fullTextCollector.length}), caching stream only`);
             writeToCache(fullTextCollector).catch(() => {});
           }
+        } else {
+          const errBody = await fullRes.text().catch(() => '');
+          console.error(`[wealth-stream] [ERROR] Completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
+          writeToCache(fullTextCollector).catch(() => {});
         }
       } catch (e) {
         console.error('[wealth-stream] 补全失败，落库截断版本:', e.message);
