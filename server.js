@@ -70,6 +70,24 @@ app.get('/api/debug-env', (req, res) => {
   });
 });
 
+// ── /api/debug-clear-cache ── 清空指定 cache_key 的财富报告缓存（调试用，生成后删除）
+app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
+  const { cacheKey } = req.body;
+  if (!cacheKey) return res.status(400).json({ error: 'cacheKey required' });
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return res.status(500).json({ error: 'supabase not configured' });
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+    });
+    res.json({ ok: r.ok, status: r.status, cacheKey });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '1a11de8', debugBuildTime: 'FRESHBUILD-20260704-1147Z' });
