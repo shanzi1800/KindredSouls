@@ -1173,7 +1173,6 @@ app.post('/api/wealth-oracle', async (req, res) => {
                 cache_key: cacheKey,
                 insight: reportContent,
                 prompt_version: `v1.0.0-${reportType}-${lang}`,
-                model: 'deepseek-chat',
                 created_at: new Date().toISOString(),
               })
             });
@@ -1438,7 +1437,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           cache_key: cacheKey,
           insight: text,
           prompt_version: `v1.0.0-stream-${reportType}-${lang}`,
-          model: 'deepseek-chat',
           created_at: new Date().toISOString(),
         })
       });
