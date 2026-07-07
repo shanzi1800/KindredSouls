@@ -4,6 +4,7 @@ import express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { getAstroMatrix, buildFactSheet, v69HealthCheck } from './v69_client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -160,7 +161,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
 // 年报：5大硬核乐章 + 荣格阴影整合 + 动态日期 + 6语言独立系统提示词
 // ═══════════════════════════════════════════════════════════════════
 
-function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
+function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix) {
   if (!reportType) return null;
 
   // ── 动态日期计算 ──
@@ -194,6 +195,16 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData) {
     vi: '\n\n[Language Style: Vietnamese] Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh.',
   };
   const instruction = langInstructions[lang] || langInstructions.en;
+
+  // ── V69 SwissEph FACT_SHEET ─────────────────────────────────────────
+  // When astroMatrix is provided (from Python SwissEph), use it.
+  // This replaces the hardcoded FACT_SHEET with machine-computed truth.
+  const v69FactSheet = astroMatrix
+    ? buildFactSheet(astroMatrix, lang)
+    : null;
+  // If V69 computed data available, skip the hardcoded FACT_SHEET section
+  // by marking it with a tag that the caller can replace.
+  const HAS_V69_DATA = !!v69FactSheet;
 
   // ── 年报 5大乐章系统提示词（6语言全量） ──
   const YEARLY_SYSTEM = {
@@ -860,7 +871,22 @@ IMPORTANT:
       th: '\n\n[กฎเหล็กดาวพลูโต]: ดาวพลูโตเข้าสู่ราศีกุมภ์ในปี 2024 และจะอยู่ถึง 2043 ในรายงาน 2026-2027 ดาวพลูโตต้องอยู่ราศีกุมภ์ ห้ามเขียนราศีมังกรสำหรับดาวพลูโต',
       vi: '\n\n[QUY TẮC SẮT DIÊM VƯƠNG]: Sao Diêm Vương đã vào Bảo Bình năm 2024 và ở đó đến 2043. Trong báo cáo 2026-2027 Sao Diêm Vương PHẢI ở Bảo Bình. Tuyệt đối không viết Ma Kết cho Sao Diêm Vương!'
     };
-    const yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
+    let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
+
+    // ── V69 SwissEph Override: Replace hardcoded FACT_SHEET with computed truth ──
+    if (v69FactSheet) {
+      const FACT_START = yearlySystem.indexOf('[2026-2027 ASTRONOMY FACT SHEET');
+      const FACT_END = yearlySystem.indexOf('Sun in Leo = 2nd House (solar return year)');
+      if (FACT_START !== -1 && FACT_END !== -1) {
+        const factSheetBlock = yearlySystem.slice(FACT_START, FACT_END + 'Sun in Leo = 2nd House (solar return year)'.length);
+        // Replace the entire block with V69 truth
+        yearlySystem = yearlySystem.replace(
+          factSheetBlock,
+          v69FactSheet + '\n\n[NOTE: Above is V69 SwissEph computed. This takes precedence over any conflicting hardcoded data.]'
+        );
+        console.log('[V69] FACT_SHEET injected, V69 data overrides hardcoded facts');
+      }
+    }
 
     return {
       system: yearlySystem,
@@ -1173,6 +1199,15 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // ── 报告生成（月报/年报）──
     const { includeInsight } = req.body || {};
     if (reportType === 'monthly' || reportType === 'yearly') {
+      // ── V69 SwissEph: Fetch computed astro matrix ──
+      let astroMatrix = null;
+      try {
+        astroMatrix = await getAstroMatrix(birthDate, 'Cancer');
+        if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix`);
+      } catch (e) {
+        console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
+      }
+
       try {
         console.log('[Wealth Oracle] Generating report:', { birthDate, lang, reportType });
         const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
@@ -1181,7 +1216,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           sunSign,
           hexName,
           cardName,
-        });
+        }, astroMatrix);
         
         if (!prompt) {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
@@ -1511,6 +1546,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   const realSunSign = signs[getZodiacIdx(birthMonth, birthDay)];
 
+  // ── V69 SwissEph: Fetch computed astro matrix ──
+  let astroMatrix = null;
+  try {
+    astroMatrix = await getAstroMatrix(birthDate, 'Cancer');
+    if (astroMatrix) {
+      console.log(`[wealth-stream] [V69] Got matrix with ${astroMatrix.months?.length || 0} months`);
+    }
+  } catch (e) {
+    console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);
+  }
+
   try {
     const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
       dayMaster: '甲',
@@ -1518,7 +1564,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       sunSign: realSunSign, // 🔧 V32: 使用真实星座
       hexName: '震',
       cardName: '隐士',
-    });
+    }, astroMatrix);  // ← Pass V69 matrix to prompt builder
 
     if (!prompt) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'Invalid reportType' })}
