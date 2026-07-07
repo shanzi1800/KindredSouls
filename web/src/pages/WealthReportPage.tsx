@@ -2516,6 +2516,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 rawStreamText={cleaned || ''}
                 yearlyCardsReady={yearlyCardsReady}
                 realSunSign={trueZodiac || '双鱼座'}
+                lang={currentLang}
               />
             );
           }

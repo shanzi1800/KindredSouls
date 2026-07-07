@@ -5,7 +5,8 @@ const SacredYearlyReportBox: React.FC<{
   rawStreamText: string;
   yearlyCardsReady: boolean;
   realSunSign?: string;
-}> = ({ rawStreamText, yearlyCardsReady }) => {
+  lang?: string;
+}> = ({ rawStreamText, yearlyCardsReady, lang = 'zh' }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
@@ -197,9 +198,13 @@ const SacredYearlyReportBox: React.FC<{
       '年度财富核心', '先知神谕', '天命破局', '消费黑洞', '黄金爆发',
       '财富流流', '宿命财运', '最终财富', '通关密令', '先知天书',
       '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位',
-      '累进财富通道', '阴影消耗黑洞'
+      '累进财富通道', '阴影消耗黑洞',
+      // 🛠️ V73: 英文章节标识（让英文版 Section I-V 也走金色 heading）
+      'Section I', 'Section II', 'Section III', 'Section IV', 'Section V',
+      'The Annual Wealth Matrix', 'The 365-Day', 'The Destiny Career', 'The Debt', 'The Final Oracle',
+      'Annual Wealth Matrix', 'Monthly Revenue Matrix', 'Destiny Career', 'Debt & Risk', 'Final Wealth', 'Final Oracle'
     ];
-    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p));
+    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p)) || /^Section\s+[IVX]+/i.test(textWithoutIcon);
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
     if (isChapterPattern || isSectionNumber) {
       return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
@@ -290,8 +295,9 @@ const SacredYearlyReportBox: React.FC<{
         const isG = content.includes('🟢'), isR = content.includes('🔴');
         return (
           <div key={idx} style={{
-            color: isG ? 'rgba(16,185,129,0.9)' : isR ? 'rgba(239,68,68,0.9)' : 'rgba(212,175,55,0.85)',
-            fontSize: '11px', fontWeight: 600, margin: '6px 0 4px', paddingLeft: '12px'
+            color: '#D4AF37',
+            fontSize: '11px', fontWeight: 700, margin: '6px 0 4px', paddingLeft: '12px',
+            textShadow: '0 0 6px rgba(212,175,55,0.25)'
           }}>
             {content}
           </div>
@@ -366,7 +372,7 @@ const SacredYearlyReportBox: React.FC<{
             fontSize: '15px', 
             margin: 0 
           }}>
-            年度财富报告
+            {(lang === 'en' ? 'Annual Wealth Report' : lang === 'es' ? 'Informe de Riqueza Anual' : lang === 'fr' ? 'Rapport de Richesse Annuel' : lang === 'th' ? 'รายงานความมั่งคั่งประจำปี' : lang === 'vi' ? 'Báo Cáo Tài Sản Thường Niên' : '年度财富报告')}
           </h3>
         </div>
 
