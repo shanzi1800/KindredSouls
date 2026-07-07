@@ -6,8 +6,24 @@ Zero hallucination: all planetary positions computed by code, not guessed by AI.
 """
 
 import sys
-sys.path.insert(0, '/Users/apple/.local/lib/python3.11/site-packages')
+import os
+
+# SwissEph ephemeris configuration:
+# In Docker: download ephemeris files; fallback to Moshier (no external files needed)
+_ephe_path = None
+for _candidate in ['/usr/share/swissEph', '/app/ephemeris', os.path.expanduser('~/.swissEph')]:
+    if os.path.isdir(_candidate):
+        _ephe_path = _candidate
+        break
+
 import swisseph as swe
+if _ephe_path:
+    swe.set_ephe_path(_ephe_path)
+else:
+    # Use Moshier internal ephemeris (no external files needed)
+    # Works for all planets, slight precision difference for outer planets
+    swe.set_ephe_path('')  # Empty = Moshier mode
+
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
