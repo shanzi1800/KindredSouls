@@ -1,12 +1,12 @@
-# 🔥 V75-FORCE-CACHE-BREAK: 2026-07-07T15:58:00Z - 每次commit强制改Dockerfile首行,让Railway snapshot hash变,逼Docker重跑所有layer
+# V77-FORCE-CACHE-BREAK: 2026-07-07T16:05:00Z - emoji移除后强制重跑
 FROM node:20-alpine
 
 WORKDIR /app
 
-# 🛠️ 军师V24反缓存锁：放源文件前先发一个绝对不缓存的 trigger
+# V77 反缓存：放源文件前先发一个绝对不缓存的 trigger
 # Railway 的 snapshot 缓存太激进，必须在每个 RUN 前打上唯一时间戳水印才能逼其重跑
-ARG CACHEBUST=2026-07-07-V74-PLUTO-LOCK-$(date +%s)
-RUN echo "🛠️ CACHEBUST=$CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/cachebust.log
+ARG CACHEBUST=2026-07-07-V77-EMOJI-FIX-$(date +%s)
+RUN echo "CACHEBUST=$CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/cachebust.log
 RUN cat /tmp/cachebust.log
 
 # 环境变量
@@ -16,16 +16,15 @@ ENV SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 ENV SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw
 ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 
-# 🛠️ 军师V24：先复制 BUILD_TRIGGER.txt 逼 Railway 重新拉取文件
+# V77：先复制 BUILD_TRIGGER.txt 逼 Railway 重新拉取文件
 COPY BUILD_TRIGGER.txt /tmp/BUILD_TRIGGER.txt
 RUN echo "Build trigger file: $(cat /tmp/BUILD_TRIGGER.txt)"
 
 # 复制所有文件
 COPY . .
 
-# 🛠️ V76 终极反缓存：用 commit 进去的 web/dist（已包含 V73 标题翻译 + 金色高亮）
-# Railway Docker 层缓存把 npm run build 跳过了，改用 Git 里已有的 dist
-RUN echo "🔥 V76 使用 commit 进去的 dist: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# V77 反缓存：用 commit 进去的 web/dist
+RUN echo "V77 使用 commit 进去的 dist: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RUN cat web/dist/index.html | head -3
 
 # 安装后端依赖
