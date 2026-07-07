@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing in…</title>
+  <style>
+    body {
+      background: #0D0D1A;
+      color: #D4AF37;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(212,175,55,0.2);
+      border-top-color: #D4AF37;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #8B8778; margin: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p id="msg">Authenticating…</p>
+  <script type="module">
+    const SB_URL = 'https://wfkxqhlcgrikxoofjvas.supabase.co';
+    const SB_ANON = 'sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv';
+
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const err = params.get('error');
+
+      if (err) {
+        document.getElementById('msg').textContent = 'Auth error: ' + err;
+        setTimeout(() => window.close(), 3000);
+        return;
+      }
+
+      if (!code) {
+        document.getElementById('msg').textContent = 'No auth code found';
+        setTimeout(() => window.close(), 2000);
+        return;
+      }
+
+      try {
+        const sb = createClient(SB_URL, SB_ANON, {
+          auth: { flowType: 'pkce', autoRefreshToken: true, persistSession: true }
+        });
+        const { error: exErr } = await sb.auth.exchangeCodeForSession(code);
+        if (exErr) throw exErr;
+
+        // ══════════════════════════════════════════════════════
+        // 🛡️ 单一信号源：只写这个标志，其他什么都不做
+        // ══════════════════════════════════════════════════════
+        const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
+        const trigger = JSON.stringify({ timestamp: Date.now(), plan: pendingPlan || null });
+        localStorage.setItem('ks_auth_success_trigger', trigger);
+        localStorage.removeItem('ks_oauth_in_progress');
+
+        // 0ms 暴力关闭弹窗——父窗口的 polling 会接管
+        window.close();
+      } catch (e) {
+        console.error('[KS Auth Callback] ❌ Exchange failed:', e);
+        document.getElementById('msg').textContent = 'Session error: ' + (e.message || 'unknown');
+        setTimeout(() => window.close(), 3000);
+      }
+    })();
+  </script>
+</body>
+</html>

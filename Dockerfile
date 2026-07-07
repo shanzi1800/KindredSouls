@@ -22,16 +22,13 @@ RUN echo "Build trigger file: $(cat /tmp/BUILD_TRIGGER.txt)"
 # 复制所有文件
 COPY . .
 
-# 删除本地 dist（避免干扰）
-RUN rm -rf web/dist
+# 🛠️ V76 终极反缓存：用 commit 进去的 web/dist（已包含 V73 标题翻译 + 金色高亮）
+# Railway Docker 层缓存把 npm run build 跳过了，改用 Git 里已有的 dist
+RUN echo "🔥 V76 使用 commit 进去的 dist: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+RUN cat web/dist/index.html | head -3
 
-# 安装依赖并构建
-RUN echo "🔥 V24 重新构建: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# 安装后端依赖
 RUN npm install && npm install express stripe
-RUN cd web && rm -rf node_modules/.cache && npm install && npm run build 2>&1
-
-# 验证 dist 存在
-RUN ls -la web/dist/ && cat web/dist/index.html | head -5
 
 EXPOSE 3000
 ENV PORT=3000
