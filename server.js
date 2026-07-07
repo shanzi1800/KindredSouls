@@ -267,7 +267,7 @@ NO REPETITION PHANTOM: You have a bug of repeating dates like "2026年7月2026�
 ---
 * 🚀 **年度宏观定调**：【疯狂扩张，但带着契约精神】
 * 🌟 **财富爆发指数**：★★★★★（12年一遇狮子座木星强开财帛宫）
-* ⚠️ **资产熔断风险**：★★★☆☆（白羊座土星严审第十一宫社交契约）
+* ⚠️ **资产熔断风险**：★★★☆☆（白羊座土星严审第十宫事业权威）
 * 🔮 **天命显化方位**：正南方（ negotiation & power direction ）
 
 3. 12流月沙盘（H4死锁 + 英文标签）：
@@ -320,9 +320,39 @@ NO REPETITION PHANTOM: You have a bug of repeating dates like "2026年7月2026�
 2. Volume Pressure: The output must be massive and dense (6,000 to 8,000 words). Do NOT skip or merge any months. Elaborate on every micro-transit to create absolute psychological substance.
 3. No Hardcoding: Dynamically calculate transits based on the user's birth date (\${birthDate}) and extend exactly 12 months into the future from the current timeline.
 4. Shadow Work: Deeply integrate Carl Jung's "Shadow Self" concept. Relentlessly expose the user's psychological blind spots, subconscious greeds, and hidden fears regarding leverage, debt, and wealth expansion.
-5. [STRICT] No Temporal Repetition: Calculate all dates in one chain of thought. STRICTLY FORBID any temporal word overlap, self-correction, or repetition (e.g., prohibit "June 2026July 2026" or "June 15June 15, 1990"). All dates must be clean and unique.
+5. [STRICT] No Temporal Repetition: Calculate all dates in one chain of thought. STRICTLY FORBID any temporal word overlap, self-correction, or repetition (e.g., prohibit "June 2026July 2026" or "June 15June 15, 1990"). All dates must be clean and unique. The only legal full date format is "Month DD, YYYY" or "Month YYYY" — never "MonthDDYYYY" or "MonthY" smashed together.
 6. [STRICT] Accordion H4 Title Lock: In Section II (Monthly Revenue Matrix), you MUST use exactly #### for month headers. NEVER change # count. Format: #### [Month Label] July 2026: Jupiter Enters the House of Wealth.
 7. [STRICT] English Tag Immutability: Regardless of output language, monthly peak days MUST retain [Peak Revenue Window] and [Financial Black Swan Day] in English brackets. NEVER translate these tags! Frontend depends on them.
+8. [STRICT] NO PLACEHOLDERS: NEVER output placeholder text like 'X', 'in', 'your', 'TBD', 'N', 'placeholder' in any chapter title, header, or body. If you don't know the chapter number, write "Chapter One/Two/Three/Four/Five" in full. If you don't know the chapter name, output the canonical name from this prompt.
+9. [STRICT] COMPLETION GUARD: Your output MUST end with the Final Wealth Oracle and the sign-off line. If you approach the token limit, you MUST compress body text and PRIORITIZE the Final Oracle section. NEVER end mid-section.
+10. [STRICT] SECTION NAMING: Use ONLY "Section I", "Section II", "Section III", "Section IV", "Section V" (Roman numerals). NEVER mix with "Chapter 1" or "Chapter One" in the same report.
+
+[2026-2027 ASTRONOMY FACT SHEET - AUTHORITATIVE]
+Use these verified astronomical events. Do NOT invent dates that contradict this sheet:
+- 2026 Mercury Retrograde #1 (Aries): March 14 – April 7, 2026
+- 2026 Mercury Retrograde #2 (Leo): July 18 – August 11, 2026
+- 2026 Mercury Retrograde #3 (Scorpio): November 9 – November 29, 2026
+- 2027 Mercury Retrograde #1 (Aries): March 3 – March 24, 2027
+- 2027 Mercury Retrograde #2 (Leo): July 8 – July 31, 2027
+- 2027 Mercury Retrograde #3 (Scorpio): November 1 – November 21, 2027
+- 2026 Jupiter: In Cancer until ~late June 2026, then enters Leo (2nd House for Cancer Rising) for the 12-year peak wealth cycle.
+- 2026 Saturn: In Aries (10th House for Cancer Rising) — tests career authority and public reputation.
+- 2026-2027 Pluto: In Aquarius (8th House for Cancer Rising) — deep transformation of shared resources/debt/inheritance.
+- Vernal Equinox 2026: March 20, 2026
+- Autumnal Equinox 2026: September 22, 2026
+- Winter Solstice 2026: December 21, 2026
+- Summer Solstice 2027: June 21, 2027
+- Mars position: NEVER assume Mars and Saturn are in the same sign during a square aspect. Mars transits signs every ~6-7 weeks. Verify before claiming "Mars square Saturn in [sign]".
+
+[HOUSE SYSTEM LOCK - EQUAL HOUSE FOR CANCER RISING]
+The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
+1=Cancer / 2=Leo / 3=Virgo / 4=Libra / 5=Scorpio / 6=Sagittarius / 7=Capricorn / 8=Aquarius / 9=Pisces / 10=Aries / 11=Taurus / 12=Gemini
+- Saturn in Aries = 10th House (NOT 11th)
+- Jupiter in Leo = 2nd House (earned income)
+- Pluto in Aquarius = 8th House (shared resources)
+- Sun in Gemini = 12th House (for Cancer Rising)
+- Sun in Leo = 2nd House (solar return year)
+- If you are uncertain about a house mapping in the body text, OMIT the house bracket entirely rather than risk an error.
 
 [OUTPUT STRUCTURE]
 ### 📜 Section I: The Annual Wealth Matrix
@@ -360,7 +390,7 @@ You MUST output strictly following this formatting paradigm. Symbols/spacing/lin
 ---
 * 🚀 **Annual Macro Theme**: [Aggressive Expansion with Contractual Integrity]
 * 🌟 **Wealth Explosion Index**: ★★★★★ (12-year Jupiter in Leo activating 2nd House)
-* ⚠️ **Asset Circuit Breaker Risk**: ★★★☆☆ (Saturn in Aries auditing 11th House social contracts)
+* ⚠️ **Asset Circuit Breaker Risk**: ★★★☆☆ (Saturn in Aries auditing 10th House career contracts)
 * 🔮 **Destiny Manifestation Direction**: True South (negotiation & power direction)
 
 3. 12-Month Flow Sandbox (H4 lock + English tags):
@@ -1134,7 +1164,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
-        const maxTokens = reportType === 'yearly' ? 16000 : 3500;
+        const maxTokens = reportType === 'yearly' ? 24000 : 4000;
         const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
 
         // Parse AI result
@@ -1476,7 +1506,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    const maxTokens = reportType === 'yearly' ? 16000 : 3500;
+    const maxTokens = reportType === 'yearly' ? 24000 : 4000;
 
     if (!deepseekKey) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
