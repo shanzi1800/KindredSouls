@@ -871,7 +871,7 @@ const sanitizeZodiacHallucination = (text: string, trueZodiac: string): string =
     .replace(/太阳回归年.{0,15}座/gi, `太阳回归年·${trueZodiac}座`)
     .replace(new RegExp(`(${others.join('|')})·太阳回归年`, 'g'), `${trueZodiac}·太阳回归年`)
     .replace(new RegExp(`·(${others.join('|')})·`, 'g'), `·${trueZodiac}·`)
-    .replace(new RegExp(`·(${others.join('|')})$`, 'g'), `·${trueZodiac}`);
+    .replace(new RegExp(`·(${others.join('|')})$`, 'g'), `·${trueZodiac}`)
     // 🛠️ V74: 冥王星反幻觉（2026-2027 年报冥王星在水瓶座，AI 易幻觉成摩羯座）——六语言暴力纠错
       .replace(/冥王星[（(]?摩羯座[）)]?/g, '冥王星水瓶座')
       .replace(/Pluto in Capricorn/g, 'Pluto in Aquarius')
