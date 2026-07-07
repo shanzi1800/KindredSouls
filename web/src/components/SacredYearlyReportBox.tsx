@@ -138,14 +138,19 @@ const SacredYearlyReportBox: React.FC<{
         dynamicHouseMap[currentSign] = [(i + 1).toString(), numWords[i]];
       }
     }
-    const houseRegex = /(白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼)座第?([0-9]{1,2}|[一二三四五六七八九十]{1,2})宫/g;
-    cleaned = cleaned.replace(houseRegex, (match, sign, houseNum) => {
+    // 🛠️ V70: 连续 + 间隔双格式宫位校准（覆盖「X座第N宫」与「X座（你的第N宫）」两类句式，AI流月常换马甲）
+    const ZSIGNS = '白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼';
+    const ZNUM = '([0-9]{1,2}|[一二三四五六七八九十]{1,2})';
+    const buildHouseRe = (gap: string) => new RegExp('(' + ZSIGNS + ')座' + gap + '第?' + ZNUM + '宫(?:（[^）]*）|）)?', 'g');
+    const houseCalibrate = (match: string, sign: string, houseNum: string): string => {
       const validHouses = dynamicHouseMap[sign];
-      if (validHouses && validHouses.includes(houseNum)) {
-        return match; // 动态命中真理，完美保留（如：木星在狮子座第2宫）
-      }
+      if (validHouses && validHouses.includes(houseNum)) return match; // 动态命中真理，完美保留（如：木星在狮子座第2宫）
       return sign + '座'; // 穿帮则熔断宫位，留纯星座名
-    });
+    };
+    // 规则1：连续格式（X座第N宫）
+    cleaned = cleaned.replace(buildHouseRe(''), houseCalibrate);
+    // 规则2：间隔格式（X座...你的第N宫，AI 在流月中常用，V69单规则漏杀）
+    cleaned = cleaned.replace(buildHouseRe('[^。]{0,15}?'), houseCalibrate);
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
     const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([A-Za-z]+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
