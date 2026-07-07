@@ -41,3 +41,4 @@ web/api/webhook.js.bak
 web/src/App.tsx.bak
 .env*
 SECRETS.md
+__pycache__/
