@@ -951,6 +951,41 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const { birthDate, lang = 'zh' } = req.body;
     if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
 
+    // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
+    const reportType = req.body.reportType || 'oracle';
+    const cacheKey = `wealth:${birthDate}:${lang}:${reportType}`;
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    // ═══ 第一道拦截：Cache Hit ═══
+    if (SB_URL && SB_KEY && reportType !== 'oracle') {
+      try {
+        const cacheRes = await fetch(
+          `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
+          { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+        );
+        const cacheRows = await cacheRes.json();
+        const cachedText = cacheRows?.[0]?.insight;
+
+        if (cachedText && cachedText.length > 100) {
+          console.log(`[wealth-oracle] 🎯 Cache HIT: ${cacheKey}, length=${cachedText.length}`);
+          // 返回缓存数据（包装成前端期望的格式）
+          if (reportType === 'monthly') {
+            try {
+              const parsed = JSON.parse(cachedText);
+              return res.json({ success: true, cached: true, report: JSON.stringify(parsed) });
+            } catch (e) {
+              return res.json({ success: true, cached: true, report: cachedText });
+            }
+          } else {
+            return res.json({ success: true, cached: true, report: cachedText });
+          }
+        }
+      } catch (e) {
+        console.warn('[wealth-oracle] Cache check error:', e.message);
+      }
+    }
+
     const TIANGAN = { zh:['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'], en:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], es:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], fr:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], th:['เจีย','อี้','ปิง','ติง','อู๋','จี','เกิง','ซิน','เหริน','กุ่ย'], vi:['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'] };
     const DIZHI = { zh:['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'], en:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], es:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], fr:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], th:['จื่อ','โฉ่ว','อิน','เม้า','เฉิน','ซื่อ','อู๋','เว่ย','เซิน','โย่ว','สวี่','ไห่'], vi:['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'] };
     const WUXING = { zh:['金','木','水','火','土'], en:['Metal','Wood','Water','Fire','Earth'], es:['Metal','Madera','Agua','Fuego','Tierra'], fr:['Métal','Bois','Eau','Feu','Terre'], th:['โลหะ','ไม้','น้ำ','ไฟ','ดิน'], vi:['Kim','Mộc','Thủy','Hỏa','Thổ'] };
@@ -1082,7 +1117,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
       }
     };
     // ── 报告生成（月报/年报）──
-    const { reportType, includeInsight } = req.body || {};
+    const { includeInsight } = req.body || {};
     if (reportType === 'monthly' || reportType === 'yearly') {
       try {
         console.log('[Wealth Oracle] Generating report:', { birthDate, lang, reportType });
@@ -1121,6 +1156,32 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
         
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
+        
+        // ═══ 写入缓存（非流式端点）═══
+        if (SB_URL && SB_KEY && reportContent && reportContent.length > 100) {
+          try {
+            await fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+              method: 'POST',
+              headers: {
+                'apikey': SB_KEY,
+                'Authorization': `Bearer ${SB_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=ignore-duplicates'
+              },
+              body: JSON.stringify({
+                cache_key: cacheKey,
+                insight: reportContent,
+                prompt_version: `v1.0.0-${reportType}-${lang}`,
+                model: 'deepseek-chat',
+                created_at: new Date().toISOString(),
+              })
+            });
+            console.log(`[wealth-oracle] 💾 Cache write: ${cacheKey}, length=${reportContent.length}`);
+          } catch (e) {
+            console.warn('[wealth-oracle] Cache write error:', e.message);
+          }
+        }
+        
         return res.json({ ...result, report: reportContent, insight: '' });
       } catch (aiError) {
         console.error('[Wealth Oracle] AI generation failed:', aiError.message);
@@ -1491,10 +1552,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return res.end();
     }
 
-    // 🛠️ V72: 完整生成模式——先累积完整 DeepSeek 流式，校验完整后再伪流式发送，杜绝最终神谕截断+缓存污染
+    // 🛠️ V73: 真流式 + 后台落库——边收边发，用户体验优先
     const reader = aiRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let chunkCount = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1511,19 +1573,34 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           try {
             const parsed = JSON.parse(dataStr);
             const content = parsed.choices?.[0]?.delta?.content || '';
-            if (content) fullTextCollector += content;
+            if (content) {
+              // 真流式：立即发给前端
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: content })}\n\n`, 'utf-8'));
+              if (typeof res.flush === 'function' && ++chunkCount % 5 === 0) res.flush();
+              // 同时累积到缓存收集器
+              fullTextCollector += content;
+            }
           } catch (e) {}
         }
       }
     }
 
-    let finalText = fullTextCollector;
-    const isComplete = reportType === 'yearly'
-      ? (finalText.includes('最终财富神谕') && finalText.length > 5000)
-      : (finalText.length > 500);
+    // 流式结束，发送 [DONE]
+    res.write('data: [DONE]\n\n');
+    if (typeof res.flush === 'function') res.flush();
+    res.end();
 
-    if (!isComplete && deepseekKey) {
-      console.log('[wealth-stream] ⚠️ 流式截断(' + finalText.length + '字), 非流式补全...');
+    // 后台落库（不阻塞响应）
+    const isComplete = reportType === 'yearly'
+      ? (fullTextCollector.includes('最终财富神谕') && fullTextCollector.length > 5000)
+      : (fullTextCollector.length > 500);
+
+    if (isComplete && fullTextCollector.length > 100) {
+      console.log(`[wealth-stream] ✅ 流式完成，落库 ${fullTextCollector.length} 字`);
+      writeToCache(fullTextCollector).catch(() => {});
+    } else if (fullTextCollector.length > 100) {
+      console.log(`[wealth-stream] ⚠️ 流式可能截断(${fullTextCollector.length}字)，尝试补全...`);
+      // 尝试非流式补全并落库
       try {
         const fullRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
@@ -1541,42 +1618,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         if (fullRes.ok) {
           const fdata = await fullRes.json();
           const ft = fdata.choices?.[0]?.message?.content || '';
-          if (ft && ft.length > finalText.length) {
-            finalText = ft;
-            console.log('[wealth-stream] ✅ 非流式补全成功, ' + finalText.length + '字');
+          if (ft && ft.length > fullTextCollector.length) {
+            console.log(`[wealth-stream] ✅ 补全成功，落库 ${ft.length} 字`);
+            writeToCache(ft).catch(() => {});
+          } else {
+            writeToCache(fullTextCollector).catch(() => {});
           }
         }
       } catch (e) {
-        console.error('[wealth-stream] 非流式补全失败:', e.message);
+        console.error('[wealth-stream] 补全失败，落库截断版本:', e.message);
+        writeToCache(fullTextCollector).catch(() => {});
       }
     }
-
-    const PSEUDO_CHUNK = 40, PSEUDO_INTERVAL = 15;
-    let pseudoIdx = 0;
-    const pseudoTimer = setInterval(() => {
-      try {
-        if (pseudoIdx >= finalText.length) {
-          res.write('data: [DONE]\n\n');
-          if (typeof res.flush === 'function') res.flush();
-          res.end();
-          clearInterval(pseudoTimer);
-          return;
-        }
-        const pChunk = finalText.slice(pseudoIdx, pseudoIdx + PSEUDO_CHUNK);
-        res.write(Buffer.from('data: ' + JSON.stringify({ text: pChunk }) + '\n\n', 'utf-8'));
-        if (typeof res.flush === 'function') res.flush();
-        pseudoIdx += PSEUDO_CHUNK;
-      } catch (e) {
-        clearInterval(pseudoTimer);
-        try { res.end(); } catch (e2) {}
-      }
-    }, PSEUDO_INTERVAL);
-
-    if (finalText.length > 100) {
-      writeToCache(finalText).catch(() => {});
-    }
-    return;
-    res.end();
 
   } catch (err) {
     console.error('[Stream Error]', err.message);
