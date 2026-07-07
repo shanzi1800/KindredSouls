@@ -969,7 +969,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         const cachedText = cacheRows?.[0]?.insight;
 
         if (cachedText && cachedText.length > 100) {
-          console.log(`[wealth-oracle] 🎯 Cache HIT: ${cacheKey}, length=${cachedText.length}`);
+          console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
           // 返回缓存数据（包装成前端期望的格式）
           if (reportType === 'monthly') {
             try {
@@ -1177,7 +1177,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
                 created_at: new Date().toISOString(),
               })
             });
-            console.log(`[wealth-oracle] 💾 Cache write: ${cacheKey}, length=${reportContent.length}`);
+            console.log(`[wealth-oracle] [WRITE] Cache write: ${cacheKey}, length=${reportContent.length}`);
           } catch (e) {
             console.warn('[wealth-oracle] Cache write error:', e.message);
           }
@@ -1301,7 +1301,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         if (!gemRes.ok) throw new Error(`Gemini ${gemRes.status}`);
         const gemData = await gemRes.json();
         insight = gemData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-        if (insight) console.log('[ai-advisor] ✓ Gemini fallback used');
+        if (insight) console.log('[ai-advisor] [OK] Gemini fallback used');
       } catch (e) {
         console.error('[ai-advisor] Gemini fallback failed:', e.message);
       }
@@ -1349,7 +1349,7 @@ if (existsSync(distPath)) {
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
   const { birthDate, lang = 'zh', reportType = 'monthly' } = req.body;
-  console.log(`[wealth-stream] 🚀 Stream request: ${birthDate}/${lang}/${reportType}`);
+  console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -1373,7 +1373,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cachedText = cacheRows?.[0]?.insight;
 
       if (cachedText && cachedText.length > 100) {
-        console.log(`[wealth-stream] 🎯 Cache HIT: ${cacheKey}, length=${cachedText.length}, starting pseudo-stream`);
+        console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, starting pseudo-stream`);
 
         // 黄金欺骗流：每 15ms 吐 40 字符
         const CHUNK_SIZE = 40;
@@ -1387,7 +1387,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               if (typeof res.flush === 'function') res.flush();
               res.end();
               clearInterval(timer);
-              console.log(`[wealth-stream] ✅ Cache pseudo-stream complete, ${cachedText.length} chars pushed`);
+              console.log(`[wealth-stream] [OK] Cache pseudo-stream complete, ${cachedText.length} chars pushed`);
               return;
             }
 
@@ -1400,7 +1400,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           } catch (e) {
             console.error('[wealth-stream] Cache stream error:', e.message);
             clearInterval(timer);
-            try { res.end(); } catch {}
+            try { res.end(); } catch (_e) {}
           }
         }, INTERVAL_MS);
 
@@ -1417,7 +1417,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
 
   // ═══ 第二道：Cache Miss → 真流式 + 落库 ═══
-  console.log(`[wealth-stream] ❌ Cache MISS: ${cacheKey}, calling DeepSeek...`);
+  console.log(`[wealth-stream] [MISS] Cache MISS: ${cacheKey}, calling DeepSeek...`);
 
   // 用于缓存落库的全文本收集器
   let fullTextCollector = '';
@@ -1442,7 +1442,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           created_at: new Date().toISOString(),
         })
       });
-      console.log(`[wealth-stream] 💾 Cache write: ${cacheKey}, length=${text.length}, status=${res2.status}`);
+      console.log(`[wealth-stream] [WRITE] Cache write: ${cacheKey}, length=${text.length}, status=${res2.status}`);
     } catch (e) {
       console.warn('[wealth-stream] Cache write error:', e.message);
     }
@@ -1598,10 +1598,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       : (fullTextCollector.length > 500);
 
     if (isComplete && fullTextCollector.length > 100) {
-      console.log(`[wealth-stream] ✅ 流式完成，落库 ${fullTextCollector.length} 字`);
+      console.log(`[wealth-stream] [OK] Streaming done, cached ${fullTextCollector.length} chars`);
       writeToCache(fullTextCollector).catch(() => {});
     } else if (fullTextCollector.length > 100) {
-      console.log(`[wealth-stream] ⚠️ 流式可能截断(${fullTextCollector.length}字)，尝试补全...`);
+      console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
       try {
         const fullRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -1621,7 +1621,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const fdata = await fullRes.json();
           const ft = fdata.choices?.[0]?.message?.content || '';
           if (ft && ft.length > fullTextCollector.length) {
-            console.log(`[wealth-stream] ✅ 补全成功，落库 ${ft.length} 字`);
+            console.log(`[wealth-stream] [OK] Completion success, cached ${ft.length} chars`);
             writeToCache(ft).catch(() => {});
           } else {
             writeToCache(fullTextCollector).catch(() => {});
@@ -1647,7 +1647,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
 // ── Start ──
 app.listen(PORT, () => {
-  console.log(`[KindredSouls] 🚄 Railway server running on port ${PORT}`);
+  console.log(`[KindredSouls]  Railway server running on port ${PORT}`);
   console.log(`  - API: http://localhost:${PORT}/api/*`);
   console.log(`  - Web: http://localhost:${PORT}/`);
 });
