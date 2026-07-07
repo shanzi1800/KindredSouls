@@ -872,6 +872,13 @@ const sanitizeZodiacHallucination = (text: string, trueZodiac: string): string =
     .replace(new RegExp(`(${others.join('|')})·太阳回归年`, 'g'), `${trueZodiac}·太阳回归年`)
     .replace(new RegExp(`·(${others.join('|')})·`, 'g'), `·${trueZodiac}·`)
     .replace(new RegExp(`·(${others.join('|')})$`, 'g'), `·${trueZodiac}`);
+    // 🛠️ V74: 冥王星反幻觉（2026-2027 年报冥王星在水瓶座，AI 易幻觉成摩羯座）——六语言暴力纠错
+      .replace(/冥王星[（(]?摩羯座[）)]?/g, '冥王星水瓶座')
+      .replace(/Pluto in Capricorn/g, 'Pluto in Aquarius')
+      .replace(/Pluto en Capricornio/g, 'Pluto en Acuario')
+      .replace(/Pluto en Capricorne/g, 'Pluto en Verseau')
+      .replace(/ดาวพลูโตราศีมังกร/g, 'ดาวพลูโตราศีกุมภ์')
+      .replace(/Sao Diêm Vương Ma Kết/g, 'Sao Diêm Vương Bảo Bình');
 };
 
 // ── 年报卡片主组件 ──

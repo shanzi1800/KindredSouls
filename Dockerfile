@@ -4,7 +4,7 @@ WORKDIR /app
 
 # 🛠️ 军师V24反缓存锁：放源文件前先发一个绝对不缓存的 trigger
 # Railway 的 snapshot 缓存太激进，必须在每个 RUN 前打上唯一时间戳水印才能逼其重跑
-ARG CACHEBUST=2026-07-07-V73-GOLDEN-HIGHLIGHT-$(date +%s)
+ARG CACHEBUST=2026-07-07-V74-PLUTO-LOCK-$(date +%s)
 RUN echo "🛠️ CACHEBUST=$CACHEBUST at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/cachebust.log
 RUN cat /tmp/cachebust.log
 

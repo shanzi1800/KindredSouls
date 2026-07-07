@@ -798,7 +798,15 @@ IMPORTANT:
   // 分支：年报
   // ════════════════════════════════
   if (reportType === 'yearly') {
-    const yearlySystem = YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh;
+    const PLUTO_IRON = {
+      zh: '\n\n[冥王星天文铁律 - PLUTO IRON RULE]: 冥王星（Pluto）已于2024年进入水瓶座（Aquarius），停留至2043年。2026-2027年报中冥王星绝对位于第8宫水瓶座，绝不可写摩羯座（Capricorn）！所有语言 Pluto 必须写 Aquarius/水瓶座。',
+      en: '\n\n[PLUTO ASTRONOMY IRON RULE]: Pluto entered Aquarius in 2024 and remains until 2043. In 2026-2027 reports Pluto MUST be in Aquarius (8th House). NEVER write Capricorn for Pluto in any language!',
+      es: '\n\n[REGLA DE HIERRO DE PLUTÓN]: Plutón entró en Acuario en 2024 y permanece hasta 2043. En informes 2026-2027 Plutón DEBE estar en Acuario. ¡NUNCA escribas Capricornio para Plutón!',
+      fr: '\n\n[RÈGLE DE PLUTON]: Pluton est entré en Verseau en 2024 et y reste jusqu\'en 2043. Dans les rapports 2026-2027 Pluton DOIT être en Verseau. N\'écrivez jamais Capricorne pour Pluton !',
+      th: '\n\n[กฎเหล็กดาวพลูโต]: ดาวพลูโตเข้าสู่ราศีกุมภ์ในปี 2024 และจะอยู่ถึง 2043 ในรายงาน 2026-2027 ดาวพลูโตต้องอยู่ราศีกุมภ์ ห้ามเขียนราศีมังกรสำหรับดาวพลูโต',
+      vi: '\n\n[QUY TẮC SẮT DIÊM VƯƠNG]: Sao Diêm Vương đã vào Bảo Bình năm 2024 và ở đó đến 2043. Trong báo cáo 2026-2027 Sao Diêm Vương PHẢI ở Bảo Bình. Tuyệt đối không viết Ma Kết cho Sao Diêm Vương!'
+    };
+    const yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
 
     return {
       system: yearlySystem,
