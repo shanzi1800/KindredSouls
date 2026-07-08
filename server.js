@@ -1067,6 +1067,19 @@ IMPORTANT:
       console.log(`[V82] houseLock built for ${lang}: Jup=${jupHouse}, Sat=${satHouse}, Pluto=${plHouse}, Sun=${sunHouse}, Rising=${risingLocal}`);
     }
 
+    // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
+    const HEADER_ENFORCE = lang === 'vi' ? `
+
+⛔ [MANDATORY HEADER VALUES — DO NOT CHANGE, COPY VERBATIM]:
+The user's Natal Sun Sign is ${natalSunSign} (computed by Swiss Ephemeris for birth date ${birthDate}).
+YOUR OUTPUT HEADER MUST use exactly:
+🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời
+🗝️ Mã Bản Đồ Sao Chính: Mặt Trời ${natalSunSign} ...
+Mọi câu 'Hỡi người con của...' PHẢI dùng: ${natalSunSign}
+TUYỆT ĐỐI KHÔNG được output 'Song Ngư' hoặc bất kỳ cung nào khác cho Mặt Trời.
+Nếu output chứa 'Song Ngư' trong metadata header, generation sẽ bị từ chối!` : '';
+    yearlySystem += HEADER_ENFORCE;
+
     return {
       system: yearlySystem,
       user: `${houseLock ? houseLock + '\n\n' : ''}\n\n⛔ CRITICAL — AI MUST NOT output any chapter heading or title line in your output. Chapter structure and gold titles are handled by the frontend rendering system. Only output raw content. DO NOT include lines like 'Chương I: ...', 'Chapter I', 'บทที่ 1', '第X章' or similar headings.
