@@ -18,7 +18,7 @@ const SacredYearlyReportBox: React.FC<{
     if (!el) return;
     if (yearlyCardsReady) {
       autoScrollRef.current = false;
-      el.scrollTo({ top: 0, behavior: 'smooth' });
+      // 流式完成后保持当前滚动位置，用户继续看完整内容
     } else if (hasContent && autoScrollRef.current) {
       el.scrollTop = el.scrollHeight;
     }
@@ -211,9 +211,13 @@ const SacredYearlyReportBox: React.FC<{
       // 🛠️ V73: 英文章节标识（让英文版 Section I-V 也走金色 heading）
       'Section I', 'Section II', 'Section III', 'Section IV', 'Section V',
       'The Annual Wealth Matrix', 'The 365-Day', 'The Destiny Career', 'The Debt', 'The Final Oracle',
-      'Annual Wealth Matrix', 'Monthly Revenue Matrix', 'Destiny Career', 'Debt & Risk', 'Final Wealth', 'Final Oracle'
+      'Annual Wealth Matrix', 'Monthly Revenue Matrix', 'Destiny Career', 'Debt & Risk', 'Final Wealth', 'Final Oracle',
+      // 🛠️ V77: 泰语章名识别
+      'บทที่ 1', 'บทที่ 2', 'บทที่ 3', 'บทที่ 4', 'บทที่ 5', 'บทสรุปประจำปี'
     ];
-    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p)) || /^Section\s+[IVX]+/i.test(textWithoutIcon);
+    // 🛠️ V77: 泰语章节金色识别（บทที่ 1 ถึง บทที่ 5 + บทสรุปประจำปี）
+    const isThaiChapter = /^บทที่\s*\d+/.test(textWithoutIcon);
+    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p)) || /^Section\s+[IVX]+/i.test(textWithoutIcon) || isThaiChapter;
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
     if (isChapterPattern || isSectionNumber) {
       return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
@@ -391,10 +395,8 @@ const SacredYearlyReportBox: React.FC<{
           onScroll={handleScroll}
           className="dark-scrollbar"
           style={{ 
-            minHeight: '300px',
-            maxHeight: 'none',
-            height: 'auto', 
-            overflowY: 'visible', 
+            height: '460px', 
+            overflowY: 'auto', 
             paddingRight: '6px', 
             textAlign: 'left',
           }}
