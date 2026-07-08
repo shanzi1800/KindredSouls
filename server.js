@@ -1758,6 +1758,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);
   }
 
+  // 🔧 V90: aiTimeout 声明在 try 块外，catch 才能访问
+  let aiTimeout;
   try {
     const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
       dayMaster: '甲',
@@ -1782,7 +1784,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
     const controller = new AbortController();
     // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
-    let aiTimeout;
     try { aiTimeout = setTimeout(() => controller.abort(), 300000); } catch(e){}
 
     if (!deepseekKey) {
