@@ -391,8 +391,10 @@ const SacredYearlyReportBox: React.FC<{
           onScroll={handleScroll}
           className="dark-scrollbar"
           style={{ 
-            height: '460px', 
-            overflowY: 'auto', 
+            minHeight: '300px',
+            maxHeight: 'none',
+            height: 'auto', 
+            overflowY: 'visible', 
             paddingRight: '6px', 
             textAlign: 'left',
           }}
