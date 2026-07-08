@@ -1049,7 +1049,9 @@ IMPORTANT:
 
     return {
       system: yearlySystem,
-      user: `${houseLock ? houseLock + '\n\n' : ''}Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
+      user: `${houseLock ? houseLock + '\n\n' : ''}\n\n⛔ CRITICAL — AI MUST NOT output any chapter heading or title line in your output. Chapter structure and gold titles are handled by the frontend rendering system. Only output raw content. DO NOT include lines like 'Chương I: ...', 'Chapter I', 'บทที่ 1', '第X章' or similar headings.
+
+Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
 [P1.1 SWISSEPH PER-MONTH TRUTH DATA — DO NOT ALTER]:
 All planet positions, houses, and aspects below are COMPUTED by Swiss Ephemeris.
