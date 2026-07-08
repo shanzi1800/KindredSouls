@@ -1575,10 +1575,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    // 🔧 V74 fix: 48000 给年报足够输出空间（7700字≈2000tokens，system≈15000tokens，留足余量）
-    const maxTokens = reportType === 'yearly' ? 48000 : 4000;
+    // 🔧 V75 fix: 64000 彻底解除年报截断（EN报告需要18000+ tokens完整输出）
+    const maxTokens = reportType === 'yearly' ? 64000 : 4000;
+    // 🔧 V75 fix: DeepSeek 大输出需要更长超时（AbortController 5分钟）
+    const controller = new AbortController();
+    const aiTimeout = setTimeout(() => controller.abort(), 300000); // 5min timeout
 
     if (!deepseekKey) {
+      clearTimeout(aiTimeout);
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
 
 `, "utf-8"));
@@ -1601,7 +1605,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         temperature: 0.7,
         stream: true,
       }),
+      signal: controller.signal, // V75: AbortController prevents Railway timeout kill
     });
+
+    clearTimeout(aiTimeout); // V75: AI responded, cancel timeout
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
@@ -1657,10 +1664,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '';
     let chunkCount = 0;
+    // V75: SSE heartbeat every 20s prevents Railway idle timeout (30s limit)
+    const heartbeat = setInterval(() => {
+      try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
+    }, 20000);
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) { clearInterval(heartbeat); clearTimeout(aiTimeout); break; }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -1741,6 +1752,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
 
   } catch (err) {
+    clearTimeout(aiTimeout); // V75: Error or abort, cancel timeout
+    try { clearInterval(heartbeat); } catch(e){} // V75: also clear heartbeat
     console.error('[Stream Error]', err.message, '| Stack:', err.stack?.substring(0, 500));
     // 找到出错字符串中第13个字符的值
     const errMsg = err.message;
