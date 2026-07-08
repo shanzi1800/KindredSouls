@@ -161,6 +161,25 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
 // 年报：5大硬核乐章 + 荣格阴影整合 + 动态日期 + 6语言独立系统提示词
 // ═══════════════════════════════════════════════════════════════════
 
+// ── 🛠️ V83: Natal Sun Sign 计算（从生日直接推，不依赖 transit month）──
+function getNatalSunSign(birthDate) {
+  const [, month, day] = birthDate.split('-').map(Number);
+  const cuts = [
+    [3, 21, 0], [4, 20, 1], [5, 21, 2], [6, 21, 3], [7, 23, 4], [8, 23, 5],
+    [9, 23, 6], [10, 23, 7], [11, 22, 8], [12, 22, 9], [1, 20, 10], [2, 19, 11]
+  ];
+  for (let i = cuts.length - 1; i >= 0; i--) {
+    if (month > cuts[i][0] || (month === cuts[i][0] && day >= cuts[i][1])) return cuts[i][2];
+  }
+  return 11;
+}
+const SUN_SIGN_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];
+const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
+const SUN_SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
+const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
+
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix) {
   if (!reportType) return null;
 
@@ -968,6 +987,15 @@ IMPORTANT:
       const moonHouse = first.moon?.house || 1;
       const jupSign = first.jupiter?.sign || 'Leo';
       const satSign = first.saturn?.sign || 'Aries';
+
+      // 🛠️ V83: 计算 natal Sun Sign（不依赖 transit month）
+      const natalSunIdx = getNatalSunSign(birthDate);
+      const natalSunMap = {
+        en: SUN_SIGN_EN[natalSunIdx], vi: SUN_SIGN_VI[natalSunIdx], th: SUN_SIGN_TH[natalSunIdx],
+        zh: SUN_SIGN_ZH[natalSunIdx], es: SUN_SIGN_ES[natalSunIdx], fr: SUN_SIGN_FR[natalSunIdx]
+      };
+      const natalSunSign = natalSunMap[lang] || SUN_SIGN_EN[natalSunIdx];
+      const natalSunSignEN = SUN_SIGN_EN[natalSunIdx];
       const plSignEN = 'Aquarius';
 
       // 本地化星座/宫位名
@@ -985,11 +1013,11 @@ IMPORTANT:
 
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
-        vi: `⛔ [QUY TẮC CUNG ĐỊA BÀN BẮT BUỘC] — Dữ liệu từ AstroMatrix ⛔\n\nDựa trên Ascendant = ${risingLocal} (Equal House tính từ ngày sinh), các hành tinh BẮT BUỘC phải viết đúng cung sau:\n• Sao Mộc tại ${jupSignLocal} = Nhà ${jupHouse}\n• Sao Thổ tại ${satSignLocal} = Nhà ${satHouse}\n• Sao Diêm Vương tại Bảo Bình = Nhà ${plHouse}\n• Mặt Trời = Nhà ${sunHouse}\n• Mặt Trăng = Nhà ${moonHouse}\n\n⛔ CẤM TUYỆT ĐỐI:\n- Tự suy luận cung từ chòm sao (PHẢI dùng dữ liệu trên)\n- Dùng Bản Đồ Whole Sign — SAI\n- Viết Sao Mộc = Nhà 5 (phải là Nhà ${jupHouse})\n- Viết Sao Thổ = Nhà 11 (phải là Nhà ${satHouse})\n- Viết Sao Diêm Vương = Nhà 3 hoặc Nhà 11 (phải là Nhà ${plHouse})`,
-        th: `⛔ [กฎเหล็กเรือนดาราศาสตร์] — ข้อมูลจาก AstroMatrix ⛔\n\nอ้างอิง Ascendant = ${risingLocal} (Equal House คำนวณจากวันเกิดจริง), ดาวเหล่านี้ต้องเขียนเรือนให้ถูกต้อง:\n• ดาวพฤหัสบดีที่ ${jupSignLocal} = เรือนที่ ${jupHouse}\n• ดาวเสาร์ที่ ${satSignLocal} = เรือนที่ ${satHouse}\n• ดาวพลูโตที่ กุมภ์ = เรือนที่ ${plHouse}\n• ดวงอาทิตย์ = เรือนที่ ${sunHouse}\n• ดวงจันทร์ = เรือนที่ ${moonHouse}\n\n⛔ ห้ามเด็ดขาด:\n- อนุมานเรือนจากราศี (ต้องใช้ข้อมูลข้างบน)\n- ใช้แผนที่ Whole Sign\n- เขียนเรือนที่ผิด`,
-        zh: `⛔ [宫位铁律] — 数据来自 AstroMatrix ⛔\n\n基于上升星座 = ${risingLocal} (Equal House 从生日计算), 行星必须使用以下精确宫位:\n• 木星在 ${jupSignLocal} = 第 ${jupHouse} 宫\n• 土星在 ${satSignLocal} = 第 ${satHouse} 宫\n• 冥王星在水瓶座 = 第 ${plHouse} 宫\n• 太阳 = 第 ${sunHouse} 宫\n• 月亮 = 第 ${moonHouse} 宫\n\n⛔ 严禁:\n- 从星座推算宫位（必须用上面数据）\n- 使用 Whole Sign 全星座制\n- 写错宫位`,
-        en: `⛔ [HOUSE MAPPING IRON RULE] — Data from AstroMatrix ⛔\n\nBased on Ascendant = ${risingLocal} (Equal House from birth date), planets MUST use these exact houses:\n• Jupiter in ${jupSignLocal} = House ${jupHouse}\n• Saturn in ${satSignLocal} = House ${satHouse}\n• Pluto in Aquarius = House ${plHouse}\n• Sun = House ${sunHouse}\n• Moon = House ${moonHouse}\n\n⛔ STRICTLY FORBIDDEN:\n- Inferring houses from signs (USE THE DATA ABOVE)\n- Using Whole Sign house system\n- Writing Jupiter = House 5 (must be House ${jupHouse})\n- Writing Saturn = House 11 (must be House ${satHouse})`,
-        es: `⛔ [REGLA DE HIERRO DE CASAS] — Datos de AstroMatrix ⛔\n\nBasado en Ascendente = ${risingLocal} (Equal House desde fecha de nacimiento), los planetas DEBEN usar estas casas exactas:\n• Júpiter en ${jupSignLocal} = Casa ${jupHouse}\n• Saturno en ${satSignLocal} = Casa ${satHouse}\n• Plutón en Acuario = Casa ${plHouse}\n• Sol = Casa ${sunHouse}\n• Luna = Casa ${moonHouse}\n\n⛔ ESTRICTAMENTE PROHIBIDO:\n- Inferir casas desde signos (usar datos arriba)\n- Usar sistema Whole Sign\n- Escribir Júpiter = Casa 5 (debe ser Casa ${jupHouse})`,
+        vi: `⛔ [QUY TẮC CUNG ĐỊA BÀN BẮT BUỘC] — Dữ liệu từ AstroMatrix ⛔\n\n📛 THÔNG TIN BẢN NGÃ (CẤM DÙNG DỮ LIỆU NGƯỜI KHÁC):\n• Mặt Trời = ${natalSunSign} (SUN SIGN CỦA NGƯỜI DÙNG NÀY, ngày sinh ${birthDate})\n• Mọi câu 'Hỡi người con của X' phải dùng ${natalSunSign} — KHÔNG ĐƯỢC dùng cung khác\n\n📍 Dựa trên Ascendant = ${risingLocal} (Equal House tính từ ngày sinh), các hành tinh BẮT BUỘC phải viết đúng cung sau:\n• Sao Mộc tại ${jupSignLocal} = Nhà ${jupHouse}\n• Sao Thổ tại ${satSignLocal} = Nhà ${satHouse}\n• Sao Diêm Vương tại Bảo Bình = Nhà ${plHouse}\n• Mặt Trời = Nhà ${sunHouse}\n• Mặt Trăng = Nhà ${moonHouse}\n\n⛔ CẤM TUYỆT ĐỐI:\n- Tự suy luận cung từ chòm sao (PHẢI dùng dữ liệu trên)\n- Dùng Bản Đồ Whole Sign — SAI\n- Viết Sao Mộc = Nhà 5 (phải là Nhà ${jupHouse})\n- Viết Sao Thổ = Nhà 11 (phải là Nhà ${satHouse})\n- Viết Sao Diêm Vương = Nhà 3 hoặc Nhà 11 (phải là Nhà ${plHouse})\n- Viết 'Mặt Trời Song Tử' nếu người dùng sinh tháng 10 (PHẢI là ${natalSunSign})`,
+        th: `⛔ [กฎเหล็กเรือนดาราศาสตร์] — ข้อมูลจาก AstroMatrix ⛔\n\n📛 ข้อมูลส่วนตัว (ห้ามใช้ข้อมูลผู้ใช้อื่น):\n• ดวงอาทิตย์ = ${natalSunSign} (ดวงอาทิตย์ของผู้ใช้นี้, เกิดวันที่ ${birthDate})\n• ทุกข้อความ 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น\n\n📍 อ้างอิง Ascendant = ${risingLocal} (Equal House คำนวณจากวันเกิดจริง), ดาวเหล่านี้ต้องเขียนเรือนให้ถูกต้อง:\n• ดาวพฤหัสบดีที่ ${jupSignLocal} = เรือนที่ ${jupHouse}\n• ดาวเสาร์ที่ ${satSignLocal} = เรือนที่ ${satHouse}\n• ดาวพลูโตที่ กุมภ์ = เรือนที่ ${plHouse}\n• ดวงอาทิตย์ = เรือนที่ ${sunHouse}\n• ดวงจันทร์ = เรือนที่ ${moonHouse}\n\n⛔ ห้ามเด็ดขาด:\n- อนุมานเรือนจากราศี (ต้องใช้ข้อมูลข้างบน)\n- ใช้แผนที่ Whole Sign\n- เขียนเรือนที่ผิด\n- เขียน 'ดวงอาทิตย์ราศีเมถุน' ให้ผู้ใช้ที่เกิดเดือนตุลาคม (ต้องเป็น ${natalSunSign})`,
+        zh: `⛔ [宫位铁律] — 数据来自 AstroMatrix ⛔\n\n📛 个人信息强制（禁止用别人数据）:\n• 太阳 = ${natalSunSign} (本用户的太阳星座, 生日 ${birthDate})\n• 所有 'X座之人' 必须用 ${natalSunSign} — 不得用其他星座\n\n📍 基于上升星座 = ${risingLocal} (Equal House 从生日计算), 行星必须使用以下精确宫位:\n• 木星在 ${jupSignLocal} = 第 ${jupHouse} 宫\n• 土星在 ${satSignLocal} = 第 ${satHouse} 宫\n• 冥王星在水瓶座 = 第 ${plHouse} 宫\n• 太阳 = 第 ${sunHouse} 宫\n• 月亮 = 第 ${moonHouse} 宫\n\n⛔ 严禁:\n- 从星座推算宫位（必须用上面数据）\n- 使用 Whole Sign 全星座制\n- 写错宫位\n- 写'太阳在双子座'给10月生日的用户（必须用 ${natalSunSign}）`,
+        en: `⛔ [HOUSE MAPPING IRON RULE] — Data from AstroMatrix ␦ STRICTLY VERIFIED ␦\n\n📛 PERSONAL IDENTITY (do NOT use other users' data):\n• Sun = ${natalSunSignEN} (this user's Sun Sign, birth date ${birthDate})\n• All 'O child of X' must use ${natalSunSignEN} — NOT other signs\n\n📍 Based on Ascendant = ${risingLocal} (Equal House from birth date), planets MUST use these exact houses:\n• Jupiter in ${jupSignLocal} = House ${jupHouse}\n• Saturn in ${satSignLocal} = House ${satHouse}\n• Pluto in Aquarius = House ${plHouse}\n• Sun = House ${sunHouse}\n• Moon = House ${moonHouse}\n\n⛔ STRICTLY FORBIDDEN:\n- Inferring houses from signs (USE THE DATA ABOVE)\n- Using Whole Sign house system\n- Writing Jupiter = House 5 (must be House ${jupHouse})\n- Writing Saturn = House 11 (must be House ${satHouse})\n- Writing 'Sun in Gemini' for an October-born user (MUST be ${natalSunSignEN})`,
+        es: `⛔ [REGLA DE HIERRO DE CASAS] — Datos de AstroMatrix ⛔\n\n📛 IDENTIDAD PERSONAL (no usar datos de otros usuarios):\n• Sol = ${natalSunSign} (el Sol de ESTE usuario, fecha de nacimiento ${birthDate})\n• Todo 'Oh hijo de X' debe usar ${natalSunSign} — NO otros signos\n\n📍 Basado en Ascendente = ${risingLocal} (Equal House desde fecha de nacimiento), los planetas DEBEN usar estas casas exactas:\n• Júpiter en ${jupSignLocal} = Casa ${jupHouse}\n• Saturno en ${satSignLocal} = Casa ${satHouse}\n• Plutón en Acuario = Casa ${plHouse}\n• Sol = Casa ${sunHouse}\n• Luna = Casa ${moonHouse}\n\n⛔ ESTRICTAMENTE PROHIBIDO:\n- Inferir casas desde signos (usar datos arriba)\n- Usar sistema Whole Sign\n- Escribir Júpiter = Casa 5 (debe ser Casa ${jupHouse})\n- Escribir 'Sol en Géminis' para usuarios nacidos en octubre (DEBE ser ${natalSunSign})`,
         fr: `⛔ [RÈGLE DE FER DES MAISONS] — Données d'AstroMatrix ⛔\n\nBasé sur Ascendant = ${risingLocal} (Equal House depuis date de naissance), les planètes DOIVENT utiliser ces maisons exactes:\n• Jupiter en ${jupSignLocal} = Maison ${jupHouse}\n• Saturne en ${satSignLocal} = Maison ${satHouse}\n• Pluton en Verseau = Maison ${plHouse}\n• Soleil = Maison ${sunHouse}\n• Lune = Maison ${moonHouse}\n\n⛔ STRICTEMENT INTERDIT:\n- Inférer les maisons depuis les signes\n- Utiliser le système Whole Sign\n- Écrire Jupiter = Maison 5 (doit être Maison ${jupHouse})`
       };
       houseLock = locks[lang] || locks.en;

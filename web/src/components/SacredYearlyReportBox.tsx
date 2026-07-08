@@ -175,7 +175,7 @@ const SacredYearlyReportBox: React.FC<{
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
     // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
-    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
     cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, p3, p4, title) => {
       const chapterNum = p1 || p2 || p3 || p4;
       return '\n\n【✦ 第' + chapterNum + '章：' + title.trim() + ' ✦】\n\n';
