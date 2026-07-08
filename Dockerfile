@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir --break-system-packages swisseph fastapi uvicorn
+RUN pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn
 
 # Secrets (SUPABASE_URL / SERVICE_KEY / DEEPSEEK_API_KEY / VITE_*) 
 # are injected at runtime by Railway — do NOT hardcode here.
