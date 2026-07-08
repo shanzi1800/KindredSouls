@@ -186,6 +186,68 @@ export function buildMonthlyData(astroMatrix) {
   }));
 }
 
+// ── P1.1: Per-Month SwissEph Truth Block ──────────────────────────────────────
+/**
+ * Generate a structured per-month data block for all planets.
+ * Injected into the AI user prompt so AI never hallucinates house positions.
+ * Output is human-readable text (no JSON), AI-friendly block format.
+ */
+export function buildPerMonthData(astroMatrix) {
+  if (!astroMatrix || !astroMatrix.months) return '';
+
+  const elementEmoji = { Water: '🌊', Fire: '🔥', Earth: '🌍', Air: '💨' };
+  
+  return astroMatrix.months.map(m => {
+    const lines = [];
+    lines.push(`[${m.month_key} SWISSEPH PLANETARY POSITIONS - do NOT alter]:`);
+    
+    // Inner planets (always include)
+    const inner = ['sun','moon','mercury','venus','mars'];
+    for (const name of inner) {
+      const p = m[name];
+      if (!p) continue;
+      const rx = p.retrograde ? ' (RETROGRADE)' : '';
+      const elem = elementEmoji[p.element] || '';
+      const degStr = p.degree ? `${p.degree}°` : '';
+      lines.push(`  ${name.charAt(0).toUpperCase()+name.slice(1)}: ${p.sign} ${degStr} House ${p.house}${rx} ${elem}`);
+    }
+    
+    // Outer planets (jupiter/saturn/uranus/neptune/pluto)
+    const outer = ['jupiter','saturn','uranus','neptune','pluto'];
+    for (const name of outer) {
+      const p = m[name];
+      if (!p) continue;
+      const rx = p.retrograde ? ' (RETROGRADE)' : '';
+      const elem = elementEmoji[p.element] || '';
+      lines.push(`  ${name.charAt(0).toUpperCase()+name.slice(1)}: ${p.sign} House ${p.house}${rx} ${elem}`);
+    }
+    
+    // Mercury status (explicit)
+    if (m.mercury?.status) {
+      lines.push(`  Mercury Status: ${m.mercury.status === 'RETROGRADE' ? '🔴 RETROGRADE' : '🟢 DIRECT'}`);
+    }
+    
+    // Peak windows
+    if (m.peak_windows && m.peak_windows.length > 0) {
+      const pw = m.peak_windows.slice(0, 2);
+      for (const w of pw) {
+        lines.push(`  🟢 Peak: ${w.date} — ${w.type} in ${w.sign} House ${w.house || '?'}`);
+      }
+    }
+    
+    // Black swan days
+    if (m.black_swan_days && m.black_swan_days.length > 0) {
+      const bsd = m.black_swan_days.slice(0, 1);
+      for (const d of bsd) {
+        lines.push(`  🔴 Black Swan: ${d.date} — ${d.aspect}`);
+      }
+    }
+    
+    lines.push(''); // blank line between months
+    return lines.join('\n');
+  }).join('\n');
+}
+
 // ── Health Check ──────────────────────────────────────────────────────────────
 export async function v69HealthCheck() {
   try {

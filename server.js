@@ -4,7 +4,7 @@ import express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, v69HealthCheck } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, v69HealthCheck } from './v69_client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -227,6 +227,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // If V69 computed data available, skip the hardcoded FACT_SHEET section
   // by marking it with a tag that the caller can replace.
   const HAS_V69_DATA = !!v69FactSheet;
+  // 🛠️ P1.1: 逐月全行星真理数据块（内行星+外行星+峰值+黑天鹅，按月隔离）
+  const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix) : '';
 
   // ── 年报 5大乐章系统提示词（6语言全量） ──
   const YEARLY_SYSTEM = {
@@ -1067,6 +1069,11 @@ IMPORTANT:
     return {
       system: yearlySystem,
       user: `${houseLock ? houseLock + '\n\n' : ''}Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
+
+[P1.1 SWISSEPH PER-MONTH TRUTH DATA — DO NOT ALTER]:
+All planet positions, houses, and aspects below are COMPUTED by Swiss Ephemeris.
+Use this data DIRECTLY. Do NOT recalculate, re-assign houses, or invent positions.
+${perMonthData || '    [SwissEph data unavailable — use your best astrological judgement]'}
 
 DYNAMIC DATE CALCULATION (CRITICAL):
 • Report cycle starts from current month: ${currentYear}年${monthNamesZH[currentMonth-1]}
