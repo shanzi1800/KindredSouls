@@ -937,6 +937,17 @@ IMPORTANT:
           `ดาวเสาร์ในราศี${satSignTH}ตรวจสอบ${TH_HOUSE[satHouse]}`
         );
         console.log(`[V80] Thai house context injected: Jup=${jupHouse} House(${jupSignTH}), Sat=${satHouse} House(${satSignTH}), Rising=${rising}`);
+      } else if (lang === 'vi') {
+        // ── 🛠️ V81 FIX: 替换越南文 ASTRO RULES ──
+        const VI_HOUSE = {1:'Nhà 1',2:'Nhà 2',3:'Nhà 3',4:'Nhà 4',5:'Nhà 5',6:'Nhà 6',7:'Nhà 7',8:'Nhà 8',9:'Nhà 9',10:'Nhà 10',11:'Nhà 11',12:'Nhà 12'};
+        const VI_SIGNS = {Aries:'Bạch Dương',Taurus:'Kim Ngưu',Gemini:'Song Tử',Cancer:'Cự Giải',Leo:'Sư Tử',Virgo:'Xử Nữ',Libra:'Thiên Bình',Scorpio:'Bọ Cạp',Sagittarius:'Nhân Mã',Capricorn:'Ma Kết',Aquarius:'Bảo Bình',Pisces:'Song Ngư'};
+        const risingVI = VI_SIGNS[rising] || rising;
+        const jupSignVI = VI_SIGNS[first.jupiter?.sign] || first.jupiter?.sign || 'Leo';
+        const satSignVI = VI_SIGNS[first.saturn?.sign] || first.saturn?.sign || 'Aries';
+        const OLD_VI_HOUSE = 'BẢN ĐỒ 12 NHÀ cho ASC=Cự Giải: 1=Cự Giải/9=Sông Ngư/10=Bạch Dương/11=Kim Ngưu/12=Song Tử. Mặt Trời tại Sông Ngư = Nhà 9, KHÔNG PHẢI Nhà 1 hay 12!';
+        const NEW_VI_HOUSE = `BẢN ĐỒ 12 NHÀ cho ASC=${risingVI} (Equal House tính từ ngày sinh): Sao Mộc tại ${jupSignVI} = ${VI_HOUSE[jupHouse]}, Sao Thổ tại ${satSignVI} = ${VI_HOUSE[satHouse]}, Sao Diêm Vương tại Bảo Bình = ${VI_HOUSE[plHouse]}, Mặt Trời = ${VI_HOUSE[sunHouse]}. TUYỆT ĐỐI KHÔNG dùng Bản Đồ Whole Sign khác!`;
+        yearlySystem = yearlySystem.replace(OLD_VI_HOUSE, NEW_VI_HOUSE);
+        console.log(`[V81] Vietnamese house context injected: Jup=${jupHouse}(${jupSignVI}), Sat=${satHouse}(${satSignVI}), Rising=${risingVI}`);
       }
     }
 
