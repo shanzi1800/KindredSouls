@@ -1,4 +1,8 @@
 // 🛠️ V59: 修复Markdown符号残留+排版优化
+// ═══════════════════════════════════════════════════════════
+// 🔒 参数封仓 V79 — 本文件所有样式参数已锁定，禁止修改
+// 详见: ~/qclaw/workspace/KindredSouls_SacredYearlyReportBox_参数封仓手册.md
+// ═══════════════════════════════════════════════════════════
 import React, { useEffect, useRef, useState } from 'react';
 
 const SacredYearlyReportBox: React.FC<{
@@ -416,13 +420,15 @@ const SacredYearlyReportBox: React.FC<{
           </h3>
         </div>
 
-        {/* 滚动区 */}
+        {/* 滚动区 🔒 封仓参数 */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
           className="dark-scrollbar"
           style={{ 
+            // 🔒 LOCKED: 高度460px，禁止修改
             height: '460px', 
+            // 🔒 LOCKED: overflowY=auto，禁止修改
             overflowY: 'auto', 
             paddingRight: '6px', 
             textAlign: 'left',
@@ -446,7 +452,7 @@ const SacredYearlyReportBox: React.FC<{
           )}
         </div>
 
-        {/* 底部暗金光晕 — 4px渐变条 + 80px径向光晕球，双双呼吸脉动 */}
+        {/* 底部暗金光晕 — 4px渐变条 + 80px径向光晕球，双双呼吸脉动 🔒 LOCKED */}
         <div style={{
           position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px',
           background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)',
