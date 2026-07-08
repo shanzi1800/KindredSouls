@@ -13,16 +13,22 @@ const SacredYearlyReportBox: React.FC<{
 
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
 
+  // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || yearlyCardsReady || !hasContent) return;
+    el.scrollTop = el.scrollHeight;
+  }, [rawStreamText, tickRef.current]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (yearlyCardsReady) {
+      // 🛠️ V78: 流式完成后必须回到顶部
       autoScrollRef.current = false;
-      // 流式完成后保持当前滚动位置，用户继续看完整内容
-    } else if (hasContent && autoScrollRef.current) {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = 0;
     }
-  }, [rawStreamText, yearlyCardsReady, hasContent, tickRef.current]);
+  }, [yearlyCardsReady]);
 
   useEffect(() => {
     if (!yearlyCardsReady && hasContent) {
@@ -339,24 +345,36 @@ const SacredYearlyReportBox: React.FC<{
     });
   };
 
-  const SkeletonBar = ({ delay, w }: { delay: number; w: string }) => (
-    <div style={{
-      height: '12px', width: w, marginBottom: '16px', borderRadius: '6px',
-      background: 'linear-gradient(90deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04))',
-      animation: `sacredPulse 2s ease-in-out ${delay}s infinite`,
-    }} />
-  );
+  // 🛠️ V78: 星光呼吸灯 — 3种周期琥珀色脉冲，模拟星尘洒落
+  const SkeletonBar = ({ delay, w, period }: { delay: number; w: string; period: 2 | 25 | 3 }) => {
+    const anim = period === 2 ? 'skeleton2s' : period === 25 ? 'skeleton25s' : 'skeleton3s';
+    return (
+      <div style={{
+        height: '11px', width: w, marginBottom: '14px', borderRadius: '5px',
+        background: `linear-gradient(90deg, rgba(212,175,55,${period === 2 ? 0.15 : period === 25 ? 0.12 : 0.10}), rgba(212,175,55,${period === 2 ? 0.05 : period === 25 ? 0.04 : 0.03}))`,
+        animation: `${anim} ${period}s ease-in-out ${delay}s infinite`,
+      }} />
+    );
+  };
 
   return (
     <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 16px' }}>
       <style>{`
-        @keyframes sacredPulse {
-          0%, 100% { opacity: 0.12; transform: scaleX(0.97); }
-          50% { opacity: 0.7; transform: scaleX(1.02); }
+        @keyframes skeleton2s {
+          0%, 100% { opacity: 0.12; transform: scaleX(0.95); }
+          50% { opacity: 0.75; transform: scaleX(1.03); }
+        }
+        @keyframes skeleton25s {
+          0%, 100% { opacity: 0.10; transform: scaleX(0.93); }
+          50% { opacity: 0.65; transform: scaleX(1.05); }
+        }
+        @keyframes skeleton3s {
+          0%, 100% { opacity: 0.08; transform: scaleX(0.90); }
+          50% { opacity: 0.60; transform: scaleX(1.07); }
         }
         @keyframes sacredGlow {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.9; }
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.95; }
         }
         .dark-scrollbar::-webkit-scrollbar { width: 6px; border-radius: 3px; }
         .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
@@ -402,28 +420,33 @@ const SacredYearlyReportBox: React.FC<{
           }}
         >
           {!hasContent ? (
+            // 🛠️ V78: 星光呼吸灯骨架 — 3组琥珀色脉冲条，交错呼吸（2s/2.5s/3s），模拟星尘洒落
             <div style={{ padding: '20px 0' }}>
-              <SkeletonBar delay={0} w="90%" />
-              <SkeletonBar delay={1} w="72%" />
-              <SkeletonBar delay={2} w="80%" />
-              <SkeletonBar delay={3} w="65%" />
-              <SkeletonBar delay={4} w="55%" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <SkeletonBar delay={0.0} w="60%"  period={2} />
+                <SkeletonBar delay={0.8} w="72%"  period={25} />
+                <SkeletonBar delay={1.6} w="85%"  period={3} />
+                <SkeletonBar delay={0.3} w="55%"  period={2} />
+                <SkeletonBar delay={1.1} w="68%"  period={25} />
+                <SkeletonBar delay={1.9} w="78%"  period={3} />
+                <SkeletonBar delay={0.5} w="50%"  period={2} />
+              </div>
             </div>
           ) : (
             <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
           )}
         </div>
 
-        {/* 底部光晕 */}
+        {/* 底部暗金光晕 — 4px渐变条 + 80px径向光晕球，双双呼吸脉动 */}
         <div style={{
-          position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '3px',
-          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)',
-          animation: 'sacredGlow 3s ease-in-out infinite',
+          position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px',
+          background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)',
+          animation: 'sacredGlow 2s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', bottom: '-30px', left: '50%', transform: 'translateX(-50%)',
-          width: '80px', height: '60px', background: 'rgba(212,175,55,0.12)',
-          borderRadius: '50%', filter: 'blur(20px)', pointerEvents: 'none',
+          position: 'absolute', bottom: '-40px', left: '50%', transform: 'translateX(-50%)',
+          width: '80px', height: '80px', background: 'rgba(212,175,55,0.15)',
+          borderRadius: '50%', filter: 'blur(25px)', pointerEvents: 'none',
           animation: 'sacredGlow 3s ease-in-out infinite',
         }} />
       </div>
