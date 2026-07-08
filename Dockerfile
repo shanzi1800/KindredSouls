@@ -1,5 +1,4 @@
 FROM node:20-bookworm
-# Force cache rebuild at: $(date)
 
 WORKDIR /app
 
@@ -9,8 +8,11 @@ RUN apt-get update && \
 
 RUN pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn
 
-# Secrets (SUPABASE_URL / SERVICE_KEY / DEEPSEEK_API_KEY / VITE_*) 
-# are injected at runtime by Railway — do NOT hardcode here.
+ENV VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
+ENV VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTU4MjEsImV4cCI6MjA5NTIzMTgyMX0.qMyRlkMRTkPccngccWa2GJroGaROqdA6N937XRK2L4g
+ENV SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
+ENV SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw
+ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 ENV V69_PORT=8001
 ENV V69_HOST=127.0.0.1
 
