@@ -175,7 +175,8 @@ const SacredYearlyReportBox: React.FC<{
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
     // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
-    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+        // 🛠️ V83.2 FIX: 越南文裸✦前缀（AI输出是✦ Chương I:...，没有【】括号）
+    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
     cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, p3, p4, title) => {
       const chapterNum = p1 || p2 || p3 || p4;
       return '\n\n【✦ 第' + chapterNum + '章：' + title.trim() + ' ✦】\n\n';
@@ -242,9 +243,15 @@ const SacredYearlyReportBox: React.FC<{
     ];
     // 🛠️ V77: 泰语章节金色识别（บทที่ 1 ถึง บทที่ 5 + บทสรุปประจำปี）
     const isThaiChapter = /^บทที่\s*\d+/.test(textWithoutIcon);
+    // 🛠️ V83.2 FIX: 越南文 Chương I-V 也走大字金色（type:chapter），不降级成 heading
+    const isVietnameseChapter = /Chương\s+[IVXivx\d]+/.test(textWithoutIcon);
     const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p)) || /^Section\s+[IVX]+/i.test(textWithoutIcon) || isThaiChapter;
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
     if (isChapterPattern || isSectionNumber) {
+      // V83.2: 越南文/泰文章节 → 大字金（chapter），其他 → 小字金（heading）
+      if (isVietnameseChapter || isThaiChapter) {
+        return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };
+      }
       return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
     }
     
@@ -296,7 +303,7 @@ const SacredYearlyReportBox: React.FC<{
           textAlign: 'center', letterSpacing: '2px', margin: '16px 0 12px',
           textShadow: '0 0 8px rgba(212,175,55,0.25)'
         }}>
-          【✦ {content} ✦】
+          ✦ {content} ✦
         </div>
       );
       
