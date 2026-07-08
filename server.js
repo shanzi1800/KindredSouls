@@ -1055,6 +1055,8 @@ IMPORTANT:
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
+⛔ [CRITICAL — DO NOT COMPUTE SUN SIGN]: The user's Natal Sun Sign has been pre-computed by Swiss Ephemeris and provided in the [HOUSE MAPPING IRON RULE] section above. The per-month data below is TRANSIT data for the 12 forecast months — NOT natal chart data. DO NOT use transit Sun positions to compute or replace the user's natal Sun Sign. If the Sun Sign is explicitly stated above, USE THAT VALUE. In output, include the header 'Bảng Vận Niên: {natalSunSign} · Năm Cách Mạng Mặt Trời' and 'Mã Bản Đồ Sao Chính: Mặt Trời {natalSunSign}' using the exact natalSunSign value, NOT computed from transit data.
+
 [P1.1 SWISSEPH PER-MONTH TRUTH DATA — DO NOT ALTER]:
 All planet positions, houses, and aspects below are COMPUTED by Swiss Ephemeris.
 Use this data DIRECTLY. Do NOT recalculate, re-assign houses, or invent positions.
