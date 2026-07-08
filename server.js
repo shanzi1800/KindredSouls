@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, v69HealthCheck } from './v69_client.js';
+import { LEXICON } from './lexicon.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -963,24 +964,11 @@ IMPORTANT:
       const sunHouse = first.sun?.house || 1;
       const moonHouse = first.moon?.house || 1;
 
-      // 阳历星座 → 泰语名
-      const TH_SIGN = {
-        Aries:'เมษ', Taurus:'พฤษภ', Gemini:'มิถุน', Cancer:'กรกฏ',
-        Leo:'สิงห์', Virgo:'กันยา', Libra:'ตุลย์', Scorpio:'พิจิก',
-        Sagittarius:'ธนู', Capricorn:'มังกร', Aquarius:'กุมภ์', Pisces:'มีน'
-      };
-      // 越南星座名
-      const VI_SIGN = {
-        Aries:'Bạch Dương', Taurus:'Kim Ngưu', Gemini:'Song Tử', Cancer:'Cự Giải',
-        Leo:'Sư Tử', Virgo:'Xử Nữ', Libra:'Thiên Bình', Scorpio:'Bọ Cạp',
-        Sagittarius:'Nhân Mã', Capricorn:'Ma Kết', Aquarius:'Bảo Bình', Pisces:'Song Ngư'
-      };
-      // 阳历宫位 → 泰语/越南语宫位名
-      const TH_HOUSE = {
-        1:'เรือนที่ 1', 2:'เรือนที่ 2', 3:'เรือนที่ 3', 4:'เรือนที่ 4',
-        5:'เรือนที่ 5', 6:'เรือนที่ 6', 7:'เรือนที่ 7', 8:'เรือนที่ 8',
-        9:'เรือนที่ 9', 10:'เรือนที่ 10', 11:'เรือนที่ 11', 12:'เรือนที่ 12'
-      };
+      // P1.2 Fixed Lexicon: 从 lexicon.js 读取泰语/越南语星座和宫位
+      const TH_SIGN = LEXICON.th.signs;
+      // 🛡️ 军师修正：泰文宫位用 ภพ（梵文 bhava）而非 เรือน
+      const TH_HOUSE = {}; for (let i=1;i<=12;i++) TH_HOUSE[i] = 'ภพที่ ' + i;
+      const VI_SIGN = LEXICON.vi.signs;
 
       const signMap = lang === 'th' ? TH_SIGN : VI_SIGN;
       const jupSignTH = signMap[first.jupiter?.sign] || first.jupiter?.sign || 'Leo';
@@ -1003,9 +991,9 @@ IMPORTANT:
         );
         console.log(`[V80] Thai house context injected: Jup=${jupHouse} House(${jupSignTH}), Sat=${satHouse} House(${satSignTH}), Rising=${rising}`);
       } else if (lang === 'vi') {
-        // ── 🛠️ V81 FIX: 替换越南文 ASTRO RULES ──
-        const VI_HOUSE = {1:'Nhà 1',2:'Nhà 2',3:'Nhà 3',4:'Nhà 4',5:'Nhà 5',6:'Nhà 6',7:'Nhà 7',8:'Nhà 8',9:'Nhà 9',10:'Nhà 10',11:'Nhà 11',12:'Nhà 12'};
-        const VI_SIGNS = {Aries:'Bạch Dương',Taurus:'Kim Ngưu',Gemini:'Song Tử',Cancer:'Cự Giải',Leo:'Sư Tử',Virgo:'Xử Nữ',Libra:'Thiên Bình',Scorpio:'Bọ Cạp',Sagittarius:'Nhân Mã',Capricorn:'Ma Kết',Aquarius:'Bảo Bình',Pisces:'Song Ngư'};
+        // ── 🛠️ V81 FIX: 替换越南文 ASTRO RULES（P1.2: 从 lexicon 读取）──
+        const VI_HOUSE = {}; for (let i=1;i<=12;i++) VI_HOUSE[i] = 'Nhà ' + i;
+        const VI_SIGNS = LEXICON.vi.signs;
         const risingVI = VI_SIGNS[rising] || rising;
         const jupSignVI = VI_SIGNS[first.jupiter?.sign] || first.jupiter?.sign || 'Leo';
         const satSignVI = VI_SIGNS[first.saturn?.sign] || first.saturn?.sign || 'Aries';
@@ -1040,15 +1028,8 @@ IMPORTANT:
       const natalSunSignEN = SUN_SIGN_EN[natalSunIdx];
       const plSignEN = 'Aquarius';
 
-      // 本地化星座/宫位名
-      const ZH_SIGNS = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
-      const EN_SIGNS = {Aries:'Aries',Taurus:'Taurus',Gemini:'Gemini',Cancer:'Cancer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Scorpio',Sagittarius:'Sagittarius',Capricorn:'Capricorn',Aquarius:'Aquarius',Pisces:'Pisces'};
-      const ES_SIGNS = {Aries:'Aries',Taurus:'Tauro',Gemini:'Géminis',Cancer:'Cáncer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Escorpio',Sagittarius:'Sagitario',Capricorn:'Capricornio',Aquarius:'Acuario',Pisces:'Piscis'};
-      const FR_SIGNS = {Aries:'Bélier',Taurus:'Taureau',Gemini:'Gémeaux',Cancer:'Cancer',Leo:'Lion',Virgo:'Vierge',Libra:'Balance',Scorpio:'Scorpion',Sagittarius:'Sagittaire',Capricorn:'Capricorne',Aquarius:'Verseau',Pisces:'Poissons'};
-      const VI_SIGNS_FULL = {Aries:'Bạch Dương',Taurus:'Kim Ngưu',Gemini:'Song Tử',Cancer:'Cự Giải',Leo:'Sư Tử',Virgo:'Xử Nữ',Libra:'Thiên Bình',Scorpio:'Bọ Cạp',Sagittarius:'Nhân Mã',Capricorn:'Ma Kết',Aquarius:'Bảo Bình',Pisces:'Song Ngư'};
-      const TH_SIGNS_FULL = {Aries:'เมษ',Taurus:'พฤษภ',Gemini:'มิถุน',Cancer:'กรกฏ',Leo:'สิงห์',Virgo:'กันยา',Libra:'ตุลย์',Scorpio:'พิจิก',Sagittarius:'ธนู',Capricorn:'มังกร',Aquarius:'กุมภ์',Pisces:'มีน'};
-
-      const signMap = { zh: ZH_SIGNS, en: EN_SIGNS, es: ES_SIGNS, fr: FR_SIGNS, vi: VI_SIGNS_FULL, th: TH_SIGNS_FULL }[lang] || EN_SIGNS;
+      // P1.2 Fixed Lexicon: 从 lexicon.js 读取 6 语言星座名
+      const signMap = LEXICON[lang]?.signs || LEXICON.en.signs;
       const risingLocal = signMap[rising] || rising;
       const jupSignLocal = signMap[jupSign] || jupSign;
       const satSignLocal = signMap[satSign] || satSign;
@@ -1056,7 +1037,7 @@ IMPORTANT:
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
         vi: `⛔ [QUY TẮC CUNG ĐỊA BÀN BẮT BUỘC] — Dữ liệu từ AstroMatrix ⛔\n\n📛 THÔNG TIN BẢN NGÃ (CẤM DÙNG DỮ LIỆU NGƯỜI KHÁC):\n• Mặt Trời = ${natalSunSign} (SUN SIGN CỦA NGƯỜI DÙNG NÀY, ngày sinh ${birthDate})\n• Mọi câu 'Hỡi người con của X' phải dùng ${natalSunSign} — KHÔNG ĐƯỢC dùng cung khác\n\n📍 Dựa trên Ascendant = ${risingLocal} (Equal House tính từ ngày sinh), các hành tinh BẮT BUỘC phải viết đúng cung sau:\n• Sao Mộc tại ${jupSignLocal} = Nhà ${jupHouse}\n• Sao Thổ tại ${satSignLocal} = Nhà ${satHouse}\n• Sao Diêm Vương tại Bảo Bình = Nhà ${plHouse}\n• Mặt Trời = Nhà ${sunHouse}\n• Mặt Trăng = Nhà ${moonHouse}\n\n⛔ CẤM TUYỆT ĐỐI:\n- Tự suy luận cung từ chòm sao (PHẢI dùng dữ liệu trên)\n- Dùng Bản Đồ Whole Sign — SAI\n- Viết Sao Mộc = Nhà 5 (phải là Nhà ${jupHouse})\n- Viết Sao Thổ = Nhà 11 (phải là Nhà ${satHouse})\n- Viết Sao Diêm Vương = Nhà 3 hoặc Nhà 11 (phải là Nhà ${plHouse})\n- Viết 'Mặt Trời Song Tử' nếu người dùng sinh tháng 10 (PHẢI là ${natalSunSign})`,
-        th: `⛔ [กฎเหล็กเรือนดาราศาสตร์] — ข้อมูลจาก AstroMatrix ⛔\n\n📛 ข้อมูลส่วนตัว (ห้ามใช้ข้อมูลผู้ใช้อื่น):\n• ดวงอาทิตย์ = ${natalSunSign} (ดวงอาทิตย์ของผู้ใช้นี้, เกิดวันที่ ${birthDate})\n• ทุกข้อความ 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น\n\n📍 อ้างอิง Ascendant = ${risingLocal} (Equal House คำนวณจากวันเกิดจริง), ดาวเหล่านี้ต้องเขียนเรือนให้ถูกต้อง:\n• ดาวพฤหัสบดีที่ ${jupSignLocal} = เรือนที่ ${jupHouse}\n• ดาวเสาร์ที่ ${satSignLocal} = เรือนที่ ${satHouse}\n• ดาวพลูโตที่ กุมภ์ = เรือนที่ ${plHouse}\n• ดวงอาทิตย์ = เรือนที่ ${sunHouse}\n• ดวงจันทร์ = เรือนที่ ${moonHouse}\n\n⛔ ห้ามเด็ดขาด:\n- อนุมานเรือนจากราศี (ต้องใช้ข้อมูลข้างบน)\n- ใช้แผนที่ Whole Sign\n- เขียนเรือนที่ผิด\n- เขียน 'ดวงอาทิตย์ราศีเมถุน' ให้ผู้ใช้ที่เกิดเดือนตุลาคม (ต้องเป็น ${natalSunSign})`,
+        th: `⛔ [กฎเหล็กเรือนดาราศาสตร์] — ข้อมูลจาก AstroMatrix ⛔\n\n📛 ข้อมูลส่วนตัว (ห้ามใช้ข้อมูลผู้ใช้อื่น):\n• ดวงอาทิตย์ = ${natalSunSign} (ดวงอาทิตย์ของผู้ใช้นี้, เกิดวันที่ ${birthDate})\n• ทุกข้อความ 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น\n\n📍 อ้างอิง Ascendant = ${risingLocal} (Equal House คำนวณจากวันเกิดจริง), ดาวเหล่านี้ต้องเขียนเรือนให้ถูกต้อง:\n• ดาวพฤหัสบดีที่ ${jupSignLocal} = ภพที่ ${jupHouse}\n• ดาวเสาร์ที่ ${satSignLocal} = ภพที่ ${satHouse}\n• ดาวพลูโตที่ กุมภ์ = ภพที่ ${plHouse}\n• ดวงอาทิตย์ = ภพที่ ${sunHouse}\n• ดวงจันทร์ = ภพที่ ${moonHouse}\n\n⛔ ห้ามเด็ดขาด:\n- อนุมานเรือนจากราศี (ต้องใช้ข้อมูลข้างบน)\n- ใช้แผนที่ Whole Sign\n- เขียนภพที่ผิด\n- เขียน 'ดวงอาทิตย์ราศีเมถุน' ให้ผู้ใช้ที่เกิดเดือนตุลาคม (ต้องเป็น ${natalSunSign})`,
         zh: `⛔ [宫位铁律] — 数据来自 AstroMatrix ⛔\n\n📛 个人信息强制（禁止用别人数据）:\n• 太阳 = ${natalSunSign} (本用户的太阳星座, 生日 ${birthDate})\n• 所有 'X座之人' 必须用 ${natalSunSign} — 不得用其他星座\n\n📍 基于上升星座 = ${risingLocal} (Equal House 从生日计算), 行星必须使用以下精确宫位:\n• 木星在 ${jupSignLocal} = 第 ${jupHouse} 宫\n• 土星在 ${satSignLocal} = 第 ${satHouse} 宫\n• 冥王星在水瓶座 = 第 ${plHouse} 宫\n• 太阳 = 第 ${sunHouse} 宫\n• 月亮 = 第 ${moonHouse} 宫\n\n⛔ 严禁:\n- 从星座推算宫位（必须用上面数据）\n- 使用 Whole Sign 全星座制\n- 写错宫位\n- 写'太阳在双子座'给10月生日的用户（必须用 ${natalSunSign}）`,
         en: `⛔ [HOUSE MAPPING IRON RULE] — Data from AstroMatrix ␦ STRICTLY VERIFIED ␦\n\n📛 PERSONAL IDENTITY (do NOT use other users' data):\n• Sun = ${natalSunSignEN} (this user's Sun Sign, birth date ${birthDate})\n• All 'O child of X' must use ${natalSunSignEN} — NOT other signs\n\n📍 Based on Ascendant = ${risingLocal} (Equal House from birth date), planets MUST use these exact houses:\n• Jupiter in ${jupSignLocal} = House ${jupHouse}\n• Saturn in ${satSignLocal} = House ${satHouse}\n• Pluto in Aquarius = House ${plHouse}\n• Sun = House ${sunHouse}\n• Moon = House ${moonHouse}\n\n⛔ STRICTLY FORBIDDEN:\n- Inferring houses from signs (USE THE DATA ABOVE)\n- Using Whole Sign house system\n- Writing Jupiter = House 5 (must be House ${jupHouse})\n- Writing Saturn = House 11 (must be House ${satHouse})\n- Writing 'Sun in Gemini' for an October-born user (MUST be ${natalSunSignEN})`,
         es: `⛔ [REGLA DE HIERRO DE CASAS] — Datos de AstroMatrix ⛔\n\n📛 IDENTIDAD PERSONAL (no usar datos de otros usuarios):\n• Sol = ${natalSunSign} (el Sol de ESTE usuario, fecha de nacimiento ${birthDate})\n• Todo 'Oh hijo de X' debe usar ${natalSunSign} — NO otros signos\n\n📍 Basado en Ascendente = ${risingLocal} (Equal House desde fecha de nacimiento), los planetas DEBEN usar estas casas exactas:\n• Júpiter en ${jupSignLocal} = Casa ${jupHouse}\n• Saturno en ${satSignLocal} = Casa ${satHouse}\n• Plutón en Acuario = Casa ${plHouse}\n• Sol = Casa ${sunHouse}\n• Luna = Casa ${moonHouse}\n\n⛔ ESTRICTAMENTE PROHIBIDO:\n- Inferir casas desde signos (usar datos arriba)\n- Usar sistema Whole Sign\n- Escribir Júpiter = Casa 5 (debe ser Casa ${jupHouse})\n- Escribir 'Sol en Géminis' para usuarios nacidos en octubre (DEBE ser ${natalSunSign})`,

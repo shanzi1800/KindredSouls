@@ -264,9 +264,10 @@ export const LEXICON = {
       Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
     },
     signs: {
-      Aries: 'ราศีเมษ', Taurus: 'ราศีพฤษภ', Gemini: 'ราศีมิถุน', Cancer: 'ราศีกรกฏ',
-      Leo: 'ราศีสิงห์', Virgo: 'ราศีกันย์', Libra: 'ราศีตุลย์', Scorpio: 'ราศีพิจิก',
-      Sagittarius: 'ราศีธนู', Capricorn: 'ราศีมังกร', Aquarius: 'ราศีกุมภ์', Pisces: 'ราศีมีน',
+      // ⚠️ 无 ราศี 前缀——用于动态拼接："ในราศี" + signName
+      Aries: 'เมษ', Taurus: 'พฤษภ', Gemini: 'มิถุน', Cancer: 'กรกฏ',
+      Leo: 'สิงห์', Virgo: 'กันย์', Libra: 'ตุลย์', Scorpio: 'พิจิก',
+      Sagittarius: 'ธนู', Capricorn: 'มังกร', Aquarius: 'กุมภ์', Pisces: 'มีน',
     },
     houses: {
       1: 'ภพที่ 1 (ตนุ)', 2: 'ภพที่ 2 (กตุธน)', 3: 'ภพที่ 3 (สหัชชะ)',
