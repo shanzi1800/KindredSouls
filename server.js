@@ -1779,8 +1779,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🔧 V75 fix: 64000 彻底解除年报截断（EN报告需要18000+ tokens完整输出）
     const maxTokens = reportType === 'yearly' ? 64000 : 4000;
     // 🔧 V75 fix: DeepSeek 大输出需要更长超时（AbortController 5分钟）
+    // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
     const controller = new AbortController();
-    const aiTimeout = setTimeout(() => controller.abort(), 300000); // 5min timeout
+    // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
+    let aiTimeout;
+    try { aiTimeout = setTimeout(() => controller.abort(), 300000); } catch(e){}
 
     if (!deepseekKey) {
       clearTimeout(aiTimeout);
