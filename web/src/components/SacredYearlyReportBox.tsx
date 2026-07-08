@@ -1,5 +1,5 @@
 // 🛠️ V59: 修复Markdown符号残留+排版优化
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const SacredYearlyReportBox: React.FC<{
   rawStreamText: string;
@@ -10,8 +10,17 @@ const SacredYearlyReportBox: React.FC<{
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
+  const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
 
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
+
+  // 🛠️ V79: 强制骨架显示500ms，确保骨架可见（不管缓存还是流式）
+  useEffect(() => {
+    if (hasContent && showSkeleton) {
+      const t = setTimeout(() => setShowSkeleton(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [hasContent]);
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
   useEffect(() => {
@@ -419,7 +428,7 @@ const SacredYearlyReportBox: React.FC<{
             textAlign: 'left',
           }}
         >
-          {!hasContent ? (
+          {(showSkeleton || !hasContent) ? (
             // 🛠️ V78: 星光呼吸灯骨架 — 3组琥珀色脉冲条，交错呼吸（2s/2.5s/3s），模拟星尘洒落
             <div style={{ padding: '20px 0' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
