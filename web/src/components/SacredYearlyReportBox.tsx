@@ -174,9 +174,10 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(buildHouseRe('[^。]{0,15}?'), houseCalibrate);
 
     // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
-    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([A-Za-z]+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
-    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, title) => {
-      const chapterNum = p1 || p2;
+    // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
+    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^✦【\n\]\s]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, p3, p4, title) => {
+      const chapterNum = p1 || p2 || p3 || p4;
       return '\n\n【✦ 第' + chapterNum + '章：' + title.trim() + ' ✦】\n\n';
     });
     // 最终神谕分界线
@@ -232,7 +233,12 @@ const SacredYearlyReportBox: React.FC<{
       'The Annual Wealth Matrix', 'The 365-Day', 'The Destiny Career', 'The Debt', 'The Final Oracle',
       'Annual Wealth Matrix', 'Monthly Revenue Matrix', 'Destiny Career', 'Debt & Risk', 'Final Wealth', 'Final Oracle',
       // 🛠️ V77: 泰语章名识别
-      'บทที่ 1', 'บทที่ 2', 'บทที่ 3', 'บทที่ 4', 'บทที่ 5', 'บทสรุปประจำปี'
+      'บทที่ 1', 'บทที่ 2', 'บทที่ 3', 'บทที่ 4', 'บทที่ 5', 'บทสรุปประจำปี',
+      // 🛠️ V82: 越南语 + 英文 Roman Chapter 金色识别
+      'Chương I', 'Chương II', 'Chương III', 'Chương IV', 'Chương V',
+      'Chương 1', 'Chương 2', 'Chương 3', 'Chương 4', 'Chương 5',
+      'Chapter I', 'Chapter II', 'Chapter III', 'Chapter IV', 'Chapter V',
+      'Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5'
     ];
     // 🛠️ V77: 泰语章节金色识别（บทที่ 1 ถึง บทที่ 5 + บทสรุปประจำปี）
     const isThaiChapter = /^บทที่\s*\d+/.test(textWithoutIcon);

@@ -164,6 +164,9 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix) {
   if (!reportType) return null;
 
+  // 🛠️ V82: function-level houseLock (used in user prompt for all 6 languages)
+  let houseLock = '';
+
   // ── 动态日期计算 ──
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -897,6 +900,7 @@ IMPORTANT:
       const satHouse = first.saturn?.house || 10;
       const plHouse = first.pluto?.house || 8;
       const sunHouse = first.sun?.house || 1;
+      const moonHouse = first.moon?.house || 1;
 
       // 阳历星座 → 泰语名
       const TH_SIGN = {
@@ -949,11 +953,52 @@ IMPORTANT:
         yearlySystem = yearlySystem.replace(OLD_VI_HOUSE, NEW_VI_HOUSE);
         console.log(`[V81] Vietnamese house context injected: Jup=${jupHouse}(${jupSignVI}), Sat=${satHouse}(${satSignVI}), Rising=${risingVI}`);
       }
+
+
+    }
+
+    // ── 🛠️ V82 FIX: 6语言 STRICT HOUSE LOCK（所有语言都注入 user prompt 开头）──
+    if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+      const first = astroMatrix.months[0];
+      const rising = astroMatrix.meta?.rising_sign || 'Cancer';
+      const jupHouse = first.jupiter?.house || 2;
+      const satHouse = first.saturn?.house || 10;
+      const plHouse = first.pluto?.house || 8;
+      const sunHouse = first.sun?.house || 1;
+      const moonHouse = first.moon?.house || 1;
+      const jupSign = first.jupiter?.sign || 'Leo';
+      const satSign = first.saturn?.sign || 'Aries';
+      const plSignEN = 'Aquarius';
+
+      // 本地化星座/宫位名
+      const ZH_SIGNS = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+      const EN_SIGNS = {Aries:'Aries',Taurus:'Taurus',Gemini:'Gemini',Cancer:'Cancer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Scorpio',Sagittarius:'Sagittarius',Capricorn:'Capricorn',Aquarius:'Aquarius',Pisces:'Pisces'};
+      const ES_SIGNS = {Aries:'Aries',Taurus:'Tauro',Gemini:'Géminis',Cancer:'Cáncer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Escorpio',Sagittarius:'Sagitario',Capricorn:'Capricornio',Aquarius:'Acuario',Pisces:'Piscis'};
+      const FR_SIGNS = {Aries:'Bélier',Taurus:'Taureau',Gemini:'Gémeaux',Cancer:'Cancer',Leo:'Lion',Virgo:'Vierge',Libra:'Balance',Scorpio:'Scorpion',Sagittarius:'Sagittaire',Capricorn:'Capricorne',Aquarius:'Verseau',Pisces:'Poissons'};
+      const VI_SIGNS_FULL = {Aries:'Bạch Dương',Taurus:'Kim Ngưu',Gemini:'Song Tử',Cancer:'Cự Giải',Leo:'Sư Tử',Virgo:'Xử Nữ',Libra:'Thiên Bình',Scorpio:'Bọ Cạp',Sagittarius:'Nhân Mã',Capricorn:'Ma Kết',Aquarius:'Bảo Bình',Pisces:'Song Ngư'};
+      const TH_SIGNS_FULL = {Aries:'เมษ',Taurus:'พฤษภ',Gemini:'มิถุน',Cancer:'กรกฏ',Leo:'สิงห์',Virgo:'กันยา',Libra:'ตุลย์',Scorpio:'พิจิก',Sagittarius:'ธนู',Capricorn:'มังกร',Aquarius:'กุมภ์',Pisces:'มีน'};
+
+      const signMap = { zh: ZH_SIGNS, en: EN_SIGNS, es: ES_SIGNS, fr: FR_SIGNS, vi: VI_SIGNS_FULL, th: TH_SIGNS_FULL }[lang] || EN_SIGNS;
+      const risingLocal = signMap[rising] || rising;
+      const jupSignLocal = signMap[jupSign] || jupSign;
+      const satSignLocal = signMap[satSign] || satSign;
+
+      // 🌐 6语言 STRICT HOUSE LOCK 模板
+      const locks = {
+        vi: `⛔ [QUY TẮC CUNG ĐỊA BÀN BẮT BUỘC] — Dữ liệu từ AstroMatrix ⛔\n\nDựa trên Ascendant = ${risingLocal} (Equal House tính từ ngày sinh), các hành tinh BẮT BUỘC phải viết đúng cung sau:\n• Sao Mộc tại ${jupSignLocal} = Nhà ${jupHouse}\n• Sao Thổ tại ${satSignLocal} = Nhà ${satHouse}\n• Sao Diêm Vương tại Bảo Bình = Nhà ${plHouse}\n• Mặt Trời = Nhà ${sunHouse}\n• Mặt Trăng = Nhà ${moonHouse}\n\n⛔ CẤM TUYỆT ĐỐI:\n- Tự suy luận cung từ chòm sao (PHẢI dùng dữ liệu trên)\n- Dùng Bản Đồ Whole Sign — SAI\n- Viết Sao Mộc = Nhà 5 (phải là Nhà ${jupHouse})\n- Viết Sao Thổ = Nhà 11 (phải là Nhà ${satHouse})\n- Viết Sao Diêm Vương = Nhà 3 hoặc Nhà 11 (phải là Nhà ${plHouse})`,
+        th: `⛔ [กฎเหล็กเรือนดาราศาสตร์] — ข้อมูลจาก AstroMatrix ⛔\n\nอ้างอิง Ascendant = ${risingLocal} (Equal House คำนวณจากวันเกิดจริง), ดาวเหล่านี้ต้องเขียนเรือนให้ถูกต้อง:\n• ดาวพฤหัสบดีที่ ${jupSignLocal} = เรือนที่ ${jupHouse}\n• ดาวเสาร์ที่ ${satSignLocal} = เรือนที่ ${satHouse}\n• ดาวพลูโตที่ กุมภ์ = เรือนที่ ${plHouse}\n• ดวงอาทิตย์ = เรือนที่ ${sunHouse}\n• ดวงจันทร์ = เรือนที่ ${moonHouse}\n\n⛔ ห้ามเด็ดขาด:\n- อนุมานเรือนจากราศี (ต้องใช้ข้อมูลข้างบน)\n- ใช้แผนที่ Whole Sign\n- เขียนเรือนที่ผิด`,
+        zh: `⛔ [宫位铁律] — 数据来自 AstroMatrix ⛔\n\n基于上升星座 = ${risingLocal} (Equal House 从生日计算), 行星必须使用以下精确宫位:\n• 木星在 ${jupSignLocal} = 第 ${jupHouse} 宫\n• 土星在 ${satSignLocal} = 第 ${satHouse} 宫\n• 冥王星在水瓶座 = 第 ${plHouse} 宫\n• 太阳 = 第 ${sunHouse} 宫\n• 月亮 = 第 ${moonHouse} 宫\n\n⛔ 严禁:\n- 从星座推算宫位（必须用上面数据）\n- 使用 Whole Sign 全星座制\n- 写错宫位`,
+        en: `⛔ [HOUSE MAPPING IRON RULE] — Data from AstroMatrix ⛔\n\nBased on Ascendant = ${risingLocal} (Equal House from birth date), planets MUST use these exact houses:\n• Jupiter in ${jupSignLocal} = House ${jupHouse}\n• Saturn in ${satSignLocal} = House ${satHouse}\n• Pluto in Aquarius = House ${plHouse}\n• Sun = House ${sunHouse}\n• Moon = House ${moonHouse}\n\n⛔ STRICTLY FORBIDDEN:\n- Inferring houses from signs (USE THE DATA ABOVE)\n- Using Whole Sign house system\n- Writing Jupiter = House 5 (must be House ${jupHouse})\n- Writing Saturn = House 11 (must be House ${satHouse})`,
+        es: `⛔ [REGLA DE HIERRO DE CASAS] — Datos de AstroMatrix ⛔\n\nBasado en Ascendente = ${risingLocal} (Equal House desde fecha de nacimiento), los planetas DEBEN usar estas casas exactas:\n• Júpiter en ${jupSignLocal} = Casa ${jupHouse}\n• Saturno en ${satSignLocal} = Casa ${satHouse}\n• Plutón en Acuario = Casa ${plHouse}\n• Sol = Casa ${sunHouse}\n• Luna = Casa ${moonHouse}\n\n⛔ ESTRICTAMENTE PROHIBIDO:\n- Inferir casas desde signos (usar datos arriba)\n- Usar sistema Whole Sign\n- Escribir Júpiter = Casa 5 (debe ser Casa ${jupHouse})`,
+        fr: `⛔ [RÈGLE DE FER DES MAISONS] — Données d'AstroMatrix ⛔\n\nBasé sur Ascendant = ${risingLocal} (Equal House depuis date de naissance), les planètes DOIVENT utiliser ces maisons exactes:\n• Jupiter en ${jupSignLocal} = Maison ${jupHouse}\n• Saturne en ${satSignLocal} = Maison ${satHouse}\n• Pluton en Verseau = Maison ${plHouse}\n• Soleil = Maison ${sunHouse}\n• Lune = Maison ${moonHouse}\n\n⛔ STRICTEMENT INTERDIT:\n- Inférer les maisons depuis les signes\n- Utiliser le système Whole Sign\n- Écrire Jupiter = Maison 5 (doit être Maison ${jupHouse})`
+      };
+      houseLock = locks[lang] || locks.en;
+      console.log(`[V82] houseLock built for ${lang}: Jup=${jupHouse}, Sat=${satHouse}, Pluto=${plHouse}, Sun=${sunHouse}, Rising=${risingLocal}`);
     }
 
     return {
       system: yearlySystem,
-      user: `Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
+      user: `${houseLock ? houseLock + '\n\n' : ''}Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
 DYNAMIC DATE CALCULATION (CRITICAL):
 • Report cycle starts from current month: ${currentYear}年${monthNamesZH[currentMonth-1]}
