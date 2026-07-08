@@ -888,6 +888,58 @@ IMPORTANT:
       }
     }
 
+    // ── 🛠️ V80 FIX: Thai/Vietnamese 动态宫位替换 ──
+    // 删除旧硬编码 house mapping（ASC=Cancer），注入 AstroMatrix 真值
+    if ((lang === 'th' || lang === 'vi') && astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+      const first = astroMatrix.months[0];
+      const rising = astroMatrix.meta?.rising_sign || 'Cancer';
+      const jupHouse = first.jupiter?.house || 2;
+      const satHouse = first.saturn?.house || 10;
+      const plHouse = first.pluto?.house || 8;
+      const sunHouse = first.sun?.house || 1;
+
+      // 阳历星座 → 泰语名
+      const TH_SIGN = {
+        Aries:'เมษ', Taurus:'พฤษภ', Gemini:'มิถุน', Cancer:'กรกฏ',
+        Leo:'สิงห์', Virgo:'กันยา', Libra:'ตุลย์', Scorpio:'พิจิก',
+        Sagittarius:'ธนู', Capricorn:'มังกร', Aquarius:'กุมภ์', Pisces:'มีน'
+      };
+      // 越南星座名
+      const VI_SIGN = {
+        Aries:'Bạch Dương', Taurus:'Kim Ngưu', Gemini:'Song Tử', Cancer:'Cự Giải',
+        Leo:'Sư Tử', Virgo:'Xử Nữ', Libra:'Thiên Bình', Scorpio:'Bọ Cạp',
+        Sagittarius:'Nhân Mã', Capricorn:'Ma Kết', Aquarius:'Bảo Bình', Pisces:'Song Ngư'
+      };
+      // 阳历宫位 → 泰语/越南语宫位名
+      const TH_HOUSE = {
+        1:'เรือนที่ 1', 2:'เรือนที่ 2', 3:'เรือนที่ 3', 4:'เรือนที่ 4',
+        5:'เรือนที่ 5', 6:'เรือนที่ 6', 7:'เรือนที่ 7', 8:'เรือนที่ 8',
+        9:'เรือนที่ 9', 10:'เรือนที่ 10', 11:'เรือนที่ 11', 12:'เรือนที่ 12'
+      };
+
+      const signMap = lang === 'th' ? TH_SIGN : VI_SIGN;
+      const jupSignTH = signMap[first.jupiter?.sign] || first.jupiter?.sign || 'Leo';
+      const satSignTH = signMap[first.saturn?.sign] || first.saturn?.sign || 'Aries';
+
+      if (lang === 'th') {
+        // ① 替换 ASTRO RULES 里的硬编码 ASC=Cancer house mapping
+        const OLD_HOUSE_RULES = 'ระบบเรือน 12 หลังสำหรับ ASC=ราศีกรกฏ: เรือนที่ 1=กรกฏ, 9=มีน, 10=เมษ, 11=พฤษภ, 12=มิถุน. ดวงอาทิตย์ในราศีมีน = เรือนที่ 9 ไม่ใช่ 1 หรือ 12!';
+        const NEW_HOUSE_RULES = `ระบบเรือน 12 หลังสำหรับ ASC=${signMap[rising] || rising} (Equal House คำนวณจากวันเกิดจริง): ดาวพฤหัสบดีในราศี${jupSignTH} = ${TH_HOUSE[jupHouse]}, ดาวเสาร์ในราศี${satSignTH} = ${TH_HOUSE[satHouse]}, ดาวพลูโตในราศีกุมภ์ = ${TH_HOUSE[plHouse]}, ดวงอาทิตย์ = ${TH_HOUSE[sunHouse]}. ห้ามใช้ house mapping อื่นเด็ดขาด!`;
+        yearlySystem = yearlySystem.replace(OLD_HOUSE_RULES, NEW_HOUSE_RULES);
+
+        // ② 替换 FORMAT_SPEC 里的硬编码宫位描述
+        yearlySystem = yearlySystem.replace(
+          /ดาวพฤหัสบดีในราศีสิงห์ทุก 12 ปี เปิดเรือนชะตาที่ 2/g,
+          `ดาวพฤหัสบดีในราศี${jupSignTH} เปิด${TH_HOUSE[jupHouse]}ทุก 12 ปี`
+        );
+        yearlySystem = yearlySystem.replace(
+          /ดาวเสาร์ในราศีเมษตรวจสอบเรือนชะตาที่ 11/g,
+          `ดาวเสาร์ในราศี${satSignTH}ตรวจสอบ${TH_HOUSE[satHouse]}`
+        );
+        console.log(`[V80] Thai house context injected: Jup=${jupHouse} House(${jupSignTH}), Sat=${satHouse} House(${satSignTH}), Rising=${rising}`);
+      }
+    }
+
     return {
       system: yearlySystem,
       user: `Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
@@ -1202,7 +1254,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
       // ── V69 SwissEph: Fetch computed astro matrix ──
       let astroMatrix = null;
       try {
-        astroMatrix = await getAstroMatrix(birthDate, 'Cancer');
+        astroMatrix = await getAstroMatrix(birthDate); // 🛠️ V80: 让Python从生日自己算ASC
         if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix`);
       } catch (e) {
         console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
@@ -1549,7 +1601,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // ── V69 SwissEph: Fetch computed astro matrix ──
   let astroMatrix = null;
   try {
-    astroMatrix = await getAstroMatrix(birthDate, 'Cancer');
+    astroMatrix = await getAstroMatrix(birthDate); // 🛠️ V80: 让Python从生日自己算ASC
     if (astroMatrix) {
       console.log(`[wealth-stream] [V69] Got matrix with ${astroMatrix.months?.length || 0} months`);
     }

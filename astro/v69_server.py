@@ -337,7 +337,7 @@ app = FastAPI(title="V69 Astro Truth Engine", version="1.0.0")
 
 class AstroRequest(BaseModel):
     birth_date: str  # 'YYYY-MM-DD'
-    rising_sign: Optional[str] = 'Cancer'
+    rising_sign: Optional[str] = None  # 🛠️ V80: 默认为None，由Python自己从生日算ASC
     year: Optional[int] = 2026
     month_start: Optional[int] = 7
     months: Optional[int] = 12
@@ -347,6 +347,13 @@ class AstroRequest(BaseModel):
 def astro_matrix(req: AstroRequest):
     """Return complete 12-month astrological matrix."""
     try:
+        # 🛠️ V80: 如果没传 rising_sign，从生日算ASC（默认 noon Bangkok）
+        if req.rising_sign is None:
+            from datetime import datetime as dt
+            parts = req.birth_date.split('-')
+            y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+            jd = swe.julday(y, m, d, 12.0)  # 默认 noon Bangkok
+            req.rising_sign = get_rising_sign(jd, 13.75, 100.5)
         matrix = compute_year_matrix(
             req.birth_date,
             req.rising_sign,
