@@ -178,8 +178,12 @@ const SacredYearlyReportBox: React.FC<{
         // 🛠️ V83.2 FIX: 越南文裸✦前缀（AI输出是✦ Chương I:...，没有【】括号）
     const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
     cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, p3, p4, title) => {
-      const chapterNum = p1 || p2 || p3 || p4;
-      return '\n\n【✦ 第' + chapterNum + '章：' + title.trim() + ' ✦】\n\n';
+      // V84: 保留原始语言格式，不硬写中文
+      if (p1) return '\n\n✦ 第' + p1 + '章：' + title.trim() + ' ✦\n\n';      // 中文
+      if (p2) return '\n\n✦ Chapter ' + p2 + ': ' + title.trim() + ' ✦\n\n';    // 英文
+      if (p3) return '\n\n✦ Chương ' + p3 + ': ' + title.trim() + ' ✦\n\n';    // 越南文
+      if (p4) return '\n\n✦ บทที่ ' + p4 + ': ' + title.trim() + ' ✦\n\n';      // 泰文
+      return match;
     });
     // 最终神谕分界线
     cleaned = cleaned.replace(/最终财富神谕 · 通关密令/g, '【✦ 最终财富神谕 · 通关密令 ✦】');
