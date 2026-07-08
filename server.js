@@ -1222,7 +1222,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
-        const maxTokens = reportType === 'yearly' ? 32000 : 4000;
+        const maxTokens = reportType === 'yearly' ? 48000 : 4000;
         const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
 
         // Parse AI result
@@ -1575,7 +1575,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    const maxTokens = reportType === 'yearly' ? 32000 : 4000;
+    // 🔧 V74 fix: 48000 给年报足够输出空间（7700字≈2000tokens，system≈15000tokens，留足余量）
+    const maxTokens = reportType === 'yearly' ? 48000 : 4000;
 
     if (!deepseekKey) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
@@ -1714,7 +1715,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               { role: 'system', content: prompt.system },
               { role: 'user', content: prompt.user },
             ],
-            max_tokens: maxTokens,
+            max_tokens: 48000,
             temperature: 0.7,
           }),
         });
