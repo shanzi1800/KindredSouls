@@ -1026,15 +1026,18 @@ IMPORTANT:
 
     }
 
-    // ── 🛠️ V82 FIX: 6语言 STRICT HOUSE LOCK（所有语言都注入 user prompt 开头）──
+    // ── 🛠️ V91: 把 if 块内声明的常量提升到外层 let，供 V89 HEADER_ENFORCE 访问 ──
+    let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '';
+    let jupHouse = 0, satHouse = 0, plHouse = 0, sunHouse = 0, moonHouse = 0;
+
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
       const rising = astroMatrix.meta?.rising_sign || 'Cancer';
-      const jupHouse = first.jupiter?.house || 2;
-      const satHouse = first.saturn?.house || 10;
-      const plHouse = first.pluto?.house || 8;
-      const sunHouse = first.sun?.house || 1;
-      const moonHouse = first.moon?.house || 1;
+      jupHouse = first.jupiter?.house || 2;
+      satHouse = first.saturn?.house || 10;
+      plHouse = first.pluto?.house || 8;
+      sunHouse = first.sun?.house || 1;
+      moonHouse = first.moon?.house || 1;
       const jupSign = first.jupiter?.sign || 'Leo';
       const satSign = first.saturn?.sign || 'Aries';
 
@@ -1044,15 +1047,15 @@ IMPORTANT:
         en: SUN_SIGN_EN[natalSunIdx], vi: SUN_SIGN_VI[natalSunIdx], th: SUN_SIGN_TH[natalSunIdx],
         zh: SUN_SIGN_ZH[natalSunIdx], es: SUN_SIGN_ES[natalSunIdx], fr: SUN_SIGN_FR[natalSunIdx]
       };
-      const natalSunSign = natalSunMap[lang] || SUN_SIGN_EN[natalSunIdx];
-      const natalSunSignEN = SUN_SIGN_EN[natalSunIdx];
+      natalSunSign = natalSunMap[lang] || SUN_SIGN_EN[natalSunIdx];
+      natalSunSignEN = SUN_SIGN_EN[natalSunIdx];
       const plSignEN = 'Aquarius';
 
       // P1.2 Fixed Lexicon: 从 lexicon.js 读取 6 语言星座名
       const signMap = LEXICON[lang]?.signs || LEXICON.en.signs;
-      const risingLocal = signMap[rising] || rising;
-      const jupSignLocal = signMap[jupSign] || jupSign;
-      const satSignLocal = signMap[satSign] || satSign;
+      risingLocal = signMap[rising] || rising;
+      jupSignLocal = signMap[jupSign] || jupSign;
+      satSignLocal = signMap[satSign] || satSign;
 
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
