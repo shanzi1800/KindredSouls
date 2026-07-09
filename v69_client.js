@@ -148,8 +148,22 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
   };
   const houseMapping = HOUSE_MAPPING_TEMPLATE[actualRising] || HOUSE_MAPPING_TEMPLATE['Cancer'];
 
+  // ── V93 FIX: 添加显式 computed_houses JSON 块 ──
+  const computedHouses = meta?.computed_houses || {};
+  const computedHousesJson = JSON.stringify(computedHouses, null, 2);
+
   const factSheet = `[2026-2027 ASTRONOMY FACT SHEET - V69 SwissEph COMPUTED]
 All data below is calculated by Swiss Ephemeris. Do NOT contradict this data.
+
+═══════════════════════════════════════════════
+⛔ V93 STRICT RULE — AI MUST USE computed_houses.json BELOW ⛔
+This JSON block contains the EXACT house numbers for this user's chart.
+AI MUST quote these house numbers when writing about Jupiter/Saturn/Pluto/Sun.
+AI MUST NOT infer houses from zodiac sign names.
+═══════════════════════════════════════════════
+
+[COMPUTED_HOUSES - authoritative JSON — USE THIS EXACTLY]:
+${computedHousesJson}
 
 [PLANETARY POSITIONS - computed by SwissEph, do not alter]:
 - Jupiter 2026-2027: ${jupiterSign} (House ${jupiterHouse} — primary wealth engine)

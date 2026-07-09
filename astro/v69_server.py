@@ -317,6 +317,32 @@ def compute_year_matrix(birth_date: str, rising_sign: str,
         date(y - 1 if m == 1 else y, m - 1 if m > 1 else 12, 28)
     )
     
+    # ── V93 FIX: 显式 computed_houses，斩断自然宫位污染 ──
+    # 从第一个月提取外行星宫位（外行星跨月不变，用于全文统一引用）
+    first = monthly_data[0] if monthly_data else {}
+    computed_houses = {
+        'Jupiter': {
+            'sign': first.get('Jupiter', {}).get('sign', 'Leo'),
+            'house': first.get('Jupiter', {}).get('house', 2),
+            'house_desc_zh': f"第{first.get('Jupiter',{}).get('house',2)}宫",
+        },
+        'Saturn': {
+            'sign': first.get('Saturn', {}).get('sign', 'Aries'),
+            'house': first.get('Saturn', {}).get('house', 10),
+            'house_desc_zh': f"第{first.get('Saturn',{}).get('house',10)}宫",
+        },
+        'Pluto': {
+            'sign': first.get('Pluto', {}).get('sign', 'Aquarius'),
+            'house': first.get('Pluto', {}).get('house', 8),
+            'house_desc_zh': f"第{first.get('Pluto',{}).get('house',8)}宫",
+        },
+        'Sun': {
+            'sign': first.get('Sun', {}).get('sign', 'Gemini'),
+            'house': first.get('Sun', {}).get('house', 1),
+            'house_desc_zh': f"第{first.get('Sun',{}).get('house',1)}宫",
+        },
+    }
+
     return {
         'meta': {
             'birth_date': birth_date,
@@ -325,6 +351,8 @@ def compute_year_matrix(birth_date: str, rising_sign: str,
             'house_system': 'Equal House',
             'year_start': f"{year}-{month_start:02d}",
             'year_end': f"{y if m > 1 else y-1}-{m-1 if m > 1 else 12:02d}",
+            # ── V93: 供 AI 写作时强制引用，不许推理 ──
+            'computed_houses': computed_houses,
         },
         'months': monthly_data,
         'retrograde_stations': stations,
