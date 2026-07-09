@@ -11,6 +11,26 @@
 export const SIGN_ORDER_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
 export const SIGN_ORDER_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
 
+// EN 全名 → ZH 全名（astroMatrix.meta.rising_sign 返回英文，如 'Capricorn'）
+const SIGN_EN_TO_ZH = {};
+SIGN_ORDER_EN.forEach((en, i) => { SIGN_EN_TO_ZH[en] = SIGN_ORDER_ZH[i]; });
+
+// 归一化上升星座为 SIGN_ORDER_ZH 中文全名（兼容 EN 全名 / 中文短名 / 大小写 / null）
+// 返回 'Cancer' 作为兜底（未知时按巨蟹上升算，绝不让 houseMap 为 null 导致 500）
+export function normalizeRisingSign(rising) {
+  if (!rising) return 'Cancer';
+  const r = String(rising).trim();
+  if (SIGN_ORDER_ZH.includes(r)) return r;                       // 已是中文全名
+  if (SIGN_EN_TO_ZH[r]) return SIGN_EN_TO_ZH[r];                 // EN 全名
+  const rShort = r.replace('座', '');                            // 中文短名 '摩羯'
+  const zhShort = SIGN_ORDER_ZH.find(z => z.replace('座', '') === rShort);
+  if (zhShort) return zhShort;
+  const enLower = r.toLowerCase();                              // EN 小写 / 前缀
+  const enIdx = SIGN_ORDER_EN.findIndex(e => e.toLowerCase() === enLower || e.toLowerCase().startsWith(enLower));
+  if (enIdx >= 0) return SIGN_ORDER_ZH[enIdx];
+  return 'Cancer';
+}
+
 // 每月代表太阳星座 index（用每月15日近似；index 0=1月 ... 11=12月）
 // 1月=摩羯(9) 2月=水瓶(10) 3月=双鱼(11) 4月=白羊(0) 5月=金牛(1) 6月=双子(2)
 // 7月=巨蟹(3) 8月=狮子(4) 9月=处女(5) 10月=天秤(6) 11月=天蝎(7) 12月=射手(8)
@@ -51,8 +71,9 @@ export const SIGN_ARCHETYPE = {
 
 // 上升星座 → 星座→宫位映射（Equal House 等宫制）
 // 返回 { signIndex(0-11): house(1-12) }
-export function getSignToHouseMap(risingSignZH) {
-  const risingIdx = SIGN_ORDER_ZH.indexOf(risingSignZH);
+export function getSignToHouseMap(risingSign) {
+  const zh = normalizeRisingSign(risingSign);
+  const risingIdx = SIGN_ORDER_ZH.indexOf(zh);
   if (risingIdx < 0) return null;
   const map = {};
   for (let i = 0; i < 12; i++) {
