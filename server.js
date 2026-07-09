@@ -43,6 +43,21 @@ function stripLoneSurrogates(str) {
 
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
+
+  // ── V97m2: 火星/凯龙/北交点主动过滤（validator 已校验，但 AI 重试仍犯，只能强洗）──
+  // 删除整句含"火星在XX座"或"火星在第X宫"的句子（黑天鹅日描述火星相位冲突）
+  text = text
+    .split('\n')
+    .filter(line => {
+      const trimmed = line.trim();
+      // 如果行内含"火星在XX座"且紧跟宫位描述，删掉整行
+      if (/(?:火星|凯龙|北交点)在[^。\n]{0,20}(?:座|第[一二三四五六七八九十百\d]+宫)/.test(trimmed)) return false;
+      // 如果是描述火星相位冲突的行（整段描述火星+土星/天王星冲突）
+      if (/火星[^。\n]{0,40}(?:四分|三分|六分|对分|合相).+?(?:土星|天王星)/.test(trimmed)) return false;
+      return true;
+    })
+    .join('\n');
+
   // ── 通用宫位纠正（治本：按实际上升星座算 Equal House，替代写死 Cancer 映射）──
   // 旧逻辑只对 Cancer 生效且写死映射，导致非 Cancer 用户被错误纠正（如摩羯用户白羊被纠成第10宫）。
   const houseMap = getSignToHouseMap(ascendant);
