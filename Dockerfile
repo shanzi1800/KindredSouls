@@ -42,5 +42,5 @@ RUN printf '%s\n' \
 > /start.sh && chmod +x /start.sh
 
 EXPOSE 3000 8001
-ENV PORT=3000
+# PORT 由 Railway 注入(通常是8080),不再硬编码
 CMD ["/start.sh"]
