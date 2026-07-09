@@ -292,6 +292,8 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix) {
   if (!reportType) return null;
+  console.log('[DEBUG TOP] buildWealthReportPrompt entered. reportType=', reportType, '| lang=', lang, '| astroMatrix?', !!astroMatrix);
+  try {
 
   // 🛠️ V82: function-level houseLock (used in user prompt for all 6 languages)
   let houseLock = '';
@@ -373,7 +375,6 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 - 写"第11宫"描述冥王星/水瓶座（必须写"第__PL_HOUSE__宫"）
 - 使用 Whole Sign 全星座制
 - 从星座名推测宫位
-``
 
 
 [占星铁律 - ASTROLOGICAL IRON CLAD RULES - CRITICAL]:
@@ -1084,18 +1085,25 @@ IMPORTANT:
     }
 
     // ── V97 TDZ FIX: placeholder replacement (runs AFTER all vars assigned, safe) ──
-    yearlySystem = yearlySystem
-      .replace(/__RISING_LOCAL__/g, risingLocal)
-      .replace(/__JUP_HOUSE__/g, String(jupHouse))
-      .replace(/__SAT_HOUSE__/g, String(satHouse))
-      .replace(/__PL_HOUSE__/g, String(plHouse))
-      .replace(/__SUN_HOUSE__/g, String(sunHouse))
-      .replace(/__MOON_HOUSE__/g, String(moonHouse))
-      .replace(/__NATAL_SUN__/g, natalSunSign)
-      .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
-      .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
-      .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
-      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
+    console.log('[DEBUG V97] typeof yearlySystem before replace =', typeof yearlySystem, '| isString?', typeof yearlySystem === 'string');
+    try {
+      yearlySystem = yearlySystem
+        .replace(/__RISING_LOCAL__/g, risingLocal)
+        .replace(/__JUP_HOUSE__/g, String(jupHouse))
+        .replace(/__SAT_HOUSE__/g, String(satHouse))
+        .replace(/__PL_HOUSE__/g, String(plHouse))
+        .replace(/__SUN_HOUSE__/g, String(sunHouse))
+        .replace(/__MOON_HOUSE__/g, String(moonHouse))
+        .replace(/__NATAL_SUN__/g, natalSunSign)
+        .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
+        .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
+        .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
+        .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
+    } catch (e) {
+      console.error('[DEBUG V97] REPLACE THREW:', e.stack);
+      throw e;
+    }
+    console.log('[DEBUG V97] token remaining after replace:', yearlySystem.includes('__RISING_LOCAL__'), '| risingLocal=', JSON.stringify(risingLocal), '| jupHouse=', jupHouse, '| moonSignLocal=', JSON.stringify(moonSignLocal));
 
     // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
     const HEADER_ENFORCE = lang === 'vi' ? `
@@ -1112,7 +1120,7 @@ Nếu output chứa 'Song Ngư' trong metadata header, generation sẽ bị từ
 
     return {
       system: yearlySystem,
-      user: `${houseLock ? houseLock + '\n\n' : ''}\n\n⛔ CRITICAL — AI MUST NOT output any chapter heading or title line in your output. Chapter structure and gold titles are handled by the frontend rendering system. Only output raw content. DO NOT include lines like 'Chương I: ...', 'Chapter I', 'บทที่ 1', '第X章' or similar headings.
+      user: `— AI MUST NOT output any chapter heading or title line in your output. Chapter structure and gold titles are handled by the frontend rendering system. Only output raw content. DO NOT include lines like 'Chương I: ...', 'Chapter I', 'บทที่ 1', '第X章' or similar headings.
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
@@ -1151,6 +1159,11 @@ OUTPUT FORMAT: Clean Markdown with exactly 5 chapters.
 
 Write in ${lang}. Use native ${lang} astrological and Jungian psychological terms.`,
     };
+  }
+
+  } catch (e) {
+    console.error('[DBG buildWealthReportPrompt THREW]', e.stack);
+    throw e;
   }
 
   return null;
