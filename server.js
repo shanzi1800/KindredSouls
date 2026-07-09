@@ -498,12 +498,21 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
 You MUST output strictly following this formatting paradigm. Symbols/spacing/line breaks/bolding must match the example exactly:
 
+0. Prophetic Oracle (Chapter Zero · Mandatory Opening):
+### ✦ 先知神谕 · 财富启示录 ✦
+──────────────────────────
+◆ 命运宿主: ${birthDate}
+◇ 年度星盘: ${natalSunSign} · 太阳回归年
+✦ 核心本命代码: Sun ${natalSunSign} / Moon ${moonSign} / Rising ${risingSign}
+
+[此处展开宏观运势总揽与天启核心共振：简述宿主的本命财富格局、年度核心主题、以及五章内容的预告性总览。此章节为整本法典的天启前言，必须独立成章，震撼开篇。]
+
 1. Top Identity Card (blockquote mystery):
-> ### ✦ The Prophet's Codex · Wealth Revelation ✦
+> ### ✦ 先知法典 · 财富启示录 ✦
 >
-> * 👤 **Destiny Host**: ${birthDate}
-> * 🌌 **Annual Chart**: Gemini · Solar Return Year
-> * 🗝️ **Core Natal Code**: Sun Gemini 9° / Moon Libra / Rising Cancer
+> * ◆ **命运宿主**: ${birthDate}
+> * ◇ **年度星盘**: ${natalSunSign} · 太阳回归年
+> * ✦ **核心本命代码**: 太阳${natalSunSign} / 月亮${moonSign} / 上升${risingSign}
 
 2. Macro Strategy Dashboard (Gold/Silver/Bronze/Iron):
 ### 📊 2026-2027 Annual Wealth Core Metrics Dashboard
@@ -594,9 +603,9 @@ DEBES generar siguiendo estrictamente este paradigma de formato. Símbolos/espac
 1. Tarjeta de Identidad Superior (misterio de bloque de cita):
 > ### ✦ Códice del Profeta · Revelación de la Abundancia ✦
 >
-> * 👤 **Huésped del Destino**: ${birthDate}
-> * 🌌 **Carta Anual**: Géminis · Año del Retorno Solar
-> * 🗝️ **Código Natal Central**: Sol Géminis 9° / Luna Libra / Ascendente Cáncer
+> * ◆ **Huésped del Destino**: ${birthDate}
+> * ◇ **Carta Anual**: ${natalSunSign} · Año del Retorno Solar
+> * ✦ **Código Natal Central**: Sol ${natalSunSign} / Luna ${moonSign} / Ascendente ${risingSign}
 
 2. Panel de Métricas Estratégicas Macro (Oro/Plata/Bronce/Hierro):
 ### 📊 Panel de Métricas Centrales de Riqueza 2026-2027
@@ -686,9 +695,9 @@ Vous DEVEZ générer en suivant strictement ce paradigme de format. Symboles/esp
 1. Carte d'Identité Supérieure (mystère du bloc de citation):
 > ### ✦ Codex du Prophète · Révélation de l'Abondance ✦
 >
-> * 👤 **Hôte du Destin**: ${birthDate}
-> * 🌌 **Carte Annuelle**: Gémeaux · Année de la Révolution Solaire
-> * 🗝️ **Code Natal Central**: Soleil Gémeaux 9° / Lune Balance / Ascendant Cancer
+> * ◆ **Hôte du Destin**: ${birthDate}
+> * ◇ **Carte Annuelle**: ${natalSunSign} · Retour Solaire
+> * ✦ **Code Natal Central**: Soleil ${natalSunSign} / Lune ${moonSign} / Ascendant ${risingSign}
 
 2. Tableau de Bord Stratégique Macro (Or/Argent/Bronze/Fer):
 ### 📊 Tableau de Bord des Métriques Centrales de Richesse 2026-2027
@@ -778,9 +787,9 @@ Vous DEVEZ générer en suivant strictement ce paradigme de format. Symboles/esp
 1. บัตรประจำตัวด้านบน (ความลึกลับของบล็อกคำพูด):
 > ### ✦ คัมภีร์ผู้พยากรณ์ · การเปิดเผยความมั่งคั่ง ✦
 >
-> * 👤 **เจ้าภาพแห่งโชคชะตา**: ${birthDate}
-> * 🌌 **ผังประจำปี**: ราศีเมถุน · ปีสุริยะครอบดวงชะตา
-> * 🗝️ **รหัสชะตากำเนิดหลัก**: ดวงอาทิตย์ราศีเมถุน 9° / ดวงจันทร์ราศีตุลย์ / ขึ้นราศีกรกฎ
+> * ◆ **เจ้าภาพแห่งโชคชะตา**: ${birthDate}
+> * ◇ **ผังประจำปี**: ${natalSunSign} · ปีสุริยะครอบดวงชะตา
+> * ✦ **รหัสชะตากำเนิดหลัก**: ดวงอาทิตย์${natalSunSign} / ดวงจันทร์${moonSign} / ขึ้น${risingSign}
 
 2. แดชบอร์ดกลยุทธ์มหภาค (ทอง/เงิน/ทองแดง/เหล็ก):
 ### 📊 แดชบอร์ดตัวชี้วัดความมั่งคั่งหลัก 2026-2027
@@ -870,9 +879,9 @@ Bạn PHẢI tạo ra bằng cách tuân thủ nghiêm ngặt mô hình định 
 1. Thẻ Nhận Dạng Đầu Trang (huyền bí của khối trích dẫn):
 > ### ✦ Bộ Sách Tiên Tri · Khải Thị Tài Lộc ✦
 >
-> * 👤 **Chủ Nhân Vận Mệnh**: ${birthDate}
-> * 🌌 **Bảng Vận Niên**: Song Tử · Năm Cách Mạng Mặt TrờI
-> * 🗝️ **Mã Bản Đồ Sao Chính**: Mặt TrờI Song Tử 9° / Mặt Trăng Thiên Bình / Mọc Cự Giải
+> * ◆ **Chủ Nhân Vận Mệnh**: ${birthDate}
+> * ◇ **Bảng Vận Niên**: ${natalSunSign} · Năm Cách Mạng Mặt TrờI
+> * ✦ **Mã Bản Đồ Sao Chính**: Mặt TrờI ${natalSunSign} / Mặt Trăng ${moonSign} / Mọc ${risingSign}
 
 2. Bảng Điều Khiển Chiến Lược Vĩ Mô (Vàng/Bạc/Đồng/Sắt):
 ### 📊 Bảng Điều Khiển Chỉ Số Tài Lộc Chính 2026-2027
