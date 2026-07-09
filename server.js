@@ -341,35 +341,36 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
 
   // ── 年报 5大乐章系统提示词（6语言全量） ──
+  // V97 FIX: 先用占位符，变量赋值后再替换（避免TDZ）
   const YEARLY_SYSTEM = {
     zh: `⛔ [宫位铁律] — 数据来自 AstroMatrix ⛔
 
-📍 本次排盘宿主 = ${risingLocal} (上升星座), 等宫制(Equal House)严格计算。
+📍 本次排盘宿主 = __RISING_LOCAL__ (上升星座), 等宫制(Equal House)严格计算。
 
-📛 本次宿主 = ${risingLocal}。所有"X座之人"必须用${risingLocal}，不得用其他星座。
+📛 本次宿主 = __RISING_LOCAL__。所有"X座之人"必须用__RISING_LOCAL__，不得用其他星座。
 
 📍 外行星精确宫位（[COMPUTED_HOUSES] JSON块已提供，必须引用）:
-• 木星在 ${jupSignLocal} = 第 ${jupHouse} 宫（不是第5宫！禁止写"第5宫恋爱/创造力/子女"）
-• 土星在 ${satSignLocal} = 第 ${satHouse} 宫（不是第1宫！禁止写"第1宫自我/身份重建"）
-• 冥王星在水瓶座 = 第 ${plHouse} 宫（不是第11宫！禁止写"第11宫社交网络"）
-• 太阳在 ${natalSunSign} = 第 ${sunHouse} 宫
-• 月亮在 ${moonSignLocal} = 第 ${moonHouse} 宫
+• 木星在 __JUP_SIGN_LOCAL__ = 第 __JUP_HOUSE__ 宫（不是第5宫！禁止写"第5宫恋爱/创造力/子女"）
+• 土星在 __SAT_SIGN_LOCAL__ = 第 __SAT_HOUSE__ 宫（不是第1宫！禁止写"第1宫自我/身份重建"）
+• 冥王星在水瓶座 = 第 __PL_HOUSE__ 宫（不是第11宫！禁止写"第11宫社交网络"）
+• 太阳在 __NATAL_SUN__ = 第 __SUN_HOUSE__ 宫
+• 月亮在 __MOON_SIGN_LOCAL__ = 第 __MOON_HOUSE__ 宫
 
 ⚠️ 月度章节标题【月名】格式已由系统预写，AI必须完整抄录，不许修改宫位！
 ⚠️ 写作时，必须引用【月名】标题里的宫位数字，不许自创宫位。
 
 ⛔ 自然宫位污染禁区（AI预训练偏见，必须主动抵抗）:
-- 狮子座 = ${jupHouse}宫（对于上升${risingLocal}），不是第5宫！
-- 白羊座 = ${satHouse}宫（对于上升${risingLocal}），不是第1宫！
-- 水瓶座 = ${plHouse}宫（对于上升${risingLocal}），不是第11宫！
+- 狮子座 = __JUP_HOUSE__宫（对于上升__RISING_LOCAL__），不是第5宫！
+- 白羊座 = __SAT_HOUSE__宫（对于上升__RISING_LOCAL__），不是第1宫！
+- 水瓶座 = __PL_HOUSE__宫（对于上升__RISING_LOCAL__），不是第11宫！
 - 看到"狮子座"就写"第5宫"是错误的！必须用木星的computed house数字！
 - 看到"白羊座"就写"第1宫"是错误的！必须用土星的computed house数字！
 - 看到"水瓶座"就写"第11宫"是错误的！必须用冥王星的computed house数字！
 
 ⛔ 严禁:
-- 写"第5宫"描述木星/狮子座（必须写"第${jupHouse}宫"）
-- 写"第1宫"描述土星/白羊座（必须写"第${satHouse}宫"）
-- 写"第11宫"描述冥王星/水瓶座（必须写"第${plHouse}宫"）
+- 写"第5宫"描述木星/狮子座（必须写"第__JUP_HOUSE__宫"）
+- 写"第1宫"描述土星/白羊座（必须写"第__SAT_HOUSE__宫"）
+- 写"第11宫"描述冥王星/水瓶座（必须写"第__PL_HOUSE__宫"）
 - 使用 Whole Sign 全星座制
 - 从星座名推测宫位
 ``
@@ -951,6 +952,20 @@ IMPORTANT:
       vi: '\n\n[QUY TẮC SẮT DIÊM VƯƠNG]: Sao Diêm Vương đã vào Bảo Bình năm 2024 và ở đó đến 2043. Trong báo cáo 2026-2027 Sao Diêm Vương PHẢI ở Bảo Bình. Tuyệt đối không viết Ma Kết cho Sao Diêm Vương!'
     };
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
+
+    // ── V97 TDZ FIX: Replace placeholders with actual variable values ──
+    yearlySystem = yearlySystem
+      .replace(/__RISING_LOCAL__/g, risingLocal)
+      .replace(/__JUP_HOUSE__/g, String(jupHouse))
+      .replace(/__SAT_HOUSE__/g, String(satHouse))
+      .replace(/__PL_HOUSE__/g, String(plHouse))
+      .replace(/__SUN_HOUSE__/g, String(sunHouse))
+      .replace(/__MOON_HOUSE__/g, String(moonHouse))
+      .replace(/__NATAL_SUN__/g, natalSunSign)
+      .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
+      .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
+      .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
+      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
 
     // ── V69 SwissEph Override: Replace hardcoded FACT_SHEET with computed truth ──
     if (v69FactSheet) {
