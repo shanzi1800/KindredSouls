@@ -474,24 +474,25 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 - If you are uncertain about a house mapping in the body text, OMIT the house bracket entirely rather than risk an error.
 
 [OUTPUT STRUCTURE]
-### 📜 Section I: The Annual Wealth Matrix
+⚠️ 章节标题编号铁律：中文报告必须用『第一章~第五章』，英文报告必须用『Chapter One~Chapter Five』（或 Chapter 1~5）。绝对禁止『Section I~V』或『第X节』。冒号后的章节描述文字请按报告语言翻译，但编号前缀（第一章/Chapter One）必须保留。
+### 📜 第一章：年度财富矩阵
 - Decode the absolute transits of Jupiter (expansion) and Saturn (contraction/karma) over the user's financial houses.
 - Establish the overarching macro-strategy: Aggressive Leap vs. Strategic Defense.
 
-### 📅 Section II: The 365-Day Monthly Revenue Matrix
+### 📅 第二章：365天月度收入矩阵
 - Provide a rigorous, month-by-month breakdown for the next 12 consecutive months (No skipping, no merging).
 - For EACH month, you must output:
  1. Monthly Macro Forecast: How planetary alignment shifts their primary income.
  2. 🟢 [📈 Peak Revenue Window]: Pinpoint the exact golden dates for career shifts, contract signings, or major business expansions.
  3. 🔴 [📉 Financial Black Swan Day]: Pinpoint the exact catastrophic risk dates for market traps, contract fraud, or impulsive bleeding.
 
-### 🏹 Section III: The Destiny Career Path & Sovereign Tracks
+### 🏹 第三章：命运事业路径与主权轨道
 - Identify hidden side-hustles or quantum leap industries based on quadruplicities (Fire, Earth, Air, Water) and current year cosmic triggers.
 
-### 🛡️ Section IV: The Debt & Risk Shield (The Shadow Audit)
+### 🛡️ 第四章：债务与风险护盾（阴影审计）
 - Perform a ruthless behavioral audit of their Shadow Self, pinpointing where they unconsciously hemorrhage wealth.
 
-### 🔮 Section V: The Oracle's Manifestation Protocol
+### 🔮 第五章：先知显化协议
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
@@ -524,7 +525,7 @@ You MUST output strictly following this formatting paradigm. Symbols/spacing/lin
  * *Circuit Breaker Warning*: Strictly prohibited from signing any contracts...
 
 4. Shadow Integration (rupture line impact):
-### 🛡️ Section IV: The Debt & Risk Shield
+### 🛡️ 第四章：债务与风险护盾
 
 #### 👁️ Subconscious Shadow: Performative Consumption (Unintegrated Vanity Self)
 > "Deep inside you hides an unseen child..."
