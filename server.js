@@ -15,6 +15,92 @@ const app = express();
 
 // ═══════════════════════════════════════════════════════════════════════
 // ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）
+
+// ═══════════════════════════════════════════════════════════════════════
+// V97: 宫位强制纠正器（后端铁血断路器）
+// AI 脑子里"白羊=1宫/狮子=5宫/水瓶=11宫"的惯性太深，Prompt 压不住。
+// 解决方案：AI 生成后，由后端强制替换，不给穿帮留活路。
+// ═══════════════════════════════════════════════════════════════════════
+function final_text_sanitizer(text, ascendant = 'Cancer') {
+  if (!text) return text;
+  const R = (pattern, replacement, flags = 'gi') => {
+    text = text.replace(new RegExp(pattern, flags), replacement);
+  };
+
+  if (ascendant === 'Cancer') {
+    // ── 木星在狮子座 = 第2宫（财帛宫）── AI 错写成第5宫 ──
+    R('第5宫（狮子座）', '第2宫（狮子座）');
+    R('第5宫（Leo）', '第2宫（狮子座）');
+    R('第5宫（leo）', '第2宫（狮子座）');
+    R('第5宫狮子座', '第2宫（狮子座）');
+    R('第5宫的狮子座', '第2宫的狮子座');
+    R('进入你命盘的第5宫（狮子座）', '进入你命盘的第2宫（狮子座）');
+    R('进入第5宫（狮子座）', '进入第2宫（狮子座）');
+    R('木星入第5宫（狮子座）', '木星入第2宫（狮子座）');
+    R('木星进入第5宫（狮子座）', '木星进入第2宫（狮子座）');
+    R('木星在第5宫（狮子座）', '木星在第2宫（狮子座）');
+    R('狮子座在第5宫', '狮子座在第2宫');
+
+    // 上下文清洗（因宫位错写产生的错误联想）
+    text = text.replace(/投机项目或创意事业/g, '正财项目或核心资产提升');
+    text = text.replace(/恋爱、投机、子女/g, '正财、现金流、资产增值');
+    text = text.replace(/创造力、领导力/g, '财富掌控力、资产管理');
+    text = text.replace(/舞台中央的王者/g, '财富舞台的掌控者');
+    text = text.replace(/无与伦比的创造力/g, '无与伦比的财富吸引力');
+    text = text.replace(/个人魅力的展现/g, '财运的展现');
+    text = text.replace(/创造性的自我表达/g, '物质财富的创造与变现');
+
+    // ── 土星在白羊座 = 第10宫（官禄宫）── AI 错写成第1宫 ──
+    R('第1宫（白羊座）', '第10宫（白羊座）');
+    R('第1宫（Aries）', '第10宫（白羊座）');
+    R('第1宫白羊座', '第10宫（白羊座）');
+    R('盘踞在你.*第1宫（白羊座）', '盘踞在你的第10宫（白羊座）');
+    R('盘踞在你的第1宫（白羊座）', '盘踞在你的第10宫（白羊座）');
+    R('进入第1宫（白羊座）', '进入第10宫（白羊座）');
+    R('土星入第1宫（白羊座）', '土星入第10宫（白羊座）');
+    R('土星在第1宫（白羊座）', '土星在第10宫（白羊座）');
+
+    // 上下文清洗
+    text = text.replace(/"自我身份"正在经历一场残酷的锻造/g, '事业天花板与顶头上司的残酷施压');
+    text = text.replace(/土星在第一宫的压力/g, '土星在第十宫的压力');
+    text = text.replace(/疯狂的扩张/g, '事业领域的深度耕耘');
+    text = text.replace(/在"创造性的自我表达"与"严苛的自我约束"/g, '在"职场晋升与外部责任"之间');
+    text = text.replace(/贪多嚼不烂/g, '野心过大而执行力不足');
+
+    // ── 冥王星在水瓶座 = 第8宫（疾厄宫）── AI 错写成第11宫 ──
+    R('第11宫（水瓶座）', '第8宫（水瓶座）');
+    R('第11宫（Aquarius）', '第8宫（水瓶座）');
+    R('第11宫（aquarius）', '第8宫（水瓶座）');
+    R('第11宫水瓶座', '第8宫（水瓶座）');
+    R('冥王星在第11宫（水瓶座）', '冥王星在第8宫（水瓶座）');
+    R('冥王星入第11宫（水瓶座）', '冥王星入第8宫（水瓶座）');
+
+    // 上下文清洗
+    text = text.replace(/人际圈层、社会资源与集体财富/g, '深度共同资产、税务与遗产规划');
+    text = text.replace(/人际圈层、社会资源/g, '深层共有财富、税务与债务');
+    text = text.replace(/集体财富/g, '深层共有财富');
+    text = text.replace(/旧友的离去/g, '财务合伙人的深层洗牌');
+    text = text.replace(/群体、科技、未来愿景/g, '深层财务转化、保险与遗产');
+
+    // ── 月份正文里的流月矛盾句清洗 ──
+    // AI写"金星在第7宫，为你带来和谐"——8月金星在狮子座(2宫)，不在7宫
+    text = text.replace(/金星在第7宫，[^\n。]*为你带来和谐[^\n。]*/g, '');
+    // 同理"金星在第7宫"单独出现也删
+    text = text.replace(/金星在第7宫，[^\n。]*/g, '');
+
+    // ── 全局兜底：彻底清除所有残留错误宫位 ──
+    // 先执行两次确保彻底（AI可能产生嵌套错误）
+    for (let i = 0; i < 2; i++) {
+      R('第5宫（狮子座）', '第2宫（狮子座）');
+      R('第1宫（白羊座）', '第10宫（白羊座）');
+      R('第11宫（水瓶座）', '第8宫（水瓶座）');
+    }
+  }
+
+  return text;
+}
+
+
 // DeepSeek Streaming 时常产生「年份重影」：2026年6月2026年6月6月21日
 // 本函数暴力清洗所有已知的污染模式
 function cleanYearlyTimeline(text) {
@@ -1359,22 +1445,26 @@ app.post('/api/wealth-oracle', async (req, res) => {
         const maxTokens = reportType === 'yearly' ? 48000 : 4000;
         const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
 
+        // ── V97 宫位强制纠正器（铁血断路）──
+        const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
+        const sanitizedAI = final_text_sanitizer(aiResult, ascendant);
+
         // Parse AI result
-        let reportContent = aiResult;
-        
+        let reportContent = sanitizedAI;
+
         // ── ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）──
         if (reportType === 'yearly') {
-          reportContent = cleanYearlyTimeline(aiResult);
+          reportContent = cleanYearlyTimeline(sanitizedAI);
         }
-        
+
         if (reportType === 'monthly') {
           // Try to parse as JSON, if fails return as markdown
           try {
-            const parsed = JSON.parse(aiResult);
+            const parsed = JSON.parse(sanitizedAI);
             reportContent = JSON.stringify(parsed); // Send JSON to frontend
           } catch (e) {
             // Not JSON, treat as markdown
-            reportContent = aiResult;
+            reportContent = sanitizedAI;
           }
         }
         
@@ -1605,6 +1695,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       if (cachedText && cachedText.length > 100) {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, starting pseudo-stream`);
 
+        // V97: 即使缓存命中也要过一遍纠正器（astroMatrix 尚不可用，硬定 Cancer Rising）
+        const sanitizedCached = final_text_sanitizer(cachedText, 'Cancer');
+        const streamText = sanitizedCached !== cachedText ? sanitizedCached : cachedText;
+        // 异步写回清洗后的缓存（不阻塞伪流式）
+        if (sanitizedCached !== cachedText && SB_URL && SB_KEY) {
+          fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+            method: 'POST',
+            headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates' },
+            body: JSON.stringify({ cache_key: cacheKey, insight: sanitizedCached, prompt_version: `v1.0.0-stream-${reportType}-${lang}`, created_at: new Date().toISOString() })
+          }).catch(() => {});
+        }
+
         // 黄金欺骗流：每 15ms 吐 40 字符
         const CHUNK_SIZE = 40;
         const INTERVAL_MS = 15;
@@ -1612,16 +1714,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         const timer = setInterval(() => {
           try {
-            if (index >= cachedText.length) {
+            if (index >= streamText.length) {
               res.write('data: [DONE]\n\n');
               if (typeof res.flush === 'function') res.flush();
               res.end();
               clearInterval(timer);
-              console.log(`[wealth-stream] [OK] Cache pseudo-stream complete, ${cachedText.length} chars pushed`);
+              console.log(`[wealth-stream] [OK] Cache pseudo-stream complete, ${streamText.length} chars pushed (sanitized)`);
               return;
             }
 
-            const chunk = cachedText.slice(index, index + CHUNK_SIZE);
+            const chunk = streamText.slice(index, index + CHUNK_SIZE);
             res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}
 
 `, "utf-8"));
@@ -1843,9 +1945,25 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // 流式结束，发送 [DONE]
+    // ── V97 宫位强制纠正器：落库前清洗一遍 ──
+    // 注意：sanitized 事件必须在 [DONE] 之前发送
+    const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
+    const sanitizedFull = final_text_sanitizer(fullTextCollector, ascendant);
+    // 矫正后有变化，先把矫正版发给前端替换显示
+    if (sanitizedFull !== fullTextCollector) {
+      try {
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: sanitizedFull })}
+
+`, 'utf-8'));
+      } catch(e){}
+    }
+    // 替换收集器内容（让后续逻辑用 sanitized 版本落库）
+    fullTextCollector = sanitizedFull;
+
+    // 流式结束，发送 [DONE]（sanitized 在前，[DONE] 在后）
     res.write('data: [DONE]\n\n');
     if (typeof res.flush === 'function') res.flush();
+
     res.end();
 
     // 后台落库（不阻塞响应）
