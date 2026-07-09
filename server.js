@@ -886,11 +886,13 @@ IMPORTANT:
     if ((lang === 'th' || lang === 'vi') && astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
       const rising = astroMatrix.meta?.rising_sign || 'Cancer';
-      const jupHouse = first.jupiter?.house || 2;
-      const satHouse = first.saturn?.house || 10;
-      const plHouse = first.pluto?.house || 8;
-      const sunHouse = first.sun?.house || 1;
-      const moonHouse = first.moon?.house || 1;
+      // V96 FIX: 所有 fallback 改为 1（未知），强制 AI 从 monthly data 读取正确值
+      // 旧 fallback（暴露错误值）：jupHouse=2, satHouse=10, plHouse=8
+      const jupHouse = first.jupiter?.house ?? 1;
+      const satHouse = first.saturn?.house ?? 1;
+      const plHouse = first.pluto?.house ?? 1;
+      const sunHouse = first.sun?.house ?? 1;
+      const moonHouse = first.moon?.house ?? 1;
 
       // P1.2 Fixed Lexicon: 从 lexicon.js 读取泰语/越南语星座和宫位
       const TH_SIGN = LEXICON.th.signs;

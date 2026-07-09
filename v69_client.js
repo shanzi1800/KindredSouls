@@ -89,16 +89,19 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
   
   // Find Jupiter position from first month
   const firstMonth = months[0];
-  const jupiterSign = firstMonth?.jupiter?.sign || 'Leo';
-  const jupiterHouse = firstMonth?.jupiter?.house || 2; // Python AstroMatrix 已计算，无 fallback 硬编码
-  
-  // Find Saturn position from first month
-  const saturnSign = firstMonth?.saturn?.sign || 'Aries';
-  const saturnHouse = firstMonth?.saturn?.house || 10; // Python AstroMatrix 已计算
-  
-  // Find Pluto position
-  const plutoSign = firstMonth?.pluto?.sign || 'Aquarius';
-  const plutoHouse = firstMonth?.pluto?.house || 8; // Python AstroMatrix 已计算
+  // V96 FIX: 所有 fallback 改为 null，强制使用 AstroMatrix 真实计算值
+  // 当 AstroMatrix 不可用时，整个 factSheet 生成会失败，而不是返回错误数据
+  const jupiterHouse = firstMonth?.jupiter?.house ?? null;
+  const saturnHouse = firstMonth?.saturn?.house ?? null;
+  const plutoHouse = firstMonth?.pluto?.house ?? null;
+  const jupiterSign = firstMonth?.jupiter?.sign ?? null;
+  const saturnSign = firstMonth?.saturn?.sign ?? null;
+  const plutoSign = firstMonth?.pluto?.sign ?? null;
+
+  // V96 FIX: 如果 AstroMatrix 数据不完整，直接返回空（不再输出错误 FACT_SHEET）
+  if (!jupiterHouse || !saturnHouse || !plutoHouse || !jupiterSign) {
+    return '';
+  }
 
   // Build Mercury Retrograde list from stations
   const mercuryRxPeriods = [];
@@ -140,11 +143,23 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
     .slice(0, 4);
 
   // 🛠️ V80 FIX: 动态生成 house mapping 描述，基于 actual rising sign
+  // V96 FIX: 修正 Equal House 宫位映射（Counter-Clockwise from ASC）
+  // House N = ASC + N - 1 (mod 12)
+  // Cancer Rising: 1=Cancer, 2=Leo, 3=Virgo, 4=Libra, 5=Scorpio, 6=Sagittarius,
+  //                 7=Capricorn, 8=Aquarius, 9=Pisces, 10=Aries, 11=Taurus, 12=Gemini
   const HOUSE_MAPPING_TEMPLATE = {
     'Cancer':  '1=Cancer / 2=Leo / 3=Virgo / 4=Libra / 5=Scorpio / 6=Sagittarius / 7=Capricorn / 8=Aquarius / 9=Pisces / 10=Aries / 11=Taurus / 12=Gemini',
     'Aries':   '1=Aries / 2=Taurus / 3=Gemini / 4=Cancer / 5=Leo / 6=Virgo / 7=Libra / 8=Scorpio / 9=Sagittarius / 10=Capricorn / 11=Aquarius / 12=Pisces',
     'Libra':   '1=Libra / 2=Scorpio / 3=Sagittarius / 4=Capricorn / 5=Aquarius / 6=Pisces / 7=Aries / 8=Taurus / 9=Gemini / 10=Cancer / 11=Leo / 12=Virgo',
     'Leo':     '1=Leo / 2=Virgo / 3=Libra / 4=Scorpio / 5=Sagittarius / 6=Capricorn / 7=Aquarius / 8=Pisces / 9=Aries / 10=Taurus / 11=Gemini / 12=Cancer',
+    'Taurus':  '1=Taurus / 2=Gemini / 3=Cancer / 4=Leo / 5=Virgo / 6=Libra / 7=Scorpio / 8=Sagittarius / 9=Capricorn / 10=Aquarius / 11=Pisces / 12=Aries',
+    'Virgo':   '1=Virgo / 2=Libra / 3=Scorpio / 4=Sagittarius / 5=Capricorn / 6=Aquarius / 7=Pisces / 8=Aries / 9=Taurus / 10=Gemini / 11=Cancer / 12=Leo',
+    'Scorpio': '1=Scorpio / 2=Sagittarius / 3=Capricorn / 4=Aquarius / 5=Pisces / 6=Aries / 7=Taurus / 8=Gemini / 9=Cancer / 10=Leo / 11=Virgo / 12=Libra',
+    'Sagittarius': '1=Sagittarius / 2=Capricorn / 3=Aquarius / 4=Pisces / 5=Aries / 6=Taurus / 7=Gemini / 8=Cancer / 9=Leo / 10=Virgo / 11=Libra / 12=Scorpio',
+    'Capricorn': '1=Capricorn / 2=Aquarius / 3=Pisces / 4=Aries / 5=Taurus / 6=Gemini / 7=Cancer / 8=Leo / 9=Virgo / 10=Libra / 11=Scorpio / 12=Sagittarius',
+    'Aquarius': '1=Aquarius / 2=Pisces / 3=Aries / 4=Taurus / 5=Gemini / 6=Cancer / 7=Leo / 8=Virgo / 9=Libra / 10=Scorpio / 11=Sagittarius / 12=Capricorn',
+    'Pisces':   '1=Pisces / 2=Aries / 3=Taurus / 4=Gemini / 5=Cancer / 6=Leo / 7=Virgo / 8=Libra / 9=Scorpio / 10=Sagittarius / 11=Capricorn / 12=Aquarius',
+    'Gemini':   '1=Gemini / 2=Cancer / 3=Leo / 4=Virgo / 5=Libra / 6=Scorpio / 7=Sagittarius / 8=Capricorn / 9=Aquarius / 10=Pisces / 11=Aries / 12=Taurus',
   };
   const houseMapping = HOUSE_MAPPING_TEMPLATE[actualRising] || HOUSE_MAPPING_TEMPLATE['Cancer'];
 
