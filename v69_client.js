@@ -187,85 +187,129 @@ Locked mapping: ${houseMapping}`;
 
 // ── Per-Month Data for Section II ─────────────────────────────────────────────
 /**
- * Get per-month structured data for Section II (monthly breakdown).
+ * V95: Pre-written monthly titles with CORRECT house numbers + SwissEph planetary data.
+ * AI must COPY titles verbatim. House numbers come from Python SwissEph.
  */
-export function buildMonthlyData(astroMatrix) {
-  if (!astroMatrix || !astroMatrix.months) return [];
-  
-  return astroMatrix.months.map(m => ({
-    month_key: m.month_key,
-    month_name: m.month_name,
-    sun: m.sun,
-    jupiter: m.jupiter,
-    saturn: m.saturn,
-    mercury: m.mercury,
-    peak_windows: m.peak_windows || [],
-    black_swan_days: m.black_swan_days || [],
-    macro_energy: m.macro_energy || '',
-  }));
-}
 
-// ── P1.1: Per-Month SwissEph Truth Block ──────────────────────────────────────
-/**
- * Generate a structured per-month data block for all planets.
- * Injected into the AI user prompt so AI never hallucinates house positions.
- * Output is human-readable text (no JSON), AI-friendly block format.
- */
-export function buildPerMonthData(astroMatrix) {
+// 中文宫位名（12宫）
+const ZH_HOUSE_NAMES = {
+  1:'第一宫·自我宫', 2:'第二宫·财帛宫', 3:'第三宫·兄弟宫',
+  4:'第四宫·田宅宫', 5:'第五宫·男女宫', 6:'第六宫·奴仆宫',
+  7:'第七宫·婚姻宫', 8:'第八宫·疾厄宫', 9:'第九宫·迁移宫',
+  10:'第十宫·官禄宫', 11:'第十一宫·福德宫', 12:'第十二宫·相貌宫'
+};
+const ZH_SIGN_NAMES = {
+  Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座',
+  Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座',
+  Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'
+};
+const EN_HOUSE_NAMES = {
+  1:'1st House (Self)', 2:'2nd House (Wealth)', 3:'3rd House (Siblings)',
+  4:'4th House (Home)', 5:'5th House (Creativity)', 6:'6th House (Service)',
+  7:'7th House (Partnership)', 8:'8th House (Shared)', 9:'9th House (Journey)',
+  10:'10th House (Career)', 11:'11th House (Community)', 12:'12th House (Hidden)'
+};
+
+export function buildPerMonthData(astroMatrix, lang = 'zh') {
   if (!astroMatrix || !astroMatrix.months) return '';
 
-  const elementEmoji = { Water: '🌊', Fire: '🔥', Earth: '🌍', Air: '💨' };
-  
+  const houseNames = lang === 'zh' ? ZH_HOUSE_NAMES : EN_HOUSE_NAMES;
+  const signNames = lang === 'zh' ? ZH_SIGN_NAMES : null;
+  const elemEmoji = { Water:'🌊', Fire:'🔥', Earth:'🌍', Air:'💨' };
+
+  if (lang === 'zh') {
+    // ── 中文：Pre-written titles with correct house numbers ──
+    return astroMatrix.months.map(m => {
+      const lines = [];
+      const sun = m.sun || {};
+      const jup = m.jupiter || {};
+      const sat = m.saturn || {};
+      const merc = m.mercury || {};
+      const venus = m.venus || {};
+      const mars = m.mars || {};
+
+      const sunHouse = houseNames[sun.house] || `第${sun.house}宫`;
+      const sunSign = signNames[sun.sign] || sun.sign || '';
+      const jupHouse = houseNames[jup.house] || `第${jup.house}宫`;
+      const jupSign = signNames[jup.sign] || jup.sign || '';
+      const satHouse = houseNames[sat.house] || `第${sat.house}宫`;
+      const satSign = signNames[sat.sign] || sat.sign || '';
+
+      // V95: 标题包含当月最重要的行星+宫位（AI 必须完整抄录）
+      lines.push(`【${m.month_name}】太阳${sunSign}${sunHouse} · 木星${jupSign}${jupHouse} · 土星${satSign}${satHouse}`);
+      lines.push('─'.repeat(40));
+
+      // SwissEph 行星宫位数据（AI 可引用但必须与标题一致）
+      const allPlanets = [
+        ['sun', sun], ['moon', m.moon], ['mercury', merc],
+        ['venus', venus], ['mars', mars], ['jupiter', jup],
+        ['saturn', sat], ['uranus', m.uranus], ['neptune', m.neptune], ['pluto', m.pluto]
+      ];
+      lines.push('[SwissEph行星实时位置 - 必须与标题宫位一致]:');
+      for (const [name, p] of allPlanets) {
+        if (!p) continue;
+        const rx = p.retrograde ? ' (逆行)' : '';
+        const signZ = signNames[p.sign] || p.sign || '';
+        const houseZ = houseNames[p.house] || `第${p.house}宫`;
+        lines.push(`  ${signZ}${houseZ}${rx} ${elemEmoji[p.element]||''}`);
+      }
+
+      // 水星状态
+      if (merc.status) {
+        lines.push(`  水星: ${merc.status === 'RETROGRADE' ? '🔴逆行中' : '🟢顺行'}`);
+      }
+
+      // Peak windows
+      if (m.peak_windows && m.peak_windows.length > 0) {
+        for (const w of m.peak_windows.slice(0, 2)) {
+          lines.push(`  🟢财流高峰: ${w.date} — ${w.type} in ${w.sign}`);
+        }
+      }
+
+      // Black swan
+      if (m.black_swan_days && m.black_swan_days.length > 0) {
+        for (const d of m.black_swan_days.slice(0, 1)) {
+          lines.push(`  🔴黑天鹅日: ${d.date} — ${d.aspect}`);
+        }
+      }
+      lines.push('');
+      return lines.join('\n');
+    }).join('\n');
+  }
+
+  // ── 英文等其他语言：保持原有 SwissEph 格式 ──
   return astroMatrix.months.map(m => {
     const lines = [];
-    lines.push(`[${m.month_key} SWISSEPH PLANETARY POSITIONS - do NOT alter]:`);
-    
-    // Inner planets (always include)
+    lines.push(`[${m.month_key} SWISSEPH PLANETARY POSITIONS]:`);
     const inner = ['sun','moon','mercury','venus','mars'];
     for (const name of inner) {
       const p = m[name];
       if (!p) continue;
       const rx = p.retrograde ? ' (RETROGRADE)' : '';
-      const elem = elementEmoji[p.element] || '';
-      const degStr = p.degree ? `${p.degree}°` : '';
-      lines.push(`  ${name.charAt(0).toUpperCase()+name.slice(1)}: ${p.sign} ${degStr} House ${p.house}${rx} ${elem}`);
+      lines.push(`  ${p.sign} ${p.degree ? p.degree+'°' : ''} House ${p.house}${rx}`);
     }
-    
-    // Outer planets (jupiter/saturn/uranus/neptune/pluto)
     const outer = ['jupiter','saturn','uranus','neptune','pluto'];
     for (const name of outer) {
       const p = m[name];
       if (!p) continue;
       const rx = p.retrograde ? ' (RETROGRADE)' : '';
-      const elem = elementEmoji[p.element] || '';
-      lines.push(`  ${name.charAt(0).toUpperCase()+name.slice(1)}: ${p.sign} House ${p.house}${rx} ${elem}`);
+      lines.push(`  ${p.sign} House ${p.house}${rx}`);
     }
-    
-    // Mercury status (explicit)
-    if (m.mercury?.status) {
-      lines.push(`  Mercury Status: ${m.mercury.status === 'RETROGRADE' ? '🔴 RETROGRADE' : '🟢 DIRECT'}`);
-    }
-    
-    // Peak windows
     if (m.peak_windows && m.peak_windows.length > 0) {
-      const pw = m.peak_windows.slice(0, 2);
-      for (const w of pw) {
-        lines.push(`  🟢 Peak: ${w.date} — ${w.type} in ${w.sign} House ${w.house || '?'}`);
+      for (const w of m.peak_windows.slice(0, 2)) {
+        lines.push(`  🟢 Peak: ${w.date} — ${w.type} in ${w.sign}`);
       }
     }
-    
-    // Black swan days
     if (m.black_swan_days && m.black_swan_days.length > 0) {
-      const bsd = m.black_swan_days.slice(0, 1);
-      for (const d of bsd) {
+      for (const d of m.black_swan_days.slice(0, 1)) {
         lines.push(`  🔴 Black Swan: ${d.date} — ${d.aspect}`);
       }
     }
-    
-    lines.push(''); // blank line between months
+    lines.push('');
     return lines.join('\n');
   }).join('\n');
 }
+
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 export async function v69HealthCheck() {
