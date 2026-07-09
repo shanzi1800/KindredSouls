@@ -1,5 +1,9 @@
 FROM node:20-bookworm
 
+# ── V95: Cache busting — force fresh build on every railway up ──
+ARG CACHE_BUST=202607091000
+ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
+
 WORKDIR /app
 
 RUN apt-get update && \
