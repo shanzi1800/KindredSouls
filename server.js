@@ -1913,8 +1913,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 });
 
 // ── Start ──
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`[KindredSouls]  Railway server running on port ${PORT}`);
-  console.log(`  - API: http://localhost:${PORT}/api/*`);
-  console.log(`  - Web: http://localhost:${PORT}/`);
+  console.log(`  - API: http://0.0.0.0:${PORT}/api/*`);
+  console.log(`  - Web: http://0.0.0.0:${PORT}/`);
 });
