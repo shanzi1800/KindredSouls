@@ -69,6 +69,19 @@ export const SIGN_ARCHETYPE = {
   },
 };
 
+// 本命太阳星座（由生日直接推，不依赖 transit month，与 server.js getNatalSunSign 同源）
+export function getNatalSunSign(birthDate) {
+  const [, month, day] = String(birthDate).split('-').map(Number);
+  const cuts = [
+    [1, 20, 10], [2, 19, 11], [3, 21, 0], [4, 20, 1], [5, 21, 2], [6, 21, 3],
+    [7, 23, 4], [8, 23, 5], [9, 23, 6], [10, 23, 7], [11, 22, 8], [12, 22, 9]
+  ];
+  for (let i = cuts.length - 1; i >= 0; i--) {
+    if (month > cuts[i][0] || (month === cuts[i][0] && day >= cuts[i][1])) return cuts[i][2];
+  }
+  return 11;
+}
+
 // 上升星座 → 星座→宫位映射（Equal House 等宫制）
 // 返回 { signIndex(0-11): house(1-12) }
 export function getSignToHouseMap(risingSign) {
@@ -130,8 +143,12 @@ export function getOuterPlanetsTruth(risingSignZH) {
 export function buildAstroTruth(birthDate, risingSignZH, lang = 'zh', startYear, startMonth) {
   const monthly = buildMonthlyTruth(risingSignZH, lang, startYear, startMonth);
   const outer = getOuterPlanetsTruth(risingSignZH);
+  const natalIdx = getNatalSunSign(birthDate);
   return {
+    birthDate,           // 透传给 validator 用于错误消息
     risingSignZH,
+    natalSunSignZH: SIGN_ORDER_ZH[natalIdx],
+    natalSunSignEN: SIGN_ORDER_EN[natalIdx],
     months: monthly.months,
     monthlyTruthText: monthly.truthText,
     outerPlanets: outer,

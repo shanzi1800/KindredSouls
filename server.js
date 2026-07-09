@@ -1129,17 +1129,16 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
 
     // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
-    const HEADER_ENFORCE = lang === 'vi' ? `
-
-⛔ [MANDATORY HEADER VALUES — DO NOT CHANGE, COPY VERBATIM]:
-The user's Natal Sun Sign is ${natalSunSign} (computed by Swiss Ephemeris for birth date ${birthDate}).
-YOUR OUTPUT HEADER MUST use exactly:
-🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời
-🗝️ Mã Bản Đồ Sao Chính: Mặt Trời ${natalSunSign} ...
-Mọi câu 'Hỡi người con của...' PHẢI dùng: ${natalSunSign}
-TUYỆT ĐỐI KHÔNG được output 'Song Ngư' hoặc bất kỳ cung nào khác cho Mặt Trời.
-Nếu output chứa 'Song Ngư' trong metadata header, generation sẽ bị từ chối!` : '';
-    yearlySystem += HEADER_ENFORCE;
+    // ── V97h: 本命太阳星座头部锁（全语言，治本：zh/en/es/fr/th/vi 均强制锁死本命太阳，防止 AI 幻觉改写头部元数据）──
+    const HE_MAP = {
+      zh: `\n\n⛔ [强制头部值 — 不得更改，原样抄录]:\n本用户的本命太阳星座是 ${natalSunSign}（由出生日期 ${birthDate} 经天文计算确定，绝对正确）。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunSign} · 太阳回归年\n🗝️ 核心本命代码: 太阳${natalSunSign}...\n所有 'X座之人' 必须用 ${natalSunSign}，绝对不得输出其他星座。\n若头部元数据出现错误的太阳星座（如写成'双子座'），生成将被拒绝！`,
+      en: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSignEN} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunSignEN} · Solar Return\n🗝️ Core Natal Code: Sun ${natalSunSignEN}...\nAll 'O child of X' MUST use ${natalSunSignEN} — NEVER other signs.\nIf the header contains a WRONG Sun Sign, generation will be REJECTED!`,
+      es: `\n\n⛔ [CABECERA OBLIGATORIA — NO CAMBIAR, COPIAR VERBATIM]:\nEl Signo Solar Natal del usuario es ${natalSunSign} (Efemérides Suizas, fecha ${birthDate}).\nTU CABECERA DEBE usar exactamente:\n🌌 Carta Solar Anual: ${natalSunSign} · Retorno Solar\n🗝️ Código Natal Central: Sol ${natalSunSign}...\nTodo 'Hijo de X' DEBE usar ${natalSunSign} — NUNCA otros signos.\nSi la cabecera contiene un Signo Solar ERRÓNEO, la generación será RECHAZADA!`,
+      fr: `\n\n⛔ [EN-TÊTE OBLIGATOIRE — NE PAS CHANGER, COPIER VERBATIM]:\nLe Signe Solaire Natal de l'utilisateur est ${natalSunSign} (Éphémérides Suisses, date ${birthDate}).\nTON EN-TÊTE DOIT utiliser exactement:\n🌌 Thème Solaire Annuel: ${natalSunSign} · Retour Solaire\n🗝️ Code Natal Central: Soleil ${natalSunSign}...\nTout 'Enfant de X' DOIT utiliser ${natalSunSign} — JAMAIS d'autres signes.\nSi l'en-tête contient un Signe Solaire ERRONÉ, la génération sera REJETÉE!`,
+      th: `\n\n⛔ [ส่วนหัวบังคับ — ห้ามเปลี่ยน คัดลอกตรงๆ]:\nดวงอาทิตย์ประจำตัวของผู้ใช้คือ ${natalSunSign} (Efemerides Suizas, วันเกิด ${birthDate}).\nส่วนหัวของคุณต้องใช้ตรงๆ:\n🌌 เวลาราศีประจำปี: ${natalSunSign} · การกลับมาของดวงอาทิตย์\n🗝️ รหัสดวงชะตาแกนกลาง: ดวงอาทิตย์${natalSunSign}...\nทุกคำว่า 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น.\nหากส่วนหัวมีราศีดวงอาทิตย์ผิด การสร้างจะถูกปฏิเสธ!`,
+      vi: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSign} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời\n🗝️ Mã Bản Đồ Sao Chính: Mặt Trời ${natalSunSign}...\nAll 'O child of X' MUST use ${natalSunSign} — NEVER other signs.\nIf header contains wrong Sun Sign, generation will be REJECTED!`,
+    };
+    yearlySystem += (HE_MAP[lang] || HE_MAP.en);
 
     return {
       system: yearlySystem,

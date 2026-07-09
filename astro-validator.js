@@ -9,7 +9,7 @@
 //
 // 返回 { pass: bool, errors: string[] }
 
-import { SIGN_ORDER_ZH } from './astro-truth.js';
+import { SIGN_ORDER_ZH, SIGN_ORDER_EN } from './astro-truth.js';
 
 const ZH_SIGN = '([\\u4e00-\\u9fa5]{1,3}座)';
 
@@ -69,6 +69,27 @@ export function validateAstroLogic(text, truth, lang = 'zh') {
   // 反向：双子座特质词出现在"双鱼座原型"描述附近
   if (/拥抱你内在的双鱼座原型[^。\n]{0,60}(灵活多变|处理多重信息|沟通连接|善于学习|信息掮客)/.test(text)) {
     errors.push('❌ 双鱼座原型被双子座夺舍（原型描述错配）');
+  }
+
+  // ── 4. 本命太阳星座（头部元数据）校验：不得被 AI 幻觉改错 ──
+  // zh: 🌌 年度星盘: X座 · 太阳回归年
+  // en: 🌌 Annual Solar Chart: X · Solar Return
+  const natalZH = truth.natalSunSignZH;
+  if (lang === 'zh') {
+    const m = text.match(/年度星盘:\s*([\u4e00-\u9fa5]{2,3}座)/);
+    if (m && m[1] !== natalZH) {
+      errors.push(`❌ 本命太阳星座错误：头部写"${m[1]}"，真值为"${natalZH}"（生日 ${truth.birthDate} 天文计算）`);
+    }
+  } else if (lang === 'en') {
+    const enToZh = {};
+    SIGN_ORDER_EN.forEach((en, i) => { enToZh[en.toLowerCase()] = SIGN_ORDER_ZH[i]; });
+    const m = text.match(/Solar Chart:\s*([A-Z][a-z]+)/);
+    if (m) {
+      const zh = enToZh[m[1].toLowerCase()];
+      if (zh && zh !== natalZH) {
+        errors.push(`❌ Natal Sun sign error: header says "${m[1]}" (${zh}), truth is "${natalZH}" (birth ${truth.birthDate})`);
+      }
+    }
   }
 
   return { pass: errors.length === 0, errors };
