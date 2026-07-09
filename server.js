@@ -6,6 +6,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, v69HealthCheck } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
+import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
+import { validateAstroLogic } from './astro-validator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,6 +25,20 @@ const app = express();
 // ═══════════════════════════════════════════════════════════════════════
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
+  // ── 通用宫位纠正（治本：按实际上升星座算 Equal House，替代写死 Cancer 映射）──
+  // 旧逻辑只对 Cancer 生效且写死映射，导致非 Cancer 用户被错误纠正（如摩羯用户白羊被纠成第10宫）。
+  const houseMap = getSignToHouseMap(ascendant);
+  if (houseMap) {
+    const fixes = [
+      { sign: '狮子座', h: houseMap[SIGN_ORDER_ZH.indexOf('狮子座')] },
+      { sign: '白羊座', h: houseMap[SIGN_ORDER_ZH.indexOf('白羊座')] },
+      { sign: '水瓶座', h: houseMap[SIGN_ORDER_ZH.indexOf('水瓶座')] },
+    ];
+    for (const f of fixes) {
+      text = text.replace(new RegExp(`第(\d+)宫（${f.sign}）`, 'g'), `第${f.h}宫（${f.sign}）`);
+      text = text.replace(new RegExp(`${f.sign}在第(\d+)宫`, 'g'), `${f.sign}在第${f.h}宫`);
+    }
+  }
   const R = (pattern, replacement, flags = 'gi') => {
     text = text.replace(new RegExp(pattern, flags), replacement);
   };
@@ -943,6 +959,21 @@ IMPORTANT:
   // 分支：年报
   // ════════════════════════════════
   if (reportType === 'yearly') {
+    // ── V97f: 后端天文真值引擎（治本：算死流月太阳/外行星/原型字典，AI 只准抄录）──
+    const risingSignZH = astroMatrix?.meta?.rising_sign || 'Cancer';
+    const astroTruth = buildAstroTruth(birthDate, risingSignZH, lang, currentYear, currentMonth);
+    const archetypeDict = SIGN_ARCHETYPE[lang] || SIGN_ARCHETYPE.zh;
+    const astroTruthBlock = `
+⛔ [ASTRO-LOGIC HARD TRUTH — 后端算死，AI 必须原样抄录，不得自行推算或改写]：
+【流月太阳真值表（12个月，逐月锁定，不得改写宫位或星座）】
+${astroTruth.monthlyTruthText}
+【外行星年度主题（2026-2027 固定天文事实，全年唯一，不得变更）】
+• 木星在${astroTruth.outerPlanets.jupiter.signZH}第${astroTruth.outerPlanets.jupiter.house}宫
+• 土星在${astroTruth.outerPlanets.saturn.signZH}第${astroTruth.outerPlanets.saturn.house}宫
+• 冥王星在${astroTruth.outerPlanets.pluto.signZH}第${astroTruth.outerPlanets.pluto.house}宫
+【12星座原型字典（描写X座必须用此精确描述，严禁张冠李戴/星座夺舍）】
+${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
+`;
     const PLUTO_IRON = {
       zh: '\n\n[冥王星天文铁律 - PLUTO IRON RULE]: 冥王星（Pluto）已于2024年进入水瓶座（Aquarius），停留至2043年。2026-2027年报中冥王星绝对位于第8宫水瓶座，绝不可写摩羯座（Capricorn）！所有语言 Pluto 必须写 Aquarius/水瓶座。',
       en: '\n\n[PLUTO ASTRONOMY IRON RULE]: Pluto entered Aquarius in 2024 and remains until 2043. In 2026-2027 reports Pluto MUST be in Aquarius (8th House). NEVER write Capricorn for Pluto in any language!',
@@ -1122,6 +1153,8 @@ Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDat
 All planet positions, houses, and aspects below are COMPUTED by Swiss Ephemeris.
 Use this data DIRECTLY. Do NOT recalculate, re-assign houses, or invent positions.
 ${perMonthData || '    [SwissEph data unavailable — use your best astrological judgement]'}
+
+${astroTruthBlock}
 
 DYNAMIC DATE CALCULATION (CRITICAL):
 • Report cycle starts from current month: ${currentYear}年${monthNamesZH[currentMonth-1]}
@@ -1466,10 +1499,30 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         const maxTokens = reportType === 'yearly' ? 48000 : 4000;
-        const aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
+        const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
+
+        // ── V97f: Astro-Logic Validator 断路器（通不过熔断重调，最多3次）──
+        let aiResult = null;
+        let _lastRaw = null;
+        if (reportType === 'yearly') {
+          const astroTruth = buildAstroTruth(birthDate, ascendant, lang, new Date().getFullYear(), new Date().getMonth() + 1);
+          const MAX_RETRY = 3;
+          for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
+            const r = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
+            _lastRaw = r;
+            const v = validateAstroLogic(r, astroTruth, lang);
+            if (v.pass) { aiResult = r; break; }
+            console.warn(`[Validator] yearly attempt ${attempt + 1}/${MAX_RETRY} FAILED:`, v.errors);
+          }
+          if (!aiResult) {
+            console.error('[Validator] yearly 所有重试均失败，降级交付（含潜在逻辑错误）');
+            aiResult = _lastRaw;
+          }
+        } else {
+          aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
+        }
 
         // ── V97 宫位强制纠正器（铁血断路）──
-        const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
         const sanitizedAI = final_text_sanitizer(aiResult, ascendant);
 
         // Parse AI result
