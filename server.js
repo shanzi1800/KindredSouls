@@ -496,23 +496,18 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
-You MUST output strictly following this formatting paradigm. Symbols/spacing/line breaks/bolding must match the example exactly:
+The ONLY allowed top-level structure is:
+1. Section 0: ## ✦ 先知神谕 · 财富启示录 ✦  (H2 header, starts with ##, NEVER ### or #)
+   - Then the metadata lines (birth date, sun sign, rising sign)
+   - Then the intro paragraph
+   - NO second oracle section after the intro!
+2. Section 1-5: ## 第一章 / ## 第二章 / etc. (H2 headers)
 
-0. Prophetic Oracle (Chapter Zero · Mandatory Opening):
-## ✦ 先知神谕 · 财富启示录 ✦
-──────────────────────────
-✦ 命运宿主: 【用户生日】
-✦ 年度星盘: 【太阳星座】 · 太阳回归年
-✦ 核心本命代码: Sun 【太阳星座】 / Moon 【月亮星座】 / Rising 【上升星座】
-
-[此处展开宏观运势总揽与天启核心共振：简述宿主的本命财富格局、年度核心主题、以及五章内容的预告性总览。此章节为整本法典的天启前言，必须独立成章，震撼开篇。]
-
-1. Top Identity Card (blockquote mystery):
-> ### ✦ 先知法典 · 财富启示录 ✦
->
-> * ◆ **命运宿主**: 【用户生日】
-> * ◇ **年度星盘**: 【太阳星座】 · 太阳回归年
-> * ✦ **核心本命代码**: 太阳【太阳星座】 / 月亮【月亮星座】 / 上升【上升星座】
+⛔ FORBIDDEN patterns (will cause display errors):
+- DO NOT output a second oracle section after the intro
+- DO NOT output blockquote with header (text beginning with '> #' in the same line) — this breaks frontend card rendering
+- Use H2 (##) for ALL major sections, NEVER H1 (#) or H3 (###)
+- DO NOT repeat section headers inside blockquotes
 
 2. Macro Strategy Dashboard (Gold/Silver/Bronze/Iron):
 ### 📊 2026-2027 Annual Wealth Core Metrics Dashboard
@@ -1174,7 +1169,7 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
     return {
       system: yearlySystem,
       user: `
-⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。
+⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。⛔ [火星/凯龙禁则]: 绝对禁止在财富年报中写"火星在XX座"或"火星在第X宫"。行星只有木星/土星/冥王星/太阳/月亮参与了2026-2027年度财富叙事。
 ⛔ [缝合怪禁则]: 绝对禁止将两个星座名直接连接（如"处女座金牛座"、"双子座白羊座"）。每段只描述一个星座，宫位从 AstroMatrix 的 computed_houses 引用，不得自创。
 ⛔ [月内宫位一致性]: 同一月内太阳描述必须唯一（如5月=金牛座，不得同时说双子座）。若发现矛盾，以流月数据为准。
 — AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章：年度财富矩阵', '第二章：365天月度收入矩阵', '第三章：命运职业路径', '第四章：债务与风险护盾', '第五章：神谕显化仪式'. These headings are REQUIRED — the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
