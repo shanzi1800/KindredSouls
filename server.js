@@ -113,6 +113,11 @@ app.use('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '1a11de8', debugBuildTime: 'FRESHBUILD-20260704-1147Z' });
 });
 
+// ── Root health check for Railway ──
+app.get('/', async (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
+});
+
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
 async function callAI(systemPrompt, userPrompt, env, options = {}) {
   const { maxTokens = 4000, reportType = 'monthly' } = options;
