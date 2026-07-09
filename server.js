@@ -953,19 +953,8 @@ IMPORTANT:
     };
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
 
-    // ── V97 TDZ FIX: Replace placeholders with actual variable values ──
-    yearlySystem = yearlySystem
-      .replace(/__RISING_LOCAL__/g, risingLocal)
-      .replace(/__JUP_HOUSE__/g, String(jupHouse))
-      .replace(/__SAT_HOUSE__/g, String(satHouse))
-      .replace(/__PL_HOUSE__/g, String(plHouse))
-      .replace(/__SUN_HOUSE__/g, String(sunHouse))
-      .replace(/__MOON_HOUSE__/g, String(moonHouse))
-      .replace(/__NATAL_SUN__/g, natalSunSign)
-      .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
-      .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
-      .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
-      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
+    // ── V97 TDZ FIX: placeholder replacement REMOVED from here (was in TDZ zone) ──
+    // ── it is re-inserted AFTER variable assignment (see below, before V89) ──
 
     // ── V69 SwissEph Override: Replace hardcoded FACT_SHEET with computed truth ──
     if (v69FactSheet) {
@@ -1038,7 +1027,7 @@ IMPORTANT:
     }
 
     // ── 🛠️ V91: 把 if 块内声明的常量提升到外层 let，供 V89 HEADER_ENFORCE 访问 ──
-    let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '';
+    let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '', moonSignLocal = '';
     let jupHouse = 0, satHouse = 0, plHouse = 0, sunHouse = 0, moonHouse = 0;
 
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
@@ -1067,6 +1056,7 @@ IMPORTANT:
       risingLocal = signMap[rising] || rising;
       jupSignLocal = signMap[jupSign] || jupSign;
       satSignLocal = signMap[satSign] || satSign;
+      moonSignLocal = signMap[first.moon?.sign] || first.moon?.sign || 'Cancer';
 
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
@@ -1092,6 +1082,20 @@ IMPORTANT:
       houseLock = locks[lang] || locks.en;
       console.log(`[V82] houseLock built for ${lang}: Jup=${jupHouse}, Sat=${satHouse}, Pluto=${plHouse}, Sun=${sunHouse}, Rising=${risingLocal}`);
     }
+
+    // ── V97 TDZ FIX: placeholder replacement (runs AFTER all vars assigned, safe) ──
+    yearlySystem = yearlySystem
+      .replace(/__RISING_LOCAL__/g, risingLocal)
+      .replace(/__JUP_HOUSE__/g, String(jupHouse))
+      .replace(/__SAT_HOUSE__/g, String(satHouse))
+      .replace(/__PL_HOUSE__/g, String(plHouse))
+      .replace(/__SUN_HOUSE__/g, String(sunHouse))
+      .replace(/__MOON_HOUSE__/g, String(moonHouse))
+      .replace(/__NATAL_SUN__/g, natalSunSign)
+      .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
+      .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
+      .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
+      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
 
     // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
     const HEADER_ENFORCE = lang === 'vi' ? `
