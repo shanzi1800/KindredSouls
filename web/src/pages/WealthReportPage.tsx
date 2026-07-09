@@ -1927,6 +1927,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               }
               try {
                 const parsed = JSON.parse(dataStr);
+                // V97: 后端纠正器清洗完毕，替换显示内容
+                if (parsed.sanitized) {
+                  if (type === 'yearly') {
+                    setSacredText(parsed.sanitized);
+                  } else {
+                    setWealthReportText(parsed.sanitized);
+                  }
+                  console.log('[WealthReport] 🔮 [SANITIZED] 宫位纠正完毕，长度:', parsed.sanitized.length);
+                  continue;
+                }
                 if (parsed.text) {
                   // 🛠️ V40: 纯净增量追加到打字机状态（不卡、不死循环）
                   if (type === 'yearly') {
