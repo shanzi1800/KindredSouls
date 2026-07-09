@@ -1232,7 +1232,15 @@ app.post('/api/save-result', async (req, res) => {
 // ── /api/wealth-oracle ──
 app.post('/api/wealth-oracle', async (req, res) => {
   try {
-    const { birthDate, lang = 'zh' } = req.body;
+    // 🛠️ V91+: 出生时间/经纬度/时区（默认 Bangkok 中午）
+    const {
+      birthDate,
+      birthTime = '12:00',
+      lat = 13.75,
+      lon = 100.5,
+      tz = 'Asia/Bangkok',
+      lang = 'zh',
+    } = req.body;
     if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
@@ -1406,8 +1414,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
       // ── V69 SwissEph: Fetch computed astro matrix ──
       let astroMatrix = null;
       try {
-        astroMatrix = await getAstroMatrix(birthDate); // 🛠️ V80: 让Python从生日自己算ASC
-        if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix`);
+        astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
+        if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
       } catch (e) {
         console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
       }
@@ -1639,7 +1647,16 @@ if (existsSync(distPath)) {
 // 🌊 流式输出端点：SSE (Server-Sent Events)
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
-  const { birthDate, lang = 'zh', reportType = 'monthly' } = req.body;
+  // 🛠️ V91+: 出生时间/经纬度/时区（默认 Bangkok 中午）
+  const {
+    birthDate,
+    birthTime = '12:00',
+    lat = 13.75,
+    lon = 100.5,
+    tz = 'Asia/Bangkok',
+    lang = 'zh',
+    reportType = 'monthly',
+  } = req.body;
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // SSE headers
@@ -1753,9 +1770,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // ── V69 SwissEph: Fetch computed astro matrix ──
   let astroMatrix = null;
   try {
-    astroMatrix = await getAstroMatrix(birthDate); // 🛠️ V80: 让Python从生日自己算ASC
+    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
     if (astroMatrix) {
-      console.log(`[wealth-stream] [V69] Got matrix with ${astroMatrix.months?.length || 0} months`);
+      console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
     }
   } catch (e) {
     console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);

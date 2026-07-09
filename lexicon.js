@@ -1,424 +1,208 @@
 /**
- * P1.2 Fixed Lexicon — 6 Language Term Dictionary + Pronoun Lock
- * 
- * Oracle Track  = 神谕轨（先知对用户说话）：高冷、权威、宿命感
- * Affirmation Track = 宣告轨（用户对自己说话）：温暖、坚定、力量感
- * 
- * 铁律：AI 生成文案时，必须根据语境选择对应轨道的人称和语气。
- *       分析/预测段落 → Oracle Track
- *       仪式/咒语/自我肯定段落 → Affirmation Track
+ * lexicon.js — 城市名 → 经纬度/时区 映射表
+ * 用于占星页面城市搜索自动补全
+ * 覆盖全球主要城市 + 中文常用城市
+ * 数据来源：GeoNames / OpenStreetMap Nominatim
  */
+export const CITY_LEXICON = [
+  // ── 🇨🇳 中国大陆 ──
+  { city: 'Beijing', cityZh: '北京', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Shanghai', cityZh: '上海', lat: 31.2304, lon: 121.4737, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Shenzhen', cityZh: '深圳', lat: 22.5431, lon: 114.0579, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Guangzhou', cityZh: '广州', lat: 23.1291, lon: 113.2644, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Hangzhou', cityZh: '杭州', lat: 30.2741, lon: 120.1551, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Chengdu', cityZh: '成都', lat: 30.5728, lon: 104.0668, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Nanjing', cityZh: '南京', lat: 32.0603, lon: 118.7969, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Wuhan', cityZh: '武汉', lat: 30.5928, lon: 114.3055, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Xian', cityZh: '西安', lat: 34.3416, lon: 108.9398, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Chongqing', cityZh: '重庆', lat: 29.5630, lon: 106.5516, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Tianjin', cityZh: '天津', lat: 39.3434, lon: 117.3616, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Suzhou', cityZh: '苏州', lat: 31.2989, lon: 120.5853, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Dalian', cityZh: '大连', lat: 38.9140, lon: 121.6147, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Qingdao', cityZh: '青岛', lat: 36.0671, lon: 120.3826, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Changsha', cityZh: '长沙', lat: 28.2282, lon: 112.9388, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Zhengzhou', cityZh: '郑州', lat: 34.7466, lon: 113.6253, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Shenyang', cityZh: '沈阳', lat: 41.8057, lon: 123.4328, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Kunming', cityZh: '昆明', lat: 25.0406, lon: 102.7123, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Jinan', cityZh: '济南', lat: 36.6512, lon: 117.1205, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Nanchang', cityZh: '南昌', lat: 28.6820, lon: 115.8581, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Taiyuan', cityZh: '太原', lat: 37.8706, lon: 112.5489, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Hefei', cityZh: '合肥', lat: 31.8612, lon: 117.2830, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Fuzhou', cityZh: '福州', lat: 26.0745, lon: 119.2965, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Xiamen', cityZh: '厦门', lat: 24.4798, lon: 118.0894, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Changchun', cityZh: '长春', lat: 43.8171, lon: 125.3235, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Harbin', cityZh: '哈尔滨', lat: 45.8038, lon: 126.5340, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Shijiazhuang', cityZh: '石家庄', lat: 38.0428, lon: 114.5149, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Lanzhou', cityZh: '兰州', lat: 36.0611, lon: 103.8343, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Guiyang', cityZh: '贵阳', lat: 26.6470, lon: 106.6302, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Urumqi', cityZh: '乌鲁木齐', lat: 43.8256, lon: 87.6168, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Nanning', cityZh: '南宁', lat: 22.8170, lon: 108.3665, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Haikou', cityZh: '海口', lat: 20.0444, lon: 110.1999, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Foshan', cityZh: '佛山', lat: 23.0218, lon: 113.1219, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Dongguan', cityZh: '东莞', lat: 23.0205, lon: 113.7518, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Ningbo', cityZh: '宁波', lat: 29.8683, lon: 121.5440, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Wuxi', cityZh: '无锡', lat: 31.4912, lon: 120.3119, tz: 'Asia/Shanghai', country: 'CN' },
+  { city: 'Foshan', cityZh: '佛山', lat: 23.0218, lon: 113.1219, tz: 'Asia/Shanghai', country: 'CN' },
 
-export const LEXICON = {
-  // ═══════════════════════════════════════════════════════════
-  // 中文
-  // ═══════════════════════════════════════════════════════════
-  zh: {
-    pronouns: {
-      oracle: {
-        firstPerson: '本座',       // 先知自称
-        secondPerson: '尔',        // 对用户称呼（高冷）
-        possessive: '尔之',        // 你的（高冷）
-      },
-      affirmation: {
-        firstPerson: '我',         // 用户自称（肯定句）
-        secondPerson: '你',        // 用户对己称呼
-        possessive: '我的',
-      },
-    },
-    planets: {
-      Sun: '太阳', Moon: '太阴', Mercury: '水星', Venus: '金星',
-      Mars: '火星', Jupiter: '木星', Saturn: '土星', Uranus: '天王星',
-      Neptune: '海王星', Pluto: '冥王星',
-    },
-    signs: {
-      Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座',
-      Leo: '狮子座', Virgo: '处女座', Libra: '天秤座', Scorpio: '天蝎座',
-      Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '双鱼座',
-    },
-    houses: {
-      1: '第一宫（命宫）', 2: '第二宫（财帛宫）', 3: '第三宫（兄弟宫）',
-      4: '第四宫（田宅宫）', 5: '第五宫（子女宫）', 6: '第六宫（奴仆宫）',
-      7: '第七宫（夫妻宫）', 8: '第八宫（疾厄宫）', 9: '第九宫（迁移宫）',
-      10: '第十宫（官禄宫）', 11: '第十一宫（福德宫）', 12: '第十二宫（玄秘宫）',
-    },
-    elements: { Fire: '火', Earth: '土', Air: '风', Water: '水' },
-    aspects: { conjuct: '合相', trine: '三合', square: '方照', opposite: '对冲', sextile: '六合' },
-    retrograde: '逆行',
-    terms: {
-      domicile: '入庙（能量最纯正、最舒适的状态）',
-      exaltation: '擢升（能量最巅峰、最闪耀的状态）',
-      fall: '落陷（能量受限、需要谨慎的状态）',
-      shadow: '阴影自我',
-      solarReturn: '太阳返照',
-      transit: '行运',
-      natal: '本命',
-      house: '宫',
-    },
-    hedge: {
-      contractBlackout: '若必须在此期间签约，需引入第三方律所或公证人进行双重审计',
-      plutoSquare: '若必须在此期间谈判，请邀请中立第三方调解，避免正面权力对抗',
-      mercuryRx: '水逆期间签署的文件易出现条款歧义，建议延至水星顺行后三日再签',
-      marsPluto: '此相位易引发权力争夺，避免在公开场合与对方发生直接冲突',
-      saturnReturn: '土星回归期宜守不宜攻，聚焦于清理旧债而非扩张新业务',
-    },
-    chapters: {
-      prefix: '第', suffix: '章',
-      names: ['年度财富矩阵', '逐月财帛天机', '天命事业征程', '资产护盾与阴影审计', '神谕显化密仪'],
-    },
-  },
+  // ── 🇨🇳 台湾 ──
+  { city: 'Taipei', cityZh: '台北', lat: 25.0330, lon: 121.5654, tz: 'Asia/Taipei', country: 'TW' },
+  { city: 'Kaohsiung', cityZh: '高雄', lat: 22.6273, lon: 120.3014, tz: 'Asia/Taipei', country: 'TW' },
+  { city: 'Taichung', cityZh: '台中', lat: 24.1477, lon: 120.6736, tz: 'Asia/Taipei', country: 'TW' },
+  { city: 'Tainan', cityZh: '台南', lat: 22.9998, lon: 120.2269, tz: 'Asia/Taipei', country: 'TW' },
 
-  // ═══════════════════════════════════════════════════════════
-  // English
-  // ═══════════════════════════════════════════════════════════
-  en: {
-    pronouns: {
-      oracle: {
-        firstPerson: 'I',         // The Seer / Oracle
-        secondPerson: 'you',      // The initiate
-        possessive: 'your',
-      },
-      affirmation: {
-        firstPerson: 'I',
-        secondPerson: 'you',
-        possessive: 'my',
-      },
-    },
-    planets: {
-      Sun: 'Sun', Moon: 'Moon', Mercury: 'Mercury', Venus: 'Venus',
-      Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus',
-      Neptune: 'Neptune', Pluto: 'Pluto',
-    },
-    signs: {
-      Aries: 'Aries', Taurus: 'Taurus', Gemini: 'Gemini', Cancer: 'Cancer',
-      Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Scorpio',
-      Sagittarius: 'Sagittarius', Capricorn: 'Capricorn', Aquarius: 'Aquarius', Pisces: 'Pisces',
-    },
-    houses: {
-      1: '1st House (Self)', 2: '2nd House (Earned Income)', 3: '3rd House (Communication)',
-      4: '4th House (Home & Family)', 5: '5th House (Creativity & Romance)', 6: '6th House (Daily Work & Health)',
-      7: '7th House (Partnerships)', 8: '8th House (Shared Resources & Transformation)', 9: '9th House (Higher Learning & Travel)',
-      10: '10th House (Career & Public Standing)', 11: '11th House (Networks & Hopes)', 12: '12th House (Subconscious & Seclusion)',
-    },
-    elements: { Fire: 'Fire', Earth: 'Earth', Air: 'Air', Water: 'Water' },
-    aspects: { conjuct: 'conjunct', trine: 'trine', square: 'square', opposite: 'opposite', sextile: 'sextile' },
-    retrograde: 'retrograde',
-    terms: {
-      domicile: 'domicile (purest, most comfortable energy)',
-      exaltation: 'exaltation (peak, most radiant energy)',
-      fall: 'fall (constrained energy requiring caution)',
-      shadow: 'Shadow Self',
-      solarReturn: 'Solar Return',
-      transit: 'transit',
-      natal: 'natal',
-      house: 'House',
-    },
-    hedge: {
-      contractBlackout: 'If you must sign during this period, engage a third-party legal auditor or notary for double verification',
-      plutoSquare: 'If negotiations are unavoidable, invite a neutral mediator to prevent power struggles',
-      mercuryRx: 'Documents signed during Mercury retrograde are prone to ambiguous clauses — delay until 3 days after station-direct',
-      marsPluto: 'This aspect triggers power struggles — avoid direct confrontation in public settings',
-      saturnReturn: 'Saturn return favors consolidation over expansion — focus on clearing old debts',
-    },
-    chapters: {
-      prefix: 'Section ', suffix: '',
-      names: ['The Annual Wealth Matrix', 'The 365-Day Monthly Revenue Matrix', 'The Destiny Career Path & Sovereign Tracks', 'The Debt & Risk Shield', "The Oracle's Manifestation Protocol"],
-    },
-  },
+  // ── 🇭🇰 🇲🇴 港澳 ──
+  { city: 'Hong Kong', cityZh: '香港', lat: 22.3193, lon: 114.1694, tz: 'Asia/Shanghai', country: 'HK' },
+  { city: 'Macau', cityZh: '澳门', lat: 22.1987, lon: 113.5439, tz: 'Asia/Shanghai', country: 'MO' },
 
-  // ═══════════════════════════════════════════════════════════
-  // Español
-  // ═══════════════════════════════════════════════════════════
-  es: {
-    pronouns: {
-      oracle: {
-        firstPerson: 'Yo',
-        secondPerson: 'tú',
-        possessive: 'tu',
-      },
-      affirmation: {
-        firstPerson: 'Yo',
-        secondPerson: 'tú',
-        possessive: 'mi',
-      },
-    },
-    planets: {
-      Sun: 'Sol', Moon: 'Luna', Mercury: 'Mercurio', Venus: 'Venus',
-      Mars: 'Marte', Jupiter: 'Júpiter', Saturn: 'Saturno', Uranus: 'Urano',
-      Neptune: 'Neptuno', Pluto: 'Plutón',
-    },
-    signs: {
-      Aries: 'Aries', Taurus: 'Tauro', Gemini: 'Géminis', Cancer: 'Cáncer',
-      Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Escorpio',
-      Sagittarius: 'Sagitario', Capricorn: 'Capricornio', Aquarius: 'Acuario', Pisces: 'Piscis',
-    },
-    houses: {
-      1: 'Casa 1 (Identidad)', 2: 'Casa 2 (Ingresos)', 3: 'Casa 3 (Comunicación)',
-      4: 'Casa 4 (Hogar)', 5: 'Casa 5 (Creatividad)', 6: 'Casa 6 (Trabajo)',
-      7: 'Casa 7 (Sociedades)', 8: 'Casa 8 (Recursos Compartidos)', 9: 'Casa 9 (Conocimiento)',
-      10: 'Casa 10 (Carrera)', 11: 'Casa 11 (Redes)', 12: 'Casa 12 (Inconsciente)',
-    },
-    elements: { Fire: 'Fuego', Earth: 'Tierra', Air: 'Aire', Water: 'Agua' },
-    aspects: { conjuct: 'conjunción', trine: 'trígono', square: 'cuadratura', opposite: 'oposición', sextile: 'sextil' },
-    retrograde: 'retrógrado',
-    terms: {
-      domicile: 'domicilio (energía más pura)',
-      exaltation: 'exaltación (energía más radiante)',
-      fall: 'caída (energía restringida)',
-      shadow: 'Sombra del Ser',
-      solarReturn: 'Retorno Solar',
-      transit: 'tránsito',
-      natal: 'natal',
-      house: 'Casa',
-    },
-    hedge: {
-      contractBlackout: 'Si debe firmar, contrate a un auditor legal externo para doble verificación',
-      plutoSquare: 'Si las negociaciones son inevitables, invite a un mediador neutral',
-      mercuryRx: 'Los documentos firmados durante Mercurio retrógrado son propensos a ambigüedades — espere 3 días después de la estación directa',
-      marsPluto: 'Este aspecto desencadena luchas de poder — evite confrontaciones directas',
-      saturnReturn: 'El retorno de Saturno favorece la consolidación sobre la expansión',
-    },
-    chapters: {
-      prefix: 'Sección ', suffix: '',
-      names: ['La Matriz de Riqueza Anual', 'La Matriz de Ingresos Mensuales', 'El Camino del Destino Profesional', 'El Escudo de Deuda y Riesgo', 'El Protocolo de Manifestación del Oráculo'],
-    },
-  },
+  // ── 🇹🇭 泰国（默认坐标）──
+  { city: 'Bangkok', cityZh: '曼谷', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok', country: 'TH' },
+  { city: 'Phuket', cityZh: '普吉', lat: 7.8804, lon: 98.3923, tz: 'Asia/Bangkok', country: 'TH' },
+  { city: 'Chiang Mai', cityZh: '清迈', lat: 18.7883, lon: 98.9853, tz: 'Asia/Bangkok', country: 'TH' },
+  { city: 'Pattaya', cityZh: '芭提雅', lat: 12.9276, lon: 100.8770, tz: 'Asia/Bangkok', country: 'TH' },
 
-  // ═══════════════════════════════════════════════════════════
-  // Français
-  // ═══════════════════════════════════════════════════════════
-  fr: {
-    pronouns: {
-      oracle: {
-        firstPerson: 'Je',
-        secondPerson: 'vous',
-        possessive: 'votre',
-      },
-      affirmation: {
-        firstPerson: 'Je',
-        secondPerson: 'vous',
-        possessive: 'mon',
-      },
-    },
-    planets: {
-      Sun: 'Soleil', Moon: 'Lune', Mercury: 'Mercure', Venus: 'Vénus',
-      Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus',
-      Neptune: 'Neptune', Pluto: 'Pluton',
-    },
-    signs: {
-      Aries: 'Bélier', Taurus: 'Taureau', Gemini: 'Gémeaux', Cancer: 'Cancer',
-      Leo: 'Lion', Virgo: 'Vierge', Libra: 'Balance', Scorpio: 'Scorpion',
-      Sagittarius: 'Sagittaire', Capricorn: 'Capricorne', Aquarius: 'Verseau', Pisces: 'Poissons',
-    },
-    houses: {
-      1: 'Maison 1 (Identité)', 2: 'Maison 2 (Revenus)', 3: 'Maison 3 (Communication)',
-      4: 'Maison 4 (Foyer)', 5: 'Maison 5 (Créativité)', 6: 'Maison 6 (Travail)',
-      7: 'Maison 7 (Partenariats)', 8: 'Maison 8 (Ressources Partagées)', 9: 'Maison 9 (Savoir)',
-      10: 'Maison 10 (Carrière)', 11: 'Maison 11 (Réseaux)', 12: 'Maison 12 (Inconscient)',
-    },
-    elements: { Fire: 'Feu', Earth: 'Terre', Air: 'Air', Water: 'Eau' },
-    aspects: { conjuct: 'conjonction', trine: 'trigone', square: 'carré', opposite: 'opposition', sextile: 'sextile' },
-    retrograde: 'rétrograde',
-    terms: {
-      domicile: 'domicile (énergie la plus pure)',
-      exaltation: 'exaltation (énergie la plus rayonnante)',
-      fall: 'chute (énergie restreinte)',
-      shadow: 'Ombre de Soi',
-      solarReturn: 'Révolution Solaire',
-      transit: 'transit',
-      natal: 'natal',
-      house: 'Maison',
-    },
-    hedge: {
-      contractBlackout: 'Si vous devez signer, engagez un notaire tiers pour double vérification',
-      plutoSquare: 'Si les négociations sont inévitables, invitez un médiateur neutre',
-      mercuryRx: 'Les documents signés pendant Mercure rétrograde sont sujets à ambiguïté — attendez 3 jours après la station directe',
-      marsPluto: 'Cet aspect déclenche des luttes de pouvoir — évitez la confrontation publique',
-      saturnReturn: 'Le retour de Saturne favorise la consolidation plutôt que l\'expansion',
-    },
-    chapters: {
-      prefix: 'Section ', suffix: '',
-      names: ['La Matrice de Richesse Annuelle', 'La Matrice des Revenus Mensuels', 'Le Chemin de Carrière du Destin', 'Le Bouclier de Dette et Risque', 'Le Protocole de Manifestation de l\'Oracle'],
-    },
-  },
+  // ── 🇸🇬 新加坡 ──
+  { city: 'Singapore', cityZh: '新加坡', lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore', country: 'SG' },
 
-  // ═══════════════════════════════════════════════════════════
-  // ภาษาไทย (Thai)
-  // ═══════════════════════════════════════════════════════════
-  th: {
-    pronouns: {
-      oracle: {
-        firstPerson: 'ข้า',         // 🛡️ 军师神级修正：吾/本座（史诗感）
-        secondPerson: 'เจ้า',       // 尔/你（古风/高冷）
-        possessive: 'ของเจ้า',
-      },
-      affirmation: {
-        firstPerson: 'ตัวฉัน',      // 🛡️ 军师神级修正：自我本尊锚定感
-        secondPerson: 'คุณ',
-        possessive: 'ของฉัน',
-      },
-    },
-    planets: {
-      Sun: 'พระอาทิตย์', Moon: 'พระจันทร์', Mercury: 'ดาวพุธ', Venus: 'ดาวศุกร์',
-      Mars: 'ดาวอังคาร', Jupiter: 'ดาวพฤหัสบดี', Saturn: 'ดาวเสาร์', Uranus: 'ดาวยูเรนัส',
-      Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
-    },
-    signs: {
-      // ⚠️ 无 ราศี 前缀——用于动态拼接："ในราศี" + signName
-      Aries: 'เมษ', Taurus: 'พฤษภ', Gemini: 'มิถุน', Cancer: 'กรกฏ',
-      Leo: 'สิงห์', Virgo: 'กันย์', Libra: 'ตุลย์', Scorpio: 'พิจิก',
-      Sagittarius: 'ธนู', Capricorn: 'มังกร', Aquarius: 'กุมภ์', Pisces: 'มีน',
-    },
-    houses: {
-      1: 'ภพที่ 1 (ตนุ)', 2: 'ภพที่ 2 (กตุธน)', 3: 'ภพที่ 3 (สหัชชะ)',
-      4: 'ภพที่ 4 (พันธุ)', 5: 'ภพที่ 5 (ปุตตะ)', 6: 'ภพที่ 6 (ริปุ)',
-      7: 'ภพที่ 7 (ปัตนิก)', 8: 'ภพที่ 8 (มรณะ)', 9: 'ภพที่ 9 (ธรรมะ)',
-      10: 'ภพที่ 10 (กรรม)', 11: 'ภพที่ 11 (ลาภะ)', 12: 'ภพที่ 12 (วินาศ)',
-    },
-    elements: { Fire: 'ธาตุไฟ', Earth: 'ธาตุดิน', Air: 'ธาตุลม', Water: 'ธาตุน้ำ' },
-    aspects: { conjuct: 'มุมเดียวกัน', trine: 'ตรีโกณ', square: 'มุมฉาก', opposite: 'ตรงข้าม', sextile: 'หกเหลี่ยม' },
-    retrograde: 'ถอยหลัง',
-    terms: {
-      domicile: 'ภูมิฐาน (พลังงานบริสุทธิ์ที่สุด)',
-      exaltation: 'อุจจน์ (พลังงานสูงสุด)',
-      fall: 'นิจจน์ / ตก (พลังงานจำกัด)',
-      shadow: 'เงามืด',
-      solarReturn: 'Solar Return',
-      transit: 'ทรานซิท',
-      natal: 'นาทอล',
-      house: 'ภพ',
-    },
-    hedge: {
-      // 🛡️ 军师神级修正——高阶泰语商业风控
-      contractBlackout: 'เปิดใช้งานการตรวจสอบบัญชีจากผู้เชี่ยวชาญภายนอกทันทีเพื่อสร้างเกราะป้องกันความเสี่ยง',
-      plutoSquare: 'หากจำเป็นต้องเจรจา ควรเชิญคนกลางที่เป็นกลาง',
-      mercuryRx: 'เอกสารที่เซ็นในช่วงดาวพุธถอยหลังมักมีข้อความคลุมเครือ — รอ 3 วันหลังจากดาวพุธเดินหน้า',
-      marsPluto: 'ตำแหน่งนี้ก่อให้เกิดการแย่งชิงอำนาจ — หลีกเลี่ยงการเผชิญหน้าในที่สาธารณะ',
-      saturnReturn: 'ดาวเสาร์กลับตำแหน่งเหมาะกับการรวมทรัพย์สินมากกว่าการขยาย',
-      // 🛡️ P1.2 军师追加——高阶泰语合规条目
-      financialAudit: 'เปิดใช้งานการตรวจสอบบัญชีจากผู้เชี่ยวชาญภายนอกทันทีเพื่อสร้างเกราะป้องกันความเสี่ยง',
-      contractHold: 'ระงับการลงนามในสัญญาชั่วคราว ใช้มาตรการชะลอตัวเพื่อทบทวนเงื่อนไขอย่างละเอียด',
-      riskIsolation: 'สร้างกำแพงกั้นความเสี่ยง แยกทรัพย์สินส่วนตัวออกจากความผูกพันทางธุรกิจอย่างเด็ดขาด',
-    },
-    chapters: {
-      prefix: 'บทที่ ', suffix: '',
-      names: ['เมทริกซ์ความมั่งคั่งประจำปี', 'เมทริกซ์รายได้ 12 เดือน', 'เส้นทางอาชีพแห่งโชคชะตา', 'โล่หนี้สินและความเสี่ยง', 'พิธีกรรมแห่งการดลบันดาล'],
-    },
-  },
+  // ── 🇻🇳 越南 ──
+  { city: 'Ho Chi Minh City', cityZh: '胡志明市', lat: 10.8231, lon: 106.6297, tz: 'Asia/Bangkok', country: 'VN' },
+  { city: 'Hanoi', cityZh: '河内', lat: 21.0285, lon: 105.8542, tz: 'Asia/Bangkok', country: 'VN' },
+  { city: 'Da Nang', cityZh: '岘港', lat: 16.0544, lon: 108.2022, tz: 'Asia/Bangkok', country: 'VN' },
 
-  // ═══════════════════════════════════════════════════════════
-  // Tiếng Việt (Vietnamese)
-  // ═══════════════════════════════════════════════════════════
-  vi: {
-    pronouns: {
-      oracle: {
-        firstPerson: 'Ta',          // 先知自称（高冷、类似 "本座"）
-        secondPerson: 'ngươi',      // 对用户称呼（古风/正式）
-        possessive: 'của ngươi',
-      },
-      affirmation: {
-        firstPerson: 'Tôi',         // 用户自称（肯定句、现代感）
-        secondPerson: 'bạn',
-        possessive: 'của tôi',
-      },
-    },
-    planets: {
-      Sun: 'Mặt Trời', Moon: 'Mặt Trăng', Mercury: 'Sao Thủy', Venus: 'Sao Kim',
-      Mars: 'Sao Hỏa', Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương',
-      Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương',
-    },
-    signs: {
-      Aries: 'Bạch Dương', Taurus: 'Kim Ngưu', Gemini: 'Song Tử', Cancer: 'Cự Giải',
-      Leo: 'Sư Tử', Virgo: 'Xử Nữ', Libra: 'Thiên Bình', Scorpio: 'Bọ Cạp',
-      Sagittarius: 'Nhân Mã', Capricorn: 'Ma Kết', Aquarius: 'Bảo Bình', Pisces: 'Song Ngư',
-    },
-    houses: {
-      1: 'Nhà 1 (Bản thân)', 2: 'Nhà 2 (Thu nhập)', 3: 'Nhà 3 (Giao tiếp)',
-      4: 'Nhà 4 (Gia đình)', 5: 'Nhà 5 (Sáng tạo)', 6: 'Nhà 6 (Công việc)',
-      7: 'Nhà 7 (Đối tác)', 8: 'Nhà 8 (Tài chính chung)', 9: 'Nhà 9 (Kiến thức)',
-      10: 'Nhà 10 (Sự nghiệp)', 11: 'Nhà 11 (Mạng lưới)', 12: 'Nhà 12 (Tiềm thức)',
-    },
-    elements: { Fire: 'Hỏa', Earth: 'Thổ', Air: 'Khí', Water: 'Thủy' },
-    aspects: { conjuct: 'hợp', trine: 'tam hợp', square: 'vuông góc', opposite: 'đối xung', sextile: 'lục hợp' },
-    retrograde: 'nghịch hành',
-    terms: {
-      domicile: 'Vị trí Nhập Miếu (Năng lượng thuần khiết nhất)',
-      exaltation: 'Vị trí Đắc Địa / Thăng Hoa',
-      fall: 'Vị trí Hãm Địa (Năng lượng bị kìm hãm)',
-      shadow: 'Bản ngã bóng tối',
-      solarReturn: 'Solar Return',
-      transit: 'chuyển động',
-      natal: 'bản mệnh',
-      house: 'Nhà',
-    },
-    hedge: {
-      contractBlackout: 'Kích hoạt quy trình kiểm toán từ bên thứ ba ngay lập tức để thiết lập rào chắn rủi ro',
-      plutoSquare: 'Nếu buộc phải đàm phán, hãy mời trung gian hòa giải trung lập',
-      mercuryRx: 'Hợp đồng ký trong thời gian Sao Thủy nghịch hành dễ có điều khoản mơ hồ — hãy đợi 3 ngày sau khi Sao Thủy thuận hành',
-      marsPluto: 'Góc chiếu này dễ gây tranh giành quyền lực — tránh đối đầu công khai',
-      saturnReturn: 'Sao Thổ hồi vị thích hợp củng cố hơn là mở rộng — tập trung thanh lý nợ cũ',
-      // 🛡️ P1.2 军师追加——高阶商业合规条目
-      financialAudit: 'Kích hoạt quy trình kiểm toán từ bên thứ ba ngay lập tức để thiết lập rào chắn rủi ro',
-      contractHold: 'Đóng băng mọi hoạt động ký kết; áp dụng thời gian đóng băng để rà soát từng điều khoản',
-      debtRestructuring: 'Tái cấu trúc danh mục nợ, triệt để thanh lý các nghĩa vụ tài chính ẩn khuất',
-    },
-    chapters: {
-      prefix: 'Chương ', suffix: '',
-      names: ['Ma Trận Tài Lộc Định Mệnh Năm', 'Sa Bàn 12 Tháng Tài Chính', 'Đường Sự Nghiệp Thiên Mệnh', 'Lá Chắn Tài Sản & Kiểm Toán Bóng Tối', 'Nghi Thức Hiển Hóa Tài Lộc'],
-    },
-  },
-};
+  // ── 🇲🇾 马来西亚 ──
+  { city: 'Kuala Lumpur', cityZh: '吉隆坡', lat: 3.1390, lon: 101.6869, tz: 'Asia/Bangkok', country: 'MY' },
+  { city: 'Penang', cityZh: '槟城', lat: 5.4164, lon: 100.3327, tz: 'Asia/Bangkok', country: 'MY' },
+
+  // ── 🇮🇳 印度 ──
+  { city: 'Mumbai', cityZh: '孟买', lat: 19.0760, lon: 72.8777, tz: 'Asia/Kolkata', country: 'IN' },
+  { city: 'New Delhi', cityZh: '新德里', lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata', country: 'IN' },
+  { city: 'Bangalore', cityZh: '班加罗尔', lat: 12.9716, lon: 77.5946, tz: 'Asia/Kolkata', country: 'IN' },
+  { city: 'Kolkata', cityZh: '加尔各答', lat: 22.5726, lon: 88.3639, tz: 'Asia/Kolkata', country: 'IN' },
+  { city: 'Chennai', cityZh: '金奈', lat: 13.0827, lon: 80.2707, tz: 'Asia/Kolkata', country: 'IN' },
+  { city: 'Hyderabad', cityZh: '海德拉巴', lat: 17.3850, lon: 78.4867, tz: 'Asia/Kolkata', country: 'IN' },
+
+  // ── 🇯🇵 日本 ──
+  { city: 'Tokyo', cityZh: '东京', lat: 35.6762, lon: 139.6503, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Osaka', cityZh: '大阪', lat: 34.6937, lon: 135.5023, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Kyoto', cityZh: '京都', lat: 35.0116, lon: 135.7681, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Nagoya', cityZh: '名古屋', lat: 35.1815, lon: 136.9066, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Yokohama', cityZh: '横滨', lat: 35.4437, lon: 139.6380, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Sapporo', cityZh: '札幌', lat: 43.0618, lon: 141.3545, tz: 'Asia/Tokyo', country: 'JP' },
+  { city: 'Fukuoka', cityZh: '福冈', lat: 33.5904, lon: 130.4017, tz: 'Asia/Tokyo', country: 'JP' },
+
+  // ── 🇰🇷 韩国 ──
+  { city: 'Seoul', cityZh: '首尔', lat: 37.5665, lon: 126.9780, tz: 'Asia/Seoul', country: 'KR' },
+  { city: 'Busan', cityZh: '釜山', lat: 35.1796, lon: 129.0756, tz: 'Asia/Seoul', country: 'KR' },
+  { city: 'Incheon', cityZh: '仁川', lat: 37.4563, lon: 126.7052, tz: 'Asia/Seoul', country: 'KR' },
+
+  // ── 🇺🇸 美国 ──
+  { city: 'New York', cityZh: '纽约', lat: 40.7128, lon: -74.0060, tz: 'America/New_York', country: 'US' },
+  { city: 'Los Angeles', cityZh: '洛杉矶', lat: 34.0522, lon: -118.2437, tz: 'America/Los_Angeles', country: 'US' },
+  { city: 'Chicago', cityZh: '芝加哥', lat: 41.8781, lon: -87.6298, tz: 'America/Chicago', country: 'US' },
+  { city: 'Houston', cityZh: '休斯顿', lat: 29.7604, lon: -95.3698, tz: 'America/Chicago', country: 'US' },
+  { city: 'San Francisco', cityZh: '旧金山', lat: 37.7749, lon: -122.4194, tz: 'America/Los_Angeles', country: 'US' },
+  { city: 'Seattle', cityZh: '西雅图', lat: 47.6062, lon: -122.3321, tz: 'America/Los_Angeles', country: 'US' },
+  { city: 'Boston', cityZh: '波士顿', lat: 42.3601, lon: -71.0589, tz: 'America/New_York', country: 'US' },
+  { city: 'Miami', cityZh: '迈阿密', lat: 25.7617, lon: -80.1918, tz: 'America/New_York', country: 'US' },
+  { city: 'Las Vegas', cityZh: '拉斯维加斯', lat: 36.1699, lon: -115.1398, tz: 'America/Los_Angeles', country: 'US' },
+  { city: 'Denver', cityZh: '丹佛', lat: 39.7392, lon: -104.9903, tz: 'America/Denver', country: 'US' },
+  { city: 'Atlanta', cityZh: '亚特兰大', lat: 33.7490, lon: -84.3880, tz: 'America/New_York', country: 'US' },
+  { city: 'Phoenix', cityZh: '凤凰城', lat: 33.4484, lon: -112.0740, tz: 'America/Phoenix', country: 'US' },
+
+  // ── 🇬🇧 英国 ──
+  { city: 'London', cityZh: '伦敦', lat: 51.5074, lon: -0.1278, tz: 'Europe/London', country: 'GB' },
+  { city: 'Manchester', cityZh: '曼彻斯特', lat: 53.4808, lon: -2.2426, tz: 'Europe/London', country: 'GB' },
+  { city: 'Birmingham', cityZh: '伯明翰', lat: 52.4862, lon: -1.8904, tz: 'Europe/London', country: 'GB' },
+  { city: 'Edinburgh', cityZh: '爱丁堡', lat: 55.9533, lon: -3.1883, tz: 'Europe/London', country: 'GB' },
+
+  // ── 🇫🇷 法国 ──
+  { city: 'Paris', cityZh: '巴黎', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris', country: 'FR' },
+  { city: 'Lyon', cityZh: '里昂', lat: 45.7640, lon: 4.8357, tz: 'Europe/Paris', country: 'FR' },
+  { city: 'Marseille', cityZh: '马赛', lat: 43.2965, lon: 5.3698, tz: 'Europe/Paris', country: 'FR' },
+
+  // ── 🇩🇪 德国 ──
+  { city: 'Berlin', cityZh: '柏林', lat: 52.5200, lon: 13.4050, tz: 'Europe/Berlin', country: 'DE' },
+  { city: 'Munich', cityZh: '慕尼黑', lat: 48.1351, lon: 11.5820, tz: 'Europe/Berlin', country: 'DE' },
+  { city: 'Hamburg', cityZh: '汉堡', lat: 53.5511, lon: 9.9937, tz: 'Europe/Berlin', country: 'DE' },
+  { city: 'Frankfurt', cityZh: '法兰克福', lat: 50.1109, lon: 8.6821, tz: 'Europe/Berlin', country: 'DE' },
+
+  // ── 🇪🇸 西班牙 ──
+  { city: 'Madrid', cityZh: '马德里', lat: 40.4168, lon: -3.7038, tz: 'Europe/Madrid', country: 'ES' },
+  { city: 'Barcelona', cityZh: '巴塞罗那', lat: 41.3851, lon: 2.1734, tz: 'Europe/Madrid', country: 'ES' },
+
+  // ── 🇮🇹 意大利 ──
+  { city: 'Rome', cityZh: '罗马', lat: 41.9028, lon: 12.4964, tz: 'Europe/Rome', country: 'IT' },
+  { city: 'Milan', cityZh: '米兰', lat: 45.4642, lon: 9.1900, tz: 'Europe/Rome', country: 'IT' },
+  { city: 'Venice', cityZh: '威尼斯', lat: 45.4408, lon: 12.3155, tz: 'Europe/Rome', country: 'IT' },
+
+  // ── 🇳🇱 荷兰 ──
+  { city: 'Amsterdam', cityZh: '阿姆斯特丹', lat: 52.3676, lon: 4.9041, tz: 'Europe/Amsterdam', country: 'NL' },
+
+  // ── 🇷🇺 俄罗斯 ──
+  { city: 'Moscow', cityZh: '莫斯科', lat: 55.7558, lon: 37.6173, tz: 'Europe/Moscow', country: 'RU' },
+  { city: 'St. Petersburg', cityZh: '圣彼得堡', lat: 59.9311, lon: 30.3609, tz: 'Europe/Moscow', country: 'RU' },
+
+  // ── 🇦🇺 澳洲 ──
+  { city: 'Sydney', cityZh: '悉尼', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney', country: 'AU' },
+  { city: 'Melbourne', cityZh: '墨尔本', lat: -37.8136, lon: 144.9631, tz: 'Australia/Melbourne', country: 'AU' },
+  { city: 'Brisbane', cityZh: '布里斯班', lat: -27.4698, lon: 153.0251, tz: 'Australia/Brisbane', country: 'AU' },
+  { city: 'Perth', cityZh: '珀斯', lat: -31.9505, lon: 115.8605, tz: 'Australia/Perth', country: 'AU' },
+  { city: 'Adelaide', cityZh: '阿德莱德', lat: -34.9285, lon: 138.6007, tz: 'Australia/Adelaide', country: 'AU' },
+
+  // ── 🇨🇦 加拿大 ──
+  { city: 'Toronto', cityZh: '多伦多', lat: 43.6532, lon: -79.3832, tz: 'America/Toronto', country: 'CA' },
+  { city: 'Vancouver', cityZh: '温哥华', lat: 49.2827, lon: -123.1207, tz: 'America/Vancouver', country: 'CA' },
+  { city: 'Montreal', cityZh: '蒙特利尔', lat: 45.5017, lon: -73.5673, tz: 'America/Montreal', country: 'CA' },
+  { city: 'Calgary', cityZh: '卡尔加里', lat: 51.0447, lon: -114.0719, tz: 'America/Edmonton', country: 'CA' },
+
+  // ── 🇧🇷 巴西 ──
+  { city: 'Sao Paulo', cityZh: '圣保罗', lat: -23.5505, lon: -46.6333, tz: 'America/Sao_Paulo', country: 'BR' },
+  { city: 'Rio de Janeiro', cityZh: '里约热内卢', lat: -22.9068, lon: -43.1729, tz: 'America/Sao_Paulo', country: 'BR' },
+
+  // ── 🇮🇩 印尼 ──
+  { city: 'Jakarta', cityZh: '雅加达', lat: -6.2088, lon: 106.8456, tz: 'Asia/Bangkok', country: 'ID' },
+  { city: 'Bali', cityZh: '巴厘岛', lat: -8.3405, lon: 115.0920, tz: 'Asia/Bangkok', country: 'ID' },
+
+  // ── 🇵🇭 菲律宾 ──
+  { city: 'Manila', cityZh: '马尼拉', lat: 14.5995, lon: 120.9842, tz: 'Asia/Bangkok', country: 'PH' },
+
+  // ── 🇳🇿 新西兰 ──
+  { city: 'Auckland', cityZh: '奥克兰', lat: -36.8509, lon: 174.7645, tz: 'Pacific/Auckland', country: 'NZ' },
+  { city: 'Wellington', cityZh: '惠灵顿', lat: -41.2865, lon: 174.7762, tz: 'Pacific/Auckland', country: 'NZ' },
+
+  // ── 🇹🇷 土耳其 ──
+  { city: 'Istanbul', cityZh: '伊斯坦布尔', lat: 41.0082, lon: 28.9784, tz: 'Europe/Istanbul', country: 'TR' },
+  { city: 'Ankara', cityZh: '安卡拉', lat: 39.9334, lon: 32.8597, tz: 'Europe/Istanbul', country: 'TR' },
+
+  // ── 🇿🇦 南非 ──
+  { city: 'Johannesburg', cityZh: '约翰内斯堡', lat: -26.2041, lon: 28.0473, tz: 'Africa/Johannesburg', country: 'ZA' },
+  { city: 'Cape Town', cityZh: '开普敦', lat: -33.9249, lon: 18.4241, tz: 'Africa/Johannesburg', country: 'ZA' },
+
+  // ── 🇦🇷 阿根廷 ──
+  { city: 'Buenos Aires', cityZh: '布宜诺斯艾利斯', lat: -34.6037, lon: -58.3816, tz: 'America/Argentina/Buenos_Aires', country: 'AR' },
+];
 
 /**
- * 获取某个语言的人称代词
- * @param {string} lang - 语言代码
- * @param {'oracle'|'affirmation'} track - 轨道
- * @returns {object} 人称代词对象
+ * 根据城市名模糊搜索（英文名 或 中文名）
  */
-export function getPronouns(lang, track = 'oracle') {
-  const l = LEXICON[lang] || LEXICON.en;
-  return l.pronouns[track] || l.pronouns.oracle;
+export function searchCity(query: string): typeof CITY_LEXICON[0][] {
+  if (!query || query.length < 2) return [];
+  const q = query.toLowerCase();
+  return CITY_LEXICON.filter(c =>
+    c.city.toLowerCase().includes(q) ||
+    c.cityZh.includes(query) ||
+    c.country.toLowerCase().includes(q)
+  ).slice(0, 8); // 最多返回8个
 }
 
 /**
- * 获取某个语言的行星名称
+ * 根据坐标查找最近城市
  */
-export function getPlanetName(lang, planet) {
-  const l = LEXICON[lang] || LEXICON.en;
-  return l.planets[planet] || planet;
-}
-
-/**
- * 获取某个语言的星座名称
- */
-export function getSignName(lang, sign) {
-  const l = LEXICON[lang] || LEXICON.en;
-  return l.signs[sign] || sign;
-}
-
-/**
- * 获取宫位描述
- */
-export function getHouseName(lang, houseNum) {
-  const l = LEXICON[lang] || LEXICON.en;
-  return l.houses[houseNum] || `House ${houseNum}`;
-}
-
-/**
- * 获取对冲对策
- */
-export function getHedgePhrase(lang, key) {
-  const l = LEXICON[lang] || LEXICON.en;
-  return l.hedge[key] || '';
-}
-
-/**
- * 获取章节标题
- */
-export function getChapterTitle(lang, chapterIndex) {
-  const l = LEXICON[lang] || LEXICON.en;
-  const prefix = l.chapters.prefix || '';
-  const suffix = l.chapters.suffix || '';
-  const name = l.chapters.names[chapterIndex - 1] || '';
-  return `${prefix}${chapterIndex}${suffix}: ${name}`;
+export function findNearestCity(lat: number, lon: number): typeof CITY_LEXICON[0] {
+  let minDist = Infinity;
+  let nearest = CITY_LEXICON[0];
+  for (const c of CITY_LEXICON) {
+    const d = Math.sqrt((c.lat - lat) ** 2 + (c.lon - lon) ** 2);
+    if (d < minDist) { minDist = d; nearest = c; }
+  }
+  return nearest;
 }

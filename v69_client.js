@@ -19,11 +19,13 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 // ── Fetch Astro Matrix ───────────────────────────────────────────────────────
 /**
  * Get the full 12-month astro matrix from V69 Python engine.
+ * 🛠️ V91+: 支持 birth_time / lat / lon / tz 精确参数。
  * Caches result for 1 hour to avoid repeated subprocess calls.
  */
-// 🛠️ V80 FIX: 不再传 risingSign 让 Python 从生日自己算 ASC（默认 noon Bangkok）
-export async function getAstroMatrix(birthDate, _risingSign /* deprecated */) {
-  const cacheKey = `${birthDate}:AUTO`; // Python 动态算ASC，不再区分输入参数}
+export async function getAstroMatrix(birthDate, birthTime = '12:00', lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok') {
+  // 🛠️ V91: 缓存键含坐标，不同城市缓存分离
+  const cacheKey = `${birthDate}:${birthTime}:${lat.toFixed(2)}:${lon.toFixed(2)}:${tz}`;
+
   
   // Check cache
   const cached = matrixCache.get(cacheKey);
@@ -40,7 +42,10 @@ export async function getAstroMatrix(birthDate, _risingSign /* deprecated */) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         birth_date: birthDate,
-        // rising_sign 由 Python AstroMatrix 从生日自己算（默认 noon Bangkok时区）
+        birth_time: birthTime,   // 🛠️ V91+: 出生时间
+        lat: lat,               // 🛠️ V91+: 纬度
+        lon: lon,               // 🛠️ V91+: 经度
+        tz: tz,                // 🛠️ V91+: 时区
         year: new Date().getFullYear(),
         month_start: new Date().getMonth() + 1,
         months: 12,

@@ -335,8 +335,42 @@ def compute_year_matrix(birth_date: str, rising_sign: str,
 
 app = FastAPI(title="V69 Astro Truth Engine", version="1.0.0")
 
+# ── 时区 → UTC 偏移量映射表 ──────────────────────────────────────────────
+TZ_OFFSET = {
+    'GMT+8': -8, 'GMT+7': -7, 'GMT+6': -6, 'GMT+5': -5, 'GMT+4': -4,
+    'GMT+3': -3, 'GMT+2': -2, 'GMT+1': -1, 'GMT+0': 0, 'GMT-1': 1,
+    'GMT-2': 2, 'GMT-3': 3, 'GMT-4': 4, 'GMT-5': 5, 'GMT-6': 6,
+    'GMT-7': 7, 'GMT-8': 8, 'GMT-9': 9, 'GMT-10': 10, 'GMT-11': 11,
+    'GMT-12': 12,
+    'Asia/Shanghai': -8, 'Asia/Hong_Kong': -8, 'Asia/Taipei': -8,
+    'Asia/Bangkok': -7, 'Asia/Seoul': -9, 'Asia/Tokyo': -9,
+    'America/New_York': 5, 'America/Los_Angeles': 8, 'America/Chicago': 6,
+    'America/Argentina/Buenos_Aires': 3,  # 阿根廷（布宜诺斯艾利斯）
+    'Europe/London': 0, 'Europe/Oslo': -1, 'Europe/Paris': -2,
+    'UTC': 0,
+}
+
+def local_time_to_ut(birth_date: str, birth_time: str, tz_str: str) -> float:
+    """将本地生日时间转换为 UT (Universal Time) 小时小数。"""
+    # 解析时间 HH:MM
+    parts = birth_time.split(':')
+    h = int(parts[0])
+    m = int(parts[1]) if len(parts) > 1 else 0
+    local_hours = h + m / 60.0
+
+    # 查时区偏移（小时）
+    offset_hours = TZ_OFFSET.get(tz_str, 0)
+    ut_hours = local_hours - offset_hours
+    # 处理跨天情况（ut_hours 可能超出 0-24）
+    return ut_hours % 24
+
+
 class AstroRequest(BaseModel):
     birth_date: str  # 'YYYY-MM-DD'
+    birth_time: Optional[str] = '12:00'  # 🛠️ V91+ 新增：出生时间 HH:MM
+    lat: Optional[float] = 13.75  # 🛠️ V91+ 新增：纬度，默认 Bangkok
+    lon: Optional[float] = 100.5  # 🛠️ V91+ 新增：经度，默认 Bangkok
+    tz: Optional[str] = 'Asia/Bangkok'  # 🛠️ V91+ 新增：时区
     rising_sign: Optional[str] = None  # 🛠️ V80: 默认为None，由Python自己从生日算ASC
     year: Optional[int] = 2026
     month_start: Optional[int] = 7
@@ -345,15 +379,21 @@ class AstroRequest(BaseModel):
 
 @app.post("/api/v1/astro-matrix")
 def astro_matrix(req: AstroRequest):
-    """Return complete 12-month astrological matrix."""
+    """Return complete 12-month astrological matrix.
+    🛠️ V91+: 支持 birth_time / lat / lon / tz 精确参数。
+    """
     try:
-        # 🛠️ V80: 如果没传 rising_sign，从生日算ASC（默认 noon Bangkok）
+        # ── 🛠️ V91: 解析出生时间 → UT 小时 ──
+        ut_hours = local_time_to_ut(req.birth_date, req.birth_time, req.tz)
+        parts = req.birth_date.split('-')
+        y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+        jd = swe.julday(y, m, d, ut_hours)
+
+        # ── 🛠️ V91: 用真实经纬度算 ASC ──
         if req.rising_sign is None:
-            from datetime import datetime as dt
-            parts = req.birth_date.split('-')
-            y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
-            jd = swe.julday(y, m, d, 12.0)  # 默认 noon Bangkok
-            req.rising_sign = get_rising_sign(jd, 13.75, 100.5)
+            req.rising_sign = get_rising_sign(jd, req.lat, req.lon)
+            print(f"[V91] ASC computed: {req.rising_sign} (lat={req.lat}, lon={req.lon})")
+
         matrix = compute_year_matrix(
             req.birth_date,
             req.rising_sign,
@@ -361,6 +401,16 @@ def astro_matrix(req: AstroRequest):
             req.month_start,
             req.months,
         )
+        # 在 matrix 里注入元数据（方便调试）
+        matrix['_v91_meta'] = {
+            'birth_date': req.birth_date,
+            'birth_time': req.birth_time,
+            'lat': req.lat,
+            'lon': req.lon,
+            'tz': req.tz,
+            'ut_hours': round(ut_hours, 4),
+            'asc': req.rising_sign,
+        }
         return matrix
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
