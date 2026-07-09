@@ -6,6 +6,8 @@
 //  2. 流月太阳连贯性：一年内太阳不得进入同一星座两次（天文不可能）。
 //  3. 星座原型夺舍：双鱼座不得含双子座特质词（灵活多变/处理多重信息/沟通连接/善于学习）。
 //  4. 流月太阳与真值表比对：若能从文本定位到某月，则该月太阳星座必须 == 真值表（可选，脆弱故仅做软校验）。
+//  5. 缝合怪检测：禁止"星座+星座"直接连接（如"处女座金牛座"）。
+//  6. 未提供行星禁则：火星/凯龙/北交点未在AstroMatrix中，不得声明具体星座或宫位。
 //
 // 返回 { pass: bool, errors: string[] }
 
@@ -72,8 +74,6 @@ export function validateAstroLogic(text, truth, lang = 'zh') {
   }
 
   // ── 4. 本命太阳星座（头部元数据）校验：不得被 AI 幻觉改错 ──
-  // zh: 🌌 年度星盘: X座 · 太阳回归年
-  // en: 🌌 Annual Solar Chart: X · Solar Return
   const natalZH = truth.natalSunSignZH;
   if (lang === 'zh') {
     const m = text.match(/年度星盘:\s*([\u4e00-\u9fa5]{2,3}座)/);
@@ -88,6 +88,34 @@ export function validateAstroLogic(text, truth, lang = 'zh') {
       const zh = enToZh[m[1].toLowerCase()];
       if (zh && zh !== natalZH) {
         errors.push(`❌ Natal Sun sign error: header says "${m[1]}" (${zh}), truth is "${natalZH}" (birth ${truth.birthDate})`);
+      }
+    }
+  }
+
+  // ── 5. 缝合怪检测：两个星座名直接连接（如"处女座金牛座"） ──
+  // 12个星座中文名，任意两个相连都是非法的（如"双子座白羊座"、"处女座金牛座"）
+  const signNames = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+  for (let i = 0; i < signNames.length; i++) {
+    for (let j = 0; j < signNames.length; j++) {
+      if (i === j) continue;
+      const combo = signNames[i] + signNames[j];
+      if (text.includes(combo)) {
+        errors.push(`❌ 缝合怪星座：'${combo}'（天文不存在，将两个星座名直接连接）`);
+      }
+    }
+  }
+
+  // ── 6. 未提供行星禁止声明宫位/星座（火星/凯龙/北交点不在astroMatrix中） ──
+  const unprovidedChecks = [
+    { planet: '火星', patterns: [/火星在[\u4e00-\u9fa5]{1,3}座(?!不)/, /火星进入[\u4e00-\u9fa5]{1,3}座/, /火星在第[一二三四五六七八九十百\d]+宫/] },
+    { planet: '凯龙', patterns: [/凯龙在[\u4e00-\u9fa5]{1,3}座/, /凯龙在第[一二三四五六七八九十百\d]+宫/] },
+    { planet: '北交点', patterns: [/北交点在[\u4e00-\u9fa5]{1,3}座/, /北交点在第[一二三四五六七八九十百\d]+宫/] },
+  ];
+  for (const check of unprovidedChecks) {
+    for (const re of check.patterns) {
+      const match = text.match(re);
+      if (match) {
+        errors.push(`❌ 未提供行星声明宫位/星座：'${match[0]}' — ${check.planet}不在AstroMatrix中，禁止声明具体星座或宫位`);
       }
     }
   }

@@ -499,20 +499,20 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 You MUST output strictly following this formatting paradigm. Symbols/spacing/line breaks/bolding must match the example exactly:
 
 0. Prophetic Oracle (Chapter Zero · Mandatory Opening):
-### ✦ 先知神谕 · 财富启示录 ✦
+## ✦ 先知神谕 · 财富启示录 ✦
 ──────────────────────────
-◆ 命运宿主: ${birthDate}
-◇ 年度星盘: ${natalSunSign} · 太阳回归年
-✦ 核心本命代码: Sun ${natalSunSign} / Moon ${moonSign} / Rising ${risingSign}
+✦ 命运宿主: 【用户生日】
+✦ 年度星盘: 【太阳星座】 · 太阳回归年
+✦ 核心本命代码: Sun 【太阳星座】 / Moon 【月亮星座】 / Rising 【上升星座】
 
 [此处展开宏观运势总揽与天启核心共振：简述宿主的本命财富格局、年度核心主题、以及五章内容的预告性总览。此章节为整本法典的天启前言，必须独立成章，震撼开篇。]
 
 1. Top Identity Card (blockquote mystery):
 > ### ✦ 先知法典 · 财富启示录 ✦
 >
-> * ◆ **命运宿主**: ${birthDate}
-> * ◇ **年度星盘**: ${natalSunSign} · 太阳回归年
-> * ✦ **核心本命代码**: 太阳${natalSunSign} / 月亮${moonSign} / 上升${risingSign}
+> * ◆ **命运宿主**: 【用户生日】
+> * ◇ **年度星盘**: 【太阳星座】 · 太阳回归年
+> * ✦ **核心本命代码**: 太阳【太阳星座】 / 月亮【月亮星座】 / 上升【上升星座】
 
 2. Macro Strategy Dashboard (Gold/Silver/Bronze/Iron):
 ### 📊 2026-2027 Annual Wealth Core Metrics Dashboard
@@ -603,9 +603,9 @@ DEBES generar siguiendo estrictamente este paradigma de formato. Símbolos/espac
 1. Tarjeta de Identidad Superior (misterio de bloque de cita):
 > ### ✦ Códice del Profeta · Revelación de la Abundancia ✦
 >
-> * ◆ **Huésped del Destino**: ${birthDate}
-> * ◇ **Carta Anual**: ${natalSunSign} · Año del Retorno Solar
-> * ✦ **Código Natal Central**: Sol ${natalSunSign} / Luna ${moonSign} / Ascendente ${risingSign}
+> * ◆ **Huésped del Destino**: 【用户生日】
+> * ◇ **Carta Anual**: 【太阳星座】 · Año del Retorno Solar
+> * ✦ **Código Natal Central**: Sol 【太阳星座】 / Luna 【月亮星座】 / Ascendente 【上升星座】
 
 2. Panel de Métricas Estratégicas Macro (Oro/Plata/Bronce/Hierro):
 ### 📊 Panel de Métricas Centrales de Riqueza 2026-2027
@@ -695,9 +695,9 @@ Vous DEVEZ générer en suivant strictement ce paradigme de format. Symboles/esp
 1. Carte d'Identité Supérieure (mystère du bloc de citation):
 > ### ✦ Codex du Prophète · Révélation de l'Abondance ✦
 >
-> * ◆ **Hôte du Destin**: ${birthDate}
-> * ◇ **Carte Annuelle**: ${natalSunSign} · Retour Solaire
-> * ✦ **Code Natal Central**: Soleil ${natalSunSign} / Lune ${moonSign} / Ascendant ${risingSign}
+> * ◆ **Hôte du Destin**: 【用户生日】
+> * ◇ **Carte Annuelle**: 【太阳星座】 · Retour Solaire
+> * ✦ **Code Natal Central**: Soleil 【太阳星座】 / Lune 【月亮星座】 / Ascendant 【上升星座】
 
 2. Tableau de Bord Stratégique Macro (Or/Argent/Bronze/Fer):
 ### 📊 Tableau de Bord des Métriques Centrales de Richesse 2026-2027
@@ -787,9 +787,9 @@ Vous DEVEZ générer en suivant strictement ce paradigme de format. Symboles/esp
 1. บัตรประจำตัวด้านบน (ความลึกลับของบล็อกคำพูด):
 > ### ✦ คัมภีร์ผู้พยากรณ์ · การเปิดเผยความมั่งคั่ง ✦
 >
-> * ◆ **เจ้าภาพแห่งโชคชะตา**: ${birthDate}
-> * ◇ **ผังประจำปี**: ${natalSunSign} · ปีสุริยะครอบดวงชะตา
-> * ✦ **รหัสชะตากำเนิดหลัก**: ดวงอาทิตย์${natalSunSign} / ดวงจันทร์${moonSign} / ขึ้น${risingSign}
+> * ◆ **เจ้าภาพแห่งโชคชะตา**: 【用户生日】
+> * ◇ **ผังประจำปี**: 【太阳星座】 · ปีสุริยะครอบดวงชะตา
+> * ✦ **รหัสชะตากำเนิดหลัก**: ดวงอาทิตย์【太阳星座】 / ดวงจันทร์【月亮星座】 / ขึ้น【上升星座】
 
 2. แดชบอร์ดกลยุทธ์มหภาค (ทอง/เงิน/ทองแดง/เหล็ก):
 ### 📊 แดชบอร์ดตัวชี้วัดความมั่งคั่งหลัก 2026-2027
@@ -879,9 +879,9 @@ Bạn PHẢI tạo ra bằng cách tuân thủ nghiêm ngặt mô hình định 
 1. Thẻ Nhận Dạng Đầu Trang (huyền bí của khối trích dẫn):
 > ### ✦ Bộ Sách Tiên Tri · Khải Thị Tài Lộc ✦
 >
-> * ◆ **Chủ Nhân Vận Mệnh**: ${birthDate}
-> * ◇ **Bảng Vận Niên**: ${natalSunSign} · Năm Cách Mạng Mặt TrờI
-> * ✦ **Mã Bản Đồ Sao Chính**: Mặt TrờI ${natalSunSign} / Mặt Trăng ${moonSign} / Mọc ${risingSign}
+> * ◆ **Chủ Nhân Vận Mệnh**: 【用户生日】
+> * ◇ **Bảng Vận Niên**: 【太阳星座】 · Năm Cách Mạng Mặt TrờI
+> * ✦ **Mã Bản Đồ Sao Chính**: Mặt TrờI 【太阳星座】 / Mặt Trăng 【月亮星座】 / Mọc 【上升星座】
 
 2. Bảng Điều Khiển Chiến Lược Vĩ Mô (Vàng/Bạc/Đồng/Sắt):
 ### 📊 Bảng Điều Khiển Chỉ Số Tài Lộc Chính 2026-2027
@@ -1173,7 +1173,11 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
 
     return {
       system: yearlySystem,
-      user: `— AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章：年度财富矩阵', '第二章：365天月度收入矩阵', '第三章：命运职业路径', '第四章：债务与风险护盾', '第五章：神谕显化仪式'. These headings are REQUIRED — the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
+      user: `
+⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。
+⛔ [缝合怪禁则]: 绝对禁止将两个星座名直接连接（如"处女座金牛座"、"双子座白羊座"）。每段只描述一个星座，宫位从 AstroMatrix 的 computed_houses 引用，不得自创。
+⛔ [月内宫位一致性]: 同一月内太阳描述必须唯一（如5月=金牛座，不得同时说双子座）。若发现矛盾，以流月数据为准。
+— AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章：年度财富矩阵', '第二章：365天月度收入矩阵', '第三章：命运职业路径', '第四章：债务与风险护盾', '第五章：神谕显化仪式'. These headings are REQUIRED — the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
@@ -1516,14 +1520,21 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
       try {
         console.log('[Wealth Oracle] Generating report:', { birthDate, lang, reportType });
-        const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
+        let prompt;
+        try {
+          prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
           dayMaster: dTGDisplay,
           wuxing,
           sunSign,
           hexName,
           cardName,
         }, astroMatrix);
-        
+        } catch (promptErr) {
+          console.error('[Wealth Oracle] buildWealthReportPrompt CRASHED:', promptErr.message);
+          console.error('[Wealth Oracle] Stack:', promptErr.stack);
+          return res.status(500).json({ success: false, error: 'Prompt construction failed: ' + promptErr.message });
+        }
+
         if (!prompt) {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }

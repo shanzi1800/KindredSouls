@@ -703,8 +703,8 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
       currentKey = 'final';
       continue;
     }
-    // 先知神谕/先知天书兜底（如果 AI 漏掉了，不让内容跑空）
-    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书')) {
+    // 先知神谕/先知天书/天启核心共振 归入 oracle 卡片
+    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书') || cleanLine.includes('天启核心共振') || cleanLine.includes('天启核心')) {
       currentKey = 'oracle';
       continue;
     }
@@ -792,7 +792,7 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
     if (cleanLine.includes('最终财富') || cleanLine.includes('通关密令') || cleanLine.includes('以狮子之心') || cleanLine.includes('终极财富') || cleanLine.includes('最终神谕')) {
       currentKey = 'final'; continue;
     }
-    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书') || cleanLine.includes('年度盘口')) {
+    if (cleanLine.includes('先知神谕') || cleanLine.includes('先知天书') || cleanLine.includes('年度盘口') || cleanLine.includes('天启核心共振') || cleanLine.includes('天启核心')) {
       currentKey = 'oracle'; continue;
     }
 
