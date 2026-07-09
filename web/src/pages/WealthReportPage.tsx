@@ -16,8 +16,8 @@ import {
 const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
   zh: [
     { key: 'oracle', match: ['先知神谕', '天命宿主', '盘口'] },
-    { key: 'ch1', match: ['第一章', '年度宿命'] },
-    { key: 'ch2', match: ['第二章', '12个月'] },
+    { key: 'ch1', match: ['第一章', '第一节', '年度宿命'] },
+    { key: 'ch2', match: ['第二章', '第二节', '12个月'] },
     { key: 'm1', match: ['2026年7月'] },
     { key: 'm2', match: ['2026年8月'] },
     { key: 'm3', match: ['2026年9月'] },
@@ -30,9 +30,9 @@ const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
     { key: 'm10', match: ['2027年4月'] },
     { key: 'm11', match: ['2027年5月'] },
     { key: 'm12', match: ['2027年6月'] },
-    { key: 'ch3', match: ['第三章'] },
-    { key: 'ch4', match: ['第四章'] },
-    { key: 'ch5', match: ['第五章'] },
+    { key: 'ch3', match: ['第三章', '第三节'] },
+    { key: 'ch4', match: ['第四章', '第四节'] },
+    { key: 'ch5', match: ['第五章', '第五节'] },
     { key: 'final', match: ['最终神谕', '通关密令', '最终财富神谕', '狮子之心'] },
   ],
   en: [
@@ -49,9 +49,9 @@ const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
     { key: 'm10', match: ['april 2027', 'month 10'] },
     { key: 'm11', match: ['may 2027', 'month 11'] },
     { key: 'm12', match: ['june 2027', 'month 12'] },
-    { key: 'ch3', match: ['chapter 3'] },
-    { key: 'ch4', match: ['chapter 4'] },
-    { key: 'ch5', match: ['chapter 5'] },
+    { key: 'ch3', match: ['chapter 3', 'section 3'] },
+    { key: 'ch4', match: ['chapter 4', 'section 4'] },
+    { key: 'ch5', match: ['chapter 5', 'section 5'] },
     { key: 'final', match: ['final oracle', 'final wealth'] },
   ],
   es: [], // TODO: 西班牙语锚点
@@ -462,7 +462,7 @@ const cleanRawReportText = (text: string): string => {
 
   // 2. 【定点清除裸露标题】：只去掉##符号，保留章节名称文字
   c = c.replace(/##\s*(先知[神天].*)/gi, '$1');
-  c = c.replace(/##\s*(第[一二三四五]章.*)/gi, '$1');  // 🛠️ V48: 保留章节名称，只去##
+  c = c.replace(/##\s*(第[一二三四五][章节].*)/gi, '$1');  // 🛠️ V48: 保留章节名称，只去##
   c = c.replace(/##\s*(2026-2027.*)/gi, '$1');
   c = c.replace(/##\s*(最终财富.*)/gi, '$1');
   c = c.replace(/####\s*(\d+\.\s*年度财富.*)/gi, '$1');
@@ -522,7 +522,7 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
     .replace(/📅|📊|📕|✦|📌|🔮/g, '')
 
     // 4. 【终极强制降级】：把所有类似 ### 第一章 这种滑坡标题，在行首强行拉回成标准 ##
-    .replace(/^###\s+(第一章|第二章|第三章|第四章|第五章|最终财富|通关密令)/gm, '## $1');
+    .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
 
   // ————————————————————————————————————————————————————————————
   // 下面进入铁血硬切循环
@@ -647,7 +647,7 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
     // 3. 擦除干扰 emoji
     .replace(/📅|📊|📕|✦|📌|🔮/g, '')
     // 4. 强制降级：### 第一章 退化成 ## 第一章
-    .replace(/^###\s+(第一章|第二章|第三章|第四章|第五章|最终财富|通关密令)/gm, '## $1');
+    .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
 
   const lines = filteredText.split('\n');
   let currentKey = 'oracle'; // 默认先知神谕接管（开篇章）
@@ -677,25 +677,25 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
 
     // 🎯 极权判定 2：大章节拦截（不管在行首还是行中，只要包含核心死字，强行切片！）
     // 🔧 V32修复: 章节标题本身也要存入对应卡片,不能跳过
-    if (cleanLine.includes('第一章') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
+    if (cleanLine.includes('第一章') || cleanLine.includes('第一节') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
       currentKey = 'ch1';
       cardMap[currentKey].push(line); // 存入章节标题
       continue;
     }
-    if (cleanLine.includes('第二章') || cleanLine.includes('12个月财富') || cleanLine.includes('12个月收入')) {
+    if (cleanLine.includes('第二章') || cleanLine.includes('第二节') || cleanLine.includes('12个月财富') || cleanLine.includes('12个月收入')) {
       // 第二章内容直接并入 7 月份（m1）开头，防止空卡片裸露
       currentKey = 'm1';
       continue;
     }
-    if (cleanLine.includes('第三章') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
+    if (cleanLine.includes('第三章') || cleanLine.includes('第三节') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
       currentKey = 'ch3';
       continue;
     }
-    if (cleanLine.includes('第四章') || cleanLine.includes('消费黑洞') || cleanLine.includes('资产防御')) {
+    if (cleanLine.includes('第四章') || cleanLine.includes('第四节') || cleanLine.includes('消费黑洞') || cleanLine.includes('资产防御')) {
       currentKey = 'ch4';
       continue;
     }
-    if (cleanLine.includes('第五章') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊')) {
+    if (cleanLine.includes('第五章') || cleanLine.includes('第五节') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊')) {
       currentKey = 'ch5';
       continue;
     }
@@ -774,19 +774,19 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
     }
     if (switched) continue;
 
-    if (cleanLine.includes('第一章') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
+    if (cleanLine.includes('第一章') || cleanLine.includes('第一节') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
       currentKey = 'ch1'; continue;
     }
-    if (cleanLine.includes('第二章') || cleanLine.includes('财富流月') || cleanLine.includes('12个月')) {
+    if (cleanLine.includes('第二章') || cleanLine.includes('第二节') || cleanLine.includes('财富流月') || cleanLine.includes('12个月')) {
       currentKey = 'm1'; continue;
     }
-    if (cleanLine.includes('第三章') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
+    if (cleanLine.includes('第三章') || cleanLine.includes('第三节') || cleanLine.includes('天命破局') || cleanLine.includes('破局赛道')) {
       currentKey = 'ch3'; continue;
     }
-    if (cleanLine.includes('第四章') || cleanLine.includes('消费黑洞') || cleanLine.includes('财富冥想') || cleanLine.includes('资产防御')) {
+    if (cleanLine.includes('第四章') || cleanLine.includes('第四节') || cleanLine.includes('消费黑洞') || cleanLine.includes('财富冥想') || cleanLine.includes('资产防御')) {
       currentKey = 'ch4'; continue;
     }
-    if (cleanLine.includes('第五章') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊') || cleanLine.includes('通关锦囊')) {
+    if (cleanLine.includes('第五章') || cleanLine.includes('第五节') || cleanLine.includes('黄金爆发') || cleanLine.includes('显化锦囊') || cleanLine.includes('通关锦囊')) {
       currentKey = 'ch5'; continue;
     }
     if (cleanLine.includes('最终财富') || cleanLine.includes('通关密令') || cleanLine.includes('以狮子之心') || cleanLine.includes('终极财富') || cleanLine.includes('最终神谕')) {

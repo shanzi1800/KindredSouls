@@ -23,6 +23,24 @@ const app = express();
 // AI 脑子里"白羊=1宫/狮子=5宫/水瓶=11宫"的惯性太深，Prompt 压不住。
 // 解决方案：AI 生成后，由后端强制替换，不给穿帮留活路。
 // ═══════════════════════════════════════════════════════════════════════
+function stripLoneSurrogates(str) {
+  if (!str) return str;
+  let out = '';
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c >= 0xD800 && c <= 0xDBFF) {            // 高代理
+      const n = str.charCodeAt(i + 1);
+      if (n >= 0xDC00 && n <= 0xDFFF) { out += str[i] + str[i + 1]; i++; } // 合法对→保留
+      // 否则半截高代理→丢弃
+    } else if (c >= 0xDC00 && c <= 0xDFFF) {     // 半截低代理→丢弃
+      /* drop */
+    } else {
+      out += str[i];
+    }
+  }
+  return out;
+}
+
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
   // ── 通用宫位纠正（治本：按实际上升星座算 Equal House，替代写死 Cancer 映射）──
@@ -113,6 +131,9 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
     }
   }
 
+
+  // 🛡️ V97h2: 防御性清洗——移除编码崩坏的孤立代理对 + U+FFFD 替换符（保留合法 emoji 对）
+  text = stripLoneSurrogates(text).replace(/\uFFFD/g, '');
   return text;
 }
 
@@ -418,7 +439,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 7. [STRICT] English Tag Immutability: Regardless of output language, monthly peak days MUST retain [Peak Revenue Window] and [Financial Black Swan Day] in English brackets. NEVER translate these tags! Frontend depends on them.
 8. [STRICT] NO PLACEHOLDERS: NEVER output placeholder text like 'X', 'in', 'your', 'TBD', 'N', 'placeholder' in any chapter title, header, or body. If you don't know the chapter number, write "Chapter One/Two/Three/Four/Five" in full. If you don't know the chapter name, output the canonical name from this prompt.
 9. [STRICT] COMPLETION GUARD: Your output MUST end with the Final Wealth Oracle and the sign-off line. If you approach the token limit, you MUST compress body text and PRIORITIZE the Final Oracle section. NEVER end mid-section.
-10. [STRICT] SECTION NAMING: Use ONLY "Section I", "Section II", "Section III", "Section IV", "Section V" (Roman numerals). NEVER mix with "Chapter 1" or "Chapter One" in the same report.
+10. [STRICT] 章节命名铁律：中文必须使用"第一章/第二章/第三章/第四章/第五章"，英文必须使用"Chapter I/II/III/IV/V"。绝对禁止写成"第X节"或"Section X"（"节"为错误用法，章节必须用"章"）。报告须包含全部五个章节标题，前端据此渲染金色章节卡片。
 
 [2026-2027 ASTRONOMY FACT SHEET - AUTHORITATIVE]
 Use these verified astronomical events. Do NOT invent dates that contradict this sheet:
@@ -1142,7 +1163,7 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
 
     return {
       system: yearlySystem,
-      user: `— AI MUST NOT output any chapter heading or title line in your output. Chapter structure and gold titles are handled by the frontend rendering system. Only output raw content. DO NOT include lines like 'Chương I: ...', 'Chapter I', 'บทที่ 1', '第X章' or similar headings.
+      user: `— AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章：年度财富矩阵', '第二章：365天月度收入矩阵', '第三章：命运职业路径', '第四章：债务与风险护盾', '第五章：神谕显化仪式'. These headings are REQUIRED — the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
@@ -1798,12 +1819,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               return;
             }
 
-            const chunk = streamText.slice(index, index + CHUNK_SIZE);
+            // ── V97h2: 代理对安全切片（emoji 占2个UTF-16码元，按码元硬切会劈裂成乱码）──
+            let end = Math.min(index + CHUNK_SIZE, streamText.length);
+            if (end < streamText.length) {
+              const lastCode = streamText.charCodeAt(end - 1);
+              if (lastCode >= 0xD800 && lastCode <= 0xDBFF) end += 1; // 高代理后必须带上低代理
+            }
+            const chunk = streamText.slice(index, end);
             res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}
 
 `, "utf-8"));
             if (typeof res.flush === 'function') res.flush();
-            index += CHUNK_SIZE;
+            index = end; // V97h2: 跳到 end 而非 +CHUNK_SIZE，避免边界 emoji 低代理被下一片重复发送
           } catch (e) {
             console.error('[wealth-stream] Cache stream error:', e.message);
             clearInterval(timer);
