@@ -528,6 +528,21 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛠️ P1.1: 逐月全行星真理数据块（内行星+外行星+峰值+黑天鹅，按月隔离）
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
 
+  // 🛠️ V97v: 12个月太阳星座硬锁死表 — Swiss Ephemeris 算死，AI 绝对禁止篡改月标题的太阳星座
+  const ZH_SIGN_LOCK = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
+  const monthLockTable = astroMatrix && astroMatrix.months
+    ? '\n⛔ [12个月太阳星座硬锁死表 — 月标题必须精确使用下表数值，严禁篡改]:\n' +
+      '所有月份标题的【太阳星座】和【宫位】必须严格按下表。禁止使用其他数据推算月份太阳星座。\n' +
+      astroMatrix.months.map((m, i) => {
+        const sun = m.sun || {};
+        const signZh = ZH_SIGN_LOCK[sun.sign] || sun.sign || '';
+        const mi = currentMonth - 1 + i;
+        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0)) + '年';
+        const monthNum = (mi % 12) + 1;
+        return `  ● ${yearPrefix}${monthNum}月: 太阳${signZh} · 第${sun.house}宫`;
+      }).join('\n')
+    : '';
+
   // ── 年报 5大乐章系统提示词（6语言全量） ──
   // V97 FIX: 先用占位符，变量赋值后再替换（避免TDZ）
   const YEARLY_SYSTEM = {
@@ -1336,6 +1351,7 @@ Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDat
 All planet positions, houses, and aspects below are COMPUTED by Swiss Ephemeris.
 Use this data DIRECTLY. Do NOT recalculate, re-assign houses, or invent positions.
 ${perMonthData || '    [SwissEph data unavailable — use your best astrological judgement]'}
+${monthLockTable}
 
 ${astroTruthBlock}
 
