@@ -635,6 +635,7 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
  1. Monthly Macro Forecast: How planetary alignment shifts their primary income.
  2. 🟢 [📈 Peak Revenue Window]: Pinpoint the exact golden dates for career shifts, contract signings, or major business expansions.
  3. 🔴 [📉 Financial Black Swan Day]: Pinpoint the exact catastrophic risk dates for market traps, contract fraud, or impulsive bleeding.
+⛔ [12月硬格标题锁 — 绝对禁止跳过/合并/收尾]: 你必须严格按公历顺序输出完整的12个月份（2026年7月至2027年6月）。每个月必须以固定标题格式开头：`#### 202X年X月：太阳[XX]座第[X]宫 · [四字星象提示]`（中文）或 `#### [Month] [Year]: Sun in [Sign] [House] — [Theme]`（英文）。绝对禁止在任何月份使用年度总结性语句替代月度章节标题。如果生成长度逼近上限，必须压缩正文细节但保留12个月的独立标题和结构。不得合并任何两个月，不得在6月之前提前进入总结/大结局模式。写完6月的完整月度推演后，方可进入第三章。
 
 ### 🏹 第三章：命运事业路径与主权轨道
 - Identify hidden side-hustles or quantum leap industries based on quadruplicities (Fire, Earth, Air, Water) and current year cosmic triggers.
@@ -646,6 +647,7 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 ### 🔮 第五章：先知显化协议
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
 ⛔ [风水内容防复读铁律]: 家居财富对齐只写【入口区域/客厅区域/卧室区域/厨房区域】；办公室财富对齐只写【前台区域/工位区域/会议室区域/财务室区域】。家居和办公室的描述必须完全独立，每段内容不得雷同。禁止把"入口区域"或"客厅区域"的内容一字不改地复制到办公室章节。
+⛔ [风水强制本命关联 — 禁止万能模板]: 第五章的所有风水阵法和显化咒语必须严格且仅根据该命盘的【核心本命代码】（太阳星座、上升星座）以及【流年核心宫位】（木星/土星/冥王星所在宫位和星座）进行定制。禁止使用与任何其他星盘雷同的通用风水套话。例如：若冥王星在第4宫（田宅宫），家居财富对齐必须重点提及第4宫对应的领域（根基/家族/房产）；每日高频咒语必须动态包含基于本命太阳和上升的专属关键词。必须保证每份报告的第五章从星座关键词到风水区域描述都与其他星盘产生显著差异。
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
 The ONLY allowed top-level structure is:
