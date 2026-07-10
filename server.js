@@ -14,6 +14,37 @@ import { Buffer } from 'buffer';
 // ── safeFetch: 替代全局 fetch，跳过 Node undici ByteString 缺陷 ──
 // undici（Node 内置 fetch）在 body/header 含非 ASCII 字符时抛 TypeError:
 //   "Cannot convert argument to a ByteString because the character at index X has a value of YYYY"
+// ── Latin-1 清洗：Headers 含非 ASCII → 用 ? 替换（防 ByteString 死锁）──
+function sanitizeLatin1(v) {
+  if (typeof v !== 'string') return String(v);
+  let out = '';
+  for (let i = 0; i < v.length; i++) {
+    const c = v.charCodeAt(i);
+    out += c > 255 ? '?' : v[i];
+  }
+  return out;
+}
+
+// ── 全局 env var 污染诊断（启动时打一次）──
+(function checkEnvForNonASCII() {
+  const dirtyVars = [];
+  for (const [k, v] of Object.entries(process.env)) {
+    if (typeof v !== 'string') continue;
+    for (let i = 0; i < v.length; i++) {
+      if (v.charCodeAt(i) > 255) {
+        // 只记录前 4 个损坏字符的位置
+        dirtyVars.push(`${k}[pos=${i}]=${v.charCodeAt(i)}`);
+        break;
+      }
+    }
+  }
+  if (dirtyVars.length > 0) {
+    console.log('[ENV-DIAG] ⚠️ 发现非 ASCII 环境变量★', dirtyVars.join(' | '));
+  } else {
+    console.log('[ENV-DIAG] ✅ 所有环境变量 ASCII 干净');
+  }
+})();
+
 // https.request 直接处理字节流，不受此限制
 async function safeFetch(url, options = {}) {
   return new Promise((resolve, reject) => {
@@ -24,12 +55,20 @@ async function safeFetch(url, options = {}) {
       bodyBuf = options.body instanceof Uint8Array ? Buffer.from(options.body) : Buffer.from(options.body);
     }
 
+    // ── Headers 强制 Latin-1 清洗（防 Key 里混入 …）──
+    const cleanHeaders = {};
+    if (options.headers) {
+      for (const [hk, hv] of Object.entries(options.headers)) {
+        cleanHeaders[sanitizeLatin1(hk)] = sanitizeLatin1(hv);
+      }
+    }
+
     const req = https.request({
       hostname: u.hostname,
       port: u.port || 443,
       path: u.pathname + u.search,
       method,
-      headers: options.headers || {},
+      headers: cleanHeaders,
       rejectUnauthorized: false,
     }, (res) => {
       const chunks = [];
@@ -2033,6 +2072,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       hexName: '震',
       cardName: '隐士',
     }, astroMatrix);  // ← Pass V69 matrix to prompt builder
+
+    // ── V97r: prompt 脏字符清洗（… → ...，防 ByteString 死锁）──
+    if (prompt) {
+      prompt.system = prompt.system.replace(/[\u2026]/g, '...');
+      prompt.user = prompt.user.replace(/[\u2026]/g, '...');
+    }
 
     if (!prompt) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'Invalid reportType' })}
