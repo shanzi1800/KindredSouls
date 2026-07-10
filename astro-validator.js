@@ -120,5 +120,43 @@ export function validateAstroLogic(text, truth, lang = 'zh') {
     }
   }
 
+
+  // ── 4 硬校验：流月太阳星座必须与真值表逐一对应（治本：防 AstroMatrix/Python 层给错值）──
+  if (truth.months && truth.months.length === 12) {
+    // 逐月从文本中捞太阳星座，看是否匹配真值
+    // 策略：每月的标题行（含"2026年7月"等）通常紧跟该月太阳位置描述
+    for (const monthData of truth.months) {
+      const monthLabel = monthData.label; // e.g. "2026年7月"
+      const trueSign = monthData.sunSignZH; // e.g. "巨蟹座"
+      // 如果文本提到了该月（包含月份），检查附近是否出现"太阳在XX座"
+      // 用月份作锚点，捞其附近200字符内的太阳描述
+      const monthIdx = text.indexOf(monthLabel);
+      if (monthIdx !== -1) {
+        const snippet = text.slice(Math.max(0, monthIdx), Math.min(text.length, monthIdx + 300));
+        // 找"太阳在XX座"模式
+        const sunMatch = snippet.match(/太阳在?([\u4e00-\u9fa5]{2,3}座)/);
+        if (sunMatch && sunMatch[1] !== trueSign) {
+          errors.push(`❌ 流月太阳错误：${monthLabel}文本写"太阳在${sunMatch[1]}"，真值为"太阳在${trueSign}"（天文不可篡改！）`);
+        }
+      }
+    }
+  }
+
+  // ── 4 硬校验：流月太阳星座必须与真值表逐一匹配（防 AstroMatrix/Python 层给错值）──
+  if (truth.months && truth.months.length > 0) {
+    for (const monthData of truth.months) {
+      const monthLabel = monthData.label; // e.g. "2026年7月"
+      const trueSign = monthData.sunSignZH; // e.g. "巨蟹座"
+      const monthIdx = text.indexOf(monthLabel);
+      if (monthIdx !== -1) {
+        // 捞该月后200字符内的"太阳在XX座"
+        const snippet = text.slice(Math.max(0, monthIdx), Math.min(text.length, monthIdx + 300));
+        const sunMatch = snippet.match(/太阳在?([一-龥]{1,3}座)/);
+        if (sunMatch && sunMatch[1] !== trueSign) {
+          errors.push(`❌ 流月太阳错误：${monthLabel}写"太阳在${sunMatch[1]}"，真值为"太阳在${trueSign}"（天文不可篡改！）`);
+        }
+      }
+    }
+  }
   return { pass: errors.length === 0, errors };
 }

@@ -519,7 +519,7 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
     .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启') // 顺手干掉那个核心指标看板标题，防止它干扰第一章
 
     // 3. 【无脑蒸发干扰符号】：把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
-    .replace(/📅|📊|📕|✦|📌|🔮/g, '')
+    .replace(/📅|📊|📕|✦|📌|🔮|◆|◇/g, '')
 
     // 4. 【终极强制降级】：把所有类似 ### 第一章 这种滑坡标题，在行首强行拉回成标准 ##
     .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
@@ -645,7 +645,7 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
     .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
     .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启')
     // 3. 擦除干扰 emoji
-    .replace(/📅|📊|📕|✦|📌|🔮/g, '')
+    .replace(/📅|📊|📕|✦|📌|🔮|◆|◇/g, '')
     // 4. 强制降级：### 第一章 退化成 ## 第一章
     .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
 
@@ -752,7 +752,7 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
   const filteredText = coreText
     .replace(/^>\s*#+/gm, '## ')
     .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
-    .replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟/g, '')
+    .replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟|◆|◇/g, '')
     .replace(/^###\s+(.)/gm, '## $1');
 
   const lines = filteredText.split('\n');

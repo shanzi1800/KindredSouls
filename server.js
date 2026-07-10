@@ -503,12 +503,14 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
 
 ### 🏹 第三章：命运事业路径与主权轨道
 - Identify hidden side-hustles or quantum leap industries based on quadruplicities (Fire, Earth, Air, Water) and current year cosmic triggers.
+⛔ [四元素防缝合复读]: 火元素/土元素/风元素/水元素的每段描述必须只含当月对应的单一星座（如4月=白羊座，只能写白羊座，不得同时出现"白羊座处女座"或"白羊座金牛座"等叠buff拼接）。禁止在描述一个星座时同时写出其他星座名。
 
 ### 🛡️ 第四章：债务与风险护盾（阴影审计）
 - Perform a ruthless behavioral audit of their Shadow Self, pinpointing where they unconsciously hemorrhage wealth.
 
 ### 🔮 第五章：先知显化协议
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
+⛔ [风水内容防复读铁律]: 家居财富对齐只写【入口区域/客厅区域/卧室区域/厨房区域】；办公室财富对齐只写【前台区域/工位区域/会议室区域/财务室区域】。家居和办公室的描述必须完全独立，每段内容不得雷同。禁止把"入口区域"或"客厅区域"的内容一字不改地复制到办公室章节。
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
 The ONLY allowed top-level structure is:
