@@ -635,7 +635,7 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
  1. Monthly Macro Forecast: How planetary alignment shifts their primary income.
  2. 🟢 [📈 Peak Revenue Window]: Pinpoint the exact golden dates for career shifts, contract signings, or major business expansions.
  3. 🔴 [📉 Financial Black Swan Day]: Pinpoint the exact catastrophic risk dates for market traps, contract fraud, or impulsive bleeding.
-⛔ [12月硬格标题锁 — 绝对禁止跳过/合并/收尾]: 你必须严格按公历顺序输出完整的12个月份（2026年7月至2027年6月）。每个月必须以固定标题格式开头：`#### 202X年X月：太阳[XX]座第[X]宫 · [四字星象提示]`（中文）或 `#### [Month] [Year]: Sun in [Sign] [House] — [Theme]`（英文）。绝对禁止在任何月份使用年度总结性语句替代月度章节标题。如果生成长度逼近上限，必须压缩正文细节但保留12个月的独立标题和结构。不得合并任何两个月，不得在6月之前提前进入总结/大结局模式。写完6月的完整月度推演后，方可进入第三章。
+⛔ [12月硬格标题锁 — 绝对禁止跳过/合并/收尾]: 你必须严格按公历顺序输出完整的12个月份（2026年7月至2027年6月）。每个月必须以固定标题格式开头：\`#### 202X年X月：太阳[XX]座第[X]宫 · [四字星象提示]\`（中文）或 \`#### [Month] [Year]: Sun in [Sign] [House] — [Theme]\`（英文）。绝对禁止在任何月份使用年度总结性语句替代月度章节标题。如果生成长度逼近上限，必须压缩正文细节但保留12个月的独立标题和结构。不得合并任何两个月，不得在6月之前提前进入总结/大结局模式。写完6月的完整月度推演后，方可进入第三章。
 
 ### 🏹 第三章：命运事业路径与主权轨道
 - Identify hidden side-hustles or quantum leap industries based on quadruplicities (Fire, Earth, Air, Water) and current year cosmic triggers.
