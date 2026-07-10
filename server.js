@@ -578,8 +578,20 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛠️ P1.1: 逐月全行星真理数据块（内行星+外行星+峰值+黑天鹅，按月隔离）
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
 
-  // 🛠️ V97v: 12个月太阳星座硬锁死表 — Swiss Ephemeris 算死，AI 绝对禁止篡改月标题的太阳星座
+  // 🛠️ V97x 治本：代码算死12个月锁死标题（星座+宫位由 SwissEph 算死，AI 只填四字主题）
   const ZH_SIGN_LOCK = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
+  const ZH_HOUSE_LOCK = {1:'第1宫',2:'第2宫',3:'第3宫',4:'第4宫',5:'第5宫',6:'第6宫',7:'第7宫',8:'第8宫',9:'第9宫',10:'第10宫',11:'第11宫',12:'第12宫'};
+  const lockedTitles = astroMatrix && astroMatrix.months
+    ? astroMatrix.months.map((m, i) => {
+        const sun = m.sun || {};
+        const signZh = ZH_SIGN_LOCK[sun.sign] || sun.sign || '未知座';
+        const houseZh = ZH_HOUSE_LOCK[sun.house] || `第${sun.house}宫`;
+        const mi = currentMonth - 1 + i;
+        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0)) + '年';
+        const monthNum = (mi % 12) + 1;
+        return `#### ${yearPrefix}${monthNum}月：太阳${signZh}${houseZh} · __[填四字主题]__`;
+      }).join('\n')
+    : '';
   const monthLockTable = astroMatrix && astroMatrix.months
     ? '\n⛔ [12个月太阳星座硬锁死表 — 月标题必须精确使用下表数值，严禁篡改]:\n' +
       '所有月份标题的【太阳星座】和【宫位】必须严格按下表。禁止使用其他数据推算月份太阳星座。\n' +
@@ -700,7 +712,8 @@ The user's chart uses the Equal House system. Locked mapping (NEVER deviate):
  1. Monthly Macro Forecast: How planetary alignment shifts their primary income.
  2. 🟢 [📈 Peak Revenue Window]: Pinpoint the exact golden dates for career shifts, contract signings, or major business expansions.
  3. 🔴 [📉 Financial Black Swan Day]: Pinpoint the exact catastrophic risk dates for market traps, contract fraud, or impulsive bleeding.
-⛔ [12月硬格标题锁 — 绝对禁止跳过/合并/收尾]: 你必须严格按公历顺序输出完整的12个月份（2026年7月至2027年6月）。每个月必须以固定标题格式开头：\`#### 202X年X月：太阳[XX]座第[X]宫 · [四字星象提示]\`（中文）或 \`#### [Month] [Year]: Sun in [Sign] [House] — [Theme]\`（英文）。绝对禁止在任何月份使用年度总结性语句替代月度章节标题。如果生成长度逼近上限，必须压缩正文细节但保留12个月的独立标题和结构。不得合并任何两个月，不得在6月之前提前进入总结/大结局模式。写完6月的完整月度推演后，方可进入第三章。
+__LOCKED_TITLES_BLOCK__
+⛔ [12月硬格标题锁 — 绝对禁止跳过/合并/收尾]: 你必须严格按公历顺序输出完整的12个月份。每个月必须以【锁死标题】小节列出的标题**原样开头**（星座+宫位已由天文引擎算死，禁止修改、禁止替换、禁止用总结句替代）。你**只许在「·」后面补四字星象主题**。绝对禁止在任何月份使用年度总结性语句替代月度章节标题。如果生成长度逼近上限，必须压缩正文细节但保留12个月的独立标题和结构。不得合并任何两个月，不得在6月之前提前进入总结/大结局模式。写完6月的完整月度推演后，方可进入第三章。
 
 ### 🏹 第三章：命运事业路径与主权轨道
 - Identify hidden side-hustles or quantum leap industries based on quadruplicities (Fire, Earth, Air, Water) and current year cosmic triggers.
@@ -1371,7 +1384,13 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       .replace(/__JUP_SIGN_LOCAL__/g, jupSignLocal)
       .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
       .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
-      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN);
+      .replace(/__NATAL_SUN_EN__/g, natalSunSignEN)
+      .replace(/__LOCKED_TITLES_BLOCK__/g, (lang === 'zh' ? lockedTitles : '[LOCKED TITLES NOT AVAILABLE FOR ' + lang + ' — use Chinese format]'));
+    if (!lockedTitles) {
+      console.warn('[V97x] lockedTitles empty — astroMatrix.months missing, AI may hallucinate month titles');
+    } else {
+      console.log('[V97x] lockedTitles injected, 12 titles locked');
+    }
 
     // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
     // ── V97h: 本命太阳星座头部锁（全语言，治本：zh/en/es/fr/th/vi 均强制锁死本命太阳，防止 AI 幻觉改写头部元数据）──
