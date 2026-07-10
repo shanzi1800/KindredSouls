@@ -87,10 +87,12 @@ async function safeFetch(url, options = {}) {
       let waiter = null;
 
       res.on('data', (chunk) => {
-        chunks.push(chunk);
+        // 🐛V97r-BUG: 曾经 chunks.push(chunk) + waiter 双发，导致每段 text 发两遍
         if (waiter) {
           const w = waiter; waiter = null;
           w({ done: false, value: new Uint8Array(chunk) });
+        } else {
+          chunks.push(chunk);
         }
       });
       res.on('end', () => {
