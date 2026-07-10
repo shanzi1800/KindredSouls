@@ -290,6 +290,55 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 
 // DeepSeek Streaming 时常产生「年份重影」：2026年6月2026年6月6月21日
 // 本函数暴力清洗所有已知的污染模式
+// 🛠️ V97w: 后处理硬替换——逐月检查标题的太阳星座，用锁表修正AI胡编（治本：Prompt锁不住就后门堵死）
+function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null) {
+  if (currentYear === null) currentYear = new Date().getFullYear();
+  if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
+  if (!text || !astroMatrix || !astroMatrix.months) return text;
+
+  const ZH_SIGN = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
+
+  // Build correct entries: [{ key: "2026年7月", sign: "巨蟹座", house: 9 }]
+  const entries = [];
+  astroMatrix.months.forEach((m, i) => {
+    const sun = m.sun || {};
+    const signZh = ZH_SIGN[sun.sign] || sun.sign || '';
+    const house = sun.house || '';
+    const mi = currentMonth - 1 + i;
+    const year = currentYear + (mi >= 12 ? 1 : 0);
+    const month = (mi % 12) + 1;
+    entries.push({ year, month, key: `${year}年${month}月`, sign: signZh, house });
+  });
+
+  // Process each month: find the title line and fix the sun sign
+  for (const entry of entries) {
+    // Target: "2026年7月：太阳[WRONG_SIGN]座[第X宫] · "
+    // Replace with: "2026年7月：太阳[CORRECT_SIGN]座第[HOUSE]宫 · "
+    const ymEscaped = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Match month title y-m：太阳ANYTHING座, e.g.: 2026年7月：太阳水瓶座 ·
+    const titleRe = new RegExp(`(${ymEscaped}[：:])太阳[^·座\n]*座`, 'gi');
+    text = text.replace(titleRe, (match, prefix) => {
+      return `${prefix}太阳${entry.sign}座`;
+    });
+
+    // Also fix "太阳进入[WRONG]座" in the body text for same month
+    // e.g.: "六月，太阳进入水瓶座" → "六月，太阳进入双子座"
+    if (entry.month >= 1 && entry.month <= 12) {
+      const monthNames = ['', '一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+      const cnMonth = monthNames[entry.month];
+      if (cnMonth) {
+        const bodyRe = new RegExp(`(${cnMonth}[，,、\s]{0,5})太阳(?:\s*进入|\s*在|\s*行经|\s*来到|\s*进|\s*抵)[^座\n]*座`, 'gi');
+        text = text.replace(bodyRe, (match, prefix) => {
+          return `${prefix}太阳进入${entry.sign}座`;
+        });
+      }
+    }
+  }
+
+  return text;
+}
+
 function cleanYearlyTimeline(text) {
   if (!text) return text;
   // Pattern 1: 2026年6月2026年6月 → 2026年6月
@@ -2245,7 +2294,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // ── V97 宫位强制纠正器：落库前清洗一遍 ──
     // 注意：sanitized 事件必须在 [DONE] 之前发送
     const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
-    const sanitizedFull = final_text_sanitizer(fullTextCollector, ascendant);
+    let sanitizedFull = final_text_sanitizer(fullTextCollector, ascendant);
+    // 🛠️ V97w: 后处理月标题太阳星座硬替换（流式终点）
+    sanitizedFull = applyMonthLockSanitizer(sanitizedFull, astroMatrix);
     // 矫正后有变化，先把矫正版发给前端替换显示
     if (sanitizedFull !== fullTextCollector) {
       try {
