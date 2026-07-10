@@ -8,6 +8,89 @@ import { getAstroMatrix, buildFactSheet, buildPerMonthData, v69HealthCheck } fro
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
+import https from 'https';
+import { Buffer } from 'buffer';
+
+// ── safeFetch: 替代全局 fetch，跳过 Node undici ByteString 缺陷 ──
+// undici（Node 内置 fetch）在 body/header 含非 ASCII 字符时抛 TypeError:
+//   "Cannot convert argument to a ByteString because the character at index X has a value of YYYY"
+// https.request 直接处理字节流，不受此限制
+async function safeFetch(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const method = options.method || 'GET';
+    let bodyBuf;
+    if (options.body != null) {
+      bodyBuf = options.body instanceof Uint8Array ? Buffer.from(options.body) : Buffer.from(options.body);
+    }
+
+    const req = https.request({
+      hostname: u.hostname,
+      port: u.port || 443,
+      path: u.pathname + u.search,
+      method,
+      headers: options.headers || {},
+      rejectUnauthorized: false,
+    }, (res) => {
+      const chunks = [];
+      let ended = false;
+      let waiter = null;
+
+      res.on('data', (chunk) => {
+        chunks.push(chunk);
+        if (waiter) {
+          const w = waiter; waiter = null;
+          w({ done: false, value: new Uint8Array(chunk) });
+        }
+      });
+      res.on('end', () => {
+        ended = true;
+        if (waiter) {
+          const w = waiter; waiter = null;
+          w({ done: true, value: undefined });
+        }
+      });
+
+      const response = {
+        ok: res.statusCode >= 200 && res.statusCode < 300,
+        status: res.statusCode,
+        headers: res.headers,
+        body: {
+          getReader() {
+            let pos = 0;
+            return {
+              read() {
+                if (pos < chunks.length) {
+                  return Promise.resolve({ done: false, value: new Uint8Array(chunks[pos++]) });
+                }
+                if (ended) return Promise.resolve({ done: true, value: undefined });
+                return new Promise((r) => { waiter = r; });
+              },
+            };
+          },
+        },
+        json: async () => {
+          if (!ended) await new Promise((r) => res.once('end', r));
+          try { return JSON.parse(Buffer.concat(chunks).toString('utf-8')); }
+          catch(e) { throw new Error(`safeFetch json parse error: ${e.message}`); }
+        },
+        text: async () => {
+          if (!ended) await new Promise((r) => res.once('end', r));
+          return Buffer.concat(chunks).toString('utf-8');
+        },
+      };
+
+      resolve(response);
+    });
+
+    req.on('error', reject);
+    if (options.signal) {
+      options.signal.addEventListener('abort', () => req.destroy(), { once: true });
+    }
+    if (bodyBuf) req.write(bodyBuf);
+    req.end();
+  });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1788,6 +1871,9 @@ if (existsSync(distPath)) {
 // 🌊 流式输出端点：SSE (Server-Sent Events)
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
+  // 🛠️ V97r 部署验证标识：真生产 KindredSouls 日志里看到这个 = V97r 代码已生效
+  console.log('[V97r-DEPLOY-MARKER] stream endpoint hit, body-encoding=TextEncoder');
+
   // 🛠️ V91+: 出生时间/经纬度/时区（默认 Bangkok 中午）
   const {
     birthDate,
@@ -1973,13 +2059,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return res.end();
     }
 
-    let aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    let aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${deepseekKey}`,
       },
-      body: Buffer.from(JSON.stringify({
+      body: new TextEncoder().encode(JSON.stringify({
         model: 'deepseek-chat',
         messages: [
           { role: 'system', content: prompt.system },
@@ -1988,7 +2074,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         max_tokens: maxTokens,
         temperature: 0.7,
         stream: true,
-      }), 'utf-8'),
+      })),
       signal: controller.signal, // V75: AbortController prevents Railway timeout kill
     });
 
@@ -2000,15 +2086,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
       if (geminiKey) {
         try {
-          const gemRes = await fetch(
+          const gemRes = await safeFetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(JSON.stringify({
+              body: new TextEncoder().encode(JSON.stringify({
                 contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
                 generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
-              }), 'utf-8'),
+              })),
             }
           );
           if (gemRes.ok) {
@@ -2117,10 +2203,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
       try {
-        const fullRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const fullRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
-          body: Buffer.from(JSON.stringify({
+          body: new TextEncoder().encode(JSON.stringify({
             model: 'deepseek-chat',
             messages: [
               { role: 'system', content: prompt.system },
@@ -2128,7 +2214,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             ],
             max_tokens: 48000,
             temperature: 0.7,
-          }), 'utf-8'),
+          })),
         });
         if (fullRes.ok) {
           const fdata = await fullRes.json();
