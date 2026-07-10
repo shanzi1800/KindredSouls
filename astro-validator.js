@@ -5,7 +5,7 @@
 //  1. 外行星宫位唯一性：土星/木星/冥王星全年位置必须一致且 == 真值（不得既10宫又4宫、不得闪现水瓶）。
 //  2. 流月太阳连贯性：一年内太阳不得进入同一星座两次（天文不可能）。
 //  3. 星座原型夺舍：双鱼座不得含双子座特质词（灵活多变/处理多重信息/沟通连接/善于学习）。
-//  4. 流月太阳与真值表比对：若能从文本定位到某月，则该月太阳星座必须 == 真值表（可选，脆弱故仅做软校验）。
+//  4. 流月太阳与真值表硬比对：从文本定位到某月，则该月太阳星座必须 == 真值表（已升级为硬校验，天文不可篡改）。
 //  5. 缝合怪检测：禁止"星座+星座"直接连接（如"处女座金牛座"）。
 //  6. 未提供行星禁则：火星/凯龙/北交点未在AstroMatrix中，不得声明具体星座或宫位。
 //
@@ -120,27 +120,6 @@ export function validateAstroLogic(text, truth, lang = 'zh') {
     }
   }
 
-
-  // ── 4 硬校验：流月太阳星座必须与真值表逐一对应（治本：防 AstroMatrix/Python 层给错值）──
-  if (truth.months && truth.months.length === 12) {
-    // 逐月从文本中捞太阳星座，看是否匹配真值
-    // 策略：每月的标题行（含"2026年7月"等）通常紧跟该月太阳位置描述
-    for (const monthData of truth.months) {
-      const monthLabel = monthData.label; // e.g. "2026年7月"
-      const trueSign = monthData.sunSignZH; // e.g. "巨蟹座"
-      // 如果文本提到了该月（包含月份），检查附近是否出现"太阳在XX座"
-      // 用月份作锚点，捞其附近200字符内的太阳描述
-      const monthIdx = text.indexOf(monthLabel);
-      if (monthIdx !== -1) {
-        const snippet = text.slice(Math.max(0, monthIdx), Math.min(text.length, monthIdx + 300));
-        // 找"太阳在XX座"模式
-        const sunMatch = snippet.match(/太阳在?([\u4e00-\u9fa5]{2,3}座)/);
-        if (sunMatch && sunMatch[1] !== trueSign) {
-          errors.push(`❌ 流月太阳错误：${monthLabel}文本写"太阳在${sunMatch[1]}"，真值为"太阳在${trueSign}"（天文不可篡改！）`);
-        }
-      }
-    }
-  }
 
   // ── 4 硬校验：流月太阳星座必须与真值表逐一匹配（防 AstroMatrix/Python 层给错值）──
   if (truth.months && truth.months.length > 0) {
