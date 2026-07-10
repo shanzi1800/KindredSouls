@@ -16,9 +16,14 @@ ENV VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 ENV VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTU4MjEsImV4cCI6MjA5NTIzMTgyMX0.qMyRlkMRTkPccngccWa2GJroGaROqdA6N937XRK2L4g
 ENV SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 ENV SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw
-ENV DEEPSEEK_API_KEY=sk-9307f02599b44612b6767996a7839ab5
 ENV V69_PORT=8001
 ENV V69_HOST=127.0.0.1
+
+# ── V97r-final: 写 key 到文件，绕过 Railway Dashboard 环境变量覆盖 ──
+# Railway Dashboard 的 env var 会覆盖 Dockerfile 的 ENV。
+# 如果 Dashboard 有旧 key，ENV DEEPSEEK_API_KEY 就废了。
+# 写文件 → 代码直接读文件，Dashboard 覆盖不到。
+RUN printf 'sk-9307f02599b44612b6767996a7839ab5' > /app/.deepseek-key
 
 COPY . .
 

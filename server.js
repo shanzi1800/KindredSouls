@@ -45,6 +45,17 @@ function sanitizeLatin1(v) {
   }
 })();
 
+// ── V97r: DeepSeek key 从文件读（防 Railway Dashboard 老 key 覆盖）──
+function getDeepSeekKey() {
+  try {
+    if (existsSync('/app/.deepseek-key')) {
+      const k = readFileSync('/app/.deepseek-key', 'utf-8').trim();
+      if (k.length > 10) return k;
+    }
+  } catch(e) { /* fall through */ }
+  return process.env.DEEPSEEK_API_KEY;
+}
+
 // https.request 直接处理字节流，不受此限制
 async function safeFetch(url, options = {}) {
   return new Promise((resolve, reject) => {
@@ -379,7 +390,7 @@ app.get('/', async (req, res) => {
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
 async function callAI(systemPrompt, userPrompt, env, options = {}) {
   const { maxTokens = 4000, reportType = 'monthly' } = options;
-  const deepseekKey = env.DEEPSEEK_API_KEY;
+  const deepseekKey = getDeepSeekKey();
   const geminiKey = env.GEMINI_API_KEY;
 
   // Try DeepSeek first
@@ -1828,7 +1839,7 @@ app.use('/api/ai-advisor', async (req, res) => {
 
     // ── DeepSeek 直连，失败自动切 Gemini 免费层 ──
     let insight = '';
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const deepseekKey = getDeepSeekKey();
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (deepseekKey) {
@@ -2086,7 +2097,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return res.end();
     }
 
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const deepseekKey = getDeepSeekKey();
     const geminiKey = process.env.GEMINI_API_KEY;
     // 🔧 V75 fix: 64000 彻底解除年报截断（EN报告需要18000+ tokens完整输出）
     const maxTokens = reportType === 'yearly' ? 64000 : 4000;
