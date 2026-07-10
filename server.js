@@ -294,6 +294,7 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null) {
   if (currentYear === null) currentYear = new Date().getFullYear();
   if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
+  console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
   if (!text || !astroMatrix || !astroMatrix.months) return text;
 
   const ZH_SIGN = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
