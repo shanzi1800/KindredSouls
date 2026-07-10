@@ -179,6 +179,9 @@ function stripLoneSurrogates(str) {
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
 
+  // ── V97aa: 清除 AI 幻觉输出 [object Object]（被复杂 Prompt 里的 {} 搞晕）──
+  text = text.replace(/\[object Object\]/g, '');
+
   // ── V97m2: 火星/凯龙/北交点主动过滤（validator 已校验，但 AI 重试仍犯，只能强洗）──
   // 删除整句含"火星在XX座"或"火星在第X宫"的句子（黑天鹅日描述火星相位冲突）
   text = text
