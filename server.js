@@ -726,7 +726,7 @@ __LOCKED_TITLES_BLOCK__
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
 ⛔ [风水内容防复读铁律]: 家居财富对齐只写【入口区域/客厅区域/卧室区域/厨房区域】；办公室财富对齐只写【前台区域/工位区域/会议室区域/财务室区域】。家居和办公室的描述必须完全独立，每段内容不得雷同。禁止把"入口区域"或"客厅区域"的内容一字不改地复制到办公室章节。
 ⛔ [风水强制本命关联 — 禁止万能模板]: 第五章的所有风水阵法和显化咒语必须严格且仅根据该命盘的【核心本命代码】（太阳星座、上升星座）以及【流年核心宫位】（木星/土星/冥王星所在宫位和星座）进行定制。禁止使用与任何其他星盘雷同的通用风水套话。例如：若冥王星在第4宫（田宅宫），家居财富对齐必须重点提及第4宫对应的领域（根基/家族/房产）；每日高频咒语必须动态包含基于本命太阳和上升的专属关键词。必须保证每份报告的第五章从星座关键词到风水区域描述都与其他星盘产生显著差异。
-⛔ [第五章本命宫位锁死]: 风水里提到"第X宫"时，必须严格按以下本命数据写，禁止按Transit月份自创：太阳=${natalSunSign}座→第${sunHouse}宫；上升=${risingLocal}；木星=${jupSignLocal}座→第${jupHouse}宫；土星=${satSignLocal}座→第${satHouse}宫；冥王星=水瓶座→第${plHouse}宫。禁止写"太阳在第1宫"或"水瓶座在第1宫"（水瓶座是星座不是宫位）。
+⛔ [第五章本命宫位锁死]: 风水里提到"第X宫"时，必须严格按以下本命数据写，禁止按Transit月份自创：太阳=__NATAL_SUN____SUN_HOUSE__座→第__SUN_HOUSE_NUM__宫；上升=__RISING_LOCAL__；木星=__JUP_SIGN_LOCAL__座→第__JUP_HOUSE__宫；土星=__SAT_SIGN_LOCAL__座→第__SAT_HOUSE__宫；冥王星=水瓶座→第__PL_HOUSE__宫。禁止写"太阳在第1宫"或"水瓶座在第1宫"（水瓶座是星座不是宫位）。
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
 The ONLY allowed top-level structure is:
@@ -1386,6 +1386,8 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       .replace(/__SAT_SIGN_LOCAL__/g, satSignLocal)
       .replace(/__MOON_SIGN_LOCAL__/g, moonSignLocal)
       .replace(/__NATAL_SUN_EN__/g, natalSunSignEN)
+      .replace(/__NATAL_SUN__/g, natalSunSign)
+      .replace(/__SUN_HOUSE_NUM__/g, String(sunHouse))
       .replace(/__LOCKED_TITLES_BLOCK__/g, (lang === 'zh' ? lockedTitles : '[LOCKED TITLES NOT AVAILABLE FOR ' + lang + ' — use Chinese format]'));
     if (!lockedTitles) {
       console.warn('[V97x] lockedTitles empty — astroMatrix.months missing, AI may hallucinate month titles');
