@@ -726,6 +726,7 @@ __LOCKED_TITLES_BLOCK__
 - Provide a physical manifestation ritual (altar layout, spatial wealth alignment, and a high-frequency daily mantra to lock their wealth mindset).
 ⛔ [风水内容防复读铁律]: 家居财富对齐只写【入口区域/客厅区域/卧室区域/厨房区域】；办公室财富对齐只写【前台区域/工位区域/会议室区域/财务室区域】。家居和办公室的描述必须完全独立，每段内容不得雷同。禁止把"入口区域"或"客厅区域"的内容一字不改地复制到办公室章节。
 ⛔ [风水强制本命关联 — 禁止万能模板]: 第五章的所有风水阵法和显化咒语必须严格且仅根据该命盘的【核心本命代码】（太阳星座、上升星座）以及【流年核心宫位】（木星/土星/冥王星所在宫位和星座）进行定制。禁止使用与任何其他星盘雷同的通用风水套话。例如：若冥王星在第4宫（田宅宫），家居财富对齐必须重点提及第4宫对应的领域（根基/家族/房产）；每日高频咒语必须动态包含基于本命太阳和上升的专属关键词。必须保证每份报告的第五章从星座关键词到风水区域描述都与其他星盘产生显著差异。
+⛔ [第五章本命宫位锁死]: 风水里提到"第X宫"时，必须严格按以下本命数据写，禁止按Transit月份自创：太阳=${natalSunSign}座→第${sunHouse}宫；上升=${risingLocal}；木星=${jupSignLocal}座→第${jupHouse}宫；土星=${satSignLocal}座→第${satHouse}宫；冥王星=水瓶座→第${plHouse}宫。禁止写"太阳在第1宫"或"水瓶座在第1宫"（水瓶座是星座不是宫位）。
 
 [FORMAT_SPEC — Ultimate Visual Layout Specification · MANDATORY]
 The ONLY allowed top-level structure is:
@@ -1410,6 +1411,25 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
 ⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。⛔ [火星/凯龙禁则]: 绝对禁止在财富年报中写"火星在XX座"或"火星在第X宫"。行星只有木星/土星/冥王星/太阳/月亮参与了2026-2027年度财富叙事。
 ⛔ [缝合怪禁则]: 绝对禁止将两个星座名直接连接（如"处女座金牛座"、"双子座白羊座"）。每段只描述一个星座，宫位从 AstroMatrix 的 computed_houses 引用，不得自创。
 ⛔ [月内宫位一致性]: 同一月内太阳描述必须唯一（如5月=金牛座，不得同时说双子座）。若发现矛盾，以流月数据为准。
+⛔ [本命盘 vs Transit 严格区分 — 核心区分规则]:
+本报告包含两类本质不同的占星数据：
+【本命盘固定数据】由出生日期算死，绝不随月份变化：
+  - 太阳星座 = ${natalSunSign}（如：太阳水瓶座）
+  - 太阳宫位 = 第${sunHouse}宫（请勿写成"点亮第1宫"或"落在第X宫"）
+  - 上升星座 = ${risingLocal}
+  - 木星 = ${jupSignLocal}座第${jupHouse}宫
+  - 土星 = ${satSignLocal}座第${satHouse}宫
+  - 冥王星 = 水瓶座第${plHouse}宫
+【Transit 流月数据】随月份变化，由 [P1.1 SWISSEPH PER-MONTH TRUTH DATA] 提供：
+  - 例：2026年7月Transit太阳 = 巨蟹座；2027年6月Transit太阳 = 双子座
+  - Transit数据仅在当月正文内有效，禁止跨月引用
+【绝对禁止】：
+  1. 将 Transit 月份的太阳星座写成"你的太阳是XX座"（那是本命太阳，已锁死）
+  2. 将2月Transit水瓶座写成"本命太阳水瓶座的能量"（本命太阳永远不变）
+  3. 在任何月份正文里写"太阳水瓶点亮你的第1宫"（本命太阳在第${sunHouse}宫，不是第1宫）
+  4. 将某月的 Transit 星座（如2月水瓶座）的内容复制到其他月份
+
+例如：对于1996-01-23的用户，Transit太阳2月=水瓶座≠本命太阳水瓶在第4宫（不是第1宫）。写2月正文只能说Transit水瓶座，不得写"点亮第1宫"。
 — AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章：年度财富矩阵', '第二章：365天月度收入矩阵', '第三章：命运职业路径', '第四章：债务与风险护盾', '第五章：神谕显化仪式'. These headings are REQUIRED — the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
