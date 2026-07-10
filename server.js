@@ -179,8 +179,8 @@ function stripLoneSurrogates(str) {
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
 
-  // ── V97aa: 清除 AI 幻觉输出 [object Object]（被复杂 Prompt 里的 {} 搞晕）──
-  text = text.replace(/\[object Object\]/g, '');
+  // ── V97ab: 清除 AI 幻觉 [object Object]（只删脏数据，不伤正常星座词）──
+  text = text.replace(/\[object Object\]/g, ' ').replace(/\s{2,}/g, ' ');
 
   // ── V97m2: 火星/凯龙/北交点主动过滤（validator 已校验，但 AI 重试仍犯，只能强洗）──
   // 删除整句含"火星在XX座"或"火星在第X宫"的句子（黑天鹅日描述火星相位冲突）
@@ -1374,6 +1374,14 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       };
       houseLock = locks[lang] || locks.en;
       console.log(`[V82] houseLock built for ${lang}: Jup=${jupHouse}, Sat=${satHouse}, Pluto=${plHouse}, Sun=${sunHouse}, Rising=${risingLocal}`);
+    }
+
+    // V97ac: V69 Python引擎失败时（astroMatrix=null），risingLocal为空 → fallback为太阳星座
+    if (!risingLocal) {
+      const SUN_ZH_FB = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+      const sunIdx = getNatalSunSign(birthDate);
+      risingLocal = SUN_ZH_FB[sunIdx] || '天蝎座';
+      console.warn(`[V97ac] V69 failed, risingLocal fallback → ${risingLocal}`);
     }
 
     // ── V97 TDZ FIX: placeholder replacement (runs AFTER all vars assigned, safe) ──
