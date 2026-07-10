@@ -1979,7 +1979,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${deepseekKey}`,
       },
-      body: JSON.stringify({
+      body: Buffer.from(JSON.stringify({
         model: 'deepseek-chat',
         messages: [
           { role: 'system', content: prompt.system },
@@ -1988,7 +1988,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         max_tokens: maxTokens,
         temperature: 0.7,
         stream: true,
-      }),
+      }), 'utf-8'),
       signal: controller.signal, // V75: AbortController prevents Railway timeout kill
     });
 
@@ -2005,10 +2005,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+              body: Buffer.from(JSON.stringify({
                 contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
                 generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
-              }),
+              }), 'utf-8'),
             }
           );
           if (gemRes.ok) {
@@ -2120,7 +2120,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const fullRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
-          body: JSON.stringify({
+          body: Buffer.from(JSON.stringify({
             model: 'deepseek-chat',
             messages: [
               { role: 'system', content: prompt.system },
@@ -2128,7 +2128,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             ],
             max_tokens: 48000,
             temperature: 0.7,
-          }),
+          }), 'utf-8'),
         });
         if (fullRes.ok) {
           const fdata = await fullRes.json();
