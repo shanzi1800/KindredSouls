@@ -438,8 +438,7 @@ app.get('/api/debug-env', (req, res) => {
 // ── V98: Supabase连通性诊断端点 ──
 app.get('/api/debug-supabase-test', async (req, res) => {
   // https 已在顶部 import
-  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
-  const tests = [];
+    const tests = [];
   
   // Test 1: 直接 HTTP ping
   const t1 = Date.now();
@@ -469,7 +468,7 @@ app.get('/api/debug-supabase-test', async (req, res) => {
       new Promise((resolve, reject) => {
         const req = https.request(
           { hostname: 'wfkxqhlcgrikxoofjvas.supabase.co', path: '/rest/v1/ai_insights_cache?cache_key=eq.wealth:1996-01-23:zh:yearly&select=insight&limit=1', port: 443, method: 'GET',
-            headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY } },
+            headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } },
           (r) => {
             let d = '';
             r.on('data', c => d += c);
@@ -500,12 +499,11 @@ app.get('/api/debug-supabase-test', async (req, res) => {
   return;
   
   // 试 anon key
-  const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
-  
+    
   const options = {
     hostname: url.hostname, port: 443, path: url.pathname + url.search,
     method: 'GET',
-    headers: { 'apikey': anonKey, 'Authorization': 'Bearer ' + anonKey }
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
   };
   
   const p = new Promise((resolve) => {
