@@ -1756,7 +1756,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v98c:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v98d:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2211,7 +2211,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v98c:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v98d:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2230,16 +2230,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         const sanitizedCached = final_text_sanitizer(cachedText, 'Cancer');
         const streamText = sanitizedCached !== cachedText ? sanitizedCached : cachedText;
-        // 异步写回清洗后的缓存
-        if (sanitizedCached !== cachedText && SB_URL && SB_KEY) {
-          safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
-            method: 'POST',
-            headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates' },
-            body: JSON.stringify({ cache_key: cacheKey, insight: sanitizedCached, prompt_version: `v1.0.0-stream-${reportType}-${lang}`, created_at: new Date().toISOString() })
-          }).catch(() => {});
-        }
+        // 不再写回：缓存命中直接返回，避免 sanitizer 截断覆盖长版
         // 一次性推完整内容 + sanitized 字段（前端会替换显示）
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: streamText, sanitized: streamText })}\n\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: streamText })}\n\n`, 'utf-8'));
         if (typeof res.flush === 'function') res.flush();
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
