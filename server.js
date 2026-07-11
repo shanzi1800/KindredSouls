@@ -2137,12 +2137,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cachedText = cacheRows?.[0]?.insight;
 
       if (cachedText && cachedText.length > 100) {
-        console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, starting pseudo-stream`);
-
-        // V97: 即使缓存命中也要过一遍纠正器（astroMatrix 尚不可用，硬定 Cancer Rising）
+        // ── V98: 缓存命中 → 纠正后直接秒回完整内容（不再伪流式）──
+        console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         const sanitizedCached = final_text_sanitizer(cachedText, 'Cancer');
         const streamText = sanitizedCached !== cachedText ? sanitizedCached : cachedText;
-        // 异步写回清洗后的缓存（不阻塞伪流式）
+        // 异步写回清洗后的缓存
         if (sanitizedCached !== cachedText && SB_URL && SB_KEY) {
           safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
             method: 'POST',
@@ -2150,47 +2149,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             body: JSON.stringify({ cache_key: cacheKey, insight: sanitizedCached, prompt_version: `v1.0.0-stream-${reportType}-${lang}`, created_at: new Date().toISOString() })
           }).catch(() => {});
         }
-
-        // 黄金欺骗流：每 15ms 吐 40 字符
-        const CHUNK_SIZE = 40;
-        const INTERVAL_MS = 15;
-        let index = 0;
-
-        const timer = setInterval(() => {
-          try {
-            if (index >= streamText.length) {
-              res.write('data: [DONE]\n\n');
-              if (typeof res.flush === 'function') res.flush();
-              res.end();
-              clearInterval(timer);
-              console.log(`[wealth-stream] [OK] Cache pseudo-stream complete, ${streamText.length} chars pushed (sanitized)`);
-              return;
-            }
-
-            // ── V97h2: 代理对安全切片（emoji 占2个UTF-16码元，按码元硬切会劈裂成乱码）──
-            let end = Math.min(index + CHUNK_SIZE, streamText.length);
-            if (end < streamText.length) {
-              const lastCode = streamText.charCodeAt(end - 1);
-              if (lastCode >= 0xD800 && lastCode <= 0xDBFF) end += 1; // 高代理后必须带上低代理
-            }
-            const chunk = streamText.slice(index, end);
-            res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}
-
-`, "utf-8"));
-            if (typeof res.flush === 'function') res.flush();
-            index = end; // V97h2: 跳到 end 而非 +CHUNK_SIZE，避免边界 emoji 低代理被下一片重复发送
-          } catch (e) {
-            console.error('[wealth-stream] Cache stream error:', e.message);
-            clearInterval(timer);
-            try { res.end(); } catch (_e) {}
-          }
-        }, INTERVAL_MS);
-
-        // 客户端断连清理
-        req.on('close', () => {
-          clearInterval(timer);
-          console.log('[wealth-stream] Client disconnected from cache stream');
-        });
+        // 一次性推完整内容 + sanitized 字段（前端会替换显示）
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: streamText, sanitized: streamText })}\n\n`, 'utf-8'));
+        if (typeof res.flush === 'function') res.flush();
+        res.write('data: [DONE]\n\n');
+        if (typeof res.flush === 'function') res.flush();
+        res.end();
+        console.log(`[wealth-stream] [OK] Cache instant complete, ${streamText.length} chars`);
         return;
       }
     }
