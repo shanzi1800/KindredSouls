@@ -1,7 +1,9 @@
 FROM node:20-bookworm
 
 # ── V95: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=1783758000
+ARG CACHE_BUST=1783759999
+
+# Force rebuild timestamp: 1783759999
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
@@ -24,6 +26,8 @@ ENV V69_HOST=127.0.0.1
 # 如果 Dashboard 有旧 key，ENV DEEPSEEK_API_KEY 就废了。
 # 写文件 → 代码直接读文件，Dashboard 覆盖不到。
 RUN printf 'sk-9307f02599b44612b6767996a7839ab5' > /app/.deepseek-key
+
+RUN echo "BUILD_TRIGGER_$(date +%s%N)"
 
 COPY . .
 
