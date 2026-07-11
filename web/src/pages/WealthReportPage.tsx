@@ -1895,50 +1895,50 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const USE_STREAM = true; // 🔥 军师下令:全量开火!
 
     if (USE_STREAM) {
-      // 🚀 流式接收
+      // 🚀 流式接收（V99f: 军师缓冲区方案——防断包/粘包）
       try {
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ birthDate, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang, reportType: type }), // 🛠️ V91: 传时间/坐标/时区
+          body: JSON.stringify({ birthDate, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang, reportType: type }),
         });
 
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
+        let buffer = ''; // 🛡️ 引入流式缓冲区（防断包）
 
         while (true) {
           const { value, done } = await reader!.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('
+');
+
+          // 关键：留下最后一行（可能是未传输完的残包）暂存到 buffer，其余的完整行拿去解析
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const dataStr = line.slice(6).trim();
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+
+            if (trimmedLine.startsWith('data: ')) {
+              const dataStr = trimmedLine.slice(6).trim();
+
               if (dataStr === '[DONE]') {
-                console.log('[WealthReport] 🔮 [DONE] 天书刻印完成!');
+                console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 setStreamedOnce(true);
-                // 🛠️ V40: [DONE]即完成，textContainerRef自动处理追光
-                if (type === 'yearly') {
-                  setYearlyCardsReady(true);
-                }
+                if (type === 'yearly') setYearlyCardsReady(true);
                 break;
               }
+
               try {
                 const parsed = JSON.parse(dataStr);
-                // V97: 后端纠正器清洗完毕，替换显示内容
-                if (parsed.sanitized) {
-                  if (type === 'yearly') {
-                    setSacredText(parsed.sanitized);
-                  } else {
-                    setWealthReportText(parsed.sanitized);
-                  }
-                  console.log('[WealthReport] 🔮 [SANITIZED] 宫位纠正完毕，长度:', parsed.sanitized.length);
-                  continue;
-                }
+
+                // 🔍 军师调试日志：看数据到底长啥样
+                console.log('[WealthReport] 📥 收到流式增量:', parsed.text?.slice(0, 20) + '...');
+
                 if (parsed.text) {
-                  // 🛠️ V40: 纯净增量追加到打字机状态（不卡、不死循环）
                   if (type === 'yearly') {
                     setSacredText(prev => prev + parsed.text);
                   } else {
@@ -1946,10 +1946,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                   }
                 }
-              } catch {}
+              } catch (e) {
+                // 🔍 裁决：绝对不能静默吞错！把刺客揪出来
+                console.warn('[WealthReport] ⚠️ JSON 解析失败！错误:', e, '原始片段:', dataStr.slice(0, 100));
+              }
             }
           }
         }
+      }
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
