@@ -35,6 +35,9 @@ COPY . .
 
 RUN npm install && npm install express stripe
 
+# V99g: 构建前端（Vite）
+RUN cd web && npm install && npm run build && cd ..
+
 RUN printf '%s\n' \
 '#!/bin/bash' \
 'set -e' \
