@@ -1,4 +1,4 @@
-FROM node:20-bookworm
+FROM node:22-slim
 
 # ── V95: Cache busting — force fresh build on every railway up ──
 ARG CACHE_BUST=1783759999
