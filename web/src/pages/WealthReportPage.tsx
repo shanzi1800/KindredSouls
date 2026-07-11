@@ -1912,8 +1912,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('
-');
+          const lines = buffer.split('\n');
 
           // 关键：留下最后一行（可能是未传输完的残包）暂存到 buffer，其余的完整行拿去解析
           buffer = lines.pop() || '';
