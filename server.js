@@ -2451,22 +2451,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // ── V97 宫位强制纠正器：落库前清洗一遍 ──
-    // 注意：sanitized 事件必须在 [DONE] 之前发送
-    const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
-    let sanitizedFull = final_text_sanitizer(fullTextCollector, ascendant);
-    // 🛠️ V97w: 后处理月标题太阳星座硬替换（流式终点）
-    sanitizedFull = applyMonthLockSanitizer(sanitizedFull, astroMatrix);
-    // 矫正后有变化，先把矫正版发给前端替换显示
-    if (sanitizedFull !== fullTextCollector) {
-      try {
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: sanitizedFull })}
+    // V99e: 跳过 sanitizer（避免删除大量行导致前端截断）
+    // SwissEph V69 已提供真数据，无需后处理矫正
+    const sanitizedFull = fullTextCollector;
 
-`, 'utf-8'));
-      } catch(e){}
-    }
-    // 替换收集器内容（让后续逻辑用 sanitized 版本落库）
-    fullTextCollector = sanitizedFull;
 
     // 流式结束，发送 [DONE]（sanitized 在前，[DONE] 在后）
     res.write('data: [DONE]\n\n');
