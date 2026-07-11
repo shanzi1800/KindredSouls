@@ -1,7 +1,7 @@
 FROM node:22-slim
 
 # ── V95: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=1783759999
+ARG CACHE_BUST=20260712-0446
 
 # Force rebuild timestamp: 1783759999
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
