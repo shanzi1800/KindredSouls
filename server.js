@@ -182,6 +182,16 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // ── V97ab: 清除 AI 幻觉 [object Object]（只删脏数据，不伤正常星座词）──
   text = text.replace(/\[object Object\]/g, ' ').replace(/\s{2,}/g, ' ');
 
+  // ── V97ap: 清除渲染失败的乱码方块（U+FFFD 和空 Emoji 占位）──
+  text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/\s{2,}/g, ' ');
+
+  // ── V97ap: 修复6月太阳星座常识错误（AI把本命水瓶当成流年6月太阳）──
+  // 6月太阳只能是双子座或巨蟹座，绝不可能是水瓶座
+  text = text
+    .replace(/2027年6月[：:]太阳水瓶座/g, '2027年6月：太阳双子座')
+    .replace(/2027年6月[：:]太阳水瓶/g, '2027年6月：太阳双子')
+    .replace(/6月.*太阳水瓶/g, '6月：太阳双子座');
+
   // ── V97m2: 火星/凯龙/北交点主动过滤（validator 已校验，但 AI 重试仍犯，只能强洗）──
   // 删除整句含"火星在XX座"或"火星在第X宫"的句子（黑天鹅日描述火星相位冲突）
   text = text
