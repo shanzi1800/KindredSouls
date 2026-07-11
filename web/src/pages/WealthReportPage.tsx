@@ -472,12 +472,23 @@ const cleanRawReportText = (text: string): string => {
   // 3. 【无脑拍扁残余井号】
   c = c.replace(/^#+/gm, '');
 
-  // 4. 彻底物理超度 Emoji 和特殊符号
+  // 4. 彻底物理超度 Emoji 和特殊符号（含 V99k 脏字符清洗）
   c = c.replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟|✨|🎯|📈|💰/g, '');
+  // V99k: 清除乱码方块（Emoji 变体选择符、零宽字符、未渲染 Unicode）
+  c = c.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFF0-\uFFFF]/g, '');
+  c = c.replace(/<fe0f>/gi, '');
+  c = c.replace(/\uFE0F/g, '');
 
   // 5. 斩杀连续重复的年月日
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
   c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
+
+  // V99k: 未闭合括号自动补齐（军师令：括号必须成对）
+  const openBrackets = (c.match(/\(/g) || []).length;
+  const closeBrackets = (c.match(/\)/g) || []).length;
+  if (openBrackets > closeBrackets) {
+    c = c + ')'.repeat(openBrackets - closeBrackets);
+  }
 
   // 6. 擦除历史生日污染
   c = c.replace(/至\s*\d{4}年\d{1,2}月\s*(\d{4}年\d{1,2}月)/g, '至 $1');
