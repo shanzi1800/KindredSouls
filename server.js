@@ -557,7 +557,13 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '6892d75', debugBuildTime: 'FRESHBUILD-20260711-1720Z' });
+  // V99n: 动态读取 git SHA（而非硬编码死值）
+  let gitSha = 'unknown';
+  try {
+    const { execSync } = require('child_process');
+    gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  } catch(e) {}
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha, debugBuildTime: 'FRESHBUILD-20260711-1720Z' });
 });
 
 // ── Root health check for Railway ──
