@@ -56,6 +56,18 @@ function getDeepSeekKey() {
   return process.env.DEEPSEEK_API_KEY;
 }
 
+// ── V97bd: Supabase keys 从文件读（防 Railway Dashboard 老 key 覆盖，同 DeepSeek 方案）──
+try {
+  if (existsSync('/app/.supabase-url')) {
+    const u = readFileSync('/app/.supabase-url', 'utf-8').trim();
+    if (u.length > 10) process.env.SUPABASE_URL = u;
+  }
+  if (existsSync('/app/.supabase-key')) {
+    const k = readFileSync('/app/.supabase-key', 'utf-8').trim();
+    if (k.length > 10) process.env.SUPABASE_SERVICE_KEY = k;
+  }
+} catch(e) { /* fall through */ }
+
 // https.request 直接处理字节流，不受此限制
 async function safeFetch(url, options = {}) {
   return new Promise((resolve, reject) => {
