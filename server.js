@@ -458,7 +458,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'f1c210c', debugBuildTime: 'FRESHBUILD-20260711-1710Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'e2476bc', debugBuildTime: 'FRESHBUILD-20260711-1715Z' });
 });
 
 // ── Root health check for Railway ──
