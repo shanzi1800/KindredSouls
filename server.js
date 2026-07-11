@@ -2211,7 +2211,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v98b:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
