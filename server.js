@@ -185,6 +185,11 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // ── V97ap: 清除渲染失败的乱码方块（U+FFFD 和空 Emoji 占位）──
   text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/\s{2,}/g, ' ');
 
+  // ── V97ar: 清理隐身脏字符（Emoji 变体选择符/零宽字符/不可见 Unicode）──
+  // U+FE0F → Emoji 变体选择符（表现为不可见方块）
+  // U+200B → 零宽空格，U+FEFF → BOM，U+200D → 零宽连字
+  text = text.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFFE\uFFF0-\uFFFF]/g, '');
+
   // ── V97aq: 12个月太阳星座全面校订（防止AI把本命太阳写成流年太阳）──
   // 流年太阳按公历月份固定：7月巨蟹、8月狮子…6月双子
   text = text
@@ -461,6 +466,19 @@ app.get('/', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
 });
 
+// ── 确定性种子：从用户 Prompt 中提取生日算 seed，确保同用户出同结果 ──
+function seedFromUserPrompt(userPrompt) {
+  if (!userPrompt) return 42;
+  // 匹配各种格式的出生日期
+  const m = userPrompt.match(/birth(?:Date|day)?[=:\s]*['"]?(\d{4})[-年](\d{1,2})[-月](\d{1,2})/i)
+    || userPrompt.match(/['"]?(\d{4})[-年](\d{1,2})[-月](\d{1,2})['"]?/);
+  if (m) {
+    const d = parseInt(m[1]) * 10000 + parseInt(m[2]) * 100 + parseInt(m[3]);
+    return d % 2147483647; // DeepSeek seed 最大 int32
+  }
+  return 42;
+}
+
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
 async function callAI(systemPrompt, userPrompt, env, options = {}) {
   const { maxTokens = 4000, reportType = 'monthly' } = options;
@@ -483,7 +501,8 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
             { role: 'user', content: userPrompt },
           ],
           max_tokens: maxTokens,
-          temperature: 0.7,
+          temperature: 0,
+          seed: seedFromUserPrompt(userPrompt),
         }),
       });
       if (res.ok) {
@@ -505,7 +524,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
           contents: [{
             parts: [{ text: systemPrompt + '\n\n' + userPrompt }],
           }],
-          generationConfig: { maxOutputTokens: 8000, temperature: 0.7 },
+          generationConfig: { maxOutputTokens: 8000, temperature: 0 },
         }),
       });
       if (res.ok) {
@@ -2269,7 +2288,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           { role: 'user', content: prompt.user },
         ],
         max_tokens: maxTokens,
-        temperature: 0.7,
+        temperature: 0,
+        seed: seedFromUserPrompt(prompt.user),
         stream: true,
       })),
       signal: controller.signal, // V75: AbortController prevents Railway timeout kill
@@ -2290,7 +2310,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               headers: { 'Content-Type': 'application/json' },
               body: new TextEncoder().encode(JSON.stringify({
                 contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+                generationConfig: { maxOutputTokens: maxTokens, temperature: 0 }
               })),
             }
           );
@@ -2412,7 +2432,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               { role: 'user', content: prompt.user },
             ],
             max_tokens: 48000,
-            temperature: 0.7,
+            temperature: 0,
+            seed: seedFromUserPrompt(prompt.user),
           })),
         });
         if (fullRes.ok) {
