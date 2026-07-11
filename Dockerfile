@@ -49,3 +49,4 @@ RUN printf '%s\n' \
 EXPOSE 3000 8001
 # PORT 由 Railway 注入(通常是8080),不再硬编码
 CMD ["/start.sh"]
+# Cache bust: 1783752047
