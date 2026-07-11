@@ -498,25 +498,6 @@ app.get('/api/debug-supabase-test', async (req, res) => {
   
   res.json({ tests, timestamp: new Date().toISOString() });
   return;
-}
-
-// ── /api/debug-dump-cache ── 只读诊断：返回某 cache_key 的所有记录（长度+时间）
-app.get('/api/debug-dump-cache', async (req, res) => {
-  const cacheKey = req.query.cacheKey || req.query.key;
-  if (!cacheKey) return res.status(400).json({ error: 'cacheKey required' });
-  try {
-    const SB_URL = process.env.SUPABASE_URL;
-    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const r = await safeFetch(
-      `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=length(insight),created_at,prompt_version&order=created_at.desc`,
-      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-    );
-    const rows = await r.json();
-    res.json({ cacheKey, status: r.status, count: rows.length, rows: rows.slice(0, 20) });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
-});
   
   // 试 anon key
   const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
@@ -2281,13 +2262,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const writeToCache = async (text) => {
     if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
     try {
+      // 🛠️ V98k: 写入前先删除该 cache_key 旧记录，避免多条脏数据堆积（无 UNIQUE 约束时尤其关键）
+      await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+      });
       const res2 = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
         method: 'POST',
         headers: {
           'apikey': SB_KEY,
           'Authorization': `Bearer ${SB_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'resolution=ignore-duplicates'
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify({
           cache_key: cacheKey,
