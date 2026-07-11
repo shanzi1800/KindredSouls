@@ -437,9 +437,67 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── V98: Supabase连通性诊断端点 ──
 app.get('/api/debug-supabase-test', async (req, res) => {
-  // 直接用 Node.js https 模块测 Supabase（不受 safeFetch ByteString 问题影响）
   const https = require('https');
-  const url = new URL('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/ai_insights_cache?cache_key=eq.wealth:1996-01-23:zh:yearly&select=insight&limit=1');
+  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
+  const tests = [];
+  
+  // Test 1: 直接 HTTP ping
+  const t1 = Date.now();
+  try {
+    const r1 = await Promise.race([
+      new Promise((resolve, reject) => {
+        const req = https.request(
+          { hostname: 'wfkxqhlcgrikxoofjvas.supabase.co', path: '/', port: 443, method: 'HEAD' },
+          (r) => resolve(r.statusCode)
+        );
+        req.on('error', reject);
+        req.on('timeout', () => reject(new Error('timeout')));
+        req.setTimeout(5000);
+        req.end();
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 5s')), 5000))
+    ]);
+    tests.push({ name: 'HTTPS ping', ok: true, status: r1, ms: Date.now() - t1 });
+  } catch(e) {
+    tests.push({ name: 'HTTPS ping', ok: false, error: e.message, ms: Date.now() - t1 });
+  }
+  
+  // Test 2: REST API with anon key
+  const t2 = Date.now();
+  try {
+    const r2 = await Promise.race([
+      new Promise((resolve, reject) => {
+        const req = https.request(
+          { hostname: 'wfkxqhlcgrikxoofjvas.supabase.co', path: '/rest/v1/ai_insights_cache?cache_key=eq.wealth:1996-01-23:zh:yearly&select=insight&limit=1', port: 443, method: 'GET',
+            headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY } },
+          (r) => {
+            let d = '';
+            r.on('data', c => d += c);
+            r.on('end', () => resolve({ status: r.statusCode, body: d.slice(0, 200) }));
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 10s')), 10000))
+    ]);
+    tests.push({ name: 'REST API (anon key)', ok: r2.status === 200, status: r2.status, body: r2.body, ms: Date.now() - t2 });
+  } catch(e) {
+    tests.push({ name: 'REST API (anon key)', ok: false, error: e.message, ms: Date.now() - t2 });
+  }
+  
+  // Test 3: env vars
+  tests.push({ 
+    name: 'env vars', 
+    SB_URL: !!process.env.SUPABASE_URL, 
+    SB_KEY_len: (process.env.SUPABASE_SERVICE_KEY || '').length,
+    V69_HOST: process.env.V69_HOST,
+    V69_PORT: process.env.V69_PORT,
+    DEEPSEEK: !!process.env.DEEPSEEK_API_KEY
+  });
+  
+  res.json({ tests, timestamp: new Date().toISOString() });
+  return;
   
   // 试 anon key
   const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
