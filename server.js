@@ -2228,14 +2228,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
         const streamText = cachedText;
-        // 不再写回：缓存命中直接返回，避免 sanitizer 截断覆盖长版
-        // 分块发送（避免单次 res.write 大 JSON 被截断）
-        const CHUNK_SIZE = 8000;
-        for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
-          const chunk = streamText.slice(i, Math.min(i + CHUNK_SIZE, streamText.length));
-          res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
-          if (typeof res.flush === 'function') res.flush();
-        }
+        // 一次性发送完整内容（避免分块被 Railway 代理截断）
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: streamText })}\n\n`, 'utf-8'));
+        if (typeof res.flush === 'function') res.flush();
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
         res.end();
