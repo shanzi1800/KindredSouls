@@ -433,6 +433,37 @@ app.get('/api/debug-env', (req, res) => {
 });
 
 // ── /api/debug-clear-cache ── 清空指定 cache_key 的财富报告缓存（调试用，生成后删除）
+
+
+// ── V98: Supabase连通性诊断端点 ──
+app.get('/api/debug-supabase-test', async (req, res) => {
+  // 直接用 Node.js https 模块测 Supabase（不受 safeFetch ByteString 问题影响）
+  const https = require('https');
+  const url = new URL('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/ai_insights_cache?cache_key=eq.wealth:1996-01-23:zh:yearly&select=insight&limit=1');
+  
+  // 试 anon key
+  const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
+  
+  const options = {
+    hostname: url.hostname, port: 443, path: url.pathname + url.search,
+    method: 'GET',
+    headers: { 'apikey': anonKey, 'Authorization': 'Bearer ' + anonKey }
+  };
+  
+  const p = new Promise((resolve) => {
+    const req2 = https.request(options, (r) => {
+      let data = '';
+      r.on('data', d => data += d);
+      r.on('end', () => resolve({ status: r.statusCode, data: data.slice(0, 500) }));
+    });
+    req2.on('error', e => resolve({ error: e.message }));
+    req2.end();
+  });
+  
+  const result = await p;
+  res.json(result);
+});
+
 app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
   const { cacheKey } = req.body;
   if (!cacheKey) return res.status(400).json({ error: 'cacheKey required' });
