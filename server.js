@@ -4,7 +4,7 @@ import express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, v69HealthCheck } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildAspectsData, v69HealthCheck } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -618,6 +618,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HAS_V69_DATA = !!v69FactSheet;
   // 🛠️ P1.1: 逐月全行星真理数据块（内行星+外行星+峰值+黑天鹅，按月隔离）
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
+  const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
 
   // 🛠️ V97x 治本：代码算死12个月锁死标题（星座+宫位由 SwissEph 算死，AI 只填四字主题）
   const ZH_SIGN_LOCK = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
@@ -1283,6 +1284,12 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       vi: '\n\n[QUY TẮC SẮT DIÊM VƯƠNG]: Sao Diêm Vương đã vào Bảo Bình năm 2024 và ở đó đến 2043. Trong báo cáo 2026-2027 Sao Diêm Vương PHẢI ở Bảo Bình. Tuyệt đối không viết Ma Kết cho Sao Diêm Vương!'
     };
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
+
+    // ── V97at: 注入 [ASPECTS_DATA] 块 ──
+    if (aspectsData) {
+      yearlySystem = aspectsData + '\n' + yearlySystem;
+      console.log('[V97at] ASPECTS_DATA injected with real SwissEph aspects');
+    }
 
     // ── V97 TDZ FIX: placeholder replacement REMOVED from here (was in TDZ zone) ──
     // ── it is re-inserted AFTER variable assignment (see below, before V89) ──

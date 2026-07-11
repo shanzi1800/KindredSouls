@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import json
 import math
+from copy import deepcopy
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
@@ -47,6 +48,22 @@ HOUSE_DESCRIPTIONS = {
 }
 
 # ── SwissEph Wrappers ──────────────────────────────────────────────────────────
+
+# ── 全行星星表 ──────────────────────────────────────────────────────────────
+ALL_PLANETS = {
+    'Sun': swe.SUN, 'Moon': swe.MOON, 'Mercury': swe.MERCURY,
+    'Venus': swe.VENUS, 'Mars': swe.MARS, 'Jupiter': swe.JUPITER,
+    'Saturn': swe.SATURN, 'Uranus': swe.URANUS, 'Neptune': swe.NEPTUNE, 'Pluto': swe.PLUTO,
+}
+INNER_PLANETS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars']
+OUTER_PLANETS = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+
+# ── 容许度设置 ──
+ASPECT_ORBS = {
+    'CONJUNCTION': 6,  # 0° ± 6°
+    'SQUARE': 5,       # 90° ± 5°
+    'OPPOSITION': 5,   # 180° ± 5°
+}
 
 def get_planet_pos(jd: float, planet: int) -> tuple:
     """Return (longitude_degrees, daily_speed) for a planet."""
@@ -88,8 +105,160 @@ def is_retrograde(speed: float) -> bool:
 
 # ── Retrograde Station Finder ─────────────────────────────────────────────────
 
-def find_mercury_stations(start_date: date, end_date: date) -> List[Dict]:
-    """Scan date range for Mercury retrograde stations."""
+def compute_natal_positions(birth_date: str, birth_time: str = '12:00', lat: float = 13.75, lon: float = 100.5, tz_str: str = 'Asia/Bangkok') -> Dict:
+    """Compute natal planet positions from birth date and time."""
+    parts = birth_date.split('-')
+    y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+    ut_hours = local_time_to_ut(birth_date, birth_time, tz_str)
+    jd = swe.julday(y, m, d, ut_hours)
+    positions = {}
+    for name, pid in ALL_PLANETS.items():
+        deg, speed = get_planet_pos(jd, pid)
+        sign = get_sign(deg)
+        positions[name] = {
+            'sign': sign,
+            'degree': round(deg % 30, 2),
+            'total_degree': deg,
+            'retrograde': is_retrograde(speed),
+        }
+    # 上升星座
+    asc = get_rising_sign(jd, lat, lon)
+    return {'planets': positions, 'rising_sign': asc}
+
+
+def check_aspect(transit_deg: float, natal_deg: float) -> List[str]:
+    """Check if transit forms conjunction (0°), square (90°), or opposition (180°) to natal.
+    Returns list of aspect type strings, e.g. ['SQUARE'] or ['CONJUNCTION', 'OPPOSITION']
+    """
+    diff = abs(transit_deg - natal_deg) % 360
+    if diff > 180:
+        diff = 360 - diff
+    aspects = []
+    if diff <= ASPECT_ORBS['CONJUNCTION']:
+        aspects.append('CONJUNCTION')
+    if 90 - ASPECT_ORBS['SQUARE'] <= diff <= 90 + ASPECT_ORBS['SQUARE']:
+        aspects.append('SQUARE')
+    if 180 - ASPECT_ORBS['OPPOSITION'] <= diff <= 180 + ASPECT_ORBS['OPPOSITION']:
+        aspects.append('OPPOSITION')
+    return aspects
+
+
+def compute_transit_aspects(natal_positions: Dict, start_year: int, start_month: int, num_months: int = 12) -> List[Dict]:
+    """Scan the full period day by day for transit outer → natal inner aspects."""
+    aspects = []
+    natal_planets = natal_positions['planets']
+    current = datetime(start_year, start_month, 1)
+    # End date: advance by num_months
+    y, m = start_year, start_month
+    for _ in range(num_months):
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    end = datetime(y, m, 1) - timedelta(days=1)
+
+    while current <= end:
+        jd = swe.julday(current.year, current.month, current.day, 12)
+        for t_name in OUTER_PLANETS:
+            t_deg, _ = get_planet_pos(jd, ALL_PLANETS[t_name])
+            t_sign = get_sign(t_deg)
+            t_house = get_house_for_sign(t_sign, natal_positions['rising_sign'])
+            for n_name in INNER_PLANETS + OUTER_PLANETS:
+                if n_name == t_name:
+                    continue
+                n_deg = natal_planets[n_name]['total_degree']
+                matches = check_aspect(t_deg, n_deg)
+                for aspect in matches:
+                    aspects.append({
+                        'date': current.strftime('%Y-%m-%d'),
+                        'transit_planet': t_name,
+                        'transit_sign': t_sign,
+                        'transit_house': t_house,
+                        'natal_planet': n_name,
+                        'natal_sign': natal_planets[n_name]['sign'],
+                        'aspect': aspect,
+                    })
+        current += timedelta(days=1)
+
+    return aspects
+
+
+def find_lunar_phases(start_year: int, start_month: int, num_months: int = 12) -> List[Dict]:
+    """Scan for New Moon (Sun-Moon 0°) and Full Moon (Sun-Moon 180°) within 3° orb."""
+    phases = []
+    current = datetime(start_year, start_month, 1)
+    y, m = start_year, start_month
+    for _ in range(num_months):
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    end = datetime(y, m, 1) - timedelta(days=1)
+
+    while current <= end:
+        jd = swe.julday(current.year, current.month, current.day, 12)
+        sun_deg, _ = get_planet_pos(jd, swe.SUN)
+        moon_deg, _ = get_planet_pos(jd, swe.MOON)
+        diff = abs(sun_deg - moon_deg) % 360
+        if diff > 180:
+            diff = 360 - diff
+        if diff <= 3:
+            phases.append({
+                'date': current.strftime('%Y-%m-%d'),
+                'type': 'NEW_MOON' if diff <= 3 else ('FULL_MOON' if abs(diff - 180) <= 3 else ''),
+                'sun_sign': get_sign(sun_deg),
+            })
+        elif 177 <= diff <= 183:
+            phases.append({
+                'date': current.strftime('%Y-%m-%d'),
+                'type': 'FULL_MOON',
+                'sun_sign': get_sign(sun_deg),
+            })
+        current += timedelta(days=1)
+
+    return phases
+
+
+def find_planet_stations(planet_id: int, start_date: date, end_date: date) -> List[Dict]:
+    """Scan date range for retrograde-direct stations of a planet."""
+    stations = []
+    current = datetime(start_date.year, start_date.month, start_date.day)
+    end = datetime(end_date.year, end_date.month, end_date.day)
+    prev_speed = None
+    prev_jd = None
+    while current <= end:
+        jd = swe.julday(current.year, current.month, current.day, 12)
+        _, speed = get_planet_pos(jd, planet_id)
+        if prev_speed is not None and prev_jd is not None:
+            if (prev_speed > 0 > speed) or (prev_speed < 0 < speed):
+                station_type = 'RETROGRADE' if speed < 0 else 'DIRECT'
+                exact_dt = find_exact_station(prev_jd, jd, planet_id, station_type)
+                if isinstance(exact_dt, datetime):
+                    stations.append({
+                        'type': station_type,
+                        'date': exact_dt.strftime('%Y-%m-%d'),
+                        'position': format_pos(get_planet_pos(swe.julday(exact_dt.year, exact_dt.month, exact_dt.day, 12), planet_id)[0]),
+                    })
+        prev_speed = speed
+        prev_jd = jd
+        current += timedelta(days=1)
+    return stations
+
+
+def find_all_stations(start_date: date, end_date: date) -> Dict:
+    """Find retrograde stations for Mercury, Jupiter, Saturn, Uranus, Neptune, Pluto."""
+    return {
+        'mercury': find_planet_stations(swe.MERCURY, start_date, end_date),
+        'jupiter': find_planet_stations(swe.JUPITER, start_date, end_date),
+        'saturn': find_planet_stations(swe.SATURN, start_date, end_date),
+        'uranus': find_planet_stations(swe.URANUS, start_date, end_date),
+        'neptune': find_planet_stations(swe.NEPTUNE, start_date, end_date),
+        'pluto': find_planet_stations(swe.PLUTO, start_date, end_date),
+    }
+
+
+def find_mercury_stations_old(start_date: date, end_date: date) -> List[Dict]:
+    """Legacy: Mercury-only station finder (kept for backward compat)."""
     stations = []
     current = datetime(start_date.year, start_date.month, start_date.day)
     end = datetime(end_date.year, end_date.month, end_date.day)
@@ -299,8 +468,9 @@ def build_macro_description(positions: Dict) -> str:
 # ── Full Year Matrix ───────────────────────────────────────────────────────────
 
 def compute_year_matrix(birth_date: str, rising_sign: str,
-                        year: int, month_start: int, months: int = 12) -> Dict:
-    """Compute 12-month astro matrix."""
+                        year: int, month_start: int, months: int = 12,
+                        birth_time: str = '12:00', lat: float = 13.75, lon: float = 100.5, tz_str: str = 'Asia/Bangkok') -> Dict:
+    """Compute 12-month astro matrix with natal aspects and lunar phases."""
     monthly_data = []
     y, m = year, month_start
     
@@ -311,14 +481,22 @@ def compute_year_matrix(birth_date: str, rising_sign: str,
             m = 1
             y += 1
     
-    # Retrograde stations for the full period
-    stations = find_mercury_stations(
-        date(year, month_start, 1),
-        date(y - 1 if m == 1 else y, m - 1 if m > 1 else 12, 28)
-    )
+    period_end_date = date(y - 1 if m == 1 else y, m - 1 if m > 1 else 12, 28)
+    period_start_date = date(year, month_start, 1)
     
-    # ── V93 FIX: 显式 computed_houses，斩断自然宫位污染 ──
-    # 从第一个月提取外行星宫位（外行星跨月不变，用于全文统一引用）
+    # ── V97at: 外行星逆行站（全行星）──
+    stations = find_all_stations(period_start_date, period_end_date)
+    
+    # ── V97at: 本命星盘 ──
+    natal = compute_natal_positions(birth_date, birth_time, lat, lon, tz_str)
+    
+    # ── V97at: 行运外 → 本命内相位 ──
+    transit_aspects = compute_transit_aspects(natal, year, month_start, months)
+    
+    # ── V97at: 新月满月 ──
+    lunar_phases = find_lunar_phases(year, month_start, months)
+    
+    # ── V93 FIX: 显式 computed_houses ──
     first = monthly_data[0] if monthly_data else {}
     computed_houses = {
         'Jupiter': {
@@ -347,15 +525,18 @@ def compute_year_matrix(birth_date: str, rising_sign: str,
         'meta': {
             'birth_date': birth_date,
             'rising_sign': rising_sign,
+            'natal_rising_sign': natal['rising_sign'],
             'generated_by': 'V69 SwissEph Engine v1.0',
             'house_system': 'Equal House',
             'year_start': f"{year}-{month_start:02d}",
             'year_end': f"{y if m > 1 else y-1}-{m-1 if m > 1 else 12:02d}",
-            # ── V93: 供 AI 写作时强制引用，不许推理 ──
             'computed_houses': computed_houses,
         },
         'months': monthly_data,
         'retrograde_stations': stations,
+        'natal_planets': natal['planets'],
+        'transit_aspects': transit_aspects,
+        'lunar_phases': lunar_phases,
     }
 
 
@@ -422,12 +603,17 @@ def astro_matrix(req: AstroRequest):
             req.rising_sign = get_rising_sign(jd, req.lat, req.lon)
             print(f"[V91] ASC computed: {req.rising_sign} (lat={req.lat}, lon={req.lon})")
 
+        # ── V97at: 将 birth_time / lat / lon / tz 传入瑞士星历引擎 ──
         matrix = compute_year_matrix(
             req.birth_date,
             req.rising_sign,
             req.year,
             req.month_start,
             req.months,
+            req.birth_time,
+            req.lat,
+            req.lon,
+            req.tz,
         )
         # 在 matrix 里注入元数据（方便调试）
         matrix['_v91_meta'] = {

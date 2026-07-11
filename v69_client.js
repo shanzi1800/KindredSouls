@@ -327,6 +327,95 @@ export function buildPerMonthData(astroMatrix, lang = 'zh') {
 
 
 // ── Health Check ──────────────────────────────────────────────────────────────
+// ── V97at: 构建 [ASPECTS_DATA] 块 ────────────────────────────────────────────
+/**
+ * Generate the ASPECTS_DATA block for prompt injection.
+ * Contains ONLY SwissEph-computed exact aspects — AI must not invent any others.
+ */
+export function buildAspectsData(astroMatrix, lang = 'zh') {
+  if (!astroMatrix) return '';
+  const {
+    transit_aspects: aspects,
+    retrograde_stations: stations,
+    lunar_phases: moons,
+    meta,
+  } = astroMatrix;
+
+  const lines = [];
+  lines.push('⛔ [ASPECTS_DATA] — 以下为瑞士星历计算的真实天象数据，AI 严禁编造其他相位 ⛔');
+  lines.push('');
+
+  // ── 外行星逆行站 ──
+  if (stations) {
+    const planetNames = {mercury:'水星', jupiter:'木星', saturn:'土星', uranus:'天王星', neptune:'海王星', pluto:'冥王星'};
+    lines.push('【行星逆行站】:');
+    for (const [key, name] of Object.entries(planetNames)) {
+      const sts = stations[key];
+      if (sts && sts.length > 0) {
+        const retros = sts.filter(s => s.type === 'RETROGRADE').map(s => `${s.date}逆行`);
+        const directs = sts.filter(s => s.type === 'DIRECT').map(s => `${s.date}顺行`);
+        const all = [...retros, ...directs];
+        if (all.length > 0) {
+          lines.push(`  ${name}: ${all.join(' → ')}`);
+        }
+      }
+    }
+    lines.push('');
+  }
+
+  // ── 新月满月 ──
+  if (moons && moons.length > 0) {
+    lines.push('【新月与满月】:');
+    const moonNames = {NEW_MOON:'🌑 新月', FULL_MOON:'🌕 满月'};
+    for (const m of moons.slice(0, 20)) {
+      const label = moonNames[m.type] || m.type;
+      lines.push(`  ${label}: ${m.date}（${m.sun_sign}）`);
+    }
+    lines.push('');
+  }
+
+  // ── 行运外 → 本命内 托勒密主相位 ──
+  if (aspects && aspects.length > 0) {
+    const aspectSymbols = {CONJUNCTION:'☌ 合相', SQUARE:'□ 刑相', OPPOSITION:'☍ 冲相'};
+    lines.push('【行运外行星 → 本命行星 托勒密主相位（合/刑/冲）】:');
+    lines.push('  AI 写作时仅允许引用以下相位，禁止自行推算或编造其他相位。');
+    lines.push('');
+    
+    // Group by month for readability
+    const byMonth = {};
+    const months = astroMatrix.months || [];
+    for (const a of aspects) {
+      const prefix = a.date.substring(0, 7); // YYYY-MM
+      if (!byMonth[prefix]) byMonth[prefix] = [];
+      byMonth[prefix].push(a);
+    }
+    
+    for (const [ym, items] of Object.entries(byMonth)) {
+      lines.push(`  📅 ${ym}:`);
+      for (const a of items.slice(0, 8)) {  // max 8 per month to avoid bloat
+        const ta = aspectSymbols[a.aspect] || a.aspect;
+        lines.push(`    ${a.date}: 行运${a.transit_planet}（${a.transit_sign}第${a.transit_house}宫）${ta}本命${a.natal_planet}（${a.natal_sign}）`);
+      }
+      if (items.length > 8) {
+        lines.push(`    ... 还有 ${items.length - 8} 个相位（详见长期趋势）`);
+      }
+    }
+    lines.push('');
+    lines.push(`  总计 ${aspects.length} 个精确相位，覆盖 ${Object.keys(byMonth).length} 个月。`);
+    lines.push('');
+  }
+
+  lines.push('⛔ [ASPECTS_DATA END] — AI 必须：');
+  lines.push('  1. 只引用上面列出的相位，严禁自己编造');
+  lines.push('  2. 黑天鹅日（危机日）描述必须引用以上相位');
+  lines.push('  3. 新月/满月可写作重要财富节点，但不得改为其他相位');
+  lines.push('  4. 每月太阳星座、宫位必须与 locking table 严格一致');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+
 export async function v69HealthCheck() {
   try {
     const res = await fetch(`${V69_BASE}/api/v1/health`, { signal: AbortSignal.timeout(3000) });
