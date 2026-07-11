@@ -35,8 +35,8 @@ COPY . .
 
 RUN npm install && npm install express stripe
 
-# V99g: 构建前端（Vite）
-RUN cd web && npm install && npm run build && cd ..
+# V99i: 强制重建前端（删除旧 dist + 重新构建）
+RUN rm -rf web/dist && cd web && npm install && npm run build && cd ..
 
 RUN printf '%s\n' \
 '#!/bin/bash' \
