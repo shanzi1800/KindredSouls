@@ -437,7 +437,7 @@ app.get('/api/debug-env', (req, res) => {
 
 // ── V98: Supabase连通性诊断端点 ──
 app.get('/api/debug-supabase-test', async (req, res) => {
-  const https = require('https');
+  // https 已在顶部 import
   const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3FobGNncmlreG9vZmp2YXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMjY0MjQ1MywiZXhwIjoxOTM4MjE4NDUzfQ.xSeGzNxT9dLS0S5C50iK0xT2h8H0q2P3vW3aC5Z9YQ';
   const tests = [];
   
