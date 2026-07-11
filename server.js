@@ -2226,8 +2226,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       if (cachedText && cachedText.length > 100) {
         // ── V98: 缓存命中 → 纠正后直接秒回完整内容（不再伪流式）──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
-        const sanitizedCached = final_text_sanitizer(cachedText, 'Cancer');
-        const streamText = sanitizedCached !== cachedText ? sanitizedCached : cachedText;
+        // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
+        const streamText = cachedText;
         // 不再写回：缓存命中直接返回，避免 sanitizer 截断覆盖长版
         // 分块发送（避免单次 res.write 大 JSON 被截断）
         const CHUNK_SIZE = 8000;
