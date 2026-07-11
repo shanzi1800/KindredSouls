@@ -428,7 +428,7 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.status(500).json({ error: 'supabase not configured' });
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+    const r = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
       method: 'DELETE',
       headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
     });
@@ -446,7 +446,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.json({ error: 'Supabase not configured' });
   try {
-    const delRes = await fetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+    const delRes = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
       method: 'DELETE',
       headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
     });
@@ -458,7 +458,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '7aa4161', debugBuildTime: 'FRESHBUILD-20260711-1700Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'f1c210c', debugBuildTime: 'FRESHBUILD-20260711-1710Z' });
 });
 
 // ── Root health check for Railway ──
@@ -488,7 +488,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
   // Try DeepSeek first
   if (deepseekKey) {
     try {
-      const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      const res = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -517,7 +517,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
   // Fallback to Gemini
   if (geminiKey) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, {
+      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1618,7 +1618,7 @@ app.post('/api/save-result', async (req, res) => {
     // 直接用 REST API 写入
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const insRes = await fetch(
+    const insRes = await safeFetch(
       `${SB_URL}/rest/v1/compatibility_results`,
       {
         method: 'POST',
@@ -1662,7 +1662,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // ═══ 第一道拦截：Cache Hit ═══
     if (SB_URL && SB_KEY && reportType !== 'oracle') {
       try {
-        const cacheRes = await fetch(
+        const cacheRes = await safeFetch(
           `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
           { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
         );
@@ -1902,7 +1902,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // ═══ 写入缓存（非流式端点）═══
         if (SB_URL && SB_KEY && reportContent && reportContent.length > 100) {
           try {
-            await fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+            await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
               method: 'POST',
               headers: {
                 'apikey': SB_KEY,
@@ -1942,7 +1942,7 @@ app.get('/api/test-gemini', async (req, res) => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return res.json({ error: 'GEMINI_API_KEY not set' });
   try {
-    const r = await fetch(
+    const r = await safeFetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
       {
         method: 'POST',
@@ -1990,7 +1990,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
     // ── 检查缓存（直接用 REST API）──
-    const cacheRes = await fetch(
+    const cacheRes = await safeFetch(
       `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&created_at=gte.${since}&select=insight`,
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
@@ -2011,7 +2011,7 @@ app.use('/api/ai-advisor', async (req, res) => {
 
     if (deepseekKey) {
       try {
-        const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
           body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
@@ -2030,7 +2030,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     // Gemini 免费层 fallback
     if (!insight && geminiKey) {
       try {
-        const gemRes = await fetch(
+        const gemRes = await safeFetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
@@ -2050,7 +2050,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     if (!insight) return res.status(500).json({ error: 'All AI providers failed' });
 
     // ── 写入缓存（直接 REST）──
-    await fetch(
+    await safeFetch(
       `${SB_URL}/rest/v1/ai_insights_cache`,
       {
         method: 'POST',
@@ -2117,7 +2117,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // ═══ 第一道拦截：Cache Hit → 伪流式 ═══
   try {
     if (SB_URL && SB_KEY) {
-      const cacheRes = await fetch(
+      const cacheRes = await safeFetch(
         `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
         { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
       );
@@ -2132,7 +2132,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const streamText = sanitizedCached !== cachedText ? sanitizedCached : cachedText;
         // 异步写回清洗后的缓存（不阻塞伪流式）
         if (sanitizedCached !== cachedText && SB_URL && SB_KEY) {
-          fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+          safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
             method: 'POST',
             headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates' },
             body: JSON.stringify({ cache_key: cacheKey, insight: sanitizedCached, prompt_version: `v1.0.0-stream-${reportType}-${lang}`, created_at: new Date().toISOString() })
@@ -2196,7 +2196,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const writeToCache = async (text) => {
     if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
     try {
-      const res2 = await fetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+      const res2 = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
         method: 'POST',
         headers: {
           'apikey': SB_KEY,
