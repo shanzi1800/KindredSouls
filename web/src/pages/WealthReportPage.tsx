@@ -2700,7 +2700,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             };
 
             const displayText = formatAndCleanSacredText(sacredText);
-            const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
+            // V99l: 军师令——幽灵方块强制物理蒸发（\uFFFD/\u0000/<fe0f>）
+            const cleanedRaw = cleanRawReportText(cleanYearlyTimeline(displayText)).replace(/[\uFFFD\u0000]/g, '').replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '');
+            const cleaned = cleanedRaw;
 
             return (
               // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
