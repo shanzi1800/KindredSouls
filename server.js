@@ -432,32 +432,6 @@ app.get('/api/debug-env', (req, res) => {
   });
 });
 
-// ── /api/debug-cache-read ── 调试：直接测试缓存读取
-app.get('/api/debug-cache-read/:birthDate/:lang/:reportType', async (req, res) => {
-  const { birthDate, lang, reportType } = req.params;
-  const cacheKey = `wealth:${birthDate}:${lang}:${reportType}`;
-  const SB_URL = process.env.SUPABASE_URL;
-  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-  const result = { cacheKey, hasEnv: !!(SB_URL && SB_KEY), sbUrl: SB_URL ? SB_URL.slice(0,30)+'...' : null, steps: [] };
-  try {
-    if (!SB_URL || !SB_KEY) { result.error = 'no env'; return res.json(result); }
-    result.steps.push('env ok');
-    const cacheRes = await safeFetch(
-      `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
-      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-    );
-    result.steps.push(`fetch status=${cacheRes.status} ok=${cacheRes.ok}`);
-    const cacheRows = await cacheRes.json();
-    result.steps.push(`rows=${cacheRows?.length}`);
-    const cachedText = cacheRows?.[0]?.insight;
-    result.cachedTextLength = cachedText ? cachedText.length : 0;
-    result.willHitCache = !!(cachedText && cachedText.length > 100);
-  } catch (e) {
-    result.error = e.message;
-  }
-  res.json(result);
-});
-
 // ── /api/debug-clear-cache ── 清空指定 cache_key 的财富报告缓存（调试用，生成后删除）
 app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
   const { cacheKey } = req.body;
@@ -496,7 +470,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
 
 // ── /api/health ──
 app.use('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: 'e2476bc', debugBuildTime: 'FRESHBUILD-20260711-1715Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha: '6892d75', debugBuildTime: 'FRESHBUILD-20260711-1720Z' });
 });
 
 // ── Root health check for Railway ──
