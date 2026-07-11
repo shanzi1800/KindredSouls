@@ -27,7 +27,7 @@ ENV V69_HOST=127.0.0.1
 # 写文件 → 代码直接读文件，Dashboard 覆盖不到。
 RUN printf 'sk-9307f02599b44612b6767996a7839ab5' > /app/.deepseek-key
 RUN printf '%s' "$SUPABASE_URL" > /app/.supabase-url
-RUN printf '%s' "$SUPABASE_SERVICE_KEY" > /app/.supabase-key
+RUN printf '%s' 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw' > /app/.supabase-key
 
 RUN echo "BUILD_TRIGGER_$(date +%s%N)"
 
