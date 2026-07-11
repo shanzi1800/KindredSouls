@@ -1952,7 +1952,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
           }
         }
-      }
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
