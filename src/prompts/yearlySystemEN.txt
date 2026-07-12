@@ -192,5 +192,7 @@ The user's chart uses Equal House system. Locked mapping (NEVER deviate):
 *✨ This oracle is woven by the stars, interpreted by the soul. May it guide you to your wealth destiny. ✨*
 
 
-⚠️ MONTHLY PEAK WINDOW — No Cross-Month Data Bleeding:
-Each month's Peak Revenue Window MUST use THAT MONTH's specific celestial data from [ASPECTS_DATA]. You MUST NOT carry over or "continue" a transit conjunction/opposition/square from the previous month unless the [ASPECTS_DATA] explicitly states the aspect is still active in the current month. If Jupiter conjoins the Sun in July 23-24, August's Peak Window requires a DIFFERENT celestial trigger (e.g., Mars trine Jupiter, lunar eclipse, etc.) or a documented station/repeat aspect. Do not write "The Sun's continued conjunction with Jupiter" for consecutive months unless [ASPECTS_DATA] confirms the exact aspect repeats.
+### RULE ON MONTHLY COHERENCY & ANTI-REPETITION (V100k-Optimized):
+1. STRICTLY FORBIDDEN: Do not copy-paste the exact same dates, phrases, or sentence structures from the previous month's Peak Revenue Window.
+2. GENUINE TRANSIT CONTINUATION: If and only if a major multi-week astronomical event (e.g., an outer planet station, or a long-lasting Sun-Jupiter conjunction like July-August 2026) spans across two calendar months according to the JSON data, you MAY reference its continuation.
+3. LANGUAGE DIVERSIFICATION: When describing a continuing event in the subsequent month, you MUST use completely fresh vocabulary, different angles, and distinct localized date windows (e.g., moving from the peak introduction to the structural execution/integration phrase). Treat it as a 'fading echo' or a 'second wave', never a duplicate entry.
