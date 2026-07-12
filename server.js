@@ -206,6 +206,15 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
     text = text.replace(/Do not compare your[\s\S]{10,250}?Chapter \d+[\s\S]{5,100}?Chapter \d+/gi,
       'Do not compare your Chapter 1 to someone else\'s Chapter 20. Your foundation is being laid.');
   }
+
+  // ── V101a: 清理灵性毒鸡汤模板词（军师2026-07-12审计：金融神谕禁塞"前世"）──
+  // 金融报告调性=硬核风控，禁止 past lives / karma 等地摊占卜词
+  text = text
+    .replace(/,?\s*(and\s+)?from\s+past lives\b/gi, '')
+    .replace(/,?\s*(y|and)?\s*(de\s+)?vidas pasadas\b/gi, '')
+    .replace(/,?\s*(et\s+)?de\s+vies antérieures\b/gi, '')
+    .replace(/[，、]?\s*甚至前世\b/g, '')
+    .replace(/[，、]?\s*来自前世\b/g, '');
   // U+200B → 零宽空格，U+FEFF → BOM，U+200D → 零宽连字
   text = text.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFFE\uFFF0-\uFFFF]/g, '');
 
@@ -988,15 +997,18 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
 
 
-    // ── V100r: 英文年报专属防幻觉规则（军师2026-07-12审计发现火星位置复读问题）──
-    if (lang === 'en') {
-      yearlySystem += `
-[ANTI-HALLUCINATION RULES — CRITICAL]:
-1. MARS TRANSIT ACCURACY: Mars changes signs every 6-8 weeks. In 2027, Mars leaves Virgo by January. It does NOT square Uranus in Gemini in February, May, or June 2027. Only reference Mars aspects that appear in [ASPECTS_DATA] above. For months without listed Mars aspects, say "Mars has transitioned to [current sign]" and describe its new house position.
-2. NO INTERNET QUOTE INJECTION: Never write "Chapter 1 to Chapter 20" or similar motivational quotes. Do not merge internet quotes with chapter markers (✦). Every ✦ marker must be followed by genuine Chapter content, not a mangled quote.
-3. PLANET POSITION HONESTY: If [ASPECTS_DATA] does not list an aspect for a specific month, do not infer or hallucinate that aspect. Say "This month carries the residue of [aspect] from [previous month]" instead.
-`;
-    }
+    // ── V102: 防幻觉 + 逆行回声叙事链（军师2026-07-12审计校正）──
+    // ⚠️ 废除旧 V100r 错误规则（它误称火星2027/1离开处女、不刊天王，与 SwissEph 真数据冲突）
+    // 真相：2027年火星逆行，在狮子-处女区间反复停留大半年，真实反复刊克双子座天王星
+    const RETRO_NARRATIVE = {
+      zh: '\n\n[防幻觉与逆行叙事链 — CRITICAL]:\n1. 行星位置只能引用 [ASPECTS_DATA] 与逐月 SWISSEPH 真值，严禁自行推算。\n2. 逆行回声铁律：若同一相位（如火星刊天王）因逆行(Rx)跨多月重复出现，必须主动点破逆行，绝不得写成“突发新事件”。首次写“初次冲击波”；中期写“火星逆行回归，宇宙锁定你进入漫长试炼——这不是新危机，而是同一相位的第二波回声”；末期写“火星终于走出阴影区，你承受这场长周期炌炼的余音”。\n3. 满月星座用 moon_sign，绝不把太阳星座当满月星座。\n4. 禁止互联网金句（如“Chapter 1 to Chapter 20”）与章节标记混合。',
+      en: '\n\n[ANTI-HALLUCINATION & RETROGRADE NARRATIVE — CRITICAL]:\n1. Only reference planetary positions from [ASPECTS_DATA] and the per-month SWISSEPH truth. NEVER infer or invent aspects.\n2. RETROGRADE ECHO RULE: If an aspect (e.g. Mars square Uranus) repeats across multiple months due to Retrograde (Rx) motion, you MUST explicitly acknowledge this cosmic redundancy — never present it as a sudden NEW event in later months. First 1-2 months: an acute shock wave. Middle (Rx) months: "As Mars stations retrograde, turning back into the forge, the universe locks you in a prolonged trial — this is not a new crisis, but the second testing wave of the identical alignment." Final months: "As Mars finally clears its shadow track, you endure the residual echo of this long-term crucible."\n3. FULL MOON SIGN: always use the Moon\'s actual sign (moon_sign), never the Sun\'s sign.\n4. NO INTERNET QUOTE INJECTION: never merge motivational quotes ("Chapter 1 to Chapter 20") with chapter markers.',
+      es: '\n\n[ANTI-ALUCINACIÓN Y NARRATIVA RETRÓGRADA — CRÍTICO]:\n1. Solo usa posiciones planetarias de [ASPECTS_DATA] y la verdad SWISSEPH mensual. NUNCA inventes aspectos.\n2. REGLA DE ECO RETRÓGRADO: si un aspecto (ej. Marte cuadratura Urano) se repite varios meses por movimiento retrógrado (Rx), DEBES reconocer explícitamente esta redundancia cósmica; nunca lo presentes como un evento NUEVO repentino en meses posteriores.\n3. SIGNO DE LUNA LLENA: usa siempre el signo real de la Luna (moon_sign), nunca el del Sol.\n4. Nunca mezcles frases motivacionales con marcadores de capítulo.',
+      fr: '\n\n[ANTI-HALLUCINATION & NARRATIF RÉTROGRADE — CRITIQUE]:\n1. N\'utilisez que les positions planétaires de [ASPECTS_DATA] et la vérité SWISSEPH mensuelle. N\'inventez JAMAIS d\'aspects.\n2. RÈGLE DE L\'ÉCHO RÉTROGRADE : si un aspect (ex. Mars carré Uranus) se répète sur plusieurs mois à cause du mouvement rétrograde (Rx), vous DEVEZ reconnaître explicitement cette redondance cosmique ; ne le présentez jamais comme un nouvel événement soudain.\n3. SIGNE DE PLEINE LUNE : utilisez toujours le signe réel de la Lune (moon_sign), jamais celui du Soleil.\n4. Ne mélangez jamais de citations motivantes avec les marqueurs de chapitre.',
+      th: '\n\n[กฎต้านภาพหลอนและการเล่าเรื่องดาวพัก — สำคัญ]:\n1. ใช้ตำแหน่งดาวจาก [ASPECTS_DATA] และข้อมูล SWISSEPH รายเดือนเท่านั้น ห้ามกุอมุมดาว.\n2. กฎเสียงสะท้อนดาวพัก: หากมุมดาวซ้ำหลายเดือนเพราะดาวเคราะห์ถอยหลัง (Rx) ต้องยอมรับว่าเป็นการสะท้อนซ้ำ ห้ามเขียนเป็นเหตุการณ์ใหม่.\n3. ราศีจันทร์เต็มดวงใช้ moon_sign เสมอ.\n4. ห้ามผสมคำคมอินเทอร์เน็ตกับเครื่องหมายบท.',
+      vi: '\n\n[CHỐNG ẢO GIÁC & TƯỜNG THUẬT NGHỊCH HÀNH — QUAN TRỌNG]:\n1. Chỉ dùng vị trí hành tinh từ [ASPECTS_DATA] và sự thật SWISSEPH từng tháng. TUYỆT ĐỐI không bịa đặt góc chiếu.\n2. QUY TẮC TIẾNG VỌNG NGHỊCH HÀNH: nếu một góc chiếu (ví dụ Hỏa vuông Thiên Vương) lặp lại nhiều tháng do nghịch hành (Rx), BẮT BUỘC phải thừa nhận sự lặp lại này, không trình bày như sự kiện MỚI đột ngột.\n3. CUNG TRĂNG TRÒN dùng moon_sign, không dùng cung Mặt Trời.\n4. Không trộn câu nói truyền cảm hứng với dấu chương.'
+    };
+    yearlySystem += (RETRO_NARRATIVE[lang] || RETRO_NARRATIVE.en);
 
     // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     if (aspectsData) {
@@ -1382,7 +1394,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v100r:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1837,7 +1849,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v100r:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

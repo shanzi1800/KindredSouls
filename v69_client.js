@@ -364,12 +364,15 @@ export function buildAspectsData(astroMatrix, lang = 'zh') {
   }
 
   // ── 新月满月 ──
+  // 🛡️ V102: 满月必须用 moon_sign（月亮所在座），不能用 sun_sign！满月月亮在太阳对宫。
   if (moons && moons.length > 0) {
-    lines.push('【新月与满月】:');
+    lines.push('【新月与满月 — 标星座用月亮实际星座(moon_sign)，绝不能把太阳星座当成满月星座】:');
     const moonNames = {NEW_MOON:'🌑 新月', FULL_MOON:'🌕 满月'};
     for (const m of moons.slice(0, 20)) {
       const label = moonNames[m.type] || m.type;
-      lines.push(`  ${label}: ${m.date}（${m.sun_sign}）`);
+      // 新月：月=日同座；满月：月在对宫（moon_sign）。优先用 moon_sign，缺失时才 fallback sun_sign。
+      const moonSign = m.moon_sign || m.sun_sign;
+      lines.push(`  ${label}: ${m.date}（月亮在 ${moonSign}座）`);
     }
     lines.push('');
   }
@@ -409,6 +412,7 @@ export function buildAspectsData(astroMatrix, lang = 'zh') {
   lines.push('  1. 只引用上面列出的相位，严禁自己编造');
   lines.push('  2. 黑天鹅日（危机日）描述必须引用以上相位');
   lines.push('  3. 新月/满月可写作重要财富节点，但不得改为其他相位');
+  lines.push('  ⚠️ 3b. 满月星座必须用上表标注的【月亮实际星座】，绝对禁止把太阳星座当成满月星座（满月时月亮总在太阳对宫）！');
   lines.push('  4. 每月太阳星座、宫位必须与 locking table 严格一致');
   lines.push('');
 

@@ -207,12 +207,14 @@ def find_lunar_phases(start_year: int, start_month: int, num_months: int = 12) -
                 'date': current.strftime('%Y-%m-%d'),
                 'type': 'NEW_MOON' if diff <= 3 else ('FULL_MOON' if abs(diff - 180) <= 3 else ''),
                 'sun_sign': get_sign(sun_deg),
+                'moon_sign': get_sign(moon_deg),  # V102: 新月月=日同座，用真实月亮黄经防幻觉
             })
         elif 177 <= diff <= 183:
             phases.append({
                 'date': current.strftime('%Y-%m-%d'),
                 'type': 'FULL_MOON',
                 'sun_sign': get_sign(sun_deg),
+                'moon_sign': get_sign(moon_deg),  # V102: 满月月在对宫！必须用 moon_sign，不能用 sun_sign
             })
         current += timedelta(days=1)
 
