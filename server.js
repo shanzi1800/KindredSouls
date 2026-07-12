@@ -360,7 +360,7 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 // DeepSeek Streaming 时常产生「年份重影」：2026年6月2026年6月6月21日
 // 本函数暴力清洗所有已知的污染模式
 // 🛠️ V97w: 后处理硬替换——逐月检查标题的太阳星座，用锁表修正AI胡编（治本：Prompt锁不住就后门堵死）
-function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null) {
+function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null, lang = 'zh') {
   if (currentYear === null) currentYear = new Date().getFullYear();
   if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
   console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
@@ -392,6 +392,15 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     text = text.replace(titleRe, (match, prefix) => {
       return `${prefix}太阳${entry.sign}${houseStr}`;
     });
+
+    // 🛠️ V102u: 语言感知标题锁（仅 zh 报告）——AI 偶尔把月度标题写成 "Sun in 巨蟹座第7宫" 等英文/混杂格式，
+    // 强制转回中文 "太阳{sign}座第{house}宫"，值仍从 SwissEph 死锁（杜绝英文词混进中文报告，且不依赖 AI 听话）。
+    if (lang === 'zh') {
+      const enTitleRe = new RegExp(`(${ymEscaped}[：:]\s*)Sun\s+in\s*[^·\n]{0,30}?(?=\s*[·\n]|$)`, 'gi');
+      text = text.replace(enTitleRe, (match, prefix) => {
+        return `${prefix}太阳${entry.sign}${houseStr}`;
+      });
+    }
 
     // Also fix "太阳进入[WRONG]座" in the body text for same month
     // e.g.: "六月，太阳进入水瓶座" → "六月，太阳进入双子座"
@@ -1441,7 +1450,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v102u:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102v:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1898,7 +1907,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v102u:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102v:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2155,7 +2164,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V102s: 流式端点接入完整清洗器（此前只跑 langPunctuationClean，漏了宫位降维/月锁/前世清洗）
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     cleanedText = final_text_sanitizer(cleanedText, _ascStream);
-    cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix);
+    cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
     if (cleanedText !== fullTextCollector) {
@@ -2204,7 +2213,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const fdata = await fullRes.json();
           let ft = fdata.choices?.[0]?.message?.content || '';
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库（防脏缓存）
-          if (ft) ft = applyMonthLockSanitizer(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream), astroMatrix);
+          if (ft) ft = applyMonthLockSanitizer(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream), astroMatrix, null, null, lang);
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
             writeToCache(ft).catch(() => {});
