@@ -1951,13 +1951,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
         const streamText = cachedText;
-        // 一次性发送完整内容（避免分块被 Railway 代理截断）
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: streamText })}\n\n`, 'utf-8'));
-        if (typeof res.flush === 'function') res.flush();
+        // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
+        // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
+        const CHUNK_SIZE = 2000;
+        const totalChunks = Math.ceil(streamText.length / CHUNK_SIZE);
+        for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
+          const chunk = streamText.slice(i, i + CHUNK_SIZE);
+          res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
+          if (typeof res.flush === 'function') res.flush();
+        }
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
         res.end();
-        console.log(`[wealth-stream] [OK] Cache instant complete, ${streamText.length} chars`);
+        console.log(`[wealth-stream] [OK] Cache instant chunked complete, ${streamText.length} chars in ${totalChunks} chunks`);
         return;
       }
     }
