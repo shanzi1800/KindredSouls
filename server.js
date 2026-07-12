@@ -199,7 +199,13 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/\s{2,}/g, ' ');
 
   // ── V97ar: 清理隐身脏字符（Emoji 变体选择符/零宽字符/不可见 Unicode）──
-  // U+FE0F → Emoji 变体选择符（表现为不可见方块）
+  // ── V100r: 清理模板污染残留（军师审计：AI将互联网金句与章节标记混合）──
+  // ── V100r: 清理互联网金句与章节标记混合污染（军师2026-07-12审计发现）──
+  // 直接字符串替换，避免regex转义问题
+  if (text.includes('Do not compare your') && text.includes('Chapter 1') && text.includes('Chapter 20')) {
+    text = text.replace(/Do not compare your[\s\S]{10,250}?Chapter \d+[\s\S]{5,100}?Chapter \d+/gi,
+      'Do not compare your Chapter 1 to someone else\'s Chapter 20. Your foundation is being laid.');
+  }
   // U+200B → 零宽空格，U+FEFF → BOM，U+200D → 零宽连字
   text = text.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFFE\uFFF0-\uFFFF]/g, '');
 
@@ -981,6 +987,17 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
     };
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
 
+
+    // ── V100r: 英文年报专属防幻觉规则（军师2026-07-12审计发现火星位置复读问题）──
+    if (lang === 'en') {
+      yearlySystem += `
+[ANTI-HALLUCINATION RULES — CRITICAL]:
+1. MARS TRANSIT ACCURACY: Mars changes signs every 6-8 weeks. In 2027, Mars leaves Virgo by January. It does NOT square Uranus in Gemini in February, May, or June 2027. Only reference Mars aspects that appear in [ASPECTS_DATA] above. For months without listed Mars aspects, say "Mars has transitioned to [current sign]" and describe its new house position.
+2. NO INTERNET QUOTE INJECTION: Never write "Chapter 1 to Chapter 20" or similar motivational quotes. Do not merge internet quotes with chapter markers (✦). Every ✦ marker must be followed by genuine Chapter content, not a mangled quote.
+3. PLANET POSITION HONESTY: If [ASPECTS_DATA] does not list an aspect for a specific month, do not infer or hallucinate that aspect. Say "This month carries the residue of [aspect] from [previous month]" instead.
+`;
+    }
+
     // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     if (aspectsData) {
       yearlySystem = aspectsData + '\n' + yearlySystem;
@@ -1365,7 +1382,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v100q:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v100r:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1820,7 +1837,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v100q:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v100r:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2113,7 +2130,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               { role: 'system', content: prompt.system },
               { role: 'user', content: prompt.user },
             ],
-            max_tokens: 48000,
+            max_tokens: 64000,
             temperature: 0,
             seed: seedFromUserPrompt(prompt.user),
           })),
