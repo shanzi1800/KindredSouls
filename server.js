@@ -2044,7 +2044,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     };
     const cleanedText = langPunctuationClean(fullTextCollector, lang);
 
-    // 流式结束，发送清洗后的内容 + [DONE]
+    // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
+    if (cleanedText !== fullTextCollector) {
+      try {
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
+      } catch(e) {}
+    }
+
+    // 流式结束，发送 [DONE]
     res.write('data: [DONE]\n\n');
     if (typeof res.flush === 'function') res.flush();
 
