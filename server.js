@@ -397,8 +397,6 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     // 强制转回中文 "太阳{sign}座第{house}宫"，值仍从 SwissEph 死锁（杜绝英文词混进中文报告，且不依赖 AI 听话）。
     if (lang === 'zh') {
       const enTitleRe = new RegExp(`(${ymEscaped}[：:]\s*)Sun\s+in\s*[^·\n]{0,30}?(?=\s*[·\n]|$)`, 'gi');
-      const _dbgHit = enTitleRe.test(text);
-      if (i === 0) console.log('[enTitle-debug] lang=', JSON.stringify(lang), 'ym=', ymEscaped, 'hit=', _dbgHit, 'sample=', text.substring(0, 160).replace(/\n/g,' '));
       text = text.replace(enTitleRe, (match, prefix) => {
         return `${prefix}太阳${entry.sign}${houseStr}`;
       });
