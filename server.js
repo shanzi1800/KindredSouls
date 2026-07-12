@@ -1062,11 +1062,18 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       const plSignEN = 'Aquarius';
 
       // P1.2 Fixed Lexicon: 从 lexicon.js 读取 6 语言星座名
-      const signMap = LEXICON[lang]?.signs || LEXICON.en.signs;
-      risingLocal = signMap[rising] || rising;
-      jupSignLocal = signMap[jupSign] || jupSign;
-      satSignLocal = signMap[satSign] || satSign;
-      moonSignLocal = signMap[first.moon?.sign] || first.moon?.sign || 'Cancer';
+      // 🛠️ V100g: LEXICON[lang].signs 返回 SIGNS 对象（12个星座），不是语言名
+      const SIGNS_TABLE = LEXICON[lang]?.signs || LEXICON.en.signs;
+      // SIGNS[signKey][lang] 返回该语言名
+      const signName = (signKey, fallback) => {
+        const entry = SIGNS_TABLE[signKey];
+        if (entry && typeof entry === 'object' && entry[lang]) return entry[lang];
+        return entry && entry.en ? entry.en : (signKey || fallback);
+      };
+      risingLocal = signName(rising, 'Cancer');
+      jupSignLocal = signName(jupSign, 'Leo');
+      satSignLocal = signName(satSign, 'Aries');
+      moonSignLocal = signName(first.moon?.sign, 'Cancer');
 
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
