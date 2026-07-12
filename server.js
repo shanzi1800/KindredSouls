@@ -239,11 +239,8 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   text = text
     .split('\n')
     .filter(line => {
-      const trimmed = line.trim();
-      // 如果行内含"火星在XX座"且紧跟宫位描述，删掉整行
-      if (/(?:火星|凯龙|北交点)在[^。\n]{0,20}(?:座|第[一二三四五六七八九十百\d]+宫)/.test(trimmed)) return false;
-      // 如果是描述火星相位冲突的行（整段描述火星+土星/天王星冲突）
-      if (/火星[^。\n]{0,40}(?:四分|三分|六分|对分|合相).+?(?:土星|天王星)/.test(trimmed)) return false;
+      // 🛠️ V102t: 停用火星整行删除——星座+相位是真天文(不依赖出生时间)，只有宫位号穿帮。
+      // 宫位号交由下方 V102s 降维单独砍除，保留完整黑天鹅内容(星座/相位/日期)。
       return true;
     })
     .join('\n');
@@ -1441,7 +1438,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v102s:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102t:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1898,7 +1895,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v102s:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102t:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2151,7 +2148,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
       return text;
     };
-    const cleanedText = langPunctuationClean(fullTextCollector, lang);
+    let cleanedText = langPunctuationClean(fullTextCollector, lang);
+    // 🛠️ V102s: 流式端点接入完整清洗器（此前只跑 langPunctuationClean，漏了宫位降维/月锁/前世清洗）
+    const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
+    cleanedText = final_text_sanitizer(cleanedText, _ascStream);
+    cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix);
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
     if (cleanedText !== fullTextCollector) {
@@ -2198,22 +2199,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         });
         if (fullRes.ok) {
           const fdata = await fullRes.json();
-          const ft = fdata.choices?.[0]?.message?.content || '';
-          if (ft && ft.length > fullTextCollector.length) {
-            console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${fullTextCollector.length}, caching full text`);
+          let ft = fdata.choices?.[0]?.message?.content || '';
+          // 🛠️ V102s: 补全文本也过一道完整清洗再落库（防脏缓存）
+          if (ft) ft = applyMonthLockSanitizer(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream), astroMatrix);
+          if (ft && ft.length > cleanedText.length) {
+            console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
             writeToCache(ft).catch(() => {});
           } else {
-            console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${fullTextCollector.length}), caching stream only`);
-            writeToCache(fullTextCollector).catch(() => {});
+            console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${cleanedText.length}), caching cleaned stream`);
+            writeToCache(cleanedText).catch(() => {});
           }
         } else {
           const errBody = await fullRes.text().catch(() => '');
           console.error(`[wealth-stream] [ERROR] Completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
-          writeToCache(fullTextCollector).catch(() => {});
+          writeToCache(cleanedText).catch(() => {});
         }
       } catch (e) {
-        console.error('[wealth-stream] 补全失败，落库截断版本:', e.message);
-        writeToCache(fullTextCollector).catch(() => {});
+        console.error('[wealth-stream] 补全失败，落库清洗版本:', e.message);
+        writeToCache(cleanedText).catch(() => {});
       }
     }
 
