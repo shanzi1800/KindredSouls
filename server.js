@@ -248,6 +248,21 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
     })
     .join('\n');
 
+  // ── V102s: 行内"非锁定行星"宫位降维 ──
+  // 只砍火星/天王/海王/水星/金星在正文里瞎写的宫位号（保留星座）；太阳/月亮/木星/土星/冥王的锁定宫位绝不碰。
+  // 中文：行星+在+X座+第N宫 → 保留"行星在X座"，砍宫位
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)(在[\u4e00-\u9fa5]{1,3}座)第[一二三四五六七八九十百零\d]+宫/g, '$1$2');
+  // 中文：行星+在(你/您)的+第N宫（无星座）→ 砍"在…第N宫"
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在[\u4e00-\u9fa5你您]{0,6}?第[一二三四五六七八九十百零\d]+宫/g, '$1');
+  // 英/西/法：Planet [in Sign] + House/Casa/Maison N → 保留 Planet in Sign
+  text = text.replace(/\b(Mars|Uranus|Neptune|Mercury|Venus|Chiron)(\s+in\s+[A-Z][a-z]+)?(\s*(?:\(|,|\bin\b)?\s*(?:the\s+)?(?:\d+(?:st|nd|rd|th)\s+House|House\s+\d+|Casa\s+\d+|Maison\s+\d+)\)?)/g, '$1$2');
+  // 泰：ดาว... + ภพที่/เรือนที่ N
+  text = text.replace(/(ดาวอังคาร|ดาวยูเรนัส|ดาวเนปจูน|ดาวพุธ|ดาวศุกร์)([^\n]{0,12}?)(?:ภพที่|เรือนที่)\s*\d+/g, '$1$2');
+  // 越：Sao Hỏa/Thiên Vương/Hải Vương/Thủy/Kim + Nhà N
+  text = text.replace(/(Sao Hỏa|Sao Thiên Vương|Sao Hải Vương|Sao Thủy|Sao Kim)([^\n]{0,12}?)\s*Nhà\s*\d+/g, '$1$2');
+  // 降维收尾：仅合并多余空格（不碰换行，保护 markdown 段落）
+  text = text.replace(/ {2,}/g, ' ');
+
   // ── 通用宫位纠正（治本：按实际上升星座算 Equal House，替代写死 Cancer 映射）──
   // 旧逻辑只对 Cancer 生效且写死映射，导致非 Cancer 用户被错误纠正（如摩羯用户白羊被纠成第10宫）。
   const houseMap = getSignToHouseMap(ascendant);
@@ -731,7 +746,7 @@ const SUN_SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座'
 const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
 const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
 
-function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix) {
+function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
   try {
 
@@ -1097,6 +1112,8 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
 
     // ── 🛠️ V91: 把 if 块内声明的常量提升到外层 let，供 V89 HEADER_ENFORCE 访问 ──
     let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '', moonSignLocal = '';
+    // 🛠️ V102s: 本命月亮（区别于流月 moonSignLocal），用于报头核心本命代码硬锁
+    let natalMoonSign = '', natalMoonSignEN = '';
     let jupHouse = 0, satHouse = 0, plHouse = 0, sunHouse = 0, moonHouse = 0;
 
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
@@ -1134,6 +1151,10 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
       jupSignLocal = signName(jupSign, 'Leo');
       satSignLocal = signName(satSign, 'Aries');
       moonSignLocal = signName(first.moon?.sign, 'Cancer');
+      // 🛠️ V102s: 本命月亮从 SwissEph natal_planets 取真值（报头用），非流月月亮
+      const natalMoonEN = astroMatrix.natal_planets?.Moon?.sign || first.moon?.sign || 'Cancer';
+      natalMoonSignEN = natalMoonEN;
+      natalMoonSign = signName(natalMoonEN, natalMoonEN);
 
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
@@ -1192,13 +1213,37 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
 
     // ⛔ V89: 注入强制头部模板到 system prompt（system > user 层级更高）
     // ── V97h: 本命太阳星座头部锁（全语言，治本：zh/en/es/fr/th/vi 均强制锁死本命太阳，防止 AI 幻觉改写头部元数据）──
+    // 🛠️ V102s: 核心本命代码硬锁（太阳+月亮 SwissEph 算死；无出生时间→砍上升，杜绝编造）
+    const _mZH = natalMoonSign ? ` · 月亮${natalMoonSign}` : '';
+    const _mEN = natalMoonSignEN ? ` · Moon ${natalMoonSignEN}` : '';
+    const _mES = natalMoonSign ? ` · Luna ${natalMoonSign}` : '';
+    const _mFR = natalMoonSign ? ` · Lune ${natalMoonSign}` : '';
+    const _mTH = natalMoonSign ? ` · ดวงจันทร์${natalMoonSign}` : '';
+    const _mVI = natalMoonSign ? ` · Mặt Trăng ${natalMoonSign}` : '';
+    const _rHB = hasBirthTime && risingLocal;
+    const NATAL_CODE = {
+      zh: `太阳${natalSunSign}${_mZH}${_rHB?` · 上升${risingLocal}`:''}`,
+      en: `Sun ${natalSunSignEN}${_mEN}${_rHB?` · Rising ${risingLocal}`:''}`,
+      es: `Sol ${natalSunSign}${_mES}${_rHB?` · Ascendente ${risingLocal}`:''}`,
+      fr: `Soleil ${natalSunSign}${_mFR}${_rHB?` · Ascendant ${risingLocal}`:''}`,
+      th: `ดวงอาทิตย์${natalSunSign}${_mTH}${_rHB?` · ราศีขึ้น${risingLocal}`:''}`,
+      vi: `Mặt Trời ${natalSunSign}${_mVI}${_rHB?` · Cung Mọc ${risingLocal}`:''}`,
+    };
+    const NO_RISING = {
+      zh: hasBirthTime ? '' : '\n⛔ 未提供出生时间：绝对禁止在头部或全文声称任何"上升星座/Ascendant"。核心本命代码只写太阳与月亮，不得追加上升字段。',
+      en: hasBirthTime ? '' : '\n⛔ Birth time NOT provided: NEVER state any "Rising/Ascendant" sign anywhere. Core Natal Code contains ONLY Sun and Moon — do NOT append a Rising field.',
+      es: hasBirthTime ? '' : '\n⛔ Sin hora de nacimiento: NUNCA indiques un "Ascendente". El Código Natal solo lleva Sol y Luna.',
+      fr: hasBirthTime ? '' : '\n⛔ Heure de naissance absente : NE JAMAIS indiquer un "Ascendant". Le Code Natal ne contient que Soleil et Lune.',
+      th: hasBirthTime ? '' : '\n⛔ ไม่มีเวลาเกิด: ห้ามระบุ "ราศีขึ้น/Ascendant" เด็ดขาด รหัสดวงชะตาแกนกลางมีแค่ดวงอาทิตย์และดวงจันทร์.',
+      vi: hasBirthTime ? '' : '\n⛔ Không có giờ sinh: TUYỆT ĐỐI không nêu "Cung Mọc/Ascendant". Mã Bản Đồ Sao chỉ gồm Mặt Trời và Mặt Trăng.',
+    };
     const HE_MAP = {
-      zh: `\n\n⛔ [强制头部值 — 不得更改，原样抄录]:\n本用户的本命太阳星座是 ${natalSunSign}（由出生日期 ${birthDate} 经天文计算确定，绝对正确）。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunSign} · 太阳回归年\n🗝️ 核心本命代码: 太阳${natalSunSign}...\n所有 'X座之人' 必须用 ${natalSunSign}，绝对不得输出其他星座。\n若头部元数据出现错误的太阳星座（如写成'双子座'），生成将被拒绝！`,
-      en: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSignEN} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunSignEN} · Solar Return\n🗝️ Core Natal Code: Sun ${natalSunSignEN}...\nAll 'O child of X' MUST use ${natalSunSignEN} — NEVER other signs.\nIf the header contains a WRONG Sun Sign, generation will be REJECTED!`,
-      es: `\n\n⛔ [CABECERA OBLIGATORIA — NO CAMBIAR, COPIAR VERBATIM]:\nEl Signo Solar Natal del usuario es ${natalSunSign} (Efemérides Suizas, fecha ${birthDate}).\nTU CABECERA DEBE usar exactamente:\n🌌 Carta Solar Anual: ${natalSunSign} · Retorno Solar\n🗝️ Código Natal Central: Sol ${natalSunSign}...\nTodo 'Hijo de X' DEBE usar ${natalSunSign} — NUNCA otros signos.\nSi la cabecera contiene un Signo Solar ERRÓNEO, la generación será RECHAZADA!`,
-      fr: `\n\n⛔ [EN-TÊTE OBLIGATOIRE — NE PAS CHANGER, COPIER VERBATIM]:\nLe Signe Solaire Natal de l'utilisateur est ${natalSunSign} (Éphémérides Suisses, date ${birthDate}).\nTON EN-TÊTE DOIT utiliser exactement:\n🌌 Thème Solaire Annuel: ${natalSunSign} · Retour Solaire\n🗝️ Code Natal Central: Soleil ${natalSunSign}...\nTout 'Enfant de X' DOIT utiliser ${natalSunSign} — JAMAIS d'autres signes.\nSi l'en-tête contient un Signe Solaire ERRONÉ, la génération sera REJETÉE!`,
-      th: `\n\n⛔ [ส่วนหัวบังคับ — ห้ามเปลี่ยน คัดลอกตรงๆ]:\nดวงอาทิตย์ประจำตัวของผู้ใช้คือ ${natalSunSign} (Efemerides Suizas, วันเกิด ${birthDate}).\nส่วนหัวของคุณต้องใช้ตรงๆ:\n🌌 เวลาราศีประจำปี: ${natalSunSign} · การกลับมาของดวงอาทิตย์\n🗝️ รหัสดวงชะตาแกนกลาง: ดวงอาทิตย์${natalSunSign}...\nทุกคำว่า 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น.\nหากส่วนหัวมีราศีดวงอาทิตย์ผิด การสร้างจะถูกปฏิเสธ!`,
-      vi: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSign} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời\n🗝️ Mã Bản Đồ Sao Chính: Mặt Trời ${natalSunSign}...\nAll 'O child of X' MUST use ${natalSunSign} — NEVER other signs.\nIf header contains wrong Sun Sign, generation will be REJECTED!`,
+      zh: `\n\n⛔ [强制头部值 — 不得更改，原样抄录]:\n本用户的本命太阳星座是 ${natalSunSign}（由出生日期 ${birthDate} 经天文计算确定，绝对正确）。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunSign} · 太阳回归年\n🗝️ 核心本命代码: ${NATAL_CODE.zh}\n所有 'X座之人' 必须用 ${natalSunSign}，绝对不得输出其他星座。${NO_RISING.zh}\n若头部元数据出现错误的太阳/月亮星座，生成将被拒绝！`,
+      en: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSignEN} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunSignEN} · Solar Return\n🗝️ Core Natal Code: ${NATAL_CODE.en}\nAll 'O child of X' MUST use ${natalSunSignEN} — NEVER other signs.${NO_RISING.en}\nIf the header contains a WRONG Sun/Moon Sign, generation will be REJECTED!`,
+      es: `\n\n⛔ [CABECERA OBLIGATORIA — NO CAMBIAR, COPIAR VERBATIM]:\nEl Signo Solar Natal del usuario es ${natalSunSign} (Efemérides Suizas, fecha ${birthDate}).\nTU CABECERA DEBE usar exactamente:\n🌌 Carta Solar Anual: ${natalSunSign} · Retorno Solar\n🗝️ Código Natal Central: ${NATAL_CODE.es}\nTodo 'Hijo de X' DEBE usar ${natalSunSign} — NUNCA otros signos.${NO_RISING.es}\nSi la cabecera contiene un Signo ERRÓNEO, la generación será RECHAZADA!`,
+      fr: `\n\n⛔ [EN-TÊTE OBLIGATOIRE — NE PAS CHANGER, COPIER VERBATIM]:\nLe Signe Solaire Natal de l'utilisateur est ${natalSunSign} (Éphémérides Suisses, date ${birthDate}).\nTON EN-TÊTE DOIT utiliser exactement:\n🌌 Thème Solaire Annuel: ${natalSunSign} · Retour Solaire\n🗝️ Code Natal Central: ${NATAL_CODE.fr}\nTout 'Enfant de X' DOIT utiliser ${natalSunSign} — JAMAIS d'autres signes.${NO_RISING.fr}\nSi l'en-tête contient un Signe ERRONÉ, la génération sera REJETÉE!`,
+      th: `\n\n⛔ [ส่วนหัวบังคับ — ห้ามเปลี่ยน คัดลอกตรงๆ]:\nดวงอาทิตย์ประจำตัวของผู้ใช้คือ ${natalSunSign} (Efemerides Suizas, วันเกิด ${birthDate}).\nส่วนหัวของคุณต้องใช้ตรงๆ:\n🌌 เวลาราศีประจำปี: ${natalSunSign} · การกลับมาของดวงอาทิตย์\n🗝️ รหัสดวงชะตาแกนกลาง: ${NATAL_CODE.th}\nทุกคำว่า 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} — ห้ามใช้ราศีอื่น.${NO_RISING.th}\nหากส่วนหัวมีราศีผิด การสร้างจะถูกปฏิเสธ!`,
+      vi: `\n\n⛔ [MANDATORY HEADER — DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSign} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời\n🗝️ Mã Bản Đồ Sao Chính: ${NATAL_CODE.vi}\nAll 'O child of X' MUST use ${natalSunSign} — NEVER other signs.${NO_RISING.vi}\nIf header contains wrong Sun/Moon Sign, generation will be REJECTED!`,
     };
     yearlySystem += (HE_MAP[lang] || HE_MAP.en);
 
@@ -1390,11 +1435,13 @@ app.post('/api/wealth-oracle', async (req, res) => {
       tz = 'Asia/Bangkok',
       lang = 'zh',
     } = req.body;
+    // 🛠️ V102s: 是否真提供出生时间（未提供→报头不声称上升）
+    const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
     if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v102:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102s:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1579,7 +1626,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           sunSign,
           hexName,
           cardName,
-        }, astroMatrix);
+        }, astroMatrix, hasBirthTime);
         } catch (promptErr) {
           console.error('[Wealth Oracle] buildWealthReportPrompt CRASHED:', promptErr.message);
           console.error('[Wealth Oracle] Stack:', promptErr.stack);
@@ -1840,6 +1887,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     lang = 'zh',
     reportType = 'monthly',
   } = req.body;
+  // 🛠️ V102s: 是否真提供出生时间（未提供→报头不声称上升）
+  const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // SSE headers
@@ -1849,7 +1898,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v102:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102s:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1950,7 +1999,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       sunSign: realSunSign, // 🔧 V32: 使用真实星座
       hexName: '震',
       cardName: '隐士',
-    }, astroMatrix);  // ← Pass V69 matrix to prompt builder
+    }, astroMatrix, hasBirthTime);  // ← Pass V69 matrix + hasBirthTime to prompt builder
 
     // ── V97r: prompt 脏字符清洗（… → ...，防 ByteString 死锁）──
     if (prompt) {
