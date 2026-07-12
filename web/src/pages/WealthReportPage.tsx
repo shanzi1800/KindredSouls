@@ -472,8 +472,13 @@ const cleanRawReportText = (text: string): string => {
   // 3. 【无脑拍扁残余井号】
   c = c.replace(/^#+/gm, '');
 
-  // 4. 彻底物理超度 Emoji 和特殊符号（含 V99k 脏字符清洗）
-  c = c.replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟|✨|🎯|📈|💰/g, '');
+  // 4. 移除行首emoji（在markdown列表标记* - 后面的那几个图标），保留行中语义emoji（★星等真实数据）
+  // 只移除：行首 或 markdown列表标记(* - >)后面的 emoji，不碰行中的表情符号语义
+  c = c.replace(/^([📅📊📕✦📌🔮⭐💎🔥🌟✨🎯📈💰◆◇🌐]+)/g, '');
+  c = c.replace(/^[*\->]\s*([📅📊📕✦📌🔮⭐💎🔥🌟✨🎯📈💰◆◇🌐]+)/g, (m, g1) => m.slice(g1.length));
+  c = c.replace(/^[*\->]\s*([🚀⚠️🟢🔴💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)/g, (m, g1) => m.slice(g1.length));
+  // 保留装饰emoji到末尾统一处理
+  c = c.replace(/📅|📊|📕|📌|💎|🔥|✨|🎯|📈|💰/g, '');
   // V99k: 清除乱码方块（Emoji 变体选择符、零宽字符、未渲染 Unicode）
   c = c.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFF0-\uFFFF]/g, '');
   c = c.replace(/<fe0f>/gi, '');
