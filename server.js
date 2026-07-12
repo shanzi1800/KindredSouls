@@ -924,29 +924,53 @@ IMPORTANT:
           saturn: { sign: astroTruth.outerPlanets.saturn.signZH, house: astroTruth.outerPlanets.saturn.house, signZH: astroTruth.outerPlanets.saturn.signZH },
           pluto: { sign: astroTruth.outerPlanets.pluto.signZH, house: astroTruth.outerPlanets.pluto.house, signZH: astroTruth.outerPlanets.pluto.signZH }
         };
-    const astroTruthBlock = lang === 'en'
-      ? `
-⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, forbidden to extrapolate or rewrite]:
+    const _jupHouse = multiLangOuterPlanets.jupiter.house;
+const _satHouse = multiLangOuterPlanets.saturn.house;
+const _plHouse = multiLangOuterPlanets.pluto.house;
+const _archKeys = Object.entries(archetypeDict);
+const _astroTruthBlockMap = {
+  en: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, forbidden to extrapolate or rewrite]:
 【Monthly Sun Truth Table (12 months, locked month-by-month, no rewriting signs or houses)】
 ${multiLangTruthText}
 【Outer Planet Annual Themes (2026-2027 Fixed Astronomical Facts, Year-Unique, Immutable)】
-• Jupiter in Leo House ${multiLangOuterPlanets.jupiter.house}
-• Saturn in Aries House ${multiLangOuterPlanets.saturn.house}
-• Pluto in Aquarius House ${multiLangOuterPlanets.pluto.house}
+• Jupiter in Leo House ${_jupHouse}
+• Saturn in Aries House ${_satHouse}
+• Pluto in Aquarius House ${_plHouse}
 【12 Zodiac Archetype Dictionary (When describing X sign, MUST use this exact description, strictly forbidden to misattribute/sign-swap)】
-${Object.entries(archetypeDict).map(([k, v]) => `• ${k}: ${v}`).join('\n')}
-`
-      : `
-⛔ [ASTRO-LOGIC HARD TRUTH — 后端算死，AI 必须原样抄录，不得自行推算或改写]：
+${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
+`,
+  zh: `⛔ [ASTRO-LOGIC HARD TRUTH — 后端算死，AI 必须原样抄录，不得自行推算或改写]：
 【流月太阳真值表（12个月，逐月锁定，不得改写宫位或星座）】
 ${multiLangTruthText}
 【外行星年度主题（2026-2027 固定天文事实，全年唯一，不得变更）】
-• 木星在${multiLangOuterPlanets.jupiter.signZH}第${multiLangOuterPlanets.jupiter.house}宫
-• 土星在${multiLangOuterPlanets.saturn.signZH}第${multiLangOuterPlanets.saturn.house}宫
-• 冥王星在${multiLangOuterPlanets.pluto.signZH}第${multiLangOuterPlanets.pluto.house}宫
+• 木星在${multiLangOuterPlanets.jupiter.signZH}第${_jupHouse}宫
+• 土星在${multiLangOuterPlanets.saturn.signZH}第${_satHouse}宫
+• 冥王星在${multiLangOuterPlanets.pluto.signZH}第${_plHouse}宫
 【12星座原型字典（描写X座必须用此精确描述，严禁张冠李戴/星座夺舍）】
-${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
-`;
+${_archKeys.map(([k, v]) => `• ${k}：${v}`).join('\n')}
+`,
+  th: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, no language mixing allowed]:
+【Monthly Sun Truth Table (12 months, locked, no rewriting signs or houses)】
+${multiLangTruthText}
+【Outer Planet Annual Themes (2026-2027 Fixed Astronomical Facts)】
+• Jupiter in Leo House ${_jupHouse}
+• Saturn in Aries House ${_satHouse}
+• Pluto in Aquarius House ${_plHouse}
+【12 Zodiac Archetype Dictionary (English + Thai bilingual)】
+${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
+[⚠️ CRITICAL: This report is in THAI. Absolutely NO Chinese characters (中文) in any output! Use Thai or English only.]`,
+  vi: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, no language mixing allowed]:
+【Monthly Sun Truth Table (12 months, locked, no rewriting)】
+${multiLangTruthText}
+【Outer Planet Annual Themes】
+• Jupiter in Leo House ${_jupHouse}
+• Saturn in Aries House ${_satHouse}
+• Pluto in Aquarius House ${_plHouse}
+【12 Zodiac Archetype Dictionary】
+${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
+[⚠️ CRITICAL: This report is in VIETNAMESE. Absolutely NO Chinese characters (中文) in any output!]`,
+};
+const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
     const PLUTO_IRON = {
       zh: '\n\n[冥王星天文铁律 - PLUTO IRON RULE]: 冥王星（Pluto）已于2024年进入水瓶座（Aquarius），停留至2043年。2026-2027年报中冥王星绝对位于第8宫水瓶座，绝不可写摩羯座（Capricorn）！所有语言 Pluto 必须写 Aquarius/水瓶座。',
       en: '\n\n[PLUTO ASTRONOMY IRON RULE]: Pluto entered Aquarius in 2024 and remains until 2043. In 2026-2027 reports Pluto MUST be in Aquarius (8th House). NEVER write Capricorn for Pluto in any language!',
@@ -1341,7 +1365,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v100o:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v100q:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1796,7 +1820,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v100o:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v100q:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
