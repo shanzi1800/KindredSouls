@@ -62,6 +62,12 @@ const SacredYearlyReportBox: React.FC<{
     if (!text) return '';
     let cleaned = text;
 
+    // 0.0 V103: 换行恢复清洗器（缓存数据整章压成一行，渲染前强行注入换行，修复整章全金 bug）
+    // 必须在章节 ✦ 前缀注入（Step 8）之前执行；不重生成缓存，纯渲染预处理
+    cleaned = cleaned.replace(/####\s*📅/g, '\n#### 📅'); // 月份标记前注入换行
+    cleaned = cleaned.replace(/###\s+/g, '\n### ');       // 子章节标题前注入换行
+    cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
+
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
     cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]*\)/g, ''); // 蒸发 Markdown 图片标记 ![](...)
     cleaned = cleaned.replace(/!\[[^\]]*\]/g, ''); // 蒸发裸 ![alt]
