@@ -988,11 +988,17 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
       const rising = astroMatrix.meta?.rising_sign || 'Cancer';
       // V96 FIX: 所有 fallback 改为 1（未知），强制 AI 从 monthly data 读取正确值
       // 旧 fallback（暴露错误值）：jupHouse=2, satHouse=10, plHouse=8
-      const jupHouse = first.jupiter?.house ?? 1;
-      const satHouse = first.saturn?.house ?? 1;
-      const plHouse = first.pluto?.house ?? 1;
-      const sunHouse = first.sun?.house ?? 1;
-      const moonHouse = first.moon?.house ?? 1;
+      // 🛠️ V100o FIX: AstroMatrix house 可能是嵌套对象，递归提取数值
+      const getHouse = (v) => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'object' && v !== null) return v.house ?? v.natal_house ?? v[0] ?? 1;
+        return 1;
+      };
+      const jupHouse = getHouse(first.jupiter?.house);
+      const satHouse = getHouse(first.saturn?.house);
+      const plHouse = getHouse(first.pluto?.house);
+      const sunHouse = getHouse(first.sun?.house);
+      const moonHouse = getHouse(first.moon?.house);
 
       // P1.2 Fixed Lexicon: 从 lexicon.js 读取泰语/越南语星座和宫位
       const TH_SIGN = LEXICON.th.signs;
@@ -1043,11 +1049,12 @@ ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
       const rising = astroMatrix.meta?.rising_sign || 'Cancer';
-      jupHouse = first.jupiter?.house || 2;
-      satHouse = first.saturn?.house || 10;
-      plHouse = first.pluto?.house || 8;
-      sunHouse = first.sun?.house || 1;
-      moonHouse = first.moon?.house || 1;
+      const getH2 = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
+      jupHouse = getH2(first.jupiter?.house);
+      satHouse = getH2(first.saturn?.house);
+      plHouse = getH2(first.pluto?.house);
+      sunHouse = getH2(first.sun?.house);
+      moonHouse = getH2(first.moon?.house);
       const jupSign = first.jupiter?.sign || 'Leo';
       const satSign = first.saturn?.sign || 'Aries';
 
@@ -1334,7 +1341,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v100k:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v100o:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1789,7 +1796,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v100k:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v100o:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1913,7 +1920,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
     const controller = new AbortController();
     // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
-    try { aiTimeout = setTimeout(() => controller.abort(), 300000); } catch(e){}
+    try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
     if (!deepseekKey) {
       clearTimeout(aiTimeout);
