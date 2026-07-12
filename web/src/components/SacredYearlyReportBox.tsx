@@ -249,10 +249,17 @@ const SacredYearlyReportBox: React.FC<{
     const isThaiChapter = /^บทที่\s*\d+/.test(textWithoutIcon);
     // 🛠️ V83.2 FIX: 越南文 Chương I-V 也走大字金色（type:chapter），不降级成 heading
     const isVietnameseChapter = /Chương\s+[IVXivx\d]+/.test(textWithoutIcon);
-    const isChapterPattern = chapterPatterns.some(p => textWithoutIcon.includes(p)) || /^Section\s+[IVX]+/i.test(textWithoutIcon) || isThaiChapter;
+    // 🛠️ V102fix: 章节关键词只在行开头(≤40字内)或在 **bold/图标/markdown标记后匹配，
+    // 不匹配长段落中间的关键词（否则 blabla 第一章 blabla blabla 全被归为 heading→金色）
+    const prefix = textWithoutIcon.slice(0, 40);
+    const startsWithBold = textWithoutIcon.trim().startsWith('**');
+    const startsWithIcon = icon || /^[*\->]/.test(textWithoutIcon);
+    const isChapterPattern = (
+      (chapterPatterns.some(p => prefix.includes(p)) && (textWithoutIcon.trim().length < 60 || startsWithBold || startsWithIcon)) ||
+      /^Section\s+[IVX]+/i.test(textWithoutIcon)
+    );
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
     if (isChapterPattern || isSectionNumber) {
-      // V83.2: 越南文/泰文章节 → 大字金（chapter），其他 → 小字金（heading）
       if (isVietnameseChapter || isThaiChapter) {
         return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };
       }
