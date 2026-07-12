@@ -420,7 +420,49 @@ app.use((req, res, next) => {
 // Each route handler runs the original Vercel function logic
 
 // ── /api/debug-env ──
+// ── /api/debug-thai-prompt: 检查泰语 system prompt 是否正确加载 ──
+app.get('/api/debug-thai-prompt', async (req, res) => {
+  try {
+    const { buildWealthReportPrompt } = await import('./server.js').catch(() => ({}));
+    const thPrompt = await import('./src/prompts/yearlySystemTH.ts').catch(() => null);
+    const loader = await import('./src/prompts/loader.js').catch(() => null);
+    const sysPrompt = loader?.getSystemPromptByLocale?.('th') || '';
+    // Check for problem markers
+    const checks = {
+      length: sysPrompt.length,
+      hasASTRONOMY_MARKER: sysPrompt.includes('[2026-2027 ASTRONOMY FACT SHEET'),
+      hasASPECTS_MARKER: sysPrompt.includes('[ASPECTS_DATA]'),
+      hasRisingLocal: sysPrompt.includes('__RISING_LOCAL__'),
+      hasJupHouse: sysPrompt.includes('__JUP_HOUSE__'),
+      hasOBJECT_OBJECT: sysPrompt.includes('[object Object]'),
+      first200: sysPrompt.slice(0, 200),
+    };
+    res.json(checks);
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
 app.get('/api/debug-env', (req, res) => {
+  // 🛠️ V100e: 临时加 debug 看实际 prompt 语言
+  if (req.query.lang) {
+    try {
+      const lang = req.query.lang.toString();
+      const prompt = buildWealthReportPrompt('1992-12-21', lang, 'yearly', null, null);
+      const sys = prompt?.system || '';
+      return res.json({
+        lang,
+        sysLen: sys.length,
+        sysFirst300: sys.slice(0, 300),
+        sysLast300: sys.slice(-300),
+        sysHasChinese: /[\u4E00-\u9FFF]/.test(sys),
+        sysHasEnglish: /[A-Za-z]/.test(sys),
+        fileSize: readFileSync(__filename).length,
+      });
+    } catch (e) {
+      return res.json({ error: e.message, stack: e.stack?.slice(0, 500) });
+    }
+  }
   res.json({
     DEEPSEEK: process.env.DEEPSEEK_API_KEY ? '✓ set' : '✗ missing',
     GEMINI: process.env.GEMINI_API_KEY ? '✓ ' + process.env.GEMINI_API_KEY.slice(0,8) + '...' : '✗ missing',
