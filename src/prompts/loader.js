@@ -13,6 +13,7 @@ const __dirname = dirname(__filename);
 // Load language-specific prompts
 const yearlySystemZH = readFileSync(join(__dirname, 'yearlySystemZH.txt'), 'utf-8');
 const yearlySystemEN = readFileSync(join(__dirname, 'yearlySystemEN.txt'), 'utf-8');
+const yearlySystemTH = readFileSync(join(__dirname, 'yearlySystemTH.txt'), 'utf-8');
 
 /**
  * Multi-Language System Prompt Map
@@ -21,10 +22,10 @@ const yearlySystemEN = readFileSync(join(__dirname, 'yearlySystemEN.txt'), 'utf-
 export const SYSTEM_PROMPT_MAP = {
   'zh': yearlySystemZH,
   'en': yearlySystemEN,
+  'th': yearlySystemTH,
   // Fallback to English for languages not yet implemented
   'fr': yearlySystemEN,
   'es': yearlySystemEN,
-  'th': yearlySystemEN,
   'vi': yearlySystemEN,
 };
 
@@ -51,8 +52,8 @@ export function getSystemPromptByLocale(locale) {
 /**
  * Check if a locale has native implementation (not English fallback)
  */
+export const supportedNativeLocales = ['zh', 'en', 'th'];
 export function hasNativeLocale(locale) {
-  const supported = ['zh', 'en'];
   const normalizedLocale = (locale || '').toLowerCase().split('-')[0];
-  return supported.includes(normalizedLocale);
+  return supportedNativeLocales.includes(normalizedLocale);
 }
