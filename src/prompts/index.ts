@@ -5,7 +5,7 @@
 
 import { yearlySystemZH } from './yearlySystemZH';
 import { yearlySystemEN } from './yearlySystemEN';
-// Future: import { yearlySystemTH } from './yearlySystemTH';
+import { yearlySystemTH } from './yearlySystemTH';
 // Future: import { yearlySystemVI } from './yearlySystemVI';
 // Future: import { yearlySystemES } from './yearlySystemES';
 // Future: import { yearlySystemFR } from './yearlySystemFR';
@@ -22,7 +22,7 @@ const SYSTEM_PROMPT_MAP: Record<SupportedLocale, string> = {
   // Fallback to English for languages not yet implemented
   'fr': yearlySystemEN,
   'es': yearlySystemEN,
-  'th': yearlySystemEN,
+  'th': yearlySystemTH,
   'vi': yearlySystemEN,
 };
 
@@ -50,7 +50,7 @@ export function getSystemPromptByLocale(locale: string): string {
  * Check if a locale has native implementation (not English fallback)
  */
 export function hasNativeLocale(locale: string): boolean {
-  const supported = ['zh', 'en'];
+  const supported = ['zh', 'en', 'th'];
   const normalizedLocale = locale.toLowerCase().split('-')[0];
   return supported.includes(normalizedLocale);
 }
