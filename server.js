@@ -1450,7 +1450,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v102w:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102x:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1908,7 +1908,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Deploy-Marker', 'V102v-enTitleRe-ok'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v102w:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102x:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
