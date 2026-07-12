@@ -253,6 +253,14 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在[\u4e00-\u9fa5你您]{0,6}?第[一二三四五六七八九十百零\d]+宫/g, '$1');
   // 中文兜底：行星+任意描述(逆行/发生在你的/四分相等动词引导)+第N宫 → 砍宫位（补 V102s 仅要求紧接"在"的缺口，覆盖动词引导句式）
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^。\n]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
+  // 🛠️ Issue B 终级 fix: 贪婪捕获"在你的第N宫（XX座）"型复杂嵌套句式 → 砍宫位+括号内星座，保留行星和"在你的"引导
+  // 匹配：火星在你的第3宫（处女座）、水星在第5宫（狮子座）、冥王星在你的第12宫（水瓶座）等所有变体
+  text = text.replace(/(行星|[\u4e00-\u9fa5星曜]+星?)(在你|在他|在她|在|的)(第[一二三四五六七八九十百零0-9]+宫)(（[^）]+座）|\([^)]+座\))/g, '$1$2$3');
+  // 🛠️ Issue B 兜底："第N宫（XX座）"仍在句中 → 砍括号内星座（保留第N宫描述，但括号内星座必删，因与本命冲突）
+  text = text.replace(/第([一二三四五六七八九十百零0-9]+)宫（([^）]+)座）/g, '第$1宫');
+  text = text.replace(/第([一二三四五六七八九十百零0-9]+)宫\(([^)]+)座\)/g, '第$1宫');
+  // 🛠️ Issue B 兜底：行星+你的+第N宫（无括号）→ 砍"你的第N宫"保留行星
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在你的第[一二三四五六七八九十百零0-9]+宫/g, '$1');
   // 英/西/法：Planet [in Sign] + House/Casa/Maison N → 保留 Planet in Sign
   text = text.replace(/\b(Mars|Uranus|Neptune|Mercury|Venus|Chiron)(\s+in\s+[A-Z][a-z]+)?(\s*(?:\(|,|\bin\b)?\s*(?:the\s+)?(?:\d+(?:st|nd|rd|th)\s+House|House\s+\d+|Casa\s+\d+|Maison\s+\d+)\)?)/g, '$1$2');
   // 泰：ดาว... + ภพที่/เรือนที่ N
@@ -408,10 +416,26 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
       const monthNames = ['', '一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
       const cnMonth = monthNames[entry.month];
       if (cnMonth) {
-        const bodyRe = new RegExp(`(${cnMonth}[，,、\s]{0,5})太阳(?:\s*进入|\s*在|\s*行经|\s*来到|\s*进|\s*抵)\s*[^座\n]*?座\s*座?`, 'gi');
+        // 🛠️ Issue A fix: 贪婪捕获"6月，太阳/木星/土星在处女座"所有变体
+        // 覆盖：太阳在处女座 / 太阳进入处女座 / 太阳行经处女座 / 木星在处女座 等
+        const bodyRe = new RegExp(`(${cnMonth}[，,、\s]{0,5})(?:太阳|木星|土星|冥王星|月亮|火星|水星|金星)(?:\s*进入|\s*在|\s*行经|\s*来到|\s*进|\s*抵|\s*位于)?\s*[^座\n]*?座(?:\s*座)?`, 'gi');
         text = text.replace(bodyRe, (match, prefix) => {
-          return `${prefix}太阳进入${entry.sign}`;
+          // 提行星名：逐个匹配前缀中的行星关键词
+          const planets = ['太阳','木星','土星','冥王星','月亮','火星','水星','金星'];
+          let planet = '太阳';
+          for (const p of planets) {
+            if (match.includes(p)) { planet = p; break; }
+          }
+          return `${prefix}${planet}进入${entry.sign}`;
         });
+
+        // 🛠️ Issue A fix #2: 英文月份 body — "June, Sun in Virgo" → "June, Sun in Gemini"
+        const enMonths = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+        const enMonth = enMonths[entry.month];
+        if (enMonth) {
+          const enBodyRe = new RegExp(`(${enMonth}[,\s]{0,5})(Sun|Mars|Saturn|Jupiter|Moon|Mercury|Venus|Pluto)(?:\s+in|\s+enters|\s+entering)?\s+[^\n,]{3,30}?(?:sign|座)?`, 'gi');
+          text = text.replace(enBodyRe, (m, p, planet) => `${p}${planet} in ${entry.sign}`);
+        }
       }
     }
   }
