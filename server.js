@@ -2031,12 +2031,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // V99e: 跳过 sanitizer（避免删除大量行导致前端截断）
-    // SwissEph V69 已提供真数据，无需后处理矫正
-    const sanitizedFull = fullTextCollector;
+    // V100i: 英文标点清洗（去除中文全角标点污染）
+    const langPunctuationClean = (text, lang) => {
+      if (lang === 'en') {
+        return text
+          .replace(/——/g, ' — ')
+          .replace(/——/g, ' -- ')
+          .replace(/·/g, ' | ')
+          .replace(/　/g, ' '); // 全角空格
+      }
+      return text;
+    };
+    const cleanedText = langPunctuationClean(fullTextCollector, lang);
 
-
-    // 流式结束，发送 [DONE]（sanitized 在前，[DONE] 在后）
+    // 流式结束，发送清洗后的内容 + [DONE]
     res.write('data: [DONE]\n\n');
     if (typeof res.flush === 'function') res.flush();
 
@@ -2051,9 +2059,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       ? (hasFinalOracle && fullTextCollector.length > 8000)
       : (fullTextCollector.length > 500);
 
-    if (isComplete && fullTextCollector.length > 100) {
-      console.log(`[wealth-stream] [OK] Streaming done, cached ${fullTextCollector.length} chars`);
-      writeToCache(fullTextCollector).catch(() => {});
+    if (isComplete && cleanedText.length > 100) {
+      console.log(`[wealth-stream] [OK] Streaming done, cached ${cleanedText.length} chars (cleaned)`);
+      writeToCache(cleanedText).catch(() => {});
     } else if (fullTextCollector.length > 100) {
       console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
