@@ -769,29 +769,41 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
 
   // 🛠️ V97x 治本：代码算死12个月锁死标题（星座+宫位由 SwissEph 算死，AI 只填四字主题）
-  const ZH_SIGN_LOCK = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
-  const ZH_HOUSE_LOCK = {1:'第1宫',2:'第2宫',3:'第3宫',4:'第4宫',5:'第5宫',6:'第6宫',7:'第7宫',8:'第8宫',9:'第9宫',10:'第10宫',11:'第11宫',12:'第12宫'};
+  // 🛠️ V100f: 多语言版（按 lang 选字）
+  const SIGN_LOCKS = {
+    zh: {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'},
+    en: {Aries:'Aries', Taurus:'Taurus', Gemini:'Gemini', Cancer:'Cancer', Leo:'Leo', Virgo:'Virgo', Libra:'Libra', Scorpio:'Scorpio', Sagittarius:'Sagittarius', Capricorn:'Capricorn', Aquarius:'Aquarius', Pisces:'Pisces'},
+  };
+  const HOUSE_LOCKS = {
+    zh: {1:'第1宫',2:'第2宫',3:'第3宫',4:'第4宫',5:'第5宫',6:'第6宫',7:'第7宫',8:'第8宫',9:'第9宫',10:'第10宫',11:'第11宫',12:'第12宫'},
+    en: {1:'1st House',2:'2nd House',3:'3rd House',4:'4th House',5:'5th House',6:'6th House',7:'7th House',8:'8th House',9:'9th House',10:'10th House',11:'11th House',12:'12th House'},
+  };
+  const SIGN_LOCK = SIGN_LOCKS[lang] || SIGN_LOCKS.zh;
+  const HOUSE_LOCK = HOUSE_LOCKS[lang] || HOUSE_LOCKS.zh;
+  const MONTH_FMT = lang === 'en'
+    ? { yearPrefix: (y, m) => `${monthNamesEN[m - 1]} ${y}`, prefix: (y, m) => `${monthNamesEN[m - 1]} ${y}` }
+    : { yearPrefix: (y, m) => `${y}年${m}月`, prefix: (y, m) => `${y}年${m}月` };
   const lockedTitles = astroMatrix && astroMatrix.months
     ? astroMatrix.months.map((m, i) => {
         const sun = m.sun || {};
-        const signZh = ZH_SIGN_LOCK[sun.sign] || sun.sign || '未知座';
-        const houseZh = ZH_HOUSE_LOCK[sun.house] || `第${sun.house}宫`;
+        const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
+        const houseName = HOUSE_LOCK[sun.house] || `House ${sun.house}`;
         const mi = currentMonth - 1 + i;
-        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0)) + '年';
+        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
         const monthNum = (mi % 12) + 1;
-        return `#### ${yearPrefix}${monthNum}月：太阳${signZh}${houseZh} · __[填四字主题]__`;
+        return `#### ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: Sun in ${signName} ${houseName} · __[Fill 4-word theme]__`;
       }).join('\n')
     : '';
   const monthLockTable = astroMatrix && astroMatrix.months
-    ? '\n⛔ [12个月太阳星座硬锁死表 — 月标题必须精确使用下表数值，严禁篡改]:\n' +
-      '所有月份标题的【太阳星座】和【宫位】必须严格按下表。禁止使用其他数据推算月份太阳星座。\n' +
+    ? '\n⛔ [12-Month Sun Sign Hard-Lock Table — Month titles MUST use exact values below, strictly forbidden to tamper]:\n' +
+      'All month titles【Sun Sign】and【House】MUST strictly follow the table below. Forbidden to use other data to extrapolate monthly Sun sign.\n' +
       astroMatrix.months.map((m, i) => {
         const sun = m.sun || {};
-        const signZh = ZH_SIGN_LOCK[sun.sign] || sun.sign || '';
+        const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
         const mi = currentMonth - 1 + i;
-        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0)) + '年';
+        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
         const monthNum = (mi % 12) + 1;
-        return `  ● ${yearPrefix}${monthNum}月: 太阳${signZh} · 第${sun.house}宫`;
+        return `  ● ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: Sun in ${signName} · House ${sun.house}`;
       }).join('\n')
     : '';
 
@@ -888,14 +900,50 @@ IMPORTANT:
     const risingSignZH = astroMatrix?.meta?.rising_sign || 'Cancer';
     const astroTruth = buildAstroTruth(birthDate, risingSignZH, lang, currentYear, currentMonth);
     const archetypeDict = SIGN_ARCHETYPE[lang] || SIGN_ARCHETYPE.zh;
-    const astroTruthBlock = `
+    // 🛠️ V100f: 多语言 truthText 生成
+    const monthNamesEN_Truth = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const SIGN_EN = {Aries:'Aries',Taurus:'Taurus',Gemini:'Gemini',Cancer:'Cancer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Scorpio',Sagittarius:'Sagittarius',Capricorn:'Capricorn',Aquarius:'Aquarius',Pisces:'Pisces'};
+    const multiLangTruthText = lang === 'en'
+      ? astroTruth.months.map((mo) => {
+          // mo.label 包含 'YYYY年M月' 格式，转成英文
+          const m = mo.label.match(/(\d+)年(\d+)月/);
+          const enLabel = m ? `${monthNamesEN_Truth[parseInt(m[2])-1]} ${m[1]}` : mo.label;
+          // mo.sunSignZH 需转 EN
+          const sunSignEN = SIGN_EN[astroTruth.natalSunSignEN] || mo.sunSignZH;
+          return `• ${enLabel}: Sun in ${sunSignEN} ${mo.sunHouse === 1 ? '1st' : mo.sunHouse === 2 ? '2nd' : mo.sunHouse === 3 ? '3rd' : `${mo.sunHouse}th`} House`;
+        }).join('\n')
+      : astroTruth.monthlyTruthText;
+    const multiLangOuterPlanets = lang === 'en'
+      ? {
+          jupiter: { sign: 'Leo', house: astroTruth.outerPlanets.jupiter.house, signZH: '狮子座' },
+          saturn: { sign: 'Aries', house: astroTruth.outerPlanets.saturn.house, signZH: '白羊座' },
+          pluto: { sign: 'Aquarius', house: astroTruth.outerPlanets.pluto.house, signZH: '水瓶座' }
+        }
+      : {
+          jupiter: { sign: astroTruth.outerPlanets.jupiter.signZH, house: astroTruth.outerPlanets.jupiter.house, signZH: astroTruth.outerPlanets.jupiter.signZH },
+          saturn: { sign: astroTruth.outerPlanets.saturn.signZH, house: astroTruth.outerPlanets.saturn.house, signZH: astroTruth.outerPlanets.saturn.signZH },
+          pluto: { sign: astroTruth.outerPlanets.pluto.signZH, house: astroTruth.outerPlanets.pluto.house, signZH: astroTruth.outerPlanets.pluto.signZH }
+        };
+    const astroTruthBlock = lang === 'en'
+      ? `
+⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, forbidden to extrapolate or rewrite]:
+【Monthly Sun Truth Table (12 months, locked month-by-month, no rewriting signs or houses)】
+${multiLangTruthText}
+【Outer Planet Annual Themes (2026-2027 Fixed Astronomical Facts, Year-Unique, Immutable)】
+• Jupiter in Leo House ${multiLangOuterPlanets.jupiter.house}
+• Saturn in Aries House ${multiLangOuterPlanets.saturn.house}
+• Pluto in Aquarius House ${multiLangOuterPlanets.pluto.house}
+【12 Zodiac Archetype Dictionary (When describing X sign, MUST use this exact description, strictly forbidden to misattribute/sign-swap)】
+${Object.entries(archetypeDict).map(([k, v]) => `• ${k}: ${v}`).join('\n')}
+`
+      : `
 ⛔ [ASTRO-LOGIC HARD TRUTH — 后端算死，AI 必须原样抄录，不得自行推算或改写]：
 【流月太阳真值表（12个月，逐月锁定，不得改写宫位或星座）】
-${astroTruth.monthlyTruthText}
+${multiLangTruthText}
 【外行星年度主题（2026-2027 固定天文事实，全年唯一，不得变更）】
-• 木星在${astroTruth.outerPlanets.jupiter.signZH}第${astroTruth.outerPlanets.jupiter.house}宫
-• 土星在${astroTruth.outerPlanets.saturn.signZH}第${astroTruth.outerPlanets.saturn.house}宫
-• 冥王星在${astroTruth.outerPlanets.pluto.signZH}第${astroTruth.outerPlanets.pluto.house}宫
+• 木星在${multiLangOuterPlanets.jupiter.signZH}第${multiLangOuterPlanets.jupiter.house}宫
+• 土星在${multiLangOuterPlanets.saturn.signZH}第${multiLangOuterPlanets.saturn.house}宫
+• 冥王星在${multiLangOuterPlanets.pluto.signZH}第${multiLangOuterPlanets.pluto.house}宫
 【12星座原型字典（描写X座必须用此精确描述，严禁张冠李戴/星座夺舍）】
 ${Object.entries(archetypeDict).map(([k, v]) => `• ${k}：${v}`).join('\n')}
 `;
