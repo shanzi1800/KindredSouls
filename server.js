@@ -251,6 +251,8 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)(在[\u4e00-\u9fa5]{1,3}座)第[一二三四五六七八九十百零\d]+宫/g, '$1$2');
   // 中文：行星+在(你/您)的+第N宫（无星座）→ 砍"在…第N宫"
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在[\u4e00-\u9fa5你您]{0,6}?第[一二三四五六七八九十百零\d]+宫/g, '$1');
+  // 中文兜底：行星+任意描述(逆行/发生在你的/四分相等动词引导)+第N宫 → 砍宫位（补 V102s 仅要求紧接"在"的缺口，覆盖动词引导句式）
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^。\n]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
   // 英/西/法：Planet [in Sign] + House/Casa/Maison N → 保留 Planet in Sign
   text = text.replace(/\b(Mars|Uranus|Neptune|Mercury|Venus|Chiron)(\s+in\s+[A-Z][a-z]+)?(\s*(?:\(|,|\bin\b)?\s*(?:the\s+)?(?:\d+(?:st|nd|rd|th)\s+House|House\s+\d+|Casa\s+\d+|Maison\s+\d+)\)?)/g, '$1$2');
   // 泰：ดาว... + ภพที่/เรือนที่ N
@@ -384,10 +386,11 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     // Replace with: "2026年7月：太阳[CORRECT_SIGN]座第[HOUSE]宫 · "
     const ymEscaped = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
-    // Match month title y-m：太阳ANYTHING座, e.g.: 2026年7月：太阳水瓶座 ·
-    const titleRe = new RegExp(`(${ymEscaped}[：:])太阳[^·座\n]*座`, 'gi');
+    // 标题锚点死锁：年-月-冒号(含冒号后可选空格)-太阳 起到第一个空格/·/换行之前（吞掉 AI/旧缓存任意 座/宫号，空格是标题与主题分隔符须保留），统一重注为 太阳{sign}{第house宫}
+    const houseStr = entry.house ? `第${entry.house}宫` : '';
+    const titleRe = new RegExp(`(${ymEscaped}[：:]\s*)太阳\s*[^·\n\s]*`, 'gi');
     text = text.replace(titleRe, (match, prefix) => {
-      return `${prefix}太阳${entry.sign}座`;
+      return `${prefix}太阳${entry.sign}${houseStr}`;
     });
 
     // Also fix "太阳进入[WRONG]座" in the body text for same month
@@ -396,9 +399,9 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
       const monthNames = ['', '一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
       const cnMonth = monthNames[entry.month];
       if (cnMonth) {
-        const bodyRe = new RegExp(`(${cnMonth}[，,、\s]{0,5})太阳(?:\s*进入|\s*在|\s*行经|\s*来到|\s*进|\s*抵)[^座\n]*座`, 'gi');
+        const bodyRe = new RegExp(`(${cnMonth}[，,、\s]{0,5})太阳(?:\s*进入|\s*在|\s*行经|\s*来到|\s*进|\s*抵)\s*[^座\n]*?座\s*座?`, 'gi');
         text = text.replace(bodyRe, (match, prefix) => {
-          return `${prefix}太阳进入${entry.sign}座`;
+          return `${prefix}太阳进入${entry.sign}`;
         });
       }
     }
@@ -1438,7 +1441,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v102t:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v102u:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -1895,7 +1898,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v102t:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102u:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
