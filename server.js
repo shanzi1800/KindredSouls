@@ -1490,16 +1490,18 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         if (cachedText && cachedText.length > 100) {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
+          // V103-fix6: 标准化旧缓存，确保格式统一
+          const stdCached = standardizeReport(cachedText);
           // 返回缓存数据（包装成前端期望的格式）
           if (reportType === 'monthly') {
             try {
-              const parsed = JSON.parse(cachedText);
+              const parsed = JSON.parse(stdCached);
               return res.json({ success: true, cached: true, report: JSON.stringify(parsed) });
             } catch (e) {
-              return res.json({ success: true, cached: true, report: cachedText });
+              return res.json({ success: true, cached: true, report: stdCached });
             }
           } else {
-            return res.json({ success: true, cached: true, report: cachedText });
+            return res.json({ success: true, cached: true, report: stdCached });
           }
         }
       } catch (e) {
@@ -1731,7 +1733,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
               },
               body: JSON.stringify({
                 cache_key: cacheKey,
-                insight: reportContent,
+                insight: standardizeReport(reportContent),
                 prompt_version: `v1.0.0-${reportType}-${lang}`,
                 created_at: new Date().toISOString(),
               })
@@ -1903,6 +1905,48 @@ if (existsSync(distPath)) {
   });
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// V103-fix6: 报告内容标准化（统一章节格式，解决缓存/实时生成不一致）
+// 写入缓存前调用，确保所有缓存数据格式统一
+// ───────────────────────────────────────────────────────────────────────
+function standardizeReport(text) {
+  if (!text || typeof text !== 'string') return text;
+  let t = text;
+
+  // 0. 蒸发图片残留碎屑
+  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, '');  // ![](...)
+  t = t.replace(/!\[[^\]]*\]/g, '');              // 裸 ![alt]
+
+  // 1. 主标题头拆分——命运宿主从标题行剥离（若有）
+  // 处理 "## ✦ 先知神谕 · 财富启示录 ✦ * ◆ **命运宿主**" 单行问题
+  t = t.replace(/(\s)\* ◆ \*\*命运宿主\*\*:?\s*/g, '\n命运宿主：');
+
+  // 2. 章节标题统一注入 ✦（主要章节：第一章~第五章 + 最终财富神谕）
+  // 模式：## [emoji]? 第X章/最终财富神谕 + 可选内容
+  // 只处理还没有 ✦ 的行，避免重复注入
+  const chapterMap = [
+    // 第一章~第五章
+    [/^(\s*)(## [\p{Emoji}]*\s*)(第一章：[^✦\n]*?)(\s*)$/um,  '$1✦\n$2$3 ✦\n$4'],
+    [/^(\s*)(## [\p{Emoji}]*\s*)(第二章：[^✦\n]*?)(\s*)$/um,  '$1✦\n$2$3 ✦\n$4'],
+    [/^(\s*)(## [\p{Emoji}]*\s*)(第三章：[^✦\n]*?)(\s*)$/um,  '$1✦\n$2$3 ✦\n$4'],
+    [/^(\s*)(## [\p{Emoji}]*\s*)(第四章：[^✦\n]*?)(\s*)$/um,  '$1✦\n$2$3 ✦\n$4'],
+    [/^(\s*)(## [\p{Emoji}]*\s*)(第五章：[^✦\n]*?)(\s*)$/um,  '$1✦\n$2$3 ✦\n$4'],
+    // 最终财富神谕
+    [/^(\s*)(## [\p{Emoji}]*\s*)(最终财富[^✦\n]*?)(\s*)$/um, '$1✦\n$2$3 ✦\n$4'],
+  ];
+  for (const [pattern, replacement] of chapterMap) {
+    if (!pattern.test(t)) { pattern.lastIndex = 0; if (pattern.test(t)) {} } // reset
+    t = t.replace(pattern, replacement);
+  }
+
+  // 3. 换行修复：月份标题前 + 子章节前 + 分割线前后
+  t = t.replace(/####\s*📅/g, '\n#### 📅');
+  t = t.replace(/###\s+/g, '\n### ');
+  t = t.replace(/---/g, '\n---\n');
+
+  return t;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // 🌊 流式输出端点：SSE (Server-Sent Events)
 // ═══════════════════════════════════════════════════════════════════════
@@ -1950,7 +1994,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // ── V98: 缓存命中 → 纠正后直接秒回完整内容（不再伪流式）──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
-        const streamText = cachedText;
+        // V103-fix6: 对旧缓存也做标准化，确保格式统一
+        const streamText = standardizeReport(cachedText);
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
@@ -1996,7 +2041,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         },
         body: JSON.stringify({
           cache_key: cacheKey,
-          insight: text,
+          insight: standardizeReport(text),
           prompt_version: `v1.0.0-stream-${reportType}-${lang}`,
           created_at: new Date().toISOString(),
         })
