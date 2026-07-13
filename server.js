@@ -364,6 +364,31 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   }
 
 
+  // 🛠️ V104b: 水星断头句修复——AI常漏写「水星在XX座逆行」中的「逆行」两字
+  // 模式：「2月9日至3月3日，水星，财务文件需要格外小心」→补逆行
+  text = text.replace(/(\d月\d日[^。\n]{0,20}?)水星，([^。\n]{0,5}?财务[^。\n]{0,20}?[。\n])/g, '$1水星在双鱼座逆行，$2');
+  text = text.replace(/(\d月\d日[^。\n]{0,20}?)水星，([^。\n]{0,30}?[。\n])/g, function(m, p1, p2) {
+    if (p2.indexOf('逆行') === -1 && p2.indexOf('顺行') === -1) {
+      return p1 + '水星在双鱼座逆行，' + p2;
+    }
+    return m;
+  });
+
+  // 🛠️ V104c: 长括号自动闭合——段落结尾有（无）时自动补
+  // 匹配以「）」「。
+」「?
+」之外字符结尾且前面有未闭合（的段落
+  var sections = text.split('\n');
+  for (var si = 0; si < sections.length; si++) {
+    var sec = sections[si];
+    var openC = (sec.match(/\uff08/g) || []).length;
+    var closeC = (sec.match(/\uff09/g) || []).length;
+    if (openC > closeC && !sec.match(/[）　]\s*$/)) {
+      sections[si] = sec + '）';
+    }
+  }
+  text = sections.join('\n');
+
   // 🛡️ V97h2: 防御性清洗——移除编码崩坏的孤立代理对 + U+FFFD 替换符（保留合法 emoji 对）
   text = stripLoneSurrogates(text).replace(/\uFFFD/g, '');
   return text;

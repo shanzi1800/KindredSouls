@@ -2730,6 +2730,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               // 「（巨蟹座形成强大……」型残缺兜底（截断场景）
               c = c.replace(/（巨蟹座形成强大的支持相位（/g, '（巨蟹座形成强大的支持相位）（');
 
+              // Pass3: 兜底——段落级括号平衡（针对长跨越多分句的未闭括号）
+              const pars = c.split('\n');
+              for (let pi = 0; pi < pars.length; pi++) {
+                const p = pars[pi];
+                const o = (p.match(/\uff08/g) || []).length;
+                const cl = (p.match(/\uff09/g) || []).length;
+                if (o > cl && !p.match(/[）　]\s*$/)) {
+                  pars[pi] = p + '）';
+                }
+              }
+              c = pars.join('\n');
+
               // 1. 【斩杀太阳双子幻觉 — 只修本太阳引用，不碰月度矩阵里的双子座】
               // V103-fix19: 后端月锁和元素锁已保证月度矩阵里星座正确，
               // 前端只修「太阳双子座」等本太阳引用，全局「双子座→处女座」会让月度标题里的双子座也被换掉
@@ -2769,7 +2781,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
             const displayText = formatAndCleanSacredText(sacredText);
             // V99l: 军师令——幽灵方块强制物理蒸发（\uFFFD/\u0000/<fe0f>）
-            const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
+            const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText))
+              .replace(/[\uFFFD\u0000\uFFFE\uFFF0-\uFFFF]/g, '')
+              .replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '');
 
             return (
               // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
