@@ -2166,7 +2166,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}
 
 `, "utf-8"));
-                fullTextCollector += char;
+                // V103-fix8：清理换行前空格再累加
+                fullTextCollector += char.replace(/ \n/g, '\n');
                 if (fullText.indexOf(char) % 10 === 0 && typeof res.flush === 'function') {
                   res.flush();
                 }
@@ -2218,8 +2219,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               // 真流式：立即发给前端
               res.write(Buffer.from(`data: ${JSON.stringify({ text: content })}\n\n`, 'utf-8'));
               if (typeof res.flush === 'function' && ++chunkCount % 5 === 0) res.flush();
-              // 同时累积到缓存收集器
-              fullTextCollector += content;
+              // 同时累积到缓存收集器（V103-fix8：先清理空格+换行再累加）
+              fullTextCollector += content.replace(/ \n/g, '\n').replace(/  +/g, ' ');
             }
           } catch (e) {}
         }
