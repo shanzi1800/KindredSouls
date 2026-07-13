@@ -322,6 +322,10 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
     R('土星入第1宫（白羊座）', '土星入第10宫（白羊座）');
     R('土星在第1宫（白羊座）', '土星在第10宫（白羊座）');
 
+    // V103-fix16: 处女座归风元素——AI 幻觉把处女座（土象）归入风元素，正则物理矫正
+    R('风元素（处女座', '土元素（处女座');
+    R('风元素路径：处女座', '土元素路径：处女座');
+
     // 上下文清洗
     text = text.replace(/"自我身份"正在经历一场残酷的锻造/g, '事业天花板与顶头上司的残酷施压');
     text = text.replace(/土星在第一宫的压力/g, '土星在第十宫的压力');
@@ -1999,7 +2003,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
         // V103-fix6: 对旧缓存也做标准化，确保格式统一
-        const streamText = standardizeReport(cachedText);
+        // V103-fix15: Cache HIT 也跑月锁卫士——旧缓存里 6 月处女座 Bug 在此被物理封杀
+        let astroMatrixHIT = null;
+        try { astroMatrixHIT = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch(e) {}
+        let streamText = standardizeReport(cachedText);
+        if (astroMatrixHIT) streamText = applyMonthLockSanitizer(streamText, astroMatrixHIT, null, null, lang);
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
