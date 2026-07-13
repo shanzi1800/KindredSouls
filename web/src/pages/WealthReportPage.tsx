@@ -755,13 +755,16 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
   };
   if (!rawText) return {};
 
-  // 💥 铁血反幻觉落闸：AI编造的星座，在进切片机之前就物理抹杀！
+  // 💥 铁血反幻觉落闸：只修本太阳引用，不碰月度矩阵里的正确月度星座
+  // V103-fix20: parseYearlyReportV24 的全局「双子座→realZodiac」会让月度卡片标题里正确的月度星座也被替换
+  // 月度标题的星座来自后端月锁sanitizer（已保证正确），前端只修本太阳特定引用
   let coreText = rawText;
   if (realZodiac && realZodiac !== '双子座') {
-    coreText = coreText.replace(/双子座/g, realZodiac);
+    coreText = coreText.replace(/太阳双子座(?![妈守护特质的])/g, '太阳' + realZodiac);
+    coreText = coreText.replace(/双子座(?=(?:太阳|月亮)进入)/g, realZodiac);  // 仅太阳/月亮进入时的双子座引用
     coreText = coreText.replace(/双子天命/g, realZodiac + '天命');
     coreText = coreText.replace(/双子守护/g, realZodiac + '守护');
-    coreText = coreText.replace(/双子星/g, realZodiac + '星');
+    coreText = coreText.replace(/双子星(?![座妈守护特质])/g, realZodiac + '星');
   }
 
   // 🎯 前置霸权清洗
@@ -2669,12 +2672,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 c = c.split('生成 AI 洞察')[0];
               }
 
-              // 1. 【斩杀太阳双子幻觉】
+              // 1. 【斩杀太阳双子幻觉 — 只修本太阳引用，不碰月度矩阵里的双子座】
+              // V103-fix19: 后端月锁和元素锁已保证月度矩阵里星座正确，
+              // 前端只修「太阳双子座」等本太阳引用，全局「双子座→处女座」会让月度标题里的双子座也被换掉
               if (trueZodiac && trueZodiac !== '双子座') {
-                c = c.replace(/太阳双子/g, '太阳' + trueZodiac);
-                c = c.replace(/双子座/g, trueZodiac);
-                c = c.replace(/双子天命/g, trueZodiac + '天命');
-                c = c.replace(/双子守护/g, trueZodiac + '守护');
+                c = c.replace(/太阳双子座/g, '太阳' + trueZodiac);  // 太阳双子座→太阳处女座
+                c = c.replace(/双子天命/g, trueZodiac + '天命');   // 双子天命→处女座天命
+                c = c.replace(/双子守护/g, trueZodiac + '守护');   // 双子守护→处女座守护
+                // 注意：不再做 /双子座/g 全局替换，月度标题的双子座保持不变
               }
 
               // 2. 【斩杀"双鱼座风元素"常识错误】

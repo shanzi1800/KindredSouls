@@ -406,6 +406,8 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
       return `${prefix}太阳${entry.sign}${houseStr}`;
     });
 
+    
+
     // 🛠️ V102u: 语言感知标题锁（仅 zh 报告）——AI 偶尔把月度标题写成 "Sun in 巨蟹座第7宫" 等英文/混杂格式，
     // 强制转回中文 "太阳{sign}座第{house}宫"，值仍从 SwissEph 死锁（杜绝英文词混进中文报告，且不依赖 AI 听话）。
     if (lang === 'zh') {
