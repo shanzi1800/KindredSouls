@@ -253,7 +253,11 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // 中文：行星+在(你/您)的+第N宫（无星座）→ 砍"在…第N宫"
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在[\u4e00-\u9fa5你您]{0,6}?第[一二三四五六七八九十百零\d]+宫/g, '$1');
   // 中文兜底：行星+任意描述(逆行/发生在你的/四分相等动词引导)+第N宫 → 砍宫位（补 V102s 仅要求紧接"在"的缺口，覆盖动词引导句式）
-  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^。\n]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
+  // 🛠️ V106-fix2: 原 [^。\n]{0,20}? 会吞掉外层闭合括号里的 ） ，导致相位句出现无头）
+  // 修复：加 ） 到禁止字符集，确保匹配在括号对边界停止
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^。\n）]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
+  // 🛠️ V106-fix2b: 上述替换后若句中出现"行星）第N宫（"（内层括号被连宫位一起删），补闭合并清星座
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)）（第[一二三四五六七八九十百零0-9]+宫）/g, '$1$2');
   // 🛠️ Issue B 终级 fix: 贪婪捕获"在你的第N宫（XX座）"型复杂嵌套句式 → 砍宫位+括号内星座，保留行星和"在你的"引导
   // 匹配：火星在你的第3宫（处女座）、水星在第5宫（狮子座）、冥王星在你的第12宫（水瓶座）等所有变体
   text = text.replace(/(行星|[\u4e00-\u9fa5星曜]+星?)(在你|在他|在她|在|的)(第[一二三四五六七八九十百零0-9]+宫)(（[^）]+座）|\([^)]+座\))/g, '$1$2$3');
@@ -518,6 +522,12 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
   if (!text || !astroMatrix || !astroMatrix.months) return text;
 
+  // 🛠️ V106-fix3: 最早期清洗——在任何标题/星座替换之前，先清乱码+修复孤闭括号
+  // 这两刀走在 applyMonthLockSanitizer 最前，确保进入主循环前文本已干净
+  text = text.replace(/\uFFFD/g, '').replace(/�/g, '');
+  // 通用孤闭括号兜底（无头）→ 清掉；有头括号链交给 natal_sun_linter / V104c 处理
+  text = text.replace(/（([^）\n]*?)(?=\n|$)/g, '（$1）');
+
   const ZH_SIGN = {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'};
 
   // Build correct entries: [{ key: "2026年7月", sign: "巨蟹座", house: 9 }]
@@ -538,11 +548,19 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     // Replace with: "2026年7月：太阳[CORRECT_SIGN]座第[HOUSE]宫 · "
     const ymEscaped = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
-    // 标题锚点死锁：年-月-冒号(含冒号后可选空格)-太阳 起到第一个空格/·/换行之前（吞掉 AI/旧缓存任意 座/宫号，空格是标题与主题分隔符须保留），统一重注为 太阳{sign}{第house宫}
+    // 标题锚点死锁：年-月-冒号(含冒号后可选空格)-太阳 起到第一个空格/·/换行之前
+    // 统一重注为 太阳{sign}{第house宫}，截断时以·或换行为界，保护后续主题文本
+    // 🛠️ V106-fix1: 去掉 [^·\n\s] 里的 \s，允许 NBSP/全角空格参与匹配；替换时规范化为"太阳{sign}{house}·"（截断后续）
     const houseStr = entry.house ? `第${entry.house}宫` : '';
-    const titleRe = new RegExp(`(${ymEscaped}[：:]\s*)太阳\s*[^·\n\s]*`, 'gi');
+    const titleRe = new RegExp(`(${ymEscaped}[：:]\s*)太阳[^·\n]*`, 'gi');
     text = text.replace(titleRe, (match, prefix) => {
-      return `${prefix}太阳${entry.sign}${houseStr}`;
+      // 去掉 match 末尾超过"太阳{sign}{house}"的部分（贪婪匹配吞了主题），只保留标题前缀
+      const norm = match
+        .replace(/\u00A0/g, ' ')  // 干掉 NBSP
+        .replace(/座座/g, '座')    // 干掉重复座
+        .replace(/第\d+宫座/g, m => m.replace(/座$/, '')) // 干掉"第N宫座"
+        .replace(/\s*·.+$/, '');  // 以 · 为界截断，保护后续
+      return norm.replace(/太阳.+$/, `太阳${entry.sign}${houseStr}`);
     });
 
     
