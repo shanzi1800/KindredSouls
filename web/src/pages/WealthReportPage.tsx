@@ -2665,14 +2665,57 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const isStreaming = !yearlyCardsReady;
             const trueZodiac = getTrueZodiacByDate(birthDate);
+
+            // 🛠️ V103-fix22: 前端月份真理表——独立于后端的第二道防线
+            // 十二个月流年太阳真理值（日历常数，不依赖任何API/astroMatrix）
+            // 起始月份 = 2026年7月，后续逐月+1星座+1宫位
+            const CHINESE_MONTH_TRUTH = [
+              { pattern: /2026年7月[：:][^·]*/, truth: '2026年7月: 太阳巨蟹座第1宫' },
+              { pattern: /2026年8月[：:][^·]*/, truth: '2026年8月: 太阳狮子座第2宫' },
+              { pattern: /2026年9月[：:][^·]*/, truth: '2026年9月: 太阳处女座第3宫' },
+              { pattern: /2026年10月[：:][^·]*/, truth: '2026年10月: 太阳天秤座第4宫' },
+              { pattern: /2026年11月[：:][^·]*/, truth: '2026年11月: 太阳天蝎座第5宫' },
+              { pattern: /2026年12月[：:][^·]*/, truth: '2026年12月: 太阳射手座第6宫' },
+              { pattern: /2027年1月[：:][^·]*/, truth: '2027年1月: 太阳摩羯座第7宫' },
+              { pattern: /2027年2月[：:][^·]*/, truth: '2027年2月: 太阳水瓶座第8宫' },
+              { pattern: /2027年3月[：:][^·]*/, truth: '2027年3月: 太阳双鱼座第9宫' },
+              { pattern: /2027年4月[：:][^·]*/, truth: '2027年4月: 太阳白羊座第10宫' },
+              { pattern: /2027年5月[：:][^·]*/, truth: '2027年5月: 太阳金牛座第11宫' },
+              { pattern: /2027年6月[：:][^·]*/, truth: '2027年6月: 太阳双子座第12宫' },
+            ];
+
             // 🛠️ V45: 军师版万能强切洗涤器——一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
             const formatAndCleanSacredText = (text: string): string => {
               if (!text) return '';
               let c = text;
 
+              // V103-fix22: 幽灵方块提前清洗——在第一行就执行，确保后续所有处理在清洁文本上进行
+              c = c.replace(/[\uFFFD\u0000]/g, '').replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '');
+
               // 0. 【斩首复读尾巴】
               if (c.includes('生成 AI 洞察')) {
                 c = c.split('生成 AI 洞察')[0];
+              }
+
+              // 0.5 【前端月份真理硬覆盖——独立于后端月锁的第二道防线】
+              for (const entry of CHINESE_MONTH_TRUTH) {
+                c = c.replace(entry.pattern, entry.truth);
+              }
+
+              // 0.6 【孤括号清洗——大模型行文污染，闭合无头`）`】
+              // 类似「但水星）」「而天王星）」「继续形成四分刑）」等
+              // 只修孤立的 `）` 不伤正常 `（...）` 对
+              {
+                let bal = '', depth = 0;
+                for (const ch of c) {
+                  if (ch === '\uff08') depth++;
+                  else if (ch === '\uff09') {
+                    if (depth > 0) { depth--; bal += ch; }
+                    continue; // 孤立）直接跳过
+                  }
+                  bal += ch;
+                }
+                c = bal;
               }
 
               // 1. 【斩杀太阳双子幻觉 — 只修本太阳引用，不碰月度矩阵里的双子座】
@@ -2714,8 +2757,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
             const displayText = formatAndCleanSacredText(sacredText);
             // V99l: 军师令——幽灵方块强制物理蒸发（\uFFFD/\u0000/<fe0f>）
-            const cleanedRaw = cleanRawReportText(cleanYearlyTimeline(displayText)).replace(/[\uFFFD\u0000]/g, '').replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '');
-            const cleaned = cleanedRaw;
+            const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText));
 
             return (
               // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
