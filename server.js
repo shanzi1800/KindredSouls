@@ -2227,7 +2227,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
 
     // V100i: 英文标点清洗（去除中文全角标点污染）
+    // V103-fix8: 清理 DeepSeek AI 输出时在换行前加的多余空格（"word \n" → "word\n"）
     const langPunctuationClean = (text, lang) => {
+      // 通用清理：先清空格+换行序列，再清多余空格
+      text = text.replace(/ \n/g, '\n'); // 清理换行前空格
+      text = text.replace(/  +/g, ' ');   // 清理连续多余空格
       if (lang === 'en') {
         return text
           .replace(/——/g, ' — ')
