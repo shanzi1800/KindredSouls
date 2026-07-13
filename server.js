@@ -1945,6 +1945,9 @@ function standardizeReport(text) {
   t = t.replace(/###\s+/g, '\n### ');
   t = t.replace(/---/g, '\n---\n');
 
+  // V103-fix14: 清理月份标题中的 "Sun in"（不依赖 ### 📅，覆盖所有格式）
+  t = t.replace(/(\d{4}年\d{1,2}月):\s*Sun\s+in\s+/g, '$1: ');
+
   return t;
 }
 
