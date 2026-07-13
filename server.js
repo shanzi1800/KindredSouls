@@ -193,10 +193,11 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
 
   // ── V97ab: 清除 AI 幻觉 [object Object]（只删脏数据，不伤正常星座词）──
-  text = text.replace(/\[object Object\]/g, ' ').replace(/\s{2,}/g, ' ');
+  // V103-fix7: 用 / {2,}/g 替代 /\s{2,}/g，只折叠多个空格，保留换行符不伤段落结构
+  text = text.replace(/\[object Object\]/g, ' ').replace(/ {2,}/g, ' ');
 
   // ── V97ap: 清除渲染失败的乱码方块（U+FFFD 和空 Emoji 占位）──
-  text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/\s{2,}/g, ' ');
+  text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/ {2,}/g, ' ');
 
   // ── V97ar: 清理隐身脏字符（Emoji 变体选择符/零宽字符/不可见 Unicode）──
   // ── V100r: 清理模板污染残留（军师审计：AI将互联网金句与章节标记混合）──
