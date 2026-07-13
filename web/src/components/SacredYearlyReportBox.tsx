@@ -66,6 +66,10 @@ const SacredYearlyReportBox: React.FC<{
     // 必须在章节 ✦ 前缀注入（Step 8）之前执行；不重生成缓存，纯渲染预处理
     cleaned = cleaned.replace(/####\s*📅/g, '\n#### 📅'); // 月份标记前注入换行
     cleaned = cleaned.replace(/####\s+/g, '\n#### ');
+    // V103-fix10: ✦ 拆行修复——三步走
+    cleaned = cleaned.replace(/^##(\s*)✦/gm, '✦$1');    // Step1: ## ✦ -> ✦（主标题去##，保空格）
+    cleaned = cleaned.replace(/^✦$/gm, '');                // Step1b: 单独✦行删掉    cleaned = cleaned.replace(/##(\s+(?!✦).+?)✦/gm, '✦$1 ✦'); // Step2: ##居前章节换位
+    cleaned = cleaned.replace(/✦\s*\n\s*\n/g, '✦ \n'); // Step3: ✦\n\n## -> ✦ \n\n##
     cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
 
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
