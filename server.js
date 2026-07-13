@@ -1297,7 +1297,16 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
     return {
       system: yearlySystem,
       user: `
-⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。⛔ [火星/凯龙禁则]: 绝对禁止在财富年报中写"火星在XX座"或"火星在第X宫"。行星只有木星/土星/冥王星/太阳/月亮参与了2026-2027年度财富叙事。
+⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据（木星/土星/冥王星/太阳/月亮）。未提供的行星（火星/凯龙/北交点等）不得写具体星座或宫位，只能描述原型特质（"行动力强"/"开创精神"），禁止"火星在XX座"或"火星在第X宫"。
+
+⛔ [火星/凯龙禁则]: 绝对禁止在年报正文（除 Black Swan Day 断路器警告外）写"火星在XX座"或"火星在第X宫"。
+
+⛔ [Black Swan Day 火星 Transit 规则]: 火星不在 AstroMatrix 固定外行星列表中，但其 2026-2027 年真实 Transit 位置有明确天文学事实，可以写入。具体规则：
+- 2026年7月-8月：火星在狮子座（6月21日离开巨蟹进入狮子，9月23日才进处女）
+- 2026年11月30日-12月：火星在处女座（9月23日进处女，2027年1月中旬才离）
+- 2027年2月-3月：火星在处女座/天秤座（1月中旬进天秤）
+- 2027年5月：火星在狮子座（4月中旬进狮子，6月中旬离）
+若 Black Swan Day 涉及火星相位，**必须**按上述真实 Transit 位置写，例如："（火星在狮子座与XX形成XX相位）"。绝对不得写"火星在处女座"给7月/8月的日子，也不得写"火星在XX座"给任何不在上述窗口的日子。
 ⛔ [缝合怪禁则]: 绝对禁止将两个星座名直接连接（如"处女座金牛座"、"双子座白羊座"）。每段只描述一个星座，宫位从 AstroMatrix 的 computed_houses 引用，不得自创。
 ⛔ [月内宫位一致性]: 同一月内太阳描述必须唯一（如5月=金牛座，不得同时说双子座）。若发现矛盾，以流月数据为准。
 ⛔ [本命盘 vs Transit 严格区分 — 核心区分规则]:
@@ -1344,12 +1353,15 @@ DYNAMIC DATE CALCULATION (CRITICAL):
 • MR#3: July 18 - August 11, 2026 (CRITICAL: July 18 is the real H2 Mercury Rx start!)
 • MR#4: October 7 - October 28, 2026
 
+⛔ [Mercury Rx 周期句式铁律]: 当描述 Mercury 逆行周期时，**必须**构成完整句，主语+谓语齐全。正确示范："水星逆行期间（2月9日至3月3日），财务文件签署需格外谨慎，你的沟通可能出现误解。" 错误示范（截断/缺谓语）："2月9日至3月3日，水星，财务文件需要格外小心。" 禁止将日期范围+"水星"单独成句后不接谓语。
+
 ⛔ NEVER write dates like "2026年6月2026年6月" or duplicated/corrupted dates.
 ⛔ NEVER repeat the year inside month descriptions.
 
 REQUIREMENTS:
 • Total length: 6,000-8,000 words (${lang})
 • Style: Epic, destiny-filled, ultra-premium ($29.99 value)
+• ⛔ [句子完整性铁律]: 每个句子必须有完整主语+谓语。禁止逗号/句号后直接跟名词性短语不接谓语（如"X，财务文件需要格外小心"或"Y，沟通可能出现误解"都是病句）。月度和章节段落的每句话都必须读起来完整，不允许"句子碎片"。
 • MUST include 5 complete chapters (each chapter ≥1,000 words):
   1. Annual Wealth Matrix
   2. 12-Month Revenue Matrix (strictly 12 months, NO merging)
