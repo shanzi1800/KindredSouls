@@ -375,9 +375,7 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   });
 
   // 🛠️ V104c: 长括号自动闭合——段落结尾有（无）时自动补
-  // 匹配以「）」「。
-」「?
-」之外字符结尾且前面有未闭合（的段落
+  // 匹配结尾字符不是）」等且前面有未闭合（的段落
   var sections = text.split('\n');
   for (var si = 0; si < sections.length; si++) {
     var sec = sections[si];
