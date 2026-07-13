@@ -228,6 +228,14 @@ const SacredYearlyReportBox: React.FC<{
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
+    // 🛠️ V103-fix5: 仪表盘项一律白色——以 🚀🌟⚠🔮 开头的行，直接返回 text（不走关键词判断）
+    // 原因：AI 生成措辞不一致（资产熔断/断路器）导致金色随机
+    // 注意：🌟 不在图标正则里，必须用行首字符直接判断
+    // 🛠️ V103-fix5: 仪表盘项一律白色（🚀🌟⚠🔮 开头），但 🔮 最终财富神谕 是金色标题，排除
+    if (/^[🚀🌟⚠🔮]/.test(t) && !t.includes('最终财富神谕')) {
+      return { type: 'text', content: cleanMarkdown(t) };
+    }
+    
     // 【✦ 章节名 ✦】
     if (t.match(/^【\s*✦.+✦\s*】$/)) {
       return { type: 'chapter', content: t.replace(/【\s*✦\s*|\s*✦\s*】/g, '') };
