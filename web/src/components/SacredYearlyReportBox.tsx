@@ -179,11 +179,12 @@ const SacredYearlyReportBox: React.FC<{
     // 规则2：间隔格式（X座...你的第N宫，AI 在流月中常用，V69单规则漏杀）
     cleaned = cleaned.replace(buildHouseRe('[^。]{0,15}?'), houseCalibrate);
 
-    // 8. V67: 章节精美化（幂等正则，统一输出【✦ 第X章：xxx ✦】兼容手写渲染）
+    // 8. V67: 章节精美化（V103-fix4: 真正幂等——已带✦前后缀的直接返回，不重复注入换行）
     // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
-        // 🛠️ V83.2 FIX: 越南文裸✦前缀（AI输出是✦ Chương I:...，没有【】括号）
-    const advancedUniversalChapterRegex = /(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
-    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, p1, p2, p3, p4, title) => {
+    const advancedUniversalChapterRegex = /(^|\n)\s*(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, prefix, p1, p2, p3, p4, title) => {
+      // V103-fix4: 如果原始匹配已带 ✦ 前后缀，直接返回原样（幂等，不重复注入）
+      if (match.includes('✦')) return match;
       // V84: 保留原始语言格式，不硬写中文
       if (p1) return '\n\n✦ 第' + p1 + '章：' + title.trim() + ' ✦\n\n';      // 中文
       if (p2) return '\n\n✦ Chapter ' + p2 + ': ' + title.trim() + ' ✦\n\n';    // 英文
