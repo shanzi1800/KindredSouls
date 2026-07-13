@@ -76,7 +76,7 @@ const SacredYearlyReportBox: React.FC<{
       return `✦ ${title} ✦`;
     }); // Step2: ##📜第一章...✦ → ✦ 第一章...✦
     cleaned = cleaned.replace(/✦\s*\n\s*\n/g, '✦ \n'); // Step3: ✦\n\n## -> ✦ \n\n##
-    cleaned = cleaned.replace(/###\s*📅\s*\d{4}年\d{1,2}月:\s*Sun\s+in\s+/g, '### 📅 '); // V103-fix11: 清理月份 Sun in
+    cleaned = cleaned.replace(/(\d{4}年\d{1,2}月):\s*Sun\s+in\s+/g, '$1: '); // V103-fix11/13: 清理月份 Sun in（不依赖 ### 📅，AI 输出格式不固定）
     cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
 
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
@@ -244,12 +244,9 @@ const SacredYearlyReportBox: React.FC<{
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
-    // V103-fix5+11: 仪表盘4项白字——检测🚀🌟⚠🔮图标后文本含关键词
-    if (/^[🚀🌟⚠🔮]/.test(t) && !t.includes('最终财富神谕')) {
-      const inner = t.slice(t.search(/[🚀🌟⚠🔮]/) + 1).replace(/^\s*[*\\-\\->]+\s*/, '').trim();
-      if (/年度宏观主题|财富爆发指数|资产熔断风险|命运显化方向|财富核心指标仪表盘/.test(inner)) {
-        return { type: 'text', content: cleanMarkdown(t) };
-      }
+    // V103-fix5+11: 仪表盘4项白字——含仪表盘关键词的行（不依赖 emoji 是否在行首，AI 输出可能是 * 🚀 **关键词**: ...）
+    if (!t.includes('最终财富神谕') && /[🚀🌟⚠🔮]/.test(t) && /年度宏观主题|财富爆发指数|资产熔断风险|命运显化方向|财富核心指标仪表盘/.test(t)) {
+      return { type: 'text', content: cleanMarkdown(t) };
     }
     // 【✦ 章节名 ✦】
     if (t.match(/^【\s*✦.+✦\s*】$/)) {
