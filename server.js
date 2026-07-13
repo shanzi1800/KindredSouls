@@ -369,6 +369,81 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   return text;
 }
 
+// ── V104: 相位校验器（相位关系 Linter）──
+// 校验AI生成的相位描述是否符合天文学规则。
+// 星座-相位关系是有限且确定的，用查表法100%拦截错误配对。
+function astro_phase_linter(text) {
+  if (!text) return text;
+
+  // 相位规则表：12星座，每类相位只能与指定星座形成
+  const PHASE_RULES = {
+    '对分相':  { '白羊座':'天秤座','天秤座':'白羊座','金牛座':'天蝎座','天蝎座':'金牛座','双子座':'射手座','射手座':'双子座','巨蟹座':'摩羯座','摩羯座':'巨蟹座','狮子座':'水瓶座','水瓶座':'狮子座','处女座':'双鱼座','双鱼座':'处女座' },
+    '四分相':  { '白羊座':['巨蟹座','摩羯座'],'金牛座':['狮子座','水瓶座'],'双子座':['处女座','双鱼座'],'巨蟹座':['白羊座','天秤座'],'狮子座':['金牛座','天蝎座'],'处女座':['双子座','射手座'],'天秤座':['巨蟹座','摩羯座'],'天蝎座':['狮子座','水瓶座'],'射手座':['处女座','双鱼座'],'摩羯座':['白羊座','天秤座'],'水瓶座':['金牛座','天蝎座'],'双鱼座':['双子座','射手座'] },
+    '三分相':  { '白羊座':['狮子座','射手座'],'狮子座':['白羊座','射手座'],'射手座':['白羊座','狮子座'],'金牛座':['处女座','摩羯座'],'处女座':['金牛座','摩羯座'],'摩羯座':['金牛座','处女座'],'双子座':['天秤座','水瓶座'],'天秤座':['双子座','水瓶座'],'水瓶座':['双子座','天秤座'],'巨蟹座':['天蝎座','双鱼座'],'天蝎座':['巨蟹座','双鱼座'],'双鱼座':['巨蟹座','天蝎座'] },
+    '六分相':  { '白羊座':['双子座','水瓶座'],'双子座':['白羊座','狮子座'],'狮子座':['双子座','天秤座'],'天秤座':['狮子座','射手座'],'射手座':['天秤座','水瓶座'],'水瓶座':['射手座','白羊座'],'金牛座':['巨蟹座','双鱼座'],'巨蟹座':['金牛座','处女座'],'处女座':['巨蟹座','天蝎座'],'天蝎座':['处女座','摩羯座'],'摩羯座':['天蝎座','金牛座'],'双鱼座':['摩羯座','巨蟹座'] },
+  };
+  const SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+  const PHASE_ZH = ['对分相','四分相','三分相','六分相'];
+  const SIGN_RE = new RegExp(SIGN_ZH.join('|'), 'g');
+  const PHASE_RE = new RegExp(PHASE_ZH.join('|'), 'g');
+  const lines = text.split('\n');
+  let modified = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const phaseMatches = [...line.matchAll(PHASE_RE)];
+    if (phaseMatches.length === 0) continue;
+
+    const signMatches = [...line.matchAll(SIGN_RE)];
+    if (signMatches.length < 2) continue;
+
+    for (const pm of phaseMatches) {
+      const phase = pm[0];
+      const rules = PHASE_RULES[phase];
+      if (!rules) continue;
+
+      // 找离相位词最近的2个星座（不区分前后，中文句式两个星座通常都在前面）
+      const sorted = signMatches
+        .map(function(m) { return { sign: m[0], idx: m.index, dist: Math.abs(m.index - pm.index) }; })
+        .sort(function(a, b) { return a.dist - b.dist; });
+
+      const closest = sorted[0];
+      const second = sorted[1];
+      if (!closest || !second) continue;
+
+      const signA = closest.sign;
+      const signB = second.sign;
+
+      const validForA = rules[signA];
+      if (!validForA) continue;
+
+      let isValid = false;
+      if (typeof validForA === 'string') {
+        isValid = (validForA === signB);
+      } else if (Array.isArray(validForA)) {
+        isValid = validForA.indexOf(signB) !== -1;
+      }
+
+      if (!isValid) {
+        console.log('[astro_linter] DETECTED: ' + signA + ' ' + phase + ' ' + signB);
+        var validForB = rules[signB];
+        var corrected = null;
+        if (typeof validForB === 'string') {
+          corrected = validForB;
+        } else if (Array.isArray(validForB) && validForB.length > 0) {
+          corrected = validForB[0];
+        }
+        if (corrected && corrected !== signA) {
+          lines[i] = lines[i].replace(signA, corrected);
+          modified = true;
+          console.log('[astro_linter] FIXED: ' + signA + ' -> ' + corrected);
+        }
+      }
+    }
+  }
+
+  return modified ? lines.join('\n') : text;
+}
 
 // DeepSeek Streaming 时常产生「年份重影」：2026年6月2026年6月6月21日
 // 本函数暴力清洗所有已知的污染模式
@@ -1723,7 +1798,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         // ── V97 宫位强制纠正器（铁血断路）──
-        const sanitizedAI = final_text_sanitizer(aiResult, ascendant);
+        const sanitizedAI = astro_phase_linter(final_text_sanitizer(aiResult, ascendant));
 
         // Parse AI result
         let reportContent = sanitizedAI;
@@ -2282,7 +2357,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let cleanedText = langPunctuationClean(fullTextCollector, lang);
     // 🛠️ V102s: 流式端点接入完整清洗器（此前只跑 langPunctuationClean，漏了宫位降维/月锁/前世清洗）
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
-    cleanedText = final_text_sanitizer(cleanedText, _ascStream);
+    cleanedText = astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream));
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
@@ -2332,7 +2407,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const fdata = await fullRes.json();
           let ft = fdata.choices?.[0]?.message?.content || '';
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库（防脏缓存）
-          if (ft) ft = applyMonthLockSanitizer(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream), astroMatrix, null, null, lang);
+          if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream)), astroMatrix, null, null, lang);
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
             writeToCache(ft).catch(() => {});
