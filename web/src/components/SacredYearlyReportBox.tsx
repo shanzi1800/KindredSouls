@@ -65,7 +65,7 @@ const SacredYearlyReportBox: React.FC<{
     // 0.0 V103: 换行恢复清洗器（缓存数据整章压成一行，渲染前强行注入换行，修复整章全金 bug）
     // 必须在章节 ✦ 前缀注入（Step 8）之前执行；不重生成缓存，纯渲染预处理
     cleaned = cleaned.replace(/####\s*📅/g, '\n#### 📅'); // 月份标记前注入换行
-    cleaned = cleaned.replace(/###\s+/g, '\n### ');       // 子章节标题前注入换行
+    cleaned = cleaned.replace(/####\s+/g, '\n#### ');
     cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
 
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
@@ -183,14 +183,14 @@ const SacredYearlyReportBox: React.FC<{
     // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
     const advancedUniversalChapterRegex = /(^|\n)\s*(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
     cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, prefix, p1, p2, p3, p4, title) => {
-      // V103-fix4: 如果原始匹配已带 ✦ 前后缀，直接返回原样（幂等，不重复注入）
+      // V103-fix9: 如果原始匹配已带 ✦，直接返回原样（幂等）
       if (match.includes('✦')) return match;
-      // V84: 保留原始语言格式，不硬写中文
-      if (p1) return '\n\n✦ 第' + p1 + '章：' + title.trim() + ' ✦\n\n';      // 中文
-      if (p2) return '\n\n✦ Chapter ' + p2 + ': ' + title.trim() + ' ✦\n\n';    // 英文
-      if (p3) return '\n\n✦ Chương ' + p3 + ': ' + title.trim() + ' ✦\n\n';    // 越南文
-      if (p4) return '\n\n✦ บทที่ ' + p4 + ': ' + title.trim() + ' ✦\n\n';      // 泰文
-      return match;
+      // V103-fix9: 换行注入——只在 prefix 为普通文本时加额外换行；\n 前缀时保持原样
+      const heading = (p1) ? '✦ 第' + p1 + '章：' + title.trim() + ' ✦' :
+                      (p2) ? '✦ Chapter ' + p2 + ': ' + title.trim() + ' ✦' :
+                      (p3) ? '✦ Chương ' + p3 + ': ' + title.trim() + ' ✦' :
+                      (p4) ? '✦ บทที่ ' + p4 + ': ' + title.trim() + ' ✦' : match;
+      return (prefix === '\n' ? '\n' : '\n\n') + heading + '\n\n';
     });
     // 最终神谕分界线
     cleaned = cleaned.replace(/最终财富神谕 · 通关密令/g, '【✦ 最终财富神谕 · 通关密令 ✦】');
@@ -224,6 +224,11 @@ const SacredYearlyReportBox: React.FC<{
     if (!t) return { type: 'empty', content: '' };
     
     // 检测图标
+    // 🛠️ V103-fix9: ✦章节前缀——以 ✦ 开头的行直接走 heading（金色），不依赖章节关键词检测（章节关键词有60字上限限制）
+    if (t.trim().startsWith('✦')) {
+      const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
+      return { type: 'heading', content: cleanMarkdown(withoutStar), icon: '✦' };
+    }
     const iconMatch = t.match(/^([🚀⚠️🟢🔴💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
@@ -282,7 +287,7 @@ const SacredYearlyReportBox: React.FC<{
     }
     
     // 月份/年份/章节编号 (1.4, 1.1 等)
-    if (t.match(/^(2026年|2027年|\d{4}-\d{4}|\d+\.\d+)/)) {
+    if (t.match(/^(####\s|2026年|2027年|\d{4}-\d{4}|\d+\.\d+)/)) {
       return { type: 'subheading', content: cleanMarkdown(t) };
     }
     
