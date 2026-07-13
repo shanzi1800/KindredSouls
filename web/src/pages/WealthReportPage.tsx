@@ -2702,21 +2702,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 c = c.replace(entry.pattern, entry.truth);
               }
 
-              // 0.6 【孤括号清洗——大模型行文污染，闭合无头`）`】
-              // 类似「但水星）」「而天王星）」「继续形成四分刑）」等
-              // 只修孤立的 `）` 不伤正常 `（...）` 对
+              // 0.6 【孤括号清洗——大模型行文污染，双向保底】
+              // Pass1: 移除孤立 `）`（不伤正常对）
               {
                 let bal = '', depth = 0;
                 for (const ch of c) {
                   if (ch === '\uff08') depth++;
                   else if (ch === '\uff09') {
                     if (depth > 0) { depth--; bal += ch; }
-                    continue; // 孤立）直接跳过
+                    continue; // 孤立）跳过
                   }
                   bal += ch;
                 }
                 c = bal;
               }
+              // Pass2: 补孤立 `（`（有头无尾，如「（巨蟹座形成强大」→补 `）`）
+              // 只修明确的前括号残缺场景，保守处理避免误伤
+              c = c.replace(/（巨蟹座形成强大的[^）]{0,30})（[：。\n]/g, '$1）（$2');
+              c = c.replace(/（对应太阳[^）]{0,30}?）（：)/g, '$1）：');
 
               // 1. 【斩杀太阳双子幻觉 — 只修本太阳引用，不碰月度矩阵里的双子座】
               // V103-fix19: 后端月锁和元素锁已保证月度矩阵里星座正确，
