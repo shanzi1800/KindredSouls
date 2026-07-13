@@ -247,7 +247,7 @@ const SacredYearlyReportBox: React.FC<{
     // V103-fix5+11: 仪表盘4项白字——检测🚀🌟⚠🔮图标后文本含关键词
     if (/^[🚀🌟⚠🔮]/.test(t) && !t.includes('最终财富神谕')) {
       const inner = t.slice(t.search(/[🚀🌟⚠🔮]/) + 1).replace(/^\s*[*\\-\\->]+\s*/, '').trim();
-      if (/年度宏观主题|财富爆发指数|资产断路器|命运显化方向|财富核心指标仪表盘/.test(inner)) {
+      if (/年度宏观主题|财富爆发指数|资产熔断风险|命运显化方向|财富核心指标仪表盘/.test(inner)) {
         return { type: 'text', content: cleanMarkdown(t) };
       }
     }
