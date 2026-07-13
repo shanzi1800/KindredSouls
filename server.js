@@ -799,7 +799,7 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
 // ── /api/clear-cache ──
 app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   const { birthDate, lang, reportType } = req.params;
-  const cacheKey = `wealth:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v102x:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.json({ error: 'Supabase not configured' });
@@ -2168,9 +2168,22 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // V99c: 缓存命中直接返回原始内容，跳过 sanitizer（避免删除大量行导致截断）
         // V103-fix6: 对旧缓存也做标准化，确保格式统一
         // V103-fix15: Cache HIT 也跑月锁卫士——旧缓存里 6 月处女座 Bug 在此被物理封杀
+        // V105: HIT 路径补全全管道——旧缓存可能有本命太阳座错误，必须强制过 linter
         let astroMatrixHIT = null;
         try { astroMatrixHIT = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch(e) {}
+        // 计算本命太阳座（与 MISS 路径保持一致）
+        const [_, bm, bd] = birthDate.split('-').map(Number);
+        const _signs = ['摩羯座','水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座'];
+        const _cuts = [[1,20,1],[2,19,2],[3,21,3],[4,20,4],[5,21,5],[6,22,6],[7,23,7],[8,23,8],[9,23,9],[10,24,10],[11,22,11],[12,22,0]];
+        let _sunIdx = 0;
+        for (let _ci = _cuts.length - 1; _ci >= 0; _ci--) {
+          if (bm > _cuts[_ci][0] || (bm === _cuts[_ci][0] && bd >= _cuts[_ci][1])) { _sunIdx = _cuts[_ci][2]; break; }
+        }
+        const _realSunSignHIT = _signs[_sunIdx]; // 1988-08-08 → 狮子座
+        const _ascHIT = astroMatrixHIT?.meta?.rising_sign || 'Cancer';
         let streamText = standardizeReport(cachedText);
+        // 强制全管道清洗（治本：HIT 路径以前跳过 natal_sun_linter/astro_phase_linter）
+        streamText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(streamText, _ascHIT)), _realSunSignHIT, _ascHIT);
         if (astroMatrixHIT) streamText = applyMonthLockSanitizer(streamText, astroMatrixHIT, null, null, lang);
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
