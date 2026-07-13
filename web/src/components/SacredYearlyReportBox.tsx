@@ -68,8 +68,15 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/####\s+/g, '\n#### ');
     // V103-fix10: ✦ 拆行修复——三步走
     cleaned = cleaned.replace(/^##(\s*)✦/gm, '✦$1');    // Step1: ## ✦ -> ✦（主标题去##，保空格）
-    cleaned = cleaned.replace(/^✦$/gm, '');                // Step1b: 单独✦行删掉    cleaned = cleaned.replace(/##(\s+(?!✦).+?)✦/gm, '✦$1 ✦'); // Step2: ##居前章节换位
+    cleaned = cleaned.replace(/^✦$/gm, '');                // Step1b: 单独✦行删掉
+    cleaned = cleaned.replace(/##((?:\\s*[^\\n✦])*?(?:第[一二三四五六七八九十\\d]+章|Chương|Chương\\s+\\d+|Chapter\\s+[IVX\\d]+|บทที่\\s*\\d+)[^\\n✦]*)✦/gm, (m) => {
+      const raw = m.replace(/^##\s*/, '').replace(/\s*✦\$/, '').trim();
+      const chMatch = raw.match(/(?:第[一二三四五六七八九十\d]+章|Chương|Chương\s+\d+|Chapter\s+[IVX\d]+|บทที่\s*\d+)/);
+      const title = chMatch ? raw.slice(raw.indexOf(chMatch[0])).trim() : raw;
+      return `✦ ${title} ✦`;
+    }); // Step2: ##📜第一章...✦ → ✦ 第一章...✦
     cleaned = cleaned.replace(/✦\s*\n\s*\n/g, '✦ \n'); // Step3: ✦\n\n## -> ✦ \n\n##
+    cleaned = cleaned.replace(/###\s*📅\s*\d{4}年\d{1,2}月:\s*Sun\s+in\s+/g, '### 📅 '); // V103-fix11: 清理月份 Sun in
     cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
 
     // 0. V67: 蒸发图片残留碎屑 + 错别字统一
@@ -237,14 +244,13 @@ const SacredYearlyReportBox: React.FC<{
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
-    // 🛠️ V103-fix5: 仪表盘项一律白色——以 🚀🌟⚠🔮 开头的行，直接返回 text（不走关键词判断）
-    // 原因：AI 生成措辞不一致（资产熔断/断路器）导致金色随机
-    // 注意：🌟 不在图标正则里，必须用行首字符直接判断
-    // 🛠️ V103-fix5: 仪表盘项一律白色（🚀🌟⚠🔮 开头），但 🔮 最终财富神谕 是金色标题，排除
+    // V103-fix5+11: 仪表盘4项白字——检测🚀🌟⚠🔮图标后文本含关键词
     if (/^[🚀🌟⚠🔮]/.test(t) && !t.includes('最终财富神谕')) {
-      return { type: 'text', content: cleanMarkdown(t) };
+      const inner = t.slice(t.search(/[🚀🌟⚠🔮]/) + 1).replace(/^\s*[*\\-\\->]+\s*/, '').trim();
+      if (/年度宏观主题|财富爆发指数|资产断路器|命运显化方向|财富核心指标仪表盘/.test(inner)) {
+        return { type: 'text', content: cleanMarkdown(t) };
+      }
     }
-    
     // 【✦ 章节名 ✦】
     if (t.match(/^【\s*✦.+✦\s*】$/)) {
       return { type: 'chapter', content: t.replace(/【\s*✦\s*|\s*✦\s*】/g, '') };
