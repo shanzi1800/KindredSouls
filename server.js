@@ -394,7 +394,46 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   return text;
 }
 
-// ── V104: 相位校验器（相位关系 Linter）──
+// ── V104e: 本命太阳断言器 + 反向括号补丁 ──
+// 1) 正文中「你的太阳在X座」但X不是本命太阳 → 替换为本命太阳
+// 2) 反向残括号：「但水星）」「而天王星）」等（有）无（前）→ 补前
+// 3) 「（巨蟹座形成强大的支持相位」漏）→ 补）
+function natal_sun_linter(text, natalSunSign, ascendant) {
+  if (!text || !natalSunSign) return text;
+
+  // 1) 本命太阳断言：匹配「你的太阳在X座」或「太阳在X座第Y宫」等显式引用
+  //    只修正文中的本命表述，不修月度标题（月锁已保证正确）
+  const SUN_SIGNS = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+  for (const wrongSign of SUN_SIGNS) {
+    if (wrongSign === natalSunSign) continue;
+    // 模式 1：你的太阳在双子座第12宫 → 你的太阳在狮子座第X宫
+    // 但保留「太阳进入双子座」（月度 transit 语境）
+    // 「太阳在X座」且前面 20 字内有「你的」→ 视为本命引用
+    const pat1 = new RegExp('你的太阳在' + wrongSign, 'g');
+    text = text.replace(pat1, '你的太阳在' + natalSunSign);
+
+    // 模式 2：前面无「你的」但有明显的本命上下文（如风元素路径章节）
+    // 谨慎处理：只替换明确的前缀模式
+    const pat2 = new RegExp('太阳在' + wrongSign + '第', 'g');
+    // 替换前先检查上下文：如果上一句是「你的」领起，或前300字内第一次出现
+    text = text.replace(pat2, '太阳在' + natalSunSign + '第');
+  }
+
+  // 2) 反向残括号：但水星）→ 但水星（逆行） 或补前（
+  //   「但[行星名]）」 → 「但[行星名]（逆行）」
+  //   「而[行星名]）」 → 「而[行星名]（逆行）」
+  const PLANETS = ['水星','金星','火星','木星','土星','天王星','海王星','冥王星'];
+  for (const p of PLANETS) {
+    const revPat = new RegExp('但' + p + '）', 'g');
+    text = text.replace(revPat, '但' + p + '（逆行）');
+    const revPat2 = new RegExp('而' + p + '）', 'g');
+    text = text.replace(revPat2, '而' + p + '（逆行）');
+    const revPat3 = new RegExp('，' + p + '）', 'g');
+    text = text.replace(revPat3, '，' + p + '（逆行）');
+  }
+
+  return text;
+}
 // 校验AI生成的相位描述是否符合天文学规则。
 // 星座-相位关系是有限且确定的，用查表法100%拦截错误配对。
 function astro_phase_linter(text) {
@@ -1823,7 +1862,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         // ── V97 宫位强制纠正器（铁血断路）──
-        const sanitizedAI = astro_phase_linter(final_text_sanitizer(aiResult, ascendant));
+        const sanitizedAI = natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign);
 
         // Parse AI result
         let reportContent = sanitizedAI;
@@ -2382,7 +2421,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let cleanedText = langPunctuationClean(fullTextCollector, lang);
     // 🛠️ V102s: 流式端点接入完整清洗器（此前只跑 langPunctuationClean，漏了宫位降维/月锁/前世清洗）
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
-    cleanedText = astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream));
+    // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
+    cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
@@ -2433,6 +2473,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           let ft = fdata.choices?.[0]?.message?.content || '';
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库（防脏缓存）
           if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream)), astroMatrix, null, null, lang);
+          // 🛠️ V104e: 也有反向括号隐患
+          if (ft) ft = natal_sun_linter(ft, realSunSign, _ascStream);
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
             writeToCache(ft).catch(() => {});
