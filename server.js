@@ -2216,11 +2216,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const parsed = JSON.parse(dataStr);
             const content = parsed.choices?.[0]?.delta?.content || '';
             if (content) {
-              // 真流式：立即发给前端
-              res.write(Buffer.from(`data: ${JSON.stringify({ text: content })}\n\n`, 'utf-8'));
+              // V103-fix8b：清理后统一用于前端和缓存（根治段落粘连）
+              const clean = content.replace(/ \n/g, '\n').replace(/  +/g, ' ');
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8'));
               if (typeof res.flush === 'function' && ++chunkCount % 5 === 0) res.flush();
-              // 同时累积到缓存收集器（V103-fix8：先清理空格+换行再累加）
-              fullTextCollector += content.replace(/ \n/g, '\n').replace(/  +/g, ' ');
+              fullTextCollector += clean;
             }
           } catch (e) {}
         }
