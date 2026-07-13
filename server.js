@@ -474,6 +474,9 @@ function cleanYearlyTimeline(text) {
   // V103-fix18: 断头括号兜底——AI 流式截断导致行星名+）独立成句，替换为逗号
   text = text.replace(/(火星|水星|天王星|冥王星|金星|木星|土星)(？！)(?!在)/g, "$1，");
 
+  // V103-fix21: 通用括号平衡——行内中文左括号（无闭合）→ 行尾补）
+  text = text.replace(/（([^）\n]*?)(\s*)(?=\n|$)/g, '（$1$2）');
+
   return text;
 }
 

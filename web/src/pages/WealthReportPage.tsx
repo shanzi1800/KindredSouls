@@ -441,6 +441,9 @@ export const cleanYearlyTimeline = (text: string): string => {
     prev = cleaned;
   }
 
+  // V103-fix21: 通用括号平衡——行内中文左括号（无闭合）→ 行尾补）
+  cleaned = cleaned.replace(/（([^）\n]*?)(\s*)(?=\n|$)/g, '（$1$2）');
+
   return cleaned;
 };
 
