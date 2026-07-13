@@ -389,6 +389,8 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 
   // 🛡️ V97h2: 防御性清洗——移除编码崩坏的孤立代理对 + U+FFFD 替换符（保留合法 emoji 对）
   text = stripLoneSurrogates(text).replace(/\uFFFD/g, '');
+  // V104d: 斩杀文本中字面的 \n 串
+  text = text.replace(/\\n/g, '');
   return text;
 }
 
