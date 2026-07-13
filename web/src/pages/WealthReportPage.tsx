@@ -2667,22 +2667,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             const trueZodiac = getTrueZodiacByDate(birthDate);
 
             // 🛠️ V103-fix22: 前端月份真理表——独立于后端的第二道防线
-            // 十二个月流年太阳真理值（日历常数，不依赖任何API/astroMatrix）
-            // 起始月份 = 2026年7月，后续逐月+1星座+1宫位
-            const CHINESE_MONTH_TRUTH = [
-              { pattern: /2026年7月[：:][^·]*/, truth: '2026年7月: 太阳巨蟹座第1宫' },
-              { pattern: /2026年8月[：:][^·]*/, truth: '2026年8月: 太阳狮子座第2宫' },
-              { pattern: /2026年9月[：:][^·]*/, truth: '2026年9月: 太阳处女座第3宫' },
-              { pattern: /2026年10月[：:][^·]*/, truth: '2026年10月: 太阳天秤座第4宫' },
-              { pattern: /2026年11月[：:][^·]*/, truth: '2026年11月: 太阳天蝎座第5宫' },
-              { pattern: /2026年12月[：:][^·]*/, truth: '2026年12月: 太阳射手座第6宫' },
-              { pattern: /2027年1月[：:][^·]*/, truth: '2027年1月: 太阳摩羯座第7宫' },
-              { pattern: /2027年2月[：:][^·]*/, truth: '2027年2月: 太阳水瓶座第8宫' },
-              { pattern: /2027年3月[：:][^·]*/, truth: '2027年3月: 太阳双鱼座第9宫' },
-              { pattern: /2027年4月[：:][^·]*/, truth: '2027年4月: 太阳白羊座第10宫' },
-              { pattern: /2027年5月[：:][^·]*/, truth: '2027年5月: 太阳金牛座第11宫' },
-              { pattern: /2027年6月[：:][^·]*/, truth: '2027年6月: 太阳双子座第12宫' },
-            ];
+            // 【重要】只锁月份+太阳星座，宫位由后端 SwissEph 按实际上升计算
+            // 月份星座是日历常数（2026-07=巨蟹→逐月顺延），宫位取决于出生上升，不是固定值
+            const ZODIAC_TRUTH = {
+              '2026年7月': '巨蟹座', '2026年8月': '狮子座', '2026年9月': '处女座',
+              '2026年10月': '天秤座', '2026年11月': '天蝎座', '2026年12月': '射手座',
+              '2027年1月': '摩羯座', '2027年2月': '水瓶座', '2027年3月': '双鱼座',
+              '2027年4月': '白羊座', '2027年5月': '金牛座', '2027年6月': '双子座',
+            };
 
             // 🛠️ V45: 军师版万能强切洗涤器——一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
             const formatAndCleanSacredText = (text: string): string => {
@@ -2697,9 +2689,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 c = c.split('生成 AI 洞察')[0];
               }
 
-              // 0.5 【前端月份真理硬覆盖——独立于后端月锁的第二道防线】
-              for (const entry of CHINESE_MONTH_TRUTH) {
-                c = c.replace(entry.pattern, entry.truth);
+              // 0.5 【前端月份星座真理覆盖——只换星座，宫位不动】
+              // 月份星座是日历常数（2026-07=巨蟹→逐月顺延），宫位取决于实际上升让后端算
+              for (const [month, sign] of Object.entries(ZODIAC_TRUTH)) {
+                // 匹配形如「2027年6月: 太阳XXX座」并用真理星座替换，保留后续所有内容（第X宫等）
+                c = c.replace(
+                  new RegExp(`${month}[：:]\\s*太阳\\S{0,6}座`, 'g'),
+                  `${month}: 太阳${sign}`
+                );
               }
 
               // 0.6 【孤括号清洗——大模型行文污染，双向保底】
