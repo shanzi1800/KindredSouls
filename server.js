@@ -442,6 +442,20 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     text = text.replace(revPat3, '，' + p + '（逆行）');
   }
 
+  // 🛠️ V108-fix4: 第五章本命宫位硬编码——AI 自行推算本命太阳宫位时常写".2e6.79bb.121宫"
+  // 根据上升星座和本命太阳星座，用整宫制计算正确宫位
+  try {
+    const _vm = getSignToHouseMap(ascendant);
+    const _si = SIGN_ORDER_ZH.indexOf(natalSunSign);
+    if (_vm && _si >= 0 && _vm[_si]) {
+      const _ch = _vm[_si];
+      text = text.replace(/你的本命太阳在第[一二三四五六七八九十百零\d]{1,3}宫/g, '你的本命太阳在第' + _ch + '宫');
+      text = text.replace(/本命太阳在第[一二三四五六七八九十百零\d]{1,3}宫/g, '本命太阳在第' + _ch + '宫');
+    }
+  } catch(e) {
+    console.warn('[natal_sun_linter] house fix failed:', e.message);
+  }
+
   return text;
 }
 // 校验AI生成的相位描述是否符合天文学规则。
@@ -648,6 +662,10 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     }
   }
 
+  // 🛠️ V108-fix3: 6月标题本命魂穿兜底——当 AI 在6月写了本命太阳而非双子座时强制纠正
+  if (lang === 'zh') {
+    text = text.replace(/(2027年6月[：:]\s*)太阳(?!双子座)[^·\n座]*座/g, '$1太阳双子座');
+  }
   return text;
 }
 
@@ -2443,95 +2461,154 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = getDeepSeekKey();
     const geminiKey = process.env.GEMINI_API_KEY;
-    // 🔧 V75 fix: 64000 彻底解除年报截断（EN报告需要18000+ tokens完整输出）
-    const maxTokens = reportType === 'yearly' ? 64000 : 4000;
-    // 🔧 V75 fix: DeepSeek 大输出需要更长超时（AbortController 5分钟）
-    // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
+    // 🔧 V75 fix: 64000 彻底解除年报截断
+    // 🛠️ V108-fix2: 年报改用 Gemini 2.5 Pro 为主模型（支持 65536 tokens 输出，彻底消灭10月截断）
+    const maxTokens = 65536;
     const controller = new AbortController();
-    // 🔧 V89.1: let 声明让 catch 块也能访问（const block-scoping 跨不过 try→catch）
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
-    if (!deepseekKey) {
-      clearTimeout(aiTimeout);
-      res.write(Buffer.from(`data: ${JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured' })}
+    // 🛠️ V108-fix2: 年报优先走 Gemini 2.5 Pro（输出上限高），非年报走 DeepSeek（快）
+    let usedGemini = false;
+    let aiRes = null;
+    let aiStream = false;
+    let geminiFullText = '';
 
-`, "utf-8"));
-      return res.end();
-    }
-
-    let aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${deepseekKey}`,
-      },
-      body: new TextEncoder().encode(JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: prompt.system },
-          { role: 'user', content: prompt.user },
-        ],
-        max_tokens: maxTokens,
-        temperature: 0,
-        seed: seedFromUserPrompt(prompt.user),
-        stream: true,
-      })),
-      signal: controller.signal, // V75: AbortController prevents Railway timeout kill
-    });
-
-    clearTimeout(aiTimeout); // V75: AI responded, cancel timeout
-
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      console.warn(`[wealth-stream] DeepSeek failed (${aiRes.status}), trying Gemini...`);
-
-      if (geminiKey) {
-        try {
-          const gemRes = await safeFetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: new TextEncoder().encode(JSON.stringify({
-                contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                generationConfig: { maxOutputTokens: maxTokens, temperature: 0 }
-              })),
-            }
-          );
-          if (gemRes.ok) {
-            const gemData = await gemRes.json();
-            const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (fullText) {
-              console.log('[wealth-stream] Gemini fallback succeeded, length:', fullText.length);
-              for (const char of fullText) {
-                res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}
-
-`, "utf-8"));
-                // V103-fix8-final：literal \\n 转实际换行，再清换行前空格
-                fullTextCollector += char.replace(/\\n/g, '\n').replace(/ \n/g, '\n');
-                if (fullText.indexOf(char) % 10 === 0 && typeof res.flush === 'function') {
-                  res.flush();
-                }
+    if (reportType === 'yearly' && geminiKey) {
+      usedGemini = true;
+      // Gemini 2.5 Pro 流式请求
+      try {
+        const gemRes = await safeFetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: new TextEncoder().encode(JSON.stringify({
+              contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+              generationConfig: { maxOutputTokens: 65536, temperature: 0 }
+            })),
+            signal: controller.signal
+          }
+        );
+        if (gemRes.ok) {
+          const gemReader = gemRes.body.getReader();
+          const gemDecoder = new TextDecoder();
+          let gemBuf = '';
+          const heartbeat = setInterval(() => {
+            try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
+          }, 20000);
+          while (true) {
+            const { done, value } = await gemReader.read();
+            if (done) { clearInterval(heartbeat); break; }
+            gemBuf += gemDecoder.decode(value, { stream: true });
+            const gemLines = gemBuf.split('\n');
+            gemBuf = gemLines.pop() || '';
+            for (const gl of gemLines) {
+              if (gl.startsWith('data: ')) {
+                const d = gl.slice(6).trim();
+                if (d === '[DONE]') continue;
+                try {
+                  const gp = JSON.parse(d);
+                  if (gp.error) continue;
+                  const txt = gp.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                  if (txt) {
+                    const clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
+                    res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8'));
+                    if (typeof res.flush === 'function') res.flush();
+                    geminiFullText += clean;
+                  }
+                } catch(e){}
               }
-              // Gemini 也要落库
-              if (fullTextCollector.length > 100) {
-                writeToCache(fullTextCollector).catch(() => {});
-              }
-              res.write('data: [DONE]\n\n');
-              if (typeof res.flush === 'function') res.flush();
-              return res.end();
             }
           }
-        } catch (e) {
-          console.error('[wealth-stream] Gemini fallback failed:', e.message);
+          aiStream = true;
+        } else {
+          console.warn('[wealth-stream] Gemini 2.5 Pro failed (' + gemRes.status + '), falling back to DeepSeek');
+          usedGemini = false;
         }
+      } catch(e) {
+        console.error('[wealth-stream] Gemini 2.5 Pro stream error:', e.message);
+        usedGemini = false;
+      }
+    }
+
+    if (!aiStream) {
+      // DeepSeek 路径（非年报 或 Gemini 失败降级）
+      if (!deepseekKey) {
+        clearTimeout(aiTimeout);
+        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable' })}\n\n`, 'utf-8'));
+        return res.end();
       }
 
-      res.write(Buffer.from(`data: ${JSON.stringify({ error: `DeepSeek error: ${aiRes.status}` })}\n\n`, 'utf-8'));
-      return res.end();
+      aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${deepseekKey}`,
+        },
+        body: new TextEncoder().encode(JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: prompt.system },
+            { role: 'user', content: prompt.user },
+          ],
+          max_tokens: maxTokens,
+          temperature: 0,
+          seed: seedFromUserPrompt(prompt.user),
+          stream: true,
+        })),
+        signal: controller.signal,
+      });
+
+      clearTimeout(aiTimeout);
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        console.warn('[wealth-stream] DeepSeek failed (' + aiRes.status + '), trying Gemini 2.0 Flash fallback...');
+        if (geminiKey && !usedGemini) {
+          try {
+            const gemRes = await safeFetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: new TextEncoder().encode(JSON.stringify({
+                  contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+                  generationConfig: { maxOutputTokens: 65536, temperature: 0 }
+                })),
+              }
+            );
+            if (gemRes.ok) {
+              const gemData = await gemRes.json();
+              const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (fullText) {
+                console.log('[wealth-stream] Gemini 2.0 Flash fallback succeeded, length:', fullText.length);
+                for (const char of fullText) {
+                  res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}\n\n`, 'utf-8'));
+                  fullTextCollector += char.replace(/\\n/g, '\n').replace(/ \n/g, '\n');
+                }
+                if (fullTextCollector.length > 100) {
+                  writeToCache(fullTextCollector).catch(() => {});
+                }
+                res.write('data: [DONE]\n\n');
+                if (typeof res.flush === 'function') res.flush();
+                return res.end();
+              }
+            }
+          } catch (e) {
+            console.error('[wealth-stream] Gemini 2.0 Flash fallback failed:', e.message);
+          }
+        }
+        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI error: ' + aiRes.status })}\n\n`, 'utf-8'));
+        return res.end();
+      }
     }
 
     // 🛠️ V73: 真流式 + 后台落库——边收边发，用户体验优先
+    // 🛠️ V108-fix2: 如果 Gemini 已流完，跳过 DeepSeek 读取
+    if (aiStream) {
+      // Gemini 2.5 Pro 已完成流式读取，直接跳转到后处理
+      fullTextCollector = geminiFullText;
+    } else {
     const reader = aiRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -2566,7 +2643,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           } catch (e) {}
         }
       }
-    }
+    }  // end of while loop
+    } // end of else (DeepSeek path)
 
     // V100i: 英文标点清洗（去除中文全角标点污染）
     // V103-fix8: 清理 DeepSeek AI 输出时在换行前加的多余空格（"word \n" → "word\n"）
@@ -2590,6 +2668,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
     cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+
+    // 🛠️ V108-fix1: 终极乱码清洗——sanitized 事件前最后一次 FFFD 清扫
+    cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
     if (cleanedText !== fullTextCollector) {
