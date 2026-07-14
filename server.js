@@ -2461,7 +2461,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         let _si = 0;
         for (let _ci = _cuts2.length-1; _ci>=0; _ci--) { if (bm2>_cuts2[_ci][0]||(bm2===_cuts2[_ci][0]&&bd2>=_cuts2[_ci][1])) {_si=_cuts2[_ci][2]; break;} }
         const _rs = _signs2[_si];
-        const streamText = natal_sun_linter(standardizeReport(cachedText), _rs, null);
+        const streamText = cachedText;  // V113-fix5: 缓存已是cleanedText，零处理直接用
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
@@ -2784,6 +2784,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
 
     // V100i2: 用清洗后的完整文本替换显示（清除中文标点污染）
+    // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText（标准化后），同一终稿
     if (cleanedText !== fullTextCollector) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
