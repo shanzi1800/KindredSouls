@@ -605,6 +605,38 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   // 🛠️ V106-fix3: 最早期清洗——在任何标题/星座替换之前，先清乱码+修复孤闭括号
   // 这两刀走在 applyMonthLockSanitizer 最前，确保进入主循环前文本已干净
   text = text.replace(/\uFFFD/g, '').replace(/�/g, '');
+  // ═══════════════════════════════════════════════════════════
+  // 🛠️ V115-fix1: 月度标题全量精准锁（一次性替换12个月，不依赖正则分组）
+  // 根因：V114 的 titleRe 只处理 ### 标题，漏了 #### 加粗标题 + 句式变体。
+  // 治法：直接遍历12个月，精准替换"年N月：太阳[错误]座"→"年N月：太阳[正确]座"
+  // ═══════════════════════════════════════════════════════════
+  const _sunSignMap = {};
+  if (astroMatrix && astroMatrix.months) {
+    astroMatrix.months.forEach((m, i) => {
+      const sun = _sunOf(m);
+      const signZh = ZH_SIGN[sun.sign] || sun.sign || '';
+      if (!signZh) return;
+      const mi = currentMonth - 1 + i;
+      const year = currentYear + (mi >= 12 ? 1 : 0);
+      const month = (mi % 12) + 1;
+      _sunSignMap[`${year}年${month}月`] = signZh;
+    });
+  }
+  Object.keys(_sunSignMap).forEach(key => {
+    const correctSign = _sunSignMap[key];
+    // 全量替换：key + 冒号/冒号 + 任意内容 + 星座名 → 正确星座名
+    // 匹配：2027年6月：/：+ 太阳 + 任意 + 星座名
+    const wrongSigns = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+    wrongSigns.forEach(wrong => {
+      if (wrong === correctSign) return;
+      // Pattern A: 冒号+空格+太阳+任意+星座名（标题格式）
+      const reA = new RegExp(`(${key}[：:]\s*太阳[^\n]*?)${wrong}`, 'g');
+      // Pattern B: 冒号+星座名（简洁标题，如"太阳双鱼座"）
+      const reB = new RegExp(`(${key}[：:]\s*)${wrong}`, 'g');
+      text = text.replace(reA, `$1${correctSign}`);
+      text = text.replace(reB, `$1${correctSign}`);
+    });
+  });
   // 通用孤闭括号兜底（无头）→ 清掉；有头括号链交给 natal_sun_linter / V104c 处理
   text = text.replace(/（([^）\n]*?)(?=\n|$)/g, '（$1）');
 
@@ -724,6 +756,38 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           //       V107-fix2 的 _sectionRe 只锁"X座第N宫"格式，漏了"X座刑克Y座"相位句式 → 跨月死循环。
           // 治本：用 astroMatrix 每月真实火星/天王星星座，按章节隔离替换（不依赖 AI 听话）。
           const ZH_SIGN_PL2 = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+          // 🛠️ V115-fix2: 火星/天王星全量真值替换（不依赖段隔离，一次遍历全局替换）
+          // 根因：AI 写"火星在狮子座刑克天王星在双子座"跨月复制，sanitizer 段隔离逻辑漏截
+          // 治法：读每月真值，全局逐月替换，斩断复读冲动
+          if (astroMatrix && astroMatrix.months) {
+            const _marsCache = {};
+            const _uraCache = {};
+            astroMatrix.months.forEach((m2, i2) => {
+              const marSign = m2.mars?.sign || m2.positions?.Mars?.sign || '';
+              const uraSign = m2.uranus?.sign || m2.positions?.Uranus?.sign || '';
+              _marsCache[i2] = ZH_SIGN_PL2[marSign]?.replace(/座$/,'') || marSign.replace(/座$/,'') || '';
+              _uraCache[i2] = ZH_SIGN_PL2[uraSign]?.replace(/座$/,'') || uraSign.replace(/座$/,'') || '';
+            });
+            // 替换：火星在X座 → 火星在当月真值座（只替换"火星在"+非真值+座）
+            const _allMarsSigns = Object.values(_marsCache).filter(Boolean);
+            const _allUraSigns = Object.values(_uraCache).filter(Boolean);
+            _allMarsSigns.forEach(ms => {
+              if (!ms) return;
+              wrongSigns.forEach(ws => {
+                if (ws === ms) return;
+                const _mr = new RegExp(`火星在${ws}`, 'g');
+                text = text.replace(_mr, `火星在${ms}`);
+              });
+            });
+            _allUraSigns.forEach(us => {
+              if (!us) return;
+              wrongSigns.forEach(ws => {
+                if (ws === us) return;
+                const _ur = new RegExp(`天王星在${ws}`, 'g');
+                text = text.replace(_ur, `天王星在${us}`);
+              });
+            });
+          }
           const _realMar2 = ZH_SIGN_PL2[_md.mars?.sign] || _md.mars?.sign || '';
           const _realUra2 = ZH_SIGN_PL2[_md.uranus?.sign] || _md.uranus?.sign || '';
           const _marCore = _realMar2.replace(/座$/, '');
@@ -2226,6 +2290,23 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         // ── V97 宫位强制纠正器（铁血断路）──
+    // 🛠️ V115-fix3: Body 正文本命太阳全护（在 linter 前全量扫射）
+    // 根因：AI 在长文后半段偶发"作为X座之人"等句式，natal_sun_linter 只护句式骨架
+    // 治法：在 linter 前全量替换12星座名 → 本命真值（覆盖所有句式变体）
+    if (realSunSign) {
+      ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'].forEach(wrong => {
+        if (wrong === realSunSign) return;
+        // 斩断所有句式变体
+        const _patterns = [
+          new RegExp(`作为${wrong}之人`, 'g'),
+          new RegExp(`${wrong}之人`, 'g'),
+          new RegExp(`你是${wrong}`, 'g'),
+          new RegExp(`${wrong}的你`, 'g'),
+          new RegExp(`双鱼座(?!座)`, 'g'),  // 防止双鱼座座
+        ];
+        _patterns.forEach(p => { cleanedText = cleanedText.replace(p, realSunSign); });
+      });
+    }
         const sanitizedAI = natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign);
 
         // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer（此前只跑了 MISS 的 HIT 和流式端点，非流式 MISS 漏了）
@@ -2873,6 +2954,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V102s: 流式端点接入完整清洗器（此前只跑 langPunctuationClean，漏了宫位降维/月锁/前世清洗）
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
+    // 🛠️ V115-fix3: MISS流式路径 Body 正文本命太阳全护
+    if (realSunSign) {
+      ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'].forEach(wrong => {
+        if (wrong === realSunSign) return;
+        const _r1 = new RegExp(`作为${wrong}之人`, 'g');
+        const _r2 = new RegExp(`${wrong}之人`, 'g');
+        const _r3 = new RegExp(`你是${wrong}`, 'g');
+        cleanedText = cleanedText.replace(_r1, realSunSign).replace(_r2, realSunSign).replace(_r3, realSunSign);
+      });
+    }
     cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
@@ -2932,6 +3023,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库（防脏缓存）
           if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream)), astroMatrix, null, null, lang);
           // 🛠️ V104e: 也有反向括号隐患
+          // 🛠️ V115-fix3: Completion路径 Body 正文本命太阳全护
+          if (realSunSign) {
+            ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'].forEach(wrong => {
+              if (wrong === realSunSign) return;
+              const _r1 = new RegExp(`作为${wrong}之人`, 'g');
+              const _r2 = new RegExp(`${wrong}之人`, 'g');
+              ft = ft.replace(_r1, realSunSign).replace(_r2, realSunSign);
+            });
+          }
           if (ft) ft = natal_sun_linter(ft, realSunSign, _ascStream);
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
