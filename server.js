@@ -2509,7 +2509,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         },
         body: JSON.stringify({
           cache_key: cacheKey,
-          insight: standardizeReport(text),
+          insight: text,  // V113-fix4: 写入不洗，读取洗，彻底消除双次标准化差异
           prompt_version: `v1.0.0-stream-${reportType}-${lang}`,
           created_at: new Date().toISOString(),
         })
