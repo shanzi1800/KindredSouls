@@ -2467,10 +2467,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         const _realSunSignHIT = _signs[_sunIdx]; // 1988-08-08 → 狮子座
         const _ascHIT = astroMatrixHIT?.meta?.rising_sign || 'Cancer';
-        let streamText = standardizeReport(cachedText);
-        // 强制全管道清洗（治本：HIT 路径以前跳过 natal_sun_linter/astro_phase_linter）
-        streamText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(streamText, _ascHIT)), _realSunSignHIT, _ascHIT);
-        if (astroMatrixHIT) streamText = applyMonthLockSanitizer(streamText, astroMatrixHIT, null, null, lang);
+        // V113-fix: 缓存已是完美终稿，直接分块 SSE 输出，跳过双重清洗
+        const streamText = cachedText;
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
