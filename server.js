@@ -405,6 +405,12 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 function natal_sun_linter(text, natalSunSign, ascendant) {
   if (!text || !natalSunSign) return text;
 
+  // 🛠️ V110-fix1: 报头本命太阳硬覆盖（AI幻觉把摩羯写成双鱼，pat1只覆盖正文"你的太阳在X座"漏了报头）
+  //   报头两处：年度星盘: X座 / 核心本命代码: 太阳X座 · 月亮Y座
+  const _allSigns = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+  text = text.replace(new RegExp('年度星盘[:：]\\s*(' + _allSigns.join('|') + ')座', 'g'), '年度星盘: ' + natalSunSign);
+  text = text.replace(new RegExp('核心本命代码[:：]\\s*太阳\\s*(' + _allSigns.join('|') + ')座', 'g'), '核心本命代码: 太阳' + natalSunSign);
+
   // 1) 本命太阳断言：匹配「你的太阳在X座」或「太阳在X座第Y宫」等显式引用
   //    只修正文中的本命表述，不修月度标题（月锁已保证正确）
   const SUN_SIGNS = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
@@ -413,7 +419,7 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     // 模式 1：你的太阳在双子座第12宫 → 你的太阳在狮子座第X宫
     // 但保留「太阳进入双子座」（月度 transit 语境）
     // 「太阳在X座」且前面 20 字内有「你的」→ 视为本命引用
-    const pat1 = new RegExp('你的太阳在' + wrongSign, 'g');
+    const pat1 = new RegExp('你的(?:本命)?太阳在' + wrongSign, 'g');
     text = text.replace(pat1, '你的太阳在' + natalSunSign);
 
     // 模式 2：前面无「你的」但有明显的本命上下文（如风元素路径章节）
@@ -427,6 +433,13 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     // 匹配：与你的本命[WRONG]座太阳/月亮形成[相位]
     const pat3 = new RegExp('与你的本命' + wrongSign + '(太阳|月亮)形成', 'g');
     text = text.replace(pat3, '与你的本命' + natalSunSign + '$1形成');
+
+    // 🛠️ V110-fix2: 本命太阳句式扩面（pat1只覆盖"你的太阳在X座"，漏了带"本命"间隔和"之人"句式）
+    //   "你的本命太阳在X座" / "本命太阳在X座" / "作为X座之人" / "X座之人"
+    text = text.replace(new RegExp('你的本命太阳在' + wrongSign, 'g'), '你的本命太阳在' + natalSunSign);
+    text = text.replace(new RegExp('本命太阳在' + wrongSign + '座', 'g'), '本命太阳在' + natalSunSign + '座');
+    text = text.replace(new RegExp('作为' + wrongSign + '之人', 'g'), '作为' + natalSunSign + '之人');
+    text = text.replace(new RegExp('(^|[\\s，。、])' + wrongSign + '之人', 'g'), '$1' + natalSunSign + '之人');
   }
 
   // 2) 反向残括号：但水星）→ 但水星（逆行） 或补前（
