@@ -610,11 +610,12 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   // 根因：V114 的 titleRe 只处理 ### 标题，漏了 #### 加粗标题 + 句式变体。
   // 治法：直接遍历12个月，精准替换"年N月：太阳[错误]座"→"年N月：太阳[正确]座"
   // ═══════════════════════════════════════════════════════════
+  const _ZS = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
   const _sunSignMap = {};
   if (astroMatrix && astroMatrix.months) {
     astroMatrix.months.forEach((m, i) => {
       const sun = _sunOf(m);
-      const signZh = ZH_SIGN[sun.sign] || sun.sign || '';
+      const signZh = _ZS[sun.sign] || sun.sign || '';
       if (!signZh) return;
       const mi = currentMonth - 1 + i;
       const year = currentYear + (mi >= 12 ? 1 : 0);
