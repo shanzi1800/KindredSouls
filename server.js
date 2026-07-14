@@ -590,6 +590,13 @@ function astro_phase_linter(text) {
 // 本函数暴力清洗所有已知的污染模式
 // 🛠️ V97w: 后处理硬替换——逐月检查标题的太阳星座，用锁表修正AI胡编（治本：Prompt锁不住就后门堵死）
 function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null, lang = 'zh') {
+  // 🛠️ V114-fix: Python positions.Sun accessor（顶层 m.sun 永远空）
+  const _sunOf = (m) => {
+  if (m.sun && m.sun.sign) return m.sun;
+  if (m.positions?.Sun) return {sign: m.positions.Sun.sign, house: m.positions.Sun.house};
+  if (m.sunSignZH) return {sign: m.sunSignZH, house: m.sunHouse};  // astro-truth.js format
+  return {sign:'', house:undefined};
+};
   if (currentYear === null) currentYear = new Date().getFullYear();
   if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
   console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
@@ -606,7 +613,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   // Build correct entries: [{ key: "2026年7月", sign: "巨蟹座", house: 9 }]
   const entries = [];
   astroMatrix.months.forEach((m, i) => {
-    const sun = m.sun || {};
+    const sun = _sunOf(m);
     const signZh = ZH_SIGN[sun.sign] || sun.sign || '';
     const house = sun.house || '';
     const mi = currentMonth - 1 + i;
@@ -683,7 +690,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
         if (_md) {
           // 取各行星的真实星座中文名
           const ZH_SIGN_PL = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
-          const _realSun = ZH_SIGN_PL[_md.sun?.sign] || _md.sun?.sign || '';
+          const _realSun = ZH_SIGN_PL[_sunOf(_md).sign] || _sunOf(_md).sign || '';
           const _realJup = ZH_SIGN_PL[_md.jupiter?.sign] || _md.jupiter?.sign || '';
           const _realSat = ZH_SIGN_PL[_md.saturn?.sign] || _md.saturn?.sign || '';
           const _realMar = ZH_SIGN_PL[_md.mars?.sign] || _md.mars?.sign || '';
@@ -809,6 +816,60 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     // 修复 Gemini 输出的 "Sun in X座" 格式（全部12个月）
     text = text.replace(/(\d{4}年\d{1,2}月[：:]\s*)Sun\s+in\s+([^·\n]{1,10})(?=\s*[·\n]|$)/g, '$1太阳$2');
   }
+
+  // ═══ V114-fix: 月度天文星座强锁（治Gemini偷懒/换座期幻觉）═══
+  // 根因：AI写正文时，遇到换座期/长文本后半段，偷懒套已生成的星座模式
+  //        applyMonthLockSanitizer 的正则只匹配"太阳进入X座"等标准格式，
+  //        漏了"太阳在X座"/"X座能量"/"当你看到X座"等变体 → 月度星座错乱
+  // 解法：章节隔离——以月度标题为锚，正文里所有出现"X座"的句子里，
+  //        若X座≠标题星座 → 强制替换为标题星座（不限格式/句式）
+  try {
+    const _all12 = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+    // 按月份章节切分
+    const _secs2 = text.split(/(?=###\s*\d{4}年\d{1,2}月)/g);
+    const _fixed2 = _secs2.map(_sec => {
+      // 提取当月标题星座
+      const _tm = _sec.match(/###\s*\d{4}年\d{1,2}月\s*[：:]\s*太阳([^\s·\n]+座)/);
+      if (!_tm) return _sec;
+      const _correctSign = _tm[1]; // 如"射手座"
+      const _signCore = _correctSign.replace('座','');
+      // 定位正文（跳过标题行）
+      const _ti = _sec.indexOf('\n', _sec.indexOf('###'));
+      if (_ti < 0) return _sec;
+      const _hdr2 = _sec.substring(0, _ti + 1);
+      let _bod = _sec.substring(_ti + 1);
+      // 遍历正文里所有 12 星座，把不是标题星座的强制替换
+      // 但排除"本命太阳在X座"/"你的太阳在X座"等本命句式（那是 natal_sun_linter 的活）
+      // 简单策略：正文里出现"星座"+"[WRONG]座"→"[CORRECT]座"
+      // 更精准：找"太阳在X座"/"太阳进入X座"/"[星座名]座的"等月度语境
+      for (const _ws of _all12) {
+        if (_ws === _correctSign) continue;
+        const _wc = _ws.replace('座','');
+        // 跳过含"本命"/"你的"/"此人"/"之人"的行（那是本命语境，不归这里管）
+        const _skipLinePat = /(本命太阳|你的太阳|此人|之人|星座是|属于)/;
+        const _lines = _bod.split('\n');
+        const _newLines = _lines.map(_ln => {
+          if (_skipLinePat.test(_ln)) return _ln;
+          if (!_ln.includes(_ws)) return _ln;
+          // 替换：太阳在[WRONG]座 / 太阳进入[WRONG]座 / [WRONG]座能量 / [WRONG]座的光芒
+          return _ln
+            .replace(new RegExp('太阳在' + _ws, 'g'), '太阳在' + _correctSign)
+            .replace(new RegExp('太阳进入' + _ws, 'g'), '太阳进入' + _correctSign)
+            .replace(new RegExp('太阳行经' + _ws, 'g'), '太阳行经' + _correctSign)
+            .replace(new RegExp(_ws + '能量', 'g'), _correctSign + '能量')
+            .replace(new RegExp(_ws + '的光芒', 'g'), _correctSign + '的光芒')
+            .replace(new RegExp('进入' + _ws, 'g'), '进入' + _correctSign)
+            .replace(new RegExp('看到' + _ws, 'g'), '看到' + _correctSign);
+        });
+        _bod = _newLines.join('\n');
+      }
+      return _hdr2 + _bod;
+    });
+    text = _fixed2.join('');
+  } catch(e) {
+    console.warn('[MonthAstroLock] failed:', e.message);
+  }
+
   return text;
 }
 
@@ -1227,6 +1288,15 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
+// 🛠️ V114-fix: Python monthly matrix 太阳在 positions.Sun（非顶层 m.sun），统一 accessor
+const _sunOf = (m) => {
+  if (m.sun && m.sun.sign) return m.sun;
+  if (m.positions?.Sun) return {sign: m.positions.Sun.sign, house: m.positions.Sun.house};
+  if (m.sunSignZH) return {sign: m.sunSignZH, house: m.sunHouse};  // astro-truth.js format
+  return {sign:'', house:undefined};
+};
+
+
   try {
 
   // 🛠️ V82: function-level houseLock (used in user prompt for all 6 languages)
@@ -1294,7 +1364,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     : { yearPrefix: (y, m) => `${y}年${m}月`, prefix: (y, m) => `${y}年${m}月` };
   const lockedTitles = astroMatrix && astroMatrix.months
     ? astroMatrix.months.map((m, i) => {
-        const sun = m.sun || {};
+        // 🛠️ V114-fix: Python返回positions.Sun，fallback防止空对象
+      const sun = m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
         const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
         const houseName = HOUSE_LOCK[sun.house] || `House ${sun.house}`;
         const mi = currentMonth - 1 + i;
@@ -1307,7 +1378,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     ? '\n⛔ [12-Month Sun Sign Hard-Lock Table — Month titles MUST use exact values below, strictly forbidden to tamper]:\n' +
       'All month titles【Sun Sign】and【House】MUST strictly follow the table below. Forbidden to use other data to extrapolate monthly Sun sign.\n' +
       astroMatrix.months.map((m, i) => {
-        const sun = m.sun || {};
+        const sun = _sunOf(m);
         const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
         const mi = currentMonth - 1 + i;
         const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
@@ -1544,7 +1615,7 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
       const jupHouse = getHouse(first.jupiter?.house);
       const satHouse = getHouse(first.saturn?.house);
       const plHouse = getHouse(first.pluto?.house);
-      const sunHouse = getHouse(first.sun?.house);
+      const sunHouse = getHouse(_sunOf(first).house);
       const moonHouse = getHouse(first.moon?.house);
 
       // P1.2 Fixed Lexicon: 从 lexicon.js 读取泰语/越南语星座和宫位
@@ -1602,7 +1673,7 @@ const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
       jupHouse = getH2(first.jupiter?.house);
       satHouse = getH2(first.saturn?.house);
       plHouse = getH2(first.pluto?.house);
-      sunHouse = getH2(first.sun?.house);
+      sunHouse = getH2(_sunOf(first).house);
       moonHouse = getH2(first.moon?.house);
       const jupSign = first.jupiter?.sign || 'Leo';
       const satSign = first.saturn?.sign || 'Aries';

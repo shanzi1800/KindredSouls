@@ -236,7 +236,8 @@ export function buildPerMonthData(astroMatrix, lang = 'zh') {
     // ── 中文：Pre-written titles with correct house numbers ──
     return astroMatrix.months.map(m => {
       const lines = [];
-      const sun = m.sun || {};
+      // 🛠️ V114-fix: Python返回positions.Sun fallback防止空对象（m.sun永远空）
+      const sun = (m.sun && m.sun.sign) ? m.sun : (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
       const jup = m.jupiter || {};
       const sat = m.saturn || {};
       const merc = m.mercury || {};
