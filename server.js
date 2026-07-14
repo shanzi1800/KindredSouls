@@ -2463,10 +2463,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
           if (typeof res.flush === 'function') res.flush();
         }
+        // V113-fix2: 发送 sanitized 事件，确保前端与 MISS 路径一致
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: streamText })}\n\n`, 'utf-8'));
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
         res.end();
-        console.log(`[wealth-stream] [OK] Cache instant chunked complete, ${streamText.length} chars in ${totalChunks} chunks`);
+        console.log(`[wealth-stream] [OK] Cache instant chunked complete, ${streamText.length} chars`);
         return;
       }
     }
