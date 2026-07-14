@@ -663,8 +663,11 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   }
 
   // 🛠️ V108-fix3: 6月标题本命魂穿兜底——当 AI 在6月写了本命太阳而非双子座时强制纠正
+  // 🛠️ V108-fix5: Gemini 输出的 "Sun in 双子座第X宫" 格式转为 "太阳双子座第X宫"
   if (lang === 'zh') {
     text = text.replace(/(2027年6月[：:]\s*)太阳(?!双子座)[^·\n座]*座/g, '$1太阳双子座');
+    // 修复 Gemini 输出的 "Sun in X座" 格式（全部12个月）
+    text = text.replace(/(\d{4}年\d{1,2}月[：:]\s*)Sun\s+in\s+([^·\n]{1,10})(?=\s*[·\n]|$)/g, '$1太阳$2');
   }
   return text;
 }
