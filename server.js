@@ -2453,7 +2453,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗，缓存=完美终稿；读取时零处理直接分块 SSE 输出
         // V113-fix: 缓存已是完美终稿，直接分块 SSE 输出，跳过双重清洗
-        const streamText = cachedText;
+        // V113-fix3: 缓存存原始内容，HIT 路径标准化后发送，与 MISS client 内容完全一致
+        const streamText = standardizeReport(cachedText);
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
@@ -2799,7 +2800,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     if (isComplete && cleanedText.length > 100) {
       console.log(`[wealth-stream] [OK] Streaming done, cached ${cleanedText.length} chars (cleaned)`);
-      writeToCache(cleanedText).catch(() => {});
+      writeToCache(fullTextCollector).catch(() => {});
     } else if (fullTextCollector.length > 100) {
       console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
@@ -2830,16 +2831,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             writeToCache(ft).catch(() => {});
           } else {
             console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${cleanedText.length}), caching cleaned stream`);
-            writeToCache(cleanedText).catch(() => {});
+            writeToCache(fullTextCollector).catch(() => {});
           }
         } else {
           const errBody = await fullRes.text().catch(() => '');
           console.error(`[wealth-stream] [ERROR] Completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
-          writeToCache(cleanedText).catch(() => {});
+          writeToCache(fullTextCollector).catch(() => {});
         }
       } catch (e) {
         console.error('[wealth-stream] 补全失败，落库清洗版本:', e.message);
-        writeToCache(cleanedText).catch(() => {});
+        writeToCache(fullTextCollector).catch(() => {});
       }
     }
 
