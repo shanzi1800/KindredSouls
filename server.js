@@ -481,6 +481,34 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     console.warn('[natal_sun_linter] house fix failed:', e.message);
   }
 
+
+  // ═══ V113-fix6: 月度爆发窗口星座强锁 ═══
+  // 根因：Gemini偷懒套7月模板，Peak Revenue Window里"太阳在X座"全写成本命星座
+  // 解法：按月章节切分，提取标题当月天象星座，正文"太阳在X座"全部强制对齐
+  try {
+    const _alls = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+    const _secs = text.split(/(?=###\s*\d{4}年\d{1,2}月)/g);
+    const _proc = _secs.map(_s => {
+      const _m = _s.match(/###\s*\d{4}年\d{1,2}月\s*:\s*太阳([^\s座]+座)/);
+      if (!_m) return _s;
+      const _transit = _m[1];
+      const _ti = _s.indexOf('\n', _s.indexOf('###'));
+      if (_ti < 0) return _s;
+      const _hdr = _s.substring(0, _ti + 1);
+      let _body = _s.substring(_ti + 1);
+      _body = _body.replace(/太阳在([^\s座]+)座/g, (_mm, _sg) => {
+        if (_alls.includes(_sg + '座') && _sg + '座' !== _transit) {
+          return '太阳在' + _transit.replace('座','') + '座';
+        }
+        return _mm;
+      });
+      return _hdr + _body;
+    });
+    text = _proc.join('');
+  } catch(e) {
+    console.warn('[natal_sun_linter] transit sun lock failed:', e.message);
+  }
+
   return text;
 }
 // 校验AI生成的相位描述是否符合天文学规则。
@@ -2592,7 +2620,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             headers: { 'Content-Type': 'application/json' },
             body: new TextEncoder().encode(JSON.stringify({
               contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 65536, temperature: 0 }
+              generationConfig: { maxOutputTokens: 131072, temperature: 0 }  // V113-fix7: 年报从65536→131072，确保12月完整
             })),
             signal: controller.signal
           }
