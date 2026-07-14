@@ -655,12 +655,12 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
         if (_md) {
           // 取各行星的真实星座中文名
           const ZH_SIGN_PL = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
-          const _realSun = _md.sun?.sign?.replace(/座$/, '') || '';
-          const _realJup = _md.jupiter?.sign?.replace(/座$/, '') || '';
-          const _realSat = _md.saturn?.sign?.replace(/座$/, '') || '';
-          const _realMar = _md.mars?.sign?.replace(/座$/, '') || '';
-          const _realMerc = _md.mercury?.sign?.replace(/座$/, '') || '';
-          const _realVen = _md.venus?.sign?.replace(/座$/, '') || '';
+          const _realSun = ZH_SIGN_PL[_md.sun?.sign] || _md.sun?.sign || '';
+          const _realJup = ZH_SIGN_PL[_md.jupiter?.sign] || _md.jupiter?.sign || '';
+          const _realSat = ZH_SIGN_PL[_md.saturn?.sign] || _md.saturn?.sign || '';
+          const _realMar = ZH_SIGN_PL[_md.mars?.sign] || _md.mars?.sign || '';
+          const _realMerc = ZH_SIGN_PL[_md.mercury?.sign] || _md.mercury?.sign || '';
+          const _realVen = ZH_SIGN_PL[_md.venus?.sign] || _md.venus?.sign || '';
 
           // 找本月份章节（用 entry.key 定位）：2026年7月: ...
           // 在章节内做精确的行星际替换：
@@ -689,8 +689,8 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           //       V107-fix2 的 _sectionRe 只锁"X座第N宫"格式，漏了"X座刑克Y座"相位句式 → 跨月死循环。
           // 治本：用 astroMatrix 每月真实火星/天王星星座，按章节隔离替换（不依赖 AI 听话）。
           const ZH_SIGN_PL2 = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
-          const _realMar2 = _md.mars?.sign?.replace(/座$/, '') || '';
-          const _realUra2 = _md.uranus?.sign?.replace(/座$/, '') || '';
+          const _realMar2 = ZH_SIGN_PL2[_md.mars?.sign] || _md.mars?.sign || '';
+          const _realUra2 = ZH_SIGN_PL2[_md.uranus?.sign] || _md.uranus?.sign || '';
           const _marCore = _realMar2.replace(/座$/, '');
           const _uraCore = _realUra2.replace(/座$/, '');
           if (_marCore && _uraCore) {
@@ -724,8 +724,8 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   if (astroMatrix && astroMatrix.months && astroMatrix.months.length >= 12) {
     const _marM = {}, _uraM = {};
     astroMatrix.months.forEach((m, i) => {
-      if (m?.mars?.sign) _marM[i] = m.mars.sign.replace(/座$/, '');
-      if (m?.uranus?.sign) _uraM[i] = m.uranus.sign.replace(/座$/, '');
+      if (m?.mars?.sign) _marM[i] = ZH_SIGN[m.mars.sign]?.replace(/座$/, '') || '';
+      if (m?.uranus?.sign) _uraM[i] = ZH_SIGN[m.uranus.sign]?.replace(/座$/, '') || '';
     });
     const _mtRe = /#{2,4}\s*\d{4}年\d{1,2}月[：:]/g;
     const _titles = [];

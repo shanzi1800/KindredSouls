@@ -233,6 +233,14 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
             'sign': positions['Saturn']['sign'],
             'house': positions['Saturn']['house'],
         },
+        'mars': {
+            'sign': positions['Mars']['sign'],
+            'house': positions['Mars']['house'],
+        },
+        'uranus': {
+            'sign': positions['Uranus']['sign'],
+            'house': positions['Uranus']['house'],
+        },
         'mars_saturn_aspect': mars_sat_aspect,
         'mars_uranus_aspect': mars_ur_aspect,
         'peak_window': peak_window,
