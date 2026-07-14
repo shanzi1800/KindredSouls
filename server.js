@@ -708,17 +708,70 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
                 if (_nextMatch) _mkEnd = _mkStart + 1 + _nextMatch.index;
               }
               const _section = text.slice(_mkStart, _mkEnd);
-              // 1) 完整相位句式：火星在X座 [刑克/四分/合相] 天王星在Y座 -> 真值
-              const _phRe = /火星在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座\s*[刑克四分合相对冲与及和]\s*天王星在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座/g;
-              let _fixed = _section.replace(_phRe, `火星在${_marCore}座刑克天王星在${_uraCore}座`);
-              // 2) 模糊指代：火星与天王星...紧张相位/再次上演 -> 补充真值
-              const _vagueRe = /火星与天王星[^。\n]{0,30}?(?:紧张相位|刑克|四分)[^。\n]{0,12}?(?:的再次上演|再次出现)?/g;
-              _fixed = _fixed.replace(_vagueRe, `火星在${_marCore}座刑克天王星在${_uraCore}座（紧张相位）`);
+              // V112: 鲁棒——章节内所有"火星在X座"和"天王星在Y座"强制真值替换，覆盖所有格式变体（简式/带宫位/带括注）
+              let _fixed = _section
+                .replace(/火星在[^。\n]*?座/g, `火星在${_marCore}座`)
+                .replace(/天王星在[^。\n]*?座/g, `天王星在${_uraCore}座`);
               text = text.slice(0, _mkStart) + _fixed + text.slice(_mkEnd);
             }
           }
         }
       }
+    }
+  }
+
+  // 🛠️ V112: 头部/尾部 BlackSwan 段硬锁（AI 抽到月度章节外的汇总段，V111 月度隔离漏不掉这里）
+  if (astroMatrix && astroMatrix.months && astroMatrix.months.length >= 12) {
+    const ZH2 = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+    const _marM = {}, _uraM = {};
+    astroMatrix.months.forEach((m, i) => {
+      if (m?.mars?.sign) _marM[i] = ZH2[m.mars.sign].replace(/座$/, '');
+      if (m?.uranus?.sign) _uraM[i] = ZH2[m.uranus.sign].replace(/座$/, '');
+    });
+    const _mtRe = /#{2,4}\s*\d{4}年\d{1,2}月[：:]/g;
+    const _titles = [];
+    let _mt;
+    while ((_mt = _mtRe.exec(text))) _titles.push(_mt.index);
+    if (_titles.length) {
+      const _process = (seg) => {
+        const _dayRe = /\*\*?(\d{4})年(\d{1,2})月(\d{1,2})日[前后]?\*\*?/g;
+        const _days = [];
+        let _dm;
+        while ((_dm = _dayRe.exec(seg))) {
+          const _mi = parseInt(_dm[2], 10) - 1;
+          if (_mi >= 0 && _mi < 12) _days.push({ idx: _dm.index, mi: _mi });
+        }
+        if (!_days.length) return seg;
+        let _out = '';
+        let _last = 0;
+        for (let k = 0; k < _days.length; k++) {
+          const _d = _days[k];
+          const _nextIdx = (k + 1 < _days.length) ? _days[k + 1].idx : seg.length;
+          const _s = seg.slice(_last, _nextIdx);
+          const _mc = _marM[_d.mi] || '';
+          const _uc = _uraM[_d.mi] || '';
+          let _sf = _s;
+          if (_mc) _sf = _sf.replace(/火星在[^。\n]*?座/g, `火星在${_mc}座`);
+          if (_uc) _sf = _sf.replace(/天王星在[^。\n]*?座/g, `天王星在${_uc}座`);
+          _out += _sf;
+          _last = _nextIdx;
+        }
+        return _out + seg.slice(_last);
+      };
+      const _head = _process(text.slice(0, _titles[0]));
+      const _tail = _process(text.slice(_titles[_titles.length - 1]));
+      text = _head + text.slice(_titles[0], _titles[_titles.length - 1]) + _tail;
+      // 汇总段特判：风险（火星在X座）：日期 → 用第一个日期月份真值
+      text = text.replace(/(风险[^\n（]*?)\（火星在[^。\n]*?座[^。\n]*?）\s*[：:]\s*(\d{4})年(\d{1,2})月(\d{1,2})日/g,
+        (m, pre, marsPart, y, mo, d) => {
+          const _mi = parseInt(mo, 10) - 1;
+          const _mc = _marM[_mi] || '';
+          const _uc = _uraM[_mi] || '';
+          let _nm = marsPart;
+          if (_mc) _nm = _nm.replace(/火星在[^。\n]*?座/, `火星在${_mc}座`);
+          if (_uc) _nm = _nm.replace(/天王星在[^。\n]*?座/, `天王星在${_uc}座`);
+          return `${pre}（${_nm}）：${y}年${mo}月${d}日`;
+        });
     }
   }
 
