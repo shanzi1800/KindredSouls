@@ -683,6 +683,40 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
             const _signCore = realSign.replace(/座$/, '');
             return `${prefix}${planetChar}在${_signCore}第${_house}宫`;
           });
+
+          // 🛠️ V111: 火星相位死循环硬锁（章节隔离 + 真值替换）
+          // 根因：AI 在 Black Swan 段写"火星在X座刑克天王星在Y座"，长文本复制粘贴到所有月份。
+          //       V107-fix2 的 _sectionRe 只锁"X座第N宫"格式，漏了"X座刑克Y座"相位句式 → 跨月死循环。
+          // 治本：用 astroMatrix 每月真实火星/天王星星座，按章节隔离替换（不依赖 AI 听话）。
+          const ZH_SIGN_PL2 = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+          const _realMar2 = ZH_SIGN_PL2[_md.mars?.sign] || '';
+          const _realUra2 = ZH_SIGN_PL2[_md.uranus?.sign] || '';
+          const _marCore = _realMar2.replace(/座$/, '');
+          const _uraCore = _realUra2.replace(/座$/, '');
+          if (_marCore && _uraCore) {
+            const _mkEsc = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const _titleRe = new RegExp('\\n#{2,4}\\s*' + _mkEsc + '[：:]');
+            const _titleMatch = _titleRe.exec(text);
+            if (_titleMatch) {
+              const _mkStart = _titleMatch.index;
+              const _nextEntry = entries.find(e => e.monthIdx > entry.monthIdx);
+              let _mkEnd = text.length;
+              if (_nextEntry) {
+                const _nextEsc = _nextEntry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const _nextRe = new RegExp('\\n#{2,4}\\s*' + _nextEsc + '[：:]');
+                const _nextMatch = _nextRe.exec(text.slice(_mkStart + 1));
+                if (_nextMatch) _mkEnd = _mkStart + 1 + _nextMatch.index;
+              }
+              const _section = text.slice(_mkStart, _mkEnd);
+              // 1) 完整相位句式：火星在X座 [刑克/四分/合相] 天王星在Y座 -> 真值
+              const _phRe = /火星在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座\s*[刑克四分合相对冲与及和]\s*天王星在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座/g;
+              let _fixed = _section.replace(_phRe, `火星在${_marCore}座刑克天王星在${_uraCore}座`);
+              // 2) 模糊指代：火星与天王星...紧张相位/再次上演 -> 补充真值
+              const _vagueRe = /火星与天王星[^。\n]{0,30}?(?:紧张相位|刑克|四分)[^。\n]{0,12}?(?:的再次上演|再次出现)?/g;
+              _fixed = _fixed.replace(_vagueRe, `火星在${_marCore}座刑克天王星在${_uraCore}座（紧张相位）`);
+              text = text.slice(0, _mkStart) + _fixed + text.slice(_mkEnd);
+            }
+          }
         }
       }
     }
