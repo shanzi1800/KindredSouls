@@ -669,8 +669,7 @@ function wealthCriticCheck(text, birthDate, natalSunSign) {
   if (fffd > 0) issues.push('FFFD残块: ' + fffd);
   
   // 3. 验证孤括号
-  const noOpen = text.match(/[^（]）》/);
-  if (noOpen) issues.push('孤闭括号');
+  if (text.match(/[^（]）》/)) issues.push('孤闭括号');
   
   // 4. 验证关键月份：6月标题必须有双子座
   const juneHeader = text.match(/6月[：:].{0,40}?太阳[^座]*座/);
@@ -678,12 +677,40 @@ function wealthCriticCheck(text, birthDate, natalSunSign) {
     issues.push('6月标题星座错误: ' + juneHeader[0].slice(0, 30));
   }
   
-  // 5. 验证 7月 Peak Window 不含射手座（7月太阳不可能在射手座）
+  // 5. 验证 7月 Peak Window 不含射手座
   const julyPeak = text.match(/2026年7月[^🔴🟢]*(?:🟢|🔴)[^。]*?太阳在[^座]*座/g);
   if (julyPeak && julyPeak.some(m => m.includes('射手座'))) {
     issues.push('7月Peak/W太阳座错误(含射手座)');
   }
   
+  // 6. 🛠️ 军师审计·P0: 玄秘宫误用——本命太阳非天秤座时不得写"玄秘宫"
+  // 天秤座=第3宫(沟通宫)对于上升狮子座；"玄秘宫"=第12宫(巨蟹座)
+  if (natalSunSign === '天秤座' && text.slice(0, 3000).includes('玄秘宫')) {
+    issues.push('本命天秤座被误归玄秘宫(第12宫)');
+  }
+  
+  // 7. 🛠️ 军师审计·P1: 11月/12月星座串线——正文第一句与标题不符
+  // 11月标题天秤座但正文写"太阳进入摩羯座"
+  const monthBodies = text.match(/2026年1[12]月[：:][^。]*?太阳进入[^座]{1,3}座/g);
+  if (monthBodies) {
+    for (const mb of monthBodies) {
+      const titleSign = mb.match(/(天蝎座|射手座|天秤座|摩羯座|水瓶座)第/);
+      const bodySign = mb.match(/太阳进入[^座]{1,3}(座)/);
+      if (titleSign && bodySign && titleSign[1] !== bodySign[1]) {
+        issues.push('月度正文星座与标题不匹配:' + mb.slice(0, 40));
+      }
+    }
+  }
+  
+  // 8. 🛠️ 军师审计·P2: 幽灵相位——"火星形成刑克相位"缺行星对象
+  const ghostPhase = text.match(/[日月水火木金土]星形成(刑克|对分|三分|六分|合)相(?!与[日月水火木金土])/g);
+  if (ghostPhase) issues.push('幽灵相位:' + ghostPhase.join('|'));
+
+  // 9. 🛠️ 军师审计·P3: 双子座元素错——归入土元素
+  const badElement = text.match(/土元素[^。
+]*?双子座/g);
+  if (badElement) issues.push('双子座被错误归入土元素:' + badElement.join('|'));
+
   return issues;
 }
 
@@ -1988,19 +2015,20 @@ app.post('/api/wealth-oracle', async (req, res) => {
         
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
         
-        // 🛠️ V107-方案A: 预缓存校验
+        // 🛠️ V107-方案A: 预缓存校验器（硬拦截——发现问题就不写缓存，触发重刷）
+        let skipCache = false;
         if (reportType === 'yearly') {
           const criticIssues = wealthCriticCheck(reportContent, birthDate, natalSunSign);
           if (criticIssues.length > 0) {
-            console.warn('[CRITIC] 缓存前校验发现问题:', JSON.stringify(criticIssues));
-            // 只警告不拦截——避免全量熔断导致用户404
+            console.error('[CRITIC] 🚨 缓存前校验发现问题, 跳过缓存写入:', JSON.stringify(criticIssues));
+            skipCache = true;
           } else {
             console.log('[CRITIC] 预缓存校验通过 ✅');
           }
         }
         
         // ═══ 写入缓存（非流式端点）═══
-        if (SB_URL && SB_KEY && reportContent && reportContent.length > 100) {
+        if (SB_URL && SB_KEY && reportContent && reportContent.length > 100 && !skipCache) {
           try {
             await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
               method: 'POST',
@@ -2230,7 +2258,11 @@ function standardizeReport(text) {
   // Step3 的 `###\s+` 注入换行，但若文本本身以空格开头会变成 "\\n 第一章"；此行兜底清理
   t = t.replace(/\n +(\*{0,2}\s*(?:第[一二三四五六七八九十\d]+章|最终财富|通关密令))/g, '\n$1');
 
-  return t.trim();
+  // 🛠️ V107-fixB3: 终极乱码清洗——standardizeReport 的 emoji regex 和 ✦ 注入在 Unicode 处理中
+  // 可能产生二次 FFFD 乱码。此刀作为返回前最后一道防线，不依赖之前的位置标记，直接通杀
+  t = t.replace(/[\uFFFD]/g, '').replace(/[\uFFFE\uFFFF]/g, '').trim();
+
+  return t;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
