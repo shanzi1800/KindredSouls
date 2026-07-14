@@ -2453,8 +2453,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗，缓存=完美终稿；读取时零处理直接分块 SSE 输出
         // V113-fix: 缓存已是完美终稿，直接分块 SSE 输出，跳过双重清洗
-        // V113-fix3: 缓存存原始内容，HIT 路径标准化后发送，与 MISS client 内容完全一致
-        const streamText = standardizeReport(cachedText);
+        // V113-fix3: HIT路径补全全套处理链，与MISS client内容完全一致
+        // HIT路径重新计算 realSunSign（定义在MISS路径，不在HIT路径作用域）
+        const [_, bm2, bd2] = birthDate.split('-').map(Number);
+        const _signs2 = ['摩羯座','水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座'];
+        const _cuts2 = [[1,20,1],[2,19,2],[3,21,3],[4,20,4],[5,21,5],[6,22,6],[7,23,7],[8,23,8],[9,23,9],[10,24,10],[11,22,11],[12,22,0]];
+        let _si = 0;
+        for (let _ci = _cuts2.length-1; _ci>=0; _ci--) { if (bm2>_cuts2[_ci][0]||(bm2===_cuts2[_ci][0]&&bd2>=_cuts2[_ci][1])) {_si=_cuts2[_ci][2]; break;} }
+        const _rs = _signs2[_si];
+        const streamText = natal_sun_linter(standardizeReport(cachedText), _rs, null);
         // V103: 瞬时分块流（Instant Chunking）——放弃单次巨量事件，按 ~2000字切片，骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件，完美兼容
         const CHUNK_SIZE = 2000;
@@ -2688,7 +2695,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   fullTextCollector += char.replace(/\\n/g, '\n').replace(/ \n/g, '\n');
                 }
                 if (fullTextCollector.length > 100) {
-                  writeToCache(fullTextCollector).catch(() => {});
+                  writeToCache(cleanedText).catch(() => {});
                 }
                 res.write('data: [DONE]\n\n');
                 if (typeof res.flush === 'function') res.flush();
@@ -2800,7 +2807,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     if (isComplete && cleanedText.length > 100) {
       console.log(`[wealth-stream] [OK] Streaming done, cached ${cleanedText.length} chars (cleaned)`);
-      writeToCache(fullTextCollector).catch(() => {});
+      writeToCache(cleanedText).catch(() => {});
     } else if (fullTextCollector.length > 100) {
       console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
@@ -2831,16 +2838,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             writeToCache(ft).catch(() => {});
           } else {
             console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${cleanedText.length}), caching cleaned stream`);
-            writeToCache(fullTextCollector).catch(() => {});
+            writeToCache(cleanedText).catch(() => {});
           }
         } else {
           const errBody = await fullRes.text().catch(() => '');
           console.error(`[wealth-stream] [ERROR] Completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
-          writeToCache(fullTextCollector).catch(() => {});
+          writeToCache(cleanedText).catch(() => {});
         }
       } catch (e) {
         console.error('[wealth-stream] 补全失败，落库清洗版本:', e.message);
-        writeToCache(fullTextCollector).catch(() => {});
+        writeToCache(cleanedText).catch(() => {});
       }
     }
 
