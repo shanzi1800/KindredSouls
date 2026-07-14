@@ -703,12 +703,19 @@ function wealthCriticCheck(text, birthDate, natalSunSign) {
   }
   
   // 8. 🛠️ 军师审计·P2: 幽灵相位——"火星形成刑克相位"缺行星对象
-  const ghostPhase = text.match(/[日月水火木金土]星形成(刑克|对分|三分|六分|合)相(?!与[日月水火木金土])/g);
-  if (ghostPhase) issues.push('幽灵相位:' + ghostPhase.join('|'));
+  // 在完整句子内检查：含'形成刑克/三分/六分/对分'但同一句内无'与+行星名'
+  var sents = text.split(/[。\n]/);
+  for (var si = 0; si < sents.length; si++) {
+    var s = sents[si];
+    if (/形成(刑克|对分|三分|六分|合相)/.test(s) && !/[日月水火木金土]星.*与[日月水火木金土]星/.test(s)) {
+      issues.push('幽灵相位:' + s.slice(0, 50));
+      break;
+    }
+  }
 
   // 9. 🛠️ 军师审计·P3: 双子座元素错——归入土元素
-  const badElement = text.match(/土元素[^。
-]*?双子座/g);
+  // 用分割行方式绕过\n在character class中的逃逸问题
+  const badElement = text.split('\n').filter(function(l){return l.indexOf('土元素')>=0 && l.indexOf('双子座')>=0;});
   if (badElement) issues.push('双子座被错误归入土元素:' + badElement.join('|'));
 
   return issues;
