@@ -421,6 +421,12 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     const pat2 = new RegExp('太阳在' + wrongSign + '第', 'g');
     // 替换前先检查上下文：如果上一句是「你的」领起，或前300字内第一次出现
     text = text.replace(pat2, '太阳在' + natalSunSign + '第');
+
+    // 🛠️ V107-fix1: AI 把相位目标星座（如巨蟹座四分相 白羊座）错写为本命星座
+    // 模式：与你的本命白羊座太阳形成四分相（用户本命射手座时，白羊座是 aspect target 不是本命）
+    // 匹配：与你的本命[WRONG]座太阳/月亮形成[相位]
+    const pat3 = new RegExp('与你的本命' + wrongSign + '(太阳|月亮)形成', 'g');
+    text = text.replace(pat3, '与你的本命' + natalSunSign + '$1形成');
   }
 
   // 2) 反向残括号：但水星）→ 但水星（逆行） 或补前（
@@ -539,7 +545,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     const mi = currentMonth - 1 + i;
     const year = currentYear + (mi >= 12 ? 1 : 0);
     const month = (mi % 12) + 1;
-    entries.push({ year, month, key: `${year}年${month}月`, sign: signZh, house });
+    entries.push({ year, month, key: `${year}年${month}月`, sign: signZh, house, monthIdx: i });
   });
 
   // Process each month: find the title line and fix the sun sign
@@ -601,10 +607,84 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           text = text.replace(enBodyRe, (m, p, planet) => `${p}${planet} in ${entry.sign}`);
         }
       }
+
+      // 🛠️ V107-fix2: 修复 Peak Window/Black Swan 行星位置幻觉
+      // AI 常忽略 SwissEph 数据，用自己的训练知识写行星位置（7月写「太阳在射手座」）
+      // 用 astroMatrix 真实数据覆盖 Peak Window 描述中的行星位置
+      if (entry.monthIdx !== undefined) {
+        const _md = astroMatrix.months[entry.monthIdx];
+        if (_md) {
+          // 取各行星的真实星座中文名
+          const ZH_SIGN_PL = {Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+          const _realSun = ZH_SIGN_PL[_md.sun?.sign] || '';
+          const _realJup = ZH_SIGN_PL[_md.jupiter?.sign] || '';
+          const _realSat = ZH_SIGN_PL[_md.saturn?.sign] || '';
+          const _realMar = ZH_SIGN_PL[_md.mars?.sign] || '';
+          const _realMerc = ZH_SIGN_PL[_md.mercury?.sign] || '';
+          const _realVen = ZH_SIGN_PL[_md.venus?.sign] || '';
+
+          // 找本月份章节（用 entry.key 定位）：2026年7月: ...
+          // 在章节内做精确的行星际替换：
+          const _monthKeyEsc = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const _sectionRe = new RegExp(`(${_monthKeyEsc}[：:][^🔴🟢]*(?:🟢|🔴)[^。]*?)(太阳|木星|土星|火星|水星|金星|月亮)在[^座]+座第\\d+宫(?=与|形成|，|\.|。|）)`, 'g');
+          text = text.replace(_sectionRe, function(match, prefix, planetChar) {
+            // 根据行星名选真实星座
+            let realSign = '';
+            if ((planetChar === '太阳' || planetChar === 'Sun') && _realSun) realSign = _realSun;
+            else if (planetChar === '木星' && _realJup) realSign = _realJup;
+            else if (planetChar === '土星' && _realSat) realSign = _realSat;
+            else if (planetChar === '火星' && _realMar) realSign = _realMar;
+            else if (planetChar === '水星' && _realMerc) realSign = _realMerc;
+            else if (planetChar === '金星' && _realVen) realSign = _realVen;
+            else if (planetChar === '月亮' && _md.moon?.sign) realSign = ZH_SIGN_PL[_md.moon.sign] || '';
+            if (!realSign) return match; // 没数据不动
+            // 提取宫位号
+            const _houseMatch = match.match(/第(\\d+)宫/);
+            const _house = _houseMatch ? _houseMatch[1] : '';
+            return `${prefix}${planetChar}在${realSign}第${_house}宫`;
+          });
+        }
+      }
     }
   }
 
   return text;
+}
+
+// 🛠️ V107-方案A: 轻量级预缓存校验器（写缓存前拦截质量问题）
+function wealthCriticCheck(text, birthDate, natalSunSign) {
+  const issues = [];
+  if (!text || text.length < 500) issues.push('内容过短');
+  
+  // 1. 验证本命太阳星座是否正确出现在前2000字
+  if (natalSunSign) {
+    const header = text.slice(0, 2000);
+    if (!header.includes(natalSunSign)) {
+      issues.push('报头缺少' + natalSunSign);
+    }
+  }
+  
+  // 2. 验证乱码
+  const fffd = (text.match(/\ufffd/g) || []).length + (text.match(/�/g) || []).length;
+  if (fffd > 0) issues.push('FFFD残块: ' + fffd);
+  
+  // 3. 验证孤括号
+  const noOpen = text.match(/[^（]）》/);
+  if (noOpen) issues.push('孤闭括号');
+  
+  // 4. 验证关键月份：6月标题必须有双子座
+  const juneHeader = text.match(/6月[：:].{0,40}?太阳[^座]*座/);
+  if (juneHeader && !juneHeader[0].includes('双子座')) {
+    issues.push('6月标题星座错误: ' + juneHeader[0].slice(0, 30));
+  }
+  
+  // 5. 验证 7月 Peak Window 不含射手座（7月太阳不可能在射手座）
+  const julyPeak = text.match(/2026年7月[^🔴🟢]*(?:🟢|🔴)[^。]*?太阳在[^座]*座/g);
+  if (julyPeak && julyPeak.some(m => m.includes('射手座'))) {
+    issues.push('7月Peak/W太阳座错误(含射手座)');
+  }
+  
+  return issues;
 }
 
 function cleanYearlyTimeline(text) {
@@ -1882,12 +1962,17 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // ── V97 宫位强制纠正器（铁血断路）──
         const sanitizedAI = natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign);
 
+        // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer（此前只跑了 MISS 的 HIT 和流式端点，非流式 MISS 漏了）
+        const monthLocked = (reportType === 'yearly' && astroMatrix)
+          ? applyMonthLockSanitizer(sanitizedAI, astroMatrix, null, null, lang)
+          : sanitizedAI;
+
         // Parse AI result
-        let reportContent = sanitizedAI;
+        let reportContent = monthLocked;
 
         // ── ⛔ 时间线强行熔断重组（防 DeepSeek Streaming 污染）──
         if (reportType === 'yearly') {
-          reportContent = cleanYearlyTimeline(sanitizedAI);
+          reportContent = cleanYearlyTimeline(monthLocked);
         }
 
         if (reportType === 'monthly') {
@@ -1902,6 +1987,17 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
         
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
+        
+        // 🛠️ V107-方案A: 预缓存校验
+        if (reportType === 'yearly') {
+          const criticIssues = wealthCriticCheck(reportContent, birthDate, natalSunSign);
+          if (criticIssues.length > 0) {
+            console.warn('[CRITIC] 缓存前校验发现问题:', JSON.stringify(criticIssues));
+            // 只警告不拦截——避免全量熔断导致用户404
+          } else {
+            console.log('[CRITIC] 预缓存校验通过 ✅');
+          }
+        }
         
         // ═══ 写入缓存（非流式端点）═══
         if (SB_URL && SB_KEY && reportContent && reportContent.length > 100) {
