@@ -760,7 +760,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           // 🛠️ V115-fix2: 火星/天王星全量真值替换（不依赖段隔离，一次遍历全局替换）
           // 根因：AI 写"火星在狮子座刑克天王星在双子座"跨月复制，sanitizer 段隔离逻辑漏截
           // 治法：读每月真值，全局逐月替换，斩断复读冲动
-          // ⚠️ 注意：wrongSigns 在月度循环内定义，此处用 _ZS（月度循环外专用）
+          // ⚠️ 注意：_wrongZodiacs 在月度循环内定义，此处用 _ZS（月度循环外专用）
           const _wrongZodiacs = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
           if (astroMatrix && astroMatrix.months) {
             const _marsCache = {};
@@ -776,7 +776,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
             const _allUraSigns = Object.values(_uraCache).filter(Boolean);
             _allMarsSigns.forEach(ms => {
               if (!ms) return;
-              wrongSigns.forEach(ws => {
+              _wrongZodiacs.forEach(ws => {
                 if (ws === ms) return;
                 const _mr = new RegExp(`火星在${ws}`, 'g');
                 text = text.replace(_mr, `火星在${ms}`);
@@ -784,7 +784,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
             });
             _allUraSigns.forEach(us => {
               if (!us) return;
-              wrongSigns.forEach(ws => {
+              _wrongZodiacs.forEach(ws => {
                 if (ws === us) return;
                 const _ur = new RegExp(`天王星在${ws}`, 'g');
                 text = text.replace(_ur, `天王星在${us}`);
