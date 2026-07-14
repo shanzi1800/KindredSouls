@@ -408,8 +408,8 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
   // 🛠️ V110-fix1: 报头本命太阳硬覆盖（AI幻觉把摩羯写成双鱼，pat1只覆盖正文"你的太阳在X座"漏了报头）
   //   报头两处：年度星盘: X座 / 核心本命代码: 太阳X座 · 月亮Y座
   const _allSigns = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
-  text = text.replace(new RegExp('年度星盘[:：]\\s*(' + _allSigns.join('|') + ')座', 'g'), '年度星盘: ' + natalSunSign);
-  text = text.replace(new RegExp('核心本命代码[:：]\\s*太阳\\s*(' + _allSigns.join('|') + ')座', 'g'), '核心本命代码: 太阳' + natalSunSign);
+  text = text.replace(new RegExp('年度星盘[^座]*(' + _allSigns.join('|') + ')座', 'g'), '年度星盘: ' + natalSunSign);
+  text = text.replace(new RegExp('核心本命代码[^座]*太阳(' + _allSigns.join('|') + ')座', 'g'), '核心本命代码: 太阳' + natalSunSign);
 
   // 1) 本命太阳断言：匹配「你的太阳在X座」或「太阳在X座第Y宫」等显式引用
   //    只修正文中的本命表述，不修月度标题（月锁已保证正确）
