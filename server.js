@@ -285,7 +285,7 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
       { sign: '水瓶座', h: houseMap[SIGN_ORDER_ZH.indexOf('水瓶座')] },
     ];
     for (const f of fixes) {
-      text = text.replace(new RegExp(`第(\d+)宫（${f.sign}）`, 'g'), `第${f.h}宫（${f.sign}）`);
+      text = text.replace(new RegExp(`第([一二三四五六七八九十百零\d]+)宫（${f.sign}）`, 'g'), `第${f.h}宫（${f.sign}）`);
       text = text.replace(new RegExp(`${f.sign}在第(\d+)宫`, 'g'), `${f.sign}在第${f.h}宫`);
     }
   }
@@ -451,6 +451,18 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
       const _ch = _vm[_si];
       text = text.replace(/你的本命太阳在第[一二三四五六七八九十百零\d]{1,3}宫/g, '你的本命太阳在第' + _ch + '宫');
       text = text.replace(/本命太阳在第[一二三四五六七八九十百零\d]{1,3}宫/g, '本命太阳在第' + _ch + '宫');
+
+      // 🛠️ V108-fix7: 第五章家居对齐硬编码宫位解耦
+      const _homeStart = text.indexOf('家居财富对齐');
+      const _officeStart = text.indexOf('办公室财富对齐');
+      if (_homeStart >= 0) {
+        const _homeEnd = _officeStart >= 0 ? _officeStart : text.length;
+        const _before = text.substring(0, _homeStart);
+        let _home = text.substring(_homeStart, _homeEnd);
+        const _after = text.substring(_homeEnd);
+        _home = _home.replace(/第([一二三四五六七八九十百零\d]+)宫/g, '第' + _ch + '宫');
+        text = _before + _home + _after;
+      }
     }
   } catch(e) {
     console.warn('[natal_sun_linter] house fix failed:', e.message);
@@ -640,7 +652,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           // 找本月份章节（用 entry.key 定位）：2026年7月: ...
           // 在章节内做精确的行星际替换：
           const _monthKeyEsc = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const _sectionRe = new RegExp(`(${_monthKeyEsc}[：:][^🔴🟢]*(?:🟢|🔴)[^。]*?)(太阳|木星|土星|火星|水星|金星|月亮)在[^座]+座第\\d+宫(?=与|形成|，|\.|。|）)`, 'g');
+          const _sectionRe = new RegExp(`(${_monthKeyEsc}[：:][\s\S]*?)(太阳|木星|土星|火星|水星|金星|月亮|冥王星)在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座第\\d+宫(?=与|形成|，|\.|。|）)`, 'g');
           text = text.replace(_sectionRe, function(match, prefix, planetChar) {
             // 根据行星名选真实星座
             let realSign = '';
@@ -653,9 +665,10 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
             else if (planetChar === '月亮' && _md.moon?.sign) realSign = ZH_SIGN_PL[_md.moon.sign] || '';
             if (!realSign) return match; // 没数据不动
             // 提取宫位号
-            const _houseMatch = match.match(/第(\\d+)宫/);
+            const _houseMatch = match.match(/第([一二三四五六七八九十百零\d]+)宫/);
             const _house = _houseMatch ? _houseMatch[1] : '';
-            return `${prefix}${planetChar}在${realSign}第${_house}宫`;
+            const _signCore = realSign.replace(/座$/, '');
+            return `${prefix}${planetChar}在${_signCore}第${_house}宫`;
           });
         }
       }
@@ -2671,6 +2684,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
     cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+
+    // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport（HIT 路径已调用，此处漏掉导致章节 ✦ 注入缺失）
+    cleanedText = standardizeReport(cleanedText);
 
     // 🛠️ V108-fix1: 终极乱码清洗——sanitized 事件前最后一次 FFFD 清扫
     cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
