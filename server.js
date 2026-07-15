@@ -3168,7 +3168,18 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     sendText(outroText);
     allText += outroText;
 
-    // ── Step 7: DONE ──
+    // ── Step 7: 复用 V1 清洗管道（Bug1 U+FFFD / Bug2 月度标题 / Bug3 相位幻觉）──
+    allText = natal_sun_linter(
+      astro_phase_linter(
+        final_text_sanitizer(allText, natalRising)
+      ),
+      natalSunSign,
+      natalRising
+    );
+    allText = applyMonthLockSanitizer(allText, matrix, null, null, lang);
+    allText = standardizeReport(allText);
+
+    // ── Step 8: DONE ──
     send(JSON.stringify({ sanitized: allText }));
     send('data: [DONE]\n\n');
     res.end();
