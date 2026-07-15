@@ -11,6 +11,7 @@ import { validateAstroLogic } from './astro-validator.js';
 import https from 'https';
 import { Buffer } from 'buffer';
 import { getSystemPromptByLocale } from './src/prompts/loader.js';
+import { exec } from 'child_process';
 
 // ── safeFetch: 替代全局 fetch，跳过 Node undici ByteString 缺陷 ──
 // undici（Node 内置 fetch）在 body/header 含非 ASCII 字符时抛 TypeError:
@@ -3055,7 +3056,6 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   try {
     // ── Step 1: Python Schema ──
     sendStatus('🔮 命运推演引擎启动...');
-    const { exec } = require('child_process');
     const schemaStr = await new Promise((resolve, reject) => {
       const py = `import sys,json;sys.path.insert(0,'astro');from astrology_engine import build_full_schema;print(json.dumps(build_full_schema('${birthDate}','${birthTime}',${lat},${lon},'${tz}','Equal House','${lang}'),ensure_ascii=False))`;
       exec(`python3 -c "${py}"`, { cwd: process.cwd(), timeout: 30000 }, (err, stdout, stderr) => {
