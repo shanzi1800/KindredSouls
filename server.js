@@ -2727,13 +2727,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // Gemini 2.5 Pro 流式请求
       try {
         const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: new TextEncoder().encode(JSON.stringify({
               contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 131072, temperature: 0 }  // V113-fix7: 年报从65536→131072，确保12月完整
+              generationConfig: { maxOutputTokens: 8192, temperature: 0 }  // V116: 改Flash，Flash上限8192
             })),
             signal: controller.signal
           }
@@ -2822,7 +2822,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: new TextEncoder().encode(JSON.stringify({
                   contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                  generationConfig: { maxOutputTokens: 65536, temperature: 0 }
+                  generationConfig: { maxOutputTokens: 8192, temperature: 0 }  // V116: 改Flash，上限8192
                 })),
               }
             );
@@ -3216,7 +3216,7 @@ async function streamGeminiChunk(prompt, onChunk) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 180000);
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
