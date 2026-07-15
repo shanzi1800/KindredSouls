@@ -2748,7 +2748,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const geminiKey = process.env.GEMINI_API_KEY;
     // 🔧 V75 fix: 64000 彻底解除年报截断
     // 🛠️ V108-fix2: 年报改用 Gemini 2.5 Pro 为主模型（支持 65536 tokens 输出，彻底消灭10月截断）
-    const maxTokens = 16384;
+    // 🛠️ V116-final: 条件化 max_tokens —— Gemini 主用 65536(快)，DeepSeek 兜底降到 32000(够完整年报且不卡)
+    let maxTokens = 32000;
+    if (geminiKey && reportType === 'yearly') maxTokens = 65536; // Gemini 支持高输出且快
+    else if (reportType === 'yearly') maxTokens = 32000; // DeepSeek 兜底：32000≈24000字，够完整年报，处理2-3分钟不卡
+    else maxTokens = 4000;
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
