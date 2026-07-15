@@ -2727,7 +2727,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // Gemini 2.5 Pro 流式请求
       try {
         const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:streamGenerateContent?alt=sse&key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3216,7 +3216,7 @@ async function streamGeminiChunk(prompt, onChunk) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 180000);
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:streamGenerateContent?alt=sse&key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
