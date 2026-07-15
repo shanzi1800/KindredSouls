@@ -202,31 +202,38 @@ function stripLoneSurrogates(str) {
   return out;
 }
 
-// V116-Bug1-fix
-function forceSpaceHouseSanitizer(text){if(!text)return text;let t=text;t=t.replace(/卧室是你的第4宫（[^）\n]{0,30}?）/g,'卧室是你的第五宫（男女宫）');
-  t=t.replace(/卧室是你的第四宫（[^）\n]{0,30}?）/g,'卧室是你的第五宫（男女宫）');
-  t=t.replace(/卧室对应你的第4宫/g,'卧室对应你的第五宫（男女宫）');
-  t=t.replace(/卧室属于第4宫/g,'卧室属于第五宫（男女宫）');
-  t=t.replace(/卧室对应第4宫/g,'卧室对应第五宫（男女宫）');
-  t=t.replace(/厨房代表你的第4宫（[^）\n]{0,30}?）和第4宫（[^）\n]{0,30}?）/g,'厨房代表你的第二宫（财帛宫）和第八宫（疾厄宫）');
-  t=t.replace(/厨房代表你的第4宫（[^）\n]{0,30}?）和第4宫/g,'厨房代表你的第二宫（财帛宫）和第八宫（疾厄宫）');
-  t=t.replace(/厨房代表你的第4宫/g,'厨房代表你的第二宫（财帛宫）');
-  t=t.replace(/厨房代表第四宫（[^）\n]{0,30}?）和第四宫/g,'厨房代表第二宫（财帛宫）和第八宫（疾厄宫）');
-  t=t.replace(/厨房代表第四宫/g,'厨房代表第二宫（财帛宫）');
-  t=t.replace(/厨房对应你的第4宫/g,'厨房对应你的第二宫（财帛宫）');
-  t=t.replace(/厨房属于第4宫/g,'厨房属于第二宫（财帛宫）');
-  t=t.replace(/厨房对应第4宫/g,'厨房对应第二宫（财帛宫）');
-  t=t.replace(/财务室[^\n]{0,30}?对应?你的?第4宫/g,'财务室对应你的第八宫（疾厄宫）');
-  t=t.replace(/财务室对应第4宫/g,'财务室对应第八宫（疾厄宫）');
-  t=t.replace(/客厅对应你的第5宫/g,'客厅对应你的第四宫（田宅宫）');
-  t=t.replace(/客厅属于第5宫/g,'客厅属于第四宫（田宅宫）');
-  t=t.replace(/客厅对应第5宫/g,'客厅对应第四宫（田宅宫）');
-  t=t.replace(/前台对应你的第4宫/g,'前台对应你的第十宫（官禄宫）');
-  t=t.replace(/工位对应你的第4宫/g,'工位对应你的第十宫（官禄宫）');
-  t=t.replace(/前台对应第4宫/g,'前台对应第十宫（官禄宫）');
-  t=t.replace(/工位对应第4宫/g,'工位对应第十宫（官禄宫）');
-  t=t.replace(/会议室对应你的第4宫/g,'会议室对应你的第七宫（婚姻宫）');
-  t=t.replace(/会议室对应第4宫/g,'会议室对应第七宫（婚姻宫）');return t;}
+// V116-Bug4b-fix: 英文星座名 → 中文（报头回归，前置Map + 后置清洗双保险）
+function englishSignToChinese(text){
+  if(!text)return text;
+  const EN_ZH = {
+    'Aries':'白羊座','Taurus':'金牛座','Gemini':'双子座','Cancer':'巨蟹座','Leo':'狮子座','Virgo':'处女座',
+    'Libra':'天秤座','Scorpio':'天蝎座','Sagittarius':'射手座','Capricorn':'摩羯座','Aquarius':'水瓶座','Pisces':'双鱼座',
+    'aries':'白羊座','taurus':'金牛座','gemini':'双子座','cancer':'巨蟹座','leo':'狮子座','virgo':'处女座',
+    'libra':'天秤座','scorpio':'天蝎座','sagittarius':'射手座','capricorn':'摩羯座','aquarius':'水瓶座','pisces':'双鱼座'
+  };
+  let t = text;
+  for(const [en,zh] of Object.entries(EN_ZH)){
+    t = t.replace(new RegExp('\\b'+en+'\\b','g'), zh);
+  }
+  return t;
+}
+
+// V116-Bug1-fix: 空间宫位模糊匹配（抓关键词前后任意宫位，强制归位到产品固定隐喻）
+// 产品固定规则（山子大叔裁决）：卧室=第四宫（田宅宫），厨房=第二宫（财帛宫）与第八宫（共享资源），财务室=第八宫（共享资源）
+function forceSpaceHouseSanitizer(text){
+  if(!text)return text;
+  let t = text;
+  // 卧室 → 第四宫（田宅宫）
+  t = t.replace(/卧室[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '卧室区域：第四宫（田宅宫）');
+  t = t.replace(/卧室[^\n]{0,20}?（第[一二三四五六七八九十百0-9]{1,3}宫[^）]{0,12}）[^\n]{0,20}?/g, '卧室区域：第四宫（田宅宫）');
+  // 厨房 → 第二宫（财帛宫）与第八宫（共享资源）
+  t = t.replace(/厨房[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '厨房区域：第二宫（财帛宫）与第八宫（共享资源）');
+  t = t.replace(/厨房[^\n]{0,20}?（第[一二三四五六七八九十百0-9]{1,3}宫[^）]{0,12}）[^\n]{0,20}?/g, '厨房区域：第二宫（财帛宫）与第八宫（共享资源）');
+  // 财务室 → 第八宫（共享资源）
+  t = t.replace(/财务室[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '财务室区域：第八宫（共享资源）');
+  t = t.replace(/财务室[^\n]{0,20}?（第[一二三四五六七八九十百0-9]{1,3}宫[^）]{0,12}）[^\n]{0,20}?/g, '财务室区域：第八宫（共享资源）');
+  return t;
+}
 
 // V116-Bug4-fix
 function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFE0F\uFEFF]/g,'');}
@@ -3135,6 +3142,23 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     const locale = localeMap[lang] || 'zh';
     const sysPrompt = getSystemPromptByLocale(locale);
 
+    // 🛠️ V116-Bug1-fix: 第五章空间宫位前置锁死（不在事后擦屁股，前置约束）
+    const CHAPTER5_CONSTRAINT = `
+
+【第五章：空间财富对齐硬性格式规范】
+在撰写第五章（空间/家居/办公室财富对齐）时，你必须严格且毫无例外地遵守以下产品设计隐喻，严禁自行更换宫位或添加其他星座杂质：
+1. 卧室区域：必须且只能描述为"第四宫（田宅宫）"，代表财富根基与安全感。
+2. 厨房区域：必须且只能描述为"第二宫（财帛宫）与第八宫（共享资源）"。
+3. 财务室/保险柜：必须且只能描述为"第八宫（共享资源）"。
+4. 客厅/入口/前台/工位/会议室等区域：保持与前述章节一致的宫位描述，不得自行发明宫位。
+
+【强制输出格式模板】：每一个空间的开头必须严格使用如下纯文本结构（用于前端渲染）：
+* **卧室区域：第四宫（田宅宫）**
+* **厨房区域：第二宫（财帛宫）与第八宫（共享资源）**
+* **财务室区域：第八宫（共享资源）**
+严禁添加任何括号外的星座名或宫位变体。`;
+    const v2SysPrompt = sysPrompt + CHAPTER5_CONSTRAINT;
+
     // ── Step 4: 年度引言 ──
     const natalSunSign = meta.sun_sign || 'Pisces';
     const natalMoonSign = meta.moon_sign || 'Cancer';
@@ -3157,7 +3181,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
       return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
     })();
 
-    const introPrompt = sysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。\n\n★ 用户出生日期（必须写入报头，不得虚构）：' + birthDateFormatted + '\n★ 年度星盘（报头必须精确引用）：\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座（年度机遇主星）/ 土星' + satSignZH + '座（年度业力考验）\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节，以[V116-V2 INTRO]标签标注。';
+    const introPrompt = v2SysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。\n\n★ 用户出生日期（必须写入报头，不得虚构）：' + birthDateFormatted + '\n★ 年度星盘（报头必须精确引用）：\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座（年度机遇主星）/ 土星' + satSignZH + '座（年度业力考验）\n\n【报头铁律】：以上星座必须100%使用中文（如双鱼座、摩羯座），严禁使用英文（如Pisces、Capricorn）。\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节，以[V116-V2 INTRO]标签标注。';
 
     const introText = await streamGeminiChunk(introPrompt, sendChunk);
     allText += introText + '\n\n';
@@ -3203,7 +3227,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
         }
       }
 
-      var mPrompt = sysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节（800-1200字）。\n\n★ 月份：' + monthName + '\n★ 太阳行运：' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运：' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运：' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运：' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
+      var mPrompt = v2SysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节（800-1200字）。\n\n★ 月份：' + monthName + '\n★ 太阳行运：' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运：' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运：' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运：' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
 
       const mText = await streamGeminiChunk(mPrompt, sendChunk);
       // 🔒 V116-step8-fix: 月度标题即时锁（applyMonthLockSanitizer的regex不匹配V2格式）
@@ -3234,6 +3258,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     allText += outroText;
 
     // ── Step 7: V116八层清洗链(Bug1~Bug4全硬锁) ──
+    allText = englishSignToChinese(allText);      // 刀0(报头英文→中文回归)
     allText = cleanGarbageCharacters(allText);    // 刀1(Bug4)
     allText = forceSpaceHouseSanitizer(allText);  // 刀2(Bug1)
     allText = final_text_sanitizer(allText, natalRising);
@@ -3444,25 +3469,26 @@ function impossible_aspect_guard(text) {
 // ═══════════════════════════════════════════════════════════════════════
 function v2_monthly_title_lock(text, months) {
   if (!text || !months || !Array.isArray(months)) return text;
-  const LOCKS_2026 = [
-    { re: /2026年7月：太阳(?!巨蟹)[^\n]{0,10}座/g,      s: '2026年7月：太阳巨蟹座' },
-    { re: /2026年8月：太阳(?!狮子)[^\n]{0,10}座/g,      s: '2026年8月：太阳狮子座' },
-    { re: /2026年9月：太阳(?!处女)[^\n]{0:10}座/g,      s: '2026年9月：太阳处女座' },
-    { re: /2026年10月：太阳(?!天秤)[^\n]{0,10}座/g,    s: '2026年10月：太阳天秤座' },
-    { re: /2026年11月：太阳(?!天蝎)[^\n]{0,10}座/g,   s: '2026年11月：太阳天蝎座' },
-    { re: /2026年12月：太阳(?!射手)[^\n]{0,10}座/g,    s: '2026年12月：太阳射手座' },
-  ];
-  const LOCKS_2027 = [
-    { re: /2027年1月：太阳(?!摩羯)[^\n]{0,10}座/g,      s: '2027年1月：太阳摩羯座' },
-    { re: /2027年2月：太阳(?!水瓶)[^\n]{0,10}座/g,      s: '2027年2月：太阳水瓶座' },
-    { re: /2027年3月：太阳(?!双鱼)[^\n]{0,10}座/g,      s: '2027年3月：太阳双鱼座' },
-    { re: /2027年4月：太阳(?!白羊)[^\n]{0,10}座/g,      s: '2027年4月：太阳白羊座' },
-    { re: /2027年5月：太阳(?!金牛)[^\n]{0,10}座/g,      s: '2027年5月：太阳金牛座' },
-    { re: /2027年6月：太阳(?!双子)[^\n]{0,10}座/g,      s: '2027年6月：太阳双子座' },
-  ];
+  const SIGN_ZH = { Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座' };
+  const SIGNS = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座','Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  const signRe = new RegExp('(' + SIGNS.join('|') + ')', 'g');
   let t = text;
-  for (const l of LOCKS_2026) { t = t.replace(l.re, l.s); }
-  for (const l of LOCKS_2027) { t = t.replace(l.re, l.s); }
+  for (const m of months) {
+    const monthName = m.month_name;
+    if (!monthName || !m.sun) continue;
+    const correctSign = SIGN_ZH[m.sun.sign] || (m.sun.sign + '座');
+    const correctHouse = m.sun.house ? ('第' + m.sun.house + '宫') : '';
+    const idx = t.indexOf(monthName);
+    if (idx === -1) continue;
+    const lineEnd = t.indexOf('\n', idx);
+    const segEnd = lineEnd === -1 ? Math.min(idx + 80, t.length) : lineEnd;
+    const seg = t.slice(idx, segEnd);
+    let newSeg = seg.replace(signRe, correctSign);
+    if (correctHouse) {
+      newSeg = newSeg.replace(/第[一二三四五六七八九十百0-9]{1,3}宫/g, correctHouse);
+    }
+    t = t.slice(0, idx) + newSeg + t.slice(segEnd);
+  }
   return t;
 }
 
