@@ -3080,33 +3080,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     const meta = matrix.meta || {};
     const risingSign = meta.rising_sign || 'Cancer';
 
-    const QUARTER_RANGES = [[0,3],[3,6],[6,9],[9,12]];
-    const QNAMES_ZH = ['第一阶段：能量锚定', '第二阶段：命运河流', '第三阶段：深层觉醒', '第四阶段：主权回归'];
-    const QNAMES_EN = ['Phase I: Energy Anchoring', 'Phase II: Fate River', 'Phase III: Deep Awakening', 'Phase IV: Sovereign Return'];
-
     const SIGN_MAP_ZH = { Aries:'白羊',Taurus:'金牛',Gemini:'双子',Cancer:'巨蟹',Leo:'狮子',Virgo:'处女',Libra:'天秤',Scorpio:'天蝎',Sagittarius:'射手',Capricorn:'摩羯',Aquarius:'水瓶',Pisces:'双鱼' };
-
-    const quarters = QUARTER_RANGES.map(function(range, qi) {
-      const start = range[0], end = range[1];
-      const qMonths = months.slice(start, end);
-      const midMonth = qMonths[Math.floor(qMonths.length / 2)];
-      const crisisDays = qMonths.flatMap(function(m) { return m.black_swan_days || []; });
-      const topCrisis = crisisDays.sort(function(a, b) { return (b.severity || 0) - (a.severity || 0); })[0] || null;
-      const peakWindows = qMonths.flatMap(function(m) { return m.peak_windows || []; });
-      const topPeak = peakWindows.sort(function(a, b) { return (b.strength || 0) - (a.strength || 0); })[0] || null;
-
-      return {
-        index: qi,
-        name: lang === 'en' ? QNAMES_EN[qi] : QNAMES_ZH[qi],
-        months: qMonths.map(function(m) { return m.month_name || ('月' + (start + 1)); }),
-        sun_transit: { sign: midMonth && midMonth.sun ? midMonth.sun.sign : 'Aries', house: midMonth && midMonth.sun ? (midMonth.sun.house || 1) : 1 },
-        jupiter: { sign: midMonth && midMonth.jupiter ? midMonth.jupiter.sign : 'Leo', house: midMonth && midMonth.jupiter ? (midMonth.jupiter.house || 1) : 1 },
-        saturn: { sign: midMonth && midMonth.saturn ? midMonth.saturn.sign : 'Aries', house: midMonth && midMonth.saturn ? (midMonth.saturn.house || 1) : 1 },
-        pluto: { sign: midMonth && midMonth.pluto ? midMonth.pluto.sign : 'Aquarius', house: midMonth && midMonth.pluto ? (midMonth.pluto.house || 1) : 1 },
-        crisis_day: topCrisis,
-        peak_window: topPeak,
-      };
-    });
 
     // ── Step 3: System Prompt ──
     const localeMap = { zh: 'zh', en: 'en', fr: 'fr', es: 'es', th: 'th', vi: 'vi' };
@@ -3120,8 +3094,11 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     const natalSunZH = SIGN_MAP_ZH[natalSunSign] || natalSunSign;
     const natalMoonZH = SIGN_MAP_ZH[natalMoonSign] || natalMoonSign;
     const natalRisingZH = SIGN_MAP_ZH[natalRising] || natalRising;
-    const jupSignZH = SIGN_MAP_ZH[quarters[0].jupiter.sign] || quarters[0].jupiter.sign;
-    const satSignZH = SIGN_MAP_ZH[quarters[0].saturn.sign] || quarters[0].saturn.sign;
+    // 用第1个月的数据取年度主星
+    const m0Jup = months[0] && months[0].jupiter ? months[0].jupiter.sign : 'Leo';
+    const m0Sat = months[0] && months[0].saturn ? months[0].saturn.sign : 'Aries';
+    const jupSignZH = SIGN_MAP_ZH[m0Jup] || m0Jup;
+    const satSignZH = SIGN_MAP_ZH[m0Sat] || m0Sat;
 
     sendStatus('✨ 正在书写年度宏观战略...');
     const factSheet = buildFactSheet(matrix, locale) || '';
@@ -3139,35 +3116,51 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     sendText(introText);
     console.log('[V2] 引言: ' + introText.length + '字');
 
-    // ── Step 5: 逐季度滚动 ──
-    for (let i = 0; i < quarters.length; i++) {
-      const q = quarters[i];
-      const sunSignZH = SIGN_MAP_ZH[q.sun_transit.sign] || q.sun_transit.sign;
-      const crisis = q.crisis_day || {};
-      const peak = q.peak_window || {};
+    // ── Step 5: 逐月滚动（12个月）──
+    for (let i = 0; i < months.length; i++) {
+      const m = months[i];
+      const monthName = m.month_name || ('Month ' + (i + 1));
+      const sun = m.sun || {};
+      const jupiter = m.jupiter || {};
+      const saturn = m.saturn || {};
+      const pluto = m.pluto || {};
+      const sunSignZH = SIGN_MAP_ZH[sun.sign] || sun.sign || '';
+      const jupSignZH_m = SIGN_MAP_ZH[jupiter.sign] || jupiter.sign || '';
+      const satSignZH_m = SIGN_MAP_ZH[saturn.sign] || saturn.sign || '';
+      const pluSignZH = SIGN_MAP_ZH[pluto.sign] || pluto.sign || '';
+      const peakWindows = m.peak_windows || [];
+      const crisisDays = m.black_swan_days || [];
 
-      const transition = '\n\n> 🪐 **【' + q.name + '】**\n\n';
+      const transition = '\n\n---\n\n## ✦ ' + monthName + '\n\n';
       send(JSON.stringify({ type: 'transition', text: transition }));
       flush();
       allText += transition;
 
-      sendStatus('🔮 ' + q.months.join('/') + ' 运势撰写中...（' + (i+1) + '/4）');
+      sendStatus('🔮 ' + monthName + ' 运势撰写中...（' + (i+1) + '/12）');
 
-      var crisisLine = crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect || '') + '\n' : '';
-      var peakLine = peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type || '收入高峰') + '）\n' : '';
-      var crisisLine2 = crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect || '') + '\n' : '';
-      var peakLine2 = peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type || '收入高峰') + '）\n' : '';
+      // 峰值窗口
+      var peakBlock = '';
+      if (peakWindows.length > 0) {
+        for (var pi = 0; pi < Math.min(2, peakWindows.length); pi++) {
+          var pw = peakWindows[pi];
+          peakBlock += '★ 峰值窗口：' + (pw.date || '') + '（' + (pw.type || '收入高峰') + ' in ' + (pw.sign || '') + '）\n';
+        }
+      }
+      // 黑天鹅
+      var crisisBlock = '';
+      if (crisisDays.length > 0) {
+        for (var ci = 0; ci < Math.min(1, crisisDays.length); ci++) {
+          var cd = crisisDays[ci];
+          crisisBlock += '★ 危机警示日：' + (cd.date || '') + ' ' + (cd.aspect || '') + '\n';
+        }
+      }
 
-      var jupiterSignZH = SIGN_MAP_ZH[q.jupiter.sign] || q.jupiter.sign;
-      var saturnSignZH = SIGN_MAP_ZH[q.saturn.sign] || q.saturn.sign;
-      var plutoSignZH = SIGN_MAP_ZH[q.pluto.sign] || q.pluto.sign;
+      var mPrompt = sysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节（800-1200字）。\n\n★ 月份：' + monthName + '\n★ 太阳行运：' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运：' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运：' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运：' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
 
-      var qPrompt = sysPrompt + '\n\n[V116-V2-Q' + (i+1) + ']: 生成第' + (i+1) + '季度章节（1200-2000字）。\n\n★ 季度定位：' + q.months.join('、') + '\n★ 太阳行运：' + sunSignZH + '座第' + q.sun_transit.house + '宫\n★ 木星行运：' + jupiterSignZH + '座第' + q.jupiter.house + '宫\n★ 土星行运：' + saturnSignZH + '座第' + q.saturn.house + '宫\n★ 冥王行运：' + plutoSignZH + '座第' + q.pluto.house + '宫\n' + (peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type||'收入高峰') + '）\n' : '') + (crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect||'') + '\n' : '') + factSheet + '\n\n请以[V116-V2-Q' + (i+1) + ']标签标注输出本章。';
-
-      const qText = await streamGeminiChunk(qPrompt, sendChunk);
-      allText += qText + '\n\n';
-      sendText(qText);
-      console.log('[V2] Q' + (i+1) + ': ' + qText.length + '字');
+      const mText = await streamGeminiChunk(mPrompt, sendChunk);
+      allText += mText + '\n\n';
+      sendText(mText);
+      console.log('[V2] M' + (i+1) + ' (' + monthName + '): ' + mText.length + '字');
     }
 
     // ── Step 6: 结语 ──
