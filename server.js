@@ -58,6 +58,18 @@ function getDeepSeekKey() {
   return process.env.DEEPSEEK_API_KEY;
 }
 
+// ── V116: Gemini key 从文件读（防 Railway Dashboard 覆盖）──
+function getGeminiKey() {
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10) return process.env.GEMINI_API_KEY;
+  try {
+    if (existsSync('/app/.gemini-key')) {
+      const k = readFileSync('/app/.gemini-key', 'utf-8').trim();
+      if (k.length > 10) return k;
+    }
+  } catch(e) { /* fall through */ }
+  return null;
+}
+
 // ── V97bd: Supabase keys 从文件读（防 Railway Dashboard 老 key 覆盖，同 DeepSeek 方案）──
 try {
   if (existsSync('/app/.supabase-url')) {
@@ -1103,7 +1115,7 @@ app.get('/api/debug-env', (req, res) => {
   }
   res.json({
     DEEPSEEK: process.env.DEEPSEEK_API_KEY ? '✓ set' : '✗ missing',
-    GEMINI: process.env.GEMINI_API_KEY ? '✓ ' + process.env.GEMINI_API_KEY.slice(0,8) + '...' : '✗ missing',
+    GEMINI: (() => { const k = getGeminiKey(); return k ? '✓ ' + k.slice(0,8) + '...' : '✗ missing'; })(),
     SUPABASE_URL: process.env.SUPABASE_URL ? '✓ set' : '✗ missing',
     SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? '✓ set' : '✗ missing',
     STRIPE: process.env.STRIPE_SECRET_KEY ? '✓ set' : '✗ missing',
@@ -3193,8 +3205,8 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
 
 // ── Gemini流式调用辅助函数 ──
 async function streamGeminiChunk(prompt, onChunk) {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+  const geminiKey = getGeminiKey();
+  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured — 请在 Railway Variables 配置 GEMINI_API_KEY');
   let attempt = 0;
   let fullText = '';
 

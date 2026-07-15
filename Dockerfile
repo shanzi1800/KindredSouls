@@ -1,7 +1,8 @@
 FROM node:22-slim
 
-# ── V95: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=20260712-1620-V102t
+# ── V116: Cache busting — force fresh build on every railway up ──
+ARG CACHE_BUST=20260715-V116-GEMINI-KEY
+ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
@@ -24,6 +25,8 @@ ENV V69_HOST=127.0.0.1
 # 如果 Dashboard 有旧 key，ENV DEEPSEEK_API_KEY 就废了。
 # 写文件 → 代码直接读文件，Dashboard 覆盖不到。
 RUN printf 'sk-9307f02599b44612b6767996a7839ab5' > /app/.deepseek-key
+# V116: Gemini API Key 文件后备（优先读 env var，回退读此文件）
+RUN printf '%s' "${GEMINI_API_KEY}" > /app/.gemini-key || true
 RUN printf '%s' "$SUPABASE_URL" > /app/.supabase-url
 RUN printf '%s' 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw' > /app/.supabase-key
 
