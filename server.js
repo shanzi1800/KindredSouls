@@ -3158,8 +3158,14 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
       var mPrompt = sysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节（800-1200字）。\n\n★ 月份：' + monthName + '\n★ 太阳行运：' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运：' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运：' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运：' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
 
       const mText = await streamGeminiChunk(mPrompt, sendChunk);
-      allText += mText + '\n\n';
-      sendText(mText);
+      // 🔒 V116-step8-fix: 月度标题即时锁（applyMonthLockSanitizer的regex不匹配V2格式）
+      let mTextLocked = mText;
+      if (m.sun && m.sun.sign) {
+        const sunSignCorrect = { Aries:'白羊',Taurus:'金牛',Gemini:'双子',Cancer:'巨蟹',Leo:'狮子',Virgo:'处女',Libra:'天秤',Scorpio:'天蝎',Sagittarius:'射手',Capricorn:'摩羯',Aquarius:'水瓶',Pisces:'双鱼' }[m.sun.sign] || m.sun.sign;
+        mTextLocked = mText.replace(new RegExp('太阳(?!' + sunSignCorrect + ')[^\n]{0,10}座'), '太阳' + sunSignCorrect + '座');
+      }
+      allText += mTextLocked + '\n\n';
+      sendText(mTextLocked);
       console.log('[V2] M' + (i+1) + ' (' + monthName + '): ' + mText.length + '字');
     }
 
@@ -3168,7 +3174,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     sendText(outroText);
     allText += outroText;
 
-    // ── Step 7: 复用 V1 清洗管道（Bug1 U+FFFD / Bug2 月度标题 / Bug3 相位幻觉）──
+    // ── Step 7: V1五层清洗链 + V116新增两层（Bug1/Bug2/Bug3全硬锁）──
     allText = natal_sun_linter(
       astro_phase_linter(
         final_text_sanitizer(allText, natalRising)
@@ -3177,6 +3183,8 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
       natalRising
     );
     allText = applyMonthLockSanitizer(allText, matrix, null, null, lang);
+    allText = v2_monthly_title_lock(allText, matrix.months);  // V116-step8: V2月度标题锁
+    allText = impossible_aspect_guard(allText);               // V116-step8: 同星座四分相硬删
     allText = standardizeReport(allText);
 
     // ── Step 8: DONE ──
@@ -3263,6 +3271,17 @@ async function streamGeminiChunk(prompt, onChunk) {
           } catch(e) {}
         }
       }
+      // 🔒 V116-step8-fix: flush末尾无\n的最后一个SSE event（防末段截断）
+      if (buffer.trim()) {
+        const t = buffer.trim();
+        if (t.startsWith('data: ')) {
+          try {
+            const p = JSON.parse(t.slice(6));
+            const tx = p?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (tx) { fullText += tx; onChunk(tx); }
+          } catch(e) {}
+        }
+      }
       console.log('[V2] Gemini成功: ' + fullText.length + '字');
       return fullText;
     } catch(err) {
@@ -3321,12 +3340,72 @@ async function streamGeminiChunk(prompt, onChunk) {
           } catch(e) {}
         }
       }
+      // 🔒 V116-step8-fix: DeepSeek流同理flush末尾残留buffer
+      if (buffer.trim()) {
+        const t = buffer.trim();
+        if (t.startsWith('data: ')) {
+          try {
+            const p = JSON.parse(t.slice(6));
+            const tx = p?.choices?.[0]?.delta?.content || '';
+            if (tx) { fullText += tx; onChunk(tx); }
+          } catch(e3) {}
+        }
+      }
       console.log('[V2] DeepSeek成功: ' + fullText.length + '字');
     } catch(e2) {
       throw new Error('Gemini配额耗尽，DeepSeek也失败: ' + e2.message);
     }
   }
   return fullText;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V116 Impossible Aspect Guard
+// 修复 Bug3（军师）："火星在双子座与天王星在双子座形成四分相"
+// 天文学：同星座两天体只能形成合相，四分相/对分相/六分相必须跨星座
+// 本函数检测"行星A在X座与行星B在X座[非合相相位]"并移除非法相位描述
+// ═══════════════════════════════════════════════════════════════════════
+function impossible_aspect_guard(text) {
+  if (!text || !text.includes('座与') && !text.includes('座和')) return text;
+  // 匹配：行星在X座[与/和]行星在X座[相位名]
+  // 只处理：X座 ≠ X座（同星座），且相位 ≠ 合相/同宫
+  const RE_SAME_SIGN_ASPECT = /([\u4e00-\u9fa5星曜]+星?)(在[\u4e00-\u9fa5]{1,3}座)(?:与|和)([\u4e00-\u9fa5星曜]+星?)(在)([\u4e00-\u9fa5]{1,3}座)((?:精准)?(?:四分相|对分相|六分相|三分相|刑克|拱照|三分|六分))(：?)/g;
+  return text.replace(RE_SAME_SIGN_ASPECT, function(match, p1, sign1, p2, _kw, sign2, aspect, colon) {
+    if (sign1 !== sign2) return match; // 不同星座，不处理
+    // 同星座但写的是非合相相位 → 移除非法相位描述
+    const conj = (aspect.includes('合相') || aspect.includes('同宫')) ? aspect : '（合相）';
+    return p1 + sign1 + '与' + p2 + sign2 + conj + colon;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🔒 V2 Monthly Title Lock（V116-step8补丁）
+// Bug2 根因：applyMonthLockSanitizer 匹配 "## 2027年6月：太阳XX座"
+// 但 V2 月度标题是 "## ✦ 2027年6月：太阳XX座"，regex 不命中
+// 本函数直接对 allText 做 12 个月针对性替换
+// ═══════════════════════════════════════════════════════════════════════
+function v2_monthly_title_lock(text, months) {
+  if (!text || !months || !Array.isArray(months)) return text;
+  const LOCKS_2026 = [
+    { re: /2026年7月：太阳(?!巨蟹)[^\n]{0,10}座/g,      s: '2026年7月：太阳巨蟹座' },
+    { re: /2026年8月：太阳(?!狮子)[^\n]{0,10}座/g,      s: '2026年8月：太阳狮子座' },
+    { re: /2026年9月：太阳(?!处女)[^\n]{0:10}座/g,      s: '2026年9月：太阳处女座' },
+    { re: /2026年10月：太阳(?!天秤)[^\n]{0,10}座/g,    s: '2026年10月：太阳天秤座' },
+    { re: /2026年11月：太阳(?!天蝎)[^\n]{0,10}座/g,   s: '2026年11月：太阳天蝎座' },
+    { re: /2026年12月：太阳(?!射手)[^\n]{0,10}座/g,    s: '2026年12月：太阳射手座' },
+  ];
+  const LOCKS_2027 = [
+    { re: /2027年1月：太阳(?!摩羯)[^\n]{0,10}座/g,      s: '2027年1月：太阳摩羯座' },
+    { re: /2027年2月：太阳(?!水瓶)[^\n]{0,10}座/g,      s: '2027年2月：太阳水瓶座' },
+    { re: /2027年3月：太阳(?!双鱼)[^\n]{0,10}座/g,      s: '2027年3月：太阳双鱼座' },
+    { re: /2027年4月：太阳(?!白羊)[^\n]{0,10}座/g,      s: '2027年4月：太阳白羊座' },
+    { re: /2027年5月：太阳(?!金牛)[^\n]{0,10}座/g,      s: '2027年5月：太阳金牛座' },
+    { re: /2027年6月：太阳(?!双子)[^\n]{0,10}座/g,      s: '2027年6月：太阳双子座' },
+  ];
+  let t = text;
+  for (const l of LOCKS_2026) { t = t.replace(l.re, l.s); }
+  for (const l of LOCKS_2027) { t = t.replace(l.re, l.s); }
+  return t;
 }
 
 // ── /api/debug-dump-cache ── 只读诊断：返回某 cache_key 的所有记录（时间+版本，不含正文避免超长）
