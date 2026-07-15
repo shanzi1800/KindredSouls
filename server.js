@@ -3013,6 +3013,213 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🌊 V116: /api/wealth-oracle/v2 — 分片滚动年报引擎
+// 架构：Python Schema → 4×Gemini循环 → 实时SSE流 → 缓存落库
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/wealth-oracle/v2', async (req, res) => {
+  const {
+    birthDate,
+    birthTime = '12:00',
+    lat = 13.75,
+    lon = 100.5,
+    tz = 'Asia/Bangkok',
+    lang = 'zh',
+  } = req.body;
+  if (!birthDate) return res.status(400).json({ error: 'birthDate required' });
+
+  // ── SSE Headers ──
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('X-Deploy-Marker', 'V116-v2-rolling-engine');
+
+  const send = (obj) => {
+    try {
+      const data = typeof obj === 'string' ? obj : JSON.stringify(obj);
+      res.write(Buffer.from(`data: ${data}\n\n`, 'utf-8'));
+      if (typeof res.flush === 'function') res.flush();
+    } catch(e) {}
+  };
+  const flush = () => { try { if (typeof res.flush === 'function') res.flush(); } catch(e) {} };
+  const heartbeat = setInterval(() => { send(': heartbeat\n\n'); flush(); }, 20000);
+
+  const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
+  const sendChunk = (text) => { send(JSON.stringify({ type: 'chunk', text })); flush(); };
+  const sendText = (text) => { send(JSON.stringify({ type: 'text', text })); flush(); };
+  const sendTransition = (text) => { send(JSON.stringify({ type: 'transition', text })); flush(); };
+
+  let allText = '';
+
+  try {
+    // ── Step 1: Python Schema ──
+    sendStatus('🔮 命运推演引擎启动...');
+    const { exec } = require('child_process');
+    const schemaStr = await new Promise((resolve, reject) => {
+      const py = `import sys,json;sys.path.insert(0,'astro');from astrology_engine import build_full_schema;print(json.dumps(build_full_schema('${birthDate}','${birthTime}',${lat},${lon},'${tz}','Equal House','${lang}'),ensure_ascii=False))`;
+      exec(`python3 -c "${py}"`, { cwd: process.cwd(), timeout: 30000 }, (err, stdout, stderr) => {
+        if (err) reject(new Error(stderr || err.message));
+        else resolve(stdout.trim());
+      });
+    });
+    const schema = JSON.parse(schemaStr);
+    if (schema.error) throw new Error(`Python: ${schema.error}`);
+    const quarters = schema.quarterly_forecast;
+    console.log(`[V2] Schema OK: ${quarters.length} quarters`);
+
+    // ── Step 2: System Prompt ──
+    const localeMap = { zh: 'zh', en: 'en', fr: 'fr', es: 'es', th: 'th', vi: 'vi' };
+    const locale = localeMap[lang] || 'zh';
+    const sysPrompt = getSystemPromptByLocale(locale);
+
+    // ── Step 3: 年度引言 ──
+    const natal = schema.natal_chart || {};
+    const natalSunSignZH = natal.sun?.sign_zh || '双鱼座';
+    const risingSignZH = natal.ascendant?.sign_zh || '巨蟹座';
+    const jupSign = natal.jupiter?.sign || 'Leo';
+    const satSign = natal.saturn?.sign || 'Aries';
+    const PLANET_NAMES_ZH = { Jupiter: '木星', Saturn: '土星' };
+    const jupZH = PLANET_NAMES_ZH.Jupiter || '木星';
+    const satZH = PLANET_NAMES_ZH.Saturn || '土星';
+
+    const QNAMES_ZH = ['第一阶段：能量锚定', '第二阶段：命运河流', '第三阶段：深层觉醒', '第四阶段：主权回归'];
+    const QNAMES_EN = ['Phase I: Energy Anchoring', 'Phase II: Fate River', 'Phase III: Deep Awakening', 'Phase IV: Sovereign Return'];
+    const QNAMES = locale === 'en' ? QNAMES_EN : QNAMES_ZH;
+
+    // 年度引言prompt
+    sendStatus('✨ 正在书写年度宏观战略...');
+    const introPrompt = `${sysPrompt}\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。包含报头（年度星盘/核心本命代码）和年度宏观战略简介。\n\n用户本命：太阳${natalSunSignZH}，上升${risingSignZH}。\n\n年度主题星：${jupZH}在${jupSign}（宏观机遇），${satZH}在${satSign}（业力考验）。\n\n请以[V116-V2]标签输出本章。`;
+    const introText = await streamGeminiChunk(introPrompt, sendChunk);
+    allText += introText + '\n\n';
+    sendText(introText);
+    console.log(`[V2] 引言完成: ${introText.length}字`);
+
+    // ── Step 4: 逐季度滚动 ──
+    for (let i = 0; i < quarters.length; i++) {
+      const q = quarters[i];
+      const sun = q.sun_transit || {};
+      const aspects = (q.active_aspects || []).slice(0, 3);
+      const aspectSummary = aspects.map(a => `${a.planet||''} ${a.aspect_name||''} ${a.natal_planet||''}`).join('; ') || '无重大相位';
+      const swan = q.financial_black_swan || {};
+
+      // 转场文字
+      const transition = `\n\n> 🪐 **【${QNAMES[i]}：能量锚定完成，正在窥探下一阶段命运河流...】**\n\n`;
+      sendTransition(transition);
+      allText += transition;
+
+      sendStatus(`🔮 ${q.months?.[0]} 运势撰写中...（${i+1}/${quarters.length}）`);
+
+      const qUserPrompt = `${sysPrompt}\n\n[V116-V2-Q${i+1}]: 生成第${i+1}季度章节（1200-2000字）。\n\n季度：${q.period||''}（${(q.months||[]).join('、')}）\n太阳行运：${sun.sign_zh||sun.sign||''}座第${sun.house||0}宫（主题：${sun.theme_zh||sun.theme||''}）\n核心相位：${aspectSummary}\n${swan.has_alert ? `黑天鹅事件：${swan.date||''} ${swan.event||''}，应对：${swan.action_guideline||''}\n` : ''}\nJSON数据（只读不抄）：${JSON.stringify(q).slice(0, 1500)}\n\n请以[V116-V2-Q${i+1}]标签输出本章。`;
+
+      const qText = await streamGeminiChunk(qUserPrompt, sendChunk);
+      allText += qText + '\n\n';
+      sendText(qText);
+      console.log(`[V2] Q${i+1}完成: ${qText.length}字`);
+    }
+
+    // ── Step 5: 结语 ──
+    const outroText = `\n\n---\n\n## 🌌 结语\n\n年报至此终结。愿你在星辰的指引下，握紧属于你的财富主权。\n\n*KindredSouls V116 · 命运主权觉醒系统*\n`;
+    sendText(outroText);
+    allText += outroText;
+
+    // ── Step 6: DONE + sanitized ──
+    send(JSON.stringify({ sanitized: allText }));
+    send('data: [DONE]\n\n');
+    res.end();
+    clearInterval(heartbeat);
+
+    // ── Step 7: 缓存落库（异步）──
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const v2CacheKey = `wealth:v116-v2:${birthDate}:${lang}:yearly`;
+    if (SB_URL && SB_KEY && allText.length > 500) {
+      try {
+        await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(v2CacheKey)}`, {
+          method: 'DELETE',
+          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+        });
+        await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+          method: 'POST',
+          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cache_key: v2CacheKey, insight: allText, prompt_version: 'v116-v2-rolling', created_at: new Date().toISOString() })
+        });
+        console.log(`[V2] 缓存写入: ${v2CacheKey} (${allText.length}字)`);
+      } catch(e) { console.warn(`[V2] 缓存写入失败: ${e.message}`); }
+    }
+    console.log(`[V2] ✅ 完成: ${birthDate}/${lang}，总字数: ${allText.length}`);
+
+  } catch (err) {
+    console.error(`[V2] ❌ 错误: ${err.message}`);
+    clearInterval(heartbeat);
+    send(JSON.stringify({ error: err.message }));
+    try { res.end(); } catch(e2) {}
+  }
+});
+
+// ── Gemini流式调用辅助函数 ──
+async function streamGeminiChunk(prompt, onChunk) {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+  const maxRetries = 2;
+  let attempt = 0;
+  let fullText = '';
+
+  while (attempt <= maxRetries) {
+    attempt++;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 180000);
+      const response = await safeFetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: new TextEncoder().encode(JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 8192, temperature: 0.6 }
+          })),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          const dataStr = trimmed.slice(6);
+          if (dataStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(dataStr);
+            const txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (txt) {
+              fullText += txt;
+              onChunk(txt);
+            }
+          } catch(e) {}
+        }
+      }
+      return fullText;
+    } catch(err) {
+      console.warn(`[V2] Gemini尝试${attempt}失败: ${err.message}`);
+      if (attempt > maxRetries) throw new Error(`Gemini连续失败: ${err.message}`);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  return fullText;
+}
+
 // ── /api/debug-dump-cache ── 只读诊断：返回某 cache_key 的所有记录（时间+版本，不含正文避免超长）
 app.get('/api/debug-dump-cache', async (req, res) => {
   const cacheKey = req.query.cacheKey || req.query.key;
