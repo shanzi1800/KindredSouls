@@ -3126,7 +3126,13 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     sendStatus('✨ 正在书写年度宏观战略...');
     const factSheet = buildFactSheet(matrix, locale) || '';
 
-    const introPrompt = sysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。\n\n★ 年度星盘（报头必须精确引用）：\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座（年度机遇主星）/ 土星' + satSignZH + '座（年度业力考验）\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节，以[V116-V2 INTRO]标签标注。';
+    // ── 格式化生日（1997-03-18 → 1997年3月18日）──
+    const birthDateFormatted = (function() {
+      const parts = birthDate.split('-');
+      return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+    })();
+
+    const introPrompt = sysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。\n\n★ 用户出生日期（必须写入报头，不得虚构）：' + birthDateFormatted + '\n★ 年度星盘（报头必须精确引用）：\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座（年度机遇主星）/ 土星' + satSignZH + '座（年度业力考验）\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节，以[V116-V2 INTRO]标签标注。';
 
     const introText = await streamGeminiChunk(introPrompt, sendChunk);
     allText += introText + '\n\n';
