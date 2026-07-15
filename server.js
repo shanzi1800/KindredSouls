@@ -1545,103 +1545,49 @@ IMPORTANT:
   if (reportType === 'yearly') {
     // ── V97f: 后端天文真值引擎（治本：算死流月太阳/外行星/原型字典，AI 只准抄录）──
     const risingSignZH = astroMatrix?.meta?.rising_sign || 'Cancer';
-    const astroTruth = buildAstroTruth(birthDate, risingSignZH, lang, currentYear, currentMonth);
-    const archetypeDict = SIGN_ARCHETYPE[lang] || SIGN_ARCHETYPE.zh;
-    // 🛠️ V100f: 多语言 truthText 生成
-    const monthNamesEN_Truth = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const SIGN_EN = {Aries:'Aries',Taurus:'Taurus',Gemini:'Gemini',Cancer:'Cancer',Leo:'Leo',Virgo:'Virgo',Libra:'Libra',Scorpio:'Scorpio',Sagittarius:'Sagittarius',Capricorn:'Capricorn',Aquarius:'Aquarius',Pisces:'Pisces'};
-    const multiLangTruthText = lang === 'en'
-      ? astroTruth.months.map((mo) => {
-          // mo.label 包含 'YYYY年M月' 格式，转成英文
-          const m = mo.label.match(/(\d+)年(\d+)月/);
-          const enLabel = m ? `${monthNamesEN_Truth[parseInt(m[2])-1]} ${m[1]}` : mo.label;
-          // mo.sunSignZH 需转 EN
-          const sunSignEN = SIGN_EN[astroTruth.natalSunSignEN] || mo.sunSignZH;
-          return `• ${enLabel}: Sun in ${sunSignEN} ${mo.sunHouse === 1 ? '1st' : mo.sunHouse === 2 ? '2nd' : mo.sunHouse === 3 ? '3rd' : `${mo.sunHouse}th`} House`;
-        }).join('\n')
-      : astroTruth.monthlyTruthText;
-    const multiLangOuterPlanets = lang === 'en'
-      ? {
-          jupiter: { sign: 'Leo', house: astroTruth.outerPlanets.jupiter.house, signZH: '狮子座' },
-          saturn: { sign: 'Aries', house: astroTruth.outerPlanets.saturn.house, signZH: '白羊座' },
-          pluto: { sign: 'Aquarius', house: astroTruth.outerPlanets.pluto.house, signZH: '水瓶座' }
-        }
-      : {
-          jupiter: { sign: astroTruth.outerPlanets.jupiter.signZH, house: astroTruth.outerPlanets.jupiter.house, signZH: astroTruth.outerPlanets.jupiter.signZH },
-          saturn: { sign: astroTruth.outerPlanets.saturn.signZH, house: astroTruth.outerPlanets.saturn.house, signZH: astroTruth.outerPlanets.saturn.signZH },
-          pluto: { sign: astroTruth.outerPlanets.pluto.signZH, house: astroTruth.outerPlanets.pluto.house, signZH: astroTruth.outerPlanets.pluto.signZH }
-        };
-    const _jupHouse = multiLangOuterPlanets.jupiter.house;
-const _satHouse = multiLangOuterPlanets.saturn.house;
-const _plHouse = multiLangOuterPlanets.pluto.house;
-const _archKeys = Object.entries(archetypeDict);
-const _astroTruthBlockMap = {
-  en: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, forbidden to extrapolate or rewrite]:
-【Monthly Sun Truth Table (12 months, locked month-by-month, no rewriting signs or houses)】
-${multiLangTruthText}
-【Outer Planet Annual Themes (2026-2027 Fixed Astronomical Facts, Year-Unique, Immutable)】
-• Jupiter in Leo House ${_jupHouse}
-• Saturn in Aries House ${_satHouse}
-• Pluto in Aquarius House ${_plHouse}
-【12 Zodiac Archetype Dictionary (When describing X sign, MUST use this exact description, strictly forbidden to misattribute/sign-swap)】
-${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
-`,
-  zh: `⛔ [ASTRO-LOGIC HARD TRUTH — 后端算死，AI 必须原样抄录，不得自行推算或改写]：
-【流月太阳真值表（12个月，逐月锁定，不得改写宫位或星座）】
-${multiLangTruthText}
-【外行星年度主题（2026-2027 固定天文事实，全年唯一，不得变更）】
-• 木星在${multiLangOuterPlanets.jupiter.signZH}第${_jupHouse}宫
-• 土星在${multiLangOuterPlanets.saturn.signZH}第${_satHouse}宫
-• 冥王星在${multiLangOuterPlanets.pluto.signZH}第${_plHouse}宫
-【12星座原型字典（描写X座必须用此精确描述，严禁张冠李戴/星座夺舍）】
-${_archKeys.map(([k, v]) => `• ${k}：${v}`).join('\n')}
-`,
-  th: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, no language mixing allowed]:
-【Monthly Sun Truth Table (12 months, locked, no rewriting signs or houses)】
-${multiLangTruthText}
-【Outer Planet Annual Themes (2026-2027 Fixed Astronomical Facts)】
-• Jupiter in Leo House ${_jupHouse}
-• Saturn in Aries House ${_satHouse}
-• Pluto in Aquarius House ${_plHouse}
-【12 Zodiac Archetype Dictionary (English + Thai bilingual)】
-${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
-[⚠️ CRITICAL: This report is in THAI. Absolutely NO Chinese characters (中文) in any output! Use Thai or English only.]`,
-  vi: `⛔ [ASTRO-LOGIC HARD TRUTH — Backend-computed, AI MUST copy verbatim, no language mixing allowed]:
-【Monthly Sun Truth Table (12 months, locked, no rewriting)】
-${multiLangTruthText}
-【Outer Planet Annual Themes】
-• Jupiter in Leo House ${_jupHouse}
-• Saturn in Aries House ${_satHouse}
-• Pluto in Aquarius House ${_plHouse}
-【12 Zodiac Archetype Dictionary】
-${_archKeys.map(([k, v]) => `• ${k}: ${v}`).join('\n')}
-[⚠️ CRITICAL: This report is in VIETNAMESE. Absolutely NO Chinese characters (中文) in any output!]`,
-};
-const astroTruthBlock = _astroTruthBlockMap[lang] || _astroTruthBlockMap.en;
-    const PLUTO_IRON = {
-      zh: '\n\n[冥王星天文铁律 - PLUTO IRON RULE]: 冥王星（Pluto）已于2024年进入水瓶座（Aquarius），停留至2043年。2026-2027年报中冥王星绝对位于第8宫水瓶座，绝不可写摩羯座（Capricorn）！所有语言 Pluto 必须写 Aquarius/水瓶座。',
-      en: '\n\n[PLUTO ASTRONOMY IRON RULE]: Pluto entered Aquarius in 2024 and remains until 2043. In 2026-2027 reports Pluto MUST be in Aquarius (8th House). NEVER write Capricorn for Pluto in any language!',
-      es: '\n\n[REGLA DE HIERRO DE PLUTÓN]: Plutón entró en Acuario en 2024 y permanece hasta 2043. En informes 2026-2027 Plutón DEBE estar en Acuario. ¡NUNCA escribas Capricornio para Plutón!',
-      fr: '\n\n[RÈGLE DE PLUTON]: Pluton est entré en Verseau en 2024 et y reste jusqu\'en 2043. Dans les rapports 2026-2027 Pluton DOIT être en Verseau. N\'écrivez jamais Capricorne pour Pluton !',
-      th: '\n\n[กฎเหล็กดาวพลูโต]: ดาวพลูโตเข้าสู่ราศีกุมภ์ในปี 2024 และจะอยู่ถึง 2043 ในรายงาน 2026-2027 ดาวพลูโตต้องอยู่ราศีกุมภ์ ห้ามเขียนราศีมังกรสำหรับดาวพลูโต',
-      vi: '\n\n[QUY TẮC SẮT DIÊM VƯƠNG]: Sao Diêm Vương đã vào Bảo Bình năm 2024 và ở đó đến 2043. Trong báo cáo 2026-2027 Sao Diêm Vương PHẢI ở Bảo Bình. Tuyệt đối không viết Ma Kết cho Sao Diêm Vương!'
+    // 🛠️ V116 CLEAN: 彻底移除流月真值表、星座原型字典、防幻觉咆哮
+    // 数据来源已迁移至 astrology_engine.py 季度 JSON Schema，Prompt 只负责文笔翻译
+    // ── 数据消费最高准则（军师V116注入）──
+    const DATA_CONSUMPTION_RULE_ZH = `
+[数据消费最高准则 - 必须绝对服从]
+1. 你的唯一数据源是后端传入的 quarterly_forecast JSON。禁止任何天文计算与星座推导。
+2. 撰写某月运势时，该月【太阳星座】与【宫位】必须 100% 提取自 JSON 的 sun_transit.sign 和 sun_transit.house，即使与本命星座冲突也必须以 JSON 为准。
+3. active_aspects 数组中每个相位，只能按给定的 formula 进行修辞展开，禁止凭空创造未给出的相位。
+4. financial_black_swan 节点包含精确日期与御敌指南，必须原样翻译成叙事体。
+`;
+    const DATA_CONSUMPTION_RULE_EN = `
+[Data Consumption Supreme Guideline - MUST OBEY]
+1. Your SOLE data source is the quarterly_forecast JSON from the backend. NO astronomical calculation or sign derivation is permitted.
+2. When writing any month's forecast, the Sun sign and House MUST be extracted 100% from JSON's sun_transit.sign and sun_transit.house — even if it conflicts with the user's natal sign.
+3. Each aspect in active_aspects MUST be narrated using the given formula only. Never invent unlisted planetary aspects.
+4. financial_black_swan contains exact dates and action guidelines — translate verbatim into narrative prose.
+`;
+    const DATA_CONSUMPTION_RULE_TH = `
+[กฎบริโภคข้อมูลสูงสุด - ต้องปฏิบัติตาม]
+1. แหล่งข้อมูลเดียวของคุณคือ JSON จาก backend ห้ามคำนวณดาราศาสตร์ด้วยตัวเอง
+2. เมื่อเขียนรายเดือน ดวงอาทิตย์และบ้านต้องมาจาก JSON เท่านั้น
+3. ดาวเคราะห์ใน active_aspects ต้องใช้สูตรที่ให้มาเท่านั้น ห้ามแต่งเพิ่ม
+4. financial_black_swan มีวันที่และคำแนะนำต้องแปลตรงตามที่ให้มา
+`;
+    const DATA_CONSUMPTION_RULE_VI = `
+[Quy Tắc Tiêu Thụ Dữ Liệu Tối Cao - PHẢI TUÂN THỦ]
+1. Nguồn dữ liệu duy nhất của bạn là JSON từ backend. Cấm tính toán thiên văn.
+2. Khi viết báo cáo hàng tháng, Mặt Trời và Cung phải từ JSON. Tuyệt đối không suy luận riêng.
+3. Mỗi góc chiếu trong active_aspects phải theo công thức đã cho, cấm bịa đặt.
+4. financial_black_swan có ngày và hướng dẫn phải viết y nguyên.
+`;
+    const DATA_CONSUMPTION_RULES = {
+        zh: DATA_CONSUMPTION_RULE_ZH,
+        en: DATA_CONSUMPTION_RULE_EN,
+        th: DATA_CONSUMPTION_RULE_TH,
+        vi: DATA_CONSUMPTION_RULE_VI,
     };
-    let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + (PLUTO_IRON[lang] || PLUTO_IRON.zh);
+    const dataRule = DATA_CONSUMPTION_RULES[lang] || DATA_CONSUMPTION_RULE_EN;
 
+    // 简单重建 yearlySystem（只保留系统叙事prompt + 数据消费铁律）
+    let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + '\n' + dataRule;
 
-    // ── V102: 防幻觉 + 逆行回声叙事链（军师2026-07-12审计校正）──
-    // ⚠️ 废除旧 V100r 错误规则（它误称火星2027/1离开处女、不刊天王，与 SwissEph 真数据冲突）
-    // 真相：2027年火星逆行，在狮子-处女区间反复停留大半年，真实反复刊克双子座天王星
-    const RETRO_NARRATIVE = {
-      zh: '\n\n[防幻觉与逆行叙事链 — CRITICAL]:\n1. 行星位置只能引用 [ASPECTS_DATA] 与逐月 SWISSEPH 真值，严禁自行推算。\n2. 逆行回声铁律：若同一相位（如火星刊天王）因逆行(Rx)跨多月重复出现，必须主动点破逆行，绝不得写成“突发新事件”。首次写“初次冲击波”；中期写“火星逆行回归，宇宙锁定你进入漫长试炼——这不是新危机，而是同一相位的第二波回声”；末期写“火星终于走出阴影区，你承受这场长周期炌炼的余音”。\n3. 满月星座用 moon_sign，绝不把太阳星座当满月星座。\n4. 禁止互联网金句（如“Chapter 1 to Chapter 20”）与章节标记混合。',
-      en: '\n\n[ANTI-HALLUCINATION & RETROGRADE NARRATIVE — CRITICAL]:\n1. Only reference planetary positions from [ASPECTS_DATA] and the per-month SWISSEPH truth. NEVER infer or invent aspects.\n2. RETROGRADE ECHO RULE: If an aspect (e.g. Mars square Uranus) repeats across multiple months due to Retrograde (Rx) motion, you MUST explicitly acknowledge this cosmic redundancy — never present it as a sudden NEW event in later months. First 1-2 months: an acute shock wave. Middle (Rx) months: "As Mars stations retrograde, turning back into the forge, the universe locks you in a prolonged trial — this is not a new crisis, but the second testing wave of the identical alignment." Final months: "As Mars finally clears its shadow track, you endure the residual echo of this long-term crucible."\n3. FULL MOON SIGN: always use the Moon\'s actual sign (moon_sign), never the Sun\'s sign.\n4. NO INTERNET QUOTE INJECTION: never merge motivational quotes ("Chapter 1 to Chapter 20") with chapter markers.',
-      es: '\n\n[ANTI-ALUCINACIÓN Y NARRATIVA RETRÓGRADA — CRÍTICO]:\n1. Solo usa posiciones planetarias de [ASPECTS_DATA] y la verdad SWISSEPH mensual. NUNCA inventes aspectos.\n2. REGLA DE ECO RETRÓGRADO: si un aspecto (ej. Marte cuadratura Urano) se repite varios meses por movimiento retrógrado (Rx), DEBES reconocer explícitamente esta redundancia cósmica; nunca lo presentes como un evento NUEVO repentino en meses posteriores.\n3. SIGNO DE LUNA LLENA: usa siempre el signo real de la Luna (moon_sign), nunca el del Sol.\n4. Nunca mezcles frases motivacionales con marcadores de capítulo.',
-      fr: '\n\n[ANTI-HALLUCINATION & NARRATIF RÉTROGRADE — CRITIQUE]:\n1. N\'utilisez que les positions planétaires de [ASPECTS_DATA] et la vérité SWISSEPH mensuelle. N\'inventez JAMAIS d\'aspects.\n2. RÈGLE DE L\'ÉCHO RÉTROGRADE : si un aspect (ex. Mars carré Uranus) se répète sur plusieurs mois à cause du mouvement rétrograde (Rx), vous DEVEZ reconnaître explicitement cette redondance cosmique ; ne le présentez jamais comme un nouvel événement soudain.\n3. SIGNE DE PLEINE LUNE : utilisez toujours le signe réel de la Lune (moon_sign), jamais celui du Soleil.\n4. Ne mélangez jamais de citations motivantes avec les marqueurs de chapitre.',
-      th: '\n\n[กฎต้านภาพหลอนและการเล่าเรื่องดาวพัก — สำคัญ]:\n1. ใช้ตำแหน่งดาวจาก [ASPECTS_DATA] และข้อมูล SWISSEPH รายเดือนเท่านั้น ห้ามกุอมุมดาว.\n2. กฎเสียงสะท้อนดาวพัก: หากมุมดาวซ้ำหลายเดือนเพราะดาวเคราะห์ถอยหลัง (Rx) ต้องยอมรับว่าเป็นการสะท้อนซ้ำ ห้ามเขียนเป็นเหตุการณ์ใหม่.\n3. ราศีจันทร์เต็มดวงใช้ moon_sign เสมอ.\n4. ห้ามผสมคำคมอินเทอร์เน็ตกับเครื่องหมายบท.',
-      vi: '\n\n[CHỐNG ẢO GIÁC & TƯỜNG THUẬT NGHỊCH HÀNH — QUAN TRỌNG]:\n1. Chỉ dùng vị trí hành tinh từ [ASPECTS_DATA] và sự thật SWISSEPH từng tháng. TUYỆT ĐỐI không bịa đặt góc chiếu.\n2. QUY TẮC TIẾNG VỌNG NGHỊCH HÀNH: nếu một góc chiếu (ví dụ Hỏa vuông Thiên Vương) lặp lại nhiều tháng do nghịch hành (Rx), BẮT BUỘC phải thừa nhận sự lặp lại này, không trình bày như sự kiện MỚI đột ngột.\n3. CUNG TRĂNG TRÒN dùng moon_sign, không dùng cung Mặt Trời.\n4. Không trộn câu nói truyền cảm hứng với dấu chương.'
-    };
-    yearlySystem += (RETRO_NARRATIVE[lang] || RETRO_NARRATIVE.en);
-
+    // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     if (aspectsData) {
       yearlySystem = aspectsData + '\n' + yearlySystem;
@@ -1910,7 +1856,6 @@ Use this data DIRECTLY. Do NOT recalculate, re-assign houses, or invent position
 ${perMonthData || '    [SwissEph data unavailable — use your best astrological judgement]'}
 ${monthLockTable}
 
-${astroTruthBlock}
 
 DYNAMIC DATE CALCULATION (CRITICAL):
 • Report cycle starts from current month: ${currentYear}年${monthNamesZH[currentMonth-1]}
