@@ -3015,8 +3015,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════
 // 🌊 V116: /api/wealth-oracle/v2 — 分片滚动年报引擎
-// 架构：Python Schema → 4×Gemini循环 → 实时SSE流 → 缓存落库
+// 架构：V69月度数据 → JS季度聚合 → 4×Gemini实时SSE流 → 缓存落库
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/v2', async (req, res) => {
   const {
@@ -3039,7 +3041,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   const send = (obj) => {
     try {
       const data = typeof obj === 'string' ? obj : JSON.stringify(obj);
-      res.write(Buffer.from(`data: ${data}\n\n`, 'utf-8'));
+      res.write(Buffer.from('data: ' + data + '\n\n', 'utf-8'));
       if (typeof res.flush === 'function') res.flush();
     } catch(e) {}
   };
@@ -3049,108 +3051,140 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
   const sendChunk = (text) => { send(JSON.stringify({ type: 'chunk', text })); flush(); };
   const sendText = (text) => { send(JSON.stringify({ type: 'text', text })); flush(); };
-  const sendTransition = (text) => { send(JSON.stringify({ type: 'transition', text })); flush(); };
 
   let allText = '';
 
   try {
-    // ── Step 1: Python Schema ──
+    // ── Step 1: V69 月度数据（通过HTTP调用Python引擎）──
     sendStatus('🔮 命运推演引擎启动...');
-    const schemaStr = await new Promise((resolve, reject) => {
-      const py = `import sys,json;sys.path.insert(0,'astro');from astrology_engine import build_full_schema;print(json.dumps(build_full_schema('${birthDate}','${birthTime}',${lat},${lon},'${tz}','Equal House','${lang}'),ensure_ascii=False))`;
-      exec(`python3 -c "${py}"`, { cwd: process.cwd(), timeout: 30000 }, (err, stdout, stderr) => {
-        if (err) reject(new Error(stderr || err.message));
-        else resolve(stdout.trim());
-      });
-    });
-    const schema = JSON.parse(schemaStr);
-    if (schema.error) throw new Error(`Python: ${schema.error}`);
-    const quarters = schema.quarterly_forecast;
-    console.log(`[V2] Schema OK: ${quarters.length} quarters`);
+    const matrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz);
+    if (!matrix || !matrix.months || matrix.months.length === 0) {
+      throw new Error('V69 engine unavailable — 无法获取星盘数据');
+    }
+    console.log('[V2] V69 OK: ' + matrix.months.length + ' months, rising=' + (matrix.meta && matrix.meta.rising_sign));
 
-    // ── Step 2: System Prompt ──
+    // ── Step 2: 月度→季度聚合 ──
+    const months = matrix.months;
+    const meta = matrix.meta || {};
+    const risingSign = meta.rising_sign || 'Cancer';
+
+    const QUARTER_RANGES = [[0,3],[3,6],[6,9],[9,12]];
+    const QNAMES_ZH = ['第一阶段：能量锚定', '第二阶段：命运河流', '第三阶段：深层觉醒', '第四阶段：主权回归'];
+    const QNAMES_EN = ['Phase I: Energy Anchoring', 'Phase II: Fate River', 'Phase III: Deep Awakening', 'Phase IV: Sovereign Return'];
+
+    const SIGN_MAP_ZH = { Aries:'白羊',Taurus:'金牛',Gemini:'双子',Cancer:'巨蟹',Leo:'狮子',Virgo:'处女',Libra:'天秤',Scorpio:'天蝎',Sagittarius:'射手',Capricorn:'摩羯',Aquarius:'水瓶',Pisces:'双鱼' };
+
+    const quarters = QUARTER_RANGES.map(function(range, qi) {
+      const start = range[0], end = range[1];
+      const qMonths = months.slice(start, end);
+      const midMonth = qMonths[Math.floor(qMonths.length / 2)];
+      const crisisDays = qMonths.flatMap(function(m) { return m.black_swan_days || []; });
+      const topCrisis = crisisDays.sort(function(a, b) { return (b.severity || 0) - (a.severity || 0); })[0] || null;
+      const peakWindows = qMonths.flatMap(function(m) { return m.peak_windows || []; });
+      const topPeak = peakWindows.sort(function(a, b) { return (b.strength || 0) - (a.strength || 0); })[0] || null;
+
+      return {
+        index: qi,
+        name: lang === 'en' ? QNAMES_EN[qi] : QNAMES_ZH[qi],
+        months: qMonths.map(function(m) { return m.month_name || ('月' + (start + 1)); }),
+        sun_transit: { sign: midMonth && midMonth.sun ? midMonth.sun.sign : 'Aries', house: midMonth && midMonth.sun ? (midMonth.sun.house || 1) : 1 },
+        jupiter: { sign: midMonth && midMonth.jupiter ? midMonth.jupiter.sign : 'Leo', house: midMonth && midMonth.jupiter ? (midMonth.jupiter.house || 1) : 1 },
+        saturn: { sign: midMonth && midMonth.saturn ? midMonth.saturn.sign : 'Aries', house: midMonth && midMonth.saturn ? (midMonth.saturn.house || 1) : 1 },
+        pluto: { sign: midMonth && midMonth.pluto ? midMonth.pluto.sign : 'Aquarius', house: midMonth && midMonth.pluto ? (midMonth.pluto.house || 1) : 1 },
+        crisis_day: topCrisis,
+        peak_window: topPeak,
+      };
+    });
+
+    // ── Step 3: System Prompt ──
     const localeMap = { zh: 'zh', en: 'en', fr: 'fr', es: 'es', th: 'th', vi: 'vi' };
     const locale = localeMap[lang] || 'zh';
     const sysPrompt = getSystemPromptByLocale(locale);
 
-    // ── Step 3: 年度引言 ──
-    const natal = schema.natal_chart || {};
-    const natalSunSignZH = natal.sun?.sign_zh || '双鱼座';
-    const risingSignZH = natal.ascendant?.sign_zh || '巨蟹座';
-    const jupSign = natal.jupiter?.sign || 'Leo';
-    const satSign = natal.saturn?.sign || 'Aries';
-    const PLANET_NAMES_ZH = { Jupiter: '木星', Saturn: '土星' };
-    const jupZH = PLANET_NAMES_ZH.Jupiter || '木星';
-    const satZH = PLANET_NAMES_ZH.Saturn || '土星';
+    // ── Step 4: 年度引言 ──
+    const natalSunSign = meta.sun_sign || 'Pisces';
+    const natalMoonSign = meta.moon_sign || 'Cancer';
+    const natalRising = risingSign;
+    const natalSunZH = SIGN_MAP_ZH[natalSunSign] || natalSunSign;
+    const natalMoonZH = SIGN_MAP_ZH[natalMoonSign] || natalMoonSign;
+    const natalRisingZH = SIGN_MAP_ZH[natalRising] || natalRising;
+    const jupSignZH = SIGN_MAP_ZH[quarters[0].jupiter.sign] || quarters[0].jupiter.sign;
+    const satSignZH = SIGN_MAP_ZH[quarters[0].saturn.sign] || quarters[0].saturn.sign;
 
-    const QNAMES_ZH = ['第一阶段：能量锚定', '第二阶段：命运河流', '第三阶段：深层觉醒', '第四阶段：主权回归'];
-    const QNAMES_EN = ['Phase I: Energy Anchoring', 'Phase II: Fate River', 'Phase III: Deep Awakening', 'Phase IV: Sovereign Return'];
-    const QNAMES = locale === 'en' ? QNAMES_EN : QNAMES_ZH;
-
-    // 年度引言prompt
     sendStatus('✨ 正在书写年度宏观战略...');
-    const introPrompt = `${sysPrompt}\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。包含报头（年度星盘/核心本命代码）和年度宏观战略简介。\n\n用户本命：太阳${natalSunSignZH}，上升${risingSignZH}。\n\n年度主题星：${jupZH}在${jupSign}（宏观机遇），${satZH}在${satSign}（业力考验）。\n\n请以[V116-V2]标签输出本章。`;
+    const factSheet = buildFactSheet(matrix, locale) || '';
+
+    const introPrompt = sysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节（500-800字）。\n\n★ 年度星盘（报头必须精确引用）：\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座（年度机遇主星）/ 土星' + satSignZH + '座（年度业力考验）\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节，以[V116-V2 INTRO]标签标注。';
+
     const introText = await streamGeminiChunk(introPrompt, sendChunk);
     allText += introText + '\n\n';
     sendText(introText);
-    console.log(`[V2] 引言完成: ${introText.length}字`);
+    console.log('[V2] 引言: ' + introText.length + '字');
 
-    // ── Step 4: 逐季度滚动 ──
+    // ── Step 5: 逐季度滚动 ──
     for (let i = 0; i < quarters.length; i++) {
       const q = quarters[i];
-      const sun = q.sun_transit || {};
-      const aspects = (q.active_aspects || []).slice(0, 3);
-      const aspectSummary = aspects.map(a => `${a.planet||''} ${a.aspect_name||''} ${a.natal_planet||''}`).join('; ') || '无重大相位';
-      const swan = q.financial_black_swan || {};
+      const sunSignZH = SIGN_MAP_ZH[q.sun_transit.sign] || q.sun_transit.sign;
+      const crisis = q.crisis_day || {};
+      const peak = q.peak_window || {};
 
-      // 转场文字
-      const transition = `\n\n> 🪐 **【${QNAMES[i]}：能量锚定完成，正在窥探下一阶段命运河流...】**\n\n`;
-      sendTransition(transition);
+      const transition = '\n\n> 🪐 **【' + q.name + '】**\n\n';
+      send(JSON.stringify({ type: 'transition', text: transition }));
+      flush();
       allText += transition;
 
-      sendStatus(`🔮 ${q.months?.[0]} 运势撰写中...（${i+1}/${quarters.length}）`);
+      sendStatus('🔮 ' + q.months.join('/') + ' 运势撰写中...（' + (i+1) + '/4）');
 
-      const qUserPrompt = `${sysPrompt}\n\n[V116-V2-Q${i+1}]: 生成第${i+1}季度章节（1200-2000字）。\n\n季度：${q.period||''}（${(q.months||[]).join('、')}）\n太阳行运：${sun.sign_zh||sun.sign||''}座第${sun.house||0}宫（主题：${sun.theme_zh||sun.theme||''}）\n核心相位：${aspectSummary}\n${swan.has_alert ? `黑天鹅事件：${swan.date||''} ${swan.event||''}，应对：${swan.action_guideline||''}\n` : ''}\nJSON数据（只读不抄）：${JSON.stringify(q).slice(0, 1500)}\n\n请以[V116-V2-Q${i+1}]标签输出本章。`;
+      var crisisLine = crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect || '') + '\n' : '';
+      var peakLine = peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type || '收入高峰') + '）\n' : '';
+      var crisisLine2 = crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect || '') + '\n' : '';
+      var peakLine2 = peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type || '收入高峰') + '）\n' : '';
 
-      const qText = await streamGeminiChunk(qUserPrompt, sendChunk);
+      var jupiterSignZH = SIGN_MAP_ZH[q.jupiter.sign] || q.jupiter.sign;
+      var saturnSignZH = SIGN_MAP_ZH[q.saturn.sign] || q.saturn.sign;
+      var plutoSignZH = SIGN_MAP_ZH[q.pluto.sign] || q.pluto.sign;
+
+      var qPrompt = sysPrompt + '\n\n[V116-V2-Q' + (i+1) + ']: 生成第' + (i+1) + '季度章节（1200-2000字）。\n\n★ 季度定位：' + q.months.join('、') + '\n★ 太阳行运：' + sunSignZH + '座第' + q.sun_transit.house + '宫\n★ 木星行运：' + jupiterSignZH + '座第' + q.jupiter.house + '宫\n★ 土星行运：' + saturnSignZH + '座第' + q.saturn.house + '宫\n★ 冥王行运：' + plutoSignZH + '座第' + q.pluto.house + '宫\n' + (peak && peak.date ? '★ 峰值窗口：' + peak.date + '（' + (peak.type||'收入高峰') + '）\n' : '') + (crisis && crisis.date ? '★ 危机警示日：' + crisis.date + ' ' + (crisis.aspect||'') + '\n' : '') + factSheet + '\n\n请以[V116-V2-Q' + (i+1) + ']标签标注输出本章。';
+
+      const qText = await streamGeminiChunk(qPrompt, sendChunk);
       allText += qText + '\n\n';
       sendText(qText);
-      console.log(`[V2] Q${i+1}完成: ${qText.length}字`);
+      console.log('[V2] Q' + (i+1) + ': ' + qText.length + '字');
     }
 
-    // ── Step 5: 结语 ──
-    const outroText = `\n\n---\n\n## 🌌 结语\n\n年报至此终结。愿你在星辰的指引下，握紧属于你的财富主权。\n\n*KindredSouls V116 · 命运主权觉醒系统*\n`;
+    // ── Step 6: 结语 ──
+    const outroText = '\n\n---\n\n## 🌌 结语\n\n年报至此终结。愿你在星辰的指引下，握紧属于你的财富主权。\n\n*KindredSouls V116 · 命运主权觉醒系统*\n';
     sendText(outroText);
     allText += outroText;
 
-    // ── Step 6: DONE + sanitized ──
+    // ── Step 7: DONE ──
     send(JSON.stringify({ sanitized: allText }));
     send('data: [DONE]\n\n');
     res.end();
     clearInterval(heartbeat);
 
-    // ── Step 7: 缓存落库（异步）──
+    // ── Step 8: 缓存落库（异步）──
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const v2CacheKey = `wealth:v116-v2:${birthDate}:${lang}:yearly`;
+    const v2CacheKey = 'wealth:v116-v2:' + birthDate + ':' + lang + ':yearly';
     if (SB_URL && SB_KEY && allText.length > 500) {
       try {
-        await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(v2CacheKey)}`, {
+        await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {
           method: 'DELETE',
-          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
         });
-        await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+        await safeFetch(SB_URL + '/rest/v1/ai_insights_cache', {
           method: 'POST',
-          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({ cache_key: v2CacheKey, insight: allText, prompt_version: 'v116-v2-rolling', created_at: new Date().toISOString() })
         });
-        console.log(`[V2] 缓存写入: ${v2CacheKey} (${allText.length}字)`);
-      } catch(e) { console.warn(`[V2] 缓存写入失败: ${e.message}`); }
+        console.log('[V2] 缓存写入: ' + v2CacheKey + ' (' + allText.length + '字)');
+      } catch(e) { console.warn('[V2] 缓存写入失败: ' + e.message); }
     }
-    console.log(`[V2] ✅ 完成: ${birthDate}/${lang}，总字数: ${allText.length}`);
+    console.log('[V2] ✅ 完成: ' + birthDate + '/' + lang + '，总字数: ' + allText.length);
 
   } catch (err) {
-    console.error(`[V2] ❌ 错误: ${err.message}`);
+    console.error('[V2] ❌ 错误: ' + err.message);
     clearInterval(heartbeat);
     send(JSON.stringify({ error: err.message }));
     try { res.end(); } catch(e2) {}
@@ -3161,17 +3195,16 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
 async function streamGeminiChunk(prompt, onChunk) {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
-  const maxRetries = 2;
   let attempt = 0;
   let fullText = '';
 
-  while (attempt <= maxRetries) {
+  while (attempt < 2) {
     attempt++;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 180000);
       const response = await safeFetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=${geminiKey}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse&key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3183,7 +3216,7 @@ async function streamGeminiChunk(prompt, onChunk) {
         }
       );
       clearTimeout(timeout);
-      if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+      if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -3202,19 +3235,16 @@ async function streamGeminiChunk(prompt, onChunk) {
           if (dataStr === '[DONE]') continue;
           try {
             const parsed = JSON.parse(dataStr);
-            const txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (txt) {
-              fullText += txt;
-              onChunk(txt);
-            }
+            const txt = parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0] ? parsed.candidates[0].content.parts[0].text : '';
+            if (txt) { fullText += txt; onChunk(txt); }
           } catch(e) {}
         }
       }
       return fullText;
     } catch(err) {
-      console.warn(`[V2] Gemini尝试${attempt}失败: ${err.message}`);
-      if (attempt > maxRetries) throw new Error(`Gemini连续失败: ${err.message}`);
-      await new Promise(r => setTimeout(r, 2000));
+      console.warn('[V2] Gemini尝试' + attempt + '失败: ' + err.message);
+      if (attempt >= 2) throw new Error('Gemini连续失败: ' + err.message);
+      await new Promise(function(r) { setTimeout(r, 2000); });
     }
   }
   return fullText;
