@@ -639,6 +639,7 @@ function astro_phase_linter(text) {
 // 本函数暴力清洗所有已知的污染模式
 // 🛠️ V97w: 后处理硬替换——逐月检查标题的太阳星座，用锁表修正AI胡编（治本：Prompt锁不住就后门堵死）
 function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null, lang = 'zh') {
+  text = forceSpaceHouseSanitizer(text); // 🛠️ V116-final: 空间宫位清洗挂到月度锁内，V1/V2所有清洗路径自动受益
   // 🛠️ V114-fix: Python positions.Sun accessor（顶层 m.sun 永远空）
   const _sunOf = (m) => {
   if (m.sun && m.sun.sign) return m.sun;
@@ -2734,6 +2735,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // ── V97r: prompt 脏字符清洗（… → ...，防 ByteString 死锁）──
     if (prompt) {
       prompt.system = prompt.system.replace(/[\u2026]/g, '...');
+
+      // 🛠️ V116-final: V1端点加第五章空间宫位前置铁律（V2已加，V1漏了）
+      prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 —— 严禁幻觉】\n在撰写第五章时，你必须像执行编译器代码一样，毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻，严禁将其替换为任何流年行运宫位：\n1. 卧室区域：必须且只能描述为“第四宫（田宅宫）”，代表财富根基与守藏。\n2. 厨房区域：必须且只能描述为“第二宫（财帛宫）与第八宫（共享资源）”，代表食禄与滋养之源。\n3. 财务室/保险柜：必须且只能描述为“第八宫（共享资源）”，代表核心资产与偏财。\n\n【输出格式控制】：每一个空间的标题行必须严格使用以下加粗纯文本，严禁夹杂任何斜杠或自行脑补的星座（如白羊座/土星等杂质）：\n* **卧室区域：第四宫（田宅宫）**\n* **厨房区域：第二宫（财帛宫）与第八宫（共享资源）**\n* **财务室/保险柜：第八宫（共享资源）**';
       prompt.user = prompt.user.replace(/[\u2026]/g, '...');
     }
 
