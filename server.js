@@ -2823,6 +2823,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               }
             }
           }
+          // 🛠️ 军师兜底（2026-07-16）：Gemini 流结束但零文本 → 强制降级 DeepSeek，杜绝静默空报告
+          if (!geminiFullText || geminiFullText.trim().length === 0) {
+            throw new Error('[wealth-stream] Gemini stream completed with ZERO text (quota exhausted / prompt blocked). Forcing DeepSeek fallback.');
+          }
           aiStream = true;
         } else {
           console.warn('[wealth-stream] Gemini 2.5 Pro failed (' + gemRes.status + '), falling back to DeepSeek');
