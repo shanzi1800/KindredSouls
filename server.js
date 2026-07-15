@@ -202,6 +202,35 @@ function stripLoneSurrogates(str) {
   return out;
 }
 
+// V116-Bug1-fix
+function forceSpaceHouseSanitizer(text){if(!text)return text;let t=text;t=t.replace(/卧室是你的第4宫（[^）\n]{0,30}?）/g,'卧室是你的第五宫（男女宫）');
+  t=t.replace(/卧室是你的第四宫（[^）\n]{0,30}?）/g,'卧室是你的第五宫（男女宫）');
+  t=t.replace(/卧室对应你的第4宫/g,'卧室对应你的第五宫（男女宫）');
+  t=t.replace(/卧室属于第4宫/g,'卧室属于第五宫（男女宫）');
+  t=t.replace(/卧室对应第4宫/g,'卧室对应第五宫（男女宫）');
+  t=t.replace(/厨房代表你的第4宫（[^）\n]{0,30}?）和第4宫（[^）\n]{0,30}?）/g,'厨房代表你的第二宫（财帛宫）和第八宫（疾厄宫）');
+  t=t.replace(/厨房代表你的第4宫（[^）\n]{0,30}?）和第4宫/g,'厨房代表你的第二宫（财帛宫）和第八宫（疾厄宫）');
+  t=t.replace(/厨房代表你的第4宫/g,'厨房代表你的第二宫（财帛宫）');
+  t=t.replace(/厨房代表第四宫（[^）\n]{0,30}?）和第四宫/g,'厨房代表第二宫（财帛宫）和第八宫（疾厄宫）');
+  t=t.replace(/厨房代表第四宫/g,'厨房代表第二宫（财帛宫）');
+  t=t.replace(/厨房对应你的第4宫/g,'厨房对应你的第二宫（财帛宫）');
+  t=t.replace(/厨房属于第4宫/g,'厨房属于第二宫（财帛宫）');
+  t=t.replace(/厨房对应第4宫/g,'厨房对应第二宫（财帛宫）');
+  t=t.replace(/财务室[^\n]{0,30}?对应?你的?第4宫/g,'财务室对应你的第八宫（疾厄宫）');
+  t=t.replace(/财务室对应第4宫/g,'财务室对应第八宫（疾厄宫）');
+  t=t.replace(/客厅对应你的第5宫/g,'客厅对应你的第四宫（田宅宫）');
+  t=t.replace(/客厅属于第5宫/g,'客厅属于第四宫（田宅宫）');
+  t=t.replace(/客厅对应第5宫/g,'客厅对应第四宫（田宅宫）');
+  t=t.replace(/前台对应你的第4宫/g,'前台对应你的第十宫（官禄宫）');
+  t=t.replace(/工位对应你的第4宫/g,'工位对应你的第十宫（官禄宫）');
+  t=t.replace(/前台对应第4宫/g,'前台对应第十宫（官禄宫）');
+  t=t.replace(/工位对应第4宫/g,'工位对应第十宫（官禄宫）');
+  t=t.replace(/会议室对应你的第4宫/g,'会议室对应你的第七宫（婚姻宫）');
+  t=t.replace(/会议室对应第4宫/g,'会议室对应第七宫（婚姻宫）');return t;}
+
+// V116-Bug4-fix
+function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFE0F\uFEFF]/g,'');}
+
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
 
@@ -3181,10 +3210,21 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
       let mTextLocked = mText;
       if (m.sun && m.sun.sign) {
         const sunSignCorrect = { Aries:'白羊',Taurus:'金牛',Gemini:'双子',Cancer:'巨蟹',Leo:'狮子',Virgo:'处女',Libra:'天秤',Scorpio:'天蝎',Sagittarius:'射手',Capricorn:'摩羯',Aquarius:'水瓶',Pisces:'双鱼' }[m.sun.sign] || m.sun.sign;
-        mTextLocked = mText.replace(new RegExp('太阳(?!' + sunSignCorrect + ')[^\n]{0,10}座'), '太阳' + sunSignCorrect + '座');
+        // V116-Bug3-fix
+      let mTextLocked = mText;
+      if(m.sun&&m.sun.sign){
+        const monthEscaped=monthName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        const signMap={Aries:'白羊座',Taurus:'金牛座',Gemini:'双子座',Cancer:'巨蟹座',Leo:'狮子座',Virgo:'处女座',Libra:'天秤座',Scorpio:'天蝎座',Sagittarius:'射手座',Capricorn:'摩羯座',Aquarius:'水瓶座',Pisces:'双鱼座'};
+        const correctSun=signMap[m.sun.sign]||(m.sun.sign+'座');
+        const titleRe=new RegExp('(##\\s*[\\u2606*]\\s*'+monthEscaped+'\\s*[:：]\\s*太阳)[^\n]{1,30}?(座)','g');
+        mTextLocked=mText.replace(titleRe,'$1'+correctSun);
+      }
       }
       allText += mTextLocked + '\n\n';
-      sendText(mTextLocked);
+      // Bug4实时锁
+      let mTextSanitized=mTextLocked;
+      try{mTextSanitized=natal_sun_linter(astro_phase_linter(final_text_sanitizer(mTextLocked,natalRising)),natalSunSign,natalRising);mTextSanitized=cleanGarbageCharacters(mTextSanitized);}catch(e){mTextSanitized=mTextLocked;}
+      sendText(mTextSanitized);
       console.log('[V2] M' + (i+1) + ' (' + monthName + '): ' + mText.length + '字');
     }
 
@@ -3193,18 +3233,17 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     sendText(outroText);
     allText += outroText;
 
-    // ── Step 7: V1五层清洗链 + V116新增两层（Bug1/Bug2/Bug3全硬锁）──
-    allText = natal_sun_linter(
-      astro_phase_linter(
-        final_text_sanitizer(allText, natalRising)
-      ),
-      natalSunSign,
-      natalRising
-    );
+    // ── Step 7: V116八层清洗链(Bug1~Bug4全硬锁) ──
+    allText = cleanGarbageCharacters(allText);    // 刀1(Bug4)
+    allText = forceSpaceHouseSanitizer(allText);  // 刀2(Bug1)
+    allText = final_text_sanitizer(allText, natalRising);
+    allText = astro_phase_linter(allText);
+    allText = natal_sun_linter(allText, natalSunSign, natalRising);
     allText = applyMonthLockSanitizer(allText, matrix, null, null, lang);
-    allText = v2_monthly_title_lock(allText, matrix.months);  // V116-step8: V2月度标题锁
-    allText = impossible_aspect_guard(allText);               // V116-step8: 同星座四分相硬删
+    allText = v2_monthly_title_lock(allText, matrix.months);
+    allText = impossible_aspect_guard(allText);
     allText = standardizeReport(allText);
+    allText = cleanGarbageCharacters(allText);    // 刀10(Bug4)
 
     // ── Step 8: DONE ──
     send(JSON.stringify({ sanitized: allText }));
