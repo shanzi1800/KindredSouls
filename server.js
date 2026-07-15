@@ -3206,10 +3206,11 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
 // ── Gemini流式调用辅助函数 ──
 async function streamGeminiChunk(prompt, onChunk) {
   const geminiKey = getGeminiKey();
-  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured — 请在 Railway Variables 配置 GEMINI_API_KEY');
+  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
   let attempt = 0;
   let fullText = '';
 
+  // ── Step 1: 尝试 Gemini 2.0 Flash ──
   while (attempt < 2) {
     attempt++;
     try {
@@ -3247,16 +3248,72 @@ async function streamGeminiChunk(prompt, onChunk) {
           if (dataStr === '[DONE]') continue;
           try {
             const parsed = JSON.parse(dataStr);
-            const txt = parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0] ? parsed.candidates[0].content.parts[0].text : '';
+            const txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (txt) { fullText += txt; onChunk(txt); }
           } catch(e) {}
         }
       }
+      console.log('[V2] Gemini成功: ' + fullText.length + '字');
       return fullText;
     } catch(err) {
       console.warn('[V2] Gemini尝试' + attempt + '失败: ' + err.message);
+      // 429 = 配额耗尽 → 立即切 DeepSeek，不重试
+      if (err.message.includes('429') || err.message.includes('429')) {
+        console.warn('[V2] Gemini配额耗尽，切换DeepSeek兜底...');
+        break;
+      }
       if (attempt >= 2) throw new Error('Gemini连续失败: ' + err.message);
       await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+  }
+
+  // ── Step 2: DeepSeek 兜底（Gemini 429 或 Gemini 连续失败）──
+  if (!fullText) {
+    const deepseekKey = getDeepSeekKey();
+    if (!deepseekKey) throw new Error('Gemini配额耗尽，DeepSeek也不可用');
+    console.warn('[V2] 使用DeepSeek兜底...');
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 180000);
+      const res = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
+        body: new TextEncoder().encode(JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 8192,
+          temperature: 0.6,
+          stream: true,
+        })),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          const dataStr = trimmed.slice(6);
+          if (dataStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(dataStr);
+            const txt = parsed.choices?.[0]?.delta?.content || '';
+            if (txt) { fullText += txt; onChunk(txt); }
+          } catch(e) {}
+        }
+      }
+      console.log('[V2] DeepSeek成功: ' + fullText.length + '字');
+    } catch(e2) {
+      throw new Error('Gemini配额耗尽，DeepSeek也失败: ' + e2.message);
     }
   }
   return fullText;
