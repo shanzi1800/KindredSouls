@@ -2954,7 +2954,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
                 res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
-              if (typeof res.flush === 'function' && ++chunkCount % 5 === 0) res.flush();
+              if (typeof res.flush === 'function') res.flush(); // 🛠️ V116-fix: 每帧 flush，避免内容滞留缓冲（与 Gemini 路径一致）
             }
           } catch (e) {}
         }
