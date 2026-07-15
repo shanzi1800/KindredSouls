@@ -2858,7 +2858,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user },
           ],
-          max_tokens: maxTokens,
+          max_tokens: reportType === 'yearly' ? 24000 : 4000,  // DeepSeek 兜底独立上限（不受 geminiKey 的 65536 影响）
           temperature: 0,
           seed: seedFromUserPrompt(prompt.user),
           stream: true,
@@ -2868,9 +2868,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
       clearTimeout(aiTimeout);
 
-      try { res.write(Buffer.from(`data: ${JSON.stringify({ debug: 'DeepSeek status=' + aiRes.status + ' ok=' + aiRes.ok + ' maxTokens=' + maxTokens + ' keyLen=' + (deepseekKey||'').length })}
-
-`, 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e){}
       if (!aiRes.ok) {
         const errText = await aiRes.text();
         console.warn('[wealth-stream] DeepSeek failed (' + aiRes.status + '), trying Gemini 2.0 Flash fallback...');
@@ -2923,8 +2920,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const decoder = new TextDecoder();
     let buffer = '';
     let chunkCount = 0;
-    let dbgFrames = 0;
-    const dbgStart = Date.now();
     // V75: SSE heartbeat every 20s prevents Railway idle timeout (30s limit)
     const heartbeat = setInterval(() => {
       try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
@@ -2932,9 +2927,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { clearInterval(heartbeat); clearTimeout(aiTimeout); try { res.write(Buffer.from(`data: ${JSON.stringify({ debug: 'DeepSeek DONE, content frames=' + dbgFrames + ' elapsed=' + (Date.now()-dbgStart) + 'ms' })}
-
-`, 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e){} break; }
+      if (done) { clearInterval(heartbeat); clearTimeout(aiTimeout); break; }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -2948,7 +2941,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const parsed = JSON.parse(dataStr);
             const content = parsed.choices?.[0]?.delta?.content || '';
             if (content) {
-              dbgFrames++;
               // V103-fix8-final：literal \\n 转实际换行，再清换行前空格
               const clean = content.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
               // 🔒 V116-fix: DeepSeek流式chunks全量清洗（Bug1-4根因：裸发未过linter）
