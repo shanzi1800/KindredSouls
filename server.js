@@ -2748,7 +2748,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const geminiKey = process.env.GEMINI_API_KEY;
     // 🔧 V75 fix: 64000 彻底解除年报截断
     // 🛠️ V108-fix2: 年报改用 Gemini 2.5 Pro 为主模型（支持 65536 tokens 输出，彻底消灭10月截断）
-    const maxTokens = 65536;
+    const maxTokens = 16384;
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
