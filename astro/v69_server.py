@@ -9,6 +9,7 @@ sys.path.insert(0, '/Users/apple/.local/lib/python3.11/site-packages')
 
 import os
 import swisseph as swe
+import pytz
 from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
@@ -109,8 +110,8 @@ def compute_natal_positions(birth_date: str, birth_time: str = '12:00', lat: flo
     """Compute natal planet positions from birth date and time."""
     parts = birth_date.split('-')
     y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
-    ut_hours = local_time_to_ut(birth_date, birth_time, tz_str)
-    jd = swe.julday(y, m, d, ut_hours)
+    utc_y, utc_m, utc_d, utc_h = get_utc_datetime_for_swe(birth_date, birth_time, tz_str)
+    jd = swe.julday(utc_y, utc_m, utc_d, utc_h)
     positions = {}
     for name, pid in ALL_PLANETS.items():
         deg, speed = get_planet_pos(jd, pid)
@@ -561,19 +562,27 @@ TZ_OFFSET = {
     'UTC': 0,
 }
 
-def local_time_to_ut(birth_date: str, birth_time: str, tz_str: str) -> float:
-    """将本地生日时间转换为 UT (Universal Time) 小时小数。"""
-    # 解析时间 HH:MM
-    parts = birth_time.split(':')
-    h = int(parts[0])
-    m = int(parts[1]) if len(parts) > 1 else 0
-    local_hours = h + m / 60.0
-
-    # 查时区偏移（小时）
-    offset_hours = TZ_OFFSET.get(tz_str, 0)
-    ut_hours = local_hours - offset_hours
-    # 处理跨天情况（ut_hours 可能超出 0-24）
-    return ut_hours % 24
+def get_utc_datetime_for_swe(birth_date: str, birth_time: str, tz_str: str):
+    """
+    🛠️ V117d: 用 pytz 历史 IANA 将本地时间转 UTC，返回安全用于 swe.julday 的 (year, month, day, decimal_hour)。
+    正确处理：历史夏令时（如中国 1986-1991）、跨天/跨月/跨年。
+    """
+    try:
+        y, m, d = map(int, birth_date.split('-'))
+        hh, mm = map(int, birth_time.split(':'))
+        tz = pytz.timezone(tz_str)
+        dt_naive = datetime(y, m, d, hh, mm)
+        dt_local = tz.localize(dt_naive, is_dst=None)
+        dt_utc = dt_local.astimezone(pytz.UTC)
+        decimal_hour = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0
+        return dt_utc.year, dt_utc.month, dt_utc.day, decimal_hour
+    except Exception as e:
+        # Fallback: 固定偏移 + 简单跨天
+        offset = TZ_OFFSET.get(tz_str, 0)
+        local_hour = int(birth_time.split(':')[0]) + int(birth_time.split(':')[1]) / 60.0
+        ut_hour = (local_hour - offset) % 24
+        y, m, d = map(int, birth_date.split('-'))
+        return y, m, d, ut_hour
 
 
 class AstroRequest(BaseModel):
@@ -594,11 +603,11 @@ def astro_matrix(req: AstroRequest):
     🛠️ V91+: 支持 birth_time / lat / lon / tz 精确参数。
     """
     try:
-        # ── 🛠️ V91: 解析出生时间 → UT 小时 ──
-        ut_hours = local_time_to_ut(req.birth_date, req.birth_time, req.tz)
+        # ── 🛠️ V117d: 用 pytz 历史 IANA 转 UTC（修正夏令时+日期跨界）──
+        utc_y, utc_m, utc_d, utc_h = get_utc_datetime_for_swe(req.birth_date, req.birth_time, req.tz)
+        jd = swe.julday(utc_y, utc_m, utc_d, utc_h)
         parts = req.birth_date.split('-')
         y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
-        jd = swe.julday(y, m, d, ut_hours)
 
         # ── 🛠️ V91: 用真实经纬度算 ASC ──
         if req.rising_sign is None:
@@ -624,7 +633,10 @@ def astro_matrix(req: AstroRequest):
             'lat': req.lat,
             'lon': req.lon,
             'tz': req.tz,
-            'ut_hours': round(ut_hours, 4),
+            'utc_y': utc_y,
+            'utc_m': utc_m,
+            'utc_d': utc_d,
+            'utc_h': round(utc_h, 4),
             'asc': req.rising_sign,
         }
         return matrix

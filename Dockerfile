@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn
+RUN pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn pytz
 
 ENV VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 ENV VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTU4MjEsImV4cCI6MjA5NTIzMTgyMX0.qMyRlkMRTkPccngccWa2GJroGaROqdA6N937XRK2L4g
