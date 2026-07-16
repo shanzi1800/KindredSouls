@@ -165,7 +165,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           }}>
             📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
             {'  |  '}
-            🌐 {tz}
+            🌐 {value}  {/* V117i: 改为显示城市英文名(中国全境都是Asia/Shanghai会误导) */}
           </div>
         )}
       </div>
