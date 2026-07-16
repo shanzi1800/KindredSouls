@@ -121,6 +121,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             textAlign: 'center',
             outline: 'none',
             boxSizing: 'border-box',
+            lineHeight: '28px',  // 对齐 TimeInput 容器 lineHeight:28px，让总高都是 46px
             transition: 'border-color 0.15s',
           }}
         />
