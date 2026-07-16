@@ -105,7 +105,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         background: 'rgba(255,255,255,0.08)',
         border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.3)',
         borderRadius: '10px',
-        padding: '8px 14px 8px 30px',  // left 30px 让位给 🔍 图标
+        padding: '5px 14px',  // 上下缩小 3px（约 0.5mm），更紧凑
         transition: 'border-color 0.15s',
       }}>
         {/* 🔍 搜索图标 */}
@@ -217,22 +217,6 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* 🛠️ V117b: 选中城市后显示坐标 HUD（删 IANA，避免中国城市都显示 Asia/Shanghai 的误导） */}
-      {value && (
-        <div style={{
-          fontSize: '11px',
-          fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
-          color: 'rgba(255,255,255,0.45)',
-          marginTop: '4px',
-          marginBottom: '0',
-          paddingLeft: '2px',
-          letterSpacing: '0.3px',
-          animation: 'hudFadeIn 0.35s ease-out',
-        }}>
-          📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
         </div>
       )}
     </div>
