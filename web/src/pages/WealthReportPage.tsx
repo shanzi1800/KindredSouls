@@ -5,7 +5,6 @@ import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
-import { CitySearchInput } from '../components/CitySearchInput';
 import { supabase } from '../lib/supabase';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
@@ -1202,8 +1201,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [birthLat, setBirthLat] = useState<number>(13.75);   // 默认 Bangkok
   const [birthLon, setBirthLon] = useState<number>(100.5);
   const [birthTz, setBirthTz] = useState<string>('Asia/Bangkok');
-  const [selectedCity, setSelectedCity] = useState<string>('Bangkok');
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  // selectedCity/showAdvanced 已移除（报告页不再展示输入框）
   const [lang, setLang] = useState<string>('en');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2466,87 +2464,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               {t('wealthReport.almanacDesc')}
             </div>
 
-            {/* 🛠️ V91: 精确宿命指针折叠面板 */}
-            <div style={{ marginBottom: '10px' }}>
-              <div
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                style={{
-                  fontSize: '11px',
-                  color: showAdvanced ? '#D4AF37' : 'rgba(212,175,55,0.6)',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginBottom: showAdvanced ? '8px' : '0',
-                }}
-              >
-                <span style={{ fontSize: '12px' }}>{showAdvanced ? '▼' : '▶'}</span>
-                {currentLang === 'zh' ? '解锁精确宿命指针（出生时间+地点让预言更精准）'
-                  : currentLang === 'vi' ? 'Mở khóa Chỉ báo Định mệnh Chính xác（thời gian + địa điểm sinh giúp tiên tri chính xác hơn）'
-                  : currentLang === 'th' ? 'ปลดล็อกตัวชี้โชคชะตาที่แม่นยำ（เวลา + สถานที่เกิดช่วยให้คำทำนายแม่นยำขึ้น）'
-                  : 'Unlock Precision Destiny指针（birth time + location = more accurate prophecy）'}
-              </div>
-
-              {showAdvanced && (
-                <div style={{
-                  padding: '10px',
-                  background: 'rgba(0,0,0,0.3)',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(212,175,55,0.15)',
-                }}>
-                  {/* 出生时间 */}
-                  <div style={{ marginBottom: '8px' }}>
-                    <label style={{ fontSize: '10px', color: '#D4AF37', display: 'block', marginBottom: '3px' }}>
-                      ⏰ {currentLang === 'zh' ? '出生时间（可选）' : currentLang === 'vi' ? 'Thời gian sinh（tùy chọn）' : 'Birth Time (optional)'}
-                    </label>
-                    <input
-                      type="time"
-                      value={birthTime}
-                      onChange={e => setBirthTime(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '1px solid rgba(212,175,55,0.25)',
-                        borderRadius: '6px',
-                        color: '#D4AF37',
-                        fontSize: '12px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                    <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
-                      {currentLang === 'zh' ? '不知道默认中午12:00' : currentLang === 'vi' ? 'Không biết → mặc định 12:00' : "Don't know → defaults to 12:00"}
-                    </div>
-                  </div>
-
-                  {/* 时区 */}
-                  <div style={{ marginBottom: '8px' }}>
-                  {/* 城市搜索 → 自动设置时区+经纬度 */}
-                  <div style={{ marginBottom: '8px' }}>
-                    <CitySearchInput
-                      value={selectedCity}
-                      tz={birthTz}
-                      lat={birthLat}
-                      lon={birthLon}
-                      lang={currentLang}
-                      onSelect={city => {
-                        setSelectedCity(city.key);
-                        setBirthTz(city.tz);
-                        setBirthLat(city.lat);
-                        setBirthLon(city.lon);
-                      }}
-                    />
-                  </div>
-                  <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)' }}>
-                    {currentLang === 'zh' ? '💡 搜索不到？直接用时间，地点默认 Bangkok'
-                      : currentLang === 'vi' ? '💡 Không tìm thấy? Dùng giờ mặc định Bangkok'
-                      : '💡 Not found? Use time only, location defaults to Bangkok'}
-                  </div>
-                  </div>
-                </div>
-              )}
+            {/* 报告页不再展示输入框 — 时间/城市在首页填写，返回时可通过顶部←回到首页修改 */}
+            <div style={{ fontSize: '10px', color: 'rgba(212,175,55,0.4)', marginBottom: '8px' }}>
+              {currentLang === 'zh' ? '📍 出生信息已锁定。如需修改，请返回上一页。'
+                : currentLang === 'vi' ? '📍 Thông tin sinh đã khóa. Quay lại trang trước để chỉnh sửa.'
+                : '📍 Birth info locked. Return to previous page to edit.'}
             </div>
             {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { normalizeLang } from '../lib/algos/i18n';
 import { CitySearchInput } from '../components/CitySearchInput';
@@ -107,9 +107,21 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
   const [birthDate, setBirthDate] = useState('');
   const [dateError, setDateError] = useState('');
   const [shaking, setShaking] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [birthTime, setBirthTime] = useState('12:00');
   const [birthCity, setBirthCity] = useState<CityRecord | null>(null);
+
+  // 返回时恢复数据
+  useEffect(() => {
+    const saved = sessionStorage.getItem('wealthFormData');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.birthDate) setBirthDate(data.birthDate);
+        if (data.birthTime) setBirthTime(data.birthTime);
+        if (data.birthCity) setBirthCity(data.birthCity);
+      } catch {}
+    }
+  }, []);
 
   const handleSubmit = () => {
     setDateError('');
@@ -124,14 +136,17 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
     const lang = normalizeLang(i18n.language || 'en');
     const params: Record<string, string> = { birth: birthDate, lang };
 
-    // 高级选项：有精确时间+城市则传递
-    if (showAdvanced && birthTime && birthCity) {
+    // 高级选项
+    if (birthTime && birthCity) {
       params.birthTime = birthTime;
       params.birthCity = birthCity.key;
       params.birthTz = birthCity.tz;
       params.birthLat = String(birthCity.lat);
       params.birthLon = String(birthCity.lon);
     }
+
+    // 保存到 sessionStorage（返回时恢复）
+    sessionStorage.setItem('wealthFormData', JSON.stringify({ birthDate, birthTime, birthCity }));
 
     // 保留 free_access 参数
     const urlFreeAccess = new URLSearchParams(window.location.search).get('free_access');
@@ -143,10 +158,8 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
 
   const lang = (i18n.language || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
 
-  const LABEL_CITY = { zh: '出生城市', en: 'Birth City', es: 'Ciudad de nacimiento', fr: 'Ville de naissance', th: 'เมืองเกิด', vi: 'Thành phố sinh' }[lang] || 'Birth City';
-  const LABEL_TIME = { zh: '出生时间', en: 'Birth Time', es: 'Hora de nacimiento', fr: 'Heure de naissance', th: 'เวลาเกิด', vi: 'Giờ sinh' }[lang] || 'Birth Time';
-  const LABEL_ADVANCED = { zh: '填写更精准的出生信息（可选）', en: 'Enter precise birth info (optional)', es: 'Info de nacimiento precisa (opcional)', fr: 'Infos précises (optionnel)', th: 'ข้อมูลเกิดที่แม่นยำ (เลือกได้)', vi: 'Thông tin sinh chính xác (tùy chọn)' }[lang] || 'Precise birth info (optional)';
-  const LABEL_ADVANCED_HIDE = { zh: '收起', en: 'Collapse', es: 'Ocultar', fr: 'Réduire', th: 'ซ่อน', vi: 'Thu gọn' }[lang] || 'Collapse';
+  const LABEL_CITY = { zh: '出生城市（可选）', en: 'Birth City (optional)', es: 'Ciudad de nacimiento (opcional)', fr: 'Ville de naissance (optionnel)', th: 'เมืองเกิด (เลือกได้)', vi: 'Thành phố sinh (tùy chọn)' }[lang] || 'Birth City (optional)';
+  const LABEL_TIME = { zh: '出生时间（可选）', en: 'Birth Time (optional)', es: 'Hora de nacimiento (opcional)', fr: 'Heure de naissance (optionnel)', th: 'เวลาเกิด (เลือกได้)', vi: 'Giờ sinh (tùy chọn)' }[lang] || 'Birth Time (optional)';
 
   return (
     <div style={{
@@ -173,7 +186,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           {t('wealthInput.subtitle')}
         </p>
 
-        {/* Form Card */}
+        {/* Form Card - 平铺布局 */}
         <div style={{ background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', padding: '24px 20px', marginBottom: '16px' }}>
 
           {/* 出生日期 */}
@@ -183,56 +196,28 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} />
           {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
 
-          {/* 高级选项切换 */}
-          <button
-            onClick={() => setShowAdvanced(v => !v)}
-            style={{
-              width: '100%', marginTop: '12px', padding: '8px',
-              background: 'transparent', border: 'none',
-              color: showAdvanced ? '#D4AF37' : 'rgba(212,175,55,0.55)',
-              fontSize: '11px', cursor: 'pointer', textAlign: 'center',
-              transition: 'color 0.2s',
-            }}
-          >
-            {showAdvanced ? '▼' : '▶'} {LABEL_ADVANCED}
-          </button>
-
-          {/* 高级选项：出生时间 + 城市 */}
-          {showAdvanced && (
-            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-              {/* 出生时间 */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
-                  {LABEL_TIME}
-                </label>
-                <TimeInput value={birthTime} onChange={setBirthTime} />
-              </div>
-
-              {/* 出生城市 */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
-                  {LABEL_CITY}
-                </label>
-                <CitySearchInput
-                  value={birthCity?.key || ''}
-                  tz={birthCity?.tz || 'Asia/Shanghai'}
-                  lat={birthCity?.lat || 31.23}
-                  lon={birthCity?.lon || 121.47}
-                  onSelect={(city) => setBirthCity(city)}
-                  lang={lang}
-                />
-              </div>
-
-              {/* 收起按钮 */}
-              <button
-                onClick={() => setShowAdvanced(false)}
-                style={{ background: 'transparent', border: 'none', color: 'rgba(212,175,55,0.4)', fontSize: '10px', cursor: 'pointer', alignSelf: 'flex-end' }}
-              >
-                {LABEL_ADVANCED_HIDE} ▲
-              </button>
+          {/* 出生时间 + 城市 - 并排 */}
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+                {LABEL_TIME}
+              </label>
+              <TimeInput value={birthTime} onChange={setBirthTime} />
             </div>
-          )}
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+                {LABEL_CITY}
+              </label>
+              <CitySearchInput
+                value={birthCity?.key || ''}
+                tz={birthCity?.tz || 'Asia/Shanghai'}
+                lat={birthCity?.lat || 31.23}
+                lon={birthCity?.lon || 121.47}
+                onSelect={(city) => setBirthCity(city)}
+                lang={lang}
+              />
+            </div>
+          </div>
 
           {/* 提交按钮 */}
           <button
