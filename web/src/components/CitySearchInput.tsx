@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useCitySearch, CityRecord } from '../hooks/useCitySearch';
+import { useCitySearch } from '../hooks/useCitySearch';
+import type { CityRecord } from '../hooks/useCitySearch';
 
 interface CitySearchInputProps {
   value: string;
@@ -122,9 +123,9 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             >
               <div>
                 <div style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 500 }}>{city.key}</div>
-                {city.native && Object.keys(city.native).length > 0 && (
+                {city.search && city.search.length > 1 && (
                   <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
-                    {Object.values(city.native).slice(0, 2).join(' · ')}
+                    {city.search.slice(1, 3).join(' · ')}
                   </div>
                 )}
               </div>

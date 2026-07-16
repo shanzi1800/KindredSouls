@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { normalizeLang } from '../lib/algos/i18n';
 import { CitySearchInput } from '../components/CitySearchInput';
 import type { CityRecord } from '../hooks/useCitySearch';
+// CityRecord fields: key, search[], lat, lon, tz
 
 interface WealthPageProps {
   onNavigate: (path: string) => void;
@@ -137,7 +138,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
       const k = params.get('birthCity'); const tz = params.get('birthTz');
       const lat = params.get('birthLat'); const lon = params.get('birthLon');
       if (k && tz && lat && lon) {
-        setBirthCity({ key: k, tz, lat: parseFloat(lat), lon: parseFloat(lon), native: {} });
+        setBirthCity({ key: k, tz, lat: parseFloat(lat), lon: parseFloat(lon), search: [k] });
       }
     }
   }, []);
