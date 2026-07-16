@@ -81,22 +81,24 @@ const DateInput: React.FC<{
   );
 };
 
-// ── Time Input (紧凑型 HH:MM，24小时制，独立修改两栏) ──
+// ── Time Input (HH:MM 紧凑一体，基线对齐，首位可独立修改) ──
 const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = ({ value, onChange }) => {
   const hh = value.split(':')[0] || '';
   const mm = value.split(':')[1] || '';
   const hhRef = useRef<HTMLInputElement>(null);
   const mmRef = useRef<HTMLInputElement>(null);
 
-  // 纯数字过滤，不补零、不处理边界，保留用户输入原状
+  // 不切片，依赖 maxLength+inputMode 保证单格 ≤ 2 位数字
   const handleHH = (raw: string) => {
-    const cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    const cleaned = raw.replace(/\D/g, '');
     onChange(cleaned + (mm ? ':' + mm : ''));
-    if (cleaned.length === 2) mmRef.current?.focus();
+    if (cleaned.length >= 2) {
+      setTimeout(() => mmRef.current?.focus(), 0);
+    }
   };
 
   const handleMM = (raw: string) => {
-    const cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    const cleaned = raw.replace(/\D/g, '');
     onChange((hh || '') + ':' + cleaned);
   };
 
@@ -119,39 +121,66 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
     onChange(newHH + ':' + newMM);
   };
 
-  // Backspace 智能跳到上一位
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, isHH: boolean) => {
-    if (e.key === 'Backspace' && !value.split(':')[isHH ? 0 : 1]) {
-      e.preventDefault();
-      (isHH ? null : hhRef.current?.focus());
-    }
+  // 统一的内联样式（保证 input 和冒号基线完全一致）
+  const lineHeight = '28px';
+  const fontSize = 16;
+  const inputBase: React.CSSProperties = {
+    width: '28px',
+    border: 'none',
+    background: 'transparent',
+    color: 'rgba(232,228,217,0.55)',
+    fontSize,
+    fontWeight: 600,
+    textAlign: 'center',
+    outline: 'none',
+    padding: 0,
+    margin: 0,
+    lineHeight,
+    cursor: 'text',
+    caretColor: '#D4AF37',
   };
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-      width: '100%', padding: '11px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '2px',
+      width: '100%',
+      padding: '9px 14px',
       background: 'rgba(255,255,255,0.08)',
       border: '1.5px solid rgba(212,175,55,0.3)',
       borderRadius: '10px',
+      lineHeight,  // 与 input 共享行高
     }}>
       <input
         ref={hhRef}
-        style={{ width: '50px', border: 'none', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
-        type="text" inputMode="numeric" maxLength={2} placeholder="HH"
+        style={inputBase}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        placeholder="HH"
         value={hh}
         onChange={e => handleHH(e.target.value)}
-        onKeyDown={e => handleKeyDown(e, true)}
         onBlur={handleBlur}
       />
-      <span style={{ color: '#E8E4D9', fontSize: '18px', fontWeight: 400, margin: '0 2px' }}>:</span>
+      <span style={{
+        color: '#E8E4D9',
+        fontSize,
+        fontWeight: 400,
+        lineHeight,
+        margin: '0 4px',
+        userSelect: 'none',
+      }}>:</span>
       <input
         ref={mmRef}
-        style={{ width: '50px', border: 'none', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
-        type="text" inputMode="numeric" maxLength={2} placeholder="MM"
+        style={inputBase}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        placeholder="MM"
         value={mm}
         onChange={e => handleMM(e.target.value)}
-        onKeyDown={e => handleKeyDown(e, false)}
         onBlur={handleBlur}
       />
     </div>

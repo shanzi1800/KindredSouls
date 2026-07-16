@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export interface CityRecord {
   key: string;
-  search: string[];  // 英文名 + 所有语言本地名
+  search: string[];  // 保留兼容：英文名 + 所有语言本地名（用于模糊搜索）
+  names?: { [lang: string]: string };  // 多语种名映射 { en, zh, vi, es, fr, th }
   lat: number;
   lon: number;
   tz: string;        // IANA timezone
