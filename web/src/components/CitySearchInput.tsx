@@ -185,7 +185,20 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         </div>
       )}
 
-      {/* 删掉误导性的“当前选中信息”条（下面显示 tz/lat/lon 会在 Beijing 选中后仍反发 “Shanghai” 拼音，滥用 IANA 时区名） */}
+      {/* 🛠️ V117: 选中城市后显示坐标+IANA时区 HUD（专业背书，0延迟渲染） */}
+      {value && (
+        <div style={{
+          fontSize: '11px',
+          fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
+          color: 'rgba(255,255,255,0.45)',
+          marginTop: '4px',
+          paddingLeft: '2px',
+          letterSpacing: '0.3px',
+          animation: 'hudFadeIn 0.35s ease-out',
+        }}>
+          📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}  |  🌐 {tz}
+        </div>
+      )}
     </div>
   );
 };
