@@ -8,18 +8,19 @@ interface WealthPageProps {
   onNavigate: (path: string) => void;
 }
 
-// ── Date Input (全语种统一 YYYY/MM/DD，从左向右自动跳栏) ──
+// ── Date Input (中文 YYYY/MM/DD，其它语种 DD/MM/YYYY，从左向右自动跳栏) ──
 const DateInput: React.FC<{
   value: string;
   onChange: (v: string) => void;
   hasError?: boolean;
 }> = ({ value, onChange, hasError = false }) => {
-  // 统一顺序：年 / 月 / 日（所有语种都从左向右输入）
-  const partDefs = [
-    { key: 0, max: 4, ph: 'YYYY' },
-    { key: 1, max: 2, ph: 'MM' },
-    { key: 2, max: 2, ph: 'DD' },
-  ];
+  const { i18n } = useTranslation();
+  const isZh = (i18n.language || '').startsWith('zh') || (i18n.language || '').includes('Chinese');
+
+  // 中文：年/月/日；其它语种：日/月/年（国际通用）
+  const partDefs = isZh
+    ? [{ key: 0, max: 4, ph: 'YYYY' }, { key: 1, max: 2, ph: 'MM' }, { key: 2, max: 2, ph: 'DD' }]
+    : [{ key: 2, max: 2, ph: 'DD' }, { key: 1, max: 2, ph: 'MM' }, { key: 0, max: 4, ph: 'YYYY' }];
 
   const parts = (value ? value.split('-') : ['', '', '']);
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
@@ -29,7 +30,6 @@ const DateInput: React.FC<{
     const p = [...parts];
     p[partDefs[pi].key] = cleaned;
     onChange(p.join('-').replace(/-+/g, '-').replace(/^-|-$/g, ''));
-    // 自动跳到下一栏
     if (cleaned.length === partDefs[pi].max && pi < partDefs.length - 1) {
       refs[pi + 1].current?.focus();
     }
@@ -59,7 +59,7 @@ const DateInput: React.FC<{
   );
 };
 
-// ── Time Input (HH | MM 独立两栏，24小时制，从左向右自动跳栏) ──
+// ── Time Input (紧凑型 HH:MM，24小时制，从左向右自动跳栏) ──
 const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = ({ value, onChange }) => {
   const hh = value.split(':')[0] || '';
   const mm = value.split(':')[1] || '';
@@ -82,7 +82,7 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '3px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
       width: '100%', padding: '11px 14px',
       background: 'rgba(255,255,255,0.08)',
       border: '1.5px solid rgba(212,175,55,0.3)',
@@ -90,18 +90,20 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
     }}>
       <input
         ref={hhRef}
-        style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+        style={{ width: '50px', border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
         type="text" inputMode="numeric" maxLength={2} placeholder="HH"
         value={hh}
         onChange={e => handleHH(e.target.value)}
+        onClick={e => (e.target as HTMLInputElement).select()}
       />
-      <span style={{ color: '#8B8778', fontSize: '14px' }}>:</span>
+      <span style={{ color: '#D4AF37', fontSize: '18px', fontWeight: 700, margin: '0 2px' }}>:</span>
       <input
         ref={mmRef}
-        style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+        style={{ width: '50px', border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
         type="text" inputMode="numeric" maxLength={2} placeholder="MM"
         value={mm}
         onChange={e => handleMM(e.target.value)}
+        onClick={e => (e.target as HTMLInputElement).select()}
       />
     </div>
   );
@@ -195,23 +197,8 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
 
         <div style={{ background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', padding: '24px 20px', marginBottom: '16px' }}>
 
-          {/* 出生日期 - 全语种 YYYY/MM/DD */}
-          <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
-            {t('wealthInput.birthdayLabel')}
-          </label>
-          <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} />
-          {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
-
-          {/* 出生时间 - 24小时制 HH:MM 独立两栏 */}
-          <div style={{ marginTop: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
-              {LABEL_TIME}
-            </label>
-            <TimeInput value={birthTime} onChange={setBirthTime} />
-          </div>
-
-          {/* 出生城市 - 单独一行，文字居中 */}
-          <div style={{ marginTop: '16px' }}>
+          {/* 出生城市 - 第1行 */}
+          <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
               {LABEL_CITY}
             </label>
@@ -223,6 +210,23 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
               onSelect={(city) => setBirthCity(city)}
               lang={lang}
             />
+          </div>
+
+          {/* 出生时间 - 第2行 */}
+          <div style={{ marginTop: '16px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+              {LABEL_TIME}
+            </label>
+            <TimeInput value={birthTime} onChange={setBirthTime} />
+          </div>
+
+          {/* 出生日期 - 第3行（中文 YYYY/MM/DD，其他 DD/MM/YYYY） */}
+          <div style={{ marginTop: '16px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+              {t('wealthInput.birthdayLabel')}
+            </label>
+            <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} />
+            {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
           </div>
 
           {/* 🔮 金牌提示：40%精度诱饵 — 提高亮 */}
@@ -260,13 +264,13 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           💡 {t('wealthInput.unlockTip')}
         </div>
 
-        <p style={{ fontSize: '10px', color: 'rgba(200,195,170,0.9)', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
-          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('wealthInput.startBtn')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
-          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('wealthInput.startBtn')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
-          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('wealthInput.startBtn')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
-          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('wealthInput.startBtn')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
-          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('wealthInput.startBtn')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Chính Sách Bảo Mật</a>.</> : null}
-          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('wealthInput.startBtn')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'rgba(200,195,170,0.9)',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Privacy Policy</a>.</> : null}
+        <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
+          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('wealthInput.startBtn')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
+          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('wealthInput.startBtn')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
+          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('wealthInput.startBtn')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
+          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('wealthInput.startBtn')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
+          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('wealthInput.startBtn')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Chính Sách Bảo Mật</a>.</> : null}
+          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('wealthInput.startBtn')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Privacy Policy</a>.</> : null}
         </p>
       </div>
     </div>
