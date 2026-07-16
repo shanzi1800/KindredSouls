@@ -82,15 +82,24 @@ const DateInput: React.FC<{
 };
 
 // ── Time Input (HH:MM 紧凑一体，基线对齐，首位可独立修改) ──
+// 每位置数字上限（H1=小时十位, H2=小时个位, M1=分钟十位, M2=分钟个位）
+const HH_MAX = [2, 4];  // 允许 00-24（24:00 失焦时夹到 23:59）
+const MM_MAX = [5, 9];  // 允许 00-59
+
 const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = ({ value, onChange }) => {
   const hh = value.split(':')[0] || '';
   const mm = value.split(':')[1] || '';
   const hhRef = useRef<HTMLInputElement>(null);
   const mmRef = useRef<HTMLInputElement>(null);
 
-  // 不切片，依赖 maxLength+inputMode 保证单格 ≤ 2 位数字
+  // 每位置数字上限验证
   const handleHH = (raw: string) => {
-    const cleaned = raw.replace(/\D/g, '');
+    let cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    if (cleaned.length >= 1 && parseInt(cleaned[0], 10) > HH_MAX[0]) {
+      cleaned = '';  // H1 超过上限，整段拒
+    } else if (cleaned.length === 2 && parseInt(cleaned[1], 10) > HH_MAX[1]) {
+      cleaned = cleaned[0];  // H2 超过上限，保留 H1
+    }
     onChange(cleaned + (mm ? ':' + mm : ''));
     if (cleaned.length >= 2) {
       setTimeout(() => mmRef.current?.focus(), 0);
@@ -98,11 +107,16 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
   };
 
   const handleMM = (raw: string) => {
-    const cleaned = raw.replace(/\D/g, '');
+    let cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    if (cleaned.length >= 1 && parseInt(cleaned[0], 10) > MM_MAX[0]) {
+      cleaned = '';
+    } else if (cleaned.length === 2 && parseInt(cleaned[1], 10) > MM_MAX[1]) {
+      cleaned = cleaned[0];
+    }
     onChange((hh || '') + ':' + cleaned);
   };
 
-  // 失焦时补零并验证边界
+  // 失焦时补零并验证边界（HH 24 夹到 23，MM 60 夹到 59）
   const handleBlur = () => {
     let newHH = hh;
     let newMM = mm;

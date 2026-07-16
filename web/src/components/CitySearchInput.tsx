@@ -124,6 +124,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             borderRadius: '6px',
             color: '#D4AF37',
             fontSize: '12px',
+            textAlign: 'center',
             outline: 'none',
             boxSizing: 'border-box',
             transition: 'border-color 0.15s',
