@@ -97,8 +97,6 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
     if (e.key === 'Escape') { setOpen(false); }
   };
 
-  const currentCity = value ? { key: value, tz, lat, lon } : null;
-
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* 城市搜索框（不再加多余的金色“城市”徽标，外层“出生城市（可选）”已够用） */}
@@ -198,13 +196,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         </div>
       )}
 
-      {/* 当前选中信息（紧凑展示） */}
-      {currentCity && !open && (
-        <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', paddingLeft: '2px' }}>
-          {currentCity.tz.split('/').pop()?.replace(/_/g, ' ')} · {currentCity.lat.toFixed(2)}° {currentCity.lon > 0 ? 'E' : 'W'}{Math.abs(currentCity.lon).toFixed(2)}°
-          {query !== currentCity.key && <span style={{ color: 'rgba(212,175,55,0.6)' }}> ← {currentCity.key}</span>}
-        </div>
-      )}
+      {/* 删掉误导性的“当前选中信息”条（下面显示 tz/lat/lon 会在 Beijing 选中后仍反发 “Shanghai” 拼音，滥用 IANA 时区名） */}
     </div>
   );
 };
