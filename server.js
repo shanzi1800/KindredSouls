@@ -2846,31 +2846,82 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         return res.end();
       }
 
-      aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${deepseekKey}`,
-        },
-        body: new TextEncoder().encode(JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: prompt.system },
-            { role: 'user', content: prompt.user },
-          ],
-          max_tokens: reportType === 'yearly' ? 24000 : 4000,  // DeepSeek 兜底独立上限（不受 geminiKey 的 65536 影响）
-          temperature: 0,
-          seed: seedFromUserPrompt(prompt.user),
-          stream: true,
-        })),
-        signal: controller.signal,
+      // 🔒 V117-fix: DeepSeek 流式不走 safeFetch（safeFetch 等 res.end 才释放 chunk，24000token 等 3-4min，超 Railway 50s timeout）
+      //    改用 Node 原生 https.request，边收边发，0 缓冲
+      const dsReqBody = JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        max_tokens: reportType === 'yearly' ? 24000 : 4000,
+        temperature: 0,
+        stream: true,
       });
 
-      clearTimeout(aiTimeout);
+      let dsDone = false;
+      const dsPromise = new Promise((resolveDs) => {
+        const u = new URL('https://api.deepseek.com/v1/chat/completions');
+        const dsReq = https.request({
+          hostname: u.hostname, port: 443,
+          path: u.pathname, method: 'POST',
+          headers: { 'Content-Type': 'application/json',
+                     'Authorization': `Bearer ${deepseekKey}`,
+                     'Content-Length': Buffer.byteLength(dsReqBody) },
+        }, (dsRes) => {
+          if (!dsRes.ok || dsRes.statusCode >= 400) {
+            let errBody = ''; dsRes.on('data', c => errBody += c);
+            dsRes.on('end', () => resolveDs({ ok: false, status: dsRes.statusCode, bodyText: errBody }));
+            return;
+          }
+          const _a = astroMatrix?.meta?.rising_sign || 'Cancer';
+          const decoder2 = new TextDecoder();
+          let buf = '';
+          const heartbeat2 = setInterval(() => {
+            try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
+          }, 20000);
+          dsRes.on('data', (chunk) => {
+            buf += decoder2.decode(chunk, { stream: true });
+            const lines = buf.split('\n'); buf = lines.pop() || '';
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const d = line.slice(6).trim();
+              if (d === '[DONE]') { dsDone = true; clearInterval(heartbeat2); continue; }
+              try {
+                const parsed = JSON.parse(d);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  let clean = content.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
+                  clean = clean.replace(/客厅[^\n]{0,30}?(?:对应?|是?|属于?)第4宫/g, m => m.replace(/第4宫/g,'第4宫（田宅宫·摩羯座）'));
+                  ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w => { if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
+                  clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
+                  fullTextCollector += clean;
+                  try {
+                    let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean, _a)), realSunSign, _a);
+                    pc = applyMonthLockSanitizer(pc, astroMatrix, null, null, lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+                    res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+                  } catch(e2) { res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
+                  if (typeof res.flush === 'function') res.flush();
+                }
+              } catch(e){}
+            }
+          });
+          dsRes.on('end', () => { clearInterval(heartbeat2); resolveDs({ ok: true }); });
+          dsRes.on('error', (e) => { clearInterval(heartbeat2); console.error('[wealth-stream] DeepSeek stream error:', e.message); resolveDs({ ok: false, status: 0 }); });
+        });
+        dsReq.on('error', (e) => { console.error('[wealth-stream] DeepSeek req error:', e.message); resolveDs({ ok: false, status: 0 }); });
+        dsReq.write(dsReqBody); dsReq.end();
+      });
 
-      if (!aiRes.ok) {
-        const errText = await aiRes.text();
-        console.warn('[wealth-stream] DeepSeek failed (' + aiRes.status + '), trying Gemini 2.0 Flash fallback...');
+      // 45s timeout（Railway 50s 硬限制，留 5s 余地）
+      const dsResult = await Promise.race([
+        dsPromise,
+        new Promise(r => setTimeout(() => r({ ok: false, status: 408, timedout: true }), 45000))
+      ]);
+      dsDone = true; // 无论结果如何，标记完成防止后续误用
+
+      if (!dsResult.ok) {
+        console.warn('[wealth-stream] DeepSeek failed (' + (dsResult.timedout ? 'timeout' : dsResult.status) + '), trying Gemini 2.0 Flash fallback...');
         if (geminiKey && !usedGemini) {
           try {
             const gemRes = await safeFetch(
@@ -2880,7 +2931,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: new TextEncoder().encode(JSON.stringify({
                   contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                  generationConfig: { maxOutputTokens: 65536, temperature: 0 }  // V116-fix: V1年报用65536防截断
+                  generationConfig: { maxOutputTokens: 65536, temperature: 0 }
                 })),
               }
             );
@@ -2905,62 +2956,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             console.error('[wealth-stream] Gemini 2.0 Flash fallback failed:', e.message);
           }
         }
-        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI error: ' + aiRes.status })}\n\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI error: ' + (dsResult.status || 'unknown') })}\n\n`, 'utf-8'));
         return res.end();
       }
     }
 
     // 🛠️ V73: 真流式 + 后台落库——边收边发，用户体验优先
     // 🛠️ V108-fix2: 如果 Gemini 已流完，跳过 DeepSeek 读取
-    if (aiStream) {
-      // Gemini 2.5 Pro 已完成流式读取，直接跳转到后处理
-      fullTextCollector = geminiFullText;
-    } else {
-    const reader = aiRes.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let chunkCount = 0;
-    // V75: SSE heartbeat every 20s prevents Railway idle timeout (30s limit)
-    const heartbeat = setInterval(() => {
-      try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
-    }, 20000);
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) { clearInterval(heartbeat); clearTimeout(aiTimeout); break; }
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(dataStr);
-            const content = parsed.choices?.[0]?.delta?.content || '';
-            if (content) {
-              // V103-fix8-final：literal \\n 转实际换行，再清换行前空格
-              const clean = content.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
-              // 🔒 V116-fix: DeepSeek流式chunks全量清洗（Bug1-4根因：裸发未过linter）
-              clean = clean.replace(/客厅[^\n]{0,30}?(?:对应?|是?|属于?)第4宫/g, function(m){ return m.replace(/第4宫/g,'第4宫（田宅宫·摩羯座）'); });
-              ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w=>{ if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
-              clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
-              fullTextCollector += clean;
-              try {
-                const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-                let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean,_a)),realSunSign,_a);
-                pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-                res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-              } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
-              if (typeof res.flush === 'function') res.flush(); // 🛠️ V116-fix: 每帧 flush，避免内容滞留缓冲（与 Gemini 路径一致）
-            }
-          } catch (e) {}
-        }
-      }
-    }  // end of while loop
-    } // end of else (DeepSeek path)
+    // 🛠️ V117-fix: DeepSeek 流式已由上方原生 https 处理（dsRes.on('data')），content 直接写 SSE
+    //    aiStream=true → Gemini 流完；aiStream=false → DeepSeek 原生流已写完 fullTextCollector
+    //    post-processing 在下方统一执行，不再走旧的 safeFetch+reader 循环
 
     // V100i: 英文标点清洗（去除中文全角标点污染）
     // V103-fix8: 清理 DeepSeek AI 输出时在换行前加的多余空格（"word \n" → "word\n"）
