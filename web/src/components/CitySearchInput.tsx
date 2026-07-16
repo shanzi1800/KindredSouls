@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useCitySearch, CityRecord } from '../hooks/useCitySearch';
+import { useCitySearch } from '../hooks/useCitySearch';
+import type { CityRecord } from '../hooks/useCitySearch';
 
 interface CitySearchInputProps {
   value: string;           // 当前选中的城市 key（英文名）
