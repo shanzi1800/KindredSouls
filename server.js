@@ -2854,7 +2854,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           { role: 'system', content: prompt.system },
           { role: 'user', content: prompt.user },
         ],
-        max_tokens: reportType === 'yearly' ? 24000 : 4000,
+        max_tokens: reportType === 'yearly' ? 3000 : 2000,  // V117c: 降为3000，DeepSeek免费层Railway限流，必须60s内跑完否则超时
         temperature: 0,
         stream: true,
       });
