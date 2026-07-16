@@ -53,9 +53,17 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   const ph = placeholder || PLACEHOLDER[lang] || PLACEHOLDER.en;
 
-  // value prop 变化时同步 query（处理从父组件清空的情况）
+  // 🛠️ V117g: 本地选状态，跟踪用户是否在本次会话中点过下拉（不依赖 prop 时序）
+  const [hasSelected, setHasSelected] = useState(!!value);
+
+  // value prop 变化时同步 query + hasSelected
   useEffect(() => {
-    if (!value) setQuery('');
+    if (!value) {
+      setQuery('');
+      setHasSelected(false);
+    } else {
+      setHasSelected(true);
+    }
   }, [value]);
 
   // 点击外部关闭
@@ -87,6 +95,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
     setQuery(getDisplayName(city, lang));
     setOpen(false);
     setResults([]);
+    setHasSelected(true);  // V117g: 本地立即打饱,不等 prop 回调
     onSelect(city);
   };
 
@@ -140,7 +149,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         />
 
         {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内（恢复 IANA 时区） */}
-        {value && (
+        {(value || hasSelected) && (
           <div style={{
             fontSize: '10px',  // V117f: 从 11px 缩到 10px
             fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
