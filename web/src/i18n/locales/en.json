@@ -66,7 +66,8 @@
     "birthdayLabel": "Enter your birth date",
     "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Start Decoding",
-    "unlockTip": "Your wealth trajectory is connected to your relationship energy. Unlock to also see wealth analysis in compatibility reports."
+    "unlockTip": "Your wealth trajectory is connected to your relationship energy. Unlock to also see wealth analysis in compatibility reports.",
+    "birthTip": "Add birth time & city to boost chart accuracy by 40% (Optional). If unsure, the default 12:00 PM calculation remains highly accurate and insightful."
   },
   "wealthReport": {
     "reportTitle": "Wealth Oracle Report",

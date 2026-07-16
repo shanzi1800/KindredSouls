@@ -61,7 +61,8 @@
     "birthdayLabel": "Entrez votre date de naissance",
     "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Commencer le Décodage",
-    "unlockTip": "Votre trajectoire financière est liée à votre énergie relationnelle. Débloquez pour voir aussi l'analyse de richesse dans les rapports de compatibilité."
+    "unlockTip": "Votre trajectoire financière est liée à votre énergie relationnelle. Débloquez pour voir aussi l'analyse de richesse dans les rapports de compatibilité.",
+    "birthTip": "Ajoutez votre heure et ville de naissance pour augmenter la précision de l'analyse de 40% (Optionnel). Si vous l'ignorez, le calcul par défaut à 12h00 reste extrêmement fiable et pertinent."
   },
   "wealthReport": {
     "reportTitle": "Rapport de l'Oracle Fortune",

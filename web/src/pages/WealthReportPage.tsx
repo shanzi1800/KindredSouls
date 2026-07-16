@@ -2464,12 +2464,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               {t('wealthReport.almanacDesc')}
             </div>
 
-            {/* 报告页不再展示输入框 — 时间/城市在首页填写，返回时可通过顶部←回到首页修改 */}
-            <div style={{ fontSize: '10px', color: 'rgba(212,175,55,0.4)', marginBottom: '8px' }}>
-              {currentLang === 'zh' ? '📍 出生信息已锁定。如需修改，请返回上一页。'
-                : currentLang === 'vi' ? '📍 Thông tin sinh đã khóa. Quay lại trang trước để chỉnh sửa.'
-                : '📍 Birth info locked. Return to previous page to edit.'}
-            </div>
+            {/* 报告页保持绝对干净 — 无任何输入框，无任何提示。看 Teaser 直接付款。 */}
             {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>
                 <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>

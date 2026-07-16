@@ -61,7 +61,8 @@
     "birthdayLabel": "Ingresa tu fecha de nacimiento",
     "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Comenzar Decodificación",
-    "unlockTip": "Tu trayectoria de riqueza está conectada a tu energía relacional. Desbloquea para ver también análisis de riqueza en informes de compatibilidad."
+    "unlockTip": "Tu trayectoria de riqueza está conectada a tu energía relacional. Desbloquea para ver también análisis de riqueza en informes de compatibilidad.",
+    "birthTip": "Añade la hora y ciudad de nacimiento para aumentar la precisión un 40% (Opcional). Si no la sabes, el cálculo predeterminado de las 12:00 PM sigue siendo altamente preciso."
   },
   "wealthReport": {
     "reportTitle": "Informe del Oráculo de Riqueza",

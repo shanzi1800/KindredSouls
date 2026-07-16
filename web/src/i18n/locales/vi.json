@@ -61,7 +61,8 @@
     "birthdayLabel": "Nhập ngày sinh của bạn",
     "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Bắt đầu giải mã",
-    "unlockTip": "Quỹ đạo tài lộc của bạn kết nối với năng lượng quan hệ của bạn. Mở khóa để xem thêm phân tích tài lộc trong báo cáo duyên phận."
+    "unlockTip": "Quỹ đạo tài lộc của bạn kết nối với năng lượng quan hệ của bạn. Mở khóa để xem thêm phân tích tài lộc trong báo cáo duyên phận.",
+    "birthTip": "Bổ sung giờ sinh và thành phố cụ thể giúp tăng độ chính xác lên 40% (Không bắt buộc). Nếu không rõ, kết quả tính theo mặc định 12:00 trưa vẫn cực kỳ chính xác và có giá trị tham khảo."
   },
   "wealthReport": {
     "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc",
