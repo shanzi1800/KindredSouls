@@ -8,7 +8,7 @@ interface WealthPageProps {
   onNavigate: (path: string) => void;
 }
 
-// ── Date Input (中文 YYYY/MM/DD，其它语种 DD/MM/YYYY，从左向右自动跳栏) ──
+// ── Date Input (中文 YYYY/MM/DD，其它语种 DD/MM/YYYY，从左向右自动跳栏，独立修改) ──
 const DateInput: React.FC<{
   value: string;
   onChange: (v: string) => void;
@@ -22,18 +22,39 @@ const DateInput: React.FC<{
     ? [{ key: 0, max: 4, ph: 'YYYY' }, { key: 1, max: 2, ph: 'MM' }, { key: 2, max: 2, ph: 'DD' }]
     : [{ key: 2, max: 2, ph: 'DD' }, { key: 1, max: 2, ph: 'MM' }, { key: 0, max: 4, ph: 'YYYY' }];
 
-  const parts = (value ? value.split('-') : ['', '', '']);
+  // 始终用 YYYY-MM-DD 三段，不吞空位（修复之前 replace 把前导空位丢掉的 bug）
+  const getParts = (): [string, string, string] => {
+    const s = (value || '').split('-');
+    return [s[0] || '', s[1] || '', s[2] || ''];
+  };
+
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   const handleChange = (pi: number, raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, partDefs[pi].max);
-    const p = [...parts];
+    const p = getParts();
     p[partDefs[pi].key] = cleaned;
-    onChange(p.join('-').replace(/-+/g, '-').replace(/^-|-$/g, ''));
+    onChange(p.join('-'));  // 保持三段结构，parent 拿到完整的 YYYY-MM-DD
     if (cleaned.length === partDefs[pi].max && pi < partDefs.length - 1) {
       refs[pi + 1].current?.focus();
     }
   };
+
+  // Backspace 智能跳到上一位
+  const handleKeyDown = (pi: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      const p = getParts();
+      if (!p[partDefs[pi].key] && pi > 0) {
+        e.preventDefault();
+        const newP: [string, string, string] = [p[0], p[1], p[2]];
+        newP[partDefs[pi - 1].key] = '';
+        onChange(newP.join('-'));
+        refs[pi - 1].current?.focus();
+      }
+    }
+  };
+
+  const parts = getParts();
 
   return (
     <div style={{
@@ -50,8 +71,9 @@ const DateInput: React.FC<{
             ref={refs[pi]}
             style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
             type="text" inputMode="numeric" maxLength={def.max} placeholder={def.ph}
-            value={parts[def.key] || ''}
+            value={parts[def.key]}
             onChange={e => handleChange(pi, e.target.value)}
+            onKeyDown={e => handleKeyDown(pi, e)}
           />
         </React.Fragment>
       ))}
@@ -59,25 +81,50 @@ const DateInput: React.FC<{
   );
 };
 
-// ── Time Input (紧凑型 HH:MM，24小时制，从左向右自动跳栏) ──
+// ── Time Input (紧凑型 HH:MM，24小时制，独立修改两栏) ──
 const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = ({ value, onChange }) => {
   const hh = value.split(':')[0] || '';
   const mm = value.split(':')[1] || '';
   const hhRef = useRef<HTMLInputElement>(null);
   const mmRef = useRef<HTMLInputElement>(null);
 
+  // 纯数字过滤，不补零、不处理边界，保留用户输入原状
   const handleHH = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
-    const safe = cleaned ? String(Math.min(parseInt(cleaned, 10), 23)).padStart(2, '0') : '';
-    const nextMM = mm || '';
-    onChange(safe + (nextMM ? ':' + nextMM : (cleaned.length === 2 ? ':' : '')));
+    onChange(cleaned + (mm ? ':' + mm : ''));
     if (cleaned.length === 2) mmRef.current?.focus();
   };
 
   const handleMM = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
-    const safe = cleaned ? String(Math.min(parseInt(cleaned, 10), 59)).padStart(2, '0') : '';
-    onChange((hh || '00') + ':' + safe);
+    onChange((hh || '') + ':' + cleaned);
+  };
+
+  // 失焦时补零并验证边界
+  const handleBlur = () => {
+    let newHH = hh;
+    let newMM = mm;
+    if (hh) {
+      const n = Math.min(parseInt(hh, 10) || 0, 23);
+      newHH = String(n).padStart(2, '0');
+    } else {
+      newHH = '12';
+    }
+    if (mm) {
+      const n = Math.min(parseInt(mm, 10) || 0, 59);
+      newMM = String(n).padStart(2, '0');
+    } else {
+      newMM = '00';
+    }
+    onChange(newHH + ':' + newMM);
+  };
+
+  // Backspace 智能跳到上一位
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, isHH: boolean) => {
+    if (e.key === 'Backspace' && !value.split(':')[isHH ? 0 : 1]) {
+      e.preventDefault();
+      (isHH ? null : hhRef.current?.focus());
+    }
   };
 
   return (
@@ -90,20 +137,22 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
     }}>
       <input
         ref={hhRef}
-        style={{ width: '50px', border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
+        style={{ width: '50px', border: 'none', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
         type="text" inputMode="numeric" maxLength={2} placeholder="HH"
         value={hh}
         onChange={e => handleHH(e.target.value)}
-        onClick={e => (e.target as HTMLInputElement).select()}
+        onKeyDown={e => handleKeyDown(e, true)}
+        onBlur={handleBlur}
       />
-      <span style={{ color: '#D4AF37', fontSize: '18px', fontWeight: 700, margin: '0 2px' }}>:</span>
+      <span style={{ color: '#E8E4D9', fontSize: '18px', fontWeight: 400, margin: '0 2px' }}>:</span>
       <input
         ref={mmRef}
-        style={{ width: '50px', border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
+        style={{ width: '50px', border: 'none', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontSize: '16px', fontWeight: 600, textAlign: 'center', outline: 'none', padding: '4px 0', cursor: 'text' }}
         type="text" inputMode="numeric" maxLength={2} placeholder="MM"
         value={mm}
         onChange={e => handleMM(e.target.value)}
-        onClick={e => (e.target as HTMLInputElement).select()}
+        onKeyDown={e => handleKeyDown(e, false)}
+        onBlur={handleBlur}
       />
     </div>
   );
