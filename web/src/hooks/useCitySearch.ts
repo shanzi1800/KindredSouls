@@ -51,15 +51,24 @@ export function useCitySearch() {
       .catch(() => setLoading(false));
   }, []);
 
-  const search = useCallback((query: string, limit = 8): CityRecord[] => {
+  const search = useCallback((query: string, limit = 8, lang: string = 'en'): CityRecord[] => {
     const q = query.trim();
     if (!q || cities.length === 0) return [];
     const results: FuseResult[] = [];
     for (const city of cities) {
-      const matched = city.search.some(s => fuzzyMatch(s, q));
+      // 🛠️ V117h: 查 search 数组（所有语种别名）+ names[lang] 当前语种本地名
+      // 原因：search 数组只在 57 个 Top 城市含中文，其余 31947 个只有 names.zh，拼音能查 search，中文需查 names
+      const candidates: string[] = [...(city.search || [])];
+      if (city.names) {
+        for (const ln of ['zh', 'en', 'vi', 'es', 'fr', 'th']) {
+          const n = city.names[ln];
+          if (n) candidates.push(n);
+        }
+      }
+      const matched = candidates.some(s => fuzzyMatch(s, q));
       if (matched) {
         results.push({ item: city });
-        if (results.length >= limit * 3) break; // 预取足够多
+        if (results.length >= limit * 3) break;
       }
     }
     // 排序：key 完全匹配优先，再前缀，再包含
