@@ -90,6 +90,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           fontSize: '14px',
           outline: 'none',
           boxSizing: 'border-box',
+          textAlign: 'center',
           transition: 'border-color 0.15s',
         }}
       />

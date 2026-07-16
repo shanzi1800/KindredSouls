@@ -3,37 +3,32 @@ import { useTranslation } from 'react-i18next';
 import { normalizeLang } from '../lib/algos/i18n';
 import { CitySearchInput } from '../components/CitySearchInput';
 import type { CityRecord } from '../hooks/useCitySearch';
-// CityRecord fields: key, search[], lat, lon, tz
 
 interface WealthPageProps {
   onNavigate: (path: string) => void;
 }
 
-// ── Date Input (YYYY-MM-DD 三栏自动跳转) ──
+// ── Date Input (全语种统一 YYYY/MM/DD，从左向右自动跳栏) ──
 const DateInput: React.FC<{
   value: string;
   onChange: (v: string) => void;
   hasError?: boolean;
 }> = ({ value, onChange, hasError = false }) => {
-  const { i18n } = useTranslation();
-  const isZh = (i18n.language || '').startsWith('zh') || (i18n.language || '').includes('Chinese');
-
-  const partDefs = isZh
-    ? [{ key: 0, max: 4, ph: 'YYYY' }, { key: 1, max: 2, ph: 'MM' }, { key: 2, max: 2, ph: 'DD' }]
-    : [{ key: 2, max: 2, ph: 'DD' }, { key: 1, max: 2, ph: 'MM' }, { key: 0, max: 4, ph: 'YYYY' }];
+  // 统一顺序：年 / 月 / 日（所有语种都从左向右输入）
+  const partDefs = [
+    { key: 0, max: 4, ph: 'YYYY' },
+    { key: 1, max: 2, ph: 'MM' },
+    { key: 2, max: 2, ph: 'DD' },
+  ];
 
   const parts = (value ? value.split('-') : ['', '', '']);
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
-  const update = (keyIdx: number, val: string) => {
-    const p = [...parts];
-    p[partDefs[keyIdx].key] = val;
-    onChange(p.join('-').replace(/-+/g, '-').replace(/^-|-$/g, ''));
-  };
-
   const handleChange = (pi: number, raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, partDefs[pi].max);
-    update(pi, cleaned);
+    const p = [...parts];
+    p[partDefs[pi].key] = cleaned;
+    onChange(p.join('-').replace(/-+/g, '-').replace(/^-|-$/g, ''));
     // 自动跳到下一栏
     if (cleaned.length === partDefs[pi].max && pi < partDefs.length - 1) {
       refs[pi + 1].current?.focus();
@@ -64,41 +59,49 @@ const DateInput: React.FC<{
   );
 };
 
-// ── Time Input (HH:MM 数字键盘) ──
+// ── Time Input (HH | MM 独立两栏，24小时制，从左向右自动跳栏) ──
 const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = ({ value, onChange }) => {
-  const [focused, setFocused] = useState(false);
-  const handleChange = (raw: string) => {
-    const cleaned = raw.replace(/\D/g, '').slice(0, 4);
-    if (cleaned.length <= 2) { onChange(cleaned); return; }
-    const hh = Math.min(parseInt(cleaned.slice(0, 2), 10), 23);
-    const mm = Math.min(parseInt(cleaned.slice(2, 4), 10), 59);
-    onChange(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+  const hh = value.split(':')[0] || '';
+  const mm = value.split(':')[1] || '';
+  const hhRef = useRef<HTMLInputElement>(null);
+  const mmRef = useRef<HTMLInputElement>(null);
+
+  const handleHH = (raw: string) => {
+    const cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    const safe = cleaned ? String(Math.min(parseInt(cleaned, 10), 23)).padStart(2, '0') : '';
+    const nextMM = mm || '';
+    onChange(safe + (nextMM ? ':' + nextMM : (cleaned.length === 2 ? ':' : '')));
+    if (cleaned.length === 2) mmRef.current?.focus();
   };
+
+  const handleMM = (raw: string) => {
+    const cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    const safe = cleaned ? String(Math.min(parseInt(cleaned, 10), 59)).padStart(2, '0') : '';
+    onChange((hh || '00') + ':' + safe);
+  };
+
   return (
-    <div
-      onClick={() => {
-        // 点击容器任何位置都聚焦到 input
-        const inp = document.activeElement;
-        if (!inp || inp.tagName !== 'INPUT') {
-          (document.querySelector('[data-time-input]') as HTMLInputElement)?.focus();
-        }
-      }}
-      style={{
-        width: '100%', padding: '11px 14px',
-        background: focused ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.08)',
-        border: `1.5px solid ${focused ? 'rgba(212,175,55,0.6)' : 'rgba(212,175,55,0.3)'}`,
-        borderRadius: '10px',
-        transition: 'all 0.15s',
-      }}
-    >
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '3px',
+      width: '100%', padding: '11px 14px',
+      background: 'rgba(255,255,255,0.08)',
+      border: '1.5px solid rgba(212,175,55,0.3)',
+      borderRadius: '10px',
+    }}>
       <input
-        data-time-input
-        style={{ width: '100%', border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', cursor: 'text' }}
-        type="text" inputMode="numeric" maxLength={5} placeholder="HH:MM"
-        value={value}
-        onChange={e => handleChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        ref={hhRef}
+        style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+        type="text" inputMode="numeric" maxLength={2} placeholder="HH"
+        value={hh}
+        onChange={e => handleHH(e.target.value)}
+      />
+      <span style={{ color: '#8B8778', fontSize: '14px' }}>:</span>
+      <input
+        ref={mmRef}
+        style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+        type="text" inputMode="numeric" maxLength={2} placeholder="MM"
+        value={mm}
+        onChange={e => handleMM(e.target.value)}
       />
     </div>
   );
@@ -128,13 +131,13 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
   const [birthTime, setBirthTime] = useState('12:00');
   const [birthCity, setBirthCity] = useState<CityRecord | null>(null);
 
-  // 报告页返回时从 URL 读回（替代 sessionStorage，避免报告页取消 sessionStorage 后失效）
+  // 从 URL 读回（替代 sessionStorage）
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromReport = params.get('from') === 'report';
     if (fromReport) {
       const b = params.get('birth'); if (b) setBirthDate(b);
-      const t = params.get('birthTime'); if (t) setBirthTime(t);
+      const tp = params.get('birthTime'); if (tp) setBirthTime(tp);
       const k = params.get('birthCity'); const tz = params.get('birthTz');
       const lat = params.get('birthLat'); const lon = params.get('birthLon');
       if (k && tz && lat && lon) {
@@ -192,14 +195,14 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
 
         <div style={{ background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', padding: '24px 20px', marginBottom: '16px' }}>
 
-          {/* 出生日期 */}
+          {/* 出生日期 - 全语种 YYYY/MM/DD */}
           <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
             {t('wealthInput.birthdayLabel')}
           </label>
           <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} />
           {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
 
-          {/* 出生时间 - 单独一行 */}
+          {/* 出生时间 - 24小时制 HH:MM 独立两栏 */}
           <div style={{ marginTop: '16px' }}>
             <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
               {LABEL_TIME}
@@ -207,7 +210,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             <TimeInput value={birthTime} onChange={setBirthTime} />
           </div>
 
-          {/* 出生城市 - 单独一行（避开城市名长导致并排挤压） */}
+          {/* 出生城市 - 单独一行，文字居中 */}
           <div style={{ marginTop: '16px' }}>
             <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
               {LABEL_CITY}
@@ -222,16 +225,19 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             />
           </div>
 
-          {/* 🔮 金牌提示：40%精度诱饵（6国语言） */}
+          {/* 🔮 金牌提示：40%精度诱饵 — 提高亮 */}
           <div style={{
             marginTop: '16px',
-            padding: '10px 12px',
-            background: 'rgba(212,175,55,0.05)',
-            border: '1px solid rgba(212,175,55,0.12)',
+            padding: '12px 14px',
+            background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)',
+            border: '1px solid rgba(212,175,55,0.4)',
             borderRadius: '8px',
             fontSize: '12px',
-            color: 'rgba(212,175,55,0.7)',
-            lineHeight: 1.5,
+            color: '#F0D060',
+            fontWeight: 600,
+            lineHeight: 1.55,
+            boxShadow: '0 2px 8px rgba(212,175,55,0.15)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.4)',
           }}>
             <span style={{ marginRight: '6px' }}>🔮</span>
             {t('wealthInput.birthTip')}
