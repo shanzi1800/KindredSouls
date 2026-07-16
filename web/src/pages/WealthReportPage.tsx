@@ -5,6 +5,7 @@ import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
+import { CitySearchInput } from '../components/CitySearchInput';
 import { supabase } from '../lib/supabase';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
@@ -1201,6 +1202,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [birthLat, setBirthLat] = useState<number>(13.75);   // 默认 Bangkok
   const [birthLon, setBirthLon] = useState<number>(100.5);
   const [birthTz, setBirthTz] = useState<string>('Asia/Bangkok');
+  const [selectedCity, setSelectedCity] = useState<string>('Bangkok');
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [lang, setLang] = useState<string>('en');
   const [loading, setLoading] = useState(true);
@@ -2521,96 +2523,26 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
                   {/* 时区 */}
                   <div style={{ marginBottom: '8px' }}>
-                    <label style={{ fontSize: '10px', color: '#D4AF37', display: 'block', marginBottom: '3px' }}>
-                      🌍 {currentLang === 'zh' ? '时区' : currentLang === 'vi' ? 'Múi giờ' : 'Timezone'}
-                    </label>
-                    <select
-                      value={birthTz}
-                      onChange={e => setBirthTz(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '1px solid rgba(212,175,55,0.25)',
-                        borderRadius: '6px',
-                        color: '#D4AF37',
-                        fontSize: '12px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        appearance: 'none',
+                  {/* 城市搜索 → 自动设置时区+经纬度 */}
+                  <div style={{ marginBottom: '8px' }}>
+                    <CitySearchInput
+                      value={selectedCity}
+                      tz={birthTz}
+                      lat={birthLat}
+                      lon={birthLon}
+                      lang={currentLang}
+                      onSelect={city => {
+                        setSelectedCity(city.key);
+                        setBirthTz(city.tz);
+                        setBirthLat(city.lat);
+                        setBirthLon(city.lon);
                       }}
-                    >
-                      <option value="Asia/Shanghai">🇨🇳 GMT+8 北京/上海/深圳/香港</option>
-                      <option value="Asia/Bangkok">🇹🇭 GMT+7 曼谷/雅加达</option>
-                      <option value="Asia/Seoul">🇰🇷 GMT+9 首尔/东京</option>
-                      <option value="Asia/Kolkata">🇮🇳 GMT+5:30 印度</option>
-                      <option value="America/New_York">🇺🇸 GMT-5 纽约/波士顿</option>
-                      <option value="America/Los_Angeles">🇺🇸 GMT-8 洛杉矶/旧金山</option>
-                      <option value="America/Chicago">🇺🇸 GMT-6 芝加哥</option>
-                      <option value="America/Sao_Paulo">🇧🇷 GMT-3 圣保罗</option>
-                      <option value="Europe/London">🇬🇧 GMT+0 伦敦</option>
-                      <option value="Europe/Paris">🇫🇷 GMT+2 巴黎/柏林</option>
-                      <option value="Europe/Moscow">🇷🇺 GMT+3 莫斯科</option>
-                      <option value="Australia/Sydney">🇦🇺 GMT+10 悉尼</option>
-                      <option value="Asia/Singapore">🇸🇬 GMT+8 新加坡</option>
-                      <option value="Asia/Taipei">🇹🇼 GMT+8 台北</option>
-                      <option value="Asia/Tokyo">🇯🇵 GMT+9 东京</option>
-                    </select>
-                  </div>
-
-                  {/* 经纬度 */}
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '10px', color: '#D4AF37', display: 'block', marginBottom: '3px' }}>
-                        📍 {currentLang === 'zh' ? '纬度' : currentLang === 'vi' ? 'Vĩ độ' : 'Latitude'}
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={birthLat}
-                        onChange={e => setBirthLat(parseFloat(e.target.value) || 0)}
-                        placeholder="13.75"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          background: 'rgba(255,255,255,0.08)',
-                          border: '1px solid rgba(212,175,55,0.25)',
-                          borderRadius: '6px',
-                          color: '#D4AF37',
-                          fontSize: '12px',
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '10px', color: '#D4AF37', display: 'block', marginBottom: '3px' }}>
-                        📍 {currentLang === 'zh' ? '经度' : currentLang === 'vi' ? 'Kinh độ' : 'Longitude'}
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={birthLon}
-                        onChange={e => setBirthLon(parseFloat(e.target.value) || 0)}
-                        placeholder="100.50"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          background: 'rgba(255,255,255,0.08)',
-                          border: '1px solid rgba(212,175,55,0.25)',
-                          borderRadius: '6px',
-                          color: '#D4AF37',
-                          fontSize: '12px',
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
+                    />
                   </div>
                   <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)' }}>
-                    {currentLang === 'zh' ? '💡 不确定？使用默认值即可，系统自动按Bangkok推算'
-                      : currentLang === 'vi' ? '💡 Không chắc? Dùng mặc định Bangkok'
-                      : '💡 Not sure? Defaults to Bangkok (lat=13.75, lon=100.5)'}
+                    {currentLang === 'zh' ? '💡 搜索不到？直接用时间，地点默认 Bangkok'
+                      : currentLang === 'vi' ? '💡 Không tìm thấy? Dùng giờ mặc định Bangkok'
+                      : '💡 Not found? Use time only, location defaults to Bangkok'}
                   </div>
                 </div>
               )}
