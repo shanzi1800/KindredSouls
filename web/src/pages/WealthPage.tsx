@@ -116,12 +116,12 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
     onChange((hh || '') + ':' + cleaned);
   };
 
-  // 失焦时补零并验证边界（HH 24 夹到 23，MM 60 夹到 59）
+  // 失焦时补零并验证边界（HH 允许 00-24，MM 允许 00-59；24:XX 仅保留 24:00）
   const handleBlur = () => {
     let newHH = hh;
     let newMM = mm;
     if (hh) {
-      const n = Math.min(parseInt(hh, 10) || 0, 23);
+      const n = Math.min(parseInt(hh, 10) || 0, 24);
       newHH = String(n).padStart(2, '0');
     } else {
       newHH = '12';
@@ -130,6 +130,10 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
       const n = Math.min(parseInt(mm, 10) || 0, 59);
       newMM = String(n).padStart(2, '0');
     } else {
+      newMM = '00';
+    }
+    // 24:XX 仅保留 24:00
+    if (newHH === '24' && newMM !== '00') {
       newMM = '00';
     }
     onChange(newHH + ':' + newMM);
