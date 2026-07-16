@@ -104,10 +104,15 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
       <div style={{
         position: 'relative',
         background: 'rgba(255,255,255,0.08)',
-        border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.3)',
+        border: open ? '1.5px solid rgba(212,175,55,0.6)' : '1.5px solid rgba(212,175,55,0.3)',
         borderRadius: '10px',
-        padding: '5px 14px',  // 上下缩小 3px（约 0.5mm），更紧凑
+        padding: value ? '4px 14px 8px' : '9px 14px',  // V117f: 选中后顶部收紧，底部不变
         transition: 'border-color 0.15s',
+        boxSizing: 'border-box',
+        height: '49px',  // 固定高度与 TimeInput 一致
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
       }}>
         {/* 搜索输入框 - 透明无边框，镶在容器内 */}
         <input
@@ -124,27 +129,30 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             border: 'none',
             background: 'transparent',
             color: '#D4AF37',
-            fontSize: '15px',
+            fontSize: value ? '15px' : '16px',  // V117f: 选中后稍小，给坐标行留位置
             textAlign: 'center',
             outline: 'none',
             padding: 0,
             margin: 0,
             boxSizing: 'border-box',
-            lineHeight: '22px',
+            lineHeight: value ? '20px' : '28px',  // V117f: 选中后压缩
           }}
         />
 
         {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内（恢复 IANA 时区） */}
         {value && (
           <div style={{
-            fontSize: '11px',
+            fontSize: '10px',  // V117f: 从 11px 缩到 10px
             fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
             color: 'rgba(255,255,255,0.45)',
-            marginTop: '3px',
-            lineHeight: '14px',
+            marginTop: '1px',  // V117f: 从 3px 缩到 1px（约 0.5mm 缩 2px）
+            lineHeight: '12px',  // V117f: 从 14px 缩到 12px
             letterSpacing: '0.3px',
             textAlign: 'center',
             animation: 'hudFadeIn 0.35s ease-out',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
             📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
             {'  |  '}
