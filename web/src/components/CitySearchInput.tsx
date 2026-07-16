@@ -114,7 +114,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             width: '100%',
             padding: '9px 14px',
             background: 'rgba(255,255,255,0.08)',
-            border: open ? '1.5px solid rgba(212,175,55,0.6)' : '1.5px solid rgba(212,175,55,0.3)',
+            border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.3)',
             borderRadius: '10px',
             color: '#D4AF37',
             fontSize: '15px',
@@ -185,18 +185,19 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         </div>
       )}
 
-      {/* 🛠️ V117: 选中城市后显示坐标+IANA时区 HUD（专业背书，0延迟渲染） */}
+      {/* 🛠️ V117b: 选中城市后显示坐标 HUD（删 IANA，避免中国城市都显示 Asia/Shanghai 的误导） */}
       {value && (
         <div style={{
           fontSize: '11px',
           fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
           color: 'rgba(255,255,255,0.45)',
           marginTop: '4px',
+          marginBottom: '0',
           paddingLeft: '2px',
           letterSpacing: '0.3px',
           animation: 'hudFadeIn 0.35s ease-out',
         }}>
-          📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}  |  🌐 {tz}
+          📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
         </div>
       )}
     </div>

@@ -84,7 +84,7 @@ const DateInput: React.FC<{
             {pi > 0 && <span style={{ color: '#8B8778', fontSize: '14px' }}>/</span>}
             <input
               ref={refs[pi]}
-              style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+              style={{ flex: 1, border: 'none', background: 'transparent', color: '#D4AF37', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
               type="text" inputMode="numeric" maxLength={def.max} placeholder={def.ph}
               value={parts[def.key]}
               onChange={e => handleChange(pi, e.target.value)}
@@ -161,7 +161,7 @@ const TimeInput: React.FC<{ value: string; onChange: (v: string) => void; }> = (
     width: '28px',
     border: 'none',
     background: 'transparent',
-    color: 'rgba(232,228,217,0.55)',
+    color: '#D4AF37',
     fontSize,
     fontWeight: 600,
     textAlign: 'center',
@@ -320,7 +320,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
 
           {/* 出生城市 - 第1行 */}
           <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>
               {LABEL_CITY}
             </label>
             <CitySearchInput
@@ -334,16 +334,16 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           </div>
 
           {/* 出生时间 - 第2行 */}
-          <div style={{ marginTop: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+          <div style={{ marginTop: '8px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>
               {LABEL_TIME}
             </label>
             <TimeInput value={birthTime} onChange={setBirthTime} />
           </div>
 
           {/* 出生日期 - 第3行（中文 YYYY/MM/DD，其他 DD/MM/YYYY） */}
-          <div style={{ marginTop: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
+          <div style={{ marginTop: '8px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>
               {t('wealthInput.birthdayLabel')}
             </label>
             <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} shakeSeed={shakeSeed} />
