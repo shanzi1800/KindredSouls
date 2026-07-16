@@ -2913,10 +2913,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         dsReq.write(dsReqBody); dsReq.end();
       });
 
-      // 45s timeout（Railway 50s 硬限制，留 5s 余地）
+      // 120s timeout（给 DeepSeek 足够时间跑完年度报告；Railway 硬 timeout 约120s，Node 会先到）
       const dsResult = await Promise.race([
         dsPromise,
-        new Promise(r => setTimeout(() => r({ ok: false, status: 408, timedout: true }), 45000))
+        new Promise(r => setTimeout(() => r({ ok: false, status: 408, timedout: true }), 120000))
       ]);
       dsDone = true; // 无论结果如何，标记完成防止后续误用
 
