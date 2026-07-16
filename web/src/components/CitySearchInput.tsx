@@ -99,17 +99,8 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* 城市搜索框（不再加多余的金色“城市”徽标，外层“出生城市（可选）”已够用） */}
+      {/* 城市搜索框——与 TimeInput/DateInput 尺寸对齐：15px 居中 9px×14px padding，高度统一为 ~33px */}
       <div style={{ marginBottom: '4px', position: 'relative' }}>
-        <span style={{
-          position: 'absolute',
-          left: '10px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          color: '#D4AF37',
-          fontSize: '12px',
-          pointerEvents: 'none',
-        }}>🔍</span>
         <input
           ref={inputRef}
           type="text"
@@ -121,13 +112,13 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           autoComplete="off"
           style={{
             width: '100%',
-            padding: '7px 10px 7px 28px',
+            padding: '9px 14px',
             background: 'rgba(255,255,255,0.08)',
             border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.25)',
-            borderRadius: '6px',
+            borderRadius: '12px',
             color: '#D4AF37',
-            fontSize: '12px',
-            textAlign: 'left',
+            fontSize: '15px',
+            textAlign: 'center',
             outline: 'none',
             boxSizing: 'border-box',
             transition: 'border-color 0.15s',
