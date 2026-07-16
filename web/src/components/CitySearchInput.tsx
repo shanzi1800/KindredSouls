@@ -42,7 +42,7 @@ function getDisplayName(city: CityRecord, lang: string): string {
 export const CitySearchInput: React.FC<CitySearchInputProps> = ({
   value, tz, lat, lon, onSelect, lang = 'zh', placeholder,
 }) => {
-  const { loading, search } = useCitySearch();
+  const { loading, search, cities } = useCitySearch();
   // 直接用 value 初始化 query，确保 HUD 条件 value&& 在 mount 时就同步（不依赖 useEffect 时序）
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<CityRecord[]>([]);
@@ -107,6 +107,28 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
     if (e.key === 'Escape') { setOpen(false); }
   };
 
+  // V117j: onBlur 清理 - 避免输入框与已选城市不一致
+  // 场景：用户选了北京后输入“上海”但未点击下拉，input 显示“上海”但 birthCity 还是北京
+  const handleBlur = () => {
+    // 延迟检测：等下拉项的 onClick 优先触发（如果点了下拉项，query 已经被 handleSelect 更新为新的 displayName）
+    setTimeout(() => {
+      if (value) {
+        const selected = cities.find(c => c.key === value);
+        if (selected) {
+          const displayName = getDisplayName(selected, lang);
+          if (query !== displayName) {
+            setQuery(displayName);
+          }
+        }
+      } else {
+        // 没选任何城市时，如果输入框有文字（用户只打字没选），清空
+        if (query.trim().length > 0) {
+          setQuery('');
+        }
+      }
+    }, 150);
+  };
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* 🛠️ V117c: 单个带边框容器，搜索输入 + 选中后坐标/时区 都在内部 */}
@@ -130,6 +152,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           value={query}
           onChange={handleChange}
           onFocus={() => { if (query.trim().length >= 1 && results.length > 0) setOpen(true); }}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={ph}
           autoComplete="off"
