@@ -350,17 +350,17 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
           </div>
 
-          {/* 🔮 金牌提示：40%精度诱饵 — 提高亮 */}
+          {/* 🔮 金牌提示：40%精度诱饵 — 字号与底部提示一致（11px 正常体） */}
           <div style={{
             marginTop: '16px',
-            padding: '12px 14px',
+            padding: '14px 16px',
             background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)',
             border: '1px solid rgba(212,175,55,0.4)',
-            borderRadius: '8px',
-            fontSize: '12px',
+            borderRadius: '12px',
+            fontSize: '11px',
             color: '#F0D060',
-            fontWeight: 600,
-            lineHeight: 1.55,
+            fontWeight: 400,
+            lineHeight: 1.6,
             boxShadow: '0 2px 8px rgba(212,175,55,0.15)',
             textShadow: '0 1px 2px rgba(0,0,0,0.4)',
           }}>

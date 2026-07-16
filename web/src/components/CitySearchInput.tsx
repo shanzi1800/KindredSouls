@@ -99,8 +99,26 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* 城市搜索框——与 TimeInput/DateInput 尺寸对齐：15px 居中 9px×14px padding，高度统一为 ~33px */}
-      <div style={{ marginBottom: '4px', position: 'relative' }}>
+      {/* 🛠️ V117c: 单个带边框容器，搜索输入 + 选中后坐标/时区 都在内部 */}
+      <div style={{
+        position: 'relative',
+        background: 'rgba(255,255,255,0.08)',
+        border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.3)',
+        borderRadius: '10px',
+        padding: '8px 14px 8px 30px',  // left 30px 让位给 🔍 图标
+        transition: 'border-color 0.15s',
+      }}>
+        {/* 🔍 搜索图标 */}
+        <span style={{
+          position: 'absolute',
+          left: '10px',
+          top: '10px',
+          color: '#D4AF37',
+          fontSize: '12px',
+          pointerEvents: 'none',
+        }}>🔍</span>
+
+        {/* 搜索输入框 - 透明无边框，镶在容器内 */}
         <input
           ref={inputRef}
           type="text"
@@ -112,19 +130,36 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           autoComplete="off"
           style={{
             width: '100%',
-            padding: '9px 14px',
-            background: 'rgba(255,255,255,0.08)',
-            border: open ? '1px solid rgba(212,175,55,0.6)' : '1px solid rgba(212,175,55,0.3)',
-            borderRadius: '10px',
+            border: 'none',
+            background: 'transparent',
             color: '#D4AF37',
             fontSize: '15px',
             textAlign: 'center',
             outline: 'none',
+            padding: 0,
+            margin: 0,
             boxSizing: 'border-box',
-            lineHeight: '28px',  // 对齐 TimeInput 容器 lineHeight:28px，让总高都是 46px
-            transition: 'border-color 0.15s',
+            lineHeight: '22px',
           }}
         />
+
+        {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内（恢复 IANA 时区） */}
+        {value && (
+          <div style={{
+            fontSize: '11px',
+            fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
+            color: 'rgba(255,255,255,0.45)',
+            marginTop: '3px',
+            lineHeight: '14px',
+            letterSpacing: '0.3px',
+            textAlign: 'center',
+            animation: 'hudFadeIn 0.35s ease-out',
+          }}>
+            📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
+            {'  |  '}
+            🌐 {tz}
+          </div>
+        )}
       </div>
 
       {/* 搜索结果下拉 */}
