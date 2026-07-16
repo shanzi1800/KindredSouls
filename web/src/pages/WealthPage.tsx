@@ -9,11 +9,24 @@ interface WealthPageProps {
 }
 
 // ── Date Input (中文 YYYY/MM/DD，其它语种 DD/MM/YYYY，从左向右自动跳栏，独立修改) ──
+// ── 全局 keyframes：错误抖动动画（与合婚密码一致） ──
+const inputShakeKeyframes = `
+@keyframes inputShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(7px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+`;
+
 const DateInput: React.FC<{
   value: string;
   onChange: (v: string) => void;
   hasError?: boolean;
-}> = ({ value, onChange, hasError = false }) => {
+  shakeSeed?: number;  // 变化时重新触发抖动
+}> = ({ value, onChange, hasError = false, shakeSeed = 0 }) => {
   const { i18n } = useTranslation();
   const isZh = (i18n.language || '').startsWith('zh') || (i18n.language || '').includes('Chinese');
 
@@ -57,27 +70,29 @@ const DateInput: React.FC<{
   const parts = getParts();
 
   return (
-    <div style={{
+    <div key={`shake-${shakeSeed}`} style={{
       display: 'flex', alignItems: 'center', gap: '3px',
       width: '100%', padding: '11px 14px',
       background: 'rgba(255,255,255,0.08)',
       border: `1.5px solid ${hasError ? '#E05C5C' : 'rgba(212,175,55,0.3)'}`,
       borderRadius: '10px',
+      animation: shakeSeed > 0 ? 'inputShake 0.4s ease-in-out' : 'none',
+      transformOrigin: 'center',
     }}>
-      {partDefs.map((def, pi) => (
-        <React.Fragment key={def.key}>
-          {pi > 0 && <span style={{ color: '#8B8778', fontSize: '14px' }}>/</span>}
-          <input
-            ref={refs[pi]}
-            style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
-            type="text" inputMode="numeric" maxLength={def.max} placeholder={def.ph}
-            value={parts[def.key]}
-            onChange={e => handleChange(pi, e.target.value)}
-            onKeyDown={e => handleKeyDown(pi, e)}
-          />
-        </React.Fragment>
-      ))}
-    </div>
+        {partDefs.map((def, pi) => (
+          <React.Fragment key={def.key}>
+            {pi > 0 && <span style={{ color: '#8B8778', fontSize: '14px' }}>/</span>}
+            <input
+              ref={refs[pi]}
+              style={{ flex: 1, border: 'none', background: 'transparent', color: '#E8E4D9', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
+              type="text" inputMode="numeric" maxLength={def.max} placeholder={def.ph}
+              value={parts[def.key]}
+              onChange={e => handleChange(pi, e.target.value)}
+              onKeyDown={e => handleKeyDown(pi, e)}
+            />
+          </React.Fragment>
+        ))}
+      </div>
   );
 };
 
@@ -225,7 +240,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
   const { t, i18n } = useTranslation();
   const [birthDate, setBirthDate] = useState('');
   const [dateError, setDateError] = useState('');
-  const [shaking, setShaking] = useState(false);
+  const [shakeSeed, setShakeSeed] = useState(0);  // 每次错误自增1，强制重新动画
   const [birthTime, setBirthTime] = useState('12:00');
   const [birthCity, setBirthCity] = useState<CityRecord | null>(null);
 
@@ -244,11 +259,13 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
     }
   }, []);
 
+  const triggerShake = () => setShakeSeed(s => s + 1);
+
   const handleSubmit = () => {
     setDateError('');
-    if (!birthDate) { setShaking(true); setTimeout(() => setShaking(false), 300); return; }
+    if (!birthDate) { triggerShake(); return; }
     const err = validateDate(birthDate, t);
-    if (err) { setDateError(err); setShaking(true); setTimeout(() => setShaking(false), 300); return; }
+    if (err) { setDateError(err); triggerShake(); return; }
 
     const lang = normalizeLang(i18n.language || 'en');
     const params: Record<string, string> = { birth: birthDate, lang };
@@ -276,6 +293,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '56px 16px 60px', position: 'relative',
     }}>
+      <style>{inputShakeKeyframes}</style>
       <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(1.5px 1.5px at 20% 30%, rgba(212,175,55,0.3) 50%, transparent 50%), radial-gradient(1.5px 1.5px at 80% 70%, rgba(129,216,208,0.3) 50%, transparent 50%), radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.2) 50%, transparent 50%), #080810', pointerEvents: 'none', zIndex: 0 }} />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
@@ -291,7 +309,14 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
           {t('wealthInput.subtitle')}
         </p>
 
-        <div style={{ background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', padding: '24px 20px', marginBottom: '16px' }}>
+        <div key={`form-shake-${shakeSeed}`} style={{
+          background: 'linear-gradient(135deg, #0e0e1a 0%, #12121f 100%)',
+          border: `1px solid ${dateError ? 'rgba(224,92,92,0.4)' : 'rgba(212,175,55,0.25)'}`,
+          borderRadius: '16px',
+          padding: '24px 20px',
+          marginBottom: '16px',
+          animation: shakeSeed > 0 ? 'inputShake 0.4s ease-in-out' : 'none',
+        }}>
 
           {/* 出生城市 - 第1行 */}
           <div>
@@ -321,7 +346,7 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             <label style={{ display: 'block', fontSize: '12px', color: '#E8E4D9', fontWeight: 600, marginBottom: '8px' }}>
               {t('wealthInput.birthdayLabel')}
             </label>
-            <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} />
+            <DateInput value={birthDate} onChange={setBirthDate} hasError={!!dateError} shakeSeed={shakeSeed} />
             {dateError && <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '6px' }}>{dateError}</p>}
           </div>
 
