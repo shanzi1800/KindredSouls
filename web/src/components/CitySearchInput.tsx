@@ -43,7 +43,8 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
   value, tz, lat, lon, onSelect, lang = 'zh', placeholder,
 }) => {
   const { loading, search } = useCitySearch();
-  const [query, setQuery] = useState('');
+  // 直接用 value 初始化 query，确保 HUD 条件 value&& 在 mount 时就同步（不依赖 useEffect 时序）
+  const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<CityRecord[]>([]);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -52,9 +53,9 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   const ph = placeholder || PLACEHOLDER[lang] || PLACEHOLDER.en;
 
-  // 加载时显示当前值（用语种名）
+  // value prop 变化时同步 query（处理从父组件清空的情况）
   useEffect(() => {
-    if (value) setQuery(value);
+    if (!value) setQuery('');
   }, [value]);
 
   // 点击外部关闭
