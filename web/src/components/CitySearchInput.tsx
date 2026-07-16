@@ -108,16 +108,6 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         padding: '5px 14px',  // 上下缩小 3px（约 0.5mm），更紧凑
         transition: 'border-color 0.15s',
       }}>
-        {/* 🔍 搜索图标 */}
-        <span style={{
-          position: 'absolute',
-          left: '10px',
-          top: '10px',
-          color: '#D4AF37',
-          fontSize: '12px',
-          pointerEvents: 'none',
-        }}>🔍</span>
-
         {/* 搜索输入框 - 透明无边框，镶在容器内 */}
         <input
           ref={inputRef}
