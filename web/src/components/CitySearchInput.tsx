@@ -178,10 +178,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
-                  <div>{city.tz.split('/').pop()?.replace(/_/g, ' ')}</div>
-                  <div>{city.lat.toFixed(2)}°, {city.lon.toFixed(2)}°</div>
-                </div>
+                {/* 右侧不显示技术信息（时区/坐标对用户选城市无用，去掉） */}
               </div>
             );
           })}
