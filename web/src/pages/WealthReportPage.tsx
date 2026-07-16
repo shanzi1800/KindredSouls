@@ -2544,6 +2544,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       : currentLang === 'vi' ? '💡 Không tìm thấy? Dùng giờ mặc định Bangkok'
                       : '💡 Not found? Use time only, location defaults to Bangkok'}
                   </div>
+                  </div>
                 </div>
               )}
             </div>
