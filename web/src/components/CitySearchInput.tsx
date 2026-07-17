@@ -53,18 +53,28 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   const ph = placeholder || PLACEHOLDER[lang] || PLACEHOLDER.en;
 
-  // 🛠️ V117g: 本地选状态，跟踪用户是否在本次会话中点过下拉（不依赖 prop 时序）
+  // 🛠️ V118a: 用 ref 跟踪最新 value，避免 onBlur setTimeout stale closure
+  const valueRef = useRef(value);
   const [hasSelected, setHasSelected] = useState(!!value);
 
-  // value prop 变化时同步 query + hasSelected
+  // value prop 变化时同步：保持 query 等于当前选中城市 displayName
   useEffect(() => {
-    if (!value) {
-      setQuery('');
-      setHasSelected(false);
-    } else {
+    valueRef.current = value;
+    if (value) {
       setHasSelected(true);
+      const selected = cities.find(c => c.key === value);
+      if (selected) {
+        const displayName = getDisplayName(selected, lang);
+        if (query !== displayName) {
+          setQuery(displayName);
+        }
+      }
+    } else {
+      setHasSelected(false);
+      setQuery('');
     }
-  }, [value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, lang]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -92,10 +102,11 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
   };
 
   const handleSelect = (city: CityRecord) => {
-    setQuery(getDisplayName(city, lang));
+    const displayName = getDisplayName(city, lang);
+    setQuery(displayName);
     setOpen(false);
     setResults([]);
-    setHasSelected(true);  // V117g: 本地立即打饱,不等 prop 回调
+    setHasSelected(true);
     onSelect(city);
   };
 
@@ -107,24 +118,18 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
     if (e.key === 'Escape') { setOpen(false); }
   };
 
-  // V117j: onBlur 清理 - 避免输入框与已选城市不一致
-  // 场景：用户选了北京后输入“上海”但未点击下拉，input 显示“上海”但 birthCity 还是北京
+  // V118a: 用 ref 读最新 value，避免 stale closure 清除 query
   const handleBlur = () => {
-    // 延迟检测：等下拉项的 onClick 优先触发（如果点了下拉项，query 已经被 handleSelect 更新为新的 displayName）
     setTimeout(() => {
-      if (value) {
-        const selected = cities.find(c => c.key === value);
+      const v = valueRef.current;
+      if (v) {
+        const selected = cities.find(c => c.key === v);
         if (selected) {
           const displayName = getDisplayName(selected, lang);
-          if (query !== displayName) {
-            setQuery(displayName);
-          }
+          setQuery(prev => prev !== displayName ? displayName : prev);
         }
       } else {
-        // 没选任何城市时，如果输入框有文字（用户只打字没选），清空
-        if (query.trim().length > 0) {
-          setQuery('');
-        }
+        setQuery(prev => prev.trim().length > 0 ? '' : prev);
       }
     }, 150);
   };
@@ -188,7 +193,11 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           }}>
             📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
             {'  |  '}
-            🌐 {value}  {/* V117i: 改为显示城市英文名(中国全境都是Asia/Shanghai会误导) */}
+            🌐 {(() => {
+              // V118a: 显示本地化名（中文显示"重庆"，英文显示"Chongqing"），不再用 raw value
+              const selected = cities.find(c => c.key === value);
+              return selected ? getDisplayName(selected, lang) : value;
+            })()}
           </div>
         )}
       </div>
@@ -222,6 +231,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             return (
               <div
                 key={city.key}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(city); }}
                 onClick={() => handleSelect(city)}
                 style={{
                   padding: '8px 12px',
