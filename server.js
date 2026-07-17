@@ -3582,6 +3582,15 @@ app.get('/api/test-groq', async (req, res) => {
 app.get('/api/compare-llm', async (req, res) => {
   const GROQ_KEY = process.env.GROQ_API_KEY || process.env.GROQ_KEY || req.query.groq_key;
   const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
+  
+  // 诊断：环境变量状态
+  const envDiag = {
+    GROQ_API_KEY_exists: !!process.env.GROQ_API_KEY,
+    GROQ_API_KEY_length: process.env.GROQ_API_KEY?.length || 0,
+    GROQ_KEY_exists: !!process.env.GROQ_KEY,
+    DEEPSEEK_API_KEY_exists: !!process.env.DEEPSEEK_API_KEY,
+    DEEPSEEK_API_KEY_length: process.env.DEEPSEEK_API_KEY?.length || 0,
+  };
   const testPrompt = req.query.prompt || 
     '请为以下星盘写一段200字的中文财富月报：\n太阳星座：射手座 | 上升星座：天蝎座 | 月亮星座：双子座\n要求：专业有深度，像真正的占星师在说话，直接输出不要废话。';
 
@@ -3605,9 +3614,11 @@ app.get('/api/compare-llm', async (req, res) => {
   if (DEEPSEEK_KEY) {
     const start = Date.now();
     try {
+      // 强制 ASCII 编码，防止 Unicode 字符导致 header 错误
+      const cleanKey = Buffer.from(DEEPSEEK_KEY).toString('ascii');
       const r = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${cleanKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
       });
       const d = await r.json();
@@ -3615,5 +3626,5 @@ app.get('/api/compare-llm', async (req, res) => {
     } catch(e) { results.deepseek = { ok: false, latency_ms: Date.now() - start, error: e.message }; }
   } else { results.deepseek = { ok: false, error: 'DEEPSEEK_API_KEY not set' }; }
 
-  res.json({ results, prompt_length: testPrompt.length });
+  res.json({ results, env_diag: envDiag, prompt_length: testPrompt.length });
 });
