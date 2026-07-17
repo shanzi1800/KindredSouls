@@ -3580,7 +3580,7 @@ app.get('/api/test-groq', async (req, res) => {
 // GET /api/compare-llm
 // 用同一份 prompt 分别测 Groq 和 DeepSeek，输出内容和耗时用于对比
 app.get('/api/compare-llm', async (req, res) => {
-  const GROQ_KEY = process.env.GROQ_KEY || req.query.groq_key;
+  const GROQ_KEY = process.env.GROQ_API_KEY || process.env.GROQ_KEY || req.query.groq_key;
   const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
   const testPrompt = req.query.prompt || 
     '请为以下星盘写一段200字的中文财富月报：\n太阳星座：射手座 | 上升星座：天蝎座 | 月亮星座：双子座\n要求：专业有深度，像真正的占星师在说话，直接输出不要废话。';
