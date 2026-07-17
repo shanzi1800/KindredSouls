@@ -3541,3 +3541,37 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  - Web: http://0.0.0.0:${PORT}/`);
 });
 // FORCE REBUILD 1783756900
+
+// ── Groq API Test Endpoint ──────────────────────────────────────────────────
+// GET /api/test-groq?key=YOUR_KEY
+// 测试 Railway → Groq 是否可达 + key 是否有效
+app.get('/api/test-groq', async (req, res) => {
+  const groqKey = req.query.key || process.env.GROQ_API_KEY;
+  if (!groqKey) {
+    return res.json({ error: 'No Groq key provided. Add ?key=YOUR_KEY' });
+  }
+  try {
+    const start = Date.now();
+    const apiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: 'Say "GROQ_OK" in exactly that format.' }],
+        max_tokens: 10,
+        temperature: 0,
+      }),
+    });
+    const latency = Date.now() - start;
+    const data = await apiRes.json();
+    if (!apiRes.ok) {
+      return res.json({ ok: false, status: apiRes.status, error: data.error?.message || data, latency_ms: latency });
+    }
+    return res.json({ ok: true, latency_ms: latency, model: data.model, response: data.choices[0].message.content });
+  } catch (e) {
+    return res.json({ ok: false, error: e.message });
+  }
+});
