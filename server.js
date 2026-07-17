@@ -3575,3 +3575,45 @@ app.get('/api/test-groq', async (req, res) => {
     return res.json({ ok: false, error: e.message });
   }
 });
+
+// ── Groq 内容质量对比测试端点 ─────────────────────────────────────────────
+// GET /api/compare-llm
+// 用同一份 prompt 分别测 Groq 和 DeepSeek，输出内容和耗时用于对比
+app.get('/api/compare-llm', async (req, res) => {
+  const GROQ_KEY = process.env.GROQ_KEY || req.query.groq_key;
+  const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
+  const testPrompt = req.query.prompt || 
+    '请为以下星盘写一段200字的中文财富月报：\n太阳星座：射手座 | 上升星座：天蝎座 | 月亮星座：双子座\n要求：专业有深度，像真正的占星师在说话，直接输出不要废话。';
+
+  const results = {};
+
+  // 测 Groq
+  if (GROQ_KEY) {
+    const start = Date.now();
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+      });
+      const d = await r.json();
+      results.groq = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
+    } catch(e) { results.groq = { ok: false, latency_ms: Date.now() - start, error: e.message }; }
+  } else { results.groq = { ok: false, error: 'GROQ_KEY not set' }; }
+
+  // 测 DeepSeek
+  if (DEEPSEEK_KEY) {
+    const start = Date.now();
+    try {
+      const r = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+      });
+      const d = await r.json();
+      results.deepseek = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
+    } catch(e) { results.deepseek = { ok: false, latency_ms: Date.now() - start, error: e.message }; }
+  } else { results.deepseek = { ok: false, error: 'DEEPSEEK_API_KEY not set' }; }
+
+  res.json({ results, prompt_length: testPrompt.length });
+});

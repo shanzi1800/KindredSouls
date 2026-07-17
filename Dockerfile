@@ -19,6 +19,7 @@ ENV SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 # SUPABASE_SERVICE_KEY: 在 Railway Dashboard Variables 页配置为 Secret
 ENV V69_PORT=8001
 ENV V69_HOST=127.0.0.1
+ENV GROQ_KEY=${GROQ_KEY:-}
 
 # ── V97r-final: 写 key 到文件，绕过 Railway Dashboard 环境变量覆盖 ──
 # Railway Dashboard 的 env var 会覆盖 Dockerfile 的 ENV。
