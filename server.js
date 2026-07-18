@@ -71,138 +71,83 @@ function getGeminiKey() {
 }
 
 // ── DeepSeek 直连流式（OpenAI 兼容格式，SSE 逐字吐出）──
-// 🛠️ V127: 恢复 Node 原生 https.request 流式（fetch 流式在 Railway 上行为异常：连接成功但永远不吐数据）
-// 🛠️ onChunk(text) 实时回调写入 SSE，避免流式结束后 fullTextCollector 仍为空
+// 🛠️ V131: Node.js 原生 fetch 流式（Railway 实测 https.request 在流式场景丢数据，fetch 完美）
 async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang) {
   const deepseekKey = getDeepSeekKey();
-  const reqBody = JSON.stringify({
-    model: 'deepseek-chat',
-    messages: [
-      { role: 'system', content: systemText },
-      { role: 'user', content: userText },
-    ],
-    max_tokens: 15000,
-    temperature: 0,
-    stream: true,
-  });
-
-  return new Promise((resolve, reject) => {
-    const u = new URL('https://api.deepseek.com/v1/chat/completions');
-    const req = https.request({
-      hostname: u.hostname,
-      port: 443,
-      path: u.pathname,
+  let resp;
+  try {
+    console.log('[callDeepSeek] → api.deepseek.com (native fetch)');
+    resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${deepseekKey}`,
-        'Content-Length': Buffer.byteLength(reqBody),
-      },
-    }, (apiRes) => {
-      if (apiRes.statusCode >= 400) {
-        let errBody = '';
-        apiRes.on('data', c => errBody += c);
-        apiRes.on('end', () => {
-          console.error('[callDeepSeek] HTTP ' + apiRes.statusCode + ':', errBody.slice(0, 200));
-          reject(new Error('DeepSeek HTTP ' + apiRes.statusCode));
-        });
-        apiRes.on('error', e => { console.error('[callDeepSeek] apiRes error:', e.message); reject(e); });
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buf = '';
-      let fullText = '';
-      let chunksProcessed = 0;
-      let bytesProcessed = 0;
-      const FLUSH_SIZE = 50;
-      let pending = '';
-      const heartbeat = setInterval(() => {
-        try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
-      }, 20000);
-
-      apiRes.on('data', (chunk) => {
-        bytesProcessed += chunk.length;
-        buf += decoder.decode(chunk, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const d = line.slice(6).trim();
-          if (d === '[DONE]') { clearInterval(heartbeat); continue; }
-          try {
-            const parsed = JSON.parse(d);
-            const txt = parsed.choices?.[0]?.delta?.content || '';
-            if (txt) {
-              chunksProcessed++;
-              let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
-              clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
-              fullText += clean;
-              pending += clean;
-              if (pending.length >= FLUSH_SIZE) {
-                try {
-                  const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-                  let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
-                  pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-                  res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-                  onChunk && onChunk(pc);
-                } catch(e2) {
-                  res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
-                  onChunk && onChunk(pending);
-                }
-                res.flush && res.flush();
-                pending = '';
-              }
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 15000, temperature: 0, stream: true }),
+      signal: controller.signal,
+    });
+    console.log('[callDeepSeek] HTTP', resp.status);
+  } catch(e) { console.error('[callDeepSeek] fetch threw:', e.message); throw e; }
+  if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP ' + resp.status + ':', body.slice(0, 200)); throw new Error('DeepSeek HTTP ' + resp.status); }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '', fullText = '';
+  const FLUSH_SIZE = 50;
+  let pending = '';
+  let chunkCount = 0;
+  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){} }, 20000);
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines2 = buf.split('\n');
+      buf = lines2.pop() || '';
+      for (const line of lines2) {
+        if (!line.startsWith('data: ')) continue;
+        const d = line.slice(6).trim();
+        if (d === '[DONE]') { clearInterval(heartbeat); continue; }
+        try {
+          const parsed = JSON.parse(d);
+          const txt = parsed.choices?.[0]?.delta?.content || '';
+          if (!txt) continue;
+          chunkCount++;
+          let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ').replace(/\uFFFD/g,'').replace(/�/g,'');
+          fullText += clean;
+          pending += clean;
+          if (pending.length >= FLUSH_SIZE) {
+            try {
+              const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+              let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+              pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+              onChunk && onChunk(pc);
+            } catch(e2) {
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
+              onChunk && onChunk(pending);
             }
-          } catch(e) {}
-        }
-      });
-
-      apiRes.on('end', () => {
-        clearInterval(heartbeat);
-        if (pending) {
-          try {
-            const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-            let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
-            pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-            res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-            onChunk && onChunk(pc);
-          } catch(e) {
-            res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
-            onChunk && onChunk(pending);
+            if (typeof res.flush === 'function') res.flush();
+            pending = '';
           }
-          res.flush && res.flush();
-        }
-        console.log('[callDeepSeek] RETURN fullText.length=' + fullText.length + ' chunks=' + chunksProcessed + ' bytes=' + bytesProcessed);
-        resolve(fullText);
-      });
-
-      apiRes.on('error', (e) => {
-        clearInterval(heartbeat);
-        console.error('[callDeepSeek] API stream error:', e.message);
-        reject(e);
-      });
-    });
-
-    req.on('error', (e) => {
-      console.error('[callDeepSeek] request error:', e.message);
-      reject(e);
-    });
-
-    req.on('close', () => {
-      clearInterval(heartbeat);
-    });
-
-    controller.signal.addEventListener('abort', () => {
-      clearInterval(heartbeat);
-      req.destroy();
-      reject(new Error('Request aborted'));
-    });
-
-    req.write(reqBody);
-    req.end();
-  });
+        } catch(e) {}
+      }
+    }
+  } catch(e) { clearInterval(heartbeat); console.error('[callDeepSeek] stream read error:', e.message); throw e; }
+  clearInterval(heartbeat);
+  if (pending) {
+    try {
+      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+      onChunk && onChunk(pc);
+    } catch(e) {
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
+      onChunk && onChunk(pending);
+    }
+    if (typeof res.flush === 'function') res.flush();
+  }
+  console.log('[callDeepSeek] RETURN fullText.length=' + fullText.length + ' chunks=' + chunkCount);
+  return fullText;
 }
+
 
 // ── V97bd: Supabase keys 从文件读（防 Railway Dashboard 老 key 覆盖，同 DeepSeek 方案）──
 try {
@@ -2381,17 +2326,13 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // ── 报告生成（月报/年报）──
     const { includeInsight } = req.body || {};
     if (reportType === 'monthly' || reportType === 'yearly') {
-      // ── V69 SwissEph: Fetch computed astro matrix（5秒超时）──
+      // ── V69 SwissEph: Fetch computed astro matrix ──
       let astroMatrix = null;
       try {
-        const withTimeout = Promise.race([
-          getAstroMatrix(birthDate, birthTime, lat, lon, tz),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
-        ]);
-        astroMatrix = await withTimeout;
+        astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
         if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
       } catch (e) {
-        console.warn('[Wealth Oracle] [V69] Fetch failed, proceeding without V69:', e.message);
+        console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
       }
 
       try {
@@ -2874,14 +2815,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   const realSunSign = signs[getZodiacIdx(birthMonth, birthDay)];
 
-  // ── V69 SwissEph: Fetch computed astro matrix（5秒超时）──
+  // ── V69 SwissEph: Fetch computed astro matrix ──
   let astroMatrix = null;
   try {
-    const withTimeout = Promise.race([
-      getAstroMatrix(birthDate, birthTime, lat, lon, tz),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
-    ]);
-    astroMatrix = await withTimeout;
+    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
     if (astroMatrix) {
       console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
     }
@@ -2930,230 +2867,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiStream = false;
     let geminiFullText = '';
 
-    // 🛠️ V125-final: 纯 DeepSeek 直连流式，无任何 OpenRouter 残留
-    if (reportType === 'yearly' && deepseekKey) {
-      usedGemini = false;
-      try {
-        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, (chunk) => {
-          // 🛠️ V126-fix: onChunk 实时回调写入 SSE handler 的 fullTextCollector，让缓存写入能拿到完整内容
-          fullTextCollector += chunk;
-          if (fullTextCollector.length % 1000 < chunk.length) console.log('[wealth-stream] [V126] deepseek chunk: +' + chunk.length + ' chars, total=' + fullTextCollector.length);
-        }, astroMatrix, realSunSign, lang);
-        if (geminiFullText && geminiFullText.trim().length > 0) {
-          aiStream = true;
-          console.log('[wealth-stream] [V125] DeepSeek stream OK');
-        }
-      } catch(e) {
-        console.error('[wealth-stream] [V125] DeepSeek stream FAILED: ' + (e.message || e));
-      }
-    } else if (geminiKey) {
-      // 保留 Gemini 直连作为备用（Gemini key 存在但 DeepSeek 不可用时）
-      usedGemini = true;
-      try {
-        const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:streamGenerateContent?alt=sse&key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: new TextEncoder().encode(JSON.stringify({
-              contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 65536, temperature: 0 }
-            })),
-            signal: controller.signal
-          }
-        );
-        if (gemRes.ok) {
-          const gemReader = gemRes.body.getReader();
-          const gemDecoder = new TextDecoder();
-          let gemBuf = '';
-          const heartbeat = setInterval(() => {
-            try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
-          }, 20000);
-          while (true) {
-            const { done, value } = await gemReader.read();
-            if (done) { clearInterval(heartbeat); break; }
-            gemBuf += gemDecoder.decode(value, { stream: true });
-            const gemLines = gemBuf.split('\n');
-            gemBuf = gemLines.pop() || '';
-            for (const gl of gemLines) {
-              if (gl.startsWith('data: ')) {
-                const d = gl.slice(6).trim();
-                if (d === '[DONE]') continue;
-                try {
-                  const gp = JSON.parse(d);
-                  if (gp.error) continue;
-                  const txt = gp.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                  if (txt) {
-                    let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
-                    clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
-                    geminiFullText += clean;
-                    try {
-                      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-                      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean,_a)),realSunSign,_a);
-                      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-                      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-                    } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
-                    if (typeof res.flush === 'function') res.flush();
-                  }
-                } catch(e){}
-              }
-            }
-          }
-          if (!geminiFullText || geminiFullText.trim().length === 0) {
-            throw new Error('[wealth-stream] Gemini stream completed with ZERO text. Forcing DeepSeek fallback.');
-          }
-          aiStream = true;
-        } else {
-          usedGemini = false;
-        }
-      } catch(e) {
-        usedGemini = false;
-      }
+    // 🛠️ V131-final: 统一走 callDeepSeekStream（native fetch），废弃所有 Gemini/https.request 降级路径
+    if (!deepseekKey) {
+      clearTimeout(aiTimeout);
+      res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
+      return res.end();
     }
-
-    if (!aiStream) {
-      // DeepSeek 路径（非年报 或 Gemini 失败降级）
-      if (!deepseekKey) {
-        clearTimeout(aiTimeout);
-        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable' })}\n\n`, 'utf-8'));
-        return res.end();
+    try {
+      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, (chunk) => {
+        fullTextCollector += chunk;
+        if (fullTextCollector.length % 1000 < chunk.length) console.log('[wealth-stream] [V131] deepseek chunk: +' + chunk.length + ' chars, total=' + fullTextCollector.length);
+      }, astroMatrix, realSunSign, lang);
+      if (geminiFullText && geminiFullText.trim().length > 0) {
+        aiStream = true;
+        console.log('[wealth-stream] [V131] DeepSeek stream OK, textLen=' + geminiFullText.length);
       }
-
-      // 🔒 V117-fix: DeepSeek 流式不走 safeFetch（safeFetch 等 res.end 才释放 chunk，24000token 等 3-4min，超 Railway 50s timeout）
-      //    改用 Node 原生 https.request，边收边发，0 缓冲
-      const dsReqBody = JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: prompt.system },
-          { role: 'user', content: prompt.user },
-        ],
-        max_tokens: reportType === 'yearly' ? 15000 : 2000,  // V125-fix: 年报15000 token≈10000-12000字，100字/秒，120秒内完成
-        temperature: 0,
-        stream: true,
-      });
-
-      let dsDone = false;
-      const dsPromise = new Promise((resolveDs) => {
-        const u = new URL('https://api.deepseek.com/v1/chat/completions');
-        const dsReq = https.request({
-          hostname: u.hostname, port: 443,
-          path: u.pathname, method: 'POST',
-          headers: { 'Content-Type': 'application/json',
-                     'Authorization': `Bearer ${deepseekKey}`,
-                     'Content-Length': Buffer.byteLength(dsReqBody) },
-        }, (dsRes) => {
-          if (!dsRes.ok || dsRes.statusCode >= 400) {
-            let errBody = ''; dsRes.on('data', c => errBody += c);
-            dsRes.on('end', () => resolveDs({ ok: false, status: dsRes.statusCode, bodyText: errBody }));
-            return;
-          }
-          const _a = astroMatrix?.meta?.rising_sign || 'Cancer';
-          const decoder2 = new TextDecoder();
-          let buf = '';
-          const heartbeat2 = setInterval(() => {
-            try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
-          }, 20000);
-          dsRes.on('data', (chunk) => {
-            buf += decoder2.decode(chunk, { stream: true });
-            const lines = buf.split('\n'); buf = lines.pop() || '';
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              const d = line.slice(6).trim();
-              if (d === '[DONE]') { dsDone = true; clearInterval(heartbeat2); continue; }
-              try {
-                const parsed = JSON.parse(d);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                if (content) {
-                  let clean = content.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
-                  // 🛠️ V122-fix: 跨块空括号深度清理
-                  // 1. 基础：中文/英文空括号
-                  clean = clean.replace(/（）/g, '').replace(/\(\)/g, '');
-                  // 2. 中文字 + 后续括号包裹其他内容 + 中文（例：第五宫（）狮子座）
-                  clean = clean.replace(/([\u4e00-\u9fa5])（）([\u4e00-\u9fa5])/g, '$1$2');
-                  // 3. 英文括号包裹后接中文（例：（Jupiter Return）开启）
-                  clean = clean.replace(/[（(][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[）)](?=[\u4e00-\u9fa5])/g, '');
-                  // 4. 中文括号包裹中文字符后接点/逗号（例：（Jupiter Return）开启）同样
-                  clean = clean.replace(/客厅[^\n]{0,30}?(?:对应?|是?|属于?)第4宫/g, m => m.replace(/第4宫/g,'第4宫（田宅宫·摩羯座）'));
-                  ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w => { if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
-                  clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
-                  fullTextCollector += clean;
-                  if (fullTextCollector.length % 500 < clean.length) console.log('[wealth-stream] [DEBUG] deepseek chunk: +' + clean.length + ' chars, total=' + fullTextCollector.length);
-                  try {
-                    let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean, _a)), realSunSign, _a);
-                    pc = applyMonthLockSanitizer(pc, astroMatrix, null, null, lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-                    res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-                  } catch(e2) { res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
-                  if (typeof res.flush === 'function') res.flush();
-                }
-              } catch(e){}
-            }
-          });
-          dsRes.on('end', () => { clearInterval(heartbeat2); console.log('[wealth-stream] [DEBUG] DeepSeek stream END, fullTextCollector.length=' + fullTextCollector.length); resolveDs({ ok: true }); });
-          dsRes.on('error', (e) => { clearInterval(heartbeat2); console.error('[wealth-stream] DeepSeek stream error:', e.message); resolveDs({ ok: false, status: 0 }); });
-        });
-        dsReq.on('error', (e) => { console.error('[wealth-stream] DeepSeek req error:', e.message); resolveDs({ ok: false, status: 0 }); });
-        dsReq.write(dsReqBody); dsReq.end();
-      });
-
-      // 120s timeout（给 DeepSeek 足够时间跑完年度报告；Railway 硬 timeout 约120s，Node 会先到）
-      const dsResult = await Promise.race([
-        dsPromise,
-        new Promise(r => setTimeout(() => r({ ok: false, status: 408, timedout: true }), 120000))
-      ]);
-      dsDone = true; // 无论结果如何，标记完成防止后续误用
-
-      if (!dsResult.ok) {
-        console.warn('[wealth-stream] DeepSeek failed (' + (dsResult.timedout ? 'timeout' : dsResult.status) + '), trying Gemini 2.0 Flash fallback...');
-        if (geminiKey && !usedGemini) {
-          try {
-            const gemRes = await safeFetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: new TextEncoder().encode(JSON.stringify({
-                  contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                  generationConfig: { maxOutputTokens: 65536, temperature: 0 }
-                })),
-              }
-            );
-            if (gemRes.ok) {
-              const gemData = await gemRes.json();
-              const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              if (fullText) {
-                console.log('[wealth-stream] Gemini 2.0 Flash fallback succeeded, length:', fullText.length);
-                const _ascFb = astroMatrix?.meta?.rising_sign || 'Cancer';
-                let gemClean = final_text_sanitizer(fullText, _ascFb);
-                gemClean = natal_sun_linter(astro_phase_linter(gemClean), realSunSign, _ascFb);
-                gemClean = applyMonthLockSanitizer(gemClean, astroMatrix, null, null, lang);
-                gemClean = standardizeReport(gemClean).replace(/\uFFFD/g, '').replace(/�/g, '');
-                for (const char of gemClean) {
-                  res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}\n\n`, 'utf-8'));
-                  fullTextCollector += char.replace(/\\n/g, '\n').replace(/ \n/g, '\n');
-                }
-                if (fullTextCollector.length > 100) {
-                  writeToCache(gemClean).catch(() => {});
-                }
-                res.write('data: [DONE]\n\n');
-                if (typeof res.flush === 'function') res.flush();
-                return res.end();
-              }
-            }
-          } catch (e) {
-            console.error('[wealth-stream] Gemini 2.0 Flash fallback failed:', e.message);
-          }
-        }
-        res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI error: ' + (dsResult.status || 'unknown') })}\n\n`, 'utf-8'));
-        return res.end();
-      }
+    } catch(e) {
+      console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || e));
     }
-
-    // 🛠️ V73: 真流式 + 后台落库——边收边发，用户体验优先
-    // 🛠️ V108-fix2: 如果 Gemini 已流完，跳过 DeepSeek 读取
-    // 🛠️ V117-fix: DeepSeek 流式已由上方原生 https 处理（dsRes.on('data')），content 直接写 SSE
-    //    aiStream=true → Gemini 流完；aiStream=false → DeepSeek 原生流已写完 fullTextCollector
-    //    post-processing 在下方统一执行，不再走旧的 safeFetch+reader 循环
-
     // V100i: 英文标点清洗（去除中文全角标点污染）
     // V103-fix8: 清理 DeepSeek AI 输出时在换行前加的多余空格（"word \n" → "word\n"）
     const langPunctuationClean = (text, lang) => {
@@ -3339,19 +3070,9 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   let allText = '';
 
   try {
-    // ── Step 1: V69 月度数据（通过HTTP调用Python引擎，5秒超时）──
+    // ── Step 1: V69 月度数据（通过HTTP调用Python引擎）──
     sendStatus('🔮 命运推演引擎启动...');
-    let matrix = null;
-    try {
-      const withTimeout = Promise.race([
-        getAstroMatrix(birthDate, birthTime, lat, lon, tz),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
-      ]);
-      matrix = await withTimeout;
-    } catch(e) {}
-    if (!matrix || !matrix.months || matrix.months.length === 0) {
-      throw new Error('V69 engine unavailable — 无法获取星盘数据');
-    }
+    const matrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz);
     if (!matrix || !matrix.months || matrix.months.length === 0) {
       throw new Error('V69 engine unavailable — 无法获取星盘数据');
     }
