@@ -105,6 +105,9 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
       max_tokens: 24000,
       temperature: 0,
       stream: true,
+      provider: {
+        only: ['anthropic']  // 强制使用 Anthropic 官方节点，最快最稳
+      }
     }),
     signal: controller.signal,
   });
