@@ -2698,6 +2698,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
+  // 🛠️ V122-fix: SSE 心跳保活——Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR)；每 8s 发注释事件保活
+  const _hb = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch (e) {}
+  }, 8000);
+  res.on('close', () => {
+    try { clearInterval(_hb); } catch (e) {}
+    console.warn('[wealth-stream] ⚠️ 连接关闭:', { destroyed: res.destroyed, writableEnded: res.writableEnded, writableFinished: res.writableFinished });
+  });
+  res.on('error', (e) => console.error('[wealth-stream] ❌ res error:', e && e.message));
+
+
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
