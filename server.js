@@ -123,8 +123,12 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
   }, 20000);
   const _doFlush = (text) => {
     if (!text) return;
-    // V124-TEST: 裸奔——跳过全部sanitizer，只做批处理推送，测模型真实速度上限
-    res.write(Buffer.from(`data: ${JSON.stringify({ text })}\n\n`, 'utf-8'));
+    try {
+      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(text,_a)),realSunSign,_a);
+      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+    } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text })}\n\n`, 'utf-8')); }
   };
   while (true) {
     const { done, value } = await reader.read();
