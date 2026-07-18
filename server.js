@@ -70,26 +70,8 @@ function getGeminiKey() {
   return null;
 }
 
-// ── V118: OpenRouter key（借道复活 Gemini/DeepSeek，绕过 Google 锁卡）──
-function getOpenRouterKey() {
-  const envKey = process.env.OPENROUTER_API_KEY;
-  console.log('[V118-DEBUG] OPENROUTER_API_KEY env:', envKey ? envKey.substring(0,10)+'...' : 'undefined');
-  if (envKey && envKey.length > 10) return envKey;
-  try {
-    if (existsSync('/app/.openrouter-key')) {
-      const k = readFileSync('/app/.openrouter-key', 'utf-8').trim();
-      console.log('[V118-DEBUG] .openrouter-key file exists, length:', k.length);
-      if (k.length > 10) return k;
-    } else {
-      console.log('[V118-DEBUG] .openrouter-key file NOT FOUND');
-    }
-  } catch(e) { console.log('[V118-DEBUG] .openrouter-key read error:', e.message); }
-  return null;
-}
-
-// ── V118: OpenRouter 流式调用（OpenAI 兼容格式，SSE 逐字吐出）──
-async function callOpenRouterStream(model, systemText, userText, controller, res, astroMatrix, realSunSign, lang) {
-  // 🛠️ V125: OpenRouter key 损坏 (User not found)，改走 DeepSeek 直连
+// ── DeepSeek 直连流式（OpenAI 兼容格式，SSE 逐字吐出）──
+async function callDeepSeekStream(systemText, userText, controller, res, astroMatrix, realSunSign, lang) {
   const deepseekKey = getDeepSeekKey();
   const resp = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -2870,15 +2852,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = getDeepSeekKey();
     const geminiKey = process.env.GEMINI_API_KEY;
-    const openrouterKey = getOpenRouterKey();  // 🛠️ V118: OpenRouter 借道
     // 🔧 V75 fix: 64000 彻底解除年报截断
-    // 🛠️ V108-fix2: 年报改用 Gemini 2.5 Pro 为主模型（支持 65536 tokens 输出，彻底消灭10月截断）
-    // 🛠️ V116-final: 条件化 max_tokens —— Gemini 主用 65536(快)，DeepSeek 兜底降到 32000(够完整年报且不卡)
-    let maxTokens = 32000;
-    if (geminiKey && reportType === 'yearly') maxTokens = 65536; // Gemini 支持高输出且快
-    // 🛠️ V125-fix: max_tokens 15000 → 年报上限约10000-12000字，速度100字/秒，100-120秒完成，落 Railway 安全时长窗口内
-    else if (reportType === 'yearly') maxTokens = 15000;
-    else maxTokens = 4000;
+    // 🛠️ V125-final: 删除所有 OpenRouter 残留，纯 DeepSeek 直连
+    let maxTokens = reportType === 'yearly' ? 15000 : 4000;
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
@@ -2888,31 +2864,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiStream = false;
     let geminiFullText = '';
 
-    if (reportType === 'yearly' && openrouterKey) {
-      usedGemini = true;
-      // 🛠️ V123: OpenRouter + Gemini 3.5 Flash（生成速度比 Haiku 快 ~2x）
-      const openModels = ['google/gemini-3.5-flash', 'anthropic/claude-haiku-4.5', 'deepseek/deepseek-v3.2'];
-      for (const om of openModels) {
-        try {
-          const orText = await callOpenRouterStream(om, prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
-          if (orText && orText.trim().length > 0) {
-            geminiFullText = orText;
-            aiStream = true;
-            console.log('[wealth-stream] [V118] OpenRouter ' + om + ' OK, text frames cached');
-            break;
-          } else {
-            console.warn('[wealth-stream] [V118] OpenRouter ' + om + ' returned ZERO text => trying next');
-          }
-        } catch(e) {
-          console.error('[wealth-stream] [V118] OpenRouter ' + om + ' FAILED: ' + (e.message || e) + ' | status may be non-ok or stream parse error');
+    // 🛠️ V125-final: 纯 DeepSeek 直连流式，无任何 OpenRouter 残留
+    if (reportType === 'yearly' && deepseekKey) {
+      usedGemini = false;
+      try {
+        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
+        if (geminiFullText && geminiFullText.trim().length > 0) {
+          aiStream = true;
+          console.log('[wealth-stream] [V125] DeepSeek stream OK');
         }
+      } catch(e) {
+        console.error('[wealth-stream] [V125] DeepSeek stream FAILED: ' + (e.message || e));
       }
-      if (!aiStream) {
-        console.warn('[wealth-stream] [V118] OpenRouter all models failed, falling back to direct DeepSeek');
-        usedGemini = false;
-      }
-    } else if (reportType === 'yearly' && geminiKey) {
-      // 保留原 Gemini 直连作为备用（当 OpenRouter key 缺失时）
+    } else if (geminiKey) {
+      // 保留 Gemini 直连作为备用（Gemini key 存在但 DeepSeek 不可用时）
       usedGemini = true;
       try {
         const gemRes = await safeFetch(
