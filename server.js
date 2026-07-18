@@ -328,6 +328,9 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // ── V97ap: 清除渲染失败的乱码方块（U+FFFD 和空 Emoji 占位）──
   text = text.replace(/�/g, '').replace(/\uFFFD/g, '').replace(/ {2,}/g, ' ');
 
+  // ── V120-fix: 清理军师审计发现的空括号污染（AI 变量填充残留）──
+  text = text.replace(/（）/g, '').replace(/\(\)/g, '');
+
   // ── V97ar: 清理隐身脏字符（Emoji 变体选择符/零宽字符/不可见 Unicode）──
   // ── V100r: 清理模板污染残留（军师审计：AI将互联网金句与章节标记混合）──
   // ── V100r: 清理互联网金句与章节标记混合污染（军师2026-07-12审计发现）──
