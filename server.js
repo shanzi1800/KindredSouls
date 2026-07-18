@@ -99,13 +99,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         'Content-Length': Buffer.byteLength(reqBody),
       },
     }, (apiRes) => {
-      if (!apiRes.ok || apiRes.statusCode >= 400) {
+      if (apiRes.statusCode >= 400) {
         let errBody = '';
         apiRes.on('data', c => errBody += c);
         apiRes.on('end', () => {
           console.error('[callDeepSeek] HTTP ' + apiRes.statusCode + ':', errBody.slice(0, 200));
           reject(new Error('DeepSeek HTTP ' + apiRes.statusCode));
         });
+        apiRes.on('error', e => { console.error('[callDeepSeek] apiRes error:', e.message); reject(e); });
         return;
       }
 
