@@ -103,7 +103,7 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
         { role: 'system', content: systemText },
         { role: 'user', content: userText },
       ],
-      max_tokens: 24000,
+      max_tokens: 15000,  // V125-fix: 年报上限10000-12000字，100字/秒，Railway时长墙内完成
       temperature: 0,
       stream: true,
     }),
@@ -2876,7 +2876,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V116-final: 条件化 max_tokens —— Gemini 主用 65536(快)，DeepSeek 兜底降到 32000(够完整年报且不卡)
     let maxTokens = 32000;
     if (geminiKey && reportType === 'yearly') maxTokens = 65536; // Gemini 支持高输出且快
-    else if (reportType === 'yearly') maxTokens = 32000; // DeepSeek 兜底：32000≈24000字，够完整年报，处理2-3分钟不卡
+    // 🛠️ V125-fix: max_tokens 15000 → 年报上限约10000-12000字，速度100字/秒，100-120秒完成，落 Railway 安全时长窗口内
+    else if (reportType === 'yearly') maxTokens = 15000;
     else maxTokens = 4000;
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
@@ -2991,7 +2992,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           { role: 'system', content: prompt.system },
           { role: 'user', content: prompt.user },
         ],
-        max_tokens: reportType === 'yearly' ? 3000 : 2000,  // V117c: 降为3000，DeepSeek免费层Railway限流，必须60s内跑完否则超时
+        max_tokens: reportType === 'yearly' ? 15000 : 2000,  // V125-fix: 年报15000 token≈10000-12000字，100字/秒，120秒内完成
         temperature: 0,
         stream: true,
       });
