@@ -70,6 +70,81 @@ function getGeminiKey() {
   return null;
 }
 
+// ── V118: OpenRouter key（借道复活 Gemini/DeepSeek，绕过 Google 锁卡）──
+function getOpenRouterKey() {
+  if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.length > 10) return process.env.OPENROUTER_API_KEY;
+  try {
+    if (existsSync('/app/.openrouter-key')) {
+      const k = readFileSync('/app/.openrouter-key', 'utf-8').trim();
+      if (k.length > 10) return k;
+    }
+  } catch(e) { /* fall through */ }
+  return null;
+}
+
+// ── V118: OpenRouter 流式调用（OpenAI 兼容格式，SSE 逐字吐出）──
+async function callOpenRouterStream(model, systemText, userText, controller, res, astroMatrix, realSunSign, lang) {
+  const openrouterKey = getOpenRouterKey();
+  const resp = await safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openrouterKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: systemText },
+        { role: 'user', content: userText },
+      ],
+      max_tokens: 24000,
+      temperature: 0,
+      stream: true,
+    }),
+    signal: controller.signal,
+  });
+  if (!resp.ok) {
+    throw new Error('OpenRouter ' + model + ' HTTP ' + resp.status);
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let fullText = '';
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
+  }, 20000);
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) { clearInterval(heartbeat); break; }
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const d = line.slice(6).trim();
+        if (d === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(d);
+          const txt = parsed.choices?.[0]?.delta?.content || '';
+          if (txt) {
+            let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
+            clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
+            fullText += clean;
+            try {
+              const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+              let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean,_a)),realSunSign,_a);
+              pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+            } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
+            if (typeof res.flush === 'function') res.flush();
+          }
+        } catch(e) {}
+      }
+    }
+  }
+  return fullText;
+}
+
 // ── V97bd: Supabase keys 从文件读（防 Railway Dashboard 老 key 覆盖，同 DeepSeek 方案）──
 try {
   if (existsSync('/app/.supabase-url')) {
@@ -2750,6 +2825,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     const deepseekKey = getDeepSeekKey();
     const geminiKey = process.env.GEMINI_API_KEY;
+    const openrouterKey = getOpenRouterKey();  // 🛠️ V118: OpenRouter 借道
     // 🔧 V75 fix: 64000 彻底解除年报截断
     // 🛠️ V108-fix2: 年报改用 Gemini 2.5 Pro 为主模型（支持 65536 tokens 输出，彻底消灭10月截断）
     // 🛠️ V116-final: 条件化 max_tokens —— Gemini 主用 65536(快)，DeepSeek 兜底降到 32000(够完整年报且不卡)
@@ -2766,9 +2842,32 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiStream = false;
     let geminiFullText = '';
 
-    if (reportType === 'yearly' && geminiKey) {
+    if (reportType === 'yearly' && openrouterKey) {
       usedGemini = true;
-      // Gemini 2.5 Pro 流式请求
+      // 🛠️ V118: OpenRouter 借道（Gemini 2.5 Flash 优先，DeepSeek V3 兜底，绕 Google 锁卡）
+      const openModels = ['google/gemini-2.5-flash', 'deepseek/deepseek-v3.2'];
+      for (const om of openModels) {
+        try {
+          const orText = await callOpenRouterStream(om, prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
+          if (orText && orText.trim().length > 0) {
+            geminiFullText = orText;
+            aiStream = true;
+            console.log('[wealth-stream] [V118] OpenRouter ' + om + ' OK, text frames cached');
+            break;
+          } else {
+            console.warn('[wealth-stream] [V118] OpenRouter ' + om + ' returned ZERO text, trying next');
+          }
+        } catch(e) {
+          console.error('[wealth-stream] [V118] OpenRouter ' + om + ' failed:', e.message);
+        }
+      }
+      if (!aiStream) {
+        console.warn('[wealth-stream] [V118] OpenRouter all models failed, falling back to direct DeepSeek');
+        usedGemini = false;
+      }
+    } else if (reportType === 'yearly' && geminiKey) {
+      // 保留原 Gemini 直连作为备用（当 OpenRouter key 缺失时）
+      usedGemini = true;
       try {
         const gemRes = await safeFetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:streamGenerateContent?alt=sse&key=${geminiKey}`,
@@ -2777,7 +2876,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             headers: { 'Content-Type': 'application/json' },
             body: new TextEncoder().encode(JSON.stringify({
               contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 65536, temperature: 0 }  // V116-fix: V1年报用65536防截断
+              generationConfig: { maxOutputTokens: 65536, temperature: 0 }
             })),
             signal: controller.signal
           }
@@ -2805,12 +2904,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   const txt = gp.candidates?.[0]?.content?.parts?.[0]?.text || '';
                   if (txt) {
                     let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
-                    // 🔒 V116-fix: V1 Gemini流式chunks全量清洗（Bug1-4根因：裸发未过linter）
-                    clean = clean.replace(/客厅[^\n]{0,30}?(?:对应?|是?|属于?)第4宫/g, function(m){ return m.replace(/第4宫/g,'第4宫（田宅宫·摩羯座）'); });
-                    ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w=>{ if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
                     clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
                     geminiFullText += clean;
-                    // 流式发送前过linter
                     try {
                       const _a = astroMatrix?.meta?.rising_sign||'Cancer';
                       let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean,_a)),realSunSign,_a);
@@ -2823,17 +2918,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               }
             }
           }
-          // 🛠️ 军师兜底（2026-07-16）：Gemini 流结束但零文本 → 强制降级 DeepSeek，杜绝静默空报告
           if (!geminiFullText || geminiFullText.trim().length === 0) {
-            throw new Error('[wealth-stream] Gemini stream completed with ZERO text (quota exhausted / prompt blocked). Forcing DeepSeek fallback.');
+            throw new Error('[wealth-stream] Gemini stream completed with ZERO text. Forcing DeepSeek fallback.');
           }
           aiStream = true;
         } else {
-          console.warn('[wealth-stream] Gemini 2.5 Pro failed (' + gemRes.status + '), falling back to DeepSeek');
           usedGemini = false;
         }
       } catch(e) {
-        console.error('[wealth-stream] Gemini 2.5 Pro stream error:', e.message);
         usedGemini = false;
       }
     }
