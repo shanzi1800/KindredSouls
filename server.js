@@ -3007,6 +3007,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w => { if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
                   clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
                   fullTextCollector += clean;
+                  if (fullTextCollector.length % 500 < clean.length) console.log('[wealth-stream] [DEBUG] deepseek chunk: +' + clean.length + ' chars, total=' + fullTextCollector.length);
                   try {
                     let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean, _a)), realSunSign, _a);
                     pc = applyMonthLockSanitizer(pc, astroMatrix, null, null, lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -3017,7 +3018,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               } catch(e){}
             }
           });
-          dsRes.on('end', () => { clearInterval(heartbeat2); resolveDs({ ok: true }); });
+          dsRes.on('end', () => { clearInterval(heartbeat2); console.log('[wealth-stream] [DEBUG] DeepSeek stream END, fullTextCollector.length=' + fullTextCollector.length); resolveDs({ ok: true }); });
           dsRes.on('error', (e) => { clearInterval(heartbeat2); console.error('[wealth-stream] DeepSeek stream error:', e.message); resolveDs({ ok: false, status: 0 }); });
         });
         dsReq.on('error', (e) => { console.error('[wealth-stream] DeepSeek req error:', e.message); resolveDs({ ok: false, status: 0 }); });
