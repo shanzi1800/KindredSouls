@@ -109,7 +109,7 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
     signal: controller.signal,
   });
   if (!resp.ok) {
-    throw new Error('OpenRouter ' + model + ' HTTP ' + resp.status);
+    console.log('[callOR] ' + model + ' HTTP ' + resp.status); throw new Error('OpenRouter ' + model + ' HTTP ' + resp.status);
   }
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -2899,10 +2899,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             console.log('[wealth-stream] [V118] OpenRouter ' + om + ' OK, text frames cached');
             break;
           } else {
-            console.warn('[wealth-stream] [V118] OpenRouter ' + om + ' returned ZERO text, trying next');
+            console.warn('[wealth-stream] [V118] OpenRouter ' + om + ' returned ZERO text => trying next');
           }
         } catch(e) {
-          console.error('[wealth-stream] [V118] OpenRouter ' + om + ' failed:', e.message);
+          console.error('[wealth-stream] [V118] OpenRouter ' + om + ' FAILED: ' + (e.message || e) + ' | status may be non-ok or stream parse error');
         }
       }
       if (!aiStream) {
