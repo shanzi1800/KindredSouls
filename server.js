@@ -2705,6 +2705,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V102v-enTitleRe-ok'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
 
+  // 🛠️ V122-fix: HTTP/2 长流中断防护——禁用 Nagle + 启用 keep-alive，让 chunk 立即推出去
+  if (res.socket) {
+    try { res.socket.setNoDelay(true); res.socket.setKeepAlive(true); } catch(e) {}
+  }
+
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
   const cacheKey = `wealth:v113x:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
@@ -3003,6 +3008,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 const content = parsed.choices?.[0]?.delta?.content || '';
                 if (content) {
                   let clean = content.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
+                  // 🛠️ V122-fix: 跨块空括号深度清理
+                  // 1. 基础：中文/英文空括号
+                  clean = clean.replace(/（）/g, '').replace(/\(\)/g, '');
+                  // 2. 中文字 + 后续括号包裹其他内容 + 中文（例：第五宫（）狮子座）
+                  clean = clean.replace(/([\u4e00-\u9fa5])（）([\u4e00-\u9fa5])/g, '$1$2');
+                  // 3. 英文括号包裹后接中文（例：（Jupiter Return）开启）
+                  clean = clean.replace(/[（(][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[）)](?=[\u4e00-\u9fa5])/g, '');
+                  // 4. 中文括号包裹中文字符后接点/逗号（例：（Jupiter Return）开启）同样
                   clean = clean.replace(/客厅[^\n]{0,30}?(?:对应?|是?|属于?)第4宫/g, m => m.replace(/第4宫/g,'第4宫（田宅宫·摩羯座）'));
                   ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'].forEach(w => { if(w===realSunSign)return; clean=clean.replace(new RegExp('你的本命太阳在'+w.replace(/座$/,'')+'座','g'),'你的本命太阳在'+realSunSign).replace(new RegExp('本命太阳在'+w,'g'),'本命太阳在'+realSunSign).replace(new RegExp('作为'+w.replace(/座$/,'')+'之人','g'),'作为'+realSunSign.replace(/座$/,'')+'之人'); });
                   clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -3110,6 +3123,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
     cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+
+    // 🛠️ V122-fix: 终极空括号清理（final_text_sanitizer 可能漏 “（）” 跨块，
+    //   完整文本这里再扣一遍）
+    cleanedText = cleanedText.replace(/（）/g, '').replace(/\(\)/g, '');
+    cleanedText = cleanedText.replace(/([\u4e00-\u9fa5])（）([\u4e00-\u9fa5])/g, '$1$2');
+    cleanedText = cleanedText.replace(/[（(][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[）)](?=[\u4e00-\u9fa5])/g, '');
 
     // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport（HIT 路径已调用，此处漏掉导致章节 ✦ 注入缺失）
     cleanedText = standardizeReport(cleanedText);
@@ -3232,6 +3251,10 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V116-v2-rolling-engine');
+  // 🛠️ V122-fix: HTTP/2 长流中断防护
+  if (res.socket) {
+    try { res.socket.setNoDelay(true); res.socket.setKeepAlive(true); } catch(e) {}
+  }
 
   const send = (obj) => {
     try {
