@@ -3277,7 +3277,24 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     const v2SysPrompt = sysPrompt + CHAPTER5_CONSTRAINT;
 
     // ── Step 4: 年度引言 ──
-    const natalSunSign = meta.sun_sign || 'Pisces';
+    // 🛠️ V121-fix: Python 服务未返回本命太阳星座，用 JavaScript 计算覆盖 fallback
+    const birthParts = birthDate.split('-');
+    const birthYear = parseInt(birthParts[0]);
+    const birthMonth = parseInt(birthParts[1]);
+    const birthDay = parseInt(birthParts[2]);
+    
+    // JavaScript 星座计算函数（同 getZodiacIdx）
+    const getNatalSunIdx = (m, d) => {
+      const cuts = [[1,20,1],[2,19,2],[3,21,3],[4,20,4],[5,21,5],[6,22,6],[7,23,7],[8,23,8],[9,23,9],[10,24,10],[11,22,11],[12,22,0]];
+      for (let i = cuts.length - 1; i >= 0; i--) {
+        if (m > cuts[i][0] || (m === cuts[i][0] && d >= cuts[i][1])) return cuts[i][2];
+      }
+      return 0;
+    };
+    const SIGNS_EN = ['Capricorn','Aquarius','Pisces','Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius'];
+    const jsNatalSunSign = SIGNS_EN[getNatalSunIdx(birthMonth, birthDay)];
+    
+    const natalSunSign = jsNatalSunSign || meta.sun_sign || 'Pisces';
     const natalMoonSign = meta.moon_sign || 'Cancer';
     const natalRising = risingSign;
     const natalSunZH = SIGN_MAP_ZH[natalSunSign] || natalSunSign;
