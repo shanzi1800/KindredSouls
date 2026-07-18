@@ -2889,7 +2889,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (reportType === 'yearly' && openrouterKey) {
       usedGemini = true;
       // 🛠️ V123: OpenRouter + Gemini 3.5 Flash（生成速度比 Haiku 快 ~2x）
-      const openModels = ['google/gemini-2.5-flash', 'anthropic/claude-3.5-haiku', 'deepseek/deepseek-v3.2'];
+      const openModels = ['google/gemini-3.5-flash', 'anthropic/claude-haiku-4.5', 'deepseek/deepseek-v3.2'];
       for (const om of openModels) {
         try {
           const orText = await callOpenRouterStream(om, prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
