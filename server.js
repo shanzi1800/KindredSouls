@@ -2796,7 +2796,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       });
       console.log(`[wealth-stream] [WRITE] Cache write: ${cacheKey}, length=${text.length}, status=${res2.status}`);
     } catch (e) {
-      console.warn('[wealth-stream] Cache write error:', e.message);
+      console.error('[wealth-stream] [WRITE-ERROR] ' + (cacheKey||'?') + ': ' + (e && e.message) + (e && e.stack ? ' | ' + e.stack.split('\n')[1] : ''));
     }
   };
 
@@ -3140,9 +3140,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     res.write('data: [DONE]\n\n');
     if (typeof res.flush === 'function') res.flush();
 
+    // 🛠️ V125-fix: streaming结束立即写缓存（不依赖completion是否成功）
+    if (cleanedText.length > 100) {
+      console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
+      writeToCache(cleanedText).catch((e) => {
+        console.error('[wealth-stream] [WRITE-CACHE-ERROR] ' + cacheKey + ': ' + (e && e.message));
+      });
+    } else {
+      console.warn('[wealth-stream] [WRITE-CACHE-SKIP] cleanedText too short: ' + cleanedText.length + ' chars');
+    }
+
     res.end();
 
-    // 后台落库（不阻塞响应）
+    // 后台补全（非必须，不影响缓存）
     // 年报完成判断：英文用 'Final Wealth Oracle'，中文用 '最终财富神谕'
     const hasFinalOracle = fullTextCollector.includes('Final Wealth Oracle') ||
       fullTextCollector.includes('The Final Wealth Oracle') ||
@@ -3151,10 +3161,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       ? (hasFinalOracle && fullTextCollector.length > 8000)
       : (fullTextCollector.length > 500);
 
-    if (isComplete && cleanedText.length > 100) {
-      console.log(`[wealth-stream] [OK] Streaming done, cached ${cleanedText.length} chars (cleaned)`);
-      writeToCache(cleanedText).catch(() => {});
-    } else if (fullTextCollector.length > 100) {
+    if (!isComplete && fullTextCollector.length > 100) {
       console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
       // 尝试非流式补全并落库
       try {
