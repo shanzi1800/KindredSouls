@@ -2868,6 +2868,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let geminiFullText = '';
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream（native fetch），废弃所有 Gemini/https.request 降级路径
+    console.log('[wealth-stream] [V131] BEFORE callDeepSeekStream, key=' + (deepseekKey ? 'YES' : 'NO'));
     if (!deepseekKey) {
       clearTimeout(aiTimeout);
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
