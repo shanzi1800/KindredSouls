@@ -2726,7 +2726,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
+  res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
+  res.setHeader('Connection', 'keep-alive'); // V121 原生，防 Railway hikari 提前 RST
 
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
@@ -3273,7 +3274,8 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix');
+  res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
+  res.setHeader('Connection', 'keep-alive');
 
   const send = (obj) => {
     try {
