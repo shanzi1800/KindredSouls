@@ -115,9 +115,21 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
   const decoder = new TextDecoder();
   let buf = '';
   let fullText = '';
+  // 🛠️ V123: 批处理优化——每累积 FLUSH_SIZE 字符才 flush 一次，减少 HTTP 写入次数
+  const FLUSH_SIZE = 50;
+  let pending = '';
   const heartbeat = setInterval(() => {
     try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
   }, 20000);
+  const _doFlush = (text) => {
+    if (!text) return;
+    try {
+      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(text,_a)),realSunSign,_a);
+      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+    } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text })}\n\n`, 'utf-8')); }
+  };
   while (true) {
     const { done, value } = await reader.read();
     if (done) { clearInterval(heartbeat); break; }
@@ -135,18 +147,19 @@ async function callOpenRouterStream(model, systemText, userText, controller, res
             let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
             clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
             fullText += clean;
-            try {
-              const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-              let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(clean,_a)),realSunSign,_a);
-              pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-              res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-            } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text: clean })}\n\n`, 'utf-8')); }
-            if (typeof res.flush === 'function') res.flush();
+            pending += clean;
+            if (pending.length >= FLUSH_SIZE) {
+              _doFlush(pending);
+              res.flush && res.flush();
+              pending = '';
+            }
           }
         } catch(e) {}
       }
     }
   }
+  // 最后一批不足 FLUSH_SIZE 的残留
+  if (pending) { _doFlush(pending); res.flush && res.flush(); }
   return fullText;
 }
 
