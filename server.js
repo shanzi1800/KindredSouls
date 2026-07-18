@@ -71,51 +71,66 @@ function getGeminiKey() {
 }
 
 // ── DeepSeek 直连流式（OpenAI 兼容格式，SSE 逐字吐出）──
-async function callDeepSeekStream(systemText, userText, controller, res, astroMatrix, realSunSign, lang) {
+// 🛠️ V126: Node.js 原生 fetch 流式（替代 safeFetch，避免 Waitress 缓冲 bug）
+// 🛠️ onChunk(text) 实时回调写入 SSE，避免流式结束后 fullTextCollector 仍为空
+async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang) {
   const deepseekKey = getDeepSeekKey();
-  const resp = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${deepseekKey}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: systemText },
-        { role: 'user', content: userText },
-      ],
-      max_tokens: 15000,  // V125-fix: 年报上限10000-12000字，100字/秒，Railway时长墙内完成
-      temperature: 0,
-      stream: true,
-    }),
-    signal: controller.signal,
-  });
-  if (!resp.ok) {
-    console.log('[callOR] ' + model + ' HTTP ' + resp.status); throw new Error('OpenRouter ' + model + ' HTTP ' + resp.status);
+  let resp;
+  try {
+    resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemText },
+          { role: 'user', content: userText },
+        ],
+        max_tokens: 15000,
+        temperature: 0,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+  } catch(e) {
+    console.error('[callDeepSeek] fetch() threw:', e.message);
+    throw e;
   }
+  if (!resp.ok) {
+    const bodyText = await resp.text();
+    console.error('[callDeepSeek] HTTP ' + resp.status + ':', bodyText.slice(0, 300));
+    throw new Error('DeepSeek HTTP ' + resp.status);
+  }
+
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
   let fullText = '';
-  // 🛠️ V123: 批处理优化——每累积 FLUSH_SIZE 字符才 flush 一次，减少 HTTP 写入次数
+  let chunksProcessed = 0;
+  let bytesProcessed = 0;
   const FLUSH_SIZE = 50;
   let pending = '';
+  let streamClosed = false;
+
   const heartbeat = setInterval(() => {
     try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){}
   }, 20000);
-  const _doFlush = (text) => {
-    if (!text) return;
-    try {
-      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(text,_a)),realSunSign,_a);
-      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-    } catch(e2){ res.write(Buffer.from(`data: ${JSON.stringify({ text })}\n\n`, 'utf-8')); }
-  };
+
   while (true) {
-    const { done, value } = await reader.read();
-    if (done) { clearInterval(heartbeat); break; }
+    let readResult;
+    try {
+      readResult = await reader.read();
+    } catch(e) {
+      console.error('[callDeepSeek] reader.read() threw:', e.message);
+      break;
+    }
+    const { done, value } = readResult;
+    if (done) { clearInterval(heartbeat); streamClosed = true; break; }
+    bytesProcessed += (value ? value.byteLength : 0);
+    if (!value || value.byteLength === 0) continue;
     buf += decoder.decode(value, { stream: true });
     const lines = buf.split('\n');
     buf = lines.pop() || '';
@@ -127,12 +142,19 @@ async function callDeepSeekStream(systemText, userText, controller, res, astroMa
           const parsed = JSON.parse(d);
           const txt = parsed.choices?.[0]?.delta?.content || '';
           if (txt) {
+            chunksProcessed++;
             let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ');
             clean = clean.replace(/\uFFFD/g,'').replace(/�/g,'');
             fullText += clean;
             pending += clean;
             if (pending.length >= FLUSH_SIZE) {
-              _doFlush(pending);
+              try {
+                const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+                let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+                pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+                res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+                onChunk && onChunk(pc);
+              } catch(e2) { res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8')); onChunk && onChunk(pending); }
               res.flush && res.flush();
               pending = '';
             }
@@ -141,8 +163,17 @@ async function callDeepSeekStream(systemText, userText, controller, res, astroMa
       }
     }
   }
-  // 最后一批不足 FLUSH_SIZE 的残留
-  if (pending) { _doFlush(pending); res.flush && res.flush(); }
+  if (pending) {
+    try {
+      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+      onChunk && onChunk(pc);
+    } catch(e) { res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8')); onChunk && onChunk(pending); }
+    res.flush && res.flush();
+  }
+  console.log('[callDeepSeek] RETURN fullText.length=' + fullText.length + ' chunks=' + chunksProcessed + ' bytes=' + bytesProcessed + ' streamClosed=' + streamClosed);
   return fullText;
 }
 
@@ -2868,7 +2899,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (reportType === 'yearly' && deepseekKey) {
       usedGemini = false;
       try {
-        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
+        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, (chunk) => {
+          // 🛠️ V126-fix: onChunk 实时回调写入 SSE handler 的 fullTextCollector，让缓存写入能拿到完整内容
+          fullTextCollector += chunk;
+          if (fullTextCollector.length % 1000 < chunk.length) console.log('[wealth-stream] [V126] deepseek chunk: +' + chunk.length + ' chars, total=' + fullTextCollector.length);
+        }, astroMatrix, realSunSign, lang);
         if (geminiFullText && geminiFullText.trim().length > 0) {
           aiStream = true;
           console.log('[wealth-stream] [V125] DeepSeek stream OK');
