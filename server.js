@@ -2858,7 +2858,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const geminiKey = process.env.GEMINI_API_KEY;
     // 🔧 V75 fix: 64000 彻底解除年报截断
     // 🛠️ V125-final: 删除所有 OpenRouter 残留，纯 DeepSeek 直连
-    let maxTokens = reportType === 'yearly' ? 15000 : 4000;
+    let maxTokens = reportType === 'yearly' ? 48000 : 4000;
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
