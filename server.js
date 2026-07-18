@@ -2703,7 +2703,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Deploy-Marker', 'V102v-enTitleRe-ok'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
+  res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
 
   // 🛠️ V122-fix: HTTP/2 长流中断防护——禁用 Nagle + 启用 keep-alive，让 chunk 立即推出去
   if (res.socket) {
@@ -3250,7 +3250,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Deploy-Marker', 'V116-v2-rolling-engine');
+  res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix');
   // 🛠️ V122-fix: HTTP/2 长流中断防护
   if (res.socket) {
     try { res.socket.setNoDelay(true); res.socket.setKeepAlive(true); } catch(e) {}
