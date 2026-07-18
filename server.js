@@ -2701,7 +2701,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix'); // 🛠️ 部署验证标记：curl -I 看此头确认新代码已上线
 
@@ -3253,7 +3252,6 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   // ── SSE Headers ──
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V122-empty-paren-http2-fix');
   // 🛠️ V122-fix: HTTP/2 长流中断防护
