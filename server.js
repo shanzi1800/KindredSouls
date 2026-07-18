@@ -72,13 +72,18 @@ function getGeminiKey() {
 
 // ── V118: OpenRouter key（借道复活 Gemini/DeepSeek，绕过 Google 锁卡）──
 function getOpenRouterKey() {
-  if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.length > 10) return process.env.OPENROUTER_API_KEY;
+  const envKey = process.env.OPENROUTER_API_KEY;
+  console.log('[V118-DEBUG] OPENROUTER_API_KEY env:', envKey ? envKey.substring(0,10)+'...' : 'undefined');
+  if (envKey && envKey.length > 10) return envKey;
   try {
     if (existsSync('/app/.openrouter-key')) {
       const k = readFileSync('/app/.openrouter-key', 'utf-8').trim();
+      console.log('[V118-DEBUG] .openrouter-key file exists, length:', k.length);
       if (k.length > 10) return k;
+    } else {
+      console.log('[V118-DEBUG] .openrouter-key file NOT FOUND');
     }
-  } catch(e) { /* fall through */ }
+  } catch(e) { console.log('[V118-DEBUG] .openrouter-key read error:', e.message); }
   return null;
 }
 
