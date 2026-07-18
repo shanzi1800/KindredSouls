@@ -89,15 +89,16 @@ function getOpenRouterKey() {
 
 // ── V118: OpenRouter 流式调用（OpenAI 兼容格式，SSE 逐字吐出）──
 async function callOpenRouterStream(model, systemText, userText, controller, res, astroMatrix, realSunSign, lang) {
-  const openrouterKey = getOpenRouterKey();
-  const resp = await safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+  // 🛠️ V125: OpenRouter key 损坏 (User not found)，改走 DeepSeek 直连
+  const deepseekKey = getDeepSeekKey();
+  const resp = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${openrouterKey}`,
+      'Authorization': `Bearer ${deepseekKey}`,
     },
     body: JSON.stringify({
-      model: model,
+      model: 'deepseek-chat',
       messages: [
         { role: 'system', content: systemText },
         { role: 'user', content: userText },
