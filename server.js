@@ -2381,13 +2381,17 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // ── 报告生成（月报/年报）──
     const { includeInsight } = req.body || {};
     if (reportType === 'monthly' || reportType === 'yearly') {
-      // ── V69 SwissEph: Fetch computed astro matrix ──
+      // ── V69 SwissEph: Fetch computed astro matrix（5秒超时）──
       let astroMatrix = null;
       try {
-        astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
+        const withTimeout = Promise.race([
+          getAstroMatrix(birthDate, birthTime, lat, lon, tz),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
+        ]);
+        astroMatrix = await withTimeout;
         if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
       } catch (e) {
-        console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
+        console.warn('[Wealth Oracle] [V69] Fetch failed, proceeding without V69:', e.message);
       }
 
       try {
@@ -2870,10 +2874,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   const realSunSign = signs[getZodiacIdx(birthMonth, birthDay)];
 
-  // ── V69 SwissEph: Fetch computed astro matrix ──
+  // ── V69 SwissEph: Fetch computed astro matrix（5秒超时）──
   let astroMatrix = null;
   try {
-    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
+    const withTimeout = Promise.race([
+      getAstroMatrix(birthDate, birthTime, lat, lon, tz),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
+    ]);
+    astroMatrix = await withTimeout;
     if (astroMatrix) {
       console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
     }
@@ -3331,9 +3339,19 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   let allText = '';
 
   try {
-    // ── Step 1: V69 月度数据（通过HTTP调用Python引擎）──
+    // ── Step 1: V69 月度数据（通过HTTP调用Python引擎，5秒超时）──
     sendStatus('🔮 命运推演引擎启动...');
-    const matrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz);
+    let matrix = null;
+    try {
+      const withTimeout = Promise.race([
+        getAstroMatrix(birthDate, birthTime, lat, lon, tz),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('V69 timeout (5s)')), 5000))
+      ]);
+      matrix = await withTimeout;
+    } catch(e) {}
+    if (!matrix || !matrix.months || matrix.months.length === 0) {
+      throw new Error('V69 engine unavailable — 无法获取星盘数据');
+    }
     if (!matrix || !matrix.months || matrix.months.length === 0) {
       throw new Error('V69 engine unavailable — 无法获取星盘数据');
     }
