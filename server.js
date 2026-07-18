@@ -2878,7 +2878,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     console.log('[wealth-stream] >>> CALLING callDeepSeekStream, prompt.len=' + (prompt.system + prompt.user).length);
     console.log('[wealth-stream] >>> res.type=' + typeof res + ', res.write=' + typeof res?.write + ', deepseekKey=' + (getDeepSeekKey() ? 'YES' : 'NO'));
     try {
-      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, (chunk) => {
+      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
         fullTextCollector += chunk;
         if (fullTextCollector.length % 1000 < chunk.length) console.log('[wealth-stream] deepseek chunk: +' + chunk.length + ' chars, total=' + fullTextCollector.length);
       }, astroMatrix, realSunSign, lang);
