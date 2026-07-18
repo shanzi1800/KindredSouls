@@ -2849,8 +2849,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     if (reportType === 'yearly' && openrouterKey) {
       usedGemini = true;
-      // 🛠️ V118: OpenRouter 借道（DeepSeek V3 优先，Gemini 2.5 Flash 备用，绕 Google 锁卡）
-      const openModels = ['deepseek/deepseek-v3.2', 'google/gemini-2.5-flash'];
+      // 🛠️ V118: OpenRouter 借道（Claude 3.5 Haiku 首发，速度质量双优）
+      const openModels = ['anthropic/claude-3.5-haiku', 'deepseek/deepseek-v3.2'];
       for (const om of openModels) {
         try {
           const orText = await callOpenRouterStream(om, prompt.system, prompt.user, controller, res, astroMatrix, realSunSign, lang);
