@@ -2869,29 +2869,22 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let geminiFullText = '';
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream（native fetch），废弃所有 Gemini/https.request 降级路径
-    console.log('[wealth-stream] [V131] BEFORE callDeepSeekStream, key=' + (deepseekKey ? 'YES' : 'NO'));
     if (!deepseekKey) {
       clearTimeout(aiTimeout);
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
       return res.end();
     }
-    console.log('[wealth-stream] >>> CALLING callDeepSeekStream, prompt.len=' + (prompt.system + prompt.user).length);
-    console.log('[wealth-stream] >>> res.type=' + typeof res + ', res.write=' + typeof res?.write + ', deepseekKey=' + (getDeepSeekKey() ? 'YES' : 'NO'));
     try {
       geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
         fullTextCollector += chunk;
-        if (fullTextCollector.length % 1000 < chunk.length) console.log('[wealth-stream] deepseek chunk: +' + chunk.length + ' chars, total=' + fullTextCollector.length);
-      }, astroMatrix, realSunSign, lang);
-      console.log('[wealth-stream] <<< callDeepSeekStream RETURNED: len=' + (geminiFullText ? geminiFullText.length : 'null/undefined'));
+        }, astroMatrix, realSunSign, lang);
       if (geminiFullText && geminiFullText.trim().length > 0) {
         aiStream = true;
-        console.log('[wealth-stream] DeepSeek stream OK, textLen=' + geminiFullText.length);
-      } else {
-        console.error('[wealth-stream] DeepSeek returned EMPTY TEXT, aiStream=false');
       }
     } catch(e) {
-      console.error('[wealth-stream] <<< callDeepSeekStream THREW: ' + (e.message || String(e)));
+      console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
     }
+
     // V100i: 英文标点清洗（去除中文全角标点污染）
     // V103-fix8: 清理 DeepSeek AI 输出时在换行前加的多余空格（"word \n" → "word\n"）
     const langPunctuationClean = (text, lang) => {
