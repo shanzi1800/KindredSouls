@@ -73,6 +73,7 @@ function getGeminiKey() {
 // ── DeepSeek 直连流式（OpenAI 兼容格式，SSE 逐字吐出）──
 // 🛠️ V131: Node.js 原生 fetch 流式（Railway 实测 https.request 在流式场景丢数据，fetch 完美）
 async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang) {
+  console.log('[callDeepSeek] START, res.type=', typeof res, 'res.write=', typeof res?.write, 'res.flush=', typeof res?.flush);
   const deepseekKey = getDeepSeekKey();
   let resp;
   try {
@@ -84,15 +85,15 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
-  } catch(e) { console.error('[callDeepSeek] fetch threw:', e.message); throw e; }
-  if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP ' + resp.status + ':', body.slice(0, 200)); throw new Error('DeepSeek HTTP ' + resp.status); }
+  } catch(e) { console.error('[callDeepSeek] fetch threw:', e.name, e.message); throw e; }
+  if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP!ok:', resp.status, body.slice(0,200)); throw new Error('DeepSeek HTTP '+resp.status); }
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buf = '', fullText = '';
   const FLUSH_SIZE = 50;
   let pending = '';
   let chunkCount = 0;
-  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(e){} }, 20000);
+  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
     while (true) {
       const { done, value } = await reader.read();
