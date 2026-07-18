@@ -1468,8 +1468,10 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
 // ── 🛠️ V83: Natal Sun Sign 计算（从生日直接推，不依赖 transit month）──
 function getNatalSunSign(birthDate) {
   const [, month, day] = birthDate.split('-').map(Number);
-  // ⚠️ V86 FIX: 日历顺序（1月→12月），反向循环要求月份升序
-  // 之前的版本是天文学顺序（白羊3月打头），导致10月生日反向循环先碰2月19日→返回双鱼座
+  // 🛠️ V121-fix: 1月1-19日属于摩羯座（12月22日-1月19日）
+  // 反向循环从12月开始，1月早期的日期会漏掉
+  if (month === 1 && day < 20) return 9; // 摩羯座
+  
   const cuts = [
     [1, 20, 10], [2, 19, 11], [3, 21, 0], [4, 20, 1], [5, 21, 2], [6, 21, 3],
     [7, 23, 4], [8, 23, 5], [9, 23, 6], [10, 23, 7], [11, 22, 8], [12, 22, 9]
