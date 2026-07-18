@@ -3064,12 +3064,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               const fullText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '';
               if (fullText) {
                 console.log('[wealth-stream] Gemini 2.0 Flash fallback succeeded, length:', fullText.length);
-                for (const char of fullText) {
+                const _ascFb = astroMatrix?.meta?.rising_sign || 'Cancer';
+                let gemClean = final_text_sanitizer(fullText, _ascFb);
+                gemClean = natal_sun_linter(astro_phase_linter(gemClean), realSunSign, _ascFb);
+                gemClean = applyMonthLockSanitizer(gemClean, astroMatrix, null, null, lang);
+                gemClean = standardizeReport(gemClean).replace(/\uFFFD/g, '').replace(/�/g, '');
+                for (const char of gemClean) {
                   res.write(Buffer.from(`data: ${JSON.stringify({ text: char })}\n\n`, 'utf-8'));
                   fullTextCollector += char.replace(/\\n/g, '\n').replace(/ \n/g, '\n');
                 }
                 if (fullTextCollector.length > 100) {
-                  writeToCache(cleanedText).catch(() => {});
+                  writeToCache(gemClean).catch(() => {});
                 }
                 res.write('data: [DONE]\n\n');
                 if (typeof res.flush === 'function') res.flush();
