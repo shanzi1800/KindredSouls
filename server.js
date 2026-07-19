@@ -1797,7 +1797,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
 铁律：
 • 太阳星座永远用${natalSunZH}（禁止写成别的星座）
-• 木星整月都在第${jupHouse}宫${jupSignLocal}座，土星整月都在第${satHouse}宫${satSignLocal}座（禁止穿越到其他宫位）
+• 木星整月都在第${jupHouse}宫${jupSign}座，土星整月都在第${satHouse}宫${satSign}座（禁止穿越到其他宫位）
 • 写生动，禁止废话，付费用户值得一篇好故事
 `
     };
@@ -2079,8 +2079,8 @@ if (reportType === 'yearly') {
   - 太阳星座 = ${natalSunSign}(如:太阳水瓶座)
   - 太阳宫位 = 第${sunHouse}宫(请勿写成"点亮第1宫"或"落在第X宫")
   - 上升星座 = __RISING_LOCAL__
-  - 木星 = ${jupSignLocal}座第${jupHouse}宫
-  - 土星 = ${satSignLocal}座第${satHouse}宫
+  - 木星 = ${jupSign}座第${jupHouse}宫
+  - 土星 = ${satSign}座第${satHouse}宫
   - 冥王星 = 水瓶座第${plHouse}宫
 【Transit 流月数据】随月份变化,由 [P1.1 SWISSEPH PER-MONTH TRUTH DATA] 提供:
   - 例:2026年7月Transit太阳 = 巨蟹座;2027年6月Transit太阳 = 双子座
