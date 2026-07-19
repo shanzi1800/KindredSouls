@@ -1746,14 +1746,14 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       return `  - ${zh}: ${p.sign} 第${house}宫${rx}${status}`;
     }).filter(Boolean).join('\n') : '';
 
-    // ── 月报系统提示词(6语言·Markdown格式·2026-07-19)──
+    // ── 月报系统提示词(6语言·Markdown格式·2026-07-19简化版)──
     const MONTHLY_SYSTEM = {
-      zh: `你是顶级财富占星师兼荣格心理分析师,生成月度财富报告。${instruction}\n\nCRITICAL: 报告总长度不得超过1500个中文字符(含标点)。`,
-      en: `You are a top wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: Total length MUST NOT exceed 1500 Chinese characters (including punctuation).`,
-      es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: La longitud total NO debe exceder 1500 caracteres.`,
-      fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: La longueur totale ne doit pas dépasser 1500 caractères.`,
-      th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสําคัญ: ความยาวรวมต้องไม่เกิน 1500 ตัวอักษร`,
-      vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Tổng độ dài KHÔNG được vượt quá 1500 ký tự.`,
+      zh: `你是顶级财富占星师兼荣格心理分析师。${instruction}`,
+      en: `You are a master wealth astrologer and Jungian psychologist.${instruction}`,
+      es: `Eres un maestro astrólogo de riqueza y psicólogo junguiano.${instruction}`,
+      fr: `Vous êtes un maître astrologue de la richesse et psychologue junguien.${instruction}`,
+      th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียนชั้นเซียน.${instruction}`,
+      vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
     const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
@@ -1761,116 +1761,47 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     return {
       system: monthlySystem,
       user: `
-<Context_Isolation_Protocol>
-[CRITICAL] Wipe all knowledge, zodiac signs, and house placements from previous examples. The ONLY source of truth is the current user data inside <User_Profile>. Do NOT inherit any astrological traits from past training cases or cached sessions.
-</Context_Isolation_Protocol>
-
-<User_Profile>
-• Birthdate: ${birthDate}
-• Sun Sign: ${natalSunEN} (${natalSunZH}) - STRICTLY this user's natal Sun sign. NEVER call any other sign their "本命太阳星座" (natal sun sign).
-• Rising Sign: ${risingLocal}
-</User_Profile>
-
-<Astrological_Sanity_Check>
-• Step 1: Compute user's Sun Sign from birthdate ${birthDate} → ${natalSunEN} (${natalSunZH}). Period.
-• Step 2: Based on Rising = ${risingLocal} (Equal House system), planet houses are LOCKED:
-  - Jupiter in ${jupSign} = House ${jupHouse}
-  - Saturn in ${satSign} = House ${satHouse}
-  - Pluto in Aquarius = House ${plHouse}
-  - Sun = House ${sunHouse}
-  - Moon = House ${moonHouse}
-• Step 3: If any calculation contradicts standard astrological geometry, halt and correct before outputting.
-</Astrological_Sanity_Check>
-
-<Planet_Positions_Truth>
-[CRITICAL] 以下行星位置由后端 SwissEph 精确计算,是本月唯一真相来源。严禁编造未列出的行星位置、宫位或相位。
-${planetBlock}
-</Planet_Positions_Truth>
-
-<Astrological_Constraints>
-• Phase/Aspect Prohibition: 若你无法精确计算两星之间的数学角度,禁止使用"三分相"/"四分相"/"六分相"/"对分相"等具体相位术语。改用泛化能量描述:"形成强烈共振"、"带来引力交织"、"形成合力"。
-• Sun Speed Constraint: 太阳每日约运行1度,每月只停留一个星座。2026年7月:太阳在巨蟹座(1-22日)与狮子座(23-31日)。7月内太阳绝不可能到达天蝎座或摩羯座。
-• New Moon Constraint: 7月中旬的新月必须与太阳同星座(巨蟹座),落在第7宫。严禁将7月新月放在狮子座或第8宫。
-• House Consistency: 木星整月都在第${jupHouse}宫${jupSign},禁止让它穿越到其他宫位。土星整月在第${satHouse}宫${satSign}。
-</Astrological_Constraints>
-
-<Formatting_Constraints>
-⚡ NESTED PARENTHESES ARE STRICTLY PROHIBITED. Do not output constructs like "宫位)" or "(你的)".
-⚡ All Chinese content must use FULL-WIDTH Chinese brackets () flawlessly. Never mix half-width ( ) or cross-pair them like ( )。
-⚡ Every sentence MUST end with a period 。 - never end with a comma, "的", or a trailing clause.
-⚡ Ensure all emoji tokens are standard and well-formed.
-</Formatting_Constraints>
-
-ASTROGRAPHIC RULES (MUST FOLLOW):
-• MERCURY Rx 2026: starts July 18 in Leo - NEVER write July 18 as a good financial day before that date
-• JUPITER: in Leo all July 2026 - NEVER write Jupiter in Pisces
-• NO NEW MOON on July 1 or July 31 - real new moon is ~July 14
-
-[THAI ASTRO RULES]:
-• MERCURY Rx: ดาวพุธวงในเริ่ม 18 กรกฎาคม 2026 - ห้ามเขียนก่อนวันที่ 18
-• JUPITER: ดาวพฤหัสบดีในราษีสิงห์ตลอดกรกฎาคม 2026
-• NEW MOON จริง: ~14 กรกฎาคม 2026
-
-[VIETNAMESE ASTRO RULES]:
-• MERCURY Rx: Sao Thủy nghịch bắt đầu 18/7/2026 - cấm viết trước ngày 18/7
-• WEEK 3 (Jul 15-21): Ngày 18/7 là ngày Sao Thủy nghịch BẮT ĐẦU - tuyệt đối CẤM đặt ngày 18/7 làm ngày vàng tài chính
-• SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
-• CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" - dùng tiếng Việt tự nhiên
-
-Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
-
-CRITICAL REQUIREMENTS:
-• Total length: ≤ 1500 Chinese characters (${lang}) - dense and rich, no padding
-• Style: Epic, destiny-filled, premium quality
-• MUST have 6 sections exactly
-
-OUTPUT FORMAT - CLEAN MARKDOWN (6 sections, no JSON):
+<User_Data>
+• 生日: ${birthDate}
+• 本命太阳星座: ${natalSunZH}（绝对禁止写成其他星座）
+• 上升星座: ${risingLocal}
+• 木星: ${jupSignLocal}座 第${jupHouse}宫
+• 土星: ${satSignLocal}座 第${satHouse}宫
+• 冥王星: 水瓶座 第${plHouse}宫
+• 太阳: 第${sunHouse}宫
+• 月亮: 第${moonHouse}宫
+</User_Data>
 
 ✦ 🔮 本月命运主题 ✦
-[Write EXACTLY 2 complete sentences, each ending with a period (。). DO NOT end any sentence with a comma, "的", or a trailing clause. Each sentence must be a full, grammatically complete statement with subject + verb + conclusion. NEVER use phrases like "...木星在狮子座的社交与愿景之火," or "...中," - always complete the thought with 。]
+[根据上述星盘数据，写一段命运感强烈的月度主题概述，150-250字，要有画面感]
 
 🟢 第1周 ${curMonthZH}(财富充能)
 核心天机:第X日
-[Write 180-220 字: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+[本周财富能量、关键机会、行动建议，180-280字，要有具体日期]
 
 🔴 第2周 ${curMonthZH}(高危熔断)
 核心天机:第X日
-[Write 180-220 字: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+[本周高危日、陷阱、防守策略，180-280字，具体日期避开大决策]
 
 🔵 第3周 ${curMonthZH}(顺流蓄力)
 核心天机:第X日
-[Write 180-220 字: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
+[本周顺势期、积累节奏、适合策略，180-280字]
 
 🟢 第4周 ${curMonthZH}(财富爆发)
 核心天机:第X日
-[Write 180-220 字: describe the peak wealth window, maximum financial potential, final push strategies.]
+[本周财富高峰、最大机遇、终极行动，180-280字]
 
 ⚠️ 消费陷阱熔断区 ${curMonthZH}
-[Write 120-160 字: identify specific spending traps, psychological pitfalls, and provide a concrete "熔断指令" - a clear rule like "单笔消费超过X元必须等24小时冷静期"]
+[识别心理陷阱，给出具体"熔断指令"，如"单笔超X元等24小时"，120-180字]
 
-IMPORTANT:
-• Write in ${lang} with native astrological and financial terminology
-• Use ✦ for section dividers
-• Each section must be rich with specific astrological context
-• The user's natal Sun sign is ${natalSunZH} - NEVER write another sign as their "本命太阳星座"
-• NO English in Chinese output (except universal astrological terms)
-• Be dramatic and destiny-filled, not clinical
-• ⛔ [句子完整性铁律]: 每个句子必须有完整主语+谓语。禁止句子碎片。`
+铁律：
+• 太阳星座永远用${natalSunZH}（禁止写成别的星座）
+• 木星整月都在第${jupHouse}宫${jupSignLocal}座，土星整月都在第${satHouse}宫${satSignLocal}座（禁止穿越到其他宫位）
+• 写生动，禁止废话，付费用户值得一篇好故事
+`
     };
   }
 if (reportType === 'yearly') {
-    // ── V97f: 后端天文真值引擎(治本:算死流月太阳/外行星/原型字典,AI 只准抄录)──
-    const risingSignZH = astroMatrix?.meta?.rising_sign || 'Cancer';
-    // 🛠️ V116 CLEAN: 彻底移除流月真值表、星座原型字典、防幻觉咆哮
-    // 数据来源已迁移至 astrology_engine.py 季度 JSON Schema,Prompt 只负责文笔翻译
-    // ── 数据消费最高准则(军师V116注入)──
-    const DATA_CONSUMPTION_RULE_ZH = `
-[数据消费最高准则 - 必须绝对服从]
-1. 你的唯一数据源是后端传入的 quarterly_forecast JSON。禁止任何天文计算与星座推导。
-2. 撰写某月运势时,该月【太阳星座】与【宫位】必须 100% 提取自 JSON 的 sun_transit.sign 和 sun_transit.house,即使与本命星座冲突也必须以 JSON 为准。
-3. active_aspects 数组中每个相位,只能按给定的 formula 进行修辞展开,禁止凭空创造未给出的相位。
-4. financial_black_swan 节点包含精确日期与御敌指南,必须原样翻译成叙事体。
-`;
     const DATA_CONSUMPTION_RULE_EN = `
 [Data Consumption Supreme Guideline - MUST OBEY]
 1. Your SOLE data source is the quarterly_forecast JSON from the backend. NO astronomical calculation or sign derivation is permitted.
