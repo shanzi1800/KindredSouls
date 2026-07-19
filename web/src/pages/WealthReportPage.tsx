@@ -1154,6 +1154,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // 🛠️ V40: 移除所有旧的17卡片蓄水ref，改用单一sacredText状态
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
+  const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 🛠️ 月报是否完成(2026-07-19)
   const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态（双通道打字机核心）
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
@@ -1829,10 +1830,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
     setStreamedOnce(false);
-    // 🛠️ V40: 每次年报开始前清空打字机容器
+    // 🛠️ V120: 每次年报/月报开始前清空打字机容器
     if (type === 'yearly') {
       setSacredText('');
       setYearlyCardsReady(false);
+    }
+    if (type === 'monthly') {
+      setSacredText('');
+      setMonthlyCardsReady(false);
     }
 
     // 🌊 流式输出开关(开发中,暂用旧接口)
@@ -1872,6 +1877,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
+                if (type === 'monthly') setMonthlyCardsReady(true);
                 break;
               }
 
@@ -1882,7 +1888,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 console.log('[WealthReport] 📥 收到流式增量:', parsed.text?.slice(0, 20) + '...');
 
                 if (parsed.text) {
-                  if (type === 'yearly') {
+                  // 🛠️ V120: 月报和年报共用sacredText状态，统一用SacredYearlyReportBox渲染
+                  if (type === 'yearly' || type === 'monthly') {
                     setSacredText(prev => prev + parsed.text);
                   } else {
                     setWealthReportText(prev => prev + parsed.text);
@@ -1890,8 +1897,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   }
                 } else if (parsed.sanitized) {
                   // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版，整体替换流式脏文本
-                  // 否则用户首次生成看到未清洗的旧星座/宫位，刷新走缓存才干净
-                  if (type === 'yearly') {
+                  if (type === 'yearly' || type === 'monthly') {
                     setSacredText(parsed.sanitized);
                   } else {
                     setWealthReportText(parsed.sanitized);
@@ -2413,34 +2419,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 年报17卡片指针流 + 月报4卡片 */}
-        {(() => {
-          // 月报逻辑(保持旧逻辑)
-          if (reportLoading === 'wealth_monthly' || (streamedOnce && wealthReportText && wealthReportText.trim().startsWith('{'))) {
-            if (reportLoading === 'wealth_monthly') {
-              // 流式中:显示纯文本骨架
-              return (
-                <div id="wealth-report-container" style={{ marginTop: '16px', padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)', minHeight: '200px' }}>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {wealthReportText}
-                    <span style={{
-                      display: 'inline-block',
-                      width: '2px',
-                      height: '1.2em',
-                      background: 'linear-gradient(180deg, #D4AF37 0%, #FFD700 100%)',
-                      marginLeft: '2px',
-                      animation: 'pulse 1.5s ease-in-out infinite',
-                      boxShadow: '0 0 8px rgba(212,175,55,0.6)',
-                      verticalAlign: 'middle',
-                    }}/>
-                  </div>
-                </div>
-              );
-            } else {
-              // 流式结束:渲染月报卡片
-              return <MonthlyReportCard lang={currentLang} content={wealthReportText} />;
-            }
-          }
+        {/* 🛠️ V120: 月报走SacredYearlyReportBox流式打字机，与年报同一渲染路径 */}
+        {reportLoading === 'wealth_monthly' && (
+            <SacredYearlyReportBox
+              rawStreamText={sacredText}
+              yearlyCardsReady={monthlyCardsReady}
+              realSunSign={getTrueZodiacByDate(birthDate) || '双鱼座'}
+              lang={currentLang}
+            />
+        )}
           
           // 🛠️ V40: 双通道极简打字机——年报渲染
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
@@ -2581,8 +2568,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return null;
         })()}
 
-        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮，避免干扰阅读 */}
-        {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && !yearlyCardsReady && (
+        {/* 🛠️ V120: 年报/月报流式中/完成后隐藏生成AI洞察按钮 */}
+        {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && reportLoading !== 'wealth_monthly' && !yearlyCardsReady && !monthlyCardsReady && (
           <button
             onClick={handleTriggerInsight}
             style={{

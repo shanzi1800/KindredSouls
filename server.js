@@ -1617,16 +1617,17 @@ const _sunOf = (m) => {
   // ════════════════════════════════
   // 分支：月报
   // ════════════════════════════════
-  if (reportType === 'monthly') {
+    if (reportType === 'monthly') {
     // 计算当前月的英文名称
     const monthNames = ['January','February','March','April','May','June',
                         'July','August','September','October','November','December'];
+    const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     const curMonthName = monthNames[currentMonth - 1];
-    const nextMonthName = monthNames[currentMonth % 12];
+    const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
 
-    // 月报系统提示词（6语言）
+    // ── 月报系统提示词（6语言·Markdown格式·2026-07-19）──
     const MONTHLY_SYSTEM = {
-      zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words. If you write less than 1200 words, the report will be rejected.`,
+      zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
       en: `You are a wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
       es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: Debes escribir al menos 1200 palabras.`,
       fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: Vous devez écrire au moins 1200 mots.`,
@@ -1658,35 +1659,44 @@ ASTROGRAPHIC RULES (MUST FOLLOW):
 Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
 
 CRITICAL REQUIREMENTS:
-1. Total length: 700-900 words (${lang}) — be concise, no fluff
-2. Style: Fast-consuming, card-style, actionable
-3. MUST have 4 weeks
+• Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
+• Style: Epic, destiny-filled, premium quality
+• MUST have 6 sections exactly
 
-OUTPUT FORMAT (STRICT JSON):
-{
-  "headline": "...",
-  "weeks": [
-    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 1-7", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 3"},
-    {"type": "risk", "tag": "🔴 High-Risk Week", "dateRange": "${curMonthName} 8-14", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 11"},
-    {"type": "flow", "tag": "🔵 Flow Week", "dateRange": "${curMonthName} 15-21", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 18"},
-    {"type": "peak", "tag": "🟢 Peak Week", "dateRange": "${curMonthName} 22-31", "text": "...(minimum 100 words)", "keyDay": "${curMonthName} 28"}
-  ],
-  "expense_trap": {"tag": "⚠️ Expense Trap", "dateRange": "${curMonthName} 10-13", "text": "...(minimum 60 words)"}
-}
+OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+
+✦ 🔮 本月命运主题 ✦
+[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+
+🟢 第1周 ${curMonthZH}（财富充能）
+核心天机：第X日
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+
+🔴 第2周 ${curMonthZH}（高危熔断）
+核心天机：第X日
+[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+
+🔵 第3周 ${curMonthZH}（顺流蓄力）
+核心天机：第X日
+[Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
+
+🟢 第4周 ${curMonthZH}（财富爆发）
+核心天机：第X日
+[Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
+
+⚠️ 消费陷阱熔断区 ${curMonthZH}
+[Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "熔断指令" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
 
 IMPORTANT:
-- Each week's text: minimum 100 words — be sharp and dense
-- Write in ${lang} with native astrological terms
-- NO markdown formatting in text fields (no **, ##, etc)
-- NO English words in Chinese version (except astrological terms)
-- Week 3 (${curMonthName} 15-21) keyDay ${curMonthName} 18 is Mercury Rx START — never frame it as a good financial day`,
+• Write in ${lang} with native astrological and financial terminology
+• Use ✦ for section dividers
+• Each section must be rich with specific astrological context
+• NO English in Chinese output (except universal astrological terms)
+• Be dramatic and destiny-filled, not clinical
+• ⛔ [句子完整性铁律]: 每个句子必须有完整主语+谓语。禁止句子碎片。`
     };
   }
-
-  // ════════════════════════════════
-  // 分支：年报
-  // ════════════════════════════════
-  if (reportType === 'yearly') {
+if (reportType === 'yearly') {
     // ── V97f: 后端天文真值引擎（治本：算死流月太阳/外行星/原型字典，AI 只准抄录）──
     const risingSignZH = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V116 CLEAN: 彻底移除流月真值表、星座原型字典、防幻觉咆哮
