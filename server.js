@@ -550,6 +550,13 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   text = stripLoneSurrogates(text).replace(/\uFFFD/g, '');
   // V104d: 斩杀文本中字面的 \n 串
   text = text.replace(/\\n/g, '');
+
+  // 🛠️ V120-fix6: 军师前端防御层——半角括号→全角 + Emoji 标准空格
+  // 1. 全局半角括号 ( ) → 全角 （ ）(防止安卓/iOS 排版错位与中英混杂)
+  text = text.replace(/\(/g, '（').replace(/\)/g, '）');
+  // 2. 章节 Emoji 标记(🟢🔴🔵⚠️)后强制标准空格,防止移动端文本排版错位
+  text = text.replace(/([🟢🔴🔵⚠️])(?=[^\s\n])/g, '$1 ');
+
   return text;
 }
 
@@ -1700,6 +1707,18 @@ const _sunOf = (m) => {
       moonSign = first.moon?.sign || 'Cancer';
     }
 
+    // ── V120-fix6: 月报全量行星数据(从 astroMatrix 真值提取,喂给 DeepSeek 杜绝编造)──
+    const firstMonth = astroMatrix?.months?.[0];
+    const PLANET_KEYS = [['sun','太阳'],['moon','月亮'],['mercury','水星'],['venus','金星'],['mars','火星'],['jupiter','木星'],['saturn','土星'],['uranus','天王星'],['neptune','海王星'],['pluto','冥王星']];
+    const planetBlock = firstMonth ? PLANET_KEYS.map(([k, zh]) => {
+      const p = k === 'sun' ? _sunOf(firstMonth) : (firstMonth[k]);
+      if (!p || !p.sign) return null;
+      const house = getH2(p.house);
+      const rx = p.retrograde ? '（逆行）' : '';
+      const status = p.status ? ` [${p.status}]` : '';
+      return `  - ${zh}: ${p.sign} 第${house}宫${rx}${status}`;
+    }).filter(Boolean).join('\n') : '';
+
     // ── 月报系统提示词(6语言·Markdown格式·2026-07-19)──
     const MONTHLY_SYSTEM = {
       zh: `你是顶级财富占星师兼荣格心理分析师,生成月度财富报告。${instruction}\n\nCRITICAL: 报告总长度不得超过1500个中文字符(含标点)。`,
@@ -1735,6 +1754,18 @@ const _sunOf = (m) => {
   - Moon = House ${moonHouse}
 • Step 3: If any calculation contradicts standard astrological geometry, halt and correct before outputting.
 </Astrological_Sanity_Check>
+
+<Planet_Positions_Truth>
+[CRITICAL] 以下行星位置由后端 SwissEph 精确计算,是本月唯一真相来源。严禁编造未列出的行星位置、宫位或相位。
+${planetBlock}
+</Planet_Positions_Truth>
+
+<Astrological_Constraints>
+• Phase/Aspect Prohibition: 若你无法精确计算两星之间的数学角度,禁止使用"三分相"/"四分相"/"六分相"/"对分相"等具体相位术语。改用泛化能量描述:"形成强烈共振"、"带来引力交织"、"形成合力"。
+• Sun Speed Constraint: 太阳每日约运行1度,每月只停留一个星座。2026年7月:太阳在巨蟹座(1-22日)与狮子座(23-31日)。7月内太阳绝不可能到达天蝎座或摩羯座。
+• New Moon Constraint: 7月中旬的新月必须与太阳同星座(巨蟹座),落在第7宫。严禁将7月新月放在狮子座或第8宫。
+• House Consistency: 木星整月都在第${jupHouse}宫${jupSign},禁止让它穿越到其他宫位。土星整月在第${satHouse}宫${satSign}。
+</Astrological_Constraints>
 
 <Formatting_Constraints>
 ⚡ NESTED PARENTHESES ARE STRICTLY PROHIBITED. Do not output constructs like "宫位)" or "(你的)".
