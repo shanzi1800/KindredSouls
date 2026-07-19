@@ -1475,7 +1475,7 @@ app.use('/api/health', async (req, res) => {
     const { execSync } = require('child_process');
     gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
   } catch(e) {}
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha, debugBuildTime: 'FRESHBUILD-20260711-1720Z' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha, debugBuildTime: 'FRESHBUILD-20260719-1730Z' });
 });
 
 // ── Root health check for Railway ──
