@@ -116,10 +116,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           if (pending.length >= FLUSH_SIZE) {
             try {
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-// 🛠️ V120-fix12: 月报跳过 applyMonthLockSanitizer（Issue A fix regex 会删字符）；年报保留
-              if (reportType !== 'monthly') pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-              else pc = pc.replace(/\uFFFD/g,'').replace(/�/g,'');
+// 🛠️ V120-fix14: 月报只跑 final_text_sanitizer，跳 natal_sun_linter/astro_phase_linter/house_linter
+              let pc;
+              if (reportType === 'monthly') {
+                pc = final_text_sanitizer(pending,_a).replace(/\uFFFD/g,'').replace(/�/g,'');
+              } else {
+                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
+                pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+              }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
             } catch(e2) {
@@ -142,9 +146,12 @@ let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(p
     try {
       const _a = astroMatrix?.meta?.rising_sign||'Cancer';
       let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-      // 🛠️ V120-fix12: 月报跳过 applyMonthLockSanitizer
-      if (reportType !== 'monthly') pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-      else pc = pc.replace(/\uFFFD/g,'').replace(/�/g,'');
+      // 🛠️ V120-fix14: 月报只跑 final_text_sanitizer，跳过其他 linter
+      if (reportType === 'monthly') {
+        pc = final_text_sanitizer(pc,_a).replace(/\uFFFD/g,'').replace(/�/g,'');
+      } else {
+        pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      }
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } catch(e) {
