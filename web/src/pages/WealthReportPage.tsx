@@ -156,16 +156,12 @@ const highlightKeywords = (text: string): React.ReactNode => {
 const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ content, lang }) => {
   // lang 校验
   const safeLang = (['zh','en','es','fr','th','vi'].includes(lang) ? lang : 'en') as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
-  // Try to parse as JSON (monthly report format)
   let data: MonthlyReportData | null = null;
   try {
     data = JSON.parse(content);
-  } catch {
-    // Not JSON, treat as plain text/HTML
-  }
+  } catch { /* Not JSON */ }
 
   if (!data || !data.weeks) {
-    // Fallback to plain text rendering
     const _fallbackStyle: React.CSSProperties = { marginTop: '2px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', textAlign: 'left', color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' };
     const _sanitized = content
       .replace(/<h1[^>]*>.*?<\/h1>/gi, '')
@@ -175,210 +171,136 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
       .replace(/<br\s*\/?><br\s*\/?>/gi, '<br/>')
       .replace(/^\s+|\s+$/g, '')
       .replace(/(<\/p>)\s+(<p>)/g, '$1$2');
-    return (
-      <div style={_fallbackStyle} dangerouslySetInnerHTML={{ __html: _sanitized }}>
-      </div>
-    );
+    return <div style={_fallbackStyle} dangerouslySetInnerHTML={{ __html: _sanitized }} />;
   }
 
-
-
-  // ── UI 翻译字典 ──
+  // ── 金属框架常量 ──
   const UI = {
-    badge: {
-      peak:    { zh:'🟢 财富充能周', en:'🟢 Wealth Peak', es:'🟢 Expansión', fr:'🟢 Flux', th:'🟢 เติบโต', vi:'🟢 Tài Lộc' },
-      risk:    { zh:'🔴 高危熔断周', en:'🔴 High Risk', es:'🔴 Riesgo', fr:'🔴 Risque', th:'🔴 เสี่ยง', vi:'🔴 Rủi Ro' },
-      flow:    { zh:'🔵 顺流蓄力周', en:'🔵 Flow', es:'🔵 Flujo', fr:'🔵 Flux', th:'🔵 ไหลลื่น', vi:'🔵 Thành Công' },
-      default: { zh:'💫 机遇窗口', en:'💫 Opportunity', es:'💫 Oportunidad', fr:'💫 Opportunité', th:'💫 โอกาส', vi:'💫 Cơ Hội' },
-    },
     theme:  { zh:'🔮 本月命运主题', en:'🔮 Monthly Theme', es:'🔮 Tema', fr:'🔮 Thème', th:'🔮 ธีม', vi:'🔮 Chủ Đề' },
     keyDay: { zh:'💫 核心天机', en:'💫 Key Day', es:'💫 Día Clave', fr:'💫 Jour Clé', th:'💫 วันสําคัญ', vi:'💫 Ngày Quan Trọng' },
     order:  { zh:'🛑 防弹硬核指令', en:'🛑 Hard Order', es:'🛑 Orden', fr:'🛑 Ordre', th:'🛑 คําสั่ง', vi:'🛑 Lệnh Khẩn' },
     orderTxt: { zh:'执行【全面戒严】!超过 <b>5000元</b> 必须等 <b>24小时</b>!', en:'Full alert! Expense > <b>$700</b> wait <b>24h</b>!', es:'¡Alerta! Gasto > <b>$700</b> esperar <b>24h</b>!', fr:'Alerte! Dépense > <b>700€</b> attendre <b>24h</b>!', th:'แจ้งเตือน! ค่าใช้จ่าย > <b>฿25000</b> รอ <b>24ชม.</b>!', vi:'Báo động! Chi > <b>3.5M₫</b> đợi <b>24giờ</b>!' },
+    weeks: [
+      { zh:'🟢 第1周：财富充能', en:'🟢 Week 1: Wealth Peak', es:'🟢 Semana 1: Expansión', fr:'🟢 Semaine 1: Flux', th:'🟢 สัปดาห์ 1: เติบโต', vi:'🟢 Tuần 1: Tài Lộc', color:'#4CAF50' },
+      { zh:'🔴 第2周：高危熔断', en:'🔴 Week 2: High Risk', es:'🔴 Semana 2: Riesgo', fr:'🔴 Semaine 2: Risque', th:'🔴 สัปดาห์ 2: เสี่ยง', vi:'🔴 Tuần 2: Rủi Ro', color:'#FF4D4F' },
+      { zh:'🔵 第3周：顺流蓄力', en:'🔵 Week 3: Flow', es:'🔵 Semana 3: Flujo', fr:'🔵 Semaine 3: Flux', th:'🔵 สัปดาห์ 3: ไหลลื่น', vi:'🔵 Tuần 3: Thành Công', color:'#64B5F6' },
+      { zh:'🟢 第4周：财富爆发', en:'🟢 Week 4: Wealth Burst', es:'🟢 Semana 4: Expansión', fr:'🟢 Semaine 4: Flux', th:'🟢 สัปดาห์ 4: เติบโต', vi:'🟢 Tuần 4: Tài Lộc', color:'#4CAF50' },
+    ],
   };
-  // Render as cards
-  const getCardStyle = (type: string) => {
-    switch (type) {
-      case 'peak': return {
-        border: '#4CAF50',
-        bg: 'linear-gradient(135deg, rgba(76,175,80,0.12) 0%, rgba(76,175,80,0.04) 100%)',
-        badge: UI.badge.peak[safeLang] || UI.badge.peak.en
-      };
-      case 'risk': return {
-        border: '#FF4D4F',
-        bg: 'linear-gradient(135deg, rgba(255,77,79,0.12) 0%, rgba(255,77,79,0.04) 100%)',
-        badge: UI.badge.risk[safeLang] || UI.badge.risk.en
-      };
-      case 'flow': return {
-        border: '#64B5F6',
-        bg: 'linear-gradient(135deg, rgba(100,181,246,0.12) 0%, rgba(100,181,246,0.04) 100%)',
-        badge: UI.badge.flow[safeLang] || UI.badge.flow.en
-      };
-      default: return {
-        border: '#D4AF37',
-        bg: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)',
-        badge: UI.badge.default[safeLang] || UI.badge.default.en
-      };
-    }
-  };
+
+  // ── 统一分隔线 ──
+  const Divider = ({ color = 'rgba(212,175,55,0.2)' }: { color?: string }) => (
+    <div style={{ height: '1px', margin: '14px 0', background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
+  );
 
   return (
     <div style={{ marginTop: '16px' }}>
-      {/* 🔮 Headline - 命运主题 */}
+
+      {/* ═══ 1. 🔮 本月命运主题（头条·金色特殊处理） ═══ */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(139,69,19,0.1) 100%)',
-        border: '2px solid rgba(212,175,55,0.4)',
+        background: 'rgba(0,0,0,0.35)',
         borderRadius: '16px',
         padding: '20px',
         marginBottom: '20px',
-        textAlign: 'center',
-        boxShadow: '0 4px 20px rgba(212,175,55,0.15)'
+        border: '1px solid rgba(212,175,55,0.3)',
+        textAlign: 'center'
       }}>
-        <div style={{ fontSize: '12px', color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
+        <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
           {UI.theme[safeLang] || UI.theme.en}
         </div>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.5, textShadow: '0 2px 4px rgba(0,0,0,0.3)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+        <div style={{ fontSize: '17px', fontWeight: 800, color: '#fff', lineHeight: 1.5, textShadow: '0 2px 6px rgba(0,0,0,0.5)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
           {data.headline}
         </div>
       </div>
 
-      {/* Week Cards - 战时财富指标卡 */}
+      {/* ═══ 2-5. 四周内容（金属框架·无卡片边框） ═══ */}
       {data.weeks.map((week, idx) => {
-        const style = getCardStyle(week.type);
+        const meta = UI.weeks[idx] || UI.weeks[0];
         const textBlocks = splitTextToBlocks(week.text);
-
         return (
-          <div key={idx} style={{
-            background: style.bg,
-            border: `2px solid ${style.border}`,
-            borderRadius: '14px',
-            padding: '16px',
-            marginBottom: '16px',
-            boxShadow: `0 2px 12px ${style.border}20`
-          }}>
-            {/* 战时指标卡头 */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '12px',
-              paddingBottom: '10px',
-              borderBottom: `1px dashed ${style.border}40`
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  color: '#fff',
-                  background: style.border,
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  boxShadow: `0 2px 8px ${style.border}50`
-                }}>
-                  {style.badge}
-                </span>
-              </div>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+          <div key={idx} style={{ marginBottom: '6px' }}>
+            {/* 节头：标签 + 日期行 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <span style={{
+                fontSize: '11px', fontWeight: 700, color: '#fff',
+                background: meta.color, padding: '3px 10px', borderRadius: '6px',
+                boxShadow: `0 2px 8px ${meta.color}50`
+              }}>
+                {meta[safeLang] || meta.en}
+              </span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
                 {week.dateRange}
               </span>
             </div>
-
-            {/* 核心天机 - Key Day */}
+            {/* 核心天机内嵌行 */}
             <div style={{
-              background: 'rgba(0,0,0,0.25)',
-              borderRadius: '10px',
-              padding: '12px',
-              marginBottom: '12px',
-              border: '1px solid rgba(212,175,55,0.2)'
+              display: 'inline-block',
+              background: 'rgba(0,0,0,0.3)',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              borderLeft: `3px solid ${meta.color}`,
+              marginBottom: '10px'
             }}>
-              <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '4px', fontWeight: 600 }}>
+              <span style={{ fontSize: '10px', color: '#D4AF37', fontWeight: 600, marginRight: '8px' }}>
                 {UI.keyDay[safeLang] || UI.keyDay.en}
-              </div>
-              <div style={{ fontSize: '14px', color: '#fff', fontWeight: 700, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+              </span>
+              <span style={{ fontSize: '13px', color: '#fff', fontWeight: 700, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {week.keyDay}
-              </div>
+              </span>
             </div>
-
-            {/* 豆腐块文字 - 乱刀斩断 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* 正文段落 */}
+            <div style={{ paddingLeft: '4px' }}>
               {textBlocks.map((block, bidx) => (
                 <div key={bidx} style={{
-                  fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word',
-                  padding: '8px 0',
-                  borderBottom: bidx < textBlocks.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none'
+                  fontSize: '12px', color: 'rgba(255,255,255,0.88)',
+                  lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word',
+                  padding: '6px 0',
+                  borderBottom: bidx < textBlocks.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none'
                 }}>
                   {highlightKeywords(block)}
                 </div>
               ))}
             </div>
+            {idx < data.weeks.length - 1 && <Divider color={`${meta.color}30`} />}
           </div>
         );
       })}
 
-      {/* ⚠️ Expense Trap - 消费陷阱熔断区 */}
+      {/* ═══ 6. ⚠️ 消费陷阱熔断区（红色背景统一处理） ═══ */}
       {data.expense_trap && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(255,77,79,0.15) 0%, rgba(139,0,0,0.08) 100%)',
-          border: '2px dashed #FF4D4F',
-          borderRadius: '14px',
-          padding: '18px',
-          marginTop: '20px',
-          boxShadow: '0 4px 16px rgba(255,77,79,0.2)'
-        }}>
-          {/* 高危指标头 */}
+        <>
+          <Divider color='rgba(255,77,79,0.3)' />
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            marginBottom: '14px',
-            paddingBottom: '12px',
-            borderBottom: '1px dashed rgba(255,77,79,0.3)'
+            background: 'rgba(255,77,79,0.08)',
+            borderRadius: '12px',
+            padding: '16px',
+            borderLeft: '3px solid #FF4D4F',
+            marginBottom: '6px'
           }}>
-            <span style={{ fontSize: '20px' }}>☠️</span>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: '#FF4D4F', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                {data.expense_trap.tag}
-              </div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+            {/* 节头 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff', background: '#FF4D4F', padding: '3px 10px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(255,77,79,0.5)' }}>
+                ⚠️ {data.expense_trap.tag}
+              </span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
                 {UI.order[safeLang] || UI.order.en} {data.expense_trap.dateRange}
-              </div>
+              </span>
             </div>
-            <div style={{ marginLeft: 'auto', fontSize: '16px' }}>
-              {'☠️'.repeat(5)}
-            </div>
-          </div>
-
-          {/* 陷阱内容 - 乱刀斩断 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* 内容 */}
             {splitTextToBlocks(data.expense_trap.text).map((block, idx) => (
-              <div key={idx} style={{
-                fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, padding: '6px 0', wordBreak: 'break-word', overflowWrap: 'break-word',
-              }}>
+              <div key={idx} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, padding: '4px 0', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {highlightKeywords(block)}
               </div>
             ))}
-          </div>
-
-          {/* 防弹硬核指令 */}
-          <div style={{
-            marginTop: '14px',
-            padding: '12px',
-            background: 'rgba(255,77,79,0.2)',
-            borderRadius: '8px',
-            border: '1px solid rgba(255,77,79,0.4)'
-          }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#FF4D4F', marginBottom: '6px' }}>
-              {UI.order[safeLang] || UI.order.en}
-            </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.8, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-              <span
-                style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.9, wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: UI.orderTxt[safeLang] || UI.orderTxt.en }}
-              />
+            {/* 防弹硬核指令 */}
+            <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255,77,79,0.12)', borderRadius: '8px', border: '1px solid rgba(255,77,79,0.25)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#FF4D4F', marginBottom: '4px' }}>{UI.order[safeLang] || UI.order.en}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: UI.orderTxt[safeLang] || UI.orderTxt.en }} />
             </div>
           </div>
-        </div>
+        </>
       )}
+
     </div>
   );
 };
