@@ -116,7 +116,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           if (pending.length >= FLUSH_SIZE) {
             try {
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-              let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+              let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
               pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
@@ -135,7 +135,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   if (pending) {
     try {
       const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-      let pc = natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a);
+      let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
       pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
@@ -666,6 +666,39 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
 
   return text;
 }
+
+// 🛠️ V120-fix5: 宫位强制纠偏 linter——AI 常把行星宫位写错(如木星狮子座写成第11宫,实为第2宫)
+// 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
+function house_linter(text, astroMatrix) {
+  if (!text) return text;
+  const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
+  // rising Cancer fallback(与年报旧 fallback 对齐):木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫
+  let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
+  if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+    const first = astroMatrix.months[0];
+    jupHouse = getH(first.jupiter?.house); satHouse = getH(first.saturn?.house); plHouse = getH(first.pluto?.house);
+    sunHouse = getH(_sunOf(first).house); moonHouse = getH(first.moon?.house);
+  }
+  const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
+  const rules = [
+    ['木星', jupHouse],
+    ['土星', satHouse],
+    ['冥王星', plHouse],
+    ['太阳', sunHouse],
+    ['月亮', moonHouse],
+  ];
+  for (const [planet, house] of rules) {
+    if (!house) continue;
+    // 中文: 行星在X座第N宫 → 行星在X座第{house}宫
+    const reCN = new RegExp('(' + planet + '在[^第\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
+    text = text.replace(reCN, '$1' + toCN(house) + '宫');
+    // 英文: Planet in X House N → Planet in X House {house}
+    const reEN = new RegExp('(' + planet + '\\s+in\\s+[^H\n]{0,12}?House\\s*)\\d+', 'gi');
+    text = text.replace(reEN, '$1' + house);
+  }
+  return text;
+}
+
 // 校验AI生成的相位描述是否符合天文学规则。
 // 星座-相位关系是有限且确定的,用查表法100%拦截错误配对。
 function astro_phase_linter(text) {
@@ -1652,7 +1685,8 @@ const _sunOf = (m) => {
     const risingIdx = RISING_IDX[rising] ?? 3;
     const risingLocal = { zh: NATAL_SIGN_ZH[risingIdx], en: rising, es: rising, fr: rising, th: rising, vi: rising }[lang] || rising;
     const getH2 = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
-    let jupHouse=5, satHouse=10, plHouse=11, sunHouse=10, moonHouse=3;
+    // 🛠️ V120-fix5: fallback 修正为 ASC=Cancer 真值(与年报旧 fallback 对齐:木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫)
+    let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
     let jupSign='Leo', satSign='Aries', moonSign='Cancer';
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
@@ -2473,7 +2507,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         _patterns.forEach(p => { cleanedText = cleanedText.replace(p, realSunSign); });
       });
     }
-        const sanitizedAI = natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign);
+        const sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign), astroMatrix);
 
         // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer(此前只跑了 MISS 的 HIT 和流式端点,非流式 MISS 漏了)
         const monthLocked = (reportType === 'yearly' && astroMatrix)
