@@ -1708,26 +1708,26 @@ CRITICAL REQUIREMENTS:
 
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
-✦ 🔮 本月命运主题 ✦
+【开篇】本月命运主题
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
-🟢 第1周 ${curMonthZH}（财富充能）
+【第1周】 ${curMonthZH}（财富充能）
 核心天机：第X日
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
-🔴 第2周 ${curMonthZH}（高危熔断）
+【第2周】 ${curMonthZH}（高危熔断）
 核心天机：第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
-🔵 第3周 ${curMonthZH}（顺流蓄力）
+【第3周】 ${curMonthZH}（顺流蓄力）
 核心天机：第X日
 [Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
 
-🟢 第4周 ${curMonthZH}（财富爆发）
+【第4周】 ${curMonthZH}（财富爆发）
 核心天机：第X日
 [Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
 
-⚠️ 消费陷阱熔断区 ${curMonthZH}
+【消费陷阱】 ${curMonthZH}
 [Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "熔断指令" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
 
 IMPORTANT:
@@ -1928,26 +1928,26 @@ CRITICAL REQUIREMENTS:
 
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
-✦ 🔮 本月命运主题 ✦
+【开篇】本月命运主题
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
-🟢 第1周 ${curMonthZH}（财富充能）
+【第1周】 ${curMonthZH}（财富充能）
 核心天机：第X日
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
-🔴 第2周 ${curMonthZH}（高危熔断）
+【第2周】 ${curMonthZH}（高危熔断）
 核心天机：第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
-🔵 第3周 ${curMonthZH}（顺流蓄力）
+【第3周】 ${curMonthZH}（顺流蓄力）
 核心天机：第X日
 [Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
 
-🟢 第4周 ${curMonthZH}（财富爆发）
+【第4周】 ${curMonthZH}（财富爆发）
 核心天机：第X日
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
 
-⚠️ 消费陷阱熔断区 ${curMonthZH}
+【消费陷阱】 ${curMonthZH}
 [Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "熔断指令" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
 `
     };
