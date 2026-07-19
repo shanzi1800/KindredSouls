@@ -147,24 +147,27 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   } catch(e) { clearInterval(heartbeat); console.error('[callDeepSeek] stream read error:', e.message); throw e; }
   clearInterval(heartbeat);
   if (pending) {
-    try {
-      const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-      let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-      // 🛠️ V120-fix15: 月报只跑最基础清洗
-      if (reportType === 'monthly') {
-        pc = pc
-          .replace(/\uFFFD/g,'').replace(/�/g,'')
-          .replace(/\(/g,'（').replace(/\)/g,'）')
-          .replace(/✦[^✦]*✦/g,'✦')
-          .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
-      } else {
-        pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-      }
+    const _a = astroMatrix?.meta?.rising_sign||'Cancer';
+    let pc;
+    if (reportType === 'monthly') {
+      // 🛠️ V120-fix16: 月报完全不跑 linter，只做基础清洗
+      pc = pending
+        .replace(/\uFFFD/g,'').replace(/�/g,'')
+        .replace(/\(/g,'（').replace(/\)/g,'）')
+        .replace(/✦[^✦]*✦/g,'✦')
+        .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
-    } catch(e) {
-      res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
-      onChunk && onChunk(pending);
+    } else {
+      try {
+        pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
+        pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+        onChunk && onChunk(pc);
+      } catch(e) {
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
+        onChunk && onChunk(pending);
+      }
     }
     if (typeof res.flush === 'function') res.flush();
   }
