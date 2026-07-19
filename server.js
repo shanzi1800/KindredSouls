@@ -609,11 +609,11 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
   //   「而[行星名])」 → 「而[行星名](逆行)」
   const PLANETS = ['水星','金星','火星','木星','土星','天王星','海王星','冥王星'];
   for (const p of PLANETS) {
-    const revPat = new RegExp('但' + p + ')', 'g');
+    const revPat = new RegExp('但' + p + '[\)）]', 'g');
     text = text.replace(revPat, '但' + p + '(逆行)');
-    const revPat2 = new RegExp('而' + p + ')', 'g');
+    const revPat2 = new RegExp('而' + p + '[\)）]', 'g');
     text = text.replace(revPat2, '而' + p + '(逆行)');
-    const revPat3 = new RegExp(',' + p + ')', 'g');
+    const revPat3 = new RegExp(',' + p + '[\)）]', 'g');
     text = text.replace(revPat3, ',' + p + '(逆行)');
   }
 
@@ -929,7 +929,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
           // 找本月份章节(用 entry.key 定位):2026年7月: ...
           // 在章节内做精确的行星际替换:
           const _monthKeyEsc = entry.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const _sectionRe = new RegExp(`(${_monthKeyEsc}[::][\s\S]*?)(太阳|木星|土星|火星|水星|金星|月亮|冥王星)在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座第\\d+宫(?=与|形成|,|\.|。|))`, 'g');
+          const _sectionRe = new RegExp(`(${_monthKeyEsc}[::][\s\S]*?)(太阳|木星|土星|火星|水星|金星|月亮|冥王星)在([白羊金牛双子巨蟹狮子处女天秤天蝎射手摩羯水瓶双鱼]+)座第\\d+宫(?=与|形成|,|\.|。|$)`, 'g');
           text = text.replace(_sectionRe, function(match, prefix, planetChar) {
             // 根据行星名选真实星座
             let realSign = '';
