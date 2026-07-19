@@ -1754,41 +1754,43 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     return {
       system: monthlySystem,
       user: `
-ASTROGRAPHIC RULES (MUST FOLLOW):
-• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
-• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
-
-Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
-
-CRITICAL REQUIREMENTS:
-• Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
-• Style: Epic, destiny-filled, premium quality
-• MUST have 6 sections exactly
-
-OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+<User_Data>
+• 生日: ${birthDate}
+• 本命太阳星座: ${natalSunZH}（绝对禁止写成其他星座）
+• 上升星座: ${risingLocal}
+• 木星: ${jupSign}座 第${jupHouse}宫
+• 土星: ${satSign}座 第${satHouse}宫
+• 冥王星: 水瓶座 第${plHouse}宫
+• 太阳: 第${sunHouse}宫
+• 月亮: ${moonSign}座 第${moonHouse}宫
+</User_Data>
 
 ✦ 🔮 本月命运主题 ✦
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+[根据上述星盘数据，写一段命运感强烈的月度主题概述，150-250字，要有画面感]
 
-🟢 第1周 ${curMonthZH}（财富充能）
-核心天机：第X日
-[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+🟢 第1周 ${curMonthZH}(财富充能)
+核心天机:第X日
+[本周财富能量、关键机会、行动建议，180-280字，要有具体日期]
 
-🔴 第2周 ${curMonthZH}（高危熔断）
-核心天机：第X日
-[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+🔴 第2周 ${curMonthZH}(高危熔断)
+核心天机:第X日
+[本周高危日、陷阱、防守策略，180-280字，具体日期避开大决策]
 
-🔵 第3周 ${curMonthZH}（顺流蓄力）
-核心天机：第X日
-[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
+🔵 第3周 ${curMonthZH}(顺流蓄力)
+核心天机:第X日
+[本周顺势期、积累节奏、适合策略，180-280字]
 
-🟢 第4周 ${curMonthZH}（财富爆发）
-核心天机：第X日
-[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
+🟢 第4周 ${curMonthZH}(财富爆发)
+核心天机:第X日
+[本周财富高峰、最大机遇、终极行动，180-280字]
 
 ⚠️ 消费陷阱熔断区 ${curMonthZH}
-[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "熔断指令" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
+[识别心理陷阱，给出具体"熔断指令"，如"单笔超X元等24小时"，120-180字]
+
+铁律：
+• 太阳星座永远用${natalSunZH}（禁止写成别的星座）
+• 木星整月都在第${jupHouse}宫${jupSign}座，土星整月都在第${satHouse}宫${satSign}座（禁止穿越到其他宫位）
+• 写生动，禁止废话，付费用户值得一篇好故事
 `
     };
   }
