@@ -108,7 +108,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         if (d === '[DONE]') { clearInterval(heartbeat); continue; }
         try {
           const parsed = JSON.parse(d);
-          const txt = parsed.choices?.[0]?.delta?.content || '';
+          const txt = parsed.choices?.[0]?.delta?.content || parsed.text || '';
           if (!txt) continue;
           chunkCount++;
           // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
@@ -118,7 +118,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/  +/g, ' ')
             // 字面 unicode 转义 → 真实字符 (DeepSeek 偶尔字面吐出 \ud83d\udd2e)
             .replace(/\\ud83d ?\\udd2e/g, '🔮')
-            .replace(/\\ud83d ?\\udd2e/g, '🟢')
+            .replace(/\\ud83d ?\\udfe2/g, '🟢')
             .replace(/\\ud83d ?\\udd34/g, '🔴')
             .replace(/\\ud83d ?\\udd35/g, '🔵')
             .replace(/\\u26a0 ?\\ufe0f/g, '⚠️')
@@ -3663,7 +3663,7 @@ async function streamGeminiChunk(prompt, onChunk) {
           if (dataStr === '[DONE]') continue;
           try {
             const parsed = JSON.parse(dataStr);
-            const txt = parsed.choices?.[0]?.delta?.content || '';
+            const txt = parsed.choices?.[0]?.delta?.content || parsed.text || '';
             if (txt) { fullText += txt; onChunk(txt); }
           } catch(e) {}
         }
