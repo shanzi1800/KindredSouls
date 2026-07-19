@@ -3,7 +3,7 @@ import { useCitySearch } from '../hooks/useCitySearch';
 import type { CityRecord } from '../hooks/useCitySearch';
 
 interface CitySearchInputProps {
-  value: string;           // 当前选中的城市 key（英文名）
+  value: string;           // 当前选中的城市 key(英文名)
   tz: string;
   lat: number;
   lon: number;
@@ -14,12 +14,12 @@ interface CitySearchInputProps {
 
 // 6 语种完整占位符
 const PLACEHOLDER: Record<string, string> = {
-  zh: '搜索城市…',
-  en: 'Search city…',
-  vi: 'Tìm thành phố…',
-  es: 'Buscar ciudad…',
-  fr: 'Rechercher une ville…',
-  th: 'ค้นหาเมือง…',
+  zh: '搜索城市...',
+  en: 'Search city...',
+  vi: 'Tìm thành phố...',
+  es: 'Buscar ciudad...',
+  fr: 'Rechercher une ville...',
+  th: 'ค้นหาเมือง...',
 };
 
 // 6 语种标签
@@ -39,11 +39,35 @@ function getDisplayName(city: CityRecord, lang: string): string {
   return city.key;
 }
 
+// V118b: 计算 IANA 时区的 UTC 偏移（如 Asia/Shanghai -> UTC+8、Europe/Rome -> UTC+1）
+function getUtcOffset(tz: string): string {
+  try {
+    const now = new Date();
+    // 用 timeZone 选项格式化，提取形如 GMT+8 / GMT+05:30 的偏移
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    if (tzPart) {
+      // tzPart.value 形如 "GMT+8" 或 "GMT+05:30"
+      let v = tzPart.value.replace(/^GMT/, '');
+      // 标准化：+8 -> +8，+05:30 -> +5:30
+      if (v.startsWith('+')) v = '+' + v.slice(1).replace(/^0+(?=\d)/, '');
+      if (v.startsWith('-')) v = '-' + v.slice(1).replace(/^0+(?=\d)/, '');
+      return `UTC${v}`;
+    }
+  } catch {
+    // 无效时区兜底
+  }
+  return '';
+}
+
 export const CitySearchInput: React.FC<CitySearchInputProps> = ({
   value, tz, lat, lon, onSelect, lang = 'zh', placeholder,
 }) => {
   const { loading, search, cities } = useCitySearch();
-  // 直接用 value 初始化 query，确保 HUD 条件 value&& 在 mount 时就同步（不依赖 useEffect 时序）
+  // 直接用 value 初始化 query,确保 HUD 条件 value&& 在 mount 时就同步(不依赖 useEffect 时序)
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<CityRecord[]>([]);
   const [open, setOpen] = useState(false);
@@ -53,11 +77,11 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   const ph = placeholder || PLACEHOLDER[lang] || PLACEHOLDER.en;
 
-  // 🛠️ V118a: 用 ref 跟踪最新 value，避免 onBlur setTimeout stale closure
+  // 🛠️ V118a: 用 ref 跟踪最新 value,避免 onBlur setTimeout stale closure
   const valueRef = useRef(value);
   const [hasSelected, setHasSelected] = useState(!!value);
 
-  // value prop 变化时同步：保持 query 等于当前选中城市 displayName
+  // value prop 变化时同步:保持 query 等于当前选中城市 displayName
   useEffect(() => {
     valueRef.current = value;
     if (value) {
@@ -118,7 +142,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
     if (e.key === 'Escape') { setOpen(false); }
   };
 
-  // V118a: 用 ref 读最新 value，避免 stale closure 清除 query
+  // V118a: 用 ref 读最新 value,避免 stale closure 清除 query
   const handleBlur = () => {
     setTimeout(() => {
       const v = valueRef.current;
@@ -136,13 +160,13 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* 🛠️ V117c: 单个带边框容器，搜索输入 + 选中后坐标/时区 都在内部 */}
+      {/* 🛠️ V117c: 单个带边框容器,搜索输入 + 选中后坐标/时区 都在内部 */}
       <div style={{
         position: 'relative',
         background: 'rgba(255,255,255,0.08)',
         border: open ? '1.5px solid rgba(212,175,55,0.6)' : '1.5px solid rgba(212,175,55,0.3)',
         borderRadius: '10px',
-        padding: value ? '4px 14px 8px' : '9px 14px',  // V117f: 选中后顶部收紧，底部不变
+        padding: value ? '4px 14px 8px' : '9px 14px',  // V117f: 选中后顶部收紧,底部不变
         transition: 'border-color 0.15s',
         boxSizing: 'border-box',
         height: '49px',  // 固定高度与 TimeInput 一致
@@ -150,7 +174,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
         flexDirection: 'column',
         justifyContent: 'flex-start',
       }}>
-        {/* 搜索输入框 - 透明无边框，镶在容器内 */}
+        {/* 搜索输入框 - 透明无边框,镶在容器内 */}
         <input
           ref={inputRef}
           type="text"
@@ -166,7 +190,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             border: 'none',
             background: 'transparent',
             color: '#D4AF37',
-            fontSize: value ? '15px' : '16px',  // V117f: 选中后稍小，给坐标行留位置
+            fontSize: value ? '15px' : '16px',  // V117f: 选中后稍小,给坐标行留位置
             textAlign: 'center',
             outline: 'none',
             padding: 0,
@@ -176,13 +200,13 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
           }}
         />
 
-        {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内（恢复 IANA 时区） */}
+        {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内(恢复 IANA 时区) */}
         {(value || hasSelected) && (
           <div style={{
             fontSize: '10px',  // V117f: 从 11px 缩到 10px
             fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
             color: 'rgba(255,255,255,0.45)',
-            marginTop: '1px',  // V117f: 从 3px 缩到 1px（约 0.5mm 缩 2px）
+            marginTop: '1px',  // V117f: 从 3px 缩到 1px(约 0.5mm 缩 2px)
             lineHeight: '12px',  // V117f: 从 14px 缩到 12px
             letterSpacing: '0.3px',
             textAlign: 'center',
@@ -194,9 +218,14 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
             📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
             {'  |  '}
             🌐 {(() => {
-              // V118a: 显示本地化名（中文显示"重庆"，英文显示"Chongqing"），不再用 raw value
+              // V118c: 去掉城市名重复（输入框已显示），只留 IANA + UTC 偏移
+              // 中国全境法定 Asia/Shanghai (UTC+8) 是国际标准，非 bug
               const selected = cities.find(c => c.key === value);
-              return selected ? getDisplayName(selected, lang) : value;
+              if (!selected) return value;
+              const tzStr = selected.tz || '';
+              if (!tzStr) return '';
+              const off = getUtcOffset(tzStr);
+              return off ? `${tzStr} (${off})` : tzStr;
             })()}
           </div>
         )}
@@ -254,7 +283,7 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
                     </div>
                   )}
                 </div>
-                {/* 右侧不显示技术信息（时区/坐标对用户选城市无用，去掉） */}
+                {/* 右侧不显示技术信息(时区/坐标对用户选城市无用,去掉) */}
               </div>
             );
           })}
