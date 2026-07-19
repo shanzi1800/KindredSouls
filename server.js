@@ -118,7 +118,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/  +/g, ' ')
             // 字面 unicode 转义 → 真实字符 (DeepSeek 偶尔字面吐出 \ud83d\udd2e)
             .replace(/\\ud83d ?\\udd2e/g, '🔮')
-            .replace(/\\ud83d ?\\udfe2/g, '🟢')
+            .replace(/\\ud83d ?\\udd2e/g, '🟢')
             .replace(/\\ud83d ?\\udd34/g, '🔴')
             .replace(/\\ud83d ?\\udd35/g, '🔵')
             .replace(/\\u26a0 ?\\ufe0f/g, '⚠️')
