@@ -116,11 +116,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           if (pending.length >= FLUSH_SIZE) {
             try {
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-              global.__dbgN = (global.__dbgN||0)+1;
-              if (global.__dbgN <= 3) console.error('[DBG pending#' + global.__dbgN + ']', pending.slice(0,80));
-              let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-              if (global.__dbgN <= 3) console.error('[DBG pc#' + global.__dbgN + ']', pc.slice(0,80));
-              pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
+// 🛠️ V120-fix12: 月报跳过 applyMonthLockSanitizer（Issue A fix regex 会删字符）；年报保留
+              if (reportType !== 'monthly') pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+              else pc = pc.replace(/\uFFFD/g,'').replace(/�/g,'');
               res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
             } catch(e2) {
@@ -143,7 +142,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     try {
       const _a = astroMatrix?.meta?.rising_sign||'Cancer';
       let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-      pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      // 🛠️ V120-fix12: 月报跳过 applyMonthLockSanitizer
+      if (reportType !== 'monthly') pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+      else pc = pc.replace(/\uFFFD/g,'').replace(/�/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } catch(e) {
@@ -808,7 +809,6 @@ function astro_phase_linter(text) {
 function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null, lang = 'zh') {
   text = forceSpaceHouseSanitizer(text); // 🛠️ V116-final: 空间宫位清洗挂到月度锁内,V1/V2所有清洗路径自动受益
   if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
-  console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
   if (!text || !astroMatrix || !astroMatrix.months) return text;
 
   // 🛠️ V106-fix3: 最早期清洗--在任何标题/星座替换之前,先清乱码+修复孤闭括号
