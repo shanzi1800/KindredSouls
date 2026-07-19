@@ -122,7 +122,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                 pc = pending
                   .replace(/\uFFFD/g,'').replace(/�/g,'')
                   .replace(/\(/g,'（').replace(/\)/g,'）')
-                  .replace(/✦[^✦]*✦/g,'✦')
+                  .replace(/✦✦/g,'✦')  // 只合并相邻✦
                   .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
@@ -154,7 +154,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       pc = pending
         .replace(/\uFFFD/g,'').replace(/�/g,'')
         .replace(/\(/g,'（').replace(/\)/g,'）')
-        .replace(/✦[^✦]*✦/g,'✦')
+        .replace(/✦✦/g,'✦')  // 只合并相邻✦
         .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
