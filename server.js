@@ -328,6 +328,10 @@ function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/
 
 function final_text_sanitizer(text, ascendant = 'Cancer') {
   if (!text) return text;
+  if (!global.__ftsLog) { global.__ftsLog = 0; }
+  global.__ftsLog++;
+  if (global.__ftsLog <= 2) console.error('[FTS-IN]', text.length, text.slice(0,40));
+  
 
   // ── V97ab: 清除 AI 幻觉 [object Object](只删脏数据,不伤正常星座词)──
   // V103-fix7: 用 / {2,}/g 替代 /\s{2,}/g,只折叠多个空格,保留换行符不伤段落结构
@@ -578,6 +582,10 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 // 3) 「(巨蟹座形成强大的支持相位」漏)→ 补)
 function natal_sun_linter(text, natalSunSign, ascendant) {
   if (!text || !natalSunSign) return text;
+  if (!global.__nslLog) { global.__nslLog = 0; }
+  global.__nslLog++;
+  if (global.__nslLog <= 2) console.error('[NSL-IN]', text.length, text.slice(0,40));
+  
 
   // 🛠️ V110-fix1: 报头本命太阳硬覆盖(AI幻觉把摩羯写成双鱼,pat1只覆盖正文"你的太阳在X座"漏了报头)
   //   报头两处:年度星盘: X座 / 核心本命代码: 太阳X座 · 月亮Y座
@@ -700,6 +708,10 @@ const _sunOf = (m) => {
 // 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
 function house_linter(text, astroMatrix) {
   if (!text) return text;
+  if (!global.__hlLog) { global.__hlLog = 0; }
+  global.__hlLog++;
+  if (global.__hlLog <= 2) console.error('[HL-IN]', text.length, text.slice(0,40));
+  
   const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
   // rising Cancer fallback(与年报旧 fallback 对齐):木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫
   let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
@@ -732,6 +744,10 @@ function house_linter(text, astroMatrix) {
 // 星座-相位关系是有限且确定的,用查表法100%拦截错误配对。
 function astro_phase_linter(text) {
   if (!text) return text;
+  if (!global.__aplLog) { global.__aplLog = 0; }
+  global.__aplLog++;
+  if (global.__aplLog <= 2) console.error('[APL-IN]', text.length, text.slice(0,40));
+  
 
   // 相位规则表:12星座,每类相位只能与指定星座形成
   const PHASE_RULES = {
