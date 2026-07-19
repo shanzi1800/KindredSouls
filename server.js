@@ -1579,6 +1579,87 @@ const SUN_SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座'
 const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
 const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
 
+// ═══════════════════════════════════════════════════════════════
+// buildMonthlyPrompt: 月报专用，永远不调用年报管道
+// 方案 B 隔离: 独立函数，零共享状态，改月报绝不影响年报
+// ═══════════════════════════════════════════════════════════════
+function buildMonthlyPrompt(birthDate, lang) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const monthNames = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const curMonthName = monthNames[currentMonth - 1];
+  const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
+
+  // ── 月报本命太阳(从生日直接算,不依赖 astroMatrix)──
+  const getNatalSunSign = (bd) => {
+    const [, m, d] = bd.split('-').map(Number);
+    if (m === 1 && d < 20) return 9;
+    const cuts = [[1,20,10],[2,19,11],[3,21,0],[4,20,1],[5,21,2],[6,21,3],[7,23,4],[8,23,5],[9,23,6],[10,23,7],[11,22,8],[12,22,9]];
+    for (let i = cuts.length-1; i >= 0; i--)
+      if (m > cuts[i][0] || (m === cuts[i][0] && d >= cuts[i][1])) return cuts[i][2];
+    return 11;
+  };
+  const natalSunIdx = getNatalSunSign(birthDate);
+  const NATAL_SIGN = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+  const natalSunZH = NATAL_SIGN[natalSunIdx];
+
+  const MONTHLY_SYSTEM = {
+    zh: '你是顶级财富占星师兼荣格心理分析师。生成用户的月度财富报告，风格史诗命运感，极高端品质。',
+    en: 'You are a master wealth astrologer and Jungian psychologist. Generate the monthly wealth report. Epic, destiny-filled, ultra-premium quality.',
+    es: 'Eres un maestro astrólogo de riqueza y psicólogo junguiano. Genera el informe mensual de riqueza del usuario.',
+    fr: 'Vous êtes un maître astrologue de la richesse et psychologue junguien. Générez le rapport de richesse mensuel.',
+    th: 'คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียนชั้นเซียน สร้างรายงานความมั่งคั่งประจำเดือน',
+    vi: 'Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu. Tạo báo cáo tài chính hàng tháng.',
+  };
+
+  const MONTHLY_USER = `
+ASTROGRAPHIC RULES (MUST FOLLOW):
+• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
+• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
+• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
+
+Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
+
+CRITICAL REQUIREMENTS:
+• Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
+• Style: Epic, destiny-filled, premium quality
+• MUST have 6 sections exactly
+
+OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+
+✦ 🔮 本月命运主题 ✦
+[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+
+🟢 第1周 ${curMonthZH}（财富充能）
+核心天机：第X日
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+
+🔴 第2周 ${curMonthZH}（高危熔断）
+核心天机：第X日
+[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+
+🔵 第3周 ${curMonthZH}（顺流蓄力）
+核心天机：第X日
+[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
+
+🟢 第4周 ${curMonthZH}（财富爆发）
+核心天机：第X日
+[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
+
+⚠️ 消费陷阱熔断区 ${curMonthZH}
+[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "熔断指令" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
+`;
+
+  return {
+    system: MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en,
+    user: MONTHLY_USER
+  };
+}
+
+
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
 
@@ -2433,7 +2514,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
         console.log('[Wealth Oracle] Generating report:', { birthDate, lang, reportType });
         let prompt;
         try {
-          prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
+          // 🛠️ PLAN B: 月报永远直接调 buildMonthlyPrompt，永不触动年报管道
+          prompt = (reportType === 'monthly')
+            ? buildMonthlyPrompt(birthDate, lang)
+            : buildWealthReportPrompt(birthDate, lang, reportType, {
           dayMaster: dTGDisplay,
           wuxing,
           sunSign,
