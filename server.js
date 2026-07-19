@@ -1362,7 +1362,7 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
 // ── /api/clear-cache ──
 app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   const { birthDate, lang, reportType } = req.params;
-  const cacheKey = `wealth:v113x:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v120:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.json({ error: 'Supabase not configured' });
@@ -2169,7 +2169,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键：wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v113x:${birthDate}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v120:${birthDate}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -2741,7 +2741,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
 
   // 🔥 军师缓存键：wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v113x:${birthDate}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v120:${birthDate}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

@@ -2427,6 +2427,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             yearlyCardsReady={monthlyCardsReady}
             realSunSign={getTrueZodiacByDate(birthDate) || '双鱼座'}
             lang={currentLang}
+            reportType="monthly"
           />
         )}
 

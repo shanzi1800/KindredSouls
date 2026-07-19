@@ -10,7 +10,8 @@ const SacredYearlyReportBox: React.FC<{
   yearlyCardsReady: boolean;
   realSunSign?: string;
   lang?: string;
-}> = ({ rawStreamText, yearlyCardsReady, lang = 'zh' }) => {
+  reportType?: 'yearly' | 'monthly';  // 🛠️ V120: 控制标题显示
+}> = ({ rawStreamText, yearlyCardsReady, lang = 'zh', reportType = 'yearly' }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
@@ -467,7 +468,9 @@ const SacredYearlyReportBox: React.FC<{
             fontSize: '15px', 
             margin: 0 
           }}>
-            {(lang === 'en' ? 'Annual Wealth Report' : lang === 'es' ? 'Informe de Riqueza Anual' : lang === 'fr' ? 'Rapport de Richesse Annuel' : lang === 'th' ? 'รายงานความมั่งคั่งประจำปี' : lang === 'vi' ? 'Báo Cáo Tài Sản Thường Niên' : '年度财富报告')}
+            {(reportType === 'monthly'
+              ? (lang === 'en' ? 'Monthly Wealth Report' : lang === 'es' ? 'Informe de Riqueza Mensual' : lang === 'fr' ? 'Rapport de Richesse Mensuel' : lang === 'th' ? 'รายงานความมั่งคั่งรายเดือน' : lang === 'vi' ? 'Báo Cáo Tài Sản Hàng Tháng' : '月度财富报告')
+              : (lang === 'en' ? 'Annual Wealth Report' : lang === 'es' ? 'Informe de Riqueza Anual' : lang === 'fr' ? 'Rapport de Richesse Annuel' : lang === 'th' ? 'รายงานความมั่งคั่งประจำปี' : lang === 'vi' ? 'Báo Cáo Tài Sản Thường Niên' : '年度财富报告'))}
           </h3>
         </div>
 
