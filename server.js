@@ -2565,9 +2565,19 @@ app.post('/api/wealth-oracle', async (req, res) => {
         _patterns.forEach(p => { cleanedText = cleanedText.replace(p, realSunSign); });
       });
     }
-        const sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign), astroMatrix);
+        // 🛠️ V120-fix17: 月报完全不跑 linter，只做基础清洗
+        let sanitizedAI;
+        if (reportType === 'monthly') {
+          sanitizedAI = (aiResult || '')
+            .replace(/�/g,'').replace(/�/g,'')
+            .replace(/\(/g,'（').replace(/\)/g,'）')
+            .replace(/✦✦/g,'✦')
+            .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
+        } else {
+          sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign), astroMatrix);
+        }
 
-        // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer(此前只跑了 MISS 的 HIT 和流式端点,非流式 MISS 漏了)
+        // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer
         const monthLocked = (reportType === 'yearly' && astroMatrix)
           ? applyMonthLockSanitizer(sanitizedAI, astroMatrix, null, null, lang)
           : sanitizedAI;
@@ -2578,11 +2588,6 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
           reportContent = cleanYearlyTimeline(monthLocked);
-        }
-
-        if (reportType === 'monthly') {
-          // 🛠️ V120: 月报返回 markdown 纯文本(前端正名为流式打字机)
-          reportContent = sanitizedAI; // 月报 prompt 已改为 markdown 格式,直接发送
         }
 
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
