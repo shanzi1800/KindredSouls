@@ -111,7 +111,28 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           const txt = parsed.choices?.[0]?.delta?.content || '';
           if (!txt) continue;
           chunkCount++;
-          let clean = txt.replace(/\\n/g, '\n').replace(/ \n/g, '\n').replace(/  +/g, ' ').replace(/\uFFFD/g,'').replace(/�/g,'');
+          // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
+          let clean = txt
+            .replace(/\\n/g, '\n')
+            .replace(/ \n/g, '\n')
+            .replace(/  +/g, ' ')
+            // 字面 unicode 转义 → 真实字符 (DeepSeek 偶尔字面吐出 \ud83d\udd2e)
+            .replace(/\\uD83D\\uDD2E/g, '🔮')
+            .replace(/\\uD83D ?\\uDDE2/g, '🟢')
+            .replace(/\\uD83D ?\\uDD34/g, '🔴')
+            .replace(/\\uD83D ?\\uDD35/g, '🔵')
+            .replace(/\\u26A0 ?\\uFE0F/g, '⚠️')
+            // 半角括号→全角
+            .replace(/\(/g, '（').replace(/\)/g, '）')
+            // 章节标题兜底修复 (DeepSeek 截断/缩写标题)
+            .replace(/🔮\s*本命主(?!题)/g, '🔮 本月命运主题')
+            .replace(/🔮\s*本(?![月命运主题])/g, '🔮 本月命运主题')
+            .replace(/🔮\s*命主(?!题)/g, '🔮 本月命运主题')
+            .replace(/（财充）/g, '（财富充能）')
+            .replace(/（高熔）/g, '（高危熔断）')
+            .replace(/（顺蓄）/g, '（顺流蓄力）')
+            .replace(/（财爆）/g, '（财富爆发）')
+            .replace(/\uFFFD/g,'').replace(/�/g,'');
           fullText += clean;
           pending += clean;
           if (pending.length >= FLUSH_SIZE) {
@@ -164,6 +185,23 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
     if (typeof res.flush === 'function') res.flush();
   }
+  // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复
+  // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
+  if (reportType === 'monthly' && fullText) {
+    const fixed = fixMonthlySectionTitles(fullText);
+    if (fixed !== fullText) {
+      try {
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\\n\\n`, 'utf-8'));
+        onChunk && onChunk(fixed);
+        if (typeof res.flush === 'function') res.flush();
+        console.log('[callDeepSeek] [MONTHLY-FIX] Section titles fixed, len=' + fixed.length);
+        fullText = fixed;
+      } catch(e) {
+        console.error('[callDeepSeek] [MONTHLY-FIX] error:', e.message);
+      }
+    }
+  }
+
   console.log('[callDeepSeek] RETURN fullText.length=' + fullText.length + ' chunks=' + chunkCount);
   return fullText;
 }

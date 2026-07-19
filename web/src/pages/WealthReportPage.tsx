@@ -1895,14 +1895,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     setWealthReportText(prev => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                   }
-                } else if (parsed.sanitized) {
+                } else if (parsed.sanitized || parsed.fixed) {
                   // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版，整体替换流式脏文本
-                  // 否则用户首次生成看到未清洗的旧星座/宫位，刷新走缓存才干净
-                  if (type === 'yearly') {
-                    setSacredText(parsed.sanitized);
+                  // 🛠️ V120-fix25: 月报章节标题修复后发来 fixed 全量版，整体替换
+                  // 否则用户首次生成看到未清洗的旧星座/宫位/缩写标题，刷新走缓存才干净
+                  const fixedText = parsed.sanitized || parsed.text;
+                  if (type === 'yearly' || type === 'monthly') {
+                    setSacredText(fixedText);
                   } else {
-                    setWealthReportText(parsed.sanitized);
-                    wealthReportRef.current = parsed.sanitized;
+                    setWealthReportText(fixedText);
+                    wealthReportRef.current = fixedText;
                   }
                 }
               } catch (e) {
