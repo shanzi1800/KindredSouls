@@ -133,6 +133,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（顺蓄）/g, '（顺流蓄力）')
             .replace(/（财爆）/g, '（财富爆发）')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
+          console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           fullText += clean;
           pending += clean;
           if (pending.length >= FLUSH_SIZE) {
@@ -1625,7 +1626,7 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 function fixMonthlySectionTitles(text) {
   if (!text) return text;
   let c = text;
-  if (process.env.DEBUG_FIX) console.log('[FIX] called, len:', c.length, 'has 【开】:', c.includes('【开】'));
+  console.log('[FIX] in:', JSON.stringify(text.slice(0,100)));
 
   // 1. 【开篇】章节缩写还原（处理字符脱落：'【开】'、'【开】本命主' 等）
   c = c.replace(/【开】\s*本命主(?!题)/g, '【开篇】本月命运主题');
