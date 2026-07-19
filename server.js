@@ -121,8 +121,12 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
             } catch(e2) {
-              res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
-              onChunk && onChunk(pending);
+              // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
+              console.error('[Stream Chunk Error]', e2 && e2.message, '| pending_head=', pending.slice(0,60));
+              let _safe = pending;
+              try { _safe = final_text_sanitizer(pending, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = pending; }
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: _safe })}\n\n`, 'utf-8'));
+              onChunk && onChunk(_safe);
             }
             if (typeof res.flush === 'function') res.flush();
             pending = '';
