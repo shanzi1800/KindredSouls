@@ -116,9 +116,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           if (pending.length >= FLUSH_SIZE) {
             try {
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-              if (!global.__dbgLogged) { global.__dbgLogged = true; console.error('[DBG pending]', pending.slice(0,80)); }
+              global.__dbgN = (global.__dbgN||0)+1;
+              if (global.__dbgN <= 3) console.error('[DBG pending#' + global.__dbgN + ']', pending.slice(0,80));
               let pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
-              if (global.__dbgLogged === 1) { global.__dbgLogged = 2; console.error('[DBG pc]', pc.slice(0,80)); }
+              if (global.__dbgN <= 3) console.error('[DBG pc#' + global.__dbgN + ']', pc.slice(0,80));
               pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
