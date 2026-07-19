@@ -1519,6 +1519,22 @@ app.use('/api/health', async (req, res) => {
 });
 
 // ── Root health check for Railway ──
+app.get('/api/debug-source', async (req, res) => {
+  const fs = require('fs');
+  try {
+    const src = fs.readFileSync(__filename, 'utf-8');
+    const idx = src.indexOf('res.write(Buffer.from(`data: ${JSON.stringify({');
+    res.json({
+      hasDbg: src.includes('_dbg'),
+      hasDbgAnnotation: src.includes('hasKaichuan'),
+      snippet: idx >= 0 ? src.slice(idx, idx+200) : 'NOT FOUND',
+      fileLen: src.length
+    });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
 app.get('/', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
 });
