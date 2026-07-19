@@ -2540,9 +2540,36 @@ app.use('/api/ai-advisor', async (req, res) => {
     }
 
     const LANG_NAME = {zh:'中文',en:'English',es:'Español',fr:'Français',th:'ภาษาไทย',vi:'Tiếng Việt'};
+
+    // ── V9 塔罗方向锁 prompt（从 web/api/ai-advisor.js 迁移，2026-07-19）──
+    const tarotOrient = (req.body.tarot && req.body.tarot.orientation) ? req.body.tarot.orientation : '';
+    const isReversed = tarotOrient.includes('Reversed') || tarotOrient.includes('Invertido') || tarotOrient.includes('Inversé') || tarotOrient.includes('กลับด้าน') || tarotOrient.includes('Ngược');
+    const isUpright  = tarotOrient.includes('Upright')  || tarotOrient.includes('Derecho')   || tarotOrient.includes('Droit')     || tarotOrient.includes('ตั้งตรง') || tarotOrient.includes('Xuôi');
+
+    // 各语言塔罗正逆位强制锁（从 V9 迁移）
+    const tarotLock =
+      lang === 'zh' ? (isReversed ? '【强制】塔罗牌为逆位，全程禁止出现"正位"或"Upright"字样。' : isUpright ? '【强制】塔罗牌为正位，全程禁止出现"逆位"或"Reversed"字样。' : '') :
+      lang === 'en' ? (isReversed ? '[LOCK] Tarot is Reversed. FORBIDDEN: upright, Upright, 正位. ALWAYS say Reversed.' : isUpright ? '[LOCK] Tarot is Upright. FORBIDDEN: reversed, Reversed, 逆位. ALWAYS say Upright.' : '') :
+      lang === 'es' ? (isReversed ? '[BLOQUEO] La carta es Invertido. PROHIBIDO: upright, Derecho.' : isUpright ? '[BLOQUEO] La carta es Derecho. PROHIBIDO: inverted, Invertido.' : '') :
+      lang === 'fr' ? (isReversed ? '[VERROU] La carte est Inversé. DÉFENDU: upright, Droit.' : isUpright ? '[VERROU] La carte est Droit. DÉFENDU: reversed, Inversé.' : '') :
+      lang === 'th' ? (isReversed ? '[🔒] ไพ่กลับด้าน ห้ามพูด"ตั้งตรง"หรือ"Upright"แม้แต่คำเดียว' : isUpright ? '[🔒] ไพ่ตั้งตรง ห้ามพูด"กลับด้าน"หรือ"Reversed"แม้แต่คำเดียว' : '') :
+      lang === 'vi' ? (isReversed ? '[KHOÁ] Lá bài là Ngược. CẤM: Xuôi, Upright. Luôn nói Ngược.' : isUpright ? '[KHOÁ] Lá bài là Xuôi. CẤM: Ngược, Reversed. Luôn nói Xuôi.' : '') :
+      '';
+
+    const bazi = req.body.bazi || '未知';
+    const zodiac = req.body.zodiac || '未知';
+    const iching = req.body.iching || '未知';
+
     const prompt = reportType === 'compatibility'
-      ? `分析 ${d1} 和 ${d2} 的命理合盘。必须用 ${LANG_NAME[lang]||'Tiếng Việt'} 输出，温暖、积极的情感解读，禁止输出其他语言，禁止重复塔罗牌名称。数据：${JSON.stringify({d1,d2})}`
-      : `分析 ${d1} 的财富格局。必须用 ${LANG_NAME[lang]||'English'} 输出，专业的财富建议，禁止输出其他语言，禁止重复塔罗牌名称。数据：${JSON.stringify({d1,lang})}`
+      ? (lang === 'zh' ? `${tarotLock}${tarotLock ? ' ' : ''}你是一位资深命理情感顾问。综合八字${bazi}、星座${zodiac}、易经${iching}的数据，对 ${d1} 和 ${d2} 的合盘给出温暖、专业、积极的4句话情感洞察。只用中文输出，不预测分手或负面结局，始终给予希望和具体行动建议。` :
+        lang === 'en' ? `${tarotLock}${tarotLock ? ' ' : ''}You are the AI relationship advisor for KindredSouls. Based on: Bazi=${bazi}, Zodiac=${zodiac}, I Ching=${iching}. Give 4 warm, professional, positive sentences of relationship insight for ${d1} and ${d2}. Only English. Never predict breakups. Always give hope and specific actionable advice.` :
+        lang === 'es' ? `${tarotLock}${tarotLock ? ' ' : ''}Eres el consejero sentimental IA de KindredSouls. Basado en: Bazi=${bazi}, Zodiaco=${zodiac}, I Ching=${iching}. Da 4 frases cálidas y positivas sobre ${d1} y ${d2}. Solo español. Nunca predigas ruptura.` :
+        lang === 'fr' ? `${tarotLock}${tarotLock ? ' ' : ''}Tu es le conseiller sentimental IA de KindredSouls. Basé sur: Bazi=${bazi}, Zodiac=${zodiac}, I Ching=${iching}. Donne 4 phrases chaleureuses et positives sur ${d1} et ${d2}. Seulement français. Ne prédis jamais de rupture.` :
+        lang === 'th' ? `${tarotLock}${tarotLock ? ' ' : ''}คุณเป็นที่ปรึกษาความสัมพันธ์ AI ของ KindredSouls จากข้อมูล: บาซี=${bazi}, ราศี=${zodiac}, อี้จิง=${iching} ให้ 4 ประโยคที่อบอุ่นและเชิงบวกเกี่ยวกับความสัมพันธ์ระหว่าง ${d1} และ ${d2} เป็นภาษาไทยเท่านั้น` :
+        lang === 'vi' ? `${tarotLock}${tarotLock ? ' ' : ''}Bạn là cố vấn mối quan hệ AI của KindredSouls. Dựa trên: Bazi=${bazi}, Zodiac=${zodiac}, I Ching=${iching}. Đưa ra 4 câu ấm áp, tích cực về mối quan hệ giữa ${d1} và ${d2}. Chỉ tiếng Việt. Không dự đoán chia tay.` :
+        `分析 ${d1} 和 ${d2} 的命理合盘。温暖、积极的情感解读。`)
+      : `分析 ${d1} 的财富格局。专业财富建议，禁止输出其他语言。`;
+
 
     // ── DeepSeek 直连，失败自动切 Gemini 免费层 ──
     let insight = '';
