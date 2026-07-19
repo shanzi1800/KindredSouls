@@ -117,7 +117,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/ \n/g, '\n')
             .replace(/  +/g, ' ')
             // 字面 unicode 转义 → 真实字符 (DeepSeek 偶尔字面吐出 \ud83d\udd2e)
-            .replace(/\\uD83D\\uDD2E/g, '🔮')
+            .replace(/\\uD83D ?\\uDD2E/g, '🔮')
             .replace(/\\uD83D ?\\uDDE2/g, '🟢')
             .replace(/\\uD83D ?\\uDD34/g, '🔴')
             .replace(/\\uD83D ?\\uDD35/g, '🔵')
@@ -1505,7 +1505,7 @@ app.use('/api/health', async (req, res) => {
     const { execSync } = require('child_process');
     gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
   } catch(e) {}
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-2026-30-TEST-FIX', gitSha, debugBuildTime: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-V120FIX26', gitSha, debugBuildTime: new Date().toISOString() });
 });
 
 // ── Root health check for Railway ──
