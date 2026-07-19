@@ -1520,9 +1520,8 @@ app.use('/api/health', async (req, res) => {
 
 // ── Root health check for Railway ──
 app.get('/api/debug-source', async (req, res) => {
-  const fs = require('fs');
   try {
-    const src = fs.readFileSync(__filename, 'utf-8');
+    const src = readFileSync(import.meta.url.replace('file://', ''), 'utf-8');
     const idx = src.indexOf('res.write(Buffer.from(`data: ${JSON.stringify({');
     res.json({
       hasDbg: src.includes('_dbg'),
