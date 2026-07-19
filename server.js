@@ -1765,11 +1765,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 • 生日: ${birthDate}
 • 本命太阳星座: ${natalSunZH}（绝对禁止写成其他星座）
 • 上升星座: ${risingLocal}
-• 木星: ${jupSignLocal}座 第${jupHouse}宫
-• 土星: ${satSignLocal}座 第${satHouse}宫
+• 木星: ${jupSign}座 第${jupHouse}宫
+• 土星: ${satSign}座 第${satHouse}宫
 • 冥王星: 水瓶座 第${plHouse}宫
 • 太阳: 第${sunHouse}宫
-• 月亮: 第${moonHouse}宫
+• 月亮: ${moonSign}座 第${moonHouse}宫
 </User_Data>
 
 ✦ 🔮 本月命运主题 ✦
