@@ -2188,16 +2188,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // V103-fix6: 标准化旧缓存，确保格式统一
           const stdCached = standardizeReport(cachedText);
           // 返回缓存数据（包装成前端期望的格式）
-          if (reportType === 'monthly') {
-            try {
-              const parsed = JSON.parse(stdCached);
-              return res.json({ success: true, cached: true, report: JSON.stringify(parsed) });
-            } catch (e) {
-              return res.json({ success: true, cached: true, report: stdCached });
-            }
-          } else {
-            return res.json({ success: true, cached: true, report: stdCached });
-          }
+          // 🛠️ V120: 月报返回 markdown 纯文本
+          return res.json({ success: true, cached: true, report: stdCached });
         }
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
@@ -2425,14 +2417,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         if (reportType === 'monthly') {
-          // Try to parse as JSON, if fails return as markdown
-          try {
-            const parsed = JSON.parse(sanitizedAI);
-            reportContent = JSON.stringify(parsed); // Send JSON to frontend
-          } catch (e) {
-            // Not JSON, treat as markdown
-            reportContent = sanitizedAI;
-          }
+          // 🛠️ V120: 月报返回 markdown 纯文本（前端正名为流式打字机）
+          reportContent = sanitizedAI; // 月报 prompt 已改为 markdown 格式，直接发送
         }
         
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
