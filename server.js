@@ -117,14 +117,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           if (pending.length >= FLUSH_SIZE) {
             try {
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
-// 🛠️ V120-fix15: 月报只跑最基础清洗，不跑破坏性的 full final_text_sanitizer
+// 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
-                pc = pending
-                  .replace(/\uFFFD/g,'').replace(/�/g,'')
-                  .replace(/\(/g,'（').replace(/\)/g,'）')
-                  .replace(/✦✦/g,'✦')  // 只合并相邻✦
-                  .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
+                pc = pending.replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
