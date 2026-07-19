@@ -147,7 +147,16 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               }
-              res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+              res.write(Buffer.from(`data: ${JSON.stringify({
+                text: pc,
+                _dbg: {
+                  pendingLen: pending.length,
+                  fixInput: pending.slice(0, 100),
+                  fixOutput: pc.slice(0, 100),
+                  hasKaichuan: pc.includes('【开篇】'),
+                  hasCaichong: pc.includes('（财富充能）')
+                }
+              })}\n\n`, 'utf-8'));
               onChunk && onChunk(pc);
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
