@@ -122,7 +122,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               onChunk && onChunk(pc);
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
-              console.error('[Stream Chunk Error]', e2 && e2.message, '| pending_head=', pending.slice(0,60));
+              
               let _safe = pending;
               try { _safe = final_text_sanitizer(pending, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = pending; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _safe })}\n\n`, 'utf-8'));
@@ -682,6 +682,16 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
   return text;
 }
 
+// ── 模块级 _sunOf: 从 astroMatrix month 对象安全取太阳星座/宫位(astro-truth.js / Python 双格式兼容)──
+// ⚠️ 必须模块级定义! house_linter / applyMonthLockSanitizer / buildWealthReportPrompt 共用,局部定义会导致跨函数调用 _sunOf is not defined
+const _sunOf = (m) => {
+  if (!m) return { sign: '', house: undefined };
+  if (m.sun && m.sun.sign) return m.sun;
+  if (m.positions && m.positions.Sun) return { sign: m.positions.Sun.sign, house: m.positions.Sun.house };
+  if (m.sunSignZH) return { sign: m.sunSignZH, house: m.sunHouse };  // astro-truth.js format
+  return { sign: '', house: undefined };
+};
+
 // 🛠️ V120-fix5: 宫位强制纠偏 linter——AI 常把行星宫位写错(如木星狮子座写成第11宫,实为第2宫)
 // 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
 function house_linter(text, astroMatrix) {
@@ -794,14 +804,6 @@ function astro_phase_linter(text) {
 // 🛠️ V97w: 后处理硬替换--逐月检查标题的太阳星座,用锁表修正AI胡编(治本:Prompt锁不住就后门堵死)
 function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentMonth = null, lang = 'zh') {
   text = forceSpaceHouseSanitizer(text); // 🛠️ V116-final: 空间宫位清洗挂到月度锁内,V1/V2所有清洗路径自动受益
-  // 🛠️ V114-fix: Python positions.Sun accessor(顶层 m.sun 永远空)
-  const _sunOf = (m) => {
-  if (m.sun && m.sun.sign) return m.sun;
-  if (m.positions?.Sun) return {sign: m.positions.Sun.sign, house: m.positions.Sun.house};
-  if (m.sunSignZH) return {sign: m.sunSignZH, house: m.sunHouse};  // astro-truth.js format
-  return {sign:'', house:undefined};
-};
-  if (currentYear === null) currentYear = new Date().getFullYear();
   if (currentMonth === null) currentMonth = new Date().getMonth() + 1;
   console.log('[V97w-MARKER] applyMonthLockSanitizer invoked, astroMatrix.months=' + (astroMatrix?.months?.length || 0));
   if (!text || !astroMatrix || !astroMatrix.months) return text;
@@ -1561,14 +1563,6 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
-// 🛠️ V114-fix: Python monthly matrix 太阳在 positions.Sun(非顶层 m.sun),统一 accessor
-const _sunOf = (m) => {
-  if (m.sun && m.sun.sign) return m.sun;
-  if (m.positions?.Sun) return {sign: m.positions.Sun.sign, house: m.positions.Sun.house};
-  if (m.sunSignZH) return {sign: m.sunSignZH, house: m.sunHouse};  // astro-truth.js format
-  return {sign:'', house:undefined};
-};
-
 
   try {
 
