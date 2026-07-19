@@ -1625,6 +1625,7 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 function fixMonthlySectionTitles(text) {
   if (!text) return text;
   let c = text;
+  if (process.env.DEBUG_FIX) console.log('[FIX] called, len:', c.length, 'has 【开】:', c.includes('【开】'));
 
   // 1. 【开篇】章节缩写还原（处理字符脱落：'【开】'、'【开】本命主' 等）
   c = c.replace(/【开】\s*本命主(?!题)/g, '【开篇】本月命运主题');
