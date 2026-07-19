@@ -151,12 +151,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     const _a = astroMatrix?.meta?.rising_sign||'Cancer';
     let pc;
     if (reportType === 'monthly') {
-      // 🛠️ V120-fix16: 月报完全不跑 linter，只做基础清洗
-      pc = pending
-        .replace(/\uFFFD/g,'').replace(/�/g,'')
-        .replace(/\(/g,'（').replace(/\)/g,'）')
-        .replace(/✦✦/g,'✦')  // 只合并相邻✦
-        .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
+      // 🛠️ V120-fix21: 月报零清洗——只去乱码，不做任何正则
+      pc = pending.replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -1803,6 +1799,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     };
   }
 if (reportType === 'yearly') {
+    const DATA_CONSUMPTION_RULE_ZH = `
+[数据消费铁律 - 必须遵守]
+1. 你的唯一数据来源是后端 JSON 中的 quarterly_forecast。禁止自行计算天文数据。
+2. 写作任何月份时,太阳星座和宫位必须100%从 JSON 的 sun_transit.sign 和 sun_transit.house 提取——即使与用户本命星座冲突。
+3. active_aspects 中的每个相位必须严格按公式叙述,禁止编造未列出的相位。
+4. financial_black_swan 包含精确日期和行动指南——必须原样翻译为叙述性散文。
+`;
     const DATA_CONSUMPTION_RULE_EN = `
 [Data Consumption Supreme Guideline - MUST OBEY]
 1. Your SOLE data source is the quarterly_forecast JSON from the backend. NO astronomical calculation or sign derivation is permitted.
@@ -2497,14 +2500,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
         _patterns.forEach(p => { cleanedText = cleanedText.replace(p, realSunSign); });
       });
     }
-        // 🛠️ V120-fix17: 月报完全不跑 linter，只做基础清洗
+        // 🛠️ V120-fix22: 月报零清洗，只去乱码
         let sanitizedAI;
         if (reportType === 'monthly') {
-          sanitizedAI = (aiResult || '')
-            .replace(/�/g,'').replace(/�/g,'')
-            .replace(/\(/g,'（').replace(/\)/g,'）')
-            .replace(/✦✦/g,'✦')
-            .replace(/三分相|六分相|四分相|对分相/g,'强烈共振');
+          sanitizedAI = (aiResult || '').replace(/�/g,'');
         } else {
           sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign), astroMatrix);
         }
