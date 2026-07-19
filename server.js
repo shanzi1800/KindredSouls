@@ -1658,98 +1658,87 @@ function buildMonthlyPrompt(birthDate, lang) {
   const curMonthName = monthNames[currentMonth - 1];
   const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
 
-  // ── 月报本命太阳(从生日直接算,不依赖 astroMatrix)──
-  const getNatalSunSign = (bd) => {
-    const [, m, d] = bd.split('-').map(Number);
-    if (m === 1 && d < 20) return 9;
-    const cuts = [[1,20,10],[2,19,11],[3,21,0],[4,20,1],[5,21,2],[6,21,3],[7,23,4],[8,23,5],[9,23,6],[10,23,7],[11,22,8],[12,22,9]];
-    for (let i = cuts.length-1; i >= 0; i--)
-      if (m > cuts[i][0] || (m === cuts[i][0] && d >= cuts[i][1])) return cuts[i][2];
-    return 11;
+  // 多语言语言铁律（来自 b41261b 验证可用版本）
+  const langInstructions = {
+    zh: '',
+    en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House, Square, Trine). ALL OUTPUT MUST BE IN ENGLISH ONLY.',
+    es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
+    fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.',
+    th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น',
+    vi: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.',
   };
-  const natalSunIdx = getNatalSunSign(birthDate);
-  const NATAL_SIGN = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
-  const natalSunZH = NATAL_SIGN[natalSunIdx];
-
-// MONTHLY_SYSTEM is now inside MONTHLY_USER (lang-aware)
+  const instruction = langInstructions[lang] || langInstructions.en;
 
   const MONTHLY_SYSTEM = {
-    zh: `你是顶级财富占星师兼荣格心理分析师。
-
-【格式铁律 - 违反任何一条=输出作废】
-1. 必须用中文输出（除了专有名词外）
-2. 必须严格按照下方6个章节标题**逐字**输出，不许改、不许缩写、不许省略任何字
-3. 每个章节标题必须**独占一行**，前后空一行
-4. 总字数必须达到 1500-1800 个中文字符（不含标点和空格），不得低于1500
-5. 输出时**每个汉字都要完整写出**，不要用「的」一个字代替整段话，不要用「…」省略内容
-6. 只输出报告正文，不要写「好的，这是您的报告」「以下是」等废话开场白
-7. 用户本命太阳星座: ${natalSunZH}（必须使用此星座，不许改）`,
-
-    en: `You are a master wealth astrologer and Jungian psychologist.
-
-FORMAT RULES - violation = output invalid:
-1. Must output in English (except proper nouns)
-2. Must strictly follow the 6 section titles below, character-by-character
-3. Each section title on its own line
-4. Total length: 1500-1800 words
-5. Write every word completely, no abbreviations
-6. Output only the report, no preamble`,
+    zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
+    en: `You are a wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
+    es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: Debes escribir al menos 1200 palabras.`,
+    fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: Vous devez écrire au moins 1200 mots.`,
+    th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสำคัญ: คุณต้องเขียนอย่างน้อย 1200 คำ`,
+    vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.`,
   };
 
-  const MONTHLY_USER = `
-Generate a monthly wealth report in ${lang === 'zh' ? '中文' : lang} for birth date ${birthDate} (${curMonthName} ${currentYear}).
-
-【用户信息 - 绝对锁定】
-- 生日: ${birthDate}
-- 本命太阳: ${natalSunZH}（任何引用本命太阳的句子必须使用此星座）
-- 报告月份: ${curMonthZH}
-
-【必须严格按照下面的模板输出 - 一字不改】
-
-✦ 🔮 本月命运主题 ✦
-
-用2-3句话写本月财富主题，必须提及${natalSunZH}的本命特质和本月${curMonthName}的关键星象。
-
-🟢 第1周 ${curMonthZH}（财富充能）
-核心天机：第1-7日
-
-详细写第1周的财富能量（至少250字）。包括：能量来源（哪个星象在推动）、具体机会（哪天做什么最赚钱）、推荐行动、关键日期。不要省略，不要用「...」。
-
-🔴 第2周 ${curMonthZH}（高危熔断）
-核心天机：第8-14日
-
-详细写第2周的危险期（至少250字）。包括：危险来源（哪个相位在搞事）、具体陷阱（哪天会冲动消费或被坑）、熔断指令（超过多少元必须等24小时）、关键日期。
-
-🔵 第3周 ${curMonthZH}（顺流蓄力）
-核心天机：第15-21日
-
-详细写第3周的渐进财富（至少250字）。包括：能量流向（哪个星象在支撑）、适合的策略（适合做什么不适合做什么）、关键日期。
-
-🟢 第4周 ${curMonthZH}（财富爆发）
-核心天机：第22-31日
-
-详细写第4周的高峰（至少250字）。包括：能量爆发点（哪天的具体机会）、可获得收益（佣金/奖金/遗产等）、行动建议、关键日期。
-
-⚠️ 消费陷阱熔断区 ${curMonthZH}
-
-详细写本月最大的消费陷阱（至少200字）。包括：陷阱来源（哪个宫位/行星在放大消费欲）、具体场景（什么样的支出最容易踩坑）、熔断指令（具体数字+24小时冷静期）。
-
-【再次强调】
-- 6个章节标题必须**原样照抄**，包括 emoji、✦、中文括号
-- 章节之间空一行
-- 每个章节内容至少250字
-- 全文总计1500-1800中文字符
-- 不许输出「好的」「以下是」「下面是」等任何开场白
-- 直接从 ✦ 🔮 本月命运主题 ✦ 开始
-`;
+  const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
 
   return {
-    system: MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en,
-    user: MONTHLY_USER
+    system: monthlySystem,
+    user: `
+ASTROGRAPHIC RULES (MUST FOLLOW):
+• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
+• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
+• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
+
+[THAI ASTRO RULES]:
+• MERCURY Rx: ดาวพุธวงในเริ่ม 18 กรกฎาคม 2026 — ห้ามเขียนก่อนวันที่ 18
+• JUPITER: ดาวพฤหัสบดีในราศีสิงห์ตลอดกรกฎาคม 2026
+• NEW MOON จริง: ~14 กรกฎาคม 2026
+
+[VIETNAMESE ASTRO RULES]:
+• MERCURY Rx: Sao Thủy nghịch bắt đầu 18/7/2026 — cấm viết trước ngày 18/7
+• WEEK 3 (Jul 15-21): Ngày 18/7 là ngày Sao Thủy nghịch BẮT ĐẦU — tuyệt đối CẤM đặt ngày 18/7 làm ngày vàng tài chính
+• SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
+• CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" — dùng tiếng Việt tự nhiên
+
+Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
+
+CRITICAL REQUIREMENTS:
+• Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
+• Style: Epic, destiny-filled, premium quality
+• MUST have 6 sections exactly
+
+OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+
+✦ 🔮 本月命运主题 ✦
+[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+
+🟢 第1周 ${curMonthZH}（财富充能）
+核心天机：第X日
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+
+🔴 第2周 ${curMonthZH}（高危熔断）
+核心天机：第X日
+[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+
+🔵 第3周 ${curMonthZH}（顺流蓄力）
+核心天机：第X日
+[Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
+
+🟢 第4周 ${curMonthZH}（财富爆发）
+核心天机：第X日
+[Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
+
+⚠️ 消费陷阱熔断区 ${curMonthZH}
+[Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "熔断指令" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
+
+IMPORTANT:
+• Write in ${lang} with native astrological and financial terminology
+• Use ✦ for section dividers
+• Each section must be rich with specific astrological context
+• NO English in Chinese output (except universal astrological terms)
+• Be dramatic and destiny-filled, not clinical
+• ⛔ [句子完整性铁律]: 每个句子必须有完整主语+谓语。禁止句子碎片。`
   };
 }
-
-
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
 
