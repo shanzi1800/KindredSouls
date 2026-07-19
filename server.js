@@ -1666,7 +1666,7 @@ CRITICAL REQUIREMENTS:
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
 ✦ 🔮 本月命运主题 ✦
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+[Write EXACTLY 2 complete sentences, each ending with a period (。). DO NOT end any sentence with a comma, "的", or a trailing clause. Each sentence must be a full, grammatically complete statement with subject + verb + conclusion. NEVER use phrases like "...木星在狮子座的社交与愿景之火，" or "...中，" - always complete the thought with 。]
 
 🟢 第1周 ${curMonthZH}（财富充能）
 核心天机：第X日

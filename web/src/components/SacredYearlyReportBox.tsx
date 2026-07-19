@@ -241,7 +241,7 @@ const SacredYearlyReportBox: React.FC<{
       const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
       return { type: 'heading', content: cleanMarkdown(withoutStar), icon: '✦' };
     }
-    const iconMatch = t.match(/^([🚀⚠️🟢🔴💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
+    const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
@@ -310,7 +310,7 @@ const SacredYearlyReportBox: React.FC<{
     }
     
     // 警告/提示
-    if (t.match(/^🟢|^🔴|^⚠️|^🚀/)) {
+    if (t.match(/^🟢|^🔴|^🔵|^⚠️|^🚀/)) {
       return { type: 'alert', content: cleanMarkdown(t) };
     }
     
