@@ -120,7 +120,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 // 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
-                pc = pending.replace(/\uFFFD/g,'');
+                pc = fixMonthlySectionTitles(pending).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -147,8 +147,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     const _a = astroMatrix?.meta?.rising_sign||'Cancer';
     let pc;
     if (reportType === 'monthly') {
-      // 🛠️ V120-fix21: 月报零清洗——只去乱码，不做任何正则
-      pc = pending.replace(/\uFFFD/g,'');
+      // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
+      pc = fixMonthlySectionTitles(pending).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -1580,6 +1580,33 @@ const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra',
 const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// 月报章节标题兜底修复 (DeepSeek 流式吐字畸变修复)
+// 把 AI 缩写/截断的章节标题还原成完整版
+// ═══════════════════════════════════════════════════════════════
+function fixMonthlySectionTitles(text) {
+  if (!text) return text;
+  let c = text;
+
+  // 1. 命运主题章缩写还原
+  c = c.replace(/🔮\s*本命主(?!题)/g, '🔮 本月命运主题');
+  c = c.replace(/🔮\s*本(?![月命运主题])/g, '🔮 本月命运主题');
+  c = c.replace(/🔮\s*命主(?!题)/g, '🔮 本月命运主题');
+  c = c.replace(/🔮\s*命运主题(?!\s*✦)/g, '🔮 本月命运主题');
+
+  // 2. 4周章节标题缩写还原 (括号内被截断)
+  c = c.replace(/（财充）/g, '（财富充能）');
+  c = c.replace(/（高危）(?![熔])/g, '（高危熔断）');
+  c = c.replace(/（高熔断）/g, '（高危熔断）');
+  c = c.replace(/（高熔）/g, '（高危熔断）');
+  c = c.replace(/（顺流）(?![蓄])/g, '（顺流蓄力）');
+  c = c.replace(/（顺蓄）/g, '（顺流蓄力）');
+  c = c.replace(/（财爆）(?![发])/g, '（财富爆发）');
+  c = c.replace(/（财富爆）(?![发])/g, '（财富爆发）');
+
+  return c;
+}
+
 // buildMonthlyPrompt: 月报专用，永远不调用年报管道
 // 方案 B 隔离: 独立函数，零共享状态，改月报绝不影响年报
 // ═══════════════════════════════════════════════════════════════
@@ -1606,51 +1633,76 @@ function buildMonthlyPrompt(birthDate, lang) {
   const NATAL_SIGN = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
   const natalSunZH = NATAL_SIGN[natalSunIdx];
 
+// MONTHLY_SYSTEM is now inside MONTHLY_USER (lang-aware)
+
   const MONTHLY_SYSTEM = {
-    zh: '你是顶级财富占星师兼荣格心理分析师。生成用户的月度财富报告，风格史诗命运感，极高端品质。',
-    en: 'You are a master wealth astrologer and Jungian psychologist. Generate the monthly wealth report. Epic, destiny-filled, ultra-premium quality.',
-    es: 'Eres un maestro astrólogo de riqueza y psicólogo junguiano. Genera el informe mensual de riqueza del usuario.',
-    fr: 'Vous êtes un maître astrologue de la richesse et psychologue junguien. Générez le rapport de richesse mensuel.',
-    th: 'คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียนชั้นเซียน สร้างรายงานความมั่งคั่งประจำเดือน',
-    vi: 'Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu. Tạo báo cáo tài chính hàng tháng.',
+    zh: `你是顶级财富占星师兼荣格心理分析师。
+
+【格式铁律 - 违反任何一条=输出作废】
+1. 必须用中文输出（除了专有名词外）
+2. 必须严格按照下方6个章节标题**逐字**输出，不许改、不许缩写、不许省略任何字
+3. 每个章节标题必须**独占一行**，前后空一行
+4. 总字数必须达到 1500-1800 个中文字符（不含标点和空格），不得低于1500
+5. 输出时**每个汉字都要完整写出**，不要用「的」一个字代替整段话，不要用「…」省略内容
+6. 只输出报告正文，不要写「好的，这是您的报告」「以下是」等废话开场白
+7. 用户本命太阳星座: ${natalSunZH}（必须使用此星座，不许改）`,
+
+    en: `You are a master wealth astrologer and Jungian psychologist.
+
+FORMAT RULES - violation = output invalid:
+1. Must output in English (except proper nouns)
+2. Must strictly follow the 6 section titles below, character-by-character
+3. Each section title on its own line
+4. Total length: 1500-1800 words
+5. Write every word completely, no abbreviations
+6. Output only the report, no preamble`,
   };
 
   const MONTHLY_USER = `
-ASTROGRAPHIC RULES (MUST FOLLOW):
-• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
-• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
+Generate a monthly wealth report in ${lang === 'zh' ? '中文' : lang} for birth date ${birthDate} (${curMonthName} ${currentYear}).
 
-Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
+【用户信息 - 绝对锁定】
+- 生日: ${birthDate}
+- 本命太阳: ${natalSunZH}（任何引用本命太阳的句子必须使用此星座）
+- 报告月份: ${curMonthZH}
 
-CRITICAL REQUIREMENTS:
-• Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
-• Style: Epic, destiny-filled, premium quality
-• MUST have 6 sections exactly
-
-OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+【必须严格按照下面的模板输出 - 一字不改】
 
 ✦ 🔮 本月命运主题 ✦
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+
+用2-3句话写本月财富主题，必须提及${natalSunZH}的本命特质和本月${curMonthName}的关键星象。
 
 🟢 第1周 ${curMonthZH}（财富充能）
-核心天机：第X日
-[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+核心天机：第1-7日
+
+详细写第1周的财富能量（至少250字）。包括：能量来源（哪个星象在推动）、具体机会（哪天做什么最赚钱）、推荐行动、关键日期。不要省略，不要用「...」。
 
 🔴 第2周 ${curMonthZH}（高危熔断）
-核心天机：第X日
-[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+核心天机：第8-14日
+
+详细写第2周的危险期（至少250字）。包括：危险来源（哪个相位在搞事）、具体陷阱（哪天会冲动消费或被坑）、熔断指令（超过多少元必须等24小时）、关键日期。
 
 🔵 第3周 ${curMonthZH}（顺流蓄力）
-核心天机：第X日
-[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
+核心天机：第15-21日
+
+详细写第3周的渐进财富（至少250字）。包括：能量流向（哪个星象在支撑）、适合的策略（适合做什么不适合做什么）、关键日期。
 
 🟢 第4周 ${curMonthZH}（财富爆发）
-核心天机：第X日
-[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
+核心天机：第22-31日
+
+详细写第4周的高峰（至少250字）。包括：能量爆发点（哪天的具体机会）、可获得收益（佣金/奖金/遗产等）、行动建议、关键日期。
 
 ⚠️ 消费陷阱熔断区 ${curMonthZH}
-[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "熔断指令" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
+
+详细写本月最大的消费陷阱（至少200字）。包括：陷阱来源（哪个宫位/行星在放大消费欲）、具体场景（什么样的支出最容易踩坑）、熔断指令（具体数字+24小时冷静期）。
+
+【再次强调】
+- 6个章节标题必须**原样照抄**，包括 emoji、✦、中文括号
+- 章节之间空一行
+- 每个章节内容至少250字
+- 全文总计1500-1800中文字符
+- 不许输出「好的」「以下是」「下面是」等任何开场白
+- 直接从 ✦ 🔮 本月命运主题 ✦ 开始
 `;
 
   return {
