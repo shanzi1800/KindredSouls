@@ -1737,7 +1737,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW):
 • SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
 • CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" — dùng tiếng Việt tự nhiên
 
-Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
+Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
 CRITICAL REQUIREMENTS:
 • Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
@@ -1957,7 +1957,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW):
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
 • NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
 
-Generate a ${lang} monthly wealth report for birth date ${birthDate} (${curMonthName} ${currentYear}).
+Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
 CRITICAL REQUIREMENTS:
 • Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
