@@ -125,7 +125,7 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
               onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.left = '100%'; }}
             />
 
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{card.icon}</div>
+            <div style={{ fontSize: '28px', marginBottom: '8px', fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}>{card.icon}</div>
             <div style={{ fontSize: '11px', color: '#8B8778', marginBottom: '6px', textTransform: 'uppercase' as const }}>
               {card.label[lang] || card.label.en}
             </div>
