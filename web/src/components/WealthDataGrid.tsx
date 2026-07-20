@@ -132,9 +132,9 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
             {/* 动态图标: 星座/易经/塔罗根据数据变化, 八字固定 */}
             <div style={{ marginBottom: '8px' }}>
               {card.key === 'zodiac' && field.value ? (
-                <ZodiacIcon sign={field.value.split('·')[0].trim()} size={32} color="#D4AF37" />
+                <ZodiacIcon sign={field.value} size={32} color="#D4AF37" />
               ) : card.key === 'iching' && field.value ? (
-                <IChingIcon hexName={field.value.split('#')[0].trim()} size={32} color="#D4AF37" />
+                <IChingIcon hexName={field.value} size={32} color="#D4AF37" />
               ) : card.key === 'tarot' && field.cardId !== undefined ? (
                 <TarotIcon 
                   cardId={field.cardId} 

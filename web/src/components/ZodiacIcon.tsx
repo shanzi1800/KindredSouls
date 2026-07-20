@@ -14,6 +14,19 @@ const ZodiacIcon: React.FC<ZodiacIconProps> = ({
   size = 32, 
   color = '#D4AF37' 
 }) => {
+  // 从 value 字符串中提取星座名 (如 "射手座 · 火" -> "射手座")
+  const extractSign = (value: string): string => {
+    // 尝试匹配各种分隔符
+    const separators = [' · ', ' ·', '· ', '·', ' | ', ' |', '| ', '|', ' - ', ' -', '- ', '-'];
+    for (const sep of separators) {
+      if (value.includes(sep)) {
+        return value.split(sep)[0].trim();
+      }
+    }
+    return value.trim();
+  };
+  
+  const extractedSign = extractSign(sign);
   const icons: Record<string, React.ReactNode> = {
     // 1. 白羊座 ♈ - 羊角
     Aries: (
@@ -150,23 +163,35 @@ const ZodiacIcon: React.FC<ZodiacIconProps> = ({
     ),
   };
 
-  // 中文星座名映射到英文
-  const zhToEn: Record<string, string> = {
-    '白羊座': 'Aries',
-    '金牛座': 'Taurus',
-    '双子座': 'Gemini',
-    '巨蟹座': 'Cancer',
-    '狮子座': 'Leo',
-    '处女座': 'Virgo',
-    '天秤座': 'Libra',
-    '天蝎座': 'Scorpio',
-    '射手座': 'Sagittarius',
-    '摩羯座': 'Capricorn',
-    '水瓶座': 'Aquarius',
-    '双鱼座': 'Pisces',
+  // 多语言星座名映射到英文
+  const nameToEn: Record<string, string> = {
+    // 中文
+    '白羊座': 'Aries', '金牛': 'Taurus', '双子座': 'Gemini', '巨蟹座': 'Cancer',
+    '狮子座': 'Leo', '处女座': 'Virgo', '天秤座': 'Libra', '天蝎座': 'Scorpio',
+    '射手座': 'Sagittarius', '摩羯座': 'Capricorn', '水瓶座': 'Aquarius', '双鱼座': 'Pisces',
+    // 英文
+    'Aries': 'Aries', 'Taurus': 'Taurus', 'Gemini': 'Gemini', 'Cancer': 'Cancer',
+    'Leo': 'Leo', 'Virgo': 'Virgo', 'Libra': 'Libra', 'Scorpio': 'Scorpio',
+    'Sagittarius': 'Sagittarius', 'Capricorn': 'Capricorn', 'Aquarius': 'Aquarius', 'Pisces': 'Pisces',
+    // 西班牙语
+    'Aries': 'Aries', 'Tauro': 'Taurus', 'Géminis': 'Gemini', 'Cáncer': 'Cancer',
+    'Leo': 'Leo', 'Virgo': 'Virgo', 'Libra': 'Libra', 'Escorpio': 'Scorpio',
+    'Sagitario': 'Sagittarius', 'Capricornio': 'Capricorn', 'Acuario': 'Aquarius', 'Piscis': 'Pisces',
+    // 法语
+    'Bélier': 'Aries', 'Taureau': 'Taurus', 'Gémeaux': 'Gemini', 'Cancer': 'Cancer',
+    'Lion': 'Leo', 'Vierge': 'Virgo', 'Balance': 'Libra', 'Scorpion': 'Scorpio',
+    'Sagittaire': 'Sagittarius', 'Capricorne': 'Capricorn', 'Verseau': 'Aquarius', 'Poissons': 'Pisces',
+    // 泰语
+    'ราศีเมษ': 'Aries', 'ราศีพฤษภ': 'Taurus', 'ราศีเมถุน': 'Gemini', 'ราศีกรกฎ': 'Cancer',
+    'ราศีสิงห์': 'Leo', 'ราศีกันย์': 'Virgo', 'ราศีตุลย์': 'Libra', 'ราศีพิจิก': 'Scorpio',
+    'ราศีธนู': 'Sagittarius', 'ราศีมังกร': 'Capricorn', 'ราศีกุมภ์': 'Aquarius', 'ราศีมีน': 'Pisces',
+    // 越南语
+    'Bạch Dương': 'Aries', 'Kim Ngưu': 'Taurus', 'Song Tử': 'Gemini', 'Cự Giải': 'Cancer',
+    'Sư Tử': 'Leo', 'Xử Nữ': 'Virgo', 'Thiên Bình': 'Libra', 'Bọ Cạp': 'Scorpio',
+    'Nhân Mã': 'Sagittarius', 'Ma Kết': 'Capricorn', 'Bảo Bình': 'Aquarius', 'Song Ngư': 'Pisces',
   };
 
-  const normalizedSign = zhToEn[sign] || sign;
+  const normalizedSign = nameToEn[extractedSign] || nameToEn[extractedSign.split(' ')[0]] || extractedSign;
   
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>

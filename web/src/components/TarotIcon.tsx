@@ -106,14 +106,18 @@ const TarotIcon: React.FC<TarotIconProps> = ({
       </svg>
     ),
     
-    // 9. 隐士 The Hermit - 提灯/人
+    // 9. 隐士 The Hermit - 提灯老人 (简化版)
     9: (
       <svg width={size} height={size} viewBox="0 0 32 32">
-        <circle cx="16" cy="8" r="4" fill={color}/>
-        <path d="M16 12 L16 24" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-        <path d="M12 16 L20 16" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-        <path d="M16 24 L12 30 M16 24 L20 30" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-        <path d="M20 10 Q26 8 24 14 Q22 18 20 14" fill={color} opacity="0.6"/>
+        {/* 头部 */}
+        <circle cx="16" cy="8" r="3" fill={color}/>
+        {/* 身体/斗篷 */}
+        <path d="M10 12 L16 28 L22 12" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+        {/* 提灯 */}
+        <circle cx="22" cy="14" r="2" fill={color} opacity="0.8"/>
+        <path d="M20 14 L18 12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+        {/* 手杖 */}
+        <line x1="12" y1="20" x2="12" y2="28" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
     

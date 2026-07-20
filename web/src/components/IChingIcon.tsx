@@ -14,6 +14,18 @@ const IChingIcon: React.FC<IChingIconProps> = ({
   size = 32, 
   color = '#D4AF37' 
 }) => {
+  // 从 value 字符串中提取卦名 (如 "乾 #8" -> "乾")
+  const extractHexName = (value: string): string => {
+    // 尝试匹配 # 号分隔
+    if (value.includes('#')) {
+      return value.split('#')[0].trim();
+    }
+    // 尝试匹配空格分隔
+    const parts = value.trim().split(/\s+/);
+    return parts[0] || value;
+  };
+  
+  const extractedName = extractHexName(hexName);
   // 八卦线条配置: 阳爻(实线) = true, 阴爻(断线) = false
   // 从下往上: 初爻、二爻、三爻
   const trigrams: Record<string, [boolean, boolean, boolean]> = {
@@ -39,7 +51,7 @@ const IChingIcon: React.FC<IChingIconProps> = ({
     'Dui': '兑', '兑': '兑',
   };
 
-  const normalizedName = nameMap[hexName] || hexName;
+  const normalizedName = nameMap[extractedName] || extractedName;
   const lines = trigrams[normalizedName] || [true, true, true];
 
   // 渲染单条爻线
