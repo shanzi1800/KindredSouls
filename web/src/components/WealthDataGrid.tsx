@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ZodiacIcon from './ZodiacIcon';
 import IChingIcon from './IChingIcon';
+import TarotIcon from './TarotIcon';
 
 // ── Types ──
 interface DataField {
@@ -9,6 +10,7 @@ interface DataField {
   subValue?: string;
   detail?: string; // 展开后显示的详细信息（如卦辞）
   oneLiner?: string; // 灵魂释义（军师一句话天机）
+  cardId?: number; // 塔罗牌ID (0-21)
 }
 
 interface WealthDataGridProps {
@@ -127,12 +129,19 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
               onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.left = '100%'; }}
             />
 
-            {/* 动态图标: 星座和易经根据数据变化, 八字和塔罗固定 */}
+            {/* 动态图标: 星座/易经/塔罗根据数据变化, 八字固定 */}
             <div style={{ marginBottom: '8px' }}>
               {card.key === 'zodiac' && field.value ? (
                 <ZodiacIcon sign={field.value.split('·')[0].trim()} size={32} color="#D4AF37" />
               ) : card.key === 'iching' && field.value ? (
                 <IChingIcon hexName={field.value.split('#')[0].trim()} size={32} color="#D4AF37" />
+              ) : card.key === 'tarot' && field.cardId !== undefined ? (
+                <TarotIcon 
+                  cardId={field.cardId} 
+                  reversed={field.subValue ? /逆|reversed|invertido|renversé|ผ่านกลับ|ngược/.test(field.subValue) : false}
+                  size={32} 
+                  color="#D4AF37" 
+                />
               ) : (
                 <span style={{ fontSize: '28px', fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}>{card.icon}</span>
               )}

@@ -2307,10 +2307,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           label: '',
           value: `${t.emoji || '🃏'} ${tTarotName(cardId, currentLang as AlgLang)}`,
           subValue: `${tOrientation(t.orientation || 'upright', currentLang as AlgLang)} · ${tTarotMeaning(cardId, currentLang as AlgLang)}`,
-          oneLiner: oneLiner
+          oneLiner: oneLiner,
+          cardId: cardId
         };
       })()
-    : { label: '', value: '--', subValue: '', oneLiner: '' };
+    : { label: '', value: '--', subValue: '', oneLiner: '', cardId: 0 };
 
   return (
     <>
