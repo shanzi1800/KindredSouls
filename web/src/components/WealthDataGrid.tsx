@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ZodiacIcon from './ZodiacIcon';
+import IChingIcon from './IChingIcon';
 
 // ── Types ──
 interface DataField {
@@ -125,7 +127,16 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
               onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.left = '100%'; }}
             />
 
-            <div style={{ fontSize: '28px', marginBottom: '8px', fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}>{card.icon}</div>
+            {/* 动态图标: 星座和易经根据数据变化, 八字和塔罗固定 */}
+            <div style={{ marginBottom: '8px' }}>
+              {card.key === 'zodiac' && field.value ? (
+                <ZodiacIcon sign={field.value.split('·')[0].trim()} size={32} color="#D4AF37" />
+              ) : card.key === 'iching' && field.value ? (
+                <IChingIcon hexName={field.value.split('#')[0].trim()} size={32} color="#D4AF37" />
+              ) : (
+                <span style={{ fontSize: '28px', fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}>{card.icon}</span>
+              )}
+            </div>
             <div style={{ fontSize: '11px', color: '#8B8778', marginBottom: '6px', textTransform: 'uppercase' as const }}>
               {card.label[lang] || card.label.en}
             </div>
