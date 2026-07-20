@@ -163,22 +163,18 @@ const ZodiacIcon: React.FC<ZodiacIconProps> = ({
     ),
   };
 
-  // 多语言星座名映射到英文
+  // 多语言星座名映射到英文 (去重版)
   const nameToEn: Record<string, string> = {
     // 中文
-    '白羊座': 'Aries', '金牛': 'Taurus', '双子座': 'Gemini', '巨蟹座': 'Cancer',
+    '白羊座': 'Aries', '金牛座': 'Taurus', '双子座': 'Gemini', '巨蟹座': 'Cancer',
     '狮子座': 'Leo', '处女座': 'Virgo', '天秤座': 'Libra', '天蝎座': 'Scorpio',
     '射手座': 'Sagittarius', '摩羯座': 'Capricorn', '水瓶座': 'Aquarius', '双鱼座': 'Pisces',
-    // 英文
-    'Aries': 'Aries', 'Taurus': 'Taurus', 'Gemini': 'Gemini', 'Cancer': 'Cancer',
-    'Leo': 'Leo', 'Virgo': 'Virgo', 'Libra': 'Libra', 'Scorpio': 'Scorpio',
-    'Sagittarius': 'Sagittarius', 'Capricorn': 'Capricorn', 'Aquarius': 'Aquarius', 'Pisces': 'Pisces',
-    // 西班牙语
-    'Aries': 'Aries', 'Tauro': 'Taurus', 'Géminis': 'Gemini', 'Cáncer': 'Cancer',
-    'Leo': 'Leo', 'Virgo': 'Virgo', 'Libra': 'Libra', 'Escorpio': 'Scorpio',
-    'Sagitario': 'Sagittarius', 'Capricornio': 'Capricorn', 'Acuario': 'Aquarius', 'Piscis': 'Pisces',
-    // 法语
-    'Bélier': 'Aries', 'Taureau': 'Taurus', 'Gémeaux': 'Gemini', 'Cancer': 'Cancer',
+    // 西班牙语 (与英文不同的)
+    'Tauro': 'Taurus', 'Géminis': 'Gemini', 'Cáncer': 'Cancer',
+    'Escorpio': 'Scorpio', 'Sagitario': 'Sagittarius', 'Capricornio': 'Capricorn', 
+    'Acuario': 'Aquarius', 'Piscis': 'Pisces',
+    // 法语 (与英文不同的)
+    'Bélier': 'Aries', 'Taureau': 'Taurus', 'Gémeaux': 'Gemini',
     'Lion': 'Leo', 'Vierge': 'Virgo', 'Balance': 'Libra', 'Scorpion': 'Scorpio',
     'Sagittaire': 'Sagittarius', 'Capricorne': 'Capricorn', 'Verseau': 'Aquarius', 'Poissons': 'Pisces',
     // 泰语
