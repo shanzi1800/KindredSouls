@@ -138,7 +138,7 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
               ) : card.key === 'tarot' && field.cardId !== undefined ? (
                 <TarotIcon 
                   cardId={field.cardId} 
-                  reversed={field.subValue ? /逆|reversed|invertido|renversé|ผ่านกลับ|ngược/.test(field.subValue) : false}
+                  reversed={false}
                   size={32} 
                   color="#D4AF37" 
                 />
