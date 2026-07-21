@@ -1534,7 +1534,8 @@ app.get('/api/debug-source', async (req, res) => {
   }
 });
 
-app.get('/', async (req, res) => {
+// 🛠️ V120-fix27: 健康检查移到 /api/health，让 / 走静态文件服务
+app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
 });
 
@@ -3240,8 +3241,8 @@ app.use('/api/ai-advisor', async (req, res) => {
 const distPath = join(__dirname, 'web', 'dist');
 if (existsSync(distPath)) {
   app.use(express.static(distPath));
-  // SPA fallback
-  app.use((req, res, next) => {
+  // SPA fallback: 所有非 /api 路由返回 index.html（包括 /）
+  app.get('*', (req, res, next) => {
     if (!req.path.startsWith('/api') && existsSync(join(distPath, 'index.html'))) {
       return res.sendFile(join(distPath, 'index.html'));
     }
