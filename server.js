@@ -3082,7 +3082,7 @@ app.get('/api/test-gemini', async (req, res) => {
   if (!key) return res.json({ error: 'GEMINI_API_KEY not set' });
   try {
     const r = await safeFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3197,7 +3197,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     if (!insight && geminiKey) {
       try {
         const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3910,7 +3910,7 @@ async function streamGeminiChunk(prompt, onChunk) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 180000);
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:streamGenerateContent?alt=sse&key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:streamGenerateContent?alt=sse&key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
