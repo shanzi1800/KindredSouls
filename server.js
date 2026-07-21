@@ -3589,8 +3589,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         cleanedText = cleanedText.replace(_r1, realSunSign).replace(_r2, realSunSign).replace(_r3, realSunSign);
       });
     }
-    cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
-    cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+    // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
+    // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
+    // 有破坏性(HIT/MISS不一致 bug)，跳过直接用基础清洗
+    if (reportType === 'monthly') {
+      cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
+    } else {
+      cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
+      cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+    }
 
     // 🛠️ V122-fix: 终极空括号清理(final_text_sanitizer 可能漏 "()" 跨块,
     //   完整文本这里再扣一遍)
