@@ -2301,10 +2301,9 @@ OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
   }
 if (reportType === 'yearly') {
     // 🛠️ V126-fix2: 年报分支的行星变量在 astroMatrix=null 时 undefined
-    //    natalSunSign/natalSunSignEN 在内层 if()里才赋值,模板字面量直接炸 ReferenceError
-    //    此处加默认值兜底,确保任何时候模板字面量都有合法值
-    natalSunSign = natalSunFallback;    // ← 覆盖外层 let natalSunSign=''
-    natalSunSignEN = natalSunENFallback;
+    //    natalSunSign/natalSunSignEN 有 TDZ 问题(在 yearly 内层被 let 重声明)
+    //    不能在此处赋值;改用 natalSunFallback 直接注入模板
+    //    行星变量(jupSign/satSign等)不在内层被 let 重声明,可安全重赋值
     if (!jupSign || jupSign === undefined) jupSign = 'Leo';
     if (!satSign || satSign === undefined) satSign = 'Aries';
     if (!moonSign || moonSign === undefined) moonSign = 'Cancer';
@@ -2441,6 +2440,10 @@ if (reportType === 'yearly') {
 
     // ── 🛠️ V91: 把 if 块内声明的常量提升到外层 let,供 V89 HEADER_ENFORCE 访问 ──
     let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '', moonSignLocal = '';
+    // 🛠️ V126-fix3: astroMatrix=null 时这些变量保持 '',导致模板字面量炸 ReferenceError
+    //   在 if(astroMatrix...) 之前用 natalSunFallback/natalSunENFallback 填充
+    natalSunSign = natalSunFallback;
+    natalSunSignEN = natalSunENFallback;
     // 🛠️ V102s: 本命月亮(区别于流月 moonSignLocal),用于报头核心本命代码硬锁
     let natalMoonSign = '', natalMoonSignEN = '';
     let jupHouse = 0, satHouse = 0, plHouse = 0, sunHouse = 0, moonHouse = 0;
