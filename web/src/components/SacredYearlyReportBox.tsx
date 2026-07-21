@@ -10,7 +10,7 @@ const SacredYearlyReportBox: React.FC<{
   yearlyCardsReady: boolean;
   realSunSign?: string;
   lang?: string;
-  reportType?: 'yearly' | 'monthly';  // 🛠️ V120: 控制标题显示
+  reportType?: 'yearly' | 'monthly' | 'once';  // 🛠️ V120: 控制标题显示
 }> = ({ rawStreamText, yearlyCardsReady, lang = 'zh', reportType = 'yearly' }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);

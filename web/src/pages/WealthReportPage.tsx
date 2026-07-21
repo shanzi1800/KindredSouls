@@ -1240,7 +1240,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     wealthReportRef.current = text;
     setWealthReportText(text);
   };
-  const [reportLoading, setReportLoading] = useState<string>('');
+  const [reportLoading, setReportLoading] = useState<'wealth_monthly' | 'wealth_yearly' | 'wealth_once' | ''>('');
   const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
 
   // 🛠️ V47: 流式期间追光底部，完成后归顶
@@ -1761,7 +1761,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } else if (data.already_paid) {
         setIsUnlocked(true);
         setShowPaywall(false);
-        if (reportData && !reportData.insight) {
+        // 💎 wealth_once: 支付成功后自动生成先天财富DNA报告
+        if (plan === 'wealth_once') {
+          generateWealthReport('once');
+        } else if (reportData && !reportData.insight) {
           loadWealthData(birthDate, lang, token ?? undefined);
         }
       } else {
@@ -1808,7 +1811,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // 🛠️ V40: 移除折叠逻辑，改用单框打字机
 
-  const generateWealthReport = async (type: 'monthly' | 'yearly') => {
+  const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once') => {
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
     if (isFreeTest && type === 'monthly') {
@@ -1951,7 +1954,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         console.error('[WealthReport] API error:', res.status, errData);
         if (res.status === 402) {
           await handlePurchase(
-            type === 'monthly' ? 'wealth_monthly_report' : 'wealth_yearly_report'
+            type === 'monthly' ? 'wealth_monthly_report' : (type === 'once' ? 'wealth_once' : 'wealth_yearly_report')
           );
           return;
         }
@@ -2570,6 +2573,31 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             );
           }
           
+          return null;
+        })()}
+
+        {/* 💎 先天财富DNA报告渲染 */}
+        {(() => {
+          if (reportLoading === 'wealth_once' || (wealthReportText && wealthReportText.length > 100)) {
+            const trueZodiac = getTrueZodiacByDate(birthDate);
+            const displayText = wealthReportText || sacredText || '';
+            
+            // 简化清洗（不涉及时间线）
+            const cleaned = displayText
+              .replace(/[\uFFFD\u0000\uFFFE\uFFF0-\uFFFF]/g, '')
+              .replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '')
+              .replace(/\\n/g, '');
+
+            return (
+              <SacredYearlyReportBox
+                rawStreamText={cleaned || ''}
+                yearlyCardsReady={true}
+                realSunSign={trueZodiac || '双鱼座'}
+                lang={currentLang}
+                reportType="once"
+              />
+            );
+          }
           return null;
         })()}
 
