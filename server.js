@@ -2198,6 +2198,16 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // ════════════════════════════════
   // 分支:月报
   // ════════════════════════════════
+    // 🛠️ V126-fix: 年报/月报模板共用变量必须在两者共同的父作用域声明
+    //    月报 if() 里 let 声明的变量对年报 if() 不可见 → TDZ
+    //    统一在外层声明,月报/年报内只做赋值(含条件赋值)
+    let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
+    let jupSign='Leo', satSign='Aries', moonSign='Cancer';
+    let natalSunSign = natalSunFallback;
+    let natalSunSignEN = natalSunENFallback;
+    let risingLocal = 'Cancer', jupSignLocal = 'Leo', satSignLocal = 'Aries', moonSignLocal = 'Cancer';
+    let natalMoonSign = 'Cancer', natalMoonSignEN = 'Cancer';
+    let _mZH='', _mEN='', _mES='', _mFR='', _mTH='', _mVI='';
     if (reportType === 'monthly') {
     // 计算当前月的英文名称
     const monthNames = ['January','February','March','April','May','June',
@@ -2217,11 +2227,12 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     const rising = astroMatrix?.meta?.rising_sign || 'Cancer';
     const RISING_IDX = { Aries:0, Taurus:1, Gemini:2, Cancer:3, Leo:4, Virgo:5, Libra:6, Scorpio:7, Sagittarius:8, Capricorn:9, Aquarius:10, Pisces:11 };
     const risingIdx = RISING_IDX[rising] ?? 3;
-    const risingLocal = { zh: NATAL_SIGN_ZH[risingIdx], en: rising, es: rising, fr: rising, th: rising, vi: rising }[lang] || rising;
+    risingLocal = { zh: NATAL_SIGN_ZH[risingIdx], en: rising, es: rising, fr: rising, th: rising, vi: rising }[lang] || rising;
     const getH2 = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
     // 🛠️ V120-fix5: fallback 修正为 ASC=Cancer 真值(与年报旧 fallback 对齐:木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫)
-    let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
-    let jupSign='Leo', satSign='Aries', moonSign='Cancer';
+    // ⚠️ jupHouse/jupSign 等已在外层(let)声明,此处只赋值不重声明
+    jupHouse=2; satHouse=10; plHouse=8; sunHouse=1; moonHouse=2;
+    jupSign='Leo'; satSign='Aries'; moonSign='Cancer';
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
       jupHouse = getH2(first.jupiter?.house);
@@ -2439,14 +2450,14 @@ if (reportType === 'yearly') {
     }
 
     // ── 🛠️ V91: 把 if 块内声明的常量提升到外层 let,供 V89 HEADER_ENFORCE 访问 ──
-    let natalSunSign = '', natalSunSignEN = '', risingLocal = '', jupSignLocal = '', satSignLocal = '', moonSignLocal = '';
-    // 🛠️ V126-fix3: astroMatrix=null 时这些变量保持 '',导致模板字面量炸 ReferenceError
-    //   在 if(astroMatrix...) 之前用 natalSunFallback/natalSunENFallback 填充
+    // ⚠️ V126-fix: natalSunSign/risingLocal/jupSign 等已在外层(let monthly level)声明
+    //    年报块不再重声明,只做赋值
     natalSunSign = natalSunFallback;
     natalSunSignEN = natalSunENFallback;
-    // 🛠️ V102s: 本命月亮(区别于流月 moonSignLocal),用于报头核心本命代码硬锁
-    let natalMoonSign = '', natalMoonSignEN = '';
-    let jupHouse = 0, satHouse = 0, plHouse = 0, sunHouse = 0, moonHouse = 0;
+    risingLocal = 'Cancer'; // 年报默认上升,无出生时间时用 Cancer
+    jupSignLocal = 'Leo'; satSignLocal = 'Aries'; moonSignLocal = 'Cancer';
+    natalMoonSign = 'Cancer'; natalMoonSignEN = 'Cancer';
+    jupHouse = 2; satHouse = 10; plHouse = 8; sunHouse = 1; moonHouse = 2;
 
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
@@ -2457,8 +2468,8 @@ if (reportType === 'yearly') {
       plHouse = getH2(first.pluto?.house);
       sunHouse = getH2(_sunOf(first).house);
       moonHouse = getH2(first.moon?.house);
-      const jupSign = first.jupiter?.sign || 'Leo';
-      const satSign = first.saturn?.sign || 'Aries';
+      jupSign = first.jupiter?.sign || 'Leo';
+      satSign = first.saturn?.sign || 'Aries';
 
       // 🛠️ V83: 计算 natal Sun Sign(不依赖 transit month)
       const natalSunIdx = getNatalSunSign(birthDate);
