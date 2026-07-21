@@ -2173,6 +2173,17 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 彻底根除语种混淆,为全球化铺平道路
   // ═══════════════════════════════════════════════════════════════
 
+  // 🛠️ V126-fix: natalSunSign 在年报分支无独立赋值,模板字面量直接引用会炸 ReferenceError
+  //    必须在 YEARLY_SYSTEM 定义前给默认值
+  const natalSunFallback = (() => {
+    const idx = getNatalSunSign(birthDate);
+    const m = {
+      zh:['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],
+      en:['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
+    }[lang] || ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+    return m[idx] || 'Cancer';
+  })();
+
   // 根据用户语言动态加载纯净系统提示词
   const YEARLY_SYSTEM = {
     zh: getSystemPromptByLocale('zh'),
@@ -2289,6 +2300,20 @@ OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
     };
   }
 if (reportType === 'yearly') {
+    // 🛠️ V126-fix2: 年报分支的行星变量在 astroMatrix=null 时 undefined
+    //    natalSunSign/natalSunSignEN 在内层 if()里才赋值,模板字面量直接炸 ReferenceError
+    //    此处加默认值兜底,确保任何时候模板字面量都有合法值
+    natalSunSign = natalSunFallback;    // ← 覆盖外层 let natalSunSign=''
+    natalSunSignEN = natalSunENFallback;
+    if (!jupSign || jupSign === undefined) jupSign = 'Leo';
+    if (!satSign || satSign === undefined) satSign = 'Aries';
+    if (!moonSign || moonSign === undefined) moonSign = 'Cancer';
+    if (!jupHouse || jupHouse === 0) jupHouse = 2;
+    if (!satHouse || satHouse === 0) satHouse = 10;
+    if (!plHouse || plHouse === 0) plHouse = 8;
+    if (!sunHouse || sunHouse === 0) sunHouse = 1;
+    if (!moonHouse || moonHouse === 0) moonHouse = 2;
+
     const DATA_CONSUMPTION_RULE_ZH = `
 [数据消费铁律 - 必须遵守]
 1. 你的唯一数据来源是后端 JSON 中的 quarterly_forecast。禁止自行计算天文数据。
@@ -2541,13 +2566,20 @@ if (reportType === 'yearly') {
       th: hasBirthTime ? '' : '\n⛔ ไม่มีเวลาเกิด: ห้ามระบุ "ราศีขึ้น/Ascendant" เด็ดขาด รหัสดวงชะตาแกนกลางมีแค่ดวงอาทิตย์และดวงจันทร์.',
       vi: hasBirthTime ? '' : '\n⛔ Không có giờ sinh: TUYỆT ĐỐI không nêu "Cung Mọc/Ascendant". Mã Bản Đồ Sao chỉ gồm Mặt Trời và Mặt Trăng.',
     };
+    // 🛠️ V126-fix: natalSunSign/natalSunSignEN 在 astroMatrix=null 时 undefined,模板字面量直接炸 ReferenceError
+    const natalSunENFallback = (() => {
+      const idx2 = getNatalSunSign(birthDate);
+      const enSigns=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+      return enSigns[idx2]||'Cancer';
+    })();
+
     const HE_MAP = {
-      zh: `\n\n⛔ [强制头部值 - 不得更改,原样抄录]:\n本用户的本命太阳星座是 ${natalSunSign}(由出生日期 ${birthDate} 经天文计算确定,绝对正确)。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunSign} · 太阳回归年\n🗝️ 核心本命代码: ${NATAL_CODE.zh}\n所有 'X座之人' 必须用 ${natalSunSign},绝对不得输出其他星座。${NO_RISING.zh}\n若头部元数据出现错误的太阳/月亮星座,生成将被拒绝!`,
-      en: `\n\n⛔ [MANDATORY HEADER - DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSignEN} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunSignEN} · Solar Return\n🗝️ Core Natal Code: ${NATAL_CODE.en}\nAll 'O child of X' MUST use ${natalSunSignEN} - NEVER other signs.${NO_RISING.en}\nIf the header contains a WRONG Sun/Moon Sign, generation will be REJECTED!`,
-      es: `\n\n⛔ [CABECERA OBLIGATORIA - NO CAMBIAR, COPIAR VERBATIM]:\nEl Signo Solar Natal del usuario es ${natalSunSign} (Efemérides Suizas, fecha ${birthDate}).\nTU CABECERA DEBE usar exactamente:\n🌌 Carta Solar Anual: ${natalSunSign} · Retorno Solar\n🗝️ Código Natal Central: ${NATAL_CODE.es}\nTodo 'Hijo de X' DEBE usar ${natalSunSign} - NUNCA otros signos.${NO_RISING.es}\nSi la cabecera contiene un Signo ERRÓNEO, la generación será RECHAZADA!`,
-      fr: `\n\n⛔ [EN-TÊTE OBLIGATOIRE - NE PAS CHANGER, COPIER VERBATIM]:\nLe Signe Solaire Natal de l'utilisateur est ${natalSunSign} (Éphémérides Suisses, date ${birthDate}).\nTON EN-TÊTE DOIT utiliser exactement:\n🌌 Thème Solaire Annuel: ${natalSunSign} · Retour Solaire\n🗝️ Code Natal Central: ${NATAL_CODE.fr}\nTout 'Enfant de X' DOIT utiliser ${natalSunSign} - JAMAIS d'autres signes.${NO_RISING.fr}\nSi l'en-tête contient un Signe ERRONÉ, la génération sera REJETÉE!`,
-      th: `\n\n⛔ [ส่วนหัวบังคับ - ห้ามเปลี่ยน คัดลอกตรงๆ]:\nดวงอาทิตย์ประจําตัวของผู้ใช้คือ ${natalSunSign} (Efemerides Suizas, วันเกิด ${birthDate}).\nส่วนหัวของคุณต้องใช้ตรงๆ:\n🌌 เวลาราศีประจําปี: ${natalSunSign} · การกลับมาของดวงอาทิตย์\n🗝️ รหัสดวงชะตาแกนกลาง: ${NATAL_CODE.th}\nทุกคําว่า 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunSign} - ห้ามใช้ราศีอื่น.${NO_RISING.th}\nหากส่วนหัวมีราศีผิด การสร้างจะถูกปฏิเสธ!`,
-      vi: `\n\n⛔ [MANDATORY HEADER - DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunSign} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Bảng Vận Niên: ${natalSunSign} · Năm Cách Mạng Mặt Trời\n🗝️ Mã Bản Đồ Sao Chính: ${NATAL_CODE.vi}\nAll 'O child of X' MUST use ${natalSunSign} - NEVER other signs.${NO_RISING.vi}\nIf header contains wrong Sun/Moon Sign, generation will be REJECTED!`,
+      zh: `\n\n⛔ [强制头部值 - 不得更改,原样抄录]:\n本用户的本命太阳星座是 ${natalSunFallback}(由出生日期 ${birthDate} 经天文计算确定,绝对正确)。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunFallback} · 太阳回归年\n🗝️ 核心本命代码: ${NATAL_CODE.zh}\n所有 'X座之人' 必须用 ${natalSunFallback},绝对不得输出其他星座。${NO_RISING.zh}\n若头部元数据出现错误的太阳/月亮星座,生成将被拒绝!`,
+      en: `\n\n⛔ [MANDATORY HEADER - DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunENFallback} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunENFallback} · Solar Return\n🗝️ Core Natal Code: ${NATAL_CODE.en}\nAll 'O child of X' MUST use ${natalSunENFallback} - NEVER other signs.${NO_RISING.en}\nIf the header contains a WRONG Sun/Moon Sign, generation will be REJECTED!`,
+      es: `\n\n⛔ [CABECERA OBLIGATORIA - NO CAMBIAR, COPIAR VERBATIM]:\nEl Signo Solar Natal del usuario es ${natalSunFallback} (Efemérides Suizas, fecha ${birthDate}).\nTU CABECERA DEBE usar exactamente:\n🌌 Carta Solar Anual: ${natalSunFallback} · Retorno Solar\n🗝️ Código Natal Central: ${NATAL_CODE.es}\nTodo 'Hijo de X' DEBE usar ${natalSunFallback} - NUNCA otros signos.${NO_RISING.es}\nSi la cabecera contiene un Signo ERRÓNEO, la generación será RECHAZADA!`,
+      fr: `\n\n⛔ [EN-TÊTE OBLIGATOIRE - NE PAS CHANGER, COPIER VERBATIM]:\nLe Signe Solaire Natal de l'utilisateur est ${natalSunFallback} (Éphémérides Suisses, date ${birthDate}).\nTON EN-TÊTE DOIT utiliser exactement:\n🌌 Thème Solaire Annuel: ${natalSunFallback} · Retour Solaire\n🗝️ Code Natal Central: ${NATAL_CODE.fr}\nTout 'Enfant de X' DOIT utiliser ${natalSunFallback} - JAMAIS d'autres signes.${NO_RISING.fr}\nSi l'en-tête contient un Signe ERRONÉ, la génération sera REJETÉE!`,
+      th: `\n\n⛔ [ส่วนหัวบังคับ - ห้ามเปลี่ยน คัดลอกตรงๆ]:\nดวงอาทิตย์ประจําตัวของผู้ใช้คือ ${natalSunFallback} (Efemerides Suizas, วันเกิด ${birthDate}).\nส่วนหัวของคุณต้องใช้ตรงๆ:\n🌌 เวลาราศีประจําปี: ${natalSunFallback} · การกลับมาของดวงอาทิตย์\n🗝️ รหัสดวงชะตาแกนกลาง: ${NATAL_CODE.th}\nทุกคําว่า 'โอ้บุตรแห่งราศี X' ต้องใช้ ${natalSunFallback} - ห้ามใช้ราศีอื่น.${NO_RISING.th}\nหากส่วนหัวมีราศีผิด การสร้างจะถูกปฏิเสธ!`,
+      vi: `\n\n⛔ [MANDATORY HEADER - DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunFallback} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Bảng Vận Niên: ${natalSunFallback} · Năm Cách Mạng Mặt Trời\n🗝️ Mã Bản Đồ Sao Chính: ${NATAL_CODE.vi}\nAll 'O child of X' MUST use ${natalSunFallback} - NEVER other signs.${NO_RISING.vi}\nIf header contains wrong Sun/Moon Sign, generation will be REJECTED!`,
     };
     yearlySystem += (HE_MAP[lang] || HE_MAP.en);
 
