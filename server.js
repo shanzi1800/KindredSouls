@@ -2963,7 +2963,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           new RegExp(`${wrong}的你`, 'g'),
           new RegExp(`双鱼座(?!座)`, 'g'),  // 防止双鱼座座
         ];
-        _patterns.forEach(p => { cleanedText = cleanedText.replace(p, realSunSign); });
+        _patterns.forEach(p => { aiResult = aiResult.replace(p, realSunSign); });
       });
     }
         // 🛠️ V120-fix22: 月报零清洗，只去乱码
