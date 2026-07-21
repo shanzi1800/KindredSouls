@@ -2183,6 +2183,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     }[lang] || ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
     return m[idx] || 'Cancer';
   })();
+  // 🛠️ V126-fix: natalSunENFallback 在年报块内声明,但月报块先执行时它还不存在
+  //    移到此处与 natalSunFallback 并列,两分支都可见
+  const natalSunENFallback = (() => {
+    const idx2 = getNatalSunSign(birthDate);
+    const enSigns=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+    return enSigns[idx2]||'Cancer';
+  })();
 
   // 根据用户语言动态加载纯净系统提示词
   const YEARLY_SYSTEM = {
@@ -2580,13 +2587,7 @@ if (reportType === 'yearly') {
       th: hasBirthTime ? '' : '\n⛔ ไม่มีเวลาเกิด: ห้ามระบุ "ราศีขึ้น/Ascendant" เด็ดขาด รหัสดวงชะตาแกนกลางมีแค่ดวงอาทิตย์และดวงจันทร์.',
       vi: hasBirthTime ? '' : '\n⛔ Không có giờ sinh: TUYỆT ĐỐI không nêu "Cung Mọc/Ascendant". Mã Bản Đồ Sao chỉ gồm Mặt Trời và Mặt Trăng.',
     };
-    // 🛠️ V126-fix: natalSunSign/natalSunSignEN 在 astroMatrix=null 时 undefined,模板字面量直接炸 ReferenceError
-    const natalSunENFallback = (() => {
-      const idx2 = getNatalSunSign(birthDate);
-      const enSigns=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-      return enSigns[idx2]||'Cancer';
-    })();
-
+    // 🛠️ V126-fix: natalSunENFallback 已移到月报块前面,此处不再重复声明
     const HE_MAP = {
       zh: `\n\n⛔ [强制头部值 - 不得更改,原样抄录]:\n本用户的本命太阳星座是 ${natalSunFallback}(由出生日期 ${birthDate} 经天文计算确定,绝对正确)。\n你的输出头部【元数据】必须精确使用:\n🌌 年度星盘: ${natalSunFallback} · 太阳回归年\n🗝️ 核心本命代码: ${NATAL_CODE.zh}\n所有 'X座之人' 必须用 ${natalSunFallback},绝对不得输出其他星座。${NO_RISING.zh}\n若头部元数据出现错误的太阳/月亮星座,生成将被拒绝!`,
       en: `\n\n⛔ [MANDATORY HEADER - DO NOT CHANGE, COPY VERBATIM]:\nThe user's Natal Sun Sign is ${natalSunENFallback} (Swiss Ephemeris, birth date ${birthDate}).\nYOUR HEADER MUST use exactly:\n🌌 Annual Solar Chart: ${natalSunENFallback} · Solar Return\n🗝️ Core Natal Code: ${NATAL_CODE.en}\nAll 'O child of X' MUST use ${natalSunENFallback} - NEVER other signs.${NO_RISING.en}\nIf the header contains a WRONG Sun/Moon Sign, generation will be REJECTED!`,
