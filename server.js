@@ -73,7 +73,7 @@ function getGeminiKey() {
 
 // ── DeepSeek 直连流式(OpenAI 兼容格式,SSE 逐字吐出)──
 // 🛠️ V131: Node.js 原生 fetch 流式(Railway 实测 https.request 在流式场景丢数据,fetch 完美)
-async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang) {
+async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly') {
   console.log('[callDeepSeek] START, res.type=', typeof res, 'res.write=', typeof res?.write, 'res.flush=', typeof res?.flush);
   const deepseekKey = getDeepSeekKey();
   let resp;
@@ -3551,7 +3551,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     try {
       geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
         fullTextCollector += chunk;
-        }, astroMatrix, realSunSign, lang);
+        }, astroMatrix, realSunSign, lang, reportType);
       if (geminiFullText && geminiFullText.trim().length > 0) {
         aiStream = true;
       }
