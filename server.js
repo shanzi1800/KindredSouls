@@ -1792,17 +1792,49 @@ function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
 
   // 解析出生日期
   const [year, month, day] = birthDate.split('-').map(Number);
-  const zodiacSigns = ['摩羯座', '水瓶座', '双鱼座', '白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座'];
-  const zodiacDates = [[1,20],[2,19],[3,21],[4,20],[5,21],[6,22],[7,23],[8,23],[9,23],[10,24],[11,23],[12,22]];
+  // 标准星座日期范围(修复星座判断逻辑)
+  const zodiacRanges = [
+    {name: '摩羯座', start: [12, 22], end: [1, 19]},
+    {name: '水瓶座', start: [1, 20], end: [2, 18]},
+    {name: '双鱼座', start: [2, 19], end: [3, 20]},
+    {name: '白羊座', start: [3, 21], end: [4, 19]},
+    {name: '金牛座', start: [4, 20], end: [5, 20]},
+    {name: '双子座', start: [5, 21], end: [6, 21]},
+    {name: '巨蟹座', start: [6, 22], end: [7, 22]},
+    {name: '狮子座', start: [7, 23], end: [8, 22]},
+    {name: '处女座', start: [8, 23], end: [9, 22]},
+    {name: '天秤座', start: [9, 23], end: [10, 23]},
+    {name: '天蝎座', start: [10, 24], end: [11, 22]},
+    {name: '射手座', start: [11, 23], end: [12, 21]},
+  ];
+  
   let sunSign = '';
-  for (let i = 0; i < 12; i++) {
-    const [startMonth, startDay] = zodiacDates[i];
-    const nextIdx = (i + 1) % 12;
-    const [nextMonth, nextDay] = zodiacDates[nextIdx];
-    if ((month === startMonth && day >= startDay) || (month === startMonth + 1 && day < nextDay) ||
-        (startMonth === 12 && (month === 12 && day >= startDay || month === 1 && day < nextDay))) {
-      sunSign = zodiacSigns[i];
-      break;
+  for (const range of zodiacRanges) {
+    const [sm, sd] = range.start;
+    const [em, ed] = range.end;
+    
+    // 特殊处理摩羯座(跨年)
+    if (sm > em) {
+      if ((month === sm && day >= sd) || (month === em && day <= ed)) {
+        sunSign = range.name;
+        break;
+      }
+    } else {
+      // 起始月
+      if (month === sm && day >= sd) {
+        sunSign = range.name;
+        break;
+      }
+      // 结束月
+      if (month === em && day <= ed) {
+        sunSign = range.name;
+        break;
+      }
+      // 中间月(整个月在范围内)
+      if (sm < em && month > sm && month < em) {
+        sunSign = range.name;
+        break;
+      }
     }
   }
   if (!sunSign) sunSign = zodiacSigns[0];
