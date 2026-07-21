@@ -3242,7 +3242,8 @@ const distPath = join(__dirname, 'web', 'dist');
 if (existsSync(distPath)) {
   app.use(express.static(distPath));
   // SPA fallback: 所有非 /api 路由返回 index.html（包括 /）
-  app.get('*', (req, res, next) => {
+  // 🛠️ V120-fix28: 使用正则表达式兼容新版 path-to-regexp
+  app.get(/.*/, (req, res, next) => {
     if (!req.path.startsWith('/api') && existsSync(join(distPath, 'index.html'))) {
       return res.sendFile(join(distPath, 'index.html'));
     }
