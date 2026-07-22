@@ -213,10 +213,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       ['十二分相（30度）','微调互动'],['十二分相','微调互动'],
     ];
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
-    // 2) 修正 Pluto 水瓶座宫位(上升水瓶=Pluto in Aquarius=House 11)
-    // 容错: 中数字(第十/第十一)和阿拉伯数字都匹配
-    t = t.replace(/冥王星在水瓶座第[零一二三四五六七八九十百\d]+宫/g, '冥王星在水瓶座第十一宫');
-    t = t.replace(/Pluto in Aquarius House \d+/g, 'Pluto in Aquarius House 11');
+    // 2) 修正 Pluto 水瓶座宫位 + 任何水瓶座第十宫(满月/太阳等Transit都适用)
+    // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
+    // 中数字(第十/第十一)和阿拉伯数字都匹配
+    t = t.replace(/水瓶座第[零一二三四五六七八九十百\d]+宫/g, '水瓶座第十一宫');
+    t = t.replace(/\bAquarius House \d+/g, 'Aquarius House 11');
     return t;
   }
 
