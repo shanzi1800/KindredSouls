@@ -1913,6 +1913,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               } catch (e) {
                 // 🔍 裁决：绝对不能静默吞错！把刺客揪出来
                 console.warn('[WealthReport] ⚠️ JSON 解析失败！错误:', e, '原始片段:', dataStr.slice(0, 100));
+                // 🛡️ V133-fix: 容错提取——即使JSON损坏也尝试恢复text/sanitized字段
+                try {
+                  const sanMatch = dataStr.match(/"sanitized"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                  const textMatch = dataStr.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                  const recovered = (sanMatch && sanMatch[1]) || (textMatch && textMatch[1]) || '';
+                  if (recovered) {
+                    const unescaped = recovered.replace(/\\n/g, '\n').replace(/\\\"/g, '"').replace(/\\\\/g, '\\');
+                    if (type === 'yearly' || type === 'monthly') {
+                      setSacredText(prev => prev + unescaped);
+                    } else {
+                      setWealthReportText(prev => prev + unescaped);
+                      wealthReportRef.current = (wealthReportRef.current || '') + unescaped;
+                    }
+                    console.log('[WealthReport] ✅ 容错提取成功，长度:', unescaped.length);
+                  }
+                } catch (e2) {
+                  console.warn('[WealthReport] ❌ 容错提取也失败:', e2.message);
+                }
               }
             }
           }
