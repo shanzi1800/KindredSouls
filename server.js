@@ -204,6 +204,17 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     let t = text;
     // 0) 半角括号→全角(兜底,月报路径不过final_text_sanitizer)
     t = t.replace(/\(/g, '（').replace(/\)/g, '）');
+    // 0b) 后处理天文强杀 — AI瞎编的历史行星位置
+    // 🛠️ V132-fix: 强杀土星在射手座(AI用2015-2017年旧数据),太阳入狮子错误日期
+    t = t.replace(/土星在射手座/g, '土星在白羊座');
+    t = t.replace(/土星在摩羯座(?!.*逆行)/g, '土星在白羊座');
+    // 强杀"水星在狮子座逆行"(真实7月逆行在水星在巨蟹座)
+    t = t.replace(/水星在狮子座逆行/g, '水星在巨蟹座逆行');
+    // 强杀"7月25日太阳进入狮子座"(真实是7月23日)
+    t = t.replace(/7月25日，太阳进入狮子座/g, '7月23日，太阳进入狮子座');
+    t = t.replace(/7月25日\s*[,，]\s*太阳进入狮子座/g, '7月23日，太阳进入狮子座');
+    // 强杀"月亮7月底在双子座"(真实在水瓶座)
+    t = t.replace(/月亮进入双子座并与冥王星/g, '月亮进入水瓶座并与冥王星');
     // 1) 清除所有相角术语 → 自然能量语言
     // 🛠️ V131e-fix2: 覆盖全角（120度）+半角(120°)双版本
     // 月报路径不过final_text_sanitizer,括号可能是半角也可能是全角
@@ -1756,11 +1767,14 @@ function buildMonthlyPrompt(birthDate, lang) {
     system: monthlySystem,
     user: `
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx 2026: ONLY July 18 – August 11 (in Leo). July 18 is the SOLE retrograde start date — NEVER mention any other date as Mercury Rx start. NEVER describe July 11 as retrograde.
-• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards — never write Venus in Virgo then back in Leo the same week.
+• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer) — Mercury NEVER enters Leo during this retrograde. July 18 is the STATION peak (slowest point, most intense), NOT the start. Correct: "水星在巨蟹座逆行" or "水星逆行(7月8日至25日)". NEVER write "水星在狮子座逆行".
+• SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
+• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
+• SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
+• PLUTO July 2026: in 水瓶座 (Aquarius) all month.
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• MOON July 2026: on 7/31 it is in 摩羯座 (Capricorn), NOT in 双子座. NEVER write "月亮在双子座" for July 31.
+• MOON July 2026: on 7/31 it is in 水瓶座 (Aquarius). NEVER write "月亮在双子座" for July 31.
 • NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
 • 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
 
@@ -1769,17 +1783,20 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
 
 [THAI ASTRO RULES]:
-• MERCURY Rx: ดาวพุธวงในเริ่ม 18 กรกฎาคม 2026 — ห้ามเขียนวันที่ 11 เป็นวันเริ่ม Rx
-• VENUS กรกฎาคม: 1-13 กรกฎาคม อยู่ราศีสิงห์ (Leo); 14+ เข้าราศีกันยา (Virgo)
-• MARS: อยู่ราศีบิดา (Gemini) ตลอดเดือน
-• JUPITER: ดาวพฤหัสบดีในราศีสิงห์ตลอดกรกฎาคม 2026
+• MERCURY Rx: ดาวพุธวงในเริ่ม ~8–25 กรกฎาคม ในราศีกรกฎ (Cancer) — ห้ามเขียนดาวพุธในราศีสิงห์ (Leo) ตลอดเดือนกรกฎาคม
+• SUN เข้าราศีสิงห์: 23 กรกฎาคม (ไม่ใช่ 22 หรือ 25)
+• VENUS: 1-13 กรกฎาคม อยู่ราศีสิงห์ (Leo); 14+ เข้าราศีกันยา (Virgo)
+• SATURN: อยู่ราศีเมษ (Aries) ตลอดกรกฎาคม — ห้ามเขียนดาวเสาร์ในราศีธนู/มังกร/กุมภ์
+• PLUTO: อยู่ราศีกุมภ์ (Aquarius) ตลอดกรกฎาคม
 • NEW MOON จริง: ~14 กรกฎาคม 2026
 
 [VIETNAMESE ASTRO RULES]:
-• MERCURY Rx: Sao Thủy nghịch bắt đầu 18/7/2026 — cấm viết trước ngày 18/7, tuyệt đối không viết ngày 11
+• MERCURY Rx: Sao Thủy nghịch ~8-25/7/2026 trong Cự Giải (Cancer) — cấm tuyệt đối viết Sao Thủy ở Sư Tử (Leo) trong tháng 7
+• SUN vào Sư Tử: 23/7 (không phải 22 hay 25)
 • VENUS: 1-13/7 ở Sư Tử (Leo); 14+ ở Xử Nữ (Virgo)
-• MARS: Song Tử (Gemini) cả tháng
-• WEEK 3 (Jul 15-21): Ngày 18/7 là ngày Sao Thủy nghịch BẮT ĐẦU — tuyệt đối CẤM đặt ngày 18/7 làm ngày vàng tài chính
+• SATURN: ở Bạch Dương (Aries) cả tháng 7 — cấm viết Sao Thổ ở Nhân Mã/Ma Kết
+• PLUTO: ở Bảo Bình (Aquarius) cả tháng 7
+• WEEK 3 (Jul 15-21): Ngày 18/7 là đỉnh Sao Thủy nghịch (station) — tuyệt đối không đặt ngày 18/7 làm ngày vàng tài chính
 • SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
 • CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" — dùng tiếng Việt tự nhiên
 
@@ -2336,17 +2353,22 @@ ${planetBlock}
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx 2026: ONLY July 18 – August 11 (in Leo). July 18 is the SOLE retrograde start date — NEVER mention any other date as Mercury Rx start. NEVER describe July 11 as retrograde.
-• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards — never write Venus in Virgo then back in Leo the same week.
+• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer) — Mercury NEVER enters Leo during this retrograde. July 18 is the STATION peak (slowest point, most intense), NOT the start. Correct: "水星在巨蟹座逆行" or "水星逆行(7月8日至25日)". NEVER write "水星在狮子座逆行".
+• SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
+• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
+• SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
+• PLUTO July 2026: in 水瓶座 (Aquarius) all month.
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• MOON July 2026: on 7/31 it is in 摩羯座 (Capricorn), NOT in 双子座. NEVER write "月亮在双子座" for July 31.
+• MOON July 2026: on 7/31 it is in 水瓶座 (Aquarius). NEVER write "月亮在双子座" for July 31.
 • NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
 • 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
 
 ⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
 
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
+
+⛔ [水逆日期铁律]: 水星7月逆行周期为7月8日至25日(巨蟹座)，7月18日是【逆行顶点】(水星最慢点)不是开始日。
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
