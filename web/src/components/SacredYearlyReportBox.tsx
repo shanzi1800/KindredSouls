@@ -264,6 +264,8 @@ const SacredYearlyReportBox: React.FC<{
       '财富流流', '宿命财运', '最终财富', '通关密令', '先知天书',
       '年度宏观定调', '财富爆发指数', '资产熔断风险', '天命显化方位',
       '累进财富通道', '阴影消耗黑洞',
+      // 🛠️ V131d: 月度报告章节金色识别
+      '【开篇】', '【第1周】', '【第2周】', '【第3周】', '【第4周】', '【消费陷阱】',
       // 🛠️ V73: 英文章节标识（让英文版 Section I-V 也走金色 heading）
       'Section I', 'Section II', 'Section III', 'Section IV', 'Section V',
       'The Annual Wealth Matrix', 'The 365-Day', 'The Destiny Career', 'The Debt', 'The Final Oracle',
