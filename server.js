@@ -3575,7 +3575,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
       return text;
     };
-    let cleanedText = langPunctuationClean(fullTextCollector, lang);
+    // 🛠️ V131c-fix: 月报用 geminiFullText(函数返回值=全量1743字)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
+    let cleanedText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
