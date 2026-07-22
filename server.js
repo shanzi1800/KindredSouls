@@ -142,7 +142,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 // 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
-                pc = fixMonthlySectionTitles(pending).replace(/\uFFFD/g,'');
+                // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净)
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending)).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -179,7 +180,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     let pc;
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
-      pc = fixMonthlySectionTitles(pending).replace(/\uFFFD/g,'');
+      // 🛠️ V131e: 月报 flush 也过相角清洗(保证前端展示干净)
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending)).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -195,10 +197,33 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
     if (typeof res.flush === 'function') res.flush();
   }
-  // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复
+  // 🛠️ V131e-fix: 月报相角术语+ Pluto水瓶宫位双重后处理清洗
+  // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
+  function stripAspectTermsAndPlutoHouse(text) {
+    if (!text) return text;
+    let t = text;
+    // 1) 清除所有相角术语 → 自然能量语言
+    const ASPECT_MAP = [
+      ['三分相（120度）','共振'],['三分相','共振'],['三分相(120°)','共振'],
+      ['四分相（90度）','张力'],['四分相','张力'],['四分相(90°)','张力'],
+      ['对分相（180度）','强烈对冲'],['对分相','对冲'],['对分相(180°)','强烈对冲'],
+      ['六分相（60度）','和谐互动'],['六分相','和谐互动'],
+      ['合相（0度）','同频共振'],['合相','同频共振'],
+      ['梅花相位（150度）','艰难共振'],['梅花相位','艰难共振'],
+      ['十二分相（30度）','微调互动'],['十二分相','微调互动'],
+    ];
+    for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
+    // 2) 修正 Pluto 水瓶座宫位(上升水瓶=Pluto in Aquarius=House 11)
+    // 容错: Pluto in Aquarius / 冥王星在水瓶座 的任何宫位数字替换为 11
+    t = t.replace(/冥王星在水瓶座第(\d+)宫/g, '冥王星在水瓶座第11宫');
+    t = t.replace(/Pluto in Aquarius House (\d+)/g, 'Pluto in Aquarius House 11');
+    return t;
+  }
+
+  // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
   if (reportType === 'monthly' && fullText) {
-    const fixed = fixMonthlySectionTitles(fullText);
+    const fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText));
     if (fixed !== fullText) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\\n\\n`, 'utf-8'));
