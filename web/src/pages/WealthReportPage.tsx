@@ -1885,7 +1885,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               }
 
               try {
-                const parsed = JSON.parse(dataStr);
+                let parsed;
+                try {
+                  parsed = JSON.parse(dataStr);
+                } catch (e1) {
+                  // 🛡️ V133d-fix: SSE事件可能含尾部垃圾(下一事件残片),提取第一个完整JSON对象
+                  const _fb = dataStr.indexOf('{');
+                  const _lb = dataStr.lastIndexOf('}');
+                  if (_fb >= 0 && _lb > _fb) {
+                    parsed = JSON.parse(dataStr.slice(_fb, _lb + 1));
+                  } else {
+                    throw e1;
+                  }
+                }
 
                 // 🔍 军师调试日志：看数据到底长啥样
                 console.log('[WealthReport] 📥 收到流式增量:', parsed.text?.slice(0, 20) + '...');

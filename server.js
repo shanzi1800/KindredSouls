@@ -266,6 +266,33 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
     // 兜底：月末"太阳在巨蟹座"与"太阳进入狮子座"矛盾时，统一狮子座
     t = t.replace(/(太阳与木星在巨蟹座|太阳在巨蟹座第十宫|太阳在巨蟹座第11宫)/g, (m) => m.replace('巨蟹座', '狮子座'));
+    // 🛠️ V133d-fix: 水星逆行日期纠偏(Swiss Eph实测:7月全程巨蟹座,6月底已逆,7/23-24转顺)
+    // AI常编"7月8日正式开始""7月18日顶点"——7月内没有开始日,7/18只是普通逆行中
+    t = t.replace(/水星逆行于7月\d+日正式开始/g, '水星在巨蟹座逆行');
+    t = t.replace(/水星于7月\d+日进入逆行/g, '水星在巨蟹座逆行');
+    t = t.replace(/水星在巨蟹座逆行于7月\d+日正式开始/g, '水星在巨蟹座逆行');
+    t = t.replace(/7月18日达到逆行顶点/g, '逆行中期');
+    t = t.replace(/7月18日[^。\n]{0,12}?逆行顶点/g, '逆行中期');
+    t = t.replace(/水星逆行（7月8-25日）/g, '水星在巨蟹座逆行（7月1日至23日）');
+    t = t.replace(/水星在巨蟹座逆行（7月8-25日）/g, '水星在巨蟹座逆行（7月1日至23日）');
+    t = t.replace(/水星逆行（7月1-25日）/g, '水星在巨蟹座逆行（7月1日至23日）');
+    t = t.replace(/水星在巨蟹座逆行[^。\n]{0,20}?7月8日[^。\n]{0,15}?开始/g, '水星在巨蟹座逆行（7月23日前后恢复顺行）');
+    // 🛠️ V133d-fix: 月报长括号自动闭合(搬自final_text_sanitizer V104c,月报路径不过该链)
+    // 防AI流式丢左括号→裸右括号(如"月亮进入天蝎座天然守护星座）")
+    var _secs = t.split('\n');
+    for (var _si = 0; _si < _secs.length; _si++) {
+      var _sec = _secs[_si];
+      var _openC = (_sec.match(/（/g) || []).length;
+      var _closeC = (_sec.match(/）/g) || []).length;
+      if (_openC > _closeC && !_sec.match(/[）\s]$/)) {
+        _secs[_si] = _sec + '）';
+      }
+      // 反向:有)无(开头→ 补左括号(流式块被截断的孤立右括号)——但仅当句首即右括号
+      if (_closeC > _openC && _sec.trim().startsWith('）')) {
+        _secs[_si] = '（' + _sec;
+      }
+    }
+    t = _secs.join('\n');
     // 2) 修正 Pluto 水瓶座宫位(仅对本命太阳水瓶座用户生效)
     // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
     // 中数字(第十/第十一)和阿拉伯数字都匹配
@@ -1805,7 +1832,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     system: monthlySystem,
     user: `
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo during July 2026 (do NOT write "水星在狮子座逆行"). Retrograde period is ~July 2 to July 24 (Mercury moves backward THROUGH Cancer). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day). Correct phrasing: "水星在巨蟹座逆行（7月2日至24日），7月18日达逆行顶点". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星恢复顺行" before July 24. (3) Any retrograde start date other than ~July 2.
+• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
 • SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。
 • 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
 • 禁止用"意外之财"描述梅花相/四分相。
@@ -1821,6 +1848,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
 
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
+⛔ [宫位含义一致性]: 行星进入某星座时,其宫位象征必须与该星座在用户等宫制中的序号一致(如处女座=第12宫隐秘宫/潜意识/暗财,摩羯座=第4宫田宅,白羊座=第7宫关系)。绝不允许把第12宫(隐秘)强行解释为"家庭与事业"(第4/10宫),或把任何宫位含义张冠李戴。
 
 [THAI ASTRO RULES]:
 • MERCURY Rx: ดาวพุธวงในเริ่ม ~2–24 กรกฎาคม ในราศีกรกฎ (Cancer) — ห้ามเขียนดาวพุธในราศีสิงห์ (Leo) ตลอดเดือนกรกฎาคม
@@ -2394,7 +2422,7 @@ ${planetBlock}
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo during July 2026 (do NOT write "水星在狮子座逆行"). Retrograde period is ~July 2 to July 24 (Mercury moves backward THROUGH Cancer). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day). Correct phrasing: "水星在巨蟹座逆行（7月2日至24日），7月18日达逆行顶点". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星恢复顺行" before July 24. (3) Any retrograde start date other than ~July 2.
+• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
 • SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。
 • 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
 • 禁止用"意外之财"描述梅花相/四分相。
@@ -2410,6 +2438,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
 
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
+⛔ [宫位含义一致性]: 行星进入某星座时,其宫位象征必须与该星座在用户等宫制中的序号一致(如处女座=第12宫隐秘宫/潜意识/暗财,摩羯座=第4宫田宅,白羊座=第7宫关系)。绝不允许把第12宫(隐秘)强行解释为"家庭与事业"(第4/10宫),或把任何宫位含义张冠李戴。
 
 ⛔ [水逆日期铁律]: 水星7月逆行周期为7月8日至25日(巨蟹座)，7月18日是【逆行顶点】(水星最慢点)不是开始日。
 
