@@ -213,6 +213,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 强杀"7月25日太阳进入狮子座"(真实是7月23日)
     t = t.replace(/7月25日，太阳进入狮子座/g, '7月23日，太阳进入狮子座');
     t = t.replace(/7月25日\s*[,，]\s*太阳进入狮子座/g, '7月23日，太阳进入狮子座');
+    // 强杀"太阳在狮子座"（7月1-22日太阳在巨蟹座）
+    t = t.replace(/太阳在狮子座第十宫与木星狮子座/g, '太阳在巨蟹座第十宫与木星巨蟹座');
+    t = t.replace(/太阳在狮子座/g, '太阳在巨蟹座');
     // 强杀"月亮7月底在双子座"(真实在水瓶座)
     t = t.replace(/月亮进入双子座并与冥王星/g, '月亮进入水瓶座并与冥王星');
     // 1) 清除所有相角术语 → 自然能量语言
@@ -234,7 +237,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     ];
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
     // 🛠️ V132e-fix: 月报直接输出"同频共振"替换为中性词（避免"合相"变"同频共振"后AI直接写同频共振）
-    t = t.replace(/\b同频共振\b/g, '能量互动');
+    t = t.replace(/同频共振/g, '能量互动');
     // 2) 修正 Pluto 水瓶座宫位(仅对本命太阳水瓶座用户生效)
     // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
     // 中数字(第十/第十一)和阿拉伯数字都匹配
