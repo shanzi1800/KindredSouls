@@ -1755,18 +1755,30 @@ function buildMonthlyPrompt(birthDate, lang) {
   return {
     system: monthlySystem,
     user: `
-ASTROGRAPHIC RULES (MUST FOLLOW):
-• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
+ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
+• MERCURY Rx 2026: ONLY July 18 – August 11 (in Leo). July 18 is the SOLE retrograde start date — NEVER mention any other date as Mercury Rx start. NEVER describe July 11 as retrograde.
+• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards — never write Venus in Virgo then back in Leo the same week.
+• MARS July 2026: in 双子座 (Gemini) all month.
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
+• MOON July 2026: on 7/31 it is in 摩羯座 (Capricorn), NOT in 双子座. NEVER write "月亮在双子座" for July 31.
 • NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
+• 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
+
+⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
+
+⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
 
 [THAI ASTRO RULES]:
-• MERCURY Rx: ดาวพุธวงในเริ่ม 18 กรกฎาคม 2026 — ห้ามเขียนก่อนวันที่ 18
+• MERCURY Rx: ดาวพุธวงในเริ่ม 18 กรกฎาคม 2026 — ห้ามเขียนวันที่ 11 เป็นวันเริ่ม Rx
+• VENUS กรกฎาคม: 1-13 กรกฎาคม อยู่ราศีสิงห์ (Leo); 14+ เข้าราศีกันยา (Virgo)
+• MARS: อยู่ราศีบิดา (Gemini) ตลอดเดือน
 • JUPITER: ดาวพฤหัสบดีในราศีสิงห์ตลอดกรกฎาคม 2026
 • NEW MOON จริง: ~14 กรกฎาคม 2026
 
 [VIETNAMESE ASTRO RULES]:
-• MERCURY Rx: Sao Thủy nghịch bắt đầu 18/7/2026 — cấm viết trước ngày 18/7
+• MERCURY Rx: Sao Thủy nghịch bắt đầu 18/7/2026 — cấm viết trước ngày 18/7, tuyệt đối không viết ngày 11
+• VENUS: 1-13/7 ở Sư Tử (Leo); 14+ ở Xử Nữ (Virgo)
+• MARS: Song Tử (Gemini) cả tháng
 • WEEK 3 (Jul 15-21): Ngày 18/7 là ngày Sao Thủy nghịch BẮT ĐẦU — tuyệt đối CẤM đặt ngày 18/7 làm ngày vàng tài chính
 • SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
 • CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" — dùng tiếng Việt tự nhiên
@@ -2321,10 +2333,20 @@ ${planetBlock}
 ⛔ [相角幻觉禁令]: 禁止写三分相/四分相/对分相等相角术语，只用自然语言描述行星能量互动（如：太阳与木星同在狮子座，形成强大共振扩张能量）。
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
-ASTROGRAPHIC RULES (MUST FOLLOW):
-• MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
+几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
+
+ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
+• MERCURY Rx 2026: ONLY July 18 – August 11 (in Leo). July 18 is the SOLE retrograde start date — NEVER mention any other date as Mercury Rx start. NEVER describe July 11 as retrograde.
+• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards — never write Venus in Virgo then back in Leo the same week.
+• MARS July 2026: in 双子座 (Gemini) all month.
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
+• MOON July 2026: on 7/31 it is in 摩羯座 (Capricorn), NOT in 双子座. NEVER write "月亮在双子座" for July 31.
 • NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
+• 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
+
+⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
+
+⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
