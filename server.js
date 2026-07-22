@@ -2279,6 +2279,15 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     return {
       system: monthlySystem,
       user: `
+⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
+以下天文数据来自 AstroMatrix，请严格遵循，禁止推理：
+${planetBlock}
+
+⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
+
+⛔ [相角幻觉禁令]: 禁止写三分相/四分相/对分相等相角术语，只用自然语言描述行星能量互动（如：太阳与木星同在狮子座，形成强大共振扩张能量）。
+几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
+
 ASTROGRAPHIC RULES (MUST FOLLOW):
 • MERCURY Rx 2026: starts July 18 in Leo — NEVER write July 18 as a good financial day before that date
 • JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
