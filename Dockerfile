@@ -11,7 +11,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn pytz
+# 🛠️ V133d-fix: 优先用预编译 wheel(跳过 pyswisseph C 编译,提速并规避新区域构建环境缺编译工具的问题)
+# 若 wheel 不可用(极少数平台)则回退源码编译
+RUN pip3 install --no-cache-dir --break-system-packages --only-binary :all: pyswisseph fastapi uvicorn pytz || \
+    pip3 install --no-cache-dir --break-system-packages pyswisseph fastapi uvicorn pytz
 
 ENV VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co
 ENV VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTU4MjEsImV4cCI6MjA5NTIzMTgyMX0.qMyRlkMRTkPccngccWa2GJroGaROqdA6N937XRK2L4g
