@@ -1767,7 +1767,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     system: monthlySystem,
     user: `
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer) — Mercury NEVER enters Leo during this retrograde. July 18 is the STATION peak (slowest point, most intense), NOT the start. Correct: "水星在巨蟹座逆行" or "水星逆行(7月8日至25日)". NEVER write "水星在狮子座逆行".
+• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer). July 8 is approximately when Mercury enters retrograde shadow (starts moving backwards). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day, NOT the start date). Correct phrasing: "水星逆行(7月8日至25日)，7月18日逆行顶点" or "水星在巨蟹座逆行，7月18日进入最缓慢的顶点期". NEVER write: (1) "第X日水星逆行达到顶点" unless X=18. (2) "水星在狮子座逆行". (3) "水星恢复顺行" before July 25. Mercury is retrograde until ~July 25.
 • SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
@@ -2353,7 +2353,7 @@ ${planetBlock}
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer) — Mercury NEVER enters Leo during this retrograde. July 18 is the STATION peak (slowest point, most intense), NOT the start. Correct: "水星在巨蟹座逆行" or "水星逆行(7月8日至25日)". NEVER write "水星在狮子座逆行".
+• MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer). July 8 is approximately when Mercury enters retrograde shadow (starts moving backwards). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day, NOT the start date). Correct phrasing: "水星逆行(7月8日至25日)，7月18日逆行顶点" or "水星在巨蟹座逆行，7月18日进入最缓慢的顶点期". NEVER write: (1) "第X日水星逆行达到顶点" unless X=18. (2) "水星在狮子座逆行". (3) "水星恢复顺行" before July 25. Mercury is retrograde until ~July 25.
 • SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
