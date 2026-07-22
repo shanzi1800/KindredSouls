@@ -142,8 +142,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 // 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
-                // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净)
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending)).replace(/\uFFFD/g,'');
+                // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -180,8 +180,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     let pc;
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
-      // 🛠️ V131e: 月报 flush 也过相角清洗(保证前端展示干净)
-      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending)).replace(/\uFFFD/g,'');
+      // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -199,7 +199,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   }
   // 🛠️ V131e-fix: 月报相角术语+ Pluto水瓶宫位双重后处理清洗
   // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
-  function stripAspectTermsAndPlutoHouse(text) {
+  function stripAspectTermsAndPlutoHouse(text, natalSunSign) {
     if (!text) return text;
     let t = text;
     // 0) 半角括号→全角(兜底,月报路径不过final_text_sanitizer)
@@ -217,18 +217,21 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       ['十二分相（30度）','微调互动'],['十二分相(30度)','微调互动'],['十二分相','微调互动'],
     ];
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
-    // 2) 修正 Pluto 水瓶座宫位 + 任何水瓶座第十宫(满月/太阳等Transit都适用)
+    // 2) 修正 Pluto 水瓶座宫位(仅对本命太阳水瓶座用户生效)
     // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
     // 中数字(第十/第十一)和阿拉伯数字都匹配
-    t = t.replace(/水瓶座第[零一二三四五六七八九十百\d]+宫/g, '水瓶座第十一宫');
-    t = t.replace(/\bAquarius House \d+/g, 'Aquarius House 11');
+    const isAquarius = natalSunSign && (natalSunSign.includes('水瓶') || natalSunSign.includes('Aquarius') || natalSunSign.includes('Verseau') || natalSunSign === 'Aquarius');
+    if (isAquarius) {
+      t = t.replace(/水瓶座第[零一二三四五六七八九十百\d]+宫/g, '水瓶座第十一宫');
+      t = t.replace(/\bAquarius House \d+/g, 'Aquarius House 11');
+    }
     return t;
   }
 
   // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
   if (reportType === 'monthly' && fullText) {
-    const fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText));
+    const fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign);
     if (fixed !== fullText) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\\n\\n`, 'utf-8'));
