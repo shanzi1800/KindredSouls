@@ -293,6 +293,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/（逆行顶点）/g, '');
     t = t.replace(/第\d+日（逆行顶点）/g, '');
     t = t.replace(/正式在巨蟹座逆行/g, '在巨蟹座逆行');
+    // 🛠️ V133d-fix8: 覆盖"第18日正是逆行顶点"等中文数字句式
+    t = t.replace(/第\d+日正是逆行顶点/g, '逆行中期');
+    t = t.replace(/第\d+日（逆行顶点）[^。]*/g, '');
+    t = t.replace(/第\d+日.*?逆行顶点[^。]*/g, '逆行中期');
     t = t.replace(/进入逆行顶点（最慢点）[^。]+/g, '在巨蟹座逆行（全程）');
     t = t.replace(/进入逆行顶点[^。]+/g, '在巨蟹座逆行（全程）');
     t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
