@@ -1941,7 +1941,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     console.log('[WealthReport] ✅ 容错提取成功，长度:', unescaped.length);
                   }
                 } catch (e2) {
-                  console.warn('[WealthReport] ❌ 容错提取也失败:', e2.message);
+                  console.warn('[WealthReport] ❌ 容错提取也失败:', e2 instanceof Error ? e2.message : String(e2));
                 }
               }
             }
