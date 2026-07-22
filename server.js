@@ -288,7 +288,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/水星逆行进入顶点[^。]+/g, '水星逆行（7月全程在巨蟹座）');
     t = t.replace(/水星在巨蟹座逆行进入顶点[^。]+/g, '水星在巨蟹座逆行（7月全程）');
     // 🛠️ V133d-fix6: 覆盖"进入逆行顶点（最慢点）"和"逆行水星在巨蟹座"等变体
-    t = t.replace(/进入逆行顶点[^。]+最慢[^。]+/g, '在巨蟹座逆行（全程）');
+    t = t.replace(/进入逆行顶点[^）]+/g, '在巨蟹座逆行（全程）');
+    // 🛠️ V133d-fix7: 直接杀"第N日（逆行顶点）"和"正式在巨蟹座逆行"残留
+    t = t.replace(/（逆行顶点）/g, '');
+    t = t.replace(/第\d+日（逆行顶点）/g, '');
+    t = t.replace(/正式在巨蟹座逆行/g, '在巨蟹座逆行');
     t = t.replace(/进入逆行顶点（最慢点）[^。]+/g, '在巨蟹座逆行（全程）');
     t = t.replace(/进入逆行顶点[^。]+/g, '在巨蟹座逆行（全程）');
     t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
