@@ -214,9 +214,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     ];
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
     // 2) 修正 Pluto 水瓶座宫位(上升水瓶=Pluto in Aquarius=House 11)
-    // 容错: Pluto in Aquarius / 冥王星在水瓶座 的任何宫位数字替换为 11
-    t = t.replace(/冥王星在水瓶座第(\d+)宫/g, '冥王星在水瓶座第11宫');
-    t = t.replace(/Pluto in Aquarius House (\d+)/g, 'Pluto in Aquarius House 11');
+    // 容错: 中数字(第十/第十一)和阿拉伯数字都匹配
+    t = t.replace(/冥王星在水瓶座第[零一二三四五六七八九十百\d]+宫/g, '冥王星在水瓶座第十一宫');
+    t = t.replace(/Pluto in Aquarius House \d+/g, 'Pluto in Aquarius House 11');
     return t;
   }
 
