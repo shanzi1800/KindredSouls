@@ -3590,27 +3590,28 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         cleanedText = cleanedText.replace(_r1, realSunSign).replace(_r2, realSunSign).replace(_r3, realSunSign);
       });
     }
-    // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
+        // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
     // 有破坏性(HIT/MISS不一致 bug)，跳过直接用基础清洗
+    // 🛠️ V131c-fix: 月报跳过全部后续清洗链(空括号/standardizeReport)，仅做 FFFD 清理
     if (reportType === 'monthly') {
-      cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
+      cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
-    }
 
     // 🛠️ V122-fix: 终极空括号清理(final_text_sanitizer 可能漏 "()" 跨块,
     //   完整文本这里再扣一遍)
     cleanedText = cleanedText.replace(/()/g, '').replace(/\(\)/g, '');
-    cleanedText = cleanedText.replace(/([\u4e00-\u9fa5])()([\u4e00-\u9fa5])/g, '$1$2');
-    cleanedText = cleanedText.replace(/[((][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[))](?=[\u4e00-\u9fa5])/g, '');
+    cleanedText = cleanedText.replace(/([一-龥])()([一-龥])/g, '$1$2');
+    cleanedText = cleanedText.replace(/[((][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[))](?=[一-龥])/g, '');
 
     // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport(HIT 路径已调用,此处漏掉导致章节 ✦ 注入缺失)
     cleanedText = standardizeReport(cleanedText);
 
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
-    cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/�/g, '');
+    cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
+    }
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
