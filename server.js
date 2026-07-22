@@ -217,7 +217,12 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/月亮进入双子座并与冥王星/g, '月亮进入水瓶座并与冥王星');
     // 1) 清除所有相角术语 → 自然能量语言
     // 🛠️ V131e-fix2: 覆盖全角（120度）+半角(120°)双版本
-    // 月报路径不过final_text_sanitizer,括号可能是半角也可能是全角
+    // 🛠️ V132e-fix: 禁止"同频共振"用于四分相/梅花相
+    t = t.replace(/同频共振/g, '能量互动');
+    // 禁止"和谐互动"描述梅花相(处女-白羊)
+    t = t.replace(/处女座与土星在白羊座形成和谐互动/g, '处女座金星与白羊座土星形成错位张力');
+    // 禁止"意外之财"描述四分相(处女-双子)
+    t = t.replace(/金星在处女座与天王星在双子座形成相位.*?意外之财/g, '金星在处女座与天王星在双子座形成能量碰撞，变数增加');
     const ASPECT_MAP = [
       ['三分相（120度）','共振'],['三分相(120度)','共振'],['三分相','共振'],
       ['四分相（90度）','张力'],['四分相(90度)','张力'],['四分相','张力'],
@@ -228,6 +233,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       ['十二分相（30度）','微调互动'],['十二分相(30度)','微调互动'],['十二分相','微调互动'],
     ];
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
+    // 🛠️ V132e-fix: 月报直接输出"同频共振"替换为中性词（避免"合相"变"同频共振"后AI直接写同频共振）
+    t = t.replace(/\b同频共振\b/g, '能量互动');
     // 2) 修正 Pluto 水瓶座宫位(仅对本命太阳水瓶座用户生效)
     // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
     // 中数字(第十/第十一)和阿拉伯数字都匹配
@@ -1768,7 +1775,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     user: `
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 • MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer). July 8 is approximately when Mercury enters retrograde shadow (starts moving backwards). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day, NOT the start date). Correct phrasing: "水星逆行(7月8日至25日)，7月18日逆行顶点" or "水星在巨蟹座逆行，7月18日进入最缓慢的顶点期". NEVER write: (1) "第X日水星逆行达到顶点" unless X=18. (2) "水星在狮子座逆行". (3) "水星恢复顺行" before July 25. Mercury is retrograde until ~July 25.
-• SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
+• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入）。7月1日-22日太阳在巨蟹座，绝不能在7月1-21日写"太阳在狮子座"或"太阳与木星在狮子座"。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确：7月23日才写"太阳在/进入狮子座"；7月1-22日必须写"太阳在巨蟹座"。
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
 • SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
@@ -2347,14 +2354,15 @@ ${planetBlock}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 
-⛔ [相角幻觉禁令]: 禁止写三分相/四分相/对分相等相角术语，只用自然语言描述行星能量互动（如：太阳与木星同在狮子座，形成强大共振扩张能量）。
+⛔ [相角幻觉禁令]: 禁止写"形成和谐互动"、"吉相"、"三分相/四分相/对分相"等相角术语。禁止描述 quincunx(150°处女-白羊)、square(90°处女-双子)为正向能量。统一用中性行星能量描述，如："处女座金星与白羊座土星的错位张力"、"处女座金星与双子座天王星的能量碰撞带来突发变数"。禁止用"意外之财"、"意外收获"描述四分相/梅花相位的相位。
+禁止用"同频共振"描述四分相(90°/square)或梅花相(150°/quincunx)——只有三分相(120°/trine)或六分相(60°/sextile)才可用"共振"类词汇。水星/火星/天王星与任何行星的紧张相位禁止用"同频共振"。
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 • MERCURY Rx July 2026: RETROGRADE ~July 8–25 in 巨蟹座 (Cancer). July 8 is approximately when Mercury enters retrograde shadow (starts moving backwards). July 18 is the STATION (Mercury at its SLOWEST — most intense retrograde day, NOT the start date). Correct phrasing: "水星逆行(7月8日至25日)，7月18日逆行顶点" or "水星在巨蟹座逆行，7月18日进入最缓慢的顶点期". NEVER write: (1) "第X日水星逆行达到顶点" unless X=18. (2) "水星在狮子座逆行". (3) "水星恢复顺行" before July 25. Mercury is retrograde until ~July 25.
-• SUN INGRESS Leo: July 23 (NOT July 22 or July 25). Before July 23: Sun in 巨蟹座 (Cancer). From July 23+: Sun in 狮子座 (Leo).
+• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入）。7月1日-22日太阳在巨蟹座，绝不能在7月1-21日写"太阳在狮子座"或"太阳与木星在狮子座"。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确：7月23日才写"太阳在/进入狮子座"；7月1-22日必须写"太阳在巨蟹座"。
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
 • MARS July 2026: in 双子座 (Gemini) all month.
 • SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
