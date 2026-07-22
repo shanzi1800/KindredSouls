@@ -249,18 +249,22 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     for (const [bad, good] of ASPECT_MAP) t = t.split(bad).join(good);
     // 🛠️ V132e-fix: 月报直接输出"同频共振"替换为中性词（避免"合相"变"同频共振"后AI直接写同频共振）
     t = t.replace(/同频共振/g, '能量互动');
-    // 🛠️ V133-fix: 太阳倒流拦截——7月23日入狮后绝不再回巨蟹（防LLM第4周写回旧星座）
-    // 1. 第4周(7月25-31日)内所有"太阳在巨蟹座"强制改为狮子座（不限距离）
+    // 🛠️ V133-fix: 太阳双向拦截——7月1-22巨蟹 / 7月23-31狮子（防LLM算错方向）
     const _wk4 = t.indexOf('第4周');
     if (_wk4 >= 0) {
       const _before = t.substring(0, _wk4);
       let _after = t.substring(_wk4);
+      // 第4周及之后(7月23-31):太阳必在狮子
       _after = _after.split('太阳在巨蟹座').join('太阳在狮子座');
-      t = _before + _after;
+      // 第4周之前(7月1-22):太阳必在巨蟹
+      const _beforeFixed = _before.split('太阳在狮子座').join('太阳在巨蟹座');
+      t = _beforeFixed + _after;
+    } else {
+      // 无第4周标记时，按日期兜底
+      t = t.replace(/7月(2[3-9]|3[01])日[^。\n]*?太阳在巨蟹座/g, (m) => m.replace('太阳在巨蟹座', '太阳在狮子座'));
+      t = t.replace(/7月([1-9]|1[0-9]|2[0-2])日[^。\n]*?太阳在狮子座/g, (m) => m.replace('太阳在狮子座', '太阳在巨蟹座'));
     }
-    // 2. 任何7月≥23日的"太阳在巨蟹座"改为狮子座（不限距离）
-    t = t.replace(/7月(2[3-9]|3[01])日[^。\n]*?太阳在巨蟹座/g, (m) => m.replace('太阳在巨蟹座', '太阳在狮子座'));
-    // 3. 兜底：月末"太阳在巨蟹座"与"太阳进入狮子座"矛盾时，统一狮子座
+    // 兜底：月末"太阳在巨蟹座"与"太阳进入狮子座"矛盾时，统一狮子座
     t = t.replace(/(太阳与木星在巨蟹座|太阳在巨蟹座第十宫|太阳在巨蟹座第11宫)/g, (m) => m.replace('巨蟹座', '狮子座'));
     // 2) 修正 Pluto 水瓶座宫位(仅对本命太阳水瓶座用户生效)
     // 上升水瓶=全行星落Aquarius=House 11; AI 统一写成 House 10 必须统一纠正
