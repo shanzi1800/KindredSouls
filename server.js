@@ -143,6 +143,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               let pc;
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
+  console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
                 pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
