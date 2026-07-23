@@ -372,13 +372,22 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
   if (reportType === 'monthly' && fullText) {
-    const fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign);
-    if (fixed !== fullText) {
+    let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign);
+    // 🛠️ V133g-fix5: 括号计数修复必须同步更新fullText
+    const _ocF = (fixed.match(/\uff08/g)||[]).length;
+    const _ccF = (fixed.match(/\uff09/g)||[]).length;
+    if (_ccF > _ocF) {
+      let _exF = _ccF - _ocF;
+      const _rvF = fixed.split(''); _rvF.reverse();
+      for (let i=0; i<_rvF.length && _exF>0; i++) { if (_rvF[i]==='\uff09') { _rvF[i]=''; _exF--; } }
+      fixed = _rvF.reverse().join('');
+    }
+    if (fixed.length > 0) {
       try {
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\\n\\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
         if (typeof res.flush === 'function') res.flush();
-        console.log('[callDeepSeek] [MONTHLY-FIX] Section titles fixed, len=' + fixed.length);
+        console.log('[callDeepSeek] [MONTHLY-FIX] len=' + fixed.length + ' oc=' + _ocF + ' cc=' + _ccF);
         fullText = fixed;
       } catch(e) {
         console.error('[callDeepSeek] [MONTHLY-FIX] error:', e.message);
