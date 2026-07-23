@@ -149,7 +149,9 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
  * 🛠️ V91+: 支持 birth_time / lat / lon / tz 精确参数。
  * Caches result for 1 hour to avoid repeated subprocess calls.
  */
-export async function getAstroMatrix(birthDate, birthTime = '12:00', lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok') {
+export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok') {
+  // 🛠️ V142-fix: 移除 birthTime='12:00' 默认值——undefined 会触发默认值导致 birthTimeKnown 误判为 true(假上升),
+  // 现在 undefined/null/'' 都如实传给 computeViaPython 判定为无出生时间→Solar House
   const cacheKey = `${birthDate}:${birthTime}:${lat.toFixed(2)}:${lon.toFixed(2)}:${tz}`;
 
   // Check cache

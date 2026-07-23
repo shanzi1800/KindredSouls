@@ -1275,6 +1275,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setBirthDate(birth);
     setLang(langParam || i18n.language || 'en');
 
+    // 🛠️ V143: 支持从 URL 传入精确出生时间/经纬度/时区（A轨：真实上升宫位）
+    // ?time=HH:MM 有时间→Placidus 精确宫位；无 time → Solar House 降级
+    const timeParam = params.get('time') || params.get('birthTime');
+    if (timeParam && /^\d{1,2}:\d{2}$/.test(timeParam)) {
+      setBirthTime(timeParam);
+      sessionStorage.setItem('wealth_time', timeParam);
+    }
+    const latParam = params.get('lat');
+    const lonParam = params.get('lon');
+    const tzParam = params.get('tz');
+    if (latParam && !isNaN(Number(latParam))) setBirthLat(Number(latParam));
+    if (lonParam && !isNaN(Number(lonParam))) setBirthLon(Number(lonParam));
+    if (tzParam) setBirthTz(tzParam);
+
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment') === 'success';
     const intentCheckout = urlParams.get('intent') === 'checkout';
