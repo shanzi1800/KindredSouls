@@ -2685,7 +2685,9 @@ ${HT_RP.circuit}第X日
 
 ${HT_RP.trap}
 [Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
- jupHouse = 2;
+    `
+    };
+    jupHouse = 2;
     if (!satHouse || satHouse === 0) satHouse = 10;
     if (!plHouse || plHouse === 0) plHouse = 8;
     if (!sunHouse || sunHouse === 0) sunHouse = 1;
