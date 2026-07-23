@@ -48,13 +48,14 @@ CANCER_RISING_HOUSES = {
 
 # Generic rising sign house mapping (parametrizable)
 def get_house(sign: str, rising_sign: str) -> int:
-    """Return house number (1-12) for a given sign, given the rising sign."""
-    if rising_sign == 'Cancer':
-        return CANCER_RISING_HOUSES.get(sign, 0)
-    # Generic formula: houses advance by 2 for each sign away from rising
+    """Return house number (1-12) for a given sign, given the rising sign.
+    🛠️ V142: 修正 off-by-one bug — 旧公式 (sign_idx - rising_idx + 1) % 12 + 1
+    多了一个 +1，导致所有非 Cancer 上升用户宫位偏 1 宫。
+    标准 Whole Sign: rising_sign 为第1宫，沿黄道顺序递增。
+    已验证 100% 匹配 Cancer 权威表 + 军师 Virgo 要求(Cancer=11,Leo=12)。"""
     rising_idx = SIGNS.index(rising_sign)
     sign_idx = SIGNS.index(sign)
-    house = (sign_idx - rising_idx + 1) % 12 + 1
+    house = (sign_idx - rising_idx) % 12 + 1
     return house
 
 # ── SwissEph Core Calculations ────────────────────────────────────────────────
@@ -456,10 +457,13 @@ def test_verification():
 
 def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
                         lat: float = 13.75, lon: float = 100.5,
-                        tz: str = 'Asia/Bangkok') -> Dict:
+                        tz: str = 'Asia/Bangkok',
+                        birth_time_known: bool = True) -> Dict:
     """
     Compute natal chart from birth date/time/coordinates.
     Returns rising sign, sun sign, and all planet positions.
+    🛠️ V142: birth_time_known=False 时降级为 Solar House (太阳星座=第1宫)，
+    避免用假上升(默认12:00)产生"伪精确"宫位张冠李戴。
     """
     import pytz
     
@@ -496,6 +500,14 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         asc_deg = (lon + 180) % 360  # rough approximation
     
     rising_sign = get_sign(asc_deg)
+    
+    # 🛠️ V142: 无出生时间→降级 Solar House (太阳星座=第1宫)
+    # 先算出太阳星座，再把它当作"上升"，后面所有宫位自动=Solar House
+    _jd_sun = swe.julday(birth_dt.year, birth_dt.month, birth_dt.day, 12)
+    _sun_deg, _ = get_planet_pos(_jd_sun, swe.SUN)
+    _sun_sign = get_sign(_sun_deg)
+    if not birth_time_known:
+        rising_sign = _sun_sign  # Solar House: 太阳星座=第1宫
     
     # Get all planet positions at birth moment
     planets = {
@@ -536,8 +548,10 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         'lon': lon,
         'tz': tz,
         'computed_houses': computed_houses,
-        'version': 'V138',
-        'rising_sign_source': 'computed' if asc_deg > 0 else 'defaulted',
+        'version': 'V142',
+        'birth_time_known': birth_time_known,
+        'rising_sign_source': ('solar_house_no_time' if not birth_time_known
+                               else ('computed' if asc_deg > 0 else 'defaulted')),
     }
 
 
@@ -558,6 +572,8 @@ if __name__ == '__main__':
     parser.add_argument('--lon', type=float, default=100.5, help='Longitude')
     parser.add_argument('--tz', default='Asia/Bangkok', help='Timezone')
     parser.add_argument('--mode', default='monthly', help='Mode: natal or monthly')
+    parser.add_argument('--no-birth-time', dest='no_birth_time', action='store_true',
+                        help='Birth time unknown → Solar House fallback (sun sign = 1st house)')
     parser.add_argument('--health', action='store_true', help='Health check')
     
     args = parser.parse_args()
@@ -569,7 +585,8 @@ if __name__ == '__main__':
         exit(0)
     
     if args.mode == 'natal' and args.birth_date:
-        natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz)
+        natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz,
+                                    birth_time_known=not args.no_birth_time)
         print(json.dumps(natal, indent=2, ensure_ascii=False))
     elif args.year and args.month:
         matrix = compute_full_matrix(

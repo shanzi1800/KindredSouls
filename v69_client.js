@@ -47,6 +47,8 @@ function getScriptPath() {
 async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   const scriptPath = getScriptPath();
   
+  // 🛠️ V142: 无出生时间→Solar House 降级 (太阳星座=第1宫,避免假上升宫位张冠李戴)
+  const birthTimeKnown = typeof birthTime === 'string' && birthTime.trim().length > 0;
   // ── 第一步：计算本命盘（出生日期对应的上升/宫位/本命星）──
   // 本命盘计算：传入出生日期+时间+坐标，astro_matrix.py 内部计算上升星座
   const natalCmd = [
@@ -58,6 +60,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
     '--tz', tz || 'Asia/Bangkok',
     '--mode', 'natal'
   ];
+  if (!birthTimeKnown) natalCmd.push('--no-birth-time');
 
   console.log('[V134] Computing natal chart:', natalCmd.join(' '));
   
@@ -84,7 +87,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   const risingSign = natalData.rising_sign || 'Cancer';
   const sunSign = natalData.sun_sign || natalData.sunSign || 'Cancer';
   
-  console.log(`[V134] Rising=${risingSign}, Sun=${sunSign}`);
+  console.log(`[V134] Rising=${risingSign}, Sun=${sunSign}, birthTimeKnown=${birthTimeKnown}, source=${natalData.rising_sign_source || '?'}`);
 
   // ── 第二步：计算流年月报 JSON（2026年7月起，12个月）──
   const now = new Date();
@@ -130,7 +133,9 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   matrix.meta.natal_lon = lon;
   matrix.meta.natal_tz = tz;
   matrix.meta.computed_by = 'V138-spawnSync';
-  matrix.meta.rising_sign_source = 'computed'; // Flag: these houses are from real birth-time computation, NOT fallback ASC=Cancer
+  // 🛠️ V142: 如实反映来源,无出生时间时为 Solar House 降级 (太阳星座=第1宫)
+  matrix.meta.birth_time_known = birthTimeKnown;
+  matrix.meta.rising_sign_source = birthTimeKnown ? 'computed' : 'solar_house_no_time';
 
   console.log(`[V134] Got ${matrix.months?.length || 0} months, ${matrix.retrograde_stations?.mercury?.length || 0} Mercury stations`);
 

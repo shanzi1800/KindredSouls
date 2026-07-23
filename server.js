@@ -1896,7 +1896,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `🟢 第4周 ${curMonthZH}（财富爆发）`,
       trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ 安全指令：',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
@@ -1916,7 +1916,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Directiva de Seguridad:',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -1926,7 +1926,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Directive de Sécurité :',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -1936,7 +1936,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ คำสั่งความปลอดภัย:',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -1946,7 +1946,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Chỉ thị An toàn:',
     },
   };
   const HT = HEADER_TEMPLATES[lang] || HEADER_TEMPLATES.zh;
@@ -2422,7 +2422,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `🟢 第4周 ${currentYear}年${currentMonth}月（财富爆发）`,
       trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ 安全指令：',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
@@ -2442,7 +2442,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Directiva de Seguridad:',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -2452,7 +2452,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Directive de Sécurité :',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -2462,7 +2462,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ คำสั่งความปลอดภัย:',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -2472,7 +2472,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '⚠️ Safety Directive:',
+      circuit_tag: '⚠️ Chỉ thị An toàn:',
     },
   };
   const HT_RP = HEADER_TEMPLATES_RP[lang] || HEADER_TEMPLATES_RP.zh;
