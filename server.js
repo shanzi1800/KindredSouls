@@ -121,9 +121,12 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/\\ud83d ?\\udd2e/g, '🟢')
             .replace(/\\ud83d ?\\udd34/g, '🔴')
             .replace(/\\ud83d ?\\udd35/g, '🔵')
-            .replace(/\\u26a0 ?\\ufe0f/g, '⚠️')
-            // 半角括号→全角
-            .replace(/\(/g, '（').replace(/\)/g, '）')
+            .replace(/\\u26a0 ?\\ufe0f/g, '⚠️');
+          // 🛠️ V140: 半角括号→全角 仅限非英文 (军师核弹级抓包: 英文报告括号被误转全角)
+          if (lang !== 'en') {
+            clean = clean.replace(/\(/g, '（').replace(/\)/g, '）');
+          }
+          clean = clean
             // 章节标题兜底修复 (DeepSeek 截断/缩写标题)
             .replace(/🔮\s*本命主(?!题)/g, '🔮 本月命运主题')
             .replace(/🔮\s*本(?![月命运主题])/g, '🔮 本月命运主题')
@@ -144,7 +147,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign).replace(/\uFFFD/g,'');
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign, lang).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -182,7 +185,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
-      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign).replace(/\uFFFD/g,'');
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign, lang).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -200,11 +203,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   }
   // 🛠️ V131e-fix: 月报相角术语+ Pluto水瓶宫位双重后处理清洗
   // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
-  function stripAspectTermsAndPlutoHouse(text, natalSunSign) {
+  function stripAspectTermsAndPlutoHouse(text, natalSunSign, lang) {
     if (!text) return text;
     let t = text;
     // 0) 半角括号→全角(兜底,月报路径不过final_text_sanitizer)
-    t = t.replace(/\(/g, '（').replace(/\)/g, '）');
+    // 🛠️ V140: 仅限非英文 (英文报告保留半角括号)
+    if (lang !== 'en') {
+      t = t.replace(/\(/g, '（').replace(/\)/g, '）');
+    }
     // 0b) 后处理天文强杀 — AI瞎编的历史行星位置
     // 🛠️ V132-fix: 强杀土星在射手座(AI用2015-2017年旧数据),太阳入狮子错误日期
     t = t.replace(/土星在射手座/g, '土星在白羊座');
@@ -372,7 +378,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
   if (reportType === 'monthly' && fullText) {
-    let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign);
+    let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign, lang);
     // 🛠️ V133g-fix5: 括号计数修复必须同步更新fullText
     const _ocF = (fixed.match(/\uff08/g)||[]).length;
     const _ccF = (fixed.match(/\uff09/g)||[]).length;
