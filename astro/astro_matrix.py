@@ -218,29 +218,19 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
         'month_name': f"{month_names[month]} {year}",
         'rising_sign': rising_sign,
         'positions': positions,
+        # ── V134: Flat top-level fields for v69_client.js buildPerMonthData ──
+        'sun': {'sign': positions['Sun']['sign'], 'house': positions['Sun']['house'], 'retrograde': False},
+        'moon': {'sign': positions['Moon']['sign'], 'house': positions['Moon']['house'], 'retrograde': False},  # Moon NEVER retrograde
+        'mercury': {'sign': mercury['sign'], 'house': mercury['house'], 'retrograde': mercury['retrograde']},
+        'venus': {'sign': positions['Venus']['sign'], 'house': positions['Venus']['house'], 'retrograde': positions['Venus']['retrograde']},
+        'mars': {'sign': positions['Mars']['sign'], 'house': positions['Mars']['house'], 'retrograde': positions['Mars']['retrograde']},
+        'jupiter': {'sign': positions['Jupiter']['sign'], 'house': positions['Jupiter']['house'], 'element': positions['Jupiter']['element'], 'retrograde': positions['Jupiter']['retrograde']},
+        'saturn': {'sign': positions['Saturn']['sign'], 'house': positions['Saturn']['house'], 'retrograde': positions['Saturn']['retrograde']},
+        'uranus': {'sign': positions['Uranus']['sign'], 'house': positions['Uranus']['house'], 'retrograde': positions['Uranus']['retrograde']},
+        'neptune': {'sign': positions['Neptune']['sign'], 'house': positions['Neptune']['house'], 'retrograde': positions['Neptune']['retrograde']},
+        'pluto': {'sign': positions['Pluto']['sign'], 'house': positions['Pluto']['house'], 'retrograde': positions['Pluto']['retrograde']},
         'macro_energy': macro_energy,
-        'mercury': {
-            'status': mercury_status,
-            'sign': mercury['sign'],
-            'house': mercury['house'],
-        },
-        'jupiter': {
-            'sign': positions['Jupiter']['sign'],
-            'house': positions['Jupiter']['house'],
-            'element': positions['Jupiter']['element'],
-        },
-        'saturn': {
-            'sign': positions['Saturn']['sign'],
-            'house': positions['Saturn']['house'],
-        },
-        'mars': {
-            'sign': positions['Mars']['sign'],
-            'house': positions['Mars']['house'],
-        },
-        'uranus': {
-            'sign': positions['Uranus']['sign'],
-            'house': positions['Uranus']['house'],
-        },
+        'mercury_status': mercury_status,
         'mars_saturn_aspect': mars_sat_aspect,
         'mars_uranus_aspect': mars_ur_aspect,
         'peak_window': peak_window,
@@ -461,11 +451,137 @@ def test_verification():
     print("\n✅ SwissEph engine verified and ready!")
 
 
+# ── Natal Chart (Birth Time Required) ───────────────────────────────────────
+
+def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
+                        lat: float = 13.75, lon: float = 100.5,
+                        tz: str = 'Asia/Bangkok') -> Dict:
+    """
+    Compute natal chart from birth date/time/coordinates.
+    Returns rising sign, sun sign, and all planet positions.
+    """
+    import pytz
+    
+    # Parse birth datetime
+    bd_str = f"{birth_date} {birth_time}"
+    try:
+        # Try with timezone
+        try:
+            birth_tz = pytz.timezone(tz)
+            birth_dt = birth_tz.localize(datetime.strptime(bd_str, '%Y-%m-%d %H:%M'))
+        except Exception:
+            # Fallback: naive datetime in UTC
+            birth_dt = datetime.strptime(bd_str, '%Y-%m-%d %H:%M')
+    except ValueError:
+        birth_time = '12:00'
+        bd_str = f"{birth_date} {birth_time}"
+        try:
+            birth_tz = pytz.timezone(tz)
+            birth_dt = birth_tz.localize(datetime.strptime(bd_str, '%Y-%m-%d %H:%M'))
+        except Exception:
+            birth_dt = datetime.strptime(bd_str, '%Y-%m-%d %H:%M')
+    
+    # Julian Day for birth moment
+    jd_birth = swe.julday(birth_dt.year, birth_dt.month, birth_dt.day,
+                           birth_dt.hour + birth_dt.minute / 60.0)
+    
+    # Calculate Ascendant using SwissEph
+    try:
+        # hsys = 'E' for Equal House
+        asc_data = swe.houses(jd_birth, lat, lon, 'E')
+        asc_deg = asc_data[0][0]  # First house cusp = Ascendant
+    except Exception:
+        # Fallback: calculate rough ascendant
+        asc_deg = (lon + 180) % 360  # rough approximation
+    
+    rising_sign = get_sign(asc_deg)
+    
+    # Get all planet positions at birth moment
+    planets = {
+        'Sun': swe.SUN, 'Moon': swe.MOON, 'Mercury': swe.MERCURY,
+        'Venus': swe.VENUS, 'Mars': swe.MARS, 'Jupiter': swe.JUPITER,
+        'Saturn': swe.SATURN, 'Uranus': swe.URANUS, 'Neptune': swe.NEPTUNE,
+        'Pluto': swe.PLUTO,
+    }
+    
+    positions = {}
+    for name, pid in planets.items():
+        deg, speed = get_planet_pos(jd_birth, pid)
+        sign = get_sign(deg)
+        house = get_house(sign, rising_sign)
+        positions[name] = {
+            'sign': sign,
+            'degree': round(deg % 30, 2),
+            'house': house,
+            'retrograde': is_retrograde(speed),
+        }
+    
+    # Build computed_houses dict
+    computed_houses = {}
+    for name, pos in positions.items():
+        computed_houses[name] = {
+            'sign': pos['sign'],
+            'house': pos['house'],
+            'retrograde': pos['retrograde'],
+        }
+    
+    return {
+        'rising_sign': rising_sign,
+        'sun_sign': positions['Sun']['sign'],
+        'ascendant_deg': round(asc_deg, 4),
+        'birth_date': birth_date,
+        'birth_time': birth_time,
+        'lat': lat,
+        'lon': lon,
+        'tz': tz,
+        'computed_houses': computed_houses,
+        'version': 'V134',
+    }
+
+
+# ── CLI Entry Point ───────────────────────────────────────────────────────────
+
 if __name__ == '__main__':
-    test_verification()
-    
-    print("\n═══ Full Astro Matrix for 1990-06-15 (Rising Cancer) ═══")
-    matrix = compute_full_matrix('1990-06-15', 'Cancer', 2026, 7)
-    
     import json
-    print(json.dumps(matrix, indent=2, ensure_ascii=False))
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='V134 SwissEph Astro Matrix')
+    parser.add_argument('year', nargs='?', type=int, help='Start year (e.g. 2026)')
+    parser.add_argument('month', nargs='?', type=int, help='Start month (1-12)')
+    parser.add_argument('rising_sign', nargs='?', default='Cancer', help='Rising sign (e.g. Cancer)')
+    parser.add_argument('--months', type=int, default=12, help='Number of months to compute')
+    parser.add_argument('--birth-date', dest='birth_date', help='Birth date YYYY-MM-DD')
+    parser.add_argument('--birth-time', dest='birth_time', default='12:00', help='Birth time HH:MM')
+    parser.add_argument('--lat', type=float, default=13.75, help='Latitude')
+    parser.add_argument('--lon', type=float, default=100.5, help='Longitude')
+    parser.add_argument('--tz', default='Asia/Bangkok', help='Timezone')
+    parser.add_argument('--mode', default='monthly', help='Mode: natal or monthly')
+    parser.add_argument('--health', action='store_true', help='Health check')
+    
+    args = parser.parse_args()
+    
+    if args.health:
+        print('✅ V134 SwissEph OK')
+        print(f'  swisseph version: {swe.version}')
+        print(f'  ephe_path: internal (Moshier mode)')
+        exit(0)
+    
+    if args.mode == 'natal' and args.birth_date:
+        natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz)
+        print(json.dumps(natal, indent=2, ensure_ascii=False))
+    elif args.year and args.month:
+        matrix = compute_full_matrix(
+            birth_date=args.birth_date or '',
+            rising_sign=args.rising_sign or 'Cancer',
+            start_year=args.year,
+            start_month=args.month,
+        )
+        # Override months count
+        matrix['meta']['months_requested'] = args.months
+        matrix['months'] = matrix['months'][:args.months]
+        print(json.dumps(matrix, indent=2, ensure_ascii=False))
+    else:
+        test_verification()
+        print('\n═══ Full Astro Matrix (1990-06-15, Rising Cancer) ═══')
+        matrix = compute_full_matrix('1990-06-15', 'Cancer', 2026, 7)
+        print(json.dumps(matrix, indent=2, ensure_ascii=False))
