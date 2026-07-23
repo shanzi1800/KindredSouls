@@ -301,7 +301,12 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/进入逆行顶点（[^）]+）/g, '在巨蟹座逆行（全程）');
     // 括号未闭合兜底：匹配到第一个句号
     t = t.replace(/进入逆行顶点[^)）。]+/g, '在巨蟹座逆行（全程）');
-    // 清理dangling句号：）。 → ）
+    // 清理括号不规范：多重重开 → 单重
+    // 例: 第6宫在（全程））→ 第6宫在（全程）
+    t = t.replace(/（（+/g, '（');
+    t = t.replace(/））+ /g, '）');
+    // 清理孤悬）且前面不是（的情况：）不在括号内 → 删
+    t = t.replace(/([^（]）)）/g, '$1');
     t = t.replace(/）（[。]/g, '）');
     t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
     // 🛠️ V133f-fix1: 修复正则误伤"在巨蟹座在巨蟹座"连写
