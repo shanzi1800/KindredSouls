@@ -3818,6 +3818,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 有破坏性(HIT/MISS不一致 bug)，跳过直接用基础清洗
     // 🛠️ V131c-fix: 月报跳过全部后续清洗链(空括号/standardizeReport)，仅做 FFFD 清理
     if (reportType === 'monthly') {
+      // 🛠️ V133g-fix4: 月报路径内嵌括号计数修复（stripAspectTermsAndPlutoHouse计数法移植）
+      const _oc2 = (cleanedText.match(/（/g)||[]).length;
+      const _cc2 = (cleanedText.match(/）/g)||[]).length;
+      if (_cc2 > _oc2) {
+        let _ex2 = _cc2 - _oc2;
+        const _rv2 = cleanedText.split(''); _rv2.reverse();
+        for (let i=0; i<_rv2.length && _ex2>0; i++) { if (_rv2[i]==='）') { _rv2[i]=''; _ex2--; } }
+        cleanedText = _rv2.reverse().join('');
+      }
       cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
