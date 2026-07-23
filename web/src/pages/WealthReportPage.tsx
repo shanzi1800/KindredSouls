@@ -1914,9 +1914,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版，整体替换流式脏文本
                   // 🛠️ V120-fix25: 月报章节标题修复后发来 fixed 全量版，整体替换
                   // 否则用户首次生成看到未清洗的旧星座/宫位/缩写标题，刷新走缓存才干净
+                  // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读——sanitized以【开篇】开头说明是全量替换
                   const fixedText = parsed.sanitized || parsed.text;
                   if (type === 'yearly' || type === 'monthly') {
-                    setSacredText(fixedText);
+                    // 如果fixedText以【开篇】开头且sacredText已有内容，先清空再替换（防复读）
+                    setSacredText(prev => (fixedText.startsWith('【开篇】') && prev.length > 50) ? fixedText : prev);
+                  }
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;

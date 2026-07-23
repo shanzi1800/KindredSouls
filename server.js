@@ -304,6 +304,20 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 清理dangling句号：）。 → ）
     t = t.replace(/）（[。]/g, '）');
     t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
+    // 🛠️ V133f-fix1: 修复正则误伤"在巨蟹座在巨蟹座"连写
+    t = t.replace(/在巨蟹座在巨蟹座/g, '在巨蟹座');
+    // 🛠️ V133f-fix2: 强杀"7月23日太阳进入巨蟹座"——双向拦截误伤了正确的"进入狮子座"
+    // 也可能是LLM直接生成了错误表述，无论如何这是物理级错误必须杀
+    t = t.replace(/7月23日[,，]?太阳进入巨蟹座/g, '7月23日，太阳进入狮子座');
+    // 同理修复"在第七宫在巨蟹座"
+    t = t.replace(/在第(\d)宫在巨蟹座/g, '在第$1宫');
+    // 🛠️ V133f-fix: 修复正则误伤导致"在巨蟹座在巨蟹座"连写
+    t = t.replace(/在巨蟹座在巨蟹座/g, '在巨蟹座');
+    // 🛠️ V133f-fix2: 强杀"7月23日太阳进入巨蟹座"——双向拦截误伤了正确的"进入狮子座"
+    // 也可能是LLM直接生成了错误表述，无论如何这是物理级错误必须杀
+    t = t.replace(/7月23日[,，]?太阳进入巨蟹座/g, '7月23日，太阳进入狮子座');
+    // 同理修复"在第七宫在巨蟹座"
+    t = t.replace(/在第(.)宫在巨蟹座/g, '在第$1宫在巨蟹座');
     // 覆盖"逆行水星在巨蟹座第N宫" → "水星在巨蟹座逆行第N宫"
     t = t.replace(/逆行水星在巨蟹座([^，,。\n]+)/g, '水星在巨蟹座逆行$1');
     // 🛠️ V133d-fix6c: "7月18日至22日，水星逆行末期"——7月18日不是逆行末期，正确是7月23-24日顺行
@@ -1872,7 +1886,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     user: `
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 • MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
-• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。
+• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。严禁写"7月XX日太阳进入巨蟹座"——太阳在7月23日之后绝不在巨蟹座；如出现"进入巨蟹座"，立即改为"进入狮子座"。
 • 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
 • 禁止用"意外之财"描述梅花相/四分相。
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
@@ -2462,7 +2476,7 @@ ${planetBlock}
 
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 • MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
-• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。
+• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。严禁写"7月XX日太阳进入巨蟹座"——太阳在7月23日之后绝不在巨蟹座；如出现"进入巨蟹座"，立即改为"进入狮子座"。
 • 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
 • 禁止用"意外之财"描述梅花相/四分相。
 • VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
