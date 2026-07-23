@@ -1880,6 +1880,71 @@ function buildMonthlyPrompt(birthDate, lang) {
   const curMonthName = monthNames[currentMonth - 1];
   const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
 
+  // ── 多语言标题字典（军师裁决 V136）─────────────────────────────
+  const HEADER_TEMPLATES = {
+    zh: {
+      overview:    '✦ 🔮 本月命运主题 ✦',
+      week1:       `🟢 第1周 ${curMonthZH}（财富充能）`,
+      week2:       `🔴 第2周 ${curMonthZH}（高危熔断）`,
+      week3:       `🔵 第3周 ${curMonthZH}（顺流蓄力）`,
+      week4:       `🟢 第4周 ${curMonthZH}（财富爆发）`,
+      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
+      circuit:     '核心天机：',
+      circuit_tag: '熔断指令：',
+    },
+    en: {
+      overview:    '✦ [Overview] Monthly Cosmic Theme',
+      week1:       `✦ [Week 1: ${curMonthName} 1–7] Wealth Recharging`,
+      week2:       `✦ [Week 2: ${curMonthName} 8–14] High-Risk Circuit Breaker`,
+      week3:       `✦ [Week 3: ${curMonthName} 15–22] Strategic Integration`,
+      week4:       `✦ [Week 4: ${curMonthName} 23–31] The Wealth Explosion`,
+      trap:        `✦ [Financial Shadow] ${curMonthName} 2026 Spending Traps`,
+      circuit:     'Core Cosmic Window: ',
+      circuit_tag: '🛑 Circuit Breaker Directive:',
+    },
+    es: {
+      overview:    '✦ [Visión General] Tema Cósmico Mensual',
+      week1:       `✦ [Semana 1: ${curMonthName} 1–7] Recarga de Riqueza`,
+      week2:       `✦ [Semana 2: ${curMonthName} 8–14] Cortocircuito de Alto Riesgo`,
+      week3:       `✦ [Semana 3: ${curMonthName} 15–22] Integración Estratégica`,
+      week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
+      trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
+      circuit:     'Ventana Cósmica Clave: ',
+      circuit_tag: '🛑 Directiva de Cortocircuito:',
+    },
+    fr: {
+      overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
+      week1:       `✦ [Semaine 1: ${curMonthName} 1–7] Recharge de Richesse`,
+      week2:       `✦ [Semaine 2: ${curMonthName} 8–14] Disjoncteur à Haut Risque`,
+      week3:       `✦ [Semaine 3: ${curMonthName} 15–22] Intégration Stratégique`,
+      week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
+      trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
+      circuit:     'Fenêtre Cosmique Clé: ',
+      circuit_tag: '🛑 Directive de Disjoncteur:',
+    },
+    th: {
+      overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
+      week1:       `✦ [สัปดาห์ที่ 1: ${curMonthName} 1–7] การเติมพลังความมั่งคั่ง`,
+      week2:       `✦ [สัปดาห์ที่ 2: ${curMonthName} 8–14] วงจรความเสี่ยงสูง`,
+      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthName} 15–22] การบูรณาการเชิงกลยุทธ์`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
+      trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
+      circuit:     'หน้าต่างจักรวาลหลัก: ',
+      circuit_tag: '🛑 คำสั่งวงจร:',
+    },
+    vi: {
+      overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
+      week1:       `✦ [Tuần 1: ${curMonthName} 1–7] Nạp năng lượng Tài sản`,
+      week2:       `✦ [Tuần 2: ${curMonthName} 8–14] Mạch Ngắn Rủi ro Cao`,
+      week3:       `✦ [Tuần 3: ${curMonthName} 15–22] Tích hợp Chiến lược`,
+      week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
+      trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
+      circuit:     'Cửa sổ Vũ trụ chính: ',
+      circuit_tag: '🛑 Chỉ thị Mạch Ngắn:',
+    },
+  };
+  const HT = HEADER_TEMPLATES[lang] || HEADER_TEMPLATES.zh;
+
   // 多语言语言铁律（来自 b41261b 验证可用版本）
   const langInstructions = {
     zh: '\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n',
@@ -1951,33 +2016,33 @@ CRITICAL REQUIREMENTS:
 
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
-✦ 🔮 本月命运主题 ✦
+${HT.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
-🟢 第1周 ${curMonthZH}（财富充能）
-核心天机：第X日
+${HT.week1}
+${HT.circuit}第X日
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
-🔴 第2周 ${curMonthZH}（高危熔断）
-核心天机：第X日
+${HT.week2}
+${HT.circuit}第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
-🔵 第3周 ${curMonthZH}（顺流蓄力）
-核心天机：第X日
+${HT.week3}
+${HT.circuit}第X日
 [Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
 
-🟢 第4周 ${curMonthZH}（财富爆发）
-核心天机：第X日
+${HT.week4}
+${HT.circuit}第X日
 [Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
 
-⚠️ 消费陷阱熔断区 ${curMonthZH}
-[Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "熔断指令" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
+${HT.trap}
+[Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "${HT.circuit_tag}" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
 
 IMPORTANT:
 • Write in ${lang} with native astrological and financial terminology
 • Use ✦ for section dividers
 • Each section must be rich with specific astrological context
-• NO English in Chinese output (except universal astrological terms)
+• NO mixed-language headers (e.g. 【Week 1】 in Chinese report, or 【第1周】 in English report — use ONLY your language's header format)
 • Be dramatic and destiny-filled, not clinical
 • ⛔ [句子完整性铁律]: 每个句子必须有完整主语+谓语。禁止句子碎片。`
   };
@@ -2332,6 +2397,80 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
   const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
 
+  // ── 多语言标题字典（军师裁决 V136 — buildWealthReportPrompt 专用版）──
+  const MONTH_ABBR = {
+    zh: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    es: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    fr: ['Janv','Févr','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'],
+    th: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+    vi: ['Thg1','Thg2','Thg3','Thg4','Thg5','Thg6','Thg7','Thg8','Thg9','Thg10','Thg11','Thg12'],
+  };
+  const curMonthLocal = (MONTH_ABBR[lang] || MONTH_ABBR.zh)[currentMonth - 1];
+  const HEADER_TEMPLATES_RP = {
+    zh: {
+      overview:    '✦ 🔮 本月命运主题 ✦',
+      week1:       `🟢 第1周 ${currentYear}年${currentMonth}月（财富充能）`,
+      week2:       `🔴 第2周 ${currentYear}年${currentMonth}月（高危熔断）`,
+      week3:       `🔵 第3周 ${currentYear}年${currentMonth}月（顺流蓄力）`,
+      week4:       `🟢 第4周 ${currentYear}年${currentMonth}月（财富爆发）`,
+      trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
+      circuit:     '核心天机：',
+      circuit_tag: '熔断指令：',
+    },
+    en: {
+      overview:    '✦ [Overview] Monthly Cosmic Theme',
+      week1:       `✦ [Week 1: ${curMonthLocal} 1–7] Wealth Recharging`,
+      week2:       `✦ [Week 2: ${curMonthLocal} 8–14] High-Risk Circuit Breaker`,
+      week3:       `✦ [Week 3: ${curMonthLocal} 15–22] Strategic Integration`,
+      week4:       `✦ [Week 4: ${curMonthLocal} 23–31] The Wealth Explosion`,
+      trap:        `✦ [Financial Shadow] ${curMonthLocal} ${currentYear} Spending Traps`,
+      circuit:     'Core Cosmic Window: ',
+      circuit_tag: '🛑 Circuit Breaker Directive:',
+    },
+    es: {
+      overview:    '✦ [Visión General] Tema Cósmico Mensual',
+      week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] Recarga de Riqueza`,
+      week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] Cortocircuito de Alto Riesgo`,
+      week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] Integración Estratégica`,
+      week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
+      trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
+      circuit:     'Ventana Cósmica Clave: ',
+      circuit_tag: '🛑 Directiva de Cortocircuito:',
+    },
+    fr: {
+      overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
+      week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] Recharge de Richesse`,
+      week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] Disjoncteur à Haut Risque`,
+      week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] Intégration Stratégique`,
+      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
+      trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
+      circuit:     'Fenêtre Cosmique Clé: ',
+      circuit_tag: '🛑 Directive de Disjoncteur:',
+    },
+    th: {
+      overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
+      week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] การเติมพลังความมั่งคั่ง`,
+      week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] วงจรความเสี่ยงสูง`,
+      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] การบูรณาการเชิงกลยุทธ์`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
+      trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
+      circuit:     'หน้าต่างจักรวาลหลัก: ',
+      circuit_tag: '🛑 คำสั่งวงจร:',
+    },
+    vi: {
+      overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
+      week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] Nạp năng lượng Tài sản`,
+      week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] Mạch Ngắn Rủi ro Cao`,
+      week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] Tích hợp Chiến lược`,
+      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
+      trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
+      circuit:     'Cửa sổ Vũ trụ chính: ',
+      circuit_tag: '🛑 Chỉ thị Mạch Ngắn:',
+    },
+  };
+  const HT_RP = HEADER_TEMPLATES_RP[lang] || HEADER_TEMPLATES_RP.zh;
+
   // 🛠️ V97x 治本:代码算死12个月锁死标题(星座+宫位由 SwissEph 算死,AI 只填四字主题)
   // 🛠️ V100f: 多语言版(按 lang 选字)
   const SIGN_LOCKS = {
@@ -2525,39 +2664,28 @@ CRITICAL REQUIREMENTS:
 
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
-【开篇】本月命运主题
+${HT_RP.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
-【第1周】 ${curMonthZH}（财富充能）
-核心天机：第X日
+${HT_RP.week1}
+${HT_RP.circuit}第X日
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
-【第2周】 ${curMonthZH}（高危熔断）
-核心天机：第X日
+${HT_RP.week2}
+${HT_RP.circuit}第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
-【第3周】 ${curMonthZH}（顺流蓄力）
-核心天机：第X日
+${HT_RP.week3}
+${HT_RP.circuit}第X日
 [Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
 
-【第4周】 ${curMonthZH}（财富爆发）
-核心天机：第X日
+${HT_RP.week4}
+${HT_RP.circuit}第X日
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
 
-【消费陷阱】 ${curMonthZH}
-[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "熔断指令" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
-`
-    };
-  }
-if (reportType === 'yearly') {
-    // 🛠️ V126-fix2: 年报分支的行星变量在 astroMatrix=null 时 undefined
-    //    natalSunSign/natalSunSignEN 有 TDZ 问题(在 yearly 内层被 let 重声明)
-    //    不能在此处赋值;改用 natalSunFallback 直接注入模板
-    //    行星变量(jupSign/satSign等)不在内层被 let 重声明,可安全重赋值
-    if (!jupSign || jupSign === undefined) jupSign = 'Leo';
-    if (!satSign || satSign === undefined) satSign = 'Aries';
-    if (!moonSign || moonSign === undefined) moonSign = 'Cancer';
-    if (!jupHouse || jupHouse === 0) jupHouse = 2;
+${HT_RP.trap}
+[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
+ jupHouse = 2;
     if (!satHouse || satHouse === 0) satHouse = 10;
     if (!plHouse || plHouse === 0) plHouse = 8;
     if (!sunHouse || sunHouse === 0) sunHouse = 1;
