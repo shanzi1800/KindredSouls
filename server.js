@@ -297,8 +297,12 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/第\d+日正是逆行顶点/g, '逆行中期');
     t = t.replace(/第\d+日（逆行顶点）[^。]*/g, '');
     t = t.replace(/第\d+日.*?逆行顶点[^。]*/g, '逆行中期');
-    t = t.replace(/进入逆行顶点（最慢点）[^。]+/g, '在巨蟹座逆行（全程）');
-    t = t.replace(/进入逆行顶点[^。]+/g, '在巨蟹座逆行（全程）');
+    // 🛠️ V133d-fix9: 非贪婪版——停在第一个)而非贪到下一个句号
+    t = t.replace(/进入逆行顶点（[^）]+）/g, '在巨蟹座逆行（全程）');
+    // 括号未闭合兜底：匹配到第一个句号
+    t = t.replace(/进入逆行顶点[^)）。]+/g, '在巨蟹座逆行（全程）');
+    // 清理dangling句号：）。 → ）
+    t = t.replace(/）（[。]/g, '）');
     t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
     // 覆盖"逆行水星在巨蟹座第N宫" → "水星在巨蟹座逆行第N宫"
     t = t.replace(/逆行水星在巨蟹座([^，,。\n]+)/g, '水星在巨蟹座逆行$1');
