@@ -2607,13 +2607,15 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       return `  - ${zh}: ${p.sign} 第${house}宫${rx}${status}`;
     }).filter(Boolean).join('\n') : '';
 
-    // ── V138-fix: Birth-time unknown → inject house lock warning to prevent AI inventing house mappings ──
-    const NO_BIRTH_TIME = !astroMatrix?.meta?.rising_sign_source || astroMatrix.meta.rising_sign_source !== 'computed';
-    const HOUSE_LOCK_WARNING = NO_BIRTH_TIME ? `
-⛔ [宫位强制锁定 - 仅当无法计算上升星座时使用]
-由于未提供精确出生时间，本月宫位采用上升巨蟹座(ASC=Cancer)默认映射。
-本月太阳在巨蟹座时位于第1宫，太阳在狮子座时位于第2宫。
-严禁自行推理其他上升星座对应的宫位！` : '';
+    // ── V138-fix3: Warn AI when house data is from FALLBACK (ASC=Cancer default) vs real birth-time computation ──
+    // true when: no astroMatrix OR astroMatrix.rising_sign_source !== 'computed'
+    // This ensures AI knows houses are defaults even if astroMatrix exists (cache may not have rising_sign_source)
+    const HOUSE_RISK = !astroMatrix?.meta?.rising_sign_source || astroMatrix.meta.rising_sign_source !== 'computed';
+    const HOUSE_LOCK_WARNING = HOUSE_RISK ? `
+⛔ [宫位来源说明]
+以下行星宫位基于上升巨蟹座(ASC=Cancer)默认映射计算——这是因为未提供精确出生时间。
+严禁将上述宫位数据与用户的真实出生盘混淆！
+` : '';
     const planetBlockWithWarning = HOUSE_LOCK_WARNING + (planetBlock ? '\n' + planetBlock : '');
 
     // ── 月报系统提示词(6语言·Markdown格式·2026-07-19简化版)──

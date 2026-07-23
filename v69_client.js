@@ -129,7 +129,8 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   matrix.meta.natal_lat = lat;
   matrix.meta.natal_lon = lon;
   matrix.meta.natal_tz = tz;
-  matrix.meta.computed_by = 'V134-spawnSync';
+  matrix.meta.computed_by = 'V138-spawnSync';
+  matrix.meta.rising_sign_source = 'computed'; // Flag: these houses are from real birth-time computation, NOT fallback ASC=Cancer
 
   console.log(`[V134] Got ${matrix.months?.length || 0} months, ${matrix.retrograde_stations?.mercury?.length || 0} Mercury stations`);
 
