@@ -304,11 +304,18 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 清理括号不规范：多重重开 → 单重
     // 例: 第6宫在（全程））→ 第6宫在（全程）
     t = t.replace(/（（+/g, '（');
-    t = t.replace(/））+ /g, '）');
-    // 清理孤悬）且前面不是（的情况：）不在括号内 → 删
-    t = t.replace(/([^（]）)）/g, '$1');
-    t = t.replace(/）（[。]/g, '）');
-    t = t.replace(/逆行水星在巨蟹座逆行/g, '水星在巨蟹座逆行');
+    // 🛠️ V133g-fix3: 括号规范化——多重重括号只保留一个
+    // 例: （全程）））→（全程））→（全程）
+
+    // 括号计数法：统计（和）数量，从后往前删超出的）
+    const _oc = (t.match(/（/g)||[]).length;
+    const _cc = (t.match(/）/g)||[]).length;
+    if (_cc > _oc) {
+      let _ex = _cc - _oc;
+      const _rv = t.split(''); _rv.reverse();
+      for (let i=0;i<_rv.length&&_ex>0;i++) { if (_rv[i]==='）') { _rv[i]=''; _ex--; } }
+      t = _rv.reverse().join('');
+    }
     // 🛠️ V133f-fix1: 修复正则误伤"在巨蟹座在巨蟹座"连写
     t = t.replace(/在巨蟹座在巨蟹座/g, '在巨蟹座');
     // 🛠️ V133f-fix2: 强杀"7月23日太阳进入巨蟹座"——双向拦截误伤了正确的"进入狮子座"
