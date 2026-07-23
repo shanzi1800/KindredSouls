@@ -1919,7 +1919,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   if (type === 'yearly' || type === 'monthly') {
                     // 如果fixedText以【开篇】开头且sacredText已有内容，先清空再替换（防复读）
                     setSacredText(prev => (fixedText.startsWith('【开篇】') && prev.length > 50) ? fixedText : prev);
-                  }
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;
