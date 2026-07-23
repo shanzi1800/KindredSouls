@@ -251,7 +251,7 @@ AI MUST NOT infer houses from zodiac sign names.
 ${computedHousesJson}
 
 Your Rising Sign: ${actualRising}
-Your Natal Sun Sign: ${sunSign || 'Cancer'}
+Your Natal Sun Sign: ${astroMatrix.meta?.sun_sign || 'Cancer'}
 House System: Equal House
 
 ── Monthly Planetary Positions (July 2026 – June 2027) ──
