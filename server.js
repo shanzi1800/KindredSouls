@@ -1900,7 +1900,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Week 4: ${curMonthName} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthName} 2026 Spending Traps`,
       circuit:     'Core Cosmic Window: ',
-      circuit_tag: '🛑 Circuit Breaker Directive:',
+      circuit_tag: 'Circuit Breaker Directive:',
     },
     es: {
       overview:    '✦ [Visión General] Tema Cósmico Mensual',
@@ -1910,7 +1910,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '🛑 Directiva de Cortocircuito:',
+      circuit_tag: 'Directiva de Cortocircuito:',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -1920,7 +1920,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '🛑 Directive de Disjoncteur:',
+      circuit_tag: 'Directive de Disjoncteur:',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -1930,7 +1930,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '🛑 คำสั่งวงจร:',
+      circuit_tag: 'คำสั่งวงจร:',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -1940,7 +1940,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '🛑 Chỉ thị Mạch Ngắn:',
+      circuit_tag: 'Chỉ thị Mạch Ngắn:',
     },
   };
   const HT = HEADER_TEMPLATES[lang] || HEADER_TEMPLATES.zh;
@@ -2426,7 +2426,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Week 4: ${curMonthLocal} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthLocal} ${currentYear} Spending Traps`,
       circuit:     'Core Cosmic Window: ',
-      circuit_tag: '🛑 Circuit Breaker Directive:',
+      circuit_tag: 'Circuit Breaker Directive:',
     },
     es: {
       overview:    '✦ [Visión General] Tema Cósmico Mensual',
@@ -2436,7 +2436,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '🛑 Directiva de Cortocircuito:',
+      circuit_tag: 'Directiva de Cortocircuito:',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -2446,7 +2446,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '🛑 Directive de Disjoncteur:',
+      circuit_tag: 'Directive de Disjoncteur:',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -2456,7 +2456,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '🛑 คำสั่งวงจร:',
+      circuit_tag: 'คำสั่งวงจร:',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -2466,7 +2466,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '🛑 Chỉ thị Mạch Ngắn:',
+      circuit_tag: 'Chỉ thị Mạch Ngắn:',
     },
   };
   const HT_RP = HEADER_TEMPLATES_RP[lang] || HEADER_TEMPLATES_RP.zh;
@@ -2607,6 +2607,15 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       return `  - ${zh}: ${p.sign} 第${house}宫${rx}${status}`;
     }).filter(Boolean).join('\n') : '';
 
+    // ── V138-fix: Birth-time unknown → inject house lock warning to prevent AI inventing house mappings ──
+    const NO_BIRTH_TIME = !astroMatrix?.meta?.rising_sign_source || astroMatrix.meta.rising_sign_source !== 'computed';
+    const HOUSE_LOCK_WARNING = NO_BIRTH_TIME ? `
+⛔ [宫位强制锁定 - 仅当无法计算上升星座时使用]
+由于未提供精确出生时间，本月宫位采用上升巨蟹座(ASC=Cancer)默认映射。
+本月太阳在巨蟹座时位于第1宫，太阳在狮子座时位于第2宫。
+严禁自行推理其他上升星座对应的宫位！` : '';
+    const planetBlockWithWarning = HOUSE_LOCK_WARNING + (planetBlock ? '\n' + planetBlock : '');
+
     // ── 月报系统提示词(6语言·Markdown格式·2026-07-19简化版)──
     const MONTHLY_SYSTEM = {
       zh: `你是顶级财富占星师兼荣格心理分析师。${instruction}`,
@@ -2619,12 +2628,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
     const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
 
-    return {
-      system: monthlySystem,
-      user: `
-⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
+        // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
+    const USER_TEMPLATE = {
+      zh: `⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
 以下天文数据来自 AstroMatrix，请严格遵循，禁止推理：
-${planetBlock}
+${planetBlockWithWarning}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 
@@ -2668,7 +2676,7 @@ ${HT_RP.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
 ${HT_RP.week1}
-${HT_RP.circuit}第X日
+${HT_RP.circuit_tag}Day X
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
 ${HT_RP.week2}
@@ -2685,8 +2693,184 @@ ${HT_RP.circuit}第X日
 
 ${HT_RP.trap}
 [Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
-    `
+    \``,
+      en: `USER INSTRUCTIONS:
+${planetBlockWithWarning}
+
+ASTROGRAPHIC RULES:
+• All planetary positions above are computed by Swiss Ephemeris — follow EXACTLY
+• Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
+• Do NOT write "unexpected windfall" for tense aspects
+• When a planet is in a house, describe the THEMATIC wealth energy of that house
+• Mercury retrograde in Cancer ~Jul 8-25; Venus enters Virgo Jul 14; Sun enters Leo Jul 23
+• Moon NEVER goes retrograde — always Direct
+• NO invented planetary positions — use only the data above
+
+OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
+
+${HT_RP.overview}
+[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal sun sign.]
+
+${HT_RP.week1}
+${HT_RP.circuit}Day X
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Include specific days and dollar amount triggers where relevant.]
+
+${HT_RP.week2}
+${HT_RP.circuit}Day X
+[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days are dangerous and why. Include a concrete financial safety rule.]
+
+${HT_RP.week3}
+${HT_RP.circuit}Day X
+[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include days for planning and consolidation.]
+
+${HT_RP.week4}
+${HT_RP.circuit}Day X
+[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days.]
+
+${HT_RP.trap}
+[Write 100-150 words: identify the top financial trap for this month based on the user's natal chart. Provide a concrete Circuit Breaker Directive with a specific dollar amount trigger for a financial safety rule.]
+`,
+      es: `INSTRUCCIONES DE USUARIO:
+${planetBlockWithWarning}
+
+REGLAS ASTROGRÁFICAS:
+• Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
+• NO usar terminología de aspectos (trino/cuadratura/sextil) — usar descripción de energía
+• Cuando un planeta esté en una casa, describir el tema de RIQUEZA de esa casa
+• Mercurio retrógrado en Cáncer Jul 8-25; Venus entra en Virgo Jul 14; Sol entra en Leo Jul 23
+• La Luna NUNCA es retrógrada
+
+FORMATO DE SALIDA — MARKDOWN LIMPIO (6 secciones):
+
+${HT_RP.overview}
+[Write 1-2 sentences...]
+
+${HT_RP.week1}
+${HT_RP.circuit}Día X
+[Write 150-200 words in Spanish...]
+
+${HT_RP.week2}
+${HT_RP.circuit}Día X
+[Write 150-200 words in Spanish...]
+
+${HT_RP.week3}
+${HT_RP.circuit}Día X
+[Write 150-200 words in Spanish...]
+
+${HT_RP.week4}
+${HT_RP.circuit}Día X
+[Write 150-200 words in Spanish...]
+
+${HT_RP.trap}
+[Write 100-150 words in Spanish... specific dollar amount trigger...]
+`,
+      fr: `INSTRUCTIONS UTILISATEUR:
+${planetBlockWithWarning}
+
+RÈGLES ASTROGRAPHIQUES:
+• Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
+• Ne PAS utiliser la terminologie des aspects (trine/carré/sextile) — utiliser la description d'énergie
+• Quand une planète est dans une maison, décrire le thème de RICHESSE de cette maison
+• Mercure rétrograde en Cancer du ~8 au ~25 juillet; Vénus entre en Vierge le 14 juillet; Soleil entre en Lion le 23 juillet
+• La Lune N'EST JAMAIS rétrograde
+
+FORMAT DE SORTIE — MARKDOWN PROPRE (6 sections):
+
+${HT_RP.overview}
+[Write 1-2 sentences...]
+
+${HT_RP.week1}
+${HT_RP.circuit}Jour X
+[Write 150-200 words in French...]
+
+${HT_RP.week2}
+${HT_RP.circuit}Jour X
+[Write 150-200 words in French...]
+
+${HT_RP.week3}
+${HT_RP.circuit}Jour X
+[Write 150-200 words in French...]
+
+${HT_RP.week4}
+${HT_RP.circuit}Jour X
+[Write 150-200 words in French...]
+
+${HT_RP.trap}
+[Write 100-150 words in French... specific dollar amount trigger...]
+`,
+      th: `คำแนะนำสำหรับผู้ใช้:
+${planetBlockWithWarning}
+
+กฎดาราศาสตร์:
+• ตำแหน่งดาวเคราะห์ทั้งหมดมาจาก Swiss Ephemeris — ปฏิบัติตามอย่างเคร่งครัด
+• ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
+• ดาวพุธวงในในราศีกรกฎ ประมาณ 8-25 กรกฎาคม; ดาวศูกรเข้าราศีกันยา 14 กรกฎาคม; ดวงอาทิตย์เข้าราศีสิงห์ 23 กรกฎาคม
+• ดวงจันทร์ไม่เคยวงใน
+
+รูปแบบผลลัพธ์ — MARKDOWN สะอาด (6 ส่วน):
+
+${HT_RP.overview}
+[Write 1-2 sentences...]
+
+${HT_RP.week1}
+${HT_RP.circuit}วันที่ X
+[Write 150-200 words in Thai...]
+
+${HT_RP.week2}
+${HT_RP.circuit}วันที่ X
+[Write 150-200 words in Thai...]
+
+${HT_RP.week3}
+${HT_RP.circuit}วันที่ X
+[Write 150-200 words in Thai...]
+
+${HT_RP.week4}
+${HT_RP.circuit}วันที่ X
+[Write 150-200 words in Thai...]
+
+${HT_RP.trap}
+[Write 100-150 words in Thai... specific dollar amount trigger...]
+`,
+      vi: `HƯỚNG DẪN CHO NGƯỜI DÙNG:
+${planetBlockWithWarning}
+
+QUY TẮC THIÊN VĂN:
+• Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC
+• Không dùng thuật ngữ góc chiếu (trine/square/sextile) — dùng mô tả năng lượng
+• Sao Thủy nghịch hành trong Cự Giải khoảng 8-25/7; Sao Kim vào Xử Nữ 14/7; Mặt Trời vào Sư Tử 23/7
+• Mặt Trăng không bao giờ nghịch hành
+
+ĐỊNH DẠNG ĐẦU RA — MARKDOWN SẠCH (6 phần):
+
+${HT_RP.overview}
+[Write 1-2 sentences...]
+
+${HT_RP.week1}
+${HT_RP.circuit}Ngày X
+[Write 150-200 words in Vietnamese...]
+
+${HT_RP.week2}
+${HT_RP.circuit}Ngày X
+[Write 150-200 words in Vietnamese...]
+
+${HT_RP.week3}
+${HT_RP.circuit}Ngày X
+[Write 150-200 words in Vietnamese...]
+
+${HT_RP.week4}
+${HT_RP.circuit}Ngày X
+[Write 150-200 words in Vietnamese...]
+
+${HT_RP.trap}
+[Write 100-150 words in Vietnamese... specific dollar amount trigger...]
+`,
     };
+
+    return {
+      system: monthlySystem,
+      user: USER_TEMPLATE[lang] || USER_TEMPLATE.zh,
+    };
+
     jupHouse = 2;
     if (!satHouse || satHouse === 0) satHouse = 10;
     if (!plHouse || plHouse === 0) plHouse = 8;

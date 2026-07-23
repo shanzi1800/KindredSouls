@@ -383,6 +383,7 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
             'version': '1.0.0',
             'house_system': 'Equal House',
             'year_range': f"{start_year}-{start_month:02d} to {year}-{month-1:02d}",
+        'rising_sign_source': 'from_natal',
         },
         'months': months,
         'retrograde_stations': stations,
@@ -535,7 +536,8 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         'lon': lon,
         'tz': tz,
         'computed_houses': computed_houses,
-        'version': 'V134',
+        'version': 'V138',
+        'rising_sign_source': 'computed' if asc_deg > 0 else 'defaulted',
     }
 
 
