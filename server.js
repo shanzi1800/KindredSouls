@@ -4125,7 +4125,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           .replace(/Heavenly Machine/gi, 'Cosmic Catalyst')
           .replace(/Core Celestial Secrets?/gi, 'Key Astrological Trigger')
           .replace(/(?:The )?Heavenly Secrets?/gi, 'Celestial Trigger Point')
-          .replace(/Fate Opportunity/gi, 'Key Astrological Catalyst');
+          .replace(/Fate Opportunity/gi, 'Key Astrological Catalyst')
+          // ── V140: 英文全角标点转半角 (军师抓包: （not the person）残留) ──
+          .replace(/（/g, ' (')
+          .replace(/）/g, ') ')
+          .replace(/，/g, ', ')
+          .replace(/：/g, ': ')
+          .replace(/；/g, '; ')
+          .replace(/  +/g, ' ');
       }
       return text;
     };
@@ -4143,6 +4150,28 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const _r3 = new RegExp(`你是${wrong}`, 'g');
         cleanedText = cleanedText.replace(_r1, realSunSign).replace(_r2, realSunSign).replace(_r3, realSunSign);
       });
+    }
+    // 🛠️ V140: 英文本命太阳断言器 (军师核弹级抓包: 1973-12-12射手座被误写Cancer Sun)
+    // 根因: LLM 把流年太阳(Transit Sun in Cancer)误当本命太阳。只拦"当本命用"的错误表述,
+    // 不误杀合法的"the Sun in Cancer"(指流年)。
+    if (lang === 'en') {
+      const natalEN = astroMatrix?.meta?.sun_sign || '';
+      if (natalEN) {
+        const SIGNS_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+        SIGNS_EN.forEach(wrong => {
+          if (wrong === natalEN) return;
+          // "your <wrong> Sun" → "your <natal> Sun"
+          cleanedText = cleanedText.replace(new RegExp(`\\byour ${wrong} Sun\\b`, 'gi'), `your ${natalEN} Sun`);
+          // "<wrong> Sun's" → "<natal> Sun's"
+          cleanedText = cleanedText.replace(new RegExp(`\\b${wrong} Sun's\\b`, 'g'), `${natalEN} Sun's`);
+          // "as a <wrong> Sun" / "as a <wrong>," → natal
+          cleanedText = cleanedText.replace(new RegExp(`\\bas a ${wrong} Sun\\b`, 'gi'), `as a ${natalEN} Sun`);
+          // "you are a <wrong>" / "you, a <wrong>" → natal
+          cleanedText = cleanedText.replace(new RegExp(`\\byou are a ${wrong}\\b`, 'gi'), `you are a ${natalEN}`);
+          // "your natal <wrong>" → "your natal <natal>"
+          cleanedText = cleanedText.replace(new RegExp(`\\byour natal ${wrong}\\b`, 'gi'), `your natal ${natalEN}`);
+        });
+      }
     }
         // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式

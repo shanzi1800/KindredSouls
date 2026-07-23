@@ -255,11 +255,20 @@ Your Rising Sign: ${actualRising}
 Your Natal Sun Sign: ${astroMatrix.meta?.sun_sign || 'Cancer'}
 House System: Equal House
 
-── Monthly Planetary Positions (July 2026 – June 2027) ──
+═══════════════════════════════════════════════
+⛔ [ASTROLOGICAL ACCURACY DIRECTIVE — NATAL vs TRANSIT — ZERO TOLERANCE]
+• The user's NATAL Sun Sign is FIXED FOREVER: ${astroMatrix.meta?.sun_sign || 'Cancer'} (from their birth date).
+• The "Transit Sun" positions listed below (Cancer, Leo, etc.) are the CURRENT sky, NOT the user's sign.
+• NEVER call the user by a transit sign (e.g. do NOT say "Cancer Sun" if their natal is not Cancer) — they are ALWAYS a ${astroMatrix.meta?.sun_sign || 'Cancer'}.
+• FORBIDDEN phrases: "your Cancer Sun", "as a Cancer", "you are a Cancer" (unless natal IS Cancer).
+• CORRECT: "your natal ${astroMatrix.meta?.sun_sign || 'Cancer'} Sun" / "the transiting Sun moving through Cancer".
+═══════════════════════════════════════════════
+
+── Monthly TRANSIT Planetary Positions (July 2026 – June 2027) — these are SKY positions, NOT natal ──
 ${months.map((m, i) => {
   const marsDirect = m.mars?.retrograde === false || m.mars?.retrograde === undefined;
   return `【Month ${i+1}】${m.month_name}
-  Sun: ${m.sun?.sign || '?'} House ${m.sun?.house || '?'} ${m.sun?.retrograde ? '(Retrograde)' : ''}
+  Transit Sun: ${m.sun?.sign || '?'} House ${m.sun?.house || '?'} ${m.sun?.retrograde ? '(Retrograde)' : ''}
   Moon: ${m.moon?.sign || '?'} House ${m.moon?.house || '?'} (Moon does NOT retrograde — always Direct)
   Mercury: ${m.mercury?.sign || '?'} House ${m.mercury?.house || '?'} ${m.mercury?.retrograde ? '(RETROGRADE)' : '(Direct)'}
   Venus: ${m.venus?.sign || '?'} House ${m.venus?.house || '?'}
