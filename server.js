@@ -811,6 +811,35 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // 2. 章节 Emoji 标记(🟢🔴🔵⚠️)后强制标准空格,防止移动端文本排版错位
   text = text.replace(/([🟢🔴🔵⚠️])(?=[^\s\n])/g, '$1 ');
 
+  // ── V149: 全局括号配对清洗（根治空括号/孤儿右括号/孤儿左括号）──
+  // 军师抓包: "（高危熔断）()"/"冥王星（水瓶座形成对冲"/"处女座）"
+  // 算法:逐行双向栈校验,确保每个左括号有对应右括号
+  text = (function(t) {
+    const lines = t.split('\n');
+    const result = lines.map(line => {
+      let openHalf = 0, openFull = 0;
+      let pass1 = '';
+      // 正向:丢弃孤儿右括号
+      for (const ch of line) {
+        if (ch === '(') { openHalf++; pass1 += ch; }
+        else if (ch === ')') { if (openHalf > 0) { openHalf--; pass1 += ch; } }
+        else if (ch === '（') { openFull++; pass1 += ch; }
+        else if (ch === '）') { if (openFull > 0) { openFull--; pass1 += ch; } }
+        else pass1 += ch;
+      }
+      // 反向:丢弃孤儿左括号
+      let pass2 = '';
+      for (let i = pass1.length - 1; i >= 0; i--) {
+        const ch = pass1[i];
+        if (ch === '(' && openHalf > 0) { openHalf--; }
+        else if (ch === '（' && openFull > 0) { openFull--; }
+        else pass2 += ch;
+      }
+      return pass2.split('').reverse().join('');
+    });
+    return result.join('\n');
+  })(text);
+
   return text;
 }
 
