@@ -656,7 +656,7 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // 中文兜底:行星+任意描述(逆行/发生在你的/四分相等动词引导)+第N宫 → 砍宫位(补 V102s 仅要求紧接"在"的缺口,覆盖动词引导句式)
   // 🛠️ V106-fix2: 原 [^。\n]{0,20}? 会吞掉外层闭合括号里的 ) ,导致相位句出现无头)
   // 修复:加 ) 到禁止字符集,确保匹配在括号对边界停止
-  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^。\n)]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
+  text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)[^\uff09\u3002\n)]{0,20}?第[一二三四五六七八九十百零0-9]+宫/g, '$1');
   // 🛠️ V106-fix2b: 上述替换后若句中出现"行星)第N宫("(内层括号被连宫位一起删),补闭合并清星座
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)）（第[一二三四五六七八九十百零0-9]+宫）/g, '$1$2');
   // 🛠️ Issue B 终级 fix: 贪婪捕获"在你的第N宫(XX座)"型复杂嵌套句式 → 砍宫位+括号内星座,保留行星和"在你的"引导
@@ -804,6 +804,10 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
   // 🛠️ V120-fix6: 军师前端防御层——半角括号→全角 + Emoji 标准空格
   // 1. 全局半角括号 ( ) → 全角 （ ）(防止安卓/iOS 排版错位与中英混杂)
   text = text.replace(/\(/g, '（').replace(/\)/g, '）');
+  // ── V146: 孤儿全角右括号兜底清洗 ──
+  // 根因：LLM偶发输出"太阳在巨蟹座】"（全角）残留或纯残缺括号，校验逻辑误判跳过
+  // 匹配: 中文/英文/数字后接孤立全角）→ 删
+  text = text.replace(/([\u4e00-\u9fa5a-zA-Z0-9])）/g, '$1');
   // 2. 章节 Emoji 标记(🟢🔴🔵⚠️)后强制标准空格,防止移动端文本排版错位
   text = text.replace(/([🟢🔴🔵⚠️])(?=[^\s\n])/g, '$1 ');
 
@@ -923,6 +927,21 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
   }
 
   return text;
+
+  // ── V146: 中文本命星体断言器（木星/土星/海王星/冥王星张冠李戴）──
+  // 根因：LLM把2026流年星体（白羊座土星/海王星）误冠"本命"前缀
+  const NATAL_PLANETS_ZH = [
+    { planet: '土星', real: '摩羯座', wrong: ['白羊座','狮子座','处女座','天秤座','射手座','水瓶座','双子座','巨蟹座','双鱼座'] },
+    { planet: '海王星', real: '摩羯座', wrong: ['白羊座','金牛座','双子座','狮子座','处女座','天蝎座','射手座','双鱼座'] },
+    { planet: '木星', real: '金牛座', wrong: ['白羊座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','水瓶座','双鱼座'] },
+    { planet: '冥王星', real: '天蝎座', wrong: ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','射手座','摩羯座','水瓶座','双鱼座'] }
+  ];
+  NATAL_PLANETS_ZH.forEach(({ planet, wrong }) => {
+    wrong.forEach(wrongSign => {
+      text = text.replace(new RegExp(`本命${planet}在${wrongSign}`, 'g'), `流年${planet}在${wrongSign}`);
+      text = text.replace(new RegExp(`${planet}是本命${wrongSign}`, 'g'), `${planet}是流年${wrongSign}`);
+    });
+  });
 }
 
 // ── 模块级 _sunOf: 从 astroMatrix month 对象安全取太阳星座/宫位(astro-truth.js / Python 双格式兼容)──
@@ -1942,7 +1961,7 @@ function buildMonthlyPrompt(birthDate, lang) {
 
   // 多语言语言铁律（来自 b41261b 验证可用版本）
   const langInstructions = {
-    zh: '\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n',
+    zh: '\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n  6. 🛑 本命星体铁律：严格区分本命与流年！本命星体=用户出生星图位置（出生日期锁定），流年星体=2026年当下天象位置。禁止将2026年流年星体（白羊座土星、摩羯座海王星等）冠以"本命"前缀。\n',
     en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".',
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.',
@@ -2370,7 +2389,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
   // ── 语言专属指令 ──
   const langInstructions = {
-    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n3. 🛑 句式完整性铁律：每个句子必须有完整主语+谓语。星体名称不能单独成句或与动词分离（如"巨蟹座交织"❌应写成"太阳与水星在巨蟹座交织"✅；"金星从狮子座的深层资源领域"❌应写成"金星从狮子座进入深层资源领域"✅）。\n4. 🛑 宫位标签强制吐出：当提及星体所在宫位时，必须同时写出"第X宫"标签（例："木星在狮子座【第5宫】"✅），不得只写宫位主题省略"第X宫"数字标签。\n5. 🛑 水星逆行铁律：水星于6月底进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"等矛盾句式。正确写法："水星在巨蟹座逆行"或"7月24日水星恢复顺行"。',
+    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n3. 🛑 句式完整性铁律：每个句子必须有完整主语+谓语。星体名称不能单独成句或与动词分离（如"巨蟹座交织"❌应写成"太阳与水星在巨蟹座交织"✅；"金星从狮子座的深层资源领域"❌应写成"金星从狮子座进入深层资源领域"✅）。\n4. 🛑 宫位标签强制吐出：当提及星体所在宫位时，必须同时写出"第X宫"标签（例："木星在狮子座（第5宫）"✅），不得只写宫位主题省略"第X宫"数字标签。\n5. 🛑 水星逆行铁律：水星于6月底进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"等矛盾句式。正确写法："水星在巨蟹座逆行"或"7月24日水星恢复顺行"。',
     en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".',
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.',
