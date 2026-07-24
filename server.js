@@ -1506,6 +1506,10 @@ function cleanYearlyTimeline(text) {
   // V103-fix21: 通用括号平衡--行内中文左括号(无闭合)→ 行尾补)
   text = text.replace(/（([^）\n]*?)(\s*)(?=\n|$)/g, '（$1$2）');
 
+  // ── V147: 西班牙语等非中文全角括号转半角(军师抓包: （Plutón...）残留) ──
+  if (ascendant === 'es' || ascendant === 'en' || ascendant === 'fr' || ascendant === 'th' || ascendant === 'vi') {
+    text = text.replace(/（/g, '(').replace(/）/g, ')');
+  }
   return text;
 }
 
