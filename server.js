@@ -278,35 +278,24 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     t = t.replace(/水星于7月\d+日进入逆行/g, '水星在巨蟹座逆行');
     t = t.replace(/水星在巨蟹座逆行于7月\d+日正式开始/g, '水星在巨蟹座逆行');
     // 🛠️ V133d-fix2: 扩大匹配覆盖"7月8日...开始"和"7月18日...顶点"变体
-    t = t.replace(/7月18日达到逆行顶点/g, '逆行中期');
-    t = t.replace(/7月18日[^。]+逆行顶点/g, '逆行中期');
-    t = t.replace(/7月18日[^。]+顶点/g, '逆行中期');
-    t = t.replace(/7月18日[^。]+水星最慢/g, '逆行中期');
+
+    // 🛠️ V144-fix: 保留完整句子，只清括号内的"逆行顶点"标签
+    t = t.replace(/（逆行顶点）/g, '（中期）');
     t = t.replace(/7月18日，水星逆行达到最慢点/g, '7月18日前后，水星逆行处于中期');
     t = t.replace(/7月8日[^。]+正式[^。]+开始/g, '7月全程处于逆行状态');
     t = t.replace(/7月8日[^。]+开始[^。]+逆行/g, '7月全程处于逆行状态');
     // 🛠️ V133d-fix3: 覆盖"逆行进入顶点（7月8日至25日）"这种嵌套括号变体
-    t = t.replace(/逆行进入顶点[^。]+7月8日至25日[^。]+/g, '逆行（7月全程）');
     t = t.replace(/逆行[^。]+7月8日至25日/g, '逆行（7月1日至23日前后）');
     // 🛠️ V133d-fix4: 直接杀"水星逆行进入顶点"这个错误短语
     // 真实天象：水星7月全程在巨蟹座逆行，没有"进入顶点"这个概念
     // 句式："7月8-12日，水星逆行进入顶点（7月18日前后最慢）"
-    t = t.replace(/水星逆行进入顶点[^。]+/g, '水星逆行（7月全程在巨蟹座）');
-    t = t.replace(/水星在巨蟹座逆行进入顶点[^。]+/g, '水星在巨蟹座逆行（7月全程）');
     // 🛠️ V133d-fix6: 覆盖"进入逆行顶点（最慢点）"和"逆行水星在巨蟹座"等变体
-    t = t.replace(/进入逆行顶点[^）]+/g, '在巨蟹座逆行（全程）');
     // 🛠️ V133d-fix7: 直接杀"第N日（逆行顶点）"和"正式在巨蟹座逆行"残留
-    t = t.replace(/（逆行顶点）/g, '');
-    t = t.replace(/第\d+日（逆行顶点）/g, '');
     t = t.replace(/正式在巨蟹座逆行/g, '在巨蟹座逆行');
-    // 🛠️ V133d-fix8: 覆盖"第18日正是逆行顶点"等中文数字句式
+    // 🛠️ V144: 只清括号内标签，保留完整句子结构
     t = t.replace(/第\d+日正是逆行顶点/g, '逆行中期');
-    t = t.replace(/第\d+日（逆行顶点）[^。]*/g, '');
-    t = t.replace(/第\d+日.*?逆行顶点[^。]*/g, '逆行中期');
     // 🛠️ V133d-fix9: 非贪婪版——停在第一个)而非贪到下一个句号
-    t = t.replace(/进入逆行顶点（[^）]+）/g, '在巨蟹座逆行（全程）');
     // 括号未闭合兜底：匹配到第一个句号
-    t = t.replace(/进入逆行顶点[^)）。]+/g, '在巨蟹座逆行（全程）');
     // 清理括号不规范：多重重开 → 单重
     // 例: 第6宫在（全程））→ 第6宫在（全程）
     t = t.replace(/（（+/g, '（');
@@ -339,10 +328,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 覆盖"逆行水星在巨蟹座第N宫" → "水星在巨蟹座逆行第N宫"
     t = t.replace(/逆行水星在巨蟹座([^，,。\n]+)/g, '水星在巨蟹座逆行$1');
     // 🛠️ V133d-fix6c: "7月18日至22日，水星逆行末期"——7月18日不是逆行末期，正确是7月23-24日顺行
-    t = t.replace(/7月18日至22日[^。]*?逆行末期/g, '7月下旬起逆行影响逐渐减弱');
-    t = t.replace(/7月18日至22日[^。]*?逆行[^。]*?减弱/g, '7月下旬起逆行影响逐渐减弱');
+    // 🛠️ V144: 温和处理，不破坏句子结构
+    t = t.replace(/7月18日至22日[^。]*?逆行末期/g, '逆行影响逐渐减弱');
+    t = t.replace(/7月18日至22日[^。]*?逆行[^。]*?减弱/g, '逆行影响逐渐减弱');
     // 🛠️ V133d-fix5: 精确兜底——直接匹配实际生成的错误句式
-    t = t.replace(/7月8日[至到-]12日，水星逆行进入顶点[^。]+最慢[^。]+/g, '7月8日至12日，水星在巨蟹座逆行（全程）');
     t = t.replace(/7月18日[前后]后[最慢左右][^。]+/g, '7月18日前后，逆行中期');
     t = t.replace(/水星逆行（7月8-25日）/g, '水星在巨蟹座逆行（7月1日至23日）');
     t = t.replace(/水星在巨蟹座逆行（7月8-25日）/g, '水星在巨蟹座逆行（7月1日至23日）');
@@ -2381,7 +2370,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
   // ── 语言专属指令 ──
   const langInstructions = {
-    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。',
+    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n3. 🛑 句式完整性铁律：每个句子必须有完整主语+谓语。星体名称不能单独成句或与动词分离（如"巨蟹座交织"❌应写成"太阳与水星在巨蟹座交织"✅；"金星从狮子座的深层资源领域"❌应写成"金星从狮子座进入深层资源领域"✅）。\n4. 🛑 宫位标签强制吐出：当提及星体所在宫位时，必须同时写出"第X宫"标签（例："木星在狮子座【第5宫】"✅），不得只写宫位主题省略"第X宫"数字标签。\n5. 🛑 水星逆行铁律：水星于6月底进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"等矛盾句式。正确写法："水星在巨蟹座逆行"或"7月24日水星恢复顺行"。',
     en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".',
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.',
@@ -2669,7 +2658,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
 ⛔ [宫位含义一致性]: 行星进入某星座时,其宫位象征必须与该星座在用户等宫制中的序号一致(如处女座=第12宫隐秘宫/潜意识/暗财,摩羯座=第4宫田宅,白羊座=第7宫关系)。绝不允许把第12宫(隐秘)强行解释为"家庭与事业"(第4/10宫),或把任何宫位含义张冠李戴。
 
-⛔ [水逆日期铁律]: 水星7月逆行周期为7月8日至25日(巨蟹座)，7月18日是【逆行顶点】(水星最慢点)不是开始日。
+⛔ [水逆日期铁律]: 水星于6月28日左右进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"、"7月18日达到最慢点"等矛盾句式。正确："水星在巨蟹座逆行（7月24日前后恢复顺行）"。
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
@@ -2710,7 +2699,7 @@ ASTROGRAPHIC RULES:
 • Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
 • Do NOT write "unexpected windfall" for tense aspects
 • When a planet is in a house, describe the THEMATIC wealth energy of that house
-• Mercury retrograde in Cancer ~Jul 8-25; Venus enters Virgo Jul 14; Sun enters Leo Jul 23
+• ⛔ [MERCURY RX TIMELINE LOCK] Mercury entered retrograde in Cancer on ~June 28, 2026. It stations DIRECT on July 24, 2026. FORBIDDEN to say Mercury turns direct before July 24 or that it "reaches retrograde apex" after July 24. The correct narrative: "Mercury stations direct on July 24." • Venus enters Virgo Jul 14; Sun enters Leo Jul 23
 • Moon NEVER goes retrograde — always Direct
 • NO invented planetary positions — use only the data above
 
@@ -2745,7 +2734,7 @@ REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
 • NO usar terminología de aspectos (trino/cuadratura/sextil) — usar descripción de energía
 • Cuando un planeta esté en una casa, describir el tema de RIQUEZA de esa casa
-• Mercurio retrógrado en Cáncer Jul 8-25; Venus entra en Virgo Jul 14; Sol entra en Leo Jul 23
+• ⛔ [CRONOLOGÍA DE MERCURIO RETRÓGRADO] Mercurio entró retrógrado en Cáncer aprox. el 28 de Junio. Estaciona directo el 24 de Julio. PROHIBIDO decir que Mercurio cambia a directo antes del 24 de Julio. • Venus entra en Virgo Jul 14; Sol entra en Leo Jul 23
 • La Luna NUNCA es retrógrada
 
 FORMATO DE SALIDA — MARKDOWN LIMPIO (6 secciones):
