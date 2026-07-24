@@ -149,7 +149,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
                 pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign, lang).replace(/\uFFFD/g,'');
               } else {
-                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
+                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               }
               res.write(Buffer.from(`data: ${JSON.stringify({
@@ -190,7 +190,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       onChunk && onChunk(pc);
     } else {
       try {
-        pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a)),realSunSign,_a), astroMatrix);
+        pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
         res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
         onChunk && onChunk(pc);
@@ -563,7 +563,7 @@ function forceSpaceHouseSanitizer(text){
 // V116-Bug4-fix
 function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFE0F\uFEFF]/g,'');}
 
-function final_text_sanitizer(text, ascendant = 'Cancer') {
+function final_text_sanitizer(text, ascendant = 'Cancer', lang = 'zh') {
   if (!text) return text;
 
 
@@ -803,7 +803,12 @@ function final_text_sanitizer(text, ascendant = 'Cancer') {
 
   // 🛠️ V120-fix6: 军师前端防御层——半角括号→全角 + Emoji 标准空格
   // 1. 全局半角括号 ( ) → 全角 （ ）(防止安卓/iOS 排版错位与中英混杂)
-  text = text.replace(/\(/g, '（').replace(/\)/g, '）');
+  // ⚠️ V150-fix: 西班牙语/法语/泰语/越南语保留半角括号（国际化要求）
+  if (lang !== 'zh') {
+    // 非中文语言保持半角括号，不转全角
+  } else {
+    text = text.replace(/\(/g, '（').replace(/\)/g, '）');
+  }
   // ── V146: 孤儿全角右括号兜底清洗 ──
   // 根因：LLM偶发输出"太阳在巨蟹座】"（全角）残留或纯残缺括号，校验逻辑误判跳过
   // 匹配: 中文/英文/数字后接孤立全角）→ 删
@@ -3650,7 +3655,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 先天财富DNA: 只做基础清理
           sanitizedAI = (aiResult || '').replace(/�/g,'');
         } else {
-          sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant)), natalSunSign), astroMatrix);
+          sanitizedAI = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(aiResult, ascendant, lang)), natalSunSign), astroMatrix);
         }
 
         // 🛠️ V107-fix3: MISS 路径补全 applyMonthLockSanitizer
