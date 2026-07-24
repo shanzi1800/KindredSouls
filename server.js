@@ -4082,8 +4082,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (prompt) {
       prompt.system = prompt.system.replace(/[\u2026]/g, '...');
 
-      // 🛠️ V116-final: V1端点加第五章空间宫位前置铁律(V2已加,V1漏了)
-      prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
+      // 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇
+      if (lang === 'zh') {
+        prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
+      }
       prompt.user = prompt.user.replace(/[\u2026]/g, '...');
     }
 
@@ -4383,21 +4385,92 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     const locale = localeMap[lang] || 'zh';
     const sysPrompt = getSystemPromptByLocale(locale);
 
-    // 🛠️ V116-Bug1-fix: 第五章空间宫位前置锁死(不在事后擦屁股,前置约束)
-    const CHAPTER5_CONSTRAINT = `
-
+    // 🛠️ V148: 第五章空间锚点分语言约束(中文用中文,其余语言自动切换目标语言)
+    const CHAPTER5_ZH = `
 【第五章:空间财富对齐硬性格式规范】
 在撰写第五章(空间/家居/办公室财富对齐)时,你必须严格且毫无例外地遵守以下产品设计隐喻,严禁自行更换宫位或添加其他星座杂质:
 1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与安全感。
-2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)"。
-3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)"。
+2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)".
+3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)".
 4. 客厅/入口/前台/工位/会议室等区域:保持与前述章节一致的宫位描述,不得自行发明宫位。
-
-【强制输出格式模板】:每一个空间的开头必须严格使用如下纯文本结构(用于前端渲染):
+【强制输出格式模板】:
 * **卧室区域:第四宫(田宅宫)**
 * **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**
 * **财务室区域:第八宫(共享资源)**
 严禁添加任何括号外的星座名或宫位变体。`;
+
+    const CHAPTER5_EN = `
+[Chapter 5: Spatial Wealth Alignment - Strict Format]
+When writing Chapter 5 (Spatial/Home/Office Wealth Alignment), you MUST follow these fixed metaphors without exception:
+1. Bedroom Area: describe ONLY as "4th House (Home Foundation)", financial roots and security.
+2. Kitchen Area: describe ONLY as "2nd House (Income) & 8th House (Shared Resources)".
+3. Financial Room/Safe: describe ONLY as "8th House (Shared Resources)".
+4. Living room/Entrance/Reception/Desk/Conference room: follow the house descriptions from previous sections.
+
+[Strict Output Format]:
+* **Bedroom Area: 4th House (Home Foundation)**
+* **Kitchen Area: 2nd House & 8th House**
+* **Financial Room/Safe: 8th House**
+Do NOT add any zodiac signs outside parentheses or invent house variants.`;
+
+    const CHAPTER5_ES = `
+[Capítulo 5: Alineación de Riqueza Espacial - Formato Estricto]
+Al escribir el Capítulo 5 (Alineación de Riqueza Espacial/Doméstica/de Oficina), DEBES seguir estas metáforas sin excepción:
+1. Zona del Dormitorio: describir SOLO como "Casa 4 (Hogar)", raíces financieras y seguridad.
+2. Zona de la Cocina: describir SOLO como "Casa 2 (Ingresos) y Casa 8 (Recursos Compartidos)".
+3. Sala Financiera/Caja Fuerte: describir SOLO como "Casa 8 (Recursos Compartidos)".
+4. Sala de estar/Entrada/Recepción/Escritorio/Sala de conferencias: seguir las descripciones de casas de secciones anteriores.
+
+[Formato de Salida Estricto]:
+* **Zona del Dormitorio: Casa 4 (Hogar)**
+* **Zona de la Cocina: Casa 2 y Casa 8**
+* **Sala Financiera/Caja Fuerte: Casa 8**
+No añadir signos zodiacales fuera de paréntesis ni inventar variantes de casas.`;
+
+    const CHAPTER5_FR = `
+[Chapitre 5: Alignement de Richesse Spatiale - Format Strict]
+En rédigeant le Chapitre 5 (Alignement de Richesse Spatiale/Domestique/de Bureau), vous DEVEZ suivre ces métaphores sans exception:
+1. Zone de la Chambre: décrire UNIQUEMENT comme "Maison 4 (Foyer)", racines financières et sécurité.
+2. Zone de la Cuisine: décrire UNIQUEMENT comme "Maison 2 (Revenus) et Maison 8 (Ressources Partagées)".
+3. Bureau/Coffre-fort financier: décrire UNIQUEMENT comme "Maison 8 (Ressources Partagées)".
+4. Salon/Entrée/Réception/Bureau/Salle de conférence: suivre les descriptions de maisons des sections précédentes.
+
+[Format de Sortie Strict]:
+* **Zone de la Chambre: Maison 4 (Foyer)**
+* **Zone de la Cuisine: Maison 2 et Maison 8**
+* **Bureau financier/Coffre-fort: Maison 8**
+Ne pas ajouter de signes zodiacaux hors des parenthèses ni inventer de variantes de maisons.`;
+
+    const CHAPTER5_TH = `
+[บทที่ 5: การจัดตำแหน่งความมั่งคั่งตามพื้นที่ - รูปแบบตายตัว]
+เมื่อเขียนบทที่ 5 (การจัดตำแหน่งความมั่งคั่งตามพื้นที่/บ้าน/สำนักงาน), คุณต้องปฏิบัติตามอุปลักษณ์เหล่านี้โดยไม่มีข้อยกเว้น:
+1. พื้นที่ห้องนอน: อธิบายได้เพียง "เรือนที่ 4 (รากฐานความมั่งคั่ง)", รากฐานทางการเงินและความปลอดภัย
+2. พื้นที่ห้องครัว: อธิบายได้เพียง "เรือนที่ 2 (รายได้) และเรือนที่ 8 (ทรัพยากรที่ใช้ร่วมกัน)"
+3. ห้องการเงิน/ตู้นิรภัย: อธิบายได้เพียง "เรือนที่ 8 (ทรัพยากรที่ใช้ร่วมกัน)"
+4. ห้องนั่งเล่น/ทางเข้า/เคาน์เตอร์/โต๊ะทำงาน/ห้องประชุม: ใช้คำอธิบายเรือนจากบทก่อนหน้า
+
+[รูปแบบการแสดงผลบังคับ]:
+* **พื้นที่ห้องนอน: เรือนที่ 4 (รากฐานความมั่งคั่ง)**
+* **พื้นที่ห้องครัว: เรือนที่ 2 และ 8**
+* **ห้องการเงิน/ตู้นิรภัย: เรือนที่ 8**
+ห้ามเพิ่มราศีนอกวงเล็บหรือคิดค้นรูปแบบเรือนอื่น.`;
+
+    const CHAPTER5_VI = `
+[Chương 5: Căn Chỉnh Tài Lộc Theo Không Gian - Định Dạng Bắt Buộc]
+Khi viết Chương 5 (Căn Chỉnh Tài Lộc Không Gian/Nhà Ở/Văn Phòng), bạn PHẢI tuân thủ các ẩn dụ này không có ngoại lệ:
+1. Khu Vực Phòng Ngủ: mô tả DUY NHẤT là "Cung 4 (Gốc Tài Chính)", gốc rễ tài chính và an toàn.
+2. Khu Vực Nhà Bếp: mô tả DUY NHẤT là "Cung 2 (Thu Nhập) & Cung 8 (Tài Nguyên Chia Sẻ)".
+3. Phòng Tài Chính/Két Sắt: mô tả DUY NHẤT là "Cung 8 (Tài Nguyên Chia Sẻ)".
+4. Phòng khách/Quầy tiếp tân/Bàn làm việc/Phòng họp: dùng mô tả cung từ chương trước.
+
+[Định Dạng Bắt Buộc]:
+* **Khu Vực Phòng Ngủ: Cung 4 (Gốc Tài Chính)**
+* **Khu Vực Nhà Bếp: Cung 2 và 8**
+* **Phòng Tài Chính/Két Sắt: Cung 8**
+Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra biến thể cung khác.`;
+
+    const CHAPTER5_MAP = { zh: CHAPTER5_ZH, en: CHAPTER5_EN, es: CHAPTER5_ES, fr: CHAPTER5_FR, th: CHAPTER5_TH, vi: CHAPTER5_VI };
+    const CHAPTER5_CONSTRAINT = CHAPTER5_MAP[locale] || CHAPTER5_EN;
     const v2SysPrompt = sysPrompt + CHAPTER5_CONSTRAINT;
 
     // ── Step 4: 年度引言 ──
