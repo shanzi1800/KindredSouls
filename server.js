@@ -666,9 +666,10 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
   // 第2周错误写“水星开始逆行”→纠正为“水星逆行持续”
   // 正确时间轴:7月上旬水星巨蟹座逆行,7月24日恢复顺行
   if (lang === 'vi') {
-    text = text.replace(/Thủy Tinh[^。\n]{0,30}?thuận hành/g, 'Thủy Tinh nghịch hành');
-    text = text.replace(/Thủy Tinh bắt đầu nghịch hành/g, 'Thủy Tinh nghịch hành tiếp tục');
-    text = text.replace(/nghịch hành trong Cự Giải nhà 11[^。\n]{0,20}?thuận hành/g, 'nghịch hành trong Cự Giải nhà 11');
+    // 支持 Thủy Tinh 和 Sao Thủy 两种表达
+    text = text.replace(/(Thủy Tinh|Sao Thủy)[^。\n]{0,30}?thuận hành/g, '$1 nghịch hành');
+    text = text.replace(/(Thủy Tinh|Sao Thủy) bắt đầu nghịch hành/g, '$1 nghịch hành tiếp tục');
+    text = text.replace(/nghịch hành trong Cự Giải nhà \d+[^。\n]{0,20}?thuận hành/g, 'nghịch hành trong Cự Giải');
   }
   return text;
 }
