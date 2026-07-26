@@ -147,7 +147,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign, lang).replace(/\uFFFD/g,'');
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -185,7 +185,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
-      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(pending), realSunSign, lang).replace(/\uFFFD/g,'');
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
       onChunk && onChunk(pc);
     } else {
@@ -205,6 +205,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
   function stripAspectTermsAndPlutoHouse(text, natalSunSign, lang) {
     if (!text) return text;
+
+  // V152: 标题方括号补全
+  text = fixSectionBrackets(text, lang);
+
     let t = text;
     // 0) 半角括号→全角(兜底,月报路径不过final_text_sanitizer)
     // 🛠️ V140: 仅限非英文 (英文报告保留半角括号)
@@ -562,6 +566,27 @@ function forceSpaceHouseSanitizer(text){
 
 // V116-Bug4-fix
 function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFE0F\uFEFF]/g,'');}
+
+
+// ── V152: 标题方括号强制补全（es/fr/th/vi 模板输出丢失 []）──
+function fixSectionBrackets(text, lang) {
+  if (!['es','fr','th','vi'].includes(lang)) return text;
+  // 通用：单独成行的裸标题关键词 → 补 []
+  const lines = text.split('\n');
+  const fixed = lines.map(line => {
+    const t = line.trim();
+    // 匹配裸露的 [标题行]（不以 [ 或 * 开头）
+    if (t && !t.startsWith('[') && !t.startsWith('*') && !t.startsWith('✦') && !t.startsWith('#')) {
+      // Visión General / Sombra Financiera / Aperçu / Thème 等关键标题
+      if (/^(Visi[oó]n General|Sombra Financiera|Semana \d|Aper[çc]u|Th[eè]me Cosmique|Semaine \d|Chi Ti[ếe]m|Ti[ếe]m T[àa]i|Pengalaman)/i.test(t)) {
+        // 已经是 [xxx] 格式的跳过
+        if (!t.startsWith('[')) return '[' + t + ']';
+      }
+    }
+    return line;
+  });
+  return fixed.join('\n');
+}
 
 function final_text_sanitizer(text, ascendant = 'Cancer', lang = 'zh') {
   if (!text) return text;
@@ -4233,7 +4258,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return text;
     };
     // 🛠️ V131c-fix: 月报用 geminiFullText(函数返回值=全量1743字)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
-    let cleanedText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
+    let rawText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
+  // V152: 月度非流式也加括号补全
+  let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
