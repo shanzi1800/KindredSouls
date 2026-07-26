@@ -4307,7 +4307,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
       cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
     } else {
-      cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream)), realSunSign, _ascStream);
+      cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
     // 🛠️ V122-fix: 终极空括号清理(final_text_sanitizer 可能漏 "()" 跨块,
@@ -4378,7 +4378,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const fdata = await fullRes.json();
           let ft = fdata.choices?.[0]?.message?.content || '';
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库(防脏缓存)
-          if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream)), astroMatrix, null, null, lang);
+          if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream, lang)), astroMatrix, null, null, lang);
           // 🛠️ V104e: 也有反向括号隐患
           // 🛠️ V115-fix3: Completion路径 Body 正文本命太阳全护
           if (realSunSign) {
@@ -4676,7 +4676,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
       allText += mTextLocked + '\n\n';
       // Bug4实时锁
       let mTextSanitized=mTextLocked;
-      try{mTextSanitized=natal_sun_linter(astro_phase_linter(final_text_sanitizer(mTextLocked,natalRising)),natalSunSign,natalRising);mTextSanitized=cleanGarbageCharacters(mTextSanitized);}catch(e){mTextSanitized=mTextLocked;}
+      try{mTextSanitized=natal_sun_linter(astro_phase_linter(final_text_sanitizer(mTextLocked,natalRising,lang)),natalSunSign,natalRising);mTextSanitized=cleanGarbageCharacters(mTextSanitized);}catch(e){mTextSanitized=mTextLocked;}
       sendText(mTextSanitized);
       console.log('[V2] M' + (i+1) + ' (' + monthName + '): ' + mText.length + '字');
     }
