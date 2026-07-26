@@ -4393,7 +4393,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         });
       }
     }
-        // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
+        // 🛠️ V161: 法文本命/Transit太阳断言器 (军师核弹级抓包: 1993-09-18处女座被误写Votre Soleil en Cancer)
+    // 根因: LLM 偶发把流年太阳(Transit Sun in Cancer)写成 "Votre Soleil en Cancer"，混淆本命
+    // 修复: 改为流年表述，保留流年真值(7月太阳确实在巨蟹座，不该改成处女座)
+    if (lang === 'fr') {
+      cleanedText = cleanedText.replace(/votre Soleil en ([A-Za-zÀ-ÿ]+)/gi, 'le Soleil de transit en $1');
+      cleanedText = cleanedText.replace(/Votre Soleil en Maison/g, 'le Soleil en Maison');
+      cleanedText = cleanedText.replace(/votre Soleil en Maison/g, 'le Soleil en Maison');
+    }
+    // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
     // 有破坏性(HIT/MISS不一致 bug)，跳过直接用基础清洗
     // 🛠️ V131c-fix: 月报跳过全部后续清洗链(空括号/standardizeReport)，仅做 FFFD 清理
