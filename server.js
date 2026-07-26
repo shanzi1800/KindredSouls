@@ -588,7 +588,7 @@ function fixSectionBrackets(text, lang) {
   return fixed.join('\n');
 }
 
-function final_text_sanitizer(text, ascendant = 'Cancer', lang = 'zh') {
+function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
   if (!text) return text;
 
 
@@ -1561,8 +1561,8 @@ function cleanYearlyTimeline(text) {
   text = text.replace(/（([^）\n]*?)(\s*)(?=\n|$)/g, '（$1$2）');
 
   // ── V147: 西班牙语等非中文全角括号转半角(军师抓包: （Plutón...）残留) ──
-  if (ascendant === 'es' || ascendant === 'en' || ascendant === 'fr' || ascendant === 'th' || ascendant === 'vi') {
-    text = text.replace(/（/g, '(').replace(/）/g, ')');
+  if (lang === 'es' || lang === 'en' || lang === 'fr' || lang === 'th' || lang === 'vi') {
+    text = text.replace(/（/g, '(').replace(/）/g, '');
   }
   return text;
 }
