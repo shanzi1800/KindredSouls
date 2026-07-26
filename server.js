@@ -609,6 +609,7 @@ function fixSectionBrackets(text, lang) {
 function cleanChineseBrackets(text) {
   if (!text) return text;
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
+  text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*)/g, '$1（$2）');
   // 2. 嵌套空括号: 第八宫（）共享资源） → 第八宫（共享资源）
   text = text.replace(/（）([^）\n]*?）)/g, '（$1）');
