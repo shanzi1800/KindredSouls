@@ -2895,7 +2895,7 @@ ${planetBlockWithWarning}
 
 REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
-• NO usar terminología de aspectos (trino/cuadratura/sextil) — usar descripción de energía
+• NO usar terminología de aspectos como trino, cuadratura o sextil — usar descripción de energía
 • Cuando un planeta esté en una casa, describir el tema de RIQUEZA de esa casa
 • ⛔ [CRONOLOGÍA DE MERCURIO RETRÓGRADO] Mercurio entró retrógrado en Cáncer aprox. el 28 de Junio. Estaciona directo el 24 de Julio. PROHIBIDO decir que Mercurio cambia a directo antes del 24 de Julio. • Venus entra en Virgo Jul 14; Sol entra en Leo Jul 23
 • La Luna NUNCA es retrógrada
@@ -4400,6 +4400,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 月报正文太阳=流年太阳(7月=巨蟹座)，统一 'votre Soleil' → 'le Soleil'
       // 彻底消除本命/流年混淆视觉错误(报头本命太阳由locks锁死,不在此格式)
       cleanedText = cleanedText.replace(/votre Soleil(?! natal)/gi, 'le Soleil');
+    }
+    // 🛠️ V162: 月报标题补 [ ] (流式路径确保覆盖 fixSectionBrackets,根治四周标题缺[])
+    if (reportType === 'monthly') cleanedText = fixSectionBrackets(cleanedText, lang);
+    // 🛠️ V163: 清除 LLM 幻觉的 Prompt 残留括号 (es: sin usar el término 等元指令漏出)
+    if (lang === 'es') {
+      cleanedText = cleanedText.replace(/\(\s*(sin usar|no usar)[^)]{0,20}t[eé]rmino\s*\)/gi, '');
     }
     // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
