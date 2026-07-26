@@ -4240,7 +4240,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           .replace(/  +/g, ' ');
       }
       // ── V150: 西班牙语/法语全角括号转半角 (军师抓包: exclus）ivas) ──
-      if (lang === 'es' || lang === 'fr' || lang === 'th' || lang === 'vi') {
+      if (lang !== 'zh') {
         return text
           .replace(/（/g, '(')
           .replace(/）/g, ')')
@@ -4250,8 +4250,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // ── V150: 词界保护 — 修复右括号插在单词中间 (exclus)ivas → exclusivas) ──
           .replace(/(\w+)\)(\w+)/g, '$1$2)');
       }
-      // 🛠️ V154: LLM偶发生成全角括号，非中文一律转半角（中文保留）
-      if (lang !== 'zh') { text = text.replace(/（/g, "(").replace(/）/g, ")"); }
       return text;
     };
     // 🛠️ V131c-fix: 月报用 geminiFullText(函数返回值=全量1743字)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
