@@ -394,7 +394,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
   }
 
-  console.log('[callDeepSeek] RETURN fullText.length=' + fullText.length + ' chunks=' + chunkCount);
+  // ── V154: 清除全角括号（非中文语言）—— 早于final_text_sanitizer处理 ──
+  if (lang !== "zh") {
+    fullText = fullText.replace(/（/g, "").replace(/）/g, "");
+  }
+
   return fullText;
 }
 
