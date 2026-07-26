@@ -597,7 +597,7 @@ function fixSectionBrackets(text, lang) {
       s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');
       if (!s.includes('[')) {
         // 越南语: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
-        s = s.replace(/✦\s+(Tuần\s*\d[^:|]*:\s*[^\s|]+(?:–|-|—)[^\s|]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Tuần\s*\d+[^\n]{0,20}?\d{1,2}(?:–|-|—)\d{1,2})\s+/, '✦ [$1] ');
         s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
         s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
       }
@@ -617,7 +617,7 @@ function fixSectionBrackets(text, lang) {
         s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
         s = s.replace(/✦\s+(Sombra Financiera)/, '✦ [$1]');
         // 越南语
-        s = s.replace(/✦\s+(Tuần\s*\d[^:|]*:\s*[^\s|]+(?:–|-|—)[^\s|]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Tuần\s*\d+[^\n]{0,20}?\d{1,2}(?:–|-|—)\d{1,2})\s+/, '✦ [$1] ');
         s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
         s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
       }
