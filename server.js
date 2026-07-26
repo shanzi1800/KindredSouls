@@ -4463,8 +4463,10 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
 
   const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
   const sendChunk = (text) => { send(JSON.stringify({ type: 'chunk', text })); flush(); };
-  const sendText = (text) => { send(JSON.stringify({ type: 'text', text })); flush(); };
-
+  const sendText = (text) => {
+    if (lang !== 'zh') { text = text.replace(/（/g, '').replace(/）/g, ''); }
+    send(JSON.stringify({ type: 'text', text })); flush();
+  };
   let allText = '';
 
   try {
