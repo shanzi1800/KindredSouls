@@ -394,6 +394,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
   }
 
+          console.log("[V154] lang=" + lang + " fullwidth(、。「」『』（）)=" + ([...text].filter(c=>"、。「」『』（）".includes(c)).length) + " chars=" + text.length);
   // ── V154: 清除全角括号（非中文语言）—— 早于final_text_sanitizer处理 ──
   if (lang !== "zh") {
     fullText = fullText.replace(/（/g, "").replace(/）/g, "");
