@@ -613,7 +613,7 @@ function fixSectionBrackets(text, lang) {
       // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
       if (!s.includes('[')) {
         // 西班牙语
-        s = s.replace(/✦\s+(Semana \d[^:|]*:\s*[^\s|]+(?:–|-)[^\s|]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Semana\s*\d+\s*:\s*[^\n]+?)\s+(?=[A-ZÁÉÍÓÚÑ])/, '✦ [$1] ');
         s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
         s = s.replace(/✦\s+(Sombra Financiera)/, '✦ [$1]');
         // 越南语
