@@ -578,17 +578,25 @@ function fixSectionBrackets(text, lang) {
   // ── V155: 跨语言 week 词纠正（fr/es 同源易混 Semaine/Semana，LLM 偶发串味）──
   if (lang === 'fr') text = text.replace(/Semana/gi, 'Semaine');
   if (lang === 'es') text = text.replace(/Semaine/gi, 'Semana');
+  // ── V157: ✦ 标题行归一化（LLM 偶发加 ** 加粗 + 双 [[ + 结尾 **] 错配）──
+  // 例：✦ **[[Semana 1: Jul 1–7] Recarga de Riqueza**] → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
+  const HEADER_KEY_RE = /(Visi[oó]n General|Sombra Financiera|Semana \d|Aper[çc]u|Th[eè]me Cosmique|Ombre Financi[eè]re|Semaine \d|ภาพรวม|สัปดาห์ที่ \d|เงาการเงิน|Tổng quan|Tuần \d|Bóng Tài chính)/i;
   // 通用：单独成行的裸标题关键词 → 补 []
   const lines = text.split('\n');
   const fixed = lines.map(line => {
     const t = line.trim();
-    // 匹配裸露的 [标题行]（不以 [ 或 * 开头）
+    // 1) 裸露标题行（不以 [/*/✦/# 开头）→ 补 []
     if (t && !t.startsWith('[') && !t.startsWith('*') && !t.startsWith('✦') && !t.startsWith('#')) {
-      // Visión General / Sombra Financiera / Aperçu / Thème 等关键标题
-      if (/^(Visi[oó]n General|Sombra Financiera|Semana \d|Aper[çc]u|Th[eè]me Cosmique|Semaine \d|Chi Ti[ếe]m|Ti[ếe]m T[àa]i|Pengalaman)/i.test(t)) {
-        // 已经是 [xxx] 格式的跳过
-        if (!t.startsWith('[')) return '[' + t + ']';
-      }
+      if (HEADER_KEY_RE.test(t) && !t.startsWith('[')) return '[' + t + ']';
+      return line;
+    }
+    // 2) ✦ 开头的标题行 → 剥 **、折叠 [[、修结尾 ] 错配
+    if (t.startsWith('✦') && HEADER_KEY_RE.test(t)) {
+      let s = line.replace(/\*\*/g, '');                       // 剥 markdown 加粗
+      s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');   // 折叠双括号
+      s = s.replace(/\s*\]+$/g, '');                           // 删结尾错配 ]（来自 **]）
+      s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
+      return s;
     }
     return line;
   });
