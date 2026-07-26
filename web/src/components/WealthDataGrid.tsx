@@ -44,7 +44,7 @@ const CARD_CONFIG = [
   {
     key: 'bazi',
     icon: '☯',
-    label: { zh: '八字命盘', en: 'BaZi Profile', es: 'Perfil BaZi', fr: 'Profil BaZi', th: 'ไพ่ซี', vi: 'Tử Vi' },
+    label: { zh: '八字命盘', en: 'BaZi Profile', es: 'Perfil BaZi', fr: 'Profil BaZi', th: 'ไพ่ศาสตร์โชคลาภ', vi: 'Tử Vi' },
     color: '#D4AF37',
   },
   {
