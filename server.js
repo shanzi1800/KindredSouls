@@ -4622,7 +4622,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 
     const introPrompt = v2SysPrompt + '\n\n[V116-V2 INTRO]: 生成年报开场章节(500-800字)。\n\n★ 用户出生日期(必须写入报头,不得虚构):' + birthDateFormatted + '\n★ 年度星盘(报头必须精确引用):\n太阳' + natalSunZH + '座 / 月亮' + natalMoonZH + '座 / 上升' + natalRisingZH + '座\n木星' + jupSignZH + '座(年度机遇主星)/ 土星' + satSignZH + '座(年度业力考验)\n\n【报头铁律】:以上星座必须100%使用中文(如双鱼座、摩羯座),严禁使用英文(如Pisces、Capricorn)。\n\n' + factSheet + '\n\n请生成包含报头和年度宏观战略简介的章节,以[V116-V2 INTRO]标签标注。';
 
-    const introText = await streamGeminiChunk(introPrompt, sendChunk);
+    const introText = await streamGeminiChunk(introPrompt, sendChunk, lang);
     allText += introText + '\n\n';
     sendText(introText);
     console.log('[V2] 引言: ' + introText.length + '字');
@@ -4668,7 +4668,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 
       var mPrompt = v2SysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节(800-1200字)。\n\n★ 月份:' + monthName + '\n★ 太阳行运:' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运:' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运:' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运:' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
 
-      const mText = await streamGeminiChunk(mPrompt, sendChunk);
+      const mText = await streamGeminiChunk(mPrompt, sendChunk, lang);
       // 🔒 V116-step8-fix: 月度标题即时锁(applyMonthLockSanitizer的regex不匹配V2格式)
       let mTextLocked = mText;
       if (m.sun && m.sun.sign) {
@@ -4707,6 +4707,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     allText = v2_monthly_title_lock(allText, matrix.months);
     allText = impossible_aspect_guard(allText);
     allText = standardizeReport(allText);
+    if (lang !== "zh") { allText = allText.replace(/（/g, "").replace(/）/g, ""); } // V154: sendChunk+allText双保险
     allText = cleanGarbageCharacters(allText);    // 刀10(Bug4)
 
     // ── Step 8: DONE ──
@@ -4744,7 +4745,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 });
 
 // ── Gemini流式调用辅助函数 ──
-async function streamGeminiChunk(prompt, onChunk) {
+async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
   let attempt = 0;
@@ -4805,7 +4806,8 @@ async function streamGeminiChunk(prompt, onChunk) {
         }
       }
       console.log('[V2] Gemini成功: ' + fullText.length + '字');
-      return fullText;
+      const cleaned = langForClean !== "zh" ? fullText.replace(/（/g, "").replace(/）/g, "") : fullText;
+      return cleaned;
     } catch(err) {
       console.warn('[V2] Gemini尝试' + attempt + '失败: ' + err.message);
       // 429 = 配额耗尽 → 立即切 DeepSeek,不重试
