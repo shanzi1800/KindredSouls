@@ -631,7 +631,7 @@ function fixSectionBrackets(text, lang) {
 // ── V158: 月报空括号/孤儿标点清洗（军师审计:1993-10-18牛津中文报告空括号大爆发）──
 // 根因:月报路径跳过 final_text_sanitizer(V149仅在该函数内,且只删"孤儿"括号),
 // 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
-function cleanMonthlyBrackets(text) {
+function cleanMonthlyBrackets(text, lang = 'zh') {
   if (!text) return text;
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
@@ -661,6 +661,15 @@ function cleanMonthlyBrackets(text) {
     // 正文内部方括号：[xxx] → xxx
     return line.replace(/\[([^\[\]]+?)\]/g, '$1');
   }).join('\n');
+  // 9. 越南语水逆时间轴纠正（军师审计:V145越南语样本水星顺逆倒错）
+  // 第1周错误写“水星顺行”→纠正为“水星逆行”
+  // 第2周错误写“水星开始逆行”→纠正为“水星逆行持续”
+  // 正确时间轴:7月上旬水星巨蟹座逆行,7月24日恢复顺行
+  if (lang === 'vi') {
+    text = text.replace(/Thủy Tinh[^。\n]{0,30}?thuận hành/g, 'Thủy Tinh nghịch hành');
+    text = text.replace(/Thủy Tinh bắt đầu nghịch hành/g, 'Thủy Tinh nghịch hành tiếp tục');
+    text = text.replace(/nghịch hành trong Cự Giải nhà 11[^。\n]{0,20}?thuận hành/g, 'nghịch hành trong Cự Giải nhà 11');
+  }
   return text;
 }
 
@@ -4347,7 +4356,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // V152: 月度非流式也加括号补全
   let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
   // ── V158: 月报空括号/孤儿标点清洗(月报路径跳过 final_text_sanitizer,需独立处理)──
-  if (reportType === 'monthly') cleanedText = cleanMonthlyBrackets(cleanedText);
+  if (reportType === 'monthly') cleanedText = cleanMonthlyBrackets(cleanedText, lang);
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
