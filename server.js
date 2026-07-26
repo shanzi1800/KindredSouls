@@ -603,6 +603,28 @@ function fixSectionBrackets(text, lang) {
   return fixed.join('\n');
 }
 
+// ── V158: 月报空括号/孤儿标点清洗（军师审计:1993-10-18牛津中文报告空括号大爆发）──
+// 根因:月报路径跳过 final_text_sanitizer(V149仅在该函数内,且只删"孤儿"括号),
+// 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
+function cleanChineseBrackets(text) {
+  if (!text) return text;
+  // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
+  text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*)/g, '$1（$2）');
+  // 2. 嵌套空括号: 第八宫（）共享资源） → 第八宫（共享资源）
+  text = text.replace(/（）([^）\n]*?）)/g, '（$1）');
+  // 3. 孤儿顿号/逗号紧挨右括号: （如伴侣收入、遗产、） → （如伴侣收入、遗产）
+  text = text.replace(/[、，,](?=）)/g, '');
+  // 4. 残留空括号兜底: （） → 删除
+  text = text.replace(/（）/g, '');
+  text = text.replace(/\(\s*\)/g, '');
+  // 5. 多余右括号折叠
+  text = text.replace(/）\s*）/g, '）');
+  text = text.replace(/\)\s*\)/g, ')');
+  // 6. 介词补缺: "X座的水瓶座冥王星" → "X座，与水瓶座冥王星"(LLM 偶漏"与")
+  text = text.replace(/([座])的(白羊座|金牛座|双子座|巨蟹座|狮子座|处女座|天秤座|天蝎座|射手座|摩羯座|水瓶座|双鱼座)/g, '$1，与$2');
+  return text;
+}
+
 function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
   if (!text) return text;
 
@@ -2074,7 +2096,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
 
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
-⛔ [宫位含义一致性]: 行星进入某星座时,其宫位象征必须与该星座在用户等宫制中的序号一致(如处女座=第12宫隐秘宫/潜意识/暗财,摩羯座=第4宫田宅,白羊座=第7宫关系)。绝不允许把第12宫(隐秘)强行解释为"家庭与事业"(第4/10宫),或把任何宫位含义张冠李戴。
+⛔ [宫位含义一致性]: 行星进入某星座时,其宫位必须严格引用下方[宫位铁律]注入的等宫制完整映射表(按本命上升星座计算)。不同上升星座宫位完全不同,禁止凭星座序号自行推算,禁止套用任何固定映射(如"处女座=第12宫"仅在白羊上升成立,对其他上升星座错误)。
 
 [THAI ASTRO RULES]:
 • MERCURY Rx: ดาวพุธวงในเริ่ม ~2–24 กรกฎาคม ในราศีกรกฎ (Cancer) — ห้ามเขียนดาวพุธในราศีสิงห์ (Leo) ตลอดเดือนกรกฎาคม
@@ -2748,7 +2770,7 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 ⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
 
 ⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
-⛔ [宫位含义一致性]: 行星进入某星座时,其宫位象征必须与该星座在用户等宫制中的序号一致(如处女座=第12宫隐秘宫/潜意识/暗财,摩羯座=第4宫田宅,白羊座=第7宫关系)。绝不允许把第12宫(隐秘)强行解释为"家庭与事业"(第4/10宫),或把任何宫位含义张冠李戴。
+⛔ [宫位含义一致性]: 行星进入某星座时,其宫位必须严格引用下方[宫位铁律]注入的等宫制完整映射表(按本命上升星座计算)。不同上升星座宫位完全不同,禁止凭星座序号自行推算,禁止套用任何固定映射(如"处女座=第12宫"仅在白羊上升成立,对其他上升星座错误)。
 
 ⛔ [水逆日期铁律]: 水星于6月28日左右进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"、"7月18日达到最慢点"等矛盾句式。正确："水星在巨蟹座逆行（7月24日前后恢复顺行）"。
 
@@ -3141,6 +3163,14 @@ ${HT_RP.trap}
       natalMoonSignEN = natalMoonEN;
       natalMoonSign = signName(natalMoonEN, natalMoonEN);
 
+      // ── V158: 动态上升宫位映射表(根治 LLM 用硬编码白羊映射/自行推算宫位)──
+      const _hm = getSignToHouseMap(risingLocal);
+      const _SIGNS_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+      const _houseLabelMap = { zh:(n)=>`第${n}宫`, en:(n)=>`House ${n}`, es:(n)=>`Casa ${n}`, fr:(n)=>`Maison ${n}`, th:(n)=>`ภพที่ ${n}`, vi:(n)=>`Nhà ${n}` };
+      const _houseLabel = _houseLabelMap[lang] || _houseLabelMap.zh;
+      const _sep = lang === 'zh' ? '、' : ', ';
+      const _houseRef = _hm ? _SIGNS_EN.map((enSign, i) => `${signName(enSign, SIGN_ORDER_ZH[i])}=${_houseLabel(_hm[i])}`).join(_sep) : '';
+
       // 🌐 6语言 STRICT HOUSE LOCK 模板
       const locks = {
         vi: `⛔ [QUY TẮC CUNG ĐỊA BÀN BẮT BUỘC] - Dữ liệu từ AstroMatrix + computed_houses.json ⛔
@@ -3163,6 +3193,10 @@ ${HT_RP.trap}
 \n\nBasé sur Ascendant = __RISING_LOCAL__ (Equal House depuis date de naissance), les planètes DOIVENT utiliser ces maisons exactes:\n• Jupiter en ${jupSignLocal} = Maison ${jupHouse}\n• Saturne en ${satSignLocal} = Maison ${satHouse}\n• Pluton en Verseau = Maison ${plHouse}\n• Soleil = Maison ${sunHouse}\n• Lune = Maison ${moonHouse}\n\n⛔ STRICTEMENT INTERDIT:\n- Inférer les maisons depuis les signes\n- Utiliser le système Whole Sign\n- Écrire Jupiter = Maison 5 (doit être Maison ${jupHouse})`
       };
       houseLock = locks[lang] || locks.en;
+      // ── V158: 注入动态上升宫位映射表(根治 LLM 自行推算/硬编码白羊映射)──
+      if (_houseRef) {
+        houseLock += `\n\n📍 本命上升 = ${risingLocal} 的等宫制完整映射(流年行星落入某星座,其宫位必须按此表查,禁止自行推算):\n${_houseRef}`;
+      }
       console.log(`[V82] houseLock built for ${lang}: Jup=${jupHouse}, Sat=${satHouse}, Pluto=${plHouse}, Sun=${sunHouse}, Rising=${risingLocal}`);
     }
 
@@ -4273,6 +4307,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let rawText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
   // V152: 月度非流式也加括号补全
   let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
+  // ── V158: 月报空括号/孤儿标点清洗(月报路径跳过 final_text_sanitizer,需独立处理)──
+  if (reportType === 'monthly') cleanedText = cleanChineseBrackets(cleanedText);
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
