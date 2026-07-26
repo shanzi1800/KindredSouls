@@ -590,6 +590,19 @@ function fixSectionBrackets(text, lang) {
       if (HEADER_KEY_RE.test(t) && !t.startsWith('[')) return '[' + t + ']';
       return line;
     }
+    // 1.5) ## 或 ### 开头的 Markdown 标题行 → 剥 ## 后按 ✦ 开头处理
+    if (/^##+\s/.test(t) && HEADER_KEY_RE.test(t)) {
+      let s = line.replace(/^##+\s*/, ''); // 剥 ##/###
+      s = s.replace(/\*\*/g, '');         // 剥加粗
+      s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');
+      if (!s.includes('[')) {
+        // 越南语: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
+        s = s.replace(/✦\s+(Tuần\s*\d[^:|]*:\s*[^\s|]+(?:–|-|—)[^\s|]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
+        s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
+      }
+      return '## ' + s;
+    }
     // 2) ✦ 开头的标题行 → 剥 **、折叠 [[、修结尾 ] 错配、补缺失的 []
     if (t.startsWith('✦') && HEADER_KEY_RE.test(t)) {
       let s = line.replace(/\*\*/g, '');                       // 剥 markdown 加粗
@@ -597,10 +610,16 @@ function fixSectionBrackets(text, lang) {
       s = s.replace(/\s*\]+$/g, '');                           // 删结尾错配 ]（来自 **]）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
       // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
+      // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
       if (!s.includes('[')) {
-        s = s.replace(/✦\s+(Semana \d[^:]*:\s*[^\s]+(?:–|-)[^\s]+\s*)/, '✦ [$1] ');
+        // 西班牙语
+        s = s.replace(/✦\s+(Semana \d[^:|]*:\s*[^\s|]+(?:–|-)[^\s|]+\s*)/, '✦ [$1] ');
         s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
         s = s.replace(/✦\s+(Sombra Financiera)/, '✦ [$1]');
+        // 越南语
+        s = s.replace(/✦\s+(Tuần\s*\d[^:|]*:\s*[^\s|]+(?:–|-|—)[^\s|]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
+        s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
       }
       return s;
     }
