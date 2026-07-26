@@ -122,8 +122,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/\\ud83d ?\\udd34/g, '🔴')
             .replace(/\\ud83d ?\\udd35/g, '🔵')
             .replace(/\\u26a0 ?\\ufe0f/g, '⚠️');
-          // 🛠️ V140: 半角括号→全角 仅限非英文 (军师核弹级抓包: 英文报告括号被误转全角)
-          if (lang !== 'en') {
+          // 🛠️ V140: 半角括号→全角 仅限中文 (2026-07-26 V154修正: 原为 lang!=='en' 导致es/fr/th/vi全错)
+          if (lang === 'zh') {
             clean = clean.replace(/\(/g, '（').replace(/\)/g, '）');
           }
           clean = clean
