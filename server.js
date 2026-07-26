@@ -213,7 +213,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 0) 半角括号→全角(兜底,月报路径不过final_text_sanitizer)
     // 🛠️ V140: 仅限非英文 (英文报告保留半角括号)
     if (lang !== 'en') {
-      t = t.replace(/\(/g, '（').replace(/\)/g, '）');
+      if (lang === 'zh') { t = t.replace(/\(/g, '（').replace(/\)/g, '）'); }
     }
     // 0b) 后处理天文强杀 — AI瞎编的历史行星位置
     // 🛠️ V132-fix: 强杀土星在射手座(AI用2015-2017年旧数据),太阳入狮子错误日期
@@ -829,13 +829,8 @@ function final_text_sanitizer(text, ascendant = 'Cancer', lang = 'zh') {
   // 🛠️ V120-fix6: 军师前端防御层——半角括号→全角 + Emoji 标准空格
   // 1. 全局半角括号 ( ) → 全角 （ ）(防止安卓/iOS 排版错位与中英混杂)
   // ⚠️ V150-fix: 西班牙语/法语/泰语/越南语保留半角括号（国际化要求）
-  if (lang !== 'zh') {
-    // 非中文语言保持半角括号，不转全角
-  } else {
-    text = text.replace(/\(/g, '（').replace(/\)/g, '）');
-  }
-  // ── V146: 孤儿全角右括号兜底清洗 ──
-  // 根因：LLM偶发输出"太阳在巨蟹座】"（全角）残留或纯残缺括号，校验逻辑误判跳过
+  // 🛠️ V153: 仅对中文转全角括号，es/fr/th/vi 由 langPunctuationClean 保持半角
+  if (lang === 'zh') { text = text.replace(/\(/g, '（').replace(/\)/g, '）'); }
   // 匹配: 中文/英文/数字后接孤立全角）→ 删
   text = text.replace(/([\u4e00-\u9fa5a-zA-Z0-9])）/g, '$1');
   // 2. 章节 Emoji 标记(🟢🔴🔵⚠️)后强制标准空格,防止移动端文本排版错位
