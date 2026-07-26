@@ -4395,11 +4395,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
         // 🛠️ V161: 法文本命/Transit太阳断言器 (军师核弹级抓包: 1993-09-18处女座被误写Votre Soleil en Cancer)
     // 根因: LLM 偶发把流年太阳(Transit Sun in Cancer)写成 "Votre Soleil en Cancer"，混淆本命
-    // 修复: 改为流年表述，保留流年真值(7月太阳确实在巨蟹座，不该改成处女座)
+    // 修复: 全量改 'votre Soleil'→'le Soleil'(流年),不改成处女座(保留流年真值)
     if (lang === 'fr') {
-      cleanedText = cleanedText.replace(/votre Soleil en ([A-Za-zÀ-ÿ]+)/gi, 'le Soleil de transit en $1');
-      cleanedText = cleanedText.replace(/Votre Soleil en Maison/g, 'le Soleil en Maison');
-      cleanedText = cleanedText.replace(/votre Soleil en Maison/g, 'le Soleil en Maison');
+      // 月报正文太阳=流年太阳(7月=巨蟹座)，统一 'votre Soleil' → 'le Soleil'
+      // 彻底消除本命/流年混淆视觉错误(报头本命太阳由locks锁死,不在此格式)
+      cleanedText = cleanedText.replace(/votre Soleil(?! natal)/gi, 'le Soleil');
     }
     // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
