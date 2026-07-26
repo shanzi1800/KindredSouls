@@ -82,7 +82,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 48000, temperature: 0, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 48000, temperature: 0, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -1803,7 +1803,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
           'Authorization': `Bearer ${deepseekKey}`,
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-v4-flash',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
@@ -3827,7 +3827,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-          body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
+          body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json();
@@ -4159,6 +4159,37 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     } catch(e) {
       console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
+      // 🛠️ V151: Gemini paid fallback — DeepSeek 失败时走 Gemini 付费通道
+      if (geminiKey) {
+        console.log('[wealth-stream] → Gemini paid fallback (non-stream)');
+        usedGemini = true;
+        try {
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+              generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+            }),
+            signal: controller.signal,
+          });
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (geminiFullText && geminiFullText.trim().length > 0) {
+              // 流式输出完整文本（非流式，直接写入）
+              res.write(Buffer.from(JSON.stringify({ error: '' }) + '\n', 'utf-8'));
+              res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
+              onChunk && onChunk(geminiFullText);
+            }
+          } else {
+            const errBody = await geminiRes.text();
+            console.error('[wealth-stream] Gemini paid failed:', geminiRes.status, errBody.slice(0,200));
+          }
+        } catch(geminiErr) {
+          console.error('[wealth-stream] Gemini paid EXCEPTION:', geminiErr.message);
+        }
+      }
     }
 
     // V100i: 英文标点清洗(去除中文全角标点污染)
@@ -4311,7 +4342,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
           body: new TextEncoder().encode(JSON.stringify({
-            model: 'deepseek-chat',
+            model: 'deepseek-v4-flash',
             messages: [
               { role: 'system', content: prompt.system },
               { role: 'user', content: prompt.user },
@@ -4767,7 +4798,7 @@ async function streamGeminiChunk(prompt, onChunk) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
         body: new TextEncoder().encode(JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-v4-flash',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 8192,
           temperature: 0.6,
@@ -4978,7 +5009,7 @@ app.get('/api/compare-llm', async (req, res) => {
       const r = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${cleanKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+        body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
       });
       const d = await r.json();
       results.deepseek = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
