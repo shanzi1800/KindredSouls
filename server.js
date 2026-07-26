@@ -606,7 +606,7 @@ function fixSectionBrackets(text, lang) {
 // ── V158: 月报空括号/孤儿标点清洗（军师审计:1993-10-18牛津中文报告空括号大爆发）──
 // 根因:月报路径跳过 final_text_sanitizer(V149仅在该函数内,且只删"孤儿"括号),
 // 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
-function cleanChineseBrackets(text) {
+function cleanMonthlyBrackets(text) {
   if (!text) return text;
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
@@ -625,6 +625,17 @@ function cleanChineseBrackets(text) {
   text = text.replace(/([座])的(白羊座|金牛座|双子座|巨蟹座|狮子座|处女座|天秤座|天蝎座|射手座|摩羯座|水瓶座|双鱼座)/g, '$1，与$2');
   // 7. 周标题标签括号错位: （顺）流蓄力 → （顺流蓄力）(LLM 偶将闭括号提前)
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（([充富高危顺流蓄爆熔发]{1,3})）([充富高危顺流蓄爆熔发]{1,4})/g, '$1（$2$3）');
+  // 8. 正文内部误入方括号（西/法/英/泰/越通用）: 移除非行首的方括号
+  //    保留行首标题格式 [Visión General]/[Semana 1]/[Semaine 1] 等
+  const lines = text.split('\n');
+  text = lines.map(line => {
+    const t = line.trim();
+    if (t.startsWith('[') || t.startsWith('✦ [') || t.startsWith('* [') || t.startsWith('# [') || t.startsWith('- [')) {
+      return line; // 行首标题保留
+    }
+    // 正文内部方括号：[xxx] → xxx
+    return line.replace(/\[([^\[\]]+?)\]/g, '$1');
+  }).join('\n');
   return text;
 }
 
@@ -4311,7 +4322,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // V152: 月度非流式也加括号补全
   let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
   // ── V158: 月报空括号/孤儿标点清洗(月报路径跳过 final_text_sanitizer,需独立处理)──
-  if (reportType === 'monthly') cleanedText = cleanChineseBrackets(cleanedText);
+  if (reportType === 'monthly') cleanedText = cleanMonthlyBrackets(cleanedText);
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
