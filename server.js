@@ -4397,6 +4397,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 根因: LLM 偶发把流年太阳(Transit Sun in Cancer)写成 "Votre Soleil en Cancer"，混淆本命
     // 修复: 全量改 'votre Soleil'→'le Soleil'(流年),不改成处女座(保留流年真值)
     if (lang === 'fr') {
+      console.log('[V161-FR-SOLEIL-MARKER] hit, lang=', lang, 'len=', cleanedText.length);
       // 月报正文太阳=流年太阳(7月=巨蟹座)，统一 'votre Soleil' → 'le Soleil'
       // 彻底消除本命/流年混淆视觉错误(报头本命太阳由locks锁死,不在此格式)
       cleanedText = cleanedText.replace(/votre Soleil(?! natal)/gi, 'le Soleil');
