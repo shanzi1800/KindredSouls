@@ -4201,6 +4201,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (geminiRes.ok) {
             const geminiData = await geminiRes.json();
             geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            // V154: 立即清除geminiFullText里的全角括号（非中文）
+            if (lang !== "zh") { geminiFullText = geminiFullText.replace(/（/g, "").replace(/）/g, ""); }
             if (geminiFullText && geminiFullText.trim().length > 0) {
               // 流式输出完整文本（非流式，直接写入）
               res.write(Buffer.from(JSON.stringify({ error: '' }) + '\n', 'utf-8'));
