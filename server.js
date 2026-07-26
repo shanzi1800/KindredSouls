@@ -590,12 +590,18 @@ function fixSectionBrackets(text, lang) {
       if (HEADER_KEY_RE.test(t) && !t.startsWith('[')) return '[' + t + ']';
       return line;
     }
-    // 2) ✦ 开头的标题行 → 剥 **、折叠 [[、修结尾 ] 错配
+    // 2) ✦ 开头的标题行 → 剥 **、折叠 [[、修结尾 ] 错配、补缺失的 []
     if (t.startsWith('✦') && HEADER_KEY_RE.test(t)) {
       let s = line.replace(/\*\*/g, '');                       // 剥 markdown 加粗
       s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');   // 折叠双括号
       s = s.replace(/\s*\]+$/g, '');                           // 删结尾错配 ]（来自 **]）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
+      // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
+      if (!s.includes('[')) {
+        s = s.replace(/✦\s+(Semana \d[^:]*:\s*[^\s]+(?:–|-)[^\s]+\s*)/, '✦ [$1] ');
+        s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
+        s = s.replace(/✦\s+(Sombra Financiera)/, '✦ [$1]');
+      }
       return s;
     }
     return line;
