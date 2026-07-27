@@ -634,6 +634,11 @@ function fixSectionBrackets(text, lang) {
 // 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
 function cleanMonthlyBrackets(text, lang = 'zh') {
   if (!text) return text;
+    // step0: 中文周标题补[] (emoji开头: 🟢 第1周...)
+    text = text.split('\n').map(ln => {
+    const m = ln.match(/^[\u{1F7E2}\u{1F534}\u{1F535}\u{1F7E1}]\s*(第[一二三四1-4]周.+)$/u);
+      return m ? '[' + m[1] + ']' : ln;
+    }).join('\n');
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*)/g, '$1（$2）');
@@ -4406,7 +4411,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (reportType === 'monthly') cleanedText = fixSectionBrackets(cleanedText, lang);
     // 🛠️ V163: 清除 LLM 幻觉的 Prompt 残留括号 (es: sin usar el término 等元指令漏出)
     if (lang === 'es') {
-      cleanedText = cleanedText.replace(/\(\s*(sin usar|no usar)[^)]{0,20}t[eé]rmino\s*\)/gi, '');
+      cleanedText = cleanedText.replace(/\(\s*(sin usar|no usar|sans utiliser|ne pas utiliser)[^)]{0,20}t[eé]rmino|terme\s*\)/gi, '');
     }
     // 🛠️ V131b-fix: 月报文本已经过 fixMonthlySectionTitles 完整清洗(流式路径)，
     // final_text_sanitizer + applyMonthLockSanitizer 的贪婪正则对月报格式
