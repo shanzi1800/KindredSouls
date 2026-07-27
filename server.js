@@ -625,13 +625,12 @@ function fixSectionBrackets(text, lang) {
       if (!s.includes('[')) s = s.replace(/\s*\]+$/, '');                 // 删结尾错配 ]（来自 **]，但放过已平衡的 [..] 标题）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
       // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
-        // 泰文(✦ 分支): 兼容 '1–7 ก.ค. —'(em-dash 标题分隔) 与 '1–7/7' 等 LLM 非确定性格式
-        // 旧正则写死 en-dash 作分隔符 → 1/2/4 周漏括号; 现统一归一并补总览/陷阱标题
+      // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
+      if (!s.includes('[')) {
+        // 泰文(✦ 分支): 兼容 '1–7 ก.ค. —'(em-dash 标题分隔) 与 '1–7/7' 等 LLM 非确定性格式; 已平衡标题跳过避免重复套[]
         s = s.replace(/(✦\s*)?\**\s*(สัปดาห์ที่\s*[๑๒๓๔\d]+\s*:\s*[^\n]*?)\**\s*(?=\s+[ก-๙]|\n|$|\])/, '✦ [$2] ');
         s = s.replace(/✦\s+(ภาพรวม)/, '✦ [$1]');
         s = s.replace(/✦\s+(เงาการเงิน)/, '✦ [$1]');
-      // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
-      if (!s.includes('[')) {
         // 西班牙语
         s = s.replace(/✦\s+(Semana\s*\d+\s*:\s*[^\n]+?)\s+(?=[A-ZÁÉÍÓÚÑ])/, '✦ [$1] ');
         s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
