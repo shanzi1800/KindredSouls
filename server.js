@@ -643,10 +643,6 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
     const m = ln.match(/^[\u{1F7E2}\u{1F534}\u{1F535}\u{1F7E1}]\s*(第[一二三四1-4]周.+)$/u);
       return m ? '[' + m[1] + ']' : ln;
     }).join('\n');
-    if (lang === 'zh') {
-      const _after = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
-      console.log('[STEP0-AFTER] weekLines=', JSON.stringify(_after.slice(0,4)));
-    }
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*)/g, '$1（$2）');
@@ -4455,7 +4451,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
-    console.log('[SEND-DEBUG] final weekLines=', JSON.stringify(cleanedText.split('\n').filter(l=>/周/.test(l)&&/第[一二三四1-4]/.test(l)).slice(0,4)));
     if (cleanedText !== fullTextCollector) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
