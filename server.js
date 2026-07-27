@@ -4502,6 +4502,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     };
     // 🛠️ V131c-fix: 月报用 geminiFullText(函数返回值=全量1743字)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
     let rawText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
+    // 🛠️ V173-fix: 不可变 token → astroMatrix 真值确定性替换(流式端点·军师 P0 批准)
+    // LLM 原样输出 {{JUPITER_HOUSE}} 等标记,后端用真值渲染,物理上杜绝"木11/冥5"类宫位幻觉
+    // 若 LLM 没用 token 而写了"第X宫",下方 house_linter(V166 已部署)兜底纠偏
+    let _tokRaw = rawText || '';
+    if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+      const _first = astroMatrix.months[0];
+      const _gH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
+      const _jH = _gH(_first.jupiter?.house);
+      const _sH = _gH(_first.saturn?.house);
+      const _pH = _gH(_first.pluto?.house);
+      const _snH = _gH(_first.sun?.house) ?? 1;
+      const _mnH = _gH(_first.moon?.house) ?? 2;
+      const _tokMap = {
+        '{{JUPITER_HOUSE}}': '第' + _jH + '宫',
+        '{{SATURN_HOUSE}}': '第' + _sH + '宫',
+        '{{PLUTO_HOUSE}}': '第' + _pH + '宫',
+        '{{SUN_HOUSE}}': '第' + _snH + '宫',
+        '{{MOON_HOUSE}}': '第' + _mnH + '宫',
+      };
+      for (const [_t, _v] of Object.entries(_tokMap)) {
+        if (_t && _v) _tokRaw = _tokRaw.split(_t).join(_v);
+      }
+    }
+    rawText = _tokRaw;
   // V152: 月度非流式也加括号补全
   let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
   // ── V158: 月报空括号/孤儿标点清洗(月报路径跳过 final_text_sanitizer,需独立处理)──
