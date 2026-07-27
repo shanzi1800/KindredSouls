@@ -2860,6 +2860,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 ${planetBlockWithWarning}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
+⛔ [不可变 Token 铁律·P0]: 提到行星宫位时，你必须原样保留以下不可变标记（不要写成'第N宫'或任何数字，后端会用真实宫位自动替换）:
+  • 木星宫位 → {{JUPITER_HOUSE}}
+  • 土星宫位 → {{SATURN_HOUSE}}
+  • 冥王星宫位 → {{PLUTO_HOUSE}}
+  • 本命太阳宫位 → {{SUN_HOUSE}}
+  • 月亮宫位 → {{MOON_HOUSE}}
+例如正确写法: "木星在狮子座{{JUPITER_HOUSE}}带来财富"。错误写法: "木星在狮子座第5宫"(数字会被后端覆盖，且可能错)。
 
 ⛔ [相角幻觉禁令]: 禁止写"形成和谐互动"、"吉相"、"三分相/四分相/对分相"等相角术语。禁止描述 quincunx(150°处女-白羊)、square(90°处女-双子)为正向能量。统一用中性行星能量描述，如："处女座金星与白羊座土星的错位张力"、"处女座金星与双子座天王星的能量碰撞带来突发变数"。禁止用"意外之财"、"意外收获"描述四分相/梅花相位的相位。
 禁止用"同频共振"描述四分相(90°/square)或梅花相(150°/quincunx)——只有三分相(120°/trine)或六分相(60°/sextile)才可用"共振"类词汇。水星/火星/天王星与任何行星的紧张相位禁止用"同频共振"。
@@ -3840,7 +3847,30 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 💎 先天财富DNA: 简化清洗(不涉及时间线/宫位锁)
         let sanitizedAI;
         if (reportType === 'monthly') {
-          sanitizedAI = house_linter((aiResult || '').replace(/\uFFFD/g, ''), astroMatrix);
+          // 🛠️ P0-token-fix: 不可变 token → astroMatrix 真值确定性替换(军师 P0 批准·月报 MISS 试点)
+          // LLM 原样输出 {{JUPITER_HOUSE}} 等标记,后端用真值渲染,物理上杜绝"木11/冥5"类宫位幻觉
+          // 若 LLM 没用 token 而写了"第X宫",下方 house_linter(V166 已部署)兜底纠偏
+          let _tokResult = aiResult || '';
+          if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+            const _first = astroMatrix.months[0];
+            const _gH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
+            const _jH = _gH(_first.jupiter?.house);
+            const _sH = _gH(_first.saturn?.house);
+            const _pH = _gH(_first.pluto?.house);
+            const _snH = _gH(_first.sun?.house) ?? 1;
+            const _mnH = _gH(_first.moon?.house) ?? 2;
+            const _tokMap = {
+              '{{JUPITER_HOUSE}}': '第' + _jH + '宫',
+              '{{SATURN_HOUSE}}': '第' + _sH + '宫',
+              '{{PLUTO_HOUSE}}': '第' + _pH + '宫',
+              '{{SUN_HOUSE}}': '第' + _snH + '宫',
+              '{{MOON_HOUSE}}': '第' + _mnH + '宫',
+            };
+            for (const [_t, _v] of Object.entries(_tokMap)) {
+              if (_t && _v) _tokResult = _tokResult.split(_t).join(_v);
+            }
+          }
+          sanitizedAI = house_linter((_tokResult || '').replace(/\uFFFD/g, ''), astroMatrix);
         } else if (reportType === 'once') {
           // 先天财富DNA: 只做基础清理
           sanitizedAI = (aiResult || '').replace(/�/g,'');
