@@ -500,7 +500,8 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     # Calculate Ascendant using SwissEph
     try:
         # hsys = 'E' for Equal House
-        asc_data = swe.houses(jd_birth, lat, lon, 'E')
+        # 🛠️ V167-fix: hsys must be bytes, not str (Railway swisseph requires strict typing)
+        asc_data = swe.houses(jd_birth, lat, lon, b'E')
         asc_deg = asc_data[0][0]  # First house cusp = Ascendant
     except Exception:
         # Fallback: calculate rough ascendant
