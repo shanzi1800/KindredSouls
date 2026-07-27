@@ -591,13 +591,15 @@ function fixSectionBrackets(text, lang) {
   // ── V157: ✦ 标题行归一化（LLM 偶发加 ** 加粗 + 双 [[ + 结尾 **] 错配）──
   // 例：✦ **[[Semana 1: Jul 1–7] Recarga de Riqueza**] → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
   const HEADER_KEY_RE = /(Visi[oó]n General|Sombra Financiera|Semana \d|Aper[çc]u|Th[eè]me Cosmique|Ombre Financi[eè]re|Semaine \d|ภาพรวม|สัปดาห์ที่ \d|เงาการเงิน|Tổng quan|Tuần \d|Bóng Tài chính)/i;
+  // V171: 行首锚定版——仅当标题词出现在行首才视为标题,避免正文提及สัปดาห์ที่ 3等被误套[]
+  const HEADER_START_RE = new RegExp('^(' + HEADER_KEY_RE.source + ')', 'i');
   // 通用：单独成行的裸标题关键词 → 补 []
   const lines = text.split('\n');
   const fixed = lines.map(line => {
     const t = line.trim();
     // 1) 裸露标题行（不以 [/*/✦/# 开头）→ 补 []
     if (t && !t.startsWith('[') && !t.startsWith('*') && !t.startsWith('✦') && !t.startsWith('#')) {
-      if (HEADER_KEY_RE.test(t) && !t.startsWith('[')) return '[' + t + ']';
+      if (HEADER_START_RE.test(t) && !t.startsWith('[')) return '[' + t + ']';
       return line;
     }
     // 1.5) ## 或 ### 开头的 Markdown 标题行 → 剥 ## 后按 ✦ 开头处理
@@ -610,6 +612,9 @@ function fixSectionBrackets(text, lang) {
         s = s.replace(/(Tuần\s*\d+\s*:\s*[^\n]*?)\**\s*(?=\s+[A-ZÀ-ÿ]|\n|$|\])/, '✦ [$1] ');
         s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
         s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
+        // 泰文(## 分支,已剥 ##): 同 ✦ 分支逻辑,兜底 ## 前缀的泰文标题
+        s = s.replace(/(สัปดาห์ที่\s*[๑๒๓๔\d]+\s*:\s*[^\n]*?)\**\s*(?=\s+[ก-๙]|\n|$|\])/, '✦ [$1] ');
+        s = s.replace(/(ภาพรวม|เงาการเงิน)/, '✦ [$1]');
       }
       return '## ' + s;
     }
@@ -620,7 +625,11 @@ function fixSectionBrackets(text, lang) {
       if (!s.includes('[')) s = s.replace(/\s*\]+$/, '');                 // 删结尾错配 ]（来自 **]，但放过已平衡的 [..] 标题）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
       // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
-        s = s.replace(/✦\s+(สัปดาห์ที่\s*[๑๒๓๔\d]+[^\n]*?)\s+–\s*([ก-๙][^\n]*)/, '✦ [$1] $2');
+        // 泰文(✦ 分支): 兼容 '1–7 ก.ค. —'(em-dash 标题分隔) 与 '1–7/7' 等 LLM 非确定性格式
+        // 旧正则写死 en-dash 作分隔符 → 1/2/4 周漏括号; 现统一归一并补总览/陷阱标题
+        s = s.replace(/(✦\s*)?\**\s*(สัปดาห์ที่\s*[๑๒๓๔\d]+\s*:\s*[^\n]*?)\**\s*(?=\s+[ก-๙]|\n|$|\])/, '✦ [$2] ');
+        s = s.replace(/✦\s+(ภาพรวม)/, '✦ [$1]');
+        s = s.replace(/✦\s+(เงาการเงิน)/, '✦ [$1]');
       // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
       if (!s.includes('[')) {
         // 西班牙语
