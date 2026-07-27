@@ -2833,7 +2833,8 @@ ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 
 ⛔ [水逆日期铁律]: 水星于6月28日左右进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"、"7月18日达到最慢点"等矛盾句式。正确："水星在巨蟹座逆行（7月24日前后恢复顺行）"。
 
-Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
+Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — rising sign: ${risingLocal} — (${curMonthName} ${currentYear}).
+⛔ [V165-vital] 本命太阳星座 = ${natalSunEN}（生日 ${birthDate} 绝对正确,绝不是其他星座）。上升星座 = ${risingLocal}（绝非 Cancer，除非从 AstroMatrix 真实计算得出）。
 
 CRITICAL REQUIREMENTS:
 • Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
@@ -2865,6 +2866,12 @@ ${HT_RP.trap}
 [Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
     \``,
       en: `USER INSTRUCTIONS:
+⛔ [V165-vital] THIS USER'S CHART:
+  - Natal Sun = ${natalSunEN} (birth date ${birthDate} = ALWAYS ${natalSunEN}, NEVER any other sign)
+  - Ascendant = ${risingLocal} (NOT Cancer unless specifically computed by AstroMatrix)
+  - Jupiter in ${jupSignLocal} = House ${jupHouse} (NOT House 5, NEVER write House 5 for Jupiter)
+  - Saturn in ${satSignLocal} = House ${satHouse} (NOT House 11, NEVER write House 11 for Saturn)
+  - Pluto in Aquarius = House ${plHouse} (NOT House 11)
 ${planetBlockWithWarning}
 
 ASTROGRAPHIC RULES:
@@ -4249,6 +4256,52 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
       }
       prompt.user = prompt.user.replace(/[\u2026]/g, '...');
+
+      // 🛠️ V165-fix: 清理 user prompt 残留占位符(年报/月报流式共用药组)
+      if (prompt.user) {
+        prompt.user = prompt.user.replace(/__RISING_LOCAL__/g, 'Cancer');
+        prompt.user = prompt.user.replace(/__NATAL_SUN__/g, 'Leo');
+      }
+    }
+
+    // 🛠️ V165-crisis: 年报 system prompt 强制占位符替换(流式端点年报路径不经过 buildWealthReportPrompt 内的替换)
+    // 年报不走 buildWealthReportPrompt 的 yearlySystem 替换逻辑,在此兜底
+    if (reportType === 'yearly' && prompt) {
+      const rRising = astroMatrix?.meta?.rising_sign || 'Cancer';
+      const NATAL_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+      const natalEN = NATAL_EN[getNatalSunSign(birthDate)];
+      const first = astroMatrix?.months?.[0];
+      const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
+      const rJupH = first ? getH(first.jupiter?.house) : 2;
+      const rSatH = first ? getH(first.saturn?.house) : 10;
+      const rPlH = first ? getH(first.pluto?.house) : 8;
+      const rSunH = first ? getH(first.sun?.house) : 1;
+      const rJupS = first?.jupiter?.sign || 'Leo';
+      const rSatS = first?.saturn?.sign || 'Aries';
+      const rMoonS = first?.moon?.sign || 'Cancer';
+      const rMoonH = first ? getH(first.moon?.house) : 2;
+      // 熔断检测
+      const unreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
+      if (unreplaced.length > 0) {
+        console.warn('[V165-crisis] Unreplaced tokens:', unreplaced);
+      }
+      prompt.system = prompt.system
+        .replace(/__RISING_LOCAL__/g, rRising)
+        .replace(/__RISING_SIGN__/g, rRising)
+        .replace(/__NATAL_SUN__/g, natalEN)
+        .replace(/__NATAL_SUN_EN__/g, natalEN)
+        .replace(/__JUP_HOUSE__/g, String(rJupH))
+        .replace(/__SAT_HOUSE__/g, String(rSatH))
+        .replace(/__PL_HOUSE__/g, String(rPlH))
+        .replace(/__SUN_HOUSE__/g, String(rSunH))
+        .replace(/__MOON_HOUSE__/g, String(rMoonH))
+        .replace(/__JUP_SIGN_LOCAL__/g, rJupS)
+        .replace(/__SAT_SIGN_LOCAL__/g, rSatS)
+        .replace(/__MOON_SIGN_LOCAL__/g, rMoonS);
+      const stillUnreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
+      if (stillUnreplaced.length > 0) {
+        console.error('[V165-crisis] FATAL: After replacement still unreplaced:', stillUnreplaced);
+      }
     }
 
     if (!prompt) {
