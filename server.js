@@ -635,6 +635,10 @@ function fixSectionBrackets(text, lang) {
 function cleanMonthlyBrackets(text, lang = 'zh') {
   if (!text) return text;
     // step0: 中文周标题补[] (emoji开头: 🟢 第1周...)
+    if (lang === 'zh') {
+      const _dbgLines = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
+      console.log('[STEP0-DEBUG] lang=zh weekLines=', JSON.stringify(_dbgLines.slice(0,4)));
+    }
     text = text.split('\n').map(ln => {
     const m = ln.match(/^[\u{1F7E2}\u{1F534}\u{1F535}\u{1F7E1}]\s*(第[一二三四1-4]周.+)$/u);
       return m ? '[' + m[1] + ']' : ln;
