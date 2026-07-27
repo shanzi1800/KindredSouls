@@ -4455,6 +4455,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
+    console.log('[SEND-DEBUG] final weekLines=', JSON.stringify(cleanedText.split('\n').filter(l=>/周/.test(l)&&/第[一二三四1-4]/.test(l)).slice(0,4)));
     if (cleanedText !== fullTextCollector) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
