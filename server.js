@@ -657,9 +657,19 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
       const _dbgLines = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
       console.log('[STEP0-DEBUG] lang=zh weekLines=', JSON.stringify(_dbgLines.slice(0,4)));
     }
+    const _stripEmoji = (s) => s.replace(/[✦🔮⚠️\*]/g, '').replace(/\uFE0F/g, '').trim();
     text = text.split('\n').map(ln => {
+    const t = ln.trim();
+    // 已带 [ ] 的标题直接放行（幂等）
+    if (t.startsWith('[')) return ln;
+    // 周标题（现有）
     const m = ln.match(/^[\u{1F7E2}\u{1F534}\u{1F535}\u{1F7E1}]\s*(第[一二三四1-4]周.+)$/u);
-      return m ? '[' + m[1] + ']' : ln;
+    if (m) return '[' + m[1] + ']';
+    // 总览：🔮 本月命运主题（含可选 ✦ 框，幂等补 [ ]）——军师审计:中文月报开篇标题缺括号致前端切片漏识
+    if (/本月命运主题/.test(t) && /[✦🔮]/.test(t)) return '[' + _stripEmoji(t) + ']';
+    // 消费陷阱：⚠️ 消费陷阱 2026年7月（幂等补 [ ]）——军师审计:中文月报收尾标题缺括号致前端切片漏识
+    if (/消费陷阱/.test(t) && /[✦⚠]/.test(t)) return '[' + _stripEmoji(t) + ']';
+    return ln;
     }).join('\n');
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
   text = text.replace(/(第[一二三四1-4]周[^\n]{0,18}?)（）([^）\n]*?)）/g, '$1（$2）');
@@ -693,11 +703,26 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
   // 第1周错误写“水星顺行”→纠正为“水星逆行”
   // 第2周错误写“水星开始逆行”→纠正为“水星逆行持续”
   // 正确时间轴:7月上旬水星巨蟹座逆行,7月24日恢复顺行
-  if (lang === 'vi') {
-    // 支持 Thủy Tinh 和 Sao Thủy 两种表达
-    text = text.replace(/(Thủy Tinh|Sao Thủy)[^。\n]{0,30}?thuận hành/g, '$1 nghịch hành');
-    text = text.replace(/(Thủy Tinh|Sao Thủy) bắt đầu nghịch hành/g, '$1 nghịch hành tiếp tục');
-    text = text.replace(/nghịch hành trong Cự Giải nhà \d+[^。\n]{0,20}?thuận hành/g, 'nghịch hành trong Cự Giải');
+  // ── V172: 天文度数硬锁（中文月报）──
+  // 两星座间隔的相位度数必须真实：处女座(5)与白羊座(0)相隔5座=150度梅花相位，绝非90度四分相。
+  // 若 LLM 写的度数 ≠ 实际星座间隔度数，纠正为真实度数（若该间隔无标准相位则剥离度数词）。
+  if (lang === 'zh') {
+    const _ZH_SIGN = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
+    const _SEP2DEG = {0:0,1:30,2:60,3:90,4:120,5:150,6:180};
+    const _degRe = new RegExp('(' + _ZH_SIGN.join('|') + ')[^。\n]{0,18}?与[^。\n]{0,18}?(' + _ZH_SIGN.join('|') + ')[^。\n]{0,12}?(\\d+)度', 'g');
+    text = text.replace(_degRe, (m, sa, sb, nd) => {
+      const ia = _ZH_SIGN.indexOf(sa), ib = _ZH_SIGN.indexOf(sb);
+      if (ia < 0 || ib < 0 || !nd) return m;
+      const sep = Math.min(Math.abs(ia - ib), 12 - Math.abs(ia - ib));
+      const realDeg = _SEP2DEG[sep] || 0;
+      if (realDeg === 0) return m;           // 同座/合相不处理
+      if (Number(nd) === realDeg) return m;  // 度数已正确，放过
+      const tok = nd + '度';
+      const idx = m.lastIndexOf(tok);
+      if (idx < 0) return m;
+      // 纠正为真实度数（如 90度→150度）；若该间隔无标准相位则剥离"N度"
+      return realDeg > 0 ? (m.slice(0, idx) + realDeg + '度' + m.slice(idx + tok.length)) : m.replace(tok, '');
+    });
   }
   return text;
 }
