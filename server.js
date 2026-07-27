@@ -1128,21 +1128,33 @@ function house_linter(text, astroMatrix) {
     sunHouse = getH(_sunOf(first).house); moonHouse = getH(first.moon?.house);
   }
   const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
-  const rules = [
-    ['木星', jupHouse],
-    ['土星', satHouse],
-    ['冥王星', plHouse],
-    ['太阳', sunHouse],
-    ['月亮', moonHouse],
+  // 🛠️ V166-fix: 原 rules 仅用中文行星名,英文/西/法/泰/越正则用中文名匹配永远落空→月报宫位无人纠偏(木11/冥5)。
+  //    改为多语言行星名映射,对每种语言名分别跑中/西两套正则。
+  const NAME_MAP = {
+    jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
+    saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
+    pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
+    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+  };
+  const RULES = [
+    ['jupiter', jupHouse],
+    ['saturn', satHouse],
+    ['pluto', plHouse],
+    ['sun', sunHouse],
+    ['moon', moonHouse],
   ];
-  for (const [planet, house] of rules) {
+  for (const [key, house] of RULES) {
     if (!house) continue;
-    // 中文: 行星在X座第N宫 → 行星在X座第{house}宫
-    const reCN = new RegExp('(' + planet + '在[^第\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
-    text = text.replace(reCN, '$1' + toCN(house) + '宫');
-    // 英文: Planet in X House N → Planet in X House {house}
-    const reEN = new RegExp('(' + planet + '\\s+in\\s+[^H\n]{0,12}?House\\s*)\\d+', 'gi');
-    text = text.replace(reEN, '$1' + house);
+    for (const pname of NAME_MAP[key]) {
+      // 中文: 行星在X座第N宫 → 行星在X座第{house}宫
+      const reCN = new RegExp('(' + pname + '在[^第\\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
+      text = text.replace(reCN, '$1' + toCN(house) + '宫');
+      // 西文: Planet in X House N → Planet in X House {house}
+      // 🛠️ V166-fix: 统一覆盖 6 语言 house 词(House/Casa/Maison/ภพที่/เรือนที่/Nhà), 函数式 replacer 保留原空格, 杜绝 $3+数字组引用误判
+      const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
+      text = text.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
+    }
   }
   return text;
 }
@@ -3795,7 +3807,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 💎 先天财富DNA: 简化清洗(不涉及时间线/宫位锁)
         let sanitizedAI;
         if (reportType === 'monthly') {
-          sanitizedAI = (aiResult || '').replace(/�/g,'');
+          sanitizedAI = house_linter((aiResult || '').replace(/\uFFFD/g, ''), astroMatrix);
         } else if (reportType === 'once') {
           // 先天财富DNA: 只做基础清理
           sanitizedAI = (aiResult || '').replace(/�/g,'');
@@ -4494,7 +4506,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         for (let i=0; i<_rv2.length && _ex2>0; i++) { if (_rv2[i]==='）') { _rv2[i]=''; _ex2--; } }
         cleanedText = _rv2.reverse().join('');
       }
-      cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
+      cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/\uFFFD/g, '');
+      // 🛠️ V166-fix: 补回月报 house_linter(非破坏性,仅修正行星-宫位映射,杜绝英文月报木/冥/土星宫位幻觉)
+      cleanedText = house_linter(cleanedText, astroMatrix);
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
