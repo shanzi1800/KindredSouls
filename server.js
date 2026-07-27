@@ -610,7 +610,7 @@ function fixSectionBrackets(text, lang) {
       s = s.replace(/\s*\]+$/g, '');                           // 删结尾错配 ]（来自 **]）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
       // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
-        s = s.replace(/✦\s+(สัปดาห์ที่\s*\d+[^|\n]+)\s*\|/, '✦ [\$1] |');
+        s = s.replace(/✦\s+(สัปดาห์ที่\s*[๑๒๓๔\d]+[^\n]*?)\s+–\s*([ก-๙][^\n]*)/, '✦ [$1] $2');
       // V159-fix-vi: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
       if (!s.includes('[')) {
         // 西班牙语
