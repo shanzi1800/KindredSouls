@@ -486,9 +486,16 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         except Exception:
             birth_dt = datetime.strptime(bd_str, '%Y-%m-%d %H:%M')
     
-    # Julian Day for birth moment
-    jd_birth = swe.julday(birth_dt.year, birth_dt.month, birth_dt.day,
-                           birth_dt.hour + birth_dt.minute / 60.0)
+    # ── V166-fix: Convert to UTC for SwissEph ──
+    # SwissEph swe.julday() expects UTC, but birth_dt is in local timezone.
+    # Must convert to UTC before extracting year/month/day/hour, otherwise
+    # DST offset (e.g. Copenhagen +2h in summer) shifts the JD by 2 hours,
+    # causing rising sign to drift ~30° (e.g. Libra instead of Taurus).
+    utc_dt = birth_dt.astimezone(pytz.UTC)
+
+    # Julian Day for birth moment (in UTC)
+    jd_birth = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day,
+                           utc_dt.hour + utc_dt.minute / 60.0)
     
     # Calculate Ascendant using SwissEph
     try:
@@ -503,7 +510,7 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     
     # 🛠️ V142: 无出生时间→降级 Solar House (太阳星座=第1宫)
     # 先算出太阳星座，再把它当作"上升"，后面所有宫位自动=Solar House
-    _jd_sun = swe.julday(birth_dt.year, birth_dt.month, birth_dt.day, 12)
+    _jd_sun = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, 12)
     _sun_deg, _ = get_planet_pos(_jd_sun, swe.SUN)
     _sun_sign = get_sign(_sun_deg)
     if not birth_time_known:
