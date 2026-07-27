@@ -606,8 +606,8 @@ function fixSectionBrackets(text, lang) {
       s = s.replace(/\*\*/g, '');         // 剥加粗
       s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');
       if (!s.includes('[')) {
-        // 越南语: ✦ Tuần 1: Thg7 1–7 — Nạp năng lượng Tài sản → ✦ [Tuần 1: Thg7 1–7] Nạp năng lượng Tài sản
-        s = s.replace(/✦\s+(Tuần\s*\d+[^\n]{0,20}?\d{1,2}(?:–|-|—)\d{1,2})\s+/, '✦ [$1] ');
+        // 越南语(## 分支,已剥 ##): 兼容 '1–7/7'(无空格/带/M月份) 与 'Thg7 1–7'(有空格) 两种 LLM 非确定性输出
+        s = s.replace(/(Tuần\s*\d+\s*:\s*[^\n]*?)\**\s*(?=\s+[A-ZÀ-ÿ]|\n|$|\])/, '✦ [$1] ');
         s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
         s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
       }
@@ -617,7 +617,7 @@ function fixSectionBrackets(text, lang) {
     if (t.startsWith('✦') && HEADER_KEY_RE.test(t)) {
       let s = line.replace(/\*\*/g, '');                       // 剥 markdown 加粗
       s = s.replace(/\[\[+/g, '[').replace(/\]\]+/g, ']');   // 折叠双括号
-      s = s.replace(/\s*\]+$/g, '');                           // 删结尾错配 ]（来自 **]）
+      if (!s.includes('[')) s = s.replace(/\s*\]+$/, '');                 // 删结尾错配 ]（来自 **]，但放过已平衡的 [..] 标题）
       s = s.replace(/^✦\s*\[+/, '✦ [');                        // 规范化 ✦ [ 前缀
       // V159-fix: ✦ Semana 1: Jul 1–7 Recarga de Riqueza → ✦ [Semana 1: Jul 1–7] Recarga de Riqueza
         s = s.replace(/✦\s+(สัปดาห์ที่\s*[๑๒๓๔\d]+[^\n]*?)\s+–\s*([ก-๙][^\n]*)/, '✦ [$1] $2');
@@ -627,8 +627,8 @@ function fixSectionBrackets(text, lang) {
         s = s.replace(/✦\s+(Semana\s*\d+\s*:\s*[^\n]+?)\s+(?=[A-ZÁÉÍÓÚÑ])/, '✦ [$1] ');
         s = s.replace(/✦\s+(Visi[oó]n General)/, '✦ [$1]');
         s = s.replace(/✦\s+(Sombra Financiera)/, '✦ [$1]');
-        // 越南语
-        s = s.replace(/✦\s+(Tuần\s*\d+[^\n]{0,20}?\d{1,2}(?:–|-|—)\d{1,2})\s+/, '✦ [$1] ');
+        // 越南语(✦ 分支): 兼容 '1–7/7**'(无空格+**加粗) 与 'Thg7 23–31'(有空格) 与 '** [Tuần 3: 15–22/7**]'(双括号+加粗) 所有 LLM 非确定性变体
+        s = s.replace(/(✦\s*)?\**\s*(Tuần\s*\d+\s*:\s*[^\n]*?)\**\s*(?=\s+[A-ZÀ-ÿ]|\n|$|\])/, '✦ [$2] ');
         s = s.replace(/✦\s+(Tổng quan)/, '✦ [$1]');
         s = s.replace(/✦\s+(Bóng Tài chính)/, '✦ [$1]');
       }
