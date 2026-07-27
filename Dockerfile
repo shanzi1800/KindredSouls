@@ -1,7 +1,7 @@
 FROM node:22-slim
 
 # ── V116: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=20260715-V116-GEMINI-KEY
+ARG CACHE_BUST=20260727-V166-FORCE-REBUILD
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
