@@ -4181,7 +4181,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
   const {
     birthDate,
-    birthTime = '12:00',
+    birthTime,  // ⚠️ V176c-fix: 无默认值，缺省时 hasBirthTime=false 触发 Solar House 降级
+
     lat = 13.75,
     lon = 100.5,
     tz = 'Asia/Bangkok',
