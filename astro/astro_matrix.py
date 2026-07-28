@@ -211,6 +211,20 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
     
     # Find black swan days
     black_swan_days = find_crisis_days(year, month)
+
+    # ── V177-P2: Weekly Sun mid-point positions (W1-W4) ──
+    # 喂给 P1 数据块，让 LLM 照单抄每周太阳，杜绝本命/流年同名星座混淆幻觉
+    # 每周中点：第1周4日、第2周11日、第3周18日、第4周25日（2月取月末）
+    import calendar as _cal
+    _last_day = _cal.monthrange(year, month)[1]
+    _week_days = [4, 11, 18, min(25, _last_day)]
+    _weekly_sun = {}
+    for _wi, _wd in enumerate(_week_days, 1):
+        _wjd = swe.julday(year, month, _wd, 12)
+        _wdeg, _ = get_planet_pos(_wjd, swe.SUN)
+        _wsign = get_sign(_wdeg)
+        _whouse = get_house(_wsign, rising_sign)
+        _weekly_sun[f'w{_wi}'] = {'sign': _wsign, 'house': _whouse, 'retrograde': False}
     
     month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -237,6 +251,11 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
         'mars_uranus_aspect': mars_ur_aspect,
         'peak_window': peak_window,
         'black_swan_days': black_swan_days,
+        # ── V177-P2: Weekly Sun (W1-W4) for P1 data block ──
+        'w1': _weekly_sun['w1'],
+        'w2': _weekly_sun['w2'],
+        'w3': _weekly_sun['w3'],
+        'w4': _weekly_sun['w4'],
     }
 
 

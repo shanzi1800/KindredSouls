@@ -425,7 +425,18 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
       const rx = p.retrograde ? 'R' : '';
       parts.push(`${enName}=${signName}(H${house})${rx}`);
     });
-    lines.push(`  ${parts.join(' ')} [${wkMap}]`);
+    // ── V177-P2: 用每周太阳实际值替换占位符 wkMap（照单抄，杜绝 LLM 推理混淆）──
+    const wParts = [];
+    for (const wk of ['w1', 'w2', 'w3', 'w4']) {
+      const w = m[wk];
+      if (w?.sign) {
+        const wSignIdx = SIGN_NAMES.indexOf(w.sign);
+        const wSignName = L[wSignIdx] || w.sign;
+        const wHouse = _getH(w.house);
+        wParts.push(`${wk}=${wSignName}(H${wHouse})`);
+      }
+    }
+    lines.push(`  ${parts.join(' ')} [${wParts.join(',')}]`);
   });
 
   return lines.join('\n');
