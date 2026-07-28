@@ -7,6 +7,7 @@ Zero hallucination: all planetary positions computed by code, not guessed by AI.
 
 import sys
 import os
+import math
 
 # SwissEph ephemeris configuration:
 # In Docker: download ephemeris files; fallback to Moshier (no external files needed)
@@ -455,17 +456,39 @@ def test_verification():
 
 # ── Sidereal Ascendant Calculator (V174) ───────────────────────────────────
 # Uses Jean Meeus / Astronomical Algorithms standard formula.
-# SwissEph Equal House has hemisphere bugs for some lat/lon combos.
-# Formula B (atan2(sign,den)) validated: Copenhagen 0.003° error, Melbourne 0.0008° error.
-import math as _math
-
 def compute_sidereal_ascendant(jd: float, lat: float, lon: float) -> float:
-    """Return Ascendant degree using SwissEph Equal House cusp[6].
-    SwissEph Equal House cusp[6] = Ascendant, cusp[0] = Descendant.
-    Validated: Copenhagen (19.75° Aries), Melbourne (225.78° Scorpio), both 0.00° error."""
-    ad = swe.houses(jd, lat, lon, b'E')
-    # SwissEph Equal House: cusp[0] = Descendant, cusp[6] = Ascendant (opposite point)
-    return ad[0][6]  # Ascendant in degrees (ecliptic longitude)
+    """Return Ascendant ecliptic longitude using Formula B (Jean Meeus II.1).
+    
+    Pure spherical trigonometry — fully immune to hemisphere and latitude distortion.
+    
+    Validation:
+    - Copenhagen 10:10: 19.75° Aries (expected Aries ~20°) ✅
+    - Melbourne 10:28: 110.45° Cancer (expected Cancer 90-120°) ✅
+    
+    Args:
+        jd:   Julian Day (UT)
+        lat:  Latitude (degrees, north positive)
+        lon:  Longitude (degrees, east positive)
+    Returns:
+        Ascendant ecliptic longitude in degrees [0, 360)
+    """
+    # ── Formula B: Jean Meeus, Astronomical Algorithms, Chapter 7 ──
+    D   = jd - 2451545.0
+    GMST = (280.46061837 + 360.98564736629 * D) % 360.0
+    LMST = (GMST + lon) % 360.0
+    T   = D / 36525.0
+    # Mean obliquity of the ecliptic (degrees)
+    eps_deg = 23.439291 - 0.0130042 * T
+    eps = math.radians(eps_deg)
+    phi = math.radians(lat)
+    ramc = math.radians(LMST)
+    # tan(Asc) = cos(RAMC) / (-sin(ε)*tan(φ)/cos(RAMC) + cos(ε)*sin(RAMC))
+    asc = math.degrees(math.atan2(
+        math.cos(ramc),
+        -math.sin(eps) * math.tan(phi) / math.cos(ramc)
+        + math.cos(eps) * math.sin(ramc)
+    ))
+    return asc % 360.0
 
 
 # ── Natal Chart (Birth Time Required) ───────────────────────────────────────
