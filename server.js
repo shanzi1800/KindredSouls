@@ -5,7 +5,7 @@ import express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildAspectsData, v69HealthCheck } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -2619,6 +2619,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛠️ P1.1: 逐月全行星真理数据块(内行星+外行星+峰值+黑天鹅,按月隔离)
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
   const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
+  // 🛠️ V177-P1: 全12月可读行星数据块，LLM照单抄不瞎猜
+  const monthlyDataBlock = astroMatrix ? buildPerMonthDataBlock(astroMatrix, lang) : '';
 
   // ── 多语言标题字典（军师裁决 V136 — buildWealthReportPrompt 专用版）──
   const MONTH_ABBR = {
@@ -2859,6 +2861,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 以下天文数据来自 AstroMatrix，请严格遵循，禁止推理：
 ${planetBlockWithWarning}
 
+🛠️ [P1 全12月行星数据 - 严禁自行计算]:
+${monthlyDataBlock}
+
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [不可变 Token 铁律·P0]: 提到行星宫位时，你必须原样保留以下不可变标记（不要写成'第N宫'或任何数字，后端会用真实宫位自动替换）:
   • 木星宫位 → {{JUPITER_HOUSE}}
@@ -2936,6 +2941,9 @@ ${HT_RP.trap}
   - Pluto in Aquarius = House ${plHouse} (NOT House 11)
 ${planetBlockWithWarning}
 
+🛠️ [P1 FULL 12-MONTH PLANET DATA — COPY EXACTLY, NEVER CALCULATE]:
+${monthlyDataBlock}
+
 ASTROGRAPHIC RULES:
 • All planetary positions above are computed by Swiss Ephemeris — follow EXACTLY
 • Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
@@ -2972,6 +2980,9 @@ ${HT_RP.trap}
       es: `INSTRUCCIONES DE USUARIO:
 ${planetBlockWithWarning}
 
+🛠️ [P1 DATOS PLANETARIOS 12 MESES — COPIAR EXACTO, NUNCA CALCULAR]:
+${monthlyDataBlock}
+
 REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
 • NO usar terminología de aspectos como trino, cuadratura o sextil — usar descripción de energía
@@ -3005,6 +3016,9 @@ ${HT_RP.trap}
 `,
       fr: `INSTRUCTIONS UTILISATEUR:
 ${planetBlockWithWarning}
+
+🛠️ [P1 DONNÉES PLANÉTAIRES 12 MOIS — COPIER EXACTEMENT, NE JAMAIS CALCULER]:
+${monthlyDataBlock}
 
 RÈGLES ASTROGRAPHIQUES:
 • Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
@@ -3040,6 +3054,9 @@ ${HT_RP.trap}
       th: `คำแนะนำสำหรับผู้ใช้:
 ${planetBlockWithWarning}
 
+🛠️ [P1 ข้อมูลดาวเคราะห์ 12 เดือน — คัดลอกตรงๆ ห้ามคำนวณเอง]:
+${monthlyDataBlock}
+
 กฎดาราศาสตร์:
 • ตำแหน่งดาวเคราะห์ทั้งหมดมาจาก Swiss Ephemeris — ปฏิบัติตามอย่างเคร่งครัด
 • ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
@@ -3072,6 +3089,9 @@ ${HT_RP.trap}
 `,
       vi: `HƯỚNG DẪN CHO NGƯỜI DÙNG:
 ${planetBlockWithWarning}
+
+🛠️ [P1 DỮ LIỆU HÀNH TINH 12 THÁNG — SAO CHÉP CHÍNH XÁC, TUYỆT ĐỐI KHÔNG TÍNH TOÁN]:
+${monthlyDataBlock}
 
 QUY TẮC THIÊN VĂN:
 • Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC
