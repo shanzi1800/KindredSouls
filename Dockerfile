@@ -41,12 +41,11 @@ COPY . .
 
 # ── 部署指纹: CI 写入的 git SHA (build time) ──
 # CI workflow 在 checkout 后执行 git rev-parse HEAD > .git-sha
-# Dockerfile COPY 这个文件并输出验证
+# COPY . . 已经把 .git-sha 放到 /app/.git-sha (WORKDIR 是 /app)
 RUN if [ -f .git-sha ]; then \
-      cp .git-sha /app/.git-sha && \
-      echo "[DEPLOY FINGERPRINT] Git SHA: $(cat /app/.git-sha)"; \
+      echo "[DEPLOY FINGERPRINT] Git SHA: $(cat .git-sha)"; \
     else \
-      echo "unknown" > /app/.git-sha && \
+      echo "unknown" > .git-sha && \
       echo "[DEPLOY FINGERPRINT] No .git-sha file found, using 'unknown'"; \
     fi
 
