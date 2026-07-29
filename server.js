@@ -1946,14 +1946,24 @@ app.get('/api/debug-source', async (req, res) => {
 // 🛠️ V120-fix27: 健康检查移到 /api/health，让 / 走静态文件服务
 // 🛠️ 2026-07-29: 读 Railway 自动注入的 RAILWAY_GIT_COMMIT_SHORT_SHA / RAILWAY_DEPLOYMENT_ID
 //                  一秒确认部署版本;此前被 app.use('/api/health', ...) 遮蔽不可达
+// 🛠️ 2026-07-29 16:41: Railway 环境变量不注入 Dockerfile 部署，改为读 /app/.git-sha 文件
 app.get('/api/health', async (req, res) => {
+  let gitSha = 'unknown';
+  let gitShaFull = 'unknown';
+  try {
+    const shaFile = readFileSync('/app/.git-sha', 'utf-8').trim();
+    if (shaFile && shaFile !== 'unknown') {
+      gitShaFull = shaFile;
+      gitSha = shaFile.substring(0, 7);
+    }
+  } catch (e) {}
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
     version: 'v1.0.0-V120FIX26-DBG-SSE',
-    gitSha: process.env.RAILWAY_GIT_COMMIT_SHORT_SHA || process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
-    gitShaFull: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
+    gitSha,
+    gitShaFull,
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
     environment: process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_ENVIRONMENT_NAME || 'unknown',
     railpackVersion: process.env.RAILPACK_VERSION || 'unknown',

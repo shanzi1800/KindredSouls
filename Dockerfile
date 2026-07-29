@@ -39,6 +39,11 @@ RUN echo "BUILD_TRIGGER_$(date +%s%N)"
 
 COPY . .
 
+# ── 写入 git commit SHA 到容器文件 (部署指纹) ──
+RUN apt-get update && apt-get install -y --no-install-recommends git && \
+    if [ -d .git ]; then git rev-parse HEAD > /app/.git-sha; else echo "unknown" > /app/.git-sha; fi && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN npm install && npm install express stripe
 RUN rm -rf web/dist && cd web && npm install && npm run build && cd ..
 
