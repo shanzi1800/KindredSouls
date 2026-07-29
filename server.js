@@ -4355,6 +4355,25 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
         }
         
+        // 🛠️ V186: 消费陷阱标头清洗(军师审计:P0 缺方括号)
+        // HIT 路径也要执行,否则缓存里的错误格式会裸奔
+        streamText = streamText.split('\n').map(ln => {
+          const t = ln.trim();
+          if (/消费陷阱/.test(t)) {
+            if (t.startsWith('[')) {
+              let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
+              inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+              if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
+              return '[' + inner + ']';
+            } else {
+              let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+              if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
+              return '[' + normalized + ']';
+            }
+          }
+          return ln;
+        }).join('\n');
+        
         // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
         const CHUNK_SIZE = 2000;
