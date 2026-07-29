@@ -668,9 +668,13 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
     // 总览：🔮 本月命运主题（含可选 ✦ 框，幂等补 [ ]）——军师审计:中文月报开篇标题缺括号致前端切片漏识
     if (/本月命运主题/.test(t) && /[✦🔮]/.test(t)) return '[' + _stripEmoji(t) + ']';
     // 消费陷阱：⚠️ 消费陷阱 2026年7月（幂等补 [ ]）——军师审计:中文月报收尾标题缺括号致前端切片漏识
-    // V181-fix: 加强匹配，支持无 ✦ 前缀的纯 emoji 标题
+    // V182-fix: 保留 emoji，加冒号，包裹方括号
     if (/消费陷阱/.test(t) && /⚠/.test(t)) {
-      if (!t.startsWith('[')) return '[' + _stripEmoji(t).replace(/:/g, '：') + ']';
+      if (!t.startsWith('[')) {
+        // ⚠️ 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
+        const normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+        return '[' + normalized + ']';
+      }
     }
     return ln;
     }).join('\n');
