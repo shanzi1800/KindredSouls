@@ -668,7 +668,10 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
     // 总览：🔮 本月命运主题（含可选 ✦ 框，幂等补 [ ]）——军师审计:中文月报开篇标题缺括号致前端切片漏识
     if (/本月命运主题/.test(t) && /[✦🔮]/.test(t)) return '[' + _stripEmoji(t) + ']';
     // 消费陷阱：⚠️ 消费陷阱 2026年7月（幂等补 [ ]）——军师审计:中文月报收尾标题缺括号致前端切片漏识
-    if (/消费陷阱/.test(t) && /[✦⚠]/.test(t)) return '[' + _stripEmoji(t) + ']';
+    // V181-fix: 加强匹配，支持无 ✦ 前缀的纯 emoji 标题
+    if (/消费陷阱/.test(t) && /⚠/.test(t)) {
+      if (!t.startsWith('[')) return '[' + _stripEmoji(t).replace(/:/g, '：') + ']';
+    }
     return ln;
     }).join('\n');
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
@@ -1050,6 +1053,10 @@ function natal_sun_linter(text, natalSunSign, ascendant) {
     text = text.replace(new RegExp('本命太阳在' + wrongSign + '座', 'g'), '本命太阳在' + natalSunSign + '座');
     text = text.replace(new RegExp('作为' + wrongSign + '之人', 'g'), '作为' + natalSunSign + '之人');
     text = text.replace(new RegExp('(^|[\\s,。、])' + wrongSign + '之人', 'g'), '$1' + natalSunSign + '之人');
+    
+    // 🛠️ V181-fix: "X座本命太阳"模式(军师审计:摩羯本命太阳应为双鱼)
+    //   "金星在处女座与摩羯座本命太阳的谐和联动" → "金星在处女座与双鱼座本命太阳的镜像联动"
+    text = text.replace(new RegExp(wrongSign + '本命太阳', 'g'), natalSunSign + '本命太阳');
   }
 
   // 2) 反向残括号:但水星)→ 但水星(逆行) 或补前(
