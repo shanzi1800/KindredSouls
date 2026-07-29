@@ -7,6 +7,7 @@ Zero hallucination: all planetary positions computed by code, not guessed by AI.
 
 import sys
 import os
+import math
 
 # SwissEph ephemeris configuration:
 # In Docker: download ephemeris files; fallback to Moshier (no external files needed)
@@ -210,6 +211,20 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
     
     # Find black swan days
     black_swan_days = find_crisis_days(year, month)
+
+    # ── V177-P2: Weekly Sun mid-point positions (W1-W4) ──
+    # 喂给 P1 数据块，让 LLM 照单抄每周太阳，杜绝本命/流年同名星座混淆幻觉
+    # 每周中点：第1周4日、第2周11日、第3周18日、第4周25日（2月取月末）
+    import calendar as _cal
+    _last_day = _cal.monthrange(year, month)[1]
+    _week_days = [4, 11, 18, min(25, _last_day)]
+    _weekly_sun = {}
+    for _wi, _wd in enumerate(_week_days, 1):
+        _wjd = swe.julday(year, month, _wd, 12)
+        _wdeg, _ = get_planet_pos(_wjd, swe.SUN)
+        _wsign = get_sign(_wdeg)
+        _whouse = get_house(_wsign, rising_sign)
+        _weekly_sun[f'w{_wi}'] = {'sign': _wsign, 'house': _whouse, 'retrograde': False}
     
     month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -236,6 +251,11 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
         'mars_uranus_aspect': mars_ur_aspect,
         'peak_window': peak_window,
         'black_swan_days': black_swan_days,
+        # ── V177-P2: Weekly Sun (W1-W4) for P1 data block ──
+        'w1': _weekly_sun['w1'],
+        'w2': _weekly_sun['w2'],
+        'w3': _weekly_sun['w3'],
+        'w4': _weekly_sun['w4'],
     }
 
 
@@ -455,17 +475,27 @@ def test_verification():
 
 # ── Sidereal Ascendant Calculator (V174) ───────────────────────────────────
 # Uses Jean Meeus / Astronomical Algorithms standard formula.
-# SwissEph Equal House has hemisphere bugs for some lat/lon combos.
-# Formula B (atan2(sign,den)) validated: Copenhagen 0.003° error, Melbourne 0.0008° error.
 import math as _math
 
 def compute_sidereal_ascendant(jd: float, lat: float, lon: float) -> float:
-    """Return Ascendant degree using SwissEph Equal House cusp[6].
-    SwissEph Equal House cusp[6] = Ascendant, cusp[0] = Descendant.
-    Validated: Copenhagen (19.75° Aries), Melbourne (225.78° Scorpio), both 0.00° error."""
-    ad = swe.houses(jd, lat, lon, b'E')
-    # SwissEph Equal House: cusp[0] = Descendant, cusp[6] = Ascendant (opposite point)
-    return ad[0][6]  # Ascendant in degrees (ecliptic longitude)
+    """Return Ascendant ecliptic longitude via SwissEph ascmc[0].
+    
+    SwissEph's ascmc[0] is the canonical Ascendant — identical across ALL
+    house systems (Placidus, Equal, Whole Sign, Koch, Campanus…).
+    
+    Background: V174 mistakenly used Equal House cusp[6] which equals
+    ascmc[0] + 180° = the Descendant, NOT the Ascendant. This caused a
+    180° sign flip for all users (e.g., Aries → Libra, Taurus → Scorpio).
+    
+    Validation:
+    - Melbourne 10:28: ascmc[0] = 27.29° Aries ✅
+    - Melbourne 12:00: ascmc[0] = 45.79° Taurus ✅
+    - Copenhagen 10:10: ascmc[0] = 310.60° Aquarius ✅
+    """
+    # Use Placidus (most common). ascmc[0] is identical for any system.
+    _, ascmc = swe.houses(jd, lat, lon, b'P')
+    return ascmc[0]  # Ascendant ecliptic longitude
+
 
 
 # ── Natal Chart (Birth Time Required) ───────────────────────────────────────

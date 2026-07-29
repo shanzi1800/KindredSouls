@@ -359,6 +359,90 @@ export function buildPerMonthData(astroMatrix) {
 }
 
 // ── Build Aspects Data ────────────────────────────────────────────────────────
+// 🛠️ V177-P1: 生成全12月可读行星数据块，喂进月报Prompt让LLM照单抄不瞎猜
+const PLANET_KEYS_MONTHLY = [
+  ['sun','Sun'],['moon','Moon'],['mercury','Mercury'],
+  ['venus','Venus'],['mars','Mars'],['jupiter','Jupiter'],
+  ['saturn','Saturn'],['uranus','Uranus'],['neptune','Neptune'],['pluto','Pluto'],
+];
+const SIGN_NAMES = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'];
+const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
+const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
+
+export function buildPerMonthDataBlock(astroMatrix, lang) {
+  if (!astroMatrix?.months) return '';
+  const months = astroMatrix.months;
+  const labels = {
+    zh: ['白羊','金牛','双子','巨蟹','狮子','处女','天秤','天蝎','射手','摩羯','水瓶','双鱼'],
+    en: SIGN_NAMES,
+    es: ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'],
+    fr: ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'],
+    th: ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'],
+    vi: ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'],
+  };
+  const L = labels[lang] || labels.zh;
+
+  // 月份标签
+  const monthAbbr = {
+    zh: ['7月','8月','9月','10月','11月','12月','1月','2月','3月','4月','5月','6月'],
+    en: ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'],
+    es: ['Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun'],
+    fr: ['Juil','Août','Sep','Oct','Nov','Déc','Janv','Févr','Mars','Avr','Mai','Juin'],
+    th: ['ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'],
+    vi: ['Thg7','Thg8','Thg9','Thg10','Thg11','Thg12','Thg1','Thg2','Thg3','Thg4','Thg5','Thg6'],
+  };
+  const mAbbr = monthAbbr[lang] || monthAbbr.zh;
+
+  const lines = ['[P1 PER-MONTH PLANET DATA — EVERY WORD IS TRUE — COPY EXACTLY INTO YOUR REPORT]'];
+  months.forEach((m, i) => {
+    const wkMap = i === 0 ? 'W1=Wk1,W2=Wk2,W3=Wk3,W4=Wk4' :
+                  i === 1 ? 'W1=Wk5,W2=Wk6,W3=Wk7,W4=Wk8' :
+                  i === 2 ? 'W1=Wk9,W2=Wk10,W3=Wk11,W4=Wk12' :
+                  i === 3 ? 'W1=Wk13,W2=Wk14,W3=Wk15,W4=Wk16' :
+                  i === 4 ? 'W1=Wk17,W2=Wk18,W3=Wk19,W4=Wk20' :
+                  i === 5 ? 'W1=Wk21,W2=Wk22,W3=Wk23,W4=Wk24' :
+                  i === 6 ? 'W1=Wk25,W2=Wk26,W3=Wk27,W4=Wk28' :
+                  i === 7 ? 'W1=Wk29,W2=Wk30,W3=Wk31,W4=Wk32' :
+                  i === 8 ? 'W1=Wk33,W2=Wk34,W3=Wk35,W4=Wk36' :
+                  i === 9 ? 'W1=Wk37,W2=Wk38,W3=Wk39,W4=Wk40' :
+                  i === 10 ? 'W1=Wk41,W2=Wk42,W3=Wk43,W4=Wk44' :
+                  'W1=Wk45,W2=Wk46,W3=Wk47,W4=Wk48';
+    const sunData = _sunOf(m);
+    const sunSignIdx = SIGN_NAMES.indexOf(sunData.sign);
+    const sunSignName = L[sunSignIdx] || sunData.sign;
+    const sunHouse = _getH(sunData.house);
+
+    const parts = [`${mAbbr[i]}:`];
+    parts.push(`Sun=${sunSignName}(H${sunHouse})`);
+
+    PLANET_KEYS_MONTHLY.forEach(([k, enName]) => {
+      if (k === 'sun') return; // handled above
+      const p = m[k];
+      if (!p?.sign) return;
+      const signIdx = SIGN_NAMES.indexOf(p.sign);
+      const signName = L[signIdx] || p.sign;
+      const house = _getH(p.house);
+      const rx = p.retrograde ? 'R' : '';
+      parts.push(`${enName}=${signName}(H${house})${rx}`);
+    });
+    // ── V177-P2: 用每周太阳实际值替换占位符 wkMap（照单抄，杜绝 LLM 推理混淆）──
+    const wParts = [];
+    for (const wk of ['w1', 'w2', 'w3', 'w4']) {
+      const w = m[wk];
+      if (w?.sign) {
+        const wSignIdx = SIGN_NAMES.indexOf(w.sign);
+        const wSignName = L[wSignIdx] || w.sign;
+        const wHouse = _getH(w.house);
+        wParts.push(`${wk}=${wSignName}(H${wHouse})`);
+      }
+    }
+    lines.push(`  ${parts.join(' ')} [${wParts.join(',')}]`);
+  });
+
+  return lines.join('\n');
+}
+
+// 保留旧接口（年报用）
 export function buildAspectsData(astroMatrix) {
   if (!astroMatrix?.months) return [];
   return astroMatrix.months.map(m => ({

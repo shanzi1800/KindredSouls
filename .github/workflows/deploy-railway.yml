@@ -3,7 +3,7 @@ name: Deploy to Railway
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,9 +18,10 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway
-        run: railway up --detach --service kindredsouls
+        run: railway up --detach --service KindredSouls
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: 738a638d-f90d-45b0-94cb-f501ae31c5d2
         timeout-minutes: 10
 
       - name: Verify deployment

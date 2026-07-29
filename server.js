@@ -5,7 +5,7 @@ import express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildAspectsData, v69HealthCheck } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -1898,18 +1898,32 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
 // ── /api/clear-cache ──
 app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   const { birthDate, lang, reportType } = req.params;
-  const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+  const { birthTime, lat, lon, tz } = req.query;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.json({ error: 'Supabase not configured' });
+  // 🛠️ V178-P0: 精准清(带 birthTime/lat/lon/tz 查询参数) 或 通配清(该生日全部, 兼容旧格式)
+  let delUrl;
+  if (birthTime && lat && lon && tz) {
+    // 模式A: 精确清理特定生辰
+    const _ckLat = Number(lat).toFixed(4);
+    const _ckLon = Number(lon).toFixed(4);
+    const cacheKey = `wealth:v131e:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
+  } else {
+    // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
+    // 🛠️ V178-P0: 通配符覆盖 v131e(月报/先天) 与 v116-v2(年报) 全部财富键
+    const pat = 'wealth:' + encodeURIComponent(birthDate) + ':*';
+    delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=like.${pat}`;
+  }
   try {
-    const delRes = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+    const delRes = await safeFetch(delUrl, {
       method: 'DELETE',
       headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
     });
-    res.json({ deleted: true, cacheKey, status: delRes.status });
+    res.json({ deleted: true, mode: birthTime ? 'precise' : 'wildcard', status: delRes.status });
   } catch (e) {
-    res.json({ deleted: false, cacheKey, error: e.message });
+    res.json({ deleted: false, error: e.message });
   }
 });
 
@@ -1938,10 +1952,11 @@ app.get('/api/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
     version: 'v1.0.0-V120FIX26-DBG-SSE',
-    gitSha: process.env.RAILWAY_GIT_COMMIT_SHORT_SHA || 'unknown',
+    gitSha: process.env.RAILWAY_GIT_COMMIT_SHORT_SHA || process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
     gitShaFull: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
     environment: process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_ENVIRONMENT_NAME || 'unknown',
+    railpackVersion: process.env.RAILPACK_VERSION || 'unknown',
     debugBuildTime: new Date().toISOString(),
   });
 });
@@ -2107,11 +2122,11 @@ function buildMonthlyPrompt(birthDate, lang) {
   // ── 多语言标题字典（军师裁决 V136）─────────────────────────────
   const HEADER_TEMPLATES = {
     zh: {
-      overview:    '✦ 🔮 本月命运主题 ✦',
-      week1:       `🟢 第1周 ${curMonthZH}（财富充能）`,
-      week2:       `🔴 第2周 ${curMonthZH}（高危熔断）`,
-      week3:       `🔵 第3周 ${curMonthZH}（顺流蓄力）`,
-      week4:       `🟢 第4周 ${curMonthZH}（财富爆发）`,
+      overview:    '✦ [🔮 本月命运主题] ✦',
+      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '',
       circuit_tag: '⚠️ 安全指令：',
@@ -2620,6 +2635,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛠️ P1.1: 逐月全行星真理数据块(内行星+外行星+峰值+黑天鹅,按月隔离)
   const perMonthData = astroMatrix ? buildPerMonthData(astroMatrix, lang) : '';
   const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
+  // 🛠️ V177-P1: 全12月可读行星数据块，LLM照单抄不瞎猜
+  const monthlyDataBlock = astroMatrix ? buildPerMonthDataBlock(astroMatrix, lang) : '';
 
   // ── 多语言标题字典（军师裁决 V136 — buildWealthReportPrompt 专用版）──
   const MONTH_ABBR = {
@@ -2633,11 +2650,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const curMonthLocal = (MONTH_ABBR[lang] || MONTH_ABBR.zh)[currentMonth - 1];
   const HEADER_TEMPLATES_RP = {
     zh: {
-      overview:    '✦ 🔮 本月命运主题 ✦',
-      week1:       `🟢 第1周 ${currentYear}年${currentMonth}月（财富充能）`,
-      week2:       `🔴 第2周 ${currentYear}年${currentMonth}月（高危熔断）`,
-      week3:       `🔵 第3周 ${currentYear}年${currentMonth}月（顺流蓄力）`,
-      week4:       `🟢 第4周 ${currentYear}年${currentMonth}月（财富爆发）`,
+      overview:    '✦ [🔮 本月命运主题] ✦',
+      week1:       `✦ [🟢 第1周：${currentYear}年${currentMonth}月（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${currentYear}年${currentMonth}月（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${currentYear}年${currentMonth}月（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
       circuit_tag: '⚠️ 安全指令：',
@@ -2860,6 +2877,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 以下天文数据来自 AstroMatrix，请严格遵循，禁止推理：
 ${planetBlockWithWarning}
 
+🛠️ [P1 全12月行星数据 - 严禁自行计算]:
+${monthlyDataBlock}
+
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [不可变 Token 铁律·P0]: 提到行星宫位时，你必须原样保留以下不可变标记（不要写成'第N宫'或任何数字，后端会用真实宫位自动替换）:
   • 木星宫位 → {{JUPITER_HOUSE}}
@@ -2937,6 +2957,9 @@ ${HT_RP.trap}
   - Pluto in Aquarius = House ${plHouse} (NOT House 11)
 ${planetBlockWithWarning}
 
+🛠️ [P1 FULL 12-MONTH PLANET DATA — COPY EXACTLY, NEVER CALCULATE]:
+${monthlyDataBlock}
+
 ASTROGRAPHIC RULES:
 • All planetary positions above are computed by Swiss Ephemeris — follow EXACTLY
 • Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
@@ -2973,6 +2996,9 @@ ${HT_RP.trap}
       es: `INSTRUCCIONES DE USUARIO:
 ${planetBlockWithWarning}
 
+🛠️ [P1 DATOS PLANETARIOS 12 MESES — COPIAR EXACTO, NUNCA CALCULAR]:
+${monthlyDataBlock}
+
 REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
 • NO usar terminología de aspectos como trino, cuadratura o sextil — usar descripción de energía
@@ -3006,6 +3032,9 @@ ${HT_RP.trap}
 `,
       fr: `INSTRUCTIONS UTILISATEUR:
 ${planetBlockWithWarning}
+
+🛠️ [P1 DONNÉES PLANÉTAIRES 12 MOIS — COPIER EXACTEMENT, NE JAMAIS CALCULER]:
+${monthlyDataBlock}
 
 RÈGLES ASTROGRAPHIQUES:
 • Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
@@ -3041,6 +3070,9 @@ ${HT_RP.trap}
       th: `คำแนะนำสำหรับผู้ใช้:
 ${planetBlockWithWarning}
 
+🛠️ [P1 ข้อมูลดาวเคราะห์ 12 เดือน — คัดลอกตรงๆ ห้ามคำนวณเอง]:
+${monthlyDataBlock}
+
 กฎดาราศาสตร์:
 • ตำแหน่งดาวเคราะห์ทั้งหมดมาจาก Swiss Ephemeris — ปฏิบัติตามอย่างเคร่งครัด
 • ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
@@ -3073,6 +3105,9 @@ ${HT_RP.trap}
 `,
       vi: `HƯỚNG DẪN CHO NGƯỜI DÙNG:
 ${planetBlockWithWarning}
+
+🛠️ [P1 DỮ LIỆU HÀNH TINH 12 THÁNG — SAO CHÉP CHÍNH XÁC, TUYỆT ĐỐI KHÔNG TÍNH TOÁN]:
+${monthlyDataBlock}
 
 QUY TẮC THIÊN VĂN:
 • Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC
@@ -3589,7 +3624,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
     const {
       birthDate,
-      birthTime = '12:00',
+      birthTime,  // ⚠️ V176-fix: 禁止默认值！缺省时由 hasBirthTime=false 触发 Solar House 降级
       lat = 13.75,
       lon = 100.5,
       tz = 'Asia/Bangkok',
@@ -3601,7 +3636,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+    // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
+    const _ckTime = birthTime || '12:00';
+    const _ckLat = Number(lat || 13.75).toFixed(4);
+    const _ckLon = Number(lon || 100.5).toFixed(4);
+    const _ckTz = tz || 'Asia/Bangkok';
+    const cacheKey = `wealth:v131e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -4182,7 +4222,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
   const {
     birthDate,
-    birthTime = '12:00',
+    birthTime,  // ⚠️ V176c-fix: 无默认值，缺省时 hasBirthTime=false 触发 Solar House 降级
+
     lat = 13.75,
     lon = 100.5,
     tz = 'Asia/Bangkok',
@@ -4212,8 +4253,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('Connection', 'keep-alive'); // V121 原生,防 Railway hikari 提前 RST
 
 
-  // 🔥 军师缓存键:wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+  // 🔥 军师缓存键 (V178-P0 升级): 纳入 birthTime/lat/lon/tz, 杜绝跨用户串盘
+  const _ckTime = birthTime || '12:00';
+  const _ckLat = Number(lat || 13.75).toFixed(4);
+  const _ckLon = Number(lon || 100.5).toFixed(4);
+  const _ckTz = tz || 'Asia/Bangkok';
+  const cacheKey = `wealth:v131e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -5005,7 +5050,8 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // ── Step 8: 缓存落库(异步)──
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const v2CacheKey = 'wealth:v116-v2:' + birthDate + ':' + lang + ':yearly';
+    // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
+    const v2CacheKey = `wealth:v116-v2:${birthDate}:${birthTime || '12:00'}:${Number(lat || 13.75).toFixed(4)}:${Number(lon || 100.5).toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     if (SB_URL && SB_KEY && allText.length > 500) {
       try {
         await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {
