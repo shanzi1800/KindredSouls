@@ -50,7 +50,16 @@ RUN if [ -f .git-sha ]; then \
     fi
 
 RUN npm install && npm install express stripe
-RUN rm -rf web/dist && cd web && npm install && npm run build && cd ..
+
+# ── 前端构建: Vite 环境变量注入 ──
+# Supabase 凭据必须在构建时注入 Vite，否则运行时报错 supabaseUrl is required
+RUN rm -rf web/dist && \
+    cd web && \
+    npm install && \
+    VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co \
+    VITE_SUPABASE_ANON_KEY=sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv \
+    npm run build && \
+    cd ..
 
 EXPOSE 3000
 
