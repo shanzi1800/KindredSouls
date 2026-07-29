@@ -743,6 +743,9 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
       return realDeg > 0 ? (m.slice(0, idx) + realDeg + '度' + m.slice(idx + tok.length)) : m.replace(tok, '');
     });
   }
+  // 🛠️ V188: 括号崩塌兜底(军师审计: 冥）王星 / 第11）宫 等错位右括号)
+  // 只删夹在中文/数字之间的错位右括号,绝不误伤合法 (第X宫)
+  text = text.replace(/([\u4e00-\u9fff0-9])）([\u4e00-\u9fff])/g, '$1$2');
   return text;
 }
 
@@ -2237,7 +2240,9 @@ function buildMonthlyPrompt(birthDate, lang) {
     vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.`,
   };
 
-  const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
+  // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
+  const COT_BLOCK_RULE = '\n\n### 🛑 绝对禁忌（System Boundary）：\n1. 严禁在输出文本中包含任何思考过程、自我纠错、数据合法性讨论、或对 Prompt 规则的元解析（如“注意：规则禁止...”、“数据写...不符合常理”等）。\n2. 内部推理必须全部在思考空间完成，最终输出给用户的必须是100%纯净、无任何思考痕迹、标点闭合完全正确的终端文章！';
+  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + COT_BLOCK_RULE;
 
   return {
     system: monthlySystem,
@@ -2902,7 +2907,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
-    const monthlySystem = MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en;
+    const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + `\n\n### 🛑 绝对禁忌（System Boundary）：\n1. 严禁在输出文本中包含任何思考过程、自我纠错、数据合法性讨论、或对 Prompt 规则的元解析（如"注意：规则禁止..."、"数据写...不符合常理"等）。\n2. 内部推理必须全部在思考空间完成，最终输出给用户的必须是100%纯净、无任何思考痕迹、标点闭合完全正确的终端文章！`;
 
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
