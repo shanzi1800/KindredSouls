@@ -660,6 +660,25 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
     const _stripEmoji = (s) => s.replace(/[✦🔮⚠️\*]/g, '').replace(/\uFE0F/g, '').trim();
     text = text.split('\n').map(ln => {
     const t = ln.trim();
+    // ── 先处理特殊内容，再判断括号 ──
+    // 消费陷阱：[消费陷阱 2026年7月] → [⚠️ 消费陷阱：2026年7月]
+    // V184-fix: 必须在 startsWith('[') 判断之前检查，否则会被放行
+    if (/消费陷阱/.test(t)) {
+      // 已有方括号，但内容不对（缺 emoji 或冒号）
+      if (t.startsWith('[')) {
+        // [消费陷阱 2026年7月] → 消费陷阱 2026年7月
+        let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
+        inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+        if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
+        return '[' + inner + ']';
+      } else {
+        // 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
+        let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+        if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
+        return '[' + normalized + ']';
+      }
+    }
+    
     // 已带 [ ] 的标题直接放行（幂等）——但先清理多余括号
     if (t.startsWith('[[')) {
       // [[ 本月命运主题]] → [🔮 本月命运主题]
@@ -669,22 +688,6 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
       return cleaned;
     }
     if (t.startsWith('[')) return ln;
-    // 周标题（现有）
-    const m = ln.match(/^[\u{1F7E2}\u{1F534}\u{1F535}\u{1F7E1}]\s*(第[一二三四1-4]周.+)$/u);
-    if (m) return '[' + m[1] + ']';
-    // 总览：🔮 本月命运主题（含可选 ✦ 框，幂等补 [ ]）——军师审计:中文月报开篇标题缺括号致前端切片漏识
-    if (/本月命运主题/.test(t) && /[✦🔮]/.test(t)) return '[' + _stripEmoji(t) + ']';
-    // 消费陷阱：消费陷阱 2026年7月（幂等补 [ ]）——军师审计:中文月报收尾标题缺括号致前端切片漏识
-    // V183-fix: 不依赖 emoji，强制包裹 + 加冒号
-    if (/消费陷阱/.test(t)) {
-      if (!t.startsWith('[')) {
-        // 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
-        let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-        // 如果没有 ⚠️ 前缀，加上
-        if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
-        return '[' + normalized + ']';
-      }
-    }
     return ln;
     }).join('\n');
   // 1. 周标题空括号: 第2周 2026年7月（）高危熔断 → 第2周 2026年7月（高危熔断）
