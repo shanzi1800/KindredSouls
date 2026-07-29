@@ -670,12 +670,12 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
         let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
         inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
         if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
-        return '[' + inner + ']';
+        return '✦\n[' + inner + ']';  // 🛠️ V187: 加 ✦ 分隔符
       } else {
         // 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
         let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
         if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
-        return '[' + normalized + ']';
+        return '✦\n[' + normalized + ']';  // 🛠️ V187: 加 ✦ 分隔符
       }
     }
     
@@ -4364,11 +4364,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
               inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
               if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
-              return '[' + inner + ']';
+              return '✦\n[' + inner + ']';  // 🛠️ V187: 加 ✦ 分隔符
             } else {
               let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
               if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
-              return '[' + normalized + ']';
+              return '✦\n[' + normalized + ']';  // 🛠️ V187: 加 ✦ 分隔符
             }
           }
           return ln;
