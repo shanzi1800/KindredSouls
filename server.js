@@ -1913,17 +1913,6 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   }
 });
 
-// ── /api/health ──
-app.use('/api/health', async (req, res) => {
-  // V99n: 动态读取 git SHA(而非硬编码死值)
-  let gitSha = 'unknown';
-  try {
-    const { execSync } = require('child_process');
-    gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-  } catch(e) {}
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api', version: 'v1.0.0-V120FIX26-DBG-SSE', gitSha, debugBuildTime: new Date().toISOString() });
-});
-
 // ── Root health check for Railway ──
 app.get('/api/debug-source', async (req, res) => {
   try {
@@ -1941,8 +1930,20 @@ app.get('/api/debug-source', async (req, res) => {
 });
 
 // 🛠️ V120-fix27: 健康检查移到 /api/health，让 / 走静态文件服务
+// 🛠️ 2026-07-29: 读 Railway 自动注入的 RAILWAY_GIT_COMMIT_SHORT_SHA / RAILWAY_DEPLOYMENT_ID
+//                  一秒确认部署版本;此前被 app.use('/api/health', ...) 遮蔽不可达
 app.get('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'kindredsouls-api',
+    version: 'v1.0.0-V120FIX26-DBG-SSE',
+    gitSha: process.env.RAILWAY_GIT_COMMIT_SHORT_SHA || 'unknown',
+    gitShaFull: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
+    deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
+    environment: process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_ENVIRONMENT_NAME || 'unknown',
+    debugBuildTime: new Date().toISOString(),
+  });
 });
 
 // ── 确定性种子:从用户 Prompt 中提取生日算 seed,确保同用户出同结果 ──
