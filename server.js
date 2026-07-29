@@ -1956,7 +1956,15 @@ app.get('/api/debug-source', async (req, res) => {
 
 // 🛠️ V120-fix27: 健康检查移到 /api/health，让 / 走静态文件服务
 app.get('/api/health', async (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'kindredsouls-api' });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'kindredsouls-api',
+    // 🛠️ V180: 部署指纹 - Railway 注入的真实 commit SHA + deployment ID
+    gitSha: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
+    deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
+    railpackVersion: process.env.RAILPACK_VERSION || 'unknown',
+  });
 });
 
 // ── 确定性种子:从用户 Prompt 中提取生日算 seed,确保同用户出同结果 ──
