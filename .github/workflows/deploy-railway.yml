@@ -14,6 +14,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Write git SHA to file (for deployment fingerprint)
+        run: |
+          git rev-parse HEAD > .git-sha
+          echo "Git SHA written: $(cat .git-sha)"
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 

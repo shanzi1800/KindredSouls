@@ -39,10 +39,10 @@ RUN echo "BUILD_TRIGGER_$(date +%s%N)"
 
 COPY . .
 
-# ── 写入 git commit SHA 到容器文件 (部署指纹) ──
-RUN apt-get update && apt-get install -y --no-install-recommends git && \
-    if [ -d .git ]; then git rev-parse HEAD > /app/.git-sha; else echo "unknown" > /app/.git-sha; fi && \
-    rm -rf /var/lib/apt/lists/*
+# ── 部署指纹: CI 写入的 git SHA (build time) ──
+# CI workflow 在 checkout 后执行 git rev-parse HEAD > .git-sha
+# Dockerfile 只需 COPY 这个文件，不再需要安装 git
+RUN if [ -f .git-sha ]; then cp .git-sha /app/.git-sha; else echo "unknown" > /app/.git-sha; fi
 
 RUN npm install && npm install express stripe
 RUN rm -rf web/dist && cd web && npm install && npm run build && cd ..
