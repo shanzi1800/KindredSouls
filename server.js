@@ -1898,18 +1898,31 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
 // ── /api/clear-cache ──
 app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
   const { birthDate, lang, reportType } = req.params;
-  const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+  const { birthTime, lat, lon, tz } = req.query;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return res.json({ error: 'Supabase not configured' });
+  // 🛠️ V178-P0: 精准清(带 birthTime/lat/lon/tz 查询参数) 或 通配清(该生日全部, 兼容旧格式)
+  let delUrl;
+  if (birthTime && lat && lon && tz) {
+    // 模式A: 精确清理特定生辰
+    const _ckLat = Number(lat).toFixed(4);
+    const _ckLon = Number(lon).toFixed(4);
+    const cacheKey = `wealth:v131e:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
+  } else {
+    // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
+    const pat = 'wealth:v131e:' + encodeURIComponent(birthDate) + ':*';
+    delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=like.${pat}`;
+  }
   try {
-    const delRes = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
+    const delRes = await safeFetch(delUrl, {
       method: 'DELETE',
       headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
     });
-    res.json({ deleted: true, cacheKey, status: delRes.status });
+    res.json({ deleted: true, mode: birthTime ? 'precise' : 'wildcard', status: delRes.status });
   } catch (e) {
-    res.json({ deleted: false, cacheKey, error: e.message });
+    res.json({ deleted: false, error: e.message });
   }
 });
 
@@ -3620,7 +3633,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
-    const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+    // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
+    const _ckTime = birthTime || '12:00';
+    const _ckLat = Number(lat || 13.75).toFixed(4);
+    const _ckLon = Number(lon || 100.5).toFixed(4);
+    const _ckTz = tz || 'Asia/Bangkok';
+    const cacheKey = `wealth:v131e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -4232,8 +4250,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('Connection', 'keep-alive'); // V121 原生,防 Railway hikari 提前 RST
 
 
-  // 🔥 军师缓存键:wealth:{生日}:{语言}:{类型}
-  const cacheKey = `wealth:v131e:${birthDate}:${lang}:${reportType}`;
+  // 🔥 军师缓存键 (V178-P0 升级): 纳入 birthTime/lat/lon/tz, 杜绝跨用户串盘
+  const _ckTime = birthTime || '12:00';
+  const _ckLat = Number(lat || 13.75).toFixed(4);
+  const _ckLon = Number(lon || 100.5).toFixed(4);
+  const _ckTz = tz || 'Asia/Bangkok';
+  const cacheKey = `wealth:v131e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
