@@ -1912,7 +1912,8 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
-    const pat = 'wealth:v131e:' + encodeURIComponent(birthDate) + ':*';
+    // 🛠️ V178-P0: 通配符覆盖 v131e(月报/先天) 与 v116-v2(年报) 全部财富键
+    const pat = 'wealth:' + encodeURIComponent(birthDate) + ':*';
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=like.${pat}`;
   }
   try {
@@ -5047,7 +5048,8 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // ── Step 8: 缓存落库(异步)──
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const v2CacheKey = 'wealth:v116-v2:' + birthDate + ':' + lang + ':yearly';
+    // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
+    const v2CacheKey = `wealth:v116-v2:${birthDate}:${birthTime || '12:00'}:${Number(lat || 13.75).toFixed(4)}:${Number(lon || 100.5).toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     if (SB_URL && SB_KEY && allText.length > 500) {
       try {
         await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {
