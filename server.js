@@ -1640,6 +1640,33 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   return text;
 }
 
+// 🛠️ V189: 消费陷阱标头清洗 + 括号兜底修复（双路径共享）
+// 消费陷阱: 裸行/有✦无[]/有[]缺格式 → 统一 ✦\n[⚠️ 消费陷阱：YYYY年M月]
+// 括号: (第X）宫 → (第X宫)
+function cleanConsumerTrapAndBrackets(text) {
+  if (!text) return text;
+  // 1. 消费陷阱标头清洗
+  text = text.split('\n').map(ln => {
+    const t = ln.trim();
+    if (/消费陷阱/.test(t)) {
+      // 取内部内容，去掉 ✦ 和 []
+      let inner = t.replace(/^\s*✦\s*/, '').replace(/^\[\s*/, '').replace(/\s*\]\s*$/, '').trim();
+      inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
+      if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
+      const hadStar = t.includes('✦');
+      return hadStar ? '[' + inner + ']' : '✦\n[' + inner + ']';
+    }
+    return ln;
+  }).join('\n');
+
+  // 2. 括号兜底修复: (第X）宫 → (第X宫)
+  text = text.replace(/\（第(\d+)）宫/g, '（第$1宫）');
+  // 3. 段落尾部多余右括号
+  text = text.replace(/(\S)[\uff09](?=\n|$)/g, '$1\uff09');
+
+  return text;
+}
+
 // 🛠️ V107-方案A: 轻量级预缓存校验器(写缓存前拦截质量问题)
 function wealthCriticCheck(text, birthDate, natalSunSign) {
   const issues = [];
@@ -4360,24 +4387,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
         }
         
-        // 🛠️ V186: 消费陷阱标头清洗(军师审计:P0 缺方括号)
-        // HIT 路径也要执行,否则缓存里的错误格式会裸奔
-        streamText = streamText.split('\n').map(ln => {
-          const t = ln.trim();
-          if (/消费陷阱/.test(t)) {
-            if (t.startsWith('[')) {
-              let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
-              inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-              if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
-              return '✦\n[' + inner + ']';  // 🛠️ V187: 加 ✦ 分隔符
-            } else {
-              let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-              if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
-              return '✦\n[' + normalized + ']';  // 🛠️ V187: 加 ✦ 分隔符
-            }
-          }
-          return ln;
-        }).join('\n');
+        // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
+        streamText = cleanConsumerTrapAndBrackets(streamText);
         
         // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
@@ -4726,6 +4737,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
       cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/\uFFFD/g, '');
       // 🛠️ V166-fix: 补回月报 house_linter(非破坏性,仅修正行星-宫位映射,杜绝英文月报木/冥/土星宫位幻觉)
+      // 🛠️ V189: 消费陷阱+括号兜底（MISS月报路径）
+      cleanedText = cleanConsumerTrapAndBrackets(cleanedText);
       cleanedText = house_linter(cleanedText, astroMatrix);
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
