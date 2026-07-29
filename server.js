@@ -4296,6 +4296,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   // ═══ 第一道拦截:Cache Hit → 伪流式 ═══
+  // 🛠️ V185: 占位符替换需要 astroMatrix,提前计算(HIT/MISS 共用)
+  let astroMatrix = null;
+  try {
+    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz);
+    if (astroMatrix) {
+      console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
+    }
+  } catch (e) {
+    console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);
+  }
+
   try {
     if (SB_URL && SB_KEY) {
       const cacheRes = await safeFetch(
@@ -4318,7 +4329,32 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         let _si = 0;
         for (let _ci = _cuts2.length-1; _ci>=0; _ci--) { if (bm2>_cuts2[_ci][0]||(bm2===_cuts2[_ci][0]&&bd2>=_cuts2[_ci][1])) {_si=_cuts2[_ci][2]; break;} }
         const _rs = _signs2[_si];
-        const streamText = cachedText;  // V113-fix5: 缓存已是cleanedText,零处理直接用
+        let streamText = cachedText;  // V113-fix5: 缓存已是cleanedText,零处理直接用
+        
+        // 🛠️ V185: 占位符替换(军师审计:{{SUN_HOUSE}}等模板变量未渲染)
+        // HIT 路径也必须执行替换,否则缓存里的占位符会裸奔
+        if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
+          const _first = astroMatrix.months[0];
+          const _gH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
+          const _jH = _gH(_first.jupiter?.house);
+          const _sH = _gH(_first.saturn?.house);
+          const _pH = _gH(_first.pluto?.house);
+          const _snH = _gH(_first.sun?.house) ?? 1;
+          const _mnH = _gH(_first.moon?.house) ?? 2;
+          const _tokMap = {
+            '{{JUPITER_HOUSE}}': '第' + _jH + '宫',
+            '{{SATURN_HOUSE}}': '第' + _sH + '宫',
+            '{{PLUTO_HOUSE}}': '第' + _pH + '宫',
+            '{{SUN_HOUSE}}': '第' + _snH + '宫',
+            '{{MOON_HOUSE}}': '第' + _mnH + '宫',
+          };
+          for (const [_t, _v] of Object.entries(_tokMap)) {
+            if (_t && _v) streamText = streamText.split(_t).join(_v);
+          }
+          // 兜底: 清除任何未匹配的 {{...}} 占位符
+          streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+        }
+        
         // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
         const CHUNK_SIZE = 2000;
@@ -4389,16 +4425,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   const realSunSign = signs[getZodiacIdx(birthMonth, birthDay)];
 
-  // ── V69 SwissEph: Fetch computed astro matrix ──
-  let astroMatrix = null;
-  try {
-    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
-    if (astroMatrix) {
-      console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
-    }
-  } catch (e) {
-    console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);
-  }
+  // ── V69 SwissEph: astroMatrix 已在 HIT 路径前计算,此处复用 ──
+  // (已移至函数开头,V185 重构)
 
   // 🔧 V90: aiTimeout 声明在 try 块外,catch 才能访问
   let aiTimeout;
