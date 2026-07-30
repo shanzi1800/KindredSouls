@@ -1670,6 +1670,43 @@ function fixWeekHeaderColors(text) {
   );
 }
 
+// 🛠️ V215: 星象日期-周次后处理校验（代码层兜底，军师批复：策略C降级报警 + 受限Clamp）
+// 铁律 2026-07-18 立项已批准（kindredsouls_date_drift_guard_proposal_2026-07-30.md）
+// 原则：绝对禁止篡改天文事实；常规错置仅标记降级；仅非法日期(如7/32)受限Clamp到当月天数
+// 首期仅英文（西/法/泰/越后续迭代）；挂载于 cleanConsumerTrapAndBrackets 末尾（fixWeekHeaderColors 之后）
+function guardWeekDateDrift(text) {
+  if (!text) return text;
+  const MONTHS = {jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+  const DAYS = {1:31,2:28,3:31,4:30,5:31,6:30,7:31,8:31,9:30,10:31,11:30,12:31};
+  const PLANETS = 'Mercury|Venus|Mars|Sun|Moon|Jupiter|Saturn';
+  const segs = text.split(/(?=✦)/);
+  return segs.map(seg => {
+    const hm = seg.match(/\[(🟢|🔴|🔵|⚠️)?\s*Week\s+(\d+):\s*([A-Za-z]+)\s+(\d+)\s*[–-]\s*(?:([A-Za-z]+)\s+)?(\d+)/i);
+    if (!hm) return seg;
+    const startM = MONTHS[String(hm[3]).toLowerCase()];
+    const startD = parseInt(hm[4], 10);
+    const endM = hm[5] ? MONTHS[String(hm[5]).toLowerCase()] : startM;
+    const endD = parseInt(hm[6], 10);
+    if (!startM) return seg;
+    const evRe = new RegExp('(' + PLANETS + ')\\b[^\\n]{0,40}?\\b([A-Za-z]+)\\s+(\\d+)', 'gi');
+    let m, drifted = false;
+    while ((m = evRe.exec(seg)) !== null) {
+      const evM = MONTHS[String(m[2]).toLowerCase()];
+      if (!evM) continue;
+      let evD = parseInt(m[3], 10);
+      if (evD > DAYS[evM]) evD = DAYS[evM]; // 受限Clamp: 非法日期(7/32)→当月天数
+      const inRange =
+        (evM === startM && evD >= startD && evD <= endD) ||
+        (startM !== endM && ((evM === startM && evD >= startD) || (evM === endM && evD <= endD)));
+      if (!inRange) { drifted = true; break; }
+    }
+    if (drifted && !seg.includes('⚠️ 日期校准')) {
+      return seg.replace(hm[0], hm[0] + ' ⚠️ 日期校准');
+    }
+    return seg;
+  }).join('');
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -1789,6 +1826,7 @@ function cleanConsumerTrapAndBrackets(text) {
 
   // 🛠️ V214: 周次颜色强制规范化（所有语言）
   text = fixWeekHeaderColors(text);
+  text = guardWeekDateDrift(text); // V215 星象日期-周次校验
 
   // 5. 规范化空行
   text = text.replace(/\n{3,}/g, '\n\n');
