@@ -1669,17 +1669,18 @@ function cleanConsumerTrapAndBrackets(text) {
   text = text.replace(/(?<![（\(])第\s*(\d+)\s*[）\)]\s*宫/g, '（第$1宫）');
 
   // 2. 激进算法：剥离所有无左括号配对的"孤立右括号"（栈扫描）
+  // 🛠️ V209-fix: 不统一转为中文括号，按原文半角/全角保留，只抹孤立闭括号
   text = text.split('\n').map(line => {
     const result = [];
     let openBrackets = 0;
     for (const char of line) {
       if (char === '（' || char === '(') {
         openBrackets++;
-        result.push('（'); // 统一为中文全角
+        result.push(char); // 原样保留
       } else if (char === '）' || char === ')') {
         if (openBrackets > 0) {
           openBrackets--;
-          result.push('）'); // 有配对，保留
+          result.push(char); // 有配对，保留
         }
         // 否则跳过（孤立右括号，抹除）
       } else {
@@ -1692,7 +1693,14 @@ function cleanConsumerTrapAndBrackets(text) {
   // 3. 多语言消费陷阱标头与 ✦ 分隔符强行补齐
   // 关键词: 中文"消费陷阱" / 英文"Spending Trap""Financial Shadow" / 泰语"กับดักการใช้จ่าย""เงาการเงิน" / 越南语"Bẫy chi tiêu" / 西班牙语"Trampa de gasto" / 法语"Piège de dépense""Ombre Financière"
   // Step A: 确保 [⚠️ ...] 格式（多语言）
-  text = text.replace(/^(?!\[)(⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|Sombra Financiera|Sombra Financiera de Gasto|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*)$/gm, '[$1]');
+  // 🛠️ V209-fix: 兼容 [Sombra Financiera] Trampas de Gasto Jul 2026] 这类行末带内容的裸头
+  // 也兼容纯 [Sombra Financiera] 后接换行的简单裸头
+  text = text.replace(/^(?!\[)(\[?\s*)(Sombra Financiera|Sombra Financiera de Gasto|Ombre Financière|消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense)[^\n\[]*$/gm, (m, prefix, kw) => {
+    // 已经有 [ 的直接升级，没有的补上
+    if (prefix.includes('[')) return '✦\n' + m.trim();
+    return '✦\n[' + kw + '] ' + m.replace(prefix, '').replace(kw, '').trim();
+  });
+  text = text.replace(/^(?!\[)(⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|Sombra Financiera|Sombra Financiera de Gasto|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*)$/gm, '✦\n[$1]');
   // Step B: 匹配各语言的消费陷阱关键词并补 [⚠️ ...]
   text = text.replace(/^(\[\s*)(เงาการเงิน|กับดักการใช้จ่าย|Ombre Financière|Piège de dépense)([^\]]*\])$/gm, '[⚠️ $1$2$3');
   text = text.replace(/^\[(เงาการเงิน|Ombre Financière)[^\]]*\]/gm, '[⚠️ $1]');
