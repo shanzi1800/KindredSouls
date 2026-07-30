@@ -4843,6 +4843,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛠️ V166-fix: 补回月报 house_linter(非破坏性,仅修正行星-宫位映射,杜绝英文月报木/冥/土星宫位幻觉)
       // 🛠️ V189: 消费陷阱+括号兜底（MISS月报路径）
       cleanedText = cleanConsumerTrapAndBrackets(cleanedText);
+      // 🛠️ V210: 西班牙语月报专项——双重标题最终兜底
+      // 场景: AI同时输出裸头和带⚠️的头，或输出[Sombra Financiera] Trampas de Gasto Jul 2026]
+      // 修复: 统一 → ✦\n[⚠️ Sombra Financiera]
+      if (lang === 'es') {
+        // 抹:裸[Sombra Financiera] 独立行(前面已有✦的)
+        cleanedText = cleanedText.replace(/^\[Sombra Financiera[^\]]*\]$/gm, '');
+        // 抹:带内容的行(Sombra Financiera] xxx) → 提取内容后统一
+        cleanedText = cleanedText.replace(/^\[Sombra Financiera[^\]]*\]\s*([^\n]+)$/gm, (m, content) => {
+          if (content.includes('Trampas') || content.includes('2026')) return '✦\n[⚠️ Sombra Financiera]';
+          return '✦\n[⚠️ Sombra Financiera] ' + content.trim();
+        });
+        // 收尾:确保末尾消费陷阱有✦前缀
+        cleanedText = cleanedText.replace(/(?<!✦\n)(\[⚠️\s*Sombra[^\]]*\])/g, '✦\n$1');
+      }
       cleanedText = house_linter(cleanedText, astroMatrix);
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
