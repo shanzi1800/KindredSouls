@@ -35,15 +35,9 @@ RUN printf '%s' "https://wfkxqhlcgrikxoofjvas.supabase.co" > /app/.supabase-url
 RUN printf '%s' 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw' > /app/.supabase-key
 RUN printf '%s' "${GEMINI_API_KEY}" > /app/.gemini-key || true
 RUN printf '%s' "sk-9307f02599b44612b6767996a7839ab5" > /app/.deepseek-key
-RUN echo "BUILD_TRIGGER_$(date +%s%N)" 
-
-COPY . .
-
-# ── 部署指纹: CI 写入的 git SHA (build time) ──
-# CI workflow 在 checkout 后执行 git rev-parse HEAD > .git-sha
-# COPY . . 已经把 .git-sha 放到 /app/.git-sha (WORKDIR 是 /app)
-RUN if [ -f .git-sha ]; then \
-      echo "[DEPLOY FINGERPRINT] Git SHA: $(cat .git-sha)"; \
+RUN echo "BUILD_TRIGGER_FORCE_$(date +%s%N) - V200 frontend fix" \
+    && if [ -f .git-sha ]; then \
+         echo "[DEPLOY FINGERPRINT] Git SHA: $(cat .git-sha)"; \
     else \
       echo "unknown" > .git-sha && \
       echo "[DEPLOY FINGERPRINT] No .git-sha file found, using 'unknown'"; \

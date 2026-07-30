@@ -314,8 +314,8 @@ const SacredYearlyReportBox: React.FC<{
       return { type: 'table', content: cells.join(' · ') };
     }
     
-    // 警告/提示
-    if (t.match(/^🟢|^🔴|^🔵|^⚠️?|^🚀/)) {
+    // 警告/提示（含消费陷阱标题 [⚠️ xxx]）
+    if (t.match(/^🟢|^🔴|^🔵|^⚠️?|^\[⚠️/)) {
       return { type: 'alert', content: cleanMarkdown(t) };
     }
     
@@ -382,10 +382,13 @@ const SacredYearlyReportBox: React.FC<{
       
       if (type === 'alert') {
         const isG = content.includes('🟢'), isR = content.includes('🔴');
+        const isTrapTitle = content.includes('消费陷阱'); // 🛠️ V200: 消费陷阱标题居中
         return (
           <div key={idx} style={{
             color: '#D4AF37',
-            fontSize: '11px', fontWeight: 700, margin: '6px 0 4px', paddingLeft: '12px',
+            fontSize: '11px', fontWeight: 700, margin: '6px 0 4px',
+            paddingLeft: isTrapTitle ? '0' : '12px',
+            textAlign: isTrapTitle ? 'center' : 'left',
             textShadow: '0 0 6px rgba(212,175,55,0.25)'
           }}>
             {content}
