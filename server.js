@@ -1,6 +1,6 @@
 // V120-fix19: rebuild-20260719170618
 
-const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Zero Tolerance）：\n\n#### A. 禁止 CoT 泄漏\n严禁将任何思考过程、自我纠错、规则讨论、数据验证输出到正文中。内部推理必须在模型内部完成，不得出现在最终文本里。\n禁止输出： (note:...) (注意：...) (Je me corrige...) (correction) (根据数据...) (数据说...) 等任何括号包裹的推理内容。\n\n#### B. 方括号完整性（P0）\n每张卡片的 [ 和 ] 必须成对匹配，且方括号内部不得换行、不得断句、不得嵌套。\n错误示例（全部禁止）：\n  • [สัปดาห์ที่ 2: ก] .ค. 8–14]  （在 [ 内部断开）\n  • [สัปดาห์ที่ 4: ก.ค. 23–31  （缺失结尾 ]）\n  • [เงาการเงิน] กับดัก... （在 [ 内部有空格和 ]）\n正确格式：\n  • [🟢 สัปดาห์ที่ 2: ก.ค. 8–14 (วงจรความเสี่ยงสูง)]  （一气呵成，无内部断句）\n  • [⚠️ เงาการเงิน：กับดักการใช้จ่าย ก.ค. 2026]  （整行是单个方括号块）\n\n#### C. 周卡片格式模板\n每张周卡片必须严格使用：\n  ✦\n[emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]\n内容\n英文:  ✦\n[emoji Week N: Month D–D (theme)]\ncontent\n法语:  ✦\n[emoji Semaine N: Mois D–D (thème)]\ncontenu\n西班牙语:  ✦\n[emoji Semana N: Mes D–D (tema)]\ncontenido\n中文:  ✦\n[emoji 第N周：月份D–D（主题）]\n内容\n越南语:  ✦\n[emoji Tuần N: Tháng D–D (chủ đề)]\nnội dung\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n`;
+const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Zero Tolerance）：\n\n#### A. 禁止 CoT 泄漏\n严禁将任何思考过程、自我纠错、规则讨论、数据验证输出到正文中。内部推理必须在模型内部完成，不得出现在最终文本里。\n禁止输出： (note:...) (注意：...) (Je me corrige...) (correction) (根据数据...) (数据说...) 等任何括号包裹的推理内容。\n\n#### B. 方括号完整性（P0）\n每张卡片的 [ 和 ] 必须成对匹配，且方括号内部不得换行、不得断句、不得嵌套。\n错误示例（全部禁止）：\n  • [สัปดาห์ที่ 2: ก] .ค. 8–14]  （在 [ 内部断开）\n  • [สัปดาห์ที่ 4: ก.ค. 23–31  （缺失结尾 ]）\n  • [เงาการเงิน] กับดัก... （在 [ 内部有空格和 ]）\n正确格式：\n  • [🟢 สัปดาห์ที่ 2: ก.ค. 8–14 (วงจรความเสี่ยงสูง)]  （一气呵成，无内部断句）\n  • [⚠️ เงาการเงิน：กับดักการใช้จ่าย ก.ค. 2026]  （整行是单个方括号块）\n\n#### C. 周卡片格式模板\n每张周卡片必须严格使用：\n  ✦\n[emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]\n内容\n英文:  ✦\n[emoji Week N: Month D–D (theme)]\ncontent\n法语:  ✦\n[emoji Semaine N: Mois D–D (thème)]\ncontenu\n西班牙语:  ✦\n[emoji Semana N: Mes D–D (tema)]\ncontenido\n中文:  ✦\n[emoji 第N周：月份D–D（主题）]\n内容\n越南语:  ✦\n[emoji Tuần N: Tháng D–D (chủ đề)]\nnội dung\n\n#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–22 日\n  • Week 4 = 当月 23–31 日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（23–31日），严禁写在 Week 3（15–22日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n`;
 
 //
 // KindredSouls Railway Server - V116bc (FORCE REBUILD 1783756901)
@@ -1652,6 +1652,23 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 🛠️ V189: 消费陷阱标头清洗 + 括号兜底修复（双路径共享）
 // 消费陷阱: 裸行/有✦无[]/有[]缺格式 → 统一 ✦\n[⚠️ 消费陷阱：YYYY年M月]
 // 括号: (第X）宫 → (第X宫)
+// 🛠️ V214: 周次颜色强制规范化（所有语言，HIT+MISS 路径共用）
+// 周次标准色: 1=🟢(充能) 2=🔴(熔断) 3=🔵(蓄力) 4=🟢(爆发)
+// AI 偶发用错 emoji(⚠️/🔥/🟢混用)，按周次序号强制覆盖
+// 消费陷阱[⚠️ ...]和Overview[🔮 ...]不含 Week/第N周 关键词，不会误伤
+function fixWeekHeaderColors(text) {
+  if (!text) return text;
+  const STD = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
+  return text.replace(
+    /^\[\s*([🔴🟢🔵⚠️🔥🟡]*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gim,
+    (m, emoji, label, w1, w2, w3) => {
+      const n = parseInt(w1 || w2 || w3);
+      if (!n || !STD[n]) return m;
+      return '[' + STD[n] + ' ' + label.trim();
+    }
+  );
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -1768,6 +1785,9 @@ function cleanConsumerTrapAndBrackets(text) {
   // 当 cleanConsumerTrapAndBrackets 处理后仍有 dangling 开括号时，用此兜底修复
   // 例: （第11宫的 → （第11宫）的 / （第11宫与 → （第11宫）与
   text = text.replace(/（第([一二三四五六七八九十百零\d]+)宫(?!）)/g, '（第$1宫）');
+
+  // 🛠️ V214: 周次颜色强制规范化（所有语言）
+  text = fixWeekHeaderColors(text);
 
   // 5. 规范化空行
   text = text.replace(/\n{3,}/g, '\n\n');
