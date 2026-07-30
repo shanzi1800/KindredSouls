@@ -4681,12 +4681,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         console.log('[wealth-stream] → Gemini paid fallback (non-stream)');
         usedGemini = true;
         try {
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
+          // 🛠️ V212: 换 gemini-2.0-flash-EXP(exp) 输出上限更高,maxOutputTokens 提到 16000
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+              generationConfig: { maxOutputTokens: 16000, temperature: 0 },
             }),
             signal: controller.signal,
           });
