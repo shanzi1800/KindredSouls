@@ -1680,13 +1680,17 @@ function cleanConsumerTrapAndBrackets(text) {
     return result.join('');
   }).join('\n');
 
-  // 3. 消费陷阱标头与 ✦ 分隔符强行补齐
-  // Step A: 确保"⚠️ 消费陷阱"带有 [] 包裹
-  text = text.replace(/^(?!\[)(⚠️\s*消费陷阱[^\n]*)$/gm, '[$1]');
-  // Step B: 确保 [⚠️ 消费陷阱...] 前面有 ✦ 分隔符
-  text = text.replace(/(?<!✦\n)(^\s*\[⚠️\s*消费陷阱[^\n]*\])/gm, '✦\n$1');
-  // Step C: 规范化消费陷阱内部的冒号和 emoji
-  text = text.replace(/\[⚠️\s*消费陷阱\s*([：:]?)\s*/g, '[⚠️ 消费陷阱：');
+  // 3. 多语言消费陷阱标头与 ✦ 分隔符强行补齐
+  // 关键词: 中文"消费陷阱" / 英文"Spending Trap""Financial Shadow" / 泰语"กับดักการใช้จ่าย""เงาการเงิน" / 越南语"Bẫy chi tiêu" / 西班牙语"Trampa de gasto" / 法语"Piège de dépense"
+  // Step A: 确保 [⚠️ ...] 格式（多语言）
+  text = text.replace(/^(?!\[)(⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense)[^\n]*)$/gm, '[$1]');
+  // Step B: 匹配各语言的消费陷阱关键词并补 [⚠️ ...]
+  text = text.replace(/^(\[\s*)(เงาการเงิน|กับดักการใช้จ่าย)([^\]]*\])$/gm, '[⚠️ $1$2$3');
+  text = text.replace(/^\[(เงาการเงิน[^\]]*)\]/gm, '[⚠️ $1]');
+  // Step C: 确保 [⚠️ ...] 前面有 ✦ 分隔符
+  text = text.replace(/(?<!✦\n)(^\s*\[⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense)[^\n]*\])/gm, '✦\n$1');
+  // Step D: 规范化消费陷阱内部的冒号
+  text = text.replace(/\[⚠️\s*(消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense)\s*([：:]?)\s*/g, '[⚠️ $1：');
 
   // 4. 消费陷阱第2段标题清理: [⚠️ xxx:——xxx] → [⚠️ xxx: xxx]
   text = text.replace(/\[⚠️ ([^\]]*?)[：:]——/g, '[⚠️ $1：');
