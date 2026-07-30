@@ -1377,6 +1377,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
         .replace(/座座/g, '座')    // 干掉重复座
         .replace(/第\d+宫座/g, m => m.replace(/座$/, '')) // 干掉"第N宫座"
         .replace(/\s*·.+$/, '');  // 以 · 为界截断,保护后续
+      if (!norm.includes('太阳')) return match; // 🛠️ V206: 守卫-无太阳则原样返回,防止整行被空替换吞掉
       return norm.replace(/太阳.+$/, `太阳${entry.sign}${houseStr}`);
     });
 
