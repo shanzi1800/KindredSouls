@@ -1645,32 +1645,54 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 括号: (第X）宫 → (第X宫)
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
-  // 1. 消费陷阱标头清洗
-  text = text.split('\n').map(ln => {
-    const t = ln.trim();
-    if (/消费陷阱/.test(t)) {
-      // 取内部内容，去掉 ✦ 和 []
-      let inner = t.replace(/^\s*✦\s*/, '').replace(/^\[\s*/, '').replace(/\s*\]\s*$/, '').trim();
-      inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-      if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
-      const hadStar = t.includes('✦');
-      return hadStar ? '[' + inner + ']' : '✦\n[' + inner + ']';
+
+  // ═══════════════════════════════════════════════════════════
+  // V200 激进清洗引擎（军师方案）
+  // 解决：宫位括号错位、孤立右括号残余、消费陷阱切片头缺失
+  // ═══════════════════════════════════════════════════════════
+
+  // 1. 修复所有类型的宫位括号错位/畸变
+  // （第12）宫 / (第12)宫 → （第12宫）
+  text = text.replace(/[（\(]\s*第\s*(\d+)\s*[）\)]\s*宫/g, '（第$1宫）');
+  // （第）12宫 / (第)12宫 → （第12宫）
+  text = text.replace(/[（\(]\s*第\s*[）\)]\s*(\d+)\s*宫/g, '（第$1宫）');
+  // 第12）宫 / 第12)宫 → （第12宫）
+  text = text.replace(/(?<![（\(])第\s*(\d+)\s*[）\)]\s*宫/g, '（第$1宫）');
+
+  // 2. 激进算法：剥离所有无左括号配对的"孤立右括号"（栈扫描）
+  text = text.split('\n').map(line => {
+    const result = [];
+    let openBrackets = 0;
+    for (const char of line) {
+      if (char === '（' || char === '(') {
+        openBrackets++;
+        result.push('（'); // 统一为中文全角
+      } else if (char === '）' || char === ')') {
+        if (openBrackets > 0) {
+          openBrackets--;
+          result.push('）'); // 有配对，保留
+        }
+        // 否则跳过（孤立右括号，抹除）
+      } else {
+        result.push(char);
+      }
     }
-    return ln;
+    return result.join('');
   }).join('\n');
 
-  // 2. 括号兜底修复: (第X）宫 → (第X宫)
-  text = text.replace(/\（第(\d+)）宫/g, '（第$1宫）');
+  // 3. 消费陷阱标头与 ✦ 分隔符强行补齐
+  // Step A: 确保"⚠️ 消费陷阱"带有 [] 包裹
+  text = text.replace(/^(?!\[)(⚠️\s*消费陷阱[^\n]*)$/gm, '[$1]');
+  // Step B: 确保 [⚠️ 消费陷阱...] 前面有 ✦ 分隔符
+  text = text.replace(/(?<!✦\n)(^\s*\[⚠️\s*消费陷阱[^\n]*\])/gm, '✦\n$1');
+  // Step C: 规范化消费陷阱内部的冒号和 emoji
+  text = text.replace(/\[⚠️\s*消费陷阱\s*([：:]?)\s*/g, '[⚠️ 消费陷阱：');
 
-  // 3. 括号闭合修复: (第X宫xxx → (第X宫）xxx
-  // 匹配 (第N宫 后面紧跟非右括号的内容，补右括号
-  text = text.replace(/（第(\d+)宫([^）\n]{0,30}?)(?=，|、|。|，|的|与|形成|构成|为|在|，|$)/g, '（第$1宫）$2');
-
-  // 4. 段落尾部多余右括号
-  text = text.replace(/(\S)[\uff09](?=\n|$)/g, '$1\uff09');
-
-  // 5. 消费陷阱第2段标题清理: [⚠️ xxx:——xxx] → [⚠️ xxx: xxx]
+  // 4. 消费陷阱第2段标题清理: [⚠️ xxx:——xxx] → [⚠️ xxx: xxx]
   text = text.replace(/\[⚠️ ([^\]]*?)[：:]——/g, '[⚠️ $1：');
+
+  // 5. 规范化空行
+  text = text.replace(/\n{3,}/g, '\n\n');
 
   return text;
 }
