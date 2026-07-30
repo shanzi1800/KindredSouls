@@ -43,6 +43,8 @@ RUN echo "BUILD_TRIGGER_FORCE_$(date +%s%N) - V200 frontend fix" \
       echo "[DEPLOY FINGERPRINT] No .git-sha file found, using 'unknown'"; \
     fi
 
+COPY . .
+
 RUN npm install && npm install express stripe
 
 # ── 前端构建: Vite 环境变量注入 ──
