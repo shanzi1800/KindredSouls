@@ -1683,14 +1683,14 @@ function cleanConsumerTrapAndBrackets(text) {
   // 3. 多语言消费陷阱标头与 ✦ 分隔符强行补齐
   // 关键词: 中文"消费陷阱" / 英文"Spending Trap""Financial Shadow" / 泰语"กับดักการใช้จ่าย""เงาการเงิน" / 越南语"Bẫy chi tiêu" / 西班牙语"Trampa de gasto" / 法语"Piège de dépense""Ombre Financière"
   // Step A: 确保 [⚠️ ...] 格式（多语言）
-  text = text.replace(/^(?!\[)(⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*)$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|Sombra Financiera|Sombra Financiera de Gasto|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*)$/gm, '[$1]');
   // Step B: 匹配各语言的消费陷阱关键词并补 [⚠️ ...]
   text = text.replace(/^(\[\s*)(เงาการเงิน|กับดักการใช้จ่าย|Ombre Financière|Piège de dépense)([^\]]*\])$/gm, '[⚠️ $1$2$3');
   text = text.replace(/^\[(เงาการเงิน|Ombre Financière)[^\]]*\]/gm, '[⚠️ $1]');
   // Step C: 确保 [⚠️ ...] 前面有 ✦ 分隔符
-  text = text.replace(/(?<!✦\n)(^\s*\[⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*\])/gm, '✦\n$1');
+  text = text.replace(/(?<!✦\n)(^\s*\[⚠️\s*(?:消费陷阱|Spending Trap|Financial Shadow|Sombra Financiera|Sombra Financiera de Gasto|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)[^\n]*\])/gm, '✦\n$1');
   // Step D: 规范化消费陷阱内部的冒号
-  text = text.replace(/\[⚠️\s*(消费陷阱|Spending Trap|Financial Shadow|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)\s*([：:]?)\s*/g, '[⚠️ $1：');
+  text = text.replace(/\[⚠️\s*(消费陷阱|Spending Trap|Financial Shadow|Sombra Financiera|Sombra Financiera de Gasto|กับดักการใช้จ่าย|เงาการเงิน|Bẫy chi tiêu|Trampa de gasto|Piège de dépense|Ombre Financière)\s*([：:]?)\s*/g, '[⚠️ $1：');
 
   // ═══════════════════════════════════════════════════════════
   // 4. V201: CoT 泄漏清洗（AI 内心戏喷出）
@@ -1719,6 +1719,9 @@ function cleanConsumerTrapAndBrackets(text) {
   text = text.replace(/^(?!\[)(Week\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
   // 法语主题标题: Aperçu] xxx  → [Aperçu: xxx]
   text = text.replace(/^(?!\[)(Aperçu)\]/gm, '[$1]');
+
+  // V203: 激进修复 Sombra Financiera] Trampas de Gasto Jul 2026] 格式问题
+  text = text.replace(/^\[\s*((?:Sombra Financiera|Sombra Financiera de Gasto|Ombre Financière)[^\]]*?)\s*\]\s*([^\n]+)$/gm, '[⚠️ $1： $2]');
 
   // 4. 消费陷阱第2段标题清理: [⚠️ xxx:——xxx] → [⚠️ xxx: xxx]
   text = text.replace(/\[⚠️ ([^\]]*?)[：:]——/g, '[⚠️ $1：');
