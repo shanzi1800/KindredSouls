@@ -1764,6 +1764,11 @@ function cleanConsumerTrapAndBrackets(text) {
   // 4) 激进兜底：任何 เงาการเงิน 结尾裸 ] 强制补全
   text = text.replace(/^(เงาการเงิน[^\[]*)\](\s*$)/gm, '[⚠️ $1]');
 
+  // 🛠️ V213: 括号安全守卫——防止 cleanConsumerTrapAndBrackets 误删有效括号
+  // 当 cleanConsumerTrapAndBrackets 处理后仍有 dangling 开括号时，用此兜底修复
+  // 例: （第11宫的 → （第11宫）的 / （第11宫与 → （第11宫）与
+  text = text.replace(/（第([一二三四五六七八九十百零\d]+)宫(?!）)/g, '（第$1宫）');
+
   // 5. 规范化空行
   text = text.replace(/\n{3,}/g, '\n\n');
 
