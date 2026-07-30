@@ -2142,7 +2142,8 @@ function seedFromUserPrompt(userPrompt) {
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
 async function callAI(systemPrompt, userPrompt, env, options = {}) {
-  const { maxTokens = 4000, reportType = 'monthly' } = options;
+  // 🛠️ V211: 月报默认从 4000→12000
+  const { maxTokens = 12000, reportType = 'monthly' } = options;
   const deepseekKey = getDeepSeekKey();
   const geminiKey = env.GEMINI_API_KEY;
 
@@ -4007,7 +4008,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
-        const maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'once' ? 8000 : 4000);
+        // 🛠️ V211: 月报从 4000→12000
+        const maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'once' ? 8000 : 12000);
         const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
         const realSunSign = sunSign;  // 🛠️ V120-fix4: 补全非流式端点真实太阳星座(供 inline 清洗 + natal_sun_linter 使用)
         const natalSunSign = sunSign;
@@ -4648,7 +4650,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const geminiKey = process.env.GEMINI_API_KEY;
     // 🔧 V75 fix: 64000 彻底解除年报截断
     // 🛠️ V125-final: 删除所有 OpenRouter 残留,纯 DeepSeek 直连
-    let maxTokens = reportType === 'yearly' ? 48000 : 4000;
+    // 🛠️ V211: 月报 maxOutputTokens 从 4000→12000,Gemini Flash 需足够余量完整输出四周+消费陷阱
+    let maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'monthly' ? 12000 : 4000);
     const controller = new AbortController();
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
