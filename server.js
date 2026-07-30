@@ -1661,8 +1661,16 @@ function cleanConsumerTrapAndBrackets(text) {
 
   // 2. 括号兜底修复: (第X）宫 → (第X宫)
   text = text.replace(/\（第(\d+)）宫/g, '（第$1宫）');
-  // 3. 段落尾部多余右括号
+
+  // 3. 括号闭合修复: (第X宫xxx → (第X宫）xxx
+  // 匹配 (第N宫 后面紧跟非右括号的内容，补右括号
+  text = text.replace(/（第(\d+)宫([^）\n]{0,30}?)(?=，|、|。|，|的|与|形成|构成|为|在|，|$)/g, '（第$1宫）$2');
+
+  // 4. 段落尾部多余右括号
   text = text.replace(/(\S)[\uff09](?=\n|$)/g, '$1\uff09');
+
+  // 5. 消费陷阱第2段标题清理: [⚠️ xxx:——xxx] → [⚠️ xxx: xxx]
+  text = text.replace(/\[⚠️ ([^\]]*?)[：:]——/g, '[⚠️ $1：');
 
   return text;
 }
