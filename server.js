@@ -1661,7 +1661,7 @@ function fixWeekHeaderColors(text) {
   text = text.replace(/\*\*/g, '');  // 🛠️ V214c: 去 markdown 加粗(**)，避免 **Week N 格式漏匹配
   const STD = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
   return text.replace(
-    /^\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gim,
+    /\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gi,
     (m, emoji, label, w1, w2, w3) => {
       const n = parseInt(w1 || w2 || w3);
       if (!n || !STD[n]) return m;
