@@ -1660,7 +1660,7 @@ function fixWeekHeaderColors(text) {
   if (!text) return text;
   const STD = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
   return text.replace(
-    /^\[\s*([🔴🟢🔵⚠️🔥🟡]*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gim,
+    /^\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gim,
     (m, emoji, label, w1, w2, w3) => {
       const n = parseInt(w1 || w2 || w3);
       if (!n || !STD[n]) return m;
