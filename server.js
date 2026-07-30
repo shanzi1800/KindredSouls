@@ -1698,10 +1698,15 @@ function cleanConsumerTrapAndBrackets(text) {
   // ═══════════════════════════════════════════════════════════
   text = text.replace(/\s*\([Nn]ote\s*[：:\-–—]\s*[^)]*\)/g, ''); // 英文 note
   text = text.replace(/\s*\(注意[：:\-–—][^)]*\)/g, ''); // 中文 注意
+  // V203-fix3: 全角括号内的 CoT 泄漏（中文全角括号包裹的内心戏）
+  text = text.replace(/（[^）]*(?:note|Je me corrige|correction|根据数据|数据说|rules say|data says|Verification|Mais la données|Mars est|Vérifions|Je me corrige)[^）]*）/gi, '');
   text = text.replace(/\s*\(note\s*:[^)]*\)/gi, ''); // note: 格式
   text = text.replace(/\s*\(note\s*–[^)]*\)/gi, ''); // note – 格式
   // 激进清洗：任何包含 "Je me corrige" "correction" "根据数据" "数据说" 的括号内容
   text = text.replace(/\([^)]*(?:Je me corrige|correction|根据数据|数据说|rules say|data says)[^)]*\)/gi, '');
+  // V203-fix2: CoT 泄漏增强版——空格位置更灵活 (note : xxx) (note:xxx) (note - xxx) 全覆盖
+  text = text.replace(/\s*\([Nn]ote\s*[：:\-\u2013\u2014]\s*[^)]*\)/g, '');
+  text = text.replace(/\s*\([Nn]ote\s+[^)]*\)/gi, ''); // 任意 "(note " 格式（无严格分隔符）
 
   // ═══════════════════════════════════════════════════════════
   // 5. V201: 缺失左括号修复（多语言周标题）
