@@ -4847,15 +4847,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 场景: AI同时输出裸头和带⚠️的头，或输出[Sombra Financiera] Trampas de Gasto Jul 2026]
       // 修复: 统一 → ✦\n[⚠️ Sombra Financiera]
       if (lang === 'es') {
-        // 抹:裸[Sombra Financiera] 独立行(前面已有✦的)
-        cleanedText = cleanedText.replace(/^\[Sombra Financiera[^\]]*\]$/gm, '');
-        // 抹:带内容的行(Sombra Financiera] xxx) → 提取内容后统一
-        cleanedText = cleanedText.replace(/^\[Sombra Financiera[^\]]*\]\s*([^\n]+)$/gm, (m, content) => {
-          if (content.includes('Trampas') || content.includes('2026')) return '✦\n[⚠️ Sombra Financiera]';
-          return '✦\n[⚠️ Sombra Financiera] ' + content.trim();
-        });
-        // 收尾:确保末尾消费陷阱有✦前缀
-        cleanedText = cleanedText.replace(/(?<!✦\n)(\[⚠️\s*Sombra[^\]]*\])/g, '✦\n$1');
+        // 终极清洗:不管[Sombra Financiera]出现在哪里,都统一收口
+        // 合并跨chunk边界的双重标题:[Sombra Financiera] + [⚠️ Sombra Financiera]
+        cleanedText = cleanedText
+          .replace(/\[Sombra Financiera[^\]]*\]\s*⚠️\s*\[Sombra Financiera[^\]]*\]/g, '✦\n[⚠️ Sombra Financiera]')
+          .replace(/\[Sombra Financiera[^\]]*\]\s*⚠️\s*Sombra Financiera[^\n\[]*/g, '✦\n[⚠️ Sombra Financiera]')
+          .replace(/\[Sombra Financiera[^\]]*\]\s*Trampas[^\n]+/g, '✦\n[⚠️ Sombra Financiera: Trampas de Gasto Julio 2026]')
+          .replace(/^\[Sombra Financiera[^\]]*\]$/gm, '')
+          .replace(/\[Sombra Financiera[^\]]*\]\s*\[Sombra Financiera[^\]]*\]/g, '✦\n[⚠️ Sombra Financiera]')
+          .replace(/(?<!✦\n)(\[⚠️\s*Sombra[^\]]*\])/g, '✦\n$1');
       }
       cleanedText = house_linter(cleanedText, astroMatrix);
     } else {
