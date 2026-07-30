@@ -4720,8 +4720,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           .replace(/(?:The )?Heavenly Secrets?/gi, 'Celestial Trigger Point')
           .replace(/Fate Opportunity/gi, 'Key Astrological Catalyst')
           // ── V140: 英文全角标点转半角 (军师抓包: （not the person）残留) ──
-          .replace(/（/g, ' (')
-          .replace(/）/g, ') ')
+          // 🛠️ V208-fix: 移除中文括号而非转换为英文括号(否则与另一半括号不匹配时导致dangling括号)
+          .replace(/（/g, '')
+          .replace(/）/g, '')
           .replace(/，/g, ', ')
           .replace(/：/g, ': ')
           .replace(/；/g, '; ')
