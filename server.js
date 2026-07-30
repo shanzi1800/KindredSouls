@@ -1658,6 +1658,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 消费陷阱[⚠️ ...]和Overview[🔮 ...]不含 Week/第N周 关键词，不会误伤
 function fixWeekHeaderColors(text) {
   if (!text) return text;
+  text = text.replace(/\*\*/g, '');  // 🛠️ V214c: 去 markdown 加粗(**)，避免 **Week N 格式漏匹配
   const STD = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
   return text.replace(
     /^\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gim,
