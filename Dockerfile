@@ -1,3 +1,4 @@
+# FORCE REBUILD 1785399075
 FROM node:22-slim
 
 # ── V116: Cache busting — force fresh build on every railway up ──
