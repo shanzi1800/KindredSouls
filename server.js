@@ -1,4 +1,8 @@
 // V120-fix19: rebuild-20260719170618
+
+const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Zero Tolerance）：\n\n#### A. 禁止 CoT 泄漏\n严禁将任何思考过程、自我纠错、规则讨论、数据验证输出到正文中。内部推理必须在模型内部完成，不得出现在最终文本里。\n禁止输出： (note:...) (注意：...) (Je me corrige...) (correction) (根据数据...) (数据说...) 等任何括号包裹的推理内容。\n\n#### B. 方括号完整性（P0）\n每张卡片的 [ 和 ] 必须成对匹配，且方括号内部不得换行、不得断句、不得嵌套。\n错误示例（全部禁止）：\n  • [สัปดาห์ที่ 2: ก] .ค. 8–14]  （在 [ 内部断开）\n  • [สัปดาห์ที่ 4: ก.ค. 23–31  （缺失结尾 ]）\n  • [เงาการเงิน] กับดัก... （在 [ 内部有空格和 ]）\n正确格式：\n  • [🟢 สัปดาห์ที่ 2: ก.ค. 8–14 (วงจรความเสี่ยงสูง)]  （一气呵成，无内部断句）\n  • [⚠️ เงาการเงิน：กับดักการใช้จ่าย ก.ค. 2026]  （整行是单个方括号块）\n\n#### C. 周卡片格式模板\n每张周卡片必须严格使用：\n  ✦\n[emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]\n内容\n英文:  ✦\n[emoji Week N: Month D–D (theme)]\ncontent\n法语:  ✦\n[emoji Semaine N: Mois D–D (thème)]\ncontenu\n西班牙语:  ✦\n[emoji Semana N: Mes D–D (tema)]\ncontenido\n中文:  ✦\n[emoji 第N周：月份D–D（主题）]\n内容\n越南语:  ✦\n[emoji Tuần N: Tháng D–D (chủ đề)]\nnội dung\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n`;
+
+//
 // KindredSouls Railway Server - V116bc (FORCE REBUILD 1783756901)
 // Serves static frontend + all API routes on port 3000
 import express from 'express';
@@ -2354,8 +2358,7 @@ function buildMonthlyPrompt(birthDate, lang) {
   };
 
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
-  const COT_BLOCK_RULE = '\n\n### 🛑 绝对禁忌（System Boundary）：\n1. 严禁在输出文本中包含任何思考过程、自我纠错、数据合法性讨论、或对 Prompt 规则的元解析（如“注意：规则禁止...”、“数据写...不符合常理”等）。\n2. 内部推理必须全部在思考空间完成，最终输出给用户的必须是100%纯净、无任何思考痕迹、标点闭合完全正确的终端文章！';
-  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + COT_BLOCK_RULE;
+  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
 
   return {
     system: monthlySystem,
@@ -3020,7 +3023,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
-    const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + `\n\n### 🛑 绝对禁忌（System Boundary）：\n1. 严禁在输出文本中包含任何思考过程、自我纠错、数据合法性讨论、或对 Prompt 规则的元解析（如"注意：规则禁止..."、"数据写...不符合常理"等）。\n2. 内部推理必须全部在思考空间完成，最终输出给用户的必须是100%纯净、无任何思考痕迹、标点闭合完全正确的终端文章！`;
+    const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
 
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
