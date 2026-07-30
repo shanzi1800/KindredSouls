@@ -1642,6 +1642,10 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     console.warn('[MonthAstroLock] failed:', e.message);
   }
 
+  // 🛠️ V207: 修复 AI 把 ) 吞进正文导致的 dangling 开括号
+  // 例:（第6宫逆行 → （第6宫）逆行  /  （第7宫与木星 → （第7宫）与木星
+  text = text.replace(/（第([一二三四五六七八九十百零\d]+)宫(?!）)/g, '（第$1宫）');
+
   return text;
 }
 
