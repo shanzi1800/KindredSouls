@@ -81,6 +81,13 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 
   // 🛡️ V219b: 流内重复/超长检测——模型陷入 degeneracy 循环(完整月报重复吐)时提前终止,杜绝 8MB 卡死
   let _acc = '';
+  const _tokClean = (s) => {
+    if (!s || !tokMap) return s;
+    for (const [_t, _v] of Object.entries(tokMap)) {
+      if (_t && _v) s = s.split(_t).join(_v);
+    }
+    return s.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+  };
   const _dupGuard = (txt) => {
     _acc += (txt || '');
     const weeks = (_acc.match(/第[一二三四1-4]周|Week\s+[1-4]|Semaine\s+[1-4]|สัปดาห์ที่\s+[1-4]/g) || []).length;
@@ -100,7 +107,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0.5, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -186,7 +193,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               
               let _safe = pending;
               try { _safe = final_text_sanitizer(pending, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = pending; }
-              res.write(Buffer.from(`data: ${JSON.stringify({ text: _safe })}\n\n`, 'utf-8'));
+              res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
@@ -204,16 +211,16 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
       pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
-      res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
       if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pending) })}\n\n`, 'utf-8'));
         if (_dupGuard(pending)) onChunk && onChunk(pending); else return;
       }
     }
