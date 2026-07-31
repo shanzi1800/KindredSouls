@@ -1655,24 +1655,19 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 🛠️ V214: 周次颜色强制规范化（所有语言，HIT+MISS 路径共用）
 // 周次标准色: 1=🟢(充能) 2=🔴(熔断) 3=🔵(蓄力) 4=🟢(爆发)
 // AI 偶发用错 emoji(⚠️/🔥/🟢混用)，按周次序号强制覆盖
-// 🛠️ V214: 周次颜色强制规范化（所有语言，HIT+MISS 路径共用）
-// 周次标准色: 1=🟢(充能) 2=🔴(熔断) 3=🔵(蓄力) 4=🟢(爆发)
-// V214d-fr-fix: 无括号的 ✦ Semaine/Semana 行补方括号+颜色
 // 消费陷阱[⚠️ ...]和Overview[🔮 ...]不含 Week/第N周 关键词，不会误伤
-  function fixWeekHeaderColors(text) {
-  if (!text) return text;
-  text = text.replace(/\*\*/g, '');  // V214c: 去 markdown 加粗
-  const STD = {1:"🟢", 2:"🔴", 3:"🔵", 4:"🟢"};
-
-  // Step 1: 无括号 ✦ Semaine/Semana 行 → 补方括号+颜色
-  text = text.replace(/^✦\s*(?:(🟢|🔴|🔵)\s*)?(Semaine|Semana)\s+(\d+)\s*:\s*([^\n]+)/gmu,
-    (m, color, lang, n, rest) => {
-    const c = color || STD[parseInt(n)] || "🔵";
+  // V214d-fr-fix: 无括号的 ✦ Semaine/Semana/Tuần 行补方括号
+  text = text.replace(/^✦\s*(?:(🟢|🔴|🔵)\s*)?(Semaine|Semana|Tuần)\s+(\d+)\s*:\s*([^\n]+)/gmu, (m, color, lang, n, rest) => {
+    const colors = {1:'🟢',2:'🔴',3:'🔵',4:'🟢'};
+    const c = color || colors[parseInt(n)] || '🔵';
     return `✦\n[${c} ${lang} ${n}: ${rest.trim()}]`;
   });
 
-  // Step 2: 有括号标头 → 补/覆盖颜色（按周次序号）
-  text = text.replace(
+  return text.replace(Colors(text) {
+  if (!text) return text;
+  text = text.replace(/\*\*/g, '');  // 🛠️ V214c: 去 markdown 加粗(**)，避免 **Week N 格式漏匹配
+  const STD = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
+  return text.replace(
     /\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gi,
     (m, emoji, label, w1, w2, w3) => {
       const n = parseInt(w1 || w2 || w3);
@@ -1680,9 +1675,11 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
       return '[' + STD[n] + ' ' + label.trim();
     }
   );
+}
 
-  return text;
-  }
+// 🛠️ V215: 星象日期-周次后处理校验（代码层兜底，军师批复：策略C降级报警 + 受限Clamp）
+// 铁律 2026-07-18 立项已批准（kindredsouls_date_drift_guard_proposal_2026-07-30.md）
+// 原则：绝对禁止篡改天文事实；常规错置仅标记降级；仅非法日期(如7/32)受限Clamp到当月天数
 // 首期仅英文（西/法/泰/越后续迭代）；挂载于 cleanConsumerTrapAndBrackets 末尾（fixWeekHeaderColors 之后）
 function guardWeekDateDrift(text) {
   if (!text) return text;
