@@ -285,6 +285,11 @@ const SacredYearlyReportBox: React.FC<{
     // 🛠️ V102fix: 章节关键词只在行开头(≤40字内)或在 **bold/图标/markdown标记后匹配，
     // 不匹配长段落中间的关键词（否则 blabla 第一章 blabla blabla 全被归为 heading→金色）
     const prefix = textWithoutIcon.slice(0, 40);
+    // 🛠️ V217: 月度周次卡片标头（[🟢 Week N / 第N周 / Tuần N / สัปดาห์ที่ N]）走金色大字 heading
+    const isMonthWeekHeader = textWithoutIcon.trimStart().match(
+      /^\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s+\d+|Semana\s+\d+|Semaine\s+\d+|Tuần\s+\d+|สัปดาห์ที่\s+[๑๒๓๔๕๖๗๘๙\d]+|第\s*[\d一二三四五六七八九十]+\s*周)\b/i
+    );
+
     const startsWithBold = textWithoutIcon.trim().startsWith('**');
     const startsWithIcon = icon || /^[*\->]/.test(textWithoutIcon);
     const isChapterPattern = (
@@ -292,11 +297,21 @@ const SacredYearlyReportBox: React.FC<{
       /^Section\s+[IVX]+/i.test(textWithoutIcon)
     );
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
-    if (isChapterPattern || isSectionNumber) {
+    if (isChapterPattern || isSectionNumber || isMonthWeekHeader) {
       if (isVietnameseChapter || isThaiChapter) {
         return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };
       }
-      return { type: 'heading', content: cleanMarkdown(textWithoutIcon), icon };
+      // 🛠️ V217: [🟢 Week N...] → 去掉方括号，提取 emoji 作图标
+      let finalContent = textWithoutIcon;
+      let finalIcon = icon;
+      if (isMonthWeekHeader) {
+        const m = textWithoutIcon.match(/^\[\s*([🟢🔴🔵⚠️])?\s*\]?\s*(.+)/);
+        if (m) {
+          if (m[1] && !finalIcon) finalIcon = m[1];
+          finalContent = m[2].replace(/^\s*\]?\s*/, '');
+        }
+      }
+      return { type: 'heading', content: cleanMarkdown(finalContent), icon: finalIcon };
     }
     
     // 月份/年份/章节编号 (1.4, 1.1 等)
