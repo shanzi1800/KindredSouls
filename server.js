@@ -107,7 +107,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0.5, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 1.0, presence_penalty: 0.5, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
