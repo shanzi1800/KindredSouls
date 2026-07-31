@@ -1326,8 +1326,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     setTimeout(() => setAuthChecking(false), 10000);
-    // 🔒 组件卸载时中止未完成的流，防止反复 remount 叠加多份报告
-    return () => { if (abortRef.current) abortRef.current.abort(); };
+    // 🛡️ V219e: 不再在卸载时 abort 进行中的请求——abort 会误删 module 级单例锁，导致反复 remount 陷入“发→abort→删锁→再发”死循环。单例锁已保证全局只发一个请求。
   }, []);
 
   // ── Magic Link 同 tab 回调监听:callback.html 完成后发 KS_AUTH_SUCCESS ──
@@ -1907,13 +1906,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         // 🛡️ V219d: 注册单例生成锁，后续 remount 订阅此进度（不重复发请求）
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
-        // 🔒 发起新请求前先中止上一条悬挂流（防反复 remount 叠加）
-        abortRef.current?.abort();
-        abortRef.current = new AbortController();
+        // 🛡️ V219e: 发起请求但不 abort 任何请求——单例锁已保证全局只发一个，进行中请求必须跑到 [DONE]
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: abortRef.current.signal,
           body: JSON.stringify({ birthDate, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang, reportType: type }),
         });
 
