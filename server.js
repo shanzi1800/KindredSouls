@@ -4876,12 +4876,29 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
     try {
-      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-        if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-          fullTextCollector += chunk;
-        }, astroMatrix, realSunSign, lang, reportType);
-      if (geminiFullText && geminiFullText.trim().length > 0) {
-        aiStream = true;
+      // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆4段各写1周拼接)
+      if (reportType === 'monthly') {
+        const _wf = [
+          '只写第1周（标题使用 ✦ [🟢 第1周：...（财富充能）]），写完第1周立即停止，不要写其他周、不要重复。',
+          '只写第2周（标题使用 ✦ [🔴 第2周：...（高危熔断）]），写完第2周立即停止，不要写其他周、不要重复。',
+          '只写第3周（标题使用 ✦ [🔵 第3周：...（顺流蓄力）]），写完第3周立即停止，不要写其他周、不要重复。',
+          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。'
+        ];
+        for (let w = 0; w < 4; w++) {
+          const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+          const _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+              fullTextCollector += chunk;
+            }, astroMatrix, realSunSign, lang, reportType, null);
+          if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
+        }
+        if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
+      } else {
+        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+          if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, astroMatrix, realSunSign, lang, reportType, null);
+        if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       }
     } catch(e) {
       console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
