@@ -1661,31 +1661,79 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 消费陷阱[⚠️ ...]和Overview[🔮 ...]不含 Week/第N周 关键词，不会误伤
   function fixWeekHeaderColors(text) {
   if (!text) return text;
-  text = text.replace(/\*\*/g, '');  // V214c: 去 markdown 加粗
-  const STD = {1:"🟢", 2:"🔴", 3:"🔵", 4:"🟢"};
+  text = text.replace(/\*\*/g, '');
+  return text.split('\n').map(line => {
+    let l = line.trimEnd();
 
-  // Step 1: 无括号 ✦ Semaine/Semana 行 → 补方括号+颜色
-  text = text.replace(/^✦\s*(?:(🟢|🔴|🔵)\s*)?(Semaine|Semana)\s+(\d+)\s*:\s*([^\n]+)/gmu,
-    (m, color, lang, n, rest) => {
-    const c = color || STD[parseInt(n)] || "🔵";
-    return `✦\n[${c} ${lang} ${n}: ${rest.trim()}]`;
-  });
+    // Step 0: 清除 ## 标记
+    l = l.replace(/^##\s*/, '');
 
-  // Step 2: 有括号完整标头 → 补/覆盖颜色（label已有emoji则跳过，防止重复追加）
-  text = text.replace(
-    /\[((?:🟢|🔴|🔵|⚠️)?[\s]*(?:(?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))[^\]]*)\]/gi,
-    (m, label, w1, w2, w3) => {
-      // 若 label 已有 🟢🔴🔵 emoji，说明已处理过，跳过
-      if (/^[\s]*[🟢🔴🔵]/.test(label)) return m;
-      const n = parseInt(w1 || w2 || w3);
-      if (!n || !STD[n]) return m;
-      return '[' + STD[n] + ' ' + label.trim() + ']';
+    // Step 0.5: 提取 ✦ 和 desc
+    let star = false, desc = '';
+    if (/^\u2726\s*\[.+?\]\s+[^\[]/.test(l)) {
+      star = true;
+      l = l.replace(/^(\u2726\s*)\[(.+?)\]\s+(.+)/, (_p, _pfx, inner, d) => {
+        for (const bad of ['\u{1F570}','\u{1F33F}','\u{1F525}','\u{1F4D0}','\u{1F51C}','\u{1F539}','\u{1F719}','\u{1F319}','\u2600\uFE0F','\u{1F4AF}','\u{1F4CA}','\u{1F5AB}'])
+          inner = inner.split(bad).join(' ');
+        inner = inner.replace(/\uFE0F/g, '');
+        desc = d.trim();
+        return '[' + inner.trim() + ']';
+      });
     }
-  );
+
+    // Step 0.6: 清除残留非标准 emoji
+    if (/^\[.*?(?:Semaine|Semana|Tuần|Week|第.+周|สัปดาห์ที่)/.test(l)) {
+      for (const bad of ['\u{1F570}','\u{1F33F}','\u{1F525}','\u{1F4D0}','\u{1F51C}','\u{1F539}','\u{1F719}','\u{1F319}','\u2600\uFE0F','\u{1F4AF}','\u{1F4CA}','\u{1F5AB}'])
+        l = l.split(bad).join(' ');
+      l = l.replace(/\uFE0F/g, '');
+      if (l.includes('\u26A0') && !l.includes('\u26A0\uFE0F'))
+        l = l.replace(/\u26A0/g, '\u26A0\uFE0F');
+    }
+
+    // Step 1: 无括号的 Semaine/Semana 行
+    l = l.replace(/^(Semaine|Semana)\s+(\d+)\s*:\s*(.+)/,
+      (m, lang, n, rest) => {
+        const STD = {1:"\u{1F7E2}", 2:"\u{1F534}", 3:"\u{1F535}", 4:"\u{1F7E2}"};
+        const c = STD[parseInt(n)] || "\u{1F535}";
+        return '\u2726[' + c + ' ' + lang + ' ' + n + ': ' + rest.trim() + ']';
+      }
+    );
+
+    // Step 2: 有括号标头 → 只保护 🟢🔴🔵，其余按周次重写
+    l = l.replace(
+      /^\[((?:\u{1F7E2}|\u{1F534}|\u{1F535}|\u26A0\uFE0F?)?[\s]*(?:Week|Semana|Semaine|Tuần|第\s*(\d+)\s*周|สัปดาห์ที่\s*([๑๒๓๔๕๖๗๘๙\d]+))[^\]]*)\]/,
+      (m, label, zhWeek, thWeek) => {
+        const firstCP = m.codePointAt(1);
+        if ([0x1F7E2, 0x1F534, 0x1F535].includes(firstCP)) return m;
+        if (m.includes('\u26A0')) return m;
+        const zhW = /第\s*(\d+)\s*周/.exec(label);
+        const thW = /สัปดาห์ที่\s*([๑๒๓๔๕๖๗๘๙\d]+)/.exec(label);
+        const enW = /(?:Week|Semana|Semaine|Tuần)\s*(\d+)/.exec(label);
+        const TH = {'๐':0,'๑':1,'๒':2,'๓':3,'๔':4,'๕':5,'๖':6,'๗':7,'๘':8,'๙':9};
+        let n = null;
+        if (zhW) n = parseInt(zhW[1]);
+        else if (thW) {
+          let tn = ''; for(const c of thW[1]) tn += TH[c] !== undefined ? TH[c] : c;
+          n = parseInt(tn) || null;
+        }
+        else if (enW) n = parseInt(enW[1]);
+        const STD2 = {1:"\u{1F7E2}", 2:"\u{1F534}", 3:"\u{1F535}", 4:"\u{1F7E2}"};
+        if (!n || !STD2[n]) return m;
+        return '[' + STD2[n] + ' ' + label.trim() + ']';
+      }
+    );
+
+    // Step 3: 还原 ✦ 前缀
+    if (star) {
+      if (desc) l = '\u2726 ' + l.trimStart() + ' ' + desc;
+      else l = '\u2726 ' + l.trimStart();
+    }
+
+    return l;
+  }).join('\n');
+}
 
 
-  return text;
-  }
 // 首期仅英文（西/法/泰/越后续迭代）；挂载于 cleanConsumerTrapAndBrackets 末尾（fixWeekHeaderColors 之后）
 function guardWeekDateDrift(text) {
   if (!text) return text;
