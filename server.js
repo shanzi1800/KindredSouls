@@ -1676,29 +1676,71 @@ function fixWeekHeaderColors(text) {
 // 首期仅英文（西/法/泰/越后续迭代）；挂载于 cleanConsumerTrapAndBrackets 末尾（fixWeekHeaderColors 之后）
 function guardWeekDateDrift(text) {
   if (!text) return text;
-  const MONTHS = {jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+  // V215-i18n: 扩展四语种月份（西/法/泰）；越南语 ThgN 单独解析
+  const MONTHS = {
+    jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12,
+    ene:1,enero:1,feb:2,febrero:2,mar:3,marzo:3,abr:4,abril:4,may:5,mayo:5,jun:6,junio:6,jul:7,julio:7,ago:8,agosto:8,sep:9,septiembre:9,oct:10,octubre:10,nov:11,noviembre:11,dic:12,diciembre:12,
+    janv:1,janvier:1,fév:2,fev:2,février:2,fevrier:2,mars:3,avr:4,avril:4,mai:5,juin:6,juil:7,juillet:7,août:8,aout:8,sept:9,septembre:9,oct:10,octobre:10,nov:11,novembre:11,déc:12,dec:12,décembre:12,decembre:12,
+    'ม.ค.':1,'มกราคม':1,'ก.พ.':2,'กุมภาพันธ์':2,'มี.ค.':3,'มีนาคม':3,'เม.ย.':4,'เมษายน':4,'พ.ค.':5,'พฤษภาคม':5,'มิ.ย.':6,'มิถุนายน':6,'ก.ค.':7,'กรกฎาคม':7,'ส.ค.':8,'สิงหาคม':8,'ก.ย.':9,'กันยายน':9,'ต.ค.':10,'ตุลาคม':10,'พ.ย.':11,'พฤศจิกายน':11,'ธ.ค.':12,'ธันวาคม':12
+  };
   const DAYS = {1:31,2:28,3:31,4:30,5:31,6:30,7:31,8:31,9:30,10:31,11:30,12:31};
-  const PLANETS = 'Mercury|Venus|Mars|Sun|Moon|Jupiter|Saturn';
+  // 行星名覆盖英/法/泰/越（西语复用英文名）
+  const PLANETS = 'Mercury|Venus|Mars|Sun|Moon|Jupiter|Saturn|Vénus|Mercure|Saturne|Lune|Soleil|ดาวพุธ|ดาวศุกร์|ดาวอังคาร|ดวงอาทิตย์|ดวงจันทร์|ดาวพฤหัส|ดาวเสาร์|Sao Thủy|Sao Kim|Sao Hỏa|Mặt Trời|Mặt Trăng|Sao Mộc|Sao Thổ';
+  // V215-i18n: 月份词精确列表（转义正则特殊字符，含泰语点），避免 (\S+) 贪婪捕获过多
+  const MT = Object.keys(MONTHS).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  function monthNum(tok) {
+    if (!tok) return null;
+    const t = String(tok).toLowerCase().replace(/[.,;:]+$/, ''); // 去尾点/标点（julio. → julio）
+    if (MONTHS[t] !== undefined) return MONTHS[t];
+    // 🛠️ V215-th-dot-fix: Thai abbrevs like ก.ค. lose trailing dot in t; check raw tok too
+    if (MONTHS[tok] !== undefined) return MONTHS[tok];
+    const m = t.match(/^thg\s*(\d+)$/); // 越南语 Thg7 = Tháng 7
+    if (m) return parseInt(m[1], 10);
+    return null;
+  }
+  function inRange(evM, evD, sM, sD, eM, eD) {
+    return (evM === sM && evD >= sD && evD <= eD) ||
+           (sM !== eM && ((evM === sM && evD >= sD) || (evM === eM && evD <= eD)));
+  }
   const segs = text.split(/(?=✦)/);
   return segs.map(seg => {
-    const hm = seg.match(/\[(🟢|🔴|🔵|⚠️)?\s*Week\s+(\d+):\s*([A-Za-z]+)\s+(\d+)\s*[–-]\s*(?:([A-Za-z]+)\s+)?(\d+)/i);
+    // V215-i18n: 周次标题支持 Week/Semana/Semaine/Tuần/第N周/สัปดาห์ที่ + 四语种月份 token
+    const hm = seg.match(/\[(🟢|🔴|🔵|⚠️)?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่)\s*(\d+)\s*[:：]\s*(\S+)\s+(\d+)\s*[–-]\s*(?:(\S+)\s+)?(\d+)/i);
     if (!hm) return seg;
-    const startM = MONTHS[String(hm[3]).toLowerCase()];
-    const startD = parseInt(hm[4], 10);
-    const endM = hm[5] ? MONTHS[String(hm[5]).toLowerCase()] : startM;
-    const endD = parseInt(hm[6], 10);
-    if (!startM) return seg;
-    const evRe = new RegExp('(' + PLANETS + ')\\b[^\\n]{0,40}?\\b([A-Za-z]+)\\s+(\\d+)', 'gi');
-    let m, drifted = false;
-    while ((m = evRe.exec(seg)) !== null) {
-      const evM = MONTHS[String(m[2]).toLowerCase()];
+    const sM = monthNum(hm[3]);
+    const sD = parseInt(hm[4], 10);
+    const eM = hm[5] ? monthNum(hm[5]) : sM;
+    const eD = parseInt(hm[6], 10);
+    if (!sM) return seg;
+    let drifted = false, m;
+    // 月+日（英）：Planet ... Month DD
+    const mdRe = new RegExp('(' + PLANETS + ')[^\\n]{0,40}?(' + MT + ')\\s+(\\d+)', 'gi');
+    while ((m = mdRe.exec(seg)) !== null) {
+      const evM = monthNum(m[2]);
       if (!evM) continue;
       let evD = parseInt(m[3], 10);
-      if (evD > DAYS[evM]) evD = DAYS[evM]; // 受限Clamp: 非法日期(7/32)→当月天数
-      const inRange =
-        (evM === startM && evD >= startD && evD <= endD) ||
-        (startM !== endM && ((evM === startM && evD >= startD) || (evM === endM && evD <= endD)));
-      if (!inRange) { drifted = true; break; }
+      if (evD > DAYS[evM]) evD = DAYS[evM];
+      if (!inRange(evM, evD, sM, sD, eM, eD)) { drifted = true; break; }
+    }
+    // 日+月（西/法/泰）：Planet ... DD (de|วันที่) Month
+    if (!drifted) {
+      const dmRe = new RegExp('(' + PLANETS + ')[^\\n]{0,40}?(\\d+)\\s+(?:de\\s+|วันที่\\s+)?(' + MT + ')', 'gi');
+      while ((m = dmRe.exec(seg)) !== null) {
+        const evM = monthNum(m[3]);
+        if (!evM) continue;
+        let evD = parseInt(m[2], 10);
+        if (evD > DAYS[evM]) evD = DAYS[evM];
+        if (!inRange(evM, evD, sM, sD, eM, eD)) { drifted = true; break; }
+      }
+    }
+    // 越南语：Planet ... ngày DD tháng MM
+    if (!drifted) {
+      const viRe = new RegExp('(' + PLANETS + ')[^\\n]{0,40}?ngày\\s+(\\d+)\\s+tháng\\s+(\\d+)', 'gi');
+      while ((m = viRe.exec(seg)) !== null) {
+        let evM = parseInt(m[3], 10), evD = parseInt(m[2], 10);
+        if (evD > DAYS[evM]) evD = DAYS[evM];
+        if (!inRange(evM, evD, sM, sD, eM, eD)) { drifted = true; break; }
+      }
     }
     if (drifted && !seg.includes('⚠️ 日期校准')) {
       return seg.replace(hm[0], hm[0] + ' ⚠️ 日期校准');
@@ -1706,6 +1748,7 @@ function guardWeekDateDrift(text) {
     return seg;
   }).join('');
 }
+
 
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
