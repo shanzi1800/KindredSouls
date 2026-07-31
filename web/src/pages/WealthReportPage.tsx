@@ -5,6 +5,9 @@ import React, { useState, useEffect, useRef } from 'react';
 const _reportMemCache = new Map<string, string>();
 // 🛡️ V219d: 进行中报告的单例锁——同一 birth+lang+type 全局只发一个请求，所有 remount 共享进度
 const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => void> }>();
+// 🔬 V219g-DEBUG: 诊断用计数器（确认后删除）
+let _dbgCall = 0;
+let _dbgSet = 0;
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
@@ -1851,6 +1854,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const _stableLang = _urlP.get('lang') || lang || 'en';
     // 🛡️ V219: 内存级去重，跨 remount 生效——同一 birth+lang+type 只发一次请求
     const _memKey = `${_stableBirth}_${_stableLang}_${type}`;
+    _dbgCall++;
+    console.log(`[V219g-DEBUG] CALL #${_dbgCall} key=${_memKey} has=${_reportGen.has(_memKey)} gen=${_reportGen.size}`);
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
       console.log('[generateWealthReport] 🛡️ V219 内存命中,直接渲染不重发请求');
@@ -1910,6 +1915,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         // 🛡️ V219d: 注册单例生成锁，后续 remount 订阅此进度（不重复发请求）
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
+        _dbgSet++;
+        console.log(`[V219g-DEBUG] SET #${_dbgSet} key=${_memKey} gen=${_reportGen.size}`);
         // 🛡️ V219e: 发起请求但不 abort 任何请求——单例锁已保证全局只发一个，进行中请求必须跑到 [DONE]
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
