@@ -1845,8 +1845,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // 🛠️ V40: 移除折叠逻辑，改用单框打字机
 
   const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once') => {
+    // 🛡️ V219f: key 必须基于 URL 稳定值,绝不依赖组件 state(birthDate/lang 初始化期为空或波动会导致锁 key 失配、5 个并发请求叠加)
+    const _urlP = new URLSearchParams(window.location.search);
+    const _stableBirth = _urlP.get('birth') || birthDate || '';
+    const _stableLang = _urlP.get('lang') || lang || 'en';
     // 🛡️ V219: 内存级去重，跨 remount 生效——同一 birth+lang+type 只发一次请求
-    const _memKey = `${birthDate}_${lang}_${type}`;
+    const _memKey = `${_stableBirth}_${_stableLang}_${type}`;
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
       console.log('[generateWealthReport] 🛡️ V219 内存命中,直接渲染不重发请求');
@@ -1910,7 +1914,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ birthDate, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang, reportType: type }),
+          body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type }),
         });
 
         const reader = res.body?.getReader();
