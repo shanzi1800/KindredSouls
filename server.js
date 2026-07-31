@@ -78,6 +78,20 @@ function getGeminiKey() {
 // ── DeepSeek 直连流式(OpenAI 兼容格式,SSE 逐字吐出)──
 // 🛠️ V131: Node.js 原生 fetch 流式(Railway 实测 https.request 在流式场景丢数据,fetch 完美)
 async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly') {
+
+  // 🛡️ V219b: 流内重复/超长检测——模型陷入 degeneracy 循环(完整月报重复吐)时提前终止,杜绝 8MB 卡死
+  let _acc = '';
+  const _dupGuard = (txt) => {
+    _acc += (txt || '');
+    const weeks = (_acc.match(/第[一二三四1-4]周|Week\s+[1-4]|Semaine\s+[1-4]|สัปดาห์ที่\s+[1-4]/g) || []).length;
+    if (_acc.length > 60000 || weeks > 4) {
+      console.log('[callDeepSeek] ⚠️ V219b 检测到重复生成/超长,提前终止流 (' + _acc.length + ' chars, weeks=' + weeks + ')');
+      try { clearInterval(heartbeat); } catch(e){}
+      try { res.end(); } catch(e){}
+      return false;
+    }
+    return true;
+  };
   console.log('[callDeepSeek] START, res.type=', typeof res, 'res.write=', typeof res?.write, 'res.flush=', typeof res?.flush);
   const deepseekKey = getDeepSeekKey();
   let resp;
@@ -86,7 +100,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 48000, temperature: 0, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -166,14 +180,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                   hasCaichong: pc.includes('（财富充能）')
                 }
               })}\n\n`, 'utf-8'));
-              onChunk && onChunk(pc);
+              if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
               
               let _safe = pending;
               try { _safe = final_text_sanitizer(pending, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = pending; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _safe })}\n\n`, 'utf-8'));
-              onChunk && onChunk(_safe);
+              if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
             pending = '';
@@ -191,16 +205,16 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
       pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-      onChunk && onChunk(pc);
+      if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
         res.write(Buffer.from(`data: ${JSON.stringify({ text: pc })}\n\n`, 'utf-8'));
-        onChunk && onChunk(pc);
+        if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
         res.write(Buffer.from(`data: ${JSON.stringify({ text: pending })}\n\n`, 'utf-8'));
-        onChunk && onChunk(pending);
+        if (_dupGuard(pending)) onChunk && onChunk(pending); else return;
       }
     }
     if (typeof res.flush === 'function') res.flush();
