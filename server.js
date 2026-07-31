@@ -1818,6 +1818,14 @@ function guardWeekDateDrift(text) {
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
+  // 🛠️ V216-fix: 过滤 DeepSeek 幻觉吐出的 LaTeX 源码
+  if (/\\[a-z]/i.test(text) || text.includes('documentclass') || text.includes('begin{') || text.includes('usepackage')) {
+    text = text.replace(/\n\s*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, '\n');
+    text = text.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?\{[^}]*\}/g, ' ')
+    text = text.replace(/\\[a-zA-Z]+/g, ' ');
+    text = text.replace(/\{[^}]{20,}\}/g, '');
+  }
+
   // ═══════════════════════════════════════════════════════════
   // V200 激进清洗引擎（军师方案）
   // 解决：宫位括号错位、孤立右括号残余、消费陷阱切片头缺失
