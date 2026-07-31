@@ -107,7 +107,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0.5, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 20000, temperature: 0.5, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -4464,7 +4464,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-          body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
+          body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json();
@@ -4874,51 +4874,50 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
       return res.end();
     }
-    // 🛡️ V219d: 主通道改 Gemini(non-stream)——DeepSeek 服务端退化(月报生成第1周循环不前进),Gemini 作主,DeepSeek 兜底
-    if (geminiKey) {
-      try {
-        console.log('[wealth-stream] → Gemini primary (non-stream)');
-        usedGemini = true;
-        const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-            generationConfig: { maxOutputTokens: 16000, temperature: 0.5 },
-          }),
-          signal: controller.signal,
-        });
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (lang !== 'zh') { geminiFullText = geminiFullText.replace(/（/g, '').replace(/）/g, ''); }
-          if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) geminiFullText = geminiFullText.split(_t).join(_v);
-          geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
-          if (geminiFullText && geminiFullText.trim().length > 0) {
-            res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
-            if (typeof res.flush === 'function') res.flush();
-            fullTextCollector += geminiFullText;
-            aiStream = true;
-          }
-        } else {
-          console.error('[wealth-stream] Gemini primary HTTP', geminiRes.status);
-        }
-      } catch(e) {
-        console.error('[wealth-stream] Gemini primary FAILED:', e.message);
+    // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
+    try {
+      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+        if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+          fullTextCollector += chunk;
+        }, astroMatrix, realSunSign, lang, reportType);
+      if (geminiFullText && geminiFullText.trim().length > 0) {
+        aiStream = true;
       }
-    }
-    // DeepSeek 兜底（Gemini 未产出时）
-    if (!geminiFullText || geminiFullText.trim().length === 0) {
-      try {
-        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-          if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            fullTextCollector += chunk;
-          }, astroMatrix, realSunSign, lang, reportType);
-        if (geminiFullText && geminiFullText.trim().length > 0) {
-          aiStream = true;
-        }
-      } catch(e) {
-        console.error('[wealth-stream] [V131] DeepSeek stream FAILED:', e.message || String(e));
+    } catch(e) {
+      console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
+      if (geminiKey) {
+        const gCtrl = new AbortController();
+        const gTimer = setTimeout(() => gCtrl.abort(), 30000);
+        try {
+          console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
+          usedGemini = true;
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+              generationConfig: { maxOutputTokens: 16000, temperature: 0.5 },
+            }),
+            signal: gCtrl.signal,
+          });
+          clearTimeout(gTimer);
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (lang !== 'zh') { geminiFullText = geminiFullText.replace(/（/g, '').replace(/）/g, ''); }
+            if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) geminiFullText = geminiFullText.split(_t).join(_v);
+            geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+            if (geminiFullText && geminiFullText.trim().length > 0) {
+              res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
+              if (typeof res.flush === 'function') res.flush();
+              onChunk && onChunk(geminiFullText);
+            }
+          } else {
+            console.error('[wealth-stream] Gemini fallback HTTP', geminiRes.status);
+          }
+        } catch(geminiErr) {
+          console.error('[wealth-stream] Gemini fallback EXCEPTION:', geminiErr.message);
+        } finally { clearTimeout(gTimer); }
       }
     }
 
@@ -5805,7 +5804,7 @@ app.get('/api/compare-llm', async (req, res) => {
       const r = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${cleanKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
       });
       const d = await r.json();
       results.deepseek = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
