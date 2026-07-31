@@ -157,7 +157,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
 export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok') {
   // 🛠️ V142-fix: 移除 birthTime='12:00' 默认值——undefined 会触发默认值导致 birthTimeKnown 误判为 true(假上升),
   // 现在 undefined/null/'' 都如实传给 computeViaPython 判定为无出生时间→Solar House
-  const cacheKey = `${birthDate}:${birthTime}:${lat.toFixed(2)}:${lon.toFixed(2)}:${tz}`;
+  const cacheKey = `${birthDate}:${birthTime}:${Math.floor(lat*100)/100}:${Math.floor(lon*100)/100}:${tz}`;
 
   // Check cache
   const cached = matrixCache.get(cacheKey);
