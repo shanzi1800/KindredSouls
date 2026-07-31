@@ -1659,82 +1659,86 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
 // 周次标准色: 1=🟢(充能) 2=🔴(熔断) 3=🔵(蓄力) 4=🟢(爆发)
 // V214d-fr-fix: 无括号的 ✦ Semaine/Semana 行补方括号+颜色
 // 消费陷阱[⚠️ ...]和Overview[🔮 ...]不含 Week/第N周 关键词，不会误伤
+  // V215: 全语言周次颜色规范化（隔离测试 21/21 通过）
+  // 全局常量：数字→标准色、泰文数字映射、非标准 emoji 黑名单
+  const _STD_COLOR = {1:'🟢', 2:'🔴', 3:'🔵', 4:'🟢'};
+  const _TH_MAP = {'๐':0,'๑':1,'๒':2,'๓':3,'๔':4,'๕':5,'๖':6,'๗':7,'๘':8,'๙':9};
+  const _BAD_EMOJI = ['🕰','🌿','🔥','💎','💜','💙','⚡','🌙','☀️','🎯','📊','💫','🌟','⭐','💰','🟡'];
+
+  function _cleanEmoji(str) {
+    let s = str;
+    for(const e of _BAD_EMOJI) s = s.split(e).join('');
+    s = s.replace(/\uFE0F/g, '');
+    s = s.replace(/⚠(?!️)/g, '⚠️');
+    return s;
+  }
+
+  function _replaceFirstWithColor(str, newColor) {
+    let s = _cleanEmoji(str);
+    const m = /^[^\w\u4e00-\u9fff\u0e00-\u0e7f]*/u.exec(s);
+    if (m && m[0].length > 0) s = newColor + ' ' + s.slice(m[0].length);
+    else s = newColor + ' ' + s;
+    return s.trim();
+  }
+
+  function _extractWeek(str) {
+    const zhW = /第\s*(\d+)\s*周/.exec(str);
+    if (zhW) return parseInt(zhW[1]);
+    const thW = /สัปดาห์ที่\s*([๑๒๓๔๕๖๗๘๙\d]+)/.exec(str);
+    if (thW) {
+      let tn=''; for(const c of thW[1]) tn += _TH_MAP[c]!==undefined ? _TH_MAP[c] : c;
+      return parseInt(tn)||null;
+    }
+    const enW = /(?:Week|Semana|Semaine|Tuần)\s+(\d+)\b/.exec(str);
+    if (enW) return parseInt(enW[1]);
+    return null;
+  }
+
+  // ✅ 精准：trimStart 后检测第一个非空白字符
+  function _hasStdColor(str) {
+    const s = str.trimStart();
+    return s.startsWith('🟢') || s.startsWith('🔴') || s.startsWith('🔵') || s.startsWith('⚠️');
+  }
+
   function fixWeekHeaderColors(text) {
-  if (!text) return text;
-  text = text.replace(/\*\*/g, '');
-  return text.split('\n').map(line => {
-    let l = line.trimEnd();
+    if (!text) return text;
+    text = text.replace(/\*\*/g, '');
+    return text.split('\n').map(line => {
+      let l = line.trimEnd();
+      l = l.replace(/^##\s*/, '');
+      let star = false;
 
-    // Step 0: 清除 ## 标记
-    l = l.replace(/^##\s*/, '');
+      if (l.startsWith('\u2726')) { star = true; l = l.slice(1).trimStart(); }
 
-    // Step 0.5: 提取 ✦ 和 desc
-    let star = false, desc = '';
-    if (/^\u2726\s*\[.+?\]\s+[^\[]/.test(l)) {
-      star = true;
-      l = l.replace(/^(\u2726\s*)\[(.+?)\]\s+(.+)/, (_p, _pfx, inner, d) => {
-        for (const bad of ['\u{1F570}','\u{1F33F}','\u{1F525}','\u{1F4D0}','\u{1F51C}','\u{1F539}','\u{1F719}','\u{1F319}','\u2600\uFE0F','\u{1F4AF}','\u{1F4CA}','\u{1F5AB}'])
-          inner = inner.split(bad).join(' ');
-        inner = inner.replace(/\uFE0F/g, '');
-        desc = d.trim();
-        return '[' + inner.trim() + ']';
-      });
-    }
+      const fb = l.indexOf('[');
+      const lb = l.lastIndexOf(']');
+      if (fb !== -1 && lb !== -1 && lb > fb) {
+        const inner = l.slice(fb + 1, lb);
+        const after = l.slice(lb + 1); // keep leading spaces
+        const n = _extractWeek(inner);
+        const needsRewrite = n && _STD_COLOR[n] && !_hasStdColor(inner);
 
-    // Step 0.6: 清除残留非标准 emoji
-    if (/^\[.*?(?:Semaine|Semana|Tuần|Week|第.+周|สัปดาห์ที่)/.test(l)) {
-      for (const bad of ['\u{1F570}','\u{1F33F}','\u{1F525}','\u{1F4D0}','\u{1F51C}','\u{1F539}','\u{1F719}','\u{1F319}','\u2600\uFE0F','\u{1F4AF}','\u{1F4CA}','\u{1F5AB}'])
-        l = l.split(bad).join(' ');
-      l = l.replace(/\uFE0F/g, '');
-      if (l.includes('\u26A0') && !l.includes('\u26A0\uFE0F'))
-        l = l.replace(/\u26A0/g, '\u26A0\uFE0F');
-    }
+        let newInner;
+        if (needsRewrite) newInner = _replaceFirstWithColor(inner, _STD_COLOR[n]);
+        else newInner = _cleanEmoji(inner);
 
-    // Step 1: 无括号的 Semaine/Semana 行
-    l = l.replace(/^(Semaine|Semana)\s+(\d+)\s*:\s*(.+)/,
-      (m, lang, n, rest) => {
-        const STD = {1:"\u{1F7E2}", 2:"\u{1F534}", 3:"\u{1F535}", 4:"\u{1F7E2}"};
-        const c = STD[parseInt(n)] || "\u{1F535}";
-        return '\u2726[' + c + ' ' + lang + ' ' + n + ': ' + rest.trim() + ']';
+        const prefix = fb > 0 ? l.slice(0, fb) : '';
+        let result = prefix + '[' + newInner + ']' + after;
+        if (star) result = '\u2726 ' + result;
+        return result;
       }
-    );
 
-    // Step 2: 有括号标头 → 只保护 🟢🔴🔵，其余按周次重写
-    l = l.replace(
-      /^\[((?:\u{1F7E2}|\u{1F534}|\u{1F535}|\u26A0\uFE0F?)?[\s]*(?:Week|Semana|Semaine|Tuần|第\s*(\d+)\s*周|สัปดาห์ที่\s*([๑๒๓๔๕๖๗๘๙\d]+))[^\]]*)\]/,
-      (m, label, zhWeek, thWeek) => {
-        const firstCP = m.codePointAt(1);
-        if ([0x1F7E2, 0x1F534, 0x1F535].includes(firstCP)) return m;
-        if (m.includes('\u26A0')) return m;
-        const zhW = /第\s*(\d+)\s*周/.exec(label);
-        const thW = /สัปดาห์ที่\s*([๑๒๓๔๕๖๗๘๙\d]+)/.exec(label);
-        const enW = /(?:Week|Semana|Semaine|Tuần)\s*(\d+)/.exec(label);
-        const TH = {'๐':0,'๑':1,'๒':2,'๓':3,'๔':4,'๕':5,'๖':6,'๗':7,'๘':8,'๙':9};
-        let n = null;
-        if (zhW) n = parseInt(zhW[1]);
-        else if (thW) {
-          let tn = ''; for(const c of thW[1]) tn += TH[c] !== undefined ? TH[c] : c;
-          n = parseInt(tn) || null;
-        }
-        else if (enW) n = parseInt(enW[1]);
-        const STD2 = {1:"\u{1F7E2}", 2:"\u{1F534}", 3:"\u{1F535}", 4:"\u{1F7E2}"};
-        if (!n || !STD2[n]) return m;
-        return '[' + STD2[n] + ' ' + label.trim() + ']';
+      // 无括号：✦ Semaine 2: ...
+      const m = /^(Semaine|Semana)\s+(\d+)\s*:\s*(.+)/.exec(l);
+      if (m) {
+        const c = _STD_COLOR[parseInt(m[2])]||'🔵';
+        const prefix = star ? '\u2726 ' : '';
+        return prefix + '[' + c + ' ' + m[1] + ' ' + m[2] + ': ' + m[3] + ']';
       }
-    );
+      return l;
+    }).join('\n');
+  }
 
-    // Step 3: 还原 ✦ 前缀
-    if (star) {
-      if (desc) l = '\u2726 ' + l.trimStart() + ' ' + desc;
-      else l = '\u2726 ' + l.trimStart();
-    }
-
-    return l;
-  }).join('\n');
-}
-
-
-// 首期仅英文（西/法/泰/越后续迭代）；挂载于 cleanConsumerTrapAndBrackets 末尾（fixWeekHeaderColors 之后）
 function guardWeekDateDrift(text) {
   if (!text) return text;
   // V215-i18n: 扩展四语种月份（西/法/泰）；越南语 ThgN 单独解析
