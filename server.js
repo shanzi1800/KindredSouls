@@ -1818,12 +1818,18 @@ function guardWeekDateDrift(text) {
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
-  // 🛠️ V216-fix: 过滤 DeepSeek 幻觉吐出的 LaTeX 源码
-  if (/\\[a-z]/i.test(text) || text.includes('documentclass') || text.includes('begin{') || text.includes('usepackage')) {
-    text = text.replace(/\n\s*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, '\n');
-    text = text.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?\{[^}]*\}/g, ' ')
-    text = text.replace(/\\[a-zA-Z]+/g, ' ');
+  // 🛠️ V216-fix: 过滤 DeepSeek 幻觉吐出的 LaTeX 源码（5种触发）
+  if (/\\begin\{|documentclass|begin\{|usepackage|\\[a-z]/i.test(text) || /```.?latex/i.test(text)) {
+    // 1. 抹掉 ```latex 标签行
+    text = text.replace(/```\.?latex\n?/gi, '');
+    // 2. 抹掉 \begin{...}...\end{...} 块
+    text = text.replace(/\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, '');
+    // 3. 抹掉 LaTeX 命令+花括号参数
+    text = text.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?\{[^}]*\}/g, ' ');
+    // 4. 抹掉超长花括号（20字符以上，多半是 LaTeX 参数）
     text = text.replace(/\{[^}]{20,}\}/g, '');
+    // 5. 抹掉裸LaTeX命令词
+    text = text.replace(/\b(documentclass|usepackage|begin|end|section|article|geometry|fontspec|xcolor)\b/gi, ' ');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2244,7 +2250,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v131e:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v216e:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
