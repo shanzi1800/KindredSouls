@@ -1152,6 +1152,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
+  const abortRef = useRef<AbortController | null>(null); // 🔒 中止悬挂流，防止反复 remount 叠加多份报告
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
@@ -1323,6 +1324,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     setTimeout(() => setAuthChecking(false), 10000);
+    // 🔒 组件卸载时中止未完成的流，防止反复 remount 叠加多份报告
+    return () => { if (abortRef.current) abortRef.current.abort(); };
   }, []);
 
   // ── Magic Link 同 tab 回调监听:callback.html 完成后发 KS_AUTH_SUCCESS ──
@@ -1891,9 +1894,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (USE_STREAM) {
       // 🚀 流式接收（V99f: 军师缓冲区方案——防断包/粘包）
       try {
+        // 🔒 发起新请求前先中止上一条悬挂流（防反复 remount 叠加）
+        abortRef.current?.abort();
+        abortRef.current = new AbortController();
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: abortRef.current.signal,
           body: JSON.stringify({ birthDate, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang, reportType: type }),
         });
 
