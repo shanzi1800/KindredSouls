@@ -1671,15 +1671,18 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     return `✦\n[${c} ${lang} ${n}: ${rest.trim()}]`;
   });
 
-  // Step 2: 有括号标头 → 补/覆盖颜色（按周次序号）
+  // Step 2: 有括号完整标头 → 补/覆盖颜色（label已有emoji则跳过，防止重复追加）
   text = text.replace(
-    /\[\s*(\S*)\s*((?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))\b/gi,
-    (m, emoji, label, w1, w2, w3) => {
+    /\[((?:🟢|🔴|🔵|⚠️)?[\s]*(?:(?:Week|Semana|Semaine|Tuần)\s+(\d+)|第\s*(\d+)\s*周|สัปดาห์ที่\s+(\d+))[^\]]*)\]/gi,
+    (m, label, w1, w2, w3) => {
+      // 若 label 已有 🟢🔴🔵 emoji，说明已处理过，跳过
+      if (/^[\s]*[🟢🔴🔵]/.test(label)) return m;
       const n = parseInt(w1 || w2 || w3);
       if (!n || !STD[n]) return m;
-      return '[' + STD[n] + ' ' + label.trim();
+      return '[' + STD[n] + ' ' + label.trim() + ']';
     }
   );
+
 
   return text;
   }
