@@ -4248,7 +4248,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
               if (_t && _v) _tokResult = _tokResult.split(_t).join(_v);
             }
           }
-          sanitizedAI = house_linter((_tokResult || '').replace(/\uFFFD/g, ''), astroMatrix);
+          sanitizedAI = cleanConsumerTrapAndBrackets(house_linter((_tokResult || '').replace(/\uFFFD/g, ''), astroMatrix));
         } else if (reportType === 'once') {
           // 先天财富DNA: 只做基础清理
           sanitizedAI = (aiResult || '').replace(/�/g,'');
