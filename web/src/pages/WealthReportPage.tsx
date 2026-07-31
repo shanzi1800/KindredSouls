@@ -1,5 +1,8 @@
 // 🛠️ 军师霸权清洗版 V12 - 20260705_1250_FORCE_REBUILD
 import React, { useState, useEffect, useRef } from 'react';
+
+// 🛡️ V219: 内存级报告缓存，跨组件 remount 去重，防止反复挂载导致重复发请求/重复拼接几十份报告
+const _reportMemCache = new Map<string, string>();
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
@@ -1521,6 +1524,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       console.log('[WealthReport] ⚠️ loadWealthData 已在执行,跳过重复调用');
       return;
     }
+    // 🛡️ V219: 内存级去重，跨 remount 生效——free/默认月报只发一次请求（loadWealthData 仅处理月报绿色入口）
+    const _memKey = `${birth}_${lang}_monthly`;
+    const _memHit = _reportMemCache.get(_memKey);
+    if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
+      console.log('[loadWealthData] 🛡️ V219 内存命中,直接渲染不重发请求');
+      setSacredText(_memHit);
+      setStreamedOnce(true);
+      setMonthlyCardsReady(true);
+      setLoading(false);
+      loadingRef.current = false;
+      return;
+    }
     loadingRef.current = true;
     setLoading(true);
     setError(null);
@@ -1826,6 +1841,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // 🛠️ V40: 移除折叠逻辑，改用单框打字机
 
   const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once') => {
+    // 🛡️ V219: 内存级去重，跨 remount 生效——同一 birth+lang+type 只发一次请求
+    const _memKey = `${birthDate}_${lang}_${type}`;
+    const _memHit = _reportMemCache.get(_memKey);
+    if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
+      console.log('[generateWealthReport] 🛡️ V219 内存命中,直接渲染不重发请求');
+      setSacredText(_memHit);
+      setStreamedOnce(true);
+      if (type === 'monthly') setMonthlyCardsReady(true);
+      if (type === 'yearly') setYearlyCardsReady(true);
+      setLoading(false);
+      loadingRef.current = false;
+      return;
+    }
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
     if (isFreeTest && type === 'monthly') {
@@ -1872,6 +1900,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let buffer = ''; // 🛡️ 引入流式缓冲区（防断包）
+        let _full = ''; // 🛡️ V219: 累积完整文本，[DONE] 后写入内存缓存
 
         while (true) {
           const { value, done } = await reader!.read();
@@ -1892,6 +1921,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
               if (dataStr === '[DONE]') {
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
+                _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存，后续 remount 直接命中
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') setMonthlyCardsReady(true);
@@ -1920,6 +1950,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     setSacredText(prev => prev + parsed.text);
+                    _full += parsed.text; // 🛡️ V219: 累积完整文本
                   } else {
                     setWealthReportText(prev => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;

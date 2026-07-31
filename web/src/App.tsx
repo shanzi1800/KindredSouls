@@ -1504,7 +1504,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
   return (
     <div className="app">
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
-      {wealthPath?.startsWith('/wealth/report') && <WealthReportPage onNavigate={navigate} />}
+      {wealthPath?.startsWith('/wealth/report') && <WealthReportPage key="wealth-report" onNavigate={navigate} />}
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
