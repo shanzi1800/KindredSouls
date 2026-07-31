@@ -4874,49 +4874,51 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
       return res.end();
     }
-    try {
-      geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-        if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-          fullTextCollector += chunk;
-        }, astroMatrix, realSunSign, lang, reportType);
-      if (geminiFullText && geminiFullText.trim().length > 0) {
-        aiStream = true;
-      }
-    } catch(e) {
-      console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
-      // 🛠️ V151: Gemini paid fallback — DeepSeek 失败时走 Gemini 付费通道
-      if (geminiKey) {
-        console.log('[wealth-stream] → Gemini paid fallback (non-stream)');
+    // 🛡️ V219d: 主通道改 Gemini(non-stream)——DeepSeek 服务端退化(月报生成第1周循环不前进),Gemini 作主,DeepSeek 兜底
+    if (geminiKey) {
+      try {
+        console.log('[wealth-stream] → Gemini primary (non-stream)');
         usedGemini = true;
-        try {
-          // 🛠️ V212: 换 gemini-2.0-flash-EXP(exp) 输出上限更高,maxOutputTokens 提到 16000
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 16000, temperature: 0 },
-            }),
-            signal: controller.signal,
-          });
-          if (geminiRes.ok) {
-            const geminiData = await geminiRes.json();
-            geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            // V154: 立即清除geminiFullText里的全角括号（非中文）
-            if (lang !== "zh") { geminiFullText = geminiFullText.replace(/（/g, "").replace(/）/g, ""); }
-            if (geminiFullText && geminiFullText.trim().length > 0) {
-              // 流式输出完整文本（非流式，直接写入）
-              res.write(Buffer.from(JSON.stringify({ error: '' }) + '\n', 'utf-8'));
-              res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
-              onChunk && onChunk(geminiFullText);
-            }
-          } else {
-            const errBody = await geminiRes.text();
-            console.error('[wealth-stream] Gemini paid failed:', geminiRes.status, errBody.slice(0,200));
+        const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+            generationConfig: { maxOutputTokens: 16000, temperature: 0.5 },
+          }),
+          signal: controller.signal,
+        });
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          geminiFullText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (lang !== 'zh') { geminiFullText = geminiFullText.replace(/（/g, '').replace(/）/g, ''); }
+          if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) geminiFullText = geminiFullText.split(_t).join(_v);
+          geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+          if (geminiFullText && geminiFullText.trim().length > 0) {
+            res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
+            if (typeof res.flush === 'function') res.flush();
+            fullTextCollector += geminiFullText;
+            aiStream = true;
           }
-        } catch(geminiErr) {
-          console.error('[wealth-stream] Gemini paid EXCEPTION:', geminiErr.message);
+        } else {
+          console.error('[wealth-stream] Gemini primary HTTP', geminiRes.status);
         }
+      } catch(e) {
+        console.error('[wealth-stream] Gemini primary FAILED:', e.message);
+      }
+    }
+    // DeepSeek 兜底（Gemini 未产出时）
+    if (!geminiFullText || geminiFullText.trim().length === 0) {
+      try {
+        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+          if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, astroMatrix, realSunSign, lang, reportType);
+        if (geminiFullText && geminiFullText.trim().length > 0) {
+          aiStream = true;
+        }
+      } catch(e) {
+        console.error('[wealth-stream] [V131] DeepSeek stream FAILED:', e.message || String(e));
       }
     }
 
