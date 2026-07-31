@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 
 // 🛡️ V219: 内存级报告缓存，跨组件 remount 去重，防止反复挂载导致重复发请求/重复拼接几十份报告
 const _reportMemCache = new Map<string, string>();
+// 🛡️ V219d: 进行中报告的单例锁——同一 birth+lang+type 全局只发一个请求，所有 remount 共享进度
+const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => void> }>();
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
@@ -1857,6 +1859,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       loadingRef.current = false;
       return;
     }
+    // 🛡️ V219d: 正在生成中 → 订阅 module 级进度，不重复发请求（根治反复 remount 叠加重复）
+    if (_reportGen.has(_memKey)) {
+      const gen = _reportGen.get(_memKey)!;
+      setSacredText(gen.partial); // 立即渲染当前进度
+      const sub = (t: string) => setSacredText(t);
+      gen.subs.add(sub);
+      return;
+    }
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
     if (isFreeTest && type === 'monthly') {
@@ -1894,6 +1904,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (USE_STREAM) {
       // 🚀 流式接收（V99f: 军师缓冲区方案——防断包/粘包）
       try {
+        // 🛡️ V219d: 注册单例生成锁，后续 remount 订阅此进度（不重复发请求）
+        const gen = { partial: '', subs: new Set<(t: string) => void>() };
+        _reportGen.set(_memKey, gen);
         // 🔒 发起新请求前先中止上一条悬挂流（防反复 remount 叠加）
         abortRef.current?.abort();
         abortRef.current = new AbortController();
@@ -1929,6 +1942,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               if (dataStr === '[DONE]') {
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存，后续 remount 直接命中
+                const genDone = _reportGen.get(_memKey);
+                if (genDone) {
+                  genDone.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 最后一次通知所有订阅实例
+                  _reportGen.delete(_memKey); // 🛡️ V219d: 释放单例锁
+                }
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') setMonthlyCardsReady(true);
@@ -1956,8 +1974,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 if (parsed.text) {
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
-                    setSacredText(prev => prev + parsed.text);
-                    _full += parsed.text; // 🛡️ V219: 累积完整文本
+                    _full += parsed.text; // 🛡️ V219/V219d: 累积完整文本
+                    gen.partial = _full; // 🛡️ V219d: 更新 module 级进度
+                    gen.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 通知所有订阅的 remount 实例
+                    setSacredText(_full); // 🛡️ V219d: 全量覆盖（非 prev+= 防止并发叠加）
                   } else {
                     setWealthReportText(prev => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
@@ -2008,6 +2028,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         if (type === 'monthly' && !streamedOnce) {
           setTimeout(() => setVisibleWeeks(1), 500);
         }
+        _reportGen.delete(_memKey); // 🛡️ V219d: 流异常/abort 中断时释放单例锁，防止锁死
       }
       return;
     }
