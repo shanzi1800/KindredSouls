@@ -2017,13 +2017,28 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 if (parsed.text) {
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
-                    if (!_full.endsWith(parsed.text)) _full += parsed.text; // 🛡️ V219/V219d: 累积完整文本 + V220b 防重复切片
+                    // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
+                    if (parsed.text.startsWith(_full)) {
+                      _full = parsed.text;            // 后端推全量(累积)快照 -> 直接覆盖
+                    } else if (parsed.text.length > 0) {
+                      _full += parsed.text;           // 后端推纯增量 -> 追加(重复帧已被 startsWith 分支吸收)
+                    }
                     gen.partial = _full; // 🛡️ V219d: 更新 module 级进度
                     gen.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 通知所有订阅的 remount 实例
                     setSacredText(_full); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
                   } else {
-                    setWealthReportText(prev => prev + parsed.text);
-                    wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
+                    // 🛡️ V220e: 智能自适应合并(与月报通道同款, 防阶梯重复)
+                    const _wt = wealthReportRef.current || '';
+                    let _newWt;
+                    if (parsed.text.startsWith(_wt)) {
+                      _newWt = parsed.text;            // 全量快照 -> 覆盖
+                    } else if (parsed.text.length > 0) {
+                      _newWt = _wt + parsed.text;      // 纯增量 -> 追加
+                    } else {
+                      _newWt = _wt;
+                    }
+                    wealthReportRef.current = _newWt;
+                    setWealthReportText(_newWt);
                   }
                 } else if (parsed.sanitized || parsed.fixed) {
                   // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版,整体替换流式脏文本
