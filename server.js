@@ -212,6 +212,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           fullText += newSuffix;
           pending = fullText;
           const _toSend = fullText.slice(sentLen);
+          console.log(`>>>V221c<<< ft=${fullText.length} sl=${sentLen} ts=${_toSend.length} cnt=${chunkCount} txt=${_toSend.slice(0,30).replace(/\n/g,'↵')}`);
           sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
           if (_toSend.length >= FLUSH_SIZE) {
             try {
