@@ -212,7 +212,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           fullText += newSuffix;
           pending = fullText;
           const _toSend = fullText.slice(sentLen);
-          if (chunkCount <= 6 || chunkCount % 40 === 0) console.log(`[V221b-DBG] chunk#${chunkCount} sentLen=${sentLen} fullText.len=${fullText.length} toSend.len=${_toSend.length} startsWithFull=${fullText.length>0 && clean.startsWith(fullText)}`);
+          sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
           if (_toSend.length >= FLUSH_SIZE) {
             try {
               // V220d: delta already merged into unsentDelta (see above)
@@ -232,7 +232,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                 _dbg: {
                   pendingLen: _toSend.length,
                   fixInput: _toSend.slice(0, 100),
-                  fixOutput: pc.slice(0, 100),
+                  fixOutput: (pc||'').slice(0, 100),
                   hasKaichuan: pc.includes('【开篇】'),
                   hasCaichong: pc.includes('（财富充能）')
                 }
@@ -247,9 +247,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
-            sentLen += _toSend.length;
-            if (chunkCount <= 6 || chunkCount % 40 === 0) console.log(`[V221b-DBG] AFTER-FLUSH chunk#${chunkCount} sentLen=${sentLen} toSend.len=${_toSend.length}`);
-            /* V221: unsentDelta obsolete, 改用 fullText.slice(sentLen) */
+            /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
         } catch(e) {}
       }
