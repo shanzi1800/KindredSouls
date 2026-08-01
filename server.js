@@ -2662,9 +2662,6 @@ function buildMonthlyPrompt(birthDate, lang) {
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
   const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
 
-  // 🛠️ V222j: Debug - 打印 Prompt 关键段
-  console.log('[V222j-DEBUG] HT.week1:', HT.week1);
-  console.log('[V222j-DEBUG] user 片段:', user.slice(0, 300));
   
   return {
     system: monthlySystem,
@@ -3051,6 +3048,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
+  const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate(); // V222k
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const monthNamesEN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -3107,10 +3105,10 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${currentYear}年${currentMonth}月（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${currentYear}年${currentMonth}月（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${currentYear}年${currentMonth}月（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
+      week1:       `✦ [🟢 第1周：${currentMonth}月1日–7日（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${currentMonth}月8日–14日（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${currentMonth}月15日–22日（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${currentMonth}月23日–${lastDayOfMonth}日（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
