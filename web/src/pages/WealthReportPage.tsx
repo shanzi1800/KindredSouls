@@ -372,7 +372,7 @@ export const cleanYearlyTimeline = (text: string): string => {
   }
 
   // V103-fix21: 通用括号平衡--行内中文左括号(无闭合)→ 行尾补)
-  cleaned = cleaned.replace(/(([^)\n]*?)(\s*)(?=\n|$)/g, '($1$2)');
+  cleaned = cleaned.replace(new RegExp('(([^)\\n]*?)(\\s*)(?=\\n|$)', 'g'), '(\$1\$2)');
 
   return cleaned;
 };
@@ -1562,8 +1562,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           headers: {
             'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw'
-          },
-          signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
+          }
         });
         const rows = await res.json();
         if (rows.length > 0 && rows[0].insight) {
@@ -1927,7 +1926,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController，断路 remount 残留 SSE reader
+          signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
           body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type }),
         });
 
@@ -2055,7 +2054,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`,
         },
-        signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController,
+        signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
         body: JSON.stringify({
           birthDate,
           birthTime,
