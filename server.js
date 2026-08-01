@@ -118,6 +118,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   let buf = '', fullText = '';
   const FLUSH_SIZE = 50;
   let pending = '';
+  let sentLen = 0; // V220c: 已发送游标,flush 只发增量 delta(根治重复拼接)
   let chunkCount = 0;
   const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
@@ -164,24 +165,25 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           fullText += clean;
           pending += clean;
-          if (pending.length >= FLUSH_SIZE) {
+          if (pending.length - sentLen >= FLUSH_SIZE) {
             try {
+            const delta = pending.slice(sentLen); // V220c: 本次要发送的增量(delta)
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
 // 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(delta, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
               } else {
-                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
+                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(delta,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               }
               res.write(Buffer.from(`data: ${JSON.stringify({
                 text: pc,
                 _dbg: {
-                  pendingLen: pending.length,
-                  fixInput: pending.slice(0, 100),
+                  pendingLen: delta.length,
+                  fixInput: delta.slice(0, 100),
                   fixOutput: pc.slice(0, 100),
                   hasKaichuan: pc.includes('【开篇】'),
                   hasCaichong: pc.includes('（财富充能）')
@@ -191,37 +193,38 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
               
-              let _safe = pending;
-              try { _safe = final_text_sanitizer(pending, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = pending; }
+              let _safe = delta;
+              try { _safe = final_text_sanitizer(delta, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = delta; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
-            pending = '';
+            sentLen = pending.length; // V220c: 标记已发送位置(pending 不重置,根治重复拼接)
           }
         } catch(e) {}
       }
     }
   } catch(e) { clearInterval(heartbeat); console.error('[callDeepSeek] stream read error:', e.message); throw e; }
   clearInterval(heartbeat);
-  if (pending) {
+  const _rest = pending.slice(sentLen);
+  if (_rest) {
     const _a = astroMatrix?.meta?.rising_sign||'Cancer';
     let pc;
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
-      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(pending, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_rest, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
       if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
       try {
-        pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(pending,_a, lang)),realSunSign,_a), astroMatrix);
+        pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_rest,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
         res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pending) })}\n\n`, 'utf-8'));
-        if (_dupGuard(pending)) onChunk && onChunk(pending); else return;
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_rest) })}\n\n`, 'utf-8'));
+        if (_dupGuard(_rest)) onChunk && onChunk(_rest); else return;
       }
     }
     if (typeof res.flush === 'function') res.flush();
