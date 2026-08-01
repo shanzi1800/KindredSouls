@@ -2540,7 +2540,8 @@ function fixMonthlySectionTitles(text) {
   // V222c: 强制统一周标题格式（根治 DeepSeek 格式漂移）
   // V222d-fix: 先提取周次数字，再根据周次决定颜色（不信任 DeepSeek 输出的颜色）
   // V222e: 主公铁律格式——[🟢 第N周：X月X日–X月X日（主题）]，无✦开头
-  c = c.replace(/✦\s*\[?([🟢🔴🔵])?\s*第([一二三四1-4])周[：:][^\n]*/g, (m, ignoredEmoji, num) => {
+  // V222h: emoji 正则修复——通配符跳过任意颜色符号
+  c = c.replace(/[✦]?\s*\[?[^\[]*?第([一二三四1-4])周[：:][^\n]*/g, (m, num) => {
     const numMap = {'一':'1','二':'2','三':'3','四':'4'};
     const n = numMap[num] || num;
     const themes = {'1':'财富充能','2':'高危熔断','3':'顺流蓄力','4':'财富爆发'};
