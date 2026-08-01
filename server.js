@@ -106,7 +106,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 
   // 🛡️ V219b: 流内重复/超长检测——模型陷入 degeneracy 循环(完整月报重复吐)时提前终止,杜绝 8MB 卡死
   let _acc = '';
-  // V222: tokMap 仅在 prompt 构建时有用,流式清洗不需要,直接空对象兜底
+  // V222-FINAL: tokMap 仅在 prompt 构建时有用,流式清洗不需要,直接空对象兜底
   const _safeTokMap = {};
   const _tokClean = (s) => {
     if (!s) return s;
