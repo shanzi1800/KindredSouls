@@ -5161,6 +5161,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport(HIT 路径已调用,此处漏掉导致章节 ✦ 注入缺失)
     cleanedText = standardizeReport(cleanedText);
+    
+    // 🛠️ V222e: 月报格式铁律（主公裁决）——强制统一周标题格式
+    if (reportType === 'monthly') {
+      cleanedText = fixMonthlySectionTitles(cleanedText);
+    }
 
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
     cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
