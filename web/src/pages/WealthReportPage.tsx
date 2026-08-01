@@ -1,11 +1,11 @@
 // 🛠️ 军师霸权清洗版 V12 - 20260705_1250_FORCE_REBUILD
 import React, { useState, useEffect, useRef } from 'react';
 
-// 🛡️ V219: 内存级报告缓存，跨组件 remount 去重，防止反复挂载导致重复发请求/重复拼接几十份报告
+// 🛡️ V219: 内存级报告缓存,跨组件 remount 去重,防止反复挂载导致重复发请求/重复拼接几十份报告
 const _reportMemCache = new Map<string, string>();
-// 🛡️ V219d: 进行中报告的单例锁——同一 birth+lang+type 全局只发一个请求，所有 remount 共享进度
+// 🛡️ V219d: 进行中报告的单例锁--同一 birth+lang+type 全局只发一个请求,所有 remount 共享进度
 const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => void> }>();
-// 🔬 V219g-DEBUG: 诊断用计数器（确认后删除）
+// 🔬 V219g-DEBUG: 诊断用计数器(确认后删除)
 let _dbgCall = 0;
 let _dbgSet = 0;
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ import {
   type AlgLang,
 } from '../lib/algos/i18n';
 
-// 🛠️ 军师方案D完全体：年报单向指针对齐流锚点体系
+// 🛠️ 军师方案D完全体:年报单向指针对齐流锚点体系
 const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
   zh: [
     { key: 'oracle', match: ['先知神谕', '天命宿主', '盘口'] },
@@ -68,7 +68,7 @@ const YEARLY_ANCHORS: Record<string, { key: string; match: string[] }[]> = {
   vi: [], // TODO: 越南语锚点
 };
 
-// 获取当前语言的锚点（回退到中文）
+// 获取当前语言的锚点(回退到中文)
 const getAnchors = (lang: string) => {
   return YEARLY_ANCHORS[lang] || YEARLY_ANCHORS['zh'];
 };
@@ -189,10 +189,10 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
     order:  { zh:'🛑 防弹硬核指令', en:'🛑 Hard Order', es:'🛑 Orden', fr:'🛑 Ordre', th:'🛑 คําสั่ง', vi:'🛑 Lệnh Khẩn' },
     orderTxt: { zh:'执行【全面戒严】!超过 <b>5000元</b> 必须等 <b>24小时</b>!', en:'Full alert! Expense > <b>$700</b> wait <b>24h</b>!', es:'¡Alerta! Gasto > <b>$700</b> esperar <b>24h</b>!', fr:'Alerte! Dépense > <b>700€</b> attendre <b>24h</b>!', th:'แจ้งเตือน! ค่าใช้จ่าย > <b>฿25000</b> รอ <b>24ชม.</b>!', vi:'Báo động! Chi > <b>3.5M₫</b> đợi <b>24giờ</b>!' },
     weeks: [
-      { zh:'🟢 第1周：财富充能', en:'🟢 Week 1: Wealth Peak', es:'🟢 Semana 1: Expansión', fr:'🟢 Semaine 1: Flux', th:'🟢 สัปดาห์ 1: เติบโต', vi:'🟢 Tuần 1: Tài Lộc', color:'#4CAF50' },
-      { zh:'🔴 第2周：高危熔断', en:'🔴 Week 2: High Risk', es:'🔴 Semana 2: Riesgo', fr:'🔴 Semaine 2: Risque', th:'🔴 สัปดาห์ 2: เสี่ยง', vi:'🔴 Tuần 2: Rủi Ro', color:'#FF4D4F' },
-      { zh:'🔵 第3周：顺流蓄力', en:'🔵 Week 3: Flow', es:'🔵 Semana 3: Flujo', fr:'🔵 Semaine 3: Flux', th:'🔵 สัปดาห์ 3: ไหลลื่น', vi:'🔵 Tuần 3: Thành Công', color:'#64B5F6' },
-      { zh:'🟢 第4周：财富爆发', en:'🟢 Week 4: Wealth Burst', es:'🟢 Semana 4: Expansión', fr:'🟢 Semaine 4: Flux', th:'🟢 สัปดาห์ 4: เติบโต', vi:'🟢 Tuần 4: Tài Lộc', color:'#4CAF50' },
+      { zh:'🟢 第1周:财富充能', en:'🟢 Week 1: Wealth Peak', es:'🟢 Semana 1: Expansión', fr:'🟢 Semaine 1: Flux', th:'🟢 สัปดาห์ 1: เติบโต', vi:'🟢 Tuần 1: Tài Lộc', color:'#4CAF50' },
+      { zh:'🔴 第2周:高危熔断', en:'🔴 Week 2: High Risk', es:'🔴 Semana 2: Riesgo', fr:'🔴 Semaine 2: Risque', th:'🔴 สัปดาห์ 2: เสี่ยง', vi:'🔴 Tuần 2: Rủi Ro', color:'#FF4D4F' },
+      { zh:'🔵 第3周:顺流蓄力', en:'🔵 Week 3: Flow', es:'🔵 Semana 3: Flujo', fr:'🔵 Semaine 3: Flux', th:'🔵 สัปดาห์ 3: ไหลลื่น', vi:'🔵 Tuần 3: Thành Công', color:'#64B5F6' },
+      { zh:'🟢 第4周:财富爆发', en:'🟢 Week 4: Wealth Burst', es:'🟢 Semana 4: Expansión', fr:'🟢 Semaine 4: Flux', th:'🟢 สัปดาห์ 4: เติบโต', vi:'🟢 Tuần 4: Tài Lộc', color:'#4CAF50' },
     ],
   };
 
@@ -204,7 +204,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
   return (
     <div style={{ marginTop: '16px' }}>
 
-      {/* ═══ 1. 🔮 本月命运主题（头条·金色特殊处理） ═══ */}
+      {/* ═══ 1. 🔮 本月命运主题(头条·金色特殊处理) ═══ */}
       <div style={{
         background: 'rgba(0,0,0,0.35)',
         borderRadius: '16px',
@@ -221,13 +221,13 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
         </div>
       </div>
 
-      {/* ═══ 2-5. 四周内容（金属框架·无卡片边框） ═══ */}
+      {/* ═══ 2-5. 四周内容(金属框架·无卡片边框) ═══ */}
       {data.weeks.map((week, idx) => {
         const meta = UI.weeks[idx] || UI.weeks[0];
         const textBlocks = splitTextToBlocks(week.text);
         return (
           <div key={idx} style={{ marginBottom: '6px' }}>
-            {/* 节头：标签 + 日期行 */}
+            {/* 节头:标签 + 日期行 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <span style={{
                 fontSize: '11px', fontWeight: 700, color: '#fff',
@@ -274,7 +274,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
         );
       })}
 
-      {/* ═══ 6. ⚠️ 消费陷阱熔断区（红色背景统一处理） ═══ */}
+      {/* ═══ 6. ⚠️ 消费陷阱熔断区(红色背景统一处理) ═══ */}
       {data.expense_trap && (
         <>
           <Divider color='rgba(255,77,79,0.3)' />
@@ -334,35 +334,35 @@ interface MonthBlock {
   shadowWork: string[];
 }
 
-// 🛠️ 军师硬核：年报终极日期清洗矩阵（七重斩杀·终极版）
-// ⚠️ 注意：此函数必须在流式结束后对完整文本调用，不能在 onStreamChunk 中调用！
+// 🛠️ 军师硬核:年报终极日期清洗矩阵(七重斩杀·终极版)
+// ⚠️ 注意:此函数必须在流式结束后对完整文本调用,不能在 onStreamChunk 中调用!
 export const cleanYearlyTimeline = (text: string): string => {
   if (!text) return text;
   let cleaned = text;
 
-  // 🎯 斩杀 1：三连击年份去重 (如：2026年7月2026年7月2026年7月 → 2026年7月)
+  // 🎯 斩杀 1:三连击年份去重 (如:2026年7月2026年7月2026年7月 → 2026年7月)
   // 贪婪匹配任意次数的重复
   cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)(?:\1)+/g, '$1');
 
-  // 🎯 斩杀 2：AAB 模式处理 (如：2026年7月2026年7月2027年1月 → 2026年7月至2027年1月)
+  // 🎯 斩杀 2:AAB 模式处理 (如:2026年7月2026年7月2027年1月 → 2026年7月至2027年1月)
   cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)(?:\1)+(\d{4}年\d{1,2}月)/g, '$1至$2');
 
-  // 🎯 斩杀 3：带横杠的重复 (如：2027年1月-2027年1月2027年1月 → 2027年1月)
+  // 🎯 斩杀 3:带横杠的重复 (如:2027年1月-2027年1月2027年1月 → 2027年1月)
   cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)-(?:\1)+/g, '$1');
   cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)-(?:\1)+至(\d{4}年\d{1,2}月)/g, '$1至$2');
 
-  // 🎯 斩杀 4：生日+流年混杂 (如：1995年3月1995年3月2026年7月8日 → 1995年3月2026年7月8日)
-  // 旧年份重复，后面跟着新日期
+  // 🎯 斩杀 4:生日+流年混杂 (如:1995年3月1995年3月2026年7月8日 → 1995年3月2026年7月8日)
+  // 旧年份重复,后面跟着新日期
   cleaned = cleaned.replace(/(\d{4}年\d{1,2}月)(?:\1)+(\d{4}年\d{1,2}月\d{1,2}日)/g, '$1$2');
 
-  // 🎯 斩杀 5：月份卡片内部的复读 (如：7月7日7月7日7月22日 → 7月7日至7月22日)
+  // 🎯 斩杀 5:月份卡片内部的复读 (如:7月7日7月7日7月22日 → 7月7日至7月22日)
   cleaned = cleaned.replace(/(\d{1,2}月\d{1,2}日)(?:\1)+(\d{1,2}月)?(\d{1,2}日)/g, '$1至$2$3');
   cleaned = cleaned.replace(/(\d{1,2}月\d{1,2}日)(?:\1)+/g, '$1');
 
-  // 🎯 斩杀 6：跨年度区间重复 (如：至2027年1月2027年1月 → 至2027年1月)
+  // 🎯 斩杀 6:跨年度区间重复 (如:至2027年1月2027年1月 → 至2027年1月)
   cleaned = cleaned.replace(/至\s*(\d{4}年\d{1,2}月)(?:\1)+/g, '至 $1');
 
-  // 🎯 斩杀 7：兜底清理——任何剩余的年份重复模式
+  // 🎯 斩杀 7:兜底清理--任何剩余的年份重复模式
   // 循环执行直到没有变化
   let prev = cleaned;
   for (let i = 0; i < 5; i++) {
@@ -371,31 +371,31 @@ export const cleanYearlyTimeline = (text: string): string => {
     prev = cleaned;
   }
 
-  // V103-fix21: 通用括号平衡——行内中文左括号（无闭合）→ 行尾补）
-  cleaned = cleaned.replace(/（([^）\n]*?)(\s*)(?=\n|$)/g, '（$1$2）');
+  // V103-fix21: 通用括号平衡--行内中文左括号(无闭合)→ 行尾补)
+  cleaned = cleaned.replace(/(([^)\n]*?)(\s*)(?=\n|$)/g, '($1$2)');
 
   return cleaned;
 };
 
 // ── Markdown 解析核心 ──
 // 🛠️ 军师无敌强力清洗机 - 焊死在 parseYearlyReport 入口
-// 🛠️ 军师万能王水 3.1：全面清盘零星符号（补上先知天书）
+// 🛠️ 军师万能王水 3.1:全面清盘零星符号(补上先知天书)
 const cleanRawReportText = (text: string): string => {
   if (!text) return '';
   let c = text;
 
-  // 0. 【斩首复读尾巴】：在 "生成 AI 洞察" 处落闸，后面的复读尾巴全部蒸发
+  // 0. 【斩首复读尾巴】:在 "生成 AI 洞察" 处落闸,后面的复读尾巴全部蒸发
   const aiInsightIdx = c.indexOf('生成 AI 洞察');
   if (aiInsightIdx !== -1) {
     c = c.substring(0, aiInsightIdx);
   }
 
-  // 1. 【斩草除根】：去掉任何位置的 > 符号
+  // 1. 【斩草除根】:去掉任何位置的 > 符号
   c = c.replace(/>+/g, '');
 
-  // 2. 【定点清除裸露标题】：只去掉##符号，保留章节名称文字
+  // 2. 【定点清除裸露标题】:只去掉##符号,保留章节名称文字
   c = c.replace(/##\s*(先知[神天].*)/gi, '$1');
-  c = c.replace(/##\s*(第[一二三四五][章节].*)/gi, '$1');  // 🛠️ V48: 保留章节名称，只去##
+  c = c.replace(/##\s*(第[一二三四五][章节].*)/gi, '$1');  // 🛠️ V48: 保留章节名称,只去##
   c = c.replace(/##\s*(2026-2027.*)/gi, '$1');
   c = c.replace(/##\s*(最终财富.*)/gi, '$1');
   c = c.replace(/####\s*(\d+\.\s*年度财富.*)/gi, '$1');
@@ -405,14 +405,14 @@ const cleanRawReportText = (text: string): string => {
   // 3. 【无脑拍扁残余井号】
   c = c.replace(/^#+/gm, '');
 
-  // 4. 移除行首emoji（在markdown列表标记* - 后面的那几个图标），保留行中语义emoji（★星等真实数据）
-  // 只移除：行首 或 markdown列表标记(* - >)后面的 emoji，不碰行中的表情符号语义
+  // 4. 移除行首emoji(在markdown列表标记* - 后面的那几个图标),保留行中语义emoji(★星等真实数据)
+  // 只移除:行首 或 markdown列表标记(* - >)后面的 emoji,不碰行中的表情符号语义
   c = c.replace(/^([📅📊📕✦📌🔮⭐💎🔥🌟✨🎯📈💰◆◇🌐]+)/g, '');
   c = c.replace(/^[*\->]\s*([📅📊📕✦📌🔮⭐💎🔥🌟✨🎯📈💰◆◇🌐]+)/g, (m, g1) => m.slice(g1.length));
   c = c.replace(/^[*\->]\s*([🚀⚠️🟢🔴💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)/g, (m, g1) => m.slice(g1.length));
   // 保留装饰emoji到末尾统一处理
   c = c.replace(/📅|📊|📕|📌|💎|🔥|✨|🎯|📈|💰/g, '');
-  // V99k: 清除乱码方块（Emoji 变体选择符、零宽字符、未渲染 Unicode）
+  // V99k: 清除乱码方块(Emoji 变体选择符、零宽字符、未渲染 Unicode)
   c = c.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFF0-\uFFFF]/g, '');
   c = c.replace(/<fe0f>/gi, '');
   c = c.replace(/\uFE0F/g, '');
@@ -421,7 +421,7 @@ const cleanRawReportText = (text: string): string => {
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
   c = c.replace(/(\d{1,2}月\d{1,2}日)\1+/g, '$1');
 
-  // V99k: 未闭合括号自动补齐（军师令：括号必须成对）
+  // V99k: 未闭合括号自动补齐(军师令:括号必须成对)
   const openBrackets = (c.match(/\(/g) || []).length;
   const closeBrackets = (c.match(/\)/g) || []).length;
   if (openBrackets > closeBrackets) {
@@ -435,10 +435,10 @@ const cleanRawReportText = (text: string): string => {
   c = c.replace(/^---+$/gm, '');
   c = c.replace(/^\s*[-=]{3,}\s*$/gm, '');
 
-  // 🛠️ V37: 干掉多余的空行（超过2行的压缩成1行）
+  // 🛠️ V37: 干掉多余的空行(超过2行的压缩成1行)
   c = c.replace(/\n{3,}/g, '\n\n');
 
-  // 7. 终极兜底：循环清洗10次
+  // 7. 终极兜底:循环清洗10次
   let prev = c;
   for (let i = 0; i < 10; i++) {
     c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');
@@ -449,7 +449,7 @@ const cleanRawReportText = (text: string): string => {
   return c.trim();
 };
 
-// 🛠️ 军师霸权清洗版：前端物理净化器
+// 🛠️ 军师霸权清洗版:前端物理净化器
 const parseYearlyReport = (rawText: string, _birthDate: string): {
   title: string;
   chapters: YearlyChapter[];
@@ -458,22 +458,22 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
 } => {
   if (!rawText) return { title: '', chapters: [], months: [], rawContent: '' };
 
-  // 🎯 军师前置“霸权清洗矩阵”：进来先扒皮，管你 AI 怎么吐，到我这里全部变成标准版！
+  // 🎯 军师前置"霸权清洗矩阵":进来先扒皮,管你 AI 怎么吐,到我这里全部变成标准版!
   let filteredText = rawText
-    // 1. 【物理绝杀缝合怪】：管你 > 后面有多少空格、多少井号，只要在行首，全部无脑拍扁成标准二级标题 "## "
+    // 1. 【物理绝杀缝合怪】:管你 > 后面有多少空格、多少井号,只要在行首,全部无脑拍扁成标准二级标题 "## "
     .replace(/^>\s*#+/gm, '## ')
 
-    // 2. 【定点清除“先知天书”幻觉】：截图里疯狂出现的“> ## ✦ 先知天书”，直接物理替换为我们前端需要的绝对硬核锚点
-    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
-    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启') // 顺手干掉那个核心指标看板标题，防止它干扰第一章
+    // 2. 【定点清除"先知天书"幻觉】:截图里疯狂出现的"> ## ✦ 先知天书",直接物理替换为我们前端需要的绝对硬核锚点
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕:年度财富天启')
+    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕:年度财富天启') // 顺手干掉那个核心指标看板标题,防止它干扰第一章
 
-    // 3. 【无脑蒸发干扰符号】：把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
+    // 3. 【无脑蒸发干扰符号】:把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
     .replace(/📅|📊|📕|✦|📌|🔮|◆|◇/g, '')
 
-    // 4. 【终极强制降级】：把所有类似 ### 第一章 这种滑坡标题，在行首强行拉回成标准 ##
+    // 4. 【终极强制降级】:把所有类似 ### 第一章 这种滑坡标题,在行首强行拉回成标准 ##
     .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
 
-  // ————————————————————————————————————————————————————————————
+  // ------------------------------------------------------------
   // 下面进入铁血硬切循环
   const lines = filteredText.split('\n');
   const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || '年度财富报告';
@@ -482,10 +482,10 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
 
   let currentMonth: Partial<MonthBlock> | null = null;
   let currentSection: 'paragraphs' | 'wealthAction' | 'shadowWork' = 'paragraphs';
-  let currentChapterTitle = "先知神谕：年度财富天启"; // 兜底开局卡片
+  let currentChapterTitle = "先知神谕:年度财富天启"; // 兜底开局卡片
   let currentChapterContent: string[] = [];
 
-  // 必须同时满足：以 "## " 开头，且包含核心死字
+  // 必须同时满足:以 "## " 开头,且包含核心死字
   const CHAPTER_KEYWORDS = ["先知", "第一章", "第二章", "第三章", "第四章", "第五章", "最终", "密令"];
 
   for (const line of lines) {
@@ -532,7 +532,7 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
       continue;
     }
 
-    // 🎯 军师绝杀雷达：铁血硬切 - 必须同时满足：1.以 ## 开头；2.包含核心章节关键字
+    // 🎯 军师绝杀雷达:铁血硬切 - 必须同时满足:1.以 ## 开头;2.包含核心章节关键字
     const isStrictNewChapter =
       trimmed.startsWith('## ') &&
       CHAPTER_KEYWORDS.some(keyword => trimmed.includes(keyword));
@@ -551,7 +551,7 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
       continue;
     }
 
-    // 普通内容，无脑累积
+    // 普通内容,无脑累积
     currentChapterContent.push(line);
   }
 
@@ -564,17 +564,17 @@ const parseYearlyReport = (rawText: string, _birthDate: string): {
 
   if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
 
-  // 🎯 【落闸大总洗】：在把干净数据塞给 UI 前，全量执行日期去重清洗！
+  // 🎯 【落闸大总洗】:在把干净数据塞给 UI 前,全量执行日期去重清洗!
   const finalChapters = chapters.map(ch => ({
     title: ch.title,
-    content: cleanYearlyTimeline(ch.content) // 此时 2026年7月2026年7月 将在这里被碾成粉末！
+    content: cleanYearlyTimeline(ch.content) // 此时 2026年7月2026年7月 将在这里被碾成粉末!
   }));
 
   return { title, chapters: finalChapters, months, rawContent: rawText };
 };
 
 // 🛠️ 军师V23终极切片分流器【极权模糊全量切割机 4.0】
-// 不看行首、只认骨灰的终极杀器——AI 排版乱成一坨屎也能精准大卸 17 块
+// 不看行首、只认骨灰的终极杀器--AI 排版乱成一坨屎也能精准大卸 17 块
 // 返回结构: Record<cardKey, cleanedText> 直接对应 yearlyCardData state
 const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
   // 初始化 17 张卡片的标准空抽屉
@@ -586,22 +586,22 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
 
   if (!rawText) return Object.fromEntries(Object.keys(cardMap).map(k => [k, '']));
 
-  // 🎯 军师前置“霸权清洗矩阵”：进来先扒皮，管你 AI 怎么吐，到我这里全部变成标准版！
+  // 🎯 军师前置"霸权清洗矩阵":进来先扒皮,管你 AI 怎么吐,到我这里全部变成标准版!
   const filteredText = rawText
-    // 1. 物理绝杀缝合怪：>后面不管多少空格多少井号，全部拉回行首
+    // 1. 物理绝杀缝合怪:>后面不管多少空格多少井号,全部拉回行首
     .replace(/^>\s*#+/gm, '## ')
-    // 2. 定点爆破先知天书（带不带 ✦ 都干掉）
-    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
-    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕：年度财富天启')
+    // 2. 定点爆破先知天书(带不带 ✦ 都干掉)
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕:年度财富天启')
+    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕:年度财富天启')
     // 3. 擦除干扰 emoji
     .replace(/📅|📊|📕|✦|📌|🔮|◆|◇/g, '')
-    // 4. 强制降级：### 第一章 退化成 ## 第一章
+    // 4. 强制降级:### 第一章 退化成 ## 第一章
     .replace(/^###\s+(第[一二三四五][章节]|最终财富|通关密令)/gm, '## $1');
 
   const lines = filteredText.split('\n');
-  let currentKey = 'oracle'; // 默认先知神谕接管（开篇章）
+  let currentKey = 'oracle'; // 默认先知神谕接管(开篇章)
 
-  // 12 个月份的模糊字典：年月份 → 卡片 key
+  // 12 个月份的模糊字典:年月份 → 卡片 key
   const yearMonthMap: Record<string, string> = {
     '2026年7月': 'm1', '2026年8月': 'm2', '2026年9月': 'm3', '2026年10月': 'm4',
     '2026年11月': 'm5', '2026年12月': 'm6', '2027年1月': 'm7', '2027年2月': 'm8',
@@ -614,7 +614,7 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
 
     let matched = false;
 
-    // 🎯 极权判定 1：月份拦截（不管前缀是什么 Emoji 还是井号，只要包含标准年月，指针瞬间切换！）
+    // 🎯 极权判定 1:月份拦截(不管前缀是什么 Emoji 还是井号,只要包含标准年月,指针瞬间切换!)
     for (const [ym, targetKey] of Object.entries(yearMonthMap)) {
       if (cleanLine.includes(ym)) {
         currentKey = targetKey;
@@ -622,9 +622,9 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
         break;
       }
     }
-    if (matched) continue; // 这一行是月份标题，不塞入正文
+    if (matched) continue; // 这一行是月份标题,不塞入正文
 
-    // 🎯 极权判定 2：大章节拦截（不管在行首还是行中，只要包含核心死字，强行切片！）
+    // 🎯 极权判定 2:大章节拦截(不管在行首还是行中,只要包含核心死字,强行切片!)
     // 🔧 V32修复: 章节标题本身也要存入对应卡片,不能跳过
     if (cleanLine.includes('第一章') || cleanLine.includes('第一节') || cleanLine.includes('宿命财运') || cleanLine.includes('年度宿命')) {
       currentKey = 'ch1';
@@ -632,7 +632,7 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
       continue;
     }
     if (cleanLine.includes('第二章') || cleanLine.includes('第二节') || cleanLine.includes('12个月财富') || cleanLine.includes('12个月收入')) {
-      // 第二章内容直接并入 7 月份（m1）开头，防止空卡片裸露
+      // 第二章内容直接并入 7 月份(m1)开头,防止空卡片裸露
       currentKey = 'm1';
       continue;
     }
@@ -658,11 +658,11 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
       continue;
     }
 
-    // 🎯 3. 没有撞上任何标题锚点，证明是纯正文，无脑灌进当前激活的卡片抽屉里！
+    // 🎯 3. 没有撞上任何标题锚点,证明是纯正文,无脑灌进当前激活的卡片抽屉里!
     cardMap[currentKey].push(line);
   }
 
-  // 🎯 落闸总洗：把各盒子里拼装好的死文本，跑一遍王水清洗和日期去重，打包输出！
+  // 🎯 落闸总洗:把各盒子里拼装好的死文本,跑一遍王水清洗和日期去重,打包输出!
   const finalCleanedMap: Record<string, string> = {};
   for (const [key, linesArray] of Object.entries(cardMap)) {
     const joinedText = linesArray.join('\n');
@@ -675,11 +675,11 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
 // ═══════════════════════════════════════════════════════════════════
 // 🛠️ 军师V34终极切片分流器【全量无脑重装+物理反幻觉】
 // ═══════════════════════════════════════════════════════════════════
-// 铁血设计原则：
-// 1. 流式期间只蓄水，不分配，卡片全部保持骨架灯
-// 2. [DONE]触发后一次性全量切片，绝无时序死锁
-// 3. 前端物理反幻觉——星座由birthDate计算，AI幻觉直接覆盖
-// 4. 正文无脑吸附——没有continue截断，每一行都进抽屉
+// 铁血设计原则:
+// 1. 流式期间只蓄水,不分配,卡片全部保持骨架灯
+// 2. [DONE]触发后一次性全量切片,绝无时序死锁
+// 3. 前端物理反幻觉--星座由birthDate计算,AI幻觉直接覆盖
+// 4. 正文无脑吸附--没有continue截断,每一行都进抽屉
 const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<string, string> => {
   const cardMap: Record<string, string[]> = {
     oracle: [], ch1: [], ch3: [], ch4: [], ch5: [], final: [],
@@ -688,9 +688,9 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
   };
   if (!rawText) return {};
 
-  // 💥 铁血反幻觉落闸：只修本太阳引用，不碰月度矩阵里的正确月度星座
+  // 💥 铁血反幻觉落闸:只修本太阳引用,不碰月度矩阵里的正确月度星座
   // V103-fix20: parseYearlyReportV24 的全局「双子座→realZodiac」会让月度卡片标题里正确的月度星座也被替换
-  // 月度标题的星座来自后端月锁sanitizer（已保证正确），前端只修本太阳特定引用
+  // 月度标题的星座来自后端月锁sanitizer(已保证正确),前端只修本太阳特定引用
   let coreText = rawText;
   if (realZodiac && realZodiac !== '双子座') {
     coreText = coreText.replace(/太阳双子座(?![妈守护特质的])/g, '太阳' + realZodiac);
@@ -703,7 +703,7 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
   // 🎯 前置霸权清洗
   const filteredText = coreText
     .replace(/^>\s*#+/gm, '## ')
-    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕：年度财富天启')
+    .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕:年度财富天启')
     .replace(/📅|📊|📕|✦|📌|🔮|⭐|💎|🔥|🌟|◆|◇/g, '')
     .replace(/^###\s+(.)/gm, '## $1');
 
@@ -748,7 +748,7 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
       currentKey = 'oracle'; continue;
     }
 
-    // 🎯 核心防截断天锁：非标题行无脑灌入当前抽屉，绝不丢字符！
+    // 🎯 核心防截断天锁:非标题行无脑灌入当前抽屉,绝不丢字符!
     cardMap[currentKey].push(line);
   }
 
@@ -789,7 +789,7 @@ const highlightYearlyGold = (text: string): React.ReactNode => {
   return result;
 };
 
-// ── 军师 V20：前端星座辟邪函数 ──
+// ── 军师 V20:前端星座辟邪函数 ──
 // 根据出生日期计算真实星座名(中文)
 const getTrueZodiacByDate = (birthDate: string): string => {
   if (!birthDate) return '白羊座';
@@ -824,8 +824,8 @@ const sanitizeZodiacHallucination = (text: string, trueZodiac: string): string =
     .replace(new RegExp(`(${others.join('|')})·太阳回归年`, 'g'), `${trueZodiac}·太阳回归年`)
     .replace(new RegExp(`·(${others.join('|')})·`, 'g'), `·${trueZodiac}·`)
     .replace(new RegExp(`·(${others.join('|')})$`, 'g'), `·${trueZodiac}`)
-    // 🛠️ V74: 冥王星反幻觉（2026-2027 年报冥王星在水瓶座，AI 易幻觉成摩羯座）——六语言暴力纠错
-      .replace(/冥王星[（(]?摩羯座[）)]?/g, '冥王星水瓶座')
+    // 🛠️ V74: 冥王星反幻觉(2026-2027 年报冥王星在水瓶座,AI 易幻觉成摩羯座)--六语言暴力纠错
+      .replace(/冥王星[((]?摩羯座[))]?/g, '冥王星水瓶座')
       .replace(/Pluto in Capricorn/g, 'Pluto in Aquarius')
       .replace(/Pluto en Capricornio/g, 'Pluto en Acuario')
       .replace(/Pluto en Capricorne/g, 'Pluto en Verseau')
@@ -880,7 +880,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
         </div>
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent)', marginBottom: '14px' }} />
 
-        {/* 神圣引言 - 军师令：全量平铺，取消截断和滚动 */}
+        {/* 神圣引言 - 军师令:全量平铺,取消截断和滚动 */}
         {parsed.chapters[0] && (
           <div style={{
             background: 'rgba(0,0,0,0.3)',
@@ -888,13 +888,13 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
             padding: '16px',
             textAlign: 'left',
             border: '1px solid rgba(212,175,55,0.15)',
-            /* 军师v6：取消maxHeight和overflowY，全量平铺展示厚度 */
+            /* 军师v6:取消maxHeight和overflowY,全量平铺展示厚度 */
           }}>
             <div style={{ fontSize: '10px', color: '#D4AF37', marginBottom: '6px', fontWeight: 600 }}>
               💡 先知神谕
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-              {/* 军师v6：完整渲染，不截断 */}
+              {/* 军师v6:完整渲染,不截断 */}
               {highlightYearlyGold(sanitizeZodiacHallucination(parsed.chapters[0].content, trueZodiac))}
             </div>
           </div>
@@ -1126,12 +1126,12 @@ const UPGRADE_HINTS: Record<string, string> = {
 const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const { i18n, t } = useTranslation();
   const [birthDate, setBirthDate] = useState<string>('');
-  // 🛠️ V91: 出生时间/经纬度/时区状态（默认 Bangkok 中午）
+  // 🛠️ V91: 出生时间/经纬度/时区状态(默认 Bangkok 中午)
   const [birthTime, setBirthTime] = useState<string>('12:00');
   const [birthLat, setBirthLat] = useState<number>(13.75);   // 默认 Bangkok
   const [birthLon, setBirthLon] = useState<number>(100.5);
   const [birthTz, setBirthTz] = useState<string>('Asia/Bangkok');
-  // selectedCity/showAdvanced 已移除（报告页不再展示输入框）
+  // selectedCity/showAdvanced 已移除(报告页不再展示输入框)
   const [lang, setLang] = useState<string>('en');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1157,14 +1157,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
-  const abortRef = useRef<AbortController | null>(null); // 🔒 中止悬挂流，防止反复 remount 叠加多份报告
+  const abortRef = useRef<AbortController | null>(null); // 🔒 中止悬挂流,防止反复 remount 叠加多份报告
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
-  // 🛠️ V40: 移除所有旧的17卡片蓄水ref，改用单一sacredText状态
+  // 🛠️ V40: 移除所有旧的17卡片蓄水ref,改用单一sacredText状态
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
   const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 月报是否完成(2026-07-19)
-  const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态（双通道打字机核心）
+  const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态(双通道打字机核心)
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
@@ -1252,14 +1252,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [reportLoading, setReportLoading] = useState<'wealth_monthly' | 'wealth_yearly' | 'wealth_once' | ''>('');
   const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
 
-  // 🛠️ V47: 流式期间追光底部，完成后归顶
+  // 🛠️ V47: 流式期间追光底部,完成后归顶
   useEffect(() => {
     if (!textContainerRef.current) return;
     if (!yearlyCardsReady && sacredText) {
-      // 流式中：追光底部
+      // 流式中:追光底部
       textContainerRef.current.scrollTop = textContainerRef.current.scrollHeight;
     } else if (yearlyCardsReady) {
-      // 流式结束：滚动条归顶，用户从头读
+      // 流式结束:滚动条归顶,用户从头读
       textContainerRef.current.scrollTop = 0;
     }
   }, [sacredText, yearlyCardsReady]);
@@ -1284,8 +1284,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     setBirthDate(birth);
     setLang(langParam || i18n.language || 'en');
 
-    // 🛠️ V143: 支持从 URL 传入精确出生时间/经纬度/时区（A轨：真实上升宫位）
-    // ?time=HH:MM 有时间→Placidus 精确宫位；无 time → Solar House 降级
+    // 🛠️ V143: 支持从 URL 传入精确出生时间/经纬度/时区(A轨:真实上升宫位)
+    // ?time=HH:MM 有时间→Placidus 精确宫位;无 time → Solar House 降级
     const timeParam = params.get('time') || params.get('birthTime');
     if (timeParam && /^\d{1,2}:\d{2}$/.test(timeParam)) {
       setBirthTime(timeParam);
@@ -1318,6 +1318,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setAuthChecking(false);
       setLoading(false);  // ← 加上这行
       setCurrentToken('green-channel-test-token');
+      abortRef.current = new AbortController(); // 🔒 V220: 初始化 AbortController，供 cleanup abort
       loadWealthData(birth, langParam || i18n.language || 'en');
       return;
     }
@@ -1329,7 +1330,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
 
     setTimeout(() => setAuthChecking(false), 10000);
-    // 🛡️ V219e: 不再在卸载时 abort 进行中的请求——abort 会误删 module 级单例锁，导致反复 remount 陷入“发→abort→删锁→再发”死循环。单例锁已保证全局只发一个请求。
+    // 🛡️ V220: 使用 AbortController 根治 remount 叠加——cleanup 立即 abort 所有进行中的请求，防止残留 reader 叠加导致重复拼接
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   // ── Magic Link 同 tab 回调监听:callback.html 完成后发 KS_AUTH_SUCCESS ──
@@ -1531,7 +1535,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       console.log('[WealthReport] ⚠️ loadWealthData 已在执行,跳过重复调用');
       return;
     }
-    // 🛡️ V219: 内存级去重，跨 remount 生效——free/默认月报只发一次请求（loadWealthData 仅处理月报绿色入口）
+    // 🛡️ V219: 内存级去重,跨 remount 生效--free/默认月报只发一次请求(loadWealthData 仅处理月报绿色入口)
     const _memKey = `${birth}_${lang}_monthly`;
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
@@ -1556,6 +1560,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       try {
         const res = await fetch('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/wealth_insights_cache?birth_date=eq.' + birth + '&lang=eq.' + lang + '&limit=1', {
           headers: {
+          signal: abortRef.current.signal, // 🔒 V220: 接入 AbortController
             'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw'
           }
@@ -1606,6 +1611,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       const res = await fetch('/api/wealth-oracle', {
         method: 'POST',
+          signal: abortRef.current.signal, // 🔒 V220: 接入 AbortController
         headers,
         body: JSON.stringify({
           birthDate: birth,
@@ -1845,14 +1851,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  // 🛠️ V40: 移除折叠逻辑，改用单框打字机
+  // 🛠️ V40: 移除折叠逻辑,改用单框打字机
 
   const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once') => {
     // 🛡️ V219f: key 必须基于 URL 稳定值,绝不依赖组件 state(birthDate/lang 初始化期为空或波动会导致锁 key 失配、5 个并发请求叠加)
     const _urlP = new URLSearchParams(window.location.search);
     const _stableBirth = _urlP.get('birth') || birthDate || '';
     const _stableLang = _urlP.get('lang') || lang || 'en';
-    // 🛡️ V219: 内存级去重，跨 remount 生效——同一 birth+lang+type 只发一次请求
+    // 🛡️ V219: 内存级去重,跨 remount 生效--同一 birth+lang+type 只发一次请求
     const _memKey = `${_stableBirth}_${_stableLang}_${type}`;
     _dbgCall++;
     console.log(`[V219g-DEBUG] CALL #${_dbgCall} key=${_memKey} has=${_reportGen.has(_memKey)} gen=${_reportGen.size}`);
@@ -1867,7 +1873,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       loadingRef.current = false;
       return;
     }
-    // 🛡️ V219d: 正在生成中 → 订阅 module 级进度，不重复发请求（根治反复 remount 叠加重复）
+    // 🛡️ V219d: 正在生成中 → 订阅 module 级进度,不重复发请求(根治反复 remount 叠加重复)
     if (_reportGen.has(_memKey)) {
       const gen = _reportGen.get(_memKey)!;
       setSacredText(gen.partial); // 立即渲染当前进度
@@ -1910,24 +1916,25 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const USE_STREAM = true; // 🔥 军师下令:全量开火!
 
     if (USE_STREAM) {
-      // 🚀 流式接收（V99f: 军师缓冲区方案——防断包/粘包）
+      // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
       try {
-        // 🛡️ V219d: 注册单例生成锁，后续 remount 订阅此进度（不重复发请求）
+        // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
         _dbgSet++;
         console.log(`[V219g-DEBUG] SET #${_dbgSet} key=${_memKey} gen=${_reportGen.size}`);
-        // 🛡️ V219e: 发起请求但不 abort 任何请求——单例锁已保证全局只发一个，进行中请求必须跑到 [DONE]
+        // 🛡️ V219e: 发起请求但不 abort 任何请求--单例锁已保证全局只发一个,进行中请求必须跑到 [DONE]
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: abortRef.current.signal, // 🔒 V220: 接入 AbortController，断路 remount 残留 SSE reader
           body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type }),
         });
 
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
-        let buffer = ''; // 🛡️ 引入流式缓冲区（防断包）
-        let _full = ''; // 🛡️ V219: 累积完整文本，[DONE] 后写入内存缓存
+        let buffer = ''; // 🛡️ 引入流式缓冲区(防断包)
+        let _full = ''; // 🛡️ V219: 累积完整文本,[DONE] 后写入内存缓存
 
         while (true) {
           const { value, done } = await reader!.read();
@@ -1936,7 +1943,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
 
-          // 关键：留下最后一行（可能是未传输完的残包）暂存到 buffer，其余的完整行拿去解析
+          // 关键:留下最后一行(可能是未传输完的残包)暂存到 buffer,其余的完整行拿去解析
           buffer = lines.pop() || '';
 
           for (const line of lines) {
@@ -1948,7 +1955,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
               if (dataStr === '[DONE]') {
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
-                _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存，后续 remount 直接命中
+                _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
                 if (genDone) {
                   genDone.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 最后一次通知所有订阅实例
@@ -1975,7 +1982,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   }
                 }
 
-                // 🔍 军师调试日志：看数据到底长啥样
+                // 🔍 军师调试日志:看数据到底长啥样
                 console.log('[WealthReport] 📥 收到流式增量:', parsed.text?.slice(0, 20) + '...');
 
                 if (parsed.text) {
@@ -1984,19 +1991,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     _full += parsed.text; // 🛡️ V219/V219d: 累积完整文本
                     gen.partial = _full; // 🛡️ V219d: 更新 module 级进度
                     gen.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 通知所有订阅的 remount 实例
-                    setSacredText(_full); // 🛡️ V219d: 全量覆盖（非 prev+= 防止并发叠加）
+                    setSacredText(_full); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
                   } else {
                     setWealthReportText(prev => prev + parsed.text);
                     wealthReportRef.current = (wealthReportRef.current || '') + parsed.text;
                   }
                 } else if (parsed.sanitized || parsed.fixed) {
-                  // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版，整体替换流式脏文本
-                  // 🛠️ V120-fix25: 月报章节标题修复后发来 fixed 全量版，整体替换
-                  // 否则用户首次生成看到未清洗的旧星座/宫位/缩写标题，刷新走缓存才干净
-                  // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读——sanitized以【开篇】开头说明是全量替换
+                  // 🛠️ V109-fix: 后端 MISS 路径生成结束后发来全量清洗版,整体替换流式脏文本
+                  // 🛠️ V120-fix25: 月报章节标题修复后发来 fixed 全量版,整体替换
+                  // 否则用户首次生成看到未清洗的旧星座/宫位/缩写标题,刷新走缓存才干净
+                  // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读--sanitized以【开篇】开头说明是全量替换
                   const fixedText = parsed.sanitized || parsed.text;
                   if (type === 'yearly' || type === 'monthly') {
-                    // 如果fixedText以【开篇】开头且sacredText已有内容，先清空再替换（防复读）
+                    // 如果fixedText以【开篇】开头且sacredText已有内容,先清空再替换(防复读)
                     setSacredText(prev => (fixedText.startsWith('【开篇】') && prev.length > 50) ? fixedText : prev);
                   } else {
                     setWealthReportText(fixedText);
@@ -2004,9 +2011,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   }
                 }
               } catch (e) {
-                // 🔍 裁决：绝对不能静默吞错！把刺客揪出来
-                console.warn('[WealthReport] ⚠️ JSON 解析失败！错误:', e, '原始片段:', dataStr.slice(0, 100));
-                // 🛡️ V133-fix: 容错提取——即使JSON损坏也尝试恢复text/sanitized字段
+                // 🔍 裁决:绝对不能静默吞错!把刺客揪出来
+                console.warn('[WealthReport] ⚠️ JSON 解析失败!错误:', e, '原始片段:', dataStr.slice(0, 100));
+                // 🛡️ V133-fix: 容错提取--即使JSON损坏也尝试恢复text/sanitized字段
                 try {
                   const sanMatch = dataStr.match(/"sanitized"\s*:\s*"((?:[^"\\]|\\.)*)"/);
                   const textMatch = dataStr.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
@@ -2019,7 +2026,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                       setWealthReportText(prev => prev + unescaped);
                       wealthReportRef.current = (wealthReportRef.current || '') + unescaped;
                     }
-                    console.log('[WealthReport] ✅ 容错提取成功，长度:', unescaped.length);
+                    console.log('[WealthReport] ✅ 容错提取成功,长度:', unescaped.length);
                   }
                 } catch (e2) {
                   console.warn('[WealthReport] ❌ 容错提取也失败:', e2 instanceof Error ? e2.message : String(e2));
@@ -2031,11 +2038,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
       } finally {
-        // 🛠️ V40: finally只做月报兜底，年报不需要（[DONE]已处理）
+        // 🛠️ V40: finally只做月报兜底,年报不需要([DONE]已处理)
         if (type === 'monthly' && !streamedOnce) {
           setTimeout(() => setVisibleWeeks(1), 500);
         }
-        _reportGen.delete(_memKey); // 🛡️ V219d: 流异常/abort 中断时释放单例锁，防止锁死
+        _reportGen.delete(_memKey); // 🛡️ V219d: 流异常/abort 中断时释放单例锁,防止锁死
       }
       return;
     }
@@ -2045,6 +2052,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const res = await fetch('/api/wealth-oracle', {
         method: 'POST',
         headers: {
+          signal: abortRef.current.signal, // 🔒 V220: 接入 AbortController
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`,
         },
@@ -2511,7 +2519,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               {t('wealthReport.almanacDesc')}
             </div>
 
-            {/* 报告页保持绝对干净 — 无任何输入框，无任何提示。看 Teaser 直接付款。 */}
+            {/* 报告页保持绝对干净 - 无任何输入框,无任何提示。看 Teaser 直接付款。 */}
             {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>
                 <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
@@ -2538,7 +2546,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 V120: 月报流式打字机（markdown格式） */}
+        {/* 🔮 V120: 月报流式打字机(markdown格式) */}
         {reportLoading === 'wealth_monthly' && (
           <SacredYearlyReportBox
             rawStreamText={sacredText}
@@ -2549,14 +2557,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           />
         )}
 
-        {/* 🛠️ V40: 双通道极简打字机——年报渲染
+        {/* 🛠️ V40: 双通道极简打字机--年报渲染
           if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
             const isStreaming = !yearlyCardsReady;
             const trueZodiac = getTrueZodiacByDate(birthDate);
 
-            // 🛠️ V103-fix22: 前端月份真理表——独立于后端的第二道防线
-            // 【重要】只锁月份+太阳星座，宫位由后端 SwissEph 按实际上升计算
-            // 月份星座是日历常数（2026-07=巨蟹→逐月顺延），宫位取决于出生上升，不是固定值
+            // 🛠️ V103-fix22: 前端月份真理表--独立于后端的第二道防线
+            // 【重要】只锁月份+太阳星座,宫位由后端 SwissEph 按实际上升计算
+            // 月份星座是日历常数(2026-07=巨蟹→逐月顺延),宫位取决于出生上升,不是固定值
             const ZODIAC_TRUTH = {
               '2026年7月': '巨蟹座', '2026年8月': '狮子座', '2026年9月': '处女座',
               '2026年10月': '天秤座', '2026年11月': '天蝎座', '2026年12月': '射手座',
@@ -2564,12 +2572,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               '2027年4月': '白羊座', '2027年5月': '金牛座', '2027年6月': '双子座',
             };
 
-            // 🛠️ V45: 军师版万能强切洗涤器——一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
+            // 🛠️ V45: 军师版万能强切洗涤器--一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
             const formatAndCleanSacredText = (text: string): string => {
               if (!text) return '';
               let c = text;
 
-              // V103-fix22: 幽灵方块提前清洗——在第一行就执行，确保后续所有处理在清洁文本上进行
+              // V103-fix22: 幽灵方块提前清洗--在第一行就执行,确保后续所有处理在清洁文本上进行
               c = c.replace(/[\uFFFD\u0000]/g, '').replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '');
 
               // 0. 【斩首复读尾巴】
@@ -2577,105 +2585,105 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 c = c.split('生成 AI 洞察')[0];
               }
 
-              // 0.5 【前端月份星座真理覆盖——只换星座，宫位不动】
-              // 月份星座是日历常数（2026-07=巨蟹→逐月顺延），宫位取决于实际上升让后端算
+              // 0.5 【前端月份星座真理覆盖--只换星座,宫位不动】
+              // 月份星座是日历常数(2026-07=巨蟹→逐月顺延),宫位取决于实际上升让后端算
               for (const [month, sign] of Object.entries(ZODIAC_TRUTH)) {
-                // 匹配形如「2027年6月: 太阳XXX座」并用真理星座替换，保留后续所有内容（第X宫等）
+                // 匹配形如「2027年6月: 太阳XXX座」并用真理星座替换,保留后续所有内容(第X宫等)
                 c = c.replace(
-                  new RegExp(`${month}[：:]\\s*太阳\\S{0,6}座`, 'g'),
+                  new RegExp(`${month}[::]\\s*太阳\\S{0,6}座`, 'g'),
                   `${month}: 太阳${sign}`
                 );
               }
 
-              // 0.6 【孤括号清洗——大模型行文污染，双向保底】
-              // Pass1: 移除孤立 `）`（不伤正常对）
+              // 0.6 【孤括号清洗--大模型行文污染,双向保底】
+              // Pass1: 移除孤立 `)`(不伤正常对)
               {
                 let bal = '', depth = 0;
                 for (const ch of c) {
                   if (ch === '\uff08') depth++;
                   else if (ch === '\uff09') {
                     if (depth > 0) { depth--; bal += ch; }
-                    continue; // 孤立）跳过
+                    continue; // 孤立)跳过
                   }
                   bal += ch;
                 }
                 c = bal;
               }
-              // Pass2: 补孤立 `（`（有头无尾，如「（巨蟹座形成强大……（→补））
-              // 不使用字符类否定 [^）]，改为精确替换已知污染场景
-              c = c.replace(/（对应太阳狮子座：/g, '（对应太阳狮子座）：');
-              c = c.replace(/（对应太阳金牛座：/g, '（对应太阳金牛座）：');
-              c = c.replace(/（对应太阳处女座：/g, '（对应太阳处女座）：');
-              c = c.replace(/（对应太阳天秤座：/g, '（对应太阳天秤座）：');
-              c = c.replace(/（对应太阳天蝎座：/g, '（对应太阳天蝎座）：');
-              c = c.replace(/（对应太阳双鱼座：/g, '（对应太阳双鱼座）：');
-              c = c.replace(/（对应太阳双子座：/g, '（对应太阳双子座）：');
-              c = c.replace(/（对应太阳白羊座：/g, '（对应太阳白羊座）：');
-              c = c.replace(/（对应太阳射手座：/g, '（对应太阳射手座）：');
-              c = c.replace(/（对应太阳摩羯座：/g, '（对应太阳摩羯座）：');
-              c = c.replace(/（对应太阳水瓶座：/g, '（对应太阳水瓶座）：');
-              c = c.replace(/（对应太阳巨蟹座：/g, '（对应太阳巨蟹座）：');
-              // 「（巨蟹座形成强大……」型残缺兜底（截断场景）
-              c = c.replace(/（巨蟹座形成强大的支持相位（/g, '（巨蟹座形成强大的支持相位）（');
+              // Pass2: 补孤立 `(`(有头无尾,如「(巨蟹座形成强大......(→补))
+              // 不使用字符类否定 [^)],改为精确替换已知污染场景
+              c = c.replace(/(对应太阳狮子座:/g, '(对应太阳狮子座):');
+              c = c.replace(/(对应太阳金牛座:/g, '(对应太阳金牛座):');
+              c = c.replace(/(对应太阳处女座:/g, '(对应太阳处女座):');
+              c = c.replace(/(对应太阳天秤座:/g, '(对应太阳天秤座):');
+              c = c.replace(/(对应太阳天蝎座:/g, '(对应太阳天蝎座):');
+              c = c.replace(/(对应太阳双鱼座:/g, '(对应太阳双鱼座):');
+              c = c.replace(/(对应太阳双子座:/g, '(对应太阳双子座):');
+              c = c.replace(/(对应太阳白羊座:/g, '(对应太阳白羊座):');
+              c = c.replace(/(对应太阳射手座:/g, '(对应太阳射手座):');
+              c = c.replace(/(对应太阳摩羯座:/g, '(对应太阳摩羯座):');
+              c = c.replace(/(对应太阳水瓶座:/g, '(对应太阳水瓶座):');
+              c = c.replace(/(对应太阳巨蟹座:/g, '(对应太阳巨蟹座):');
+              // 「(巨蟹座形成强大......」型残缺兜底(截断场景)
+              c = c.replace(/(巨蟹座形成强大的支持相位(/g, '(巨蟹座形成强大的支持相位)(');
 
-              // Pass3: 兜底——段落级括号平衡（针对长跨越多分句的未闭括号）
+              // Pass3: 兜底--段落级括号平衡(针对长跨越多分句的未闭括号)
               const pars = c.split('\n');
               for (let pi = 0; pi < pars.length; pi++) {
                 const p = pars[pi];
                 const o = (p.match(/\uff08/g) || []).length;
                 const cl = (p.match(/\uff09/g) || []).length;
-                if (o > cl && !p.match(/[）　]\s*$/)) {
-                  pars[pi] = p + '）';
+                if (o > cl && !p.match(/[) ]\s*$/)) {
+                  pars[pi] = p + ')';
                 }
               }
               c = pars.join('\n');
 
-              // 1. 【斩杀太阳双子幻觉 — 只修本太阳引用，不碰月度矩阵里的双子座】
-              // V103-fix19: 后端月锁和元素锁已保证月度矩阵里星座正确，
-              // 前端只修「太阳双子座」等本太阳引用，全局「双子座→处女座」会让月度标题里的双子座也被换掉
+              // 1. 【斩杀太阳双子幻觉 - 只修本太阳引用,不碰月度矩阵里的双子座】
+              // V103-fix19: 后端月锁和元素锁已保证月度矩阵里星座正确,
+              // 前端只修「太阳双子座」等本太阳引用,全局「双子座→处女座」会让月度标题里的双子座也被换掉
               if (trueZodiac && trueZodiac !== '双子座') {
                 c = c.replace(/太阳双子座/g, '太阳' + trueZodiac);  // 太阳双子座→太阳处女座
                 c = c.replace(/双子天命/g, trueZodiac + '天命');   // 双子天命→处女座天命
                 c = c.replace(/双子守护/g, trueZodiac + '守护');   // 双子守护→处女座守护
-                // 注意：不再做 /双子座/g 全局替换，月度标题的双子座保持不变
+                // 注意:不再做 /双子座/g 全局替换,月度标题的双子座保持不变
               }
 
               // 2. 【斩杀"双鱼座风元素"常识错误】
               c = c.replace(/双鱼座太阳的永恒印记。?你的灵魂带着风元素/g,
                 '双鱼座太阳的永恒印记。你的灵魂带着水元素的深邃');
-              c = c.replace(/基于风元素（双鱼座）/g, '基于水元素（双鱼座）');
+              c = c.replace(/基于风元素(双鱼座)/g, '基于水元素(双鱼座)');
               c = c.replace(/双鱼座的沟通能力/g, '双鱼座的直觉感知力');
 
-              // 3. 【斩杀水瓶座天顶第十宫穿帮——水瓶座是第八宫疾厄宫/深层转化/偏财宫】
-              c = c.replace(/冥王星在水瓶座的行进，持续在你星盘的天顶——事业与公众形象/g,
-                '冥王星在水瓶座的行进，持续在你星盘的第八宫——深层转化与偏财跨越');
-              c = c.replace(/冥王星在你的天顶（第十宫，事业宫）/g,
-                '冥王星在你的第八宫（深层转化与隐秘财富之宫）');
-              c = c.replace(/水瓶座（你的第十宫宫头，代表事业/g,
-                '水瓶座（你的第八宫宫头，代表深层资产转化');
-              c = c.replace(/在你的事业宫（水瓶座）逆行/g,
-                '在你的深层资源宫（水瓶座）逆行');
-              c = c.replace(/水瓶座（你的第十宫/g,
-                '水瓶座（你的第八宫');
+              // 3. 【斩杀水瓶座天顶第十宫穿帮--水瓶座是第八宫疾厄宫/深层转化/偏财宫】
+              c = c.replace(/冥王星在水瓶座的行进,持续在你星盘的天顶--事业与公众形象/g,
+                '冥王星在水瓶座的行进,持续在你星盘的第八宫--深层转化与偏财跨越');
+              c = c.replace(/冥王星在你的天顶(第十宫,事业宫)/g,
+                '冥王星在你的第八宫(深层转化与隐秘财富之宫)');
+              c = c.replace(/水瓶座(你的第十宫宫头,代表事业/g,
+                '水瓶座(你的第八宫宫头,代表深层资产转化');
+              c = c.replace(/在你的事业宫(水瓶座)逆行/g,
+                '在你的深层资源宫(水瓶座)逆行');
+              c = c.replace(/水瓶座(你的第十宫/g,
+                '水瓶座(你的第八宫');
               c = c.replace(/水瓶座在第十宫/g, '水瓶座在第八宫');
 
-              // 4. 【斩杀重复黑天鹅理由话术——保留第一个，其余按星象差异化】
-              // 已由后端prompt修正，此处前端兜底
-              c = c.replace(/你的“阴影自我”——对控制的渴望——可能被触发。{2,}/g, '你需保持冷静与觉知。');
-              c = c.replace(/你的“阴影自我”——急躁和愤怒——可能被触发。{2,}/g, '你需控制冲动，深思熟虑。');
+              // 4. 【斩杀重复黑天鹅理由话术--保留第一个,其余按星象差异化】
+              // 已由后端prompt修正,此处前端兜底
+              c = c.replace(/你的"阴影自我"--对控制的渴望--可能被触发。{2,}/g, '你需保持冷静与觉知。');
+              c = c.replace(/你的"阴影自我"--急躁和愤怒--可能被触发。{2,}/g, '你需控制冲动,深思熟虑。');
 
               return c.trim();
             };
 
             const displayText = formatAndCleanSacredText(sacredText);
-            // V99l: 军师令——幽灵方块强制物理蒸发（\uFFFD/\u0000/<fe0f>）
+            // V99l: 军师令--幽灵方块强制物理蒸发(\uFFFD/\u0000/<fe0f>)
             const cleaned = cleanRawReportText(cleanYearlyTimeline(displayText))
               .replace(/[\uFFFD\u0000\uFFFE\uFFF0-\uFFFF]/g, '')
               .replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '')
               .replace(/\\n/g, '');
 
             return (
-              // 🛠️ V50: 一行顶所有——星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
+              // 🛠️ V50: 一行顶所有--星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
               <SacredYearlyReportBox
                 rawStreamText={cleaned || ''}
                 yearlyCardsReady={yearlyCardsReady}
@@ -2684,7 +2692,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               />
             );
           }
-          
+
           return null;
         })()}
 
@@ -2693,8 +2701,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (reportLoading === 'wealth_once' || (wealthReportText && wealthReportText.length > 100)) {
             const trueZodiac = getTrueZodiacByDate(birthDate);
             const displayText = wealthReportText || sacredText || '';
-            
-            // 简化清洗（不涉及时间线）
+
+            // 简化清洗(不涉及时间线)
             const cleaned = displayText
               .replace(/[\uFFFD\u0000\uFFFE\uFFF0-\uFFFF]/g, '')
               .replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '')
@@ -2713,7 +2721,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           return null;
         })()}
 
-        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮，避免干扰阅读 */}
+        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮,避免干扰阅读 */}
         {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && reportLoading !== 'wealth_monthly' && !yearlyCardsReady && !monthlyCardsReady && (
           <button
             onClick={handleTriggerInsight}
