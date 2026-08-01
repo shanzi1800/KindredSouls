@@ -2540,16 +2540,11 @@ function fixMonthlySectionTitles(text) {
   // V222c: 强制统一周标题格式（根治 DeepSeek 格式漂移）
   // V222d-fix: 先提取周次数字，再根据周次决定颜色（不信任 DeepSeek 输出的颜色）
   // V222e: 主公铁律格式——[🟢 第N周：X月X日–X月X日（主题）]，无✦开头
-  // V222h: emoji 正则修复——通配符跳过任意颜色符号
-  c = c.replace(/[✦]?\s*\[?[^\[]*?第([一二三四1-4])周[：:][^\n]*/g, (m, num) => {
-    const numMap = {'一':'1','二':'2','三':'3','四':'4'};
-    const n = numMap[num] || num;
-    const themes = {'1':'财富充能','2':'高危熔断','3':'顺流蓄力','4':'财富爆发'};
-    const colors = {'1':'🟢','2':'🔴','3':'🔵','4':'🟢'};
-    const dates = {'1':'7月1日–7月7日','2':'7月8日–7月14日','3':'7月15日–7月22日','4':'7月23日–7月31日'};
-    return `[${colors[n]} 第${n}周：${dates[n]}（${themes[n]}）]`;
-  });
-  // 强制统一开篇标题
+  // V222i: 切除硬编码日期正则（主公裁决·方案A）——信任 DeepSeek 原生输出
+  // 动态日期区间由 Prompt 层预填充，LLM 原样照抄，根治跨月/大小月错误
+  // 原 V222h 正则已删除（硬编码 '7月' 导致 8月报告格式漂移）
+  
+  // 仅保留：强制统一开篇标题
   c = c.replace(/[✦]?\s*\[?🔮\s*本[月命][命运主][题]?[^\]]*\]?/g, '[🔮 Overview: 本月命运主题]');
   // 强制统一消费陷阱章节
   c = c.replace(/[✦]?\s*\[?⚠️?\s*(消费陷阱|Financial\s+Shadow)[^\]]*\]?/g, '[⚠️ Financial Shadow: 消费陷阱]');
@@ -2571,6 +2566,8 @@ function buildMonthlyPrompt(birthDate, lang) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
+  // V222i: 动态计算当月最后一天（根治硬编码 '31日' 跨月错误）
+  const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate();
   const monthNames = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -2584,7 +2581,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `[🟢 第1周：${curMonthZH.slice(5)}1日–${curMonthZH.slice(5)}7日（财富充能）]`,
       week2:       `[🔴 第2周：${curMonthZH.slice(5)}8日–${curMonthZH.slice(5)}14日（高危熔断）]`,
       week3:       `[🔵 第3周：${curMonthZH.slice(5)}15日–${curMonthZH.slice(5)}22日（顺流蓄力）]`,
-      week4:       `[🟢 第4周：${curMonthZH.slice(5)}23日–${curMonthZH.slice(5)}31日（财富爆发）]`,
+      week4:       `[🟢 第4周：${curMonthZH.slice(5)}23日–${curMonthZH.slice(5)}${lastDayOfMonth}日（财富爆发）]`,
       trap:        '[⚠️ Financial Shadow: 消费陷阱]',
       circuit:     '',
       circuit_tag: '【风险提示：】',
@@ -2594,7 +2591,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Week 1: ${curMonthName} 1–7] Wealth Recharging`,
       week2:       `✦ [Week 2: ${curMonthName} 8–14] High-Risk Circuit Breaker`,
       week3:       `✦ [Week 3: ${curMonthName} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthName} 23–31] The Wealth Explosion`,
+      week4:       `✦ [Week 4: ${curMonthName} 23–${lastDayOfMonth}] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthName} 2026 Spending Traps`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -2604,7 +2601,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Semana 1: ${curMonthName} 1–7] Recarga de Riqueza`,
       week2:       `✦ [Semana 2: ${curMonthName} 8–14] Cortocircuito de Alto Riesgo`,
       week3:       `✦ [Semana 3: ${curMonthName} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
+      week4:       `✦ [Semana 4: ${curMonthName} 23–${lastDayOfMonth}] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -2614,7 +2611,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Semaine 1: ${curMonthName} 1–7] Recharge de Richesse`,
       week2:       `✦ [Semaine 2: ${curMonthName} 8–14] Disjoncteur à Haut Risque`,
       week3:       `✦ [Semaine 3: ${curMonthName} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
+      week4:       `✦ [Semaine 4: ${curMonthName} 23–${lastDayOfMonth}] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -2624,7 +2621,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [สัปดาห์ที่ 1: ${curMonthName} 1–7] การเติมพลังความมั่งคั่ง`,
       week2:       `✦ [สัปดาห์ที่ 2: ${curMonthName} 8–14] วงจรความเสี่ยงสูง`,
       week3:       `✦ [สัปดาห์ที่ 3: ${curMonthName} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -2634,7 +2631,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Tuần 1: ${curMonthName} 1–7] Nạp năng lượng Tài sản`,
       week2:       `✦ [Tuần 2: ${curMonthName} 8–14] Mạch Ngắn Rủi ro Cao`,
       week3:       `✦ [Tuần 3: ${curMonthName} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
+      week4:       `✦ [Tuần 4: ${curMonthName} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -3119,7 +3116,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Week 1: ${curMonthLocal} 1–7] Wealth Recharging`,
       week2:       `✦ [Week 2: ${curMonthLocal} 8–14] High-Risk Circuit Breaker`,
       week3:       `✦ [Week 3: ${curMonthLocal} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthLocal} 23–31] The Wealth Explosion`,
+      week4:       `✦ [Week 4: ${curMonthLocal} 23–${lastDayOfMonth}] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthLocal} ${currentYear} Spending Traps`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -3129,7 +3126,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] Recarga de Riqueza`,
       week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] Cortocircuito de Alto Riesgo`,
       week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
+      week4:       `✦ [Semana 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -3139,7 +3136,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] Recharge de Richesse`,
       week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] Disjoncteur à Haut Risque`,
       week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
+      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -3149,7 +3146,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] การเติมพลังความมั่งคั่ง`,
       week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] วงจรความเสี่ยงสูง`,
       week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -3159,7 +3156,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] Nạp năng lượng Tài sản`,
       week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] Mạch Ngắn Rủi ro Cao`,
       week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
+      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
