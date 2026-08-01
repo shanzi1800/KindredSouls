@@ -78,6 +78,31 @@ function getGeminiKey() {
 // ── DeepSeek 直连流式(OpenAI 兼容格式,SSE 逐字吐出)──
 // 🛠️ V131: Node.js 原生 fetch 流式(Railway 实测 https.request 在流式场景丢数据,fetch 完美)
 async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly') {
+  // 🛠️ V221: Prompt 预填充真值——彻底弃用 {{}} 占位符机制(主公裁决·方案2)
+  // 送进 LLM 前用 astroMatrix 本命盘真值把 {{SUN_HOUSE}} 等替换为 第X宫,
+  // 物理杜绝模型因看见 {{}} 非自然 token 而退化,也避免标记裸奔进成品。
+  try {
+    const _natalH = astroMatrix?.meta?.computed_houses || {};
+    const _gJupH = _natalH.Jupiter?.house ?? 2;
+    const _gSatH = _natalH.Saturn?.house ?? 10;
+    const _gPltH = _natalH.Pluto?.house ?? 8;
+    const _gSunH = _natalH.Sun?.house ?? 1;
+    const _gMooH = _natalH.Moon?.house ?? 2;
+    const _houseTok = {
+      '{{JUPITER_HOUSE}}': '第' + _gJupH + '宫',
+      '{{SATURN_HOUSE}}': '第' + _gSatH + '宫',
+      '{{PLUTO_HOUSE}}': '第' + _gPltH + '宫',
+      '{{SUN_HOUSE}}': '第' + _gSunH + '宫',
+      '{{MOON_HOUSE}}': '第' + _gMooH + '宫',
+    };
+    for (const [_t, _v] of Object.entries(_houseTok)) {
+      if (_t) { systemText = (systemText || '').split(_t).join(_v); userText = (userText || '').split(_t).join(_v); }
+    }
+    // 兜底: 清除任何残留 {{...}}
+    systemText = (systemText || '').replace(/\{\{[A-Z0-9_]+\}\}/g, '第1宫');
+    userText = (userText || '').replace(/\{\{[A-Z0-9_]+\}\}/g, '第1宫');
+  } catch (e) { /* 预填充失败不影响主流程 */ }
+
 
   // 🛡️ V219b: 流内重复/超长检测——模型陷入 degeneracy 循环(完整月报重复吐)时提前终止,杜绝 8MB 卡死
   let _acc = '';
@@ -123,7 +148,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 1.0, presence_penalty: 0.5, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.5, repetition_penalty: 1.05, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -2529,7 +2554,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '',
-      circuit_tag: '⚠️ 安全指令：',
+      circuit_tag: '【风险提示：】',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
@@ -2539,7 +2564,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Week 4: ${curMonthName} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthName} 2026 Spending Traps`,
       circuit:     'Core Cosmic Window: ',
-      circuit_tag: '⚠️ Safety Directive:'
+      circuit_tag: '【Risk Alert:】'
     },
     es: {
       overview:    '✦ [Visión General] Tema Cósmico Mensual',
@@ -2549,7 +2574,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '⚠️ Directiva de Seguridad:',
+      circuit_tag: '【Alerta de Riesgo:】',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -2559,7 +2584,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '⚠️ Directive de Sécurité :',
+      circuit_tag: '【Alerte de Risque :】',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -2569,7 +2594,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '⚠️ คำสั่งความปลอดภัย:',
+      circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -2579,7 +2604,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '⚠️ Chỉ thị An toàn:',
+      circuit_tag: '【Cảnh Báo Rủi Ro:】',
     },
   };
   const HT = HEADER_TEMPLATES[lang] || HEADER_TEMPLATES.zh;
@@ -2660,19 +2685,15 @@ ${HT.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
 ${HT.week1}
-${HT.circuit}第X日
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
 ${HT.week2}
-${HT.circuit}第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
 ${HT.week3}
-${HT.circuit}第X日
 [Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
 
 ${HT.week4}
-${HT.circuit}第X日
 [Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
 
 ${HT.trap}
@@ -3058,7 +3079,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
-      circuit_tag: '⚠️ 安全指令：',
+      circuit_tag: '【风险提示：】',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
@@ -3068,7 +3089,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Week 4: ${curMonthLocal} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthLocal} ${currentYear} Spending Traps`,
       circuit:     'Core Cosmic Window: ',
-      circuit_tag: '⚠️ Safety Directive:'
+      circuit_tag: '【Risk Alert:】'
     },
     es: {
       overview:    '✦ [Visión General] Tema Cósmico Mensual',
@@ -3078,7 +3099,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
       circuit:     'Ventana Cósmica Clave: ',
-      circuit_tag: '⚠️ Directiva de Seguridad:',
+      circuit_tag: '【Alerta de Riesgo:】',
     },
     fr: {
       overview:    '✦ [Aperçu] Thème Cosmique Mensuel',
@@ -3088,7 +3109,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
       circuit:     'Fenêtre Cosmique Clé: ',
-      circuit_tag: '⚠️ Directive de Sécurité :',
+      circuit_tag: '【Alerte de Risque :】',
     },
     th: {
       overview:    '✦ [ภาพรวม] ธีมจักรวาลประจำเดือน',
@@ -3098,7 +3119,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
-      circuit_tag: '⚠️ คำสั่งความปลอดภัย:',
+      circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
     vi: {
       overview:    '✦ [Tổng quan] Chủ đề Vũ trụ Hàng tháng',
@@ -3108,7 +3129,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
-      circuit_tag: '⚠️ Chỉ thị An toàn:',
+      circuit_tag: '【Cảnh Báo Rủi Ro:】',
     },
   };
   const HT_RP = HEADER_TEMPLATES_RP[lang] || HEADER_TEMPLATES_RP.zh;
@@ -3282,13 +3303,7 @@ ${planetBlockWithWarning}
 ${monthlyDataBlock}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
-⛔ [不可变 Token 铁律·P0]: 提到行星宫位时，你必须原样保留以下不可变标记（不要写成'第N宫'或任何数字，后端会用真实宫位自动替换）:
-  • 木星宫位 → {{JUPITER_HOUSE}}
-  • 土星宫位 → {{SATURN_HOUSE}}
-  • 冥王星宫位 → {{PLUTO_HOUSE}}
-  • 本命太阳宫位 → {{SUN_HOUSE}}
-  • 月亮宫位 → {{MOON_HOUSE}}
-例如正确写法: "木星在狮子座{{JUPITER_HOUSE}}带来财富"。错误写法: "木星在狮子座第5宫"(数字会被后端覆盖，且可能错)。
+⛔ [宫位直写铁律]: 提到行星宫位时，直接写"第N宫"（如"木星在狮子座第2宫带来财富"），严禁使用任何 {{}} 模板占位符或英文 token 标记。后端不再做占位符替换。
 
 ⛔ [相角幻觉禁令]: 禁止写"形成和谐互动"、"吉相"、"三分相/四分相/对分相"等相角术语。禁止描述 quincunx(150°处女-白羊)、square(90°处女-双子)为正向能量。统一用中性行星能量描述，如："处女座金星与白羊座土星的错位张力"、"处女座金星与双子座天王星的能量碰撞带来突发变数"。禁止用"意外之财"、"意外收获"描述四分相/梅花相位的相位。
 禁止用"同频共振"描述四分相(90°/square)或梅花相(150°/quincunx)——只有三分相(120°/trine)或六分相(60°/sextile)才可用"共振"类词汇。水星/火星/天王星与任何行星的紧张相位禁止用"同频共振"。
@@ -3331,19 +3346,15 @@ ${HT_RP.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
 
 ${HT_RP.week1}
-${HT_RP.circuit_tag}Day X
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
 
 ${HT_RP.week2}
-${HT_RP.circuit}第X日
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
 
 ${HT_RP.week3}
-${HT_RP.circuit}第X日
 [Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include specific date references where relevant.]
 
 ${HT_RP.week4}
-${HT_RP.circuit}第X日
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
 
 ${HT_RP.trap}
@@ -3376,19 +3387,15 @@ ${HT_RP.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal sun sign.]
 
 ${HT_RP.week1}
-${HT_RP.circuit}Day X
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Include specific days and dollar amount triggers where relevant.]
 
 ${HT_RP.week2}
-${HT_RP.circuit}Day X
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days are dangerous and why. Include a concrete financial safety rule.]
 
 ${HT_RP.week3}
-${HT_RP.circuit}Day X
 [Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include days for planning and consolidation.]
 
 ${HT_RP.week4}
-${HT_RP.circuit}Day X
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days.]
 
 ${HT_RP.trap}
