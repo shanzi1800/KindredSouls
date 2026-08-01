@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // 🛡️ V219: 内存级报告缓存,跨组件 remount 去重,防止反复挂载导致重复发请求/重复拼接几十份报告
 const _reportMemCache = new Map<string, string>();
 // 🛡️ V219d: 进行中报告的单例锁--同一 birth+lang+type 全局只发一个请求,所有 remount 共享进度
-const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => void> }>();
+const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => void>; done?: boolean }>();
 // 🔬 V219g-DEBUG: 诊断用计数器(确认后删除)
 let _dbgCall = 0;
 let _dbgSet = 0;
@@ -1158,6 +1158,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
   const abortRef = useRef<AbortController | null>(null); // 🔒 中止悬挂流,防止反复 remount 叠加多份报告
+  const mySubRef = useRef<((t: string) => void) | null>(null); // 🔒 V220b: 本实例的订阅者,cleanup 时从 gen.subs 移除,防止 stale 闭包重复写入
   const [wealthReportText, setWealthReportText] = useState<string>('');
   const [visibleWeeks, setVisibleWeeks] = useState<number>(1); // 当前可见的卡片数
 
@@ -1333,6 +1334,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🛡️ V220: 使用 AbortController 根治 remount 叠加——cleanup 立即 abort 所有进行中的请求，防止残留 reader 叠加导致重复拼接
     return () => {
       abortRef.current?.abort();
+      // 🔒 V220b: 从所有进行中的 gen.subs 移除本实例订阅,杜绝 stale 闭包在 remount 后继续写入导致重复拼接
+      if (mySubRef.current) {
+        for (const g of _reportGen.values()) {
+          if (g.subs.has(mySubRef.current)) g.subs.delete(mySubRef.current);
+        }
+      }
     };
   }, []);
 
@@ -1852,13 +1859,19 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // 🛠️ V40: 移除折叠逻辑,改用单框打字机
 
-  const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once') => {
+  const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force = false) => {
     // 🛡️ V219f: key 必须基于 URL 稳定值,绝不依赖组件 state(birthDate/lang 初始化期为空或波动会导致锁 key 失配、5 个并发请求叠加)
     const _urlP = new URLSearchParams(window.location.search);
     const _stableBirth = _urlP.get('birth') || birthDate || '';
     const _stableLang = _urlP.get('lang') || lang || 'en';
     // 🛡️ V219: 内存级去重,跨 remount 生效--同一 birth+lang+type 只发一次请求
     const _memKey = `${_stableBirth}_${_stableLang}_${type}`;
+    // 🔒 V220b: 强制刷新(用户点 regenerate)→ 清掉 done/memcache 锁,允许重新开发请求
+    if (force) {
+      const _fg = _reportGen.get(_memKey);
+      if (_fg) { _fg.subs.clear(); _reportGen.delete(_memKey); }
+      _reportMemCache.delete(_memKey);
+    }
     _dbgCall++;
     console.log(`[V219g-DEBUG] CALL #${_dbgCall} key=${_memKey} has=${_reportGen.has(_memKey)} gen=${_reportGen.size}`);
     const _memHit = _reportMemCache.get(_memKey);
@@ -1875,8 +1888,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🛡️ V219d: 正在生成中 → 订阅 module 级进度,不重复发请求(根治反复 remount 叠加重复)
     if (_reportGen.has(_memKey)) {
       const gen = _reportGen.get(_memKey)!;
+      // 🔒 V220b: 流已结束 → 直接复用最终全量文本,绝不重新开发请求
+      if (gen.done) {
+        setSacredText(gen.partial);
+        setStreamedOnce(true);
+        if (type === 'monthly') setMonthlyCardsReady(true);
+        if (type === 'yearly') setYearlyCardsReady(true);
+        setLoading(false);
+        loadingRef.current = false;
+        return;
+      }
+      // 🔒 V220b: 先移除本实例可能的旧订阅,防止多次 remount 堆积 stale sub
+      if (mySubRef.current && gen.subs.has(mySubRef.current)) gen.subs.delete(mySubRef.current);
       setSacredText(gen.partial); // 立即渲染当前进度
       const sub = (t: string) => setSacredText(t);
+      mySubRef.current = sub;
       gen.subs.add(sub);
       return;
     }
@@ -1958,7 +1984,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 const genDone = _reportGen.get(_memKey);
                 if (genDone) {
                   genDone.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 最后一次通知所有订阅实例
-                  _reportGen.delete(_memKey); // 🛡️ V219d: 释放单例锁
+                  // 🔒 V220b: 标记完成但保留在 Map 中,后续 remount 直接复用最终文本,绝不重新开发请求(根治重复拼接)
+                  genDone.done = true;
+                  genDone.partial = _full;
+                } else {
+                  setSacredText(_full);
                 }
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
@@ -1987,7 +2017,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 if (parsed.text) {
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
-                    _full += parsed.text; // 🛡️ V219/V219d: 累积完整文本
+                    if (!_full.endsWith(parsed.text)) _full += parsed.text; // 🛡️ V219/V219d: 累积完整文本 + V220b 防重复切片
                     gen.partial = _full; // 🛡️ V219d: 更新 module 级进度
                     gen.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 通知所有订阅的 remount 实例
                     setSacredText(_full); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
@@ -2041,6 +2071,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         if (type === 'monthly' && !streamedOnce) {
           setTimeout(() => setVisibleWeeks(1), 500);
         }
+        const _genAbort = _reportGen.get(_memKey);
+        if (_genAbort) { _genAbort.subs.clear(); }
         _reportGen.delete(_memKey); // 🛡️ V219d: 流异常/abort 中断时释放单例锁,防止锁死
       }
       return;
@@ -2521,10 +2553,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             {/* 报告页保持绝对干净 - 无任何输入框,无任何提示。看 Teaser 直接付款。 */}
             {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>
-                <button onClick={() => generateWealthReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('monthly', true)} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
                 </button>
-                <button onClick={() => generateWealthReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('yearly', true)} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
                 </button>
                 <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {t('wealthReport.vipFree')}</div>
