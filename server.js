@@ -212,6 +212,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           fullText += newSuffix;
           pending = fullText;
           const _toSend = fullText.slice(sentLen);
+          if (chunkCount <= 6 || chunkCount % 40 === 0) console.log(`[V221b-DBG] chunk#${chunkCount} sentLen=${sentLen} fullText.len=${fullText.length} toSend.len=${_toSend.length} startsWithFull=${fullText.length>0 && clean.startsWith(fullText)}`);
           if (_toSend.length >= FLUSH_SIZE) {
             try {
               // V220d: delta already merged into unsentDelta (see above)
@@ -246,7 +247,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
-            sentLen += _toSend.length; // V220d: accumulate sent delta bytes
+            sentLen += _toSend.length;
+            if (chunkCount <= 6 || chunkCount % 40 === 0) console.log(`[V221b-DBG] AFTER-FLUSH chunk#${chunkCount} sentLen=${sentLen} toSend.len=${_toSend.length}`);
             /* V221: unsentDelta obsolete, 改用 fullText.slice(sentLen) */
           }
         } catch(e) {}
