@@ -118,7 +118,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   let buf = '', fullText = '';
   const FLUSH_SIZE = 50;
   let pending = '';
-  let sentLen = 0; // V220c: 已发送游标,flush 只发增量 delta(根治重复拼接)
+  let sentLen = 0; // V220d
+  let lastClean = ''; // V220d: last chunk clean for new-suffix
+  let unsentDelta = ''; // V220d: pending delta to send
   let chunkCount = 0;
   const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
@@ -163,27 +165,31 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（财爆）/g, '（财富爆发）')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
           console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
-          fullText += clean;
-          pending += clean;
-          if (pending.length - sentLen >= FLUSH_SIZE) {
+          fullText = clean;  // V220d: clean is cumulative full text; assign not +=
+          pending = clean;   // latest full text (for final flush slice)
+          // V220d: DeepSeek SDK returns cumulative full text each chunk; take only new suffix
+          let newSuffix = (lastClean && clean.startsWith(lastClean)) ? clean.slice(lastClean.length) : clean;
+          lastClean = clean;
+          unsentDelta += newSuffix;
+          if (unsentDelta.length >= FLUSH_SIZE) {
             try {
-            const delta = pending.slice(sentLen); // V220c: 本次要发送的增量(delta)
+              // V220d: delta already merged into unsentDelta (see above)
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
 // 🛠️ V120-fix23: 流式月报零清洗
               let pc;
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(delta, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(unsentDelta, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
               } else {
-                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(delta,_a, lang)),realSunSign,_a), astroMatrix);
+                pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(unsentDelta,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
               }
               res.write(Buffer.from(`data: ${JSON.stringify({
                 text: pc,
                 _dbg: {
-                  pendingLen: delta.length,
-                  fixInput: delta.slice(0, 100),
+                  pendingLen: unsentDelta.length,
+                  fixInput: unsentDelta.slice(0, 100),
                   fixOutput: pc.slice(0, 100),
                   hasKaichuan: pc.includes('【开篇】'),
                   hasCaichong: pc.includes('（财富充能）')
@@ -193,20 +199,21 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
               
-              let _safe = delta;
-              try { _safe = final_text_sanitizer(delta, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = delta; }
+              let _safe = unsentDelta;
+              try { _safe = final_text_sanitizer(unsentDelta, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = unsentDelta; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
             if (typeof res.flush === 'function') res.flush();
-            sentLen = pending.length; // V220c: 标记已发送位置(pending 不重置,根治重复拼接)
+            sentLen += unsentDelta.length; // V220d: accumulate sent delta bytes
+            unsentDelta = '';
           }
         } catch(e) {}
       }
     }
   } catch(e) { clearInterval(heartbeat); console.error('[callDeepSeek] stream read error:', e.message); throw e; }
   clearInterval(heartbeat);
-  const _rest = pending.slice(sentLen);
+  const _rest = unsentDelta; // V220d: 循环结束时未达 FLUSH_SIZE 的尾部增量(累积/增量场景都正确)
   if (_rest) {
     const _a = astroMatrix?.meta?.rising_sign||'Cancer';
     let pc;
