@@ -90,10 +90,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   };
   const _dupGuard = (txt) => {
     _acc += (txt || '');
-    const weeks = (_acc.match(/第[一二三四1-4]周|Week\s+[1-4]|Semaine\s+[1-4]|สัปดาห์ที่\s+[1-4]/g) || []).length;
-    if (_acc.length > 60000 || weeks > 4) {
+    // V220f-fix: 先去掉 V132e 标记再计数(它不是真实周标题,会被误判)
+    const _stripped = _acc.replace(/\[V132e-DEPLOYED\]/g, '');
+    const weeks = (_stripped.match(/第[一二三四1-4]周|Week\s+[1-4]|Semaine\s+[1-4]|สัปดาห์ที่\s+[1-4]/g) || []).length;
+    // V220f-fix2: 触发阈值从 >4 改为 >=5(4周完整月报才是合法值; >=5 才触发)
+    if (_acc.length > 60000 || weeks >= 5) {
       console.log('[callDeepSeek] ⚠️ V219b 检测到重复生成/超长,提前终止流 (' + _acc.length + ' chars, weeks=' + weeks + ')');
       try { clearInterval(heartbeat); } catch(e){}
+      try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 必须先发 [DONE] 再关连接,否则前端 SSE reader 永远卡死
       try { res.end(); } catch(e){}
       return false;
     }
