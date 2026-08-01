@@ -2662,6 +2662,10 @@ function buildMonthlyPrompt(birthDate, lang) {
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
   const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
 
+  // 🛠️ V222j: Debug - 打印 Prompt 关键段
+  console.log('[V222j-DEBUG] HT.week1:', HT.week1);
+  console.log('[V222j-DEBUG] user 片段:', user.slice(0, 300));
+  
   return {
     system: monthlySystem,
     user: `
