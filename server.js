@@ -469,6 +469,10 @@ sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch
       for (let i=0; i<_rvF.length && _exF>0; i++) { if (_rvF[i]==='\uff09') { _rvF[i]=''; _exF--; } }
       fixed = _rvF.reverse().join('');
     }
+    // 🛠️ V222e: 月报格式铁律——在 sanitized 发送前强制统一格式
+    if (reportType === 'monthly') {
+      fixed = fixMonthlySectionTitles(fixed);
+    }
     if (fixed.length > 0) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
