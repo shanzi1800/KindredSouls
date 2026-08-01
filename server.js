@@ -106,9 +106,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 
   // 🛡️ V219b: 流内重复/超长检测——模型陷入 degeneracy 循环(完整月报重复吐)时提前终止,杜绝 8MB 卡死
   let _acc = '';
+  // V222: tokMap 仅在 prompt 构建时有用,流式清洗不需要,直接空对象兜底
+  const _safeTokMap = {};
   const _tokClean = (s) => {
-    if (!s || !tokMap) return s;
-    for (const [_t, _v] of Object.entries(tokMap)) {
+    if (!s) return s;
+    for (const [_t, _v] of Object.entries(_safeTokMap)) {
       if (_t && _v) s = s.split(_t).join(_v);
     }
     return s.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
@@ -148,7 +150,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.5, repetition_penalty: 1.05, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.3, repetition_penalty: 1.05, stream: true }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -212,8 +214,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           fullText += newSuffix;
           pending = fullText;
           const _toSend = fullText.slice(sentLen);
-          console.log(`>>>V221c<<< ft=${fullText.length} sl=${sentLen} ts=${_toSend.length} cnt=${chunkCount} txt=${_toSend.slice(0,30).replace(/\n/g,'↵')}`);
-          sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
+sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
           if (_toSend.length >= FLUSH_SIZE) {
             try {
               // V220d: delta already merged into unsentDelta (see above)
