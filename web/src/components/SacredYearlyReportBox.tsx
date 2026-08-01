@@ -286,8 +286,9 @@ const SacredYearlyReportBox: React.FC<{
     // 不匹配长段落中间的关键词（否则 blabla 第一章 blabla blabla 全被归为 heading→金色）
     const prefix = textWithoutIcon.slice(0, 40);
     // 🛠️ V217: 月度周次卡片标头（[🟢 Week N / 第N周 / Tuần N / สัปดาห์ที่ N]）走金色大字 heading
+    // V222d: 允许 ✦ 开头（后端输出格式）
     const isMonthWeekHeader = textWithoutIcon.trimStart().match(
-      /^\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s+\d+|Semana\s+\d+|Semaine\s+\d+|Tuần\s+\d+|สัปดาห์ที่\s+[๑๒๓๔๕๖๗๘๙\d]+|第\s*[\d一二三四五六七八九十]+\s*周)\b/i
+      /^[✦]?\s*\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s+\d+|Semana\s+\d+|Semaine\s+\d+|Tuần\s+\d+|สัปดาห์ที่\s+[๑๒๓๔๕๖๗๘๙\d]+|第\s*[\d一二三四五六七八九十]+\s*周)\b/i
     );
 
     const startsWithBold = textWithoutIcon.trim().startsWith('**');

@@ -2535,11 +2535,12 @@ function fixMonthlySectionTitles(text) {
 
   // V222c: 强制统一周标题格式（根治 DeepSeek 格式漂移）
   // 统一为: ✦ [🟢/🔴/🔵 第N周：2026年X月（主题）]
-  c = c.replace(/✦\s*\[?([🟢🔴🔵])\s*第([一二三四1-4])周[：:][^\n]*/g, (m, emoji, num) => {
+  // V222d-fix: 先提取周次数字，再根据周次决定颜色（不信任 DeepSeek 输出的颜色）
+  c = c.replace(/✦\s*\[?([🟢🔴🔵])?\s*第([一二三四1-4])周[：:][^\n]*/g, (m, ignoredEmoji, num) => {
     const numMap = {'一':'1','二':'2','三':'3','四':'4'};
     const n = numMap[num] || num;
     const themes = {'1':'财富充能','2':'高危熔断','3':'顺流蓄力','4':'财富爆发'};
-    const colors = {'1':'🟢','2':'🔴','3':'🔵','4':'🟢'};
+    const colors = {'1':'🟢','2':'🔴','3':'🔵','4':'🟢'}; // V222d: 周次决定颜色，忽略 DeepSeek 输出的颜色
     return `✦ [${colors[n]} 第${n}周：2026年8月（${themes[n]}）]`;
   });
   // 清理多余的日期范围
