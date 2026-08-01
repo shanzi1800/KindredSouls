@@ -2534,15 +2534,20 @@ function fixMonthlySectionTitles(text) {
   c = c.replace(/）\s*）/g, '）');
 
   // V222c: 强制统一周标题格式（根治 DeepSeek 格式漂移）
-  // 统一为: ✦ [🟢/🔴/🔵 第N周：2026年X月（主题）]
   // V222d-fix: 先提取周次数字，再根据周次决定颜色（不信任 DeepSeek 输出的颜色）
+  // V222e: 主公铁律格式——[🟢 第N周：X月X日–X月X日（主题）]，无✦开头
   c = c.replace(/✦\s*\[?([🟢🔴🔵])?\s*第([一二三四1-4])周[：:][^\n]*/g, (m, ignoredEmoji, num) => {
     const numMap = {'一':'1','二':'2','三':'3','四':'4'};
     const n = numMap[num] || num;
     const themes = {'1':'财富充能','2':'高危熔断','3':'顺流蓄力','4':'财富爆发'};
-    const colors = {'1':'🟢','2':'🔴','3':'🔵','4':'🟢'}; // V222d: 周次决定颜色，忽略 DeepSeek 输出的颜色
-    return `✦ [${colors[n]} 第${n}周：2026年8月（${themes[n]}）]`;
+    const colors = {'1':'🟢','2':'🔴','3':'🔵','4':'🟢'};
+    const dates = {'1':'7月1日–7月7日','2':'7月8日–7月14日','3':'7月15日–7月22日','4':'7月23日–7月31日'};
+    return `[${colors[n]} 第${n}周：${dates[n]}（${themes[n]}）]`;
   });
+  // 强制统一开篇标题
+  c = c.replace(/[✦]?\s*\[?🔮\s*本[月命][命运主][题]?[^\]]*\]?/g, '[🔮 Overview: 本月命运主题]');
+  // 强制统一消费陷阱章节
+  c = c.replace(/[✦]?\s*\[?⚠️?\s*(消费陷阱|Financial\s+Shadow)[^\]]*\]?/g, '[⚠️ Financial Shadow: 消费陷阱]');
   // 清理多余的日期范围
   c = c.replace(/第([一二三四1-4])周[：:]\s*[0-9]+月([0-9]+日?[–-][0-9]+日?)/g, (m, num, range) => {
     const numMap = {'一':'1','二':'2','三':'3','四':'4'};
@@ -2570,12 +2575,12 @@ function buildMonthlyPrompt(birthDate, lang) {
   // ── 多语言标题字典（军师裁决 V136）─────────────────────────────
   const HEADER_TEMPLATES = {
     zh: {
-      overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
-      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
+      overview:    '[🔮 Overview: 本月命运主题]',
+      week1:       `[🟢 第1周：${curMonthZH.slice(5)}1日–${curMonthZH.slice(5)}7日（财富充能）]`,
+      week2:       `[🔴 第2周：${curMonthZH.slice(5)}8日–${curMonthZH.slice(5)}14日（高危熔断）]`,
+      week3:       `[🔵 第3周：${curMonthZH.slice(5)}15日–${curMonthZH.slice(5)}22日（顺流蓄力）]`,
+      week4:       `[🟢 第4周：${curMonthZH.slice(5)}23日–${curMonthZH.slice(5)}31日（财富爆发）]`,
+      trap:        '[⚠️ Financial Shadow: 消费陷阱]',
       circuit:     '',
       circuit_tag: '【风险提示：】',
     },
