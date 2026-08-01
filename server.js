@@ -90,14 +90,26 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   };
   const _dupGuard = (txt) => {
     _acc += (txt || '');
-    // V220f-fix: 先去掉 V132e 标记再计数(它不是真实周标题,会被误判)
+    // V220g-fix: 改为"最高周次"计数而非"重复次数"——
+    // 问题: _acc 累积全量文本,每个增量 chunk 都含"第1周"标题,
+    // 导致同一个月报章节被重复计 10~20 次,合法 4 周月报也触发早停。
+    // 修复: 提取 _acc 中出现的最大周次(第1周=1, 第2周=2...),
+    // 只有模型开始生成"第5周"才算真正越界,4 周合法月报永不触发。
     const _stripped = _acc.replace(/\[V132e-DEPLOYED\]/g, '');
-    const weeks = (_stripped.match(/第[一二三四1-4]周|Week\s+[1-4]|Semaine\s+[1-4]|สัปดาห์ที่\s+[1-4]/g) || []).length;
-    // V220f-fix2: 触发阈值从 >4 改为 >=5(4周完整月报才是合法值; >=5 才触发)
-    if (_acc.length > 60000 || weeks >= 5) {
-      console.log('[callDeepSeek] ⚠️ V219b 检测到重复生成/超长,提前终止流 (' + _acc.length + ' chars, weeks=' + weeks + ')');
+    const _clean = _stripped.replace(/⚠️ 安全指令：第\d+日|Day \d+-\d+|第\d+日[\s\S]*$/gm, '');
+    const _cnNums = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8 };
+    const _wnMatches = _clean.match(/第([一二三四五六七八1-8])周/g) || [];
+    let _maxWeek = 0;
+    for (const m of _wnMatches) {
+      const _n = m[1];
+      const _v = _cnNums[_n] || parseInt(_n);
+      if (_v > _maxWeek) _maxWeek = _v;
+    }
+    // 超长(>60k 字)或周次超过 4(即出现第5周+)才算真正的 degeneracy
+    if (_acc.length > 60000 || _maxWeek > 4) {
+      console.log('[callDeepSeek] ⚠️ V219b 检测到超长/越界周次,提前终止流 (' + _acc.length + ' chars, maxWeek=' + _maxWeek + ')');
       try { clearInterval(heartbeat); } catch(e){}
-      try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 必须先发 [DONE] 再关连接,否则前端 SSE reader 永远卡死
+      try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 先发 [DONE] 再关连接
       try { res.end(); } catch(e){}
       return false;
     }
