@@ -2555,14 +2555,14 @@ function buildMonthlyPrompt(birthDate, lang) {
   // ── 多语言标题字典（军师裁决 V136）─────────────────────────────
   const HEADER_TEMPLATES = {
     zh: {
-      overview:    '[🔮 Overview: 本月命运主题]',
-      week1:       `[🟢 第1周：${curMonthZH.slice(5)}1日–${curMonthZH.slice(5)}7日（财富充能）]`,
-      week2:       `[🔴 第2周：${curMonthZH.slice(5)}8日–${curMonthZH.slice(5)}14日（高危熔断）]`,
-      week3:       `[🔵 第3周：${curMonthZH.slice(5)}15日–${curMonthZH.slice(5)}22日（顺流蓄力）]`,
-      week4:       `[🟢 第4周：${curMonthZH.slice(5)}23日–${curMonthZH.slice(5)}${lastDayOfMonth}日（财富爆发）]`,
-      trap:        '[⚠️ Financial Shadow: 消费陷阱]',
+      overview:    '✦ [🔮 本月命运主题] ✦',
+      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
+      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '',
-      circuit_tag: '【风险提示：】',
+      circuit_tag: '⚠️ 安全指令：',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
@@ -3083,11 +3083,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${currentYear}年${currentMonth}月（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${currentYear}年${currentMonth}月（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${currentYear}年${currentMonth}月（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
-      trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
+      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
+      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
     },
