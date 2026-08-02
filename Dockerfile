@@ -46,7 +46,7 @@ RUN echo "BUILD_TRIGGER_FORCE_$(date +%s%N) - V200 frontend fix" \
 
 RUN echo "[BUILD] CACHE_BUST=${CACHE_BUST} forcing full rebuild"
 COPY . .
-RUN echo "[BUILD] after copy, server.js lines:" && wc -l /app/server.js && echo "wealth-stream refs:" && grep -c 'wealth-stream' /app/server.js
+RUN echo "[BUILD] after copy, server.js BYTES:" && wc -c /app/server.js && echo "[BUILD] marker check:" && grep -c "V229" /app/server.js || echo "V229 not found" && echo "wealth-stream refs:" && grep -c 'wealth-stream' /app/server.js
 
 RUN npm install && npm install express stripe
 
