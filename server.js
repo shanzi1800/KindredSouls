@@ -2537,29 +2537,6 @@ function fixMonthlySectionTitles(text) {
   // 4. 清理多余 '）'（避免 '（财富充能））'）
   c = c.replace(/）\s*）/g, '）');
 
-  // V222c: 强制统一周标题格式（根治 DeepSeek 格式漂移）
-  // V222d-fix: 先提取周次数字，再根据周次决定颜色（不信任 DeepSeek 输出的颜色）
-  // V222e: 主公铁律格式——[🟢 第N周：X月X日–X月X日（主题）]，无✦开头
-  // V222i: 切除硬编码日期正则（主公裁决·方案A）——信任 DeepSeek 原生输出
-  // 动态日期区间由 Prompt 层预填充，LLM 原样照抄，根治跨月/大小月错误
-  // 原 V222h 正则已删除（硬编码 '7月' 导致 8月报告格式漂移）
-  
-  // 仅保留：强制统一开篇标题
-  c = c.replace(/[✦]?\s*\[?🔮\s*本[月命][命运主][题]?[^\]]*\]?/g, '[🔮 Overview: 本月命运主题]');
-  // 强制统一消费陷阱章节
-  c = c.replace(/[✦]?\s*\[?⚠️?\s*(消费陷阱|Financial\s+Shadow)[^\]]*\]?/g, '[⚠️ Financial Shadow: 消费陷阱]');
-  // 清理多余的日期范围
-  c = c.replace(/第([一二三四1-4])周[：:]\s*[0-9]+月([0-9]+日?[–-][0-9]+日?)/g, (m, num, range) => {
-    const numMap = {'一':'1','二':'2','三':'3','四':'4'};
-    const n = numMap[num] || num;
-    const themes = {'1':'财富充能','2':'高危熔断','3':'顺流蓄力','4':'财富爆发'};
-    return `第${n}周：2026年8月（${themes[n]}）`;
-  });
-  // 统一消费陷阱/风险提示格式
-  c = c.replace(/【?⚠?\s*消费陷阱[：:]?\s*[0-9]+年[0-9]+月】?/g, '⚠️ 消费陷阱 2026年8月');
-  c = c.replace(/【?⚠?\s*风险提示[：:]?】?/g, '【风险提示：】');
-
-  return c;
 }
 
 function buildMonthlyPrompt(birthDate, lang) {
@@ -3105,10 +3082,10 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${currentMonth}月1日–7日（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${currentMonth}月8日–14日（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${currentMonth}月15日–22日（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${currentMonth}月23日–${lastDayOfMonth}日（财富爆发）]`,
+      week1:       `✦ [🟢 第1周：${currentYear}年${currentMonth}月（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${currentYear}年${currentMonth}月（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${currentYear}年${currentMonth}月（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
