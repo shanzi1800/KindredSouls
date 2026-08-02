@@ -2627,7 +2627,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
       week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
       week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
-      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
+      trap:        `✦ [⚠️ 消费陷阱：${curMonthZH}]`,
       circuit:     '',
       circuit_tag: '⚠️ 安全指令：',
     },
