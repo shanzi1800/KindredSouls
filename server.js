@@ -253,14 +253,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                   hasCaichong: pc.includes('（财富充能）')
                 }
               })}\n\n`, 'utf-8'));
-              if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
+              if (_dupGuard(pc)) { try { onChunk && onChunk(pc); } catch(e) {} } else return;
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
               
               let _safe = _toSend;
               try { _safe = final_text_sanitizer(_toSend, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = _toSend; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
-              if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
+              { /* V222t: catch 兜底只发一次 no-dbg 事件，不再 onChunk(_safe) 重复累积 */ }
             }
             /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
