@@ -2758,22 +2758,22 @@ CRITICAL REQUIREMENTS:
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
 ${HT.overview}
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+→ Write 1-2 sentences in ${lang} about the overall monthly financial theme — weave in the planetary lineup and natal chart.
 
 ${HT.week1}
-[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
+→ Write 150-200 words in ${lang} — week 1 financial energy, key opportunities, recommended actions, specific dates.
 
 ${HT.week2}
-[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days to avoid major financial decisions.]
+→ Write 150-200 words in ${lang} — high-risk financial days, potential pitfalls, danger zones, which days to avoid decisions.
 
 ${HT.week3}
-[Write 150-200 words: describe the flow state period, gradual momentum building, optimal strategies for this phase.]
+→ Write 150-200 words in ${lang} — flow state period, gradual momentum, optimal strategies for this phase.
 
 ${HT.week4}
-[Write 150-200 words: describe the peak wealth window, maximum financial potential, final push strategies.]
+→ Write 150-200 words in ${lang} — peak wealth window, maximum financial potential, final push strategies.
 
 ${HT.trap}
-[Write 100-150 words: identify specific spending traps, psychological pitfalls, and provide a concrete "${HT.circuit_tag}" — a clear rule like "单笔消费超过X元必须等24小时冷静期"]
+→ Write 100-150 words in ${lang} — identify specific spending traps, psychological pitfalls, end with a concrete circuit-breaker rule.
 
 IMPORTANT:
 • Write in ${lang} with native astrological and financial terminology
