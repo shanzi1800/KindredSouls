@@ -3083,11 +3083,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
-      trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
+      week1:       `✦ [🟢 第1周：${curMonthLocal}（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${curMonthLocal}（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${curMonthLocal}（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${curMonthLocal}（财富爆发）]`,
+      trap:        `⚠️ 消费陷阱 ${curMonthLocal}`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
     },
