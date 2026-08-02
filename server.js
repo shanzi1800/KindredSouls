@@ -2600,9 +2600,21 @@ function fixMonthlySectionTitles(text) {
       const y = now.getFullYear();
       const m = now.getMonth() + 1;
       const monthZH = `${y}年${m}月`;
-      c = c + '\n\n✦\n[⚠️ 消费陷阱：' + monthZH + ']\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）';
+      c = c + '\n\n✦ [⚠️ 消费陷阱：' + monthZH + ']\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）';
     }
   }
+
+  // 7. 🛠️ V229-fix: 强制标准化 Overview/Trap 标题（✦前缀+方括号；Overview无年月，Trap带年月）
+  //    根因：V223-fix 第5步把 ✦ 前缀从 命运主题/消费陷阱 行剥掉，导致前端 parseLine 不走 heading（金色居中）
+  //    此处幂等补全：无论 AI 是否带 ✦/年月，统一成 ✦ [🔮 本月命运主题] ✦ / ✦ [⚠️ 消费陷阱：YYYY年M月] ✦
+  const _v229now = new Date();
+  const _v229y = _v229now.getFullYear();
+  const _v229m = _v229now.getMonth() + 1;
+  const _v229monthZH = `${_v229y}年${['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][_v229m-1]}`;
+  // Overview: 任意 [🔮 本月命运主题...] 或 ✦ [🔮 本月命运主题...]（含跨行 ✦\n[🔮）→ ✦ [🔮 本月命运主题] ✦
+  c = c.replace(/✦?\s*\[\s*🔮\s*本月命运主题[^\]]*\]/gi, '✦ [🔮 本月命运主题] ✦');
+  // Trap: 任意 [⚠️ 消费陷阱...] 或 ✦ [⚠️ 消费陷阱...]（含跨行）→ ✦ [⚠️ 消费陷阱：YYYY年M月] ✦
+  c = c.replace(/✦?\s*\[\s*⚠️\s*消费陷阱[^\]]*\]/gi, `✦ [⚠️ 消费陷阱：${_v229monthZH}] ✦`);
 
   return c;
 }
@@ -3151,7 +3163,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const curMonthLocal = (MONTH_ABBR[lang] || MONTH_ABBR.zh)[currentMonth - 1];
   const HEADER_TEMPLATES_RP = {
     zh: {
-      overview:    `✦ [🔮 本月命运主题：${currentYear}年${curMonthLocal}]`,
+      overview:    '✦ [🔮 本月命运主题] ✦',
       week1:       `✦ [🟢 第1周：${curMonthLocal}1日–7日（财富充能）]`,
       week2:       `✦ [🔴 第2周：${curMonthLocal}8日–14日（高危熔断）]`,
       week3:       `✦ [🔵 第3周：${curMonthLocal}15日–22日（顺流蓄力）]`,
