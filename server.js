@@ -2537,6 +2537,7 @@ function fixMonthlySectionTitles(text) {
   // 4. 清理多余 '）'（避免 '（财富充能））'）
   c = c.replace(/）\s*）/g, '）');
 
+  return c;
 }
 
 function buildMonthlyPrompt(birthDate, lang) {
