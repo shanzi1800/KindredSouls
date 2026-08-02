@@ -77,7 +77,7 @@ function getGeminiKey() {
 
 // ── DeepSeek 直连流式(OpenAI 兼容格式,SSE 逐字吐出)──
 // 🛠️ V131: Node.js 原生 fetch 流式(Railway 实测 https.request 在流式场景丢数据,fetch 完美)
-async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly', skipFinal = false) {
+async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly') {
   // 🛠️ V221: Prompt 预填充真值——彻底弃用 {{}} 占位符机制(主公裁决·方案2)
   // 送进 LLM 前用 astroMatrix 本命盘真值把 {{SUN_HOUSE}} 等替换为 第X宫,
   // 物理杜绝模型因看见 {{}} 非自然 token 而退化,也避免标记裸奔进成品。
@@ -209,27 +209,13 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/\uFFFD/g,'').replace(/�/g,'');
           console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           // V221: newSuffix 恒为增量(delta); fullText 累积真实全文, sentLen 游标保证只发未发部分(根治累积重发灾难)
-          // V222q: 加前缀重发检测——DeepSeek 偶发重发已输出前缀(clean 是 lastClean 的前缀或相同) → 丢弃,根治事件级重复
-          let newSuffix = '';
-          if (lastClean) {
-            if (clean.length > lastClean.length && clean.startsWith(lastClean)) {
-              newSuffix = clean.slice(lastClean.length);      // 正常累积延伸
-            } else if (clean.length <= lastClean.length && lastClean.startsWith(clean)) {
-              newSuffix = '';                                  // 重发前缀/完全相同 → 丢弃
-            } else {
-              newSuffix = clean;                               // 全新内容(增量SDK/漂移) → 原样
-            }
-          } else {
-            newSuffix = clean;
-          }
+          let newSuffix = (lastClean && clean.startsWith(lastClean) && clean.length > lastClean.length) ? clean.slice(lastClean.length) : clean;
           lastClean = clean;
           fullText += newSuffix;
           pending = fullText;
-          unsentDelta += newSuffix; // V222q: 增量入缓冲——V221b 无条件推进 sentLen 导致 <FLUSH_SIZE 的增量被永久跳过(text事件全丢,前端无流式),恢复 V220d 缓冲方案
-          if (unsentDelta.length >= FLUSH_SIZE) {
-            const _toSend = unsentDelta;
-            unsentDelta = '';
-            sentLen += _toSend.length;
+          const _toSend = fullText.slice(sentLen);
+sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
+          if (_toSend.length >= FLUSH_SIZE) {
             try {
               // V220d: delta already merged into unsentDelta (see above)
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
@@ -253,19 +239,18 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                   hasCaichong: pc.includes('（财富充能）')
                 }
               })}\n\n`, 'utf-8'));
-              if (_dupGuard(pc)) { try { onChunk && onChunk(pc); } catch(e) {} } else return;
+              if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
             } catch(e2) {
               // 🛠️ V120-fix8: 兜底——即使下游linter抛错,也至少过final_text_sanitizer清洗半角括号/相位术语
               
               let _safe = _toSend;
               try { _safe = final_text_sanitizer(_toSend, astroMatrix?.meta?.rising_sign||'Cancer'); } catch(e3) { _safe = _toSend; }
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
-              { /* V222t: catch 兜底只发一次 no-dbg 事件，不再 onChunk(_safe) 重复累积 */ }
+              if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
+            if (typeof res.flush === 'function') res.flush();
             /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
-          // 🛠️ V222s: res.flush 移到 flush try 外——原 265 行的 res.flush 在 try 内,若 flush 抛错会进 257 catch → 每 flush 重复发一次 no-dbg 事件(成对重复+ sanitary 失效)。现单独 try/catch,抛错只影响 flush 时机,不触发主 catch
-          try { if (typeof res.flush === 'function') res.flush(); } catch(e) {}
         } catch(e) {}
       }
     }
@@ -473,8 +458,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 
   // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
-  // 🛡️ V222q: 分段生成时跳过最终 sanitized 全量发送(由主端点最终合并后统一发一次),根治前端流式分段跳变
-  if (reportType === 'monthly' && fullText && !skipFinal) {
+  if (reportType === 'monthly' && fullText) {
     let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign, lang);
     // 🛠️ V133g-fix5: 括号计数修复必须同步更新fullText
     const _ocF = (fixed.match(/\uff08/g)||[]).length;
@@ -484,10 +468,6 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       const _rvF = fixed.split(''); _rvF.reverse();
       for (let i=0; i<_rvF.length && _exF>0; i++) { if (_rvF[i]==='\uff09') { _rvF[i]=''; _exF--; } }
       fixed = _rvF.reverse().join('');
-    }
-    // 🛠️ V222e: 月报格式铁律——在 sanitized 发送前强制统一格式
-    if (reportType === 'monthly') {
-      fixed = fixMonthlySectionTitles(fixed);
     }
     if (fixed.length > 0) {
       try {
@@ -750,21 +730,6 @@ function fixSectionBrackets(text, lang) {
 // 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
 function cleanMonthlyBrackets(text, lang = 'zh') {
   if (!text) return text;
-    // ── V222q: 中文周标题拆行 + 补方括号兜底(LLM 丢括号/粘行时前端不渲染金色标题)──
-    if (lang === 'zh') {
-      // 1. 行内标题拆行: "……正文。✦ 🔴 第2周：8月8日–14日（高危熔断）" → 拆出独立标题行
-      text = text.replace(/([^\n])(✦\s*(?:🟢|🔴|🔵)\s*第[一二三四1-4]周)/g, '$1\n$2');
-      // 2. 独占行裸标题补方括号: "✦ 🔴 第2周：8月8日–14日（高危熔断）" → "✦ [🔴 第2周：8月8日–14日（高危熔断）]"
-      text = text.split('\n').map(ln => {
-        const t = ln.trim();
-        if (/^✦\s*(?:🟢|🔴|🔵)\s*第[一二三四1-4]周/.test(t) && !t.includes('[') && !t.includes(']')) {
-          return '✦ [' + t.replace(/^✦\s*/, '').trim() + ']';
-        }
-        return ln;
-      }).join('\n');
-      // 3. overview 裸标题补括号: "✦ 🔮 本月命运主题 ✦" → "✦ [🔮 本月命运主题] ✦"
-      text = text.replace(/✦\s*🔮\s*本月命运主题\s*✦?/g, '✦ [🔮 本月命运主题] ✦');
-    }
     // step0: 中文周标题补[] (emoji开头: 🟢 第1周...)
     if (lang === 'zh') {
       const _dbgLines = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
@@ -2563,42 +2528,10 @@ function fixMonthlySectionTitles(text) {
 
   // 3. 【消费陷阱】缩写还原
   c = c.replace(/【消陷】/g, '【消费陷阱】');
-  c = c.replace(/【消费】(?!.*陷阱)/g, '【消费陷阱】');
+  c = c.replace(/【消费】(?![陷阱])/g, '【消费陷阱】');
 
   // 4. 清理多余 '）'（避免 '（财富充能））'）
   c = c.replace(/）\s*）/g, '）');
-
-  // 5. 🛠️ V223-fix: 去掉 ✦ 前缀——DeepSeek 输出 "✦ [emoji 第N周...]"
-  //    前端 SacredYearlyReportBox 的 parseLine 期望 "[emoji 第N周...]"
-  //    不含 ✦ 前缀（✦ 是章节分隔符，不是标题前缀）
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*第[一二三四1-4]周)/gm, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Week\s*\d+)/gim, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semana\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semaine\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Tuần\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*สัปดาห์ที่)/gi, '$1');
-
-  // 6. 🛠️ V223-fix2: 注入缺失的 Overview 和消费陷阱（DeepSeek 吞 Prompt 模板占位符）
-  const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
-  if (hasWeek1) {
-    const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
-    const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
-    if (!hasOverview) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = `✦\n[🔮 本月命运主题：${monthZH}]\n
-【占位符-系统注入】本月命运主题（请刷新重试，AI 未生成此节）\n\n` + c;
-    }
-    if (!hasTrap) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = c + '\n\n✦\n[⚠️ 消费陷阱：' + monthZH + ']\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）';
-    }
-  }
 
   return c;
 }
@@ -2607,8 +2540,6 @@ function buildMonthlyPrompt(birthDate, lang) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
-  // V222i: 动态计算当月最后一天（根治硬编码 '31日' 跨月错误）
-  const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate();
   const monthNames = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -2625,14 +2556,14 @@ function buildMonthlyPrompt(birthDate, lang) {
       week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
       trap:        `⚠️ 消费陷阱 ${curMonthZH}`,
       circuit:     '',
-      circuit_tag: '⚠️ 安全指令：',
+      circuit_tag: '【风险提示：】',
     },
     en: {
       overview:    '✦ [Overview] Monthly Cosmic Theme',
       week1:       `✦ [Week 1: ${curMonthName} 1–7] Wealth Recharging`,
       week2:       `✦ [Week 2: ${curMonthName} 8–14] High-Risk Circuit Breaker`,
       week3:       `✦ [Week 3: ${curMonthName} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthName} 23–${lastDayOfMonth}] The Wealth Explosion`,
+      week4:       `✦ [Week 4: ${curMonthName} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthName} 2026 Spending Traps`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -2642,7 +2573,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Semana 1: ${curMonthName} 1–7] Recarga de Riqueza`,
       week2:       `✦ [Semana 2: ${curMonthName} 8–14] Cortocircuito de Alto Riesgo`,
       week3:       `✦ [Semana 3: ${curMonthName} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthName} 23–${lastDayOfMonth}] Explosión de Riqueza`,
+      week4:       `✦ [Semana 4: ${curMonthName} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthName} 2026`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -2652,7 +2583,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Semaine 1: ${curMonthName} 1–7] Recharge de Richesse`,
       week2:       `✦ [Semaine 2: ${curMonthName} 8–14] Disjoncteur à Haut Risque`,
       week3:       `✦ [Semaine 3: ${curMonthName} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthName} 23–${lastDayOfMonth}] Explosion de Richesse`,
+      week4:       `✦ [Semaine 4: ${curMonthName} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthName} 2026`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -2662,7 +2593,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [สัปดาห์ที่ 1: ${curMonthName} 1–7] การเติมพลังความมั่งคั่ง`,
       week2:       `✦ [สัปดาห์ที่ 2: ${curMonthName} 8–14] วงจรความเสี่ยงสูง`,
       week3:       `✦ [สัปดาห์ที่ 3: ${curMonthName} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthName} 2026`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -2672,7 +2603,7 @@ function buildMonthlyPrompt(birthDate, lang) {
       week1:       `✦ [Tuần 1: ${curMonthName} 1–7] Nạp năng lượng Tài sản`,
       week2:       `✦ [Tuần 2: ${curMonthName} 8–14] Mạch Ngắn Rủi ro Cao`,
       week3:       `✦ [Tuần 3: ${curMonthName} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthName} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
+      week4:       `✦ [Tuần 4: ${curMonthName} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthName} 2026`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -2703,7 +2634,6 @@ function buildMonthlyPrompt(birthDate, lang) {
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
   const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
 
-  
   return {
     system: monthlySystem,
     user: `
@@ -3089,7 +3019,6 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
-  const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate(); // V222k
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const monthNamesEN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -3146,11 +3075,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${curMonthLocal}1日–7日（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${curMonthLocal}8日–14日（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${curMonthLocal}15日–22日（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${curMonthLocal}23日–${lastDayOfMonth}日（财富爆发）]`,
-      trap:        `⚠️ 消费陷阱 ${curMonthLocal}`,
+      week1:       `✦ [🟢 第1周：${currentYear}年${currentMonth}月（财富充能）]`,
+      week2:       `✦ [🔴 第2周：${currentYear}年${currentMonth}月（高危熔断）]`,
+      week3:       `✦ [🔵 第3周：${currentYear}年${currentMonth}月（顺流蓄力）]`,
+      week4:       `✦ [🟢 第4周：${currentYear}年${currentMonth}月（财富爆发）]`,
+      trap:        `⚠️ 消费陷阱 ${currentYear}年${currentMonth}月`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
     },
@@ -3159,7 +3088,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Week 1: ${curMonthLocal} 1–7] Wealth Recharging`,
       week2:       `✦ [Week 2: ${curMonthLocal} 8–14] High-Risk Circuit Breaker`,
       week3:       `✦ [Week 3: ${curMonthLocal} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthLocal} 23–${lastDayOfMonth}] The Wealth Explosion`,
+      week4:       `✦ [Week 4: ${curMonthLocal} 23–31] The Wealth Explosion`,
       trap:        `✦ [Financial Shadow] ${curMonthLocal} ${currentYear} Spending Traps`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -3169,7 +3098,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] Recarga de Riqueza`,
       week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] Cortocircuito de Alto Riesgo`,
       week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosión de Riqueza`,
+      week4:       `✦ [Semana 4: ${curMonthLocal} 23–31] Explosión de Riqueza`,
       trap:        `✦ [Sombra Financiera] Trampas de Gasto ${curMonthLocal} ${currentYear}`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -3179,7 +3108,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] Recharge de Richesse`,
       week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] Disjoncteur à Haut Risque`,
       week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosion de Richesse`,
+      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–31] Explosion de Richesse`,
       trap:        `✦ [Ombre Financière] Pièges de Dépense ${curMonthLocal} ${currentYear}`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -3189,7 +3118,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] การเติมพลังความมั่งคั่ง`,
       week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] วงจรความเสี่ยงสูง`,
       week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–31] การระเบิดความมั่งคั่ง`,
       trap:        `✦ [เงาการเงิน] กับดักการใช้จ่าย ${curMonthLocal} ${currentYear}`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -3199,7 +3128,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] Nạp năng lượng Tài sản`,
       week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] Mạch Ngắn Rủi ro Cao`,
       week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
+      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–31] Bùng nổ Tài sản`,
       trap:        `✦ [Bóng Tài chính] Bẫy Chi tiêu ${curMonthLocal} ${currentYear}`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -4982,23 +4911,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
     try {
-      // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
-      // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
+      // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆4段各写1周拼接)
       if (reportType === 'monthly') {
         const _wf = [
-          '先写开篇（标题必须使用 ✦ [🔮 本月命运主题] ✦，用1-2句话概述本月整体财运基调，结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。',
           '只写第1周（标题使用 ✦ [🟢 第1周：...（财富充能）]），写完第1周立即停止，不要写其他周、不要重复。',
           '只写第2周（标题使用 ✦ [🔴 第2周：...（高危熔断）]），写完第2周立即停止，不要写其他周、不要重复。',
           '只写第3周（标题使用 ✦ [🔵 第3周：...（顺流蓄力）]），写完第3周立即停止，不要写其他周、不要重复。',
-          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。',
-          '只写消费陷阱（标题使用 ✦ [⚠️ 消费陷阱：2026年8月]，给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线），写完立即停止，不要写其他部分、不要重复。'
+          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。'
         ];
-        for (let w = 0; w < 6; w++) {
+        for (let w = 0; w < 4; w++) {
           const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
           const _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
             if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               fullTextCollector += chunk;
-            }, astroMatrix, realSunSign, lang, reportType, true); // V222q: 分段不单独发 sanitized
+            }, astroMatrix, realSunSign, lang, reportType, null);
           if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
@@ -5006,7 +4932,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
           if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
             fullTextCollector += chunk;
-          }, astroMatrix, realSunSign, lang, reportType, false); // V222q: 整段保留最终 sanitized
+          }, astroMatrix, realSunSign, lang, reportType, null);
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       }
     } catch(e) {
@@ -5209,11 +5135,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport(HIT 路径已调用,此处漏掉导致章节 ✦ 注入缺失)
     cleanedText = standardizeReport(cleanedText);
-    
-    // 🛠️ V222e: 月报格式铁律（主公裁决）——强制统一周标题格式
-    if (reportType === 'monthly') {
-      cleanedText = fixMonthlySectionTitles(cleanedText);
-    }
 
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
     cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
@@ -5221,8 +5142,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
-    // V222q: 原条件 cleanedText !== fullTextCollector 在 text 事件恢复后恒为 false(两者清洗链不同但内容常相同),导致 sanitized 永不发送 → 改无条件发(前端无条件替换,幂等无害)
-    if (cleanedText && cleanedText.length > 100) {
+    if (cleanedText !== fullTextCollector) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
       } catch(e) {}
@@ -5945,4 +5865,3 @@ app.get('/api/compare-llm', async (req, res) => {
 
   res.json({ results, env_diag: envDiag, prompt_length: testPrompt.length });
 });
-// V223-verify-1785660410
