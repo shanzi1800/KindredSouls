@@ -209,7 +209,19 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/\uFFFD/g,'').replace(/�/g,'');
           console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           // V221: newSuffix 恒为增量(delta); fullText 累积真实全文, sentLen 游标保证只发未发部分(根治累积重发灾难)
-          let newSuffix = (lastClean && clean.startsWith(lastClean) && clean.length > lastClean.length) ? clean.slice(lastClean.length) : clean;
+          // V222q: 加前缀重发检测——DeepSeek 偶发重发已输出前缀(clean 是 lastClean 的前缀或相同) → 丢弃,根治事件级重复
+          let newSuffix = '';
+          if (lastClean) {
+            if (clean.length > lastClean.length && clean.startsWith(lastClean)) {
+              newSuffix = clean.slice(lastClean.length);      // 正常累积延伸
+            } else if (clean.length <= lastClean.length && lastClean.startsWith(clean)) {
+              newSuffix = '';                                  // 重发前缀/完全相同 → 丢弃
+            } else {
+              newSuffix = clean;                               // 全新内容(增量SDK/漂移) → 原样
+            }
+          } else {
+            newSuffix = clean;
+          }
           lastClean = clean;
           fullText += newSuffix;
           pending = fullText;
@@ -5176,7 +5188,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
-    if (cleanedText !== fullTextCollector) {
+    // V222q: 原条件 cleanedText !== fullTextCollector 在 text 事件恢复后恒为 false(两者清洗链不同但内容常相同),导致 sanitized 永不发送 → 改无条件发(前端无条件替换,幂等无害)
+    if (cleanedText && cleanedText.length > 100) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
       } catch(e) {}
