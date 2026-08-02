@@ -3093,6 +3093,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
+  // V225: 目标月份防御日志——出生日期仅用于本命盘，报告时间轴强制锁死服务器当月
+  console.log(`[MONTHLY] 出生: ${birthDate || '未提供'} | 目标锁定: ${currentYear}年${currentMonth}月`);
   const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate(); // V222k
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const monthNamesEN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
