@@ -7,6 +7,7 @@ on:
 
 jobs:
   deploy:
+    if: false  # 2026-08-02 临时禁用：railway up 走中毒缓存，改由 Railway 原生 GitHub webhook 构建
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
