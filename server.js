@@ -240,6 +240,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
                 pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_toSend, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+                pc = injectMonthlySectionHeaders(pc); // V226-fix: 强制统一 Overview/Trap 标题格式
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_toSend,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -286,6 +287,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_rest,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+        pc = injectMonthlySectionHeaders(pc); // V226-fix: 强制统一 Overview/Trap 标题格式
         res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
@@ -2066,6 +2068,44 @@ function cleanConsumerTrapAndBrackets(text) {
   return text;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 🛠️ V226-fix: 强制统一月报格式——Overview/Trap 标题标准化注入
+// 问题：DeepSeek 输出格式漂移（✦位置/缺年份/缺方括号）
+// 解法：在清洗链最末端，强制用标准化标题覆盖任何残缺版本
+// ═══════════════════════════════════════════════════════════════════
+function injectMonthlySectionHeaders(text) {
+  if (!text) return text;
+  // 仅对月报生效（有周标题才触发）
+  const hasWeek1 = /\[(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(text);
+  if (!hasWeek1) return text;
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const curMonthZH = `${y}年${monthNamesZH[m-1]}`;
+
+  // ── Overview 标准化：统一为 ✦ [🔮 本月命运主题：YYYY年M月] ✦
+  // 覆盖一切变体：缺✦/缺年份/缺方括号/✦位置错误
+  text = text.replace(/[✦\s]*\[\s*🔮\s*本月命运主题[^\]]*\]/gi,
+    `✦ [🔮 本月命运主题：${curMonthZH}] ✦`);
+  // 兜底：如果全文没有 Overview 标题，插到开头
+  if (!/本月命运主题/.test(text)) {
+    text = `✦ [🔮 本月命运主题：${curMonthZH}] ✦\n\n` + text;
+  }
+
+  // ── Trap 标准化：统一为 ✦ [⚠️ 消费陷阱：YYYY年M月]
+  // 覆盖一切变体：缺✦/缺年份/缺方括号/⚠️位置错误/只有⚠️无[]
+  text = text.replace(/[✦\s]*\[?\s*⚠️\s*消费陷阱[^\]]*\]/gi,
+    `✦ [⚠️ 消费陷阱：${curMonthZH}]`);
+  // 兜底：如果全文没有 Trap 标题，插到结尾
+  if (!/消费陷阱/.test(text)) {
+    text = text + `\n\n✦ [⚠️ 消费陷阱：${curMonthZH}]\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）`;
+  }
+
+  return text;
+}
+
 // 🛠️ V107-方案A: 轻量级预缓存校验器(写缓存前拦截质量问题)
 function wealthCriticCheck(text, birthDate, natalSunSign) {
   const issues = [];
@@ -2581,28 +2621,6 @@ function fixMonthlySectionTitles(text) {
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Tuần\s*\d+)/gi, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*สัปดาห์ที่)/gi, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*[^\[\n]+?(?:命运主题|消费陷阱))/gm, '$1');
-
-  // 6. 🛠️ V223-fix2: 注入缺失的 Overview 和消费陷阱（DeepSeek 吞 Prompt 模板占位符）
-  const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
-  if (hasWeek1) {
-    const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
-    const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
-    if (!hasOverview) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = `✦\n[🔮 本月命运主题：${monthZH}]\n
-【占位符-系统注入】本月命运主题（请刷新重试，AI 未生成此节）\n\n` + c;
-    }
-    if (!hasTrap) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = c + '\n\n✦\n[⚠️ 消费陷阱：' + monthZH + ']\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）';
-    }
-  }
 
   return c;
 }
@@ -4411,13 +4429,16 @@ app.post('/api/wealth-oracle', async (req, res) => {
         const monthLocked = (reportType === 'yearly' && astroMatrix)
           ? applyMonthLockSanitizer(sanitizedAI, astroMatrix, null, null, lang)
           : sanitizedAI;
+        const reportLocked = (reportType === 'monthly')
+          ? injectMonthlySectionHeaders(monthLocked)  // V226-fix: 月报终稿强制统一 Overview/Trap
+          : monthLocked;
 
         // Parse AI result
-        let reportContent = monthLocked;
+        let reportContent = reportLocked;
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
-          reportContent = cleanYearlyTimeline(monthLocked);
+          reportContent = cleanYearlyTimeline(reportLocked);
         }
 
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
@@ -5206,6 +5227,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
+      if (reportType === 'monthly') cleanedText = injectMonthlySectionHeaders(cleanedText); // V226-fix
 
     // 🛠️ V122-fix: 终极空括号清理(final_text_sanitizer 可能漏 "()" 跨块,
     //   完整文本这里再扣一遍)
