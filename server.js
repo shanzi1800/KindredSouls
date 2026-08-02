@@ -77,7 +77,7 @@ function getGeminiKey() {
 
 // ── DeepSeek 直连流式(OpenAI 兼容格式,SSE 逐字吐出)──
 // 🛠️ V131: Node.js 原生 fetch 流式(Railway 实测 https.request 在流式场景丢数据,fetch 完美)
-async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly') {
+async function callDeepSeekStream(systemText, userText, controller, res, onChunk, astroMatrix, realSunSign, lang, reportType = 'yearly', skipFinal = false) {
   // 🛠️ V221: Prompt 预填充真值——彻底弃用 {{}} 占位符机制(主公裁决·方案2)
   // 送进 LLM 前用 astroMatrix 本命盘真值把 {{SUN_HOUSE}} 等替换为 第X宫,
   // 物理杜绝模型因看见 {{}} 非自然 token 而退化,也避免标记裸奔进成品。
@@ -213,9 +213,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           lastClean = clean;
           fullText += newSuffix;
           pending = fullText;
-          const _toSend = fullText.slice(sentLen);
-sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch 异常都吞不掉,根治累积重发
-          if (_toSend.length >= FLUSH_SIZE) {
+          unsentDelta += newSuffix; // V222q: 增量入缓冲——V221b 无条件推进 sentLen 导致 <FLUSH_SIZE 的增量被永久跳过(text事件全丢,前端无流式),恢复 V220d 缓冲方案
+          if (unsentDelta.length >= FLUSH_SIZE) {
+            const _toSend = unsentDelta;
+            unsentDelta = '';
+            sentLen += _toSend.length;
             try {
               // V220d: delta already merged into unsentDelta (see above)
               const _a = astroMatrix?.meta?.rising_sign||'Cancer';
@@ -458,7 +460,8 @@ sentLen += _toSend.length; // V221b: 无条件推进游标——任何 try/catch
 
   // 🛠️ V120-fix25: 流式结束后,用完整 fullText 重新应用章节标题修复 + 相角清洗
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
-  if (reportType === 'monthly' && fullText) {
+  // 🛡️ V222q: 分段生成时跳过最终 sanitized 全量发送(由主端点最终合并后统一发一次),根治前端流式分段跳变
+  if (reportType === 'monthly' && fullText && !skipFinal) {
     let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign, lang);
     // 🛠️ V133g-fix5: 括号计数修复必须同步更新fullText
     const _ocF = (fixed.match(/\uff08/g)||[]).length;
@@ -734,6 +737,21 @@ function fixSectionBrackets(text, lang) {
 // 成对空括号（）被栈校验视为合法放行。本函数专门治理月报空括号/嵌套/孤儿标点。
 function cleanMonthlyBrackets(text, lang = 'zh') {
   if (!text) return text;
+    // ── V222q: 中文周标题拆行 + 补方括号兜底(LLM 丢括号/粘行时前端不渲染金色标题)──
+    if (lang === 'zh') {
+      // 1. 行内标题拆行: "……正文。✦ 🔴 第2周：8月8日–14日（高危熔断）" → 拆出独立标题行
+      text = text.replace(/([^\n])(✦\s*(?:🟢|🔴|🔵)\s*第[一二三四1-4]周)/g, '$1\n$2');
+      // 2. 独占行裸标题补方括号: "✦ 🔴 第2周：8月8日–14日（高危熔断）" → "✦ [🔴 第2周：8月8日–14日（高危熔断）]"
+      text = text.split('\n').map(ln => {
+        const t = ln.trim();
+        if (/^✦\s*(?:🟢|🔴|🔵)\s*第[一二三四1-4]周/.test(t) && !t.includes('[') && !t.includes(']')) {
+          return '✦ [' + t.replace(/^✦\s*/, '').trim() + ']';
+        }
+        return ln;
+      }).join('\n');
+      // 3. overview 裸标题补括号: "✦ 🔮 本月命运主题 ✦" → "✦ [🔮 本月命运主题] ✦"
+      text = text.replace(/✦\s*🔮\s*本月命运主题\s*✦?/g, '✦ [🔮 本月命运主题] ✦');
+    }
     // step0: 中文周标题补[] (emoji开头: 🟢 第1周...)
     if (lang === 'zh') {
       const _dbgLines = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
@@ -4919,20 +4937,23 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
     try {
-      // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆4段各写1周拼接)
+      // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
+      // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
       if (reportType === 'monthly') {
         const _wf = [
+          '先写开篇（标题必须使用 ✦ [🔮 本月命运主题] ✦，用1-2句话概述本月整体财运基调，结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。',
           '只写第1周（标题使用 ✦ [🟢 第1周：...（财富充能）]），写完第1周立即停止，不要写其他周、不要重复。',
           '只写第2周（标题使用 ✦ [🔴 第2周：...（高危熔断）]），写完第2周立即停止，不要写其他周、不要重复。',
           '只写第3周（标题使用 ✦ [🔵 第3周：...（顺流蓄力）]），写完第3周立即停止，不要写其他周、不要重复。',
-          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。'
+          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。',
+          '只写消费陷阱（标题使用 ✦ [⚠️ 消费陷阱：2026年8月]，给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线），写完立即停止，不要写其他部分、不要重复。'
         ];
-        for (let w = 0; w < 4; w++) {
+        for (let w = 0; w < 6; w++) {
           const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
           const _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
             if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               fullTextCollector += chunk;
-            }, astroMatrix, realSunSign, lang, reportType, null);
+            }, astroMatrix, realSunSign, lang, reportType, true); // V222q: 分段不单独发 sanitized
           if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
@@ -4940,7 +4961,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
           if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
             fullTextCollector += chunk;
-          }, astroMatrix, realSunSign, lang, reportType, null);
+          }, astroMatrix, realSunSign, lang, reportType, false); // V222q: 整段保留最终 sanitized
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       }
     } catch(e) {
