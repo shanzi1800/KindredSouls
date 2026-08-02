@@ -262,9 +262,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_safe) })}\n\n`, 'utf-8'));
               if (_dupGuard(_safe)) onChunk && onChunk(_safe); else return;
             }
-            if (typeof res.flush === 'function') res.flush();
             /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
+          // 🛠️ V222s: res.flush 移到 flush try 外——原 265 行的 res.flush 在 try 内,若 flush 抛错会进 257 catch → 每 flush 重复发一次 no-dbg 事件(成对重复+ sanitary 失效)。现单独 try/catch,抛错只影响 flush 时机,不触发主 catch
+          try { if (typeof res.flush === 'function') res.flush(); } catch(e) {}
         } catch(e) {}
       }
     }
