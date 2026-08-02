@@ -2571,12 +2571,15 @@ function fixMonthlySectionTitles(text) {
   // 5. 🛠️ V223-fix: 去掉 ✦ 前缀——DeepSeek 输出 "✦ [emoji 第N周...]"
   //    前端 SacredYearlyReportBox 的 parseLine 期望 "[emoji 第N周...]"
   //    不含 ✦ 前缀（✦ 是章节分隔符，不是标题前缀）
+  //    同时处理跨行情况：单独一行的 ✦ 与下一行周标题合并后去前缀
+  c = c.replace(/^✦\s*$(\s*\[\s*[🟢🔴🔵⚠️🔮]\s*)/gm, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*第[一二三四1-4]周)/gm, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Week\s*\d+)/gim, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semana\s*\d+)/gi, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semaine\s*\d+)/gi, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Tuần\s*\d+)/gi, '$1');
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*สัปดาห์ที่)/gi, '$1');
+  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*[^\[\n]+?(?:命运主题|消费陷阱))/gm, '$1');
 
   // 6. 🛠️ V223-fix2: 注入缺失的 Overview 和消费陷阱（DeepSeek 吞 Prompt 模板占位符）
   const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
@@ -5946,3 +5949,4 @@ app.get('/api/compare-llm', async (req, res) => {
   res.json({ results, env_diag: envDiag, prompt_length: testPrompt.length });
 });
 // V223-verify-1785660410
+// V223c-1785660969
