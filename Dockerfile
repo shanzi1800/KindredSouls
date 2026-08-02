@@ -2,7 +2,7 @@
 FROM node:22-slim
 
 # ── V116: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=20260731-V217-NO-CACHE
+ARG CACHE_BUST=20260802-V222s-FORCE-REBUILD
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
@@ -44,7 +44,9 @@ RUN echo "BUILD_TRIGGER_FORCE_$(date +%s%N) - V200 frontend fix" \
       echo "[DEPLOY FINGERPRINT] No .git-sha file found, using 'unknown'"; \
     fi
 
+RUN echo "[BUILD] CACHE_BUST=${CACHE_BUST} forcing full rebuild"
 COPY . .
+RUN echo "[BUILD] after copy, server.js lines:" && wc -l /app/server.js && echo "wealth-stream refs:" && grep -c 'wealth-stream' /app/server.js
 
 RUN npm install && npm install express stripe
 
