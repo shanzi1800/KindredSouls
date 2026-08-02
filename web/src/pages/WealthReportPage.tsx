@@ -2047,11 +2047,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读--sanitized以【开篇】开头说明是全量替换
                   const fixedText = parsed.sanitized || parsed.text;
                   if (type === 'yearly' || type === 'monthly') {
-                    // 🛠️ V222k-fix: 移除 startsWith('【开篇】') 限制——月报 sanitized 以 ✦/[Overview 开头,
-                    // 年报以【开篇】开头。原条件永远为 false 导致月报 sacredText 永远是空。
-                    // 年报保留【开篇】检查防误写。
+                    // 🛡️ V222k-fix2: sanitized 是全量终稿——年报按【开篇】判断替换，月报直接覆盖
+                    // _full 已含流式 chunk，直接用 fixedText 全量替换（根治内容翻倍）
                     const isYearlyFull = fixedText.startsWith('【开篇】');
-                    setSacredText(prev => (isYearlyFull && prev.length > 50) ? fixedText : (prev.length === 0 ? fixedText : prev + fixedText));
+                    setSacredText(prev => (isYearlyFull && prev.length > 50) ? fixedText : fixedText);
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;
