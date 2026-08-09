@@ -49,13 +49,13 @@ for CASE_JSON in "${TEST_CASES[@]}"; do
   echo -e "${YELLOW}-------------------------------------------------------------------${NC}"
   echo -e "🔎 [测试中] ${CASE_ID} - ${CASE_NAME} (Language: ${CASE_LANG})"
 
-  START_TIME=$(date +%s%3N)
+  START_TIME=$(date +%s)
   TMP_RESPONSE=$(mktemp)
   HTTP_STATUS=$(curl -s -w "%{http_code}" -o "$TMP_RESPONSE" \
     -X POST "$PROD_URL" \
     -H "Content-Type: application/json" \
     -d "$CASE_JSON")
-  END_TIME=$(date +%s%3N)
+  END_TIME=$(date +%s)
   ELAPSED=$((END_TIME - START_TIME))
 
   # 1. HTTP Status Check (200)
@@ -91,7 +91,7 @@ for CASE_JSON in "${TEST_CASES[@]}"; do
     fi
   fi
 
-  echo -e "  ${GREEN}✅ 通过 (${ELAPSED}ms) | $PARSE_DETAIL${NC}"
+  echo -e "  ${GREEN}✅ 通过 (${ELAPSED}s) | $PARSE_DETAIL${NC}"
   PASSED=$((PASSED+1))
   rm -f "$TMP_CASE" "$TMP_RESPONSE"
 done
