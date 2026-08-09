@@ -1302,15 +1302,24 @@ function house_linter(text, astroMatrix, currentMonth = null) {
   // sections[0] = 前导文本(开篇等), sections[1]=年份, sections[2]=月份, sections[3]=正文, ...
 
   if (sections.length >= 4 && astroMatrix && astroMatrix.months && astroMatrix.months.length > 0) {
+    // 🛠️ V230-fix: 精确年月匹配,不靠 monthNum-1 索引推算
+    //   风险: months 是动态滚动数组(从当前月切片), months[monthNum-1] 会越界/错配
+    //   治本: 用文本锚点的真实年月拼 month_key ("2026-08") 在 months 里精确查找
+    const _monthsMap = {};
+    astroMatrix.months.forEach(m => {
+      const _k = m.month_key || (m.year && m.month ? `${m.year}-${String(m.month).padStart(2,'0')}` : '');
+      if (_k) _monthsMap[_k] = m;
+    });
     // sections 奇数位(1,3,5...)=年份/月份, 偶数位(2,4,6...)=正文
     let result = sections[0]; // 前导(不含月份)
     for (let i = 1; i < sections.length; i += 2) {
       const year  = parseInt(sections[i]);
       const monthNum = parseInt(sections[i + 1]); // 1-12
       const body = sections[i + 2] !== undefined ? sections[i + 2] : '';
-      // 找当月在 astroMatrix.months 中的索引: months[monthNum - 1]
-      const monthData = astroMatrix.months[monthNum - 1];
-      if (!monthData) { result += sections[i] + sections[i + 1] + body; continue; }
+      // 🛠️ V230-fix: 精确查找(兼容静态全年数组 & 动态滚动数组)
+      const _key = `${year}-${String(monthNum).padStart(2,'0')}`;
+      const monthData = _monthsMap[_key] || astroMatrix.months[monthNum - 1] || null;
+      if (!monthData) { result += sections[i] + '年' + sections[i + 1] + '月:' + body; continue; }
       const jupHouse = getH(monthData.jupiter?.house) || 2;
       const satHouse = getH(monthData.saturn?.house) || 10;
       const plHouse  = getH(monthData.pluto?.house)  || 8;
