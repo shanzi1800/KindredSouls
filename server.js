@@ -1289,50 +1289,89 @@ const _sunOf = (m) => {
 
 // 🛠️ V120-fix5: 宫位强制纠偏 linter——AI 常把行星宫位写错(如木星狮子座写成第11宫,实为第2宫)
 // 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
-function house_linter(text, astroMatrix) {
+function house_linter(text, astroMatrix, currentMonth = null) {
   if (!text) return text;
 
   const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
-  // rising Cancer fallback(与年报旧 fallback 对齐):木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫
+  const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
+
+  // ── 按月分区处理：每节用当月真实 house ──────────────────────────
+  // 月份锚点: ### YYYY年MM月: / ### YYYY年M月:
+  const monthAnchorRe = /###\s*(\d{4})年(\d{1,2})月:/g;
+  const sections = text.split(monthAnchorRe);
+  // sections[0] = 前导文本(开篇等), sections[1]=年份, sections[2]=月份, sections[3]=正文, ...
+
+  if (sections.length >= 4 && astroMatrix && astroMatrix.months && astroMatrix.months.length > 0) {
+    // sections 奇数位(1,3,5...)=年份/月份, 偶数位(2,4,6...)=正文
+    let result = sections[0]; // 前导(不含月份)
+    for (let i = 1; i < sections.length; i += 2) {
+      const year  = parseInt(sections[i]);
+      const monthNum = parseInt(sections[i + 1]); // 1-12
+      const body = sections[i + 2] !== undefined ? sections[i + 2] : '';
+      // 找当月在 astroMatrix.months 中的索引: months[monthNum - 1]
+      const monthData = astroMatrix.months[monthNum - 1];
+      if (!monthData) { result += sections[i] + sections[i + 1] + body; continue; }
+      const jupHouse = getH(monthData.jupiter?.house) || 2;
+      const satHouse = getH(monthData.saturn?.house) || 10;
+      const plHouse  = getH(monthData.pluto?.house)  || 8;
+      const sunHouse = getH(_sunOf(monthData).house) || 1;
+      const moonHouse= getH(monthData.moon?.house)   || 2;
+      const RULES = [
+        ['jupiter', jupHouse], ['saturn', satHouse], ['pluto', plHouse],
+        ['sun', sunHouse], ['moon', moonHouse],
+      ];
+      const NAME_MAP = {
+        jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
+        saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
+        pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
+        sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
+        moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+      };
+      let secText = sections[i] + '年' + sections[i + 1] + '月:' + body;
+      for (const [key, house] of RULES) {
+        if (!house) continue;
+        for (const pname of NAME_MAP[key]) {
+          const reCN = new RegExp('(' + pname + '在[^第\\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
+          secText = secText.replace(reCN, '$1' + toCN(house) + '宫');
+          const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
+          secText = secText.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
+        }
+      }
+      result += secText;
+    }
+    return result;
+  }
+
+  // ── 回退: 无月份锚点或无 astroMatrix → 用 months[0] 全局处理 ───
   let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
   if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
     const first = astroMatrix.months[0];
-    jupHouse = getH(first.jupiter?.house); satHouse = getH(first.saturn?.house); plHouse = getH(first.pluto?.house);
-    sunHouse = getH(_sunOf(first).house); moonHouse = getH(first.moon?.house);
+    jupHouse = getH(first.jupiter?.house); satHouse = getH(first.saturn?.house);
+    plHouse  = getH(first.pluto?.house);  sunHouse = getH(_sunOf(first).house);
+    moonHouse= getH(first.moon?.house);
   }
-  const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
-  // 🛠️ V166-fix: 原 rules 仅用中文行星名,英文/西/法/泰/越正则用中文名匹配永远落空→月报宫位无人纠偏(木11/冥5)。
-  //    改为多语言行星名映射,对每种语言名分别跑中/西两套正则。
-  const NAME_MAP = {
+  const RULES2 = [
+    ['jupiter', jupHouse], ['saturn', satHouse], ['pluto', plHouse],
+    ['sun', sunHouse], ['moon', moonHouse],
+  ];
+  const NAME_MAP2 = {
     jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
     saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
     pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
     sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
     moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
   };
-  const RULES = [
-    ['jupiter', jupHouse],
-    ['saturn', satHouse],
-    ['pluto', plHouse],
-    ['sun', sunHouse],
-    ['moon', moonHouse],
-  ];
-  for (const [key, house] of RULES) {
+  for (const [key, house] of RULES2) {
     if (!house) continue;
-    for (const pname of NAME_MAP[key]) {
-      // 中文: 行星在X座第N宫 → 行星在X座第{house}宫
+    for (const pname of NAME_MAP2[key]) {
       const reCN = new RegExp('(' + pname + '在[^第\\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
       text = text.replace(reCN, '$1' + toCN(house) + '宫');
-      // 西文: Planet in X House N → Planet in X House {house}
-      // 🛠️ V166-fix: 统一覆盖 6 语言 house 词(House/Casa/Maison/ภพที่/เรือนที่/Nhà), 函数式 replacer 保留原空格, 杜绝 $3+数字组引用误判
       const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
       text = text.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
     }
   }
   return text;
-}
-
-// 校验AI生成的相位描述是否符合天文学规则。
+}// 校验AI生成的相位描述是否符合天文学规则。
 // 星座-相位关系是有限且确定的,用查表法100%拦截错误配对。
 function astro_phase_linter(text) {
   if (!text) return text;
