@@ -5338,40 +5338,21 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
     // V222q: 原条件 cleanedText !== fullTextCollector 在 text 事件恢复后恒为 false(两者清洗链不同但内容常相同),导致 sanitized 永不发送 → 改无条件发(前端无条件替换,幂等无害)
-    if (cleanedText && cleanedText.length > 100) {
-      try {
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
-      } catch(e) {}
-    }
 
-    // 流式结束,发送 [DONE]
-    res.write('data: [DONE]\n\n');
-    if (typeof res.flush === 'function') res.flush();
-
-    // 🛠️ V125-fix: streaming结束立即写缓存(不依赖completion是否成功)
-    if (cleanedText.length > 100) {
-      console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
-      writeToCache(cleanedText).catch((e) => {
-        console.error('[wealth-stream] [WRITE-CACHE-ERROR] ' + cacheKey + ': ' + (e && e.message));
-      });
-    } else {
-      console.warn('[wealth-stream] [WRITE-CACHE-SKIP] cleanedText too short: ' + cleanedText.length + ' chars');
-    }
-
-    res.end();
-
-    // 后台补全(非必须,不影响缓存)
-    // 年报完成判断:英文用 'Final Wealth Oracle',中文用 '最终财富神谕'
+    // 🛠️ 方案 C (2026-08-09 军师裁决): 截断检测 + 同步补全, 在 [DONE] 前完成
+    //    原逻辑: 补全在 res.end() 后后台执行 → 当前用户只看到半截流, 补全版仅进缓存(下次访问才完整)
+    //    现逻辑: 流结束即检测, 不完整则同步非流式补全(8s 心跳保活), 成功后覆盖 cleanedText
+    //            → sanitized 事件与缓存自动使用完整版, 前端 WealthReportPage.tsx:2043-2050 整体平滑替换
     const hasFinalOracle = fullTextCollector.includes('Final Wealth Oracle') ||
       fullTextCollector.includes('The Final Wealth Oracle') ||
       fullTextCollector.includes('最终财富神谕');
+    // 月报完整性阈值: 正常 5000-8000 字符, <2000 判定 LLM 提前终止(原 500 过宽, 1000 字半截不触发补全)
     const isComplete = reportType === 'yearly'
       ? (hasFinalOracle && fullTextCollector.length > 8000)
-      : (fullTextCollector.length > 500);
+      : (fullTextCollector.length > 2000);
 
     if (!isComplete && fullTextCollector.length > 100) {
-      console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars), trying to complete...`);
-      // 尝试非流式补全并落库
+      console.log(`[wealth-stream] [WARN] Stream truncated (${fullTextCollector.length} chars < 2000), sync completing before [DONE]...`);
       try {
         const fullRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
@@ -5392,7 +5373,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           let ft = fdata.choices?.[0]?.message?.content || '';
           // 🛠️ V102s: 补全文本也过一道完整清洗再落库(防脏缓存)
           if (ft) ft = applyMonthLockSanitizer(astro_phase_linter(final_text_sanitizer(langPunctuationClean(ft, lang), _ascStream, lang)), astroMatrix, null, null, lang);
-          // 🛠️ V104e: 也有反向括号隐患
           // 🛠️ V115-fix3: Completion路径 Body 正文本命太阳全护
           if (realSunSign) {
             ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'].forEach(wrong => {
@@ -5403,23 +5383,45 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             });
           }
           if (ft) ft = natal_sun_linter(ft, realSunSign, _ascStream);
+          // 🛠️ V231-fix: 补全版补齐标题契约(standardizeReport + fixMonthlySectionTitles), 否则 sanitized 无 ✦ 装饰符
+          if (ft) ft = standardizeReport(ft);
+          if (ft && reportType === 'monthly') ft = fixMonthlySectionTitles(ft, true, lang);
           if (ft && ft.length > cleanedText.length) {
-            console.log(`[wealth-stream] [OK] Completion success, ${ft.length} chars > ${cleanedText.length}, caching full text`);
-            writeToCache(ft).catch(() => {});
+            console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
+            cleanedText = ft; // sanitized 事件与缓存自动使用完整版
           } else {
-            console.log(`[wealth-stream] [WARN] Completion returned ${ft.length} chars (stream had ${cleanedText.length}), caching cleaned stream`);
-            writeToCache(cleanedText).catch(() => {});
+            console.log(`[wealth-stream] [WARN] Sync completion returned ${ft.length} chars (stream had ${cleanedText.length}), keep stream text`);
           }
         } else {
           const errBody = await fullRes.text().catch(() => '');
-          console.error(`[wealth-stream] [ERROR] Completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
-          writeToCache(cleanedText).catch(() => {});
+          console.error(`[wealth-stream] [ERROR] Sync completion failed ${fullRes.status}: ${errBody.slice(0, 200)}`);
         }
       } catch (e) {
-        console.error('[wealth-stream] 补全失败,落库清洗版本:', e.message);
-        writeToCache(cleanedText).catch(() => {});
+        console.error('[wealth-stream] 同步补全异常,降级原流输出:', e.message);
       }
     }
+
+    if (cleanedText && cleanedText.length > 100) {
+      try {
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
+      } catch(e) {}
+    }
+
+    // 流式结束,发送 [DONE]
+    res.write('data: [DONE]\n\n');
+    if (typeof res.flush === 'function') res.flush();
+
+    // 🛠️ V125-fix: streaming结束立即写缓存(不依赖completion是否成功) —— 方案C: cleanedText 可能已被补全版覆盖
+    if (cleanedText.length > 100) {
+      console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
+      writeToCache(cleanedText).catch((e) => {
+        console.error('[wealth-stream] [WRITE-CACHE-ERROR] ' + cacheKey + ': ' + (e && e.message));
+      });
+    } else {
+      console.warn('[wealth-stream] [WRITE-CACHE-SKIP] cleanedText too short: ' + cleanedText.length + ' chars');
+    }
+
+    res.end();
 
   } catch (err) {
     clearTimeout(aiTimeout); // V75: Error or abort, cancel timeout
