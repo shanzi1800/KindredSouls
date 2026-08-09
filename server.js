@@ -239,7 +239,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               if (reportType === 'monthly') {
                 // 🛠️ V131e: 月报流式 flush 也过相角清洗(保证前端展示干净); realSunSign 传给 Pluto House 修正
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
-                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_toSend, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+                pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_toSend, lang), false, lang)).replace(/\uFFFD/g,'');
               } else {
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_toSend,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
@@ -279,7 +279,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     if (reportType === 'monthly') {
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
-      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_rest, lang)), realSunSign, lang).replace(/\uFFFD/g,'');
+      pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_rest, lang), false, lang)).replace(/\uFFFD/g,'');
       res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
       if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
@@ -476,7 +476,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 前端收到 sanitized 标志时整体替换流式脏文本(避免叠加重复)
   // 🛡️ V222q: 分段生成时跳过最终 sanitized 全量发送(由主端点最终合并后统一发一次),根治前端流式分段跳变
   if (reportType === 'monthly' && fullText && !skipFinal) {
-    let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText), realSunSign, lang);
+    let fixed = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fullText, true, lang), realSunSign, lang);
     // 🛠️ V133g-fix5: 括号计数修复必须同步更新fullText
     const _ocF = (fixed.match(/\uff08/g)||[]).length;
     const _ccF = (fixed.match(/\uff09/g)||[]).length;
@@ -488,7 +488,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
     // 🛠️ V222e: 月报格式铁律——在 sanitized 发送前强制统一格式
     if (reportType === 'monthly') {
-      fixed = fixMonthlySectionTitles(fixed);
+      fixed = fixMonthlySectionTitles(fixed, true, lang);
     }
     if (fixed.length > 0) {
       try {
@@ -2581,7 +2581,16 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 // 月报章节标题兜底修复 (DeepSeek 流式吐字畸变修复)
 // 把 AI 缩写/截断的章节标题还原成完整版
 // ═══════════════════════════════════════════════════════════════
-function fixMonthlySectionTitles(text) {
+const SECTION_PLACEHOLDERS = {
+  zh: { theme: '【占位符-系统注入】本月命运主题（请刷新重试，AI 未生成此节）', trap: '【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）' },
+  en: { theme: '【System-Injected】Monthly Destiny Theme (please refresh, AI did not generate this section)', trap: '【System-Injected】Spending Traps (please refresh, AI did not generate this section)' },
+  es: { theme: '【Inyección del Sistema】Tema de Destino Mensual (actualice para reintentar, la IA no generó esta sección)', trap: '【Inyección del Sistema】Trampas de Gasto (actualice para reintentar, la IA no generó esta sección)' },
+  fr: { theme: '【Injection Système】Thème de Destin du Mois (veuillez actualiser, l\'IA n\'a pas généré cette section)', trap: '【Injection Système】Pièges Financiers (veuillez actualiser, l\'IA n\'a pas généré cette section)' },
+  th: { theme: '【ระบบป้ายแทรก】ธีมโชคชะตาประจำเดือน (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)', trap: '【ระบบป้ายแทรก】กับดักการใช้จ่าย (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)' },
+  vi: { theme: '【Hệ Thống Chèn】Chủ Đề Vận Mệnh Tháng (vui lòng làm mới, AI chưa tạo phần này)', trap: '【Hệ Thống Chèn】Bẫy Chi Tiêu (vui lòng làm mới, AI chưa tạo phần này)' }
+};
+
+function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   if (!text) return text;
   let c = text;
   console.log('[FIX] in:', JSON.stringify(text.slice(0,100)));
@@ -2631,24 +2640,29 @@ function fixMonthlySectionTitles(text) {
   c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*[^\[\n]+?(?:命运主题|消费陷阱))/gm, '$1');
 
   // 6. 🛠️ V223-fix2: 注入缺失的 Overview 和消费陷阱（DeepSeek 吞 Prompt 模板占位符）
-  const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
-  if (hasWeek1) {
-    const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
-    const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
-    if (!hasOverview) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = `✦\n[🔮 本月命运主题：${monthZH}]\n
-【占位符-系统注入】本月命运主题（请刷新重试，AI 未生成此节）\n\n` + c;
-    }
-    if (!hasTrap) {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const monthZH = `${y}年${m}月`;
-      c = c + '\n\n✦ [⚠️ 消费陷阱：' + monthZH + ']\n\n【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）';
+  //    ⚠️ injectPlaceholders=false 时（流式分片路径）跳过——否则占位符会被追加到半截分片尾部，
+  //       下一个流式分片接上后导致单词被斩首（如 "Wealth Re" + 占位符 + "charging"）。
+  //       占位符注入只在完整文本路径（injectPlaceholders=true）执行，且按 lang 做 i18n 防穿帮。
+  if (injectPlaceholders) {
+    const _ph = SECTION_PLACEHOLDERS[lang] || SECTION_PLACEHOLDERS.zh;
+    const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
+    if (hasWeek1) {
+      const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
+      const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
+      if (!hasOverview) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const monthZH = `${y}年${m}月`;
+        c = `✦\n[🔮 本月命运主题：${monthZH}]\n\n${_ph.theme}\n\n` + c;
+      }
+      if (!hasTrap) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const monthZH = `${y}年${m}月`;
+        c = c + '\n\n✦ [⚠️ 消费陷阱：' + monthZH + ']\n\n' + _ph.trap;
+      }
     }
   }
 
@@ -5278,7 +5292,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     
     // 🛠️ V222e: 月报格式铁律（主公裁决）——强制统一周标题格式
     if (reportType === 'monthly') {
-      cleanedText = fixMonthlySectionTitles(cleanedText);
+      cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
     }
 
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
