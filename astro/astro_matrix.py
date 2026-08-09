@@ -477,8 +477,8 @@ def test_verification():
 # Uses Jean Meeus / Astronomical Algorithms standard formula.
 import math as _math
 
-def compute_sidereal_ascendant(jd: float, lat: float, lon: float) -> float:
-    """Return Ascendant ecliptic longitude via SwissEph ascmc[0].
+def compute_sidereal_ascendant(jd: float, lat: float, lon: float):
+    """Return (Ascendant ecliptic longitude, house_system_used) via SwissEph ascmc[0].
     
     SwissEph's ascmc[0] is the canonical Ascendant — identical across ALL
     house systems (Placidus, Equal, Whole Sign, Koch, Campanus…).
@@ -491,10 +491,21 @@ def compute_sidereal_ascendant(jd: float, lat: float, lon: float) -> float:
     - Melbourne 10:28: ascmc[0] = 27.29° Aries ✅
     - Melbourne 12:00: ascmc[0] = 45.79° Taurus ✅
     - Copenhagen 10:10: ascmc[0] = 310.60° Aquarius ✅
+    
+    🛠️ Dynamic Fallback (Arctic fix): Placidus (b'P') has no geometric
+    solution above ~66.5° latitude (swe.houses raises swe.Error). At extreme
+    latitudes we gracefully fall back to Whole Sign (b'W'), which computes
+    the real Ascendant without regression for mid/low latitudes.
     """
-    # Use Placidus (most common). ascmc[0] is identical for any system.
-    _, ascmc = swe.houses(jd, lat, lon, b'P')
-    return ascmc[0]  # Ascendant ecliptic longitude
+    try:
+        # 优先使用 Placidus 分宫制 (b'P') — ascmc[0] 在所有分宫制下相同
+        _, ascmc = swe.houses(jd, lat, lon, b'P')
+        return ascmc[0], 'Placidus'
+    except swe.Error as e:
+        # 极高纬度（|lat| > 66.5°）Placidus 无解 → 平滑降级为整宫制 (b'W') 算真实上升点
+        _, ascmc = swe.houses(jd, lat, lon, b'W')
+        print(f"[AstroMatrix] Latitude {lat} triggered Placidus exception. Fallback to WholeSign. Error: {e}", file=sys.stderr)
+        return ascmc[0], 'WholeSignFallback'
 
 
 
@@ -546,7 +557,7 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     # SwissEph Equal House has hemisphere-dependent bugs (cusp[0] = Descendant ≠ Ascendant
     # for some lat/lon combos). Replace with Formula B (Jean Meeus) validated to
     # Copenhagen error 0.003°, Melbourne error 0.0008°.
-    asc_deg = compute_sidereal_ascendant(jd_birth, lat, lon)
+    asc_deg, house_system_used = compute_sidereal_ascendant(jd_birth, lat, lon)
     house_cusps = [(asc_deg + i * 30) % 360 for i in range(12)]  # Equal House
     
     rising_sign = get_sign(asc_deg)
@@ -604,6 +615,7 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         'birth_time_known': birth_time_known,
         'rising_sign_source': ('solar_house_no_time' if not birth_time_known
                                else ('computed' if asc_deg > 0 else 'defaulted')),
+        'house_system_used': house_system_used,
     }
 
 

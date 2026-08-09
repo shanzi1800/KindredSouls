@@ -136,6 +136,8 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   // 🛠️ V142: 如实反映来源,无出生时间时为 Solar House 降级 (太阳星座=第1宫)
   matrix.meta.birth_time_known = birthTimeKnown;
   matrix.meta.rising_sign_source = birthTimeKnown ? 'computed' : 'solar_house_no_time';
+  // 🛠️ Arctic fix: 如实反映分宫制（极高纬度 Placidus 破裂时降级 WholeSign）
+  matrix.meta.house_system_used = natalData.house_system_used || 'Placidus';
   // 🛠️ V143: 合并本命盘宫位映射 (computed_houses) —— Mode A 激活关键
   if (natalData.computed_houses && Object.keys(natalData.computed_houses).length > 0) {
     matrix.meta.computed_houses = natalData.computed_houses;
