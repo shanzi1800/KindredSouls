@@ -2699,9 +2699,20 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   const _v229hdr = SECTION_HEADERS[lang] || SECTION_HEADERS.zh;
   const _v229monthLabel = getMonthLabel(lang, _v229y, _v229m);
   // Overview: 匹配 [🔮 ...]（Emoji 锚点优先，任意语言文本），归一为 lang 规范头（无月份）
-  c = c.replace(/✦?\s*\[\s*🔮\s*[^\]]*\]/gi, `✦ [🔮 ${_v229hdr.theme}] ✦`);
+  // 2026-08-09-fix: 末尾加 \s*✦? 吃掉 LLM 自带的尾部 ✦（否则 "[🔮 ...] ✦" → "✦ [🔮 ...] ✦ ✦" 双✦）
+  c = c.replace(/✦?\s*\[\s*🔮\s*[^\]]*\]\s*✦?/gi, `✦ [🔮 ${_v229hdr.theme}] ✦`);
   // Trap: 匹配 [⚠️ ...]（负向预查排除周次标题 [⚠️ Week N]），归一为 lang 规范头（带月份）
-  c = c.replace(/✦?\s*\[\s*⚠️\s*(?![🟢🔴🔵]?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+  // 2026-08-09-fix: 末尾加 \s*✦? 吃掉尾部 ✦；并新增 Financial Shadow 变体（无 ⚠️ 时整行即标题，吃掉整行）
+  c = c.replace(/✦?\s*\[\s*⚠️\s*(?![🟢🔴🔵]?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+  c = c.replace(/✦?\s*\[\s*Financial\s*Shadow[^\n]*/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+
+  // 8. 🛠️ 2026-08-09: 英文排版粘连清洗（仅 en，清洗层兜底不改 Prompt）
+  //    LLM 吐字常把英文单词与数字/序数词粘连：your12th→your 12th / Aug1–7→Aug 1–7 / 12thHouse→12th House
+  //    幂等安全：已带空格的不再匹配；流式分片跨 chunk 断开时拼接结果仍正确
+  if (lang === 'en') {
+    c = c.replace(/([a-zA-Z])(\d+)/g, '$1 $2')
+         .replace(/(\d+)(st|nd|rd|th)([A-Za-z])/g, '$1$2 $3');
+  }
 
   return c;
 }
