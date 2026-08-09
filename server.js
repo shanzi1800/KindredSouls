@@ -4955,6 +4955,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 用于缓存落库的全文本收集器
   let fullTextCollector = '';
 
+  // 🛠️ V222x-fix: stream 端点补声明 _tokMap
+  // 5115/5123/5150 引用 _tokMap 但本端点从未声明 → ReferenceError → onChunk 抛错被 callDeepSeekStream 内部 catch 吞掉
+  // → fullTextCollector 永不累积 → 方案C补全条件(fullTextCollector.length>100)恒false → sanitized 不推送、缓存不写 → 用户半截流
+  // _tokMap 语义为占位符替换({{JUPITER_HOUSE}}→第N宫),stream 端点无此需求 → null 跳过替换,行为不变
+  const _tokMap = null;
+
   // 写缓存辅助函数
   const writeToCache = async (text) => {
     if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
@@ -5101,13 +5107,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
       if (reportType === 'monthly') {
+        // 🛠️ V222y-fix: 分段指令语言感知化——原硬编码中文标题(第1周/消费陷阱/2026年8月)导致非中文语言报告标题穿帮
+        // 标题格式一律让 LLM 从 FORMAT_FIREWALL 系统铁律中读取对应语言模板(该模板已含 zh/en/es/fr/th/vi 六语言周卡片+陷阱卡片示例)
+        const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
         const _wf = [
-          '先写开篇（标题必须使用 ✦ [🔮 本月命运主题] ✦，用1-2句话概述本月整体财运基调，结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。',
-          '只写第1周（标题使用 ✦ [🟢 第1周：...（财富充能）]），写完第1周立即停止，不要写其他周、不要重复。',
-          '只写第2周（标题使用 ✦ [🔴 第2周：...（高危熔断）]），写完第2周立即停止，不要写其他周、不要重复。',
-          '只写第3周（标题使用 ✦ [🔵 第3周：...（顺流蓄力）]），写完第3周立即停止，不要写其他周、不要重复。',
-          '只写第4周（标题使用 ✦ [🟢 第4周：...（财富爆发）]），写完第4周立即停止，不要写其他周、不要重复。',
-          '只写消费陷阱（标题使用 ✦ [⚠️ 消费陷阱：2026年8月]，给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线），写完立即停止，不要写其他部分、不要重复。'
+          `先写开篇：标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式（🔮 主题语义），用1-2句话概述本月整体财运基调（结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。`,
+          `只写第1周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第1周主题=财富充能/Wealth Recharge 语义，emoji 🟢），写完第1周立即停止，不要写其他周、不要重复。`,
+          `只写第2周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第2周主题=高危熔断/High-Risk Circuit Breaker 语义，emoji 🔴），写完第2周立即停止，不要写其他周、不要重复。`,
+          `只写第3周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第3周主题=顺流蓄力/Flow Accumulation 语义，emoji 🔵），写完第3周立即停止，不要写其他周、不要重复。`,
+          `只写第4周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第4周主题=财富爆发/Wealth Explosion 语义，emoji 🟢），写完第4周立即停止，不要写其他周、不要重复。`,
+          `只写消费陷阱：标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板（⚠️ + 动态年份月份，语义=消费陷阱/Spending Traps），给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线，写完立即停止，不要写其他部分、不要重复。`
         ];
         for (let w = 0; w < 6; w++) {
           const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
