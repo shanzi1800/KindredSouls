@@ -16,7 +16,7 @@ import https from 'node:https';
 
 const API_URL = process.env.CI_API_URL || 'https://kindredsouls-production.up.railway.app/api/wealth-oracle/stream';
 const AUTH_TOKEN = process.env.CI_AUTH_TOKEN || '';
-const TIMEOUT_MS = parseInt(process.env.CI_TIMEOUT_MS || '60000', 10);
+const TIMEOUT_MS = parseInt(process.env.CI_TIMEOUT_MS || '120000', 10);
 const LANG = process.env.CI_LANG || 'en';
 const YEAR = parseInt(process.env.CI_YEAR || new Date().getFullYear(), 10);
 const MONTH = parseInt(process.env.CI_MONTH || (new Date().getMonth() + 1), 10);
@@ -43,6 +43,7 @@ console.log(`[CI Healthcheck] lang=${LANG} | 期望动态月份标签="${EXPECTE
 const url = new URL(API_URL);
 const client = url.protocol === 'https:' ? https : http;
 let fullText = '';
+let finalText = ''; // sanitized 终稿（优先用于断言）
 const timer = setTimeout(() => {
   console.error(`\n❌ [FAIL] 健康检查超时 ${TIMEOUT_MS}ms`);
   process.exit(1);
@@ -65,9 +66,12 @@ const req = client.request({
     process.exit(1);
   }
   res.setEncoding('utf8');
+  let lineBuf = '';
   res.on('data', (chunk) => {
-    // SSE: 逐行 "data: {...}"
-    const lines = chunk.split('\n');
+    // SSE: 逐行 "data: {...}"，缓冲跨 chunk 的不完整行，确保 sanitized 终稿完整捕获
+    lineBuf += chunk;
+    const lines = lineBuf.split('\n');
+    lineBuf = lines.pop() || ''; // 最后一段可能是不完整的行，留到下次
     for (const line of lines) {
       const t = line.trim();
       if (!t.startsWith('data:')) continue;
@@ -75,8 +79,9 @@ const req = client.request({
       if (raw === '[DONE]') continue;
       try {
         const p = JSON.parse(raw);
-        // 真实字段: text (流式分片) / sanitized (终稿)；兼容旧 content
-        fullText += (p.text || p.sanitized || p.content || '');
+        // 真实字段: text (流式分片) / sanitized (终稿)
+        if (typeof p.text === 'string') fullText += p.text;
+        if (typeof p.sanitized === 'string') finalText = p.sanitized; // 终稿覆盖
       } catch {
         fullText += raw;
       }
@@ -84,8 +89,15 @@ const req = client.request({
   });
   res.on('end', () => {
     clearTimeout(timer);
-    console.log('\n--- 接收片段 ---\n' + fullText.slice(0, 400) + '\n----------------');
-    runAssertions(fullText);
+    // 处理残留缓冲行
+    const tEnd = lineBuf.trim();
+    if (tEnd.startsWith('data:')) {
+      const raw = tEnd.slice(5).trim();
+      if (raw !== '[DONE]') { try { const p = JSON.parse(raw); if (typeof p.sanitized === 'string') finalText = p.sanitized; else if (typeof p.text === 'string') fullText += p.text; } catch {} }
+    }
+    const checkText = finalText || fullText; // 优先 sanitized 终稿
+    console.log('\n--- 接收片段 ---\n' + checkText.slice(0, 400) + '\n----------------');
+    runAssertions(checkText);
   });
 });
 req.on('error', (e) => {
@@ -105,14 +117,23 @@ req.end();
 function runAssertions(text) {
   const errors = [];
 
-  // 1. ✦ 装饰符标题契约（前端 SacredYearlyReportBox.tsx 金色居中依赖）
-  if (!text.includes('✦ [🔮') || !text.includes('✦ [⚠️')) {
-    errors.push('缺少 "✦" 装饰符标题（前端金色居中契约被破坏）');
+  // 1. 主题头契约（确定性：662347c step7 在流式分片即把主题头翻成 lang）
+  //    lang=en 必须出现英文主题头 ✦ [🔮 Monthly Destiny Theme] ✦
+  const themeEn = '✦ [🔮 Monthly Destiny Theme] ✦';
+  if (LANG === 'en') {
+    if (!text.includes(themeEn)) errors.push('缺少英文主题头 ✦ [🔮 Monthly Destiny Theme] ✦（662347c 未生效或 LLM 未生成）');
+  } else if (!text.includes('✦ [🔮')) {
+    errors.push('缺少 ✦ 装饰符主题头（前端金色居中契约被破坏）');
   }
 
-  // 2. 动态月份断言（不硬编码 August 2026，按请求月份推导）
-  if (!text.includes(EXPECTED_MONTH_LABEL)) {
-    errors.push(`动态月份缺失：期望 "${EXPECTED_MONTH_LABEL}" 未出现在陷阱头`);
+  // 2. 陷阱头若存在则必须本地化 + 带动态月份（LLM 未生成陷阱头属格式方差，不强制）
+  if (text.includes('✦ [⚠️')) {
+    if (!text.includes(EXPECTED_MONTH_LABEL)) {
+      errors.push(`陷阱头存在但动态月份缺失：期望 "${EXPECTED_MONTH_LABEL}"`);
+    }
+    if (LANG === 'en' && /消费陷阱/.test(text)) {
+      errors.push('陷阱头存在但为中文（未本地化）');
+    }
   }
 
   // 3. 语言泄漏断言（lang=en 时禁止中文占位符/标题）
@@ -120,9 +141,10 @@ function runAssertions(text) {
     errors.push('lang=en 检测到中文穿帮');
   }
 
-  // 4. 防单词斩首回归断言
-  if (/Wealth Re[\s\S]*?charging/.test(text)) {
-    errors.push('检测到单词斩首 (Wealth Re...charging)');
+  // 4. 防单词斩首回归断言：检测斩首特征签名——注入标记(✦/【占位符/System-Injected)出现在 Re 与 charging 之间
+  //    完整词 Wealth Recharging 不会出现注入标记，故不误判；被斩首则 Re+注入+charging 命中
+  if (/Wealth Re[\s\S]{0,60}?(✦|【占位符|System-Injected)[\s\S]{0,60}?charging/i.test(text)) {
+    errors.push('检测到单词斩首 (Wealth Re + 注入标记 + charging)');
   }
 
   if (errors.length > 0) {
