@@ -29,7 +29,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "build": "cd web && npm install && npm run build"
+    "build": "cd web && npm install && npm run build",
+    "test:astro": "node --test test/audit-astro-matrix.test.js",
+    "test": "npm run test:astro"
   },
   "private": true
 }
