@@ -398,7 +398,7 @@ const SacredYearlyReportBox: React.FC<{
       
       if (type === 'alert') {
         const isG = content.includes('🟢'), isR = content.includes('🔴');
-        const isTrapTitle = content.includes('消费陷阱'); // 🛠️ V200: 消费陷阱标题居中
+        const isTrapTitle = /消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pièges?\s*financiers?|กับดักการใช้จ่าย|bẫy\s*chi\s*tiêu/i.test(content); // 🛠️ V200: 消费陷阱标题居中（多语言，不依赖中文文本）
         return (
           <div key={idx} style={{
             color: '#D4AF37',

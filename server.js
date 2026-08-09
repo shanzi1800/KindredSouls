@@ -2590,6 +2590,32 @@ const SECTION_PLACEHOLDERS = {
   vi: { theme: '【Hệ Thống Chèn】Chủ Đề Vận Mệnh Tháng (vui lòng làm mới, AI chưa tạo phần này)', trap: '【Hệ Thống Chèn】Bẫy Chi Tiêu (vui lòng làm mới, AI chưa tạo phần này)' }
 };
 
+// 🛠️ 章节标题（展示层）按 lang 翻译——UI 视图层 100% 遵循 lang，绝不对用户展示未翻译中文
+const SECTION_HEADERS = {
+  zh: { theme: '本月命运主题', trap: '消费陷阱：' },
+  en: { theme: 'Monthly Destiny Theme', trap: 'Spending Traps: ' },
+  es: { theme: 'Tema de Destino Mensual', trap: 'Trampas de Gasto: ' },
+  fr: { theme: 'Thème de Destin du Mois', trap: 'Pièges Financiers: ' },
+  th: { theme: 'ธีมโชคชะตาประจำเดือน', trap: 'กับดักการใช้จ่าย: ' },
+  vi: { theme: 'Chủ Đề Vận Mệnh Tháng', trap: 'Bẫy Chi Tiêu: ' }
+};
+
+const MONTH_NAMES = {
+  zh: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+  en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  es: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+  fr: ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
+  th: ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'],
+  vi: ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12']
+};
+
+function getMonthLabel(lang, year, month) {
+  const _names = MONTH_NAMES[lang] || MONTH_NAMES.zh;
+  const _name = _names[month - 1];
+  if (lang === 'zh') return `${year}年${_name}`;
+  return `${_name} ${year}`;
+}
+
 function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   if (!text) return text;
   let c = text;
@@ -2645,23 +2671,21 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   //       占位符注入只在完整文本路径（injectPlaceholders=true）执行，且按 lang 做 i18n 防穿帮。
   if (injectPlaceholders) {
     const _ph = SECTION_PLACEHOLDERS[lang] || SECTION_PLACEHOLDERS.zh;
+    const _hdr = SECTION_HEADERS[lang] || SECTION_HEADERS.zh;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const _monthLabel = getMonthLabel(lang, y, m);
     const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
     if (hasWeek1) {
       const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
       const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
       if (!hasOverview) {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth() + 1;
-        const monthZH = `${y}年${m}月`;
-        c = `✦\n[🔮 本月命运主题：${monthZH}]\n\n${_ph.theme}\n\n` + c;
+        // 主题头无月份（与前端格式一致：## [🔮 Monthly Destiny Theme]）
+        c = `✦\n[🔮 ${_hdr.theme}]\n\n${_ph.theme}\n\n` + c;
       }
       if (!hasTrap) {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth() + 1;
-        const monthZH = `${y}年${m}月`;
-        c = c + '\n\n✦ [⚠️ 消费陷阱：' + monthZH + ']\n\n' + _ph.trap;
+        c = c + '\n\n✦ [⚠️ ' + _hdr.trap + _monthLabel + ']\n\n' + _ph.trap;
       }
     }
   }
@@ -2672,11 +2696,12 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   const _v229now = new Date();
   const _v229y = _v229now.getFullYear();
   const _v229m = _v229now.getMonth() + 1;
-  const _v229monthZH = `${_v229y}年${['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][_v229m-1]}`;
-  // Overview: 任意 [🔮 本月命运主题...] 或 ✦ [🔮 本月命运主题...]（含跨行 ✦\n[🔮）→ ✦ [🔮 本月命运主题] ✦
-  c = c.replace(/✦?\s*\[\s*🔮\s*本月命运主题[^\]]*\]/gi, '✦ [🔮 本月命运主题] ✦');
-  // Trap: 任意 [⚠️ 消费陷阱...] 或 ✦ [⚠️ 消费陷阱...]（含跨行）→ ✦ [⚠️ 消费陷阱：YYYY年M月] ✦
-  c = c.replace(/✦?\s*\[\s*⚠️\s*消费陷阱[^\]]*\]/gi, `✦ [⚠️ 消费陷阱：${_v229monthZH}] ✦`);
+  const _v229hdr = SECTION_HEADERS[lang] || SECTION_HEADERS.zh;
+  const _v229monthLabel = getMonthLabel(lang, _v229y, _v229m);
+  // Overview: 匹配 [🔮 ...]（Emoji 锚点优先，任意语言文本），归一为 lang 规范头（无月份）
+  c = c.replace(/✦?\s*\[\s*🔮\s*[^\]]*\]/gi, `✦ [🔮 ${_v229hdr.theme}] ✦`);
+  // Trap: 匹配 [⚠️ ...]（负向预查排除周次标题 [⚠️ Week N]），归一为 lang 规范头（带月份）
+  c = c.replace(/✦?\s*\[\s*⚠️\s*(?![🟢🔴🔵]?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
 
   return c;
 }
