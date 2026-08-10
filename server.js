@@ -133,6 +133,17 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       const _v = _cnNums[_n] || parseInt(_n);
       if (_v > _maxWeek) _maxWeek = _v;
     }
+    // 🛡️ V222z-fix10: 双份报告检测——模型退化时完整月报吐两遍(两份都合法4周,周次检测无效)
+    // 合法月报:命运主题出现1次(开篇)、⚠️出现1次(消费陷阱)。≥2次即第二份开始
+    const _themeCount = (_acc.match(/本月命运主题/g) || []).length;
+    const _trapCount = (_acc.match(/⚠️/g) || []).length;
+    if (_themeCount >= 2 || _trapCount >= 2) {
+      console.log('[callDeepSeek] ⚠️ V222z-fix10 检测到双份报告(命运主题×' + _themeCount + '/陷阱×' + _trapCount + '),提前终止流 (' + _acc.length + ' chars)');
+      try { clearInterval(heartbeat); } catch(e){}
+      try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 先发 [DONE] 再关连接
+      try { res.end(); } catch(e){}
+      return false;
+    }
     // 超长(>60k 字)或周次超过 4(即出现第5周+)才算真正的 degeneracy
     if (_acc.length > 60000 || _maxWeek > 4) {
       console.log('[callDeepSeek] ⚠️ V219b 检测到超长/越界周次,提前终止流 (' + _acc.length + ' chars, maxWeek=' + _maxWeek + ')');
@@ -4928,9 +4939,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛡️ V222z-fix8: 根治 Supabase 脏缓存导致的双份报告——若缓存里已有两份报告（两份 消费陷阱），截断到第一份结尾
         // 场景：之前 bug 期间写入了双份缓存，即使 cacheKey 门槛提升，旧数据仍会命中
         // 检测：第一份消费陷阱章节头 + 往后 >500 字符处出现第二份消费陷阱章节头 → 截断
-        const _dupMark1 = streamText.indexOf('[⚠️');
+        // 🛡️ V222z-fix8b: 锚点修正——真实格式是 '✦ [⚠️ 消费陷阱...] ✦'（前面有 ✦ 前缀），原 '[⚠️' 锚点永远找不到。改用 '⚠️' emoji 作为锚点
+        const _dupMark1 = streamText.indexOf('⚠️');
         if (_dupMark1 >= 0) {
-          const _afterFirst = streamText.indexOf('[⚠️', _dupMark1 + 1);
+          const _afterFirst = streamText.indexOf('⚠️', _dupMark1 + 1);
           if (_afterFirst > _dupMark1 + 500) {
             // 第二份在第一份 >500 字符后出现，说明是双份，截断到第一份结尾
             // 寻找第一份后的 ✦ 结束标记
