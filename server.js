@@ -4252,7 +4252,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         const cacheRows = await cacheRes.json();
         const cachedText = cacheRows?.[0]?.insight;
 
-        if (cachedText && cachedText.length > 100) {
+        if (cachedText && cachedText.length > 2000) {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
           // V103-fix6: 标准化旧缓存,确保格式统一
           const stdCached = standardizeReport(cachedText);
@@ -4881,7 +4881,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cacheRows = await cacheRes.json();
       const cachedText = cacheRows?.[0]?.insight;
 
-      if (cachedText && cachedText.length > 100) {
+      if (cachedText && cachedText.length > 2000) {
         // ── V113: 缓存命中 → 完美终稿直传(写入时已清洗,读取时零处理)──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗,缓存=完美终稿;读取时零处理直接分块 SSE 输出
@@ -5430,7 +5430,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (typeof res.flush === 'function') res.flush();
 
     // 🛠️ V125-fix: streaming结束立即写缓存(不依赖completion是否成功) —— 方案C: cleanedText 可能已被补全版覆盖
-    if (cleanedText.length > 100) {
+    // 🛠️ V222z-fix3: 写缓存门槛从100→2000, 与截断检测阈值拉齐, 防止截断碎片(<2000字)毒化缓存
+    if (cleanedText.length > 2000) {
       console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
       writeToCache(cleanedText).catch((e) => {
         console.error('[wealth-stream] [WRITE-CACHE-ERROR] ' + cacheKey + ': ' + (e && e.message));
