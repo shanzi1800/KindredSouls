@@ -2083,6 +2083,52 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }
       } catch (err) {
         console.error('[WealthReport] Stream error:', err);
+        // 🛠️ V222z-fix: Railway 30秒硬切断兜底——流断时自动调用非流式端点补全完整报告
+        // 判断：network error + 当前已接收文本 < 2000 字符 → 触发 fallback
+        const _isNetworkErr = err instanceof TypeError && (
+          String(err).includes('network') ||
+          String(err).includes('connection') ||
+          String(err).includes('NetworkError') ||
+          String(err).includes('ERR_')
+        );
+        if (_isNetworkErr && _full.length < 2000) {
+          console.warn('[WealthReport] ⚠️ Railway 30s 超时断流，_full 仅 ' + _full.length + ' 字符 → 启动非流式 fallback');
+          try {
+            const fbRes = await fetch('/api/wealth-oracle', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                birthDate: _stableBirth,
+                birthTime,
+                lat: birthLat,
+                lon: birthLon,
+                tz: birthTz,
+                lang: _stableLang,
+                reportType: type,
+              }),
+            });
+            if (fbRes.ok) {
+              const fbData = await fbRes.json().catch(() => ({}));
+              const fbText = fbData.report || fbData.insight || '';
+              if (fbText.length > 2000) {
+                console.log('[WealthReport] ✅ Fallback 成功，' + fbText.length + ' 字符，写入 UI');
+                if (type === 'yearly' || type === 'monthly') {
+                  setSacredText(fbText);
+                } else {
+                  setWealthReportText(fbText);
+                  wealthReportRef.current = fbText;
+                }
+                return;
+              } else {
+                console.warn('[WealthReport] Fallback 文本也短: ' + fbText.length + ' 字符');
+              }
+            } else {
+              console.error('[WealthReport] Fallback HTTP 失败:', fbRes.status);
+            }
+          } catch (fbErr) {
+            console.error('[WealthReport] Fallback 请求失败:', fbErr);
+          }
+        }
       } finally {
         // 🛠️ V40: finally只做月报兜底,年报不需要([DONE]已处理)
         if (type === 'monthly' && !streamedOnce) {
