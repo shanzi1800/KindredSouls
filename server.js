@@ -4881,7 +4881,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cacheRows = await cacheRes.json();
       const cachedText = cacheRows?.[0]?.insight;
 
-      if (cachedText && cachedText.length > 2000) {
+      // 🛡️ V222z-fix9: 最小长度检查——若缓存文本 <3000字（正常月报应 >5000），说明是历史残缺缓存，强制穿透重新生成
+      if (cachedText && cachedText.length > 2000 && cachedText.length > 3000) {
         // ── V113: 缓存命中 → 完美终稿直传(写入时已清洗,读取时零处理)──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗,缓存=完美终稿;读取时零处理直接分块 SSE 输出
