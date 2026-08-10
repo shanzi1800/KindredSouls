@@ -330,8 +330,24 @@ const SacredYearlyReportBox: React.FC<{
       return { type: 'table', content: cells.join(' · ') };
     }
     
-    // 警告/提示（含消费陷阱标题 [⚠️ xxx]）
-    if (t.match(/^🟢|^🔴|^🔵|^⚠️?|^\[⚠️/)) {
+    // 🛠️ V222z-fix5: 月报格式——方括号包裹的标题（emoji在括号内，如 [🟢 Semana 1...]、[⚠️ Trampas...]）
+    // 月主题 [🔮 ...]、四周 [🟢/🔴/🔵 ...]、消费陷阱 [⚠️ ...] 全部走金色居中 heading
+    if (t.startsWith('[') && t.includes(']')) {
+      const bracketContent = t.slice(1, t.indexOf(']'));
+      const isWeekEmoji = /^\s*[🟢🔴🔵]+\s*$/.test(bracketContent);
+      const isTrapEmoji = /^\s*[⚠️✦]+\s*$/.test(bracketContent);
+      const isThemeEmoji = /^\s*[🔮✨]+\s*$/.test(bracketContent);
+      const isWeekText = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周)/i.test(t);
+      const isTrapText = /(?:Trampas?|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|消费陷阱)/i.test(t);
+      if (isWeekEmoji || isTrapEmoji || isThemeEmoji || isWeekText || isTrapText) {
+        const emoji = bracketContent.match(/[🟢🔴🔵⚠️🔮✨✦]/)?.[0] || '';
+        const inner = t.slice(t.indexOf(']') + 1).trim();
+        return { type: 'heading', content: cleanMarkdown(inner || t), icon: emoji };
+      }
+    }
+
+    // 警告/提示（仅匹配行首 emoji 或明确的 [⚠️ 独立标题]）
+    if (t.match(/^\[⚠️\s/)) {
       return { type: 'alert', content: cleanMarkdown(t) };
     }
     
@@ -398,16 +414,18 @@ const SacredYearlyReportBox: React.FC<{
       
       if (type === 'alert') {
         const isG = content.includes('🟢'), isR = content.includes('🔴');
-        const isTrapTitle = /消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pièges?\s*financiers?|กับดักการใช้จ่าย|bẫy\s*chi\s*tiêu/i.test(content); // 🛠️ V200: 消费陷阱标题居中（多语言，不依赖中文文本）
+        const isTrapTitle = /(?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)/i.test(content); // 🛠️ V200: 消费陷阱标题居中（多语言，不依赖中文文本）
+        // 🛠️ V222z-fix5: ✦ ⚠️ Trampas...✦ 格式，去掉 ✦ 后仍是 trap，居中金色
+        const isStarTrapTitle = line.trimStart().startsWith('✦') && isTrapTitle;
         return (
           <div key={idx} style={{
             color: '#D4AF37',
             fontSize: '11px', fontWeight: 700, margin: '6px 0 4px',
-            paddingLeft: isTrapTitle ? '0' : '12px',
-            textAlign: isTrapTitle ? 'center' : 'left',
+            paddingLeft: (isTrapTitle && !isStarTrapTitle) ? '12px' : '0',
+            textAlign: (isTrapTitle || isStarTrapTitle) ? 'center' : 'left',
             textShadow: '0 0 6px rgba(212,175,55,0.25)'
           }}>
-            {content}
+            {isStarTrapTitle ? content.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim() : content}
           </div>
         );
       }
