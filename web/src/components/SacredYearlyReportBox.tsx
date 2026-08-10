@@ -234,13 +234,24 @@ const SacredYearlyReportBox: React.FC<{
       .trim();
   };
 
-  const parseLine = (line: string): { type: string; content: string; icon?: string } => {
+  // 🛠️ V222z-fix7: 行内 trap 提取——LLM 把 ✦⚠️trap...✦ 埋在段落尾部时，截断trap单独成行，剩余内容返回 next
+  const INLINE_TRAP_RE = /✦\s*⚠️\s*((?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)[^✦]*?)\s*✦/i;
+
+  const parseLine = (line: string): { type: string; content: string; icon?: string; next?: { type: string; content: string } } => {
     const t = line.trim();
     if (!t) return { type: 'empty', content: '' };
     
     // 检测图标
     // 🛠️ V103-fix9: ✦章节前缀——以 ✦ 开头的行直接走 heading（金色），不依赖章节关键词检测（章节关键词有60字上限限制）
     // 🛠️ V222z-fix6: guard——trap 标题 ✦ ⚠️ Trampas...✦ 放行，不在这里吞掉（iconMatch 会吞 ✦，导致 textWithoutIcon 以 ⚠️ 开头但 alert 正则要求 [⚠️ 在行首，匹配不上）
+    // 🛠️ V222z-fix7: 行内 trap 检测——在段落中间发现 ✦⚠️trap✦ 时截断
+    const inlineTrapMatch = t.match(INLINE_TRAP_RE);
+    if (inlineTrapMatch) {
+      const trapTitle = '⚠️ ' + inlineTrapMatch[1].trim();
+      const afterTrap = t.slice(t.indexOf(inlineTrapMatch[0]) + inlineTrapMatch[0].length).trim();
+      return { type: 'alert', content: cleanMarkdown(trapTitle), next: afterTrap ? { type: 'text', content: cleanMarkdown(afterTrap) } : undefined };
+    }
+
     if (t.trim().startsWith('✦')) {
       const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
       if (/\b(?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)/i.test(withoutStar)) {
@@ -367,8 +378,8 @@ const SacredYearlyReportBox: React.FC<{
   const renderLines = (processedText: string) => {
     if (!processedText) return null;
     return processedText.split('\n').map((line, idx) => {
-      const { type, content, icon } = parseLine(line);
-      
+      const { type, content, icon, next } = parseLine(line);
+
       if (type === 'empty') return <div key={idx} style={{ height: '4px' }} />;
       if (type === 'skip') return null;
       if (type === 'divider') return (
@@ -433,8 +444,17 @@ const SacredYearlyReportBox: React.FC<{
             {isStarTrapTitle ? content.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim() : content}
           </div>
         );
+        // next: trap 后续内容（guard 确保 next 存在）
+        if (next) {
+          return (
+            <div key={idx + '_next'} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px' }}>
+              {/* @ts-ignore */}
+            {(next as any).content}
+            </div>
+          );
+        }
       }
-      
+
       if (type === 'listItem') {
         return (
           <div key={idx} style={{
