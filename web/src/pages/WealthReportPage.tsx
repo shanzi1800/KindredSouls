@@ -1943,6 +1943,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (USE_STREAM) {
       // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
       try {
+        let _full = ''; // 🛡️ V222z-fix2: 声明在 try 同一层级 → catch 可见
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
@@ -1959,7 +1960,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let buffer = ''; // 🛡️ 引入流式缓冲区(防断包)
-        let _full = ''; // 🛡️ V219: 累积完整文本,[DONE] 后写入内存缓存
 
         while (true) {
           const { value, done } = await reader!.read();
@@ -2081,18 +2081,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             }
           }
         }
-      } catch (err) {
-        console.error('[WealthReport] Stream error:', err);
-        // 🛠️ V222z-fix: Railway 30秒硬切断兜底——流断时自动调用非流式端点补全完整报告
-        // 判断：network error + 当前已接收文本 < 2000 字符 → 触发 fallback
-        const _isNetworkErr = err instanceof TypeError && (
-          String(err).includes('network') ||
-          String(err).includes('connection') ||
-          String(err).includes('NetworkError') ||
-          String(err).includes('ERR_')
-        );
-        if (_isNetworkErr && _full.length < 2000) {
-          console.warn('[WealthReport] ⚠️ Railway 30s 超时断流，_full 仅 ' + _full.length + ' 字符 → 启动非流式 fallback');
+      
+        // 🛠️ V222z-fix2: Railway 30秒硬切断兜底——在 try 末尾检查流状态
+        // 判断：_full 长度 < 2000 字符 → 说明流未正常完成，触发 fallback
+        if (_full.length < 2000) {
+          console.warn('[WealthReport] ⚠️ 流式传输不完整(_full=' + _full.length + '字符) → 启动非流式 fallback');
           try {
             const fbRes = await fetch('/api/wealth-oracle', {
               method: 'POST',
@@ -2118,7 +2111,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   setWealthReportText(fbText);
                   wealthReportRef.current = fbText;
                 }
-                return;
               } else {
                 console.warn('[WealthReport] Fallback 文本也短: ' + fbText.length + ' 字符');
               }
@@ -2129,7 +2121,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             console.error('[WealthReport] Fallback 请求失败:', fbErr);
           }
         }
+} catch (err) {
+        console.error('[WealthReport] Stream error:', err);
       } finally {
+
         // 🛠️ V40: finally只做月报兜底,年报不需要([DONE]已处理)
         if (type === 'monthly' && !streamedOnce) {
           setTimeout(() => setVisibleWeeks(1), 500);
