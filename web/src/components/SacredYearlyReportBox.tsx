@@ -240,8 +240,13 @@ const SacredYearlyReportBox: React.FC<{
     
     // 检测图标
     // 🛠️ V103-fix9: ✦章节前缀——以 ✦ 开头的行直接走 heading（金色），不依赖章节关键词检测（章节关键词有60字上限限制）
+    // 🛠️ V222z-fix6: guard——trap 标题 ✦ ⚠️ Trampas...✦ 放行，不在这里吞掉（iconMatch 会吞 ✦，导致 textWithoutIcon 以 ⚠️ 开头但 alert 正则要求 [⚠️ 在行首，匹配不上）
     if (t.trim().startsWith('✦')) {
       const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
+      if (/\b(?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)/i.test(withoutStar)) {
+        // trap 标题：去掉首尾 ✦ 后走 alert 逻辑（alert 里有 trap 居中渲染）
+        return { type: 'alert', content: cleanMarkdown(withoutStar) };
+      }
       return { type: 'heading', content: cleanMarkdown(withoutStar), icon: '✦' };
     }
     const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
