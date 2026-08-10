@@ -4923,7 +4923,23 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         // 兜底: 清除任何未匹配的 {{...}} 占位符
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
-        
+
+        // 🛡️ V222z-fix8: 根治 Supabase 脏缓存导致的双份报告——若缓存里已有两份报告（两份 消费陷阱），截断到第一份结尾
+        // 场景：之前 bug 期间写入了双份缓存，即使 cacheKey 门槛提升，旧数据仍会命中
+        // 检测：第一份消费陷阱章节头 + 往后 >500 字符处出现第二份消费陷阱章节头 → 截断
+        const _dupMark1 = streamText.indexOf('[⚠️');
+        if (_dupMark1 >= 0) {
+          const _afterFirst = streamText.indexOf('[⚠️', _dupMark1 + 1);
+          if (_afterFirst > _dupMark1 + 500) {
+            // 第二份在第一份 >500 字符后出现，说明是双份，截断到第一份结尾
+            // 寻找第一份后的 ✦ 结束标记
+            const _afterFirstMark = streamText.indexOf('✦', _dupMark1 + 1);
+            const _cutPos = (_afterFirstMark > _dupMark1 && _afterFirstMark < _afterFirst) ? _afterFirstMark + 1 : _afterFirst;
+            console.warn(`[V222z-fix8] 检测到双份缓存，截断位置=${_cutPos}（总长=${streamText.length}）`);
+            streamText = streamText.substring(0, _cutPos);
+          }
+        }
+
         // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
         streamText = cleanConsumerTrapAndBrackets(streamText);
         
