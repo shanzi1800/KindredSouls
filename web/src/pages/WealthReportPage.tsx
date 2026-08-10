@@ -1945,6 +1945,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       try {
         let _full = ''; // 🛡️ V222z-fix2: 声明在 try 同一层级 → catch 可见
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
+        // 🛡️ V222z-fix7: 覆盖前先检查旧 gen 是否已完成；若已完成则保留旧 gen（它已经持有最终 _full）
+        const existingGen = _reportGen.get(_memKey);
+        if (existingGen?.done) {
+          console.log('[V222z-fix7] gen 已完成，跳过新 SSE，直接复用 partial（长度=' + (existingGen.partial?.length ?? 0) + '）');
+          setSacredText(existingGen.partial ?? '');
+          setStreamedOnce(true);
+          if (type === 'monthly') setMonthlyCardsReady(true);
+          if (type === 'yearly') setYearlyCardsReady(true);
+          return;
+        }
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
         _dbgSet++;
