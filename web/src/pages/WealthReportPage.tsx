@@ -1908,8 +1908,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     // 🧪 绿色通道:free_access=1 时优先从 localStorage 读取缓存
     const isFreeTest = new URLSearchParams(window.location.search).get('free_access') === '1';
+    // 🛡️ V222z-fix12: free_access 页面每次打开时强制清 localStorage 旧缓存
+    // 根因: Supabase 旧缓存(不同版本/脏数据) 先写入 localStorage, 之后 SSE 流生成另一份新的,
+    // 两路同时渲染 → 双份。治本: 页面打开时清缓存,只走 SSE 流一条路
     if (isFreeTest && type === 'monthly') {
       const cacheKey = 'ks_wealth_monthly_cache_' + birthDate + '_' + lang;
+      localStorage.removeItem(cacheKey); // 🛡️ 清旧缓存,只走 SSE 流
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         console.log('[WealthReport] 📦 从 localStorage 读取月报缓存(但强制走流式输出以验证效果)');
