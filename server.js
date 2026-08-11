@@ -134,9 +134,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       if (_v > _maxWeek) _maxWeek = _v;
     }
     // 🛡️ V222z-fix10: 双份报告检测——模型退化时完整月报吐两遍(两份都合法4周,周次检测无效)
-    // 合法月报:命运主题出现1次(开篇)、⚠️出现1次(消费陷阱)。≥2次即第二份开始
+    // 修复 V222z-fix11: trap 内容本身含多个 ⚠️ 符号(如"⚠️ 避免借贷""⚠️ 冲动消费"),字符级检测会在 trap 内容未写完时误触发
+    // 正确做法: 用 trap 章节头 `[⚠️`(月报)/`[💸`(年报) 而非单个字符,章节头每份报告只出现1次
     const _themeCount = (_acc.match(/本月命运主题/g) || []).length;
-    const _trapCount = (_acc.match(/⚠️/g) || []).length;
+    const _trapCount  = (_acc.match(/\[⚠️|\[💸/g) || []).length;
     if (_themeCount >= 2 || _trapCount >= 2) {
       console.log('[callDeepSeek] ⚠️ V222z-fix10 检测到双份报告(命运主题×' + _themeCount + '/陷阱×' + _trapCount + '),提前终止流 (' + _acc.length + ' chars)');
       try { clearInterval(heartbeat); } catch(e){}
