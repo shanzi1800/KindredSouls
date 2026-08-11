@@ -5449,22 +5449,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // 🛡️ V222z-fix13: sanitized 事件发前截断双份——根因: _dupGuard 在流式层停了, _acc 含双份,
-    // sanitized 发的还是未截断的 _acc, 浏览器先收到流式完整双份, sanitized 覆盖时内容已脏
-    // 修复: 发 sanitized 前检测双份命运主题,截断到第一份消费陷阱结尾
+    // 🛡️ V222z-fix13b: sanitized 发前截断多份——双结构锚点(命运主题+消费陷阱), 每份报告各出现一次,
+    // 不再依赖脆弱的 [⚠️ 标记(模型掉字/换Emoji/被清洗即失效)。多语言感知: 按当前 lang 取对应标题;
+    // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
+    // 双锚点门禁可杜绝"同份内偶发复提主题"被误截(单份只有 1 个陷阱头, 永不满足 ≥2)。
     if (cleanedText && cleanedText.length > 100) {
-      const _themeMatches = (cleanedText.match(/本月命运主题/g) || []).length;
-      if (_themeMatches >= 2) {
-        const _firstTrapIdx = cleanedText.indexOf('[⚠️');
-        if (_firstTrapIdx >= 0) {
-          const _secondTrapIdx = cleanedText.indexOf('[⚠️', _firstTrapIdx + 1);
-          if (_secondTrapIdx > _firstTrapIdx + 200) {
-            // 有两份命运主题 → 截断到第一份消费陷阱结尾(第一个 ✦ 在第二份之前)
-            const _secondThemeIdx = cleanedText.indexOf('本月命运主题', cleanedText.indexOf('本月命运主题') + 1);
-            const _cutPos = _secondThemeIdx > 0 ? _secondThemeIdx : _secondTrapIdx;
-            console.warn(`[V222z-fix13] sanitized 双份截断: ${cleanedText.length}→${_cutPos} chars`);
-            cleanedText = cleanedText.substring(0, _cutPos);
-          }
+      const _THEME = {
+        zh: '本月命运主题', en: 'Monthly Destiny Theme', es: 'Tema de Destino Mensual',
+        fr: 'Thème de Destin du Mois', th: 'ธีมโชคชะตาประจำเดือน', vi: 'Chủ Đề Vận Mệnh Tháng',
+      };
+      const _TRAP = {
+        zh: '消费陷阱', en: 'Spending Traps', es: 'Trampas de Gasto',
+        fr: 'Pièges Financiers', th: 'กับดักการใช้จ่าย', vi: 'Bẫy Chi Tiêu',
+      };
+      const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const _theme = _THEME[lang] || _THEME.zh;
+      const _trap = _TRAP[lang] || _TRAP.zh;
+      const _themeCnt = (cleanedText.match(new RegExp(_esc(_theme), 'g')) || []).length;
+      const _trapCnt = (cleanedText.match(new RegExp(_esc(_trap), 'g')) || []).length;
+      if (_themeCnt >= 2 && _trapCnt >= 2) {
+        const _firstTheme = cleanedText.indexOf(_theme);
+        const _cutPos = cleanedText.indexOf(_theme, _firstTheme + 1); // 第 2 次主题头 = 第 2 份报告起点
+        if (_cutPos > 0) {
+          console.warn(`[V222z-fix13b] sanitized 多份截断(${lang} 主题×${_themeCnt}/陷阱×${_trapCnt}): ${cleanedText.length}→${_cutPos} chars`);
+          cleanedText = cleanedText.substring(0, _cutPos);
         }
       }
     }
