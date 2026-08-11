@@ -5449,6 +5449,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
+    // 🛡️ V222z-fix13: sanitized 事件发前截断双份——根因: _dupGuard 在流式层停了, _acc 含双份,
+    // sanitized 发的还是未截断的 _acc, 浏览器先收到流式完整双份, sanitized 覆盖时内容已脏
+    // 修复: 发 sanitized 前检测双份命运主题,截断到第一份消费陷阱结尾
+    if (cleanedText && cleanedText.length > 100) {
+      const _themeMatches = (cleanedText.match(/本月命运主题/g) || []).length;
+      if (_themeMatches >= 2) {
+        const _firstTrapIdx = cleanedText.indexOf('[⚠️');
+        if (_firstTrapIdx >= 0) {
+          const _secondTrapIdx = cleanedText.indexOf('[⚠️', _firstTrapIdx + 1);
+          if (_secondTrapIdx > _firstTrapIdx + 200) {
+            // 有两份命运主题 → 截断到第一份消费陷阱结尾(第一个 ✦ 在第二份之前)
+            const _secondThemeIdx = cleanedText.indexOf('本月命运主题', cleanedText.indexOf('本月命运主题') + 1);
+            const _cutPos = _secondThemeIdx > 0 ? _secondThemeIdx : _secondTrapIdx;
+            console.warn(`[V222z-fix13] sanitized 双份截断: ${cleanedText.length}→${_cutPos} chars`);
+            cleanedText = cleanedText.substring(0, _cutPos);
+          }
+        }
+      }
+    }
+
     if (cleanedText && cleanedText.length > 100) {
       try {
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
