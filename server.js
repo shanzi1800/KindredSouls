@@ -2593,7 +2593,7 @@ app.get('/api/health', async (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
-    version: 'v1.0.2-V233-RUN-NOW',
+    version: 'v1.0.2-CHECKPOINT-1',
     gitSha,
     gitShaFull,
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
@@ -5588,7 +5588,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const _matches = [...cleanedText.matchAll(_THEME_RE)];
       if (_matches.length >= 2) {
         const _cutPos = _matches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
-        console.warn(`[V222z-fix13d-v2] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
+        console.warn('CHECKPOINT: V233-RUN-NOW-ACTIVE'); console.warn(`[V222z-fix13d-v2] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
         cleanedText = cleanedText.substring(0, _cutPos);
       }
     }
