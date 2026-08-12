@@ -4960,21 +4960,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 兜底: 清除任何未匹配的 {{...}} 占位符
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 
-        // 🛡️ V222z-fix8: 根治 Supabase 脏缓存导致的双份报告——若缓存里已有两份报告（两份 消费陷阱），截断到第一份结尾
-        // 场景：之前 bug 期间写入了双份缓存，即使 cacheKey 门槛提升，旧数据仍会命中
-        // 检测：第一份消费陷阱章节头 + 往后 >500 字符处出现第二份消费陷阱章节头 → 截断
-        // 🛡️ V222z-fix8b: 锚点修正——真实格式是 '✦ [⚠️ 消费陷阱...] ✦'（前面有 ✦ 前缀），原 '[⚠️' 锚点永远找不到。改用 '⚠️' emoji 作为锚点
-        const _dupMark1 = streamText.indexOf('⚠️');
-        if (_dupMark1 >= 0) {
-          const _afterFirst = streamText.indexOf('⚠️', _dupMark1 + 1);
-          if (_afterFirst > _dupMark1 + 500) {
-            // 第二份在第一份 >500 字符后出现，说明是双份，截断到第一份结尾
-            // 寻找第一份后的 ✦ 结束标记
-            const _afterFirstMark = streamText.indexOf('✦', _dupMark1 + 1);
-            const _cutPos = (_afterFirstMark > _dupMark1 && _afterFirstMark < _afterFirst) ? _afterFirstMark + 1 : _afterFirst;
-            console.warn(`[V222z-fix8] 检测到双份缓存，截断位置=${_cutPos}（总长=${streamText.length}）`);
-            streamText = streamText.substring(0, _cutPos);
-          }
+        // 🛡️ V222z-fix8-final: 根治 Supabase 缓存里双份报告——缓存文本含两份月报时截断到第一份结尾
+        // 锚点改用 ✦ [🔮（月报命运主题专属头，6语言通用，命中即代表新一份报告已开始）
+        // 检测：两个 ✦ [🔮 锚点（间隔 >500 字符），截断到第 2 个锚点之前（只留第 1 份）
+        // 💡 miss（直接生成）和 hit（从缓存读）共用本逻辑，因为两者最终都走 ✦ [🔮 统一锚点
+        const _HIT_THEME_RE = /\✦\s*\[\🔮/g;
+        const _hitAnchors = [...streamText.matchAll(_HIT_THEME_RE)];
+        if (_hitAnchors.length >= 2) {
+          const _cutPos = _hitAnchors[1].index; // 第 2 个 ✦ [🔮 = 第 2 份报告起点
+          console.warn(`[V222z-fix8-final] CACHE-HIT 双份截断(✦[🔮×${_hitAnchors.length}): ${streamText.length}→${_cutPos} chars`);
+          streamText = streamText.substring(0, _cutPos);
         }
 
         // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
