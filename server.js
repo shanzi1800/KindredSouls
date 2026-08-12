@@ -5454,19 +5454,25 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
     // 双锚点门禁可杜绝"同份内偶发复提主题"被误截(单份只有 1 个陷阱头, 永不满足 ≥2)。
     if (cleanedText && cleanedText.length > 100) {
+      // 🛡️ V222z-fix13b-enhotfix: en trap 实际输出 `Spending Trap` / `Spending Traps` 两种变体,
+      // 改用预建正则对象(非字符串)避免转义破坏; 其余语言保持精确字符串匹配.
       const _THEME = {
         zh: '本月命运主题', en: 'Monthly Destiny Theme', es: 'Tema de Destino Mensual',
         fr: 'Thème de Destin du Mois', th: 'ธีมโชคชะตาประจำเดือน', vi: 'Chủ Đề Vận Mệnh Tháng',
       };
-      const _TRAP = {
-        zh: '消费陷阱', en: 'Spending Traps', es: 'Trampas de Gasto',
-        fr: 'Pièges Financiers', th: 'กับดักการใช้จ่าย', vi: 'Bẫy Chi Tiêu',
+      const _TRAP_RE = {
+        zh: /消费陷阱/g,
+        en: /Spending\s*Trap[s]?/gi,       // 匹配 Trap / Traps / 全角冒号变体
+        es: /Trampas?\s+de\s+Gasto/gi,
+        fr: /Pièges?\s+Financiers?/gi,
+        th: /กับดักการใช้จ่าย/g,
+        vi: /Bẫy\s+Chi\s+Tiêu/g,
       };
       const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const _theme = _THEME[lang] || _THEME.zh;
-      const _trap = _TRAP[lang] || _TRAP.zh;
+      const _trapRE = _TRAP_RE[lang] || _TRAP_RE.zh;
       const _themeCnt = (cleanedText.match(new RegExp(_esc(_theme), 'g')) || []).length;
-      const _trapCnt = (cleanedText.match(new RegExp(_esc(_trap), 'g')) || []).length;
+      const _trapCnt = (cleanedText.match(_trapRE) || []).length;
       if (_themeCnt >= 2 && _trapCnt >= 2) {
         const _firstTheme = cleanedText.indexOf(_theme);
         const _cutPos = cleanedText.indexOf(_theme, _firstTheme + 1); // 第 2 次主题头 = 第 2 份报告起点
