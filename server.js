@@ -1324,6 +1324,50 @@ const _sunOf = (m) => {
 
 // 🛠️ V120-fix5: 宫位强制纠偏 linter——AI 常把行星宫位写错(如木星狮子座写成第11宫,实为第2宫)
 // 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
+// ═══════════════════════════════════════════════════════════════════
+// 🛡️ V233-fix: 法语/西班牙语月报专用清洗工具
+// ── 修空格粘连（DeepSeek 吞词边界空格）─────────────────────────
+function fixFrenchSpacing(text) {
+  if (!text || typeof text !== 'string') return text;
+  if (!/(?:maison|Maison|Soleil|Lune|Jupiter|Saturne|Mars|Mercure|Vénus|Semaine|Jour|Août|Juillet|de \d|€|%)/i.test(text)) return text;
+  // 1. ordinal 粘连（数字紧贴 maison 但带 e）：votre7e maison → votre 7e maison
+  text = text.replace(/([a-zA-ZàâäéèêëïîôùûüÿçœæÀÂÄÉÈÊËÏÎÔÙÛÜŸÇŒÆ])(\d+e?)(?= maison)/g, '$1 $2');
+  // 2. en/du/la/le + 数字 ordinal：en7e maison → en 7e maison
+  text = text.replace(/(en|du|la|le)\s*(\d+e?)(?= maison)/gi, '$1 $2');
+  // 3. 纯数字 + e + maison：7e maison → 7e maison（如已有空格不变）
+  text = text.replace(/([0-9]+)\s*e?\s*(maison)/gi, '$1e $2');
+  // 4. Maison + 数字：Maison7 → Maison 7
+  text = text.replace(/(Maison)\s*([0-9])/gi, '$1 $2');
+  // 5. 字母紧贴数字（如 votre7 / Jour12 / le18）——但 ordinal 7e 已修，跳过 7e
+  text = text.replace(/([a-zA-ZàâäéèêëïîôùûüÿçœæÀÂÄÉÈÊËÏÎÔÙÛÜŸÇŒÆ])([0-9]+(?!s*e\s))/g, '$1 $2');
+  // 6. 数字紧贴货币（合并）: 450 € → 450€
+  text = text.replace(/([0-9]+)\s*(€|%|\$|£)/g, '$1$2');
+  return text.replace(/ {2,}/g, ' ');
+}
+
+function fixFrenchTypo(text) {
+  if (!text || typeof text !== 'string') return text;
+  // guard 用独立词匹配，防止 "Laune" 被 "Lune" 子串误触发
+  // guard 改用子串检测（独立词边界无法匹配 Laune 里的 Lune 子串）
+  if (!/(?:maison|Soleil|Lune|Jupiter|Saturne|Mars|Mercure|Vénus|Août|Juillet|Semaine|Jour|quinz|dix|vingt|trente)/i.test(text) && !/(?:Laune|oleil|Maisonn|junguien)/i.test(text)) return text;
+  text = text.replace(/\bLaune\b/g, 'La Lune');   // Laune → La Lune
+  text = text.replace(/\boleil\b/g, 'Soleil');   // oleil → Soleil
+  text = text.replace(/\bMaisonn\b/g, 'Maison'); // Maisonn → Maison
+  text = text.replace(/\bjunguien/gi, 'jungien');  // junguien → jungien
+  text = text.replace(/vous demande\s+(transformer|donner|acheter|payer)/gi, 'vous demande de $1'); // 缺介词
+  return text;
+}
+
+// ── 修西班牙语空格粘连 ────────────────────────────────────
+function fixSpanishSpacing(text) {
+  if (!text || typeof text !== 'string') return text;
+  if (!/(?:casa|Casa|Semana|Día|mes|Sol|Luna|Júpiter|Marte)/i.test(text)) return text;
+  // 数字紧贴字母
+  text = text.replace(/([a-zA-ZáéíóúüñÁÉÍÓÚÜÑ])([0-9])/g, '$1 $2');
+  text = text.replace(/([0-9]+)(?![eèéêë]\b)([a-zA-ZáéíóúüñÁÉÍÓÚÜÑ])/g, '$1 $2');
+  return text.replace(/ {2,}/g, ' ');
+}
+
 function house_linter(text, astroMatrix, currentMonth = null) {
   if (!text) return text;
 
@@ -1386,35 +1430,56 @@ function house_linter(text, astroMatrix, currentMonth = null) {
     return result;
   }
 
-  // ── 回退: 无月份锚点或无 astroMatrix → 用 months[0] 全局处理 ───
-  let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
-  if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
-    const first = astroMatrix.months[0];
-    jupHouse = getH(first.jupiter?.house); satHouse = getH(first.saturn?.house);
-    plHouse  = getH(first.pluto?.house);  sunHouse = getH(_sunOf(first).house);
-    moonHouse= getH(first.moon?.house);
+  // ── 回退: 无月份锚点或无 astroMatrix → 用 months 数据处理 ───
+  // 🛡️ V233-fix: 法语/西班牙语月份锚点无法被中文锚点正则捕获，自动检测月份关键词选对应数据。
+  const FR_MONTH_MAP = {Juil:7,Juillet:7,Août:8,Aout:8,Sept:9,Sep:9,Septembre:9,
+    Oct:10,Octobre:10,Nov:11,Novembre:11,Déc:12,Dec:12,Decembre:12,
+    Janv:1,Janvier:1,Févr:2,Fév:2,Février:2,Mars:3,Avril:4,Mai:5,Juin:6};
+  const ES_MONTH_MAP = {Ene:1,Feb:2,Mar:3,Abr:4,May:5,Jun:6,Jul:7,Ago:8,Sep:9,Oct:10,Nov:11,Dic:12};
+  const MONTH_MAP = {...FR_MONTH_MAP, ...ES_MONTH_MAP};
+  let detectedMonth = 1;
+  for (const [kw, m] of Object.entries(MONTH_MAP)) {
+    if (new RegExp('\\b' + kw + '\\b', 'i').test(text)) { detectedMonth = m; break; }
   }
+  const monthIdx = Math.min(Math.max(detectedMonth - 1, 0), (astroMatrix?.months?.length || 1) - 1);
+  const fb = (astroMatrix?.months?.[monthIdx]) || (astroMatrix?.months?.[0]) || {};
+  const jupHouse = getH(fb.jupiter?.house) || getH(fb.positions?.Jupiter?.house) || 2;
+  const satHouse = getH(fb.saturn?.house)  || getH(fb.positions?.Saturn?.house)  || 10;
+  const plHouse  = getH(fb.pluto?.house)   || getH(fb.positions?.Pluto?.house)   || 8;
+  const sunHouse = getH(_sunOf(fb).house)  || getH(fb.sun?.house)  || 1;
+  const moonHouse= getH(fb.moon?.house)    || getH(fb.positions?.Moon?.house)    || 2;
+  const mercHouse= getH(fb.mercury?.house)|| getH(fb.positions?.Mercury?.house)|| 3;
+  const venHouse = getH(fb.venus?.house)  || getH(fb.positions?.Venus?.house)   || 4;
+  const marsHouse= getH(fb.mars?.house)   || getH(fb.positions?.Mars?.house)    || 5;
   const RULES2 = [
     ['jupiter', jupHouse], ['saturn', satHouse], ['pluto', plHouse],
-    ['sun', sunHouse], ['moon', moonHouse],
+    ['sun', sunHouse], ['moon', moonHouse], ['mercury', mercHouse], ['venus', venHouse], ['mars', marsHouse],
   ];
   const NAME_MAP2 = {
-    jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
+    jupiter: ['木星', 'Jupiter', 'Júpiter', 'ดาวพฤหัส', 'Sao Mộc'],
     saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
     pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
-    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trăng'],
     moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+    mercury: ['水星', 'Mercury', 'Mercure', 'ดาวพุธ', 'Sao Thủy'],
+    venus:   ['金星', 'Venus', 'Vénus', 'ดาวศุกร์', 'Sao Kim'],
+    mars:    ['火星', 'Mars', 'ดาวอังคาร', 'Sao Hỏa'],
   };
   for (const [key, house] of RULES2) {
     if (!house) continue;
     for (const pname of NAME_MAP2[key]) {
-      const reCN = new RegExp('(' + pname + '在[^第\\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
+      const reCN = new RegExp('(' + pname + '在[^第\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
       text = text.replace(reCN, '$1' + toCN(house) + '宫');
-      const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
+      // 🛡️ V233-fix: 法语 maison 格式——Lune en 9e maison / Soleil en 8e Maison
+      const reFR = new RegExp('(' + pname + '[^\n]{0,20}?)(\d+)e?\s*(maison)', 'gi');
+      text = text.replace(reFR, (m, prefix, n, suffix) =>
+        parseInt(n) !== house ? prefix + house + 'e ' + suffix : m);
+      const reEN = new RegExp('(' + pname + ')([^\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
       text = text.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
     }
   }
   return text;
+
 }// 校验AI生成的相位描述是否符合天文学规则。
 // 星座-相位关系是有限且确定的,用查表法100%拦截错误配对。
 function astro_phase_linter(text) {
@@ -4989,7 +5054,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         for (const [_t, _v] of Object.entries(_tokMap)) {
           if (_t && _v) streamText = streamText.split(_t).join(_v);
         }
-        // 兜底: 清除任何未匹配的 {{...}} 占位符
+        // 🛡️ V233-fix: 法语/西班牙语清洗（空格粘连+漏字）
+          if (lang === 'fr') { streamText = fixFrenchTypo(fixFrenchSpacing(streamText)); }
+          if (lang === 'es') { streamText = fixSpanishSpacing(streamText); }
+          // 兜底: 清除任何未匹配的 {{...}} 占位符
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 
         // 🛡️ V222z-fix8-final: 根治 Supabase 缓存里双份报告——缓存文本含两份月报时截断到第一份结尾
@@ -5004,6 +5072,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           streamText = streamText.substring(0, _cutPos);
         }
 
+        // 🛡️ V233-fix: 法语/西班牙语清洗
+        if (lang === 'fr') { streamText = fixFrenchTypo(fixFrenchSpacing(streamText)); }
+        if (lang === 'es') { streamText = fixSpanishSpacing(streamText); }
         // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
         streamText = cleanConsumerTrapAndBrackets(streamText);
 
@@ -5398,6 +5469,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       cleanedText = cleanedText.replace(/\uFFFD/g, '').replace(/\uFFFD/g, '');
       // 🛠️ V166-fix: 补回月报 house_linter(非破坏性,仅修正行星-宫位映射,杜绝英文月报木/冥/土星宫位幻觉)
       // 🛠️ V189: 消费陷阱+括号兜底（MISS月报路径）
+      // 🛡️ V233-fix: 法语/西班牙语清洗
+      if (lang === 'fr') { cleanedText = fixFrenchTypo(fixFrenchSpacing(cleanedText)); }
+      if (lang === 'es') { cleanedText = fixSpanishSpacing(cleanedText); }
       cleanedText = cleanConsumerTrapAndBrackets(cleanedText);
       // 🛠️ V210: 西班牙语月报专项——双重标题最终兜底
       // 场景: AI同时输出裸头和带⚠️的头，或输出[Sombra Financiera] Trampas de Gasto Jul 2026]
