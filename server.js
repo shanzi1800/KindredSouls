@@ -178,6 +178,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   let lastClean = ''; // V220d: last chunk clean for new-suffix
   let unsentDelta = ''; // V220d: pending delta to send
   let chunkCount = 0;
+  // 🛡️ V222z-fix13e: text 流层单锚截断——MISS 路径下 sanitized 从不触发,必须在 text 流层直接断流
+  let _monthlyCutDone = false;
+  const _MONTHLY_THEME_RE = /\✦\s*\[\🔮/g;
   const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
     while (true) {
@@ -238,6 +241,26 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           lastClean = clean;
           fullText += newSuffix;
           pending = fullText;
+          // 🛡️ V222z-fix13e: monthly 专用——流式循环中实时检测第二个 ✦ [🔮 锚点,发现即截断
+          // 截断逻辑前置到 text 流层:MISS 路径下 sanitized 从不触发,必须在流式循环里直接断流
+          if (reportType === 'monthly' && !_monthlyCutDone) {
+            _MONTHLY_THEME_RE.lastIndex = 0;
+            const _anchors = [...fullText.matchAll(_MONTHLY_THEME_RE)];
+            if (_anchors.length >= 2) {
+              const _cutPos = _anchors[1].index; // 第 2 个锚点位置 = 第 2 份报告起点
+              const _truncated = fullText.substring(0, _cutPos);
+              console.warn(`[V222z-fix13e] text流层截断(锚点×${_anchors.length}): ${fullText.length}→${_truncated.length} chars`);
+              _monthlyCutDone = true; // 阻止重复触发
+              // 发截断后的完整内容,立即关闭流
+              try {
+                res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'fix13e_stream_cut' } })}\n\n`, 'utf-8'));
+              } catch(e) {}
+              res.write('data: [DONE]\n\n');
+              if (typeof res.flush === 'function') try { res.flush(); } catch(e) {}
+              clearInterval(heartbeat);
+              return; // 跳出流式循环
+            }
+          }
           unsentDelta += newSuffix; // V222q: 增量入缓冲——V221b 无条件推进 sentLen 导致 <FLUSH_SIZE 的增量被永久跳过(text事件全丢,前端无流式),恢复 V220d 缓冲方案
           if (unsentDelta.length >= FLUSH_SIZE) {
             const _toSend = unsentDelta;
