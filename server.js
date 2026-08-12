@@ -2593,7 +2593,7 @@ app.get('/api/health', async (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
-    version: 'v1.0.2-CHECKPOINT-1',
+    version: 'v1.0.2-V233-FINAL',
     gitSha,
     gitShaFull,
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
@@ -5579,7 +5579,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ V222z-fix13b: sanitized 发前截断多份——双结构锚点(命运主题+消费陷阱), 每份报告各出现一次,
     // 不再依赖脆弱的 [⚠️ 标记(模型掉字/换Emoji/被清洗即失效)。多语言感知: 按当前 lang 取对应标题;
     // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
-    // 🛡️ V222z-fix13d-v2: 单结构锚点截断——`✦ [🔮` 是月报命运主题的固定结构头(6语言通用)
+    // 🛡️ V222z-fix13d-v2-FINAL: 单结构锚点截断——`✦ [🔮` 是月报命运主题的固定结构头(6语言通用)
     // 不依赖任何语言本地化文字, 彻底摆脱多语言硬编码与文案变动风险.
     // 单锚设计: 2个 `✦ [🔮` = 第2份报告已生成, 截断到第2个锚点之前.
     // (trap 锚点不参与门禁: 同一份报告内 trap 可多次出现, trap≥2 不是双份的充分条件)
@@ -5588,7 +5588,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const _matches = [...cleanedText.matchAll(_THEME_RE)];
       if (_matches.length >= 2) {
         const _cutPos = _matches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
-        console.warn('CHECKPOINT: V233-RUN-NOW-ACTIVE'); console.warn(`[V222z-fix13d-v2] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
+        console.warn('CHECKPOINT: V233-RUN-NOW-ACTIVE'); console.warn(`[V222z-fix13d-v2-FINAL] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
         cleanedText = cleanedText.substring(0, _cutPos);
       }
     }
