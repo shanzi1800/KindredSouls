@@ -2593,7 +2593,7 @@ app.get('/api/health', async (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
-    version: 'v1.0.2-e3b428c-fix13e-running',
+    version: 'v1.0.2-V233-RUN-NOW',
     gitSha,
     gitShaFull,
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
