@@ -5452,23 +5452,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ V222z-fix13b: sanitized 发前截断多份——双结构锚点(命运主题+消费陷阱), 每份报告各出现一次,
     // 不再依赖脆弱的 [⚠️ 标记(模型掉字/换Emoji/被清洗即失效)。多语言感知: 按当前 lang 取对应标题;
     // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
-    // 🛡️ V222z-fix13d: 结构化通用截断——锚点从"具体文字"升级为"模板骨架符号"
-    // `✦ [🔮` 是月报命运主题的固定结构头(6语言通用), `✦ [⚠️` 是消费陷阱固定头(同上)
+    // 🛡️ V222z-fix13d-v2: 单结构锚点截断——`✦ [🔮` 是月报命运主题的固定结构头(6语言通用)
     // 不依赖任何语言本地化文字, 彻底摆脱多语言硬编码与文案变动风险.
+    // 单锚设计: 2个 `✦ [🔮` = 第2份报告已生成, 截断到第2个锚点之前.
+    // (trap 锚点不参与门禁: 同一份报告内 trap 可多次出现, trap≥2 不是双份的充分条件)
     if (cleanedText && cleanedText.length > 100) {
-      // 预建结构锚点正则(精确到 emoji 组合, 防模型替换)
-      const _SIGNS = {
-        theme: /\✦\s*\[\🔮/g,      // ✦ [🔮 命运主题头
-        trap:  /\✦\s*\[\⚠️/g,      // ✦ [⚠️ 消费陷阱头
-      };
-      const _themeMatches = [...cleanedText.matchAll(_SIGNS.theme)];
-      const _trapMatches  = [...cleanedText.matchAll(_SIGNS.trap)];
-      const _themeCnt = _themeMatches.length;
-      const _trapCnt  = _trapMatches.length;
-      // 双锚点门禁: 主题头 ≥2 且陷阱头 ≥2 → 第 2 份报告已生成 → 截断
-      if (_themeCnt >= 2 && _trapCnt >= 2) {
-        const _cutPos = _themeMatches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
-        console.warn(`[V222z-fix13d] 多份截断(主题×${_themeCnt}/陷阱×${_trapCnt}): ${cleanedText.length}→${_cutPos} chars`);
+      const _THEME_RE = /\✦\s*\[\🔮/g;
+      const _matches = [...cleanedText.matchAll(_THEME_RE)];
+      if (_matches.length >= 2) {
+        const _cutPos = _matches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
+        console.warn(`[V222z-fix13d-v2] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
         cleanedText = cleanedText.substring(0, _cutPos);
       }
     }
