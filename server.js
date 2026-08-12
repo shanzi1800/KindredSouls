@@ -163,7 +163,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.3, repetition_penalty: 1.05, stream: true }),
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.3, repetition_penalty: 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -5150,12 +5150,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           vi: 'Xuất nội dung trực tiếp. Ký tự đầu tiên phải là ✦. Tuyệt đối không viết"Tôi hiểu","Tôi sẽ viết"hay bất kỳ lời tự nhận nào trước nội dung chính.'
         }[lang] || '直接输出内容，不要写自我说明。';
         const _wf = [
-          `${_noCot}先写开篇：标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式（🔮 主题语义），用1-2句话概述本月整体财运基调（结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。`,
-          `${_noCot}只写第1周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第1周主题=财富充能/Wealth Recharge 语义，emoji 🟢），写完第1周立即停止，不要写其他周、不要重复。`,
-          `${_noCot}只写第2周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第2周主题=高危熔断/High-Risk Circuit Breaker 语义，emoji 🔴），写完第2周立即停止，不要写其他周、不要重复。`,
-          `${_noCot}只写第3周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第3周主题=顺流蓄力/Flow Accumulation 语义，emoji 🔵），写完第3周立即停止，不要写其他周、不要重复。`,
-          `${_noCot}只写第4周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第4周主题=财富爆发/Wealth Explosion 语义，emoji 🟢），写完第4周立即停止，不要写其他周、不要重复。`,
-          `${_noCot}只写消费陷阱：标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板（⚠️ + 动态年份月份，语义=消费陷阱/Spending Traps），给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线，写完立即停止，不要写其他部分、不要重复。`
+          `${_noCot}先写开篇：标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式（🔮 主题语义），用1-2句话概述本月整体财运基调（结合星象与本命盘），写完开篇立即停止，不要写其他部分、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第1周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第1周主题=财富充能/Wealth Recharge 语义，emoji 🟢），写完第1周立即停止，不要写其他周、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第2周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第2周主题=高危熔断/High-Risk Circuit Breaker 语义，emoji 🔴），写完第2周立即停止，不要写其他周、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第3周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第3周主题=顺流蓄力/Flow Accumulation 语义，emoji 🔵），写完第3周立即停止，不要写其他周、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第4周：标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板（第4周主题=财富爆发/Wealth Explosion 语义，emoji 🟢），写完第4周立即停止，不要写其他周、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写消费陷阱：标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板（⚠️ + 动态年份月份，语义=消费陷阱/Spending Traps），给出本月最需警惕的财务陷阱与熔断规则，含具体金额触发线，写完立即停止，不要写其他部分、不要重复。本部分写完后，必须在最末尾单独输出一行：===END_OF_REPORT=== 并立即停止生成。`
         ];
         for (let w = 0; w < 6; w++) {
           const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
@@ -5452,34 +5452,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ V222z-fix13b: sanitized 发前截断多份——双结构锚点(命运主题+消费陷阱), 每份报告各出现一次,
     // 不再依赖脆弱的 [⚠️ 标记(模型掉字/换Emoji/被清洗即失效)。多语言感知: 按当前 lang 取对应标题;
     // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
-    // 双锚点门禁可杜绝"同份内偶发复提主题"被误截(单份只有 1 个陷阱头, 永不满足 ≥2)。
+    // 🛡️ V222z-fix13d: 结构化通用截断——锚点从"具体文字"升级为"模板骨架符号"
+    // `✦ [🔮` 是月报命运主题的固定结构头(6语言通用), `✦ [⚠️` 是消费陷阱固定头(同上)
+    // 不依赖任何语言本地化文字, 彻底摆脱多语言硬编码与文案变动风险.
     if (cleanedText && cleanedText.length > 100) {
-      // 🛡️ V222z-fix13b-enhotfix: en trap 实际输出 `Spending Trap` / `Spending Traps` 两种变体,
-      // 改用预建正则对象(非字符串)避免转义破坏; 其余语言保持精确字符串匹配.
-      const _THEME = {
-        zh: '本月命运主题', en: 'Monthly Destiny Theme', es: 'Tema de Destino Mensual',
-        fr: 'Thème de Destin du Mois', th: 'ธีมโชคชะตาประจำเดือน', vi: 'Chủ Đề Vận Mệnh Tháng',
+      // 预建结构锚点正则(精确到 emoji 组合, 防模型替换)
+      const _SIGNS = {
+        theme: /\✦\s*\[\🔮/g,      // ✦ [🔮 命运主题头
+        trap:  /\✦\s*\[\⚠️/g,      // ✦ [⚠️ 消费陷阱头
       };
-      const _TRAP_RE = {
-        zh: /消费陷阱/g,
-        en: /Spending\s*Trap[s]?/gi,       // 匹配 Trap / Traps / 全角冒号变体
-        es: /Trampas?\s+de\s+Gasto/gi,
-        fr: /Pièges?\s+Financiers?/gi,
-        th: /กับดักการใช้จ่าย/g,
-        vi: /Bẫy\s+Chi\s+Tiêu/g,
-      };
-      const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const _theme = _THEME[lang] || _THEME.zh;
-      const _trapRE = _TRAP_RE[lang] || _TRAP_RE.zh;
-      const _themeCnt = (cleanedText.match(new RegExp(_esc(_theme), 'g')) || []).length;
-      const _trapCnt = (cleanedText.match(_trapRE) || []).length;
+      const _themeMatches = [...cleanedText.matchAll(_SIGNS.theme)];
+      const _trapMatches  = [...cleanedText.matchAll(_SIGNS.trap)];
+      const _themeCnt = _themeMatches.length;
+      const _trapCnt  = _trapMatches.length;
+      // 双锚点门禁: 主题头 ≥2 且陷阱头 ≥2 → 第 2 份报告已生成 → 截断
       if (_themeCnt >= 2 && _trapCnt >= 2) {
-        const _firstTheme = cleanedText.indexOf(_theme);
-        const _cutPos = cleanedText.indexOf(_theme, _firstTheme + 1); // 第 2 次主题头 = 第 2 份报告起点
-        if (_cutPos > 0) {
-          console.warn(`[V222z-fix13b] sanitized 多份截断(${lang} 主题×${_themeCnt}/陷阱×${_trapCnt}): ${cleanedText.length}→${_cutPos} chars`);
-          cleanedText = cleanedText.substring(0, _cutPos);
-        }
+        const _cutPos = _themeMatches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
+        console.warn(`[V222z-fix13d] 多份截断(主题×${_themeCnt}/陷阱×${_trapCnt}): ${cleanedText.length}→${_cutPos} chars`);
+        cleanedText = cleanedText.substring(0, _cutPos);
       }
     }
 
