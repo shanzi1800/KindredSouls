@@ -2008,6 +2008,38 @@ function guardWeekDateDrift(text) {
 }
 
 
+// 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
+// 根因: DeepSeek 模型对越南语词边界处理有编码缺陷（空格被模型吞掉）
+//       trình tài → trìnhài / của cải → củaải / những nỗi → nhữngỗi 等
+// 修复: NFD 归一化 + 空格锚点 split-join，精确替换已知损坏模式
+function fixVietnameseCorruption(text) {
+  if (!text) return text;
+  // 只有含越南语声调字符才处理（其他语言不受影响）
+  if (!/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷđ]/i.test(text)) return text;
+  let s = text.normalize('NFD');
+  s = ' ' + s + ' '; // 空格锚点，消除行首/行末匹配问题
+  const fixes = [
+    'bạnè bè', 'bạn bè bè',
+    'trìnhài', 'trình tài',
+    'củaải', 'của cải',
+    'nhữngỗi', 'những nỗi',
+    'thìầm', 'thì thầm',
+    'bạnè', 'bạn bè',
+    'từư duy', 'từ tư duy',
+    'tíchinh', 'tích tinh',
+    'cón nợ', 'món nợ',
+    'làời', 'là lời',
+    'trìnhâm', 'trình tâm',
+  ];
+  for (let i = 0; i < fixes.length; i += 2) {
+    const bad = fixes[i].normalize('NFD');
+    const good = fixes[i + 1].normalize('NFD');
+    const parts = s.split(bad);
+    if (parts.length > 1) s = parts.join(good);
+  }
+  return s.normalize('NFC').replace(/ {2,}/g, ' ').trim();
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -4974,7 +5006,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
         streamText = cleanConsumerTrapAndBrackets(streamText);
-        
+
+        // 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
+        if (lang === 'vi') streamText = fixVietnameseCorruption(streamText);
+
         // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
         const CHUNK_SIZE = 2000;
