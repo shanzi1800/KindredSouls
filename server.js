@@ -253,7 +253,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               _monthlyCutDone = true; // 阻止重复触发
               // 发截断后的完整内容,立即关闭流
               try {
-                res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'fix13e_stream_cut' } })}\n\n`, 'utf-8'));
+                res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'V233FIX13E_STREAM_CUT' } })}\n\n`, 'utf-8'));
               } catch(e) {}
               res.write('data: [DONE]\n\n');
               if (typeof res.flush === 'function') try { res.flush(); } catch(e) {}
