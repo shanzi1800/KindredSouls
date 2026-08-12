@@ -1,7 +1,7 @@
 {
-  // V223e-FORCE-REBUILD-1723431247
   "name": "kindredsouls",
-  "version": "1.0.0",
+  "version": "1.0.2",
+  "buildMeta": "v223e-force-rebuild",
   "type": "module",
   "main": "index.ts",
   "dependencies": {
