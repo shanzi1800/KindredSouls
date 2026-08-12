@@ -2,7 +2,7 @@
 FROM node:22-slim
 
 # ── V116: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=20260812-V223e-GH-1723431800
+ARG CACHE_BUST=20260812-V223f-GH-20260812131846
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
