@@ -655,9 +655,10 @@ async function safeFetch(url, options = {}) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// V237: Railway 代理按 railway.toml [deploy] port=3000 转发,但容器被注入动态 PORT(≠3000)
-// 导致代理打 3000、server 绑动态口 → 公共 URL 超时。死绑 3000 强制对齐代理端口。
-const PORT = 3000;
+// V238: Railway Edge Proxy 转发到注入的 process.env.PORT(实测 8080)。
+// server 必须监听同一 PORT,代理才能命中。HOST 显式 0.0.0.0 供容器外访问。
+const PORT = parseInt(process.env.PORT || '3000', 10);
+const HOST = '0.0.0.0';
 const app = express();
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -6207,7 +6208,7 @@ app.get('/api/debug-dump-cache', async (req, res) => {
 });
 
 // ── Start ──
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, HOST, () => {
   console.log(`[KindredSouls]  Railway server running on port ${PORT}`);
   console.log(`  - API: http://0.0.0.0:${PORT}/api/*`);
   console.log(`  - Web: http://0.0.0.0:${PORT}/`);

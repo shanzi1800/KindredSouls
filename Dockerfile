@@ -28,7 +28,7 @@ RUN printf '%s\n' \
     'echo "[V69] Python PID=${V69_PID}, waiting 8s..."' \
     'sleep 8' \
     'if curl -s --max-time 5 "http://127.0.0.1:${V69_PORT}/api/v1/health"; then echo " [V69] Health OK"; else echo " [V69] Health FAILED"; fi' \
-    'echo "[Node] Starting on port 3000"' \
+    'echo "[Node] Starting on port ${PORT:-3000}"' \
     'exec node server.js' > /start.sh && chmod +x /start.sh
 
 # ── 凭据写入容器文件 ──
