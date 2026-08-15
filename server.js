@@ -655,8 +655,9 @@ async function safeFetch(url, options = {}) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// V95.3: Railway 新版动态端口!读取 Railway 注入的 PORT 环境变量,不硬编码
-const PORT = parseInt(process.env.PORT || '3000', 10);
+// V237: Railway 代理按 railway.toml [deploy] port=3000 转发,但容器被注入动态 PORT(≠3000)
+// 导致代理打 3000、server 绑动态口 → 公共 URL 超时。死绑 3000 强制对齐代理端口。
+const PORT = 3000;
 const app = express();
 
 // ═══════════════════════════════════════════════════════════════════════
