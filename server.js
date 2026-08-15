@@ -18,6 +18,7 @@ import https from 'https';
 import { Buffer } from 'buffer';
 import { getSystemPromptByLocale } from './src/prompts/loader.js';
 import { exec } from 'child_process';
+import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 
 // ── safeFetch: 替代全局 fetch,跳过 Node undici ByteString 缺陷 ──
 // undici(Node 内置 fetch)在 body/header 含非 ASCII 字符时抛 TypeError:
@@ -114,7 +115,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     for (const [_t, _v] of Object.entries(_safeTokMap)) {
       if (_t && _v) s = s.split(_t).join(_v);
     }
-    return s.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+    s = s.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+    // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
+    s = s.replace(/\uFFFD/g, '');
+    return s;
   };
   const _dupGuard = (txt) => {
     _acc += (txt || '');
@@ -170,7 +174,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   } catch(e) { console.error('[callDeepSeek] fetch threw:', e.name, e.message); throw e; }
   if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP!ok:', resp.status, body.slice(0,200)); throw new Error('DeepSeek HTTP '+resp.status); }
   const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
+  // 🛠️ P0-fix: 用 StringDecoder 替代 TextDecoder，根治 UTF-8 多字节字符被 Chunk 边界切断导致的掉辅音/乱码方块
+  // TextDecoder 在遇到不完整的多字节序列时会输出 \uFFFD，StringDecoder 会暂存未完整的字节等下一个 chunk 凑齐后再解码
+  const decoder = new StringDecoder('utf8');
   let buf = '', fullText = '';
   const FLUSH_SIZE = 50;
   let pending = '';
@@ -5114,6 +5120,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         // 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
         if (lang === 'vi') streamText = fixVietnameseCorruption(streamText);
+
+        // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
+        streamText = streamText.replace(/\uFFFD/g, '');
 
         // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
         // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
