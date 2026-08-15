@@ -191,8 +191,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
+      if (done) { const _final = decoder.end(); if (_final) buf += _final; break; }
+      buf += decoder.write(value);
       const lines2 = buf.split('\n');
       buf = lines2.pop() || '';
       for (const line of lines2) {
