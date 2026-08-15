@@ -1,6 +1,69 @@
 // V120-fix19: rebuild-20260719170618
 // V223d-GHA-FORCE-REBUILD-1785663888
 
+
+// ═══════════════════════════════════════════════════════════════
+// 🌟 V238：三刀流后处理安全阀（军师封仓补丁）
+// 刀一：多语言防重截断（Deduplication Guard）
+// 刀二：泰语 Tokenizer 词素字典校正（Consonant Repair）
+// 刀三：月亮天蝎座幻觉强制抹平（Moon Scorpio Hard Override）
+// ═══════════════════════════════════════════════════════════════
+
+// 刀二：泰语高频掉辅音校正字典（持续扩充）
+const THAI_CORRECTION_MAP = {
+  'จริงัง': 'จริงจัง',
+  'ปรับุง': 'ปรับปรุง',
+  'ภาวะโล': 'ภาวะโลภ',
+  'น่าดึงดูไร': 'น่าดึงดูดใจ',
+  'ราบื่น': 'ราบรื่น',
+  'ฝงไว้': 'ฝังไว้',
+  'แก้ค้น': 'แก้ไข',
+};
+
+function fixMoonScorpioHallucination(text) {
+  if (!text) return text;
+  const lines = text.split('\n');
+  const processedLines = lines.map((line) => {
+    const hasMoon = /(จันทร์|ดวงจันทร์|พระจันทร์|Moon)/i.test(line);
+    const hasScorpio = /(ราศีพิจิก|Scorpio)/i.test(line);
+    if (hasMoon && hasScorpio) {
+      const isLegal = /(\b9\b|\b10\b|\b11\b|๙|๑๐|๑๑)/.test(line) && /(ส\.ค\.|สิงหาคม|August|Aug)/i.test(line);
+      if (!isLegal) {
+        return line
+          .replace(/ดวงจันทร์(เคลื่อน|ย้าย)?เข้าสู่ราศีพิจิก/g, 'ดวงจันทร์เคลื่อนผ่านกลุ่มดาวตามปรกติ')
+          .replace(/พระจันทร์เข้าสู่ราศีพิจิก[^。\n]*/g, 'พระจันทร์เคลื่อนผ่านกลุ่มดาวตามปรกติ')
+          .replace(/Moon (in|enters) Scorpio[^。\n]*/gi, 'Moon continues its standard transit');
+      }
+    }
+    return line;
+  });
+  return processedLines.join('\n');
+}
+
+function sanitizeReportFinal(text, options = {}) {
+  if (!text || typeof text !== 'string') return text;
+  const { lang = 'zh', reportType = 'monthly' } = options;
+  let result = text;
+  // 刀一：多语言防重截断
+  const HEADER_REGEX = /(本月命运主题|ธีมโชคชะตาประจำเดือน|Monthly Destiny Theme)/gi;
+  const hm = [...result.matchAll(HEADER_REGEX)];
+  if (hm.length > 1) {
+    result = result.substring(0, hm[1].index).trim();
+    console.warn(`[V238] 防重截断: 主题头×${hm.length}, 截断至第${hm[1].index}字`);
+  }
+  // 刀二：泰语掉辅音字典校正
+  if (lang === 'th' || /[\u0E00-\u0E7F]/.test(result)) {
+    for (const [wrong, correct] of Object.entries(THAI_CORRECTION_MAP)) {
+      if (wrong !== correct) result = result.split(wrong).join(correct);
+    }
+  }
+  // 刀三：月亮天蝎座幻觉清洗
+  if (reportType === 'monthly') {
+    result = fixMoonScorpioHallucination(result);
+  }
+  return result;
+}
+
 const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Zero Tolerance）：\n\n#### A. 禁止 CoT 泄漏\n严禁将任何思考过程、自我纠错、规则讨论、数据验证输出到正文中。内部推理必须在模型内部完成，不得出现在最终文本里。\n禁止输出： (note:...) (注意：...) (Je me corrige...) (correction) (根据数据...) (数据说...) 等任何括号包裹的推理内容。\n\n#### B. 方括号完整性（P0）\n每张卡片的 [ 和 ] 必须成对匹配，且方括号内部不得换行、不得断句、不得嵌套。\n错误示例（全部禁止）：\n  • [สัปดาห์ที่ 2: ก] .ค. 8–14]  （在 [ 内部断开）\n  • [สัปดาห์ที่ 4: ก.ค. 23–31  （缺失结尾 ]）\n  • [เงาการเงิน] กับดัก... （在 [ 内部有空格和 ]）\n正确格式：\n  • [🟢 สัปดาห์ที่ 2: ก.ค. 8–14 (วงจรความเสี่ยงสูง)]  （一气呵成，无内部断句）\n  • [⚠️ เงาการเงิน：กับดักการใช้จ่าย ก.ค. 2026]  （整行是单个方括号块）\n\n#### C. 周卡片格式模板\n每张周卡片必须严格使用：\n  ✦\n[emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]\n内容\n英文:  ✦\n[emoji Week N: Month D–D (theme)]\ncontent\n法语:  ✦\n[emoji Semaine N: Mois D–D (thème)]\ncontenu\n西班牙语:  ✦\n[emoji Semana N: Mes D–D (tema)]\ncontenido\n中文:  ✦\n[emoji 第N周：月份D–D（主题）]\n内容\n越南语:  ✦\n[emoji Tuần N: Tháng D–D (chủ đề)]\nnội dung\n\n#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–22 日\n  • Week 4 = 当月 23–31 日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（23–31日），严禁写在 Week 3（15–22日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n`;
 
 //
@@ -533,6 +596,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     }
     if (fixed.length > 0) {
       try {
+        // 🌟 V238 刀B：sanitized 发送前过三刀流
+        fixed = sanitizeReportFinal(fixed, { lang, reportType });
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
         if (typeof res.flush === 'function') res.flush();
@@ -5136,6 +5201,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (typeof res.flush === 'function') res.flush();
         }
         // V113-fix2: 发送 sanitized 事件,确保前端与 MISS 路径一致
+        // V238 刀C：HIT路径三刀流
+        streamText = sanitizeReportFinal(streamText, { lang, reportType });
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: streamText })}\n\n`, 'utf-8'));
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
