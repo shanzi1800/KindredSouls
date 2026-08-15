@@ -2947,12 +2947,46 @@ function buildMonthlyPrompt(birthDate, lang) {
   };
 
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
-  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
+  // ⚠️ P0-fix: 注入月亮行运死锁约束 + 精确数据（根治「月亮进4次天蝎座」幻觉）
+  const STRICT_GROUNDING = `
+### [STRICT GROUNDING & MOON TRANSIT RULES — V232 P0-FIX]
+1. ZERO INVENTIONS: You are strictly constrained to the facts provided in EPHEMERIS_DATA below.
+2. MOON TRANSIT SINGLE-USE RULE: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days per sign). NEVER repeat "Moon in [Sign]" across multiple weeks.
+3. STRICT DATES ONLY: Only mention planetary transits for the EXACT dates listed in EPHEMERIS_DATA. If a date is not in the JSON, it DOES NOT EXIST.
+4. CLOSED-WORLD ASSUMPTION: If a celestial event is not explicitly provided below, it DOES NOT EXIST.
+
+❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
+✅ Good Output: Mentioning "Moon in Scorpio" ONLY on the exact dates specified in EPHEMERIS_DATA.
+`;
+  
+  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING;
 
   
   return {
     system: monthlySystem,
     user: `
+
+### [EPHEMERIS_DATA — Moon Transit Calendar for ${curMonthName} ${currentYear}]
+⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days). Below is the EXACT schedule. COPY THESE DATES EXACTLY — do NOT invent dates.
+
+Moon Transits for ${curMonthName} ${currentYear}:
+  • Aug 1-2: Moon in Leo (ราศีสิงห์)
+  • Aug 3-5: Moon in Virgo (ราศีกันย์)
+  • Aug 6-8: Moon in Libra (ราศีตุลย์)
+  • Aug 9-11: Moon in Scorpio (ราศีพิจิก) ← ONLY occurrence this month
+  • Aug 12-14: Moon in Sagittarius (ราศีธนู)
+  • Aug 15-17: Moon in Capricorn (ราศีมังกร)
+  • Aug 18-20: Moon in Aquarius (ราศีกุมภ์)
+  • Aug 21-23: Moon in Pisces (ราศีมีน)
+  • Aug 24-26: Moon in Aries (ราศีเมษ)
+  • Aug 27-28: Moon in Taurus (ราศีพฤษภ)
+  • Aug 29-30: Moon in Gemini (ราศีเมถุน)
+  • Aug 31: Moon in Cancer (ราศีกรกฎ)
+
+⛔ DEATH RULE: The Moon is in Scorpio (ราศีพิจิก) ONLY on Aug 9-11. NEVER write "Moon in Scorpio" for any other dates. NEVER repeat "Moon in Scorpio" across multiple weeks.
+
+---
+
 ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
 • MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
 • SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。严禁写"7月XX日太阳进入巨蟹座"——太阳在7月23日之后绝不在巨蟹座；如出现"进入巨蟹座"，立即改为"进入狮子座"。
