@@ -1,0 +1,294 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useCitySearch } from '../hooks/useCitySearch';
+import type { CityRecord } from '../hooks/useCitySearch';
+
+interface CitySearchInputProps {
+  value: string;           // 当前选中的城市 key(英文名)
+  tz: string;
+  lat: number;
+  lon: number;
+  onSelect: (city: CityRecord) => void;
+  lang?: string;
+  placeholder?: string;
+}
+
+// 6 语种完整占位符
+const PLACEHOLDER: Record<string, string> = {
+  zh: '搜索城市...',
+  en: 'Search city...',
+  vi: 'Tìm thành phố...',
+  es: 'Buscar ciudad...',
+  fr: 'Rechercher une ville...',
+  th: 'ค้นหาเมือง...',
+};
+
+// 6 语种标签
+const LANG_LABEL: Record<string, string> = {
+  zh: '城市',
+  en: 'City',
+  vi: 'Thành phố',
+  es: 'Ciudad',
+  fr: 'Ville',
+  th: 'เมือง',
+};
+
+// 取城市在当前语种的显示名（带回退）
+function getDisplayName(city: CityRecord, lang: string): string {
+  if (city.names && city.names[lang]) return city.names[lang];
+  if (city.names && city.names.en) return city.names.en;
+  return city.key;
+}
+
+// V118b: 计算 IANA 时区的 UTC 偏移（如 Asia/Shanghai -> UTC+8、Europe/Rome -> UTC+1）
+function getUtcOffset(tz: string): string {
+  try {
+    const now = new Date();
+    // 用 timeZone 选项格式化，提取形如 GMT+8 / GMT+05:30 的偏移
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    if (tzPart) {
+      // tzPart.value 形如 "GMT+8" 或 "GMT+05:30"
+      let v = tzPart.value.replace(/^GMT/, '');
+      // 标准化：+8 -> +8，+05:30 -> +5:30
+      if (v.startsWith('+')) v = '+' + v.slice(1).replace(/^0+(?=\d)/, '');
+      if (v.startsWith('-')) v = '-' + v.slice(1).replace(/^0+(?=\d)/, '');
+      return `UTC${v}`;
+    }
+  } catch {
+    // 无效时区兜底
+  }
+  return '';
+}
+
+export const CitySearchInput: React.FC<CitySearchInputProps> = ({
+  value, tz, lat, lon, onSelect, lang = 'zh', placeholder,
+}) => {
+  const { loading, search, cities } = useCitySearch();
+  // 直接用 value 初始化 query,确保 HUD 条件 value&& 在 mount 时就同步(不依赖 useEffect 时序)
+  const [query, setQuery] = useState(value || '');
+  const [results, setResults] = useState<CityRecord[]>([]);
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const ph = placeholder || PLACEHOLDER[lang] || PLACEHOLDER.en;
+
+  // 🛠️ V118a: 用 ref 跟踪最新 value,避免 onBlur setTimeout stale closure
+  const valueRef = useRef(value);
+  const [hasSelected, setHasSelected] = useState(!!value);
+
+  // value prop 变化时同步:保持 query 等于当前选中城市 displayName
+  useEffect(() => {
+    valueRef.current = value;
+    if (value) {
+      setHasSelected(true);
+      const selected = cities.find(c => c.key === value);
+      if (selected) {
+        const displayName = getDisplayName(selected, lang);
+        if (query !== displayName) {
+          setQuery(displayName);
+        }
+      }
+    } else {
+      setHasSelected(false);
+      setQuery('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, lang]);
+
+  // 点击外部关闭
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setQuery(q);
+    setHighlighted(0);
+    if (q.trim().length >= 1) {
+      const r = search(q, 8);
+      setResults(r);
+      setOpen(true);
+    } else {
+      setResults([]);
+      setOpen(false);
+    }
+  };
+
+  const handleSelect = (city: CityRecord) => {
+    const displayName = getDisplayName(city, lang);
+    setQuery(displayName);
+    setOpen(false);
+    setResults([]);
+    setHasSelected(true);
+    onSelect(city);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || results.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, results.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter') { e.preventDefault(); handleSelect(results[highlighted]); }
+    if (e.key === 'Escape') { setOpen(false); }
+  };
+
+  // V118a: 用 ref 读最新 value,避免 stale closure 清除 query
+  const handleBlur = () => {
+    setTimeout(() => {
+      const v = valueRef.current;
+      if (v) {
+        const selected = cities.find(c => c.key === v);
+        if (selected) {
+          const displayName = getDisplayName(selected, lang);
+          setQuery(prev => prev !== displayName ? displayName : prev);
+        }
+      } else {
+        setQuery(prev => prev.trim().length > 0 ? '' : prev);
+      }
+    }, 150);
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {/* 🛠️ V117c: 单个带边框容器,搜索输入 + 选中后坐标/时区 都在内部 */}
+      <div style={{
+        position: 'relative',
+        background: 'rgba(255,255,255,0.08)',
+        border: open ? '1.5px solid rgba(212,175,55,0.6)' : '1.5px solid rgba(212,175,55,0.3)',
+        borderRadius: '10px',
+        padding: value ? '4px 14px 8px' : '9px 14px',  // V117f: 选中后顶部收紧,底部不变
+        transition: 'border-color 0.15s',
+        boxSizing: 'border-box',
+        height: '49px',  // 固定高度与 TimeInput 一致
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+      }}>
+        {/* 搜索输入框 - 透明无边框,镶在容器内 */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onFocus={() => { if (query.trim().length >= 1 && results.length > 0) setOpen(true); }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          placeholder={ph}
+          autoComplete="off"
+          style={{
+            width: '100%',
+            border: 'none',
+            background: 'transparent',
+            color: '#D4AF37',
+            fontSize: value ? '15px' : '16px',  // V117f: 选中后稍小,给坐标行留位置
+            textAlign: 'center',
+            outline: 'none',
+            padding: 0,
+            margin: 0,
+            boxSizing: 'border-box',
+            lineHeight: value ? '20px' : '28px',  // V117f: 选中后压缩
+          }}
+        />
+
+        {/* 选中后显示的坐标+时区 - 放在输入框下方的同一容器内(恢复 IANA 时区) */}
+        {(value || hasSelected) && (
+          <div style={{
+            fontSize: '10px',  // V117f: 从 11px 缩到 10px
+            fontFamily: '"Roboto Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
+            color: 'rgba(255,255,255,0.45)',
+            marginTop: '1px',  // V117f: 从 3px 缩到 1px(约 0.5mm 缩 2px)
+            lineHeight: '12px',  // V117f: 从 14px 缩到 12px
+            letterSpacing: '0.3px',
+            textAlign: 'center',
+            animation: 'hudFadeIn 0.35s ease-out',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            📍 {Math.abs(lat).toFixed(1)}° {lat >= 0 ? 'N' : 'S'}, {Math.abs(lon).toFixed(1)}° {lon >= 0 ? 'E' : 'W'}
+            {'  |  '}
+            🌐 {(() => {
+              // V118c: 去掉城市名重复（输入框已显示），只留 IANA + UTC 偏移
+              // 中国全境法定 Asia/Shanghai (UTC+8) 是国际标准，非 bug
+              const selected = cities.find(c => c.key === value);
+              if (!selected) return value;
+              const tzStr = selected.tz || '';
+              if (!tzStr) return '';
+              const off = getUtcOffset(tzStr);
+              return off ? `${tzStr} (${off})` : tzStr;
+            })()}
+          </div>
+        )}
+      </div>
+
+      {/* 搜索结果下拉 */}
+      {open && results.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          background: '#0D0D1A',
+          border: '1px solid rgba(212,175,55,0.4)',
+          borderRadius: '8px',
+          marginTop: '2px',
+          maxHeight: '260px',
+          overflowY: 'auto',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+        }}>
+          {results.map((city, i) => {
+            const displayName = getDisplayName(city, lang);
+            // 显示其它 2 种语种作为副标题
+            const otherLangs = ['en', 'zh', 'vi', 'es', 'fr', 'th']
+              .filter(l => l !== lang)
+              .slice(0, 2);
+            const subs = otherLangs
+              .map(l => city.names?.[l])
+              .filter(Boolean)
+              .filter((v, idx, arr) => arr.indexOf(v) === idx);
+            return (
+              <div
+                key={city.key}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(city); }}
+                onClick={() => handleSelect(city)}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  background: i === highlighted ? 'rgba(212,175,55,0.15)' : 'transparent',
+                  borderBottom: i < results.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={() => setHighlighted(i)}
+              >
+                <div>
+                  <div style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 500 }}>
+                    {displayName}
+                  </div>
+                  {subs.length > 0 && (
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
+                      {subs.join(' · ')}
+                    </div>
+                  )}
+                </div>
+                {/* 右侧不显示技术信息(时区/坐标对用户选城市无用,去掉) */}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

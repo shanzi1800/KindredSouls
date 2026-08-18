@@ -1,0 +1,10 @@
+tree 2a2b4ddb39a4cb2efe2fe6e3d9980d68dae927fb
+parent 37b6185c8df625b85acc82291f4877b8f9decc15
+author KindredSouls <kindredsouls@example.com> 1782475802 +0800
+committer KindredSouls <kindredsouls@example.com> 1782475802 +0800
+
+fix: 恢复 systemPrompt/userPrompt 定义，修复登录后500错误
+
+- 在 handler 开头补充 const systemPrompt = SYSTEM_PROMPTS[...]
+- 在 handler 开头补充 const userPrompt = buildPrompt(...)
+- 这两行在上次编辑中被误删导致登录后调用AI时报ReferenceError

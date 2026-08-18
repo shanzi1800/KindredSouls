@@ -1,0 +1,22 @@
+{
+  "name_a": "Chloé",
+  "name_b": "Antoine",
+  "date_a": "1990-03-15",
+  "date_b": "1985-10-26",
+  "overall": 82,
+  "engines": {
+    "bazi": 77,
+    "zodiac": 81,
+    "iching": 92
+  },
+  "dimensions": {
+    "love": 82,
+    "communication": 81,
+    "chemistry": 81,
+    "stability": 82
+  },
+  "insight": "Quel beau couple complémentaire vous formez ! Votre score global de 82/100 témoigne d'une relation solide et harmonieuse. La communication et la chimie, toutes deux à 81, indiquent que vous savez créer un espace d'échange sincère tout en conservant cette étincelle précieuse. Avec une stabilité à 82, votre lien repose sur des bases rassurantes, propices à une évolution sereine. Pour renforcer encore cette belle dynamique, je vous encourage à cultiver des moments de qualité, sans écrans ni distractions, où vous pourrez partager vos rêves et vos petits bonheurs du quotidien.",
+  "audio_path": "/Users/apple/Desktop/KindredSouls/output/voice/insight_20260527_171648.mp3",
+  "voice": "french_chic",
+  "generated_at": "2026-05-27T17:16:52.481610"
+}

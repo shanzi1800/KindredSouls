@@ -1,0 +1,33 @@
+name: AstroMatrix Audit CI
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  astro-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ⚠️ 测试为 Node.js 原生零依赖单测（node:test），无需 npm install 前端依赖
+      # 仅需 Python + swisseph 供 astro_matrix.py 计算（项目无 requirements.txt，直接 pip 装）
+      - name: Install SwissEph (测试依赖的 Python 算力层)
+        run: pip install swisseph
+
+      - name: Run AstroMatrix Audit Unit Test
+        run: npm run test:astro

@@ -1,0 +1,188 @@
+import { useRef, useEffect, useState } from 'react';
+
+/**
+ * CelestialBackground — 纯 Canvas 星尘动画 + 可选视频背景
+ * 
+ * - 默认：只显示 Canvas 粒子动画（秒开，无视频加载）
+ * - 用户点击「开启背景视频」后：加载并播放视频
+ * - 避免大视频文件阻塞首屏渲染
+ */
+export default function CelestialBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+   const [videoEnabled, setVideoEnabled] = useState(false); // ⭐默认不加载视频 
+   const [videoReady, setVideoReady] = useState(false);
+  
+   // ⭐仅当 videoEnabled=true时才渲染<video>
+   useEffect(() => {
+     if (!videoEnabled || !videoRef.current) return; 
+    videoRef.current.play().catch(() => {});
+   }, [videoEnabled]);
+
+ useEffect(() => {
+     const canvas = canvasRef.current!;
+     const ctx = canvas.getContext('2d')!;
+    
+    let W =0, H=0; 
+
+
+    interface Particle {
+       x: number; y: number;
+
+      vx: number; vy: number;
+
+      size: number;
+
+       alpha: number;
+
+       alphaSpeed: number;
+      color: string;
+      type: 'star' | 'dust' | 'sparkle';
+
+    }
+
+
+    interface ShootingStar {
+
+       x:number; y :number ;
+      vx :number ; vy :number ;
+
+       life :number ; maxLife :number ;
+
+       length :number ;
+}
+    
+     let particles: Particle[] = [];
+
+     let shootingStars :ShootingStar[]= [];
+
+
+function resize() {
+
+
+}
+
+
+
+function initParticles() {}
+
+
+
+
+function drawParticle(p :Particle) {}
+function updateShootingStars() {}
+function drawEnergyOrbs () {}
+function drawNebula () {}
+
+ 
+
+      
+return () => {
+          };
+    
+}, [vidioEnabled]); // ⭐依赖 videoEnabled 
+
+
+
+  
+
+  
+// ⭐首次点击「开启背景影片」时触发  
+
+ function handleEnableVideo() {
+    setVideoEnabbled(true);
+ }
+
+
+ 
+return (
+ <>
+        {/* Canvas粒子动画 —秒开 */ }
+        <canvas
+ 
+         ref={canvasRf}
+         style={{
+            position:'fixed',
+          inset :0,
+          width:'100vw',
+
+           height:'100vh',
+
+           zIndex:1 ,
+           pointerEvents:'none',
+        
+})
+ />
+        
+        {/*⭐影片—仅在 user click后才加载&播放 */ }
+        {videoEnablld && (
+         <vedio
+ 
+             ref={videRf}
+            src="/cosmic_bg.mp4"
+             autoPlay
+ 
+            loop
+ 
+             playsInline
+            
+            muted
+            
+     
+         
+            
+           
+           style={{
+              position:'fixed',
+               inset:,
+        
+                width:'100vw',
+
+                height:'100vh'
+
+,
+                 objectFit:'cover'
+ ,
+                 zIndex:,0 ,
+  
+                opacity:videRead ?1 ,,: ,0 ,
+
+                  transition:',opacity ,1.5s ease-in-out',
+
+}}
+ 
+ 
+              />
+       
+)} 
+
+         
+         {/*⭐开启影片按钮—仅在未开启时显示 */ }
+
+          {!vidoeEnable && (
+
+   
+            
+      
+                   <button
+ 
+              onClick={handlEenableVieo}
+
+               style={{
+                  position::'fixed',
+                    bottom:,'24px',
+                     right:,',24px','zIndex:',9999,
+                       padding:',','12px ','24px',','background ':','linear-gradient(135deg,#7b2ff7,#ff2d95)',','color':'#fff','borderRadius':''28px','','fontSize':'15px','','fontWeight':'600','','border':''none',','cursor':'pointer',','boxShadow':'0 ,8px,,32px,,rgba(123,47,247,0.4)',}} >
+        
+                  ✨ Background Video
+  
+   
+                      </button>
+
+
+))}
+
+     
+ </>
+ );}

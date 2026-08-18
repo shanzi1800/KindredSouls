@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+C+ 真翻译脚本（修正版 · 2026-07-18）
+设计：每座城市只补它的【本国语言名】（出生城市以本国为主），不是每城翻 6 语。
+修复原 cplus_full.py 两个 bug：
+  1. 语种区隔离：plan 只含该语种区的城市（zh=中/港澳台, th=泰, vi=越, es=西/拉美, fr=法/非洲）
+  2. 禁英文冒充：DeepSeek 返回 en 原名（无该语种字符）则不写入，留空
+  3. done 从 cities.json 已有真翻译初始化，避免重翻已完成的城
+断点续传 + 指数退避 + JSON Mode 防伪。
+"""
+import json, time, urllib.request, urllib.error, ssl, os, sys, io
+
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', 'sk-9307f02599b44612b6767996a7839ab5')
+CITIES_JSON = '/Users/apple/Desktop/KindredSouls源代码/web/public/data/cities.json'
+PLAN_JSON = '/tmp/cplus_plan.json'
+PROGRESS_DIR = '/tmp/cplus_progress'
+os.makedirs(PROGRESS_DIR, exist_ok=True)
+
+LANGS = {
+    'zh': {'name': '简体中文', 'target': 'Chinese (Simplified)', 'chars': '一-鿿'},
+    'es': {'name': '西班牙语', 'target': 'Spanish', 'chars': 'áéíóúüñÁÉÍÓÚÜÑ'},
+    'th': {'name': '泰语',     'target': 'Thai',    'chars': '฀-๿'},
+    'fr': {'name': '法语',     'target': 'French',  'chars': 'àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ'},
+    'vi': {'name': '越南语',   'target': 'Vietnamese', 'chars': 'ăâđêôơưĂÂĐÊÔƠƯ'},
+}
+
+def zone(c):
+    """按出生城市所属国家/语种区归类（GeoNames 时区近似）"""
+    tz = c.get('tz', '')
+    if tz in ('Asia/Shanghai','Asia/Hong_Kong','Asia/Taipei','Asia/Macau','Asia/Urumqi','Asia/Chongqing','Asia/Harbin'):
+        return 'zh'
+    if tz.startswith('Asia/Bangkok'):
+        return 'th'
+    if tz.startswith('Asia/Ho_Chi_Minh'):
+        return 'vi'
+    if tz.startswith('America/') or tz in ('Europe/Madrid','Africa/Malabo','Atlantic/Canary'):
+        return 'es'
+    if tz.startswith('Africa/') or tz in ('Europe/Paris','Pacific/Noumea','Indian/Reunion','America/Martinique','America/Guadeloupe'):
+        return 'fr'
+    return 'en'
+
+def load_cities():
+    with io.open(CITIES_JSON, encoding='utf-8') as f:
+        return json.load(f)
+
+def call_deepseek(prompt, max_retries=8):
+    sleep_t = 3
+    last = None
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(
+                'https://api.deepseek.com/v1/chat/completions',
+                data=json.dumps({
+                    'model': 'deepseek-chat',
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'temperature': 0.1,
+                    'response_format': {'type': 'json_object'},
+                    'max_tokens': 8000,
+                }).encode('utf-8'),
+                headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {DEEPSEEK_API_KEY}'}
+            )
+            with urllib.request.urlopen(req, timeout=120, context=ssl.create_default_context()) as resp:
+                return json.loads(json.loads(resp.read().decode('utf-8'))['choices'][0]['message']['content'])
+        except Exception as e:
+            last = e
+            if attempt == max_retries - 1:
+                raise
+            print(f'  ⚠️ {attempt+1}次失败({type(e).__name__}): {str(e)[:80]}')
+            time.sleep(sleep_t)
+            sleep_t = min(sleep_t * 2, 60)
+    raise last
+
+def has_local_chars(s, lang):
+    if not s:
+        return False
+    if lang == 'zh':
+        return any('\u4e00' <= c <= '\u9fff' for c in s)
+    if lang == 'th':
+        return any('\u0e00' <= c <= '\u0e7f' for c in s)
+    # vi/es/fr 用显式字符集（覆盖变音字母）
+    return any(c in LANGS[lang]['chars'] for c in s)
+
+def is_valid_local(v, lang, en):
+    """接受真翻译：含本国字符(重音)、或中文/泰文原生文字、或与英文原名不同(如 Londres≠London)。
+    拒绝：空串、或==英文原名(英文冒充)。
+    修复：西/法/越大量城市本地名为无重音拉丁名(Madrid/Lyon/Paris/Hanoi)，旧 has_local_chars
+    要求重音导致这些合法名被拒、覆盖率卡在~20%。"""
+    if not v:
+        return False
+    v = v.strip()
+    if has_local_chars(v, lang):
+        return True
+    if en and v != en.strip():
+        return True
+    return False
+
+def translate_language(lang, plan_keys, cities_data):
+    cfg = LANGS[lang]
+    progress_file = os.path.join(PROGRESS_DIR, f'progress_{lang}.json')
+
+    # done 从 progress 加载
+    done = {}
+    if os.path.exists(progress_file):
+        with open(progress_file) as f:
+            done = json.load(f).get('translations', {})
+        print(f"  📂 {lang} 已有进度: {len(done)} 城")
+
+    # 补充：从 cities.json 已有真翻译初始化 done（避免重翻）
+    for c in cities_data['fuse_index']:
+        nm = c.get('names', {}).get(lang, '')
+        en = c.get('names', {}).get('en', '')
+        if is_valid_local(nm, lang, en):
+            done.setdefault(c['key'], nm)
+
+    city_map = {c['key']: c for c in cities_data['fuse_index']}
+    todo = [k for k in plan_keys if k in city_map and k not in done]
+    print(f"  📝 {lang} 待翻译: {len(todo)} 城")
+
+    batch_size = 40
+    translated_count = 0
+
+    for i in range(0, len(todo), batch_size):
+        batch = todo[i:i+batch_size]
+        prompt = f"""Translate these {len(batch)} city names into {cfg['target']}.
+Rules:
+1. Use common colloquial names locals use daily on Google Maps.
+2. NEVER use archaic, ultra-formal, or extremely long official names.
+3. Examples: Bangkok → 'กรุงเทพฯ' (Thai), Beijing → '北京' (Chinese), London → 'Londres' (Spanish), Hanoi → 'Hà Nội' (Vietnamese).
+4. Return ONLY a JSON object: key = city_key, value = {cfg['target']}_name. No explanation.
+5. If a city has NO well-known {cfg['target']} name (tiny settlement), return value as empty string "".
+Cities: {batch}"""
+        try:
+            result = call_deepseek(prompt)
+            for k, v in result.items():
+                if k in city_map and isinstance(v, str):
+                    v = v.strip()
+                    # 禁冒充：只有真翻译（含本国字符 或 ≠英文原名）才写入；en 原名/空串留空
+                    en_val = city_map[k].get('names', {}).get('en', '')
+                    if is_valid_local(v, lang, en_val):
+                        existing = city_map[k].get('names', {}).get(lang, '')
+                        if not is_valid_local(existing, lang, en_val):
+                            city_map[k].setdefault('names', {})[lang] = v
+                            done[k] = v
+                            translated_count += 1
+                    # 否则 v 为空或==英文原名（英文冒充）→ 不写入，留空（禁冒充）
+            with open(progress_file, 'w') as f:
+                json.dump({'translations': done}, f, ensure_ascii=False, indent=2)
+            print(f"  ✅ {lang} 批次 {i//batch_size+1}: 本批+{translated_count} | 累计 {len(done)}")
+            time.sleep(1.5)
+        except Exception as e:
+            print(f"  ❌ {lang} 批次 {i//batch_size+1} 失败: {e}")
+            with open(progress_file, 'w') as f:
+                json.dump({'translations': done}, f, ensure_ascii=False, indent=2)
+            continue
+
+    print(f"  🎯 {lang} 完成: {len(done)} 城 (本次新增 {translated_count})")
+    return translated_count
+
+def gen_plan(cities_data):
+    plan = {l: [] for l in LANGS}
+    for c in cities_data['fuse_index']:  # 人口排序已在 cities.json 顺序里
+        z = zone(c)
+        if z in plan:
+            plan[z].append(c['key'])
+    return plan
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'run'
+    cities_data = load_cities()
+    print(f"城市总数: {len(cities_data['fuse_index'])}")
+
+    if mode == 'plan':
+        plan = gen_plan(cities_data)
+        with open(PLAN_JSON, 'w') as f:
+            json.dump(plan, f, ensure_ascii=False, indent=2)
+        print("Plan 生成(语种区隔离):", {k: len(v) for k, v in plan.items()})
+        return
+
+    # run 模式
+    if not os.path.exists(PLAN_JSON):
+        plan = gen_plan(cities_data)
+        with open(PLAN_JSON, 'w') as f:
+            json.dump(plan, f, ensure_ascii=False, indent=2)
+    else:
+        with open(PLAN_JSON) as f:
+            plan = json.load(f)
+
+    total_new = 0
+    for lang in ['zh', 'es', 'th', 'fr', 'vi']:
+        print(f"\n{'='*70}")
+        print(f"  开始翻译: {LANGS[lang]['name']} ({lang})  计划 {len(plan.get(lang, []))} 城")
+        print(f"{'='*70}")
+        count = translate_language(lang, plan.get(lang, []), cities_data)
+        total_new += count
+
+    print(f"\n{'='*70}")
+    print(f"保存 cities.json（本次新增 {total_new} 翻译）...")
+    with io.open(CITIES_JSON, 'w', encoding='utf-8') as f:
+        json.dump(cities_data, f, ensure_ascii=False, indent=2)
+    print(f"  ✅ 完成！")
+    print(f"{'='*70}")
+
+if __name__ == '__main__':
+    main()

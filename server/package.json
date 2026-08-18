@@ -1,0 +1,16 @@
+{
+  "name": "kindredsouls-server",
+  "version": "1.0.0",
+  "description": "DeepSeek API proxy for KindredSouls AI insights",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

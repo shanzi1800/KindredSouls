@@ -1,0 +1,7 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+# V238: 删除 [deploy] port 硬编码。Railway Edge Proxy 转发到注入的 process.env.PORT(实测 8080),
+# server.js 已改为监听 process.env.PORT;此处若写死 3000 会与代理端口冲突导致 000 超时。
+[deploy]

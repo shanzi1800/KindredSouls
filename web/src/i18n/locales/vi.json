@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "KindredSouls",
+    "tagline": "Khai mở sợi dây liên kết vũ trụ của bạn"
+  },
+  "input": {
+    "title": "Vận mệnh an bài trên ngàn tinh tú",
+    "subtitle": "Điền ngày sinh của cả hai để giải mã duyên phận thiên định",
+    "yourBirthday": "Ngày sinh của bạn",
+    "theirBirthday": "Ngày sinh của người ấy",
+    "calculate": "Giải mã duyên phận 🌟",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD",
+    "start": "Bắt đầu",
+    "compatibilityMode": "Mã Duyên Phận",
+    "compatibilityModeDesc": "Mở khóa mã bí mật mối quan hệ",
+    "wealthMode": "Chìa Khóa Tài Lộc",
+    "wealthModeDesc": "Mở khóa két tài lộc bẩm sinh",
+    "selectMode": "Chọn chế độ",
+    "back": "Quay lại",
+    "legalFooter": "Bằng cách nhấp vào \"{{calculate}}\", bạn đồng ý với {terms} và {privacy} của chúng tôi.",
+    "termsOfService": "Điều Khoản Dịch Vụ",
+    "privacyPolicy": "Chính Sách Bảo Mật"
+  },
+  "result": {
+    "title": "Kết quả độ hòa hợp",
+    "score": "Chỉ số duyên phận",
+    "overall": "Độ tương hợp tổng quan",
+    "loading": "Đang giải mã thông điệp từ vũ trụ...",
+    "back": "Xem duyên phận cặp khác",
+    "luckyAspects": "Điểm cát tường thiên định",
+    "challengingAspects": "Góc nhìn thách thức cần lưu ý",
+    "engines": {
+      "bazi": "Bát Tự (Tử Vi Đông Phương)",
+      "zodiac": "Cung hoàng đạo Tây Phương",
+      "iching": "Trí tuệ Kinh Dịch",
+      "aiInsight": "Luận giải mối quan hệ bằng AI Duyên Phận"
+    }
+  },
+  "nav": {
+    "language": "Ngôn ngữ",
+    "settings": "Cài đặt"
+  },
+  "common": {
+    "errorIncomplete": "🔮 Cần hội tụ đủ hai vì sao để định vị sợi dây mệnh vận",
+    "errorFormat": "✨ Vui lòng dùng định dạng YYYY-MM-DD để hiệu chuẩn tần số vũ trụ của bạn",
+    "errorInvalidDate": "🔮 Mốc thời gian phàm trần bị lệch hướng — Vui lòng điều chỉnh lại ngày sinh",
+    "errorFutureDate": "⏳ Bánh xe vận mệnh chưa quay đến — Không thể bói trước tương lai",
+    "errorTooOld": "🌟 Ngay cả tinh tú cũng có giới hạn — Vui lòng kiểm tra lại năm sinh"
+  },
+  "wealth": {
+    "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
+    "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
+    "cta": "🔮 Giải mã ngay",
+    "loading": "Đang triệu hồi mã tài lộc...",
+    "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc"
+  },
+  "wealthInput": {
+    "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
+    "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
+    "birthdayLabel": "Nhập ngày sinh của bạn",
+    "birthdayPh": "YYYY-MM-DD",
+    "startBtn": "🔮 Bắt đầu giải mã",
+    "unlockTip": "Quỹ đạo tài lộc của bạn kết nối với năng lượng quan hệ của bạn. Mở khóa để xem thêm phân tích tài lộc trong báo cáo duyên phận.",
+    "birthTip": "Bổ sung giờ sinh và thành phố cụ thể giúp tăng độ chính xác lên 40% (Không bắt buộc). Nếu không rõ, kết quả tính theo mặc định 12:00 trưa vẫn cực kỳ chính xác và có giá trị tham khảo."
+  },
+  "wealthReport": {
+    "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc",
+    "monthlyReport": "📅 Báo cáo Tài Lộc Tháng",
+    "yearlyReport": "📆 Báo cáo Tài Lộc Năm",
+    "vipFree": "Quyền truy cập VIP miễn phí",
+    "unlockMonthly": "Mở khóa Tháng $2.99",
+    "unlockYearly": "Mở khóa Năm $29.99",
+    "generateAI": "✨ Tạo AI Insight",
+    "alreadyGeneratedMonthly": "Báo cáo tài lộc tháng đã được tạo trong tháng này. Lần tiếp theo: tháng sau",
+    "alreadyGeneratedYearly": "Báo cáo tài lộc năm đã được tạo trong năm nay. Lần tiếp theo: năm sau",
+    "generateFail": "Tạo thất bại",
+    "loginFirst": "Vui lòng đăng nhập trước để tạo báo cáo.",
+    "almanac": "Niên Ký Tài Lộc",
+    "almanacDesc": "Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai."
+  }
+}

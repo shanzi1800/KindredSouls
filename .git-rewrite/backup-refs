@@ -1,0 +1,16 @@
+5b6245dd6837fab0f14f260e36734bf86be77015 commit	refs/heads/deploy-v97at
+92bae62ee9bb21b03e121702c052fb47bb37ac49 commit	refs/heads/fix/i18n-batch4
+8b1ffb6796bef6109a717c3e08e8d10d2f74d236 commit	refs/heads/fix/th-moon-hallucination-p0
+d91082bb1bcbc492ce99aa2ecfd2deee6a09e99e commit	refs/heads/gh-pages
+b7663d5a9f6410084909443669299e554e537cad commit	refs/heads/main
+8b2b1cf369266139fc471637fd44be815f25a0f3 commit	refs/remotes/origin/HEAD
+5b6245dd6837fab0f14f260e36734bf86be77015 commit	refs/remotes/origin/deploy-v97at
+8b1ffb6796bef6109a717c3e08e8d10d2f74d236 commit	refs/remotes/origin/fix/th-moon-hallucination-p0
+d91082bb1bcbc492ce99aa2ecfd2deee6a09e99e commit	refs/remotes/origin/gh-pages
+8b2b1cf369266139fc471637fd44be815f25a0f3 commit	refs/remotes/origin/main
+4a7c99ccc4a152d5effc06bdb0192f290799a9ec commit	refs/stash
+3ce338f9e88b7b4ea1e8d7de07a26b4ccfaf6c9a tag	refs/tags/V113-RELEASE
+ec4e59b32b459222626d2bb9e657f4a67a633b14 commit	refs/tags/V154
+10000b63684888047c70477fad9eaafd5a2b6748 tag	refs/tags/V231-MONTHLY-RELEASE
+b055fc72d520066594ecf3b3880223e82079b970 tag	refs/tags/v103-format-lock
+001e7c81261fbb57ddad16b615f776e0c3ee025f tag	refs/tags/v74

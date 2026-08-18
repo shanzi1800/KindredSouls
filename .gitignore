@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+
+# Build output
+# dist/ (commented out for GitHub Pages deployment)
+site/
+
+# Expo
+.expo/
+.expo-shared/
+expo-env.d.ts
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.pem
+*.key
+.vercel
+
+# Environment variables
+.env
+api/.env
+
+# Media files - only ignore backups and unused videos
+web/public/bg-video.mp4
+web/public/romantic_bg.mp4
+web/public/rose-petals.mp4
+web/public/test_background.mp4
+.env.production
+web/api/webhook.fixed.js
+web/api/webhook.js.bak
+web/src/App.tsx.bak
+.env*
+SECRETS.md
+__pycache__/

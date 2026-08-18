@@ -1,0 +1,88 @@
+{
+  "app": {
+    "name": "缘分天定",
+    "tagline": "发现你们的宇宙连接"
+  },
+  "input": {
+    "title": "缘分天定",
+    "subtitle": "输入双方生日，测算缘分指数",
+    "yourBirthday": "你的生日",
+    "theirBirthday": "TA的生日",
+    "calculate": "测算缘分",
+    "placeholder1": "YYYY-MM-DD",
+    "placeholder2": "YYYY-MM-DD",
+    "start": "开始测算",
+    "selectMode": "选择模式",
+    "compatibilityMode": "合婚密码",
+    "compatibilityModeDesc": "解锁双人关系密码",
+    "wealthMode": "财富密码",
+    "wealthModeDesc": "解锁先天财库密码",
+    "back": "返回",
+    "legalFooter": "点击「{{calculate}}」即表示你同意{terms}和{privacy}。",
+    "termsOfService": "服务条款",
+    "privacyPolicy": "隐私政策"
+  },
+  "result": {
+    "title": "缘分测算结果",
+    "score": "缘分指数",
+    "overall": "综合匹配度",
+    "loading": "正在解读星象...",
+    "back": "重新测算",
+    "luckyAspects": "有利方面",
+    "challengingAspects": "注意方面",
+    "engines": {
+      "bazi": "八字命理",
+      "zodiac": "西方星座",
+      "iching": "易经智慧",
+      "aiInsight": "AI情感洞察"
+    }
+  },
+  "wealth": {
+    "title": "财富与事业解码",
+    "subtitle": "终极破译你的先天财富格局与事业基因",
+    "inputLabel": "输入你的出生日期",
+    "cta": "🔮 开始解码",
+    "loading": "正在召唤财富密码……",
+    "reportTitle": "财富解码报告",
+    "paywallTitle": "🔒 AI 深度洞察",
+    "priceMonthly": "$7.99 / 月",
+    "priceYearly": "$79.99 / 年",
+    "unlock": "解锁完整报告"
+  },
+  "nav": {
+    "language": "语言",
+    "settings": "设置"
+  },
+  "common": {
+    "errorIncomplete": "🔮 需要两颗星辰锚定命运",
+    "errorFormat": "✨ 请用 YYYY-MM-DD 格式校准你的时空频率",
+    "errorInvalidDate": "🔮 时空锚点溢出，请修正您的尘世生日",
+    "errorFutureDate": "⏳ 命运之轮未到此处，请勿输入未来节点",
+    "errorTooOld": "🌟 星辰亦有寿数，请核查年份"
+  },
+  "wealthInput": {
+    "title": "财富与事业解码",
+    "subtitle": "终极破译你的先天财富格局与事业基因",
+    "birthdayLabel": "输入你的出生日期",
+    "birthdayPh": "YYYY-MM-DD",
+    "startBtn": "🔮 开始解码",
+    "unlockTip": "你的财富运势和感情能量场是联动的。解锁后还可查看合婚报告中的财富分析。",
+    "birthTip": "补充具体出生时间和城市，测算精度可提升 40%（可选）。若不清楚具体时间，默认中午 12:00 测算同样极具参考价值"
+  },
+  "wealthReport": {
+    "reportTitle": "财富解码报告",
+    "monthlyReport": "📅 生成财富月报",
+    "yearlyReport": "📆 生成财富年报",
+    "yearlyReportTitle": "年度财富报告",
+    "vipFree": "VIP 尊享，点击免费生成",
+    "unlockMonthly": "解锁流月报告 $2.99",
+    "unlockYearly": "解锁年度报告 $29.99",
+    "generateAI": "✨ 生成 AI 洞察",
+    "alreadyGeneratedMonthly": "📅 本月财富月报已生成，请下个月再来（每月1日重置）",
+    "alreadyGeneratedYearly": "📆 本年度财富年报已生成，请明年再来",
+    "generateFail": "生成失败",
+    "loginFirst": "请先登录后再生成报告",
+    "almanac": "财富年鉴",
+    "almanacDesc": "基于您的先天财富格局，推演未来运势曲线"
+  }
+}
