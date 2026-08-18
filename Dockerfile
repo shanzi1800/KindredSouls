@@ -1,8 +1,8 @@
 # FORCE REBUILD 1785664211
 FROM node:22-slim
 
-# ── V116: Cache busting — force fresh build on every railway up ──
-ARG CACHE_BUST=20260812-V223f-GH-20260812131846
+# ── V200(2026-08-18): 隔离 DeepSeek key，Railway 生产走 Gemini ──
+ARG CACHE_BUST=20260818-V200-gh-18183600
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
@@ -35,7 +35,8 @@ RUN printf '%s\n' \
 RUN printf '%s' "https://wfkxqhlcgrikxoofjvas.supabase.co" > /app/.supabase-url
 RUN printf '%s' 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw' > /app/.supabase-key
 RUN printf '%s' "${GEMINI_API_KEY}" > /app/.gemini-key || true
-RUN printf '%s' "sk-9307f02599b44612b6767996a7839ab5" > /app/.deepseek-key
+# V200: DeepSeek key 不写入容器，生产全走 Gemini（与 8818 隔离）
+RUN rm -f /app/.deepseek-key || true
 RUN echo "BUILD_TRIGGER_FORCE_$(date +%s%N) - V200 frontend fix" \
     && if [ -f .git-sha ]; then \
          echo "[DEPLOY FINGERPRINT] Git SHA: $(cat .git-sha)"; \
