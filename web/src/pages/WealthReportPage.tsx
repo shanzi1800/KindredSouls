@@ -1165,7 +1165,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // 🛠️ V40: 移除所有旧的17卡片蓄水ref,改用单一sacredText状态
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
   const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 月报是否完成(2026-07-19)
-  const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态(双通道打字机核心)
+  const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态
+  const [_stableMemKey, _setStableMemKey] = useState<string>(''); // V247: SacredYearlyReportBox 稳定 key(双通道打字机核心)
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
   // 🛠️ 军师的流式硬切黑魔法:实时提取 headline、weeks 和 expense_trap 数据(无需等待 JSON 闭合)
@@ -1963,6 +1964,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         }
         const gen = { partial: '', subs: new Set<(t: string) => void>() };
         _reportGen.set(_memKey, gen);
+        _setStableMemKey(_memKey); // V247: 同步 key 到组件状态，锁死 SacredYearlyReportBox
         _dbgSet++;
         console.log(`[V219g-DEBUG] SET #${_dbgSet} key=${_memKey} gen=${_reportGen.size}`);
         // 🛡️ V219e: 发起请求但不 abort 任何请求--单例锁已保证全局只发一个,进行中请求必须跑到 [DONE]
@@ -2667,6 +2669,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         {/* 🔮 V120: 月报流式打字机(markdown格式) - V240-fix: [DONE]后保持渲染直到有内容 */}
         {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
           <SacredYearlyReportBox
+            key={_stableMemKey || 'monthly-pending'}
             rawStreamText={sacredText}
             yearlyCardsReady={monthlyCardsReady}
             realSunSign={getTrueZodiacByDate(birthDate) || '双鱼座'}
@@ -2803,6 +2806,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             return (
               // 🛠️ V50: 一行顶所有--星光呼吸灯+暗金光晕+追光器+归顶+章节硬插五合一
               <SacredYearlyReportBox
+                key={_stableMemKey || 'yearly-pending'}
                 rawStreamText={cleaned || ''}
                 yearlyCardsReady={yearlyCardsReady}
                 realSunSign={trueZodiac || '双鱼座'}
@@ -2828,6 +2832,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
             return (
               <SacredYearlyReportBox
+                key={_stableMemKey || 'once-pending'}
                 rawStreamText={cleaned || ''}
                 yearlyCardsReady={true}
                 realSunSign={trueZodiac || '双鱼座'}
