@@ -2006,7 +2006,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 _reportMemCache.set(_memKey, _fullMap.get(_memKey) || ''); // V244,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
                 if (genDone) {
-                  genDone.subs.forEach(fn => fn(_fullMap.get(_memKey) || _full)); // 🛡️ V219d: 最后一次通知所有订阅实例
+                  genDone.subs.forEach(fn => fn(_fullMap.get(_memKey)||'')); // 🛡️ V219d: 最后一次通知所有订阅实例
                   // 🔒 V220b: 标记完成但保留在 Map 中,后续 remount 直接复用最终文本,绝不重新开发请求(根治重复拼接)
                   genDone.done = true;
                   genDone.partial = _fullMap.get(_memKey) || '';
@@ -2043,7 +2043,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
                   const _prevLen = (_fullMap.get(_memKey)||'').length;
-                  console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + _full.length);
+                  console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + (_fullMap.get(_memKey)||'').length);
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
