@@ -286,6 +286,14 @@ const SacredYearlyReportBox: React.FC<{
         .replace(/([a-zA-Z])(\d+)/g, '$1 $2');
     }
 
+    // V251-fixC: 标题方括号后若紧跟正文(无换行), 强制换行分离, 防止正文被误吞为金色heading
+    // 场景: [⚠️ Trampas de Gasto: Agosto 2026] ✦La conjunción... (标题与正文同行 → 整段被当heading渲染成金色)
+    // 治本: 已知标题类型的方括号后插入换行, 并吞掉分隔符 ✦(标题与正文间的章节分隔符)
+    const _HDR_KW = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周|Destin|Destino|Th[eè]me|ธีม|Chủ Đề|Trampas?|消费陷阱|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|Overview|Financial\s+Shadow)/i;
+    cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => {
+      return _HDR_KW.test(_b) ? _b + '\n' : _m;
+    });
+
     return cleaned;
   };
 
