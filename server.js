@@ -101,24 +101,115 @@ function deriveSunHouse(risingSign, sunSign) {
 }
 
 // 3. 动态 Prompt 注入指令(月报专用,覆盖通用 FORMAT_FIREWALL 周标题模板)
+// V241-fix: buildWealthPromptContext 多语言化——原硬编码中文周标题导致法语等非中文报告夹带中文
 function buildWealthPromptContext(lang, meta) {
   const curr = getCurrencyRiskProfile(lang);
   const sunSign = meta?.zodiac?.sunSign || '天秤座';
   const risingSign = meta?.zodiac?.risingSign || '摩羯座';
   const sunHouse = deriveSunHouse(risingSign, sunSign);
-  const instruction = `
-[DYNAMIC_FINANCIAL_PROFILE — 月报专用·覆盖通用 FORMAT_FIREWALL 周标题模板]
-- 报告语言: ${lang}
-- 币种单位: ${curr.currency} (${curr.symbol})
-- 单笔消费风控阈值: ${curr.symbol}${curr.baseRisk.toLocaleString()}
-- 周度非必需消费上限: ${curr.symbol}${curr.maxWeekly.toLocaleString()}
-- 太阳/木星核心激活宫位: 第 ${sunHouse} 宫
-
-[STRICT_OUTPUT_FORMAT_RULES — 月报周卡片标题增强]
-1. 在 FORMAT_FIREWALL 周卡片标题基础上,标题末尾追加显性宫位锚点与风控等级(不破坏原有 ✦ [emoji 第N周：日期（主题）] 结构),例:
-   ✦ [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
-2. 消费陷阱模块(✦ [⚠️ 消费陷阱...])必须对超过 ${curr.symbol}${curr.baseRisk.toLocaleString()} 的单笔消费强制执行 24 小时冷静期规则,周度非必需上限 ${curr.symbol}${curr.maxWeekly.toLocaleString()},并附灵魂三问决策树。
-3. 全文币种统一使用 ${curr.symbol},禁止混入其他币种符号。`;
+  const _l = (d) => d[lang] || d.zh;
+  const INSTR = {
+    overview: {
+      zh: `[DYNAMIC_FINANCIAL_PROFILE — 月报专用·覆盖通用 FORMAT_FIREWALL 周标题模板]`,
+      en: `[DYNAMIC_FINANCIAL_PROFILE — Monthly report override. Replaces FORMAT_FIREWALL weekly header template]`,
+      es: `[DYNAMIC_FINANCIAL_PROFILE — Informe mensual. Reemplaza la plantilla semanal de FORMAT_FIREWALL]`,
+      fr: `[DYNAMIC_FINANCIAL_PROFILE — Rapport mensuel. Remplace le modèle d'en-tête hebdomadaire FORMAT_FIREWALL]`,
+      th: `[DYNAMIC_FINANCIAL_PROFILE — รายงานรายเดือน ใช้แทนเทมเพลตสัปดาห์ FORMAT_FIREWALL]`,
+      vi: `[DYNAMIC_FINANCIAL_PROFILE — Báo cáo hàng tháng. Thay thế mẫu tiêu đề hàng tuần FORMAT_FIREWALL]`,
+    },
+    langNote: {
+      zh: `- 报告语言: ${lang}`,
+      en: `- Report language: ${lang}`,
+      es: `- Idioma del informe: ${lang}`,
+      fr: `- Langue du rapport: ${lang}`,
+      th: `- ภาษารายงาน: ${lang}`,
+      vi: `- Ngôn ngữ báo cáo: ${lang}`,
+    },
+    currency: {
+      zh: `- 币种单位: ${curr.currency} (${curr.symbol})`,
+      en: `- Currency: ${curr.currency} (${curr.symbol})`,
+      es: `- Moneda: ${curr.currency} (${curr.symbol})`,
+      fr: `- Devise: ${curr.currency} (${curr.symbol})`,
+      th: `- สกุลเงิน: ${curr.currency} (${curr.symbol})`,
+      vi: `- Đơn vị tiền tệ: ${curr.currency} (${curr.symbol})`,
+    },
+    riskThreshold: {
+      zh: `- 单笔消费风控阈值: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+      en: `- Single transaction risk threshold: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+      es: `- Umbral de riesgo por transacción: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+      fr: `- Seuil de risque par dépense: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+      th: `- ขีดจำกัดความเสี่ยงต่อรายการ: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+      vi: `- Ngưỡng rủi ro mỗi giao dịch: ${curr.symbol}${curr.baseRisk.toLocaleString()}`,
+    },
+    weeklyCap: {
+      zh: `- 周度非必需消费上限: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+      en: `- Weekly non-essential spending cap: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+      es: `- Tope de gasto no esencial semanal: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+      fr: `- Plafond de dépenses non essentielles hebdomadaire: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+      th: `- เพดานการใช้จ่ายที่ไม่จำเป็นรายสัปดาห์: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+      vi: `- Giới hạn chi tiêu không thiết yếu hàng tuần: ${curr.symbol}${curr.maxWeekly.toLocaleString()}`,
+    },
+    house: {
+      zh: `- 太阳/木星核心激活宫位: 第 ${sunHouse} 宫`,
+      en: `- Core activated house (Sun/Jupiter): House ${sunHouse}`,
+      es: `- Casa activada principal (Sol/Júpiter): Casa ${sunHouse}`,
+      fr: `- Maison principale activée (Soleil/Jupiter): Maison ${sunHouse}`,
+      th: `- บ้านหลักที่เปิดใช้งาน (ดวงอาทิตย์/ดาวพฤหัสบดี): บ้านที่ ${sunHouse}`,
+      vi: `- Nhà chính được kích hoạt (Mặt Trời/Mộc Tinh): Nhà ${sunHouse}`,
+    },
+    rulesTitle: {
+      zh: `[STRICT_OUTPUT_FORMAT_RULES — 月报周卡片标题增强]`,
+      en: `[STRICT_OUTPUT_FORMAT_RULES — Enhanced weekly card headers]`,
+      es: `[STRICT_OUTPUT_FORMAT_RULES — Encabezados de tarjetas semanales mejorados]`,
+      fr: `[STRICT_OUTPUT_FORMAT_RULES — En-têtes de cartes hebdomadaires enrichis]`,
+      th: `[STRICT_OUTPUT_FORMAT_RULES — ส่วนหัวการ์ดรายสัปดาห์ที่ปรับปรุงแล้ว]`,
+      vi: `[STRICT_OUTPUT_FORMAT_RULES — Đầu thẻ hàng tuần nâng cao]`,
+    },
+    rule1: {
+      zh: `1. 在 FORMAT_FIREWALL 周卡片标题基础上,标题末尾追加显性宫位锚点与风控等级(不破坏原有 ✦ [emoji 第N周：日期（主题）] 结构),例:
+   ✦ [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]`,
+      en: `1. Extend FORMAT_FIREWALL weekly card headers by appending house anchor + risk level at the end (preserve ✦ [emoji Week N: dates (theme)] structure), e.g.:
+   ✦ [🟢 Week 1: Aug 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]`,
+      es: `1. Extiende los encabezados de FORMAT_FIREWALL agregando casa astrológica + nivel de riesgo al final (preserva estructura ✦ [emoji Semana N: fechas (tema)]), ej:
+   ✦ [🟢 Semana 1: Ago 1–7 (Recarga de Riqueza) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]`,
+      fr: `1. Enrichir les en-têtes FORMAT_FIREWALL en ajoutant la maison astrologique + niveau de risque en fin de titre (conserver structure ✦ [emoji Semaine N: dates (thème)]), ex:
+   ✦ [🟢 Semaine 1: ${curMonthName || 'Août'} 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]`,
+      th: `1. ขยายส่วนหัว FORMAT_FIREWALL โดยเพิ่มบ้านโหราศาสตร์ + ระดับความเสี่ยงท้ายหัวข้อ (รักษาโครงสร้าง ✦ [emoji สัปดาห์ที่ N: วันที่ (ธีม)]), ตัวอย่าง:
+   ✦ [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (การเติมพลังความมั่งคั่ง) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]`,
+      vi: `1. Mở rộng đầu thẻ FORMAT_FIREWALL bằng cách thêm nhà chiêm tinh + mức độ rủi ro ở cuối (giữ nguyên cấu trúc ✦ [emoji Tuần N: ngày (chủ đề)]), ví dụ:
+   ✦ [🟢 Tuần 1: Thg8 1–7 (Nạp năng lượng Tài sản) | Nhà ${sunHouse} | Rủi ro: 🟢 Thấp]`,
+    },
+    rule2: {
+      zh: `2. 消费陷阱模块(✦ [⚠️ 消费陷阱...])必须对超过 ${curr.symbol}${curr.baseRisk.toLocaleString()} 的单笔消费强制执行 24 小时冷静期规则,周度非必需上限 ${curr.symbol}${curr.maxWeekly.toLocaleString()},并附灵魂三问决策树。`,
+      en: `2. The spending trap section (✦ [⚠️ Spending Traps...]) must enforce a 24-hour cooling-off for any single purchase over ${curr.symbol}${curr.baseRisk.toLocaleString()}, weekly non-essential cap ${curr.symbol}${curr.maxWeekly.toLocaleString()}, plus the 3-question decision tree.`,
+      es: `2. La sección de trampas de gasto (✦ [⚠️ Trampas de Gasto...]) debe imponer un enfriamiento de 24 horas para compras superiores a ${curr.symbol}${curr.baseRisk.toLocaleString()}, tope semanal no esencial ${curr.symbol}${curr.maxWeekly.toLocaleString()}, más el árbol de decisión de 3 preguntas.`,
+      fr: `2. La section pièges financiers (✦ [⚠️ Pièges Financiers...]) doit imposer un délai de réflexion de 24h pour tout achat dépassant ${curr.symbol}${curr.baseRisk.toLocaleString()}, plafond hebdomadaire non essentiel ${curr.symbol}${curr.maxWeekly.toLocaleString()}, plus l'arbre de décision à 3 questions.`,
+      th: `2. ส่วนกับดักการใช้จ่าย (✦ [⚠️ กับดักการใช้จ่าย...]) ต้องบังคับระยะเย็นลง 24 ชม. สำหรับการซื้อเกิน ${curr.symbol}${curr.baseRisk.toLocaleString()} เพดานรายสัปดาห์ไม่จำเป็น ${curr.symbol}${curr.maxWeekly.toLocaleString()} บวกต้นไม้ตัดสินใจ 3 คำถาม`,
+      vi: `2. Phần bẫy chi tiêu (✦ [⚠️ Bẫy Chi Tiêu...]) phải áp dụng thời gian chờ 24 giờ cho mỗi giao dịch trên ${curr.symbol}${curr.baseRisk.toLocaleString()}, trần hàng tuần không thiết yếu ${curr.symbol}${curr.maxWeekly.toLocaleString()}, cộng cây quyết định 3 câu hỏi.`,
+    },
+    rule3: {
+      zh: `3. 全文币种统一使用 ${curr.symbol},禁止混入其他币种符号。`,
+      en: `3. Use only ${curr.symbol} throughout. No other currency symbols allowed.`,
+      es: `3. Usar solo ${curr.symbol} en todo el texto. No mezclar símbolos de otras monedas.`,
+      fr: `3. Utiliser uniquement ${curr.symbol} dans tout le texte. Ne pas mélanger avec d'autres symboles monétaires.`,
+      th: `3. ใช้เฉพาะ ${curr.symbol} ทั่วทั้งข้อความ ห้ามผสมสัญลักษณ์สกุลเงินอื่น`,
+      vi: `3. Chỉ sử dụng ${curr.symbol} trong toàn bộ văn bản. Không trộn lẫn các ký hiệu tiền tệ khác.`,
+    },
+  };
+  const instruction = [
+    INSTR.overview[lang] || INSTR.overview.zh,
+    _l(INSTR.langNote),
+    _l(INSTR.currency),
+    _l(INSTR.riskThreshold),
+    _l(INSTR.weeklyCap),
+    _l(INSTR.house),
+    '',
+    _l(INSTR.rulesTitle),
+    _l(INSTR.rule1),
+    _l(INSTR.rule2),
+    _l(INSTR.rule3),
+  ].join('
+');
   return { instruction, curr, sunHouse, risingSign, sunSign };
 }
 
