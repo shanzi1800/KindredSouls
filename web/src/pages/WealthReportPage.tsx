@@ -2652,8 +2652,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* 🔮 V120: 月报流式打字机(markdown格式) */}
-        {reportLoading === 'wealth_monthly' && (
+        {/* 🔮 V120: 月报流式打字机(markdown格式) - V240-fix: [DONE]后保持渲染直到有内容 */}
+        {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
           <SacredYearlyReportBox
             rawStreamText={sacredText}
             yearlyCardsReady={monthlyCardsReady}
