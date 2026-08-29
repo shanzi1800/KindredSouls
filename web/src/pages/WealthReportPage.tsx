@@ -1948,6 +1948,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
       try {
         let _full = ''; // 🛡️ V222z-fix2: 声明在 try 同一层级 → catch 可见
+        let _chunkIdx = 0; // V242-debug: 追踪 chunk 编号
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         // 🛡️ V222z-fix7: 覆盖前先检查旧 gen 是否已完成；若已完成则保留旧 gen（它已经持有最终 _full）
         const existingGen = _reportGen.get(_memKey);
@@ -1993,6 +1994,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               const dataStr = trimmedLine.slice(6).trim();
 
               if (dataStr === '[DONE]') {
+                console.log('[V242-DEBUG] [DONE] _full.length=' + _full.length + ' | _full.slice(0,80)=' + JSON.stringify(_full.slice(0, 80)));
+                console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + (_full.match(/\✦/g) || []).length + ' | 第4个✦位置=' + (_full.indexOf('\✦') !== -1 ? _full.indexOf('\✦') : -1));
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
@@ -2031,7 +2034,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
-                  console.log('[WealthReport] 📥 收到流式增量:', parsed.text.slice(0, 40) + (parsed.text.length > 40 ? '...' : ''));
+                  const _prevLen = _full.length;
+                  console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + _full.length); + (parsed.text.length > 40 ? '...' : ''));
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
