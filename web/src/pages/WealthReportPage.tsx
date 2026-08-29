@@ -2035,7 +2035,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
                   const _prevLen = _full.length;
-                  console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + _full.length); + (parsed.text.length > 40 ? '...' : ''));
+                  console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + _full.length);
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
