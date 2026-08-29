@@ -254,6 +254,22 @@ function buildWealthPromptContext(lang, meta) {
       th: `5. โมดูลเปิด 【Thème de Destin du Mois】 ต้องปรากฏเพียงครั้งเดียวเท่านั้น ห้ามสร้างซ้ำ`,
       vi: `5. Phần mở đầu 【Thème de Destin du Mois】 CHỈ ĐƯỢC PHÉP xuất hiện ĐÚNG MỘT LẦN. Không bao giờ tạo hai lần.`,
     },
+    rule6: {
+      zh: `6. 描述流年太阳运行时统一使用“流年太阳”或“[月份]的太阳”，严禁用“你的太阳”指代行运太阳——“你的太阳”指本命太阳（固定不变，如天秤座）。`,
+      en: `6. When describing the Sun's monthly movement (transit), ALWAYS use "the transit Sun" or "the Sun of [month]". NEVER use "your Sun" for the transit Sun — "your Sun" refers to the user's fixed natal Sun sign.`,
+      es: `6. AL DESCRIBIR el movimiento mensual del Sol (tránsito), USA SIEMPRE "El Sol en tránsito" o "El Sol de [mes]". NUNCA uses "Tu Sol" para el Sol transitorio — "Tu Sol" se refiere a tu Sol natal (fijo, ej. Libra).`,
+      fr: `6. Pour décrire le mouvement mensuel du Soleil (transit), utilisez TOUJOURS "Le Soleil en transit" ou "Le Soleil d'août". N'utilisez jamais "Votre Soleil" pour le Soleil transitoire — "Votre Soleil" désigne votre Soleil natal (fixe).`,
+      th: `6. เมื่ออธิบายการเคลื่อนที่รายเดือนของดวงอาทิตย์ (ทรานซิส) ให้ใช้ "ดวงอาทิตย์ในระยะทรานซิส" หรือ "ดวงอาทิตย์ประจำเดือน" เสมอ ห้ามใช้ "ดวงอาทิตย์ของคุณ" สำหรับดวงอาทิตย์ระยะทรานซิส`,
+      vi: `6. Khi mô tả sự vận động hàng tháng của Mặt Trời (trôi qua), luôn dùng "Mặt Trời transit" hoặc "Mặt Trời của tháng". KHÔNG dùng "Mặt Trời của bạn" cho Mặt Trời transit — "Mặt Trời của bạn" chỉ Mặt Trời bản mệnh (cố định).`,
+    },
+    rule7: {
+      zh: `7. 本报告所有日期（尤其“消费陷阱”段落）必须严格属于本报告月份，严禁出现其他月份名称（如把8月写成7月）。`,
+      en: `7. ALL dates in this report (especially the "Spending Traps" section) MUST belong to the report's current month. NEVER reference other months (e.g., writing August as July).`,
+      es: `7. TODAS las fechas de este informe (especialmente la sección "Trampas de Gasto") DEBEN pertenecer al mes actual del informe. NUNCA menciones otros meses (ej. escribir agosto como julio).`,
+      fr: `7. Toutes les dates de ce rapport (surtout la section "Pièges Financiers") DOIVENT appartenir au mois courant du rapport. N'évoquez jamais d'autres mois (ex. écrire août au lieu de juillet).`,
+      th: `7. วันที่ทั้งหมดในรายงานนี้ (โดยเฉพาะส่วน "กับดักการใช้จ่าย") ต้องอยู่ในเดือนปัจจุบันของรายงาน ห้ามระบุเดือนอื่น (เช่น เขียนสิงหาคมเป็นกรกฎาคม)`,
+      vi: `7. TẤT CẢ ngày trong báo cáo này (đặc biệt phần "Bẫy Chi Tiêu") PHẢI thuộc tháng hiện tại của báo cáo. KHÔNG nhắc đến tháng khác (vd. viết tháng 8 thành tháng 7).`,
+    },
   };
   const instruction = [
     INSTR.overview[lang] || INSTR.overview.zh,
@@ -269,6 +285,8 @@ function buildWealthPromptContext(lang, meta) {
     _l(INSTR.rule3),
     _l(INSTR.rule4),
     _l(INSTR.rule5),
+    _l(INSTR.rule6),
+    _l(INSTR.rule7),
   ].join('\n');
   return { instruction, curr, sunHouse, risingSign, sunSign };
 }

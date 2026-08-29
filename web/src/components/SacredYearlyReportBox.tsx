@@ -261,6 +261,31 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/\bLaune\b/g, 'Lune');
     cleaned = cleaned.replace(/\blaune\b/g, 'lune');
 
+    // V250-fixA: 周标题前缀图标强制 = 尾部风险等级图标（防 LLM 用 🔵 等非风险图标导致卡片图标冲突）
+    // 注意: emoji 不能在字符类[]里(代理对分裂只匹配高代理项),必须用字面量 alternation
+    cleaned = cleaned.split('\n').map((_line) => {
+      const _m = _line.match(/^\[(🔵|🟢|🟡|🔴)\s*(.*?(?:Riesgo|Risque|Risk|风险|ความเสี่ยง|Rủi ro)\s*[:：]?\s*(🟢|🟡|🔴)\s*\w.*)\]$/i);
+      if (_m && _m[1] !== _m[3]) {
+        return '[' + _m[3] + ' ' + _m[2] + ']';
+      }
+      return _line;
+    }).join('\n');
+
+    // V250-fixB: 西语拼写/介词/数字空格清洗（lang=es 专用，防 LLM 西语非母语粒度失控）
+    if (lang === 'es') {
+      cleaned = cleaned
+        .replace(/\ben la paus\b/gi, 'en la pausa')
+        .replace(/\bteienta\b/gi, 'te tienta')
+        .replace(/\bestacion directo\b/gi, 'estaciona directo')
+        .replace(/\btuscarteras\b/gi, 'tus carteras')
+        .replace(/\bempuja actuar\b/gi, 'empuja a actuar')
+        .replace(/\btendencia aferrarse\b/gi, 'tendencia a aferrarse')
+        .replace(/\bse rompe conciencia\b/gi, 'se rompe con conciencia')
+        // 数字与字母/€ 粘连补空格（Día 1 y3 → Día 1 y 3, 700€ → 700 €）
+        .replace(/(\d+)(€|[a-zA-Z])/g, '$1 $2')
+        .replace(/([a-zA-Z])(\d+)/g, '$1 $2');
+    }
+
     return cleaned;
   };
 
