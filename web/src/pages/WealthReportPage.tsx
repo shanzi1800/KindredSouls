@@ -2083,9 +2083,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   const fixedText = parsed.sanitized || parsed.text;
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V222k-fix2: sanitized 是全量终稿——年报按【开篇】判断替换，月报直接覆盖
-                    // _full 已含流式 chunk，直接用 fixedText 全量替换（根治内容翻倍）
+                    // 🛡️ V257c: 但若后端 sanitized 偶发比流式短(截断回归),绝不以短覆盖长 → 保留较长版本
                     const isYearlyFull = fixedText.startsWith('【开篇】');
-                    setSacredText(prev => (isYearlyFull && prev.length > 50) ? fixedText : fixedText);
+                    setSacredText(prev => ((fixedText.length >= (prev || '').length) ? fixedText : prev));
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;

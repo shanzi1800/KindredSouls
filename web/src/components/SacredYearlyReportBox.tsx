@@ -348,6 +348,12 @@ const SacredYearlyReportBox: React.FC<{
 
     if (t.trim().startsWith('✦')) {
       const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
+      // 🛡️ V257b: 标题与正文同行业分 — 形如 "✦ [🔮 Tema de Destino Mensual] ✦Agosto de 2026..."
+      // 把 [bracket] 作为金色 heading, 其后 ✦ 分隔的本文作为独立黑字段落(next)渲染, 避免整段被金色吞掉
+      const sameLine = withoutStar.match(/^\[([^\]]+)\]\s*✦\s*(.+)$/);
+      if (sameLine) {
+        return { type: 'heading', content: cleanMarkdown(sameLine[1]), icon: '✦', next: { type: 'text', content: cleanMarkdown(sameLine[2]) } };
+      }
       if (/\b(?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)/i.test(withoutStar)) {
         // trap 标题：去掉首尾 ✦ 后走 alert 逻辑（alert 里有 trap 居中渲染）
         return { type: 'alert', content: cleanMarkdown(withoutStar) };
@@ -500,7 +506,8 @@ const SacredYearlyReportBox: React.FC<{
       );
       
       if (type === 'heading') return (
-        <div key={idx} style={{
+        <React.Fragment key={idx}>
+        <div style={{
           color: '#D4AF37', fontSize: '13px', fontWeight: 700,
           textAlign: 'center', margin: '14px 0 10px', letterSpacing: '0.5px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
@@ -508,6 +515,8 @@ const SacredYearlyReportBox: React.FC<{
           {icon && <span>{icon}</span>}
           <span>{content}</span>
         </div>
+        {next && <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px' }}>{next.content}</div>}
+        </React.Fragment>
       );
       
       if (type === 'subheading') return (

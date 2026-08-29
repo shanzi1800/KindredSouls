@@ -5870,8 +5870,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
       return text;
     };
-    // 🛠️ V131c-fix: 月报用 geminiFullText(函数返回值=全量1743字)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
-    let rawText = langPunctuationClean(reportType === 'monthly' ? (geminiFullText || fullTextCollector) : fullTextCollector, lang);
+    // 🛠️ V131c-fix: 月报原用 geminiFullText(函数返回值)替代 fullTextCollector(onChunk只收flush块,缺最后pending段)
+    //    ⚠️ 实测回归: callDeepSeekStream 返回值(geminiFullText)在某些报告被截断(仅 Overview+第1周,约1040字),
+    //       而 fullTextCollector(流式累加) 反而是全量(8151字)。两者互为长短,
+    //       → 取【较长者】作为月报 sanitized 源,根治"结尾 sanitized 截断到第1/2周"。
+    const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
+      ? geminiFullText
+      : (fullTextCollector || '');
+    let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
     const _gJupH = natalH.Jupiter?.house ?? 2;
