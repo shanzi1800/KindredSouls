@@ -15,6 +15,7 @@ const SacredYearlyReportBox: React.FC<{
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
+  const lastScrollTopRef = useRef(0); // 🛡️ V257-fix: 追踪 scroll 方向, 区分"用户向下滚"vs"程序化 smooth scroll-to-top"
   const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
   const [showScrollHint, setShowScrollHint] = useState(false); // 🛡️ V257: 完结复位后"向下滚动"提示气泡
 
@@ -41,6 +42,8 @@ const SacredYearlyReportBox: React.FC<{
     if (yearlyCardsReady) {
       // 🛡️ V257: 完结跳回顶部改平滑滚动 + 显示视觉示能提示, 消除"被截断"心理错觉
       autoScrollRef.current = false;
+      // 🛡️ V257-fix: 先记录当前 scrollTop (通常很大, 因流式阶段 autoScroll 一直在底), 否则 smooth scroll 递减时 handleScroll 会把首帧误判为"用户向下滚"秒关气泡
+      lastScrollTopRef.current = el.scrollTop;
       el.scrollTo({ top: 0, behavior: 'smooth' });
       setShowScrollHint(true);
     }
@@ -56,11 +59,19 @@ const SacredYearlyReportBox: React.FC<{
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    // 🛡️ V257: 用户向下滚动 > 50px 即隐去提示气泡(完结后也能消, 体验一致)
-    if (el.scrollTop > 50) setShowScrollHint(false);
-    if (yearlyCardsReady) return;
+    if (yearlyCardsReady) {
+      // 🛡️ V257-fix: 仅当用户主动向下滚(newTop > lastTop) 且已越过 50px 才隐去气泡
+      // 程序化的 smooth scroll-to-top 让 scrollTop 递减, 不会触发本分支
+      if (el.scrollTop > lastScrollTopRef.current && el.scrollTop > 50) {
+        setShowScrollHint(false);
+      }
+      lastScrollTopRef.current = el.scrollTop;
+      return;
+    }
+    // 流式阶段: 仅追踪 autoScroll
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
+    lastScrollTopRef.current = el.scrollTop;
   };
 
   // 🛠️ V64: 军师天启版洗涤滤网 - 6大穿帮矫正
