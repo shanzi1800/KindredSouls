@@ -61,7 +61,65 @@ function sanitizeReportFinal(text, options = {}) {
   if (reportType === 'monthly') {
     result = fixMoonScorpioHallucination(result);
   }
+  // 刀四(V239): 排版美化——压缩过量空行 + 消除孤立/连续 ✦ + 风险提示转 Markdown 引用
+  result = result.replace(/\n{3,}/g, '\n\n');
+  result = result.replace(/✦\s*✦+/g, '✦');
+  result = result.replace(/【风险提示：?】/g, '\n> 🛡️ **风控指南**：');
+  result = result.replace(/\s*✦\s*$/, '');
   return result;
+}
+
+// ═══ V239: 动态币种/宫位 Prompt 注入算子（仅 6 语:zh/en/fr/es/th/vi）═══
+// 1. 动态币种与风控阈值——取代月报硬编码 ￥5000 / 5% 资产上限
+function getCurrencyRiskProfile(lang) {
+  const profiles = {
+    zh: { currency: 'CNY', symbol: '￥', baseRisk: 5000,     maxWeekly: 15000 },
+    en: { currency: 'USD', symbol: '$',  baseRisk: 800,      maxWeekly: 2500 },
+    fr: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000 },
+    es: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000 },
+    th: { currency: 'THB', symbol: '฿',  baseRisk: 5000,     maxWeekly: 15000 },
+    vi: { currency: 'VND', symbol: '₫',  baseRisk: 12000000, maxWeekly: 36000000 },
+  };
+  return profiles[lang] || profiles.en;
+}
+
+// 2. 中英签名归一化 + 整宫制太阳宫位推导(1-12),无新数据依赖
+const V239_ZH_ORDER = ['摩羯座','水瓶座','双鱼座','白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座'];
+const V239_EN2ZH = { Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座' };
+function _v239ToZhSign(s) {
+  if (!s) return null;
+  if (V239_ZH_ORDER.includes(s)) return s;
+  return V239_EN2ZH[s] || null;
+}
+function deriveSunHouse(risingSign, sunSign) {
+  const rs = _v239ToZhSign(risingSign);
+  const ss = _v239ToZhSign(sunSign);
+  if (!rs || !ss) return 9; // 兜底:第9宫(远行/跨界)
+  const ri = V239_ZH_ORDER.indexOf(rs);
+  const si = V239_ZH_ORDER.indexOf(ss);
+  return ((si - ri) % 12 + 12) % 12 + 1;
+}
+
+// 3. 动态 Prompt 注入指令(月报专用,覆盖通用 FORMAT_FIREWALL 周标题模板)
+function buildWealthPromptContext(lang, meta) {
+  const curr = getCurrencyRiskProfile(lang);
+  const sunSign = meta?.zodiac?.sunSign || '天秤座';
+  const risingSign = meta?.zodiac?.risingSign || '摩羯座';
+  const sunHouse = deriveSunHouse(risingSign, sunSign);
+  const instruction = `
+[DYNAMIC_FINANCIAL_PROFILE — 月报专用·覆盖通用 FORMAT_FIREWALL 周标题模板]
+- 报告语言: ${lang}
+- 币种单位: ${curr.currency} (${curr.symbol})
+- 单笔消费风控阈值: ${curr.symbol}${curr.baseRisk.toLocaleString()}
+- 周度非必需消费上限: ${curr.symbol}${curr.maxWeekly.toLocaleString()}
+- 太阳/木星核心激活宫位: 第 ${sunHouse} 宫
+
+[STRICT_OUTPUT_FORMAT_RULES — 月报周卡片标题增强]
+1. 在 FORMAT_FIREWALL 周卡片标题基础上,标题末尾追加显性宫位锚点与风控等级(不破坏原有 ✦ [emoji 第N周：日期（主题）] 结构),例:
+   ✦ [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
+2. 消费陷阱模块(✦ [⚠️ 消费陷阱...])必须对超过 ${curr.symbol}${curr.baseRisk.toLocaleString()} 的单笔消费强制执行 24 小时冷静期规则,周度非必需上限 ${curr.symbol}${curr.maxWeekly.toLocaleString()},并附灵魂三问决策树。
+3. 全文币种统一使用 ${curr.symbol},禁止混入其他币种符号。`;
+  return { instruction, curr, sunHouse, risingSign, sunSign };
 }
 
 const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Zero Tolerance）：\n\n#### A. 禁止 CoT 泄漏\n严禁将任何思考过程、自我纠错、规则讨论、数据验证输出到正文中。内部推理必须在模型内部完成，不得出现在最终文本里。\n禁止输出： (note:...) (注意：...) (Je me corrige...) (correction) (根据数据...) (数据说...) 等任何括号包裹的推理内容。\n\n#### B. 方括号完整性（P0）\n每张卡片的 [ 和 ] 必须成对匹配，且方括号内部不得换行、不得断句、不得嵌套。\n错误示例（全部禁止）：\n  • [สัปดาห์ที่ 2: ก] .ค. 8–14]  （在 [ 内部断开）\n  • [สัปดาห์ที่ 4: ก.ค. 23–31  （缺失结尾 ]）\n  • [เงาการเงิน] กับดัก... （在 [ 内部有空格和 ]）\n正确格式：\n  • [🟢 สัปดาห์ที่ 2: ก.ค. 8–14 (วงจรความเสี่ยงสูง)]  （一气呵成，无内部断句）\n  • [⚠️ เงาการเงิน：กับดักการใช้จ่าย ก.ค. 2026]  （整行是单个方括号块）\n\n#### C. 语言封锁（最高优先级 — V210-fix 多语言重复循环）
@@ -5243,6 +5301,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // ===== [V238-STREAM-META] 优先推送结构化元数据供前端报头渲染 =====
   try {
     const metaPayload = buildWealthMeta(birthDate, lang, astroMatrix);
+    // V239: 注入动态风控门槛 + 宫位元数据(前端 meta 事件未来可视化用)
+    try {
+      const _ctx = buildWealthPromptContext(lang, metaPayload);
+      metaPayload.riskControl = {
+        currency: _ctx.curr.currency,
+        symbol: _ctx.curr.symbol,
+        baseRisk: _ctx.curr.baseRisk,
+        maxWeekly: _ctx.curr.maxWeekly,
+      };
+      metaPayload.houseInfo = { sunHouse: _ctx.sunHouse, risingSign: _ctx.risingSign, sunSign: _ctx.sunSign };
+    } catch (e) { /* meta 兜底不阻断 */ }
     res.write(Buffer.from(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`, 'utf-8'));
     if (typeof res.flush === 'function') res.flush();
   } catch (e) {
@@ -5428,6 +5497,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇
       if (lang === 'zh') {
         prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
+      }
+      // V239: 月报动态币种/宫位 Prompt 注入(覆盖通用标题模板,仅 monthly)
+      if (reportType === 'monthly') {
+        const _ctx = buildWealthPromptContext(lang, astroMatrix ? buildWealthMeta(birthDate, lang, astroMatrix) : null);
+        prompt.system += '\n\n' + _ctx.instruction;
       }
       prompt.user = prompt.user.replace(/[\u2026]/g, '...');
 

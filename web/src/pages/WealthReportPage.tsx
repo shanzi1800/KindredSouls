@@ -2025,10 +2025,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   }
                 }
 
-                // 🔍 军师调试日志:看数据到底长啥样
-                console.log('[WealthReport] 📥 收到流式增量:', parsed.text?.slice(0, 20) + '...');
-
-                if (parsed.text) {
+                if (parsed.meta) {
+                  // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
+                  // 前端目前不消费，只记录日志（未来可扩展到报头实时渲染）
+                  console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
+                } else if (parsed.text) {
+                  // 🔍 军师调试日志:看数据到底长啥样
+                  console.log('[WealthReport] 📥 收到流式增量:', parsed.text.slice(0, 40) + (parsed.text.length > 40 ? '...' : ''));
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
