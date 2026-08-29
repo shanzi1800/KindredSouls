@@ -233,13 +233,14 @@ const SacredYearlyReportBox: React.FC<{
       .replace(/Pluto en Capricorne/g, 'Pluto en Verseau')
       .replace(/ดาวพลูโตราศีมังกร/g, 'ดาวพลูโตราศีกุมภ์')
       .replace(/Sao Diêm Vương Ma Kết/g, 'Sao Diêm Vương Bảo Bình');
-    // V248-fix1: 去除重复的开篇模块（两段 Thème de Destin du Mois）
-    // 逻辑: 找到第一个 ✦ Thème de Destin du Mois ✦ 块，如果其后紧接着第二个
-    // Thème de Destin 块(中间不超过200字符)，则删掉第一个
-    const themeMatch = cleaned.match(/(✦[^✦]*Th[èe]me[^✦]*Moix?[^✦]*✦)([\s\S]{1,200}?)(✦[^✦]*Th[èe]me[^✦]*Moix?[^✦]*✦)/);
-    if (themeMatch) {
-      // 保留第二个（更完整的），删掉第一个
-      cleaned = cleaned.replace(themeMatch[1] + themeMatch[2], '');
+    // V248-fix1: 去除重复的开篇模块（任何语言的两段相同开篇主题块）
+    // 结构: ✦\n[🔮 <主题标题>]\n<正文>\n✦\n[🔮 <主题标题>]\n<正文> → 删第一段
+    const _openTitles = '本月命运主题|Monthly Destiny Theme|Tema de Destino Mensual|Thème de Destin du Mois|ธีมโชคชะตาประจำเดือน|Chủ Đề Vận Mệnh Tháng';
+    const _openRe = new RegExp(`(✦\\s*\\[[^\\]]*(${_openTitles})[^\\]]*\\][\\s\\S]*?)(✦\\s*\\[[^\\]]*(${_openTitles})[^\\]]*\\])`);
+    let _dup;
+    let _guard = 0;
+    while ((_dup = cleaned.match(_openRe)) && _guard++ < 5) {
+      cleaned = cleaned.replace(_dup[1], '');
     }
 
     // V248-fix2: 修复 Week4 风险图标与文案不符 🟢 Modéré → 🟡 Modéré

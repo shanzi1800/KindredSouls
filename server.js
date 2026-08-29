@@ -246,6 +246,14 @@ function buildWealthPromptContext(lang, meta) {
       th: `4. ไม่มีข้อผิดพลาดในการสะกดชื่อวัตถุท้องฟ้า`,
       vi: `4. Không lỗi chính tả tên thiên thể.`,
     },
+    rule5: {
+      zh: `5. 开篇模块【Thème de Destin du Mois】全文只允许出现一次，严禁重复生成两段相同的开篇。`,
+      en: `5. The opening module 【Thème de Destin du Mois】 MUST appear EXACTLY ONCE. Never generate it twice.`,
+      es: `5. El módulo de apertura 【Thème de Destin du Mois】 debe aparecer EXACTAMENTE UNA VEZ. Nunca lo generes dos veces.`,
+      fr: `5. 【ANTI-DUPLICATION】Le module d'ouverture 【Thème de Destin du Mois】 DOIT apparaître EXACTEMENT UNE FOIS au début du rapport. INTERDIT de le générer deux fois (pas de double intro).`,
+      th: `5. โมดูลเปิด 【Thème de Destin du Mois】 ต้องปรากฏเพียงครั้งเดียวเท่านั้น ห้ามสร้างซ้ำ`,
+      vi: `5. Phần mở đầu 【Thème de Destin du Mois】 CHỈ ĐƯỢC PHÉP xuất hiện ĐÚNG MỘT LẦN. Không bao giờ tạo hai lần.`,
+    },
   };
   const instruction = [
     INSTR.overview[lang] || INSTR.overview.zh,
@@ -260,6 +268,7 @@ function buildWealthPromptContext(lang, meta) {
     _l(INSTR.rule2),
     _l(INSTR.rule3),
     _l(INSTR.rule4),
+    _l(INSTR.rule5),
   ].join('\n');
   return { instruction, curr, sunHouse, risingSign, sunSign };
 }
