@@ -1459,7 +1459,7 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
   // 匹配: 中文/英文/数字后接孤立全角）→ 删
   text = text.replace(/([\u4e00-\u9fa5a-zA-Z0-9])）/g, '$1');
   // 2. 章节 Emoji 标记(🟢🔴🔵⚠️)后强制标准空格,防止移动端文本排版错位
-  text = text.replace(/([🟢🔴🔵⚠️])(?=[^\s\n])/g, '$1 ');
+  text = text.replace(/((?:🟢|🔴|🔵|⚠️))(?=[^\s\n])/g, '$1 ');
 
   // ── V149: 全局括号配对清洗（根治空括号/孤儿右括号/孤儿左括号）──
   // 军师抓包: "（高危熔断）()"/"冥王星（水瓶座形成对冲"/"处女座）"
@@ -3108,14 +3108,14 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   //    前端 SacredYearlyReportBox 的 parseLine 期望 "[emoji 第N周...]"
   //    不含 ✦ 前缀（✦ 是章节分隔符，不是标题前缀）
   //    同时处理跨行情况：单独一行的 ✦ 与下一行周标题合并后去前缀
-  c = c.replace(/^✦\s*$(\s*\[\s*[🟢🔴🔵⚠️🔮]\s*)/gm, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*第[一二三四1-4]周)/gm, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Week\s*\d+)/gim, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semana\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Semaine\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*Tuần\s*\d+)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*สัปดาห์ที่)/gi, '$1');
-  c = c.replace(/^✦\s*(\[\s*[🟢🔴🔵⚠️]?\s*[^\[\n]+?(?:命运主题|消费陷阱))/gm, '$1');
+  c = c.replace(/^✦\s*$(\s*\[\s*(?:🟢|🔴|🔵|⚠️|🔮)\s*)/gm, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*第[一二三四1-4]周)/gm, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Week\s*\d+)/gim, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Semana\s*\d+)/gi, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Semaine\s*\d+)/gi, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Tuần\s*\d+)/gi, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*สัปดาห์ที่)/gi, '$1');
+  c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*[^\[\n]+?(?:命运主题|消费陷阱))/gm, '$1');
 
   // 6. 🛠️ V223-fix2: 注入缺失的 Overview 和消费陷阱（DeepSeek 吞 Prompt 模板占位符）
   //    ⚠️ injectPlaceholders=false 时（流式分片路径）跳过——否则占位符会被追加到半截分片尾部，
@@ -3128,10 +3128,11 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
     const _monthLabel = getMonthLabel(lang, y, m);
-    const hasWeek1 = /\[\s*[🟢🔴🔵⚠️]?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
+    const hasWeek1 = /\[\s*(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
     if (hasWeek1) {
-      const hasOverview = /本月命运主题|Monthly\s*Cosmic\s*Theme|Visión\s*General|Aperçu|ธีม|Chủ\s*đề/i.test(c);
-      const hasTrap = /消费陷阱|Financial\s*Shadow|Sombra\s*Financière|Ombre\s*Financière|เงาการ|Trap|Bóng\s*Tài/i.test(c);
+      // 🛠️ V256: 全语言 Overview/Trap 检测——原正则只认 zh/en 部分词, 漏检 es/fr 导致已生成时重复注入 / 未生成时不注入
+      const hasOverview = /本月命运主题|Monthly\s*Destiny|Tema\s*de\s*Destino|Thème\s*de\s*Destin|ธีม|Chủ\s*Đề|Visión\s*General|Aperçu|Cosmic\s*Theme/i.test(c);
+      const hasTrap = /消费陷阱|Spending\s*Traps|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Financial\s*Shadow|Ombre\s*Financi|Sombra\s*Financi|เงาการ|Bóng\s*Tài/i.test(c);
       if (!hasOverview) {
         // 主题头无月份（与前端格式一致：## [🔮 Monthly Destiny Theme]）
         c = `✦\n[🔮 ${_hdr.theme}]\n\n${_ph.theme}\n\n` + c;
@@ -3155,7 +3156,7 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   c = c.replace(/✦?\s*\[\s*🔮\s*[^\]]*\]\s*✦?/gi, `✦ [🔮 ${_v229hdr.theme}] ✦`);
   // Trap: 匹配 [⚠️ ...]（负向预查排除周次标题 [⚠️ Week N]），归一为 lang 规范头（带月份）
   // 2026-08-09-fix: 末尾加 \s*✦? 吃掉尾部 ✦；并新增 Financial Shadow 变体（无 ⚠️ 时整行即标题，吃掉整行）
-  c = c.replace(/✦?\s*\[\s*⚠️\s*(?![🟢🔴🔵]?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+  c = c.replace(/✦?\s*\[\s*⚠️\s*(?!(?:🟢|🔴|🔵)?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
   c = c.replace(/✦?\s*\[\s*Financial\s*Shadow[^\n]*/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
 
   // 8. 🛠️ 2026-08-09: 英文排版粘连清洗（仅 en，清洗层兜底不改 Prompt）
@@ -5981,6 +5982,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           .replace(/(?<!✦\n)(\[⚠️\s*Sombra[^\]]*\])/g, '✦\n$1');
       }
       cleanedText = house_linter(cleanedText, astroMatrix);
+      // 🛠️ V256-fix: 月报全量 Overview/陷阱 注入——根因: 原 fixMonthlySectionTitles(true) 误置于 yearly else 分支,
+      //   if(reportType==='monthly') 在 yearly 分支内永假→从不执行; 流式逐chunk flush 处 injectPlaceholders=false 须保留(防半截分片斩首单词),
+      //   故改在【整段流结束后】此处(全量 cleanedText)以 true 注入, 确保 6 段齐全。hasOverview/hasTrap 检测已升级全语言。
+      cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
