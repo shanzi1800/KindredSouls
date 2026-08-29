@@ -73,6 +73,8 @@ const SacredYearlyReportBox: React.FC<{
     // V103-fix10: ✦ 拆行修复——三步走
     cleaned = cleaned.replace(/^##(\s*)✦/gm, '✦$1');    // Step1: ## ✦ -> ✦（主标题去##，保空格）
     cleaned = cleaned.replace(/^✦$/gm, '');                // Step1b: 单独✦行删掉
+    // V254-fix: 删除 LLM 生成的孤立装饰星标行(🌟/⭐/💫)——段落间多余分隔符(后端 _BAD_EMOJI 未覆盖正文)
+    cleaned = cleaned.replace(/^(🌟|⭐|💫)\s*$/gm, '');  // 注意: emoji 代理对不能放字符类[], 必须 alternation
     cleaned = cleaned.replace(/##((?:\\s*[^\\n✦])*?(?:第[一二三四五六七八九十\\d]+章|Chương|Chương\\s+\\d+|Chapter\\s+[IVX\\d]+|บทที่\\s*\\d+)[^\\n✦]*)✦/gm, (m) => {
       const raw = m.replace(/^##\s*/, '').replace(/\s*✦\$/, '').trim();
       const chMatch = raw.match(/(?:第[一二三四五六七八九十\d]+章|Chương|Chương\s+\d+|Chapter\s+[IVX\d]+|บทที่\s*\d+)/);
