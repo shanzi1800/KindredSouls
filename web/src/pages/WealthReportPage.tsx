@@ -2010,6 +2010,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') setMonthlyCardsReady(true);
+                // V243-fix: 延迟清 reportLoading，等 sacredText 和 monthlyCardsReady 都落状态后再触发重新渲染
+                setTimeout(() => setReportLoading(''), 0);
                 break;
               }
 
@@ -2232,9 +2234,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
       setWealthReport(currentLang === 'zh' ? '网络错误,请检查网络连接后重试。' : 'Network error, please try again.');
-    } finally {
-      setReportLoading('');
-    }
+    } // V243-fix: 不在这里清 reportLoading，改在 [DONE] 内延迟清
   };
 
   const currentLang = (lang || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
