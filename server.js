@@ -850,7 +850,6 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       }
     }
   }
-  console.log('[V257-DEBUG-callDeepSeek] RETURN fullText.len=' + fullText.length + ' skipFinal=' + skipFinal + ' reportType=' + reportType);
 
   // ── V154: 清除全角括号（非中文语言）—— 早于final_text_sanitizer处理 ──
   if (lang !== "zh") {
@@ -3131,13 +3130,15 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
     const _monthLabel = getMonthLabel(lang, y, m);
     const hasWeek1 = /\[\s*(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
     if (hasWeek1) {
-      // 🛠️ V256: 全语言 Overview/Trap 检测——原正则只认 zh/en 部分词, 漏检 es/fr 导致已生成时重复注入 / 未生成时不注入
-      const hasOverview = /本月命运主题|Monthly\s*Destiny|Tema\s*de\s*Destino|Thème\s*de\s*Destin|ธีม|Chủ\s*Đề|Visión\s*General|Aperçu|Cosmic\s*Theme/i.test(c);
+      // 🛡️ V256/V257: Overview 用下方「✦ [🔮 主题头计数」检测(格式已统一), Trap 用多语言正则检测
       const hasTrap = /消费陷阱|Spending\s*Traps|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Financial\s*Shadow|Ombre\s*Financi|Sombra\s*Financi|เงาการ|Bóng\s*Tài/i.test(c);
-      if (!hasOverview) {
-        // 主题头无月份（与前端格式一致：## [🔮 Monthly Destiny Theme]）
-        c = `✦\n[🔮 ${_hdr.theme}]\n\n${_ph.theme}\n\n` + c;
-      }
+        // 🛡️ V257-fix: 主题头检测改用「✦ [🔮 计数」(下方提前归一化后任何语言主题头都是 ✦ [🔮 格式),
+        //   仅当数量=0(真缺失)才注入,杜绝重复注入第2个主题头。
+        const _themeCount = (c.match(/✦\s*\[\s*🔮/g) || []).length;
+        if (_themeCount === 0) {
+          // 主题头无月份（与前端格式一致：## [🔮 Monthly Destiny Theme]）
+          c = `✦\n[🔮 ${_hdr.theme}]\n\n${_ph.theme}\n\n` + c;
+        }
       if (!hasTrap) {
         c = c + '\n\n✦ [⚠️ ' + _hdr.trap + _monthLabel + ']\n\n' + _ph.trap;
       }
@@ -5878,7 +5879,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
       ? geminiFullText
       : (fullTextCollector || '');
-    console.log('[V257-DEBUG] gFT.len=' + (geminiFullText||'').length + ' ftc.len=' + (fullTextCollector||'').length + ' src.len=' + _monthlySrc.length + ' reportType=' + reportType);
     let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
@@ -6082,20 +6082,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // 🛡️ V222z-fix13b: sanitized 发前截断多份——双结构锚点(命运主题+消费陷阱), 每份报告各出现一次,
-    // 不再依赖脆弱的 [⚠️ 标记(模型掉字/换Emoji/被清洗即失效)。多语言感知: 按当前 lang 取对应标题;
-    // 仅当【主题头与陷阱头同时 ≥2 次】才截到第 2 次主题头之前(只留第 1 份)。
-    // 🛡️ V222z-fix13d-v2-FINAL: 单结构锚点截断——`✦ [🔮` 是月报命运主题的固定结构头(6语言通用)
-    // 不依赖任何语言本地化文字, 彻底摆脱多语言硬编码与文案变动风险.
+    // 🛡️ V257-fix: 多份报告守卫(原 V222z-fix13d 用 ✦ [🔮 主题头计数截断,误判双份砍光正文,已废弃)。
+    //   新逻辑见下方: 仅当【同一周标题重复出现】才截(真·双份报告信号),单份月报绝触发。
     // 单锚设计: 2个 `✦ [🔮` = 第2份报告已生成, 截断到第2个锚点之前.
     // (trap 锚点不参与门禁: 同一份报告内 trap 可多次出现, trap≥2 不是双份的充分条件)
     if (cleanedText && cleanedText.length > 100) {
-      const _THEME_RE = /\✦\s*\[\🔮/g;
-      const _matches = [...cleanedText.matchAll(_THEME_RE)];
-      if (_matches.length >= 2) {
-        const _cutPos = _matches[1].index; // 第 2 次主题头位置 = 第 2 份报告起点
-        console.warn('CHECKPOINT: V233-RUN-NOW-ACTIVE'); console.warn(`[V222z-fix13d-v2-FINAL] 多份截断(主题×${_matches.length}): ${cleanedText.length}→${_cutPos} chars`);
-        cleanedText = cleanedText.substring(0, _cutPos);
+      // 🛡️ V257-fix: 多份报告检测改为「同一周标题重复出现」(如 Week 1 出现 2 次)= 真·双份报告信号。
+      //   不再用 ✦ [🔮 主题头计数——LLM 偶发回显 prompt 模板示例 / V256 兜底注入会产生第2个主题头,
+      //   误判双份把正文砍光(本例: 9930→443)。单份月报 4 周各出现 1 次,绝不触发。
+      const _WEEK_RE = /\[\s*(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*(\d+)|第\s*([一二三四1-4])\s*周|Semana\s*(\d+)|Semaine\s*(\d+)|Tuần\s*(\d+)|สัปดาห์ที่\s*(\d+))/gi;
+      const _wkSeen = {};
+      let _dupPos = -1;
+      let _mw;
+      while ((_mw = _WEEK_RE.exec(cleanedText)) !== null) {
+        const _w = _mw[1] || _mw[2] || _mw[3] || _mw[4] || _mw[5] || _mw[6];
+        if (_wkSeen[_w]) { _dupPos = _mw.index; break; }
+        _wkSeen[_w] = true;
+      }
+      if (_dupPos >= 0) {
+        console.warn(`[V257-fix] 多份截断(周标题重复): ${cleanedText.length}→${_dupPos} chars`);
+        cleanedText = cleanedText.substring(0, _dupPos);
       }
     }
 
