@@ -1947,13 +1947,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (USE_STREAM) {
       // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
       try {
-        let _full = ''; // 🛡️ V222z-fix2: 声明在 try 同一层级 → catch 可见
+        let _fullMap = new Map<string, string>(); // V244: 每请求独立_full，防止HMR/重挂/多请求互相踩踏
         let _chunkIdx = 0; // V242-debug: 追踪 chunk 编号
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         // 🛡️ V222z-fix7: 覆盖前先检查旧 gen 是否已完成；若已完成则保留旧 gen（它已经持有最终 _full）
         const existingGen = _reportGen.get(_memKey);
         if (existingGen?.done) {
           console.log('[V222z-fix7] gen 已完成，跳过新 SSE，直接复用 partial（长度=' + (existingGen.partial?.length ?? 0) + '）');
+          _fullMap.set(_memKey, existingGen.partial ?? ''); // V244: sync Map
           setSacredText(existingGen.partial ?? '');
           setStreamedOnce(true);
           if (type === 'monthly') setMonthlyCardsReady(true);
@@ -1965,10 +1966,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         _dbgSet++;
         console.log(`[V219g-DEBUG] SET #${_dbgSet} key=${_memKey} gen=${_reportGen.size}`);
         // 🛡️ V219e: 发起请求但不 abort 任何请求--单例锁已保证全局只发一个,进行中请求必须跑到 [DONE]
+        // V244-fix: 新请求发起前，abort 旧 AbortController（防止旧流继续写 _fullMap）
+        if (abortRef.current) { abortRef.current.abort(); }
+        abortRef.current = new AbortController();
+        // V244: 初始化本请求的 _fullMap 条目（每个请求独立累加，不被 HMR / 重挂重置）
+        _fullMap.set(_memKey, '');
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
+          signal: abortRef.current.signal, // V244: 接入 fresh AbortController
           body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type }),
         });
 
@@ -1994,18 +2000,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               const dataStr = trimmedLine.slice(6).trim();
 
               if (dataStr === '[DONE]') {
-                console.log('[V242-DEBUG] [DONE] _full.length=' + _full.length + ' | _full.slice(0,80)=' + JSON.stringify(_full.slice(0, 80)));
-                console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + (_full.match(/\✦/g) || []).length + ' | 第4个✦位置=' + (_full.indexOf('\✦') !== -1 ? _full.indexOf('\✦') : -1));
+                console.log('[V242-DEBUG] [DONE] (_fullMap.get(_memKey)||'').length=' + (_fullMap.get(_memKey)||'').length + ' | (_fullMap.get(_memKey)||'').slice(0,80)=' + JSON.stringify(_full.slice(0, 80)));
+                console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + ((_fullMap.get(_memKey)||'').match(/\✦/g) || []).length + ' | 第4个✦位置=' + ((_fullMap.get(_memKey)||'').indexOf('\✦') !== -1 ? (_fullMap.get(_memKey)||'').indexOf('\✦') : -1));
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
-                _reportMemCache.set(_memKey, _full); // 🛡️ V219: 完整报告写入内存缓存,后续 remount 直接命中
+                _reportMemCache.set(_memKey, _fullMap.get(_memKey) || ''); // V244,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
                 if (genDone) {
-                  genDone.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 最后一次通知所有订阅实例
+                  genDone.subs.forEach(fn => fn(_fullMap.get(_memKey) || _full)); // 🛡️ V219d: 最后一次通知所有订阅实例
                   // 🔒 V220b: 标记完成但保留在 Map 中,后续 remount 直接复用最终文本,绝不重新开发请求(根治重复拼接)
                   genDone.done = true;
-                  genDone.partial = _full;
+                  genDone.partial = _fullMap.get(_memKey) || '';
                 } else {
-                  setSacredText(_full);
+                  setSacredText(_fullMap.get(_memKey) || '');
                 }
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
@@ -2036,19 +2042,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
-                  const _prevLen = _full.length;
+                  const _prevLen = (_fullMap.get(_memKey)||'').length;
                   console.log('[V242-DEBUG] text chunk #' + (++_chunkIdx) + ' parsed.text.len=' + parsed.text.length + ' _full: ' + _prevLen + '→' + _full.length);
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
-                    if (parsed.text.startsWith(_full)) {
-                      _full = parsed.text;            // 后端推全量(累积)快照 -> 直接覆盖
+                    const _cur = _fullMap.get(_memKey) || '';
+                    if (parsed.text.startsWith(_cur)) {
+                      _fullMap.set(_memKey, parsed.text);            // 后端推全量(累积)快照 -> 直接覆盖
                     } else if (parsed.text.length > 0) {
-                      _full += parsed.text;           // 后端推纯增量 -> 追加(重复帧已被 startsWith 分支吸收)
+                      _fullMap.set(_memKey, (_fullMap.get(_memKey) || '') + parsed.text);
                     }
-                    gen.partial = _full; // 🛡️ V219d: 更新 module 级进度
-                    gen.subs.forEach(fn => fn(_full)); // 🛡️ V219d: 通知所有订阅的 remount 实例
-                    setSacredText(_full); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
+                    _fullMap.set(_memKey, _fullMap.get(_memKey) || ''); // V244: sync Map
+                    _fullMap.set(_memKey, _fullMap.get(_memKey) || '');
+                    gen.subs.forEach(fn => fn(_fullMap.get(_memKey) || ''));
+                    setSacredText(_fullMap.get(_memKey)||''); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
                   } else {
                     // 🛡️ V220e: 智能自适应合并(与月报通道同款, 防阶梯重复)
                     const _wt = wealthReportRef.current || '';
@@ -2107,8 +2115,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       
         // 🛠️ V222z-fix2: Railway 30秒硬切断兜底——在 try 末尾检查流状态
         // 判断：_full 长度 < 2000 字符 → 说明流未正常完成，触发 fallback
-        if (_full.length < 2000) {
-          console.warn('[WealthReport] ⚠️ 流式传输不完整(_full=' + _full.length + '字符) → 启动非流式 fallback');
+        if ((_fullMap.get(_memKey)||'').length < 2000) {
+          console.warn('[WealthReport] ⚠️ 流式传输不完整(_full=' + (_fullMap.get(_memKey)||'').length + '字符) → 启动非流式 fallback');
           try {
             const fbRes = await fetch('/api/wealth-oracle', {
               method: 'POST',
