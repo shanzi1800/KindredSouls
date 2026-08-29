@@ -2000,7 +2000,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               const dataStr = trimmedLine.slice(6).trim();
 
               if (dataStr === '[DONE]') {
-                console.log('[V242-DEBUG] [DONE] (_fullMap.get(_memKey)||'').length=' + (_fullMap.get(_memKey)||'').length + ' | (_fullMap.get(_memKey)||'').slice(0,80)=' + JSON.stringify(_full.slice(0, 80)));
+                console.log('[V242-DEBUG] [DONE] len=' + (_fullMap.get(_memKey)||'').length + ' | first80=' + JSON.stringify((_fullMap.get(_memKey)||'').slice(0,80)));
                 console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + ((_fullMap.get(_memKey)||'').match(/\✦/g) || []).length + ' | 第4个✦位置=' + ((_fullMap.get(_memKey)||'').indexOf('\✦') !== -1 ? (_fullMap.get(_memKey)||'').indexOf('\✦') : -1));
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 _reportMemCache.set(_memKey, _fullMap.get(_memKey) || ''); // V244,后续 remount 直接命中
