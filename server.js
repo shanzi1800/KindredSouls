@@ -238,6 +238,14 @@ function buildWealthPromptContext(lang, meta) {
       th: `3. ใช้เฉพาะ ${curr.symbol} ทั่วทั้งข้อความ ห้ามผสมสัญลักษณ์สกุลเงินอื่น`,
       vi: `3. Chỉ sử dụng ${curr.symbol} trong toàn bộ văn bản. Không trộn lẫn các ký hiệu tiền tệ khác.`,
     },
+    rule4: {
+      zh: `4. 全文禁止拼写错误：如"月亮"写错、火星/金星等专有名词错误。`,
+      en: `4. No spelling errors for celestial body names: "Lune" (not "Laune"), "Mars", "Vénus", "Mercure", "Jupiter", "Saturne".`,
+      es: `4. Sin errores ortográficos en nombres de cuerpos celestes.`,
+      fr: `4. 【ORTHOGRAPHE & MAISON】Aucune erreur de spelling. Corps célestes: "Lune" (PAS "Laune"), "Mars", "Vénus", "Mercure", "Jupiter", "Saturne". Chaque section hebdomadaire DOIT maintenir la MÊME maison par corps céleste. EXEMPLE INTERDIT: "La Lune traverse votre Maison 9" suivi de "La Lune en Scorpion dans votre Maison 7" — CHOISIR une seule maison et la garder cohérente dans toute la section.`,
+      th: `4. ไม่มีข้อผิดพลาดในการสะกดชื่อวัตถุท้องฟ้า`,
+      vi: `4. Không lỗi chính tả tên thiên thể.`,
+    },
   };
   const instruction = [
     INSTR.overview[lang] || INSTR.overview.zh,
@@ -251,6 +259,7 @@ function buildWealthPromptContext(lang, meta) {
     _l(INSTR.rule1),
     _l(INSTR.rule2),
     _l(INSTR.rule3),
+    _l(INSTR.rule4),
   ].join('\n');
   return { instruction, curr, sunHouse, risingSign, sunSign };
 }

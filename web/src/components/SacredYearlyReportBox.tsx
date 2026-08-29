@@ -233,6 +233,33 @@ const SacredYearlyReportBox: React.FC<{
       .replace(/Pluto en Capricorne/g, 'Pluto en Verseau')
       .replace(/ดาวพลูโตราศีมังกร/g, 'ดาวพลูโตราศีกุมภ์')
       .replace(/Sao Diêm Vương Ma Kết/g, 'Sao Diêm Vương Bảo Bình');
+    // V248-fix1: 去除重复的开篇模块（两段 Thème de Destin du Mois）
+    // 逻辑: 找到第一个 ✦ Thème de Destin du Mois ✦ 块，如果其后紧接着第二个
+    // Thème de Destin 块(中间不超过200字符)，则删掉第一个
+    const themeMatch = cleaned.match(/(✦[^✦]*Th[èe]me[^✦]*Moix?[^✦]*✦)([\s\S]{1,200}?)(✦[^✦]*Th[èe]me[^✦]*Moix?[^✦]*✦)/);
+    if (themeMatch) {
+      // 保留第二个（更完整的），删掉第一个
+      cleaned = cleaned.replace(themeMatch[1] + themeMatch[2], '');
+    }
+
+    // V248-fix2: 修复 Week4 风险图标与文案不符 🟢 Modéré → 🟡 Modéré
+    // 法语风险等级: 🟢=Faible(低), 🟡=Modéré(中), 🔴=Élevé(高)
+    cleaned = cleaned.replace(/Risque:\s*🟢\s*Modéré/gi, 'Risque: 🟡 Modéré');
+    cleaned = cleaned.replace(/Risque:\s*🟢\s*Modéré/gi, 'Risque: 🟡 Modéré');
+
+    // V248-fix3: 法文数字粘连空格修复
+    // à700 → à 700, de24 → de 24, Le30 → Le 30, 700€ → 700 €
+    cleaned = cleaned.replace(/([àÀa-zA-Z])(\d[\d\s]*€)/g, '$1 $2');  // 前字母后数字+€
+    cleaned = cleaned.replace(/(\d+)\s*€(?![\d\s])/g, '$1 €');      // 数字+€ 后无数字
+    cleaned = cleaned.replace(/([a-zàâäéèêëïîôùûüç])(\d{2,})/gi, '$1 $2'); // 前小写字母后2位+数字
+    cleaned = cleaned.replace(/(\d{2,})([a-zàâäéèêëïîôùûüç])(?![a-zàâäéèêëïîôùûüç])/gi, '$1 $2'); // 数字后小写字母
+    cleaned = cleaned.replace(/(\d+)\s*heures/gi, '$1 heures');       // de24 heures
+    cleaned = cleaned.replace(/([a-zA-Z])(\d{1})(?![\d\s€])/g, '$1 $2'); // 单数字粘连
+
+    // V248-fix4: 法文拼写错误 Laune → Lune（月亮）
+    cleaned = cleaned.replace(/\bLaune\b/g, 'Lune');
+    cleaned = cleaned.replace(/\blaune\b/g, 'lune');
+
     return cleaned;
   };
 
