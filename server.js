@@ -173,7 +173,7 @@ function buildWealthPromptContext(lang, meta) {
       es: `1. Extiende los encabezados de FORMAT_FIREWALL agregando casa astrológica + nivel de riesgo al final (preserva estructura ✦ [emoji Semana N: fechas (tema)]), ej:
    ✦ [🟢 Semana 1: Ago 1–7 (Recarga de Riqueza) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]`,
       fr: `1. Enrichir les en-têtes FORMAT_FIREWALL en ajoutant la maison astrologique + niveau de risque en fin de titre (conserver structure ✦ [emoji Semaine N: dates (thème)]), ex:
-   ✦ [🟢 Semaine 1: ${curMonthName || 'Août'} 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]`,
+   ✦ [🟢 Semaine 1: Août 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]`,
       th: `1. ขยายส่วนหัว FORMAT_FIREWALL โดยเพิ่มบ้านโหราศาสตร์ + ระดับความเสี่ยงท้ายหัวข้อ (รักษาโครงสร้าง ✦ [emoji สัปดาห์ที่ N: วันที่ (ธีม)]), ตัวอย่าง:
    ✦ [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (การเติมพลังความมั่งคั่ง) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]`,
       vi: `1. Mở rộng đầu thẻ FORMAT_FIREWALL bằng cách thêm nhà chiêm tinh + mức độ rủi ro ở cuối (giữ nguyên cấu trúc ✦ [emoji Tuần N: ngày (chủ đề)]), ví dụ:
@@ -208,8 +208,7 @@ function buildWealthPromptContext(lang, meta) {
     _l(INSTR.rule1),
     _l(INSTR.rule2),
     _l(INSTR.rule3),
-  ].join('
-');
+  ].join('\n');
   return { instruction, curr, sunHouse, risingSign, sunSign };
 }
 
