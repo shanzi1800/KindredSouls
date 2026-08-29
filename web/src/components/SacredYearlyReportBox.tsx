@@ -290,9 +290,10 @@ const SacredYearlyReportBox: React.FC<{
     // 场景: [⚠️ Trampas de Gasto: Agosto 2026] ✦La conjunción... (标题与正文同行 → 整段被当heading渲染成金色)
     // 治本: 已知标题类型的方括号后插入换行, 并吞掉分隔符 ✦(标题与正文间的章节分隔符)
     const _HDR_KW = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周|Destin|Destino|Th[eè]me|ธีม|Chủ Đề|Trampas?|消费陷阱|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|Overview|Financial\s+Shadow)/i;
-    cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => {
-      return _HDR_KW.test(_b) ? _b + '\n' : _m;
-    });
+    // 场景A: 方括号后紧跟正文 → 换行(吞 ✦)
+    cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => _HDR_KW.test(_b) ? _b + '\n' : _m);
+    // 场景B: 方括号前紧跟正文(无换行) → 换行(标题被上一段落吞并会导致黑字)
+    cleaned = cleaned.replace(/([^\n])(\[[^\]]*\])/g, (_m, _pre, _b) => _HDR_KW.test(_b) ? _pre + '\n' + _b : _m);
 
     return cleaned;
   };
