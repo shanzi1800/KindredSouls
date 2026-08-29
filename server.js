@@ -165,19 +165,62 @@ function buildWealthPromptContext(lang, meta) {
       th: `[STRICT_OUTPUT_FORMAT_RULES — ส่วนหัวการ์ดรายสัปดาห์ที่ปรับปรุงแล้ว]`,
       vi: `[STRICT_OUTPUT_FORMAT_RULES — Đầu thẻ hàng tuần nâng cao]`,
     },
+    // V242-fix: 强化格式约束 + Few-Shot 示例，防 LLM 省略换行和方括号
     rule1: {
-      zh: `1. 在 FORMAT_FIREWALL 周卡片标题基础上,标题末尾追加显性宫位锚点与风控等级(不破坏原有 ✦ [emoji 第N周：日期（主题）] 结构),例:
-   ✦ [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]`,
-      en: `1. Extend FORMAT_FIREWALL weekly card headers by appending house anchor + risk level at the end (preserve ✦ [emoji Week N: dates (theme)] structure), e.g.:
-   ✦ [🟢 Week 1: Aug 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]`,
-      es: `1. Extiende los encabezados de FORMAT_FIREWALL agregando casa astrológica + nivel de riesgo al final (preserva estructura ✦ [emoji Semana N: fechas (tema)]), ej:
-   ✦ [🟢 Semana 1: Ago 1–7 (Recarga de Riqueza) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]`,
-      fr: `1. Enrichir les en-têtes FORMAT_FIREWALL en ajoutant la maison astrologique + niveau de risque en fin de titre (conserver structure ✦ [emoji Semaine N: dates (thème)]), ex:
-   ✦ [🟢 Semaine 1: Août 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]`,
-      th: `1. ขยายส่วนหัว FORMAT_FIREWALL โดยเพิ่มบ้านโหราศาสตร์ + ระดับความเสี่ยงท้ายหัวข้อ (รักษาโครงสร้าง ✦ [emoji สัปดาห์ที่ N: วันที่ (ธีม)]), ตัวอย่าง:
-   ✦ [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (การเติมพลังความมั่งคั่ง) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]`,
-      vi: `1. Mở rộng đầu thẻ FORMAT_FIREWALL bằng cách thêm nhà chiêm tinh + mức độ rủi ro ở cuối (giữ nguyên cấu trúc ✦ [emoji Tuần N: ngày (chủ đề)]), ví dụ:
-   ✦ [🟢 Tuần 1: Thg8 1–7 (Nạp năng lượng Tài sản) | Nhà ${sunHouse} | Rủi ro: 🟢 Thấp]`,
+      zh: `1. 【格式强制】每周卡片标题必须严格遵循以下格式，不得擅自改动：
+   ✦
+   [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
+   规则：
+   - "✦" 必须单独占一行，后面紧跟一个换行
+   - 标题内容必须用方括号 [...] 包裹
+   - 方括号内不得换行、不得嵌套
+   - 错误格式（禁止）：✦ [🟢 第1周... ]（✦ 和 [ 同在一行）
+   - 错误格式（禁止）：✦ 🟢 第1周...（缺失方括号）`,
+      en: `1. 【STRICT FORMAT】Every weekly header MUST follow this EXACT pattern:
+   ✦
+   [🟢 Week 1: Aug 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
+   Rules:
+   - "✦" MUST be on its own line, followed by exactly one newline
+   - Title content MUST be wrapped in square brackets [...]
+   - No line breaks inside the brackets
+   - FORBIDDEN: ✦ [🟢 Week 1... ] (✦ and [ on same line)
+   - FORBIDDEN: ✦ 🟢 Week 1... (missing brackets)`,
+      es: `1. 【FORMATO ESTRICTO】Cada encabezado semanal DEBE seguir este patrón exacto:
+   ✦
+   [🟢 Semana 1: Ago 1–7 (Recarga de Riqueza) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]
+   Reglas:
+   - "✦" DEBE estar en su propia línea, seguido de un salto de línea
+   - El título DEBE estar envuelto en corchetes [...]
+   - Sin saltos de línea dentro de los corchetes
+   - PROHIBIDO: ✦ [🟢 Semana 1... ] (✦ y [ en la misma línea)
+   - PROHIBIDO: ✦ 🟢 Semana 1... (sin corchetes)`,
+      fr: `1. 【FORMAT OBLIGATOIRE】Chaque en-tête hebdomadaire DOIT suivre ce modèle exact:
+   ✦
+   [🟢 Semaine 1: Août 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]
+   Règles:
+   - "✦" DOIT être sur sa propre ligne, suivi d'un saut de ligne
+   - Le titre DOIT être entouré de crochets [...]
+   - Pas de saut de ligne à l'intérieur des crochets
+   - INTERDIT: ✦ [🟢 Semaine 1... ] (✦ et [ sur la même ligne)
+   - INTERDIT: ✦ 🟢 Semaine 1... (crochets manquants)`,
+      th: `1. 【รูปแบบบังคับ】ส่วนหัวรายสัปดาห์ทุกสัปดาห์ต้องเป็นไปตามรูปแบบนี้:
+   ✦
+   [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (การเติมพลังความมั่งคั่ง) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]
+   กฎ:
+   - "✦" ต้องอยู่บรรทัดของตัวเอง ตามด้วยการขึ้นบรรทัดใหม่
+   - หัวข้อต้องอยู่ในวงเล็บ [...]
+   - ห้ามขึ้นบรรทัดใหม่ภายในวงเล็บ
+   - ห้าม: ✦ [🟢 สัปดาห์ที่ 1... ] (✦ และ [ บรรทัดเดียวกัน)
+   - ห้าม: ✦ 🟢 สัปดาห์ที่ 1... (ไม่มีวงเล็บ)`,
+      vi: `1. 【ĐỊNH DẠNG BẮT BUỘC】Mỗi tiêu đề hàng tuần phải tuân theo mẫu này:
+   ✦
+   [🟢 Tuần 1: Thg8 1–7 (Nạp năng lượng Tài sản) | Nhà ${sunHouse} | Rủi ro: 🟢 Thấp]
+   Quy tắc:
+   - "✦" PHẢI trên dòng riêng, theo sau bởi một dòng mới
+   - Tiêu đề PHẢI được bọc trong dấu ngoặc [...]
+   - Không xuống dòng bên trong dấu ngoặc
+   - CẤM: ✦ [🟢 Tuần 1... ] (✦ và [ cùng dòng)
+   - CẤM: ✦ 🟢 Tuần 1... (thiếu dấu ngoặc)`,
     },
     rule2: {
       zh: `2. 消费陷阱模块(✦ [⚠️ 消费陷阱...])必须对超过 ${curr.symbol}${curr.baseRisk.toLocaleString()} 的单笔消费强制执行 24 小时冷静期规则,周度非必需上限 ${curr.symbol}${curr.maxWeekly.toLocaleString()},并附灵魂三问决策树。`,

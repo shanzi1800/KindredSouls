@@ -80,6 +80,20 @@ const SacredYearlyReportBox: React.FC<{
       return `✦ ${title} ✦`;
     }); // Step2: ##📜第一章...✦ → ✦ 第一章...✦
     cleaned = cleaned.replace(/✦\s*\n\s*\n/g, '✦ \n'); // Step3: ✦\n\n## -> ✦ \n\n##
+
+    // V242-fix: 前端归一化——修复 LLM 漏换行/漏方括号的周标题
+    // 场景A: ✦ 🔴 Semaine 2: ...（✦ 和内容同行，无换行无方括号）
+    // 场景A: ✦ 🟢 Semaine 2: ...（✦ 和内容同行，无换行无方括号）→ 补换行+方括号
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*Semaine\s+\d+[^\n]*)$/gm, '✦\n[$1]');
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*Week\s+\d+[^\n]*)$/gm, '✦\n[$1]');
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*Semana\s+\d+[^\n]*)$/gm, '✦\n[$1]');
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*Tuần\s+\d+[^\n]*)$/gm, '✦\n[$1]');
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*สัปดาห์ที่[^\n]*)$/gm, '✦\n[$1]');
+    cleaned = cleaned.replace(/^✦\s+([^\n\[][^\n]*第\s+\d+\s*周[^\n]*)$/gm, '✦\n[$1]');
+    // 场景B: ✦[🟢 Semaine 1...]（✦ 和 [ 同在一行，无换行）→ 补换行
+    cleaned = cleaned.replace(/^✦(\[)/gm, '✦\n$1');
+    // 场景C: ✦\n[🟢 Semaine 1...] 正确格式，但可能缺结尾 ] → 补 ]
+    cleaned = cleaned.replace(/^✦\n(\[[🟢🔴🔵⚠️][^\n]*[^\n]$)/gm, '$1]');
     cleaned = cleaned.replace(/(\d{4}年\d{1,2}月):\s*Sun\s+in\s+/g, '$1: '); // V103-fix11/13: 清理月份 Sun in（不依赖 ### 📅，AI 输出格式不固定）
     cleaned = cleaned.replace(/---/g, '\n---\n');         // 分割线前后注入换行
 
