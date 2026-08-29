@@ -16,6 +16,7 @@ const SacredYearlyReportBox: React.FC<{
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
   const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
+  const [showScrollHint, setShowScrollHint] = useState(false); // 🛡️ V257: 完结复位后"向下滚动"提示气泡
 
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
 
@@ -38,9 +39,10 @@ const SacredYearlyReportBox: React.FC<{
     const el = scrollRef.current;
     if (!el) return;
     if (yearlyCardsReady) {
-      // 🛠️ V78: 流式完成后必须回到顶部
+      // 🛡️ V257: 完结跳回顶部改平滑滚动 + 显示视觉示能提示, 消除"被截断"心理错觉
       autoScrollRef.current = false;
-      el.scrollTop = 0;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+      setShowScrollHint(true);
     }
   }, [yearlyCardsReady]);
 
@@ -53,7 +55,10 @@ const SacredYearlyReportBox: React.FC<{
 
   const handleScroll = () => {
     const el = scrollRef.current;
-    if (!el || yearlyCardsReady) return;
+    if (!el) return;
+    // 🛡️ V257: 用户向下滚动 > 50px 即隐去提示气泡(完结后也能消, 体验一致)
+    if (el.scrollTop > 50) setShowScrollHint(false);
+    if (yearlyCardsReady) return;
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
   };
@@ -592,10 +597,16 @@ const SacredYearlyReportBox: React.FC<{
           0%, 100% { opacity: 0.35; }
           50% { opacity: 0.95; }
         }
-        .dark-scrollbar::-webkit-scrollbar { width: 6px; border-radius: 3px; }
-        .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
-        .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.75); border-radius: 3px; }
-        .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.9); }
+        /* 🛡️ V257: 哑光金色常驻细滚动条 — 5px 低调常驻(解锁封仓加 UX) */
+        .dark-scrollbar::-webkit-scrollbar { width: 5px; border-radius: 4px; }
+        .dark-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 4px; }
+        .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.6); }
+        /* 🛡️ V257: 提示气泡呼吸跳动 */
+        @keyframes v257Bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
       `}</style>
 
       <div style={{
@@ -625,7 +636,8 @@ const SacredYearlyReportBox: React.FC<{
           </h3>
         </div>
 
-        {/* 滚动区 🔒 封仓参数 */}
+        {/* 滚动区 🔒 封仓参数(460px 高度+overflow 锁不变) */}
+        <div style={{ position: 'relative' }}>
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -655,6 +667,41 @@ const SacredYearlyReportBox: React.FC<{
           ) : (
             <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
           )}
+        </div>
+        {/* 🛡️ V257: 底部渐变遮罩 + 提示气泡 — 完结复位后引导用户向下滚动, 点击气泡自动下滚一屏 */}
+        {yearlyCardsReady && showScrollHint && (
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: '64px',
+            background: 'linear-gradient(to top, rgba(15,14,23,0.95) 0%, rgba(15,14,23,0.6) 50%, transparent 100%)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            paddingBottom: '8px',
+            pointerEvents: 'none',
+            transition: 'opacity 0.3s',
+          }}>
+            <div
+              onClick={() => { scrollRef.current?.scrollBy({ top: 300, behavior: 'smooth' }); }}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                background: 'rgba(212,175,55,0.2)',
+                border: '1px solid rgba(212,175,55,0.4)',
+                color: '#F5E1A4',
+                fontSize: '12px',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5), 0 0 8px rgba(212,175,55,0.2)',
+                backdropFilter: 'blur(8px)',
+                cursor: 'pointer',
+                animation: 'v257Bounce 1.5s infinite',
+              }}
+            >
+              <span>向下滑动查看四周完整推演</span>
+              <span>↓</span>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* 底部暗金光晕 — 4px渐变条 + 80px径向光晕球，双双呼吸脉动 🔒 LOCKED */}
