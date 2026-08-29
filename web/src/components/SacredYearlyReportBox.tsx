@@ -391,7 +391,10 @@ const SacredYearlyReportBox: React.FC<{
 
   const renderLines = (processedText: string) => {
     if (!processedText) return null;
-    return processedText.split('\n').map((line, idx) => {
+    // V248-debug: 精确诊断只渲染一段的问题
+    const _lines = processedText.split('\n');
+    console.log('[SacredYearlyReportBox] V248 render: raw len=' + (rawStreamText?.length||0) + ' lines=' + _lines.length + ' firstLine=' + JSON.stringify(_lines[0]||'EMPTY') + ' ✦ count in raw=' + ((rawStreamText||'').match(/\✦/g)||[]).length);
+    return _lines.map((line, idx) => {
       const { type, content, icon, next } = parseLine(line);
 
       if (type === 'empty') return <div key={idx} style={{ height: '4px' }} />;

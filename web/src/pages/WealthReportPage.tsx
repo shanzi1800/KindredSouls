@@ -2007,19 +2007,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 _reportMemCache.set(_memKey, _fullMap.get(_memKey) || ''); // V244,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
-                if (genDone) {
-                  genDone.subs.forEach(fn => fn(_fullMap.get(_memKey)||'')); // 🛡️ V219d: 最后一次通知所有订阅实例
-                  // 🔒 V220b: 标记完成但保留在 Map 中,后续 remount 直接复用最终文本,绝不重新开发请求(根治重复拼接)
-                  genDone.done = true;
-                  genDone.partial = _fullMap.get(_memKey) || '';
-                } else {
-                  setSacredText(_fullMap.get(_memKey) || '');
-                }
+                const _final = _fullMap.get(_memKey) || '';
+                console.log('[V248] [DONE] final len=' + _final.length + ' ✦=' + ((_final.match(/\✦/g)||[]).length));
+                _reportMemCache.set(_memKey, _final);
+                // V248: 同步清 reportLoading，破坏渲染条件
+                setReportLoading('');
+                // V248: 同步 setSacredText，让 React 批量处理时sacredText 和 monthlyCardsReady 同时就绪
+                setSacredText(_final);
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') setMonthlyCardsReady(true);
-                // V243-fix: 延迟清 reportLoading，等 sacredText 和 monthlyCardsReady 都落状态后再触发重新渲染
-                setTimeout(() => setReportLoading(''), 0);
+                if (genDone) {
+                  genDone.done = true;
+                  genDone.partial = _final;
+                  genDone.subs.forEach(fn => fn(_final));
+                }
                 break;
               }
 
