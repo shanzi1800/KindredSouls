@@ -850,6 +850,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       }
     }
   }
+  console.log('[V257-DEBUG-callDeepSeek] RETURN fullText.len=' + fullText.length + ' skipFinal=' + skipFinal + ' reportType=' + reportType);
 
   // ── V154: 清除全角括号（非中文语言）—— 早于final_text_sanitizer处理 ──
   if (lang !== "zh") {
@@ -5877,6 +5878,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
       ? geminiFullText
       : (fullTextCollector || '');
+    console.log('[V257-DEBUG] gFT.len=' + (geminiFullText||'').length + ' ftc.len=' + (fullTextCollector||'').length + ' src.len=' + _monthlySrc.length + ' reportType=' + reportType);
     let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
