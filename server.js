@@ -400,7 +400,15 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 [emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]
 内容
 
-#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–22 日\n  • Week 4 = 当月 23–31 日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（23–31日），严禁写在 Week 3（15–22日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n`;
+#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–22 日\n  • Week 4 = 当月 23–31 日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（23–31日），严禁写在 Week 3（15–22日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n
+
+#### G. 严格单次输出约束（P0）
+全文必须严格遵守以下出现次数限制，禁止超出：
+  • ✦ [🔮 月度主题] → 仅出现 1 次（第 1 行）
+  • ✦ [emoji 第N周] → 仅出现 4 次
+  • ✦ [⚠️ 消费陷阱] → 仅出现 1 次
+禁止：生成第 2 个月度主题、第 5 个周次卡片、草稿版、替代版本
+`;
 
 //
 // KindredSouls Railway Server - V116bc (FORCE REBUILD 1783756901)
@@ -3126,14 +3134,14 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
   // 优先 Gemini（澳洲付费通道，月报/年报主输出引擎）
   if (geminiKey) {
     try {
-      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey}`, {
+      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
             parts: [{ text: systemPrompt + '\n\n' + userPrompt }],
           }],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
         }),
       });
       if (res.ok) {
@@ -5374,7 +5382,7 @@ app.get('/api/test-gemini', async (req, res) => {
   if (!key) return res.json({ error: 'GEMINI_API_KEY not set' });
   try {
     const r = await safeFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -5489,11 +5497,11 @@ app.use('/api/ai-advisor', async (req, res) => {
     if (!insight && geminiKey) {
       try {
         const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 800, temperature: 0.35 } }),
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 800, temperature: 0.3 } }),
           }
         );
         if (!gemRes.ok) throw new Error(`Gemini ${gemRes.status}`);
@@ -6010,12 +6018,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         try {
           console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
           usedGemini = true;
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + geminiKey, {
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-              generationConfig: { maxOutputTokens: 16000, temperature: 0.5 },
+              generationConfig: { maxOutputTokens: 16000, temperature: 0.3 },
             }),
             signal: gCtrl.signal,
           });
@@ -6694,13 +6702,13 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: new TextEncoder().encode(JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 32768, temperature: 0.75 }
+            generationConfig: { maxOutputTokens: 32768, temperature: 0.3 }
           })),
           signal: controller.signal,
         }
@@ -6834,7 +6842,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
-  const MODEL = 'gemini-3-flash-preview';
+  const MODEL = 'gemini-2.5-flash';
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
@@ -6856,7 +6864,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             headers: { 'Content-Type': 'application/json' },
             body: new TextEncoder().encode(JSON.stringify({
               contents: [{ parts: [{ text: segPrompt }] }],
-              generationConfig: { maxOutputTokens: 8192, temperature: 0.75 }
+              generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
             })),
             signal: controller.signal,
           }
@@ -6866,6 +6874,8 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
         const data = await response.json();
         segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // 🛡️ V277-fix: 清理嵌套括号如 [[🔴 → [🔴
+        segText = segText.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
         console.log('[V272-seg] 段' + (seg+1) + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
         console.log("[V266] segText preview:", JSON.stringify(segText.slice(0,100)));
         break; // 成功，跳出重试循环
