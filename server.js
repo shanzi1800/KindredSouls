@@ -3306,7 +3306,10 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   //    ⚠️ injectPlaceholders=false 时（流式分片路径）跳过——否则占位符会被追加到半截分片尾部，
   //       下一个流式分片接上后导致单词被斩首（如 "Wealth Re" + 占位符 + "charging"）。
   //       占位符注入只在完整文本路径（injectPlaceholders=true）执行，且按 lang 做 i18n 防穿帮。
-  if (injectPlaceholders) {
+  if (injectPlaceholders && lang !== 'zh' && lang !== 'en') {
+    // 🛡️ V274-fix2: zh/en 不注入占位符文本——Gemini prompt 已内置 ✦ [🔮 月度命运主题，
+    //   injectPlaceholders 注入的占位符会被步骤7正则漏匹配（跨行 .*? 断在 ] 处），
+    //   导致占位符文本残留于正文，出现双 ✦ [🔮 块。
     const _ph = SECTION_PLACEHOLDERS[lang] || SECTION_PLACEHOLDERS.zh;
     const _hdr = SECTION_HEADERS[lang] || SECTION_HEADERS.zh;
     const now = new Date();
