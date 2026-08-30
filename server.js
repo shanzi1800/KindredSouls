@@ -5977,6 +5977,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               fullTextCollector += chunk;
             }, lang, prompt.system, prompt.user);
             geminiFullText = _gemFull || '';
+          console.log('[V272-fix3] _gemFull.len=' + (_gemFull?.length||0) + ' fullTextCollector.len=' + fullTextCollector.length);
             console.log('[wealth-stream] V272 Gemini 完成, geminiFullText.len=' + (geminiFullText?.length||0));
           } catch(gemErr) {
             console.error('[wealth-stream] V272 Gemini 失败，降级 DeepSeek 6段: ' + gemErr.message);
@@ -6863,7 +6864,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
         const data = await response.json();
         segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log('[V266] Gemini 段' + (seg+1) + ' 完成, len=' + segText.length);
+        console.log('[V272-seg] 段' + (seg+1) + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
         console.log("[V266] segText preview:", JSON.stringify(segText.slice(0,100)));
         break; // 成功，跳出重试循环
       } catch(err) {
