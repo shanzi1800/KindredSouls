@@ -3134,7 +3134,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
   // 优先 Gemini（澳洲付费通道，月报/年报主输出引擎）
   if (geminiKey) {
     try {
-      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`, {
+      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5382,7 +5382,7 @@ app.get('/api/test-gemini', async (req, res) => {
   if (!key) return res.json({ error: 'GEMINI_API_KEY not set' });
   try {
     const r = await safeFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -5497,7 +5497,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     if (!insight && geminiKey) {
       try {
         const gemRes = await safeFetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -6018,7 +6018,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         try {
           console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
           usedGemini = true;
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + geminiKey, {
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6702,7 +6702,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6842,7 +6842,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
-  const MODEL = 'gemini-2.0-flash-exp';
+  const MODEL = 'gemini-2.0-flash';
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
