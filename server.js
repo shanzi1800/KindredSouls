@@ -5928,7 +5928,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         try {
           console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
           usedGemini = true;
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey, {
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6607,7 +6607,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6731,7 +6731,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
-  const MODEL = 'gemini-2.0-flash-EXP-1214';
+  const MODEL = 'gemini-2.5-flash';
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
