@@ -5765,9 +5765,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (typeof res.flush === 'function') res.flush();
         }
         // V113-fix2: 发送 sanitized 事件,确保前端与 MISS 路径一致
-        // V238 刀C：HIT路径三刀流
-        streamText = sanitizeReportFinal(streamText, { lang, reportType });
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: streamText })}\n\n`, 'utf-8'));
+        // 🛡️ V272-fix2: HIT路径 sanitized 只对 zh/en 执行（小语种正文含英文词会误触发刀一截断）
+        let _sanitizedOut = streamText;
+        if (['zh', 'en'].includes(lang)) {
+          _sanitizedOut = sanitizeReportFinal(streamText, { lang, reportType });
+        }
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedOut })}\n\n`, 'utf-8'));
         res.write('data: [DONE]\n\n');
         if (typeof res.flush === 'function') res.flush();
         res.end();
