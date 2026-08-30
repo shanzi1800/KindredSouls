@@ -18,6 +18,11 @@ const SacredYearlyReportBox: React.FC<{
   const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
 
+  // 🛡️ V276-fix: hasContent 出现时关掉骨架屏，显示真实内容
+  useEffect(() => {
+    if (hasContent) setShowSkeleton(false);
+  }, [hasContent]);
+
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
   useEffect(() => {
