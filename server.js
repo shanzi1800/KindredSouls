@@ -6504,7 +6504,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
           headers: { 'Content-Type': 'application/json' },
           body: new TextEncoder().encode(JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 4096, temperature: 0.75 }  // V116-step8b: 8192→4096,留足余量防截断
+            generationConfig: { maxOutputTokens: 32768, temperature: 0.75 }  // V116-step8b: 8192→4096,留足余量防截断
           })),
           signal: controller.signal,
         }
