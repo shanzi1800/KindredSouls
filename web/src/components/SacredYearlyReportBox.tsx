@@ -228,15 +228,26 @@ const SacredYearlyReportBox: React.FC<{
       .replace(/Pluto en Capricorne/g, 'Pluto en Verseau')
       .replace(/ดาวพลูโตราศีมังกร/g, 'ดาวพลูโตราศีกุมภ์')
       .replace(/Sao Diêm Vương Ma Kết/g, 'Sao Diêm Vương Bảo Bình');
-    // V248-fix1: 去除重复的开篇模块（任何语言的两段相同开篇主题块）
-    // 结构: ✦\n[🔮 <主题标题>]\n<正文>\n✦\n[🔮 <主题标题>]\n<正文> → 删第一段
-    const _openTitles = '本月命运主题|Monthly Destiny Theme|Tema de Destino Mensual|Thème de Destin du Mois|ธีมโชคชะตาประจำเดือน|Chủ Đề Vận Mệnh Tháng';
-    const _openRe = new RegExp(`(✦\\s*\\[[^\\]]*(${_openTitles})[^\\]]*\\][\\s\\S]*?)(✦\\s*\\[[^\\]]*(${_openTitles})[^\\]]*\\])`);
-    let _dup;
-    let _guard = 0;
-    while ((_dup = cleaned.match(_openRe)) && _guard++ < 5) {
-      cleaned = cleaned.replace(_dup[1], '');
+    // V265-fix1: 去除重复开篇模块——块级去重(比正则更可靠)
+    // DeepSeek 偶发生成两个开篇块，V264 时第一个被 dedup 删、第二个留下
+    // 但 dedup 正则在某些边界情况下失效(如第二主题头紧跟 ✦[🔮 Thème])
+    // 新策略: 按 \n✦ 分割块，保留最后一个开篇块
+    const _ot2 = 'Thème de Destin du Mois|Tema de Destino Mensual|Monthly Destiny Theme|月度命运主题|ธีมโชคชะตา|Chủ Đề Vận Mệnh Tháng';
+    const _openBlockRe = new RegExp('^\\s*\\[[^\\]]*(' + _ot2 + ')', 'i');
+    const _sections = cleaned.split('\\n✦');
+    let _openIdx = -1;
+    const _kept = [];
+    for (let i = 0; i < _sections.length; i++) {
+      if (_openBlockRe.test(_sections[i])) {
+        if (_openIdx >= 0) {
+          // 重复开篇: 跳过旧的，保留当前
+        } else {
+          _openIdx = _kept.length;
+        }
+      }
+      _kept.push(_sections[i]);
     }
+    cleaned = _kept.join('\\n✦');
 
     // V248-fix2: 修复 Week4 风险图标与文案不符 🟢 Modéré → 🟡 Modéré
     // 法语风险等级: 🟢=Faible(低), 🟡=Modéré(中), 🔴=Élevé(高)
