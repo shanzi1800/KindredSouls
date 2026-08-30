@@ -5777,34 +5777,29 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
-        // 🛠️ V260: 按语言智能分流——es/fr/th/vi 主力 Gemini, zh/en 主力 DeepSeek
-        const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
-        const _isGeminiLang = _GEMINI_LANGS.includes(lang);
-        console.log(`[wealth-stream] V260 语言路由: lang=${lang} _isGeminiLang=${_isGeminiLang}`);
+        // 🟢 全部走 DeepSeek(max_tokens=10000,足够装一段月报正文)
+        // Gemini 有 maxOutputTokens 硬上限≈7750字符,实测单次只能生成开头几段就截断
+        // DeepSeek 无此限制,6段×每段2000字=12000+字全量输出
         for (let w = 0; w < 6; w++) {
           const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
           let _wt = '';
-          if (_isGeminiLang) {
-            // 🟢 Gemini 分段流式(主力通道)
+          try {
+            _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+              fullTextCollector += chunk;
+            }, astroMatrix, realSunSign, lang, reportType, true) || '';
+          } catch(e) {
+            console.warn(`[wealth-stream] V264 DeepSeek 分段异常(w=${w}),降级 Gemini:`, e.message);
+            // Gemini fallback(非月报场景用,月报DeepSeek已够用)
             try {
               const _gemFull = await streamGeminiChunk(prompt.system + '\n\n' + _wUser, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 fullTextCollector += chunk;
               }, lang);
               _wt = _gemFull || '';
-            } catch(e) {
-              console.warn(`[wealth-stream] V260 Gemini 分段异常(w=${w}),降级 DeepSeek:`, e.message);
-              _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, true) || '';
+            } catch(e2) {
+              console.warn(`[wealth-stream] V264 Gemini fallback 也失败:`, e2.message);
             }
-          } else {
-            // 🔵 DeepSeek 分段流式(中文/英文)
-            _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              fullTextCollector += chunk;
-            }, astroMatrix, realSunSign, lang, reportType, true) || '';
           }
           if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
         }
