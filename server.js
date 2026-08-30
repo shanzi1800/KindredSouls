@@ -5731,16 +5731,22 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 兜底: 清除任何未匹配的 {{...}} 占位符
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 
-        // 🛡️ V222z-fix8-final: 根治 Supabase 缓存里双份报告——缓存文本含两份月报时截断到第一份结尾
-        // 锚点改用 ✦ [🔮（月报命运主题专属头，6语言通用，命中即代表新一份报告已开始）
-        // 检测：两个 ✦ [🔮 锚点（间隔 >500 字符），截断到第 2 个锚点之前（只留第 1 份）
-        // 💡 miss（直接生成）和 hit（从缓存读）共用本逻辑，因为两者最终都走 ✦ [🔮 统一锚点
-        const _HIT_THEME_RE = /\✦\s*\[\🔮/g;
-        const _hitAnchors = [...streamText.matchAll(_HIT_THEME_RE)];
-        if (_hitAnchors.length >= 2) {
-          const _cutPos = _hitAnchors[1].index; // 第 2 个 ✦ [🔮 = 第 2 份报告起点
-          console.warn(`[V222z-fix8-final] CACHE-HIT 双份截断(✦[🔮×${_hitAnchors.length}): ${streamText.length}→${_cutPos} chars`);
-          streamText = streamText.substring(0, _cutPos);
+        // 🛡️ V274-fix: 替换 V222z-fix8-final 的错误守卫
+        // 根因：单份完整月报合法含 ✦[🔮×1，守卫用"✦[🔮≥2"判断多份拼接是错的
+        // 正确信号：同一周次重复出现（如"第1周"出现2次 = 两份报告拼接）
+        // 6语言周标题正则（含emoji+风险等级+数字）
+        const _WK_RE = /\✦\s*\[\S+\s+(?:Semaine\s+\d|Week\s+\d|Semana\s+\d|第\d+周|สัปดาห์ที่\s*\d|Tuần\s+\d)\b/g;
+        const _wkHits = [...streamText.matchAll(_WK_RE)].map(m => m[0]);
+        const _seen = new Set();
+        let _dupCut = 0;
+        for (const h of _wkHits) {
+          if (_seen.has(h)) { _dupCut = h; break; } // 第一次重复 = 第2份报告开始
+          _seen.add(h);
+        }
+        if (_dupCut) {
+          const _idx = streamText.indexOf(_dupCut);
+          console.warn(`[V274-fix] HIT缓存双份截断(首次重复: ${_dupCut.trim()}): ${streamText.length}→${_idx} chars`);
+          streamText = streamText.substring(0, _idx);
         }
 
         // 🛡️ V233-fix: 法语/西班牙语清洗
