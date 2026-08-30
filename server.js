@@ -6301,7 +6301,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛡️ V257-fix: 多份报告检测改为「同一周标题重复出现」(如 Week 1 出现 2 次)= 真·双份报告信号。
       //   不再用 ✦ [🔮 主题头计数——LLM 偶发回显 prompt 模板示例 / V256 兜底注入会产生第2个主题头,
       //   误判双份把正文砍光(本例: 9930→443)。单份月报 4 周各出现 1 次,绝不触发。
-      const _WEEK_RE = /\[\s*(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*(\d+)|第\s*([一二三四1-4])\s*周|Semana\s*(\d+)|Semaine\s*(\d+)|Tuần\s*(\d+)|สัปดาห์ที่\s*(\d+))/gi;
+      // 🛠️ V271e-fix: anchor 防止 ] 被误当 [ —— 要求 [ 后必须紧跟 🟢🔴🔵⚠️ 或字母/汉字，否则不匹配
+      const _WEEK_RE = /\[(?:[🟢🔴🔵⚠️]|Week|第|Semana|Semaine|Tuần|สัปดาห์)\s*(?:(\d+)|([一二三四1-4])|(\d+)|(\d+)|(\d+)|(\d+))/gi;
       const _wkSeen = {};
       let _dupPos = -1;
       let _mw;
