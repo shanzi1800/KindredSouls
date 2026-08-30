@@ -2,7 +2,7 @@
 FROM node:22-slim
 
 # ── V200(2026-08-18): 隔离 DeepSeek key，Railway 生产走 Gemini ──
-ARG CACHE_BUST=20260829-V239-deploy-V200-gh-18183600
+ARG CACHE_BUST=20260830-V279-REBUILD
 ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
 
 WORKDIR /app
