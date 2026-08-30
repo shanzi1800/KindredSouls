@@ -5779,7 +5779,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         ];
         // 🛠️ V266: 小语种 Gemini 分段串联流式，zh/en DeepSeek
         const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
-        const _isGeminiLang = _GEMINI_LANGS.includes(lang);
+        const _isGeminiLang = false; // V266-hotfix: 临时禁用 Gemini
         console.log('[wealth-stream] V266 语言路由: lang=' + lang + ' _isGeminiLang=' + _isGeminiLang);
         if (_isGeminiLang) {
           // 🟢 Gemini 分段串联（maxOutputTokens 8192 × 3 段 ≈ 18000 字符，足够月报正文）
