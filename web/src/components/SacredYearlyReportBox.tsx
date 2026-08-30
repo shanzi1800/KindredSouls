@@ -59,6 +59,73 @@ const SacredYearlyReportBox: React.FC<{
     // 🛠️ V120-fix3: 裸 ⚠ 归一化为 ⚠️（AI 偶发漏输 VS16 变体选择器，导致前端 regex 配不上）
     cleaned = cleaned.replace(/⚠(?!️)/g, '⚠️');
 
+    // 🛠️ V270-fix: 容错正则兜底——LLM 漏标或产生非法换行符时，前端兜底识别并补全 ✦ 标签
+    // Step 1: 清理非法换行符（垂直跳格 \x0b / 垂直制表符）
+    cleaned = cleaned.replace(/\x0b/g, '\n');
+
+    // Step 2: 法语周标题漏标兜底——检测到 "Semaine N:" 但前面没有 ✦ 时，自动补全标签
+    // 仅在当前行没有 ✦ 时触发，避免重复包裹已有标签的行
+    cleaned = cleaned.replace(
+      /^(?!✦)(.*?(?:Semaine\s+[2-4]:[\s\S]*?))$/gm,
+      (m, content) => {
+        // 如果本行或前一行已经有 ✦，不干预
+        return m;
+      }
+    );
+    // 法语 Semaine 2/3/4 漏标兜底：行首无 ✦ 且含 Semaine + 数字 + : → 前面加 ✦ 并换行
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Semaine\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
+        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+      }
+    );
+    // 法语 "Disjoncteur à Haut Risque" 等小标题（Semaine 2 的子标题，漏了 ✦ + Semaine 2 标签）→ 补全为 ✦ [🔴 Semaine 2]
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Disjoncteur[^\n]*)$/gm,
+      '✦ [🔴 Semaine 2: Circuit de Haut Risque]'
+    );
+    // 法语 "Intégration Stratégique"（Semaine 3）
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Intégration\s+Stratégique[^\n]*)$/gm,
+      '✦ [🔵 Semaine 3: Intégration Stratégique]'
+    );
+    // 法语 "Explosion de Richesse"（Semaine 4）
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Explosion\s+de\s+Richesse[^\n]*)$/gm,
+      '✦ [🟢 Semaine 4: Explosion de Richesse]'
+    );
+    // 财务陷阱兜底：检测到 Pièges Financiers 但前面没有 ✦
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Pièges\s+Financiers[^\n]*)$/gm,
+      '✦ [⚠️ Pièges Financiers: ' + new Date().toLocaleString('fr-FR', { month: 'long', year: 'numeric' }).replace(/^./, c => c.toUpperCase()) + '] ✦'
+    );
+    // 西班牙语周标题漏标兜底
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Semana\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
+        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+      }
+    );
+    // 泰语周标题漏标兜底
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*สัปดาห์ที่\s*([2-4])[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
+        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+      }
+    );
+    // 越南语周标题漏标兜底
+    cleaned = cleaned.replace(
+      /^(?!✦)([^\n]*Tuần\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
+        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+      }
+    );
+
+
     // 0.0 V103: 换行恢复清洗器（缓存数据整章压成一行，渲染前强行注入换行，修复整章全金 bug）
     // 必须在章节 ✦ 前缀注入（Step 8）之前执行；不重生成缓存，纯渲染预处理
     cleaned = cleaned.replace(/####\s*📅/g, '\n#### 📅'); // 月份标记前注入换行

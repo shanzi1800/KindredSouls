@@ -112,59 +112,62 @@ const SLIM_LANG_PACKS = {
 [LANG_RULE: French]
 - 文风: 深邃诗意，灵性哲学（善用 l'archétype, nigredo alchimique, alchimie 等词）。
 - 语法: 严格法语语法，介词/冠词完整（l', d', de, à），数字加空格（700 €）。
-- 标题格式（严格遵守）:
-  ✦ [🔮 Thème de Destin du Mois]
-  ✦ [🟢 Semaine 1: Août 1–7]
-  ✦ [🔴 Semaine 2: Août 8–14]
-  ✦ [🔵 Semaine 3: Août 15–21]
-  ✦ [🟢 Semaine 4: Août 22–31]
-  ✦ [⚠️ Pièges Financiers & Gestion des Risques]
+- CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag. DO NOT omit, rename, or modify any tag:
+  ✦ [🔮 Thème de Destin du Mois]   ← 月度主题开头
+  ✦ [🟢 Semaine 1: Août 1–7]      ← 第1周（🟢=低风险）
+  ✦ [🔴 Semaine 2: Août 8–14]     ← 第2周（🔴=高风险）
+  ✦ [🔵 Semaine 3: Août 15–21]    ← 第3周（🔵=中风险）
+  ✦ [🟢 Semaine 4: Août 22–31]    ← 第4周（🟢=低风险）
+  ✦ [⚠️ Pièges Financiers: Août 2026] ✦ ← 财务陷阱结尾
 - 行星拼写: Soleil（太阳）, Lune（月亮）, Mars（火星）, Mercure（水星）, Jupiter（木星）, Saturne（土星）, Vénus（金星）, Neptune（海王星）, Pluton（冥王星）, Uranus（天王星）。
 - 宫位: Maison 1–12（禁止写"宫"字）。
 - 风险图标: 🟢 Faible | 🔴 Élevé | 🔵 Modéré | ⚠️ Avertissement。
+- V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
+
 
   es: `
 [LANG_RULE: Spanish]
 - 文风: 热情内省，灵性共鸣。
 - 语法: 介词/冠词完整（el, la, de, a, del），数字加空格（700 €）。
-- 标题格式（严格遵守）:
-  ✦ [🔮 Tema del Destino Mensual]
-  ✦ [🟢 Semana 1: Agosto 1–7]
-  ✦ [🔴 Semana 2: Agosto 8–14]
-  ✦ [🔵 Semana 3: Agosto 15–21]
-  ✦ [🟢 Semana 4: Agosto 22–31]
-  ✦ [⚠️ Trampas Financieras y Gestión de Riesgos]
-- 行星拼写: Sol, Luna, Marte, Mercurio, Júpiter, Saturno, Venus, Neptuno, Plutón, Urano。
-- 风险图标: 🟢 Bajo | 🔴 Alto | 🔵 Moderado | ⚠️ Advertencia。
+- CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag. DO NOT omit, rename, or modify any tag:
+  ✦ [🔮 Tema del Destino Mensual]   ← 月度主题开头
+  ✦ [🟢 Semana 1: Agosto 1–7]      ← 第1周（🟢=低风险）
+  ✦ [🔴 Semana 2: Agosto 8–14]     ← 第2周（🔴=高风险）
+  ✦ [🔵 Semana 3: Agosto 15–21]    ← 第3周（🔵=中风险）
+  ✦ [🟢 Semana 4: Agosto 22–31]    ← 第4周（🟢=低风险）
+  ✦ [⚠️ Trampas Financieras: Agosto 2026] ✦ ← 财务陷阱结尾
+- V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
+
 
   th: `
 [LANG_RULE: Thai]
 - 文风: สุภาพ ลึกซึ้ง ให้สติ บวกด้วยพลังบวก
-- 标题格式（严格遵守）:
-  ✦ [🔮 ธีมโชคชะตารายเดือน]
-  ✦ [🟢 สัปดาห์ที่ 1: สิงหาคม 1–7]
-  ✦ [🔴 สัปดาห์ที่ 2: สิงหาคม 8–14]
-  ✦ [🔵 สัปดาห์ที่ 3: สิงหาคม 15–21]
-  ✦ [🟢 สัปดาห์ที่ 4: สิงหาคม 22–31]
-  ✦ [⚠️ กับดักทางการเงินและการบริหารความเสี่ยง]
-- 行星拼写: ดวงอาทิตย์, ดวงจันทร์, ดาวอังคาร, ดาวพุธ, ดาวพฤหัสบดี, ดาวเสาร์, ดาวศุกร์, ดาวเนปจูน, ดาวพลูโต, ดาวยูเรนัส。
+- CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
+  ✦ [🔮 ธีมโชคชะตารายเดือน]   ← 月度主题开头
+  ✦ [🟢 สัปดาห์ที่ 1: สิงหาคม 1–7]   ← 第1周（🟢=低风险）
+  ✦ [🔴 สัปดาห์ที่ 2: สิงหาคม 8–14]   ← 第2周（🔴=高风险）
+  ✦ [🔵 สัปดาห์ที่ 3: สิงหาคม 15–21]  ← 第3周（🔵=中风险）
+  ✦ [🟢 สัปดาห์ที่ 4: สิงหาคม 22–31]  ← 第4周（🟢=低风险）
+  ✦ [⚠️ กับดักทางการเงิน: สิงหาคม 2026] ✦ ← 财务陷阱结尾
+- V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
+
 
   vi: `
 [LANG_RULE: Vietnamese]
 - 文风: Sâu sắc, thấu hiểu, triết lý cuộc sống。
-- 标题格式（严格遵守）:
-  ✦ [🔮 Chủ đề Vận mệnh Tháng]
-  ✦ [🟢 Tuần 1: Tháng 8, Ngày 1–7]
-  ✦ [🔴 Tuần 2: Tháng 8, Ngày 8–14]
-  ✦ [🔵 Tuần 3: Tháng 8, Ngày 15–21]
-  ✦ [🟢 Tuần 4: Tháng 8, Ngày 22–31]
-  ✦ [⚠️ Cạm bẫy Tài chính & Quản trị Rủi ro]
-- 行星拼写: Mặt Trời, Mặt Trăng, Sao Hỏa, Sao Thủy, Sao Mộc, Sao Thổ, Sao Kim, Sao Hải Vương, Sao Diêm Vương, Sao Thiên Vương。
-- 风险图标: 🟢 Thấp | 🔴 Cao | 🔵 Trung bình | ⚠️ Cảnh báo。
+- CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
+  ✦ [🔮 Chủ đề Vận mệnh Tháng]   ← 月度主题开头
+  ✦ [🟢 Tuần 1: Tháng 8, Ngày 1–7]    ← 第1周（🟢=低风险）
+  ✦ [🔴 Tuần 2: Tháng 8, Ngày 8–14]    ← 第2周（🔴=高风险）
+  ✦ [🔵 Tuần 3: Tháng 8, Ngày 15–21]   ← 第3周（🔵=中风险）
+  ✦ [🟢 Tuần 4: Tháng 8, Ngày 22–31]   ← 第4周（🟢=低风险）
+  ✦ [⚠️ Cạm bẫy Tài chính: Tháng 8, 2026] ✦ ← 财务陷阱结尾
+- V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
+
 
   en: `
 [LANG_RULE: English]
