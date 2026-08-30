@@ -5777,31 +5777,32 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
-        // 🟢 全部走 DeepSeek(max_tokens=10000,足够装一段月报正文)
-        // Gemini 有 maxOutputTokens 硬上限≈7750字符,实测单次只能生成开头几段就截断
-        // DeepSeek 无此限制,6段×每段2000字=12000+字全量输出
-        for (let w = 0; w < 6; w++) {
-          const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-          let _wt = '';
-          try {
-            _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              fullTextCollector += chunk;
-            }, astroMatrix, realSunSign, lang, reportType, true) || '';
-          } catch(e) {
-            console.warn(`[wealth-stream] V264 DeepSeek 分段异常(w=${w}),降级 Gemini:`, e.message);
-            // Gemini fallback(非月报场景用,月报DeepSeek已够用)
+        // 🛠️ V266: 小语种 Gemini 分段串联流式，zh/en DeepSeek
+        const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
+        const _isGeminiLang = _GEMINI_LANGS.includes(lang);
+        console.log('[wealth-stream] V266 语言路由: lang=' + lang + ' _isGeminiLang=' + _isGeminiLang);
+        if (_isGeminiLang) {
+          // 🟢 Gemini 分段串联（maxOutputTokens 8192 × 3 段 ≈ 18000 字符，足够月报正文）
+          const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, lang, prompt);
+          geminiFullText = _gemFull || '';
+        } else {
+          // 🟡 DeepSeek（zh/en，max_tokens=10000 足够）
+          for (let w = 0; w < 6; w++) {
+            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+            let _wt = '';
             try {
-              const _gemFull = await streamGeminiChunk(prompt.system + '\n\n' + _wUser, (chunk) => {
+              _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 fullTextCollector += chunk;
-              }, lang);
-              _wt = _gemFull || '';
-            } catch(e2) {
-              console.warn(`[wealth-stream] V264 Gemini fallback 也失败:`, e2.message);
+              }, astroMatrix, realSunSign, lang, reportType, true) || '';
+            } catch(e) {
+              console.warn('[wealth-stream] V266 DeepSeek 分段异常(w=' + w + '): ' + e.message);
             }
+            if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
           }
-          if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       } else {
@@ -6597,6 +6598,89 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
   return fullText;
 }
 
+// ── V266: Gemini 分段串联流式生成器（小语种月报专用）──
+// Gemini 单次 maxOutputTokens 上限 8192（约 6000 英文字）
+// 月报 12000+ 字符分 3 段串联生成，每段结果实时 res.write 给前端
+// 全部 3 段完成后返回完整文本供下游缓存/后处理
+async function streamGeminiSequential(res, onChunk, lang, prompt) {
+  const geminiKey = getGeminiKey();
+  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+
+  // ── 3 段任务定义 ──
+  const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
+  const _segPrompt = [
+    { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🔮 月度命运主题]（标题无月份）
+2. ✦ [🟢 第1周：MM月D日–D日（财富充能）]（emoji+风险等级）
+只写这两部分，写完立即停止，不要写其他周、不要重复。` },
+    { title: '第2周+第3周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🔴 第2周：MM月D日–D日（高危熔断）]
+2. ✦ [🔵 第3周：MM月D日–D日（顺流蓄力）]
+只写这两部分，写完立即停止，不要写其他周、不要重复。` },
+    { title: '第4周+避坑指南', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🟢 第4周：MM月D日–D日（财富爆发）]
+2. ✦ [⚠️ 避坑指南：YYYY年MM月]
+只写这两部分，写完立即停止，不要写其他周、不要重复。` }
+  ];
+
+  const MODEL = 'gemini-2.0-flash';
+  let fullText = '';
+
+  for (let seg = 0; seg < _segPrompt.length; seg++) {
+    const segPrompt = prompt + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
+    let segText = '';
+    let attempt = 0;
+
+    while (attempt < 2) {
+      attempt++;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 180000);
+
+        console.log('[V266] Gemini 段' + (seg+1) + '/3: ' + _segPrompt[seg].title);
+        const response = await safeFetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + geminiKey,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: new TextEncoder().encode(JSON.stringify({
+              contents: [{ parts: [{ text: segPrompt }] }],
+              generationConfig: { maxOutputTokens: 8192, temperature: 0.75 }
+            })),
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeout);
+        if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+
+        const data = await response.json();
+        segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        console.log('[V266] Gemini 段' + (seg+1) + ' 完成, len=' + segText.length);
+        break; // 成功，跳出重试循环
+      } catch(err) {
+        console.warn('[V266] Gemini 段' + (seg+1) + ' attempt ' + attempt + ' 失败: ' + err.message);
+        if (attempt >= 2) throw new Error('Gemini 段' + (seg+1) + ' 连续失败: ' + err.message);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    // 每段结果流式推给前端（模拟打字机，每 300 字一批，间隔 30ms）
+    const CHUNK = 300;
+    for (let i = 0; i < segText.length; i += CHUNK) {
+      const chunk = segText.slice(i, i + CHUNK);
+      const sseMsg = JSON.stringify({ text: chunk });
+      try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+      onChunk(chunk);
+      fullText += chunk;
+      await new Promise(r => setTimeout(r, 30)); // 30ms 打字机节奏
+    }
+  }
+
+  // 全 3 段完成后返回完整文本（供下游缓存/后处理）
+  return fullText;
+}
+
+//
 // ═══════════════════════════════════════════════════════════════════════
 // 🛡️ V116 Impossible Aspect Guard
 // 修复 Bug3(军师):"火星在双子座与天王星在双子座形成四分相"
