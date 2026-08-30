@@ -6010,7 +6010,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         try {
           console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
           usedGemini = true;
-          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey, {
+          const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + geminiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6085,11 +6085,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //    ⚠️ 实测回归: callDeepSeekStream 返回值(geminiFullText)在某些报告被截断(仅 Overview+第1周,约1040字),
     //       而 fullTextCollector(流式累加) 反而是全量(8151字)。两者互为长短,
     //       → 取【较长者】作为月报 sanitized 源,根治"结尾 sanitized 截断到第1/2周"。
-    console.log('[V271-DIAG] geminiFullText.len=' + (geminiFullText?.length||0) + ' | fullTextCollector.len=' + (fullTextCollector?.length||0) + ' | 选择:' + ((geminiFullText && geminiFullText.length > (fullTextCollector||'').length) ? 'geminiFullText' : 'fullTextCollector'));
+    console.log('[V276-DIAG] geminiFullText.len=' + (geminiFullText?.length||0) + ' | fullTextCollector.len=' + (fullTextCollector?.length||0) + ' | 选择:' + ((geminiFullText && geminiFullText.length > (fullTextCollector||'').length) ? 'geminiFullText' : 'fullTextCollector'));
     const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
       ? geminiFullText
       : (fullTextCollector || '');
-    console.log('[V271-DIAG] _monthlySrc.len=' + (_monthlySrc?.length||0));
+    console.log('[V276-DIAG] _monthlySrc.len=' + (_monthlySrc?.length||0));
     let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
@@ -6694,7 +6694,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6834,7 +6834,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
-  const MODEL = 'gemini-2.5-flash';
+  const MODEL = 'gemini-3-flash-preview';
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
