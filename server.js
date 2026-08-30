@@ -6485,26 +6485,31 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 
 // ── Gemini流式调用辅助函数 ──
 async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
-  console.log("[V260-DEBUG] streamGeminiChunk CALLED, prompt_len=" + prompt.length + ", lang=" + langForClean);
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
-  let attempt = 0;
-  let fullText = '';
 
-  // ── Step 1: 尝试 Gemini 2.0 Flash ──
+  // ── V263-fix: streamGenerateContent 有输出截断问题，改用非流式 generateContent
+  //    实测 streamGenerateContent maxOutputTokens=32768 时仍只吐 437 字主动停止
+  //    非流式不受流式引擎的额外截断控制，maxOutputTokens 真正生效
+  //    生成完后手动 SSE 推送给前端，与流式等效
+  console.log("[V263-DEBUG] streamGeminiChunk: non-streaming mode, prompt_len=" + prompt.length);
+
+  let attempt = 0;
   while (attempt < 2) {
     attempt++;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 180000);
+
+      // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:streamGenerateContent?alt=sse&key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: new TextEncoder().encode(JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 32768, temperature: 0.75 }  // V116-step8b: 8192→4096,留足余量防截断
+            generationConfig: { maxOutputTokens: 32768, temperature: 0.75 }
           })),
           signal: controller.signal,
         }
@@ -6512,115 +6517,88 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
       clearTimeout(timeout);
       if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const data = await response.json();
+      const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const dataStr = trimmed.slice(6);
-          if (dataStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(dataStr);
-            const txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (txt) { fullText += txt; onChunk(txt); console.log("[V260-DEBUG] onChunk called: txt.len=" + txt.length + ", fullText.len=" + fullText.length); }
-          } catch(e) {}
-        }
+      console.log("[V263-DEBUG] Gemini generateContent 成功, len=" + fullText.length);
+
+      // 手动分块 SSE 推送（模拟流式，每 500 字一块）
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
+        const chunk = fullText.slice(i, i + CHUNK_SIZE);
+        onChunk(chunk);
+        await new Promise(r => setTimeout(r, 20)); // 20ms 间隔，模拟打字机
       }
-      // 🔒 V116-step8-fix: flush末尾无\n的最后一个SSE event(防末段截断)
-      if (buffer.trim()) {
-        const t = buffer.trim();
-        if (t.startsWith('data: ')) {
-          try {
-            const p = JSON.parse(t.slice(6));
-            const tx = p?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (tx) { fullText += tx; onChunk(tx); }
-          } catch(e) {}
-        }
-      }
-      console.log('[V2] Gemini成功: ' + fullText.length + '字');
+
       const cleaned = langForClean !== "zh" ? fullText.replace(/（/g, "").replace(/）/g, "") : fullText;
-      console.log("[V260-DEBUG] returning cleaned.len=" + cleaned.length + ", fullText.len=" + fullText.length);
       return cleaned;
     } catch(err) {
-      console.warn('[V260-DEBUG] Gemini attempt ' + attempt + ' failed: ' + err.message);
-      // 429 = 配额耗尽 → 立即切 DeepSeek,不重试
-      if (err.message.includes('429') || err.message.includes('429')) {
-        console.warn('[V2] Gemini配额耗尽,切换DeepSeek兜底...');
+      console.warn('[V263-DEBUG] Gemini attempt ' + attempt + ' failed: ' + err.message);
+      if (err.message.includes('429') || err.message.includes('rate limit')) {
+        console.warn('[V263] Gemini配额耗尽,切换DeepSeek兜底...');
         break;
       }
       if (attempt >= 2) throw new Error('Gemini连续失败: ' + err.message);
-      await new Promise(function(r) { setTimeout(r, 2000); });
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 
-  // ── Step 2: DeepSeek 兜底(Gemini 429 或 Gemini 连续失败)──
-  if (!fullText) {
-    const deepseekKey = getDeepSeekKey();
-    if (!deepseekKey) throw new Error('Gemini配额耗尽,DeepSeek也不可用');
-    console.warn('[V2] 使用DeepSeek兜底...');
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 180000);
-      const res = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
-        body: new TextEncoder().encode(JSON.stringify({
-          model: 'deepseek-v4-flash',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 8192,
-          temperature: 0.6,
-          stream: true,
-        })),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
+  // ── DeepSeek 兜底 ──
+  const deepseekKey = getDeepSeekKey();
+  if (!deepseekKey) throw new Error('Gemini配额耗尽,DeepSeek也不可用');
+  console.warn('[V263] 使用DeepSeek兜底...');
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const dataStr = trimmed.slice(6);
-          if (dataStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(dataStr);
-            const txt = parsed.choices?.[0]?.delta?.content || '';
-            if (txt) { fullText += txt; onChunk(txt); console.log("[V260-DEBUG] onChunk called: txt.len=" + txt.length + ", fullText.len=" + fullText.length); }
-          } catch(e) {}
-        }
-      }
-      // 🔒 V116-step8-fix: DeepSeek流同理flush末尾残留buffer
-      if (buffer.trim()) {
-        const t = buffer.trim();
-        if (t.startsWith('data: ')) {
-          try {
-            const p = JSON.parse(t.slice(6));
-            const tx = p?.choices?.[0]?.delta?.content || '';
-            if (tx) { fullText += tx; onChunk(tx); }
-          } catch(e3) {}
-        }
-      }
-      console.log('[V2] DeepSeek成功: ' + fullText.length + '字');
-    } catch(e2) {
-      throw new Error('Gemini配额耗尽,DeepSeek也失败: ' + e2.message);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180000);
+  const res = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
+    body: new TextEncoder().encode(JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 10000,
+      temperature: 0.7,
+      stream: true,
+    })),
+    signal: controller.signal,
+  });
+  clearTimeout(timeout);
+  if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data: ')) continue;
+      const dataStr = trimmed.slice(6);
+      if (dataStr === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(dataStr);
+        const txt = parsed.choices?.[0]?.delta?.content || '';
+        if (txt) { fullText += txt; onChunk(txt); }
+      } catch(e) {}
     }
   }
+  if (buffer.trim()) {
+    const t = buffer.trim();
+    if (t.startsWith('data: ')) {
+      try {
+        const p = JSON.parse(t.slice(6));
+        const tx = p?.choices?.[0]?.delta?.content || '';
+        if (tx) { fullText += tx; onChunk(tx); }
+      } catch(e3) {}
+    }
+  }
+  console.log('[V263] DeepSeek成功: ' + fullText.length + '字');
   return fullText;
 }
 
