@@ -102,6 +102,97 @@ function deriveSunHouse(risingSign, sunSign) {
 
 // 3. 动态 Prompt 注入指令(月报专用,覆盖通用 FORMAT_FIREWALL 周标题模板)
 // V241-fix: buildWealthPromptContext 多语言化——原硬编码中文周标题导致法语等非中文报告夹带中文
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛠️ [V267] Slim Lang Packs — 单语种月报规则包（替代 35k 全量 INSTR）
+// 按语种精准注入，Payload 从 35k Tokens 降至 ~8k Tokens，彻底解决 Gemini HTTP 400
+// ═══════════════════════════════════════════════════════════════════════
+const SLIM_LANG_PACKS = {
+  fr: `
+[LANG_RULE: French]
+- 文风: 深邃诗意，灵性哲学（善用 l'archétype, nigredo alchimique, alchimie 等词）。
+- 语法: 严格法语语法，介词/冠词完整（l', d', de, à），数字加空格（700 €）。
+- 标题格式（严格遵守）:
+  ✦ [🔮 Thème de Destin du Mois]
+  ✦ [🟢 Semaine 1: Août 1–7]
+  ✦ [🔴 Semaine 2: Août 8–14]
+  ✦ [🔵 Semaine 3: Août 15–21]
+  ✦ [🟢 Semaine 4: Août 22–31]
+  ✦ [⚠️ Pièges Financiers & Gestion des Risques]
+- 行星拼写: Soleil（太阳）, Lune（月亮）, Mars（火星）, Mercure（水星）, Jupiter（木星）, Saturne（土星）, Vénus（金星）, Neptune（海王星）, Pluton（冥王星）, Uranus（天王星）。
+- 宫位: Maison 1–12（禁止写"宫"字）。
+- 风险图标: 🟢 Faible | 🔴 Élevé | 🔵 Modéré | ⚠️ Avertissement。
+`,
+
+  es: `
+[LANG_RULE: Spanish]
+- 文风: 热情内省，灵性共鸣。
+- 语法: 介词/冠词完整（el, la, de, a, del），数字加空格（700 €）。
+- 标题格式（严格遵守）:
+  ✦ [🔮 Tema del Destino Mensual]
+  ✦ [🟢 Semana 1: Agosto 1–7]
+  ✦ [🔴 Semana 2: Agosto 8–14]
+  ✦ [🔵 Semana 3: Agosto 15–21]
+  ✦ [🟢 Semana 4: Agosto 22–31]
+  ✦ [⚠️ Trampas Financieras y Gestión de Riesgos]
+- 行星拼写: Sol, Luna, Marte, Mercurio, Júpiter, Saturno, Venus, Neptuno, Plutón, Urano。
+- 风险图标: 🟢 Bajo | 🔴 Alto | 🔵 Moderado | ⚠️ Advertencia。
+`,
+
+  th: `
+[LANG_RULE: Thai]
+- 文风: สุภาพ ลึกซึ้ง ให้สติ บวกด้วยพลังบวก
+- 标题格式（严格遵守）:
+  ✦ [🔮 ธีมโชคชะตารายเดือน]
+  ✦ [🟢 สัปดาห์ที่ 1: สิงหาคม 1–7]
+  ✦ [🔴 สัปดาห์ที่ 2: สิงหาคม 8–14]
+  ✦ [🔵 สัปดาห์ที่ 3: สิงหาคม 15–21]
+  ✦ [🟢 สัปดาห์ที่ 4: สิงหาคม 22–31]
+  ✦ [⚠️ กับดักทางการเงินและการบริหารความเสี่ยง]
+- 行星拼写: ดวงอาทิตย์, ดวงจันทร์, ดาวอังคาร, ดาวพุธ, ดาวพฤหัสบดี, ดาวเสาร์, ดาวศุกร์, ดาวเนปจูน, ดาวพลูโต, ดาวยูเรนัส。
+`,
+
+  vi: `
+[LANG_RULE: Vietnamese]
+- 文风: Sâu sắc, thấu hiểu, triết lý cuộc sống。
+- 标题格式（严格遵守）:
+  ✦ [🔮 Chủ đề Vận mệnh Tháng]
+  ✦ [🟢 Tuần 1: Tháng 8, Ngày 1–7]
+  ✦ [🔴 Tuần 2: Tháng 8, Ngày 8–14]
+  ✦ [🔵 Tuần 3: Tháng 8, Ngày 15–21]
+  ✦ [🟢 Tuần 4: Tháng 8, Ngày 22–31]
+  ✦ [⚠️ Cạm bẫy Tài chính & Quản trị Rủi ro]
+- 行星拼写: Mặt Trời, Mặt Trăng, Sao Hỏa, Sao Thủy, Sao Mộc, Sao Thổ, Sao Kim, Sao Hải Vương, Sao Diêm Vương, Sao Thiên Vương。
+- 风险图标: 🟢 Thấp | 🔴 Cao | 🔵 Trung bình | ⚠️ Cảnh báo。
+`,
+
+  en: `
+[LANG_RULE: English]
+- 文风: Empathetic, psychologically insightful, precise.
+- 标题格式（严格遵守）:
+  ✦ [🔮 Monthly Destiny Theme]
+  ✦ [🟢 Week 1: August 1–7]
+  ✦ [🔴 Week 2: August 8–14]
+  ✦ [🔵 Week 3: August 15–21]
+  ✦ [🟢 Week 4: August 22–31]
+  ✦ [⚠️ Financial Traps & Risk Mitigation]
+- 风险图标: 🟢 Low | 🔴 High | 🔵 Moderate | ⚠️ Warning。
+`,
+
+  zh: `
+[LANG_RULE: Chinese]
+- 文风: 深邃典雅，融汇西方占星与东方灵性。
+- 标题格式（严格遵守）:
+  ✦ [🔮 月度命运主题]
+  ✦ [🟢 第1周: 8月1日–7日]
+  ✦ [🔴 第2周: 8月8日–14日]
+  ✦ [🔵 第3周: 8月15日–21日]
+  ✦ [🟢 第4周: 8月22日–31日]
+  ✦ [⚠️ 财务避坑指南]
+- 风险图标: 🟢 低危 | 🔴 高危 | 🔵 中危 | ⚠️ 警示。
+`
+};
+
 function buildWealthPromptContext(lang, meta) {
   const curr = getCurrencyRiskProfile(lang);
   const sunSign = meta?.zodiac?.sunSign || '天秤座';
@@ -5673,7 +5764,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // V239: 月报动态币种/宫位 Prompt 注入(覆盖通用标题模板,仅 monthly)
       if (reportType === 'monthly') {
         const _ctx = buildWealthPromptContext(lang, astroMatrix ? buildWealthMeta(birthDate, lang, astroMatrix) : null);
-        prompt.system += '\n\n' + _ctx.instruction;
+        prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh']);
       }
       prompt.user = prompt.user.replace(/[\u2026]/g, '...');
 
@@ -5779,7 +5870,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         ];
         // 🛠️ V266: 小语种 Gemini 分段串联流式，zh/en DeepSeek
         const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
-        const _isGeminiLang = false; // V266-hotfix: 临时禁用 Gemini
+        const _isGeminiLang = _GEMINI_LANGS.includes(lang); // V266: Gemini 小语种主力通道
         console.log('[wealth-stream] V266 语言路由: lang=' + lang + ' _isGeminiLang=' + _isGeminiLang);
         if (_isGeminiLang) {
           // 🟢 Gemini 分段串联（maxOutputTokens 8192 × 3 段 ≈ 18000 字符，足够月报正文）
