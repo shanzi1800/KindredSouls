@@ -6499,7 +6499,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       // 🟢 非流式 generateContent，maxOutputTokens 真正生效
       const response = await safeFetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-EXP-1214:generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6623,7 +6623,7 @@ async function streamGeminiSequential(res, onChunk, lang, prompt) {
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
-  const MODEL = 'gemini-2.0-flash';
+  const MODEL = 'gemini-2.0-flash-EXP-1214';
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
