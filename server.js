@@ -5786,7 +5786,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           const _gemFull = await streamGeminiSequential(res, (chunk) => {
             if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
             fullTextCollector += chunk;
-          }, lang, prompt);
+          }, lang, prompt.system, prompt.user);
           geminiFullText = _gemFull || '';
         } else {
           // 🟡 DeepSeek（zh/en，max_tokens=10000 足够）
@@ -6602,7 +6602,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 // Gemini 单次 maxOutputTokens 上限 8192（约 6000 英文字）
 // 月报 12000+ 字符分 3 段串联生成，每段结果实时 res.write 给前端
 // 全部 3 段完成后返回完整文本供下游缓存/后处理
-async function streamGeminiSequential(res, onChunk, lang, prompt) {
+async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUser) {
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
@@ -6627,7 +6627,7 @@ async function streamGeminiSequential(res, onChunk, lang, prompt) {
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
-    const segPrompt = prompt + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
+    const segPrompt = promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
     let segText = '';
     let attempt = 0;
 
