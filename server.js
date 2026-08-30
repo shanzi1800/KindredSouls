@@ -5963,38 +5963,22 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
         // 🛠️ V266: 小语种 Gemini 分段串联流式，zh/en DeepSeek
-        const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
-        const _isGeminiLang = _GEMINI_LANGS.includes(lang); // V266: Gemini 小语种主力通道
-        console.log('[wealth-stream] V266 语言路由: lang=' + lang + ' _isGeminiLang=' + _isGeminiLang);
-        // V267: Gemini 优先，失败时降级 DeepSeek（不再静默吞错误）
-        if (_isGeminiLang) {
-          try {
-            const _gemFull = await streamGeminiSequential(res, (chunk) => {
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              fullTextCollector += chunk;
-            }, lang, prompt.system, prompt.user);
-            geminiFullText = _gemFull || '';
-          } catch(gemErr) {
-            console.error('[V267] Gemini 通道失败，降级 DeepSeek: ' + gemErr.message);
-            for (let w = 0; w < 6; w++) {
-              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-              let _wt = '';
-              try {
-                _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                  if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                  fullTextCollector += chunk;
-                }, astroMatrix, realSunSign, lang, reportType, true) || '';
-              } catch(e) {
-                console.warn('[V267] DeepSeek 分段异常(w=' + w + '): ' + e.message);
-              }
-              if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
-            }
-          }
-        } else {
-          // 🟡 DeepSeek（zh/en，max_tokens=10000 足够）
-          // 🛠️ V271-fix: callDeepSeekStream skipFinal=true 导致 _dupGuard 截断返回值永远为空
-          // 真实全量在 fullTextCollector（onChunk 累加），geminiFullText 不再累加 _wt
-          console.log('[V271] DeepSeek 分段开始，全量在 fullTextCollector（onChunk 累加）');
+        // 🛠️ V271d: 全部语言统一走 Gemini，DeepSeek 降级兜底
+        // streamGeminiSequential 已支持全部 6 语种（含 zh/en 标题归一化）
+        // zh/en 标题由 Gemini 的 FORMAT_FIREWALL prompt 统一控制，不再有中文周标题穿帮
+        let _usedGemini = false;
+        try {
+          console.log('[wealth-stream] V271d 尝试 Gemini 流式（全部语言）');
+          const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, lang, prompt.system, prompt.user);
+          geminiFullText = _gemFull || '';
+          _usedGemini = true;
+          console.log('[wealth-stream] V271d Gemini 完成，geminiFullText.len=' + (geminiFullText?.length||0));
+        } catch(gemErr) {
+          console.error('[wealth-stream] V271d Gemini 失败，降级 DeepSeek: ' + gemErr.message);
+          // 🛠️ V271c-fix: 用 fullTextCollector（onChunk 累加），不再依赖返回值
           for (let w = 0; w < 6; w++) {
             const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
             try {
@@ -6003,12 +5987,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 fullTextCollector += chunk;
               }, astroMatrix, realSunSign, lang, reportType, true);
             } catch(e) {
-              console.warn('[wealth-stream] V271 DeepSeek 分段异常(w=' + w + '): ' + e.message);
+              console.warn('[wealth-stream] V271d DeepSeek 分段异常(w=' + w + '): ' + e.message);
             }
           }
-          console.log('[V271] DeepSeek 分段结束，fullTextCollector.len=' + (fullTextCollector?.length||0));
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
+
       } else {
         geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
           if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
