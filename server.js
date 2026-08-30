@@ -5872,13 +5872,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
         const _isGeminiLang = _GEMINI_LANGS.includes(lang); // V266: Gemini 小语种主力通道
         console.log('[wealth-stream] V266 语言路由: lang=' + lang + ' _isGeminiLang=' + _isGeminiLang);
+        // V267: Gemini 优先，失败时降级 DeepSeek（不再静默吞错误）
         if (_isGeminiLang) {
-          // 🟢 Gemini 分段串联（maxOutputTokens 8192 × 3 段 ≈ 18000 字符，足够月报正文）
-          const _gemFull = await streamGeminiSequential(res, (chunk) => {
-            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            fullTextCollector += chunk;
-          }, lang, prompt.system, prompt.user);
-          geminiFullText = _gemFull || '';
+          try {
+            const _gemFull = await streamGeminiSequential(res, (chunk) => {
+              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+              fullTextCollector += chunk;
+            }, lang, prompt.system, prompt.user);
+            geminiFullText = _gemFull || '';
+          } catch(gemErr) {
+            console.error('[V267] Gemini 通道失败，降级 DeepSeek: ' + gemErr.message);
+            for (let w = 0; w < 6; w++) {
+              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+              let _wt = '';
+              try {
+                _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+                  if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                  fullTextCollector += chunk;
+                }, astroMatrix, realSunSign, lang, reportType, true) || '';
+              } catch(e) {
+                console.warn('[V267] DeepSeek 分段异常(w=' + w + '): ' + e.message);
+              }
+              if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
+            }
+          }
         } else {
           // 🟡 DeepSeek（zh/en，max_tokens=10000 足够）
           for (let w = 0; w < 6; w++) {
@@ -6573,7 +6590,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 // ── Gemini流式调用辅助函数 ──
 async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
   const geminiKey = getGeminiKey();
-  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+  console.log("[V267-diag] getGeminiKey()=", getGeminiKey()?.slice(0,8)); if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
   // ── V263-fix: streamGenerateContent 有输出截断问题，改用非流式 generateContent
   //    实测 streamGenerateContent maxOutputTokens=32768 时仍只吐 437 字主动停止
@@ -6747,9 +6764,11 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
         const data = await response.json();
         segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         console.log('[V266] Gemini 段' + (seg+1) + ' 完成, len=' + segText.length);
+        console.log("[V266] segText preview:", JSON.stringify(segText.slice(0,100)));
         break; // 成功，跳出重试循环
       } catch(err) {
         console.warn('[V266] Gemini 段' + (seg+1) + ' attempt ' + attempt + ' 失败: ' + err.message);
+        console.error("[V266] Gemini 段" + (seg+1) + " 3次重试全失败，最终 throw");
         if (attempt >= 2) throw new Error('Gemini 段' + (seg+1) + ' 连续失败: ' + err.message);
         await new Promise(r => setTimeout(r, 2000));
       }
