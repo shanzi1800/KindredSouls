@@ -540,6 +540,7 @@ const SacredYearlyReportBox: React.FC<{
 
   const renderLines = (processedText: string) => {
     if (!processedText) return null;
+    try {
     // V248-debug: 精确诊断只渲染一段的问题
     const _lines = processedText.split('\n');
     console.log('[SacredYearlyReportBox] V248 render: raw len=' + (rawStreamText?.length||0) + ' lines=' + _lines.length + ' firstLine=' + JSON.stringify(_lines[0]||'EMPTY') + ' ✦ count in raw=' + ((rawStreamText||'').match(/\✦/g)||[]).length);
@@ -644,6 +645,10 @@ const SacredYearlyReportBox: React.FC<{
         </div>
       );
     });
+  } catch(e: unknown) {
+    console.error('[SacredYearlyReportBox] V276 渲染异常:', String(e));
+    return <div style={{color:'#F5E1A4',padding:'20px',fontSize:'13px',whiteSpace:'pre-wrap'}}>{processedText}</div>;
+  }
   };
 
   // 🛠️ V78: 星光呼吸灯 — 3种周期琥珀色脉冲，模拟星尘洒落
