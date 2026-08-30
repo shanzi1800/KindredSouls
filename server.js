@@ -5974,49 +5974,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
-        // 🛡️ V275: 语言分流——zh/en → DeepSeek（6段分段），es/fr/th/vi → Gemini 流式
-        const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
-        const _isGeminiLang = _GEMINI_LANGS.includes(lang);
-        if (_isGeminiLang) {
-          console.log('[wealth-stream] V275 lang=' + lang + ' -> Gemini流式');
-          try {
-            const _gemFull = await streamGeminiSequential(res, (chunk) => {
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              fullTextCollector += chunk;
-            }, lang, prompt.system, prompt.user);
-            // 🛡️ V275-fix: streamGeminiSequential 返回值可能为空，用 fullTextCollector 兜底
-            if (!geminiFullText || geminiFullText.length < fullTextCollector.length) {
-              geminiFullText = fullTextCollector;
-            }
-            console.log('[V275] Gemini完成 geminiFullText.len=' + geminiFullText.length + ' | fullTextCollector.len=' + fullTextCollector.length);
-          } catch(gemErr) {
-            console.error('[wealth-stream] V275 Gemini 失败，降级 DeepSeek 6段: ' + gemErr.message);
-            for (let w = 0; w < 6; w++) {
-              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-              try {
-                await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                  if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                  fullTextCollector += chunk;
-                }, astroMatrix, realSunSign, lang, reportType, true);
-              } catch(e) {
-                console.warn('[wealth-stream] V275 DeepSeek 分段异常(w=' + w + '): ' + e.message);
-              }
-            }
+        // 🛡️ V276: 全语言统一 Gemini，DeepSeek 完全废弃
+        console.log('[wealth-stream] V276 全语言 lang=' + lang + ' -> Gemini流式');
+        try {
+          const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, lang, prompt.system, prompt.user);
+          // 🛡️ V276-fix: streamGeminiSequential 返回值可能为空，用 fullTextCollector 兜底
+          if (!_gemFull || _gemFull.length < fullTextCollector.length) {
+            geminiFullText = fullTextCollector;
+          } else {
+            geminiFullText = _gemFull;
           }
-        } else {
-          // 🟡 DeepSeek（zh/en，6段分段）
-          console.log('[wealth-stream] V275 lang=' + lang + ' -> DeepSeek 6段');
-          for (let w = 0; w < 6; w++) {
-            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-            try {
-              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, true);
-            } catch(e) {
-              console.warn('[wealth-stream] V275 DeepSeek 分段异常(w=' + w + '): ' + e.message);
-            }
-          }
+          console.log('[V276] Gemini完成 geminiFullText.len=' + geminiFullText.length + ' | fullTextCollector.len=' + fullTextCollector.length);
+        } catch(gemErr) {
+          // Gemini 彻底失败时用 fullTextCollector（流式 onChunk 已在累加）
+          console.error('[wealth-stream] V276 Gemini 失败: ' + gemErr.message + ' | 使用 fullTextCollector=' + fullTextCollector.length);
+          geminiFullText = fullTextCollector;
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
 
@@ -6828,18 +6803,34 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
   // ── 3 段任务定义 ──
   const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
+  const _MONTHLY_THEME = { zh:'月度命运主题', en:'Monthly Destiny Theme', es:'Tema del Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตารายเดือน', vi:'Chủ đề Vận mệnh Tháng' };
+  const _W1_TITLE  = { zh:'第1周', en:'Week 1', es:'Semana 1', fr:'Semaine 1', th:'สัปดาห์ที่ 1', vi:'Tuần 1' };
+  const _W1_SUB    = { zh:'财富充能', en:'Wealth Recharge', es:'Recarga de Riqueza', fr:'Recharge de Richesse', th:'การเติมพลังความมั่งคั่ง', vi:'Nạp năng lượng tài lộc' };
+  const _W2_TITLE  = { zh:'第2周', en:'Week 2', es:'Semana 2', fr:'Semaine 2', th:'สัปดาห์ที่ 2', vi:'Tuần 2' };
+  const _W2_SUB    = { zh:'高危熔断', en:'High-Risk Circuit Breaker', es:'Cortocircuito de Alto Riesgo', fr:'Disjoncteur à Haut Risque', th:'วงจรหยุดความเสี่ยงสูง', vi:'Cầu dao nguy cơ cao' };
+  const _W3_TITLE  = { zh:'第3周', en:'Week 3', es:'Semana 3', fr:'Semaine 3', th:'สัปดาห์ที่ 3', vi:'Tuần 3' };
+  const _W3_SUB    = { zh:'顺流蓄力', en:'Flow Accumulation', es:'Acumulación de Flujo', fr:'Accumulation de Flux', th:'การสะสมพลังตามกระแส', vi:'Tích lũy năng lượng' };
+  const _W4_TITLE  = { zh:'第4周', en:'Week 4', es:'Semana 4', fr:'Semaine 4', th:'สัปดาห์ที่ 4', vi:'Tuần 4' };
+  const _W4_SUB    = { zh:'财富爆发', en:'Wealth Explosion', es:'Explosión de Riqueza', fr:'Explosion de Richesse', th:'ระเบิดความมั่งคั่ง', vi:'Bùng nổ tài lộc' };
+  const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
+  const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
+  const _T1 = _W1_TITLE[lang]||_W1_TITLE.zh; const _S1 = _W1_SUB[lang]||_W1_SUB.zh;
+  const _T2 = _W2_TITLE[lang]||_W2_TITLE.zh; const _S2 = _W2_SUB[lang]||_W2_SUB.zh;
+  const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
+  const _T4 = _W4_TITLE[lang]||_W4_TITLE.zh; const _S4 = _W4_SUB[lang]||_W4_SUB.zh;
+  const _TRP = _TRAP_TITLE[lang]||_TRAP_TITLE.zh;
   const _segPrompt = [
     { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🔮 月度命运主题]（标题无月份）
-2. ✦ [🟢 第1周：MM月D日–D日（财富充能）]（emoji+风险等级）
+1. ✦ [🔮 ${_THEME_HDR}]（标题无月份）
+2. ✦ [🟢 ${_T1}（${_S1}）]（emoji+风险等级）
 只写这两部分，写完立即停止，不要写其他周、不要重复。` },
     { title: '第2周+第3周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🔴 第2周：MM月D日–D日（高危熔断）]
-2. ✦ [🔵 第3周：MM月D日–D日（顺流蓄力）]
+1. ✦ [🔴 ${_T2}（${_S2}）]
+2. ✦ [🔵 ${_T3}（${_S3}）]
 只写这两部分，写完立即停止，不要写其他周、不要重复。` },
     { title: '第4周+避坑指南', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🟢 第4周：MM月D日–D日（财富爆发）]
-2. ✦ [⚠️ 避坑指南：YYYY年MM月]
+1. ✦ [🟢 ${_T4}（${_S4}）]
+2. ✦ [⚠️ ${_TRP}]
 只写这两部分，写完立即停止，不要写其他周、不要重复。` }
   ];
 
