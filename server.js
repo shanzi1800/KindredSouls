@@ -6485,6 +6485,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
 
 // ── Gemini流式调用辅助函数 ──
 async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
+  console.log("[V260-DEBUG] streamGeminiChunk CALLED, prompt_len=" + prompt.length + ", lang=" + langForClean);
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
   let attempt = 0;
@@ -6529,7 +6530,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
           try {
             const parsed = JSON.parse(dataStr);
             const txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (txt) { fullText += txt; onChunk(txt); }
+            if (txt) { fullText += txt; onChunk(txt); console.log("[V260-DEBUG] onChunk called: txt.len=" + txt.length + ", fullText.len=" + fullText.length); }
           } catch(e) {}
         }
       }
@@ -6546,9 +6547,10 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
       }
       console.log('[V2] Gemini成功: ' + fullText.length + '字');
       const cleaned = langForClean !== "zh" ? fullText.replace(/（/g, "").replace(/）/g, "") : fullText;
+      console.log("[V260-DEBUG] returning cleaned.len=" + cleaned.length + ", fullText.len=" + fullText.length);
       return cleaned;
     } catch(err) {
-      console.warn('[V2] Gemini尝试' + attempt + '失败: ' + err.message);
+      console.warn('[V260-DEBUG] Gemini attempt ' + attempt + ' failed: ' + err.message);
       // 429 = 配额耗尽 → 立即切 DeepSeek,不重试
       if (err.message.includes('429') || err.message.includes('429')) {
         console.warn('[V2] Gemini配额耗尽,切换DeepSeek兜底...');
@@ -6599,7 +6601,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
           try {
             const parsed = JSON.parse(dataStr);
             const txt = parsed.choices?.[0]?.delta?.content || '';
-            if (txt) { fullText += txt; onChunk(txt); }
+            if (txt) { fullText += txt; onChunk(txt); console.log("[V260-DEBUG] onChunk called: txt.len=" + txt.length + ", fullText.len=" + fullText.length); }
           } catch(e) {}
         }
       }

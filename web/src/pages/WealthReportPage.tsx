@@ -2051,8 +2051,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   // 🛠️ V120: 年报/月报共用sacredText状态
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
+                    // V261-fix: 只有 cur 非空时才用 startsWith 判断;空字符串时.startsWith('')永为 true 导致第一次 chunk 被当快照覆盖
                     const _cur = _fullMap.get(_memKey) || '';
-                    if (parsed.text.startsWith(_cur)) {
+                    if (_cur && parsed.text.startsWith(_cur)) {
                       _fullMap.set(_memKey, parsed.text);            // 后端推全量(累积)快照 -> 直接覆盖
                     } else if (parsed.text.length > 0) {
                       _fullMap.set(_memKey, (_fullMap.get(_memKey) || '') + parsed.text);
