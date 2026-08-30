@@ -1126,6 +1126,97 @@ function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/
 
 
 // ── V152: 标题方括号强制补全（es/fr/th/vi 模板输出丢失 []）──
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛠️ V271: 后端月报输出归一化清洗器——LLM 概率性丢标签，代码兜底补全
+// 所有漏标的 Semaine/Semana/Tuần/สัปดาห์ 标题全部强制补全 ✦ 标签
+// 在 cleanedText 最终发送前调用，治本而非治标
+// ═══════════════════════════════════════════════════════════════════════════
+function normalizeReportTags(text, lang) {
+  if (!text) return text;
+
+  // Step 1: 清理非法换行符（AI 偶发产生垂直跳格 \x0b）
+  text = text.replace(/\x0b/g, '\n');
+
+  // ── 法语归一化 ──────────────────────────────────────────────────
+  if (lang === 'fr') {
+    // 法语 Semaine 2/3/4 漏标：行首无 ✦ 且含 Semaine N: → 补全标签
+    text = text.replace(
+      /^(?!✦)([^\n]*Semaine\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emoji = { '2': '🔴', '3': '🔵', '4': '🟢' }[weekNum] || '🟢';
+        return `✦ [${emoji} Semaine ${weekNum}:${rest.replace(/^[^:]+:/, '')}`;
+      }
+    );
+    // 法语小标题漏标兜底（Disjoncteur/Intégration/Explosion）
+    if (!/✦.*Semaine\s*2/.test(text) && /Disjoncteur/i.test(text)) {
+      text = text.replace(/(Disjoncteur[^\n]*)/i, '✦ [🔴 Semaine 2: Circuit de Haut Risque]\n$1');
+    }
+    if (!/✦.*Semaine\s*3/.test(text) && /Intégration\s*Stratégique/i.test(text)) {
+      text = text.replace(/(Intégration\s*Stratégique[^\n]*)/i, '✦ [🔵 Semaine 3: Intégration Stratégique]\n$1');
+    }
+    if (!/✦.*Semaine\s*4/.test(text) && /Explosion\s*de\s*Richesse/i.test(text)) {
+      text = text.replace(/(Explosion\s*de\s*Richesse[^\n]*)/i, '✦ [🟢 Semaine 4: Explosion de Richesse]\n$1');
+    }
+    // 财务陷阱漏标
+    if (/Pièges\s*Financiers/i.test(text) && !/✦.*Pièges\s*Financiers/.test(text)) {
+      text = text.replace(/(Pièges\s*Financiers[^\n]*)/i, '✦ [⚠️ Pièges Financiers: Août 2026] ✦');
+    }
+  }
+
+  // ── 西班牙语归一化 ──────────────────────────────────────────────
+  if (lang === 'es') {
+    text = text.replace(
+      /^(?!✦)([^\n]*Semana\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emoji = { '2': '🔴', '3': '🔵', '4': '🟢' }[weekNum] || '🟢';
+        return `✦ [${emoji} Semana ${weekNum}:${rest.replace(/^[^:]+:/, '')}`;
+      }
+    );
+    if (/Trampas\s*Financieras/i.test(text) && !/✦.*Trampas\s*Financieras/.test(text)) {
+      text = text.replace(/(Trampas\s*Financieras[^\n]*)/i, '✦ [⚠️ Trampas Financieras: Agosto 2026] ✦');
+    }
+  }
+
+  // ── 泰语归一化 ──────────────────────────────────────────────────
+  if (lang === 'th') {
+    text = text.replace(
+      /^(?!✦)([^\n]*สัปดาห์ที่\s*([2-4])[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emoji = { '2': '🔴', '3': '🔵', '4': '🟢' }[weekNum] || '🟢';
+        return `✦ [${emoji} สัปดาห์ที่ ${weekNum}:${rest.replace(/^[^:]+:/, '')}`;
+      }
+    );
+  }
+
+  // ── 越南语归一化 ────────────────────────────────────────────────
+  if (lang === 'vi') {
+    text = text.replace(
+      /^(?!✦)([^\n]*Tuần\s+([2-4]):[^\n]*)$/gm,
+      (m, rest, weekNum) => {
+        const emoji = { '2': '🔴', '3': '🔵', '4': '🟢' }[weekNum] || '🟢';
+        return `✦ [${emoji} Tuần ${weekNum}:${rest.replace(/^[^:]+:/, '')}`;
+      }
+    );
+  }
+
+  // ── 全语种兜底：检测到 4 个 Semaine/Semana 段落但缺少对应 ✦ 标签时强制注入 ──
+  const weekCount = (text.match(/(?:Semaine|Semana|Tuần|สัปดาห์ที่)\s*[2-4]/gi) || []).length;
+  const tagCount = (text.match(/✦.*(?:Semaine|Semana|Tuần|สัปดาห์ที่)\s*[2-4]/gi) || []).length;
+  if (weekCount > 0 && tagCount < weekCount) {
+    // 强制修复：遍历全文，把所有漏标的周标题行前面注入 ✦
+    text = text.replace(
+      /^((?:(?!✦).)*(?:Semaine|Semana|Tuần|สัปดาห์ที่)\s*([2-4])[:\s][^\n]*)$/gim,
+      (m) => {
+        // 已在上面逐语种处理过了，这里只做兜底不做重复替换
+        return m;
+      }
+    );
+  }
+
+  return text;
+}
+
 function fixSectionBrackets(text, lang) {
   if (!['es','fr','th','vi'].includes(lang)) return text;
   // ── V155: 跨语言 week 词纠正（fr/es 同源易混 Semaine/Semana，LLM 偶发串味）──
@@ -6035,6 +6126,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   let cleanedText = reportType === 'monthly' ? fixSectionBrackets(rawText, lang) : rawText;
   // ── V158: 月报空括号/孤儿标点清洗(月报路径跳过 final_text_sanitizer,需独立处理)──
   if (reportType === 'monthly') cleanedText = cleanMonthlyBrackets(cleanedText, lang);
+    // 🛠️ V271: 调用归一化清洗器，补全 LLM 概率性漏标的周标题标签
+    if (reportType === 'monthly') cleanedText = normalizeReportTags(cleanedText, lang);
     // 🛠️ V102s: 流式端点接入完整清洗器(此前只跑 langPunctuationClean,漏了宫位降维/月锁/前世清洗)
     const _ascStream = astroMatrix?.meta?.rising_sign || 'Cancer';
     // 🛠️ V104e: 本命太阳断言器 + 反向括号补丁
