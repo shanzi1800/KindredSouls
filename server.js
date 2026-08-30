@@ -5974,18 +5974,38 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
-        // 🛡️ V273: 全语言统一走 Gemini，DeepSeek 降级兜底
-        console.log('[wealth-stream] V273 全语言路由 lang=' + lang + ' -> Gemini流式, DeepSeek兜底');
-        try {
-          console.log('[wealth-stream] V273 Gemini 流式 start, lang=' + lang);
-          const _gemFull = await streamGeminiSequential(res, (chunk) => {
-            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            fullTextCollector += chunk;
-          }, lang, prompt.system, prompt.user);
-          geminiFullText = _gemFull || '';
-          console.log('[V273] _gemFull.len=' + (_gemFull?.length||0) + ' | fullTextCollector.len=' + fullTextCollector.length);
-        } catch(gemErr) {
-          console.error('[wealth-stream] V273 Gemini 失败，降级 DeepSeek 6段: ' + gemErr.message);
+        // 🛡️ V275: 语言分流——zh/en → DeepSeek（6段分段），es/fr/th/vi → Gemini 流式
+        const _GEMINI_LANGS = ['es', 'fr', 'th', 'vi'];
+        const _isGeminiLang = _GEMINI_LANGS.includes(lang);
+        if (_isGeminiLang) {
+          console.log('[wealth-stream] V275 lang=' + lang + ' -> Gemini流式');
+          try {
+            const _gemFull = await streamGeminiSequential(res, (chunk) => {
+              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+              fullTextCollector += chunk;
+            }, lang, prompt.system, prompt.user);
+            // 🛡️ V275-fix: streamGeminiSequential 返回值可能为空，用 fullTextCollector 兜底
+            if (!geminiFullText || geminiFullText.length < fullTextCollector.length) {
+              geminiFullText = fullTextCollector;
+            }
+            console.log('[V275] Gemini完成 geminiFullText.len=' + geminiFullText.length + ' | fullTextCollector.len=' + fullTextCollector.length);
+          } catch(gemErr) {
+            console.error('[wealth-stream] V275 Gemini 失败，降级 DeepSeek 6段: ' + gemErr.message);
+            for (let w = 0; w < 6; w++) {
+              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+              try {
+                await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+                  if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                  fullTextCollector += chunk;
+                }, astroMatrix, realSunSign, lang, reportType, true);
+              } catch(e) {
+                console.warn('[wealth-stream] V275 DeepSeek 分段异常(w=' + w + '): ' + e.message);
+              }
+            }
+          }
+        } else {
+          // 🟡 DeepSeek（zh/en，6段分段）
+          console.log('[wealth-stream] V275 lang=' + lang + ' -> DeepSeek 6段');
           for (let w = 0; w < 6; w++) {
             const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
             try {
@@ -5994,7 +6014,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 fullTextCollector += chunk;
               }, astroMatrix, realSunSign, lang, reportType, true);
             } catch(e) {
-              console.warn('[wealth-stream] V273 DeepSeek 分段异常(w=' + w + '): ' + e.message);
+              console.warn('[wealth-stream] V275 DeepSeek 分段异常(w=' + w + '): ' + e.message);
             }
           }
         }
