@@ -15,19 +15,9 @@ const SacredYearlyReportBox: React.FC<{
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
-  const lastScrollTopRef = useRef(0); // 🛡️ V257-fix: 追踪 scroll 方向, 区分"用户向下滚"vs"程序化 smooth scroll-to-top"
   const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
-  const [showScrollHint, setShowScrollHint] = useState(false); // 🛡️ V257: 完结复位后"向下滚动"提示气泡
-
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
 
-  // 🛠️ V79: 强制骨架显示500ms，确保骨架可见（不管缓存还是流式）
-  useEffect(() => {
-    if (hasContent && showSkeleton) {
-      const t = setTimeout(() => setShowSkeleton(false), 500);
-      return () => clearTimeout(t);
-    }
-  }, [hasContent]);
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
   useEffect(() => {
@@ -40,12 +30,9 @@ const SacredYearlyReportBox: React.FC<{
     const el = scrollRef.current;
     if (!el) return;
     if (yearlyCardsReady) {
-      // 🛡️ V257: 完结跳回顶部改平滑滚动 + 显示视觉示能提示, 消除"被截断"心理错觉
       autoScrollRef.current = false;
       // 🛡️ V257-fix: 先记录当前 scrollTop (通常很大, 因流式阶段 autoScroll 一直在底), 否则 smooth scroll 递减时 handleScroll 会把首帧误判为"用户向下滚"秒关气泡
-      lastScrollTopRef.current = el.scrollTop;
       el.scrollTo({ top: 0, behavior: 'smooth' });
-      setShowScrollHint(true);
     }
   }, [yearlyCardsReady]);
 
@@ -59,19 +46,9 @@ const SacredYearlyReportBox: React.FC<{
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    if (yearlyCardsReady) {
-      // 🛡️ V257-fix: 仅当用户主动向下滚(newTop > lastTop) 且已越过 50px 才隐去气泡
-      // 程序化的 smooth scroll-to-top 让 scrollTop 递减, 不会触发本分支
-      if (el.scrollTop > lastScrollTopRef.current && el.scrollTop > 50) {
-        setShowScrollHint(false);
-      }
-      lastScrollTopRef.current = el.scrollTop;
-      return;
-    }
     // 流式阶段: 仅追踪 autoScroll
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
-    lastScrollTopRef.current = el.scrollTop;
   };
 
   // 🛠️ V64: 军师天启版洗涤滤网 - 6大穿帮矫正
@@ -622,11 +599,6 @@ const SacredYearlyReportBox: React.FC<{
         .dark-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
         .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 4px; }
         .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.6); }
-        /* 🛡️ V257: 提示气泡呼吸跳动 */
-        @keyframes v257Bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
       `}</style>
 
       <div style={{
@@ -657,7 +629,6 @@ const SacredYearlyReportBox: React.FC<{
         </div>
 
         {/* 滚动区 🔒 封仓参数(460px 高度+overflow 锁不变) */}
-        <div style={{ position: 'relative' }}>
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -667,7 +638,7 @@ const SacredYearlyReportBox: React.FC<{
             height: '460px', 
             // 🔒 LOCKED: overflowY=auto，禁止修改
             overflowY: 'auto', 
-            paddingRight: '6px', 
+            paddingRight: '10px',  // V258: 向右移动1mm 
             textAlign: 'left',
           }}
         >
@@ -687,41 +658,6 @@ const SacredYearlyReportBox: React.FC<{
           ) : (
             <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
           )}
-        </div>
-        {/* 🛡️ V257: 底部渐变遮罩 + 提示气泡 — 完结复位后引导用户向下滚动, 点击气泡自动下滚一屏 */}
-        {yearlyCardsReady && showScrollHint && (
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0,
-            height: '64px',
-            background: 'linear-gradient(to top, rgba(15,14,23,0.95) 0%, rgba(15,14,23,0.6) 50%, transparent 100%)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            paddingBottom: '8px',
-            pointerEvents: 'none',
-            transition: 'opacity 0.3s',
-          }}>
-            <div
-              onClick={() => { scrollRef.current?.scrollBy({ top: 300, behavior: 'smooth' }); }}
-              style={{
-                pointerEvents: 'auto',
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '9999px',
-                background: 'rgba(212,175,55,0.2)',
-                border: '1px solid rgba(212,175,55,0.4)',
-                color: '#F5E1A4',
-                fontSize: '12px',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5), 0 0 8px rgba(212,175,55,0.2)',
-                backdropFilter: 'blur(8px)',
-                cursor: 'pointer',
-                animation: 'v257Bounce 1.5s infinite',
-              }}
-            >
-              <span>向下滑动查看四周完整推演</span>
-              <span>↓</span>
-            </div>
-          </div>
-        )}
         </div>
 
         {/* 底部暗金光晕 — 4px渐变条 + 80px径向光晕球，双双呼吸脉动 🔒 LOCKED */}
