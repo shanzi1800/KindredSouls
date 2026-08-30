@@ -2016,7 +2016,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 setSacredText(_final);
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
-                if (type === 'monthly') setMonthlyCardsReady(true);
+                if (type === 'monthly') {
+                  console.log('[V270-DEBUG] [DONE] → calling setMonthlyCardsReady(true)');
+                  setMonthlyCardsReady(true);
+                  console.log('[V270-DEBUG] setMonthlyCardsReady(true) called. SacredYearlyReportBox should now mount. _final.length=' + _final.length);
+                }
                 if (genDone) {
                   genDone.done = true;
                   genDone.partial = _final;
