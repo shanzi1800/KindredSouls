@@ -734,7 +734,10 @@ const SacredYearlyReportBox: React.FC<{
               </div>
             </div>
           ) : (
-            <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
+            <>
+              <div>{"[V271-MOUNT] rawStreamText.len=" + (rawStreamText?.length||0) + " | ready=" + yearlyCardsReady + " | hasContent=" + hasContent + " | showSkeleton=" + showSkeleton + " | lang=" + lang}</div>
+              <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
+            </>
           )}
         </div>
 

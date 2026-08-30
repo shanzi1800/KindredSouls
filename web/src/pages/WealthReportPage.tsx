@@ -2147,6 +2147,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                 console.log('[WealthReport] ✅ Fallback 成功，' + fbText.length + ' 字符，写入 UI');
                 if (type === 'yearly' || type === 'monthly') {
                   setSacredText(fbText);
+                  console.log('[V270-FALLBACK-DEBUG] setSacredText called with ' + fbText.length + ' chars, monthlyCardsReady will be set to true');
                   if (type === 'monthly') setMonthlyCardsReady(true);
                 } else {
                   setWealthReportText(fbText);
