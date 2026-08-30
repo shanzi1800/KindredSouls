@@ -5992,19 +5992,21 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           }
         } else {
           // 🟡 DeepSeek（zh/en，max_tokens=10000 足够）
+          // 🛠️ V271-fix: callDeepSeekStream skipFinal=true 导致 _dupGuard 截断返回值永远为空
+          // 真实全量在 fullTextCollector（onChunk 累加），geminiFullText 不再累加 _wt
+          console.log('[V271] DeepSeek 分段开始，全量在 fullTextCollector（onChunk 累加）');
           for (let w = 0; w < 6; w++) {
             const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-            let _wt = '';
             try {
-              _wt = await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, true) || '';
+              }, astroMatrix, realSunSign, lang, reportType, true);
             } catch(e) {
-              console.warn('[wealth-stream] V266 DeepSeek 分段异常(w=' + w + '): ' + e.message);
+              console.warn('[wealth-stream] V271 DeepSeek 分段异常(w=' + w + '): ' + e.message);
             }
-            if (_wt && _wt.trim().length > 0) geminiFullText += _wt;
           }
+          console.log('[V271] DeepSeek 分段结束，fullTextCollector.len=' + (fullTextCollector?.length||0));
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       } else {
@@ -6097,9 +6099,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //    ⚠️ 实测回归: callDeepSeekStream 返回值(geminiFullText)在某些报告被截断(仅 Overview+第1周,约1040字),
     //       而 fullTextCollector(流式累加) 反而是全量(8151字)。两者互为长短,
     //       → 取【较长者】作为月报 sanitized 源,根治"结尾 sanitized 截断到第1/2周"。
+    console.log('[V271-DIAG] geminiFullText.len=' + (geminiFullText?.length||0) + ' | fullTextCollector.len=' + (fullTextCollector?.length||0) + ' | 选择:' + ((geminiFullText && geminiFullText.length > (fullTextCollector||'').length) ? 'geminiFullText' : 'fullTextCollector'));
     const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
       ? geminiFullText
       : (fullTextCollector || '');
+    console.log('[V271-DIAG] _monthlySrc.len=' + (_monthlySrc?.length||0));
     let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
