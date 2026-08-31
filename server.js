@@ -6006,7 +6006,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const _gemFull = await streamGeminiSequential(res, (chunk) => {
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               fullTextCollector += chunk;
-            }, lang, prompt.system, prompt.user);
+            }, lang, prompt.system, prompt.user, astroMatrix);
             geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
           } catch(gemErr) {
             console.error('[wealth-stream] V281 Gemini失败，降级DeepSeek: ' + gemErr.message);
@@ -6826,7 +6826,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 // Gemini 单次 maxOutputTokens 上限 8192（约 6000 英文字）
 // 月报 12000+ 字符分 3 段串联生成，每段结果实时 res.write 给前端
 // 全部 3 段完成后返回完整文本供下游缓存/后处理
-async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUser) {
+async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUser, astroMatrix) {
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
@@ -6848,6 +6848,24 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
   const _T4 = _W4_TITLE[lang]||_W4_TITLE.zh; const _S4 = _W4_SUB[lang]||_W4_SUB.zh;
   const _TRP = _TRAP_TITLE[lang]||_TRAP_TITLE.zh;
+
+  // 🛡️ V284: 星盘锁死——上升 + 12宫整宫制映射表(IMMUTABLE TRUTH), 切断 Gemini 自行推算上升的幻觉
+  const _RISING_IDX = { Aries:0, Taurus:1, Gemini:2, Cancer:3, Leo:4, Virgo:5, Libra:6, Scorpio:7, Sagittarius:8, Capricorn:9, Aquarius:10, Pisces:11 };
+  const _rising = (astroMatrix && astroMatrix.meta && astroMatrix.meta.rising_sign) || 'Gemini';
+  const _risingIdx = _RISING_IDX[_rising] ?? 2;
+  const _SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  const _houseSigns = _SIGNS.slice(_risingIdx).concat(_SIGNS.slice(0, _risingIdx));
+  const _houseNames = ['命宫(自我)','财帛(资源)','兄弟(沟通/契约)','田宅(家庭)','子女(创意/恋爱)','奴仆(健康/工作)','夫妻(合作/婚姻)','疾厄(偏财/蜕变)','迁移(远方/学问)','官禄(事业)','福德(社交/希望)','相貌(隐秘/潜意识)'];
+  const _astroLock = '[CRITICAL ASTROLOGICAL DATA — IMMUTABLE TRUTH]\n' +
+    'Ascendant/Rising Sign: ' + _rising + ' (Whole Sign 整宫制)\n\n' +
+    '[HOUSE MAPPING TABLE — STRICT CONSTRAINT]\n' +
+    _houseSigns.map((s, i) => '- House ' + (i+1) + ' (' + _houseNames[i] + '): ' + s).join('\n') + '\n\n' +
+    '[STRICT GENERATION RULES]\n' +
+    '1. DO NOT calculate or infer the Rising Sign. Use ONLY ' + _rising + ' above (天文真值, 不可更改).\n' +
+    '2. When mentioning ANY planet (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto), its House placement MUST match the HOUSE MAPPING TABLE above STRICTLY.\n' +
+    '   e.g. If Mars is in Cancer, check which House Cancer is in the table above -> write THAT House number. Do NOT assume Cancer=House1.\n' +
+    '3. NEVER use Whole Sign system incorrectly. The table above IS the correct Whole Sign mapping.\n' +
+    '4. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位、或写与表格不符的宫位。';
   const _segPrompt = [
     { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
 1. ✦ [🔮 ${_THEME_HDR}]（标题无月份）
@@ -6876,7 +6894,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   let fullText = '';
 
   for (let seg = 0; seg < _segPrompt.length; seg++) {
-    const segPrompt = promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
+    const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
     let segText = '';
     let attempt = 0;
 
