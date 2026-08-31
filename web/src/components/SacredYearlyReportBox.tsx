@@ -82,7 +82,8 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Semaine\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
     // 法语 "Disjoncteur à Haut Risque" 等小标题（Semaine 2 的子标题，漏了 ✦ + Semaine 2 标签）→ 补全为 ✦ [🔴 Semaine 2]
@@ -110,7 +111,8 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Semana\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
     // 泰语周标题漏标兜底
@@ -118,7 +120,8 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*สัปดาห์ที่\s*([2-4])[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
     // 越南语周标题漏标兜底
@@ -126,7 +129,8 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Tuần\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        return `✦ [${emojiMap[weekNum]} ${rest.trim()}]`;
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
 
@@ -372,6 +376,21 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => _HDR_KW.test(_b) ? _b + '\n' : _m);
     // 场景B: 方括号前紧跟正文(无换行) → 换行(标题被上一段落吞并会导致黑字)
     cleaned = cleaned.replace(/([^\n])(\[[^\]]*\])/g, (_m, _pre, _b) => _HDR_KW.test(_b) ? _pre + '\n' + _b : _m);
+
+    // 🛡️ V283-fix: 去重——🔮主题/⚠️陷阱只留首段，删后续重复段落
+    const _parts = cleaned.split(/(?=✦\s*\[)/);
+    let _themeSeen = false, _trapSeen = false;
+    const _filtered: string[] = [];
+    for (const _p of _parts) {
+      const _isTheme = _p.includes('🔮');
+      const _isTrap = _p.includes('⚠️');
+      if (_isTheme && _themeSeen) continue;
+      if (_isTrap && _trapSeen) continue;
+      if (_isTheme) _themeSeen = true;
+      if (_isTrap) _trapSeen = true;
+      _filtered.push(_p);
+    }
+    cleaned = _filtered.join('');
 
     return cleaned;
   };
@@ -745,7 +764,6 @@ const SacredYearlyReportBox: React.FC<{
             </div>
           ) : (
             <>
-              <div>{"[V271-MOUNT] rawStreamText.len=" + (rawStreamText?.length||0) + " | ready=" + yearlyCardsReady + " | hasContent=" + hasContent + " | showSkeleton=" + showSkeleton + " | lang=" + lang}</div>
               <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
             </>
           )}
