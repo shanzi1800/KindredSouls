@@ -385,7 +385,7 @@ const SacredYearlyReportBox: React.FC<{
     for (const _p of _parts) {
       const _isTheme = _p.includes('🔮');
       const _isTrap = _p.includes('⚠️');
-      const _wk = _p.match(/✦\s*\[[🟢🔴🔵]\s*(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周)\s*(\d+)/i);
+      const _wk = _p.match(/✦\s*\[(?:🟢|🔴|🔵)\s*(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周)\s*(\d+)/i);
       if (_isTheme && _themeSeen) continue;
       if (_isTrap && _trapSeen) continue;
       if (_wk && _weeksSeen.has(_wk[1])) continue;
