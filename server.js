@@ -5987,18 +5987,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         if (_DEEPSEEK_LANGS.includes(lang)) {
           // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
           console.log('[wealth-stream] V281 lang=' + lang + ' -> DeepSeek分段(6段)');
-          for (let w = 0; w < 6; w++) {
-            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-            try {
+          try {
+            for (let w = 0; w < 6; w++) {
+              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
               await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 fullTextCollector += chunk;
               }, astroMatrix, realSunSign, lang, reportType, true);
-            } catch(dsErr) {
-              console.error('[wealth-stream] V281 DeepSeek分段w=' + w + '失败: ' + dsErr.message);
+            }
+            geminiFullText = fullTextCollector;
+          } catch(dsErr) {
+            // 🟠 DeepSeek 全崩，降级 Gemini（治本：不再只吐 meta 无正文）
+            console.error('[wealth-stream] V281 DeepSeek全崩，降级Gemini: ' + dsErr.message);
+            try {
+              const _gemFull = await streamGeminiSequential(res, (chunk) => {
+                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                fullTextCollector += chunk;
+              }, lang, prompt.system, prompt.user, astroMatrix);
+              geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
+              console.log('[wealth-stream] V281 Gemini降级成功，len=' + geminiFullText.length);
+            } catch(gemErr2) {
+              console.error('[wealth-stream] V281 Gemini降级也失败: ' + gemErr2.message);
+              geminiFullText = fullTextCollector; // 保留已收集的碎片
             }
           }
-          geminiFullText = fullTextCollector;
         } else {
           // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
           console.log('[wealth-stream] V281 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
