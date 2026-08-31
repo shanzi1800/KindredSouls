@@ -377,17 +377,21 @@ const SacredYearlyReportBox: React.FC<{
     // 场景B: 方括号前紧跟正文(无换行) → 换行(标题被上一段落吞并会导致黑字)
     cleaned = cleaned.replace(/([^\n])(\[[^\]]*\])/g, (_m, _pre, _b) => _HDR_KW.test(_b) ? _pre + '\n' + _b : _m);
 
-    // 🛡️ V283-fix: 去重——🔮主题/⚠️陷阱只留首段，删后续重复段落
+    // 🛡️ V283-fix: 去重——🔮主题/⚠️陷阱/各周次只留首段，删后续重复
     const _parts = cleaned.split(/(?=✦\s*\[)/);
     let _themeSeen = false, _trapSeen = false;
+    const _weeksSeen: Set<string> = new Set();
     const _filtered: string[] = [];
     for (const _p of _parts) {
       const _isTheme = _p.includes('🔮');
       const _isTrap = _p.includes('⚠️');
+      const _wk = _p.match(/✦\s*\[[🟢🔴🔵]\s*(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周)\s*(\d+)/i);
       if (_isTheme && _themeSeen) continue;
       if (_isTrap && _trapSeen) continue;
+      if (_wk && _weeksSeen.has(_wk[1])) continue;
       if (_isTheme) _themeSeen = true;
       if (_isTrap) _trapSeen = true;
+      if (_wk) _weeksSeen.add(_wk[1]);
       _filtered.push(_p);
     }
     cleaned = _filtered.join('');
