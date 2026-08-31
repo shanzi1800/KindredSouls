@@ -5982,56 +5982,28 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
-        // 🛡️ [V281] 语言分流：zh/en→DeepSeek，es/fr/th/vi→Gemini流式+DeepSeek降级兜底
-        const _DEEPSEEK_LANGS = ['zh', 'en'];
-        if (_DEEPSEEK_LANGS.includes(lang)) {
-          // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
-          console.log('[wealth-stream] V281 lang=' + lang + ' -> DeepSeek分段(6段)');
+        // 🟢 [V286] 统一 Gemini 主路径，DeepSeek 兜底（所有语言）
+        console.log('[wealth-stream] V286 lang=' + lang + ' -> Gemini主路径');
+        try {
+          const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+            fullTextCollector += chunk;
+          }, lang, prompt.system, prompt.user, astroMatrix);
+          geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
+          console.log('[wealth-stream] V286 Gemini成功，len=' + geminiFullText.length);
+        } catch(gemErr) {
+          // 🟠 Gemini 崩了，DeepSeek 兜底
+          console.error('[wealth-stream] V286 Gemini失败，降级DeepSeek: ' + gemErr.message);
           try {
-            for (let w = 0; w < 6; w++) {
-              const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, true);
-            }
-            geminiFullText = fullTextCollector;
-          } catch(dsErr) {
-            // 🟠 DeepSeek 全崩，降级 Gemini（治本：不再只吐 meta 无正文）
-            console.error('[wealth-stream] V281 DeepSeek全崩，降级Gemini: ' + dsErr.message);
-            try {
-              const _gemFull = await streamGeminiSequential(res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, lang, prompt.system, prompt.user, astroMatrix);
-              geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
-              console.log('[wealth-stream] V281 Gemini降级成功，len=' + geminiFullText.length);
-            } catch(gemErr2) {
-              console.error('[wealth-stream] V281 Gemini降级也失败: ' + gemErr2.message);
-              geminiFullText = fullTextCollector; // 保留已收集的碎片
-            }
-          }
-        } else {
-          // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
-          console.log('[wealth-stream] V281 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
-          try {
-            const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               fullTextCollector += chunk;
-            }, lang, prompt.system, prompt.user, astroMatrix);
-            geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
-          } catch(gemErr) {
-            console.error('[wealth-stream] V281 Gemini失败，降级DeepSeek: ' + gemErr.message);
-            try {
-              const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, false) || '';
-              geminiFullText = _dsFull || fullTextCollector;
-            } catch(dsErr2) {
-              console.error('[wealth-stream] V281 DeepSeek降级也失败: ' + dsErr2.message);
-              geminiFullText = fullTextCollector;
-            }
+            }, astroMatrix, realSunSign, lang, reportType, false) || '';
+            geminiFullText = _dsFull || fullTextCollector;
+            console.log('[wealth-stream] V286 DeepSeek兜底成功，len=' + geminiFullText.length);
+          } catch(dsErr2) {
+            console.error('[wealth-stream] V286 DeepSeek兜底也失败: ' + dsErr2.message);
+            geminiFullText = fullTextCollector; // 保留已收集的碎片
           }
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
