@@ -5985,17 +5985,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛡️ [V281] 语言分流：zh/en→DeepSeek，es/fr/th/vi→Gemini流式+DeepSeek降级兜底
         const _DEEPSEEK_LANGS = ['zh', 'en'];
         if (_DEEPSEEK_LANGS.includes(lang)) {
-          // 🟡 DeepSeek 整段生成（zh/en，稳定可靠）
-          console.log('[wealth-stream] V281 lang=' + lang + ' -> DeepSeek整段');
-          try {
-            geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              fullTextCollector += chunk;
-            }, astroMatrix, realSunSign, lang, reportType, false) || '';
-          } catch(dsErr) {
-            console.error('[wealth-stream] V281 DeepSeek失败: ' + dsErr.message);
-            geminiFullText = fullTextCollector;
+          // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
+          console.log('[wealth-stream] V281 lang=' + lang + ' -> DeepSeek分段(6段)');
+          for (let w = 0; w < 6; w++) {
+            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+            try {
+              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                fullTextCollector += chunk;
+              }, astroMatrix, realSunSign, lang, reportType, true);
+            } catch(dsErr) {
+              console.error('[wealth-stream] V281 DeepSeek分段w=' + w + '失败: ' + dsErr.message);
+            }
           }
+          geminiFullText = fullTextCollector;
         } else {
           // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
           console.log('[wealth-stream] V281 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
