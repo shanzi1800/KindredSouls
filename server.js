@@ -6926,25 +6926,25 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
               generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
             };
             console.log('[V289] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
-            // V295-fix: 用 generateContentStream 实时流式推送，每个Delta立刻发给前端
-            const streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContentStream?key=' + geminiKey;
-            const response = await safeFetch(
-              streamUrl,
-              { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: new TextEncoder().encode(JSON.stringify(requestBody)), signal: controller.signal }
-            );
+            // V295-fix: 用 native fetch + streamGenerateContent，Node.js 原生流式读取每个 Delta
+            const streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':streamGenerateContent?key=' + geminiKey;
+            const fetchOpts = {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+            };
+            if (controller.signal) fetchOpts.signal = controller.signal;
+            const response = await fetch(streamUrl, fetchOpts);
             clearTimeout(timeout);
             if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
-            // V295-fix: 用 ReadableStream 逐 chunk 读取 Delta，即时推送不等整段
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let _partialLine = '';
             const _processStreamText = (text) => {
-              // Gemini 返回的是纯文本（不是 SSE），直接是文本片段
               if (!text) return;
               const _t = text.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
               segText += _t;
-              _sendFinal(_t); // V295-fix: 每个 Delta 立刻推送，打破"等整段才发"的伪流式
+              _sendFinal(_t); // V295-fix: 每个 Delta 立刻推送
             };
             try {
               while (true) {
@@ -6965,7 +6965,6 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
                   }
                 }
               }
-              // 处理剩余
               if (_partialLine.trim()) _processStreamText(_partialLine);
             } finally { reader.releaseLock(); }
             console.log('[V295] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
