@@ -636,7 +636,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（顺蓄）/g, '（顺流蓄力）')
             .replace(/（财爆）/g, '（财富爆发）')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
-          console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
+          // V310-tmp: 临时注释掉避免速率限制刷掉诊断日志
+          // console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           // V221: newSuffix 恒为增量(delta); fullText 累积真实全文, sentLen 游标保证只发未发部分(根治累积重发灾难)
           // V222q: 加前缀重发检测——DeepSeek 偶发重发已输出前缀(clean 是 lastClean 的前缀或相同) → 丢弃,根治事件级重复
           let newSuffix = '';
@@ -5611,6 +5612,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   // 🛠️ V97r 部署验证标识:真生产 KindredSouls 日志里看到这个 = V97r 代码已生效
   console.log('[V97r-DEPLOY-MARKER] stream endpoint hit, body-encoding=TextEncoder');
+  // V310-ENTRY: 最前面诊断，确认请求到达 + 参数
+  console.log('[V310-ENTRY] body.reportType=' + JSON.stringify(req.body?.reportType) + ' nocache(q)=' + JSON.stringify(req.query?.nocache) + ' nocache(b)=' + JSON.stringify(req.body?.nocache));
 
   // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
   const {
