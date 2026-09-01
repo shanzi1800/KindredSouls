@@ -6814,71 +6814,93 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
-  // ── 3 段任务定义 ──
-  const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
-  const _MONTHLY_THEME = { zh:'月度命运主题', en:'Monthly Destiny Theme', es:'Tema del Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตารายเดือน', vi:'Chủ đề Vận mệnh Tháng' };
-  const _W1_TITLE  = { zh:'第1周', en:'Week 1', es:'Semana 1', fr:'Semaine 1', th:'สัปดาห์ที่ 1', vi:'Tuần 1' };
-  const _W1_SUB    = { zh:'财富充能', en:'Wealth Recharge', es:'Recarga de Riqueza', fr:'Recharge de Richesse', th:'การเติมพลังความมั่งคั่ง', vi:'Nạp năng lượng tài lộc' };
-  const _W2_TITLE  = { zh:'第2周', en:'Week 2', es:'Semana 2', fr:'Semaine 2', th:'สัปดาห์ที่ 2', vi:'Tuần 2' };
-  const _W2_SUB    = { zh:'高危熔断', en:'High-Risk Circuit Breaker', es:'Cortocircuito de Alto Riesgo', fr:'Disjoncteur à Haut Risque', th:'วงจรหยุดความเสี่ยงสูง', vi:'Cầu dao nguy cơ cao' };
-  const _W3_TITLE  = { zh:'第3周', en:'Week 3', es:'Semana 3', fr:'Semaine 3', th:'สัปดาห์ที่ 3', vi:'Tuần 3' };
-  const _W3_SUB    = { zh:'顺流蓄力', en:'Flow Accumulation', es:'Acumulación de Flujo', fr:'Accumulation de Flux', th:'การสะสมพลังตามกระแส', vi:'Tích lũy năng lượng' };
-  const _W4_TITLE  = { zh:'第4周', en:'Week 4', es:'Semana 4', fr:'Semaine 4', th:'สัปดาห์ที่ 4', vi:'Tuần 4' };
-  const _W4_SUB    = { zh:'财富爆发', en:'Wealth Explosion', es:'Explosión de Riqueza', fr:'Explosion de Richesse', th:'ระเบิดความมั่งคั่ง', vi:'Bùng nổ tài lộc' };
-  const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
-  const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
-  const _T1 = _W1_TITLE[lang]||_W1_TITLE.zh; const _S1 = _W1_SUB[lang]||_W1_SUB.zh;
-  const _T2 = _W2_TITLE[lang]||_W2_TITLE.zh; const _S2 = _W2_SUB[lang]||_W2_SUB.zh;
-  const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
-  const _T4 = _W4_TITLE[lang]||_W4_TITLE.zh; const _S4 = _W4_SUB[lang]||_W4_SUB.zh;
-  const _TRP = _TRAP_TITLE[lang]||_TRAP_TITLE.zh;
+  // ── 多语言标题字典 ──
+  const _T = {
+    theme: { zh:'月度命运主题',en:'Monthly Destiny Theme',es:'Tema del Destino Mensual',fr:'Thème de Destin du Mois',th:'ธีมโชคชะตารายเดือน',vi:'Chủ đề Vận mệnh Tháng' },
+    w1t: { zh:'第1周',en:'Week 1',es:'Semana 1',fr:'Semaine 1',th:'สัปดาห์ที่ 1',vi:'Tuần 1' },
+    w1s: { zh:'财富充能',en:'Wealth Recharge',es:'Recarga de Riqueza',fr:'Recharge de Richesse',th:'การเติมพลังความมั่งคั่ง',vi:'Nạp năng lượng tài lộc' },
+    w2t: { zh:'第2周',en:'Week 2',es:'Semana 2',fr:'Semaine 1',th:'สัปดาห์ที่ 2',vi:'Tuần 2' },
+    w2s: { zh:'高危熔断',en:'High-Risk Circuit Breaker',es:'Cortocircuito de Alto Riesgo',fr:'Disjoncteur à Haut Risque',th:'วงจรหยุดความเสี่ยงสูง',vi:'Cầu dao nguy cơ cao' },
+    w3t: { zh:'第3周',en:'Week 3',es:'Semana 3',fr:'Semaine 3',th:'สัปดาห์ที่ 3',vi:'Tuần 3' },
+    w3s: { zh:'顺流蓄力',en:'Flow Accumulation',es:'Acumulación de Flujo',fr:'Accumulation de Flux',th:'การสะสมพลังตามกระแส',vi:'Tích lũy năng lượng' },
+    w4t: { zh:'第4周',en:'Week 4',es:'Semana 4',fr:'Semaine 4',th:'สัปดาห์ที่ 4',vi:'Tuần 4' },
+    w4s: { zh:'财富爆发',en:'Wealth Explosion',es:'Explosión de Riqueza',fr:'Explosion de Richesse',th:'ระเบิดความมั่งคั่ง',vi:'Bùng nổ tài lộc' },
+    trap:{ zh:'避坑指南',en:'Financial Traps & Risk Mitigation',es:'Trampas Financieras',fr:'Pièges Financiers',th:'กับดักทางการเงิน',vi:'Cạm bẫy Tài chính' },
+  };
+  const L = (d) => d[lang] || d.zh;
+  const _THEME_HDR = L(_T.theme);
+  const _T1=L(_T.w1t); const _S1=L(_T.w1s);
+  const _T2=L(_T.w2t); const _S2=L(_T.w2s);
+  const _T3=L(_T.w3t); const _S3=L(_T.w3s);
+  const _T4=L(_T.w4t); const _S4=L(_T.w4s);
+  const _TRP=L(_T.trap);
 
-  // 🛡️ V284: 星盘锁死——上升 + 12宫整宫制映射表(IMMUTABLE TRUTH), 切断 Gemini 自行推算上升的幻觉
-  const _RISING_IDX = { Aries:0, Taurus:1, Gemini:2, Cancer:3, Leo:4, Virgo:5, Libra:6, Scorpio:7, Sagittarius:8, Capricorn:9, Aquarius:10, Pisces:11 };
-  const _rising = (astroMatrix && astroMatrix.meta && astroMatrix.meta.rising_sign) || 'Gemini';
+  // 🛡️ V284: 整宫制 IMMUTABLE TRUTH
+  const _RISING_IDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 };
+  const _rising = (astroMatrix?.meta?.rising_sign) || 'Gemini';
   const _risingIdx = _RISING_IDX[_rising] ?? 2;
-  const _SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-  const _houseSigns = _SIGNS.slice(_risingIdx).concat(_SIGNS.slice(0, _risingIdx));
-  const _houseNames = ['命宫(自我)','财帛(资源)','兄弟(沟通/契约)','田宅(家庭)','子女(创意/恋爱)','奴仆(健康/工作)','夫妻(合作/婚姻)','疾厄(偏财/蜕变)','迁移(远方/学问)','官禄(事业)','福德(社交/希望)','相貌(隐秘/潜意识)'];
+  const _SIGNS=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  const _houseSigns = _SIGNS.slice(_risingIdx).concat(_SIGNS.slice(0,_risingIdx));
+  const _houseNames=['命宫(自我)','财帛(资源)','兄弟(沟通/契约)','田宅(家庭)','子女(创意/恋爱)','奴仆(健康/工作)','夫妻(合作/婚姻)','疾厄(偏财/蜕变)','迁移(远方/学问)','官禄(事业)','福德(社交/希望)','相貌(隐秘/潜意识)'];
   const _astroLock = '[CRITICAL ASTROLOGICAL DATA — IMMUTABLE TRUTH]\n' +
-    'Ascendant/Rising Sign: ' + _rising + ' (Whole Sign 整宫制)\n\n' +
-    '[HOUSE MAPPING TABLE — STRICT CONSTRAINT]\n' +
-    _houseSigns.map((s, i) => '- House ' + (i+1) + ' (' + _houseNames[i] + '): ' + s).join('\n') + '\n\n' +
-    '[STRICT GENERATION RULES]\n' +
-    '1. DO NOT calculate or infer the Rising Sign. Use ONLY ' + _rising + ' above (天文真值, 不可更改).\n' +
-    '2. When mentioning ANY planet (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto), its House placement MUST match the HOUSE MAPPING TABLE above STRICTLY.\n' +
-    '   e.g. If Mars is in Cancer, check which House Cancer is in the table above -> write THAT House number. Do NOT assume Cancer=House1.\n' +
-    '3. NEVER use Whole Sign system incorrectly. The table above IS the correct Whole Sign mapping.\n' +
-    '4. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位、或写与表格不符的宫位。';
-  const _segPrompt = [
-    { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🔮 ${_THEME_HDR}]（标题无月份）
-2. ✦ [🟢 ${_T1}（${_S1}）]（emoji+风险等级）
-生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
-严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
-严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
-写完立即停止生成，不要输出多余内容。` },
-    { title: '第2周+第3周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🔴 ${_T2}（${_S2}）]
-2. ✦ [🔵 ${_T3}（${_S3}）]
-生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
-严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
-严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
-写完立即停止生成，不要输出多余内容。` },
-    { title: '第4周+避坑指南', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
-1. ✦ [🟢 ${_T4}（${_S4}）]
-2. ✦ [⚠️ ${_TRP}]
-生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
-严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
-严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
-写完立即停止生成，不要输出多余内容。` }
+    'Ascendant/Rising Sign: ' + _rising + ' (Whole Sign 整宫制)\n\n[HOUSE MAPPING TABLE]\n' +
+    _houseSigns.map((s,i)=>'- House '+(i+1)+' ('+_houseNames[i]+'): '+s).join('\n')+'\n\n' +
+    '[STRICT RULES]\n1. Use ONLY ' + _rising + ' as Rising Sign.\n' +
+    '2. Planet House placement MUST match the TABLE above.\n' +
+    '3. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位。';
+
+  // 3 段定义（锚点强化版）
+  const _segments = [
+    {
+      id: 1,
+      sections: `【必写章节 EXACTLY 2 个】
+✦ [🔮 ${_THEME_HDR}]
+✦ [🟢 ${_T1}（${_S1}）]`,
+      instruction: `严格按上述【必写章节】列表，依次生成每一章的内容。
+只写这 2 个章节，不要多、不要少、不要换顺序、不要重复任何章节。
+写完最后一个章节的内容后立即停止，不要写任何额外文字。
+严格使用 [背景信息] 中的本命盘数据，不自行推演星座/宫位。`
+    },
+    {
+      id: 2,
+      sections: `【必写章节 EXACTLY 2 个】
+✦ [🔴 ${_T2}（${_S2}）]
+✦ [🔵 ${_T3}（${_S3}）]`,
+      instruction: `严格按上述【必写章节】列表，依次生成每一章的内容。
+只写这 2 个章节，不要多、不要少、不要换顺序、不要重复任何章节。
+写完最后一个章节的内容后立即停止，不要写任何额外文字。
+严格使用 [背景信息] 中的本命盘数据，不自行推演星座/宫位。`
+    },
+    {
+      id: 3,
+      sections: `【必写章节 EXACTLY 2 个】
+✦ [🟢 ${_T4}（${_S4}）]
+✦ [⚠️ ${_TRP}]`,
+      instruction: `严格按上述【必写章节】列表，依次生成每一章的内容。
+只写这 2 个章节，不要多、不要少、不要换顺序、不要重复任何章节。
+写完最后一个章节的内容后立即停止，不要写任何额外文字。
+严格使用 [背景信息] 中的本命盘数据，不自行推演星座/宫位。`
+    }
   ];
 
   const MODEL = 'gemini-3.5-flash';
   let fullText = '';
+  // V288 治本: 对话历史链——每段生成后作为 assistant 回复加入 history
+  const _history = [];
 
-  for (let seg = 0; seg < _segPrompt.length; seg++) {
-    const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
+  for (let segIdx = 0; segIdx < _segments.length; segIdx++) {
+    const seg = _segments[segIdx];
+    // V288: 构建已生成章节的锚点上下文（后续段知道前面写了什么）
+    const _doneCtx = (_history.length > 0)
+      ? '\n\n[已生成章节（仅供参照，不要重复任何内容）]\n' +
+        _history.map((h,i) => '[章节'+(i+1)+']\n'+h).join('\n') + '\n\n'
+      : '';
+
+    const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n' +
+      _doneCtx +
+      '[必写章节]\n' + seg.sections + '\n\n' +
+      '[生成指令]\n' + seg.instruction;
+
     let segText = '';
     let attempt = 0;
 
@@ -6888,16 +6910,24 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 180000);
 
-        console.log('[V266] Gemini 段' + (seg+1) + '/3: ' + _segPrompt[seg].title);
+        // V288: contents 包含对话历史，第1段空，后续段含前段 assistant 回复
+        const requestBody = {
+          contents: _history.length === 0
+            ? [{ parts: [{ text: segPrompt }] }]
+            : [
+                ..._history.map(h => ({ role: 'model', parts: [{ text: h }] })),
+                { role: 'user', parts: [{ text: segPrompt }] }
+              ],
+          generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
+        };
+
+        console.log('[V288] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
         const response = await safeFetch(
           'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + geminiKey,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: new TextEncoder().encode(JSON.stringify({
-              contents: [{ parts: [{ text: segPrompt }] }],
-              generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
-            })),
+            body: new TextEncoder().encode(JSON.stringify(requestBody)),
             signal: controller.signal,
           }
         );
@@ -6906,20 +6936,21 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
         const data = await response.json();
         segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        // 🛡️ V277-fix: 清理嵌套括号如 [[🔴 → [🔴
+        // 🛡️ V277-fix: 清理嵌套括号
         segText = segText.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
-        console.log('[V272-seg] 段' + (seg+1) + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
-        console.log("[V266] segText preview:", JSON.stringify(segText.slice(0,100)));
-        break; // 成功，跳出重试循环
+        console.log('[V288] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
+        break;
       } catch(err) {
-        console.warn('[V266] Gemini 段' + (seg+1) + ' attempt ' + attempt + ' 失败: ' + err.message);
-        console.error("[V266] Gemini 段" + (seg+1) + " 3次重试全失败，最终 throw");
-        if (attempt >= 2) throw new Error('Gemini 段' + (seg+1) + ' 连续失败: ' + err.message);
+        console.warn('[V288] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
+        if (attempt >= 2) throw new Error('Gemini 段' + seg.id + ' 连续失败: ' + err.message);
         await new Promise(r => setTimeout(r, 2000));
       }
     }
 
-    // 每段结果流式推给前端（按 Unicode 字符边界截断，避免 emoji/多字节字符被截断导致 FFFD）
+    // 写入对话历史（后续段可参考）
+    if (segText) _history.push(segText);
+
+    // 每段结果流式推给前端（按 Unicode 字符边界截断）
     const _send = (text) => {
       const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
       try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
@@ -6934,17 +6965,10 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     }
   }
 
-  // 全 3 段完成后返回完整文本（供下游缓存/后处理）
   return fullText;
 }
 
-//
-// ═══════════════════════════════════════════════════════════════════════
-// 🛡️ V116 Impossible Aspect Guard
-// 修复 Bug3(军师):"火星在双子座与天王星在双子座形成四分相"
-// 天文学:同星座两天体只能形成合相,四分相/对分相/六分相必须跨星座
-// 本函数检测"行星A在X座与行星B在X座[非合相相位]"并移除非法相位描述
-// ═══════════════════════════════════════════════════════════════════════
+
 function impossible_aspect_guard(text) {
   if (!text || !text.includes('座与') && !text.includes('座和')) return text;
   // 匹配:行星在X座[与/和]行星在X座[相位名]
