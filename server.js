@@ -5687,8 +5687,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     console.warn('[wealth-stream] [V238-META] build failed:', e.message);
   }
 
+  // V306: nocache 参数强制绕过缓存，真流式测试用
+  const shouldBypassCache = req.query.nocache === 'true' || req.body.bypassCache === true || req.body.nocache === true;
+  if (shouldBypassCache) {
+    console.log('[wealth-stream] [NOCACHE] 强制绕过缓存，走真流式生成');
+  }
+  
   try {
-    if (SB_URL && SB_KEY) {
+    if (SB_URL && SB_KEY && !shouldBypassCache) {
       const cacheRes = await safeFetch(
         `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
         { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
