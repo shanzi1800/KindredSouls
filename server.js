@@ -5640,6 +5640,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('X-Accel-Buffering', 'no'); // V291-fix: 禁止Railway边缘缓冲SSE
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
   res.setHeader('Connection', 'keep-alive'); // V121 原生,防 Railway hikari 提前 RST
@@ -6397,6 +6398,7 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   // ── SSE Headers ──
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('X-Accel-Buffering', 'no'); // V291-fix: 禁止Railway边缘缓冲SSE
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
   res.setHeader('Connection', 'keep-alive');
@@ -6952,13 +6954,12 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
           const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
           try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
         };
-        const CHUNK = 400;
+        const CHUNK = 2000; // V291-fix: 增大chunk治Railway边缘缓冲，移除delay让OS自然发包
         for (let i = 0; i < segText.length; i += CHUNK) {
           const slice = segText.slice(i, i + CHUNK);
-          _sendFinal(slice);
+          _sendFinal(slice);  // V291-fix: 无delay，让OS尽快flush大chunk到Railway边缘
           onChunk(slice);
           fullText += slice;
-          await new Promise(r => setTimeout(r, 25));
         }
       }
       return true; // true = 全部成功
