@@ -5688,7 +5688,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
 
   // V306: nocache 参数强制绕过缓存，真流式测试用
-  const shouldBypassCache = req.query.nocache === 'true' || req.body.bypassCache === true || req.body.nocache === true;
+  // 兼容字符串 "true" 和布尔值 true
+  const shouldBypassCache = req.query.nocache === 'true' || 
+                             req.body.bypassCache === true || 
+                             req.body.nocache === true || 
+                             req.body.nocache === 'true';
   if (shouldBypassCache) {
     console.log('[wealth-stream] [NOCACHE] 强制绕过缓存，走真流式生成');
   }
