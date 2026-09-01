@@ -6899,6 +6899,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _history = [];
 
     // V289-fix: 每段包成 async 函数，失败 return 触发 caller fallback（不用 throw 避免 post-while bug）
+    // V298-fix: 重写 streamGeminiSequential，移除 _sendFinal 引用问题，干净流式推送
     const _genSeg = async () => {
       for (let segIdx = 0; segIdx < _segments.length; segIdx++) {
         const seg = _segments[segIdx];
@@ -6913,9 +6914,9 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
         while (attempt < 2) {
           attempt++;
+          const controller = new AbortController(); // V298: 声明在循环顶部，在 _sendFinal 闭包里可见
+          const timeout = setTimeout(() => controller.abort(), 180000);
           try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 180000);
             const requestBody = {
               contents: _history.length === 0
                 ? [{ parts: [{ text: segPrompt }] }]
@@ -6925,8 +6926,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
                   ],
               generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
             };
-            console.log('[V289] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
-            // V295-fix: 用 native fetch + streamGenerateContent，Node.js 原生流式读取每个 Delta
+            console.log('[V298] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
             const streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':streamGenerateContent?key=' + geminiKey;
             const fetchOpts = {
               method: 'POST',
@@ -6937,6 +6937,14 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             const response = await fetch(streamUrl, fetchOpts);
             clearTimeout(timeout);
             if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+
+            // V298-fix: _sendFinal 定义在这里（controller 闭包内可见），避免 ReferenceError
+            const _sendFinal = (text) => {
+              if (!text) return;
+              const _lineBuf = 'data: ' + JSON.stringify({ text }) + '\n\n';
+              try { res.write(_lineBuf, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+            };
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let _partialLine = '';
@@ -6944,16 +6952,16 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
               if (!text) return;
               const _t = text.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
               segText += _t;
-              _sendFinal(_t); // V295-fix: 每个 Delta 立刻推送
+              _sendFinal(_t);
             };
             try {
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 _partialLine += decoder.decode(value, { stream: true });
-                const lines = _partialLine.split('\n');
-                _partialLine = lines.pop() || '';
-                for (const line of lines) {
+                const lines2 = _partialLine.split('\n');
+                _partialLine = lines2.pop() || '';
+                for (const line of lines2) {
                   if (line.startsWith('data: ')) {
                     try {
                       const obj = JSON.parse(line.slice(6));
@@ -6967,63 +6975,30 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
               }
               if (_partialLine.trim()) _processStreamText(_partialLine);
             } finally { reader.releaseLock(); }
-            console.log('[V295] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
+
+            console.log('[V298] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
             if (segText.length === 0) throw new Error('Stream returned no text');
+            _history.push(segText);
             break;
           } catch(err) {
-            console.warn('[V289] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
+            clearTimeout(timeout);
+            console.warn('[V298] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
             if (attempt >= 2) {
-              console.error('[V289] 段' + seg.id + ' 连续失败，return false 触发 DeepSeek fallback');
-              return false; // false = 失败，触发 caller fallback
+              console.error('[V298] 段' + seg.id + ' 连续失败，return false 触发 DeepSeek fallback');
+              return false;
             }
             await new Promise(r => setTimeout(r, 2000));
           }
         }
-
-        // 成功：写入 history + 流推送
-        if (segText) _history.push(segText);
-        // V292-fix: Gemini把周2/周4标题合并到上一段末尾，在流推送前inject标题
-// V292-fix: 后处理segText，注入缺失的周2/周4标题，再发流
-        if (seg.id === 2 && !segText.includes('✦ [🔴')) {
-          // 找周2正文起始位置inject标题
-          const _w2m = /9月[8-9]日|9月1[0-4]日/.exec(segText); // V292-fix: 匹配9/8-14任意格式
-          console.log('[V292-fix] 段2检测: 周2标题缺失，尝试inject，regex匹配='+(_w2m?JSON.stringify(_w2m[0]):'无')+'，seg长度='+segText.length+')');
-          if (_w2m) { segText = segText.slice(0,_w2m.index) + '\n✦ [🔴 '+_T2+'（'+_S2+'）]\n' + segText.slice(_w2m.index); console.log('[V292-fix] 段2 周2标题inject ✅'); }
-        }
-        if (seg.id === 3 && !segText.includes('✦ [🟢')) {
-          const _w4m = /9月2[2-9]日|9月3[0]日/.exec(segText); // V292-fix: 匹配9/22-30任意格式
-          console.log('[V292-fix] 段3检测: 周4标题缺失，尝试inject，regex匹配='+(_w4m?JSON.stringify(_w4m[0]):'无')+'，seg长度='+segText.length+')');
-          if (_w4m) { segText = segText.slice(0,_w4m.index) + '\n✦ [🟢 '+_T4+'（'+_S4+'）]\n' + segText.slice(_w4m.index); console.log('[V292-fix] 段3 周4标题inject ✅'); }
-        }
-        const _sendFinal = (text) => {
-          const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
-          try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
-        };
-        // V294-fix: 按行分块（不按字节），保证不切UTF-8多字节字符，治JSON静默丢chunk
-        let _lineBuf = '';
-        const _flushBuf = (force) => {
-          if (_lineBuf.length === 0) return;
-          if (!force && _lineBuf.length < 2000) return;
-          _sendFinal(_lineBuf);
-          onChunk(_lineBuf);
-          fullText += _lineBuf;
-          _lineBuf = '';
-        };
-        for (const _line of segText.split('\n')) {
-          const _withNl = _line + '\n';
-          _lineBuf += _withNl;
-          if (_lineBuf.length >= 2000) _flushBuf(true);
-        }
-        _flushBuf(true); // 强制写完剩余
       }
-      return true; // true = 全部成功
+      return true;
     };
 
     const ok = await _genSeg();
     if (!ok) {
-      // _genSeg return false = 至少一段 Gemini 失败，DeepSeek 整体补
       throw new Error('Gemini 段N连续失败，触发 DeepSeek 补全');
     }
+
 
   return fullText;
 }
