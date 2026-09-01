@@ -5605,6 +5605,10 @@ function standardizeReport(text) {
 // 🌊 流式输出端点:SSE (Server-Sent Events)
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
+  // V301-fix: Express SSE streaming 头，关闭 Nginx 缓冲
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
   // 🛠️ V97r 部署验证标识:真生产 KindredSouls 日志里看到这个 = V97r 代码已生效
   console.log('[V97r-DEPLOY-MARKER] stream endpoint hit, body-encoding=TextEncoder');
 
@@ -6932,7 +6936,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             const _sendFinal = (text) => {
               if (!text) return;
               const _lineBuf = 'data: ' + JSON.stringify({ text }) + '\n\n';
-              try { res.write(_lineBuf, 'utf-8'); } catch(e) {}
+              try { res.write(_lineBuf, 'utf-8'); res.flush(); } catch(e) {} // V301-fix: res.flush()推Nginx立即转发
             };
 
             const reader = response.body.getReader();
