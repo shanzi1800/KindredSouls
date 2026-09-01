@@ -6967,13 +6967,22 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
           const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
           try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
         };
-        const CHUNK = 2000; // V291-fix: 增大chunk治Railway边缘缓冲，移除delay让OS自然发包
-        for (let i = 0; i < segText.length; i += CHUNK) {
-          const slice = segText.slice(i, i + CHUNK);
-          _sendFinal(slice);  // V291-fix: 无delay，让OS尽快flush大chunk到Railway边缘
-          onChunk(slice);
-          fullText += slice;
+        // V294-fix: 按行分块（不按字节），保证不切UTF-8多字节字符，治JSON静默丢chunk
+        let _lineBuf = '';
+        const _flushBuf = (force) => {
+          if (_lineBuf.length === 0) return;
+          if (!force && _lineBuf.length < 2000) return;
+          _sendFinal(_lineBuf);
+          onChunk(_lineBuf);
+          fullText += _lineBuf;
+          _lineBuf = '';
+        };
+        for (const _line of segText.split('\n')) {
+          const _withNl = _line + '\n';
+          _lineBuf += _withNl;
+          if (_lineBuf.length >= 2000) _flushBuf(true);
         }
+        _flushBuf(true); // 强制写完剩余
       }
       return true; // true = 全部成功
     };
