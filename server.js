@@ -940,7 +940,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         // 🌟 V238 刀B：sanitized 发送前过三刀流
         fixed = sanitizeReportFinal(fixed, { lang, reportType });
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
+        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8')); } catch(_e){} } // V302-fix
         onChunk && onChunk(fixed);
         console.log('[callDeepSeek] [MONTHLY-FIX] len=' + fixed.length + ' oc=' + _ocF + ' cc=' + _ccF);
         fullText = fixed;
