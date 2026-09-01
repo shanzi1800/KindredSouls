@@ -668,8 +668,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               try {
                 res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'V233FIX13E_STREAM_CUT' } })}\n\n`, 'utf-8'));
               } catch(e) {}
-              res.write('data: [DONE]\n\n');
-              if (typeof res.flush === 'function') try { res.flush(); } catch(e) {}
+              if (res) { try { res.write('data: [DONE]\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(_e){} } // V299-fix
               clearInterval(heartbeat);
               return; // 跳出流式循环
             }
@@ -728,16 +727,16 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
       pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_rest, lang), false, lang)).replace(/\uFFFD/g,'');
-      res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
+      if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8')); } catch(_e){} } // V299-fix
       if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_rest,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
+        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8')); } catch(_e){} } // V299-fix
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
-        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_rest) })}\n\n`, 'utf-8'));
+        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_rest) })}\n\n`, 'utf-8')); } catch(_e2){} } // V299-fix
         if (_dupGuard(_rest)) onChunk && onChunk(_rest); else return;
       }
     }
