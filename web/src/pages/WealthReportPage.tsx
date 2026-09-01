@@ -1973,11 +1973,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         abortRef.current = new AbortController();
         // V244: 初始化本请求的 _fullMap 条目（每个请求独立累加，不被 HMR / 重挂重置）
         _fullMap.set(_memKey, '');
+        // V306: 从 URL 读取 nocache 参数，传递给后端强制绕过缓存
+        const _urlParams = new URLSearchParams(window.location.search);
+        const _noCache = _urlParams.get('nocache') === 'true';
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: abortRef.current.signal, // V244: 接入 fresh AbortController
-          body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type }),
+          body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type, nocache: _noCache }),
         });
 
         const reader = res.body?.getReader();
