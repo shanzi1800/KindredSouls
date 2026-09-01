@@ -6965,11 +6965,20 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
                   if (line.startsWith('data: ')) {
                     try {
                       const obj = JSON.parse(line.slice(6));
-                      const txt = obj.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                      _processStreamText(txt);
-                    } catch {}
+                      // V299-fix: streamGenerateContent 的 parts[0].text 可能是字符串或对象
+                      // 字符串 = 纯文本内容；对象 = { text: string } 需要解一层
+                      const raw = obj.candidates?.[0]?.content?.parts?.[0];
+                      const txt = (typeof raw === 'string') ? raw : (raw?.text || '');
+                      if (txt) _processStreamText(txt);
+                    } catch(e) {}
                   } else if (line.trim()) {
-                    _processStreamText(line);
+                    // V299-fix: 纯 JSON 行（非 data: 前缀）也要解析
+                    try {
+                      const obj = JSON.parse(line);
+                      const raw = obj.candidates?.[0]?.content?.parts?.[0];
+                      const txt = (typeof raw === 'string') ? raw : (raw?.text || '');
+                      if (txt) _processStreamText(txt);
+                    } catch(e) {}
                   }
                 }
               }
