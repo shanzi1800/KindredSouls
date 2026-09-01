@@ -6954,12 +6954,14 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 // V292-fix: 后处理segText，注入缺失的周2/周4标题，再发流
         if (seg.id === 2 && !segText.includes('✦ [🔴')) {
           // 找周2正文起始位置inject标题
-          const _w2m = /9月[8-9]日/.exec(segText);
-          if (_w2m) { segText = segText.slice(0,_w2m.index) + '\n✦ [🔴 '+_T2+'（'+_S2+'）]\n' + segText.slice(_w2m.index); }
+          const _w2m = /9月[8-9]日|9月1[0-4]日/.exec(segText); // V292-fix: 匹配9/8-14任意格式
+          console.log('[V292-fix] 段2检测: 周2标题缺失，尝试inject，regex匹配='+(_w2m?JSON.stringify(_w2m[0]):'无')+'，seg长度='+segText.length+')');
+          if (_w2m) { segText = segText.slice(0,_w2m.index) + '\n✦ [🔴 '+_T2+'（'+_S2+'）]\n' + segText.slice(_w2m.index); console.log('[V292-fix] 段2 周2标题inject ✅'); }
         }
         if (seg.id === 3 && !segText.includes('✦ [🟢')) {
-          const _w4m = /9月2[3-9]日/.exec(segText);
-          if (_w4m) { segText = segText.slice(0,_w4m.index) + '\n✦ [🟢 '+_T4+'（'+_S4+'）]\n' + segText.slice(_w4m.index); }
+          const _w4m = /9月2[2-9]日|9月3[0]日/.exec(segText); // V292-fix: 匹配9/22-30任意格式
+          console.log('[V292-fix] 段3检测: 周4标题缺失，尝试inject，regex匹配='+(_w4m?JSON.stringify(_w4m[0]):'无')+'，seg长度='+segText.length+')');
+          if (_w4m) { segText = segText.slice(0,_w4m.index) + '\n✦ [🟢 '+_T4+'（'+_S4+'）]\n' + segText.slice(_w4m.index); console.log('[V292-fix] 段3 周4标题inject ✅'); }
         }
         const _sendFinal = (text) => {
           const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
