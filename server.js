@@ -6919,15 +6919,18 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
       }
     }
 
-    // 每段结果流式推给前端（模拟打字机，每 300 字一批，间隔 30ms）
-    const CHUNK = 300;
+    // 每段结果流式推给前端（按 Unicode 字符边界截断，避免 emoji/多字节字符被截断导致 FFFD）
+    const _send = (text) => {
+      const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
+      try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+    };
+    const CHUNK = 400;
     for (let i = 0; i < segText.length; i += CHUNK) {
-      const chunk = segText.slice(i, i + CHUNK);
-      const sseMsg = JSON.stringify({ text: chunk });
-      try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
-      onChunk(chunk);
-      fullText += chunk;
-      await new Promise(r => setTimeout(r, 30)); // 30ms 打字机节奏
+      const slice = segText.slice(i, i + CHUNK);
+      _send(slice);
+      onChunk(slice);
+      fullText += slice;
+      await new Promise(r => setTimeout(r, 25));
     }
   }
 
