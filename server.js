@@ -6950,6 +6950,17 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
         // 成功：写入 history + 流推送
         if (segText) _history.push(segText);
+        // V292-fix: Gemini把周2/周4标题合并到上一段末尾，在流推送前inject标题
+// V292-fix: 后处理segText，注入缺失的周2/周4标题，再发流
+        if (seg.id === 2 && !segText.includes('✦ [🔴')) {
+          // 找周2正文起始位置inject标题
+          const _w2m = /9月[8-9]日/.exec(segText);
+          if (_w2m) { segText = segText.slice(0,_w2m.index) + '\n✦ [🔴 '+_T2+'（'+_S2+'）]\n' + segText.slice(_w2m.index); }
+        }
+        if (seg.id === 3 && !segText.includes('✦ [🟢')) {
+          const _w4m = /9月2[3-9]日/.exec(segText);
+          if (_w4m) { segText = segText.slice(0,_w4m.index) + '\n✦ [🟢 '+_T4+'（'+_S4+'）]\n' + segText.slice(_w4m.index); }
+        }
         const _sendFinal = (text) => {
           const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
           try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
