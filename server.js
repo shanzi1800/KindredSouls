@@ -5960,29 +5960,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     try {
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
+      // V303: 全线统一走 Gemini streamGeminiSequential，删除历史遗留 _wf 死代码
       if (reportType === 'monthly') {
-        // 🛠️ V222y-fix: 分段指令语言感知化——原硬编码中文标题(第1周/消费陷阱/2026年8月)导致非中文语言报告标题穿帮
-        // 标题格式一律让 LLM 从 FORMAT_FIREWALL 系统铁律中读取对应语言模板(该模板已含 zh/en/es/fr/th/vi 六语言周卡片+陷阱卡片示例)
-        const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
-        // 🛠️ V222z-fix: 强制输出约束——禁止 LLM 照抄指令自我说明（vi 出现"Tôi hiểu..."即是违反此约束）
-        const _noCot = {
-          zh: '直接输出内容,不要写"我理解"、"我将"等自我说明,开篇第一个字符必须是✦,不是句子开头。',
-          en: 'Output content directly. The first character must be ✦. Never write "I understand", "I will write", or any self-description before the content.',
-          es: 'Salida directa. El primer carácter debe ser ✦. Nunca escribir "Entiendo", "Voy a escribir" ni auto-descripción.',
-          fr: 'Sortie directe. Le premier caractère doit être ✦. Ne jamais écrire "Je comprends", "Je vais écrire" ni auto-description.',
-          th: 'ส่งออกเนื้อหาโดยตรง อักขระตัวแรกต้องเป็น ✦ ไม่เขียน"ฉันเข้าใจ"หรือคำอธิบายตัวเองก่อนเนื้อหา',
-          vi: 'Xuất nội dung trực tiếp. Ký tự đầu tiên phải là ✦. Tuyệt đối không viết"Tôi hiểu","Tôi sẽ viết"hay bất kỳ lời tự nhận nào trước nội dung chính.'
-        }[lang] || '直接输出内容,不要写自我说明。';
-        const _wf = [
-          `${_noCot}先写开篇:标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式(🔮 主题语义),用1-2句话概述本月整体财运基调(结合星象与本命盘),写完开篇立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第1周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第1周主题=财富充能/Wealth Recharge 语义,emoji 🟢),写完第1周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第2周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第2周主题=高危熔断/High-Risk Circuit Breaker 语义,emoji 🔴),写完第2周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第3周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第3周主题=顺流蓄力/Flow Accumulation 语义,emoji 🔵),写完第3周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
-        ];
-        // 🟢 [V286] 统一 Gemini 主路径，DeepSeek 兜底（所有语言）
-        console.log('[wealth-stream] V286 lang=' + lang + ' -> Gemini主路径');
+        // Gemini 主路径（所有语言，含中文）
+        console.log('[wealth-stream] V303 lang=' + lang + ' -> Gemini streamGeminiSequential');
         try {
           const _gemFull = await streamGeminiSequential(res, (chunk) => {
             if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
@@ -6936,7 +6917,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             const _sendFinal = (text) => {
               if (!text) return;
               const _lineBuf = 'data: ' + JSON.stringify({ text }) + '\n\n';
-              try { res.write(_lineBuf, 'utf-8'); res.flush(); } catch(e) {} // V301-fix: res.flush()推Nginx立即转发
+              try { res.write(_lineBuf, 'utf-8'); } catch(e) {} // V301-fix: res.flush()推Nginx立即转发
             };
 
             const reader = response.body.getReader();
