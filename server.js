@@ -5964,6 +5964,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
     try {
+      // V307-diag: 诊断为什么没进入 V303 分支
+      console.log('[V307-diag] reportType=' + reportType + ' deepseekKey=' + (deepseekKey ? 'YES' : 'NO') + ' geminiKey=' + (geminiKey ? 'YES' : 'NO'));
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
       // V303: 全线统一走 Gemini streamGeminiSequential，删除历史遗留 _wf 死代码
