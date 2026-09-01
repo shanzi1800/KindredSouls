@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { getAstroMatrix } from '../v69_client.js';
 
 /**
- * AstroMatrix 2026-08 天文学真值 + 多语言映射审计（整宫制 · 上升天秤）
+ * AstroMatrix 2026-09 天文学真值 + 多语言映射审计（整宫制 · 上升天秤）
  * ────────────────────────────────────────────────────────────────
  * 基准：上升天秤座（整宫制 Equal House）
  * 参考日：astro_matrix.py 的 ref_date = 每月15日，故太阳/水星取 8月15日 参考值
@@ -59,18 +59,18 @@ const SIGN_STD = {
 // 系统实际支持的语言（i18n.ts AlgLang：zh/en/es/fr/th/vi）
 const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
-// 2026-08 天文真值（英文 sign + house，不随语言变化）
+// 2026-09 天文真值（英文 sign + house，不随语言变化）
 // 木星狮子11 / 土星白羊7 / 火星巨蟹10 / 太阳狮子11(8/15参考日) / 水星狮子11(8/15参考日)
 const EXPECTED = {
   jupiter: { sign: 'Leo', house: 11 },
   saturn: { sign: 'Aries', house: 7 },
   mars: { sign: 'Cancer', house: 10 },
-  sun: { sign: 'Leo', house: 11 },
-  mercury: { sign: 'Leo', house: 11 },
+  sun: { sign: 'Virgo', house: 12 },
+  mercury: { sign: 'Libra', house: 1 },
 };
 
-describe('AstroMatrix 2026-08 天文学真值 + 多语言映射审计 (整宫制 · 天秤上升)', () => {
-  test('校验 2026-08 星体英文 Sign 真值 + 6语言字典映射准确性', async () => {
+describe('AstroMatrix 2026-09 天文学真值 + 多语言映射审计 (整宫制 · 天秤上升)', () => {
+  test('校验 2026-09 星体英文 Sign 真值 + 6语言字典映射准确性', async () => {
     // 天秤上升固定入参：1969-01-26 22:00（原示例 10:58 为金牛上升，已修正）
     const matrix = await getAstroMatrix('1969-01-26', '22:00', 45.44, 12.32, 'Europe/Rome');
 
@@ -84,9 +84,9 @@ describe('AstroMatrix 2026-08 天文学真值 + 多语言映射审计 (整宫制
       `❌ 测试基准要求上升天秤，实际上升为: ${matrix.meta?.rising_sign}（请修正 birthTime）`
     );
 
-    // ── 精确查找 2026-08 月份节点（用 month_key 精确匹配，兼容动态滚动数组）──
-    const augData = matrix.months.find((m) => m.month_key === '2026-08');
-    assert.ok(augData, '❌ 未在 astroMatrix.months 中找到 2026-08 的数据节点');
+    // ── 精确查找 2026-09 月份节点（用 month_key 精确匹配，兼容动态滚动数组）──
+    const augData = matrix.months.find((m) => m.month_key === '2026-09');
+    assert.ok(augData, '❌ 未在 astroMatrix.months 中找到 2026-09 的数据节点');
 
     const planets = augData.planets || augData;
 
@@ -134,7 +134,7 @@ describe('AstroMatrix 2026-08 天文学真值 + 多语言映射审计 (整宫制
     }
 
     console.log(
-      '✅ [2026-08 真值+多语言审计通过]: 5行星 × 6语言(zh/en/es/fr/th/vi) 英文真值 + 字典映射全部非空且匹配标准答案！'
+      '✅ [2026-09 真值+多语言审计通过]: 5行星 × 6语言(zh/en/es/fr/th/vi) 英文真值 + 字典映射全部非空且匹配标准答案！'
     );
   });
 });
