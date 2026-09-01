@@ -577,7 +577,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.3, repetition_penalty: 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
-    console.log('[callDeepSeek] HTTP', resp.status);
+    console.log('[callDeepSeek] HTTP', resp.status, 'body type:', typeof resp.body);
   } catch(e) { console.error('[callDeepSeek] fetch threw:', e.name, e.message); throw e; }
   if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP!ok:', resp.status, body.slice(0,200)); throw new Error('DeepSeek HTTP '+resp.status); }
   const reader = resp.body.getReader();
@@ -598,7 +598,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { const _final = decoder.end(); if (_final) buf += _final; break; }
+      if (done) { const _final = decoder.end(); if (_final) buf += _final; console.log('[callDeepSeek] stream done, buf残留='+buf.length+', chunkCount='+chunkCount); break; }
       buf += decoder.write(value);
       const lines2 = buf.split('\n');
       buf = lines2.pop() || '';
@@ -609,7 +609,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         try {
           const parsed = JSON.parse(d);
           const txt = parsed.choices?.[0]?.delta?.content || '';
-          if (!txt) continue;
+          if (!txt) { if(chunkCount===0) console.log('[callDeepSeek] 数据行但空txt, raw:', d.slice(0,100)); continue; }
           chunkCount++;
           // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
           let clean = txt
