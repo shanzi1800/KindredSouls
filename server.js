@@ -6888,82 +6888,79 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   // V288 治本: 对话历史链——每段生成后作为 assistant 回复加入 history
   const _history = [];
 
-  for (let segIdx = 0; segIdx < _segments.length; segIdx++) {
-    const seg = _segments[segIdx];
-    // V288: 构建已生成章节的锚点上下文（后续段知道前面写了什么）
-    const _doneCtx = (_history.length > 0)
-      ? '\n\n[已生成章节（仅供参照，不要重复任何内容）]\n' +
-        _history.map((h,i) => '[章节'+(i+1)+']\n'+h).join('\n') + '\n\n'
-      : '';
+    // V289-fix: 每段包成 async 函数，失败 return 触发 caller fallback（不用 throw 避免 post-while bug）
+    const _genSeg = async () => {
+      for (let segIdx = 0; segIdx < _segments.length; segIdx++) {
+        const seg = _segments[segIdx];
+        const _doneCtx = (_history.length > 0)
+          ? '\n\n[已生成章节（仅供参照，不要重复任何内容）]\n' +
+            _history.map((h,i) => '[章节'+(i+1)+']\n'+h).join('\n') + '\n\n'
+          : '';
+        const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n' +
+          _doneCtx + '[必写章节]\n' + seg.sections + '\n\n[生成指令]\n' + seg.instruction;
+        let segText = '';
+        let attempt = 0;
 
-    const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n' +
-      _doneCtx +
-      '[必写章节]\n' + seg.sections + '\n\n' +
-      '[生成指令]\n' + seg.instruction;
-
-    let segText = '';
-    let attempt = 0;
-
-    while (attempt < 2) {
-      attempt++;
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 180000);
-
-        // V288: contents 包含对话历史，第1段空，后续段含前段 assistant 回复
-        const requestBody = {
-          contents: _history.length === 0
-            ? [{ parts: [{ text: segPrompt }] }]
-            : [
-                ..._history.map(h => ({ role: 'model', parts: [{ text: h }] })),
-                { role: 'user', parts: [{ text: segPrompt }] }
-              ],
-          generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
-        };
-
-        console.log('[V288] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
-        const response = await safeFetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + geminiKey,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: new TextEncoder().encode(JSON.stringify(requestBody)),
-            signal: controller.signal,
+        while (attempt < 2) {
+          attempt++;
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 180000);
+            const requestBody = {
+              contents: _history.length === 0
+                ? [{ parts: [{ text: segPrompt }] }]
+                : [
+                    ..._history.map(h => ({ role: 'model', parts: [{ text: h }] })),
+                    { role: 'user', parts: [{ text: segPrompt }] }
+                  ],
+              generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
+            };
+            console.log('[V289] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
+            const response = await safeFetch(
+              'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + geminiKey,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: new TextEncoder().encode(JSON.stringify(requestBody)), signal: controller.signal }
+            );
+            clearTimeout(timeout);
+            if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+            const data = await response.json();
+            segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            segText = segText.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
+            console.log('[V289] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
+            break;
+          } catch(err) {
+            console.warn('[V289] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
+            if (attempt >= 2) {
+              console.error('[V289] 段' + seg.id + ' 连续失败，return false 触发 DeepSeek fallback');
+              return false; // false = 失败，触发 caller fallback
+            }
+            await new Promise(r => setTimeout(r, 2000));
           }
-        );
-        clearTimeout(timeout);
-        if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+        }
 
-        const data = await response.json();
-        segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        // 🛡️ V277-fix: 清理嵌套括号
-        segText = segText.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
-        console.log('[V288] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
-        break;
-      } catch(err) {
-        console.warn('[V288] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
-        if (attempt >= 2) throw new Error('Gemini 段' + seg.id + ' 连续失败: ' + err.message);
-        await new Promise(r => setTimeout(r, 2000));
+        // 成功：写入 history + 流推送
+        if (segText) _history.push(segText);
+        const _sendFinal = (text) => {
+          const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
+          try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+        };
+        const CHUNK = 400;
+        for (let i = 0; i < segText.length; i += CHUNK) {
+          const slice = segText.slice(i, i + CHUNK);
+          _sendFinal(slice);
+          onChunk(slice);
+          fullText += slice;
+          await new Promise(r => setTimeout(r, 25));
+        }
       }
-    }
-
-    // 写入对话历史（后续段可参考）
-    if (segText) _history.push(segText);
-
-    // 每段结果流式推给前端（按 Unicode 字符边界截断）
-    const _send = (text) => {
-      const line = 'data: ' + JSON.stringify({ text }) + '\n\n';
-      try { res.write(line, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+      return true; // true = 全部成功
     };
-    const CHUNK = 400;
-    for (let i = 0; i < segText.length; i += CHUNK) {
-      const slice = segText.slice(i, i + CHUNK);
-      _send(slice);
-      onChunk(slice);
-      fullText += slice;
-      await new Promise(r => setTimeout(r, 25));
+
+    const ok = await _genSeg();
+    if (!ok) {
+      // _genSeg return false = 至少一段 Gemini 失败，DeepSeek 整体补
+      throw new Error('Gemini 段N连续失败，触发 DeepSeek 补全');
     }
-  }
 
   return fullText;
 }
