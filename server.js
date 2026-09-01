@@ -594,7 +594,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 🛡️ V222z-fix13e: text 流层单锚截断——MISS 路径下 sanitized 从不触发,必须在 text 流层直接断流
   let _monthlyCutDone = false;
   const _MONTHLY_THEME_RE = /\✦\s*\[\🔮/g;
-  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
+  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); } } catch(e){} }, 20000);
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -668,7 +668,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               try {
                 res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'V233FIX13E_STREAM_CUT' } })}\n\n`, 'utf-8'));
               } catch(e) {}
-              if (res) { try { res.write('data: [DONE]\n\n'); if (typeof res.flush === 'function') res.flush(); } catch(_e){} } // V299-fix
+              if (res) { try { res.write('data: [DONE]\n\n'); } catch(_e){} } // V299-fix
               clearInterval(heartbeat);
               return; // 跳出流式循环
             }
@@ -713,7 +713,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
           // 🛠️ V222s: res.flush 移到 flush try 外——原 265 行的 res.flush 在 try 内,若 flush 抛错会进 257 catch → 每 flush 重复发一次 no-dbg 事件(成对重复+ sanitary 失效)。现单独 try/catch,抛错只影响 flush 时机,不触发主 catch
-          try { if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+          try { } catch(e) {}
         } catch(e) {}
       }
     }
@@ -740,8 +740,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         if (_dupGuard(_rest)) onChunk && onChunk(_rest); else return;
       }
     }
-    if (typeof res.flush === 'function') res.flush();
-  }
+    }
   // 🛠️ V131e-fix: 月报相角术语+ Pluto水瓶宫位双重后处理清洗
   // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
   function stripAspectTermsAndPlutoHouse(text, natalSunSign, lang) {
@@ -943,7 +942,6 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         fixed = sanitizeReportFinal(fixed, { lang, reportType });
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
-        if (typeof res.flush === 'function') res.flush();
         console.log('[callDeepSeek] [MONTHLY-FIX] len=' + fixed.length + ' oc=' + _ocF + ' cc=' + _ccF);
         fullText = fixed;
       } catch(e) {
@@ -5627,7 +5625,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活
   const _hb = setInterval(() => {
-    try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch (e) {}
+    try { res.write(': heartbeat\n\n'); } catch (e) {}
   }, 8000);
   res.on('close', () => {
     try { clearInterval(_hb); } catch (e) {}
@@ -5681,8 +5679,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       metaPayload.houseInfo = { sunHouse: _ctx.sunHouse, risingSign: _ctx.risingSign, sunSign: _ctx.sunSign };
     } catch (e) { /* meta 兜底不阻断 */ }
     res.write(Buffer.from(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`, 'utf-8'));
-    if (typeof res.flush === 'function') res.flush();
-  } catch (e) {
+    } catch (e) {
     console.warn('[wealth-stream] [V238-META] build failed:', e.message);
   }
 
@@ -5779,8 +5776,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
           const chunk = streamText.slice(i, i + CHUNK_SIZE);
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
-          if (typeof res.flush === 'function') res.flush();
-        }
+          }
         // V113-fix2: 发送 sanitized 事件,确保前端与 MISS 路径一致
         // 🛡️ V272-fix2: HIT路径 sanitized 只对 zh/en 执行（小语种正文含英文词会误触发刀一截断）
         let _sanitizedOut = streamText;
@@ -5789,7 +5785,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedOut })}\n\n`, 'utf-8'));
         res.write('data: [DONE]\n\n');
-        if (typeof res.flush === 'function') res.flush();
         res.end();
         console.log(`[wealth-stream] [OK] Cache instant chunked complete, ${streamText.length} chars`);
         return;
@@ -6004,7 +5999,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             if (_dsFull) {
               // 一次性写完整段，不拆 chunk（保持 SSE 原子性）
               const _finalLine = 'data: ' + JSON.stringify({ text: _dsFull }) + '\n\n';
-              try { res.write(_finalLine, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e2) {}
+              try { res.write(_finalLine, 'utf-8'); } catch(e2) {}
               fullTextCollector += _dsFull;
             }
             geminiFullText = _dsFull || fullTextCollector;
@@ -6049,7 +6044,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
             if (geminiFullText && geminiFullText.trim().length > 0) {
               res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
-              if (typeof res.flush === 'function') res.flush();
               onChunk && onChunk(geminiFullText);
             }
           } else {
@@ -6348,8 +6342,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 流式结束,发送 [DONE]
     res.write('data: [DONE]\n\n');
-    if (typeof res.flush === 'function') res.flush();
-
     // 🛠️ V125-fix: streaming结束立即写缓存(不依赖completion是否成功) —— 方案C: cleanedText 可能已被补全版覆盖
     // 🛠️ V222z-fix3: 写缓存门槛从100→2000, 与截断检测阈值拉齐, 防止截断碎片(<2000字)毒化缓存
     if (cleanedText.length > 2000) {
@@ -6406,10 +6398,9 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     try {
       const data = typeof obj === 'string' ? obj : JSON.stringify(obj);
       res.write(Buffer.from('data: ' + data + '\n\n', 'utf-8'));
-      if (typeof res.flush === 'function') res.flush();
-    } catch(e) {}
+      } catch(e) {}
   };
-  const flush = () => { try { if (typeof res.flush === 'function') res.flush(); } catch(e) {} };
+  const flush = () => { try { } catch(e) {} };
   const heartbeat = setInterval(() => { send(': heartbeat\n\n'); flush(); }, 20000);
 
   const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
@@ -6941,7 +6932,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             const _sendFinal = (text) => {
               if (!text) return;
               const _lineBuf = 'data: ' + JSON.stringify({ text }) + '\n\n';
-              try { res.write(_lineBuf, 'utf-8'); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+              try { res.write(_lineBuf, 'utf-8'); } catch(e) {}
             };
 
             const reader = response.body.getReader();
