@@ -5950,6 +5950,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiRes = null;
     let aiStream = false;
     let geminiFullText = '';
+    let _totalWritten = ''; // V315-fix: 追踪已写SSE内容，检测并跳过Gemini输出重叠
+    const _MIN_OVERLAP = 20;
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
     if (!deepseekKey) {
@@ -5983,12 +5985,25 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
         ];
         // 🛡️ [V281] 语言分流：zh/en→DeepSeek，es/fr/th/vi→Gemini流式+DeepSeek降级兜底
-        // 🛠️ V314-fix: SSE层去重——防止 Gemini 流式输出同一chunk多次写入SSE
+        // 🛠️ V315-fix: 完整去重体系
+        // _getTrimmed: 核心去重函数——计算 chunk 去掉重叠后的真实增量
+        const _getTrimmed = (chunk) => {
+          if (!chunk || typeof chunk !== 'string') return '';
+          if (!chunk.trim()) return '';
+          if (_totalWritten.includes(chunk)) return '';           // 场景A：完全重复
+          let t = chunk;
+          for (let n = Math.min(chunk.length, _totalWritten.length); n >= _MIN_OVERLAP; n--) {
+            if (_totalWritten.endsWith(chunk.slice(0, n))) { t = chunk.slice(n); break; }
+          }
+          return t.trim() ? t : '';
+        };
+        // _dedupWrite: 双重职责——更新状态 + 通过 _resDedupe 写 SSE
         const _dedupWrite = (chunk) => {
-          if (!chunk || typeof chunk !== 'string') return;
-          const trimmed = chunk.trim();
-          if (!trimmed) return;
-          res.write(chunk);
+          const t = _getTrimmed(chunk);
+          if (!t) return;
+          _totalWritten += t;
+          fullTextCollector += t;
+          _resDedupe.write(t);   // 走 wrapper 去重
         };
         // 🛠️ V315-fix: 段落级去重——解决 Gemini 流式输出重复段落的缓存污染
         function _dedupParagraphs(text) {
@@ -6004,6 +6019,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             return true;
           }).join('\n');
         }
+
+        // 🛠️ V315-fix: res 去重 wrapper——拦截所有 res.write() 调用，防止 Gemini 和 DeepSeek 双重写入
+        const _resDedupe = {
+          write: (data, enc, cb) => {
+            const s = typeof data === 'string' ? data : data.toString('utf-8');
+            const trimmed = _getTrimmed(s);
+            if (!trimmed) return typeof cb === 'function' && cb();
+            return res.write(trimmed, enc, cb);
+          },
+          flush: res.flush && res.flush.bind(res),
+          writableEnded: false,
+          end: (...args) => { _resDedupe.writableEnded = true; return res.end(...args); }
+        };
         const _DEEPSEEK_LANGS = ['zh', 'en'];
         if (_DEEPSEEK_LANGS.includes(lang)) {
           // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
@@ -6024,7 +6052,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (!fullTextCollector || fullTextCollector.trim().length < 100) {
             console.error('[wealth-stream] V315 DeepSeek全崩，降级Gemini...');
             try {
-              const _gemFull = await streamGeminiSequential(res, (chunk) => {
+              const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 fullTextCollector += chunk;
               }, lang, prompt.system, prompt.user, astroMatrix);
@@ -6039,7 +6067,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
           console.log('[wealth-stream] V315 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
           try {
-            const _gemFull = await streamGeminiSequential(res, (chunk) => {
+            const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               _dedupWrite(chunk); // V315-fix: SSE层防重复写入
             }, lang, prompt.system, prompt.user, astroMatrix);
