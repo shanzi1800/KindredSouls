@@ -5946,6 +5946,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
     // 🛠️ V316-fix-final: 可靠的去重截断——找第2个"第2周"/"Week 2"，中文用indexOf(废弃 emoji regex)
     function _dedupParagraphs(text) {
+      // 🛠️ V317: 截断式去重——AI生成多份完整月报时，只保留第1份完整内容
+      // 优先找第2个"本月命运主题"（AI第2份报告开始）
+      const _theme2 = text.indexOf('本月命运主题', 1);
+      if (_theme2 > 0) {
+        const _cut = text.substring(0, _theme2).trim();
+        console.log(`[wealth-stream] [V317] 主题重复截断: ${text.length}→${_cut.length}字`);
+        return _cut;
+      }
+      // 降级：找第2个"第2周"
       const _s2 = '第2周', _e2 = 'Week 2';
       const _isZh = text.includes(_s2);
       let _cutPos = -1;
@@ -5959,11 +5968,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         _cutPos = _p > 0 ? _p : -1;
       }
       if (_cutPos <= 0) {
-        console.log(`[wealth-stream] [V316-fix-final] 无重复周次，无需去重 (${text.length}字)`);
+        console.log(`[wealth-stream] [V317] 无重复周次 (${text.length}字)`);
         return text;
       }
       const _cut = text.substring(0, _cutPos).trim();
-      console.log(`[wealth-stream] [V316-fix-final] 多份→1份: ${text.length}→${_cut.length}字`);
+      console.log(`[wealth-stream] [V317] 多份→1份: ${text.length}→${_cut.length}字`);
       return _cut;
     }
 
