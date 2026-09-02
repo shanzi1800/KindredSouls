@@ -408,6 +408,8 @@ const SacredYearlyReportBox: React.FC<{
       .replace(/\*/g, '')
       .replace(/^#{1,3}\s*/g, '')
       .replace(/^>\s*/g, '')
+      // 🛠️ V318: 过滤游离分隔符 ✦（独立占行，前后空行）——保呼吸感，去噪音
+      .replace(/\n\s*✦\s*\n/g, '\n\n')
       .trim();
   };
 
@@ -591,19 +593,50 @@ const SacredYearlyReportBox: React.FC<{
         </div>
       );
       
-      if (type === 'heading') return (
-        <React.Fragment key={idx}>
-        <div style={{
-          color: '#D4AF37', fontSize: '13px', fontWeight: 700,
-          textAlign: 'center', margin: '14px 0 10px', letterSpacing: '0.5px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-        }}>
-          {icon && <span>{icon}</span>}
-          <span>{content}</span>
-        </div>
-        {next && <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px' }}>{next.content}</div>}
-        </React.Fragment>
-      );
+      if (type === 'heading') {
+        // 🛠️ V318: 周状态灯/避坑预警 inline badge（按 emoji 类型选择颜色主题）
+        const _badgeMap: Record<string, { text: string; bg: string; border: string }> = {
+          '🟢': { text: '#34D399', bg: 'rgba(2,44,34,0.3)',  border: 'rgba(16,185,129,0.25)' },  // emerald-400 + 950/30 + 500/20
+          '🔴': { text: '#FB7185', bg: 'rgba(136,19,55,0.3)', border: 'rgba(244,63,94,0.25)' },  // rose-400
+          '🔵': { text: '#38BDF8', bg: 'rgba(8,47,73,0.3)',   border: 'rgba(14,165,233,0.25)' }, // sky-400
+          '⚠️': { text: '#FBBF24', bg: 'rgba(120,53,15,0.3)', border: 'rgba(245,158,11,0.25)' }, // amber-400
+        };
+        const _badge = icon && _badgeMap[icon];
+        if (_badge) {
+          return (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'center', margin: '14px 0 10px' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '5px 14px', borderRadius: '14px',
+                color: _badge.text, background: _badge.bg,
+                border: '1px solid ' + _badge.border,
+                fontSize: '12px', fontWeight: 700, letterSpacing: '0.4px',
+                boxShadow: '0 0 8px ' + _badge.border,
+              }}>
+                <span style={{ fontSize: '13px' }}>{icon}</span>
+                <span>{content}</span>
+              </div>
+            </div>
+          );
+        }
+        // 🛠️ V318: 🔮 主题标题（amber-300 加大居中，无下划线）
+        const _isThemeTitle = icon === '🔮';
+        return (
+          <React.Fragment key={idx}>
+          <div style={{
+            color: _isThemeTitle ? '#FCD34D' : '#D4AF37',
+            fontSize: _isThemeTitle ? '15px' : '13px', fontWeight: 700,
+            textAlign: 'center', margin: '14px 0 10px',
+            letterSpacing: _isThemeTitle ? '0.6px' : '0.5px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+          }}>
+            {icon && <span>{icon}</span>}
+            <span>{content}</span>
+          </div>
+          {next && <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px' }}>{next.content}</div>}
+          </React.Fragment>
+        );
+      }
       
       if (type === 'subheading') return (
         <div key={idx} style={{
