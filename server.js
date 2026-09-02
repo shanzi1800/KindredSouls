@@ -5742,32 +5742,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 兜底: 清除任何未匹配的 {{...}} 占位符
           streamText = streamText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 
-        // 🛡️ V274-fix: 替换 V222z-fix8-final 的错误守卫
-        // 根因：单份完整月报合法含 ✦[🔮×1，守卫用"✦[🔮≥2"判断多份拼接是错的
-        // 正确信号：同一周次重复出现（如"第1周"出现2次 = 两份报告拼接）
-        // 6语言周标题正则（含emoji+风险等级+数字）
-        const _WK_RE = /\✦\s*\[\S+\s+(?:Semaine\s+\d|Week\s+\d|Semana\s+\d|第\d+周|สัปดาห์ที่\s*\d|Tuần\s+\d)\b/g;
-        const _wkHits = [...streamText.matchAll(_WK_RE)].map(m => m[0]);
-        const _seen = new Set();
-        let _dupCut = 0;
-        for (const h of _wkHits) {
-          if (_seen.has(h)) { _dupCut = h; break; } // 第一次重复 = 第2份报告开始
-          _seen.add(h);
-        }
-        if (_dupCut) {
-          const _idx = streamText.indexOf(_dupCut);
-          console.warn(`[V274-fix] HIT缓存双份截断(首次重复: ${_dupCut.trim()}): ${streamText.length}→${_idx} chars`);
-          streamText = streamText.substring(0, _idx);
-        }
+        // 🛠️ V316-fix: 多份报告去重——统一由 _dedupParagraphs 处理（HIT路径已调用）
+        // 旧 V274-fix 已整合到 _dedupParagraphs，此处删除避免重复截断
 
-        // 🛠️ V315-fix2: HIT路径段落去重（Python DELETE被RLS拦截时，缓存无法删除的保底兜底）
-        // _dedupParagraphs 在月度块之前已定义，直接调用
+        // 🛠️ V316-fix: HIT路径去重——直接调用 _dedupParagraphs（无阈值guard）
         if (typeof _dedupParagraphs === 'function') {
-          const _before = streamText.length;
           streamText = _dedupParagraphs(streamText);
-          if (streamText.length < _before * 0.95) {
-            console.log(`[wealth-stream] [V315-fix2] HIT段落去重: ${_before}→${streamText.length}字, 删${_before - streamText.length}字`);
-          }
         }
 
         // 🛡️ V233-fix: 法语/西班牙语清洗
@@ -5964,28 +5944,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const _MIN_OVERLAP = 20;
 
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
+    // 🛠️ V316-fix: 去重截断——直接用重复周次定位，保留第一份完整报告
     function _dedupParagraphs(text) {
-      // 🛠️ V315-fix2: 与 V238 完全一致的多份主题截断（治Python DELETE被RLS拦截导致旧缓存无法删除的根因）
-      const _HDR_RE = /(本月命运主题|ธีมโชคชะตาประจำเดือน|Monthly Destiny Theme)/gi;
-      const _hm = [...text.matchAll(_HDR_RE)];
-      if (_hm.length > 1) {
-        // 截取第1份主题结束位置（即第2份主题开始位置）
-        const _cut = text.substring(0, _hm[1].index).trim();
-        console.log(`[wealth-stream] [V315-fix2] 多份主题截断: ×${_hm.length}→1份, ${text.length}→${_cut.length}字`);
-        return _cut;
-      }
-      // 备选：段落级去重（兜底，不常用）
-      const lines = text.split('\n');
-      const seen = new Set();
-      return lines.filter(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return true;
-        if (trimmed.startsWith('✦') || trimmed.startsWith('[[')) return true;
-        const key = trimmed.slice(0, 60);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }).join('\n');
+      // 6语言周标题（含emoji+风险等级），提取纯文本用于比对（去掉emoji/空格差异）
+      const _WK_RE = /\✦\s*\[\S+\s+(?:Semaine\s+\d|Week\s+\d|Semana\s+\d|第\d+周|สัปดาห์ที่\s*\d|Tuần\s+\d)\b/g;
+      const _wkHits = [...text.matchAll(_WK_RE)];
+      if (_wkHits.length < 2) return text; // 单份报告，无需去重
+      // 取第2个周次的纯文本（去掉emoji前缀）作为切割信号
+      const _sig = _wkHits[1][0].replace(/\✦\s*\[\S+\s+/, '').trim();
+      const _cutPos = text.indexOf(_wkHits[1][0]);
+      if (_cutPos <= 0) return text;
+      const _cut = text.substring(0, _cutPos).trim();
+      console.log(`[wealth-stream] [V316-fix] 多份报告去重: ×${_wkHits.length}→1份, ${text.length}→${_cut.length}字, 切割信号=${_sig.slice(0,30)}`);
+      return _cut;
     }
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
