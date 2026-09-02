@@ -5994,26 +5994,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
       if (reportType === 'monthly') {
-        // 🛠️ V222y-fix: 分段指令语言感知化——原硬编码中文标题(第1周/消费陷阱/2026年8月)导致非中文语言报告标题穿帮
-        // 标题格式一律让 LLM 从 FORMAT_FIREWALL 系统铁律中读取对应语言模板(该模板已含 zh/en/es/fr/th/vi 六语言周卡片+陷阱卡片示例)
-        const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
-        // 🛠️ V222z-fix: 强制输出约束——禁止 LLM 照抄指令自我说明（vi 出现"Tôi hiểu..."即是违反此约束）
-        const _noCot = {
-          zh: '直接输出内容,不要写"我理解"、"我将"等自我说明,开篇第一个字符必须是✦,不是句子开头。',
-          en: 'Output content directly. The first character must be ✦. Never write "I understand", "I will write", or any self-description before the content.',
-          es: 'Salida directa. El primer carácter debe ser ✦. Nunca escribir "Entiendo", "Voy a escribir" ni auto-descripción.',
-          fr: 'Sortie directe. Le premier caractère doit être ✦. Ne jamais écrire "Je comprends", "Je vais écrire" ni auto-description.',
-          th: 'ส่งออกเนื้อหาโดยตรง อักขระตัวแรกต้องเป็น ✦ ไม่เขียน"ฉันเข้าใจ"หรือคำอธิบายตัวเองก่อนเนื้อหา',
-          vi: 'Xuất nội dung trực tiếp. Ký tự đầu tiên phải là ✦. Tuyệt đối không viết"Tôi hiểu","Tôi sẽ viết"hay bất kỳ lời tự nhận nào trước nội dung chính.'
-        }[lang] || '直接输出内容,不要写自我说明。';
-        const _wf = [
-          `${_noCot}先写开篇:标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式(🔮 主题语义),用1-2句话概述本月整体财运基调(结合星象与本命盘),写完开篇立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第1周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第1周主题=财富充能/Wealth Recharge 语义,emoji 🟢),写完第1周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第2周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第2周主题=高危熔断/High-Risk Circuit Breaker 语义,emoji 🔴),写完第2周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第3周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第3周主题=顺流蓄力/Flow Accumulation 语义,emoji 🔵),写完第3周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
-          `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
-        ];
         // 🛡️ [V281] 语言分流：zh/en→DeepSeek，es/fr/th/vi→Gemini流式+DeepSeek降级兜底
         // 🛠️ V315-fix: 完整去重体系
         // _getTrimmed: 核心去重函数——计算 chunk 去掉重叠后的真实增量
@@ -6048,40 +6028,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           writableEnded: false,
           end: (...args) => { _resDedupe.writableEnded = true; return res.end(...args); }
         };
-        const _DEEPSEEK_LANGS = ['zh', 'en'];
-        if (_DEEPSEEK_LANGS.includes(lang)) {
-          // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
-          // V315-fix: 每段单独 try，段失败不中断后续段，最大化生成内容完整性
-          console.log('[wealth-stream] V315 lang=' + lang + ' -> DeepSeek分段(6段)');
-          for (let w = 0; w < 6; w++) {
-            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
-            try {
-              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, astroMatrix, realSunSign, lang, reportType, true);
-            } catch(dsErr) {
-              console.error('[wealth-stream] V315 DeepSeek分段w=' + w + '失败: ' + dsErr.message);
-            }
-          }
-          // V315-fix: DeepSeek 6段全崩时，降级 Gemini
-          if (!fullTextCollector || fullTextCollector.trim().length < 100) {
-            console.error('[wealth-stream] V315 DeepSeek全崩，降级Gemini...');
-            try {
-              const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
-                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                fullTextCollector += chunk;
-              }, lang, prompt.system, prompt.user, astroMatrix);
-              fullTextCollector = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
-              console.log('[wealth-stream] V315 Gemini降级成功，len=' + fullTextCollector.length);
-            } catch(gemErr2) {
-              console.error('[wealth-stream] V315 Gemini降级也失败: ' + gemErr2.message);
-            }
-          }
-          geminiFullText = fullTextCollector;
-        } else {
-          // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
-          console.log('[wealth-stream] V315 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
+        // 🛠️ V320-fix: 全语言统一走 Gemini 流式主路径（恢复 V303 架构），DeepSeek 仅兜底
+        // 废除 V281 语言分流(zh/en→DeepSeek 6段)——V286/V303 已定案全 Gemini 主路径省 DeepSeek token
+        // V315-fix2 误带回 _wf 死代码 + _DEEPSEEK_LANGS，现彻底清除，zh/en 与 es/fr/th/vi 同路径
+          // 🟢 Gemini 流式分段（全语言 zh/en/es/fr/th/vi），失败自动降级 DeepSeek
+          console.log('[wealth-stream] V320 lang=' + lang + ' -> Gemini流式主路径+DeepSeek兜底');
           try {
             const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
@@ -6089,7 +6040,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             }, lang, prompt.system, prompt.user, astroMatrix);
             geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
           } catch(gemErr) {
-            console.error('[wealth-stream] V315 Gemini失败，降级DeepSeek: ' + gemErr.message);
+            console.error('[wealth-stream] V320 Gemini失败，降级DeepSeek: ' + gemErr.message);
             try {
               const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
@@ -6097,11 +6048,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               }, astroMatrix, realSunSign, lang, reportType, false) || '';
               geminiFullText = _dsFull || fullTextCollector;
             } catch(dsErr2) {
-              console.error('[wealth-stream] V315 DeepSeek降级也失败: ' + dsErr2.message);
+              console.error('[wealth-stream] V320 DeepSeek降级也失败: ' + dsErr2.message);
               geminiFullText = fullTextCollector;
             }
           }
-        }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
 
       } else {
