@@ -5946,40 +5946,33 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
     // 🛠️ V316-fix-final: 可靠的去重截断——找第2个"第2周"/"Week 2"，中文用indexOf(废弃 emoji regex)
     function _dedupParagraphs(text) {
-      // 🛠️ V319-fix: 用「✦ [🔮 本月命运主题」精确锚定章节头（不在正文里匹配）
-      const _themeMark = '✦ [🔮 本月命运主题';
+      // 🛠️ V322: 重复月报截断（只保留第1份）——全语言通用锚点
+      // 主锚点: 「✦ [🔮」——🔮 emoji 只出现在月度主题头（✦ [🔮 Tema/Monthly/本月命运主题...]），全语言通用
+      // AI 重复输出完整月报时,第2份必然以主题头重新开始 → 找到第2个 🔮 头即第2份起点
+      const _themeMark = '✦ [🔮';
       const _firstTheme = text.indexOf(_themeMark);
       if (_firstTheme >= 0) {
         const _secondTheme = text.indexOf(_themeMark, _firstTheme + _themeMark.length);
         if (_secondTheme > 0) {
           const _cut = text.substring(0, _secondTheme).trim();
-          console.log(`[wealth-stream] [V319-fix] 主题头重复截断: ${text.length}→${_cut.length}字`);
+          console.log(`[wealth-stream] [V322] 主题头重复截断: ${text.length}→${_cut.length}字`);
           return _cut;
         }
       }
-      // 降级锚点：找第2个「✦ [🟢」或「✦ [🔴」周卡片头
-      const _weekMark = '✦ [🟢';
-      const _firstWeek = text.indexOf(_weekMark);
-      if (_firstWeek >= 0) {
-        const _secondWeek = text.indexOf(_weekMark, _firstWeek + _weekMark.length);
-        if (_secondWeek > 0) {
-          const _cut = text.substring(0, _secondWeek).trim();
-          console.log(`[wealth-stream] [V319-fix] 周卡重复截断: ${text.length}→${_cut.length}字`);
+      // 降级锚点: 行首精确匹配第2个「第2周」级标题（周2 = 🔴 全语言唯一,不会与第4周🟢混淆）
+      // 必须行首 + 标题 + 冒号结构 → 正文提及(如"Semana 2:...")不在行首不误伤
+      const _w2Line = /^\s*✦?\s*[\[【]\s*(?:[🔴🟢🔵]+\s*)?(第2周|Week 2|Semana 2|Semaine 2|สัปดาห์ที่ 2|Tuần 2)\s*[:：]/m;
+      const _firstW2 = text.search(_w2Line);
+      if (_firstW2 >= 0) {
+        const _afterFirst = text.slice(_firstW2 + 10);
+        const _secondW2 = _afterFirst.search(_w2Line);
+        if (_secondW2 >= 0) {
+          const _cut = text.substring(0, _firstW2 + 10 + _secondW2).trim();
+          console.log(`[wealth-stream] [V322] 周2标题重复截断: ${text.length}→${_cut.length}字`);
           return _cut;
         }
       }
-      // 极端保底：找英文版周卡头
-      const _enWeek = '✦ [🟢 Week';
-      const _ewFirst = text.indexOf(_enWeek);
-      if (_ewFirst >= 0) {
-        const _ewSecond = text.indexOf(_enWeek, _ewFirst + _enWeek.length);
-        if (_ewSecond > 0) {
-          const _cut = text.substring(0, _ewSecond).trim();
-          console.log(`[wealth-stream] [V319-fix] EN周卡重复截断: ${text.length}→${_cut.length}字`);
-          return _cut;
-        }
-      }
-      console.log(`[wealth-stream] [V319-fix] 无重复章节头 (${text.length}字)`);
+      console.log(`[wealth-stream] [V322] 无重复章节头 (${text.length}字)`);
       return text;
     }
 
