@@ -5962,13 +5962,34 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiRes = null;
     let aiStream = false;
     let geminiFullText = '';
-    // V314-fix: 追踪已写 SSE chunk，防止 Gemini 中途失败 + DeepSeek 兜底造成内容重复
-    const _writtenSet = new Set();
-    const _dedupWrite = (chunk) => {
-      if (_writtenSet.has(chunk)) return; // 跳过完全相同的 chunk
-      _writtenSet.add(chunk);
-      fullTextCollector += chunk;
+    // V314-fix: 重叠检测——解决 Gemini 中途失败 + DeepSeek 兜底导致内容重复
+    let _totalWritten = ''; // 记录所有已写 SSE 内容（用于去重）
+    const _MIN_OVERLAP = 20; // 重叠检测阈值（字符数）
+    // 对单个 chunk 做去重，返回 trimmed 内容（可能被截断）
+    const _getTrimmed = (chunk) => {
+      if (!chunk) return '';
+      if (_totalWritten.includes(chunk)) return ''; // 场景A：chunk 完全是已写内容的子串
+      // 场景B：截断与 _totalWritten 结尾重叠的前缀（Gemini 先写了半句，DeepSeek 补全重写了）
+      let trimmed = chunk;
+      for (let n = Math.min(chunk.length, _totalWritten.length); n >= _MIN_OVERLAP; n--) {
+        const suffix = chunk.slice(0, n);
+        if (_totalWritten.endsWith(suffix)) { trimmed = chunk.slice(n); break; }
+      }
+      return trimmed;
     };
+    const _dedupWrite = (chunk) => {
+      const trimmed = _getTrimmed(chunk);
+      if (!trimmed) return;
+      _totalWritten += trimmed;
+      fullTextCollector += trimmed;
+    };
+    // 去重 SSE wrapper：拦截所有 res.write() 调用，防止同一内容写多次
+    const _resDedupe = { write: (data, enc, cb) => {
+      const s = typeof data === 'string' ? data : data.toString('utf-8');
+      const trimmed = _getTrimmed(s);
+      if (!trimmed) return typeof cb === 'function' && cb();
+      return res.write(trimmed, enc, cb);
+    }, flush: res.flush && res.flush.bind(res), writableEnded: false, end: (...args) => { _resDedupe.writableEnded = true; return res.end(...args); } };
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
     if (!deepseekKey) {
@@ -6006,18 +6027,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           console.error('[wealth-stream] V313 Gemini失败，降级DeepSeek(流式): ' + gemErr.message + ' | rootCause=' + _gemRootCause + ' | stack: ' + (gemErr.stack||'').slice(0,300));
           try {
             const _dsFull = await callDeepSeekStream(
-              prompt.system, prompt.user, controller, res, // V313-fix: 传真实 res，实时推 SSE chunk
+              prompt.system, prompt.user, controller, res, // V313-fix: 传真实 res，wrapper 处理去重
               (chunkText) => {
-                if (res && !res.writableEnded) {
-                  try {
-                    if (!_writtenSet.has(chunkText)) { // V314-fix: 已在 _writtenSet 的 chunk 跳过（防 Gemini 部分输出 + DeepSeek 重写）
-                      const _sseLine = 'data: ' + JSON.stringify({ text: chunkText }) + '\n\n';
-                      res.write(_sseLine, 'utf-8');
-                      if (typeof res.flush === 'function') res.flush();
-                    }
-                  } catch(writeErr) { /* 连接已关闭 */ }
-                }
-                _dedupWrite(chunkText);
+                _dedupWrite(chunkText); // wrapper._write 负责去重，callback 只更新 fullTextCollector
               },
               astroMatrix, realSunSign, lang, reportType, false
             ) || '';
