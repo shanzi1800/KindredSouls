@@ -6397,29 +6397,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
-    // 🛡️ V257-fix: 多份报告守卫(原 V222z-fix13d 用 ✦ [🔮 主题头计数截断,误判双份砍光正文,已废弃)。
-    //   新逻辑见下方: 仅当【同一周标题重复出现】才截(真·双份报告信号),单份月报绝触发。
-    // 单锚设计: 2个 `✦ [🔮` = 第2份报告已生成, 截断到第2个锚点之前.
-    // (trap 锚点不参与门禁: 同一份报告内 trap 可多次出现, trap≥2 不是双份的充分条件)
-    if (cleanedText && cleanedText.length > 100) {
-      // 🛡️ V257-fix: 多份报告检测——找第2个"第2周"/"Week 2"，中文用indexOf(最快最可靠)
-      // 🛠️ V316-fix-final: 废弃 emoji regex（Surrogate Pair 问题导致 Railway 上失效）
-      const _dupPos = (() => {
-        const _s2 = '第2周', _e2 = 'Week 2';
-        const _isZh = cleanedText.includes(_s2);
-        if (_isZh) {
-          let _p = cleanedText.indexOf(_s2);
-          _p = cleanedText.indexOf(_s2, _p + 1);
-          return _p > 0 ? _p : -1;
-        } else {
-          let _p = cleanedText.indexOf(_e2);
-          _p = cleanedText.indexOf(_e2, _p + 1);
-          return _p > 0 ? _p : -1;
-        }
-      })();
-      if (_dupPos >= 0) {
-        console.warn(`[V257-fix] 多份截断(周标题重复): ${cleanedText.length}→${_dupPos} chars`);
-        cleanedText = cleanedText.substring(0, _dupPos);
+    // 🛡️ V318-fix: 多份报告守卫——只对极端超长文本(>25000字)触发，此时很可能是 AI 无节制输出多份
+    // V317 的 _dedupParagraphs 已经精确处理正常重复，这个守卫只管极端情况
+    if (cleanedText && cleanedText.length > 25000) {
+      const _s2 = '第2周', _e2 = 'Week 2';
+      const _isZh = cleanedText.includes(_s2);
+      const _p2 = _isZh
+        ? (() => { let p = cleanedText.indexOf(_s2); return cleanedText.indexOf(_s2, p + 1); })()
+        : (() => { let p = cleanedText.indexOf(_e2); return cleanedText.indexOf(_e2, p + 1); })();
+      if (_p2 > 0) {
+        console.warn(`[V318-fix] 极端超长(${cleanedText.length}字)→截断第2周重复: ${_p2}字`);
+        cleanedText = cleanedText.substring(0, _p2);
       }
     }
 
