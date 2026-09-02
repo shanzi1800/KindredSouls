@@ -5944,18 +5944,25 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const _MIN_OVERLAP = 20;
 
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
-    // 🛠️ V316-fix: 去重截断——直接用重复周次定位，保留第一份完整报告
+    // 🛠️ V316-fix2: 去重截断——直接找第2个"第2周"/"Week 2"，保留第一份完整报告
     function _dedupParagraphs(text) {
-      // 6语言周标题（含emoji+风险等级），提取纯文本用于比对（去掉emoji/空格差异）
-      const _WK_RE = /\✦\s*\[\S+\s+(?:Semaine\s+\d|Week\s+\d|Semana\s+\d|第\d+周|สัปดาห์ที่\s*\d|Tuần\s+\d)\b/g;
-      const _wkHits = [...text.matchAll(_WK_RE)];
-      if (_wkHits.length < 2) return text; // 单份报告，无需去重
-      // 取第2个周次的纯文本（去掉emoji前缀）作为切割信号
-      const _sig = _wkHits[1][0].replace(/\✦\s*\[\S+\s+/, '').trim();
-      const _cutPos = text.indexOf(_wkHits[1][0]);
-      if (_cutPos <= 0) return text;
+      // 中文月报：每份报告都有"第2周"，找第2次出现 = 第2份报告开始
+      // 英文：找第2个"Week 2"
+      const _hasZh = /[\u4e00-\u9fff]/.test(text);
+      let _cutPos = -1;
+      if (_hasZh) {
+        const _hits = [...text.matchAll(/第2周/g)];
+        if (_hits.length >= 2) { _cutPos = _hits[1].index; }
+      } else {
+        const _hits = [...text.matchAll(/\bWeek 2\b/g)];
+        if (_hits.length >= 2) { _cutPos = _hits[1].index; }
+      }
+      if (_cutPos <= 0) {
+        console.log(`[wealth-stream] [V316-fix2] 无重复周次，无需去重 (${text.length}字)`);
+        return text;
+      }
       const _cut = text.substring(0, _cutPos).trim();
-      console.log(`[wealth-stream] [V316-fix] 多份报告去重: ×${_wkHits.length}→1份, ${text.length}→${_cut.length}字, 切割信号=${_sig.slice(0,30)}`);
+      console.log(`[wealth-stream] [V316-fix2] 多份→1份: ${text.length}→${_cut.length}字`);
       return _cut;
     }
 
