@@ -5944,25 +5944,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     const _MIN_OVERLAP = 20;
 
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
-    // 🛠️ V316-fix2: 去重截断——直接找第2个"第2周"/"Week 2"，保留第一份完整报告
+    // 🛠️ V316-fix-final: 可靠的去重截断——找第2个"第2周"/"Week 2"，中文用indexOf(废弃 emoji regex)
     function _dedupParagraphs(text) {
-      // 中文月报：每份报告都有"第2周"，找第2次出现 = 第2份报告开始
-      // 英文：找第2个"Week 2"
-      const _hasZh = /[\u4e00-\u9fff]/.test(text);
+      const _s2 = '第2周', _e2 = 'Week 2';
+      const _isZh = text.includes(_s2);
       let _cutPos = -1;
-      if (_hasZh) {
-        const _hits = [...text.matchAll(/第2周/g)];
-        if (_hits.length >= 2) { _cutPos = _hits[1].index; }
+      if (_isZh) {
+        let _p = text.indexOf(_s2);
+        _p = text.indexOf(_s2, _p + 1);
+        _cutPos = _p > 0 ? _p : -1;
       } else {
-        const _hits = [...text.matchAll(/\bWeek 2\b/g)];
-        if (_hits.length >= 2) { _cutPos = _hits[1].index; }
+        let _p = text.indexOf(_e2);
+        _p = text.indexOf(_e2, _p + 1);
+        _cutPos = _p > 0 ? _p : -1;
       }
       if (_cutPos <= 0) {
-        console.log(`[wealth-stream] [V316-fix2] 无重复周次，无需去重 (${text.length}字)`);
+        console.log(`[wealth-stream] [V316-fix-final] 无重复周次，无需去重 (${text.length}字)`);
         return text;
       }
       const _cut = text.substring(0, _cutPos).trim();
-      console.log(`[wealth-stream] [V316-fix2] 多份→1份: ${text.length}→${_cut.length}字`);
+      console.log(`[wealth-stream] [V316-fix-final] 多份→1份: ${text.length}→${_cut.length}字`);
       return _cut;
     }
 
@@ -6392,28 +6393,38 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 单锚设计: 2个 `✦ [🔮` = 第2份报告已生成, 截断到第2个锚点之前.
     // (trap 锚点不参与门禁: 同一份报告内 trap 可多次出现, trap≥2 不是双份的充分条件)
     if (cleanedText && cleanedText.length > 100) {
-      // 🛡️ V257-fix: 多份报告检测改为「同一周标题重复出现」(如 Week 1 出现 2 次)= 真·双份报告信号。
-      //   不再用 ✦ [🔮 主题头计数——LLM 偶发回显 prompt 模板示例 / V256 兜底注入会产生第2个主题头,
-      //   误判双份把正文砍光(本例: 9930→443)。单份月报 4 周各出现 1 次,绝不触发。
-      // 🛠️ V271e-fix: anchor 防止 ] 被误当 [ —— 要求 [ 后必须紧跟 🟢🔴🔵⚠️ 或字母/汉字，否则不匹配
-      const _WEEK_RE = /\[(?:[🟢🔴🔵⚠️]|Week|第|Semana|Semaine|Tuần|สัปดาห์)\s*(?:(\d+)|([一二三四1-4])|(\d+)|(\d+)|(\d+)|(\d+))/gi;
-      const _wkSeen = {};
-      let _dupPos = -1;
-      let _mw;
-      while ((_mw = _WEEK_RE.exec(cleanedText)) !== null) {
-        const _w = _mw[1] || _mw[2] || _mw[3] || _mw[4] || _mw[5] || _mw[6];
-        if (_wkSeen[_w]) { _dupPos = _mw.index; break; }
-        _wkSeen[_w] = true;
-      }
+      // 🛡️ V257-fix: 多份报告检测——找第2个"第2周"/"Week 2"，中文用indexOf(最快最可靠)
+      // 🛠️ V316-fix-final: 废弃 emoji regex（Surrogate Pair 问题导致 Railway 上失效）
+      const _dupPos = (() => {
+        const _s2 = '第2周', _e2 = 'Week 2';
+        const _isZh = cleanedText.includes(_s2);
+        if (_isZh) {
+          let _p = cleanedText.indexOf(_s2);
+          _p = cleanedText.indexOf(_s2, _p + 1);
+          return _p > 0 ? _p : -1;
+        } else {
+          let _p = cleanedText.indexOf(_e2);
+          _p = cleanedText.indexOf(_e2, _p + 1);
+          return _p > 0 ? _p : -1;
+        }
+      })();
       if (_dupPos >= 0) {
         console.warn(`[V257-fix] 多份截断(周标题重复): ${cleanedText.length}→${_dupPos} chars`);
         cleanedText = cleanedText.substring(0, _dupPos);
       }
     }
 
-    if (cleanedText && cleanedText.length > 100) {
+    // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
+    let _sanitizedForClient = cleanedText;
+    if (typeof _dedupParagraphs === 'function' && cleanedText && cleanedText.length > 500) {
+      _sanitizedForClient = _dedupParagraphs(cleanedText);
+      if (_sanitizedForClient.length < cleanedText.length) {
+        console.log(`[wealth-stream] [V316-fix3] sanitized 去重: ${cleanedText.length}→${_sanitizedForClient.length}字`);
+      }
+    }
+    if (_sanitizedForClient && _sanitizedForClient.length > 100) {
       try {
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: cleanedText })}\n\n`, 'utf-8'));
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedForClient })}\n\n`, 'utf-8'));
       } catch(e) {}
     }
 
