@@ -415,8 +415,10 @@ const SacredYearlyReportBox: React.FC<{
   const INLINE_TRAP_RE = /✦\s*⚠️\s*((?:消费陷阱|spending\s*traps?|trampas\s*de\s*gasto|pi[eè]ges?|กับดัก|bẫy\s*chi\s*tiêu)[^✦]*?)\s*✦/i;
 
   const parseLine = (line: string): { type: string; content: string; icon?: string; next?: { type: string; content: string } } => {
-    const t = line.trim();
+    let t = line.trim();
     if (!t) return { type: 'empty', content: '' };
+    // 🛠️ V324: 剥 markdown # 头/引用符——LLM 偶发输出 "# ✦ [🔮 ...]" 导致标题行识别失败回退普通文本(不金色不居中)
+    t = t.replace(/^#{1,6}\s*/, '').replace(/^>\s*/, '');
     
     // 检测图标
     // 🛠️ V103-fix9: ✦章节前缀——以 ✦ 开头的行直接走 heading（金色），不依赖章节关键词检测（章节关键词有60字上限限制）

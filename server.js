@@ -6288,6 +6288,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
     }
 
+    // 🛠️ V324: 主题标题行规范化——LLM 输出漂移(# markdown头/漏尾✦/方括号缺失)统一为 "✦ [🔮 X] ✦" 独占行
+    // 根因: Gemini 英文偶发输出 "# ✦ [🔮 Monthly Destiny Theme] ✦"(带#)或漏尾✦, 前端 parseLine 行首非✦则回退普通文本(不金色不居中)
+    if (reportType === 'monthly') {
+      const _themeStd = { zh:'本月命运主题', en:'Monthly Destiny Theme', es:'Tema de Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตา', vi:'Chủ Đề Vận Mệnh Tháng' }[lang] || '本月命运主题';
+      cleanedText = cleanedText.split('\n').map(_l => {
+        const _s = _l.trim().replace(/^[#>_*\-]+\s*/, ''); // 剥 markdown # 头等
+        const _m = _s.match(/^✦?\s*[\[【]?\s*(?:🔮\s*)?(本月命运主题|月度命运主题|Monthly Destiny Theme|Tema de Destino Mensual|Th[èe]me de Destin du Mois|ธีมโชคชะตา|Chủ Đề Vận Mệnh Tháng)\s*[\]】]?\s*✦?$/);
+        if (_m) return '✦ [🔮 ' + _themeStd + '] ✦';
+        return _l;
+      }).join('\n');
+    }
+
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
     cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
     }
