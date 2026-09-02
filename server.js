@@ -6045,7 +6045,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 _dedupWrite(chunk); // V315-fix: SSE层防重复写入
-              }, astroMatrix, realSunSign, lang, reportType, false) || '';
+              }, astroMatrix, realSunSign, lang, reportType, true) || '';
+              // V321-fix: skipFinal=true——callDeepSeekStream 内部不再发 sanitized(945行 V222q 逻辑),
+              // sanitized 统一由主端点 V316-fix3 发一次,根治 Gemini失败→DeepSeek降级 造成的 sanitized 双发叠加
               geminiFullText = _dsFull || fullTextCollector;
             } catch(dsErr2) {
               console.error('[wealth-stream] V320 DeepSeek降级也失败: ' + dsErr2.message);
