@@ -5760,6 +5760,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           streamText = streamText.substring(0, _idx);
         }
 
+        // 🛠️ V315-fix2: HIT路径段落去重（Python DELETE被RLS拦截时，缓存无法删除的保底兜底）
+        // _dedupParagraphs 在月度块之前已定义，直接调用
+        if (typeof _dedupParagraphs === 'function') {
+          const _before = streamText.length;
+          streamText = _dedupParagraphs(streamText);
+          if (streamText.length < _before * 0.95) {
+            console.log(`[wealth-stream] [V315-fix2] HIT段落去重: ${_before}→${streamText.length}字, 删${_before - streamText.length}字`);
+          }
+        }
+
         // 🛡️ V233-fix: 法语/西班牙语清洗
         if (lang === 'fr') { streamText = fixFrenchTypo(fixFrenchSpacing(streamText)); }
         if (lang === 'es') { streamText = fixSpanishSpacing(streamText); }
