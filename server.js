@@ -5946,34 +5946,41 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
     // 🛠️ V316-fix-final: 可靠的去重截断——找第2个"第2周"/"Week 2"，中文用indexOf(废弃 emoji regex)
     function _dedupParagraphs(text) {
-      // 🛠️ V317: 截断式去重——AI生成多份完整月报时，只保留第1份完整内容
-      // 优先找第2个"本月命运主题"（AI第2份报告开始）
-      const _theme2 = text.indexOf('本月命运主题', 1);
-      if (_theme2 > 0) {
-        const _cut = text.substring(0, _theme2).trim();
-        console.log(`[wealth-stream] [V317] 主题重复截断: ${text.length}→${_cut.length}字`);
-        return _cut;
+      // 🛠️ V319-fix: 用「✦ [🔮 本月命运主题」精确锚定章节头（不在正文里匹配）
+      const _themeMark = '✦ [🔮 本月命运主题';
+      const _firstTheme = text.indexOf(_themeMark);
+      if (_firstTheme >= 0) {
+        const _secondTheme = text.indexOf(_themeMark, _firstTheme + _themeMark.length);
+        if (_secondTheme > 0) {
+          const _cut = text.substring(0, _secondTheme).trim();
+          console.log(`[wealth-stream] [V319-fix] 主题头重复截断: ${text.length}→${_cut.length}字`);
+          return _cut;
+        }
       }
-      // 降级：找第2个"第2周"
-      const _s2 = '第2周', _e2 = 'Week 2';
-      const _isZh = text.includes(_s2);
-      let _cutPos = -1;
-      if (_isZh) {
-        let _p = text.indexOf(_s2);
-        _p = text.indexOf(_s2, _p + 1);
-        _cutPos = _p > 0 ? _p : -1;
-      } else {
-        let _p = text.indexOf(_e2);
-        _p = text.indexOf(_e2, _p + 1);
-        _cutPos = _p > 0 ? _p : -1;
+      // 降级锚点：找第2个「✦ [🟢」或「✦ [🔴」周卡片头
+      const _weekMark = '✦ [🟢';
+      const _firstWeek = text.indexOf(_weekMark);
+      if (_firstWeek >= 0) {
+        const _secondWeek = text.indexOf(_weekMark, _firstWeek + _weekMark.length);
+        if (_secondWeek > 0) {
+          const _cut = text.substring(0, _secondWeek).trim();
+          console.log(`[wealth-stream] [V319-fix] 周卡重复截断: ${text.length}→${_cut.length}字`);
+          return _cut;
+        }
       }
-      if (_cutPos <= 0) {
-        console.log(`[wealth-stream] [V317] 无重复周次 (${text.length}字)`);
-        return text;
+      // 极端保底：找英文版周卡头
+      const _enWeek = '✦ [🟢 Week';
+      const _ewFirst = text.indexOf(_enWeek);
+      if (_ewFirst >= 0) {
+        const _ewSecond = text.indexOf(_enWeek, _ewFirst + _enWeek.length);
+        if (_ewSecond > 0) {
+          const _cut = text.substring(0, _ewSecond).trim();
+          console.log(`[wealth-stream] [V319-fix] EN周卡重复截断: ${text.length}→${_cut.length}字`);
+          return _cut;
+        }
       }
-      const _cut = text.substring(0, _cutPos).trim();
-      console.log(`[wealth-stream] [V317] 多份→1份: ${text.length}→${_cut.length}字`);
-      return _cut;
+      console.log(`[wealth-stream] [V319-fix] 无重复章节头 (${text.length}字)`);
+      return text;
     }
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
