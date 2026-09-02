@@ -5993,21 +5993,27 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         } catch(gemErr) {
           // 🟠 Gemini 崩了，DeepSeek 兜底
           // V290-fix: 用非流式 API 整段收集，不在 SSE 写中间过程（避免与 _genSeg 的异步 setTimeout 写竞争）
-          console.error('[wealth-stream] V290 Gemini失败，降级DeepSeek(非流式): ' + gemErr.message);
+          // V313-diagnostic: 在 monthly handler 层面记录 Gemini 失败根因
+          const _gemRootCause = (gemErr.stack||'').includes('fetch') ? 'NETWORK' :
+            (gemErr.message.includes('HTTP') ? 'GEMINI_API_' + gemErr.message.match(/HTTP (\d+)/)?.[1] : 'UNKNOWN');
+          console.error('[wealth-stream] V313 Gemini失败，降级DeepSeek(流式): ' + gemErr.message + ' | rootCause=' + _gemRootCause + ' | stack: ' + (gemErr.stack||'').slice(0,300));
           try {
             const _dsFull = await callDeepSeekStream(
-              prompt.system, prompt.user, controller, null, // res=null → 不写 SSE
-              null, // onChunk=null → 不触发 onChunk 回调
+              prompt.system, prompt.user, controller, res, // V313-fix: 传真实 res，实时推 SSE chunk
+              (chunkText) => {
+                if (res && !res.writableEnded) {
+                  try {
+                    const _sseLine = 'data: ' + JSON.stringify({ text: chunkText }) + '\n\n';
+                    res.write(_sseLine, 'utf-8');
+                    if (typeof res.flush === 'function') res.flush();
+                  } catch(writeErr) { /* 连接已关闭 */ }
+                }
+                fullTextCollector += chunkText;
+              },
               astroMatrix, realSunSign, lang, reportType, false
             ) || '';
-            if (_dsFull) {
-              // 一次性写完整段，不拆 chunk（保持 SSE 原子性）
-              const _finalLine = 'data: ' + JSON.stringify({ text: _dsFull }) + '\n\n';
-              try { res.write(_finalLine, 'utf-8'); } catch(e2) {}
-              fullTextCollector += _dsFull;
-            }
             geminiFullText = _dsFull || fullTextCollector;
-            console.log('[wealth-stream] V290 DeepSeek兜底成功，len=' + geminiFullText.length);
+            console.log('[wealth-stream] V313 DeepSeek流式兜底成功，len=' + geminiFullText.length);
           } catch(dsErr2) {
             console.error('[wealth-stream] V286 DeepSeek兜底也失败: ' + dsErr2.message);
             geminiFullText = fullTextCollector; // 保留已收集的碎片
@@ -7000,7 +7006,6 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     if (!ok) {
       throw new Error('Gemini 段N连续失败，触发 DeepSeek 补全');
     }
-
 
   return fullText;
 }
