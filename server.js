@@ -5953,6 +5953,21 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let _totalWritten = ''; // V315-fix: 追踪已写SSE内容，检测并跳过Gemini输出重叠
     const _MIN_OVERLAP = 20;
 
+    // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
+    function _dedupParagraphs(text) {
+      const lines = text.split('\n');
+      const seen = new Set();
+      return lines.filter(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return true;
+        if (trimmed.startsWith('✦') || trimmed.startsWith('[[')) return true;
+        const key = trimmed.slice(0, 60);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).join('\n');
+    }
+
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
     if (!deepseekKey) {
       clearTimeout(aiTimeout);
@@ -6005,20 +6020,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           fullTextCollector += t;
           _resDedupe.write(t);   // 走 wrapper 去重
         };
-        // 🛠️ V315-fix: 段落级去重——解决 Gemini 流式输出重复段落的缓存污染
-        function _dedupParagraphs(text) {
-          const lines = text.split('\n');
-          const seen = new Set();
-          return lines.filter(line => {
-            const trimmed = line.trim();
-            if (!trimmed) return true;
-            if (trimmed.startsWith('✦') || trimmed.startsWith('[[')) return true;
-            const key = trimmed.slice(0, 60);
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          }).join('\n');
-        }
 
         // 🛠️ V315-fix: res 去重 wrapper——拦截所有 res.write() 调用，防止 Gemini 和 DeepSeek 双重写入
         const _resDedupe = {
