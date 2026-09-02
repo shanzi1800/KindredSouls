@@ -577,7 +577,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: 0.3, presence_penalty: 0.3, repetition_penalty: 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
-    console.log('[callDeepSeek] HTTP', resp.status, 'body type:', typeof resp.body);
+    console.log('[callDeepSeek] HTTP', resp.status);
   } catch(e) { console.error('[callDeepSeek] fetch threw:', e.name, e.message); throw e; }
   if (!resp.ok) { const body = await resp.text(); console.error('[callDeepSeek] HTTP!ok:', resp.status, body.slice(0,200)); throw new Error('DeepSeek HTTP '+resp.status); }
   const reader = resp.body.getReader();
@@ -594,11 +594,11 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 🛡️ V222z-fix13e: text 流层单锚截断——MISS 路径下 sanitized 从不触发,必须在 text 流层直接断流
   let _monthlyCutDone = false;
   const _MONTHLY_THEME_RE = /\✦\s*\[\🔮/g;
-  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); } } catch(e){} }, 20000);
+  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { const _final = decoder.end(); if (_final) buf += _final; console.log('[callDeepSeek] stream done, buf残留='+buf.length+', chunkCount='+chunkCount); break; }
+      if (done) { const _final = decoder.end(); if (_final) buf += _final; break; }
       buf += decoder.write(value);
       const lines2 = buf.split('\n');
       buf = lines2.pop() || '';
@@ -609,7 +609,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
         try {
           const parsed = JSON.parse(d);
           const txt = parsed.choices?.[0]?.delta?.content || '';
-          if (!txt) { if(chunkCount===0) console.log('[callDeepSeek] 数据行但空txt, raw:', d.slice(0,100)); continue; }
+          if (!txt) continue;
           chunkCount++;
           // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
           let clean = txt
@@ -636,8 +636,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（顺蓄）/g, '（顺流蓄力）')
             .replace(/（财爆）/g, '（财富爆发）')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
-          // V310-tmp: 临时注释掉避免速率限制刷掉诊断日志
-          // console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
+          console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           // V221: newSuffix 恒为增量(delta); fullText 累积真实全文, sentLen 游标保证只发未发部分(根治累积重发灾难)
           // V222q: 加前缀重发检测——DeepSeek 偶发重发已输出前缀(clean 是 lastClean 的前缀或相同) → 丢弃,根治事件级重复
           let newSuffix = '';
@@ -669,7 +668,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
               try {
                 res.write(Buffer.from(`data: ${JSON.stringify({ text: _truncated, _dbg: { source: 'V233FIX13E_STREAM_CUT' } })}\n\n`, 'utf-8'));
               } catch(e) {}
-              if (res) { try { res.write('data: [DONE]\n\n'); } catch(_e){} } // V299-fix
+              res.write('data: [DONE]\n\n');
+              if (typeof res.flush === 'function') try { res.flush(); } catch(e) {}
               clearInterval(heartbeat);
               return; // 跳出流式循环
             }
@@ -714,7 +714,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             /* V221b: sentLen 已在 _toSend 算完时无条件推进, 不依赖此处 */
           }
           // 🛠️ V222s: res.flush 移到 flush try 外——原 265 行的 res.flush 在 try 内,若 flush 抛错会进 257 catch → 每 flush 重复发一次 no-dbg 事件(成对重复+ sanitary 失效)。现单独 try/catch,抛错只影响 flush 时机,不触发主 catch
-          try { } catch(e) {}
+          try { if (typeof res.flush === 'function') res.flush(); } catch(e) {}
         } catch(e) {}
       }
     }
@@ -728,20 +728,21 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       // 🛠️ V120-fix23: 月报修复章节标题缩写 + 去乱码
       // 🛠️ V131e: 月报 flush 也过相角清洗; realSunSign 传给 Pluto House 修正
       pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_rest, lang), false, lang)).replace(/\uFFFD/g,'');
-      if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8')); } catch(_e){} } // V299-fix
+      res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
       if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
     } else {
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_rest,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
-        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8')); } catch(_e){} } // V299-fix
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
-        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_rest) })}\n\n`, 'utf-8')); } catch(_e2){} } // V299-fix
+        res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(_rest) })}\n\n`, 'utf-8'));
         if (_dupGuard(_rest)) onChunk && onChunk(_rest); else return;
       }
     }
-    }
+    if (typeof res.flush === 'function') res.flush();
+  }
   // 🛠️ V131e-fix: 月报相角术语+ Pluto水瓶宫位双重后处理清洗
   // 根治:DeepSeek 绕过 Prompt 禁令写"三分相/对分相/合相"和"水瓶座第10宫"
   function stripAspectTermsAndPlutoHouse(text, natalSunSign, lang) {
@@ -941,8 +942,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         // 🌟 V238 刀B：sanitized 发送前过三刀流
         fixed = sanitizeReportFinal(fixed, { lang, reportType });
-        if (res) { try { res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8')); } catch(_e){} } // V302-fix
+        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
+        if (typeof res.flush === 'function') res.flush();
         console.log('[callDeepSeek] [MONTHLY-FIX] len=' + fixed.length + ' oc=' + _ocF + ' cc=' + _ccF);
         fullText = fixed;
       } catch(e) {
@@ -3099,7 +3101,7 @@ app.get('/api/health', async (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'kindredsouls-api',
-    version: 'v1.0.2-V314-FINAL',
+    version: 'v1.0.2-V233-FINAL',
     gitSha,
     gitShaFull,
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'unknown',
@@ -5606,14 +5608,8 @@ function standardizeReport(text) {
 // 🌊 流式输出端点:SSE (Server-Sent Events)
 // ═══════════════════════════════════════════════════════════════════════
 app.post('/api/wealth-oracle/stream', async (req, res) => {
-  // V301-fix: Express SSE streaming 头，关闭 Nginx 缓冲
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
   // 🛠️ V97r 部署验证标识:真生产 KindredSouls 日志里看到这个 = V97r 代码已生效
   console.log('[V97r-DEPLOY-MARKER] stream endpoint hit, body-encoding=TextEncoder');
-  // V310-ENTRY: 最前面诊断，确认请求到达 + 参数
-  console.log('[V310-ENTRY] body.reportType=' + JSON.stringify(req.body?.reportType) + ' nocache(q)=' + JSON.stringify(req.query?.nocache) + ' nocache(b)=' + JSON.stringify(req.body?.nocache));
 
   // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
   const {
@@ -5632,7 +5628,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活
   const _hb = setInterval(() => {
-    try { res.write(': heartbeat\n\n'); } catch (e) {}
+    try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch (e) {}
   }, 8000);
   res.on('close', () => {
     try { clearInterval(_hb); } catch (e) {}
@@ -5644,7 +5640,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('X-Accel-Buffering', 'no'); // V291-fix: 禁止Railway边缘缓冲SSE
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
   res.setHeader('Connection', 'keep-alive'); // V121 原生,防 Railway hikari 提前 RST
@@ -5686,22 +5681,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       metaPayload.houseInfo = { sunHouse: _ctx.sunHouse, risingSign: _ctx.risingSign, sunSign: _ctx.sunSign };
     } catch (e) { /* meta 兜底不阻断 */ }
     res.write(Buffer.from(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`, 'utf-8'));
-    } catch (e) {
+    if (typeof res.flush === 'function') res.flush();
+  } catch (e) {
     console.warn('[wealth-stream] [V238-META] build failed:', e.message);
   }
 
-  // V306: nocache 参数强制绕过缓存，真流式测试用
-  // 兼容字符串 "true" 和布尔值 true
-  const shouldBypassCache = req.query.nocache === 'true' || 
-                             req.body.bypassCache === true || 
-                             req.body.nocache === true || 
-                             req.body.nocache === 'true';
-  if (shouldBypassCache) {
-    console.log('[wealth-stream] [NOCACHE] 强制绕过缓存，走真流式生成');
-  }
-  
   try {
-    if (SB_URL && SB_KEY && !shouldBypassCache) {
+    if (SB_URL && SB_KEY) {
       const cacheRes = await safeFetch(
         `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
         { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
@@ -5793,7 +5779,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
           const chunk = streamText.slice(i, i + CHUNK_SIZE);
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
-          }
+          if (typeof res.flush === 'function') res.flush();
+        }
         // V113-fix2: 发送 sanitized 事件,确保前端与 MISS 路径一致
         // 🛡️ V272-fix2: HIT路径 sanitized 只对 zh/en 执行（小语种正文含英文词会误触发刀一截断）
         let _sanitizedOut = streamText;
@@ -5802,6 +5789,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedOut })}\n\n`, 'utf-8'));
         res.write('data: [DONE]\n\n');
+        if (typeof res.flush === 'function') res.flush();
         res.end();
         console.log(`[wealth-stream] [OK] Cache instant chunked complete, ${streamText.length} chars`);
         return;
@@ -5962,34 +5950,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiRes = null;
     let aiStream = false;
     let geminiFullText = '';
-    // V314-fix: 重叠检测——解决 Gemini 中途失败 + DeepSeek 兜底导致内容重复
-    let _totalWritten = ''; // 记录所有已写 SSE 内容（用于去重）
-    const _MIN_OVERLAP = 20; // 重叠检测阈值（字符数）
-    // 对单个 chunk 做去重，返回 trimmed 内容（可能被截断）
-    const _getTrimmed = (chunk) => {
-      if (!chunk) return '';
-      if (_totalWritten.includes(chunk)) return ''; // 场景A：chunk 完全是已写内容的子串
-      // 场景B：截断与 _totalWritten 结尾重叠的前缀（Gemini 先写了半句，DeepSeek 补全重写了）
-      let trimmed = chunk;
-      for (let n = Math.min(chunk.length, _totalWritten.length); n >= _MIN_OVERLAP; n--) {
-        const suffix = chunk.slice(0, n);
-        if (_totalWritten.endsWith(suffix)) { trimmed = chunk.slice(n); break; }
-      }
-      return trimmed;
-    };
-    const _dedupWrite = (chunk) => {
-      const trimmed = _getTrimmed(chunk);
-      if (!trimmed) return;
-      _totalWritten += trimmed;
-      fullTextCollector += trimmed;
-    };
-    // 去重 SSE wrapper：拦截所有 res.write() 调用，防止同一内容写多次
-    const _resDedupe = { write: (data, enc, cb) => {
-      const s = typeof data === 'string' ? data : data.toString('utf-8');
-      const trimmed = _getTrimmed(s);
-      if (!trimmed) return typeof cb === 'function' && cb();
-      return res.write(trimmed, enc, cb);
-    }, flush: res.flush && res.flush.bind(res), writableEnded: false, end: (...args) => { _resDedupe.writableEnded = true; return res.end(...args); } };
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
     if (!deepseekKey) {
@@ -5999,45 +5959,103 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
     // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
     try {
-      // V308-diag: 在最最开始打印关键变量
-      console.log('[V308-BEGIN] ========== STREAM MISS PATH BEGIN ==========');
-      console.log('[V308-diag] reportType=' + JSON.stringify(reportType) + ' typeof=' + typeof reportType);
-      console.log('[V308-diag] deepseekKey=' + (deepseekKey ? 'YES(len=' + deepseekKey.length + ')' : 'NO'));
-      console.log('[V308-diag] geminiKey=' + (geminiKey ? 'YES(len=' + geminiKey.length + ')' : 'NO'));
-      console.log('[V308-diag] birthDate=' + birthDate + ' lang=' + lang);
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
-      // V303: 全线统一走 Gemini streamGeminiSequential，删除历史遗留 _wf 死代码
       if (reportType === 'monthly') {
-        // Gemini 主路径（所有语言，含中文）
-        console.log('[wealth-stream] V303 lang=' + lang + ' -> Gemini streamGeminiSequential');
-        try {
-          const _gemFull = await streamGeminiSequential(res, (chunk) => {
-            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            _dedupWrite(chunk); // V314-fix: dedup，防止 Gemini+DeepSeek 双重写入
-          }, lang, prompt.system, prompt.user, astroMatrix);
-          geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
-          console.log('[wealth-stream] V286 Gemini成功，len=' + geminiFullText.length);
-        } catch(gemErr) {
-          // 🟠 Gemini 崩了，DeepSeek 兜底
-          // V290-fix: 用非流式 API 整段收集，不在 SSE 写中间过程（避免与 _genSeg 的异步 setTimeout 写竞争）
-          // V313-diagnostic: 在 monthly handler 层面记录 Gemini 失败根因
-          const _gemRootCause = (gemErr.stack||'').includes('fetch') ? 'NETWORK' :
-            (gemErr.message.includes('HTTP') ? 'GEMINI_API_' + gemErr.message.match(/HTTP (\d+)/)?.[1] : 'UNKNOWN');
-          console.error('[wealth-stream] V313 Gemini失败，降级DeepSeek(流式): ' + gemErr.message + ' | rootCause=' + _gemRootCause + ' | stack: ' + (gemErr.stack||'').slice(0,300));
+        // 🛠️ V222y-fix: 分段指令语言感知化——原硬编码中文标题(第1周/消费陷阱/2026年8月)导致非中文语言报告标题穿帮
+        // 标题格式一律让 LLM 从 FORMAT_FIREWALL 系统铁律中读取对应语言模板(该模板已含 zh/en/es/fr/th/vi 六语言周卡片+陷阱卡片示例)
+        const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
+        // 🛠️ V222z-fix: 强制输出约束——禁止 LLM 照抄指令自我说明（vi 出现"Tôi hiểu..."即是违反此约束）
+        const _noCot = {
+          zh: '直接输出内容,不要写"我理解"、"我将"等自我说明,开篇第一个字符必须是✦,不是句子开头。',
+          en: 'Output content directly. The first character must be ✦. Never write "I understand", "I will write", or any self-description before the content.',
+          es: 'Salida directa. El primer carácter debe ser ✦. Nunca escribir "Entiendo", "Voy a escribir" ni auto-descripción.',
+          fr: 'Sortie directe. Le premier caractère doit être ✦. Ne jamais écrire "Je comprends", "Je vais écrire" ni auto-description.',
+          th: 'ส่งออกเนื้อหาโดยตรง อักขระตัวแรกต้องเป็น ✦ ไม่เขียน"ฉันเข้าใจ"หรือคำอธิบายตัวเองก่อนเนื้อหา',
+          vi: 'Xuất nội dung trực tiếp. Ký tự đầu tiên phải là ✦. Tuyệt đối không viết"Tôi hiểu","Tôi sẽ viết"hay bất kỳ lời tự nhận nào trước nội dung chính.'
+        }[lang] || '直接输出内容,不要写自我说明。';
+        const _wf = [
+          `${_noCot}先写开篇:标题用${_langName}严格遵循系统格式铁律 FORMAT_FIREWALL 中对应语言的命运主题标题格式(🔮 主题语义),用1-2句话概述本月整体财运基调(结合星象与本命盘),写完开篇立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第1周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第1周主题=财富充能/Wealth Recharge 语义,emoji 🟢),写完第1周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第2周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第2周主题=高危熔断/High-Risk Circuit Breaker 语义,emoji 🔴),写完第2周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第3周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第3周主题=顺流蓄力/Flow Accumulation 语义,emoji 🔵),写完第3周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写第4周:标题用${_langName}严格遵循 FORMAT_FIREWALL 周卡片模板(第4周主题=财富爆发/Wealth Explosion 语义,emoji 🟢),写完第4周立即停止,不要写其他周、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`,
+          `${_noCot}只写消费陷阱:标题用${_langName}严格遵循 FORMAT_FIREWALL 消费陷阱卡片模板(⚠️ + 动态年份月份,语义=消费陷阱/Spending Traps),给出本月最需警惕的财务陷阱与熔断规则,含具体金额触发线,写完立即停止,不要写其他部分、不要重复。本部分写完后,必须在最末尾单独输出一行:===END_OF_REPORT=== 并立即停止生成。`
+        ];
+        // 🛡️ [V281] 语言分流：zh/en→DeepSeek，es/fr/th/vi→Gemini流式+DeepSeek降级兜底
+        // 🛠️ V314-fix: SSE层去重——防止 Gemini 流式输出同一chunk多次写入SSE
+        const _dedupWrite = (chunk) => {
+          if (!chunk || typeof chunk !== 'string') return;
+          const trimmed = chunk.trim();
+          if (!trimmed) return;
+          res.write(chunk);
+        };
+        // 🛠️ V315-fix: 段落级去重——解决 Gemini 流式输出重复段落的缓存污染
+        function _dedupParagraphs(text) {
+          const lines = text.split('\n');
+          const seen = new Set();
+          return lines.filter(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return true;
+            if (trimmed.startsWith('✦') || trimmed.startsWith('[[')) return true;
+            const key = trimmed.slice(0, 60);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          }).join('\n');
+        }
+        const _DEEPSEEK_LANGS = ['zh', 'en'];
+        if (_DEEPSEEK_LANGS.includes(lang)) {
+          // 🟡 DeepSeek 分段生成（zh/en，6段拼接，稳定可靠，避免整段触发 stop 提前结束）
+          // V315-fix: 每段单独 try，段失败不中断后续段，最大化生成内容完整性
+          console.log('[wealth-stream] V315 lang=' + lang + ' -> DeepSeek分段(6段)');
+          for (let w = 0; w < 6; w++) {
+            const _wUser = prompt.user + '\n\n[分段生成指令] ' + _wf[w];
+            try {
+              await callDeepSeekStream(prompt.system, _wUser, controller, res, (chunk) => {
+                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                fullTextCollector += chunk;
+              }, astroMatrix, realSunSign, lang, reportType, true);
+            } catch(dsErr) {
+              console.error('[wealth-stream] V315 DeepSeek分段w=' + w + '失败: ' + dsErr.message);
+            }
+          }
+          // V315-fix: DeepSeek 6段全崩时，降级 Gemini
+          if (!fullTextCollector || fullTextCollector.trim().length < 100) {
+            console.error('[wealth-stream] V315 DeepSeek全崩，降级Gemini...');
+            try {
+              const _gemFull = await streamGeminiSequential(res, (chunk) => {
+                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                fullTextCollector += chunk;
+              }, lang, prompt.system, prompt.user, astroMatrix);
+              fullTextCollector = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
+              console.log('[wealth-stream] V315 Gemini降级成功，len=' + fullTextCollector.length);
+            } catch(gemErr2) {
+              console.error('[wealth-stream] V315 Gemini降级也失败: ' + gemErr2.message);
+            }
+          }
+          geminiFullText = fullTextCollector;
+        } else {
+          // 🟢 Gemini 流式分段（es/fr/th/vi），失败自动降级 DeepSeek
+          console.log('[wealth-stream] V315 lang=' + lang + ' -> Gemini流式+DeepSeek降级');
           try {
-            const _dsFull = await callDeepSeekStream(
-              prompt.system, prompt.user, controller, res, // V313-fix: 传真实 res，wrapper 处理去重
-              (chunkText) => {
-                _dedupWrite(chunkText); // wrapper._write 负责去重，callback 只更新 fullTextCollector
-              },
-              astroMatrix, realSunSign, lang, reportType, false
-            ) || '';
-            geminiFullText = _dsFull || fullTextCollector;
-            console.log('[wealth-stream] V313 DeepSeek流式兜底成功，len=' + geminiFullText.length);
-          } catch(dsErr2) {
-            console.error('[wealth-stream] V286 DeepSeek兜底也失败: ' + dsErr2.message);
-            geminiFullText = fullTextCollector; // 保留已收集的碎片
+            const _gemFull = await streamGeminiSequential(res, (chunk) => {
+              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+              _dedupWrite(chunk); // V315-fix: SSE层防重复写入
+            }, lang, prompt.system, prompt.user, astroMatrix);
+            geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
+          } catch(gemErr) {
+            console.error('[wealth-stream] V315 Gemini失败，降级DeepSeek: ' + gemErr.message);
+            try {
+              const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+                if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                _dedupWrite(chunk); // V315-fix: SSE层防重复写入
+              }, astroMatrix, realSunSign, lang, reportType, false) || '';
+              geminiFullText = _dsFull || fullTextCollector;
+            } catch(dsErr2) {
+              console.error('[wealth-stream] V315 DeepSeek降级也失败: ' + dsErr2.message);
+              geminiFullText = fullTextCollector;
+            }
           }
         }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
@@ -6075,6 +6093,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
             if (geminiFullText && geminiFullText.trim().length > 0) {
               res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
+              if (typeof res.flush === 'function') res.flush();
               onChunk && onChunk(geminiFullText);
             }
           } else {
@@ -6373,8 +6392,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 流式结束,发送 [DONE]
     res.write('data: [DONE]\n\n');
+    if (typeof res.flush === 'function') res.flush();
+
     // 🛠️ V125-fix: streaming结束立即写缓存(不依赖completion是否成功) —— 方案C: cleanedText 可能已被补全版覆盖
     // 🛠️ V222z-fix3: 写缓存门槛从100→2000, 与截断检测阈值拉齐, 防止截断碎片(<2000字)毒化缓存
+    // 🛠️ V315-fix: 段落级去重防缓存污染（去重后重新计算长度，门槛仍用2000）
+    if (typeof cleanedText === 'string' && cleanedText.length > 0) {
+      const _deduped = _dedupParagraphs(cleanedText);
+      if (_deduped.length < cleanedText.length * 0.95) {
+        console.log('[wealth-stream] [V315] 段落去重: ' + cleanedText.length + '→' + _deduped.length + '字, 删' + (cleanedText.length - _deduped.length) + '字重复');
+        cleanedText = _deduped;
+      }
+    }
     if (cleanedText.length > 2000) {
       console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
       writeToCache(cleanedText).catch((e) => {
@@ -6420,7 +6449,6 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   // ── SSE Headers ──
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('X-Accel-Buffering', 'no'); // V291-fix: 禁止Railway边缘缓冲SSE
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
   res.setHeader('Connection', 'keep-alive');
@@ -6429,9 +6457,10 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
     try {
       const data = typeof obj === 'string' ? obj : JSON.stringify(obj);
       res.write(Buffer.from('data: ' + data + '\n\n', 'utf-8'));
-      } catch(e) {}
+      if (typeof res.flush === 'function') res.flush();
+    } catch(e) {}
   };
-  const flush = () => { try { } catch(e) {} };
+  const flush = () => { try { if (typeof res.flush === 'function') res.flush(); } catch(e) {} };
   const heartbeat = setInterval(() => { send(': heartbeat\n\n'); flush(); }, 20000);
 
   const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
@@ -6845,193 +6874,134 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const geminiKey = getGeminiKey();
   if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
-  // ── 多语言标题字典 ──
-  const _T = {
-    theme: { zh:'月度命运主题',en:'Monthly Destiny Theme',es:'Tema del Destino Mensual',fr:'Thème de Destin du Mois',th:'ธีมโชคชะตารายเดือน',vi:'Chủ đề Vận mệnh Tháng' },
-    w1t: { zh:'第1周',en:'Week 1',es:'Semana 1',fr:'Semaine 1',th:'สัปดาห์ที่ 1',vi:'Tuần 1' },
-    w1s: { zh:'财富充能',en:'Wealth Recharge',es:'Recarga de Riqueza',fr:'Recharge de Richesse',th:'การเติมพลังความมั่งคั่ง',vi:'Nạp năng lượng tài lộc' },
-    w2t: { zh:'第2周',en:'Week 2',es:'Semana 2',fr:'Semaine 1',th:'สัปดาห์ที่ 2',vi:'Tuần 2' },
-    w2s: { zh:'高危熔断',en:'High-Risk Circuit Breaker',es:'Cortocircuito de Alto Riesgo',fr:'Disjoncteur à Haut Risque',th:'วงจรหยุดความเสี่ยงสูง',vi:'Cầu dao nguy cơ cao' },
-    w3t: { zh:'第3周',en:'Week 3',es:'Semana 3',fr:'Semaine 3',th:'สัปดาห์ที่ 3',vi:'Tuần 3' },
-    w3s: { zh:'顺流蓄力',en:'Flow Accumulation',es:'Acumulación de Flujo',fr:'Accumulation de Flux',th:'การสะสมพลังตามกระแส',vi:'Tích lũy năng lượng' },
-    w4t: { zh:'第4周',en:'Week 4',es:'Semana 4',fr:'Semaine 4',th:'สัปดาห์ที่ 4',vi:'Tuần 4' },
-    w4s: { zh:'财富爆发',en:'Wealth Explosion',es:'Explosión de Riqueza',fr:'Explosion de Richesse',th:'ระเบิดความมั่งคั่ง',vi:'Bùng nổ tài lộc' },
-    trap:{ zh:'避坑指南',en:'Financial Traps & Risk Mitigation',es:'Trampas Financieras',fr:'Pièges Financiers',th:'กับดักทางการเงิน',vi:'Cạm bẫy Tài chính' },
-  };
-  const L = (d) => d[lang] || d.zh;
-  const _THEME_HDR = L(_T.theme);
-  const _T1=L(_T.w1t); const _S1=L(_T.w1s);
-  const _T2=L(_T.w2t); const _S2=L(_T.w2s);
-  const _T3=L(_T.w3t); const _S3=L(_T.w3s);
-  const _T4=L(_T.w4t); const _S4=L(_T.w4s);
-  const _TRP=L(_T.trap);
+  // ── 3 段任务定义 ──
+  const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
+  const _MONTHLY_THEME = { zh:'月度命运主题', en:'Monthly Destiny Theme', es:'Tema del Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตารายเดือน', vi:'Chủ đề Vận mệnh Tháng' };
+  const _W1_TITLE  = { zh:'第1周', en:'Week 1', es:'Semana 1', fr:'Semaine 1', th:'สัปดาห์ที่ 1', vi:'Tuần 1' };
+  const _W1_SUB    = { zh:'财富充能', en:'Wealth Recharge', es:'Recarga de Riqueza', fr:'Recharge de Richesse', th:'การเติมพลังความมั่งคั่ง', vi:'Nạp năng lượng tài lộc' };
+  const _W2_TITLE  = { zh:'第2周', en:'Week 2', es:'Semana 2', fr:'Semaine 2', th:'สัปดาห์ที่ 2', vi:'Tuần 2' };
+  const _W2_SUB    = { zh:'高危熔断', en:'High-Risk Circuit Breaker', es:'Cortocircuito de Alto Riesgo', fr:'Disjoncteur à Haut Risque', th:'วงจรหยุดความเสี่ยงสูง', vi:'Cầu dao nguy cơ cao' };
+  const _W3_TITLE  = { zh:'第3周', en:'Week 3', es:'Semana 3', fr:'Semaine 3', th:'สัปดาห์ที่ 3', vi:'Tuần 3' };
+  const _W3_SUB    = { zh:'顺流蓄力', en:'Flow Accumulation', es:'Acumulación de Flujo', fr:'Accumulation de Flux', th:'การสะสมพลังตามกระแส', vi:'Tích lũy năng lượng' };
+  const _W4_TITLE  = { zh:'第4周', en:'Week 4', es:'Semana 4', fr:'Semaine 4', th:'สัปดาห์ที่ 4', vi:'Tuần 4' };
+  const _W4_SUB    = { zh:'财富爆发', en:'Wealth Explosion', es:'Explosión de Riqueza', fr:'Explosion de Richesse', th:'ระเบิดความมั่งคั่ง', vi:'Bùng nổ tài lộc' };
+  const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
+  const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
+  const _T1 = _W1_TITLE[lang]||_W1_TITLE.zh; const _S1 = _W1_SUB[lang]||_W1_SUB.zh;
+  const _T2 = _W2_TITLE[lang]||_W2_TITLE.zh; const _S2 = _W2_SUB[lang]||_W2_SUB.zh;
+  const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
+  const _T4 = _W4_TITLE[lang]||_W4_TITLE.zh; const _S4 = _W4_SUB[lang]||_W4_SUB.zh;
+  const _TRP = _TRAP_TITLE[lang]||_TRAP_TITLE.zh;
 
-  // 🛡️ V284: 整宫制 IMMUTABLE TRUTH
-  const _RISING_IDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 };
-  const _rising = (astroMatrix?.meta?.rising_sign) || 'Gemini';
+  // 🛡️ V284: 星盘锁死——上升 + 12宫整宫制映射表(IMMUTABLE TRUTH), 切断 Gemini 自行推算上升的幻觉
+  const _RISING_IDX = { Aries:0, Taurus:1, Gemini:2, Cancer:3, Leo:4, Virgo:5, Libra:6, Scorpio:7, Sagittarius:8, Capricorn:9, Aquarius:10, Pisces:11 };
+  const _rising = (astroMatrix && astroMatrix.meta && astroMatrix.meta.rising_sign) || 'Gemini';
   const _risingIdx = _RISING_IDX[_rising] ?? 2;
-  const _SIGNS=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-  const _houseSigns = _SIGNS.slice(_risingIdx).concat(_SIGNS.slice(0,_risingIdx));
-  const _houseNames=['命宫(自我)','财帛(资源)','兄弟(沟通/契约)','田宅(家庭)','子女(创意/恋爱)','奴仆(健康/工作)','夫妻(合作/婚姻)','疾厄(偏财/蜕变)','迁移(远方/学问)','官禄(事业)','福德(社交/希望)','相貌(隐秘/潜意识)'];
+  const _SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  const _houseSigns = _SIGNS.slice(_risingIdx).concat(_SIGNS.slice(0, _risingIdx));
+  const _houseNames = ['命宫(自我)','财帛(资源)','兄弟(沟通/契约)','田宅(家庭)','子女(创意/恋爱)','奴仆(健康/工作)','夫妻(合作/婚姻)','疾厄(偏财/蜕变)','迁移(远方/学问)','官禄(事业)','福德(社交/希望)','相貌(隐秘/潜意识)'];
   const _astroLock = '[CRITICAL ASTROLOGICAL DATA — IMMUTABLE TRUTH]\n' +
-    'Ascendant/Rising Sign: ' + _rising + ' (Whole Sign 整宫制)\n\n[HOUSE MAPPING TABLE]\n' +
-    _houseSigns.map((s,i)=>'- House '+(i+1)+' ('+_houseNames[i]+'): '+s).join('\n')+'\n\n' +
-    '[STRICT RULES]\n1. Use ONLY ' + _rising + ' as Rising Sign.\n' +
-    '2. Planet House placement MUST match the TABLE above.\n' +
-    '3. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位。';
-
-  // 3 段定义（锚点强化版）
-  const _segments = [
-    {
-      id: 1,
-      sections: `✦ [🔮 ${_THEME_HDR}]`,
-      instruction: `只写1章「本月命运主题」，写完立即停止，不要写任何其他章节。`
-    },
-    {
-      id: 2,
-      sections: `✦ [🟢 ${_T1}（${_S1}）]`,
-      instruction: `只写1章「第1周」，写完立即停止，不要写任何其他章节。`
-    },
-    {
-      id: 3,
-      sections: `✦ [🔴 ${_T2}（${_S2}）]`,
-      instruction: `只写1章「第2周」，写完立即停止，不要写任何其他章节。`
-    },
-    {
-      id: 4,
-      sections: `✦ [🔵 ${_T3}（${_S3}）]`,
-      instruction: `只写1章「第3周」，写完立即停止，不要写任何其他章节。`
-    },
-    {
-      id: 5,
-      sections: `✦ [🟢 ${_T4}（${_S4}）]`,
-      instruction: `只写1章「第4周」，写完立即停止，不要写任何其他章节。`
-    },
-    {
-      id: 6,
-      sections: `✦ [⚠️ ${_TRP}]`,
-      instruction: `只写1章「消费陷阱」，写完立即停止，不要写任何其他章节。`
-    }
+    'Ascendant/Rising Sign: ' + _rising + ' (Whole Sign 整宫制)\n\n' +
+    '[HOUSE MAPPING TABLE — STRICT CONSTRAINT]\n' +
+    _houseSigns.map((s, i) => '- House ' + (i+1) + ' (' + _houseNames[i] + '): ' + s).join('\n') + '\n\n' +
+    '[STRICT GENERATION RULES]\n' +
+    '1. DO NOT calculate or infer the Rising Sign. Use ONLY ' + _rising + ' above (天文真值, 不可更改).\n' +
+    '2. When mentioning ANY planet (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto), its House placement MUST match the HOUSE MAPPING TABLE above STRICTLY.\n' +
+    '   e.g. If Mars is in Cancer, check which House Cancer is in the table above -> write THAT House number. Do NOT assume Cancer=House1.\n' +
+    '3. NEVER use Whole Sign system incorrectly. The table above IS the correct Whole Sign mapping.\n' +
+    '4. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位、或写与表格不符的宫位。';
+  const _segPrompt = [
+    { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🔮 ${_THEME_HDR}]（标题无月份）
+2. ✦ [🟢 ${_T1}（${_S1}）]（emoji+风险等级）
+生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
+严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
+严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
+写完立即停止生成，不要输出多余内容。` },
+    { title: '第2周+第3周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🔴 ${_T2}（${_S2}）]
+2. ✦ [🔵 ${_T3}（${_S3}）]
+生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
+严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
+严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
+写完立即停止生成，不要输出多余内容。` },
+    { title: '第4周+避坑指南', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+1. ✦ [🟢 ${_T4}（${_S4}）]
+2. ✦ [⚠️ ${_TRP}]
+生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
+严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
+严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
+写完立即停止生成，不要输出多余内容。` }
   ];
+
   const MODEL = 'gemini-3.5-flash';
   let fullText = '';
-  // V288 治本: 对话历史链——每段生成后作为 assistant 回复加入 history
-  const _history = [];
 
-    // V289-fix: 每段包成 async 函数，失败 return 触发 caller fallback（不用 throw 避免 post-while bug）
-    // V298-fix: 重写 streamGeminiSequential，移除 _sendFinal 引用问题，干净流式推送
-    const _genSeg = async () => {
-      for (let segIdx = 0; segIdx < _segments.length; segIdx++) {
-        const seg = _segments[segIdx];
-        const _doneCtx = (_history.length > 0)
-          ? '\n\n[已生成章节（仅供参照，不要重复任何内容）]\n' +
-            _history.map((h,i) => '[章节'+(i+1)+']\n'+h).join('\n') + '\n\n'
-          : '';
-        const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n' +
-          _doneCtx + '[必写章节]\n' + seg.sections + '\n\n[生成指令]\n' + seg.instruction;
-        let segText = '';
-        let attempt = 0;
+  for (let seg = 0; seg < _segPrompt.length; seg++) {
+    const segPrompt = _astroLock + '\n\n' + promptSystem + '\n\n[背景信息]\n' + promptUser + '\n\n[分段生成指令] ' + _segPrompt[seg].content;
+    let segText = '';
+    let attempt = 0;
 
-        while (attempt < 2) {
-          attempt++;
-          const controller = new AbortController(); // V298: 声明在循环顶部，在 _sendFinal 闭包里可见
-          const timeout = setTimeout(() => controller.abort(), 180000);
-          try {
-            const requestBody = {
-              contents: _history.length === 0
-                ? [{ parts: [{ text: segPrompt }] }]
-                : [
-                    ..._history.map(h => ({ role: 'model', parts: [{ text: h }] })),
-                    { role: 'user', parts: [{ text: segPrompt }] }
-                  ],
+    while (attempt < 2) {
+      attempt++;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 180000);
+
+        console.log('[V266] Gemini 段' + (seg+1) + '/3: ' + _segPrompt[seg].title);
+        const response = await safeFetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + geminiKey,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: new TextEncoder().encode(JSON.stringify({
+              contents: [{ parts: [{ text: segPrompt }] }],
               generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
-            };
-            console.log('[V298] Gemini 段' + seg.id + '/3，history 长度=' + _history.length);
-            const streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':streamGenerateContent?key=' + geminiKey;
-            const fetchOpts = {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestBody),
-            };
-            if (controller.signal) fetchOpts.signal = controller.signal;
-            const response = await fetch(streamUrl, fetchOpts);
-            clearTimeout(timeout);
-            if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
-
-            // V298-fix: _sendFinal 定义在这里（controller 闭包内可见），避免 ReferenceError
-            const _sendFinal = (text) => {
-              if (!text) return;
-              const _lineBuf = 'data: ' + JSON.stringify({ text }) + '\n\n';
-              try { res.write(_lineBuf, 'utf-8'); res.flush(); } catch(e) {} // V304-fix: res.flush()强制Express立即flush到底层socket，打穿Nginx缓冲
-            };
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let _partialLine = '';
-            const _processStreamText = (text) => {
-              if (!text) return;
-              const _t = text.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
-              segText += _t;
-              _sendFinal(_t);
-            };
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                _partialLine += decoder.decode(value, { stream: true });
-                const lines2 = _partialLine.split('\n');
-                _partialLine = lines2.pop() || '';
-                for (const line of lines2) {
-                  if (line.startsWith('data: ')) {
-                    try {
-                      const obj = JSON.parse(line.slice(6));
-                      // V299-fix: streamGenerateContent 的 parts[0].text 可能是字符串或对象
-                      // 字符串 = 纯文本内容；对象 = { text: string } 需要解一层
-                      const raw = obj.candidates?.[0]?.content?.parts?.[0];
-                      const txt = (typeof raw === 'string') ? raw : (raw?.text || '');
-                      if (txt) _processStreamText(txt);
-                    } catch(e) {}
-                  } else if (line.trim()) {
-                    // V299-fix: 纯 JSON 行（非 data: 前缀）也要解析
-                    try {
-                      const obj = JSON.parse(line);
-                      const raw = obj.candidates?.[0]?.content?.parts?.[0];
-                      const txt = (typeof raw === 'string') ? raw : (raw?.text || '');
-                      if (txt) _processStreamText(txt);
-                    } catch(e) {}
-                  }
-                }
-              }
-              if (_partialLine.trim()) _processStreamText(_partialLine);
-            } finally { reader.releaseLock(); }
-
-            console.log('[V298] 段' + seg.id + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
-            if (segText.length === 0) throw new Error('Stream returned no text');
-            _history.push(segText);
-            break;
-          } catch(err) {
-            clearTimeout(timeout);
-            console.warn('[V298] 段' + seg.id + ' attempt ' + attempt + ' 失败: ' + err.message);
-            if (attempt >= 2) {
-              console.error('[V298] 段' + seg.id + ' 连续失败，return false 触发 DeepSeek fallback');
-              return false;
-            }
-            await new Promise(r => setTimeout(r, 2000));
+            })),
+            signal: controller.signal,
           }
-        }
-      }
-      return true;
-    };
+        );
+        clearTimeout(timeout);
+        if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
 
-    const ok = await _genSeg();
-    if (!ok) {
-      throw new Error('Gemini 段N连续失败，触发 DeepSeek 补全');
+        const data = await response.json();
+        segText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // 🛡️ V277-fix: 清理嵌套括号如 [[🔴 → [🔴
+        segText = segText.replace(/\[{2,}/g, '[').replace(/\]{2,}/g, ']');
+        console.log('[V272-seg] 段' + (seg+1) + ' len=' + segText.length + ' preview=' + JSON.stringify(segText.slice(0,80)));
+        console.log("[V266] segText preview:", JSON.stringify(segText.slice(0,100)));
+        break; // 成功，跳出重试循环
+      } catch(err) {
+        console.warn('[V266] Gemini 段' + (seg+1) + ' attempt ' + attempt + ' 失败: ' + err.message);
+        console.error("[V266] Gemini 段" + (seg+1) + " 3次重试全失败，最终 throw");
+        if (attempt >= 2) throw new Error('Gemini 段' + (seg+1) + ' 连续失败: ' + err.message);
+        await new Promise(r => setTimeout(r, 2000));
+      }
     }
 
+    // 每段结果流式推给前端（模拟打字机，每 300 字一批，间隔 30ms）
+    const CHUNK = 300;
+    for (let i = 0; i < segText.length; i += CHUNK) {
+      const chunk = segText.slice(i, i + CHUNK);
+      const sseMsg = JSON.stringify({ text: chunk });
+      try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+      onChunk(chunk);
+      fullText += chunk;
+      await new Promise(r => setTimeout(r, 30)); // 30ms 打字机节奏
+    }
+  }
+
+  // 全 3 段完成后返回完整文本（供下游缓存/后处理）
   return fullText;
 }
 
-
+//
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V116 Impossible Aspect Guard
+// 修复 Bug3(军师):"火星在双子座与天王星在双子座形成四分相"
+// 天文学:同星座两天体只能形成合相,四分相/对分相/六分相必须跨星座
+// 本函数检测"行星A在X座与行星B在X座[非合相相位]"并移除非法相位描述
+// ═══════════════════════════════════════════════════════════════════════
 function impossible_aspect_guard(text) {
   if (!text || !text.includes('座与') && !text.includes('座和')) return text;
   // 匹配:行星在X座[与/和]行星在X座[相位名]
@@ -7198,4 +7168,3 @@ app.get('/api/compare-llm', async (req, res) => {
 // V223-verify-1785660410
 // V223c-1785660969
 
-// V312-FORCE-DEPLOY-1788292097
