@@ -5962,6 +5962,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     let aiRes = null;
     let aiStream = false;
     let geminiFullText = '';
+    // V314-fix: 追踪已写 SSE chunk，防止 Gemini 中途失败 + DeepSeek 兜底造成内容重复
+    const _writtenSet = new Set();
+    const _dedupWrite = (chunk) => {
+      if (_writtenSet.has(chunk)) return; // 跳过完全相同的 chunk
+      _writtenSet.add(chunk);
+      fullTextCollector += chunk;
+    };
 
     // 🛠️ V131-final: 统一走 callDeepSeekStream(native fetch),废弃所有 Gemini/https.request 降级路径
     if (!deepseekKey) {
@@ -5986,7 +5993,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         try {
           const _gemFull = await streamGeminiSequential(res, (chunk) => {
             if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            fullTextCollector += chunk;
+            _dedupWrite(chunk); // V314-fix: dedup，防止 Gemini+DeepSeek 双重写入
           }, lang, prompt.system, prompt.user, astroMatrix);
           geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
           console.log('[wealth-stream] V286 Gemini成功，len=' + geminiFullText.length);
@@ -6003,12 +6010,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               (chunkText) => {
                 if (res && !res.writableEnded) {
                   try {
-                    const _sseLine = 'data: ' + JSON.stringify({ text: chunkText }) + '\n\n';
-                    res.write(_sseLine, 'utf-8');
-                    if (typeof res.flush === 'function') res.flush();
+                    if (!_writtenSet.has(chunkText)) { // V314-fix: 已在 _writtenSet 的 chunk 跳过（防 Gemini 部分输出 + DeepSeek 重写）
+                      const _sseLine = 'data: ' + JSON.stringify({ text: chunkText }) + '\n\n';
+                      res.write(_sseLine, 'utf-8');
+                      if (typeof res.flush === 'function') res.flush();
+                    }
                   } catch(writeErr) { /* 连接已关闭 */ }
                 }
-                fullTextCollector += chunkText;
+                _dedupWrite(chunkText);
               },
               astroMatrix, realSunSign, lang, reportType, false
             ) || '';
