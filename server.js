@@ -427,6 +427,15 @@ import { getSystemPromptByLocale } from './src/prompts/loader.js';
 import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 
+// 🛠️ V323-fix: 安全分块切割——JS .slice() 按 UTF-16 code unit 切，可能劈开 emoji 的 surrogate pair
+// （🟢🔴🔵 等占 2 个 code unit）。劈开后 chunk 末尾是孤立 high surrogate → JSON.stringify 保留 →
+// 前端 JSON.parse 得孤立代理项 → 浏览器渲染为 �。本函数把切点前移 1，确保 emoji 完整落入下一块。
+function _chunkEndSafe(s, end) {
+  if (end >= s.length) return s.length;
+  const c = s.charCodeAt(end);
+  return (c >= 0xDC00 && c <= 0xDFFF) ? end - 1 : end;  // end 恰落在 low surrogate → 回退，emoji 整体留给下块
+}
+
 // ── safeFetch: 替代全局 fetch,跳过 Node undici ByteString 缺陷 ──
 // undici(Node 内置 fetch)在 body/header 含非 ASCII 字符时抛 TypeError:
 //   "Cannot convert argument to a ByteString because the character at index X has a value of YYYY"
@@ -5767,7 +5776,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const CHUNK_SIZE = 2000;
         const totalChunks = Math.ceil(streamText.length / CHUNK_SIZE);
         for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
-          const chunk = streamText.slice(i, i + CHUNK_SIZE);
+          const chunk = streamText.slice(i, _chunkEndSafe(streamText, i + CHUNK_SIZE)); // V323: 不劈开 emoji
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
           if (typeof res.flush === 'function') res.flush();
         }
@@ -6776,7 +6785,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
       // 手动分块 SSE 推送（模拟流式，每 500 字一块）
       const CHUNK_SIZE = 500;
       for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
-        const chunk = fullText.slice(i, i + CHUNK_SIZE);
+        const chunk = fullText.slice(i, _chunkEndSafe(fullText, i + CHUNK_SIZE)); // V323: 不劈开 emoji
         onChunk(chunk);
         await new Promise(r => setTimeout(r, 20)); // 20ms 间隔，模拟打字机
       }
@@ -6969,7 +6978,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     // 每段结果流式推给前端（模拟打字机，每 300 字一批，间隔 30ms）
     const CHUNK = 300;
     for (let i = 0; i < segText.length; i += CHUNK) {
-      const chunk = segText.slice(i, i + CHUNK);
+      const chunk = segText.slice(i, _chunkEndSafe(segText, i + CHUNK)); // V323: 不劈开 emoji
       const sseMsg = JSON.stringify({ text: chunk });
       try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
       onChunk(chunk);
