@@ -5965,6 +5965,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 🛠️ V315-fix: 段落级去重——在月度块外定义，可在缓存写入时被调用
     function _dedupParagraphs(text) {
+      // 🛠️ V315-fix2: 与 V238 完全一致的多份主题截断（治Python DELETE被RLS拦截导致旧缓存无法删除的根因）
+      const _HDR_RE = /(本月命运主题|ธีมโชคชะตาประจำเดือน|Monthly Destiny Theme)/gi;
+      const _hm = [...text.matchAll(_HDR_RE)];
+      if (_hm.length > 1) {
+        // 截取第1份主题结束位置（即第2份主题开始位置）
+        const _cut = text.substring(0, _hm[1].index).trim();
+        console.log(`[wealth-stream] [V315-fix2] 多份主题截断: ×${_hm.length}→1份, ${text.length}→${_cut.length}字`);
+        return _cut;
+      }
+      // 备选：段落级去重（兜底，不常用）
       const lines = text.split('\n');
       const seen = new Set();
       return lines.filter(line => {
