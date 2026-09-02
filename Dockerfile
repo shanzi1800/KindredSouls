@@ -52,14 +52,17 @@ RUN echo "[BUILD] after copy, server.js BYTES:" && wc -c /app/server.js && echo 
 RUN npm install && npm install express stripe
 
 # ── 前端构建: Vite 环境变量注入 ──
-# Supabase 凭据必须在构建时注入 Vite，否则运行时报错 supabaseUrl is required
-RUN rm -rf web/dist && \
-    cd web && \
-    npm install && \
-    VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co \
-    VITE_SUPABASE_ANON_KEY=sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv \
-    npm run build && \
-    cd ..
+# 🛠️ V318: 禁用容器内 rebuild —— Railway Docker build 缓存会命中旧 web/dist(BJ1vp0PL, V324时代)
+#          导致 V318 改动永不生效。改用 git 中已预构建的 web/dist（commit c108874 含 V318）
+#          直接用 COPY . . 进来的 dist，避免缓存陷阱。
+# RUN rm -rf web/dist && \
+#     cd web && \
+#     npm install && \
+#     VITE_SUPABASE_URL=https://wfkxqhlcgrikxoofjvas.supabase.co \
+#     VITE_SUPABASE_ANON_KEY=sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv \
+#     npm run build && \
+#     cd ..
+RUN echo "[V318] skip in-container web rebuild, use prebuilt dist from git"
 
 EXPOSE 3000
 
