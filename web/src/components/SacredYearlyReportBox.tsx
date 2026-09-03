@@ -797,6 +797,7 @@ const SacredYearlyReportBox: React.FC<{
             height: '460px', 
             // 🔒 LOCKED: overflowY=auto，禁止修改
             overflowY: 'auto', 
+            marginRight: '-4px',  // 🛡️ V320: 滚动条向右平移1mm(≈3.78px取4px)——容器右边界外扩使滑条更贴金边
             paddingRight: '10px',  // V258: 向右移动1mm 
             textAlign: 'left',
           }}
