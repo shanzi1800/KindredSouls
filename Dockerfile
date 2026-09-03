@@ -1,11 +1,15 @@
-# FORCE REBUILD 1785664211
+# V320: 强制 Docker layer invalidate —— Railway 缓存顽固不拉新 web/dist, 每次 push 必须让 COPY . . cache 失效
+# CACHE_BUST 变更 → 触发从 FROM 重新构建所有后续 RUN
+ARG CACHE_BUST=20260903-V320-FORCE-REBUILD
 FROM node:22-slim
 
 # ── V200(2026-08-18): 隔离 DeepSeek key，Railway 生产走 Gemini ──
-ARG CACHE_BUST=20260902-V314-REBUILD
-ARG BUILD_DATE=$(date -u +"%Y%m%dT%H%M%SZ")
+ARG CACHE_BUST=20260903-V320-$(date +%s)
 
 WORKDIR /app
+
+# V320 强制 invalidate COPY layer cache —— 在 COPY 前加 timestamp RUN, ARG 变更触发后续所有层重建
+RUN echo "[CACHE_BUST ${CACHE_BUST}] force rebuild" && date
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip curl && \
