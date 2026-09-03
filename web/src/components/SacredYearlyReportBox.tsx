@@ -396,6 +396,14 @@ const SacredYearlyReportBox: React.FC<{
     }
     cleaned = _filtered.join('');
 
+    // 🛡️ V319-fix: 整文级清除孤立装饰行（段落间噪音）——必须在文本级处理，V318 写在单行 cleanMarkdown 内无效(\n 正则在单行字符串永远不匹配)
+    // 场景1: Markdown 分割线 --- / ___ / *** 及 ━━ ── —— 等装饰线 → 直接删除(不再渲染 divider 金线，用户判定为噪音)
+    cleaned = cleaned.replace(/^[ \t]*(?:-{3,}|_{3,}|\*{3,}|━{2,}|─{2,}|—{2,}|・{2,}|•{2,}|·{2,})[ \t]*$/gm, '');
+    // 场景2: 游离 ✦/✧ 独立行(带首尾空白/\r 也能删)——LLM 偶发在标题前输出孤立 ✦ 行
+    cleaned = cleaned.replace(/^[ \t]*[✦✧][ \t]*$/gm, '');
+    // 场景3: 孤立单字符装饰行(· • ・ ∙ ― – — ─ ━ ~ * + | 等，如段落间的 "·" 中点)
+    cleaned = cleaned.replace(/^[ \t]*[·•・∙◦―–—─━~*+|][ \t]*$/gm, '');
+
     return cleaned;
   };
 
@@ -408,8 +416,8 @@ const SacredYearlyReportBox: React.FC<{
       .replace(/\*/g, '')
       .replace(/^#{1,3}\s*/g, '')
       .replace(/^>\s*/g, '')
-      // 🛠️ V318: 过滤游离分隔符 ✦（独立占行，前后空行）——保呼吸感，去噪音
-      .replace(/\n\s*✦\s*\n/g, '\n\n')
+      // 🛡️ V318→V319: 游离 ✦/装饰行过滤已上移至 cleanAndInjectChapters 文本级(return 前)——
+      // 本函数是单行清洗，原 V318 的 /\n\s*✦\s*\n/ 含 \n 在此永远匹配不到，属无效代码，已移除
       .trim();
   };
 
@@ -435,6 +443,8 @@ const SacredYearlyReportBox: React.FC<{
 
     if (t.trim().startsWith('✦')) {
       const withoutStar = t.replace(/^✦\s*/, '').replace(/\s*✦$/, '').trim();
+      // 🛡️ V319-fix: 游离 ✦ 空行双保险——文本级清洗漏网的纯 ✦ 行直接按空行处理(不进 heading 渲染孤立金色 ✦)
+      if (!withoutStar) return { type: 'empty', content: '' };
       // 🛡️ V257b: 标题与正文同行业分 — 形如 "✦ [🔮 Tema de Destino Mensual] ✦Agosto de 2026..."
       // 把 [bracket] 作为金色 heading, 其后 ✦ 分隔的本文作为独立黑字段落(next)渲染, 避免整段被金色吞掉
       const sameLine = withoutStar.match(/^\[([^\]]+)\]\s*✦\s*(.+)$/);
