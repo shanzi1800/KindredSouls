@@ -1,6 +1,5 @@
-# V320: 强制 Docker layer invalidate —— Railway 缓存顽固不拉新 web/dist, 每次 push 必须让 COPY . . cache 失效
-# CACHE_BUST 变更 → 触发从 FROM 重新构建所有后续 RUN
-ARG CACHE_BUST=20260903-V320-FORCE-REBUILD
+# V321: 强制 Docker layer invalidate —— V320 的 CACHE_BUST 仍被缓存, 再升级一次彻底破
+ARG CACHE_BUST=20260903-V321-FORCE-FULL-REBUILD
 FROM node:22-slim
 
 # ── V200(2026-08-18): 隔离 DeepSeek key，Railway 生产走 Gemini ──
