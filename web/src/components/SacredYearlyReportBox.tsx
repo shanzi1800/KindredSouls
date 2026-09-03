@@ -403,6 +403,9 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/^[ \t]*[✦✧][ \t]*$/gm, '');
     // 场景3: 孤立单字符装饰行(· • ・ ∙ ― – — ─ ━ ~ * + | 等，如段落间的 "·" 中点)
     cleaned = cleaned.replace(/^[ \t]*[·•・∙◦―–—─━~*+|][ \t]*$/gm, '');
+    // 🛡️ V319b-fix: LLM 段落分隔符 " - -" 变体——实测英文月报 LLM 用 " - -"(空格-连字符-空格-连字符) 分隔周标题，
+    // V319 的 -{3,}/单字符行都匹配不到(2个连字符不连续+带空格)。治本：行内仅由 分隔符 token(可带空格分隔,1~8个) 组成 → 删
+    cleaned = cleaned.replace(/^[ \t]*(?:[-–—―─━_·•・∙◦*~][ \t]*){1,8}$/gm, '');
 
     return cleaned;
   };
