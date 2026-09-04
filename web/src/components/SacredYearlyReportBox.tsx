@@ -64,9 +64,17 @@ const SacredYearlyReportBox: React.FC<{
     // 🛠️ V120-fix3: 裸 ⚠ 归一化为 ⚠️（AI 偶发漏输 VS16 变体选择器，导致前端 regex 配不上）
     cleaned = cleaned.replace(/⚠(?!️)/g, '⚠️');
 
+    // 🛠️ V329-fix: 扑灭 U+FFFD 替换字符（UTF-8 多字节被切断后的乱码方块；后端月报流式路径未调 cleanGarbageCharacters 时偶发漏清，前端兜底）
+    cleaned = cleaned.replace(/�/g, '');
+    // 🛠️ V329-fix: 扑灭单独占行的游离 ⚠ / ✦（LLM 偶发漏吐的孤立符号行，归一化后 ⚠ 已变 ⚠️）
+    cleaned = cleaned.replace(/^\s*[⚠✦]\s*$/gm, '');
+
     // 🛠️ V270-fix: 容错正则兜底——LLM 漏标或产生非法换行符时，前端兜底识别并补全 ✦ 标签
     // Step 1: 清理非法换行符（垂直跳格 \x0b / 垂直制表符）
     cleaned = cleaned.replace(/\x0b/g, '\n');
+    // 🛠️ V329-fix: 容错修复多余方括号（纠正 [🔵[Semana 3... 类型的 LLM 误吐双左括号）
+    // 必须在周标题兜底之前执行，否则兜底会把 [🔵[ 套成 [🔵 [🔵[ 双括号更糟
+    cleaned = cleaned.replace(/\[([🟢🔴🔵⚠️])\[/g, '[$1 ');
 
     // Step 2: 法语周标题漏标兜底——检测到 "Semaine N:" 但前面没有 ✦ 时，自动补全标签
     // 仅在当前行没有 ✦ 时触发，避免重复包裹已有标签的行
