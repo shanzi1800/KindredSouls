@@ -74,7 +74,7 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/\x0b/g, '\n');
     // 🛠️ V329-fix: 容错修复多余方括号（纠正 [🔵[Semana 3... 类型的 LLM 误吐双左括号）
     // 必须在周标题兜底之前执行，否则兜底会把 [🔵[ 套成 [🔵 [🔵[ 双括号更糟
-    cleaned = cleaned.replace(/\[([🟢🔴🔵⚠️])\[/g, '[$1 ');
+    cleaned = cleaned.replace(/\[([🟢🔴🔵⚠️])\[/gu, '[$1 ');
 
     // Step 2: 法语周标题漏标兜底——检测到 "Semaine N:" 但前面没有 ✦ 时，自动补全标签
     // 仅在当前行没有 ✦ 时触发，避免重复包裹已有标签的行
@@ -90,7 +90,7 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Semaine\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/u, '$1').trim();
         return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
@@ -119,7 +119,7 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Semana\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/u, '$1').trim();
         return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
@@ -128,7 +128,7 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*สัปดาห์ที่\s*([2-4])[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/u, '$1').trim();
         return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
@@ -137,7 +137,7 @@ const SacredYearlyReportBox: React.FC<{
       /^(?!✦)([^\n]*Tuần\s+([2-4]):[^\n]*)$/gm,
       (m, rest, weekNum) => {
         const emojiMap: Record<string,string> = { "2": "🔴", "3": "🔵", "4": "🟢" };
-        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/, '$1').trim();
+        const _clean = rest.replace(/^\s*\[[🔴🔵🟢⚠️]\s*([^\]]*)\]?\s*$/u, '$1').trim();
         return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
