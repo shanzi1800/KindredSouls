@@ -430,16 +430,61 @@ import { getSystemPromptByLocale } from './src/prompts/loader.js';
 import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 
-// 🛠️ V323-fix: 安全分块切割——JS .slice() 按 UTF-16 code unit 切，可能劈开 emoji 的 surrogate pair
-// （🟢🔴🔵 等占 2 个 code unit）。劈开后 chunk 末尾是孤立 high surrogate → JSON.stringify 保留 →
-// 前端 JSON.parse 得孤立代理项 → 浏览器渲染为 �。本函数把切点前移 1，确保 emoji 完整落入下一块。
-// 🛠️ V331-fix: 同步防范泰语辅音/元音（0E31-0E3F）被 chunk 切断后 JSON 编码跨边界产生 U+FFFD
+// ─────────────────────────────────────────────────────────
+// 🛠️ V332-fix: StringDecoder 字节级安全分块
+// ─────────────────────────────────────────────────────────
+//
+// 问题根因：
+// JS string.length 是 UTF-16 code unit 数，不是字节数。emoji (🟢) 占 2 个 code unit 但 4 个 UTF-8 字节，
+// 泰语组合符 ่ 占 1 个 code unit 但 3 个 UTF-8 字节。若按 string 位置切片后再 Buffer.from().toString('utf8')，
+// Buffer 内部字节边界可能切在多字节字符中间 → JSON.stringify 产生 U+FFFD → 前端渲染为 乱码方块。
+//
+// 治本方案：
+// 1. 先把 string encode 成 Buffer（utf8 字节数组）
+// 2. 在字节层切片（BYTES_PER_CHUNK）
+// 3. 用 StringDecoder 把每个字节分片解码成完整字符
+//
+// StringDecoder 机制：内部维护一个"遗留字节缓冲区"，遇到不完整的多字节序列时，暂存尾部字节，
+// 等下次 write() 时把遗留缓冲 + 新字节一起解码，实现零丢失的流式拼接。
+//
+// 注意：这里不是处理原始网络流（那种场景 StringDecoder 直接接 on('data')），
+// 而是"把已组装好的大字符串切成 SSE-safe 的小字符串"——仍然用 StringDecoder 做字节对齐，
+// 保证每个 SSE chunk 的内容在字节层面是完整的 UTF-8 字符序列。
+//
+/**
+ * 把大字符串切成字节对齐的 SSE-safe chunk
+ *
+ * @param text       原始完整字符串
+ * @param maxBytes   每个 chunk 的最大字节数（默认 2000 bytes ≈ ~666 个泰语字符）
+ * @returns          完整的字符数组，每个元素都是 UTF-8 字节对齐的（无截断）
+ */
+function _safeChunk(text, maxBytes = 2000) {
+  const bytes = Buffer.from(text, 'utf8');
+  const decoder = new StringDecoder('utf8');
+  const chunks = [];
+
+  for (let byteOffset = 0; byteOffset < bytes.length; byteOffset += maxBytes) {
+    // 取 maxBytes 字节（最后一个 chunk 不满也正常）
+    const slice = bytes.slice(byteOffset, byteOffset + maxBytes);
+
+    // StringDecoder.write() 负责把不完整的字节序列暂存，
+    // 只有完整的 UTF-8 字符才被吐出——不会有 U+FFFD
+    const decoded = decoder.write(slice);
+    if (decoded) chunks.push(decoded);
+  }
+
+  // end() 强制清空 StringDecoder 内部缓冲区，吐出最后的完整字符
+  const tail = decoder.end();
+  if (tail) chunks.push(tail);
+
+  return chunks;
+}
+
+// 保留旧函数别名——其他模块可能仍引用 _chunkEndSafe（渐进式迁移）
 function _chunkEndSafe(s, end) {
   if (end >= s.length) return s.length;
   const c = s.charCodeAt(end);
-  if (c >= 0xDC00 && c <= 0xDFFF) return end - 1;  // surrogate → 回退保 emoji
-  // Thai above-base combining (0E31-MAI HANAKAT, 0E34-SARA I, 0E47-MAI EK, 0E48-MAI CHATTAWA)
-  // 若切点落在这些组合符上，把组合符留给下一 chunk，避免 JSON 编码跨边界产生 U+FFFD
+  if (c >= 0xDC00 && c <= 0xDFFF) return end - 1;
   if (c >= 0x0E31 && c <= 0x0E3F) return end - 1;
   return end;
 }
@@ -5779,12 +5824,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
 
-        // V103: 瞬时分块流(Instant Chunking)--放弃单次巨量事件,按 ~2000字切片,骗过 Railway 代理避免截断
-        // 前端 sacredText += chunk 累加缓冲区本就支持多事件,完美兼容
-        const CHUNK_SIZE = 2000;
-        const totalChunks = Math.ceil(streamText.length / CHUNK_SIZE);
-        for (let i = 0; i < streamText.length; i += CHUNK_SIZE) {
-          const chunk = streamText.slice(i, _chunkEndSafe(streamText, i + CHUNK_SIZE)); // V323: 不劈开 emoji
+        // 🛠️ V332-fix: 用 StringDecoder 字节级对齐分块——彻底替代手动 _chunkEndSafe 切片
+        // maxBytes=6000 相当于 ~2000 个泰/中文字符，足以触发 Railway 代理截断阈值
+        const safeChunks = _safeChunk(streamText, 6000);
+        for (const chunk of safeChunks) {
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
           if (typeof res.flush === 'function') res.flush();
         }
@@ -6804,12 +6847,11 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
 
       console.log("[V263-DEBUG] Gemini generateContent 成功, len=" + fullText.length);
 
-      // 手动分块 SSE 推送（模拟流式，每 500 字一块）
-      const CHUNK_SIZE = 500;
-      for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
-        const chunk = fullText.slice(i, _chunkEndSafe(fullText, i + CHUNK_SIZE)); // V323: 不劈开 emoji
+      // 🛠️ V332-fix: StringDecoder 字节对齐分块（每 ~500 字 ≈ 1500 bytes）
+      const safeChunks = _safeChunk(fullText, 1500);
+      for (const chunk of safeChunks) {
         onChunk(chunk);
-        await new Promise(r => setTimeout(r, 20)); // 20ms 间隔，模拟打字机
+        await new Promise(r => setTimeout(r, 20)); // 20ms 打字机节奏
       }
 
       const cleaned = langForClean !== "zh" ? fullText.replace(/（/g, "").replace(/）/g, "") : fullText;
@@ -7000,10 +7042,9 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
       }
     }
 
-    // 每段结果流式推给前端（模拟打字机，每 300 字一批，间隔 30ms）
-    const CHUNK = 300;
-    for (let i = 0; i < segText.length; i += CHUNK) {
-      const chunk = segText.slice(i, _chunkEndSafe(segText, i + CHUNK)); // V323: 不劈开 emoji
+    // 🛠️ V332-fix: StringDecoder 字节对齐分块（每 ~300 字 ≈ 900 bytes）
+    const safeChunks = _safeChunk(segText, 900);
+    for (const chunk of safeChunks) {
       const sseMsg = JSON.stringify({ text: chunk });
       try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
       onChunk(chunk);
