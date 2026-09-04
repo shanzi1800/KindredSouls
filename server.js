@@ -144,6 +144,7 @@ const SLIM_LANG_PACKS = {
   th: `
 [LANG_RULE: Thai]
 - 文风: สุภาพ ลึกซึ้ง ให้สติ บวกด้วยพลังบวก
+- ⚠️ CONSONANT+VOWEL INTEGRITY: Every Thai consonant (ก-ฮ), vowel mark (่ ้ ๊ ๋ ็ ์ ํ), and tone mark MUST appear intact in output. Common dropped letters: น (dropped from ซึ่ง→ซ่), ษ (dropped from สัญญาณ→สัญ信号), ห (dropped from หุ้น→หุ้น). NEVER truncate mid-syllable.
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
   ✦ [🔮 ธีมโชคชะตารายเดือน]   ← 月度主题开头
   ✦ [🟢 สัปดาห์ที่ 1: สิงหาคม 1–7]   ← 第1周（🟢=低风险）
@@ -432,10 +433,15 @@ import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码�
 // 🛠️ V323-fix: 安全分块切割——JS .slice() 按 UTF-16 code unit 切，可能劈开 emoji 的 surrogate pair
 // （🟢🔴🔵 等占 2 个 code unit）。劈开后 chunk 末尾是孤立 high surrogate → JSON.stringify 保留 →
 // 前端 JSON.parse 得孤立代理项 → 浏览器渲染为 �。本函数把切点前移 1，确保 emoji 完整落入下一块。
+// 🛠️ V331-fix: 同步防范泰语辅音/元音（0E31-0E3F）被 chunk 切断后 JSON 编码跨边界产生 U+FFFD
 function _chunkEndSafe(s, end) {
   if (end >= s.length) return s.length;
   const c = s.charCodeAt(end);
-  return (c >= 0xDC00 && c <= 0xDFFF) ? end - 1 : end;  // end 恰落在 low surrogate → 回退，emoji 整体留给下块
+  if (c >= 0xDC00 && c <= 0xDFFF) return end - 1;  // surrogate → 回退保 emoji
+  // Thai above-base combining (0E31-MAI HANAKAT, 0E34-SARA I, 0E47-MAI EK, 0E48-MAI CHATTAWA)
+  // 若切点落在这些组合符上，把组合符留给下一 chunk，避免 JSON 编码跨边界产生 U+FFFD
+  if (c >= 0x0E31 && c <= 0x0E3F) return end - 1;
+  return end;
 }
 
 // ── safeFetch: 替代全局 fetch,跳过 Node undici ByteString 缺陷 ──
@@ -6015,9 +6021,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         const _dedupWrite = (chunk) => {
           const t = _getTrimmed(chunk);
           if (!t) return;
-          _totalWritten += t;
-          fullTextCollector += t;
-          _resDedupe.write(t);   // 走 wrapper 去重
+          // 🛠️ V331-fix: 二次扑灭 U+FFFD——JSON.encode/decode 跨 SSE 流边界偶尔残留，兜底清洗后写入
+          const clean = t.replace(/\uFFFD/g, '');
+          _totalWritten += clean;
+          fullTextCollector += clean;
+          _resDedupe.write(clean);   // 走 wrapper 去重
         };
 
         // 🛠️ V315-fix: res 去重 wrapper——拦截所有 res.write() 调用，防止 Gemini 和 DeepSeek 双重写入

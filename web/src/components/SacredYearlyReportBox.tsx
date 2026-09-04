@@ -65,7 +65,8 @@ const SacredYearlyReportBox: React.FC<{
     cleaned = cleaned.replace(/⚠(?!️)/g, '⚠️');
 
     // 🛠️ V329-fix: 扑灭 U+FFFD 替换字符（UTF-8 多字节被切断后的乱码方块；后端月报流式路径未调 cleanGarbageCharacters 时偶发漏清，前端兜底）
-    cleaned = cleaned.replace(/�/g, '');
+    // 🛠️ V331-fix: literal 符 + \uFFFD escape 双保险
+    cleaned = cleaned.replace(/\uFFFD/g, '').replace(/[\uFFFD]/g, '');
     // 🛠️ V329-fix: 扑灭单独占行的游离 ⚠ / ✦（LLM 偶发漏吐的孤立符号行，归一化后 ⚠ 已变 ⚠️）
     cleaned = cleaned.replace(/^\s*[⚠✦]\s*$/gm, '');
 
