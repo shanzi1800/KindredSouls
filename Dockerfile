@@ -1,9 +1,9 @@
-# V321: 强制 Docker layer invalidate —— V320 的 CACHE_BUST 仍被缓存, 再升级一次彻底破
-ARG CACHE_BUST=20260903-V321-FORCE-FULL-REBUILD
+# V332: 强制 Docker layer invalidate —— V321/V331 CACHE_BUST 仍被缓存, 升级彻底刷新
+ARG CACHE_BUST=20260904-V332-FORCE-FULL-REBUILD
 FROM node:22-slim
 
 # ── V200(2026-08-18): 隔离 DeepSeek key，Railway 生产走 Gemini ──
-ARG CACHE_BUST=20260903-V320-$(date +%s)
+ARG CACHE_BUST=20260904-V332-$(date +%s)
 
 WORKDIR /app
 
