@@ -6944,6 +6944,9 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 写完立即停止生成，不要输出多余内容。` }
   ];
 
+  // 🛠️ V330-fix: 泰/越语 BPE token 膨胀，Thai raw 2459字≈2500+ tokens → 第2段(Week2+Week3)截断
+  // Thai BPE tokenizer 对辅音+元音+声调组合膨胀系数约2.5x，8192不够；提至16384保第2段完整吐完Week3
+  const _segMaxTokens = (['th', 'vi'].includes(lang)) ? 16384 : 8192;
   const MODEL = 'gemini-3.5-flash';
   let fullText = '';
 
@@ -6966,7 +6969,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
             headers: { 'Content-Type': 'application/json' },
             body: new TextEncoder().encode(JSON.stringify({
               contents: [{ parts: [{ text: segPrompt }] }],
-              generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
+              generationConfig: { maxOutputTokens: _segMaxTokens, temperature: 0.3 }
             })),
             signal: controller.signal,
           }
