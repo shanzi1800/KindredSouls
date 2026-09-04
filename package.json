@@ -35,5 +35,6 @@
     "test:astro": "node --test test/audit-astro-matrix.test.js",
     "test": "npm run test:astro"
   },
-  "private": true
+  "private": true,
+  "_build_hash": "FORCE_REBUILD_20260904_V332"
 }
