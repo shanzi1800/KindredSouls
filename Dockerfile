@@ -7,8 +7,8 @@ ARG CACHE_BUST=20260905-1855-V335-FRESHBUILD-NEVERCACHED
 
 WORKDIR /app
 
-# V320 强制 invalidate COPY layer cache —— 在 COPY 前加 timestamp RUN, ARG 变更触发后续所有层重建
-RUN echo "[CACHE_BUST ${CACHE_BUST}] force rebuild" && date
+# V336: 强制 Docker 缓存失效——改命令文字本身(非ARG值), Docker 必破层缓存
+RUN echo "[V336-FORCE-REBUILD-TRIGGER-001] cache invalidated at build time" && date
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip curl && \
