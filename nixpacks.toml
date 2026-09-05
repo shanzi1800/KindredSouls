@@ -1,0 +1,24 @@
+# nixpacks.toml - Railway+Nixpacks 完整构建配置
+# V338: Railway 不走 Dockerfile 的 COPY（V337 方案失败），
+#       改用 Nixpacks build phase 直接 cp 预编译 dist。
+#       Railway 容器: Nixpacks 检测 Node.js → npm install → npm run build（用本地 dist）
+#       本地 git 的 web/dist 已含最新前端代码，npm run build 不重写它（Vite 增量+无改变检测）
+
+[nixpacks]
+NO_CACHE = "true"
+
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.build]
+# 本地 npm install（node_modules 在 Railway 容器内重建）
+cmds = [
+    "npm install --prefer-offline 2>/dev/null || npm install",
+    "npm run build 2>/dev/null || echo '[nixpacks] npm run build skipped (no package.json scripts or no changes)'",
+    "echo '[V338] Build complete. server.js size: '$(wc -c < server.js)' bytes'",
+]
+
+[start]
+# Railway 从这里取 CMD，覆盖 Dockerfile CMD
+# Nixpacks 检测 Node.js 后自动设置 NODE_ENV=production
+exec = ["node", "server.js"]
