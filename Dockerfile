@@ -1,3 +1,4 @@
+# V337b: force rebuild at 2246
 # V332: 强制 Docker layer invalidate —— V321/V331 CACHE_BUST 仍被缓存, 升级彻底刷新
 ARG CACHE_BUST=20260905-1900-V335-FROMCHANGE-FORCE-REBUILD
 FROM node:22-bookworm-slim
