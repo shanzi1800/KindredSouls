@@ -417,7 +417,8 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 // KindredSouls Railway Server - V116bc (FORCE REBUILD 1783756901)
 // Serves static frontend + all API routes on port 3000
 import express from 'express';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck } from './v69_client.js';
@@ -3130,15 +3131,22 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
 });
 
 // ── Root health check for Railway ──
+// V342: fileLen 误读教训——src.length 是 UTF-16 字符数不是字节数。
+// 改为输出 byteLen(Buffer 字节数) + charLen + md5，杜绝字符/字节混淆。
 app.get('/api/debug-source', async (req, res) => {
   try {
-    const src = readFileSync(import.meta.url.replace('file://', ''), 'utf-8');
+    const filePath = import.meta.url.replace('file://', '');
+    const buf = readFileSync(filePath);
+    const src = buf.toString('utf-8');
     const idx = src.indexOf('res.write(Buffer.from(`data: ${JSON.stringify({');
     res.json({
       hasDbg: src.includes('_dbg'),
       hasDbgAnnotation: src.includes('hasKaichuan'),
       snippet: idx >= 0 ? src.slice(idx, idx+200) : 'NOT FOUND',
-      fileLen: src.length
+      byteLen: buf.length,          // ✅ 真实 UTF-8 字节数（与 wc -c / Docker build 一致）
+      charLen: src.length,          // 💡 UTF-16 字符数（仅作对比，勿当字节数）
+      md5: createHash('md5').update(buf).digest('hex'),
+      mtime: statSync(filePath).mtime.toISOString()
     });
   } catch(e) {
     res.json({ error: e.message });
