@@ -11,11 +11,13 @@ NO_CACHE = "true"
 nixPkgs = ["nodejs_22"]
 
 [phases.build]
-# 本地 npm install（node_modules 在 Railway 容器内重建）
+# V339: 强制 COPY 新代码——每次构建先 rm 旧文件，防止 Railway BuildKit 缓存劫持
 cmds = [
+    "rm -rf /app /kindredsouls 2>/dev/null || true",
     "npm install --prefer-offline 2>/dev/null || npm install",
     "npm run build 2>/dev/null || echo '[nixpacks] npm run build skipped (no package.json scripts or no changes)'",
-    "echo '[V338] Build complete. server.js size: '$(wc -c < server.js)' bytes'",
+    "echo '[V339] Build complete. server.js size: '$(wc -c < server.js)' bytes'",
+    "if [ \"$(wc -c < server.js 2>/dev/null || echo 0)\" -lt 400000 ]; then echo '[V339-ERROR] server.js too small, COPY may have failed!'; exit 1; fi",
 ]
 
 [start]
