@@ -5700,8 +5700,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _hb = setInterval(() => {
     try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch (e) {}
   }, 8000);
+  // V343: 客户端断连 → 立即 abort 上游 AI 请求（防烧钱：用户关页面/断网后 Gemini/DeepSeek 不再继续跑完）
+  let _aiCtrl = null;
   res.on('close', () => {
     try { clearInterval(_hb); } catch (e) {}
+    if (_aiCtrl) {
+      try { _aiCtrl.abort(); console.warn('[V343] 🔌 客户端断连，已 abort 上游 AI 请求'); } catch (e) {}
+    }
     console.warn('[wealth-stream] ⚠️ 连接关闭:', { destroyed: res.destroyed, writableEnded: res.writableEnded, writableFinished: res.writableFinished });
   });
   res.on('error', (e) => console.error('[wealth-stream] ❌ res error:', e && e.message));
@@ -6001,6 +6006,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V211: 月报 maxOutputTokens 从 4000→12000,Gemini Flash 需足够余量完整输出四周+消费陷阱
     let maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'monthly' ? 12000 : 4000);
     const controller = new AbortController();
+    _aiCtrl = controller; // V343: 主请求纳入断连取消
     try { aiTimeout = setTimeout(() => controller.abort(), 600000); } catch(e){}
 
     // 🛠️ V108-fix2: 年报优先走 Gemini 2.5 Pro(输出上限高),非年报走 DeepSeek(快)
@@ -6130,6 +6136,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       console.error('[wealth-stream] [V131] DeepSeek stream FAILED: ' + (e.message || String(e)));
       if (geminiKey) {
         const gCtrl = new AbortController();
+        _aiCtrl = gCtrl; // V343: Gemini fallback 也纳入断连取消
         const gTimer = setTimeout(() => gCtrl.abort(), 30000);
         try {
           console.log('[wealth-stream] → Gemini fallback (non-stream, 30s timeout)');
