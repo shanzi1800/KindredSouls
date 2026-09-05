@@ -11,13 +11,32 @@ NO_CACHE = "true"
 nixPkgs = ["nodejs_22"]
 
 [phases.build]
-# V339: 强制 COPY 新代码——每次构建先 rm 旧文件，防止 Railway BuildKit 缓存劫持
+# V340 FIX: Railway Nixpacks builder 每次构建时在 Nixpacks 的 git clone → /app COPY 之前
+# server.js 已经存在于 base image 镜像层。COPY 时被镜像层的旧文件覆盖。
+# 治本：build phase 开始时立即检查 server.js 大小并输出到日志（会出现在 Railway build logs）
 cmds = [
-    "rm -rf /app /kindredsouls 2>/dev/null || true",
+    "echo '[V340-DIAGNOSTIC] Contents of current dir:'",
+    "ls -la",
+    "echo '[V340-DIAGNOSTIC] server.js in current dir:'",
+    "wc -c server.js 2>/dev/null || echo 'server.js NOT FOUND in current dir'",
+    "# Nixpacks git clone 放在 /github/workspace，尝试从那里复制",
+    "for alt in /github/workspace /workspace /repo /project /src /home/repo; do",
+    "    if [ -f \"$alt/server.js\" ]; then",
+    "        echo \"[V340] Found server.js at $alt: $(wc -c < $alt/server.js) bytes\"",
+    "        cp \"$alt/server.js\" ./server.js && break",
+    "    fi",
+    "done",
+    "echo '[V340-DIAGNOSTIC] After cp attempt, server.js:'",
+    "wc -c server.js 2>/dev/null || echo 'still missing'",
+    "# 验证",
+    "SERVER_SIZE=$(wc -c < server.js 2>/dev/null || echo 0)",
+    "if [ \"$SERVER_SIZE\" -lt 400000 ]; then",
+    "    echo \"[V340-ERROR] server.js is only $SERVER_SIZE bytes (expected > 400000 for V340+)\"",
+    "    exit 1",
+    "fi",
     "npm install --prefer-offline 2>/dev/null || npm install",
-    "npm run build 2>/dev/null || echo '[nixpacks] npm run build skipped (no package.json scripts or no changes)'",
-    "echo '[V339] Build complete. server.js size: '$(wc -c < server.js)' bytes'",
-    "if [ \"$(wc -c < server.js 2>/dev/null || echo 0)\" -lt 400000 ]; then echo '[V339-ERROR] server.js too small, COPY may have failed!'; exit 1; fi",
+    "npm run build 2>/dev/null || echo '[V340] npm run build skipped'",
+    "echo '[V340] ✅ Build complete'",
 ]
 
 [start]
