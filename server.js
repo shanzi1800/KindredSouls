@@ -3448,6 +3448,13 @@ function buildMonthlyPrompt(birthDate, lang) {
                       'July','August','September','October','November','December'];
   const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const curMonthName = monthNames[currentMonth - 1];
+    // V350: 目标月太阳真值显式注入(防AI自由发挥,锁定到astroMatrix真值)
+    let _tgSunText = '';
+    try {
+      const _tm = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+      const _s = _tm && _tm.sun;
+      if (_s && _s.sign) _tgSunText = _s.sign + ' (House ' + _s.house + ')';
+    } catch(e){}
   const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
 
   // ── 多语言标题字典（军师裁决 V136）─────────────────────────────
@@ -3559,6 +3566,7 @@ function buildMonthlyPrompt(birthDate, lang) {
 ⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days). Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
+${_tgSunText ? '⚠️ [当月太阳铁定真值 - 必须照抄] ' + _tgSunText + '。所有太阳描述必须严格使用此值,绝对禁止用本命太阳或任何其他星座。' : ''}
 
 CRITICAL REQUIREMENTS:
 • Total length: 1,200-1,500 words (${lang}) — be rich and dense, no fluff
@@ -4116,6 +4124,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
                         'July','August','September','October','November','December'];
     const monthNamesZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     const curMonthName = monthNames[currentMonth - 1];
+      // V350b: 目标月太阳真值显式注入(buildWealthReportPrompt,stream实际调用)
+      let _tgSunText = '';
+      try {
+        const _tm = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+        const _s = _tm && _tm.sun;
+        if (_s && _s.sign) _tgSunText = _s.sign + ' (House ' + _s.house + ')';
+      } catch(e){}
     const curMonthZH = `${currentYear}年${monthNamesZH[currentMonth-1]}`;
 
     // ── V120-fix3: 月报真实太阳星座 + 宫位锁(与年报同套逻辑)──
@@ -4202,6 +4217,7 @@ ${monthlyDataBlock}
 
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — rising sign: ${risingLocal} — (${curMonthName} ${currentYear}).
+${_tgSunText ? '⚠️ [当月太阳铁定真值 - 必须照抄] ' + _tgSunText + '。所有太阳描述必须严格使用此值,绝对禁止用本命太阳或任何其他星座。' : ''}
 ⛔ [V165-vital] 本命太阳星座 = ${natalSunEN}（生日 ${birthDate} 绝对正确,绝不是其他星座）。上升星座 = ${risingLocal}（绝非 Cancer，除非从 AstroMatrix 真实计算得出）。
 
 CRITICAL REQUIREMENTS:
