@@ -5635,7 +5635,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   } = req.body;
   // 🛠️ V102s: 是否真提供出生时间(未提供→报头不声称上升)
   const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
-  // 🛠️ V360: 移除 V353 前端日期校验（Python 会自然拒绝无效日期，无需提前封）
+  // 🛠️ V361: 日期合法性校验（返回 SSE 格式错误，前端 stream reader 可捕获，不截断管道）
+  const _dp = birthDate ? birthDate.split('-').map(Number) : null;
+  const _badDate = (() => {
+    if (!_dp || _dp.length !== 3 || _dp.some(isNaN)) return 'birthDate 格式错误';
+    const _td = new Date(birthDate + 'T00:00:00');
+    if (isNaN(_td.getTime()) || _td.getFullYear() !== _dp[0] || _td.getMonth() + 1 !== _dp[1] || _td.getDate() !== _dp[2]) return '出生日期不存在: ' + birthDate + '（如2月30日）';
+    return null;
+  })();
+  if (_badDate) {
+    res.write(Buffer.from('data: ' + JSON.stringify({ error: _badDate }) + '\n\n', 'utf-8'));
+    res.end();
+    return;
+  }
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活

@@ -2051,7 +2051,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                   }
                 }
 
-                if (parsed.meta) {
+                if (parsed.error) {
+                  // 🛠️ V361-fix: 后端返回 SSE 格式错误（如无效日期），捕获并显示友好提示
+                  console.warn('[WealthReport] ⚠️ 流式路由错误:', parsed.error);
+                  setError(parsed.error);
+                  if (type === 'monthly') setMonthlyCardsReady(true); // 关闭骨架屏
+                  break; // 跳出 stream reader
+                } else if (parsed.meta) {
                   // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
                   // 🛠️ V354-fix: meta事件一到立即挂载内容，废除"等 [DONE]"才显示的旧逻辑
