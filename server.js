@@ -4499,6 +4499,7 @@ ${HT_RP.trap}
       system: monthlySystem,
       user: USER_TEMPLATE[lang] || USER_TEMPLATE.zh,
     };
+  }
 
     jupHouse = 2;
     if (!satHouse || satHouse === 0) satHouse = 10;
@@ -4751,12 +4752,12 @@ ${HT_RP.trap}
     // ⛔ V89: 注入强制头部模板到 system prompt(system > user 层级更高)
     // ── V97h: 本命太阳星座头部锁(全语言,治本:zh/en/es/fr/th/vi 均强制锁死本命太阳,防止 AI 幻觉改写头部元数据)──
     // 🛠️ V102s: 核心本命代码硬锁(太阳+月亮 SwissEph 算死;无出生时间→砍上升,杜绝编造)
-    const _mZH = natalMoonSign ? ` · 月亮${natalMoonSign}` : '';
-    const _mEN = natalMoonSignEN ? ` · Moon ${natalMoonSignEN}` : '';
-    const _mES = natalMoonSign ? ` · Luna ${natalMoonSign}` : '';
-    const _mFR = natalMoonSign ? ` · Lune ${natalMoonSign}` : '';
-    const _mTH = natalMoonSign ? ` · ดวงจันทร์${natalMoonSign}` : '';
-    const _mVI = natalMoonSign ? ` · Mặt Trăng ${natalMoonSign}` : '';
+    _mZH = natalMoonSign ? ` · 月亮${natalMoonSign}` : '';
+    _mEN = natalMoonSignEN ? ` · Moon ${natalMoonSignEN}` : '';
+    _mES = natalMoonSign ? ` · Luna ${natalMoonSign}` : '';
+    _mFR = natalMoonSign ? ` · Lune ${natalMoonSign}` : '';
+    _mTH = natalMoonSign ? ` · ดวงจันทร์${natalMoonSign}` : '';
+    _mVI = natalMoonSign ? ` · Mặt Trăng ${natalMoonSign}` : '';
     const _rHB = hasBirthTime && risingLocal;
     const NATAL_CODE = {
       zh: `太阳${natalSunSign}${_mZH}${_rHB?` · 上升${risingLocal}`:''}`,
@@ -4863,7 +4864,6 @@ OUTPUT FORMAT: Clean Markdown with exactly 5 chapters.
 
 Write in ${lang}. Use native ${lang} astrological and Jungian psychological terms.`,
     };
-  }
 
   } catch (e) {
     throw e;
