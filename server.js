@@ -161,10 +161,10 @@ const SLIM_LANG_PACKS = {
 - 文风: Sâu sắc, thấu hiểu, triết lý cuộc sống。
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
   ✦ [🔮 Chủ đề Vận mệnh Tháng]   ← 月度主题开头
-  ✦ [🟢 Tuần 1: Tháng 8, Ngày 1–7]    ← 第1周（🟢=低风险）
-  ✦ [🔴 Tuần 2: Tháng 8, Ngày 8–14]    ← 第2周（🔴=高风险）
-  ✦ [🔵 Tuần 3: Tháng 8, Ngày 15–21]   ← 第3周（🔵=中风险）
-  ✦ [🟢 Tuần 4: Tháng 8, Ngày 22–31]   ← 第4周（🟢=低风险）
+  ✦ [🟢 Tuần 1: ${curMonthName}, Ngày 1–7]    ← 第1周（🟢=低风险）
+  ✦ [🔴 Tuần 2: ${curMonthName}, Ngày 8–14]    ← 第2周（🔴=高风险）
+  ✦ [🔵 Tuần 3: ${curMonthName}, Ngày 15–21]   ← 第3周（🔵=中风险）
+  ✦ [🟢 Tuần 4: ${curMonthName}, Ngày 22–31]   ← 第4周（🟢=低风险）
   ✦ [⚠️ Cạm bẫy Tài chính: Tháng 8, 2026] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
@@ -175,10 +175,10 @@ const SLIM_LANG_PACKS = {
 - 文风: Empathetic, psychologically insightful, precise.
 - 标题格式（严格遵守）:
   ✦ [🔮 Monthly Destiny Theme]
-  ✦ [🟢 Week 1: August 1–7]
-  ✦ [🔴 Week 2: August 8–14]
-  ✦ [🔵 Week 3: August 15–21]
-  ✦ [🟢 Week 4: August 22–31]
+  ✦ [🟢 Week 1: ${curMonthName} 1–7]
+  ✦ [🔴 Week 2: ${curMonthName} 8–14]
+  ✦ [🔵 Week 3: ${curMonthName} 15–21]
+  ✦ [🟢 Week 4: ${curMonthName} 22–31]
   ✦ [⚠️ Financial Traps & Risk Mitigation]
 - 风险图标: 🟢 Low | 🔴 High | 🔵 Moderate | ⚠️ Warning。
 `,
@@ -188,10 +188,10 @@ const SLIM_LANG_PACKS = {
 - 文风: 深邃典雅，融汇西方占星与东方灵性。
 - 标题格式（严格遵守）:
   ✦ [🔮 月度命运主题]
-  ✦ [🟢 第1周: 8月1日–7日]
-  ✦ [🔴 第2周: 8月8日–14日]
-  ✦ [🔵 第3周: 8月15日–21日]
-  ✦ [🟢 第4周: 8月22日–31日]
+  ✦ [🟢 第1周: ${curMonthName}1日–7日]
+  ✦ [🔴 第2周: ${curMonthName}8日–14日]
+  ✦ [🔵 第3周: ${curMonthName}15日–21日]
+  ✦ [🟢 第4周: ${curMonthName}22日–31日]
   ✦ [⚠️ 财务避坑指南]
 - 风险图标: 🟢 低危 | 🔴 高危 | 🔵 中危 | ⚠️ 警示。
 `
@@ -264,7 +264,7 @@ function buildWealthPromptContext(lang, meta) {
     rule1: {
       zh: `1. 【格式强制】每周卡片标题必须严格遵循以下格式，不得擅自改动：
    ✦
-   [🟢 第1周：8月1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
+   [🟢 第1周：${curMonthName}1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
    规则：
    - "✦" 必须单独占一行，后面紧跟一个换行
    - 标题内容必须用方括号 [...] 包裹
@@ -273,7 +273,7 @@ function buildWealthPromptContext(lang, meta) {
    - 错误格式（禁止）：✦ 🟢 第1周...（缺失方括号）`,
       en: `1. 【STRICT FORMAT】Every weekly header MUST follow this EXACT pattern:
    ✦
-   [🟢 Week 1: Aug 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
+   [🟢 Week 1: ${curMonthName} 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
    Rules:
    - "✦" MUST be on its own line, followed by exactly one newline
    - Title content MUST be wrapped in square brackets [...]
