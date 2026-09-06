@@ -2661,10 +2661,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
             {/* 报告页保持绝对干净 - 无任何输入框,无任何提示。看 Teaser 直接付款。 */}
             {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
               <>
-                <button onClick={() => generateWealthReport('monthly', true)} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
                 </button>
-                <button onClick={() => generateWealthReport('yearly', true)} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
                   {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
                 </button>
                 <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {t('wealthReport.vipFree')}</div>
@@ -2686,7 +2686,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {/* 🔮 V120: 月报流式打字机(markdown格式) - V240-fix: [DONE]后保持渲染直到有内容 */}
-        {(reportLoading === 'wealth_monthly') && (
+        {/* V356-fix: 改用 monthlyCardsReady 作为挂载条件，不再依赖 reportLoading。
+            原因：reportLoading 在 [DONE] 时被清空（setReportLoading('')），导致组件卸载。
+            现在：monthlyCardsReady 由 meta/text chunk/[DONE] 逐步设为 true，组件全程保持挂载。 */}
+        {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
           <SacredYearlyReportBox
             key={_stableMemKey || 'monthly-pending'}
             rawStreamText={sacredText}
