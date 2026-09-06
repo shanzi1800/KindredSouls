@@ -2679,7 +2679,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         )}
 
         {/* 🔮 V120: 月报流式打字机(markdown格式) - V240-fix: [DONE]后保持渲染直到有内容 */}
-        {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
+        {(reportLoading === 'wealth_monthly') && (
           <SacredYearlyReportBox
             key={_stableMemKey || 'monthly-pending'}
             rawStreamText={sacredText}
