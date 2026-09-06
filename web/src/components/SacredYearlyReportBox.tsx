@@ -25,13 +25,12 @@ const SacredYearlyReportBox: React.FC<{
 
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
-  // 🛠️ V359-fix: 流式期间禁用 autoScroll，内容从顶部长下来，用户清楚看到✦逐块增加
-  // 旧行为: autoScroll 到最底，内容从底部冒出来，掩盖了"边到边"视觉效果
-  // 新行为: scrollTop=0，内容从顶向下增长，完成后 scrollToTop
+  // 🛠️ V365-fix: 恢复 autoScroll——内容从顶部向下增长，滚动跟随底部，用户持续看到新增内容
+  // V359 禁用滚动导致内容在屏幕外堆积，视觉上"一次性弹出"，恢复 autoScroll 根治
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || yearlyCardsReady || !hasContent) return;
-    // el.scrollTop = el.scrollHeight; // ← V359: 禁用 autoScroll，让内容从顶部长
+    el.scrollTop = el.scrollHeight; // ← 流式期间持续跟随底部
   }, [rawStreamText, tickRef.current]);
 
   // 🛠️ V359: 流式状态感知——isStreaming=true 表示正在生成中
