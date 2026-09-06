@@ -1341,6 +1341,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           if (g.subs.has(mySubRef.current)) g.subs.delete(mySubRef.current);
         }
       }
+      // V354-fix: 组件销毁时才清monthlyCardsReady，避免fetch中途触发重mount导致窗口关闭
+      setMonthlyCardsReady(false);
+      setYearlyCardsReady(false);
     };
   }, []);
 
@@ -1939,7 +1942,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
     if (type === 'monthly') {
       setSacredText('');
-      setMonthlyCardsReady(false);
+      // V354-fix: 月报中途不清monthlyCardsReady，组件重新mount会导致窗口关掉
+      // setMonthlyCardsReady(false);  // ← 已移除，流式中途保持挂载状态
     }
 
     // 🌊 流式输出开关(开发中,暂用旧接口)
