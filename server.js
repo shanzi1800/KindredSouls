@@ -648,7 +648,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // TextDecoder 在遇到不完整的多字节序列时会输出 \uFFFD，StringDecoder 会暂存未完整的字节等下一个 chunk 凑齐后再解码
   const decoder = new StringDecoder('utf8');
   let buf = '', fullText = '';
-  const FLUSH_SIZE = 50;
+  const FLUSH_SIZE = 1500; // V358-fix: 50→1500，MISS路径每~1500字符推一次（约15s），不再128块×5s
   let pending = '';
   let sentLen = 0; // V220d
   let lastClean = ''; // V220d: last chunk clean for new-suffix
