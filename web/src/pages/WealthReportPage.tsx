@@ -1863,7 +1863,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // 🛠️ V40: 移除折叠逻辑,改用单框打字机
 
-  const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force = false) => {
+  
+// 🛠️ V363: 打字机流式渲染——fallback 全量文本不用 setState 一次性替换，
+//          而是每 16ms (60fps) 吐 4 个字符，视觉上维持"边到边"仪式感
+async function smoothAppendText(text: string, setSacredTextFn: (t: string) => void, intervalMs = 16, charsPerTick = 4) {
+  let current = '';
+  for (let i = 0; i < text.length; i += charsPerTick) {
+    current += text.slice(i, i + charsPerTick);
+    setSacredTextFn(current);
+    if (i + charsPerTick < text.length) {
+      await new Promise(res => setTimeout(res, intervalMs));
+    }
+  }
+  return current;
+}
+const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force = false) => {
     // 🛡️ V219f: key 必须基于 URL 稳定值,绝不依赖组件 state(birthDate/lang 初始化期为空或波动会导致锁 key 失配、5 个并发请求叠加)
     const _urlP = new URLSearchParams(window.location.search);
     const _stableBirth = _urlP.get('birth') || birthDate || '';
@@ -2162,7 +2176,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               if (fbText.length > 2000) {
                 console.log('[WealthReport] ✅ Fallback 成功，' + fbText.length + ' 字符，写入 UI');
                 if (type === 'yearly' || type === 'monthly') {
-                  setSacredText(fbText);
+                  // 🛠️ V363: fallback 内容用打字机效果逐字显示，不一次性替换
+smoothAppendText(fbText, setSacredText, 16, 4);
                   console.log('[V270-FALLBACK-DEBUG] setSacredText called with ' + fbText.length + ' chars, monthlyCardsReady will be set to true');
                   if (type === 'monthly') setMonthlyCardsReady(true);
                 } else {

@@ -657,7 +657,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   // 🛡️ V222z-fix13e: text 流层单锚截断——MISS 路径下 sanitized 从不触发,必须在 text 流层直接断流
   let _monthlyCutDone = false;
   const _MONTHLY_THEME_RE = /\✦\s*\[\🔮/g;
-  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
+  // 🛠️ V362: 全局心跳同步升级为 1KB 重型心跳
+  const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': ' + ' '.repeat(1024) + '\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -5651,8 +5652,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活
+  // 🛠️ V362: 1KB 重型心跳——每 8s 发送 1024 字节空格垫片，强制挤满 Nginx 缓冲区立即刷盘
+  // 旧版 ': heartbeat\n\n' 仅 13 字节，极易被代理层静默挂起积压，满 30s 超时砍连接
   const _hb = setInterval(() => {
-    try { res.write(': heartbeat\n\n'); if (typeof res.flush === 'function') res.flush(); } catch (e) {}
+    try {
+      res.write(': ' + ' '.repeat(1024) + '\n\n');
+      if (typeof res.flush === 'function') res.flush();
+    } catch (e) {}
   }, 8000);
   // V343: 客户端断连 → 立即 abort 上游 AI 请求（防烧钱：用户关页面/断网后 Gemini/DeepSeek 不再继续跑完）
   let _aiCtrl = null;
@@ -5666,12 +5672,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   res.on('error', (e) => console.error('[wealth-stream] ❌ res error:', e && e.message));
 
 
-  // SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  // 🛠️ V362: SSE Header 组合拳——强破 Nginx/hikari 代理层缓冲
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('X-No-Compression', '1');      // 绕过 compression 中间件（若有）
   res.setHeader('X-Deploy-Marker', 'V124-keep-alive');
-  res.setHeader('Connection', 'keep-alive'); // V121 原生,防 Railway hikari 提前 RST
+  res.setHeader('Connection', 'keep-alive');
+  // HTTP 200 握手建立后立刻冲刷首包 Header，防止代理层等待
+  if (res.flushHeaders) res.flushHeaders();
 
 
   // 🔥 军师缓存键 (V178-P0 升级): 纳入 birthTime/lat/lon/tz, 杜绝跨用户串盘
