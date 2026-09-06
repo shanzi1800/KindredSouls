@@ -2049,8 +2049,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
                 if (parsed.meta) {
                   // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
-                  // 前端目前不消费，只记录日志（未来可扩展到报头实时渲染）
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
+                  // 🛠️ V354-fix: meta事件一到立即挂载内容，废除"等 [DONE]"才显示的旧逻辑
+                  if (type === 'monthly') setMonthlyCardsReady(true);
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
                   const _prevLen = (_fullMap.get(_memKey)||'').length;
@@ -2060,6 +2061,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
                     // 🛡️ V220e: 智能自适应合并——后端推"全量快照"或"增量Delta"都能正确对齐,根治阶梯重复
                     // V261-fix: 只有 cur 非空时才用 startsWith 判断;空字符串时.startsWith('')永为 true 导致第一次 chunk 被当快照覆盖
                     const _cur = _fullMap.get(_memKey) || '';
+                    // 🛠️ V354-fix: 第一个text chunk到达时挂载内容(比meta更稳,避免空白闪)
+                    if (!_cur && parsed.text.length > 0 && type === 'monthly') setMonthlyCardsReady(true);
                     if (_cur && parsed.text.startsWith(_cur)) {
                       _fullMap.set(_memKey, parsed.text);            // 后端推全量(累积)快照 -> 直接覆盖
                     } else if (parsed.text.length > 0) {
