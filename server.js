@@ -4435,14 +4435,14 @@ ${HT_RP.trap}
     const DATA_CONSUMPTION_RULE_ZH = `
 [数据消费铁律 - 必须遵守]
 1. 你的唯一数据来源是后端 JSON 中的 quarterly_forecast。禁止自行计算天文数据。
-2. 写作任何月份时,太阳星座和宫位必须100%从 JSON 的 sun_transit.sign 和 sun_transit.house 提取——即使与用户本命星座冲突。
+2. 本月太阳星座和宫位必须100%从上方 [P1 PER-MONTH PLANET DATA] 里 [当前月] 行的 Sun= 值提取（例如 9月行: Sun=Vir(H9) = 处女座第9宫）。⚠️ 绝对禁止用本命太阳星座 natalSunSign（那是固定的本命盘，不是本月行运）；即使与用户本命星座冲突，也必须严格使用 P1 数据里 [当前月] 行的 Sun= 值。
 3. active_aspects 中的每个相位必须严格按公式叙述,禁止编造未列出的相位。
 4. financial_black_swan 包含精确日期和行动指南——必须原样翻译为叙述性散文。
 `;
     const DATA_CONSUMPTION_RULE_EN = `
 [Data Consumption Supreme Guideline - MUST OBEY]
 1. Your SOLE data source is the quarterly_forecast JSON from the backend. NO astronomical calculation or sign derivation is permitted.
-2. When writing any month's forecast, the Sun sign and House MUST be extracted 100% from JSON's sun_transit.sign and sun_transit.house - even if it conflicts with the user's natal sign.
+2. The current month's Sun sign and House MUST be extracted 100% from the [当前月] row's Sun= value in [P1 PER-MONTH PLANET DATA] above (e.g. September row: Sun=Vir(H9) = Virgo House 9).⚠️ NEVER use the natal Sun sign natalSunSign (that is the fixed natal chart, NOT this month's transit); always use the Sun= value from the [current month] row in P1 data, even if it conflicts with the user's natal sign.
 3. Each aspect in active_aspects MUST be narrated using the given formula only. Never invent unlisted planetary aspects.
 4. financial_black_swan contains exact dates and action guidelines - translate verbatim into narrative prose.
 `;
