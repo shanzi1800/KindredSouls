@@ -5792,7 +5792,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         // 🛠️ V332-fix: 用 StringDecoder 字节级对齐分块——彻底替代手动 _chunkEndSafe 切片
         // maxBytes=6000 相当于 ~2000 个泰/中文字符，足以触发 Railway 代理截断阈值
-        const safeChunks = _safeChunk(streamText, 6000);
+        const safeChunks = _safeChunk(streamText, 1500); // V357-fix: 1500字节≈500中文字符，每1-2秒推送一次，流式边到边
         for (const chunk of safeChunks) {
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
           if (typeof res.flush === 'function') res.flush();
