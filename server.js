@@ -5635,18 +5635,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   } = req.body;
   // 🛠️ V102s: 是否真提供出生时间(未提供→报头不声称上升)
   const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
-  // 🛠️ V353: 日期合法性校验（2000-02-30 等无效日期直接拒绝，不进 Python）
-  const _dp = birthDate ? birthDate.split('-').map(Number) : null;
-  if (!_dp || _dp.length !== 3 || _dp.some(isNaN)) {
-    res.write(Buffer.from('data: ' + JSON.stringify({error:'Invalid birthDate format'}) + '\n\n', 'utf-8'));
-    return res.end();
-  }
-  const _testDate = new Date(birthDate + 'T00:00:00');
-  if (isNaN(_testDate.getTime()) || _testDate.getFullYear() !== _dp[0] || _testDate.getMonth() + 1 !== _dp[1] || _testDate.getDate() !== _dp[2]) {
-    res.write(Buffer.from('data: ' + JSON.stringify({error:'Invalid birthDate: ' + birthDate}) + '\n\n', 'utf-8'));
-    return res.end();
-  }
-
+  // 🛠️ V360: 移除 V353 前端日期校验（Python 会自然拒绝无效日期，无需提前封）
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活
