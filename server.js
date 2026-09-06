@@ -6089,7 +6089,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🟢 Gemini 流式分段（全语言 zh/en/es/fr/th/vi），失败自动降级 DeepSeek
           console.log('[wealth-stream] V320 lang=' + lang + ' -> Gemini流式主路径+DeepSeek兜底');
           try {
+            let _didStream = false; // V366-fix: 标记是否走了流式路径
             const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
+              _didStream = true; // V366: 标记流式路径已走，finally 不再发完整文本
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               _dedupWrite(chunk); // V315-fix: SSE层防重复写入
             }, lang, prompt.system, prompt.user, astroMatrix);
@@ -6165,7 +6167,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           }
         } catch(geminiErr) {
           console.error('[wealth-stream] Gemini fallback EXCEPTION:', geminiErr.message);
-        } finally { clearTimeout(gTimer); }
+        } finally {
+          // V366-fix: 流式成功时 chunks 已通过 _resDedupe.write 逐段发了，finally 不再发完整文本
+          if (!_didStream && geminiFullText && geminiFullText.trim().length > 0) {
+            res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
+            if (typeof res.flush === 'function') res.flush();
+          }
+          clearTimeout(gTimer);
+        }
       }
     }
 

@@ -15,13 +15,11 @@ const SacredYearlyReportBox: React.FC<{
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const tickRef = useRef(0);
-  const [showSkeleton, setShowSkeleton] = useState(true); // 🛠️ V79: 先骨架再内容
+  // V366-fix: 用 ref 跟踪内容状态，sync 判断（无 useState 延迟），骨架立即消失
+  const contentArrived = useRef(false);
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
-
-  // 🛡️ V276-fix: hasContent 出现时关掉骨架屏，显示真实内容
-  useEffect(() => {
-    if (hasContent) setShowSkeleton(false);
-  }, [hasContent]);
+  if (hasContent && !contentArrived.current) contentArrived.current = true;
+  const showSkeleton = contentArrived.current === false;
 
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
