@@ -3556,62 +3556,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     user: `
 
 ### [EPHEMERIS_DATA — Moon Transit Calendar for ${curMonthName} ${currentYear}]
-⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days). Below is the EXACT schedule. COPY THESE DATES EXACTLY — do NOT invent dates.
-
-Moon Transits for ${curMonthName} ${currentYear}:
-  • Aug 1-2: Moon in Leo (ราศีสิงห์)
-  • Aug 3-5: Moon in Virgo (ราศีกันย์)
-  • Aug 6-8: Moon in Libra (ราศีตุลย์)
-  • Aug 9-11: Moon in Scorpio (ราศีพิจิก) ← ONLY occurrence this month
-  • Aug 12-14: Moon in Sagittarius (ราศีธนู)
-  • Aug 15-17: Moon in Capricorn (ราศีมังกร)
-  • Aug 18-20: Moon in Aquarius (ราศีกุมภ์)
-  • Aug 21-23: Moon in Pisces (ราศีมีน)
-  • Aug 24-26: Moon in Aries (ราศีเมษ)
-  • Aug 27-28: Moon in Taurus (ราศีพฤษภ)
-  • Aug 29-30: Moon in Gemini (ราศีเมถุน)
-  • Aug 31: Moon in Cancer (ราศีกรกฎ)
-
-⛔ DEATH RULE: The Moon is in Scorpio (ราศีพิจิก) ONLY on Aug 9-11. NEVER write "Moon in Scorpio" for any other dates. NEVER repeat "Moon in Scorpio" across multiple weeks.
-
----
-
-ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
-• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。严禁写"7月XX日太阳进入巨蟹座"——太阳在7月23日之后绝不在巨蟹座；如出现"进入巨蟹座"，立即改为"进入狮子座"。
-• 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
-• 禁止用"意外之财"描述梅花相/四分相。
-• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
-• MARS July 2026: in 双子座 (Gemini) all month.
-• SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
-• PLUTO July 2026: in 水瓶座 (Aquarius) all month.
-• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• MOON July 2026: on 7/31 it is in 水瓶座 (Aquarius). NEVER write "月亮在双子座" for July 31.
-• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
-• 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
-
-⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
-
-⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
-⛔ [宫位含义一致性]: 行星进入某星座时,其宫位必须严格引用下方[宫位铁律]注入的等宫制完整映射表(按本命上升星座计算)。不同上升星座宫位完全不同,禁止凭星座序号自行推算,禁止套用任何固定映射(如"处女座=第12宫"仅在白羊上升成立,对其他上升星座错误)。
-
-[THAI ASTRO RULES]:
-• MERCURY Rx: ดาวพุธวงในเริ่ม ~2–24 กรกฎาคม ในราศีกรกฎ (Cancer) — ห้ามเขียนดาวพุธในราศีสิงห์ (Leo) ตลอดเดือนกรกฎาคม
-• SUN เข้าราศีสิงห์: 23 กรกฎาคม (ไม่ใช่ 22 หรือ 25)
-• VENUS: 1-13 กรกฎาคม อยู่ราศีสิงห์ (Leo); 14+ เข้าราศีกันยา (Virgo)
-• SATURN: อยู่ราศีเมษ (Aries) ตลอดกรกฎาคม — ห้ามเขียนดาวเสาร์ในราศีธนู/มังกร/กุมภ์
-• PLUTO: อยู่ราศีกุมภ์ (Aquarius) ตลอดกรกฎาคม
-• NEW MOON จริง: ~14 กรกฎาคม 2026
-
-[VIETNAMESE ASTRO RULES]:
-• MERCURY Rx: Sao Thủy nghịch ~2-24/7/2026 trong Cự Giải (Cancer) — cấm tuyệt đối viết Sao Thủy ở Sư Tử (Leo) trong tháng 7
-• SUN vào Sư Tử: 23/7 (không phải 22 hay 25)
-• VENUS: 1-13/7 ở Sư Tử (Leo); 14+ ở Xử Nữ (Virgo)
-• SATURN: ở Bạch Dương (Aries) cả tháng 7 — cấm viết Sao Thổ ở Nhân Mã/Ma Kết
-• PLUTO: ở Bảo Bình (Aquarius) cả tháng 7
-• WEEK 3 (Jul 15-21): Ngày 18/7 là đỉnh Sao Thủy nghịch (station) — tuyệt đối không đặt ngày 18/7 làm ngày vàng tài chính
-• SỐ TIỀN: Dùng cùng một đơn vị (VND hoặc triệu đồng), không thay đổi linh tinh
-• CẤM: "TÌNH TRẠNG GIỜI NGUYỆT TÀI CHÍNH" — dùng tiếng Việt tự nhiên
+⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days). Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
 
