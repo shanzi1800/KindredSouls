@@ -7069,7 +7069,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     const safeChunks = _safeChunk(segText, 900);
     for (const chunk of safeChunks) {
       const sseMsg = JSON.stringify({ text: chunk });
-      try { res.write(Buffer.from('data: ' + sseMsg + '\n\n', 'utf-8')); if (typeof res.flush === 'function') res.flush(); } catch(e) {}
+      // V367-fix: 删 direct res.write()——全走 onChunk(_resDedupe) 去重出口（原双写导致周次重复）
       onChunk(chunk);
       fullText += chunk;
       await new Promise(r => setTimeout(r, 30)); // 30ms 打字机节奏

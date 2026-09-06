@@ -1164,7 +1164,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // 🛠️ V40: 移除所有旧的17卡片蓄水ref,改用单一sacredText状态
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
-  const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 月报是否完成(2026-07-19)
+  const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(true); // 月报是否完成(2026-07-19)
   const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态
   const [_stableMemKey, _setStableMemKey] = useState<string>(''); // V247: SacredYearlyReportBox 稳定 key(双通道打字机核心)
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
