@@ -2038,9 +2038,14 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') {
-                  console.log('[V270-DEBUG] [DONE] → calling setMonthlyCardsReady(true)');
-                  setMonthlyCardsReady(true);
-                  console.log('[V270-DEBUG] setMonthlyCardsReady(true) called. SacredYearlyReportBox should now mount. _final.length=' + _final.length);
+                  // 🛠️ V368-fix: 只在有有效内容时才挂载卡片，杜绝 [DONE] 时 _final=0 字符仍挂载空金属框架
+                  if (_final.length > 0) {
+                    console.log('[V270-DEBUG] [DONE] → calling setMonthlyCardsReady(true)');
+                    setMonthlyCardsReady(true);
+                    console.log('[V270-DEBUG] setMonthlyCardsReady(true) called. SacredYearlyReportBox should now mount. _final.length=' + _final.length);
+                  } else {
+                    console.warn('[V368] [DONE] _final.length=0 → 跳过挂载空框架，等待 fallback 补内容');
+                  }
                 }
                 if (genDone) {
                   genDone.done = true;
@@ -2074,8 +2079,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 } else if (parsed.meta) {
                   // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
-                  // 🛠️ V354-fix: meta事件一到立即挂载内容，废除"等 [DONE]"才显示的旧逻辑
-                  if (type === 'monthly') setMonthlyCardsReady(true);
+                  // 🛠️ V368-fix: 废除 meta 即挂载空框架——改为首个真实 text chunk 到达时才挂载(见下方 parsed.text 分支)，避免空金属框架闪现
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
                   const _prevLen = (_fullMap.get(_memKey)||'').length;
