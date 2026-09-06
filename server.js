@@ -5513,7 +5513,11 @@ app.use('/api/ai-advisor', async (req, res) => {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 800, temperature: 0.3 } }),
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              systemInstruction: { parts: [{ text: '你是一个财富月报生成器。绝对禁止输出任何英文指令、自我纠错记录、思考过程或指令摘要。你的输出必须直接以报告正文开头，第一个字符必须是「✦」。禁止输出任何类似"No English"、"Self-Correction"、instruction summary 等元文本。' }] },
+              generationConfig: { maxOutputTokens: 800, temperature: 0.3 },
+            }),
           }
         );
         if (!gemRes.ok) throw new Error(`Gemini ${gemRes.status}`);
@@ -6038,11 +6042,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           return t.trim() ? t : '';
         };
         // _dedupWrite: 双重职责——更新状态 + 通过 _resDedupe 写 SSE
+        // 🛠️ V364-fix: Chunk 清洗器——拦截 AI 指令摘要/思维链泄漏，如 "No English, no CoT"、Self-Correction 等
+        const _rejectPatterns = [
+          /No English,? no CoT/i, /Self[- ]?Correction/i, /strict active voice/i,
+          /mandatory house labels/i, /no forbidden aspects/i, /space wealth alignment/i,
+          /avoid ["'"][^"']+["']/i, /instead of ["'"][^"']+["']/i,
+        ];
+        const _isGarbage = (t) => {
+          for (const p of _rejectPatterns) { if (p.test(t)) return true; }
+          return false;
+        };
         const _dedupWrite = (chunk) => {
           const t = _getTrimmed(chunk);
           if (!t) return;
           // 🛠️ V331-fix: 二次扑灭 U+FFFD——JSON.encode/decode 跨 SSE 流边界偶尔残留，兜底清洗后写入
+          // 🛠️ V364-fix: 拦截指令摘要泄漏（No English / Self-Correction / instruction summary）
+          if (_isGarbage(t)) {
+            console.warn('[V364] ⚠️ 拦截指令泄漏 chunk:', t.slice(0, 60));
+            return;
+          }
           const clean = t.replace(/\uFFFD/g, '');
+          if (_isGarbage(clean)) {
+            console.warn('[V364] ⚠️ 拦截清洗后仍含指令片段:', clean.slice(0, 60));
+            return;
+          }
           _totalWritten += clean;
           fullTextCollector += clean;
           _resDedupe.write(clean);   // 走 wrapper 去重
@@ -6120,6 +6143,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             if (lang !== 'zh') { geminiFullText = geminiFullText.replace(/（/g, '').replace(/）/g, ''); }
             if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) geminiFullText = geminiFullText.split(_t).join(_v);
             geminiFullText = geminiFullText.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+            // 🛠️ V364-fix: fallback 路径也拦截指令摘要泄漏
+            const _fbGarbageMatch = geminiFullText.match(/(No English|No CoT|Self[- ]?Correction|strict active voice)/i);
+            if (_fbGarbageMatch) {
+              console.warn('[V364] ⚠️ Fallback geminiFullText 含指令泄漏，裁剪掉前 ' + (geminiFullText.indexOf(_fbGarbageMatch[0])) + ' 字节');
+              geminiFullText = geminiFullText.slice(geminiFullText.indexOf(_fbGarbageMatch[0]));
+            }
+            // 从第一个 ✦ 截取（忽略一切前言）
+            const _firstMarker = geminiFullText.indexOf('✦');
+            if (_firstMarker > 0) {
+              console.log('[V364] ⚠️ Fallback 截取首个✦之前内容，前', _firstMarker, '字节指令泄漏');
+              geminiFullText = geminiFullText.slice(_firstMarker);
+            }
             if (geminiFullText && geminiFullText.trim().length > 0) {
               res.write(Buffer.from('data: ' + JSON.stringify({ text: geminiFullText }) + '\n\n', 'utf-8'));
               if (typeof res.flush === 'function') res.flush();
