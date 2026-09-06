@@ -414,7 +414,7 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
     const sunSignName = L[sunSignIdx] || sunData.sign;
     const sunHouse = _getH(sunData.house);
 
-    const parts = [`${mAbbr[i]}:`];
+    const parts = [`${months[i].month_name || mAbbr[i]}:`];
     parts.push(`Sun=${sunSignName}(H${sunHouse})`);
 
     PLANET_KEYS_MONTHLY.forEach(([k, enName]) => {
