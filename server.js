@@ -161,10 +161,10 @@ const SLIM_LANG_PACKS = {
 - 文风: Sâu sắc, thấu hiểu, triết lý cuộc sống。
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
   ✦ [🔮 Chủ đề Vận mệnh Tháng]   ← 月度主题开头
-  ✦ [🟢 Tuần 1: ${curMonthName}, Ngày 1–7]    ← 第1周（🟢=低风险）
-  ✦ [🔴 Tuần 2: ${curMonthName}, Ngày 8–14]    ← 第2周（🔴=高风险）
-  ✦ [🔵 Tuần 3: ${curMonthName}, Ngày 15–21]   ← 第3周（🔵=中风险）
-  ✦ [🟢 Tuần 4: ${curMonthName}, Ngày 22–31]   ← 第4周（🟢=低风险）
+  ✦ [🟢 Tuần 1: {MONTH}, Ngày 1–7]    ← 第1周（🟢=低风险）
+  ✦ [🔴 Tuần 2: {MONTH}, Ngày 8–14]    ← 第2周（🔴=高风险）
+  ✦ [🔵 Tuần 3: {MONTH}, Ngày 15–21]   ← 第3周（🔵=中风险）
+  ✦ [🟢 Tuần 4: {MONTH}, Ngày 22–31]   ← 第4周（🟢=低风险）
   ✦ [⚠️ Cạm bẫy Tài chính: Tháng 8, 2026] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
@@ -175,10 +175,10 @@ const SLIM_LANG_PACKS = {
 - 文风: Empathetic, psychologically insightful, precise.
 - 标题格式（严格遵守）:
   ✦ [🔮 Monthly Destiny Theme]
-  ✦ [🟢 Week 1: ${curMonthName} 1–7]
-  ✦ [🔴 Week 2: ${curMonthName} 8–14]
-  ✦ [🔵 Week 3: ${curMonthName} 15–21]
-  ✦ [🟢 Week 4: ${curMonthName} 22–31]
+  ✦ [🟢 Week 1: {MONTH} 1–7]
+  ✦ [🔴 Week 2: {MONTH} 8–14]
+  ✦ [🔵 Week 3: {MONTH} 15–21]
+  ✦ [🟢 Week 4: {MONTH} 22–31]
   ✦ [⚠️ Financial Traps & Risk Mitigation]
 - 风险图标: 🟢 Low | 🔴 High | 🔵 Moderate | ⚠️ Warning。
 `,
@@ -188,10 +188,10 @@ const SLIM_LANG_PACKS = {
 - 文风: 深邃典雅，融汇西方占星与东方灵性。
 - 标题格式（严格遵守）:
   ✦ [🔮 月度命运主题]
-  ✦ [🟢 第1周: ${curMonthName}1日–7日]
-  ✦ [🔴 第2周: ${curMonthName}8日–14日]
-  ✦ [🔵 第3周: ${curMonthName}15日–21日]
-  ✦ [🟢 第4周: ${curMonthName}22日–31日]
+  ✦ [🟢 第1周: {MONTH}1日–7日]
+  ✦ [🔴 第2周: {MONTH}8日–14日]
+  ✦ [🔵 第3周: {MONTH}15日–21日]
+  ✦ [🟢 第4周: {MONTH}22日–31日]
   ✦ [⚠️ 财务避坑指南]
 - 风险图标: 🟢 低危 | 🔴 高危 | 🔵 中危 | ⚠️ 警示。
 `
@@ -264,7 +264,7 @@ function buildWealthPromptContext(lang, meta) {
     rule1: {
       zh: `1. 【格式强制】每周卡片标题必须严格遵循以下格式，不得擅自改动：
    ✦
-   [🟢 第1周：${curMonthName}1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
+   [🟢 第1周：{MONTH}1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
    规则：
    - "✦" 必须单独占一行，后面紧跟一个换行
    - 标题内容必须用方括号 [...] 包裹
@@ -273,7 +273,7 @@ function buildWealthPromptContext(lang, meta) {
    - 错误格式（禁止）：✦ 🟢 第1周...（缺失方括号）`,
       en: `1. 【STRICT FORMAT】Every weekly header MUST follow this EXACT pattern:
    ✦
-   [🟢 Week 1: ${curMonthName} 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
+   [🟢 Week 1: {MONTH} 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
    Rules:
    - "✦" MUST be on its own line, followed by exactly one newline
    - Title content MUST be wrapped in square brackets [...]
@@ -3474,41 +3474,41 @@ function buildMonthlyPrompt(birthDate, lang) {
     },
     es: {
       overview:    '✦ [🔮 Tema de Destino Mensual] ✦',
-      week1:       `✦ [Semana 1: ${curMonthName} 1–7] Recarga de Riqueza`,
-      week2:       `✦ [Semana 2: ${curMonthName} 8–14] Cortocircuito de Alto Riesgo`,
-      week3:       `✦ [Semana 3: ${curMonthName} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthName} 23–${lastDayOfMonth}] Explosión de Riqueza`,
-      trap:        `✦ [⚠️ Trampas de Gasto: ${curMonthName} ${currentYear}] ✦`,
+      week1:       `✦ [Semana 1: {MONTH} 1–7] Recarga de Riqueza`,
+      week2:       `✦ [Semana 2: {MONTH} 8–14] Cortocircuito de Alto Riesgo`,
+      week3:       `✦ [Semana 3: {MONTH} 15–22] Integración Estratégica`,
+      week4:       `✦ [Semana 4: {MONTH} 23–${lastDayOfMonth}] Explosión de Riqueza`,
+      trap:        `✦ [⚠️ Trampas de Gasto: {MONTH} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
     },
     fr: {
       overview:    '✦ [🔮 Thème de Destin du Mois] ✦',
-      week1:       `✦ [Semaine 1: ${curMonthName} 1–7] Recharge de Richesse`,
-      week2:       `✦ [Semaine 2: ${curMonthName} 8–14] Disjoncteur à Haut Risque`,
-      week3:       `✦ [Semaine 3: ${curMonthName} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthName} 23–${lastDayOfMonth}] Explosion de Richesse`,
-      trap:        `✦ [⚠️ Pièges Financiers: ${curMonthName} ${currentYear}] ✦`,
+      week1:       `✦ [Semaine 1: {MONTH} 1–7] Recharge de Richesse`,
+      week2:       `✦ [Semaine 2: {MONTH} 8–14] Disjoncteur à Haut Risque`,
+      week3:       `✦ [Semaine 3: {MONTH} 15–22] Intégration Stratégique`,
+      week4:       `✦ [Semaine 4: {MONTH} 23–${lastDayOfMonth}] Explosion de Richesse`,
+      trap:        `✦ [⚠️ Pièges Financiers: {MONTH} ${currentYear}] ✦`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
     },
     th: {
       overview:    '✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦',
-      week1:       `✦ [สัปดาห์ที่ 1: ${curMonthName} 1–7] การเติมพลังความมั่งคั่ง`,
-      week2:       `✦ [สัปดาห์ที่ 2: ${curMonthName} 8–14] วงจรความเสี่ยงสูง`,
-      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthName} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthName} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
-      trap:        `✦ [⚠️ กับดักการใช้จ่าย: ${curMonthName} ${currentYear}] ✦`,
+      week1:       `✦ [สัปดาห์ที่ 1: {MONTH} 1–7] การเติมพลังความมั่งคั่ง`,
+      week2:       `✦ [สัปดาห์ที่ 2: {MONTH} 8–14] วงจรความเสี่ยงสูง`,
+      week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–22] การบูรณาการเชิงกลยุทธ์`,
+      week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
+      trap:        `✦ [⚠️ กับดักการใช้จ่าย: {MONTH} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
     vi: {
       overview:    '✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦',
-      week1:       `✦ [Tuần 1: ${curMonthName} 1–7] Nạp năng lượng Tài sản`,
-      week2:       `✦ [Tuần 2: ${curMonthName} 8–14] Mạch Ngắn Rủi ro Cao`,
-      week3:       `✦ [Tuần 3: ${curMonthName} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthName} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
-      trap:        `✦ [⚠️ Bẫy Chi Tiêu: ${curMonthName} ${currentYear}] ✦`,
+      week1:       `✦ [Tuần 1: {MONTH} 1–7] Nạp năng lượng Tài sản`,
+      week2:       `✦ [Tuần 2: {MONTH} 8–14] Mạch Ngắn Rủi ro Cao`,
+      week3:       `✦ [Tuần 3: {MONTH} 15–22] Tích hợp Chiến lược`,
+      week4:       `✦ [Tuần 4: {MONTH} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
+      trap:        `✦ [⚠️ Bẫy Chi Tiêu: {MONTH} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
     },
@@ -3548,7 +3548,7 @@ function buildMonthlyPrompt(birthDate, lang) {
 ✅ Good Output: Mentioning "Moon in Scorpio" ONLY on the exact dates specified in EPHEMERIS_DATA.
 `;
   
-  const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING;
+  const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
 
   
   return {
@@ -4180,7 +4180,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
-    const monthlySystem = (MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL;
+    const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL).replaceAll('{MONTH}', curMonthName);
 
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
@@ -4200,26 +4200,6 @@ ${monthlyDataBlock}
 
 几何关系：狮子座与水瓶座正对（180度），摩羯座与水瓶座相邻（30度），相邻星座绝不等同于对冲。
 
-ASTROGRAPHIC RULES (MUST FOLLOW — DO NOT CONTRADICT):
-• MERCURY Rx July 2026: ENTIRE MONTH in 巨蟹座 (Cancer) — Mercury is NEVER in Leo in July 2026 (do NOT write "水星在狮子座逆行"). Retrograde STARTED ~June 29 (before July) and ENDS ~July 23-24 (turns direct). So in July: 7/1–7/23 RETROGRADE, 7/24+ DIRECT, ALL MONTH in Cancer. July 18 is just MID-retrograde — NOT a start, NOT a peak. Correct phrasing: "水星在巨蟹座逆行（7月23日前后恢复顺行）". NEVER write: (1) "水星在狮子座逆行" (wrong sign). (2) "水星于7月X日正式开始逆行" (it started in late June, not July). (3) "7月18日逆行顶点/开始" (false — 7/18 is ordinary mid-retrograde). (4) "水星恢复顺行" before July 23.
-• SUN INGRESS Leo: 7月23日太阳正式进入狮子座（这是唯一一次进入，且之后整月都在狮子座）。7月1日-22日太阳在巨蟹座，7月23日-31日太阳在狮子座。绝不能在7月1-22日写"太阳在狮子座"；也绝不能在7月23日之后（尤其是第4周7月25-31日）写"太阳在巨蟹座"——太阳一旦入狮绝不回头。禁止写"7月XX日太阳进入狮子座"（XX不是23）。正确写法：7月1-22日"太阳在巨蟹座"；7月23日之后（含第4周）必须写"太阳在狮子座"。严禁写"7月XX日太阳进入巨蟹座"——太阳在7月23日之后绝不在巨蟹座；如出现"进入巨蟹座"，立即改为"进入狮子座"。
-• 禁止使用"同频共振"——一律用"协同互动"或"能量互动"。
-• 禁止用"意外之财"描述梅花相/四分相。
-• VENUS July 2026: 7/1–7/13 in 狮子座 (Leo); 7/14+ enters 处女座 (Virgo). Venus NEVER goes backwards.
-• MARS July 2026: in 双子座 (Gemini) all month.
-• SATURN July 2026: in 白羊座 (Aries) — NEVER write Saturn in 射手座/摩羯座. Saturn last in Sagittarius was 2015–2017.
-• PLUTO July 2026: in 水瓶座 (Aquarius) all month.
-• JUPITER: in Leo all July 2026 — NEVER write Jupiter in Pisces
-• MOON July 2026: on 7/31 it is in 水瓶座 (Aquarius). NEVER write "月亮在双子座" for July 31.
-• NO NEW MOON on July 1 or July 31 — real new moon is ~July 14
-• 第八宫天然守护天蝎座 — 月亮在第8宫时，其星座应与天蝎座/摩羯座/射手座相邻，绝不是双子座。
-
-⛔ [天体相位禁用令]: 严禁使用精确几何度数描述（如"形成四分相/合相/对分相"）。禁止将次六分相(30°)夸大为"突破性"。两个相邻星座(如双子座-巨蟹座)之间不存在强相位。当行星落入某宫时，只描述该宫的财富主题，不描述宫与宫之间的"相位"关系。
-
-⛔ [禁止凭空发明行星位置]: 除本规则明确列出的行星位置外,不得随意编造任何行星在特定日期的星座位置。金星7/1在狮子座,不是处女座。月亮相对于第8宫的位置应基于真实黄道位置而非主观设定。
-⛔ [宫位含义一致性]: 行星进入某星座时,其宫位必须严格引用下方[宫位铁律]注入的等宫制完整映射表(按本命上升星座计算)。不同上升星座宫位完全不同,禁止凭星座序号自行推算,禁止套用任何固定映射(如"处女座=第12宫"仅在白羊上升成立,对其他上升星座错误)。
-
-⛔ [水逆日期铁律]: 水星于6月28日左右进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"、"7月18日达到最慢点"等矛盾句式。正确："水星在巨蟹座逆行（7月24日前后恢复顺行）"。
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — rising sign: ${risingLocal} — (${curMonthName} ${currentYear}).
 ⛔ [V165-vital] 本命太阳星座 = ${natalSunEN}（生日 ${birthDate} 绝对正确,绝不是其他星座）。上升星座 = ${risingLocal}（绝非 Cancer，除非从 AstroMatrix 真实计算得出）。
