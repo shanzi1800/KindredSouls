@@ -25,11 +25,17 @@ const SacredYearlyReportBox: React.FC<{
 
 
   // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
+  // 🛠️ V359-fix: 流式期间禁用 autoScroll，内容从顶部长下来，用户清楚看到✦逐块增加
+  // 旧行为: autoScroll 到最底，内容从底部冒出来，掩盖了"边到边"视觉效果
+  // 新行为: scrollTop=0，内容从顶向下增长，完成后 scrollToTop
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || yearlyCardsReady || !hasContent) return;
-    el.scrollTop = el.scrollHeight;
+    // el.scrollTop = el.scrollHeight; // ← V359: 禁用 autoScroll，让内容从顶部长
   }, [rawStreamText, tickRef.current]);
+
+  // 🛠️ V359: 流式状态感知——isStreaming=true 表示正在生成中
+  const isStreaming = hasContent && !yearlyCardsReady;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -827,6 +833,20 @@ const SacredYearlyReportBox: React.FC<{
           ) : (
             <>
               <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
+              {/* 🛠️ V359: 流式进行中指示器——闪烁"✦ 正在生成中"让用户清楚感知边到边 */}
+              {isStreaming && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '4px 0',
+                  fontSize: '11px',
+                  color: '#D4AF37',
+                  animation: 'sacredGlow 1s ease-in-out infinite',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.5px',
+                }}>
+                  ✦ 正在生成中 · {rawStreamText.length} chars
+                </div>
+              )}
             </>
           )}
         </div>
