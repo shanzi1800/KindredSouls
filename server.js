@@ -1377,11 +1377,11 @@ function fixSectionBrackets(text, lang) {
     }
     return line;
   });
-  // V378-fix: 泰语双重括号清洗——[🔴 [🔴 สัปดาห์ที่ 2...] → [🔴 สัปดาห์ที่ 2...]
+  // V378-fix: 双重括号清洗——[emoji [emoji title...] → [emoji title...]
   // LLM 偶发生成 [emoji [emoji title...] 双重嵌套，前端 \n✦ 分割时会额外产生空/碎段
-  if (lang === 'th') {
+  if (['th','vi','es','fr'].includes(lang)) {
     // Pattern: [emoji [emoji ... → [emoji ... (递归清除双重括号)
-    const _dRe = /^(\[[🟢🟡🟠🟣🔴🔵]\s*)\s*\[/gm;
+    const _dRe = /^(\[[🟢🟡🟠🟣🔴🔵⚠️🔮💎✨⭐🚀📈📉🎯💡🔆🔅]\s*)\s*\[/gm;
     let _prev;
     do { _prev = text; text = text.replace(_dRe, '$1'); } while (text !== _prev);
     // Pattern: 孤立 ⚠ 行后紧跟 [⚠️ ... → 合并为一行 [⚠️ ...
@@ -6204,7 +6204,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           for (let n = Math.min(chunk.length, _totalWritten.length); n >= _MIN_OVERLAP; n--) {
             if (_totalWritten.endsWith(chunk.slice(0, n))) { t = chunk.slice(n); break; }
           }
-          return t.trim() ? t : '';
+          return t.length > 0 ? t : ''; // V388-fix: 不trim()——保留chunk末尾空格,防跨chunk拼接吞字
         };
         // _dedupWrite: 双重职责——更新状态 + 通过 _resDedupe 写 SSE
         // 🛠️ V364-fix: Chunk 清洗器——拦截 AI 指令摘要/思维链泄漏，如 "No English, no CoT"、Self-Correction 等
