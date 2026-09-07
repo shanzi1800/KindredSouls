@@ -6254,8 +6254,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           console.log('[wealth-stream] V370 lang=' + lang + ' -> DeepSeek-V4-Flash主路径+Gemini兜底');
           try {
             let _didStream = false; // V366-fix: 标记是否走了流式路径
+            // 🛠️ V386-fix: 月报路径 DeepSeek 主路径——流式首 chunk 前注入标准化主题标题(根治🔮消失)
+            const _monthlyThemeInject = reportType === 'monthly' ? {
+              zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦'
+            }[lang] || '✦ [🔮 本月命运主题] ✦' : '';
+            let _themeTitleInjected = !_monthlyThemeInject;
             const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, _resDedupe, (chunk) => {
               _didStream = true; // V366: 标记流式路径已走，finally 不再发完整文本
+              // 🛠️ V386-fix: 流式首 chunk 到达且尚未注入主题头时,强制注入标准化标题(DeepSeek偶发漏🔮)
+              if (!_themeTitleInjected && chunk.trim().length > 0 && chunk.trim().length < 600) {
+                _dedupWrite(_monthlyThemeInject + '\n');
+                _themeTitleInjected = true;
+              }
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               _dedupWrite(chunk); // V315-fix: SSE层防重复写入
             }, astroMatrix, realSunSign, lang, reportType, true) || '';
@@ -6278,8 +6288,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
 
       } else {
-        geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-          if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+        // 🛠️ V386-fix: 月报路径 fallback DeepSeek 路径同样注入标准化主题标题
+          const _monthlyThemeInjectFallback = reportType === 'monthly' ? {
+            zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦'
+          }[lang] || '✦ [🔮 本月命运主题] ✦' : '';
+          let _themeTitleInjectedFallback = !_monthlyThemeInjectFallback;
+          geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+            if (!_themeTitleInjectedFallback && chunk.trim().length > 0 && chunk.trim().length < 600) {
+              res.write(Buffer.from('data: ' + JSON.stringify({ text: _monthlyThemeInjectFallback + '\n' }) + '\n\n', 'utf-8'));
+              fullTextCollector += _monthlyThemeInjectFallback + '\n';
+              _themeTitleInjectedFallback = true;
+            }
+            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
             fullTextCollector += chunk;
           }, astroMatrix, realSunSign, lang, reportType, false); // V222q: 整段保留最终 sanitized
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
@@ -7140,6 +7160,13 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _W4_SUB    = { zh:'财富爆发', en:'Wealth Explosion', es:'Explosión de Riqueza', fr:'Explosion de Richesse', th:'ระเบิดความมั่งคั่ง', vi:'Bùng nổ tài lộc' };
   const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
   const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
+  // 🛠️ V386-fix: 流式首段强制注入标准化月报主题标题(DeepSeek偶发漏🔮导致金色标题消失)
+  // 根因: DeepSeek V4-Flash 听 Prompt 但偶发输出 "Chủ Đề Vận Mệnh Tháng" 不带 ✦[🔮] 格式
+  // 治本: 流式首 chunk 到达时,若 _acc 尚未含标准标题头,自动注入一行标准格式,前端解析识别→金色居中
+  let _themeInjected = false;
+  const _langThemeTitle = { zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦' }[lang] || '✦ [🔮 本月命运主题] ✦';
+  // 周标题语言映射(第1段需注入第1周标题,让前端 parseLine 能识别周次金色)
+  const _langW1Title = { zh:'✦ [🟢 第1周：财富充能] ✦', en:'✦ [🟢 Week 1: Wealth Recharge] ✦', es:'✦ [🟢 Semana 1: Recarga de Riqueza] ✦', fr:'✦ [🟢 Semaine 1: Recharge de Richesse] ✦', th:'✦ [🟢 สัปดาห์ที่ 1: การเติมพลังความมั่งคั่ง] ✦', vi:'✦ [🟢 Tuần 1: Nạp năng lượng tài lộc] ✦' }[lang] || '✦ [🟢 第1周：财富充能] ✦';
   const _T1 = _W1_TITLE[lang]||_W1_TITLE.zh; const _S1 = _W1_SUB[lang]||_W1_SUB.zh;
   const _T2 = _W2_TITLE[lang]||_W2_TITLE.zh; const _S2 = _W2_SUB[lang]||_W2_SUB.zh;
   const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
@@ -7241,6 +7268,16 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     for (const chunk of safeChunks) {
       const sseMsg = JSON.stringify({ text: chunk });
       // V367-fix: 删 direct res.write()——全走 onChunk(_resDedupe) 去重出口（原双写导致周次重复）
+      // 🛠️ V386-fix: 流式首 chunk 到达时,若尚未注入标准月报主题头,强制注入(DeepSeek偶发漏🔮导致金色标题消失)
+      // _themeInjected 在 streamGeminiSequential 函数顶部声明,seg=0 时检测,已注入则跳过
+      if (!_themeInjected && chunk.trim().length > 0 && chunk.trim().length < 500) {
+        // 首段(seg=0)第一批次 chunk 到达: 注入标准主题头 + 第1周标题
+        // 只有 chunk 长度<500 才注入(防已到中段内容时再误注)
+        if (seg === 0 && !fullText.includes('[' + String.fromCharCode(0x1F4A1)) && !fullText.includes('Tuần') && !fullText.includes('Week') && !fullText.includes('第1周')) {
+          onChunk(_langThemeTitle + '\n' + _langW1Title + '\n');
+          _themeInjected = true;
+        }
+      }
       onChunk(chunk);
       fullText += chunk;
       await new Promise(r => setTimeout(r, 30)); // 30ms 打字机节奏
