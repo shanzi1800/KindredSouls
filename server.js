@@ -3581,7 +3581,14 @@ function buildMonthlyPrompt(birthDate, lang) {
 4. CLOSED-WORLD ASSUMPTION: If a celestial event is not explicitly provided below, it DOES NOT EXIST.
 5. SUN INGRESS SINGLE-USE RULE: The Sun enters each zodiac sign ONLY ONCE per month. If the Sun enters Libra on Sept 22, write it ONLY in the week containing Sept 22. NEVER write "Sun enters Libra" in two different weeks.
 6. HOUSE CONSISTENCY RULE: When you mention a planet in a sign, the House number MUST match the HOUSE MAPPING in the planet data block. Example: if data says "Venus: Scorpio 第5宫", then EVERY mention of Venus in Scorpio MUST say 第5宫. NEVER write "Venus in Scorpio (第8宫)" or "Venus in Scorpio (第9宫)" — this is a CRITICAL ERROR.
-7. TITLE FORMAT RULE: The monthly theme title MUST be exactly: ✦ [🔮 本月命运主题] (or the equivalent in the target language). The ✦ and [🔮 ] brackets are MANDATORY. NEVER output the title without [🔮 ] brackets. NEVER output just "本月命运主题" without ✦ and [].
+7. TITLE FORMAT RULE:
+  Chinese:   ✦ [🔮 本月命运主题] ✦
+  English:  ✦ [🔮 Monthly Destiny Theme: Strategic Alignment & Wealth Expansion] ✦
+  Spanish:  ✦ [🔮 Tema de Destino Mensual] ✦
+  French:   ✦ [🔮 Thème de Destin du Mois] ✦
+  Thai:     ✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦
+  Vietnamese: ✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦
+The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the title without them.
 
 ❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
 ✅ Good Output: Mentioning "Moon in Scorpio" ONLY on the exact dates specified in EPHEMERIS_DATA.
@@ -3600,7 +3607,13 @@ function buildMonthlyPrompt(birthDate, lang) {
     system: monthlySystem,
     user: `
 
-### [EPHEMERIS_DATA — Moon Transit Calendar for ${curMonthName} ${currentYear}]
+### [EPHEMERIS_DATA — Planetary Transit Calendar for ${curMonthName} ${currentYear}]
+⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days).
+Below are the EXACT moon ingress dates for ${currentYear} — use ONLY these dates:
+Moon Ingress Dates (exact): Sept 1→Ari, Sept 3→Gem, Sept 5→Can, Sept 7→Leo, Sept 9→Vir, Sept 12→Lib, Sept 14→Sco, Sept 16→Sag, Sept 19→Cap, Sept 21→Aqu, Sept 24→Pis, Sept 26→Ari, Sept 28→Tau, Sept 30→Gem
+The Sun ingresses: Aug 10→Leo, Sept 22→Lib (write Sun entering Libra ONLY in the week containing Sept 22).
+Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
+
 ⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days). Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
 
 Generate a ${lang} monthly wealth report for birth date ${birthDate} — natal sun sign: ${natalSunZH} (${natalSunEN}) — (${curMonthName} ${currentYear}).
