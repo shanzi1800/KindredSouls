@@ -881,20 +881,6 @@ const SacredYearlyReportBox: React.FC<{
           ) : (
             <>
               <div>{renderLines(cleanAndInjectChapters(smoothText))}</div>
-              {/* 🛠️ V359: 流式进行中指示器——闪烁"✦ 正在生成中"让用户清楚感知边到边 */}
-              {isStreaming && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '4px 0',
-                  fontSize: '11px',
-                  color: '#D4AF37',
-                  animation: 'sacredGlow 1s ease-in-out infinite',
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.5px',
-                }}>
-                  ✦ 正在生成中 · {smoothText.length} chars
-                </div>
-              )}
             </>
           )}
         </div>
