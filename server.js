@@ -1330,6 +1330,8 @@ function normalizeReportTags(text, lang) {
 
 function fixSectionBrackets(text, lang) {
   if (!['es','fr','th','vi'].includes(lang)) return text;
+  // 🛠️ V392-fix: NFC Unicode 标准化（入口）——根治 NFD 分解形态导致单词内被插空格
+  text = (text || '').normalize('NFC');
   // ── V155: 跨语言 week 词纠正（fr/es 同源易混 Semaine/Semana，LLM 偶发串味）──
   if (lang === 'fr') text = text.replace(/Semana/gi, 'Semaine');
   if (lang === 'es') text = text.replace(/Semaine/gi, 'Semana');
@@ -6238,7 +6240,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           return false;
         };
         const _dedupWrite = (chunk) => {
-          const t = _getTrimmed(chunk);
+          // 🛠️ V392-fix: NFC Unicode 标准化——DeepSeek 输出偶发 NFD 分解形态(字母+声调分离)，
+          //   声调字符在 chunk 边界被切断后前端无法重组，导致 Vậ n / Mệ nh / Thá ng 类单词内被插空格
+          //   normalize('NFC') 强制合成为标准形式，确保所有后续逻辑（去重/清洗）处理统一码点
+          const _normalized = (chunk || '').normalize('NFC');
+          const t = _getTrimmed(_normalized);
           if (!t) return;
           // 🛠️ V331-fix: 二次扑灭 U+FFFD——JSON.encode/decode 跨 SSE 流边界偶尔残留，兜底清洗后写入
           // 🛠️ V364-fix: 拦截指令摘要泄漏（No English / Self-Correction / instruction summary）
