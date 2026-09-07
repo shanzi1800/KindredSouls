@@ -2690,35 +2690,113 @@ function guardWeekDateDrift(text) {
 // 🛠️ V380-fix: 升级为通用正则+扩展硬编码列表，根治所有"辅音首字母粘连"模式
 // 根因: _safeChunk 字节截断破坏多字节UTF-8字符，本函数做最后防线兜底
 // 检测: 越南语声调元音字母紧跟辅音字母，中间无空格
+// V382-fix: 全面覆盖辅音双写+元音粘连模式，根治所有越南语吞字Bug
+// 模式1: 辅音尾双写(first word ends with X, second starts with X) → 加空格
+// 模式2: 元音+元音粘连(含辅音被吸收) → 还原辅音+空格
+// 模式3: 实测案例兜底
 function fixVietnameseCorruption(text) {
   if (!text) return text;
   if (!/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷđ]/i.test(text)) return text;
   let s = text;
-  // 模式1: 声调元音紧跟辅音字母(bcdghklmnpqrstx) → 插入空格
-  s = s.replace(/([àáạảãầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷạảãáàèéẻẽẹìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷăắặẳẵưọừựửữỳýỵỷđ])\s*([bcdghklmnpqrstx])/gi, '$1 $2');
-  // 模式2: 扩展硬编码兜底——旧11组 + 本次实测发现的新粘连(23组)
-  const fixes = [
-    'bạnè bè', 'bạn bè bè',  'trìnhài', 'trình tài',   'củaải', 'của cải',
-    'nhữngỗi', 'những nỗi',   'thìầm', 'thì thầm',      'từư duy', 'từ tư duy',
-    'tíchinh', 'tích tinh',   'cón nợ', 'món nợ',       'làời', 'là lời',
-    'trìnhâm', 'trình tâm',   'bạnbè', 'bạn bè',        'cơhội', 'cơ hội',
-    'soiáng', 'soi sáng',     'mayắn', 'may mắn',       'khôngý', 'không ý',
-    'khôngýkết', 'không ý kết', 'bạnè bè', 'bạn bè bè', 'tiếpục', 'tiếp tục',
-    'tinưởng', 'tin tưởng',   'vớiăn', 'với văn',       'đểánh', 'để đánh',
-    'địnhúng', 'định đúng',  'khiý', 'khi ý',          'thứcài', 'thức tài',
-    'trìnhài', 'trình tài',  'vớinhững', 'với những',   'nhữngnỗi', 'những nỗi',
-    'từnền', 'từ nền',       'bạncó', 'bạn có',        'khôngcó', 'không có',
+  // 模式1: 辅音双写(高优先级，防止 tt/nn/ng 等先触发模式2)
+  const doubleConsonantFixes = [
+    'ắtt', 'ắt t',
+    'ếtt', 'ết t',
+    'iêtt', 'iết t',
+    'ưtt', 'ưt t',
+    'ếnn', 'ến n',
+    'iênn', 'iên n',
+    'ơnn', 'ơ n n',
+    'ưnn', 'ưn n',
+    'ênn', 'ên n',
+    'uyn', 'uy n',
+    'ônn', 'ôn n',
+    'unn', 'un n',
+    'êngg', 'êng g',
+    'angg', 'ang g',
+    'êngg', 'êng g',
+    'ongg', 'ong g',
+    'ungng', 'ung ng',
+    'ưngng', 'ưng ng',
+    'ơmng', 'ơm ng',
+    'amng', 'am ng',
+    'ênh', 'ên h',
+    'anhh', 'anh h',
+    'inhh', 'inh h',
+    'ênhh', 'ênh h',
+    'unhh', 'unh h',
+    'ơnh', 'ơ n h',
+    'innh', 'in n h',
+    'nnh', 'n nh',
+    'ngng', 'ng ng',
+    'nn', 'n n',
+    'mm', 'm m',
+    'đđ', 'đ đ',
+    'll', 'l l',
+    'tt', 't t',
+    'bb', 'b b',
+    'cc', 'c c',
+    'dd', 'd d',
+    'gg', 'g g',
+    'hh', 'h h',
+    'kk', 'k k',
+    'pp', 'p p',
+    'qq', 'q q',
+    'rr', 'r r',
+    'ss', 's s',
+    'vv', 'v v',
+    'xx', 'x x',
+    'cóơ', 'có cơ',
+    'ốơ', 'ố ơ',
+    'ổơ', 'ổ ơ',
+    'ộơ', 'ộ ơ',
+    'ếư', 'ế tư',
+    'ềư', 'ề tư',
+    'ểư', 'ể tư',
+    'ễư', 'ễ tư',
+    'ạiợ', 'ại bợ',
+    'ạiợi', 'ại bợi',
+    'ảợ', 'ả bợ',
+    'ếpư', 'ếp tư',
+    'ếpụ', 'ếp tụ',
+    'ếpự', 'ếp tự',
+    'àiả', 'ài bả',
+    'ầibả', 'ài bả',
+    'aoấ', 'ao cấp',
+    'aoấp', 'ao cấp',
+    'aoập', 'ao cập',
+    'ôộ', 'ô cộ',
+    'uu', 'u ngư',
+    'uư', 'u ngư',
+    'uuờ', 'u ngư ờ',
+    'êơ', 'ê cơ',
+    'êơi', 'ê cơi',
+    'êư', 'ê tư',
+    'êưi', 'ê tưi',
+    'ơợ', 'ơ nhợ',
+    'ăắ', 'ă kắ',
+    'uyư', 'uy ngư',
+    'uyu', 'uy u',
+    'oơ', 'o cơ',
+    'khôngý', 'không ý',
+    'tiếpục', 'tiếp tục',
+    'bàiản', 'bài bản',
+    'caoấp', 'cao cấp',
+    'đểưa', 'để đưa',
+    'lạiợi', 'lại lợi',
+    'cóơhội', 'có cơ hội',
+    'chưa cóc', 'chưa có c'
   ];
-  for (let i = 0; i < fixes.length; i += 2) {
-    const bad = fixes[i], good = fixes[i + 1];
-    let count = 0;
-    const orig = s;
+  for (let i = 0; i < doubleConsonantFixes.length; i += 2) {
+    const bad = doubleConsonantFixes[i], good = doubleConsonantFixes[i + 1];
+    let prev = s;
     s = s.split(bad).join(good);
-    while (s !== orig && count < 10) { const tmp = s; s = s.split(bad).join(good); if (s === tmp) break; count++; }
+    while (s !== prev) { prev = s; s = s.split(bad).join(good); }
   }
+  // 模式2: 声调元音+辅音粘连(补防线)
+  s = s.replace(/([àáạảãầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷạảãáàèéẻẽẹìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷăắặẳẵưọừựửữỳýỵỷđ])\s*([bcdghklmnpqrstvx])/gi, '$1 $2');
   return s.replace(/ {2,}/g, ' ').trim();
 }
-
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -3629,7 +3707,8 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 `;
   
   const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
-
+  const natalSun = astroMatrix?.meta?.sun_sign || '';
+  if (natalSun) monthlySystem += `\n\n[NATAL PROFILE V382] User's Natal Sun is in ${natalSun}. You MUST mention "${natalSun}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun}.`;
   
   return {
     system: monthlySystem,
@@ -4282,7 +4361,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 6. HOUSE CONSISTENCY: Planet House number MUST match the data block. If data says "Venus: Scorpio 第5宫", EVERY mention MUST say 第5宫. NEVER write 第8宫 or 第9宫 for the same planet.
 7. TITLE FORMAT: Monthly theme title MUST be: ✦ [🔮 本月命运主题] (with ✦ and [🔮 ] brackets). NEVER bare text without brackets.
 `).replaceAll('{MONTH}', curMonthName);
-
+        const natalSun2 = astroMatrix?.meta?.sun_sign || '';
+        if (natalSun2) monthlySystem += `\n\n[NATAL PROFILE V382] User\'s Natal Sun is in ${natalSun2}. You MUST mention "${natalSun2}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun2}.`;
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
       zh: `⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
