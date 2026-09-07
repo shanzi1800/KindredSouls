@@ -607,13 +607,22 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       const _v = _cnNums[_n] || parseInt(_n);
       if (_v > _maxWeek) _maxWeek = _v;
     }
-    // 🛡️ V222z-fix10: 双份报告检测——模型退化时完整月报吐两遍(两份都合法4周,周次检测无效)
-    // 修复 V222z-fix11: trap 内容本身含多个 ⚠️ 符号(如"⚠️ 避免借贷""⚠️ 冲动消费"),字符级检测会在 trap 内容未写完时误触发
-    // 正确做法: 用 trap 章节头 `[⚠️`(月报)/`[💸`(年报) 而非单个字符,章节头每份报告只出现1次
-    const _themeCount = (_acc.match(/本月命运主题/g) || []).length;
-    const _trapCount  = (_acc.match(/\[⚠️|\[💸/g) || []).length;
+    // 🛡️ V369-fix: 双份报告检测升级——原"本月命运主题"正则会误匹配周标题内的🔮字符(如"✦ [🔴 本月命运主题第2周"),导致合法4周月报被误判截断
+    // 正确锚点: `✦ [🔮 本月命运主题]` 含 ✦+🔮+中文字,全宇宙唯一,只有真正的月度主题章节头才会命中
+    // 🛡️ V369-fix2: trap 检测升级——原 `/\[⚠️/` 会把 trap 章节内子项的 ⚠️ 也计入(如"⚠️ 冲动消费"),合法 trap 也触发
+    // 修复: trap 章节头 `[⚠️` 必须出现在行首(中文 trap 子项 "⚠️ 冲动" 在句中无行首,不会被误计)
+    const _themeCount = (_acc.match(/\✦\s*\[🔮\s*本月命运主题/g) || []).length;
+    const _trapCount  = (_acc.match(/^\[⚠️|^\[💸/gm) || []).length;
     if (_themeCount >= 2 || _trapCount >= 2) {
       console.log('[callDeepSeek] ⚠️ V222z-fix10 检测到双份报告(命运主题×' + _themeCount + '/陷阱×' + _trapCount + '),提前终止流 (' + _acc.length + ' chars)');
+      // 🛠️ V369-fix3: _dupGuard 返回 false 前先把 unsentDelta 缓冲 flush 出去（消费陷阱等尾部内容可能还在缓冲里），再发 [DONE]，杜绝截断
+      if (unsentDelta.length > 0) {
+        try {
+          res.write(Buffer.from('data: ' + JSON.stringify({ text: unsentDelta }) + '\n\n', 'utf-8'));
+          unsentDelta = '';
+          if (typeof res.flush === 'function') res.flush();
+        } catch(e2){}
+      }
       try { clearInterval(heartbeat); } catch(e){}
       try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 先发 [DONE] 再关连接
       try { res.end(); } catch(e){}
@@ -622,6 +631,14 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     // 超长(>60k 字)或周次超过 4(即出现第5周+)才算真正的 degeneracy
     if (_acc.length > 60000 || _maxWeek > 4) {
       console.log('[callDeepSeek] ⚠️ V219b 检测到超长/越界周次,提前终止流 (' + _acc.length + ' chars, maxWeek=' + _maxWeek + ')');
+      // 🛠️ V369-fix3: 同上——尾部缓冲 flush
+      if (unsentDelta.length > 0) {
+        try {
+          res.write(Buffer.from('data: ' + JSON.stringify({ text: unsentDelta }) + '\n\n', 'utf-8'));
+          unsentDelta = '';
+          if (typeof res.flush === 'function') res.flush();
+        } catch(e2){}
+      }
       try { clearInterval(heartbeat); } catch(e){}
       try { res.write('data: [DONE]\n\n'); } catch(e){} // V220f: 先发 [DONE] 再关连接
       try { res.end(); } catch(e){}
