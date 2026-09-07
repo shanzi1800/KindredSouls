@@ -147,6 +147,8 @@ const SacredYearlyReportBox: React.FC<{
     );
 
 
+    // 🛠️ V370-fix: 清除空括号 （）/() ——LLM 按 prompt 模板生成时偶发残留空副标题
+    cleaned = cleaned.replace(/（\s*）/g, '').replace(/\(\s*\)/g, '');
     // 0.0 V103: 换行恢复清洗器（缓存数据整章压成一行，渲染前强行注入换行，修复整章全金 bug）
     // 必须在章节 ✦ 前缀注入（Step 8）之前执行；不重生成缓存，纯渲染预处理
     cleaned = cleaned.replace(/####\s*📅/g, '\n#### 📅'); // 月份标记前注入换行
@@ -383,11 +385,14 @@ const SacredYearlyReportBox: React.FC<{
     // V251-fixC: 标题方括号后若紧跟正文(无换行), 强制换行分离, 防止正文被误吞为金色heading
     // 场景: [⚠️ Trampas de Gasto: Agosto 2026] ✦La conjunción... (标题与正文同行 → 整段被当heading渲染成金色)
     // 治本: 已知标题类型的方括号后插入换行, 并吞掉分隔符 ✦(标题与正文间的章节分隔符)
-    const _HDR_KW = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周|Trampas?|消费陷阱|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|Overview|Financial\s+Shadow)/i;
+    const _HDR_KW = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周|Trampas?|消费陷阱|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|Overview|Financial\s+Shadow|命运主题|Destiny\s*Theme|Tema\s*de\s*Destino|Th[eè]me\s*de\s*Destin|Chủ\s*Đề\s*Vận\s*Mệnh|ธีมโชคชะตา)/i;
     // 场景A: 方括号后紧跟正文 → 换行(吞 ✦)
     cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => _HDR_KW.test(_b) ? _b + '\n' : _m);
     // 场景B: 方括号前紧跟正文(无换行) → 换行(标题被上一段落吞并会导致黑字)
     cleaned = cleaned.replace(/([^\n])(\[[^\]]*\])/g, (_m, _pre, _b) => _HDR_KW.test(_b) ? _pre + '\n' + _b : _m);
+    // 🛠️ V370-fix: 🔮主题标题后紧跟正文(无换行) → 强制换行，防止正文被吞入金色 heading
+    // 场景: ✦ [🔮 本月命运主题] ✦ 2026年9月... → 标题后插入换行
+    cleaned = cleaned.replace(/(\[🔮[^\]]*\])\s*✦?\s*(?=[^\n])/g, '$1\n');
 
     // 🛡️ V283-fix: 去重——🔮主题/⚠️陷阱/各周次只留首段，删后续重复
     const _parts = cleaned.split(/(?=✦\s*\[)/);
