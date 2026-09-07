@@ -1377,6 +1377,17 @@ function fixSectionBrackets(text, lang) {
     }
     return line;
   });
+  // V378-fix: 泰语双重括号清洗——[🔴 [🔴 สัปดาห์ที่ 2...] → [🔴 สัปดาห์ที่ 2...]
+  // LLM 偶发生成 [emoji [emoji title...] 双重嵌套，前端 \n✦ 分割时会额外产生空/碎段
+  if (lang === 'th') {
+    // Pattern: [emoji [emoji ... → [emoji ... (递归清除双重括号)
+    const _dRe = /^(\[[🟢🟡🟠🟣🔴🔵]\s*)\s*\[/gm;
+    let _prev;
+    do { _prev = text; text = text.replace(_dRe, '$1'); } while (text !== _prev);
+    // Pattern: 孤立 ⚠ 行后紧跟 [⚠️ ... → 合并为一行 [⚠️ ...
+    text = text.replace(/^⚠\s*$(?:\n)(\[⚠️[^\n\[]+)/gm, '$1');
+  }
+
   return fixed.join('\n');
 }
 
@@ -3557,7 +3568,7 @@ function buildMonthlyPrompt(birthDate, lang) {
     en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"',
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.\n\n⛔ RÈGLE SOLEIL NATAL vs TRANSIT: Le Soleil mentionné dans ce rapport mensuel est le Soleil de TRANSIT du mois courant, PAS votre Soleil natal. N\'écrivez JAMAIS "votre Soleil en [signe]" ni "votre Soleil en Maison X" pour décrire le Soleil de transit (cela ferait croire que votre Soleil natal est ce signe — or votre Soleil natal est une donnée permanente fixée par votre date de naissance). Utilisez toujours "Le Soleil en transit dans [signe]" ou "Le Soleil du mois dans [signe]".',
-    th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน',
+    th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน\n\n\n\n[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:\n\n- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)\n\n- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)\n\n- เก็บอม → เก็บออม (เก็บออม = saving)\n\n- ดึงดู → ดึงดูด (ดึงดูด = attract)\n\n- พิจารณ → พิจารณา (พิจารณา = consider)\n\n- ราคแพง → ราคาแพง (ราคาแพง = expensive)\n\n- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)\n\n- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)\n\n- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)\n\n- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด',
     vi: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.',
   };
   const instruction = langInstructions[lang] || langInstructions.en;
@@ -3567,7 +3578,18 @@ function buildMonthlyPrompt(birthDate, lang) {
     en: `You are a wealth astrologer and Jungian psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
     es: `Eres un astrólogo de riqueza y psicólogo junguiano generando un informe financiero mensual.${instruction}\n\nCRÍTICO: Debes escribir al menos 1200 palabras.`,
     fr: `Vous êtes un astrologue de la richesse et psychologue junguien générant un rapport financier mensuel.${instruction}\n\nCRITIQUE: Vous devez écrire au moins 1200 mots.`,
-    th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสำคัญ: คุณต้องเขียนอย่างน้อย 1200 คำ`,
+    th: `คุณคือโหราจารย์ด้านความมั่งคั่งและนักจิตวิทยาจุงเกียน สร้างรายงานการเงินรายเดือน${instruction}\n\nสำคัญ: คุณต้องเขียนอย่างน้อย 1200 คำ\n\n
+[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:
+- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)
+- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)
+- เก็บอม → เก็บออม (เก็บออม = saving)
+- ดึงดู → ดึงดูด (ดึงดูด = attract)
+- พิจารณ → พิจารณา (พิจารณา = consider)
+- ราคแพง → ราคาแพง (ราคาแพง = expensive)
+- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)
+- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)
+- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)
+- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด`,
     vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.`,
   };
 
