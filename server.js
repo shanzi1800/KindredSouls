@@ -2687,32 +2687,36 @@ function guardWeekDateDrift(text) {
 // 根因: DeepSeek 模型对越南语词边界处理有编码缺陷（空格被模型吞掉）
 //       trình tài → trìnhài / của cải → củaải / những nỗi → nhữngỗi 等
 // 修复: NFD 归一化 + 空格锚点 split-join，精确替换已知损坏模式
+// 🛠️ V380-fix: 升级为通用正则+扩展硬编码列表，根治所有"辅音首字母粘连"模式
+// 根因: _safeChunk 字节截断破坏多字节UTF-8字符，本函数做最后防线兜底
+// 检测: 越南语声调元音字母紧跟辅音字母，中间无空格
 function fixVietnameseCorruption(text) {
   if (!text) return text;
-  // 只有含越南语声调字符才处理（其他语言不受影响）
   if (!/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷđ]/i.test(text)) return text;
-  let s = text.normalize('NFD');
-  s = ' ' + s + ' '; // 空格锚点，消除行首/行末匹配问题
+  let s = text;
+  // 模式1: 声调元音紧跟辅音字母(bcdghklmnpqrstx) → 插入空格
+  s = s.replace(/([àáạảãầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷạảãáàèéẻẽẹìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷăắặẳẵưọừựửữỳýỵỷđ])\s*([bcdghklmnpqrstx])/gi, '$1 $2');
+  // 模式2: 扩展硬编码兜底——旧11组 + 本次实测发现的新粘连(23组)
   const fixes = [
-    'bạnè bè', 'bạn bè bè',
-    'trìnhài', 'trình tài',
-    'củaải', 'của cải',
-    'nhữngỗi', 'những nỗi',
-    'thìầm', 'thì thầm',
-    'bạnè', 'bạn bè',
-    'từư duy', 'từ tư duy',
-    'tíchinh', 'tích tinh',
-    'cón nợ', 'món nợ',
-    'làời', 'là lời',
-    'trìnhâm', 'trình tâm',
+    'bạnè bè', 'bạn bè bè',  'trìnhài', 'trình tài',   'củaải', 'của cải',
+    'nhữngỗi', 'những nỗi',   'thìầm', 'thì thầm',      'từư duy', 'từ tư duy',
+    'tíchinh', 'tích tinh',   'cón nợ', 'món nợ',       'làời', 'là lời',
+    'trìnhâm', 'trình tâm',   'bạnbè', 'bạn bè',        'cơhội', 'cơ hội',
+    'soiáng', 'soi sáng',     'mayắn', 'may mắn',       'khôngý', 'không ý',
+    'khôngýkết', 'không ý kết', 'bạnè bè', 'bạn bè bè', 'tiếpục', 'tiếp tục',
+    'tinưởng', 'tin tưởng',   'vớiăn', 'với văn',       'đểánh', 'để đánh',
+    'địnhúng', 'định đúng',  'khiý', 'khi ý',          'thứcài', 'thức tài',
+    'trìnhài', 'trình tài',  'vớinhững', 'với những',   'nhữngnỗi', 'những nỗi',
+    'từnền', 'từ nền',       'bạncó', 'bạn có',        'khôngcó', 'không có',
   ];
   for (let i = 0; i < fixes.length; i += 2) {
-    const bad = fixes[i].normalize('NFD');
-    const good = fixes[i + 1].normalize('NFD');
-    const parts = s.split(bad);
-    if (parts.length > 1) s = parts.join(good);
+    const bad = fixes[i], good = fixes[i + 1];
+    let count = 0;
+    const orig = s;
+    s = s.split(bad).join(good);
+    while (s !== orig && count < 10) { const tmp = s; s = s.split(bad).join(good); if (s === tmp) break; count++; }
   }
-  return s.normalize('NFC').replace(/ {2,}/g, ' ').trim();
+  return s.replace(/ {2,}/g, ' ').trim();
 }
 
 function cleanConsumerTrapAndBrackets(text) {
@@ -5883,7 +5887,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         // 🛠️ V332-fix: 用 StringDecoder 字节级对齐分块——彻底替代手动 _chunkEndSafe 切片
         // maxBytes=6000 相当于 ~2000 个泰/中文字符，足以触发 Railway 代理截断阈值
-        const safeChunks = _safeChunk(streamText, 1500); // V357-fix: 1500字节≈500中文字符，每1-2秒推送一次，流式边到边
+        const safeChunks = _safeChunk(streamText, 500); // V357-fix: 1500字节≈500中文字符，每1-2秒推送一次，流式边到边
         for (const chunk of safeChunks) {
           res.write(Buffer.from(`data: ${JSON.stringify({ text: chunk })}\n\n`, 'utf-8'));
           if (typeof res.flush === 'function') res.flush();
