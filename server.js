@@ -692,6 +692,16 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           const txt = parsed.choices?.[0]?.delta?.content || '';
           if (!txt) continue;
           chunkCount++;
+          // 🛠️ V374-fix: 首个 chunk 必须以 ✦ [🔮 开头——DeepSeek 偶发省略 ✦ 或 [🔮] 括号
+          // 若首 chunk 不以 ✦ 开头，补全前缀；若以 ✦ 开头但缺 [🔮，补 [🔮
+          if (chunkCount === 1) {
+            if (!clean.startsWith('✦')) {
+              clean = '✦ [🔮 ' + clean;
+            } else if (!clean.startsWith('✦ [🔮')) {
+              // 有 ✦ 但缺 [🔮，在 ✦ 后插入
+              clean = clean.replace(/^✦\s*/, '✦ [🔮 ');
+            }
+          }
           // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
           let clean = txt
             .replace(/\\n/g, '\n')
@@ -3569,9 +3579,18 @@ function buildMonthlyPrompt(birthDate, lang) {
 2. MOON TRANSIT SINGLE-USE RULE: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days per sign). NEVER repeat "Moon in [Sign]" across multiple weeks.
 3. STRICT DATES ONLY: Only mention planetary transits for the EXACT dates listed in EPHEMERIS_DATA. If a date is not in the JSON, it DOES NOT EXIST.
 4. CLOSED-WORLD ASSUMPTION: If a celestial event is not explicitly provided below, it DOES NOT EXIST.
+5. SUN INGRESS SINGLE-USE RULE: The Sun enters each zodiac sign ONLY ONCE per month. If the Sun enters Libra on Sept 22, write it ONLY in the week containing Sept 22. NEVER write "Sun enters Libra" in two different weeks.
+6. HOUSE CONSISTENCY RULE: When you mention a planet in a sign, the House number MUST match the HOUSE MAPPING in the planet data block. Example: if data says "Venus: Scorpio 第5宫", then EVERY mention of Venus in Scorpio MUST say 第5宫. NEVER write "Venus in Scorpio (第8宫)" or "Venus in Scorpio (第9宫)" — this is a CRITICAL ERROR.
+7. TITLE FORMAT RULE: The monthly theme title MUST be exactly: ✦ [🔮 本月命运主题] (or the equivalent in the target language). The ✦ and [🔮 ] brackets are MANDATORY. NEVER output the title without [🔮 ] brackets. NEVER output just "本月命运主题" without ✦ and [].
 
 ❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
 ✅ Good Output: Mentioning "Moon in Scorpio" ONLY on the exact dates specified in EPHEMERIS_DATA.
+
+❌ Bad Output: Writing "Sun enters Libra" in Week 3 AND Week 4.
+✅ Good Output: Writing "Sun enters Libra" ONLY in the week containing the actual ingress date.
+
+❌ Bad Output: Writing "Venus in Scorpio (第8宫)" when data says 第5宫.
+✅ Good Output: Writing "Venus in Scorpio (第5宫)" — matching the data exactly.
 `;
   
   const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
@@ -4214,7 +4233,12 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
-    const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL).replaceAll('{MONTH}', curMonthName);
+    const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + `
+### [STRICT GROUNDING V374 — SUN/HOUSE/TITLE RULES]
+5. SUN INGRESS SINGLE-USE: The Sun enters each zodiac sign ONLY ONCE per month. Write it ONLY in the week containing the actual ingress date. NEVER in two weeks.
+6. HOUSE CONSISTENCY: Planet House number MUST match the data block. If data says "Venus: Scorpio 第5宫", EVERY mention MUST say 第5宫. NEVER write 第8宫 or 第9宫 for the same planet.
+7. TITLE FORMAT: Monthly theme title MUST be: ✦ [🔮 本月命运主题] (with ✦ and [🔮 ] brackets). NEVER bare text without brackets.
+`).replaceAll('{MONTH}', curMonthName);
 
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
