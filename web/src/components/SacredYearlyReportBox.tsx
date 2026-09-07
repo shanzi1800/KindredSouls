@@ -51,11 +51,14 @@ const SacredYearlyReportBox: React.FC<{
     return () => clearInterval(timer);
   }, [rawStreamText]);
 
-  // 🛠️ V370-fix4: 平滑文本变化时触底滚动（替代原 rawStreamText 驱动）
+  // 🛠️ V370-fix5: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发(原直接 scrollTop=scrollHeight 读到上一帧高度)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || yearlyCardsReady || !hasContent) return;
-    el.scrollTop = el.scrollHeight;
+    const rafId = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [smoothText]);
 
   // V366-fix 兼容: 流式完成时强制平滑文本追上完整文本
@@ -756,8 +759,8 @@ const SacredYearlyReportBox: React.FC<{
       }
       
       return (
-        <div key={idx} style={{
-          color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px'
+        <div key={idx} data-line-type="text" style={{
+          color: 'rgb(240,240,245)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px'
         }}>
           {content}
         </div>
