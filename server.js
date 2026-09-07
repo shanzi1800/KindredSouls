@@ -3706,7 +3706,7 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 ✅ Good Output: Writing "Venus in Scorpio (第5宫)" — matching the data exactly.
 `;
   
-  const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
+  let monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
   const natalSun = astroMatrix?.meta?.sun_sign || '';
   if (natalSun) monthlySystem += `\n\n[NATAL PROFILE V382] User's Natal Sun is in ${natalSun}. You MUST mention "${natalSun}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun}.`;
   
@@ -4355,7 +4355,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian hàng đầu.${instruction}`,
     };
 
-    const monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + `
+    let monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + `
 ### [STRICT GROUNDING V374 — SUN/HOUSE/TITLE RULES]
 5. SUN INGRESS SINGLE-USE: The Sun enters each zodiac sign ONLY ONCE per month. Write it ONLY in the week containing the actual ingress date. NEVER in two weeks.
 6. HOUSE CONSISTENCY: Planet House number MUST match the data block. If data says "Venus: Scorpio 第5宫", EVERY mention MUST say 第5宫. NEVER write 第8宫 or 第9宫 for the same planet.
