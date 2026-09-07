@@ -386,13 +386,16 @@ const SacredYearlyReportBox: React.FC<{
     // 场景: [⚠️ Trampas de Gasto: Agosto 2026] ✦La conjunción... (标题与正文同行 → 整段被当heading渲染成金色)
     // 治本: 已知标题类型的方括号后插入换行, 并吞掉分隔符 ✦(标题与正文间的章节分隔符)
     const _HDR_KW = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周|Trampas?|消费陷阱|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|Overview|Financial\s+Shadow|命运主题|Destiny\s*Theme|Tema\s*de\s*Destino|Th[eè]me\s*de\s*Destin|Chủ\s*Đề\s*Vận\s*Mệnh|ธีมโชคชะตา)/i;
-    // 场景A: 方括号后紧跟正文 → 换行(吞 ✦)
-    cleaned = cleaned.replace(/(\[[^\]]*\])\s*✦?\s*(?=[^\n])/g, (_m, _b) => _HDR_KW.test(_b) ? _b + '\n' : _m);
+    // 场景A: 方括号后紧跟正文(同行) → 换行(吞 ✦)；V370-fix2: \s*→[ \t]* 不跨行吃换行(原 \s* 吃 \n\n 导致 ✦ 前缀与标题分离成空行)
+    // V370-fix3: ✦ [xxx] ✦ → [xxx]（删除首尾 ✦ 装饰符，让标题纯走方括号 heading 分支）
+    cleaned = cleaned.replace(/^✦\s*\[([🔮🟢🔴🔵⚠️][^\]]*)\]\s*✦\s*$/gm, '[\$1]');
+    cleaned = cleaned.replace(/(\[[^\]]*\])[ \t]*✦?[ \t]*(?=[^\n])/g, (_m, _b) => _HDR_KW.test(_b) ? _b + '\n' : _m);
     // 场景B: 方括号前紧跟正文(无换行) → 换行(标题被上一段落吞并会导致黑字)
     cleaned = cleaned.replace(/([^\n])(\[[^\]]*\])/g, (_m, _pre, _b) => _HDR_KW.test(_b) ? _pre + '\n' + _b : _m);
     // 🛠️ V370-fix: 🔮主题标题后紧跟正文(无换行) → 强制换行，防止正文被吞入金色 heading
-    // 场景: ✦ [🔮 本月命运主题] ✦ 2026年9月... → 标题后插入换行
-    cleaned = cleaned.replace(/(\[🔮[^\]]*\])\s*✦?\s*(?=[^\n])/g, '$1\n');
+    // 场景: ✦ [🔮 本月命运主题] ✦ 2026年9月... → 标题后插入换行（保留 ✦ 前缀和后缀）
+    // V370-fix2: 不吃 ✦，只插入换行；原正则吃掉了 ✦ 导致标题裸露 [🔮...] 不走 heading
+    cleaned = cleaned.replace(/(\[🔮[^\]]*\])\s*(?=[^\n✦\s])/g, '$1\n');
 
     // 🛡️ V283-fix: 去重——🔮主题/⚠️陷阱/各周次只留首段，删后续重复
     const _parts = cleaned.split(/(?=✦\s*\[)/);
@@ -569,10 +572,10 @@ const SacredYearlyReportBox: React.FC<{
       const bracketContent = t.slice(1, t.indexOf(']'));
       const isWeekEmoji = /^\s*[🟢🔴🔵]+\s*$/.test(bracketContent);
       const isTrapEmoji = /^\s*[⚠️✦]+\s*$/.test(bracketContent);
-      const isThemeEmoji = /^\s*[🔮✨]+\s*$/.test(bracketContent);
+      const isThemeEmoji = /^\s*[🔮✨]+\s*/.test(bracketContent);
       const isWeekText = /(?:Semana|Week|Semaine|Tuần|สัปดาห์ที่|第\s*\d+\s*周)/i.test(t);
       const isTrapText = /(?:Trampas?|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|消费陷阱)/i.test(t);
-      const isThemeText = /(?:Tema de Destino|Th[eè]me de Destin|Theme of Destiny|Destiny Theme|月度主题|月运主题|ธีม|Chủ Đề)/i.test(t);
+      const isThemeText = /(?:Tema de Destino|Th[eè]me de Destin|Theme of Destiny|Destiny Theme|月度主题|月运主题|命运主题|本月命运|ธีม|Chủ Đề)/i.test(t);
       if (isWeekEmoji || isTrapEmoji || isThemeEmoji || isWeekText || isTrapText || isThemeText) {
         const emoji = bracketContent.match(/[🟢🔴🔵⚠️🔮✨✦]/)?.[0] || '';
         const inner = t.slice(t.indexOf(']') + 1).trim();
