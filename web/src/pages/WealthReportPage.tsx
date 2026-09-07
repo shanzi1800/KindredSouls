@@ -413,9 +413,9 @@ const cleanRawReportText = (text: string): string => {
   // 保留装饰emoji到末尾统一处理
   c = c.replace(/📅|📊|📕|📌|💎|🔥|✨|🎯|📈|💰/g, '');
   // V99k: 清除乱码方块(Emoji 变体选择符、零宽字符、未渲染 Unicode)
-  c = c.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFF0-\uFFFF]/g, '');
+  c = c.replace(/[\u200B-\u200D\uFEFF\uFFF0-\uFFFF]/g, ''); // V383-fix: 保留 U+FE0F，emoji🔮显示必需
   c = c.replace(/<fe0f>/gi, '');
-  c = c.replace(/\uFE0F/g, '');
+  // V383-fix: 移除 standalone \uFE0F strip(后端 cleanGarbageCharacters 已修)
 
   // 5. 斩杀连续重复的年月日
   c = c.replace(/(\d{4}年\d{1,2}月)\1+/g, '$1');

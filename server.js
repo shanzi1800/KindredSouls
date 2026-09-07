@@ -1221,7 +1221,7 @@ function forceSpaceHouseSanitizer(text){
 }
 
 // V116-Bug4-fix
-function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFE0F\uFEFF]/g,'');}
+function cleanGarbageCharacters(text){if(!text)return text;return text.replace(/\uFFFD/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g,'').replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'');}
 
 
 // ── V152: 标题方括号强制补全（es/fr/th/vi 模板输出丢失 []）──
@@ -1416,7 +1416,7 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
       const _dbgLines = text.split('\n').filter(l => /周/.test(l) && /第[一二三四1-4]/.test(l));
       console.log('[STEP0-DEBUG] lang=zh weekLines=', JSON.stringify(_dbgLines.slice(0,4)));
     }
-    const _stripEmoji = (s) => s.replace(/[✦🔮⚠️\*]/g, '').replace(/\uFE0F/g, '').trim();
+    // V383: 删除未使用的 _stripEmoji(原会剥🔮)，备用注释
     text = text.split('\n').map(ln => {
     const t = ln.trim();
     // ── 先处理特殊内容，再判断括号 ──
@@ -1563,7 +1563,7 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
     .replace(/[,、]?\s*甚至前世\b/g, '')
     .replace(/[,、]?\s*来自前世\b/g, '');
   // U+200B → 零宽空格,U+FEFF → BOM,U+200D → 零宽连字
-  text = text.replace(/[\u200B-\u200D\uFE0F\uFEFF\uFFFE\uFFF0-\uFFFF]/g, '');
+  text = text.replace(/[\u200B-\u200D\uFEFF\uFFFE\uFFF0-\uFFFF]/g, ''); // V383-fix: 保留 U+FE0F (Variation Selector-16)，emoji🔮显示必需
 
   // ── V97aq: 12个月太阳星座全面校订(防止AI把本命太阳写成流年太阳)──
   // 流年太阳按公历月份固定:7月巨蟹、8月狮子...6月双子
@@ -2536,7 +2536,7 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
   function _cleanEmoji(str) {
     let s = str;
     for(const e of _BAD_EMOJI) s = s.split(e).join('');
-    s = s.replace(/\uFE0F/g, '');
+    // V383-fix: 移除 _cleanEmoji 的 standalone \uFE0F strip(影响非坏emoji如🔮)
     s = s.replace(/⚠(?!️)/g, '⚠️');
     return s;
   }
