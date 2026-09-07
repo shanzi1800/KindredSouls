@@ -4359,7 +4359,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 ### [STRICT GROUNDING V374 — SUN/HOUSE/TITLE RULES]
 5. SUN INGRESS SINGLE-USE: The Sun enters each zodiac sign ONLY ONCE per month. Write it ONLY in the week containing the actual ingress date. NEVER in two weeks.
 6. HOUSE CONSISTENCY: Planet House number MUST match the data block. If data says "Venus: Scorpio 第5宫", EVERY mention MUST say 第5宫. NEVER write 第8宫 or 第9宫 for the same planet.
-7. TITLE FORMAT: Monthly theme title MUST be: ✦ [🔮 本月命运主题] (with ✦ and [🔮 ] brackets). NEVER bare text without brackets.
+7. TITLE FORMAT: Monthly theme title MUST use your own language. Chinese=✦ [🔮 本月命运主题] ✦, English=✦ [🔮 Monthly Destiny Theme] ✦, Spanish=✦ [🔮 Tema de Destino Mensual] ✦, French=✦ [🔮 Thème de Destin du Mois] ✦, Thai=✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦, Vietnamese=✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦. The 🔮 crystal ball icon is MANDATORY. (with ✦ and [🔮 ] brackets). NEVER bare text without brackets.
 `).replaceAll('{MONTH}', curMonthName);
         const natalSun2 = astroMatrix?.meta?.sun_sign || '';
         if (natalSun2) monthlySystem += `\n\n[NATAL PROFILE V382] User\'s Natal Sun is in ${natalSun2}. You MUST mention "${natalSun2}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun2}.`;
