@@ -654,7 +654,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.0 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
+      body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.0 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -3255,7 +3255,8 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
           'Authorization': `Bearer ${deepseekKey}`,
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-v4-flash',
+          thinking: { type: 'disabled' },
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
@@ -5509,7 +5510,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-          body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
+          body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json();
@@ -6040,7 +6041,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'AI service unavailable (no key)' })}\n\n`, 'utf-8'));
       return res.end();
     }
-    // 🛡️ V219e: 主通道 DeepSeek(deepseek-chat 稳定版,避开退化中的 v4-flash),Gemini 兜底(带30s timeout)
+    // 🛡️ V370: 主通道 DeepSeek-V4-Flash(non-thinking,极速流式),Gemini 兜底(带30s timeout)
     try {
       // 🛡️ V219g: monthly 分段生成(DeepSeek 长生成退化,拆段各写1部分拼接)
       // 🛠️ V222q: 从4段扩到6段——补 overview(本月命运主题)与消费陷阱,根治两段稳定缺失
@@ -6100,31 +6101,30 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           writableEnded: false,
           end: (...args) => { _resDedupe.writableEnded = true; return res.end(...args); }
         };
-        // 🛠️ V320-fix: 全语言统一走 Gemini 流式主路径（恢复 V303 架构），DeepSeek 仅兜底
-        // 废除 V281 语言分流(zh/en→DeepSeek 6段)——V286/V303 已定案全 Gemini 主路径省 DeepSeek token
-        // V315-fix2 误带回 _wf 死代码 + _DEEPSEEK_LANGS，现彻底清除，zh/en 与 es/fr/th/vi 同路径
-          // 🟢 Gemini 流式分段（全语言 zh/en/es/fr/th/vi），失败自动降级 DeepSeek
-          console.log('[wealth-stream] V320 lang=' + lang + ' -> Gemini流式主路径+DeepSeek兜底');
+        // 🛠️ V370: 主路径翻转为 DeepSeek-V4-Flash(non-thinking,极速流式),Gemini 3.5 Flash 兜底
+        // V320 架构(Gemini主+DeepSeek兜底)已废除——DeepSeek V4-Flash 首字更快、成本更低、多语言够用
+          // 🟢 DeepSeek-V4-Flash 流式（全语言 zh/en/es/fr/th/vi），失败自动降级 Gemini
+          console.log('[wealth-stream] V370 lang=' + lang + ' -> DeepSeek-V4-Flash主路径+Gemini兜底');
           try {
             let _didStream = false; // V366-fix: 标记是否走了流式路径
-            const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
+            const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, _resDedupe, (chunk) => {
               _didStream = true; // V366: 标记流式路径已走，finally 不再发完整文本
               if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
               _dedupWrite(chunk); // V315-fix: SSE层防重复写入
-            }, lang, prompt.system, prompt.user, astroMatrix);
-            geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
-          } catch(gemErr) {
-            console.error('[wealth-stream] V320 Gemini失败，降级DeepSeek: ' + gemErr.message);
+            }, astroMatrix, realSunSign, lang, reportType, true) || '';
+            // V321-fix: skipFinal=true——callDeepSeekStream 内部不再发 sanitized,
+            // sanitized 统一由主端点发一次,根治降级造成的 sanitized 双发叠加
+            geminiFullText = _dsFull || fullTextCollector;
+          } catch(dsErr) {
+            console.error('[wealth-stream] V370 DeepSeek失败，降级Gemini: ' + dsErr.message);
             try {
-              const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
+              const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
                 _dedupWrite(chunk); // V315-fix: SSE层防重复写入
-              }, astroMatrix, realSunSign, lang, reportType, true) || '';
-              // V321-fix: skipFinal=true——callDeepSeekStream 内部不再发 sanitized(945行 V222q 逻辑),
-              // sanitized 统一由主端点 V316-fix3 发一次,根治 Gemini失败→DeepSeek降级 造成的 sanitized 双发叠加
-              geminiFullText = _dsFull || fullTextCollector;
-            } catch(dsErr2) {
-              console.error('[wealth-stream] V320 DeepSeek降级也失败: ' + dsErr2.message);
+              }, lang, prompt.system, prompt.user, astroMatrix);
+              geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
+            } catch(gemErr2) {
+              console.error('[wealth-stream] V370 Gemini降级也失败: ' + gemErr2.message);
               geminiFullText = fullTextCollector;
             }
           }
@@ -6917,7 +6917,8 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
     body: new TextEncoder().encode(JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 10000,
       temperature: 0.7,
@@ -7258,7 +7259,7 @@ app.get('/api/compare-llm', async (req, res) => {
       const r = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${cleanKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+        body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
       });
       const d = await r.json();
       results.deepseek = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
