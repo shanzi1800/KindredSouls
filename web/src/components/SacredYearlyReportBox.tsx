@@ -3,7 +3,7 @@
 // 🔒 参数封仓 V79 — 本文件所有样式参数已锁定，禁止修改
 // 详见: ~/qclaw/workspace/KindredSouls_SacredYearlyReportBox_参数封仓手册.md
 // ═══════════════════════════════════════════════════════════
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 const SacredYearlyReportBox: React.FC<{
   rawStreamText: string;
@@ -17,47 +17,74 @@ const SacredYearlyReportBox: React.FC<{
   const tickRef = useRef(0);
   // V366-fix: 用 ref 跟踪内容状态，sync 判断（无 useState 延迟），骨架立即消失
   const contentArrived = useRef(false);
+  // 🛠️ V370-fix4: 平滑打字机——把 80 字块状 chunk 转为逐字输出
+  const [smoothText, setSmoothText] = useState('');
+  const smoothIdxRef = useRef(0);
+  const targetTextRef = useRef('');
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
   if (hasContent && !contentArrived.current) contentArrived.current = true;
   const showSkeleton = contentArrived.current === false;
 
+  // 🛠️ V370-fix4: 平滑打字机核心逻辑
+  // 每 20ms 推进 2-3 个字符，把 80 字 chunk 视觉上变成逐字流
+  useEffect(() => {
+    if (!rawStreamText) return;
+    targetTextRef.current = rawStreamText;
+    // 如果新文本比当前平滑文本短（重新生成），重置
+    if (rawStreamText.length < smoothIdxRef.current) {
+      smoothIdxRef.current = 0;
+      setSmoothText('');
+    }
+    const timer = setInterval(() => {
+      const target = targetTextRef.current;
+      const idx = smoothIdxRef.current;
+      if (idx < target.length) {
+        // 每次推进 3 个字符（中文约 60ms/字 = 50字/秒，视觉上是打字机效果）
+        const advance = Math.min(3, target.length - idx);
+        smoothIdxRef.current = idx + advance;
+        setSmoothText(target.slice(0, idx + advance));
+      } else {
+        // 已追上目标文本，清除定时器
+        clearInterval(timer);
+      }
+    }, 20);
+    return () => clearInterval(timer);
+  }, [rawStreamText]);
 
-  // 🛠️ V78 追光器：每次token追加自动滚到底部，丝滑不卡顿
-  // 🛠️ V365-fix: 恢复 autoScroll——内容从顶部向下增长，滚动跟随底部，用户持续看到新增内容
-  // V359 禁用滚动导致内容在屏幕外堆积，视觉上"一次性弹出"，恢复 autoScroll 根治
+  // 🛠️ V370-fix4: 平滑文本变化时触底滚动（替代原 rawStreamText 驱动）
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || yearlyCardsReady || !hasContent) return;
-    el.scrollTop = el.scrollHeight; // ← 流式期间持续跟随底部
-  }, [rawStreamText, tickRef.current]);
+    el.scrollTop = el.scrollHeight;
+  }, [smoothText]);
 
-  // 🛠️ V359: 流式状态感知——isStreaming=true 表示正在生成中
-  const isStreaming = hasContent && !yearlyCardsReady;
+  // V366-fix 兼容: 流式完成时强制平滑文本追上完整文本
+  useEffect(() => {
+    if (yearlyCardsReady && rawStreamText) {
+      smoothIdxRef.current = rawStreamText.length;
+      setSmoothText(rawStreamText);
+    }
+  }, [yearlyCardsReady]);
+
+  // 🛠️ V359: 流式状态感知——平滑文本落后于原始文本时表示正在生成
+  const isStreaming = hasContent && !yearlyCardsReady && smoothText.length < (rawStreamText?.length || 0);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (yearlyCardsReady) {
       autoScrollRef.current = false;
-      // 🛡️ V257-fix: 先记录当前 scrollTop (通常很大, 因流式阶段 autoScroll 一直在底), 否则 smooth scroll 递减时 handleScroll 会把首帧误判为"用户向下滚"秒关气泡
       el.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [yearlyCardsReady]);
 
-  useEffect(() => {
-    if (!yearlyCardsReady && hasContent) {
-      const iv = setInterval(() => { tickRef.current += 1; }, 300);
-      return () => clearInterval(iv);
-    }
-  }, [yearlyCardsReady, hasContent]);
-
-  const handleScroll = () => {
+  // 🛠️ V370-fix4: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    // 流式阶段: 仅追踪 autoScroll
+    if (!el || yearlyCardsReady) return;
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
-  };
+  }, [yearlyCardsReady]);
 
   // 🛠️ V64: 军师天启版洗涤滤网 - 6大穿帮矫正
   const cleanAndInjectChapters = (text: string): string => {
@@ -837,7 +864,7 @@ const SacredYearlyReportBox: React.FC<{
             </div>
           ) : (
             <>
-              <div>{renderLines(cleanAndInjectChapters(rawStreamText))}</div>
+              <div>{renderLines(cleanAndInjectChapters(smoothText))}</div>
               {/* 🛠️ V359: 流式进行中指示器——闪烁"✦ 正在生成中"让用户清楚感知边到边 */}
               {isStreaming && (
                 <div style={{
@@ -849,7 +876,7 @@ const SacredYearlyReportBox: React.FC<{
                   fontFamily: 'monospace',
                   letterSpacing: '0.5px',
                 }}>
-                  ✦ 正在生成中 · {rawStreamText.length} chars
+                  ✦ 正在生成中 · {smoothText.length} chars
                 </div>
               )}
             </>
