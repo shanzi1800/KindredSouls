@@ -51,16 +51,7 @@ const SacredYearlyReportBox: React.FC<{
     return () => clearInterval(timer);
   }, [rawStreamText]);
 
-  // 🛠️ V370-fix5: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发(原直接 scrollTop=scrollHeight 读到上一帧高度)
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || yearlyCardsReady || !hasContent) return;
-    const rafId = requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, [smoothText]);
-
+  // 🛠️ V371-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
   // V366-fix 兼容: 流式完成时强制平滑文本追上完整文本
   useEffect(() => {
     if (yearlyCardsReady && rawStreamText) {
@@ -69,25 +60,44 @@ const SacredYearlyReportBox: React.FC<{
     }
   }, [yearlyCardsReady]);
 
-  // 🛠️ V359: 流式状态感知——平滑文本落后于原始文本时表示正在生成
-  const isStreaming = hasContent && !yearlyCardsReady && smoothText.length < (rawStreamText?.length || 0);
+  // 🛠️ V371-fix: 流式状态感知——只看 smoothText 是否还在追赶 rawStreamText
+  // 原逻辑依赖 yearlyCardsReady，但 monthlyCardsReady 在首个 chunk 就置 true，导致 isStreaming 永远 false
+  const isStreaming = hasContent && smoothText.length < (rawStreamText?.length || 0);
 
+  // 🛠️ V371-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
+  // 关键：用 isStreaming 判断（smoothText 还在追 rawStreamText），而非 yearlyCardsReady
+  // 因为 monthlyCardsReady 在首个 chunk 就置 true，但流式还在继续，原条件会过早停止滚动
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !hasContent) return;
+    if (!isStreaming) return;  // 流式结束后停止自动滚动
+    const rafId = requestAnimationFrame(() => {
+      if (autoScrollRef.current) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [smoothText, isStreaming, hasContent]);
+
+  // 🛠️ V371-fix: 仅在真正完成时回顶部（isStreaming false 且有内容）
+  // 原依赖 yearlyCardsReady，但首个 chunk 就触发 scrollTo top:0 把滚动条拉回顶部
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (yearlyCardsReady) {
+    if (!isStreaming && hasContent && smoothText.length > 100) {
       autoScrollRef.current = false;
       el.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [yearlyCardsReady]);
+  }, [isStreaming, hasContent, smoothText]);
 
-  // 🛠️ V370-fix4: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
+  // 🛠️ V371-fix: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || yearlyCardsReady) return;
+    if (!el) return;
+    if (!isStreaming) return;  // 流式结束后不干预
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
-  }, [yearlyCardsReady]);
+  }, [isStreaming]);
 
   // 🛠️ V64: 军师天启版洗涤滤网 - 6大穿帮矫正
   const cleanAndInjectChapters = (text: string): string => {
