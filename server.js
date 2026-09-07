@@ -1237,6 +1237,18 @@ function normalizeReportTags(text, lang) {
   // Step 1: 清理非法换行符（AI 偶发产生垂直跳格 \x0b）
   text = text.replace(/\x0b/g, '\n');
 
+  // 🛠️ V390-fix: 从源头拦截双重括号——DeepSeek偶发生成[emoji [emoji/text,
+  // normalizeReportTags prepend ✦ 时若源文本已含[emoji会变成[emoji [emoji;
+  // 修复: 函数入口处直接清除[emoji重复,阻止其进入后续prepend逻辑
+  if (['vi','es','fr','th'].includes(lang)) {
+    // Pattern A: [emoji [emoji/[[ -> [emoji (递归清除)
+    const _v390a = /^(\[[🔴🟢🔵⚠️💎✨⭐🚀📈📉🎯💡🔮✦🔆🔅])\s*\[+[🔴🟢🔵⚠️💎✨⭐🚀📈📉🎯💡🔮✦🔆🔅]?\s*/gm;
+    let _p;
+    do { _p = text; text = text.replace(_v390a, '$1 '); } while (text !== _p);
+    // Pattern B: [emoji [text -> [emoji text (emoji后直接跟[text)
+    text = text.replace(/^\[([🔴🟢🔵⚠️💎✨⭐🚀📈📉🎯💡🔮✦🔆🔅])\s*\[([^\]]+)/gm, '[$1 $2');
+  }
+
   // ── 法语归一化 ──────────────────────────────────────────────────
   if (lang === 'fr') {
     // 法语 Semaine 2/3/4 漏标：行首无 ✦ 且含 Semaine N: → 补全标签
