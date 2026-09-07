@@ -1388,6 +1388,14 @@ function fixSectionBrackets(text, lang) {
     text = text.replace(/^⚠\s*$(?:\n)(\[⚠️[^\n\[]+)/gm, '$1');
   }
 
+  // 🛠️ V389-fix: [emoji [text 双重括号（emoji后直接跟[text，非[emoji [emoji）
+  // 处理: [🔵 [Tuần 3:...] → [🔵 Tuần 3:...]  (后端补全后残留，扩展V378覆盖)
+  if (['vi','es','fr','th'].includes(lang)) {
+    const _d2Re = /^\[([🔴🟢🔵⚠️💎✨⭐🚀📈📉🎯💡🔮✦🔆🔅])\s*\[([^\]]+)/gm;
+    let _prev2;
+    do { _prev2 = text; text = text.replace(_d2Re, '[$1 $2'); } while (text !== _prev2);
+  }
+
   return fixed.join('\n');
 }
 
