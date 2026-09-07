@@ -14,6 +14,7 @@ const SacredYearlyReportBox: React.FC<{
 }> = ({ rawStreamText, yearlyCardsReady, lang = 'zh', reportType = 'yearly' }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
+  const isAutoScrollingRef = useRef(false);  // V372-fix: 程序性滚动时跳过 handleScroll 防止误判 atBottom=false
   const tickRef = useRef(0);
   // V366-fix: 用 ref 跟踪内容状态，sync 判断（无 useState 延迟），骨架立即消失
   const contentArrived = useRef(false);
@@ -64,17 +65,18 @@ const SacredYearlyReportBox: React.FC<{
   // 原逻辑依赖 yearlyCardsReady，但 monthlyCardsReady 在首个 chunk 就置 true，导致 isStreaming 永远 false
   const isStreaming = hasContent && smoothText.length < (rawStreamText?.length || 0);
 
-  // 🛠️ V371-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
+  // 🛠️ V372-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
   // 关键：用 isStreaming 判断（smoothText 还在追 rawStreamText），而非 yearlyCardsReady
-  // 因为 monthlyCardsReady 在首个 chunk 就置 true，但流式还在继续，原条件会过早停止滚动
+  // V372-fix2: 加 isAutoScrollingRef 防止程序性 scrollTop 触发 handleScroll 误判 atBottom=false
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !hasContent) return;
-    if (!isStreaming) return;  // 流式结束后停止自动滚动
+    if (!isStreaming) return;
     const rafId = requestAnimationFrame(() => {
-      if (autoScrollRef.current) {
-        el.scrollTop = el.scrollHeight;
-      }
+      isAutoScrollingRef.current = true;
+      el.scrollTop = el.scrollHeight;
+      // 在下一帧解除标记，让 handleScroll 恢复响应
+      requestAnimationFrame(() => { isAutoScrollingRef.current = false; });
     });
     return () => cancelAnimationFrame(rafId);
   }, [smoothText, isStreaming, hasContent]);
@@ -90,11 +92,12 @@ const SacredYearlyReportBox: React.FC<{
     }
   }, [isStreaming, hasContent, smoothText]);
 
-  // 🛠️ V371-fix: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
+  // 🛠️ V372-fix: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
   const handleScroll = useCallback(() => {
+    if (isAutoScrollingRef.current) return;  // 程序性滚动跳过，防止误判
     const el = scrollRef.current;
     if (!el) return;
-    if (!isStreaming) return;  // 流式结束后不干预
+    if (!isStreaming) return;
     const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
     autoScrollRef.current = atBottom;
   }, [isStreaming]);
