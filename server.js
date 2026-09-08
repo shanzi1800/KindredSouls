@@ -6282,8 +6282,24 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // AI 重复输出完整月报时,第2份必然以主题头重新开始 → 找到第2个 🔮 头即第2份起点
       const _themeMark = '✦ [🔮';
       const _firstTheme = text.indexOf(_themeMark);
+      // 🛠️ V394-fix5: 无括号变体锚点——LLM 第二份报告主题头偶发丢方括号('✦ 🔮 Chủ đề...'),
+      //   主锚点匹配不到导致双份报告残留(1981-09-08 实证: 报告A腰斩+报告B从头插入)。
+      //   退化到宽松锚点 '✦ 🔮'(正文不会用🔮 emoji,安全)再扫一遍第2份起点。
+      let _secondTheme = _firstTheme >= 0 ? text.indexOf(_themeMark, _firstTheme + _themeMark.length) : -1;
+      if (_secondTheme < 0) {
+        const _looseMark = '✦ 🔮';
+        let _scanFrom = 0;
+        let _looseCount = 0;
+        for (;;) {
+          const _hit = text.indexOf(_looseMark, _scanFrom);
+          if (_hit < 0) break;
+          _looseCount++;
+          if (_looseCount === 2) { _secondTheme = _hit; break; }
+          _scanFrom = _hit + _looseMark.length;
+        }
+        if (_secondTheme >= 0) console.log(`[wealth-stream] [V394-fix5] 无括号主题头变体第2份起点: idx=${_secondTheme}`);
+      }
       if (_firstTheme >= 0) {
-        const _secondTheme = text.indexOf(_themeMark, _firstTheme + _themeMark.length);
         if (_secondTheme > 0) {
           const _cut = text.substring(0, _secondTheme).trim();
           console.log(`[wealth-stream] [V322] 主题头重复截断: ${text.length}→${_cut.length}字`);

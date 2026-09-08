@@ -99,7 +99,8 @@ const req = https.request(
           // 变音符号被误剥离硬塞空格: 如 Vậ n / Mệ nh / Thá ng / Dươ ng / Nă ng
           // ⚠️ V394-fix: 原宽泛正则 [A-ZÀ-ỹ][a-à-ỹ]\s+[a-zÀ-ỹ] 误报正常语料
           //   (Có thể / Bị cuốn / Sự kết 等双字母大写词+空格+小写词),改用从不合法的精确拆词模式
-          pass: !/Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|chiế\s+u|hộ\s+i|thể\s+hiệ|chuyệ\s+n|cuộ\s+c/i.test(finalDisplayed),
+          // 🛠️ V394-fix6: 剔除 thể hiện——越南语合法双音节词(thể+hiện本就该有空格),1981-09-08误报实证
+          pass: !/Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|chiế\s+u|hộ\s+i|chuyệ\s+n|cuộ\s+c/i.test(finalDisplayed),
           failMsg: '存在变音符号被误剥离并硬塞空格现象',
         },
         {
@@ -132,7 +133,7 @@ const req = https.request(
           try {
             const _pat = a.name.includes('吞字')
               ? /mayắn|khôngý|trongương|giá trịinh thần/gi
-              : a.name.includes('词内空格') ? /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng/gi : null;
+              : a.name.includes('词内空格') ? /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|chiế\s+u|hộ\s+i|chuyệ\s+n|cuộ\s+c/gi : null;
             if (_pat) {
               const _ms = [...finalDisplayed.matchAll(_pat)];
               console.log('  [debug] 命中' + _ms.length + '处:');
