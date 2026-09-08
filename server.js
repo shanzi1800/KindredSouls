@@ -2727,6 +2727,25 @@ function fixVietnameseCorruption(text) {
     //   完整词必须置于数组最顶端——通用双写规则(gg→g g/nhh→nh h/uu→u ngư)在后,先执行会拆坏完整词。
     //   这些拼写在越南语中从不合法存在,字面替换绝对安全。
     'mayắn', 'may mắn',
+    // 🛠️ V394-fix10: DeepSeek vi 缺失型(两词粘连·第二词首辅音丢失)高频复现模式。
+    //   这些拼写在越南语中从不合法存在,字面替换绝对安全;之前 V394-fix2 只覆盖部分(mayắn/trongương/caoấp),
+    //   军师 48 分样本暴露的新变体(bạnước/đếnỉnh/vàoùng/tinức/nhữngỗ/loắng/hìnhảnh/ởúc/ủa ra)全部补齐。
+    'bạnước', 'bạn bước',
+    'đếnỉnh', 'đến đỉnh',
+    'vàoùng', 'vào vùng',
+    'tinức', 'tin tức',
+    'nhữngỗ', 'những nỗ',
+    'loắng', 'lo lắng',
+    'hìnhảnh', 'hình ảnh',
+    'ởúc', 'ở lúc',
+    'ủa ra', 'đưa ra',
+    'nghiờ', 'nghi ngờ',
+    'thìầm', 'thì thầm',
+    'bước vàoùng', 'bước vào vùng',
+    'trênài', 'trên tài',
+    'theoời', 'theo thời',
+    'phân địnhâu', 'phân định đâu',
+    'Đây làúc', 'Đây là lúc',
     'trongương', 'trong tương',
     'giá trịinh thần', 'giá trị tinh thần',
     'cơ hộii', 'cơ hội',
