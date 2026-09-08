@@ -1033,6 +1033,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         // 🌟 V238 刀B：sanitized 发送前过三刀流
         fixed = sanitizeReportFinal(fixed, { lang, reportType });
+        fixed = enforceRiskThreshold(fixed, lang);
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
         if (typeof res.flush === 'function') res.flush();
@@ -5244,6 +5245,33 @@ function buildWealthMeta(birthDate, lang, astroMatrix) {
   };
 }
 
+// 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段包含真实微冲动阈值 ₫500,000
+// 根因: DeepSeek 在超长 prompt 下对嵌入式风险阈值指令遵循极弱, 反复自创 USD 金额($4,800/$2,500/$1,500等)
+//   无视 ₫500,000 指令(连 system prompt 强制原样行都被忽略)。此处生成后兜底, 确保阈值必现。
+//   逻辑: 定位 Bẫy Chi Tiêu 段, 若已含 ₫500,000 则跳过; 否则替换 LLM 自创的 USD/VND 金额为 ₫500,000,
+//   若无金额可替换则追加权威声明行。仅作用于 lang==='vi'。
+function enforceRiskThreshold(report, lang) {
+  if (lang !== 'vi' || !report || typeof report !== 'string') return report;
+  const THRESHOLD = '₫500,000';
+  const m = report.match(/Bẫy Chi Ti/i);
+  if (!m) return report;
+  const start = m.index;
+  const rest = report.slice(start + 1);
+  const nextHdr = rest.match(/\n✦\s*\[/);
+  const end = nextHdr ? start + 1 + nextHdr.index : report.length;
+  let section = report.slice(start, end);
+  if (section.includes(THRESHOLD)) return report; // 已含真实阈值, 无需处理
+  // 替换 LLM 自创的 USD/VND 金额
+  const amtRe = /\$\s?\d[\d,.]*\s*(?:USD)?|\b\d[\d.]*\s*USD|₫\s?\d[\d,.]*/g;
+  let newSection = section.replace(amtRe, THRESHOLD);
+  if (newSection === section) {
+    // 段内无可替换金额 → 追加权威声明行
+    newSection = section.replace(/\s*$/, '') +
+      '\n\n🚨 Ngưỡng vi mô: ₫500,000 VND — mọi chi tiêu không thiết yếu vượt mức này cần 72 giờ suy nghĩ trước khi mua.';
+  }
+  return report.slice(0, start) + newSection + report.slice(end);
+}
+
 // ── /api/wealth-oracle ──
 app.post('/api/wealth-oracle', async (req, res) => {
   try {
@@ -5553,6 +5581,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // Parse AI result
         let reportContent = monthLocked;
+        reportContent = enforceRiskThreshold(reportContent, lang);
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
