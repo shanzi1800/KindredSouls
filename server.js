@@ -6740,6 +6740,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
 
+    // 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段含真实阈值 ₫500,000(stream MISS 路径)
+    // 必须在 sanitized 发送 + 缓存落库前、且晚于「方案C同步补全」覆盖,确保阈值必现(即便补全路径跑过)
+    cleanedText = enforceRiskThreshold(cleanedText, lang);
+
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
     let _sanitizedForClient = cleanedText;
     if (typeof _dedupParagraphs === 'function' && cleanedText && cleanedText.length > 500) {
