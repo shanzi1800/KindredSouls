@@ -2816,8 +2816,10 @@ function fixVietnameseCorruption(text) {
     s = s.split(bad).join(good);
     while (s !== prev) { prev = s; s = s.split(bad).join(good); }
   }
-  // 模式2: 声调元音+辅音粘连(补防线)
-  s = s.replace(/([àáạảãầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷạảãáàèéẻẽẹìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷăắặẳẵưọừựửữỳýỵỷđ])\s*([bcdghklmnpqrstvx])/gi, '$1 $2');
+  // 🛠️ V394-fix: 删除原「模式2: 声调元音+辅音粘连」通用正则——它把每个正常带调词拆开
+  //   (Vận→Vậ n / Tháng→Thá ng / Mệnh→Mệ nh),5454字报告被插552个空格,是越南语拆词元凶。
+  //   越南语中「带调韵母+辅音」是正常拼写(ận/áng/ệnh),无法与真粘连区分;
+  //   真实缺陷模式已由上方字面列表(doubleConsonantFixes)精确覆盖,通用正则必须删除。
   return s.replace(/ {2,}/g, ' ').trim();
 }
 function cleanConsumerTrapAndBrackets(text) {
@@ -6499,10 +6501,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //       而 fullTextCollector(流式累加) 反而是全量(8151字)。两者互为长短,
     //       → 取【较长者】作为月报 sanitized 源,根治"结尾 sanitized 截断到第1/2周"。
     console.log('[V276-DIAG] geminiFullText.len=' + (geminiFullText?.length||0) + ' | fullTextCollector.len=' + (fullTextCollector?.length||0) + ' | 选择:' + ((geminiFullText && geminiFullText.length > (fullTextCollector||'').length) ? 'geminiFullText' : 'fullTextCollector'));
-    const _monthlySrc = (geminiFullText && geminiFullText.length > (fullTextCollector || '').length)
-      ? geminiFullText
-      : (fullTextCollector || '');
-    console.log('[V276-DIAG] _monthlySrc.len=' + (_monthlySrc?.length||0));
+    // 🛠️ V394-fix: 源选择根治——优先 fullTextCollector(用户真看到的流:已NFC+去重+含V386注入主题头),
+    //   仅当 geminiFullText NFD归一化后仍显著更长(>15%,防NFD虚长30%)才选它(覆盖callDeepSeek返回值独有的完整尾段)。
+    //   根因: _dsFull 是 callDeepSeekStream 内部累积的原始AI输出——未过 _dedupWrite 的 NFC 归一,
+    //   越南语NFD形态比NFC长~30%,导致旧逻辑总是选中 NFD 的 geminiFullText → cleanedText 无主题头(V386注入只在fullTextCollector)
+    //   → fixMonthlySectionTitles 注入占位符头 → sanitized 正文丢失/占位符胜出。
+    const _gfNfc = (geminiFullText || '').normalize('NFC');
+    const _fcNfc = (fullTextCollector || '').normalize('NFC');
+    const _useGemini = (_gfNfc.length > _fcNfc.length * 1.15) && _gfNfc.length > 2000;
+    const _monthlySrc = _useGemini ? _gfNfc : _fcNfc;
+    console.log('[V394-DIAG] gfNFC=' + _gfNfc.length + ' | fcNFC=' + _fcNfc.length + ' | useGemini=' + _useGemini + ' | _monthlySrc.len=' + (_monthlySrc?.length||0));
     let rawText = langPunctuationClean(reportType === 'monthly' ? _monthlySrc : fullTextCollector, lang);
     // 🛠️ V200: 占位符从 natal 本命盘读取(computed_houses.Sun.house 而非流年 months[0].sun.house)
     const natalH = astroMatrix?.meta?.computed_houses || {};
@@ -6758,16 +6766,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       }
     }
     // 🛠️ V389: 确保清洗版 sanitized 击败前端"保留较长者"守卫(WealthReportPage.tsx:2104)。
-    //   清洗(金额13→9字符 / 越南语去空格)必然缩短,导致前端丢弃清洗版、保留脏text→用户看到错误金额/Thá ng。
+    //   清洗(金额13→9字符 / 越南语修复)必然缩短,导致前端丢弃清洗版、保留脏text→用户看到错误金额/Thá ng。
     //   补尾空白使 sanitized 长度 > 原始流,清洗版(含₫500,000 + 越南语修复)必现。纯后端、零前端改动。
+    // 🛠️ V394-fix: 占位符残渣守卫——若清洗版仍是占位符(主题头注入失败/源异常短),补长只会让
+    //   前端"较长者"守卫选中垃圾(用户看到占位符+几千空格,正文消失)。此时【不发 sanitized】,前端回退 text 流。
+    const _phMarker = /【(?:Hệ Thống Chèn|System-Injected|占位符-系统注入|Inyección del Sistema|Injection Système|ระบบป้ายแทรก)】|vui lòng làm mới|please refresh|actualice|actualisez|กรุณารีเฟรช/i;
+    const _isPlaceholderResidue = _sanitizedForClient && (
+      _sanitizedForClient.length < 3000 && _phMarker.test(_sanitizedForClient)
+    );
     const _rawStreamLen = (fullTextCollector || '').length;
-    if (_sanitizedForClient.length < _rawStreamLen) {
-      _sanitizedForClient = _sanitizedForClient + '\n\n' + ' '.repeat(_rawStreamLen - _sanitizedForClient.length + 64);
-    }
-    if (_sanitizedForClient && _sanitizedForClient.length > 100) {
-      try {
-        res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedForClient })}\n\n`, 'utf-8'));
-      } catch(e) {}
+    if (_isPlaceholderResidue) {
+      console.warn('[V394] sanitized 占位符残渣(' + _sanitizedForClient.length + '字), 不发送, 前端回退 text 流(' + _rawStreamLen + '字)');
+    } else {
+      if (_sanitizedForClient.length < _rawStreamLen) {
+        _sanitizedForClient = _sanitizedForClient + '\n\n' + ' '.repeat(_rawStreamLen - _sanitizedForClient.length + 64);
+      }
+      if (_sanitizedForClient && _sanitizedForClient.length > 100) {
+        try {
+          res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: _sanitizedForClient })}\n\n`, 'utf-8'));
+        } catch(e) {}
+      }
     }
 
     // 流式结束,发送 [DONE]
