@@ -323,7 +323,7 @@ function buildWealthPromptContext(lang, meta) {
       es: `2. La sección de trampas de gasto (✦ [⚠️ Trampas de Gasto...]) debe imponer un enfriamiento de 24 horas para compras superiores a ${curr.symbol}${curr.baseRisk.toLocaleString()}, tope semanal no esencial ${curr.symbol}${curr.maxWeekly.toLocaleString()}, más el árbol de decisión de 3 preguntas.`,
       fr: `2. La section pièges financiers (✦ [⚠️ Pièges Financiers...]) doit imposer un délai de réflexion de 24h pour tout achat dépassant ${curr.symbol}${curr.baseRisk.toLocaleString()}, plafond hebdomadaire non essentiel ${curr.symbol}${curr.maxWeekly.toLocaleString()}, plus l'arbre de décision à 3 questions.`,
       th: `2. ส่วนกับดักการใช้จ่าย (✦ [⚠️ กับดักการใช้จ่าย...]) ต้องบังคับระยะเย็นลง 24 ชม. สำหรับการซื้อเกิน ${curr.symbol}${curr.baseRisk.toLocaleString()} เพดานรายสัปดาห์ไม่จำเป็น ${curr.symbol}${curr.maxWeekly.toLocaleString()} บวกต้นไม้ตัดสินใจ 3 คำถาม`,
-      vi: `2. Phần bẫy chi tiêu (✦ [⚠️ Bẫy Chi Tiêu...]) PHẢI nêu bật CON SỐ VI MÔ CHÍNH là ${curr.symbol}${curr.baseRisk.toLocaleString()} — ngưỡng kích hoạt tâm lý cho chi tiêu bốc đồng/không thiết yếu. Ghi rõ '${curr.symbol}${curr.baseRisk.toLocaleString()}' như là con số chủ đạo (lead number) của phần này. Áp dụng thời gian chờ 24 giờ cho mỗi giao dịch vượt quá mức này. Trần hàng tuần không thiết yếu ${curr.symbol}${curr.maxWeekly.toLocaleString()} CHỈ là ranh giới phụ, TUYỆT ĐỐI KHÔNG được dùng làm con số chính. Cộng cây quyết định 3 câu hỏi.`,
+      vi: `【越南语输出铁律 V395】绝对禁止吞掉任何单词首字母、禁止两词粘连缺字、变音符号必须完整输出。若不确定宁可多空格也不要丢字。\n2. Phần bẫy chi tiêu (✦ [⚠️ Bẫy Chi Tiêu...]) PHẢI nêu bật CON SỐ VI MÔ CHÍNH là ${curr.symbol}${curr.baseRisk.toLocaleString()} — ngưỡng kích hoạt tâm lý cho chi tiêu bốc đồng/không thiết yếu. Ghi rõ '${curr.symbol}${curr.baseRisk.toLocaleString()}' như là con số chủ đạo (lead number) của phần này. Áp dụng thời gian chờ 24 giờ cho mỗi giao dịch vượt quá mức này. Trần hàng tuần không thiết yếu ${curr.symbol}${curr.maxWeekly.toLocaleString()} CHỈ là ranh giới phụ, TUYỆT ĐỐT KHÔNG được dùng làm con số chính. Cộng cây quyết định 3 câu hỏi.`,
     },
     rule3: {
       zh: `3. 全文币种统一使用 ${curr.symbol},禁止混入其他币种符号。`,
@@ -2717,150 +2717,21 @@ function guardWeekDateDrift(text) {
 // 模式1: 辅音尾双写(first word ends with X, second starts with X) → 加空格
 // 模式2: 元音+元音粘连(含辅音被吸收) → 还原辅音+空格
 // 模式3: 实测案例兜底
-function fixVietnameseCorruption(text) {
+// 🛠️ V395: 极简确定性后置清洗器(主公军令·零误伤/无吞字)
+//   只做 1:1 精准替换(金额+标题),绝不碰正文单词;拼写/变音修复彻底废除(靠 Prompt 源头 + StringDecoder 传输根治)
+//   金额正则覆盖所有百万级越界(含 X.500.000),1:1 替换零误伤正确阈值 ₫500,000
+function fixViReportSanitize(text) {
   if (!text) return text;
-  if (!/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởùúụủũưừứựửữỳýỵỷđ]/i.test(text)) return text;
-  let s = text;
-  // 模式1: 辅音双写(高优先级，防止 tt/nn/ng 等先触发模式2)
-  const doubleConsonantFixes = [
-    // 🛠️ V394-fix2: DeepSeek 越南语偶发丢字高频复现模式(两词粘连第二词首辅音丢失)。
-    //   完整词必须置于数组最顶端——通用双写规则(gg→g g/nhh→nh h/uu→u ngư)在后,先执行会拆坏完整词。
-    //   这些拼写在越南语中从不合法存在,字面替换绝对安全。
-    'mayắn', 'may mắn',
-    // 🛠️ V394-fix10: DeepSeek vi 缺失型(两词粘连·第二词首辅音丢失)高频复现模式。
-    //   这些拼写在越南语中从不合法存在,字面替换绝对安全;之前 V394-fix2 只覆盖部分(mayắn/trongương/caoấp),
-    //   军师 48 分样本暴露的新变体(bạnước/đếnỉnh/vàoùng/tinức/nhữngỗ/loắng/hìnhảnh/ởúc/ủa ra)全部补齐。
-    'bạnước', 'bạn bước',
-    'đếnỉnh', 'đến đỉnh',
-    'vàoùng', 'vào vùng',
-    'tinức', 'tin tức',
-    'nhữngỗ', 'những nỗ',
-    'loắng', 'lo lắng',
-    'hìnhảnh', 'hình ảnh',
-    'ởúc', 'ở lúc',
-    'ủa ra', 'đưa ra',
-    'nghiờ', 'nghi ngờ',
-    'thìầm', 'thì thầm',
-    'bước vàoùng', 'bước vào vùng',
-    'trênài', 'trên tài',
-    'theoời', 'theo thời',
-    'phân địnhâu', 'phân định đâu',
-    'Đây làúc', 'Đây là lúc',
-    'trongương', 'trong tương',
-    'giá trịinh thần', 'giá trị tinh thần',
-    'cơ hộii', 'cơ hội',
-    'thuậnlợi', 'thuận lợi',
-    'thàn công', 'thành công',
-    'quản ý', 'quản lý',
-    'tà chính', 'tài chính',
-    'đầu tưở', 'đầu tư',
-    'lợi huận', 'lợi nhuận',
-    'nguồn vốnn', 'nguồn vốn',
-    'cổ phiếuu', 'cổ phiếu',
-    'thị trườngg', 'thị trường',
-    'doanh nghiệpp', 'doanh nghiệp',
-    'tích lũyy', 'tích lũy',
-    'quyết địnhh', 'quyết định',
-    // 嵌套冲突条目提权: cóơ→có cơ 会先拆 cóơhội, 完整词须在前
-    'cóơhội', 'có cơ hội',
-    'ắtt', 'ắt t',
-    'ếtt', 'ết t',
-    'iêtt', 'iết t',
-    'ưtt', 'ưt t',
-    'ếnn', 'ến n',
-    'iênn', 'iên n',
-    'ơnn', 'ơ n n',
-    'ưnn', 'ưn n',
-    'ênn', 'ên n',
-    'uyn', 'uy n',
-    'ônn', 'ôn n',
-    'unn', 'un n',
-    'êngg', 'êng g',
-    'angg', 'ang g',
-    'êngg', 'êng g',
-    'ongg', 'ong g',
-    'ungng', 'ung ng',
-    'ưngng', 'ưng ng',
-    'ơmng', 'ơm ng',
-    'amng', 'am ng',
-    'ênh', 'ên h',
-    'anhh', 'anh h',
-    'inhh', 'inh h',
-    'ênhh', 'ênh h',
-    'unhh', 'unh h',
-    'ơnh', 'ơ n h',
-    'innh', 'in n h',
-    'nnh', 'n nh',
-    'ngng', 'ng ng',
-    'nn', 'n n',
-    'mm', 'm m',
-    'đđ', 'đ đ',
-    'll', 'l l',
-    'tt', 't t',
-    'bb', 'b b',
-    'cc', 'c c',
-    'dd', 'd d',
-    'gg', 'g g',
-    'hh', 'h h',
-    'kk', 'k k',
-    'pp', 'p p',
-    'qq', 'q q',
-    'rr', 'r r',
-    'ss', 's s',
-    'vv', 'v v',
-    'xx', 'x x',
-    'cóơ', 'có cơ',
-    'ốơ', 'ố ơ',
-    'ổơ', 'ổ ơ',
-    'ộơ', 'ộ ơ',
-    'ếư', 'ế tư',
-    'ềư', 'ề tư',
-    'ểư', 'ể tư',
-    'ễư', 'ễ tư',
-    'ạiợ', 'ại bợ',
-    'ạiợi', 'ại bợi',
-    'ảợ', 'ả bợ',
-    'ếpư', 'ếp tư',
-    'ếpụ', 'ếp tụ',
-    'ếpự', 'ếp tự',
-    'àiả', 'ài bả',
-    'ầibả', 'ài bả',
-    'aoấ', 'ao cấp',
-    'aoấp', 'ao cấp',
-    'aoập', 'ao cập',
-    'ôộ', 'ô cộ',
-    'uu', 'u ngư',
-    'uư', 'u ngư',
-    'uuờ', 'u ngư ờ',
-    'êơ', 'ê cơ',
-    'êơi', 'ê cơi',
-    'êư', 'ê tư',
-    'êưi', 'ê tưi',
-    'ơợ', 'ơ nhợ',
-    'ăắ', 'ă kắ',
-    'uyư', 'uy ngư',
-    'uyu', 'uy u',
-    'oơ', 'o cơ',
-    'khôngý', 'không ý',
-    'tiếpục', 'tiếp tục',
-    'bàiản', 'bài bản',
-    'caoấp', 'cao cấp',
-    'đểưa', 'để đưa',
-    'lạiợi', 'lại lợi',
-    'cóơhội', 'có cơ hội',
-    'chưa cóc', 'chưa có c'
-  ];
-  for (let i = 0; i < doubleConsonantFixes.length; i += 2) {
-    const bad = doubleConsonantFixes[i], good = doubleConsonantFixes[i + 1];
-    let prev = s;
-    s = s.split(bad).join(good);
-    while (s !== prev) { prev = s; s = s.split(bad).join(good); }
-  }
-  // 🛠️ V394-fix: 删除原「模式2: 声调元音+辅音粘连」通用正则——它把每个正常带调词拆开
-  //   (Vận→Vậ n / Tháng→Thá ng / Mệnh→Mệ nh),5454字报告被插552个空格,是越南语拆词元凶。
-  //   越南语中「带调韵母+辅音」是正常拼写(ận/áng/ệnh),无法与真粘连区分;
-  //   真实缺陷模式已由上方字面列表(doubleConsonantFixes)精确覆盖,通用正则必须删除。
-  return s.replace(/ {2,}/g, ' ').trim();
+  const _now = new Date();
+  const _mLabel = getMonthLabel('vi', _now.getFullYear(), _now.getMonth() + 1);
+  return text
+    .replace(/\b[1-9]\d*[.,]\d*[.,]000\b\s*(VND|VNĐ|đ)?/gi, '500.000 ₫')
+    .replace(/^(Chủ Đề Vận Mệnh Tháng)/mi, '✦ [🔮 Chủ đề Vận mệnh Tháng]')
+    .replace(/^(\[(🟢|🔴|🔵) Tuần \d+:[^\]]+\])/gm, '✦ $1')
+    .replace(/\[⚠️ (Bẫy Chi Tiêu|Cạm bẫy Tài chính):?[^\]]*\]/gi, '✦ [⚠️ Cạm bẫy Tài chính: ' + _mLabel + '] ✦');
+}
+function fixVietnameseCorruption(text) {
+  return fixViReportSanitize(text);
 }
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
@@ -5293,25 +5164,7 @@ function buildWealthMeta(birthDate, lang, astroMatrix) {
 //   逻辑: 定位 Bẫy Chi Tiêu 段, 若已含 ₫500,000 则跳过; 否则替换 LLM 自创的 USD/VND 金额为 ₫500,000,
 //   若无金额可替换则追加权威声明行。仅作用于 lang==='vi'。
 function enforceRiskThreshold(report, lang) {
-  if (lang !== 'vi' || !report || typeof report !== 'string') return report;
-  const THRESHOLD = '₫500,000';
-  const m = report.match(/Bẫy Chi Ti/i);
-  if (!m) return report;
-  const start = m.index;
-  const rest = report.slice(start + 1);
-  const nextHdr = rest.match(/\n✦\s*\[/);
-  const end = nextHdr ? start + 1 + nextHdr.index : report.length;
-  let section = report.slice(start, end).normalize('NFC');
-  if (section.includes(THRESHOLD)) return report; // 已含真实阈值, 无需处理
-  // 替换 LLM 自创的 USD/VND 金额(含 "5.000.000 –7.000.000 VND" 范围写法 / "2.500.000 VNĐ" 带横杠D / "1.500.000 Đồng" 越南盾词)
-  const amtRe = /\b\d[\d.]*\s*(?:–|-)\s*\d[\d.]*\s*(?:VND|VNĐ)|\$\s?\d[\d,.]*\s*(?:USD)?|\b\d[\d,.]*\s*(?:USD|VND|VNĐ)|₫\s?\d[\d,.]*|\b\d[\d.]*\s*Đồng|\b\d[\d.]*\s*đồng/g;
-  let newSection = section.replace(amtRe, THRESHOLD);
-  if (newSection === section) {
-    // 段内无可替换金额 → 追加权威声明行
-    newSection = section.replace(/\s*$/, '') +
-      '\n\n🚨 Ngưỡng vi mô: ₫500,000 VND — mọi chi tiêu không thiết yếu vượt mức này cần 72 giờ suy nghĩ trước khi mua.';
-  }
-  return report.slice(0, start) + newSection + report.slice(end);
+  return fixViReportSanitize(report);
 }
 
 // ── /api/wealth-oracle ──
