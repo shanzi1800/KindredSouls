@@ -2720,15 +2720,59 @@ function guardWeekDateDrift(text) {
 // 🛠️ V395: 极简确定性后置清洗器(主公军令·零误伤/无吞字)
 //   只做 1:1 精准替换(金额+标题),绝不碰正文单词;拼写/变音修复彻底废除(靠 Prompt 源头 + StringDecoder 传输根治)
 //   金额正则覆盖所有百万级越界(含 X.500.000),1:1 替换零误伤正确阈值 ₫500,000
+// 🛠️ V396: 极简 1:1 精准替换（金额越界 + 缺失型 + 标题格式）
 function fixViReportSanitize(text) {
   if (!text) return text;
   const _now = new Date();
   const _mLabel = getMonthLabel('vi', _now.getFullYear(), _now.getMonth() + 1);
-  return text
-    .replace(/\b[1-9]\d*[.,]\d*[.,]000\b\s*(VND|VNĐ|đ)?/gi, '500.000 ₫')
-    .replace(/^(Chủ Đề Vận Mệnh Tháng)/mi, '✦ [🔮 Chủ đề Vận mệnh Tháng]')
-    .replace(/^(\[(🟢|🔴|🔵) Tuần \d+:[^\]]+\])/gm, '✦ $1')
-    .replace(/\[⚠️ (Bẫy Chi Tiêu|Cạm bẫy Tài chính):?[^\]]*\]/gi, '✦ [⚠️ Cạm bẫy Tài chính: ' + _mLabel + '] ✦');
+  let t = text;
+  // ── 1. 缺失型修复（两词粘连丢首辅音）──
+  const _lossFixes = [
+    'banuoc', 'ban buoc',
+    'nhunghu', 'nhung nhu',
+    'deninh', 'den dinh',
+    'vaovung', 'vao vung',
+    'tintuc', 'tin tuc',
+    'nhungho', 'nhung nho',
+    'loang', 'lo lang',
+    'hinh anh', 'hinh anh',
+    'luc', 'l luc',
+    'bile', 'bi le',
+    'taichinh', 'tai chinh',
+    'than cong', 'thanh cong',
+    'thuanloi', 'thuan loi',
+    'loi nhuan', 'loi nhuan',
+    'nguon vonn', 'nguon von',
+    'co phieuu', 'co phieu',
+    'thi truongg', 'thi truong',
+    'doanh nghiepp', 'doanh nghiep',
+    'tich luyy', 'tich luy',
+    'quyet dinhh', 'quyet dinh',
+    'co hoii', 'co hoi',
+    'tronguong', 'tron tuong',
+  ];
+  for (let i = 0; i < _lossFixes.length; i += 2) {
+    const _bad = _lossFixes[i], _good = _lossFixes[i + 1];
+    if (t.includes(_bad)) t = t.split(_bad).join(_good);
+  }
+  // ── 2a. 金额越界替换（千分位格式：X.000 / X.000.000）──
+  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)\s*(?:VND|VN?Đ|đồng)?/gi,
+    (m) => {
+      const _n = parseInt(m.replace(/\D/g, ''), 10);
+      if (_n >= 500000) return '500.000';
+      return m;
+    });
+  // ── 2b. 越南语 triệu đồng（×1,000,000）──
+  t = t.replace(/\b(\d+)\s*triệu\s*(?:đồng)?/gi,
+    (m) => {
+      const _n = parseInt(m.match(/\d+/)[0], 10) * 1000000;
+      if (_n >= 500000) return '500.000';
+      return m;
+    });
+  // ── 3. 标题格式标准化 ──
+  t = t.replace(/^(Chủ Đề Vận Mệnh Tháng)/mi, '✦ [🔮 Chủ đề Vận mệnh Tháng]');
+  t = t.replace(/^(\[(?:🟢|🔴|🔵) Tuần \d+:[^\]]+\])/gm, '✦ $1');
+  t = t.replace(/\[⚠️ (?:Bẫy Chi Tiêu|Cạm bẫy Tài chính):?[^\]]*\]/gi, '✦ [⚠️ Cạm bẫy Tài chính: ' + _mLabel + '] ✦');
 }
 function fixVietnameseCorruption(text) {
   return fixViReportSanitize(text);
