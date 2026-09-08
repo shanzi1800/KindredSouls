@@ -5336,6 +5336,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
           // V103-fix6: 标准化旧缓存,确保格式统一
           const stdCached = standardizeReport(cachedText);
+          // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
+          //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
+          if (lang === 'vi') {
+            stdCached = enforceRiskThreshold(fixVietnameseCorruption(stdCached.normalize('NFC')), lang);
+          }
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
           return res.json({ success: true, cached: true, report: stdCached });
@@ -5605,6 +5610,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // Parse AI result
         let reportContent = monthLocked;
         reportContent = enforceRiskThreshold(reportContent, lang);
+        // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
+        //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
+        if (lang === 'vi') {
+          reportContent = fixVietnameseCorruption(reportContent.normalize('NFC'));
+        }
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
