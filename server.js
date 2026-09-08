@@ -6023,9 +6023,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cachedText = cacheRows?.[0]?.insight;
 
       // 🛡️ V222z-fix9: 最小长度检查——若缓存文本 <3000字（正常月报应 >5000），说明是历史残缺缓存，强制穿透重新生成
-      // 🛠️ V394-fix4: HIT 入口 vi 拆词脏缓存拦截——V389 脏版(含 Vậ n 类不可逆拆词)直接视为 MISS 强制重生成
-      //   拆词信息已丢失(ậ n 无法复原 ận),清洗不可逆,只能弃缓存重生成
-      const _viDirtyHit = lang === 'vi' && /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|Mặ\s+t|chiế\s+u|chuyệ\s+n|cuộ\s+c|mộ\s+t|đượ\s+c/i.test(cachedText || '');
+      // 🛠️ V394-fix4: HIT 入口 vi 脏缓存拦截——任何 9-06 前旧脏缓存(不含₫500,000正确阈值/含乱码/越界大额/拆词)直接视为 MISS 强制重生成
+      //   拆词信息已丢失(ậ n 无法复原 ận),清洗不可逆,只能弃缓存重生成。
+      //   正向健康校验:我 V383+ 所有 vi 月报必含 ₫500,000;凡不含即 9-06 前旧数据→拦截。
+      const _viDirtyHit = lang === 'vi' && (
+        (cachedText || '').includes('�') ||                          // U+FFFD 乱码方块(9-06 StringDecoder前产物)
+        !(cachedText || '').includes('₫500,000') ||                 // 缺少正确风控阈值(9-06旧缓存特征:5.000.000/10.000.000等)
+        /[2-9]\.000\.000|\d{2,}\.000\.000|5\.000\.000|7\.000\.000/.test(cachedText || '') ||  // 越界大额VND
+        /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|Mặ\s+t|chiế\s+u|chuyệ\s+n|cuộ\s+c|mộ\s+t|đượ\s+c/i.test(cachedText || '')  // 拆词型
+      );
       if (_viDirtyHit) {
         console.warn(`[V394] HIT缓存含vi拆词脏文本, 拦截强制MISS重生成: ${cacheKey}`);
       }
