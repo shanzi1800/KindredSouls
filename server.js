@@ -2723,6 +2723,27 @@ function fixVietnameseCorruption(text) {
   let s = text;
   // 模式1: 辅音双写(高优先级，防止 tt/nn/ng 等先触发模式2)
   const doubleConsonantFixes = [
+    // 🛠️ V394-fix2: DeepSeek 越南语偶发丢字高频复现模式(两词粘连第二词首辅音丢失)。
+    //   完整词必须置于数组最顶端——通用双写规则(gg→g g/nhh→nh h/uu→u ngư)在后,先执行会拆坏完整词。
+    //   这些拼写在越南语中从不合法存在,字面替换绝对安全。
+    'mayắn', 'may mắn',
+    'trongương', 'trong tương',
+    'giá trịinh thần', 'giá trị tinh thần',
+    'cơ hộii', 'cơ hội',
+    'thuậnlợi', 'thuận lợi',
+    'thàn công', 'thành công',
+    'quản ý', 'quản lý',
+    'tà chính', 'tài chính',
+    'đầu tưở', 'đầu tư',
+    'lợi huận', 'lợi nhuận',
+    'nguồn vốnn', 'nguồn vốn',
+    'cổ phiếuu', 'cổ phiếu',
+    'thị trườngg', 'thị trường',
+    'doanh nghiệpp', 'doanh nghiệp',
+    'tích lũyy', 'tích lũy',
+    'quyết địnhh', 'quyết định',
+    // 嵌套冲突条目提权: cóơ→có cơ 会先拆 cóơhội, 完整词须在前
+    'cóơhội', 'có cơ hội',
     'ắtt', 'ắt t',
     'ếtt', 'ết t',
     'iêtt', 'iết t',

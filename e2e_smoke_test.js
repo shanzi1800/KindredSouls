@@ -96,8 +96,10 @@ const req = https.request(
         },
         {
           name: '2. 越南语词内空格隔离 (无 Vậ n 破损)',
-          // 变音符号被误剥离硬塞空格: 如 Vậ n / Mệ nh / Thá ng
-          pass: !/Vậ\s+n|Mệ\s+nh|Thá\s+ng|[A-ZÀ-ỹ][a-à-ỹ]\s+[a-zÀ-ỹ]/i.test(finalDisplayed),
+          // 变音符号被误剥离硬塞空格: 如 Vậ n / Mệ nh / Thá ng / Dươ ng / Nă ng
+          // ⚠️ V394-fix: 原宽泛正则 [A-ZÀ-ỹ][a-à-ỹ]\s+[a-zÀ-ỹ] 误报正常语料
+          //   (Có thể / Bị cuốn / Sự kết 等双字母大写词+空格+小写词),改用从不合法的精确拆词模式
+          pass: !/Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|chiế\s+u|hộ\s+i|thể\s+hiệ|chuyệ\s+n|cuộ\s+c/i.test(finalDisplayed),
           failMsg: '存在变音符号被误剥离并硬塞空格现象',
         },
         {
@@ -124,7 +126,22 @@ const req = https.request(
       console.log('================ 终验报告 ================');
       assertions.forEach((a) => {
         if (a.pass) { console.log(`✅ PASS - ${a.name}`); passed++; }
-        else { console.error(`❌ FAIL - ${a.name} --> ${a.failMsg}`); }
+        else {
+          console.error(`❌ FAIL - ${a.name} --> ${a.failMsg}`);
+          // V394-debug: 输出实际匹配样本上下文(定位真实吞字位置)
+          try {
+            const _pat = a.name.includes('吞字')
+              ? /mayắn|khôngý|trongương|giá trịinh thần/gi
+              : a.name.includes('词内空格') ? /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng/gi : null;
+            if (_pat) {
+              const _ms = [...finalDisplayed.matchAll(_pat)];
+              console.log('  [debug] 命中' + _ms.length + '处:');
+              for (const m of _ms.slice(0, 6)) {
+                console.log('    ...' + finalDisplayed.slice(Math.max(0, m.index - 50), m.index + 50).replace(/\n/g, '⏎') + '...');
+              }
+            }
+          } catch (e) {}
+        }
       });
       console.log('==========================================');
 
