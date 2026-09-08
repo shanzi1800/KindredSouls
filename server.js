@@ -4467,7 +4467,7 @@ ${HT_RP.week4}
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
 
 ${HT_RP.trap}
-[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Include a precise dollar amount trigger for when they should STOP and WAIT before spending.]
+[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Use the micro-impulse threshold {{risk_limit}} (stated in your system instructions) as the precise amount trigger for when they should STOP and WAIT before spending — do NOT invent a different figure.]
     \``,
       en: `USER INSTRUCTIONS:
 ⛔ [V165-vital] THIS USER'S CHART:
@@ -4662,7 +4662,7 @@ ${HT_RP.trap}
 
     return {
       system: monthlySystem,
-      user: USER_TEMPLATE[lang] || USER_TEMPLATE.zh,
+      user: (USER_TEMPLATE[lang] || USER_TEMPLATE.zh).split('{{risk_limit}}').join(_riskLimit).split('{{cooldown_hours}}').join(_cooldownH),
     };
   }
 
