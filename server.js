@@ -6496,7 +6496,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //   根因: _dsFull 是 callDeepSeekStream 内部累积的原始AI输出——未过 _dedupWrite 的 NFC 归一,
     //   越南语NFD形态比NFC长~30%,导致旧逻辑总是选中 NFD 的 geminiFullText → cleanedText 无主题头(V386注入只在fullTextCollector)
     //   → fixMonthlySectionTitles 注入占位符头 → sanitized 正文丢失/占位符胜出。
-    const _gfNfc = (geminiFullText || '').normalize('NFC');
+    // 🛠️ V396-fix: DeepSeek异常时geminiFullText未赋值，||''保证undefined不抛次生错
+    const _gfNfc = (geminiFullText ?? '').normalize('NFC');
     const _fcNfc = (fullTextCollector || '').normalize('NFC');
     const _useGemini = (_gfNfc.length > _fcNfc.length * 1.15) && _gfNfc.length > 2000;
     const _monthlySrc = _useGemini ? _gfNfc : _fcNfc;
