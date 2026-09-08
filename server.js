@@ -6081,7 +6081,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
         // 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
         // 🛠️ V394-fix4: HIT 路径拆词兜底清洗(入口已拦脏缓存,此处仅正常补偿)
-        if (lang === 'vi') streamText = fixVietnameseCorruption(streamText);
+        if (lang === 'vi') {
+          streamText = fixVietnameseCorruption(streamText);
+          // 🛠️ V394-fix7: HIT 路径补 enforceRiskThreshold——V383-fix5 仅挂 MISS cleanedText 链,
+          //   历史 MISS 写入的缓存(无拆词无占位符但陷阱段无阈值/双份残稿)在 HIT 路径直接裸奔。
+          //   与 MISS 路径对齐, 读取时强制阈值兜底。
+          streamText = enforceRiskThreshold(streamText, lang);
+        }
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
