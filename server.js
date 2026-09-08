@@ -3710,7 +3710,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
 - แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)
 - ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)
 - ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด`,
-    vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.` + `\n\n[DYNAMIC RISK V379] Format spending trap section as:\n- Ngưỡng kích hoạt: {{risk_limit}} cho bất kỳ mặt hàng không thiết yếu nào\n- Thời gian chờ: {{cooldown_hours}} giờ trước khi quyết định\nSubstitute {{risk_limit}} and {{cooldown_hours}} with the actual values provided in your input context.`,
+    vi: `Bạn là nhà chiêm tinh giàu có và nhà tâm lý học Jungian tạo báo cáo tài chính hàng tháng.${instruction}\n\nQUAN TRỌNG: Bạn phải viết ít nhất 1200 từ.` + `\n\n[DYNAMIC RISK V379 — BẮT BUỘC] Phần Bẫy Chi Tiêu PHẢI chứa nguyên văn dòng này (thay [RISK] bằng {{risk_limit}}, [H] bằng {{cooldown_hours}}):\n🚨 Ngưỡng vi mô: [RISK] — mọi chi tiêu không thiết yếu vượt mức này cần [H] giờ suy nghĩ trước khi mua.\nCẤM TUYỆT ĐỐI dùng bất kỳ con số khác (như $2,500, 60.000.000 VND, $1,500, 37.000.000 VND) làm ngưỡng kích hoạt. Chỉ được dùng đúng [RISK].`,
   };
 
   // 🛠️ V188: 封口令 — 禁止 CoT 泄漏(军师审计: AI 把内心戏喷进正文)
