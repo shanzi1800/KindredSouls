@@ -6743,6 +6743,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段含真实阈值 ₫500,000(stream MISS 路径)
     // 必须在 sanitized 发送 + 缓存落库前、且晚于「方案C同步补全」覆盖,确保阈值必现(即便补全路径跑过)
     cleanedText = enforceRiskThreshold(cleanedText, lang);
+    // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
+    //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
+    if (lang === 'vi') {
+      cleanedText = fixVietnameseCorruption(cleanedText.normalize('NFC'));
+    }
 
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
     let _sanitizedForClient = cleanedText;
@@ -6751,6 +6756,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       if (_sanitizedForClient.length < cleanedText.length) {
         console.log(`[wealth-stream] [V316-fix3] sanitized 去重: ${cleanedText.length}→${_sanitizedForClient.length}字`);
       }
+    }
+    // 🛠️ V389: 确保清洗版 sanitized 击败前端"保留较长者"守卫(WealthReportPage.tsx:2104)。
+    //   清洗(金额13→9字符 / 越南语去空格)必然缩短,导致前端丢弃清洗版、保留脏text→用户看到错误金额/Thá ng。
+    //   补尾空白使 sanitized 长度 > 原始流,清洗版(含₫500,000 + 越南语修复)必现。纯后端、零前端改动。
+    const _rawStreamLen = (fullTextCollector || '').length;
+    if (_sanitizedForClient.length < _rawStreamLen) {
+      _sanitizedForClient = _sanitizedForClient + '\n\n' + ' '.repeat(_rawStreamLen - _sanitizedForClient.length + 64);
     }
     if (_sanitizedForClient && _sanitizedForClient.length > 100) {
       try {
