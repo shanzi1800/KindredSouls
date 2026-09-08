@@ -99,8 +99,14 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
     'python3', scriptPath,
     String(year), String(monthStart),  // 年 月
     risingSign,                        // 上升星座（决定宫位）
+    '--birth-date', birthDate || '',
+    '--birth-time', birthTime || '12:00',
+    '--lat', String(lat),
+    '--lon', String(lon),
+    '--tz', tz || 'Asia/Bangkok',
     '--months', '12'
   ];
+  if (!birthTimeKnown) cmd.push('--no-birth-time');
 
   console.log('[V134] Computing monthly matrix:', cmd.join(' '));
 
@@ -138,6 +144,11 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   matrix.meta.rising_sign_source = birthTimeKnown ? 'computed' : 'solar_house_no_time';
   // 🛠️ Arctic fix: 如实反映分宫制（极高纬度 Placidus 破裂时降级 WholeSign）
   matrix.meta.house_system_used = natalData.house_system_used || 'Placidus';
+  // 🛠️ V383: 合并本命月亮/上升/中天/真实宫头,供 FACT_SHEET 与星象报告硬锚定
+  if (natalData.natal_moon) matrix.meta.natal_moon = natalData.natal_moon;
+  if (natalData.ascendant) matrix.meta.ascendant = natalData.ascendant;
+  if (natalData.midheaven !== undefined) matrix.meta.midheaven = natalData.midheaven;
+  if (natalData.house_cusps_full) matrix.meta.house_cusps_full = natalData.house_cusps_full;
   // 🛠️ V143: 合并本命盘宫位映射 (computed_houses) —— Mode A 激活关键
   if (natalData.computed_houses && Object.keys(natalData.computed_houses).length > 0) {
     matrix.meta.computed_houses = natalData.computed_houses;
@@ -145,6 +156,25 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   }
 
   console.log(`[V134] Got ${matrix.months?.length || 0} months, ${matrix.retrograde_stations?.mercury?.length || 0} Mercury stations`);
+
+  // ── 第三步：动态计算当前月月亮换座（替换硬编码 9/14 入天蝎 等静态日期）──
+  try {
+    const ingCmd = [
+      'python3', scriptPath,
+      '--mode', 'moon-ingress',
+      String(year), String(monthStart),
+      '--tz', tz || 'Asia/Bangkok'
+    ];
+    const ingRaw = execSync(ingCmd.join(' '), {
+      encoding: 'utf8', timeout: 15000, maxBuffer: 10 * 1024 * 1024,
+    }).trim();
+    const moonIngress = JSON.parse(ingRaw);
+    matrix.meta.moon_ingress = moonIngress;
+    console.log(`[V383] Moon ingresses computed: ${moonIngress.length} events for ${year}-${monthStart}`);
+  } catch (e) {
+    console.warn('[V383] Moon ingress computation failed, leaving null:', e.message);
+    matrix.meta.moon_ingress = null;
+  }
 
   return matrix;
 }
@@ -248,7 +278,31 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
     'Pisces': '1=Pisces / 2=Aries / 3=Taurus / 4=Gemini / 5=Cancer / 6=Leo / 7=Virgo / 8=Libra / 9=Scorpio / 10=Sagittarius / 11=Capricorn / 12=Aquarius',
     'Gemini': '1=Gemini / 2=Cancer / 3=Leo / 4=Virgo / 5=Libra / 6=Scorpio / 7=Sagittarius / 8=Capricorn / 9=Aquarius / 10=Pisces / 11=Aries / 12=Taurus',
   };
-  const houseMapping = HOUSE_MAPPING_TEMPLATE[actualRising] || HOUSE_MAPPING_TEMPLATE['Cancer'];
+  // 🛠️ V383: 真实宫头动态生成 (Placidus/WholeSign/SolarHouse),不再用硬编码 Equal House 模板
+  let houseMapping;
+  if (meta?.house_cusps_full) {
+    houseMapping = Array.from({ length: 12 }, (_, i) => {
+      const h = meta.house_cusps_full['house_' + (i + 1)];
+      return `${i + 1}=${h.sign} ${h.degree_in_sign.toFixed(2)}°`;
+    }).join(' / ');
+  } else {
+    houseMapping = HOUSE_MAPPING_TEMPLATE[actualRising] || HOUSE_MAPPING_TEMPLATE['Cancer'];
+  }
+  // 🛠️ V383: 本命锚点 (出生盘固定不变,供所有语言报告硬引用)
+  const _natalMoon = meta?.natal_moon || meta?.computed_houses?.Moon || {};
+  const _asc = meta?.ascendant || null;
+  const _mc = meta?.midheaven || null;
+  const natalAnchors = [
+    `Your Natal Sun: ${astroMatrix.meta?.sun_sign || 'Cancer'} (House ${meta?.computed_houses?.Sun?.house ?? '?'})`,
+    `Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim(),
+    `Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`,
+    `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
+  ].join('\n');
+  // 🛠️ V383: 月亮换座动态化 (SwissEph 实时计算,替代 server.js 旧硬编码 9/14 入天蝎)
+  const moonIngress = meta?.moon_ingress || [];
+  const moonIngressText = moonIngress.length > 0
+    ? moonIngress.map(e => `- Moon enters ${e.to_sign} on ${e.date_str} (~${e.time_str} local time)`).join('\n')
+    : '(No moon ingress computed for this month.)';
   const computedHouses = meta?.computed_houses || {};
   const computedHousesJson = JSON.stringify(computedHouses, null, 2);
 
@@ -267,7 +321,7 @@ ${computedHousesJson}
 
 Your Rising Sign: ${actualRising}
 Your Natal Sun Sign: ${astroMatrix.meta?.sun_sign || 'Cancer'}
-House System: Equal House
+House System: ${meta?.house_system_used || 'Equal House'}
 
 ═══════════════════════════════════════════════
 ⛔ [ASTROLOGICAL ACCURACY DIRECTIVE — NATAL vs TRANSIT — ZERO TOLERANCE]
@@ -277,6 +331,9 @@ House System: Equal House
 • FORBIDDEN phrases: "your Cancer Sun", "as a Cancer", "you are a Cancer" (unless natal IS Cancer).
 • CORRECT: "your natal ${astroMatrix.meta?.sun_sign || 'Cancer'} Sun" / "the transiting Sun moving through Cancer".
 ═══════════════════════════════════════════════
+
+[NATAL CHART ANCHORS — your birth chart, FIXED forever, use for all natal references]
+${natalAnchors}
 
 ── Monthly TRANSIT Planetary Positions (July 2026 – June 2027) — these are SKY positions, NOT natal ──
 ${months.map((m, i) => {
@@ -296,7 +353,7 @@ ${months.map((m, i) => {
   ${m.peak_windows?.length > 0 ? `✨ Peak Window: ${m.peak_windows[0].date} – ${m.peak_windows[0].reason}` : ''}`;
 }).join('\n')}
 
-── House Mapping (Equal House, Rising = ${actualRising}) ──
+── House Mapping (${meta?.house_system_used || 'Equal House'}, Rising = ${actualRising}) ──
 ${houseMapping}
 
 ── Mercury Retrograde Periods (2026-2027) ──
@@ -307,6 +364,10 @@ ${peakWindows || 'Dynamically computed from exact planetary alignments.'}
 
 ── Crisis / Black Swan Days ──
 ${crisisDays?.join('\n') || 'None this month.'}
+
+── Moon Ingress Calendar (current month — SwissEph computed, EXACT dates) ──
+${moonIngressText}
+⛔ Only mention "Moon in [Sign]" for the exact date ranges implied by these ingresses. Do NOT invent moon-sign dates not listed here.
 
 ⛔ FORBIDDEN — Do NOT write:
   - "Moon is retrograde" (physically impossible)

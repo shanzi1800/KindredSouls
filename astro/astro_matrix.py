@@ -141,7 +141,7 @@ def find_station_day(start_dt: datetime, end_dt: datetime, planet: int, station_
 
 # ── Monthly Astro Matrix Computation ─────────────────────────────────────────
 
-def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -> Dict[str, Any]:
+def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', cusps: List[float] = None) -> Dict[str, Any]:
     """Compute the complete astro matrix for one month."""
     # Reference date for the month
     ref_date = datetime(year, month, 15)
@@ -160,7 +160,7 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
     for name, pid in planets.items():
         deg, speed = get_planet_pos(jd, pid)
         sign = get_sign(deg)
-        house = get_house(sign, rising_sign)
+        house = get_house_from_cusps(deg, cusps) if cusps is not None else get_house(sign, rising_sign)
         positions[name] = {
             'sign': sign,
             'degree': round(deg % 30, 2),
@@ -223,7 +223,7 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer') -
         _wjd = swe.julday(year, month, _wd, 12)
         _wdeg, _ = get_planet_pos(_wjd, swe.SUN)
         _wsign = get_sign(_wdeg)
-        _whouse = get_house(_wsign, rising_sign)
+        _whouse = get_house_from_cusps(_wdeg, cusps) if cusps is not None else get_house(_wsign, rising_sign)
         _weekly_sun[f'w{_wi}'] = {'sign': _wsign, 'house': _whouse, 'retrograde': False}
     
     month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -376,17 +376,45 @@ def find_crisis_days(year: int, month: int) -> List[Dict]:
 # ── Full Year Matrix ──────────────────────────────────────────────────────────
 
 def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
-                        start_year: int = 2026, start_month: int = 7) -> Dict:
+                        start_year: int = 2026, start_month: int = 7,
+                        lat: float = 13.75, lon: float = 100.5,
+                        birth_time: str = '12:00', birth_time_known: bool = True,
+                        tz: str = 'Asia/Bangkok') -> Dict:
     """
     Compute the complete 12-month astro matrix.
     birth_date: 'YYYY-MM-DD' string
+    Real natal cusps (Placidus) derived once and reused so transit planet
+    houses map onto the user's actual natal houses (no Equal House approx).
     """
+    # ── Derive real natal cusps once, reuse for all 12 transit months ──
+    _cusps = None
+    _hs = None
+    if birth_time_known and birth_date:
+        try:
+            import pytz
+            _bt = birth_time if birth_time else '12:00'
+            _bd = datetime.strptime(f"{birth_date} {_bt}", '%Y-%m-%d %H:%M')
+            try:
+                _bd = pytz.timezone(tz).localize(_bd)
+            except Exception:
+                try:
+                    _bd = pytz.timezone('Asia/Bangkok').localize(_bd)
+                except Exception:
+                    pass
+            _utc = _bd.astimezone(pytz.UTC)
+            _jd_b = swe.julday(_utc.year, _utc.month, _utc.day, _utc.hour + _utc.minute / 60.0)
+            _sdeg, _ = get_planet_pos(swe.julday(_utc.year, _utc.month, _utc.day, 12), swe.SUN)
+            _ssign = get_sign(_sdeg)
+            _cusps, _asc, _mc, _hs = compute_natal_cusps(_jd_b, lat, lon, True, _ssign)
+        except Exception as _e:
+            print(f"[AstroMatrix] cusp derivation failed: {_e}", file=sys.stderr)
+            _cusps = None
     months = []
     year = start_year
     month = start_month
     
     for _ in range(12):
-        matrix = compute_monthly_matrix(year, month, rising_sign)
+        matrix = compute_monthly_matrix(year, month, rising_sign, _cusps)
         months.append(matrix)
         month += 1
         if month > 12:
@@ -402,7 +430,7 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
             'rising_sign': rising_sign,
             'generated_by': 'V69 SwissEph Engine',
             'version': '1.0.0',
-            'house_system': 'Equal House',
+            'house_system': _hs if _cusps is not None else 'Solar House',
             'year_range': f"{start_year}-{start_month:02d} to {year}-{month-1:02d}",
         'rising_sign_source': 'from_natal',
         },
@@ -511,6 +539,71 @@ def compute_sidereal_ascendant(jd: float, lat: float, lon: float):
 
 # ── Natal Chart (Birth Time Required) ───────────────────────────────────────
 
+def get_house_from_cusps(degree: float, cusps: List[float]) -> int:
+    """Return house number (1-12) for an ecliptic longitude, given 12 cusp degrees.
+    Works for both Placidus (unequal) and Whole/Solar House (equal) cusp arrays."""
+    deg = degree % 360.0
+    for i in range(12):
+        start = cusps[i] % 360.0
+        end = cusps[(i + 1) % 12] % 360.0
+        if start <= end:
+            if start <= deg < end:
+                return i + 1
+        else:  # wraps past 360°
+            if deg >= start or deg < end:
+                return i + 1
+    return 1
+
+
+def compute_natal_cusps(jd_birth: float, lat: float, lon: float,
+                        birth_time_known: bool = True,
+                        solar_sign: str = None) -> tuple:
+    """Compute 12 house cusps via SwissEph.
+    Returns (cusps[12], asc_deg, mc_deg, house_system_used).
+    Placidus with Whole Sign fallback at extreme latitudes.
+    birth_time_known=False → Solar House (1st cusp = 0° of solar_sign)."""
+    if not birth_time_known:
+        s_idx = SIGNS.index(solar_sign) if solar_sign in SIGNS else 0
+        cusps = [(s_idx * 30 + i * 30) % 360 for i in range(12)]
+        return cusps, float(cusps[0]), None, 'SolarHouse'
+    try:
+        c, ascmc = swe.houses(jd_birth, lat, lon, b'P')
+        return list(c), float(ascmc[0]), float(ascmc[1]), 'Placidus'
+    except swe.Error:
+        c, ascmc = swe.houses(jd_birth, lat, lon, b'W')
+        return list(c), float(ascmc[0]), float(ascmc[1]), 'WholeSignFallback'
+
+
+def compute_moon_ingresses(year: int, month: int, tz_str: str = 'Asia/Ho_Chi_Minh') -> List[Dict]:
+    """Compute exact Moon sign-ingress dates within a given month (local tz).
+    Scans hourly; records each sign change. Returns list of ingress events."""
+    import pytz
+    tz = pytz.timezone(tz_str)
+    start_dt = tz.localize(datetime(year, month, 1, 0, 0, 0))
+    if month == 12:
+        end_dt = tz.localize(datetime(year + 1, 1, 1, 0, 0, 0))
+    else:
+        end_dt = tz.localize(datetime(year, month + 1, 1, 0, 0, 0))
+    ingresses = []
+    curr = start_dt
+    last_sign = None
+    while curr < end_dt:
+        utc = curr.astimezone(pytz.utc)
+        jd = swe.julday(utc.year, utc.month, utc.day, utc.hour + utc.minute / 60.0)
+        xx, _ = swe.calc_ut(jd, swe.MOON)
+        sign_idx = int(xx[0] // 30) % 12
+        if last_sign is not None and sign_idx != last_sign:
+            ingresses.append({
+                'date_str': curr.strftime('%Y-%m-%d'),
+                'day': curr.day,
+                'to_sign': SIGNS[sign_idx],
+                'time_str': curr.strftime('%H:%M'),
+            })
+        last_sign = sign_idx
+        curr += timedelta(hours=1)
+    return ingresses
+
+
 def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
                         lat: float = 13.75, lon: float = 100.5,
                         tz: str = 'Asia/Bangkok',
@@ -557,16 +650,16 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     # SwissEph Equal House has hemisphere-dependent bugs (cusp[0] = Descendant ≠ Ascendant
     # for some lat/lon combos). Replace with Formula B (Jean Meeus) validated to
     # Copenhagen error 0.003°, Melbourne error 0.0008°.
-    asc_deg, house_system_used = compute_sidereal_ascendant(jd_birth, lat, lon)
-    house_cusps = [(asc_deg + i * 30) % 360 for i in range(12)]  # Equal House
-    
-    rising_sign = get_sign(asc_deg)
-    
-    # 🛠️ V142: 无出生时间→降级 Solar House (太阳星座=第1宫)
-    # 先算出太阳星座，再把它当作"上升"，后面所有宫位自动=Solar House
+    # ── Natal Sun (needed for Solar House fallback) ──
     _jd_sun = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, 12)
     _sun_deg, _ = get_planet_pos(_jd_sun, swe.SUN)
     _sun_sign = get_sign(_sun_deg)
+
+    # ── Real House Cusps (Placidus / Whole Sign fallback / Solar House) ──
+    cusps, asc_deg, mc_deg, house_system_used = compute_natal_cusps(
+        jd_birth, lat, lon, birth_time_known, _sun_sign if not birth_time_known else None)
+    house_cusps = cusps  # real cusp degrees (NOT Equal House approximation)
+    rising_sign = get_sign(asc_deg)
     if not birth_time_known:
         rising_sign = _sun_sign  # Solar House: 太阳星座=第1宫
     
@@ -582,7 +675,7 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     for name, pid in planets.items():
         deg, speed = get_planet_pos(jd_birth, pid)
         sign = get_sign(deg)
-        house = get_house(sign, rising_sign)
+        house = get_house_from_cusps(deg, cusps)
         positions[name] = {
             'sign': sign,
             'degree': round(deg % 30, 2),
@@ -610,7 +703,18 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         'tz': tz,
         'computed_houses': computed_houses,
         'house_cusps': [round(c, 4) for c in house_cusps],
-        'version': 'V174',
+        'house_cusps_full': {
+            f'house_{i+1}': {
+                'cusp_degree': round(cusps[i], 4),
+                'sign': get_sign(cusps[i]),
+                'degree_in_sign': round(cusps[i] % 30, 2),
+            } for i in range(12)
+        },
+        'ascendant': {'sign': rising_sign, 'degree': round(asc_deg % 30, 2)},
+        'midheaven': ({'sign': get_sign(mc_deg), 'degree': round(mc_deg % 30, 2)}
+                      if mc_deg is not None else None),
+        'natal_moon': computed_houses.get('Moon', {}),
+        'version': 'V383',
         'asc_source': 'ascmc_asc',
         'birth_time_known': birth_time_known,
         'rising_sign_source': ('solar_house_no_time' if not birth_time_known
@@ -652,12 +756,20 @@ if __name__ == '__main__':
         natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz,
                                     birth_time_known=not args.no_birth_time)
         print(json.dumps(natal, indent=2, ensure_ascii=False))
+    elif args.mode == 'moon-ingress' and args.year and args.month:
+        ing = compute_moon_ingresses(args.year, args.month, args.tz)
+        print(json.dumps(ing, ensure_ascii=False))
     elif args.year and args.month:
         matrix = compute_full_matrix(
             birth_date=args.birth_date or '',
             rising_sign=args.rising_sign or 'Cancer',
             start_year=args.year,
             start_month=args.month,
+            lat=args.lat,
+            lon=args.lon,
+            birth_time=args.birth_time,
+            birth_time_known=not args.no_birth_time,
+            tz=args.tz,
         )
         # Override months count
         matrix['meta']['months_requested'] = args.months

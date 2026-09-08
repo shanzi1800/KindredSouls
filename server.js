@@ -78,7 +78,7 @@ function getCurrencyRiskProfile(lang) {
     fr: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000 },
     es: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000 },
     th: { currency: 'THB', symbol: '฿',  baseRisk: 5000,     maxWeekly: 15000 },
-    vi: { currency: 'VND', symbol: '₫',  baseRisk: 12000000, maxWeekly: 36000000 },
+    vi: { currency: 'VND', symbol: '₫',  baseRisk: 500000, maxWeekly: 36000000 },
   };
   return profiles[lang] || profiles.en;
 }
@@ -3582,7 +3582,7 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   return c;
 }
 
-function buildMonthlyPrompt(birthDate, lang) {
+function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -3673,11 +3673,25 @@ function buildMonthlyPrompt(birthDate, lang) {
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.\n\n⛔ RÈGLE SOLEIL NATAL vs TRANSIT: Le Soleil mentionné dans ce rapport mensuel est le Soleil de TRANSIT du mois courant, PAS votre Soleil natal. N\'écrivez JAMAIS "votre Soleil en [signe]" ni "votre Soleil en Maison X" pour décrire le Soleil de transit (cela ferait croire que votre Soleil natal est ce signe — or votre Soleil natal est une donnée permanente fixée par votre date de naissance). Utilisez toujours "Le Soleil en transit dans [signe]" ou "Le Soleil du mois dans [signe]".',
     th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน\n\n\n\n[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:\n\n- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)\n\n- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)\n\n- เก็บอม → เก็บออม (เก็บออม = saving)\n\n- ดึงดู → ดึงดูด (ดึงดูด = attract)\n\n- พิจารณ → พิจารณา (พิจารณา = consider)\n\n- ราคแพง → ราคาแพง (ราคาแพง = expensive)\n\n- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)\n\n- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)\n\n- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)\n\n- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด',
-    vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign (Capricorn) and ascendant in your analysis. Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết".
+    vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign, ascendant (Rising), AND natal Moon in your analysis (see NATAL CHART ANCHORS in the fact sheet). Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết, và Mặt Trăng natal của bạn ở Song Ngư Nhà 5 khuếch đại trực giác tài chính".
 [OUTPUT FORMAT V381] CRITICAL: DO NOT output any main report title, header, or greeting at the beginning. Start directly with Section 1 content.
 `,
   };
-  const instruction = langInstructions[lang] || langInstructions.en;
+  // 🛠️ V383: 多货币风险阈值动态化 — 替换 {{risk_limit}}/{{cooldown_hours}} 占位符
+  const RISK_BY_LANG = {
+    zh: { currency: 'CNY', symbol: '￥', baseRisk: 5000,     maxWeekly: 15000,     cooldown: 72 },
+    en: { currency: 'USD', symbol: '$',  baseRisk: 800,      maxWeekly: 2500,      cooldown: 72 },
+    fr: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000,      cooldown: 72 },
+    es: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000,      cooldown: 72 },
+    th: { currency: 'THB', symbol: '฿', baseRisk: 5000,     maxWeekly: 15000,     cooldown: 72 },
+    vi: { currency: 'VND', symbol: '₫', baseRisk: 500000, maxWeekly: 36000000, cooldown: 72 },
+  };
+  const _rk = RISK_BY_LANG[lang] || RISK_BY_LANG.en;
+  const _riskLimit = _rk.symbol + _rk.baseRisk.toLocaleString('en-US') + ' ' + _rk.currency;
+  const _cooldownH = String(_rk.cooldown);
+  let instruction = (langInstructions[lang] || langInstructions.en)
+    .split('{{risk_limit}}').join(_riskLimit)
+    .split('{{cooldown_hours}}').join(_cooldownH);
 
   const MONTHLY_SYSTEM = {
     zh: `You are a master wealth astrologer and clinical psychologist generating a monthly financial report.${instruction}\n\nCRITICAL: You MUST write at least 1200 words.`,
@@ -3728,8 +3742,14 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 ✅ Good Output: Writing "Venus in Scorpio (第5宫)" — matching the data exactly.
 `;
   
-  let monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName);
+  let monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName)
+    .split('{{risk_limit}}').join(_riskLimit).split('{{cooldown_hours}}').join(_cooldownH);
   const natalSun = astroMatrix?.meta?.sun_sign || '';
+  // 🛠️ V383: 月亮换座动态化 — 由 SwissEph 实时计算 (替换旧硬编码 9/14 入天蝎)
+  const _moonIng = (astroMatrix?.meta?.moon_ingress || []);
+  const moonIngressLines = _moonIng.length > 0
+    ? _moonIng.map(e => `- Moon enters ${e.to_sign} on ${e.date_str} (~${e.time_str})`).join('\n')
+    : '- (Moon ingress data unavailable for this month)';
   if (natalSun) monthlySystem += `\n\n[NATAL PROFILE V382] User's Natal Sun is in ${natalSun}. You MUST mention "${natalSun}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun}.`;
   
   return {
@@ -3739,7 +3759,8 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 ### [EPHEMERIS_DATA — Planetary Transit Calendar for ${curMonthName} ${currentYear}]
 ⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days).
 Below are the EXACT moon ingress dates for ${currentYear} — use ONLY these dates:
-Moon Ingress Dates (exact): Sept 1→Ari, Sept 3→Gem, Sept 5→Can, Sept 7→Leo, Sept 9→Vir, Sept 12→Lib, Sept 14→Sco, Sept 16→Sag, Sept 19→Cap, Sept 21→Aqu, Sept 24→Pis, Sept 26→Ari, Sept 28→Tau, Sept 30→Gem
+Moon Ingress Dates (exact, SwissEph computed):
+${moonIngressLines}
 The Sun ingresses: Aug 10→Leo, Sept 22→Lib (write Sun entering Libra ONLY in the week containing Sept 22).
 Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
 
@@ -4118,11 +4139,25 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.',
     th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนําที่ผสมผสานจิตวิทยาคววเจียน ใช้คําที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน',
-    vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign (Capricorn) and ascendant in your analysis. Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết".
+    vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign, ascendant (Rising), AND natal Moon in your analysis (see NATAL CHART ANCHORS in the fact sheet). Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết, và Mặt Trăng natal của bạn ở Song Ngư Nhà 5 khuếch đại trực giác tài chính".
 [OUTPUT FORMAT V381] CRITICAL: DO NOT output any main report title, header, or greeting at the beginning. Start directly with Section 1 content.
 `,
   };
-  const instruction = langInstructions[lang] || langInstructions.en;
+  // 🛠️ V383: 多货币风险阈值动态化 — 替换 {{risk_limit}}/{{cooldown_hours}} 占位符
+  const RISK_BY_LANG = {
+    zh: { currency: 'CNY', symbol: '￥', baseRisk: 5000,     maxWeekly: 15000,     cooldown: 72 },
+    en: { currency: 'USD', symbol: '$',  baseRisk: 800,      maxWeekly: 2500,      cooldown: 72 },
+    fr: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000,      cooldown: 72 },
+    es: { currency: 'EUR', symbol: '€',  baseRisk: 700,      maxWeekly: 2000,      cooldown: 72 },
+    th: { currency: 'THB', symbol: '฿', baseRisk: 5000,     maxWeekly: 15000,     cooldown: 72 },
+    vi: { currency: 'VND', symbol: '₫', baseRisk: 500000, maxWeekly: 36000000, cooldown: 72 },
+  };
+  const _rk = RISK_BY_LANG[lang] || RISK_BY_LANG.en;
+  const _riskLimit = _rk.symbol + _rk.baseRisk.toLocaleString('en-US') + ' ' + _rk.currency;
+  const _cooldownH = String(_rk.cooldown);
+  let instruction = (langInstructions[lang] || langInstructions.en)
+    .split('{{risk_limit}}').join(_riskLimit)
+    .split('{{cooldown_hours}}').join(_cooldownH);
 
   // ── V69 SwissEph FACT_SHEET ─────────────────────────────────────────
   // When astroMatrix is provided (from Python SwissEph), use it.
