@@ -5262,7 +5262,7 @@ function enforceRiskThreshold(report, lang) {
   let section = report.slice(start, end);
   if (section.includes(THRESHOLD)) return report; // 已含真实阈值, 无需处理
   // 替换 LLM 自创的 USD/VND 金额(含 "5.000.000 –7.000.000 VND" 范围写法)
-  const amtRe = /\b\d[\d.]*\s*(?:–|-)\s*\d[\d.]*\s*VND|\$\s?\d[\d,.]*\s*(?:USD)?|\b\d[\d.]*\s*USD|₫\s?\d[\d,.]*/g;
+  const amtRe = /\b\d[\d.]*\s*(?:–|-)\s*\d[\d.]*\s*VND|\$\s?\d[\d,.]*\s*(?:USD)?|\b\d[\d.]*\s*USD|\b\d[\d.]*\s*Đồng|₫\s?\d[\d,.]*/g;
   let newSection = section.replace(amtRe, THRESHOLD);
   if (newSection === section) {
     // 段内无可替换金额 → 追加权威声明行
