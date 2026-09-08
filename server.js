@@ -6013,7 +6013,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       const cachedText = cacheRows?.[0]?.insight;
 
       // 🛡️ V222z-fix9: 最小长度检查——若缓存文本 <3000字（正常月报应 >5000），说明是历史残缺缓存，强制穿透重新生成
-      if (cachedText && cachedText.length > 2000 && cachedText.length > 3000) {
+      // 🛠️ V394-fix4: HIT 入口 vi 拆词脏缓存拦截——V389 脏版(含 Vậ n 类不可逆拆词)直接视为 MISS 强制重生成
+      //   拆词信息已丢失(ậ n 无法复原 ận),清洗不可逆,只能弃缓存重生成
+      const _viDirtyHit = lang === 'vi' && /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|Mặ\s+t|chiế\s+u|chuyệ\s+n|cuộ\s+c|mộ\s+t|đượ\s+c/i.test(cachedText || '');
+      if (_viDirtyHit) {
+        console.warn(`[V394] HIT缓存含vi拆词脏文本, 拦截强制MISS重生成: ${cacheKey}`);
+      }
+      if (cachedText && !_viDirtyHit && cachedText.length > 2000 && cachedText.length > 3000) {
         // ── V113: 缓存命中 → 完美终稿直传(写入时已清洗,读取时零处理)──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗,缓存=完美终稿;读取时零处理直接分块 SSE 输出
@@ -6074,6 +6080,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = cleanConsumerTrapAndBrackets(streamText);
 
         // 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
+        // 🛠️ V394-fix4: HIT 路径拆词兜底清洗(入口已拦脏缓存,此处仅正常补偿)
         if (lang === 'vi') streamText = fixVietnameseCorruption(streamText);
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -6120,6 +6127,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const writeToCache = async (text) => {
     if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
     try {
+      // 🛠️ V394-fix3: 缓存写入卫生守卫——拆词脏文本/占位符残渣拒绝写入,防毒化永久复发(组2 1981-09-08 HIT到V389脏缓存实证)。
+      //   拆词不可逆(ậ n 无法复原 ận),只能不写+下次重生成;占位符残渣(<3000字含marker)同理。
+      const _dirtyVi = lang === 'vi' && /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|Mặ\s+t|chiế\s+u|chuyệ\s+n|cuộ\s+c|mộ\s+t|đượ\s+c/i.test(text);
+      const _phResidue = /【(?:Hệ Thống Chèn|System-Injected|占位符-系统注入|Inyección del Sistema|Injection Système|ระบบป้ายแทรก)】|vui lòng làm mới|please refresh/i.test(text) && text.length < 3000;
+      if (_dirtyVi || _phResidue) {
+        console.warn(`[V394] 缓存卫生守卫拦截脏文本(${_dirtyVi ? 'vi拆词' : ''}${_phResidue ? '占位符残渣' : ''}), 不写入: ${cacheKey}`);
+        return;
+      }
       // 🛠️ V98k: 写入前先删除该 cache_key 旧记录,避免多条脏数据堆积(无 UNIQUE 约束时尤其关键)
       await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`, {
         method: 'DELETE',
