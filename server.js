@@ -323,7 +323,7 @@ function buildWealthPromptContext(lang, meta) {
       es: `2. La sección de trampas de gasto (✦ [⚠️ Trampas de Gasto...]) debe imponer un enfriamiento de 24 horas para compras superiores a ${curr.symbol}${curr.baseRisk.toLocaleString()}, tope semanal no esencial ${curr.symbol}${curr.maxWeekly.toLocaleString()}, más el árbol de decisión de 3 preguntas.`,
       fr: `2. La section pièges financiers (✦ [⚠️ Pièges Financiers...]) doit imposer un délai de réflexion de 24h pour tout achat dépassant ${curr.symbol}${curr.baseRisk.toLocaleString()}, plafond hebdomadaire non essentiel ${curr.symbol}${curr.maxWeekly.toLocaleString()}, plus l'arbre de décision à 3 questions.`,
       th: `2. ส่วนกับดักการใช้จ่าย (✦ [⚠️ กับดักการใช้จ่าย...]) ต้องบังคับระยะเย็นลง 24 ชม. สำหรับการซื้อเกิน ${curr.symbol}${curr.baseRisk.toLocaleString()} เพดานรายสัปดาห์ไม่จำเป็น ${curr.symbol}${curr.maxWeekly.toLocaleString()} บวกต้นไม้ตัดสินใจ 3 คำถาม`,
-      vi: `【越南语输出铁律 V395】绝对禁止吞掉任何单词首字母、禁止两词粘连缺字、变音符号必须完整输出。若不确定宁可多空格也不要丢字。\n2. Phần bẫy chi tiêu (✦ [⚠️ Bẫy Chi Tiêu...]) PHẢI nêu bật CON SỐ VI MÔ CHÍNH là ${curr.symbol}${curr.baseRisk.toLocaleString()} — ngưỡng kích hoạt tâm lý cho chi tiêu bốc đồng/không thiết yếu. Ghi rõ '${curr.symbol}${curr.baseRisk.toLocaleString()}' như là con số chủ đạo (lead number) của phần này. Áp dụng thời gian chờ 24 giờ cho mỗi giao dịch vượt quá mức này. Trần hàng tuần không thiết yếu ${curr.symbol}${curr.maxWeekly.toLocaleString()} CHỈ là ranh giới phụ, TUYỆT ĐỐT KHÔNG được dùng làm con số chính. Cộng cây quyết định 3 câu hỏi.`,
+      vi: `【越南语输出铁律 V395】绝对禁止吞掉任何单词首字母、禁止两词粘连缺字、变音符号必须完整输出。若不确定宁可多空格也不要丢字。\n【标题格式死模板】报告必须以「✦ [🔮 Chủ đề Vận mệnh Tháng]」开头；每周标题严格用「✦ [🟢 Tuần 1: Thg9 1–7]」「✦ [🔴 Tuần 2: ...]」「✦ [🔵 Tuần 3: ...]」格式（🟢🔴🔵 与周次一一对应）；消费陷阱段标题严格用「✦ [⚠️ Cạm bẫy Tài chính: Tháng 9, 2026] ✦」。金额一律写作「500.000 ₫」，禁止写成 2.000.000 / 5.000.000 等越界数值。\n2. Phần bẫy chi tiêu (✦ [⚠️ Bẫy Chi Tiêu...]) PHẢI nêu bật CON SỐ VI MÔ CHÍNH là ${curr.symbol}${curr.baseRisk.toLocaleString()} — ngưỡng kích hoạt tâm lý cho chi tiêu bốc đồng/không thiết yếu. Ghi rõ '${curr.symbol}${curr.baseRisk.toLocaleString()}' như là con số chủ đạo (lead number) của phần này. Áp dụng thời gian chờ 24 giờ cho mỗi giao dịch vượt quá mức này. Trần hàng tuần không thiết yếu ${curr.symbol}${curr.maxWeekly.toLocaleString()} CHỈ là ranh giới phụ, TUYỆT ĐỐT KHÔNG được dùng làm con số chính. Cộng cây quyết định 3 câu hỏi.`,
     },
     rule3: {
       zh: `3. 全文币种统一使用 ${curr.symbol},禁止混入其他币种符号。`,
@@ -2726,36 +2726,9 @@ function fixViReportSanitize(text) {
   const _now = new Date();
   const _mLabel = getMonthLabel('vi', _now.getFullYear(), _now.getMonth() + 1);
   let t = text;
-  // ── 1. 缺失型修复（两词粘连丢首辅音）──
-  const _lossFixes = [
-    'banuoc', 'ban buoc',
-    'nhunghu', 'nhung nhu',
-    'deninh', 'den dinh',
-    'vaovung', 'vao vung',
-    'tintuc', 'tin tuc',
-    'nhungho', 'nhung nho',
-    'loang', 'lo lang',
-    'hinh anh', 'hinh anh',
-    'luc', 'l luc',
-    'bile', 'bi le',
-    'taichinh', 'tai chinh',
-    'than cong', 'thanh cong',
-    'thuanloi', 'thuan loi',
-    'loi nhuan', 'loi nhuan',
-    'nguon vonn', 'nguon von',
-    'co phieuu', 'co phieu',
-    'thi truongg', 'thi truong',
-    'doanh nghiepp', 'doanh nghiep',
-    'tich luyy', 'tich luy',
-    'quyet dinhh', 'quyet dinh',
-    'co hoii', 'co hoi',
-    'tronguong', 'tron tuong',
-  ];
-  for (let i = 0; i < _lossFixes.length; i += 2) {
-    const _bad = _lossFixes[i], _good = _lossFixes[i + 1];
-    if (t.includes(_bad)) t = t.split(_bad).join(_good);
-  }
-  // ── 2a. 金额越界替换（千分位格式：X.000 / X.000.000）──
+  // ── 1. 金额越界替换（千分位格式：X.000 / X.000.000）──
+  // 🛠️ V396: 极简确定性替换—— ONLY 1:1 数字格式归一 + 固定标题字符串替换。
+  //    绝不触碰任何正文单词（废除所有修正拼写/变音符号的模糊正则，根治“吞字”）
   t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)\s*(?:VND|VN?Đ|đồng)?/gi,
     (m) => {
       const _n = parseInt(m.replace(/\D/g, ''), 10);
