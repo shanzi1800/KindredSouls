@@ -5228,7 +5228,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
           //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
           if (lang === 'vi') {
-            stdCached = enforceRiskThreshold(fixVietnameseCorruption(stdCached.normalize('NFC')), lang);
+            stdCached = enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang);
           }
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
@@ -5502,7 +5502,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
         if (lang === 'vi') {
-          reportContent = fixVietnameseCorruption(reportContent.normalize('NFC'));
+          reportContent = fixVietnameseCorruption((reportContent || '').normalize('NFC'));
         }
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
@@ -6718,7 +6718,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {
-      cleanedText = fixVietnameseCorruption(cleanedText.normalize('NFC'));
+      cleanedText = fixVietnameseCorruption((cleanedText || '').normalize('NFC'));
     }
 
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
