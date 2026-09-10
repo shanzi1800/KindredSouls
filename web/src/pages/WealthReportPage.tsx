@@ -2126,10 +2126,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读--sanitized以【开篇】开头说明是全量替换
                   const fixedText = parsed.sanitized || parsed.text;
                   if (type === 'yearly' || type === 'monthly') {
-                    // 🛡️ V222k-fix2: sanitized 是全量终稿——年报按【开篇】判断替换，月报直接覆盖
-                    // 🛡️ V257c: 但若后端 sanitized 偶发比流式短(截断回归),绝不以短覆盖长 → 保留较长版本
-                    const isYearlyFull = fixedText.startsWith('【开篇】');
-                    setSacredText(prev => ((fixedText.length >= (prev || '').length) ? fixedText : prev));
+                    // 🛡️ V410: sanitized 是后端全量清洗终稿(已修拆词+₫500,000阈值),月报/年报无条件覆盖流式脏文本
+                    //   原长度守卫会因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
+                    //   安全阈值: sanitized 至少 1000 字符才覆盖(防极端截断回归),否则保留较长流式版
+                    setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText)));
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;

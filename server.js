@@ -6312,9 +6312,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             console.warn('[V364] ⚠️ 拦截清洗后仍含指令片段:', clean.slice(0, 60));
             return;
           }
-          _totalWritten += clean;
-          fullTextCollector += clean;
-          _resDedupe.write(clean);   // 走 wrapper 去重
+          // 🛡️ V410: 流式 chunk 层越南语拆词修复——实时流与 sanitized 终稿保持一致,
+          //   根治前端长度守卫因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
+          let _out = clean;
+          if (lang === 'vi') {
+            _out = fixVietnameseCorruption(_out);
+            _out = enforceRiskThreshold(_out, lang);
+          }
+          _totalWritten += _out;
+          fullTextCollector += _out;
+          _resDedupe.write(_out);   // 走 wrapper 去重
         };
 
         // 🛠️ V315-fix: res 去重 wrapper——拦截所有 res.write() 调用，防止 Gemini 和 DeepSeek 双重写入
