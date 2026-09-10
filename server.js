@@ -709,7 +709,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/  +/g, ' ')
             // 字面 unicode 转义 → 真实字符 (DeepSeek 偶尔字面吐出 \ud83d\udd2e)
             .replace(/\\ud83d ?\\udd2e/g, '🔮')
-            .replace(/\\ud83d ?\\udd2e/g, '🟢')
+            // 🛠️ V407-fix: \ud83d\udfe2 才是 🟢(U+1F7E2)，\ud83d\udd2e 是 🔮(U+1F52E)，旧版重复映射
+            .replace(/\\ud83d ?\\udfe2/g, '🟢')
             .replace(/\\ud83d ?\\udd34/g, '🔴')
             .replace(/\\ud83d ?\\udd35/g, '🔵')
             .replace(/\\u26a0 ?\\ufe0f/g, '⚠️');
@@ -2743,9 +2744,33 @@ function fixViReportSanitize(text) {
       return m;
     });
   // ── 3. 标题格式标准化 ──
-  t = t.replace(/^(Chủ Đề Vận Mệnh Tháng)/mi, '✦ [🔮 Chủ đề Vận mệnh Tháng]');
-  t = t.replace(/^(\[(?:🟢|🔴|🔵) Tuần \d+:[^\]]+\])/gm, '✦ $1');
+  // 🛠️ V407-fix: 主标题大小写全匹配(Đ/đ 混淆)——不区分大小写
+  t = t.replace(/^(Chủ đề vận mệnh tháng)/mi, '✦ [🔮 Chủ đề Vận mệnh Tháng]');
+  // 🛠️ V407-fix2: 周标题修复——DeepSeek 偶发省去开头 ✦ 或 emoji，三种模式兜底
+  // 模式A: ✦ [🟢 Tuần 1:...] 已有格式，补全 ✦ 前缀
+  t = t.replace(/^\[((?:🟢|🔴|🔵)\s+Tuần \d+:[^\]]+\])/gm, '✦ [$1');
+  // 模式B: ✦ Tuần 1: Thg9 1–7] 无 [ 开头，补全 ✦ [emoji
+  t = t.replace(/^✦\s+((?:🟢|🔴|🔵)\s+Tuần \d+)/gm, '✦ [$1');
+  // 模式C: Tuần 1: Thg9 1–7] 完全无 ✦ 和 emoji，直接补全
+  t = t.replace(/^(?!✦)(\[?\s*Tuần \d+:[^\n]+)/gmi, '✦ [🟢 $1');
+  // 陷阱段格式
   t = t.replace(/\[⚠️ (?:Bẫy Chi Tiêu|Cạm bẫy Tài chính):?[^\]]*\]/gi, '✦ [⚠️ Cạm bẫy Tài chính: ' + _mLabel + '] ✦');
+  // ── 4. 金额越界替换(治本:不碰任何其他数字，只替换风险阈值 500,000)──
+  // 🛠️ V407-fix3: 根治金额替换丢失 ₫ 符号——回调必须返回含 ₫
+  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)\s*(?:VND|VN?Đ|đồng)?/gi,
+    (m) => {
+      const _n = parseInt(m.replace(/\D/g, ''), 10);
+      if (_n >= 500000) return '500.000 ₫';
+      return m;
+    });
+  t = t.replace(/\b(\d+)\s*triệu\s*(?:đồng)?/gi,
+    (m) => {
+      const _n = parseInt(m.match(/\d+/)[0], 10) * 1000000;
+      if (_n >= 500000) return '500.000 ₫';
+      return m;
+    });
+  // 🛠️ V407-fix4: 末尾必须有 return t;(原 V396 漏写导致越南语报告变 undefined)
+  return t;
 }
 function fixVietnameseCorruption(text) {
   return fixViReportSanitize(text);
