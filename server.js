@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -2777,6 +2777,13 @@ function fixViReportSanitize(text) {
       if (_n >= 500000) return '500.000 ₫';
       return m;
     });
+  // ── 🛠️ V420: 同值括号冗余折叠 —— 金额归一后两端变同值，会打出 "500.000 ₫ (khoảng 500.000 ₫)" 的打结式重复
+  t = t.replace(/([\d][\d.,]*)\s*₫\s*\(\s*(?:khoảng|tầm|chừng|≈|~)?\s*([\d][\d.,]*)\s*₫?\s*\)/gi,
+    (m, a, b) => {
+      const _a = parseInt(String(a).replace(/[.,]/g, ''), 10);
+      const _b = parseInt(String(b).replace(/[.,]/g, ''), 10);
+      return (_a && _b && _a === _b) ? _a.toLocaleString('de-DE') + ' ₫' : m;
+    });
   // 🛡️ V411-fix4: vi月报陷阱段必含 ₫500,000 风险阈值——军师军令(无金额则追加权威声明行72h冷静期)
   //   仅对完整报告(>3000字)生效,避免流式分片(<500字)误触发;幂等(已含₫500,000则跳过)
   if (t.length > 3000 && /Cạm\s*bẫy\s*Tài\s*chính|Bẫy\s*Chi\s*Tiêu/i.test(t) && !/500\.000\s*₫|₫500\.?000/i.test(t)) {
@@ -4405,6 +4412,19 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       .split('{{risk_limit}}').join(_riskLimit).split('{{cooldown_hours}}').join(_cooldownH);
         const natalSun2 = astroMatrix?.meta?.sun_sign || '';
         if (natalSun2) monthlySystem += `\n\n[NATAL PROFILE V382] User\'s Natal Sun is in ${natalSun2}. You MUST mention "${natalSun2}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun2}.`;
+        // 🛠️ V420 (军令 P0) 月报补齐「本命盘真值锚点」注入 —— 根治本命月亮造假
+        //   病根: monthlySystem 此前只有本命太阳, 无任何本命锚点/fact sheet 数据,
+        //   而各语言 instruction 却写着「see NATAL CHART ANCHORS in the fact sheet」
+        //   → 指向一张从未注入的表 → 模型只能编本命月亮
+        //   (实测 1990-08-05 真值 Ma Kết/摩羯 第5宫 被编成 Bọ Cạp/天蝎 第3·8宫, 且自相矛盾)
+        if (astroMatrix) {
+          try {
+            const _natAnchors = buildNatalAnchors(astroMatrix);
+            monthlySystem += `\n\n[NATAL CHART ANCHORS — SwissEph COMPUTED TRUTH · FIXED FOREVER · NEVER alter, infer or substitute]\n` +
+              _natAnchors + `\n` +
+              `- RULE: Every mention of the natal Moon MUST use exactly the sign AND house above. The transit Moon position (per-month sky data) is NOT the natal Moon — never present it as natal. If a value shows "?", omit that reference entirely; NEVER invent one.`;
+          } catch (e) { console.warn('[V420] natal anchors inject failed: ' + e.message); }
+        }
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
       zh: `⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
@@ -4826,8 +4846,15 @@ ${HT_RP.trap}
       jupSignLocal = signName(jupSign, 'Leo');
       satSignLocal = signName(satSign, 'Aries');
       moonSignLocal = signName(first.moon?.sign, 'Cancer');
-      // 🛠️ V102s: 本命月亮从 SwissEph natal_planets 取真值(报头用),非流月月亮
-      const natalMoonEN = astroMatrix.natal_planets?.Moon?.sign || first.moon?.sign || 'Cancer';
+      // 🛠️ V102s: 本命月亮从 SwissEph 取真值(报头用),非流月月亮
+      // 🛠️ V420 键名修正(军令 P0): astroMatrix 真实键是 meta.natal_moon(次选 meta.computed_houses.Moon)。
+      //   旧代码写 astroMatrix.natal_planets?.Moon?.sign —— 该键根本不存在 → undefined
+      //   → optional chaining 静默回落到 first.moon(流月月亮) → 报头本命月亮逐月漂移、纯随机。
+      //   此处彻底斩断「流月冒充本命」的后路: 取不到真值就留空(下游 if 守卫会省略), 绝不编。
+      const natalMoonEN = astroMatrix?.meta?.natal_moon?.sign
+        || astroMatrix?.natal_moon?.sign
+        || astroMatrix?.meta?.computed_houses?.Moon?.sign
+        || '';
       natalMoonSignEN = natalMoonEN;
       natalMoonSign = signName(natalMoonEN, natalMoonEN);
 

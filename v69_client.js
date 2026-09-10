@@ -215,6 +215,26 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
  * Generate the FACT_SHEET section of the prompt from V69 computed data.
  * This replaces the hardcoded FACT_SHEET with machine-generated truth.
  */
+// ── 🛠️ V420: 本命盘锚点真值块 (出生盘 FIXED forever) ────────────────────
+// 年报 FactSheet 与月报 monthlySystem 共用同一份 SwissEph 真值。
+// 病根备忘：月报此前完全没有本命锚点注入，而 prompt 却要求「see NATAL CHART ANCHORS
+//   in the fact sheet」→ 模型只能编本命月亮（实测 1990-08-05 真值 Ma Kết/摩羯 第5宫 被编成 Bọ Cạp/天蝎 第3·8宫）。
+// ⚠️ 键名铁律：本命月亮真值在 meta.natal_moon（次选 meta.computed_houses.Moon）。
+//   meta.natal_planets 不存在 —— 历史踩坑：键名写错 → undefined → optional chaining 静默回落流月月亮。
+export function buildNatalAnchors(astroMatrix) {
+  const meta = astroMatrix?.meta || {};
+  const actualRising = meta.rising_sign || astroMatrix?.rising_sign || 'Cancer';
+  const _natalMoon = meta.natal_moon || meta.computed_houses?.Moon || {};
+  const _asc = meta.ascendant || null;
+  const _mc = meta.midheaven || null;
+  return [
+    `Your Natal Sun: ${meta.sun_sign || 'Cancer'} (House ${meta?.computed_houses?.Sun?.house ?? '?'})`,
+    `Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim(),
+    `Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`,
+    `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
+  ].join('\n');
+}
+
 export function buildFactSheet(astroMatrix, lang = 'en') {
   if (!astroMatrix || !astroMatrix.months || astroMatrix.months.length === 0) {
     return '';
@@ -289,15 +309,8 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
     houseMapping = HOUSE_MAPPING_TEMPLATE[actualRising] || HOUSE_MAPPING_TEMPLATE['Cancer'];
   }
   // 🛠️ V383: 本命锚点 (出生盘固定不变,供所有语言报告硬引用)
-  const _natalMoon = meta?.natal_moon || meta?.computed_houses?.Moon || {};
-  const _asc = meta?.ascendant || null;
-  const _mc = meta?.midheaven || null;
-  const natalAnchors = [
-    `Your Natal Sun: ${astroMatrix.meta?.sun_sign || 'Cancer'} (House ${meta?.computed_houses?.Sun?.house ?? '?'})`,
-    `Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim(),
-    `Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`,
-    `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
-  ].join('\n');
+  // 🛠️ V420: 抽为导出函数 buildNatalAnchors() —— 月报 monthlySystem 复用同一份真值, 杜绝双份实现漂移
+  const natalAnchors = buildNatalAnchors(astroMatrix);
   // 🛠️ V383: 月亮换座动态化 (SwissEph 实时计算,替代 server.js 旧硬编码 9/14 入天蝎)
   const moonIngress = meta?.moon_ingress || [];
   const moonIngressText = moonIngress.length > 0
