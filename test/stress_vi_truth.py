@@ -31,6 +31,76 @@ ALL_SIGNS = ['Bạch Dương', 'Kim Ngưu', 'Song Tử', 'Cự Giải', 'Sư T�
 CUT_RE = re.compile(r'(?:Vậ|Mệ|Thá|Dươ|Nă|lượ|Mặ|chiế|chuyệ|cuộ|mộ|đượ)\s+[a-zàáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứửữựỳỵỷỹ]')
 FOREIGN = re.compile(r'\d[\d.,]*\s*(?:USD|đô(?:\s*la)?|Mỹ kim)|(?:\$|US\$)\s?\d[\d.,]*', re.I)
 
+# ── 真值裁定：只看「本命月亮锚点自身从句」内的宫位归属（前后均切在句读/连词/星体名边界）──
+BODY_N = r'(?:Mặt Trời|Mặt Trăng|Sao (?:Thủy|Kim|Hỏa|Mộc|Thổ|Thiên Vương|Hải Vương|Diêm Vương)|Thiên Vương|Hải Vương|Diêm Vương)'
+BODY_SPLIT = re.compile(r'\s' + BODY_N + r'\s')
+BODY_ANY = re.compile(BODY_N)
+# 回看边界：句读 + 连词（với/cùng 必须在内——'hợp nhất với ⟦月亮⟧' 的上句宫位不属于月亮）
+BW_CUT = re.compile(r'[.;,!?:()\n]|\s(?:và|với|nhưng|song|trong khi|đồng thời|khi|cùng)\s', re.I)
+TRANSIT_MARK = re.compile(r'di chuyển qua|quá cảnh|transit|đi qua|đi vào|bước vào|luân chuyển|đầu tháng|cuối tháng|chuyển sang|rời ', re.I)
+COMPOUND = re.compile(r'^\s*(?:và|với|,)\s+' + BODY_N + r'[^—–,.;\n]{0,20}?(?:của bạn|cùng)')
+NATAL_MOON = re.compile(r'Mặt Trăng natal|Mặt Trăng[^.\n]{0,25}?(?:của bạn|natal)', re.I)
+
+
+def _moon_clause(text, ms, me):
+    fwd = text[me:me + 90]
+    e = re.search(r'[.\n]', fwd)
+    if e:
+        fwd = fwd[:e.start()]
+    b = BODY_SPLIT.search(fwd)
+    if b and not COMPOUND.match(fwd):
+        fwd = fwd[:b.start()]
+    bwd = text[max(0, ms - 70):ms]
+    cut = -1
+    for c in BW_CUT.finditer(bwd):
+        cut = max(cut, c.end())
+    last = None
+    for m in BODY_ANY.finditer(bwd):
+        if m.end() < len(bwd):
+            last = m
+    if last:
+        cut = max(cut, last.end())
+    return bwd[cut + 1:] + ' ' + fwd
+
+
+def moon_house_claims(text):
+    """返回 (归给本命月亮的宫位集合, 是否出现任何宫位声明)。流月从句整段排除。"""
+    hs, seen = set(), False
+    for m in NATAL_MOON.finditer(text):
+        w = _moon_clause(text, m.start(), m.end())
+        if TRANSIT_MARK.search(w):
+            continue
+        for h in re.findall(r'Nhà\s*(\d+)', w):
+            seen = True
+            hs.add(int(h))
+    return hs, seen
+
+
+SELF_TEST_CASES = [
+    # (标签, 文本, 真值, 期望硬门通过?)
+    ('已知坏样本(应抓)', 'Cạm bẫy lớn nhất tháng này nằm ở Nhà 5 — nơi Mặt Trời và Sao Thủy hội tụ tại Xử Nữ — kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 11.', ('Xử Nữ', 4), False),
+    ('已知好样本(应放行)', 'Cạm bẫy đến từ sự kết hợp giữa Mặt Trăng Ma Kết Nhà 5 — Mặt Trăng natal của bạn — và Sao Hỏa Cự Giáo Nhà 1.', ('Ma Kết', 5), True),
+    ('太阳宫位在前(不应污染)', 'Mặt Trời natal của bạn khởi hành tại Song Ngư Nhà 11, và Mặt Trăng natal của bạn ở Xử Nữ Nhà 4 nhận cộng hưởng.', ('Xử Nữ', 4), True),
+    ('流月宫位(不应污染)', 'Mặt Trăng đi qua Ma Kết Nhà 8 và chạm vào Mặt Trăng natal của bạn ở Ma Kết Nhà 5.', ('Ma Kết', 5), True),
+    ('锚前写错宫位(应抓)', 'Nhà 8 — Mặt Trăng natal của bạn — bị kích hoạt.', ('Ma Kết', 5), False),
+]
+
+
+def self_test():
+    """检查表自证：跑固定好/坏样本，防止“评分表本身失灵”。"""
+    lines, ok = [], True
+    for label, txt, (ms, mh), expect in SELF_TEST_CASES:
+        hard, _ = verify({'moon': ms, 'moon_h': mh}, txt)
+        hs = sorted(moon_house_claims(txt)[0])
+        good = (hard == expect)
+        ok = ok and good
+        lines.append(f"  {'✅' if good else '❌'} {label} → 判定={'通过' if hard else '硬挂'} 归月亮宫位={hs}")
+    return ok, lines
+
+
+# 拆词签名（精确版）：破损 token 后紧跟空格+小写字母，才判为拆词。
+# 旧版用 'ệ nh'/'á ng' 这类泛化片段 → 误报 bảo vệ những / quá ngân sách（2026-09-10 实测 4/4 误报）
+
 M = {"success": 0, "failed": 0, "ttfb": [], "total": [], "status": {},
      "truth_pass": 0, "truth_fail": 0, "compliance_miss": 0,
      "fffd": 0, "cut": 0, "currency": 0, "over_amt": 0, "no_trap": 0, "no_week": 0,
@@ -47,15 +117,21 @@ def pct(vals, p):
 
 
 def verify(profile, text):
-    """硬门 = 真值被写错或自相矛盾；软门 = 压根没写宫位（依从性）"""
+    """硬门 = 真值被写错或自相矛盾；软门 = 压根没写宫位（依从性）
+
+    口径（避免“评分表自己失灵”，已由 self_test() 双向自证）：
+      • 只裁「本命月亮锚点自身从句」内的宫位（切在句读/连词/其他星体名边界）
+      • 流月(transit)从句整段排除 —— 流月宫位不是本命宫位，不得据此定罪
+      • 星座：本命月亮锚点后若写了星座，必须是真值
+    """
     hard, soft_miss = True, False
     for z in re.findall(r'Mặt Trăng natal[^.\n]{0,40}?\b(' + '|'.join(ALL_SIGNS) + r')\b', text):
         if z != profile["moon"]:
             hard = False
-    hs = set(int(h) for h in re.findall(r'Mặt Trăng natal[^.\n]{0,70}?Nhà (\d+)', text))
+    hs, seen = moon_house_claims(text)
     if len(hs) > 1 or (hs and hs != {profile["moon_h"]}):
         hard = False
-    if not hs:
+    if not seen:
         soft_miss = True
     return hard, soft_miss
 
@@ -160,6 +236,11 @@ async def main():
     total = int(sys.argv[2]) if len(sys.argv) > 2 else 60
     os.makedirs(OUTDIR, exist_ok=True)
     print(f"🚀 越南语月报 SSE 压测 | 并发={conc} 总量={total} | 真值基准已本地 SwissEph 复核", flush=True)
+    ok, lines = self_test()
+    print("── 检查表自证（好/坏样本双向）──")
+    for ln in lines:
+        print(ln)
+    print(f"  自证结论: {'✅ 检查表可信' if ok else '❌ 检查表失灵，结果不可信！'}", flush=True)
     sem = asyncio.Semaphore(conc)
     stop = asyncio.Event()
     conn = aiohttp.TCPConnector(limit=conc + 5)
