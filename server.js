@@ -2807,6 +2807,44 @@ function fixViReportSanitize(text) {
 function fixVietnameseCorruption(text) {
   return fixViReportSanitize(text);
 }
+
+// ── 🛠️ V421: 越南语本命盘真值硬锁（军令 P0 收口）────────────────────────
+// 病根2（Prompt 软约束的天花板）：即使把 NATAL CHART ANCHORS 真值注进 prompt，实测仍会漂：
+//   ① 1990-08-05 本命月亮 Ma Kết 第5宫 → 首句写对 Nhà 5，后续 5 句漂成 Nhà 8
+//   ② 1992-03-17 本命月亮 Xử Nữ 第4宫 → 被写成与太阳同座的 Song Ngư Nhà 5
+// 修法：用 SwissEph 真值做确定性后置替换（与 enforceRiskThreshold 同挂载点，HIT/MISS × stream/非stream）。
+// 安全边界：只改 “Mặt Trăng/Trời natal” 后的**首个从句**（遇到另一个星体名就截断），
+//   绝不越界污染其他行星/流月描述。
+const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 };
+function lockNatalTruthVi(text, astroMatrix) {
+  if (!text || !astroMatrix) return text;
+  const meta = astroMatrix.meta || {};
+  const nm = meta.natal_moon || meta.computed_houses?.Moon || {};
+  const idx2vi = (en) => (_EN2ZIDX[en] != null ? SUN_SIGN_VI[_EN2ZIDX[en]] : null);
+  const moonVi = idx2vi(nm.sign), moonH = Number(nm.house) || 0;
+  const sunVi = idx2vi(meta.sun_sign), sunH = Number(meta.computed_houses?.Sun?.house) || 0;
+  let fixes = 0;
+  // 只取 “natal” 后的首个从句；遇到下一个星体/行星即截断，防误伤
+  const firstClause = (w) => {
+    const i = w.search(/\s(?:Mặt|Sao|Hành)\s/);
+    return i >= 0 ? w.slice(0, i) : w;
+  };
+  const patch = (win, sign, house) => {
+    let s = firstClause(win);
+    if (sign) for (const z of SUN_SIGN_VI) {
+      if (z !== sign && s.includes(z)) { s = s.split(z).join(sign); fixes++; }
+    }
+    if (house) {
+      const m = s.match(/Nhà\s*(\d+)/);
+      if (m && Number(m[1]) !== house) { s = s.replace(/Nhà\s*\d+/, 'Nhà ' + house); fixes++; }
+    }
+    return s + win.slice(s.length);
+  };
+  let out = text.replace(/(Mặt Trăng natal)([^.\n]{0,70})/g, (m, mark, win) => mark + patch(win, moonVi, moonH));
+  out = out.replace(/(Mặt Trời natal)([^.\n]{0,70})/g, (m, mark, win) => mark + patch(win, sunVi, sunH));
+  if (fixes) console.log(`[V421] 本命盘真值锁: 修正 ${fixes} 处 native 星座/宫位漂移`);
+  return out;
+}
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -5308,7 +5346,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
           //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
           if (lang === 'vi') {
-            stdCached = enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang);
+            // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
+            //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
+            let _hitAstro = null;
+            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
+            stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
           }
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
@@ -5579,7 +5621,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // Parse AI result
         let reportContent = monthLocked;
         // 🛠️ V414: 语言门控(同上)——越南语专用清洗不得作用于其他语言
-        if (lang === 'vi') reportContent = enforceRiskThreshold(reportContent, lang);
+        if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
         if (lang === 'vi') {
@@ -6073,6 +6115,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           //   历史 MISS 写入的缓存(无拆词无占位符但陷阱段无阈值/双份残稿)在 HIT 路径直接裸奔。
           //   与 MISS 路径对齐, 读取时强制阈值兜底。
           streamText = enforceRiskThreshold(streamText, lang);
+          // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
+          streamText = lockNatalTruthVi(streamText, astroMatrix);
         }
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -6912,7 +6956,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段含真实阈值 ₫500,000(stream MISS 路径)
     // 必须在 sanitized 发送 + 缓存落库前、且晚于「方案C同步补全」覆盖,确保阈值必现(即便补全路径跑过)
     // 🛠️ V414: 语言门控——越南语专用清洗不得作用于 zh/en/es/fr/th
-    if (lang === 'vi') cleanedText = enforceRiskThreshold(cleanedText, lang);
+    if (lang === 'vi') cleanedText = lockNatalTruthVi(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {
