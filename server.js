@@ -6360,15 +6360,34 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const _mtMax = 12000;
             let _mtFull = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _mtMax, reportType: 'monthly' });
             if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _mtFull = _mtFull.split(_t).join(_v);
-            // 首行注入标准化主题标题(若 AI 未输出 ✦ 头)
+            // 首行注入标准化主题标题(若 AI 未输出 ✦ 头)——直接发 data:{text:...} 事件(前端期望格式)
             if (!_themeTitleInjected && !(_mtFull || '').trimStart().startsWith('✦')) {
-              _dedupWrite(_monthlyThemeInject + '\n');
+              fullTextCollector += _monthlyThemeInject + '\n';
+              const _titleOut = 'data: ' + JSON.stringify({ text: _monthlyThemeInject + '\n' }) + '\n\n';
+              res.write(Buffer.from(_titleOut, 'utf-8'));
+              if (typeof res.flush === 'function') res.flush();
               _themeTitleInjected = true;
             }
-            // 切成 SSE chunk 推流(逐块经 _dedupWrite → _resDedupe.write 清洗vi)
+            // 切成 SSE chunk 推流——直接发 data:{text:...} 事件(前端期望格式),并累积 fullTextCollector
+            // 注: _dedupWrite 经 _resDedupe.write 发的是原始文本(无 data: 包裹),前端忽略;
+            //     故此处绕过 _dedupWrite,直接发标准 SSE text 事件(与 else 分支一致)
             const _mtChunks = _safeChunk(_mtFull || '', 500);
             for (const _mc of _mtChunks) {
-              if (_mc) _dedupWrite(_mc);
+              if (!_mc) continue;
+              fullTextCollector += _mc;
+              let _out;
+              if (lang === 'vi') {
+                try {
+                  const _j = { text: _mc };
+                  _j.text = fixVietnameseCorruption(_j.text);
+                  _j.text = enforceRiskThreshold(_j.text, lang);
+                  _out = 'data: ' + JSON.stringify(_j) + '\n\n';
+                } catch (e) { _out = 'data: ' + JSON.stringify({ text: _mc }) + '\n\n'; }
+              } else {
+                _out = 'data: ' + JSON.stringify({ text: _mc }) + '\n\n';
+              }
+              res.write(Buffer.from(_out, 'utf-8'));
+              if (typeof res.flush === 'function') res.flush();
             }
             _didStream = true;
             geminiFullText = _mtFull || fullTextCollector;
@@ -6377,7 +6396,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             try {
               const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-                _dedupWrite(chunk); // V315-fix: SSE层防重复写入
+                fullTextCollector += chunk;
+                let _out = lang === 'vi' ? (() => { try { const _j = { text: chunk }; _j.text = fixVietnameseCorruption(_j.text); _j.text = enforceRiskThreshold(_j.text, lang); return 'data: ' + JSON.stringify(_j) + '\n\n'; } catch (e) { return 'data: ' + JSON.stringify({ text: chunk }) + '\n\n'; } })() : 'data: ' + JSON.stringify({ text: chunk }) + '\n\n';
+                res.write(Buffer.from(_out, 'utf-8'));
+                if (typeof res.flush === 'function') res.flush();
               }, lang, prompt.system, prompt.user, astroMatrix);
               geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
             } catch(gemErr2) {
