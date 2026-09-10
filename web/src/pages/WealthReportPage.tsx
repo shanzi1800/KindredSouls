@@ -1972,6 +1972,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
       // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
       try {
         let _fullMap = new Map<string, string>(); // V244: 每请求独立_full，防止HMR/重挂/多请求互相踩踏
+        const _sanMap = new Map<string, string>(); // 🛡️ V419: 保存后端 sanitized 全量终稿——防止 [DONE] 用流式原文本覆盖终稿
         let _chunkIdx = 0; // V242-debug: 追踪 chunk 编号
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         // 🛡️ V222z-fix7: 覆盖前先检查旧 gen 是否已完成；若已完成则保留旧 gen（它已经持有最终 _full）
@@ -2033,7 +2034,11 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
                 _reportMemCache.set(_memKey, _fullMap.get(_memKey) || ''); // V244,后续 remount 直接命中
                 const genDone = _reportGen.get(_memKey);
-                const _final = _fullMap.get(_memKey) || '';
+                // 🛡️ V419: 终稿优先——sanitized(后端全量清洗:拆词修复+₫500,000阈值+外币归一)必须在 [DONE] 后仍生效。
+                //   病根: 原代码无条件 setSacredText(流式累积),把刚收到的 sanitized 终稿盖掉
+                //   → 线上实测 DOM 残留 "1.200 đô la"、0 次 500.000(军师 9-10 抓包复现)
+                const _sanFinal = _sanMap.get(_memKey) || '';
+                const _final = _sanFinal.length >= 1000 ? _sanFinal : (_fullMap.get(_memKey) || '');
                 console.log('[V248] [DONE] final len=' + _final.length + ' ✦=' + ((_final.match(/\✦/g)||[]).length));
                 _reportMemCache.set(_memKey, _final);
                 // V248: 同步清 reportLoading，破坏渲染条件
@@ -2129,6 +2134,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     // 🛡️ V410: sanitized 是后端全量清洗终稿(已修拆词+₫500,000阈值),月报/年报无条件覆盖流式脏文本
                     //   原长度守卫会因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
                     //   安全阈值: sanitized 至少 1000 字符才覆盖(防极端截断回归),否则保留较长流式版
+                    if (fixedText && fixedText.length >= 1000) _sanMap.set(_memKey, fixedText); // 🛡️ V419: 登记终稿
                     setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText)));
                   } else {
                     setWealthReportText(fixedText);
