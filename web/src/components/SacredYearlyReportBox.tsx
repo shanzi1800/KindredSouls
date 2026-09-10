@@ -517,7 +517,8 @@ const SacredYearlyReportBox: React.FC<{
       if (sameLine) {
         // 🛠️ V387-fix: 从括号内容中提取实际 emoji 作为 icon(根治 sameLine 分支漏🔮导致普通金色非🔮金色)
         const bracketContent = sameLine[1];
-        const emojiMatch = bracketContent.match(/[🔮✦💎✨⭐🟢🔴🔵⚠️🚀📈📉🎯💡]/);
+        // 🛠️ V417-fix: 必须带 u 标志——字符类里的 emoji 是代理对,无 u 时只匹配到孤立高代理项(�)会渲染成 �
+        const emojiMatch = bracketContent.match(/[🔮✦💎✨⭐🟢🔴🔵⚠️🚀📈📉🎯💡]/u);
         const extractedIcon = emojiMatch ? emojiMatch[0] : '✦';
         return { type: 'heading', content: cleanMarkdown(bracketContent), icon: extractedIcon, next: { type: 'text', content: cleanMarkdown(sameLine[2]) } };
       }
@@ -527,7 +528,7 @@ const SacredYearlyReportBox: React.FC<{
       }
       return { type: 'heading', content: cleanMarkdown(withoutStar), icon: '✦' };
     }
-    const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/);
+    const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/u);
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
@@ -589,7 +590,7 @@ const SacredYearlyReportBox: React.FC<{
       let finalContent = textWithoutIcon;
       let finalIcon = icon;
       if (isMonthWeekHeader) {
-        const m = textWithoutIcon.match(/^\[\s*([🟢🔴🔵⚠️])?\s*\]?\s*(.+)/);
+        const m = textWithoutIcon.match(/^\[\s*([🟢🔴🔵⚠️])?\s*\]?\s*(.+)/u);
         if (m) {
           if (m[1] && !finalIcon) finalIcon = m[1];
           finalContent = m[2].replace(/^\s*\]?\s*/, '');
@@ -624,10 +625,11 @@ const SacredYearlyReportBox: React.FC<{
       const isTrapText = /(?:Trampas?|Spending\s*Traps?|pi[eè]ges?|กับดัก|bẫy|消费陷阱)/i.test(t);
       const isThemeText = /(?:Tema de Destino|Th[eè]me de Destin|Theme of Destiny|Destiny Theme|月度主题|月运主题|命运主题|本月命运|ธีม|Chủ Đề)/i.test(t);
       if (isWeekEmoji || isTrapEmoji || isThemeEmoji || isWeekText || isTrapText || isThemeText) {
-        const emoji = bracketContent.match(/[🟢🔴🔵⚠️🔮✨✦]/)?.[0] || '';
+        // 🛠️ V417-fix: 无 u 标志时 match 只返回孤立高代理项 → icon 渲染成 �(DOM 实证 iconUnits=["d83d"])
+        const emoji = bracketContent.match(/[🟢🔴🔵⚠️🔮✨✦]/u)?.[0] || '';
         const inner = t.slice(t.indexOf(']') + 1).trim();
         // V253-fix: 主题标题取方括号内文本(去除前导 emoji), 不残留方括号; 周次/trap 维持原 inner||t
-        const _content = isThemeText ? bracketContent.replace(/^[\s🟢🔴🔵⚠️🔮✨✦]+/, '').trim() : (inner || t);
+        const _content = isThemeText ? bracketContent.replace(/^[\s🟢🔴🔵⚠️🔮✨✦]+/u, '').trim() : (inner || t);
         return { type: 'heading', content: cleanMarkdown(_content), icon: emoji };
       }
     }
