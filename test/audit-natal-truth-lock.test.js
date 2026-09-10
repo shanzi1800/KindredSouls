@@ -1,79 +1,132 @@
-// 🛠️ V421 回归门：本命盘真值硬锁 lockNatalTruthVi
-// 不变量：① 修后「真值↔错值」往返替换必须与原文逐字符相同（抓掉字/重字）
-//        ② 越界保护：他行星的星座/宫位绝不被污染；流月(transit)描述绝不被改写
-import { test } from 'node:test';
+// 🛠️ V423 回归门：本命盘真值硬锁 lockNatalTruthVi（10 行星全量）
+//
+// 【真值轴】真值不手写，全部来自 astro/astro_matrix.py（SwissEph 实算）→ 杜绝「用自己写的常量验自己」
+// 【不变量】① 修后「真值↔错值」往返替换必须与原文逐字符相同（抓掉字/重字）
+//          ② 越界保护：他行星的星座/宫位绝不被污染；流月(transit)描述绝不被改写
+//          ③ 10 行星全覆盖：任一本命星座/宫位漂移都必须归真
+import { test, describe, before } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getAstroMatrix } from '../v69_client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-const BLOCK = SRC.match(/const _EN2ZIDX[\s\S]*?\nfunction _viForceHouseInClause[\s\S]*?\n\}\n/);
-if (!BLOCK) throw new Error('未能从 server.js 提取 lockNatalTruthVi 源码块');
+// 用标记切片（比非贪婪正则稳：块内出现多个 "\n}\n" 时不会提前截断）
+const _from = SRC.indexOf('const _EN2ZIDX');
+const _to = SRC.indexOf('function cleanConsumerTrapAndBrackets');
+if (_from < 0 || _to < 0 || _to <= _from) throw new Error('未能从 server.js 提取 lockNatalTruthVi 源码块');
+const BLOCK = SRC.slice(_from, _to);
 const SUN_SIGN_VI_DECL = "const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];";
-// ESM 严格模式下 eval 不会外泄声明，改用 new Function 工厂把函数取出来
-const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK[0]}\nreturn lockNatalTruthVi;`)();
-assert.strictEqual(typeof lockNatalTruthVi, 'function', 'lockNatalTruthVi 应被成功提取');
+// ESM 严格模式下 eval 不外泄声明 → 用 new Function 工厂把函数取出来
+const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK}\nreturn { lockNatalTruthVi, _VI_PLANET, _VI_PLANET_ORDER, SUN_SIGN_VI };`)();
+assert.strictEqual(typeof lockNatalTruthVi.lockNatalTruthVi, 'function', 'lockNatalTruthVi 应被成功提取');
+assert.strictEqual(lockNatalTruthVi._VI_PLANET_ORDER.length, 10, 'V423 必须覆盖 10 行星');
 
-const chart = (ms, mh, ss, sh) => ({ meta: { sun_sign: ss, natal_moon: { sign: ms, house: mh }, computed_houses: { Sun: { house: sh }, Moon: { sign: ms, house: mh } } } });
-const CAP_H5 = chart('Capricorn', 5, 'Leo', 12);      // 1990-08-05 真值
-const VIR_H4 = chart('Virgo', 4, 'Pisces', 11);       // 1992-03-17 真值
-
-// pairs: [真值token, 原文错值token]
-function roundTrip(input, ch, pairs, identical = false) {
-  const out = lockNatalTruthVi(input, ch);
+const VI = lockNatalTruthVi._VI_PLANET;
+const SIGNS = lockNatalTruthVi.SUN_SIGN_VI;
+const WRONG_SIGN_OF = (s) => SIGNS[(SIGNS.indexOf(s) + 5) % 12];      // 错值：隔 5 个星座（必不等）
+const WRONG_HOUSE_OF = (h) => (h === 12 ? 1 : h + 1);
+const roundTrip = (input, ch, pairs, identical = false) => {
+  const out = lockNatalTruthVi.lockNatalTruthVi(input, ch);
   let norm = out;
   for (const [truth, wrong] of pairs) norm = norm.split(truth).join(wrong);
   assert.strictEqual(norm, input, `往返不一致（掉字/重字）\nIN : ${input}\nOUT: ${out}`);
   if (identical) assert.strictEqual(out, input, `应零改动但被改了\nOUT: ${out}`);
   return out;
-}
+};
 
-test('① 本命月亮宫位漂移 8→5 归真', () => {
-  roundTrip('Mặt Trăng natal Ma Kết Nhà 8 của bạn được kích hoạt nhẹ nhàng.', CAP_H5, [['Nhà 5', 'Nhà 8']]);
+// ── 三个 profile（真值全部 SwissEph 实算）──
+const PROFILES = [
+  { bd: '1990-08-05', bt: '07:00', lat: 10.8231, lon: 106.6297, tz: 'Asia/Ho_Chi_Minh' },
+  { bd: '1989-10-12', bt: '07:00', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok' },
+  { bd: '1992-03-17', bt: '09:30', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai' },
+];
+const MATRICES = [];
+before(async () => {
+  for (const p of PROFILES) MATRICES.push(await getAstroMatrix(p.bd, p.bt, p.lat, p.lon, p.tz));
+});
+const chartOf = (m) => ({
+  meta: { ...m.meta, sun_sign: m.meta.sun_sign, natal_moon: m.meta.natal_moon, computed_houses: m.meta.computed_houses },
+});
+const truthOf = (m, planet) => {
+  const info = planet === 'Moon' ? (m.meta.natal_moon || m.meta.computed_houses.Moon) : m.meta.computed_houses[planet];
+  return { sign: SIGNS[['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'].indexOf(info.sign)], house: info.house };
+};
+
+describe('V423 本命真值锁 · 10 行星逐项真值轴（SwissEph 实算）', () => {
+  for (let pi = 0; pi < PROFILES.length; pi++) {
+    test(`profile ${pi + 1} (${PROFILES[pi].bd})：10 行星各自的漂移都必须归真`, async () => {
+      const m = MATRICES[pi];
+      const ch = chartOf(m);
+      let checked = 0;
+      for (const p of lockNatalTruthVi._VI_PLANET_ORDER) {
+        const t = truthOf(m, p);
+        if (!t.sign || !t.house) continue;
+        const name = VI[p];
+        const ws = WRONG_SIGN_OF(t.sign), wh = WRONG_HOUSE_OF(t.house);
+        const inc = `${name} natal của bạn ở ${ws} Nhà ${wh} chiếu rọi tài chính.`;
+        const out = roundTrip(inc, ch, [[t.sign, ws], [`Nhà ${t.house}`, `Nhà ${wh}`]]);
+        assert.ok(out.includes(`${t.sign} Nhà ${t.house}`), `${p} 未归真：${out}`);
+        assert.ok(!new RegExp(`Nhà\\s*${wh}(?!\\d)`).test(out), `${p} 仍残留错值宫位：${out}`);
+        checked++;
+      }
+      assert.ok(checked >= 10, `应至少校验 10 行星，实际 ${checked}`);
+    });
+  }
 });
 
-test('② 星座替换改变字长时不得掉字/重字', () => {
-  const out = roundTrip('Mặt Trăng natal của bạn ở Song Ngư Nhà 5 hỗ trợ bạn.', VIR_H4, [['Xử Nữ', 'Song Ngư'], ['Nhà 4', 'Nhà 5']]);
-  assert.ok(out.includes('Xử Nữ Nhà 4'), out);
-});
+describe('V423 本命真值锁 · 越界与流月保护（不许误伤）', () => {
+  test('他行星的数据绝不被污染', () => {
+    const ch = chartOf(MATRICES[0]);            // 1990-08-05：月 Cap H5 / 金 Cancer H11
+    roundTrip('Mặt Trăng natal Ma Kết Nhà 5 hòa hợp với Sao Kim tại Bọ Cạp Nhà 3.', ch, [], true);
+  });
 
-test('③ 他行星的星座/宫位绝不被污染', () => {
-  roundTrip('Mặt Trăng natal Ma Kết Nhà 5 hòa hợp với Sao Kim tại Bọ Cạp Nhà 3.', CAP_H5, [], true);
-});
+  test('流月(transit)描述绝不改写', () => {
+    const ch = chartOf(MATRICES[0]);
+    roundTrip('Sao Kim đi qua Bọ Cạp Nhà 3 của bạn hôm nay.', ch, [], true);
+    roundTrip('Mặt Trăng đi qua Bọ Cạp Nhà 3 của bạn hôm nay.', ch, [], true);
+  });
 
-test('④ 复合句「你的月亮和X」宫位归真', () => {
-  roundTrip('nơi Mặt Trăng và Sao Kim của bạn cùng ngự trị ở Nhà 3.', CAP_H5, [['Nhà 5', 'Nhà 3']]);
-});
+  test('回看段含流月动词时，其星座/宫位不得算作本命（V421 血泪）', () => {
+    // 「Sao Hỏa transit ở Cự Giải Nhà 1 chiếu vào Mặt Trăng natal của bạn ở …」——Nhà 1 是火星流月的
+    const ch = chartOf(MATRICES[0]);            // 月亮真值 Cap H5；火星真值 Taurus H9
+    const inc = 'Sao Hỏa transit ở Cự Giải Nhà 1 chiếu vào Mặt Trăng natal của bạn ở Bọ Cạp Nhà 8.';
+    const out = lockNatalTruthVi.lockNatalTruthVi(inc, ch);
+    assert.ok(out.includes('Ma Kết Nhà 5'), `月亮未归真：${out}`);
+    assert.ok(out.includes('Cự Giải Nhà 1'), `火星流月的流月宫位被误改：${out}`);
+  });
 
-test('⑤ 流月(transit)描述绝不改写', () => {
-  roundTrip('Mặt Trăng đi qua Bọ Cạp Nhà 3 của bạn hôm nay.', CAP_H5, [], true);
-});
+  test('非本命锚点（无 «của bạn/natal»）零改动', () => {
+    const ch = chartOf(MATRICES[0]);
+    roundTrip('Mặt Trăng đầu tháng ở Bọ Cạp Nhà 3 thúc đẩy giao tiếp.', ch, [], true);
+    roundTrip('Hôm nay trời đẹp, bạn nên tiết kiệm 500.000 ₫.', ch, [], true);
+  });
 
-test('⑥ 宫位属于他星时（你的 在星体名之前）不碰', () => {
-  roundTrip('Mặt Trăng của bạn và Sao Kim tại Bọ Cạp Nhà 3.', CAP_H5, [], true);
-});
+  test('流月行星 + 尾部 «của bạn»（生产实测误报·必须零改动）', () => {
+    // 2026-09-10 生产实测：模型写流月 “Sao Mộc tại Sư Tử trong Nhà 12 của bạn”（真值本命木星 Cự Giải H11）、
+    // “Sao Kim Bọ Cạp tại Nhà 1” —— 从句里的 của bạn 修饰的是宫不是行星，绝不可当成 natal 去改
+    const ch = chartOf(MATRICES[0]);
+    roundTrip('Sao Mộc tại Sư Tử trong Nhà 12 của bạn mở rộng trực giác và kết nối với vô thức tập thể.', ch, [], true);
+    roundTrip('Sao Kim Bọ Cạp tại Nhà 1 lại kéo bạn ra ánh sáng với sức hút khó cưỡng.', ch, [], true);
+    roundTrip('Mặt Trời natal Libra trong Nhà 12 thôi thúc bạn lùi lại, nhưng Sao Kim Bọ Cạp tại Nhà 1 lại kéo bạn ra.', ch, [], true);
+  });
 
-test('⑦ 无本命锚点的普通文本零改动', () => {
-  roundTrip('Hôm nay trời đẹp, bạn nên tiết kiệm 500.000 ₫.', CAP_H5, [], true);
-});
+  test('跨句夺宫【生产血泪·2026-09-10】：太阳任务不得改写月亮从句', () => {
+    const m = MATRICES[2];                       // 1992-03-17：月 Virgo H4 / 日 Pisces H11
+    const ch = chartOf(m);
+    const trap = 'Cạm bẫy lớn nhất tháng này nằm ở Nhà 5 — nơi Mặt Trời và Sao Thủy hội tụ tại Xử Nữ — kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 11. Bạn sẽ bị cám dỗ chi tiêu.';
+    const out = lockNatalTruthVi.lockNatalTruthVi(trap, ch);
+    const claimed = [...out.matchAll(/Mặt Trăng natal[^.\n]{0,70}?Nhà (\d+)/g)].map((x) => Number(x[1]));
+    assert.deepStrictEqual([...new Set(claimed)], [4], `月亮从句宫位应唯一为 4，实际 ${JSON.stringify(claimed)}\n${out}`);
+    assert.ok(out.includes('Xử Nữ Nhà 4'), out);
+  });
 
-test('⑨ 跨句夺宫【生产血泪·2026-09-10】太阳任务不得改写月亮从句的宫位', () => {
-  // 生产实例：太阳/水星在 Nhà 5，月亮在 Nhà 4；旧规则误把 “của bạn” 判为复合句，
-  // 太阳任务越界把月亮的 Nhà 4 改回 Nhà 11（太阳的宫位）→ 同一锚点出现两个宫位
-  const trap = 'Cạm bẫy lớn nhất tháng này nằm ở Nhà 5 — nơi Mặt Trời và Sao Thủy hội tụ tại Xử Nữ — kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 11. Bạn sẽ bị cám dỗ chi tiêu.';
-  const out = roundTrip(trap, VIR_H4, [['Nhà 4', 'Nhà 11']]);
-  assert.ok(!/Mặt Trăng natal[^.\n]{0,70}?Nhà 11/.test(out), `月亮从句仍残留 Nhà 11：${out}`);
-  assert.ok(out.includes('Xử Nữ Nhà 4'), out);
-});
-
-test('⑩ 太阳从句在前、月亮从句在后：双方宫位各归各位（零改动）', () => {
-  roundTrip('Mặt Trời natal của bạn ở Song Ngư Nhà 11, kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 4.', VIR_H4, [], true);
-});
-
-test('⑧ astroMatrix 缺失时安全透传（不崩溃、不改写）', () => {
-  const t = 'Mặt Trăng natal Ma Kết Nhà 8 của bạn.';
-  assert.strictEqual(lockNatalTruthVi(t, null), t);
-  assert.strictEqual(lockNatalTruthVi('', CAP_H5), '');
+  test('astroMatrix 缺失时安全透传（不崩溃、不改写）', () => {
+    const t = 'Mặt Trăng natal Ma Kết Nhà 8 của bạn.';
+    assert.strictEqual(lockNatalTruthVi.lockNatalTruthVi(t, null), t);
+    assert.strictEqual(lockNatalTruthVi.lockNatalTruthVi('', chartOf(MATRICES[0])), '');
+    assert.strictEqual(lockNatalTruthVi.lockNatalTruthVi(t, { meta: {} }), t);
+  });
 });

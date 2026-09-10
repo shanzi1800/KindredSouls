@@ -1,0 +1,51 @@
+name: astro-truth-gates
+
+# 🛠️ V423: 本命真值闸门
+# ① 离线（每次 push/PR）：SwissEph 真值轴单测 + 锁回归门 + 校验器自证 —— 零成本、必跑
+# ② 线上端到端（手动触发 / 每周一 03:00 UTC）：真跑 3 profile × 2 轮生产 SSE，比对 10 行星真值
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装 swisseph（真值来源，绝不手写常量）
+        run: pip install pyswisseph
+      - name: SwissEph 能不能跑（真值轴前提）
+        run: python3 astro/astro_matrix.py --birth-date 1990-08-05 --birth-time 07:00 --lat 10.8231 --lon 106.6297 --tz Asia/Ho_Chi_Minh --mode natal | head -5
+      - name: 校验器自证（抓不住已知坏的评分表 = 废纸）
+        run: python3 test/verify_report_truth.py --self-test
+      - name: 真值锁回归门 + 启动烟测
+        env:
+          PYTHON_BIN: python3
+        run: npm run test:astro
+
+  live-truth:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pyswisseph aiohttp
+      - name: 线上 10 行星真值轴（生产 SSE 实跑）
+        run: python3 test/verify_report_truth.py --live --rounds 2 --save /tmp/truth_live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: truth-live-reports
+          path: /tmp/truth_live

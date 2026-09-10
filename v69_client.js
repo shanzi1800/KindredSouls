@@ -221,18 +221,36 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
 //   in the fact sheet」→ 模型只能编本命月亮（实测 1990-08-05 真值 Ma Kết/摩羯 第5宫 被编成 Bọ Cạp/天蝎 第3·8宫）。
 // ⚠️ 键名铁律：本命月亮真值在 meta.natal_moon（次选 meta.computed_houses.Moon）。
 //   meta.natal_planets 不存在 —— 历史踩坑：键名写错 → undefined → optional chaining 静默回落流月月亮。
+// ── 🛠️ V423: 本命盘真值锚点(出生盘固定不变) —— 年报 FactSheet 与月报 monthlySystem 共用 ──
+//   覆盖 10 行星(日月水金火木土天海冥)，供 server.js 的 lockNatalTruthVi 逐项硬锁。
+//   注：中文/越语行星名一并给出，方便模型直接引用(越语锁按越语名匹配)。
+export const NATAL_PLANETS_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+export const PLANET_VI = {
+  Sun: 'Mặt Trời', Moon: 'Mặt Trăng', Mercury: 'Sao Thủy', Venus: 'Sao Kim', Mars: 'Sao Hỏa',
+  Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương', Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương',
+};
+
 export function buildNatalAnchors(astroMatrix) {
   const meta = astroMatrix?.meta || {};
+  const ch = meta.computed_houses || {};
   const actualRising = meta.rising_sign || astroMatrix?.rising_sign || 'Cancer';
-  const _natalMoon = meta.natal_moon || meta.computed_houses?.Moon || {};
+  const _natalMoon = meta.natal_moon || ch.Moon || {};
   const _asc = meta.ascendant || null;
   const _mc = meta.midheaven || null;
-  return [
-    `Your Natal Sun: ${meta.sun_sign || 'Cancer'} (House ${meta?.computed_houses?.Sun?.house ?? '?'})`,
-    `Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim(),
-    `Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`,
+  const lines = [
+    `Your Natal Sun: ${meta.sun_sign || ch.Sun?.sign || 'Cancer'} (House ${ch.Sun?.house ?? '?'})`,
     `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
-  ].join('\n');
+  ];
+  // 🛠️ V423: 其余 8 行星 —— 全盘本命真值(此前仅日/月，其余在正文里任由模型发挥)
+  for (const p of NATAL_PLANETS_ORDER) {
+    if (p === 'Sun' || p === 'Moon') continue;
+    const info = ch[p];
+    if (!info) continue;
+    lines.push(`Your Natal ${p} (${PLANET_VI[p]}): ${info.sign || '?'} in House ${info.house ?? '?'}${info.retrograde ? ' (Retrograde)' : ''}`);
+  }
+  lines.push(`Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim());
+  lines.push(`Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`);
+  return lines.join('\n');
 }
 
 export function buildFactSheet(astroMatrix, lang = 'en') {

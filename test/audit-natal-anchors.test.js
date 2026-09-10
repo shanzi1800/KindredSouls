@@ -45,5 +45,23 @@ describe('V420 本命盘锚点真值审计（SwissEph 真值 · 禁流月冒充�
       assert.ok(!natalLine.includes(transitMoon),
         `本命月亮行被流月(${transitMoon})污染：${natalLine}`);
     }
+
+    // 4) 🛠️ V423: 10 行星全量 —— 锚点块必须逐项写真值（此前仅日/月，其余 8 星在正文任由模型发挥）
+    const P_VI = { Sun:'Mặt Trời', Moon:'Mặt Trăng', Mercury:'Sao Thủy', Venus:'Sao Kim', Mars:'Sao Hỏa',
+      Jupiter:'Sao Mộc', Saturn:'Sao Thổ', Uranus:'Sao Thiên Vương', Neptune:'Sao Hải Vương', Pluto:'Sao Diêm Vương' };
+    const ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+    const ch = m?.meta?.computed_houses || {};
+    for (const p of ORDER) {
+      const info = p === 'Moon' ? (m.meta.natal_moon || ch.Moon) : ch[p];
+      assert.ok(info, `computed_houses.${p} 缺失：10 行星真值必须齐全`);
+      if (p === 'Sun') {
+        assert.match(anchors, new RegExp(`Your Natal Sun: ${info.sign} \\(House ${info.house}\\)`), anchors);
+      } else if (p === 'Moon') {
+        assert.match(anchors, new RegExp(`Your Natal Moon: ${info.sign} in House ${info.house}`), anchors);
+      } else {
+        assert.match(anchors, new RegExp(`Your Natal ${p} \\(${P_VI[p]}\\): ${info.sign} in House ${info.house}`),
+          `锚点缺 ${p} 真值行:\n${anchors}`);
+      }
+    }
   });
 });

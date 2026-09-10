@@ -87,15 +87,8 @@ SELF_TEST_CASES = [
 
 
 def self_test():
-    """检查表自证：跑固定好/坏样本，防止“评分表本身失灵”。"""
-    lines, ok = [], True
-    for label, txt, (ms, mh), expect in SELF_TEST_CASES:
-        hard, _ = verify({'moon': ms, 'moon_h': mh}, txt)
-        hs = sorted(moon_house_claims(txt)[0])
-        good = (hard == expect)
-        ok = ok and good
-        lines.append(f"  {'✅' if good else '❌'} {label} → 判定={'通过' if hard else '硬挂'} 归月亮宫位={hs}")
-    return ok, lines
+    """检查表自证：直接复用共享比对器的自证样本（单一来源）。"""
+    return TRUTHCHK.self_test(verbose=False)
 
 
 # 拆词签名（精确版）：破损 token 后紧跟空格+小写字母，才判为拆词。
@@ -116,24 +109,28 @@ def pct(vals, p):
     return v[min(len(v) - 1, int(len(v) * p / 100))]
 
 
-def verify(profile, text):
-    """硬门 = 真值被写错或自相矛盾；软门 = 压根没写宫位（依从性）
+# 🛠️ V423: 真值轴统一到 verify_report_truth（锁与检查表同源，口径绝不漂移）
+#   旧版这里自带一套“只查月亮”的私有口径 → 已废弃，改为调用共享比对器（10 行星全量）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import verify_report_truth as TRUTHCHK  # noqa: E402
 
-    口径（避免“评分表自己失灵”，已由 self_test() 双向自证）：
-      • 只裁「本命月亮锚点自身从句」内的宫位（切在句读/连词/其他星体名边界）
-      • 流月(transit)从句整段排除 —— 流月宫位不是本命宫位，不得据此定罪
-      • 星座：本命月亮锚点后若写了星座，必须是真值
+LAST_HARD = []
+_TRUTH_CACHE = {}
+
+
+def verify(profile, text):
+    """硬门 = 任一行星本命真值被写错/自相矛盾；软门 = 某行星压根没写（依从性）
+
+    口径全部来自 verify_report_truth（与 server.js lockNatalTruthVi 同源从句归因，
+    且由 self_test() 双向自证：4 个已知坏必抓 + 9 个已知好必放行）。
     """
-    hard, soft_miss = True, False
-    for z in re.findall(r'Mặt Trăng natal[^.\n]{0,40}?\b(' + '|'.join(ALL_SIGNS) + r')\b', text):
-        if z != profile["moon"]:
-            hard = False
-    hs, seen = moon_house_claims(text)
-    if len(hs) > 1 or (hs and hs != {profile["moon_h"]}):
-        hard = False
-    if not seen:
-        soft_miss = True
-    return hard, soft_miss
+    t = _TRUTH_CACHE.get(profile['bd'])
+    if t is None:
+        t = TRUTHCHK.compute_truth(profile['bd'], profile['bt'], profile['lat'], profile['lon'], profile['tz'])
+        _TRUTH_CACHE[profile['bd']] = t
+    hard_list, soft_list, _ = TRUTHCHK.verify_report(t, text)
+    LAST_HARD[:] = hard_list
+    return (not hard_list), bool(soft_list)
 
 
 async def health_probe(stop_evt):
@@ -210,9 +207,9 @@ async def fetch_sse(session, profile, req_id, sem):
                 M["truth_pass"] += 1
             else:
                 M["truth_fail"] += 1
-                _h = sorted(set(re.findall(r'Mặt Trăng natal[^.\n]{0,70}?Nhà (\d+)', final)))
-                _z = sorted(set(re.findall(r'Mặt Trăng natal[^.\n]{0,40}?\b(' + '|'.join(ALL_SIGNS) + r')\b', final)))
-                print(f"⚠️ #{req_id:02d} 真值硬门挂 | {profile['bd']} 期望 {profile['moon']} Nhà {profile['moon_h']} | 实检 星座={_z} 宫位={_h} | 层={'sanitized' if san else 'raw-stream'}", flush=True)
+                print(f"⚠️ #{req_id:02d} 真值硬门挂 | {profile['bd']} | 打点:", flush=True)
+                for _x in LAST_HARD[:4]:
+                    print(f"     ↳ {_x}", flush=True)
             if soft_miss:
                 M["compliance_miss"] += 1
             if "\uFFFD" in final:
