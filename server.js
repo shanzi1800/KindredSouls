@@ -2840,11 +2840,14 @@ function _viLockClause(out, anchor, sign, house, requireNatalish, state) {
       if (_VI_TRANSIT_MARK.test(win)) continue;        // 流月动词 → 明确是 transit，不碰
     }
     const bodyIdx = win.search(_VI_BODY_SPLIT);
-    const natalishIdx = win.search(/của bạn|natal/i);
-    // 宫位可改区: 无其他星体 → 全窗口; “你的月亮和X”复合句(你的 在 X 之后) → 全窗口;
-    // 否则(如 “你的月亮 và Sao Kim tại ... Nhà 3” —— 宫位属于金星) → 只到首个其他星体名为止，不碰
-    const houseZone = (bodyIdx < 0 || (natalishIdx >= 0 && natalishIdx > bodyIdx)) ? win.length : bodyIdx;
-    const signZone = bodyIdx >= 0 ? win.slice(0, bodyIdx) : win;
+    // 复合句判定（加严）：必须紧跟 “và/với/, + 星体名”，且 20 字内出现 “của bạn/cùng”
+    //   ✅ “ và Sao Kim của bạn cùng ngự trị ở Nhà 3” → 复合句，宫位归双星
+    //   ❌ “ và Sao Thủy hội tụ tại Xử Nữ — kết hợp với Mặt Trăng natal của bạn ở … Nhà 11”
+    //      → “của bạn” 属于【后面那段自己的从句】，绝不可是复合句
+    //   （2026-09-10 血泪：旧规则用 natalishIdx>bodyIdx 判复合，导致太阳任务跨句把月亮的 Nhà 4 改回 Nhà 11）
+    const compound = bodyIdx >= 0 && /^\s*(?:và|với|,)\s+(?:Mặt|Sao|Hành)[^—–,.;\n]{0,20}?(?:của bạn|cùng)/.test(win);
+    const houseZone = (bodyIdx < 0 || compound) ? win.length : bodyIdx;
+    const signZone = bodyIdx >= 0 && !compound ? win.slice(0, bodyIdx) : win;
     let newWin = win, ch = 0;
     if (sign) {
       let sz = signZone;
@@ -2879,7 +2882,42 @@ function lockNatalTruthVi(text, astroMatrix) {
   // 泛化：模型常省掉 “natal”，写成「Mặt Trăng ... của bạn」——需窗口含 “của bạn” 且无流月动词
   out = _viLockClause(out, 'Mặt Trăng', moonVi, moonH, true, state);
   out = _viLockClause(out, 'Mặt Trời', sunVi, sunH, true, state);
+  // 🛠️ V421-fix3: 终局宫位不变式扫描——跑完所有任务后，任何「本命月亮/太阳」锚点从句内的宫位
+  //   必须等于真值（一个月亮/太阳只有一个本命宫位）。这是“任务互相踩”的兜底网：
+  //   2026-09-10 实证太阳任务越界把月亮的 Nhà 4 改回 Nhà 11，仅靠单任务去重无法拦住。
+  const _before = state.fixes;
+  out = _viForceHouseInClause(out, 'Mặt Trăng natal', moonH, state);
+  out = _viForceHouseInClause(out, 'Mặt Trăng', moonH, state);
+  out = _viForceHouseInClause(out, 'Mặt Trời natal', sunH, state);
+  out = _viForceHouseInClause(out, 'Mặt Trời', sunH, state);
+  if (state.fixes - _before) console.log(`[V421] 不变式扫描补正 ${state.fixes - _before} 处宫位`);
   if (state.fixes) console.log(`[V421] 本命盘真值锁: 修正 ${state.fixes} 处 native 星座/宫位漂移`);
+  return out;
+}
+// 宫位不变式强制：锚点从句内若出现宫位且 != 真值 → 改回真值（跨到其它星体则不碰）
+function _viForceHouseInClause(out, anchor, house, state) {
+  if (!house) return out;
+  const re = new RegExp(anchor, 'g');
+  const hits = [];
+  let m;
+  while ((m = re.exec(out)) !== null) {
+    const a = m.index + m[0].length;
+    let win = out.slice(a, a + 90);
+    const eol = win.search(/[.\n]/);
+    if (eol >= 0) win = win.slice(0, eol);
+    if (!win.trim()) continue;
+    if (!/(?:của bạn|natal)/i.test(win)) continue;
+    if (_VI_TRANSIT_MARK.test(win)) continue;
+    const bodyIdx = win.search(_VI_BODY_SPLIT);
+    const compound = bodyIdx >= 0 && /^\s*(?:và|với|,)\s+(?:Mặt|Sao|Hành)[^—–,.;\n]{0,20}?(?:của bạn|cùng)/.test(win);
+    if (bodyIdx >= 0 && !compound) continue;
+    const hm = win.match(/Nhà\s*(\d+)/);
+    if (hm && Number(hm[1]) !== house) {
+      hits.push([a, a + win.length, win.replace(/Nhà\s*\d+/, 'Nhà ' + house)]);
+      state.fixes++;
+    }
+  }
+  for (let i = hits.length - 1; i >= 0; i--) out = out.slice(0, hits[i][0]) + hits[i][2] + out.slice(hits[i][1]);
   return out;
 }
 function cleanConsumerTrapAndBrackets(text) {

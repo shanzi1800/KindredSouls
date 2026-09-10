@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-const BLOCK = SRC.match(/const _EN2ZIDX[\s\S]*?\nfunction lockNatalTruthVi[\s\S]*?\n\}\n/);
+const BLOCK = SRC.match(/const _EN2ZIDX[\s\S]*?\nfunction _viForceHouseInClause[\s\S]*?\n\}\n/);
 if (!BLOCK) throw new Error('未能从 server.js 提取 lockNatalTruthVi 源码块');
 const SUN_SIGN_VI_DECL = "const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];";
 // ESM 严格模式下 eval 不会外泄声明，改用 new Function 工厂把函数取出来
@@ -57,6 +57,19 @@ test('⑥ 宫位属于他星时（你的 在星体名之前）不碰', () => {
 
 test('⑦ 无本命锚点的普通文本零改动', () => {
   roundTrip('Hôm nay trời đẹp, bạn nên tiết kiệm 500.000 ₫.', CAP_H5, [], true);
+});
+
+test('⑨ 跨句夺宫【生产血泪·2026-09-10】太阳任务不得改写月亮从句的宫位', () => {
+  // 生产实例：太阳/水星在 Nhà 5，月亮在 Nhà 4；旧规则误把 “của bạn” 判为复合句，
+  // 太阳任务越界把月亮的 Nhà 4 改回 Nhà 11（太阳的宫位）→ 同一锚点出现两个宫位
+  const trap = 'Cạm bẫy lớn nhất tháng này nằm ở Nhà 5 — nơi Mặt Trời và Sao Thủy hội tụ tại Xử Nữ — kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 11. Bạn sẽ bị cám dỗ chi tiêu.';
+  const out = roundTrip(trap, VIR_H4, [['Nhà 4', 'Nhà 11']]);
+  assert.ok(!/Mặt Trăng natal[^.\n]{0,70}?Nhà 11/.test(out), `月亮从句仍残留 Nhà 11：${out}`);
+  assert.ok(out.includes('Xử Nữ Nhà 4'), out);
+});
+
+test('⑩ 太阳从句在前、月亮从句在后：双方宫位各归各位（零改动）', () => {
+  roundTrip('Mặt Trời natal của bạn ở Song Ngư Nhà 11, kết hợp với Mặt Trăng natal của bạn ở Xử Nữ Nhà 4.', VIR_H4, [], true);
 });
 
 test('⑧ astroMatrix 缺失时安全透传（不崩溃、不改写）', () => {
