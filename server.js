@@ -694,14 +694,6 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
           chunkCount++;
           // 🛠️ V374-fix: 首个 chunk 必须以 ✦ [🔮 开头——DeepSeek 偶发省略 ✦ 或 [🔮] 括号
           // 若首 chunk 不以 ✦ 开头，补全前缀；若以 ✦ 开头但缺 [🔮，补 [🔮
-          if (chunkCount === 1) {
-            if (!clean.startsWith('✦')) {
-              clean = '✦ [🔮 ' + clean;
-            } else if (!clean.startsWith('✦ [🔮')) {
-              // 有 ✦ 但缺 [🔮，在 ✦ 后插入
-              clean = clean.replace(/^✦\s*/, '✦ [🔮 ');
-            }
-          }
           // 🛠️ V120-fix26: 净化层 - 含字面\uXXXX转义→真实emoji + 标题修复
           let clean = txt
             .replace(/\\n/g, '\n')
@@ -728,6 +720,15 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（顺蓄）/g, '（顺流蓄力）')
             .replace(/（财爆）/g, '（财富爆发）')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
+          // 🛠️ V414-fix: V374 首块主题头补全——原代码块位于 `let clean` 之前(TDZ 死区),
+          //   首 chunk 访问 clean 抛 ReferenceError 被 catch 吞掉 → 首段文字丢失("削首"根因)。移到 clean 生成之后。
+          if (chunkCount === 1) {
+            if (!clean.startsWith('✦')) {
+              clean = '✦ [🔮 ' + clean;
+            } else if (!clean.startsWith('✦ [🔮')) {
+              clean = clean.replace(/^✦\s*/, '✦ [🔮 ');
+            }
+          }
           console.log('[CLEAN] in:', JSON.stringify(txt.slice(0,80)), '-> out has 财充:', clean.includes('（财充）'), 'has 财富充能:', clean.includes('（财富充能）'));
           // V221: newSuffix 恒为增量(delta); fullText 累积真实全文, sentLen 游标保证只发未发部分(根治累积重发灾难)
           // V222q: 加前缀重发检测——DeepSeek 偶发重发已输出前缀(clean 是 lastClean 的前缀或相同) → 丢弃,根治事件级重复
@@ -1034,7 +1035,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         // 🌟 V238 刀B：sanitized 发送前过三刀流
         fixed = sanitizeReportFinal(fixed, { lang, reportType });
-        fixed = enforceRiskThreshold(fixed, lang);
+        // 🛠️ V414: 阈值清洗为越南语专用,加语言门控防污染其他语言(原无条件执行)
+        if (lang === 'vi') fixed = enforceRiskThreshold(fixed, lang);
         res.write(Buffer.from(`data: ${JSON.stringify({ sanitized: fixed })}\n\n`, 'utf-8'));
         onChunk && onChunk(fixed);
         if (typeof res.flush === 'function') res.flush();
@@ -2727,17 +2729,21 @@ function fixViReportSanitize(text) {
   const _now = new Date();
   const _mLabel = getMonthLabel('vi', _now.getFullYear(), _now.getMonth() + 1);
   let t = text;
+  // 🛠️ V414-fix: 外币金额(USD/US$)一律归一为本地风控阈值 ₫500,000
+  //   根因: 下方「金额越界」正则按【面值】比较(≥500000 才替换),"2.000 USD"/"500 USD" 面值 < 500000 → 漏网,
+  //   越南语月报陷阱段裸奔美元金额(本地应为 VND)。此处先做币种归一,再做面值兜底。
+  t = t.replace(/(?:\$|US\$)\s?\d[\d.,]*|\b\d[\d.,]*\s*(?:USD|US\$)\b/gi, '500.000 ₫');
   // ── 1. 金额越界替换（千分位格式：X.000 / X.000.000）──
   // 🛠️ V396: 极简确定性替换—— ONLY 1:1 数字格式归一 + 固定标题字符串替换。
   //    绝不触碰任何正文单词（废除所有修正拼写/变音符号的模糊正则，根治“吞字”）
-  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)\s*(?:VND|VN?Đ|đồng)?/gi,
+  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)(?:\s*(?:VND|VN?Đ|đồng|₫))?/gi,
     (m) => {
       const _n = parseInt(m.replace(/\D/g, ''), 10);
       if (_n >= 500000) return '500.000';
       return m;
     });
   // ── 2b. 越南语 triệu đồng（×1,000,000）──
-  t = t.replace(/\b(\d+)\s*triệu\s*(?:đồng)?/gi,
+  t = t.replace(/\b(\d+)\s*triệu(?:\s*(?:đồng|₫))?/gi,
     (m) => {
       const _n = parseInt(m.match(/\d+/)[0], 10) * 1000000;
       if (_n >= 500000) return '500.000';
@@ -2757,13 +2763,13 @@ function fixViReportSanitize(text) {
   t = t.replace(/\[⚠️ (?:Bẫy Chi Tiêu|Cạm bẫy Tài chính):?[^\]]*\]/gi, '✦ [⚠️ Cạm bẫy Tài chính: ' + _mLabel + '] ✦');
   // ── 4. 金额越界替换(治本:不碰任何其他数字，只替换风险阈值 500,000)──
   // 🛠️ V407-fix3: 根治金额替换丢失 ₫ 符号——回调必须返回含 ₫
-  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)\s*(?:VND|VN?Đ|đồng)?/gi,
+  t = t.replace(/\b([1-9]\d{0,2}(?:,\d{3}){1,}(?:[.,]\d{3})?|\d{1,3}[.,]\d{3}[.,]?\d*)(?:\s*(?:VND|VN?Đ|đồng|₫))?/gi,
     (m) => {
       const _n = parseInt(m.replace(/\D/g, ''), 10);
       if (_n >= 500000) return '500.000 ₫';
       return m;
     });
-  t = t.replace(/\b(\d+)\s*triệu\s*(?:đồng)?/gi,
+  t = t.replace(/\b(\d+)\s*triệu(?:\s*(?:đồng|₫))?/gi,
     (m) => {
       const _n = parseInt(m.match(/\d+/)[0], 10) * 1000000;
       if (_n >= 500000) return '500.000 ₫';
@@ -2781,6 +2787,8 @@ function fixViReportSanitize(text) {
       t = t + _thresh;
     }
   }
+  // 🛠️ V414-fix2: 收尾补空格——模型偶发把 "₫" 与下个单词粘连(500.000₫cho),补一个空格防粘连
+  t = t.replace(/₫(?=[\p{L}])/gu, '₫ ');
   // 🛠️ V407-fix4: 末尾必须有 return t;(原 V396 漏写导致越南语报告变 undefined)
   return t;
 }
@@ -5538,7 +5546,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // Parse AI result
         let reportContent = monthLocked;
-        reportContent = enforceRiskThreshold(reportContent, lang);
+        // 🛠️ V414: 语言门控(同上)——越南语专用清洗不得作用于其他语言
+        if (lang === 'vi') reportContent = enforceRiskThreshold(reportContent, lang);
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
         if (lang === 'vi') {
@@ -6369,43 +6378,104 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦'
             }[lang] || '✦ [🔮 本月命运主题] ✦' : '';
             let _themeTitleInjected = !_monthlyThemeInject;
-            // 🛡️ V411: 月报 MISS 改用 callAI(非流式,干净)生成全文,再切成 SSE chunk 推流
-            //   根治 callDeepSeekStream 流式 token 拼接插空格(là úc/bạn è/khi ý 等,不可逆)
-            //   callAI 内部 Gemini→DeepSeek 兜底,返回干净全文;复用 _safeChunk 分块 + _dedupWrite 清洗vi
+            // 🛡️ V414: 月报真·流式(DeepSeek SSE 直通)——根治 V411「callAI 生成完再批量 _safeChunk 推流」
+            //   导致的「前端一次性蹦全文」(非流式观感:chunk 同毫秒灌入,浏览器一次渲染)。
+            //   设计铁律:
+            //   ① 逐 token 转发 SSE data:{text} 事件,_MT_FLUSH=60字 逼近打字机节奏(自然节流,靠模型自身出字速度)
+            //   ② 无损累积——绝不做 lastClean/newSuffix 前缀去重、_getTrimmed 重叠裁剪等【有损】操作,
+            //      流式拼接字节数 == 非流式全文(历史病根:旧 callDeepSeekStream 的有损去重把 'những nỗ' 吞成 'nhữngỗ')
+            //   ③ 每块只做无损清洗(字面 \uXXXX→emoji / U+FFFD 清除);金额阈值、标题归一、去重等有损替换留给末尾 sanitized 终稿
+            //   ④ 双份报告护栏:检测到第 2 个 `✦ [🔮` 锚点即断流
             const _mtMax = 12000;
-            let _mtFull = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _mtMax, reportType: 'monthly' });
-            if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _mtFull = _mtFull.split(_t).join(_v);
-            // 首行注入标准化主题标题(若 AI 未输出 ✦ 头)——直接发 data:{text:...} 事件(前端期望格式)
-            if (!_themeTitleInjected && !(_mtFull || '').trimStart().startsWith('✦')) {
-              fullTextCollector += _monthlyThemeInject + '\n';
-              const _titleOut = 'data: ' + JSON.stringify({ text: _monthlyThemeInject + '\n' }) + '\n\n';
-              res.write(Buffer.from(_titleOut, 'utf-8'));
-              if (typeof res.flush === 'function') res.flush();
-              _themeTitleInjected = true;
-            }
-            // 切成 SSE chunk 推流——直接发 data:{text:...} 事件(前端期望格式),并累积 fullTextCollector
-            // 注: _dedupWrite 经 _resDedupe.write 发的是原始文本(无 data: 包裹),前端忽略;
-            //     故此处绕过 _dedupWrite,直接发标准 SSE text 事件(与 else 分支一致)
-            const _mtChunks = _safeChunk(_mtFull || '', 500);
-            for (const _mc of _mtChunks) {
-              if (!_mc) continue;
-              fullTextCollector += _mc;
-              let _out;
-              if (lang === 'vi') {
-                try {
-                  const _j = { text: _mc };
-                  _j.text = fixVietnameseCorruption(_j.text);
-                  _j.text = enforceRiskThreshold(_j.text, lang);
-                  _out = 'data: ' + JSON.stringify(_j) + '\n\n';
-                } catch (e) { _out = 'data: ' + JSON.stringify({ text: _mc }) + '\n\n'; }
-              } else {
-                _out = 'data: ' + JSON.stringify({ text: _mc }) + '\n\n';
+            let _mtFull = '';
+            const _mtEmit = (t) => {
+              if (!t) return;
+              try {
+                res.write(Buffer.from('data: ' + JSON.stringify({ text: t }) + '\n\n', 'utf-8'));
+                if (typeof res.flush === 'function') res.flush();
+              } catch (e) {}
+            };
+            try {
+              const _mtKey = getDeepSeekKey();
+              const _mtResp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_mtKey}` },
+                body: JSON.stringify({
+                  model: 'deepseek-flash', thinking: { type: 'disabled' },
+                  messages: [{ role: 'system', content: prompt.system }, { role: 'user', content: prompt.user }],
+                  max_tokens: _mtMax, temperature: 0.7,
+                  frequency_penalty: lang === 'vi' ? 0 : 0.3,
+                  presence_penalty: lang === 'vi' ? 0 : 0.3,
+                  repetition_penalty: lang === 'vi' ? 1.08 : 1.05,
+                  stream: true, stop: ['===END_OF_REPORT==='],
+                }),
+                signal: controller.signal,
+              });
+              if (!_mtResp.ok) throw new Error('DeepSeek HTTP ' + _mtResp.status);
+              const _mtReader = _mtResp.body.getReader();
+              const _mtDec = new StringDecoder('utf8');
+              const _MT_FLUSH = 60;
+              let _mtBuf = '', _mtPend = '', _mtFirstFlush = true, _mtStop = false;
+              while (!_mtStop) {
+                const { done, value } = await _mtReader.read();
+                if (done) { const _tl = _mtDec.end(); if (_tl) _mtBuf += _tl; } else { _mtBuf += _mtDec.write(value); }
+                const _ls = _mtBuf.split('\n');
+                _mtBuf = _ls.pop() || '';
+                for (const _ln of _ls) {
+                  if (!_ln.startsWith('data: ')) continue;
+                  const _d = _ln.slice(6).trim();
+                  if (!_d || _d === '[DONE]') continue;
+                  let _txt = '';
+                  try { _txt = JSON.parse(_d).choices?.[0]?.delta?.content || ''; } catch (e) { continue; }
+                  if (!_txt) continue;
+                  // ── 无损清洗层(绝不改动字词边界) ──
+                  _txt = _txt
+                    .replace(/\\n/g, '\n')
+                    .replace(/\\ud83d ?\\udd2e/g, '🔮')
+                    .replace(/\\ud83d ?\\udfe2/g, '🟢')
+                    .replace(/\\ud83d ?\\udd34/g, '🔴')
+                    .replace(/\\ud83d ?\\udd35/g, '🔵')
+                    .replace(/\\u26a0 ?\\ufe0f/g, '⚠️')
+                    .replace(/\uFFFD/g, '').replace(/�/g, '');
+                  if (!_txt) continue;
+                  _mtFull += _txt;
+                  _mtPend += _txt;
+                  // ④ 双份报告护栏:出现第 2 个 ✦ [🔮 锚点 → 立即断流
+                  if ((_mtFull.match(/✦\s*\[🔮/g) || []).length >= 2) {
+                    console.warn('[V414] 检测到第2个主题锚点(双份报告),断流 @' + _mtFull.length + '字');
+                    _mtStop = true;
+                    break;
+                  }
+                  if (_mtPend.length >= _MT_FLUSH) {
+                    // 首块兜底:模型漏 ✦ 主题头时补全标准头
+                    if (!_themeTitleInjected && _mtFirstFlush) {
+                      _mtFirstFlush = false;
+                      if (!_mtFull.trimStart().startsWith('✦')) {
+                        _mtPend = _monthlyThemeInject + '\n' + _mtPend;
+                        _mtFull = _monthlyThemeInject + '\n' + _mtFull;
+                      }
+                      _themeTitleInjected = true;
+                    }
+                    _mtEmit(_mtPend); _mtPend = '';
+                  }
+                }
+                if (done) break;
               }
-              res.write(Buffer.from(_out, 'utf-8'));
-              if (typeof res.flush === 'function') res.flush();
+              if (_mtPend && !_mtStop) { _mtEmit(_mtPend); _mtPend = ''; }
+              if (!(_mtFull || '').trim()) throw new Error('stream produced empty text');
+            } catch (_mtErr) {
+              console.warn('[V414] 月报流式失败,降级 callAI(非流式): ' + (_mtErr && _mtErr.message));
+              _mtFull = (await callAI(prompt.system, prompt.user, process.env, { maxTokens: _mtMax, reportType: 'monthly' })) || '';
+              if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _mtFull = _mtFull.split(_t).join(_v);
+              if (!_themeTitleInjected && !_mtFull.trimStart().startsWith('✦')) {
+                _mtFull = _monthlyThemeInject + '\n' + _mtFull;
+                _themeTitleInjected = true;
+              }
+              for (const _mc of _safeChunk(_mtFull, 500)) _mtEmit(_mc);
             }
+            fullTextCollector = _mtFull;
             _didStream = true;
-            geminiFullText = _mtFull || fullTextCollector;
+            geminiFullText = _mtFull;
           } catch(dsErr) {
             console.error('[wealth-stream] V411 callAI失败，降级Gemini流式: ' + dsErr.message);
             try {
@@ -6809,7 +6879,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段含真实阈值 ₫500,000(stream MISS 路径)
     // 必须在 sanitized 发送 + 缓存落库前、且晚于「方案C同步补全」覆盖,确保阈值必现(即便补全路径跑过)
-    cleanedText = enforceRiskThreshold(cleanedText, lang);
+    // 🛠️ V414: 语言门控——越南语专用清洗不得作用于 zh/en/es/fr/th
+    if (lang === 'vi') cleanedText = enforceRiskThreshold(cleanedText, lang);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {
