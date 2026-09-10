@@ -2769,6 +2769,18 @@ function fixViReportSanitize(text) {
       if (_n >= 500000) return '500.000 ₫';
       return m;
     });
+  // 🛡️ V411-fix4: vi月报陷阱段必含 ₫500,000 风险阈值——军师军令(无金额则追加权威声明行72h冷静期)
+  //   仅对完整报告(>3000字)生效,避免流式分片(<500字)误触发;幂等(已含₫500,000则跳过)
+  if (t.length > 3000 && /Cạm\s*bẫy\s*Tài\s*chính|Bẫy\s*Chi\s*Tiêu/i.test(t) && !/500\.000\s*₫|₫500\.?000/i.test(t)) {
+    const _thresh = '\n\n⚠️ Ngưỡng rủi ro khuyến nghị: mọi quyết định tài chính trên ₫500,000 cần ít nhất 72 giờ để cân nhắc kỹ lưỡng trước khi hành động.';
+    const _ti = t.search(/✦\s*\[\s*⚠️\s*(?:Cạm bẫy Tài chính|Bẫy Chi Tiêu)/i);
+    if (_ti >= 0) {
+      const _ns = t.indexOf('✦', _ti + 10);
+      t = (_ns > 0 ? t.slice(0, _ns) + _thresh + '\n\n' + t.slice(_ns) : t + _thresh);
+    } else {
+      t = t + _thresh;
+    }
+  }
   // 🛠️ V407-fix4: 末尾必须有 return t;(原 V396 漏写导致越南语报告变 undefined)
   return t;
 }
