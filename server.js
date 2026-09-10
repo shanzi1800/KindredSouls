@@ -3312,33 +3312,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
   const deepseekKey = getDeepSeekKey();
   const geminiKey = env.GEMINI_API_KEY;
 
-  // 优先 Gemini（澳洲付费通道，月报/年报主输出引擎）
-  if (geminiKey) {
-    try {
-      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: systemPrompt + '\n\n' + userPrompt }],
-          }],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (txt) return txt;
-        console.error('[AI] Gemini returned empty, trying DeepSeek fallback');
-      } else {
-        console.error('[AI] Gemini HTTP', res.status, 'trying DeepSeek fallback');
-      }
-    } catch (e) {
-      console.error('[AI] Gemini failed, trying DeepSeek:', e.message);
-    }
-  }
-
-  // 兜底 DeepSeek（修复 v4-flash 推理模型 content 为空问题）
+  // 优先 DeepSeek-V4.1-Flash（月报/年报主输出引擎，V4.1 2026-09-10 上线）
   if (deepseekKey) {
     try {
       const res = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
@@ -3362,10 +3336,39 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
       if (res.ok) {
         const data = await res.json();
         const m = data?.choices?.[0]?.message;
-        return (m?.content || m?.reasoning_content || '').trim();
+        if (m?.content || m?.reasoning_content) return (m.content || m.reasoning_content || '').trim();
+        console.error('[AI] DeepSeek returned empty, trying Gemini fallback');
+      } else {
+        console.error('[AI] DeepSeek HTTP', res.status, 'trying Gemini fallback');
       }
     } catch (e) {
-      console.error('[AI] DeepSeek failed:', e.message);
+      console.error('[AI] DeepSeek failed, trying Gemini:', e.message);
+    }
+  }
+
+  // 兜底 Gemini（澳洲付费通道）
+  if (geminiKey) {
+    try {
+      const res = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: systemPrompt + '\n\n' + userPrompt }],
+          }],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (txt) return txt;
+        console.error('[AI] Gemini returned empty');
+      } else {
+        console.error('[AI] Gemini HTTP', res.status);
+      }
+    } catch (e) {
+      console.error('[AI] Gemini failed:', e.message);
     }
   }
 
