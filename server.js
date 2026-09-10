@@ -6354,21 +6354,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦'
             }[lang] || '✦ [🔮 本月命运主题] ✦' : '';
             let _themeTitleInjected = !_monthlyThemeInject;
-            const _dsFull = await callDeepSeekStream(prompt.system, prompt.user, controller, _resDedupe, (chunk) => {
-              _didStream = true; // V366: 标记流式路径已走，finally 不再发完整文本
-              // 🛠️ V386-fix: 流式首 chunk 到达且尚未注入主题头时,强制注入标准化标题(DeepSeek偶发漏🔮)
-              if (!_themeTitleInjected && chunk.trim().length > 0 && chunk.trim().length < 600) {
-                _dedupWrite(_monthlyThemeInject + '\n');
-                _themeTitleInjected = true;
-              }
-              if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-              _dedupWrite(chunk); // V315-fix: SSE层防重复写入
-            }, astroMatrix, realSunSign, lang, reportType, true) || '';
-            // V321-fix: skipFinal=true——callDeepSeekStream 内部不再发 sanitized,
-            // sanitized 统一由主端点发一次,根治降级造成的 sanitized 双发叠加
-            geminiFullText = _dsFull || fullTextCollector;
+            // 🛡️ V411: 月报 MISS 改用 callAI(非流式,干净)生成全文,再切成 SSE chunk 推流
+            //   根治 callDeepSeekStream 流式 token 拼接插空格(là úc/bạn è/khi ý 等,不可逆)
+            //   callAI 内部 Gemini→DeepSeek 兜底,返回干净全文;复用 _safeChunk 分块 + _dedupWrite 清洗vi
+            const _mtMax = 12000;
+            let _mtFull = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _mtMax, reportType: 'monthly' });
+            if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _mtFull = _mtFull.split(_t).join(_v);
+            // 首行注入标准化主题标题(若 AI 未输出 ✦ 头)
+            if (!_themeTitleInjected && !(_mtFull || '').trimStart().startsWith('✦')) {
+              _dedupWrite(_monthlyThemeInject + '\n');
+              _themeTitleInjected = true;
+            }
+            // 切成 SSE chunk 推流(逐块经 _dedupWrite → _resDedupe.write 清洗vi)
+            const _mtChunks = _safeChunk(_mtFull || '', 500);
+            for (const _mc of _mtChunks) {
+              if (_mc) _dedupWrite(_mc);
+            }
+            _didStream = true;
+            geminiFullText = _mtFull || fullTextCollector;
           } catch(dsErr) {
-            console.error('[wealth-stream] V370 DeepSeek失败，降级Gemini: ' + dsErr.message);
+            console.error('[wealth-stream] V411 callAI失败，降级Gemini流式: ' + dsErr.message);
             try {
               const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
@@ -6376,27 +6381,41 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
               }, lang, prompt.system, prompt.user, astroMatrix);
               geminiFullText = (_gemFull && _gemFull.length >= fullTextCollector.length) ? _gemFull : fullTextCollector;
             } catch(gemErr2) {
-              console.error('[wealth-stream] V370 Gemini降级也失败: ' + gemErr2.message);
+              console.error('[wealth-stream] V411 Gemini降级也失败: ' + gemErr2.message);
               geminiFullText = fullTextCollector;
             }
           }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
 
       } else {
-        // 🛠️ V386-fix: 月报路径 fallback DeepSeek 路径同样注入标准化主题标题
-          const _monthlyThemeInjectFallback = reportType === 'monthly' ? {
-            zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦'
-          }[lang] || '✦ [🔮 本月命运主题] ✦' : '';
-          let _themeTitleInjectedFallback = !_monthlyThemeInjectFallback;
-          geminiFullText = await callDeepSeekStream(prompt.system, prompt.user, controller, res, (chunk) => {
-            if (!_themeTitleInjectedFallback && chunk.trim().length > 0 && chunk.trim().length < 600) {
-              res.write(Buffer.from('data: ' + JSON.stringify({ text: _monthlyThemeInjectFallback + '\n' }) + '\n\n', 'utf-8'));
-              fullTextCollector += _monthlyThemeInjectFallback + '\n';
-              _themeTitleInjectedFallback = true;
+        // 🛡️ V411: 非月报(yearly/once) MISS 同样改用 callAI(干净)生成全文,再切 SSE chunk 推流(res 直写)
+        try {
+          const _maxT = reportType === 'yearly' ? 48000 : 8000;
+          let _full = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _maxT, reportType });
+          if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _full = _full.split(_t).join(_v);
+          const _chunks = _safeChunk(_full || '', 500);
+          for (const _c of _chunks) {
+            if (!_c) continue;
+            let _out;
+            if (lang === 'vi') {
+              try {
+                const _j = { text: _c };
+                _j.text = fixVietnameseCorruption(_j.text);
+                _j.text = enforceRiskThreshold(_j.text, lang);
+                _out = 'data: ' + JSON.stringify(_j) + '\n\n';
+              } catch (e) { _out = 'data: ' + JSON.stringify({ text: _c }) + '\n\n'; }
+            } else {
+              _out = 'data: ' + JSON.stringify({ text: _c }) + '\n\n';
             }
-            if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
-            fullTextCollector += chunk;
-          }, astroMatrix, realSunSign, lang, reportType, false); // V222q: 整段保留最终 sanitized
+            res.write(Buffer.from(_out, 'utf-8'));
+            if (typeof res.flush === 'function') res.flush();
+          }
+          fullTextCollector += (_full || '');
+          geminiFullText = _full || fullTextCollector;
+        } catch (e2) {
+          console.error('[wealth-stream] V411 非月报 callAI失败: ' + (e2.message || e2));
+          geminiFullText = fullTextCollector;
+        }
         if (geminiFullText && geminiFullText.trim().length > 0) aiStream = true;
       }
     } catch(e) {
