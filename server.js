@@ -2816,6 +2816,51 @@ function fixVietnameseCorruption(text) {
 // 安全边界：只改 “Mặt Trăng/Trời natal” 后的**首个从句**（遇到另一个星体名就截断），
 //   绝不越界污染其他行星/流月描述。
 const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 };
+const _VI_TRANSIT_MARK = /di chuyển qua|quá cảnh|transit|đi qua|đi vào|bước vào|luân chuyển/i;
+const _VI_BODY_SPLIT = /\s(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|Diêm Vương)\s/;
+const _VI_SIGN_UNIQ = SUN_SIGN_VI.filter((s, i, a) => a.indexOf(s) === i);
+
+// 单个锚点的真值替换；改动范围严格限制在 [锚点后 90 字内、句末之前]，且星座只在「首个其他星体名之前」替换
+function _viLockClause(out, anchor, sign, house, requireNatalish, state) {
+  const re = new RegExp(anchor, 'g');
+  const hits = [];
+  let m;
+  while ((m = re.exec(out)) !== null) {
+    const a = m.index + m[0].length;
+    let win = out.slice(a, a + 90);
+    const eol = win.search(/[.\n]/);
+    if (eol >= 0) win = win.slice(0, eol);
+    if (!win.trim()) continue;
+    if (requireNatalish) {
+      if (!/(?:của bạn|natal)/i.test(win)) continue;   // 非「你的月亮/太阳」→ 很可能是流月/流日，不碰
+      if (_VI_TRANSIT_MARK.test(win)) continue;        // 流月动词 → 明确是 transit，不碰
+    }
+    const bodyIdx = win.search(_VI_BODY_SPLIT);
+    const natalishIdx = win.search(/của bạn|natal/i);
+    // 宫位可改区: 无其他星体 → 全窗口; “你的月亮和X”复合句(你的 在 X 之后) → 全窗口;
+    // 否则(如 “你的月亮 và Sao Kim tại ... Nhà 3” —— 宫位属于金星) → 只到首个其他星体名为止，不碰
+    const houseZone = (bodyIdx < 0 || (natalishIdx >= 0 && natalishIdx > bodyIdx)) ? win.length : bodyIdx;
+    const signZone = bodyIdx >= 0 ? win.slice(0, bodyIdx) : win;
+    let newWin = win, ch = 0;
+    if (sign) {
+      let sz = signZone;
+      for (const z of _VI_SIGN_UNIQ) if (z !== sign && sz.includes(z)) { sz = sz.split(z).join(sign); ch++; }
+      if (sz !== signZone) newWin = sz + newWin.slice(signZone.length);
+    }
+    if (house) {
+      const zone = newWin.slice(0, houseZone);
+      const hm = zone.match(/Nhà\s*(\d+)/);
+      if (hm && Number(hm[1]) !== house) { newWin = zone.replace(/Nhà\s*\d+/, 'Nhà ' + house) + newWin.slice(houseZone); ch++; }
+    }
+    if (!ch) continue;
+    // 改动区长度可变，但右边界用「原 win.length」定位，绝不因长度变化而丢/重字符
+    hits.push([a, a + win.length, newWin]);
+    state.fixes += ch;
+  }
+  for (let i = hits.length - 1; i >= 0; i--) out = out.slice(0, hits[i][0]) + hits[i][2] + out.slice(hits[i][1]);
+  return out;
+}
+
 function lockNatalTruthVi(text, astroMatrix) {
   if (!text || !astroMatrix) return text;
   const meta = astroMatrix.meta || {};
@@ -2823,26 +2868,14 @@ function lockNatalTruthVi(text, astroMatrix) {
   const idx2vi = (en) => (_EN2ZIDX[en] != null ? SUN_SIGN_VI[_EN2ZIDX[en]] : null);
   const moonVi = idx2vi(nm.sign), moonH = Number(nm.house) || 0;
   const sunVi = idx2vi(meta.sun_sign), sunH = Number(meta.computed_houses?.Sun?.house) || 0;
-  let fixes = 0;
-  // 只取 “natal” 后的首个从句；遇到下一个星体/行星即截断，防误伤
-  const firstClause = (w) => {
-    const i = w.search(/\s(?:Mặt|Sao|Hành)\s/);
-    return i >= 0 ? w.slice(0, i) : w;
-  };
-  const patch = (win, sign, house) => {
-    let s = firstClause(win);
-    if (sign) for (const z of SUN_SIGN_VI) {
-      if (z !== sign && s.includes(z)) { s = s.split(z).join(sign); fixes++; }
-    }
-    if (house) {
-      const m = s.match(/Nhà\s*(\d+)/);
-      if (m && Number(m[1]) !== house) { s = s.replace(/Nhà\s*\d+/, 'Nhà ' + house); fixes++; }
-    }
-    return s + win.slice(s.length);
-  };
-  let out = text.replace(/(Mặt Trăng natal)([^.\n]{0,70})/g, (m, mark, win) => mark + patch(win, moonVi, moonH));
-  out = out.replace(/(Mặt Trời natal)([^.\n]{0,70})/g, (m, mark, win) => mark + patch(win, sunVi, sunH));
-  if (fixes) console.log(`[V421] 本命盘真值锁: 修正 ${fixes} 处 native 星座/宫位漂移`);
+  const state = { fixes: 0 };
+  let out = text;
+  out = _viLockClause(out, 'Mặt Trăng natal', moonVi, moonH, false, state);
+  out = _viLockClause(out, 'Mặt Trời natal', sunVi, sunH, false, state);
+  // 泛化：模型常省掉 “natal”，写成「Mặt Trăng ... của bạn」——需窗口含 “của bạn” 且无流月动词
+  out = _viLockClause(out, 'Mặt Trăng', moonVi, moonH, true, state);
+  out = _viLockClause(out, 'Mặt Trời', sunVi, sunH, true, state);
+  if (state.fixes) console.log(`[V421] 本命盘真值锁: 修正 ${state.fixes} 处 native 星座/宫位漂移`);
   return out;
 }
 function cleanConsumerTrapAndBrackets(text) {
