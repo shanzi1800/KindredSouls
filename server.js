@@ -654,7 +654,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.08 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
+      body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.08 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -3348,7 +3348,7 @@ async function callAI(systemPrompt, userPrompt, env, options = {}) {
           'Authorization': `Bearer ${deepseekKey}`,
         },
         body: JSON.stringify({
-          model: 'deepseek-v4-flash',
+          model: 'deepseek-flash',
           thinking: { type: 'disabled' },
           messages: [
             { role: 'system', content: systemPrompt },
@@ -5703,7 +5703,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-          body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
+          body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json();
@@ -6747,7 +6747,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
           body: new TextEncoder().encode(JSON.stringify({
-            model: 'deepseek-v4-flash',
+            model: 'deepseek-flash',
             messages: [
               { role: 'system', content: prompt.system },
               { role: 'user', content: prompt.user },
@@ -7271,7 +7271,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
     body: new TextEncoder().encode(JSON.stringify({
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-flash',
       thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 10000,
@@ -7630,7 +7630,7 @@ app.get('/api/compare-llm', async (req, res) => {
       const r = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${cleanKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
+        body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'user', content: testPrompt }], max_tokens: 512, temperature: 0.7 }),
       });
       const d = await r.json();
       results.deepseek = { ok: r.ok, latency_ms: Date.now() - start, status: r.status, text: d.choices?.[0]?.message?.content || d.error?.message, chars: (d.choices?.[0]?.message?.content || '').length };
