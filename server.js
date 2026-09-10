@@ -2884,6 +2884,12 @@ function _viClause(text, i, len, explicit) {
   if (e >= 0) fwd = fwd.slice(0, e);
   const bIdx = fwd.search(_VI_BODY_SPLIT);
   if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
+  // 🛠️ V423-fix-node-axis: 节点轴短语「trục X–Y」里的第二个星座是「对轴星座」绝非本命落点，
+  //   一旦吃进归因窗口就会把 Bạch Dương 之类轴星座误判成本命星座去改写（生产实测把
+  //   “trục Kim Ngưu–Bạch Dương” 改成了 “trục Kim Ngưu–Kim Ngưu”，纯误伤）。轴描述永远在句尾，
+  //   遇 trục / 破折号即截断本命从句窗口。
+  const axisIdx = fwd.search(/trục|—|–/i);
+  if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
   // 前段：70 字内；含流月动词 → 整段弃用；否则切成 [最后一个句读/连词之后, 首个其他星体名之前)
   let bwd = text.slice(Math.max(0, i - 70), i);
   if (_VI_TRANSIT_MARK.test(bwd)) {

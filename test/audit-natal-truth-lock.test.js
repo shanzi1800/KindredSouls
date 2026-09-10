@@ -104,6 +104,17 @@ describe('V423 本命真值锁 · 越界与流月保护（不许误伤）', () =
     roundTrip('Hôm nay trời đẹp, bạn nên tiết kiệm 500.000 ₫.', ch, [], true);
   });
 
+  test('节点轴短语「trục X–Y」绝不改写（V423 误伤现形·必须零改动）', () => {
+    // 2026-09-10 生产实测误伤：模型写 “Mặt Trời natal … trục Kim Ngưu–Bạch Dương”，
+    // 锁把轴里的 Bạch Dương（对轴星座，非本命）误判成本命太阳星座，改成 “trục Kim Ngưu–Kim Ngưu”。
+    // 轴描述永远在句尾、绝不可能落本命盘 → 遇 trục/破折号即截断归因窗口，整段不动。
+    const ch = chartOf(MATRICES[0]);            // 1990-08-05：月 Cap H5 / 日 Leo H10
+    roundTrip('Mặt Trăng natal của bạn ở Ma Kết Nhà 5, được kích hoạt bởi trục Xử Nữ–Bạch Dương, nhắc bạn.', ch, [], true);
+    // 太阳落点即便需归真（此处 Sư Tử 为正确真值），轴短语「trục Kim Ngưu–Bạch Dương」整段绝不被改写
+    const out2 = lockNatalTruthVi.lockNatalTruthVi('Mặt Trời natal của bạn ở Sư Tử Nhà 10, kích hoạt trục Kim Ngưu–Bạch Dương.', ch);
+    assert.ok(out2.includes('trục Kim Ngưu–Bạch Dương'), `轴短语被误伤改写：${out2}`);
+  });
+
   test('流月行星 + 尾部 «của bạn»（生产实测误报·必须零改动）', () => {
     // 2026-09-10 生产实测：模型写流月 “Sao Mộc tại Sư Tử trong Nhà 12 của bạn”（真值本命木星 Cự Giải H11）、
     // “Sao Kim Bọ Cạp tại Nhà 1” —— 从句里的 của bạn 修饰的是宫不是行星，绝不可当成 natal 去改

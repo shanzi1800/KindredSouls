@@ -122,6 +122,11 @@ def clause_of(text, i, ln, explicit):
     b = BODY_SPLIT.search(fwd)
     if b:
         fwd = fwd[:b.start()]
+    # 🛠️ V423-fix-node-axis: 节点轴短语「trục X–Y」里的第二个星座是对轴星座，绝非本命落点；
+    #   吃进归因窗口会把轴星座误判成本命星座（生产实测误伤）。遇 trục/破折号即截断。
+    ai = re.search(r'trục|—|–', fwd, re.I)
+    if ai:
+        fwd = fwd[:ai.start()]
     bwd = text[max(0, i - 70):i]
     if TRANSIT.search(bwd):
         bwd = ''                                  # 回看段含流月动词 → 整段弃用
@@ -220,6 +225,10 @@ SELF_CASES = [
      'Sao Kim Bọ Cạp tại Nhà 1 lại kéo bạn ra ánh sáng với sức hút khó cưỡng.', False),
     ('已知好⑨: 流月+本命定语混写（必须放行）',
      'Mặt Trăng vẫn vận hành trong vùng Bọ Cạp, và cùng với Sao Kim Bọ Cạp tại Nhà 1, bạn có thể bị cuốn vào xung đột.', False),
+    ('已知好⑩: 本命月亮后接节点轴含他星座（生产实测·必须放行）',
+     'Mặt Trăng natal của bạn ở Xử Nữ Nhà 4, được kích hoạt bởi trục Xử Nữ–Bạch Dương, nhắc bạn.', False),
+    ('已知好⑪: 轴短语后接流月月亮（生产实测·必须放行）',
+     'Mặt Trăng natal của bạn ở Xử Nữ Nhà 4, trục Xử Nữ–Bạch Dương, trong khi Mặt Trăng transit ở Bọ Cạp.', False),
     ('已知坏④: 回看段是他星数据、本锚点自己也写错（必须抓到）',
      'Sao Hỏa Cự Giải Nhà 1 chiếu vào Mặt Trăng natal của bạn ở Bọ Cạp Nhà 8.', True),
     ('已知好③: 流月（必须放行）',
