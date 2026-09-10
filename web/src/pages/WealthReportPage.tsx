@@ -1625,7 +1625,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         headers,
         body: JSON.stringify({
           birthDate: birth,
+          birthTime,
+          lat: birthLat,
+          lon: birthLon,
+          tz: birthTz,
           lang: lang,
+          reportType: 'monthly',
           referrer: 'standalone',
         }),
       });
