@@ -6312,16 +6312,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             console.warn('[V364] ⚠️ 拦截清洗后仍含指令片段:', clean.slice(0, 60));
             return;
           }
-          // 🛡️ V410: 流式 chunk 层越南语拆词修复——实时流与 sanitized 终稿保持一致,
-          //   根治前端长度守卫因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
-          let _out = clean;
-          if (lang === 'vi') {
-            _out = fixVietnameseCorruption(_out);
-            _out = enforceRiskThreshold(_out, lang);
-          }
-          _totalWritten += _out;
-          fullTextCollector += _out;
-          _resDedupe.write(_out);   // 走 wrapper 去重
+          _totalWritten += clean;
+          fullTextCollector += clean;
+          _resDedupe.write(clean);   // 走 wrapper 去重
         };
 
         // 🛠️ V315-fix: res 去重 wrapper——拦截所有 res.write() 调用，防止 Gemini 和 DeepSeek 双重写入
@@ -6330,7 +6323,21 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             const s = typeof data === 'string' ? data : data.toString('utf-8');
             const trimmed = _getTrimmed(s);
             if (!trimmed) return typeof cb === 'function' && cb();
-            return res.write(trimmed, enc, cb);
+            // 🛡️ V410: 流式 SSE text 事件层越南语拆词修复——callDeepSeekStream 直接写 raw chunk,
+            //   此处统一清洗 text 字段,确保前端实时看到的是已修拆词+₫500,000阈值的干净文本
+            //   (onChunk/_dedupWrite 只累积 fullTextCollector 不控制 SSE 输出,故在此清洗)
+            let _out = trimmed;
+            if (lang === 'vi' && trimmed.startsWith('data: ')) {
+              try {
+                const _j = JSON.parse(trimmed.slice(6).trim());
+                if (_j && typeof _j.text === 'string' && _j.text.length) {
+                  _j.text = fixVietnameseCorruption(_j.text);
+                  _j.text = enforceRiskThreshold(_j.text, lang);
+                  _out = 'data: ' + JSON.stringify(_j) + '\n\n';
+                }
+              } catch (e) { /* 非标准 JSON 行原样透传 */ }
+            }
+            return res.write(_out, enc, cb);
           },
           flush: res.flush && res.flush.bind(res),
           writableEnded: false,
