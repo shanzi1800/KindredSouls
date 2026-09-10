@@ -2902,6 +2902,7 @@ function _viClause(text, i, len, explicit) {
 // 在单段区间内做「就近一处」替换：preferFirst=true → 取该区间首个；false → 取最后一个
 function _viPatchZone(zone, sign, house, preferFirst) {
   let z = zone, ch = 0;
+  const log = [];
   if (sign) {
     let best = null;
     for (const s of _VI_SIGN_UNIQ()) {
@@ -2910,15 +2911,15 @@ function _viPatchZone(zone, sign, house, preferFirst) {
       if (idx < 0) continue;
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
-    if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; }
+    if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`星座 ${best.s}→${sign}`); }
   }
   if (house) {
     const re = /Nhà\s*(\d+)/g;
     let target = null, m;
     while ((m = re.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
-    if (target && Number(target[1]) !== house) { z = z.slice(0, target.index) + ('Nhà ' + house) + z.slice(target.index + target[0].length); ch++; }
+    if (target && Number(target[1]) !== house) { z = z.slice(0, target.index) + ('Nhà ' + house) + z.slice(target.index + target[0].length); ch++; log.push(`宫位 ${target[1]}→${house}`); }
   }
-  return { text: z, count: ch };
+  return { text: z, count: ch, log };
 }
 
 function lockNatalTruthVi(text, astroMatrix) {
@@ -2931,6 +2932,7 @@ function lockNatalTruthVi(text, astroMatrix) {
   }
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
   const hits = [];
+  const detail = [];
   let fixes = 0, m;
   while ((m = nameRe.exec(text)) !== null) {
     const name = m[1];
@@ -2942,8 +2944,9 @@ function lockNatalTruthVi(text, astroMatrix) {
     const { fwd, bwd } = clause;
     const backStart = m.index - bwd.length;
     const F = _viPatchZone(fwd, t.sign, t.house, true);
-    const B = bwd ? _viPatchZone(bwd, t.sign, t.house, false) : { text: bwd, count: 0 };
+    const B = bwd ? _viPatchZone(bwd, t.sign, t.house, false) : { text: bwd, count: 0, log: [] };
     if (!F.count && !B.count) continue;
+    for (const x of F.log.concat(B.log)) detail.push(`${name} ${x}`);
     // 右界用【原长度】定位：星座名长短变化不会导致掉字/重字
     if (F.count) hits.push([m.index + m[0].length, m.index + m[0].length + fwd.length, F.text]);
     if (B.count) hits.push([backStart, m.index, B.text]);
@@ -2953,7 +2956,7 @@ function lockNatalTruthVi(text, astroMatrix) {
     const [s, e, rep] = hits[i];
     text = text.slice(0, s) + rep + text.slice(e);
   }
-  if (fixes) console.log(`[V423] 本命盘真值锁(10行星): 修正 ${fixes} 处 native 星座/宫位漂移`);
+  if (fixes) console.log(`[V423] 本命盘真值锁(10行星): 修正 ${fixes} 处 native 星座/宫位漂移${detail.length ? ' | ' + detail.slice(0, 10).join('; ') : ''}`);
   return text;
 }
 function cleanConsumerTrapAndBrackets(text) {

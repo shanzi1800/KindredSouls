@@ -255,7 +255,12 @@ PROFILES = [
     {'bd': '1990-08-05', 'bt': '07:00', 'lat': 10.8231, 'lon': 106.6297, 'tz': 'Asia/Ho_Chi_Minh'},
     {'bd': '1989-10-12', 'bt': '07:00', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
     {'bd': '1992-03-17', 'bt': '09:30', 'lat': 39.9042, 'lon': 116.4074, 'tz': 'Asia/Shanghai'},
+    # 下面两个生日专供「强制 MISS」——从未生成过，缓存里不存在 → 验证 10 行星锚点注入后的真实生成行为
+    {'bd': '1977-05-21', 'bt': '03:00', 'lat': 21.0278, 'lon': 105.8342, 'tz': 'Asia/Ho_Chi_Minh'},
+    {'bd': '1985-02-14', 'bt': '23:30', 'lat': 31.2304, 'lon': 121.4737, 'tz': 'Asia/Shanghai'},
 ]
+# 专供 MISS：只跑这两个（--miss-only）
+MISS_PROFILES = PROFILES[3:]
 API = os.environ.get('TRUTH_API', 'https://kindredsouls.online/api/wealth-oracle/stream')
 
 
@@ -284,17 +289,18 @@ async def _fetch(session, prof):
     return (san or ''.join(chunks)), 200
 
 
-async def run_live(rounds=2, save_dir=None):
+async def run_live(rounds=2, save_dir=None, miss_only=False):
     import aiohttp
     ok_self, _ = self_test()
     if not ok_self:
         return 1
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
+    profs = MISS_PROFILES if miss_only else PROFILES
     results = []
     async with aiohttp.ClientSession() as s:
         for r in range(rounds):
-            for prof in PROFILES:
+            for prof in profs:
                 text, code = await _fetch(s, prof)
                 if save_dir and text:
                     with open(os.path.join(save_dir, f"live_r{r + 1}_{prof['bd']}.txt"), 'w', encoding='utf-8') as fh:
@@ -348,6 +354,7 @@ def main():
     ap.add_argument('--live', action='store_true')
     ap.add_argument('--rounds', type=int, default=2)
     ap.add_argument('--save')
+    ap.add_argument('--miss-only', action='store_true', help='只跑两个从未生成过的新生日（强制 MISS）')
     a = ap.parse_args()
     if a.self_test:
         ok, _ = self_test()
@@ -355,7 +362,7 @@ def main():
     if a.dir:
         return run_dir(a.dir)
     if a.live:
-        return asyncio.run(run_live(a.rounds, a.save))
+        return asyncio.run(run_live(a.rounds, a.save, a.miss_only))
     ok, _ = self_test()
     print('\n(未指定 --dir/--live，仅执行自证)')
     return 0 if ok else 1
