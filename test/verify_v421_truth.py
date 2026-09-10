@@ -20,14 +20,33 @@ VI = {'Aries':'Bạch Dương','Taurus':'Kim Ngưu','Gemini':'Song Tử','Cancer
 VI_ALL = list(VI.values())
 BODIES = r'(?:Mặt|Sao|Hành|Trái Đất|Thiên Vương|Hải Vương|Diêm Vương|Kim Tinh|Hỏa Tinh|Thủy Tinh|Mộc Tinh|Thổ Tinh)'
 
+def _pick_py():
+    """挑一个真带 swisseph 的解释器——nohup/后台环境下 PATH 可能解析到无该模块的 python(2026-09-10 实测踩坑)"""
+    cands = [sys.executable,
+             '/Users/apple/Library/Application Support/QClaw/openclaw/config/bin/python/python3',
+             '/Users/apple/Library/Application Support/QClaw/python/bin/python3',
+             'python3', '/usr/local/bin/python3']
+    for c in cands:
+        if not c: continue
+        try:
+            if subprocess.run([c, '-c', 'import swisseph'], capture_output=True).returncode == 0:
+                return c
+        except Exception:
+            pass
+    raise RuntimeError('找不到带 swisseph 的解释器')
+
+PY = _pick_py()
+print('终验用解释器:', PY)
+
 def natal(bd, bt, lat, lon, tz):
     last = ''
-    for _ in range(3):
-        r = subprocess.run(['python3','astro/astro_matrix.py','--birth-date',bd,'--birth-time',bt,
+    for attempt in range(3):
+        r = subprocess.run([PY,'astro/astro_matrix.py','--birth-date',bd,'--birth-time',bt,
                             '--lat',str(lat),'--lon',str(lon),'--tz',tz,'--mode','natal'],
                            capture_output=True, text=True, cwd=REPO)
         last = (r.stdout or '').strip()
         if last.startswith('{'): break
+        print(f'  ⚠️ astro真值调用失败(尝试{attempt+1}) stderr={ (r.stderr or "")[-200:] }')
         time.sleep(2)
     d = json.loads(last)
     h = d['computed_houses']
