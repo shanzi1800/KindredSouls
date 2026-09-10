@@ -3497,7 +3497,7 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
     const hasWeek1 = /\[\s*(?:🟢|🔴|🔵|⚠️)?\s*(?:Week\s*\d+|第\s*[一二三四1-4]\s*周|Semana|Semaine|Tuần|สัปดาห์ที่)/i.test(c);
     if (hasWeek1) {
       // 🛡️ V256/V257: Overview 用下方「✦ [🔮 主题头计数」检测(格式已统一), Trap 用多语言正则检测
-      const hasTrap = /消费陷阱|Spending\s*Traps|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Financial\s*Shadow|Ombre\s*Financi|Sombra\s*Financi|เงาการ|Bóng\s*Tài/i.test(c);
+      const hasTrap = /消费陷阱|Spending\s*Traps|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Cạm\s*bẫy\s*Tài\s*chính|Financial\s*Shadow|Ombre\s*Financi|Sombra\s*Financi|เงาการ|Bóng\s*Tài/i.test(c);
         // 🛡️ V257-fix: 主题头检测改用「✦ [🔮 计数」(下方提前归一化后任何语言主题头都是 ✦ [🔮 格式),
         //   仅当数量=0(真缺失)才注入,杜绝重复注入第2个主题头。
         const _themeCount = (c.match(/✦\s*\[\s*🔮/g) || []).length;
