@@ -2818,11 +2818,15 @@ function fixVietnameseCorruption(text) {
 const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 };
 const _VI_TRANSIT_MARK = /di chuyển qua|quá cảnh|transit|đi qua|đi vào|bước vào|luân chuyển/i;
 const _VI_BODY_SPLIT = /\s(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|Diêm Vương)\s/;
-const _VI_SIGN_UNIQ = SUN_SIGN_VI.filter((s, i, a) => a.indexOf(s) === i);
+// 🛠️ V421-fix2: 顶层不得直接引用 SUN_SIGN_VI（其声明在本行之后 → TDZ 启动崩溃，2026-09-10 已实陆一次）
+//   改用惰性函数，运行时才去读后方声明的常量
+let _VI_SIGN_UNIQ_CACHE = null;
+const _VI_SIGN_UNIQ = () => (_VI_SIGN_UNIQ_CACHE ||= SUN_SIGN_VI.filter((s, i, a) => a.indexOf(s) === i));
 
 // 单个锚点的真值替换；改动范围严格限制在 [锚点后 90 字内、句末之前]，且星座只在「首个其他星体名之前」替换
 function _viLockClause(out, anchor, sign, house, requireNatalish, state) {
   const re = new RegExp(anchor, 'g');
+  const _signs = _VI_SIGN_UNIQ();
   const hits = [];
   let m;
   while ((m = re.exec(out)) !== null) {
@@ -2844,7 +2848,7 @@ function _viLockClause(out, anchor, sign, house, requireNatalish, state) {
     let newWin = win, ch = 0;
     if (sign) {
       let sz = signZone;
-      for (const z of _VI_SIGN_UNIQ) if (z !== sign && sz.includes(z)) { sz = sz.split(z).join(sign); ch++; }
+      for (const z of _signs) if (z !== sign && sz.includes(z)) { sz = sz.split(z).join(sign); ch++; }
       if (sz !== signZone) newWin = sz + newWin.slice(signZone.length);
     }
     if (house) {

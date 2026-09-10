@@ -39,8 +39,16 @@ def natal(bd, bt, lat, lon, tz):
 def gen(bd, bt, lat, lon, tz):
     body = json.dumps({"birthDate":bd,"birthTime":bt,"lat":lat,"lon":lon,"tz":tz,
                        "lang":"vi","reportType":"monthly"}).encode()
-    req = urllib.request.Request(ENDPOINT, data=body, headers={'Content-Type':'application/json'})
-    raw = urllib.request.urlopen(req, timeout=300).read().decode('utf-8','ignore')
+    raw = ''
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(ENDPOINT, data=body, headers={'Content-Type':'application/json'})
+            raw = urllib.request.urlopen(req, timeout=300).read().decode('utf-8','ignore')
+            if 'data: ' in raw: break
+            print(f'  ⚠️ 空响应(尝试{attempt+1})')
+        except Exception as e:
+            print(f'  ⚠️ 请求异常(尝试{attempt+1}): {e}')
+        time.sleep(8)
     parts, san = [], None
     for line in raw.split('\n'):
         if not line.startswith('data: '): continue
