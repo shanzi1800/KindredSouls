@@ -2840,7 +2840,7 @@ const _TH_PLANET_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Satur
 let _TH_SIGN_UNIQ_CACHE = null;
 const _TH_SIGN_UNIQ = () => (_TH_SIGN_UNIQ_CACHE ||= SUN_SIGN_TH.filter((s,i,a) => a.indexOf(s)===i));
 // 泰语流月动词（遇这些词 → 明确是 transit，不归入本命）
-const _TH_TRANSIT_MARK = /กำลัง|ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก|เดินผ่าน/i;
+const _TH_TRANSIT_MARK = /กำลัง|ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก|สถิต/i;
 // 泰语句末标点
 const _TH_CLAUSE_BREAK = /[.!:ๆ๋\n]/g;
 // 泰语身体句（行星出现即截断归因窗口，避免把别的行星数据归到本锚点上）
