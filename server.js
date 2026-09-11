@@ -6046,74 +6046,8 @@ function enforceRiskThreshold(report, lang) {
 }
 
 // ── /api/wealth-oracle ──
-app.post('/api/wealth-oracle', async (req, res) => {
-  try {
-    // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
-    const {
-      birthDate,
-      birthTime,  // ⚠️ V176-fix: 禁止默认值！缺省时由 hasBirthTime=false 触发 Solar House 降级
-      lat = 13.75,
-      lon = 100.5,
-      tz = 'Asia/Bangkok',
-      lang = 'zh',
-    } = req.body;
-    // 🛠️ V102s: 是否真提供出生时间(未提供→报头不声称上升)
-    const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
-    if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
-
-    // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
-    const reportType = req.body.reportType || 'oracle';
-    // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
-    const _ckTime = birthTime || '12:00';
-    const _ckLat = Number(lat || 13.75).toFixed(4);
-    const _ckLon = Number(lon || 100.5).toFixed(4);
-    const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v352e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
-    const SB_URL = process.env.SUPABASE_URL;
-    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-    // ═══ 第一道拦截:Cache Hit ═══
-    if (SB_URL && SB_KEY && reportType !== 'oracle') {
-      try {
-        const cacheRes = await safeFetch(
-          `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
-          { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-        );
-        const cacheRows = await cacheRes.json();
-        const cachedText = cacheRows?.[0]?.insight;
-
-        if (cachedText && cachedText.length > 2000) {
-          console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
-          // V103-fix6: 标准化旧缓存,确保格式统一
-          const stdCached = standardizeReport(cachedText);
-          // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
-          //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
-          if (lang === 'vi') {
-            // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
-            //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
-            let _hitAstro = null;
-            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
-            stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
-            stdCached = lockTransitTruthVi(stdCached, _hitAstro);
-            if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
-            if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
-          }
-          // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
-          if (lang === 'th') {
-            let _hitAstroTh = null;
-            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
-            stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
-            stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
-          }
-          // 返回缓存数据(包装成前端期望的格式)
-          // 🛠️ V120: 月报返回 markdown 纯文本
-          return res.json({ success: true, cached: true, report: stdCached });
-        }
-      } catch (e) {
-        console.warn('[wealth-oracle] Cache check error:', e.message);
-      }
-    }
-
+// ── V427: 命理元数据计算（MISS + HIT 路径共用，杜绝逻辑重复）──
+function buildWealthMetaFull(birthDate, lang) {
     const TIANGAN = { zh:['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'], en:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], es:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], fr:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], th:['เจีย','อี้','ปิง','ติง','อู๋','จี','เกิง','ซิน','เหริน','กุ่ย'], vi:['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'] };
     const DIZHI = { zh:['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'], en:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], es:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], fr:['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'], th:['จื่อ','โฉ่ว','อิน','เม้า','เฉิน','ซื่อ','อู๋','เว่ย','เซิน','โย่ว','สวี่','ไห่'], vi:['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'] };
     const WUXING = { zh:['金','木','水','火','土'], en:['Metal','Wood','Water','Fire','Earth'], es:['Metal','Madera','Agua','Fuego','Tierra'], fr:['Métal','Bois','Eau','Feu','Terre'], th:['โลหะ','ไม้','น้ํา','ไฟ','ดิน'], vi:['Kim','Mộc','Thủy','Hỏa','Thổ'] };
@@ -6243,7 +6177,84 @@ app.post('/api/wealth-oracle', async (req, res) => {
           orientation: tarotReversed ? 'Reversed' : 'Upright'
         }
       }
-    };
+    }
+  return { result, sunSign };
+}
+
+app.post('/api/wealth-oracle', async (req, res) => {
+  try {
+    // 🛠️ V91+: 出生时间/经纬度/时区(默认 Bangkok 中午)
+    const {
+      birthDate,
+      birthTime,  // ⚠️ V176-fix: 禁止默认值！缺省时由 hasBirthTime=false 触发 Solar House 降级
+      lat = 13.75,
+      lon = 100.5,
+      tz = 'Asia/Bangkok',
+      lang = 'zh',
+    } = req.body;
+    // 🛠️ V102s: 是否真提供出生时间(未提供→报头不声称上升)
+    const hasBirthTime = typeof req.body.birthTime === 'string' && req.body.birthTime.trim().length > 0;
+    if (!birthDate) return res.status(400).json({ success: false, error: 'birthDate required' });
+
+    // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
+    const reportType = req.body.reportType || 'oracle';
+    // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
+    const _ckTime = birthTime || '12:00';
+    const _ckLat = Number(lat || 13.75).toFixed(4);
+    const _ckLon = Number(lon || 100.5).toFixed(4);
+    const _ckTz = tz || 'Asia/Bangkok';
+    const cacheKey = `wealth:v352e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    // ═══ 第一道拦截:Cache Hit ═══
+    if (SB_URL && SB_KEY && reportType !== 'oracle') {
+      try {
+        const cacheRes = await safeFetch(
+          `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
+          { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+        );
+        const cacheRows = await cacheRes.json();
+        const cachedText = cacheRows?.[0]?.insight;
+
+        if (cachedText && cachedText.length > 2000) {
+          console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
+          // V103-fix6: 标准化旧缓存,确保格式统一
+          const stdCached = standardizeReport(cachedText);
+          // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
+          //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
+          if (lang === 'vi') {
+            // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
+            //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
+            let _hitAstro = null;
+            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
+            stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
+            stdCached = lockTransitTruthVi(stdCached, _hitAstro);
+            if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
+            if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
+          }
+          // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
+          if (lang === 'th') {
+            let _hitAstroTh = null;
+            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
+            stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
+            stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
+          }
+          // 🛠️ V427: HIT 路径补 data 字段(让前端 4 卡片能渲染，与 MISS 路径对称)
+          const _hitMeta = buildWealthMetaFull(birthDate, lang);
+          // 返回缓存数据(包装成前端期望的格式)
+          // 🛠️ V120: 月报返回 markdown 纯文本
+          return res.json({ ..._hitMeta.result, cached: true, report: stdCached });
+        }
+      } catch (e) {
+        console.warn('[wealth-oracle] Cache check error:', e.message);
+      }
+    }
+
+    // 🛠️ V427: 调用 buildWealthMetaFull 生成命理元数据（与 HIT 路径共用，无重复逻辑）
+    const _meta = buildWealthMetaFull(birthDate, lang);
+    const sunSign = _meta.sunSign;  // 🛠️ V427: 供后续 realSunSign/natalSunSign 使用
+    const result = _meta.result;
     // ── 报告生成(月报/年报/先天财富DNA)──
     const { includeInsight } = req.body || {};
     if (reportType === 'monthly' || reportType === 'yearly' || reportType === 'once') {
