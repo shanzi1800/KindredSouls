@@ -3420,6 +3420,17 @@ function _frTransitClause(text, i, len) {
 }
 
 // 法语单段替换（镜像 _viPatchZone；house=Maison X；含拼写错误兜底归真）
+const _FR_ORDINAL_TO_DIGIT = {
+  'première': 1, 'premier': 1, 'deuxième': 2, 'troisième': 3, 'quatrième': 4,
+  'cinquième': 5, 'sixième': 6, 'septième': 7, 'huitième': 8, 'neuvième': 9,
+  'dixième': 10, 'onzième': 11, 'douzième': 12,
+};
+const _FR_DIGIT_TO_ORDINAL = {
+  1: 'première', 2: 'deuxième', 3: 'troisième', 4: 'quatrième', 5: 'cinquième',
+  6: 'sixième', 7: 'septième', 8: 'huitième', 9: 'neuvième', 10: 'dixième',
+  11: 'onzième', 12: 'douzième',
+};
+
 function _frPatchZone(zone, sign, house, preferFirst) {
   let z = zone, ch = 0;
   const log = [];
@@ -3449,10 +3460,22 @@ function _frPatchZone(zone, sign, house, preferFirst) {
     }
   }
   if (house) {
-    const re = /Maison\s*(\d+)/gi;
-    let target = null, m;
-    while ((m = re.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
-    if (target && Number(target[1]) !== house) { z = z.slice(0, target.index) + ('Maison ' + house) + z.slice(target.index + target[0].length); ch++; log.push(`宫位 ${target[1]}→${house}`); }
+    let target = null, m, isOrdinal = false;
+    const reNum = /Maison\s*(\d+)/gi;
+    while ((m = reNum.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
+    if (!target) {
+      const reOrd = /\b(première|premier|deuxième|troisième|quatrième|cinquième|sixième|septième|huitième|neuvième|dixième|onzième|douzième)\s+maison/gi;
+      while ((m = reOrd.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
+      isOrdinal = true;
+    }
+    if (target) {
+      const gotHouse = isOrdinal ? (_FR_ORDINAL_TO_DIGIT[target[1].toLowerCase()] || 0) : Number(target[1]);
+      if (gotHouse !== house) {
+        const replacement = isOrdinal ? (_FR_DIGIT_TO_ORDINAL[house] + ' maison') : ('Maison ' + house);
+        z = z.slice(0, target.index) + replacement + z.slice(target.index + target[0].length);
+        ch++; log.push('宫位 ' + gotHouse + '→' + house);
+      }
+    }
   }
   return { text: z, count: ch, log };
 }

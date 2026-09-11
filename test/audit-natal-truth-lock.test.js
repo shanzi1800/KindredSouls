@@ -509,4 +509,22 @@ describe('V426 法语 natal+transit 真值双锁（治本命盘混入 transit �
     assert.strictEqual(FR.lockTransitTruthFr(t, {}), t);
     assert.strictEqual(FR.lockTransitTruthFr(t, { months: [{}] }), t);
   });
+
+  test('法语序数词宫位(septième maison) 错误时必须兜底归真（_frPatchZone 盲区修复）', () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const EN2Z = FR._EN2ZIDX;
+    const info = first.jupiter || {};
+    if (!info || !info.sign || !info.house) return;
+    const truthSign = FR_SIGN[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const WRONG_HOUSE = truthHouse === 12 ? 1 : truthHouse + 1;
+    const ORD = {1:'première',2:'deuxième',3:'troisième',4:'quatrième',5:'cinquième',6:'sixième',7:'septième',8:'huitième',9:'neuvième',10:'dixième',11:'onzième',12:'douzième'};
+    const CORRECT_ORD = ORD[truthHouse];
+    const WRONG_ORD = ORD[WRONG_HOUSE];
+    const inc = 'Jupiter en ' + truthSign + ' dans votre ' + WRONG_ORD + ' maison brille de mille feux.';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.ok(out.includes(CORRECT_ORD + ' maison'), 'fr transit 序数词宫位未归真至 ' + truthHouse + ' (' + CORRECT_ORD + ')：' + out);
+    assert.ok(!out.includes(WRONG_ORD + ' maison'), 'fr 仍残留错值序数词宫位 ' + WRONG_ORD + '：' + out);
+  });
 });
