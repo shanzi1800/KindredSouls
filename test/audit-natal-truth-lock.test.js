@@ -151,7 +151,7 @@ if (_from_TH < 0 || _to_TH < 0) throw new Error('未能从 server.js 提取 lock
 const BLOCK_TH = SRC.slice(_from_TH, _to_TH);
 // _EN2ZIDX 在 server.js 2829行，_natalTruthMap10_TH 引用了它，必须一起 prepend
 const _EN2ZIDX_DECL = "const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 }";
-const SUN_SIGN_TH_DECL = "const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];";
+const SUN_SIGN_TH_DECL = "const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];";
 const lockNatalTruthTh = new Function(`${_EN2ZIDX_DECL};${SUN_SIGN_TH_DECL};${BLOCK_TH}\nreturn lockNatalTruthTh;`)();
 assert.strictEqual(typeof lockNatalTruthTh, 'function', 'lockNatalTruthTh 应被成功提取');
 
@@ -160,7 +160,7 @@ const TH = {
   Jupiter: 'ดาวพฤหัสบดี', Saturn: 'ดาวเสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
 };
 const TH_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
-const TH_SIGNS = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
+const TH_SIGNS = ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
 const EN_MAP = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
 
 const roundTripTh = (input, ch, pairs, identical = false) => {
@@ -250,5 +250,37 @@ describe('V424 泰语本命真值锁 · 越界与流月保护（不许误伤）'
     const ch = chartOfTh(MATRICES[0]);
     roundTripTh('ดาวพุธในราศีกันยาเป็นลัคนาของคุณ', ch, [], true);
     roundTripTh('การเงินเดือนนี้อาจมีปัญหา ควรออมเงิน 5000 บาท', ch, [], true);
+  });
+
+  // ── V424-fix7: 巨蟹座字符กรกฎ(DO CHADA)对齐 + โคจร/ออกจาก natal 隐喻误杀回归门 ──
+  const _cancerChart = {
+    meta: {
+      natal_moon: { sign: 'Cancer', house: 5 },
+      computed_houses: {
+        Sun: { sign: 'Leo', house: 12 }, Moon: { sign: 'Cancer', house: 5 },
+        Mercury: { sign: 'Cancer', house: 3 }, Venus: { sign: 'Libra', house: 11 },
+        Mars: { sign: 'Taurus', house: 9 }, Jupiter: { sign: 'Cancer', house: 3 },
+        Saturn: { sign: 'Capricorn', house: 3 }, Uranus: { sign: 'Capricorn', house: 3 },
+        Neptune: { sign: 'Capricorn', house: 3 }, Pluto: { sign: 'Scorpio', house: 1 },
+      },
+    },
+  };
+  test('🔥 V424-fix7: 巨蟹座字符กรกฎ必须能匹配与归真（BP/DC 字符错位回归）', () => {
+    const ch = chartOfTh(_cancerChart); // Moon/Hg/Jupiter 真值 Cancer=กรกฎ
+    const out = lockNatalTruthTh('ดวงจันทร์ natal ของคุณอยู่ในราศีพฤษภ บ้าน 8', ch);
+    assert.ok(out.includes('กรกฎ'), `月亮未归真至กรกฎ(Cancer)：${out}`);
+    assert.ok(out.includes('บ้าน 5'), `月亮宫位未归真至H5：${out}`);
+  });
+  test('🔥 V424-fix7: โคจร(本轮周期="การโคจรครั้งนี้")在natal句中不得误判transit跳过', () => {
+    const ch = chartOfTh(_cancerChart); // Mercury 真值 Cancer กรกฎ H3
+    const out = lockNatalTruthTh('ดาวพุธ natal ของคุณอยู่ในราศีพิจิก บ้าน 9 การโคจรครั้งนี้กระตุ้น', ch);
+    assert.ok(out.includes('กรกฎ'), `Mercury未归真至กรกฎ：${out}`);
+    assert.ok(out.includes('บ้าน 3'), `Mercury宫位未归真至H3：${out}`);
+  });
+  test('🔥 V424-fix7: ออกจาก(逃离陷阱="ออกจากกับดัก")在natal句中不得误判transit跳过', () => {
+    const ch = chartOfTh(_cancerChart); // Mercury 真值 Cancer กรกฎ H3
+    const out = lockNatalTruthTh('ดาวพุธ natal ของคุณอยู่ในราศีพิจิก บ้าน 9 ในการแยกแยะโอกาสจริงออกจากกับดัก', ch);
+    assert.ok(out.includes('กรกฎ'), `Mercury未归真至กรกฎ：${out}`);
+    assert.ok(out.includes('บ้าน 3'), `Mercury宫位未归真至H3：${out}`);
   });
 });

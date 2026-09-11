@@ -2840,10 +2840,8 @@ const _TH_PLANET_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Satur
 let _TH_SIGN_UNIQ_CACHE = null;
 const _TH_SIGN_UNIQ = () => (_TH_SIGN_UNIQ_CACHE ||= SUN_SIGN_TH.filter((s,i,a) => a.indexOf(s)===i));
 // 泰语流月动词（遇这些词 → 明确是 transit，不归入本命）
-// 🛠️ V424-fix3: 去掉สถิต（驻位于）——它既可表流月也可表本命，用于占位/陈述时不是移动动词
-// 🛠️ V424-fix6: กำลัง(=aspect marker"正在"≠move)移出，保留真正的移动动词
-// กำลังผลักดัน（正在施加）≠ กำลังเคลื่อน（正在运行）；ขึ้น/ลง 在"ขึ้นบันได/ลงเตียง"语境下非行星移动，保留但可考虑后续收紧
-const _TH_TRANSIT_MARK = /ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก/i;
+// 🛠️ V424-fix7: โคจร(本轮周期="การโคจรครั้งนี้")、ออกจาก(逃离陷阱="ออกจากกับดัก") 是 natal 隐喻，非 transit 移动动词，移除以防 natal 句被误杀跳过
+const _TH_TRANSIT_MARK = /ผ่าน|เคลื่อน|เดินทาง|ย้าย|ขึ้น|ลง|เข้าสู่/i;
 // 泰语句末标点
 const _TH_CLAUSE_BREAK = /[.!:ๆ๋\n]/g;
 // 泰语身体句（行星出现即截断归因窗口，避免把别的行星数据归到本锚点上）
@@ -3728,7 +3726,7 @@ function getNatalSunSign(birthDate) {
 }
 const SUN_SIGN_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
 const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];
-const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
+const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
 const SUN_SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'];
 const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
 const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
@@ -5078,7 +5076,7 @@ ${HT_RP.trap}
 
       if (lang === 'th') {
         // 1 替换 ASTRO RULES 里的硬编码 ASC=Cancer house mapping
-        const OLD_HOUSE_RULES = 'ระบบเรือน 12 หลังสําหรับ ASC=ราศีกรกฏ: เรือนที่ 1=กรกฏ, 9=มีน, 10=เมษ, 11=พฤษภ, 12=มิถุน. ดวงอาทิตย์ในราศีมีน = เรือนที่ 9 ไม่ใช่ 1 หรือ 12!';
+        const OLD_HOUSE_RULES = 'ระบบเรือน 12 หลังสําหรับ ASC=ราศีกรกฎ: เรือนที่ 1=กรกฎ, 9=มีน, 10=เมษ, 11=พฤษภ, 12=มิถุน. ดวงอาทิตย์ในราศีมีน = เรือนที่ 9 ไม่ใช่ 1 หรือ 12!';
         const NEW_HOUSE_RULES = `ระบบเรือน 12 หลังสําหรับ ASC=${signMap[rising] || rising} (Equal House คํานวณจากวันเกิดจริง): ดาวพฤหัสบดีในราศี${jupSignTH} = ${TH_HOUSE[jupHouse]}, ดาวเสาร์ในราศี${satSignTH} = ${TH_HOUSE[satHouse]}, ดาวพลูโตในราศีกุมภ์ = ${TH_HOUSE[plHouse]}, ดวงอาทิตย์ = ${TH_HOUSE[sunHouse]}. ห้ามใช้ house mapping อื่นเด็ดขาด!`;
         yearlySystem = yearlySystem.replace(OLD_HOUSE_RULES, NEW_HOUSE_RULES);
 
