@@ -6178,7 +6178,7 @@ function buildWealthMetaFull(birthDate, lang) {
         }
       }
     }
-  return { result, sunSign };
+  return { result, sunSign, dTGDisplay, wuxing, hexName, cardName };
 }
 
 app.post('/api/wealth-oracle', async (req, res) => {
@@ -6253,7 +6253,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // 🛠️ V427: 调用 buildWealthMetaFull 生成命理元数据（与 HIT 路径共用，无重复逻辑）
     const _meta = buildWealthMetaFull(birthDate, lang);
-    const sunSign = _meta.sunSign;  // 🛠️ V427: 供后续 realSunSign/natalSunSign 使用
+    const { sunSign, dTGDisplay, wuxing, hexName, cardName } = _meta;  // 🛠️ V427: 解构供后续 buildWealthReportPrompt 使用
     const result = _meta.result;
     // ── 报告生成(月报/年报/先天财富DNA)──
     const { includeInsight } = req.body || {};
