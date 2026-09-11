@@ -2830,6 +2830,140 @@ const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scor
 const _VI_TRANSIT_MARK = /di chuyển qua|quá cảnh|transit|đi qua|đi vào|bước vào|luân chuyển|chuyển sang/i;
 const _VI_BODY_SPLIT = /(?:^|\s)(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|Diêm Vương)\s/;
 const _VI_CLAUSE_BREAK = /[.;,!?:()\n]|\s(?:và|với|nhưng|song|trong khi|đồng thời|khi|cùng)\s/gi;
+
+// ── V424: 泰语本命真值锁（镜像 V421/V423 越南语锁，泰语无显式 natal 标记，用 transit 动词排除）
+const _TH_PLANET = {
+  Sun: 'ดวงอาทิตย์', Moon: 'ดวงจันทร์', Mercury: 'ดาวพุธ', Venus: 'ดาวศุกร์', Mars: 'ดาวอังคาร',
+  Jupiter: 'ดาวพฤหัสบดี', Saturn: 'ดาวเสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
+};
+const _TH_PLANET_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+let _TH_SIGN_UNIQ_CACHE = null;
+const _TH_SIGN_UNIQ = () => (_TH_SIGN_UNIQ_CACHE ||= SUN_SIGN_TH.filter((s,i,a) => a.indexOf(s)===i));
+// 泰语流月动词（遇这些词 → 明确是 transit，不归入本命）
+const _TH_TRANSIT_MARK = /กำลัง|ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก|เดินผ่าน/i;
+// 泰语句末标点
+const _TH_CLAUSE_BREAK = /[.!:ๆ๋\n]/g;
+// 泰语身体句（行星出现即截断归因窗口，避免把别的行星数据归到本锚点上）
+const _TH_BODY_ANY = /ดวงอาทิตย์|ดวงจันทร์|ดาวพุธ|ดาวศุกร์|ดาวอังคาร|ดาวพฤหัสบดี|ดาวเสาร์|ดาวยูเรนัส|ดาวเนปจูน|ดาวพลูโต/;
+// 泰语节点轴（遇轴短语截断，防止轴星座被误判成本命；镜像 _VI_AXIS）
+const _TH_AXIS = /คู่แกน|แกน|ระหว่าง/;
+
+// 泰语真值表：行星名 → {sign, house}
+function _natalTruthMap10_TH(astroMatrix) {
+  const meta = astroMatrix?.meta || {};
+  const ch = meta.computed_houses || {};
+  const map = {};
+  for (const p of _TH_PLANET_ORDER) {
+    const info = (p === 'Moon' ? (meta.natal_moon || ch.Moon) : ch[p]) || null;
+    if (!info) continue;
+    const signEN = info.sign || (p === 'Sun' ? meta.sun_sign : null);
+    const idx = _EN2ZIDX[signEN];
+    const sign = idx != null ? SUN_SIGN_TH[idx] : null;
+    const house = Number(info.house) || 0;
+    if (sign || house) map[_TH_PLANET[p]] = { sign, house };
+  }
+  return map;
+}
+
+// 泰语从句归因窗口（镜像 _viClause，无显式 natal 标记，用 transit 动词排他）
+function _thClause(text, i, len) {
+  const aEnd = i + len;
+  // 锚点后 30 字内找显式 natal/born 标记
+  const explicit = /natal|ของคุณ/i.test(text.slice(aEnd, aEnd + 30));
+  // 强标记 → 接受；无强标记时：后段含 transit 动词 → 明确流月，不碰
+  let fwd = text.slice(aEnd, aEnd + 90);
+  const e = fwd.search(_TH_CLAUSE_BREAK);
+  if (e >= 0) fwd = fwd.slice(0, e);
+  if (!explicit && _TH_TRANSIT_MARK.test(fwd)) return null;
+  // 节点轴截断（镜像 V423-fix-node-axis）
+  const axisIdx = fwd.search(_TH_AXIS);
+  if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
+  // 前段：70 字内；含 transit 动词 → 整段弃用；否则切到首个其他行星名之前
+  let bwd = text.slice(Math.max(0, i - 70), i);
+  if (_TH_TRANSIT_MARK.test(bwd)) {
+    bwd = '';
+  } else {
+    let lo = 0;
+    for (const m of bwd.matchAll(_TH_CLAUSE_BREAK)) lo = Math.max(lo, m.index + m[0].length);
+    const bm = bwd.search(_TH_BODY_ANY);
+    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+  }
+  return { fwd, bwd };
+}
+
+// 泰语单段替换（镜像 _viPatchZone）
+function _thPatchZone(zone, sign, house, preferFirst) {
+  let z = zone, ch = 0;
+  const log = [];
+  if (sign) {
+    let best = null;
+    for (const s of _TH_SIGN_UNIQ()) {
+      if (s === sign) continue;
+      const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
+      if (idx < 0) continue;
+      if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
+    }
+    if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`เบอร์ ${best.s}→${sign}`); }
+  }
+  if (house) {
+    const re = /บ้าน\s*(\d+)/g;
+    let target = null, m;
+    while ((m = re.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
+    if (target && Number(target[1]) !== house) {
+      z = z.slice(0, target.index) + ('บ้าน ' + house) + z.slice(target.index + target[0].length);
+      ch++; log.push(`บ้าน ${target[1]}→${house}`);
+    }
+  }
+  return { text: z, count: ch, log };
+}
+
+function lockNatalTruthTh(text, astroMatrix) {
+  if (!text) return text;
+  const truth = astroMatrix ? _natalTruthMap10_TH(astroMatrix) : {};
+  const names = Object.keys(truth);
+  if (!names.length) {
+    console.log('[V424] ข้อมูลนำเกิดไม่พร้อม → ข้าม Thai natal lock');
+    return text;
+  }
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  let result = text;
+  let m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    const clause = _thClause(text, m.index, m[0].length);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
+    const hasHouse = t.house && (fwd.includes('บ้าน ' + t.house) || bwd.includes('บ้าน ' + t.house));
+    if (hasSign && hasHouse) continue;
+    // 先找后段目标
+    let z = fwd.length >= bwd.length ? fwd : bwd;
+    const origLen = z.length;
+    let patch;
+    if (hasSign || hasHouse) {
+      patch = _thPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
+    } else {
+      patch = _thPatchZone(z, t.sign, t.house, z === fwd);
+    }
+    if (patch.count === 0) continue;
+    // 替换：基于 text（原文）位置，防止多轮替换位移踩踏
+    const pos = z === fwd ? m.index + m[0].length : m.index - origLen;
+    const safePos = Math.max(0, pos);
+    result = result.slice(0, safePos) + patch.text + result.slice(safePos + origLen);
+    // 更新 text 指针用于下一轮 search（基于 result 长度修正）
+    const delta = patch.text.length - origLen;
+    text = result;
+    nameRe.lastIndex += delta;
+    if (patch.count > 0) {
+      const old = (fwd + bwd).replace(/\n/g,' ');
+      console.log(`[V424] Thai natal lock: ${name} → ${t.sign||'?'} ${t.house ? 'บ้าน '+t.house : ''} | ${old.slice(0,40)}`);
+    }
+  }
+  return result;
+}
+
 const _VI_BODY_ANY = /(?:^|\s)(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|Diêm Vương)\s/;
 // 10 行星越语名（V423 全量覆盖；锁按此表匹配正文）
 const _VI_PLANET = {
@@ -5741,7 +5875,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // Parse AI result
         let reportContent = monthLocked;
         // 🛠️ V414: 语言门控(同上)——越南语专用清洗不得作用于其他语言
+        // 🛠️ V424: 泰语 MISS 非stream 路径补 lockNatalTruthTh（金额阈值已由 enforceRiskThreshold 覆盖）
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
+        if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
         if (lang === 'vi') {
@@ -6236,7 +6372,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           //   与 MISS 路径对齐, 读取时强制阈值兜底。
           streamText = enforceRiskThreshold(streamText, lang);
           // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
-          streamText = lockNatalTruthVi(streamText, astroMatrix);
+          if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
+          if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
         }
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -6547,12 +6684,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             //   此处统一清洗 text 字段,确保前端实时看到的是已修拆词+₫500,000阈值的干净文本
             //   (onChunk/_dedupWrite 只累积 fullTextCollector 不控制 SSE 输出,故在此清洗)
             let _out = trimmed;
-            if (lang === 'vi' && trimmed.startsWith('data: ')) {
+            if ((lang === 'vi' || lang === 'th') && trimmed.startsWith('data: ')) {
               try {
                 const _j = JSON.parse(trimmed.slice(6).trim());
                 if (_j && typeof _j.text === 'string' && _j.text.length) {
-                  _j.text = fixVietnameseCorruption(_j.text);
+                  if (lang === 'vi') _j.text = fixVietnameseCorruption(_j.text);
                   _j.text = enforceRiskThreshold(_j.text, lang);
+                  if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
                 }
               } catch (e) { /* 非标准 JSON 行原样透传 */ }
@@ -7076,7 +7214,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V383-fix5: 后处理兜底 — 强制 vi 月报消费陷阱段含真实阈值 ₫500,000(stream MISS 路径)
     // 必须在 sanitized 发送 + 缓存落库前、且晚于「方案C同步补全」覆盖,确保阈值必现(即便补全路径跑过)
     // 🛠️ V414: 语言门控——越南语专用清洗不得作用于 zh/en/es/fr/th
+    // 🛠️ V424: 泰语 sync completion 补 lockNatalTruthTh
     if (lang === 'vi') cleanedText = lockNatalTruthVi(enforceRiskThreshold(cleanedText, lang), astroMatrix);
+    if (lang === 'th') cleanedText = lockNatalTruthTh(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {

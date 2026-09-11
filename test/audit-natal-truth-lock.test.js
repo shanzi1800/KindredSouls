@@ -141,3 +141,114 @@ describe('V423 本命真值锁 · 越界与流月保护（不许误伤）', () =
     assert.strictEqual(lockNatalTruthVi.lockNatalTruthVi(t, { meta: {} }), t);
   });
 });
+
+// ─────────────────────────────────────────────────
+// V424 泰语本命真值锁测试（镜像 V423 越南语审计门）
+// ─────────────────────────────────────────────────
+const _from_TH = SRC.indexOf('// ── V424');
+const _to_TH = SRC.indexOf('function lockNatalTruthVi');
+if (_from_TH < 0 || _to_TH < 0) throw new Error('未能从 server.js 提取 lockNatalTruthTh 源码块');
+const BLOCK_TH = SRC.slice(_from_TH, _to_TH);
+// _EN2ZIDX 在 server.js 2829行，_natalTruthMap10_TH 引用了它，必须一起 prepend
+const _EN2ZIDX_DECL = "const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 }";
+const SUN_SIGN_TH_DECL = "const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];";
+const lockNatalTruthTh = new Function(`${_EN2ZIDX_DECL};${SUN_SIGN_TH_DECL};${BLOCK_TH}\nreturn lockNatalTruthTh;`)();
+assert.strictEqual(typeof lockNatalTruthTh, 'function', 'lockNatalTruthTh 应被成功提取');
+
+const TH = {
+  Sun: 'ดวงอาทิตย์', Moon: 'ดวงจันทร์', Mercury: 'ดาวพุธ', Venus: 'ดาวศุกร์', Mars: 'ดาวอังคาร',
+  Jupiter: 'ดาวพฤหัสบดี', Saturn: 'ดาวเสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
+};
+const TH_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+const TH_SIGNS = ['เมษ','พฤษภ','มิถุน','กรกฏ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];
+const EN_MAP = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+
+const roundTripTh = (input, ch, pairs, identical = false) => {
+  const out = lockNatalTruthTh(input, ch);
+  let norm = out;
+  for (const [truth, wrong] of pairs) norm = norm.split(truth).join(wrong);
+  assert.strictEqual(norm, input, `Thai 往返不一致（掉字/重字）\nIN : ${input}\nOUT: ${out}`);
+  if (identical) assert.strictEqual(out, input, `Thai 应零改动但被改了\nOUT: ${out}`);
+  return out;
+};
+
+const chartOfTh = (m) => ({
+  meta: { ...m.meta, natal_moon: m.meta.natal_moon, computed_houses: m.meta.computed_houses },
+});
+
+const truthOfTh = (m, planet) => {
+  const info = planet === 'Moon' ? (m.meta.natal_moon || m.meta.computed_houses.Moon) : m.meta.computed_houses[planet];
+  const enSign = info.sign; // English sign name from SwissEph
+  const thIdx = EN_MAP.indexOf(enSign);
+  const thSign = thIdx >= 0 ? TH_SIGNS[thIdx] : null;
+  return { sign: thSign, house: info.house };
+};
+
+const WRONG_TH_SIGN = (s) => {
+  const idx = TH_SIGNS.indexOf(s);
+  return TH_SIGNS[(idx + 5) % 12];
+};
+const WRONG_TH_HOUSE = (h) => (h === 12 ? 1 : h + 1);
+
+describe('V424 泰语本命真值锁 · 10 行星逐项真值轴（SwissEph 实算）', () => {
+  for (let pi = 0; pi < PROFILES.length; pi++) {
+    test(`Thai profile ${pi + 1} (${PROFILES[pi].bd})：10 行星各自的漂移都必须归真`, async () => {
+      const m = MATRICES[pi];
+      const ch = chartOfTh(m);
+      let checked = 0;
+      for (const p of TH_ORDER) {
+        const t = truthOfTh(m, p);
+        if (!t.sign || !t.house) continue;
+        const name = TH[p];
+        const ws = WRONG_TH_SIGN(t.sign), wh = WRONG_TH_HOUSE(t.house);
+        const inc = `${name} natal ของคุณอยู่ใน${ws} บ้าน ${wh}.`;
+        const out = roundTripTh(inc, ch, [[t.sign, ws], [`บ้าน ${t.house}`, `บ้าน ${wh}`]]);
+        assert.ok(out.includes(`${t.sign} บ้าน ${t.house}`), `${p} 未归真：${out}`);
+        assert.ok(!new RegExp(`บ้าน\\s*${wh}(?!\\d)`).test(out), `${p} 仍残留错值宫位：${out}`);
+        checked++;
+      }
+      assert.ok(checked >= 8, `应至少校验 8 行星，实际 ${checked}`);
+    });
+  }
+});
+
+describe('V424 泰语本命真值锁 · 越界与流月保护（不许误伤）', () => {
+  test('流月(transit)动词绝不触发替换（กำลัง/ผ่าน/เคลื่อน）', () => {
+    const ch = chartOfTh(MATRICES[0]); // 1990-08-05: Sun Leo, Moon Cap
+    roundTripTh('ดวงอาทิตย์กำลังเคลื่อนเข้าสู่ราศีกันยา', ch, [], true);
+    roundTripTh('ดาวพฤหัสบดีผ่านในราศีมังกร บ้าน 5', ch, [], true);
+    roundTripTh('ดวงจันทร์เคลื่อนผ่านราศีสิงห์ บ้าน 12', ch, [], true);
+  });
+
+  test('本命声明正确时零改动', () => {
+    const ch = chartOfTh(MATRICES[0]); // Sun Leo สิงห์ H12, Moon Cap มังกร H5
+    roundTripTh('ดวงอาทิตย์ natal ของคุณอยู่ในราศีสิงห์ บ้าน 12', ch, [], true);
+    roundTripTh('ดวงจันทร์ natal ของคุณอยู่ในราศีมังกร บ้าน 5', ch, [], true);
+  });
+
+  test('本命太阳写错星座+宫位（流月Virgo vs 真值Leo）→ 必须归真', () => {
+    const ch = chartOfTh(MATRICES[0]); // 真值: Sun Leo สิงห์ H12
+    const out = lockNatalTruthTh('ดวงอาทิตย์ natal ของคุณอยู่ในราศีกันยา บ้าน 1', ch);
+    assert.ok(out.includes('ราศีสิงห์'), `太阳未归真至Leo：${out}`);
+    assert.ok(out.includes('บ้าน 12'), `太阳宫位未归真至H12：${out}`);
+    assert.ok(!out.includes('ราศีกันยา บ้าน 1'), `旧错值仍残留：${out}`);
+  });
+
+  test('astroMatrix 缺失时安全透传（不崩溃、不改写）', () => {
+    const t = 'ดวงอาทิตย์ natal ของคุณอยู่ในราศีกันยา บ้าน 1.';
+    assert.strictEqual(lockNatalTruthTh(t, null), t);
+    assert.strictEqual(lockNatalTruthTh('', chartOfTh(MATRICES[0])), '');
+    assert.strictEqual(lockNatalTruthTh(t, { meta: {} }), t);
+  });
+
+  test('泰国真实月报格式：ดวงจันทร์ natal ของคุณอยู่ในราศีมังกร บ้าน 5（生产实测·必须零改动）', () => {
+    const ch = chartOfTh(MATRICES[0]); // 真值 Cap มังกร H5
+    roundTripTh('ดวงจันทร์ natal ของคุณอยู่ในราศีมังกร บ้าน 5', ch, [], true);
+  });
+
+  test('无 transit 动词、无 natal 标记时零改动（泛指行星描述）', () => {
+    const ch = chartOfTh(MATRICES[0]);
+    roundTripTh('ดาวพุธในราศีกันยาเป็นลัคนาของคุณ', ch, [], true);
+    roundTripTh('การเงินเดือนนี้อาจมีปัญหา ควรออมเงิน 5000 บาท', ch, [], true);
+  });
+});
