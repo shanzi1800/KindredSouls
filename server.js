@@ -3299,6 +3299,240 @@ function lockTransitTruthVi(text, astroMatrix) {
   return result;
 }
 
+
+// ── V426: 法语本命+transit 真值双锁（镜像 V423/V424/V425，治 LLM 二次翻译偷抄本命锚点）
+// 根因同源：labels.fr 此前喂英文缩写 ['Ari','Tau'...] 逼 LLM 翻译 → 偷抄本命锚点混进 transit 段。
+// 现在 labels.fr 已本土化（v69_client.js），本锁负责输出后置硬归真兜底。
+const _FR_PLANET = {
+  Sun: 'Soleil', Moon: 'Lune', Mercury: 'Mercure', Venus: 'Vénus', Mars: 'Mars',
+  Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluton',
+};
+const _FR_PLANET_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+// 法语标准星座名（与山子大叔路线图 + labels.fr 完全一致）
+const _FR_SIGN_FR = ['Bélier', 'Taureau', 'Gémeaux', 'Cancer', 'Lion', 'Vierge', 'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons'];
+// 🛠️ 惰性函数避免 TDZ（声明在本行之后会被读取，运行时才解析）
+let _FR_SIGN_UNIQ_CACHE = null;
+const _FR_SIGN_UNIQ = () => (_FR_SIGN_UNIQ_CACHE ||= _FR_SIGN_FR.filter((s, i, a) => a.indexOf(s) === i));
+// 法语流月标记（显式 transit 动词；"en [星座]" 介词由 _frTransitClause 单独判定）
+const _FR_TRANSIT_MARK = /transitant|se déplace|passe|entre dans|rejoint|quitte|croise|au signe/i;
+// 法语句读 + 连词
+const _FR_CLAUSE_BREAK = /[.;,!?:()\n]|\s(?:et|mais|ou|donc|or|ni|car|lorsque|pendant|tandis|alors)\s/gi;
+// 法语行星名（出现即截断归因窗口，避免把别的行星数据归到本锚点）
+const _FR_BODY_ANY = /(?:^|\s)(?:Soleil|Lune|Mercure|Vénus|Mars|Jupiter|Saturne|Uranus|Neptune|Pluton)\b/i;
+// 法语节点轴（遇轴短语截断，防止轴星座误判成本命；镜像 _VI_AXIS / _TH_AXIS）
+const _FR_AXIS = /axe|pôle|entre\s+.+?\s+et\s+.+?\(?Maison/i;
+
+// 法语 natal 真值表：法语行星名 → {sign, house}（astroMatrix.meta.computed_houses 为唯一真值源）
+function _natalTruthMap10_FR(astroMatrix) {
+  const meta = astroMatrix?.meta || {};
+  const ch = meta.computed_houses || {};
+  const map = {};
+  for (const p of _FR_PLANET_ORDER) {
+    const info = (p === 'Moon' ? (meta.natal_moon || ch.Moon) : ch[p]) || null;
+    if (!info) continue;
+    const signEN = info.sign || (p === 'Sun' ? meta.sun_sign : null);
+    const sign = _EN2ZIDX[signEN] != null ? _FR_SIGN_FR[_EN2ZIDX[signEN]] : null;
+    const house = Number(info.house) || 0;
+    if (sign || house) map[_FR_PLANET[p]] = { sign, house };
+  }
+  return map;
+}
+
+// 法语 transit 真值表（从报告月 months[0] 取；与 _natalTruthMap10_FR 同构，源不同）
+function _transitTruthMap10_FR(astroMatrix) {
+  const first = astroMatrix?.months?.[0];
+  if (!first) return {};
+  const map = {};
+  for (const p of _FR_PLANET_ORDER) {
+    const k = p.toLowerCase();
+    const info = p === 'Sun' ? (first.sun || (first.positions && first.positions.Sun) || {}) : (first[k] || {});
+    if (!info) continue;
+    const signEN = info.sign;
+    const sign = _EN2ZIDX[signEN] != null ? _FR_SIGN_FR[_EN2ZIDX[signEN]] : null;
+    const house = Number(info.house) || 0;
+    if (sign || house) map[_FR_PLANET[p]] = { sign, house };
+  }
+  return map;
+}
+
+// 法语本命从句归因（镜像 _viClause；natal 标记 = 行星后紧跟 natal/natale）
+function _frClause(text, i, len, explicit) {
+  const aEnd = i + len;
+  if (!explicit) {
+    const after = text.slice(aEnd, aEnd + 50);
+    let pre = after;
+    let cut = -1;
+    for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
+    const hm = after.match(/Maison\s*\d+/i);
+    if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
+    if (cut >= 0) pre = after.slice(0, cut);
+    if (!/(?:natal|natale)/i.test(pre)) return null;        // 非本命标记 → 多半是 transit/泛指，不碰
+    if (_FR_TRANSIT_MARK.test(pre)) return null;            // 定语段含 transit 动词 → 明确是 transit，不碰
+  }
+  let fwd = text.slice(aEnd, aEnd + 90);
+  const e = fwd.search(/[.\n]/);
+  if (e >= 0) fwd = fwd.slice(0, e);
+  const bIdx = fwd.search(_FR_BODY_ANY);
+  if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
+  const axisIdx = fwd.search(_FR_AXIS);
+  if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
+  let bwd = text.slice(Math.max(0, i - 70), i);
+  if (_FR_TRANSIT_MARK.test(bwd)) {
+    bwd = '';
+  } else {
+    let lo = 0;
+    for (const m of bwd.matchAll(_FR_CLAUSE_BREAK)) lo = Math.max(lo, m.index + m[0].length);
+    const bm = bwd.search(_FR_BODY_ANY);
+    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+  }
+  return { fwd, bwd };
+}
+
+// 法语 transit 从句归因（镜像 _viTransitClause；transit 标记 = 行星后 en [大写星座] 且无 natal）
+function _frTransitClause(text, i, len) {
+  const aEnd = i + len;
+  const after = text.slice(aEnd, aEnd + 50);
+  let pre = after;
+  let cut = -1;
+  for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
+  const hm = after.match(/Maison\s*\d+/i);
+  if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
+  if (cut >= 0) pre = after.slice(0, cut);
+  if (/(?:natal|natale)/i.test(pre)) return null;                       // 本命句 → natal 锁已处理，跳过
+  if (!/\ben\b\s+[A-ZÀ-ÿ]/i.test(after) && !_FR_TRANSIT_MARK.test(after)) return null;  // 非位置/transit 描述 → 不碰
+  let fwd = text.slice(aEnd, aEnd + 90);
+  const e = fwd.search(/[.\n]/);
+  if (e >= 0) fwd = fwd.slice(0, e);
+  const bIdx = fwd.search(_FR_BODY_ANY);
+  if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
+  const axisIdx = fwd.search(_FR_AXIS);
+  if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
+  let bwd = text.slice(Math.max(0, i - 70), i);
+  if (_FR_TRANSIT_MARK.test(bwd)) {
+    bwd = '';
+  } else {
+    let lo = 0;
+    for (const m of bwd.matchAll(_FR_CLAUSE_BREAK)) lo = Math.max(lo, m.index + m[0].length);
+    const bm = bwd.search(_FR_BODY_ANY);
+    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+  }
+  return { fwd, bwd };
+}
+
+// 法语单段替换（镜像 _viPatchZone；house=Maison X；含拼写错误兜底归真）
+function _frPatchZone(zone, sign, house, preferFirst) {
+  let z = zone, ch = 0;
+  const log = [];
+  if (sign) {
+    let best = null;
+    for (const s of _FR_SIGN_UNIQ()) {
+      if (s === sign) continue;
+      const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
+      if (idx < 0) continue;
+      if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
+    }
+    if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`星座 ${best.s}→${sign}`); }
+    else if (!z.includes(sign)) {
+      // 盲区：z 不含预期星座，也不含任何已知错误星座（如 LLM 拼写错误 Lion≠Lion? 或外文混入）→ 兜底归真
+      const hm = z.match(/Maison\s*\d+/i);
+      if (hm) {
+        const before = z.slice(0, hm.index).replace(/\s+$/, '');
+        const sp = before.lastIndexOf(' ');
+        const wStart = sp >= 0 ? sp + 1 : 0;
+        const word = before.slice(wStart);
+        // 只替换首字母大写的词（星座名特征），跳过小写介词（en/dans/à 等），避免误伤
+        if (word && word !== sign && !_FR_SIGN_UNIQ().includes(word) && /^[A-ZÀ-ÖØ-Þ]/.test(word)) {
+          z = z.slice(0, wStart) + sign + z.slice(wStart + word.length);
+          ch++; log.push(`星座 ${word}→${sign}(未知/拼写兜底)`);
+        }
+      }
+    }
+  }
+  if (house) {
+    const re = /Maison\s*(\d+)/gi;
+    let target = null, m;
+    while ((m = re.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
+    if (target && Number(target[1]) !== house) { z = z.slice(0, target.index) + ('Maison ' + house) + z.slice(target.index + target[0].length); ch++; log.push(`宫位 ${target[1]}→${house}`); }
+  }
+  return { text: z, count: ch, log };
+}
+
+function lockNatalTruthFr(text, astroMatrix) {
+  if (!text) return text;
+  const truth = astroMatrix ? _natalTruthMap10_FR(astroMatrix) : {};
+  const names = Object.keys(truth);
+  if (!names.length) {
+    console.log('[V426] 法语本命真值盘不可用 → 跳过本命真值锁（绝不编）');
+    return text;
+  }
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  const hits = [];
+  const detail = [];
+  let fixes = 0, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    const explicit = /^\s*(?:natal|natale)\b/i.test(text.slice(m.index + m[0].length, m.index + m[0].length + 12));
+    const clause = _frClause(text, m.index, m[0].length, explicit);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const backStart = m.index - bwd.length;
+    const F = _frPatchZone(fwd, t.sign, t.house, true);
+    const B = bwd ? _frPatchZone(bwd, t.sign, t.house, false) : { text: bwd, count: 0, log: [] };
+    if (!F.count && !B.count) continue;
+    for (const x of F.log.concat(B.log)) detail.push(`${name} ${x}`);
+    if (F.count) hits.push([m.index + m[0].length, m.index + m[0].length + fwd.length, F.text]);
+    if (B.count) hits.push([backStart, m.index, B.text]);
+    fixes += F.count + B.count;
+  }
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const [s, e, rep] = hits[i];
+    text = text.slice(0, s) + rep + text.slice(e);
+  }
+  if (fixes) console.log(`[V426] 法语本命盘真值锁(10行星): 修正 ${fixes} 处 native 星座/宫位漂移${detail.length ? ' | ' + detail.slice(0, 10).join('; ') : ''}`);
+  return text;
+}
+
+function lockTransitTruthFr(text, astroMatrix) {
+  if (!text || typeof text !== 'string' || !astroMatrix?.months?.[0]) return text;
+  const truth = _transitTruthMap10_FR(astroMatrix);
+  const names = Object.keys(truth);
+  if (!names.length) return text;
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  let result = text;
+  let m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    const clause = _frTransitClause(text, m.index, m[0].length);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const hPat = String(t.house);
+    const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
+    const hasHouse = t.house && (fwd.includes('Maison ' + hPat) || bwd.includes('Maison ' + hPat));
+    if (hasSign && hasHouse) continue;
+    let z = fwd.length >= bwd.length ? fwd : bwd;
+    const origLen = z.length;
+    let patch;
+    if (hasSign || hasHouse) patch = _frPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
+    else patch = _frPatchZone(z, t.sign, t.house, z === fwd);
+    if (patch.count === 0) continue;
+    const pos = z === fwd ? m.index + m[0].length : m.index - origLen;
+    const safePos = Math.max(0, pos);
+    result = result.slice(0, safePos) + patch.text + result.slice(safePos + origLen);
+    const delta = patch.text.length - origLen;
+    text = result;
+    nameRe.lastIndex += delta;
+    if (patch.count > 0) {
+      const old = (fwd + bwd).replace(/\n/g, ' ');
+      console.log(`[V426] Fr transit lock: ${name} → ${t.sign || '?'}${t.house ? ' Maison ' + t.house : ''} | ${old.slice(0, 40)}`);
+    }
+  }
+  return result;
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -5838,6 +6072,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
             try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
             stdCached = lockTransitTruthVi(stdCached, _hitAstro);
+            if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
+            if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
           }
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
@@ -6118,6 +6354,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V424: 泰语 MISS 非stream 路径补 lockNatalTruthTh（金额阈值已由 enforceRiskThreshold 覆盖）
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'vi') reportContent = lockTransitTruthVi(reportContent, astroMatrix);
+  if (lang === 'fr') reportContent = lockNatalTruthFr(enforceRiskThreshold(reportContent, lang), astroMatrix);
+  if (lang === 'fr') reportContent = lockTransitTruthFr(reportContent, astroMatrix);
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockTransitTruthTh(reportContent, astroMatrix);
 
@@ -6617,6 +6855,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
           if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
           if (lang === 'vi') streamText = lockTransitTruthVi(streamText, astroMatrix);
+  if (lang === 'fr') streamText = lockNatalTruthFr(streamText, astroMatrix);
+  if (lang === 'fr') streamText = lockTransitTruthFr(streamText, astroMatrix);
           if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
           if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
         }
@@ -6937,6 +7177,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   _j.text = enforceRiskThreshold(_j.text, lang);
                   if (lang === 'vi') _j.text = lockNatalTruthVi(_j.text, astroMatrix);
                   if (lang === 'vi') _j.text = lockTransitTruthVi(_j.text, astroMatrix);
+  if (lang === 'fr') _j.text = lockNatalTruthFr(_j.text, astroMatrix);
+  if (lang === 'fr') _j.text = lockTransitTruthFr(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
@@ -7465,6 +7707,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V424: 泰语 sync completion 补 lockNatalTruthTh
     if (lang === 'vi') cleanedText = lockNatalTruthVi(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     if (lang === 'vi') cleanedText = lockTransitTruthVi(cleanedText, astroMatrix);
+  if (lang === 'fr') cleanedText = lockNatalTruthFr(enforceRiskThreshold(cleanedText, lang), astroMatrix);
+  if (lang === 'fr') cleanedText = lockTransitTruthFr(cleanedText, astroMatrix);
     if (lang === 'th') cleanedText = lockNatalTruthTh(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     if (lang === 'th') cleanedText = lockTransitTruthTh(cleanedText, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,

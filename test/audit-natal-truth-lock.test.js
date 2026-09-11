@@ -20,7 +20,7 @@ if (_from < 0 || _to < 0 || _to <= _from) throw new Error('未能从 server.js �
 const BLOCK = SRC.slice(_from, _to);
 const SUN_SIGN_VI_DECL = "const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];";
 // ESM 严格模式下 eval 不外泄声明 → 用 new Function 工厂把函数取出来
-const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK}\nreturn { lockNatalTruthVi, lockTransitTruthVi, _VI_PLANET, _VI_PLANET_ORDER, _EN2ZIDX, SUN_SIGN_VI };`)();
+const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK}\nreturn { lockNatalTruthVi, lockTransitTruthVi, _VI_PLANET, _VI_PLANET_ORDER, _EN2ZIDX, SUN_SIGN_VI, lockNatalTruthFr, lockTransitTruthFr, _FR_PLANET, _FR_PLANET_ORDER, _FR_SIGN_FR };`)();
 assert.strictEqual(typeof lockNatalTruthVi.lockNatalTruthVi, 'function', 'lockNatalTruthVi 应被成功提取');
 assert.strictEqual(lockNatalTruthVi._VI_PLANET_ORDER.length, 10, 'V423 必须覆盖 10 行星');
 
@@ -418,5 +418,95 @@ describe('V424-B2 越南语 transit 真值硬锁（治本命盘混入 transit �
     assert.ok(out.includes(truthSign), `拼写错误未归真至 ${truthSign}：${out}`);
     assert.ok(out.includes(`Nhà ${truthHouse}`), `宫位未保留：${out}`);
     assert.ok(!out.includes('Sư Lửa'), `拼写错词 Sư Lửa 残留：${out}`);
+  });
+});
+
+// ── V426: 法语 natal+transit 真值双锁（镜像 V423/V424/V425，治本命盘混入 transit 段）
+describe('V426 法语 natal+transit 真值双锁（治本命盘混入 transit 段·SwissEph 真值）', () => {
+  const FR = lockNatalTruthVi;  // 复用上方 new Function 工厂（已导出 fr 函数）
+  const FR_PLANET = FR._FR_PLANET;
+  const FR_SIGN = FR._FR_SIGN_FR;
+  const FR_ORDER = FR._FR_PLANET_ORDER;
+  const EN2Z = FR._EN2ZIDX;
+  const WRONG_FR_SIGN = (s) => FR_SIGN[(FR_SIGN.indexOf(s) + 5) % 12];
+  const WRONG_FR_HOUSE = (h) => (h === 12 ? 1 : h + 1);
+
+  test('natal 句(含 natal/natale) 必须用 meta 真值归真（10 行星全量）', async () => {
+    const m = MATRICES[0];
+    if (!m.meta || !m.meta.computed_houses) return;
+    let checked = 0;
+    for (const p of FR_ORDER) {
+      const info = p === 'Moon' ? (m.meta.natal_moon || m.meta.computed_houses.Moon) : m.meta.computed_houses[p];
+      if (!info || !info.sign || !info.house) continue;
+      const truthSign = FR_SIGN[EN2Z[info.sign]];
+      const truthHouse = info.house;
+      const name = FR_PLANET[p];
+      const ws = WRONG_FR_SIGN(truthSign), wh = WRONG_FR_HOUSE(truthHouse);
+      const inc = name + ' natal en ' + ws + ' Maison ' + wh + ' avec influences profondes.';
+      const out = FR.lockNatalTruthFr(inc, m);
+      assert.ok(out.includes(truthSign), p + ' natal 星座未归真至 ' + truthSign + '：' + out);
+      assert.ok(out.includes('Maison ' + truthHouse), p + ' natal 宫位未归真至 ' + truthHouse + '：' + out);
+      assert.ok(!out.includes(ws), p + ' 仍残留错值星座：' + out);
+      checked++;
+    }
+    assert.ok(checked >= 10, '应至少校验 10 行星，实际 ' + checked);
+  });
+
+  test('transit 句(含 en [星座]) 必须用 months[0] 真值归真（10 行星全量）', async () => {
+    const m = MATRICES[0];
+    if (!m.months || !m.months[0]) return;
+    const first = m.months[0];
+    let checked = 0;
+    for (const p of FR_ORDER) {
+      const k = p.toLowerCase();
+      const info = p === 'Sun' ? (first.sun || {}) : (first[k] || {});
+      if (!info || !info.sign || !info.house) continue;
+      const truthSign = FR_SIGN[EN2Z[info.sign]];
+      const truthHouse = info.house;
+      const name = FR_PLANET[p];
+      const ws = WRONG_FR_SIGN(truthSign), wh = WRONG_FR_HOUSE(truthHouse);
+      const inc = name + ' en ' + ws + ' Maison ' + wh + ' brille ce mois-ci.';
+      const out = FR.lockTransitTruthFr(inc, m);
+      assert.ok(out.includes(truthSign), p + ' transit 星座未归真至 ' + truthSign + '：' + out);
+      assert.ok(out.includes('Maison ' + truthHouse), p + ' transit 宫位未归真至 ' + truthHouse + '：' + out);
+      assert.ok(!out.includes(ws), p + ' 仍残留错值星座：' + out);
+      checked++;
+    }
+    assert.ok(checked >= 10, '应至少校验 10 行星，实际 ' + checked);
+  });
+
+  test('本命句(含 natal) 绝不被 transit 锁改动', () => {
+    const m = MATRICES[0];
+    const info = (m.meta.natal_moon || m.meta.computed_houses.Moon);
+    const truthSign = FR_SIGN[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const inc = 'Lune natale en ' + truthSign + ' Maison ' + truthHouse + " amplifie l'intuition.";
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.strictEqual(out, inc, 'transit 锁误改本命句：' + out);
+  });
+
+  test('正确的 transit 句(含 en + 正确真值) 零改动', () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const info = first.jupiter || {};
+    if (!info || !info.sign || !info.house) return;
+    const truthSign = FR_SIGN[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const inc = 'Jupiter en ' + truthSign + ' Maison ' + truthHouse + ' brille de mille feux.';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.strictEqual(out, inc, '正确 transit 句被误改：' + out);
+  });
+
+  test('无位置标记的泛指句零改动（防误伤）', () => {
+    const m = MATRICES[0];
+    const t = "Aujourd'hui il fait beau, vous devriez économiser 500 €.";
+    assert.strictEqual(FR.lockTransitTruthFr(t, m), t);
+  });
+
+  test('astroMatrix 无 months 时安全透传（不崩溃、不改写）', () => {
+    const t = 'Jupiter en Bélier Maison 3 stimule la communication.';
+    assert.strictEqual(FR.lockTransitTruthFr(t, null), t);
+    assert.strictEqual(FR.lockTransitTruthFr(t, {}), t);
+    assert.strictEqual(FR.lockTransitTruthFr(t, { months: [{}] }), t);
   });
 });
