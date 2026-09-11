@@ -5617,6 +5617,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
             try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
           }
+          // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
+          if (lang === 'th') {
+            let _hitAstroTh = null;
+            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
+            stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
+          }
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
           return res.json({ success: true, cached: true, report: stdCached });
