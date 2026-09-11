@@ -3968,7 +3968,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
     en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"',
     es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.\n\n⛔ RÈGLE SOLEIL NATAL vs TRANSIT: Le Soleil mentionné dans ce rapport mensuel est le Soleil de TRANSIT du mois courant, PAS votre Soleil natal. N\'écrivez JAMAIS "votre Soleil en [signe]" ni "votre Soleil en Maison X" pour décrire le Soleil de transit (cela ferait croire que votre Soleil natal est ce signe — or votre Soleil natal est une donnée permanente fixée par votre date de naissance). Utilisez toujours "Le Soleil en transit dans [signe]" ou "Le Soleil du mois dans [signe]".',
-    th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน\n\n\n\n[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:\n\n- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)\n\n- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)\n\n- เก็บอม → เก็บออม (เก็บออม = saving)\n\n- ดึงดู → ดึงดูด (ดึงดูด = attract)\n\n- พิจารณ → พิจารณา (พิจารณา = consider)\n\n- ราคแพง → ราคาแพง (ราคาแพง = expensive)\n\n- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)\n\n- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)\n\n- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)\n\n- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด',
+    th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน\n\n\n\n[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:\n\n- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)\n\n- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)\n\n- เก็บอม → เก็บออม (เก็บออม = saving)\n\n- ดึงดู → ดึงดูด (ดึงดูด = attract)\n\n- พิจารณ → พิจารณา (พิจารณา = consider)\n\n- ราคแพง → ราคาแพง (ราคาแพง = expensive)\n\n- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)\n\n- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)\n\n- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)\n\n- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด\n\n[THAI NATAL INTEGRATION V379-th] คุณต้องอ้างอิงดวงชะตาแบบกำเนิด (natal) ของผู้ใช้ในรายงาน:\n• บังคับใช้เครื่องหมาย "กำเนิด" สำหรับดาวกำเนิดทุกดวง (ดวงอาทิตย์กำเนิด, ดวงจันทร์กำเนิด, ดาวพุธกำเนิด ฯลฯ)\n• รูปแบบบังคับสำหรับดาวกำเนิด: "[ชื่อดาว]กำเนิดในราศี[ชื่อราศี] บ้าน[เลข]" ตัวอย่าง: "ดวงอาทิตย์กำเนิดในราศีสิงห์ บ้าน 12" (ห้ามละทิ้งชื่อราศี — ห้ามเขียน "ดวงอาทิตย์ในบ้าน 12" โดยไม่ระบุราศี)\n• เชื่อมโยงพลังงานดาวทรานซิส (transit) เข้ากับดวงชะตากำเนิดเสมอ (ดู NATAL CHART ANCHORS ใน system prompt และ user prompt)\n• ดวงจันทร์ทรานซิส (transit Moon) ไม่ใช่ดวงจันทร์กำเนิด — ห้ามนำเสนอเป็นกำเนิด\n• ใช้ชื่อราศีให้ตรงกับ THAI ZODIAC REFERENCE เสมอ (ราศีกรกฎ=Cancer, ราศีสิงห์=Leo ฯลฯ) ห้ามสับสนราศีทรานซิสกับราศีกำเนิด',
     vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign, ascendant (Rising), AND natal Moon in your analysis (see NATAL CHART ANCHORS in the fact sheet). Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết, và Mặt Trăng natal của bạn ở Song Ngư Nhà 5 khuếch đại trực giác tài chính".
 [OUTPUT FORMAT V381] CRITICAL: DO NOT output any main report title, header, or greeting at the beginning. Start directly with Section 1 content.
 `,
@@ -4730,6 +4730,26 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
               `- RULE: Every mention of the natal Moon MUST use exactly the sign AND house above. The transit Moon position (per-month sky data) is NOT the natal Moon — never present it as natal. If a value shows "?", omit that reference entirely; NEVER invent one.`;
           } catch (e) { console.warn('[V420] natal anchors inject failed: ' + e.message); }
         }
+        // 🛠️ V424-B: 泰语本命锚点（泰语直出，杜绝模型自译漏写星座名/漏写กำเนิด标记）
+        let _natAnchorsTh = '';
+        if (astroMatrix) {
+          try {
+            const meta = astroMatrix?.meta || {};
+            const ch = meta.computed_houses || {};
+            const _thSign = (en) => { const i = _EN2ZIDX[en]; return i != null ? SUN_SIGN_TH[i] : (en || '?'); };
+            const _lines = [
+              `ดวงอาทิตย์กำเนิด (Natal Sun): ราศี${_thSign(meta.sun_sign || ch.Sun?.sign)} บ้าน ${ch.Sun?.house ?? '?'}`,
+              `ดวงจันทร์กำเนิด (Natal Moon): ราศี${_thSign(meta.natal_moon?.sign || ch.Moon?.sign)} บ้าน ${meta.natal_moon?.house ?? ch.Moon?.house ?? '?'}`,
+            ];
+            for (const p of _TH_PLANET_ORDER) {
+              if (p === 'Sun' || p === 'Moon') continue;
+              const info = ch[p];
+              if (!info) continue;
+              _lines.push(`${_TH_PLANET[p]}กำเนิด (Natal ${p}): ราศี${_thSign(info.sign)} บ้าน ${info.house ?? '?'}`);
+            }
+            _natAnchorsTh = _lines.join('\n');
+          } catch (e) { console.warn('[V424-B] th natal anchors build failed: ' + e.message); }
+        }
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
       zh: `⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
@@ -4906,6 +4926,12 @@ ${monthlyDataBlock}
 • ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
 • ดาวพุธวงในในราศีกรกฎ ประมาณ 8-25 กรกฎาคม; ดาวศูกรเข้าราศีกันยา 14 กรกฎาคม; ดวงอาทิตย์เข้าราศีสิงห์ 23 กรกฎาคม
 • ดวงจันทร์ไม่เคยวงใน
+
+🛠️ [ดวงชะตากำเนิด — NATAL CHART ANCHORS ภาษาไทย (SwissEph คำนวณจริง · ห้ามเปลี่ยนแปลง)]
+${_natAnchorsTh}
+กฎ: ทุกการกล่าวถึงดาวกำเนิด ต้องใช้เครื่องหมาย "กำเนิด" และระบุราศี+บ้านตามที่ระบุ exactly ห้ามละทิ้งชื่อราศี (เช่น ห้ามเขียน "ดวงอาทิตย์ในบ้าน 12" โดยไม่ระบุราศี)
+
+[THAI ZODIAC REFERENCE] ราศีเมษ=Aries, ราศีพฤษภ=Taurus, ราศีมิถุน=Gemini, ราศีกรกฎ=Cancer, ราศีสิงห์=Leo, ราศีกันยา=Virgo, ราศีตุลย์=Libra, ราศีพิจิก=Scorpio, ราศีธนู=Sagittarius, ราศีมังกร=Capricorn, ราศีกุมภ์=Aquarius, ราศีมีน=Pisces
 
 รูปแบบผลลัพธ์ — MARKDOWN สะอาด (6 ส่วน):
 
