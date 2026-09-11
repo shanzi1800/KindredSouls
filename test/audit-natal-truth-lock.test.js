@@ -152,8 +152,11 @@ const BLOCK_TH = SRC.slice(_from_TH, _to_TH);
 // _EN2ZIDX 在 server.js 2829行，_natalTruthMap10_TH 引用了它，必须一起 prepend
 const _EN2ZIDX_DECL = "const _EN2ZIDX = { Aries:0,Taurus:1,Gemini:2,Cancer:3,Leo:4,Virgo:5,Libra:6,Scorpio:7,Sagittarius:8,Capricorn:9,Aquarius:10,Pisces:11 }";
 const SUN_SIGN_TH_DECL = "const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];";
-const lockNatalTruthTh = new Function(`${_EN2ZIDX_DECL};${SUN_SIGN_TH_DECL};${BLOCK_TH}\nreturn lockNatalTruthTh;`)();
+const _extractedTH = new Function(`${_EN2ZIDX_DECL};${SUN_SIGN_TH_DECL};${BLOCK_TH}\nreturn { lockNatalTruthTh, lockTransitTruthTh };`)();
+const lockNatalTruthTh = _extractedTH.lockNatalTruthTh;
+const lockTransitTruthTh = _extractedTH.lockTransitTruthTh;
 assert.strictEqual(typeof lockNatalTruthTh, 'function', 'lockNatalTruthTh 应被成功提取');
+assert.strictEqual(typeof lockTransitTruthTh, 'function', 'lockTransitTruthTh 应被成功提取');
 
 const TH = {
   Sun: 'ดวงอาทิตย์', Moon: 'ดวงจันทร์', Mercury: 'ดาวพุธ', Venus: 'ดาวศุกร์', Mars: 'ดาวอังคาร',
@@ -282,5 +285,57 @@ describe('V424 泰语本命真值锁 · 越界与流月保护（不许误伤）'
     const out = lockNatalTruthTh('ดาวพุธ natal ของคุณอยู่ในราศีพิจิก บ้าน 9 ในการแยกแยะโอกาสจริงออกจากกับดัก', ch);
     assert.ok(out.includes('กรกฎ'), `Mercury未归真至กรกฎ：${out}`);
     assert.ok(out.includes('บ้าน 3'), `Mercury宫位未归真至H3：${out}`);
+  });
+});
+
+describe('V424-B2 泰语 transit 真值硬锁（治本命盘混入 transit 句·SwissEph 9月 transit 真值）', () => {
+  // 2026-09 transit 真值（SwissEph 实算）：日月水金火木土天海冥
+  const TRANSIT = {
+    months: [{
+      sun: { sign: 'Leo', house: 12 },
+      moon: { sign: 'Cancer', house: 11 },
+      mercury: { sign: 'Libra', house: 1 },
+      venus: { sign: 'Scorpio', house: 2 },
+      mars: { sign: 'Cancer', house: 11 },
+      jupiter: { sign: 'Leo', house: 12 },
+      saturn: { sign: 'Aries', house: 7 },
+      uranus: { sign: 'Gemini', house: 9 },
+      neptune: { sign: 'Aries', house: 7 },
+      pluto: { sign: 'Aquarius', house: 5 },
+    }],
+  };
+
+  test('transit 句含 natal 星座 → 必须归真至 transit 真值', () => {
+    const out = lockTransitTruthTh('ดาวพฤหัสบดีทรานซิสในราศีธนู บ้าน 3', TRANSIT);
+    assert.ok(out.includes('ราศีสิงห์'), `Jupiter transit 未归真至 Leo：${out}`);
+    assert.ok(out.includes('บ้าน 12'), `Jupiter transit 宫位未归真至 H12：${out}`);
+  });
+
+  test('本命句(กำเนิด) 绝不被 transit 锁改动', () => {
+    const t = 'ดวงจันทร์กำเนิดในราศีเมษ บ้าน 8';
+    assert.strictEqual(lockTransitTruthTh(t, TRANSIT), t);
+  });
+
+  test('已正确的 transit 句零改动', () => {
+    const t = 'ดาวพฤหัสบดีทรานซิสในราศีสิงห์ บ้าน 12';
+    assert.strictEqual(lockTransitTruthTh(t, TRANSIT), t);
+  });
+
+  test('无 transit 标记的泛指句零改动（防误伤）', () => {
+    const t = 'ดวงอาทิตย์ในราศีสิงห์ บ้าน 12 ช่วยให้คุณมั่นใจ';
+    assert.strictEqual(lockTransitTruthTh(t, TRANSIT), t);
+  });
+
+  test('多行星 transit 句各自归真（不互踩）', () => {
+    const out = lockTransitTruthTh('ดาวพฤหัสบดีทรานซิสในราศีธนู บ้าน 3.ดาวอังคารทรานซิสในราศีกันยา บ้าน 5', TRANSIT);
+    assert.ok(out.includes('ราศีสิงห์'), `Jupiter 未归真：${out}`);
+    assert.ok(out.includes('ราศีกรกฎ'), `Mars 未归真至 Cancer：${out}`);
+  });
+
+  test('astroMatrix 缺失时安全透传（不崩溃、不改写）', () => {
+    const t = 'ดาวพฤหัสบดีทรานซิสในราศีธนู บ้าน 3';
+    assert.strictEqual(lockTransitTruthTh(t, null), t);
+    assert.strictEqual(lockTransitTruthTh('', TRANSIT), '');
+    assert.strictEqual(lockTransitTruthTh(t, { months: [{}] }), t);
   });
 });

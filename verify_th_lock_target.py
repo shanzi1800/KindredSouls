@@ -64,9 +64,16 @@ def verify(c, truth, report):
         if not t: continue
         idx = report.find(th)
         while idx >= 0:
-            w = report[idx:idx+120]
-            if "กำเนิด" in w or "natal" in w.lower():
+            # 必须在行星名 20 字符内出现 กำเนิด/natal 才是本命句（防止 transit 句窗口荡进隔壁กำเนิด句造成假阳性）
+            near = report[idx:idx+30]
+            if "กำเนิด" in near or "natal" in near.lower():
                 natal_count += 1
+                # 提取本句星座/宫位：限制在当前从句（下一个句子终结符或 70 字符内）
+                end = len(report)
+                for sep in ['。', '\n', '🟢', '🔴', '🔵', '⚠️', '✦']:
+                    p = report.find(sep, idx+1)
+                    if p > idx and p < end: end = p
+                w = report[idx:min(idx+70, end)]
                 m_sign = SIGN_RE.search(w)
                 m_house = HOUSE_RE.search(w)
                 sign_ok = m_sign and m_sign.group(1) == t["sign"]
