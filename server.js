@@ -2840,7 +2840,8 @@ const _TH_PLANET_ORDER = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Satur
 let _TH_SIGN_UNIQ_CACHE = null;
 const _TH_SIGN_UNIQ = () => (_TH_SIGN_UNIQ_CACHE ||= SUN_SIGN_TH.filter((s,i,a) => a.indexOf(s)===i));
 // 泰语流月动词（遇这些词 → 明确是 transit，不归入本命）
-const _TH_TRANSIT_MARK = /กำลัง|ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก|สถิต/i;
+// 🛠️ V424-fix3: 去掉สถิต（驻位于）——它既可表流月也可表本命，用于占位/陈述时不是移动动词
+const _TH_TRANSIT_MARK = /กำลัง|ผ่าน|เคลื่อน|เดินทาง|โคจร|ย้าย|ขึ้น|ลง|เข้าสู่|ออกจาก/i;
 // 泰语句末标点
 const _TH_CLAUSE_BREAK = /[.!:ๆ๋\n]/g;
 // 泰语身体句（行星出现即截断归因窗口，避免把别的行星数据归到本锚点上）
@@ -2908,12 +2909,20 @@ function _thPatchZone(zone, sign, house, preferFirst) {
     if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`เบอร์ ${best.s}→${sign}`); }
   }
   if (house) {
-    const re = /บ้าน\s*(\d+)/g;
+    // 🛠️ V424-fix3: 三种宫位格式全认：เรือนที่ X / บ้าน X / (ภพที่ X)
+    const re = /(?:เรือนที่|บ้าน|ภพที่)\s*(\d+)|\((?:ภพที่)\s*(\d+)\)/g;
     let target = null, m;
-    while ((m = re.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
-    if (target && Number(target[1]) !== house) {
-      z = z.slice(0, target.index) + ('บ้าน ' + house) + z.slice(target.index + target[0].length);
-      ch++; log.push(`บ้าน ${target[1]}→${house}`);
+    while ((m = re.exec(z)) !== null) {
+      if (preferFirst) { target = m; break; } target = m;
+    }
+    if (target) {
+      const oldNum = Number(target[1] || target[2]);
+      if (oldNum !== house) {
+        // 保留原始前缀格式
+        const prefix = target[0].replace(/\d+/, '');
+        z = z.slice(0, target.index) + (prefix + house) + z.slice(target.index + target[0].length);
+        ch++; log.push(`เรือน ${oldNum}→${house}`);
+      }
     }
   }
   return { text: z, count: ch, log };
@@ -5880,6 +5889,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V424: 泰语 MISS 非stream 路径补 lockNatalTruthTh（金额阈值已由 enforceRiskThreshold 覆盖）
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
+
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
         if (lang === 'vi') {
