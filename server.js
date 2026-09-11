@@ -2947,7 +2947,9 @@ function lockNatalTruthTh(text, astroMatrix) {
     if (!clause) continue;
     const { fwd, bwd } = clause;
     const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
-    const hasHouse = t.house && (fwd.includes('บ้าน ' + t.house) || bwd.includes('บ้าน ' + t.house));
+    // 🛠️ V424-fix5: 三种宫位格式全认：บ้าน X / เรือนที่ X / (ภพที่ X)
+    const hPat = String(t.house);
+    const hasHouse = t.house && (fwd.includes('บ้าน ' + hPat) || fwd.includes('เรือนที่ ' + hPat) || fwd.includes('ภพที่ ' + hPat) || fwd.includes('(ภพที่ ' + hPat) || bwd.includes('บ้าน ' + hPat) || bwd.includes('เรือนที่ ' + hPat) || bwd.includes('ภพที่ ' + hPat) || bwd.includes('(ภพที่ ' + hPat));
     if (hasSign && hasHouse) continue;
     // 先找后段目标
     let z = fwd.length >= bwd.length ? fwd : bwd;
