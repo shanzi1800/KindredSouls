@@ -60,18 +60,19 @@ for en, vi in PLANETS:
         # 只接受 transit 句：含 tại、不含 natal/bản mệnh（与硬锁判定一致）
         if 'tại' not in clause: continue
         if re.search(r'\bnatal\b|bản mệnh', clause, re.I): continue
-        sm = next((s for s in SUN_SIGN_VI if s in clause), None)
-        hm = re.search(r'Nhà\s*(\d+)', clause)
-        got_sign = sm
-        got_house = int(hm.group(1)) if hm else None
+        # vi transit 句格式常为「[星座] tại Nhà [宫位]」或「[星座] (英文) Nhà [宫位]」
+        # 星座与 Nhà 之间可能有 tại/(英文) 修饰 → 用「真值星座出现后，其后第一个 Nhà 是否为真值宫位」判断
+        sign_pos = clause.find(t[0])
+        ok = False
+        if sign_pos >= 0:
+            m = re.search(r'Nhà\s*(\d+)', clause[sign_pos:])
+            ok = bool(m) and int(m.group(1)) == t[1]
         checked += 1
-        ok_sign = got_sign == t[0]
-        ok_house = got_house == t[1]
-        if not (ok_sign and ok_house):
+        if not ok:
             problems += 1
-            print(f"  ❌ {en}({vi}): 期望 {t[0]} H{t[1]} | 实测 {got_sign} H{got_house} | 从句: {clause.strip()[:50]}")
+            print(f"  ❌ {en}({vi}): 期望 {t[0]} Nhà {t[1]} | 从句: {clause.strip()[:60]}")
         else:
-            print(f"  ✅ {en}: {got_sign} H{got_house}")
+            print(f"  ✅ {en}: {t[0]} H{t[1]}")
         matched = True
         break
     if not matched:

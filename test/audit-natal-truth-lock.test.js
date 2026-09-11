@@ -403,4 +403,20 @@ describe('V424-B2 越南语 transit 真值硬锁（治本命盘混入 transit �
     assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, {}), t);
     assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, { months: [{}] }), t);
   });
+
+  test('LLM 拼写错误星座(Sư Lửa≠Sư Tử) 必须兜底归真（_viPatchZone 盲区修复）', () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const info = first.jupiter || {};
+    if (!info?.sign || !info?.house) return;
+    const EN2Z = lockNatalTruthVi._EN2ZIDX;
+    const truthSign = SIGNS[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    // Sư Lửa 不在 SUN_SIGN_VI 字典内（真值 Sư Tử 的拼写错误）→ 触发盲区兜底归真
+    const inc = `Sao Mộc tại Sư Lửa Nhà ${truthHouse} tỏa sáng tài chính.`;
+    const out = lockNatalTruthVi.lockTransitTruthVi(inc, m);
+    assert.ok(out.includes(truthSign), `拼写错误未归真至 ${truthSign}：${out}`);
+    assert.ok(out.includes(`Nhà ${truthHouse}`), `宫位未保留：${out}`);
+    assert.ok(!out.includes('Sư Lửa'), `拼写错词 Sư Lửa 残留：${out}`);
+  });
 });

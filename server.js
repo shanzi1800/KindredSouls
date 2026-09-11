@@ -3137,6 +3137,22 @@ function _viPatchZone(zone, sign, house, preferFirst) {
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
     if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`星座 ${best.s}→${sign}`); }
+    else if (!z.includes(sign)) {
+      // 盲区：z 不含预期星座，也不含任何已知错误星座（如 LLM 拼写错误 Sư Lửa≠Sư Tử）
+      // → 找第一个 Nhà N，把其前的词（到上一个空格）强制替换为预期星座，杜绝残错误名
+      const hm = z.match(/Nhà\s*\d+/);
+      if (hm) {
+        const before = z.slice(0, hm.index).replace(/\s+$/, '');
+        const sp = before.lastIndexOf(' ');
+        const wStart = sp >= 0 ? sp + 1 : 0;
+        const word = before.slice(wStart);
+        // 只替换首字母大写的词（星座名特征），跳过小写介词（trong/ở/tại 等），避免误伤
+        if (word && word !== sign && !_VI_SIGN_UNIQ().includes(word) && /^[A-ZÀ-Ỹ]/.test(word)) {
+          z = z.slice(0, wStart) + sign + z.slice(wStart + word.length);
+          ch++; log.push(`星座 ${word}→${sign}(未知/拼写兜底)`);
+        }
+      }
+    }
   }
   if (house) {
     const re = /Nhà\s*(\d+)/g;
