@@ -3537,7 +3537,12 @@ function lockTransitTruthFr(text, astroMatrix) {
       const curSign = t.sign;
       const nextMonth = astroMatrix.months?.[1];
       const nextSignEn = nextMonth?.sun?.sign || nextMonth?.Sun?.sign || null;
-      const nextSignFr = nextSignEn && _EN2ZIDX[nextSignEn] != null ? _FR_SIGN_FR[_EN2ZIDX[nextSignEn]] : nextSignEn;
+      let nextSignFr = nextSignEn && _EN2ZIDX[nextSignEn] != null ? _FR_SIGN_FR[_EN2ZIDX[nextSignEn]] : nextSignEn;
+      // V428-fallback: months[1] 缺失时退回黄道顺序下一个（保证月末时序校验不漏，如 Vierge→Balance）
+      if (!nextSignFr && curSign) {
+        const zi = _FR_SIGN_FR.indexOf(curSign);
+        if (zi >= 0) nextSignFr = _FR_SIGN_FR[(zi + 1) % 12];
+      }
       let fixed = null;
       if (written === curSign && nextSignFr && nextSignFr !== curSign) {
         // 当月星座命中对，但月末有换位 → 若当前段是月末（23-30日/末周）应改为进入下月星座
