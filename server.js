@@ -3546,7 +3546,8 @@ function lockTransitTruthFr(text, astroMatrix) {
       let fixed = null;
       if (written === curSign && nextSignFr && nextSignFr !== curSign) {
         // 当月星座命中对，但月末有换位 → 若当前段是月末（23-30日/末周）应改为进入下月星座
-        const ctx = text.slice(m.index, m.index + 240);
+        // V428-fix: ctx 窗口前后都看（日期标记 "Jour 23" 常在行星名之前，仅往后看会漏判月末段）
+        const ctx = text.slice(Math.max(0, m.index - 60), m.index + 240);
         if (/(2[3-9]|30|fin|derni|semaine\s*4|septembre|octobre|novembre|décembre)/i.test(ctx)) fixed = nextSignFr;
       } else if (written !== curSign) {
         fixed = curSign;  // 明显写错星座 → 改为当月真值
