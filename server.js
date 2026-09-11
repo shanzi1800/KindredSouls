@@ -3480,6 +3480,121 @@ function _frPatchZone(zone, sign, house, preferFirst) {
   return { text: z, count: ch, log };
 }
 
+// ============================================================================
+// V430: 法语「本命/流年定语」双向裁定器（治「夺舍」与「丢标识」两类定语错配）
+//   定位：由 lockNatalTruthFr 入口调用 → 必然早于 natal / transit 两个真值锁。
+//   只动「定语词」本身，绝不动星座/宫位（星座/宫位仍由双锁按真值归真）。
+//   判据是「真值匹配 + 同分句窗口」，不是 V428 式的词距猜测：
+//     A 夺舍剥离：行星后定语= natal/natale，但所写星座/宫位 = 流月真值 ≠ 本命真值
+//                → 该句实为流月句，剥掉本命定语（值已 = 流月真值，transit 锁随后零改动）
+//     B 标识补全：行星后无本命定语，但所写星座/宫位 = 本命真值 ≠ 流月真值
+//                → 该句实为本命句，补回 natal/natale（否则会被 transit 锁误改成流月值）
+//                （B1 星座+宫位双中；B2 星座中且同句含本命语境词；两者都要求槽内无 transit 动词）
+//   幂等：修后再次运行零改动（A 剥离后 isN 仍假 → B 不触发；B 补全后 hasDesc 真 → A/B 均不触发）
+//   不变量：往返「真值↔错值」替换后必须逐字符等于原文（抓掉字/重字）
+// ============================================================================
+const _FR_NATAL_SLOT = /(?:natal|natale|de naissance|qui vous fit naître|du thème natal)/i;
+const _FR_DESC_STRIP = /\s*(?:du thème natal|de naissance|qui vous fit naître|natal|natale)\b/gi;
+const _FR_NATAL_CTX = /(?:natal|natale|naissance|votre thème|votre ciel|carte du ciel|votre signature)/i;
+const _FR_FEM_PLANET = /^(?:Lune|Vénus)$/;
+
+// 定语槽：行星名 → 第一个星座/宫位之间（与两个真值锁同源口径）
+function _frSlotOf(text, aEnd) {
+  const after = text.slice(aEnd, aEnd + 50);
+  let cut = after.length;
+  for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && k < cut) cut = k; }
+  const hm = after.match(/Maison\s*\d+/i);
+  if (hm && hm.index < cut) cut = hm.index;
+  return after.slice(0, cut);
+}
+
+// 该从句「声称」的星座/宫位（fwd 优先，fwd 无则回看 bwd）
+function _frClaimOf(fwd, bwd) {
+  const uniq = _FR_SIGN_UNIQ();
+  let sign = null, si = -1;
+  for (const s of uniq) { const k = fwd.indexOf(s); if (k >= 0 && (si < 0 || k < si)) { si = k; sign = s; } }
+  let house = null;
+  const hm = fwd.match(/Maison\s*(\d+)/i);
+  if (hm) house = Number(hm[1]);
+  if (!sign && bwd) { let bi = -1; for (const s of uniq) { const k = bwd.lastIndexOf(s); if (k > bi) { bi = k; sign = s; } } }
+  if (house === null && bwd) { const all = [...String(bwd).matchAll(/Maison\s*(\d+)/gi)]; if (all.length) house = Number(all[all.length - 1][1]); }
+  return { sign, house };
+}
+
+// 声称值是否与某真值盘一致（有宫位则星座+宫位都要中）
+function _frTruthMatch(t, sign, house) {
+  if (!t) return false;
+  if (!sign && house === null) return false;
+  if (sign && t.sign !== sign) return false;
+  if (house !== null && t.house !== house) return false;
+  return true;
+}
+
+function adjudicateNatalDescriptorsFr(text, astroMatrix) {
+  if (!text || typeof text !== 'string' || !astroMatrix) return text;
+  const NT = _natalTruthMap10_FR(astroMatrix);
+  const names = Object.keys(NT);
+  if (!names.length) return text;
+  const TT = (astroMatrix.months && astroMatrix.months[0]) ? _transitTruthMap10_FR(astroMatrix) : {};
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  const patches = [];
+  let stripped = 0, inserted = 0, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const nt = NT[name];
+    if (!nt) continue;
+    const aEnd = m.index + m[0].length;
+    const slot = _frSlotOf(text, aEnd);
+    const clause = _frClause(text, m.index, m[0].length, true);
+    if (!clause) continue;
+    const claim = _frClaimOf(clause.fwd, clause.bwd);
+    const isN = _frTruthMatch(nt, claim.sign, claim.house);
+    const isT = TT[name] ? _frTruthMatch(TT[name], claim.sign, claim.house) : false;
+    const hasDesc = _FR_NATAL_SLOT.test(slot);
+
+    if (hasDesc && isT && !isN) {
+      // A) 夺舍：本命定语贴在流月句上 → 剥定语（槽内最多 3 处，且不误伤冒号前的法式空格）
+      const re = new RegExp(_FR_DESC_STRIP.source, 'gi');
+      let sm, n0 = 0;
+      while ((sm = re.exec(slot)) !== null) {
+        let e = aEnd + sm.index + sm[0].length;
+        // 剥离后若紧跟「空格+逗号」，一并吃掉该空格（法语逗号前不加空格）
+        if (text[e] === ' ' && text[e + 1] === ',') e += 1;
+        patches.push({ s: aEnd + sm.index, e, rep: '' });
+        n0++;
+        if (n0 >= 3) break;
+      }
+      stripped += n0;
+      continue;
+    }
+
+    if (!hasDesc && isN && !isT && !_FR_TRANSIT_MARK.test(slot)) {
+      // B) 丢标识：本命事实被写成流月格式 → 补回 natal/natale
+      const strong = !!(claim.sign && claim.house !== null);
+      const ctxSig = _FR_NATAL_CTX.test(clause.fwd) || _FR_NATAL_CTX.test(clause.bwd) ||
+                     _FR_NATAL_CTX.test(text.slice(Math.max(0, m.index - 90), m.index));
+      if (strong || ctxSig) {
+        const marker = _FR_FEM_PLANET.test(name) ? 'natale' : 'natal';
+        const tail = text.slice(aEnd, aEnd + 16);
+        const mc = tail.match(/^(\s*),/);
+        const mp = tail.match(/^(\s*)(?:en|dans|au|à)\b/i);
+        if (mc) { patches.push({ s: aEnd + mc[1].length, e: aEnd + mc[1].length, rep: ' ' + marker }); inserted++; }
+        else if (mp) { patches.push({ s: aEnd + mp[1].length, e: aEnd + mp[1].length, rep: marker + ' ' }); inserted++; }
+      }
+      continue;
+    }
+  }
+  if (!patches.length) return text;
+  patches.sort((a, b) => a.s - b.s || a.e - b.e);
+  let out = text;
+  for (let i = patches.length - 1; i >= 0; i--) {
+    const p = patches[i];
+    out = out.slice(0, p.s) + p.rep + out.slice(p.e);
+  }
+  console.log(`[V430] 法语定语裁定: 剥离 ${stripped} 处(实为流月句) / 补全 ${inserted} 处(实为本命句)`);
+  return out;
+}
+
 function lockNatalTruthFr(text, astroMatrix) {
   if (!text) return text;
   const truth = astroMatrix ? _natalTruthMap10_FR(astroMatrix) : {};
@@ -3488,6 +3603,8 @@ function lockNatalTruthFr(text, astroMatrix) {
     console.log('[V426] 法语本命真值盘不可用 → 跳过本命真值锁（绝不编）');
     return text;
   }
+  // 🛠️ V430: 先做定语双向裁定（剥夺舍 / 补丢标识），再进本命真值锁
+  text = adjudicateNatalDescriptorsFr(text, astroMatrix);
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
   const hits = [];
   const detail = [];
