@@ -527,4 +527,49 @@ describe('V426 法语 natal+transit 真值双锁（治本命盘混入 transit �
     assert.ok(out.includes(CORRECT_ORD + ' maison'), 'fr transit 序数词宫位未归真至 ' + truthHouse + ' (' + CORRECT_ORD + ')：' + out);
     assert.ok(!out.includes(WRONG_ORD + ' maison'), 'fr 仍残留错值序数词宫位 ' + WRONG_ORD + '：' + out);
   });
+
+  // ── V428: 盲区补强（军师打靶暴露的三种非标准句式，SwissEph 真值轴）──
+  test('V428 盲区①: 本命太阳同位语(la Vierge, votre Soleil de naissance) 必须归真', async () => {
+    const m = MATRICES[0];
+    const info = m.meta.computed_houses.Sun;
+    if (!info || !info.sign || !info.house) return;
+    const truthSign = FR_SIGN[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const ws = WRONG_FR_SIGN(truthSign), wh = WRONG_FR_HOUSE(truthHouse);
+    const inc = 'la ' + ws + ', votre Soleil de naissance en Maison ' + wh + ' brille de mille feux.';
+    const out = FR.lockNatalTruthFr(inc, m);
+    assert.ok(out.includes(truthSign), '本命太阳同位语未归真至 ' + truthSign + '：' + out);
+    assert.ok(!out.includes('la ' + ws + ','), '本命太阳仍残留错值星座 ' + ws + '：' + out);
+  });
+
+  test('V428 盲区②: 复合句多星体(Mars ... Maison X, et Neptune) 火星宫位必须归真', async () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const info = first.mars || {};
+    if (!info || !info.sign || !info.house) return;
+    const truthSign = FR_SIGN[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const ws = WRONG_FR_SIGN(truthSign), wh = WRONG_FR_HOUSE(truthHouse);
+    // 复合句：火星(错值) + et Neptune(另一行星) → 锁必须识别并修正火星宫位，不因 et Neptune 提前截断
+    const inc = 'Le piège majeur réside dans la conjonction entre Mars en ' + ws + ', Maison ' + wh + ', et Neptune en Bélier, Maison 8, rétrograde';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.ok(out.includes('Mars en ' + truthSign), '复合句火星星座未归真至 ' + truthSign + '：' + out);
+    assert.ok(out.includes('Maison ' + truthHouse), '复合句火星宫位未归真至 ' + truthHouse + '：' + out);
+  });
+
+  test('V428 盲区③: 月末 entre en [Signe] 时序锁（应进入下月星座，防逆向移入）', async () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const next = m.months[1];
+    if (!first?.sun || !next?.sun) return;
+    const curSign = FR_SIGN[EN2Z[first.sun.sign]];
+    const nextSign = FR_SIGN[EN2Z[next.sun.sign]];
+    if (curSign === nextSign) return;  // 当月与下月同座则无时序变化，跳过
+    const curHouse = first.sun.house;
+    // LLM 写当月星座 + 月末段落(Sept 23-30) → 应改为进入下月星座
+    const inc = 'Le Soleil entre en ' + curSign + ', Maison ' + curHouse + ' — votre Soleil natal s illumine. Semaine 4: Sept 23–30';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.ok(out.includes('entre en ' + nextSign), '月末 entre en 未归真至下月星座 ' + nextSign + '：' + out);
+    assert.ok(!out.includes('entre en ' + curSign + ','), '月末 entre en 仍残留当月星座 ' + curSign + '：' + out);
+  });
 });

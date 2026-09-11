@@ -3316,7 +3316,7 @@ const _FR_SIGN_UNIQ = () => (_FR_SIGN_UNIQ_CACHE ||= _FR_SIGN_FR.filter((s, i, a
 // 法语流月标记（显式 transit 动词；"en [星座]" 介词由 _frTransitClause 单独判定）
 const _FR_TRANSIT_MARK = /transitant|se déplace|passe|entre dans|rejoint|quitte|croise|au signe/i;
 // 法语句读 + 连词
-const _FR_CLAUSE_BREAK = /[.;,!?:()\n]|\s(?:et|mais|ou|donc|or|ni|car|lorsque|pendant|tandis|alors)\s/gi;
+const _FR_CLAUSE_BREAK = /[.;!?:()\n]|\s(?:et|mais|ou|donc|or|ni|car|lorsque|pendant|tandis|alors)\s/gi;  // 逗号不当 bwd 硬截断：法语本命星座常作同位语置于行星名前的逗号前
 // 法语行星名（出现即截断归因窗口，避免把别的行星数据归到本锚点）
 const _FR_BODY_ANY = /(?:^|\s)(?:Soleil|Lune|Mercure|Vénus|Mars|Jupiter|Saturne|Uranus|Neptune|Pluton)\b/i;
 // 法语节点轴（遇轴短语截断，防止轴星座误判成本命；镜像 _VI_AXIS / _TH_AXIS）
@@ -3366,7 +3366,7 @@ function _frClause(text, i, len, explicit) {
     const hm = after.match(/Maison\s*\d+/i);
     if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
     if (cut >= 0) pre = after.slice(0, cut);
-    if (!/(?:natal|natale)/i.test(pre)) return null;        // 非本命标记 → 多半是 transit/泛指，不碰
+    if (!/(?:natal|natale|de naissance|qui vous fit naître)/i.test(pre)) return null;        // 非本命标记 → 多半是 transit/泛指，不碰
     if (_FR_TRANSIT_MARK.test(pre)) return null;            // 定语段含 transit 动词 → 明确是 transit，不碰
   }
   let fwd = text.slice(aEnd, aEnd + 90);
@@ -3496,7 +3496,7 @@ function lockNatalTruthFr(text, astroMatrix) {
     const name = m[1];
     const t = truth[name];
     if (!t) continue;
-    const explicit = /^\s*(?:natal|natale)\b/i.test(text.slice(m.index + m[0].length, m.index + m[0].length + 12));
+    const explicit = /^(?:natal|natale|de naissance|qui vous fit naître)\b/i.test(text.slice(m.index + m[0].length, m.index + m[0].length + 30));
     const clause = _frClause(text, m.index, m[0].length, explicit);
     if (!clause) continue;
     const { fwd, bwd } = clause;
@@ -3529,18 +3529,51 @@ function lockTransitTruthFr(text, astroMatrix) {
     const name = m[1];
     const t = truth[name];
     if (!t) continue;
+    // V428: entre en [Signe] 时序校验（防月末逆向移入真实星座，如 9/23 太阳应从 Vierge 进入 Balance）
+    const entreWin = text.slice(m.index, m.index + m[0].length + 90);
+    const entreM = entreWin.match(/\bentre en\s+([A-ZÀ-Ý][a-zà-ý]*)/i);
+    if (entreM) {
+      const written = entreM[1];
+      const curSign = t.sign;
+      const nextMonth = astroMatrix.months?.[1];
+      const nextSignEn = nextMonth?.sun?.sign || nextMonth?.Sun?.sign || null;
+      const nextSignFr = nextSignEn && _EN2ZIDX[nextSignEn] != null ? _FR_SIGN_FR[_EN2ZIDX[nextSignEn]] : nextSignEn;
+      let fixed = null;
+      if (written === curSign && nextSignFr && nextSignFr !== curSign) {
+        // 当月星座命中对，但月末有换位 → 若当前段是月末（23-30日/末周）应改为进入下月星座
+        const ctx = text.slice(m.index, m.index + 240);
+        if (/(2[3-9]|30|fin|derni|semaine\s*4|septembre|octobre|novembre|décembre)/i.test(ctx)) fixed = nextSignFr;
+      } else if (written !== curSign) {
+        fixed = curSign;  // 明显写错星座 → 改为当月真值
+      }
+      if (fixed) {
+        const re = new RegExp('entre en ' + written.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+        const before = text;
+        text = text.replace(re, 'entre en ' + fixed);
+        result = text;  // V428: 同步更新 result（否则返回值不含此次替换）
+        nameRe.lastIndex += (text.length - before.length);
+        console.log(`[V428] Fr transit时序锁: ${name} entre en ${written} → entre en ${fixed}`);
+        continue;
+      }
+    }
     const clause = _frTransitClause(text, m.index, m[0].length);
     if (!clause) continue;
     const { fwd, bwd } = clause;
     const hPat = String(t.house);
-    const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
-    const hasHouse = t.house && (fwd.includes('Maison ' + hPat) || bwd.includes('Maison ' + hPat));
-    if (hasSign && hasHouse) continue;
-    let z = fwd.length >= bwd.length ? fwd : bwd;
-    const origLen = z.length;
-    let patch;
-    if (hasSign || hasHouse) patch = _frPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
-    else patch = _frPatchZone(z, t.sign, t.house, z === fwd);
+    const hasSignF = t.sign && fwd.includes(t.sign);
+    const hasHouseF = t.house && fwd.includes('Maison ' + hPat);
+    const hasSignB = t.sign && bwd.includes(t.sign);
+    const hasHouseB = t.house && bwd.includes('Maison ' + hPat);
+    if (hasSignF && hasHouseF && hasSignB && hasHouseB) continue;  // fwd 与 bwd 均已正确 → 跳过
+    // V428: 分别尝试 fwd / bwd 修正（先 fwd 后 bwd），避免复合句选错窗口漏改（如 "Mars ... Maison 1, et Neptune..."）
+    let z = fwd;
+    let origLen = z.length;
+    let patch = _frPatchZone(z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true);
+    if (patch.count === 0 && bwd) {
+      z = bwd;
+      origLen = z.length;  // V428: 更新窗口长度，保证回写位置正确
+      patch = _frPatchZone(z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false);
+    }
     if (patch.count === 0) continue;
     const pos = z === fwd ? m.index + m[0].length : m.index - origLen;
     const safePos = Math.max(0, pos);
