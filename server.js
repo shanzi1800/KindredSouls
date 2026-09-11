@@ -3184,6 +3184,105 @@ function lockNatalTruthVi(text, astroMatrix) {
   if (fixes) console.log(`[V423] 本命盘真值锁(10行星): 修正 ${fixes} 处 native 星座/宫位漂移${detail.length ? ' | ' + detail.slice(0, 10).join('; ') : ''}`);
   return text;
 }
+
+// ═══════════════════════════════════════════════════════════
+// 🛠️ V424-B2: 越南语 transit 真值硬锁（镜像 natal 锁）
+// 治 LLM 把本命盘位置误写入 transit 句（如 "Sao Mộc tại Sư Tử Nhà 12" 应为 transit 真值）。
+// 越南语 transit 句多用具位置描述 "tại [星座] Nhà N"，绝大多数无显式 transit 动词，
+//   故判定标记同时接受 tại 与 _VI_TRANSIT_MARK。
+// 与 natal 锁互补：natal 锁管含 natal/bản mệnh/của bạn 的本命句、transit 锁管不含这些标记且含 tại 的位置句、plain 句不动。
+// ═══════════════════════════════════════════════════════════
+
+// 越南语 transit 真值表（从报告月 months[0] 取；与 _natalTruthMap10 同构，源不同）
+function _transitTruthMap10_VI(astroMatrix) {
+  const first = astroMatrix?.months?.[0];
+  if (!first) return {};
+  const map = {};
+  for (const p of _VI_PLANET_ORDER) {
+    const k = p.toLowerCase();
+    const info = p === 'Sun' ? (first.sun || (first.positions && first.positions.Sun) || {}) : (first[k] || {});
+    if (!info) continue;
+    const signEN = info.sign;
+    const sign = _EN2ZIDX[signEN] != null ? SUN_SIGN_VI[_EN2ZIDX[signEN]] : null;
+    const house = Number(info.house) || 0;
+    if (sign || house) map[_VI_PLANET[p]] = { sign, house };
+  }
+  return map;
+}
+
+// 越南语 transit 从句归因（镜像 _viClause 的非 explicit 分支，但只取 transit 句）
+function _viTransitClause(text, i, len) {
+  const aEnd = i + len;
+  // 本命定语判定：锚点后到首个星座/宫位之间的定语段含 natal/bản mệnh/của bạn → 本命句，跳过（natal 锁已处理）
+  const after = text.slice(aEnd, aEnd + 40);
+  let pre = after;
+  let cut = -1;
+  for (const s of _VI_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
+  const hm = after.match(/Nhà\s*\d+/);
+  if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
+  if (cut >= 0) pre = after.slice(0, cut);
+  if (/(?:bản mệnh|natal|của bạn)/i.test(pre)) return null;   // 本命句 → natal 锁已处理，跳过
+  if (!/tại/i.test(after) && !_VI_TRANSIT_MARK.test(after)) return null;  // 非位置/transit 描述 → 不碰
+  // 后段：90 字内、句末/其他星体名为止、遇节点轴截断
+  let fwd = text.slice(aEnd, aEnd + 90);
+  const e = fwd.search(/[.\n]/);
+  if (e >= 0) fwd = fwd.slice(0, e);
+  const bIdx = fwd.search(_VI_BODY_SPLIT);
+  if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
+  const axisIdx = fwd.search(/trục|—|–/i);
+  if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
+  // 前段：70 字内；含 transit 动词 → 整段弃用；否则切到 [最后句读/连词之后, 首个其他星体名之前)
+  let bwd = text.slice(Math.max(0, i - 70), i);
+  if (_VI_TRANSIT_MARK.test(bwd)) {
+    bwd = '';
+  } else {
+    let lo = 0;
+    for (const m of bwd.matchAll(_VI_CLAUSE_BREAK)) lo = Math.max(lo, m.index + m[0].length);
+    const bm = bwd.search(_VI_BODY_ANY);
+    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+  }
+  return { fwd, bwd };
+}
+
+function lockTransitTruthVi(text, astroMatrix) {
+  if (!text || typeof text !== 'string' || !astroMatrix?.months?.[0]) return text;
+  const truth = _transitTruthMap10_VI(astroMatrix);
+  const names = Object.keys(truth);
+  if (!names.length) return text;
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  let result = text;
+  let m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    const clause = _viTransitClause(text, m.index, m[0].length);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const hPat = String(t.house);
+    const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
+    const hasHouse = t.house && (fwd.includes('Nhà ' + hPat) || bwd.includes('Nhà ' + hPat));
+    if (hasSign && hasHouse) continue;
+    let z = fwd.length >= bwd.length ? fwd : bwd;
+    const origLen = z.length;
+    let patch;
+    if (hasSign || hasHouse) patch = _viPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
+    else patch = _viPatchZone(z, t.sign, t.house, z === fwd);
+    if (patch.count === 0) continue;
+    const pos = z === fwd ? m.index + m[0].length : m.index - origLen;
+    const safePos = Math.max(0, pos);
+    result = result.slice(0, safePos) + patch.text + result.slice(safePos + origLen);
+    const delta = patch.text.length - origLen;
+    text = result;
+    nameRe.lastIndex += delta;
+    if (patch.count > 0) {
+      const old = (fwd + bwd).replace(/\n/g, ' ');
+      console.log(`[V424-B2] Vi transit lock: ${name} → ${t.sign || '?'}${t.house ? ' Nhà ' + t.house : ''} | ${old.slice(0, 40)}`);
+    }
+  }
+  return result;
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -5722,6 +5821,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             let _hitAstro = null;
             try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
+            stdCached = lockTransitTruthVi(stdCached, _hitAstro);
           }
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
@@ -6001,6 +6101,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V414: 语言门控(同上)——越南语专用清洗不得作用于其他语言
         // 🛠️ V424: 泰语 MISS 非stream 路径补 lockNatalTruthTh（金额阈值已由 enforceRiskThreshold 覆盖）
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
+        if (lang === 'vi') reportContent = lockTransitTruthVi(reportContent, astroMatrix);
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockTransitTruthTh(reportContent, astroMatrix);
 
@@ -6499,6 +6600,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           streamText = enforceRiskThreshold(streamText, lang);
           // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
           if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
+          if (lang === 'vi') streamText = lockTransitTruthVi(streamText, astroMatrix);
           if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
           if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
         }
@@ -6817,6 +6919,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 if (_j && typeof _j.text === 'string' && _j.text.length) {
                   if (lang === 'vi') _j.text = fixVietnameseCorruption(_j.text);
                   _j.text = enforceRiskThreshold(_j.text, lang);
+                  if (lang === 'vi') _j.text = lockNatalTruthVi(_j.text, astroMatrix);
+                  if (lang === 'vi') _j.text = lockTransitTruthVi(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
@@ -7344,6 +7448,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V414: 语言门控——越南语专用清洗不得作用于 zh/en/es/fr/th
     // 🛠️ V424: 泰语 sync completion 补 lockNatalTruthTh
     if (lang === 'vi') cleanedText = lockNatalTruthVi(enforceRiskThreshold(cleanedText, lang), astroMatrix);
+    if (lang === 'vi') cleanedText = lockTransitTruthVi(cleanedText, astroMatrix);
     if (lang === 'th') cleanedText = lockNatalTruthTh(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     if (lang === 'th') cleanedText = lockTransitTruthTh(cleanedText, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,

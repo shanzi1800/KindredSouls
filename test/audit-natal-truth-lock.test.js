@@ -20,7 +20,7 @@ if (_from < 0 || _to < 0 || _to <= _from) throw new Error('未能从 server.js �
 const BLOCK = SRC.slice(_from, _to);
 const SUN_SIGN_VI_DECL = "const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];";
 // ESM 严格模式下 eval 不外泄声明 → 用 new Function 工厂把函数取出来
-const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK}\nreturn { lockNatalTruthVi, _VI_PLANET, _VI_PLANET_ORDER, SUN_SIGN_VI };`)();
+const lockNatalTruthVi = new Function(`${SUN_SIGN_VI_DECL}\n${BLOCK}\nreturn { lockNatalTruthVi, lockTransitTruthVi, _VI_PLANET, _VI_PLANET_ORDER, _EN2ZIDX, SUN_SIGN_VI };`)();
 assert.strictEqual(typeof lockNatalTruthVi.lockNatalTruthVi, 'function', 'lockNatalTruthVi 应被成功提取');
 assert.strictEqual(lockNatalTruthVi._VI_PLANET_ORDER.length, 10, 'V423 必须覆盖 10 行星');
 
@@ -337,5 +337,70 @@ describe('V424-B2 泰语 transit 真值硬锁（治本命盘混入 transit 句·
     assert.strictEqual(lockTransitTruthTh(t, null), t);
     assert.strictEqual(lockTransitTruthTh('', TRANSIT), '');
     assert.strictEqual(lockTransitTruthTh(t, { months: [{}] }), t);
+  });
+});
+
+// ── V424-B2 越南语 transit 真值硬锁（治本命盘混入 transit 段·SwissEph 真值）──
+describe('V424-B2 越南语 transit 真值硬锁（治本命盘混入 transit 段）', () => {
+  test('transit 句(含 tại) 必须用 months[0] 真值归真（10 行星全量）', async () => {
+    const m = MATRICES[0];
+    if (!m.months || !m.months[0]) return;
+    const first = m.months[0];
+    const EN2Z = lockNatalTruthVi._EN2ZIDX;
+    let checked = 0;
+    for (const p of lockNatalTruthVi._VI_PLANET_ORDER) {
+      const k = p.toLowerCase();
+      const info = p === 'Sun' ? (first.sun || {}) : (first[k] || {});
+      if (!info?.sign || !info?.house) continue;
+      const truthSign = SIGNS[EN2Z[info.sign]];
+      const truthHouse = info.house;
+      const name = VI[p];
+      const ws = WRONG_SIGN_OF(truthSign), wh = WRONG_HOUSE_OF(truthHouse);
+      const inc = `${name} tại ${ws} Nhà ${wh} chiếu rọi tài chính tháng này.`;
+      const out = lockNatalTruthVi.lockTransitTruthVi(inc, m);
+      assert.ok(out.includes(truthSign), `${p} transit 星座未归真至 ${truthSign}：${out}`);
+      assert.ok(out.includes(`Nhà ${truthHouse}`), `${p} transit 宫位未归真至 ${truthHouse}：${out}`);
+      assert.ok(!new RegExp(`${ws} Nhà`).test(out), `${p} 仍残留错值星座：${out}`);
+      assert.ok(!new RegExp(`Nhà\\s*${wh}(?!\\d)`).test(out), `${p} 仍残留错值宫位：${out}`);
+      checked++;
+    }
+    assert.ok(checked >= 10, `应至少校验 10 行星，实际 ${checked}`);
+  });
+
+  test('本命句(含 natal/bản mệnh) 绝不被 transit 锁改动', () => {
+    const m = MATRICES[0];
+    const info = m.meta.natal_moon || m.meta.computed_houses.Moon;
+    const EN2Z = lockNatalTruthVi._EN2ZIDX;
+    const truthSign = SIGNS[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const inc = `Mặt Trăng natal của bạn ở ${truthSign} Nhà ${truthHouse} khuếch đại trực giác.`;
+    const out = lockNatalTruthVi.lockTransitTruthVi(inc, m);
+    assert.strictEqual(out, inc, `transit 锁误改本命句：${out}`);
+  });
+
+  test('正确的 transit 句(含 tại + 正确真值) 零改动', () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const EN2Z = lockNatalTruthVi._EN2ZIDX;
+    const info = first.jupiter || {};
+    if (!info?.sign || !info?.house) return;
+    const truthSign = SIGNS[EN2Z[info.sign]];
+    const truthHouse = info.house;
+    const inc = `Sao Mộc tại ${truthSign} Nhà ${truthHouse} khuếch đại trực giác tài chính.`;
+    const out = lockNatalTruthVi.lockTransitTruthVi(inc, m);
+    assert.strictEqual(out, inc, `正确 transit 句被误改：${out}`);
+  });
+
+  test('无位置标记的泛指句零改动（防误伤）', () => {
+    const m = MATRICES[0];
+    const t = 'Hôm nay trời đẹp, bạn nên tiết kiệm 500.000 ₫.';
+    assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, m), t);
+  });
+
+  test('astroMatrix 无 months 时安全透传（不崩溃、不改写）', () => {
+    const t = 'Sao Mộc tại Bọ Cạp Nhà 3 thúc đẩy giao tiếp.';
+    assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, null), t);
+    assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, {}), t);
+    assert.strictEqual(lockNatalTruthVi.lockTransitTruthVi(t, { months: [{}] }), t);
   });
 });
