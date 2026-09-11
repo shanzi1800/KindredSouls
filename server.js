@@ -3529,8 +3529,12 @@ function lockTransitTruthFr(text, astroMatrix) {
     const name = m[1];
     const t = truth[name];
     if (!t) continue;
-    // V428: entre en [Signe] 时序校验（防月末逆向移入真实星座，如 9/23 太阳应从 Vierge 进入 Balance）
-    const entreWin = text.slice(m.index, m.index + m[0].length + 90);
+    // V429: "entre en [Signe]" 是入驻(ingress)事件 —— 入驻目标随日期而变（月末=下月星座, 月初=当月星座），
+    //   绝不能用「当月流月星座」硬套；否则会把 LLM 写对的 Balance（9/23 太阳入驻天秤）反向改成 Vierge。
+    //   同分句口径：窗口遇下一颗行星名即截断，防跨句误判。
+    const _tail = text.slice(m.index + m[0].length, m.index + m[0].length + 90);
+    const _bp = _tail.search(_FR_BODY_ANY);
+    const entreWin = _bp >= 0 ? _tail.slice(0, _bp) : _tail;
     const entreM = entreWin.match(/\bentre en\s+([A-ZÀ-Ý][a-zà-ý]*)/i);
     if (entreM) {
       const written = entreM[1];
@@ -3538,29 +3542,38 @@ function lockTransitTruthFr(text, astroMatrix) {
       const nextMonth = astroMatrix.months?.[1];
       const nextSignEn = nextMonth?.sun?.sign || nextMonth?.Sun?.sign || null;
       let nextSignFr = nextSignEn && _EN2ZIDX[nextSignEn] != null ? _FR_SIGN_FR[_EN2ZIDX[nextSignEn]] : nextSignEn;
-      // V428-fallback: months[1] 缺失时退回黄道顺序下一个（保证月末时序校验不漏，如 Vierge→Balance）
+      // 兜底：months[1] 缺失时退回黄道顺序下一个（保证 Vierge→Balance 不漏）
       if (!nextSignFr && curSign) {
         const zi = _FR_SIGN_FR.indexOf(curSign);
         if (zi >= 0) nextSignFr = _FR_SIGN_FR[(zi + 1) % 12];
       }
+      // V429: 只用「明确日号」判定时序阶段。禁用 septembre/octobre 等月名（会让整月都判成月末）
+      //   与裸 2[3-9]（年份 "2026" 会被误命中）——这两者是本次把正确 Balance 改成 Vierge 的真凶。
+      const ctx = text.slice(Math.max(0, m.index - 80), m.index + 240);
+      const _MONTHS_FR = 'janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[ée]cembre|janv|f[ée]vr|sept|oct|nov|d[ée]c';
+      let day = null;
+      let dm = ctx.match(/\bJour\s*(\d{1,2})\b/i);
+      if (dm) day = Number(dm[1]);
+      if (day == null) { dm = ctx.match(new RegExp('\\b(\\d{1,2})\\s*(?:er)?\\s*(?:' + _MONTHS_FR + ')\\b', 'i')); if (dm) day = Number(dm[1]); }
+      if (day == null) { dm = ctx.match(new RegExp('\\b(?:' + _MONTHS_FR + ')\\.?\\s*(\\d{1,2})\\b', 'i')); if (dm) day = Number(dm[1]); }
+      const isEnd = day != null
+        ? day >= 22
+        : /fin\s+d[eu]\s+mois|derni(?:er|ère|ers|ères)|semaine\s*4/i.test(ctx);
+      const isStart = day != null
+        ? day <= 8
+        : /d[ée]but\s+d[eu]\s+mois|semaine\s*1/i.test(ctx);
       let fixed = null;
-      if (written === curSign && nextSignFr && nextSignFr !== curSign) {
-        // 当月星座命中对，但月末有换位 → 若当前段是月末（23-30日/末周）应改为进入下月星座
-        // V428-fix: ctx 窗口前后都看（日期标记 "Jour 23" 常在行星名之前，仅往后看会漏判月末段）
-        const ctx = text.slice(Math.max(0, m.index - 60), m.index + 240);
-        if (/(2[3-9]|30|fin|derni|semaine\s*4|septembre|octobre|novembre|décembre)/i.test(ctx)) fixed = nextSignFr;
-      } else if (written !== curSign) {
-        fixed = curSign;  // 明显写错星座 → 改为当月真值
-      }
+      if (isEnd && nextSignFr && written !== nextSignFr) fixed = nextSignFr;   // 月末入驻 → 下月星座
+      else if (isStart && curSign && written !== curSign) fixed = curSign;      // 月初入驻 → 当月星座
       if (fixed) {
         const re = new RegExp('entre en ' + written.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
         const before = text;
         text = text.replace(re, 'entre en ' + fixed);
-        result = text;  // V428: 同步更新 result（否则返回值不含此次替换）
+        result = text;
         nameRe.lastIndex += (text.length - before.length);
-        console.log(`[V428] Fr transit时序锁: ${name} entre en ${written} → entre en ${fixed}`);
-        continue;
+        console.log(`[V429] Fr ingress时序锁: ${name} entre en ${written} → entre en ${fixed} (day=${day})`);
       }
+      continue;  // V429: 入驻句一律不走「流月星座/宫位归真」，防把正确的下月星座反向改回当月星座
     }
     const clause = _frTransitClause(text, m.index, m[0].length);
     if (!clause) continue;

@@ -572,4 +572,31 @@ describe('V426 法语 natal+transit 真值双锁（治本命盘混入 transit �
     assert.ok(out.includes('entre en ' + nextSign), '月末 entre en 未归真至下月星座 ' + nextSign + '：' + out);
     assert.ok(!out.includes('entre en ' + curSign + ','), '月末 entre en 仍残留当月星座 ' + curSign + '：' + out);
   });
+
+  // V429 回归：V428 的 else 分支把「写对的下月星座」反向改成当月星座（生产实测 Balance→Vierge）
+  test('V429 回归①: 月末 entre en 已是下月星座(LLM 写对) → 必须零改动', async () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    const next = m.months[1];
+    if (!first?.sun || !next?.sun) return;
+    const curSign = FR_SIGN[EN2Z[first.sun.sign]];
+    const nextSign = FR_SIGN[EN2Z[next.sun.sign]];
+    if (curSign === nextSign) return;
+    const curHouse = first.sun.house;
+    // 生产真实句式：日期标记 "Jour 23" 在行星名之前 + "le 23 septembre"
+    const inc = 'Fenêtre Cosmique Clé: Jour 23\nLe Soleil entre en ' + nextSign + ', Maison ' + curHouse + ', le 23 septembre — retour au foyer natal de votre Soleil !';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.strictEqual(out, inc, '月末入驻已是下月星座时不得改写：' + out);
+  });
+
+  test('V429 回归②: 月初 entre en 当月星座 → 零改动(不得改下月)', async () => {
+    const m = MATRICES[0];
+    const first = m.months[0];
+    if (!first?.sun) return;
+    const curSign = FR_SIGN[EN2Z[first.sun.sign]];
+    const curHouse = first.sun.house;
+    const inc = 'Le Soleil entre en ' + curSign + ', Maison ' + curHouse + ', le 3 septembre — un nouveau chapitre s ouvre.';
+    const out = FR.lockTransitTruthFr(inc, m);
+    assert.strictEqual(out, inc, '月初入驻当月星座时不得改写：' + out);
+  });
 });
