@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# V426 法语 transit 锁生产终验：算报告月 transit 真值 → 打靶生产 lang=fr 的 "en [星座] Maison N" 句
-# 用锁定字典（法语星座名 ↔ 英文真值）做归一化，兼容 LLM 偶发英文混用 (Scorpio/Lion 等)
+# V426 法语 transit 锁生产终验：算报告月 transit 真值 → 打靶生产 lang=fr 的 "en [星座] [Maison N | 序数词 maison]" 句
+# 兼容：① 数字宫位 "Maison 7" ② 法语序数词 "septième maison" ③ LLM 偶发英文混用 (Scorpio/Lion)
 import subprocess, json, re, urllib.request, sys
 
 # 朗伊尔城极地 Case（军师指定，测试极地分宫降级 + 法语锁）
@@ -15,6 +15,12 @@ FR2EN = {
     'Lion': 'Leo', 'Vierge': 'Virgo', 'Balance': 'Libra', 'Scorpion': 'Scorpio',
     'Sagittaire': 'Sagittarius', 'Capricorne': 'Capricorn', 'Verseau': 'Aquarius', 'Poissons': 'Pisces',
 }
+# 法语序数词 → 数字（报告宫位用 "septième maison" 等序数词）
+ORDINAL_FR = {
+    'première': 1, 'premier': 1, 'deuxième': 2, 'troisième': 3, 'quatrième': 4,
+    'cinquième': 5, 'sixième': 6, 'septième': 7, 'huitième': 8, 'neuvième': 9,
+    'dixième': 10, 'onzième': 11, 'douzième': 12,
+}
 SIGN_EN = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio',
            'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
 PLANETS = [("Sun", "Soleil"), ("Moon", "Lune"), ("Mercury", "Mercure"), ("Venus", "Vénus"),
@@ -24,6 +30,18 @@ PLANETS = [("Sun", "Soleil"), ("Moon", "Lune"), ("Mercury", "Mercure"), ("Venus"
 
 def run(cmd):
     return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+
+
+def extract_house(seg):
+    """从片段提取宫位：优先数字 Maison N，否则法语序数词 (septième maison)"""
+    mnum = re.search(r'Maison\s*(\d+)', seg, re.I)
+    if mnum:
+        return int(mnum.group(1))
+    mord = re.search(r'\b(première|premier|deuxième|troisième|quatrième|cinquième|sixième|'
+                     r'septième|huitième|neuvième|dixième|onzième|douzième)\s+maison', seg, re.I)
+    if mord:
+        return ORDINAL_FR[mord.group(1).lower()]
+    return None
 
 
 # 算报告月 transit 真值（months[0]）
@@ -68,14 +86,11 @@ for en, fr in PLANETS:
     found = False
     for mm in re.finditer(re.escape(fr) + r"\s+en\s+([A-Za-zÀ-ÿÉè]+)", report):
         seg = report[mm.start():mm.start() + 150]
-        # 行星名后到首个星座之间的定语含 natal → 本命句，跳过
         pre = seg[len(fr):seg.find(mm.group(1))].lower()
         if 'natal' in pre or 'natale' in pre:
             continue
         raw_sign = mm.group(1)
-        mh = re.search(r'Maison\s*(\d+)', seg)
-        got_house = int(mh.group(1)) if mh else None
-        # 归一星座：法语 → 英文；英文直接用
+        got_house = extract_house(seg)
         got_sign_en = FR2EN.get(raw_sign) or (raw_sign if raw_sign in SIGN_EN else None)
         ok_sign = got_sign_en == t[0]
         ok_house = got_house == t[1]
@@ -88,13 +103,16 @@ for en, fr in PLANETS:
             print(f"  ✅ {en}: {raw_sign} H{got_house}")
         break
     if not found:
-        # 退化：找含 Maison 的任意句
+        # 退化：找含 Maison/序数词 的任意句
         for s in re.split(r'[.。!]', report):
-            if fr in s and 'en ' in s and 'Maison' in s and 'natal' not in s.lower():
-                m2 = re.search(re.escape(fr) + r".*?en\s+([A-Za-zÀ-ÿÉè]+).*?Maison\s*(\d+)", s, re.S)
+            if fr in s and 'en ' in s and ('maison' in s.lower()) and 'natal' not in s.lower():
+                m2 = re.search(re.escape(fr) + r".*?en\s+([A-Za-zÀ-ÿÉè]+).*?"
+                              r"(?:Maison\s*(\d+)|(première|premier|deuxième|troisième|quatrième|"
+                              r"cinquième|sixième|septième|huitième|neuvième|dixième|onzième|douzième)\s+maison)",
+                              s, re.S | re.I)
                 if m2:
                     raw_sign = m2.group(1)
-                    got_house = int(m2.group(2))
+                    got_house = int(m2.group(2)) if m2.group(2) else ORDINAL_FR.get(m2.group(3).lower())
                     got_sign_en = FR2EN.get(raw_sign) or (raw_sign if raw_sign in SIGN_EN else None)
                     checked += 1
                     found = True
