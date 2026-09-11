@@ -2866,15 +2866,17 @@ function _natalTruthMap10_TH(astroMatrix) {
 }
 
 // 泰语从句归因窗口（镜像 _viClause，无显式 natal 标记，用 transit 动词排他）
+// 🛠️ V424-fix2: 改逻辑——无 transit 动词即接受（泰国月报句型多无显式 transit 标记，
+//  本命与流月混写，用 transit 排除保护更可靠）。
+//  接受条件：无 transit 动词（显式标记不强制要求）。
 function _thClause(text, i, len) {
   const aEnd = i + len;
-  // 锚点后 30 字内找显式 natal/born 标记
-  const explicit = /natal|ของคุณ/i.test(text.slice(aEnd, aEnd + 30));
-  // 强标记 → 接受；无强标记时：后段含 transit 动词 → 明确流月，不碰
+  // 先找前向从句（含锚点后 90 字）
   let fwd = text.slice(aEnd, aEnd + 90);
   const e = fwd.search(_TH_CLAUSE_BREAK);
   if (e >= 0) fwd = fwd.slice(0, e);
-  if (!explicit && _TH_TRANSIT_MARK.test(fwd)) return null;
+  // 核心规则：含 transit 动词 → 明确流月，拒绝；无 transit → 接受
+  if (_TH_TRANSIT_MARK.test(fwd)) return null;
   // 节点轴截断（镜像 V423-fix-node-axis）
   const axisIdx = fwd.search(_TH_AXIS);
   if (axisIdx >= 0) fwd = fwd.slice(0, axisIdx);
