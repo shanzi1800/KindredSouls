@@ -654,7 +654,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-      body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? 10000 : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.08 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
+      // 🛡️ V437-fix: 泰文 BPE 膨胀效应——3700 泰字符≈4500-5500 tokens，加上 Prompt 侧已消耗，
+      //   deepseek-flash 8K 模型总容量在输出中途爆表（实测 3726 字符截断在陷阱标题）。
+      //   按语种扩容：th/vi 月报→16384，zh 月报→12000，其余→10000
+      body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? (lang === 'th' || lang === 'vi' ? 16384 : lang === 'zh' ? 12000 : 10000) : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.08 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -9724,7 +9727,7 @@ async function streamGeminiChunk(prompt, onChunk, langForClean = "zh") {
       model: 'deepseek-flash',
       thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 10000,
+      max_tokens: langForClean === 'th' || langForClean === 'vi' ? 16384 : langForClean === 'zh' ? 12000 : 10000,
       temperature: 0.7,
       stream: true,
     })),
