@@ -673,7 +673,8 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   let chunkCount = 0;
   // 🛡️ V222z-fix13e: text 流层单锚截断——MISS 路径下 sanitized 从不触发,必须在 text 流层直接断流
   let _monthlyCutDone = false;
-  const _MONTHLY_THEME_RE = /\✦\s*\[\🔮/g;
+  // 🛡️ V436-fix2: 加换行前缀要求——注入的标准标题在 text 最开头(无前置换行)不触发截断守卫，LLM 自生成的 ✦ [🔮 才触发
+  const _MONTHLY_THEME_RE = /\n\✦\s*\[\🔮/g;
   // 🛠️ V362: 全局心跳同步升级为 1KB 重型心跳
   const heartbeat = setInterval(() => { try { if (typeof res?.write === 'function') { res.write(': ' + ' '.repeat(1024) + '\n\n'); if (typeof res.flush === 'function') res.flush(); } } catch(e){} }, 20000);
   try {
