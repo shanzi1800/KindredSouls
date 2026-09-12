@@ -8597,14 +8597,18 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 主锚点: 「✦ [🔮」——🔮 emoji 只出现在月度主题头（✦ [🔮 Tema/Monthly/本月命运主题...]），全语言通用
       // AI 重复输出完整月报时,第2份必然以主题头重新开始 → 找到第2个 🔮 头即第2份起点
       const _themeMark = '✦ [🔮';
-      const _firstTheme = text.indexOf(_themeMark);
+      // 🛡️ V436-fix2 V322补丁: 注入的标题在 text 开头(V386-fix 强制注入),
+      // 不算作第一份报告主题头——只有落入正文深处(pos>100)的才可能是真正的第一份
+      let _firstTheme = text.indexOf(_themeMark);
+      if (_firstTheme >= 0 && _firstTheme < 100) _firstTheme = text.indexOf(_themeMark, 100);
       // 🛠️ V394-fix5: 无括号变体锚点——LLM 第二份报告主题头偶发丢方括号('✦ 🔮 Chủ đề...'),
       //   主锚点匹配不到导致双份报告残留(1981-09-08 实证: 报告A腰斩+报告B从头插入)。
       //   退化到宽松锚点 '✦ 🔮'(正文不会用🔮 emoji,安全)再扫一遍第2份起点。
       let _secondTheme = _firstTheme >= 0 ? text.indexOf(_themeMark, _firstTheme + _themeMark.length) : -1;
       if (_secondTheme < 0) {
         const _looseMark = '✦ 🔮';
-        let _scanFrom = 0;
+        // 🛡️ V436-fix2: loose mark 也跳过 text 前 100 字符(注入的 ✦ 🔮 也在开头)
+        let _scanFrom = 100;
         let _looseCount = 0;
         for (;;) {
           const _hit = text.indexOf(_looseMark, _scanFrom);
