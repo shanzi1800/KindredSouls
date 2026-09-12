@@ -4309,7 +4309,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
     wkFirst[w.week] = firstLeg ? { idx: _EN2ZIDX[firstLeg.sign], house: firstLeg.house } : null;
   }
   // ⚠️ moonRe 用字符串表（\\b 在字符串里=词边界；正则字面量的 .source 喂 new RegExp 会被重解析成退格符，导致月亮关键词永远匹配不上）
-  const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '\\b月亮\\b', en: '\\bMoon\\b', fr: '\\bLune\\b', th: '\\bดวงจันทร์\\b' }[lang];
+  const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '月亮', en: '\\bMoon\\b', fr: '\\bLune\\b', th: 'ดวงจันทร์' }[lang];  // zh/th 不用 \b（CJK/泰文非 \w，边界失效）
   if (!moonRe) return text;
   const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
   const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación)/i;
@@ -4320,8 +4320,8 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
   while (sp !== -1) {
     const np = text.indexOf('✦', sp + 1);
     const seg = np === -1 ? text.slice(sp) : text.slice(sp, np);
-    const hm = seg.match(/(?:Semana|Tuần|Week|周|สัปดาห์ที่)\s*([1-4])/);
-    segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1], 10) : 0 });
+    const hm = seg.match(/(?:Semana|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);  // 兼容中文「第N周」（数字在「周」前）
+    segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1] || hm[2] || hm[3], 10) : 0 });
     if (np === -1) break;
     sp = np;
   }

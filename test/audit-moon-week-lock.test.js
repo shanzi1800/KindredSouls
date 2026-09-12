@@ -81,4 +81,10 @@ describe('V433-fix4：月亮周级硬锁', () => {
     assert.equal(F._v433LockMoonWeek(inp, 'vi', null), inp);
     assert.equal(F._v433LockMoonWeek(inp, 'vi', {}), inp);
   });
+  test('⑦ CJK 月亮锁生效（中文 \\b 边界失效回归）', () => {
+    const inp = '✦ [🟢 第1周: 9月1–7日] X\n月亮进入天蝎座（第6宫），日常工作中的努力开始转化为实际收入。';
+    const out = F._v433LockMoonWeek(inp, 'zh', astro);
+    assert.ok(out.includes('白羊座'), 'zh 月亮锁未生效（CJK \\b 边界失效）: ' + out);
+    assert.ok(!out.includes('天蝎座'), 'zh 越界天蝎座残留');
+  });
 });
