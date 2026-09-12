@@ -8718,6 +8718,9 @@ app.listen(PORT, HOST, () => {
   console.log(`[KindredSouls]  Railway server running on port ${PORT}`);
   console.log(`  - API: http://0.0.0.0:${PORT}/api/*`);
   console.log(`  - Web: http://0.0.0.0:${PORT}/`);
+  // V431: 启动即打「真值锁清单」——以后判定「新代码是否在线」不再靠猜部署哈希（webhook 部署 commitHash 常为 `-`），
+  //       直接 grep 本行即可。任何一次解锁/回退都会在这行上体现。
+  console.log('[BUILD] V431 真值锁清单: vi(natal+transit) | th(natal+transit) | fr(natal+transit+定语家族裁定) | 外文星座名归真(Aries→Bélier) | HOUSE-NUMBER-FORMAT V375(en/th/vi/fr)');
 });
 // FORCE REBUILD 1783756900
 
