@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -5140,6 +5140,9 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
 }
 
 function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
+  // ⚠️ V433 实测发现：本函数全仓零调用点 = 死代码。月报实际走 buildWealthReportPrompt (5694, 调用点 7140/7856)。
+  //    血泪：V383 月亮换座表、STRICT_GROUNDING V232、以及 V433 首次注入都曾落在这里 → 生产零效果。
+  //    改动前必须先确认调用链：grep -n "函数名(" server.js（注入点守卫测试见 test/audit-moon-weeks.test.js）。
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -5764,6 +5767,24 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const aspectsData = astroMatrix ? buildAspectsData(astroMatrix, lang) : '';
   // 🛠️ V177-P1: 全12月可读行星数据块，LLM照单抄不瞎猜
   const monthlyDataBlock = astroMatrix ? buildPerMonthDataBlock(astroMatrix, lang) : '';
+  // 🛠️ V433 · 方案 A：月亮「周级真值」（根治「月中快照充当全月」的事实性幻觉）
+  //   病根实证（1988-12-31 Chatham 盘 / 2026-09，es 生产）：
+  //   ① 月报走的是 buildWealthReportPrompt（本函数），而 V383 月亮换座表与 EPHEMERIS 块
+  //      都在 buildMonthlyPrompt —— 全仓零调用点的死代码 → 生产从未喂过任何月亮流月数据；
+  //   ② 唯一月亮数据是 P1 块里的月中快照 Moon=Escorpio(H2) → 模型当全月常量抄，
+  //      W1/W3/W4+陷阱段共 5 处写同一星座（真值 W1=Aries→Cancer、W4=Aquarius→Taurus）。
+  //   治本：① 对月报摘掉 Moon 行（不留误导锚点）② 注入按周切分的真实月亮轨迹 + 硬规则。
+  const _moonWeeks = astroMatrix?.months?.[0]?.moon_weeks || null;
+  // ⚠️ 不得用 curMonthName：它在 live 函数里 5949 行才声明（本月报分支内），此处引用会 TDZ/未定义。
+  //    改用引擎自带的月名（如 'Sep 2026' → 'Sep'），语言无关、无作用域依赖。
+  const _mwMonthLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
+  const moonWeekBlock = buildMoonWeekBlock(astroMatrix, lang, _mwMonthLabel);
+  const monthlyDataBlockMoon = (_moonWeeks
+    ? monthlyDataBlock.replace(/\s*Moon=[^\s]+\*snap\*/g, '')
+    : monthlyDataBlock) + moonWeekBlock;
+  if (_moonWeeks) {
+    console.log(`[V433] 月亮周级真值注入: ${_moonWeeks.map(w => `W${w.week}=${w.legs.length}腿/${(w.changes || []).filter(c => c.kind === 'sign').length}换座`).join(' ')}`);
+  }
 
   // ── 多语言标题字典（军师裁决 V136 — buildWealthReportPrompt 专用版）──
   const MONTH_ABBR = {
@@ -6007,6 +6028,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 ### [STRICT GROUNDING V374 — SUN/HOUSE/TITLE RULES]
 5. SUN INGRESS SINGLE-USE: The Sun enters each zodiac sign ONLY ONCE per month. Write it ONLY in the week containing the actual ingress date. NEVER in two weeks.
 6. HOUSE CONSISTENCY: Planet House number MUST match the data block. If data says "Venus: Scorpio 第5宫", EVERY mention MUST say 第5宫. NEVER write 第8宫 or 第9宫 for the same planet.
+6b. MOON PER-WEEK TRUTH (V433 · HIGHEST PRIORITY): The Moon changes sign every ~2.5 days, so it NEVER keeps one sign for a month — its single mid-month value was REMOVED from the data block on purpose. For every weekly section take the Moon sign AND house ONLY from that week's line of [MOON PER-WEEK TRUTH V433]. NEVER repeat one Moon sign in two different weeks; NEVER name a Moon sign that is not listed for that week.
 7. TITLE FORMAT: Monthly theme title MUST use your own language. Chinese=✦ [🔮 本月命运主题] ✦, English=✦ [🔮 Monthly Destiny Theme] ✦, Spanish=✦ [🔮 Tema de Destino Mensual] ✦, French=✦ [🔮 Thème de Destin du Mois] ✦, Thai=✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦, Vietnamese=✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦. The 🔮 crystal ball icon is MANDATORY. (with ✦ and [🔮 ] brackets). NEVER bare text without brackets.
 `).replaceAll('{MONTH}', curMonthName)
       .split('{{risk_limit}}').join(_riskLimit).split('{{cooldown_hours}}').join(_cooldownH);
@@ -6052,7 +6074,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 ${planetBlockWithWarning}
 
 🛠️ [P1 全12月行星数据 - 严禁自行计算]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [宫位直写铁律]: 提到行星宫位时，直接写"第N宫"（如"木星在狮子座第2宫带来财富"），严禁使用任何 {{}} 模板占位符或英文 token 标记。后端不再做占位符替换。
@@ -6103,7 +6125,7 @@ ${HT_RP.trap}
 ${planetBlockWithWarning}
 
 🛠️ [P1 FULL 12-MONTH PLANET DATA — COPY EXACTLY, NEVER CALCULATE]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 ASTROGRAPHIC RULES:
 • All planetary positions above are computed by Swiss Ephemeris — follow EXACTLY
@@ -6138,7 +6160,7 @@ ${HT_RP.trap}
 ${planetBlockWithWarning}
 
 🛠️ [P1 DATOS PLANETARIOS 12 MESES — COPIAR EXACTO, NUNCA CALCULAR]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
@@ -6175,7 +6197,7 @@ ${HT_RP.trap}
 ${planetBlockWithWarning}
 
 🛠️ [P1 DONNÉES PLANÉTAIRES 12 MOIS — COPIER EXACTEMENT, NE JAMAIS CALCULER]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 RÈGLES ASTROGRAPHIQUES:
 • Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
@@ -6214,7 +6236,7 @@ ${HT_RP.trap}
 ${planetBlockWithWarning}
 
 🛠️ [P1 ข้อมูลดาวเคราะห์ 12 เดือน — คัดลอกตรงๆ ห้ามคำนวณเอง]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 🛠️ [แยกแยะ NATAL vs TRANSIT — สำคัญที่สุด]:
 • [P1 PER-MONTH PLANET DATA] คือตำแหน่งดาวทรานซิส (transit) ของแต่ละเดือน — ต้องใช้สำหรับคำอธิบายดาวทรานซิส เท่านั้น ชื่อราศีต้องตรงกับข้อมูลนี้ทุกตัวอักษร ห้ามเปลี่ยน
@@ -6262,7 +6284,7 @@ ${HT_RP.trap}
 ${planetBlockWithWarning}
 
 🛠️ [P1 DỮ LIỆU HÀNH TINH 12 THÁNG — SAO CHÉP CHÍNH XÁC, TUYỆT ĐỐI KHÔNG TÍNH TOÁN]:
-${monthlyDataBlock}
+${monthlyDataBlockMoon}
 
 QUY TẮC THIÊN VĂN:
 • Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC

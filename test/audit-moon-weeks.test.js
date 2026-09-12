@@ -122,7 +122,7 @@ describe('V433 月亮周级真值', () => {
     const out = buildPerMonthDataBlock(fake, 'zh');
     assert.ok(out.includes('Moon=天蝎座(H2)*snap*'), '月亮未打快照标记: ' + out);
     assert.ok(/MID-MONTH SNAPSHOT/.test(out), '缺 legend 快照说明');
-    assert.ok(out.includes('WEEK-SCOPED MOON TRUTH'), 'legend 未指向周级真值');
+    assert.ok(out.includes('MOON PER-WEEK TRUTH'), 'legend 未指向周级真值块名');
     // 非月亮行星不得被误标
     assert.ok(!/Mercury=[^*]*\*snap\*/.test(out), '非月亮行星被误标快照');
     // 🛠️ V433-fix 回归：本地化字典必须真正生效（SIGN_NAMES 缩写表 indexOf 全称 = -1 的致命死代码）
@@ -140,4 +140,30 @@ describe('V433 月亮周级真值', () => {
     assert.ok(out.includes('Moon=Scorpio(H2)*snap*'), '缺省快照标记丢失');
     assert.ok(out.includes('Sun=Virgo(H1)'), '英文渲染异常');
   });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V433 注入点守卫：必须在「活代码」路径上（血泪：V383 月亮换座表 + 首次 V433
+// 注入都落在了 buildMonthlyPrompt —— 全仓零调用点的死代码里 → 零效果）
+// ═══════════════════════════════════════════════════════════════════════════
+test('V433 注入点在活路径 + 死代码防线', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const liveStart = src.indexOf('function buildWealthReportPrompt');
+  const liveEnd = src.indexOf('function buildCompatibilityReportPrompt');
+  assert.ok(liveStart > 0 && liveEnd > liveStart, '未能定位 live 月报构造器');
+  const live = src.slice(liveStart, liveEnd);
+
+  assert.ok(live.includes('const monthlyDataBlockMoon'), 'live 分支缺 monthlyDataBlockMoon');
+  const refs = (live.match(/\$\{monthlyDataBlockMoon\}/g) || []).length;
+  assert.equal(refs, 6, `六语种月报模板应全部引用周级块，实际 ${refs} 处`);
+  assert.ok(live.includes('MOON PER-WEEK TRUTH'), 'live 分支缺 V433 硬规则');
+  assert.ok(live.includes('buildMoonWeekBlock('), 'live 分支未调用 buildMoonWeekBlock');
+  assert.ok(!/\$\{monthlyDataBlock\}\s*\n/.test(live.split('function buildMonthlyPrompt')[0]),
+    'live 分支仍在直接使用原始数据块（快照锚点未摘）');
+
+  // 死代码防线：live 月报构造器必须有多个调用点；死掉的 buildMonthlyPrompt 必须带警示
+  const liveCalls = (src.match(/buildWealthReportPrompt\(/g) || []).length;
+  assert.ok(liveCalls >= 3, `live 月报构造器调用点异常: ${liveCalls}（定义1 + 调用≥2）`);
+  const deadBlock = src.slice(src.indexOf('function buildMonthlyPrompt'), src.indexOf('function buildWealthOncePrompt'));
+  assert.ok(deadBlock.includes('死代码'), 'buildMonthlyPrompt 缺死代码警示注释（后来人易再踩）');
 });

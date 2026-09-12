@@ -473,22 +473,61 @@ function _signIdxOf(s) {
   const k = String(s).slice(0, 3).toLowerCase();   // 兼容缩写/大小写变体
   return SIGN_NAMES.findIndex((x) => x.toLowerCase() === k);
 }
+
+// 🛠️ V432/V433: 全语言「本地化全称星座名」字典（喂缩写会逼 LLM 二次翻译，进而偷抄本命锚点）
+const SIGN_L10N = {
+  zh: ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],
+  en: ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
+  es: ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'],
+  fr: ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'],
+  th: ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'],
+  vi: ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'],
+};
+
+/**
+ * 🛠️ V433 方案 A：月亮「周级真值」Prompt 块（根治「月中快照充当全月」的事实性幻觉）
+ *
+ * 病根实证（1988-12-31 Chatham 盘 / 2026-09，es 生产）：月报唯一月亮数据是 P1 块里的
+ * 月中快照 Moon=Escorpio(H2)，模型把它当全月常量 → W1/W3/W4+陷阱段共 5 处写同一星座
+ * （真值 W1=Aries→Cancer、W4=Aquarius→Taurus）。
+ *
+ * @param {object} astroMatrix 引擎矩阵（需含 months[0].moon_weeks）
+ * @param {string} lang 语言码
+ * @param {string} monthName 当月本地化名（如 "Sept"）
+ * @returns {string} 供 prompt 注入的块文本；无数据时返回 ''
+ */
+export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
+  const weeks = astroMatrix?.months?.[0]?.moon_weeks;
+  if (!Array.isArray(weeks) || !weeks.length) return '';
+  const L = SIGN_L10N[lang] || SIGN_L10N.en;
+  const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
+  const lines = weeks.map((w) => {
+    // 按星座聚合宫位：同一星座跨两宫 → H7→H8（宫位制的数学必然，非矛盾）
+    const groups = [];
+    for (const lg of w.legs) {
+      const last = groups[groups.length - 1];
+      if (last && last.sign === lg.sign) {
+        if (last.houses[last.houses.length - 1] !== lg.house) last.houses.push(lg.house);
+      } else groups.push({ sign: lg.sign, houses: [lg.house] });
+    }
+    const path = groups.map((g) => `${loc(g.sign)}(H${g.houses.join('→H')})`).join(' → ');
+    const ing = (w.changes || []).filter((c) => c.kind === 'sign')
+      .map((c) => `${loc(c.to_sign)}@${monthName} ${c.day} ${c.time}`).join(', ');
+    return `- Week ${w.week} (${monthName} ${w.from_day}–${w.to_day}): ${path}${ing ? ` | Moon enters: ${ing}` : ''}`;
+  });
+  return '\n\n⚠️ [MOON PER-WEEK TRUTH V433 — SwissEph computed, local time · THIS IS THE ONLY VALID MOON SOURCE]\n' +
+    'The Moon changes zodiac sign every ~2.5 days. The single mid-month Moon value was deliberately REMOVED from the\n' +
+    'per-month data block: it is one instant and CANNOT represent a whole week. Use ONLY these per-week lists:\n' +
+    lines.join('\n') +
+    '\n⛔ HARD RULE: In each weekly section you may ONLY name the Moon signs listed for THAT week (in that order); describe the passage when several are listed. NEVER repeat one Moon sign across two different weeks (the Moon enters each sign only ONCE per month). NEVER use a Moon sign absent from that week\'s list. HOUSES MUST MATCH the (H…) values above.';
+}
 const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
 const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
 
 export function buildPerMonthDataBlock(astroMatrix, lang) {
   if (!astroMatrix?.months) return '';
   const months = astroMatrix.months;
-  const labels = {
-    // 🛠️ V432: 全语言统一喂「本地化全称星座名」——喂缩写(Ari/Tau)会逼 LLM 二次翻译，
-    //   进而把本命锚点偷抄进流月段（vi/th/fr 已实锤的根因，这里一次性对齐）
-    zh: ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],
-    en: ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
-    es: ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'],
-    fr: ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'],
-    th: ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'],
-    vi: ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'],
-  };
+  const labels = SIGN_L10N;   // V433: 字典提升为模块级常量 SIGN_L10N（供 buildMoonWeekBlock 复用）
   const L = labels[lang] || labels.zh;
 
   // 月份标签
@@ -504,7 +543,7 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
 
   const lines = [
     '[P1 PER-MONTH PLANET DATA — EVERY WORD IS TRUE — COPY EXACTLY INTO YOUR REPORT]',
-    '(*snap* = MID-MONTH SNAPSHOT — a single instant. Applies to the Moon: it changes sign every ~2.5 days, so for week-by-week Moon statements you MUST use WEEK-SCOPED MOON TRUTH in EPHEMERIS_DATA, NEVER this value.)',
+    '(*snap* = MID-MONTH SNAPSHOT — a single instant. Applies to the Moon: it changes sign every ~2.5 days, so for week-by-week Moon statements you MUST use the [MOON PER-WEEK TRUTH V433] block, NEVER this value.)',
   ];
   months.forEach((m, i) => {
     const wkMap = i === 0 ? 'W1=Wk1,W2=Wk2,W3=Wk3,W4=Wk4' :
