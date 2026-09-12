@@ -3786,6 +3786,570 @@ function lockTransitTruthFr(text, astroMatrix) {
   return result;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// V432: en / es / zh 真值双锁通用引擎（镜像 V421-vi / V424-th / V426-V431-fr 架构）
+//
+// 为什么写「通用引擎 + 语言配置」而不是再抄三份：
+//   判据宽度 = 防线宽度（V431 实锤）。三份拷贝 = 三处可能写歪的判据、三处可能漏的变体。
+//   一份引擎 + 三个配置，判据只写一次，新增语言只加配置。
+//
+// 与既有 vi/th/fr **完全解耦**：本块不引用、不修改任何既有锁符号；既有三语锁继续独立工作。
+//
+// ⚠️ TDZ 铁律：本块顶层**不得**引用 SUN_SIGN_EN/ES/ZH（它们的 const 声明在本块之后），
+//   一律惰性 `_v432Signs()` 取用。V421 曾因顶层引用后置 const 导致全站 502，
+//   而 `node --check` 只查语法抓不到 → 必须靠启动烟测（test/smoke-boot.test.js）兜底。
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _V432_LANGS = ['en', 'es', 'zh'];
+const _V432_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+const _V432_NAME = {
+  en: { Sun: 'Sun', Moon: 'Moon', Mercury: 'Mercury', Venus: 'Venus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluto' },
+  es: { Sun: 'Sol', Moon: 'Luna', Mercury: 'Mercurio', Venus: 'Venus', Mars: 'Marte', Jupiter: 'J\u00fapiter', Saturn: 'Saturno', Uranus: 'Urano', Neptune: 'Neptuno', Pluto: 'Plut\u00f3n' },
+  zh: { Sun: '\u592a\u9633', Moon: '\u6708\u4eae', Mercury: '\u6c34\u661f', Venus: '\u91d1\u661f', Mars: '\u706b\u661f', Jupiter: '\u6728\u661f', Saturn: '\u571f\u661f', Uranus: '\u5929\u738b\u661f', Neptune: '\u6d77\u738b\u661f', Pluto: '\u51a5\u738b\u661f' },
+};
+// 英文星座名 → 本地化（仅 es/zh 需要；en 自身即真值语言，不需要归真）
+const _V432_EN2LOC = {
+  es: { Aries: 'Aries', Taurus: 'Tauro', Gemini: 'G\u00e9minis', Cancer: 'C\u00e1ncer', Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Escorpio', Sagittarius: 'Sagitario', Capricorn: 'Capricornio', Aquarius: 'Acuario', Pisces: 'Piscis' },
+  zh: { Aries: '\u767d\u7f8a\u5ea7', Taurus: '\u91d1\u725b\u5ea7', Gemini: '\u53cc\u5b50\u5ea7', Cancer: '\u5de8\u87f9\u5ea7', Leo: '\u72ee\u5b50\u5ea7', Virgo: '\u5904\u5973\u5ea7', Libra: '\u5929\u79e4\u5ea7', Scorpio: '\u5929\u874e\u5ea7', Sagittarius: '\u5c04\u624b\u5ea7', Capricorn: '\u6469\u7faf\u5ea7', Aquarius: '\u6c34\u74f6\u5ea7', Pisces: '\u53cc\u9c7c\u5ea7' },
+};
+const _V432_ZH_NUM = { '\u4e00': 1, '\u4e8c': 2, '\u4e09': 3, '\u56db': 4, '\u4e94': 5, '\u516d': 6, '\u4e03': 7, '\u516b': 8, '\u4e5d': 9, '\u5341': 10, '\u5341\u4e00': 11, '\u5341\u4e8c': 12 };
+const _V432_ES_ORD = { primera: 1, segundo: 2, segunda: 2, tercera: 3, cuarta: 4, quinta: 5, sexta: 6, 's\u00e9ptima': 7, septima: 7, octava: 8, novena: 9, 'd\u00e9cima': 10, decima: 10, 'und\u00e9cima': 11, undecima: 11, 'duod\u00e9cima': 12, duodecima: 12 };
+const _V432_ES_ORD_FORMAT = { 1: 'primera', 2: 'segunda', 3: 'tercera', 4: 'cuarta', 5: 'quinta', 6: 'sexta', 7: 's\u00e9ptima', 8: 'octava', 9: 'novena', 10: 'd\u00e9cima', 11: 'und\u00e9cima', 12: 'duod\u00e9cima' };
+
+// ── 惰性取本地化星座名（防 TDZ）──
+function _v432Signs(lang) {
+  if (lang === 'en') return SUN_SIGN_EN;
+  if (lang === 'es') return SUN_SIGN_ES;
+  if (lang === 'zh') return SUN_SIGN_ZH;
+  return null;
+}
+// 附加可识别写法（中文短名：报告里常写「白羊」而非「白羊座」）
+function _v432SignAlts(lang) {
+  return lang === 'zh' ? ['\u767d\u7f8a', '\u91d1\u725b', '\u53cc\u5b50', '\u5de8\u87f9', '\u72ee\u5b50', '\u5904\u5973', '\u5929\u79e4', '\u5929\u874e', '\u5c04\u624b', '\u6469\u7faf', '\u6c34\u74f6', '\u53cc\u9c7c'] : [];
+}
+function _v432AllSignWords(lang) {
+  const s = _v432Signs(lang) || [];
+  return s.concat(_v432SignAlts(lang));
+}
+
+// ── 语言配置（纯字面量；全角/拉丁皆按各语言真实书写习惯）──
+const _V432_CFG = {
+  en: {
+    markerSide: 'pre',          // 英文定语在行星名**之前**：your natal Sun
+    marker: 'natal',
+    natalSuf: /^\s*[(\u2014-]?\s*(?:natal|native|of birth|at birth|birth-chart)\b/i,
+    natalPre: /(?:\bnatal|\bnative|\bbirth(?:[-\s]?chart)?|\bnativ\w*|\bof birth|\bat birth)\s*$/i,
+    natalAny: /\b(?:natal|native|of birth|at birth|birth-chart)\b/i,
+    transitSuf: /^\s*[(\u2014-]?\s*(?:in transit|transiting|transits?|of the month|this month|current)\b/i,
+    transitPre: /(?:\btransit\w*|\bcurrent|\bmonthly|\bthis month'?s?)\s*$/i,
+    transitMark: /\b(?:transit\w*|enters?|entering|moves?|moving|passes?|crosses?|reaches?|travels?|visits?|journey\w*|this month|current)\b/i,
+    transitVerb: /\b(?:moves?|moving|travels?|journey\w*|passes?|crosses?|reaches?|enters?|entering|glides?|shifts?|returns?|arrives?|sweeps?|visits?)\b/i,
+    ingress: /\b(?:enters?|entering|ingress)\b/i,
+    posMark: /\b(?:in|into|at)\b\s+[A-Z]/,
+    bodyAny: /(?:^|[\s(])(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/,
+    clauseBreak: /[.;!?:()\n]|\s(?:and|but|or|while|when|as|so|yet|then)\s/gi,
+    axis: /\baxis\b|\bpolarity\b|\bbetween\b[^.]{0,60}\band\b/i,
+    houseNum: /\bHouse\s*(\d{1,2})\b/i,
+    houseOrd: /\b(\d{1,2})(?:st|nd|rd|th)\s+House\b/i,
+    houseFmt: (n) => 'House ' + n,
+    houseOrdFmt: (n) => n + ((n % 10 === 1 && n !== 11) ? 'st' : (n % 10 === 2 && n !== 12) ? 'nd' : (n % 10 === 3 && n !== 13) ? 'rd' : 'th') + ' House',
+    ctx: /\b(?:natal|native|birth|your chart|your sky)\b/i,
+    dayRe: [/\bDay\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i, /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})\b/i],
+    endHint: /\bend of (?:the )?month\b|\bfinal week\b|\bweek\s*4\b|\blast week\b/i,
+    startHint: /\bbeginning of (?:the )?month\b|\bfirst week\b|\bweek\s*1\b/i,
+  },
+  es: {
+    markerSide: 'post',         // 西语定语在行星名**之后**：el Sol natal
+    marker: 'natal',
+    natalSuf: /^\s*[(\u2014-]?\s*(?:natal(?:es)?|de nacimiento|natales|nacido|nacida)\b/i,
+    natalPre: /(?:\bnatal(?:es)?|\bde nacimiento|\bnacido|\bnacida|\bnativ\w*)\s*$/i,
+    natalAny: /\b(?:natal(?:es)?|nacimiento|nacido|nacida)\b/i,
+    transitSuf: /^\s*[(\u2014-]?\s*(?:en tr[a\u00e1]nsito|transitando|transita|del mes|de este mes|actual(?:es)?)\b/i,
+    transitPre: /(?:\btransitando|\ben tr[a\u00e1]nsito|\bdel mes|\bactual)\s*$/i,
+    transitMark: /\b(?:tr[a\u00e1]nsito|transitando|transita|recorre|avanza|pasa|entra en|ingresa|del mes|de este mes|actual)\b/i,
+    transitVerb: /\b(?:recorre|avanza|pasa|entra|ingresa|transita|viaja|cruza|llega|se desplaza|retorna)\b/i,
+    ingress: /\b(?:entra en|entrar[a\u00e1] en|ingresa en|ingresar[a\u00e1] en)\b/i,
+    posMark: /\b(?:en)\b\s+[A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00d1]/,
+    bodyAny: /(?:^|[\s(])(?:Sol|Luna|Mercurio|Venus|Marte|J\u00fapiter|Saturno|Urano|Neptuno|Plut\u00f3n)\b/,
+    clauseBreak: /[.;!?:()\n]|\s(?:y|pero|o|mientras|cuando|aunque|entonces)\s/gi,
+    axis: /\beje\b|\bentre\b[^.]{0,60}\by\b/i,
+    houseNum: /\bCasa\s*(\d{1,2})\b/i,
+    houseOrd: /\b(primera|segunda|tercera|cuarta|quinta|sexta|s[e\u00e9]ptima|octava|novena|d[e\u00e9]cima|und[e\u00e9]cima|duod[e\u00e9]cima)\s+casa\b/i,
+    houseFmt: (n) => 'Casa ' + n,
+    houseOrdFmt: (n) => (_V432_ES_ORD_FORMAT[n] || n) + ' casa',
+    ctx: /\b(?:natal(?:es)?|nacimiento|tu carta|tu cielo)\b/i,
+    dayRe: [/\bD[i\u00ed]a\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i],
+    endHint: /\bfin de mes\b|\bfinal del mes\b|\b[u\u00fa]ltima semana\b|\bsemana\s*4\b/i,
+    startHint: /\bprincipio de mes\b|\bcomienzo del mes\b|\bprimera semana\b|\bsemana\s*1\b/i,
+  },
+  zh: {
+    markerSide: 'pre',          // 中文定语在行星名**之前**：本命太阳
+    marker: '\u672c\u547d',
+    natalSuf: /^\s*[(\uff08]?\s*(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
+    natalPre: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)\s*$/,
+    natalAny: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
+    transitSuf: /^\s*[(\uff08]?\s*(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)/,
+    transitPre: /(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)\s*$/,
+    transitMark: /(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d|\u8fdb\u5165|\u5165\u9a7b|\u7ecf\u8fc7|\u79fb\u81f3|\u8d70\u5230)/,
+    transitVerb: /(?:\u8fdb\u5165|\u5165\u9a7b|\u7ecf\u8fc7|\u79fb\u81f3|\u8d70\u5230|\u884c\u81f3|\u8fd0\u884c|\u56de\u5230|\u62b5\u8fbe|\u626b\u8fc7)/,
+    ingress: /(?:\u8fdb\u5165|\u5165\u9a7b)/,
+    posMark: /(?:\u5728|\u4e8e|\u4f4d\u4e8e)/,
+    bodyAny: /(?:\u592a\u9633|\u6708\u4eae|\u6c34\u661f|\u91d1\u661f|\u706b\u661f|\u6728\u661f|\u571f\u661f|\u5929\u738b\u661f|\u6d77\u738b\u661f|\u51a5\u738b\u661f)/,
+    clauseBreak: /[\u3002\uff1b\uff01\uff1f\uff1a\n]/g,
+    axis: /(?:\u8f74\u7ebf|\u5bf9\u8f74|\u4e4b\u95f4)/,
+    houseNum: /(?:\u7b2c\s*)?(\d{1,2})\s*\u5bab/,
+    houseOrd: /\u7b2c\s*([\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u5341\u4e00\u5341\u4e8c]{1,3})\s*\u5bab/,
+    houseFmt: (n) => '\u7b2c' + n + '\u5bab',
+    houseOrdFmt: (n) => '\u7b2c' + n + '\u5bab',
+    ctx: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
+    dayRe: [/(?:\d{1,2}\u6708)?(\d{1,2})\u65e5/, /\u7b2c(\d{1,2})\u5929/],
+    endHint: /\u6708\u672b|\u6700\u540e\u4e00\u5468|\u7b2c\s*4\s*\u5468|\u7b2c\u56db\u5468/,
+    startHint: /\u6708\u521d|\u6708\u4e0a\u65ec|\u7b2c\u4e00\u5468|\u7b2c\s*1\s*\u5468/,
+  },
+};
+
+function _v432Esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// ── 真值盘（本命 / 流月），与 vi/th/fr 同构，仅换语言字典 ──
+function _v432Truth(lang, astroMatrix, kind) {
+  const signs = _v432Signs(lang);
+  if (!signs) return {};
+  const NAME = _V432_NAME[lang] || {};
+  const map = {};
+  if (kind === 'natal') {
+    const meta = astroMatrix?.meta || {};
+    const ch = meta.computed_houses || {};
+    for (const p of _V432_ORDER) {
+      const info = (p === 'Moon' ? (meta.natal_moon || ch.Moon) : ch[p]) || null;
+      if (!info) continue;
+      const signEN = info.sign || (p === 'Sun' ? meta.sun_sign : null);
+      const idx = _EN2ZIDX[signEN];
+      const sign = idx != null ? signs[idx] : null;
+      const house = Number(info.house) || 0;
+      if (sign || house) map[NAME[p]] = { sign, house };
+    }
+    return map;
+  }
+  const first = astroMatrix?.months?.[0];
+  if (!first) return {};
+  for (const p of _V432_ORDER) {
+    const k = p.toLowerCase();
+    const info = p === 'Sun' ? (first.sun || (first.positions && first.positions.Sun) || {}) : (first[k] || {});
+    if (!info) continue;
+    const idx = _EN2ZIDX[info.sign];
+    const sign = idx != null ? signs[idx] : null;
+    const house = Number(info.house) || 0;
+    if (sign || house) map[NAME[p]] = { sign, house };
+  }
+  return map;
+}
+
+// ── 宫位定位（数字式 / 序数式 / 汉字式），返回 {idx,len,value,ord} ──
+function _v432FindHouse(cfg, zone, preferFirst) {
+  let best = null, m;
+  if (cfg.houseNum) {
+    const re = new RegExp(cfg.houseNum.source, 'g');
+    while ((m = re.exec(zone)) !== null) {
+      const hit = { idx: m.index, len: m[0].length, value: Number(m[1]), ord: false };
+      if (preferFirst) { best = hit; break; }
+      best = hit;
+    }
+  }
+  if (cfg.houseOrd) {
+    const re = new RegExp(cfg.houseOrd.source, 'g');
+    while ((m = re.exec(zone)) !== null) {
+      let v = null;
+      if (cfg === _V432_CFG.zh) v = _V432_ZH_NUM[m[1]] || null;
+      else if (cfg === _V432_CFG.es) v = _V432_ES_ORD[m[1].toLowerCase()] || null;
+      else v = Number(m[1]) || null;
+      if (!v) continue;
+      const hit = { idx: m.index, len: m[0].length, value: v, ord: true };
+      const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
+      if (take) best = hit;
+    }
+  }
+  return best;
+}
+
+// ── 定语槽：行星名 → 第一个星座/宫位之间 ──
+function _v432SlotOf(cfg, lang, text, aEnd) {
+  const after = text.slice(aEnd, aEnd + 50);
+  let cut = after.length;
+  for (const s of _v432AllSignWords(lang)) { const k = after.indexOf(s); if (k >= 0 && k < cut) cut = k; }
+  const h = _v432FindHouse(cfg, after, true);
+  if (h && h.idx < cut) cut = h.idx;
+  return after.slice(0, cut);
+}
+
+// ── 从句窗口（fwd / bwd），口径与 vi/th/fr 一致 ──
+function _v432Clause(cfg, lang, text, i, len, explicit) {
+  const aEnd = i + len;
+  if (!explicit) {
+    const after = text.slice(aEnd, aEnd + 50);
+    let pre = after, cut = -1;
+    for (const s of _v432AllSignWords(lang)) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
+    const hm = _v432FindHouse(cfg, after, true);
+    if (hm && (cut < 0 || hm.idx < cut)) cut = hm.idx;
+    if (cut >= 0) pre = after.slice(0, cut);
+    if (!cfg.natalAny.test(pre)) return null;
+    if (cfg.transitMark.test(pre)) return null;
+  }
+  let fwd = text.slice(aEnd, aEnd + 90);
+  const e = fwd.search(/[.\n\u3002]/);
+  if (e >= 0) fwd = fwd.slice(0, e);
+  const bIdx = fwd.search(cfg.bodyAny);
+  if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
+  const aIdx = fwd.search(cfg.axis);
+  if (aIdx >= 0) fwd = fwd.slice(0, aIdx);
+  let bwd = text.slice(Math.max(0, i - 70), i);
+  if (cfg.transitMark.test(bwd)) {
+    bwd = '';
+  } else {
+    let lo = 0;
+    for (const m of bwd.matchAll(cfg.clauseBreak)) lo = Math.max(lo, m.index + m[0].length);
+    const bm = bwd.search(cfg.bodyAny);
+    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+  }
+  return { fwd, bwd };
+}
+
+// ── 流月从句归因：需「位置描述」或「流月标记」，且无本命定语 ──
+function _v432TransitClause(cfg, lang, text, i, len) {
+  const aEnd = i + len;
+  const after = text.slice(aEnd, aEnd + 50);
+  let pre = after, cut = -1;
+  for (const s of _v432AllSignWords(lang)) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
+  const hm = _v432FindHouse(cfg, after, true);
+  if (hm && (cut < 0 || hm.idx < cut)) cut = hm.idx;
+  if (cut >= 0) pre = after.slice(0, cut);
+  if (cfg.natalAny.test(pre)) return null;                                   // 本命句 → 归属本命锁
+  const preWin = text.slice(Math.max(0, i - 34), i);
+  if (cfg.natalPre.test(preWin)) return null;                                 // 前置本命定语
+  if (!cfg.posMark.test(after) && !cfg.transitMark.test(after)) return null;   // 非位置/流月描述 → 不碰
+  return _v432Clause(cfg, lang, text, i, len, true);
+}
+
+// ── 该从句「声称」的星座/宫位 ──
+function _v432ClaimOf(cfg, lang, fwd, bwd) {
+  const words = _v432AllSignWords(lang);
+  let sign = null, si = -1;
+  for (const s of words) { const k = fwd.indexOf(s); if (k >= 0 && (si < 0 || k < si)) { si = k; sign = s; } }
+  let house = null;
+  const h = _v432FindHouse(cfg, fwd, true);
+  if (h) house = h.value;
+  if (!sign && bwd) { let bi = -1; for (const s of words) { const k = bwd.lastIndexOf(s); if (k > bi) { bi = k; sign = s; } } }
+  if (house === null && bwd) { const hb = _v432FindHouse(cfg, bwd, false); if (hb) house = hb.value; }
+  return { sign, house };
+}
+
+// 声称值是否与真值一致（有宫位则星座+宫位都要中）
+function _v432TruthMatch(t, sign, house) {
+  if (!t) return false;
+  if (!sign && house === null) return false;
+  if (sign && t.sign !== sign) return false;
+  if (house !== null && t.house !== house) return false;
+  return true;
+}
+
+// ── 单段替换：星座归真 + 宫位归真（含未知/拼写错误兜底）──
+function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst) {
+  let z = zone, cnt = 0, log = [];
+  const words = _v432AllSignWords(lang);
+  if (sign) {
+    let best = null;
+    for (const s of words) {
+      if (s === sign) continue;
+      // ⚠️ V432: 真名与候选互为子串时必须跳过（中文全称/简称互含：'天蝎' ⊂ '天蝎座'），
+      //   否则会把已经正确的 '天蝎座' 里的 '天蝎' 当成错值再替换一次 → '天蝎座座'
+      if (s.includes(sign) || sign.includes(s)) continue;
+      const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
+      if (idx < 0) continue;
+      if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
+    }
+    if (best) {
+      z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length);
+      cnt++; log.push(`sign ${best.s}\u2192${sign}`);
+    } else if (!z.includes(sign)) {
+      // 兜底：z 里既没有预期星座、也没有任何已知星座 → 可能是拼写错误/外文/缩写
+      const hm = _v432FindHouse(cfg, z, true);
+      if (hm) {
+        const before = z.slice(0, hm.idx).replace(/[\s,\uff0c\u3001]+$/, '');
+        const w = lang === 'zh'
+          ? before.match(/([\u4e00-\u9fa5]{2,4})$/)
+          : before.match(/([A-Za-z\u00c0-\u017f]{3,14})$/);
+        if (w) {
+          const word = w[1];
+          const known = words.includes(word) || (lang !== 'zh' && word.toLowerCase() === String(sign).toLowerCase());
+          const looksSign = lang === 'zh' ? true : /^[A-Z\u00c0-\u00de]/.test(word);
+          if (word !== sign && !known && looksSign) {
+            const wStart = before.length - word.length;
+            const base = z.slice(0, hm.idx).length - before.length;
+            z = z.slice(0, base + wStart) + sign + z.slice(base + wStart + word.length);
+            cnt++; log.push(`sign ${word}\u2192${sign}(未知/拼写兜底)`);
+          }
+        }
+      }
+    }
+  }
+  if (house) {
+    const h = _v432FindHouse(cfg, z, preferFirst);
+    if (h && h.value !== Number(house)) {
+      const repl = h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house);
+      z = z.slice(0, h.idx) + repl + z.slice(h.idx + h.len);
+      cnt++; log.push('house ' + h.value + '\u2192' + house);
+    }
+  }
+  return { text: z, count: cnt, log };
+}
+
+// ── 外文（英）星座名归真 + 本地化简短名归真（幂等）──
+function _v432Normalize(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  const map = _V432_EN2LOC[lang];
+  if (!map) return text;
+  let n = 0;
+  const re = new RegExp('\\b(' + Object.keys(map).map(_v432Esc).join('|') + ')\\b', 'g');
+  const out = text.replace(re, (w) => { const r = map[w]; if (r && r !== w) { n++; return r; } return w; });
+  if (n) console.log(`[V432] ${lang} \u5916\u6587\u661f\u5ea7\u540d\u5f52\u771f: ${n} \u5904`);
+  return out;
+}
+
+// ── 定语双向裁定（镜像 V430/V431：A 夺舍剥离 / A2 值域皆不符+运动动词 / B 丢标识补全）；否决不动的 C 类留档 ──
+function _v432AdjudicateDescriptors(text, lang, astroMatrix) {
+  const cfg = _V432_CFG[lang];
+  if (!cfg) return text;
+  const NT = _v432Truth(lang, astroMatrix, 'natal');
+  const names = Object.keys(NT);
+  if (!names.length) return text;
+  const TT = _v432Truth(lang, astroMatrix, 'transit');
+  const nameRe = new RegExp('(' + names.map(_v432Esc).join('|') + ')', 'g');
+  const patches = [];
+  let stripped = 0, inserted = 0, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const nt = NT[name];
+    const aEnd = m.index + m[0].length;
+    const slot = _v432SlotOf(cfg, lang, text, aEnd);
+    const preWin = text.slice(Math.max(0, m.index - 34), m.index);
+    const isPrefix = cfg.natalPre.test(preWin);
+    const hasSuffixDesc = cfg.natalSuf.test(slot);
+    const hasDesc = hasSuffixDesc || isPrefix;
+    const hasTDesc = cfg.transitSuf.test(slot) || cfg.transitPre.test(preWin);
+    const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, true);
+    if (!clause) continue;
+    const claim = _v432ClaimOf(cfg, lang, clause.fwd, clause.bwd);
+    const isN = _v432TruthMatch(nt, claim.sign, claim.house);
+    const isT = _v432TruthMatch(TT[name], claim.sign, claim.house);
+
+    // A) 夺舍：本命定语贴在流月值上 → 剥定语
+    if (hasDesc && isT && !isN) {
+      const re = new RegExp(cfg.natalSuf.source, 'gi');
+      let sm, n0 = 0;
+      while ((sm = re.exec(slot)) !== null) {
+        let e = aEnd + sm.index + sm[0].length;
+        if (text[e] === ' ' && text[e + 1] === ',') e += 1;
+        patches.push({ s: aEnd + sm.index, e, rep: '' });
+        n0++; if (n0 >= 3) break;
+      }
+      if (!n0 && isPrefix) {
+        const ws = Math.max(0, m.index - 34);
+        const winc = text.slice(ws, m.index);
+        const pm = winc.match(cfg.natalPre);
+        if (pm) {
+          patches.push({ s: ws + pm.index, e: m.index, rep: '' });
+          n0 = 1;
+        }
+      }
+      stripped += n0;
+      continue;
+    }
+
+    // A2) 定语在、值域两盘皆不符（改无可改）：仅当句中有运动性流月动词时才认定「本命定语贴错在流月句上」→ 剥
+    if (hasDesc && !isN && !isT) {
+      const verb = cfg.transitVerb.test(slot) || cfg.transitVerb.test(clause.fwd) || cfg.transitVerb.test(clause.bwd || '');
+      if (verb && hasSuffixDesc) {
+        const re = new RegExp(cfg.natalSuf.source, 'gi');
+        let sm, n0 = 0;
+        while ((sm = re.exec(slot)) !== null) {
+          let e = aEnd + sm.index + sm[0].length;
+          if (text[e] === ' ' && text[e + 1] === ',') e += 1;
+          patches.push({ s: aEnd + sm.index, e, rep: '' });
+          n0++; if (n0 >= 3) break;
+        }
+        stripped += n0;
+      }
+      continue;   // 其余一律不动（宁可不动，不可编）
+    }
+
+    // B) 丢标识：本命事实被写成流月格式（无本命定语、无流月定语、非流月标记）→ 补本命标识
+    if (!hasDesc && !hasTDesc && isN && !isT && !cfg.transitMark.test(slot)) {
+      const strong = !!(claim.sign && claim.house !== null);
+      const ctxSig = cfg.ctx.test(clause.fwd) || cfg.ctx.test(clause.bwd) || cfg.ctx.test(text.slice(Math.max(0, m.index - 90), m.index));
+      if (strong || ctxSig) {
+        if (cfg.markerSide === 'pre') {
+          if (lang === 'zh') {
+            patches.push({ s: m.index, e: m.index, rep: cfg.marker });   // 中文无词间空格，直接前置
+          } else {
+            const lead = text.slice(Math.max(0, m.index - 24), m.index).match(/[\s(\uff08\u2014-]*$/);
+            patches.push({ s: m.index - (lead ? lead[0].length : 0), e: m.index, rep: (lead ? lead[0] : ' ') + cfg.marker + ' ' });
+          }
+        } else {
+          const tail = text.slice(aEnd, aEnd + 16);
+          const mc = tail.match(/^(\s*),/);
+          const mp = tail.match(/^(\s*)(?:en|dans|au|\u00e0)\b/i);
+          if (mc) patches.push({ s: aEnd + mc[1].length, e: aEnd + mc[1].length, rep: ' ' + cfg.marker });
+          else if (mp) patches.push({ s: aEnd + mp[1].length, e: aEnd + mp[1].length, rep: cfg.marker + ' ' });
+          else patches.push({ s: aEnd, e: aEnd, rep: ' ' + cfg.marker });
+        }
+        inserted++;
+      }
+      continue;
+    }
+
+    // C 类（流月定语贴本命句 → 换成本命定语）**已考虑并否决**：与「定语决定管辖」互踩，
+    //   实测会触发既有回归门（V426 transitant 句）。流月定语保留，值由流月锁归真。
+  }
+  if (!patches.length) return text;
+  patches.sort((a, b) => a.s - b.s || a.e - b.e);
+  let out = text;
+  for (let i = patches.length - 1; i >= 0; i--) {
+    const p = patches[i];
+    out = out.slice(0, p.s) + p.rep + out.slice(p.e);
+  }
+  console.log(`[V432] ${lang} \u5b9a\u8bed\u88c1\u5b9a: \u5265\u79bb ${stripped} \u5904 / \u8865\u5168 ${inserted} \u5904`);
+  return out;
+}
+
+// ── 本命真值锁（10 行星）──
+function _v432LockNatal(text, lang, astroMatrix) {
+  const cfg = _V432_CFG[lang];
+  if (!text || !cfg) return text;
+  const truth = _v432Truth(lang, astroMatrix, 'natal');
+  const names = Object.keys(truth);
+  if (!names.length) {
+    console.log(`[V432] ${lang} \u672c\u547d\u771f\u503c\u76d8\u4e0d\u53ef\u7528 \u2192 \u8df3\u8fc7\u672c\u547d\u771f\u503c\u9501\uff08\u7edd\u4e0d\u7f16\uff09`);
+    return text;
+  }
+  text = _v432AdjudicateDescriptors(text, lang, astroMatrix);
+  const nameRe = new RegExp('(' + names.map(_v432Esc).join('|') + ')', 'g');
+  const hits = [];
+  let fixes = 0, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    const tail30 = text.slice(m.index + m[0].length, m.index + m[0].length + 30);
+    const preWin = text.slice(Math.max(0, m.index - 34), m.index);
+    const explicit = cfg.natalSuf.test(tail30) || cfg.natalPre.test(preWin);
+    const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, explicit);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const backStart = m.index - bwd.length;
+    const F = _v432PatchZone(cfg, lang, fwd, t.sign, t.house, true);
+    const B = bwd ? _v432PatchZone(cfg, lang, bwd, t.sign, t.house, false) : { text: bwd, count: 0 };
+    if (!F.count && !B.count) continue;
+    if (F.count) hits.push([m.index + m[0].length, m.index + m[0].length + fwd.length, F.text]);
+    if (B.count) hits.push([backStart, m.index, B.text]);
+    fixes += F.count + B.count;
+  }
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const [s, e, rep] = hits[i];
+    text = text.slice(0, s) + rep + text.slice(e);
+  }
+  if (fixes) console.log(`[V432] ${lang} \u672c\u547d\u771f\u503c\u9501(10\u884c\u661f): \u4fee\u6b63 ${fixes} \u5904`);
+  return text;
+}
+
+// ── 流月（行运）真值锁：入驻句单独按日号判向，其余位置句按 months[0] 归真 ──
+function _v432IngressDay(cfg, ctx) {
+  let day = null;
+  for (const re of (cfg.dayRe || [])) {
+    const m = ctx.match(re);
+    if (m) { day = Number(m[1]); if (day) break; }
+  }
+  return day || null;
+}
+
+function _v432LockTransit(text, lang, astroMatrix) {
+  const cfg = _V432_CFG[lang];
+  if (!text || !cfg || !astroMatrix?.months?.[0]) return text;
+  const signs = _v432Signs(lang);
+  const truth = _v432Truth(lang, astroMatrix, 'transit');
+  const names = Object.keys(truth);
+  if (!names.length) return text;
+  const nameRe = new RegExp('(' + names.map(_v432Esc).join('|') + ')', 'g');
+  let result = text, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    // 入驻（ingress）句：目标星座随日期而变 → 绝不用「当月星座」硬套（镜像 V429）
+    const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 90);
+    const bp = tail.search(cfg.bodyAny);
+    const win = bp >= 0 ? tail.slice(0, bp) : tail;
+    if (cfg.ingress.test(win)) {
+      const ctx = text.slice(Math.max(0, m.index - 80), m.index + 240);
+      const day = _v432IngressDay(cfg, ctx);
+      const nextMonth = astroMatrix.months?.[1];
+      const nSun = nextMonth?.sun || nextMonth?.Sun || (nextMonth?.positions && nextMonth.positions.Sun) || null;
+      let nextSign = nSun && _EN2ZIDX[nSun.sign] != null ? signs[_EN2ZIDX[nSun.sign]] : null;
+      if (!nextSign && t.sign) { const zi = signs.indexOf(t.sign); if (zi >= 0) nextSign = signs[(zi + 1) % 12]; }
+      const isEnd = day != null ? day >= 22 : cfg.endHint.test(ctx);
+      const isStart = day != null ? day <= 8 : cfg.startHint.test(ctx);
+      if (day == null && !isEnd && !isStart) continue;   // 取不到时序 → 不动（宁可不动，不可编）
+      const written = (() => {
+        for (const s of _v432AllSignWords(lang)) if (win.includes(s)) return s;
+        return null;
+      })();
+      const target = isEnd ? nextSign : (isStart ? t.sign : null);
+      if (written && target && written !== target) {
+        const before = text;
+        text = text.replace(new RegExp(_v432Esc(written)), target);
+        nameRe.lastIndex += (text.length - before.length);
+        result = text;
+        console.log(`[V432] ${lang} ingress\u65f6\u5e8f\u9501: ${name} \u2192 ${written} \u21d2 ${target} (day=${day})`);
+      }
+      continue;
+    }
+    const clause = _v432TransitClause(cfg, lang, text, m.index, m[0].length);
+    if (!clause) continue;
+    const { fwd, bwd } = clause;
+    const hasSignF = t.sign && fwd.includes(t.sign);
+    const hasHouseF = t.house && (() => { const h = _v432FindHouse(cfg, fwd, true); return h && h.value === Number(t.house); })();
+    const hasSignB = t.sign && bwd.includes(t.sign);
+    const hasHouseB = t.house && (() => { const h = _v432FindHouse(cfg, bwd, false); return h && h.value === Number(t.house); })();
+    if (hasSignF && hasHouseF && hasSignB && hasHouseB) continue;
+    let z = fwd, origLen = z.length;
+    let patch = _v432PatchZone(cfg, lang, z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true);
+    if (patch.count === 0 && bwd) {
+      z = bwd; origLen = z.length;
+      patch = _v432PatchZone(cfg, lang, z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false);
+    }
+    if (patch.count === 0) continue;
+    const pos = z === fwd ? m.index + m[0].length : Math.max(0, m.index - origLen);
+    result = result.slice(0, pos) + patch.text + result.slice(pos + origLen);
+    const delta = patch.text.length - origLen;
+    text = result;
+    nameRe.lastIndex += delta;
+    console.log(`[V432] ${lang} \u6d41\u6708\u9501: ${name} \u2192 ${t.sign || '?'}${t.house ? ' ' + cfg.houseFmt(t.house) : ''}`);
+  }
+  return result;
+}
+
+// ── 统一入口：en/es/zh 三语真值双锁（幂等；无真值盘则全程跳过，绝不编）──
+function applyTruthLocksEnEsZh(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string' || !_V432_LANGS.includes(lang)) return text;
+  try {
+    let out = _v432Normalize(text, lang);
+    out = _v432LockNatal(out, lang, astroMatrix);
+    out = _v432LockTransit(out, lang, astroMatrix);
+    return out;
+  } catch (e) {
+    console.warn(`[V432] ${lang} \u771f\u503c\u9501\u5f02\u5e38\uff08\u539f\u6587\u900f\u4f20\uff09: ${e.message}`);
+    return text;
+  }
+}
+
 function cleanConsumerTrapAndBrackets(text) {
   if (!text) return text;
 
@@ -4638,9 +5202,9 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
 
   // 多语言语言铁律（来自 b41261b 验证可用版本）
   const langInstructions = {
-    zh: '\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n  6. 🛑 本命星体铁律：严格区分本命与流年！本命星体=用户出生星图位置（出生日期锁定），流年星体=2026年当下天象位置。禁止将2026年流年星体（白羊座土星、摩羯座海王星等）冠以"本命"前缀。\n  7. 🛑 天文几何铁律：月亮在摩羯座与冥王星在水瓶座仅30°相邻（相邻星座绝不等同于对冲），7月绝不可能形成月亮/冥王对冲。严禁写"月亮在摩羯座与冥王星在水瓶座形成对冲"——正确为"错位张力"或"能量碰撞"。\n',
-    en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"',
-    es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
+    zh: '\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n  6. 🛑 本命星体铁律：严格区分本命与流年！本命星体=用户出生星图位置（出生日期锁定），流年星体=2026年当下天象位置。禁止将2026年流年星体（白羊座土星、摩羯座海王星等）冠以"本命"前缀。\n  7. 🛑 天文几何铁律：月亮在摩羯座与冥王星在水瓶座仅30°相邻（相邻星座绝不等同于对冲），7月绝不可能形成月亮/冥王对冲。严禁写"月亮在摩羯座与冥王星在水瓶座形成对冲"——正确为"错位张力"或"能量碰撞"。\n\n\n【宫位格式 V375】写宫位必须用阿拉伯数字加宫字：第1宫、第2宫、第8宫；严禁混用 "House 8" 英文写法或 "8th house" 序数写法。\n\n【本命与流年 分离铁律 V432】本命位置（出生日期锁定）必须带 本命 前缀：写「本命太阳在天蝎座 第8宫」；本月流年位置必须带 流年 前缀，且绝不能带 本命：写「流年太阳在天秤座 第6宫」。严禁给流年位置加 本命，也严禁给本命位置加 流年。',
+    en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"\n\n[NATAL vs TRANSIT SEPARATION V432] MANDATORY. Placements fixed by birth date MUST always carry the natal marker: write "your natal Sun in Scorpio, House 8" or "your natal Moon". Monthly transit placements (the sky of this month) MUST always carry a transit marker and NEVER the natal marker: write "the transiting Sun in Libra, House 6" or "the Sun of the month". NEVER put the natal marker on a transit position, and NEVER put a transit marker on a natal position.',
+    es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.\n\n[FORMATO DE CASA V375] Al escribir el numero de casa use SIEMPRE el formato numerico: Casa 1, Casa 2, Casa 8. NUNCA use ordinales (octava casa) ni el ingles "8th House" ni el chino en el mismo parrafo.\n\n[SEPARACION NATAL vs TRANSITO V432] OBLIGATORIO. Las posiciones natales (fijadas por la fecha de nacimiento) deben llevar SIEMPRE el marcador natal: escriba "su Sol natal en Escorpio, Casa 8". Las posiciones de transito del mes deben llevar SIEMPRE el marcador de transito y NUNCA natal: escriba "el Sol en transito en Libra, Casa 6". Nunca ponga el marcador natal en una posicion de transito, ni el marcador de transito en una posicion natal.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.\n\n[HOUSE NUMBER FORMAT V375] Lorsque vous ecrivez le numero de maison dans le rapport, utilisez TOUJOURS le format numerique francais: Maison 1, Maison 2, Maison 5, Maison 9, etc. Ne utilisez JAMAIS les ordinaux francais (premiere, deuxieme, septieme maison) ni House anglais ni di-X-gong chinois dans le meme paragraphe. CORRECT: Mars en Cancer, Maison 5. FAUX: Mars en Cancer, cinquieme maison.\n\n⛔ RÈGLE SOLEIL NATAL vs TRANSIT: Le Soleil mentionné dans ce rapport mensuel est le Soleil de TRANSIT du mois courant, PAS votre Soleil natal. N\'écrivez JAMAIS "votre Soleil en [signe]" ni "votre Soleil en Maison X" pour décrire le Soleil de transit (cela ferait croire que votre Soleil natal est ce signe — or votre Soleil natal est une donnée permanente fixée par votre date de naissance). Utilisez toujours "Le Soleil en transit dans [signe]" ou "Le Soleil du mois dans [signe]".',
     th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนำที่ผสมผสานจิตวิทยาคววเจียน ใช้คำที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน\n\n\n\n[THAI SPELLING CORRECTIONS V378] ตรวจสอบการสะกดอย่างเคร่งครัด:\n\n- จริงัง → จริงจัง (ขยันขันแข็ง ทำอย่างจริงจัง)\n\n- ราบื่น → ราบรื่น (ราบรื่น = ราบเรียบ สะดวก)\n\n- เก็บอม → เก็บออม (เก็บออม = saving)\n\n- ดึงดู → ดึงดูด (ดึงดูด = attract)\n\n- พิจารณ → พิจารณา (พิจารณา = consider)\n\n- ราคแพง → ราคาแพง (ราคาแพง = expensive)\n\n- วงจันทร์ → ดวงจันทร์ (ดวงจันทร์ = moon)\n\n- แข็งกร่ง → แข็งแกร่ง (แข็งแกร่ง = strong)\n\n- ความ่วมท้น → ความท่วมท้น (ท่วมท้น = overwhelming)\n\n- ห้ามผสมภาษาอังกฤษในคำไทย ใช้ตัวอักษรไทยทั้งหมด\n\n[THAI NATAL INTEGRATION V379-th] คุณต้องอ้างอิงดวงชะตาแบบกำเนิด (natal) ของผู้ใช้ในรายงาน:\n• บังคับใช้เครื่องหมาย "กำเนิด" สำหรับดาวกำเนิดทุกดวง (ดวงอาทิตย์กำเนิด, ดวงจันทร์กำเนิด, ดาวพุธกำเนิด ฯลฯ)\n• รูปแบบบังคับสำหรับดาวกำเนิด: "[ชื่อดาว]กำเนิดในราศี[ชื่อราศี] บ้าน[เลข]" ตัวอย่าง: "ดวงอาทิตย์กำเนิดในราศีสิงห์ บ้าน 12" (ห้ามละทิ้งชื่อราศี — ห้ามเขียน "ดวงอาทิตย์ในบ้าน 12" โดยไม่ระบุราศี)\n• เชื่อมโยงพลังงานดาวทรานซิส (transit) เข้ากับดวงชะตากำเนิดเสมอ (ดู NATAL CHART ANCHORS ใน system prompt และ user prompt)\n• ดวงจันทร์ทรานซิส (transit Moon) ไม่ใช่ดวงจันทร์กำเนิด — ห้ามนำเสนอเป็นกำเนิด\n• ใช้ชื่อราศีให้ตรงกับ THAI ZODIAC REFERENCE เสมอ (ราศีกรกฎ=Cancer, ราศีสิงห์=Leo ฯลฯ) ห้ามสับสนราศีทรานซิสกับราศีกำเนิด',
     vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign, ascendant (Rising), AND natal Moon in your analysis (see NATAL CHART ANCHORS in the fact sheet). Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết, và Mặt Trăng natal của bạn ở Song Ngư Nhà 5 khuếch đại trực giác tài chính".
@@ -5104,9 +5668,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
   // ── 语言专属指令 ──
   const langInstructions = {
-    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n3. 🛑 句式完整性铁律：每个句子必须有完整主语+谓语。星体名称不能单独成句或与动词分离（如"巨蟹座交织"❌应写成"太阳与水星在巨蟹座交织"✅；"金星从狮子座的深层资源领域"❌应写成"金星从狮子座进入深层资源领域"✅）。\n4. 🛑 宫位标签强制吐出：当提及星体所在宫位时，必须同时写出"第X宫"标签（例："木星在狮子座（第5宫）"✅），不得只写宫位主题省略"第X宫"数字标签。\n5. 🛑 水星逆行铁律：水星于6月底进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"等矛盾句式。正确写法："水星在巨蟹座逆行"或"7月24日水星恢复顺行"。\n  6. 🛑 天文几何铁律：月亮在摩羯座与冥王星在水瓶座仅30°相邻（相邻星座绝不等同于对冲），7月绝不可能形成月亮/冥王对冲。严禁写"月亮在摩羯座与冥王星在水瓶座形成对冲"——正确为"错位张力"或"能量碰撞"。\n',
-    en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"',
-    es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.',
+    zh: '\n\n【强制语言指令】你必须全程使用简体中文输出。忽略系统提示中的任何英文指令。严禁输出任何英文句子或英文单词，只写中文。\n\n【中文写作铁律 - 必读】\n1. 🛑 禁用畸形被动句：严禁使用"被……成为"、"被……使得"等不符合中文习惯的被动句（例："你的财富宫位被巨蟹座成为中心"❌）。一律使用主动语态（例："巨蟹座成为了你财富宫位的中心"✅）。\n2. 🛑 主语完整性：提到星座对冲或相位时，必须写明"本命星座"或"流年星体"（例：写"与你的本命摩羯座太阳形成对冲"✅），严禁只写"你的摩羯座形成对冲"❌。\n3. 🛑 句式完整性铁律：每个句子必须有完整主语+谓语。星体名称不能单独成句或与动词分离（如"巨蟹座交织"❌应写成"太阳与水星在巨蟹座交织"✅；"金星从狮子座的深层资源领域"❌应写成"金星从狮子座进入深层资源领域"✅）。\n4. 🛑 宫位标签强制吐出：当提及星体所在宫位时，必须同时写出"第X宫"标签（例："木星在狮子座（第5宫）"✅），不得只写宫位主题省略"第X宫"数字标签。\n5. 🛑 水星逆行铁律：水星于6月底进入巨蟹座逆行，7月24日恢复顺行。禁止写"7月16日恢复顺行"、"7月18日逆行顶点"等矛盾句式。正确写法："水星在巨蟹座逆行"或"7月24日水星恢复顺行"。\n  6. 🛑 天文几何铁律：月亮在摩羯座与冥王星在水瓶座仅30°相邻（相邻星座绝不等同于对冲），7月绝不可能形成月亮/冥王对冲。严禁写"月亮在摩羯座与冥王星在水瓶座形成对冲"——正确为"错位张力"或"能量碰撞"。\n\n\n【宫位格式 V375】写宫位必须用阿拉伯数字加宫字：第1宫、第2宫、第8宫；严禁混用 "House 8" 英文写法或 "8th house" 序数写法。\n\n【本命与流年 分离铁律 V432】本命位置（出生日期锁定）必须带 本命 前缀：写「本命太阳在天蝎座 第8宫」；本月流年位置必须带 流年 前缀，且绝不能带 本命：写「流年太阳在天秤座 第6宫」。严禁给流年位置加 本命，也严禁给本命位置加 流年。',
+    en: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN ENGLISH. Ignore any Chinese text in the system prompt. Write in sophisticated, soul-stirring English. You are a top-tier Western astrologer and Jungian psychologist. Use professional terms (Solar Return, Shadow Self, Synastry Alignment, Jungian Shadow Work, 8th House, 11th House). NEVER use invented aspect names like "trine", "square", "sextile", or "opposite". Always describe planetary interactions with energetic flow terms: "creates a powerful alignment with...", "forms dynamic tension with...", "harmonizes with the energy of...", "triggers transformative friction with...". ALL OUTPUT MUST BE IN ENGLISH ONLY.\n\n[ANTI-LITERAL TRANSLATION BLACKLIST] NEVER use awkward literal translations of Chinese fortune-telling terms. FORBIDDEN: "Core Heavenly Secrets", "Heavenly Machine", "Fate Opportunity", "Celestial Secret", "Heavenly Secret". ALWAYS use authentic Western Psychological Astrology terms instead: "Core Cosmic Window", "Key Astrological Catalyst", "Celestial Trigger Point", "Primary Planetary Shift".\n\n[HOUSE CONSISTENCY V375] Within the report body, use ONLY English "House N" (House 1, House 2, House 8 etc.). NEVER mix Chinese "第X宫" or Thai "บ้าน X" within the same paragraph. CORRECT: "Venus in Scorpio, House 8" — WRONG: "Venus in Scorpio (第8宫)"\n\n[NATAL vs TRANSIT SEPARATION V432] MANDATORY. Placements fixed by birth date MUST always carry the natal marker: write "your natal Sun in Scorpio, House 8" or "your natal Moon". Monthly transit placements (the sky of this month) MUST always carry a transit marker and NEVER the natal marker: write "the transiting Sun in Libra, House 6" or "the Sun of the month". NEVER put the natal marker on a transit position, and NEVER put a transit marker on a natal position.',
+    es: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN SPANISH. Ignore any Chinese text in the system prompt. Eres un astrólogo de élite y psicólogo junguiano. Usa términos profesionales (Yo Sombra, Retorno Solar, Alineación de Sinastría). Escribe en español sofisticado y místico. TODA LA SALIDA DEBE ESTAR EN ESPAÑOL ÚNICAMENTE.\n\n[FORMATO DE CASA V375] Al escribir el numero de casa use SIEMPRE el formato numerico: Casa 1, Casa 2, Casa 8. NUNCA use ordinales (octava casa) ni el ingles "8th House" ni el chino en el mismo parrafo.\n\n[SEPARACION NATAL vs TRANSITO V432] OBLIGATORIO. Las posiciones natales (fijadas por la fecha de nacimiento) deben llevar SIEMPRE el marcador natal: escriba "su Sol natal en Escorpio, Casa 8". Las posiciones de transito del mes deben llevar SIEMPRE el marcador de transito y NUNCA natal: escriba "el Sol en transito en Libra, Casa 6". Nunca ponga el marcador natal en una posicion de transito, ni el marcador de transito en una posicion natal.',
     fr: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN FRENCH. Ignore any Chinese text in the system prompt. Vous êtes un maître astrologue parisien et psychologue junguien. Utilisez un ton romantique, philosophique, avec des termes tarologiques classiques et le concept du "Soi" de Jung. Écrivez en français élégant. TOUTE LA SORTIE DOIT ÊTRE EN FRANÇAIS UNIQUEMENT.\n\n[HOUSE NUMBER FORMAT V375] Lorsque vous ecrivez le numero de maison dans le rapport, utilisez TOUJOURS le format numerique francais: Maison 1, Maison 2, Maison 5, Maison 9, etc. Ne utilisez JAMAIS les ordinaux francais (premiere, deuxieme, septieme maison) ni House anglais ni di-X-gong chinois dans le meme paragraphe. CORRECT: Mars en Cancer, Maison 5. FAUX: Mars en Cancer, cinquieme maison.',
     th: '\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN THAI. Ignore any Chinese text in the system prompt. คุณคือโหราจารย์ชั้นนําที่ผสมผสานจิตวิทยาคววเจียน ใช้คําที่ศักดิ์สิทธิ์และน่าเคารพ เขียนในภาษาไทยที่ทรงพลัง ผลลัพธ์ทั้งหมดต้องเป็นภาษาไทยเท่านั้น\n\n[HOUSE NUMBER FORMAT V375] เมื่อเขียนหมายเลขโชคลาภ บ้าน ในรายงาน ใช้ตัวเลขไทยพร้อมคำนำหน้า บ้าน 1, บ้าน 2, บ้าน 5, บ้าน 9 เป็นต้น ห้ามผสมผสาน "House" ภาษาอังกฤษ หรือ "第X宫" ภาษาจีน ในย่อหน้าเดียวกัน',
     vi: `\n\n[CRITICAL LANGUAGE INSTRUCTION] YOU MUST WRITE THE ENTIRE REPORT IN VIETNAMESE. Ignore any Chinese text in the system prompt. Bạn là một chiêm tinh gia hàng đầu kết hợp tâm lý học Jungian. Viết bằng tiếng Việt trang trọng, mang tính định mệnh. TOÀN BỘ ĐẦU RA PHẢI BẰNG TIẾNG VIỆT CHỈ.\n\n[HOUSE NUMBER FORMAT V375] Khi viết số nhà (cung hoàng đạo) trong báo cáo, dùng tiếng Việt: Nhà 1, Nhà 2, Nhà 5, Nhà 9 v.v. TUYỆT ĐỐI không trộn lẫn "House" tiếng Anh hoặc "第X宫" tiếng Trung trong cùng một đoạn văn.\n\n[VIETNAMESE WORD NATAL INTEGRATION V379] You MUST reference the user natal sun sign, ascendant (Rising), AND natal Moon in your analysis (see NATAL CHART ANCHORS in the fact sheet). Always connect transit planetary energy to the personal natal chart. Example: "Sao Mộc tại Nhà 7 tạo góc tam hợp với Mặt Trời natal của bạn ở Ma Kết, và Mặt Trăng natal của bạn ở Song Ngư Nhà 5 khuếch đại trực giác tài chính".
@@ -6470,11 +7034,18 @@ app.post('/api/wealth-oracle', async (req, res) => {
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
             stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
           }
+          // 🛠️ V432: HIT 路径补 en/es/zh 真值锁（与 vi/th/fr 对称；旧缓存里的 native 漂移不再裸奔）
+          let _hitFinal = stdCached;
+          if (_V432_LANGS.includes(lang)) {
+            let _hitAstro432 = null;
+            try { _hitAstro432 = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V432] HIT matrix fetch failed: ' + e.message); }
+            _hitFinal = applyTruthLocksEnEsZh(stdCached, lang, _hitAstro432);
+          }
           // 🛠️ V427: HIT 路径补 data 字段(让前端 4 卡片能渲染，与 MISS 路径对称)
           const _hitMeta = buildWealthMetaFull(birthDate, lang);
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
-          return res.json({ ..._hitMeta.result, cached: true, report: stdCached });
+          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal });
         }
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
@@ -6622,6 +7193,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
   if (lang === 'fr') reportContent = lockTransitTruthFr(reportContent, astroMatrix);
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockTransitTruthTh(reportContent, astroMatrix);
+        // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
+        if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
 
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
@@ -7124,6 +7697,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
           if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
         }
+        // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
+        if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -7975,6 +8550,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   if (lang === 'fr') cleanedText = lockTransitTruthFr(cleanedText, astroMatrix);
     if (lang === 'th') cleanedText = lockNatalTruthTh(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     if (lang === 'th') cleanedText = lockTransitTruthTh(cleanedText, astroMatrix);
+    // 🛠️ V432: MISS stream 收尾 en/es/zh 真值双锁（完整文本、落库前最后一道）
+    if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {
