@@ -8627,17 +8627,17 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
       }
       // 降级锚点: 行首精确匹配第2个「第2周」级标题（周2 = 🔴 全语言唯一,不会与第4周🟢混淆）
-      // 必须行首 + 标题 + 冒号结构 → 正文提及(如"Semana 2:...")不在行首不误伤
-      const _w2Line = /^\s*✦?\s*[\[【]\s*(?:[🔴🟢🔵]+\s*)?(第2周|Week 2|Semana 2|Semaine 2|สัปดาห์ที่ 2|Tuần 2)\s*[:：]/m;
-      const _firstW2 = text.search(_w2Line);
-      if (_firstW2 >= 0) {
-        const _afterFirst = text.slice(_firstW2 + 10);
-        const _secondW2 = _afterFirst.search(_w2Line);
-        if (_secondW2 >= 0) {
-          const _cut = text.substring(0, _firstW2 + 10 + _secondW2).trim();
-          console.log(`[wealth-stream] [V322] 周2标题重复截断: ${text.length}→${_cut.length}字`);
-          return _cut;
-        }
+      // 🛡️ V436-fix3: 1) 冒号/破折号皆可(V386注入的标题用 em dash)；2) 跳过开头的注入W1(位置<100)
+      const _w2Line = /^\s*✦?\s*[\[【]\s*(?:[🔴🟢🔵]+\s*)?(第2周|Week 2|Semana 2|Semaine 2|สัปดาห์ที่ 2|Tuần 2)[\s\-—:：]/m;
+      const _matches = [...text.matchAll(new RegExp(_w2Line.source, 'gm'))];
+      // 过滤：位置<100的是V386注入的W1，不算第1份报告的W2
+      const _realMatches = _matches.filter(m => m.index >= 100);
+      if (_realMatches.length >= 2) {
+        const _firstW2 = _matches[0].index;
+        const _secondW2 = _realMatches[1].index;
+        const _cut = text.substring(0, _secondW2 + _matches[1][0].length).trim();
+        console.log(`[wealth-stream] [V322] 周2标题重复截断: ${text.length}→${_cut.length}字`);
+        return _cut;
       }
       console.log(`[wealth-stream] [V322] 无重复章节头 (${text.length}字)`);
       return text;
