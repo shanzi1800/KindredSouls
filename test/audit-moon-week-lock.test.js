@@ -27,7 +27,7 @@ const SIGNS = ['EN', 'ES', 'ZH', 'FR', 'TH', 'VI'].map((k) => {
   const m = SRC.match(new RegExp('const SUN_SIGN_' + k + '\\s*=\\s*\\[[^\\]]*\\];'));
   return m ? m[0] : '';
 }).join('\n');
-const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { _v433LockMoonWeek, _v432Signs };`)();
+const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { _v433LockMoonWeek, _v434LockGlobalMoonScope, _v432Signs };`)();
 
 const weeks = [{
   week: 1,
@@ -86,5 +86,44 @@ describe('V433-fix4：月亮周级硬锁', () => {
     const out = F._v433LockMoonWeek(inp, 'zh', astro);
     assert.ok(out.includes('白羊座'), 'zh 月亮锁未生效（CJK \\b 边界失效）: ' + out);
     assert.ok(!out.includes('天蝎座'), 'zh 越界天蝎座残留');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V435-fix 回归门：打死「只验好样本」的盲区（这四类坏样本原先一条都没覆盖）
+describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标记／法语宫位词／泰语本命守护）', () => {
+  test('⑧ 宫位错但星座在周内 → 只换宫位号，不得吞字符（P0 文本写坏回归）', () => {
+    const inp = '✦ [🟢 Tuần 1: Thg9 1–7] X\nMặt Trăng hành vận đi qua Bạch Dương (Nhà 11→Nhà 12) → Kim Ngưu (Nhà 11→Nhà 12).';
+    const out = F._v433LockMoonWeek(inp, 'vi', astro);
+    assert.ok(out.includes('Bạch Dương (Nhà 7→Nhà 12)'), '宫位未归真且丢了 Nhà 标签（旧 bug: 会吞掉 5 字符）: ' + out);
+    assert.ok(out.includes('Kim Ngưu (Nhà 8→Nhà 12)'), '第二个星座宫位未归真: ' + out);
+    assert.equal(out.length, inp.length - 2, '字符数异常（旧 bug 会吞掉 10 字符）: ' + out.length + ' vs ' + inp.length);
+  });
+  test('⑨ 法语周段落受管辖（Semaine 必须识别，否则星座越界永不纠）', () => {
+    const inp = '✦ [🔴 Semaine 1: Recharge de Richesse] X\nla Lune en transit en Vierge (Maison 12) → Balance (Maison 1).';
+    const out = F._v433LockMoonWeek(inp, 'fr', astro);
+    assert.ok(out.includes('Bélier'), '法语周段落未被识别（Semaine 缺失）→ 越界星座未归真: ' + out);
+    assert.ok(!out.includes('Vierge'), '法语越界星座残留: ' + out);
+    assert.ok(!/ House /.test(out), '替换产物注入了英文 House（穿帮）: ' + out);
+    assert.ok(out.includes(' Maison '), '法语宫位词应为 Maison: ' + out);
+  });
+  test('⑩ 法语宫位词必须是 Maison（用已识别周标记隔离该分支）', () => {
+    // 用 Week 2（修复前后都识别）把「星座替换尾巴」分支单独隔离出来
+    // Poissons(Aquarius 之外的越界星: 双鱼不在 W2 真值内) → 必触发星座替换分支
+    const inp = '✦ [🔴 Week 2: X]\nla Lune en transit en Poissons (Maison 5).';
+    const out = F._v433LockMoonWeek(inp, 'fr', astro);
+    assert.ok(!out.includes('Poissons'), '法语越界星座未归真: ' + out);
+    assert.ok(!/ House /.test(out), '英文 House 泄漏进法语正文（穿帮）: ' + out);
+    assert.ok(out.includes(' Maison '), '法语宫位词应为 Maison: ' + out);
+  });
+  test('⑪ 泰语本命月亮不动（กำเนิด 守护词）', () => {
+    const inp = '✦ [🔵 สัปดาห์ที่ 1: X]\nดวงจันทร์กำเนิดในราศีกันยา บ้าน 7 ส่งผลต่อการเงินของคุณ';
+    const out = F._v433LockMoonWeek(inp, 'th', astro);
+    assert.equal(out, inp, '泰语本命月亮被误改（กำเนิด 未进守护词表）: ' + out);
+  });
+  test('⑫ V434-2 泰语本命月亮不动（กำเนิด 守护词）', () => {
+    const inp = '✦ [🔵 ภาพรวม]\nดวงจันทร์กำเนิด ตลอดทั้งเดือนในราศีกันยา';
+    const out = F._v434LockGlobalMoonScope(inp, 'th', astro);
+    assert.equal(out, inp, 'V434-2 泰语本命月亮被误改: ' + out);
   });
 });

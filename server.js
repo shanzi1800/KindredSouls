@@ -4312,7 +4312,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
   const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '月亮', en: '\\bMoon\\b', fr: '\\bLune\\b', th: 'ดวงจันทร์' }[lang];  // zh/th 不用 \b（CJK/泰文非 \w，边界失效）
   if (!moonRe) return text;
   const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
-  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación)/i;
+  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación|กำเนิด)/i;
 
   // 切分 ✦[周N] 段落（indexOf 而非脆弱正则，避 /g lastIndex 诡异）
   const segs = [];
@@ -4320,7 +4320,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
   while (sp !== -1) {
     const np = text.indexOf('✦', sp + 1);
     const seg = np === -1 ? text.slice(sp) : text.slice(sp, np);
-    const hm = seg.match(/(?:Semana|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);  // 兼容中文「第N周」（数字在「周」前）
+    const hm = seg.match(/(?:Semana|Semaine|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);  // 兼容中文「第N周」（数字在「周」前）
     segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1] || hm[2] || hm[3], 10) : 0 });
     if (np === -1) break;
     sp = np;
@@ -4353,13 +4353,13 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
             const th = ah[si] ? Array.from(ah[si]) : [];
             if (writtenHouse != null && th.length && !th.includes(writtenHouse)) {
               // 宫位不符 → 归真（取真值首个宫位）
-              patches.push({ s: abs + sm[0].length + (hm.index - sm[0].length), e: abs + sm[0].length + hm.index + hm[0].length, rep: String(th[0]) });
+              patches.push({ s: abs + hm.index, e: abs + hm.index + hm[0].length, rep: hm[0].replace(/\d{1,2}/, String(th[0])) });
             }
           } else if (first && first.idx >= 0) {
             // 越界星座 → 整段(星座+宫位)换成本周首个真值
             const repSign = L[first.idx];
             const tail = (writtenHouse != null && hm)
-              ? (houseRe.toString().includes('Casa') ? ' Casa ' : (lang === 'vi' ? ' Nhà ' : (lang === 'zh' ? ' 第' + first.house + '宫' : (lang === 'th' ? ' บ้าน ' : ' House ')))) + first.house
+              ? (houseRe.toString().includes('Casa') ? ' Casa ' : (lang === 'vi' ? ' Nhà ' : (lang === 'zh' ? ' 第' + first.house + '宫' : (lang === 'th' ? ' บ้าน ' : (lang === 'fr' ? ' Maison ' : ' House '))))) + first.house
               : (writtenHouse != null ? ' ' + first.house : '');
             const rep = repSign + tail;
             patches.push({ s: abs, e: abs + sm[0].length + (hm ? (hm.index - sm[0].length + hm[0].length) : 0), rep });
@@ -4573,7 +4573,7 @@ function _v434LockGlobalMoonScope(text, lang, astroMatrix) {
   if (!moonRe) return text;
   const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
   const persistRe = new RegExp(_V434_PERSIST_SRC[lang], 'i');
-  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación)/i;
+  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación|กำเนิด)/i;
   // 切段：✦ 分段的非周段落 + ✦ 之前的「前言」段（V433 从首个 ✦ 起切，前言是它的盲区）
   const segs = [];
   let sp = text.indexOf('✦');
@@ -4581,7 +4581,7 @@ function _v434LockGlobalMoonScope(text, lang, astroMatrix) {
   while (sp !== -1) {
     const np = text.indexOf('✦', sp + 1);
     const seg = np === -1 ? text.slice(sp) : text.slice(sp, np);
-    const hm = seg.match(/(?:Semana|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);
+    const hm = seg.match(/(?:Semana|Semaine|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);
     segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1] || hm[2] || hm[3], 10) : 0 });
     if (np === -1) break;
     sp = np;
