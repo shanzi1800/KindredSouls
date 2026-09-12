@@ -3855,6 +3855,7 @@ const _V432_CFG = {
     houseOrdFmt: (n) => n + ((n % 10 === 1 && n !== 11) ? 'st' : (n % 10 === 2 && n !== 12) ? 'nd' : (n % 10 === 3 && n !== 13) ? 'rd' : 'th') + ' House',
     ctx: /\b(?:natal|native|birth|your chart|your sky)\b/i,
     dayRe: [/\bDay\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i, /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})\b/i],
+    dateMark: /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s*\d{1,2}\b|\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\b|\bDay\s*\d{1,2}\b|\bWeek\s*\d\b/i,
     endHint: /\bend of (?:the )?month\b|\bfinal week\b|\bweek\s*4\b|\blast week\b/i,
     startHint: /\bbeginning of (?:the )?month\b|\bfirst week\b|\bweek\s*1\b/i,
   },
@@ -3879,6 +3880,7 @@ const _V432_CFG = {
     houseOrdFmt: (n) => (_V432_ES_ORD_FORMAT[n] || n) + ' casa',
     ctx: /\b(?:natal(?:es)?|nacimiento|tu carta|tu cielo)\b/i,
     dayRe: [/\bD[i\u00ed]a\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i],
+    dateMark: /\bD[i\u00ed]a\s*\d{1,2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b|\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s*\d{1,2}\b|\bSemana\s*\d\b/i,
     endHint: /\bfin de mes\b|\bfinal del mes\b|\b[u\u00fa]ltima semana\b|\bsemana\s*4\b/i,
     startHint: /\bprincipio de mes\b|\bcomienzo del mes\b|\bprimera semana\b|\bsemana\s*1\b/i,
   },
@@ -3903,6 +3905,7 @@ const _V432_CFG = {
     houseOrdFmt: (n) => '\u7b2c' + n + '\u5bab',
     ctx: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
     dayRe: [/(?:\d{1,2}\u6708)?(\d{1,2})\u65e5/, /\u7b2c(\d{1,2})\u5929/],
+    dateMark: /\d{1,2}\u6708\d{1,2}\u65e5|\u7b2c\s*\d{1,2}\s*\u5929|\u7b2c\s*[\u4e00\u4e8c\u4e09\u56db1-4]\s*\u5468|\d{1,2}\u65e5/,
     endHint: /\u6708\u672b|\u6700\u540e\u4e00\u5468|\u7b2c\s*4\s*\u5468|\u7b2c\u56db\u5468/,
     startHint: /\u6708\u521d|\u6708\u4e0a\u65ec|\u7b2c\u4e00\u5468|\u7b2c\s*1\s*\u5468/,
   },
@@ -3933,6 +3936,11 @@ function _v432Truth(lang, astroMatrix, kind) {
   const first = astroMatrix?.months?.[0];
   if (!first) return {};
   for (const p of _V432_ORDER) {
+    // ⚠️ V432-fix: 月亮排除在流月真值之外 —— 月亮约 2.5 天换一宫，
+    //   而真值盘只是「月初快照」。用月初快照去「纠正」报告里带日期的月亮句（如
+    //   "the transiting Moon in Libra, House 4, on September 1-2"）= 把正确写反。
+    //   月亮保留在本命锁（本命月亮是出生锁定的固定事实）。宁可不纠，不可编。
+    if (p === 'Moon') continue;
     const k = p.toLowerCase();
     const info = p === 'Sun' ? (first.sun || (first.positions && first.positions.Sun) || {}) : (first[k] || {});
     if (!info) continue;
@@ -4288,7 +4296,12 @@ function _v432LockTransit(text, lang, astroMatrix) {
     const bp = tail.search(cfg.bodyAny);
     const win = bp >= 0 ? tail.slice(0, bp) : tail;
     if (cfg.ingress.test(win)) {
-      const ctx = text.slice(Math.max(0, m.index - 80), m.index + 240);
+      // ⚠️ V432-fix: 日号窗口收紧到「本句」(+前置 60 字符，容纳 "Jour 24" 这类标头)，
+      //   否则会抓到后面句子的日期 → 用错误日号判向（实测：Sept 1-2 句被后面的 Sept 27 带偏）
+      const s0 = text.slice(m.index, m.index + 160);
+      const sEnd = s0.search(/[.\n\u3002]/);
+      const core = sEnd >= 0 ? s0.slice(0, sEnd) : s0;
+      const ctx = text.slice(Math.max(0, m.index - 60), m.index) + core;
       const day = _v432IngressDay(cfg, ctx);
       const nextMonth = astroMatrix.months?.[1];
       const nSun = nextMonth?.sun || nextMonth?.Sun || (nextMonth?.positions && nextMonth.positions.Sun) || null;
@@ -4302,15 +4315,25 @@ function _v432LockTransit(text, lang, astroMatrix) {
         return null;
       })();
       const target = isEnd ? nextSign : (isStart ? t.sign : null);
-      if (written && target && written !== target) {
+      const wi = written ? win.indexOf(written) : -1;
+      if (wi >= 0 && target && written !== target) {
+        // ⚠️ V432-fix: 只改「本句」内的那一处（原实现 text.replace 会改全文首个同名星座 → 可能覆写前文的正确句子）
+        const abs = m.index + m[0].length + wi;
         const before = text;
-        text = text.replace(new RegExp(_v432Esc(written)), target);
+        text = text.slice(0, abs) + target + text.slice(abs + written.length);
         nameRe.lastIndex += (text.length - before.length);
         result = text;
         console.log(`[V432] ${lang} ingress\u65f6\u5e8f\u9501: ${name} \u2192 ${written} \u21d2 ${target} (day=${day})`);
       }
       continue;
     }
+    // ⚠️ V432-fix: 句中带明确日期的，流月「值锁」一律不得介入 —— 真值盘只是月初快照，
+    //   代表不了该日真值，强行纠正 = 把正确写反（月亮除外已整星排除）。宁可不动，不可编。
+    const sw = text.slice(m.index, m.index + 160);
+    const swEnd = sw.search(/[.\n\u3002]/);
+    const swCore = swEnd >= 0 ? sw.slice(0, swEnd) : sw;
+    const prevLine = (text.slice(Math.max(0, m.index - 80), m.index).split(/[.\n\u3002]/).pop() || '');
+    if (cfg.dateMark.test(swCore) || cfg.dateMark.test(prevLine)) continue;
     const clause = _v432TransitClause(cfg, lang, text, m.index, m[0].length);
     if (!clause) continue;
     const { fwd, bwd } = clause;

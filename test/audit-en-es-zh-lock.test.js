@@ -28,7 +28,7 @@ const SIGNS = ['EN', 'VI', 'TH', 'ZH', 'ES', 'FR'].map((k) => {
   return m[0];
 }).join('\n');
 
-const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { applyTruthLocksEnEsZh, _v432Truth, _v432Normalize, _V432_LANGS, _V432_NAME, _v432AllSignWords };`)();
+const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { applyTruthLocksEnEsZh, _v432Truth, _v432Normalize, _V432_LANGS, _V432_NAME, _v432AllSignWords, _V432_CFG };`)();
 
 const CASE = { birthDate: '1989-11-12', birthTime: '02:00', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai' };
 let M = null;
@@ -39,6 +39,7 @@ const planets = (lang) => Object.values(F._V432_NAME[lang]);
 const nTruth = (lang, p) => (F._v432Truth(lang, M, 'natal') || {})[p];
 const tTruth = (lang, p) => (F._v432Truth(lang, M, 'transit') || {})[p];
 const lock = (text, lang) => F.applyTruthLocksEnEsZh(text, lang, M);
+const cfgOf = (lang) => F._V432_CFG[lang];
 
 // 找一个「本命真值与流月真值不同」的行星（否则用例无判定力）
 function pickPlanet(lang) {
@@ -120,9 +121,13 @@ for (const lang of ['en', 'es', 'zh']) {
       assert.deepStrictEqual(fails, [], 'self_test 失败：\n  ' + fails.join('\n  '));
     });
 
-    test('十行星全覆盖（防覆盖率造假）', () => {
+    test('九行星流月全覆盖 + 月亮整星排除（防反向污染）', () => {
       const f = fb[lang];
       const tt = F._v432Truth(lang, M, 'transit');
+      const nt = F._v432Truth(lang, M, 'natal');
+      const moon = Object.values(F._V432_NAME[lang]).find((n) => /moon|luna|lune|月/i.test(n));
+      assert.ok(!tt[moon], `${moon} 不得进入流月真值（月初快照代表不了月内换宫）`);
+      assert.ok(nt[moon], `${moon} 必须仍在本命真值（本命月亮是出生锁定的固定事实）`);
       let covered = 0;
       const misses = [];
       for (const p of planets(lang)) {
@@ -133,8 +138,42 @@ for (const lang of ['en', 'es', 'zh']) {
         if (out === want) covered++;
         else misses.push(`${p}: ${out} （期望 ${want}）`);
       }
-      assert.deepStrictEqual(misses, [], '十行星值归真失败：\n  ' + misses.join('\n  '));
-      assert.ok(covered >= 10, `行星覆盖数 ${covered} < 10`);
+      assert.deepStrictEqual(misses, [], '流月值归真失败：\n  ' + misses.join('\n  '));
+      assert.ok(covered >= 9, `行星覆盖数 ${covered} < 9`);
+    });
+
+    test('带明确日期的句子：流月值锁不得介入（月初快照≠该日真值）', () => {
+      const p = pickPlanet(lang);
+      const T = tTruth(lang, p);
+      const f = fb[lang];
+      const W = otherSign(lang, T.sign);
+      const DATE = { en: ', on September 27', es: ', el 27 de septiembre', zh: '，9月27日' }[lang];
+      // 同句带日期 → 原文不动（正确信号）——日期必须插在句末标点**之前**（否则落在窗口外，测不到守卫）
+      const dated = f.transit(p, W, otherHouse(T)).replace(/([.。])$/, DATE + '$1');
+      assert.ok(cfgOf(lang).dateMark.test(dated), '测试样本构造失败：日期未被识别 → ' + dated);
+      assert.strictEqual(lock(dated, lang), dated, '带日期句被改动（反向污染风险）');
+      // 不带日期 → 必须归真（证明锁本身仍有效，非整体失效）
+      const undated = f.transit(p, W, otherHouse(T));
+      assert.strictEqual(lock(undated, lang), f.transit(p, T.sign, T.house), '无日期句未被归真');
+    });
+
+    test('入驻句日号不跳句：只能读本句日期（防用后句日号判错向）', () => {
+      const p = pickPlanet(lang);
+      const T = tTruth(lang, p);
+      const f = fb[lang];
+      const signsOf = F._v432AllSignWords(lang).slice(0, 12);
+      const zi = signsOf.indexOf(T.sign);
+      const nextSign = zi >= 0 ? signsOf[(zi + 1) % 12] : null;
+      const W = signsOf.find((s) => s !== T.sign && s !== nextSign);
+      assert.ok(W && nextSign, '取不到可用错值/下月星座');
+      const DATE = { en: 'on September 1', es: 'el 1 de septiembre', zh: '9月1日' }[lang];
+      const LATER = { en: ' Peak: Day 27 brings a shift.', es: ' Clave: Día 27 trae un cambio.', zh: ' 关键：第27天带来转折。' }[lang];
+      const head = f.ingress(p, W, T.house).replace(/([.。])$/, ' ' + DATE + '$1');
+      const text = head + ' ' + LATER;
+      const out = lock(text, lang);
+      // 本句日期=1 → 月初判向（当月星座）：修对时不得被后句 Day 27 带去下月星座
+      assert.ok(!out.includes(nextSign), `被后句日号带偏到下月星座 ${nextSign}: ${out}`);
+      assert.ok(out.includes(W) || out.includes(T.sign), '入驻句被改成了不可识别形态: ' + out);
     });
 
     test('本命/流月隔离：纯流月句与纯本命句都不得被改动', () => {
