@@ -2895,7 +2895,7 @@ function _thClause(text, i, len) {
 }
 
 // 泰语单段替换（镜像 _viPatchZone）
-function _thPatchZone(zone, sign, house, preferFirst) {
+function _thPatchZone(zone, sign, house, preferFirst, text, absBase) {
   let z = zone, ch = 0;
   const log = [];
   if (sign) {
@@ -2904,6 +2904,9 @@ function _thPatchZone(zone, sign, house, preferFirst) {
       if (s === sign) continue;
       const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
       if (idx < 0) continue;
+      // ⚠️ V436 守卫挂此处会误杀本命真星座引用（th/vi natal/transit 锁的星座是行星-星座直接关联，
+      //   不是月名中的日期词）；已回滚，仅保留参数以兼容调用方。
+      if (false && text != null && absBase != null && _v436InThMonth(text, absBase + idx, s.length)) continue;
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
     if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`เบอร์ ${best.s}→${sign}`); }
@@ -2956,9 +2959,9 @@ function lockNatalTruthTh(text, astroMatrix) {
     const origLen = z.length;
     let patch;
     if (hasSign || hasHouse) {
-      patch = _thPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
+      patch = _thPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd, text, z === fwd ? m.index + m[0].length : m.index - origLen);
     } else {
-      patch = _thPatchZone(z, t.sign, t.house, z === fwd);
+      patch = _thPatchZone(z, t.sign, t.house, z === fwd, text, z === fwd ? m.index + m[0].length : m.index - origLen);
     }
     if (patch.count === 0) continue;
     // 替换：基于 text（原文）位置，防止多轮替换位移踩踏
@@ -3125,7 +3128,7 @@ function _viClause(text, i, len, explicit) {
 }
 
 // 在单段区间内做「就近一处」替换：preferFirst=true → 取该区间首个；false → 取最后一个
-function _viPatchZone(zone, sign, house, preferFirst) {
+function _viPatchZone(zone, sign, house, preferFirst, text, absBase) {
   let z = zone, ch = 0;
   const log = [];
   if (sign) {
@@ -3134,6 +3137,8 @@ function _viPatchZone(zone, sign, house, preferFirst) {
       if (s === sign) continue;
       const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
       if (idx < 0) continue;
+      // ⚠️ V436 守卫不挂 vi：vi 月名不含星座子串，守卫永远 false（零误杀）；th 同理已回滚。
+      if (false && text != null && absBase != null && _v436InThMonth(text, absBase + idx, s.length)) continue;
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
     if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`星座 ${best.s}→${sign}`); }
@@ -3184,8 +3189,8 @@ function lockNatalTruthVi(text, astroMatrix) {
     if (!clause) continue;
     const { fwd, bwd } = clause;
     const backStart = m.index - bwd.length;
-    const F = _viPatchZone(fwd, t.sign, t.house, true);
-    const B = bwd ? _viPatchZone(bwd, t.sign, t.house, false) : { text: bwd, count: 0, log: [] };
+    const F = _viPatchZone(fwd, t.sign, t.house, true, text, m.index + m[0].length);
+    const B = bwd ? _viPatchZone(bwd, t.sign, t.house, false, text, backStart) : { text: bwd, count: 0, log: [] };
     if (!F.count && !B.count) continue;
     for (const x of F.log.concat(B.log)) detail.push(`${name} ${x}`);
     // 右界用【原长度】定位：星座名长短变化不会导致掉字/重字
@@ -3282,8 +3287,8 @@ function lockTransitTruthVi(text, astroMatrix) {
     let z = fwd.length >= bwd.length ? fwd : bwd;
     const origLen = z.length;
     let patch;
-    if (hasSign || hasHouse) patch = _viPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd);
-    else patch = _viPatchZone(z, t.sign, t.house, z === fwd);
+    if (hasSign || hasHouse) patch = _viPatchZone(z, hasSign ? null : t.sign, hasHouse ? null : t.house, z === fwd, text, z === fwd ? m.index + m[0].length : m.index - origLen);
+    else patch = _viPatchZone(z, t.sign, t.house, z === fwd, text, z === fwd ? m.index + m[0].length : m.index - origLen);
     if (patch.count === 0) continue;
     const pos = z === fwd ? m.index + m[0].length : m.index - origLen;
     const safePos = Math.max(0, pos);
@@ -4060,7 +4065,7 @@ function _v432TruthMatch(t, sign, house) {
 }
 
 // ── 单段替换：星座归真 + 宫位归真（含未知/拼写错误兜底）──
-function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst) {
+function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase) {
   let z = zone, cnt = 0, log = [];
   const words = _v432AllSignWords(lang);
   if (sign) {
@@ -4072,6 +4077,9 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst) {
       if (s.includes(sign) || sign.includes(s)) continue;
       const idx = preferFirst ? z.indexOf(s) : z.lastIndexOf(s);
       if (idx < 0) continue;
+      // 🛠️ V436: 泰语月名内嵌星座名防撞（统一挂到全部真值锁）—— 候选星座位置落在月名区间内
+      //   （如 กันยายน⊃กันยา）= 不是星座引用，跳过。non-th 文本不含泰语月名 → 零误杀。
+      if (text != null && absBase != null && _v436InThMonth(text, absBase + idx, s.length)) continue;
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
     if (best) {
@@ -4091,9 +4099,14 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst) {
           const looksSign = lang === 'zh' ? true : /^[A-Z\u00c0-\u00de]/.test(word);
           if (word !== sign && !known && looksSign) {
             const wStart = before.length - word.length;
-            const base = z.slice(0, hm.idx).length - before.length;
-            z = z.slice(0, base + wStart) + sign + z.slice(base + wStart + word.length);
-            cnt++; log.push(`sign ${word}\u2192${sign}(未知/拼写兜底)`);
+            // 🛠️ V436: 月名内嵌星座名防撞（兜底分支也要守卫，保守漏改非假阳性）
+            if (text != null && absBase != null && _v436InThMonth(text, absBase + wStart, word.length)) {
+              // 候选词落在泰语月名区间内（如 กันยายน⊃กันยา）= 不是星座引用 → 跳过替换
+            } else {
+              const base = z.slice(0, hm.idx).length - before.length;
+              z = z.slice(0, base + wStart) + sign + z.slice(base + wStart + word.length);
+              cnt++; log.push(`sign ${word}\u2192${sign}(未知/拼写兜底)`);
+            }
           }
         }
       }
@@ -4253,8 +4266,8 @@ function _v432LockNatal(text, lang, astroMatrix) {
     if (!clause) continue;
     const { fwd, bwd } = clause;
     const backStart = m.index - bwd.length;
-    const F = _v432PatchZone(cfg, lang, fwd, t.sign, t.house, true);
-    const B = bwd ? _v432PatchZone(cfg, lang, bwd, t.sign, t.house, false) : { text: bwd, count: 0 };
+    const F = _v432PatchZone(cfg, lang, fwd, t.sign, t.house, true, text, m.index + m[0].length);
+    const B = bwd ? _v432PatchZone(cfg, lang, bwd, t.sign, t.house, false, text, backStart) : { text: bwd, count: 0 };
     if (!F.count && !B.count) continue;
     if (F.count) hits.push([m.index + m[0].length, m.index + m[0].length + fwd.length, F.text]);
     if (B.count) hits.push([backStart, m.index, B.text]);
@@ -4470,10 +4483,10 @@ function _v432LockTransit(text, lang, astroMatrix) {
     const hasHouseB = t.house && (() => { const h = _v432FindHouse(cfg, bwd, false); return h && h.value === Number(t.house); })();
     if (hasSignF && hasHouseF && hasSignB && hasHouseB) continue;
     let z = fwd, origLen = z.length;
-    let patch = _v432PatchZone(cfg, lang, z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true);
+    let patch = _v432PatchZone(cfg, lang, z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true, text, m.index + m[0].length);
     if (patch.count === 0 && bwd) {
       z = bwd; origLen = z.length;
-      patch = _v432PatchZone(cfg, lang, z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false);
+      patch = _v432PatchZone(cfg, lang, z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false, text, m.index - origLen);
     }
     if (patch.count === 0) continue;
     const pos = z === fwd ? m.index + m[0].length : Math.max(0, m.index - origLen);

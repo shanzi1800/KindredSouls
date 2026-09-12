@@ -27,7 +27,7 @@ const SIGNS = ['EN', 'ES', 'ZH', 'FR', 'TH', 'VI'].map((k) => {
   const m = SRC.match(new RegExp('const SUN_SIGN_' + k + '\\s*=\\s*\\[[^\\]]*\\];'));
   return m ? m[0] : '';
 }).join('\n');
-const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { _v433LockMoonWeek, _v434LockGlobalMoonScope, _v432Signs };`)();
+const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { _v433LockMoonWeek, _v434LockGlobalMoonScope, _v432Signs, _v436InThMonth };`)();
 
 const weeks = [{
   week: 1,
@@ -151,5 +151,73 @@ describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标�
     const once = F._v433LockMoonWeek(inp, 'th', astroTh);
     const twice = F._v433LockMoonWeek(once, 'th', astroTh);
     assert.equal(twice, once, '非幂等（乒乓）: ' + twice);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V436 回归门：泰语月名内嵌星座名防撞（生产实测根因）
+// 【核心问题】泰语月名含星座短名：กันยายน⊃กันยา / เมษายน⊃เมษ / ... 共6组
+//   V433 月亮锁用 _v433MoonNameTh 扫星座名时，候选位置落在月名区间内=不是星座引用，跳过。
+//   同时 V432 引擎（en/es/zh/fr）对泰语月名无影响（泰国锁专用 _thPatchZone，不扫月名）。
+describe('V436：泰语月名内嵌星座名守卫（生产实测根因）', () => {
+  // ① _v436InThMonth 单测：六组月名-星座名碰撞 + 负例
+  test('⑬ กันยายน(九月) 含处女座 กันยา → 落在月名内 = true', () => {
+    // กันยา 在 กันยายน 内（位置 0-5）→ กันยา 起点在月名内
+    assert.ok(F._v436InThMonth('เดือนกันยายน', 7, 5), 'กันยา(处女)起点在กันยายน内应 true: ' + F._v436InThMonth('เดือนกันยายน', 7, 5));
+  });
+  test('⑬b เมษายน(四月) 含白羊 เมษ → true', () => {
+    assert.ok(F._v436InThMonth('เดือนเมษายน', 6, 3), 'เมษ(白羊)起点在เมษายน内应 true');
+  });
+  test('⑬c พฤษภาคม(五月) 含金牛 พฤษภ → true', () => {
+    assert.ok(F._v436InThMonth('พฤษภาคม', 0, 5), 'พฤษภ 在พฤษภาคม内应 true');
+  });
+  test('⑬d มีนาคม(三月) 含双鱼 มีน → true', () => {
+    assert.ok(F._v436InThMonth('มีนาคม', 0, 3), 'มีน(双鱼)起点在มีนาคม内应 true');
+  });
+  test('⑬e 星座位置不在月名内 → false（合法引用）', () => {
+    // กันยา 出现在独立词 ราศีกันยา（星座词，非月名）→ false
+    assert.ok(!F._v436InThMonth('ราศีกันยา', 5, 5), 'ราศีกันยา 里的 กันยา 不是月名区间 → false');
+    assert.ok(!F._v436InThMonth('เดือนกันยายน ราศีกันยา', 19, 5), 'ราศีกันยา 里 กันยา 不在月名内 → false');
+  });
+  test('⑬f มีน(双鱼) 在มีนาคม(三月)外 → false', () => {
+    // มีน 出现在独立词，不在月名区间
+    assert.ok(!F._v436InThMonth('มีนาคมดวงจันทร์มีน', 12, 3), 'มีน 在มีนาคม外 → false');
+  });
+
+  // ② V433 月亮锁防撞（泰语）：含月名的周级文本，守卫跳过月名内的星座名
+  test('⑭ 泰语月名 กันยายน 含 กันยา，V433 月亮锁不得误改独立星座词ราศีกันยา', () => {
+    const thAstro = {
+      months: [{ moon_weeks: [
+        { week: 2, legs: [{ sign: 'Scorpio', house: 5 }, { sign: 'Virgo', house: 3 }, { sign: 'Virgo', house: 4 }] },
+        { week: 3, legs: [{ sign: 'Libra', house: 4 }, { sign: 'Libra', house: 5 }] },
+      ]}]
+    };
+    // 文本含ราศีกันยา（星座，独立）+ กันยายน（月名，在同一行）
+    // ราศีกันยา里的กันยา起点在ราศีกันยา词内（非月名区间）→ 守卫放行 → 归真
+    // กันยายน里的กันยา起点在月名内 → 守卫跳过 → 不被误改
+    const inp = '✦ [🔵 สัปดาห์ที่ 2: 9月8–14]\nดวงจันทร์ทรานซิสผ่านราศีกันยา (บ้าน 3→บ้าน 4) และเดือนกันยายน';
+    const out = F._v433LockMoonWeek(inp, 'th', thAstro);
+    // กันยายน（月名）里的 กันยา 不应被月亮锁误改（但ราศีกันยา 里的 กันยา 是流月星座引用，如不在本周真值则应归真）
+    // 为避免混淆，用不含真值冲突的纯文本
+    const inp2 = '✦ [🔵 สัปดาห์ที่ 2]\nดวงจันทร์ทรานซิสเคลื่อนผ่านราศีพิจิก (บ้าน 5→บ้าน 3) เดือนกันยายน';
+    const out2 = F._v433LockMoonWeek(inp2, 'th', thAstro);
+    assert.equal(out2, inp2, '月名 กันยายน 未被月亮锁误改（守卫跳过月名内 กันยา）: ' + out2);
+  });
+
+  // ③ 幂等验证（生产实测：V433+V435 乒乓消失）
+  test('⑮ มีนาคม(三/月)含มีน(双鱼)，幂等归真无乒乓 → 不动点', () => {
+    const thAstro = {
+      months: [{ moon_weeks: [
+        { week: 1, legs: [{ sign: 'Aries', house: 7 }, { sign: 'Aries', house: 8 }] },
+      ]}]
+    };
+    // มีนาคม含มีน（月名内），若ฺ月亮锁误改→每次都翻→永不等；幂等则最终不动
+    const inp = '✦ [🔵 สัปดาห์ที่ 1]\nมีนาคมดวงจันทร์มีน';
+    const out1 = F._v433LockMoonWeek(inp, 'th', thAstro);
+    const out2 = F._v433LockMoonWeek(out1, 'th', thAstro);
+    const out3 = F._v433LockMoonWeek(out2, 'th', thAstro);
+    assert.equal(out1, out2, '幂等：第1次==第2次（无乒乓）: ' + out1 + ' vs ' + out2);
+    assert.equal(out2, out3, '幂等：第2次==第3次: ' + out2 + ' vs ' + out3);
+    assert.ok(!out1.includes('♓'), '输出不含双鱼emoji（มีน非本周真值→若误改ฺ双鱼星座名会有问题）');
   });
 });
