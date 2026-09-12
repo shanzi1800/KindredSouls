@@ -25,6 +25,7 @@ else:
     # Works for all planets, slight precision difference for outer planets
     swe.set_ephe_path('')  # Empty = Moshier mode
 
+import calendar
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -141,7 +142,8 @@ def find_station_day(start_dt: datetime, end_dt: datetime, planet: int, station_
 
 # ── Monthly Astro Matrix Computation ─────────────────────────────────────────
 
-def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', cusps: List[float] = None) -> Dict[str, Any]:
+def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', cusps: List[float] = None,
+                           tz: str = 'Asia/Bangkok', moon_weeks: bool = False) -> Dict[str, Any]:
     """Compute the complete astro matrix for one month."""
     # Reference date for the month
     ref_date = datetime(year, month, 15)
@@ -256,6 +258,8 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', c
         'w2': _weekly_sun['w2'],
         'w3': _weekly_sun['w3'],
         'w4': _weekly_sun['w4'],
+        # ── V433: 月亮周级真值（方案 A）——仅报告月计算，避免 12 月全算的冗余开销 ──
+        'moon_weeks': compute_moon_weeks(year, month, tz, cusps, rising_sign) if moon_weeks else None,
     }
 
 
@@ -414,7 +418,9 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
     month = start_month
     
     for _ in range(12):
-        matrix = compute_monthly_matrix(year, month, rising_sign, _cusps)
+        # V433: 仅首月计算月亮周级真值（月报周次只属于当月；12 月全算纯属浪费算力）
+        matrix = compute_monthly_matrix(year, month, rising_sign, _cusps,
+                                        tz=tz, moon_weeks=(len(months) == 0))
         months.append(matrix)
         month += 1
         if month > 12:
@@ -574,6 +580,111 @@ def compute_natal_cusps(jd_birth: float, lat: float, lon: float,
         return list(c), float(ascmc[0]), float(ascmc[1]), 'WholeSignFallback'
 
 
+def compute_moon_weeks(year: int, month: int, tz_str: str = 'Asia/Bangkok',
+                       cusps: List[float] = None,
+                       rising_sign: str = 'Cancer') -> List[Dict[str, Any]]:
+    """V433 · 方案 A：月亮「周级真值」。
+
+    【为什么需要】月亮约 13.2°/天、2.5 天换一座，月度单点快照（月中 15 日 12:00 UT）
+    根本无法支撑周级陈述。实测（1988-12-31 Chatham 盘，2026-09）：
+      快照 = Moon Scorpio H2，而真值 W1 = Aries→Taurus→Gemini→Cancer、
+      W4 = Aquarius→Pisces→Aries→Taurus。
+    生产 report 因此把「Luna en tránsito en Escorpio, su Casa 2」抄进每一周
+    （W1/W3/W4 + 陷阱段共 5 次）——负向 Prompt 规则（V232 SINGLE-USE RULE）拦不住，
+    因为数据本身只给「月中快照」+「扁平换座日期表」，模型必须自己把日期归进周次。
+
+    【本函数】按用户本地时区把该月切成 W1(1-7) / W2(8-14) / W3(15-21) / W4(22-月末)：
+      · start  = 该周 0 点月亮所在 (星座, 宫位)
+      · legs   = 周内 (星座, 宫位) 腿序列（相邻重复已去重）
+      · changes= 周内状态变化事件，本地时间精确到分钟：
+                 kind='sign' 月亮换座；kind='cusp' 月亮跨宫头（星座不变，宫位变）
+    【真值纪律】星座/宫位一律 SwissEph 实算；宫位用本命 Placidus 宫头，无出生时间退化为太阳宫。
+    【注意】同一星座跨两宫会产生两条腿（如 Aries/H7 → Aries/H8）——这是宫位制的数学必然，合法。
+    """
+    import pytz
+    try:
+        tz = pytz.timezone(tz_str or 'Asia/Bangkok')
+    except Exception:
+        try:
+            tz = pytz.timezone('Asia/Bangkok')
+        except Exception:
+            tz = pytz.UTC
+
+    def _loc(y, m, d, hh=0, mm=0, ss=0):
+        try:
+            return tz.localize(datetime(y, m, d, hh, mm, ss))
+        except Exception:
+            return datetime(y, m, d, hh, mm, ss, tzinfo=pytz.UTC)
+
+    def _leg_at(dt_local):
+        u = dt_local.astimezone(pytz.UTC)
+        jd = swe.julday(u.year, u.month, u.day, u.hour + u.minute / 60.0 + u.second / 3600.0)
+        xx, _ = swe.calc_ut(jd, swe.MOON)
+        deg = xx[0] % 360.0
+        sign = SIGNS[int(deg // 30) % 12]
+        house = get_house_from_cusps(deg, cusps) if cusps else get_house(sign, rising_sign)
+        return {'sign': sign, 'house': house}
+
+    def _refine(t0, t1, prev_leg):
+        """二分法把 (星座,宫位) 状态跳变时刻收敛到分钟（区间内只允许一次跳变）"""
+        a, b = t0, t1
+        while (b - a).total_seconds() > 60:
+            mid = a + (b - a) / 2
+            if _leg_at(mid) != prev_leg:
+                b = mid
+            else:
+                a = mid
+        t = a + (b - a) / 2
+        return t.replace(second=0, microsecond=0)
+
+    last_day = calendar.monthrange(year, month)[1]
+    week_ranges = [(1, 7), (8, 14), (15, 21), (22, last_day)]
+
+    weeks = []
+    for wi, (d0, d1) in enumerate(week_ranges, 1):
+        w_start = _loc(year, month, d0, 0, 0, 0)
+        w_end = _loc(year, month, d1, 23, 59, 59)
+        first = _leg_at(w_start)
+        legs = [first]
+        changes = []
+        prev = first
+        cur = w_start
+        while cur < w_end:
+            nxt = cur + timedelta(hours=1)
+            if nxt > w_end:
+                nxt = w_end
+            nowleg = _leg_at(nxt)
+            if nowleg != prev:
+                t = _refine(cur, nxt, prev)
+                # 越过边界 1 分钟取新状态，杜绝「二分收敛在旧状态侧」造成的事件重复
+                nxt_leg = _leg_at(t + timedelta(minutes=1))
+                if nxt_leg == prev:      # 极端兜底：仍在旧状态则用区间末端状态
+                    nxt_leg = nowleg
+                changes.append({
+                    'day': t.day,
+                    'time': t.strftime('%H:%M'),
+                    'kind': 'sign' if nxt_leg['sign'] != prev['sign'] else 'cusp',
+                    'from_sign': prev['sign'], 'from_house': prev['house'],
+                    'to_sign': nxt_leg['sign'], 'to_house': nxt_leg['house'],
+                })
+                legs.append(nxt_leg)
+                prev = nxt_leg
+            cur = nxt
+        dedup = []
+        for lg in legs:
+            if not dedup or dedup[-1] != lg:
+                dedup.append(lg)
+        weeks.append({
+            'week': wi,
+            'from_day': d0,
+            'to_day': d1,
+            'start': first,
+            'legs': dedup,
+            'changes': changes,
+        })
+    return weeks
+
+
 def compute_moon_ingresses(year: int, month: int, tz_str: str = 'Asia/Ho_Chi_Minh') -> List[Dict]:
     """Compute exact Moon sign-ingress dates within a given month (local tz).
     Scans hourly; records each sign change. Returns list of ingress events."""
@@ -602,6 +713,104 @@ def compute_moon_ingresses(year: int, month: int, tz_str: str = 'Asia/Ho_Chi_Min
         last_sign = sign_idx
         curr += timedelta(hours=1)
     return ingresses
+
+
+def self_test_moon_weeks() -> bool:
+    """V433 自证：月亮周级真值（评分表必须先自证，再报结论）。
+
+    ① 独立复算：用 15 分钟步进的全月扫描（与实现的 1 小时粗扫 + 二分法不同路径）
+       重建每周星座序列与换座分钟，逐条比对。
+    ② 结构不变量：W1..W4 连续覆盖整月且首尾相接；腿序列相邻不重复。
+    ③ 已知坏样本必抓：月中快照星座不足以代表 W1/W4（证明「必须喂周级数据」）。
+    """
+    import pytz
+    ok = True
+    def _chk(cond, msg):
+        nonlocal ok
+        print(('  ✅ ' if cond else '  ❌ ') + msg)
+        if not cond:
+            ok = False
+
+    print('═══ V433 月亮周级真值 self_test ═══')
+    lat, lon, tz_name = -43.9536, -176.5463, 'Pacific/Chatham'   # 极东时区：跨日/跨月边界最苛刻
+    cusps = None
+    try:
+        _bd = pytz.timezone(tz_name).localize(datetime(1988, 12, 31, 23, 59))
+        _u = _bd.astimezone(pytz.UTC)
+        _jdb = swe.julday(_u.year, _u.month, _u.day, _u.hour + _u.minute / 60.0)
+        _sdeg, _ = get_planet_pos(swe.julday(_u.year, _u.month, _u.day, 12), swe.SUN)
+        cusps, _asc, _mc, _hs = compute_natal_cusps(_jdb, lat, lon, True, get_sign(_sdeg))
+        print(f'  用盘：1988-12-31 23:59 {tz_name} | 宫位制 {_hs}')
+    except Exception as e:
+        print(f'  用盘 cusps 计算失败（退化为太阳宫）: {e}')
+
+    YEAR, MONTH = 2026, 9
+    weeks = compute_moon_weeks(YEAR, MONTH, tz_name, cusps, get_sign(_sdeg) if cusps else 'Cancer')
+    tz = pytz.timezone(tz_name)
+
+    def _leg(dt_local):
+        u = dt_local.astimezone(pytz.UTC)
+        jd = swe.julday(u.year, u.month, u.day, u.hour + u.minute / 60.0)
+        deg = swe.calc_ut(jd, swe.MOON)[0][0] % 360.0
+        sign = SIGNS[int(deg // 30) % 12]
+        house = get_house_from_cusps(deg, cusps) if cusps else get_house(sign, 'Cancer')
+        return (sign, house)
+
+    # ── ① 独立复算（5 分钟步进，与实现的「1 小时粗扫 + 二分」完全不同路径）──
+    def _dedup(seq):
+        out = []
+        for x in seq:
+            if not out or out[-1] != x:
+                out.append(x)
+        return out
+
+    import calendar as _c
+    _last = _c.monthrange(YEAR, MONTH)[1]
+    ind = {}
+    for (d0, d1) in [(1, 7), (8, 14), (15, 21), (22, _last)]:
+        a = tz.localize(datetime(YEAR, MONTH, d0, 0, 0))
+        b = tz.localize(datetime(YEAR, MONTH, d1, 23, 59))
+        seq, prev, t = [], _leg(a), a
+        while t < b:
+            t2 = min(t + timedelta(minutes=5), b)
+            lg = _leg(t2)
+            if lg != prev:
+                seq.append(prev)
+                prev = lg
+            t = t2
+        seq.append(prev)
+        ind[d0] = _dedup(seq)
+
+    for w in weeks:
+        ind_legs = ind[w['from_day']]
+        f_legs = [tuple([lg['sign'], lg['house']]) for lg in w['legs']]
+        i_legs = [tuple(x) for x in ind_legs]
+        f_signs = _dedup([x[0] for x in f_legs])
+        i_signs = _dedup([x[0] for x in i_legs])
+        _chk(f_signs == i_signs, f"W{w['week']} 星座序列一致（实现 {f_signs} vs 独立复算 {i_signs}）")
+        _chk(f_legs == i_legs, f"W{w['week']} 星座+宫位腿序列完全一致（{len(f_legs)} 条腿）")
+
+    # ── ② 结构不变量 ──
+    _chk([w['week'] for w in weeks] == [1, 2, 3, 4], 'W1..W4 四周齐全')
+    cont = all(weeks[i]['to_day'] + 1 == weeks[i + 1]['from_day'] for i in range(len(weeks) - 1))
+    _chk(cont and weeks[0]['from_day'] == 1 and weeks[3]['to_day'] == 30, '周区间连续覆盖 1..30')
+    nodup = all(
+        all(w['legs'][i] != w['legs'][i + 1] for i in range(len(w['legs']) - 1))
+        for w in weeks
+    )
+    _chk(nodup, '腿序列相邻不重复')
+    _chk(all(len(w['legs']) >= 1 for w in weeks), '每周至少一条腿')
+
+    # ── ③ 已知坏样本：月中快照不足以代表 W1/W4 ──
+    snap = SIGNS[int(swe.calc_ut(swe.julday(YEAR, MONTH, 15, 12), swe.MOON)[0][0] // 30) % 12]
+    w1 = {lg['sign'] for lg in weeks[0]['legs']}
+    w4 = {lg['sign'] for lg in weeks[3]['legs']}
+    _chk(snap not in w1, f'快照({snap})不在 W1 真值({sorted(w1)})——快照当全月必错')
+    _chk(snap not in w4, f'快照({snap})不在 W4 真值({sorted(w4)})——快照当全月必错')
+    _chk('Cancer' in w1 and 'Scorpio' not in w1, f'W1 已知真值核对（含 Cancer 且无 Scorpio）: {sorted(w1)}')
+
+    print(f"self_test 结论: {'✅ 通过（周级真值可信）' if ok else '❌ 失败'}")
+    return ok
 
 
 def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
@@ -743,9 +952,13 @@ if __name__ == '__main__':
     parser.add_argument('--no-birth-time', dest='no_birth_time', action='store_true',
                         help='Birth time unknown → Solar House fallback (sun sign = 1st house)')
     parser.add_argument('--health', action='store_true', help='Health check')
+    parser.add_argument('--moon-weeks-selftest', action='store_true', help='V433 月亮周级真值自证')
     
     args = parser.parse_args()
     
+    if getattr(args, 'moon_weeks_selftest', False):
+        sys.exit(0 if self_test_moon_weeks() else 1)
+
     if args.health:
         print('✅ V134 SwissEph OK')
         print(f'  swisseph version: {swe.version}')

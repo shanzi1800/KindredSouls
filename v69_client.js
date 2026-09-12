@@ -460,6 +460,19 @@ const PLANET_KEYS_MONTHLY = [
   ['saturn','Saturn'],['uranus','Uranus'],['neptune','Neptune'],['pluto','Pluto'],
 ];
 const SIGN_NAMES = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis'];
+// 🛠️ V433-fix: 星座名 → 索引（致命死代码修复）
+//   病根：SIGN_NAMES 是「缩写表」(Ari/Tau/Vir…)，而矩阵数据是「全称」(Aries/Virgo…)→
+//   SIGN_NAMES.indexOf('Virgo') 永远 = -1 → labels[lang] 本地化字典从未生效，
+//   所有语种的数据块一直在喂英文星座名 → 逼 LLM 二次翻译（V432 病根分析所指的同一条机制）。
+//   注：V432 改 labels.vi/labels.fr 那次改动其实是死代码，真正生效的是后置锁。
+const SIGN_FULL = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+function _signIdxOf(s) {
+  if (!s) return -1;
+  const i = SIGN_FULL.indexOf(s);
+  if (i >= 0) return i;
+  const k = String(s).slice(0, 3).toLowerCase();   // 兼容缩写/大小写变体
+  return SIGN_NAMES.findIndex((x) => x.toLowerCase() === k);
+}
 const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
 const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
 
@@ -489,7 +502,10 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
   };
   const mAbbr = monthAbbr[lang] || monthAbbr.zh;
 
-  const lines = ['[P1 PER-MONTH PLANET DATA — EVERY WORD IS TRUE — COPY EXACTLY INTO YOUR REPORT]'];
+  const lines = [
+    '[P1 PER-MONTH PLANET DATA — EVERY WORD IS TRUE — COPY EXACTLY INTO YOUR REPORT]',
+    '(*snap* = MID-MONTH SNAPSHOT — a single instant. Applies to the Moon: it changes sign every ~2.5 days, so for week-by-week Moon statements you MUST use WEEK-SCOPED MOON TRUTH in EPHEMERIS_DATA, NEVER this value.)',
+  ];
   months.forEach((m, i) => {
     const wkMap = i === 0 ? 'W1=Wk1,W2=Wk2,W3=Wk3,W4=Wk4' :
                   i === 1 ? 'W1=Wk5,W2=Wk6,W3=Wk7,W4=Wk8' :
@@ -504,7 +520,7 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
                   i === 10 ? 'W1=Wk41,W2=Wk42,W3=Wk43,W4=Wk44' :
                   'W1=Wk45,W2=Wk46,W3=Wk47,W4=Wk48';
     const sunData = _sunOf(m);
-    const sunSignIdx = SIGN_NAMES.indexOf(sunData.sign);
+    const sunSignIdx = _signIdxOf(sunData.sign);
     const sunSignName = L[sunSignIdx] || sunData.sign;
     const sunHouse = _getH(sunData.house);
 
@@ -515,18 +531,20 @@ export function buildPerMonthDataBlock(astroMatrix, lang) {
       if (k === 'sun') return; // handled above
       const p = m[k];
       if (!p?.sign) return;
-      const signIdx = SIGN_NAMES.indexOf(p.sign);
+      const signIdx = _signIdxOf(p.sign);
       const signName = L[signIdx] || p.sign;
       const house = _getH(p.house);
       const rx = p.retrograde ? 'R' : '';
-      parts.push(`${enName}=${signName}(H${house})${rx}`);
+      // V433: 月亮是「月中快照」（2.5 天换一座）——显式标注，杜绝被当作全月值抄进周次
+      const snap = k === 'moon' ? '*snap*' : '';
+      parts.push(`${enName}=${signName}(H${house})${rx}${snap}`);
     });
     // ── V177-P2: 用每周太阳实际值替换占位符 wkMap（照单抄，杜绝 LLM 推理混淆）──
     const wParts = [];
     for (const wk of ['w1', 'w2', 'w3', 'w4']) {
       const w = m[wk];
       if (w?.sign) {
-        const wSignIdx = SIGN_NAMES.indexOf(w.sign);
+        const wSignIdx = _signIdxOf(w.sign);
         const wSignName = L[wSignIdx] || w.sign;
         const wHouse = _getH(w.house);
         wParts.push(`${wk}=${wSignName}(H${wHouse})`);

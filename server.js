@@ -5275,7 +5275,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   const STRICT_GROUNDING = `
 ### [STRICT GROUNDING & MOON TRANSIT RULES — V232 P0-FIX]
 1. ZERO INVENTIONS: You are strictly constrained to the facts provided in EPHEMERIS_DATA below.
-2. MOON TRANSIT SINGLE-USE RULE: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days per sign). NEVER repeat "Moon in [Sign]" across multiple weeks.
+2. MOON TRANSIT SINGLE-USE RULE: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days per sign). NEVER repeat "Moon in [Sign]" across multiple weeks. For every weekly section, take the Moon's sign AND house from the WEEK-SCOPED MOON TRUTH block (that week's line) — NEVER from the mid-month snapshot in the per-month planet block.
 3. STRICT DATES ONLY: Only mention planetary transits for the EXACT dates listed in EPHEMERIS_DATA. If a date is not in the JSON, it DOES NOT EXIST.
 4. CLOSED-WORLD ASSUMPTION: If a celestial event is not explicitly provided below, it DOES NOT EXIST.
 5. SUN INGRESS SINGLE-USE RULE: The Sun enters each zodiac sign ONLY ONCE per month. If the Sun enters Libra on Sept 22, write it ONLY in the week containing Sept 22. NEVER write "Sun enters Libra" in two different weeks.
@@ -5290,7 +5290,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
 The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the title without them.
 
 ❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
-✅ Good Output: Mentioning "Moon in Scorpio" ONLY on the exact dates specified in EPHEMERIS_DATA.
+✅ Good Output: For Week 1, naming the Moon signs listed on the "Week 1" line of WEEK-SCOPED MOON TRUTH, in order.
 
 ❌ Bad Output: Writing "Sun enters Libra" in Week 3 AND Week 4.
 ✅ Good Output: Writing "Sun enters Libra" ONLY in the week containing the actual ingress date.
@@ -5307,6 +5307,34 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
   const moonIngressLines = _moonIng.length > 0
     ? _moonIng.map(e => `- Moon enters ${e.to_sign} on ${e.date_str} (~${e.time_str})`).join('\n')
     : '- (Moon ingress data unavailable for this month)';
+  // 🛠️ V433 · 方案 A：月亮「周级真值」（根治「月中快照充当全月」的事实性幻觉）
+  //   病根实证（1988-12-31 Chatham 盘 / 2026-09）：月中快照 Moon=Scorpio H2，
+  //   真值 W1=Aries→Taurus→Gemini→Cancer、W4=Aquarius→Pisces→Aries→Taurus，
+  //   生产报告却把快照写进 W1/W3/W4+陷阱段共 5 处 —— 负向 Prompt 规则(V232)拦不住，
+  //   因为数据只给了「扁平换座日期表」，模型必须自己把日期归进周次（还并存一个快照锚点）。
+  const _moonWeeks = astroMatrix?.months?.[0]?.moon_weeks || null;
+  const _mwSigns = ({ en: SUN_SIGN_EN, es: SUN_SIGN_ES, zh: SUN_SIGN_ZH, fr: SUN_SIGN_FR,
+                      th: SUN_SIGN_TH, vi: SUN_SIGN_VI })[lang] || SUN_SIGN_EN;
+  const _mwLoc = (s) => { const _i = _EN2ZIDX[s]; return (_i != null && _mwSigns[_i]) || s; };
+  const moonWeekLines = _moonWeeks
+    ? _moonWeeks.map(w => {
+        // 按星座聚合宫位：同一星座跨两宫 → H7→H8（宫位制的数学必然，不是矛盾）
+        const groups = [];
+        for (const lg of w.legs) {
+          const last = groups[groups.length - 1];
+          if (last && last.sign === lg.sign) {
+            if (last.houses[last.houses.length - 1] !== lg.house) last.houses.push(lg.house);
+          } else groups.push({ sign: lg.sign, houses: [lg.house] });
+        }
+        const path = groups.map(g => `${_mwLoc(g.sign)}(H${g.houses.join('→H')})`).join(' → ');
+        const ing = w.changes.filter(c => c.kind === 'sign')
+          .map(c => `${_mwLoc(c.to_sign)}@${curMonthName} ${c.day} ${c.time}`).join(', ');
+        return `- Week ${w.week} (${curMonthName} ${w.from_day}–${w.to_day}): ${path}${ing ? ` | Moon enters: ${ing}` : ''}`;
+      }).join('\n')
+    : '- (Moon week truth unavailable)';
+  if (_moonWeeks) {
+    console.log(`[V433] 月亮周级真值注入: ${_moonWeeks.map(w => `W${w.week}=${w.legs.length}腿/${w.changes.filter(c => c.kind === 'sign').length}换座`).join(' ')}`);
+  }
   if (natalSun) monthlySystem += `\n\n[NATAL PROFILE V382] User's Natal Sun is in ${natalSun}. You MUST mention "${natalSun}" in Section 1 and explain how the monthly transit affects their Natal Sun in ${natalSun}.`;
   
   return {
@@ -5314,10 +5342,16 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
     user: `
 
 ### [EPHEMERIS_DATA — Planetary Transit Calendar for ${curMonthName} ${currentYear}]
-⚠️ CRITICAL: The Moon transits each zodiac sign ONLY ONCE per month (~2.5 days).
+⚠️ CRITICAL: The Moon changes sign every ~2.5 days — it does NOT stay in one sign for a whole month.
 Below are the EXACT moon ingress dates for ${currentYear} — use ONLY these dates:
 Moon Ingress Dates (exact, SwissEph computed):
 ${moonIngressLines}
+
+═══ WEEK-SCOPED MOON TRUTH (V433 · HIGHEST PRIORITY · SwissEph computed · local time) ═══
+⚠️ The "Moon=" value in the per-month planet block is a MID-MONTH SNAPSHOT (a single instant) — it MUST NOT be used for week-by-week Moon statements.
+⚠️ In each weekly section (Week 1–4) you may ONLY name the Moon signs listed for THAT week, in that order. If a week lists several signs, describe the passage (e.g. "the Moon moves from X into Y").
+⚠️ The Moon enters each sign only ONCE per month: NEVER repeat one Moon sign across two different weeks, and NEVER name a sign (or house) that is not listed for that week.
+${moonWeekLines}
 The Sun ingresses: Aug 10→Leo, Sept 22→Lib (write Sun entering Libra ONLY in the week containing Sept 22).
 Use the EXACT planetary positions from [P1 PER-MONTH PLANET DATA] below — do NOT invent dates.
 
