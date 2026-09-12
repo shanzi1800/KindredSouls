@@ -1213,7 +1213,7 @@ function forceSpaceHouseSanitizer(text){
   if(!text)return text;
   let t = text;
   // 卧室 → 第四宫(田宅宫)
-  t = t.replace(/卧室[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '卧室区域:第四宫(田宅宫)');
+  t = t.replace(/卧室[^✦]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '卧室区域:第四宫(田宅宫)');
   t = t.replace(/卧室[^\n]{0,20}?(第[一二三四五六七八九十百0-9]{1,3}宫[^)]{0,12})[^\n]{0,20}?/g, '卧室区域:第四宫(田宅宫)');
   // 厨房 → 第二宫(财帛宫)与第八宫(共享资源)
   t = t.replace(/厨房[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '厨房区域:第二宫(财帛宫)与第八宫(共享资源)');
@@ -4278,6 +4278,104 @@ function _v432IngressDay(cfg, ctx) {
   return day || null;
 }
 
+// 🛠️ V433-fix4: 月亮「周级真值」硬锁（确定性后处理，治本 vi 等模型读周级块的行为缺陷）
+//
+// 病根：方案 A 已把周级月亮真值 + 照抄句注入 prompt（es 几乎 100% 正确），但 vi 模型仍会
+//   把相邻周的星座（如 Scorpio）搬进 W1/W4 并配错宫位（实测 HCMC/vi）。靠喂数据已到顶 → 上确定性锁。
+//
+// 规则（镜像 V432 锁族，仅作用于「流月月亮」）：
+//   ① 解析报告 ✦[周N] 分段；每段只允许本周真实星座集合（陷阱段用全月并集）
+//   ② 流月月亮句里：星座在集合内 → 宫位不符则归真；星座不在集合内 → 整段(星座+宫位)换成本周首个真值
+//   ③ 本命月亮（natal/bản mệnh/本命/出生）一律不动（由本命锁管辖）
+//   ④ 取不到真值盘 → 原文透传（绝不编）
+function _v433LockMoonWeek(text, lang, astroMatrix) {
+  const weeks = astroMatrix && astroMatrix.months && astroMatrix.months[0] && astroMatrix.months[0].moon_weeks;
+  if (!Array.isArray(weeks) || !weeks.length) return text;
+  const LMAP = { en: SUN_SIGN_EN, es: SUN_SIGN_ES, zh: SUN_SIGN_ZH, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI };
+  const L = LMAP[lang];
+  if (!L || !L.length) return text;
+  const wkSigns = {}, wkHouse = {}, wkFirst = {};
+  const union = new Set(), unionHouse = {};
+  for (const w of weeks) {
+    const s = new Set(), h = {};
+    for (const lg of w.legs) {
+      const li = _EN2ZIDX[lg.sign];
+      if (li == null) continue;
+      s.add(li); (h[li] = h[li] || new Set()).add(lg.house);
+      union.add(li); (unionHouse[li] = unionHouse[li] || new Set()).add(lg.house);
+    }
+    wkSigns[w.week] = s; wkHouse[w.week] = h;
+    const firstLeg = (w.legs || [])[0];
+    wkFirst[w.week] = firstLeg ? { idx: _EN2ZIDX[firstLeg.sign], house: firstLeg.house } : null;
+  }
+  // ⚠️ moonRe 用字符串表（\\b 在字符串里=词边界；正则字面量的 .source 喂 new RegExp 会被重解析成退格符，导致月亮关键词永远匹配不上）
+  const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '\\b月亮\\b', en: '\\bMoon\\b', fr: '\\bLune\\b', th: '\\bดวงจันทร์\\b' }[lang];
+  if (!moonRe) return text;
+  const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
+  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación)/i;
+
+  // 切分 ✦[周N] 段落（indexOf 而非脆弱正则，避 /g lastIndex 诡异）
+  const segs = [];
+  let sp = text.indexOf('✦');
+  while (sp !== -1) {
+    const np = text.indexOf('✦', sp + 1);
+    const seg = np === -1 ? text.slice(sp) : text.slice(sp, np);
+    const hm = seg.match(/(?:Semana|Tuần|Week|周|สัปดาห์ที่)\s*([1-4])/);
+    segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1], 10) : 0 });
+    if (np === -1) break;
+    sp = np;
+  }
+
+  let patches = [];
+  for (const seg of segs) {
+    const start = seg.start, wk = seg.wk;
+    const end = seg.end;
+    const allowed = wk ? wkSigns[wk] : union;
+    const ah = wk ? wkHouse[wk] : unionHouse;
+    const first = wk ? wkFirst[wk] : null;
+    const moonIt = new RegExp(moonRe, 'gi');
+    let mpos;
+    while ((mpos = moonIt.exec(text.slice(start, end))) !== null) {
+      const mo = start + mpos.index;
+      const w0 = Math.max(0, mo - 40);  // 窗口起点（夹紧负下标）
+      const win = text.slice(w0, mo + 110);
+      for (let si = 0; si < L.length; si++) {
+        const sign = L[si];
+        const sre = new RegExp(_v432Esc(sign), 'g');
+        let sm;
+        while ((sm = sre.exec(win)) !== null) {
+          const abs = w0 + sm.index;  // 绝对位置 = 窗口起点 + 窗口内偏移
+          if (natalRe.test(win.slice(0, sm.index))) continue;   // 本命月亮 → 不动
+          const around = win.slice(sm.index, sm.index + 60);
+          const hm = around.match(houseRe);
+          const writtenHouse = hm ? parseInt(hm[1], 10) : null;
+          if (allowed.has(si)) {
+            const th = ah[si] ? Array.from(ah[si]) : [];
+            if (writtenHouse != null && th.length && !th.includes(writtenHouse)) {
+              // 宫位不符 → 归真（取真值首个宫位）
+              patches.push({ s: abs + sm[0].length + (hm.index - sm[0].length), e: abs + sm[0].length + hm.index + hm[0].length, rep: String(th[0]) });
+            }
+          } else if (first && first.idx >= 0) {
+            // 越界星座 → 整段(星座+宫位)换成本周首个真值
+            const repSign = L[first.idx];
+            const tail = (writtenHouse != null && hm)
+              ? (houseRe.toString().includes('Casa') ? ' Casa ' : (lang === 'vi' ? ' Nhà ' : (lang === 'zh' ? ' 第' + first.house + '宫' : (lang === 'th' ? ' บ้าน ' : ' House ')))) + first.house
+              : (writtenHouse != null ? ' ' + first.house : '');
+            const rep = repSign + tail;
+            patches.push({ s: abs, e: abs + sm[0].length + (hm ? (hm.index - sm[0].length + hm[0].length) : 0), rep });
+          }
+        }
+      }
+    }
+  }
+  if (!patches.length) return text;
+  patches.sort((x, y) => y.s - x.s);
+  let out = text;
+  for (const p of patches) out = out.slice(0, p.s) + p.rep + out.slice(p.e);
+  console.log(`[V433] 月亮周级锁: 归正 ${patches.length} 处 (lang=${lang})`);
+  return out;
+}
+
 function _v432LockTransit(text, lang, astroMatrix) {
   const cfg = _V432_CFG[lang];
   if (!text || !cfg || !astroMatrix?.months?.[0]) return text;
@@ -4366,6 +4464,7 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix) {
     let out = _v432Normalize(text, lang);
     out = _v432LockNatal(out, lang, astroMatrix);
     out = _v432LockTransit(out, lang, astroMatrix);
+    out = _v433LockMoonWeek(out, lang, astroMatrix);   // V433-fix4: 月亮周级硬锁
     return out;
   } catch (e) {
     console.warn(`[V432] ${lang} \u771f\u503c\u9501\u5f02\u5e38\uff08\u539f\u6587\u900f\u4f20\uff09: ${e.message}`);
@@ -7125,6 +7224,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             stdCached = lockTransitTruthVi(stdCached, _hitAstro);
             if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
             if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
+            stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstro);   // V433-fix4
           }
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
@@ -7132,6 +7232,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
             stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
+            stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstroTh);   // V433-fix4
           }
           // 🛠️ V432: HIT 路径补 en/es/zh 真值锁（与 vi/th/fr 对称；旧缓存里的 native 漂移不再裸奔）
           let _hitFinal = stdCached;
@@ -7290,10 +7391,13 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V424: 泰语 MISS 非stream 路径补 lockNatalTruthTh（金额阈值已由 enforceRiskThreshold 覆盖）
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'vi') reportContent = lockTransitTruthVi(reportContent, astroMatrix);
+        reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
   if (lang === 'fr') reportContent = lockNatalTruthFr(enforceRiskThreshold(reportContent, lang), astroMatrix);
   if (lang === 'fr') reportContent = lockTransitTruthFr(reportContent, astroMatrix);
+        reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockTransitTruthTh(reportContent, astroMatrix);
+        reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
 
@@ -7793,10 +7897,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
           if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
           if (lang === 'vi') streamText = lockTransitTruthVi(streamText, astroMatrix);
+          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
   if (lang === 'fr') streamText = lockNatalTruthFr(streamText, astroMatrix);
   if (lang === 'fr') streamText = lockTransitTruthFr(streamText, astroMatrix);
+          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
           if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
           if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
+          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
         }
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
