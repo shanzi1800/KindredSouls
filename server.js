@@ -417,7 +417,7 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 // KindredSouls Railway Server - V116bc (FORCE REBUILD 1783756901)
 // Serves static frontend + all API routes on port 3000
 import express from 'express';
-import { readFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -5139,6 +5139,17 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   return c;
 }
 
+// 🛠️ V433-DIAG: 真实 Prompt 落盘（仅当设 KC_DUMP_PROMPT=/path 时生效；生产不设 → 零影响）
+//   用途：月亮类「数据锚点」散落在多处时，肉眼核对线上到底喂了什么，避免再靠推测。
+function _v433DumpPrompt(prompt) {
+  const f = process.env.KC_DUMP_PROMPT;
+  if (!f || !prompt) return;
+  try {
+    writeFileSync(f, `=== SYSTEM ===\n${prompt.system || ''}\n\n=== USER ===\n${prompt.user || ''}`);
+    console.log('[V433-DIAG] prompt dumped → ' + f);
+  } catch (e) { console.error('[V433-DIAG] dump failed: ' + e.message); }
+}
+
 function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   // ⚠️ V433 实测发现：本函数全仓零调用点 = 死代码。月报实际走 buildWealthReportPrompt (5694, 调用点 7140/7856)。
   //    血泪：V383 月亮换座表、STRICT_GROUNDING V232、以及 V433 首次注入都曾落在这里 → 生产零效果。
@@ -6000,6 +6011,13 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       const house = getH2(p.house);
       const rx = p.retrograde ? '（逆行）' : '';
       const status = p.status ? ` [${p.status}]` : '';
+      // 🛠️ V433: 流月月亮绝不能以「月中快照」形式出现在「必须照抄」清单里。
+      //   病根实证（Chatham 盘 es 生产）：此处 `月亮: Scorpio 第2宫` 被模型当成全月常量 →
+      //   W1/W3/W4+陷阱段共 5 处写同一星座；而真值 W1=Aries→Cancer、W4=Aquarius→Taurus。
+      //   月报且已有周级真值时 → 该行改为指向周级真值块（月亮 house 每周都变，本行不成立）。
+      if (k === 'moon' && reportType === 'monthly' && _moonWeeks) {
+        return '  - 月亮: ⚠️ NOT a month-wide value — take the Moon sign+house for EACH week from [MOON PER-WEEK TRUTH V433]';
+      }
       return `  - ${zh}: ${p.sign} 第${house}宫${rx}${status}`;
     }).filter(Boolean).join('\n') : '';
 
@@ -7177,6 +7195,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Invalid reportType' });
         }
 
+        _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
+
         // 🛠️ V211: 月报从 4000→12000
         const maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'once' ? 8000 : 12000);
         const ascendant = astroMatrix?.meta?.rising_sign || 'Cancer';
@@ -7882,6 +7902,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       hexName: '震',
       cardName: '隐士',
     }, astroMatrix, hasBirthTime);  // ← Pass V69 matrix + hasBirthTime to prompt builder
+    _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
 
     // ── V97r: prompt 脏字符清洗(... → ...,防 ByteString 死锁)──
     if (prompt) {
