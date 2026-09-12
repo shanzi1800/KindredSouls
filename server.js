@@ -4645,10 +4645,260 @@ function _v434LockGlobalMoonScope(text, lang, astroMatrix) {
 }
 
 // ── V434 统一入口（月亮全范围锁 + 日月修饰词锁；幂等，无真值盘自动跳过）──
+// ==================== V435: 日级月亮星座区间硬锁 ====================
+// 【病根】V433 只锁「带周号」段落 + 只到「周」粒度；周内「日期–月亮星座」组合无人校验。
+//   实测 Chatham 盘 W2：真值 8日 Cancer→Leo / 12日 12:37 Virgo→Libra / 14日 19:28 Libra→Scorpio，
+//   而文案写「Día 12 ... Luna en tránsito en Escorpio」→ 星座在该周并集内（V433 放行），日期却对不上。
+//
+// 【真值来源】moon_weeks[].changes（kind='sign'/'cusp' + day + time）→ 现推逐日切片。
+//   ⚠️ 星盘矩阵**没有** dailyMoonMap 字段（草案假设它存在 → 整把锁会 return 原文 = 静默死锁）；
+//      必须从 changes 现推：换座当天产出两段（星座+宫位各带分钟权重）。
+//
+// 【硬约束（每条都对应一个已踩过的坑）】
+//   ① 星座按「文本位置最近」选，绝不按星座字典顺序选（V430 的假阳性根因）
+//   ② 必须是「月亮自己的」星座：月亮关键词之后若先出现其他行星名则截断（绝不改金星/水星的星座）
+//   ③ 本命月亮不动：只查月亮关键词「紧邻前 40 / 紧邻后 16」，不做整窗排除（V433 跨子句教训）
+//   ④ 区间内只要有任一天含该星座 → 合法放行（交集非空即合法，零误杀）
+//   ⑤ 日期须带月份或显式日期词，日号 1..31，且月份必须是报告月
+//   ⑥ 幂等；无真值盘 → 原文透传
+const V435_MOON = { en: '\\bMoon\\b', es: '\\bLuna\\b', zh: '月亮', vi: 'Mặt Trăng', fr: '\\bLune\\b', th: 'ดวงจันทร์' };
+const V435_PLANET = {
+  en: '\\b(?:Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\\b',
+  es: '\\b(?:Sol|Mercurio|Venus|Marte|Júpiter|Saturno|Urano|Neptuno|Plutón)\\b',
+  zh: '(?:太阳|水星|金星|火星|木星|土星|天王星|海王星|冥王星)',
+  vi: '(?:Mặt Trời|Sao Thủy|Sao Kim|Sao Hỏa|Sao Mộc|Sao Thổ|Sao Thiên Vương|Sao Hải Vương|Sao Diêm Vương)',
+  fr: '\\b(?:Soleil|Mercure|Vénus|Mars|Jupiter|Saturne|Uranus|Neptune|Pluton)\\b',
+  th: '(?:ดวงอาทิตย์|ดาวพุธ|ดาวศุกร์|ดาวอังคาร|ดาวพฤหัสบดี|ดาวเสาร์|ดาวยูเรนัส|ดาวเนปจูน|ดาวพลูโต)',
+};
+const V435_HOUSE = {
+  zh: '第\\s*(\\d{1,2})\\s*宫', en: '\\bHouse\\s*(\\d{1,2})', es: '\\bCasa\\s*(\\d{1,2})',
+  vi: '\\bNhà\\s*(\\d{1,2})', fr: '\\bMaison\\s*(\\d{1,2})', th: '(?:บ้าน|ภพ)\\s*(\\d{1,2})',
+};
+const V435_NATAL = /(natal|natale|natif|native|de naissance|本命|出生|bản mệnh|กำเนิด)/i;
+const V435_MONTHS = {
+  en: { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 },
+  es: { enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12 },
+  fr: { janvier: 1, fevrier: 2, 'février': 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, aout: 8, 'août': 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12, 'décembre': 12 },
+  th: { 'มกราคม': 1, 'กุมภาพันธ์': 2, 'มีนาคม': 3, 'เมษายน': 4, 'พฤษภาคม': 5, 'มิถุนายน': 6, 'กรกฎาคม': 7, 'สิงหาคม': 8, 'กันยายน': 9, 'ตุลาคม': 10, 'พฤศจิกายน': 11, 'ธันวาคม': 12 },
+};
+// 日期区间模式表：gN = 捕获组序号（1 起）；monName = 月份名组；monNum = 数值月份组
+const V435_DATE_PATTERNS = {
+  zh: [
+    { re: /(\d{1,2})\s*月\s*(\d{1,2})\s*日?\s*(?:[-–~—]|至|到)\s*(?:(\d{1,2})\s*月\s*)?(\d{1,2})\s*日?(?![0-9])/g, gS: 2, gE: 4, monNum: 1, monNum2: 3 },
+    { re: /(\d{1,2})\s*月\s*(\d{1,2})\s*日(?![0-9])/g, gS: 2, gE: null, monNum: 1 },
+  ],
+  en: [
+    { re: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?![0-9])\s*(?:[-–~—]|to|through|until)\s*(\d{1,2})(?![0-9])/gi, gS: 2, gE: 3, monName: 1 },
+    { re: /(?:on\s+)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?![0-9])/gi, gS: 2, gE: null, monName: 1 },
+  ],
+  es: [
+    { re: /(\d{1,2})(?![0-9])\s*(?:al|a|hasta|[-–~—])\s*(\d{1,2})(?![0-9])\s+de\s+([a-záéíóúñ]+)/gi, gS: 1, gE: 2, monName: 3 },
+    { re: /d[íi]a\s+(\d{1,2})(?![0-9])/gi, gS: 1, gE: null },
+  ],
+  vi: [
+    { re: /ng[àa]y\s+(\d{1,2})(?![0-9])\s*(?:[-–~—]|đến|tới)\s*(\d{1,2})(?![0-9])/gi, gS: 1, gE: 2 },
+    { re: /ng[àa]y\s+(\d{1,2})(?![0-9])/gi, gS: 1, gE: null },
+  ],
+  fr: [
+    { re: /(\d{1,2})(?![0-9])\s*(?:au|à|[-–~—])\s*(\d{1,2})(?![0-9])\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)/gi, gS: 1, gE: 2, monName: 3 },
+    { re: /(?:(?:le|du)\s+)?(\d{1,2})(?![0-9])\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)/gi, gS: 1, gE: null, monName: 2 },
+  ],
+  th: [
+    { re: /วันที่\s*(\d{1,2})(?![0-9])\s*(?:[-–~—]|ถึง)\s*(\d{1,2})(?![0-9])/g, gS: 1, gE: 2 },
+    { re: /วันที่\s*(\d{1,2})(?![0-9])/g, gS: 1, gE: null },
+  ],
+};
+
+function _v435Key(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function _v435Min(t) { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : 0; }
+
+/** 由 moon_weeks[].changes 现推「逐日切片真值表」：{ year, month, map: {'YYYY-MM-DD': [{sign,house,mins}]} } */
+function _v435DailyMap(astroMatrix) {
+  const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+  const weeks = m0 && m0.moon_weeks;
+  if (!Array.isArray(weeks) || !weeks.length) return null;
+  const mm = /^(\d{4})-(\d{1,2})$/.exec(String(m0.month_key || ''));
+  if (!mm) return null;
+  const year = +mm[1], month = +mm[2];
+  const all = [];
+  for (const w of weeks) for (const c of (w.changes || [])) if ((c.kind === 'sign' || c.kind === 'cusp') && c.day) all.push(c);
+  if (!all.some((c) => c.kind === 'sign')) return null;   // 无换座数据 → 不做（宁可不锁，绝不瞎猜）
+  all.sort((a, b) => (a.day - b.day) || String(a.time || '00:00').localeCompare(String(b.time || '00:00')));
+  const firstDay = Math.min(...weeks.map((w) => w.from_day));
+  const lastDay = Math.max(...weeks.map((w) => w.to_day));
+  const w0 = weeks[0] || {};
+  const startSign = (w0.start && w0.start.sign) || (w0.legs && w0.legs[0] && w0.legs[0].sign);
+  if (!startSign) return null;
+  const map = {};
+  for (let d = firstDay; d <= lastDay; d++) {
+    let cur = { sign: startSign, house: (w0.start && w0.start.house) || (w0.legs && w0.legs[0] && w0.legs[0].house) || null };
+    for (const c of all) if (c.day < d) cur = { sign: c.to_sign || cur.sign, house: c.to_house || cur.house };
+    const same = all.filter((c) => c.day === d);
+    const segs = [];
+    let t = 0;
+    for (const c of same) {
+      const mins = _v435Min(c.time);
+      segs.push({ sign: cur.sign, house: cur.house, mins: Math.max(0, mins - t) });
+      cur = { sign: c.to_sign || cur.sign, house: c.to_house || cur.house };
+      t = mins;
+    }
+    segs.push({ sign: cur.sign, house: cur.house, mins: Math.max(0, 1440 - t) });
+    map[_v435Key(year, month, d)] = segs;
+  }
+  return { year, month, map };
+}
+
+/** 区间真值：valid=该区间出现过的星座集合（交集判据）；dom=占时最长星座；domHouse=该星座占时最长的宫位 */
+function _v435RangeTruth(dm, sd, ed) {
+  const mins = {}, hMins = {};
+  for (let d = sd; d <= ed; d++) {
+    const segs = dm.map[_v435Key(dm.year, dm.month, d)];
+    if (!segs) continue;
+    for (const s of segs) {
+      mins[s.sign] = (mins[s.sign] || 0) + s.mins;
+      const k = s.sign + '|' + s.house;
+      hMins[k] = (hMins[k] || 0) + s.mins;
+    }
+  }
+  const signs = Object.keys(mins);
+  if (!signs.length) return null;
+  let dom = signs[0];
+  for (const s of signs) if (mins[s] > mins[dom]) dom = s;
+  let domHouse = null, best = -1;
+  for (const k of Object.keys(hMins)) {
+    const i = k.lastIndexOf('|');
+    if (k.slice(0, i) === dom && hMins[k] > best) { best = hMins[k]; domHouse = +k.slice(i + 1); }
+  }
+  return { valid: new Set(signs), dom, domHouse };
+}
+
+/** 取日期区间文本 → 候选列表 [{s,e,sd,ed}]（月份必须与报告月一致） */
+function _v435CollectDates(text, lang, tM) {
+  const specs = V435_DATE_PATTERNS[lang];
+  if (!specs) return [];
+  const out = [];
+  for (const sp of specs) {
+    const re = new RegExp(sp.re.source, sp.re.flags);
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m[0].length === 0) { re.lastIndex++; continue; }
+      const sd = parseInt(m[sp.gS], 10);
+      const ed = sp.gE ? parseInt(m[sp.gE], 10) : sd;
+      if (!(sd >= 1 && sd <= 31 && ed >= 1 && ed <= 31 && sd <= ed)) continue;
+      let mon = tM;
+      if (sp.monNum) {
+        mon = parseInt(m[sp.monNum], 10);
+        if (mon !== tM) continue;                                  // 非报告月 → 跳过
+        if (sp.monNum2 && m[sp.monNum2] && parseInt(m[sp.monNum2], 10) !== tM) continue;
+      }
+      if (sp.monName) {
+        const key = String(m[sp.monName] || '').toLowerCase();
+        const mp = V435_MONTHS[lang] || {};
+        let found = 0;
+        for (const k of Object.keys(mp)) if (key.startsWith(k.slice(0, 3)) || key === k) { found = mp[k]; break; }
+        if (!found || found !== tM) continue;                      // 认不出/非报告月 → 跳过
+      }
+      out.push({ s: m.index, e: m.index + m[0].length, sd, ed });
+    }
+  }
+  // 折叠重叠（同一起点保留最长）
+  return out.sort((a, b) => a.s - b.s || b.e - a.e).filter((x, i, arr) => i === 0 || x.s >= arr[i - 1].e);
+}
+
+/** 在日期所在句内找到「月亮自己的」星座 → { signStart, signEnd, signIdx, hStart, hEnd, hNum } */
+function _v435FindMoonSign(text, ds, de, lang, L) {
+  const moonStr = V435_MOON[lang];
+  if (!moonStr) return null;
+  const B = /[.!?。！？\n;；]/;
+  let cs = ds, ce = de;
+  while (cs > 0 && !B.test(text[cs - 1]) && (ds - cs) < 220) cs--;
+  while (ce < text.length && !B.test(text[ce]) && (ce - de) < 220) ce++;
+  const clause = text.slice(cs, ce);
+  const relS = ds - cs;
+  const moonIt = new RegExp(moonStr, 'gi');
+  let best = null, bestD = 1e9, mm;
+  while ((mm = moonIt.exec(clause)) !== null) {
+    const st = mm.index, en = mm.index + mm[0].length;
+    const d = (en <= relS) ? relS - en : (st >= relS ? st - relS : 0);
+    if (d < bestD) { bestD = d; best = { st, en }; }
+  }
+  if (!best || bestD > 130) return null;                            // 月亮不在该日期附近
+  if (V435_NATAL.test(clause.slice(Math.max(0, best.st - 40), best.st))) return null;   // 本命月亮（前置）
+  if (V435_NATAL.test(clause.slice(best.en, best.en + 16))) return null;                // 本命月亮（后置）
+  let seg = clause.slice(best.en, best.en + 70);
+  const pRe = V435_PLANET[lang];
+  if (pRe) { const cp = seg.search(new RegExp(pRe, 'i')); if (cp >= 0) seg = seg.slice(0, cp); }   // 截断到下一个行星
+  let si = -1, sp = -1;
+  for (let i = 0; i < L.length; i++) {
+    const p = seg.indexOf(L[i]);
+    if (p >= 0 && (sp < 0 || p < sp)) { sp = p; si = i; }           // ① 按位置最近选，不按字典序
+  }
+  if (si < 0) return null;
+  const signStart = cs + best.en + sp;
+  const signEnd = signStart + L[si].length;
+  let hNum = null, hStart = -1, hEnd = -1;
+  const hPat = V435_HOUSE[lang];
+  if (hPat) {
+    const after = text.slice(signEnd, signEnd + 24);
+    const hm = after.match(new RegExp('^\\s*[,，、（(]?\\s*' + hPat));
+    if (hm) {
+      hNum = parseInt(hm[1], 10);
+      hStart = signEnd + hm[0].indexOf(hm[1]);
+      hEnd = hStart + hm[1].length;
+    }
+  }
+  return { signStart, signEnd, signIdx: si, hStart, hEnd, hNum };
+}
+
+/**
+ * V435 主锁：校验并归正「日期–月亮星座」组合（区间 + 显式单日）
+ * @param {string} text 报告文本
+ * @param {string} lang 语言码
+ * @param {object} astroMatrix 星盘矩阵（含 months[0].moon_weeks）
+ */
+function _v435LockMoonDailyRanges(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  const L = ({ en: SUN_SIGN_EN, es: SUN_SIGN_ES, zh: SUN_SIGN_ZH, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI })[lang];
+  if (!L || !V435_MOON[lang]) return text;
+  const dm = _v435DailyMap(astroMatrix);
+  if (!dm) return text;
+  const dates = _v435CollectDates(text, lang, dm.month);
+  if (!dates.length) return text;
+  const patches = [];
+  for (const dt of dates) {
+    const claim = _v435FindMoonSign(text, dt.s, dt.e, lang, L);
+    if (!claim) continue;
+    const claimedEn = Object.keys(_EN2ZIDX).find((k) => _EN2ZIDX[k] === claim.signIdx);
+    if (!claimedEn) continue;
+    const truth = _v435RangeTruth(dm, dt.sd, dt.ed);
+    if (!truth) continue;
+    if (truth.valid.has(claimedEn)) continue;                        // ④ 交集非空 → 合法放行
+    const domIdx = _EN2ZIDX[truth.dom];
+    if (domIdx === undefined || domIdx === claim.signIdx) continue;
+    patches.push({ s: claim.signStart, e: claim.signEnd, txt: L[domIdx], tag: `${claimedEn}→${truth.dom}@${dt.sd}-${dt.ed}` });
+    if (claim.hNum && truth.domHouse && claim.hStart >= 0) {
+      patches.push({ s: claim.hStart, e: claim.hEnd, txt: String(truth.domHouse) });
+    }
+  }
+  if (!patches.length) return text;
+  patches.sort((a, b) => b.s - a.s);                                 // 倒序应用，保证索引不漂
+  let out = text, guard = Infinity, done = [];
+  for (const p of patches) {
+    if (p.e > guard) continue;                                       // 与已应用补丁重叠 → 跳过
+    out = out.slice(0, p.s) + p.txt + out.slice(p.e);
+    guard = p.s;
+    if (p.tag) done.push(p.tag);
+  }
+  if (done.length) console.log(`[V435] 月亮日级区间锁: 归正 ${done.length} 处 (lang=${lang}) | ${done.slice(0, 4).join(' ')}`);
+  return out;
+}
+
 function applyV434Locks(text, lang, astroMatrix) {
   if (!text || typeof text !== 'string') return text;
   try {
-    let out = _v434LockGlobalMoonScope(text, lang, astroMatrix);
+    // V435 日级区间锁先做（位置敏感：它按「日期所在句」定位星座，必须在全局改写之前）
+    let out = _v435LockMoonDailyRanges(text, lang, astroMatrix);
+    out = _v434LockGlobalMoonScope(out, lang, astroMatrix);
     out = _v434LockQualifiers(out, lang);
     return out;
   } catch (e) {
