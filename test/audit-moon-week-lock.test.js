@@ -126,4 +126,30 @@ describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标�
     const out = F._v434LockGlobalMoonScope(inp, 'th', astro);
     assert.equal(out, inp, 'V434-2 泰语本命月亮被误改: ' + out);
   });
+
+  // ── V436：泰语月名内嵌星座名 + 轨迹括注组（生产实测根因）──
+  // 【病根】泰语月份名 กันยายน(九月) 里嵌着星座名 กันยา(处女) / พฤษภาคม⊃พฤษภ / เมษายน⊃เมษ 等 6 族
+  //   → 星座匹配落进日期词 → 把「后一个星座的宫位」算到该星座头上 → 假阳性改写 + 与 V435 互打乒乓（永不收敛）
+  const thWeeks = [{ week: 2, legs: [
+    { sign: 'Scorpio', house: 5 }, { sign: 'Virgo', house: 3 },
+    { sign: 'Virgo', house: 4 }, { sign: 'Libra', house: 4 }, { sign: 'Libra', house: 5 },
+  ] }];
+  const astroTh = { months: [{ moon_weeks: thWeeks }] };
+  test('⑬ 泰语月名内嵌星座名不得被当星座引用（กันยายน⊃กันยา 假阳性）', () => {
+    const inp = '✦ [สัปดาห์ที่ 2: 8–14 กันยายน]\nดวงจันทร์ทรานซิสเคลื่อนผ่าน ราศีพิจิก (บ้าน 5→บ้าน 3) → ราศีกันยา (บ้าน 3→บ้าน 4) → ราศีตุลย์ (บ้าน 4→บ้าน 5).';
+    const out = F._v433LockMoonWeek(inp, 'th', astroTh);
+    assert.equal(out, inp, '月名 กันยายน 里的 กันยา 被当星座引用 → 宫位张冠李戴: ' + out);
+  });
+  test('⑭ 轨迹括注组：只改本星座入口宫位，后续星座括注不得被吞', () => {
+    const inp = '✦ [สัปดาห์ที่ 2: 8–14 กันยายน]\nดวงจันทร์ทรานซิสเคลื่อนผ่าน ราศีพิจิก (บ้าน 7→บ้าน 3) → ราศีกันยา (บ้าน 3→บ้าน 4).';
+    const out = F._v433LockMoonWeek(inp, 'th', astroTh);
+    assert.ok(out.includes('พิจิก (บ้าน 5→บ้าน 3)'), '本星座入口宫位未归真（7→5）: ' + out);
+    assert.ok(out.includes('กันยา (บ้าน 3→บ้าน 4)'), '下个星座的括注被误改: ' + out);
+  });
+  test('⑮ 幂等/无乒乓：同一句连过两次必须一致（V433↔V435 互打回归门）', () => {
+    const inp = '✦ [สัปดาห์ที่ 2: 8–14 กันยายน]\nดวงจันทร์ทรานซิสเคลื่อนผ่าน ราศีพิจิก (บ้าน 5→บ้าน 3) → ราศีกันยา (บ้าน 3→บ้าน 4).';
+    const once = F._v433LockMoonWeek(inp, 'th', astroTh);
+    const twice = F._v433LockMoonWeek(once, 'th', astroTh);
+    assert.equal(twice, once, '非幂等（乒乓）: ' + twice);
+  });
 });

@@ -4288,6 +4288,26 @@ function _v432IngressDay(cfg, ctx) {
 //   ② 流月月亮句里：星座在集合内 → 宫位不符则归真；星座不在集合内 → 整段(星座+宫位)换成本周首个真值
 //   ③ 本命月亮（natal/bản mệnh/本命/出生）一律不动（由本命锁管辖）
 //   ④ 取不到真值盘 → 原文透传（绝不编）
+// ── V436: 泰语「月份名内嵌星座名」防撞 ─────────────────────────────
+// 【病根】泰语 12 月名里嵌着星座名：เมษายน⊃เมษ(白羊) / พฤษภาคม⊃พฤษภ(金牛) / มิถุนายน⊃มิถุน(双子)
+//   / กรกฎาคม⊃กรกฎ(巨蟹) / กันยายน⊃กันยา(处女) / มีนาคม⊃มีน(双鱼)
+//   → 星座匹配落进日期词后，会把「后一个星座/别人的宫位」算到这个星座头上（实测：
+//     处女座把 Scorpio 的 บ้าน 5 改成 3 并配 truth[3,4]）→ 假阳性改写 + 与 V435 互打乒乓（永不收敛）
+// 【治法】匹配位置落在任一月名区间内 → 视为「不是星座引用」，跳过（三把月亮锁统一挂）
+const _V436_TH_MONTHS = 'มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม';
+function _v436InThMonth(text, pos, len) {
+  if (!text || pos < 0 || typeof pos !== 'number') return false;
+  const a = Math.max(0, pos - 12), b = Math.min(text.length, pos + (len || 0) + 4);
+  const w = text.slice(a, b);
+  const re = new RegExp(_V436_TH_MONTHS, 'g');
+  let m;
+  while ((m = re.exec(w)) !== null) {
+    const st = a + m.index;
+    if (st <= pos && pos < st + m[0].length) return true;   // 匹配起点落在月名内部
+  }
+  return false;
+}
+
 function _v433LockMoonWeek(text, lang, astroMatrix) {
   const weeks = astroMatrix && astroMatrix.months && astroMatrix.months[0] && astroMatrix.months[0].moon_weeks;
   if (!Array.isArray(weeks) || !weeks.length) return text;
@@ -4345,8 +4365,17 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
         let sm;
         while ((sm = sre.exec(win)) !== null) {
           const abs = w0 + sm.index;  // 绝对位置 = 窗口起点 + 窗口内偏移
+          if (lang === 'th' && _v436InThMonth(text, abs, sm[0].length)) continue;  // V436: 月名内嵌星座（กันยายน⊃กันยา）不是星座引用
           if (natalRe.test(win.slice(0, sm.index))) continue;   // 本命月亮 → 不动
-          const around = win.slice(sm.index, sm.index + 60);
+          let around = win.slice(sm.index, sm.index + 60);
+          // V436: 宫位窗口不得跨出「本星座自己的括注组」(轨迹写法 'พิจิก (บ้าน 5→บ้าน 3)' 的后一个是下个星座的宫位)
+          {
+            const rest = around.slice(sm[0].length);
+            let cut = rest.length;
+            for (const s2 of L) { const p2 = rest.indexOf(s2); if (p2 >= 0 && p2 < cut) cut = p2; }
+            const arr = rest.indexOf('\u2192'); if (arr >= 0 && arr < cut) cut = arr;
+            if (cut < rest.length) around = around.slice(0, sm[0].length + cut);
+          }
           const hm = around.match(houseRe);
           const writtenHouse = hm ? parseInt(hm[1], 10) : null;
           if (allowed.has(si)) {
@@ -4602,7 +4631,9 @@ function _v434LockGlobalMoonScope(text, lang, astroMatrix) {
       const base = mo + mp[0].length;
       let si = -1, spos = -1;
       for (let i = 0; i < L.length; i++) {
-        const p = wr.indexOf(L[i]);
+        let p = wr.indexOf(L[i]);
+        // V436: 泰语月名内嵌星座名 → 跳到下一个出现位置（否则日期词被当星座）
+        while (p >= 0 && lang === 'th' && _v436InThMonth(text, base + p, L[i].length)) p = wr.indexOf(L[i], p + 1);
         if (p >= 0 && (spos < 0 || p < spos)) { si = i; spos = p; }
       }
       const pm = persistRe.exec(wr);
@@ -4830,7 +4861,9 @@ function _v435FindMoonSign(text, ds, de, lang, L) {
   if (pRe) { const cp = seg.search(new RegExp(pRe, 'i')); if (cp >= 0) seg = seg.slice(0, cp); }   // 截断到下一个行星
   let si = -1, sp = -1;
   for (let i = 0; i < L.length; i++) {
-    const p = seg.indexOf(L[i]);
+    let p = seg.indexOf(L[i]);
+    // V436: 泰语月名内嵌星座名 → 跳过（否则日期词被当星座，宫位张冠李戴）
+    while (p >= 0 && lang === 'th' && _v436InThMonth(text, cs + best.en + p, L[i].length)) p = seg.indexOf(L[i], p + 1);
     if (p >= 0 && (sp < 0 || p < sp)) { sp = p; si = i; }           // ① 按位置最近选，不按字典序
   }
   if (si < 0) return null;
