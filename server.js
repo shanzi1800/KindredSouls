@@ -4465,9 +4465,194 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix) {
     out = _v432LockNatal(out, lang, astroMatrix);
     out = _v432LockTransit(out, lang, astroMatrix);
     out = _v433LockMoonWeek(out, lang, astroMatrix);   // V433-fix4: 月亮周级硬锁
+    out = applyV434Locks(out, lang, astroMatrix);   // V434
     return out;
   } catch (e) {
     console.warn(`[V432] ${lang} \u771f\u503c\u9501\u5f02\u5e38\uff08\u539f\u6587\u900f\u4f20\uff09: ${e.message}`);
+    return text;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// V434-1: 行星修饰词错配硬锁（Qualifier Alignment）
+// ═══════════════════════════════════════════════════════════
+// 病根：LLM 偶发把「逆行」贴在太阳/月亮身上（天文上日月永不逆行）→ 懂行用户一眼假。
+// 铁律：只在「紧邻」日月处剥离（括号内 / 日月后紧跟修饰词），绝不跨子句误伤其他行星的合法逆行。
+// ⚠️ CJK/泰文不用 \b（JS \w 仅 [A-Za-z0-9_]，\b 对中文/泰文失效）→ 字符串表 + new RegExp(str)
+const _V434_LUM_SRC = {
+  en: 'Sun|Moon', es: 'Sol|Luna', zh: '太阳|月亮',
+  vi: 'Mặt Trời|Mặt Trăng', fr: 'Soleil|Lune', th: 'ดวงอาทิตย์|ดวงจันทร์',
+};
+const _V434_RETRO_SRC = {
+  en: '\\bin\\s+retrograde\\b|\\bretrograde\\b|\\brx\\b',
+  es: '\\ben\\s+retrogradación\\b|\\bretrógrad[oa]s?\\b|\\bretrograd[oa]s?\\b',
+  zh: '处于逆行(?:状态|中)?|逆行(?:状态|中)?',
+  vi: '\\bđang\\s+nghịch\\s+hành\\b|\\bnghịch\\s+hành\\b',
+  fr: '\\ben\\s+rétrogradation\\b|\\brétrogrades?\\b',
+  th: 'กำลังถอยหลัง|ถอยหลัง',
+};
+function _v434LockQualifiers(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  const lum = _V434_LUM_SRC[lang], retro = _V434_RETRO_SRC[lang];
+  if (!lum || !retro) return text;
+  let out = text, n = 0;
+  // 1) 括号形式：日月（…逆行…） → 日月
+  const bre = new RegExp('(' + lum + ')\\s*[\\(（][^\\)）]{0,24}?(?:' + retro + ')[^\\)）]{0,16}[\\)）]', 'gi');
+  out = out.replace(bre, (m, l) => { n++; return l; });
+  // 2) 紧邻修饰词：日月 [系动词] 逆行词 → 日月（其余行星的合法逆行不受影响）
+  const are = new RegExp('(' + lum + ')\\s*(?:(?:is|est|đang|กำลัง|处于|正)\\s*)?(?:' + retro + ')(?=[\\s,，、.。;；!！?？]|$)', 'gi');
+  out = out.replace(are, (m, l) => { n++; return l; });
+  if (n) console.log('[V434] 行星修饰词锁: 剥离日月误贴逆行 ' + n + ' 处 (lang=' + lang + ')');
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// V434-2: 全范围月亮声明一致性硬锁（Global Moon Scope）
+// ═══════════════════════════════════════════════════════════
+// V433 只处理「带周号」段落；无周号段落（概览/陷阱/前言）走全月并集但**越界星座不纠**（first=null）。
+// 此锁补齐：非周段落里出现「全月真值并集之外」的月亮星座 → 归正为「本月主导星座」（腿数最多者）。
+// 只纠可证伪的（不在并集内），并集内一律不碰——宁可不动，不可编。
+function _v434HouseFmt(lang, n) {
+  switch (lang) {
+    case 'zh': return '第' + n + '宫';
+    case 'vi': return 'Nhà ' + n;
+    case 'es': return 'Casa ' + n;
+    case 'fr': return 'Maison ' + n;
+    case 'th': return 'บ้าน ' + n;
+    default: return 'House ' + n;
+  }
+}
+// 持续性声明词：月亮 ~2.5 天换一座，绝无可能「整月停留某座」→ 命中即可证伪
+const _V434_PERSIST_SRC = {
+  en: 'spends most of the month|most of the month|throughout the month|all month long|all month|stays in|remains in',
+  es: 'la mayor parte del mes|todo el mes|permanece|se queda',
+  zh: '主要停留在|整月停留|整个月|全月|整月|一直停留|大部分时间',
+  vi: 'phần lớn tháng|suốt tháng|toàn bộ tháng|cả tháng',
+  fr: 'la majeure partie du mois|tout le mois|reste dans|demeure',
+  th: 'ส่วนใหญ่ของเดือน|ตลอดทั้งเดือน|ทั้งเดือน',
+};
+const _V434_TRAV = {
+  en: (l) => 'travels through ' + l.join(' → ') + ' this month',
+  es: (l) => 'recorre este mes ' + l.join(' → '),
+  zh: (l) => '本月依次经过' + l.join('、'),
+  vi: (l) => 'đi qua lần lượt ' + l.join(' → ') + ' trong tháng này',
+  fr: (l) => 'traverse ce mois ' + l.join(' → '),
+  th: (l) => 'เดือนนี้เคลื่อนผ่าน ' + l.join(' → '),
+};
+function _v434Trajectory(lang, weeks) {
+  const LMAP = { en: SUN_SIGN_EN, es: SUN_SIGN_ES, zh: SUN_SIGN_ZH, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI };
+  const L = LMAP[lang]; const out = [];
+  if (!L) return out;
+  for (const w of weeks) for (const lg of w.legs) {
+    const li = _EN2ZIDX[lg.sign];
+    if (li == null) continue;
+    const nm = L[li];
+    if (!out.length || out[out.length - 1] !== nm) out.push(nm);
+  }
+  return out;
+}
+function _v434LockGlobalMoonScope(text, lang, astroMatrix) {
+  const weeks = astroMatrix && astroMatrix.months && astroMatrix.months[0] && astroMatrix.months[0].moon_weeks;
+  if (!text || typeof text !== 'string' || !Array.isArray(weeks) || !weeks.length) return text;
+  const LMAP = { en: SUN_SIGN_EN, es: SUN_SIGN_ES, zh: SUN_SIGN_ZH, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI };
+  const L = LMAP[lang];
+  if (!L || !L.length) return text;
+  const union = new Set(), cnt = {}, uh = {};
+  for (const w of weeks) for (const lg of w.legs) {
+    const li = _EN2ZIDX[lg.sign];
+    if (li == null) continue;
+    union.add(li); cnt[li] = (cnt[li] || 0) + 1;
+    (uh[li] = uh[li] || new Set()).add(lg.house);
+  }
+  if (!union.size) return text;
+  let dom = -1, best = -1;
+  for (let i = 0; i < L.length; i++) if ((cnt[i] || 0) > best) { best = cnt[i] || 0; dom = i; }
+  if (dom < 0) return text;
+  const traj = _v434Trajectory(lang, weeks);
+  const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '月亮', en: '\\bMoon\\b', fr: '\\bLune\\b', th: 'ดวงจันทร์' }[lang];
+  if (!moonRe) return text;
+  const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
+  const persistRe = new RegExp(_V434_PERSIST_SRC[lang], 'i');
+  const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación)/i;
+  // 切段：✦ 分段的非周段落 + ✦ 之前的「前言」段（V433 从首个 ✦ 起切，前言是它的盲区）
+  const segs = [];
+  let sp = text.indexOf('✦');
+  if (sp > 0) segs.push({ start: 0, end: sp, wk: 0 });
+  while (sp !== -1) {
+    const np = text.indexOf('✦', sp + 1);
+    const seg = np === -1 ? text.slice(sp) : text.slice(sp, np);
+    const hm = seg.match(/(?:Semana|Tuần|Week|สัปดาห์ที่)\s*([1-4])|第\s*([1-4])\s*周|周\s*([1-4])/);
+    segs.push({ start: sp, end: np === -1 ? text.length : np, wk: hm ? parseInt(hm[1] || hm[2] || hm[3], 10) : 0 });
+    if (np === -1) break;
+    sp = np;
+  }
+  const patches = [];
+  let fixed = 0, persist = 0;
+  for (const seg of segs) {
+    if (seg.wk) continue;   // 带周号 → V433 管辖，V434 不侵入
+    const segText = text.slice(seg.start, seg.end);
+    const moonIt = new RegExp(moonRe, 'gi');
+    let mp;
+    while ((mp = moonIt.exec(segText)) !== null) {
+      const mo = seg.start + mp.index;
+      const pre = text.slice(Math.max(0, mo - 40), mo);                 // 月亮之前 40 字符（本命定语判定）
+      const post = text.slice(mo + mp[0].length, mo + mp[0].length + 140);
+      const cut = post.search(/[.\n。]/);
+      const wr = cut >= 0 ? post.slice(0, cut) : post;                  // ⚠️ 只取「月亮之后、本句之内」
+      const base = mo + mp[0].length;
+      let si = -1, spos = -1;
+      for (let i = 0; i < L.length; i++) {
+        const p = wr.indexOf(L[i]);
+        if (p >= 0 && (spos < 0 || p < spos)) { si = i; spos = p; }
+      }
+      const pm = persistRe.exec(wr);
+      // 本命月亮（前置/后置定语）→ 一律不动
+      const guardTo = Math.min(spos >= 0 ? spos : 1e9, pm ? pm.index : 1e9, wr.length);
+      if (natalRe.test(pre) || natalRe.test(wr.slice(0, guardTo))) continue;
+      // ── 规则 1（主·真会触发）：持续性声明「月亮整月/主要停留在X座」 → 可证伪 → 换成真实轨迹 ──
+      if (pm && si >= 0 && Math.abs(pm.index - spos) <= 40 && traj.length) {
+        const s = base + Math.min(pm.index, spos);
+        let e = base + Math.max(pm.index + pm[0].length, spos + L[si].length);
+        const around = wr.slice(spos, spos + 60);
+        const hm = around.match(houseRe);
+        if (hm && spos + hm.index + hm[0].length > spos + L[si].length) e = base + spos + hm.index + hm[0].length;
+        patches.push({ s, e, rep: _V434_TRAV[lang](traj) });
+        persist++; fixed++;
+        continue;
+      }
+      // ── 规则 2（兜底）：并集外星座 → 主导星座（正常月份并集=全黄道 12 座，此支路几乎不触发）──
+      if (si < 0) continue;
+      if (union.has(si)) continue;                     // 全月并集之内 → 合法，不碰
+      const abs = base + spos;
+      const around2 = wr.slice(spos, spos + 60);
+      const hm2 = around2.match(houseRe);
+      const th = uh[dom] ? Array.from(uh[dom]) : [];
+      const rep = L[dom] + (hm2 && th.length ? ' ' + _v434HouseFmt(lang, th[0]) : '');
+      const e2 = hm2 ? abs + hm2.index + hm2[0].length : abs + L[si].length;
+      patches.push({ s: abs, e: Math.max(abs + L[si].length, e2), rep });
+      fixed++;
+    }
+  }
+  if (!patches.length) return text;
+  patches.sort((a, b) => a.s - b.s || a.e - b.e);
+  let out = text;
+  for (let i = patches.length - 1; i >= 0; i--) {
+    const p = patches[i];
+    out = out.slice(0, p.s) + p.rep + out.slice(p.e);
+  }
+  console.log('[V434] 全范围月亮锁: 归正 ' + fixed + ' 处（持续性声明 ' + persist + ' 处）(lang=' + lang + ')');
+  return out;
+}
+
+// ── V434 统一入口（月亮全范围锁 + 日月修饰词锁；幂等，无真值盘自动跳过）──
+function applyV434Locks(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  try {
+    let out = _v434LockGlobalMoonScope(text, lang, astroMatrix);
+    out = _v434LockQualifiers(out, lang);
+    return out;
+  } catch (e) {
+    console.warn('[V434] ' + lang + ' 锁异常（原文透传）: ' + e.message);
     return text;
   }
 }
@@ -7225,6 +7410,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
             if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
             stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstro);   // V433-fix4
+            stdCached = applyV434Locks(stdCached, lang, _hitAstro);   // V434
           }
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
@@ -7233,6 +7419,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
             stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
             stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstroTh);   // V433-fix4
+            stdCached = applyV434Locks(stdCached, lang, _hitAstroTh);   // V434
           }
           // 🛠️ V432: HIT 路径补 en/es/zh 真值锁（与 vi/th/fr 对称；旧缓存里的 native 漂移不再裸奔）
           let _hitFinal = stdCached;
@@ -7392,12 +7579,15 @@ app.post('/api/wealth-oracle', async (req, res) => {
         if (lang === 'vi') reportContent = lockNatalTruthVi(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'vi') reportContent = lockTransitTruthVi(reportContent, astroMatrix);
         reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
+        reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
   if (lang === 'fr') reportContent = lockNatalTruthFr(enforceRiskThreshold(reportContent, lang), astroMatrix);
   if (lang === 'fr') reportContent = lockTransitTruthFr(reportContent, astroMatrix);
         reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
+        reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
         if (lang === 'th') reportContent = lockNatalTruthTh(enforceRiskThreshold(reportContent, lang), astroMatrix);
         if (lang === 'th') reportContent = lockTransitTruthTh(reportContent, astroMatrix);
         reportContent = _v433LockMoonWeek(reportContent, lang, astroMatrix);   // V433-fix4
+        reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
 
@@ -7898,12 +8088,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
           if (lang === 'vi') streamText = lockTransitTruthVi(streamText, astroMatrix);
           streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
+          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
   if (lang === 'fr') streamText = lockNatalTruthFr(streamText, astroMatrix);
   if (lang === 'fr') streamText = lockTransitTruthFr(streamText, astroMatrix);
           streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
+          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
           if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
           if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
           streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
+          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
         }
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
@@ -8229,6 +8422,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   if (lang === 'fr') _j.text = lockTransitTruthFr(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
+                  _j.text = applyV434Locks(_j.text, lang, astroMatrix);   // V434（补 V433 未挂的 SSE 逐块链）
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
                 }
               } catch (e) { /* 非标准 JSON 行原样透传 */ }
@@ -8759,6 +8953,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   if (lang === 'fr') cleanedText = lockTransitTruthFr(cleanedText, astroMatrix);
     if (lang === 'th') cleanedText = lockNatalTruthTh(enforceRiskThreshold(cleanedText, lang), astroMatrix);
     if (lang === 'th') cleanedText = lockTransitTruthTh(cleanedText, astroMatrix);
+    cleanedText = applyV434Locks(cleanedText, lang, astroMatrix);   // V434（补 V433 未挂的落库前收尾链）
     // 🛠️ V432: MISS stream 收尾 en/es/zh 真值双锁（完整文本、落库前最后一道）
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
@@ -9507,6 +9702,9 @@ app.listen(PORT, HOST, () => {
   // V431: 启动即打「真值锁清单」——以后判定「新代码是否在线」不再靠猜部署哈希（webhook 部署 commitHash 常为 `-`），
   //       直接 grep 本行即可。任何一次解锁/回退都会在这行上体现。
   console.log('[BUILD] V431 真值锁清单: vi(natal+transit) | th(natal+transit) | fr(natal+transit+定语家族裁定) | 外文星座名归真(Aries→Bélier) | HOUSE-NUMBER-FORMAT V375(en/th/vi/fr)');
+  console.log('[BUILD] V432 真值锁清单: en/es/zh(natal+transit) | 六语种对称 | 月亮整星排除流月锁 + 日期守卫');
+  console.log('[BUILD] V433 真值锁清单: 六语种月亮周级硬锁 (MOON PER-WEEK TRUTH + 照抄句) | 星座名本地化(修 SIGN_NAMES 缩写死代码)');
+  console.log('[BUILD] V434 真值锁清单: 全范围月亮锁(持续性声明→真实轨迹) | 行星修饰词锁(日月无逆行·剥离误贴逆行·CJK 不用 \\b)');
 });
 // FORCE REBUILD 1783756900
 
