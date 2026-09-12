@@ -167,3 +167,34 @@ test('V433 注入点在活路径 + 死代码防线', () => {
   const deadBlock = src.slice(src.indexOf('function buildMonthlyPrompt'), src.indexOf('function buildWealthOncePrompt'));
   assert.ok(deadBlock.includes('死代码'), 'buildMonthlyPrompt 缺死代码警示注释（后来人易再踩）');
 });
+
+// 🛠️ V433-fix3 回归门：本地化「照抄句」（LLM 抄 > 推演）
+// 【病根】生产实证（vi / HCMC 盘）：星座表已跟随周级真值，但个别句子仍把相邻周的星座搬进 W4
+//   （Scorpio 改写成「26 日 / 28 日入驻」，真值应为 Aries 26 / Tauro 29）→ 给现成可用文本，抬高违规成本。
+describe('V433-fix3：月亮周级「照抄句」渲染', () => {
+  const mat = {
+    months: [{ moon_weeks: [
+      { week: 1, from_day: 1, to_day: 7, changes: [{ kind: 'sign', to_sign: 'Taurus', day: 1, time: '20:46' }],
+        legs: [{ sign: 'Aries', house: 7 }, { sign: 'Aries', house: 8 }, { sign: 'Taurus', house: 8 }, { sign: 'Taurus', house: 9 }] },
+    ] }],
+  };
+  test('es/th/zh 三语照抄句格式正确（含宫位前缀、无「第宫」畸形）', async () => {
+    const { buildMoonWeekBlock } = await import('../v69_client.js');
+    const es = buildMoonWeekBlock(mat, 'es', 'Sep');
+    assert.ok(es.includes('"La Luna en tránsito recorre Aries (Casa 7→Casa 8) → Tauro (Casa 8→Casa 9)"'),
+      'es 照抄句格式不符: ' + (es.match(/copy-ready: .*/) || [''])[0]);
+    const zh = buildMoonWeekBlock(mat, 'zh', 'Sep');
+    assert.ok(zh.includes('白羊座 (第7宫→第8宫)'), 'zh 照抄句宫位格式不符: ' + (zh.match(/copy-ready: .*/) || [''])[0]);
+    assert.ok(!zh.includes('第宫'), 'zh 出现畸形「第宫」');
+    const th = buildMoonWeekBlock(mat, 'th', 'Sep');
+    assert.ok(th.includes('เมษ (บ้าน 7→บ้าน 8)'), 'th 照抄句格式不符');
+  });
+  test('照抄句的星座序列必须与 legs 真值完全一致（防漂移）', async () => {
+    const { buildMoonWeekBlock } = await import('../v69_client.js');
+    const es = buildMoonWeekBlock(mat, 'es', 'Sep');
+    const line = es.split('\n').find((l) => l.includes('copy-ready'));
+    const seq = [...line.matchAll(/\(Casa/g)].length;
+    assert.equal(seq, 2, '照抄句腿数应等于聚合后星座数（2），实际 ' + seq);
+    assert.ok(!/Escorpio|Virgo|Libra/.test(line), '照抄句混入非本周星座');
+  });
+});

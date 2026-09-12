@@ -496,11 +496,27 @@ const SIGN_L10N = {
  * @param {string} monthName 当月本地化名（如 "Sept"）
  * @returns {string} 供 prompt 注入的块文本；无数据时返回 ''
  */
+// 🛠️ V433-fix3: 月亮「照抄句」语言模板（宫位前缀 + 主语短语）
+const MOON_HOUSE_WORD = {
+  zh: '第', en: 'House', es: 'Casa', fr: 'Maison', th: 'บ้าน', vi: 'Nhà',
+};
+const MOON_HOUSE_SUF = { zh: '宫', en: '', es: '', fr: '', th: '', vi: '' };
+const MOON_SUBJECT = {
+  zh: '流月月亮依次行经 ',
+  en: 'The transiting Moon passes through ',
+  es: 'La Luna en tránsito recorre ',
+  fr: 'La Lune en transit traverse ',
+  th: 'ดวงจันทร์ทรานซิสเคลื่อนผ่าน ',
+  vi: 'Mặt Trăng hành vận đi qua ',
+};
+
 export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
   const weeks = astroMatrix?.months?.[0]?.moon_weeks;
   if (!Array.isArray(weeks) || !weeks.length) return '';
   const L = SIGN_L10N[lang] || SIGN_L10N.en;
   const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
+  const HW = (MOON_HOUSE_WORD[lang] || 'House') + (MOON_HOUSE_SUF[lang] || '');
+  const SUBJ = MOON_SUBJECT[lang] || MOON_SUBJECT.en;
   const lines = weeks.map((w) => {
     // 按星座聚合宫位：同一星座跨两宫 → H7→H8（宫位制的数学必然，非矛盾）
     const groups = [];
@@ -513,7 +529,16 @@ export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
     const path = groups.map((g) => `${loc(g.sign)}(H${g.houses.join('→H')})`).join(' → ');
     const ing = (w.changes || []).filter((c) => c.kind === 'sign')
       .map((c) => `${loc(c.to_sign)}@${monthName} ${c.day} ${c.time}`).join(', ');
-    return `- Week ${w.week} (${monthName} ${w.from_day}–${w.to_day}): ${path}${ing ? ` | Moon enters: ${ing}` : ''}`;
+    // 🛠️ V433-fix3: 本地化「照抄句」——把正确文本做成最省力路径（LLM 抄比推演容易）
+    //   生产实证（vi）：星座表已跟随周级真值，但个别句子仍把相邻周的星座（Scorpio）搬进 W4 且配错日期。
+    const hsStr = (hs) => (lang === 'zh')
+      ? hs.map((h) => `第${h}宫`).join('→')
+      : `${HW} ${hs.join('→' + HW + ' ')}`;
+    const mk = (g) => `${loc(g.sign)} (${hsStr(g.houses)})`;
+    const joinW = lang === 'zh' ? '、' : (lang === 'th' ? ' → ' : ' → ');
+    const copy = `${SUBJ}${groups.map(mk).join(joinW)}`;
+    return `- Week ${w.week} (${monthName} ${w.from_day}–${w.to_day}): ${path}${ing ? ` | Moon enters: ${ing}` : ''}` +
+      `\n  📋 ${lang.toUpperCase()} copy-ready: \"${copy}\"`;
   });
   return '\n\n⚠️ [MOON PER-WEEK TRUTH V433 — SwissEph computed, local time · THIS IS THE ONLY VALID MOON SOURCE]\n' +
     'The Moon changes zodiac sign every ~2.5 days. The single mid-month Moon value was deliberately REMOVED from the\n' +
