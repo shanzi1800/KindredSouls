@@ -3398,7 +3398,8 @@ function _frTransitClause(text, i, len) {
   const hm = after.match(/Maison\s*\d+/i);
   if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
   if (cut >= 0) pre = after.slice(0, cut);
-  if (/(?:natal|natale)/i.test(pre)) return null;                       // 本命句 → natal 锁已处理，跳过
+  if (/(?:natal|natale|natif|native)/i.test(pre)) return null;                     // 本命句 → natal 锁已处理，跳过
+  if (_FR_PRE_NATAL_DESC.test(text.slice(Math.max(0, i - 34), i))) return null;      // V431: 前置本命定语（`natif du Soleil …`）→ 同上
   if (!/\ben\b\s+[A-ZÀ-ÿ]/i.test(after) && !_FR_TRANSIT_MARK.test(after)) return null;  // 非位置/transit 描述 → 不碰
   let fwd = text.slice(aEnd, aEnd + 90);
   const e = fwd.search(/[.\n]/);
@@ -3493,10 +3494,35 @@ function _frPatchZone(zone, sign, house, preferFirst) {
 //   幂等：修后再次运行零改动（A 剥离后 isN 仍假 → B 不触发；B 补全后 hasDesc 真 → A/B 均不触发）
 //   不变量：往返「真值↔错值」替换后必须逐字符等于原文（抓掉字/重字）
 // ============================================================================
-const _FR_NATAL_SLOT = /(?:natal|natale|de naissance|qui vous fit naître|du thème natal)/i;
-const _FR_DESC_STRIP = /\s*(?:du thème natal|de naissance|qui vous fit naître|natal|natale)\b/gi;
-const _FR_NATAL_CTX = /(?:natal|natale|naissance|votre thème|votre ciel|carte du ciel|votre signature)/i;
+// ── V431: 定语家族「单一真源」——检测与剥离共用同一段 regex 源串，杜绝「检测到 A 形态、剥离只认 B 形态」的错位────
+// 本命定语家族（后缀槽：紧跟在行星名之后）
+const _FR_NATAL_DESC_SRC = '(?:natal(?:e)?s?|natif|native|natifs|natives|de\\s+naissance|à\\s+la\\s+naissance|au\\s+moment\\s+de\\s+la\\s+naissance|du\\s+thème\\s+natal|de\\s+votre\\s+thème(?:\\s+natal)?|de\\s+votre\\s+ciel|qui\\s+vous\\s+fit\\s+naître)';
+const _FR_NATAL_SLOT = new RegExp(_FR_NATAL_DESC_SRC, 'i');
+const _FR_DESC_STRIP = new RegExp('\\s*' + _FR_NATAL_DESC_SRC + '\\b', 'gi');
+const _FR_NATAL_CTX = /(?:natal|natale|natif|native|naissance|votre thème|votre ciel|carte du ciel|votre signature)/i;
 const _FR_FEM_PLANET = /^(?:Lune|Vénus)$/;
+// 前置本命定语：定语在行星名**之前**（生产实测：`vous, natif du Soleil en Vierge` / `native de la Lune`）
+const _FR_PRE_NATAL_DESC = /(?:natif|native|natifs|natives|née?|nés?)\s+(?:du|de\s+la|de\s+l['’]|des|d['’]|avec\s+le|avec\s+la)\s*$/i;
+// 流年定语家族（后缀槽）—— V431 新增：transitant/transitaire/de passage/en transit/du mois/actuel…
+const _FR_TRANSIT_DESC_SRC = '(?:transitant(?:e)?s?|transitaire(?:s)?|en\\s+transit|de\\s+passage|du\\s+mois|ce\\s+mois(?:-ci)?|de\\s+ce\\s+mois|actuel(?:le)?s?|en\\s+cours)';
+const _FR_TRANSIT_DESC = new RegExp(_FR_TRANSIT_DESC_SRC, 'i');
+const _FR_TRANSIT_DESC_STRIP = new RegExp('\\s*' + _FR_TRANSIT_DESC_SRC + '\\b', 'gi');
+// 流年「运动性」语义（V431-A2 判向用：句中若有运动动词，则实为流月句，本命定语是贴错的）
+const _FR_TRANSIT_VERB = /transit|se\s+déplace|déambule|passe\b|glisse|entre\s+en|entre\s+dans|rejoint|quitte|croise|se\s+dirige|approche|poursuit\s+sa\s+course|voyage|arrive\b|s['’]installe|se\s+lève|décline|recule/i;
+// 外文（英）星座名泄漏归真表：生产实测 fr 报告混入 Aries×18 / Libra×4（法英同形者 Cancer/Lion/Balance 不入表，避免误伤）
+const _FR_EN_SIGN_MAP = { aries: 'Bélier', taurus: 'Taureau', gemini: 'Gémeaux', leo: 'Lion', virgo: 'Vierge', libra: 'Balance', scorpio: 'Scorpion', sagittarius: 'Sagittaire', capricorn: 'Capricorne', aquarius: 'Verseau', pisces: 'Poissons' };
+const _FR_EN_SIGN_RE = /\b(Aries|Taurus|Gemini|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces)\b/gi;
+function normalizeForeignSignsFr(text) {
+  if (!text || typeof text !== 'string') return text;
+  let n = 0;
+  let out = text.replace(_FR_EN_SIGN_RE, (w) => { const r = _FR_EN_SIGN_MAP[w.toLowerCase()]; if (r && r !== w) { n++; return r; } return w; });
+  // 法语性别修正：Vierge / Balance 为阴性星座名 → 「Vierge natal」应为「Vierge natale」
+  const before2 = out;
+  out = out.replace(/\b(Vierge|Balance)(\s+)natal\b/g, '$1$2natale');
+  if (out !== before2) n += (before2.match(/\b(?:Vierge|Balance)\s+natal\b/g) || []).length;
+  if (n) console.log(`[V431] 法语外文星座名/性别归真: ${n} 处`);
+  return out;
+}
 
 // 定语槽：行星名 → 第一个星座/宫位之间（与两个真值锁同源口径）
 function _frSlotOf(text, aEnd) {
@@ -3532,6 +3558,7 @@ function _frTruthMatch(t, sign, house) {
 
 function adjudicateNatalDescriptorsFr(text, astroMatrix) {
   if (!text || typeof text !== 'string' || !astroMatrix) return text;
+  text = normalizeForeignSignsFr(text);   // V431: 先归真外文星座名（Aries→Bélier），否则值域判据整体失效
   const NT = _natalTruthMap10_FR(astroMatrix);
   const names = Object.keys(NT);
   if (!names.length) return text;
@@ -3545,14 +3572,19 @@ function adjudicateNatalDescriptorsFr(text, astroMatrix) {
     if (!nt) continue;
     const aEnd = m.index + m[0].length;
     const slot = _frSlotOf(text, aEnd);
+    // V431: 本命定语两种位置都要认——后缀槽（`Soleil natal`）与前置（`natif du Soleil`）
+    const preWin = text.slice(Math.max(0, m.index - 34), m.index);
+    const isPrefix = _FR_PRE_NATAL_DESC.test(preWin);
+    const hasSuffixDesc = _FR_NATAL_SLOT.test(slot);
+    const hasDesc = hasSuffixDesc || isPrefix;
+    const hasTDesc = _FR_TRANSIT_DESC.test(slot);
     const clause = _frClause(text, m.index, m[0].length, true);
     if (!clause) continue;
     const claim = _frClaimOf(clause.fwd, clause.bwd);
     const isN = _frTruthMatch(nt, claim.sign, claim.house);
     const isT = TT[name] ? _frTruthMatch(TT[name], claim.sign, claim.house) : false;
-    const hasDesc = _FR_NATAL_SLOT.test(slot);
 
-    if (hasDesc && isT && !isN) {
+    if (hasSuffixDesc && isT && !isN) {
       // A) 夺舍：本命定语贴在流月句上 → 剥定语（槽内最多 3 处，且不误伤冒号前的法式空格）
       const re = new RegExp(_FR_DESC_STRIP.source, 'gi');
       let sm, n0 = 0;
@@ -3568,7 +3600,26 @@ function adjudicateNatalDescriptorsFr(text, astroMatrix) {
       continue;
     }
 
-    if (!hasDesc && isN && !isT && !_FR_TRANSIT_MARK.test(slot)) {
+    if (hasDesc && !isN && !isT) {
+      // A2) V431: 定语在、但值域两盘都不符（改无可改）→ 唯有句中带「运动性流年动词」时
+      //     才能断定这是流月句、本命定语是贴错的 → 剥定语（让值锁与文意自然接管）
+      const verb = _FR_TRANSIT_VERB.test(slot) || _FR_TRANSIT_VERB.test(clause.fwd) || _FR_TRANSIT_VERB.test(clause.bwd || '');
+      if (verb && hasSuffixDesc) {
+        const re = new RegExp(_FR_DESC_STRIP.source, 'gi');
+        let sm, n0 = 0;
+        while ((sm = re.exec(slot)) !== null) {
+          let e = aEnd + sm.index + sm[0].length;
+          if (text[e] === ' ' && text[e + 1] === ',') e += 1;
+          patches.push({ s: aEnd + sm.index, e, rep: '' });
+          n0++;
+          if (n0 >= 3) break;
+        }
+        stripped += n0;
+      }
+      continue;   // 其余情况：取不到可判定的值域 → 一律不动（宁可不动，不可编）
+    }
+
+    if (!hasDesc && !hasTDesc && isN && !isT && !_FR_TRANSIT_MARK.test(slot)) {
       // B) 丢标识：本命事实被写成流月格式 → 补回 natal/natale
       const strong = !!(claim.sign && claim.house !== null);
       const ctxSig = _FR_NATAL_CTX.test(clause.fwd) || _FR_NATAL_CTX.test(clause.bwd) ||
@@ -3583,6 +3634,13 @@ function adjudicateNatalDescriptorsFr(text, astroMatrix) {
       }
       continue;
     }
+
+    // 
+    // ⚠️ V431 已考虑并**否决**的规则「C 类：流年定语贴本命句 → 换成 natal」：
+    //    原句「Le Soleil transitaire en Balance, Maison 2」（Balance/2 = 本命真值）既可读作
+    //    「本命句写错定语」也可读作「流月句抄了本命锚点」，两种改法都能得到真句，但
+    //    V426 已定“流年定语 → 值由流年锁归真（transit 真值）”，再加逆规则会与实际锁链互踩。
+    //    因此此处**不换定语**，交给 lockTransitTruthFr 把值归真。
   }
   if (!patches.length) return text;
   patches.sort((a, b) => a.s - b.s || a.e - b.e);
@@ -3591,12 +3649,13 @@ function adjudicateNatalDescriptorsFr(text, astroMatrix) {
     const p = patches[i];
     out = out.slice(0, p.s) + p.rep + out.slice(p.e);
   }
-  console.log(`[V430] 法语定语裁定: 剥离 ${stripped} 处(实为流月句) / 补全 ${inserted} 处(实为本命句)`);
+  console.log(`[V431] 法语定语裁定: 剥离 ${stripped} 处(实为流月句的贴错定语) / 补全 ${inserted} 处(丢标识的本命句)`);
   return out;
 }
 
 function lockNatalTruthFr(text, astroMatrix) {
   if (!text) return text;
+  text = normalizeForeignSignsFr(text);   // V431: 外文星座名先归真（幂等；adjudicate 内也调一次）
   const truth = astroMatrix ? _natalTruthMap10_FR(astroMatrix) : {};
   const names = Object.keys(truth);
   if (!names.length) {
@@ -3613,7 +3672,9 @@ function lockNatalTruthFr(text, astroMatrix) {
     const name = m[1];
     const t = truth[name];
     if (!t) continue;
-    const explicit = /^(?:natal|natale|de naissance|qui vous fit naître)\b/i.test(text.slice(m.index + m[0].length, m.index + m[0].length + 30));
+    // V431: 本命定语两种位置都认——后缀（`Soleil natal`）+ 前置（`natif du Soleil`）
+    const explicit = /^(?:natal|natale|natif|native|de naissance|à la naissance|au moment de la naissance|du thème natal|de votre thème|qui vous fit naître)\b/i.test(text.slice(m.index + m[0].length, m.index + m[0].length + 30))
+      || _FR_PRE_NATAL_DESC.test(text.slice(Math.max(0, m.index - 34), m.index));
     const clause = _frClause(text, m.index, m[0].length, explicit);
     if (!clause) continue;
     const { fwd, bwd } = clause;
