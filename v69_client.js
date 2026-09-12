@@ -519,7 +519,8 @@ export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
     'The Moon changes zodiac sign every ~2.5 days. The single mid-month Moon value was deliberately REMOVED from the\n' +
     'per-month data block: it is one instant and CANNOT represent a whole week. Use ONLY these per-week lists:\n' +
     lines.join('\n') +
-    '\n⛔ HARD RULE: In each weekly section you may ONLY name the Moon signs listed for THAT week (in that order); describe the passage when several are listed. NEVER repeat one Moon sign across two different weeks (the Moon enters each sign only ONCE per month). NEVER use a Moon sign absent from that week\'s list. HOUSES MUST MATCH the (H…) values above.';
+    '\n⛔ HARD RULE: In each weekly section you may ONLY name the Moon signs listed for THAT week (in that order); describe the passage when several are listed. NEVER repeat one Moon sign across two different weeks (the Moon enters each sign only ONCE per month). NEVER use a Moon sign absent from that week\'s list. HOUSES MUST MATCH the (H…) values above.' +
+    '\n⛔ HOUSE RULE: the house of a TRANSITING Moon sign is the (H…) value shown after that sign on that week\'s line — copy it exactly. NEVER use the NATAL Moon\'s house for a transiting Moon position (different cycle, different house).';
 }
 const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
 const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);

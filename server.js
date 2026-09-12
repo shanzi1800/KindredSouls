@@ -4812,8 +4812,10 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
-    // 🛠️ V178-P0: 通配符覆盖 v352e(月报/先天) 与 v116-v2(年报) 全部财富键
-    const pat = 'wealth:' + encodeURIComponent(birthDate) + ':*';
+    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v352e:<date>:...' → 清了等于没清！
+    //   实测：GET /api/clear-cache/1988-12-31/es/monthly 返回 deleted:true/204，但随后生成仍是旧文本
+    //   （命中旧缓存），导致整轮验证结论错误。改为 'wealth:*<date>*' 同时覆盖新旧两种键格式。
+    const pat = 'wealth:*' + encodeURIComponent(birthDate) + '*';
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=like.${pat}`;
   }
   try {
