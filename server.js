@@ -5326,6 +5326,7 @@ app.get('/api/debug-supabase-test', async (req, res) => {
   }
 
   // Test 2: REST API with anon key
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;   // 🛠️ 2026-09-13 修复：原先漏声明，Test 2 直接 ReferenceError → "SB_KEY is not defined"（误导以为没恢复，实际生产函数都各自声明了）
   const t2 = Date.now();
   try {
     const r2 = await Promise.race([
