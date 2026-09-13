@@ -4406,7 +4406,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
             const repSign = L[first.idx];
             const tail = (writtenHouse != null && hm)
               ? (() => {
-                  if (lang === 'zh') return ' 第' + first.house + '宫';
+                  if (lang === 'zh') return '（第' + first.house + '宫';
                   if (lang === 'th') return ' บ้าน ' + first.house;
                   if (lang === 'vi') return ' Nhà ' + first.house;
                   if (lang === 'fr') return ' (Maison ' + first.house;
