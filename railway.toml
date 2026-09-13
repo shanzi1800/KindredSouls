@@ -5,3 +5,7 @@ dockerfilePath = "Dockerfile"
 # V238: 删除 [deploy] port 硬编码。Railway Edge Proxy 转发到注入的 process.env.PORT(实测 8080),
 # server.js 已改为监听 process.env.PORT;此处若写死 3000 会与代理端口冲突导致 000 超时。
 [deploy]
+# V437-sec: railway up（Railpack 路径）修正启动命令。
+# 生产 API 须用 node server.js；package.json 的 start=expo start 是移动端命令，Railpack 默认会误用。
+# Dockerfile 路径用自身 CMD（exec node server.js），此 startCommand 不覆盖它。
+startCommand = "node server.js"
