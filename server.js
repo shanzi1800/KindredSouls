@@ -5601,6 +5601,102 @@ const SUN_SIGN_ZH = ['白羊座','金牛座','双子座','巨蟹座','狮子座'
 const SUN_SIGN_ES = ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
 const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V438: 月亮周级轨迹「硬覆盖」后处理护栏 —— 算法算真值，AI 只填颜色
+// 病根实证(2026-09-13 / 1997-10-18 盘): LLM 在周正文续写时把 W1 写过的「白羊座」当节奏
+//   带下去,在 W2/W3 凭空造出不存在的月亮过境(且宫位张冠李戴)。V433/V436 真值锁只锁住了
+//   「宫位数字」,没拦住「编造月亮在哪一周」.
+// 治本: 用 moon_weeks 真值逐周构建轨迹串,强制覆盖每周正文里的月亮过境句.
+//   不依赖 LLM 是否照抄 —— 直接替换。幂等(对已正确的文本 = no-op).
+// ═══════════════════════════════════════════════════════════════════════
+
+// 由单周 legs 构建真值轨迹串(按星座聚合并标注宫位区段)
+function _v438WeekTruth(w, cfg) {
+  const seq = (Array.isArray(w.legs) && w.legs.length) ? w.legs : (w.start ? [w.start] : []);
+  if (!seq.length) return '';
+  const groups = [];
+  for (const lg of seq) {
+    const last = groups[groups.length - 1];
+    if (last && last.sign === lg.sign) {
+      if (last.houses[last.houses.length - 1] !== lg.house) last.houses.push(lg.house);
+    } else groups.push({ sign: lg.sign, houses: [lg.house] });
+  }
+  return groups.map(g => {
+    const idx = _EN2ZIDX[g.sign];
+    const loc = (idx != null && cfg.signs[idx]) ? cfg.signs[idx] : g.sign;
+    const hs = g.houses.map(cfg.houseOut).join('→');
+    return cfg.fmt(loc, hs);
+  }).join(cfg.sep);
+}
+
+const _V438_CFG = {
+  zh: { signs: SUN_SIGN_ZH, houseOut: h => `第${h}宫`, fmt: (loc, hs) => `${loc}（${hs}）`, sep: '、',
+        intro: '流月月亮依次行经', stopRe: /[。.\n]|\d+月\d+日/,
+        headerRe: /第([1-4])周[^\n]*/g },
+  en: { signs: SUN_SIGN_EN, houseOut: h => `House ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
+        intro: 'The Moon transits through ', stopRe: /[.\n]/,
+        headerRe: /Week\s+([1-4])[^\n]*/gi },
+  es: { signs: SUN_SIGN_ES, houseOut: h => `Casa ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
+        intro: 'La Luna transita por ', stopRe: /[.\n]/,
+        headerRe: /Semana\s+([1-4])[^\n]*/gi },
+  fr: { signs: SUN_SIGN_FR, houseOut: h => `Maison ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
+        intro: 'La Lune traverse ', stopRe: /[.\n]/,
+        headerRe: /Semaine\s+([1-4])[^\n]*/gi },
+  th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ' ',
+        intro: 'ดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
+        headerRe: /สัปดาห์ที่\s*([1-4])[^\n]*/g },
+  vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ',
+        intro: 'Mặt Trăng đi qua ', stopRe: /[.\n]/,
+        headerRe: /Tuần\s*([1-4])[^\n]*/gi },
+};
+
+function applyMoonWeekHardOverride(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  const cfg = _V438_CFG[lang];
+  if (!cfg) return text;
+  const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+  const weeks = m0 && m0.moon_weeks;
+  if (!Array.isArray(weeks) || !weeks.length) return text;   // 无真值 → 不动(绝瞎猜)
+  const truths = weeks.map(w => _v438WeekTruth(w, cfg));
+  const truthByWeek = {};
+  weeks.forEach((w, i) => { const n = w.week || (i + 1); if (truths[i]) truthByWeek[n] = truths[i]; });
+  // 定位所有周标题(只保留有真值的周)
+  const headers = [];
+  let hm; cfg.headerRe.lastIndex = 0;
+  while ((hm = cfg.headerRe.exec(text)) !== null) {
+    if (truthByWeek[+hm[1]]) headers.push({ i: hm.index, e: hm.index + hm[0].length, week: +hm[1] });
+  }
+  if (!headers.length) return text;
+  let result = '', cursor = 0;
+  for (let hi = 0; hi < headers.length; hi++) {
+    const h = headers[hi];
+    const nextStart = (hi + 1 < headers.length) ? headers[hi + 1].i : text.length;
+    const body = text.slice(h.e, nextStart);
+    const fixedBody = _v438OverrideBody(body, cfg, truthByWeek[h.week]);
+    result += text.slice(cursor, h.e) + fixedBody;
+    cursor = nextStart;
+  }
+  result += text.slice(cursor);
+  return result;
+}
+
+function _v438OverrideBody(body, cfg, truth) {
+  if (!truth) return body;
+  const lead = body.search(/\S/);
+  if (lead < 0) return body;
+  const signAlt = cfg.signs.slice().sort((a, b) => b.length - a.length).join('|');
+  const houseTok = /（?第\d+宫(?:→第\d+宫)*）?|\(?House \d+(?:→House \d+)*\)?|\(?Casa \d+(?:→Casa \d+)*\)?|\(?Maison \d+(?:→Maison \d+)*\)?|บ้าน \d+(?:→บ้าน \d+)*|Nhà \d+(?:→Nhà \d+)*/;
+  const m = new RegExp('(' + signAlt + ')\\s*' + houseTok.source).exec(body.slice(lead));
+  if (!m || m.index > 200) return body;          // 无「星座+宫位」或落在正文深处(非周开头)→ 不碰
+  const pStart = lead;                           // 吞掉正文开头的旧引导语,统一改写
+  const rest = body.slice(pStart);
+  let pEndRel = rest.length;
+  const sm = cfg.stopRe.exec(rest);
+  if (sm) pEndRel = sm.index;
+  return body.slice(0, pStart) + cfg.intro + truth + body.slice(pStart + pEndRel);
+}
+
+
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 // 月报章节标题兜底修复 (DeepSeek 流式吐字畸变修复)
@@ -7913,6 +8009,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
+        reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
@@ -8423,6 +8520,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
+        streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -9150,6 +9248,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //   if(reportType==='monthly') 在 yearly 分支内永假→从不执行; 流式逐chunk flush 处 injectPlaceholders=false 须保留(防半截分片斩首单词),
       //   故改在【整段流结束后】此处(全量 cleanedText)以 true 注入, 确保 6 段齐全。hasOverview/hasTrap 检测已升级全语言。
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
+      cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
@@ -9241,6 +9340,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🛠️ V231-fix: 补全版补齐标题契约(standardizeReport + fixMonthlySectionTitles), 否则 sanitized 无 ✦ 装饰符
           if (ft) ft = standardizeReport(ft);
           if (ft && reportType === 'monthly') ft = fixMonthlySectionTitles(ft, true, lang);
+          if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
