@@ -35,9 +35,11 @@ RUN printf '%s\n' \
     'echo "[Node] Starting on port ${PORT:-3000}"' \
     'exec node server.js' > /start.sh && chmod +x /start.sh
 
-# ── 凭据写入容器文件 ──
+# ── 非敏感配置写入容器文件（URL 属公开信息，可保留）──
+# ⚠️ V437: service_role 密钥已从镜像彻底剥离——严禁再把任何 JWT/密钥 printf 进镜像！
+#    运行时凭据一律走环境变量（server.js 环境变量优先，容器文件仅本地兜底）。
+#    轮换流程：Railway 改 SUPABASE_SERVICE_KEY 变量 → Redeploy（无需重新构建镜像）
 RUN printf '%s' "https://wfkxqhlcgrikxoofjvas.supabase.co" > /app/.supabase-url
-RUN printf '%s' 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw' > /app/.supabase-key
 RUN printf '%s' "${GEMINI_API_KEY}" > /app/.gemini-key || true
 # V200: DeepSeek key 不写入容器，生产全走 Gemini（与 8818 隔离）
 RUN rm -f /app/.deepseek-key || true

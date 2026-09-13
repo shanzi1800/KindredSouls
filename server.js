@@ -1061,15 +1061,29 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
 }
 
 
-// ── V97bd: Supabase keys 从文件读(防 Railway Dashboard 老 key 覆盖,同 DeepSeek 方案)──
+// ── V437: Supabase 凭据加载 —— 环境变量优先，容器文件仅作兜底 ──
+// 【为什么改】旧版(V97bd)是「容器文件覆盖环境变量」→ 密钥必须烤进镜像(Dockerfile printf)
+//   → 每次轮换都要重新构建镜像，且密钥永久留在镜像层/公开仓库（安全死循环）。
+// 【新规则】环境变量优先：Railway 改变量 + Redeploy 即可轮换，零重新打镜像。
+//   容器文件只在「无环境变量」时兜底（本地开发 / 旧镜像兼容）。
 try {
-  if (existsSync('/app/.supabase-url')) {
+  const envKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '').trim();
+  if (envKey.length > 10) {
+    process.env.SUPABASE_SERVICE_KEY = envKey;
+    console.log('[V437] Supabase key 来源: 环境变量 (len=' + envKey.length + ')');
+  } else if (existsSync('/app/.supabase-key')) {
+    const k = readFileSync('/app/.supabase-key', 'utf-8').trim();
+    if (k.length > 10) {
+      process.env.SUPABASE_SERVICE_KEY = k;
+      console.log('[V437] Supabase key 来源: 容器文件兜底 (len=' + k.length + ') → 建议改配环境变量');
+    }
+  }
+  const envUrl = String(process.env.SUPABASE_URL || '').trim();
+  if (envUrl.length > 10) {
+    process.env.SUPABASE_URL = envUrl;
+  } else if (existsSync('/app/.supabase-url')) {
     const u = readFileSync('/app/.supabase-url', 'utf-8').trim();
     if (u.length > 10) process.env.SUPABASE_URL = u;
-  }
-  if (existsSync('/app/.supabase-key')) {
-    const k = readFileSync('/app/.supabase-key', 'utf-8').trim();
-    if (k.length > 10) process.env.SUPABASE_SERVICE_KEY = k;
   }
 } catch(e) { /* fall through */ }
 
