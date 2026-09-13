@@ -1566,48 +1566,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (isGreenChannelRef.current) {
       setIsUnlocked(true);
       setShowPaywall(false);
-      // 绿色通道:从 Supabase 读预存数据
-      let hasCacheData = false;
-      try {
-        const res = await fetch('https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1/wealth_insights_cache?birth_date=eq.' + birth + '&lang=eq.' + lang + '&limit=1', {
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw'
-          }
-        });
-        const rows = await res.json();
-        if (rows.length > 0 && rows[0].insight) {
-          const cached = JSON.parse(rows[0].insight);
-          // 只设置主报告数据(四宫格),不设置月报(让用户手动点击按钮)
-          if (cached.data) {
-            setReportData({
-              success: true,
-              birthDate: birth,
-              lang: lang,
-              data: cached.data,
-              insight: '',
-              referrer: ''
-            });
-            hasCacheData = true;  // ✅ 标记有缓存数据
-          }
-          // 月报数据缓存到 localStorage,用户点击按钮时读取
-          if (cached.weeks && cached.expense_trap) {
-            localStorage.setItem('ks_wealth_monthly_cache_' + birth + '_' + lang, JSON.stringify(cached));
-          }
-        } else {
-          console.warn("[WealthReport] ⚠️ Supabase 无数据 → fallback 到 API");
-        }
-      } catch (err) {
-        console.error('[WealthReport] ❌ Supabase 查询失败:', err);
-      }
-
-      // ✅ 只有有缓存数据时才直接返回,否则继续走 API
-      if (hasCacheData) {
-        setLoading(false);
-        loadingRef.current = false;
-        return;
-      }
-      // 无缓存数据,继续执行下面的 API 调用
+      // 🛠️ V437: 移除「绿色通道直连 Supabase wealth_insights_cache」分支（安全 P0 + 性能）
+      //   ①【安全】该分支硬编码 service_role 密钥 → 会被打进公开 JS bundle，任何人可取得全库读写权限；
+      //            移除后前端再无高权限凭据，凭据只保留在服务端（Dockerfile / 容器 /app/.supabase-key）。
+      //   ②【性能】该表唯一写入方是已废弃的 Vercel 函数 web/api/wealth-oracle.js，数据冻结在 6-7 月；
+      //            前端读它必然 MISS（白费一次 Supabase 往返），还会把旧数据写进 localStorage 污染渲染。
+      //   统一改走服务端 /api/wealth-oracle(/stream)，由服务端统一管理 ai_insights_cache。
     }
 
     try {

@@ -8317,7 +8317,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //   正向健康校验:我 V383+ 所有 vi 月报必含 ₫500,000;凡不含即 9-06 前旧数据→拦截。
       const _viDirtyHit = lang === 'vi' && (
         (cachedText || '').includes('�') ||                          // U+FFFD 乱码方块(9-06 StringDecoder前产物)
-        !(cachedText || '').includes('₫500,000') ||                 // 缺少正确风控阈值(9-06旧缓存特征:5.000.000/10.000.000等)
+        !/(?:500[.,]000\s*₫|₫\s?500[.,]000)/.test(cachedText || '') ||   // 🛠️ V437-fix: 兼容前后缀两种阈值写法——提示词第326行强制「金额一律写作 500.000 ₫」，而 V394 守卫只认 ₫500,000 → vi 缓存恒判脏、永远 MISS 全量重算
         /[2-9]\.000\.000|\d{2,}\.000\.000|5\.000\.000|7\.000\.000/.test(cachedText || '') ||  // 越界大额VND
         /Vậ\s+n|Mệ\s+nh|Thá\s+ng|Dươ\s+ng|Nă\s+ng|lượ\s+ng|Mặ\s+t|chiế\s+u|chuyệ\s+n|cuộ\s+c|mộ\s+t|đượ\s+c/i.test(cachedText || '')  // 拆词型
       );
