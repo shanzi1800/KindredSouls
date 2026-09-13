@@ -6,9 +6,10 @@ C+ 全量城市翻译脚本（2308 城市 × 5 语种）
 - JSON Mode 防伪
 - 每语种独立隔离（不污染其他字段）
 """
+import os
 import json, time, urllib.request, urllib.error, ssl, os, sys
 
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', 'sk-9307f02599b44612b6767996a7839ab5')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
 CITIES_JSON = '/Users/apple/Desktop/KindredSouls源代码/web/public/data/cities.json'
 PLAN_JSON = '/tmp/cplus_plan.json'
 PROGRESS_DIR = '/tmp/cplus_progress'

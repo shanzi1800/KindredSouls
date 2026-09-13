@@ -4,11 +4,12 @@
 C+ 快速并行版：batch_size=100 + 语种并行。
 一行命令：python3 scripts/cplus_fast.py run
 """
+import os
 import io, json, os, sys, time, urllib.request, ssl, subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 CITIES_JSON = '/Users/apple/Desktop/KindredSouls源代码/web/public/data/cities.json'
-DEEPSEEK_KEY = 'sk-9307f02599b44612b6767996a7839ab5'
+DEEPSEEK_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
 BATCH_SIZE = 100
 MAX_RETRIES = 8
 

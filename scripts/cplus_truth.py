@@ -8,13 +8,14 @@ C+ 真翻译脚本（并发 + processed 追踪版 · 2026-07-19）
   - 完成 = 所有 plan 城市都 processed。translated 只是"拿到了不同于英文的本地名"的子集。
 每语言跑完即落盘 cities.json；6 路并发；无缓冲日志。断点续传 + 指数退避 + JSON防伪。
 """
+import os
 import json, time, urllib.request, urllib.error, ssl, os, sys, io
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 MAX_WORKERS = 6
 
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', 'sk-9307f02599b44612b6767996a7839ab5')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
 CITIES_JSON = '/Users/apple/Desktop/KindredSouls源代码/web/public/data/cities.json'
 PLAN_JSON = '/tmp/cplus_plan.json'
 PROGRESS_DIR = '/tmp/cplus_progress'

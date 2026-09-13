@@ -6,10 +6,11 @@
   python3 scripts/translate_specific.py zh_all       # 已完成 200 + 31
   python3 scripts/translate_specific.py en_global     # 1000 国际城市
 """
+import os
 import json, os, sys, time, urllib.request, urllib.error, ssl
 from pathlib import Path
 
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', 'sk-9307f02599b44612b6767996a7839ab5')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
 CITIES_JSON = '/Users/apple/Desktop/KindredSouls源代码/web/public/data/cities.json'
 PROGRESS_DIR = '/tmp/ks_translate_progress'
 os.makedirs(PROGRESS_DIR, exist_ok=True)

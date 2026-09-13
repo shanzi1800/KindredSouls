@@ -6,7 +6,7 @@
 ## 测试方法
 - 复制 `wealth-oracle.js` → `wealth-oracle.localtest.mjs`（避免改原文件）
 - 写 `test_wealth_local.mjs`：构造 mock `req/res`，直接 `await handler(req, res)`，用测试账号白名单 `test_mode_*` 绕过 Supabase auth
-- DeepSeek key 从 `kindredsouls-backend/main.py` 抓真实可用 key（`sk-0fa35ae88d2b4ae5aa1e922020d5ad1b`，backend 三引擎验证过），shell `export` 注入（`.env.local` 的 `DEEPSEEK_API_KEY` 值为空，长度仅 2）
+- DeepSeek key 从 `kindredsouls-backend/main.py` 抓真实可用 key（`sk-REDACTED-see-env`，backend 三引擎验证过），shell `export` 注入（`.env.local` 的 `DEEPSEEK_API_KEY` 值为空，长度仅 2）
 
 ## 发现的真实 Bug（在财富-oracle.js 本体，非测试脚本）
 1. **语法错误 line 2396**：多余 `}`，Node ESM 加载即崩溃（原文件根本跑不起来）

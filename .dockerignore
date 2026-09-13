@@ -2,7 +2,12 @@ node_modules
 .git
 *.log
 npm-debug.log
-.env
+# 凭据文件绝不进镜像（V437-sec: 原规则只挡精确名 .env，
+#   .env.vercel / .env.local / server/.env / web/.env.local 全都会被打进镜像）
+.env*
+**/.env*
+**/.vercel
+web/.vercel
 .cache
 .DS_Store
 .git-sha

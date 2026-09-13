@@ -3,12 +3,40 @@
 月报验收测试：直接查 Supabase 缓存验证终稿质量
 因为 sanitized 事件不发时测试无法读到终稿，直接查数据库最准
 """
-import subprocess, json, sys
+import os, subprocess, json, sys
+
+def _load_env_file(path):
+    """本地开发兜底：从 .env 风格文件读凭据（绝不硬编码进源码）"""
+    try:
+        with open(path, encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, v = line.split('=', 1)
+                k, v = k.strip(), v.strip().strip('"').strip("'")
+                if v and not os.environ.get(k):
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+def _sb_creds():
+    """凭据优先级：环境变量 > server/.env > .env.local（禁硬编码·见 LESSONS.md）"""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if not (os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')):
+        for cand in ('server/.env', 'web/.env.local', '.env.vercel', '.env.local', '.env'):
+            _load_env_file(os.path.join(root, cand))
+    url = (os.environ.get('SUPABASE_URL') or '').rstrip('/')
+    key = (os.environ.get('SUPABASE_SERVICE_KEY')
+           or os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or '')
+    return url + '/rest/v1', key
 
 def supabase_query(birth):
     """查 Supabase ai_insights_cache 表"""
-    SB_URL = 'https://wfkxqhlcgrikxoofjvas.supabase.co/rest/v1'
-    SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma3hxaGxjZ3Jpa3hvb2ZqdmFzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1NTgyMSwiZXhwIjoyMDk1MjMxODIxfQ.IV6CxfemnwbqXWSkwixaN606PV6-NLWb7nJtYvVGeEw'
+    SB_URL, SB_KEY = _sb_creds()
+    if not SB_KEY or not SB_URL:
+        print('    \N{WARNING SIGN} 缺少 SUPABASE_URL/SUPABASE_SERVICE_KEY 环境变量，跳过查询', file=sys.stderr)
+        return ''
     import urllib.request, urllib.parse
     url = SB_URL + '/ai_insights_cache?cache_key=eq.wealth%3Av131e%3A' + birth + '%3Azh%3Amonthly&select=insight'
     req = urllib.request.Request(url, headers={
