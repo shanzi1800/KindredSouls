@@ -4405,7 +4405,14 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
             // 越界星座 → 整段(星座+宫位)换成本周首个真值
             const repSign = L[first.idx];
             const tail = (writtenHouse != null && hm)
-              ? (houseRe.toString().includes('Casa') ? ' Casa ' : (lang === 'vi' ? ' Nhà ' : (lang === 'zh' ? ' 第' + first.house + '宫' : (lang === 'th' ? ' บ้าน ' : (lang === 'fr' ? ' Maison ' : ' House '))))) + first.house
+              ? (() => {
+                  if (lang === 'zh') return ' 第' + first.house + '宫';
+                  if (lang === 'th') return ' บ้าน ' + first.house;
+                  if (lang === 'vi') return ' Nhà ' + first.house;
+                  if (lang === 'fr') return ' (Maison ' + first.house;
+                  if (houseRe.toString().includes('Casa')) return ' Casa ' + first.house;
+                  return ' (House ' + first.house;
+                })()
               : (writtenHouse != null ? ' ' + first.house : '');
             const rep = repSign + tail;
             patches.push({ s: abs, e: abs + sm[0].length + (hm ? (hm.index - sm[0].length + hm[0].length) : 0), rep });

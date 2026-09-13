@@ -105,7 +105,7 @@ describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标�
     assert.ok(out.includes('Bélier'), '法语周段落未被识别（Semaine 缺失）→ 越界星座未归真: ' + out);
     assert.ok(!out.includes('Vierge'), '法语越界星座残留: ' + out);
     assert.ok(!/ House /.test(out), '替换产物注入了英文 House（穿帮）: ' + out);
-    assert.ok(out.includes(' Maison '), '法语宫位词应为 Maison: ' + out);
+    assert.ok(out.includes('(Maison '), '法语宫位词应为 (Maison : ' + out);
   });
   test('⑩ 法语宫位词必须是 Maison（用已识别周标记隔离该分支）', () => {
     // 用 Week 2（修复前后都识别）把「星座替换尾巴」分支单独隔离出来
@@ -114,7 +114,7 @@ describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标�
     const out = F._v433LockMoonWeek(inp, 'fr', astro);
     assert.ok(!out.includes('Poissons'), '法语越界星座未归真: ' + out);
     assert.ok(!/ House /.test(out), '英文 House 泄漏进法语正文（穿帮）: ' + out);
-    assert.ok(out.includes(' Maison '), '法语宫位词应为 Maison: ' + out);
+    assert.ok(out.includes('(Maison '), '法语宫位词应为 (Maison : ' + out);
   });
   test('⑪ 泰语本命月亮不动（กำเนิด 守护词）', () => {
     const inp = '✦ [🔵 สัปดาห์ที่ 1: X]\nดวงจันทร์กำเนิดในราศีกันยา บ้าน 7 ส่งผลต่อการเงินของคุณ';
