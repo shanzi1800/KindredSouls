@@ -4410,7 +4410,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
                   if (lang === 'th') return ' บ้าน ' + first.house;
                   if (lang === 'vi') return ' Nhà ' + first.house;
                   if (lang === 'fr') return ' (Maison ' + first.house;
-                  if (houseRe.toString().includes('Casa')) return ' Casa ' + first.house;
+                  if (houseRe.toString().includes('Casa')) return ' (Casa ' + first.house;
                   return ' (House ' + first.house;
                 })()
               : (writtenHouse != null ? ' ' + first.house : '');
