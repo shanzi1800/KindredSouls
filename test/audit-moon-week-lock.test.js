@@ -51,7 +51,7 @@ describe('V433-fix4：月亮周级硬锁', () => {
   test('① 越界星座整段归真（W1 里 Scorpio→Aries）', () => {
     const inp = '✦ [🟢 Tuần 1: Thg9 1–7] Nạp\nMặt Trăng hành vận đi qua Bọ Cạp (Nhà 3) → Kim Ngưu (Nhà 8→Nhà 9) → Song Tử (Nhà 9→Nhà 10) → Cự Giải (Nhà 10→Nhà 11).';
     const out = F._v433LockMoonWeek(inp, 'vi', astro);
-    assert.ok(out.includes('Bạch Dương Nhà 7'), '越界星座未归真为首周真值: ' + out);
+    assert.ok(out.includes('Bạch Dương (Nhà 7)'), '越界星座未归真为首周真值: ' + out);
     assert.ok(!out.includes('Bọ Cạp'), '越界 Scorpio 仍残留');
   });
   test('② 宫内归真（星座对、宫位错）', () => {
@@ -151,6 +151,29 @@ describe('V435-fix：周级锁的坏样本回归（宫位补丁／法语周标�
     const once = F._v433LockMoonWeek(inp, 'th', astroTh);
     const twice = F._v433LockMoonWeek(once, 'th', astroTh);
     assert.equal(twice, once, '非幂等（乒乓）: ' + twice);
+  });
+
+  // ═══ V433-fix10: 跨语种括号平衡门禁（根治 tail 手动拼接漏括号）═══
+  // 每个语种用「越界星座 + 带括号宫位」格式，验替换后括号仍平衡
+  test('⑯ 跨语种括号平衡：越界替换后所有语种括号必须配对', () => {
+    const cases = [
+      { lang: 'vi', inp: '✦ [🟢 Tuần 1: X]\nMặt Trăng đi qua Bọ Cạp (Nhà 99) → Kim Ngưu (Nhà 8).', expect: 'Bạch Dương (Nhà 7)' },
+      { lang: 'zh', inp: '✦ [🟢 第1周: 9月1–7日] X\n月亮进入天蝎座（第99宫） → 金牛座（第8宫）。', expect: '白羊座（第7宫）' },
+      { lang: 'fr', inp: '✦ [🟢 Semaine 1: X]\nla Lune en transit en Scorpion (Maison 99) → Taureau (Maison 1).', expect: 'Bélier (Maison 7)' },
+      { lang: 'es', inp: '✦ [🟢 Semana 1: X]\nLa Luna en tránsito en Escorpio (Casa 99) → Tauro (Casa 1).', expect: 'Aries (Casa 7)' },
+      { lang: 'en', inp: '✦ [🟢 Week 1: X]\nThe transiting Moon in Scorpio (House 99) → Taurus (House 1).', expect: 'Aries (House 7)' },
+    ];
+    for (const c of cases) {
+      const out = F._v433LockMoonWeek(c.inp, c.lang, astro);
+      assert.ok(out.includes(c.expect), `[${c.lang}] 越界替换后括号缺失: expected "${c.expect}" in "${out}"`);
+      // 括号平衡校验
+      const opens = (out.match(/\(/g) || []).length;
+      const closes = (out.match(/\)/g) || []).length;
+      assert.equal(opens, closes, `[${c.lang}] 括号不平衡: (=${opens} )=${closes}`);
+      const zhOpens = (out.match(/（/g) || []).length;
+      const zhCloses = (out.match(/）/g) || []).length;
+      assert.equal(zhOpens, zhCloses, `[${c.lang}] 全角括号不平衡: （=${zhOpens} ）=${zhCloses}`);
+    }
   });
 });
 

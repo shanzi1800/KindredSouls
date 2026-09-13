@@ -4404,17 +4404,18 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
           } else if (first && first.idx >= 0) {
             // 越界星座 → 整段(星座+宫位)换成本周首个真值
             const repSign = L[first.idx];
+            // 🛠️ V433-fix10: tail 从 hm[0] 原始匹配自动继承格式（根治手动 per-lang 拼接漏括号）
+            //   hm[0] 例如 '(Maison 7)' / '第5宫' / 'บ้าน 7' / 'Nhà 3' / '(Casa 9)' / '(House 4)'
+            //   → 把数字替换为真值宫位号即可，括号/前缀/后缀全自动保留
+            //   ⚠️ 但 houseRe 不含括号时（vi 'Nhà 3' / zh '第5宫'），原文的左括号在 sm 末尾与 hm 之间
+            //      → 被替换区间吃掉。用 gap = sm 末尾到 hm 起始之间的原文自动补回。
             const tail = (writtenHouse != null && hm)
-              ? (() => {
-                  if (lang === 'zh') return '（第' + first.house + '宫';
-                  if (lang === 'th') return ' บ้าน ' + first.house;
-                  if (lang === 'vi') return ' Nhà ' + first.house;
-                  if (lang === 'fr') return ' (Maison ' + first.house;
-                  if (houseRe.toString().includes('Casa')) return ' (Casa ' + first.house;
-                  return ' (House ' + first.house;
-                })()
+              ? hm[0].replace(/\d{1,2}/, String(first.house))
               : (writtenHouse != null ? ' ' + first.house : '');
-            const rep = repSign + tail;
+            // gap = 星座名末尾到 houseRe 匹配起始之间的字符（通常是 ' (' 或 '（'）
+            const gapEnd = hm ? (hm.index - sm[0].length) : 0;
+            const gap = (hm && gapEnd > 0) ? around.slice(sm[0].length, sm[0].length + gapEnd) : '';
+            const rep = repSign + gap + tail;
             patches.push({ s: abs, e: abs + sm[0].length + (hm ? (hm.index - sm[0].length + hm[0].length) : 0), rep });
           }
         }
