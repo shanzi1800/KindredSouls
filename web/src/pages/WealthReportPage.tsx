@@ -1938,6 +1938,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
         let _fullMap = new Map<string, string>(); // V244: 每请求独立_full，防止HMR/重挂/多请求互相踩踏
         const _sanMap = new Map<string, string>(); // 🛡️ V419: 保存后端 sanitized 全量终稿——防止 [DONE] 用流式原文本覆盖终稿
         let _chunkIdx = 0; // V242-debug: 追踪 chunk 编号
+        let _streamDone = false; // 🛡️ V446: [DONE] 已收到=流正常完成，禁用误判 fallback
         // 🛡️ V219d: 注册单例生成锁,后续 remount 订阅此进度(不重复发请求)
         // 🛡️ V222z-fix7: 覆盖前先检查旧 gen 是否已完成；若已完成则保留旧 gen（它已经持有最终 _full）
         const existingGen = _reportGen.get(_memKey);
@@ -1993,6 +1994,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
               const dataStr = trimmedLine.slice(6).trim();
 
               if (dataStr === '[DONE]') {
+                _streamDone = true; // 🛡️ V446: 流正常完成，后续 fallback 不再误触发
                 console.log('[V242-DEBUG] [DONE] len=' + (_fullMap.get(_memKey)||'').length + ' | first80=' + JSON.stringify((_fullMap.get(_memKey)||'').slice(0,80)));
                 console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + ((_fullMap.get(_memKey)||'').match(/\✦/g) || []).length + ' | 第4个✦位置=' + ((_fullMap.get(_memKey)||'').indexOf('\✦') !== -1 ? (_fullMap.get(_memKey)||'').indexOf('\✦') : -1));
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
@@ -2131,9 +2133,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
           }
         }
       
-        // 🛠️ V222z-fix2: Railway 30秒硬切断兜底——在 try 末尾检查流状态
-        // 判断：_full 长度 < 2000 字符 → 说明流未正常完成，触发 fallback
-        if ((_fullMap.get(_memKey)||'').length < 2000) {
+        // 🛡️ V446: 仅当流「真正未正常完成」才 fallback——[DONE] 已收到(_streamDone=true)说明流完整结束，
+        //   禁止再用写死的 2000 字阈值误判(月报正文常 <2000 字，原逻辑会把它当截断→重拉→视觉重流)。
+        //   触发条件收紧为:未收到 [DONE] 且正文长度 < 2000(真实截断场景)。
+        if (!_streamDone && (_fullMap.get(_memKey)||'').length < 2000) {
           console.warn('[WealthReport] ⚠️ 流式传输不完整(_full=' + (_fullMap.get(_memKey)||'').length + '字符) → 启动非流式 fallback');
           try {
             const fbRes = await fetch('/api/wealth-oracle', {
