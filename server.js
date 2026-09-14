@@ -5633,9 +5633,15 @@ const _V438_CFG = {
   zh: { signs: SUN_SIGN_ZH, houseOut: h => `第${h}宫`, fmt: (loc, hs) => `${loc}（${hs}）`, sep: '、',
         intro: '流月月亮依次行经', stopRe: /[。.\n]|\d+月\d+日/,
         headerRe: /第([1-4])周[^\n]*/g },
-  en: { signs: SUN_SIGN_EN, houseOut: h => `House ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
-        intro: 'The Moon transits through ', stopRe: /[.\n]/,
-        headerRe: /Week\s+([1-4])[^\n]*/gi },
+  en: { signs: SUN_SIGN_EN, houseOut: h => `House ${h}`, fmt: (loc, hs) => {
+      const parts = hs.replace(/House\s*/g, '').trim().split('\u2192');
+      const houses = parts.map(n => 'House ' + n.trim()).join('\u2192');
+      return parts.length === 1 ? `${loc} (${houses})` : `${loc} (${houses})`;
+    },  // V442-fix6: 单宫 'House 1'，多宫 'House 1→House 2'
+        intro: 'The Moon transits through ', stopRe: /\n/,   // V442-fix5
+        headerRe: /Week\s+([1-4])[^\n]*/gi,
+        sep: ', ',   // V442-fix10
+  },   // en
   es: { signs: SUN_SIGN_ES, houseOut: h => `Casa ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
         intro: 'La Luna transita por ', stopRe: /[.\n]/,
         headerRe: /Semana\s+([1-4])[^\n]*/gi },
@@ -5651,8 +5657,10 @@ const _V438_CFG = {
 };
 
 function applyMoonWeekHardOverride(text, lang, astroMatrix) {
+  console.log('[V438] CALLED lang=' + lang + ' text.len=' + (text ? text.length : 'null'));
   if (!text || typeof text !== 'string') return text;
   const cfg = _V438_CFG[lang];
+  if (!cfg) { console.log('[V438] NO CFG for lang=' + lang); return text; }
   if (!cfg) return text;
   const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
   const weeks = m0 && m0.moon_weeks;
@@ -5666,35 +5674,48 @@ function applyMoonWeekHardOverride(text, lang, astroMatrix) {
   while ((hm = cfg.headerRe.exec(text)) !== null) {
     if (truthByWeek[+hm[1]]) headers.push({ i: hm.index, e: hm.index + hm[0].length, week: +hm[1] });
   }
-  if (!headers.length) return text;
-  let result = '', cursor = 0;
+  if (!headers.length) { console.log('[V438] NO HEADERS found, text.len=' + text.length); return text; }
+  console.log('[V438] headers=' + headers.length + ' (' + headers.map(h=>'W'+h.week).join(',') + '), text.len=' + text.length);
+  let result = '', prevCursor = 0;
   for (let hi = 0; hi < headers.length; hi++) {
     const h = headers[hi];
     const nextStart = (hi + 1 < headers.length) ? headers[hi + 1].i : text.length;
     const body = text.slice(h.e, nextStart);
     const fixedBody = _v438OverrideBody(body, cfg, truthByWeek[h.week]);
-    result += text.slice(cursor, h.e) + fixedBody;
-    cursor = nextStart;
+    // 追加：上周body末尾到本周标题 + 本周标题 + 本周替换body
+    result += text.slice(prevCursor, h.e) + fixedBody;
+    prevCursor = nextStart;   // V442-fix2: 跳过整个本周body（h.e→nextStart），下轮从下个标题起始   // 下周标题从本周body末尾之后开始
   }
-  result += text.slice(cursor);
+  result += text.slice(prevCursor);  // 最后一周body末尾到文本末尾
   return result;
 }
 
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
-  const lead = body.search(/\S/);
+  const lead = body.search(/\S/);          // 跳过前导空白
   if (lead < 0) return body;
-  const signAlt = cfg.signs.slice().sort((a, b) => b.length - a.length).join('|');
-  // 🛠️ V438-fix2: 加 .*? 跨越「本周依次行经」等前缀词(AI 常在句首加引导语)
-  const houseTok = /.*?（?第\d+宫(?:→第\d+宫)*）?|.*?\(?House \d+(?:→House \d+)*\)?|.*?\(?Casa \d+(?:→Casa \d+)*\)?|.*?\(?Maison \d+(?:→Maison \d+)*\)?|.*?บ้าน \d+(?:→บ้าน \d+)*|.*?Nhà \d+(?:→Nhà \d+)*/;
-  const m = new RegExp('(' + signAlt + ')\\s*' + houseTok.source).exec(body.slice(lead));
-  if (!m || m.index > 200) return body;          // 无「星座+宫位」或落在正文深处(非周开头)→ 不碰
-  const pStart = lead;                           // 吞掉正文开头的旧引导语,统一改写
-  const rest = body.slice(pStart);
-  let pEndRel = rest.length;
-  const sm = cfg.stopRe.exec(rest);
-  if (sm) pEndRel = sm.index;
-  return body.slice(0, pStart) + cfg.intro + truth + body.slice(pStart + pEndRel);
+  // 找正文第一个 stopRe 边界（句号/日期句）
+  let stopAt = body.length;
+  // V442-fix4: 从 lead 之后搜索句末（body.slice 避免 lastIndex 歧义）
+  const afterLead = body.slice(lead);   // 从首非空白字符之后开始
+  cfg.stopRe.lastIndex = 0;
+  const sm = cfg.stopRe.exec(afterLead);
+  if (sm) stopAt = lead + sm.index;
+  // 保留：前导空白 + stopRe 边界前的内容（日期句等）
+  const beforeStop = body.slice(lead, stopAt);   // 原文要替换的区间
+  const afterStop = body.slice(stopAt);           // stopRe 之后（原样保留，如日期句）
+  // 替换区间内只要含 cfg.signs 任意一个星座 → 整段用 truth 硬换
+  const hasSign = cfg.signs.some(s => beforeStop.includes(s));
+  if (!hasSign) return body;                    // 无星座（已正确或格式异常）
+  const changed = beforeStop !== truth;
+  // V442-fix9: comma was eaten by stopRe -> put it back
+  // V442-fix11: period was eaten -> put it back too
+  let trailing = "";
+  if (afterStop.startsWith(", ")) { trailing = ", "; }
+  else if (afterStop.startsWith(". ")) { trailing = ". "; }
+  else if (afterStop.startsWith(".\n")) { trailing = ".\n"; }
+  console.log('[V438] _v438OverrideBody: replaced body.len=' + beforeStop.length + '→' + truth.length + ' changed=' + changed + (trailing ? ' [' + trailing + ']' : ''));
+  return body.slice(0, lead) + truth + trailing + afterStop.slice(trailing.length);
 }
 
 
