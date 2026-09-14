@@ -856,3 +856,128 @@ export async function v69HealthCheck() {
     return { ok: false, error: e.message };
   }
 }
+
+// ── V441 月报 JSON 事实宪法 ───────────────────────────────────────────────────
+// 核心原则：算法生成全部天体事实 JSON，LLM 只负责渲染文采，不生成任何数字/星座/日期。
+// 用法：在 buildWealthReportPrompt 月报分支里注入此 block，命令 LLM 照 JSON 渲染。
+
+/**
+ * V441: 生成月报 JSON 事实宪法块（算法算真值，LLM 只读不写）
+ * @param {object} astroMatrix - 星盘引擎输出
+ * @param {string} lang - 语言代码 zh/en/es/fr/th/vi
+ * @param {string} monthLabel - 当月标签，如 '9月' / 'Sep'
+ * @returns {string} 注入 Prompt 的事实宪法块（含 JSON + LLM 指令）
+ */
+export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
+  const L = SIGN_L10N[lang] || SIGN_L10N.zh;
+  const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
+  const mw = astroMatrix?.months?.[0]?.moon_weeks;
+  const natal = astroMatrix?.meta || {};
+  const m0 = astroMatrix?.months?.[0];
+
+  // ── 1. 每周月亮过境（按星座聚合宫位段） ──
+  const weekBlocks = (Array.isArray(mw) ? mw : []).map(w => {
+    const groups = [];
+    for (const lg of (w.legs || [])) {
+      const last = groups[groups.length - 1];
+      if (last && last.sign === lg.sign) {
+        if (!last.houses.includes(lg.house)) last.houses.push(lg.house);
+      } else groups.push({ sign: lg.sign, houses: [lg.house] });
+    }
+    const ingresses = (w.changes || [])
+      .filter(c => c.kind === 'sign')
+      .map(c => ({ day: c.day, time: c.time, sign: loc(c.to_sign) }));
+    return {
+      week: w.week,
+      fromDay: w.from_day,
+      toDay: w.to_day,
+      transits: groups.map(g => ({
+        sign: loc(g.sign),
+        houses: g.houses,
+      })),
+      ingresses,
+    };
+  });
+
+  // ── 2. 流年行星真值 ──
+  const PLANET_KEYS = ['sun','mercury','venus','mars','jupiter','saturn'];
+  const transitPlanets = PLANET_KEYS.map(k => {
+    const p = k === 'sun' ? (m0?.sun || (m0?.positions?.Sun ? {sign:m0.positions.Sun.sign, house:m0.positions.Sun.house} : {})) : (m0?.[k]);
+    if (!p?.sign) return null;
+    return { key: k, sign: loc(p.sign), house: _getH(p.house), retrograde: !!p.retrograde };
+  }).filter(Boolean);
+
+  // ── 3. 本命锚点 ──
+  const natalSun = loc(natal.sun_sign || 'Capricorn');
+  const rising = loc(natal.rising_sign || 'Cancer');
+  const natalMoon = natal.natal_moon ? loc(natal.natal_moon.sign || '') : null;
+
+  // ── 4. 消费陷阱阈值 ──
+  const RISK = {
+    zh: { sym:'￥', threshold:5000, unit:'元' },
+    en: { sym:'$',  threshold:800,  unit:'' },
+    fr: { sym:'€',  threshold:700,  unit:'' },
+    es: { sym:'€',  threshold:700,  unit:'' },
+    th: { sym:'฿',  threshold:5000, unit:'บาท' },
+    vi: { sym:'₫',  threshold:500000, unit:'' },
+  }[lang] || { sym:'￥', threshold:5000, unit:'元' };
+
+  // ── 5. 风险等级（固定节律，算法硬定）──
+  const RISK_LEVELS = ['低危','高危','中危','低危'];
+
+  // ── 6. 渲染 JSON ──
+  const factTree = {
+    reportMeta: { month: monthLabel, natalSun, rising, natalMoon },
+    weeklyMoonTransits: weekBlocks,
+    transitPlanets,
+    spendingTrap: { symbol: RISK.sym, threshold: RISK.threshold, unit: RISK.unit },
+  };
+
+  // ── 7. 逐周生成「照抄句」──
+  const monthLocal = monthLabel + (lang === 'zh' ? '月' : '');
+  const weekCopyBlocks = weekBlocks.map(w => {
+    const risk = RISK_LEVELS[w.week - 1] || '中危';
+    const dateRange = lang === 'zh'
+      ? `${monthLocal}${w.fromDay}日–${w.toDay}日`
+      : `${monthLabel} ${w.fromDay}–${w.toDay}`;
+    const riskLabelMap = {
+      zh: {'低危':'财富充能','高危':'高危熔断','中危':'顺流蓄力'},
+      en: {'低危':'Wealth Recharging','高危':'High-Risk Circuit Breaker','中危':'Strategic Integration'},
+      fr: {'低危':'Recharge de Richesse','高危':'Disjoncteur à Haut Risque','中危':'Intégration Stratégique'},
+      es: {'低危':'Recarga de Riqueza','高危':'Cortocircuito de Alto Riesgo','中危':'Integración Estratégica'},
+      th: {'低危':'การเติมพลังความมั่งคั่ง','高危':'วงจรความเสี่ยงสูง','中危':'การบูรณาการเชิงกลยุทธ์'},
+      vi: {'低危':'Nạp lại năng lượng','高危':'Ngắt mạch rủi ro cao','中危':'Tích hợp chiến lược'},
+    };
+    const riskLabel = (riskLabelMap[lang] || riskLabelMap.zh)[risk] || risk;
+    const sep = lang === 'zh' ? '、' : ', ';
+    const transitsStr = w.transits.map(t => {
+      const houses = t.houses.map(h => lang === 'zh' ? `第${h}宫` : `H${h}`).join('→');
+      return `${t.sign}（${houses}）`;
+    }).join(sep);
+    const ingressStr = w.ingresses.length > 0
+      ? w.ingresses.map(i => `${i.day}日${i.sign}`).join('、')
+      : '';
+    return { week: w.week, dateRange, risk, riskLabel, moonTransits: transitsStr, ingressStr };
+  });
+
+  const sep = '─'.repeat(40);
+  let block = `\n${sep}\n【V441 JSON FACT CONSTITUTION — SwissEph 算法生成 · LLM 只读不写】\n${sep}\n`;
+  block += `以下 JSON 数据是当月天体事实的完整真值。你的任务是把它们翻译成优美的运势文案。\n`;
+  block += `⚠️ 禁止编造任何未在下方 JSON 中列出的：星座、宫位、日期、金额、行星。\n`;
+  block += `⚠️ 月亮过境必须按 JSON 的 transits 顺序和 house 值渲染，不准改变顺序或换座。\n\n`;
+  block += `【JSON FACT TREE】\n`;
+  block += JSON.stringify(factTree, null, 2) + `\n\n`;
+  block += `【逐周照抄句（严格按此格式写月亮过境段落）】\n`;
+  for (const wb of weekCopyBlocks) {
+    const moonLine = lang === 'zh'
+      ? `流月月亮依次行经${wb.moonTransits}。`
+      : `The Moon transits through ${wb.moonTransits.replace(/（/g,' (').replace(/）/g,')')}.`;
+    const ingressLine = wb.ingressStr
+      ? (lang === 'zh' ? `${wb.ingressStr}换座。` : `${wb.ingressStr} ingress. `)
+      : '';
+    block += `[WEEK ${wb.week} ${wb.dateRange} (${wb.risk})]\n`;
+    block += `月亮过境: ${moonLine}\n${ingressLine}\n`;
+  }
+  block += `${sep}\n`;
+  return block;
+}

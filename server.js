@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -6495,6 +6495,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   //    改用引擎自带的月名（如 'Sep 2026' → 'Sep'），语言无关、无作用域依赖。
   const _mwMonthLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
   const moonWeekBlock = buildMoonWeekBlock(astroMatrix, lang, _mwMonthLabel);
+  // 🛠️ V441: JSON 事实宪法块（剥夺 LLM 生成天体事实的最后自留地）
+  const factTreeBlock = buildMonthlyFactTree(astroMatrix, lang, _mwMonthLabel);
   const monthlyDataBlockMoon = (_moonWeeks
     ? monthlyDataBlock.replace(/\s*Moon=[^\s]+\*snap\*/g, '')
     : monthlyDataBlock) + moonWeekBlock;
@@ -6807,6 +6809,8 @@ ${planetBlockWithWarning}
 
 🛠️ [P1 全12月行星数据 - 严禁自行计算]:
 ${monthlyDataBlockMoon}
+
+${factTreeBlock}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [宫位直写铁律]: 提到行星宫位时，直接写"第N宫"（如"木星在狮子座第2宫带来财富"），严禁使用任何 {{}} 模板占位符或英文 token 标记。后端不再做占位符替换。
