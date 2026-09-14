@@ -12,8 +12,6 @@ import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
-import MonthlyFactCards from '../components/MonthlyFactCards';
-import type { MonthlyFactTree } from '../components/MonthlyFactCards';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 import {
@@ -1168,7 +1166,6 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
   const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 🛠️ V369-fix: 初始 false杜绝金属框闪现——首个text chunk到达时挂载
   const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态
-  const [monthlyFactTree, setMonthlyFactTree] = useState<MonthlyFactTree | null>(null); // [B路线/军师 9-14] 算法真值层
   const [_stableMemKey, _setStableMemKey] = useState<string>(''); // V247: SacredYearlyReportBox 稳定 key(双通道打字机核心)
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
@@ -1921,7 +1918,6 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
     setStreamedOnce(false);
-    setMonthlyFactTree(null); // [B路线/军师 9-14] 清除上一轮残留的算法真值层，避免跨报告类型污染
     // 🛠️ V40: 每次年报/月报开始前清空打字机容器
     if (type === 'yearly') {
       setSacredText('');
@@ -2058,12 +2054,6 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
                   // 🛠️ V368-fix: 废除 meta 即挂载空框架——改为首个真实 text chunk 到达时才挂载(见下方 parsed.text 分支)，避免空金属框架闪现
-                } else if (parsed.factTree) {
-                  // [B路线/军师 9-14] 结构化算法真值层：仅月报渲染权威事实卡（LLM 不参与）。年报暂不在 B 路线范围。
-                  if (type === 'monthly') {
-                    console.log('[WealthReport] 🔒 收到 factTree 事件, weeks=', (parsed.factTree.weeklyMoonTransits || []).length);
-                    setMonthlyFactTree(parsed.factTree);
-                  }
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
                   const _prevLen = (_fullMap.get(_memKey)||'').length;
@@ -2699,9 +2689,6 @@ smoothAppendText(fbText, setSacredText, 16, 4);
         {/* V356-fix: 改用 monthlyCardsReady 作为挂载条件，不再依赖 reportLoading。
             原因：reportLoading 在 [DONE] 时被清空（setReportLoading('')），导致组件卸载。
             现在：monthlyCardsReady 由 meta/text chunk/[DONE] 逐步设为 true，组件全程保持挂载。 */}
-        {monthlyFactTree && (reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
-          <MonthlyFactCards factTree={monthlyFactTree} lang={currentLang} />
-        )}
         {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
           <SacredYearlyReportBox
             key={_stableMemKey || 'monthly-pending'}

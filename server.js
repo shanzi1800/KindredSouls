@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, getMonthlyFactTree } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -5690,6 +5690,92 @@ function applyMoonWeekHardOverride(text, lang, astroMatrix) {
   return result;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V444：本命锚点角色归属锁（军师 9-14 主公令）
+// 目的：防止 LLM 散文把"上升/太阳/月亮"三个本命锚点对应的星座搞混
+//   已知最常见 bug：把"月亮金牛座"误写成"上升金牛座"（截图实证）
+// 策略：扫描散文中"角色词 + 星座"搭配，与 astroMatrix.meta 真值对撞
+//   错则替换为真值星座（LLM 文采保留、事实归位）。
+// 排除：流年/流月/本月等 transit 上下文（流年太阳不算本命，不动）。
+// ══════════════════════════════════════════════════════════════════
+const _V444_TRANSIT_EXC_ZH = '(?<!流年|流月|今年|本月|当月|下月|上月|当周|这周|下周|上周)';
+
+function _v444Esc(s) { return s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'); }
+
+function _v444Signs(lang) {
+  const m = { zh: SUN_SIGN_ZH, en: SUN_SIGN_EN, es: SUN_SIGN_ES, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI };
+  return m[lang] || null;
+}
+
+function _v444Patterns(lang, signsPat) {
+  if (lang === 'zh') {
+    const te = _V444_TRANSIT_EXC_ZH;
+    return {
+      rising: new RegExp(String.raw`${te}(?:你的|本命|乃)?上升(?:星座)?(?:是|在|为)?\s*(${signsPat})`, 'g'),
+      sun: new RegExp(String.raw`${te}(?:你的|本命|乃)?太阳(?:星座)?(?:是|在|为)?\s*(${signsPat})`, 'g'),
+      moon: new RegExp(String.raw`${te}(?:你的|本命|乃)?月亮(?:星座)?(?:是|在|为)?\s*(${signsPat})`, 'g'),
+    };
+  }
+  if (lang === 'en') {
+    return {
+      rising: new RegExp(String.raw`(?:your|Your)\s+(?:natal\s+)?(?:rising\s+sign|ascendant|Rising|Ascendant)(?:\s+is)?(?:\s+in)?\s+(${signsPat})\b`, 'g'),
+      sun: new RegExp(String.raw`(?:your|Your)\s+(?:natal\s+)?(?:sun|Sun)(?:\s+sign)?(?:\s+is)?(?:\s+in)?\s+(${signsPat})\b`, 'g'),
+      moon: new RegExp(String.raw`(?:your|Your)\s+(?:natal\s+)?(?:moon|Moon)(?:\s+sign)?(?:\s+is)?(?:\s+in)?\s+(${signsPat})\b`, 'g'),
+    };
+  }
+  if (lang === 'fr') {
+    return {
+      rising: new RegExp(String.raw`(?:ton|votre|mon|notre|son)\s+(?:Ascendant|ascendant)(?:\s+est)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+      sun: new RegExp(String.raw`(?:ton|votre|mon|notre|son)\s+(?:Soleil|soleil)(?:\s+est)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+      moon: new RegExp(String.raw`(?:ta|votre|mon|notre|sa)\s+(?:Lune|lune)(?:\s+est)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+    };
+  }
+  if (lang === 'es') {
+    return {
+      rising: new RegExp(String.raw`(?:tu|su|mi|nuestro)\s+(?:Ascendente|ascendente)(?:\s+es)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+      sun: new RegExp(String.raw`(?:tu|su|mi|nuestro)\s+(?:Sol|sol)(?:\s+es)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+      moon: new RegExp(String.raw`(?:tu|su|mi|nuestra)\s+(?:Luna|luna)(?:\s+es)?(?:\s+en)?\s+(${signsPat})\b`, 'gi'),
+    };
+  }
+  if (lang === 'th') {
+    return {
+      rising: new RegExp(`(?:ลัคนา|Ascendant|ascendant)(?:\s+ของ\s+คุณ)?(?:\s+อยู่)?(?:\s+ใน)?\s*(${signsPat})`, 'g'),
+      sun: new RegExp(`(?:ดวงอาทิตย์|พระอาทิตย์|Sun|sun)(?:\s+ของ\s+คุณ)?(?:\s+อยู่)?(?:\s+ใน)?\s*(${signsPat})`, 'g'),
+      moon: new RegExp(`(?:ดวงจันทร์|พระจันทร์|Moon|moon)(?:\s+ของ\s+คุณ)?(?:\s+อยู่)?(?:\s+ใน)?\s*(${signsPat})`, 'g'),
+    };
+  }
+  if (lang === 'vi') {
+    return {
+      rising: new RegExp(String.raw`(?:Ascendant|ascendant|cung\s+Thiên\s+Bình)(?:\s+của\s+bạn)?(?:\s+là)?(?:\s+ở)?\s+(${signsPat})`, 'gi'),
+      sun: new RegExp(String.raw`(?:Mặt\s+Trời|Mặt\s+trời|Sun|sun)(?:\s+của\s+bạn)?(?:\s+là)?(?:\s+ở)?\s+(${signsPat})`, 'gi'),
+      moon: new RegExp(String.raw`(?:Mặt\s+Trăng|Mặt\s+trăng|Moon|moon)(?:\s+của\s+bạn)?(?:\s+là)?(?:\s+ở)?\s+(${signsPat})`, 'gi'),
+    };
+  }
+  return null;
+}
+
+function lockNatalAnchorRole(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  const meta = astroMatrix && astroMatrix.meta;
+  if (!meta) return text;
+  const truth = { sun: meta.sun_sign, rising: meta.rising_sign, moon: meta.natal_moon && meta.natal_moon.sign };
+  if (!truth.sun || !truth.rising || !truth.moon) return text;
+  const signs = _v444Signs(lang);
+  if (!signs) return text;
+  const signsPat = signs.map(_v444Esc).join('|');
+  const pats = _v444Patterns(lang, signsPat);
+  if (!pats) return text;
+  let out = text;
+  for (const role of ['sun', 'rising', 'moon']) {
+    const re = pats[role];
+    const idx = SUN_SIGN_EN.indexOf(truth[role]);
+    if (idx < 0) continue;
+    const trueLocal = signs[idx];
+    out = out.replace(re, (m, captured) => (captured === trueLocal ? m : m.replace(captured, trueLocal)));
+  }
+  return out;
+}
+
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
   const lead = body.search(/\S/);          // 跳过前导空白
@@ -7887,8 +7973,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
           const _hitMatrix = _hitAstro432 || _hitAstro || _hitAstroTh || null;
-          const _hitFactTree = _hitMatrix ? (() => { try { return getMonthlyFactTree(_hitMatrix, lang, String(_hitMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim()); } catch (e) { return null; } })() : null;
-          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal, factTree: _hitFactTree });
+          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal });
         }
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
@@ -8046,6 +8131,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
+        reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix);   // 🛡️ V444
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
@@ -8097,8 +8183,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           }
         }
 
-        const _missFactTree = astroMatrix ? (() => { try { return getMonthlyFactTree(astroMatrix, lang, String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim()); } catch (e) { return null; } })() : null;
-        return res.json({ ...result, report: reportContent, insight: '', factTree: _missFactTree });
+        return res.json({ ...result, report: reportContent, insight: '' });
       } catch (aiError) {
         console.error('[Wealth Oracle] AI generation failed:', aiError.message);
         return res.status(500).json({ success: false, error: 'AI generation failed: ' + aiError.message });
@@ -8452,16 +8537,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     console.warn('[wealth-stream] [V238-META] build failed:', e.message);
   }
 
-  // ── [B路线/军师 9-14] 结构化 factTree 事件：SwissEph 真值 JSON，前端渲染权威事实层（LLM 不参与）──
-  try {
-    if (astroMatrix) {
-      const _mwLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
-      const _factTree = getMonthlyFactTree(astroMatrix, lang, _mwLabel);
-      res.write(Buffer.from(`data: ${JSON.stringify({ factTree: _factTree })}\n\n`, 'utf-8'));
-      if (typeof res.flush === 'function') res.flush();
-      console.log('[wealth-stream] [B-FACTTREE] emitted factTree event for', lang, 'weeks=', (_factTree.weeklyMoonTransits || []).length);
-    }
-  } catch (e) {
+  // ── [V444 9-14 摘除] factTree SSE 事件已下线(前端不再消费，内部真值层仅V444后处理调用 astroMatrix)──
+  try { /* no-op */ } catch (e) {
     console.warn('[wealth-stream] [B-FACTTREE] emit failed:', e.message);
   }
 
@@ -8571,6 +8648,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
+        streamText = lockNatalAnchorRole(streamText, lang, astroMatrix);   // 🛡️ V444
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -8898,6 +8976,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   if (lang === 'fr') _j.text = lockTransitTruthFr(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
+                  _j.text = lockNatalAnchorRole(_j.text, lang, astroMatrix);   // 🛡️ V444
                   _j.text = applyV434Locks(_j.text, lang, astroMatrix);   // V434（补 V433 未挂的 SSE 逐块链）
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
                 }
@@ -9299,6 +9378,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //   if(reportType==='monthly') 在 yearly 分支内永假→从不执行; 流式逐chunk flush 处 injectPlaceholders=false 须保留(防半截分片斩首单词),
       //   故改在【整段流结束后】此处(全量 cleanedText)以 true 注入, 确保 6 段齐全。hasOverview/hasTrap 检测已升级全语言。
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
+      cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
       cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
@@ -9391,6 +9471,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           // 🛠️ V231-fix: 补全版补齐标题契约(standardizeReport + fixMonthlySectionTitles), 否则 sanitized 无 ✦ 装饰符
           if (ft) ft = standardizeReport(ft);
           if (ft && reportType === 'monthly') ft = fixMonthlySectionTitles(ft, true, lang);
+          if (ft) ft = lockNatalAnchorRole(ft, lang, astroMatrix);   // 🛡️ V444
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
@@ -9433,6 +9514,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (lang === 'th') cleanedText = lockTransitTruthTh(cleanedText, astroMatrix);
     cleanedText = applyV434Locks(cleanedText, lang, astroMatrix);   // V434（补 V433 未挂的落库前收尾链）
     // 🛠️ V432: MISS stream 收尾 en/es/zh 真值双锁（完整文本、落库前最后一道）
+    cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
