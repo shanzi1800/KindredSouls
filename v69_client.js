@@ -868,14 +868,14 @@ export async function v69HealthCheck() {
  * @param {string} monthLabel - 当月标签，如 '9月' / 'Sep'
  * @returns {string} 注入 Prompt 的事实宪法块（含 JSON + LLM 指令）
  */
-export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
+// ── B路线(军师 9/14): 抽出 factTree JSON 构建，供后端直接吐给前端渲染（LLM 不参与事实组装）──
+export function computeMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
   const L = SIGN_L10N[lang] || SIGN_L10N.zh;
   const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
   const mw = astroMatrix?.months?.[0]?.moon_weeks;
   const natal = astroMatrix?.meta || {};
   const m0 = astroMatrix?.months?.[0];
 
-  // ── 1. 每周月亮过境（按星座聚合宫位段） ──
   const weekBlocks = (Array.isArray(mw) ? mw : []).map(w => {
     const groups = [];
     for (const lg of (w.legs || [])) {
@@ -899,7 +899,6 @@ export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
     };
   });
 
-  // ── 2. 流年行星真值 ──
   const PLANET_KEYS = ['sun','mercury','venus','mars','jupiter','saturn'];
   const transitPlanets = PLANET_KEYS.map(k => {
     const p = k === 'sun' ? (m0?.sun || (m0?.positions?.Sun ? {sign:m0.positions.Sun.sign, house:m0.positions.Sun.house} : {})) : (m0?.[k]);
@@ -907,12 +906,10 @@ export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
     return { key: k, sign: loc(p.sign), house: _getH(p.house), retrograde: !!p.retrograde };
   }).filter(Boolean);
 
-  // ── 3. 本命锚点 ──
   const natalSun = loc(natal.sun_sign || 'Capricorn');
   const rising = loc(natal.rising_sign || 'Cancer');
   const natalMoon = natal.natal_moon ? loc(natal.natal_moon.sign || '') : null;
 
-  // ── 4. 消费陷阱阈值 ──
   const RISK = {
     zh: { sym:'￥', threshold:5000, unit:'元' },
     en: { sym:'$',  threshold:800,  unit:'' },
@@ -922,16 +919,22 @@ export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
     vi: { sym:'₫',  threshold:500000, unit:'' },
   }[lang] || { sym:'￥', threshold:5000, unit:'元' };
 
-  // ── 5. 风险等级（固定节律，算法硬定）──
-  const RISK_LEVELS = ['低危','高危','中危','低危'];
-
-  // ── 6. 渲染 JSON ──
-  const factTree = {
+  return {
     reportMeta: { month: monthLabel, natalSun, rising, natalMoon },
     weeklyMoonTransits: weekBlocks,
     transitPlanets,
     spendingTrap: { symbol: RISK.sym, threshold: RISK.threshold, unit: RISK.unit },
   };
+}
+
+export function getMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
+  return computeMonthlyFactTree(astroMatrix, lang, monthLabel);
+}
+
+export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
+  const factTree = computeMonthlyFactTree(astroMatrix, lang, monthLabel);
+  const weekBlocks = factTree.weeklyMoonTransits;
+  const RISK_LEVELS = ['低危','高危','中危','低危'];
 
   // ── 7. 逐周生成「照抄句」──
   const monthLocal = monthLabel + (lang === 'zh' ? '月' : '');

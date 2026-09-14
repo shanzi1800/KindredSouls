@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, getMonthlyFactTree } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -7886,7 +7886,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
           const _hitMeta = buildWealthMetaFull(birthDate, lang);
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
-          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal });
+          const _hitMatrix = _hitAstro432 || _hitAstro || _hitAstroTh || null;
+          const _hitFactTree = _hitMatrix ? (() => { try { return getMonthlyFactTree(_hitMatrix, lang, String(_hitMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim()); } catch (e) { return null; } })() : null;
+          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal, factTree: _hitFactTree });
         }
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
@@ -8095,7 +8097,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           }
         }
 
-        return res.json({ ...result, report: reportContent, insight: '' });
+        const _missFactTree = astroMatrix ? (() => { try { return getMonthlyFactTree(astroMatrix, lang, String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim()); } catch (e) { return null; } })() : null;
+        return res.json({ ...result, report: reportContent, insight: '', factTree: _missFactTree });
       } catch (aiError) {
         console.error('[Wealth Oracle] AI generation failed:', aiError.message);
         return res.status(500).json({ success: false, error: 'AI generation failed: ' + aiError.message });
@@ -8447,6 +8450,19 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (typeof res.flush === 'function') res.flush();
   } catch (e) {
     console.warn('[wealth-stream] [V238-META] build failed:', e.message);
+  }
+
+  // ── [B路线/军师 9-14] 结构化 factTree 事件：SwissEph 真值 JSON，前端渲染权威事实层（LLM 不参与）──
+  try {
+    if (astroMatrix) {
+      const _mwLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
+      const _factTree = getMonthlyFactTree(astroMatrix, lang, _mwLabel);
+      res.write(Buffer.from(`data: ${JSON.stringify({ factTree: _factTree })}\n\n`, 'utf-8'));
+      if (typeof res.flush === 'function') res.flush();
+      console.log('[wealth-stream] [B-FACTTREE] emitted factTree event for', lang, 'weeks=', (_factTree.weeklyMoonTransits || []).length);
+    }
+  } catch (e) {
+    console.warn('[wealth-stream] [B-FACTTREE] emit failed:', e.message);
   }
 
   try {
