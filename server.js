@@ -6001,10 +6001,12 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   // Overview: 匹配 [🔮 ...]（Emoji 锚点优先，任意语言文本），归一为 lang 规范头（无月份）
   // 2026-08-09-fix: 末尾加 \s*✦? 吃掉 LLM 自带的尾部 ✦（否则 "[🔮 ...] ✦" → "✦ [🔮 ...] ✦ ✦" 双✦）
   c = c.replace(/✦?\s*\[\s*🔮\s*[^\]]*\]\s*✦?/gi, `✦ [🔮 ${_v229hdr.theme}] ✦`);
-  // Trap: 匹配 [⚠️ ...]（负向预查排除周次标题 [⚠️ Week N]），归一为 lang 规范头（带月份）
-  // 2026-08-09-fix: 末尾加 \s*✦? 吃掉尾部 ✦；并新增 Financial Shadow 变体（无 ⚠️ 时整行即标题，吃掉整行）
-  c = c.replace(/✦?\s*\[\s*⚠️\s*(?!(?:🟢|🔴|🔵)?\s*(?:Week|Semana|Semaine|Tuần|สัปดาห์ที่|第\s*[\d一二三四五六七八九十]+\s*周))[^\]]*\]\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
-  c = c.replace(/✦?\s*\[\s*Financial\s*Shadow[^\n]*/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+  // 🛡️ V446-trap: 健壮陷阱段标题归一——吃掉任意外层 [✦/⚠ 信封与多余 ]，无论 AI 写成
+  //   [✦⚠️ 消费陷阱...] / [⚠️ 消费陷阱...] / ✦⚠ 消费陷阱... / 嵌套 / 多 ⚠ / 无 ✦ 等畸形，一律归一到
+  //   ✦ [⚠️ <标题><月份>] ✦；幂等（规范串复跑不变）。治「[✦ ⚠[⚠️ 消费陷阱：2026年9月] ]」套框 bug。
+  //   同时覆盖 Financial Shadow / Spending Trap / Pièges / Bẫy / Cạm bẫy 等全语种陷阱变体（含无 ⚠️ 整行标题）。
+  //   注意：此条必须唯一，禁止在它之前再用旧 trap 正则半归一（否则会残留外层 [✦ ⚠ 与尾部 ]）。
+  c = c.replace(/(?:[✦⚠️\s\[]*)(消费陷阱|Spending\s*Traps?|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Cạm\s*bẫy\s*Tài\s*chính|Financial\s*Shadow)[^\n]*?\]\s*]?\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
 
   // 8. 🛠️ 2026-08-09: 英文排版粘连清洗（仅 en，清洗层兜底不改 Prompt）
   //    LLM 吐字常把英文单词与数字/序数词粘连：your12th→your 12th / Aug1–7→Aug 1–7 / 12thHouse→12th House
