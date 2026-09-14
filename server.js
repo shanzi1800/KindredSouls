@@ -5685,7 +5685,8 @@ function _v438OverrideBody(body, cfg, truth) {
   const lead = body.search(/\S/);
   if (lead < 0) return body;
   const signAlt = cfg.signs.slice().sort((a, b) => b.length - a.length).join('|');
-  const houseTok = /（?第\d+宫(?:→第\d+宫)*）?|\(?House \d+(?:→House \d+)*\)?|\(?Casa \d+(?:→Casa \d+)*\)?|\(?Maison \d+(?:→Maison \d+)*\)?|บ้าน \d+(?:→บ้าน \d+)*|Nhà \d+(?:→Nhà \d+)*/;
+  // 🛠️ V438-fix2: 加 .*? 跨越「本周依次行经」等前缀词(AI 常在句首加引导语)
+  const houseTok = /.*?（?第\d+宫(?:→第\d+宫)*）?|.*?\(?House \d+(?:→House \d+)*\)?|.*?\(?Casa \d+(?:→Casa \d+)*\)?|.*?\(?Maison \d+(?:→Maison \d+)*\)?|.*?บ้าน \d+(?:→บ้าน \d+)*|.*?Nhà \d+(?:→Nhà \d+)*/;
   const m = new RegExp('(' + signAlt + ')\\s*' + houseTok.source).exec(body.slice(lead));
   if (!m || m.index > 200) return body;          // 无「星座+宫位」或落在正文深处(非周开头)→ 不碰
   const pStart = lead;                           // 吞掉正文开头的旧引导语,统一改写
