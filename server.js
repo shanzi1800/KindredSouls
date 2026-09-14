@@ -5776,6 +5776,71 @@ function lockNatalAnchorRole(text, lang, astroMatrix) {
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V445：流年行星星座归属锁（军师 9-14 主公令·极致封仓）
+// 目的：V444 只锁本命锚点(上升/太阳/月亮)。但陷阱段 LLM 仍会把
+//   流年行星(水/金/火/木/土)的星座写错——如把火星写成天蝎座(实则在巨蟹)，
+//   与同报告正文自相矛盾。本锁扫描"星座(的)行星"与"行星(在)星座"搭配，
+//   与 astroMatrix.months[0] 真值对撞，错则归位。不锁太阳(V444 已管本命太阳)。
+// ══════════════════════════════════════════════════════════════════
+const _V445_PLANET_KEYS = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'];
+const _V445_PLANET_NAMES = {
+  zh: { mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' },
+  en: { mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn' },
+  fr: { mercury: 'Mercure', venus: 'Vénus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturne' },
+  es: { mercury: 'Mercurio', venus: 'Venus', mars: 'Marte', jupiter: 'Júpiter', saturn: 'Saturno' },
+  th: { mercury: 'ดวงพุธ', venus: 'ดวงศุกร์', mars: 'ดวงอังคาร', jupiter: 'ดวงพฤหัสบดี', saturn: 'ดวงเสาร์' },
+  vi: { mercury: 'Sao Thủy', venus: 'Sao Kim', mars: 'Sao Hỏa', jupiter: 'Sao Mộc', saturn: 'Sao Thổ' },
+};
+
+function _v445TruthSigns(lang, astroMatrix) {
+  const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+  if (!m0) return null;
+  const signs = _v444Signs(lang);
+  if (!signs) return null;
+  const out = {};
+  for (const k of _V445_PLANET_KEYS) {
+    const p = m0[k];
+    if (p && p.sign) {
+      const idx = SUN_SIGN_EN.indexOf(p.sign);
+      if (idx >= 0) out[k] = signs[idx];
+    }
+  }
+  return out;
+}
+
+function lockTransitPlanetSigns(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  const truth = _v445TruthSigns(lang, astroMatrix);
+  if (!truth || !Object.keys(truth).length) return text;
+  const names = _V445_PLANET_NAMES[lang];
+  if (!names) return text;
+  const signs = _v444Signs(lang);
+  const signsPat = signs.map(_v444Esc).join('|');
+  const suf = lang === 'zh' ? '座' : '';
+  let out = text;
+  for (const k of _V445_PLANET_KEYS) {
+    const trueSign = truth[k];
+    const planet = names[k];
+    if (!trueSign || !planet) continue;
+    if (lang === 'zh') {
+      const reA = new RegExp(String.raw`(${signsPat})${suf}?的(?:流年|流月)?${planet}`, 'g');
+      out = out.replace(reA, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
+      const reB = new RegExp(String.raw`(?:流年|流月)?${planet}(?:在|位于|落入|行经)?(${signsPat})${suf}`, 'g');
+      out = out.replace(reB, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
+    } else {
+      const inWord = lang === 'en' ? '(?:\\s+in|\\s+is\\s+in|\\s+enters)?\\s+'
+        : lang === 'fr' ? '(?:\\s+en|\\s+dans)?\\s+'
+        : lang === 'es' ? '(?:\\s+en|\\s+está\\s+en)?\\s+'
+        : lang === 'th' ? '(?:\\s+อยู่\\s+ใน|\\s+ใน)?\\s*'
+        : '(?:\\s+ở|\\s+trong)?\\s*';
+      const reB = new RegExp(String.raw`(?:transit\s+)?${planet}${inWord}(${signsPat})`, 'g');
+      out = out.replace(reB, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
+    }
+  }
+  return out;
+}
+
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
   const lead = body.search(/\S/);          // 跳过前导空白
@@ -8132,6 +8197,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix);   // 🛡️ V444
+        reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
@@ -8649,6 +8715,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
         streamText = lockNatalAnchorRole(streamText, lang, astroMatrix);   // 🛡️ V444
+        streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix); // 🛡️ V445
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -8977,6 +9044,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
                   _j.text = lockNatalAnchorRole(_j.text, lang, astroMatrix);   // 🛡️ V444
+                  _j.text = lockTransitPlanetSigns(_j.text, lang, astroMatrix); // 🛡️ V445
                   _j.text = applyV434Locks(_j.text, lang, astroMatrix);   // V434（补 V433 未挂的 SSE 逐块链）
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
                 }
@@ -9379,6 +9447,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //   故改在【整段流结束后】此处(全量 cleanedText)以 true 注入, 确保 6 段齐全。hasOverview/hasTrap 检测已升级全语言。
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
       cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
+      cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
       cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
@@ -9472,6 +9541,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = standardizeReport(ft);
           if (ft && reportType === 'monthly') ft = fixMonthlySectionTitles(ft, true, lang);
           if (ft) ft = lockNatalAnchorRole(ft, lang, astroMatrix);   // 🛡️ V444
+          if (ft) ft = lockTransitPlanetSigns(ft, lang, astroMatrix); // 🛡️ V445
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
@@ -9515,6 +9585,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = applyV434Locks(cleanedText, lang, astroMatrix);   // V434（补 V433 未挂的落库前收尾链）
     // 🛠️ V432: MISS stream 收尾 en/es/zh 真值双锁（完整文本、落库前最后一道）
     cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
+    cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
