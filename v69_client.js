@@ -550,6 +550,218 @@ export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
 const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
 const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
 
+// ── V439 月报骨架生成 ─────────────────────────────────────────────────────────
+// 治本：概述句和陷阱段内容由算法硬生成真值骨架，剥夺 LLM 编造天文事实的最后自留地。
+
+const PLANET_ZH_MAP = {
+  Sun:'太阳', Moon:'月亮', Mercury:'水星', Venus:'金星',
+  Mars:'火星', Jupiter:'木星', Saturn:'土星',
+  Uranus:'天王星', Neptune:'海王星', Pluto:'冥王星',
+};
+
+const RISK_LANG = {
+  zh: { currency:'CNY', symbol:'￥', baseRisk:5000,      limit:'5000元',   safe:'「单笔超过5000元必须暂停24小时后再评估」' },
+  en: { currency:'USD', symbol:'$',  baseRisk:800,       limit:'$800',     safe:'「Any single spending over $800 must pause 24 hours before deciding」' },
+  fr: { currency:'EUR', symbol:'€',  baseRisk:700,       limit:'€700',     safe:'「Tout achat dépassant €700 impose une pause de 24 heures」' },
+  es: { currency:'EUR', symbol:'€',  baseRisk:700,       limit:'€700',     safe:'「Cualquier gasto superior a €700 requiere una pausa de 24 horas」' },
+  th: { currency:'THB', symbol:'฿', baseRisk:5000,      limit:'฿5000',    safe:'「การใช้จ่ายเกิน ฿5000 ต้องหยุดพัก 24 ชั่วโมงก่อนตัดสินใจ」' },
+  vi: { currency:'VND', symbol:'₫', baseRisk:500000,   limit:'₫500.000', safe:'「Chi tiêu vượt ₫500.000 phải dừng 24 giờ trước khi quyết định」' },
+};
+
+const PLANET_TRAP_ARCHETYPE = {
+  zh:  {
+    1:  '自我认同消费陷阱：上升/第一宫薄弱时，容易通过购物填补空虚感',
+    2:  '不安全感驱动消费：财帛宫脆弱时，囤积行为或过度节俭都是恐惧的投射',
+    3:  '信息焦虑购物：第三宫活跃时，容易被营销话术和限时促销冲昏头脑',
+    4:  '家庭/面子消费：田宅宫压力时，在房产、家装或给家人花钱上失控',
+    5:  '情感补偿消费：第五宫过强时，用奢侈品/娱乐填补情感空洞',
+    6:  '工作焦虑赎罪：第六宫驱动时，用购物缓解对工作表现的不安',
+    7:  '关系依赖消费：第七宫压力时，为讨好他人或维持关系过度付出金钱',
+    8:  '深层恐惧投资：第八宫活跃时，容易被高回报诱惑陷入财务陷阱',
+    9:  '意义迷失消费：第九宫驱动时，为"提升自己"的幻觉花冤枉钱',
+    10: '社会地位购物：第十宫压力时，为维持形象在职业/社交场过度消费',
+    11: '群体认同消费：第十一宫过强时，为社群归属感买一堆不需要的东西',
+    12: '隐秘/上瘾消费：第十二宫活跃时，隐秘性消费或习惯性囤积悄悄烧钱',
+  },
+  en: {
+    1:  'Self-identity spending: when the 1st house is weak, retail therapy fills the void',
+    2:  'Insecurity-driven spending: with a vulnerable 2nd house, hoarding or excessive thrift both stem from fear',
+    3:  'Information anxiety shopping: with an active 3rd house, marketing and flash sales easily override judgment',
+    4:  'Family/status spending: 4th house pressure triggers over-spending on property, home, or family gifts',
+    5:  'Emotional compensation purchases: with an overactive 5th house, luxury and entertainment fill an emotional void',
+    6:  'Work-guilt redemption: 6th house drive causes shopping as penance for work anxieties',
+    7:  'Relationship-dependency spending: 7th house stress leads to excessive spending to please or maintain relationships',
+    8:  'Deep-fear investments: an active 8th house makes high-return schemes dangerously seductive',
+    9:  'Meaning迷途 spending: 9th house drive burns money on "self-improvement" illusions',
+    10: 'Status-signaling shopping: 10th house pressure drives overspending to maintain career or social image',
+    11: 'Group-identity purchasing: an overactive 11th house buys community belonging over actual need',
+    12: 'Secret/addictive spending: an active 12th house quietly hemorrhages money through secretive or habitual purchases',
+  },
+};
+
+/**
+ * V439 概述句骨架生成
+ * 输入: astroMatrix + lang → 输出: 算法硬生成的概述句骨架
+ * LLM 只能在骨架内渲染心理学叙事，不准自己编造星座/宫位/行星数据
+ */
+export function buildMonthlyOverviewBlock(astroMatrix, lang) {
+  const m0 = astroMatrix?.months?.[0];
+  if (!m0) return '';
+  const L = SIGN_L10N[lang] || SIGN_L10N.zh;
+  const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
+
+  // 当月流年行星真值（星座+宫位）
+  const pNames = ['sun','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+  const pBlock = pNames.map(k => {
+    const p = m0[k];
+    if (!p?.sign) return null;
+    const s = loc(p.sign);
+    const h = _getH(p.house);
+    const rx = p.retrograde ? '(R)' : '';
+    return { k, s, h, rx };
+  }).filter(Boolean);
+
+  // 本命盘锚点
+  const natal = astroMatrix?.meta || {};
+  const natalSun = loc(natal.sun_sign || '');
+  const rising = loc(natal.rising_sign || 'Cancer');
+  const natalMoon = natal.natal_moon ? loc(natal.natal_moon.sign || '') : null;
+
+  // 主导能量行星（按宫位归类：财帛/事业/共享资源三宫优先）
+  const keyHouses = [2, 8, 10, 4, 11];
+  const dominated = pBlock.filter(p => keyHouses.includes(p.h));
+  const dominatedStr = dominated.length
+    ? dominated.map(p => `${p.s}第${p.h}宫${p.rx}`).join('、')
+    : pBlock.slice(0,3).map(p => `${p.s}第${p.h}宫${p.rx}`).join('、');
+
+  const tmpl = {
+    zh:  `【概述句骨架 — 算法生成 — LLM 只渲染情绪/心理学叙事】
+当月流年星体（SwissEph真值）:
+${pBlock.map(p => `  · ${PLANET_ZH_MAP[p.k] || p.k}: ${p.s}第${p.h}宫${p.rx}`).join('\n')}
+本命盘锚点: 本命太阳${natalSun}，上升${rising}${natalMoon ? `，本命月亮${natalMoon}` : ''}
+本月主导能量行星: ${dominatedStr}
+LLM渲染要求: 基于上述真值，撰写1-2句整体月度财务主题叙事。要求: (1)必须提及本命太阳${natalSun}与当月流年星体的互动关系; (2)必须提及主导能量行星所在的宫位主题; (3)语言需有史诗感/命运感/荣格心理学深度; (4)禁止提及任何未在上方真值列表中的星座、宫位或行星。`,
+    en:   `【Overview Skeleton — Algorithm-Generated — LLM Renders Psychology Only】
+Transit planets this month (SwissEph truth):
+${pBlock.map(p => `  · ${p.k}: ${p.s} House ${p.h}${p.rx}`).join('\n')}
+Natal anchors: Sun in ${natalSun}, Rising ${rising}${natalMoon ? `, Moon ${natalMoon}` : ''}
+Dominant energy planets: ${dominatedStr}
+LLM task: Based on the above truth values, write 1-2 sentences of overall monthly financial theme. Must: (1) connect natal Sun (${natalSun}) with transit planetary energy; (2) reference the dominant planet house themes; (3) write with epic/Jungian depth; (4) NEVER mention any planet, sign or house absent from the truth list above.`,
+    es:   `【Resumen — Esqueleto Algorítmico — LLM Solo Renderiza Psicología】
+Planetas en tránsito este mes (SwissEph):
+${pBlock.map(p => `  · ${p.k}: ${p.s} Casa ${p.h}${p.rx}`).join('\n')}
+Anclas natales: Sol ${natalSun}, Ascendente ${rising}
+Planetas de energía dominante: ${dominatedStr}
+Tarea LLM: Basado en los datos真值 acima, escribe 1-2 oraciones del tema financiero mensual. NUNCA menciones datos no listados arriba.`,
+    fr:   `【Résumé — Fondamentaux Algorithmiques — LLM Rend la Psychologie】
+Planètes en transit ce mois (SwissEph):
+${pBlock.map(p => `  · ${p.k}: ${p.s} Maison ${p.h}${p.rx}`).join('\n')}
+Ancres natales: Soleil ${natalSun}, Ascendant ${rising}
+Planètes dominantes: ${dominatedStr}
+Tâche LLM: Sur la base des données真值 ci-dessus, rédigez 1-2 phrases du thème financier mensuel. NE JAMAIS mentionner de données hors de la liste.`,
+    th:   `【ภาพรวม — โครงสร้างอัลกอริทึม — LLM เรนเดอร์จิตวิทยาเท่านั้น】
+ดาวเคราะห์ทรานซิสเดือนนี้ (SwissEph):
+${pBlock.map(p => `  · ${p.k}: ${p.s} บ้าน ${p.h}${p.rx}`).join('\n')}
+จุดยึดกำเนิด: ดวงอาทิตย์กำเนิด ${natalSun}, ราศีขึ้น ${rising}
+ดาวพลังงานเด่น: ${dominatedStr}
+งาน LLM: จากข้อมูลจริงข้างบน เขียนประโยคธีมการเงินรายเดือน 1-2 ประโยค ห้ามกล่าวถึงข้อมูลนอกเหนือจากรายการ`,
+    vi:   `【Tổng quan — Khung thuật toán — LLM Chỉ diễn giải tâm lý】
+Các hành tinh transit tháng này (SwissEph):
+${pBlock.map(p => `  · ${p.k}: ${p.s} Nhà ${p.h}${p.rx}`).join('\n')}
+Điểm neo bẩm sinh: Mặt Trời bản mệnh ${natalSun}, Ascendant ${rising}
+Hành tinh năng lượng chủ đạo: ${dominatedStr}
+Nhiệm vụ LLM: Dựa trên dữ liệu thật ở trên, viết 1-2 câu chủ đề tài chính hàng tháng. TUYỆT ĐỐI không nhắc đến dữ liệu không có trong danh sách.`,
+  };
+  return tmpl[lang] || tmpl.zh;
+}
+
+/**
+ * V439 消费陷阱段骨架生成
+ * 输入: astroMatrix + lang → 输出: 算法硬生成的陷阱段真值骨架
+ * 危险期由流年星体宫位决定（LLM 不准自己推断哪些天危险）
+ */
+export function buildMonthlyTrapBlock(astroMatrix, lang) {
+  const m0 = astroMatrix?.months?.[0];
+  if (!m0) return '';
+  const natal = astroMatrix?.meta || {};
+  const riskCfg = RISK_LANG[lang] || RISK_LANG.zh;
+
+  // 按财帛宫关联行星 + 危险行星找最危险期
+  // 策略：第2宫（财帛宫）关联行星过境最易触发消费冲动
+  const dangerPlanets = ['venus','mars','jupiter','saturn','neptune'];
+  const dangerPeriods = [];
+  const mw = m0.moon_weeks;
+  if (Array.isArray(mw)) {
+    for (const wk of mw) {
+      const wkHouses = (wk.legs || []).map(l => l.house);
+      const hasVenus = wk.legs?.some(l => ['venus'].includes(m0.venus?.sign ? l.sign === m0.venus.sign : false));
+      // 用日期跨度描述危险期
+      const dateRange = `${wk.from_day}–${wk.to_day}日`;
+      dangerPeriods.push({ range: dateRange, houses: [...new Set(wkHouses)].join('/') });
+    }
+  }
+
+  // 找第2宫守护星 + 最危险宫位
+  const sunHouse = natal.computed_houses?.Sun?.house || 1;
+  const venusHouse = natal.computed_houses?.Venus?.house || 5;
+  const marsHouse = natal.computed_houses?.Mars?.house || 6;
+  const worstHouses = [2, 8, 4, 6, 11];
+  const dominated = dangerPlanets.map(k => {
+    const p = m0[k];
+    if (!p) return null;
+    const h = _getH(p.house);
+    const score = worstHouses.includes(h) ? 2 : 1;
+    return { k, sign: p.sign, house: h, score };
+  }).filter(Boolean).sort((a,b) => b.score - a.score);
+
+  const topDanger = dominated[0];
+  const arch = PLANET_TRAP_ARCHETYPE[lang] || PLANET_TRAP_ARCHETYPE.zh;
+  const archetype = arch[topDanger?.house] || arch[2];
+  const safeRule = riskCfg.safe;
+
+  const dangerRanges = dangerPeriods.slice(0,3).map(d => `${d.range}(月相过境第${d.houses}宫期间)`).join('、');
+
+  const tmpl = {
+    zh:   `【消费陷阱骨架 — 算法生成 — LLM 只渲染心理学洞察】
+危险行星: ${dominated.slice(0,3).map(d => `${PLANET_ZH_MAP[d.k] || d.k}(${d.sign}第${d.house}宫)`).join('、')}
+本命盘脆弱宫位: 财帛宫第2宫、共享资源宫第8宫
+高危日期区间（算法判定）: ${dangerRanges || '本月第2周'}
+财务安全底线: ${safeRule}
+LLM任务: 基于上述真值，撰写陷阱段100-150字。要求: (1)精准描述该行星/宫位组合对应的心理投射陷阱; (2)必须提及高危日期区间; (3)必须包含安全底线规则; (4)禁止编造任何未在上方真值列表中的信息。`,
+    en:   `【Spending Trap Skeleton — Algorithm-Generated — LLM Renders Psychology Only】
+Dangerous planets: ${dominated.slice(0,3).map(d => `${d.k}(${d.sign} House ${d.house})`).join(', ')}
+Vulnerable natal houses: 2nd House (finances), 8th House (shared resources)
+High-risk date ranges (computed): ${dangerRanges || 'Week 2'}
+Safety floor: ${safeRule}
+LLM task: Based on the above truth values, write 100-150 words on the primary spending trap. Must: (1) describe the psychological archetype of the dominant danger planet/house; (2) mention the high-risk periods; (3) include the safety floor rule; (4) NEVER fabricate any data not in the truth list above.`,
+    es:   `【Trampas de Gasto — Esqueleto Algorítmico — LLM Solo Psicología】
+Planetas peligrosos: ${dominated.slice(0,3).map(d => `${d.k}(${d.sign} Casa ${d.house})`).join(', ')}
+Casas vulnerables natales: Casa 2 (finanzas), Casa 8 (recursos compartidos)
+Fechas de alto riesgo: ${dangerRanges || 'Semana 2'}
+Regla de seguridad: ${safeRule}
+Tarea LLM: Basado en los datos真值 acima, redacta 100-150 palabras sobre la trampa principal. NUNCA menciones datos fuera de la lista.`,
+    fr:   `【Pièges Financiers — Fondamentaux Algorithmiques — LLM Psychologie】
+Planètes dangereuses: ${dominated.slice(0,3).map(d => `${d.k}(${d.sign} Maison ${d.house})`).join(', ')}
+Maisons vulnérables natales: Maison 2 (finances), Maison 8 (ressources partagées)
+Périodes à haut risque: ${dangerRanges || 'Semaine 2'}
+Règle de sécurité: ${safeRule}
+Tâche LLM: Sur la base des données真值 ci-dessus, rédigez 100-150 mots sur le piège principal. NE JAMAIS mentionner de données hors liste.`,
+    th:   `【กับดักการใช้จ่าย — โครงสร้างอัลกอริทึม — LLM เฉพาะจิตวิทยา】
+ดาวเคราะห์อันตราย: ${dominated.slice(0,3).map(d => `${d.k}(${d.sign} บ้าน ${d.house})`).join(', ')}
+บ้านเปราะบาง: บ้าน 2 (การเงิน), บ้าน 8 (ทรัพยากรร่วม)
+ช่วงเสี่ยงสูง: ${dangerRanges || 'สัปดาห์ที่ 2'}
+กฎความปลอดภัย: ${safeRule}
+งาน LLM: จากข้อมูลจริง เขียน 100-150 คำเกี่ยวกับกับดักหลัก ห้ามกล่าวข้อมูลนอกรายการ`,
+    vi:   `【Bẫy Chi Tiêu — Khung thuật toán — LLM Chỉ tâm lý】
+Hành tinh nguy hiểm: ${dominated.slice(0,3).map(d => `${d.k}(${d.sign} Nhà ${d.house})`).join(', ')}
+Nhà dễ tổn thương: Nhà 2 (tài chính), Nhà 8 (tài nguyên chia sẻ)
+Khoảng thời gian rủi ro cao: ${dangerRanges || 'Tuần 2'}
+Quy tắc an toàn: ${safeRule}
+Nhiệm vụ LLM: Dựa trên dữ liệu thật ở trên, viết 100-150 từ về bẫy chính. TUYỆT ĐỐI không nhắc đến dữ liệu ngoài danh sách.`,
+  };
+  return tmpl[lang] || tmpl.zh;
+}
+
 export function buildPerMonthDataBlock(astroMatrix, lang) {
   if (!astroMatrix?.months) return '';
   const months = astroMatrix.months;

@@ -421,7 +421,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -6790,6 +6790,15 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
             _natAnchorsTh = _lines.join('\n');
           } catch (e) { console.warn('[V424-B] th natal anchors build failed: ' + e.message); }
         }
+
+        // 🛠️ V439: 概述句+陷阱段骨架硬注入——算法生成真值，剥夺 LLM 编造天体事实的最后自留地
+        // 概述句骨架（概述段禁止 LLM 自由发挥天文数据）
+        let _overviewBlock = '';
+        try { _overviewBlock = buildMonthlyOverviewBlock(astroMatrix, lang); } catch(e) { console.warn('[V439] overview block failed: ' + e.message); }
+        // 陷阱段骨架
+        let _trapBlock = '';
+        try { _trapBlock = buildMonthlyTrapBlock(astroMatrix, lang); } catch(e) { console.warn('[V439] trap block failed: ' + e.message); }
+
         // ── V137: Per-language user templates (fix: isolate Chinese contamination in EN/ES/FR/TH/VI) ──
     const USER_TEMPLATE = {
       zh: `⛔ [ASTRONOMICAL TRUTH - 唯一数据来源]:
@@ -6821,7 +6830,7 @@ CRITICAL REQUIREMENTS:
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
 ${HT_RP.overview}
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal chart]
+${_overviewBlock}
 
 ${HT_RP.week1}
 [Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Be specific and actionable.]
@@ -6836,7 +6845,7 @@ ${HT_RP.week4}
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Reference specific celestial events driving this energy.]
 
 ${HT_RP.trap}
-[Write 100-150 words: identify the top financial trap for this month based on the user's birth chart. Provide a concrete "${HT_RP.circuit_tag}" — a specific financial safety rule the user must follow this month. Use the micro-impulse threshold {{risk_limit}} (stated in your system instructions) as the precise amount trigger for when they should STOP and WAIT before spending — do NOT invent a different figure.]
+${_trapBlock}
     \``,
       en: `USER INSTRUCTIONS:
 ⛔ [V165-vital] THIS USER'S CHART:
@@ -6877,7 +6886,7 @@ ${HT_RP.week4}
 [Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days.]
 
 ${HT_RP.trap}
-[Write 100-150 words: identify the top financial trap for this month based on the user's natal chart. Provide a concrete Circuit Breaker Directive with a specific dollar amount trigger for a financial safety rule.]
+${_trapBlock}
 `,
       es: `INSTRUCCIONES DE USUARIO:
 ${planetBlockWithWarning}
