@@ -23,6 +23,21 @@ const FN = SRC.slice(fnStart, fnEnd);
 const F = new Function(DEPS + '\n' + FN + '\nreturn { fixMonthlySectionTitles };');
 const { fixMonthlySectionTitles } = F();
 
+// ── V446-trap2 追加：cleanMonthlyBrackets 幂等门（与服务端同源抽取）────────────
+function _grabFn(name) {
+  const i = SRC.search(new RegExp('(^|\\n)\\s*function\\s+' + name + '\\s*\\('));
+  if (i < 0) throw new Error('[V446] 未找到函数 ' + name);
+  const j = SRC.indexOf('{', i);
+  let d = 0, s = false, k = j;
+  for (; k < SRC.length; k++) { if (SRC[k] === '{') { d++; s = true; } else if (SRC[k] === '}') { d--; if (s && d === 0) { k++; break; } } }
+  return SRC.slice(j + 1, k - 1);
+}
+const F2 = new Function(DEPS + '\n' + FN
+  + '\nfunction _stripEmoji(s){return s;}'
+  + '\nfunction cleanMonthlyBrackets(text, lang="zh"){' + _grabFn('cleanMonthlyBrackets') + '}'
+  + '\nreturn { fixMonthlySectionTitles, cleanMonthlyBrackets };');
+const { cleanMonthlyBrackets } = F2();
+
 // 用「干净输入归一结果」做基准（规避当前月份依赖：函数内部用 new Date() 生成月份标签）
 const canon = fixMonthlySectionTitles('[⚠️ 消费陷阱：2026年9月]', true, 'zh');
 assert.ok(canon.startsWith('✦ [⚠️ 消费陷阱：'), '[V446] 基准 canonical 形态异常: ' + canon);
@@ -71,5 +86,29 @@ describe('V446-trap：陷阱段标题健壮归一', () => {
   test('⑤ 空串/undefined 安全', () => {
     assert.strictEqual(fixMonthlySectionTitles('', true, 'zh'), '');
     assert.strictEqual(fixMonthlySectionTitles(undefined, true, 'zh'), undefined);
+  });
+});
+
+// ═══ V446-trap2：并段回归 + cleanMonthlyBrackets 幂等 ═══
+describe('V446-trap2：标题前空行保留 + cleanMonthlyBrackets 幂等', () => {
+  test('⑥ 标题前空行必须保留（治贪婪吃 \\n\\n 并段回归）', () => {
+    const input = '正文段落结束。\n\n✦ [⚠️ 消费陷阱：2026年9月] ✦\n危险行星为流年金星。';
+    const out = fixMonthlySectionTitles(input, true, 'zh');
+    assert.ok(out.includes('结束。\n\n✦ [⚠️ 消费陷阱：'), '标题前 \\n\\n 被吞（并段回归）: ' + JSON.stringify(out));
+    assert.ok(!out.includes('结束。✦'), '标题被并进上一段: ' + JSON.stringify(out));
+  });
+
+  test('⑦ cleanMonthlyBrackets 对规范标题幂等（无双层信封、无多余 ]）', () => {
+    const out = cleanMonthlyBrackets(canon, 'zh');
+    assert.ok(!out.includes('[✦'), '双层信封残留: ' + JSON.stringify(out));
+    assert.ok(!/✦\]/.test(out), '尾部多余 ] 残留: ' + JSON.stringify(out));
+  });
+
+  test('⑧ 全链 fixMonthly→cleanMonthly→fixMonthly = 规范头且不并段', () => {
+    const input = '正文段落结束。\n\n✦ [⚠️ 消费陷阱：2026年9月] ✦\n危险行星为流年金星。';
+    const out = fixMonthlySectionTitles(cleanMonthlyBrackets(fixMonthlySectionTitles(input, true, 'zh'), 'zh'), true, 'zh');
+    assert.ok(out.includes('✦ [⚠️ 消费陷阱：'), '未归一: ' + JSON.stringify(out));
+    assert.ok(!/✦\]/.test(out), '尾部多余 ]: ' + JSON.stringify(out));
+    assert.ok(!out.includes('结束。✦'), '并段: ' + JSON.stringify(out));
   });
 });

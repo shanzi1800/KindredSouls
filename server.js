@@ -1467,18 +1467,23 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
     // 消费陷阱：[消费陷阱 2026年7月] → [⚠️ 消费陷阱：2026年7月]
     // V184-fix: 必须在 startsWith('[') 判断之前检查，否则会被放行
     if (/消费陷阱/.test(t)) {
-      // 已有方括号，但内容不对（缺 emoji 或冒号）
-      if (t.startsWith('[')) {
-        // [消费陷阱 2026年7月] → 消费陷阱 2026年7月
-        let inner = t.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
-        inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-        if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
-        return '✦\n[' + inner + ']';  // 🛠️ V187: 加 ✦ 分隔符
-      } else {
-        // 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
-        let normalized = t.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：');
-        if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
-        return '✦\n[' + normalized + ']';  // 🛠️ V187: 加 ✦ 分隔符
+      // 🛡️ V446-trap2: 先剥外层 ✦ 信封，识别「已带 ✦ … ✦ 前后缀」的规范形态（幂等）。
+      //   否则规范标题 ✦ [⚠️ 消费陷阱：X] ✦ 会被当裸标题再套一层 → ✦\n[✦ [⚠️ 消费陷阱：X] ✦]（尾部多 ] 回归）。
+      const _trapLine = t.replace(/^✦\s*/, '').replace(/\s*✦\s*$/, '').trim();
+      //   仅当陷阱标题处于行首才按标题归一；正文中提及「消费陷阱」的行原样放行（防并段后整段被套框）
+      if (_trapLine.startsWith('[') || /^⚠️?\s*消费陷阱/.test(_trapLine)) {
+        if (_trapLine.startsWith('[')) {
+          // [消费陷阱 2026年7月] → 消费陷阱 2026年7月
+          let inner = _trapLine.replace(/^\[+\s*/, '').replace(/\s*\]+$/, '');
+          inner = inner.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：').replace(/^⚠️?\s*/, '');
+          if (!/⚠/.test(inner)) inner = '⚠️ ' + inner;
+          return '✦\n[' + inner + ']';  // 🛠️ V187: 加 ✦ 分隔符
+        } else {
+          // 消费陷阱 2026年7月 → [⚠️ 消费陷阱：2026年7月]
+          let normalized = _trapLine.replace(/消费陷阱\s*([：:]?)\s*/g, '消费陷阱：').replace(/^⚠️?\s*/, '');
+          if (!/⚠/.test(normalized)) normalized = '⚠️ ' + normalized;
+          return '✦\n[' + normalized + ']';  // 🛠️ V187: 加 ✦ 分隔符
+        }
       }
     }
     
@@ -5950,7 +5955,8 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   //    前端 SacredYearlyReportBox 的 parseLine 期望 "[emoji 第N周...]"
   //    不含 ✦ 前缀（✦ 是章节分隔符，不是标题前缀）
   //    同时处理跨行情况：单独一行的 ✦ 与下一行周标题合并后去前缀
-  c = c.replace(/^✦\s*$(\s*\[\s*(?:🟢|🔴|🔵|⚠️|🔮)\s*)/gm, '$1');
+  // 🛡️ V446-trap2: 末尾加 \n? 显式吃掉换行，避免它被捕获进 $1 留下孤立 \n（治 ✦\n[⚠️...] 归一后带前导换行）
+  c = c.replace(/^✦\s*$\n?(\s*\[\s*(?:🟢|🔴|🔵|⚠️|🔮)\s*)/gm, '$1');
   c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*第[一二三四1-4]周)/gm, '$1');
   c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Week\s*\d+)/gim, '$1');
   c = c.replace(/^✦\s*(\[\s*(?:🟢|🔴|🔵|⚠️)?\s*Semana\s*\d+)/gi, '$1');
@@ -6006,7 +6012,8 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   //   ✦ [⚠️ <标题><月份>] ✦；幂等（规范串复跑不变）。治「[✦ ⚠[⚠️ 消费陷阱：2026年9月] ]」套框 bug。
   //   同时覆盖 Financial Shadow / Spending Trap / Pièges / Bẫy / Cạm bẫy 等全语种陷阱变体（含无 ⚠️ 整行标题）。
   //   注意：此条必须唯一，禁止在它之前再用旧 trap 正则半归一（否则会残留外层 [✦ ⚠ 与尾部 ]）。
-  c = c.replace(/(?:[✦⚠️\s\[]*)(消费陷阱|Spending\s*Traps?|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Cạm\s*bẫy\s*Tài\s*chính|Financial\s*Shadow)[^\n]*?\]\s*]?\s*✦?/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
+  //   ⚠️ V446-trap2: 前缀/后缀字符类禁用 \s（含 \n）——治「贪婪吃掉标题前 \n\n 空行 → 标题并进上一段」回归。
+  c = c.replace(/(?:[✦⚠️\[ \t]*)(消费陷阱|Spending\s*Traps?|Trampas\s*de\s*Gasto|Pièges\s*Financiers|กับดักการใช้จ่าย|Bẫy\s*Chi\s*Tiêu|Cạm\s*bẫy\s*Tài\s*chính|Financial\s*Shadow)[^\n]*?\][\]✦⚠️ \t]*/gi, `✦ [⚠️ ${_v229hdr.trap}${_v229monthLabel}] ✦`);
 
   // 8. 🛠️ 2026-08-09: 英文排版粘连清洗（仅 en，清洗层兜底不改 Prompt）
   //    LLM 吐字常把英文单词与数字/序数词粘连：your12th→your 12th / Aug1–7→Aug 1–7 / 12thHouse→12th House
