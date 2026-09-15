@@ -2228,9 +2228,7 @@ smoothAppendText(fbText, setSacredText, 16, 4);
         if (errCode === 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
           userMsg = `${t('wealthReport.alreadyGeneratedMonthly')} ${(errData as any)?.nextAvailable || ''}`;
         } else if (errCode === 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
-          userMsg = currentLang === 'zh'
-            ? `${t('wealthReport.alreadyGeneratedYearly')} ${(errData as any)?.nextAvailable || ''}`
-            : `${t('wealthReport.alreadyGeneratedYearlyEn') || 'Yearly report already generated'} ${(errData as any)?.nextAvailable || ''}`;
+          userMsg = `${t('wealthReport.alreadyGeneratedYearly')} ${(errData as any)?.nextAvailable || ''}`;
         } else {
           const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
           userMsg = `${t('wealthReport.generateFail')}: ${errMsg}`;
@@ -2292,7 +2290,7 @@ smoothAppendText(fbText, setSacredText, 16, 4);
           marginBottom: '16px',
         }} />
         <p style={{ color: '#D4AF37', fontSize: '14px' }}>
-          {t('wealthReport.loading')}
+          {t('wealth.loading')}
         </p>
       </div>
     );
