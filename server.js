@@ -4105,6 +4105,11 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
       if (text != null && absBase != null && _v436InThMonth(text, absBase + idx, s.length)) continue;
       if (best === null || (preferFirst ? idx < best.idx : idx > best.idx)) best = { idx, s };
     }
+    // 🛡️ V448: 窗内已出现「本行星的正确星座」时，绝不再改写窗内其它星座——
+    //   窗可能跨并列锁点（如「本命太阳在摩羯座第10宫，上升白羊座」），否则会把属于「上升」的
+    //   白羊座当成本命太阳的错星座改写 → 张冠李戴（生产实测：上升白羊座 被 摩羯座 吃掉）。
+    //   哲学：宁可漏改，不可编（本行星星座已在，窗内其余星座多半归属别的实体）。
+    if (best && z.includes(sign)) best = null;
     if (best) {
       z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length);
       cnt++; log.push(`sign ${best.s}\u2192${sign}`);
@@ -4344,6 +4349,27 @@ function _v436InThMonth(text, pos, len) {
   return false;
 }
 
+// 🛡️ V447: 非月亮行星名表——月亮周级锁的「星座归属守卫」用
+//   病根（2026-09-15 生产实测）：_v433LockMoonWeek 用「月亮关键词 ±40/+110 字符」窗口扫描，
+//   会把同一周正文里**其他行星**的星座（如「流年太阳在处女座」）误判成「越界月亮星座」→
+//   改写成本周首个真值（白羊座/第1宫）；该锁被多层链反复调用 → 污染逐轮雪崩（W2/W3/W4 全变白羊座）。
+const _V447_OTHER_PLANET_RE = {
+  zh: /(太阳|水星|金星|火星|木星|土星|天王星|海王星|冥王星)/g,
+  en: /\b(Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/g,
+  es: /\b(Sol|Mercurio|Venus|Marte|Júpiter|Saturno|Urano|Neptuno|Plutón)\b/g,
+  fr: /\b(Soleil|Mercure|Vénus|Mars|Jupiter|Saturne|Uranus|Neptune|Pluton)\b/g,
+  th: /(ดวงอาทิตย์|ดาวอาทิตย์|ดาวพุธ|ดาวศุกร์|ดาวอังคาร|ดาวพฤหัสบดี|ดาวพฤหัส|ดาวเสาร์|ดาวยูเรนัส|ดาวเนปจูน|ดาวพลูโต)/g,
+  vi: /(Mặt Trời|Sao Thủy|Sao Kim|Sao Hỏa|Sao Mộc|Sao Thổ|Sao Thiên Vương|Sao Hải Vương|Sao Diêm Vương)/g,
+};
+const _V447_SENT_TERM_RE = /[。.！？!?；;]/;
+// 取 re 在 hay 中最后一次匹配的下标（-1 = 无）；内部重置 lastIndex，安全复用共享 /g 正则
+function _v447LastIdx(hay, re) {
+  re.lastIndex = 0;
+  let last = -1, m;
+  while ((m = re.exec(hay)) !== null) { last = m.index; if (re.lastIndex === m.index) re.lastIndex++; }
+  return last;
+}
+
 function _v433LockMoonWeek(text, lang, astroMatrix) {
   const weeks = astroMatrix && astroMatrix.months && astroMatrix.months[0] && astroMatrix.months[0].moon_weeks;
   if (!Array.isArray(weeks) || !weeks.length) return text;
@@ -4390,11 +4416,14 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
     const ah = wk ? wkHouse[wk] : unionHouse;
     const first = wk ? wkFirst[wk] : null;
     const moonIt = new RegExp(moonRe, 'gi');
+    const _v447MoonScanRe = new RegExp(moonRe, 'gi');   // V447: 独立实例（勿扰 moonIt 的 lastIndex）
     let mpos;
     while ((mpos = moonIt.exec(text.slice(start, end))) !== null) {
       const mo = start + mpos.index;
-      const w0 = Math.max(0, mo - 40);  // 窗口起点（夹紧负下标）
-      const win = text.slice(w0, mo + 110);
+      // 🛡️ V447-fix2: 窗口必须夹紧在「本段（本周）」内——原 `mo + 110` 未夹紧，
+      //   导致本周末尾的月亮关键词把【下一周】的星座拉进窗口，再用本周真值去改下一周 → 误改正确文本。
+      const w0 = Math.max(start, mo - 40);  // 窗口起点（夹紧段首 + 负下标）
+      const win = text.slice(w0, Math.min(end, mo + 110));
       for (let si = 0; si < L.length; si++) {
         const sign = L[si];
         const sre = new RegExp(_v432Esc(sign), 'g');
@@ -4403,6 +4432,18 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
           const abs = w0 + sm.index;  // 绝对位置 = 窗口起点 + 窗口内偏移
           if (lang === 'th' && _v436InThMonth(text, abs, sm[0].length)) continue;  // V436: 月名内嵌星座（กันยายน⊃กันยา）不是星座引用
           if (natalRe.test(win.slice(0, sm.index))) continue;   // 本命月亮 → 不动
+          // 🛡️ V447: 星座归属守卫——只改「确实属于月亮轨迹」的星座：
+          //   ① 星座之前（窗口前缀内）必须出现过月亮关键词（否则不是月亮轨迹；前缀里的星座一律不碰）
+          //   ② 前缀里「最近的一个行星名」必须是月亮（若是太阳/水星/金星/火星/木星/土星…→ 属于别的行星，不改）
+          //   ③ 月亮关键词与该星座之间不得有句读（不得跨句吞掉下一句）
+          {
+            const _pre = win.slice(0, sm.index);
+            const _lastMoon = _v447LastIdx(_pre, _v447MoonScanRe);
+            if (_lastMoon < 0) continue;
+            const _otherRe = _V447_OTHER_PLANET_RE[lang];
+            if (_otherRe && _v447LastIdx(_pre, _otherRe) > _lastMoon) continue;
+            if (_V447_SENT_TERM_RE.test(_pre.slice(_lastMoon))) continue;
+          }
           let around = win.slice(sm.index, sm.index + 60);
           // V436: 宫位窗口不得跨出「本星座自己的括注组」(轨迹写法 'พิจิก (บ้าน 5→บ้าน 3)' 的后一个是下个星座的宫位)
           {
