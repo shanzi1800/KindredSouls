@@ -5118,15 +5118,15 @@ function cleanConsumerTrapAndBrackets(text) {
   // 匹配: 标题名] 但前面没有 [
   // ═══════════════════════════════════════════════════════════
   // 法语周标题: Semaine 1: xxx]  → [Semaine 1: xxx]
-  text = text.replace(/^(?!\[)(Semaine\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(Semaine\s*\d+[：:\s][^\]\n]+)\]/gm, '[$1]');
   // 泰语周标题: สัปดาห์ที่ 1: xxx]  → [สัปดาห์ที่ 1: xxx]
-  text = text.replace(/^(?!\[)(สัปดาห์ที่\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(สัปดาห์ที่\s*\d+[：:\s][^\]\n]+)\]/gm, '[$1]');
   // 越南语周标题: Tuần 1: xxx]  → [Tuần 1: xxx]
-  text = text.replace(/^(?!\[)(Tuần\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(Tuần\s*\d+[：:\s][^\]\n]+)\]/gm, '[$1]');
   // 西班牙语周标题: Semana 1: xxx]  → [Semana 1: xxx]
-  text = text.replace(/^(?!\[)(Semana\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(Semana\s*\d+[：:\s][^\]\n]+)\]/gm, '[$1]');
   // 英语周标题: Week 1: xxx]  → [Week 1: xxx]
-  text = text.replace(/^(?!\[)(Week\s*\d+[：:\s][^\]]+)\]$/gm, '[$1]');
+  text = text.replace(/^(?!\[)(Week\s*\d+[：:\s][^\]\n]+)\]/gm, '[$1]');
   // 法语主题标题: Aperçu] xxx  → [Aperçu: xxx]
   text = text.replace(/^(?!\[)(Aperçu)\]/gm, '[$1]');
 
@@ -5462,11 +5462,11 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v352e:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v353:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
-    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v352e:<date>:...' → 清了等于没清！
+    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v353:<date>:...' → 清了等于没清！
     //   实测：GET /api/clear-cache/1988-12-31/es/monthly 返回 deleted:true/204，但随后生成仍是旧文本
     //   （命中旧缓存），导致整轮验证结论错误。改为 'wealth:*<date>*' 同时覆盖新旧两种键格式。
     const pat = 'wealth:*' + encodeURIComponent(birthDate) + '*';
@@ -8036,7 +8036,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v352e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v353:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8618,7 +8618,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v352e:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v353:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
