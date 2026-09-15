@@ -2292,7 +2292,7 @@ smoothAppendText(fbText, setSacredText, 16, 4);
           marginBottom: '16px',
         }} />
         <p style={{ color: '#D4AF37', fontSize: '14px' }}>
-          {currentLang === 'zh' ? '正在召唤财富密码......' : 'Summoning wealth code...'}
+          {t('wealthReport.loading')}
         </p>
       </div>
     );
