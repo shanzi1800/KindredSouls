@@ -2724,8 +2724,9 @@ function guardWeekDateDrift(text) {
         if (!inRange(evM, evD, sM, sD, eM, eD)) { drifted = true; break; }
       }
     }
-    if (drifted && !seg.includes('⚠️ 日期校准')) {
-      return seg.replace(hm[0], hm[0] + ' ⚠️ 日期校准');
+    if (drifted) {
+      // 🛠️ V441-fix: 日期漂移检测仅记日志、绝不注入用户文本（旧版会把调试标记 ⚠️ 日期校准 写进生产报告）
+      console.warn(`[V215-datecalib] week date drift detected, header="${hm[0]}" (debug-only, not injected into output)`);
     }
     return seg;
   }).join('');

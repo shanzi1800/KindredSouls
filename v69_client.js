@@ -958,28 +958,100 @@ export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
       return `${t.sign}（${houses}）`;
     }).join(sep);
     const ingressStr = w.ingresses.length > 0
-      ? w.ingresses.map(i => `${i.day}日${i.sign}`).join('、')
+      ? (lang === 'zh'
+          ? w.ingresses.map(i => `${i.day}日${i.sign}`).join('、')
+          : w.ingresses.map(i => `${i.day} ${i.sign}`).join(', '))
       : '';
     return { week: w.week, dateRange, risk, riskLabel, moonTransits: transitsStr, ingressStr };
   });
 
+  // ── 7b. V441 修复：事实块指令必须按目标语言本地化 ──
+  // 旧版对 en/es/fr/th/vi 全部写中文指令，但各语言 prompt 均含「Ignore any Chinese text」，
+  // 非中文模型忽略中文「照抄句」指令、只抄英文月亮行 → 周散文整段缺失
+  // （en 实测 2797 字且周段仅月亮映射；zh 实测 2045 字且周段饱满散文）。
+  // 修复：每种语言给原生指令，杜绝「语言混栈让模型进入只抄模式」。
+  const FACT_INSTR = {
+    zh: {
+      head: `【V441 JSON FACT CONSTITUTION — SwissEph 算法生成 · LLM 只读不写】`,
+      intro: `以下 JSON 数据是当月天体事实的完整真值。你的任务是把它们翻译成优美的运势文案。`,
+      ban: `⚠️ 禁止编造任何未在下方 JSON 中列出的：星座、宫位、日期、金额、行星。`,
+      moonRule: `⚠️ 月亮过境必须按 JSON 的 transits 顺序和 house 值渲染，不准改变顺序或换座。`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【逐周照抄句（严格按此格式写月亮过境段落）】`,
+      moonLabel: `月亮过境`,
+      moonLine: (s) => `流月月亮依次行经${s}。`,
+      ingressLine: (s) => `${s}换座。`,
+    },
+    en: {
+      head: `【V441 JSON FACT CONSTITUTION — SwissEph-computed · LLM READ-ONLY, do not invent】`,
+      intro: `The JSON below is the complete, algorithm-computed truth for this month. Your job is to translate it into beautiful wealth narrative prose.`,
+      ban: `⚠️ Do NOT fabricate any sign, house, date, amount, or planet that is not listed in the JSON below.`,
+      moonRule: `⚠️ The Moon's weekly transit MUST follow the JSON transits order and house values exactly — do not reorder or substitute signs.`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【Per-week Moon copy-line — write the Moon transit EXACTLY in this format, then add your own prose below it】`,
+      moonLabel: `Moon transits`,
+      moonLine: (s) => `The Moon transits through ${s.replace(/（/g,' (').replace(/）/g,')')}.`,
+      ingressLine: (s) => `${s} ingress. `,
+    },
+    es: {
+      head: `【V441 CONSTITUCIÓN DE HECHOS JSON — calculado por SwissEph · LLM solo lectura, no inventes】`,
+      intro: `El JSON de abajo es la verdad completa calculada por algoritmo para este mes. Tu tarea es traducirlo en una hermosa narrativa de riqueza.`,
+      ban: `⚠️ NO fabriques ningún signo, casa, fecha, monto o planeta que no aparezca en el JSON de abajo.`,
+      moonRule: `⚠️ El tránsito semanal de la Luna DEBE seguir el orden y las casas del JSON exactamente — no reordenes ni sustituyas signos.`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【Línea de copia lunar por semana — escribe el tránsito lunar EXACTAMENTE en este formato, luego añade tu propia prosa debajo】`,
+      moonLabel: `La Luna transita`,
+      moonLine: (s) => `La Luna transita por ${s.replace(/（/g,' (').replace(/）/g,')')}.`,
+      ingressLine: (s) => `${s} ingreso. `,
+    },
+    fr: {
+      head: `【V441 CONSTITUTION DE FAITS JSON — calculé par SwissEph · LLM lecture seule, n'inventez pas】`,
+      intro: `Le JSON ci-dessous est la vérité complète calculée par algorithme pour ce mois. Votre rôle est de la traduire en un beau récit de richesse.`,
+      ban: `⚠️ N'inventez AUCUN signe, maison, date, montant ou planète absent du JSON ci-dessous.`,
+      moonRule: `⚠️ Le transit hebdomadaire de la Lune DOIT suivre exactement l'ordre et les maisons du JSON — ne réordonnez ni ne substituez les signes.`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【Ligne de copie lunaire par semaine — écrivez le transit lunaire EXACTEMENT dans ce format, puis ajoutez votre prose en dessous】`,
+      moonLabel: `La Lune transite`,
+      moonLine: (s) => `La Lune transite en ${s.replace(/（/g,' (').replace(/）/g,')')}.`,
+      ingressLine: (s) => `${s} entrée. `,
+    },
+    th: {
+      head: `【V441 โครงสร้างข้อเท็จจริง JSON — คำนวณโดย SwissEph · LLM อ่านอย่างเดียว ห้ามแต่งเติม】`,
+      intro: `JSON ด้านล่างคือข้อเท็จจริงที่คำนวณด้วยอัลกอริทึมทั้งหมดสำหรับเดือนนี้ หน้าที่ของคุณคือแปลมันเป็นเรื่องราวความมั่งคั่งที่สวยงาม`,
+      ban: `⚠️ ห้ามแต่งเติมราศี บ้าน วันที่ จำนวนเงิน หรือดาวเคราะห์ใดๆ ที่ไม่อยู่ใน JSON ด้านล่าง`,
+      moonRule: `⚠️ การผ่านของดวงจันทร์รายสัปดาห์ต้องเป็นไปตามลำดับและค่าบ้านใน JSON อย่างเคร่งครัด — ห้ามสลับหรือเปลี่ยนราศี`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【บรรทัดคัดลอกดวงจันทร์รายสัปดาห์ — เขียนการผ่านดวงจันทร์ให้ตรงกับรูปแบบนี้เท่านั้น จากนั้นเติมเรื่องราวของคุณด้านล่าง】`,
+      moonLabel: `ดวงจันทร์ผ่าน`,
+      moonLine: (s) => `ดวงจันทร์โคจรผ่าน ${s.replace(/（/g,' (').replace(/）/g,')')}.`,
+      ingressLine: (s) => `${s} เข้าสู่. `,
+    },
+    vi: {
+      head: `【V441 CẤU TRÚC SỰ THẬT JSON — tính bởi SwissEph · LLM chỉ đọc, không tự bịa】`,
+      intro: `JSON bên dưới là toàn bộ sự thật được tính toán bằng thuật toán cho tháng này. Nhiệm vụ của bạn là dịch nó thành một câu chuyện tài phú đẹp đẽ.`,
+      ban: `⚠️ KHÔNG bịa bất kỳ cung, nhà, ngày, số tiền hay hành tinh nào không có trong JSON bên dưới.`,
+      moonRule: `⚠️ Sự chuyển động hàng tuần của Mặt Trăng PHẢI tuân theo đúng thứ tự và nhà trong JSON — không đảo lộn hay thay thế cung.`,
+      treeHead: `【JSON FACT TREE】`,
+      copyHead: `【Dòng sao chép Mặt Trăng theo tuần — viết sự chuyển động Mặt Trăng ĐÚNG theo định dạng này, sau đó thêm lời văn của riêng bạn bên dưới】`,
+      moonLabel: `Mặt Trăng đi qua`,
+      moonLine: (s) => `Mặt Trăng đi qua ${s.replace(/（/g,' (').replace(/）/g,')')}.`,
+      ingressLine: (s) => `${s} đi vào. `,
+    },
+  };
+  const I = FACT_INSTR[lang] || FACT_INSTR.zh;
+
   const sep = '─'.repeat(40);
-  let block = `\n${sep}\n【V441 JSON FACT CONSTITUTION — SwissEph 算法生成 · LLM 只读不写】\n${sep}\n`;
-  block += `以下 JSON 数据是当月天体事实的完整真值。你的任务是把它们翻译成优美的运势文案。\n`;
-  block += `⚠️ 禁止编造任何未在下方 JSON 中列出的：星座、宫位、日期、金额、行星。\n`;
-  block += `⚠️ 月亮过境必须按 JSON 的 transits 顺序和 house 值渲染，不准改变顺序或换座。\n\n`;
-  block += `【JSON FACT TREE】\n`;
+  let block = `\n${sep}\n${I.head}\n${sep}\n`;
+  block += `${I.intro}\n`;
+  block += `${I.ban}\n`;
+  block += `${I.moonRule}\n\n`;
+  block += `${I.treeHead}\n`;
   block += JSON.stringify(factTree, null, 2) + `\n\n`;
-  block += `【逐周照抄句（严格按此格式写月亮过境段落）】\n`;
+  block += `${I.copyHead}\n`;
   for (const wb of weekCopyBlocks) {
-    const moonLine = lang === 'zh'
-      ? `流月月亮依次行经${wb.moonTransits}。`
-      : `The Moon transits through ${wb.moonTransits.replace(/（/g,' (').replace(/）/g,')')}.`;
-    const ingressLine = wb.ingressStr
-      ? (lang === 'zh' ? `${wb.ingressStr}换座。` : `${wb.ingressStr} ingress. `)
-      : '';
-    block += `[WEEK ${wb.week} ${wb.dateRange} (${wb.risk})]\n`;
-    block += `月亮过境: ${moonLine}\n${ingressLine}\n`;
+    const ingressLine = wb.ingressStr ? I.ingressLine(wb.ingressStr) : '';
+    block += `[WEEK ${wb.week} ${wb.dateRange} (${wb.riskLabel})]\n`;
+    block += `${I.moonLabel}: ${I.moonLine(wb.moonTransits)}\n${ingressLine}\n`;
   }
   block += `${sep}\n`;
   return block;
