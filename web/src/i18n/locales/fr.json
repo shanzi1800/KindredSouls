@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "KindredSouls",
-    "tagline": "Révélez votre connexion cosmique"
+    "name": "KindredSouls"
   },
   "input": {
     "title": "Votre destinée écrite dans les étoiles",
@@ -9,22 +8,15 @@
     "yourBirthday": "Votre date de naissance",
     "theirBirthday": "Sa date de naissance",
     "calculate": "Dévoiler notre destin",
-    "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD",
     "start": "Commencer",
     "compatibilityMode": "Code de Compatibilité",
     "compatibilityModeDesc": "Débloquer le code relationnel",
     "wealthMode": "Clé de Richesse",
     "wealthModeDesc": "Déverrouiller votre schéma du coffre-fort inné",
     "selectMode": "Sélectionner le mode",
-    "back": "Retour",
-    "legalFooter": "En cliquant sur \"{{calculate}}\", vous acceptez nos {terms} et notre {privacy}.",
-    "termsOfService": "Conditions d'Utilisation",
-    "privacyPolicy": "Politique de Confidentialité"
+    "back": "Retour"
   },
   "result": {
-    "title": "Verdict des astres",
-    "score": "Score d'affinité cosmique",
     "overall": "Harmonie globale",
     "loading": "Décryptage du cosmos en cours...",
     "back": "Interroger les astres pour un autre duo",
@@ -33,13 +25,8 @@
     "engines": {
       "bazi": "Astrologie chinoise (BaZi)",
       "zodiac": "Zodiaque occidental",
-      "iching": "Sagesse du Yi Jing",
-      "aiInsight": "Clarté relationnelle par l'IA"
+      "iching": "Sagesse du Yi Jing"
     }
-  },
-  "nav": {
-    "language": "Langue",
-    "settings": "Réglages"
   },
   "common": {
     "errorIncomplete": "🔮 Deux étoiles sont nécessaires pour aligner le destin",
@@ -49,17 +36,12 @@
     "errorTooOld": "🌟 Même les astres ont des limites — veuillez vérifier l'année"
   },
   "wealth": {
-    "title": "Oracle Fortune et Carrière",
-    "subtitle": "Décodez vos blueprints Innés de richesse et ADN de carrière",
-    "cta": "🔮 Décoder maintenant",
-    "loading": "Invocations du code de richesse...",
-    "reportTitle": "Rapport de l'Oracle Fortune"
+    "loading": "Invocations du code de richesse..."
   },
   "wealthInput": {
     "title": "Oracle Fortune et Carrière",
     "subtitle": "Décodez votre blueprint Innée de richesse et ADN de carrière",
     "birthdayLabel": "Entrez votre date de naissance",
-    "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Commencer le Décodage",
     "unlockTip": "Votre trajectoire financière est liée à votre énergie relationnelle. Débloquez pour voir aussi l'analyse de richesse dans les rapports de compatibilité.",
     "birthTip": "Ajoutez votre heure et ville de naissance pour augmenter la précision de l'analyse de 40% (Optionnel). Si vous l'ignorez, le calcul par défaut à 12h00 reste extrêmement fiable et pertinent."

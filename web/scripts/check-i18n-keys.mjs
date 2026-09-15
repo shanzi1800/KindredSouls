@@ -32,6 +32,17 @@ export const WEB_ROOT = path.resolve(__dirname, '..');
 const LOCALES_DIR = path.join(WEB_ROOT, 'src', 'i18n', 'locales');
 const SRC_DIR = path.join(WEB_ROOT, 'src');
 
+/** 把嵌套字典摊平成点分路径集合 */
+export function keyPaths(dict, pre = '') {
+  const out = [];
+  for (const [k, v] of Object.entries(dict)) {
+    const p = pre ? `${pre}.${k}` : k;
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(...keyPaths(v, p));
+    else out.push(p);
+  }
+  return out;
+}
+
 /** 某 key（点分路径）在语种字典里是否存在 */
 export function hasKey(dict, keyPath) {
   let cur = dict;
@@ -93,18 +104,59 @@ export function checkI18nKeys(opts = {}) {
       if (!hasKey(locales[lang], key)) missing.push({ lang, key, ref: refs[0] });
     }
   }
-  return { ok: missing.length === 0, missing, keyCount: used.size, langs: LANGS };
+  const parity = checkKeySetParity(locales);
+  return {
+    ok: missing.length === 0 && parity.ok,
+    missing,
+    parity,
+    keyCount: used.size,
+    langs: LANGS,
+  };
+}
+
+/**
+ * 第二道防线：6 语种键集合绝对全等。
+ * 防止「往 zh/en 加了新 key，其他语种忘了补」——这类漏译会让非中英用户看到回退/空串。
+ * 前置条件：死键必须已清理，否则本判据会强迫为死字符串补 5 语种翻译（无业务价值）。
+ */
+export function checkKeySetParity(locales = loadLocales()) {
+  const sets = {};
+  for (const l of LANGS) sets[l] = new Set(keyPaths(locales[l]));
+  const base = sets.zh;
+  const mismatches = [];
+  for (const l of LANGS) {
+    if (l === 'zh') continue;
+    const missing = [...base].filter((k) => !sets[l].has(k)).sort();
+    const extra = [...sets[l]].filter((k) => !base.has(k)).sort();
+    if (missing.length || extra.length) mismatches.push({ lang: l, missing, extra });
+  }
+  return { ok: mismatches.length === 0, mismatches, total: base.size };
 }
 
 // ── CLI ──
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   const r = checkI18nKeys();
-  console.log(`[i18n-gate] 扫描静态 key: ${r.keyCount} 个 × ${r.langs.length} 语种`);
+  console.log(`[i18n-gate] 第一道防线｜代码引用覆盖：扫描静态 key ${r.keyCount} 个 × ${r.langs.length} 语种`);
+  if (r.missing.length === 0) console.log(`[i18n-gate]   ✅ 全部命中，无 key 字面量回退风险`);
+  else {
+    console.error(`[i18n-gate]   ❌ 缺口 ${r.missing.length} 处（i18next 会把 key 字面量打上屏）：`);
+    for (const m of r.missing) console.error(`      [${m.lang}] ${m.key}   <- ${m.ref}`);
+  }
+
+  console.log(`[i18n-gate] 第二道防线｜6 语种键集合全等：基准 ${r.parity.total} 键`);
+  if (r.parity.ok) console.log(`[i18n-gate]   ✅ 6 语种键集合完全全等`);
+  else {
+    console.error(`[i18n-gate]   ❌ 键集合不对称：`);
+    for (const m of r.parity.mismatches) {
+      if (m.missing.length) console.error(`      [${m.lang}] 缺 ${m.missing.join(', ')}`);
+      if (m.extra.length) console.error(`      [${m.lang}] 多 ${m.extra.join(', ')}`);
+    }
+  }
+
   if (r.ok) {
-    console.log(`[i18n-gate] ✅ 全部命中，无回退风险`);
+    console.log(`[i18n-gate] ✅ 双防线通过`);
     process.exit(0);
   }
-  console.error(`[i18n-gate] ❌ 发现 ${r.missing.length} 处缺口（i18next 会把 key 字面量打上屏）：`);
-  for (const m of r.missing) console.error(`   [${m.lang}] ${m.key}   <- ${m.ref}`);
+  console.error(`[i18n-gate] ❌ 门禁未通过`);
   process.exit(1);
 }

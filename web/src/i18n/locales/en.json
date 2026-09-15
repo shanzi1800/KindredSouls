@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "KindredSouls",
-    "tagline": "Discover Your Cosmic Connection"
+    "name": "KindredSouls"
   },
   "input": {
     "title": "Fate Written in the Stars",
@@ -9,22 +8,15 @@
     "yourBirthday": "Your birthday",
     "theirBirthday": "Their birthday",
     "calculate": "Reveal Compatibility",
-    "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD",
     "start": "Start",
     "selectMode": "Select Mode",
     "compatibilityMode": "Compatibility Code",
     "compatibilityModeDesc": "Unlock relationship code",
     "wealthMode": "Wealth Key",
     "wealthModeDesc": "Unlock your innate wealth vault blueprint",
-    "back": "Back",
-    "legalFooter": "By clicking \"{{calculate}}\", you agree to our {terms} and {privacy}.",
-    "termsOfService": "Terms of Service",
-    "privacyPolicy": "Privacy Policy"
+    "back": "Back"
   },
   "result": {
-    "title": "Compatibility Result",
-    "score": "Compatibility Score",
     "overall": "Overall Match",
     "loading": "Reading the cosmos...",
     "back": "Check Another Pair",
@@ -33,25 +25,11 @@
     "engines": {
       "bazi": "Chinese Astrology (BaZi)",
       "zodiac": "Western Zodiac",
-      "iching": "I Ching Wisdom",
-      "aiInsight": "AI Relationship Insight"
+      "iching": "I Ching Wisdom"
     }
   },
   "wealth": {
-    "title": "Wealth & Career Oracle",
-    "subtitle": "Decode Your Innate Wealth Blueprint & Career DNA",
-    "inputLabel": "Enter your birth date",
-    "cta": "🔮 Start Decoding",
-    "loading": "Summoning wealth code...",
-    "reportTitle": "Wealth Oracle Report",
-    "paywallTitle": "🔒 AI Deep Insight",
-    "priceMonthly": "$7.99 / month",
-    "priceYearly": "$79.99 / year",
-    "unlock": "Unlock full report"
-  },
-  "nav": {
-    "language": "Language",
-    "settings": "Settings"
+    "loading": "Summoning wealth code..."
   },
   "common": {
     "errorIncomplete": "🔮 Two stars needed to anchor fate",
@@ -64,7 +42,6 @@
     "title": "Wealth & Career Oracle",
     "subtitle": "Decode Your Innate Wealth Blueprint & Career DNA",
     "birthdayLabel": "Enter your birth date",
-    "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Start Decoding",
     "unlockTip": "Your wealth trajectory is connected to your relationship energy. Unlock to also see wealth analysis in compatibility reports.",
     "birthTip": "Add birth time & city to boost chart accuracy by 40% (Optional). If unsure, the default 12:00 PM calculation remains highly accurate and insightful."

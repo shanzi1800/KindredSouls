@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "KindredSouls",
-    "tagline": "Khai mở sợi dây liên kết vũ trụ của bạn"
+    "name": "KindredSouls"
   },
   "input": {
     "title": "Vận mệnh an bài trên ngàn tinh tú",
@@ -9,22 +8,15 @@
     "yourBirthday": "Ngày sinh của bạn",
     "theirBirthday": "Ngày sinh của người ấy",
     "calculate": "Giải mã duyên phận 🌟",
-    "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD",
     "start": "Bắt đầu",
     "compatibilityMode": "Mã Duyên Phận",
     "compatibilityModeDesc": "Mở khóa mã bí mật mối quan hệ",
     "wealthMode": "Chìa Khóa Tài Lộc",
     "wealthModeDesc": "Mở khóa két tài lộc bẩm sinh",
     "selectMode": "Chọn chế độ",
-    "back": "Quay lại",
-    "legalFooter": "Bằng cách nhấp vào \"{{calculate}}\", bạn đồng ý với {terms} và {privacy} của chúng tôi.",
-    "termsOfService": "Điều Khoản Dịch Vụ",
-    "privacyPolicy": "Chính Sách Bảo Mật"
+    "back": "Quay lại"
   },
   "result": {
-    "title": "Kết quả độ hòa hợp",
-    "score": "Chỉ số duyên phận",
     "overall": "Độ tương hợp tổng quan",
     "loading": "Đang giải mã thông điệp từ vũ trụ...",
     "back": "Xem duyên phận cặp khác",
@@ -33,13 +25,8 @@
     "engines": {
       "bazi": "Bát Tự (Tử Vi Đông Phương)",
       "zodiac": "Cung hoàng đạo Tây Phương",
-      "iching": "Trí tuệ Kinh Dịch",
-      "aiInsight": "Luận giải mối quan hệ bằng AI Duyên Phận"
+      "iching": "Trí tuệ Kinh Dịch"
     }
-  },
-  "nav": {
-    "language": "Ngôn ngữ",
-    "settings": "Cài đặt"
   },
   "common": {
     "errorIncomplete": "🔮 Cần hội tụ đủ hai vì sao để định vị sợi dây mệnh vận",
@@ -49,17 +36,12 @@
     "errorTooOld": "🌟 Ngay cả tinh tú cũng có giới hạn — Vui lòng kiểm tra lại năm sinh"
   },
   "wealth": {
-    "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
-    "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
-    "cta": "🔮 Giải mã ngay",
-    "loading": "Đang triệu hồi mã tài lộc...",
-    "reportTitle": "Báo cáo Sách Tiên Tri Tài Lộc"
+    "loading": "Đang triệu hồi mã tài lộc..."
   },
   "wealthInput": {
     "title": "Sách Tiên Tri Tài Lộc & Sự Nghiệp",
     "subtitle": "Giải mã bản đồ tài lộc bẩm sinh và gen sự nghiệp của bạn",
     "birthdayLabel": "Nhập ngày sinh của bạn",
-    "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Bắt đầu giải mã",
     "unlockTip": "Quỹ đạo tài lộc của bạn kết nối với năng lượng quan hệ của bạn. Mở khóa để xem thêm phân tích tài lộc trong báo cáo duyên phận.",
     "birthTip": "Bổ sung giờ sinh và thành phố cụ thể giúp tăng độ chính xác lên 40% (Không bắt buộc). Nếu không rõ, kết quả tính theo mặc định 12:00 trưa vẫn cực kỳ chính xác và có giá trị tham khảo."

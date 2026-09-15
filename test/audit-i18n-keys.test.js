@@ -10,9 +10,11 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import {
   checkI18nKeys,
+  checkKeySetParity,
   hasKey,
   loadLocales,
   collectUsedKeys,
+  keyPaths,
   LANGS,
 } from '../web/scripts/check-i18n-keys.mjs';
 
@@ -65,5 +67,56 @@ describe('V448 i18n Key 门禁', () => {
   test('④ 6 语种 JSON 均可解析且语种齐备', () => {
     const L = loadLocales();
     assert.deepStrictEqual(Object.keys(L).sort(), [...LANGS].sort());
+  });
+
+  test('⑤ 第二道防线：6 语种键集合绝对全等（死键已清）', () => {
+    const p = checkKeySetParity();
+    if (!p.ok) {
+      const lines = p.mismatches
+        .map((m) => `[${m.lang}] 缺 ${m.missing.join(', ') || '-'} | 多 ${m.extra.join(', ') || '-'}`)
+        .join('\n');
+      assert.fail(`键集合不对称（非中英用户会看到回退/空串）:\n${lines}`);
+    }
+    assert.strictEqual(p.total, 46, '清理死键后基准键数应为 46');
+  });
+
+  test('⑥ 死键已彻底清除（防回流）', () => {
+    const L = loadLocales();
+    const dead = [
+      'app.tagline',
+      'nav.language',
+      'nav.settings',
+      'wealth.title',
+      'wealth.subtitle',
+      'wealth.cta',
+      'wealth.reportTitle',
+      'wealth.paywallTitle',
+      'wealth.priceMonthly',
+      'wealth.priceYearly',
+      'wealth.unlock',
+      'wealth.inputLabel',
+      'wealthInput.birthdayPh',
+      'wealthReport.yearlyReportTitle',
+      'result.title',
+      'result.score',
+      'result.engines.aiInsight',
+      'input.placeholder1',
+      'input.placeholder2',
+      'input.legalFooter',
+      'input.termsOfService',
+      'input.privacyPolicy',
+    ];
+    for (const l of LANGS) {
+      const paths = new Set(keyPaths(L[l]));
+      for (const k of dead) {
+        assert.ok(!paths.has(k), `${l}.json 不应再含死键 ${k}`);
+      }
+      // th 曾有的根层错位副本
+      assert.ok(!paths.has('challengingAspects'), `${l}.json 不应含根层错位键 challengingAspects`);
+      assert.ok(!paths.has('luckyAspects'), `${l}.json 不应含根层错位键 luckyAspects`);
+      // 正确路径必须保留
+      assert.ok(paths.has('result.challengingAspects'), `${l}.json 应保留 result.challengingAspects`);
+      assert.ok(paths.has('result.luckyAspects'), `${l}.json 应保留 result.luckyAspects`);
+    }
   });
 });

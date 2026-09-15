@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "KindredSouls",
-    "tagline": "Descubre tu conexión cósmica"
+    "name": "KindredSouls"
   },
   "input": {
     "title": "Tu destino escrito en las estrellas",
@@ -9,22 +8,15 @@
     "yourBirthday": "Tu fecha de nacimiento",
     "theirBirthday": "Su fecha de nacimiento",
     "calculate": "Revelar nuestro destino",
-    "placeholder1": "YYYY-MM-DD",
-    "placeholder2": "YYYY-MM-DD",
     "start": "Comenzar",
     "compatibilityMode": "Código de Compatibilidad",
     "compatibilityModeDesc": "Desbloquea el código relacional",
     "wealthMode": "Clave de Riqueza",
     "wealthModeDesc": "Desbloquea tu bóveda de riqueza innata",
     "selectMode": "Seleccionar modo",
-    "back": "Volver",
-    "legalFooter": "Al hacer clic en \"{{calculate}}\", aceptas nuestros {terms} y {privacy}.",
-    "termsOfService": "Términos de Servicio",
-    "privacyPolicy": "Política de Privacidad"
+    "back": "Volver"
   },
   "result": {
-    "title": "Revelación de compatibilidad",
-    "score": "Puntaje de afinidad cósmica",
     "overall": "Alineación total",
     "loading": "Sintonizando con el cosmos...",
     "back": "Consultar otra alma",
@@ -33,13 +25,8 @@
     "engines": {
       "bazi": "Astrología china (BaZi)",
       "zodiac": "Zodíaco occidental",
-      "iching": "Sabiduría del I Ching",
-      "aiInsight": "Análisis de relación por IA"
+      "iching": "Sabiduría del I Ching"
     }
-  },
-  "nav": {
-    "language": "Idioma",
-    "settings": "Ajustes"
   },
   "common": {
     "errorIncomplete": "🔮 Se necesitan dos estrellas para sellar el destino",
@@ -49,17 +36,12 @@
     "errorTooOld": "🌟 Incluso las estrellas tienen límites — por favor, verifica el año"
   },
   "wealth": {
-    "title": "Oráculo de Riqueza y Carrera",
-    "subtitle": "Decodifica tu blueprints Innato de riqueza y ADN de carrera",
-    "cta": "🔮 Decodificar ahora",
-    "loading": "Invocando el código de riqueza...",
-    "reportTitle": "Informe del Oráculo de Riqueza"
+    "loading": "Invocando el código de riqueza..."
   },
   "wealthInput": {
     "title": "Oráculo de Riqueza y Carrera",
     "subtitle": "Decodifica tu blueprint Innegado de riqueza y ADN de carrera",
     "birthdayLabel": "Ingresa tu fecha de nacimiento",
-    "birthdayPh": "YYYY-MM-DD",
     "startBtn": "🔮 Comenzar Decodificación",
     "unlockTip": "Tu trayectoria de riqueza está conectada a tu energía relacional. Desbloquea para ver también análisis de riqueza en informes de compatibilidad.",
     "birthTip": "Añade la hora y ciudad de nacimiento para aumentar la precisión un 40% (Opcional). Si no la sabes, el cálculo predeterminado de las 12:00 PM sigue siendo altamente preciso."
