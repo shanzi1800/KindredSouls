@@ -5703,7 +5703,7 @@ const _V438_CFG = {
   th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ' ',
         intro: 'ดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
         headerRe: /สัปดาห์ที่\s*([1-4])[^\n]*/g },
-  vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ',
+  vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ', multiWordSigns: true,
         intro: 'Mặt Trăng đi qua ', stopRe: /[.\n]/,
         headerRe: /Tuần\s*([1-4])[^\n]*/gi },
 };
@@ -6011,7 +6011,14 @@ function _v438OverrideBody(body, cfg, truth) {
   //   旧版按「句末 stopRe」截断：英文周段落常一整行无换行 → 整段散文被吞；
   //   且副标题在过境句之前时 stopRe 落在副标题 → 整段跳过（W3 开头错星座漏网根因）。
   //   日期句（"X日月亮进入Y座"）用「月亮进入」而非 →/、 连接 → 自动断开，留给 V435 锁处理。
-  const tokRe = new RegExp('(' + signsPat + ')[\\s]*[（(][^（）()]{0,40}[）)]', 'g');
+  const greedy = cfg.multiWordSigns ? '+' : '+?';
+  // 越南变音符号 Unicode 范围（确保 tokRe 在它们之前停止，而非贪吃到括号内）
+  const VI_DIAC = '\\u01B0\\u01A1\\u1EA0-\\u1EF9';
+  const FULLW = '（）'; // zh/th 全角括号
+  // 排除相反方向括号：开( 配对时排除 )/），关( 配对时排除 （/（
+  // zh 星座后无空格：白羊座（第9宫）→ [^\s]* 吞0空格；en 有空格：Aries (House...) → [^\s]* 吞字母剩余量
+  // 开括号: ASCII ( 或全角 （; 闭括号: ASCII ) 或全角 ）; body: 排除闭括号和越南变音
+  const tokRe = new RegExp('(' + signsPat + ')' + greedy + '\\s*[(（]([^' + FULLW + ')' + FULLW + VI_DIAC + ']{0,40})[\\)' + FULLW + ']', 'g');
   const toks = [];
   let mm;
   tokRe.lastIndex = 0;
