@@ -154,6 +154,21 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
     matrix.meta.computed_houses = natalData.computed_houses;
     console.log('[V143] Merged computed_houses:', Object.keys(natalData.computed_houses).join(','));
   }
+  // 🛠️ V453: 合并本命全 10 行星（sign+house+retrograde），供本命锚点锁（V444/V453）兜底非日月行星
+  //   避免 LLM 把流年金星当成本命金星（1992-11-04 法文盘实测硬伤）。
+  //   house 用等宫制从上升推导（与 V69 引擎一致），planet keys 用大写（与 astro 引擎对齐）。
+  if (natalData.planets && Object.keys(natalData.planets).length) {
+    const _zorder = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+    const _rIdx = _zorder.indexOf(risingSign);
+    const _np = {};
+    for (const [pk, pv] of Object.entries(natalData.planets)) {
+      const sIdx = _zorder.indexOf(pv.sign);
+      const house = (_rIdx >= 0 && sIdx >= 0) ? ((sIdx - _rIdx + 12) % 12 + 1) : 1;
+      _np[pk] = { sign: pv.sign, house, retrograde: !!pv.retrograde };
+    }
+    matrix.meta.natal_planets = _np;
+    console.log('[V453] Merged natal_planets:', Object.keys(_np).join(','));
+  }
 
   console.log(`[V134] Got ${matrix.months?.length || 0} months, ${matrix.retrograde_stations?.mercury?.length || 0} Mercury stations`);
 

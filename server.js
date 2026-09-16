@@ -5462,11 +5462,11 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v354:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v355:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
-    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v354:<date>:...' → 清了等于没清！
+    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v355:<date>:...' → 清了等于没清！
     //   实测：GET /api/clear-cache/1988-12-31/es/monthly 返回 deleted:true/204，但随后生成仍是旧文本
     //   （命中旧缓存），导致整轮验证结论错误。改为 'wealth:*<date>*' 同时覆盖新旧两种键格式。
     const pat = 'wealth:*' + encodeURIComponent(birthDate) + '*';
@@ -5658,7 +5658,7 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 // ═══════════════════════════════════════════════════════════════════════
 
 // 由单周 legs 构建真值轨迹串(按星座聚合并标注宫位区段)
-function _v438WeekTruth(w, cfg) {
+function _v438WeekTruth(w, cfg, spanOnly) {
   const seq = (Array.isArray(w.legs) && w.legs.length) ? w.legs : (w.start ? [w.start] : []);
   if (!seq.length) return '';
   const groups = [];
@@ -5677,7 +5677,8 @@ function _v438WeekTruth(w, cfg) {
   // 🛠️ V451-fix: 还原引导词（cfg.intro 原为死字段，从未被使用）——锁替换掉的是【整句】，
   //   若不带引导词，周正文开头会变成一串裸清单（如 `Aries (House 11), Taurus (...)`），
   //   用户会当成新穿帮。带上引导词即恢复规范句式（zh `流月月亮依次行经…` / en `The Moon transits through …`）。
-  return (cfg.intro || '') + _v438Body;
+  // 🛠️ V452: spanOnly=true 时只返回星座序列本体（不含引导词），供「整段 span 替换」使用——保留 LLM 原有引导短语（如 La Lune en transit traverse）。
+  return spanOnly ? _v438Body : ((cfg.intro || '') + _v438Body);
 }
 
 const _V438_CFG = {
@@ -5716,7 +5717,7 @@ function applyMoonWeekHardOverride(text, lang, astroMatrix) {
   const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
   const weeks = m0 && m0.moon_weeks;
   if (!Array.isArray(weeks) || !weeks.length) return text;   // 无真值 → 不动(绝瞎猜)
-  const truths = weeks.map(w => _v438WeekTruth(w, cfg));
+  const truths = weeks.map(w => _v438WeekTruth(w, cfg, true));   // 🛠️ V452: spanOnly（整段序列，不含引导词）
   const truthByWeek = {};
   weeks.forEach((w, i) => { const n = w.week || (i + 1); if (truths[i]) truthByWeek[n] = truths[i]; });
   // 定位所有周标题(只保留有真值的周)
@@ -5805,24 +5806,132 @@ function _v444Patterns(lang, signsPat) {
   return null;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V453：本命锚点锁扩容到 10 大行星（V444 只管日月升，非日月行星裸奔）
+//   覆盖：太阳/月亮/水星/金星/火星/木星/土星/天王星/海王星/冥王星
+//   真值源：meta.computed_houses（computeViaPython 合并的全 10 行星 sign+house+retrograde）
+//   只在本命所有格语境下修正（"你的/本命/votre/your + 行星"），绝不误伤流年行星（流年由 V445 锁）
+// ══════════════════════════════════════════════════════════════════
+const _V453_PLANET_KEYS = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+const _V453_PLANET_NAMES = {
+  zh: { Mercury: '水星', Venus: '金星', Mars: '火星', Jupiter: '木星', Saturn: '土星', Uranus: '天王星', Neptune: '海王星', Pluto: '冥王星' },
+  en: { Mercury: 'Mercury', Venus: 'Venus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluto' },
+  fr: { Mercury: 'Mercure', Venus: 'Vénus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluton' },
+  es: { Mercury: 'Mercurio', Venus: 'Venus', Mars: 'Marte', Jupiter: 'Júpiter', Saturn: 'Saturno', Uranus: 'Urano', Neptune: 'Neptuno', Pluto: 'Plutón' },
+  th: { Mercury: 'ดวงพุธ', Venus: 'ดวงศุกร์', Mars: 'ดวงอังคาร', Jupiter: 'ดวงพฤหัสบดี', Saturn: 'ดวงเสาร์', Uranus: 'ดวงมฤตยู', Neptune: 'ดวงเนปจูน', Pluto: 'ดวงพลูโต' },
+  vi: { Mercury: 'Sao Thủy', Venus: 'Sao Kim', Mars: 'Sao Hỏa', Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Thiên Vương', Neptune: 'Hải Vương', Pluto: 'Diêm Vương' },
+};
+function _v453Poss(lang) {
+  switch (lang) {
+    case 'zh': return '(?:你的|本命|乃)?';
+    case 'en': return '(?:your|her|his|my|our|their)\\s+';
+    case 'fr': return '(?:ton|votre|mon|notre|son|sa|leur|ma)\\s+';
+    case 'es': return '(?:tu|su|mi|nuestro|nuestra)\\s+';
+    case 'th': return '(?:ดวง\\s*ของ\\s*คุณ|ของ\\s*คุณ|本命)?\\s*';
+    case 'vi': return '(?:của\\s+bạn)?\\s*';
+    default: return '';
+  }
+}
+function _v453Link(lang) {
+  switch (lang) {
+    case 'zh': return '(?:星座)?(?:是|在|为)?\\s*';
+    case 'en': return '(?:\\s+is)?(?:\\s+in)?\\s*';
+    case 'fr': return '(?:\\s+est)?(?:\\s+en)?\\s*';
+    case 'es': return '(?:\\s+es)?(?:\\s+en)?\\s*';
+    case 'th': return '(?:อยู่\\s+ใน|ใน)?\\s*';
+    case 'vi': return '(?:là)?(?:ở)?\\s*';
+    default: return '\\s*';
+  }
+}
+function _v453HouseLabel(lang) {
+  switch (lang) {
+    case 'zh': return '第(\\d+)宫';
+    case 'en': return 'House\\s+(\\d+)';
+    case 'fr': return 'Maison\\s+(\\d+)';
+    case 'es': return 'Casa\\s+(\\d+)';
+    case 'th': return 'บ้าน\\s+(\\d+)';
+    case 'vi': return 'Nhà\\s+(\\d+)';
+    default: return 'House\\s+(\\d+)';
+  }
+}
+function _v453RetroPat(lang) {
+  switch (lang) {
+    case 'zh': return '(顺行|逆行)';
+    case 'en': return '(retrograde|direct)';
+    case 'fr': return '(rétrograde|direct)';
+    case 'es': return '(retrógrado|directo)';
+    case 'th': return '(โคจรย้อน|โคจรปกติ)';
+    case 'vi': return '(xiều hành tụt|xiều hành thuận)';
+    default: return '(retrograde|direct)';
+  }
+}
+function _v453RetroWord(lang, retrograde) {
+  switch (lang) {
+    case 'zh': return retrograde ? '逆行' : '顺行';
+    case 'en': return retrograde ? 'retrograde' : 'direct';
+    case 'fr': return retrograde ? 'rétrograde' : 'direct';
+    case 'es': return retrograde ? 'retrógrado' : 'directo';
+    case 'th': return retrograde ? 'โคจรย้อน' : 'โคจรปกติ';
+    case 'vi': return retrograde ? 'xiều hành tụt' : 'xiều hành thuận';
+    default: return retrograde ? 'retrograde' : 'direct';
+  }
+}
+
 function lockNatalAnchorRole(text, lang, astroMatrix) {
   if (!text || typeof text !== 'string') return text;
   const meta = astroMatrix && astroMatrix.meta;
   if (!meta) return text;
-  const truth = { sun: meta.sun_sign, rising: meta.rising_sign, moon: meta.natal_moon && meta.natal_moon.sign };
-  if (!truth.sun || !truth.rising || !truth.moon) return text;
+  // 🛠️ V453: 真值 = 本命全 10 行星 sign+house+retrograde（meta.natal_planets，由 v69_client 合并本命盘）
+  const np = meta.natal_planets || {};
+  const truth = {};
+  if (meta.rising_sign) truth.rising = { sign: meta.rising_sign, house: 1, retrograde: false };
+  if (meta.sun_sign) truth.sun = { sign: meta.sun_sign, house: (np.Sun && np.Sun.house) || 1, retrograde: !!(np.Sun && np.Sun.retrograde) };
+  if (meta.natal_moon) truth.moon = { sign: meta.natal_moon.sign, house: meta.natal_moon.house, retrograde: !!meta.natal_moon.retrograde };
+  for (const k of _V453_PLANET_KEYS) {
+    const c = np[k];
+    if (c && c.sign) truth[k] = { sign: c.sign, house: c.house, retrograde: !!c.retrograde };
+  }
   const signs = _v444Signs(lang);
   if (!signs) return text;
   const signsPat = signs.map(_v444Esc).join('|');
-  const pats = _v444Patterns(lang, signsPat);
-  if (!pats) return text;
   let out = text;
-  for (const role of ['sun', 'rising', 'moon']) {
-    const re = pats[role];
-    const idx = SUN_SIGN_EN.indexOf(truth[role]);
-    if (idx < 0) continue;
-    const trueLocal = signs[idx];
-    out = out.replace(re, (m, captured) => (captured === trueLocal ? m : m.replace(captured, trueLocal)));
+  // ① 日月升（沿用 V444 既有模式）
+  const pats = _v444Patterns(lang, signsPat);
+  if (pats) {
+    for (const role of ['sun', 'rising', 'moon']) {
+      if (!truth[role]) continue;
+      const re = pats[role];
+      const idx = SUN_SIGN_EN.indexOf(truth[role].sign);
+      if (idx < 0) continue;
+      const trueLocal = signs[idx];
+      out = out.replace(re, (m, captured) => (captured === trueLocal ? m : m.replace(captured, trueLocal)));
+    }
+  }
+  // ② V453：其余 7 行星本命锚点全锁（星座 + 宫位 + 逆行）
+  const pnames = _V453_PLANET_NAMES[lang];
+  if (pnames) {
+    const poss = _v453Poss(lang);
+    const link = _v453Link(lang);
+    const houseLab = _v453HouseLabel(lang);
+    const retroPat = _v453RetroPat(lang);
+    for (const k of _V453_PLANET_KEYS) {
+      const t = truth[k];
+      if (!t) continue;
+      const idx = SUN_SIGN_EN.indexOf(t.sign);
+      if (idx < 0) continue;
+      const trueLocal = signs[idx];
+      const planet = _v444Esc(pnames[k]);
+      // 星座修正：poss + 行星 + (link) + 错星座（i 标志：fr/es 本命所有格首字母大写 Votre/Vénus 亦匹配）
+      const signRe = new RegExp(poss + planet + link + '(' + signsPat + ')', 'gi');
+      out = out.replace(signRe, (m, s) => (s === trueLocal ? m : m.replace(s, trueLocal)));
+      // 宫位修正：poss + 行星 + (可选中间词) + 宫位标签 + 错宫号
+      const houseRe = new RegExp(poss + planet + '(?:[^\\n]{0,18}?)' + houseLab, 'gi');
+      out = out.replace(houseRe, (m, num) => (String(num) === String(t.house) ? m : m.replace(String(num), String(t.house))));
+      // 逆行修正：poss + 行星 + (任意中间词) + 逆行词
+      const retroRe = new RegExp(poss + planet + '[^\\n]{0,48}?' + retroPat, 'gi');
+      const trueRetro = _v453RetroWord(lang, t.retrograde);
+      out = out.replace(retroRe, (m, w) => (w === trueRetro ? m : m.replace(w, trueRetro)));
+    }
   }
   return out;
 }
@@ -5894,30 +6003,38 @@ function lockTransitPlanetSigns(text, lang, astroMatrix) {
 
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
-  const lead = body.search(/\S/);          // 跳过前导空白
-  if (lead < 0) return body;
-  // 找正文第一个 stopRe 边界（句号/日期句）
-  let stopAt = body.length;
-  // V442-fix4: 从 lead 之后搜索句末（body.slice 避免 lastIndex 歧义）
-  const afterLead = body.slice(lead);   // 从首非空白字符之后开始
-  cfg.stopRe.lastIndex = 0;
-  const sm = cfg.stopRe.exec(afterLead);
-  if (sm) stopAt = lead + sm.index;
-  // 保留：前导空白 + stopRe 边界前的内容（日期句等）
-  const beforeStop = body.slice(lead, stopAt);   // 原文要替换的区间
-  const afterStop = body.slice(stopAt);           // stopRe 之后（原样保留，如日期句）
-  // 替换区间内只要含 cfg.signs 任意一个星座 → 整段用 truth 硬换
-  const hasSign = cfg.signs.some(s => beforeStop.includes(s));
-  if (!hasSign) return body;                    // 无星座（已正确或格式异常）
-  const changed = beforeStop !== truth;
-  // V442-fix9: comma was eaten by stopRe -> put it back
-  // V442-fix11: period was eaten -> put it back too
-  let trailing = "";
-  if (afterStop.startsWith(", ")) { trailing = ", "; }
-  else if (afterStop.startsWith(". ")) { trailing = ". "; }
-  else if (afterStop.startsWith(".\n")) { trailing = ".\n"; }
-  console.log('[V438] _v438OverrideBody: replaced body.len=' + beforeStop.length + '→' + truth.length + ' changed=' + changed + (trailing ? ' [' + trailing + ']' : ''));
-  return body.slice(0, lead) + truth + trailing + afterStop.slice(trailing.length);
+  const signs = cfg.signs || [];
+  if (!signs.length) return body;
+  const signsPat = signs.map(_v444Esc).join('|');
+  // 🛠️ V452: 位置无关——识别过境序列 span，用真值序列硬重写。
+  //   只把由过境分隔符（→ / 、 / 逗号+空白）连接的连续星座 token 串成 run；
+  //   旧版按「句末 stopRe」截断：英文周段落常一整行无换行 → 整段散文被吞；
+  //   且副标题在过境句之前时 stopRe 落在副标题 → 整段跳过（W3 开头错星座漏网根因）。
+  //   日期句（"X日月亮进入Y座"）用「月亮进入」而非 →/、 连接 → 自动断开，留给 V435 锁处理。
+  const tokRe = new RegExp('(' + signsPat + ')[\\s]*[（(][^（）()]{0,40}[）)]', 'g');
+  const toks = [];
+  let mm;
+  tokRe.lastIndex = 0;
+  while ((mm = tokRe.exec(body)) !== null) {
+    if (mm[1]) toks.push({ i: mm.index, e: mm.index + mm[0].length });
+  }
+  if (toks.length < 2) return body;   // 月亮路径至少 2 段；不足视为无序列 → 不动
+  // 只把由过境分隔符（→ / 、 / 逗号+空白）连接的 token 串成 run；其余（日期句等）断开
+  const connectorRe = /^[\s→、,]+$/;
+  let best = null, run = [toks[0]];
+  for (let k = 1; k < toks.length; k++) {
+    const gap = body.slice(toks[k-1].e, toks[k].i);
+    if (connectorRe.test(gap)) run.push(toks[k]);
+    else { if (run.length > 1 && (!best || run.length > best.length)) best = run; run = [toks[k]]; }
+  }
+  if (run.length > 1 && (!best || run.length > best.length)) best = run;
+  if (!best) return body;
+  const runText = body.slice(best[0].i, best[best.length - 1].e);
+  if (runText === truth) return body;   // 幂等：已是真值序列 → 不动
+  const lead = body.slice(0, best[0].i);
+  const tail = body.slice(best[best.length - 1].e);
+  console.log('[V452] span replaced (' + best.length + ' legs): ' + runText + ' → ' + truth);
+  return lead + truth + tail;
 }
 
 
@@ -8040,7 +8157,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v354:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v355:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8622,7 +8739,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v354:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v355:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

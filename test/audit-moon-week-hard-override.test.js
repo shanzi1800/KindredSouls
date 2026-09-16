@@ -116,11 +116,11 @@ describe('V438 月亮周级轨迹硬覆盖', () => {
   test('⑨ en: 过境句与散文同段时，真值替换不得吞掉散文（V451 回归门）', () => {
     const enProse = [
       '✦[🟢 Week 1: Sep 1\u20137]',
-      'The transiting Moon passes through Aries (House 1) \u2192 Wrongsign (House 9\u2192House 10). The week opens with a focus on home, family and security; keep discretionary spending in check.',
+      'The transiting Moon passes through Aries (House 1) \u2192 Libra (House 9\u2192House 10). The week opens with a focus on home, family and security; keep discretionary spending in check.',
       'The second sentence must also survive untouched.',
     ].join('\n');
     const out = applyMoonWeekHardOverride(enProse, 'en', astroMatrix);
-    assert.ok(!/Wrongsign/.test(out), 'en 幻觉星座应被真值替换');
+    assert.ok(!/Libra/.test(out), 'en 幻觉星座(Libra)应被真值替换');
     assert.ok(/keep discretionary spending in check/.test(out), '【核心】同段散文必须保留（不得整段被吞）');
     assert.ok(/The second sentence must also survive/.test(out), '段内后续句必须保留');
     assert.ok(out.includes('\n') && out.split('\n').length >= 3, '未把整段熔成一行');
