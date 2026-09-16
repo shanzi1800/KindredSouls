@@ -326,11 +326,13 @@ const SacredYearlyReportBox: React.FC<{
     const ZSIGNS = '白羊|金牛|双子|巨蟹|狮子|处女|天秤|天蝎|射手|摩羯|水瓶|双鱼';
     const ZNUM = '([0-9]{1,2}|[一二三四五六七八九十]{1,2})';
     const buildHouseRe = (gap: string) => new RegExp('(' + ZSIGNS + ')座' + gap + '第?' + ZNUM + '宫(?:（[^）]*）|）)?', 'g');
-    const houseCalibrate = (match: string, sign: string, houseNum: string): string => {
-      const validHouses = dynamicHouseMap[sign];
-      if (validHouses && validHouses.includes(houseNum)) return match; // 动态命中真理，完美保留（如：木星在狮子座第2宫）
-      return sign + '座'; // 穿帮则熔断宫位，留纯星座名
-    };
+    // 🛠️ V450-fix: 「宫位熔断」永久停用（原为 V69/V70 遗留补丁）。
+    //   病根：该补丁靠「从正文正则猜上升星座」推导 validHouses，再据此删除它认为"穿帮"的宫位；
+    //   ① 猜错上升 → 把后端正确的宫位当穿帮删掉；
+    //   ② 月亮过境区间（X座（第9宫→第10宫））只含区间不含单一宫位 → 必判穿帮 → 只吃掉左半截，
+    //      残留孤零零的「X座→第10宫）」（实测 14/14 处全被破坏，用户可见穿帮）。
+    //   后端 V432–V449 已对宫位做真值锁（算法真值层），前端不再二次猜测/删改，一律原样渲染。
+    const houseCalibrate = (match: string, _sign: string, _houseNum: string): string => match;
     // 规则1：连续格式（X座第N宫）
     cleaned = cleaned.replace(buildHouseRe(''), houseCalibrate);
     // 规则2：间隔格式（X座...你的第N宫，AI 在流月中常用，V69单规则漏杀）
