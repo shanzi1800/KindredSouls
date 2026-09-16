@@ -112,4 +112,29 @@ describe('V438 月亮周级轨迹硬覆盖', () => {
     assert.ok(/Cancer \(House 1\), Leo/.test(out), 'EN 空格与真值正确');
     assert.ok(/Scorpio \(House 4\)/.test(out), 'EN W2 真值尾=Scorpio');
   });
+
+  test('⑨ en: 过境句与散文同段时，真值替换不得吞掉散文（V451 回归门）', () => {
+    const enProse = [
+      '✦[🟢 Week 1: Sep 1\u20137]',
+      'The transiting Moon passes through Aries (House 1) \u2192 Wrongsign (House 9\u2192House 10). The week opens with a focus on home, family and security; keep discretionary spending in check.',
+      'The second sentence must also survive untouched.',
+    ].join('\n');
+    const out = applyMoonWeekHardOverride(enProse, 'en', astroMatrix);
+    assert.ok(!/Wrongsign/.test(out), 'en 幻觉星座应被真值替换');
+    assert.ok(/keep discretionary spending in check/.test(out), '【核心】同段散文必须保留（不得整段被吞）');
+    assert.ok(/The second sentence must also survive/.test(out), '段内后续句必须保留');
+    assert.ok(out.includes('\n') && out.split('\n').length >= 3, '未把整段熔成一行');
+  });
+
+  test('⑩ 引导词：真值句必须带 cfg.intro，不得输出裸清单（V451）', () => {
+    const body = 'The Moon transits through Aries (House 1), Aries (House 99), Taurus (House 77).';
+    const enText = '✦[🟢 Week 1: Sep 1\u20137]\n' + body;
+    const enOut = applyMoonWeekHardOverride(enText, 'en', astroMatrix);
+    assert.ok(/The Moon transits through Aries \(House 9\u2192House 10\)/.test(enOut), 'en 真值句应带引导词且真值正确');
+    assert.ok(!/^\s*Aries \(House/m.test(enOut), 'en 不得输出裸清单开头');
+
+    const zhText = zhHalluc;
+    const zhOut = applyMoonWeekHardOverride(zhText, 'zh', astroMatrix);
+    assert.ok(/流月月亮依次行经/.test(zhOut), 'zh 真值句应带引导词「流月月亮依次行经」');
+  });
 });

@@ -5462,11 +5462,11 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v353:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v354:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
-    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v353:<date>:...' → 清了等于没清！
+    // 🛠️ V433-fix: 原模式 'wealth:<date>:*' 匹配不到真实键 'wealth:v354:<date>:...' → 清了等于没清！
     //   实测：GET /api/clear-cache/1988-12-31/es/monthly 返回 deleted:true/204，但随后生成仍是旧文本
     //   （命中旧缓存），导致整轮验证结论错误。改为 'wealth:*<date>*' 同时覆盖新旧两种键格式。
     const pat = 'wealth:*' + encodeURIComponent(birthDate) + '*';
@@ -5668,12 +5668,16 @@ function _v438WeekTruth(w, cfg) {
       if (last.houses[last.houses.length - 1] !== lg.house) last.houses.push(lg.house);
     } else groups.push({ sign: lg.sign, houses: [lg.house] });
   }
-  return groups.map(g => {
+  const _v438Body = groups.map(g => {
     const idx = _EN2ZIDX[g.sign];
     const loc = (idx != null && cfg.signs[idx]) ? cfg.signs[idx] : g.sign;
     const hs = g.houses.map(cfg.houseOut).join('→');
     return cfg.fmt(loc, hs);
   }).join(cfg.sep);
+  // 🛠️ V451-fix: 还原引导词（cfg.intro 原为死字段，从未被使用）——锁替换掉的是【整句】，
+  //   若不带引导词，周正文开头会变成一串裸清单（如 `Aries (House 11), Taurus (...)`），
+  //   用户会当成新穿帮。带上引导词即恢复规范句式（zh `流月月亮依次行经…` / en `The Moon transits through …`）。
+  return (cfg.intro || '') + _v438Body;
 }
 
 const _V438_CFG = {
@@ -5685,7 +5689,7 @@ const _V438_CFG = {
       const houses = parts.map(n => 'House ' + n.trim()).join('\u2192');
       return parts.length === 1 ? `${loc} (${houses})` : `${loc} (${houses})`;
     },  // V442-fix6: 单宫 'House 1'，多宫 'House 1→House 2'
-        intro: 'The Moon transits through ', stopRe: /\n/,   // V442-fix5
+        intro: 'The Moon transits through ', stopRe: /\.(?=\s|\n|$)/,   // 🛠️ V451-fix: 原为 /\n/（V442-fix5），段落通常一整行 → stopAt 落到段尾 → 整段正文（含散文）被真值句整段替掉（英文周散文灭绝）。改回句末边界：只替换过境首句，散文存活。
         headerRe: /Week\s+([1-4])[^\n]*/gi,
         sep: ', ',   // V442-fix10
   },   // en
@@ -8036,7 +8040,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v353:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v354:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8618,7 +8622,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v353:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v354:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
