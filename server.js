@@ -6013,40 +6013,75 @@ function _v445TruthHouses(astroMatrix) {
   return out;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// V460-fix5：连词式行星声明（"P1与P2同在S座"）真值拆分锁 —— 全语种通用
+// 根因：AI 常把两个流年行星写进同一星座（如「水星与金星同在天蝎座」），而两者真值常不同；
+//       单行星真值锁(reB)只能改相邻星座，连词簇会让其中一个行星永久错配。
+// 治本：识别「行星簇 + 动词 + 星座」结构，按各自真值拆成「P1在真值1、P2在真值2」。
+//   - 仅当簇断言的星座与≥1行星真值不符时才改写（真值全同/无星座断言→原句无误→不动）
+//   - 各语种连词/动词/宫位格式差异大，用 _SPLIT_CFG 表驱动
+// ═══════════════════════════════════════════════════════════════════
+const _SPLIT_CFG = {
+  zh: { pf: '(?:流年|流月)?', conn: '(?:与|和|、|及|以及)', sp: '',
+        verb: '(?:同|共|一同|皆|同时)?(?:在|位于|处于|驻|驻守|聚于|聚|落入|落在|落于|落|进入|行经|停留|守|临|照耀|降临)?',
+        houseRe: '第\\d+宫', join: '、',
+        part: (name, sign, house) => name + '在' + sign + (house ? '第' + house + '宫' : '') },
+  en: { pf: '(?:transit\\s+)?', conn: '\\s+(?:and|&|with|,)\\s+', sp: '',
+        verb: '\\s+(?:in|are in|is in|transit|transits|reside|resides|occupy|occupies|enter|enters|sit|sits|travel|travels)\\s*',
+        houseRe: 'House\\s*\\d+', join: ', ',
+        part: (name, sign, house) => name + ' in ' + sign + (house ? ' (House ' + house + ')' : '') },
+  es: { pf: '(?:transit\\s+)?', conn: '\\s+(?:y|e|,|con)\\s+', sp: '',
+        verb: '\\s+(?:en|están en|está en|transitan|transita|residen|reside)\\s*',
+        houseRe: 'Casa\\s*\\d+', join: ', ',
+        part: (name, sign, house) => name + ' en ' + sign + (house ? ' (Casa ' + house + ')' : '') },
+  fr: { pf: '(?:transit\\s+)?', conn: '\\s+(?:et|avec|,)\\s+', sp: '',
+        verb: '\\s+(?:en|sont en|est en|traverse|traversent|résident|réside)\\s*',
+        houseRe: 'Maison\\s*\\d+', join: ', ',
+        part: (name, sign, house) => name + ' en ' + sign + (house ? ' (Maison ' + house + ')' : '') },
+  th: { pf: '', thSuf: 'ทรานซิส', conn: '\\s*(?:และ|กับ)\\s*', sp: '(?:ราศี)?',
+        verb: '\\s*(?:ใน|อยู่ใน|เดินทางสู่)\\s*',
+        houseRe: 'บ้าน\\s*\\d+', join: ' และ ',
+        part: (name, sign, house) => name + 'ในราศี' + sign + (house ? ' (บ้าน ' + house + ')' : '') },
+  vi: { pf: '(?:transit\\s+)?', conn: '\\s+(?:và|với|,)\\s+', sp: '',
+        verb: '\\s+(?:trong|ở|tại|nằm|hành vận|đang)\\s*',
+        houseRe: 'Nhà\\s*\\d+', join: ', ',
+        part: (name, sign, house) => name + ' hành vận ' + sign + (house ? ' (Nhà ' + house + ')' : '') },
+};
+
 function splitConjoinedPlanetClaims(text, lang, astroMatrix) {
   if (!text || typeof text !== 'string') return text;
-  if (lang !== 'zh') return text;   // 先治中文（线上实测语种）；他语文案结构不同，待逐语种验证后再扩
+  const cfg = _SPLIT_CFG[lang];
+  if (!cfg) return text;
   const truth = _v445TruthSigns(lang, astroMatrix);
   if (!truth || !Object.keys(truth).length) return text;
   const names = _V445_PLANET_NAMES[lang] || {};
   const signs = _v444Signs(lang);
-  if (!signs) return text;
+  if (!signs || !Object.keys(names).length) return text;
   const kBy = {};
   _V445_PLANET_KEYS.forEach(k => { if (names[k]) kBy[names[k]] = k; });
-  const P = Object.keys(kBy).map(_v444Esc).join('|');
+  // 行星名（th 允许可选 ทรานซิส 后缀）
+  const P = Object.keys(kBy).map(n => _v444Esc(n) + (cfg.thSuf ? '(?:' + cfg.thSuf + ')?' : '')).join('|');
   if (!P) return text;
   const signsPat = signs.map(_v444Esc).join('|');
   const houses = _v445TruthHouses(astroMatrix);
-  // 🛠️ V460-fix5b: 连词家族扩全——实测 LLM 用词极散：
-  //   「与/和/、/及 相连」+「同/共/皆/同时」+「在/位于/驻/聚/落入/落在/行经/临/守…」
-  //   仅覆盖「同在」会让「同驻天蝎座」「水星与金星在天蝎座」「水星、流年金星同在…」全部漏网。
-  const PFX = '(?:流年|流月)?';
-  const CONN = '(?:与|和|、|及|以及)';
-  const VERB = '(?:同|共|一同|皆|同时)?(?:在|位于|处于|驻|驻守|聚于|聚|落入|落在|落于|落|进入|行经|停留|守|临|照耀|降临)?';
-  const re = new RegExp('(' + PFX + '(?:' + P + ')' + '(?:' + CONN + PFX + '(?:' + P + '))+)' + VERB + '(' + signsPat + ')(第\\d+宫)?', 'g');
-  const reN = new RegExp(PFX + '(' + P + ')', 'g');
+  const CLUSTER = '(' + cfg.pf + '(?:' + P + ')' + '(?:' + cfg.conn + cfg.pf + '(?:' + P + '))+)';
+  const _spPart = cfg.sp ? '(?:' + cfg.sp + ')?' : '';
+  const re = new RegExp(CLUSTER + '(?:' + cfg.verb + ')' + _spPart + '(' + signsPat + ')(?:\\s*\\(?(' + cfg.houseRe + ')\\)?)?', 'g');
+  const reN = new RegExp(cfg.pf + '(' + P + ')', 'g');
   return text.replace(re, (m, cluster, s, h) => {
     const ks = [];
-    let mm;
-    reN.lastIndex = 0;
-    while ((mm = reN.exec(cluster)) !== null) ks.push(kBy[mm[1]]);
+    let mm; reN.lastIndex = 0;
+    while ((mm = reN.exec(cluster)) !== null) {
+      const nm = mm[1].replace(cfg.thSuf || '', '');
+      if (kBy[nm]) ks.push(kBy[nm]);
+    }
     if (ks.length < 2) return m;
     const ts = ks.map(k => truth[k]);
     if (ts.some(t => !t)) return m;
     if (ts.every(t => t === ts[0])) return m;   // 真值全同 → 原句无误 → 不动
-    const lead = (cluster.match(new RegExp('^' + PFX)) || [''])[0] || '';
-    const out = ks.map((k, i) => lead + names[k] + '在' + ts[i] + (houses[k] ? '第' + houses[k] + '宫' : '')).join('、');
-    console.log('[V460-fix5] 连词行星拆分: ' + m + ' → ' + out);
+    const lead = (cluster.match(new RegExp('^' + cfg.pf)) || [''])[0] || '';
+    const out = ks.map((k) => lead + cfg.part(names[k], truth[k], houses ? houses[k] : null)).join(cfg.join);
+    console.log('[V460-fix5] 连词行星拆分(' + lang + '): ' + m + ' → ' + out);
     return out;
   });
 }

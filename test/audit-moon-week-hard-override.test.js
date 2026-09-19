@@ -220,3 +220,53 @@ describe('V460-fix4：月亮轨迹括号外换宫脏尾归一', () => {
     assert.strictEqual(fixMoonHouseParens(fixMoonHouseParens('狮子座（第8宫）→第9宫）')), '狮子座（第8宫→第9宫）', '非幂等');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// V460-fix5 回归门：连词式行星声明真值拆分（全语种）
+//   线上实测：vi「Sao Thủy và Sao Kim hành vận Bọ Cạp」把水星错写成天蝎（水星真值天秤），
+//   连词簇让单行星真值锁失效；按各自真值拆成「P1在真值1、P2在真值2」。
+// ═══════════════════════════════════════════════════════════════════
+const _SPLIT_START = SRC.indexOf('const _SPLIT_CFG = {');
+if (_SPLIT_START < 0) throw new Error('extract _SPLIT_CFG fail');
+const _SPLIT_END = SRC.indexOf('function lockTransitPlanetSigns', _SPLIT_START);
+if (_SPLIT_END < 0) throw new Error('extract split end fail');
+const _SPLIT_SRC = SRC.slice(_SPLIT_START, _SPLIT_END);
+const _SPLIT_DEPS = `
+const SUN_SIGN_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+function _v444Signs(lang){return ({zh:['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],en:['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],es:['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'],fr:['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'],th:['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'],vi:['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư']})[lang];}
+const _V445_PLANET_NAMES = {en:{mercury:'Mercury',venus:'Venus',mars:'Mars',jupiter:'Jupiter',saturn:'Saturn',uranus:'Uranus',neptune:'Neptune',pluto:'Pluto'},es:{mercury:'Mercurio',venus:'Venus',mars:'Marte',jupiter:'Júpiter',saturn:'Saturno',uranus:'Urano',neptune:'Neptuno',pluto:'Plutón'},fr:{mercury:'Mercure',venus:'Vénus',mars:'Mars',jupiter:'Jupiter',saturn:'Saturne',uranus:'Uranus',neptune:'Neptune',pluto:'Pluton'},th:{mercury:'ดาวพุธ',venus:'ดาวศุกร์',mars:'ดาวอังคาร',jupiter:'ดาวพฤหัสบดี',saturn:'ดาวเสาร์',uranus:'ดาวยูเรนัส',neptune:'ดาวเนปจูน',pluto:'ดาวพลูโต'},vi:{mercury:'Sao Thủy',venus:'Sao Kim',mars:'Sao Hỏa',jupiter:'Sao Mộc',saturn:'Sao Thổ',uranus:'Sao Thiên Vương',neptune:'Sao Hải Vương',pluto:'Sao Diêm Vương'},zh:{mercury:'水星',venus:'金星',mars:'火星',jupiter:'木星',saturn:'土星',uranus:'天王星',neptune:'海王星',pluto:'冥王星'}};
+const _V445_PLANET_KEYS = ['mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+const _v444Esc = (s) => s;
+function _v445TruthSigns(lang, m){const m0=m&&m.months&&m.months[0];const out={};for(const k of _V445_PLANET_KEYS){const p=m0&&m0[k];if(p&&p.sign){const idx=SUN_SIGN_EN.indexOf(p.sign);if(idx>=0)out[k]=_v444Signs(lang)[idx];}}return out;}
+function _v445TruthHouses(m){const m0=m&&m.months&&m.months[0];const out={};for(const k of _V445_PLANET_KEYS){const p=m0&&m0[k];if(p&&p.sign&&p.house)out[k]=p.house;}return out;}
+`;
+const splitConjoinedPlanetClaims = new Function(_SPLIT_DEPS + _SPLIT_SRC + '\nreturn splitConjoinedPlanetClaims;')();
+const _SPLIT_M = { months: [ { mercury:{sign:'Libra',house:11}, venus:{sign:'Scorpio',house:11}, mars:{sign:'Cancer',house:8}, jupiter:{sign:'Leo',house:9}, saturn:{sign:'Aries',house:5}, uranus:{sign:'Cancer',house:8}, neptune:{sign:'Aries',house:4}, pluto:{sign:'Aquarius',house:3} } ] };
+
+describe('V460-fix5：连词式行星声明真值拆分（全语种）', () => {
+  test('⑱ zh 连词拆解：水星与金星同在天蝎座 → 水星天秤 / 金星天蝎', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('流年水星与流年金星同在天蝎座第11宫', 'zh', _SPLIT_M), '流年水星在天秤座第11宫、流年金星在天蝎座第11宫');
+  });
+  test('⑲ vi 连词拆解（线上实测 bug 复现）', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('Sao Thủy và Sao Kim hành vận Bọ Cạp', 'vi', _SPLIT_M), 'Sao Thủy hành vận Thiên Bình (Nhà 11), Sao Kim hành vận Bọ Cạp (Nhà 11)');
+  });
+  test('⑳ en 连词拆解', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('Mercury and Venus in Libra', 'en', _SPLIT_M), 'Mercury in Libra (House 11), Venus in Scorpio (House 11)');
+  });
+  test('㉑ es 连词拆解', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('Mercurio y Venus en Escorpio', 'es', _SPLIT_M), 'Mercurio en Libra (Casa 11), Venus en Escorpio (Casa 11)');
+  });
+  test('㉒ fr 连词拆解', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('Mercure et Vénus en Scorpion', 'fr', _SPLIT_M), 'Mercure en Balance (Maison 11), Vénus en Scorpion (Maison 11)');
+  });
+  test('㉓ th 连词拆解（含ทรานซิส后缀）', () => {
+    assert.strictEqual(splitConjoinedPlanetClaims('ดาวพุธและดาวศุกร์ทรานซิสในราศีพิจิก', 'th', _SPLIT_M), 'ดาวพุธในราศีตุลย์ (บ้าน 11) และ ดาวศุกร์ในราศีพิจิก (บ้าน 11)');
+  });
+  test('㉔ 真值全同/已正确句零改动 + 幂等', () => {
+    const ok1 = 'Sao Thủy hành vận Thiên Bình (Nhà 11), Sao Kim hành vận Bọ Cạp (Nhà 11)';
+    assert.strictEqual(splitConjoinedPlanetClaims(ok1, 'vi', _SPLIT_M), ok1, '已正确句被误伤');
+    const single = '流年水星在天秤座第11宫与流年金星共振';
+    assert.strictEqual(splitConjoinedPlanetClaims(single, 'zh', _SPLIT_M), single, '单行星句被误伤');
+    assert.strictEqual(splitConjoinedPlanetClaims(splitConjoinedPlanetClaims(ok1, 'vi', _SPLIT_M), 'vi', _SPLIT_M), ok1, '非幂等');
+  });
+});
