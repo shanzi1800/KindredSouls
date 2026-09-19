@@ -5683,8 +5683,12 @@ function _v438WeekTruth(w, cfg, spanOnly) {
     const exitHouse = (si === 0 && changes.length > 0)
       ? changes[0].to_house
       : (prevChange ? prevChange.from_house : lg.house);
+    // 🛠️ V460-fix1: 同 sign 延续组必须累积【每个 leg 的入口宫 entryHouse】。
+    //   旧版 push 的是 exitHouse(=prevChange.from_house=上一腿的入口宫)，导致组内中间宫位整段丢失：
+    //   1990-08-08 LA W1 金牛组 legs=[TaurusH5,TaurusH6,TaurusH7] 只产出「第5宫→第6宫」，
+    //   真值应为「第5宫→第6宫→第7宫」→ 真值本身被截断，锁写进去的就是残缺序列。
     if (last && last.sign === lg.sign) {
-      if (last.houses[last.houses.length - 1] !== exitHouse) last.houses.push(exitHouse);
+      if (last.houses[last.houses.length - 1] !== entryHouse) last.houses.push(entryHouse);
     } else {
       groups.push({ sign: lg.sign, houses: [entryHouse] });
     }
@@ -6041,10 +6045,15 @@ function _v438OverrideBody(body, cfg, truth) {
   // 越南变音符号 Unicode 范围（确保 tokRe 在它们之前停止，而非贪吃到括号内）
   const VI_DIAC = '\\u01B0\\u01A1\\u1EA0-\\u1EF9';
   const FULLW = '（）'; // zh/th 全角括号
+  // 🛠️ V460-fix2: AI 经常把多宫腿写成「金牛座（第5宫）→第6宫→第7宫）」（换宫写在括号外），
+  //   旧 tokRe 只吃到「（第5宫）」就停 → run 断裂成 2 腿 → 只替换子串、后续残留原封不动
+  //   → 产出「…狮子座（第8宫）→第6宫→第7宫）、双子座（第7宫）→第8宫）…」这类脏串（用户实测就是这版）。
+  //   让 token 继续吞掉紧随其后的「→ <宫位> [)]」尾巴，使整条腿合成一个 token，run 才完整。
+  const HOUSE_TAIL = '(?:\\s*(?:→|->)\\s*(?:(?:第\\s*)?\\d{1,2}\\s*宫|House\\s*\\d{1,2}|Casa\\s*\\d{1,2}|Maison\\s*\\d{1,2}|บ้าน\\s*\\d{1,2}|Nhà\\s*\\d{1,2})[)）]?)*';
   // 排除相反方向括号：开( 配对时排除 )/），关( 配对时排除 （/（
   // zh 星座后无空格：白羊座（第9宫）→ [^\s]* 吞0空格；en 有空格：Aries (House...) → [^\s]* 吞字母剩余量
   // 开括号: ASCII ( 或全角 （; 闭括号: ASCII ) 或全角 ）; body: 排除闭括号和越南变音
-  const tokRe = new RegExp('(' + signsPat + ')' + greedy + '\\s*[(（]([^' + FULLW + ')' + FULLW + VI_DIAC + ']{0,40})[\\)' + FULLW + ']', 'g');
+  const tokRe = new RegExp('(' + signsPat + ')' + greedy + '\\s*[(（]([^' + FULLW + ')' + FULLW + VI_DIAC + ']{0,40})[\\)' + FULLW + ']' + HOUSE_TAIL, 'g');
   const toks = [];
   let mm;
   tokRe.lastIndex = 0;
