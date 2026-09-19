@@ -6027,16 +6027,27 @@ function splitConjoinedPlanetClaims(text, lang, astroMatrix) {
   if (!P) return text;
   const signsPat = signs.map(_v444Esc).join('|');
   const houses = _v445TruthHouses(astroMatrix);
-  const re = new RegExp('(流年|流月)?(' + P + ')(与|和)(流年|流月)?(' + P + ')同(?:在|位于)?(' + signsPat + ')(第\\d+宫)?', 'g');
-  return text.replace(re, (m, a, p1, cc, b, p2, s, h) => {
-    const k1 = kBy[p1], k2 = kBy[p2];
-    if (!k1 || !k2) return m;
-    const t1 = truth[k1], t2 = truth[k2];
-    if (!t1 || !t2 || t1 === t2) return m;   // 真值相同 → 原句无误 → 不动
-    const h1 = houses[k1] ? '第' + houses[k1] + '宫' : '';
-    const h2 = houses[k2] ? '第' + houses[k2] + '宫' : (h || '');
-    console.log('[V460-fix5] 连词行星拆分: ' + m + ' → ' + (a || '') + p1 + '在' + t1 + h1 + '、' + (b || '') + p2 + '在' + t2 + h2);
-    return (a || '') + p1 + '在' + t1 + h1 + '、' + (b || '') + p2 + '在' + t2 + h2;
+  // 🛠️ V460-fix5b: 连词家族扩全——实测 LLM 用词极散：
+  //   「与/和/、/及 相连」+「同/共/皆/同时」+「在/位于/驻/聚/落入/落在/行经/临/守…」
+  //   仅覆盖「同在」会让「同驻天蝎座」「水星与金星在天蝎座」「水星、流年金星同在…」全部漏网。
+  const PFX = '(?:流年|流月)?';
+  const CONN = '(?:与|和|、|及|以及)';
+  const VERB = '(?:同|共|一同|皆|同时)?(?:在|位于|处于|驻|驻守|聚于|聚|落入|落在|落于|落|进入|行经|停留|守|临|照耀|降临)?';
+  const re = new RegExp('(' + PFX + '(?:' + P + ')' + '(?:' + CONN + PFX + '(?:' + P + '))+)' + VERB + '(' + signsPat + ')(第\\d+宫)?', 'g');
+  const reN = new RegExp(PFX + '(' + P + ')', 'g');
+  return text.replace(re, (m, cluster, s, h) => {
+    const ks = [];
+    let mm;
+    reN.lastIndex = 0;
+    while ((mm = reN.exec(cluster)) !== null) ks.push(kBy[mm[1]]);
+    if (ks.length < 2) return m;
+    const ts = ks.map(k => truth[k]);
+    if (ts.some(t => !t)) return m;
+    if (ts.every(t => t === ts[0])) return m;   // 真值全同 → 原句无误 → 不动
+    const lead = (cluster.match(new RegExp('^' + PFX)) || [''])[0] || '';
+    const out = ks.map((k, i) => lead + names[k] + '在' + ts[i] + (houses[k] ? '第' + houses[k] + '宫' : '')).join('、');
+    console.log('[V460-fix5] 连词行星拆分: ' + m + ' → ' + out);
+    return out;
   });
 }
 
@@ -8468,6 +8479,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix);   // 🛡️ V444
         reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
+        // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
+        //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
+        if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
         // 🛠️ V456: 非流式 MISS 路径补 fixMonthlySectionTitles（V446-trap 陷阱标题归一 + 周标题铁律）
         //   根因：此前此端点漏调 → 陷阱段标题 LLM 漂移未被修复（实锤 "⚠️ Spending Trap：s: Sep 2026] ✦"）。
         //   流式路径(9648 行)与 HIT 路径(1024 行)均已调用，唯独 /api/wealth-oracle 非流式 MISS 路径漏 → 补齐对称。

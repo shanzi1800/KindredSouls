@@ -68,6 +68,23 @@ describe('V460-fix5：连词式行星真值漏网修复', () => {
     assert.strictEqual(F.splitConjoinedPlanetClaims(s, 'zh', SAME), s);
   });
 
+  test('⑦ 连词家族扩全：同驻 / 、相连 / 无「同」直接「在」', () => {
+    assert.strictEqual(
+      F.splitConjoinedPlanetClaims('流年水星与金星同驻天蝎座第11宫', 'zh', M),
+      '流年水星在天秤座第11宫、流年金星在天蝎座第11宫');
+    assert.strictEqual(
+      F.splitConjoinedPlanetClaims('水星与金星在天蝎座', 'zh', M),
+      '水星在天秤座第11宫、金星在天蝎座第11宫');
+    assert.strictEqual(
+      F.splitConjoinedPlanetClaims('水星、流年金星同在天秤座', 'zh', M),
+      '水星在天秤座第11宫、金星在天蝎座第11宫');
+  });
+
+  test('⑧ 已各自独立的并列声明不得误拆', () => {
+    const s = '水星在天秤座第11宫、流年金星在天蝎座第11宫';
+    assert.strictEqual(F.splitConjoinedPlanetClaims(s, 'zh', M), s);
+  });
+
   test('⑥ 幂等 + 无真值盘/他语种零改动', () => {
     const s = '流年金星与流年水星同在天秤座第11宫';
     const once = F.splitConjoinedPlanetClaims(s, 'zh', M);
