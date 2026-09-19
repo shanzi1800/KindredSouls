@@ -5964,14 +5964,17 @@ function lockNatalAnchorRole(text, lang, astroMatrix) {
 //   与同报告正文自相矛盾。本锁扫描"星座(的)行星"与"行星(在)星座"搭配，
 //   与 astroMatrix.months[0] 真值对撞，错则归位。不锁太阳(V444 已管本命太阳)。
 // ══════════════════════════════════════════════════════════════════
-const _V445_PLANET_KEYS = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'];
+// 🛠️ V457: 扩展覆盖全部 10 行星（原仅内行星 mercury/venus/mars/jupiter/saturn，
+//   外行星 uranus/neptune/pluto 漏网 → Trap 段若写错外行星 sign 完全不被锁。
+//   治未病：当前盘 natal≈transit（Neptune 慢）恰好不暴露，但换盘即炸。
+const _V445_PLANET_KEYS = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
 const _V445_PLANET_NAMES = {
-  zh: { mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' },
-  en: { mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn' },
-  fr: { mercury: 'Mercure', venus: 'Vénus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturne' },
-  es: { mercury: 'Mercurio', venus: 'Venus', mars: 'Marte', jupiter: 'Júpiter', saturn: 'Saturno' },
-  th: { mercury: 'ดวงพุธ', venus: 'ดวงศุกร์', mars: 'ดวงอังคาร', jupiter: 'ดวงพฤหัสบดี', saturn: 'ดวงเสาร์' },
-  vi: { mercury: 'Sao Thủy', venus: 'Sao Kim', mars: 'Sao Hỏa', jupiter: 'Sao Mộc', saturn: 'Sao Thổ' },
+  zh: { mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星', uranus: '天王星', neptune: '海王星', pluto: '冥王星' },
+  en: { mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto' },
+  fr: { mercury: 'Mercure', venus: 'Vénus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturne', uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluton' },
+  es: { mercury: 'Mercurio', venus: 'Venus', mars: 'Marte', jupiter: 'Júpiter', saturn: 'Saturno', uranus: 'Urano', neptune: 'Neptuno', pluto: 'Plutón' },
+  th: { mercury: 'ดวงพุธ', venus: 'ดวงศุกร์', mars: 'ดวงอังคาร', jupiter: 'ดวงพฤหัสบดี', saturn: 'ดวงเสาร์', uranus: 'ดาวยูเรนัส', neptune: 'ดาวเนปจูน', pluto: 'ดาวพลูโต' },
+  vi: { mercury: 'Sao Thủy', venus: 'Sao Kim', mars: 'Sao Hỏa', jupiter: 'Sao Mộc', saturn: 'Sao Thổ', uranus: 'Sao Thiên Vương', neptune: 'Sao Hải Vương', pluto: 'Sao Diêm Vương' },
 };
 
 function _v445TruthSigns(lang, astroMatrix) {
@@ -6007,7 +6010,9 @@ function lockTransitPlanetSigns(text, lang, astroMatrix) {
     if (lang === 'zh') {
       const reA = new RegExp(String.raw`(${signsPat})${suf}?的(?:流年|流月)?${planet}`, 'g');
       out = out.replace(reA, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
-      const reB = new RegExp(String.raw`(?:流年|流月)?${planet}(?:在|位于|落入|行经)?(${signsPat})${suf}`, 'g');
+      // 🛠️ V457-fix: 原 reB 为 (${signsPat})${suf}，zh 的 signsPat 已含「座」（白羊座），再拼 suf=座 → 要求「白羊座座」双座，永远匹配不上
+      //   导致中文「海王星在白羊座」写法完全锁不住（reA 仅覆盖「白羊座的海王星」写法）。去掉 suf（signsPat 已是完整星座名）。
+      const reB = new RegExp(String.raw`(?:流年|流月)?${planet}(?:在|位于|落入|行经)?(${signsPat})`, 'g');
       out = out.replace(reB, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
     } else {
       const inWord = lang === 'en' ? '(?:\\s+in|\\s+is\\s+in|\\s+enters)?\\s+'
