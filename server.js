@@ -6079,20 +6079,20 @@ function _v438OverrideBody(body, cfg, truth) {
 const SECTION_PLACEHOLDERS = {
   zh: { theme: '【占位符-系统注入】本月命运主题（请刷新重试，AI 未生成此节）', trap: '【占位符-系统注入】消费陷阱（请刷新重试，AI 未生成此节）' },
   en: { theme: '【System-Injected】Monthly Destiny Theme (please refresh, AI did not generate this section)', trap: '【System-Injected】Spending Traps (please refresh, AI did not generate this section)' },
-  es: { theme: '【Inyección del Sistema】Tema de Destino Mensual (actualice para reintentar, la IA no generó esta sección)', trap: '【Inyección del Sistema】Trampas de Gasto (actualice para reintentar, la IA no generó esta sección)' },
+  es: { theme: '【Inyección del Sistema】Tema de Destino Mensual (actualice para reintentar, la IA no generó esta sección)', trap: '【Inyección del Sistema】Trampas Financieras (actualice para reintentar, la IA no generó esta sección)' },
   fr: { theme: '【Injection Système】Thème de Destin du Mois (veuillez actualiser, l\'IA n\'a pas généré cette section)', trap: '【Injection Système】Pièges Financiers (veuillez actualiser, l\'IA n\'a pas généré cette section)' },
-  th: { theme: '【ระบบป้ายแทรก】ธีมโชคชะตาประจำเดือน (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)', trap: '【ระบบป้ายแทรก】กับดักการใช้จ่าย (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)' },
-  vi: { theme: '【Hệ Thống Chèn】Chủ Đề Vận Mệnh Tháng (vui lòng làm mới, AI chưa tạo phần này)', trap: '【Hệ Thống Chèn】Bẫy Chi Tiêu (vui lòng làm mới, AI chưa tạo phần này)' }
+  th: { theme: '【ระบบป้ายแทรก】ธีมโชคชะตาประจำเดือน (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)', trap: '【ระบบป้ายแทรก】กับดักทางการเงิน (กรุณารีเฟรช AI ไม่ได้สร้างส่วนนี้)' },
+  vi: { theme: '【Hệ Thống Chèn】Chủ Đề Vận Mệnh Tháng (vui lòng làm mới, AI chưa tạo phần này)', trap: '【Hệ Thống Chèn】Cạm bẫy Tài chính (vui lòng làm mới, AI chưa tạo phần này)' }
 };
 
 // 🛠️ 章节标题（展示层）按 lang 翻译——UI 视图层 100% 遵循 lang，绝不对用户展示未翻译中文
 const SECTION_HEADERS = {
   zh: { theme: '本月命运主题', trap: '消费陷阱：' },
   en: { theme: 'Monthly Destiny Theme', trap: 'Spending Traps: ' },
-  es: { theme: 'Tema de Destino Mensual', trap: 'Trampas de Gasto: ' },
+  es: { theme: 'Tema de Destino Mensual', trap: 'Trampas Financieras: ' },
   fr: { theme: 'Thème de Destin du Mois', trap: 'Pièges Financiers: ' },
-  th: { theme: 'ธีมโชคชะตาประจำเดือน', trap: 'กับดักการใช้จ่าย: ' },
-  vi: { theme: 'Chủ Đề Vận Mệnh Tháng', trap: 'Bẫy Chi Tiêu: ' }
+  th: { theme: 'ธีมโชคชะตาประจำเดือน', trap: 'กับดักทางการเงิน: ' },
+  vi: { theme: 'Chủ Đề Vận Mệnh Tháng', trap: 'Cạm bẫy Tài chính: ' }
 };
 
 const MONTH_NAMES = {
@@ -6283,7 +6283,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       week2:       `✦ [Semana 2: {MONTH} 8–14] Cortocircuito de Alto Riesgo`,
       week3:       `✦ [Semana 3: {MONTH} 15–22] Integración Estratégica`,
       week4:       `✦ [Semana 4: {MONTH} 23–${lastDayOfMonth}] Explosión de Riqueza`,
-      trap:        `✦ [⚠️ Trampas de Gasto: {MONTH} ${currentYear}] ✦`,
+      trap:        `✦ [⚠️ Trampas Financieras: {MONTH} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
     },
@@ -6303,7 +6303,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       week2:       `✦ [สัปดาห์ที่ 2: {MONTH} 8–14] วงจรความเสี่ยงสูง`,
       week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–22] การบูรณาการเชิงกลยุทธ์`,
       week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
-      trap:        `✦ [⚠️ กับดักการใช้จ่าย: {MONTH} ${currentYear}] ✦`,
+      trap:        `✦ [⚠️ กับดักทางการเงิน: {MONTH} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
@@ -6313,7 +6313,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       week2:       `✦ [Tuần 2: {MONTH} 8–14] Mạch Ngắn Rủi ro Cao`,
       week3:       `✦ [Tuần 3: {MONTH} 15–22] Tích hợp Chiến lược`,
       week4:       `✦ [Tuần 4: {MONTH} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
-      trap:        `✦ [⚠️ Bẫy Chi Tiêu: {MONTH} ${currentYear}] ✦`,
+      trap:        `✦ [⚠️ Cạm bẫy Tài chính: {MONTH} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
     },

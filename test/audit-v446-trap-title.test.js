@@ -112,3 +112,23 @@ describe('V446-trap2：标题前空行保留 + cleanMonthlyBrackets 幂等', () 
     assert.ok(!out.includes('结束。✦'), '并段: ' + JSON.stringify(out));
   });
 });
+
+// ═══ V458：es/th/vi trap 标题词统一（对齐 _TRAP_TITLE 权威规范）═══
+describe('V458：es/th/vi trap 标题词统一', () => {
+  const cases = [
+    ['es', '[⚠️ Trampas de Gasto: Septiembre 2026]', 'Trampas Financieras'],
+    ['th', '[⚠️ กับดักการใช้จ่าย: กันยายน 2026]', 'กับดักทางการเงิน'],
+    ['vi', '[⚠️ Bẫy Chi Tiêu: Tháng 9, 2026]', 'Cạm bẫy Tài chính'],
+  ];
+  for (const [lang, input, expect] of cases) {
+    test(`① ${lang} 畸形 trap 标题 → 归一到规范词 ${expect}`, () => {
+      const out = fixMonthlySectionTitles(input, true, lang);
+      assert.ok(out.includes('✦ [⚠️ ' + expect + ':'), `${lang} 未归一到 ${expect}: ${out}`);
+      assert.ok(out.endsWith('] ✦'), `${lang} 尾部不规范: ${out}`);
+    });
+    test(`② ${lang} 幂等：规范串复跑不变`, () => {
+      const norm = fixMonthlySectionTitles(input, true, lang);
+      assert.strictEqual(fixMonthlySectionTitles(norm, true, lang), norm);
+    });
+  }
+});
