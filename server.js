@@ -9651,6 +9651,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           .replace(/\[Sombra Financiera[^\]]*\]\s*\[Sombra Financiera[^\]]*\]/g, '✦\n[⚠️ Sombra Financiera]')
           .replace(/(?<!✦\n)(\[⚠️\s*Sombra[^\]]*\])/g, '✦\n$1');
       }
+      // 🛡️ V459: applyMoonWeekHardOverride 必须先于 house_linter/fixMonthlySectionTitles 跑！
+      //   根因: 流式路径原本 house_linter → fixMonthlySectionTitles 在前，applyMoonWeekHardOverride(V438) 在后；
+      //   这俩清洗会把月亮 Trail 文本（星座+括号宫位+→分隔）改坏，导致 V438 的 tokRe 失配、整段替换失效，
+      //   流式月报 W2/W3/W4 出现白羊座幻觉循环（非流式路径无 house_linter 且 V438 在最后，故一直正常）。
+      //   提序后 V438 拿到原始 Trail（与非流式一致），替换成功；house_linter/fixMonthlySectionTitles 后续跑且不碰 Trail，安全。
+      cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438 (FIRST)
       cleanedText = house_linter(cleanedText, astroMatrix);
       // 🛠️ V256-fix: 月报全量 Overview/陷阱 注入——根因: 原 fixMonthlySectionTitles(true) 误置于 yearly else 分支,
       //   if(reportType==='monthly') 在 yearly 分支内永假→从不执行; 流式逐chunk flush 处 injectPlaceholders=false 须保留(防半截分片斩首单词),
@@ -9658,7 +9664,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
       cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
       cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
-      cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
