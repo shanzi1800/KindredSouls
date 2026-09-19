@@ -8399,6 +8399,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix);   // 🛡️ V444
         reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
+        // 🛠️ V456: 非流式 MISS 路径补 fixMonthlySectionTitles（V446-trap 陷阱标题归一 + 周标题铁律）
+        //   根因：此前此端点漏调 → 陷阱段标题 LLM 漂移未被修复（实锤 "⚠️ Spending Trap：s: Sep 2026] ✦"）。
+        //   流式路径(9648 行)与 HIT 路径(1024 行)均已调用，唯独 /api/wealth-oracle 非流式 MISS 路径漏 → 补齐对称。
+        //   幂等：规范串复跑不变；只动标题不动正文，置于真值锁之后安全。
+        if (reportType === 'monthly') reportContent = fixMonthlySectionTitles(reportContent, true, lang);
 
         // 🛠️ V394-fix8: 非stream端点MISS路径补齐vi清洗兜底(与stream端点6786对齐)——
         //   fixVietnameseCorruption 此前仅stream挂,导致前端free_access fallback到/api/wealth-oracle时vi吞字(bạnè/trongương)残留
