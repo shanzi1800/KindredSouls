@@ -6031,6 +6031,17 @@ function lockTransitPlanetSigns(text, lang, astroMatrix) {
   return out;
 }
 
+// 🛠️ V460-fix4: 月亮轨迹「换宫写在括号外」残渣归一。
+//   现象（线上实测）：AI 正文散文里把「狮子座（第8宫→第9宫）」写成「狮子座（第8宫）→第9宫）」，
+//   留下悬空的「）→第N宫）」脏尾（月报正文可见穿帮，非规范轨迹句，V438 锁不到）。
+//   规范轨迹句不含「宫）→第」模式，故本函数对 V438 产物零影响（幂等、不误伤）。
+function fixMoonHouseParens(text) {
+  if (!text) return text;
+  return text
+    .replace(/（第(\d+)宫）\s*→\s*(第\d+宫(?:→第\d+宫)*)）?/g, '（第$1宫→$2）')
+    .replace(/第(\d+)宫→第\1宫/g, '第$1宫');   // 自环「第5宫→第5宫」必为漂移残渣，收敛为单宫
+}
+
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
   const signs = cfg.signs || [];
@@ -9816,6 +9827,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //   （线上 sanitized 实测 W2-W4 变成「狮子座（第9宫）、白羊座（第5宫→第10宫）…」）。
     //   在落库前最后一道再跑一次（已验证幂等），确保最终 sanitized / 缓存落库的都是真值序列。
     cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438-final
+    if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {

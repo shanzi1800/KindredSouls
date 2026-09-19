@@ -191,3 +191,32 @@ describe('V460：月亮周真值链完整性 + 换宫外置括号治净', () => 
     assert.strictEqual(applyMoonWeekHardOverride(o1, 'zh', M), o1, '非幂等');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// V460-fix4 回归门：散文句「换宫写在括号外」脏尾归一
+//   线上实测残渣：正文散文把「狮子座（第8宫→第9宫）」写成「狮子座（第8宫）→第9宫）」，
+//   留下悬空的「）→第N宫）」（月报正文可见穿帮）。V438 只锁规范轨迹句，此处兜底。
+// ═══════════════════════════════════════════════════════════════════
+const _f4m = SRC.match(/function fixMoonHouseParens[\s\S]*?\n}/);
+if (!_f4m) throw new Error('extract fixMoonHouseParens fail');
+const fixMoonHouseParens = new Function(_f4m[0] + '\nreturn fixMoonHouseParens;')();
+
+describe('V460-fix4：月亮轨迹括号外换宫脏尾归一', () => {
+  test('⑭ 脏尾「（第8宫）→第9宫）」归一到「（第8宫→第9宫）」', () => {
+    assert.strictEqual(fixMoonHouseParens('狮子座（第8宫）→第9宫），适合处理'), '狮子座（第8宫→第9宫），适合处理');
+  });
+
+  test('⑮ 缺闭括号自动补齐', () => {
+    assert.strictEqual(fixMoonHouseParens('白羊座（第5宫）→第12宫后'), '白羊座（第5宫→第12宫）后');
+  });
+
+  test('⑯ 自环「第N宫→第N宫」收敛为单宫', () => {
+    assert.strictEqual(fixMoonHouseParens('白羊座（第5宫→第5宫）'), '白羊座（第5宫）');
+  });
+
+  test('⑰ 规范轨迹句零改动 + 幂等', () => {
+    const clean = '流月月亮依次行经金牛座（第5宫→第6宫→第7宫）。';
+    assert.strictEqual(fixMoonHouseParens(clean), clean, '规范轨迹句被误伤');
+    assert.strictEqual(fixMoonHouseParens(fixMoonHouseParens('狮子座（第8宫）→第9宫）')), '狮子座（第8宫→第9宫）', '非幂等');
+  });
+});
