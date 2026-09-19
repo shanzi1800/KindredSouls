@@ -5997,6 +5997,49 @@ function _v445TruthSigns(lang, astroMatrix) {
   return out;
 }
 
+// 🛠️ V460-fix5: 连词式行星真值漏网修复（中文实测）。
+//   现象：「流年金星与流年水星同在天秤座第11宫」——真值金星在天蝎座，但「P1与P2同在S座」
+//   连词句式让 lockTransitPlanetSigns 的 reB（要求「金星(在)S座」紧邻）匹配不上 → 金星错误星座漏网。
+//   策略：命中 P1与/和 P2同(在)S座[第N宫] 且真值(P1)≠真值(P2) 时，拆成两段各自真值的独立从句。
+//   宫位取 months[0][k].house 真值；拿不到就省略该宫位（绝不臆造）。
+function _v445TruthHouses(astroMatrix) {
+  const m0 = astroMatrix && astroMatrix.months && astroMatrix.months[0];
+  if (!m0) return {};
+  const out = {};
+  for (const k of _V445_PLANET_KEYS) {
+    const p = m0[k];
+    if (p && p.sign && p.house) out[k] = p.house;
+  }
+  return out;
+}
+
+function splitConjoinedPlanetClaims(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return text;
+  if (lang !== 'zh') return text;   // 先治中文（线上实测语种）；他语文案结构不同，待逐语种验证后再扩
+  const truth = _v445TruthSigns(lang, astroMatrix);
+  if (!truth || !Object.keys(truth).length) return text;
+  const names = _V445_PLANET_NAMES[lang] || {};
+  const signs = _v444Signs(lang);
+  if (!signs) return text;
+  const kBy = {};
+  _V445_PLANET_KEYS.forEach(k => { if (names[k]) kBy[names[k]] = k; });
+  const P = Object.keys(kBy).map(_v444Esc).join('|');
+  if (!P) return text;
+  const signsPat = signs.map(_v444Esc).join('|');
+  const houses = _v445TruthHouses(astroMatrix);
+  const re = new RegExp('(流年|流月)?(' + P + ')(与|和)(流年|流月)?(' + P + ')同(?:在|位于)?(' + signsPat + ')(第\\d+宫)?', 'g');
+  return text.replace(re, (m, a, p1, cc, b, p2, s, h) => {
+    const k1 = kBy[p1], k2 = kBy[p2];
+    if (!k1 || !k2) return m;
+    const t1 = truth[k1], t2 = truth[k2];
+    if (!t1 || !t2 || t1 === t2) return m;   // 真值相同 → 原句无误 → 不动
+    const h1 = houses[k1] ? '第' + houses[k1] + '宫' : '';
+    const h2 = houses[k2] ? '第' + houses[k2] + '宫' : (h || '');
+    console.log('[V460-fix5] 连词行星拆分: ' + m + ' → ' + (a || '') + p1 + '在' + t1 + h1 + '、' + (b || '') + p2 + '在' + t2 + h2);
+    return (a || '') + p1 + '在' + t1 + h1 + '、' + (b || '') + p2 + '在' + t2 + h2;
+  });
+}
+
 function lockTransitPlanetSigns(text, lang, astroMatrix) {
   if (!text || typeof text !== 'string') return text;
   const truth = _v445TruthSigns(lang, astroMatrix);
@@ -6028,6 +6071,7 @@ function lockTransitPlanetSigns(text, lang, astroMatrix) {
       out = out.replace(reB, (m, s) => (s === trueSign ? m : m.replace(s, trueSign)));
     }
   }
+  out = splitConjoinedPlanetClaims(out, lang, astroMatrix);   // 🛠️ V460-fix5: 连词句式兜底
   return out;
 }
 
