@@ -4394,7 +4394,7 @@ function _v433LockMoonWeek(text, lang, astroMatrix) {
   // ⚠️ moonRe 用字符串表（\\b 在字符串里=词边界；正则字面量的 .source 喂 new RegExp 会被重解析成退格符，导致月亮关键词永远匹配不上）
   const moonRe = { es: '\\bLuna\\b', vi: '\\bMặt Trăng\\b', zh: '月亮', en: '\\bMoon\\b', fr: '\\bLune\\b', th: 'ดวงจันทร์' }[lang];  // zh/th 不用 \b（CJK/泰文非 \w，边界失效）
   if (!moonRe) return text;
-  const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];
+  const houseRe = { es: /Casa\s*(\d{1,2})/i, vi: /Nhà\s*(\d{1,2})/i, zh: /第\s*(\d{1,2})\s*宫/, en: /House\s*(\d{1,2})(?!\s*,)/i, fr: /Maison\s*(\d{1,2})/i, th: /บ้าน\s*(\d{1,2})/i }[lang];   // 🛠️ V455-fix: en houseRe 加「逗号+空白」排除（trailing comma 语法 'Aries (House 11),'），避免括号后紧跟逗号时数字被截断
   const natalRe = /(natal|bản mệnh|本命|出生|de naissance|natif|generación|กำเนิด)/i;
 
   // 切分 ✦[周N] 段落（indexOf 而非脆弱正则，避 /g lastIndex 诡异）
@@ -5711,7 +5711,7 @@ const _V438_CFG = {
       const houses = parts.map(n => 'House ' + n.trim()).join('\u2192');
       return parts.length === 1 ? `${loc} (${houses})` : `${loc} (${houses})`;
     },  // V442-fix6: 单宫 'House 1'，多宫 'House 1→House 2'
-        intro: 'The Moon transits through ', stopRe: /\.(?=\s|\n|$)/,   // 🛠️ V451-fix: 原为 /\n/（V442-fix5），段落通常一整行 → stopAt 落到段尾 → 整段正文（含散文）被真值句整段替掉（英文周散文灭绝）。改回句末边界：只替换过境首句，散文存活。
+        intro: 'The Moon transits through ', stopRe: /,|\.(?=\s|\n|$)/,   // 🛠️ V455-fix: 英文 Trail 用逗号结尾→stopAt 落到下一句末→整段正文被乱序句覆盖。加逗号后只截到 Trail 逗号处，保留后面散文；es/fr/th/vi 同理（/[.\n]/ 已含换行，英文 Trail 通常无换行）。
         headerRe: /Week\s+([1-4])[^\n]*/gi,
         sep: ', ',   // V442-fix10
   },   // en
