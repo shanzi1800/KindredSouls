@@ -5659,14 +5659,35 @@ const SUN_SIGN_FR = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Ba
 
 // 由单周 legs 构建真值轨迹串(按星座聚合并标注宫位区段)
 function _v438WeekTruth(w, cfg, spanOnly) {
+  // 🛠️ V454-fix1: leg.house 是「换座瞬间旧 house」，换入 house 藏 changes[].to_house
+  //   1973-11-18 Kiritimati W1: legs=[AriesH9, TaurusH10, GeminiH11, CancerH12]
+  //     真实入口 house = changes[0].to_house=10（不是9）
+  //   策略：同 sign 延续时取 changes 最后一条 to_house；新 sign 第一段取 changes[signIdx].to_house
+  const changes = Array.isArray(w.changes) ? w.changes : [];
   const seq = (Array.isArray(w.legs) && w.legs.length) ? w.legs : (w.start ? [w.start] : []);
   if (!seq.length) return '';
   const groups = [];
-  for (const lg of seq) {
+  for (let si = 0; si < seq.length; si++) {
+    const lg = seq[si];
     const last = groups[groups.length - 1];
+    // changes[i] 语义：seq[i] 换出 → seq[i+1] 换入
+    //   from_house = seq[i] 出口 house；to_house = seq[i+1] 入口 house
+    // 统一公式：entry = 入口 house，exit = 出口 house
+    //   changes[i].from_house = 换出时本星座 house；changes[i].to_house = 换入下一星座的 house
+    //   seq[i] 的入口 = i===0 ? w.start.house : changes[i-1].to_house
+    //   seq[i] 的出口 = i===0 ? changes[0].to_house : changes[i-1].from_house
+    const prevChange = changes[si - 1];
+    const entryHouse = si === 0
+      ? ((w.start && w.start.house) ? w.start.house : lg.house)
+      : (prevChange ? prevChange.to_house : lg.house);
+    const exitHouse = (si === 0 && changes.length > 0)
+      ? changes[0].to_house
+      : (prevChange ? prevChange.from_house : lg.house);
     if (last && last.sign === lg.sign) {
-      if (last.houses[last.houses.length - 1] !== lg.house) last.houses.push(lg.house);
-    } else groups.push({ sign: lg.sign, houses: [lg.house] });
+      if (last.houses[last.houses.length - 1] !== exitHouse) last.houses.push(exitHouse);
+    } else {
+      groups.push({ sign: lg.sign, houses: [entryHouse] });
+    }
   }
   const _v438Body = groups.map(g => {
     const idx = _EN2ZIDX[g.sign];
@@ -5683,7 +5704,7 @@ function _v438WeekTruth(w, cfg, spanOnly) {
 
 const _V438_CFG = {
   zh: { signs: SUN_SIGN_ZH, houseOut: h => `第${h}宫`, fmt: (loc, hs) => `${loc}（${hs}）`, sep: '、',
-        intro: '流月月亮依次行经', stopRe: /[。.\n]|\d+月\d+日/,
+        intro: '流月月亮依次行经', stopRe: /\n|[。.]|\d+月\d+日/,   // 🛠️ V454-fix2: \n 放前面优先截断英文；中文句号 \。 补漏（stopAt=-1 时整把锁跳过）
         headerRe: /第([1-4])周[^\n]*/g },
   en: { signs: SUN_SIGN_EN, houseOut: h => `House ${h}`, fmt: (loc, hs) => {
       const parts = hs.replace(/House\s*/g, '').trim().split('\u2192');
