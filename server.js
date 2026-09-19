@@ -9811,6 +9811,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
     cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
+    // 🛡️ V460-fix3: 月亮周轨迹真值锁必须拿【最终话语权】。
+    //   实测：V438 在 house_linter 之前跑完后，本收尾链(V434/V444/V445/V432)会把月亮轨迹再次改坏
+    //   （线上 sanitized 实测 W2-W4 变成「狮子座（第9宫）、白羊座（第5宫→第10宫）…」）。
+    //   在落库前最后一道再跑一次（已验证幂等），确保最终 sanitized / 缓存落库的都是真值序列。
+    cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438-final
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
     if (lang === 'vi') {

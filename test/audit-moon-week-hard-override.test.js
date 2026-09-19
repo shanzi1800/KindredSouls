@@ -138,3 +138,56 @@ describe('V438 月亮周级轨迹硬覆盖', () => {
     assert.ok(/流月月亮依次行经/.test(zhOut), 'zh 真值句应带引导词「流月月亮依次行经」');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// V460 回归门：真值链完整性 + 「换宫写在括号外」治净
+//   背景（线上血泪）：1990-08-08 14:15 洛杉矶 zh 月报实测，用户与运维都看到脏串：
+//   「…狮子座（第8宫）→第6宫→第7宫）、双子座（第7宫）→第8宫）…」
+//   双根因：① _v438WeekTruth 同 sign 延续组 push 了 exitHouse（上一腿入口宫）而非 entryHouse，
+//             导致组内中间宫位整段丢失（金牛组只到「第5宫→第6宫」，真值应为「第5宫→第6宫→第7宫」）；
+//          ② _v438OverrideBody 的 tokRe 只吃到「（第5宫）」就停，run 断裂成 2 腿 → 只替换子串、
+//             后续原样残留 → 产出脏串。
+// ═══════════════════════════════════════════════════════════════════
+describe('V460：月亮周真值链完整性 + 换宫外置括号治净', () => {
+  // 1990-08-08 14:15 America/Los_Angeles 的真实 W1（含 changes，取自 SwiftEph 引擎实算）
+  const w1 = {
+    week: 1,
+    start: { sign: 'Aries', house: 5 },
+    legs: [
+      { sign: 'Aries', house: 5 }, { sign: 'Taurus', house: 5 }, { sign: 'Taurus', house: 6 },
+      { sign: 'Taurus', house: 7 }, { sign: 'Gemini', house: 7 }, { sign: 'Gemini', house: 8 },
+      { sign: 'Cancer', house: 8 }, { sign: 'Leo', house: 8 }, { sign: 'Leo', house: 9 },
+    ],
+    changes: [
+      { day: 1, time: '01:01', kind: 'sign', from_sign: 'Aries', from_house: 5, to_sign: 'Taurus', to_house: 5 },
+      { day: 1, time: '07:56', kind: 'cusp', from_sign: 'Taurus', from_house: 5, to_sign: 'Taurus', to_house: 6 },
+      { day: 2, time: '22:22', kind: 'cusp', from_sign: 'Taurus', from_house: 6, to_sign: 'Taurus', to_house: 7 },
+      { day: 3, time: '04:47', kind: 'sign', from_sign: 'Taurus', from_house: 7, to_sign: 'Gemini', to_house: 7 },
+      { day: 5, time: '01:46', kind: 'cusp', from_sign: 'Gemini', from_house: 7, to_sign: 'Gemini', to_house: 8 },
+      { day: 5, time: '07:30', kind: 'sign', from_sign: 'Gemini', from_house: 8, to_sign: 'Cancer', to_house: 8 },
+      { day: 7, time: '09:49', kind: 'sign', from_sign: 'Cancer', from_house: 8, to_sign: 'Leo', to_house: 8 },
+      { day: 7, time: '10:56', kind: 'cusp', from_sign: 'Leo', from_house: 8, to_sign: 'Leo', to_house: 9 },
+    ],
+  };
+  const M = { months: [{ moon_weeks: [w1] }] };
+  const TRUTH = '白羊座（第5宫）、金牛座（第5宫→第6宫→第7宫）、双子座（第7宫→第8宫）、巨蟹座（第8宫）、狮子座（第8宫→第9宫）';
+
+  test('⑪ 真值链必须含同 sign 组内全部入口宫（防组内中间宫位丢失）', () => {
+    const out = applyMoonWeekHardOverride('✦[🟢第1周：9月1日–7日]\n流月月亮依次行经白羊座（第9宫）、金牛座（第9宫）。', 'zh', M);
+    assert.ok(out.includes(TRUTH), '真值链不完整: ' + out);
+  });
+
+  test('⑫ AI 把换宫写在括号外（金牛座（第5宫）→第6宫→第7宫））必须治净、零残留', () => {
+    const bad = '✦[🟢第1周：9月1日–7日]\n流月月亮依次行经白羊座（第5宫）、金牛座（第5宫）→第6宫→第7宫）、双子座（第7宫）→第8宫）、巨蟹座（第8宫）、狮子座（第8宫）→第9宫）。';
+    const out = applyMoonWeekHardOverride(bad, 'zh', M);
+    assert.ok(out.includes(TRUTH), '未治净: ' + out);
+    assert.ok(!/）\s*→\s*第/.test(out), '残留脏尾: ' + out);
+  });
+
+  test('⑬ 规范文本零改动 + 幂等（防误伤好样本 / 防乒乓）', () => {
+    const good = '✦[🟢第1周：9月1日–7日]\n流月月亮依次行经' + TRUTH + '。';
+    const o1 = applyMoonWeekHardOverride(good, 'zh', M);
+    assert.strictEqual(o1, good, '好样本被改动: ' + o1);
+    assert.strictEqual(applyMoonWeekHardOverride(o1, 'zh', M), o1, '非幂等');
+  });
+});
