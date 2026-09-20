@@ -6135,6 +6135,11 @@ function fixMoonHouseParens(text) {
 function _v438OverrideBody(body, cfg, truth) {
   if (!truth) return body;
   const signs = cfg.signs || [];
+  // 🛠️ V461-fix: body 全以 \n 开头（标题→换行→body），旧版 tokRe 找到 \n → stopAt=0 → 整锁跳步
+  //   剥掉全部前导空白（\n / 空格），在 tokRe/toks/lead/tail 全部用干净 body；
+  //   末尾把前导空白补回去，保证幂等（不改变 body 首字符）。
+  const leadingWS = body.match(/^[\n\s]*/)[0];
+  const work = leadingWS ? body.slice(leadingWS.length) : body;
   if (!signs.length) return body;
   const signsPat = signs.map(_v444Esc).join('|');
   // 🛠️ V452: 位置无关——识别过境序列 span，用真值序列硬重写。
@@ -6158,7 +6163,7 @@ function _v438OverrideBody(body, cfg, truth) {
   const toks = [];
   let mm;
   tokRe.lastIndex = 0;
-  while ((mm = tokRe.exec(body)) !== null) {
+  while ((mm = tokRe.exec(work)) !== null) {
     if (mm[1]) toks.push({ i: mm.index, e: mm.index + mm[0].length });
   }
   if (toks.length < 2) return body;   // 月亮路径至少 2 段；不足视为无序列 → 不动
@@ -6166,18 +6171,18 @@ function _v438OverrideBody(body, cfg, truth) {
   const connectorRe = /^[\s→、,]+$/;
   let best = null, run = [toks[0]];
   for (let k = 1; k < toks.length; k++) {
-    const gap = body.slice(toks[k-1].e, toks[k].i);
+    const gap = work.slice(toks[k-1].e, toks[k].i);
     if (connectorRe.test(gap)) run.push(toks[k]);
     else { if (run.length > 1 && (!best || run.length > best.length)) best = run; run = [toks[k]]; }
   }
   if (run.length > 1 && (!best || run.length > best.length)) best = run;
   if (!best) return body;
-  const runText = body.slice(best[0].i, best[best.length - 1].e);
+  const runText = work.slice(best[0].i, best[best.length - 1].e);
   if (runText === truth) return body;   // 幂等：已是真值序列 → 不动
-  const lead = body.slice(0, best[0].i);
-  const tail = body.slice(best[best.length - 1].e);
+  const lead = work.slice(0, best[0].i);
+  const tail = work.slice(best[best.length - 1].e);
   console.log('[V452] span replaced (' + best.length + ' legs): ' + runText + ' → ' + truth);
-  return lead + truth + tail;
+  return leadingWS + lead + truth + tail;
 }
 
 
