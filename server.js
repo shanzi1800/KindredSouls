@@ -7372,19 +7372,19 @@ ASTROGRAPHIC RULES:
 OUTPUT FORMAT — CLEAN MARKDOWN (6 sections, no JSON):
 
 ${HT_RP.overview}
-[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal sun sign.]
+[Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal sun sign. You MUST mention the user's natal Sun in [sign] House [N] and natal Moon in [sign] House [N] from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week1}
-[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Include specific days and dollar amount triggers where relevant.]
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Reference how the transit affects the user's natal planets. Example: "With your natal Jupiter in Sagittarius, House 1, this week's Aries Moon transit amplifies your natural expansion drive." You MUST mention at least 2 natal planets (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn) from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week2}
-[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days are dangerous and why. Include a concrete financial safety rule.]
+[Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days are dangerous and why. Include a concrete financial safety rule. Reference the transit-to-natal interaction for at least 2 natal planets from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week3}
-[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include days for planning and consolidation.]
+[Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include days for planning and consolidation. Reference how transit affects the user's natal planets from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week4}
-[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days.]
+[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days. Reference how transit aligns with or challenges the user's natal planets from [NATAL CHART ANCHORS]. Example: "Your natal Mars in Sagittarius, House 1, harmonizes with the Aries Moon to create bold, expansion-focused action."]
 
 ${HT_RP.trap}
 ${_trapBlock}
