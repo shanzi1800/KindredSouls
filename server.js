@@ -5699,6 +5699,12 @@ function _v438WeekTruth(w, cfg, spanOnly) {
     const idx = _EN2ZIDX[g.sign];
     const loc = (idx != null && cfg.signs[idx]) ? cfg.signs[idx] : g.sign;
     const hs = g.houses.map(cfg.houseOut).join('→');
+    // 🛠️ V438-th-fix: 泰文星座名带 ราศี 前缀 + 括号包裹宫位
+    if (cfg.signPrefix) {
+      const inner = cfg.fmt(loc, hs);  // fmt 返回括号内容如 (บ้าน 5)
+      const full = cfg.signWrap ? cfg.signWrap(cfg.signPrefix + loc, inner) : `${cfg.signPrefix}${loc} ${inner}`;
+      return full;
+    }
     return cfg.fmt(loc, hs);
   }).join(cfg.sep);
   // 🛠️ V451-fix: 还原引导词（cfg.intro 原为死字段，从未被使用）——锁替换掉的是【整句】，
@@ -5727,7 +5733,8 @@ const _V438_CFG = {
   fr: { signs: SUN_SIGN_FR, houseOut: h => `Maison ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
         intro: 'La Lune traverse ', stopRe: /[.\n]/,
         headerRe: /Semaine\s+([1-4])[^\n]*/gi },
-  th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ' ',
+  th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `(${hs})`, signPrefix: 'ราศี', signWrap: (loc, inner) => `${loc} ${inner}`,
+        sep: ' → ',
         intro: 'ดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
         headerRe: /สัปดาห์ที่\s*([1-4])[^\n]*/g },
   vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ', multiWordSigns: true,
@@ -6161,7 +6168,9 @@ function _v438OverrideBody(body, cfg, truth) {
   // 排除相反方向括号：开( 配对时排除 )/），关( 配对时排除 （/（
   // zh 星座后无空格：白羊座（第9宫）→ [^\s]* 吞0空格；en 有空格：Aries (House...) → [^\s]* 吞字母剩余量
   // 开括号: ASCII ( 或全角 （; 闭括号: ASCII ) 或全角 ）; body: 排除闭括号和越南变音
-  const tokRe = new RegExp('(' + signsPat + ')' + greedy + '\\s*[(（]([^' + FULLW + ')' + FULLW + VI_DIAC + ']{0,40})[\\)' + FULLW + ']' + HOUSE_TAIL, 'g');
+  // 🛠️ V438-th-fix: 泰文星座名在报告中带 ราศี 前缀，tokRe 必须吃掉前缀否则 gap 里残留 ราศี 导致 connector 断裂
+  const signPrefixPat = cfg.signPrefix ? '(?:' + cfg.signPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')?' : '';
+  const tokRe = new RegExp(signPrefixPat + '(' + signsPat + ')' + greedy + '\\s*[(（]([^' + FULLW + ')' + FULLW + VI_DIAC + ']{0,40})[\\)' + FULLW + ']' + HOUSE_TAIL, 'g');
   const toks = [];
   let mm;
   tokRe.lastIndex = 0;
