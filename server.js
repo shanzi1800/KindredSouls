@@ -5915,8 +5915,10 @@ function lockNatalAnchorRole(text, lang, astroMatrix) {
   if (!text || typeof text !== 'string') return text;
   const meta = astroMatrix && astroMatrix.meta;
   if (!meta) return text;
-  // 🛠️ V453: 真值 = 本命全 10 行星 sign+house+retrograde（meta.natal_planets，由 v69_client 合并本命盘）
-  const np = meta.natal_planets || {};
+  // 🛠️ V453: 真值 = 本命全 10 行星 sign+house+retrograde（meta.computed_houses，由 v69_client 合并本命盘）
+  //   ⚠️ 旧代码用 meta.natal_planets —— 该字段从未被填充（undefined），导致 V453 七行星锁全空转！
+  //   改用 meta.computed_houses（含 Sun/Moon/Mercury/Venus/... 全 10 行星 sign+house+retrograde）。
+  const np = meta.computed_houses || meta.natal_planets || {};
   const truth = {};
   if (meta.rising_sign) truth.rising = { sign: meta.rising_sign, house: 1, retrograde: false };
   if (meta.sun_sign) truth.sun = { sign: meta.sun_sign, house: (np.Sun && np.Sun.house) || 1, retrograde: !!(np.Sun && np.Sun.retrograde) };
@@ -5966,6 +5968,41 @@ function lockNatalAnchorRole(text, lang, astroMatrix) {
       const trueRetro = _v453RetroWord(lang, t.retrograde);
       out = out.replace(retroRe, (m, w) => (w === trueRetro ? m : m.replace(w, trueRetro)));
     }
+  }
+  // 🛠️ V444-th-cluster-fix: 泰文倒装集群 "ราศีX บ้าน Y ซึ่งเป็นที่สถิตของ P1กำเนิด P2กำเนิด..." 逐个真值修正
+  //   实测 1995-03-18 曼谷 th 盘: W4 写 "ราศีมีน บ้าน 12 ซึ่งเป็นที่สถิตของดาวพุธกำเนิด ดาวศุกร์กำเนิด ดาวเสาร์กำเนิด"
+  //   LLM 把 3 颗本命行星全批量归到 Pisces H12，但 Venus 真值=Aquarius H12 → 错误。
+  //   正装扫描(ดาวศุกร์ ราศีX)匹配不到倒装句式 → 漏网。本分支逐个核对并拆分重写。
+  if (lang === 'th') {
+    const _thPlanetKey = {
+      'ดวงพุธ': 'Mercury', 'ดาวพุธ': 'Mercury',
+      'ดวงศุกร์': 'Venus', 'ดาวศุกร์': 'Venus',
+      'ดวงอังคาร': 'Mars', 'ดาวอังคาร': 'Mars',
+      'ดวงพฤหัสบดี': 'Jupiter', 'ดาวพฤหัสบดี': 'Jupiter',
+      'ดาวเสาร์': 'Saturn', 'ดวงเสาร์': 'Saturn',
+      'ดาวยูเรนัส': 'Uranus', 'ดาวเนปจูน': 'Neptune', 'ดาวพลูโต': 'Pluto',
+      'ดวงอาทิตย์': 'Sun', 'ดาวอาทิตย์': 'Sun',
+      'ดวงจันทร์': 'Moon', 'ดาวจันทร์': 'Moon',
+    };
+    const _thTH = '[\u0E01-\u0E4F]';
+    const clusterRe = new RegExp('ราศี(' + signsPat + ')\s*บ้าน\s*(\d+)\s*ซึ่งเป็นที่สถิตของ\s*([^。\n]+?)(?:ของท่าน|$)', 'g');
+    out = out.replace(clusterRe, (m, signCap, houseCap, planetList) => {
+      const planets = [];
+      const plRe = new RegExp('(ดาว' + _thTH + '+|ดวง' + _thTH + '+)\s*กำเนิด', 'g');
+      let pm;
+      while ((pm = plRe.exec(planetList)) !== null) {
+        const key = _thPlanetKey[pm[1]];
+        if (key && truth[key]) planets.push({ key, name: pm[1] });
+      }
+      if (!planets.length) return m;
+      const parts = planets.map(p => {
+        const t = truth[p.key];
+        const idx = SUN_SIGN_EN.indexOf(t.sign);
+        const localSign = idx >= 0 ? signs[idx] : t.sign;
+        return `ราศี${localSign} บ้าน ${t.house} (${p.name}กำเนิด)`;
+      });
+      return parts.join(', ');
+    });
   }
   return out;
 }
