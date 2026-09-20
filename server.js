@@ -7351,9 +7351,10 @@ ${_trapBlock}
 ⛔ [V165-vital] THIS USER'S CHART:
   - Natal Sun = ${natalSunEN} (birth date ${birthDate} = ALWAYS ${natalSunEN}, NEVER any other sign)
   - Ascendant = ${risingLocal} (NOT Cancer unless specifically computed by AstroMatrix)
-  - Jupiter in ${jupSignLocal} = House ${jupHouse} (NOT House 5, NEVER write House 5 for Jupiter)
-  - Saturn in ${satSignLocal} = House ${satHouse} (NOT House 11, NEVER write House 11 for Saturn)
-  - Pluto in Aquarius = House ${plHouse} (NOT House 11)
+  - TRANSIT Jupiter (Sep 2026): in ${jupSignLocal} = House ${jupHouse} — this is the TRANSIT position for THIS month, NOT the user's natal Jupiter. The natal Jupiter is in [NATAL CHART ANCHORS].
+  - TRANSIT Saturn (Sep 2026): in ${satSignLocal} = House ${satHouse} — this is TRANSIT, NOT natal. See [NATAL CHART ANCHORS] for natal Saturn.
+  - TRANSIT Pluto (Sep 2026): in Aquarius = House ${plHouse} — this is TRANSIT, NOT natal. See [NATAL CHART ANCHORS] for natal Pluto.
+  - CRITICAL: You MUST reference the user's NATAL planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto) from the [NATAL CHART ANCHORS] section. When describing how monthly transit affects the user, ALWAYS say "Your natal Jupiter in Sagittarius, House 1" — NEVER write a natal planet's sign or house without matching [NATAL CHART ANCHORS].
 ${planetBlockWithWarning}
 
 🛠️ [P1 FULL 12-MONTH PLANET DATA — COPY EXACTLY, NEVER CALCULATE]:
