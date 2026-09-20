@@ -936,7 +936,24 @@ Khoảng thời gian rủi ro cao: ${dangerRanges || 'Tuần 2'}
 Quy tắc an toàn: ${safeRule}
 Nhiệm vụ LLM: Dựa trên dữ liệu thật ở trên, viết 100-150 từ về bẫy chính. TUYỆT ĐỐI không nhắc đến dữ liệu ngoài danh sách.`,
   };
-  return tmpl[lang] || tmpl.zh;
+  // 🛠️ V444-trap-fix: 陷阱段重申本命锚点 —— LLM 写到结尾疲劳时会把上升/太阳/月亮混淆
+  //   实测 1988-12-03 Madrid es 盘：陷阱段把 Rising Leo 写成 Escorpio（跟 Venus Scorpio H4 串台）
+  //   治法：在 trap 骨架末尾追加本命上升/太阳/月亮硬约束，全篇一致
+  const _ch = natal.computed_houses || {};
+  const _rising = natal.rising_sign || astroMatrix?.rising_sign || 'Unknown';
+  const _sunSign = natal.sun_sign || _ch.Sun?.sign || 'Unknown';
+  const _sunHouse = _ch.Sun?.house || '?';
+  const _moonSign = _ch.Moon?.sign || 'Unknown';
+  const _moonHouse = _ch.Moon?.house || '?';
+  const _trapAnchor = {
+    zh: `\n[本命锚点重申 — 陷阱段强制一致] 上升星座=${_rising} | 本命太阳=${_sunSign} 第${_sunHouse}宫 | 本命月亮=${_moonSign} 第${_moonHouse}宫。陷阱段中凡涉及本命盘基础参数必须与全篇一致，严禁串台。`,
+    en: `\n[NATAL ANCHOR REINFORCEMENT — TRAP SECTION] Ascendant=${_rising} | Natal Sun=${_sunSign} House ${_sunHouse} | Natal Moon=${_moonSign} House ${_moonHouse}. These values MUST be identical throughout the entire report including this trap section. NEVER substitute another sign for the Ascendant.`,
+    es: `\n[ANCLA NATAL — SECCIÓN DE TRAMPAS] Ascendente=${_rising} | Sol natal=${_sunSign} Casa ${_sunHouse} | Luna natal=${_moonSign} Casa ${_moonHouse}. Estos valores DEBEN ser idénticos en todo el informe, incluida esta sección de trampas. NUNCA sustituya otro signo por el Ascendente.`,
+    fr: `\n[ANCRE NATALE — SECTION PIÈGES] Ascendant=${_rising} | Soleil natal=${_sunSign} Maison ${_sunHouse} | Lune natale=${_moonSign} Maison ${_moonHouse}. Ces valeurs DOIVENT être identiques dans tout le rapport, y compris cette section. NE JAMAIS substituer un autre signe à l'Ascendant.`,
+    th: `\n[สมอยึดกำเนิด — ส่วนกับดัก] ราศีขึ้น=${_rising} | ดวงอาทิตย์กำเนิด=${_sunSign} บ้าน ${_sunHouse} | ดวงจันทร์กำเนิด=${_moonSign} บ้าน ${_moonHouse}. ค่าเหล่านี้ต้องเหมือนกันทุกส่วนในรายงาน ห้ามสับเปลี่ยนราศีขึ้นเด็ดขาด.`,
+    vi: `\n[MỎ NEO BẢN MỆNH — PHẦN CẠM BẪY] Ascendant=${_rising} | Mặt Trời bản mệnh=${_sunSign} Nhà ${_sunHouse} | Mặt Trăng bản mệnh=${_moonSign} Nhà ${_moonHouse}. Các giá trị này PHẢI đồng nhất toàn bộ báo cáo, kể cả phần cạm bẫy. TUYỆT ĐỐI không thay thế Ascendant bằng cung khác.`,
+  };
+  return (tmpl[lang] || tmpl.zh) + (_trapAnchor[lang] || _trapAnchor.zh);
 }
 
 export function buildPerMonthDataBlock(astroMatrix, lang) {
