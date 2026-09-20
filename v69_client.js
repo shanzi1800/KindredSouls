@@ -245,6 +245,21 @@ export const PLANET_VI = {
   Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương', Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương',
 };
 
+// 🛠️ V461-FIX: 双格式真值契约 —— JSON(机器校验) + 散文(人类阅读) + 铁锁规则
+// 根因: 散文 anchors 被 LLM 选择性忽略(Jupiter Aquarius H2 → Leo H8), V461 以 JSON 为单一真源
+const _planets = [
+  { en: 'Sun', vi: 'Mặt Trời', zh: '太阳' },
+  { en: 'Moon', vi: 'Mặt Trăng', zh: '月亮' },
+  { en: 'Mercury', vi: 'Sao Thủy', zh: '水星' },
+  { en: 'Venus', vi: 'Sao Kim', zh: '金星' },
+  { en: 'Mars', vi: 'Sao Hỏa', zh: '火星' },
+  { en: 'Jupiter', vi: 'Sao Mộc', zh: '木星' },
+  { en: 'Saturn', vi: 'Sao Thổ', zh: '土星' },
+  { en: 'Uranus', vi: 'Sao Thiên Vương', zh: '天王星' },
+  { en: 'Neptune', vi: 'Sao Hải Vương', zh: '海王星' },
+  { en: 'Pluto', vi: 'Sao Diêm Vương', zh: '冥王星' },
+];
+
 export function buildNatalAnchors(astroMatrix) {
   const meta = astroMatrix?.meta || {};
   const ch = meta.computed_houses || {};
@@ -252,20 +267,52 @@ export function buildNatalAnchors(astroMatrix) {
   const _natalMoon = meta.natal_moon || ch.Moon || {};
   const _asc = meta.ascendant || null;
   const _mc = meta.midheaven || null;
-  const lines = [
+
+  // ── Part 1: JSON 真值表 (机器校验 · 单一真源) ─────────────────────────
+  const jsonEntries = {};
+  for (const { en } of _planets) {
+    const info = ch[en];
+    if (!info) continue;
+    jsonEntries[en] = { sign: info.sign || '?', house: info.house ?? '?' };
+  }
+  const jsonBlock = `{
+${_planets
+    .filter(({ en }) => jsonEntries[en])
+    .map(({ en }) => `  "natal${en}": {"sign":"${jsonEntries[en].sign}","house":${jsonEntries[en].house}}`)
+    .join(',\n')}
+}`;
+
+  // ── Part 2: 散文真值 (人类阅读 · 参照) ───────────────────────────
+  const proseLines = [
     `Your Natal Sun: ${meta.sun_sign || ch.Sun?.sign || 'Cancer'} (House ${ch.Sun?.house ?? '?'})`,
     `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
   ];
-  // 🛠️ V423: 其余 8 行星 —— 全盘本命真值(此前仅日/月，其余在正文里任由模型发挥)
-  for (const p of NATAL_PLANETS_ORDER) {
-    if (p === 'Sun' || p === 'Moon') continue;
-    const info = ch[p];
+  for (const { en, vi } of _planets) {
+    if (en === 'Sun' || en === 'Moon') continue;
+    const info = ch[en];
     if (!info) continue;
-    lines.push(`Your Natal ${p} (${PLANET_VI[p]}): ${info.sign || '?'} in House ${info.house ?? '?'}${info.retrograde ? ' (Retrograde)' : ''}`);
+    proseLines.push(`Your Natal ${en} (${vi}): ${info.sign || '?'} in House ${info.house ?? '?'}${info.retrograde ? ' (Retrograde)' : ''}`);
   }
-  lines.push(`Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim());
-  lines.push(`Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`);
-  return lines.join('\n');
+  proseLines.push(`Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim());
+  proseLines.push(`Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`);
+
+  // ── Part 3: 铁锁规则 (最高优先级 · 不可绕过) ────────────────────────
+  const rules = [
+    `- CRITICAL RULE: When writing about ANY natal planet, copy the sign AND house EXACTLY from the JSON above.`,
+    `  Examples of VIOLATIONS: "Your Jupiter in Leo, House 8" when JSON says Aquarius H2.`,
+    `  Examples of CORRECT: "Your natal Jupiter in Aquarius, House 2" — must match JSON exactly.`,
+    `- JSON sign+house values are SwissEph ground truth. NEVER infer or substitute.`,
+    `- Transit planets (Sun/Moon of the month) are DIFFERENT from natal planets. Never merge them.`,
+  ].join('\n');
+
+  return [
+    `// ─── SYSTEM TRUTH LOCK (JSON · Machine-Verifiable) ───`,
+    jsonBlock,
+    `// ─── PROSE REFERENCE (Human-Readable) ───`,
+    proseLines.join('\n'),
+    `// ─── RULES (Highest Priority · Non-Negotiable) ───`,
+    rules,
+  ].join('\n');
 }
 
 export function buildFactSheet(astroMatrix, lang = 'en') {

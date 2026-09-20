@@ -7261,8 +7261,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
           try {
             const _natAnchors = buildNatalAnchors(astroMatrix);
             monthlySystem += `\n\n[NATAL CHART ANCHORS — SwissEph COMPUTED TRUTH · FIXED FOREVER · NEVER alter, infer or substitute]\n` +
-              _natAnchors + `\n` +
-              `- RULE: Every mention of the natal Moon MUST use exactly the sign AND house above. The transit Moon position (per-month sky data) is NOT the natal Moon — never present it as natal. If a value shows "?", omit that reference entirely; NEVER invent one.`;
+              _natAnchors;
+            // 🛠️ V461-FIX: 升级规则 —— 从「只管月亮」扩为「全行星铁锁」
+            // 根因: 原规则只说 Moon，LLM 把 Jupiter Aquarius H2 写成 Leo H8；
+            // 现在要求 JSON 真值与散文必须精确匹配，任何行星写错 = generation failure。
+            monthlySystem += `\n- RULE: When writing about ANY natal planet, you MUST copy the sign AND house EXACTLY from the JSON above. If JSON says "natalJupiter":{"sign":"Aquarius","house":2}, you MUST write "Your natal Jupiter in Aquarius, House 2". VIOLATION = "Your Jupiter in Leo, House 8" is a CRITICAL failure. The transit Sun/Moon of the month are DIFFERENT from natal planets — never merge them.`;
           } catch (e) { console.warn('[V420] natal anchors inject failed: ' + e.message); }
         }
         // 🛠️ V424-B: 泰语本命锚点（泰语直出，杜绝模型自译漏写星座名/漏写กำเนิด标记）
