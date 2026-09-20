@@ -264,56 +264,86 @@ function buildWealthPromptContext(lang, meta) {
     rule1: {
       zh: `1. 【格式强制】每周卡片标题必须严格遵循以下格式，不得擅自改动：
    ✦
-   [🟢 第1周：{MONTH}1日–7日（财富充能） | 第${sunHouse}宫 | 风控: 🟢低危]
+   [🟢 第1周：{MONTH}1日–7日（水星淬火 · 技能显化之窗） | 第${sunHouse}宫 | 风控: 🟢低危]
    规则：
    - "✦" 必须单独占一行，后面紧跟一个换行
    - 标题内容必须用方括号 [...] 包裹
    - 方括号内不得换行、不得嵌套
+   - 副标题（括号内）必须用 V461 诗意意象替代干瘪分类词，四周映射示例：
+     · 第1周 →（水星淬火 · 技能显化之窗）类意象（严禁写"财富充能"）
+     · 第2周 →（海王迷雾 · 绝对熔断）类意象（严禁写"高危熔断"）
+     · 第3周 →（土星沉淀 · 静水深流）类意象（严禁写"顺流蓄力"）
+     · 第4周 →（木星高光 · 收割落袋）类意象（严禁写"财富爆发"）
    - 错误格式（禁止）：✦ [🟢 第1周... ]（✦ 和 [ 同在一行）
    - 错误格式（禁止）：✦ 🟢 第1周...（缺失方括号）`,
       en: `1. 【STRICT FORMAT】Every weekly header MUST follow this EXACT pattern:
    ✦
-   [🟢 Week 1: {MONTH} 1–7 (Wealth Recharging) | House ${sunHouse} | Risk: 🟢 Low]
+   [🟢 Week 1: {MONTH} 1–7 (Mercury Forged · Skill Manifestation) | House ${sunHouse} | Risk: 🟢 Low]
    Rules:
    - "✦" MUST be on its own line, followed by exactly one newline
    - Title content MUST be wrapped in square brackets [...]
    - No line breaks inside the brackets
+   - Subtitle (in parentheses) MUST use V461 poetic imagery instead of dry category words. 4-week mapping example:
+     · Week 1 → (Mercury Forged · Skill Manifestation) type imagery (NEVER write "Wealth Recharging")
+     · Week 2 → (Neptune Mist · Absolute Meltdown) type imagery (NEVER write "High Risk")
+     · Week 3 → (Saturn Sediment · Still Deep Flow) type imagery (NEVER write "Flow Recharge")
+     · Week 4 → (Jupiter Spotlight · Harvest In Hand) type imagery (NEVER write "Wealth Burst")
    - FORBIDDEN: ✦ [🟢 Week 1... ] (✦ and [ on same line)
    - FORBIDDEN: ✦ 🟢 Week 1... (missing brackets)`,
       es: `1. 【FORMATO ESTRICTO】Cada encabezado semanal DEBE seguir este patrón exacto:
    ✦
-   [🟢 Semana 1: Ago 1–7 (Recarga de Riqueza) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]
+   [🟢 Semana 1: Ago 1–7 (Mercurio Forjado · Manifestación de Habilidad) | Casa ${sunHouse} | Riesgo: 🟢 Bajo]
    Reglas:
    - "✦" DEBE estar en su propia línea, seguido de un salto de línea
    - El título DEBE estar envuelto en corchetes [...]
    - Sin saltos de línea dentro de los corchetes
+   - El subtítulo (entre paréntesis) DEBE usar imágenes poéticas V461 en vez de palabras secas. Mapeo 4 semanas:
+     · Semana 1 → (Mercurio Forjado · Manifestación de Habilidad) (NUNCA escribir "Recarga de Riqueza")
+     · Semana 2 → (Niebla de Neptuno · Fusión Absoluta) (NUNCA escribir "Riesgo Alto")
+     · Semana 3 → (Sedimento de Saturno · Corriente Profunda) (NUNCA escribir "Flujo")
+     · Semana 4 → (Spotlight de Júpiter · Cosecha en Mano) (NUNCA escribir "Expansión")
    - PROHIBIDO: ✦ [🟢 Semana 1... ] (✦ y [ en la misma línea)
    - PROHIBIDO: ✦ 🟢 Semana 1... (sin corchetes)`,
       fr: `1. 【FORMAT OBLIGATOIRE】Chaque en-tête hebdomadaire DOIT suivre ce modèle exact:
    ✦
-   [🟢 Semaine 1: Août 1–7 (Recharge de Richesse) | Maison ${sunHouse} | Risque: 🟢 Faible]
+   [🟢 Semaine 1: Août 1–7 (Mercure Trempé · Manifestation de Compétence) | Maison ${sunHouse} | Risque: 🟢 Faible]
    Règles:
    - "✦" DOIT être sur sa propre ligne, suivi d'un saut de ligne
    - Le titre DOIT être entouré de crochets [...]
    - Pas de saut de ligne à l'intérieur des crochets
+   - Le sous-titre (entre parenthèses) DOIT utiliser des images poétiques V461 au lieu de mots secs. Mapping 4 semaines:
+     · Semaine 1 → (Mercure Trempé · Manifestation de Compétence) (JAMAIS écrire "Recharge de Richesse")
+     · Semaine 2 → (Brume de Neptune · Fusion Absolue) (JAMAIS écrire "Risque")
+     · Semaine 3 → (Sédiment de Saturne · Courant Profond) (JAMAIS écrire "Flux")
+     · Semaine 4 → (Spotlight de Jupiter · Récolte en Main) (JAMAIS écrire "Expansion")
    - INTERDIT: ✦ [🟢 Semaine 1... ] (✦ et [ sur la même ligne)
    - INTERDIT: ✦ 🟢 Semaine 1... (crochets manquants)`,
       th: `1. 【รูปแบบบังคับ】ส่วนหัวรายสัปดาห์ทุกสัปดาห์ต้องเป็นไปตามรูปแบบนี้:
    ✦
-   [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (การเติมพลังความมั่งคั่ง) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]
+   [🟢 สัปดาห์ที่ 1: ส.ค. 1–7 (ดาวพุธหลอมแฝง · ประจักษ์ทักษะ) | บ้านที่ ${sunHouse} | ความเสี่ยง: 🟢 ต่ำ]
    กฎ:
    - "✦" ต้องอยู่บรรทัดของตัวเอง ตามด้วยการขึ้นบรรทัดใหม่
    - หัวข้อต้องอยู่ในวงเล็บ [...]
    - ห้ามขึ้นบรรทัดใหม่ภายในวงเล็บ
+   - ห้ามคำแบนๆ: ใช้ภาพพจน์ V461 แทน (การเติมพลัง/ความเสี่ยงสูง/ไหลลื่น/เติบโต)
+     · สัปดาห์ที่ 1 → (ดาวพุธหลอมแฝง · ประจักษ์ทักษะ)
+     · สัปดาห์ที่ 2 → (เนปจูนหมอกลง · หลอมละลายเด็ดขาด)
+     · สัปดาห์ที่ 3 → (เสาร์ตะกอน · น้ำเงียบลึก)
+     · สัปดาห์ที่ 4 → (พฤหัสจุดสว่าง · เก็บเกี่ยวลงมือ)
    - ห้าม: ✦ [🟢 สัปดาห์ที่ 1... ] (✦ และ [ บรรทัดเดียวกัน)
    - ห้าม: ✦ 🟢 สัปดาห์ที่ 1... (ไม่มีวงเล็บ)`,
       vi: `1. 【ĐỊNH DẠNG BẮT BUỘC】Mỗi tiêu đề hàng tuần phải tuân theo mẫu này:
    ✦
-   [🟢 Tuần 1: Thg8 1–7 (Nạp năng lượng Tài sản) | Nhà ${sunHouse} | Rủi ro: 🟢 Thấp]
+   [🟢 Tuần 1: Thg8 1–7 (Thủy Tinh Luyện · Hiện Thực Kỹ Năng) | Nhà ${sunHouse} | Rủi ro: 🟢 Thấp]
    Quy tắc:
    - "✦" PHẢI trên dòng riêng, theo sau bởi một dòng mới
    - Tiêu đề PHẢI được bọc trong dấu ngoặc [...]
    - Không xuống dòng bên trong dấu ngoặc
+   - Tiêu đề phụ (trong ngoặc) PHẢI dùng hình ảnh thơ V461 thay từ khô khan. 4 tuần:
+     · Tuần 1 → (Thủy Tinh Luyện · Hiện Thực Kỹ Năng) (CẤM viết "Nạp năng lượng")
+     · Tuần 2 → (Hải Vương Sương Mù · Tan Chảy Tuyệt Đối) (CẤM viết "Rủi Ro")
+     · Tuần 3 → (Thổ Tinh Trầm Tích · Dòng Nước Sâu) (CẤM viết "Thành Công")
+     · Tuần 4 → (Mộc Tinh Điểm Sáng · Gặt Hái Trong Tay) (CẤM viết "Tài Lộc")
    - CẤM: ✦ [🟢 Tuần 1... ] (✦ và [ cùng dòng)
    - CẤM: ✦ 🟢 Tuần 1... (thiếu dấu ngoặc)`,
     },
