@@ -4554,20 +4554,49 @@ function _v432LockTransit(text, lang, astroMatrix) {
     const hasHouseF = t.house && (() => { const h = _v432FindHouse(cfg, fwd, true); return h && h.value === Number(t.house); })();
     const hasSignB = t.sign && bwd.includes(t.sign);
     const hasHouseB = t.house && (() => { const h = _v432FindHouse(cfg, bwd, false); return h && h.value === Number(t.house); })();
-    if (hasSignF && hasHouseF && hasSignB && hasHouseB) continue;
-    let z = fwd, origLen = z.length;
-    let patch = _v432PatchZone(cfg, lang, z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true, text, m.index + m[0].length);
-    if (patch.count === 0 && bwd) {
-      z = bwd; origLen = z.length;
-      patch = _v432PatchZone(cfg, lang, z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false, text, m.index - origLen);
+    // ── V459 统一声明（两条支路只做赋值，common tail 统一结算）──
+    patch = null; pos = -1; z = ''; origLen = 0;
+    if (!(hasSignF || hasHouseF)) {
+      // 🛠️ V459 扩展长句修复支路：fwd 窗口不包含 sign/house → 扩展搜索区域到第一个星座/宫位
+      const pEnd = m.index + m[0].length;
+      let extendedEnd = -1;
+      for (const s of _v432AllSignWords(lang)) {
+        const pos_s = text.indexOf(s, pEnd);
+        if (pos_s >= 0) {
+          const absSignEnd = pos_s + s.length;
+          if (extendedEnd < 0 || absSignEnd < extendedEnd) extendedEnd = absSignEnd;
+        }
+      }
+      const hm2 = _v432FindHouse(cfg, text.slice(pEnd, pEnd + 200), true);
+      if (hm2) {
+        const houseFmt = cfg.houseFmt(hm2.value);
+        const absHouse = pEnd + hm2.idx + houseFmt.length;
+        if (extendedEnd < 0 || absHouse > extendedEnd) extendedEnd = absHouse;
+      }
+      const zExt = text.slice(pEnd, extendedEnd > 0 ? extendedEnd : pEnd + 200);
+      const p = _v432PatchZone(cfg, lang, zExt, t.sign, t.house, true, text, pEnd);
+      if (p.count > 0) {
+        patch = p; pos = pEnd; z = zExt; origLen = zExt.length;
+      }
+    } else {
+      // ── 标准短句命中支路 ──
+      z = fwd; origLen = z.length;
+      patch = _v432PatchZone(cfg, lang, z, hasSignF ? null : t.sign, hasHouseF ? null : t.house, true, text, m.index + m[0].length);
+      if (patch.count === 0 && bwd) {
+        z = bwd; origLen = z.length;
+        patch = _v432PatchZone(cfg, lang, z, hasSignB ? null : t.sign, hasHouseB ? null : t.house, false, text, m.index - origLen);
+      }
+      if (patch.count === 0) continue;
+      pos = z === fwd ? m.index + m[0].length : Math.max(0, m.index - origLen);
     }
-    if (patch.count === 0) continue;
-    const pos = z === fwd ? m.index + m[0].length : Math.max(0, m.index - origLen);
-    result = result.slice(0, pos) + patch.text + result.slice(pos + origLen);
-    const delta = patch.text.length - origLen;
-    text = result;
-    nameRe.lastIndex += delta;
+    // ── Common Tail（统一步骤）──
+    if (patch && patch.count > 0 && pos >= 0) {
+      result = result.slice(0, pos) + patch.text + result.slice(pos + origLen);
+      text = result;
+      nameRe.lastIndex = pos + patch.text.length;
+      changed = true;
     console.log(`[V432] ${lang} \u6d41\u6708\u9501: ${name} \u2192 ${t.sign || '?'}${t.house ? ' ' + cfg.houseFmt(t.house) : ''}`);
+    }
   }
   return result;
 }
@@ -6557,6 +6586,37 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 
 ❌ Bad Output: Writing "Venus in Scorpio (第8宫)" when data says 第5宫.
 ✅ Good Output: Writing "Venus in Scorpio (第5宫)" — matching the data exactly.
+
+### [LITERARY POLISH — V459]
+Write as an experienced master astrologer speaks — not as a coordinate extraction engine.
+
+**8. LITERARY TRANSFORMATION RULE:**
+Transform rigid astrological coordinates into rich, evocative language:
+  ❌ Bad: "本周是财富能量整合期。木星在第10宫带来机遇。本周需要注意财务决策。"
+  ✅ Good: "木星的光芒此刻正照耀你的第10宫，那是一扇缓缓开启的职业之门——并非轰轰烈烈地推开，而是如黎明前的潮汐，悄然将你推向更开阔的水域。本周不宜仓促决策，尤其是涉及中长期资金配置时，让节奏慢下来。"
+
+  ❌ Bad: "流年水星在第3宫增强沟通。本周适合谈判。"
+  ✅ Good: "水星的信使能量行经第3宫，字斟句酌成为你本周最锋利的工具——合同条款的每一个留白、对话中的每一处措辞，都值得你用比平时多三倍的耐心去推敲。"
+
+**9. SENTENCE VARIETY RULE:**
+Vary opening structures. Avoid starting consecutive paragraphs with the same phrase:
+  ❌ Bad (Chinese): "本周是...本周能量...本周财富能量...本周整体..." — mechanical repetition of "本周".
+  ✅ Good: Use natural transitions: "此刻..." / "随着..." / "第X周的重心在于..." / "这股能量...".
+
+  ❌ Bad (Spanish): "Esta semana es... Esta semana la energía... Esta semana las finanzas..."
+  ✅ Good: "La energía de esta semana..." / "El foco de la Semana 2..." / "En este periodo..."
+
+**10. EMOTIONAL RESONANCE RULE:**
+When describing financial risks, embed the guidance in felt experience, not dry warnings:
+  ❌ Bad: "Evite préstamos rápidos entre el 9 y el 14."
+  ✅ Good: "Entre el 9 y el 14, el riesgo de decisiones impulsivas se intensifica — si una oportunidad financiera se presenta con urgencia irresistible, esa misma urgencia es la señal de alerta."
+
+**11. PARAGRAPH FLUENCY RULE:**
+Each paragraph must feel like one continuous breath, not a bulleted report:
+  ❌ Bad: "木星在第10宫。土星在第6宫。本周需要注意的是..."
+  ✅ Good: "木星正以它一贯的乐观照耀第10宫，而土星则以一种近乎严苛的耐心在第6宫等待——两者之间形成的张力，本周将以一种不易察觉却持续发酵的方式影响你的决策节奏。"
+
+**REMEMBER:** You are an ancient master astrologer speaking through the written word. The astrological data is your palette; the reader's emotional reality is your canvas. Do not list coordinates. Weave them into experience.
 `;
   
   let monthlySystem = ((MONTHLY_SYSTEM[lang] || MONTHLY_SYSTEM.en) + FORMAT_FIREWALL + STRICT_GROUNDING).replaceAll('{MONTH}', curMonthName)
