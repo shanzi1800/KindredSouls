@@ -315,6 +315,121 @@ ${_planets
   ].join('\n');
 }
 
+export function assertNatalPlanetTruth(text, lang, astroMatrix) {
+  /**
+   * V461 STEP 3 (CI铁闸): 后置断言 —— 扫描正文里所有行星+星座+宫位引用,
+   * 与 buildNatalAnchors JSON 真值对撞,返回违背列表。
+   * @param {string} text - LLM 生成的报告正文
+   * @param {string} lang - 语言代码 en/es/zh/fr/th/vi
+   * @param {object} astroMatrix - SwissEph 真值矩阵
+   * @returns {{violations: Array, checked: number, passed: boolean}}
+   */
+  if (!text || !astroMatrix) return { violations: [], checked: 0, passed: true };
+
+  // ── 1. 从 buildNatalAnchors 提取 JSON 真值 ────────────────────────
+  let truthMap = {};
+  try {
+    const raw = buildNatalAnchors(astroMatrix);
+    const kv = [...raw.matchAll(/"(natal(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto))":\s*\{"sign":"([^"]+)","house"\s*:\s*(\d+)/g)];
+    for (const [, key, sign, house] of kv) {
+      truthMap[key] = { sign, house: +house };
+    }
+  } catch(e) {
+    console.warn('[V461 CI] buildNatalAnchors parse failed:', e.message);
+    return { violations: [], checked: 0, passed: true };
+  }
+
+  if (Object.keys(truthMap).length === 0) return { violations: [], checked: 0, passed: true };
+
+  // ── 2. 各语言行星名+星座名模式 ────────────────────────────────────
+  const PLANETS_ALL = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+  const SIGN_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  const SIGN_ES = ['Aries','Tauro','G\u00e9minis','C\u00e1ncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'];
+  const SIGN_FR = ['B\u00e9lier','Taureau','G\u00e9meaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
+  const SIGN_VI = ['B\u1ea1ch D\u01b0\u01a1ng','Kim Ng\u01b0u','Song T\u1eef','C\u1ef1 Gi\u1ea3i','S\u01b0 T\u1eed','X\u1eed N\u1eef','Thi\u00ean B\u00ecnh','Thi\u00ean Y\u1ebft','Nh\u00e2n M\u00e3','Ma K\u1ebft','B\u1ea3o B\u00ecnh','Song Ng\u01b0'];
+  const SIGN_ZH = ['\u767d\u7f8a\u5ea7','\u91d1\u725b\u5ea7','\u53cc\u5b50\u5ea7','\u5ba2\u623f\u5ea7','\u72ee\u5b50\u5ea7','\u5904\u5973\u5ea7','\u5929\u79e4\u5ea7','\u5929\u8749\u5ea7','\u5c04\u624b\u5ea7','\u9a6c\u5e03\u5ea7','\u6c34\u74f6\u5ea7','\u53cc\u9c7c\u5ea7'];
+
+  let signsPat;
+  if (lang === 'es') signsPat = SIGN_ES.join('|');
+  else if (lang === 'fr') signsPat = SIGN_FR.join('|');
+  else if (lang === 'vi') signsPat = SIGN_VI.join('|');
+  else if (lang === 'zh') signsPat = SIGN_ZH.join('|');
+  else signsPat = SIGN_EN.join('|'); // en/th default (其他语言正文偶见英文星座名)
+
+  const violations = [];
+  let checked = 0;
+
+  for (const planet of PLANETS_ALL) {
+    const truth = truthMap['natal' + planet];
+    if (!truth) continue;
+
+    // 行星名（各语言）
+    let planetPat;
+    if (lang === 'zh') {
+      const zhMap = { Sun:'\u592a\u9633', Moon:'\u6708\u4eae', Mercury:'\u6c34\u661f', Venus:'\u91d1\u661f', Mars:'\u706b\u661f', Jupiter:'\u6728\u661f', Saturn:'\u571f\u661f', Uranus:'\u5929\u738b\u661f', Neptune:'\u6d77\u738b\u661f', Pluto:'\u51a0\u738b\u661f' };
+      planetPat = planet === 'Moon' ? '\u6708\u4eae' : (zhMap[planet] || planet);
+    } else if (lang === 'vi') {
+      const viMap = { Sun:'M\u1eb7t Tr\u1eddi', Moon:'M\u1eb7t Tr\u0103ng', Mercury:'Sao Th\u1ee7y', Venus:'Sao Kim', Mars:'Sao H\u1ecfa', Jupiter:'Sao M\u1ed9c', Saturn:'Sao Th\u1ed5', Uranus:'Sao Thi\u00ean V\u01b0\u01a1ng', Neptune:'Sao H\u1ea3i V\u01b0\u01a1ng', Pluto:'Sao Di\u00eam V\u01b0\u01a1ng' };
+      planetPat = viMap[planet] || planet;
+    } else if (lang === 'fr') {
+      const frMap = { Sun:'Soleil', Moon:'Lune', Mercury:'Mercure', Venus:'V\u00e9nus', Mars:'Mars', Jupiter:'Jupiter', Saturn:'Saturne', Uranus:'Uranus', Neptune:'Neptune', Pluto:'Pluton' };
+      planetPat = frMap[planet] || planet;
+    } else if (lang === 'es') {
+      const esMap = { Sun:'Sol', Moon:'Luna', Mercury:'Mercurio', Venus:'Venus', Mars:'Marte', Jupiter:'J\u00fApiter', Saturn:'Saturno', Uranus:'Urano', Neptune:'Neptuno', Pluto:'Plut\u00f3n' };
+      planetPat = esMap[planet] || planet;
+    } else if (lang === 'th') {
+      const thMap = { Sun:'\u0e14\u0e27\u0e2d\u0e2d\u0e32\u0e15\u0e34\u0e19\u0e4c\u0e17\u0e35\u0e48', Moon:'\u0e14\u0e27\u0e2d\u0e08\u0e31\u0e19\u0e4c\u0e17\u0e35\u0e48', Mercury:'\u0e14\u0e32\u0e40\u0e27\u0e34\u0e22\u0e4c', Venus:'\u0e1e\u0e24\u0e19\u0e38\u0e22\u0e4c', Mars:'\u0e14\u0e32\u0e14\u0e27\u0e31\u0e15\u0e4c', Jupiter:'\u0e14\u0e32\u0e1e\u0e38\u0e15\u0e4c', Saturn:'\u0e19\u0e31\u0e01\u0e0a\u0e4c\u0e17\u0e35\u0e48', Uranus:'\u0e1e\u0e25\u0e28\u0e31\u0e19\u0e4c\u0e17\u0e35\u0e48\u0e2a\u0e32\u0e27\u0e23\u0e23\u0e30\u0e22\u0e4c', Neptune:'\u0e40\u0e19\u0e47\u0e1e\u0e42\u0e19\u0e4c\u0e17\u0e35\u0e48', Pluto:'\u0e1e\u0e25\u0e42\u0e15\u0e2d\u0e19\u0e4c\u0e17\u0e35\u0e48' };
+      planetPat = thMap[planet] || planet;
+    } else {
+      planetPat = planet; // en
+    }
+
+    // natal 语境检测正则（行星必须被 natal/natale/natal/your 修饰才算本命引用）
+    // 例: "Your natal Jupiter in Leo, House 8" / "Votre Jupiter natal en..." / "你的本命木星在..."
+    // 排除 transit 语境: "transit Jupiter in..." / "the Jupiter in Leo"（无修饰词=transit）
+    let natalCtxPat;
+    if (lang === 'zh') {
+      natalCtxPat = '(?:\u6728\u661f|\u6728\u661f\u672c\u547d|\u6728\u661f\u5728\u3001?)';
+    } else if (lang === 'vi') {
+      natalCtxPat = '(?:Sao M\u1ed9c natal|Sao M\u1ed9c c\u1ee7a|your Sao M\u1ed9c|Sao M\u1ed9c c\u1ee7a)';
+    } else if (lang === 'fr') {
+      natalCtxPat = '(?:votre?|ton|sa|natre|natal|du n\u00e3issance)';
+    } else if (lang === 'es') {
+      natalCtxPat = '(?:tu|su|natal|de nacimiento|el Sol natal|la Luna natal|natum)';
+    } else {
+      // en: your natal / your / natal / of the birth
+      natalCtxPat = '(?:your|Your|your natal|Your natal|natal |natale |birth |of the birth)';
+    }
+
+    // 检测模式: [natal修饰] [行星] [in/at/星座名] [House N]
+    // 例: "Your natal Jupiter in Leo, House 8" / "Jupiter in Leo, House 8" (无修饰=transit,跳过)
+    const patterns = [
+      // 格式A: Planet in Sign, House N / Planet Sign, House N
+      new RegExp(natalCtxPat + '\\s*(' + planetPat + ')\\s+(?:in|at|is)?\\s+(' + signsPat + ')\\s*,?\\s*(?:House\\s+|H)(\\d+)', 'gi'),
+      // 格式B: Planet Sign N (紧凑,中间无介词)
+      new RegExp(natalCtxPat + '\\s*(' + planetPat + ')\\s+(' + signsPat + ')\\s+(\\d+)(?!\\w)', 'gi'),
+    ];
+
+    for (const pat of patterns) {
+      pat.lastIndex = 0;
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        checked++;
+        const foundSign = m[2];
+        const foundHouse = +m[3];
+        if (foundSign !== truth.sign || foundHouse !== truth.house) {
+          violations.push({
+            planet, expectedSign: truth.sign, expectedHouse: truth.house,
+            foundSign, foundHouse, context: m[0].slice(0, 80),
+          });
+        }
+      }
+    }
+  }
+
+  return { violations, checked, passed: violations.length === 0 };
+}
+
 export function buildFactSheet(astroMatrix, lang = 'en') {
   if (!astroMatrix || !astroMatrix.months || astroMatrix.months.length === 0) {
     return '';
