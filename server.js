@@ -4803,6 +4803,8 @@ const V435_DATE_PATTERNS = {
   zh: [
     { re: /(\d{1,2})\s*月\s*(\d{1,2})\s*日?\s*(?:[-–~—]|至|到)\s*(?:(\d{1,2})\s*月\s*)?(\d{1,2})\s*日?(?![0-9])/g, gS: 2, gE: 4, monNum: 1, monNum2: 3 },
     { re: /(\d{1,2})\s*月\s*(\d{1,2})\s*日(?![0-9])/g, gS: 2, gE: null, monNum: 1 },
+    // 🛠️ V435-fix1: LLM 周段落常用裸日格式「X日月亮进入Y座」（省略「X月」），旧正则不匹配→V435 整体跳过→日期句幻觉裸奔
+    { re: /(?<![0-9月])(\d{1,2})\s*日(?![0-9年])/g, gS: 1, gE: null, monNum: null, bareDay: true },
   ],
   en: [
     { re: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?![0-9])\s*(?:[-–~—]|to|through|until)\s*(\d{1,2})(?![0-9])/gi, gS: 2, gE: 3, monName: 1 },
