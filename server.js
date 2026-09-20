@@ -5985,10 +5985,10 @@ function lockNatalAnchorRole(text, lang, astroMatrix) {
       'ดวงจันทร์': 'Moon', 'ดาวจันทร์': 'Moon',
     };
     const _thTH = '[\u0E01-\u0E4F]';
-    const clusterRe = new RegExp('ราศี(' + signsPat + ')\s*บ้าน\s*(\d+)\s*ซึ่งเป็นที่สถิตของ\s*([^。\n]+?)(?:ของท่าน|$)', 'g');
+    const clusterRe = new RegExp('ราศี(' + signsPat + ')\\s*บ้าน\\s*(\\d+)\\s*ซึ่งเป็นที่สถิตของ\\s*([^。\\n]+?)(?:ของท่าน|$)', 'g');
     out = out.replace(clusterRe, (m, signCap, houseCap, planetList) => {
       const planets = [];
-      const plRe = new RegExp('(ดาว' + _thTH + '+|ดวง' + _thTH + '+)\s*กำเนิด', 'g');
+      const plRe = new RegExp('(ดาว' + _thTH + '+|ดวง' + _thTH + '+)\\s*กำเนิด', 'g');
       let pm;
       while ((pm = plRe.exec(planetList)) !== null) {
         const key = _thPlanetKey[pm[1]];
