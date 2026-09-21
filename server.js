@@ -6354,7 +6354,7 @@ const V462_WEEK_SUB = {
   en: ['Mercury Forged · Skill Manifestation', 'Neptune Mist · Absolute Meltdown', 'Saturn Sediment · Still Deep Flow', 'Jupiter Spotlight · Harvest In Hand'],
   es: ['Mercurio Forjado · Manifestación de Habilidad', 'Niebla de Neptuno · Fusión Absoluta', 'Sedimento de Saturno · Corriente Profunda', 'Spotlight de Júpiter · Cosecha en Mano'],
   fr: ['Mercure Trempé · Manifestation de Compétence', 'Brume de Neptune · Fusion Absolue', 'Sédiment de Saturne · Courant Profond', 'Spotlight de Jupiter · Récolte en Main'],
-  th: ['ดาวพุธหลอมแฝง · ประจักษ์ทักษะ', 'เนปจูนหมอกลง · หลอมละลายเด็ดขาด', 'เสาร์ตะกอน · น้ำเงียบลึก', 'พฤหัสจุดสว่าง · เก็บเกี่ยวลงมือ'],
+  th: ['ดาวพุธหลอมแฝง · ประจักษ์ทักษะ', 'เนปจูนหมอกลง · หลอมละลายเด็ดขาด', 'เสาร์ตะกอน · น้ำเงียบลึก', 'พฤหัสจุดสว่าง · รับรางวัลลงมือ'],
   vi: ['Thủy Tinh Luyện · Hiện Thực Kỹ Năng', 'Hải Vương Sương Mù · Tan Chảy Tuyệt Đối', 'Thổ Tinh Trầm Tích · Dòng Nước Sâu', 'Mộc Tinh Điểm Sáng · Gặt Hái Trong Tay'],
 };
 const v462Sub = (lang) => V462_WEEK_SUB[lang] || V462_WEEK_SUB.zh;
@@ -6368,7 +6368,7 @@ const V462_LEGACY_SUB = {
        ['The Wealth Explosion', 3], ['Wealth Explosion', 3]],
   es: [['Recarga de Riqueza', 0], ['Cortocircuito de Alto Riesgo', 1], ['Integración Estratégica', 2], ['Explosión de Riqueza', 3]],
   fr: [['Recharge de Richesse', 0], ['Disjoncteur à Haut Risque', 1], ['Intégration Stratégique', 2], ['Explosion de Richesse', 3]],
-  th: [['การเติมพลังความมั่งคั่ง', 0], ['วงจรความเสี่ยงสูง', 1], ['การบูรณาการเชิงกลยุทธ์', 2], ['การระเบิดความมั่งคั่ง', 3]],
+  th: [['การเติมพลังความมั่งคั่ง', 0], ['พุธหลอมรวม', 0], ['วงจรความเสี่ยงสูง', 1], ['พุธสว่าง', 1], ['พุธแยกทาง', 2], ['การบูรณาการเชิงกลยุทธ์', 2], ['การระเบิดความมั่งคั่ง', 3]],
   vi: [['Nạp năng lượng Tài sản', 0], ['Mạch Ngắn Rủi ro Cao', 1], ['Tích hợp Chiến lược', 2], ['Bùng nổ Tài sản', 3]],
 };
 
@@ -6378,8 +6378,12 @@ function v462NormalizeWeekSub(text, lang) {
   const subs = v462Sub(lang);
   let c = text;
   // ① 旧套话全词 → 新意象（长词在前，避免「财富爆发」被「财爆」误切）
+  // V464-fix: Thai diacritics ั(U+0E33) and ุ(U+0E38) appear/drop inconsistently across LLM outputs vs LEGACY_SUB keys.
+  //   → strip both from text and keys before includes() check. Only strip these 2 chars (not all diacritics).
+  const _tstrip = lang === 'th' ? (s) => s.replace(/[ั-ฺ]/g, (m, o) => o === 0 ? m : '') : (s) => s;
+  const _txt = _tstrip(text);
   for (const [legacy, idx] of (V462_LEGACY_SUB[lang] || V462_LEGACY_SUB.zh)) {
-    if (c.includes(legacy)) c = c.split(legacy).join(subs[idx]);
+    if (_txt.includes(_tstrip(legacy)) || c.includes(legacy)) c = c.split(legacy).join(subs[idx]);
   }
   // ② 中文括号内字符脱落（「（财）」「（高）」「（顺）」等）→ 按周次归一
   if (lang === 'zh') {
