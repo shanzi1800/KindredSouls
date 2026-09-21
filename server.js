@@ -749,13 +749,15 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/🔮\s*本命主(?!题)/g, '🔮 本月命运主题')
             .replace(/🔮\s*本(?![月命运主题])/g, '🔮 本月命运主题')
             .replace(/🔮\s*命主(?!题)/g, '🔮 本月命运主题')
-            .replace(/（财充）/g, '（财富充能）')
-            .replace(/（高熔）/g, '（高危熔断）')
-            .replace(/（顺蓄）/g, '（顺流蓄力）')
-            .replace(/（财爆）/g, '（财富爆发）')
-            // 🛠️ V461: 去模版化安全网——LLM 偶发吐出"月亮过境："技术前缀时，降级为诗意月轨表述
-            .replace(/月亮过境：流月月亮依次行经/g, '月轨流转：流月月亮依次行经')
+            // 🛠️ V462: 旧套话归一（治本：此处原本把残缺词“修复”回旧套话，与提示词黑名单互相打架）
+            .replace(/（财充）/g, `（${V462_WEEK_SUB.zh[0]}）`)
+            .replace(/（高熔）/g, `（${V462_WEEK_SUB.zh[1]}）`)
+            .replace(/（顺蓄）/g, `（${V462_WEEK_SUB.zh[2]}）`)
+            .replace(/（财爆）/g, `（${V462_WEEK_SUB.zh[3]}）`)
+            // 🛠️ V462: 去模版化安全网——剥掉天文学日志式月轨前缀（无前缀变体也拦）
+            .replace(/月亮过境：流月月亮依次行经/g, '月光的足迹掠过')
             .replace(/月亮过境：/g, '月轨足迹：')
+            .replace(/流月月亮依次行经/g, '月光的足迹掠过')
             .replace(/\uFFFD/g,'').replace(/�/g,'');
           // 🛠️ V414-fix: V374 首块主题头补全——原代码块位于 `let clean` 之前(TDZ 死区),
           //   首 chunk 访问 clean 抛 ReferenceError 被 catch 吞掉 → 首段文字丢失("削首"根因)。移到 clean 生成之后。
@@ -5778,29 +5780,29 @@ function _v438WeekTruth(w, cfg, spanOnly) {
 
 const _V438_CFG = {
   zh: { signs: SUN_SIGN_ZH, houseOut: h => `第${h}宫`, fmt: (loc, hs) => `${loc}（${hs}）`, sep: '、',
-        intro: '流月月亮依次行经', stopRe: /\n|[。.]|\d+月\d+日/,   // 🛠️ V454-fix2: \n 放前面优先截断英文；中文句号 \。 补漏（stopAt=-1 时整把锁跳过）
+        intro: '月光的足迹掠过', stopRe: /\n|[。.]|\d+月\d+日/,   // 🛠️ V454-fix2: \n 放前面优先截断英文；中文句号 \。 补漏（stopAt=-1 时整把锁跳过）
         headerRe: /第([1-4])周[^\n]*/g },
   en: { signs: SUN_SIGN_EN, houseOut: h => `House ${h}`, fmt: (loc, hs) => {
       const parts = hs.replace(/House\s*/g, '').trim().split('\u2192');
       const houses = parts.map(n => 'House ' + n.trim()).join('\u2192');
       return parts.length === 1 ? `${loc} (${houses})` : `${loc} (${houses})`;
     },  // V442-fix6: 单宫 'House 1'，多宫 'House 1→House 2'
-        intro: 'The Moon transits through ', stopRe: /,|\.(?=\s|\n|$)/,   // 🛠️ V455-fix: 英文 Trail 用逗号结尾→stopAt 落到下一句末→整段正文被乱序句覆盖。加逗号后只截到 Trail 逗号处，保留后面散文；es/fr/th/vi 同理（/[.\n]/ 已含换行，英文 Trail 通常无换行）。
+        intro: "The Moon's path sweeps through ", stopRe: /,|\.(?=\s|\n|$)/,   // 🛠️ V455-fix: 英文 Trail 用逗号结尾→stopAt 落到下一句末→整段正文被乱序句覆盖。加逗号后只截到 Trail 逗号处，保留后面散文；es/fr/th/vi 同理（/[.\n]/ 已含换行，英文 Trail 通常无换行）。
         headerRe: /Week\s+([1-4])[^\n]*/gi,
         sep: ', ',   // V442-fix10
   },   // en
   es: { signs: SUN_SIGN_ES, houseOut: h => `Casa ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
-        intro: 'La Luna transita por ', stopRe: /[.\n]/,
+        intro: 'El rastro de la Luna recorre ', stopRe: /[.\n]/,
         headerRe: /Semana\s+([1-4])[^\n]*/gi },
   fr: { signs: SUN_SIGN_FR, houseOut: h => `Maison ${h}`, fmt: (loc, hs) => `${loc} (${hs})`, sep: ', ',
-        intro: 'La Lune traverse ', stopRe: /[.\n]/,
+        intro: 'Le sillage de la Lune traverse ', stopRe: /[.\n]/,
         headerRe: /Semaine\s+([1-4])[^\n]*/gi },
   th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `(${hs})`, signPrefix: 'ราศี', signWrap: (loc, inner) => `${loc} ${inner}`,
         sep: ' → ',
-        intro: 'ดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
+        intro: 'เส้นทางของดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
         headerRe: /สัปดาห์ที่\s*([1-4])[^\n]*/g },
   vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ', multiWordSigns: true,
-        intro: 'Mặt Trăng đi qua ', stopRe: /[.\n]/,
+        intro: 'Vệt trăng lần lượt đi qua ', stopRe: /[.\n]/,
         headerRe: /Tuần\s*([1-4])[^\n]*/gi },
 };
 
@@ -6336,6 +6338,58 @@ function getMonthLabel(lang, year, month) {
   return `${_name} ${year}`;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 🌟 V462：周副标题「单一真源」+ 旧套话根治
+//   治本背景（2026-09-21 封仓验收抓到的真根因）：
+//     V461-B/C 只改了 _W1_SUB~_W4_SUB 与提示词黑名单，但
+//     ① HEADER_TEMPLATES ② HEADER_TEMPLATES_RP ③ _langW1Title
+//     三处模板仍**硬编码**旧套话（财富充能/高危熔断/顺流蓄力/财富爆发），
+//     ④ fixMonthlySectionTitles 还会把残缺词「修复」**回**旧套话，
+//     ⑤ 流式 clean 链同样回填旧套话。
+//   → 结果：LLM 就算守规矩，代码也把它改回旧词（改了一次没生效的真因）。
+//   本块：真源唯一 + 全语言旧词归一，任何路径吐出旧词都被改写为新意象。
+// ═══════════════════════════════════════════════════════════════
+const V462_WEEK_SUB = {
+  zh: ['水星淬火 · 技能显化之窗', '海王迷雾 · 绝对熔断', '土星沉淀 · 静水深流', '木星高光 · 收割落袋'],
+  en: ['Mercury Forged · Skill Manifestation', 'Neptune Mist · Absolute Meltdown', 'Saturn Sediment · Still Deep Flow', 'Jupiter Spotlight · Harvest In Hand'],
+  es: ['Mercurio Forjado · Manifestación de Habilidad', 'Niebla de Neptuno · Fusión Absoluta', 'Sedimento de Saturno · Corriente Profunda', 'Spotlight de Júpiter · Cosecha en Mano'],
+  fr: ['Mercure Trempé · Manifestation de Compétence', 'Brume de Neptune · Fusion Absolue', 'Sédiment de Saturne · Courant Profond', 'Spotlight de Jupiter · Récolte en Main'],
+  th: ['ดาวพุธหลอมแฝง · ประจักษ์ทักษะ', 'เนปจูนหมอกลง · หลอมละลายเด็ดขาด', 'เสาร์ตะกอน · น้ำเงียบลึก', 'พฤหัสจุดสว่าง · เก็บเกี่ยวลงมือ'],
+  vi: ['Thủy Tinh Luyện · Hiện Thực Kỹ Năng', 'Hải Vương Sương Mù · Tan Chảy Tuyệt Đối', 'Thổ Tinh Trầm Tích · Dòng Nước Sâu', 'Mộc Tinh Điểm Sáng · Gặt Hái Trong Tay'],
+};
+const v462Sub = (lang) => V462_WEEK_SUB[lang] || V462_WEEK_SUB.zh;
+
+// 旧套话 / 截断残留 → 归一目标索引（0=W1 … 3=W4）
+const V462_LEGACY_SUB = {
+  zh: [['财富充能', 0], ['财充', 0], ['高危熔断', 1], ['高熔断', 1], ['高熔', 1], ['高危', 1],
+       ['顺流蓄力', 2], ['顺流', 2], ['顺蓄', 2],
+       ['财富爆发', 3], ['财富爆', 3], ['财爆', 3]],
+  en: [['Wealth Recharging', 0], ['High-Risk Circuit Breaker', 1], ['Strategic Integration', 2],
+       ['The Wealth Explosion', 3], ['Wealth Explosion', 3]],
+  es: [['Recarga de Riqueza', 0], ['Cortocircuito de Alto Riesgo', 1], ['Integración Estratégica', 2], ['Explosión de Riqueza', 3]],
+  fr: [['Recharge de Richesse', 0], ['Disjoncteur à Haut Risque', 1], ['Intégration Stratégique', 2], ['Explosion de Richesse', 3]],
+  th: [['การเติมพลังความมั่งคั่ง', 0], ['วงจรความเสี่ยงสูง', 1], ['การบูรณาการเชิงกลยุทธ์', 2], ['การระเบิดความมั่งคั่ง', 3]],
+  vi: [['Nạp năng lượng Tài sản', 0], ['Mạch Ngắn Rủi ro Cao', 1], ['Tích hợp Chiến lược', 2], ['Bùng nổ Tài sản', 3]],
+};
+
+// 周副标题归一（幂等；新意象不含旧词子串，可反复调用）
+function v462NormalizeWeekSub(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  const subs = v462Sub(lang);
+  let c = text;
+  // ① 旧套话全词 → 新意象（长词在前，避免「财富爆发」被「财爆」误切）
+  for (const [legacy, idx] of (V462_LEGACY_SUB[lang] || V462_LEGACY_SUB.zh)) {
+    if (c.includes(legacy)) c = c.split(legacy).join(subs[idx]);
+  }
+  // ② 中文括号内字符脱落（「（财）」「（高）」「（顺）」等）→ 按周次归一
+  if (lang === 'zh') {
+    c = c.replace(/第([1-4])周([^\n]{0,30}?)（[^）\n]{0,6}）\s*[顺高财危熔流蓄爆]{0,4}）/g,
+                  (m, n, pre) => `第${n}周${pre}（${subs[Number(n) - 1]}）`);
+    c = c.replace(/）\s*[顺高财危熔流蓄爆]{1,4}）/g, '）');
+  }
+  return c;
+}
+
 function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   if (!text) return text;
   let c = text;
@@ -6348,22 +6402,8 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   c = c.replace(/🔮\s*本命主(?!题)/g, '🔮 本月命运主题');
   c = c.replace(/🔮\s*命主(?!题)/g, '🔮 本月命运主题');
 
-  // 2. 4周章节标题括号内缩写还原（与AI脱字符场景兼容）
-  // 2a. 严重脱落：括号里只剩一个字（AI字符掉了90%）
-  c = c.replace(/【第1周】[\s\S]{0,40}（财）(?![富发])/g, m => m.replace(/（财）/, '（财富充能）'));
-  c = c.replace(/【第2周】[\s\S]{0,40}（高）(?![危熔])/g, m => m.replace(/（高）/, '（高危熔断）'));
-  c = c.replace(/【第3周】[\s\S]{0,40}（）\s*顺）(?![流蓄])/g, m => m.replace(/（）\s*顺）/, '（顺流蓄力）'));
-  c = c.replace(/【第3周】[\s\S]{0,40}（顺）(?![流蓄])/g, m => m.replace(/（顺）/, '（顺流蓄力）'));
-  c = c.replace(/【第4周】[\s\S]{0,40}（财）(?![富发])/g, m => m.replace(/（财）/, '（财富爆发）'));
-  // 2b. 中度脱落：括号里还剩两个字
-  c = c.replace(/（财充）(?![富发])/g, '（财富充能）');
-  c = c.replace(/（高危）(?![熔])/g, '（高危熔断）');
-  c = c.replace(/（高熔断）/g, '（高危熔断）');
-  c = c.replace(/（高熔）(?![断])/g, '（高危熔断）');
-  c = c.replace(/（顺流）(?![蓄])/g, '（顺流蓄力）');
-  c = c.replace(/（顺蓄）(?![力])/g, '（顺流蓄力）');
-  c = c.replace(/（财爆）(?![发])/g, '（财富爆发）');
-  c = c.replace(/（财富爆）(?![发])/g, '（财富爆发）');
+  // 2. 4周章节标题副标题归一（V462 治本：旧套话/脱落词 → 军师 V461 诗意意象，单一真源）
+  c = v462NormalizeWeekSub(c, lang);
 
   // 3. 【消费陷阱】缩写还原
   c = c.replace(/【消陷】/g, '【消费陷阱】');
@@ -6484,60 +6524,60 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   const HEADER_TEMPLATES = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${curMonthZH}（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${curMonthZH}（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${curMonthZH}（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${curMonthZH}（财富爆发）]`,
+      week1:       `✦ [🟢 第1周：${curMonthZH}（${V462_WEEK_SUB.zh[0]}）]`,
+      week2:       `✦ [🔴 第2周：${curMonthZH}（${V462_WEEK_SUB.zh[1]}）]`,
+      week3:       `✦ [🔵 第3周：${curMonthZH}（${V462_WEEK_SUB.zh[2]}）]`,
+      week4:       `✦ [🟢 第4周：${curMonthZH}（${V462_WEEK_SUB.zh[3]}）]`,
       trap:        `✦ [⚠️ 消费陷阱：${curMonthZH}]`,
       circuit:     '',
       circuit_tag: '⚠️ 安全指令：',
     },
     en: {
       overview:    '✦ [🔮 Monthly Destiny Theme: Strategic Alignment & Wealth Expansion] ✦',
-      week1:       `✦ [Week 1: ${curMonthName} 1–7] Wealth Recharging`,
-      week2:       `✦ [Week 2: ${curMonthName} 8–14] High-Risk Circuit Breaker`,
-      week3:       `✦ [Week 3: ${curMonthName} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthName} 23–${lastDayOfMonth}] The Wealth Explosion`,
+      week1:       `✦ [Week 1: ${curMonthName} 1–7] ${V462_WEEK_SUB.en[0]}`,
+      week2:       `✦ [Week 2: ${curMonthName} 8–14] ${V462_WEEK_SUB.en[1]}`,
+      week3:       `✦ [Week 3: ${curMonthName} 15–22] ${V462_WEEK_SUB.en[2]}`,
+      week4:       `✦ [Week 4: ${curMonthName} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
       trap:        `✦ [⚠️ Spending Traps: ${curMonthName} ${currentYear}] ✦`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
     },
     es: {
       overview:    '✦ [🔮 Tema de Destino Mensual] ✦',
-      week1:       `✦ [Semana 1: {MONTH} 1–7] Recarga de Riqueza`,
-      week2:       `✦ [Semana 2: {MONTH} 8–14] Cortocircuito de Alto Riesgo`,
-      week3:       `✦ [Semana 3: {MONTH} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: {MONTH} 23–${lastDayOfMonth}] Explosión de Riqueza`,
+      week1:       `✦ [Semana 1: {MONTH} 1–7] ${V462_WEEK_SUB.es[0]}`,
+      week2:       `✦ [Semana 2: {MONTH} 8–14] ${V462_WEEK_SUB.es[1]}`,
+      week3:       `✦ [Semana 3: {MONTH} 15–22] ${V462_WEEK_SUB.es[2]}`,
+      week4:       `✦ [Semana 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
       trap:        `✦ [⚠️ Trampas Financieras: {MONTH} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
     },
     fr: {
       overview:    '✦ [🔮 Thème de Destin du Mois] ✦',
-      week1:       `✦ [Semaine 1: {MONTH} 1–7] Recharge de Richesse`,
-      week2:       `✦ [Semaine 2: {MONTH} 8–14] Disjoncteur à Haut Risque`,
-      week3:       `✦ [Semaine 3: {MONTH} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: {MONTH} 23–${lastDayOfMonth}] Explosion de Richesse`,
+      week1:       `✦ [Semaine 1: {MONTH} 1–7] ${V462_WEEK_SUB.fr[0]}`,
+      week2:       `✦ [Semaine 2: {MONTH} 8–14] ${V462_WEEK_SUB.fr[1]}`,
+      week3:       `✦ [Semaine 3: {MONTH} 15–22] ${V462_WEEK_SUB.fr[2]}`,
+      week4:       `✦ [Semaine 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
       trap:        `✦ [⚠️ Pièges Financiers: {MONTH} ${currentYear}] ✦`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
     },
     th: {
       overview:    '✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦',
-      week1:       `✦ [สัปดาห์ที่ 1: {MONTH} 1–7] การเติมพลังความมั่งคั่ง`,
-      week2:       `✦ [สัปดาห์ที่ 2: {MONTH} 8–14] วงจรความเสี่ยงสูง`,
-      week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
+      week1:       `✦ [สัปดาห์ที่ 1: {MONTH} 1–7] ${V462_WEEK_SUB.th[0]}`,
+      week2:       `✦ [สัปดาห์ที่ 2: {MONTH} 8–14] ${V462_WEEK_SUB.th[1]}`,
+      week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–22] ${V462_WEEK_SUB.th[2]}`,
+      week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
       trap:        `✦ [⚠️ กับดักทางการเงิน: {MONTH} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
     vi: {
       overview:    '✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦',
-      week1:       `✦ [Tuần 1: {MONTH} 1–7] Nạp năng lượng Tài sản`,
-      week2:       `✦ [Tuần 2: {MONTH} 8–14] Mạch Ngắn Rủi ro Cao`,
-      week3:       `✦ [Tuần 3: {MONTH} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: {MONTH} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
+      week1:       `✦ [Tuần 1: {MONTH} 1–7] ${V462_WEEK_SUB.vi[0]}`,
+      week2:       `✦ [Tuần 2: {MONTH} 8–14] ${V462_WEEK_SUB.vi[1]}`,
+      week3:       `✦ [Tuần 3: {MONTH} 15–22] ${V462_WEEK_SUB.vi[2]}`,
+      week4:       `✦ [Tuần 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
       trap:        `✦ [⚠️ Cạm bẫy Tài chính: {MONTH} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -7223,60 +7263,60 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const HEADER_TEMPLATES_RP = {
     zh: {
       overview:    '✦ [🔮 本月命运主题] ✦',
-      week1:       `✦ [🟢 第1周：${curMonthLocal}1日–7日（财富充能）]`,
-      week2:       `✦ [🔴 第2周：${curMonthLocal}8日–14日（高危熔断）]`,
-      week3:       `✦ [🔵 第3周：${curMonthLocal}15日–22日（顺流蓄力）]`,
-      week4:       `✦ [🟢 第4周：${curMonthLocal}23日–${lastDayOfMonth}日（财富爆发）]`,
+      week1:       `✦ [🟢 第1周：${curMonthLocal}1日–7日（${V462_WEEK_SUB.zh[0]}）]`,
+      week2:       `✦ [🔴 第2周：${curMonthLocal}8日–14日（${V462_WEEK_SUB.zh[1]}）]`,
+      week3:       `✦ [🔵 第3周：${curMonthLocal}15日–22日（${V462_WEEK_SUB.zh[2]}）]`,
+      week4:       `✦ [🟢 第4周：${curMonthLocal}23日–${lastDayOfMonth}日（${V462_WEEK_SUB.zh[3]}）]`,
       trap:        `✦ [⚠️ 消费陷阱：${currentYear}年${curMonthLocal}] ✦`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
     },
     en: {
       overview:    '✦ [🔮 Monthly Destiny Theme: Strategic Alignment & Wealth Expansion] ✦',
-      week1:       `✦ [Week 1: ${curMonthLocal} 1–7] Wealth Recharging`,
-      week2:       `✦ [Week 2: ${curMonthLocal} 8–14] High-Risk Circuit Breaker`,
-      week3:       `✦ [Week 3: ${curMonthLocal} 15–22] Strategic Integration`,
-      week4:       `✦ [Week 4: ${curMonthLocal} 23–${lastDayOfMonth}] The Wealth Explosion`,
+      week1:       `✦ [Week 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.en[0]}`,
+      week2:       `✦ [Week 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.en[1]}`,
+      week3:       `✦ [Week 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.en[2]}`,
+      week4:       `✦ [Week 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
       trap:        `✦ [⚠️ Spending Traps: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
     },
     es: {
       overview:    '✦ [🔮 Tema de Destino Mensual] ✦',
-      week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] Recarga de Riqueza`,
-      week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] Cortocircuito de Alto Riesgo`,
-      week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] Integración Estratégica`,
-      week4:       `✦ [Semana 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosión de Riqueza`,
+      week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.es[0]}`,
+      week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.es[1]}`,
+      week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.es[2]}`,
+      week4:       `✦ [Semana 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
       trap:        `✦ [⚠️ Trampas de Gasto: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
     },
     fr: {
       overview:    '✦ [🔮 Thème de Destin du Mois] ✦',
-      week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] Recharge de Richesse`,
-      week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] Disjoncteur à Haut Risque`,
-      week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] Intégration Stratégique`,
-      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–${lastDayOfMonth}] Explosion de Richesse`,
+      week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.fr[0]}`,
+      week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.fr[1]}`,
+      week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.fr[2]}`,
+      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
       trap:        `✦ [⚠️ Pièges Financiers: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
     },
     th: {
       overview:    '✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦',
-      week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] การเติมพลังความมั่งคั่ง`,
-      week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] วงจรความเสี่ยงสูง`,
-      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] การบูรณาการเชิงกลยุทธ์`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–${lastDayOfMonth}] การระเบิดความมั่งคั่ง`,
+      week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.th[0]}`,
+      week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.th[1]}`,
+      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.th[2]}`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
       trap:        `✦ [⚠️ กับดักการใช้จ่าย: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
     },
     vi: {
       overview:    '✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦',
-      week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] Nạp năng lượng Tài sản`,
-      week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] Mạch Ngắn Rủi ro Cao`,
-      week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] Tích hợp Chiến lược`,
-      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–${lastDayOfMonth}] Bùng nổ Tài sản`,
+      week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.vi[0]}`,
+      week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.vi[1]}`,
+      week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.vi[2]}`,
+      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
       trap:        `✦ [⚠️ Bẫy Chi Tiêu: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -10668,13 +10708,13 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
   const _MONTHLY_THEME = { zh:'月度命运主题', en:'Monthly Destiny Theme', es:'Tema del Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตารายเดือน', vi:'Chủ đề Vận mệnh Tháng' };
   const _W1_TITLE  = { zh:'第1周', en:'Week 1', es:'Semana 1', fr:'Semaine 1', th:'สัปดาห์ที่ 1', vi:'Tuần 1' };
-  const _W1_SUB    = { zh:'水星淬火 · 技能显化之窗', en:'Mercury Forged · Skill Manifestation', es:'Mercurio Forjado · Manifestación de Habilidad', fr:'Mercure Trempé · Manifestation de Compétence', th:'ดาวพุธหลอมแฝง · ประจักษ์ทักษะ', vi:'Thủy Tinh Luyện · Hiện Thực Kỹ Năng' };
+  const _W1_SUB    = { zh:V462_WEEK_SUB.zh[0], en:V462_WEEK_SUB.en[0], es:V462_WEEK_SUB.es[0], fr:V462_WEEK_SUB.fr[0], th:V462_WEEK_SUB.th[0], vi:V462_WEEK_SUB.vi[0] };
   const _W2_TITLE  = { zh:'第2周', en:'Week 2', es:'Semana 2', fr:'Semaine 2', th:'สัปดาห์ที่ 2', vi:'Tuần 2' };
-  const _W2_SUB    = { zh:'海王迷雾 · 绝对熔断', en:'Neptune Mist · Absolute Meltdown', es:'Niebla de Neptuno · Fusión Absoluta', fr:'Brume de Neptune · Fusion Absolue', th:'เนปจูนหมอกลง · หลอมละลายเด็ดขาด', vi:'Hải Vương Sương Mù · Tan Chảy Tuyệt Đối' };
+  const _W2_SUB    = { zh:V462_WEEK_SUB.zh[1], en:V462_WEEK_SUB.en[1], es:V462_WEEK_SUB.es[1], fr:V462_WEEK_SUB.fr[1], th:V462_WEEK_SUB.th[1], vi:V462_WEEK_SUB.vi[1] };
   const _W3_TITLE  = { zh:'第3周', en:'Week 3', es:'Semana 3', fr:'Semaine 3', th:'สัปดาห์ที่ 3', vi:'Tuần 3' };
-  const _W3_SUB    = { zh:'土星沉淀 · 静水深流', en:'Saturn Sediment · Still Deep Flow', es:'Sedimento de Saturno · Corriente Profunda', fr:'Sédiment de Saturne · Courant Profond', th:'เสาร์ตะกอน · น้ำเงียบลึก', vi:'Thổ Tinh Trầm Tích · Dòng Nước Sâu' };
+  const _W3_SUB    = { zh:V462_WEEK_SUB.zh[2], en:V462_WEEK_SUB.en[2], es:V462_WEEK_SUB.es[2], fr:V462_WEEK_SUB.fr[2], th:V462_WEEK_SUB.th[2], vi:V462_WEEK_SUB.vi[2] };
   const _W4_TITLE  = { zh:'第4周', en:'Week 4', es:'Semana 4', fr:'Semaine 4', th:'สัปดาห์ที่ 4', vi:'Tuần 4' };
-  const _W4_SUB    = { zh:'木星高光 · 收割落袋', en:'Jupiter Spotlight · Harvest In Hand', es:'Spotlight de Júpiter · Cosecha en Mano', fr:'Spotlight de Jupiter · Récolte en Main', th:'พฤหัสจุดสว่าง · เก็บเกี่ยวลงมือ', vi:'Mộc Tinh Điểm Sáng · Gặt Hái Trong Tay' };
+  const _W4_SUB    = { zh:V462_WEEK_SUB.zh[3], en:V462_WEEK_SUB.en[3], es:V462_WEEK_SUB.es[3], fr:V462_WEEK_SUB.fr[3], th:V462_WEEK_SUB.th[3], vi:V462_WEEK_SUB.vi[3] };
   const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
   const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
   // 🛠️ V386-fix: 流式首段强制注入标准化月报主题标题(DeepSeek偶发漏🔮导致金色标题消失)
@@ -10683,7 +10723,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   let _themeInjected = false;
   const _langThemeTitle = { zh:'✦ [🔮 本月命运主题] ✦', en:'✦ [🔮 Monthly Destiny Theme] ✦', es:'✦ [🔮 Tema de Destino Mensual] ✦', fr:'✦ [🔮 Thème de Destin du Mois] ✦', th:'✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦', vi:'✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦' }[lang] || '✦ [🔮 本月命运主题] ✦';
   // 周标题语言映射(第1段需注入第1周标题,让前端 parseLine 能识别周次金色)
-  const _langW1Title = { zh:'✦ [🟢 第1周：财富充能] ✦', en:'✦ [🟢 Week 1: Wealth Recharge] ✦', es:'✦ [🟢 Semana 1: Recarga de Riqueza] ✦', fr:'✦ [🟢 Semaine 1: Recharge de Richesse] ✦', th:'✦ [🟢 สัปดาห์ที่ 1: การเติมพลังความมั่งคั่ง] ✦', vi:'✦ [🟢 Tuần 1: Nạp năng lượng tài lộc] ✦' }[lang] || '✦ [🟢 第1周：财富充能] ✦';
+  const _langW1Title = { zh:`✦ [🟢 第1周：${V462_WEEK_SUB.zh[0]}] ✦`, en:`✦ [🟢 Week 1: ${V462_WEEK_SUB.en[0]}] ✦`, es:`✦ [🟢 Semana 1: ${V462_WEEK_SUB.es[0]}] ✦`, fr:`✦ [🟢 Semaine 1: ${V462_WEEK_SUB.fr[0]}] ✦`, th:`✦ [🟢 สัปดาห์ที่ 1: ${V462_WEEK_SUB.th[0]}] ✦`, vi:`✦ [🟢 Tuần 1: ${V462_WEEK_SUB.vi[0]}] ✦` }[lang] || `✦ [🟢 第1周：${V462_WEEK_SUB.zh[0]}] ✦`;
   const _T1 = _W1_TITLE[lang]||_W1_TITLE.zh; const _S1 = _W1_SUB[lang]||_W1_SUB.zh;
   const _T2 = _W2_TITLE[lang]||_W2_TITLE.zh; const _S2 = _W2_SUB[lang]||_W2_SUB.zh;
   const _T3 = _W3_TITLE[lang]||_W3_TITLE.zh; const _S3 = _W3_SUB[lang]||_W3_SUB.zh;
@@ -10743,7 +10783,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 
 📐 格式规范：
 - 第2周（W2）开篇必须短促有力（≤2句），制造压迫感；正文用断句或省略号增强张力
-- 第3周（W3）开篇须有顺流蓄力的静谧感；正文长短句交错，叙事而非列举
+- 第3周（W3）开篇须有静水深流的静谧感；正文长短句交错，叙事而非列举
 - 不得出现「高危熔断」「顺流蓄力」等老套词（已由副标题承载）
 - 不得写「9日……12日……14日……」等列表式日期排版
 - 风控数字必须与星象心理叙事缝合（不是干巴巴的「冷静24小时」）
