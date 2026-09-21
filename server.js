@@ -8391,6 +8391,27 @@ app.post('/api/save-result', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 🛍️ V463：爆款/物理法器（Physical Artefacts & CTA）商业闭环预留节点
+//   军师指令 2026-09-21（优先级 Low，仅预留不占工期）
+//   ── 封仓期（当前）：has_recommended_item=false，其余字段 null
+//      前端解析到 false 直接忽略该节点 → 页面零多余 UI，报告绝对纯洁
+//   ── 上线期：算法按星盘硬损耗（如盘中金星/土星硬相位、破损宫位）置
+//      has_recommended_item=true 并下发 item_sku / trigger_reason / cta_text / target_url
+//      前端识别后自动在报告末尾渲染「专属法器卡片」并跳转购买
+//   ── 单一真源：所有报告接口（月报/年报/先天财富）共用此构造器，不手写第二份
+// ═══════════════════════════════════════════════════════════════
+const ACTIONABLE_ARTEFACT_RESERVED = Object.freeze({
+  has_recommended_item: false,
+  item_sku: null,
+  trigger_reason: null,
+  cta_text: null,
+  target_url: null,
+});
+function buildActionableArtefact(overrides) {
+  return Object.assign({}, ACTIONABLE_ARTEFACT_RESERVED, overrides || {});
+}
+
 // ── [V238-STREAM-META] 共享: 结构化命理元数据(八字/星座/易经/塔罗)供流式端点报头渲染 ──
 function buildWealthMeta(birthDate, lang, astroMatrix) {
   const TIANGAN = { zh:['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'], en:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], es:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], fr:['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'], th:['เจีย','อี้','ปิง','ติง','อู๋','จี','เกิง','ซิน','เหริน','กุ่ย'], vi:['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'] };
@@ -8494,7 +8515,9 @@ function buildWealthMeta(birthDate, lang, astroMatrix) {
       name: (card?.name?.[lang] || card?.name?.en),
       emoji: card?.emoji,
       orientation: tarotReversed ? 'Reversed' : 'Upright'
-    }
+    },
+    // 🛍️ V463: 爆款/法器预留节点（封仓期 false；前端见 false 忽略）
+    actionable_artefact: buildActionableArtefact()
   };
 }
 
@@ -8616,6 +8639,8 @@ function buildWealthMetaFull(birthDate, lang) {
       birthDate, lang,
       score,
       cached: false,
+      // 🛍️ V463: 爆款/法器预留节点（封仓期 false；前端见 false 忽略）
+      actionable_artefact: buildActionableArtefact(),
       message: lang === 'zh' ? '财富格局已生成' : 'Wealth pattern generated',
       data: {
         bazi: {
@@ -10399,6 +10424,8 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   const heartbeat = setInterval(() => { send(': heartbeat\n\n'); flush(); }, 20000);
 
   const sendStatus = (text) => { send(JSON.stringify({ type: 'status', text })); flush(); };
+  // 🛍️ V463: 爆款/法器预留节点首帧下发（V2 年报通道；封仓期 false，前端忽略）
+  try { send(JSON.stringify({ meta: { actionable_artefact: buildActionableArtefact() } })); } catch (e) {}
   const sendChunk = (text) => {
     if (lang !== 'zh') { text = text.replace(/（/g, '').replace(/）/g, ''); }
     send(JSON.stringify({ type: 'chunk', text })); flush();

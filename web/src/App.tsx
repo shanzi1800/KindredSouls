@@ -1278,11 +1278,43 @@ export default function App() {
   const [wealthPath, setWealthPath] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
+      // 🛍️ V463: 爆款/法器路由预留（/artefact/:sku_id、/shop/item/:sku_id）不作 View
+      if (/^\/(?:artefact|shop\/item)\/[^/]+\/?$/.test(path)) return null;
       if (path === '/wealth') return '/wealth';
       if (path === '/wealth/report') return '/wealth/report';
     }
     return null;
   });
+
+  // ── 🛍️ V463: 爆款/物理法器 路由预留（军师指令 2026-09-21）──
+  //   /artefact/:sku_id 与 /shop/item/:sku_id 暂不开发 View：
+  //   统一兜底重定向回主站 + 极简「能量载体孕育中」Toast，确保路由不报错、不空白。
+  //   未来商城上线时，仅需把这里换成真实的 ArtefactPage 即可。
+  const [artefactNotice, setArtefactNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const ARTEFACT_NOTICE: Record<string, string> = {
+      zh: '能量载体孕育中',
+      en: 'Your artefact is still being forged',
+      es: 'Tu artefacto aún se está forjando',
+      fr: 'Votre artefact est encore en forge',
+      th: 'พลังงานของคุณกำลังถูกหล่อหลอม',
+      vi: 'Vật phẩm năng lượng đang được tạo hình',
+    };
+    const handleArtefactRoute = () => {
+      const m = window.location.pathname.match(/^\/(?:artefact|shop\/item)\/([^/]+)\/?$/);
+      if (!m) return;
+      const sku = decodeURIComponent(m[1]);
+      console.info('[V463] artefact route reserved, sku =', sku);
+      try { window.history.replaceState({}, '', '/'); } catch { /* noop */ }
+      setWealthPath(null);
+      const _langKey = String(i18n.language || 'en').slice(0, 2).toLowerCase();
+      setArtefactNotice(ARTEFACT_NOTICE[_langKey] || ARTEFACT_NOTICE.en);
+      window.setTimeout(() => setArtefactNotice(null), 4200);
+    };
+    handleArtefactRoute();
+    window.addEventListener('popstate', handleArtefactRoute);
+    return () => window.removeEventListener('popstate', handleArtefactRoute);
+  }, [i18n.language]);
 
   // ── Policy page routing (terms-of-service / privacy-policy) ──
   const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
@@ -1503,6 +1535,21 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
 
   return (
     <div className="app">
+      {/* 🛍️ V463: 爆款/法器路由预留的极简 Toast（封仓期仅兜底，无任何商城 UI） */}
+      {artefactNotice && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed', left: '50%', bottom: '36px', transform: 'translateX(-50%)',
+            padding: '10px 22px', borderRadius: '999px', zIndex: 9999,
+            background: 'rgba(13,13,26,0.92)', border: '1px solid #D4AF37',
+            color: '#F5E1A4', fontSize: '13px', letterSpacing: '0.5px',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.45)', pointerEvents: 'none',
+          }}
+        >
+          {artefactNotice}
+        </div>
+      )}
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
       {wealthPath?.startsWith('/wealth/report') && <WealthReportPage key="wealth-report" onNavigate={navigate} />}
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
