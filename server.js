@@ -6400,6 +6400,8 @@ function v462PoeticizeTrail(text, lang) {
   if (lang === 'zh') {
     // ① 剔天文标签前缀
     c = c.replace(/\u6708\u4eae\u8fc7\u5883\uff1a/g, '').replace(/\u6708\u7403\u8fc7\u5883\uff1a/g, '');
+    // ①b 无冒号残留（陷阱段括号内等）→ 诗意替词
+    c = c.split('\u6708\u4eae\u8fc7\u5883').join('\u6708\u4eae\u9014\u7ecf');
     // ② 日志式引导词 → 诗意月轨
     c = c.split('\u6d41\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
     c = c.split('\u672c\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
@@ -6412,8 +6414,9 @@ function v462PoeticizeTrail(text, lang) {
     //       故要求：① 句内含换座/进入类动词 且 ② 日期数 ≥2 或以日期开头
     const _INGRESS_RE = /(\u6362\u5ea7|\u8fdb\u5165|\u884c\u81f3|\u843d\u5165|\u5165\u5ea7)/;
     c = c.split('\n').map((line) => {
-      // 标题/胴面行不碰（周标题、章节标题）
-      if (/\u7b2c[1-4\u4e00\u4e8c\u4e09\u56db]\u5468/.test(line) || /^\s*[✦【\[]/.test(line)) return line;
+      // 标题/胴面行不碰——仅限「行首标题」或「第N周：」真标题；
+      // ⚠️ 不能用含「第N周」就跳（血泪）：正文里「把第2周掉置的谈判」会整行免检 → 残留日期清单
+      if (/^\s*[✦【\[]/.test(line) || /\u7b2c[1-4\u4e00\u4e8c\u4e09\u56db]\u5468[\uff1a:]/.test(line)) return line;
       if (!/\d{1,2}\u65e5/.test(line)) return line;
       const kept = line.split('\u3002').filter((s) => {
         const dates = (s.match(/\d{1,2}\u65e5/g) || []).length;

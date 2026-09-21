@@ -257,3 +257,21 @@ describe('V462-fix4 周标题误删回归门', () => {
     assert.deepStrictEqual(fails, [], fails.join('\n  '));
   });
 });
+
+describe('V462-fix6 行级守卫收紧 + 无冒号月亮过境归一', () => {
+  test('① 正文含「第2周」字样时，日期清单句仍必须被剔除', () => {
+    const t = '26日月亮转入白羊座第1宫与第2宫，是本月签单的黄金日。28日月亮进入金牛座第2宫与第3宫，现金流落袋为安。建议：把第2周搁置的谈判重新摆上桌面。';
+    const out = poet(t, 'zh');
+    const fails = [];
+    if (out.includes('28日月亮进入金牛座')) fails.push('行级守卫过宽：含「第2周」的正文行被整体免检');
+    if (!out.includes('把第2周搁置的谈判重新摆上桌面')) fails.push('正文被误删');
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('② 无冒号的「月亮过境」也必须归一为诗意替词', () => {
+    const t = '日期区间为1–7日（月亮过境第2、3、4、5、6宫期间）、8–14日（月亮过境第6、7、8宫期间）。';
+    const out = poet(t, 'zh');
+    assert.ok(!out.includes('月亮过境'), '仍残留「月亮过境」');
+    assert.ok(out.includes('月亮途经'), '未替换为「月亮途经」');
+  });
+});
