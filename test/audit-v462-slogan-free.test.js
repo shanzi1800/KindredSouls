@@ -217,3 +217,43 @@ describe('V462-fix2 月轨句去日志化（整段/全文级）', () => {
     assert.deepStrictEqual(bad, [], '提示词负例污染未清除：\n  ' + bad.join('\n  '));
   });
 });
+
+describe('V462-fix4 周标题误删回归门', () => {
+  const titles = [
+    '✦ [🟢 第1周：9月1日–7日（水星淬火 · 技能显化之窗）]',
+    '✦ [🔴 第2周：9月8日–14日（海王迷雾 · 绝对熔断）]',
+    '✦ [🔵 第3周：9月15日–22日（土星沉淀 · 静水深流）]',
+    '✦ [🟢 第4周：9月23日–30日（木星高光 · 收割落袋）]',
+    '✦ [⚠️ 消费陷阱：2026年9月] ✦',
+  ];
+
+  test('① 含日期区间的周标题必须零改动（生产事故根因）', () => {
+    const fails = [];
+    for (const t of titles) {
+      const o = poet(t, 'zh');
+      if (o !== t) fails.push(`标题被改动:\n   入: ${t}\n   出: ${o}`);
+    }
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('② 标题 + 清单句混排：只剔清单句，标题与正文完整', () => {
+    const mixed = titles[0] + '\n1日月亮进入金牛座，3日进入双子座，5日进入巨蟹座。\n本周财富能量从社群宫位启动。\n' + titles[1];
+    const out = poet(mixed, 'zh');
+    const fails = [];
+    if (!out.includes(titles[0])) fails.push('W1 标题被删');
+    if (!out.includes(titles[1])) fails.push('W2 标题被删');
+    if (out.includes('1日月亮进入金牛座')) fails.push('清单句未被剔除');
+    if (!out.includes('本周财富能量从社群宫位启动')) fails.push('正文被误删');
+    if (poet(out, 'zh') !== out) fails.push('幂等失败');
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('③ 月轨本体（含 N日 的行进句）不得被当清单删', () => {
+    const trail = '月光的足迹掠过巨蟹座（第3宫）、狮子座（第3宫→第4宫）。';
+    const narr = '26–28日月光的足迹掠过白羊座第11宫时，与流年土星形成碰撞。';
+    const fails = [];
+    if (poet(trail, 'zh') !== trail) fails.push('月轨本体被改动');
+    if (!poet(narr, 'zh').includes('月光的足迹掠过白羊座第11宫')) fails.push('叙事句被误删');
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+});

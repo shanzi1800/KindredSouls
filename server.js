@@ -6406,12 +6406,19 @@ function v462PoeticizeTrail(text, lang) {
     c = c.split('\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
     c = c.split('\u6708\u4eae\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
     // ③ 剔「N日X座、N日Y座换座」/「N日月亮进入X座」日期清单句
-    //    保留月轨本身（已含星座/宫位轨迹），只删重复的日期表
+    //    保留月轨本身（已含星座/宫位轨迹），只删重复的日期表。
+    //    ⚠️ 判据必须双条件（血泪）：单看「≥2 个日期」会误杀周标题——
+    //       `第1周：9月1日–7日（…）` 里 `1日`+`7日` 就是两个匹配！
+    //       故要求：① 句内含换座/进入类动词 且 ② 日期数 ≥2 或以日期开头
+    const _INGRESS_RE = /(\u6362\u5ea7|\u8fdb\u5165|\u884c\u81f3|\u843d\u5165|\u5165\u5ea7)/;
     c = c.split('\n').map((line) => {
+      // 标题/胴面行不碰（周标题、章节标题）
+      if (/\u7b2c[1-4\u4e00\u4e8c\u4e09\u56db]\u5468/.test(line) || /^\s*[✦【\[]/.test(line)) return line;
       if (!/\d{1,2}\u65e5/.test(line)) return line;
       const kept = line.split('\u3002').filter((s) => {
         const dates = (s.match(/\d{1,2}\u65e5/g) || []).length;
-        if (!dates) return true;
+        if (dates < 2 && !/^\s*\d{1,2}\u65e5/.test(s)) return true;
+        if (!_INGRESS_RE.test(s)) return true;
         return !(dates >= 2 || /^\s*\d{1,2}\u65e5/.test(s));
       });
       return kept.join('\u3002');
