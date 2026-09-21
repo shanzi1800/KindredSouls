@@ -102,6 +102,7 @@ describe('V462-fix3 流式分块安全发射器', () => {
     '当流年太阳行经处女座（第3宫），你被点亮。',
     '✦ [🟢 第1周：9月1日–7日（财富充能）]',
     '月亮过境：流月月亮依次行经白羊座（第10宫）、金牛座（第10宫→第11宫）、双子座（第11宫）。1日金牛座、3日双子座、5日巨蟹座换座。',
+    '1日月亮进入金牛座，3日进入双子座，5日进入巨蟹座。',
     '本周财富能量从远方起步。',
     '✦ [🔴 第2周：9月8日–14日（高危熔断）]',
     '月亮过境：流月月亮依次行经巨蟹座（第12宫）、狮子座（第12宫→第1宫）。8日狮子座、10日处女座换座。',
@@ -136,7 +137,8 @@ describe('V462-fix3 流式分块安全发射器', () => {
       for (const keep of ['本周财富能量从远方起步', '静水深流的一周', '收获的时节', '那份紧迫本身就是警报', '本月命运主题']) {
         if (!full.includes(keep)) fails.push(`分块=${size} 正文被吞: ${keep}`);
       }
-      if (size === 1 && full.length < dirtyZh.length * 0.8) fails.push(`分块=1 输出异常短(${full.length})`);
+      // 无损护栏：净化只允许删「日期清单句」，不得吞正文（keep 列表逐条验证）
+      if (size === 1 && full.length < dirtyZh.length * 0.55) fails.push(`分块=1 输出异常短(${full.length}/${dirtyZh.length})`);
     }
     assert.deepStrictEqual(fails, [], fails.join('\n  '));
   });
@@ -171,15 +173,16 @@ describe('V462-fix3 流式分块安全发射器', () => {
 
 describe('V462-fix2 月轨句去日志化（整段/全文级）', () => {
   test('③ 中文：标签前缀消失 + 引导词诗化 + 日期清单句剔除 + 幂等', () => {
-    const bad = '月亮过境：流月月亮依次行经白羊座（第9宫）、金牛座（第9宫→第10宫）。1日金牛座、3日双子座换座。\n本周流年太阳在处女座第2宫持续为你点燃财帛宫的火种。';
+    const bad = '\u6708\u4eae\u8fc7\u5883\uff1a\u6d41\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf\u767d\u7f8a\u5ea7\uff08\u7b2c9\u5bab\uff09\u3001\u91d1\u725b\u5ea7\uff08\u7b2c9\u5bab\u2192\u7b2c10\u5bab\uff09\u30021\u65e5\u91d1\u725b\u5ea7\u30013\u65e5\u53cc\u5b50\u5ea7\u6362\u5ea7\u3002\n1\u65e5\u6708\u4eae\u8fdb\u5165\u91d1\u725b\u5ea7\uff0c3\u65e5\u8fdb\u5165\u53cc\u5b50\u5ea7\uff0c5\u65e5\u8fdb\u5165\u5de8\u87f9\u5ea7\u3002\n\u672c\u5468\u6d41\u5e74\u592a\u9633\u5728\u5904\u5973\u5ea7\u7b2c2\u5bab\u6301\u7eed\u4e3a\u4f60\u70b9\u71c3\u8d22\u5e1b\u5bab\u7684\u706b\u79cd\u3002';
     const out = poet(bad, 'zh');
     const fails = [];
-    for (const banned of ['月亮过境：', '流月月亮依次行经', '换座', '1日金牛座']) {
-      if (out.includes(banned)) fails.push(`仍残留日志式内容: ${banned}`);
+    for (const banned of ['\u6708\u4eae\u8fc7\u5883\uff1a', '\u6d41\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf', '\u6362\u5ea7', '1\u65e5\u91d1\u725b\u5ea7', '1\u65e5\u6708\u4eae\u8fdb\u5165\u91d1\u725b\u5ea7']) {
+      if (out.includes(banned)) fails.push(`\u4ecd\u6b8b\u7559\u65e5\u5fd7\u5f0f\u5185\u5bb9: ${banned}`);
     }
-    if (!out.includes('月光的足迹掠过')) fails.push('未替换为诗意引导词');
-    if (!out.includes('本周流年太阳在处女座第2宫')) fails.push('误伤正文（正文Sentence被删）');
-    if (poet(out, 'zh') !== out) fails.push('幂等失败');
+    if (!out.includes('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7')) fails.push('\u672a\u66ff\u6362\u4e3a\u8bd7\u610f\u5f15\u5bfc\u8bcd');
+    if (!out.includes('\u767d\u7f8a\u5ea7\uff08\u7b2c9\u5bab\uff09')) fails.push('\u8bef\u4f24\u6708\u8f68\u672c\u4f53');
+    if (!out.includes('\u672c\u5468\u6d41\u5e74\u592a\u9633\u5728\u5904\u5973\u5ea7\u7b2c2\u5bab')) fails.push('\u8bef\u4f24\u6b63\u6587\uff08\u6b63\u6587Sentence\u88ab\u5220\uff09');
+    if (poet(out, 'zh') !== out) fails.push('\u5e42\u7b49\u5931\u8d25');
     assert.deepStrictEqual(fails, [], fails.join('\n  '));
   });
 

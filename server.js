@@ -6405,16 +6405,20 @@ function v462PoeticizeTrail(text, lang) {
     c = c.split('\u672c\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
     c = c.split('\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
     c = c.split('\u6708\u4eae\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
-    // ③ 剔「N日X座、N日Y座换座」清单句（保留月轨本身，只删重复的日期表）
+    // ③ 剔「N日X座、N日Y座换座」/「N日月亮进入X座」日期清单句
+    //    保留月轨本身（已含星座/宫位轨迹），只删重复的日期表
     c = c.split('\n').map((line) => {
-      if (!line.includes('\u6362\u5ea7')) return line;
+      if (!/\d{1,2}\u65e5/.test(line)) return line;
       const kept = line.split('\u3002').filter((s) => {
-        if (!s.includes('\u6362\u5ea7')) return true;
         const dates = (s.match(/\d{1,2}\u65e5/g) || []).length;
+        if (!dates) return true;
         return !(dates >= 2 || /^\s*\d{1,2}\u65e5/.test(s));
       });
       return kept.join('\u3002');
     }).join('\n');
+    // ④ 收尾：清单句删除后残留的空白行归一（只压 3+ 连换行，绝不碰 2 连空行——
+    //    V446-trap2 铁律：标题前空行必须保留）
+    c = c.replace(/\n{3,}/g, '\n\n');
   } else {
     const map = {
       en: [/Moon\s+transit:\s*/gi, /The Moon transits through/g],
