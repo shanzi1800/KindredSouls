@@ -6693,6 +6693,28 @@ Each paragraph must feel like one continuous breath, not a bulleted report:
   ✅ Good: "本周的能量，由深潜转向蓄力。\n\n土星把一枚冰冷的砝码压上你信念的天平。那些从父辈血脉里继承的\"钱是危险的\"脚本，正在被它逐一拆封。\n\n16日，月亮切入射手座——家庭与内在安全感的议题浮现，像一封迟到的家书。"（三段式呼吸）
   ⚠️ 每自然段不超过 3 句；句与句之间留出心理停顿；高危周用更短的断句制造压迫。
 
+**19. NEGATIVE CONSTRAINTS — ZERO TOLERANCE（V461 黑名单 · 触之即死）:**
+周正文开篇 STRICTLY FORBIDDEN 以下任何一种写法，违者视为 Critical Failure：
+
+  ❌ FORBIDDEN #1 — 技术套话开篇（最高优先级）：
+    · 严禁以「月亮过境：」「月亮依次行经」「月球行经」等任何天文学日志式语言开篇
+    · 严禁列举「1日X座、3日Y座换座」等排版表格式文字
+    · 正确姿势：直接以诗意画面或情感氛围开篇
+    ❌ 错误 BAD: 月亮过境：流月月亮依次行经白羊座（第9宫）……
+    ✅ 正确 GOOD: 当月光的足迹从白羊座的炽热中起步，踏过金牛座的深谷……
+
+  ❌ FORBIDDEN #2 — 干瘪分类词：
+    · 严禁在周标题副标或正文中出现「财富充能」「高危熔断」「顺流蓄力」「财富爆发」等老套分类词
+    · 必须使用 V461 诗意意象替代（水星淬火 / 海王迷雾 / 土星沉淀 / 木星高光）
+
+  ❌ FORBIDDEN #3 — 列表式日期排版：
+    · 严禁写「9月1日至3日……5日……7日……」这种罗列式日期格式
+    · 正确：把日期事件编织进叙事流中，或用「某日夜间」「某日拂晓」等诗意时间词替代
+
+  ❌ FORBIDDEN #4 — 说明文式平铺直叙：
+    · 严禁连续三段以上无情感起伏的「本周...本周...本周...」说明文
+    · 每 2-3 段必须出现一次戏剧性转折或感官意象
+
 **REMEMBER:** You are an ancient master astrologer speaking through the written word. The astrological data is your palette; the reader's emotional reality is your canvas. Do not list coordinates — weave them into experience. Sensory detail, rhythmic breath, poetic risk, archetypal soul-print, zero-template footprint, and literary tension: these six dimensions together make the report a private haute-couture letter, not a generic horoscope.
 `;
   
@@ -10646,13 +10668,13 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _langName = { zh: '中文', en: '英语', es: '西班牙语', fr: '法语', th: '泰语', vi: '越南语' }[lang] || '中文';
   const _MONTHLY_THEME = { zh:'月度命运主题', en:'Monthly Destiny Theme', es:'Tema del Destino Mensual', fr:'Thème de Destin du Mois', th:'ธีมโชคชะตารายเดือน', vi:'Chủ đề Vận mệnh Tháng' };
   const _W1_TITLE  = { zh:'第1周', en:'Week 1', es:'Semana 1', fr:'Semaine 1', th:'สัปดาห์ที่ 1', vi:'Tuần 1' };
-  const _W1_SUB    = { zh:'财富充能', en:'Wealth Recharge', es:'Recarga de Riqueza', fr:'Recharge de Richesse', th:'การเติมพลังความมั่งคั่ง', vi:'Nạp năng lượng tài lộc' };
+  const _W1_SUB    = { zh:'水星淬火 · 技能显化之窗', en:'Mercury Forged · Skill Manifestation', es:'Mercurio Forjado · Manifestación de Habilidad', fr:'Mercure Trempé · Manifestation de Compétence', th:'ดาวพุธหลอมแฝง · ประจักษ์ทักษะ', vi:'Thủy Tinh Luyện · Hiện Thực Kỹ Năng' };
   const _W2_TITLE  = { zh:'第2周', en:'Week 2', es:'Semana 2', fr:'Semaine 2', th:'สัปดาห์ที่ 2', vi:'Tuần 2' };
-  const _W2_SUB    = { zh:'高危熔断', en:'High-Risk Circuit Breaker', es:'Cortocircuito de Alto Riesgo', fr:'Disjoncteur à Haut Risque', th:'วงจรหยุดความเสี่ยงสูง', vi:'Cầu dao nguy cơ cao' };
+  const _W2_SUB    = { zh:'海王迷雾 · 绝对熔断', en:'Neptune Mist · Absolute Meltdown', es:'Niebla de Neptuno · Fusión Absoluta', fr:'Brume de Neptune · Fusion Absolue', th:'เนปจูนหมอกลง · หลอมละลายเด็ดขาด', vi:'Hải Vương Sương Mù · Tan Chảy Tuyệt Đối' };
   const _W3_TITLE  = { zh:'第3周', en:'Week 3', es:'Semana 3', fr:'Semaine 3', th:'สัปดาห์ที่ 3', vi:'Tuần 3' };
-  const _W3_SUB    = { zh:'顺流蓄力', en:'Flow Accumulation', es:'Acumulación de Flujo', fr:'Accumulation de Flux', th:'การสะสมพลังตามกระแส', vi:'Tích lũy năng lượng' };
+  const _W3_SUB    = { zh:'土星沉淀 · 静水深流', en:'Saturn Sediment · Still Deep Flow', es:'Sedimento de Saturno · Corriente Profunda', fr:'Sédiment de Saturne · Courant Profond', th:'เสาร์ตะกอน · น้ำเงียบลึก', vi:'Thổ Tinh Trầm Tích · Dòng Nước Sâu' };
   const _W4_TITLE  = { zh:'第4周', en:'Week 4', es:'Semana 4', fr:'Semaine 4', th:'สัปดาห์ที่ 4', vi:'Tuần 4' };
-  const _W4_SUB    = { zh:'财富爆发', en:'Wealth Explosion', es:'Explosión de Riqueza', fr:'Explosion de Richesse', th:'ระเบิดความมั่งคั่ง', vi:'Bùng nổ tài lộc' };
+  const _W4_SUB    = { zh:'木星高光 · 收割落袋', en:'Jupiter Spotlight · Harvest In Hand', es:'Spotlight de Júpiter · Cosecha en Mano', fr:'Spotlight de Jupiter · Récolte en Main', th:'พฤหัสจุดสว่าง · เก็บเกี่ยวลงมือ', vi:'Mộc Tinh Điểm Sáng · Gặt Hái Trong Tay' };
   const _TRAP_TITLE = { zh:'避坑指南', en:'Financial Traps & Risk Mitigation', es:'Trampas Financieras', fr:'Pièges Financiers', th:'กับดักทางการเงิน', vi:'Cạm bẫy Tài chính' };
   const _THEME_HDR = _MONTHLY_THEME[lang] || _MONTHLY_THEME.zh;
   // 🛠️ V386-fix: 流式首段强制注入标准化月报主题标题(DeepSeek偶发漏🔮导致金色标题消失)
@@ -10686,21 +10708,44 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
     '3. NEVER use Whole Sign system incorrectly. The table above IS the correct Whole Sign mapping.\n' +
     '4. ABSOLUTELY FORBIDDEN: 自行推算上升星座、编造宫位、或写与表格不符的宫位。';
   const _segPrompt = [
-    { title: '月度主题+第1周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+    { title: '月度主题+第1周', content: `【V461 文学黑名单 — 必须严格遵守】
+❌ 严禁开篇写「月亮过境：流月月亮依次行经……」或「1日X座、3日Y座换座」等天文学日志
+❌ 严禁出现「财富充能」「高危熔断」「顺流蓄力」「财富爆发」等老套词
+❌ 严禁列表式日期排版「9月1日至3日……5日……7日……」
+✅ 必须以诗意画面或情感氛围直接开篇；日期事件须编织进叙事流
+✅ 2-3句即成一自然段；每段不超过3句；长短句交错营造音乐感
+✅ 感官隐喻、戏剧张力、原型高光贯穿全篇
+
+严格遵循 FORMAT_FIREWALL 格式，生成：
 1. ✦ [🔮 ${_THEME_HDR}]（标题无月份）
 2. ✦ [🟢 ${_T1}（${_S1}）]（emoji+风险等级）
 生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
 严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
 严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
 写完立即停止生成，不要输出多余内容。` },
-    { title: '第2周+第3周', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+    { title: '第2周+第3周', content: `【V461 文学黑名单 — 必须严格遵守】
+❌ 严禁开篇写「月亮过境：流月月亮依次行经……」或「1日X座、3日Y座换座」等天文学日志
+❌ 严禁出现「财富充能」「高危熔断」「顺流蓄力」「财富爆发」等老套词
+❌ 严禁列表式日期排版「9月1日至3日……5日……7日……」
+✅ 必须以诗意画面或情感氛围直接开篇；日期事件须编织进叙事流
+✅ 2-3句即成一自然段；长短句交错；高危周用断句制造压迫感
+✅ 风控底线与星象心理自然缝合（不是干巴巴的数字警告）
+
+严格遵循 FORMAT_FIREWALL 格式，生成：
 1. ✦ [🔴 ${_T2}（${_S2}）]
 2. ✦ [🔵 ${_T3}（${_S3}）]
 生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
 严禁重复「月度主题」或任何其他周次——它们已由其他分段独立生成，你只需补全本段指定的部分。
 严格使用 [背景信息] 中的本命盘 JSON 数据：太阳星座、上升星座、月亮星座以数据为准，绝对不得自行推演、编造或修改任何星座/宫位。
 写完立即停止生成，不要输出多余内容。` },
-    { title: '第4周+避坑指南', content: `严格遵循 FORMAT_FIREWALL 格式，生成：
+    { title: '第4周+避坑指南', content: `【V461 文学黑名单 — 必须严格遵守】
+❌ 严禁开篇写「月亮过境：流月月亮依次行经……」或「1日X座、3日Y座换座」等天文学日志
+❌ 严禁出现「财富充能」「高危熔断」「顺流蓄力」「财富爆发」等老套词
+❌ 严禁陷阱段写成干巴巴的"消费陷阱：超过5000元必须冷静24小时"
+✅ 第4周以收获感的诗意意象开篇（如：木星高光）；陷阱段须把数字底线编织进星象心理叙事
+✅ 报告终章须有余韵——读完之后不是"看完了"，而是"心里有什么被触碰了"
+
+严格遵循 FORMAT_FIREWALL 格式，生成：
 1. ✦ [🟢 ${_T4}（${_S4}）]
 2. ✦ [⚠️ ${_TRP}]
 生成 EXACTLY 上述列出的章节（不要多写、不要少写、不要重复任何章节）。
