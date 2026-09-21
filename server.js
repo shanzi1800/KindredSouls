@@ -6437,6 +6437,46 @@ function v462TrailIntro(lang) {
             fr: 'Le sillage de la Lune traverse', th: 'เส้นทางจันทราเคลื่อนผ่าน', vi: 'Vệt trăng lần lượt đi qua' })[lang] || '月光的足迹掠过';
 }
 
+// V462-fix3: 流式「有损净化」安全发射器
+//   流式逐块替换会跳跨 chunk 边界失配（「月亮过境：流月月亮依次行经」跨 flush 就改不到）；
+//   治法：只对「已成句的前缀」做净化，句末残句攒到下一块再发，长句超 200 字强制断。
+//   幂等 + 无状态依赖，可直接单测。
+function v462StreamSafeEmitter(emit, lang, maxCarry = 400, keep = 80) {
+  const safe = (t) => v462PoeticizeTrail(v462NormalizeWeekSub(t, lang), lang);
+  let carry = '';
+  return {
+    push(t, force) {
+      if (t) carry += t;
+      if (!carry) return;
+      if (force) {
+        const all = carry; carry = '';
+        emit(safe(all));
+        return;
+      }
+      // ① 优先在句末安全边界发射（句级/短语级替换才能 100% 命中）
+      let cut = -1;
+      for (const ch of ['\u3002', '\uff01', '\uff1f', '\n']) {
+        const k = carry.lastIndexOf(ch);
+        if (k > cut) cut = k;
+      }
+      if (cut >= 0) {
+        const head = carry.slice(0, cut + 1);
+        carry = carry.slice(cut + 1);
+        emit(safe(head));
+        return;
+      }
+      // ② 无句末标点：仅超长时强制断，且保留尾部 keep 字——
+      //    保证任何短语/整句都不可能被切在两个 emit 之间（零跨块失配）
+      if (carry.length > maxCarry) {
+        const k = carry.length - keep;
+        const head = carry.slice(0, k);
+        carry = carry.slice(k);
+        emit(safe(head));
+      }
+    },
+  };
+}
+
 function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   if (!text) return text;
   let c = text;
@@ -9718,6 +9758,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 if (typeof res.flush === 'function') res.flush();
               } catch (e) {}
             };
+            const _mtEmitSafe = v462StreamSafeEmitter(_mtEmit, lang);
             try {
               const _mtKey = getDeepSeekKey();
               const _mtResp = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -9779,12 +9820,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                       }
                       _themeTitleInjected = true;
                     }
-                    _mtEmit(_mtPend); _mtPend = '';
+                    _mtEmitSafe.push(_mtPend, false); _mtPend = '';
                   }
                 }
                 if (done) break;
               }
-              if (_mtPend && !_mtStop) { _mtEmit(_mtPend); _mtPend = ''; }
+              if (_mtPend && !_mtStop) { _mtEmitSafe.push(_mtPend, true); _mtPend = ''; }
               if (!(_mtFull || '').trim()) throw new Error('stream produced empty text');
             } catch (_mtErr) {
               console.warn('[V414] 月报流式失败,降级 callAI(非流式): ' + (_mtErr && _mtErr.message));
@@ -9794,9 +9835,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                 _mtFull = _monthlyThemeInject + '\n' + _mtFull;
                 _themeTitleInjected = true;
               }
-              for (const _mc of _safeChunk(_mtFull, 500)) _mtEmit(_mc);
+              for (const _mc of _safeChunk(v462PoeticizeTrail(v462NormalizeWeekSub(_mtFull, lang), lang), 500)) _mtEmit(_mc);
             }
-            fullTextCollector = _mtFull;
+            fullTextCollector = v462PoeticizeTrail(v462NormalizeWeekSub(_mtFull, lang), lang);
             _didStream = true;
             geminiFullText = _mtFull;
           } catch(dsErr) {
@@ -9804,6 +9845,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             try {
               const _gemFull = await streamGeminiSequential(_resDedupe, (chunk) => {
                 if(_tokMap) for(const [_t,_v] of Object.entries(_tokMap)) chunk=chunk.split(_t).join(_v);
+                if (typeof v462PoeticizeTrail === 'function') chunk = v462PoeticizeTrail(v462NormalizeWeekSub(chunk, lang), lang);
                 fullTextCollector += chunk;
                 let _out = lang === 'vi' ? (() => { try { const _j = { text: chunk }; _j.text = fixVietnameseCorruption(_j.text); _j.text = enforceRiskThreshold(_j.text, lang); return 'data: ' + JSON.stringify(_j) + '\n\n'; } catch (e) { return 'data: ' + JSON.stringify({ text: chunk }) + '\n\n'; } })() : 'data: ' + JSON.stringify({ text: chunk }) + '\n\n';
                 res.write(Buffer.from(_out, 'utf-8'));

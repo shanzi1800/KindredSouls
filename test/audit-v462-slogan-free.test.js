@@ -29,7 +29,7 @@ const _to = SRC.indexOf('function fixMonthlySectionTitles(');
 if (_from < 0 || _to <= _from) throw new Error('未能从 server.js 提取 V462 源码块');
 const BLOCK = SRC.slice(_from, _to);
 
-const F = new Function(`${BLOCK}\nreturn { V462_WEEK_SUB, V462_LEGACY_SUB, v462NormalizeWeekSub, v462PoeticizeTrail, v462TrailIntro };`)();
+const F = new Function(`${BLOCK}\nreturn { V462_WEEK_SUB, V462_LEGACY_SUB, v462NormalizeWeekSub, v462PoeticizeTrail, v462TrailIntro, v462StreamSafeEmitter };`)();
 
 const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 const norm = (t, l) => F.v462NormalizeWeekSub(t, l);
@@ -95,7 +95,81 @@ describe('V462 周副标题单一真源 · 去套话', () => {
   });
 });
 
-describe('V462-fix2 月轨句去日志化', () => {
+describe('V462-fix3 流式分块安全发射器', () => {
+  // 真实脏样本（生产实测原样）：月轨日志句 + 日期清单 + 旧套话副标题
+  const dirtyZh = [
+    '✦ [🔮 本月命运主题] ✦',
+    '当流年太阳行经处女座（第3宫），你被点亮。',
+    '✦ [🟢 第1周：9月1日–7日（财富充能）]',
+    '月亮过境：流月月亮依次行经白羊座（第10宫）、金牛座（第10宫→第11宫）、双子座（第11宫）。1日金牛座、3日双子座、5日巨蟹座换座。',
+    '本周财富能量从远方起步。',
+    '✦ [🔴 第2周：9月8日–14日（高危熔断）]',
+    '月亮过境：流月月亮依次行经巨蟹座（第12宫）、狮子座（第12宫→第1宫）。8日狮子座、10日处女座换座。',
+    '本周是财务高压线。',
+    '✦ [🔵 第3周：9月15日–22日（顺流蓄力）]',
+    '月亮过境：流月月亮依次行经天蝎座（第4宫）、射手座（第5宫）。17日射手座换座。',
+    '静水深流的一周。',
+    '✦ [🟢 第4周：9月23日–30日（财富爆发）]',
+    '月亮过境：流月月亮依次行经摩羯座（第6宫）、水瓶座（第6宫→第7宫）。22日水瓶座换座。',
+    '收获的时节。',
+    '✦ [⚠️ 消费陷阱：9月]',
+    '若一笔支出以紧迫之名召唤你，那份紧迫本身就是警报。',
+  ].join('\n');
+
+  const splitFeed = (text, size, lang) => {
+    const out = [];
+    const em = F.v462StreamSafeEmitter((t) => out.push(t), lang);
+    for (let i = 0; i < text.length; i += size) em.push(text.slice(i, i + size), false);
+    em.push('', true);
+    return out.join('');
+  };
+
+  test('①② 任意分块粒度（60/17/1 字）必须全部净化干净且非空', () => {
+    const fails = [];
+    for (const size of [60, 200, 17, 1]) {
+      const full = splitFeed(dirtyZh, size, 'zh');
+      for (const banned of ['月亮过境', '流月月亮依次行经', '换座', '财富充能', '高危熔断', '顺流蓄力', '财富爆发']) {
+        if (full.includes(banned)) fails.push(`分块=${size} 仍残留: ${banned}`);
+      }
+      if (!full.includes('月光的足迹掠过')) fails.push(`分块=${size} 未注入诗意月轨`);
+      // 无损护栏：净化不得吞掉正文
+      for (const keep of ['本周财富能量从远方起步', '静水深流的一周', '收获的时节', '那份紧迫本身就是警报', '本月命运主题']) {
+        if (!full.includes(keep)) fails.push(`分块=${size} 正文被吞: ${keep}`);
+      }
+      if (size === 1 && full.length < dirtyZh.length * 0.8) fails.push(`分块=1 输出异常短(${full.length})`);
+    }
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('③ 空输入/纯残句不误发；多次 force 幂等', () => {
+    const out = [];
+    const em = F.v462StreamSafeEmitter((t) => out.push(t), 'zh');
+    em.push('', true);
+    assert.deepStrictEqual(out, [], '空输入不得发射');
+    em.push('残句无句末标点', false);
+    assert.deepStrictEqual(out, [], '未成句不得发射');
+    em.push('。', true);
+    const once = out.join('');
+    em.push('', true);
+    em.push('', true);
+    assert.strictEqual(out.join(''), once, 'force 必须幂等');
+  });
+
+  test('④ en 分块跨边界同样净化（旧套话副标题 + 日志式月轨）', () => {
+    const dirtyEn = '✦ [🔮 Monthly Destiny Theme] ✦\nThe Sun in Virgo, House 3.\n✦ [🟢 Week 1: Sep 1–7 (Wealth Recharging)]\nMoon transit: The Moon transits through Aries, House 9, Taurus, House 9. Sun enters Virgo.\n✦ [🔴 Week 2: Sep 8–14 (High-Risk Circuit Breaker)]\nTension peaks.\n';
+    const full = splitFeed(dirtyEn, 23, 'en');
+    const fails = [];
+    for (const banned of ['Wealth Recharging', 'High-Risk Circuit Breaker', 'The Moon transits through']) {
+      if (full.includes(banned)) fails.push(`仍残留: ${banned}`);
+    }
+    if (!full.includes('Mercury Forged')) fails.push('未归一到新副标题意象');
+    if (!full.includes("The Moon's path sweeps through")) fails.push('未注入英文诗意月轨');
+    if (!full.includes('Tension peaks')) fails.push('正文被吞');
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+});
+
+describe('V462-fix2 月轨句去日志化（整段/全文级）', () => {
   test('③ 中文：标签前缀消失 + 引导词诗化 + 日期清单句剔除 + 幂等', () => {
     const bad = '月亮过境：流月月亮依次行经白羊座（第9宫）、金牛座（第9宫→第10宫）。1日金牛座、3日双子座换座。\n本周流年太阳在处女座第2宫持续为你点燃财帛宫的火种。';
     const out = poet(bad, 'zh');
