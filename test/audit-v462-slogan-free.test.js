@@ -1,0 +1,142 @@
+// 🛠️ V462 回归门：周副标题单一真源 + 去套话 + 月轨句去日志化
+//
+// 【血泪背景】
+//   军师连续两轮反馈「改了没生效」，根因不是 LLM 不听话，而是**代码把 LLM 改回去**：
+//   ① V461-B/C 只改了 _W1_SUB~_W4_SUB 与提示词黑名单，但三处模板仍硬编码旧套话
+//      （HEADER_TEMPLATES / HEADER_TEMPLATES_RP / _langW1Title）
+//   ② fixMonthlySectionTitles 还把残缺词「修复」回旧套话（（财充）→（财富充能））
+//   ③ 月轨句替换只写在 callDeepSeekStream 的「逐 chunk」清洗链里，
+//      而 `月亮过境：流月月亮依次行经…` 会跨 chunk 边界（FLUSH_SIZE=80）→ 永远匹配不到
+//   ④ 提示词里的 ❌ 反例给了 LLM 可照抄的原句 → 负例反而被复读
+//
+// 【不变量】
+//   ① 6 语言旧套话全词 → 新诗意意象（幂等）
+//   ② 中文残缺词（财充/高熔/顺蓄/财爆）→ 新意象（幂等）
+//   ③ 月轨句去日志化：标签前缀消失、日志式引导词变诗意、日期清单句被剔除
+//   ④ 模板区与提示词区不再残留旧套话 / 可照抄的坏句
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+// ── 从 server.js 原文抽取 V462 源码块（测试里绝不手写第二份真源）──
+const _from = SRC.indexOf('const V462_WEEK_SUB = {');
+const _to = SRC.indexOf('function fixMonthlySectionTitles(');
+if (_from < 0 || _to <= _from) throw new Error('未能从 server.js 提取 V462 源码块');
+const BLOCK = SRC.slice(_from, _to);
+
+const F = new Function(`${BLOCK}\nreturn { V462_WEEK_SUB, V462_LEGACY_SUB, v462NormalizeWeekSub, v462PoeticizeTrail, v462TrailIntro };`)();
+
+const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+const norm = (t, l) => F.v462NormalizeWeekSub(t, l);
+const poet = (t, l) => F.v462PoeticizeTrail(t, l);
+
+describe('V462 周副标题单一真源 · 去套话', () => {
+  test('① 6 语言旧套话 → 新诗意意象（且幂等）', () => {
+    const fails = [];
+    for (const lang of LANGS) {
+      const subs = F.V462_WEEK_SUB[lang];
+      assert.strictEqual(subs.length, 4, `${lang} 必须有 4 周副标题`);
+      F.V462_LEGACY_SUB[lang].forEach(([oldWord, idx]) => {
+        // 旧词单测 + 旧词嵌在周标题里两种形态
+        for (const input of [oldWord, `✦ [🟢 第${idx + 1}周：9月1日–7日（${oldWord}）]`]) {
+          const out = norm(input, lang);
+          if (out.includes(oldWord)) fails.push(`${lang} 旧词未清除: ${oldWord} → ${out}`);
+          if (input.includes('（') && !out.includes(subs[idx]))
+            fails.push(`${lang} 未归一到新意象: ${oldWord} → ${out}`);
+          const twice = norm(out, lang);
+          if (twice !== out) fails.push(`${lang} 幂等失败: ${oldWord}\n  一次: ${out}\n  二次: ${twice}`);
+        }
+      });
+      // 新意象必须零改动（不得误伤）
+      subs.forEach((s, i) => {
+        const good = `✦ [🟢 第${i + 1}周：9月1日–7日（${s}）]`;
+        if (norm(good, lang) !== good) fails.push(`${lang} 误伤新样本: ${good} → ${norm(good, lang)}`);
+      });
+    }
+    assert.deepStrictEqual(fails, [], '旧套话归一失败：\n  ' + fails.join('\n  '));
+  });
+
+  test('④ 模板区不再残留旧套话（HEADER_TEMPLATES / _RP / _langW1Title）', () => {
+    // 花括号配对抽取（不靠缩进/换行假设，避免抽到大段无关代码造成假阳性）
+    const extractObject = (marker) => {
+      const i = SRC.indexOf(marker);
+      if (i < 0) return null;
+      const open = SRC.indexOf('{', i);
+      let depth = 0;
+      for (let k = open; k < SRC.length; k++) {
+        if (SRC[k] === '{') depth++;
+        else if (SRC[k] === '}') { depth--; if (depth === 0) return SRC.slice(open, k + 1); }
+      }
+      return null;
+    };
+    const fails = [];
+    for (const marker of ['const HEADER_TEMPLATES = {', 'const HEADER_TEMPLATES_RP = {']) {
+      const body = extractObject(marker);
+      if (body === null) { fails.push(`缺少 ${marker}`); continue; }
+      for (const lang of LANGS) {
+        for (const [oldWord] of F.V462_LEGACY_SUB[lang]) {
+          if (body.includes(oldWord)) fails.push(`${marker} 仍硬编码旧套话: ${oldWord}`);
+        }
+      }
+    }
+    const li = SRC.indexOf('_langW1Title');
+    if (li >= 0) {
+      const line = SRC.slice(SRC.lastIndexOf('\n', li) + 1, SRC.indexOf('\n', li));
+      for (const [oldWord] of F.V462_LEGACY_SUB.zh) {
+        if (line.includes(oldWord)) fails.push(`_langW1Title 仍含旧词: ${oldWord}`);
+      }
+    }
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+});
+
+describe('V462-fix2 月轨句去日志化', () => {
+  test('③ 中文：标签前缀消失 + 引导词诗化 + 日期清单句剔除 + 幂等', () => {
+    const bad = '月亮过境：流月月亮依次行经白羊座（第9宫）、金牛座（第9宫→第10宫）。1日金牛座、3日双子座换座。\n本周流年太阳在处女座第2宫持续为你点燃财帛宫的火种。';
+    const out = poet(bad, 'zh');
+    const fails = [];
+    for (const banned of ['月亮过境：', '流月月亮依次行经', '换座', '1日金牛座']) {
+      if (out.includes(banned)) fails.push(`仍残留日志式内容: ${banned}`);
+    }
+    if (!out.includes('月光的足迹掠过')) fails.push('未替换为诗意引导词');
+    if (!out.includes('本周流年太阳在处女座第2宫')) fails.push('误伤正文（正文Sentence被删）');
+    if (poet(out, 'zh') !== out) fails.push('幂等失败');
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('③ 各语言逐条：日志式引导词 → 该语言诗意引导词', () => {
+    const cases = {
+      en: 'Moon transit: The Moon transits through Aries, House 9.',
+      es: 'Tránsito lunar: La Luna transita por Aries, Casa 9.',
+      fr: 'Transit lunaire : La Lune traverse Bélier, Maison 9.',
+      th: 'การโคจรของดวงจันทร์: ดวงจันทร์เคลื่อนผ่านเมษ บ้าน 9',
+      vi: 'Quá cảnh Mặt Trăng: Mặt Trăng đi qua Bạch Dương Nhà 9',
+    };
+    const fails = [];
+    for (const [lang, input] of Object.entries(cases)) {
+      const out = poet(input, lang);
+      const intro = F.v462TrailIntro(lang);
+      if (!out.includes(intro)) fails.push(`${lang} 未注入诗意引导词(${intro}): ${out}`);
+      if (poet(out, lang) !== out) fails.push(`${lang} 幂等失败`);
+    }
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+
+  test('④ 提示词区不再残留可照抄的坏句（负例污染根治）', () => {
+    const lines = SRC.split('\n');
+    const bad = [];
+    lines.forEach((l, i) => {
+      const t = l.trim();
+      // 以坏句开头的「独立示例行」= 可被 LLM 照抄的负例污染
+      if (/^月亮过境：流月月亮依次行经/.test(t)) bad.push(`L${i + 1} 独立坏例行: ${t.slice(0, 60)}`);
+      if (/BAD:\s*月亮过境/.test(l)) bad.push(`L${i + 1} BAD 段残留坏例: ${t.slice(0, 60)}`);
+      if (/❌\s*⚠️?\s*禁止前缀：「月亮过境：」/.test(l)) bad.push(`L${i + 1} 禁止前缀反引坏词: ${t.slice(0, 60)}`);
+    });
+    assert.deepStrictEqual(bad, [], '提示词负例污染未清除：\n  ' + bad.join('\n  '));
+  });
+});

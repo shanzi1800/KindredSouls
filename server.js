@@ -5799,7 +5799,7 @@ const _V438_CFG = {
         headerRe: /Semaine\s+([1-4])[^\n]*/gi },
   th: { signs: SUN_SIGN_TH, houseOut: h => `บ้าน ${h}`, fmt: (loc, hs) => `(${hs})`, signPrefix: 'ราศี', signWrap: (loc, inner) => `${loc} ${inner}`,
         sep: ' → ',
-        intro: 'เส้นทางของดวงจันทร์เคลื่อนผ่าน ', stopRe: /[.\n]/,
+        intro: 'เส้นทางจันทราเคลื่อนผ่าน ', stopRe: /[.\n]/,
         headerRe: /สัปดาห์ที่\s*([1-4])[^\n]*/g },
   vi: { signs: SUN_SIGN_VI, houseOut: h => `Nhà ${h}`, fmt: (loc, hs) => `${loc} ${hs}`, sep: ', ', multiWordSigns: true,
         intro: 'Vệt trăng lần lượt đi qua ', stopRe: /[.\n]/,
@@ -6390,6 +6390,53 @@ function v462NormalizeWeekSub(text, lang) {
   return c;
 }
 
+// 月轨「天文学日志式」→ 诗意化（V462-fix2）
+//   根因：原替换只写在 callDeepSeekStream 的「逐 chunk」清洗链里，
+//   而 `月亮过境：流月月亮依次行经…` 会跨 chunk 边界（FLUSH_SIZE=80），
+//   逐 chunk replace 永远匹配不到 → 必须放在全文/整段级净化层里才可靠。
+function v462PoeticizeTrail(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  let c = text;
+  if (lang === 'zh') {
+    // ① 剔天文标签前缀
+    c = c.replace(/\u6708\u4eae\u8fc7\u5883\uff1a/g, '').replace(/\u6708\u7403\u8fc7\u5883\uff1a/g, '');
+    // ② 日志式引导词 → 诗意月轨
+    c = c.split('\u6d41\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
+    c = c.split('\u672c\u6708\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
+    c = c.split('\u6708\u4eae\u4f9d\u6b21\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
+    c = c.split('\u6708\u4eae\u884c\u7ecf').join('\u6708\u5149\u7684\u8db3\u8ff9\u63a0\u8fc7');
+    // ③ 剔「N日X座、N日Y座换座」清单句（保留月轨本身，只删重复的日期表）
+    c = c.split('\n').map((line) => {
+      if (!line.includes('\u6362\u5ea7')) return line;
+      const kept = line.split('\u3002').filter((s) => {
+        if (!s.includes('\u6362\u5ea7')) return true;
+        const dates = (s.match(/\d{1,2}\u65e5/g) || []).length;
+        return !(dates >= 2 || /^\s*\d{1,2}\u65e5/.test(s));
+      });
+      return kept.join('\u3002');
+    }).join('\n');
+  } else {
+    const map = {
+      en: [/Moon\s+transit:\s*/gi, /The Moon transits through/g],
+      es: [/Tr[aá]nsito lunar:\s*/gi, /La Luna transita por/g],
+      fr: [/Transit lunaire\s*:\s*/gi, /La Lune traverse/g],
+      th: [/การโคจรของดวงจันทร์:\s*/g, /ดวงจันทร์เคลื่อนผ่าน/g],
+      vi: [/Quá cảnh Mặt Trăng:\s*/gi, /Mặt Trăng đi qua/g],
+    }[lang];
+    if (map) {
+      c = c.replace(map[0], '');
+      c = c.replace(map[1], v462TrailIntro(lang));
+    }
+  }
+  return c;
+}
+
+// 各语言月轨引导词（与 _V438_CFG.intro 保持同一真源口径）
+function v462TrailIntro(lang) {
+  return ({ zh: '月光的足迹掠过', en: "The Moon's path sweeps through", es: 'El rastro de la Luna recorre',
+            fr: 'Le sillage de la Lune traverse', th: 'เส้นทางจันทราเคลื่อนผ่าน', vi: 'Vệt trăng lần lượt đi qua' })[lang] || '月光的足迹掠过';
+}
+
 function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
   if (!text) return text;
   let c = text;
@@ -6404,6 +6451,8 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
 
   // 2. 4周章节标题副标题归一（V462 治本：旧套话/脱落词 → 军师 V461 诗意意象，单一真源）
   c = v462NormalizeWeekSub(c, lang);
+  // 2b. 月轨句去日志化（V462-fix2：全文/整段级，涵盖跨 chunk 短语）
+  c = v462PoeticizeTrail(c, lang);
 
   // 3. 【消费陷阱】缩写还原
   c = c.replace(/【消陷】/g, '【消费陷阱】');
@@ -6714,11 +6763,11 @@ Each paragraph must feel like one continuous breath, not a bulleted report:
 
 **16. ZERO-TEMPLATE & ZERO-AI-FOOTPRINT (彻底去模版化 · V461):**
 严禁任何「结构化汇报套话」与「AI 生成痕迹」。绝不解释逻辑框架，只呈现画面：
-  ❌ Bad: "月亮过境：流月月亮依次行经白羊座（第9宫）、金牛座（第10宫）……"
+  ❌ Bad: "以天文标签式前缀开头（如「◯◯过境：」），紧接着把星座与宫位罗列成清单。"
   ✅ Good: "当月光的足迹穿过白羊座的炽热，落进金牛座的深谷，再攀上双子座的风口——这一周，月轨在事业与社群的高地上画下一道上行弧线。"
-  ❌ Bad: "本周财富能量从远方与高等学习的第9宫起步，逐步攀升至事业与社群的第10宫、第11宫。"
+  ❌ Bad: "用干瘪的「本周能量从……起步，逐步攀升至……」句式平铺直叙。"
   ✅ Good: "财富的能量从远方的星火燃起，一路陡峭地攀上你事业与社群的高地。"
-  ⚠️ 禁止前缀：「月亮过境：」「本周财富能量从……起步」「本周是本月财务的高危熔断区」（后者直接融入意象标题，不单独成句）。
+  ⚠️ 禁止前缀：天文标签式前缀、干瘪的「本周能量从……起步」句式（一律融入意象句，不单独成句）。
 
 **17. LITERARY TENSION (戏剧张力句式 · V461):**
 摒弃平铺直叙的客观分析句。多采用富有文学张力、对比鲜明、直击心灵的锤击句式：
@@ -6737,10 +6786,10 @@ Each paragraph must feel like one continuous breath, not a bulleted report:
 周正文开篇 STRICTLY FORBIDDEN 以下任何一种写法，违者视为 Critical Failure：
 
   ❌ FORBIDDEN #1 — 技术套话开篇（最高优先级）：
-    · 严禁以「月亮过境：」「月亮依次行经」「月球行经」等任何天文学日志式语言开篇
-    · 严禁列举「1日X座、3日Y座换座」等排版表格式文字
+    · 严禁以任何天文学日志式标签前缀或「依次行经」式引导词开篇
+    · 严禁列举「N日 X座、N日 Y座」这种排版表格式文字
     · 正确姿势：直接以诗意画面或情感氛围开篇
-    ❌ 错误 BAD: 月亮过境：流月月亮依次行经白羊座（第9宫）……
+    ❌ 错误 BAD: 先贴一个天文标签，再直列星座与宫位。
     ✅ 正确 GOOD: 当月光的足迹从白羊座的炽热中起步，踏过金牛座的深谷……
 
   ❌ FORBIDDEN #2 — 干瘪分类词：
@@ -10750,9 +10799,8 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
   const _segPrompt = [
     { title: '月度主题+第1周', content: `【V461 写作规范 — HARD 示例 — 必须严格遵循】
 
-❌ 以下是错误示范（绝对禁止照此生成）：
-月亮过境：流月月亮依次行经白羊座（第9宫）、金牛座（第9宫→第10宫）……1日金牛座、3日双子座换座。
-本周流年太阳在处女座第2宫持续为你点燃财帛宫的火种……
+❌ 以下是错误示范（概念示意，绝对禁止照此生成）：
+① 贴一个天文标签当开头；② 把星座与宫位罗列成清单，再补一句「N日X座、N日Y座换座」；③ 用说明书式句子（「本周流年行星在◯座第◯宫持续为你……」）平铺直叙。
 
 ✅ 以下是正确的开篇方式（模仿此风格）：
 当月光的足迹从白羊座的远山之巅起步，踏过金牛座的深谷，一路折向双子与巨蟹的陡峭高地——
@@ -10760,7 +10808,7 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 本周流年太阳在处女座第2宫按下了精算的锤音……
 
 📐 格式规范：
-- 周正文必须直接以诗意意象开篇，绝不以「月亮过境」「月亮依次行经」开篇
+- 周正文必须直接以诗意意象开篇，绝不贴天文标签式前缀（如「◯◯过境：」「依次行经」）
 - 日期事件须编织进叙事流，绝不写成「1日X座、3日Y座换座」列表
 - 不得出现「财富充能」等老套分类词（已由副标题承载，正文不再重复）
 - 2-3句即成一自然段，长短交错，绝不堆砌无起伏的说明
@@ -10772,9 +10820,8 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 写完立即停止，不要输出多余内容。` },
     { title: '第2周+第3周', content: `【V461 写作规范 — HARD 示例 — 必须严格遵循】
 
-❌ 以下是错误示范（绝对禁止照此生成）：
-月亮过境：流月月亮依次行经狮子座（第12宫→第1宫）……9日处女座、12日天秤座换座。
-本周是九月财务的高危熔断区……
+❌ 以下是错误示范（概念示意，绝对禁止照此生成）：
+① 贴天文标签开篇；② 罗列「N日X座换座」；③ 用「本周是……的高危险区」这类分类口号当句子。
 
 ✅ 以下是正确的开篇方式（模仿此风格）：
 本周，宇宙在财务的高压线上拉响警报——
@@ -10795,9 +10842,8 @@ async function streamGeminiSequential(res, onChunk, lang, promptSystem, promptUs
 写完立即停止，不要输出多余内容。` },
     { title: '第4周+避坑指南', content: `【V461 写作规范 — HARD 示例 — 必须严格遵循】
 
-❌ 以下是错误示范（绝对禁止照此生成）：
-月亮过境：流月月亮依次行经水瓶座（第6宫→第7宫）……24日双鱼座、26日白羊座换座。
-本周迎来九月的财富爆发窗口……
+❌ 以下是错误示范（概念示意，绝对禁止照此生成）：
+① 贴天文标签开篇；② 罗列「N日X座换座」；③ 用「本周迎来……的◯◯窗口」这类口号句收尾。
 
 ✅ 以下是正确的开篇方式（模仿此风格）：
 木星的光芒在此刻聚焦——收获的时节悄然降临……
