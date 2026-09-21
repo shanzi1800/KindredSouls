@@ -6398,8 +6398,8 @@ function v462PoeticizeTrail(text, lang) {
   if (!text || typeof text !== 'string') return text;
   let c = text;
   if (lang === 'zh') {
-    // ① 剔天文标签前缀
-    c = c.replace(/\u6708\u4eae\u8fc7\u5883\uff1a/g, '').replace(/\u6708\u7403\u8fc7\u5883\uff1a/g, '');
+    // ① 剔天文标签前缀（全角/半角冒号 + 已归一形态一律清掉）
+    c = c.replace(/(\u6708\u4eae\u8fc7\u5883|\u6708\u7403\u8fc7\u5883|\u6708\u4eae\u9014\u7ecf)\s*[\uff1a:]\s*/g, '');
     // ①b 无冒号残留（陷阱段括号内等）→ 诗意替词
     c = c.split('\u6708\u4eae\u8fc7\u5883').join('\u6708\u4eae\u9014\u7ecf');
     // ② 日志式引导词 → 诗意月轨

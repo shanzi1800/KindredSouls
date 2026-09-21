@@ -275,3 +275,24 @@ describe('V462-fix6 行级守卫收紧 + 无冒号月亮过境归一', () => {
     assert.ok(out.includes('月亮途经'), '未替换为「月亮途经」');
   });
 });
+
+describe('V462-fix7 标签冒号残留清算（全角/半角/已归一形态）', () => {
+  test('① 全角/半角/月亮途经 三种标签形态都必须清零', () => {
+    const cases = [
+      '月亮过境：月光的足迹掠过白羊座（第5宫）。',
+      '月亮过境: 流月月亮依次行经白羊座（第5宫）。',
+      '月亮途经: 月光的足迹掠过白羊座（第5宫）。',
+      '月球过境：月光的足迹掠过白羊座（第5宫）。',
+    ];
+    const fails = [];
+    for (const t of cases) {
+      const o = poet(t, 'zh');
+      for (const banned of ['月亮过境', '月球过境', '月亮途经:', '月亮途经：', '：月光的足迹', ': 月光的足迹']) {
+        if (o.includes(banned)) fails.push(`入: ${t}\n   出: ${JSON.stringify(o)}\n   残留: ${banned}`);
+      }
+      if (!o.startsWith('月光的足迹掠过')) fails.push(`未归一到诗化开篇: ${JSON.stringify(o)}`);
+      if (poet(o, 'zh') !== o) fails.push(`幂等失败: ${JSON.stringify(o)}`);
+    }
+    assert.deepStrictEqual(fails, [], fails.join('\n  '));
+  });
+});
