@@ -4591,7 +4591,7 @@ function _v432LockTransit(text, lang, astroMatrix) {
     const hasSignB = t.sign && bwd.includes(t.sign);
     const hasHouseB = t.house && (() => { const h = _v432FindHouse(cfg, bwd, false); return h && h.value === Number(t.house); })();
     // ── V459 统一声明（两条支路只做赋值，common tail 统一结算）──
-    patch = null; pos = -1; z = ''; origLen = 0;
+    let patch = null, pos = -1, z = '', origLen = 0, changed = false;
     if (!(hasSignF || hasHouseF)) {
       // 🛠️ V459 扩展长句修复支路：fwd 窗口不包含 sign/house → 扩展搜索区域到第一个星座/宫位
       const pEnd = m.index + m[0].length;
