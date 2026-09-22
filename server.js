@@ -3396,7 +3396,7 @@ function _natalTruthMap10_FR(astroMatrix) {
     const signEN = info.sign || (p === 'Sun' ? meta.sun_sign : null);
     const sign = _EN2ZIDX[signEN] != null ? _FR_SIGN_FR[_EN2ZIDX[signEN]] : null;
     const house = Number(info.house) || 0;
-    if (sign || house) map[_FR_PLANET[p]] = { sign, house };
+    if (sign || house) map[_FR_PLANET[p]] = { sign, house, retrograde: !!info.retrograde };
   }
   return map;
 }
@@ -3755,6 +3755,7 @@ function lockNatalTruthFr(text, astroMatrix) {
     text = text.slice(0, s) + rep + text.slice(e);
   }
   if (fixes) console.log(`[V426] 法语本命盘真值锁(10行星): 修正 ${fixes} 处 native 星座/宫位漂移${detail.length ? ' | ' + detail.slice(0, 10).join('; ') : ''}`);
+  text = v426EnforceNatalRetrograde(text, 'fr', astroMatrix);   // 🛠️ V426-R: 本命逆行标识锁（fr）
   return text;
 }
 
@@ -3992,7 +3993,7 @@ function _v432Truth(lang, astroMatrix, kind) {
       const idx = _EN2ZIDX[signEN];
       const sign = idx != null ? signs[idx] : null;
       const house = Number(info.house) || 0;
-      if (sign || house) map[NAME[p]] = { sign, house };
+      if (sign || house) map[NAME[p]] = { sign, house, retrograde: !!info.retrograde };
     }
     return map;
   }
@@ -4344,6 +4345,87 @@ function _v432LockNatal(text, lang, astroMatrix) {
   return text;
 }
 
+// 🛠️ V426-R: 本命外行星「逆行标识(retrograde)」后处理真值锁（治本 FR 样本 Pluto natal 漏 rétrograde）
+//   病根（2026-09-23 实测）：LLM 写「Pluton natal en Sagittaire, Maison 9」漏 retrograde，但 SwissEph 实算 natal Pluto = retrógrado。
+//     V426/V432 本命锁只纠 sign/house，不碰逆行标识 → 漏标。
+//   治本（军师裁定）：纯确定性后处理，零碰 LLM prompt。
+//     - 若 SwissEph 实算 natal.retrograde=True，强行确保本命引用带 R 标识（rétrograde/retrógrado/retrograde）
+//     - 若 =False 但 LLM 误标 R，剔除（含前导 ", "）
+//   范围：fr（_natalTruthMap10_FR）/ en·es（_v432Truth）；zh 无 marker 自动跳过。
+const _RETRO_MARKER = {
+  en: /\bretrograde\b/i,
+  es: /\bretr[óo]grado\b/i,
+  fr: /\br[ée]trograde\b/i,
+};
+const _RETRO_INSERT = {
+  en: ' retrograde',
+  es: ' retrógrado',
+  fr: ' rétrograde',
+};
+function _v426IsNatalRef(lang, text, m) {
+  const tail30 = text.slice(m.index + m[0].length, m.index + m[0].length + 30);
+  const preWin = text.slice(Math.max(0, m.index - 34), m.index);
+  if (lang === 'fr') {
+    // fr 本命标记常紧跟行星名后（如「Pluton natal」），tail30 以空格开头 → 用 .test 而非 ^ 锚定
+    const frNatal = /(natif|native|natale?|de naissance|à la naissance|au moment de la naissance|du thème natal|de votre thème|qui vous fit naître)/i;
+    return frNatal.test(tail30) || frNatal.test(preWin) || _FR_PRE_NATAL_DESC.test(preWin);
+  }
+  const cfg = _V432_CFG[lang];
+  if (!cfg) return false;
+  return cfg.natalSuf.test(tail30) || cfg.natalPre.test(preWin) || cfg.natalAny.test(tail30) || cfg.natalAny.test(preWin);
+}
+function v426EnforceNatalRetrograde(text, lang, astroMatrix) {
+  const marker = _RETRO_MARKER[lang];
+  const insert = _RETRO_INSERT[lang];
+  if (!text || !marker || !insert) return text;   // zh 无 marker → 自动跳过
+  const truth = lang === 'fr' ? _natalTruthMap10_FR(astroMatrix) : _v432Truth(lang, astroMatrix, 'natal');
+  if (!truth) return text;
+  const names = Object.keys(truth);
+  if (!names.length) return text;
+  const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+  let m, fixes = 0;
+  const hits = [];
+  while ((m = nameRe.exec(text)) !== null) {
+    const name = m[1];
+    const t = truth[name];
+    if (!t) continue;
+    if (!_v426IsNatalRef(lang, text, m)) continue;
+    // 窗口：行星名后到句末标点（排除逗号/括号，确保覆盖 house 短语）
+    const rest = text.slice(m.index);
+    const wb = rest.search(/[.;!?\n]/);
+    const window = wb === -1 ? rest : rest.slice(0, wb);
+    const hasR = marker.test(window);
+    if (t.retrograde && !hasR) {
+      let insPos = m.index + window.length;
+      let insStr = ', ' + insert.trim();   // 默认 ", retrograde"
+      const houseNum = _V432_CFG[lang] ? _V432_CFG[lang].houseNum : /\bMaison\s*(\d{1,2})\b/i;
+      const hm = window.match(houseNum);
+      if (hm) {
+        insPos = m.index + hm.index + hm[0].length;
+        const after = text.slice(insPos, insPos + 2);
+        if (after === ', ' || after === ',') insStr = ' ' + insert.trim();   // house 后已有逗号 → 不加逗号
+      }
+      hits.push([insPos, insPos, insStr]);
+      fixes++;
+    } else if (!t.retrograde && hasR) {
+      const rm = window.match(marker.source);
+      if (rm) {
+        const rPos = m.index + rm.index;
+        let adjStart = rPos;
+        if (text[rPos - 1] === ' ') { adjStart = rPos - 1; if (text[rPos - 2] === ',') adjStart = rPos - 2; }   // 清前导空格+逗号
+        hits.push([adjStart, rPos + rm[0].length, '']);
+        fixes++;
+      }
+    }
+  }
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const [s, e, rep] = hits[i];
+    text = text.slice(0, s) + rep + text.slice(e);
+  }
+  if (fixes) console.log(`[V426-R] ${lang} 本命逆行锁: 补/删 ${fixes} 处`);
+  return text;
+}
+
 // ── 流月（行运）真值锁：入驻句单独按日号判向，其余位置句按 months[0] 归真 ──
 function _v432IngressDay(cfg, ctx) {
   let day = null;
@@ -4644,6 +4726,7 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix) {
     out = _v432LockTransit(out, lang, astroMatrix);
     out = _v433LockMoonWeek(out, lang, astroMatrix);   // V433-fix4: 月亮周级硬锁
     out = applyV434Locks(out, lang, astroMatrix);   // V434
+    out = v426EnforceNatalRetrograde(out, lang, astroMatrix);   // 🛠️ V426-R: 本命逆行标识锁（en/es；zh 无 marker 自动跳过）
     return out;
   } catch (e) {
     console.warn(`[V432] ${lang} \u771f\u503c\u9501\u5f02\u5e38\uff08\u539f\u6587\u900f\u4f20\uff09: ${e.message}`);
