@@ -140,7 +140,7 @@ describe('V465: Natal vs Transit Disambiguation (样本 A · Reykjavik EN)', { c
     const response = await fetch(`${BASE_URL}/api/wealth-oracle/stream?free_access=1`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ birthDate: CASE_A.birthDate, lang: 'en', reportType: 'monthly' }),
+      body: JSON.stringify({ birthDate: CASE_A.birthDate, birthTime: CASE_A.birthTime, lat: CASE_A.lat, lon: CASE_A.lon, tz: CASE_A.tz, lang: 'en', reportType: 'monthly' }),
     });
 
     if (!response.ok) {
