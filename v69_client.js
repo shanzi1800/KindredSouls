@@ -1290,3 +1290,28 @@ export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
   block += `${sep}\n`;
   return block;
 }
+
+// 🛠️ V467: 月亮周标签单一真源（治本「🌙 月亮过境/途经」混用）
+//   原本 LLM 自由生成「过境」(W1/W3) 与「途经」(W2/W4) 交替，格式不一致。
+//   单一真源：各语言 canonical 月亮周标签前缀。ZH 沿用 V462-fix 诗意化「月轨足迹」；
+//   其余语言保留中文「月亮过境」（产品设计中月亮标签跨语言统一用中文，不改 locale）。
+export const V462_MOON_LABEL = {
+  zh: '月轨足迹',
+  en: '月亮过境',
+  es: '月亮过境',
+  fr: '月亮过境',
+  th: '月亮过境',
+  vi: '月亮过境',
+};
+
+// 归一「🌙 月亮[过境/途经]：」为各语言 canonical；ZH 额外诗意化为「月轨足迹」。
+// 幂等：对已归一文本复跑不变。覆盖流式(750-760链) + 非流式(fixMonthlySectionTitles) 全路径。
+export function v462NormalizeMoonLabel(text, lang) {
+  if (!text) return text;
+  let c = text.replace(/🌙\s*月亮(过境|途经)([:：])/g, (m, _w, sep) => `🌙 ${V462_MOON_LABEL[lang]}${sep}`);
+  c = c
+    .replace(/月亮过境：流月月亮依次行经/g, lang === 'zh' ? '月光的足迹掠过' : '月亮过境：流月月亮依次行经')
+    .replace(/月亮过境：/g, lang === 'zh' ? '月轨足迹：' : '月亮过境：')
+    .replace(/流月月亮依次行经/g, lang === 'zh' ? '月光的足迹掠过' : '流月月亮依次行经');
+  return c;
+}

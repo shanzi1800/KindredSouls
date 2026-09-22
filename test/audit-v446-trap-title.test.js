@@ -5,6 +5,8 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
+// 🛠️ V467: fixMonthlySectionTitles 现依赖 v462NormalizeMoonLabel（单一真源，位于 v69_client.js）
+import { v462NormalizeMoonLabel } from '../v69_client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
@@ -20,8 +22,8 @@ const fnEnd = SRC.indexOf('function _v433DumpPrompt');
 if (fnEnd < 0) throw new Error('[V446] 切片函数体失败');
 const FN = SRC.slice(fnStart, fnEnd);
 
-const F = new Function(DEPS + '\n' + FN + '\nreturn { fixMonthlySectionTitles };');
-const { fixMonthlySectionTitles } = F();
+const F = new Function('v462NormalizeMoonLabel', DEPS + '\n' + FN + '\nreturn { fixMonthlySectionTitles };');
+const { fixMonthlySectionTitles } = F(v462NormalizeMoonLabel);
 
 // ── V446-trap2 追加：cleanMonthlyBrackets 幂等门（与服务端同源抽取）────────────
 function _grabFn(name) {
@@ -32,11 +34,11 @@ function _grabFn(name) {
   for (; k < SRC.length; k++) { if (SRC[k] === '{') { d++; s = true; } else if (SRC[k] === '}') { d--; if (s && d === 0) { k++; break; } } }
   return SRC.slice(j + 1, k - 1);
 }
-const F2 = new Function(DEPS + '\n' + FN
+const F2 = new Function('v462NormalizeMoonLabel', DEPS + '\n' + FN
   + '\nfunction _stripEmoji(s){return s;}'
   + '\nfunction cleanMonthlyBrackets(text, lang="zh"){' + _grabFn('cleanMonthlyBrackets') + '}'
   + '\nreturn { fixMonthlySectionTitles, cleanMonthlyBrackets };');
-const { cleanMonthlyBrackets } = F2();
+const { cleanMonthlyBrackets } = F2(v462NormalizeMoonLabel);
 
 // 用「干净输入归一结果」做基准（规避当前月份依赖：函数内部用 new Date() 生成月份标签）
 const canon = fixMonthlySectionTitles('[⚠️ 消费陷阱：2026年9月]', true, 'zh');

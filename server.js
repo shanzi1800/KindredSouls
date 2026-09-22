@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel } from './v69_client.js';
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -755,11 +755,9 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
             .replace(/（高熔）/g, `（${V462_WEEK_SUB.zh[1]}）`)
             .replace(/（顺蓄）/g, `（${V462_WEEK_SUB.zh[2]}）`)
             .replace(/（财爆）/g, `（${V462_WEEK_SUB.zh[3]}）`)
-            // 🛠️ V462: 去模版化安全网——剥掉天文学日志式月轨前缀（无前缀变体也拦）
-            .replace(/月亮过境：流月月亮依次行经/g, '月光的足迹掠过')
-            .replace(/月亮过境：/g, '月轨足迹：')
-            .replace(/流月月亮依次行经/g, '月光的足迹掠过')
+            // 🛠️ V467: 月亮周标签单一真源（治本「🌙 月亮过境/途经」混用）—— 归一为各语言 canonical
             .replace(/\uFFFD/g,'').replace(/�/g,'');
+          clean = v462NormalizeMoonLabel(clean, lang);
           // 🛠️ V414-fix: V374 首块主题头补全——原代码块位于 `let clean` 之前(TDZ 死区),
           //   首 chunk 访问 clean 抛 ReferenceError 被 catch 吞掉 → 首段文字丢失("削首"根因)。移到 clean 生成之后。
           if (chunkCount === 1) {
@@ -6591,6 +6589,9 @@ function fixMonthlySectionTitles(text, injectPlaceholders = true, lang = 'zh') {
     c = c.replace(/([a-zA-Z])(\d+)/g, '$1 $2')
          .replace(/(\d+)(st|nd|rd|th)([A-Za-z])/g, '$1$2 $3');
   }
+
+  // 🛠️ V467: 月亮周标签单一真源（治本「🌙 月亮过境/途经」混用）—— 归一为各语言 canonical
+  c = v462NormalizeMoonLabel(c, lang);
 
   return c;
 }
