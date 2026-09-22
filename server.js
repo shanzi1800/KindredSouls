@@ -590,6 +590,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
     const _gPltH = _natalH.Pluto?.house ?? 8;
     const _gSunH = _natalH.Sun?.house ?? 1;
     const _gMooH = _natalH.Moon?.house ?? 2;
+    const _gMarsH = _natalH.Mars?.house ?? 2; // V465: 补齐缺失的本命火星宫位
     const _houseTok = {
       '{{JUPITER_HOUSE}}': '第' + _gJupH + '宫',
       '{{SATURN_HOUSE}}': '第' + _gSatH + '宫',
@@ -7714,7 +7715,7 @@ ${_trapBlock}
   - TRANSIT Jupiter (Sep 2026): in ${jupSignLocal} = House ${jupHouse} — this is the TRANSIT position for THIS month, NOT the user's natal Jupiter. The natal Jupiter is in [NATAL CHART ANCHORS].
   - TRANSIT Saturn (Sep 2026): in ${satSignLocal} = House ${satHouse} — this is TRANSIT, NOT natal. See [NATAL CHART ANCHORS] for natal Saturn.
   - TRANSIT Pluto (Sep 2026): in Aquarius = House ${plHouse} — this is TRANSIT, NOT natal. See [NATAL CHART ANCHORS] for natal Pluto.
-  - CRITICAL: You MUST reference the user's NATAL planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto) from the [NATAL CHART ANCHORS] section. When describing how monthly transit affects the user, ALWAYS say "Your natal Jupiter in Sagittarius, House 1" — NEVER write a natal planet's sign or house without matching [NATAL CHART ANCHORS].
+  - CRITICAL: You MUST reference the user's NATAL planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto) from the [NATAL CHART ANCHORS] section. When describing how monthly transit affects the user, ALWAYS say "Your natal Jupiter in [CHECK NATAL CHART ANCHORS], House [CHECK NATAL CHART ANCHORS]" — NEVER write a natal planet's sign or house without matching [NATAL CHART ANCHORS]. Example (DO NOT COPY): if your NATAL CHART ANCHORS says Jupiter in Sagittarius, House 4 → write exactly "Your natal Jupiter in Sagittarius, House 4". The sign AND house must BOTH match [NATAL CHART ANCHORS].
 ${planetBlockWithWarning}
 
 🛠️ [P1 FULL 12-MONTH PLANET DATA — COPY EXACTLY, NEVER CALCULATE]:
@@ -7735,7 +7736,7 @@ ${HT_RP.overview}
 [Write 1-2 sentences about the overall monthly financial theme, incorporating the planetary lineup and the native's natal sun sign. You MUST mention the user's natal Sun in [sign] House [N] and natal Moon in [sign] House [N] from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week1}
-[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Reference how the transit affects the user's natal planets. Example: "With your natal Jupiter in Sagittarius, House 1, this week's Aries Moon transit amplifies your natural expansion drive." You MUST mention at least 2 natal planets (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn) from [NATAL CHART ANCHORS].]
+[Write 150-200 words: describe the financial energy of week 1, key opportunities, recommended actions, important dates. Reference how the transit affects the user's natal planets. Example (check [NATAL CHART ANCHORS] for the CORRECT sign and house): "With your natal Jupiter in [NATAL CHART ANCHORS], House [NATAL CHART ANCHORS], this week's transit Moon amplifies your natural energy." You MUST mention at least 2 natal planets (Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn) from [NATAL CHART ANCHORS] — copy sign AND house EXACTLY from [NATAL CHART ANCHORS].
 
 ${HT_RP.week2}
 [Write 150-200 words: describe high-risk financial days, potential pitfalls, danger zones. Be specific about which days are dangerous and why. Include a concrete financial safety rule. Reference the transit-to-natal interaction for at least 2 natal planets from [NATAL CHART ANCHORS].]
@@ -7744,7 +7745,7 @@ ${HT_RP.week3}
 [Write 150-200 words: describe gradual financial growth, opportunities for passive income, strategic preparation. Include days for planning and consolidation. Reference how transit affects the user's natal planets from [NATAL CHART ANCHORS].]
 
 ${HT_RP.week4}
-[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days. Reference how transit aligns with or challenges the user's natal planets from [NATAL CHART ANCHORS]. Example: "Your natal Mars in Sagittarius, House 1, harmonizes with the Aries Moon to create bold, expansion-focused action."]
+[Write 150-200 words: describe peak financial energy, major money-making opportunities, bonus income, windfall possibilities. Be bold and specific about peak days. Reference how transit aligns with or challenges the user's natal planets from [NATAL CHART ANCHORS]. Example (check [NATAL CHART ANCHORS] for the CORRECT sign and house): "Your natal Mars in [NATAL CHART ANCHORS], House [NATAL CHART ANCHORS], harmonizes with the transit to create bold, expansion-focused action." Copy sign AND house EXACTLY from [NATAL CHART ANCHORS].
 
 ${HT_RP.trap}
 ${_trapBlock}

@@ -296,20 +296,60 @@ ${_planets
   proseLines.push(`Your Ascendant (Rising): ${_asc?.sign || actualRising} ${_asc?.degree != null ? _asc.degree.toFixed(2) + '°' : ''}`.trim());
   proseLines.push(`Your Midheaven (MC): ${_mc ? _mc.sign + ' ' + _mc.degree.toFixed(2) + '°' : '(n/a)'}`);
 
+  // ── Part 2b: 流年对照表 (V465 新增：根治 natal/transit 混淆) ─────────
+  // 提取本月流年数据（NATAL 锚点与 TRANSIT 锚点并排，LLM 一眼区分）
+  let transitLines = [];
+  try {
+    const firstMonth = astroMatrix?.months?.[0];
+    if (firstMonth) {
+      for (const { en } of _planets) {
+        const t = firstMonth[en.toLowerCase()]; // firstMonth.sun / .mercury / etc.
+        if (!t || !t.sign) continue;
+        const rx = t.retrograde ? ' (Retrograde)' : '';
+        transitLines.push(`Transiting ${en}: ${t.sign} House ${t.house}${rx}`);
+      }
+    }
+  } catch (_) { /* transit 提取失败不阻塞 */ }
+
+  const transitSection = transitLines.length > 0
+    ? `// ─── TRANSIT POSITIONS (Current Month · SEPARATE from Natal · DO NOT MIX) ───
+// NOTE: Transit positions are FOR THIS MONTH ONLY and are DIFFERENT from your natal chart.
+// When writing natal planet references, you MUST use the NATAL positions above, NOT these transit positions.
+${transitLines.join('\n')}`
+    : '';
+
   // ── Part 3: 铁锁规则 (最高优先级 · 不可绕过) ────────────────────────
+  // V465 强化：显式示范 natal vs transit 混淆的失败案例
+  const natalExamplePlanets = Object.keys(jsonEntries).slice(0, 3); // 取前3个做示范
+  const natEx = natalExamplePlanets.map(en => {
+    const nat = jsonEntries[en];
+    return `${en}: natal=${nat.sign} H${nat.house}`;
+  }).join('; ');
   const rules = [
-    `- CRITICAL RULE: When writing about ANY natal planet, copy the sign AND house EXACTLY from the JSON above.`,
-    `  Examples of VIOLATIONS: "Your Jupiter in Leo, House 8" when JSON says Aquarius H2.`,
-    `  Examples of CORRECT: "Your natal Jupiter in Aquarius, House 2" — must match JSON exactly.`,
-    `- JSON sign+house values are SwissEph ground truth. NEVER infer or substitute.`,
-    `- Transit planets (Sun/Moon of the month) are DIFFERENT from natal planets. Never merge them.`,
+    `⚠️ NATAL vs TRANSIT — ABSOLUTE DISAMBIGUATION RULE (V465):`,
+    `  Your natal chart is FIXED (born with it). Transit positions change every month.`,
+    `  NATAL = the positions from // ─── PROSE REFERENCE ─── above (e.g., ${natEx})`,
+    `  TRANSIT = the positions from // ─── TRANSIT POSITIONS ─── above (different signs/houses — this month only)`,
+    `  NEVER say "Your natal [Planet] in [Sign] House [N]" using a sign/house from the TRANSIT section.`,
+    ``,
+    `  EXPLICIT VIOLATION EXAMPLES (copy exactly — these are WRONG):`,
+    `    ✗ "Your natal Mercury in Libra, House 10" → WRONG if natal Mercury is Capricorn H4`,
+    `    ✗ "Your natal Venus in Scorpio, House 9" → WRONG if natal Venus is Aquarius H5`,
+    `    ✗ "Your natal Mars in Cancer, House 12" → WRONG if natal Mars is Capricorn H4`,
+    `  CORRECT usage (must match // ─── PROSE REFERENCE ─── above exactly):`,
+    `    ✓ "Your natal Mercury in Capricorn, House 4" (matches PROSE REFERENCE)`,
+    `    ✓ "Your natal Venus in Aquarius, House 5" (matches PROSE REFERENCE)`,
+    `    ✓ "Your natal Mars in Capricorn, House 4" (matches PROSE REFERENCE)`,
+    ``,
+    `  WHEN IN DOUBT: re-read the // ─── PROSE REFERENCE ─── section above.`,
   ].join('\n');
 
   return [
     `// ─── SYSTEM TRUTH LOCK (JSON · Machine-Verifiable) ───`,
     jsonBlock,
-    `// ─── PROSE REFERENCE (Human-Readable) ───`,
+    `// ─── PROSE REFERENCE (Human-Readable · Your Natal Chart) ───`,
     proseLines.join('\n'),
+    transitSection,
     `// ─── RULES (Highest Priority · Non-Negotiable) ───`,
     rules,
   ].join('\n');
