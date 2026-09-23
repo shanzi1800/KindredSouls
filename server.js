@@ -3952,7 +3952,7 @@ const _V432_CFG = {
     markerSide: 'pre',          // 中文定语在行星名**之前**：本命太阳
     marker: '\u672c\u547d',
     natalSuf: /^\s*[(\uff08]?\s*(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
-    natalPre: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)\s*$/,
+    natalPre: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8).*$/,  // V469-fix: 中文本命不限preWin末尾
     natalAny: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
     transitSuf: /^\s*[(\uff08]?\s*(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)/,
     transitPre: /(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)\s*$/,
