@@ -68,7 +68,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   try {
     natalResult = execSync(natalCmd.join(' '), {
       encoding: 'utf8',
-      timeout: 15000,
+      timeout: 60000,   // 🛠️ V471: 15s→60s，高并发/CI 下 Python SwissEph 实算易超 15s 被杀 → matrix null → 真值锁全瘫
       maxBuffer: 10 * 1024 * 1024,
     }).trim();
   } catch (e) {
@@ -114,7 +114,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   try {
     rawOutput = execSync(cmd.join(' '), {
       encoding: 'utf8',
-      timeout: 20000,
+      timeout: 90000,   // 🛠️ V471: 20s→90s，12 个月矩阵实算在并发/CI 场景易超 20s → matrix null
       maxBuffer: 50 * 1024 * 1024,
     });
   } catch (e) {
@@ -181,7 +181,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
       '--tz', tz || 'Asia/Bangkok'
     ];
     const ingRaw = execSync(ingCmd.join(' '), {
-      encoding: 'utf8', timeout: 15000, maxBuffer: 10 * 1024 * 1024,
+      encoding: 'utf8', timeout: 60000, maxBuffer: 10 * 1024 * 1024,   // 🛠️ V471: 15s→60s，同上并发韧性
     }).trim();
     const moonIngress = JSON.parse(ingRaw);
     matrix.meta.moon_ingress = moonIngress;

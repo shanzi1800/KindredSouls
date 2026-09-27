@@ -1706,7 +1706,9 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
 
   // ── 通用宫位纠正(治本:按实际上升星座算 Equal House,替代写死 Cancer 映射)──
   // 旧逻辑只对 Cancer 生效且写死映射,导致非 Cancer 用户被错误纠正(如摩羯用户白羊被纠成第10宫)。
-  const houseMap = getSignToHouseMap(ascendant);
+  // 🛠️ V471-fix: 形参名是 lang_asc,旧代码误引 ascendant → ReferenceError 'ascendant is not defined',
+  //    年报收尾崩溃直接吐给前端;月报链路被 try-catch 静默吞掉导致 sanitize 链整体失效。统一改用 lang_asc。
+  const houseMap = getSignToHouseMap(lang_asc);
   if (houseMap) {
     const fixes = [
       { sign: '狮子座', h: houseMap[SIGN_ORDER_ZH.indexOf('狮子座')] },
@@ -1722,7 +1724,7 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
     text = text.replace(new RegExp(pattern, flags), replacement);
   };
 
-  if (ascendant === 'Cancer') {
+  if (lang_asc === 'Cancer') {
     // ── 木星在狮子座 = 第2宫(财帛宫)── AI 错写成第5宫 ──
     R('第5宫(狮子座)', '第2宫(狮子座)');
     R('第5宫(Leo)', '第2宫(狮子座)');
@@ -5610,7 +5612,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v470:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v471:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8779,7 +8781,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v470:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v471:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9369,7 +9371,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v470:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v471:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
