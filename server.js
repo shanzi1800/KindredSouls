@@ -5612,7 +5612,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v471:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v472:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -6280,7 +6280,11 @@ function splitConjoinedPlanetClaims(text, lang, astroMatrix) {
   });
 }
 
-function lockTransitPlanetSigns(text, lang, astroMatrix) {
+function lockTransitPlanetSigns(text, lang, astroMatrix, reportType) {
+  // 🛡️ V472-guard: 年报(12个月跨度)禁用单月固化锁。
+  // 病根: _v445TruthSigns 只锚 months[0](首月), 年报内水星/金星/火星多次换座、木星2027-08狮子→处女,
+  // 补全路径触发时会把后半段正确的星座声明误纠回首月星座。年报真值由 P1.1 逐月注入块锁定, 此锁只需服务月报。
+  if (reportType === 'yearly') return text;
   if (!text || typeof text !== 'string') return text;
   const truth = _v445TruthSigns(lang, astroMatrix);
   if (!truth || !Object.keys(truth).length) return text;
@@ -8049,6 +8053,15 @@ ${HT_RP.trap}
     // 简单重建 yearlySystem(只保留系统叙事prompt + 数据消费铁律)
     let yearlySystem = (YEARLY_SYSTEM[lang] || YEARLY_SYSTEM.zh) + '\n' + dataRule;
 
+    // 🛠️ V472-th-depth: 泰语年报篇幅强化 — 24.5K 字符约为其他语言一半, $29.99 尊享感需对齐
+    if (lang === 'th') {
+      yearlySystem += `\n\n⛔ [ความลึกของเนื้อหา - ขยายความบังคับ V472] รายงานนี้คือผลิตภัณฑ์พรีเมียมระดับสูง ห้ามสรุปสั้น:
+• แต่ละเดือนใน 12 เดือน ต้องขยายความอย่างน้อย 3-4 ย่อหน้า: บริบทดาวเคราะห์ → ผลต่อการเงิน → กลยุทธ์ที่ควรลงมือ
+• แต่ละบท (Chương/บทที่) ต้องยาวและลึกเทียบเท่าภาษาอังกฤษ — ห้ามย่อเหลือเพียงบุลเลต
+• เจาะลึกความหมายจิตวิทยาย่องรู้ (Jung) ประกอบทุกตำแหน่งดาวเคราะห์ที่กล่าวถึง
+• เป้าหมายความยาวรวม: รายละเอียดเทียบเท่ารายงานภาษาอังกฤษ (${6000}-8000 คำ)`;
+    }
+
     // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     // ── V97at: 注入 [ASPECTS_DATA] 块 ──
     if (aspectsData) {
@@ -8330,7 +8343,13 @@ ${HT_RP.trap}
   4. 将某月的 Transit 星座(如2月水瓶座)的内容复制到其他月份
 
 例如:对于1996-01-23的用户,Transit太阳2月=水瓶座≠本命太阳水瓶在第4宫(不是第1宫)。写2月正文只能说Transit水瓶座,不得写"点亮第1宫"。
-- AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) format, e.g. '第一章:年度财富矩阵', '第二章:365天月度收入矩阵', '第三章:命运职业路径', '第四章:债务与风险护盾', '第五章:神谕显化仪式'. These headings are REQUIRED - the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。
+- AI MUST output the five chapter headings explicitly using '第X章' (中文) / 'Chapter X' (英文) / 'Chương X' (Tiếng Việt) format:
+  • zh: '第一章:年度财富矩阵', '第二章:365天月度收入矩阵', '第三章:命运职业路径', '第四章:债务与风险护盾', '第五章:神谕显化仪式'
+  • en: 'Chapter I: Annual Wealth Matrix', 'Chapter II: 365-Day Monthly Income Matrix', 'Chapter III: Destiny Career Path', 'Chapter IV: Debt & Risk Shield', 'Chapter V: Oracle Manifestation Ritual'
+  • vi: 'Chương I: Ma Trận Tài Chính Năm', 'Chương II: Ma Trận Thu Nhập Hàng Tháng 365 Ngày', 'Chương III: Con Đường Sự Nghiệp Duyên Kiếp', 'Chương IV: Khiên Nợ và Rủi Ro', 'Chương V: Nghi Thức Hiện Thực Hóa Của Oracle'
+  • es/fr/th: 参照语言自身惯例本地化编号前缀 (Capítulo/Chapitre/บทที่) + 本地化标题。
+  These headings are REQUIRED - the frontend renders them as gold chapter cards. 绝对禁止写成'第X节'或'Section X'。⛔ 绝对禁止在任何非中文报告里出现中文'第X章'字样 — VI 报告必须用 'Chương I~V' 前缀。
+- 🛠️ V472 vi-retrograde: ${lang === 'vi' ? "BẮT BUỘC: Trong phần mô tả 12 tháng, khi dữ liệu [P1 PER-MONTH] đánh dấu retrograde=true cho Sao Thổ/Sao Thủy/Sao Hỏa, bài viết PHẢI nhắc rõ trạng thái 'nghịch hành' (vd. 'Sao Thổ nghịch hành tại Bạch Dương'). Không được bỏ sót toàn bộ các sự kiện nghịch hành." : "Retrograde events must be stated explicitly where P1.1 per-month data marks retrograde=true (e.g. Saturn retrograde)."}
 
 Generate a ${lang} ultra-premium yearly wealth almanac for birth date ${birthDate}.
 
@@ -8781,7 +8800,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v471:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v472:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8993,7 +9012,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix);
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix);   // 🛡️ V444
-        reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix); // 🛡️ V445
+        reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix, reportType); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
@@ -9371,7 +9390,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v471:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v472:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9519,7 +9538,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix);
         streamText = lockNatalAnchorRole(streamText, lang, astroMatrix);   // 🛡️ V444
-        streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix); // 🛡️ V445
+        streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix, reportType); // 🛡️ V445
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -9848,7 +9867,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   if (lang === 'th') _j.text = lockNatalTruthTh(_j.text, astroMatrix);
                   if (lang === 'th') _j.text = lockTransitTruthTh(_j.text, astroMatrix);
                   _j.text = lockNatalAnchorRole(_j.text, lang, astroMatrix);   // 🛡️ V444
-                  _j.text = lockTransitPlanetSigns(_j.text, lang, astroMatrix); // 🛡️ V445
+                  _j.text = lockTransitPlanetSigns(_j.text, lang, astroMatrix, reportType); // 🛡️ V445
                   _j.text = applyV434Locks(_j.text, lang, astroMatrix);   // V434（补 V433 未挂的 SSE 逐块链）
                   _out = 'data: ' + JSON.stringify(_j) + '\n\n';
                 }
@@ -10259,7 +10278,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //   故改在【整段流结束后】此处(全量 cleanedText)以 true 注入, 确保 6 段齐全。hasOverview/hasTrap 检测已升级全语言。
       cleanedText = fixMonthlySectionTitles(cleanedText, true, lang);
       cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
-      cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
+      cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix, reportType); // 🛡️ V445
     } else {
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
@@ -10352,7 +10371,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = standardizeReport(ft);
           if (ft && reportType === 'monthly') ft = fixMonthlySectionTitles(ft, true, lang);
           if (ft) ft = lockNatalAnchorRole(ft, lang, astroMatrix);   // 🛡️ V444
-          if (ft) ft = lockTransitPlanetSigns(ft, lang, astroMatrix); // 🛡️ V445
+          if (ft) ft = lockTransitPlanetSigns(ft, lang, astroMatrix, reportType); // 🛡️ V445
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
@@ -10396,7 +10415,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = applyV434Locks(cleanedText, lang, astroMatrix);   // V434（补 V433 未挂的落库前收尾链）
     // 🛠️ V432: MISS stream 收尾 en/es/zh 真值双锁（完整文本、落库前最后一道）
     cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix);   // 🛡️ V444
-    cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix); // 🛡️ V445
+    cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix, reportType); // 🛡️ V445
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix);
     // 🛡️ V460-fix3: 月亮周轨迹真值锁必须拿【最终话语权】。
     //   实测：V438 在 house_linter 之前跑完后，本收尾链(V434/V444/V445/V432)会把月亮轨迹再次改坏
