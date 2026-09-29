@@ -40,8 +40,9 @@ const SacredYearlyReportBox: React.FC<{
       const target = targetTextRef.current;
       const idx = smoothIdxRef.current;
       if (idx < target.length) {
-        // 每次推进 3 个字符（中文约 60ms/字 = 50字/秒，视觉上是打字机效果）
-        const advance = Math.min(3, target.length - idx);
+        // 🛡️ V476: 自适应速度——年报 1.4 万字按 3字/20ms 要 91 秒,体感"卡死后一次性吐出"。
+        //   按总长自适应:全文约 8 秒内追平,同时保留逐字流式仪式感。
+        const advance = Math.min(Math.max(3, Math.ceil(target.length / 400)), target.length - idx);
         smoothIdxRef.current = idx + advance;
         setSmoothText(target.slice(0, idx + advance));
       } else {

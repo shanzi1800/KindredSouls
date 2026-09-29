@@ -1613,7 +1613,10 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
   //   每块单独处理会留下 "第五宫" 后面跟 "()狮子座" 或 "(英文)中文" 错位)
   // 解决:删除 "任意中文" + 孤立左括号 + 英文/中文 + 孤立的 ")" 后接 "中文" 的组合
   // 例1: 第五宫()狮子座 → 第五宫狮子座
-  text = text.replace(/([\u4e00-\u9fa5])()([\u4e00-\u9fa5])/g, '$1$2');
+  // 🛡️ V476-fix: 原式的中间两个小括号未转义(形如"汉字组+空括号组+汉字组"),
+  //    () 退化为【空捕获组】→ 实际语义=任意相邻两汉字只留第一个 → 全文 CJK 被杀 53.9%
+  //    (V475 夜 Oslo/1989 盘缺字毒化真凶,隔离复现 10522→5635)。补上 \( \) 转义。
+  text = text.replace(/([\u4e00-\u9fa5])\(\)([\u4e00-\u9fa5])/g, '$1$2');
   // 例2: (Jupiter Return)开启 → 开启 (首尾孤立括号包裹英文,被嵌入中文段落)
   text = text.replace(/[((][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[))](?=[\u4e00-\u9fa5])/g, '');
   // 例3: 末尾有 "(" 但无配对 ")"(流式块被截断),等待下一块配对;当前块先不处理
@@ -1694,9 +1697,12 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)）（第[一二三四五六七八九十百零0-9]+宫）/g, '$1$2');
   // 🛠️ Issue B 终级 fix: 贪婪捕获"在你的第N宫(XX座)"型复杂嵌套句式 → 砍宫位+括号内星座,保留行星和"在你的"引导
   // 匹配:火星在你的第3宫(处女座)、水星在第5宫(狮子座)、冥王星在你的第12宫(水瓶座)等所有变体
-  text = text.replace(/(行星|[\u4e00-\u9fa5星曜]+星?)(在你|在他|在她|在|的)(第[一二三四五六七八九十百零0-9]+宫)(([^)]+座)|\([^)]+座\))/g, '$1$2$3');
+  // 🛡️ V476-fix: 原第一支 (([^)]+座) 漏转义字面括号 → 实际匹配「第N宫+任意非)串+座」,
+  //    从每个"第N宫"吞文本直到下一个"座"——正文 83% 汉字被杀(V475 夜 Oslo 盘实锤)。
+  //    收紧为必须字面括号:第N宫(XX座) 才砍。
+  text = text.replace(/(行星|[\u4e00-\u9fa5星曜]+星?)(在你|在他|在她|在|的)(第[一二三四五六七八九十百零0-9]+宫)\(([^)]+)座\)/g, '$1$2$3');
   // 🛠️ Issue B 兜底:"第N宫(XX座)"仍在句中 → 砍括号内星座(保留第N宫描述,但括号内星座必删,因与本命冲突)
-  text = text.replace(/第([一二三四五六七八九十百零0-9]+)宫(([^)]+)座)/g, '第$1宫');
+  // 🛡️ V476-fix: 原 L1699 同款漏转义(整条删除);本行已是正确转义版,保留。
   text = text.replace(/第([一二三四五六七八九十百零0-9]+)宫\(([^)]+)座\)/g, '第$1宫');
   // 🛠️ Issue B 兜底:行星+你的+第N宫(无括号)→ 砍"你的第N宫"保留行星
   text = text.replace(/(火星|天王星|海王星|水星|金星|凯龙星?|北交点)在你的第[一二三四五六七八九十百零0-9]+宫/g, '$1');
@@ -1763,7 +1769,7 @@ function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
     R('土星在第1宫(白羊座)', '土星在第10宫(白羊座)');
 
     // V103-fix16: 处女座归风元素--AI 幻觉把处女座(土象)归入风元素,正则物理矫正
-    R('风元素\(处女座', '土元素(处女座');
+    R('风元素\\(处女座', '土元素(处女座');  // V476-fix: 双反斜杠——单 \( 会被字符串转义吞成裸括号 → 运行时 Unterminated group(太阳巨蟹盘直接崩)
     R('风元素路径:处女座', '土元素路径:处女座');
 
     // 上下文清洗
@@ -5617,7 +5623,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v475:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v476:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8805,7 +8811,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v475:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v476:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9395,7 +9401,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v475:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v476:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

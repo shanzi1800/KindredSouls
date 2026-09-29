@@ -1829,7 +1829,18 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 //   病根: 原代码无条件 setSacredText(流式累积),把刚收到的 sanitized 终稿盖掉
                 //   → 线上实测 DOM 残留 "1.200 đô la"、0 次 500.000(军师 9-10 抓包复现)
                 const _sanFinal = _sanMap.get(_memKey) || '';
-                const _final = _sanFinal.length >= 1000 ? _sanFinal : (_fullMap.get(_memKey) || '');
+                const _fullText = _fullMap.get(_memKey) || '';
+                // 🛡️ V476: CJK 密度守卫——后端 sanitized 曾被坏清洗链吃字(汉字大面积变空格),
+                //   其 CJK 数会显著低于流式原文。此时弃用 sanitized,回退流式原文(前端最后防线)。
+                const _cjk = (s: string) => (s.match(/[\u4e00-\u9fff]/g) || []).length;
+                let _final = _fullText;
+                if (_sanFinal.length >= 1000) {
+                  if (lang !== 'zh' || _fullText.length < 1000 || _cjk(_sanFinal) >= _cjk(_fullText) * 0.6) {
+                    _final = _sanFinal;
+                  } else {
+                    console.warn('[V476] sanitized CJK 密度异常(' + _cjk(_sanFinal) + ' vs 原文 ' + _cjk(_fullText) + '), 回退流式原文');
+                  }
+                }
                 console.log('[V248] [DONE] final len=' + _final.length + ' ✦=' + ((_final.match(/\✦/g)||[]).length));
                 _reportMemCache.set(_memKey, _final);
                 // V248: 同步清 reportLoading，破坏渲染条件
