@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "node dev-server.mjs",
-    "prebuild": "node scripts/check-i18n-keys.mjs",
+    "verify:regex": "node scripts/check-runtime-regex.mjs",
+    "verify:render": "node scripts/check-yearly-render-guards.mjs",
+    "test:report": "node --test test/*.test.mjs",
+    "preflight": "npm run verify:regex && npm run verify:render && npm run test:report",
+    "prebuild": "node scripts/check-i18n-keys.mjs && npm run preflight",
     "build": "tsc -b && vite build",
-    "build:web": "vite build",
+    "build:web": "node scripts/check-i18n-keys.mjs && npm run preflight && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
