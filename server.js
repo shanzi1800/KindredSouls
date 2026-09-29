@@ -460,6 +460,8 @@ import { Buffer } from 'buffer';
 import { getSystemPromptByLocale } from './src/prompts/loader.js';
 import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
+import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ V475: 采样参数单一真源
+import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 
 // ─────────────────────────────────────────────────────────
 // 🛠️ V332-fix: StringDecoder 字节级安全分块
@@ -688,7 +690,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       // 🛡️ V437-fix: 泰文 BPE 膨胀效应——3700 泰字符≈4500-5500 tokens，加上 Prompt 侧已消耗，
       //   deepseek-flash 8K 模型总容量在输出中途爆表（实测 3726 字符截断在陷阱标题）。
       //   按语种扩容：th/vi 月报→16384，zh 月报→12000，其余→10000
-      body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], max_tokens: reportType === 'monthly' ? (lang === 'th' || lang === 'vi' ? 16384 : lang === 'zh' ? 12000 : 10000) : 8000, temperature: 0.7, frequency_penalty: lang === 'vi' ? 0 : 0.3, presence_penalty: lang === 'vi' ? 0 : 0.3, repetition_penalty: lang === 'vi' ? 1.08 : 1.05, stream: true, stop: ['===END_OF_REPORT==='] }),
+      // 🛡️ V475: 采样参数收敛到 lib/llm_params.mjs 单一真源。
+      //   旧内联参数对年报沿用月报的 0.3 频率惩罚 → 中文超长占星文系统性缺字(座/星/阳/亮被压制)+提前烂尾。
+      //   年报现走零惩罚 + max_tokens 16384；月报参数原样保留(多轮封仓验证过)。
+      body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: systemText }, { role: 'user', content: userText }], ...buildDeepSeekSamplingParams(reportType, lang), stream: true, stop: ['===END_OF_REPORT==='] }),
       signal: controller.signal,
     });
     console.log('[callDeepSeek] HTTP', resp.status);
@@ -5612,7 +5617,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v472:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v475:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8800,7 +8805,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v472:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v475:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9390,7 +9395,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v472:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v475:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9574,6 +9579,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
   // 用于缓存落库的全文本收集器
   let fullTextCollector = '';
+  let _yearlyIntegrityFailed = false; // 🛡️ V475: 年报三掷全败标记(交付但不写缓存,防毒化)
 
   // 🛠️ V222x-fix: stream 端点补声明 _tokMap
   // 5115/5123/5150 引用 _tokMap 但本端点从未声明 → ReferenceError → onChunk 抛错被 callDeepSeekStream 内部 catch 吞掉
@@ -9584,6 +9590,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 写缓存辅助函数
   const writeToCache = async (text) => {
     if (!text || text.length < 100 || !SB_URL || !SB_KEY) return;
+    // 🛡️ V475: 年报缓存卫生守卫——zh 缺字退化文本拒绝写入(防毒化永久复发)。
+    //   前车之鉴: V394 卫生守卫只防 vi 拆词/占位符残渣; 2026-09-29 zh 年报缺字毒化文本
+    //   畅通无阻写入缓存,同盘后续请求永久 HIT 垃圾。
+    if (reportType === 'yearly' && !_yearlyIntegrityFailed) {
+      const _iv = assessYearlyReportIntegrity(text, { lang });
+      if (!_iv.ok) {
+        console.warn(`[V475] 缓存卫生守卫拦截不合格年报, 不写入: ${cacheKey} | ${_iv.reasons.join('; ')}`);
+        return;
+      }
+    }
+    if (_yearlyIntegrityFailed) {
+      console.warn(`[V475] 三掷全败稿, 拒绝写入缓存: ${cacheKey}`);
+      return;
+    }
     try {
       // 🛠️ V394-fix3: 缓存写入卫生守卫——拆词脏文本/占位符残渣拒绝写入,防毒化永久复发(组2 1981-09-08 HIT到V389脏缓存实证)。
       //   拆词不可逆(ậ n 无法复原 ận),只能不写+下次重生成;占位符残渣(<3000字含marker)同理。
@@ -10010,10 +10030,82 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
       } else {
         // 🛡️ V411: 非月报(yearly/once) MISS 同样改用 callAI(干净)生成全文,再切 SSE chunk 推流(res 直写)
+        // 🛡️ V475: 年报加挂「文本完整度闸门 + 多通道重试」——
+        //   生产实证(2026-09-29, 1985-06-15 盘): 单发 48k 长生成退化,产出"每隔两三字缺一字"的
+        //   毒化文本(座密度 15.9→3.1/千字)且一度写入缓存。修复策略:
+        //   ① 首选 DeepSeek(temperature 0,确定性) → 闸门体检
+        //   ② 不合格 → 直调 Gemini 重试(不同模型=重新掷骰) → 再体检
+        //   ③ 仍不合格 → DeepSeek 高温重试(temperature 0.7 无 seed) → 终检
+        //   三掷全败则交付最长稿(不拦用户),但绝不写入缓存(writeToCache 同步加挂同闸门),并大声留痕。
         try {
           const _maxT = reportType === 'yearly' ? 48000 : 8000;
           let _full = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _maxT, reportType });
           if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _full = _full.split(_t).join(_v);
+
+          if (reportType === 'yearly') {
+            const _judge = (t) => assessYearlyReportIntegrity(t, { lang });
+            let _verdict = _judge(_full);
+            console.log(`[V475] 完整度体检 #1(DeepSeek): ok=${_verdict.ok} len=${_verdict.metrics.length} 座=${_verdict.metrics.density_座} 星=${_verdict.metrics.density_星} ${_verdict.reasons.join('; ') || 'PASS'}`);
+
+            // ② Gemini 直调重试(绕过 callAI 的 DeepSeek 优先逻辑)
+            if (!_verdict.ok && getGeminiKey()) {
+              try {
+                console.warn('[V475] ⚠️ DeepSeek 稿不合格 → Gemini 重试');
+                const _gRes = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${getGeminiKey()}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+                    generationConfig: { maxOutputTokens: 48000, temperature: 0.3 },
+                  }),
+                  signal: controller.signal,
+                });
+                if (_gRes.ok) {
+                  const _gData = await _gRes.json();
+                  const _gTxt = _gData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                  const _gVerdict = _judge(_gTxt);
+                  console.log(`[V475] 完整度体检 #2(Gemini): ok=${_gVerdict.ok} len=${_gVerdict.metrics.length} ${_gVerdict.reasons.join('; ') || 'PASS'}`);
+                  if (_gVerdict.ok) { _full = _gTxt; _verdict = _gVerdict; }
+                } else {
+                  console.error('[V475] Gemini 重试 HTTP ' + _gRes.status);
+                }
+              } catch (_gErr) { console.error('[V475] Gemini 重试异常: ' + _gErr.message); }
+            }
+
+            // ③ DeepSeek 高温重试(temperature 0.7, 无 seed → 重新掷骰)
+            if (!_verdict.ok) {
+              try {
+                console.warn('[V475] ⚠️ 仍不合格 → DeepSeek 高温重试(0.7)');
+                const _dsKey = getDeepSeekKey();
+                const _dsRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_dsKey}` },
+                  body: JSON.stringify({
+                    model: 'deepseek-flash', thinking: { type: 'disabled' },
+                    messages: [{ role: 'system', content: prompt.system }, { role: 'user', content: prompt.user }],
+                    max_tokens: 48000, temperature: 0.7, stream: false, stop: ['===END_OF_REPORT==='],
+                  }),
+                  signal: controller.signal,
+                });
+                if (_dsRes.ok) {
+                  const _dsData = await _dsRes.json();
+                  const _dsTxt = (_dsData?.choices?.[0]?.message?.content || '').trim();
+                  const _dsVerdict = _judge(_dsTxt);
+                  console.log(`[V475] 完整度体检 #3(DeepSeek高温): ok=${_dsVerdict.ok} len=${_dsVerdict.metrics.length} ${_dsVerdict.reasons.join('; ') || 'PASS'}`);
+                  if (_dsVerdict.ok) { _full = _dsTxt; _verdict = _dsVerdict; }
+                } else {
+                  console.error('[V475] DeepSeek 高温重试 HTTP ' + _dsRes.status);
+                }
+              } catch (_dsErr) { console.error('[V475] DeepSeek 高温重试异常: ' + _dsErr.message); }
+            }
+
+            if (!_verdict.ok) {
+              // 三掷全败:交付最长稿 + 大声留痕(绝不静默)
+              console.error(`[V475] ❌❌ 年报三次生成均未过完整度闸门! 交付最长稿(${_full.length}字)且不写缓存。原因: ${_verdict.reasons.join('; ')}`);
+              _yearlyIntegrityFailed = true;
+            }
+          }
+
           const _chunks = _safeChunk(_full || '', 500);
           for (const _c of _chunks) {
             if (!_c) continue;
