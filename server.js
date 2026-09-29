@@ -10047,35 +10047,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             let _verdict = _judge(_full);
             console.log(`[V475] 完整度体检 #1(DeepSeek): ok=${_verdict.ok} len=${_verdict.metrics.length} 座=${_verdict.metrics.density_座} 星=${_verdict.metrics.density_星} ${_verdict.reasons.join('; ') || 'PASS'}`);
 
-            // ② Gemini 直调重试(绕过 callAI 的 DeepSeek 优先逻辑)
-            if (!_verdict.ok && getGeminiKey()) {
-              try {
-                console.warn('[V475] ⚠️ DeepSeek 稿不合格 → Gemini 重试');
-                const _gRes = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${getGeminiKey()}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
-                    generationConfig: { maxOutputTokens: 48000, temperature: 0.3 },
-                  }),
-                  signal: controller.signal,
-                });
-                if (_gRes.ok) {
-                  const _gData = await _gRes.json();
-                  const _gTxt = _gData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                  const _gVerdict = _judge(_gTxt);
-                  console.log(`[V475] 完整度体检 #2(Gemini): ok=${_gVerdict.ok} len=${_gVerdict.metrics.length} ${_gVerdict.reasons.join('; ') || 'PASS'}`);
-                  if (_gVerdict.ok) { _full = _gTxt; _verdict = _gVerdict; }
-                } else {
-                  console.error('[V475] Gemini 重试 HTTP ' + _gRes.status);
-                }
-              } catch (_gErr) { console.error('[V475] Gemini 重试异常: ' + _gErr.message); }
-            }
-
-            // ③ DeepSeek 高温重试(temperature 0.7, 无 seed → 重新掷骰)
+            // ② DeepSeek 高温重试(temperature 0.7, 无 seed → 重新掷骰)
+            // 🛡️ 通道纪律(V475b,大叔钦定): DeepSeek 直链必须优先——先在 DeepSeek 内部
+            //    换参数重掷,穷尽后才允许降级到 Gemini 后备通道。
             if (!_verdict.ok) {
               try {
-                console.warn('[V475] ⚠️ 仍不合格 → DeepSeek 高温重试(0.7)');
+                console.warn('[V475] ⚠️ DeepSeek 稿不合格 → DeepSeek 高温重试(0.7, 换种子重掷)');
                 const _dsKey = getDeepSeekKey();
                 const _dsRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
                   method: 'POST',
@@ -10091,12 +10068,37 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
                   const _dsData = await _dsRes.json();
                   const _dsTxt = (_dsData?.choices?.[0]?.message?.content || '').trim();
                   const _dsVerdict = _judge(_dsTxt);
-                  console.log(`[V475] 完整度体检 #3(DeepSeek高温): ok=${_dsVerdict.ok} len=${_dsVerdict.metrics.length} ${_dsVerdict.reasons.join('; ') || 'PASS'}`);
+                  console.log(`[V475] 完整度体检 #2(DeepSeek高温): ok=${_dsVerdict.ok} len=${_dsVerdict.metrics.length} ${_dsVerdict.reasons.join('; ') || 'PASS'}`);
                   if (_dsVerdict.ok) { _full = _dsTxt; _verdict = _dsVerdict; }
                 } else {
                   console.error('[V475] DeepSeek 高温重试 HTTP ' + _dsRes.status);
                 }
               } catch (_dsErr) { console.error('[V475] DeepSeek 高温重试异常: ' + _dsErr.message); }
+            }
+
+            // ③ Gemini 后备(仅当 DeepSeek 两掷全败,末位兜底)
+            if (!_verdict.ok && getGeminiKey()) {
+              try {
+                console.warn('[V475] ⚠️ DeepSeek 两掷均不合格 → Gemini 后备通道');
+                const _gRes = await safeFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${getGeminiKey()}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt.system + '\n\n' + prompt.user }] }],
+                    generationConfig: { maxOutputTokens: 48000, temperature: 0.3 },
+                  }),
+                  signal: controller.signal,
+                });
+                if (_gRes.ok) {
+                  const _gData = await _gRes.json();
+                  const _gTxt = _gData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                  const _gVerdict = _judge(_gTxt);
+                  console.log(`[V475] 完整度体检 #3(Gemini后备): ok=${_gVerdict.ok} len=${_gVerdict.metrics.length} ${_gVerdict.reasons.join('; ') || 'PASS'}`);
+                  if (_gVerdict.ok) { _full = _gTxt; _verdict = _gVerdict; }
+                } else {
+                  console.error('[V475] Gemini 后备 HTTP ' + _gRes.status);
+                }
+              } catch (_gErr) { console.error('[V475] Gemini 后备异常: ' + _gErr.message); }
             }
 
             if (!_verdict.ok) {
