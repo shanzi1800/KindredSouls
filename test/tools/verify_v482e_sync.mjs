@@ -27,16 +27,20 @@ const fail = [];
 const ok = (c, m) => { console.log(`  ${c ? '✅' : '❌'} ${m}`); if (!c) fail.push(m); };
 
 console.log('\n=== 判据④ 不得再出现 lang is not defined ===');
-ok(!/lang is not defined/.test(JSON.stringify(d)), '仍报 lang is not defined: ' + JSON.stringify(d).slice(0, 200));
+// ⚠️ 断言文案必须写成「期望态」（ok() 在条件成立时打 ✅）—— 旧文案写成缺陷态会读成「✅ 仍报错」，误导判读。
+ok(!/lang is not defined/.test(JSON.stringify(d)), '响应中不再出现 `lang is not defined`' +
+  (d && d.success === false ? '（当前仍报错: ' + JSON.stringify(d).slice(0, 160) + '）' : ''));
+ok(d && d.success === true, `接口 success 必须为 true, 实得 ${d && d.success}`);
+ok(d && typeof d.report === 'string' && d.report.length > 2000, `report 正文长度必须 >2000, 实得 ${(d && d.report || '').length}`);
 
 const report = d.report || '';
 fs.writeFileSync('/tmp/ks_sync_v482e.txt', report);
 console.log(`正文长度 ${report.length} 字 → /tmp/ks_sync_v482e.txt`);
 
 console.log('\n=== 判据③ 零碾碎残渣 ===');
-ok(!/年undefined月/.test(report), '出现 `年undefined月` 残渣');
-ok(!/月:20\d{2}/.test(report), '出现 `月:20xx` 碾碎形态');
-ok(!/年20\d{2}月:/.test(report), '出现 `年20xx月:` 碾碎形态');
+ok(!/年undefined月/.test(report), '不得出现 `年undefined月` 残渣');
+ok(!/月:20\d{2}/.test(report), '不得出现 `月:20xx` 碾碎形态');
+ok(!/年20\d{2}月:/.test(report), '不得出现 `年20xx月:` 碾碎形态');
 
 console.log('\n=== 判据① 恰好 12 条规范月标题 ===');
 const titleRe = /^###\s*(\d{4})年(\d{1,2})月:\s*太阳(.+?)座\s*第(\d+)宫/m;
@@ -64,7 +68,7 @@ for (const t of titles) {
   const good = m[3] === tr.sign && Number(m[4]) === tr.house;
   if (!good) { mism++; console.log(`   ❌ ${key}: 文中 太阳${m[3]}座第${m[4]}宫 vs 真值 太阳${tr.sign}座第${tr.house}宫`); }
 }
-ok(mism === 0, `逐月真值矛盾 ${mism} 处`);
+ok(mism === 0, `逐月星座/宫位必须与 SwissEph 真值零矛盾, 实得 ${mism} 处`);
 
 console.log('\n' + '='.repeat(60));
 if (fail.length) { console.log('❌ V482e 线上复验未过:'); fail.forEach((f) => console.log('   - ' + f)); process.exit(1); }
