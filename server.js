@@ -4860,6 +4860,16 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix, reportType) {
 // ══════════════════════════════════════════════════════════════════
 const _V478_ORD_ZH = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
 const _V478_EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// 🛠️ V482b: 月标题「英文模板残渣」本地化表 + 「太阳词」表 —— 供 lockYearlyMonthTitles 兜底用。
+//   病根(2026-09-30 生产端 1999-12-15 特罗姆瑟盘实测): 硬锁标题表对所有语种硬编码英文
+//   `Sun in X` / `House N`, 中文 Prompt 因此夹带英文 → LLM 照抄 → 整篇 12 条月标题全变
+//   「### 2026年9月: Sun in 处女座 第3宫 · …」。提示词侧已本地化(治本), 此处为输出侧兜底。
+const _V482B_TITLE_LEAD = { zh: '太阳', es: 'Sol en ', fr: 'Soleil en ', th: 'ดาวอาทิตย์ใน ', vi: 'Mặt Trời trong ' };
+const _V482B_TITLE_HOUSE = {
+  zh: (n) => '第' + n + '宫', es: (n) => 'Casa ' + n, fr: (n) => 'Maison ' + n,
+  th: (n) => 'บ้าน ' + n, vi: (n) => 'Nhà ' + n,
+};
+const _V482B_SUN_WORD = { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดาวอาทิตย์', vi: 'Mặt Trời' };
 
 function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   if (reportType !== 'yearly') return text;
@@ -4905,6 +4915,31 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   const base = groups[0].key;
   let touched = 0;
   let wording = 0;   // 🛡️ V479: 措辞归一计数
+  let dropped = 0;   // 🛡️ V482b: 重复月标题清算计数
+  // 🛠️ V482b: 「同月重复标题行」清算 —— LLM 偶发对同一个月连续输出两行标题:
+  //   「### 2026年9月: 处女座第3宫 · 精算沟通之月」+「### 2026年9月: 太阳处女座 第3宫 · 精算沟通之月」
+  //   (生产实测 12/12 个月全中招)。判定**极保守**: 同月 key + 「·」后副标题完全相同 = 同一条目重复;
+  //   保留含「太阳词」的那一行(V479/V480 规范形态), 其余置空行(不改行数, 不破坏后续索引)。幂等。
+  const _dropRows = new Set();
+  {
+    const sunWord = _V482B_SUN_WORD[lang] || _V482B_SUN_WORD.en;
+    for (const g of groups) {
+      if (g.rows.length < 2) continue;
+      const bySub = new Map();
+      for (const r of g.rows) {
+        const ln = lines[r] || '';
+        const sub = (ln.split(/[·•|]/)[1] || '').trim();
+        if (!bySub.has(sub)) bySub.set(sub, []);
+        bySub.get(sub).push(r);
+      }
+      for (const arr of bySub.values()) {
+        if (arr.length < 2) continue;
+        const keepAt = arr.findIndex((r) => (lines[r] || '').includes(sunWord));
+        const keep = keepAt >= 0 ? keepAt : 0;
+        arr.forEach((r, k) => { if (k !== keep) _dropRows.add(r); });
+      }
+    }
+  }
   for (const g of groups) {
     const idx = g.key - base;
     if (idx < 0 || idx >= months.length) continue;
@@ -4916,7 +4951,15 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
     const trueSign = signs[zi];
     const trueHouse = Number(sun.house) || 0;
     for (const r of g.rows) {
+      if (_dropRows.has(r)) { if (lines[r] !== '') { lines[r] = ''; dropped++; } continue; }
       let line = lines[r];
+      // 🛠️ V482b: 英文模板残渣本地化(输出侧兜底, 见文件上方 _V482B_TITLE_LEAD 注释)。
+      //   必须在下面的星座/宫位真值重写**之前**执行: 否则 `House 3` 不匹配 zh 的 houseRe → 宫位漏纠。
+      if (lang !== 'en') {
+        const _lead = _V482B_TITLE_LEAD[lang], _hw = _V482B_TITLE_HOUSE[lang];
+        if (_lead) line = line.replace(/\bSun\s+in\s*/gi, _lead).replace(/\bSun\b\s*/gi, _lead);
+        if (_hw) line = line.replace(/\bHouse\s*(\d+)/gi, (mm, n) => _hw(n));
+      }
       const sm = line.match(signRe);
       if (sm && sm[1] !== trueSign) line = line.replace(sm[1], trueSign);
       const hm = line.match(houseRe);
@@ -4944,7 +4987,7 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
       if (line !== lines[r]) { lines[r] = line; touched++; }
     }
   }
-  if (touched || wording) console.log(`[V478b] ${lang} \u5e74\u62a5\u6708\u6807\u9898\u9010\u6708\u771f\u503c\u9501: \u91cd\u5199 ${touched} \u884c | V479 \u63aa\u8f9e\u5f52\u4e00 ${wording} \u884c`);
+  if (touched || wording || dropped) console.log(`[V478b] ${lang} \u5e74\u62a5\u6708\u6807\u9898\u9010\u6708\u771f\u503c\u9501: \u91cd\u5199 ${touched} \u884c | V479 \u63aa\u8f9e\u5f52\u4e00 ${wording} \u884c | V482b \u53bb\u91cd ${dropped} \u884c`);
   return lines.join('\n');
 }
 
@@ -6022,7 +6065,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v484:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v485:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -7946,16 +7989,31 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
 
   // 🛠️ V97x 治本:代码算死12个月锁死标题(星座+宫位由 SwissEph 算死,AI 只填四字主题)
   // 🛠️ V100f: 多语言版(按 lang 选字)
+  // 🛠️ V482b: 补齐 es/fr/th/vi —— 原表只有 zh/en, 非 en/zh 会 fallback 到 **中文** 星座名,
+  //   与 V478b 月标题锁(用 _v444Signs(lang) 写本地星座名)不一致 → 提示词自带中文泄漏源。
   const SIGN_LOCKS = {
     zh: {Aries:'白羊座', Taurus:'金牛座', Gemini:'双子座', Cancer:'巨蟹座', Leo:'狮子座', Virgo:'处女座', Libra:'天秤座', Scorpio:'天蝎座', Sagittarius:'射手座', Capricorn:'摩羯座', Aquarius:'水瓶座', Pisces:'双鱼座'},
     en: {Aries:'Aries', Taurus:'Taurus', Gemini:'Gemini', Cancer:'Cancer', Leo:'Leo', Virgo:'Virgo', Libra:'Libra', Scorpio:'Scorpio', Sagittarius:'Sagittarius', Capricorn:'Capricorn', Aquarius:'Aquarius', Pisces:'Pisces'},
+    es: Object.fromEntries(SUN_SIGN_EN.map((e, i) => [e, SUN_SIGN_ES[i]])),
+    fr: Object.fromEntries(SUN_SIGN_EN.map((e, i) => [e, SUN_SIGN_FR[i]])),
+    th: Object.fromEntries(SUN_SIGN_EN.map((e, i) => [e, SUN_SIGN_TH[i]])),
+    vi: Object.fromEntries(SUN_SIGN_EN.map((e, i) => [e, SUN_SIGN_VI[i]])),
   };
   const HOUSE_LOCKS = {
     zh: {1:'第1宫',2:'第2宫',3:'第3宫',4:'第4宫',5:'第5宫',6:'第6宫',7:'第7宫',8:'第8宫',9:'第9宫',10:'第10宫',11:'第11宫',12:'第12宫'},
     en: {1:'1st House',2:'2nd House',3:'3rd House',4:'4th House',5:'5th House',6:'6th House',7:'7th House',8:'8th House',9:'9th House',10:'10th House',11:'11th House',12:'12th House'},
+    es: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Casa ' + (i + 1)])),
+    fr: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Maison ' + (i + 1)])),
+    th: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'บ้าน ' + (i + 1)])),
+    vi: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Nhà ' + (i + 1)])),
   };
   const SIGN_LOCK = SIGN_LOCKS[lang] || SIGN_LOCKS.zh;
   const HOUSE_LOCK = HOUSE_LOCKS[lang] || HOUSE_LOCKS.zh;
+  // 🛠️ V482b: 月标题「行星引导词」本地化 —— 原写法对所有语种硬编码英文 `Sun in`,
+  //   中文 Prompt 里因此夹带英文 → LLM 照抄, 生产实测(2026-09-30 1999-12-15 特罗姆瑟盘)
+  //   整篇 12 条月标题全变「### 2026年9月: Sun in 处女座 第3宫 · …」。
+  const _V482B_SUN_LEAD = { zh: '太阳', en: 'Sun in ', es: 'Sol en ', fr: 'Soleil en ', th: 'ดาวอาทิตย์ใน ', vi: 'Mặt Trời trong ' };
+  const _SUN_LEAD = _V482B_SUN_LEAD[lang] || _V482B_SUN_LEAD.en;
   const MONTH_FMT = lang === 'en'
     ? { yearPrefix: (y, m) => `${monthNamesEN[m - 1]} ${y}`, prefix: (y, m) => `${monthNamesEN[m - 1]} ${y}` }
     : { yearPrefix: (y, m) => `${y}年${m}月`, prefix: (y, m) => `${y}年${m}月` };
@@ -7968,7 +8026,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
         const mi = currentMonth - 1 + i;
         const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
         const monthNum = (mi % 12) + 1;
-        return `#### ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: Sun in ${signName} ${houseName} · __[Fill 4-word theme]__`;
+        return `#### ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: ${_SUN_LEAD}${signName} ${houseName} · __[Fill 4-word theme]__`;
       }).join('\n')
     : '';
   const monthLockTable = astroMatrix && astroMatrix.months
@@ -7980,7 +8038,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
         const mi = currentMonth - 1 + i;
         const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
         const monthNum = (mi % 12) + 1;
-        return `  ● ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: Sun in ${signName} · House ${sun.house}`;
+        // 🛠️ V482b: 引导词/宫位词一律本地化(原写死英文 `Sun in` / `House N` → 中文 Prompt 夹带英文被 LLM 照抄)
+        return `  ● ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: ${_SUN_LEAD}${signName} · ${HOUSE_LOCK[sun.house] || ('House ' + sun.house)}`;
       }).join('\n')
     : '';
 
@@ -9222,7 +9281,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v484:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v485:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9819,7 +9878,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v484:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v485:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

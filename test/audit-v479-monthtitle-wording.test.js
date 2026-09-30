@@ -68,7 +68,8 @@ test('③ lockYearlyMonthTitles 必须含标题措辞归一(剥指代前缀)', (
 });
 
 // ── ④ 行为级: vm 抽取 + 假矩阵(零 python 依赖) ──
-const SEEDS = ['_v479IsMonthTitleLine', 'lockYearlyMonthTitles'];
+const SEEDS = ['_v479IsMonthTitleLine', 'lockYearlyMonthTitles',
+  '_V482B_TITLE_LEAD', '_V482B_TITLE_HOUSE', '_V482B_SUN_WORD'];
 const { map } = closureDecls(src, SEEDS, ['getSignToHouseMap', 'SIGN_ORDER_ZH']);
 const dropped = [];
 for (const n of [...map.keys()]) {
@@ -133,6 +134,49 @@ test('⑦ 月报零影响: reportType!=yearly 原样返回', () => {
   assert.strictEqual(F.lockYearlyMonthTitles(text, 'zh', M, 'monthly'), text, '月报路径被污染');
 });
 
+// ═══════════════ V482b: 月标题「英文模板残渣」+「同月重复行」 ═══════════════
+// 事故背景(2026-09-30 生产端 1999-12-15 特罗姆瑟盘实测):
+//   A. 硬锁标题表对所有语种硬编码英文 `Sun in X` / `House N` → 中文 Prompt 夹带英文 →
+//      LLM 照抄 → 整篇 12 条月标题全变「### 2026年9月: Sun in 处女座 第3宫 · …」。
+//   B. LLM 偶发对同一个月连续输出两行标题(简版 + 全版, 「·」后副标题完全相同) → 前端出现双月卡。
+/** 判据⑧ 谓词: 月标题模板必须已本地化(非 en 不写死英文引导词/宫位词) */
+function titleTemplateLocalizedOk(source) {
+  if (!/const\s+_V482B_SUN_LEAD\s*=/.test(source)) return false;
+  if (/yearPrefix\(yearPrefix, monthNum\)\}: Sun in \$\{signName\}/.test(source)) return false;
+  if (/: Sun in \$\{signName\} · House \$\{sun\.house\}/.test(source)) return false;
+  return /:\s*\$\{_SUN_LEAD\}\$\{signName\}/.test(source);
+}
+
+test('⑧ 月标题模板必须本地化: 非 en 不得写死英文 `Sun in` / `House N`(提示词侧泄漏源)', () => {
+  assert.ok(titleTemplateLocalizedOk(src), '月标题模板仍对非 en 语种硬编码英文(Sun in / House N)');
+});
+
+test('⑨ zh 月标题行的英文残渣必须被本地化(输出侧兜底) + 幂等', () => {
+  const text = mkLines((i, ln) => ln.replace('太阳', 'Sun in ')).join('\n');
+  const out = F.lockYearlyMonthTitles(text, 'zh', M, 'yearly');
+  assert.strictEqual((out.match(/Sun\s+in/gi) || []).length, 0, '英文引导词未清除: ' + out.split('\n')[0]);
+  assert.ok(/太阳/.test(out), '未还原本地引导词「太阳」');
+  assert.strictEqual(F.lockYearlyMonthTitles(out, 'zh', M, 'yearly'), out, '非幂等: 二次调用有变化');
+
+  // 「House N」也必须本地化为「第N宫」, 且不因此漏掉宫位真值重写(必须在 houseRe 匹配之前执行)
+  const text2 = mkLines((i, ln) => ln.replace(/第\d+宫/, (m) => 'House ' + m.match(/\d+/)[0])).join('\n');
+  const out2 = F.lockYearlyMonthTitles(text2, 'zh', M, 'yearly');
+  assert.strictEqual((out2.match(/House\s*\d+/gi) || []).length, 0, 'House N 未本地化: ' + out2.split('\n')[0]);
+  const L2 = out2.split('\n');
+  assert.ok(L2[0].includes('第1宫') && L2[11].includes('第10宫'),
+    `House N 未被本地化为第N宫 / 宫位真值未生效: ${L2[0]} | ${L2[11]}`);
+});
+
+test('⑩ 同月重复标题行必须清算(保留含太阳词的一行) + 行数不变 + 幂等', () => {
+  const dup = [];
+  for (const ln of mkLines()) { dup.push(ln.replace('太阳', ''), ln); }   // 同月两行, 副标题相同
+  const out = F.lockYearlyMonthTitles(dup.join('\n'), 'zh', M, 'yearly');
+  assert.strictEqual(out.split('\n').length, dup.length, '行数被改变(应置空行而非删行)');
+  assert.strictEqual((out.match(/太阳/g) || []).length, 12, '重复行未被清算(太阳词行数应为 12)');
+  assert.strictEqual((out.match(/副标题/g) || []).length, 12, '副标题行数应为 12');
+  assert.strictEqual(F.lockYearlyMonthTitles(out, 'zh', M, 'yearly'), out, '非幂等: 二次调用有变化');
+});
+
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
 test('【注入缺陷自测】删掉标题行豁免条件 → 判据② 必须红', () => {
   const degraded = fnBody('_v432AdjudicateDescriptors')
@@ -157,4 +201,31 @@ test('【注入缺陷自测】把标题行识别退化为「永远 false 以外�
   assert.notStrictEqual(degradedFn, map.get('_v479IsMonthTitleLine'), '未成功注入缺陷(正则没匹配到标题行判定)');
   const G = build({ _v479IsMonthTitleLine: degradedFn });
   assert.strictEqual(G._v479IsMonthTitleLine('纯正文一句。', 2), true, '闸门失效: 退化未被识别');
+});
+
+test('【注入缺陷自测】模板退回写死 `Sun in` → 判据⑧ 必须红', () => {
+  const degraded = src.replace(': ${_SUN_LEAD}${signName} ${houseName}', ': Sun in ${signName} ${houseName}');
+  assert.notStrictEqual(degraded, src, '未成功注入缺陷(正则没匹配到模板行)');
+  assert.ok(!titleTemplateLocalizedOk(degraded), '闸门失效: 模板退回英文后判据⑧ 仍放行');
+});
+
+test('【注入缺陷自测】关掉英文本地化兜底 → 判据⑨ 必须红(行为级)', () => {
+  const key = 'const _lead = _V482B_TITLE_LEAD[lang], _hw = _V482B_TITLE_HOUSE[lang];';
+  const degradedFn = map.get('lockYearlyMonthTitles').replace(key, 'const _lead = undefined, _hw = undefined;');
+  assert.notStrictEqual(degradedFn, map.get('lockYearlyMonthTitles'), '未成功注入缺陷(未匹配到本地化表引用)');
+  const G = build({ lockYearlyMonthTitles: degradedFn });
+  const text = mkLines((i, ln) => ln.replace('太阳', 'Sun in ')).join('\n');
+  const out = G.lockYearlyMonthTitles(text, 'zh', M, 'yearly');
+  assert.ok(/Sun\s+in/i.test(out), '闸门失效: 兜底被关后英文残渣仍被清除(判据⑨ 未红)');
+});
+
+test('【注入缺陷自测】关掉重复标题清算 → 判据⑩ 必须红(行为级)', () => {
+  const key = 'const sunWord = _V482B_SUN_WORD[lang] || _V482B_SUN_WORD.en;';
+  const degradedFn = map.get('lockYearlyMonthTitles').replace(key, "const sunWord = '__V482B_DISABLED__';");
+  assert.notStrictEqual(degradedFn, map.get('lockYearlyMonthTitles'), '未成功注入缺陷(未匹配到太阳词常量引用)');
+  const G = build({ lockYearlyMonthTitles: degradedFn });
+  const dup = [];
+  for (const ln of mkLines()) { dup.push(ln.replace('太阳', ''), ln); }
+  const out = G.lockYearlyMonthTitles(dup.join('\n'), 'zh', M, 'yearly');
+  assert.notStrictEqual((out.match(/太阳/g) || []).length, 12, '闸门失效: 清算被关后太阳词行数仍为 12(判据⑩ 未红)');
 });
