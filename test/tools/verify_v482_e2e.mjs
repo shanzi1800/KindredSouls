@@ -63,7 +63,7 @@ const text = sanitized || full;
 fs.writeFileSync('/tmp/ks1999_v482_e2e.txt', text);
 console.log(`生产端年报: ${text.length} 字 → /tmp/ks1999_v482_e2e.txt`);
 
-const M = await getAstroMatrix(birthDate, birthTime, +lat, +lon, tz);
+const M = await getAstroMatrix(birthDate, birthTime, +lat, +lon, tz, { reportType: 'yearly' });   // 🛡️ V483: 年报走财年窗口
 const ch = M?.meta?.computed_houses || {};
 console.log(`\n[真值盘] 太阳=${ch.Sun?.sign}第${ch.Sun?.house}宫 | 月亮=${ch.Moon?.sign}第${ch.Moon?.house}宫 | 上升=${M?.meta?.rising_sign}`);
 
@@ -142,6 +142,17 @@ const dups = [...keyCount.entries()].filter(([, c]) => c > 1);
 dups.forEach(([k, c]) => console.log(`     · ${k} 出现 ${c} 次`));
 ok(dups.length === 0, `同一个月不得出现多行标题, 实得 ${dups.length} 个月重复`);
 ok(monthTitleLines.length === 12, `月标题必须恰好 12 行, 实得 ${monthTitleLines.length}`);
+
+// ── 判据⑦ 财年窗口（V483）──
+console.log('\n=== 判据⑦ 时间窗口 = 当年 7 月至次年 6 月(V483) ===');
+const ymKeys = monthTitleLines.map((l) => { const m = l.match(/(\d{4})年(\d{1,2})月/); return m ? `${m[1]}-${String(+m[2]).padStart(2, '0')}` : null; }).filter(Boolean);
+const uniqSorted = [...new Set(ymKeys)].sort();
+const expKeys = []; { let y = M?.meta?.report_window?.start_year, mo = M?.meta?.report_window?.start_month;
+  for (let i = 0; i < 12; i++) { expKeys.push(`${y}-${String(mo).padStart(2, '0')}`); mo++; if (mo > 12) { mo = 1; y++; } } }
+console.log(`  服务器窗口: ${expKeys[0]} ~ ${expKeys[11]} | 正文实得: ${uniqSorted[0] || '?'} ~ ${uniqSorted[uniqSorted.length - 1] || '?'}`);
+ok(expKeys[0].endsWith('-07'), `财年起点必须是 7 月, 实得 ${expKeys[0]}`);
+ok(uniqSorted.length === 12 && uniqSorted.every((k, i) => k === expKeys[i]),
+  `正文 12 个月必须严格等于财年窗口 ${expKeys[0]}~${expKeys[11]}, 实得 ${uniqSorted.join(',')}`);
 
 // ── 判据③ 第五章括号/宫位残渣 ──
 console.log('\n=== 判据③ 第五章空间标签括号残渣 ===');

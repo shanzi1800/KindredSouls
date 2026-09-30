@@ -49,7 +49,7 @@ ok(titles.length === 12, `规范月标题应为 12 条, 实得 ${titles.length}`
 for (const t of titles) console.log('   ' + t.trim());
 
 console.log('\n=== 判据② 逐月星座/宫位 == SwissEph 真值 ===');
-const M = await getAstroMatrix(birthDate, birthTime, +lat, +lon, tz);
+const M = await getAstroMatrix(birthDate, birthTime, +lat, +lon, tz, { reportType: 'yearly' });   // 🛡️ V483: 年报走财年窗口
 const months = (M && M.months) || [];
 const EN2ZH = { Aries: '白羊', Taurus: '金牛', Gemini: '双子', Cancer: '巨蟹', Leo: '狮子', Virgo: '处女', Libra: '天秤', Scorpio: '天蝎', Sagittarius: '射手', Capricorn: '摩羯', Aquarius: '水瓶', Pisces: '双鱼' };
 const truth = new Map();

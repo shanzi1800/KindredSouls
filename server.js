@@ -6106,7 +6106,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v487:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v488:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -7943,7 +7943,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   //   ② 唯一月亮数据是 P1 块里的月中快照 Moon=Escorpio(H2) → 模型当全月常量抄，
   //      W1/W3/W4+陷阱段共 5 处写同一星座（真值 W1=Aries→Cancer、W4=Aquarius→Taurus）。
   //   治本：① 对月报摘掉 Moon 行（不留误导锚点）② 注入按周切分的真实月亮轨迹 + 硬规则。
-  const _moonWeeks = astroMatrix?.months?.[0]?.moon_weeks || null;
+  // 🛡️ V483: 只对【月报】取当月周表 —— 年报窗口起点是财年 7 月，若照旧取 months[0].moon_weeks
+  //   会拿到 7 月周表并打进日志（语义错位 + 误导排查），而年报根本不消费这段。
+  const _moonWeeks = reportType === 'monthly' ? (astroMatrix?.months?.[0]?.moon_weeks || null) : null;
   // ⚠️ 不得用 curMonthName：它在 live 函数里 5949 行才声明（本月报分支内），此处引用会 TDZ/未定义。
   //    改用引擎自带的月名（如 'Sep 2026' → 'Sep'），语言无关、无作用域依赖。
   const _mwMonthLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
@@ -8834,19 +8836,36 @@ ${HT_RP.trap}
     };
     yearlySystem += (HE_MAP[lang] || HE_MAP.en);
 
-    return {
-      system: yearlySystem,
-      user: `
-⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据(木星/土星/冥王星/太阳/月亮)。未提供的行星(火星/凯龙/北交点等)不得写具体星座或宫位,只能描述原型特质("行动力强"/"开创精神"),禁止"火星在XX座"或"火星在第X宫"。
-
-⛔ [火星/凯龙禁则]: 绝对禁止在年报正文(除 Black Swan Day 断路器警告外)写"火星在XX座"或"火星在第X宫"。
-
-⛔ [Black Swan Day 火星 Transit 规则]: 火星不在 AstroMatrix 固定外行星列表中,但其 2026-2027 年真实 Transit 位置有明确天文学事实,可以写入。具体规则:
+    // 🛡️ V483: 火星 Transit 硬编码事实表**只对 FY2026(2026-07 ~ 2027-06) 成立**。
+    //   病根: 原表写死在 Prompt 里、不随财年变化 —— 一旦财年滚动到 2027-07 起，
+    //   该表就变成「主动编造」的假事实，LLM 会照着写错火星星座。
+    //   现按矩阵实际窗口门控: 命中 FY2026 才注入硬表，否则降级为「只准描述相位、禁止写火星星座」。
+    const _fw = astroMatrix?.meta?.report_window;
+    const _winStartKey = _fw?.start_key || String(astroMatrix?.months?.[0]?.month_key || '');
+    const MARS_TRANSIT_RULE = (_winStartKey === '2026-07')
+      ? `火星不在 AstroMatrix 固定外行星列表中,但其 2026-2027 年真实 Transit 位置有明确天文学事实,可以写入。具体规则:
 - 2026年7月-8月:火星在狮子座(6月21日离开巨蟹进入狮子,9月23日才进处女)
 - 2026年11月30日-12月:火星在处女座(9月23日进处女,2027年1月中旬才离)
 - 2027年2月-3月:火星在处女座/天秤座(1月中旬进天秤)
 - 2027年5月:火星在狮子座(4月中旬进狮子,6月中旬离)
-若 Black Swan Day 涉及火星相位,**必须**按上述真实 Transit 位置写,例如:"(火星在狮子座与XX形成XX相位)"。绝对不得写"火星在处女座"给7月/8月的日子,也不得写"火星在XX座"给任何不在上述窗口的日子。
+若 Black Swan Day 涉及火星相位,**必须**按上述真实 Transit 位置写,例如:"(火星在狮子座与XX形成XX相位)"。绝对不得写"火星在处女座"给7月/8月的日子,也不得写"火星在XX座"给任何不在上述窗口的日子。`
+      : `火星不在 AstroMatrix 固定外行星列表中。本财年(起点 ${_winStartKey || '未知'})没有可用的火星 Transit 硬编码事实表 —— 涉及火星相位时,只描述相位关系本身(如"火星与土星形成刑相位"),**绝对禁止写出火星的任何具体星座或宫位**。`;
+
+    // 🛡️ V483: 窗口标签（Prompt「时间窗口铁律」用；与 FactSheet 同源，杜绝各写各的）
+    const _WIN_LABEL = _fw?.label || (() => {
+      const _m = astroMatrix?.months || [];
+      return `${_m[0]?.month_name || '?'} – ${_m[_m.length - 1]?.month_name || '?'}`;
+    })();
+
+    return {
+      system: yearlySystem,
+      user: `
+⛔ [时间窗口铁律 — 财年周期, 不得自行推算]: 本报告的时间轴由服务器锁定为 **${_WIN_LABEL}**（整整 12 个月，当年 7 月至次年 6 月的跨年财年周期）。下方 P1.1 数据块的 12 个月即此窗口，一一对应。绝对禁止根据"当前日期"或"生成当月"自行向后推算 12 个月来改写起止月份；第二章月标题必须严格落在 ${_WIN_LABEL} 区间内，不得出现该区间之外的月份。
+⛔ [天文真值铁律]: 只准使用 AstroMatrix 提供的外行星数据(木星/土星/冥王星/太阳/月亮)。未提供的行星(火星/凯龙/北交点等)不得写具体星座或宫位,只能描述原型特质("行动力强"/"开创精神"),禁止"火星在XX座"或"火星在第X宫"。
+
+⛔ [火星/凯龙禁则]: 绝对禁止在年报正文(除 Black Swan Day 断路器警告外)写"火星在XX座"或"火星在第X宫"。
+
+⛔ [Black Swan Day 火星 Transit 规则]: ${MARS_TRANSIT_RULE}
 ⛔ [缝合怪禁则]: 绝对禁止将两个星座名直接连接(如"处女座金牛座"、"双子座白羊座")。每段只描述一个星座,宫位从 AstroMatrix 的 computed_houses 引用,不得自创。
 ⛔ [月内宫位一致性]: 同一月内太阳描述必须唯一(如5月=金牛座,不得同时说双子座)。若发现矛盾,以流月数据为准。
 ⛔ [本命盘 vs Transit 严格区分 - 核心区分规则]:
@@ -9325,7 +9344,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v487:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v488:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9349,7 +9368,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
             // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
             //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
             let _hitAstro = null;
-            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
+            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
             stdCached = lockTransitTruthVi(stdCached, _hitAstro);
             if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
@@ -9360,7 +9379,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
             let _hitAstroTh = null;
-            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
+            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
             stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
             stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstroTh);   // V433-fix4
@@ -9370,7 +9389,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
           let _hitFinal = stdCached;
           if (_V432_LANGS.includes(lang)) {
             let _hitAstro432 = null;
-            try { _hitAstro432 = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); } catch (e) { console.warn('[V432] HIT matrix fetch failed: ' + e.message); }
+            try { _hitAstro432 = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V432] HIT matrix fetch failed: ' + e.message); }
             _hitFinal = applyTruthLocksEnEsZh(stdCached, lang, _hitAstro432, reportType);
           }
           // 🛠️ V427: HIT 路径补 data 字段(让前端 4 卡片能渲染，与 MISS 路径对称)
@@ -9397,7 +9416,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
       // 先天财富DNA不需要astroMatrix(静态本命盘)
       if (reportType !== 'once') {
         try {
-          astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz); // 🛠️ V91: 传精确时间/坐标/时区
+          astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); // 🛠️ V91: 传精确时间/坐标/时区；🛡️ V483: 传报告类型决定时间窗口(年报=财年7月–次年6月)
           if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
         } catch (e) {
           console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
@@ -9922,7 +9941,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v487:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v488:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9930,7 +9949,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 🛠️ V185: 占位符替换需要 astroMatrix,提前计算(HIT/MISS 共用)
   let astroMatrix = null;
   try {
-    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz);
+    astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType });   // 🛡️ V483: 年报=财年 7 月–次年 6 月 / 月报=当月起
     if (astroMatrix) {
       console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
     }

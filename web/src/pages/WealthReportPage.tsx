@@ -427,11 +427,21 @@ const parseYearlyReportV23 = (rawText: string): Record<string, string> => {
   let currentKey = 'oracle'; // 默认先知神谕接管(开篇章)
 
   // 12 个月份的模糊字典:年月份 → 卡片 key
-  const yearMonthMap: Record<string, string> = {
-    '2026年7月': 'm1', '2026年8月': 'm2', '2026年9月': 'm3', '2026年10月': 'm4',
-    '2026年11月': 'm5', '2026年12月': 'm6', '2027年1月': 'm7', '2027年2月': 'm8',
-    '2027年3月': 'm9', '2027年4月': 'm10', '2027年5月': 'm11', '2027年6月': 'm12'
-  };
+  // 🛡️ V483: 年代无关 —— 按「财年起点 7 月」动态生成 12 个月份键，并覆盖上/下相邻财年锚点。
+  //   旧表把 2026/2027 写死 ⇒ 财年窗口滚动到 2027 后整表失效 → 正文月份全部落不进月卡。
+  //   当前财年锚点=2026 时，本表达式与原表**逐键等价**(2026年7月→m1 … 2027年6月→m12)。
+  const yearMonthMap: Record<string, string> = (() => {
+    const _m: Record<string, string> = {};
+    const _Y = new Date().getFullYear();
+    for (const _base of [_Y - 1, _Y, _Y + 1]) {
+      for (let _i = 0; _i < 12; _i++) {
+        const _mm = ((6 + _i) % 12) + 1;          // 7,8,…,12,1,…,6
+        const _yy = _mm >= 7 ? _base : _base + 1;
+        _m[`${_yy}年${_mm}月`] = 'm' + (_i + 1);
+      }
+    }
+    return _m;
+  })();
 
   for (let line of lines) {
     const cleanLine = line.trim();
@@ -535,11 +545,21 @@ const parseYearlyReportV24 = (rawText: string, realZodiac: string): Record<strin
   const lines = filteredText.split('\n');
   let currentKey = 'oracle';
 
-  const yearMonthMap: Record<string, string> = {
-    '2026年7月': 'm1', '2026年8月': 'm2', '2026年9月': 'm3', '2026年10月': 'm4',
-    '2026年11月': 'm5', '2026年12月': 'm6', '2027年1月': 'm7', '2027年2月': 'm8',
-    '2027年3月': 'm9', '2027年4月': 'm10', '2027年5月': 'm11', '2027年6月': 'm12'
-  };
+  // 🛡️ V483: 年代无关 —— 按「财年起点 7 月」动态生成 12 个月份键，并覆盖上/下相邻财年锚点。
+  //   旧表把 2026/2027 写死 ⇒ 财年窗口滚动到 2027 后整表失效 → 正文月份全部落不进月卡。
+  //   当前财年锚点=2026 时，本表达式与原表**逐键等价**(2026年7月→m1 … 2027年6月→m12)。
+  const yearMonthMap: Record<string, string> = (() => {
+    const _m: Record<string, string> = {};
+    const _Y = new Date().getFullYear();
+    for (const _base of [_Y - 1, _Y, _Y + 1]) {
+      for (let _i = 0; _i < 12; _i++) {
+        const _mm = ((6 + _i) % 12) + 1;          // 7,8,…,12,1,…,6
+        const _yy = _mm >= 7 ? _base : _base + 1;
+        _m[`${_yy}年${_mm}月`] = 'm' + (_i + 1);
+      }
+    }
+    return _m;
+  })();
 
   for (const line of lines) {
     const cleanLine = line.trim();
@@ -2547,12 +2567,12 @@ smoothAppendText(fbText, setSacredText, 16, 4);
 
             // 🛠️ V103-fix22: 前端月份真理表--独立于后端的第二道防线
             // 【重要】只锁月份+太阳星座,宫位由后端 SwissEph 按实际上升计算
-            // 月份星座是日历常数(2026-07=巨蟹→逐月顺延),宫位取决于出生上升,不是固定值
-            const ZODIAC_TRUTH = {
-              '2026年7月': '巨蟹座', '2026年8月': '狮子座', '2026年9月': '处女座',
-              '2026年10月': '天秤座', '2026年11月': '天蝎座', '2026年12月': '射手座',
-              '2027年1月': '摩羯座', '2027年2月': '水瓶座', '2027年3月': '双鱼座',
-              '2027年4月': '白羊座', '2027年5月': '金牛座', '2027年6月': '双子座',
+            // 🛡️ V483: 月份→太阳星座是**日历常数,与年份无关**（7 月必巨蟹、8 月必狮子 … 6 月必双子）。
+            //   旧写法把「2026年7月…2027年6月」写成年份键字典 —— 财年窗口一旦滚动(2027/2028)
+            //   整表即失效、前端不再纠正任何月份。改为按【月份数字】查表 + 年份无关正则。
+            const MONTH_SUN_SIGN: Record<number, string> = {
+              7: '巨蟹座', 8: '狮子座', 9: '处女座', 10: '天秤座', 11: '天蝎座', 12: '射手座',
+              1: '摩羯座', 2: '水瓶座', 3: '双鱼座', 4: '白羊座', 5: '金牛座', 6: '双子座',
             };
 
             // 🛠️ V45: 军师版万能强切洗涤器--一次性斩杀双子幻觉/风元素错误/水瓶座宫位穿帮/复读尾巴
@@ -2569,14 +2589,11 @@ smoothAppendText(fbText, setSacredText, 16, 4);
               }
 
               // 0.5 【前端月份星座真理覆盖--只换星座,宫位不动】
-              // 月份星座是日历常数(2026-07=巨蟹→逐月顺延),宫位取决于实际上升让后端算
-              for (const [month, sign] of Object.entries(ZODIAC_TRUTH)) {
-                // 匹配形如「2027年6月: 太阳XXX座」并用真理星座替换,保留后续所有内容(第X宫等)
-                c = c.replace(
-                  new RegExp(`${month}[::]\\s*太阳\\S{0,6}座`, 'g'),
-                  `${month}: 太阳${sign}`
-                );
-              }
+              // 🛡️ V483: 年份无关（旧表写死 2026/2027,财年滚动后整表失效）。宫位仍由后端 SwissEph 算。
+              c = c.replace(/(\d{4})年(\d{1,2})月[:：]\s*太阳\S{0,6}座/g, (m, _y, _mm) => {
+                const sign = MONTH_SUN_SIGN[Number(_mm)];
+                return sign ? `${_y}年${_mm}月: 太阳${sign}` : m;
+              });
 
               // 0.6 【孤括号清洗--大模型行文污染,双向保底】
               // Pass1: 移除孤立 `)`(不伤正常对)

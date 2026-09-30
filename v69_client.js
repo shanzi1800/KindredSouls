@@ -18,8 +18,58 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // ── In-Memory Cache ──────────────────────────────────────────────────────────
-const matrixCache = new Map(); // key: `${birthDate}:${birthTime}:${lat.toFixed(2)}:${lon.toFixed(2)}:${tz}` → matrix
+// ⚠️ key 必须含【时间窗口】: 年报(财年 7 月起) 与 月报(当月起) 走同一进程，
+//    若 key 不含窗口 → 同盘同语言下月报会读到年报矩阵(months[0] 变成 7 月) → 月报整体错位。
+const matrixCache = new Map(); // key: `${birthDate}:${birthTime}:${lat}:${lon}:${tz}:${windowKey}` → matrix
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// ══════════════════════════════════════════════════════════════════════════
+// 🛡️ V483: 报告「时间窗口」契约（服务器确定性计算，绝不交给 LLM 推算）
+//   病根（2026-09-30 核实）: 年报的 Prompt / FactSheet 文案**早就按「2026 年 7 月 –
+//   2027 年 6 月」写好**（如「2026年7月Transit太阳 = 巨蟹座」「July 2026 – June 2027」），
+//   而星盘矩阵却从**当前月**起算（`now.getMonth()+1`）→ 两边打架：
+//   9 月买到的报告，Prompt 说 7 月起、数据却是 9 月起 → LLM 收到互相矛盾的指令
+//   （正是 V482 那批「跨月沿用 / 星座串染」的温床）。
+//   契约: 年报 = 当年 7 月至次年 6 月（12 个月整，跨年财年制）；月报 = 当月起 12 个月（不变）。
+//   ⚠️ 只锁定「起点」，不锁死具体年份 —— 年份由服务器按当前时间算出，LLM 无权推算。
+// ══════════════════════════════════════════════════════════════════════════
+export const FISCAL_START_MONTH = 7;   // 财年起点月（7 月）
+const _MONTH_EN = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * 解析某类报告的时间窗口。**纯函数**（可单测），不读全局状态。
+ * @param {'yearly'|'monthly'|string} reportType
+ * @param {Date} [now] 便于测试注入
+ * @returns {{startYear:number,startMonth:number,months:number,cycle:string}}
+ */
+export function resolveReportWindow(reportType, now = new Date()) {
+  const y = Number(now.getFullYear());
+  const m = Number(now.getMonth()) + 1;
+  if (reportType === 'yearly') {
+    // 当年 7 月 → 次年 6 月。例: 2026-09 购买 → 2026-07 … 2027-06
+    return { startYear: y, startMonth: FISCAL_START_MONTH, months: 12, cycle: 'fiscal-jul-jun' };
+  }
+  // 月报 / 默认: 当月起 12 个月（保持历史行为不变）
+  return { startYear: y, startMonth: m, months: 12, cycle: 'rolling-from-current-month' };
+}
+
+/** 窗口 → 人类可读区间标签（供 Prompt / FactSheet 用，杜绝硬编码年份） */
+export function windowLabel(win) {
+  let y = win.startYear, m = win.startMonth;
+  for (let i = 1; i < (win.months || 12); i++) { m += 1; if (m > 12) { m = 1; y += 1; } }
+  return {
+    start: `${_MONTH_EN[win.startMonth]} ${win.startYear}`,
+    end: `${_MONTH_EN[m]} ${y}`,
+    startKey: `${win.startYear}-${String(win.startMonth).padStart(2, '0')}`,
+    endKey: `${y}-${String(m).padStart(2, '0')}`,
+  };
+}
+
+/** 窗口 → 缓存 key 片段（保证不同窗口不互相污染） */
+function windowKeyOf(win) {
+  return `w${win.startYear}-${String(win.startMonth).padStart(2, '0')}x${win.months || 12}`;
+}
 
 // ── Resolve Python script path ───────────────────────────────────────────────
 function getScriptPath() {
@@ -44,7 +94,7 @@ function getScriptPath() {
  *   - 单月: python3 script.py YYYY MM rising_sign
  *   - 全年: python3 script.py YYYY rising_sign (months 1-12)
  */
-async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
+async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
   const scriptPath = getScriptPath();
   
   // 🛠️ V142: 无出生时间→Solar House 降级 (太阳星座=第1宫,避免假上升宫位张冠李戴)
@@ -89,26 +139,32 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
   
   console.log(`[V134] Rising=${risingSign}, Sun=${sunSign}, birthTimeKnown=${birthTimeKnown}, source=${natalData.rising_sign_source || '?'}`);
 
-  // ── 第二步：计算流年月报 JSON（2026年7月起，12个月）──
-  const now = new Date();
-  const year = now.getFullYear();
-  const monthStart = now.getMonth() + 1; // 0-indexed → 1-indexed
+  // ── 第二步：计算流年月报 JSON（🛡️ V483: 窗口由调用方传入，见 resolveReportWindow）──
+  // ⚠️ 历史病根: 此处原写 `const monthStart = now.getMonth() + 1`（当月起算），
+  //   而年报 Prompt / FactSheet 却硬编码「2026 年 7 月 – 2027 年 6 月」→ 两边打架。
+  const win = (opts && opts.window) || resolveReportWindow('monthly');
+  const year = win.startYear;
+  const monthStart = win.startMonth;
+  // 月亮换座表仍按【当前月】算（月报专属数据；年报不进这条分支，保持原行为零回归）
+  const _now = new Date();
+  const curYear = _now.getFullYear();
+  const curMonthStart = _now.getMonth() + 1;
 
   // 用 execSync 同步调 Python，拿完整 12 月 JSON
   const cmd = [
     'python3', scriptPath,
-    String(year), String(monthStart),  // 年 月
+    String(year), String(monthStart),  // 年 月（窗口起点）
     risingSign,                        // 上升星座（决定宫位）
     '--birth-date', birthDate || '',
     '--birth-time', birthTime || '12:00',
     '--lat', String(lat),
     '--lon', String(lon),
     '--tz', tz || 'Asia/Bangkok',
-    '--months', '12'
+    '--months', String(win.months || 12)
   ];
   if (!birthTimeKnown) cmd.push('--no-birth-time');
 
-  console.log('[V134] Computing monthly matrix:', cmd.join(' '));
+  console.log(`[V134] Computing monthly matrix (cycle=${win.cycle}, ${windowLabel(win).startKey}→${windowLabel(win).endKey}):`, cmd.join(' '));
 
   let rawOutput;
   try {
@@ -177,7 +233,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
     const ingCmd = [
       'python3', scriptPath,
       '--mode', 'moon-ingress',
-      String(year), String(monthStart),
+      String(curYear), String(curMonthStart),
       '--tz', tz || 'Asia/Bangkok'
     ];
     const ingRaw = execSync(ingCmd.join(' '), {
@@ -185,11 +241,23 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
     }).trim();
     const moonIngress = JSON.parse(ingRaw);
     matrix.meta.moon_ingress = moonIngress;
-    console.log(`[V383] Moon ingresses computed: ${moonIngress.length} events for ${year}-${monthStart}`);
+    console.log(`[V383] Moon ingresses computed: ${moonIngress.length} events for ${curYear}-${curMonthStart}`);
   } catch (e) {
     console.warn('[V383] Moon ingress computation failed, leaving null:', e.message);
     matrix.meta.moon_ingress = null;
   }
+
+  // 🛡️ V483: 把本矩阵的时间窗口写进 meta，供 Prompt / FactSheet / 真值锁读取（杜绝各自硬编码）
+  const _wl = windowLabel(win);
+  matrix.meta.report_window = {
+    cycle: win.cycle,
+    start_year: win.startYear,
+    start_month: win.startMonth,
+    months: win.months || 12,
+    start_key: _wl.startKey,
+    end_key: _wl.endKey,
+    label: `${_wl.start} – ${_wl.end}`,
+  };
 
   return matrix;
 }
@@ -199,12 +267,16 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz) {
  * Get the full 12-month astro matrix from V69 Python engine.
  * 🛠️ V134: spawnSync 直调，不依赖 8001 端口
  * 🛠️ V91+: 支持 birth_time / lat / lon / tz 精确参数。
- * Caches result for 1 hour to avoid repeated subprocess calls.
+ * 🛡️ V483: 新增 opts.reportType / opts.window —— 年报走「财年 7 月–次年 6 月」，
+ *   月报走「当月起 12 个月」。**不传 opts 时保持历史行为（当月起算）**，故所有既有调用零回归。
+ * Caches result for 1 hour to avoid repeated subprocess calls（缓存 key 含时间窗口）。
  */
-export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok') {
+export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 100.5, tz = 'Asia/Bangkok', opts = {}) {
   // 🛠️ V142-fix: 移除 birthTime='12:00' 默认值——undefined 会触发默认值导致 birthTimeKnown 误判为 true(假上升),
   // 现在 undefined/null/'' 都如实传给 computeViaPython 判定为无出生时间→Solar House
-  const cacheKey = `${birthDate}:${birthTime}:${Math.floor(lat*100)/100}:${Math.floor(lon*100)/100}:${tz}`;
+  const win = opts.window || resolveReportWindow(opts.reportType, opts.now);
+  const wKey = windowKeyOf(win);
+  const cacheKey = `${birthDate}:${birthTime}:${Math.floor(lat*100)/100}:${Math.floor(lon*100)/100}:${tz}:${wKey}`;
 
   // Check cache
   const cached = matrixCache.get(cacheKey);
@@ -216,7 +288,7 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
   console.log(`[V134] Cache miss, computing fresh: ${cacheKey}`);
 
   try {
-    const matrix = await computeViaPython(birthDate, birthTime, lat, lon, tz);
+    const matrix = await computeViaPython(birthDate, birthTime, lat, lon, tz, { window: win });
     matrixCache.set(cacheKey, { data: matrix, fetchedAt: Date.now() });
     return matrix;
   } catch (e) {
@@ -478,6 +550,21 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
   const { months, retrograde_stations, meta } = astroMatrix;
   
   const actualRising = meta?.rising_sign || 'Cancer';
+
+  // 🛡️ V483: 窗口标签**动态**取自矩阵（绝不再硬编码年份）。
+  //   历史病根: 此处原写死 `(July 2026 – June 2027)` / `(2026-2027)`，
+  //   而矩阵实际从当月起算 → FactSheet 对 LLM 谎报时间轴 → 诱导跨月串染。
+  const _winMeta = meta?.report_window;
+  const _winLabel = _winMeta?.label
+    || (() => {
+      const fm = months[0], lm = months[months.length - 1];
+      return `${fm?.month_name || '?'} – ${lm?.month_name || '?'}`;
+    })();
+  const _winYears = (() => {
+    const a = String(months[0]?.month_key || '').slice(0, 4);
+    const b = String(months[months.length - 1]?.month_key || '').slice(0, 4);
+    return a && b ? (a === b ? a : `${a}-${b}`) : 'the forecast period';
+  })();
   
   const firstMonth = months[0];
   const jupiterHouse = firstMonth?.jupiter?.house ?? null;
@@ -583,7 +670,7 @@ House System: ${meta?.house_system_used || 'Equal House'}
 [NATAL CHART ANCHORS — your birth chart, FIXED forever, use for all natal references]
 ${natalAnchors}
 
-── Monthly TRANSIT Planetary Positions (July 2026 – June 2027) — these are SKY positions, NOT natal ──
+── Monthly TRANSIT Planetary Positions (${_winLabel}) — these are SKY positions, NOT natal ──
 ${months.map((m, i) => {
   const marsDirect = m.mars?.retrograde === false || m.mars?.retrograde === undefined;
   return `【Month ${i+1}】${m.month_name}
@@ -604,7 +691,7 @@ ${months.map((m, i) => {
 ── House Mapping (${meta?.house_system_used || 'Equal House'}, Rising = ${actualRising}) ──
 ${houseMapping}
 
-── Mercury Retrograde Periods (2026-2027) ──
+── Mercury Retrograde Periods (${_winYears}) ──
 ${mercuryRxText || 'No major Mercury retrograde this period.'}
 
 ── Peak Revenue Windows ──
