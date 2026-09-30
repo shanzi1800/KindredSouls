@@ -4687,7 +4687,11 @@ function _v432LockTransit(text, lang, astroMatrix) {
         // ⚠️ V432-fix: 只改「本句」内的那一处（原实现 text.replace 会改全文首个同名星座 → 可能覆写前文的正确句子）
         const abs = m.index + m[0].length + wi;
         const before = text;
-        text = text.slice(0, abs) + target + text.slice(abs + written.length);
+        // 🛡️ V478c: 防「座座」——窗内只剩【简称】(如「巨蟹」)时, 原文紧邻的「座」不在替换范围内,
+        //   与新值(全称, 以「座」结尾)相邻 →「巨蟹座」被改成「白羊座座」。此处一并吃掉残留「座」。
+        let wLen = written.length;
+        if (lang === 'zh' && target.endsWith('座') && text[abs + wLen] === '座') wLen += 1;
+        text = text.slice(0, abs) + target + text.slice(abs + wLen);
         nameRe.lastIndex += (text.length - before.length);
         result = text;
         console.log(`[V432] ${lang} ingress\u65f6\u5e8f\u9501: ${name} \u2192 ${written} \u21d2 ${target} (day=${day})`);
@@ -4745,13 +4749,21 @@ function _v432LockTransit(text, lang, astroMatrix) {
     }
     // ── Common Tail（统一步骤）──
     if (patch && patch.count > 0 && pos >= 0) {
-      result = result.slice(0, pos) + patch.text + result.slice(pos + origLen);
+      // 🛡️ V478c: 防「座座」——窗口按 90 字硬截断时可能切断「X座」, 窗内只剩简称(如「巨蟹」),
+      //   被替换成全称新值(如「白羊座」)后, 窗口【外】残留的那个「座」与其相邻 →「白羊座座」
+      //   (生产实测: 年报同段「巨蟹座→白羊座座」而「天蝎座→水瓶座」正常, 差别正是窗口边界)。
+      //   此处若新值以「座」结尾、原文紧邻字符同为「座」, 一并吃掉。
+      let tailStart = pos + origLen;
+      if (lang === 'zh' && patch.text.endsWith('座') && result[tailStart] === '座') tailStart += 1;
+      result = result.slice(0, pos) + patch.text + result.slice(tailStart);
       text = result;
       nameRe.lastIndex = pos + patch.text.length;
       changed = true;
     console.log(`[V432] ${lang} \u6d41\u6708\u9501: ${name} \u2192 ${t.sign || '?'}${t.house ? ' ' + cfg.houseFmt(t.house) : ''}`);
     }
   }
+  // 🛡️ V478c 兜底: 任何路径残留的重复「座」在此收口(中文「座座」无合法用例; 幂等, 无副作用)
+  if (lang === 'zh') result = result.replace(/座座/g, '座');
   return result;
 }
 
@@ -5744,7 +5756,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v479:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v480:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8944,7 +8956,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v479:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v480:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9535,7 +9547,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v479:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v480:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

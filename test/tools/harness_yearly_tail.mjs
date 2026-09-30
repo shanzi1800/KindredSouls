@@ -76,6 +76,20 @@ for (const [label, fn] of steps) {
     const n0 = (before.match(pat) || []).length, n1 = (out.match(pat) || []).length;
     if (n1 > n0) { const ex = out.split('\n').find(l => pat.test(l)) || ''; console.log(`      ⚠️ ${pat.source} ${n0}→${n1} 例: ${ex.slice(0, 96)}`); }
   }
+  // 🔍 座座注入前后精确对照（V478c 排查用）
+  if (/座座/.test(out) && !/座座/.test(before)) {
+    const ls0 = before.split('\n'), ls1 = out.split('\n');
+    let shown = 0;
+    for (let i = 0; i < ls1.length && shown < 4; i++) {
+      if (/座座/.test(ls1[i]) && !/座座/.test(ls0[i] || '')) {
+        console.log(`      🔴 L${i + 1} BEFORE: ${(ls0[i] || '').slice(0, 140)}`);
+        console.log(`      🔴 L${i + 1} AFTER : ${ls1[i].slice(0, 140)}`);
+        const k = ls1[i].indexOf('座座');
+        console.log(`      🔴 座座处上下文: ...${ls1[i].slice(Math.max(0, k - 30), k + 30)}...`);
+        shown++;
+      }
+    }
+  }
   fs.writeFileSync(`/tmp/ks_step_${label.slice(0, 2)}.txt`, out);
   text = out;
 }

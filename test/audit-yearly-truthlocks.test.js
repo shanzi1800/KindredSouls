@@ -141,3 +141,27 @@ test('【注入缺陷自测】删掉一处月标题锁调用点 → 判据⑥ �
     .filter(l => !/function\s+lockYearlyMonthTitles/.test(l)).length;
   assert.ok(cnt < 4, '闸门失效: 调用点缺失未被识别, 剩余=' + cnt);
 });
+
+// ── V478c: 「座座」重字防护（V432 流月锁窗口边界切断修复）──
+// 根因: _v432LockTransit 的 fwd/bwd 窗口按 90 字硬截断, 可能切在「X座」中间 →
+//   窗内只剩【简称】(如「巨蟹」), 被替换成全称新值(如「白羊座」)后, 窗口外的那个「座」残留 → 「白羊座座」。
+const hasEatDupSign = (b) => /result\.replace\(\/座座\/g\s*,\s*'座'\)/.test(b);
+test('⑦ _v432LockTransit 必须有「窗口切断吃座」守卫 + 兜底(防座座重字)', () => {
+  const b = fnBody('_v432LockTransit');
+  assert.ok(/patch\.text\.endsWith\('座'\)\s*&&\s*result\[tailStart\]\s*===\s*'座'/.test(b),
+    '缺少 Common Tail 吃座守卫 —— 窗口切断「X座」时会残留「座」→「白羊座座」');
+  assert.ok(/target\.endsWith\('座'\)\s*&&\s*text\[abs\s*\+\s*wLen\]\s*===\s*'座'/.test(b),
+    '缺少 ingress 分支吃座守卫');
+  assert.ok(hasEatDupSign(b), '缺少「座座→座」兜底清洗');
+});
+
+test('【注入缺陷自测】删掉「座座」兜底 → 判据⑦ 必须红', () => {
+  const degraded = fnBody('_v432LockTransit')
+    .replace(/if\s*\(lang === 'zh'\)\s*result = result\.replace\(\/座座\/g, '座'\);/, '');
+  assert.strictEqual(hasEatDupSign(degraded), false, '闸门失效: 兜底被删未被识别');
+});
+
+test('【注入缺陷自测】删掉 Common Tail 吃座守卫 → 判据⑦ 必须红', () => {
+  const degraded = fnBody('_v432LockTransit').replace(/if\s*\(lang === 'zh' && patch\.text\.endsWith\('座'\)[^\n]*/, '');
+  assert.ok(!/patch\.text\.endsWith\('座'\)/.test(degraded), '闸门失效: 吃座守卫被删未被识别');
+});
