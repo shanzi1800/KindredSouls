@@ -9,6 +9,8 @@
 // 修法: ① 治本 _v479IsMonthTitleLine —— 月标题行豁免 B 类补标识(月标题的太阳永远是流月值);
 //       ② 兜底 lockYearlyMonthTitles 内剥离标题行指代前缀(应对 LLM 原稿自带)。
 // 本测试: 源码级结构断言 + 假矩阵行为验证 + 【注入缺陷自测】。
+// 追加 V482b: 月标题英文模板残渣本地化(提示词侧治本 + 输出侧兜底) + 同月重复标题清算。
+// 追加 V482c: 同月双标题「只差装饰符位置」漏判根治(签名归一 + 星座-宫位分隔符归一)。
 // ═══════════════════════════════════════════════════════════════════════
 import test from 'node:test';
 import assert from 'node:assert';
@@ -177,6 +179,28 @@ test('⑩ 同月重复标题行必须清算(保留含太阳词的一行) + 行�
   assert.strictEqual(F.lockYearlyMonthTitles(out, 'zh', M, 'yearly'), out, '非幂等: 二次调用有变化');
 });
 
+// ── ⑪ V482c: 「只在装饰符位置不同」的同月双标题(线上真实病例, V482b 旧法 12/12 漏判) ──
+//   线上实测(2026-09-30, 1999-12-15 特罗姆瑟盘, verify_v482_e2e.mjs 判据⑥):
+//     ### 2026年9月: 太阳处女座 · 第3宫 · 沟通炼金，细节生金     ← monthLockTable 形态
+//     ### 2026年9月: 太阳处女座 第3宫 · 沟通炼金，细节生金       ← 规范形态
+//   V482b 按「·」后副标题比对 → 两行副标题分别是「第3宫」与「沟通炼金，细节生金」→ 判为不同 → 漏判。
+test('⑪ 同月双标题「只差装饰符位置」也必须清算 + 星座-宫位分隔符归一 + 子标题不误删', () => {
+  const dup = [];
+  for (const ln of mkLines()) {
+    dup.push(ln.replace(/ (第\d+宫)/, ' \u00b7 $1'), ln);   // 前一行: 「太阳X座 · 第N宫 · 副标题」
+  }
+  // 负向保护: 无「星座+宫位」的同月子标题不得被当成重复标题清算
+  dup.splice(2, 0, '#### 2026年9月财务重点');
+  const out = F.lockYearlyMonthTitles(dup.join('\n'), 'zh', M, 'yearly');
+  assert.strictEqual(out.split('\n').length, dup.length, '行数被改变(应置空行而非删行)');
+  const titles = out.split('\n').filter((l) => /^#{3}\s/.test(l));
+  assert.strictEqual(titles.length, 12, `同月双标题未被清算, 实得 ${titles.length} 行`);
+  assert.ok(/####\s*2026年9月财务重点/.test(out), '把「无星座宫位的子标题」当重复标题误删了');
+  assert.ok(!/\u00b7\s*第\d+宫/.test(out), '星座与宫位之间的装饰分隔符未归一: ' + titles[0]);
+  assert.strictEqual((out.match(/副标题/g) || []).length, 12, '副标题行数应为 12');
+  assert.strictEqual(F.lockYearlyMonthTitles(out, 'zh', M, 'yearly'), out, '非幂等: 二次调用有变化');
+});
+
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
 test('【注入缺陷自测】删掉标题行豁免条件 → 判据② 必须红', () => {
   const degraded = fnBody('_v432AdjudicateDescriptors')
@@ -228,4 +252,20 @@ test('【注入缺陷自测】关掉重复标题清算 → 判据⑩ 必须红(�
   for (const ln of mkLines()) { dup.push(ln.replace('太阳', ''), ln); }
   const out = G.lockYearlyMonthTitles(dup.join('\n'), 'zh', M, 'yearly');
   assert.notStrictEqual((out.match(/太阳/g) || []).length, 12, '闸门失效: 清算被关后太阳词行数仍为 12(判据⑩ 未红)');
+});
+
+test('【注入缺陷自测】签名退化回 V482b「·后副标题」旧法 → 判据⑪ 必须红(行为级)', () => {
+  // 精确复刻线上漏判的那套启发式: 取「·」后第 1 段做副标题 → 装饰符位置不同的两行判为不同标题
+  const degradedFn = map.get('lockYearlyMonthTitles').replace(
+    /const sigOf = \(s\) => \{[\s\S]*?\n    \};/,
+    "const sigOf = (s) => (String(s).split(/[\\u00b7\\u2022|]/)[1] || '').trim();",
+  );
+  assert.notStrictEqual(degradedFn, map.get('lockYearlyMonthTitles'), '未成功注入缺陷(未匹配到 sigOf 签名块)');
+  assert.ok(/split\(\/\[\\u00b7/.test(degradedFn), '注入未生效: sigOf 未退化为旧法');
+  const G = build({ lockYearlyMonthTitles: degradedFn });
+  const dup = [];
+  for (const ln of mkLines()) { dup.push(ln.replace(/ (第\d+宫)/, ' \u00b7 $1'), ln); }
+  const out = G.lockYearlyMonthTitles(dup.join('\n'), 'zh', M, 'yearly');
+  const titles = out.split('\n').filter((l) => /^#{3}\s/.test(l));
+  assert.notStrictEqual(titles.length, 12, '闸门失效: 签名退化后同月双标题仍被清算(判据⑪ 未红)');
 });

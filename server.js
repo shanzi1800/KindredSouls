@@ -4916,27 +4916,45 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   let touched = 0;
   let wording = 0;   // 🛡️ V479: 措辞归一计数
   let dropped = 0;   // 🛡️ V482b: 重复月标题清算计数
-  // 🛠️ V482b: 「同月重复标题行」清算 —— LLM 偶发对同一个月连续输出两行标题:
-  //   「### 2026年9月: 处女座第3宫 · 精算沟通之月」+「### 2026年9月: 太阳处女座 第3宫 · 精算沟通之月」
-  //   (生产实测 12/12 个月全中招)。判定**极保守**: 同月 key + 「·」后副标题完全相同 = 同一条目重复;
-  //   保留含「太阳词」的那一行(V479/V480 规范形态), 其余置空行(不改行数, 不破坏后续索引)。幂等。
+  // 🛠️ V482b/V482c: 「同月重复标题行」清算 —— LLM 偶发对同一个月连续输出两行标题:
+  //   「### 2026年9月: 太阳处女座 · 第3宫 · 沟通炼金，细节生金」
+  //   「### 2026年9月: 太阳处女座 第3宫 · 沟通炼金，细节生金」
+  //   (生产实测 12/12 个月全中招)。保留一行, 其余置空行(不改行数, 不破坏后续索引)。幂等。
+  //
+  //   V482b 旧法取「·」后第 1 段当副标题比对 → 上面两行的「副标题」分别是「第3宫」与
+  //   「沟通炼金，细节生金」→ 判为不同标题 → **12/12 漏判**(线上实测 24 行标题)。V482c 改法:
+  //     sig = 该行剥掉「太阳词」与**全部装饰分隔符/空白**后的字符串。
+  //     ① sig 完全相同 → 同一条目(治「只在标点位置不同」);
+  //     ② 两行都含「星座+宫位」且一条 sig 是另一条的前缀 → 简版/全版同一条目。
+  //   保守侧: 「### 2026年9月财务重点」这类无星座宫位的子标题 sig 与月标题不同 → 不动;
+  //           `####` 与 `###` 层级差天然隔离子标题。宁可漏改, 绝不误删正文。
   const _dropRows = new Set();
   {
     const sunWord = _V482B_SUN_WORD[lang] || _V482B_SUN_WORD.en;
+    const sunWords = [...new Set([...Object.values(_V482B_SUN_WORD), 'Sun'])];
+    const sigOf = (s) => {
+      let t = String(s);
+      for (const w of sunWords) if (w) t = t.split(w).join('');
+      // ⚠️ 字符类里**禁止出现 ASCII 引号**(`"` / `'`): 测试端的朴素大括号配平器
+      //   (test/*.test.js 的 fnBody) 不识别正则字面量, 会把引号当字符串起点 → 抽错函数体。
+      return t.replace(/[\s\u00b7\u2022|:：\-—–，,、.。!！?？“”‘’()（）\[\]【】]+/g, '');
+    };
+    const hasCore = (ln) => signRe.test(ln) && houseRe.test(ln);
     for (const g of groups) {
       if (g.rows.length < 2) continue;
-      const bySub = new Map();
+      const kept = [];
       for (const r of g.rows) {
         const ln = lines[r] || '';
-        const sub = (ln.split(/[·•|]/)[1] || '').trim();
-        if (!bySub.has(sub)) bySub.set(sub, []);
-        bySub.get(sub).push(r);
-      }
-      for (const arr of bySub.values()) {
-        if (arr.length < 2) continue;
-        const keepAt = arr.findIndex((r) => (lines[r] || '').includes(sunWord));
-        const keep = keepAt >= 0 ? keepAt : 0;
-        arr.forEach((r, k) => { if (k !== keep) _dropRows.add(r); });
+        const sig = sigOf(ln);
+        const prev = kept.find((p) => p.sig === sig
+          || (sig && p.sig && hasCore(ln) && hasCore(p.ln)
+            && (p.sig.startsWith(sig) || sig.startsWith(p.sig))));
+        if (!prev) { kept.push({ r, ln, sig }); continue; }
+        // 二选一: 优先「含太阳词」→ 其次「更长(信息更全)」→ 否则保留先出现的
+        const keepNew = (!prev.ln.includes(sunWord) && ln.includes(sunWord))
+          || (prev.ln.includes(sunWord) === ln.includes(sunWord) && sig.length > prev.sig.length);
+        if (keepNew) { _dropRows.add(prev.r); prev.r = r; prev.ln = ln; prev.sig = sig; }
+        else _dropRows.add(r);
       }
     }
   }
@@ -4984,6 +5002,12 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
         line = line.replace(new RegExp('\\b(?:your|her|his|my|our|their|natal|natales?)\\b\\s*(?=(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto|Sol|Luna)\\b)', 'gi'), '');
       }
       if (line !== _w0) wording++;
+      // 🛠️ V482c: 星座与宫位之间的装饰分隔符归一 —— `太阳处女座 · 第3宫 · 主题` → `太阳处女座 第3宫 · 主题`
+      //   (V482b 硬锁表里 monthLockTable 给的是「星座 · 宫位」形态, LLM 会照抄成月标题;
+      //    与另一条「星座 宫位」形态撞车 = 同月双标题。此处只吃「紧邻宫位短语之前」的 `·`,
+      //    `第3宫 · 主题` 那一个保持不动。幂等。)
+      line = line.replace(
+        /\s*[\u00b7\u2022|]\s*(?=(?:第(?:\d+|[一二三四五六七八九十]+)宫)|(?:House|Maison|Casa|\u0e1a\u0e49\u0e32\u0e19|Nh\u00e0)\s+\d+)/g, ' ');
       if (line !== lines[r]) { lines[r] = line; touched++; }
     }
   }
@@ -6065,7 +6089,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v485:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v486:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9281,7 +9305,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v485:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v486:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9878,7 +9902,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v485:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v486:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
