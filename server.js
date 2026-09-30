@@ -2062,6 +2062,22 @@ const _sunOf = (m) => {
   return { sign: '', house: undefined };
 };
 
+// ── 🛡️ V483b: 月标题「年/月」的唯一真源 = 矩阵的 month_key ─────────────────────
+//   病根（2026-09-30 生产实测, 1999-12-15 特罗姆瑟盘）:
+//     V483 已把年报矩阵窗口改为财年(当年 7 月 ~ 次年 6 月), 但 Prompt 的月份硬锁表 /
+//     区间说明 / 输出侧月度锁仍在用「服务器当前月 + i」推算 → **数据是 7 月起、标签是 9 月起**,
+//     用户可见的 12 条月标题整体错位 2 个月（判据②「逐月数据零矛盾」绿、判据⑦「窗口对齐」红）。
+//     此前两者恰好都是 9 月起, 错位被掩盖 —— 属 V483 暴露出来的潜伏 bug。
+//   月报不受影响: 月报矩阵 month_key 本来就是「当月起」, 与回退分支语义一致。
+function _v483bMonthYM(m, i, currentYear, currentMonth) {
+  const t = /^(\d{4})-(\d{1,2})$/.exec(String((m && m.month_key) || ''));
+  if (t) return { year: Number(t[1]), month: Number(t[2]) };
+  const cm = (currentMonth == null) ? (new Date().getMonth() + 1) : currentMonth;
+  const cy = (currentYear == null) ? new Date().getFullYear() : currentYear;
+  const mi = cm - 1 + i;
+  return { year: cy + (mi >= 12 ? 1 : 0), month: (mi % 12) + 1 };
+}
+
 // 🛠️ V120-fix5: 宫位强制纠偏 linter——AI 常把行星宫位写错(如木星狮子座写成第11宫,实为第2宫)
 // 基于 astroMatrix 真值(或 rising Cancer fallback)强制修正行星-宫位映射
 // ═══════════════════════════════════════════════════════════════════
@@ -2331,10 +2347,8 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
       const sun = _sunOf(m);
       const signZh = _ZS[sun.sign] || sun.sign || '';
       if (!signZh) return;
-      const mi = currentMonth - 1 + i;
-      const year = currentYear + (mi >= 12 ? 1 : 0);
-      const month = (mi % 12) + 1;
-      _sunSignMap[`${year}年${month}月`] = signZh;
+      const _ym = _v483bMonthYM(m, i, currentYear, currentMonth);   // 🛡️ V483b: 年月真源=month_key
+      _sunSignMap[`${_ym.year}年${_ym.month}月`] = signZh;
     });
   }
   Object.keys(_sunSignMap).forEach(key => {
@@ -2363,10 +2377,8 @@ function applyMonthLockSanitizer(text, astroMatrix, currentYear = null, currentM
     const sun = _sunOf(m);
     const signZh = ZH_SIGN[sun.sign] || sun.sign || '';
     const house = sun.house || '';
-    const mi = currentMonth - 1 + i;
-    const year = currentYear + (mi >= 12 ? 1 : 0);
-    const month = (mi % 12) + 1;
-    entries.push({ year, month, key: `${year}年${month}月`, sign: signZh, house, monthIdx: i });
+    const _ym = _v483bMonthYM(m, i, currentYear, currentMonth);   // 🛡️ V483b: 年月真源=month_key
+    entries.push({ year: _ym.year, month: _ym.month, key: `${_ym.year}年${_ym.month}月`, sign: signZh, house, monthIdx: i });
   });
 
   // Process each month: find the title line and fix the sun sign
@@ -4983,6 +4995,24 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
     for (const r of g.rows) {
       if (_dropRows.has(r)) { if (lines[r] !== '') { lines[r] = ''; dropped++; } continue; }
       let line = lines[r];
+      // 🛡️ V483b: 月份号真值锁 —— 标题里的「年/月」必须等于本段窗口矩阵的 month_key。
+      //   病根: Prompt 月份硬锁表此前按「服务器当前月 + i」生成 → LLM 照抄出 9 月起标题,
+      //   而矩阵数据已是财年 7 月起 → 用户可见 12 条月标题整体错位 2 个月(V483 上线后暴露)。
+      //   本锁按【标题行出现顺序】对应矩阵同序号月份, 与下方星座/宫位重写同源; 幂等; 无 month_key 则不动。
+      //   ⚠️ 注释里禁止出现 `months[序号]` 字面量: test/*.test.js 的朴素 fnBody 会把注释一起切片,
+      //     导致 `replace(/months\[idx\]/, ...)` 打到注释而非代码 → 注入自测假红。
+      {
+        const _mk = /^(\d{4})-(\d{1,2})$/.exec(String(m.month_key || ''));
+        if (_mk) {
+          const _y = _mk[1], _mo = Number(_mk[2]);
+          if (lang === 'zh') {
+            line = line.replace(/(\d{4})年(\d{1,2})月/, `${_y}年${_mo}月`);
+          } else if (lang === 'en') {
+            const _mn = _V478_EN_MONTHS[_mo - 1];
+            if (_mn) line = line.replace(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'), `${_mn} ${_y}`);
+          }
+        }
+      }
       // 🛠️ V482b: 英文模板残渣本地化(输出侧兜底, 见文件上方 _V482B_TITLE_LEAD 注释)。
       //   必须在下面的星座/宫位真值重写**之前**执行: 否则 `House 3` 不匹配 zh 的 houseRe → 宫位漏纠。
       if (lang !== 'en') {
@@ -6106,7 +6136,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v488:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v489:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -7875,6 +7905,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
+  // 🛡️ V483b: 时间轴真源 —— 一律以【矩阵实际窗口】为准（年报=财年 7 月起 / 月报=当月起），
+  //   取代「服务器当前月 + i」的推算。matrix.months[0].month_key 已由 v69_client 按 reportType 分流。
+  const _axisKey = /^(\d{4})-(\d{1,2})$/.exec(String(astroMatrix?.months?.[0]?.month_key || ''));
+  const axisYear = _axisKey ? Number(_axisKey[1]) : currentYear;
+  const axisMonth = _axisKey ? Number(_axisKey[2]) : currentMonth;
   // V225: 目标月份防御日志——出生日期仅用于本命盘，报告时间轴强制锁死服务器当月
   console.log(`[MONTHLY] 出生: ${birthDate || '未提供'} | 目标锁定: ${currentYear}年${currentMonth}月`);
   const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate(); // V222k
@@ -7892,8 +7927,14 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     return ranges;
   }
 
-  const startMonth = currentMonth; // 7 (July)
-  const monthsRange = getMonthRange(startMonth - 1, 12).join('、') + '(共12个月)';
+  // 🛡️ V483b: 12 个月区间说明同样以矩阵 month_key 为真源（原按 currentMonth 推算 → 年报错位 2 个月）
+  const monthsRange = (_axisKey && Array.isArray(astroMatrix?.months) && astroMatrix.months.length
+    ? astroMatrix.months.map((m) => {
+        const t = /^(\d{4})-(\d{1,2})$/.exec(String(m?.month_key || ''));
+        return t ? `${t[1]}年${Number(t[2])}月` : '';
+      }).filter(Boolean)
+    : getMonthRange(currentMonth - 1, 12)
+  ).join('、') + '(共12个月)';
 
   // ── 语言专属指令 ──
   const langInstructions = {
@@ -8069,10 +8110,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       const sun = m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
         const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
         const houseName = HOUSE_LOCK[sun.house] || `House ${sun.house}`;
-        const mi = currentMonth - 1 + i;
-        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
-        const monthNum = (mi % 12) + 1;
-        return `#### ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: ${_SUN_LEAD}${signName} ${houseName} · __[Fill 4-word theme]__`;
+        const _ym = _v483bMonthYM(m, i, currentYear, currentMonth);   // 🛡️ V483b: 年月真源=month_key
+        return `#### ${MONTH_FMT.yearPrefix(_ym.year, _ym.month)}: ${_SUN_LEAD}${signName} ${houseName} · __[Fill 4-word theme]__`;
       }).join('\n')
     : '';
   const monthLockTable = astroMatrix && astroMatrix.months
@@ -8081,11 +8120,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       astroMatrix.months.map((m, i) => {
         const sun = _sunOf(m);
         const signName = SIGN_LOCK[sun.sign] || sun.sign || '';
-        const mi = currentMonth - 1 + i;
-        const yearPrefix = (currentYear + (mi >= 12 ? 1 : 0));
-        const monthNum = (mi % 12) + 1;
+        const _ym = _v483bMonthYM(m, i, currentYear, currentMonth);   // 🛡️ V483b: 年月真源=month_key
         // 🛠️ V482b: 引导词/宫位词一律本地化(原写死英文 `Sun in` / `House N` → 中文 Prompt 夹带英文被 LLM 照抄)
-        return `  ● ${MONTH_FMT.yearPrefix(yearPrefix, monthNum)}: ${_SUN_LEAD}${signName} · ${HOUSE_LOCK[sun.house] || ('House ' + sun.house)}`;
+        return `  ● ${MONTH_FMT.yearPrefix(_ym.year, _ym.month)}: ${_SUN_LEAD}${signName} · ${HOUSE_LOCK[sun.house] || ('House ' + sun.house)}`;
       }).join('\n')
     : '';
 
@@ -8907,7 +8944,7 @@ ${monthLockTable}
 
 
 DYNAMIC DATE CALCULATION (CRITICAL):
-• Report cycle starts from current month: ${currentYear}年${monthNamesZH[currentMonth-1]}
+• Report cycle starts from: ${axisYear}年${monthNamesZH[axisMonth-1]}
 • Report covers exactly 12 months: ${monthsRange}
 • The user's Solar Return cycle anchors the annual forecast
 • ALL dates must be dynamically calculated - ZERO hardcoded dates allowed
@@ -9344,7 +9381,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v488:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v489:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9941,7 +9978,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v488:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v489:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

@@ -144,8 +144,10 @@ test('⑦ 月报零影响: reportType!=yearly 原样返回', () => {
 /** 判据⑧ 谓词: 月标题模板必须已本地化(非 en 不写死英文引导词/宫位词) */
 function titleTemplateLocalizedOk(source) {
   if (!/const\s+_V482B_SUN_LEAD\s*=/.test(source)) return false;
-  if (/yearPrefix\(yearPrefix, monthNum\)\}: Sun in \$\{signName\}/.test(source)) return false;
-  if (/: Sun in \$\{signName\} · House \$\{sun\.house\}/.test(source)) return false;
+  // ⚠️ V483b: 锚点不得写死 `yearPrefix(yearPrefix, monthNum)` —— 月标题模板的年月入参
+  //   已改为矩阵真源 `_ym.year, _ym.month`; 写死参数会让注入自测失配(闸门假绿)。
+  if (/yearPrefix\([^)]*\)\}: Sun in \$\{signName\}/.test(source)) return false;
+  if (/:\s*Sun in \$\{signName\}/.test(source)) return false;
   return /:\s*\$\{_SUN_LEAD\}\$\{signName\}/.test(source);
 }
 

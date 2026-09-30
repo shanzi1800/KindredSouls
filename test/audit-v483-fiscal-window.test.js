@@ -25,7 +25,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { indexDecls } from './tools/extract_decls.mjs';
+import { indexDecls, closureDecls } from './tools/extract_decls.mjs';
+import { getSignToHouseMap, SIGN_ORDER_ZH } from '../astro-truth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -168,7 +169,7 @@ test('⑦ 源码: 缓存 key 版本必须与闸门基线一致且不低于历史
   const streamTest = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
   const minv = +/MIN_CACHE_VER\s*=\s*(\d+)/.exec(streamTest)[1];
   assert.strictEqual(vers[0], minv, `server.js 缓存 key v${vers[0]} 与闸门基线 MIN_CACHE_VER=${minv} 不一致`);
-  assert.ok(vers[0] >= 488, `缓存版本回退到 v${vers[0]}(窗口变更必须 bump, 历史基线 ≥488)`);
+  assert.ok(vers[0] >= 489, `缓存版本回退到 v${vers[0]}(窗口/月份号变更必须 bump, 历史基线 ≥489)`);
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
@@ -206,4 +207,144 @@ test('【注入缺陷自测】把火星事实表的财年门控摘掉 → 判据
   assert.notStrictEqual(degraded, serverSrc, '未成功注入缺陷(未匹配到火星门控)');
   const code = stripComments(degraded);
   assert.ok(!/_winStartKey\s*===\s*'2026-07'/.test(code), '闸门失效: 门控被摘掉后判据⑤ 仍绿');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V483b: 月标题「月份号」真值锁
+//
+// 事故(2026-09-30 线上实测, 1999-12-15 特罗姆瑟盘, 提交 abb0518 部署后):
+//   · 判据②「逐月流年行星星座零矛盾」✅ —— 正文数据已是财年 7 月起
+//   · 判据⑦「正文 12 个月 == 矩阵窗口」❌ —— 正文标题仍是 2026-09 ~ 2027-08
+//   ⇒ 数据 7 月起、标签 9 月起。病根: Prompt 的「12-Month Sun Sign Hard-Lock Table」
+//     (`monthLockTable`) 与 `lockedTitles`、输出侧 `applyMonthLockSanitizer` 的月份键
+//     全部按「服务器当前月 + i」推算(`currentMonth - 1 + i`)。V483 之前矩阵也是当前月起，
+//     两者恰好抵消 → 潜伏未现; V483 把矩阵改成财年后立刻暴露。
+//   (另发现: `applyMonthLockSanitizer` 的调用点普遍传 `currentYear=null` → `year = null+0 = 0`
+//    → key 恒为「0年9月」→ 该锁其实长期空转; 本次一并修好。)
+//
+// 契约: 月标题的「年/月」唯一真源 = `astroMatrix.months[i].month_key`（输入侧治本 + 输出侧兜底）。
+//       月报不受影响: 月报矩阵 month_key 本来就是「当月起」。
+// ═══════════════════════════════════════════════════════════════════════
+const EN12 = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+// 财年矩阵夹具: month_key = 2026-07 … 2027-06（与 V483 的真实窗口同构）
+const FISCAL_MONTHS = Array.from({ length: 12 }, (_, i) => {
+  const mo = ((6 + i) % 12) + 1;
+  const y = mo >= 7 ? 2026 : 2027;
+  return { month_key: `${y}-${String(mo).padStart(2, '0')}`, sun: { sign: EN12[i], house: i + 1 } };
+});
+const _ymOf = (m) => { const t = /^(\d{4})-(\d{1,2})$/.exec(m.month_key); return `${t[1]}-${Number(t[2])}`; };
+const WANT_KEYS = FISCAL_MONTHS.map(_ymOf);
+
+const TITLE_SEEDS = ['lockYearlyMonthTitles', '_v483bMonthYM', '_v479IsMonthTitleLine', '_v482SignAdjacent',
+  '_v432Clause', '_v432LockNatal', '_v432AdjudicateDescriptors', '_v432Normalize', '_v432Truth', '_v432TruthMatch',
+  '_v432SlotOf', '_v432ClaimOf', '_v432PatchZone', '_v432FindHouse', '_v432AllSignWords', '_v432Signs',
+  '_v432SignAlts', '_V432_CFG', '_V432_NAME', '_V432_ORDER', '_V432_LANGS', '_V432_EN2LOC', '_v432Esc',
+  '_V482_FWD_BREAK', '_V482_FWD_CONJ', '_V482_TRANSIT_KEYS', '_V482_TVERB', '_V478_EN_MONTHS', 'SUN_SIGN_EN',
+  '_v444Signs', '_v444Esc', '_V482B_TITLE_LEAD', '_V482B_TITLE_HOUSE', '_V482B_SUN_WORD'];
+
+function sandboxTitles(source = serverSrc) {
+  const { map } = closureDecls(source, TITLE_SEEDS, ['getSignToHouseMap', 'SIGN_ORDER_ZH']);
+  for (const n of [...map.keys()]) { try { new vm.Script(map.get(n)); } catch { map.delete(n); } }
+  const ctx = { getSignToHouseMap, SIGN_ORDER_ZH, console, __exports: {} };
+  vm.createContext(ctx);
+  vm.runInContext([...map.entries()].sort((a, b) => source.indexOf(a[1]) - source.indexOf(b[1])).map((e) => e[1]).join('\n\n')
+    + '\n' + TITLE_SEEDS.map((n) => `__exports[${JSON.stringify(n)}] = typeof ${n} !== 'undefined' ? ${n} : undefined;`).join('\n'), ctx);
+  return ctx.__exports;
+}
+
+/** 模拟「LLM 照抄旧提示词表」的产物: 12 条标题从 2026-09 开始（错位 2 个月） */
+function shiftedTitles() {
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    const mi = 8 + i;                       // 从 9 月起
+    const y = 2026 + Math.floor(mi / 12);
+    const mo = (mi % 12) + 1;
+    out.push(`### ${y}年${mo}月: 太阳${EN12[i]} 第1宫 · 测试主题`);
+  }
+  return out.join('\n');
+}
+const titleKeys = (t) => t.split('\n').filter((l) => /^\s*#{1,6}\s/.test(l))
+  .map((l) => { const m = l.match(/(\d{4})年(\d{1,2})月/); return m ? `${m[1]}-${Number(m[2])}` : null; }).filter(Boolean);
+
+/** 判据谓词（主判据与注入自测共用，避免「注入写法」与「判据字面」不一致造成假自测） */
+function monthNumberLockedOk(F) {
+  if (typeof F.lockYearlyMonthTitles !== 'function') return false;
+  const M = { months: FISCAL_MONTHS, meta: {} };
+  const src = shiftedTitles();
+  const out = F.lockYearlyMonthTitles(src, 'zh', M, 'yearly');
+  const got = titleKeys(out);
+  if (got.length !== 12 || got.join(',') !== WANT_KEYS.join(',')) return false;
+  const again = F.lockYearlyMonthTitles(out, 'zh', M, 'yearly');
+  return again === out;                      // 幂等
+}
+function monthKeyTruthOk() {
+  const code = stripComments(serverSrc);
+  return /function\s+_v483bMonthYM\s*\(/.test(code)
+    && new RegExp('_v483bMonthYM\\(m,\\s*i,').test(code);
+}
+
+test('⑫ 行为: lockYearlyMonthTitles 必须把「错位月份号」的标题改回财年窗口(V483b)', () => {
+  const F = sandboxTitles();
+  assert.ok(monthNumberLockedOk(F),
+    '月标题月份号未被锁回财年窗口: 期望 ' + WANT_KEYS.join(',') + ' 实得 ' + titleKeys(F.lockYearlyMonthTitles(shiftedTitles(), 'zh', { months: FISCAL_MONTHS, meta: {} }, 'yearly')).join(','));
+});
+
+test('⑬ 行为: _v483bMonthYM 必须以 month_key 为真源(无 month_key 才回退当前月推算)', () => {
+  const F = sandboxTitles();
+  assert.ok(typeof F._v483bMonthYM === 'function', '未能抽取 _v483bMonthYM');
+  const a = F._v483bMonthYM({ month_key: '2026-07' }, 0, 2026, 9);
+  assert.deepStrictEqual({ y: a.year, m: a.month }, { y: 2026, m: 7 }, 'month_key=2026-07 未按真源解析(被当前月 9 带偏)');
+  const b = F._v483bMonthYM({ month_key: '2027-06' }, 11, 2026, 9);
+  assert.deepStrictEqual({ y: b.year, m: b.month }, { y: 2027, m: 6 }, 'month_key=2027-06 未按真源解析');
+  // 回退分支: 无 month_key 时保持「当前月 + i」的历史语义(月报/旧格式兼容)
+  const c = F._v483bMonthYM({}, 0, 2026, 9);
+  assert.deepStrictEqual({ y: c.year, m: c.month }, { y: 2026, m: 9 }, '无 month_key 的回退语义被改坏(月报会错)');
+  const d = F._v483bMonthYM({}, 4, 2026, 9);
+  assert.deepStrictEqual({ y: d.year, m: d.month }, { y: 2027, m: 1 }, '回退分支跨年进位错(9 月起第 5 个应为次年 1 月)');
+});
+
+test('⑭ 源码: 月份键构造一律走 _v483bMonthYM, 不得再用「当前月 + i」直推', () => {
+  const code = stripComments(serverSrc);
+  assert.ok(/function\s+_v483bMonthYM\s*\(/.test(code), '缺少 _v483bMonthYM 真源助手');
+  const uses = [...code.matchAll(/_v483bMonthYM\(m,\s*i,/g)].length;
+  assert.ok(uses >= 3, `至少 3 处月份键构造必须走 _v483bMonthYM(monthLockTable / lockedTitles / applyMonthLockSanitizer), 实得 ${uses}`);
+  assert.ok(!/const\s+mi\s*=\s*currentMonth\s*-\s*1\s*\+\s*i/.test(code),
+    '仍存在「const mi = currentMonth - 1 + i」直推月份号(病灶写法)');
+  assert.ok(!/Report cycle starts from current month/.test(serverSrc),
+    'Prompt 仍声称「从当前月起」—— 年报已是财年窗口');
+  assert.ok(/\$\{axisYear\}年\$\{monthNamesZH\[axisMonth-1\]\}/.test(code),
+    'Prompt 的起始月说明未改用矩阵轴(axisYear/axisMonth)');
+});
+
+test('【注入缺陷自测】把 lockYearlyMonthTitles 的月份号重写禁掉 → 判据⑫ 必须红', () => {
+  const degraded = serverSrc.replace(
+    '        if (_mk) {\n          const _y = _mk[1], _mo = Number(_mk[2]);',
+    '        if (false) {\n          const _y = _mk[1], _mo = Number(_mk[2]);',
+  );
+  assert.notStrictEqual(degraded, serverSrc, '未成功注入缺陷(未匹配到 lockYearlyMonthTitles 的月份号重写块)');
+  const F = sandboxTitles(degraded);
+  assert.ok(!monthNumberLockedOk(F), '闸门失效: 月份号重写被禁掉后判据⑫ 仍绿');
+});
+
+test('【注入缺陷自测】把 _v483bMonthYM 的 month_key 分支打掉 → 判据⑬ 必须红', () => {
+  const degraded = serverSrc.replace(
+    'if (t) return { year: Number(t[1]), month: Number(t[2]) };',
+    'if (false && t) return { year: Number(t[1]), month: Number(t[2]) };',
+  );
+  assert.notStrictEqual(degraded, serverSrc, '未成功注入缺陷(未匹配到 _v483bMonthYM 的 month_key 分支)');
+  const F = sandboxTitles(degraded);
+  const a = F._v483bMonthYM({ month_key: '2026-07' }, 0, 2026, 9);
+  assert.ok(!(a.year === 2026 && a.month === 7), '闸门失效: month_key 分支打掉后判据⑬ 仍绿');
+});
+
+test('【注入缺陷自测】把月份键调用点摘掉 / 病灶写法回归 → 判据⑭ 必须红', () => {
+  const degraded = serverSrc.replace(/const _ym = _v483bMonthYM\(m, i, currentYear, currentMonth\)/g,
+    'const _ym = { year: currentYear, month: currentMonth }');
+  assert.notStrictEqual(degraded, serverSrc, '未成功注入缺陷(未匹配到 _v483bMonthYM 调用点)');
+  const uses = [...stripComments(degraded).matchAll(/_v483bMonthYM\(m,\s*i,/g)].length;
+  assert.ok(uses < 3, '闸门失效: 调用点被摘掉后判据⑭ 仍绿');
+  const bad = serverSrc.replace('function _v483bMonthYM(m, i, currentYear, currentMonth) {',
+    'function _v483bMonthYM(m, i, currentYear, currentMonth) {\n  const mi = currentMonth - 1 + i;');
+  assert.ok(/const\s+mi\s*=\s*currentMonth\s*-\s*1\s*\+\s*i/.test(stripComments(bad)),
+    '闸门失效: 病灶写法重新出现后判据⑭ 仍绿');
 });
