@@ -1281,6 +1281,15 @@ function forceSpaceHouseSanitizer(text){
   // 财务室 → 第八宫(共享资源)
   t = t.replace(/财务室[^\n]{0,40}?第[一二三四五六七八九十百0-9]{1,3}宫[^\n]{0,20}?/g, '财务室区域:第八宫(共享资源)');
   t = t.replace(/财务室[^\n]{0,20}?(第[一二三四五六七八九十百0-9]{1,3}宫[^)]{0,12})[^\n]{0,20}?/g, '财务室区域:第八宫(共享资源)');
+  // 🛠️ V482: 「括号/宫位词残渣」收口 —— 上面两条替换的尾部 [^\n]{0,20}? 是惰性(=0), 不消费紧随的
+  //   「(宫名)」括号片段与重复残渣, 于是漏出实测垃圾:
+  //     「卧室区域:第四宫(田宅宫))田宅宫」
+  //     「厨房区域:第二宫(财帛宫)与第八宫(共享资源))与第八宫(共享资源)财帛宫与第6宫共享资源」
+  //   规则: 「关键词区域[:：]」后若出现含「宫」的标签串(且不含句读/星号), 整段压回规范写法。
+  //   仅作用于「关键词区域:…宫…」标签形态 → 正文里的「在卧室区域，放置…」不受影响; 幂等。
+  t = t.replace(/卧室区域\s*[:：]?\s*[^\n，。；、*]{0,60}宫[^\n，。；、*]{0,60}/g, '卧室区域:第四宫(田宅宫)');
+  t = t.replace(/厨房区域\s*[:：]?\s*[^\n，。；、*]{0,60}宫[^\n，。；、*]{0,60}/g, '厨房区域:第二宫(财帛宫)与第八宫(共享资源)');
+  t = t.replace(/财务室区域\s*[:：]?\s*[^\n，。；、*]{0,60}宫[^\n，。；、*]{0,60}/g, '财务室区域:第八宫(共享资源)');
   return t;
 }
 
@@ -4092,9 +4101,30 @@ function _v432SlotOf(cfg, lang, text, aEnd) {
 }
 
 // ── 从句窗口（fwd / bwd），口径与 vi/th/fr 一致 ──
+// 🛠️ V482: fwd 窗口「断句界定符补完」—— 除 `.` `\n` `。` 外, 补 `；;！!？?：:` 与并列/转折连词。
+//   病根（2026-09-30 军师抓 + 探针实证）：「本命射手座月亮在第9宫…；而巨蟹座上升…」的月亮从句
+//   fwd 窗口**只按 /[.\n。]/ 断句、不吃「；」** → 跨过「；」吃进下一句「巨蟹座上升」→
+//   把月亮的真值星座（双鱼座）错扣到上升头上（张冠李戴, dormant 主动污染）。
+const _V482_FWD_BREAK = /[.\n\u3002\uff1b\uff01\uff1f\uff1a;!?:]/;
+const _V482_FWD_CONJ = {
+  zh: /而|但|则|同时|然而|此外|并且|以及/,
+  en: /\s(?:and|but|or|while|when|as|so|yet|then)\s/i,
+  es: /\s(?:y|pero|o|mientras|cuando|aunque|entonces)\s/i,
+};
+// 🛠️ V482: 「星座紧邻行星名之前」（如「射手座月亮」）= 报告自带的本命归属写法。
+//   用途① _v432Clause: 这类句子常无显式「本命/出生」定语 → 旧逻辑弃权致漂移漏网, 需补前向窗口。
+//   用途② _v432AdjudicateDescriptors B 类: 已有星座归属 → 无需再补「本命」, 否则产出「双鱼座本命月亮」倒装。
+function _v482SignAdjacent(text, lang, idx) {
+  const pre = text.slice(Math.max(0, idx - 12), idx);
+  return _v432AllSignWords(lang).some((s) => pre.endsWith(s));
+}
 function _v432Clause(cfg, lang, text, i, len, explicit) {
   const aEnd = i + len;
-  if (!explicit) {
+  // 🛠️ V482: 「本命标签式」识别 —— 星座词**紧邻行星名之前**（如「射手座月亮」）是本报告自带的本命归属写法。
+  //   这类句子常无显式「本命/出生」定语（如「射手座月亮在第9宫」），旧逻辑一律弃权 → LLM sign-bleed 漏网
+  //   （太阳射手座被串染给月亮）。仅补前向窗口, 不改显式本命句 / 流年句既有行为。
+  const signAdjacent = _v482SignAdjacent(text, lang, i);
+  if (!explicit && !signAdjacent) {
     const after = text.slice(aEnd, aEnd + 50);
     let pre = after, cut = -1;
     for (const s of _v432AllSignWords(lang)) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
@@ -4105,7 +4135,9 @@ function _v432Clause(cfg, lang, text, i, len, explicit) {
     if (cfg.transitMark.test(pre)) return null;
   }
   let fwd = text.slice(aEnd, aEnd + 90);
-  const e = fwd.search(/[.\n\u3002]/);
+  let e = fwd.search(_V482_FWD_BREAK);
+  const cj = _V482_FWD_CONJ[lang] ? fwd.search(_V482_FWD_CONJ[lang]) : -1;
+  if (cj >= 0 && (e < 0 || cj < e)) e = cj;
   if (e >= 0) fwd = fwd.slice(0, e);
   const bIdx = fwd.search(cfg.bodyAny);
   if (bIdx >= 0) fwd = fwd.slice(0, bIdx);
@@ -4117,8 +4149,13 @@ function _v432Clause(cfg, lang, text, i, len, explicit) {
   } else {
     let lo = 0;
     for (const m of bwd.matchAll(cfg.clauseBreak)) lo = Math.max(lo, m.index + m[0].length);
-    const bm = bwd.search(cfg.bodyAny);
-    bwd = bwd.slice(lo, bm >= 0 ? Math.max(lo, bm) : bwd.length);
+    // 🛠️ V482: 「其他行星名截断」只在**本从句内**生效 —— 旧写法 slice(lo, Math.max(lo, bm)) 在
+    //   上一个行星名位于最近断句点**之前**时（bm < lo）退化成 slice(lo, lo) = 空串,
+    //   把「；本命射手座」这截自己吃掉 → bwd 永远捕不到「星座紧邻行星名之前」的写法 →
+    //   「射手座月亮」这类漂移**从来纠不动**。改为：先取本从句尾段, 再在其中截断到首个其他行星名。
+    const tail = bwd.slice(lo);
+    const bm = tail.search(cfg.bodyAny);
+    bwd = bm >= 0 ? tail.slice(0, bm) : tail;
   }
   return { fwd, bwd };
 }
@@ -4323,7 +4360,8 @@ function _v432AdjudicateDescriptors(text, lang, astroMatrix) {
 
     // B) 丢标识：本命事实被写成流月格式（无本命定语、无流月定语、非流月标记）→ 补本命标识
     //   🛡️ V479: 月标题行豁免 —— 标题行的太阳是流月值, 绝不补本命定语(见 _v479IsMonthTitleLine)。
-    if (!hasDesc && !hasTDesc && isN && !isT && !cfg.transitMark.test(slot) && !_v479IsMonthTitleLine(text, m.index)) {
+    //   🛡️ V482: 星座紧邻行星名之前（如「双鱼座月亮」）已是本命归属写法 → 不再补, 防「双鱼座本命月亮」倒装。
+    if (!hasDesc && !hasTDesc && isN && !isT && !cfg.transitMark.test(slot) && !_v479IsMonthTitleLine(text, m.index) && !_v482SignAdjacent(text, lang, m.index)) {
       const strong = !!(claim.sign && claim.house !== null);
       const ctxSig = cfg.ctx.test(clause.fwd) || cfg.ctx.test(clause.bwd) || cfg.ctx.test(text.slice(Math.max(0, m.index - 90), m.index));
       if (strong || ctxSig) {
@@ -4907,6 +4945,111 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
     }
   }
   if (touched || wording) console.log(`[V478b] ${lang} \u5e74\u62a5\u6708\u6807\u9898\u9010\u6708\u771f\u503c\u9501: \u91cd\u5199 ${touched} \u884c | V479 \u63aa\u8f9e\u5f52\u4e00 ${wording} \u884c`);
+  return lines.join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V482: 年报「逐月流年行星真值锁」—— 治本「跨月沿用 / 串染」
+//   病根（2026-09-30 生产端 1999-12-15 特罗姆瑟盘实测）:
+//     火星真值 2026-09=巨蟹座(第1宫), 10 月起离开巨蟹(狮子→处女→天秤),
+//     但正文把首月的「火星在巨蟹」沿用到 11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误。
+//     同类还有 2027-03「流月太阳在射手座」(该月真值双鱼座)。
+//   本锁: 按【月标题行】把正文切成 12 段（与 lockYearlyMonthTitles 同源口径）,
+//     每段内把「行星+动词+X座」的行星星座重写为该月真值 months[i]; 月亮除外(周级变化);
+//     本命句(前 12 字含 本命/出生/原生/本盘)不动 —— 宁可漏改, 绝不编。
+//   仅服务年报(reportType==='yearly' 且 12 月齐备); 月报零影响; 幂等。
+// ══════════════════════════════════════════════════════════════════
+const _V482_TRANSIT_KEYS = ['Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];  // 排除 Moon
+const _V482_TVERB = {
+  zh: '(?:在|行经|进入|入驻|落入|位于|走到|移至|来到|抵达)',
+  en: '\\s+(?:in|enters|entering|moves into|passes into|travels through)\\s+',
+  es: '\\s+(?:en|entra en|ingresa en|recorre)\\s+',
+};
+
+function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const months = astroMatrix && astroMatrix.months;
+  if (!Array.isArray(months) || months.length < 12) return text;
+  const NAME = _V432_NAME[lang];
+  const signs = _v444Signs(lang);                                                  // 全称（真值输出用）
+  // ⚠️ 模式必须同时吃【全称】与【短名】（正文常写「火星在巨蟹」而非「巨蟹座」）;
+  //   且**长优先**排序, 否则短名「巨蟹」会先吃掉「巨蟹座」→ 产出「狮子座座」。
+  const signWords = _v432AllSignWords(lang).slice().sort((a, b) => b.length - a.length);
+  const verb = _V482_TVERB[lang];
+  if (!NAME || !signs || !signWords.length || !verb) return text;
+
+  // ① 按【月标题行】切段（同 lockYearlyMonthTitles 口径）
+  const lines = text.split('\n');
+  const heads = [];
+  const seen = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!/^#{1,6}\s/.test(ln)) continue;
+    let y = null, mo = null;
+    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
+    if (ym) { y = +ym[1]; mo = +ym[2]; }
+    else if (lang === 'en') {
+      const em = ln.match(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'));
+      if (em) { y = +em[2]; mo = _V478_EN_MONTHS.indexOf(em[1]) + 1; }
+    }
+    if (y == null || !mo || mo < 1 || mo > 12) continue;
+    const key = y * 12 + mo;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    heads.push({ line: i, key });
+  }
+  if (heads.length < 2) return text;
+  heads.sort((a, b) => a.key - b.key);
+  const base = heads[0].key;
+  const signSrc = '(' + signWords.map(_v444Esc).join('|') + ')';
+  const houseSrc = lang === 'zh' ? '(第\\s*\\d+\\s*宫)' : (lang === 'en' ? '(House\\s*\\d+)' : '(Casa\\s*\\d+)');
+
+  let changed = 0;
+  for (let h = 0; h < heads.length; h++) {
+    const idx = heads[h].key - base;
+    if (idx < 0 || idx >= months.length) continue;
+    const m = months[idx] || {};
+    const start = heads[h].line + 1;
+    // ⚠️ 段尾 = 下一个【月标题】或下一个 `## ` 章节锚点 —— 缺了后半句守卫,
+    //   末月段会一路吞到文末, 把【第三章~第五章】正文按末月真值改写(生产实测误改 5 行)。
+    let end = (h + 1 < heads.length) ? heads[h + 1].line : lines.length;
+    for (let k = start; k < end; k++) { if (/^\s*##\s/.test(lines[k])) { end = k; break; } }
+    for (let li = start; li < end; li++) {
+      let line = lines[li];
+      if (!line) continue;
+      for (const key of _V482_TRANSIT_KEYS) {
+        const pname = NAME[key];
+        const pm = m[key.toLowerCase()] || (m.positions && m.positions[key]) || null;
+        if (!pname || !pm || !pm.sign) continue;
+        const zi = SUN_SIGN_EN.indexOf(pm.sign);
+        if (zi < 0) continue;
+        const trueSign = signs[zi];
+        const trueHouse = Number(pm.house) || 0;
+        const re = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'g');
+        const before = line;
+        line = line.replace(re, (full, signWord, houseWord, off) => {
+          if (/(?:本命|出生|原生|本盘)/.test(before.slice(Math.max(0, off - 12), off))) return full;  // 本命句归本命锁
+          let out = full;
+          // 保留原文形态: 原文写短名(无「座」)就还它短名, 写全称就还全称
+          const wantSign = (lang === 'zh' && !/座$/.test(signWord)) ? trueSign.replace(/座$/, '') : trueSign;
+          if (signWord !== wantSign) {
+            const si = out.indexOf(signWord);
+            out = out.slice(0, si) + wantSign + out.slice(si + signWord.length);
+          }
+          // 星座改了就必须连宫位一起改, 否则产出「处女座第2宫」这种半改不一致
+          if (houseWord && trueHouse) {
+            const cur = Number((houseWord.match(/\d+/) || [0])[0]);
+            if (cur !== trueHouse) out = out.replace(houseWord, houseWord.replace(/\d+/, String(trueHouse)));
+          }
+          return out;
+        });
+        if (line !== before) changed++;
+      }
+      if (line !== lines[li]) lines[li] = line;
+    }
+  }
+  if (changed) console.log(`[V482] ${lang} 年报逐月流年行星真值锁: 修正 ${changed} 处`);
   return lines.join('\n');
 }
 
@@ -5879,7 +6022,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v483:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v484:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9079,7 +9222,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v483:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v484:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9295,6 +9438,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
         reportContent = lockYearlyMonthTitles(reportContent, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(最后一道)
         reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
+        reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -9675,7 +9819,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v483:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v484:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9827,6 +9971,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
         streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
         streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
+        streamText = lockYearlyTransitSigns(streamText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -9955,6 +10100,16 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       // 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇
       if (lang === 'zh') {
         prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
+      }
+      // 🛠️ V482: 星体星座「反串染 / 反跨月沿用」硬约束（P0）
+      //   病根(2026-09-30 生产端 1999-12-15 盘实证): ① 月亮被写成「射手座月亮」(串用太阳星座, sign-bleed);
+      //   ② 火星真值 2026-09=巨蟹座, 10 月起离开巨蟹(狮子→处女→天秤), 但 LLM 把「火星在巨蟹」沿用到
+      //     11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误(refund 级)。
+      //   本约束为语言无关的通用禁令, **不含任何个案数值**(prompt 为全用户共用, 严禁写死某盘真值)。
+      if (lang === 'zh') {
+        prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。';
+      } else {
+        prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
       }
       // V239: 月报动态币种/宫位 Prompt 注入(覆盖通用标题模板,仅 monthly)
       if (reportType === 'monthly') {
@@ -10834,6 +10989,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft) ft = lockYearlyMonthTitles(ft, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
           if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
+          if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
@@ -10885,6 +11041,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438-final
     cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(落库前最后一道)
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
+    cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
