@@ -5945,6 +5945,47 @@ function cleanYearlyTimeline(text, lang) {
   return text;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V483c: 年报「同月重复标题」终局清算（最后一公里兜底）
+// ══════════════════════════════════════════════════════════════════
+//   背景（2026-09-30 线上实测）: 非流式 /api/wealth-oracle 偶发返回同一个月两条逐字相同的
+//     月标题行（12 个月 ×2 = 24 行标题），用户可见 24 条。V482b/c 的清算要求「两条都含星座+宫位」
+//     （hasCore）且签名相同或前缀关系 —— 一旦 LLM 两条措辞差异较大就整月漏判（线上实测 dropped=0）。
+//   本函数 = 全链**最末**的确定性兜底: 只要同一个月出现多条标题行，就只保留**信息最全（最长）**的那条，
+//     其余置空行（不改行数，保持索引稳定）。幂等、零误伤。
+//   保守侧: ① 必须 `#{1,6}` 开头且紧跟「四位年 + 年 + 月」，章节子标题（如含年份区间的「…-…年」）
+//             不匹配，不会被误删；② 每个月份 key 至多保留 1 行，月份之间互不影响。
+//   ⚠️ 必须挂在锁链末端（lockYearlyMonthTitles → normalizeYearlyMarkup → lockYearlyTransitSigns
+//      → cleanYearlyTimeline 之后）: 前面的环节会改变标题行形态，末端清算才拿得到终局文本。
+function dedupYearlyMonthTitles(text, lang, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const lines = text.split('\n');
+  const byKey = new Map();          // 月份 key → 该月的标题行号数组
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!/^#{1,6}\s/.test(ln)) continue;
+    const m = ln.match(/^#{1,6}\s*(\d{4})\s*年\s*(\d{1,2})\s*月/);
+    if (!m) continue;
+    const mo = Number(m[2]);
+    if (!(mo >= 1 && mo <= 12)) continue;
+    const key = m[1] + '-' + mo;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(i);
+  }
+  const drop = new Set();
+  for (const rows of byKey.values()) {
+    if (rows.length < 2) continue;
+    let best = rows[0];
+    for (const r of rows) if (lines[r].length > lines[best].length) best = r;   // 信息最全者胜出
+    for (const r of rows) if (r !== best) drop.add(r);
+  }
+  if (!drop.size) return text;
+  for (const r of drop) lines[r] = '';
+  console.log(`[V483c] ${lang} 年报月标题终局去重: 清除同月重复 ${drop.size} 行`);
+  return lines.join('\n');
+}
+
 // // ── Middleware ──
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -6136,7 +6177,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v489:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v490:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9376,17 +9417,21 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
     // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
+    // 🛡️ V483c: 支持 `nocache` —— 线上真值复验必须能「强制 MISS」走真实生成链。
+    //   此前服务端完全不识别该参数（test/tools/verify_*.mjs 传了也是空转）: 一旦 HIT 恢复正常,
+    //   复验就会变成「验缓存」而不是「验生成」→ 假绿。前端不传该参数, 行为不受影响。
+    const noCache = req.body.nocache === true || req.body.noCache === true;
     // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
     const _ckTime = birthTime || '12:00';
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v489:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v490:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
     // ═══ 第一道拦截:Cache Hit ═══
-    if (SB_URL && SB_KEY && reportType !== 'oracle') {
+    if (SB_URL && SB_KEY && reportType !== 'oracle' && !noCache) {
       try {
         const cacheRes = await safeFetch(
           `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
@@ -9401,10 +9446,21 @@ app.post('/api/wealth-oracle', async (req, res) => {
           const stdCached = standardizeReport(cachedText);
           // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
           //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
+          // 🛡️ V483c: `_hitAstro` / `_hitAstroTh` / `_hitAstro432` 必须在本块**顶层**声明。
+          //   原写法三者分别在 `lang === 'vi' | 'th' | _V432_LANGS` 的 if 块内用 `let` 声明,
+          //   却在块外 `const _hitMatrix = _hitAstro432 || _hitAstro || _hitAstroTh || null;` 处读取
+          //   → 只要走进本 HIT 分支(缓存文本 >2000 字)就**必然**抛
+          //     `ReferenceError: _hitAstro432 is not defined`（zh/en/es 时它是块内 let; vi/th 时连声明都没有）,
+          //   被下方 catch 吞掉 → `return res.json` 根本执行不到 → HIT 路径**整体失效**,
+          //   每次请求都退化成 MISS 重新生成（LLM 费用 + 用户等待双输）。
+          //   线上实测日志(2026-09-30): `[wealth-oracle] Cache check error: _hitAstro432 is not defined`。
+          //   ⚠️ 与 V482d「模块级函数隐式依赖调用者局部变量」同源: 收尾/缓存路径必须自洽。
+          let _hitAstro = null;
+          let _hitAstroTh = null;
+          let _hitAstro432 = null;
           if (lang === 'vi') {
             // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
             //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
-            let _hitAstro = null;
             try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
             stdCached = lockTransitTruthVi(stdCached, _hitAstro);
@@ -9415,7 +9471,6 @@ app.post('/api/wealth-oracle', async (req, res) => {
           }
           // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
           if (lang === 'th') {
-            let _hitAstroTh = null;
             try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
             stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
@@ -9425,7 +9480,6 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 🛠️ V432: HIT 路径补 en/es/zh 真值锁（与 vi/th/fr 对称；旧缓存里的 native 漂移不再裸奔）
           let _hitFinal = stdCached;
           if (_V432_LANGS.includes(lang)) {
-            let _hitAstro432 = null;
             try { _hitAstro432 = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V432] HIT matrix fetch failed: ' + e.message); }
             _hitFinal = applyTruthLocksEnEsZh(stdCached, lang, _hitAstro432, reportType);
           }
@@ -9616,6 +9670,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
           reportContent = cleanYearlyTimeline(reportContent, lang);
+        }
+        // 🛡️ V483c: 年报月标题终局去重 —— 全链最末, 兜住 LLM 偶发把同一月的标题写两遍(线上实测 24 行)
+        if (reportType === 'yearly') {
+          reportContent = dedupYearlyMonthTitles(reportContent, lang, reportType);
         }
 
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
@@ -9974,11 +10032,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
 
   // 🔥 军师缓存键 (V178-P0 升级): 纳入 birthTime/lat/lon/tz, 杜绝跨用户串盘
+  // 🛡️ V483c: 与 /api/wealth-oracle 对齐 —— 支持 `nocache` 强制跳过 HIT（线上真值复验要跑真实生成链）
+  const noCache = req.body.nocache === true || req.body.noCache === true;
   const _ckTime = birthTime || '12:00';
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v489:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v490:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10020,7 +10080,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
 
   try {
-    if (SB_URL && SB_KEY) {
+    if (SB_URL && SB_KEY && !noCache) {
       const cacheRes = await safeFetch(
         `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
         { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
@@ -10131,6 +10191,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
         streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
         streamText = lockYearlyTransitSigns(streamText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
+        streamText = dedupYearlyMonthTitles(streamText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(防历史脏缓存 24 行裸奔)
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -11201,6 +11262,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(落库前最后一道)
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
+    cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
