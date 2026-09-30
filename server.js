@@ -4910,6 +4910,97 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   return lines.join('\n');
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V480: 年报「Markdown 结构归一」—— 标题层级/分隔符锁死 + 卡标签本地化 + 头部块瘦身
+// ══════════════════════════════════════════════════════════════════
+//   真值(2026-09-30 生产端 1989-08-15 zh 年报; 用真实产物端到端跑线上同一份前端解析器复现):
+//     ① 【已引爆】月卡全丢: 该次 LLM 用全角冒号「### 2026年9月：太阳在处女座第十一宫」,
+//        而前端月卡正则 `[·::-|]` 只认半角 → parseYearlyReport 实测 months=0
+//        → 12 个月卡整体消失、流年矩阵容器空白、H1 也缺失(标题兜底成「年度财富报告」)。
+//     ② 半吊子章节锚点: 前端把「### 📊 2026-2027 年度财富核心指标仪表盘」替换成
+//        「### 先知神谕:年度财富天启」(残留 1 个 #) → 而章节卡严格要求「## 」→ 沦为正文残渣。
+//     ③ 层级漂移: Prompt 的锁定标题模板是 `#### … Sun in …`(英文), LLM 实际输出时 ## 时 ###,
+//        写死 `###\s*\d{4}年` 的老清洗正则(L2008/L2593)静默漏网 → 真值锁失效。
+//     ④ 卡标签未本地化: 中文年报残留 [Peak Revenue Window]×12 / [Financial Black Swan Day]×12。
+//     ⑤ 头部块: ◇ 漂移 emoji + `> * **X`(粗体星号不成对) + 双 ✦ 包裹 → 渲染错乱。
+//   本函数=纯确定性后处理: 只服务年报(reportType 护栏), 幂等; 只动标记层级/分隔符/装饰符, 不改语义。
+// ══════════════════════════════════════════════════════════════════
+const _V480_SEP = '[：:·\\-–—|｜]';                                    // 半角+全角分隔符都要吃
+const _V480_EN_MON = 'January|February|March|April|May|June|July|August|September|October|November|December';
+const _V480_ES_MON = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
+// 章节锚点关键词(与前端 CHAPTER_KEYWORDS 对齐); 命中即锁 `## `
+const _V480_CHAP_KW = /(?:第[一二三四五六七八九十]+[章节]|先知神谕|先知天书|最终财富|通关密令|精通之钥)/;
+// 标题/正文行首的装饰符(前端 L106 会剥除的那批 + 双 ✦)
+const _V480_DECOR = /^[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+/;
+// 标题尾部的装饰符(如「## ✦ 先知神谕 · 财富启示录 ✦」的收尾 ✦)
+const _V480_DECOR_TAIL = /[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+$/;
+
+function normalizeYearlyMarkup(text, lang, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  let titles = 0, chaps = 0, dropped = 0, heads = 0, tags = 0;
+  let out = text;
+
+  // ── ① 卡标签本地化(zh): 中文年报里不许出现英文模板标签 ──
+  if (lang === 'zh') {
+    const b0 = out;
+    out = out
+      .replace(/\[\s*Peak\s+Revenue\s+Window\s*\]/gi, '[财富高峰窗口]')
+      .replace(/\[\s*Financial\s+Black\s+Swan\s+Day\s*\]/gi, '[财务黑天鹅日]');
+    if (out !== b0) tags = (b0.match(/Peak\s+Revenue\s+Window|Financial\s+Black\s+Swan\s+Day/gi) || []).length;
+  }
+
+  const lines = out.split('\n');
+  const kept = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // ── ② 干扰行: 「YYYY-YYYY …指标…仪表盘」标题(前端会吞成正文 + 生成半吊子锚点) → 删 ──
+    if (i < 40 && /^\s*>?\s*#{1,6}\s*\S{0,4}\s*\d{4}\s*[-–—]\s*\d{4}[^\n]*指标/.test(line)) { dropped++; continue; }
+    // ── ③ 空引用行(会渲染成空引用框) ──
+    if (/^\s*>\s*$/.test(line)) { dropped++; continue; }
+
+    const head = line.match(/^\s*>?\s*(#{1,6})\s*(.*)$/);
+    if (head) {
+      const hashes = head[1].length;
+      const body = head[2];
+
+      // ── ④ 月标题归一: 层级锁 ### + 分隔符锁「半角冒号+空格」(分隔符允许重复, 如 `——`) ──
+      const mo = body.match(new RegExp('^(\\d{4}\\s*年\\s*\\d{1,2}\\s*月)\\s*' + _V480_SEP + '+\\s*(\\S.*?)\\s*$'));
+      if (mo) { titles++; kept.push('### ' + mo[1].replace(/\s+/g, '') + ': ' + mo[2]); continue; }
+      if (lang !== 'zh') {
+        const mon = lang === 'en' ? _V480_EN_MON : _V480_ES_MON;
+        const em = body.match(new RegExp('^((?:' + mon + '))\\s+(\\d{4})\\s*' + _V480_SEP + '+\\s*(\\S.*?)\\s*$', 'i'));
+        if (em) { titles++; kept.push('### ' + em[1] + ' ' + em[2] + ': ' + em[3]); continue; }
+      }
+
+      // ── ⑤ 章节锚点归一: 一律 `## `, 并剥两端装饰前缀/后缀 ──
+      const bare = body.replace(_V480_DECOR, '').replace(_V480_DECOR_TAIL, '');
+      if (_V480_CHAP_KW.test(bare)) { chaps++; kept.push('## ' + bare); continue; }
+
+      // ── ⑥ 其余标题: 剥装饰前缀; H1 保留, 2-6 级统一锁 `### `(与月标题同构, 老正则不再漏网) ──
+      const nh = hashes === 1 ? 1 : 3;
+      if (bare !== body || hashes !== nh) heads++;
+      kept.push('#'.repeat(nh) + ' ' + bare);
+      continue;
+    }
+
+    // ── ⑦ 头部块(前 25 行): 去 ◇/◆/✦ 漂移符 + 粗体星号配对修复(奇数额 → 去本行 **) ──
+    let l2 = line.replace(/^(\s*>?\s*(?:\*\s*)?)[◇◆✦]\s*/, '$1');
+    if (i < 25) {
+      if (((l2.match(/\*\*/g) || []).length) % 2 === 1) { l2 = l2.replace(/\*\*/g, ''); heads++; }
+    }
+    if (l2 !== line) heads++;
+    kept.push(l2);
+  }
+
+  out = kept.join('\n');
+  if (titles || chaps || dropped || heads || tags) {
+    console.log(`[V480] ${lang} 年报结构归一: 月标题 ${titles} | 章节 ${chaps} | 删干扰行 ${dropped} | 装饰/头部 ${heads} | 标签本地化 ${tags}`);
+  }
+  return out;
+}
+
 // ═══════════════════════════════════════════════════════════
 // V434-1: 行星修饰词错配硬锁（Qualifier Alignment）
 // ═══════════════════════════════════════════════════════════
@@ -5786,7 +5877,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v481:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v482:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8986,7 +9077,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v481:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v482:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9201,6 +9292,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix, reportType); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
         reportContent = lockYearlyMonthTitles(reportContent, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(最后一道)
+        reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -9577,7 +9669,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v481:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v482:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9728,6 +9820,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix, reportType); // 🛡️ V445
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
         streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
+        streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -10734,6 +10827,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = lockTransitPlanetSigns(ft, lang, astroMatrix, reportType); // 🛡️ V445
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
           if (ft) ft = lockYearlyMonthTitles(ft, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
+          if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
@@ -10784,6 +10878,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //   在落库前最后一道再跑一次（已验证幂等），确保最终 sanitized / 缓存落库的都是真值序列。
     cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438-final
     cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(落库前最后一道)
+    cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。

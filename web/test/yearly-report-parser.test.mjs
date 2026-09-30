@@ -180,3 +180,48 @@ test('parseYearlyReport: 全程不抛异常(喂 5 种脏文本)', () => {
     assert.doesNotThrow(() => parseYearlyReport(d, ''), `脏文本应安全: ${JSON.stringify(d)}`);
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// 四、V480 —— 生产端真值故障回归（2026-09-30 1989-08-15 zh 年报实测）
+//   ① 全角冒号导致月卡全丢: months=0, 流年矩阵容器整体空白
+//   ② 干扰标题行 → 半吊子锚点「### 先知神谕:年度财富天启」→ 沦为正文残渣
+//   ③ 首个章节锚点处强行 push 一张 0 字空壳兜底卡
+// ═══════════════════════════════════════════════════════════════════════
+test('V480: 全角冒号月标题必须被识别成月卡(旧字符类只认半角 → 实测 months=0)', () => {
+  const r = parseYearlyReport('## 第二章 月度矩阵\n### 2026年9月：太阳在处女座第十一宫 · 精算社交', '');
+  assert.equal(r.months.length, 1, '全角冒号月标题未被识别 —— 会整块丢失流年矩阵');
+  assert.equal(r.months[0].month, '2026年9月');
+  assert.ok(r.months[0].zodiac.includes('太阳在处女座'), '副标题解析错误: ' + r.months[0].zodiac);
+});
+
+test('V480: 分隔符全覆盖(全角冒号/竖线/破折号) + 层级放宽到 ####', () => {
+  const t = [
+    '### 2026年9月：太阳在处女座',
+    '#### 2026年10月｜太阳在天秤座',
+    '## 2026年11月—太阳在天蝎座',
+    '###### 2026年12月·太阳在射手座',
+  ].join('\n');
+  const r = parseYearlyReport(t, '');
+  assert.equal(r.months.length, 4, '有分隔符/层级未被识别: ' + JSON.stringify(r.months.map((m) => m.month)));
+  assert.deepEqual(r.months.map((m) => m.month), ['2026年9月', '2026年10月', '2026年11月', '2026年12月']);
+});
+
+test('V480: 不得产出 0 字空壳章节卡(首个锚点处强行 push 兜底卡的旧缺陷)', () => {
+  const r = parseYearlyReport(
+    '## 先知神谕:年度财富天启\n正文一\n## 第一章 矩阵\n正文二',
+    '',
+  );
+  const empties = r.chapters.filter((c) => c.content.trim().length === 0);
+  assert.equal(empties.length, 0, '存在空壳卡: ' + empties.map((c) => c.title).join(', '));
+  assert.equal(r.chapters.length, 2);
+});
+
+test('V480: 干扰标题行(### 📊 YYYY-YYYY …)不得留下半吊子锚点', () => {
+  const r = parseYearlyReport('### 📊 2026-2027 年度财富核心指标仪表盘\n正文一\n## 第一章 矩阵\n正文二', '');
+  assert.ok(
+    !r.chapters.some((c) => c.title.includes('指标仪表盘')),
+    '干扰标题残留成章节: ' + r.chapters.map((c) => c.title).join(' | '),
+  );
+  assert.ok(r.chapters.every((c) => c.content.trim().length > 0), '出现空壳卡');
+});
+

@@ -100,7 +100,10 @@ export const parseYearlyReport = (rawText: string, _birthDate: string): {
 
     // 2. 【定点清除"先知天书"幻觉】:截图里疯狂出现的"> ## ✦ 先知天书",直接物理替换为我们前端需要的绝对硬核锚点
     .replace(/##\s*(?:✦\s*)?先知天书.*/gi, '## 先知神谕:年度财富天启')
-    .replace(/##\s*📊\s*2026-2027.*/gi, '## 先知神谕:年度财富天启') // 顺手干掉那个核心指标看板标题,防止它干扰第一章
+    .replace(/^#{2,6}\s*📊\s*2026-2027.*/gim, '## 先知神谕:年度财富天启') // 顺手干掉那个核心指标看板标题,防止它干扰第一章
+    // 🛡️ V480: 旧写法 `/##\s*📊\s*2026-2027.*/gi`(无 ^、无 m)会从 `### 📊 …` 的**第 2 个 #** 开始匹配,
+    //   替换后残留 1 个 `#` → 产出半吊子锚点「### 先知神谕:年度财富天启」, 而章节卡严格要「## 」→ 沦为正文残渣。
+    //   改为行首锚定 + #{2,6}。
 
     // 3. 【无脑蒸发干扰符号】:把 AI 喜欢乱加的、会导致 markdown 渲染翻车的各种特殊符号全部擦除
     .replace(/📅|📊|📕|✦|📌|🔮|◆|◇/g, '')
@@ -128,7 +131,10 @@ export const parseYearlyReport = (rawText: string, _birthDate: string): {
     if (!trimmed || trimmed === '---') continue;
 
     // 检测月份
-    const monthMatch = trimmed.match(/^#{2,4}\s*(\d{4}年\d{1,2}月)\s*[·::-|]\s*(.+)$/);
+    // 🛡️ V480: 分隔符必须吃全角！真值故障(2026-09-30 生产端 zh 年报):
+    //   LLM 某次输出「### 2026年9月：太阳在处女座第十一宫」(全角冒号), 而旧字符类 [·::-|] 只认半角
+    //   → 实测 months=0, 12 个月卡整体消失、流年矩阵容器空白。层级同时放宽到 #{1,6} 兜底。
+    const monthMatch = trimmed.match(/^#{1,6}\s*(\d{4}年\d{1,2}月)\s*[·:：\-|｜–—]\s*(.+)$/);
     if (monthMatch) {
       if (currentMonth && currentMonth.month) months.push(currentMonth as MonthBlock);
       const state = trimmed.includes('高峰') || trimmed.includes('🟢') || trimmed.includes('Peak') || trimmed.includes('显化')
@@ -173,7 +179,10 @@ export const parseYearlyReport = (rawText: string, _birthDate: string): {
       CHAPTER_KEYWORDS.some(keyword => trimmed.includes(keyword));
 
     if (isStrictNewChapter) {
-      if (currentChapterContent.length > 0 || chapters.length === 0) {
+      // 🛡️ V480: 去掉 `|| chapters.length === 0` —— 它会在遇到**第一个**章节锚点时
+      //   强行 push 一张开局兜底空卡(实测真实年报产出「先知神谕:年度财富天启」0 字空卡)。
+      //   内容为空就不该成卡; 文档只有单章时由下方收尾 push 兜住。
+      if (currentChapterContent.length > 0) {
         chapters.push({
           title: currentChapterTitle,
           content: currentChapterContent.join('\n')
