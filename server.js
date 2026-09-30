@@ -2115,12 +2115,21 @@ function house_linter(text, astroMatrix, currentMonth = null) {
   const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
 
   // ── 按月分区处理：每节用当月真实 house ──────────────────────────
-  // 月份锚点: ### YYYY年MM月: / ### YYYY年M月:
-  const monthAnchorRe = /###\s*(\d{4})年(\d{1,2})月:/g;
+  // 月份锚点: ### YYYY年MM月: / #### YYYY年M月: / ##### ...
+  // 🛠️ V482e 修两处:
+  //   ① **步长错位**: 正则有 2 个捕获组 ⇒ split 后每 3 项一组(年/月/正文),
+  //      旧代码按 `i += 2` 步进 ⇒ i=3 起把「正文」当成年份 → parseInt→NaN →
+  //      月数据查不到 → 走 !monthData 分支把**正文原样再追加一遍**并补 `年undefined月:`。
+  //      实测: 只要正文含 `### YYYY年M月:` 且 astroMatrix 有 months, 整篇月标题必被碾碎
+  //      (`### 2026年11月: X` → `2026年11月: X X年undefined月:`)。
+  //   ② **标题标记被吞**: 正则不含 `#` 前缀 ⇒ 重建时 `###` 整个丢失,
+  //      下游 lockYearlyMonthTitles / lockYearlyTransitSigns 认不出月标题 → 真值锁集体失效。
+  //      现改为把 `#{1,6}` 与空白一并捕获, 按 4 项一组步进, 重建时原样保留。
+  const monthAnchorRe = /(#{1,6}[ \t]*)(\d{4})年(\d{1,2})月:/g;
   const sections = text.split(monthAnchorRe);
-  // sections[0] = 前导文本(开篇等), sections[1]=年份, sections[2]=月份, sections[3]=正文, ...
+  // sections[0] = 前导文本(开篇等), 之后每 4 项一组: [标题标记, 年份, 月份, 正文]
 
-  if (sections.length >= 4 && astroMatrix && astroMatrix.months && astroMatrix.months.length > 0) {
+  if (sections.length >= 5 && astroMatrix && astroMatrix.months && astroMatrix.months.length > 0) {
     // 🛠️ V230-fix: 精确年月匹配,不靠 monthNum-1 索引推算
     //   风险: months 是动态滚动数组(从当前月切片), months[monthNum-1] 会越界/错配
     //   治本: 用文本锚点的真实年月拼 month_key ("2026-08") 在 months 里精确查找
@@ -2129,16 +2138,19 @@ function house_linter(text, astroMatrix, currentMonth = null) {
       const _k = m.month_key || (m.year && m.month ? `${m.year}-${String(m.month).padStart(2,'0')}` : '');
       if (_k) _monthsMap[_k] = m;
     });
-    // sections 奇数位(1,3,5...)=年份/月份, 偶数位(2,4,6...)=正文
+    // sections 每 4 项一组: 1=标题标记, 2=年份, 3=月份, 4=正文, 5=标记, 6=年份, 7=月份, 8=正文, ...
     let result = sections[0]; // 前导(不含月份)
-    for (let i = 1; i < sections.length; i += 2) {
-      const year  = parseInt(sections[i]);
-      const monthNum = parseInt(sections[i + 1]); // 1-12
-      const body = sections[i + 2] !== undefined ? sections[i + 2] : '';
+    for (let i = 1; i + 2 < sections.length; i += 4) {
+      const marker  = sections[i];                    // `### ` 原样保留(旧代码在此吞掉)
+      const yearStr  = sections[i + 1];
+      const monthStr = sections[i + 2];
+      const year  = parseInt(yearStr);
+      const monthNum = parseInt(monthStr); // 1-12
+      const body = sections[i + 3] !== undefined ? sections[i + 3] : '';
       // 🛠️ V230-fix: 精确查找(兼容静态全年数组 & 动态滚动数组)
       const _key = `${year}-${String(monthNum).padStart(2,'0')}`;
       const monthData = _monthsMap[_key] || astroMatrix.months[monthNum - 1] || null;
-      if (!monthData) { result += sections[i] + '年' + sections[i + 1] + '月:' + body; continue; }
+      if (!monthData) { result += marker + yearStr + '年' + monthStr + '月:' + body; continue; }
       const jupHouse = getH(monthData.jupiter?.house) || 2;
       const satHouse = getH(monthData.saturn?.house) || 10;
       const plHouse  = getH(monthData.pluto?.house)  || 8;
@@ -2155,7 +2167,7 @@ function house_linter(text, astroMatrix, currentMonth = null) {
         sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
         moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
       };
-      let secText = sections[i] + '年' + sections[i + 1] + '月:' + body;
+      let secText = marker + yearStr + '年' + monthStr + '月:' + body;
       for (const [key, house] of RULES) {
         if (!house) continue;
         for (const pname of NAME_MAP[key]) {
