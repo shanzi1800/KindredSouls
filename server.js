@@ -825,8 +825,10 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
   console.log("[V132e-DEPLOYED] monthly handler active - v132e-final active at", new Date().toISOString());
                 pc = stripAspectTermsAndPlutoHouse(fixMonthlySectionTitles(fixSectionBrackets(_toSend, lang), false, lang)).replace(/\uFFFD/g,'');
               } else {
+                // 🛡️ V477: 全链输出统一过 CJK 守恒守卫(任一刀吃字则回滚本块)
                 pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_toSend,_a, lang)),realSunSign,_a), astroMatrix);
                 pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+                pc = _v477Guard(_toSend, pc, 'stream-chunk');
               }
               res.write(Buffer.from(`data: ${JSON.stringify({
                 text: pc,
@@ -870,6 +872,7 @@ async function callDeepSeekStream(systemText, userText, controller, res, onChunk
       try {
         pc = house_linter(natal_sun_linter(astro_phase_linter(final_text_sanitizer(_rest,_a, lang)),realSunSign,_a), astroMatrix);
         pc = applyMonthLockSanitizer(pc,astroMatrix,null,null,lang).replace(/\uFFFD/g,'').replace(/�/g,'');
+        pc = _v477Guard(_rest, pc, 'stream-tail');
         res.write(Buffer.from(`data: ${JSON.stringify({ text: _tokClean(pc) })}\n\n`, 'utf-8'));
         if (_dupGuard(pc)) onChunk && onChunk(pc); else return;
       } catch(e) {
@@ -1594,6 +1597,28 @@ function cleanMonthlyBrackets(text, lang = 'zh') {
   // 只删夹在中文/数字之间的错位右括号,绝不误伤合法 (第X宫)
   text = text.replace(/([\u4e00-\u9fff0-9])）([\u4e00-\u9fff])/g, '$1$2');
   return text;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ V477: CJK 守恒守卫 —— 清洗链"吃字"自动拦截(末日兜底)
+// 背景: 2026-09-29/30 年报多次出现汉字被大面积吞掉(先知神谕→先神),先后查出
+//   final_text_sanitizer:1619、stream 收尾块 10389 两处"空捕获组"坏正则。
+//   这类坏正则的共同签名 = 清洗后 CJK 断崖式下跌。本守卫把"守恒"变成硬约束:
+//   任何一段文本经清洗后 CJK 存活 < 90%,即判定为坏正则吃字,直接回滚为清洗前原文,
+//   宁可少清洗,绝不吐缺字稿。所有清洗入口统一挂此守卫。
+// ═══════════════════════════════════════════════════════════════════════
+function _v477CjkCount(s) {
+  return (String(s || '').match(/[\u4e00-\u9fff]/g) || []).length;
+}
+function _v477Guard(original, cleaned, tag) {
+  const a = _v477CjkCount(original), b = _v477CjkCount(cleaned);
+  // 阈值说明: 流式块 CJK 数十~百量级,故门槛定在 24(CJK 文本片段);
+  // 正常清洗只删括号/标点残片(汉字损失 <5%),故 10% 存活跌幅已属"吃字"。
+  if (a >= 24 && b < a * 0.9) {
+    console.error(`[V477-GUARD] ${tag} 清洗链吃字: CJK ${a}→${b} (-${((1 - b / a) * 100).toFixed(1)}%), 已回滚为清洗前原文`);
+    return original;
+  }
+  return cleaned;
 }
 
 function final_text_sanitizer(text, lang_asc = 'Cancer', lang = 'zh') {
@@ -10385,9 +10410,13 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
     // 🛠️ V122-fix: 终极空括号清理(final_text_sanitizer 可能漏 "()" 跨块,
     //   完整文本这里再扣一遍)
-    cleanedText = cleanedText.replace(/()/g, '').replace(/\(\)/g, '');
-    cleanedText = cleanedText.replace(/([一-龥])()([一-龥])/g, '$1$2');
+    // 🛡️ V477-fix: 下一行字面括号未转义——写法是 [一-龥] 而非 [\u4e00-\u9fa5],
+    //   故 V476 的源码封禁闸门(只抓 \u4e00 写法)与 final_text_sanitizer 修复都漏了它!
+    //   实测: "先知神谕·财富启示录" → "先神·财启录"(CJK 存活 56.5%),正是线上 1989 盘缺字毒化真凶。
+    const _v477Pre = cleanedText;  // 🛡️ V477: 收尾清洗前快照(供守恒守卫回滚)
+    cleanedText = cleanedText.replace(/([一-龥])\(\)([一-龥])/g, '$1$2');
     cleanedText = cleanedText.replace(/[((][A-Za-z][A-Za-z0-9 ,.'":;\-]{0,40}?[))](?=[一-龥])/g, '');
+    cleanedText = _v477Guard(_v477Pre, cleanedText, 'post-stream');
 
     // 🛠️ V108-fix8: MISS 流式路径补 standardizeReport(HIT 路径已调用,此处漏掉导致章节 ✦ 注入缺失)
     cleanedText = standardizeReport(cleanedText);

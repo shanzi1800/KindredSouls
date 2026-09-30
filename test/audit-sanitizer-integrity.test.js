@@ -86,7 +86,16 @@ test('final_text_sanitizer 正确清理空括号污染(第五宫()狮子座 → 
 });
 
 test('源码封禁:server.js 不得再出现未转义字面括号的杀手模式', () => {
-  // ① 相邻汉字空捕获组(空括号未转义)
+  // 🛡️ V477: 通用封禁——"捕获组+空捕获组+捕获组"结构,不限字符类写法。
+  //   V476 闸门只抓 [\u4e00-\u9fa5] 写法,而 10389 用的是 [一-龥] → 漏网,线上再次毒化(教训!)
+  //   去注释后扫描,避免注释里的"反面教材"文本误伤(也避免误漏)
+  const _stripComments = (s) =>
+    s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+  const _srcNC = _stripComments(serverSrc);
+  const _killerShape = _srcNC.match(/\)\s*\(\)\s*\(/g) || [];
+  assert.strictEqual(_killerShape.length, 0,
+    `杀手模式复发: 出现 ${_killerShape.length} 处 "捕获组+空捕获组+捕获组" 结构(空括号未转义 → 相邻汉字只留一个)`);
+  // ① 相邻汉字空捕获组(空括号未转义) —— 保留原字符类专项封禁
   assert.ok(!serverSrc.includes('/([\\u4e00-\\u9fa5])()([\\u4e00-\\u9fa5])/'),
     '杀手模式①复发: ([\\u4e00-\\u9fa5])()([\\u4e00-\\u9fa5]) 空捕获组');
   // ② 第N宫(([^)]+)座) —— 字面 ( 未转义
@@ -99,4 +108,21 @@ test('源码封禁:server.js 不得再出现未转义字面括号的杀手模式
     assert.ok(!/(?<!\\)\\\(/.test(c),
       'R() 字符串模式含裸反斜杠括号(运行时 Unterminated group): ' + c + ' —— 应写双反斜杠 \\\\(');
   }
+});
+
+test('🛡️ V477 CJK 守恒守卫:清洗链吃字时必须回滚为原文', () => {
+  const src = extractFn('_v477Guard');
+  const ctx = { console };
+  vm.createContext(ctx);
+  vm.runInContext(extractFn('_v477CjkCount') + '\n' + src + '\nresult = _v477Guard;', ctx);
+  const guard = ctx.result;
+  // 构造"被坏正则吃字"的清洗输出(隔一个杀一个)
+  const original = '先知神谕 · 财富启示录 你诞生于太阳狮子座，上升天秤座，木星在狮子座第一宫闪耀光辉。';
+  const eaten = original.replace(/([一-龥])()([一-龥])/g, '$1$2');
+  assert.ok((eaten.match(/[\u4e00-\u9fff]/g) || []).length < (original.match(/[\u4e00-\u9fff]/g) || []).length * 0.9,
+    '构造的吃字样本应显著短于原文(自测前置条件)');
+  assert.strictEqual(guard(original, eaten, 'selftest'), original, '守卫未拦截吃字清洗(闸门失效)');
+  // 正常清洗(仅删标点,汉字不丢)必须放行
+  const normal = original.replace(/·/g, ' ');
+  assert.strictEqual(guard(original, normal, 'selftest'), normal, '守卫误伤正常清洗');
 });
