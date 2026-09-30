@@ -55,12 +55,12 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
     `通道顺序违规: DeepSeek#1=${i1} DeepSeek#2=${i2} Gemini=${ig} —— 必须依次递增(Gemini 只做末位后备)`);
 });
 
-test('④ 缓存 key 统一为 v478(输出链变更必须 bump,防毒缓存复用)', () => {
+test('④ 缓存 key 统一为 v479(输出链变更必须 bump,防毒缓存复用)', () => {
   const keys = serverSrc.match(/wealth:v47\d:/g) || [];
   assert.ok(keys.length >= 3, 'wealth 缓存 key 数量异常: ' + keys.length);
   const uniq = [...new Set(keys)];
   assert.strictEqual(uniq.length, 1, '缓存 key 版本不一致: ' + uniq.join(', '));
-  assert.strictEqual(uniq[0], 'wealth:v478:', '缓存 key 未 bump 到 v478');
+  assert.strictEqual(uniq[0], 'wealth:v479:', '缓存 key 未 bump 到 v479');
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════

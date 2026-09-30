@@ -14,7 +14,7 @@ const fixture = process.argv[2] || '/tmp/ks_raw.txt';
 
 const SEEDS = ['final_text_sanitizer', 'astro_phase_linter', 'natal_sun_linter', 'applyMonthLockSanitizer',
   'standardizeReport', 'applyV434Locks', 'lockNatalAnchorRole', 'lockTransitPlanetSigns',
-  'applyTruthLocksEnEsZh', 'applyMoonWeekHardOverride', '_v477Guard', '_v477CjkCount',
+  'applyTruthLocksEnEsZh', 'applyMoonWeekHardOverride', 'lockYearlyMonthTitles', '_v477Guard', '_v477CjkCount',
   '_v432Normalize', '_v432LockNatal', '_v432LockTransit', '_v433LockMoonWeek', 'v426EnforceNatalRetrograde'];
 
 const { map } = closureDecls(src, SEEDS, ['getSignToHouseMap', 'SIGN_ORDER_ZH']);
@@ -53,6 +53,7 @@ const steps = [
   ['⑧ lockTransitPlanetSigns(yearly→跳过)', (t) => F.lockTransitPlanetSigns(t, 'zh', M, 'yearly')],
   ['⑨ applyTruthLocksEnEsZh(yearly)', (t) => F.applyTruthLocksEnEsZh(t, 'zh', M, 'yearly')],
   ['⑩ applyMoonWeekHardOverride', (t) => F.applyMoonWeekHardOverride(t, 'zh', M)],
+  ['⑪ lockYearlyMonthTitles(V478b)', (t) => F.lockYearlyMonthTitles(t, 'zh', M, 'yearly')],
 ];
 
 let text = fs.readFileSync(fixture, 'utf8');
@@ -68,7 +69,7 @@ const lines = text.split('\n');
 let pass = 0;
 for (const e of expect) {
   const prefix = `${e.y}年${e.mo}月`;
-  const hits = lines.filter(l => l.includes(prefix));
+  const hits = lines.filter(l => /^#{1,6}\s/.test(l.trim()) && l.includes(prefix));
   const okSign = hits.some(l => l.includes(e.sign));
   const okHouse = hits.some(l => l.includes(`第${e.house}宫`) || l.includes(`第${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'][e.house]}宫`));
   const head = (hits[0] || '(缺)').slice(0, 74);

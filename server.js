@@ -4778,6 +4778,96 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix, reportType) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V478b: 年报「12 个月标题逐月真值锁」（框架在案欠账落地）
+//   病根: 年报月标题的太阳星座靠 LLM 自由发挥 → 同一盘不同次生成会漂移。
+//     实测 1989-08-15 奥斯陆盘: 一次给对「处女座/天秤座/天蝎座/射手座…」(与真值盘逐字吻合),
+//     另一次把【本命太阳狮子座】套给全部 12 个月(宫位对、星座全错)。
+//   而月报时代的 _v432LockTransit 只锚 months[0] 首月快照, 跨 12 个月必然改错
+//   (本轮已按 reportType 于年报停用), 故必须补一把「逐月」锁 —— 即框架文档在案的
+//   「12 月逐月真值锁」欠账。
+//   本锁: 以 astroMatrix.months[i] 逐月真值重写【标题行】的太阳星座 + 宫位;
+//     按标题行在文档中的出现顺序对应 months[0..11]（年报月序严格时间递增, 无需外部日期）。
+//   仅服务年报(reportType==='yearly' 且 months.length>=12), 月报零影响; 幂等。
+// ══════════════════════════════════════════════════════════════════
+const _V478_ORD_ZH = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+const _V478_EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const months = astroMatrix && astroMatrix.months;
+  if (!Array.isArray(months) || months.length < 12) return text;
+  const signs = _v444Signs(lang);
+  if (!signs) return text;
+  const signRe = new RegExp('(' + signs.map(_v444Esc).join('|') + ')');
+  // 宫位短语: zh 需同时吃「第11宫」与「第十一宫」两种写法
+  const houseRe = lang === 'zh'
+    ? /(第(?:\d+|[一二三四五六七八九十]+)宫)/
+    : new RegExp('((?:' + ['House', 'Maison', 'Casa', 'บ้าน', 'Nhà'].join('|') + ')\\s+\\d+)');
+  const ord2n = (s) => { const i = _V478_ORD_ZH.indexOf(s); return i > 0 ? i : NaN; };
+  const nOfHouse = (ph) => {
+    const d = ph.match(/\d+/);
+    if (d) return Number(d[0]);
+    const o = ph.match(/[一二三四五六七八九十]+/);
+    return o ? ord2n(o[0]) : NaN;
+  };
+
+  const lines = text.split('\n');
+  const groups = [];
+  const keyOf = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!/^#{1,6}\s/.test(ln)) continue;
+    let y = null, mo = null;
+    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
+    if (ym) { y = +ym[1]; mo = +ym[2]; }
+    else if (lang === 'en') {
+      const em = ln.match(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'));
+      if (em) { y = +em[2]; mo = _V478_EN_MONTHS.indexOf(em[1]) + 1; }
+    }
+    if (y == null || !mo || mo < 1 || mo > 12) continue;
+    const key = y * 12 + mo;
+    let g = keyOf.get(key);
+    if (!g) { g = { key, rows: [] }; keyOf.set(key, g); groups.push(g); }
+    g.rows.push(i);
+  }
+  if (groups.length < 2) return text;            // 不是 12 月矩阵 → 不动
+  groups.sort((a, b) => a.key - b.key);
+  const base = groups[0].key;
+  let touched = 0;
+  for (const g of groups) {
+    const idx = g.key - base;
+    if (idx < 0 || idx >= months.length) continue;
+    const m = months[idx];
+    const sun = (m && (m.sun || (m.positions && m.positions.Sun))) || null;
+    if (!sun || !sun.sign) continue;
+    const zi = SUN_SIGN_EN.indexOf(sun.sign);
+    if (zi < 0) continue;
+    const trueSign = signs[zi];
+    const trueHouse = Number(sun.house) || 0;
+    for (const r of g.rows) {
+      let line = lines[r];
+      const sm = line.match(signRe);
+      if (sm && sm[1] !== trueSign) line = line.replace(sm[1], trueSign);
+      const hm = line.match(houseRe);
+      if (hm && trueHouse) {
+        const cur = nOfHouse(hm[1]);
+        if (cur !== trueHouse) {
+          const ordForm = /[一二三四五六七八九十]/.test(hm[1]) && lang === 'zh';
+          const want = ordForm ? ('第' + _V478_ORD_ZH[trueHouse] + '宫')
+            : hm[1].replace(/\d+/, String(trueHouse));
+          const at = line.indexOf(hm[1]);
+          line = line.slice(0, at) + want + line.slice(at + hm[1].length);
+        }
+      }
+      if (line !== lines[r]) { lines[r] = line; touched++; }
+    }
+  }
+  if (touched) console.log(`[V478b] ${lang} 年报月标题逐月真值锁: 重写 ${touched} 行`);
+  return lines.join('\n');
+}
+
 // ═══════════════════════════════════════════════════════════
 // V434-1: 行星修饰词错配硬锁（Qualifier Alignment）
 // ═══════════════════════════════════════════════════════════
@@ -5654,7 +5744,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v478:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v479:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8854,7 +8944,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v478:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v479:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9068,6 +9158,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix, reportType);   // 🛡️ V444
         reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix, reportType); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
+        reportContent = lockYearlyMonthTitles(reportContent, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(最后一道)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -9444,7 +9535,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v478:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v479:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9594,6 +9685,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = lockNatalAnchorRole(streamText, lang, astroMatrix, reportType);   // 🛡️ V444
         streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix, reportType); // 🛡️ V445
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
+        streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -10599,6 +10691,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = lockNatalAnchorRole(ft, lang, astroMatrix, reportType);   // 🛡️ V444
           if (ft) ft = lockTransitPlanetSigns(ft, lang, astroMatrix, reportType); // 🛡️ V445
           if (ft) ft = applyMoonWeekHardOverride(ft, lang, astroMatrix);  // 🛡️ V438
+          if (ft) ft = lockYearlyMonthTitles(ft, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
@@ -10648,6 +10741,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     //   （线上 sanitized 实测 W2-W4 变成「狮子座（第9宫）、白羊座（第5宫→第10宫）…」）。
     //   在落库前最后一道再跑一次（已验证幂等），确保最终 sanitized / 缓存落库的都是真值序列。
     cleanedText = applyMoonWeekHardOverride(cleanedText, lang, astroMatrix);  // 🛡️ V438-final
+    cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(落库前最后一道)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。

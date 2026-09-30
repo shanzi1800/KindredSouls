@@ -89,6 +89,25 @@ test('④ 同类范式一致性: V445(V472-guard) 与本轮两处护栏必须并
   assert.ok(transitLockGatedByYearly(fnBody('applyTruthLocksEnEsZh')), 'V478 流月锁护栏缺失');
 });
 
+// ── V478b: 12 个月标题逐月真值锁 ──
+const fnBodyOf = (name) => fnBody(name);
+test('⑤ lockYearlyMonthTitles(12 月逐月真值锁) 必须存在 + reportType 护栏 + 以 months[] 取真值', () => {
+  assert.ok(/function\s+lockYearlyMonthTitles\s*\(/.test(src), '未找到 lockYearlyMonthTitles（框架在案的「12 月逐月真值锁」欠账未落地）');
+  const b = fnBodyOf('lockYearlyMonthTitles');
+  assert.ok(/if\s*\(\s*reportType\s*!==\s*'yearly'\s*\)\s*return\s+text\s*;/.test(b),
+    '缺少 reportType 护栏 —— 会污染月报');
+  assert.ok(/months\.length\s*<\s*12/.test(b), '缺少 months.length>=12 前置校验');
+  assert.ok(/months\[idx\]/.test(b), 'title 锁未按 months[idx] 逐月取真值(而是像旧锁那样只取首月)');
+  assert.ok(/SUN_SIGN_EN\.indexOf/.test(b), '未做 EN→本地化星座映射');
+});
+
+test('⑥ 月标题锁必须挂在全部年报收尾路径末端(至少 4 处)', () => {
+  const sites = callSites('lockYearlyMonthTitles');
+  assert.ok(sites.length >= 4, `lockYearlyMonthTitles 调用点不足(仅 ${sites.length} 处)，部分年报路径会漏锁:\n  ` + sites.join('\n  '));
+  const missing = sites.filter(l => !/reportType/.test(l));
+  assert.strictEqual(missing.length, 0, 'lockYearlyMonthTitles 有调用点漏传 reportType');
+});
+
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
 test('【注入缺陷自测】删掉本命锚点锁护栏 → 判据① 必须红', () => {
   const degraded = fnBody('lockNatalAnchorRole').replace(/if\s*\(\s*reportType\s*===\s*'yearly'\s*\)\s*return\s+text\s*;/, '');
@@ -109,4 +128,16 @@ test('【注入缺陷自测】调用点漏传 reportType → 判据③ 必须红
   const fakeSites = degradedSrc.match(/[^\n]*lockNatalAnchorRole\([^\n]*/g) || [];
   const missing = fakeSites.filter(l => !/function\s/.test(l) && !/reportType/.test(l));
   assert.ok(missing.length > 0, '闸门失效: 漏传 reportType 的调用点未被识别');
+});
+
+test('【注入缺陷自测】把 12 月标题锁退化成「只取首月」→ 判据⑤ 必须红', () => {
+  const degraded = fnBody('lockYearlyMonthTitles').replace(/months\[idx\]/, 'months[0]');
+  assert.ok(!/months\[idx\]/.test(degraded), '闸门失效: 只取首月的退化未被识别');
+});
+
+test('【注入缺陷自测】删掉一处月标题锁调用点 → 判据⑥ 必须红', () => {
+  const degradedSrc = src.replace(/^[^\n]*lockYearlyMonthTitles\(reportContent[^\n]*\n/m, '');
+  const cnt = (degradedSrc.match(/[^\n]*lockYearlyMonthTitles\([^\n]*/g) || [])
+    .filter(l => !/function\s+lockYearlyMonthTitles/.test(l)).length;
+  assert.ok(cnt < 4, '闸门失效: 调用点缺失未被识别, 剩余=' + cnt);
 });
