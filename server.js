@@ -4976,6 +4976,8 @@ function normalizeYearlyMarkup(text, lang, reportType) {
 
       // ── ⑤ 章节锚点归一: 一律 `## `, 并剥两端装饰前缀/后缀 ──
       const bare = body.replace(_V480_DECOR, '').replace(_V480_DECOR_TAIL, '');
+      //   🛠️ V481-fix: 剥完装饰后为空(如 `# ✦` / 被 standardizeReport 劈碎的 `# `) → 删, 不再渲染成空标题块。
+      if (bare === '') { dropped++; continue; }
       if (_V480_CHAP_KW.test(bare)) { chaps++; kept.push('## ' + bare); continue; }
 
       // ── ⑥ 其余标题: 剥装饰前缀; H1 保留, 2-6 级统一锁 `### `(与月标题同构, 老正则不再漏网) ──
@@ -5877,7 +5879,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v482:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v483:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9077,7 +9079,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v482:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v483:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9580,7 +9582,11 @@ function standardizeReport(text) {
 
   // 3. 换行修复:月份标题前 + 子章节前 + 分割线前后
   t = t.replace(/####\s*📅/g, '\n#### 📅');
-  t = t.replace(/###\s+/g, '\n### ');
+  // 🛠️ V481-fix: 原写法 `/###\s+/g` 会把「≥4 个 #」的标题从**第 2 个 # 处劈开**:
+  //   `#### 2026年9月：…` → `#` + `\n### 2026年9月：…`, 再被 V480 补成「# 」空标题行
+  //   → 生产端实测每个月份标题前多一条空 `# `(12 条), 渲染成空 H1 破坏排版。
+  //   加「前一字符非 #」负向回顾, 只劈独立的 `### `, 不再误伤 `####`/`#####`。
+  t = t.replace(/(?<!#)###\s+/g, '\n### ');
   t = t.replace(/---/g, '\n---\n');
 
   // V103-fix14: 清理月份标题中的 "Sun in"(不依赖 ### 📅,覆盖所有格式)
@@ -9669,7 +9675,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v482:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v483:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

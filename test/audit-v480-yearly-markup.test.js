@@ -166,3 +166,45 @@ test('【注入缺陷自测】删掉标签本地化 → 判据⑥ 必须红(行�
   const out = G.normalizeYearlyMarkup('**🟢 [Peak Revenue Window]**', 'zh', 'yearly');
   assert.ok(out.includes('Peak Revenue Window'), '闸门失效: 标签本地化被删未被识别(判据⑥ 未红)');
 });
+
+// ═══════════════ V481-fix: 空标题行(# 残留) ═══════════════
+// 事故(2026-09-30 生产端复验 V480 时发现): standardizeReport 的换行注入
+//   `t.replace(/###\s+/g, '\n### ')` 会把 `#### 2026年9月：…` 从第 2 个 # 处劈开
+//   → `#` + `\n### 2026年9月：…` → 残留的 `#` 被归一补成「# 」空标题行
+//   → 真实产物 12 个月份标题前各挂 1 条空 H1(实测 san 里 `^# *$` = 12 条)。
+// 双保险: ① 上游换行注入加负向回顾 ② 归一函数丢弃空标题行。
+test('⑨ 空标题行(# / # ✦ / 被拆碎的 # 残留) 必须被删除', () => {
+  const out = zh('## 第二章：365天月度收入矩阵\n\n# \n### 2026年9月: 太阳处女座 第11宫\n# ✦\n正文段落');
+  assert.ok(!/^\s*#\s*$/m.test(out), '空 # 行未删: ' + JSON.stringify(out));
+  assert.ok(!/^\s*#\s+✦\s*$/m.test(out), '装饰空标题未删: ' + JSON.stringify(out));
+  assert.ok(out.includes('### 2026年9月: 太阳处女座 第11宫'), '误删月份标题');
+  assert.ok(out.includes('## 第二章：365天月度收入矩阵'), '误删章节锚点');
+  assert.ok(out.includes('正文段落'), '误删正文');
+});
+
+test('⑩ 换行注入正则不得劈开多级标题(##### 也不行)', () => {
+  // 源码级: 必须存在「前一字符非 #」负向回顾版, 且不得残留裸换行注入写法。
+  // ⚠️ 断言用完整调用惯用法 `.replace(/###\s+/g,` —— 不能用裸字面量 /###\s+/g,
+  //    否则会误抓下方 V481-fix 注释里**引用**的旧写法(去注释扫描的教训)。
+  assert.ok(src.includes('(?<!#)###\\s+'), '缺少 (?<!#) 负向回顾的换行注入修复');
+  assert.ok(!/\.replace\(\/###\\s\+\/g\s*,/.test(src), '残留裸换行注入 —— 会把 #### 标题劈成 # + ###');
+  // 行为级: 复刻修复后的注入规则, 断言 ####/\#\#\#\#\# 不被劈
+  const inject = (t) => t.replace(/(?<!#)###\s+/g, '\n### ');
+  assert.strictEqual(inject('#### 2026年9月：太阳在处女座第十一宫'), '#### 2026年9月：太阳在处女座第十一宫', '#### 被劈开');
+  assert.strictEqual(inject('##### 五级标题'), '##### 五级标题', '##### 被劈开');
+  assert.strictEqual(inject('正文### 子标题'), '正文\n### 子标题', '独立的 ### 仍应换行');
+});
+
+test('【注入缺陷自测】删掉空标题兜底 → 判据⑨ 必须红(行为级)', () => {
+  const degradedFn = map.get('normalizeYearlyMarkup')
+    .replace(/if\s*\(\s*bare\s*===\s*''\s*\)\s*\{\s*dropped\+\+;\s*continue;\s*\}/, '');
+  const G = build({ normalizeYearlyMarkup: degradedFn });
+  const out = G.normalizeYearlyMarkup('# \n### 2026年9月: 太阳处女座', 'zh', 'yearly');
+  assert.ok(/^\s*#\s*$/m.test(out), '闸门失效: 空标题兜底被删未被识别(判据⑨ 未红)');
+});
+
+test('【注入缺陷自测】换行注入退回裸写法 → 判据⑩ 必须红', () => {
+  const degraded = src.replace(/\(\?<!#\)###\\s\+/g, '###\\s+');   // 退回会被劈开的写法
+  assert.ok(!degraded.includes('(?<!#)###\\s+'), '闸门失效: 负向回顾被删未被识别');
+  assert.ok(/\.replace\(\/###\\s\+\/g\s*,/.test(degraded), '闸门失效: 裸写法未被识别');
+});
