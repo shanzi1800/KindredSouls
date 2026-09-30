@@ -5864,7 +5864,12 @@ function wealthCriticCheck(text, birthDate, natalSunSign) {
   return issues;
 }
 
-function cleanYearlyTimeline(text) {
+// 🛠️ V482d: 补 `lang` 形参 —— 本函数是**模块级**函数, 词法作用域看不到调用者的局部 `lang`;
+//   原先签名只有 `(text)`, 却在 L5895 用 `lang === 'es' || …` → 任何调用都必抛
+//   `ReferenceError: lang is not defined`。线上实测: `/api/wealth-oracle`(非流式/前端 fallback 路径)
+//   yearly MISS 直接 500 `AI generation failed: lang is not defined`(2026-09-30)。
+//   教训: 收尾/清洗函数必须自洽 —— 需要哪些上下文就显式收形参, 绝不隐式依赖调用者。
+function cleanYearlyTimeline(text, lang) {
   if (!text) return text;
   // Pattern 1: 2026年6月2026年6月 → 2026年6月
   text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年\1)/g, '$1');
@@ -7606,7 +7611,10 @@ function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
       }
     }
   }
-  if (!sunSign) sunSign = zodiacSigns[0];
+  // 🛠️ V482d: 原为 `zodiacSigns[0]` —— 该标识符**全文件不存在**(自由变量),
+  //   一旦所有日期区间都没命中 sunSign 就抛 ReferenceError 崩掉整个 prompt 构造。
+  //   本意就是「取第一个星座名兜底」, 同函数内 `zodiacRanges[0].name` 才是正确写法。
+  if (!sunSign) sunSign = zodiacRanges[0].name;
 
   // 六语言 Prompt
   const PROMPTS = {
@@ -9539,7 +9547,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
-          reportContent = cleanYearlyTimeline(monthLocked);
+          reportContent = cleanYearlyTimeline(reportContent, lang);
         }
 
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);

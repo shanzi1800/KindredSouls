@@ -12,7 +12,9 @@ import { getSignToHouseMap, SIGN_ORDER_ZH } from '../../astro-truth.js';
 import { closureDecls } from './extract_decls.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+// KS_SRC 可指向任意一版 server.js（例如 `git show b9622f8:server.js > /tmp/old.js`），
+// 用来回答「线上那一版代码本该不该去重」—— 判别「容器没换」vs「去重逻辑另有漏网」。
+const src = fs.readFileSync(process.env.KS_SRC || path.join(ROOT, 'server.js'), 'utf8');
 const SEEDS = ['lockYearlyMonthTitles', 'lockYearlyTransitSigns', '_v479IsMonthTitleLine',
   '_v482SignAdjacent', '_v432Clause', '_v432LockNatal', '_v432AdjudicateDescriptors', '_v432Normalize',
   '_v432Truth', '_v432TruthMatch', '_v432SlotOf', '_v432ClaimOf', '_v432PatchZone', '_v432FindHouse',
