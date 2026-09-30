@@ -55,14 +55,20 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
     `通道顺序违规: DeepSeek#1=${i1} DeepSeek#2=${i2} Gemini=${ig} —— 必须依次递增(Gemini 只做末位后备)`);
 });
 
-test('④ 缓存 key 统一为 v480(输出链变更必须 bump,防毒缓存复用)', () => {
-  // ⚠️ 正则用 v4\d\d(v400-v499 区间): 不能写死 v47\d —— bump 到 v480 就漏抓 → 误报"数量异常: 0";
-  //   也不能用 v\d+(会命中注释里 V433-fix 提及的历史键 wealth:v356: → 误判"版本不一致")
-  const keys = serverSrc.match(/wealth:v4\d\d:/g) || [];
-  assert.ok(keys.length >= 3, 'wealth 缓存 key 数量异常: ' + keys.length);
-  const uniq = [...new Set(keys)];
+// 🛠️ V479: 缓存版本基线 —— 每次 bump 后同步上调, 不允许回退(回退=毒缓存复用)。
+//   早先写死 `wealth:v4\d\d:` + strictEqual(v480) → 每次正常 bump 都假红一次(闸门成了绊脚石);
+//   改为「同版本一致 + 不低于已发布基线」, 既守「输出链变更必须 bump」, 又不因 bump 假红。
+const MIN_CACHE_VER = 481;
+
+test('④ 缓存 key 统一且不低于已发布基线 v' + MIN_CACHE_VER + '(输出链变更必须 bump,防毒缓存复用)', () => {
+  // ⚠️ 只取 `const cacheKey = `wealth:vNNN:`` 赋值形式: 裸 match v\d+ 会命中注释里提及的历史键
+  //   (如 wealth:v356:) → 误判"版本不一致"。
+  const vers = [...serverSrc.matchAll(/const\s+cacheKey\s*=\s*`wealth:v(\d+):/g)].map((m) => m[1]);
+  assert.ok(vers.length >= 3, 'wealth 缓存 key 赋值点数量异常: ' + vers.length);
+  const uniq = [...new Set(vers)];
   assert.strictEqual(uniq.length, 1, '缓存 key 版本不一致: ' + uniq.join(', '));
-  assert.strictEqual(uniq[0], 'wealth:v480:', '缓存 key 未 bump 到 v480');
+  assert.ok(Number(uniq[0]) >= MIN_CACHE_VER,
+    `缓存 key 版本 v${uniq[0]} 低于已发布基线 v${MIN_CACHE_VER} —— 输出链变更后忘了 bump(会复用毒缓存)`);
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
@@ -80,4 +86,12 @@ test('【注入缺陷自测】把 Gemini 提到 DeepSeek 之前 → 判据③ �
   const degraded = yearlyBranch().replace('完整度体检 #2(DeepSeek高温)', '完整度体检 #3(Gemini后备)');
   const [i1, i2, ig] = channelOrder(degraded);
   assert.ok(!(i1 > 0 && i2 > i1 && ig > i2), '闸门失效: 通道顺序违规未被识别');
+});
+
+test('【注入缺陷自测】把缓存 key 退回旧版本(低于基线) → 判据④ 必须红', () => {
+  const degraded = serverSrc.replace(/const\s+cacheKey\s*=\s*`wealth:v\d+:/, 'const cacheKey = `wealth:v480:');
+  const vers = [...degraded.matchAll(/const\s+cacheKey\s*=\s*`wealth:v(\d+):/g)].map((m) => m[1]);
+  const uniq = [...new Set(vers)];
+  assert.ok(uniq.length !== 1 || Number(uniq[0]) < MIN_CACHE_VER,
+    '闸门失效: 低于基线的缓存版本未被识别');
 });

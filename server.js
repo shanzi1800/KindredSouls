@@ -4237,6 +4237,23 @@ function _v432Normalize(text, lang) {
   return out;
 }
 
+// 🛡️ V479: 「月标题行」识别 —— 标题行(^#{1,6}) 且自带年月(zh: 2027年8月 / en·es: August 2027)。
+//   病根: 月标题描述的是【流月】太阳/行星, 措辞极简(通常无「流年/进入」这类 transitMark),
+//   故 B 类「本命事实被写成流月格式 → 补本命标识」在此必然误判——尤其当该月流月值恰好与
+//   本命值同 sign+house 时(实测 1989-08-15 奥斯陆盘: 8 月流月太阳=狮子座第10宫=本命太阳值),
+//   标题被补成「本命太阳狮子座」, 与其余 11 个月「太阳X座 第N宫」措辞不一。
+//   铁律: 月标题的太阳永远是流月值, 永不加本命定语; 措辞统一由 lockYearlyMonthTitles 兜底。
+function _v479IsMonthTitleLine(text, idx) {
+  const ls = text.lastIndexOf('\n', idx - 1) + 1;
+  let le = text.indexOf('\n', idx);
+  if (le === -1) le = text.length;
+  const line = text.slice(ls, le);
+  if (!/^\s*#{1,6}\s/.test(line)) return false;
+  if (/\d{4}\s*\u5e74\s*\d{1,2}\s*\u6708/.test(line)) return true;   // zh: 2027年8月
+  return new RegExp('(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{4}').test(line)   // en
+    || new RegExp('(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\\s*\\d{4}').test(line);   // es
+}
+
 // ── 定语双向裁定（镜像 V430/V431：A 夺舍剥离 / A2 值域皆不符+运动动词 / B 丢标识补全）；否决不动的 C 类留档 ──
 function _v432AdjudicateDescriptors(text, lang, astroMatrix) {
   const cfg = _V432_CFG[lang];
@@ -4305,7 +4322,8 @@ function _v432AdjudicateDescriptors(text, lang, astroMatrix) {
     }
 
     // B) 丢标识：本命事实被写成流月格式（无本命定语、无流月定语、非流月标记）→ 补本命标识
-    if (!hasDesc && !hasTDesc && isN && !isT && !cfg.transitMark.test(slot)) {
+    //   🛡️ V479: 月标题行豁免 —— 标题行的太阳是流月值, 绝不补本命定语(见 _v479IsMonthTitleLine)。
+    if (!hasDesc && !hasTDesc && isN && !isT && !cfg.transitMark.test(slot) && !_v479IsMonthTitleLine(text, m.index)) {
       const strong = !!(claim.sign && claim.house !== null);
       const ctxSig = cfg.ctx.test(clause.fwd) || cfg.ctx.test(clause.bwd) || cfg.ctx.test(text.slice(Math.max(0, m.index - 90), m.index));
       if (strong || ctxSig) {
@@ -4848,6 +4866,7 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   groups.sort((a, b) => a.key - b.key);
   const base = groups[0].key;
   let touched = 0;
+  let wording = 0;   // 🛡️ V479: 措辞归一计数
   for (const g of groups) {
     const idx = g.key - base;
     if (idx < 0 || idx >= months.length) continue;
@@ -4873,10 +4892,21 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
           line = line.slice(0, at) + want + line.slice(at + hm[1].length);
         }
       }
+      // 🛡️ V479: 标题措辞归一 —— 剥掉标题行里紧贴行星名的指代前缀, 统一为「太阳X座 第N宫」形态。
+      //   来源有二: ① LLM 原稿自带; ② 定语裁定 B 类历史上会误补(已在 _v479IsMonthTitleLine 处豁免)。
+      //   月标题的太阳是【流月】值, 加「本命/你的」即为语义错误(本命太阳只有一个固定星座), 故一律剥离。
+      //   本处为「统一出口」, 保证任意来源的措辞不一都在最后一道被拉齐; 幂等。
+      const _w0 = line;
+      if (lang === 'zh') {
+        line = line.replace(/(?:\u4f60\u7684|\u547d\u4e2d|\u672c\u547d)\s*(?=(?:\u592a\u9633|\u6708\u4eae|\u6c34\u661f|\u91d1\u661f|\u706b\u661f|\u6728\u661f|\u571f\u661f|\u5929\u738b\u661f|\u6d77\u738b\u661f|\u51a5\u738b\u661f|\u4e0a\u5347|\u4e2d\u5929))/g, '');
+      } else {
+        line = line.replace(new RegExp('\\b(?:your|her|his|my|our|their|natal|natales?)\\b\\s*(?=(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto|Sol|Luna)\\b)', 'gi'), '');
+      }
+      if (line !== _w0) wording++;
       if (line !== lines[r]) { lines[r] = line; touched++; }
     }
   }
-  if (touched) console.log(`[V478b] ${lang} 年报月标题逐月真值锁: 重写 ${touched} 行`);
+  if (touched || wording) console.log(`[V478b] ${lang} \u5e74\u62a5\u6708\u6807\u9898\u9010\u6708\u771f\u503c\u9501: \u91cd\u5199 ${touched} \u884c | V479 \u63aa\u8f9e\u5f52\u4e00 ${wording} \u884c`);
   return lines.join('\n');
 }
 
@@ -5756,7 +5786,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v480:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v481:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8956,7 +8986,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v480:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v481:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9547,7 +9577,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v480:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v481:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

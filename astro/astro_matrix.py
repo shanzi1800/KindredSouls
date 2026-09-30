@@ -714,7 +714,7 @@ def compute_moon_ingresses(year: int, month: int, tz_str: str = 'Asia/Ho_Chi_Min
     curr = start_dt
     last_sign = None
     while curr < end_dt:
-        utc = curr.astimezone(pytz.utc)
+        utc = curr.astimezone(_utc_tzinfo())   # 🛡️ V479: 修 V476 漏抹的裸 pytz 引用(模块级只剩 shim 内的 _pytz) → 此前必抛 NameError, moon-ingress 静默失败
         jd = swe.julday(utc.year, utc.month, utc.day, utc.hour + utc.minute / 60.0)
         xx, _ = swe.calc_ut(jd, swe.MOON)
         sign_idx = int(xx[0] // 30) % 12
