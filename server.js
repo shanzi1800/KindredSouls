@@ -5648,7 +5648,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v476:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v477:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -8836,7 +8836,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v476:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v477:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9426,7 +9426,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v476:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v477:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10070,8 +10070,102 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         //   三掷全败则交付最长稿(不拦用户),但绝不写入缓存(writeToCache 同步加挂同闸门),并大声留痕。
         try {
           const _maxT = reportType === 'yearly' ? 48000 : 8000;
-          let _full = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _maxT, reportType });
-          if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _full = _full.split(_t).join(_v);
+          // 🛡️ V477b: 非月报(yearly/once) MISS 由「callAI 生成完整篇 → _safeChunk 批量推流」
+          //   改为【真·流式】——根治 V411 遗留的「干等 40+ 秒、76 个块全挤在最后 0.6 秒到达、
+          //   用户观感像命中缓存一次性吐出」的假流式体感。设计纪律:
+          //   ① 通道1 = DeepSeek 直链 SSE 逐 token 转发(sampling 与 callAI 年报一致:
+          //      temperature 0 + seed 确定性、零惩罚、max_tokens 48000),通道纪律不变(DeepSeek 必须优先)。
+          //   ② 边流边【无损】累积 _yrFull(只做字面 \n/字面 emoji 还原/U+FFFD 清除,绝不改动字词边界);
+          //      有损清洗仍全部留给末尾 sanitized 终稿,保证流式拼接字节数 == 终稿。
+          //   ③ 流毕过 V475 完整度闸门 assessYearlyReportIntegrity;合格即采用(用户已实时看到真流式)。
+          //   ④ 不合格 → 通道2 DeepSeek(0.7 无种子重掷) → 通道3 Gemini(末位后备)(均非流式);
+          //      其一合格则用其结果覆盖 _full → 末尾 sanitized 事件整篇替换前端所见
+          //      (前端 V419「终稿优先」+ V476「CJK 密度守卫」已承接)。
+          //   ⑤ 三掷全败 → 交付最长稿 + _yearlyIntegrityFailed(不写缓存)。流式通道彻底失败 → callAI 非流式兜底。
+          const _yrEmit = (t) => {
+            if (!t) return;
+            try {
+              let _out;
+              if (lang === 'vi') {
+                try {
+                  const _j = { text: t };
+                  _j.text = fixVietnameseCorruption(_j.text);
+                  _j.text = enforceRiskThreshold(_j.text, lang);
+                  _out = 'data: ' + JSON.stringify(_j) + '\n\n';
+                } catch (e) { _out = 'data: ' + JSON.stringify({ text: t }) + '\n\n'; }
+              } else {
+                _out = 'data: ' + JSON.stringify({ text: t }) + '\n\n';
+              }
+              res.write(Buffer.from(_out, 'utf-8'));
+              if (typeof res.flush === 'function') res.flush();
+            } catch (e) {}
+          };
+          let _full = '';
+          let _yrStreamed = false;   // 通道1 是否真流式成功
+          try {
+            const _yrResp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
+              body: JSON.stringify({
+                model: 'deepseek-flash', thinking: { type: 'disabled' },
+                messages: [{ role: 'system', content: prompt.system }, { role: 'user', content: prompt.user }],
+                max_tokens: _maxT, temperature: 0, seed: seedFromUserPrompt(prompt.user),
+                frequency_penalty: 0, presence_penalty: 0, repetition_penalty: 1,
+                stream: true, stop: ['===END_OF_REPORT==='],
+              }),
+              signal: controller.signal,
+            });
+            if (!_yrResp.ok) throw new Error('DeepSeek HTTP ' + _yrResp.status);
+            const _yrReader = _yrResp.body.getReader();
+            const _yrDec = new StringDecoder('utf8');
+            let _yrBuf = '';
+            let _yrRunaway = false;
+            while (!_yrRunaway) {
+              const { done, value } = await _yrReader.read();
+              if (done) { const _tl = _yrDec.end(); if (_tl) _yrBuf += _tl; } else { _yrBuf += _yrDec.write(value); }
+              const _ls = _yrBuf.split('\n');
+              _yrBuf = _ls.pop() || '';
+              for (const _ln of _ls) {
+                if (!_ln.startsWith('data: ')) continue;
+                const _d = _ln.slice(6).trim();
+                if (!_d || _d === '[DONE]') continue;
+                let _txt = '';
+                try { _txt = JSON.parse(_d).choices?.[0]?.delta?.content || ''; } catch (e) { continue; }
+                if (!_txt) continue;
+                // ── 无损清洗层(绝不改动字词边界) ──
+                _txt = _txt
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\ud83d ?\\udd2e/g, '🔮')
+                  .replace(/\\ud83d ?\\udfe2/g, '🟢')
+                  .replace(/\\ud83d ?\\udd34/g, '🔴')
+                  .replace(/\\ud83d ?\\udd35/g, '🔵')
+                  .replace(/\\u26a0 ?\\ufe0f/g, '⚠️')
+                  .replace(/\uFFFD/g, '').replace(/�/g, '');
+                if (!_txt) continue;
+                _full += _txt;
+                _yrEmit(_txt);
+                // 失控护栏: 年报正常 ≤2.5 万字, 超 6 万字判定模型打转 → 断流(不整份复读)
+                if (_full.length > 60000) {
+                  console.warn('[V477b] 年报流式超长(' + _full.length + '字), 判定失控断流');
+                  _yrRunaway = true;
+                  break;
+                }
+              }
+              if (done) break;
+            }
+            if (!_full.trim()) throw new Error('stream produced empty text');
+            _yrStreamed = true;
+            if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _full = _full.split(_t).join(_v);
+            console.log('[V477b] 年报真流式完成: ' + _full.length + ' 字');
+          } catch (_yrErr) {
+            console.warn('[V477b] 年报流式通道失败, 降级 callAI(非流式): ' + (_yrErr && _yrErr.message));
+          }
+          if (!_yrStreamed) {
+            // 兜底: 通道1 流式失败 → 原有 callAI 非流式生成 + 分块推流(保证用户至少看到内容)
+            _full = await callAI(prompt.system, prompt.user, process.env, { maxTokens: _maxT, reportType });
+            if (_tokMap) for (const [_t, _v] of Object.entries(_tokMap)) _full = _full.split(_t).join(_v);
+            for (const _c of _safeChunk(_full || '', 500)) _yrEmit(_c);
+          }
 
           if (reportType === 'yearly') {
             const _judge = (t) => assessYearlyReportIntegrity(t, { lang });
@@ -10139,23 +10233,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
             }
           }
 
-          const _chunks = _safeChunk(_full || '', 500);
-          for (const _c of _chunks) {
-            if (!_c) continue;
-            let _out;
-            if (lang === 'vi') {
-              try {
-                const _j = { text: _c };
-                _j.text = fixVietnameseCorruption(_j.text);
-                _j.text = enforceRiskThreshold(_j.text, lang);
-                _out = 'data: ' + JSON.stringify(_j) + '\n\n';
-              } catch (e) { _out = 'data: ' + JSON.stringify({ text: _c }) + '\n\n'; }
-            } else {
-              _out = 'data: ' + JSON.stringify({ text: _c }) + '\n\n';
-            }
-            res.write(Buffer.from(_out, 'utf-8'));
-            if (typeof res.flush === 'function') res.flush();
-          }
+          // 🛡️ V477b: 推流已于上方完成(真流式逐 token / 兜底 _safeChunk 分块二选一),
+          //   此处不再重复 _safeChunk 全量推送——否则前端会看到全文复读一遍。
           fullTextCollector += (_full || '');
           geminiFullText = _full || fullTextCollector;
         } catch (e2) {
