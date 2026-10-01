@@ -17,6 +17,52 @@
 // 缺月盘自动「重抓一次」验证是否「重试即恢复」（军师判定门槛所需证据）。
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
+import { closureDecls } from './extract_decls.mjs';
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SRC = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf-8');
+
+// 生产审计探针（离线加载, 与线上同一份 server.js）——用于量化 Prompt 4d 的「只降不升」
+function loadProd() {
+  const { source: code } = closureDecls(SRC, ['lockYearlyNonMonthSunRef', 'auditYearlyNonMonthSunRef'], []);
+  const ctx = { console: { log: () => {} }, __exports: {} };
+  vm.createContext(ctx);
+  vm.runInContext(code + '\n__exports.lock = lockYearlyNonMonthSunRef;'
+    + '\n__exports.audit = auditYearlyNonMonthSunRef;', ctx);
+  return ctx.__exports;
+}
+const prod = loadProd();
+
+// 用月标题反构真值矩阵（与 verify_v488_online.mjs 同口径）
+const ZH_SIGN = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座',
+  '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
+const EN_SIGN = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio',
+  'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+function matrixFromHeads(text) {
+  const months = [];
+  const seen = new Set();
+  text.split('\n').forEach((l) => {
+    const m = l.match(/^#{1,6}\s*(\d{4})年(\d{1,2})月[^\n]*?太阳\s*([\u4e00-\u9fa5]{2,3}座)\s*第\s*(\d+)\s*宫/);
+    if (!m) return;
+    const key = Number(m[1]) * 12 + Number(m[2]);
+    if (seen.has(key)) return;
+    seen.add(key);
+    const zi = ZH_SIGN.indexOf(m[3]);
+    if (zi >= 0) months.push({ month_key: `${m[1]}-${String(m[2]).padStart(2, '0')}`, sun: { sign: EN_SIGN[zi], house: Number(m[4]) } });
+  });
+  return { months };
+}
+function auditCounts(text) {
+  const a = prod.audit(text, 'zh', matrixFromHeads(text), 'yearly');
+  const before = text;
+  const after = prod.lock(text, 'zh', matrixFromHeads(text), 'yearly');
+  let fixedLines = 0;
+  const A = before.split('\n'), B = after.split('\n');
+  for (let i = 0; i < Math.max(A.length, B.length); i++) if ((A[i] || '') !== (B[i] || '')) fixedLines++;
+  return { warn2: a ? a.warn2 : 0, warn3: a ? a.warn3 : 0, fixed: after === text ? 0 : fixedLines };
+}
 
 const OUT_DIR = '/tmp/v489sample';
 const RESULT_JSON = path.join(OUT_DIR, 'results.json');
@@ -123,15 +169,17 @@ for (const chart of batch) {
   process.stdout.write(`→ ${chart.name} ${chart.birthDate} ${chart.birthTime} @${chart.tz} ... `);
   const r1 = await fetchOnce(chart);
   const m1 = measure(r1.text);
+  const a1 = auditCounts(r1.text);
   fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.txt`), r1.text);
   fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.raw`), r1.raw);
 
   const rec = {
     name: chart.name, birthDate: chart.birthDate, birthTime: chart.birthTime, tz: chart.tz,
     httpStatus: r1.httpStatus, err: r1.err, hasDone: r1.hasDone, sec: r1.sec,
-    chars: r1.text.length, ...m1, retry: null,
+    chars: r1.text.length, ...m1, audit: a1, retry: null,
   };
-  console.log(`HTTP ${r1.httpStatus} · ${r1.sec}s · ${r1.text.length} 字 · 月标题 ${m1.headsSun}/${m1.headsAny} · [DONE] ${r1.hasDone ? 'Y' : 'N'}`);
+  console.log(`HTTP ${r1.httpStatus} · ${r1.sec}s · ${r1.text.length} 字 · 月标题 ${m1.headsSun}/${m1.headsAny}`
+    + ` · [DONE] ${r1.hasDone ? 'Y' : 'N'} · 探针二级 ${a1.warn2}/三级 ${a1.warn3}/纠正行 ${a1.fixed}`);
 
   const incomplete = m1.headsSun !== 12 || m1.months !== 12;
   if (incomplete) {
@@ -139,7 +187,7 @@ for (const chart of batch) {
     const r2 = await fetchOnce(chart);
     const m2 = measure(r2.text);
     fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.retry.txt`), r2.text);
-    rec.retry = { httpStatus: r2.httpStatus, hasDone: r2.hasDone, sec: r2.sec, chars: r2.text.length, ...m2 };
+    rec.retry = { httpStatus: r2.httpStatus, hasDone: r2.hasDone, sec: r2.sec, chars: r2.text.length, ...m2, audit: auditCounts(r2.text) };
     console.log(`  ↻ 重抓 HTTP ${r2.httpStatus} · ${r2.sec}s · ${r2.text.length} 字 · 月标题 ${m2.headsSun}/${m2.headsAny}`
       + ` ⇒ ${m2.headsSun === 12 && m2.months === 12 ? '✅ 重试即恢复' : '❌ 仍缺月'}`);
   }
@@ -156,19 +204,28 @@ const bad = valid.filter((r) => r.headsSun !== 12 || r.months !== 12);
 const recovered = bad.filter((r) => r.retry && r.retry.headsSun === 12 && r.retry.months === 12);
 const stable = bad.filter((r) => !(r.retry && r.retry.headsSun === 12 && r.retry.months === 12));
 
-console.log('\n' + '═'.repeat(100));
-console.log('盘号   生辰          时区              结果   月标题(真值/宽松)  字数   耗时  [DONE]  重抓');
+console.log('\n' + '═'.repeat(112));
+console.log('盘号   生辰          时区              结果   月标题(真值/宽松)  字数   耗时  [DONE]  探针二级/三级  重抓');
 for (const r of all) {
   const ok = r.headsSun === 12 && r.months === 12;
+  const a = r.audit || { warn2: 0, warn3: 0 };
   console.log(`${r.name}  ${r.birthDate}  ${r.tz.padEnd(17)}${ok ? '✅齐备' : '❌缺月'}  `
     + `${String(r.headsSun).padStart(2)}/${String(r.headsAny).padStart(2)}            `
     + `${String(r.chars).padStart(6)}  ${String(r.sec).padStart(4)}s  ${r.hasDone ? 'Y' : 'N'}      `
+    + `${String(a.warn2).padStart(2)}/${String(a.warn3).padStart(2)}            `
     + (r.retry ? (r.retry.headsSun === 12 && r.retry.months === 12 ? '✅恢复' : '❌仍缺') : '-'));
 }
-console.log('═'.repeat(100));
+console.log('═'.repeat(112));
 console.log(`有效盘 ${valid.length} / 抓取 ${all.length}（HTTP≠200 或产物过短者不计入分母）`);
 console.log(`初次缺月 ${bad.length} 盘 ⇒ 缺月率 ${valid.length ? (100 * bad.length / valid.length).toFixed(1) : '-'}%`);
 console.log(`重抓恢复 ${recovered.length} 盘 · 稳定缺月 ${stable.length} 盘 ⇒ 稳定缺月率 ${valid.length ? (100 * stable.length / valid.length).toFixed(1) : '-'}%`);
+const sumW2 = valid.reduce((s, r) => s + ((r.audit && r.audit.warn2) || 0), 0);
+const sumW3 = valid.reduce((s, r) => s + ((r.audit && r.audit.warn3) || 0), 0);
+const sumFx = valid.reduce((s, r) => s + ((r.audit && r.audit.fixed) || 0), 0);
+const hitPlates = valid.filter((r) => r.audit && (r.audit.warn2 + r.audit.warn3) > 0).length;
+console.log(`审计探针汇总（Prompt 4d「前堵」有效性指标）: 二级告警 ${sumW2} 处 / 三级告警 ${sumW3} 处`
+  + ` / 一级纠正行 ${sumFx} ⇒ 命中盘 ${hitPlates}/${valid.length}（${valid.length ? (100 * hitPlates / valid.length).toFixed(0) : '-'}%）`);
+console.log(`  ⚠️ 该指标「只降不升」才是 4d 收紧生效的证据; 若纠正行上升而最终产物已正确, 属后锁正常接管`);
 if (bad.length) {
   console.log('\n缺月明细:');
   for (const r of bad) {

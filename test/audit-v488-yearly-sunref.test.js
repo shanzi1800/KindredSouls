@@ -313,11 +313,12 @@ test('⑨ 接线 4 处, 且每处紧随 lockYearlyOuterPlanetsYear 之后', () =
 // ⑩ Prompt 侧(军师决策④) + 决策③(仅 ZH)
 // ══════════════════════════════════════════════════════════════════════════
 test('⑩ Prompt: zh 含「非月段引用流年太阳必须带月份锚点」结构规则(不含可照抄范例)', () => {
-  assert.ok(/V488 机械判据/.test(ZH), 'zh Prompt 缺少 V488 机械判据标记');
+  // ⚠️ 本判据只断言**意图**(不锁旧原句): V488c 收紧 4d 措辞后, 原句级断言会假红。
+  assert.ok(/V488[^\n]{0,12}机械判据/.test(ZH), 'zh Prompt 缺少 V488 机械判据标记');
   assert.ok(/非月度章节/.test(ZH), 'zh Prompt 未定义「非月度章节」');
-  assert.ok(/必须在该引用之前紧邻处显式给出对应的发生月份/.test(ZH), 'zh Prompt 缺「前置月份锚点」硬规则');
-  assert.ok(/严禁把本命太阳的星座套用到流年太阳上/.test(ZH), 'zh Prompt 缺「Transit/Natal 漂移」禁令');
-  assert.ok(/本规则只约束结构，不提供任何可照抄的句子/.test(ZH), 'zh Prompt 缺自保护声明');
+  assert.ok(/必须在该次?引用之前紧邻处(?:显式)?给出对应的发生月份/.test(ZH), 'zh Prompt 缺「前置月份锚点」硬规则');
+  assert.ok(/(严禁把本命太阳的星座套用到流年太阳上|严禁借用本命太阳)/.test(ZH), 'zh Prompt 缺「Transit/Natal 漂移」禁令');
+  assert.ok(/本规则只约束[^\n]{0,16}不提供任何可照抄的句子/.test(ZH), 'zh Prompt 缺自保护声明');
   for (const bad of PROD_WORST) assert.ok(!ZH.includes(bad), `zh Prompt 出现生产复读句面「${bad.slice(0, 14)}…」`);
   for (const bad of BANNED_SKELETON) assert.ok(!ZH.includes(bad), `zh Prompt 复述了被禁骨架「${bad}」`);
 });
