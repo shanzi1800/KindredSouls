@@ -103,6 +103,13 @@ for (const b of blocks) {
 }
 const ovSk = skelStat(ovFirst);
 
+// 概览首句是否**误取**了「风控主线分配表」的项(三张表串用) —— V487 首验实测 3/12 月中招
+const CRISIS_KEYS = ['变现难度', '投入产出比', '信息真伪', '隐性债务', '税务与合规', '跨境', '人情债', '资金共管', '家庭财务', '创意项目'];
+const lensMisread = ovFirst.filter((s) => CRISIS_KEYS.some((k) => s.includes(k))).length;
+// 镜头表命中率(粗匹配: 首句是否落在某个镜头语义域内)
+const LENS_KEYS = ['周转速度', '账期', '配置比例', '再平衡', '隐性溢价', '变现测试', '支出结构', '订阅式', '应收账款', '回款周期', '议价', '知识变现', '对冲', '再融资', '精力预算', '期限匹配'];
+const lensHit = ovFirst.filter((s) => LENS_KEYS.some((k) => s.includes(k))).length;
+
 // 断路器段首句（"*断路器警告*：" 之后的完整句）
 const cbFirst = [];
 for (const b of blocks) {
@@ -146,9 +153,11 @@ const LEAK = /(?:风控|风险)\s*(?:切入)?\s*(?:主线|角度|视角|重点|�
 const leakage = (text.match(new RegExp(LEAK.source, 'g')) || []).length;
 
 const R = [];
-const row = (name, cur, base, pass) => R.push(`${pass ? '✅' : '❌'} ${name.padEnd(30)} 当前 ${String(cur).padStart(3)}  |  V486b 基线 ${String(base).padStart(3)}`);
+const row = (name, cur, base, pass) => R.push(`${pass ? '✅' : '❌'} ${name.padEnd(30)} 当前 ${String(cur).padStart(3)}  |  上轮基线 ${String(base).padStart(3)}`);
 
 row('概览首句 · 最大同骨架月数', ovSk.max, 11, ovSk.max <= 4);
+row('概览首句 · 命中镜头表 · 月数', lensHit, 0, lensHit >= 8);
+row('概览首句 · 误取风控主线表 · 月数', lensMisread, 3, lensMisread <= 1);
 row('断路器段 · 最大同骨架月数', cbSk.max, 12, cbSk.max <= 4);
 row('断路器段 · 含「绝对禁止」的月数', cbBannedMonths, 12, cbBannedMonths <= 4);
 row('窗口指令 · 最大同骨架月数', wnSk.max, 11, wnSk.max <= 4);

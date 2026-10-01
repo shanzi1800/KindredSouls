@@ -5275,7 +5275,7 @@ function buildYearlyLensFrameworkBlock() {
     + '同样按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n'
     + rows(_V487_WINDOW_FRAMES)
     + '\n\n【V487 机械判据 — 与前文所有铁律同级, 违反即视为不合格品】\n'
-    + '1. 【概览首句必须从「本月叙述镜头」切入】12 个月的【月度财富概览】首句, 必须直接以「月度叙述镜头分配表」中该月对应的那一项作为切入主题(资金周转速度／资产配置比例／合同隐性溢价／回款周期 等具体财务角度), 并给出本月的金钱后果判断。严禁采用"先点出领域名词、再用一个解释性从句说明该领域意味着什么"的同构起手骨架; 严禁 12 个月复用同一句首句结构。每个月必须让人一眼看出切入点不同。\n'
+    + '1. 【概览首句必须从「本月叙述镜头」切入】12 个月的【月度财富概览】首句, 必须直接以「月度叙述镜头分配表」中该月对应的那一项作为切入主题(资金周转速度／资产配置比例／合同隐性溢价／回款周期 等具体财务角度), 并给出本月的金钱后果判断。严禁采用"先点出领域名词、再用一个解释性从句说明该领域意味着什么"的同构起手骨架; 严禁 12 个月复用同一句首句结构。每个月必须让人一眼看出切入点不同。⚠️ 只能取自「月度叙述镜头分配表」, 严禁与「第二章 风控主线分配表」「风控表达框架分配表」互相串用(三张表用途不同, 取错表即视为不合格品)。\n'
     + '2. 【断路器段必须使用「本月风控表达框架」】12 个月的 🔴[财务黑天鹅日] 断路器警告段, 必须按「风控表达框架分配表」中该月对应的结构组织叙述。严禁使用无条件的命令式禁令句作为风险收尾; 严禁 12 个月复用同一句风险结论、同一个收尾动词或同一个比喻意象。\n'
     + '3. 【窗口执行指令必须使用「本月窗口表达框架」】12 个月的 🟢[财富高峰窗口] 的 *执行指令* 一句, 必须按「窗口表达框架分配表」中该月对应的结构开句。严禁 12 个月让这一句共用同一个引导骨架或同一个收尾判断。\n'
     + '4. 【本表仅为写作指令】严禁把「叙述镜头」「风控表达框架」「窗口表达框架」这类字段名、分配表编号或本表任何整句原样写进正文。';
@@ -5386,20 +5386,28 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：]\s*/g, '');
   // ③ 兜底: 极少数把字段名单独成行/带 markdown 强调的形态
   t = t.replace(/^[ \t]*\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：][^\n]*$\n?/gm, '');
-  // ── V487 新增字段(叙述镜头 / 风控表达框架)────────────────────────────
-  // ④ 【叙述镜头】字段形态 —— 字段名 + 冒号删除, **保留其后的实质内容**
-  //    取值(如「现金流周转速度与账期节奏」)是真正要写进正文的角度, 属内容 ⇒ 与②同法保留。
-  t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:叙述|叙事|概览)\s*(?:镜头|视角|切入点)\*{0,2}\s*[:：]\s*/g, '');
-  // ⑤ 【结构性框架】字段(风控表达框架 / 窗口表达框架) —— 字段名 + 框架代号一并删除
-  //    代号来自 24 项闭集(条件触发式/时间窗式/动作指令式/…), 是**机制而非内容**,
-  //    留着只会在正文里显得突兀; 且均为人工词, 正文不会自然出现。
-  t = t.replace(new RegExp('\\*{0,2}(?:本月|当月)?(?:专属|内部)?\\s*(?:风控|风险|窗口|高峰|执行)\\s*(?:表达)?\\s*(?:指令)?\\s*框架\\*{0,2}\\s*[:：]\\s*(?:' + _V487_RFW_CODES.join('|') + ')?\\s*[，,。；;]?\\s*', 'g'), '');
-  // ⑥ 闭集代号裸残留(LLM 把代号单独写进句子/小标题时)
+  // ── V487 新增字段(叙述镜头 / 风控表达框架 / 窗口表达框架)────────────────────────
+  // ⚠️ 必须优先处理「长形态」: 与 server 端注入串同形 ——
+  //    `★ 内部参考·本月窗口表达框架(仅供你组织…): 动作指令式 —— 开句直接给出动作。`
+  //    压力测试实测: 只写短形态规则会漏网(前缀 ★ / 内部参考 / 括号说明全都匹配不上)。
+  const _PFX487 = '\\*{0,2}[★✦]?\\s*(?:(?:内部参考|内部|专属)\\s*[·・]?\\s*)?(?:本月|当月)?\\s*';
+  const _PAREN487 = '(?:\\s*[（(][^)）\\n]{0,60}[)）])?';
+  const _SEP487 = '\\*{0,2}\\s*[:：]\\s*';
+  // ④a 框架类字段(风控/窗口/高峰/执行): 前缀 + 括号说明 + 冒号 一并删除(其后是纯机制)
+  t = t.replace(new RegExp(_PFX487 + '(?:风控|风险|窗口|高峰|执行)\\s*(?:表达)?\\s*(?:指令)?\\s*框架' + _PAREN487 + _SEP487, 'g'), '');
+  // ④b 框架的「代号 + 结构说明」(如 `条件触发式 —— 先给触发条件, 再给后果判断。`): 整段删除
+  //    ⚠️ 仅在**紧跟闭集代号**时才删 —— 绝不做「见到 —— 就删」(正文里 —— 是正常破折号, V484 类事故面)
+  t = t.replace(new RegExp('(?:' + _V487_RFW_CODES.join('|') + ')\\s*——\\s*[^。；\\n]{0,80}[。；]?\\s*', 'g'), '');
+  // ④c 闭集代号裸残留(LLM 把代号单独写进句子/小标题时) —— 代号均为人工词, 正文不会自然出现
   t = t.replace(new RegExp('(?:' + _V487_RFW_CODES.join('|') + ')', 'g'), '');
-  // ⑦ 分配表名/编号残留(极少数把表头抄进正文的形态)
+  // ④d 镜头类字段(叙述/叙事/概览): 只删字段名(含长形态前缀), **保留其后的内容**
+  //     取值(如「现金流周转速度与账期节奏」)是真正要写进正文的角度, 属内容 ⇒ 与 V485b② 同法保留。
+  t = t.replace(new RegExp(_PFX487 + '(?:叙述|叙事|概览)\\s*(?:镜头|视角|切入点)' + _PAREN487 + _SEP487, 'g'), '');
+  // ⑤ 分配表名/编号残留(极少数把表头抄进正文的形态)
   t = t.replace(/【?\s*📌?\s*第[一二三四]章\s*(?:月度)?(?:叙述镜头|风控表达框架|窗口表达框架)分配表[^】\n]*】?/g, '');
-  // 清理可能因删除产生的孤立连接词/空标点
-  t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ');
+  // 清理可能因删除产生的孤立连接词/空标点/行首逗号
+  t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ')
+    .replace(/(^|[\n。；;：:])\s*[，,、]\s*/g, '$1');
   if (t !== before) console.log(`[V485b] ${lang} 年报 Prompt 字段泄漏清理: 清除 ${(before.length - t.length)} 字`);
   return t;
 }
@@ -6461,7 +6469,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v497:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v498:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9710,7 +9718,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v497:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v498:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10331,7 +10339,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v497:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v498:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
