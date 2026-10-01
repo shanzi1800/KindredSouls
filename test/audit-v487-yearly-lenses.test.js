@@ -269,7 +269,7 @@ test('⑥ 缓存版本必须 ≥ V487 基线(单调判据, 防每次 bump 假红
   const vers = [...src.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
   assert.ok(vers.length >= 3, `应有多处缓存 key, 实得 ${vers.length}`);
   const cur = Math.max(...vers);
-  assert.ok(cur >= 498, `当前缓存版本应 ≥498(提示词/注入链已变更), 实得 v${cur}`);
+  assert.ok(cur >= 499, `当前缓存版本应 ≥499(提示词/注入链已变更), 实得 v${cur}`);
   assert.ok(vers.filter((v) => v === cur).length >= 3, `当前版本 v${cur} 应出现在 3 处缓存 key`);
 });
 

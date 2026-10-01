@@ -5358,6 +5358,211 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ V488: 年报「非月段·流年太阳引用」真值锁 + 语义漂移审计
+//   病根(2026-10-01 立项调研, 跨 2 盘实证: 可定位真值的非月段流年太阳引用 9 处中 8 处错 = 89%):
+//     非月段(开篇/第一章/第三章/第四章/第五章/最终神谕)是现有真值锁体系的**作用域真空**——
+//     V485 注释原文「只处理年内恒定的 5 颗外行星(木/土/天/海/冥) —— 火星/太阳等逐月变动的
+//     由 V482 月段锁负责」, 而 V482 的作用域**只有月段** ⇒ 非月段的流年太阳**两头都不管**。
+//     1985-06-20 盘实测: 星座全被写成本命太阳星座(双子座)、只改了宫位
+//     ⇒ 即 Natal Sun 的星座被套到 Transit Sun 上(军师所判 Transit/Natal 语义漂移)。
+//   三级治理(军师裁决):
+//     一级 确定性纠正 —— 只改星座词与宫位词(不改句式/不重写其它任何字符), 需同时满足:
+//       ① 行不在任何【月段】区间内(与 V482 同源口径)
+//       ② 句内含「流年/行运」锚点
+//       ③ 引用之前【最近的行星名】必须是「太阳」       ← 归属护栏(一步解决「夹其它行星误伤」)
+//       ④ 该「太阳」前 2 字不含 本命/出生/原生/本盘    ← 本命豁免
+//       ⑤ 存在【前置】月份锚点, 且距引用 ≤ 24 字       ← 只认前置, 天然放行「月份在后」的反例
+//     二级 审计(只检不改) —— 无前置月份锚点的太阳引用, 值不属于本年度 12 个月真值集合 ⇒ 告警
+//     三级 审计(只检不改) —— 句内月份唯一但**位于引用之后**且与引用值冲突 ⇒ 告警
+//        (覆盖军师原报形态「流年太阳在天秤座第11宫，2027年3月将激活…」: 该处 3 月是「激活」的
+//         时间点而非入座时间, 强改会撕裂「激活田宅宫」语义 ⇒ V484 类事故面, 绝不改)
+//   ⚠️ 真值源 = astroMatrix.months[i] 的太阳(与 V482/V485 同源); **禁止**从月标题反构。
+//   ⚠️ 仅 zh + yearly(决策: EN/TH 未做同等密度取证前不推广); 幂等; 改星座必连宫位一起改。
+//   ⚠️ 接线必须紧随 lockYearlyOuterPlanetsYear(后者只管外行星, 无重叠); 二/三级审计由本函数内联执行。
+// ══════════════════════════════════════════════════════════════════
+const _V488_NATAL = /本命|出生|原生|本盘/;
+const _V488_PLANETS = '(太阳|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星|上升|中天)';
+const _V488_MONTH = /(?:\d{4}\s*年)?\s*(\d{1,2})\s*月(?:份)?/g;
+const _V488_MAX_GAP = 24;   // 月份锚点与引用之间的最大字距, 超出视为无关(防"句内远月"错配)
+const _V488_ORD = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+
+// 核心: 返回 { out, fixed, warn2, warn3, log }。纯函数(不修改入参), 不改行数, 幂等。
+function _v488SunRefCore(text, lang, astroMatrix) {
+  if (lang !== 'zh') return null;
+  if (!text || typeof text !== 'string') return null;
+  const months = astroMatrix && astroMatrix.months;
+  if (!Array.isArray(months) || months.length < 12) return null;
+  const signs = _v444Signs(lang);
+  const signWords = _v432AllSignWords(lang).slice().sort((a, b) => b.length - a.length);
+  if (!signs || !signWords.length) return null;
+
+  // ① 逐月太阳真值: 月号优先取 month_key(V483b 月标题真源同口径), 无 month_key 则按序号回退
+  const truth = new Map();
+  months.forEach((m, i) => {
+    const sun = (m && (m.sun || (m.positions && m.positions.Sun))) || null;
+    if (!sun || !sun.sign) return;
+    const zi = SUN_SIGN_EN.indexOf(sun.sign);
+    if (zi < 0 || !signs[zi]) return;
+    let mo = i + 1;
+    const mk = /^(\d{4})-(\d{1,2})$/.exec(String((m && m.month_key) || ''));
+    if (mk) mo = Number(mk[2]);
+    if (mo < 1 || mo > 12 || truth.has(mo)) return;
+    truth.set(mo, { sign: signs[zi], house: Number(sun.house) || 0 });
+  });
+  if (!truth.size) return null;
+  const validSet = new Set([...truth.values()].map((v) => v.sign + '|' + v.house));
+
+  // ② 月段行集合(与 V482 同源: 按【月标题行】切段, 段尾止于下一个 `## ` 章节锚点)
+  const lines = text.split('\n');
+  const heads = [];
+  const seenKey = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!/^#{1,6}\s/.test(ln)) continue;
+    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
+    if (!ym) continue;
+    const mo = Number(ym[2]);
+    if (mo < 1 || mo > 12) continue;
+    const key = Number(ym[1]) * 12 + mo;
+    if (seenKey.has(key)) continue;
+    seenKey.add(key);
+    heads.push({ line: i, key });
+  }
+  if (heads.length < 2) return null;
+  heads.sort((a, b) => a.key - b.key);
+  const inMonth = new Set();
+  heads.forEach((h, n) => {
+    let end = n + 1 < heads.length ? heads[n + 1].line : lines.length;
+    for (let k = h.line + 1; k < end; k++) { if (/^\s*##\s/.test(lines[k])) { end = k; break; } }
+    for (let k = h.line; k < end; k++) inMonth.add(k);
+  });
+
+  const signSrc = '(' + signWords.map(_v444Esc).join('|') + ')';
+  const refSrc = signSrc + '(?:\\s*第\\s*(\\d+|[一二三四五六七八九十]{1,3})\\s*宫)?';
+  const numOfHouse = (w) => {
+    if (/\d/.test(w)) return Number((w.match(/\d+/) || [0])[0]);
+    const o = w.match(/[一二三四五六七八九十]+/);
+    const i = o ? _V488_ORD.indexOf(o[0]) : -1;
+    return i > 0 ? i : NaN;
+  };
+
+  let fixed = 0, warn2 = 0, warn3 = 0;
+  const log = [];
+
+  for (let li = 0; li < lines.length; li++) {
+    if (inMonth.has(li)) continue;                              // ① 非月段
+    const line = lines[li];
+    if (!line || line.indexOf('太阳') < 0) continue;
+    const parts = line.split(/(?<=[。！？])/);
+    let touched = false;
+    for (let pi = 0; pi < parts.length; pi++) {
+      const s = parts[pi];
+      if (!/太阳/.test(s) || !/流年|行运/.test(s)) continue;    // ② 句级流年锚点
+
+      const anchors = [];
+      for (const m of s.matchAll(new RegExp(_V488_MONTH.source, 'g'))) anchors.push({ end: m.index + m[0].length, mo: Number(m[1]) });
+      const refs = [];
+      for (const m of s.matchAll(new RegExp(refSrc, 'g')))
+        refs.push({ start: m.index, len: m[0].length, sign: m[1], house: m[2] ? numOfHouse(m[2]) : null, raw: m[0] });
+      const lastPlanet = (str, pos) => {
+        let r = null;
+        for (const m of str.slice(0, pos).matchAll(new RegExp(_V488_PLANETS, 'g'))) r = { name: m[1], idx: m.index };
+        return r;
+      };
+      const isSunOwned = (str, pos) => {
+        const lp = lastPlanet(str, pos);
+        if (!lp || lp.name !== '太阳') return false;                                     // ③ 归属护栏
+        if (_V488_NATAL.test(str.slice(Math.max(0, lp.idx - 2), lp.idx))) return false;  // ④ 本命豁免
+        return true;
+      };
+
+      let out = s;
+      const paired = new Set();
+      for (let k = refs.length - 1; k >= 0; k--) {                 // 从后往前, 避免位移
+        const ref = refs[k];
+        if (!isSunOwned(s, ref.start)) continue;
+        let a = null;
+        for (const x of anchors) if (x.end <= ref.start && (!a || x.end > a.end)) a = x;
+        if (!a || ref.start - a.end > _V488_MAX_GAP) continue;     // ⑤ 前置月份配对
+        const tv = truth.get(a.mo);
+        if (!tv) continue;
+        paired.add(k);
+        let r = ref.raw, hit = false;
+        if (ref.sign !== tv.sign) {
+          const want = /座$/.test(ref.sign) ? tv.sign : tv.sign.replace(/座$/, '');  // 保留原文形态(有座写座)
+          if (want !== ref.sign) { r = r.replace(ref.sign, want); hit = true; }
+        }
+        if (ref.house != null && tv.house && ref.house !== tv.house) {               // 改星座必连宫位一起改
+          const wantH = /\d/.test(ref.raw) ? ('第' + tv.house + '宫') : ('第' + _V488_ORD[tv.house] + '宫');
+          r = r.replace(/第\s*(?:\d+|[一二三四五六七八九十]{1,3})\s*宫/, wantH);
+          hit = true;
+        }
+        if (hit) {
+          out = out.slice(0, ref.start) + r + out.slice(ref.start + ref.len);
+          fixed++;
+          log.push(`[L${li + 1}] 一级纠正「${ref.raw}」→「${r}」(${a.mo}月真值)`);
+        }
+      }
+      if (out !== s) { parts[pi] = out; touched = true; }
+
+      // 二级审计(只检不改): 无(有效前置)月份锚点的太阳引用, 值不属本年度真值集合 ⇒ 告警
+      const seenRef = new Set();
+      for (const m of out.matchAll(new RegExp(refSrc, 'g'))) {
+        if (m[2] == null) continue;
+        if (!isSunOwned(out, m.index)) continue;
+        const sign = m[1], house = numOfHouse(m[2]);
+        const dup = sign + '|' + house;
+        if (seenRef.has(dup)) continue;
+        seenRef.add(dup);
+        let hasFront = false;
+        for (const x of anchors) if (x.end <= m.index && m.index - x.end <= _V488_MAX_GAP && truth.has(x.mo)) hasFront = true;
+        if (hasFront) continue;                                    // 有前置锚点 ⇒ 归一级口径
+        if (!validSet.has(dup)) {
+          warn2++;
+          log.push(`[L${li + 1}] 二级告警 ⚠️ 太阳「${sign} 第${house}宫」不属本年度任何月份真值(无可靠前置月份锚点)`);
+        }
+      }
+
+      // 三级审计(只检不改): 句内月份唯一但位于引用之后, 且与引用值冲突 ⇒ 语义漂移告警
+      const uniqM = [...new Set([...s.matchAll(new RegExp(_V488_MONTH.source, 'g'))].map((m) => Number(m[1])))];
+      if (uniqM.length === 1 && truth.has(uniqM[0])) {
+        const tv = truth.get(uniqM[0]);
+        refs.forEach((ref, k) => {
+          if (paired.has(k)) return;                               // 已被一级接管
+          if (!isSunOwned(s, ref.start)) return;
+          for (const x of anchors) if (x.end <= ref.start && ref.start - x.end <= _V488_MAX_GAP) return;
+          if (ref.sign !== tv.sign || (ref.house != null && tv.house && ref.house !== tv.house)) {
+            warn3++;
+            log.push(`[L${li + 1}] 三级告警 ⚠️ 语义漂移: 句内 ${uniqM[0]} 月真值「${tv.sign} 第${tv.house}宫」, 但太阳引用写作「${ref.raw}」`);
+          }
+        });
+      }
+    }
+    if (touched) lines[li] = parts.join('');
+  }
+
+  if (fixed) console.log(`[V488] ${lang} 年报非月段流年太阳真值锁: 修正 ${fixed} 处`);
+  if (warn2 || warn3) console.log(`[V488-AUDIT] ${lang} 年报非月段流年太阳语义漂移审计(只检不改): 二级 ${warn2} 处 / 三级 ${warn3} 处`);
+  log.slice(0, 4).forEach((x) => console.log(`[V488]   ${x}`));
+  return { out: lines.join('\n'), fixed, warn2, warn3, log };
+}
+
+// 一级纠正出口(含内联二/三级审计日志) —— 接线必须紧随 lockYearlyOuterPlanetsYear。
+function lockYearlyNonMonthSunRef(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  const r = _v488SunRefCore(text, lang, astroMatrix);
+  return r ? r.out : text;
+}
+
+// 只读审计出口(在线探针 / 单测直调): 不返回改写文本, 只回告警计数。
+function auditYearlyNonMonthSunRef(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return null;
+  const r = _v488SunRefCore(text, lang, astroMatrix);
+  if (!r) return null;
+  return { fixed: 0, warned: r.warn2 + r.warn3, warn2: r.warn2, warn3: r.warn3, log: r.log };
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V485b: 年报「Prompt 内部字段泄漏」清理
 //   病根(2026-10-01 生产实测, 上线 V485 黑天鹅差异化后立即暴露):
 //     为使黑天鹅逐月差异化, V485 在 prompt 里注入「★ 本月专属风控切入角度:XXX」,
@@ -6469,7 +6674,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v498:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v499:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9718,7 +9923,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v498:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v499:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9951,6 +10156,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
+        reportContent = lockYearlyNonMonthSunRef(reportContent, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁 + 语义漂移审计(只检不改, 仅日志)
         reportContent = stripYearlyPromptLeakage(reportContent, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
         auditYearlyStyleRepetition(reportContent, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 仅日志)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
@@ -10339,7 +10545,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v498:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v499:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10493,6 +10699,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
         streamText = lockYearlyTransitSigns(streamText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         streamText = lockYearlyOuterPlanetsYear(streamText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
+        streamText = lockYearlyNonMonthSunRef(streamText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(HIT 下发前)
         streamText = stripYearlyPromptLeakage(streamText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
         streamText = dedupYearlyMonthTitles(streamText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(防历史脏缓存 24 行裸奔)
 
@@ -11525,6 +11732,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
           if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
+          if (ft) ft = lockYearlyNonMonthSunRef(ft, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁
           if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
@@ -11579,6 +11787,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
+    cleanedText = lockYearlyNonMonthSunRef(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(落库前)
     cleanedText = stripYearlyPromptLeakage(cleanedText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理(落库前)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
