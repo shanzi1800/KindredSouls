@@ -69,20 +69,31 @@ for (const b of blocks) {
   const ov = b.find((l) => l.includes('月度财富概览'));
   if (!ov) continue;
   const first = (ov.replace(/^.*?\]\*{0,2}[:：]\s*/, '').split(/(?<=[。！？])/)[0] || '')
+    .replace(/[“”"「」][^“”"「」]*[“”"「」]/g, '{Q}')   // ⚠️ 必须吃掉引号内容, 否则会假绿
     .replace(/[\u4e00-\u9fa5]{1,3}座/g, '{SIGN}').replace(/第[\d一二三四五六七八九十]+宫/g, '{HOUSE}').replace(/\s+/g, '');
   const k = first.slice(0, 24);
   skel.set(k, (skel.get(k) || 0) + 1);
 }
 const sameSkeleton = Math.max(0, ...[...skel.values()]);
 
-// 2c 标签错配
+// 2c 标签错配（军师断层形态的精确判据：标签后紧接着写「另一个空间」）
+//    ⚠️ 不能只判「前 30 字是否含自身关键词」—— 线上规范写法会先写本命/流年前缀，
+//    那样会把合规内容误判成错配（本脚本首版就误报了 3 处）。
+const SPACES = ['入口区域', '客厅区域', '卧室区域', '厨房区域', '前台区域', '工位区域', '会议室区域', '财务室'];
 let mismatch = 0;
 const LAB = [
-  { re: /卧室区域[:：]?第四宫\(田宅宫\)/, topic: /卧室/ },
-  { re: /厨房区域[:：]?第二宫\(财帛宫\)与第八宫\(共享资源\)/, topic: /厨房/ },
-  { re: /财务室区域[:：]?第八宫\(共享资源\)/, topic: /财务室|保险柜/ },
+  { re: /卧室区域[:：]?第四宫\(田宅宫\)/, own: '卧室区域' },
+  { re: /厨房区域[:：]?第二宫\(财帛宫\)与第八宫\(共享资源\)/, own: '厨房区域' },
+  { re: /财务室区域[:：]?第八宫\(共享资源\)/, own: '财务室' },
 ];
-lines.forEach((l) => LAB.forEach((L) => { if (L.re.test(l) && !L.topic.test(l.replace(L.re, '').slice(0, 30))) mismatch++; }));
+lines.forEach((l) => LAB.forEach((L) => {
+  if (!L.re.test(l)) return;
+  const parts = l.split(L.re);
+  const tail = parts.length > 1 ? parts[1] : '';
+  const window30 = tail.replace(/[\s*:：]/g, '').slice(0, 40);
+  const other = SPACES.find((s) => s !== L.own && window30.includes(s));
+  if (other) mismatch++;
+}));
 
 const R = [];
 const row = (name, cur, base, pass) => R.push(`${pass ? '✅' : '❌'} ${name.padEnd(30)} 当前 ${String(cur).padStart(3)}  |  V485c 基线 ${String(base).padStart(3)}`);

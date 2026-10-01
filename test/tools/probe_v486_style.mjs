@@ -50,8 +50,11 @@ for (const m of monthBlocks) {
   if (!ov) continue;
   const after = ov.replace(/^.*?月度财富概览\]\*{0,2}[:：]\s*/, '');
   const first = (after.split(/(?<=[。！？])/)[0] || '').replace(/\s+/g, '');
-  // 归一化：把星座/宫位/月份换成占位符，暴露模板骨架
+  // 归一化：把星座/宫位/月份/**引号内的内容**都换成占位符，暴露模板骨架
+  // ⚠️ 必须吃掉引号内容 —— 否则「本月你的财务重心落在"共享资源"」与「…落在"事业"」
+  //    会被当成两个不同骨架，产出假绿（本探针首版就因此漏判 V486b 的换汤不换药）。
   const skel = first
+    .replace(/[“”"「」][^“”"「」]*[“”"「」]/g, '{Q}')
     .replace(/[\u4e00-\u9fa5]{1,3}(座)/g, '{SIGN}')
     .replace(/第[\d一二三四五六七八九十]+宫/g, '{HOUSE}')
     .replace(/\d+/g, '{N}');
@@ -92,21 +95,29 @@ for (const w of ['咒语', '祭坛', '魔法', '蜡烛', '羊皮纸', '水晶', 
 }
 
 // ── E. 第五章标签-正文错配（断层精确判据）──────────────────────
+//   ⚠️ 判据要点(首版两条都错过):
+//     ① 标签可能独占一行(下一行才是正文) ⇒ 必须把「本行 + 下一行」拼起来看;
+//     ② 不能用「前 30 字是否含自身关键词」—— 规范写法会先写本命/流年前缀,
+//        30 字内根本到不了「卧室」两个字 ⇒ 假红。改判「标签后是否先出现**另一个空间**的关键词」。
 P(`\nE. 第五章标签-正文错配审检：`);
+const SPACES = ['入口区域', '客厅区域', '卧室区域', '厨房区域', '前台区域', '工位区域', '会议室区域', '财务室'];
 const LABELS = [
-  { re: /卧室区域[:：]?第四宫\(田宅宫\)/, topic: /卧室/ },
-  { re: /厨房区域[:：]?第二宫\(财帛宫\)与第八宫\(共享资源\)/, topic: /厨房/ },
-  { re: /财务室区域[:：]?第八宫\(共享资源\)/, topic: /财务室|保险柜/ },
+  { re: /卧室区域[:：]?第四宫\(田宅宫\)/, own: '卧室区域' },
+  { re: /厨房区域[:：]?第二宫\(财帛宫\)与第八宫\(共享资源\)/, own: '厨房区域' },
+  { re: /财务室区域[:：]?第八宫\(共享资源\)/, own: '财务室' },
 ];
 let mismatch = 0;
 lines.forEach((l, i) => {
   for (const L of LABELS) {
     if (!L.re.test(l)) continue;
-    const tail = l.replace(L.re, '').replace(/^\*{0,2}[:：]\s*/, '').slice(0, 30);
-    if (!L.topic.test(tail)) { mismatch++; P(`   ⚠️ L${i + 1} 标签与紧随正文错配: ${l.slice(0, 60)}`); }
+    const joined = (l + ' ' + (lines[i + 1] || '')).split(L.re);
+    const tail = (joined.length > 1 ? joined.slice(1).join('') : '').replace(/[\s*:：]/g, '');
+    const window60 = tail.slice(0, 60);
+    const other = SPACES.find((s) => s !== L.own && window60.includes(s));
+    if (other) { mismatch++; P(`   ⚠️ L${i + 1} 标签后先出现「${other}」: ${l.slice(0, 56)}`); }
   }
 });
-P(`   错配数 = ${mismatch}`);
+P(`   错配数 = ${mismatch}（判据: 标签后 60 字内先出现另一个空间名）`);
 const legacy = (text.match(/卧室区域:第四宫\(田宅宫\)[:：][^\n]{0,40}?厨房/g) || []).length;
 P(`   军师原报「卧室标签后紧跟厨房」形态 = ${legacy} 次`);
 
