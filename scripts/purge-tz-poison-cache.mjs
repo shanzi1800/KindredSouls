@@ -34,9 +34,11 @@ const POISON_TZ_PATTERNS = [
   'wealth:*Argentina/Ushuaia*',   // 安全：也一并清（旧键可能存的是未规范化的写法）
 ];
 
-// ② 旧版本前缀（输出链变更前，时区未经 V490 校验）
+// ② 旧版本前缀（入参契约/输出链变更前的产物，其 tz 未经 V490 校验、其坐标未经 V490b 校验）
 const STALE_VERSION_PATTERNS = [
   'wealth:v504:*',
+  'wealth:v505:*',        // 🛡️ V490b: 键曾由**未校验坐标**经 Number(lat||13.75) 派生（含 null→0.0000 的洗白面）
+  'wealth:v505-v2:*',
   'wealth:v116-v2:*',
 ];
 

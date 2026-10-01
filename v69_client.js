@@ -107,6 +107,28 @@ function _invalidTzError(tz, cause) {
   return err;
 }
 
+// ── 🛡️ V490b: 非法坐标的识别与上抛 ──────────────────────────────────────────
+// 历史行为：`String(null)` = "null" → argparse float() 失败（**退出码 2**，非 3）
+// ⇒ 本函数不存在 ⇒ 落入下方 `Falling back to Cancer rising` ⇒ **伪造巨蟹座上升出盘**。
+// 另有 `lat=91` 越界却照常算盘返回 200 的静默路。二者与 V490 的「静默退 UTC」同构。
+const V490B_COORD_EXIT_CODE = 4;
+
+function _isInvalidCoordError(e) {
+  if (!e) return false;
+  if (Number(e.status) === V490B_COORD_EXIT_CODE) return true;
+  const blob = `${e.stderr || ''}\n${e.stdout || ''}\n${e.message || ''}`;
+  return /INVALID_COORDINATES/.test(blob);
+}
+
+function _invalidCoordError(lat, lon, cause) {
+  const err = new Error(`Invalid coordinates: lat=${lat}, lon=${lon}`);
+  err.code = 'INVALID_COORDINATES';
+  err.lat = lat;
+  err.lon = lon;
+  if (cause) err.cause = cause;
+  return err;
+}
+
 // ── Compute Astro Matrix via spawnSync ──────────────────────────────────────
 /**
  * 🛠️ V134: 用 execSync 直调 Python 脚本，避免依赖独立 8001 服务
@@ -144,6 +166,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
     }).trim();
   } catch (e) {
     if (_isInvalidTzError(e)) throw _invalidTzError(tz, e);  // 🛡️ V490: 时区无效绝不降级 Cancer（伪造上升）
+    if (_isInvalidCoordError(e)) throw _invalidCoordError(lat, lon, e);  // 🛡️ V490b: 坐标非法同样绝不降级
     console.warn('[V134] Natal computation failed:', e.message, '\nFalling back to Cancer rising');
     natalResult = JSON.stringify({ rising_sign: 'Cancer', sun_sign: 'Cancer' });
   }
@@ -198,6 +221,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
   } catch (e) {
     console.error('[V134] execSync FAILED:', e.message);
     if (_isInvalidTzError(e)) throw _invalidTzError(tz, e);  // 🛡️ V490: 时区无效 → 带 code 上抛
+    if (_isInvalidCoordError(e)) throw _invalidCoordError(lat, lon, e);  // 🛡️ V490b: 坐标非法 → 带 code 上抛
     throw e;
   }
 
@@ -318,6 +342,7 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
     // 🛡️ V490: 时区无效**必须上抛**给端点转 HTTP 400 —— 若照旧 `return null`，
     //   上层会当"引擎暂时不可用"继续出盘（静默假绿），正是本次立项要消灭的缺陷。
     if (e && e.code === 'INVALID_TIMEZONE') throw e;
+    if (e && e.code === 'INVALID_COORDINATES') throw e;   // 🛡️ V490b: 坐标非法同样上抛（不得 return null）
     console.error('[V134] getAstroMatrix FAILED:', e.message);
     return null;
   }

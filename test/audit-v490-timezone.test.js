@@ -46,6 +46,16 @@ const stripPyComments = (s) => s
   .replace(/'''[\s\S]*?'''/g, '')
   .replace(/^[ \t]*#.*$/gm, '');
 
+/**
+ * 判据⑨ 的判据函数（供测试与注入自测**共用同一口径**）：
+ * natal catch 里「时区错误上抛」必须存在，且排在「降级 Cancer」分支之前。
+ */
+const natalTzGuardOrdered = (src) => {
+  const i = src.search(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/);
+  const j = src.indexOf("console.warn('[V134] Natal computation failed");
+  return i > 0 && j > 0 && i < j;
+};
+
 const serverCode = stripJsComments(serverSrc);
 const v69Code = stripJsComments(v69Src);
 const pyCode = stripPyComments(pySrc);
@@ -194,9 +204,11 @@ describe('V490 源码契约（server.js / v69_client.js / astro_matrix.py）', (
     assert.match(v69Code, /code\s*=\s*'INVALID_TIMEZONE'/, 'v69_client 未定义 INVALID_TIMEZONE 错误码');
     assert.match(v69Code, /_isInvalidTzError/, 'v69_client 缺少时区错误识别函数');
     // natal 降级路径前必须先判时区
-    // ⚠️ 容忍**行内** `//` 注释（本闸门只剥行首注释；行内注释若一并剥会误伤字符串里的 `//`）
-    assert.match(v69Code, /if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);\s*(?:\/\/[^\n]*)?\n\s*console\.warn\('\[V134\] Natal computation failed/,
-      'natal catch 未在降级 Cancer 之前判时区');
+    // ⚠️ 改为**位置式**判据（同一判据函数供注入自测复用）：跨行正则会被"新增的兄弟守卫行"
+    //   （如 V490b 的坐标上抛）挤断 ⇒ 假红。语义才是判据本体：
+    //   **时区上抛必须存在，且必须排在降级 Cancer 之前**（否则时区错误会被降级吞掉）。
+    assert.ok(natalTzGuardOrdered(v69Code),
+      'natal catch 未在降级 Cancer 之前判时区（缺上抛 / 顺序颠倒）');
     // getAstroMatrix 不得把时区错误吞成 null
     assert.match(v69Code, /if\s*\(e\s*&&\s*e\.code\s*===\s*'INVALID_TIMEZONE'\)\s*throw\s*e;/,
       'getAstroMatrix catch 未上抛 INVALID_TIMEZONE');
@@ -286,6 +298,9 @@ describe('V490 端到端（live server，Tier-3 在 LLM 之前返回故无副作
       const post = (p, body) => fetch(`http://127.0.0.1:${PORT}${p}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
+      // ⚠️ 时区 Tier-3（INVALID_TIMEZONE）**只有"无坐标"时才可达** —— 有合法坐标时 Tier-2
+      //   总能按最近邻推定成功（这是 V490 钦定设计）。故本用例**必须**用 lat/lon=null 才测得到，
+      //   且 V490b 的坐标闸门刻意置于 tz 解析**之后**，正是为了不把本层遮蔽成死代码。
       const BAD = { birthDate: '1999-09-09', birthTime: '09:09', lat: null, lon: null, tz: 'Totally/MadeUp', lang: 'zh' };
       for (const p of ['/api/wealth-oracle', '/api/wealth-oracle/stream', '/api/wealth-oracle/v2']) {
         const r = await post(p, BAD);
@@ -337,6 +352,20 @@ describe('V490 注入缺陷自测', () => {
     const vers = [...degraded.matchAll(/const\s+cacheKey\s*=\s*`wealth:v(\d+):/g)].map((m) => +m[1]);
     const uniq = [...new Set(vers)];
     assert.ok(uniq[0] < 505, `闸门失效: 低于基线的 v${uniq[0]} 未被识别`);
+  });
+
+  test('【注入自测】把时区上抛整行删掉 → 判据⑨ 必须红', () => {
+    const degraded = v69Code.replace(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/, '');
+    assert.notStrictEqual(degraded, v69Code, '注入未生效');
+    assert.strictEqual(natalTzGuardOrdered(degraded), false, '闸门失效：删掉时区上抛后判据⑨ 仍未红');
+  });
+
+  test('【注入自测】把时区上抛挪到降级 Cancer 之后 → 判据⑨ 必须红', () => {
+    const i = v69Code.search(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/);
+    const lineEnd = v69Code.indexOf('\n', i);
+    const line = v69Code.slice(i, lineEnd);
+    const degraded = v69Code.slice(0, i) + v69Code.slice(lineEnd + 1) + '\n' + line;
+    assert.strictEqual(natalTzGuardOrdered(degraded), false, '闸门失效：顺序颠倒后判据⑨ 仍未红');
   });
 
   test('【注入自测】v69_client 去掉 INVALID_TIMEZONE 上抛 → 判据⑨ 必须红', () => {

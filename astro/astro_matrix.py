@@ -62,6 +62,48 @@ class InvalidTimeZoneError(Exception):
     pass
 
 
+class InvalidCoordinateError(Exception):
+    """🛡️ V490b: 非法出生坐标（类型错 / 非有限数 / 越界）。
+
+    与 V490 的 InvalidTimeZoneError 同构：**输入非法 ⇒ 显式失败，绝不静默产毒值**。
+    历史行为（2026-10-01 实测）有两条静默路，均已废除：
+      · `lat=null` → argparse `float("null")` 失败（退出码 2）→ JS 端不识别 →
+        `Falling back to Cancer rising` ⇒ **伪造巨蟹座上升出盘**
+      · `lat=91`  → argparse 收下、**无范围校验** → 照常算盘并返回 200
+        （实测 `{"lat":91.0,"rising_sign":"Virgo","ascendant_deg":178.68}`）
+
+    ⚠️ 同样继承 `Exception`（非 ValueError）：本文件多处 `except ValueError` / `except Exception`
+    降级路径，继承 ValueError 会被意外吞掉 ⇒ 又变成静默降级。
+    """
+    pass
+
+
+# 合法范围（闭区间），与 JS 侧 src/coord-validator.js 的 COORD_RANGE 保持一致
+_LAT_RANGE = (-90.0, 90.0)
+_LON_RANGE = (-180.0, 180.0)
+
+
+def validate_coordinates(lat, lon):
+    """🛡️ V490b: 坐标强校验（Python 侧哨兵，与 JS src/coord-validator.js 同契约）。
+
+    返回归一后的 (lat, lon) 浮点元组；非法一律抛 InvalidCoordinateError。
+    ⚠️ 刻意**不用** `float(x)` 的宽松语义兜底（如 None→0.0），bool 也显式拒绝
+       （`float(True) == 1.0` 是类型洗白，与 `Number(null)===0` 同类的隐患）。
+    """
+    import numbers as _numbers
+    out = []
+    for name, val, (lo, hi) in (('lat', lat, _LAT_RANGE), ('lon', lon, _LON_RANGE)):
+        if isinstance(val, bool) or not isinstance(val, (int, float, _numbers.Real)):
+            raise InvalidCoordinateError(f'INVALID_COORDINATES: {name}={val!r} 非数值')
+        f = float(val)
+        if f != f or f in (float('inf'), float('-inf')):   # NaN / ±Inf（无需 math 依赖）
+            raise InvalidCoordinateError(f'INVALID_COORDINATES: {name}={val!r} 非有限数值')
+        if f < lo or f > hi:
+            raise InvalidCoordinateError(f'INVALID_COORDINATES: {name}={f} 超出合法范围 [{lo}, {hi}]')
+        out.append(f)
+    return out[0], out[1]
+
+
 def _localize_dt(dt_naive, tzname):
     """把 naive datetime 挂上时区。zoneinfo 直接 replace；pytz 走 localize。
 
@@ -449,6 +491,8 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
     Real natal cusps (Placidus) derived once and reused so transit planet
     houses map onto the user's actual natal houses (no Equal House approx).
     """
+    # 🛡️ V490b: 坐标哨兵（同 compute_natal_chart）—— 非法坐标显式失败，绝不静默出盘
+    lat, lon = validate_coordinates(lat, lon)
     # ── Derive real natal cusps once, reuse for all 12 transit months ──
     _cusps = None
     _hs = None
@@ -864,6 +908,8 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     🛠️ V142: birth_time_known=False 时降级为 Solar House (太阳星座=第1宫)，
     避免用假上升(默认12:00)产生"伪精确"宫位张冠李戴。
     """
+    # 🛡️ V490b: 坐标哨兵 —— 非法坐标显式失败（历史会静默降级成 Cancer 上升出盘）
+    lat, lon = validate_coordinates(lat, lon)
     # 🛡️ V476: pytz→zoneinfo/pytz 双兼容(见文件头 shim;pytz 首调在本环境 40s+/次)
     # Parse birth datetime
     bd_str = f"{birth_date} {birth_time}"
@@ -989,8 +1035,12 @@ if __name__ == '__main__':
     parser.add_argument('--months', type=int, default=12, help='Number of months to compute')
     parser.add_argument('--birth-date', dest='birth_date', help='Birth date YYYY-MM-DD')
     parser.add_argument('--birth-time', dest='birth_time', default='12:00', help='Birth time HH:MM')
-    parser.add_argument('--lat', type=float, default=13.75, help='Latitude')
-    parser.add_argument('--lon', type=float, default=100.5, help='Longitude')
+    # 🛡️ V490b: 刻意用 type=str 而非 type=float —— argparse 的 float 转换失败会自带
+    #   exit(2) 且**不携带 INVALID_COORDINATES 标识** ⇒ JS 端无法识别 ⇒ 历史行为是
+    #   `Falling back to Cancer rising`（伪造上升出盘）。改手工解析后，非法一律
+    #   打标识 + 专用退出码 4，由 JS 入口转 HTTP 400。
+    parser.add_argument('--lat', type=str, default=None, help='Latitude (-90..90)')
+    parser.add_argument('--lon', type=str, default=None, help='Longitude (-180..180)')
     parser.add_argument('--tz', default='Asia/Bangkok', help='Timezone')
     parser.add_argument('--mode', default='monthly', help='Mode: natal or monthly')
     parser.add_argument('--no-birth-time', dest='no_birth_time', action='store_true',
@@ -1008,7 +1058,24 @@ if __name__ == '__main__':
         print(f'  swisseph version: {swe.version}')
         print(f'  ephe_path: internal (Moshier mode)')
         exit(0)
-    
+
+    # 🛡️ V490b: 坐标解析与强校验（默认值与历史一致：13.75 / 100.5）。
+    #   非法坐标 → stderr 打 INVALID_COORDINATES + **专用退出码 4**（与 tz 的 3 区分），
+    #   JS 入口据此抛 code='INVALID_COORDINATES' → HTTP 400。绝不静默降级 Cancer 上升。
+    try:
+        def _coord_from_arg(_name, _raw):
+            try:
+                return float(_raw)
+            except (TypeError, ValueError):
+                raise InvalidCoordinateError(f'INVALID_COORDINATES: {_name}={_raw!r} 无法解析为数值')
+        args.lat, args.lon = validate_coordinates(
+            _coord_from_arg('lat', 13.75 if args.lat is None else args.lat),
+            _coord_from_arg('lon', 100.5 if args.lon is None else args.lon),
+        )
+    except InvalidCoordinateError as e:
+        print(f'[AstroMatrix] {e}', file=sys.stderr)
+        sys.exit(4)   # 🛡️ V490b: 4=坐标非法（0=成功 / 1=其它失败 / 3=时区无效 / 4=坐标非法）
+
     # 🛡️ V490: 时区无效时**显式失败**（stderr 打出 INVALID_TIMEZONE + 专用退出码 3），
     #   绝不静默产毒值。JS 端 (v69_client.js) 据退出码 3 抛 code='INVALID_TIMEZONE'，
     #   由 server.js 端点转成 HTTP 400。
@@ -1046,4 +1113,7 @@ if __name__ == '__main__':
         _run()
     except InvalidTimeZoneError as e:
         print(f'[AstroMatrix] {e}', file=sys.stderr)
-        sys.exit(3)   # 🛡️ V490: 专用退出码（0=成功 / 1=其它失败 / 3=时区无效）
+        sys.exit(3)   # 🛡️ V490: 专用退出码（0=成功 / 1=其它失败 / 3=时区无效 / 4=坐标非法）
+    except InvalidCoordinateError as e:
+        print(f'[AstroMatrix] {e}', file=sys.stderr)
+        sys.exit(4)   # 🛡️ V490b: 引擎内部二次校验兜底（即便 CLI 关被绕过也不会静默出盘）

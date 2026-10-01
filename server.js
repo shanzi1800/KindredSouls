@@ -453,6 +453,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
+import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
@@ -6710,7 +6711,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v505:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v506:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9939,8 +9940,6 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const {
       birthDate,
       birthTime,  // ⚠️ V176-fix: 禁止默认值！缺省时由 hasBirthTime=false 触发 Solar House 降级
-      lat = 13.75,
-      lon = 100.5,
       lang = 'zh',
     } = req.body;
     // 🛠️ V102s: 是否真提供出生时间(未提供→报头不声称上升)
@@ -9950,9 +9949,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
     // 🛡️ V490: 时区强校验与三级回退（Tier-1 规范化/typo → Tier-2 坐标最近邻 → Tier-3 HTTP 400）
     //   病根: 时区拼写错曾被 Python 静默退 UTC → 上升点错 48.82° 仍返回 200 success（静默假绿）。
     //   此处统一解析，tz 一律换成**规范 IANA 名** ⇒ 缓存键 / 引擎入参 / 落库三处同源。
-    const _tzr = resolveTimeZone(req.body.tz, lat, lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
+    //   ⚠️ 传**原始** lat/lon 做 Tier-2 推定：坐标本身的合法性由下方 V490b 闸门独立把关，
+    //     这里只是"借用坐标猜时区"（猜不到就走 Tier-3 400，绝不静默）。
+    const _tzr = resolveTimeZone(req.body.tz, req.body.lat, req.body.lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
     if (!_tzr.ok) {
-      console.warn(`[TZ_FALLBACK_WARNING] 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${lat} lon=${lon} → HTTP 400`);
+      console.warn(`[TZ_FALLBACK_WARNING] 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${req.body.lat} lon=${req.body.lon} → HTTP 400`);
       return res.status(400).json({ success: false, code: 'INVALID_TIMEZONE', error: `Invalid time zone: ${req.body.tz}` });
     }
     const tz = _tzr.tz;
@@ -9960,6 +9961,18 @@ app.post('/api/wealth-oracle', async (req, res) => {
       console.warn(`[TZ_RESOLVED] ${JSON.stringify(_tzr.input)} → ${tz} (tier=${_tzr.tier}/${_tzr.reason}`
         + `${_tzr.distanceKm != null ? ', dist=' + _tzr.distanceKm.toFixed(1) + 'km' : ''})`);
     }
+
+    // 🛡️ V490b: 坐标强校验（入参第一关）—— 消灭「lat=null 静默降级 Cancer / lat=91 越界照算出盘」
+    //   ⚠️ 必须传**原始值**（不预转 Number）：Number(null)===0 会把「没给坐标」洗成 (0°,0°) = 合法坐标。
+    //   ⚠️ 置于 tz 解析**之后**：时区闸门（Tier-3 需靠"无坐标"才可达）不能被坐标闸门遮蔽成死代码，
+    //      两层各自独立可达、可测（时区层用「无坐标 + 无效 tz」，坐标层用「合法 tz + 非法坐标」）。
+    const _coord = resolveCoordinates(req.body.lat, req.body.lon);
+    if (!_coord.ok) {
+      console.warn(`[COORD_REJECTED] lat=${JSON.stringify(req.body.lat)} lon=${JSON.stringify(req.body.lon)} → HTTP 400 (${_coord.reason}: ${_coord.message})`);
+      return res.status(400).json(invalidCoordinatesBody(_coord.message));
+    }
+    const lat = _coord.lat;
+    const lon = _coord.lon;
 
     // ═══ 军师缓存键:wealth:{生日}:{语言}:{类型} ═══
     const reportType = req.body.reportType || 'oracle';
@@ -9969,10 +9982,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const noCache = req.body.nocache === true || req.body.noCache === true;
     // 🛠️ V178-P0: 缓存键纳入 birthTime/lat/lon/tz — 同生日不同时辰/地理位置 100% 独立计算, 杜绝跨用户串盘
     const _ckTime = birthTime || '12:00';
-    const _ckLat = Number(lat || 13.75).toFixed(4);
-    const _ckLon = Number(lon || 100.5).toFixed(4);
+    // 🛡️ V490b: lat/lon 此时已是**校验过的数值**（上面 resolveCoordinates），故直接 toFixed。
+    //   原写法 `Number(lat || 13.75)` 是类型洗白惯用法 —— 会把 null 洗成默认值/0，正是 V490b 要消灭的。
+    const _ckLat = lat.toFixed(4);
+    const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v505:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v506:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10280,6 +10295,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[wealth-oracle]', err.message, err.stack);
+    // 🛡️ V490/V490b: 入参类错误必须仍是 400（而非被兜成 500）—— 保住「可区分」的语义
+    if (err && (err.code === 'INVALID_TIMEZONE' || err.code === 'INVALID_COORDINATES')) {
+      return res.status(400).json({ success: false, code: err.code, error: err.message });
+    }
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -10531,9 +10550,6 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const {
     birthDate,
     birthTime,  // ⚠️ V176c-fix: 无默认值，缺省时 hasBirthTime=false 触发 Solar House 降级
-
-    lat = 13.75,
-    lon = 100.5,
     lang = 'zh',
     reportType = 'monthly',
   } = req.body;
@@ -10554,9 +10570,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   // 🛡️ V490: 时区强校验与三级回退 —— 必须在 SSE header 建立/首包下发**之前**返回 400，
   //   否则前端只会看到一个 200 的 SSE 管道里塞错误（假绿）。故放在此处（早于 heartbeat/header）。
-  const _tzr = resolveTimeZone(req.body.tz, lat, lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
+  //   ⚠️ 传**原始** lat/lon 做 Tier-2 推定（坐标合法性由下方 V490b 闸门独立把关）。
+  const _tzr = resolveTimeZone(req.body.tz, req.body.lat, req.body.lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
   if (!_tzr.ok) {
-    console.warn(`[TZ_FALLBACK_WARNING] (stream) 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${lat} lon=${lon} → HTTP 400`);
+    console.warn(`[TZ_FALLBACK_WARNING] (stream) 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${req.body.lat} lon=${req.body.lon} → HTTP 400`);
     return res.status(400).json({ success: false, code: 'INVALID_TIMEZONE', error: `Invalid time zone: ${req.body.tz}` });
   }
   const tz = _tzr.tz;
@@ -10564,6 +10581,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     console.warn(`[TZ_RESOLVED] (stream) ${JSON.stringify(_tzr.input)} → ${tz} (tier=${_tzr.tier}/${_tzr.reason}`
       + `${_tzr.distanceKm != null ? ', dist=' + _tzr.distanceKm.toFixed(1) + 'km' : ''})`);
   }
+
+  // 🛡️ V490b: 坐标强校验（同 /api/wealth-oracle）—— 同样必须在 SSE header 之前返回 400
+  const _coord = resolveCoordinates(req.body.lat, req.body.lon);
+  if (!_coord.ok) {
+    console.warn(`[COORD_REJECTED] (stream) lat=${JSON.stringify(req.body.lat)} lon=${JSON.stringify(req.body.lon)} → HTTP 400 (${_coord.reason}: ${_coord.message})`);
+    return res.status(400).json(invalidCoordinatesBody(_coord.message));
+  }
+  const lat = _coord.lat;
+  const lon = _coord.lon;
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活
@@ -10602,10 +10628,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 🛡️ V483c: 与 /api/wealth-oracle 对齐 —— 支持 `nocache` 强制跳过 HIT（线上真值复验要跑真实生成链）
   const noCache = req.body.nocache === true || req.body.noCache === true;
   const _ckTime = birthTime || '12:00';
-  const _ckLat = Number(lat || 13.75).toFixed(4);
-  const _ckLon = Number(lon || 100.5).toFixed(4);
+  // 🛡️ V490b: 此处 lat/lon 已由 resolveCoordinates 校验为数值（见端点入参第一关）
+  const _ckLat = lat.toFixed(4);
+  const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v505:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v506:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10618,6 +10645,15 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       console.log(`[wealth-stream] [V69] Got matrix: asc=${astroMatrix.meta?.rising_sign}, lat=${lat}, lon=${lon}`);
     }
   } catch (e) {
+    // 🛡️ V490/V490b: 入参闸门（时区/坐标）在更早处已拦截，故此处理论上不可达；
+    //   但**绝不静默吞掉** —— 显式下发错误帧并结束，避免"降级继续出盘"的伪造成功。
+    if (e && (e.code === 'INVALID_TIMEZONE' || e.code === 'INVALID_COORDINATES')) {
+      console.error(`[wealth-stream] ${e.code} 在引擎调用处上抛（入参闸门未拦住，异常路径）`);
+      try { clearInterval(_hb); } catch { /* noop */ }
+      try { res.write(`data: ${JSON.stringify({ error: e.message, code: e.code })}\n\n`); } catch { /* noop */ }
+      try { res.end(); } catch { /* noop */ }
+      return;
+    }
     console.warn('[wealth-stream] [V69] Fetch failed, proceeding without V69:', e.message);
   }
 
@@ -11938,22 +11974,30 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   const {
     birthDate,
     birthTime = '12:00',
-    lat = 13.75,
-    lon = 100.5,
     lang = 'zh',
   } = req.body;
   if (!birthDate) return res.status(400).json({ error: 'birthDate required' });
 
   // 🛡️ V490: 时区强校验与三级回退（同 /api/wealth-oracle）—— 必须在 SSE header 之前返回 400
-  const _tzr = resolveTimeZone(req.body.tz, lat, lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
+  //   ⚠️ 传**原始** lat/lon 做 Tier-2 推定（坐标合法性由下方 V490b 闸门独立把关）。
+  const _tzr = resolveTimeZone(req.body.tz, req.body.lat, req.body.lon);  // ⚠️ 传原值(不预转 Number)：null 不可被 Number() 洗成 0
   if (!_tzr.ok) {
-    console.warn(`[TZ_FALLBACK_WARNING] (v2) 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${lat} lon=${lon} → HTTP 400`);
+    console.warn(`[TZ_FALLBACK_WARNING] (v2) 无法解析时区 input=${JSON.stringify(req.body.tz)} lat=${req.body.lat} lon=${req.body.lon} → HTTP 400`);
     return res.status(400).json({ success: false, code: 'INVALID_TIMEZONE', error: `Invalid time zone: ${req.body.tz}` });
   }
   const tz = _tzr.tz;
   if (_tzr.corrected) {
     console.warn(`[TZ_RESOLVED] (v2) ${JSON.stringify(_tzr.input)} → ${tz} (tier=${_tzr.tier}/${_tzr.reason})`);
   }
+
+  // 🛡️ V490b: 坐标强校验（同 /api/wealth-oracle）—— 必须在 SSE header 之前返回 400
+  const _coord = resolveCoordinates(req.body.lat, req.body.lon);
+  if (!_coord.ok) {
+    console.warn(`[COORD_REJECTED] (v2) lat=${JSON.stringify(req.body.lat)} lon=${JSON.stringify(req.body.lon)} → HTTP 400 (${_coord.reason}: ${_coord.message})`);
+    return res.status(400).json(invalidCoordinatesBody(_coord.message));
+  }
+  const lat = _coord.lat;
+  const lon = _coord.lon;
 
   // ── SSE Headers ──
   res.setHeader('Content-Type', 'text/event-stream');
@@ -12247,7 +12291,8 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
-    const v2CacheKey = `wealth:v505-v2:${birthDate}:${birthTime || '12:00'}:${Number(lat || 13.75).toFixed(4)}:${Number(lon || 100.5).toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
+    const v2CacheKey = `wealth:v506-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     if (SB_URL && SB_KEY && allText.length > 500) {
       try {
         await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {
