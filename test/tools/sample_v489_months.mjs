@@ -64,7 +64,10 @@ function auditCounts(text) {
   return { warn2: a ? a.warn2 : 0, warn3: a ? a.warn3 : 0, fixed: after === text ? 0 : fixedLines };
 }
 
-const OUT_DIR = '/tmp/v489sample';
+const OUT_DIR = (() => {
+  const i = process.argv.indexOf('--out');
+  return i > 0 ? (process.argv[i + 1] || '/tmp/v489sample') : '/tmp/v489sample';
+})();
 const RESULT_JSON = path.join(OUT_DIR, 'results.json');
 const dec = new TextDecoder('utf-8');
 const ENDPOINT = 'https://kindredsouls.online/api/wealth-oracle/stream';
