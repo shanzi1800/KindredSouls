@@ -5610,6 +5610,22 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   t = t.replace(new RegExp(_PFX487 + '(?:叙述|叙事|概览)\\s*(?:镜头|视角|切入点)' + _PAREN487 + _SEP487, 'g'), '');
   // ⑤ 分配表名/编号残留(极少数把表头抄进正文的形态)
   t = t.replace(/【?\s*📌?\s*第[一二三四]章\s*(?:月度)?(?:叙述镜头|风控表达框架|窗口表达框架)分配表[^】\n]*】?/g, '');
+  // ── V488b: 「风控主线」字段的「是/为」连接变体(2026-10-01 线上跨盘验收实测)──────────
+  //   真值(线上 1985-06-20 盘 zh 年报 18204 字): 12/12 个月全部出现
+  //     「…变成"债主"。本月风控主线是"现金流周转与应急储备"，因此，在18日前…」
+  //   取值与 `_V485_CRISIS_ANGLES` 的 12 项**逐项吻合** ⇒ 确系 V485 注入表字段名 + 取值进了正文。
+  //   V485b② 只覆盖「字段名 + 冒号」形态 ⇒ 「是/为」连接整批漏网(跨盘 0/12 vs 12/12, LLM 随机性)。
+  //   ⚠️ 安全约束(防误伤正文自然句如「你的风控重点是现金流」): 必须带「本月/当月/专属/内部」
+  //      这类**定语**才删 —— 正文不会用「本月风控主线是…」的机制口吻。
+  //   ⚠️ 取值属内容(该月专属风控角度, 逐月差异化) ⇒ **只删字段名与连接符、保留取值**;
+  //      带引号时连引号一并去掉, 避免留下 `""` 空引号对。
+  //   ⚠️ 字符类里不得出现字面 ASCII 引号(会打乱测试端朴素括号配平器) ⇒ 一律用 \u0022 转义。
+  const _F488B = '(?:本月|当月|专属|内部)\\s*(?:风控|风险)\\s*(?:主线|角度|视角|重点|切入点)';
+  const _LQ488B = '[\\u201c\\u300c\\u0022]';                       // “ 「 "
+  const _RQ488B = '[\\u201d\\u300d\\u0022]';                       // ” 」 "
+  t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*' + _LQ488B
+    + '([^\\u201d\\u300d\\u0022\\n]{1,60})' + _RQ488B, 'g'), '$1');
+  t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*', 'g'), '');
   // 清理可能因删除产生的孤立连接词/空标点/行首逗号
   t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ')
     .replace(/(^|[\n。；;：:])\s*[，,、]\s*/g, '$1');
@@ -6674,7 +6690,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v499:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v500:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9923,7 +9939,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v499:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v500:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10545,7 +10561,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v499:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v500:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

@@ -415,7 +415,7 @@ test('【注入】缓存版本降级一档 → ⑪ 必须红', () => {
   const degraded = src.replace(new RegExp(`wealth:v${cur}:`, 'g'), `wealth:v${cur - 1}:`);
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const vers = [...stripComments(degraded).matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
-  assert.ok(Math.max(...vers) < 499, `注入后版本应低于 499(实得 v${Math.max(...vers)})`);
+  assert.ok(Math.max(...vers) < cur, `注入后版本应低于当前版本 v${cur}(实得 v${Math.max(...vers)})`);
 });
 
 test('【注入】把 V488 规则写进 EN → ⑩b 必须红(决策③ 护栏)', () => {
