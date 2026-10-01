@@ -32,7 +32,8 @@ const F = new Function(`${SIGNS}\n${BLOCK}\nreturn { lockTransitPlanetSigns, _v4
 
 const CASE = { birthDate: '1986-04-15', birthTime: '08:30', lat: 40.7128, lon: -74.006, tz: 'America/New_York' };
 let M = null;
-before(async () => { M = await getAstroMatrix(CASE.birthDate, CASE.birthTime, CASE.lat, CASE.lon, CASE.tz); });
+// 🛡️ V483d: 钉死窗口到 2026-09 —— ① 的 fixture 真值锚定该窗口(Mars Cancer H2), 不钉则跨月假红
+before(async () => { M = await getAstroMatrix(CASE.birthDate, CASE.birthTime, CASE.lat, CASE.lon, CASE.tz, { now: new Date(2026, 8, 15) }); });
 
 // 调试：确认 outer planets 在真值盘里存在
 test('[debug] outer planets transit 真值存在', () => {

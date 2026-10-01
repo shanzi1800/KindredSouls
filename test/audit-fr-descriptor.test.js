@@ -47,7 +47,8 @@ const PROFILES = [
 ];
 const MATRICES = [];
 before(async () => {
-  for (const p of PROFILES) MATRICES.push(await getAstroMatrix(p.bd, p.bt, p.lat, p.lon, p.tz));
+  // 🛡️ V483d: 钉死窗口到 2026-09 —— months[0] 随墙钟滚动会让流月 fixture 跨月假红
+  for (const p of PROFILES) MATRICES.push(await getAstroMatrix(p.bd, p.bt, p.lat, p.lon, p.tz, { now: new Date(2026, 8, 15) }));
 });
 
 const natalOf = (m, p) => {

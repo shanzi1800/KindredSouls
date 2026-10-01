@@ -1147,6 +1147,19 @@ async function safeFetch(url, options = {}) {
       }
     }
 
+    // 🛡️ V483d: 带 body 时必须显式设 Content-Length。
+    //   旧代码只 `req.write(bodyBuf); req.end()` → Node 自动走 `Transfer-Encoding: chunked`
+    //   → Supabase 网关对 chunked 一律 `400 PGRST102 "Empty or invalid json"`(与 body 大小/内容无关)。
+    //   2026-09-30 线上实证: writeToCache 永远 status=400 → 缓存表恒空 → HIT 永不命中。
+    //   四象限 curl 复现: 小/大 body × Content-Length=201 × chunked=400。
+    if (bodyBuf) {
+      for (const _hk of Object.keys(cleanHeaders)) {
+        const _lk = _hk.toLowerCase();
+        if (_lk === 'content-length' || _lk === 'transfer-encoding') delete cleanHeaders[_hk];
+      }
+      cleanHeaders['Content-Length'] = String(bodyBuf.length);
+    }
+
     const req = https.request({
       hostname: u.hostname,
       port: u.port || 443,
@@ -10281,6 +10294,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         })
       });
       console.log(`[wealth-stream] [WRITE] Cache write: ${cacheKey}, length=${text.length}, status=${res2.status}`);
+      // 🛡️ V483d: 写入失败必须把 Supabase 响应体打出来(否则 400/4xx 永远只能靠猜)
+      if (!res2.ok) {
+        const _eb = await res2.text().catch(() => '');
+        console.warn(`[wealth-stream] [WRITE-FAIL] status=${res2.status} body=${_eb.slice(0, 300)}`);
+      }
     } catch (e) {
       console.error('[wealth-stream] [WRITE-ERROR] ' + (cacheKey||'?') + ': ' + (e && e.message) + (e && e.stack ? ' | ' + e.stack.split('\n')[1] : ''));
     }

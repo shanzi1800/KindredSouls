@@ -21,7 +21,8 @@ const TRUTH = { sun: 'Leo', sunHouse: 12, moon: 'Capricorn', moonHouse: 5, risin
 
 describe('V420 本命盘锚点真值审计（SwissEph 真值 · 禁流月冒充）', () => {
   test('锚点块必须逐字引用本命真值，且流月月亮不得混入', async () => {
-    const m = await getAstroMatrix(CASE.birthDate, CASE.birthTime, CASE.lat, CASE.lon, CASE.tz);
+    // 🛡️ V483d: 钉死窗口(2026-09) —— 流月 sanity 检查不随墙钟漂移
+    const m = await getAstroMatrix(CASE.birthDate, CASE.birthTime, CASE.lat, CASE.lon, CASE.tz, { now: new Date(2026, 8, 15) });
 
     // 1) 键名铁律：真值必须在 meta.natal_moon（键名漂移 = 下游静默回落流月的起因）
     assert.ok(m?.meta?.natal_moon, 'meta.natal_moon 缺失：键名一旦漂移，optional chaining 会静默回落流月');

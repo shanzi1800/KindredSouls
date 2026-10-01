@@ -72,7 +72,9 @@ const EXPECTED = {
 describe('AstroMatrix 2026-09 天文学真值 + 多语言映射审计 (整宫制 · 天秤上升)', () => {
   test('校验 2026-09 星体英文 Sign 真值 + 6语言字典映射准确性', async () => {
     // 天秤上升固定入参：1969-01-26 22:00（原示例 10:58 为金牛上升，已修正）
-    const matrix = await getAstroMatrix('1969-01-26', '22:00', 45.44, 12.32, 'Europe/Rome');
+    // 🛡️ V483d: 用 opts.now 钉死窗口到 2026-09 —— V483 起 monthly 窗口随墙钟滚动
+    //   (rolling-from-current-month), 不钉则每月 1 号起 months 里不再含 2026-09 → 跨日假红。
+    const matrix = await getAstroMatrix('1969-01-26', '22:00', 45.44, 12.32, 'Europe/Rome', { now: new Date(2026, 8, 15) });
 
     assert.ok(matrix, '❌ getAstroMatrix 返回空值');
     assert.ok(Array.isArray(matrix.months), '❌ astroMatrix.months 必须为数组');

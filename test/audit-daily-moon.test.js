@@ -35,7 +35,8 @@ const L = { en: F.SUN_SIGN_EN, es: F.SUN_SIGN_ES, zh: F.SUN_SIGN_ZH, fr: F.SUN_S
 
 let astro = null, dm = null, probe = null;
 before(async () => {
-  astro = await getAstroMatrix('1988-12-31', '23:59', -43.9536, -176.5463, 'Pacific/Chatham');
+  // 🛡️ V483d: 钉死窗口到 2026-09(en 用例硬编码 "September ${day}")—— 否则随墙钟滚动, 跨月假红
+  astro = await getAstroMatrix('1988-12-31', '23:59', -43.9536, -176.5463, 'Pacific/Chatham', { now: new Date(2026, 8, 15) });
   dm = F._v435DailyMap(astro);
   probe = dm ? findIngressDay() : null;
 });

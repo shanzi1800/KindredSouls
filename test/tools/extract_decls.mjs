@@ -48,7 +48,12 @@ export function indexDecls(s) {
   const fnRe = /^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm;
   while ((m = fnRe.exec(s))) {
     const start = m.index;
-    const bi = s.indexOf('{', fnRe.lastIndex);
+    // 🛡️ V483d: 先配平**参数括号**再找 body 大括号 —— 否则默认参数里的 `= {}` 会被误当 body 起点,
+    //   切片截断成 `async function f(x = {})`(safeFetch 首当其冲)。
+    const pi = fnRe.lastIndex - 1; // fnRe 吃掉了函数名后的 `(`
+    if (pi < 0 || s[pi] !== '(') continue;
+    const closeParams = matchBracket(s, pi);
+    const bi = s.indexOf('{', closeParams);
     if (bi < 0) continue;
     decls.set(m[1], s.slice(start, matchBracket(s, bi)));
   }
