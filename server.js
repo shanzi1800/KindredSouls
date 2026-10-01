@@ -5930,8 +5930,11 @@ function cleanYearlyTimeline(text, lang) {
   text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年\1)/g, '$1');
   // Pattern 2: 2026年6月2026年6月6月 → 2026年6月21日
   text = text.replace(/(\d{4}年\d{1,2}月)(\d{4}年)(\1)(\d{1,2}月)/g, '$1$4');
-  // Pattern 3: 1990年6月2026年6月 → 1990年6月15日
-  text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2$4日');
+  // 🛡️ V484: 原 Pattern 3 已拆除 —— 它与 Pattern 4 正则完全相同, 替换串却是 `'$1$2$4日'`:
+  //   `(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)` 中 $4 是「与 $2 相同的月」⇒ 替换结果 = `2026年6月6月日`
+  //   (凭空造「日」+ 月份重复), 线上实证 `2026年6月2026年6月21日 → 2026年6月6月日21日`。
+  //   其注释声称的意图「1990年6月2026年6月 → 1990年6月15日」本身就是无中生有。
+  //   语义由 Pattern 4(不带日 → 塌缩为首个标签) 与 Pattern 5(带日 → 保留日期) 正确承接。
   // Pattern 4: 2027年6月2026年6月 → 2027年6月
   text = text.replace(/(\d{4}年)(\d{1,2}月)(\d{4}年)(\2)/g, '$1$2');
   // Pattern 5: 2026年6月2026年6月21日 → 2026年6月21日
@@ -6190,7 +6193,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v490:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v491:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9439,7 +9442,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v490:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v491:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10051,7 +10054,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v490:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v491:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

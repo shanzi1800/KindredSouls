@@ -144,7 +144,9 @@ function wiringOk(src) {
   if (!/reportContent = dedupYearlyMonthTitles\(reportContent, lang, reportType\)/.test(code)) return false;   // 非流式
   if (!/cleanedText = dedupYearlyMonthTitles\(cleanedText, lang, reportType\)/.test(code)) return false;       // 流式落库前
   if (!/streamText = dedupYearlyMonthTitles\(streamText, lang, reportType\)/.test(code)) return false;          // 流式 HIT
-  if (!/wealth:v490:/.test(code)) return false;                 // 缓存 bump
+  // 🛡️ V484: 改单调判据(提取版本号 ≥490), 不写死精确版本 —— 每次 bump 都不该让本闸门假红
+  const _ver = (code.match(/wealth:v(\d+):/) || [])[1];
+  if (!(_ver && Number(_ver) >= 490)) return false;             // 缓存版本不得低于历史基线
   if ((code.match(/nocache === true/g) || []).length < 2) return false;   // 非流式 + 流式都支持 nocache
   if (!/reportType !== 'oracle' && !noCache/.test(code)) return false;    // 非流式 HIT 守卫
   if (!/if \(SB_URL && SB_KEY && !noCache\)/.test(code)) return false;    // 流式 HIT 守卫
@@ -216,8 +218,11 @@ test('【注入缺陷自测】摘掉非流式收尾链的 dedup 调用 → 判�
   assert.strictEqual(wiringOk(degraded), false, '摘掉调用点后判据 D 必须红');
 });
 
-test('【注入缺陷自测】缓存 key 退回 v489 → 判据 D 必须红', () => {
-  const degraded = serverSrc.replace(/wealth:v490:/g, 'wealth:v489:');
+test('【注入缺陷自测】缓存 key 降到历史基线之下(v489) → 判据 D 必须红', () => {
+  // 🛡️ V484: 动态取当前版本再降级 —— 本闸门自身不写死版本号, bump 后依然有效
+  const cur = (serverSrc.match(/wealth:v(\d+):/) || [])[1];
+  assert.ok(cur, '源码中未找到 wealth:vNNN: 缓存 key');
+  const degraded = serverSrc.replace(/wealth:v(\d+):/g, 'wealth:v489:');
   assert.notStrictEqual(degraded, serverSrc, '注入必须真的改变源码');
-  assert.strictEqual(wiringOk(degraded), false, '缓存未 bump 时判据 D 必须红');
+  assert.strictEqual(wiringOk(degraded), false, '缓存版本低于基线时判据 D 必须红');
 });

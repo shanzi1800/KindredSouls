@@ -169,7 +169,7 @@ test('⑦ 源码: 缓存 key 版本必须与闸门基线一致且不低于历史
   const streamTest = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
   const minv = +/MIN_CACHE_VER\s*=\s*(\d+)/.exec(streamTest)[1];
   assert.strictEqual(vers[0], minv, `server.js 缓存 key v${vers[0]} 与闸门基线 MIN_CACHE_VER=${minv} 不一致`);
-  assert.ok(vers[0] >= 490, `缓存版本回退到 v${vers[0]}(窗口/月份号/收尾链变更必须 bump, 历史基线 ≥490)`);
+  assert.ok(vers[0] >= 491, `缓存版本回退到 v${vers[0]}(窗口/月份号/收尾链变更必须 bump, 历史基线 ≥491)`);
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
