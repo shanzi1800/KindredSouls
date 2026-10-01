@@ -57,22 +57,34 @@ const PROD_WORST = [
 // ══════════════════════════════════════════════════════════════════════════
 // ① Prompt 侧三语硬规则
 // ══════════════════════════════════════════════════════════════════════════
-test('① 三语年报 Prompt 必须含 V486 文风硬规则(严禁整句复读 + 起手句式多元 + 去道具化)', () => {
+test('① 三语年报 Prompt 必须含 V486 文风硬规则(严禁整句复读 + 首句机械禁用 + 去道具化)', () => {
   for (const [name, txt] of [['zh', ZH], ['en', EN], ['th', TH]]) {
     assert.ok(/V486/.test(txt), `${name} 年报 Prompt 缺少 V486 规则块标记`);
   }
   // zh
   assert.ok(/严禁整句复读/.test(ZH), 'zh 缺「严禁整句复读」');
-  assert.ok(/起手句式多元/.test(ZH), 'zh 缺「起手句式多元」');
-  assert.ok(/同一骨架不得超过4个月/.test(ZH), 'zh 缺骨架上限量化判据');
+  assert.ok(/天文事实句只许最短出现一次/.test(ZH), 'zh 缺 V486b「天文事实句最短一次」机械判据');
+  assert.ok(/月度财富概览首句：机械禁用/.test(ZH), 'zh 缺 V486b「概览首句机械禁用」');
   assert.ok(/本规则不提供范例/.test(ZH), 'zh 缺「不提供范例」自保护规则');
   // en (fr/es/vi 均回落 en, 故 en 必须齐)
   assert.ok(/NO VERBATIM SENTENCE REUSE/i.test(EN), 'en 缺 no-verbatim-reuse 规则');
-  assert.ok(/DIVERSIFY OPENING STRUCTURES/i.test(EN), 'en 缺句式多元规则');
+  assert.ok(/ASTRONOMICAL FACT SENTENCES/.test(EN), 'en 缺 V486b 天文事实句机械判据');
+  assert.ok(/MECHANICALLY BANNED/.test(EN), 'en 缺 V486b 概览首句机械禁用');
   assert.ok(/NO EXAMPLES BY DESIGN/i.test(EN), 'en 缺「不提供范例」自保护规则');
   // th
   assert.ok(/ห้ามใช้ประโยคเดิมซ้ำทั้งประโยค/.test(TH), 'th 缺「严禁整句复读」');
+  assert.ok(/เกณฑ์กลไก V486b/.test(TH), 'th 缺 V486b 机械判据');
   assert.ok(/เจตนาไม่ยกตัวอย่าง/.test(TH), 'th 缺「不提供范例」自保护规则');
+});
+
+test('①c 格式规范里的概览示例必须是方括号说明, 不得留下可照抄的范文句(V486 线上未生效的根因)', () => {
+  // 线上实证: FORMAT_SPEC 里原来那条 `* 🌐 **[Monthly Wealth Overview]**: Jupiter has just entered your 2nd House (Leo)...`
+  // 是「先写星象」的开头范文 ⇒ LLM 照抄 ⇒ 12 个月概览首句 11/12 同构, V486 抽象规则被压制。
+  const m = ZH.match(/\[Monthly Wealth Overview\]\*\*:\s*([^\n]*)/);
+  assert.ok(m, 'zh Prompt 找不到 [Monthly Wealth Overview] 示例行');
+  assert.ok(/^\s*\[/.test(m[1]),
+    `[Monthly Wealth Overview] 示例行后面必须是方括号说明(标签写法示范), 不得是英/中范文正文; 实得:「${m[1].slice(0, 60)}」`);
+  assert.ok(!/Jupiter has just entered/.test(ZH), 'zh Prompt 仍残留可照抄的英文概览范文句');
 });
 
 test('①b 提示词不得写入生产高危复读句当「反例」(V462 教训: 反例会被 LLM 照抄)', () => {
@@ -166,7 +178,7 @@ test('④ 接线 ≥2 处, 且只挂在生成路径(不与收尾锁混淆)', () 
 test('⑤ 缓存版本必须 ≥ 历史基线(单调判据, 防每次 bump 假红)', () => {
   const vers = [...src.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
   const cur = Math.max(...vers);
-  assert.ok(cur >= 495, `当前缓存版本应 ≥495(输出链已变更), 实得 v${cur}`);
+  assert.ok(cur >= 496, `当前缓存版本应 ≥496(输出链已变更), 实得 v${cur}`);
   assert.ok(vers.filter((v) => v === cur).length >= 3, `当前版本 v${cur} 应出现在 3 处缓存 key`);
 });
 
@@ -176,7 +188,8 @@ test('⑤ 缓存版本必须 ≥ 历史基线(单调判据, 防每次 bump 假�
 test('【注入】摘掉 zh 文风规则块 → ① 必须红', () => {
   const degraded = ZH.replace(/⛔ \[文风反复读铁律 V486[\s\S]*?搬进正文当作内容。/, '');
   assert.notStrictEqual(degraded, ZH, '注入必须真的改变源码');
-  assert.ok(!/严禁整句复读/.test(degraded) && !/V486/.test(degraded),
+  // ⚠️ 不能断言 !/V486/ —— Prompt 别处(格式规范行)也合法引用了「V486 铁律第2条」
+  assert.ok(!/严禁整句复读/.test(degraded) && !/本规则不提供范例/.test(degraded),
     '注入后 ① 判据应命中失败');
 });
 
@@ -217,5 +230,6 @@ test('【注入】缓存版本降级一档 → ⑤ 必须红', () => {
   const degraded = src.replace(new RegExp(`wealth:v${cur}:`, 'g'), `wealth:v${cur - 1}:`);
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const vers = [...degraded.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
-  assert.ok(Math.max(...vers) < 495, `注入后版本应低于基线(实得 v${Math.max(...vers)})`);
+  // ⚠️ 与动态 cur 比较, 不写死历史版本号(写死会在下一次 bump 时假红 —— V485 闸门正是这么踩的)
+  assert.ok(Math.max(...vers) < cur, `注入后版本应低于当前版本 v${cur}(实得 v${Math.max(...vers)})`);
 });
