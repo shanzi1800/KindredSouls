@@ -5205,6 +5205,81 @@ const _V485_CRISIS_ANGLES = [
   '税务与合规申报', '职业决策与收入结构', '资产流动性与变现难度', '跨境/远行相关资金',
   '创意项目投入产出比', '信息真伪与决策依据', '家庭财务与房产议题', '契约续签与人情债边界',
 ];
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ V487: 逐月「叙述镜头 + 风控表达框架」确定性注入 —— 破解跨月句式同构(打地鼠终局)
+//   病根(军师三轮评审 + 2026-10-01 线上实测, 1997-10-18 盘):
+//     ① 【月度财富概览】首句 11/12 月共用同一骨架。V486b 禁掉「流年太阳进入…」后,
+//        LLM 立刻换成一个同样统一的新骨架(「本月你的财务重心落在"某领域"」)——禁一个换一个。
+//     ② 断路器段(黑天鹅警告)「绝对禁止…」整句逐月逐字复用, 线上实测 13 次;
+//        V486/V486b 的「禁止类」规则与「只检不改」审计能抓到, 但治不住。
+//   根因是结构性的: 12 个月真值高度雷同(外行星全年不动) + 产品强制四段结构
+//     ⇒ 只给「禁止雷同」这类规则, LLM 必然落回某个统一句式。
+//   对策与 V485 黑天鹅战役同法(已验证有效, 12/12 月窗口名全不同):
+//     逐月注入**具体**切入角度/结构 —— 「给具体」远胜「禁止雷同」。
+//   ⚠️ 只描述**结构**, 刻意不给任何可照抄的示例句(V462 教训: 提示词里的反例会被 LLM 照抄)。
+//   ⚠️ 代号为闭集(属机制不属内容) ⇒ 泄漏时按 ⑤⑥ 规则整字段删除。
+// ══════════════════════════════════════════════════════════════════
+const _V487_NARRATIVE_LENSES = [
+  '现金流周转速度与账期节奏', '长期资产配置比例与再平衡', '合同条款与定价中的隐性溢价',
+  '副业与新渠道的变现测试', '固定支出结构与订阅式开销', '应收账款与回款周期',
+  '定价权与议价空间', '技能资本化与知识变现', '保障覆盖与风险对冲',
+  '存量债务的再融资时机', '时间成本与精力预算', '资产与负债的期限匹配',
+];
+const _V487_RISK_FRAMEWORKS = [
+  '条件触发式——先给触发条件, 再给后果判断',
+  '时间窗式——以时间长度与紧迫度组织风险叙述',
+  '主体归因式——指明风险源自哪个外部主体',
+  '对冲替代式——先给风险, 再给可替代的稳妥选项',
+  '分级预警式——把风险按影响面分成两到三档',
+  '因果链条式——由一个小信号推演至最终损失',
+  '场景代入式——以签约/转账/续约等具体动作作载体',
+  '反直觉式——先给与直觉相反的判断, 再解释缘由',
+  '主动权式——把重心放在用户可以控制的部分',
+  '代价对比式——对比两条路径的代价差异',
+  '拖延成本式——指出推迟决定本身产生的代价',
+  '边界划定式——给出明确的取舍边界与红线',
+];
+// 🛡️ V487: 逐月「财富高峰窗口·执行指令」框架池(12 个互不相同的开句结构)
+//   第三条 12/12 同骨架(线上实测 V486b 产物): 「这是你本月最适合"X"的窗口」×12 ——
+//   与概览首句同病: 禁掉「这个窗口期是行动的最佳时机」后 LLM 立刻换成另一个统一套壳。
+//   ⇒ 同样按「逐月给具体」处理, 而非再加一条禁止令。
+const _V487_WINDOW_FRAMES = [
+  '动作指令式——开句直接给出当月可执行的动作, 不使用套壳式引导语',
+  '截止时点式——开句先给出最晚必须完成的时间点',
+  '对象优先式——开句先点明要找的人或要谈的对手',
+  '阈值量化式——开句先给出一个可量化的金额或比例标准',
+  '两步顺序式——开句给出"先做A再做B"的顺序, 不写笼统鼓励',
+  '场景先行式——开句先给一个具体财务场景, 再落到动作',
+  '备选对冲式——开句先写"若第一条路径不通, 退而做哪件事"',
+  '自检提问式——开句以一个自查问题引出当月动作',
+  '筹码盘点式——开句先盘点用户手中已有的筹码',
+  '错失代价式——开句先写错过这几天的具体代价',
+  '双方分工式——开句把动作拆成"你做什么／对方做什么"',
+  '单一焦点式——开句只给一个动作, 并明确本月只做这一件',
+];
+// 结构性框架的闭集代号(风控 + 窗口): 泄漏时整字段删除 —— 代号是人工词, 正文不会自然出现。
+const _V487_RFW_CODES = _V487_RISK_FRAMEWORKS.concat(_V487_WINDOW_FRAMES).map((s) => s.split('——')[0]);
+// 年报 prompt 追加块(zh 专用): 三张分配表 + 机械判据。
+//   ⚠️ 与 V485 的「风控主线分配表」并列使用, 索引口径一致(第 i 个月 ↔ 第 i 项)。
+//   ⚠️ 坐标真值(线上产物核验): 12 个月度章节位于【第二章 365天月度收入矩阵】之下
+//      (标题形如 `### 2026年7月: 太阳巨蟹座 第8宫 · …`), 概览/窗口/断路器段都在章内。
+function buildYearlyLensFrameworkBlock() {
+  const rows = (list) => list.map((a, idx) => `${idx + 1}. ${a}`).join('; ');
+  return '\n\n【📌 第二章 月度叙述镜头分配表(内部参考, 严禁在正文写出本表名/字段名)】\n'
+    + '按第二章【365天月度收入矩阵】里 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n'
+    + rows(_V487_NARRATIVE_LENSES)
+    + '\n\n【📌 第二章 风控表达框架分配表(内部参考, 严禁在正文写出本表名/字段名)】\n'
+    + '同样按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n'
+    + rows(_V487_RISK_FRAMEWORKS)
+    + '\n\n【📌 第二章 窗口表达框架分配表(内部参考, 严禁在正文写出本表名/字段名)】\n'
+    + '同样按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n'
+    + rows(_V487_WINDOW_FRAMES)
+    + '\n\n【V487 机械判据 — 与前文所有铁律同级, 违反即视为不合格品】\n'
+    + '1. 【概览首句必须从「本月叙述镜头」切入】12 个月的【月度财富概览】首句, 必须直接以「月度叙述镜头分配表」中该月对应的那一项作为切入主题(资金周转速度／资产配置比例／合同隐性溢价／回款周期 等具体财务角度), 并给出本月的金钱后果判断。严禁采用"先点出领域名词、再用一个解释性从句说明该领域意味着什么"的同构起手骨架; 严禁 12 个月复用同一句首句结构。每个月必须让人一眼看出切入点不同。\n'
+    + '2. 【断路器段必须使用「本月风控表达框架」】12 个月的 🔴[财务黑天鹅日] 断路器警告段, 必须按「风控表达框架分配表」中该月对应的结构组织叙述。严禁使用无条件的命令式禁令句作为风险收尾; 严禁 12 个月复用同一句风险结论、同一个收尾动词或同一个比喻意象。\n'
+    + '3. 【窗口执行指令必须使用「本月窗口表达框架」】12 个月的 🟢[财富高峰窗口] 的 *执行指令* 一句, 必须按「窗口表达框架分配表」中该月对应的结构开句。严禁 12 个月让这一句共用同一个引导骨架或同一个收尾判断。\n'
+    + '4. 【本表仅为写作指令】严禁把「叙述镜头」「风控表达框架」「窗口表达框架」这类字段名、分配表编号或本表任何整句原样写进正文。';
+}
 function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
   if (reportType !== 'yearly') return text;
   if (lang !== 'zh') return text;
@@ -5311,6 +5386,18 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：]\s*/g, '');
   // ③ 兜底: 极少数把字段名单独成行/带 markdown 强调的形态
   t = t.replace(/^[ \t]*\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：][^\n]*$\n?/gm, '');
+  // ── V487 新增字段(叙述镜头 / 风控表达框架)────────────────────────────
+  // ④ 【叙述镜头】字段形态 —— 字段名 + 冒号删除, **保留其后的实质内容**
+  //    取值(如「现金流周转速度与账期节奏」)是真正要写进正文的角度, 属内容 ⇒ 与②同法保留。
+  t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:叙述|叙事|概览)\s*(?:镜头|视角|切入点)\*{0,2}\s*[:：]\s*/g, '');
+  // ⑤ 【结构性框架】字段(风控表达框架 / 窗口表达框架) —— 字段名 + 框架代号一并删除
+  //    代号来自 24 项闭集(条件触发式/时间窗式/动作指令式/…), 是**机制而非内容**,
+  //    留着只会在正文里显得突兀; 且均为人工词, 正文不会自然出现。
+  t = t.replace(new RegExp('\\*{0,2}(?:本月|当月)?(?:专属|内部)?\\s*(?:风控|风险|窗口|高峰|执行)\\s*(?:表达)?\\s*(?:指令)?\\s*框架\\*{0,2}\\s*[:：]\\s*(?:' + _V487_RFW_CODES.join('|') + ')?\\s*[，,。；;]?\\s*', 'g'), '');
+  // ⑥ 闭集代号裸残留(LLM 把代号单独写进句子/小标题时)
+  t = t.replace(new RegExp('(?:' + _V487_RFW_CODES.join('|') + ')', 'g'), '');
+  // ⑦ 分配表名/编号残留(极少数把表头抄进正文的形态)
+  t = t.replace(/【?\s*📌?\s*第[一二三四]章\s*(?:月度)?(?:叙述镜头|风控表达框架|窗口表达框架)分配表[^】\n]*】?/g, '');
   // 清理可能因删除产生的孤立连接词/空标点
   t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ');
   if (t !== before) console.log(`[V485b] ${lang} 年报 Prompt 字段泄漏清理: 清除 ${(before.length - t.length)} 字`);
@@ -6374,7 +6461,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v496:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v497:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9623,7 +9710,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v496:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v497:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9739,6 +9826,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
 
         _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
+
+        // 🛡️ V487: 年报逐月「叙述镜头 + 风控表达框架」注入
+        //   与非流式/流式两端点同源 —— 修复端点间提示词漂移(军师 P0 技术债同源问题)。
+        if (lang === 'zh' && reportType === 'yearly') {
+          prompt.system += buildYearlyLensFrameworkBlock();
+        }
 
         // 🛠️ V211: 月报从 4000→12000
         const maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'once' ? 8000 : 12000);
@@ -10238,7 +10331,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v496:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v497:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10537,6 +10630,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕下方分配表给出的本月风控主线展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n6. 【内部字段严禁入正文】数据块/分配表中的「内部参考」「本月风控主线」「风控切入角度」「★」等一律只是给你的写作指令, 严禁把这些字样或字段名原样写进正文(H1~H6 与正文段落都不得出现)。\n\n【📌 第二章 风控主线分配表(内部参考, 严禁在正文写出本表名/字段名)】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月风控主线」, 以该处为准。';
       } else {
         prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
+      }
+      // 🛡️ V487: 逐月「叙述镜头 + 风控表达框架」分配表 —— 破解概览首句/断路器段跨月同构(打地鼠终局)
+      //   与 V485 的「风控主线分配表」同法: 逐月注入**具体**切入角度/结构, 而非只下「禁止雷同」令。
+      //   取值范围 = 上面两张 12 项闭集表; 索引口径与 V485 一致(第 i 个月 ↔ 第 i 项)。
+      if (lang === 'zh' && reportType === 'yearly') {
+        prompt.system += buildYearlyLensFrameworkBlock();
       }
       // V239: 月报动态币种/宫位 Prompt 注入(覆盖通用标题模板,仅 monthly)
       if (reportType === 'monthly') {
@@ -11796,8 +11895,17 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
         //   治法: 按月份序号确定性分配互不相同的风控视角, 给 LLM 差异化素材 + 硬约束。
         crisisBlock += '★ 内部参考·本月风控主线(仅供你组织叙述; 严禁在正文写出本行、字段名或「风控切入角度」等措辞, 直接把它当成本月风险的切入视角去写即可):' + _V485_CRISIS_ANGLES[i % _V485_CRISIS_ANGLES.length] + '\n';
       }
+      // 🛡️ V487: 逐月「叙述镜头 + 风控表达框架 + 窗口表达框架」—— 与 /stream 的分配表同源、索引口径一致。
+      //   概览首句 V486b 禁了「流年太阳进入…」后, LLM 立刻换成一个同样统一的新骨架 ⇒
+      //   只有给「具体」的切断角度才能破同构(与 V485 黑天鹅战役同法)。
+      var lensBlock = '';
+      if (locale === 'zh') {
+        lensBlock += '★ 内部参考·本月叙述镜头(仅供你组织"月度财富概览"首句; 严禁在正文写出本行或字段名):' + _V487_NARRATIVE_LENSES[i % _V487_NARRATIVE_LENSES.length] + '\n';
+        lensBlock += '★ 内部参考·本月风控表达框架(仅供你组织本月风险叙述; 严禁在正文写出本行或框架代号):' + _V487_RISK_FRAMEWORKS[i % _V487_RISK_FRAMEWORKS.length] + '\n';
+        lensBlock += '★ 内部参考·本月窗口表达框架(仅供你组织财富高峰窗口的执行指令; 严禁在正文写出本行或框架代号):' + _V487_WINDOW_FRAMES[i % _V487_WINDOW_FRAMES.length] + '\n';
+      }
 
-      var mPrompt = v2SysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节(800-1200字)。\n\n★ 月份:' + monthName + '\n★ 太阳行运:' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运:' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运:' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运:' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
+      var mPrompt = v2SysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节(800-1200字)。\n\n★ 月份:' + monthName + '\n★ 太阳行运:' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运:' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运:' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运:' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + lensBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';
 
       const mText = await streamGeminiChunk(mPrompt, sendChunk, lang);
       // 🔒 V116-step8-fix: 月度标题即时锁(applyMonthLockSanitizer的regex不匹配V2格式)

@@ -1,6 +1,14 @@
 // ═══════════════════════════════════════════════════════════════
 // KINDREDSOULS WEALTH ORACLE - MULTI-LANGUAGE PROMPT LOADER
 // Architecture: Independent Language Map (ESM Compatible)
+//
+// ⚠️⚠️ 提示词唯一真源 = 本目录下的 *.txt 文件 ⚠️⚠️
+//   - 运行时由本文件 readFileSync 直接读取 .txt;
+//   - 必须改 .txt 才生效, 改其它任何形式的副本都不会影响线上;
+//   - (V487 P0 技术债清理) 原来的 yearlySystemZH/EN/TH.ts + index.ts 是与 .txt
+//     并行维护的孪生漂移源(比 .txt 还大 2.5KB), 全仓零引用、且会让人误以为
+//     "改了 .ts 就生效了" —— 已整体删除。历史版本可从 git 记录取回。
+//   - 新增语言: 建 yearlySystemXX.txt 并加进下方 SYSTEM_PROMPT_MAP 即可。
 // ═══════════════════════════════════════════════════════════════
 
 import { readFileSync } from 'fs';
