@@ -86,6 +86,27 @@ function getScriptPath() {
   return candidates[0]; // fallback 到第一个候选
 }
 
+// ── 🛡️ V490: 时区无效的识别与上抛 ───────────────────────────────────────────
+// Python 侧 (astro/astro_matrix.py) 对无效 tz **显式失败**：stderr 打 INVALID_TIMEZONE
+// 且进程退出码 = 3。此处据此构造带 code 的错误，**绝不降级**（历史行为会把引擎失败
+// 静默降级成 Cancer rising 出盘 = 伪造成功）。
+const V490_TZ_EXIT_CODE = 3;
+
+function _isInvalidTzError(e) {
+  if (!e) return false;
+  if (Number(e.status) === V490_TZ_EXIT_CODE) return true;
+  const blob = `${e.stderr || ''}\n${e.stdout || ''}\n${e.message || ''}`;
+  return /INVALID_TIMEZONE/.test(blob);
+}
+
+function _invalidTzError(tz, cause) {
+  const err = new Error(`Invalid time zone: ${tz}`);
+  err.code = 'INVALID_TIMEZONE';
+  err.tz = tz;
+  if (cause) err.cause = cause;
+  return err;
+}
+
 // ── Compute Astro Matrix via spawnSync ──────────────────────────────────────
 /**
  * 🛠️ V134: 用 execSync 直调 Python 脚本，避免依赖独立 8001 服务
@@ -122,6 +143,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
       maxBuffer: 10 * 1024 * 1024,
     }).trim();
   } catch (e) {
+    if (_isInvalidTzError(e)) throw _invalidTzError(tz, e);  // 🛡️ V490: 时区无效绝不降级 Cancer（伪造上升）
     console.warn('[V134] Natal computation failed:', e.message, '\nFalling back to Cancer rising');
     natalResult = JSON.stringify({ rising_sign: 'Cancer', sun_sign: 'Cancer' });
   }
@@ -175,6 +197,7 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
     });
   } catch (e) {
     console.error('[V134] execSync FAILED:', e.message);
+    if (_isInvalidTzError(e)) throw _invalidTzError(tz, e);  // 🛡️ V490: 时区无效 → 带 code 上抛
     throw e;
   }
 
@@ -292,6 +315,9 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
     matrixCache.set(cacheKey, { data: matrix, fetchedAt: Date.now() });
     return matrix;
   } catch (e) {
+    // 🛡️ V490: 时区无效**必须上抛**给端点转 HTTP 400 —— 若照旧 `return null`，
+    //   上层会当"引擎暂时不可用"继续出盘（静默假绿），正是本次立项要消灭的缺陷。
+    if (e && e.code === 'INVALID_TIMEZONE') throw e;
     console.error('[V134] getAstroMatrix FAILED:', e.message);
     return null;
   }

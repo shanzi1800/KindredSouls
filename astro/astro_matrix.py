@@ -48,21 +48,45 @@ else:
     def _utc_tzinfo():
         return _dt_timezone.utc
 
+class InvalidTimeZoneError(Exception):
+    """🛡️ V490: 无效 IANA 时区（拼写错 / 不存在）。
+
+    ⚠️ 刻意继承 `Exception` 而非 `ValueError`：本文件多处宽 `except ValueError`
+    （日期解析重试路径）与 `except Exception`（降级路径），若继承 ValueError
+    会被前者**意外吞掉**并绕进"改用 12:00 重试"分支 ⇒ 静默产毒值。
+
+    绝不静默兜底 —— 由上层显式处理（JS 入口转 HTTP 400 或明确告知用户）。
+    历史实现（V476）对无效 tz「静默退 Asia/Bangkok/UTC」⇒ 时区拼写错会变成
+    「看起来正常的错盘」，属最危险的伪造成功，已彻底废除。
+    """
+    pass
+
+
 def _localize_dt(dt_naive, tzname):
     """把 naive datetime 挂上时区。zoneinfo 直接 replace；pytz 走 localize。
-    tzname 无效时:先退 Asia/Bangkok,再退 UTC(与原 pytz 兜底链语义一致)。"""
+
+    🛡️ V490: **无效 tzname 一律抛 InvalidTimeZoneError** —— 删除历史「静默退
+    Asia/Bangkok / UTC」兜底链（且旧实现里 zoneinfo 分支与 pytz 分支**兜底链不一致**：
+    前者无 Bangkok 兜底 ⇒ 换运行环境结果就变）。
+
+    原因（2026-10-01 实测）：静默退 UTC 会把「时区拼写错」变成「看起来正常的错盘」
+    —— 实测 `America/Agentina/Ushuaia`（应为 Argentina）→ 上升点偏差 48.82°、
+    上升星座 Leo→Gemini，而接口仍返回 200 success，用户与调用方**双盲**。
+
+    时区的三级回退（① 规范化/typo ② 按 lat/lon 最近邻推定 ③ 显式 400）统一在
+    **JS 入口 `src/tz-resolver.js`** 完成；此处只做**哨兵**：宁可抛错，绝不产毒值。
+    """
+    if not tzname:
+        raise InvalidTimeZoneError('INVALID_TIMEZONE: <empty>')
     if not _PYTZ_COMPAT:
         try:
             return dt_naive.replace(tzinfo=_ZoneInfo(tzname))
-        except Exception:
-            return dt_naive.replace(tzinfo=_dt_timezone.utc)
+        except Exception as e:
+            raise InvalidTimeZoneError(f'INVALID_TIMEZONE: {tzname}') from e
     try:
         return _pytz.timezone(tzname).localize(dt_naive)
-    except Exception:
-        try:
-            return _pytz.timezone('Asia/Bangkok').localize(dt_naive)
-        except Exception:
-            return dt_naive.replace(tzinfo=_pytz.UTC)
+    except Exception as e:
+        raise InvalidTimeZoneError(f'INVALID_TIMEZONE: {tzname}') from e
 
 # ── Zodiac & House Constants ──────────────────────────────────────────────────
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
@@ -432,12 +456,14 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
         try:
             _bt = birth_time if birth_time else '12:00'
             _bd = datetime.strptime(f"{birth_date} {_bt}", '%Y-%m-%d %H:%M')
-            _bd = _localize_dt(_bd, tz)  # 🛡️ V476: zoneinfo/pytz 双兼容(内含 Bangkok/UTC 兜底链)
+            _bd = _localize_dt(_bd, tz)  # 🛡️ V490: 无效 tz 抛 InvalidTimeZoneError(见上), 不再静默兜底
             _utc = _bd.astimezone(_utc_tzinfo())
             _jd_b = swe.julday(_utc.year, _utc.month, _utc.day, _utc.hour + _utc.minute / 60.0)
             _sdeg, _ = get_planet_pos(swe.julday(_utc.year, _utc.month, _utc.day, 12), swe.SUN)
             _ssign = get_sign(_sdeg)
             _cusps, _asc, _mc, _hs = compute_natal_cusps(_jd_b, lat, lon, True, _ssign)
+        except InvalidTimeZoneError:
+            raise  # 🛡️ V490: 时区无效是**致命错** —— 绝不允许降级成 _cusps=None(等宫制)静默出盘
         except Exception as _e:
             print(f"[AstroMatrix] cusp derivation failed: {_e}", file=sys.stderr)
             _cusps = None
@@ -630,7 +656,7 @@ def compute_moon_weeks(year: int, month: int, tz_str: str = 'Asia/Bangkok',
     【注意】同一星座跨两宫会产生两条腿（如 Aries/H7 → Aries/H8）——这是宫位制的数学必然，合法。
     """
     def _loc(y, m, d, hh=0, mm=0, ss=0):
-        # 🛡️ V476: zoneinfo/pytz 双兼容(内含 Bangkok/UTC 兜底链)
+        # 🛡️ V490: 无效 tz 抛 InvalidTimeZoneError（不再静默退 Bangkok/UTC）
         return _localize_dt(datetime(y, m, d, hh, mm, ss), tz_str or 'Asia/Bangkok')
 
     def _leg_at(dt_local):
@@ -845,14 +871,20 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         # Try with timezone
         try:
             birth_dt = _localize_dt(datetime.strptime(bd_str, '%Y-%m-%d %H:%M'), tz)
+        except InvalidTimeZoneError:
+            raise  # 🛡️ V490: 时区无效 → 显式上抛（绝不静默退 naive/UTC 产毒值）
         except Exception:
             # Fallback: naive datetime in UTC
             birth_dt = datetime.strptime(bd_str, '%Y-%m-%d %H:%M')
+    except InvalidTimeZoneError:
+        raise      # 🛡️ V490: 必须置于 except ValueError 之前，否则被日期重试路径吞掉
     except ValueError:
         birth_time = '12:00'
         bd_str = f"{birth_date} {birth_time}"
         try:
             birth_dt = _localize_dt(datetime.strptime(bd_str, '%Y-%m-%d %H:%M'), tz)
+        except InvalidTimeZoneError:
+            raise  # 🛡️ V490
         except Exception:
             birth_dt = datetime.strptime(bd_str, '%Y-%m-%d %H:%M')
 
@@ -977,31 +1009,41 @@ if __name__ == '__main__':
         print(f'  ephe_path: internal (Moshier mode)')
         exit(0)
     
-    if args.mode == 'natal' and args.birth_date:
-        natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz,
-                                    birth_time_known=not args.no_birth_time)
-        print(json.dumps(natal, indent=2, ensure_ascii=False))
-    elif args.mode == 'moon-ingress' and args.year and args.month:
-        ing = compute_moon_ingresses(args.year, args.month, args.tz)
-        print(json.dumps(ing, ensure_ascii=False))
-    elif args.year and args.month:
-        matrix = compute_full_matrix(
-            birth_date=args.birth_date or '',
-            rising_sign=args.rising_sign or 'Cancer',
-            start_year=args.year,
-            start_month=args.month,
-            lat=args.lat,
-            lon=args.lon,
-            birth_time=args.birth_time,
-            birth_time_known=not args.no_birth_time,
-            tz=args.tz,
-        )
-        # Override months count
-        matrix['meta']['months_requested'] = args.months
-        matrix['months'] = matrix['months'][:args.months]
-        print(json.dumps(matrix, indent=2, ensure_ascii=False))
-    else:
-        test_verification()
-        print('\n═══ Full Astro Matrix (1990-06-15, Rising Cancer) ═══')
-        matrix = compute_full_matrix('1990-06-15', 'Cancer', 2026, 7)
-        print(json.dumps(matrix, indent=2, ensure_ascii=False))
+    # 🛡️ V490: 时区无效时**显式失败**（stderr 打出 INVALID_TIMEZONE + 专用退出码 3），
+    #   绝不静默产毒值。JS 端 (v69_client.js) 据退出码 3 抛 code='INVALID_TIMEZONE'，
+    #   由 server.js 端点转成 HTTP 400。
+    def _run():
+        if args.mode == 'natal' and args.birth_date:
+            natal = compute_natal_chart(args.birth_date, args.birth_time, args.lat, args.lon, args.tz,
+                                        birth_time_known=not args.no_birth_time)
+            print(json.dumps(natal, indent=2, ensure_ascii=False))
+        elif args.mode == 'moon-ingress' and args.year and args.month:
+            ing = compute_moon_ingresses(args.year, args.month, args.tz)
+            print(json.dumps(ing, ensure_ascii=False))
+        elif args.year and args.month:
+            matrix = compute_full_matrix(
+                birth_date=args.birth_date or '',
+                rising_sign=args.rising_sign or 'Cancer',
+                start_year=args.year,
+                start_month=args.month,
+                lat=args.lat,
+                lon=args.lon,
+                birth_time=args.birth_time,
+                birth_time_known=not args.no_birth_time,
+                tz=args.tz,
+            )
+            # Override months count
+            matrix['meta']['months_requested'] = args.months
+            matrix['months'] = matrix['months'][:args.months]
+            print(json.dumps(matrix, indent=2, ensure_ascii=False))
+        else:
+            test_verification()
+            print('\n═══ Full Astro Matrix (1990-06-15, Rising Cancer) ═══')
+            matrix = compute_full_matrix('1990-06-15', 'Cancer', 2026, 7)
+            print(json.dumps(matrix, indent=2, ensure_ascii=False))
+
+    try:
+        _run()
+    except InvalidTimeZoneError as e:
+        print(f'[AstroMatrix] {e}', file=sys.stderr)
+        sys.exit(3)   # 🛡️ V490: 专用退出码（0=成功 / 1=其它失败 / 3=时区无效）
