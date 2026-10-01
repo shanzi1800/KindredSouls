@@ -5283,6 +5283,33 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ V485b: 年报「Prompt 内部字段泄漏」清理
+//   病根(2026-10-01 生产实测, 上线 V485 黑天鹅差异化后立即暴露):
+//     为使黑天鹅逐月差异化, V485 在 prompt 里注入「★ 本月专属风控切入角度:XXX」,
+//     LLM 把该字段名连同取值**原样写进正文** ⇒ 12 个月全部出现
+//     「…警告你:不要投机。本月专属风控切入角度:隐性债务与杠杆暴露。你需要…」
+//     —— 内部机制泄漏给用户(高奢交付的观感事故)。
+//   治法(双保险):
+//     ① prompt 侧: 明确「内部参考·严禁在正文出现本行字样」(见下方 system 追加段)
+//     ② 输出侧: 本函数确定性清除该类字段句(整句删除; 因其前后均为完整句子, 删除后语句通顺)
+//   幂等; 只服务年报 zh。
+// ══════════════════════════════════════════════════════════════════
+function stripYearlyPromptLeakage(text, lang, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (lang !== 'zh') return text;
+  if (!text || typeof text !== 'string') return text;
+  const before = text;
+  // 整句形态: 「(本月)(专属)风控切入角度[:：]XXX。」 —— 句中独立成句, 整句删除后前后句仍完整
+  let t = text.replace(/(?:本月)?(?:专属)?风控切入角度\s*[:：]\s*[^。；\n]*[。；]?[ \t]*/g, '');
+  // 兜底: 极少数把字段名单独成行/带 markdown 强调的形态
+  t = t.replace(/^[ \t]*\*{0,2}(?:本月)?(?:专属)?风控切入角度\*{0,2}\s*[:：][^\n]*$\n?/gm, '');
+  // 清理可能因删除产生的孤立连接词/空标点
+  t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ');
+  if (t !== before) console.log(`[V485b] ${lang} 年报 Prompt 字段泄漏清理: 清除 ${(before.length - t.length)} 字`);
+  return t;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V480: 年报「Markdown 结构归一」—— 标题层级/分隔符锁死 + 卡标签本地化 + 头部块瘦身
 // ══════════════════════════════════════════════════════════════════
 //   真值(2026-09-30 生产端 1989-08-15 zh 年报; 用真实产物端到端跑线上同一份前端解析器复现):
@@ -6300,7 +6327,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v492:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v493:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9549,7 +9576,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v492:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v493:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9776,6 +9803,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
+        reportContent = stripYearlyPromptLeakage(reportContent, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -10162,7 +10190,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v492:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v493:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10316,6 +10344,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
         streamText = lockYearlyTransitSigns(streamText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         streamText = lockYearlyOuterPlanetsYear(streamText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
+        streamText = stripYearlyPromptLeakage(streamText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
         streamText = dedupYearlyMonthTitles(streamText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(防历史脏缓存 24 行裸奔)
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -10457,7 +10486,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       //     11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误(refund 级)。
       //   本约束为语言无关的通用禁令, **不含任何个案数值**(prompt 为全用户共用, 严禁写死某盘真值)。
       if (lang === 'zh') {
-        prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕数据块给出的「本月专属风控切入角度」展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n\n【📌 第二章「专属风控切入角度」分配表】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月专属风控切入角度」, 以该处为准。';
+        prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕下方分配表给出的本月风控主线展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n6. 【内部字段严禁入正文】数据块/分配表中的「内部参考」「本月风控主线」「风控切入角度」「★」等一律只是给你的写作指令, 严禁把这些字样或字段名原样写进正文(H1~H6 与正文段落都不得出现)。\n\n【📌 第二章 风控主线分配表(内部参考, 严禁在正文写出本表名/字段名)】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月风控主线」, 以该处为准。';
       } else {
         prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
       }
@@ -11341,6 +11370,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
           if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
+          if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
@@ -11394,6 +11424,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
+    cleanedText = stripYearlyPromptLeakage(cleanedText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理(落库前)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
@@ -11714,7 +11745,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
         // 🛡️ V485: 逐月「专属风控切入角度」—— 真值雷同(Mars SQUARE Uranus 连月)时,
         //   旧 prompt 只给一行相位, LLM 便把同套措辞连写 6 个月(军师 P1② 线上实证)。
         //   治法: 按月份序号确定性分配互不相同的风控视角, 给 LLM 差异化素材 + 硬约束。
-        crisisBlock += '★ 本月专属风控切入角度(必须围绕它展开, 严禁与相邻月份重复句式):' + _V485_CRISIS_ANGLES[i % _V485_CRISIS_ANGLES.length] + '\n';
+        crisisBlock += '★ 内部参考·本月风控主线(仅供你组织叙述; 严禁在正文写出本行、字段名或「风控切入角度」等措辞, 直接把它当成本月风险的切入视角去写即可):' + _V485_CRISIS_ANGLES[i % _V485_CRISIS_ANGLES.length] + '\n';
       }
 
       var mPrompt = v2SysPrompt + '\n\n[V116-V2-M' + (i+1) + ']: 生成' + monthName + '月度章节(800-1200字)。\n\n★ 月份:' + monthName + '\n★ 太阳行运:' + sunSignZH + '座第' + (sun.house || '?') + '宫\n★ 木星行运:' + jupSignZH_m + '座第' + (jupiter.house || '?') + '宫\n★ 土星行运:' + satSignZH_m + '座第' + (saturn.house || '?') + '宫\n★ 冥王行运:' + pluSignZH + '座第' + (pluto.house || '?') + '宫\n' + peakBlock + crisisBlock + factSheet + '\n\n请以[V116-V2-M' + (i+1) + ']标签标注输出本章。';

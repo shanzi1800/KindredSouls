@@ -196,13 +196,63 @@ test('⑥ 缓存版本必须 ≥ V485 基线(单调判据, 防每次 bump 假红
   const vers = [...src.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
   assert.ok(vers.length >= 3, `应有多处缓存 key, 实得 ${vers.length}`);
   const cur = Math.max(...vers);                 // ⚠️ 用 max: 文件里还散落着历史版本号(如注释/测试数据)
-  assert.ok(cur >= 492, `当前缓存版本应 ≥492(输出链已变更), 实得 v${cur}`);
+  assert.ok(cur >= 493, `当前缓存版本应 ≥493(输出链已变更), 实得 v${cur}`);
   assert.ok(vers.filter((v) => v === cur).length >= 3, `当前版本 v${cur} 应出现在 3 处缓存 key, 实得 ${vers.filter((v) => v === cur).length}`);
 });
 
 // ══════════════════════════════════════════════════════════════════════════
-// ⑦ 注入缺陷自测 —— 每条都必须「注入后判据变红」, 否则闸门无效
+// ⑦ 行为: Prompt 字段泄漏清理(军师 P1② 修复后立即暴露的衍生事故)
+//    —— V485 给黑天鹅注入「本月专属风控切入角度」后, LLM 把字段名连同取值写进正文(12/12 月)。
 // ══════════════════════════════════════════════════════════════════════════
+function loadLeak(source = src) {
+  const { source: code } = closureDecls(source, ['stripYearlyPromptLeakage'], []);
+  const ctx = { console, __exports: {} };
+  vm.createContext(ctx);
+  vm.runInContext(code + '\n__exports.f = stripYearlyPromptLeakage;', ctx);
+  return ctx.__exports.f;
+}
+
+test('⑦ stripYearlyPromptLeakage: 清除内部字段句 + 前后句完整 + 幂等 + 护栏', () => {
+  const f = loadLeak();
+  const inp = '警告你：任何投机行为都将受到惩罚。本月专属风控切入角度：合同细则与隐性条款审查。如果你在本月签署合同，必须逐字审查。';
+  const out = f(inp, 'zh', 'yearly');
+  assert.ok(!/风控切入角度/.test(out), `泄漏未清除 → ${out}`);
+  assert.ok(out.includes('任何投机行为都将受到惩罚') && out.includes('必须逐字审查'), '删除处伤害了正文');
+  assert.strictEqual(f(out, 'zh', 'yearly'), out, '非幂等');
+  assert.strictEqual(f(inp, 'zh', 'monthly'), inp, '月报不该被处理');
+  assert.strictEqual(f(inp, 'es', 'yearly'), inp, '非 zh 不该被处理');
+  // 无泄漏文本零 diff
+  const clean = '这是一个正常的句子。它没有任何内部字段。';
+  assert.strictEqual(f(clean, 'zh', 'yearly'), clean, '无泄漏文本被改动');
+});
+
+test('⑦b 接线: 泄漏清理必须在收尾链全部落点(≥4 处调用)', () => {
+  const n = (src.match(/stripYearlyPromptLeakage\(/g) || []).length;
+  assert.ok(n >= 5, `stripYearlyPromptLeakage 调用点应 ≥5(1 定义 + 4 落点), 实得 ${n}`);
+  assert.ok(/stripYearlyPromptLeakage\(reportContent, lang, reportType\)/.test(src), '非流式 MISS 未接线');
+  assert.ok(/stripYearlyPromptLeakage\(streamText, lang, reportType\)/.test(src), '流式 HIT 未接线');
+  assert.ok(/stripYearlyPromptLeakage\(cleanedText, lang, reportType\)/.test(src), '流式落库前未接线');
+});
+
+test('⑦c Prompt 必须显式禁止内部字段入正文', () => {
+  assert.ok(/严禁在正文写出本行、字段名或「风控切入角度」等措辞/.test(src) ||
+    /严禁把这些字样或字段名原样写进正文/.test(src),
+    'Prompt 缺少「内部字段严禁入正文」约束 → LLM 会继续把字段名写进正文');
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// ⑧ 注入缺陷自测 —— 每条都必须「注入后判据变红」, 否则闸门无效
+// ══════════════════════════════════════════════════════════════════════════
+test('【注入】摘掉泄漏清理 → ⑦ 必须红', () => {
+  // 让函数第一行直接 return(等同禁用清理)
+  const degraded = src.replace(
+    /function stripYearlyPromptLeakage\(text, lang, reportType\) \{/,
+    'function stripYearlyPromptLeakage(text, lang, reportType) { return text;');
+  assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
+  const f = loadLeak(degraded);
+  const inp = '本月专属风控切入角度：隐性债务。后续正文。';
+  assert.ok(/风控切入角度/.test(f(inp, 'zh', 'yearly')), '注入后应保留泄漏(判据⑦ 才能抓住)');
+});
 test('【注入】把跨行吞并正则还给 forceSpaceHouseSanitizer → ② 必须红', () => {
   // 把行内限定 + 负向回顾换回旧的跨行形态 `[^✦]{0,40}?`
   const degraded = src.replace(/\(\?!区域\)\[\^\\\\n✦\]\{0,20\}\?/, '[^✦]{0,40}?');
@@ -245,11 +295,13 @@ test('【注入】摘掉非流式接线 → ⑤ 接线判据必须红', () => {
     '注入后判据应命中失败');
 });
 
-test('【注入】缓存版本退回 v490 → ⑥ 必须红', () => {
-  const degraded = src.replace(/wealth:v492:/g, 'wealth:v490:');
+test('【注入】缓存版本降级一档 → ⑥ 必须红', () => {
+  // ⚠️ 动态取当前版本再降级(写死版本号会随每次 bump 失效 —— 本次踩过)
+  const cur = Math.max(...[...src.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1])));
+  const degraded = src.replace(new RegExp(`wealth:v${cur}:`, 'g'), `wealth:v${cur - 1}:`);
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const vers = [...degraded.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
-  assert.ok(Math.min(...vers) < 492, '注入后版本应低于基线');
+  assert.ok(Math.max(...vers) < 493, `注入后版本应低于基线(实得 v${Math.max(...vers)})`);
 });
 
 test('【注入】给外行星锁摘掉本命豁免 → ④ 必须红', () => {
