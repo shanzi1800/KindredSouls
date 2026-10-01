@@ -10,21 +10,23 @@ vm.createContext(ctx);
 vm.runInContext(code + '\n__exports.f = stripYearlyPromptLeakage;', ctx);
 const f = ctx.__exports.f;
 
-const path = process.argv[2] || '/tmp/ks1997_v485_leak_sample.txt';
+const path = process.argv[2] || '/tmp/ks1997_v485b_final.txt';
 const text = fs.readFileSync(path, 'utf-8');
 const count = (s, p) => (s.match(new RegExp(p, 'g')) || []).length;
 const countM = (s, p) => (s.match(new RegExp(p, 'gm')) || []).length;
 
 console.log(`样本: ${path} · ${text.length} 字`);
-console.log(`泄漏短语(清理前): ${count(text, '风控切入角度')}`);
+const LEAK = '风控(?:切入)?(?:主线|角度|视角|重点)';   // 泛化: 覆盖 prompt 换词后的各种字段名
+console.log(`泄漏短语(清理前): ${count(text, LEAK)}`);
 
 const out = f(text, 'zh', 'yearly');
-console.log(`泄漏短语(清理后): ${count(out, '风控切入角度')}`);
+console.log(`泄漏短语(清理后): ${count(out, LEAK)}`);
 
 let bad = 0;
 const chk = (n, c, e = '') => { if (!c) bad++; console.log(`  ${c ? '✅' : '❌'} ${n}${e ? ' — ' + e : ''}`); };
 
-chk('泄漏清零', count(out, '风控切入角度') === 0);
+chk('泄漏清零', count(out, LEAK) === 0);
+chk('内容未被误删(抽样: 12 条风控条目仍在)', count(out, '\\* 💡') >= 8, String(count(out, '\\* 💡')));
 chk('月标题 12 条未破坏', countM(out, '^###\\s*\\d{4}年\\d{1,2}月') === 12, String(countM(out, '^###\\s*\\d{4}年\\d{1,2}月')));
 chk('幂等', f(out, 'zh', 'yearly') === out);
 chk('月报不处理', f(text, 'zh', 'monthly') === text);

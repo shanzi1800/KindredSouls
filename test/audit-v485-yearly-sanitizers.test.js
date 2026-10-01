@@ -196,7 +196,7 @@ test('⑥ 缓存版本必须 ≥ V485 基线(单调判据, 防每次 bump 假红
   const vers = [...src.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
   assert.ok(vers.length >= 3, `应有多处缓存 key, 实得 ${vers.length}`);
   const cur = Math.max(...vers);                 // ⚠️ 用 max: 文件里还散落着历史版本号(如注释/测试数据)
-  assert.ok(cur >= 493, `当前缓存版本应 ≥493(输出链已变更), 实得 v${cur}`);
+  assert.ok(cur >= 494, `当前缓存版本应 ≥494(输出链已变更), 实得 v${cur}`);
   assert.ok(vers.filter((v) => v === cur).length >= 3, `当前版本 v${cur} 应出现在 3 处缓存 key, 实得 ${vers.filter((v) => v === cur).length}`);
 });
 
@@ -224,6 +224,20 @@ test('⑦ stripYearlyPromptLeakage: 清除内部字段句 + 前后句完整 + �
   // 无泄漏文本零 diff
   const clean = '这是一个正常的句子。它没有任何内部字段。';
   assert.strictEqual(f(clean, 'zh', 'yearly'), clean, '无泄漏文本被改动');
+
+  // ② 字段名形态(其后紧跟实质内容): 只删字段名, **内容必须保留**(V485b 线上二次实测形态)
+  const item = '* 💡 **本月风控主线**: 现金流周转与应急储备。第8宫的能量让你容易乱花钱。';
+  const itemOut = f(item, 'zh', 'yearly');
+  assert.ok(!/风控主线/.test(itemOut), `字段名未清除 → ${itemOut}`);
+  assert.ok(itemOut.includes('现金流周转与应急储备') && itemOut.includes('第8宫的能量让你容易乱花钱'),
+    `字段名清理误删了内容 → ${itemOut}`);
+  // ③ 泛化: prompt 换词(视角/重点)也必须兜住
+  for (const w of ['本月风险视角', '风控视角', '本月风险重点', '风险切入点']) {
+    assert.ok(!new RegExp(w).test(f(`${w}：测试内容。后续句。`, 'zh', 'yearly')), `字段名变体「${w}」漏清`);
+  }
+  // ④ 不得误伤正常句子
+  const normal = '本月风险主要集中在合伙资金的使用上，需要格外谨慎。';
+  assert.strictEqual(f(normal, 'zh', 'yearly'), normal, '误伤了不含字段名的正常句子');
 });
 
 test('⑦b 接线: 泄漏清理必须在收尾链全部落点(≥4 处调用)', () => {
@@ -301,7 +315,7 @@ test('【注入】缓存版本降级一档 → ⑥ 必须红', () => {
   const degraded = src.replace(new RegExp(`wealth:v${cur}:`, 'g'), `wealth:v${cur - 1}:`);
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const vers = [...degraded.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
-  assert.ok(Math.max(...vers) < 493, `注入后版本应低于基线(实得 v${Math.max(...vers)})`);
+  assert.ok(Math.max(...vers) < 494, `注入后版本应低于基线(实得 v${Math.max(...vers)})`);
 });
 
 test('【注入】给外行星锁摘掉本命豁免 → ④ 必须红', () => {

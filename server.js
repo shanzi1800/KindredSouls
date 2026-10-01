@@ -5299,10 +5299,18 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   if (lang !== 'zh') return text;
   if (!text || typeof text !== 'string') return text;
   const before = text;
-  // 整句形态: 「(本月)(专属)风控切入角度[:：]XXX。」 —— 句中独立成句, 整句删除后前后句仍完整
-  let t = text.replace(/(?:本月)?(?:专属)?风控切入角度\s*[:：]\s*[^。；\n]*[。；]?[ \t]*/g, '');
-  // 兜底: 极少数把字段名单独成行/带 markdown 强调的形态
-  t = t.replace(/^[ \t]*\*{0,2}(?:本月)?(?:专属)?风控切入角度\*{0,2}\s*[:：][^\n]*$\n?/gm, '');
+  let t = text;
+  // ⚠️ 次序要紧: 先处理「整句形态」, 再处理「字段名形态」(反过来则字段名先被删、整句形态再也匹配不到)。
+  // ① 整句形态 —— 字段名连同取值自成一整句(「…惩罚。本月专属风控切入角度:X。你需要…」), 整句删除;
+  //    因其前后均为完整句子, 删除后语句通顺。
+  t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)切入点?\s*(?:角度|视角)\*{0,2}\s*[:：]\s*[^。；\n]*[。；]?[ \t]*/g, '');
+  // ② 字段名形态 —— 其后紧跟实质内容(V485b 线上二次实测: LLM 写成带 💡 的条目
+  //    「* 💡 **本月风控主线**: 现金流周转与应急储备。第8宫的能量…」, 内容本身逐月差异化且有效)
+  //    ⇒ 只删「字段名 + 冒号」, **保留内容**, 删后语句自然衔接。
+  //    词表做泛化: 风控/风险 + 主线/角度/视角/重点/切入点 (prompt 换词也不会再漏)。
+  t = t.replace(/\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：]\s*/g, '');
+  // ③ 兜底: 极少数把字段名单独成行/带 markdown 强调的形态
+  t = t.replace(/^[ \t]*\*{0,2}(?:本月|当月)?(?:专属|内部)?\s*(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)\*{0,2}\s*[:：][^\n]*$\n?/gm, '');
   // 清理可能因删除产生的孤立连接词/空标点
   t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ');
   if (t !== before) console.log(`[V485b] ${lang} 年报 Prompt 字段泄漏清理: 清除 ${(before.length - t.length)} 字`);
@@ -6327,7 +6335,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v493:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v494:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9576,7 +9584,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v493:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v494:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10190,7 +10198,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v493:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v494:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
