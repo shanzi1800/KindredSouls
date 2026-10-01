@@ -5626,6 +5626,18 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*' + _LQ488B
     + '([^\\u201d\\u300d\\u0022\\n]{1,60})' + _RQ488B, 'g'), '$1');
   t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*', 'g'), '');
+  // ── V488e: 结构性兜底 —— 「定语 + 字段名」无条件删除, **不再枚举连接符** ───────────────
+  //   第三次实测漏网(2026-10-01 V488d 复抓, 部署 234101f3):
+  //     「…任何电子转账都可能出现延迟或错误。本月风控主线聚焦于现金流周转与应急储备，请确保…」
+  //   ⇒ 连接符是**开放集合**(冒号 → 是/为 → 聚焦于 → 将会是/围绕着/关键在于…), 枚举永远补不全。
+  //   正解(结构性): 「定语 + 字段名」本身就是"机制口吻"的充要标志 —— 定语在、字段名在, 就删;
+  //     其后内容(含动词短语「聚焦于…」)原样保留, 删后句子仍然通顺
+  //     (「…出现延迟或错误。聚焦于现金流周转与应急储备，请确保…」)。
+  //   ⚠️ 定语必须**强制出现**(绝不能写成 `(?:本月|当月)?` 这种可选形态) —— 否则会误伤正文
+  //      自然表达「你的风控重点是现金流」。
+  const _F488E = '(?:本月|当月|专属|内部)\\s*(?:(?:风控|风险)\\s*(?:主线|角度|视角|重点|切入点)'
+    + '|(?:叙述|叙事|概览)\\s*(?:镜头|视角|切入点))';
+  t = t.replace(new RegExp('\\*{0,2}\\s*' + _F488E + '\\s*\\*{0,2}', 'g'), '');
   // 清理可能因删除产生的孤立连接词/空标点/行首逗号
   t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ')
     .replace(/(^|[\n。；;：:])\s*[，,、]\s*/g, '$1');
@@ -6690,7 +6702,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v502:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v503:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9939,7 +9951,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v502:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v503:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10561,7 +10573,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v502:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v503:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 

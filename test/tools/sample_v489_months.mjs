@@ -64,6 +64,12 @@ function auditCounts(text) {
   return { warn2: a ? a.warn2 : 0, warn3: a ? a.warn3 : 0, fixed: after === text ? 0 : fixedLines };
 }
 
+// 内部字段泄漏计数（V488e 补：把泄漏纳入**每批自动统计**）
+//   教训：C 阶段只统计了「审计告警」，漏扫「字段泄漏」⇒ 某批 12/12 月的「本月风控主线聚焦X」
+//   直到事后逐文件复算才被发现（覆盖盲区）。同类指标必须一起统计，否则"某版本更干净"的结论会失真。
+const LEAK_RE = /(?:本月|当月|专属|内部)\s*(?:(?:风控|风险)\s*(?:主线|角度|视角|重点|切入点)|(?:叙述|叙事|概览)\s*(?:镜头|视角|切入点))|(?:叙述镜头|风控表达框架|窗口表达框架)分配表/g;
+const leakCount = (text) => (text.match(LEAK_RE) || []).length;
+
 const OUT_DIR = (() => {
   const i = process.argv.indexOf('--out');
   return i > 0 ? (process.argv[i + 1] || '/tmp/v489sample') : '/tmp/v489sample';
@@ -179,10 +185,11 @@ for (const chart of batch) {
   const rec = {
     name: chart.name, birthDate: chart.birthDate, birthTime: chart.birthTime, tz: chart.tz,
     httpStatus: r1.httpStatus, err: r1.err, hasDone: r1.hasDone, sec: r1.sec,
-    chars: r1.text.length, ...m1, audit: a1, retry: null,
+    chars: r1.text.length, ...m1, audit: a1, leak: leakCount(r1.text), retry: null,
   };
   console.log(`HTTP ${r1.httpStatus} · ${r1.sec}s · ${r1.text.length} 字 · 月标题 ${m1.headsSun}/${m1.headsAny}`
-    + ` · [DONE] ${r1.hasDone ? 'Y' : 'N'} · 探针二级 ${a1.warn2}/三级 ${a1.warn3}/纠正行 ${a1.fixed}`);
+    + ` · [DONE] ${r1.hasDone ? 'Y' : 'N'} · 探针二级 ${a1.warn2}/三级 ${a1.warn3}/纠正行 ${a1.fixed}`
+    + ` · 字段泄漏 ${rec.leak}`);
 
   const incomplete = m1.headsSun !== 12 || m1.months !== 12;
   if (incomplete) {
@@ -228,6 +235,10 @@ const sumFx = valid.reduce((s, r) => s + ((r.audit && r.audit.fixed) || 0), 0);
 const hitPlates = valid.filter((r) => r.audit && (r.audit.warn2 + r.audit.warn3) > 0).length;
 console.log(`审计探针汇总（Prompt 4d「前堵」有效性指标）: 二级告警 ${sumW2} 处 / 三级告警 ${sumW3} 处`
   + ` / 一级纠正行 ${sumFx} ⇒ 命中盘 ${hitPlates}/${valid.length}（${valid.length ? (100 * hitPlates / valid.length).toFixed(0) : '-'}%）`);
+const sumLeak = valid.reduce((s, r) => s + (r.leak || 0), 0);
+const leakPlates = valid.filter((r) => (r.leak || 0) > 0).length;
+console.log(`字段泄漏汇总（V488e 起纳入每批统计）: 残留字段名 ${sumLeak} 处 ⇒ 泄漏盘 ${leakPlates}/${valid.length}`);
+console.log(`  ⚠️ 输出侧清洗器(stripYearlyPromptLeakage)若生效, 该值应为 0 —— 非 0 即「连接符枚举不全」的新变体`);
 console.log(`  ⚠️ 该指标「只降不升」才是 4d 收紧生效的证据; 若纠正行上升而最终产物已正确, 属后锁正常接管`);
 if (bad.length) {
   console.log('\n缺月明细:');
