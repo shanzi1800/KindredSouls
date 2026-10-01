@@ -5610,22 +5610,16 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   t = t.replace(new RegExp(_PFX487 + '(?:叙述|叙事|概览)\\s*(?:镜头|视角|切入点)' + _PAREN487 + _SEP487, 'g'), '');
   // ⑤ 分配表名/编号残留(极少数把表头抄进正文的形态)
   t = t.replace(/【?\s*📌?\s*第[一二三四]章\s*(?:月度)?(?:叙述镜头|风控表达框架|窗口表达框架)分配表[^】\n]*】?/g, '');
-  // ── V488b: 「风控主线」字段的「是/为」连接变体(2026-10-01 线上跨盘验收实测)──────────
+  // ── V488b 的「是/为」连接变体（2026-10-01 线上跨盘验收实测）──────────────────────────
   //   真值(线上 1985-06-20 盘 zh 年报 18204 字): 12/12 个月全部出现
   //     「…变成"债主"。本月风控主线是"现金流周转与应急储备"，因此，在18日前…」
-  //   取值与 `_V485_CRISIS_ANGLES` 的 12 项**逐项吻合** ⇒ 确系 V485 注入表字段名 + 取值进了正文。
-  //   V485b② 只覆盖「字段名 + 冒号」形态 ⇒ 「是/为」连接整批漏网(跨盘 0/12 vs 12/12, LLM 随机性)。
-  //   ⚠️ 安全约束(防误伤正文自然句如「你的风控重点是现金流」): 必须带「本月/当月/专属/内部」
-  //      这类**定语**才删 —— 正文不会用「本月风控主线是…」的机制口吻。
-  //   ⚠️ 取值属内容(该月专属风控角度, 逐月差异化) ⇒ **只删字段名与连接符、保留取值**;
-  //      带引号时连引号一并去掉, 避免留下 `""` 空引号对。
-  //   ⚠️ 字符类里不得出现字面 ASCII 引号(会打乱测试端朴素括号配平器) ⇒ 一律用 \u0022 转义。
-  const _F488B = '(?:本月|当月|专属|内部)\\s*(?:风控|风险)\\s*(?:主线|角度|视角|重点|切入点)';
+  //   取值与 `_V485_CRISIS_ANGLES` 的 12 项**逐项吻合** ⇒ 确系 V485 注入表字段名 + 取值进了正文;
+  //   V485b② 只覆盖「字段名 + 冒号」形态 ⇒ 「是/为」连接整批漏网(跨盘 0/12 vs 12/12)。
+  //   ⚠️ V488f 结构性收敛: 该层能力**已被下方 V488e/f 兜底完全覆盖**(词表相同, 且同样处理
+  //      系动词与引号) —— 两层语义重叠会让"注入自测到底该判哪一层会红"无法定位(已踩) ⇒ 合一。
+  //   ⚠️ 字符类里不得出现字面 ASCII 引号(会打乱测试端朴素括号配平器) ⇒ 用 \u0022 转义。
   const _LQ488B = '[\\u201c\\u300c\\u0022]';                       // “ 「 "
   const _RQ488B = '[\\u201d\\u300d\\u0022]';                       // ” 」 "
-  t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*' + _LQ488B
-    + '([^\\u201d\\u300d\\u0022\\n]{1,60})' + _RQ488B, 'g'), '$1');
-  t = t.replace(new RegExp(_F488B + '\\s*(?:是|为|[:：])\\s*', 'g'), '');
   // ── V488e: 结构性兜底 —— 「定语 + 字段名」无条件删除, **不再枚举连接符** ───────────────
   //   第三次实测漏网(2026-10-01 V488d 复抓, 部署 234101f3):
   //     「…任何电子转账都可能出现延迟或错误。本月风控主线聚焦于现金流周转与应急储备，请确保…」
@@ -5635,9 +5629,18 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
   //     (「…出现延迟或错误。聚焦于现金流周转与应急储备，请确保…」)。
   //   ⚠️ 定语必须**强制出现**(绝不能写成 `(?:本月|当月)?` 这种可选形态) —— 否则会误伤正文
   //      自然表达「你的风控重点是现金流」。
-  const _F488E = '(?:本月|当月|专属|内部)\\s*(?:(?:风控|风险)\\s*(?:主线|角度|视角|重点|切入点)'
+  //   ── V488f 增强（同日线上复验证实第四个变体）: LLM 在定语与字段名之间**插入人称/助词** ——
+  //     「本月**你的**风控主线[是]现金流周转与应急储备——请确保…」(12/12 个月出现; 取值仍与
+  //      _V485_CRISIS_ANGLES 逐项吻合 ⇒ 同一泄漏)。此前 6 批(120 盘)未出现 ⇒ 随机措辞变体, 基率低但非零。
+  //     ⇒ 「定语必须紧贴字段名」的假设也被推翻 ⇒ 容忍「定语 + ≤4 个非标点字符 + 字段名」,
+  //       并把系动词一并吃掉(否则删完会剩「是现金流周转…」这种断句)。
+  const _F488E = '(?:本月|当月|专属|内部)[^，。；：\\n]{0,4}?(?:(?:风控|风险)\\s*(?:切入)?\\s*(?:主线|角度|视角|重点|切入点)'
     + '|(?:叙述|叙事|概览)\\s*(?:镜头|视角|切入点))';
-  t = t.replace(new RegExp('\\*{0,2}\\s*' + _F488E + '\\s*\\*{0,2}', 'g'), '');
+  // a) 字段名后接引号内容 ⇒ 只保留引号内内容(取值是内容)
+  t = t.replace(new RegExp('\\*{0,2}\\s*' + _F488E + '\\s*\\*{0,2}\\s*(?:[是为即系]{1,2}|[:：])?\\s*'
+    + _LQ488B + '([^\\u201d\\u300d\\u0022\\n]{1,60})' + _RQ488B, 'g'), '$1');
+  // b) 其余形态 ⇒ 字段名 + 可选系动词/冒号 一并删除, 其后内容原样保留
+  t = t.replace(new RegExp('\\*{0,2}\\s*' + _F488E + '\\s*\\*{0,2}\\s*(?:[是为即系]{1,2}|[:：])?\\s*', 'g'), '');
   // 清理可能因删除产生的孤立连接词/空标点/行首逗号
   t = t.replace(/[，,]\s*。/g, '。').replace(/。\s*。/g, '。').replace(/[ \t]{2,}/g, ' ')
     .replace(/(^|[\n。；;：:])\s*[，,、]\s*/g, '$1');
@@ -6702,7 +6705,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v503:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v504:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9951,7 +9954,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v503:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v504:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10573,7 +10576,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v503:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v504:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
