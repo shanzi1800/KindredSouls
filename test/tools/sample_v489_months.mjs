@@ -1,0 +1,180 @@
+// V489 决策前置：月度章节完整性「低成本跨盘抽样观测」（不做高压测）
+// 用法: node test/tools/sample_v489_months.mjs [--count N] [--start N] [--force]
+//
+// 目的（军师指令）：随机抽样抓 15~20 个不同生辰盘的线上年报产物，统计「月标题数量 < 12」的概率，
+//   据此判定是否触发 V489（Server 层 12 月完整性校验 + 缺月重试）条件立项。
+//
+// 度量口径（与生产/验收脚本一致，避免自造口径）:
+//   ① headsSun  = `^#{1,6}\s*\d{4}年\d{1,2}月 … 太阳<星>座 第N宫`  → 真值权威形态（lockYearlyMonthTitles 出口）
+//   ② headsAny  = `^#{1,6}\s*\d{4}年\d{1,2}月`                      → 宽松口径（生产 verify 现用）
+//   ③ monthKeys = 去重后的 年-月 集合，应为财年窗口 2026-07 ~ 2027-06 共 12 个
+//
+// 病根判别（本次观测的核心价值，决定 V489 方向）:
+//   hasDone = SSE 流里是否出现 `data: [DONE]`
+//     · hasDone=false ⇒ 流中途断（网络/网关/超时截断）⇒ 指向「传输层完整性保护」
+//     · hasDone=true 但缺月 ⇒ 模型自己收尾了 ⇒ 指向「Prompt/生成侧早退」⇒ 才是 V489 的适用面
+//
+// 缺月盘自动「重抓一次」验证是否「重试即恢复」（军师判定门槛所需证据）。
+import fs from 'node:fs';
+import path from 'node:path';
+
+const OUT_DIR = '/tmp/v489sample';
+const RESULT_JSON = path.join(OUT_DIR, 'results.json');
+const dec = new TextDecoder('utf-8');
+const ENDPOINT = 'https://kindredsouls.online/api/wealth-oracle/stream';
+
+// ── 抽样盘：跨 1955~2003 年、不同时辰、多时区/半球（避开与既有 1997-10-18 / 1985-06-20 重叠）──
+const CHARTS = [
+  { name: 'S01', birthDate: '1990-03-05', birthTime: '07:20', lat: 31.2304, lon: 121.4737, tz: 'Asia/Shanghai' },
+  { name: 'S02', birthDate: '1978-11-22', birthTime: '23:45', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai' },
+  { name: 'S03', birthDate: '2001-07-14', birthTime: '03:10', lat: 23.1291, lon: 113.2644, tz: 'Asia/Shanghai' },
+  { name: 'S04', birthDate: '1965-02-09', birthTime: '12:00', lat: 30.5728, lon: 104.0668, tz: 'Asia/Shanghai' },
+  { name: 'S05', birthDate: '1995-08-30', birthTime: '18:30', lat: 43.8256, lon: 87.6168, tz: 'Asia/Shanghai' },
+  { name: 'S06', birthDate: '1988-12-01', birthTime: '05:50', lat: 45.8038, lon: 126.5349, tz: 'Asia/Shanghai' },
+  { name: 'S07', birthDate: '1972-04-17', birthTime: '21:15', lat: 59.9139, lon: 10.7522, tz: 'Europe/Oslo' },
+  { name: 'S08', birthDate: '1999-09-09', birthTime: '09:09', lat: 35.6762, lon: 139.6503, tz: 'Asia/Tokyo' },
+  { name: 'S09', birthDate: '1955-06-06', birthTime: '16:40', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris' },
+  { name: 'S10', birthDate: '2003-01-25', birthTime: '11:05', lat: 40.7128, lon: -74.0060, tz: 'America/New_York' },
+  { name: 'S11', birthDate: '1981-05-13', birthTime: '02:25', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney' },
+  { name: 'S12', birthDate: '1993-10-02', birthTime: '19:55', lat: 52.5200, lon: 13.4050, tz: 'Europe/Berlin' },
+  { name: 'S13', birthDate: '1969-03-21', birthTime: '08:00', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok' },
+  { name: 'S14', birthDate: '1986-07-07', birthTime: '14:14', lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore' },
+  { name: 'S15', birthDate: '1975-12-25', birthTime: '00:30', lat: 55.7558, lon: 37.6173, tz: 'Europe/Moscow' },
+  { name: 'S16', birthDate: '1992-02-29', birthTime: '22:40', lat: -23.5505, lon: -46.6333, tz: 'America/Sao_Paulo' },
+  { name: 'S17', birthDate: '1958-09-18', birthTime: '06:45', lat: 30.2741, lon: 120.1551, tz: 'Asia/Shanghai' },
+  { name: 'S18', birthDate: '1997-04-11', birthTime: '17:35', lat: 30.0444, lon: 31.2357, tz: 'Africa/Cairo' },
+  { name: 'S19', birthDate: '2000-06-01', birthTime: '10:20', lat: 22.5431, lon: 114.0579, tz: 'Asia/Shanghai' },
+  { name: 'S20', birthDate: '1963-08-08', birthTime: '13:50', lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
+];
+
+const argv = process.argv.slice(2);
+const count = Number((argv[argv.indexOf('--count') + 1]) || 0) || CHARTS.length;
+const start = Number((argv[argv.indexOf('--start') + 1]) || 0) || 0;
+const force = argv.includes('--force');
+
+const HEADS_SUN = /^#{1,6}\s*(\d{4})年(\d{1,2})月[^\n]*?太阳\s*[\u4e00-\u9fa5]{2,3}座\s*第\s*(\d+)\s*宫/gm;
+const HEADS_ANY = /^#{1,6}\s*(\d{4})年(\d{1,2})月/gm;
+
+function measure(text) {
+  const sun = [...text.matchAll(HEADS_SUN)].map((m) => `${m[1]}-${String(m[2]).padStart(2, '0')}`);
+  const any = [...text.matchAll(HEADS_ANY)].map((m) => `${m[1]}-${String(m[2]).padStart(2, '0')}`);
+  const keys = [...new Set(sun.length ? sun : any)].sort();
+  const expecting = [];
+  for (let i = 0; i < 12; i++) expecting.push(`${i < 6 ? 2026 : 2027}-${String(((6 + i) % 12) + 1).padStart(2, '0')}`);
+  const missing = expecting.filter((k) => !keys.includes(k));
+  return { headsSun: sun.length, headsAny: any.length, months: keys.length, missing, first: keys.slice(0, 14).join(',') };
+}
+
+async function fetchOnce(chart) {
+  const t0 = Date.now();
+  let httpStatus = 0, raw = '', err = null;
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        birthDate: chart.birthDate, birthTime: chart.birthTime,
+        lat: chart.lat, lon: chart.lon, tz: chart.tz,
+        lang: 'zh', reportType: 'yearly', nocache: true,
+      }),
+      signal: AbortSignal.timeout(900000),
+    });
+    httpStatus = res.status;
+    for await (const v of res.body) raw += dec.decode(v, { stream: true });
+  } catch (e) { err = e.message; }
+
+  let best = '';
+  for (const line of raw.split('\n')) {
+    const t = line.trim();
+    if (!t.startsWith('data:')) continue;
+    const p = t.slice(5).trim();
+    if (!p || p === '[DONE]') continue;
+    let d; try { d = JSON.parse(p); } catch { continue; }
+    for (const k of ['sanitized', 'text', 'content', 'full', 'report', 'cleaned', 'accumulated']) {
+      const v = d[k];
+      if (typeof v === 'string' && v.length > best.length) best = v;
+    }
+  }
+  return {
+    text: best, raw, httpStatus, err,
+    hasDone: /data:\s*\[DONE\]/.test(raw),
+    sec: Number(((Date.now() - t0) / 1000).toFixed(0)),
+  };
+}
+
+function loadResults() {
+  try { return JSON.parse(fs.readFileSync(RESULT_JSON, 'utf8')); } catch { return []; }
+}
+function saveResults(rows) { fs.writeFileSync(RESULT_JSON, JSON.stringify(rows, null, 2)); }
+
+fs.mkdirSync(OUT_DIR, { recursive: true });
+const results = loadResults();
+const done = new Set(results.map((r) => r.name));
+
+console.log(`[抽样观测] 目标盘数 ${count}${start ? ` (从第 ${start + 1} 盘开始)` : ''} · 输出 ${OUT_DIR}`);
+try {
+  const h = await (await fetch('https://kindredsouls.online/api/health', { signal: AbortSignal.timeout(30000) })).json();
+  console.log(`[健康] deploymentId=${h.deploymentId || '-'}\n`);
+} catch (e) { console.log('[健康] 取用失败:', e.message, '\n'); }
+
+const batch = CHARTS.slice(start, start + count);
+for (const chart of batch) {
+  if (done.has(chart.name) && !force) { console.log(`- ${chart.name} ${chart.birthDate} 已有记录，跳过`); continue; }
+  process.stdout.write(`→ ${chart.name} ${chart.birthDate} ${chart.birthTime} @${chart.tz} ... `);
+  const r1 = await fetchOnce(chart);
+  const m1 = measure(r1.text);
+  fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.txt`), r1.text);
+  fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.raw`), r1.raw);
+
+  const rec = {
+    name: chart.name, birthDate: chart.birthDate, birthTime: chart.birthTime, tz: chart.tz,
+    httpStatus: r1.httpStatus, err: r1.err, hasDone: r1.hasDone, sec: r1.sec,
+    chars: r1.text.length, ...m1, retry: null,
+  };
+  console.log(`HTTP ${r1.httpStatus} · ${r1.sec}s · ${r1.text.length} 字 · 月标题 ${m1.headsSun}/${m1.headsAny} · [DONE] ${r1.hasDone ? 'Y' : 'N'}`);
+
+  const incomplete = m1.headsSun !== 12 || m1.months !== 12;
+  if (incomplete) {
+    console.log(`  ⚠️ 缺月/异常（缺 ${m1.missing.join(' ') || '—'}）⇒ 立即重抓一次验证「重试即恢复」`);
+    const r2 = await fetchOnce(chart);
+    const m2 = measure(r2.text);
+    fs.writeFileSync(path.join(OUT_DIR, `${chart.name}_${chart.birthDate}.retry.txt`), r2.text);
+    rec.retry = { httpStatus: r2.httpStatus, hasDone: r2.hasDone, sec: r2.sec, chars: r2.text.length, ...m2 };
+    console.log(`  ↻ 重抓 HTTP ${r2.httpStatus} · ${r2.sec}s · ${r2.text.length} 字 · 月标题 ${m2.headsSun}/${m2.headsAny}`
+      + ` ⇒ ${m2.headsSun === 12 && m2.months === 12 ? '✅ 重试即恢复' : '❌ 仍缺月'}`);
+  }
+
+  const i = results.findIndex((x) => x.name === chart.name);
+  if (i >= 0) results[i] = rec; else results.push(rec);
+  saveResults(results);
+}
+
+// ── 汇总 ──
+const all = loadResults();
+const valid = all.filter((r) => r.httpStatus === 200 && r.chars > 5000);
+const bad = valid.filter((r) => r.headsSun !== 12 || r.months !== 12);
+const recovered = bad.filter((r) => r.retry && r.retry.headsSun === 12 && r.retry.months === 12);
+const stable = bad.filter((r) => !(r.retry && r.retry.headsSun === 12 && r.retry.months === 12));
+
+console.log('\n' + '═'.repeat(100));
+console.log('盘号   生辰          时区              结果   月标题(真值/宽松)  字数   耗时  [DONE]  重抓');
+for (const r of all) {
+  const ok = r.headsSun === 12 && r.months === 12;
+  console.log(`${r.name}  ${r.birthDate}  ${r.tz.padEnd(17)}${ok ? '✅齐备' : '❌缺月'}  `
+    + `${String(r.headsSun).padStart(2)}/${String(r.headsAny).padStart(2)}            `
+    + `${String(r.chars).padStart(6)}  ${String(r.sec).padStart(4)}s  ${r.hasDone ? 'Y' : 'N'}      `
+    + (r.retry ? (r.retry.headsSun === 12 && r.retry.months === 12 ? '✅恢复' : '❌仍缺') : '-'));
+}
+console.log('═'.repeat(100));
+console.log(`有效盘 ${valid.length} / 抓取 ${all.length}（HTTP≠200 或产物过短者不计入分母）`);
+console.log(`初次缺月 ${bad.length} 盘 ⇒ 缺月率 ${valid.length ? (100 * bad.length / valid.length).toFixed(1) : '-'}%`);
+console.log(`重抓恢复 ${recovered.length} 盘 · 稳定缺月 ${stable.length} 盘 ⇒ 稳定缺月率 ${valid.length ? (100 * stable.length / valid.length).toFixed(1) : '-'}%`);
+if (bad.length) {
+  console.log('\n缺月明细:');
+  for (const r of bad) {
+    console.log(` ${r.name} ${r.birthDate} 首次 ${r.headsSun}/12（缺 ${r.missing.join(',') || '—'}）`
+      + ` · [DONE]=${r.hasDone} · ${r.chars}字`
+      + (r.retry ? ` ｜ 重抓 ${r.retry.headsSun}/12 · [DONE]=${r.retry.hasDone} · ${r.retry.chars}字` : ''));
+  }
+}
+console.log(`\n判别提示: [DONE]=N 者指向传输层截断; [DONE]=Y 且缺月者指向生成侧早退(才是 V489 适用面)`);
