@@ -5318,6 +5318,45 @@ function stripYearlyPromptLeakage(text, lang, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ V486: 年报文风复读审计 —— **只检不改**
+// ══════════════════════════════════════════════════════════════════
+//   军师二轮评审实证(1997-10-18 盘 zh 年报 19583 字): 11 类长句在 12 个月里逐字复用,
+//   最高单句复用 7 次; 句式级复用更重(窗口号召句 12/12 月同一句)。
+//   ⚠️ 本函数**绝不修改文本**。对正文做确定性改写 = 造词/语义损伤风险,
+//      与本项目 V484「替换串凭空造日」属同一类事故面 ⇒ 一律不做。
+//   只做统计 + 日志告警, 供线上取证与回归对比; 真正的治理在 prompt 侧硬规则(V486)。
+//   幂等、纯读; 非年报返回 null; 有 reportType 护栏。
+// ══════════════════════════════════════════════════════════════════
+function auditYearlyStyleRepetition(text, lang, reportType) {
+  if (reportType !== 'yearly') return null;
+  if (!text || typeof text !== 'string') return null;
+  const _seen = new Map();
+  for (const r of text.split(/(?<=[。！？])/)) {
+    const head = r.replace(/^[\s>*\-]+/, '');
+    const c0 = head.codePointAt(0) || 0;
+    // 跳过以图形符号/emoji 起手的标签行(🌐/🟢/🔴/💡/🚀/🌟/⚠️/🔮),
+    // 用码点区间判定而非正则字符类 —— 后者按 UTF-16 码元匹配代理对, 会误伤正文。
+    if ((c0 >= 0x2190 && c0 <= 0x2BFF) || (c0 >= 0x1F300 && c0 <= 0x1FAFF)) continue;
+    const s = head.replace(/\s+/g, '').trim();
+    if (s.length < 10) continue;
+    _seen.set(s, (_seen.get(s) || 0) + 1);
+  }
+  const _dup = [..._seen.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]);
+  const stat = {
+    dupTypes: _dup.length,
+    dupOccurrences: _dup.reduce((a, [, n]) => a + n, 0),
+    maxRepeat: _dup.length ? _dup[0][1] : 0,
+    worst: _dup.slice(0, 3).map(([s, n]) => `×${n} ${s.slice(0, 36)}`),
+  };
+  if (stat.dupTypes > 0) {
+    console.log(`[V486-STYLE] ${lang} 年报文风审计(只检不改): 重复句 ${stat.dupTypes} 类 / ${stat.dupOccurrences} 次 / 最高 ×${stat.maxRepeat} ｜ ${stat.worst.join(' ｜ ')}`);
+  } else {
+    console.log(`[V486-STYLE] ${lang} 年报文风审计(只检不改): 零重复句 ✅`);
+  }
+  return stat;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V480: 年报「Markdown 结构归一」—— 标题层级/分隔符锁死 + 卡标签本地化 + 头部块瘦身
 // ══════════════════════════════════════════════════════════════════
 //   真值(2026-09-30 生产端 1989-08-15 zh 年报; 用真实产物端到端跑线上同一份前端解析器复现):
@@ -6335,7 +6374,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     // 模式A: 精确清理特定生辰
     const _ckLat = Number(lat).toFixed(4);
     const _ckLon = Number(lon).toFixed(4);
-    const cacheKey = `wealth:v494:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v495:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${tz}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9584,7 +9623,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = Number(lat || 13.75).toFixed(4);
     const _ckLon = Number(lon || 100.5).toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v494:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v495:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -9812,6 +9851,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
         reportContent = stripYearlyPromptLeakage(reportContent, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
+        auditYearlyStyleRepetition(reportContent, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 仅日志)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -10198,7 +10238,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = Number(lat || 13.75).toFixed(4);
   const _ckLon = Number(lon || 100.5).toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v494:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v495:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11433,6 +11473,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
     cleanedText = stripYearlyPromptLeakage(cleanedText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理(落库前)
+    auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,

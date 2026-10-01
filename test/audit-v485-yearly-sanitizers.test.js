@@ -315,7 +315,8 @@ test('【注入】缓存版本降级一档 → ⑥ 必须红', () => {
   const degraded = src.replace(new RegExp(`wealth:v${cur}:`, 'g'), `wealth:v${cur - 1}:`);
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const vers = [...degraded.matchAll(/wealth:v(\d+):/g)].map((m) => Number(m[1]));
-  assert.ok(Math.max(...vers) < 494, `注入后版本应低于基线(实得 v${Math.max(...vers)})`);
+  // ⚠️ 判据必须与 cur 比较, 不得写死历史版本号(此处在 V486 bump 到 495 时正是它先假红)
+  assert.ok(Math.max(...vers) < cur, `注入后版本应低于当前版本 v${cur}(实得 v${Math.max(...vers)})`);
 });
 
 test('【注入】给外行星锁摘掉本命豁免 → ④ 必须红', () => {
