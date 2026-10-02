@@ -51,9 +51,17 @@ const stripPyComments = (s) => s
  * natal catch 里「时区错误上抛」必须存在，且排在「降级 Cancer」分支之前。
  */
 const natalTzGuardOrdered = (src) => {
-  const i = src.search(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/);
-  const j = src.indexOf("console.warn('[V134] Natal computation failed");
-  return i > 0 && j > 0 && i < j;
+  // V492/D2 升级：natal 失败的「降级 Cancer」分支已被废除（伪造成功 = 最恶劣缺陷）。
+  // 判据语义相应升级：
+  //   ① natal catch 内必须先判时区并上抛（_isInvalidTzError → throw）；
+  //   ② natal 失败必须显式上抛（NATAL_ENGINE_FAILURE），不得再有任何伪造降级。
+  //   ⚠️ 作用域限定：tz 上抛在 v69_client 有两处（natal + getAstroMatrix），
+  //      判据只认 **NATAL_ENGINE_FAILURE 之前** 的那一处（位置式，删第一处即红）。
+  const iFail = src.indexOf("throw new Error('NATAL_ENGINE_FAILURE");
+  if (iFail < 0) return false;
+  const iTz = src.slice(0, iFail)
+    .search(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/);
+  return iTz >= 0;
 };
 
 const serverCode = stripJsComments(serverSrc);
@@ -360,12 +368,15 @@ describe('V490 注入缺陷自测', () => {
     assert.strictEqual(natalTzGuardOrdered(degraded), false, '闸门失效：删掉时区上抛后判据⑨ 仍未红');
   });
 
-  test('【注入自测】把时区上抛挪到降级 Cancer 之后 → 判据⑨ 必须红', () => {
-    const i = v69Code.search(/if\s*\(_isInvalidTzError\(e\)\)\s*throw\s*_invalidTzError\(tz,\s*e\);/);
-    const lineEnd = v69Code.indexOf('\n', i);
-    const line = v69Code.slice(i, lineEnd);
-    const degraded = v69Code.slice(0, i) + v69Code.slice(lineEnd + 1) + '\n' + line;
-    assert.strictEqual(natalTzGuardOrdered(degraded), false, '闸门失效：顺序颠倒后判据⑨ 仍未红');
+  test('【注入自测】natal 失败路径退回伪造 Cancer → 判据⑨ 必须红', () => {
+    // V492/D2: 降级 Cancer 已废除 ⇒ 「挪到降级之后」场景不复存在；
+    // 注入对象改为「把显式上抛退回伪造 Cancer 出盘」——这正是 D2 要根除的最恶劣缺陷。
+    const degraded = v69Code.replace(
+      /throw new Error\('NATAL_ENGINE_FAILURE[^\n]*\n/,
+      "natalResult = JSON.stringify({ rising_sign: 'Cancer', sun_sign: 'Cancer' });\n",
+    );
+    assert.notStrictEqual(degraded, v69Code, '注入未生效');
+    assert.strictEqual(natalTzGuardOrdered(degraded), false, '闸门失效：伪造 Cancer 回归后判据⑨ 仍未红');
   });
 
   test('【注入自测】v69_client 去掉 INVALID_TIMEZONE 上抛 → 判据⑨ 必须红', () => {

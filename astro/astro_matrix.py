@@ -309,8 +309,8 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', c
     # Build macro energy description
     macro_energy = build_macro_energy(positions, year, month)
     
-    # Find peak revenue window (Sun-Jupiter exact aspect days)
-    peak_window = find_peak_window(year, month, swe.SUN, swe.JUPITER, positions['Jupiter']['house'])
+    # Find peak revenue window — 🛡️ V492/R6: 真实相位实算（多观测对象链, D3 严禁 null）
+    peak_windows = find_peak_windows(year, month)
     
     # Find black swan days
     black_swan_days = find_crisis_days(year, month)
@@ -352,7 +352,10 @@ def compute_monthly_matrix(year: int, month: int, rising_sign: str = 'Cancer', c
         'mercury_status': mercury_status,
         'mars_saturn_aspect': mars_sat_aspect,
         'mars_uranus_aspect': mars_ur_aspect,
-        'peak_window': peak_window,
+        # 🛡️ V492/R6c: 补上 sun_jupiter_aspect 生产者——js 侧 (v69_client.js:1229) 一直在读此字段，旧版恒 null
+        'sun_jupiter_aspect': sun_jup_aspect,
+        # 🛡️ V492/D4: 废弃单数 peak_window，统一复数 peak_windows（js 侧读复数，旧版恒 []）
+        'peak_windows': peak_windows,
         'black_swan_days': black_swan_days,
         # ── V177-P2: Weekly Sun (W1-W4) for P1 data block ──
         'w1': _weekly_sun['w1'],
@@ -403,45 +406,112 @@ def build_macro_energy(positions: Dict, year: int, month: int) -> str:
     return f"Sun transits {sun['sign']}, activating {sun_desc}. {jup_desc}. {sat_desc}."
 
 
-def find_peak_window(year: int, month: int, planet1: int, planet2: int,
-                     target_house: int) -> Optional[Dict]:
-    """Find days when two planets are within 2 degrees (exact aspect)."""
-    days_with_aspects = []
-    current = datetime(year, month, 1)
+_PLANET_NAMES = {
+    swe.SUN: 'Sun', swe.MOON: 'Moon', swe.MERCURY: 'Mercury', swe.VENUS: 'Venus',
+    swe.MARS: 'Mars', swe.JUPITER: 'Jupiter', swe.SATURN: 'Saturn',
+    swe.URANUS: 'Uranus', swe.NEPTUNE: 'Neptune', swe.PLUTO: 'Pluto',
+}
+
+# 🛡️ V492/D3: 扩大相位观测对象链——多组「个人行星 × 吉星」组合逐日实算，
+#   保证每月必有 1~3 天真实窗口（严禁 null / 伪桩）。
+_PEAK_PAIRS = None  # 延迟初始化（依赖 swe 常量）
+
+_ASPECTS = [(0, 'conjunction'), (60, 'sextile'), (120, 'trine')]
+
+
+def _peak_pairs():
+    global _PEAK_PAIRS
+    if _PEAK_PAIRS is None:
+        _PEAK_PAIRS = [
+            (swe.SUN, swe.JUPITER),      # 日木吉照（原有主窗口）
+            (swe.VENUS, swe.JUPITER),    # 金木吉照（财富经典相位）
+            (swe.MERCURY, swe.JUPITER),  # 水木吉照（商务/签约）
+            (swe.VENUS, swe.MERCURY),    # 金水吉照（交易顺畅）
+        ]
+    return _PEAK_PAIRS
+
+
+def find_peak_windows(year: int, month: int) -> List[Dict]:
+    """🛡️ V492/R6+D3+D4: 真实相位窗口实算（多观测对象链）。
+
+    旧 find_peak_window 两大病根：
+      R6a 回退分支伪桩——无相位就把当月每天塞进窗口截前 3 天，reason 硬编
+          "Sun aligns with House N"；
+      R6b 真分支 reason 泄漏 SwissEph 枚举索引 "Planet 0 conjoins planet 5"。
+
+    新实现：
+      · 逐日实算 4 组吉照对（conj/sextile/trine, orb ≤ 3°），orb 最小的相位日聚类成窗；
+      · 无 ≤3° 相位日时，取全月 orb 最小日 ± 邻近 orb ≤ 5° 日收拢为单窗（仍为实算，绝不空窗）；
+      · 窗口 1~3 天（D3b），最多 3 个窗口（peak_windows 长度 1~3）；
+      · reason 人类可读（"Venus trine Jupiter (orb 1.8°)"），绝无行星索引泄漏。
+    """
     last_day = (datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)) - timedelta(days=1)
-    
+    day_orb = []  # [(date_str, orb, p1_name, p2_name, aspect_name)]
+    current = datetime(year, month, 1)
     while current <= last_day:
         jd = swe.julday(current.year, current.month, current.day, 12)
-        deg1, _ = get_planet_pos(jd, planet1)
-        deg2, _ = get_planet_pos(jd, planet2)
-        diff = abs(deg1 - deg2) % 360
-        if diff > 180:
-            diff = 360 - diff
-        if diff < 3:  # Within 2 degrees = exact aspect
-            days_with_aspects.append(current.strftime('%Y-%m-%d'))
+        best = None  # (orb, p1, p2, aspect)
+        for p1, p2 in _peak_pairs():
+            deg1, _ = get_planet_pos(jd, p1)
+            deg2, _ = get_planet_pos(jd, p2)
+            diff = abs(deg1 - deg2) % 360
+            if diff > 180:
+                diff = 360 - diff
+            for angle, aname in _ASPECTS:
+                orb = abs(diff - angle)
+                if best is None or orb < best[0]:
+                    best = (orb, p1, p2, aname)
+        if best is not None:
+            day_orb.append((current.strftime('%Y-%m-%d'), best[0], best[1], best[2], best[3]))
         current += timedelta(days=1)
-    
-    if not days_with_aspects:
-        # Fallback: find Sun's highest point relative to the house
-        peak_days = []
-        current = datetime(year, month, 1)
-        while current <= last_day:
-            jd = swe.julday(current.year, current.month, current.day, 12)
-            sun_deg, _ = get_planet_pos(jd, swe.SUN)
-            # Peak when Sun is at 90° to the house cusp (advanced trigonometry simplified)
-            peak_days.append(current.strftime('%Y-%m-%d'))
-            current += timedelta(days=1)
-        return {
+
+    if not day_orb:  # 理论不可达（min-orb 恒存在），防御性保底：绝不返回空（D3 严禁 null）
+        return [{
             'dates': f"{month_names_short[month]} {year}",
-            'window_days': days_with_aspects[:3] if days_with_aspects else peak_days[:3],
-            'reason': f"Sun aligns with House {target_house}",
+            'window_days': [f"{year}-{month:02d}-15"],
+            'reason': 'Monthly benefic convergence (computed)',
+        }]
+
+    def _pname(p):
+        return _PLANET_NAMES.get(p, 'Planet')
+
+    def _mk_window(days):
+        """窗口内取 orb 最小的 1~3 天（按 orb 升序截断），reason 取全窗最小 orb 相位。"""
+        days_sorted = sorted(days, key=lambda x: x[1])
+        kept = sorted(days_sorted[:3], key=lambda x: x[0])  # 天数 1~3，按日期序呈现
+        b = days_sorted[0]
+        return {
+            'dates': f"{kept[0][0]} - {kept[-1][0]}",
+            'window_days': [d[0] for d in kept],
+            'reason': f"{_pname(b[2])} {b[4]} {_pname(b[3])} (orb {b[1]:.1f}°)",
         }
-    
-    return {
-        'dates': f"{days_with_aspects[0]} - {days_with_aspects[-1]}",
-        'window_days': days_with_aspects,
-        'reason': f"Planet {planet1} conjoins planet {planet2}",
-    }
+
+    # 聚类：orb ≤ 3° 的相位日按日期连续性（间隔 ≤1 天）聚簇
+    hits = [d for d in day_orb if d[1] <= 3.0]
+    windows = []
+    if hits:
+        cluster = [hits[0]]
+        for d in hits[1:]:
+            _prev = datetime.strptime(cluster[-1][0], '%Y-%m-%d')
+            _cur = datetime.strptime(d[0], '%Y-%m-%d')
+            if (_cur - _prev).days <= 1:
+                cluster.append(d)
+            else:
+                windows.append(_mk_window(cluster))
+                cluster = [d]
+        windows.append(_mk_window(cluster))
+    else:
+        # D3 保底：全月取 orb 最小日 ± orb ≤5° 的邻近日收拢为单窗（真实计算，非伪桩）
+        dmin = min(day_orb, key=lambda x: x[1])
+        near = [d for d in day_orb if abs((datetime.strptime(d[0], '%Y-%m-%d')
+                                           - datetime.strptime(dmin[0], '%Y-%m-%d')).days) <= 1
+                and d[1] <= dmin[1] + 2.0]
+        windows.append(_mk_window(near or [dmin]))
+
+    # 🛡️ V492/D3b: 每期窗口合计 1~3 天 —— 只保留全月最优（最小 orb）单窗，
+    #   其余簇丢弃（宁缺毋滥，严禁超 3 天）
+    windows.sort(key=lambda w: float(w['reason'].split('orb ')[1].rstrip('°)')))
+    return windows[:1]
 
 
 month_names_short = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -535,6 +605,8 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
             'generated_by': 'V69 SwissEph Engine',
             'version': '1.0.0',
             'house_system': _hs if _cusps is not None else 'Solar House',
+            # 🛡️ V492/R5: 高纬降级便捷位——前端/后端据此注入「已启用等宫制」告知，不得静默降级
+            'is_high_latitude_fallback': (_hs == 'WholeSignFallback') if _cusps is not None else False,
             'year_range': f"{start_year}-{start_month:02d} to {year}-{month-1:02d}",
         'rising_sign_source': 'from_natal',
         },

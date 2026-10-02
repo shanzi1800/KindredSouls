@@ -51,12 +51,24 @@ test('健康样本被截断到事故规模时，长度判据必须单独报警',
   assert.ok(r.metrics.astroDensityPerK > 30);
 });
 
-test('非 zh 语言：密度判据不启用（applicable=false），仅长度护栏', () => {
+test('非 zh 语言：V492/E2 结构守卫生效（长度 + 章节 + Final Oracle 全语言强校验）', () => {
   const shortEn = 'a'.repeat(100);
   const r1 = assessYearlyReportIntegrity(shortEn, { lang: 'en' });
-  assert.equal(r1.applicable, false);
   assert.equal(r1.ok, false);
+  assert.equal(r1.applicable, true, 'V492/E2: 非 zh 不再是 not-applicable（旧「仅验长度」敷衍守卫已废弃）');
+  // 毒缓存教训（2026-10-02 Adelaide 盘）：60,029 字符、缺 Final Wealth Oracle 的截断文本
+  // 在旧守卫下畅通入库 ⇒ 长度足够但无结构 ⇒ 必须拦截
   const longEn = 'a'.repeat(8000);
   const r2 = assessYearlyReportIntegrity(longEn, { lang: 'en' });
-  assert.equal(r2.ok, true);
+  assert.equal(r2.ok, false, '仅长度达标但缺章节结构必须拦截');
+  assert.ok(r2.metrics.hasFinalOracle === false);
+  // 结构齐全 + 长度达标 ⇒ 通过
+  const goodEn = ['Chapter I', 'Chapter II', 'Chapter III', 'Chapter IV', 'Chapter V'].join('\n\n')
+    + '\n\nFinal Wealth Oracle\n\n' + 'x'.repeat(8000);
+  const r3 = assessYearlyReportIntegrity(goodEn, { lang: 'en' });
+  assert.equal(r3.ok, true, `结构齐全样本误杀: ${r3.reasons.join(' | ')}`);
+  // 截断模拟: 第四章中途断句(缺第五章+Final Oracle) ⇒ 拦截
+  const truncated = goodEn.slice(0, goodEn.indexOf('Chapter V') + 50);
+  const r4 = assessYearlyReportIntegrity(truncated, { lang: 'en' });
+  assert.equal(r4.ok, false, '截断年报必须拦截');
 });

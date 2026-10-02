@@ -39,6 +39,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v504:*',
   'wealth:v505:*',        // 🛡️ V490b: 键曾由**未校验坐标**经 Number(lat||13.75) 派生（含 null→0.0000 的洗白面）
   'wealth:v505-v2:*',
+  'wealth:v506:*',        // 🛡️ V492/D1: v506 全量作废（含年报 :yearly 形态——实测线上毒缓存正是 wealth:v506:...:en:yearly）
+  'wealth:v506-v2:*',
   'wealth:v116-v2:*',
 ];
 
