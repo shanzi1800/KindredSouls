@@ -98,7 +98,10 @@ test('③ `####` 级标题也不得损失 `#` (旧代码被 `###` 前半吃掉�
 test('【注入缺陷自测】步长改回 `i += 2` → ①② 必须红', () => {
   const degraded = src.replace(/for \(let i = 1; i \+ 2 < sections\.length; i \+= 4\)/, 'for (let i = 1; i < sections.length; i += 2)');
   assert.notStrictEqual(degraded, src, '未成功注入缺陷(未匹配到循环首行)');
-  assert.ok(!/i\s*\+=\s*4\s*\)/.test(fnSrc('house_linter', degraded)), '闸门失效: 步长退化未被识别(① 未红)');
+  // V492/E7: house_linter 新增英文月锚点分支（enSections 也有各自的 i += 4 循环），
+  //   步长判据须**按分支作用域**检查——中文锚点循环（sections.length）退化后必须被识别。
+  const zhLoop = fnSrc('house_linter', degraded).match(/sections\.length; i \+= (\d+)\)/);
+  assert.ok(zhLoop && zhLoop[1] !== '4', '闸门失效: 步长退化未被识别(① 未红)');
   const f = sandbox('house_linter', degraded);
   const out = f(`### 2026年11月: ${T11}\n`, mkAM());
   assert.ok(/年undefined月/.test(out) || /^#{1,6}\s*\d{4}年/.test(out) === false,
@@ -111,8 +114,10 @@ test('【注入缺陷自测】锚点正则去掉 `#{1,6}` 捕获 → ①③ 必�
     'const monthAnchorRe = /###\\s*(\\d{4})年(\\d{1,2})月:/g;',
   );
   assert.notStrictEqual(degraded, src, '未成功注入缺陷(未匹配到锚点正则)');
-  // ① 源码级
-  assert.ok(!/\(#\{1,6\}/.test(fnSrc('house_linter', degraded)), '闸门失效: 标记捕获缺失未被识别(① 未红)');
+  // ① 源码级 —— V492/E7: 判据作用域收窄到 **monthAnchorRe 声明本身**
+  //   （英文锚点分支的 enAnchorRe 同样合法持有 `#{1,6}` 捕获，不得跨正则误伤）
+  const reDecl = fnSrc('house_linter', degraded).match(/const\s+monthAnchorRe\s*=\s*(\/.*?\/g)\s*;/);
+  assert.ok(reDecl && !/\(#\{1,6\}/.test(reDecl[1]), '闸门失效: 标记捕获缺失未被识别(① 未红)');
   // ③ 行为级: 标记不被捕获 ⇒ 重建时 `###` 整体丢失
   //   注意: 必须用 **2 个月标题** 的输入 —— 单标题时 sections.length=4 < 5 会被守卫挡到回退分支,
   //   反而看不出退化(守卫本身也是一层保护); 2 标题时 length=7 必定进入锚点分支。

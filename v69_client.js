@@ -167,20 +167,25 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
   } catch (e) {
     if (_isInvalidTzError(e)) throw _invalidTzError(tz, e);  // 🛡️ V490: 时区无效绝不降级 Cancer（伪造上升）
     if (_isInvalidCoordError(e)) throw _invalidCoordError(lat, lon, e);  // 🛡️ V490b: 坐标非法同样绝不降级
-    console.warn('[V134] Natal computation failed:', e.message, '\nFalling back to Cancer rising');
-    natalResult = JSON.stringify({ rising_sign: 'Cancer', sun_sign: 'Cancer' });
+    // 🛡️ V492/D2: 引擎失败绝不伪造 Cancer 上升出盘（伪造成功 = 最恶劣缺陷），显式上抛
+    console.error('[V134] Natal computation failed:', e.message);
+    throw new Error('NATAL_ENGINE_FAILURE: ' + e.message);
   }
 
   let natalData;
   try {
     natalData = JSON.parse(natalResult);
   } catch (e) {
-    console.warn('[V134] Natal JSON parse failed, using Cancer fallback:', natalResult.slice(0, 100));
-    natalData = { rising_sign: 'Cancer', sun_sign: 'Cancer' };
+    // 🛡️ V492/D2: JSON 解析失败同样绝不伪造，显式上抛
+    console.error('[V134] Natal JSON parse failed:', (natalResult || '').slice(0, 100));
+    throw new Error('NATAL_JSON_PARSE_FAILURE: ' + e.message);
   }
 
-  const risingSign = natalData.rising_sign || 'Cancer';
-  const sunSign = natalData.sun_sign || natalData.sunSign || 'Cancer';
+  // 🛡️ V492/D2: 真值缺失显式失败——绝不静默退 Cancer（真值锁会锁定兜底值）
+  const risingSign = natalData.rising_sign;
+  const sunSign = natalData.sun_sign || natalData.sunSign;
+  if (!risingSign) throw new Error('NATAL_MISSING_RISING_SIGN');
+  if (!sunSign) throw new Error('NATAL_MISSING_SUN_SIGN');
   
   console.log(`[V134] Rising=${risingSign}, Sun=${sunSign}, birthTimeKnown=${birthTimeKnown}, source=${natalData.rising_sign_source || '?'}`);
 
@@ -386,7 +391,8 @@ const _planets = [
 export function buildNatalAnchors(astroMatrix) {
   const meta = astroMatrix?.meta || {};
   const ch = meta.computed_houses || {};
-  const actualRising = meta.rising_sign || astroMatrix?.rising_sign || 'Cancer';
+  // 🛡️ V492/D2: 真值缺失显示为「?」——绝不静默伪造 Cancer（真值锁会锁定兜底值）
+  const actualRising = meta.rising_sign || astroMatrix?.rising_sign || '?';
   const _natalMoon = meta.natal_moon || ch.Moon || {};
   const _asc = meta.ascendant || null;
   const _mc = meta.midheaven || null;
@@ -407,7 +413,7 @@ ${_planets
 
   // ── Part 2: 散文真值 (人类阅读 · 参照) ───────────────────────────
   const proseLines = [
-    `Your Natal Sun: ${meta.sun_sign || ch.Sun?.sign || 'Cancer'} (House ${ch.Sun?.house ?? '?'})`,
+    `Your Natal Sun: ${meta.sun_sign || ch.Sun?.sign || '?'} (House ${ch.Sun?.house ?? '?'})`,
     `Your Natal Moon: ${_natalMoon.sign || '?'} in House ${_natalMoon.house ?? '?'}${_natalMoon.retrograde ? ' (Retrograde)' : ''}`,
   ];
   for (const { en, vi } of _planets) {
@@ -600,7 +606,8 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
 
   const { months, retrograde_stations, meta } = astroMatrix;
   
-  const actualRising = meta?.rising_sign || 'Cancer';
+  // 🛡️ V492/D2: 真值缺失显示为「?」——绝不静默伪造 Cancer
+  const actualRising = meta?.rising_sign || '?';
 
   // 🛡️ V483: 窗口标签**动态**取自矩阵（绝不再硬编码年份）。
   //   历史病根: 此处原写死 `(July 2026 – June 2027)` / `(2026-2027)`，
@@ -979,7 +986,14 @@ export function buildMonthlyOverviewBlock(astroMatrix, lang) {
   // 本命盘锚点
   const natal = astroMatrix?.meta || {};
   const natalSun = loc(natal.sun_sign || '');
-  const rising = loc(natal.rising_sign || 'Cancer');
+  // 🛡️ V492/D2: 上升真值缺失 ⇒ 不注入该锚点（绝不允许真值锁锁定 Cancer 兜底值）
+  const rising = natal.rising_sign ? loc(natal.rising_sign) : '';
+  const risingZh = rising ? `，上升${rising}` : '';
+  const risingEn = rising ? `, Rising ${rising}` : '';
+  const risingEs = rising ? `, Ascendente ${rising}` : '';
+  const risingFr = rising ? `, Ascendant ${rising}` : '';
+  const risingTh = rising ? `, ราศีขึ้น ${rising}` : '';
+  const risingVi = rising ? `, Ascendant ${rising}` : '';
   const natalMoon = natal.natal_moon ? loc(natal.natal_moon.sign || '') : null;
 
   // 主导能量行星（按宫位归类：财帛/事业/共享资源三宫优先）
@@ -993,37 +1007,37 @@ export function buildMonthlyOverviewBlock(astroMatrix, lang) {
     zh:  `【概述句骨架 — 算法生成 — LLM 只渲染情绪/心理学叙事】
 当月流年星体（SwissEph真值）:
 ${pBlock.map(p => `  · ${PLANET_ZH_MAP[p.k] || p.k}: ${p.s}第${p.h}宫${p.rx}`).join('\n')}
-本命盘锚点: 本命太阳${natalSun}，上升${rising}${natalMoon ? `，本命月亮${natalMoon}` : ''}
+本命盘锚点: 本命太阳${natalSun}${risingZh}${natalMoon ? `，本命月亮${natalMoon}` : ''}
 本月主导能量行星: ${dominatedStr}
 LLM渲染要求: 基于上述真值，撰写1-2句整体月度财务主题叙事。要求: (1)必须提及本命太阳${natalSun}与当月流年星体的互动关系; (2)必须提及主导能量行星所在的宫位主题; (3)语言需有史诗感/命运感/荣格心理学深度; (4)禁止提及任何未在上方真值列表中的星座、宫位或行星。`,
     en:   `【Overview Skeleton — Algorithm-Generated — LLM Renders Psychology Only】
 Transit planets this month (SwissEph truth):
 ${pBlock.map(p => `  · ${p.k}: ${p.s} House ${p.h}${p.rx}`).join('\n')}
-Natal anchors: Sun in ${natalSun}, Rising ${rising}${natalMoon ? `, Moon ${natalMoon}` : ''}
+Natal anchors: Sun in ${natalSun}${risingEn}${natalMoon ? `, Moon ${natalMoon}` : ''}
 Dominant energy planets: ${dominatedStr}
 LLM task: Based on the above truth values, write 1-2 sentences of overall monthly financial theme. Must: (1) connect natal Sun (${natalSun}) with transit planetary energy; (2) reference the dominant planet house themes; (3) write with epic/Jungian depth; (4) NEVER mention any planet, sign or house absent from the truth list above.`,
     es:   `【Resumen — Esqueleto Algorítmico — LLM Solo Renderiza Psicología】
 Planetas en tránsito este mes (SwissEph):
 ${pBlock.map(p => `  · ${p.k}: ${p.s} Casa ${p.h}${p.rx}`).join('\n')}
-Anclas natales: Sol ${natalSun}, Ascendente ${rising}
+Anclas natales: Sol ${natalSun}${risingEs}
 Planetas de energía dominante: ${dominatedStr}
 Tarea LLM: Basado en los datos真值 acima, escribe 1-2 oraciones del tema financiero mensual. NUNCA menciones datos no listados arriba.`,
     fr:   `【Résumé — Fondamentaux Algorithmiques — LLM Rend la Psychologie】
 Planètes en transit ce mois (SwissEph):
 ${pBlock.map(p => `  · ${p.k}: ${p.s} Maison ${p.h}${p.rx}`).join('\n')}
-Ancres natales: Soleil ${natalSun}, Ascendant ${rising}
+Ancres natales: Soleil ${natalSun}${risingFr}
 Planètes dominantes: ${dominatedStr}
 Tâche LLM: Sur la base des données真值 ci-dessus, rédigez 1-2 phrases du thème financier mensuel. NE JAMAIS mentionner de données hors de la liste.`,
     th:   `【ภาพรวม — โครงสร้างอัลกอริทึม — LLM เรนเดอร์จิตวิทยาเท่านั้น】
 ดาวเคราะห์ทรานซิสเดือนนี้ (SwissEph):
 ${pBlock.map(p => `  · ${p.k}: ${p.s} บ้าน ${p.h}${p.rx}`).join('\n')}
-จุดยึดกำเนิด: ดวงอาทิตย์กำเนิด ${natalSun}, ราศีขึ้น ${rising}
+จุดยึดกำเนิด: ดวงอาทิตย์กำเนิด ${natalSun}${risingTh}
 ดาวพลังงานเด่น: ${dominatedStr}
 งาน LLM: จากข้อมูลจริงข้างบน เขียนประโยคธีมการเงินรายเดือน 1-2 ประโยค ห้ามกล่าวถึงข้อมูลนอกเหนือจากรายการ`,
     vi:   `【Tổng quan — Khung thuật toán — LLM Chỉ diễn giải tâm lý】
 Các hành tinh transit tháng này (SwissEph):
 ${pBlock.map(p => `  · ${p.k}: ${p.s} Nhà ${p.h}${p.rx}`).join('\n')}
-Điểm neo bẩm sinh: Mặt Trời bản mệnh ${natalSun}, Ascendant ${rising}
+Điểm neo bẩm sinh: Mặt Trời bản mệnh ${natalSun}${risingVi}
 Hành tinh năng lượng chủ đạo: ${dominatedStr}
 Nhiệm vụ LLM: Dựa trên dữ liệu thật ở trên, viết 1-2 câu chủ đề tài chính hàng tháng. TUYỆT ĐỐI không nhắc đến dữ liệu không có trong danh sách.`,
   };
@@ -1278,8 +1292,9 @@ export function computeMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
     return { key: k, sign: loc(p.sign), house: _getH(p.house), retrograde: !!p.retrograde };
   }).filter(Boolean);
 
-  const natalSun = loc(natal.sun_sign || 'Capricorn');
-  const rising = loc(natal.rising_sign || 'Cancer');
+  // 🛡️ V492/D2: 真值缺失 ⇒ 空串透传——绝不允许真值锁锁定 'Cancer'/'Capricorn' 兜底值
+  const natalSun = loc(natal.sun_sign || '');
+  const rising = natal.rising_sign ? loc(natal.rising_sign) : '';
   const natalMoon = natal.natal_moon ? loc(natal.natal_moon.sign || '') : null;
 
   const RISK = {

@@ -2147,11 +2147,50 @@ function fixSpanishSpacing(text) {
   return text.replace(/ {2,}/g, ' ');
 }
 
-function house_linter(text, astroMatrix, currentMonth = null) {
+// 🛡️ V492/R5: 高纬度分宫降级告知——astro_matrix.py 触发 WholeSignFallback（|lat|>66.5°）时
+//   报告首段由**后端拼接注入**本告知（非 LLM 生成，禁止 LLM 复述/翻译）。文案 6 语原生。
+function injectHighLatitudeNotice(text, astroMatrix, lang) {
+  if (!text || typeof text !== 'string') return text;
+  if (!astroMatrix || !astroMatrix.meta || astroMatrix.meta.is_high_latitude_fallback !== true) return text;
+  const NOTICE = {
+    zh: '检测到您的出生地位于高纬度极圈区域，系统已自动启用等宫制（Whole Sign）为您精确校准宫位。',
+    en: 'Your birthplace lies in the high-latitude polar region — the system has automatically switched to the Whole Sign house system for precise house calibration.',
+    es: 'Tu lugar de nacimiento se encuentra en la región polar de alta latitud: el sistema ha activado automáticamente el sistema de casas de Signo Completo (Whole Sign) para calibrar con precisión tus casas.',
+    fr: 'Votre lieu de naissance se situe dans la région polaire de haute latitude — le système a automatiquement activé le système des maisons en Signes Entiers (Whole Sign) afin de calibrer précisément vos maisons.',
+    th: 'สถานที่เกิดของคุณอยู่ในเขตละติจูดสูงบริเวณขั้วโลก ระบบได้เปิดใช้ระบบเรือนแบบราศีเต็ม (Whole Sign) โดยอัตโนมัติ เพื่อปรับเรือนให้แม่นยำ',
+    vi: 'Nơi sinh của bạn nằm ở vùng vĩ độ cao gần cực — hệ thống đã tự động chuyển sang hệ thống nhà Toàn Cung (Whole Sign) để hiệu chỉnh nhà chính xác.',
+  };
+  const line = 'ℹ️ ' + (NOTICE[lang] || NOTICE.en);
+  if (text.includes(line)) return text;  // 幂等（缓存版已含告知）
+  return line + '\n\n' + text;
+}
+
+function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
   if (!text) return text;
 
   const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? null);
   const toCN = (n) => ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'][n] || String(n);
+  // 🛡️ V492/R1: 中文数字/阿拉伯数字双向解析 —— 供「同值零改动」判读（护栏 G02/G06 口径）
+  const fromCN = (s) => {
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+    const D = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
+    const m = /^([一二三四五六七八九])?十([一二三四五六七八九])?$/.exec(s);
+    if (m) return (m[1] ? D[m[1]] : 1) * 10 + (m[2] ? D[m[2]] : 0);
+    return NaN;
+  };
+  // 🛡️ V492/E7: 英文月锚点分支用全星体词条（与 NAME_MAP/NAME_MAP2 同步维护三份）
+  const NAME_MAP_ALL = {
+    jupiter: ['木星', 'Jupiter', 'Júpiter', 'ดาวพฤหัส', 'Sao Mộc'],
+    saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
+    pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
+    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+    mercury: ['水星', 'Mercury', 'Mercure', 'ดาวพุธ', 'Sao Thủy'],
+    venus:   ['金星', 'Venus', 'Vénus', 'ดาวศุกร์', 'Sao Kim'],
+    mars:    ['火星', 'Mars', 'ดาวอังคาร', 'Sao Hỏa'],
+    uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
+    neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
+  };
 
   // ── 按月分区处理：每节用当月真实 house ──────────────────────────
   // 月份锚点: ### YYYY年MM月: / #### YYYY年M月: / ##### ...
@@ -2195,9 +2234,13 @@ function house_linter(text, astroMatrix, currentMonth = null) {
       const plHouse  = getH(monthData.pluto?.house)  || 8;
       const sunHouse = getH(_sunOf(monthData).house) || 1;
       const moonHouse= getH(monthData.moon?.house)   || 2;
+      // 🛡️ V492/R2: 补齐天王星/海王星（月锚点分支原仅 5 颗）——缺真值时跳过（不编造兜底宫位）
+      const uraHouse = getH(monthData.uranus?.house);
+      const nepHouse = getH(monthData.neptune?.house);
       const RULES = [
         ['jupiter', jupHouse], ['saturn', satHouse], ['pluto', plHouse],
         ['sun', sunHouse], ['moon', moonHouse],
+        ['uranus', uraHouse], ['neptune', nepHouse],
       ];
       const NAME_MAP = {
         jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
@@ -2205,15 +2248,28 @@ function house_linter(text, astroMatrix, currentMonth = null) {
         pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
         sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
         moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+        // 🛡️ V492/R2: 天王星/海王星词条（全 6 语）
+        uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
+        neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
       };
       let secText = marker + yearStr + '年' + monthStr + '月:' + body;
       for (const [key, house] of RULES) {
         if (!house) continue;
         for (const pname of NAME_MAP[key]) {
-          const reCN = new RegExp('(' + pname + '在[^第\\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
-          secText = secText.replace(reCN, '$1' + toCN(house) + '宫');
+          // 🛡️ V492/R1: 字符类补 \d —— 旧正则 [一二三四五六七八九十]+宫 遇「第1宫」全空转
+          // 🛡️ V492/R3: 连接词放宽 —— 旧正则要求行星名紧邻「在」，报告写法（沉入/燃烧于/行经）全漏；
+          //   窗口仍守 [^第\n]{0,12} 句界与「第」界，不跨句不跨宫
+          const reCN = new RegExp('(' + pname + '[^第\\n]{0,12}?第)([一二三四五六七八九十\\d]+)宫', 'g');
+          secText = secText.replace(reCN, (mm, p1, num) => {
+            const _n = fromCN(num);
+            return (_n === house) ? mm : (p1 + toCN(house) + '宫');  // 同值零改动（值不变字也不变）
+          });
           const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
           secText = secText.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
+          // 🛡️ V492/E6: 英文序数格式（7th House / 12th House）—— 旧 reEN 只认「House 7」序数在后 ⇒ 英文年报全空转
+          const reENOrd = new RegExp('(' + pname + ')([^\\n]{0,16}?)([0-9]+)(?:st|nd|rd|th)( +)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)', 'gi');
+          secText = secText.replace(reENOrd, (m, p1, p2, num, sp, p3) =>
+            parseInt(num) !== house ? p1 + p2 + house + sp + p3 : m);
         }
       }
       result += secText;
@@ -2221,8 +2277,71 @@ function house_linter(text, astroMatrix, currentMonth = null) {
     return result;
   }
 
+  // ── 🛡️ V492/E7: 英文月锚点分支（年报 en/fr/es/vi 月段：`### July 2026: ...`）──
+  // 后端 lockYearlyMonthTitles 已内建英文月识别（_V478_EN_MONTHS），house_linter 必须同步认得，
+  // 否则英文年报月段无法按月纠偏（Adelaide 盘实证：月段全对、非月段全错且无硬后手）。
+  // split 捕获组 3 个（marker/整月词/年）⇒ 每 4 项一组；整月词捕获防 rebuild 丢后缀（September）。
+  {
+    const EN_MONTH_IDX = { Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12 };
+    const _hasMonths = astroMatrix && astroMatrix.months && astroMatrix.months.length > 0;
+    const enAnchorRe = /(#{1,6}[ \t]*)((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)[ \t]+(\d{4}):/g;
+    const enSections = _hasMonths ? text.split(enAnchorRe) : [];
+    if (enSections.length >= 5 && _hasMonths) {
+      const _monthsMap = {};
+      astroMatrix.months.forEach(m => {
+        const _k = m.month_key || (m.year && m.month ? `${m.year}-${String(m.month).padStart(2,'0')}` : '');
+        if (_k) _monthsMap[_k] = m;
+      });
+      let result = enSections[0];
+      for (let i = 1; i + 3 < enSections.length; i += 4) {
+        const marker  = enSections[i];
+        const monWord = enSections[i + 1];
+        const yearStr = enSections[i + 2];
+        const body    = enSections[i + 3] !== undefined ? enSections[i + 3] : '';
+        const _mNum = EN_MONTH_IDX[monWord.slice(0, 3)] || 0;
+        const _key = `${yearStr}-${String(_mNum).padStart(2, '0')}`;
+        const monthData = _monthsMap[_key] || astroMatrix.months[_mNum - 1] || null;
+        let secText = marker + monWord + ' ' + yearStr + ':' + body;
+        if (monthData) {
+          const _rulesEN = [
+            ['jupiter', getH(monthData.jupiter?.house)], ['saturn', getH(monthData.saturn?.house)],
+            ['pluto', getH(monthData.pluto?.house)], ['sun', getH(_sunOf(monthData).house)],
+            ['moon', getH(monthData.moon?.house)], ['uranus', getH(monthData.uranus?.house)],
+            ['neptune', getH(monthData.neptune?.house)],
+          ];
+          for (const [key, house] of _rulesEN) {
+            if (!house) continue;
+            for (const pname of NAME_MAP_ALL[key]) {
+              const reCN = new RegExp('(' + pname + '[^第\\n]{0,12}?第)([一二三四五六七八九十\\d]+)宫', 'g');
+              secText = secText.replace(reCN, (mm, p1, num) => {
+                const _n = fromCN(num);
+                return (_n === house) ? mm : (p1 + toCN(house) + '宫');
+              });
+              const reFR = new RegExp('(' + pname + '[^\\n]{0,20}?)(\\d+)e?\\s*(maison)', 'gi');
+              secText = secText.replace(reFR, (m, prefix, n, suffix) =>
+                parseInt(n) !== house ? prefix + house + 'e ' + suffix : m);
+              const reEN = new RegExp('(' + pname + ')([^\\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
+              secText = secText.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
+              const reENOrd = new RegExp('(' + pname + ')([^\\n]{0,16}?)([0-9]+)(?:st|nd|rd|th)( +)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)', 'gi');
+              secText = secText.replace(reENOrd, (m, p1, p2, num, sp, p3) =>
+                parseInt(num) !== house ? p1 + p2 + house + sp + p3 : m);
+            }
+          }
+        }
+        result += secText;
+      }
+      return result;
+    }
+  }
+  // 🛡️ V492/E7: 年报模式（strictAnchor）且中/英月锚点均不匹配（如 th 全泰文月标）⇒ 原文透传——
+  //   绝不允许「单月数据纠偏全文」的伪纠偏（回退分支的 detectedMonth 启发式只对月报安全）。
+  if (opts && opts.strictAnchor) return text;
+
   // ── 回退: 无月份锚点或无 astroMatrix → 用 months 数据处理 ───
   // 🛡️ V233-fix: 法语/西班牙语月份锚点无法被中文锚点正则捕获，自动检测月份关键词选对应数据。
+  // 🛡️ V492/G04: 无 months 数据 ⇒ 原文透传 —— 硬编兜底宫位（pluto||8 等）在 R1 补 \d 后
+  //   会从「不匹配」变成「主动改写」= 无真值伪造纠偏，绝不允许。
+  if (!astroMatrix || !astroMatrix.months || astroMatrix.months.length === 0) return text;
   const FR_MONTH_MAP = {Juil:7,Juillet:7,Août:8,Aout:8,Sept:9,Sep:9,Septembre:9,
     Oct:10,Octobre:10,Nov:11,Novembre:11,Déc:12,Dec:12,Decembre:12,
     Janv:1,Janvier:1,Févr:2,Fév:2,Février:2,Mars:3,Avril:4,Mai:5,Juin:6};
@@ -2242,31 +2361,47 @@ function house_linter(text, astroMatrix, currentMonth = null) {
   const mercHouse= getH(fb.mercury?.house)|| getH(fb.positions?.Mercury?.house)|| 3;
   const venHouse = getH(fb.venus?.house)  || getH(fb.positions?.Venus?.house)   || 4;
   const marsHouse= getH(fb.mars?.house)   || getH(fb.positions?.Mars?.house)    || 5;
+  // 🛡️ V492/R2: 回退分支补齐天王星/海王星——缺真值时跳过（不编造兜底宫位）
+  const uraHouse = getH(fb.uranus?.house) || getH(fb.positions?.Uranus?.house);
+  const nepHouse = getH(fb.neptune?.house)|| getH(fb.positions?.Neptune?.house);
   const RULES2 = [
     ['jupiter', jupHouse], ['saturn', satHouse], ['pluto', plHouse],
     ['sun', sunHouse], ['moon', moonHouse], ['mercury', mercHouse], ['venus', venHouse], ['mars', marsHouse],
+    ['uranus', uraHouse], ['neptune', nepHouse],
   ];
   const NAME_MAP2 = {
     jupiter: ['木星', 'Jupiter', 'Júpiter', 'ดาวพฤหัส', 'Sao Mộc'],
     saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
     pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
-    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trăng'],
+    // 🛡️ V492/R2c: 越南语「太阳」词条曾被污染为 Mặt Trăng（=月亮）⇒ 太阳规则误匹配越语月亮；正字 = Mặt Trời
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
     moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
     mercury: ['水星', 'Mercury', 'Mercure', 'ดาวพุธ', 'Sao Thủy'],
     venus:   ['金星', 'Venus', 'Vénus', 'ดาวศุกร์', 'Sao Kim'],
     mars:    ['火星', 'Mars', 'ดาวอังคาร', 'Sao Hỏa'],
+    // 🛡️ V492/R2: 天王星/海王星词条（全 6 语）
+    uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
+    neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
   };
   for (const [key, house] of RULES2) {
     if (!house) continue;
     for (const pname of NAME_MAP2[key]) {
-      const reCN = new RegExp('(' + pname + '在[^第\n]{0,12}?第)[一二三四五六七八九十]+宫', 'g');
-      text = text.replace(reCN, '$1' + toCN(house) + '宫');
+      // 🛡️ V492/R1+R3: 与月锚点分支同口径 —— 字符类补 \d、连接词放宽（守句界与「第」界）、同值零改动
+      const reCN = new RegExp('(' + pname + '[^第\n]{0,12}?第)([一二三四五六七八九十\\d]+)宫', 'g');
+      text = text.replace(reCN, (mm, p1, num) => {
+        const _n = fromCN(num);
+        return (_n === house) ? mm : (p1 + toCN(house) + '宫');
+      });
       // 🛡️ V233-fix: 法语 maison 格式——Lune en 9e maison / Soleil en 8e Maison
       const reFR = new RegExp('(' + pname + '[^\n]{0,20}?)(\d+)e?\s*(maison)', 'gi');
       text = text.replace(reFR, (m, prefix, n, suffix) =>
         parseInt(n) !== house ? prefix + house + 'e ' + suffix : m);
       const reEN = new RegExp('(' + pname + ')([^\n]{0,16}?)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)( +)[0-9]+', 'gi');
       text = text.replace(reEN, (m, p1, p2, p3, p4) => p1 + p2 + p3 + p4 + house);
+      // 🛡️ V492/E6: 英文序数格式（7th House）—— 与月锚点分支同口径
+      const reENOrd = new RegExp('(' + pname + ')([^\n]{0,16}?)([0-9]+)(?:st|nd|rd|th)( +)(House|Casa|Maison|ภพที่|เรือนที่|Nhà)', 'gi');
+      text = text.replace(reENOrd, (m, p1, p2, num, sp, p3) =>
+        parseInt(num) !== house ? p1 + p2 + house + sp + p3 : m);
     }
   }
   return text;
@@ -6711,7 +6846,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v506:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v507:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9987,7 +10122,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v506:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v507:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10247,6 +10382,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
           reportContent = dedupYearlyMonthTitles(reportContent, lang, reportType);
         }
 
+        // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
+        reportContent = injectHighLatitudeNotice(reportContent, astroMatrix, lang);
+
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
 
         // 🛠️ V107-方案A: 预缓存校验器(硬拦截--发现问题就不写缓存,触发重刷)
@@ -10258,6 +10396,13 @@ app.post('/api/wealth-oracle', async (req, res) => {
             skipCache = true;
           } else {
             console.log('[CRITIC] 预缓存校验通过 ✅');
+          }
+          // 🛡️ V492/E5: 非流式年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——
+          //   旧版此路径完全没有结构守卫，截断毒文本可畅通入库（Adelaide 盘实证）
+          const _ivNS = assessYearlyReportIntegrity(reportContent, { lang });
+          if (!_ivNS.ok) {
+            console.error('[V492/E5] 🚨 非流式年报完整性不足, 跳过缓存写入:', _ivNS.reasons.join('; '));
+            skipCache = true;
           }
         }
 
@@ -10632,7 +10777,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v506:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v507:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11727,6 +11872,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix, reportType);   // 🛡️ V444
       cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix, reportType); // 🛡️ V445
     } else {
+      // 🛡️ V492/E7: 取消年报跳过 house_linter 的特权——年报（全语言）纳入真值纠偏防线。
+      //   strictAnchor=true：仅认中/英月锚点逐月纠偏；锚点不匹配（如 th）⇒ 透传，绝不单月纠偏全文。
+      cleanedText = house_linter(cleanedText, astroMatrix, null, { strictAnchor: true });
       cleanedText = natal_sun_linter(astro_phase_linter(final_text_sanitizer(cleanedText, _ascStream, lang)), realSunSign, _ascStream);
       cleanedText = applyMonthLockSanitizer(cleanedText, astroMatrix, null, null, lang);
 
@@ -11769,6 +11917,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛠️ V108-fix1: 终极乱码清洗--sanitized 事件前最后一次 FFFD 清扫
     cleanedText = cleanedText.replace(/�/g, '').replace(/�/g, '');
     }
+
+    // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
+    cleanedText = injectHighLatitudeNotice(cleanedText, astroMatrix, lang);
 
     // V100i2: 用清洗后的完整文本替换显示(清除中文标点污染)
     // V113-fix5: client sanitized 和 writeToCache 都用 cleanedText(标准化后),同一终稿
@@ -12292,8 +12443,10 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v506-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
-    if (SB_URL && SB_KEY && allText.length > 500) {
+    const v2CacheKey = `wealth:v507-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
+    const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
+    if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
       try {
         await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {
           method: 'DELETE',
@@ -12306,6 +12459,8 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
         });
         console.log('[V2] 缓存写入: ' + v2CacheKey + ' (' + allText.length + '字)');
       } catch(e) { console.warn('[V2] 缓存写入失败: ' + e.message); }
+    } else if (SB_URL && SB_KEY && allText.length > 500 && !_ivV2.ok) {
+      console.warn('[V492/E5] 🚨 v2 年报完整性不足, 不写入缓存: ' + _ivV2.reasons.join('; '));
     }
     console.log('[V2] ✅ 完成: ' + birthDate + '/' + lang + ',总字数: ' + allText.length);
 
