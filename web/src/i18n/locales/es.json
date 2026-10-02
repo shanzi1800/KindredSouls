@@ -59,6 +59,10 @@
     "generateFail": "Generación fallida",
     "loginFirst": "Por favor inicia sesión primero para generar el informe.",
     "almanac": "Almanaque de Riqueza",
-    "almanacDesc": "Basado en tu plan de riqueza innato, proyecta tendencias futuras."
+    "almanacDesc": "Basado en tu plan de riqueza innato, proyecta tendencias futuras.",
+    "errInvalidCoordinates": "Coordenadas del lugar de nacimiento no válidas (la latitud debe estar entre -90 y 90, y la longitud entre -180 y 180). Comprueba los parámetros lat / lon e inténtalo de nuevo.",
+    "errInvalidTimezone": "Zona horaria no válida y no se pudo deducir de las coordenadas de nacimiento. Comprueba el parámetro tz e inténtalo de nuevo.",
+    "errInvalidBirthTime": "Formato de hora de nacimiento no reconocido (se esperaba HH:MM). Se generó con 12:00; la precisión de las casas puede ser menor.",
+    "errTimezoneAdjusted": "No se pudo reconocer tu zona horaria. Se ha deducido de las coordenadas de nacimiento como {{tz}}."
   }
 }

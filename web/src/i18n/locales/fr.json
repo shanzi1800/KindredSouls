@@ -59,6 +59,10 @@
     "generateFail": "Échec de génération",
     "loginFirst": "Veuillez vous connecter d'abord pour générer le rapport.",
     "almanac": "Almanach de Richesse",
-    "almanacDesc": "Basé sur votre plan de richesse inné, projete des tendences futures."
+    "almanacDesc": "Basé sur votre plan de richesse inné, projete des tendences futures.",
+    "errInvalidCoordinates": "Coordonnées du lieu de naissance invalides (la latitude doit être comprise entre -90 et 90, la longitude entre -180 et 180). Vérifiez les paramètres lat / lon et réessayez.",
+    "errInvalidTimezone": "Fuseau horaire invalide, et impossible à déduire des coordonnées de naissance. Vérifiez le paramètre tz et réessayez.",
+    "errInvalidBirthTime": "Format d'heure de naissance non reconnu (attendu HH:MM). Le rapport a été généré avec 12:00 ; la précision des maisons peut être réduite.",
+    "errTimezoneAdjusted": "Votre fuseau horaire n'a pas pu être reconnu. Il a été déduit des coordonnées de naissance : {{tz}}."
   }
 }

@@ -59,6 +59,10 @@
     "generateFail": "Tạo thất bại",
     "loginFirst": "Vui lòng đăng nhập trước để tạo báo cáo.",
     "almanac": "Niên Ký Tài Lộc",
-    "almanacDesc": "Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai."
+    "almanacDesc": "Dựa trên bản đồ tài lộc tiên thiên, dự báo xu hướng tương lai.",
+    "errInvalidCoordinates": "Tọa độ nơi sinh không hợp lệ (vĩ độ phải trong khoảng -90 đến 90, kinh độ trong khoảng -180 đến 180). Vui lòng kiểm tra tham số lat / lon rồi thử lại.",
+    "errInvalidTimezone": "Múi giờ không hợp lệ và không thể suy ra từ tọa độ nơi sinh. Vui lòng kiểm tra tham số tz rồi thử lại.",
+    "errInvalidBirthTime": "Định dạng giờ sinh không nhận diện được (cần là HH:MM). Báo cáo đã được tạo với 12:00; độ chính xác của các cung có thể giảm.",
+    "errTimezoneAdjusted": "Không nhận diện được múi giờ của bạn. Đã suy ra từ tọa độ nơi sinh là {{tz}}."
   }
 }

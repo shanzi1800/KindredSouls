@@ -59,6 +59,10 @@
     "generateFail": "生成失败",
     "loginFirst": "请先登录后再生成报告",
     "almanac": "财富年鉴",
-    "almanacDesc": "基于您的先天财富格局，推演未来运势曲线"
+    "almanacDesc": "基于您的先天财富格局，推演未来运势曲线",
+    "errInvalidCoordinates": "出生地坐标无效（纬度需在 -90 至 90 之间，经度需在 -180 至 180 之间）。请检查链接中的 lat / lon 参数后重试。",
+    "errInvalidTimezone": "时区参数无效，且无法根据出生地坐标推断。请检查链接中的 tz 参数后重试。",
+    "errInvalidBirthTime": "出生时间格式无法识别（应为 HH:MM）。已按 12:00 生成，宫位精度可能下降。",
+    "errTimezoneAdjusted": "您提供的时区无法识别，已根据出生地坐标推断为 {{tz}}。"
   }
 }

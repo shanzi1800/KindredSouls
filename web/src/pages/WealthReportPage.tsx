@@ -8,12 +8,19 @@ const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => v
 // 🔬 V219g-DEBUG: 诊断用计数器(确认后删除)
 let _dbgCall = 0;
 let _dbgSet = 0;
+// 🛡️ V491/WP-4·F7: 后端 400 错误码 → i18n key 映射(流式与非流式两条路径共用)
+const _ERR_CODE_I18N: Record<string, string> = {
+  INVALID_COORDINATES: 'wealthReport.errInvalidCoordinates',
+  INVALID_TIMEZONE: 'wealthReport.errInvalidTimezone',
+};
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
+// 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
+import { resolveCoordinates } from '../lib/coord-parse';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
   tTarotName, tTarotMeaning, tOrientation, tZodiacMode, tRuler, tChanging, tTiangan,
@@ -984,7 +991,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // 🏅 第一斧:useRef 同步锁定免死金牌,在所有 render 之前抢跑
   const isGreenChannelRef = useRef<boolean>(
     typeof window !== 'undefined' && (
-      window.location.search.includes('free_access=1') ||
+      // 🛡️ V491/WP-8·F9: 精确匹配 free_access 参数值(禁用 includes 宽松写法,防 query 串误命中)
+      new URLSearchParams(window.location.search).get('free_access') === '1' ||
       sessionStorage.getItem('⚡_FREE_PASS') === '1'
     )
   );
@@ -1137,13 +1145,40 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (timeParam && /^\d{1,2}:\d{2}$/.test(timeParam)) {
       setBirthTime(timeParam);
       sessionStorage.setItem('wealth_time', timeParam);
+    } else if (timeParam) {
+      // 🛡️ V491/WP-6·F2: time 提供了但格式非法 ⇒ 显式报错,严禁静默保留 12:00 出错盘
+      console.warn('[WealthReport] 无效 birth time 参数: ' + timeParam);
+      setError(t('wealthReport.errInvalidBirthTime'));
     }
     const latParam = params.get('lat');
     const lonParam = params.get('lon');
     const tzParam = params.get('tz');
-    if (latParam && !isNaN(Number(latParam))) setBirthLat(Number(latParam));
-    if (lonParam && !isNaN(Number(lonParam))) setBirthLon(Number(lonParam));
-    if (tzParam) setBirthTz(tzParam);
+    // 🛡️ V491/WP-2·F1b: 坐标解析统一走 coord-parse 纯函数(Tier-0 未提供不算错/半缺拒绝/范围校验)
+    const _coord = resolveCoordinates(latParam ?? undefined, lonParam ?? undefined);
+    if (_coord.ok) {
+      if (latParam !== null || lonParam !== null) {
+        setBirthLat(_coord.lat as number);
+        setBirthLon(_coord.lon as number);
+      }
+    } else if (_coord.code === 'MISSING_PARTNER') {
+      console.warn('[WealthReport] 坐标半缺(lat/lon 只给其一),拒绝静默补默认');
+      setError(t('wealthReport.errInvalidCoordinates'));
+    } else {
+      console.warn('[WealthReport] 无效坐标参数: lat=' + latParam + ' lon=' + lonParam);
+      setError(t('wealthReport.errInvalidCoordinates'));
+    }
+    // 🛡️ V491/WP-7·F3: tz 提供了才校验(Intl 可解析才采用);未提供 ⇒ 保留默认,不算错(D3 对齐)
+    if (tzParam) {
+      let _tzOk = false;
+      try { new Intl.DateTimeFormat('en', { timeZone: tzParam }); _tzOk = true; } catch (_) { _tzOk = false; }
+      if (_tzOk) {
+        setBirthTz(tzParam);
+        sessionStorage.setItem('wealth_tz', tzParam);
+      } else {
+        console.warn('[WealthReport] 无效 tz 参数,保留默认 Asia/Bangkok: ' + tzParam);
+        setError(t('wealthReport.errTimezoneAdjusted'));
+      }
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment') === 'success';
@@ -1392,7 +1427,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       return;
     }
     // 🛡️ V219: 内存级去重,跨 remount 生效--free/默认月报只发一次请求(loadWealthData 仅处理月报绿色入口)
-    const _memKey = `${birth}_${lang}_monthly`;
+    // 🛡️ V491/WP-5·F6: 缓存键补 lat/lon/tz 维度(取 URL 稳定值,非组件 state),杜绝同 birth 不同坐标串盘
+    const _loadUrlP = new URLSearchParams(window.location.search);
+    const _stableLat = _loadUrlP.get('lat') || '';
+    const _stableLon = _loadUrlP.get('lon') || '';
+    const _stableTz = _loadUrlP.get('tz') || '';
+    const _memKey = `${birth}_${lang}_${_stableLat}_${_stableLon}_${_stableTz}_monthly`;
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
       console.log('[loadWealthData] 🛡️ V219 内存命中,直接渲染不重发请求');
@@ -1468,9 +1508,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
       if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        console.error('[WealthReport] API error body:', res.status, errBody);
-        throw new Error(`API error: ${res.status}${errBody ? ' - ' + errBody.substring(0, 200) : ''}`);
+        // 🛡️ V491/WP-3·F5: 先解析 JSON 错误体,后端 INVALID_* 错误码 → 专用文案,不再吞成"网络开小差"
+        const _errRaw = await res.text().catch(() => '');
+        let _errCode = '';
+        try { _errCode = JSON.parse(_errRaw)?.code || ''; } catch (_) {}
+        if (_errCode && _ERR_CODE_I18N[_errCode]) {
+          setError(t(_ERR_CODE_I18N[_errCode]));
+          return;
+        }
+        console.error('[WealthReport] API error body:', res.status, _errRaw);
+        throw new Error(`API error: ${res.status}${_errRaw ? ' - ' + _errRaw.substring(0, 200) : ''}`);
       }
 
       const data: WealthOracleResponse = await res.json();
@@ -1696,8 +1743,12 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     const _urlP = new URLSearchParams(window.location.search);
     const _stableBirth = _urlP.get('birth') || birthDate || '';
     const _stableLang = _urlP.get('lang') || lang || 'en';
+    // 🛡️ V491/WP-5·F6: 第二处 _memKey 同步补 lat/lon/tz 维度(两处必须一致,防同 birth 不同坐标串盘)
+    const _stableLat = _urlP.get('lat') || '';
+    const _stableLon = _urlP.get('lon') || '';
+    const _stableTz = _urlP.get('tz') || '';
     // 🛡️ V219: 内存级去重,跨 remount 生效--同一 birth+lang+type 只发一次请求
-    const _memKey = `${_stableBirth}_${_stableLang}_${type}`;
+    const _memKey = `${_stableBirth}_${_stableLang}_${_stableLat}_${_stableLon}_${_stableTz}_${type}`;
     // 🔒 V220b: 强制刷新(用户点 regenerate)→ 清掉 done/memcache 锁,允许重新开发请求
     if (force) {
       const _fg = _reportGen.get(_memKey);
@@ -1746,14 +1797,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     if (isFreeTest && type === 'monthly') {
       const cacheKey = 'ks_wealth_monthly_cache_' + birthDate + '_' + lang;
       localStorage.removeItem(cacheKey); // 🛡️ 清旧缓存,只走 SSE 流
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        console.log('[WealthReport] 📦 从 localStorage 读取月报缓存(但强制走流式输出以验证效果)');
-        // ⚠️ 暂时注释掉直接返回,让流式输出也能测试
-        // const data = JSON.parse(cached);
-        // setWealthReport(JSON.stringify(data));
-        // return;
-      }
+      // 🛡️ V491/WP-8·F8: 移除 removeItem 后紧跟 getItem 的死代码(读出必为 null,永不命中)
     }
 
     if (!currentToken && !isFreeTest) {
@@ -1816,6 +1860,32 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
           signal: abortRef.current.signal, // V244: 接入 fresh AbortController
           body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type, nocache: _noCache }),
         });
+
+        // 🛡️ V491/WP-1·F4: 400 等非 2xx 响应绝不能当 SSE 读(旧缺陷=静默空白)——先解析 JSON 错误体再决定
+        if (!res.ok) {
+          let _streamErrCode = '';
+          try {
+            const _errJson = await res.json();
+            _streamErrCode = _errJson?.code || '';
+          } catch (_) {}
+          console.error('[WealthReport] 流式请求失败:', res.status, _streamErrCode);
+          if (_streamErrCode && _ERR_CODE_I18N[_streamErrCode]) {
+            setError(t(_ERR_CODE_I18N[_streamErrCode]));
+          } else {
+            setError(
+              _stableLang.startsWith('zh')
+                ? '报告生成失败,请重试'
+                : 'Report generation failed, please try again'
+            );
+          }
+          // 错误路径必须清掉单例锁,否则后续重试会被 _reportGen 死锁拦住
+          _reportGen.delete(_memKey);
+          _fullMap.delete(_memKey);
+          setReportLoading('');
+          setLoading(false);
+          loadingRef.current = false;
+          return;
+        }
 
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
