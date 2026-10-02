@@ -580,12 +580,16 @@ const SacredYearlyReportBox: React.FC<{
 
     const startsWithBold = textWithoutIcon.trim().startsWith('**');
     const startsWithIcon = icon || /^[*\->]/.test(textWithoutIcon);
+    // 🛡️ V491/E1: 英文月度标题识别——后端 lockYearlyMonthTitles 内建英文月输出（### July 2026: Sun in Cancer | 7th House | …），
+    // 前端 chapterPatterns 只认 Chapter I~V ⇒ 英文月份标题落 type:'text'（白字/左对齐）。补：Jan~Dec + 年份 + 冒号即金色 heading。
+    // 不设 60 字上限（英文月份标题带宫位/幸运日后缀，长度常超限）。
+    const isEnglishMonthTitle = /^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*[:：]/i.test(textWithoutIcon.trim());
     const isChapterPattern = (
       (chapterPatterns.some(p => prefix.includes(p)) && (textWithoutIcon.trim().length < 60 || startsWithBold || startsWithIcon)) ||
       /^Section\s+[IVX]+/i.test(textWithoutIcon)
     );
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
-    if (isChapterPattern || isSectionNumber || isMonthWeekHeader) {
+    if (isChapterPattern || isSectionNumber || isMonthWeekHeader || isEnglishMonthTitle) {
       if (isVietnameseChapter || isThaiChapter) {
         return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };
       }

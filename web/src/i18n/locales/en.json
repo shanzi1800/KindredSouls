@@ -59,6 +59,10 @@
     "generateFail": "Generation failed",
     "loginFirst": "Please log in first to generate report.",
     "almanac": "Wealth Almanac",
-    "almanacDesc": "Based on your innate wealth blueprint, project future fortune trends."
+    "almanacDesc": "Based on your innate wealth blueprint, project future fortune trends.",
+    "errInvalidCoordinates": "Invalid birth location coordinates (latitude must be within -90 to 90, longitude within -180 to 180). Please check the lat / lon parameters and try again.",
+    "errInvalidTimezone": "Invalid time zone, and it could not be inferred from the birth coordinates. Please check the tz parameter and try again.",
+    "errInvalidBirthTime": "Unrecognized birth time format (expected HH:MM). The report was generated using 12:00 instead; house precision may be reduced.",
+    "errTimezoneAdjusted": "Your time zone could not be recognized. It has been inferred from the birth coordinates as {{tz}}."
   }
 }

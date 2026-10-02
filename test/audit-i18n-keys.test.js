@@ -77,7 +77,9 @@ describe('V448 i18n Key 门禁', () => {
         .join('\n');
       assert.fail(`键集合不对称（非中英用户会看到回退/空串）:\n${lines}`);
     }
-    assert.strictEqual(p.total, 46, '清理死键后基准键数应为 46');
+    // V491: 新增 4 个错误文案 key（errInvalidCoordinates/errInvalidTimezone/errInvalidBirthTime/errTimezoneAdjusted）
+    // 46 → 50，键集合全等校验（p.ok）不变，仍是主防线
+    assert.strictEqual(p.total, 50, 'V491 新增 4 key 后基准键数应为 50');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {
