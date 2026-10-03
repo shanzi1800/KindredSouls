@@ -6701,16 +6701,51 @@ function _e10CacheDecision(j1, j2) {
   return { action: 'normal', useRetryText };
 }
 
+// ═══ 🛡️ E11/R10a: 星座名多语言归一（CRITIC 判据语言适配基础设施）═══
+//   病根（2026-10-03 线上实测）：判据 1 拿中文 `natalSunSign`（端点 `:10455` 取自
+//   buildWealthMetaFull 的**中文** signs 数组 `:10166`，与 lang 无关）去 includes 英文报头
+//   ⇒ 英文报告恒误报 ⇒ 每条非中文年报白跑一次重试（63s→134s、成本 ×2）且终局永远 force。
+//   ⚠️ TDZ 铁律：SUN_SIGN_* 的 const 声明在 `:7231`，而本函数定义在 `:6705` —— 故**惰性构造**
+//     （首次调用时才建表；调用发生在请求期，彼时模块已加载完毕），与该文件既有
+//     `_TH_SIGN_UNIQ`/`_VI_SIGN_UNIQ` 同款模式。**模块顶层直接引 SUN_SIGN_* 会启动即崩**。
+let _E11_SIGN_IDX_CACHE = null;
+function _e11SignIndex(name) {
+  if (!name || typeof name !== 'string') return -1;
+  if (!_E11_SIGN_IDX_CACHE) {
+    _E11_SIGN_IDX_CACHE = new Map();
+    const tables = [SUN_SIGN_EN, SUN_SIGN_ZH, SUN_SIGN_TH, SUN_SIGN_VI, SUN_SIGN_ES, SUN_SIGN_FR];
+    for (let i = 0; i < 12; i++) {
+      for (const tb of tables) {
+        const n = tb && tb[i];
+        if (typeof n === 'string' && n) _E11_SIGN_IDX_CACHE.set(n.toLowerCase(), i);
+      }
+    }
+  }
+  const k = name.toLowerCase();
+  return _E11_SIGN_IDX_CACHE.has(k) ? _E11_SIGN_IDX_CACHE.get(k) : -1;
+}
+// 把任意语言的星座名转成本次报告语言（lang）的写法；无法归一则原样返回（保守：绝不臆造）
+function _e11SignLocal(name, lang) {
+  const i = _e11SignIndex(name);
+  if (i < 0) return name;
+  const T = { en: SUN_SIGN_EN, zh: SUN_SIGN_ZH, th: SUN_SIGN_TH, vi: SUN_SIGN_VI, es: SUN_SIGN_ES, fr: SUN_SIGN_FR };
+  const arr = T[lang] || SUN_SIGN_EN;
+  return (arr && arr[i]) || name;
+}
+
 // 🛠️ V107-方案A: 轻量级预缓存校验器(写缓存前拦截质量问题)
-function wealthCriticCheck(text, birthDate, natalSunSign) {
+function wealthCriticCheck(text, birthDate, natalSunSign, lang) {
   const issues = [];
   if (!text || text.length < 500) issues.push('内容过短');
 
   // 1. 验证本命太阳星座是否正确出现在前2000字
+  // 🛡️ E11/R10a: 语言适配 —— 入参 natalSunSign 恒为**中文**（见 `_e11SignLocal` 头注根因），
+  //   必须先归一到本次报告语言（en→Sagittarius / th→ธนู / …）再比对，否则英文报告恒误报。
   if (natalSunSign) {
     const header = text.slice(0, 2000);
-    if (!header.includes(natalSunSign)) {
-      issues.push('报头缺少' + natalSunSign);
+    const _sunLocal = _e11SignLocal(natalSunSign, lang || 'zh');
+    if (!header.includes(_sunLocal)) {
+      issues.push('报头缺少' + _sunLocal);
     }
   }
 
@@ -6721,52 +6756,82 @@ function wealthCriticCheck(text, birthDate, natalSunSign) {
   // 3. 验证孤括号
   if (text.match(/[^（]）》/)) issues.push('孤闭括号');
 
-  // 4. 验证关键月份:6月标题必须有双子座
-  const juneHeader = text.match(/6月[::].{0,40}?太阳[^座]*座/);
-  if (juneHeader && !juneHeader[0].includes('双子座')) {
-    issues.push('6月标题星座错误: ' + juneHeader[0].slice(0, 30));
-  }
-
-  // 5. 验证 7月 Peak Window 不含射手座
-  const julyPeak = text.match(/2026年7月[^🔴🟢]*(?:🟢|🔴)[^。]*?太阳在[^座]*座/g);
-  if (julyPeak && julyPeak.some(m => m.includes('射手座'))) {
-    issues.push('7月Peak/W太阳座错误(含射手座)');
-  }
-
-  // 6. 🛠️ 军师审计·P0: 玄秘宫误用--本命太阳非天秤座时不得写"玄秘宫"
-  // 天秤座=第3宫(沟通宫)对于上升狮子座;"玄秘宫"=第12宫(巨蟹座)
-  if (natalSunSign === '天秤座' && text.slice(0, 3000).includes('玄秘宫')) {
-    issues.push('本命天秤座被误归玄秘宫(第12宫)');
-  }
-
-  // 7. 🛠️ 军师审计·P1: 11月/12月星座串线--正文第一句与标题不符
-  // 11月标题天秤座但正文写"太阳进入摩羯座"
-  const monthBodies = text.match(/2026年1[12]月[::][^。]*?太阳进入[^座]{1,3}座/g);
-  if (monthBodies) {
-    for (const mb of monthBodies) {
-      const titleSign = mb.match(/(天蝎座|射手座|天秤座|摩羯座|水瓶座)第/);
-      const bodySign = mb.match(/太阳进入[^座]{1,3}(座)/);
-      if (titleSign && bodySign && titleSign[1] !== bodySign[1]) {
-        issues.push('月度正文星座与标题不匹配:' + mb.slice(0, 40));
-      }
+  // 4. 验证关键月份:6月标题必须有双子座（🛡️ E11/R10a: 语言感知）
+  if (lang === 'zh') {
+    const juneHeader = text.match(/6月[::].{0,40}?太阳[^座]*座/);
+    if (juneHeader && !juneHeader[0].includes('双子座')) {
+      issues.push('6月标题星座错误: ' + juneHeader[0].slice(0, 30));
+    }
+  } else if (lang === 'en') {
+    // 英文月标题形态：`### June 2027: Sun in Gemini · 6th House · …`
+    const juneEN = text.match(/June\s+20\d\d\s*:[^\n]*?Sun in\s+([A-Za-z]+)/i);
+    if (juneEN && !/^Gemini$/i.test(juneEN[1])) {
+      issues.push('June header Sun sign wrong: ' + juneEN[0].slice(0, 40));
     }
   }
 
-  // 8. 🛠️ 军师审计·P2: 幽灵相位--"火星形成刑克相位"缺行星对象
-  // 在完整句子内检查:含'形成刑克/三分/六分/对分'但同一句内无'与+行星名'
-  var sents = text.split(/[。\n]/);
-  for (var si = 0; si < sents.length; si++) {
-    var s = sents[si];
-    if (/形成(刑克|对分|三分|六分|合相)/.test(s) && !/[日月水火木金土]星.*与[日月水火木金土]星/.test(s)) {
-      issues.push('幽灵相位:' + s.slice(0, 50));
-      break;
+  // 5. 验证 7月 太阳座不含射手座（2026-07 太阳在巨蟹；🛡️ E11/R10a: 语言感知）
+  if (lang === 'zh') {
+    const julyPeak = text.match(/2026年7月[^🔴🟢]*(?:🟢|🔴)[^。]*?太阳在[^座]*座/g);
+    if (julyPeak && julyPeak.some(m => m.includes('射手座'))) {
+      issues.push('7月Peak/W太阳座错误(含射手座)');
+    }
+  } else if (lang === 'en') {
+    const julyEN = text.match(/July\s+20\d\d\s*:[^\n]*?Sun in\s+Sagittarius/i);
+    if (julyEN) issues.push('July header Sun sign wrong (Sagittarius, expected Cancer)');
+  }
+
+  // 🛡️ E11/R10a: 判据 6~8 判据锚定**中文表述**（玄秘宫 / 2026年N月 / 形成刑克），
+  //   对非中文报告恒空转 —— 显式 gate 到 zh，杜绝「看起来在检、实则永假」的假防线。
+  if (lang === 'zh') {
+    // 6. 🛠️ 军师审计·P0: 玄秘宫误用--本命太阳非天秤座时不得写"玄秘宫"
+    // 天秤座=第3宫(沟通宫)对于上升狮子座;"玄秘宫"=第12宫(巨蟹座)
+    if (natalSunSign === '天秤座' && text.slice(0, 3000).includes('玄秘宫')) {
+      issues.push('本命天秤座被误归玄秘宫(第12宫)');
+    }
+
+    // 7. 🛠️ 军师审计·P1: 11月/12月星座串线--正文第一句与标题不符
+    // 11月标题天秤座但正文写"太阳进入摩羯座"
+    const monthBodies = text.match(/2026年1[12]月[::][^。]*?太阳进入[^座]{1,3}座/g);
+    if (monthBodies) {
+      for (const mb of monthBodies) {
+        const titleSign = mb.match(/(天蝎座|射手座|天秤座|摩羯座|水瓶座)第/);
+        const bodySign = mb.match(/太阳进入[^座]{1,3}(座)/);
+        if (titleSign && bodySign && titleSign[1] !== bodySign[1]) {
+          issues.push('月度正文星座与标题不匹配:' + mb.slice(0, 40));
+        }
+      }
+    }
+
+    // 8. 🛠️ 军师审计·P2: 幽灵相位--"火星形成刑克相位"缺行星对象
+    // 在完整句子内检查:含'形成刑克/三分/六分/对分'但同一句内无'与+行星名'
+    var sents = text.split(/[。\n]/);
+    for (var si = 0; si < sents.length; si++) {
+      var s = sents[si];
+      if (/形成(刑克|对分|三分|六分|合相)/.test(s) && !/[日月水火木金土]星.*与[日月水火木金土]星/.test(s)) {
+        issues.push('幽灵相位:' + s.slice(0, 50));
+        break;
+      }
     }
   }
 
   // 9. 🛠️ 军师审计·P3: 双子座元素错--归入土元素
   // 用分割行方式绕过\n在character class中的逃逸问题
-  const badElement = text.split('\n').filter(function(l){return l.indexOf('土元素')>=0 && l.indexOf('双子座')>=0;});
-  if (badElement) issues.push('双子座被错误归入土元素:' + badElement.join('|'));
+  // 🛡️ E11/R10a（双修）:
+  //   ① **空数组真值坑**——原 `if (badElement)` 对 `filter()` 返回的 `[]` 恒 truthy（JS 铁律：
+  //      空数组是 object ⇒ truthy），导致**任何语言的任何报告都必然命中此告警**（线上实证
+  //      `双子座被错误归入土元素:` 尾巴为空即 [] 的指纹）。改为 `.length > 0`。
+  //   ② 语言适配——原判据只认中文「土元素/双子座」，英文报告（earth element + Gemini）
+  //      恒空转 ⇒ 补英文等价键。
+  const _E11_EARTH_KEYS = ['土元素', '土象', 'earth element', 'earth sign', 'element of earth'];
+  // ⚠️ 守卫 `k &&`：空串键会让 `low.includes('')` 恒真 ⇒ 判据形同虚设（注入自测实证）
+  const _E11_hasEarth = (line) => {
+    const low = line.toLowerCase();
+    return _E11_EARTH_KEYS.some(k => k && ((k === '土元素' || k === '土象') ? line.includes(k) : low.includes(k)));
+  };
+  const _E11_hasGemini = (line) => line.includes('双子座') || /gemini/i.test(line);
+  const badElement = text.split('\n').filter((l) => _E11_hasEarth(l) && _E11_hasGemini(l));
+  if (badElement.length > 0) issues.push('双子座被错误归入土元素:' + badElement.join('|'));
 
   return issues;
 }
@@ -7049,7 +7114,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v509:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v510:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10325,7 +10390,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v509:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v510:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10606,7 +10671,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         let skipCache = false;
         if (reportType === 'yearly') {
           const _e10Judge = (txt) => ({
-            issues: wealthCriticCheck(txt, birthDate, natalSunSign),
+            // 🛡️ E11/R10a: 必须传 lang —— wealthCriticCheck 的报头/月份/元素判据全部依赖语言适配
+            issues: wealthCriticCheck(txt, birthDate, natalSunSign, lang),
             iv: assessYearlyReportIntegrity(txt, { lang }),
           });
           let _j1 = _e10Judge(reportContent);
@@ -11013,7 +11079,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v509:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v510:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12681,7 +12747,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v509-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v510-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

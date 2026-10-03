@@ -45,6 +45,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v507-v2:*',
   'wealth:v508:*',        // 🛡️ E10/R9: v508 全量作废（裸序数/轴点锁变更；表当时为空——CRITIC 曾拦截带伤稿未入库）
   'wealth:v508-v2:*',
+  'wealth:v509:*',        // 🛡️ E11/R10: v509 全量作废（CRITIC 判据精准化，误报根治后首次可走 normal 路径）
+  'wealth:v509-v2:*',
   'wealth:v116-v2:*',
 ];
 
