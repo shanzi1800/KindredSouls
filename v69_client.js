@@ -471,6 +471,13 @@ ${transitLines.join('\n')}`
     `    ✓ "Your natal Mars in Capricorn, House 4" (matches PROSE REFERENCE)`,
     ``,
     `  WHEN IN DOUBT: re-read the // ─── PROSE REFERENCE ─── section above.`,
+    ``,
+    `⚠️ CHAPTER 1 — NATAL PLACEMENTS ONLY (E9 · ABSOLUTE · NON-NEGOTIABLE):`,
+    `  Chapter 1 (the natal architecture section) describes NATAL placements ONLY.`,
+    `  Every planet's sign and house in Chapter 1 MUST exactly match the NATAL table above.`,
+    `  You MUST NOT mix 2026 transits into the natal analysis.`,
+    `  WRONG: "Your Sun sits in Sagittarius in the 7th House" (7th = a transit position).`,
+    `  RIGHT: state each natal planet's sign and house EXACTLY as in PROSE REFERENCE.`,
   ].join('\n');
 
   return [
