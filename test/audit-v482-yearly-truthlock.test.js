@@ -23,11 +23,21 @@ import { closureDecls } from './tools/extract_decls.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf-8');
 
-/** 取函数体(大括号配平, 跳过字符串/注释里的花括号) */
+/** 取函数体(大括号配平, 跳过字符串/注释里的花括号)
+ *  🛡️ V492b: 签名含默认参（如 `opts2 = {}`）⇒ 必须先配平参数表圆括号再找体首 `{`，
+ *  否则 indexOf('{') 命中参数表内的 `{}`（体只剩 66 字符）⇒ 判据①②③ 全部空转。 */
 function fnBody(name, source = src) {
   const at = source.indexOf(`function ${name}(`);
   assert.ok(at > 0, `未找到函数 ${name}`);
-  const open = source.indexOf('{', at);
+  let p = source.indexOf('(', at), pd = 0, j = p, inQ = null;
+  for (; j < source.length; j++) {
+    const c = source[j];
+    if (inQ) { if (c === '\\') { j++; continue; } if (c === inQ) inQ = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { inQ = c; continue; }
+    if (c === '(') pd++;
+    else if (c === ')') { pd--; if (!pd) break; }
+  }
+  const open = source.indexOf('{', j);
   let d = 0, i = open, inS = null, inC = null;
   for (; i < source.length; i++) {
     const c = source[i];

@@ -41,6 +41,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v505-v2:*',
   'wealth:v506:*',        // 🛡️ V492/D1: v506 全量作废（含年报 :yearly 形态——实测线上毒缓存正是 wealth:v506:...:en:yearly）
   'wealth:v506-v2:*',
+  'wealth:v507:*',        // 🛡️ V492b/E9: v507 全量作废（第 1 章前导段本命错乱缓存随 bump 洗净）
+  'wealth:v507-v2:*',
   'wealth:v116-v2:*',
 ];
 
