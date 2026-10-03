@@ -4126,6 +4126,8 @@ function _v432AllSignWords(lang) {
 }
 
 // ── 语言配置（纯字面量；全角/拉丁皆按各语言真实书写习惯）──
+// 🛡️ E10/R9-R1: 英文序数后缀助手（houseOrdFmt / houseBareFmt 共用，防三处漂移）
+const _v432EnOrdSuf = (n) => ((n % 10 === 1 && n !== 11) ? 'st' : (n % 10 === 2 && n !== 12) ? 'nd' : (n % 10 === 3 && n !== 13) ? 'rd' : 'th');
 const _V432_CFG = {
   en: {
     markerSide: 'pre',          // 英文定语在行星名**之前**：your natal Sun
@@ -4144,8 +4146,18 @@ const _V432_CFG = {
     axis: /\baxis\b|\bpolarity\b|\bbetween\b[^.]{0,60}\band\b/i,
     houseNum: /\bHouse\s*(\d{1,2})\b/i,
     houseOrd: /\b(\d{1,2})(?:st|nd|rd|th)\s+House\b/i,
+    // 🛡️ E10/R9-R1: 裸序数宫位识别 —— 病根（2026-10-03 Adelaide v508 线上实证）：LLM 写
+    //   "your Moon … also burns in Leo in the 7th."（句尾裸序数, 无 House 关键词），
+    //   houseNum/houseOrd 双双不匹配 → 月亮 7th 漏网（真值 8th）。
+    //   防误伤护栏（三重）：
+    //   ① 必须 "in the|in your" 前缀 → "July 7th" / "on the 7th" / "the 7th of July" 不匹配；
+    //   ② 否定前瞻 (?!\s*House\b) → "in the 7th House" 让位给 houseOrd（避免双重命中）；
+    //   ③ 否定前瞻排除日期后缀（of / 月份名）→ "in the 7th of July" / "in the 7th, July 2026" 不匹配。
+    //   另在 _v432FindHouse 内做 1~12 值域钳制（第 13th+ 序数恒非宫位）。
+    houseBare: /\bin\s+(?:the|your)\s+(\d{1,2})(?:st|nd|rd|th)\b(?!\s*(?:House\b|of\b|,?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\b))/i,
     houseFmt: (n) => 'House ' + n,
-    houseOrdFmt: (n) => n + ((n % 10 === 1 && n !== 11) ? 'st' : (n % 10 === 2 && n !== 12) ? 'nd' : (n % 10 === 3 && n !== 13) ? 'rd' : 'th') + ' House',
+    houseOrdFmt: (n) => n + _v432EnOrdSuf(n) + ' House',
+    houseBareFmt: (n) => 'in the ' + n + _v432EnOrdSuf(n),
     ctx: /\b(?:natal|native|birth|your chart|your sky)\b/i,
     dayRe: [/\bDay\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i, /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})\b/i],
     dateMark: /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s*\d{1,2}\b|\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\b|\bDay\s*\d{1,2}\b|\bWeek\s*\d\b/i,
@@ -4265,6 +4277,18 @@ function _v432FindHouse(cfg, zone, preferFirst) {
       else v = Number(m[1]) || null;
       if (!v) continue;
       const hit = { idx: m.index, len: m[0].length, value: v, ord: true };
+      const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
+      if (take) best = hit;
+    }
+  }
+  // 🛡️ E10/R9-R1: 裸序数（"in the 7th"）—— en 专属；ord:'bare' 让 PatchZone 选用 houseBareFmt
+  //   保形替换（写回 "in the 8th"，绝不长出 House 关键词）。1~12 值域钳制：第 13th+ 恒非宫位。
+  if (cfg.houseBare) {
+    const re = new RegExp(cfg.houseBare.source, 'gi');
+    while ((m = re.exec(zone)) !== null) {
+      const v = Number(m[1]);
+      if (!(v >= 1 && v <= 12)) continue;
+      const hit = { idx: m.index, len: m[0].length, value: v, ord: 'bare' };
       const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
       if (take) best = hit;
     }
@@ -4455,7 +4479,8 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
   if (house) {
     const h = _v432FindHouse(cfg, z, preferFirst);
     if (h && h.value !== Number(house)) {
-      const repl = h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house);
+      // 🛡️ E10/R9-R1: 裸序数命中 → houseBareFmt 保形替换（"in the 7th"→"in the 8th"，不长出 House）
+      const repl = h.ord === 'bare' ? cfg.houseBareFmt(house) : (h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house));
       z = z.slice(0, h.idx) + repl + z.slice(h.idx + h.len);
       cnt++; log.push('house ' + h.value + '\u2192' + house);
     }
@@ -4694,8 +4719,76 @@ function _v432LockLeadingNatal(text, lang, astroMatrix, reportType) {
   }
   if (cut <= 0) return text;
   const lead = text.slice(0, cut);
-  const locked = _v432LockNatal(lead, lang, astroMatrix, { leading: true });
+  let locked = _v432LockNatal(lead, lang, astroMatrix, { leading: true });
+  // 🛡️ E10/R9-R2: 轴点+称谓真值锁 —— 必须在行星锁**之后**（见下函数头注释的顺序推演）
+  locked = _v492cLockAxisSalutation(locked, lang, astroMatrix);
   return locked === lead ? text : locked + text.slice(cut);
+}
+
+// ═══ 🛡️ E10/R9-R2（军师裁决 2）: 前导段轴点与开篇称谓真值锁 ═══
+// 病根（2026-10-03 Adelaide v508 线上实证，验收④）：仪表盘 "Core Natal Code: … Rising Leo"、
+//   开篇 "…the horizon of your life rising through Leo"、"O child of Leo" —— 三处均无行星名，
+//   _v432LockNatal 按设计只锁 10 行星 → 永不进锁；prompt NATAL_CODE 头部硬锁已注真值
+//   （本文件 ~:9636）但 LLM 违背后无后处理兜底。
+// 治本：确定性重写，只认四类句式、只换星座 token、值==真值原样保留（幂等）：
+//   A. Rising [Sign] [is|in|:|·|—] <Sign> / Ascendant(e) 同型 / zh 上升<星座>
+//   B. rising through <Sign> / <Sign> rising
+//   C. O child of <Sign>（= 太阳星座称谓，真值取 meta.sun_sign）
+// 铁律：
+//   - 上升/太阳真值缺失（无出生时间、引擎异常）→ 对应组整组跳过，绝不编造（V102s 纪律）；
+//   - token 不在星座词表（如 "Rising Star" / "rising costs"）→ 不动（防误伤）；
+//   - 非 _V432_LANGS 语言整段跳过（与既有锁覆盖面一致）。
+// 挂载顺序（为何在行星锁之后）：行星锁 fwd2 窗口按 E9 设计会把「轴点词之后」的星座词当
+//   行星声称纠值（"…Capricorn Ascendant, sits in Aries…" 的 Aries 属行星）。若轴点锁先跑、
+//   把 "rising through Leo" 纠成 Capricorn，随后 Moon 窗口（真值 Leo）会在 fwd2 里把
+//   Capricorn 当错值反写回 Leo = 伪造轴点。后置 ⇒ 本锁对轴点拥有最终话语权，无人再碰。
+function _v492cLockAxisSalutation(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string' || !_V432_LANGS.includes(lang)) return text;
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const risingEN = meta ? meta.rising_sign : null;
+  const sunEN = meta ? meta.sun_sign : null;
+  const langSigns = _v432Signs(lang) || [];
+  const toLoc = (enName) => {
+    if (!enName) return null;
+    if (lang === 'en') return enName;
+    const i = SUN_SIGN_EN.indexOf(enName);
+    return (i >= 0 && langSigns[i]) ? langSigns[i] : null;
+  };
+  const risingLoc = toLoc(risingEN);
+  const sunLoc = toLoc(sunEN);
+  if (!risingLoc && !sunLoc) return text;
+  const isSignTok = (tok) => !!tok && langSigns.some((s) => s.toLowerCase() === String(tok).toLowerCase());
+  let nAxis = 0, nSun = 0;
+  const applyRules = (rules) => {
+    for (const [re, truth, kind] of rules) {
+      if (!truth) continue;   // 真值缺失 → 该组整组跳过，绝不编造
+      text = text.replace(re, (m0, tok) => {
+        if (!isSignTok(tok)) return m0;
+        if (String(tok).toLowerCase() === String(truth).toLowerCase()) return m0;   // 幂等
+        const i = m0.indexOf(tok);
+        if (kind === 'sun') nSun++; else nAxis++;
+        return m0.slice(0, i) + truth + m0.slice(i + tok.length);
+      });
+    }
+  };
+  if (lang === 'en') {
+    applyRules([
+      [/\b(?:Rising\s+Sign|Rising|Ascendant|Ascendente)\s*(?:is\s+|in\s+)?(?:[:\u00b7\u2014-]\s*)?([A-Z][a-z]+)\b/gi, risingLoc, 'axis'],
+      [/\brising\s+through\s+([A-Z][a-z]+)\b/gi, risingLoc, 'axis'],
+      [/\b([A-Z][a-z]+)\s+rising\b/gi, risingLoc, 'axis'],
+      [/\bO\s+child\s+of\s+([A-Z][a-z]+)\b/g, sunLoc, 'sun'],
+    ]);
+  } else if (lang === 'es') {
+    applyRules([
+      [/\b(?:Ascendente|Ascendant)\s*(?:es\s+|en\s+)?(?:[:\u00b7]\s*)?([A-Z][a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1]+)\b/g, risingLoc, 'axis'],
+    ]);
+  } else {
+    applyRules([
+      [/\u4e0a\u5347(?:\u661f\u5ea7)?(?:\u662f|\u4e3a|\u5728)?\s*([\u4e00-\u9fa5]{2,4})/g, risingLoc, 'axis'],
+    ]);
+  }
+  if (nAxis || nSun) console.log(`[E10/R9] ${lang} \u8f74\u70b9/\u79f0\u8c13\u771f\u503c\u9501: \u4e0a\u5347\u7ea0\u6b63 ${nAxis} \u5904 / \u79f0\u8c13\u7ea0\u6b63 ${nSun} \u5904`);
+  return text;
 }
 
 // 🛠️ V426-R: 本命外行星「逆行标识(retrograde)」后处理真值锁（治本 FR 样本 Pluto natal 漏 rétrograde）
@@ -6575,6 +6668,39 @@ function cleanConsumerTrapAndBrackets(text) {
   return text;
 }
 
+// 🛡️ E10/R9-R3（军师裁决 3）: CRITIC 拦截后的强约束重生成 prompt 块
+//   语境: 预检（wealthCriticCheck / assessYearlyReportIntegrity）拦截 → 静默重试 1 次。
+//   内容 = 本次实测三大伤的针对性铁律: 报头轴点/称谓（Rising Leo / O child of Leo 实证）、
+//   本命/流年分野（第 1 章宫位）、元素归属（"双子座被错误归入土元素" 实证）。
+function _E10_RETRY_CONSTRAINT(lang, sunEN, risingEN) {
+  if (lang === 'zh') {
+    return '\n\n\u26d4 \u7ec8\u5c40\u8d28\u91cf\u95f8\u2014\u2014\u4e0a\u4e00\u7a3f\u5df2\u88ab\u9884\u68c0\u9a73\u56de\uff0c\u91cd\u5199\u65f6\u9010\u6761\u9075\u5b88\uff1a'
+      + (risingEN ? '\n1) \u62a5\u5934 Core Natal Code \u7684\u4e0a\u5347\u661f\u5ea7\u53ea\u80fd\u5199 ' + risingEN + '\uff0c\u5168\u6587\u4efb\u4f55\u300c\u4e0a\u5347/Rising/Ascendant\u300d\u58f0\u660e\u4e00\u5f8b\u7528\u6b64\u503c\uff1b' : '')
+      + (sunEN ? '\n2) \u5f00\u7bc7\u79f0\u8c13\u53ea\u80fd\u5199\u300cO child of ' + sunEN + '\u300d\uff0c\u592a\u9633\u661f\u5ea7\u4e0d\u51c6\u6539\u5199\uff1b' : '')
+      + '\n3) \u672c\u547d\u5bab\u4f4d/\u661f\u5ea7\u53ea\u80fd\u53d6\u81ea\u4e0a\u65b9\u6ce8\u5165\u7684 SwissEph \u771f\u503c\u8868\uff0c\u7edd\u4e0d\u501f\u7528\u884c\u8fd0\u4f4d\uff1b'
+      + '\n4) \u5143\u7d20\u5f52\u5c5e\u5fc5\u987b\u7b26\u5408\u5929\u6587\u4e8b\u5b9e\uff08\u5982\u53cc\u5b50\u5ea7=\u98ce\u8c61\uff09\uff1b'
+      + '\n5) \u7b2c 1 \u7ae0\u53ea\u5199\u672c\u547d\uff0c\u6d41\u5e74\u58f0\u660e\u5fc5\u987b\u5e26\u300c\u6d41\u5e74/20XX\u300d\u9650\u5b9a\u8bcd\u3002';
+  }
+  return '\n\n\u26d4 FINAL QUALITY GATE \u2014 your previous draft was REJECTED by preflight. Rewrite under these MANDATORY rules:'
+    + (risingEN ? '\n1) The header Core Natal Code Rising field MUST be exactly: Rising ' + risingEN + '. EVERY "Rising/Ascendant" mention in the whole report MUST use this sign \u2014 never any other.' : '')
+    + (sunEN ? '\n2) The opening salutation MUST be "O child of ' + sunEN + '" \u2014 the natal Sun sign is immutable.' : '')
+    + '\n3) Every NATAL sign/house claim (including bare ordinals like "in the 7th") MUST come ONLY from the SwissEph truth table injected above \u2014 never borrow transit positions for natal claims.'
+    + '\n4) Elemental attributions MUST be astronomically standard (e.g. Gemini = AIR, never Earth).'
+    + '\n5) Chapter I describes NATAL placements ONLY; any current-year claim MUST be marked with a transit/year qualifier.';
+}
+
+// 🛡️ E10/R9-R3: 缓存终局裁定（纯函数，闸门可测）—— 军师裁决 3「有限 1 次重试 + 强后手」+ 截断红线
+//   useRetryText: 重试稿完整即采用；重试稿截断但首稿完整 → 保留首稿。
+//   action: 'normal' 零瑕疵正常入库｜'force' 有风格瑕疵但纠偏链已尽力 → 带标记入库（强后手）｜
+//           'block' 截断（完整性不足）→ 绝不入库（Adelaide 毒缓存铁律，重试也不豁免）。
+function _e10CacheDecision(j1, j2) {
+  const useRetryText = !(j2 && j2.iv && !j2.iv.ok && j1 && j1.iv && j1.iv.ok);
+  const fin = useRetryText ? j2 : j1;
+  if (!fin || !fin.iv || !fin.iv.ok) return { action: 'block', useRetryText };
+  if (fin.issues && fin.issues.length > 0) return { action: 'force', useRetryText };
+  return { action: 'normal', useRetryText };
+}
+
 // 🛠️ V107-方案A: 轻量级预缓存校验器(写缓存前拦截质量问题)
 function wealthCriticCheck(text, birthDate, natalSunSign) {
   const issues = [];
@@ -6923,7 +7049,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v508:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v509:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10199,7 +10325,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v508:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v509:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10349,6 +10475,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
           aiResult = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
         }
 
+        // 🛡️ E10/R9-R3: 后处理链提取为局部函数 —— CRITIC 拦截重试时对第二稿复跑同一条链（对称兜底）。
+        //   参数 aiResult 有意遮蔽外层同名变量 ⇒ 下方链体逐行零改动（只增首尾两行）。
+        const _e10PostProcess = (aiResult) => {
         // ── V97 宫位强制纠正器(铁血断路)──
     // 🛠️ V115-fix3: Body 正文本命太阳全护(在 linter 前全量扫射)
     // 根因:AI 在长文后半段偶发"作为X座之人"等句式,natal_sun_linter 只护句式骨架
@@ -10462,25 +10591,54 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
         reportContent = injectHighLatitudeNotice(reportContent, astroMatrix, lang);
+        return reportContent;
+        };  // ── end _e10PostProcess ──
+        let reportContent = _e10PostProcess(aiResult);
 
         console.log('[Wealth Oracle] Report generated successfully, length:', aiResult.length);
 
-        // 🛠️ V107-方案A: 预缓存校验器(硬拦截--发现问题就不写缓存,触发重刷)
+        // ═══ 🛡️ E10/R9-R3（军师裁决 3）: 预检判定 → 有限 1 次静默重试 → 终局裁定 ═══
+        //   判定 = wealthCriticCheck（报头/元素等风格真值）+ assessYearlyReportIntegrity（截断红线）。
+        //   拦截 → 用 _E10_RETRY_CONSTRAINT 强约束 prompt 重生成一次 → 第二稿复跑同一条
+        //   _e10PostProcess 后处理链（纠偏兜底对称）→ _e10CacheDecision 终局裁定：
+        //   normal 零瑕疵正常入库｜force 有瑕疵但纠偏链已尽力 → 带标记入库（保服务成功率）｜
+        //   block 截断 → 绝不入库（Adelaide 毒缓存铁律，重试也不豁免）。
         let skipCache = false;
         if (reportType === 'yearly') {
-          const criticIssues = wealthCriticCheck(reportContent, birthDate, natalSunSign);
-          if (criticIssues.length > 0) {
-            console.error('[CRITIC] 🚨 缓存前校验发现问题, 跳过缓存写入:', JSON.stringify(criticIssues));
-            skipCache = true;
+          const _e10Judge = (txt) => ({
+            issues: wealthCriticCheck(txt, birthDate, natalSunSign),
+            iv: assessYearlyReportIntegrity(txt, { lang }),
+          });
+          let _j1 = _e10Judge(reportContent);
+          if (_j1.issues.length > 0 || !_j1.iv.ok) {
+            console.warn('[E10/R9] 第 1 稿被预检拦截 → 静默重试 1/1（强约束 prompt）',
+              JSON.stringify(_j1.issues), !_j1.iv.ok ? ('| 完整性: ' + _j1.iv.reasons.join('; ')) : '');
+            try {
+              const _strongSystem = prompt.system
+                + _E10_RETRY_CONSTRAINT(lang,
+                  astroMatrix && astroMatrix.meta ? astroMatrix.meta.sun_sign : null,
+                  astroMatrix && astroMatrix.meta ? astroMatrix.meta.rising_sign : null);
+              const _r2 = await callAI(_strongSystem, prompt.user, process.env, { maxTokens, reportType });
+              const _rc2 = _e10PostProcess(_r2);
+              const _j2 = _e10Judge(_rc2);
+              const _d = _e10CacheDecision(_j1, _j2);
+              if (_d.useRetryText) { reportContent = _rc2; _j1 = _j2; }
+              console.log('[E10/R9] 重试终局裁定:', _d.action, _d.useRetryText ? '(采用重试稿)' : '(重试稿截断, 保留首稿)');
+            } catch (_e) {
+              console.warn('[E10/R9] 重试生成失败, 保留首稿走终局裁定:', _e.message);
+            }
+            // 终局裁定 → skipCache
+            const _fin = _j1;
+            if (!_fin.iv.ok) {
+              console.error('[E10/R9] 🚨 截断红线: 完整性仍不足, 拒绝写缓存:', _fin.iv.reasons.join('; '));
+              skipCache = true;
+            } else if (_fin.issues.length > 0) {
+              console.warn('[E10/R9] 强后手: 纠偏链已尽力, 带标记写入缓存:', JSON.stringify(_fin.issues));
+            } else {
+              console.log('[E10/R9] 重试稿预检全过 ✅ 正常入库');
+            }
           } else {
             console.log('[CRITIC] 预缓存校验通过 ✅');
-          }
-          // 🛡️ V492/E5: 非流式年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——
-          //   旧版此路径完全没有结构守卫，截断毒文本可畅通入库（Adelaide 盘实证）
-          const _ivNS = assessYearlyReportIntegrity(reportContent, { lang });
-          if (!_ivNS.ok) {
-            console.error('[V492/E5] 🚨 非流式年报完整性不足, 跳过缓存写入:', _ivNS.reasons.join('; '));
-            skipCache = true;
           }
         }
 
@@ -10855,7 +11013,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v508:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v509:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12523,7 +12681,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v508-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v509-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

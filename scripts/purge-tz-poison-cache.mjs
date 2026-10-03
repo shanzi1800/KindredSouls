@@ -43,6 +43,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v506-v2:*',
   'wealth:v507:*',        // 🛡️ V492b/E9: v507 全量作废（第 1 章前导段本命错乱缓存随 bump 洗净）
   'wealth:v507-v2:*',
+  'wealth:v508:*',        // 🛡️ E10/R9: v508 全量作废（裸序数/轴点锁变更；表当时为空——CRITIC 曾拦截带伤稿未入库）
+  'wealth:v508-v2:*',
   'wealth:v116-v2:*',
 ];
 
