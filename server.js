@@ -4155,9 +4155,19 @@ const _V432_CFG = {
     //   ③ 否定前瞻排除日期后缀（of / 月份名）→ "in the 7th of July" / "in the 7th, July 2026" 不匹配。
     //   另在 _v432FindHouse 内做 1~12 值域钳制（第 13th+ 序数恒非宫位）。
     houseBare: /\bin\s+(?:the|your)\s+(\d{1,2})(?:st|nd|rd|th)\b(?!\s*(?:House\b|of\b|,?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\b))/i,
+    // 🛡️ E12/R11a-1: 畸形宫位「数字在前 + 缺序数后缀」第三盲区 ——
+    //   病根（2026-10-03 v510 线上实证 7 处）：LLM 原生写 `in the 5 House`（数字在前、House 在后、
+    //   但缺 st/nd/rd/th）。四式全体不匹配：houseNum 要 `House 5`、houseOrd 要 `5th House`、
+    //   houseBare 要 `in the 5th` ⇒ 连 `Your natal Moon in Leo in the 5 House`（带 natal 标记）
+    //   也零改动（真值 8th 未纠）。非我方产物（houseFmt 产出 `House N`、houseBareFmt 恒带后缀）。
+    //   本式**只吃 `<数字>\s+House` 段** ⇒ 前缀（in the / in your / your / the）天然落在匹配段之外，
+    //   保形写回 `5th House`。1~12 值域钳制（第 13+ 恒非宫位）；`5th House` 不匹配
+    //   （数字后须直接空白）⇒ 幂等且不与 houseOrd 抢匹配。
+    houseBareNum: /\b(\d{1,2})\s+House\b/i,
     houseFmt: (n) => 'House ' + n,
     houseOrdFmt: (n) => n + _v432EnOrdSuf(n) + ' House',
     houseBareFmt: (n) => 'in the ' + n + _v432EnOrdSuf(n),
+    houseBareNumFmt: (n) => n + _v432EnOrdSuf(n) + ' House',
     ctx: /\b(?:natal|native|birth|your chart|your sky)\b/i,
     dayRe: [/\bDay\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i, /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})\b/i],
     dateMark: /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s*\d{1,2}\b|\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\b|\bDay\s*\d{1,2}\b|\bWeek\s*\d\b/i,
@@ -4289,6 +4299,18 @@ function _v432FindHouse(cfg, zone, preferFirst) {
       const v = Number(m[1]);
       if (!(v >= 1 && v <= 12)) continue;
       const hit = { idx: m.index, len: m[0].length, value: v, ord: 'bare' };
+      const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
+      if (take) best = hit;
+    }
+  }
+  // 🛡️ E12/R11a-1: 畸形形态「<数字> House」（缺序数后缀）—— en 专属；ord:'numHouse' 让 PatchZone
+  //   用 houseBareNumFmt 保形写回 `Nth House`（前缀在匹配段之外 ⇒ 自动保留）。1~12 值域钳制。
+  if (cfg.houseBareNum) {
+    const re = new RegExp(cfg.houseBareNum.source, 'gi');
+    while ((m = re.exec(zone)) !== null) {
+      const v = Number(m[1]);
+      if (!(v >= 1 && v <= 12)) continue;
+      const hit = { idx: m.index, len: m[0].length, value: v, ord: 'numHouse' };
       const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
       if (take) best = hit;
     }
@@ -4480,7 +4502,10 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
     const h = _v432FindHouse(cfg, z, preferFirst);
     if (h && h.value !== Number(house)) {
       // 🛡️ E10/R9-R1: 裸序数命中 → houseBareFmt 保形替换（"in the 7th"→"in the 8th"，不长出 House）
-      const repl = h.ord === 'bare' ? cfg.houseBareFmt(house) : (h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house));
+      // 🛡️ E12/R11a-1: 畸形形态命中（"5 House"）→ houseBareNumFmt 补序数后缀（"5th House"）
+      const repl = h.ord === 'bare' ? cfg.houseBareFmt(house)
+        : h.ord === 'numHouse' ? cfg.houseBareNumFmt(house)
+        : (h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house));
       z = z.slice(0, h.idx) + repl + z.slice(h.idx + h.len);
       cnt++; log.push('house ' + h.value + '\u2192' + house);
     }
@@ -4653,7 +4678,7 @@ function _v432LockNatal(text, lang, astroMatrix, opts = {}) {
     console.log(`[V432] ${lang} \u672c\u547d\u771f\u503c\u76d8\u4e0d\u53ef\u7528 \u2192 \u8df3\u8fc7\u672c\u547d\u771f\u503c\u9501\uff08\u7edd\u4e0d\u7f16\uff09`);
     return text;
   }
-  text = (!opts.leading) ? _v432AdjudicateDescriptors(text, lang, astroMatrix) : text;
+  text = (!opts.leading && !opts.natalScope) ? _v432AdjudicateDescriptors(text, lang, astroMatrix) : text;
   // 🛡️ V492b/E9: leading 模式跳过定语裁定 —— 它会向裸句插写「natal」限定词
   //   （二跑幂等性被破坏实证：'Your Sun sits…' → 'Your natal Sun sits…'）。
   //   前导段只需纠值、绝不动措辞。
@@ -4673,8 +4698,13 @@ function _v432LockNatal(text, lang, astroMatrix, opts = {}) {
     //   句内带流年标记（前导段无月份锚点 ⇒ 无流年真值可校验 ⇒ 绝不碰，镜像 D3 纪律）；
     //   显式本命句即使含年份/流年词也照锁（本命定语优先级最高）。
     if (opts.leading && !explicit && _v432SentTransitMarked(lang, text, m.index, m[0].length)) continue;
-    const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, explicit || !!opts.leading, { wide: !!opts.leading });
+    // 🛡️ E12/R11b: 非前导段「物主本命语境」准入（admitByScope）—— 先让 clause 可算（解除 natalAny 弃权），
+    //   再由 _v512PossessiveNatal 做四重否决 + 物主贴附的保守裁定；显式本命句 / 前导段行为零改动。
+    const admitByScope = opts.natalScope === 'possessive';
+    const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, explicit || !!opts.leading || admitByScope, { wide: !!opts.leading });
     if (!clause) continue;
+    if (!explicit && !opts.leading && admitByScope
+      && !_v512PossessiveNatal(cfg, lang, text, m.index, m[0].length, clause)) continue;
     const { fwd, bwd, fwd2, fwd2Off } = clause;
     const backStart = m.index - bwd.length;
     const F = _v432PatchZone(cfg, lang, fwd, t.sign, t.house, true, text, m.index + m[0].length);
@@ -4722,7 +4752,11 @@ function _v432LockLeadingNatal(text, lang, astroMatrix, reportType) {
   let locked = _v432LockNatal(lead, lang, astroMatrix, { leading: true });
   // 🛡️ E10/R9-R2: 轴点+称谓真值锁 —— 必须在行星锁**之后**（见下函数头注释的顺序推演）
   locked = _v492cLockAxisSalutation(locked, lang, astroMatrix);
-  return locked === lead ? text : locked + text.slice(cut);
+  // 🛡️ E12/R11b: 月锚点之后（Ch II~V）的「物主本命语境」声称同锁（全章真值防线扩展，见 _v512PossessiveNatal）。
+  //   ⚠️ 轴点锁**不**随之扩展：月段的 "Ascendant" 可能指太阳返照/流年上升，强制本命上升 = 主动污染。
+  const tailLocked = _v432LockNatal(text.slice(cut), lang, astroMatrix, { natalScope: 'possessive' });
+  const out = locked + tailLocked;
+  return out === text ? text : out;
 }
 
 // ═══ 🛡️ E10/R9-R2（军师裁决 2）: 前导段轴点与开篇称谓真值锁 ═══
@@ -4789,6 +4823,195 @@ function _v492cLockAxisSalutation(text, lang, astroMatrix) {
   }
   if (nAxis || nSun) console.log(`[E10/R9] ${lang} \u8f74\u70b9/\u79f0\u8c13\u771f\u503c\u9501: \u4e0a\u5347\u7ea0\u6b63 ${nAxis} \u5904 / \u79f0\u8c13\u7ea0\u6b63 ${nSun} \u5904`);
   return text;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E12/R11: 全章真值锁演进与 CRITIC 强规则收拢（军师最高裁决 2026-10-03）
+//   病根（E11 上线复验范围外新发现）：CRITIC 假阳性洗净后不再必然拦截 ⇒ 首稿直入缓存，
+//   失去「强约束重试稿」的意外兜底 ⇒ II~V 章暴露三类漏网（畸形宫位 / 无标记裸声称 / 自纠 artifact）。
+//   R11a-1 形态归一 · R11a-2 artifact 剥离 · R11b 全章物主本命锁 · R11c 判据扩容。
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── R11a-1: 畸形宫位形态归一（`5 House` → `5th House`）──────────────────────
+//   与 CFG.houseBareNum / PatchZone 的 numHouse 分支互补：
+//   ① 补漏【值也错】的句子（finder 认出 → 走 houseBareNumFmt 写回真值 + 补后缀）；
+//   ② 补漏【值本对但形态畸形】的句子（"in the 8 House" 真值 8 ⇒ PatchZone 无改动可做），
+//      由本归一独立完成「补序数后缀」—— 军师裁决原文「保形重写时自动补全序数后缀」。
+//   铁律：只吃 `<数字>\s+House`（数字在前）；`House 5` 是我方 houseFmt 合法产物，绝不触碰；
+//     1~12 值域钳制；幂等（`5th House` 不匹配）。
+const _V512_MALFORMED_HOUSE = /\b(\d{1,2})\s+House\b/gi;
+function _v512NormalizeHouseOrdinal(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  const cfg = _V432_CFG[lang];
+  if (!cfg || !cfg.houseBareNumFmt) return text;      // en 专属（es 序数为词式 / zh 为 第N宫，无此畸形）
+  const before = text;
+  let n = 0;
+  const out = text.replace(_V512_MALFORMED_HOUSE, (m0, d) => {
+    const v = Number(d);
+    if (!(v >= 1 && v <= 12)) return m0;              // 越值域原样（年份/数量/楼层）
+    n++;
+    return cfg.houseBareNumFmt(v);
+  });
+  if (n) console.log(`[E12/R11a] ${lang} 畸形宫位形态归一(N House→Nth House): ${n} 处`);
+  return out === before ? text : out;
+}
+
+// ── R11a-2: LLM 「自纠/元话语」artifact 剥离 ─────────────────────────────────
+//   病根（2026-10-03 v510 线上实证）：`…your Jupiter in Leo in the 7th House — wait, no.
+//   Let us be precise. The transiting Sun in Leo occupies your 8th House…` —— 大模型生成中
+//   「自我思考/纠错」的半成品被原样写出，无任何清洗链剥离 ⇒ 直接进用户可见正文。
+//   铁律：只剥离**明确的元话语标记**，绝不触碰正文破折号（V484「见 —— 就删」事故面）。
+//   反例护栏（本闸门注入自测覆盖）：`market correction`（金融常用词）绝不能被 `correction`
+//     误吃 ⇒ Correction 只在**句首 + 冒号**形态才删（`/^...Correction\s*[:：]/m`）。
+//   ⚠️ 「只删标记」不足以治本：被撤回的那句仍在 ⇒ 输出自相矛盾（见 ⓪ 注释实证）。
+//     故 ⓪ 对**破折号 + wait, no** 形态额外删除被撤回的整句（撤回语义由破折号绑定到前一句）。
+const _V512_META_RETRACT = /\s*[\u2014\u2013-]{1,2}\s*(?:wait|hold\s+on)\s*,?\s*no\b\.?(?:\s*let\s+us\s+be\s+precise\b\.?)?[ \t]*/gi;
+const _V512_SENT_CUT = /[.\n\u3002\uff01\uff1f;\uff1b!?]/g;
+const _V512_META_PLAIN = /\b(?:wait|hold\s+on)\s*,?\s*no\b\.?\s*/gi;
+const _V512_META_DECL = /\b(?:scratch\s+that|my\s+mistake|i\s+apolog(?:y|ize))\b\s*[:.]?\s*/gi;
+const _V512_META_CORR = /(^|[.!?\u3002\uff01\uff1f]\s+)Correction\s*[:：]\s*/gm;
+const _V512_META_SENT = /(^|[.!?\u3002\uff01\uff1f]\s+)(?:actually\s*,?\s*no|let\s+us\s+be\s+precise)\b\.?\s*/gim;
+const _V512_META_PAREN = /[\(\[]\s*(?:wait|hold\s+on|correction|scratch\s+that)\b[^)\]]{0,40}[\)\]]\s*/gi;
+function stripLLMSelfCorrection(text) {
+  if (!text || typeof text !== 'string') return text;
+  const before = text;
+  let t = text;
+  // ⓪ 「破折号 + wait, no」= LLM **明确撤回前一句** ⇒ 连同被撤回的句子一起删除。
+  //   ⚠️ 只删标记会留下自相矛盾（线上实证复现：`Saturn in Aries in the 4th House — wait, no.
+  //   Let us be precise. Saturn sits in Aquarius in the 2nd House.` → 删标记后「4th House」这句
+  //   仍在，与后句真值直接打架）。撤回语义只对**破折号 + wait, no** 成立（破折号把撤回绑定到前一句），
+  //   故本删除仅服务该形态；裸 wait, no / (wait, no) / Correction: 只删标记、不牵连正文。
+  //   ⚠️ 偏移坐标系：replace 一旦删掉标记，串长即变 ⇒ 被撤回句的删除必须回到**原文**坐标系执行
+  //     （初版把 cuts 应用到 replace 之后的串上，删出「HouseThe transiting」并把后半句吃掉 —— 已修）。
+  const cuts = [];
+  text.replace(_V512_META_RETRACT, function (m0, off, whole) {
+    const backStart = Math.max(0, off - 400);
+    let b = -1;
+    for (const mm of whole.slice(backStart, off).matchAll(_V512_SENT_CUT)) b = Math.max(b, mm.index + mm[0].length);
+    cuts.push([b >= 0 ? backStart + b : 0, off + m0.length]);
+    return '';
+  });
+  //   此刻 `t === text` 仍成立（上面用的是非破坏性 `text.replace`，仅收集 cuts）⇒ 直接在原文坐标系删除
+  for (let i = cuts.length - 1; i >= 0; i--) t = t.slice(0, cuts[i][0]) + t.slice(cuts[i][1]);
+  // ① 其余形态：只删标记本身（绝不牵连正文）
+  //   括号包裹形态**必须早于**裸形态：否则 `(wait, no)` 先被裸规则吃掉 `wait, no` ⇒ 留下空括号 `()`
+  t = t.replace(_V512_META_PAREN, ' ');
+  t = t.replace(_V512_META_PLAIN, '');
+  t = t.replace(_V512_META_DECL, '');
+  t = t.replace(_V512_META_CORR, '$1');
+  t = t.replace(_V512_META_SENT, '$1');
+  // 收尾归一：双空格 / 空格+标点 / 重复标点 / 空括号 / 行首孤标点 / 行尾空格
+  t = t.replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+([.,;:!?])/g, '$1')
+    .replace(/([.,;:!?])[ \t]*\1+/g, '$1')
+    .replace(/[\(\[]\s*[\)\]]/g, '')
+    .replace(/^[ \t]*[.,;:]\s*/gm, '')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n');
+  if (t !== before) console.log(`[E12/R11a] LLM 自纠 artifact 剥离: ${before.length - t.length} 字符`);
+  return t === before ? text : t;
+}
+
+// ── R11b: 全章本命声称真值锁（物主本命语境准入）──────────────────────────────
+//   病根（2026-10-03 v510 线上实证，验收范围外）：Ch III `Your Moon is in Leo, a Fire sign,
+//   in the 7th House.`（真值 8th）／`Jupiter in Leo occupies your 7th House`（真值 Libra 10th）
+//   —— 月锚点之后的**无标记本命声称**，因「非前导段须 natal 定语」而设计性弃权（全身锁零改动）；
+//   探针对照证明**同一句若落在前导段，前导锁能正确纠偏** ⇒ 能力足够，仅覆盖面止于首个月锚点。
+//   治本：非前导段以「**物主本命语境**」准入。四重否决 + 物主贴附（保守弃权，宁漏不改）：
+//     ① 流年标记（_v432SentTransitMarked 窄表 + cfg.transitMark）；
+//     ② 月份词（January…/enero…/N月）—— 月锚点行与逐月正文一律含之；
+//     ③ 具体日期（cfg.dateMark：October 7 / Day 5 / Week 2 / 3rd of July）；
+//     ④ 物主必须**紧贴**行星名（"your Moon"）或紧贴宫位短语（"your 7th House"）。
+//   为何必须物主准入（而非「月段一律锁」）：月段满是无标记**流月陈述**
+//     （"The Moon in Libra smooths negotiations." / "Mercury Retrograde in the 7th House"）
+//     ——一律锁会把流月值改成本命值 = 主动污染（生产已见 `Mercury Retrograde in the 7th House` 须存活）。
+//   为何「紧贴」而非「句内含物主」：`Saturn tests your patience in the 3rd House` 的物主属 patience，
+//     不属宫位 ⇒ 不得据以认定本命。
+const _V512_POSS = {
+  en: /\b(?:your|you\s+own)\b/i,
+  es: /\b(?:tu|tus|su|sus)\b/i,
+  zh: /(?:\u4f60\u7684|\u4f60\u672c\u547d|\u4f60\u539f\u751f)/,
+};
+const _V512_MONTH_TOK = {
+  en: /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/i,
+  es: /\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i,
+  zh: /\d{1,2}\s*\u6708/,
+};
+const _V512_POSS_NEAR = { en: 14, es: 14, zh: 8 };
+// ⑤ 时间限定词否决（this month/this summer/now/currently/soon…）—— 流年陈述的强信号；
+//   与 ①②③ 互补：`Jupiter in Leo this summer activates your 7th House` 必须原样保留。
+const _V512_TIME_QUAL = {
+  en: /\b(?:this\s+(?:month|year|week|season|summer|winter|spring|autumn|fall)|next\s+(?:month|year|week)|now|currently|presently|today|tonight|soon|these\s+days)\b/i,
+  es: /\b(?:este\s+(?:mes|a[ñn]o|verano|invierno)|ahora|actualmente|hoy|pronto|pr[óo]xim\w*)\b/i,
+  zh: /(?:\u672c\u6708|\u4eca\u5e74|\u672c\u5468|\u73b0\u5728|\u76ee\u524d|\u5982\u4eca|\u5373\u5c06|\u4e0b\u6708|\u660e\u5e74)/,
+};
+// ④b 附加门槛：行星名**紧跟**位置短语（`Jupiter in Leo … your 7th House`）—— 行星自己拥有星座声称。
+//   ⚠️ 必要性实证（探针）：`Your 8th House is activated by the Leo Sun` 若仅凭「物主紧贴宫位」就准入，
+//   会把 Leo Sun / 8th House 一并改成本命真值 = 主动污染（该句是「狮子座太阳激活你本命 8 宫」的
+//   流年陈述）。行星紧跟位置短语 ⇒ 该句是在陈述**行星自身**的落位，才可据本命真值纠偏。
+const _V512_PLACE_AFTER = {
+  en: /^\s*,?\s*(?:in|at|into|of)\b/i,
+  es: /^\s*,?\s*(?:en|de)\b/i,
+  zh: /^\s*[\uff0c,]?\s*(?:\u5728|\u4e8e|\u4f4d\u4e8e)/,
+};
+// 句窗（与 _v432SentTransitMarked 同口径）：前后最近断句符之间
+function _v512SentWindow(text, i, len) {
+  const backFrom = Math.max(0, i - 400);
+  let start = backFrom;
+  for (const mm of text.slice(backFrom, i).matchAll(_V492B_SENT_BREAK)) start = backFrom + mm.index + mm[0].length;
+  const endRel = text.slice(i + len, i + len + 300).search(_V492B_SENT_BREAK);
+  const end = endRel >= 0 ? i + len + endRel : Math.min(text.length, i + len + 300);
+  return { start, end, text: text.slice(start, end) };
+}
+// 物主紧贴：宫位短语侧（clause.fwd 里宫位 token 之前 30 字符内）+ 行星名侧（`pre` 窗口内）
+function _v512PossessiveTouch(cfg, lang, clause, fwd) {
+  const P = _V512_POSS[lang];
+  if (!P || !fwd) return false;
+  const h = _v432FindHouse(cfg, fwd, true);
+  if (!h) return false;
+  return P.test(fwd.slice(Math.max(0, h.idx - 30), h.idx));
+}
+// 本命语境准入裁定（possessive 模式唯一放行依据）
+function _v512PossessiveNatal(cfg, lang, text, i, len, clause) {
+  const P = _V512_POSS[lang];
+  if (!P) return false;
+  const win = _v512SentWindow(text, i, len);
+  const sent = win.text;
+  if (_v432SentTransitMarked(lang, text, i, len)) return false;   // ① 流年标记（窄表）
+  if (cfg.transitMark && cfg.transitMark.test(sent)) return false; // ① 流年标记（宽表）
+  if (_V512_MONTH_TOK[lang] && _V512_MONTH_TOK[lang].test(sent)) return false; // ② 月份词
+  if (cfg.dateMark && cfg.dateMark.test(sent)) return false;       // ③ 具体日期
+  if (_V512_TIME_QUAL[lang] && _V512_TIME_QUAL[lang].test(sent)) return false; // ⑤ 时间限定词
+  const near = _V512_POSS_NEAR[lang] || 14;
+  if (P.test(text.slice(Math.max(0, i - near), i))) return true;   // ④a 物主紧贴行星名
+  // ④b 物主紧贴宫位 —— 附加门槛：行星名必须紧跟位置短语（见 _V512_PLACE_AFTER 注释的反例实证）
+  if (clause && _V512_PLACE_AFTER[lang]
+    && _V512_PLACE_AFTER[lang].test(text.slice(i + len, i + len + 8))
+    && _v512PossessiveTouch(cfg, lang, clause, clause.fwd)) return true;
+  return false;
+}
+// R11c 判据 12 用：全章「物主本命声称」与 SwissEph 真值的错配计数（只检不改，纯函数）
+//   ⚠️ 排除「既无星座也无宫位」的句子（"Your Moon craves security." 什么都没声称 ⇒ 无对错可言），
+//     否则会把无尽言句全部记成错配 ⇒ CRITIC 恒误报（E11 空数组坑的同类事故面）。
+function _v512CountNatalClaimMismatch(text, lang, astroMatrix) {
+  const cfg = _V432_CFG[lang];
+  if (!cfg || !text || typeof text !== 'string') return 0;
+  const truth = _v432Truth(lang, astroMatrix, 'natal');
+  const names = Object.keys(truth);
+  if (!names.length) return 0;
+  const nameRe = new RegExp('(' + names.map(_v432Esc).join('|') + ')', 'g');
+  let n = 0, m;
+  while ((m = nameRe.exec(text)) !== null) {
+    const t = truth[m[1]];
+    if (!t) continue;
+    const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, true, {});
+    if (!clause) continue;
+    if (!_v512PossessiveNatal(cfg, lang, text, m.index, m[0].length, clause)) continue;
+    const claim = _v432ClaimOf(cfg, lang, clause.fwd, clause.bwd);
+    if (!claim.sign && claim.house === null) continue;   // 无尽言 ⇒ 不算错配
+    if (!_v432TruthMatch(t, claim.sign, claim.house)) n++;
+  }
+  return n;
 }
 
 // 🛠️ V426-R: 本命外行星「逆行标识(retrograde)」后处理真值锁（治本 FR 样本 Pluto natal 漏 rétrograde）
@@ -5179,7 +5402,11 @@ function _v432LockTransit(text, lang, astroMatrix) {
 function applyTruthLocksEnEsZh(text, lang, astroMatrix, reportType) {
   if (!text || typeof text !== 'string' || !_V432_LANGS.includes(lang)) return text;
   try {
-    let out = _v432Normalize(text, lang);
+    // 🛡️ E12/R11a: 形态收口必须**先于**真值锁 ——
+    //   ① artifact 剥离（`— wait, no. Let us be precise.` 元话语不得进任何真值/句窗判断）；
+    //   ② 畸形宫位归一（`in the 5 House`→`in the 5th House`，否则 houseOrd 认不出 ⇒ 纠偏链整段漏网）。
+    let out = stripLLMSelfCorrection(_v512NormalizeHouseOrdinal(text, lang));
+    out = _v432Normalize(out, lang);
     out = _v432LockNatal(out, lang, astroMatrix);
     // 🛡️ V478-guard: 年报(12 个月跨度)禁用单月固化【流月锁】—— 镜像 V472-guard 的既有设计。
     //   病根: _v432Truth(...,'transit') 只锚 astroMatrix.months[0](首月快照), 无月份索引。
@@ -6734,7 +6961,9 @@ function _e11SignLocal(name, lang) {
 }
 
 // 🛠️ V107-方案A: 轻量级预缓存校验器(写缓存前拦截质量问题)
-function wealthCriticCheck(text, birthDate, natalSunSign, lang) {
+// 🛡️ E12/R11c: 第 5 形参 astroMatrix（可选）—— 判据 12「全章本命声称 vs SwissEph 真值错配」需要真值盘；
+//   缺省时该判据整条跳过（对既有调用/闸门零影响）。
+function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
   const issues = [];
   if (!text || text.length < 500) issues.push('内容过短');
 
@@ -6832,6 +7061,35 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang) {
   const _E11_hasGemini = (line) => line.includes('双子座') || /gemini/i.test(line);
   const badElement = text.split('\n').filter((l) => _E11_hasEarth(l) && _E11_hasGemini(l));
   if (badElement.length > 0) issues.push('双子座被错误归入土元素:' + badElement.join('|'));
+
+  // ═══ 🛡️ E12/R11c: 三类 E12 漏洞正告警判据（命中即触发 R3 静默重试，重试稿携带强约束 prompt）═══
+  //   设计原则（E11 教训的反向应用）：判据必须**有区分力**（合规报告 0 告警）且**可被注入自测证伪**。
+  //   ① 畸形宫位 `N House`（数字在前、缺序数后缀）—— 只认**数字在前**形态（`House 5` 是我方
+  //      houseFmt 的合法产物，绝不误伤）；1~12 值域。R11a-1 归一后仍残留 = 后处理链漏覆盖 ⇒ 重试。
+  if (lang === 'en') {
+    const _v512BadHouse = [];
+    const _reBadHouse = /\b(\d{1,2})\s+House\b/g;
+    let _mbh;
+    while ((_mbh = _reBadHouse.exec(text)) !== null) {
+      const _v = Number(_mbh[1]);
+      if (_v >= 1 && _v <= 12) _v512BadHouse.push(_mbh[0]);
+    }
+    if (_v512BadHouse.length > 0) {
+      issues.push('畸形宫位格式(N House 缺序数后缀): ' + _v512BadHouse.slice(0, 5).join(', '));
+    }
+  }
+  //   ② LLM 自纠/元话语 artifact 残留（R11a-2 剥离链之外的变体）
+  //      ⚠️ `correction` 只在句首 + 冒号形态才判 —— 否则金融常用词 `market correction` 恒误报。
+  if (/\b(?:wait\s*,?\s*no|let\s+us\s+be\s+precise|scratch\s+that)\b/i.test(text)
+    || /(^|[.!?\u3002\uff01\uff1f]\s+)Correction\s*[:：]/m.test(text)) {
+    issues.push('LLM 自纠/元话语 artifact 残留');
+  }
+  //   ③ 全章「物主本命声称」与 SwissEph 真值错配（复用 R11b 的物主准入裁定 ⇒ 只判「明确本命」句；
+  //      无尽言句 / 流年句 / 含月份日期的句子一律不计 ⇒ 杜绝 E11 式的必然误报）
+  if (astroMatrix) {
+    const _mis = _v512CountNatalClaimMismatch(text, lang || 'zh', astroMatrix);
+    if (_mis > 0) issues.push('本命行星/宫位声称与 SwissEph 真值错配: ' + _mis + ' 处');
+  }
 
   return issues;
 }
@@ -7114,7 +7372,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v510:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v511:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10390,7 +10648,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v510:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v511:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10672,7 +10930,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         if (reportType === 'yearly') {
           const _e10Judge = (txt) => ({
             // 🛡️ E11/R10a: 必须传 lang —— wealthCriticCheck 的报头/月份/元素判据全部依赖语言适配
-            issues: wealthCriticCheck(txt, birthDate, natalSunSign, lang),
+            // 🛡️ E12/R11c: 必须传 astroMatrix —— 判据 12 全章本命声称真值错配检测依赖 SwissEph 真值盘
+            issues: wealthCriticCheck(txt, birthDate, natalSunSign, lang, astroMatrix),
             iv: assessYearlyReportIntegrity(txt, { lang }),
           });
           let _j1 = _e10Judge(reportContent);
@@ -11079,7 +11338,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v510:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v511:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12747,7 +13006,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v510-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v511-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

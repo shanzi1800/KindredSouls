@@ -74,8 +74,9 @@ test('① R10a: 星座 i18n 归一助手存在且惰性构造（规避 SUN_SIGN_
 
 test('② R10a: 判据 1 走 i18n 适配（不得再裸比中文字面量）', () => {
   const cc = stripComments(fnBody('wealthCriticCheck'));
-  assert.ok(/wealthCriticCheck\s*\(text,\s*birthDate,\s*natalSunSign,\s*lang\)/.test(src.replace(/\s+/g, ' '))
-    || /function\s+wealthCriticCheck\(text,\s*birthDate,\s*natalSunSign,\s*lang\)/.test(src), 'wealthCriticCheck 签名缺 lang 形参');
+  // 🛡️ E12/R11c 基线前移: 签名补第 5 形参 astroMatrix（判据 12 需 SwissEph 真值盘）；lang 仍是必传形参
+  assert.ok(/function\s+wealthCriticCheck\(text,\s*birthDate,\s*natalSunSign,\s*lang(\s*,\s*astroMatrix)?\s*\)/.test(src),
+    'wealthCriticCheck 签名缺 lang 形参');
   assert.ok(/_e11SignLocal\(natalSunSign,\s*lang/.test(cc), '判据 1 未做语言归一（英文报告将恒误报）');
   assert.ok(/header\.includes\(_sunLocal\)/.test(cc), '判据 1 未用归一后的目标语言名比对');
   assert.ok(!/if\s*\(\s*!header\.includes\(natalSunSign\)\s*\)/.test(cc), '判据 1 仍是裸中文比对（旧病未除）');
@@ -101,19 +102,20 @@ test('④ R10a: 判据 4/5 语言分支 + 6~8 显式 gate 到 zh', () => {
 });
 
 test('⑤ R10a: 端点调用点必须传 lang（不传则判据 1 回落 zh，英文仍误报）', () => {
-  assert.ok(/wealthCriticCheck\(txt,\s*birthDate,\s*natalSunSign,\s*lang\)/.test(src),
-    '调用点未传 lang ⇒ 语言适配形同虚设');
+  // 🛡️ E12/R11c 基线前移: 调用点再补 astroMatrix（判据 12 依赖真值盘）
+  assert.ok(/wealthCriticCheck\(txt,\s*birthDate,\s*natalSunSign,\s*lang\s*,\s*astroMatrix\)/.test(src),
+    '调用点未传 lang/astroMatrix ⇒ 语言适配与真值错配判据形同虚设');
 });
 
-test('⑥ R10b: 缓存 bump v510（server.js 四站点 + purge 补 v509 双形态 + 基线前移）', () => {
-  const sites = [...src.matchAll(/wealth:v510/g)].length;
-  assert.ok(sites >= 4, `server.js v510 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v509'), 'server.js 残留 v509（漏改一站）');
-  assert.ok(/wealth:v509:\*/.test(purgeSrc) && /wealth:v509-v2:\*/.test(purgeSrc), 'purge 脚本未补 v509 双形态');
+test('⑥ R10b: 缓存 bump v511（server.js 四站点 + purge 补 v510 双形态 + 基线前移）', () => {
+  const sites = [...src.matchAll(/wealth:v511/g)].length;
+  assert.ok(sites >= 4, `server.js v511 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v510'), 'server.js 残留 v510（漏改一站）');
+  assert.ok(/wealth:v510:\*/.test(purgeSrc) && /wealth:v510-v2:\*/.test(purgeSrc), 'purge 脚本未补 v510 双形态');
   const yearly = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
-  assert.ok(/MIN_CACHE_VER = 510/.test(yearly), 'yearly 流式闸门基线未前移 v510');
+  assert.ok(/MIN_CACHE_VER = 511/.test(yearly), 'yearly 流式闸门基线未前移 v511');
   const d1 = fs.readFileSync(path.join(__dirname, 'audit-v492-monthly-house-linter.test.mjs'), 'utf-8');
-  assert.ok(/V510|v510/.test(d1), 'V492 闸门 D1 基线未前移 v510');
+  assert.ok(/V511|v511/.test(d1), 'V492 闸门 D1 基线未前移 v511');
 });
 
 // ═══════════════ 行为级: vm 抽取（零 python） ═══════════════

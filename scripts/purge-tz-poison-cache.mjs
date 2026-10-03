@@ -47,6 +47,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v508-v2:*',
   'wealth:v509:*',        // 🛡️ E11/R10: v509 全量作废（CRITIC 判据精准化，误报根治后首次可走 normal 路径）
   'wealth:v509-v2:*',
+  'wealth:v510:*',        // 🛡️ E12/R11: v510 全量作废（全章物主本命真值锁 + 畸形宫位形态归一 + LLM 自纠 artifact 剥离）
+  'wealth:v510-v2:*',
   'wealth:v116-v2:*',
 ];
 
