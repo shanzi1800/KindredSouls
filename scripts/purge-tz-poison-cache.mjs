@@ -51,6 +51,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v510-v2:*',
   'wealth:v511:*',        // 🛡️ E13/R11d: v511 全量作废（英文拼写式序数宫位盲区 + HIT 路径前导锁缺失，第 1 章本命宫位可错配）
   'wealth:v511-v2:*',
+  'wealth:v512:*',        // 🛡️ E15/R11f: v512 全量作废（vi/th 非流式 HIT 因 const stdCached 重赋值崩溃丢缓存 + es/fr 章名口径矛盾拒入库 + es/fr 阴性序数缩写形态盲区 + hits 区间相交串长错位 artifact）
+  'wealth:v512-v2:*',
   'wealth:v116-v2:*',
 ];
 

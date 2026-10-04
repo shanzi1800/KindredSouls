@@ -3218,6 +3218,39 @@ function _thPatchZone(zone, sign, house, preferFirst, text, absBase) {
   return { text: z, count: ch, log };
 }
 
+// ═══ 🛡️ E15/R11f-3（偏移坐标系铁律 · 第 3 例）: 命中区间去交叉 ═══
+// 病根（2026-10-04 es 盘 Ushuaia 实证）: 同一段里两个行星的窗口可以【相交】——
+//   `Júpiter, el gran benefactor, se encuentra en Géminis en tu 5ª Casa** — la misma casa que
+//    ocupa tu tu Sol.` 中，Júpiter 的 fwd 窗口 [2459,2552) 与 Sol 的 bwd 窗口 [2483,2553)
+//   相交（Sol 的 bwd 回溯越界，吃进了上一句 Júpiter 的从句）。
+//   E13 的「命中区间倒序应用」只解决了【不相交】区间的失效问题；一旦相交，先应用者（靠后那个，
+//   Sol 的 bwd，Géminis→Cáncer 使串长 −1）改变了串长，后应用者（Júpiter 的 fwd）右界立即失效
+//   ⇒ 实测 `T1[2552)` 取到 'S' 而非空格 ⇒ `tu tu ` + `Sol` = `tu tuSol`（凭空吃掉 1 个空格 = artifact）。
+//   ⇒ 铁律补充：凡「多段替换 + 区间坐标」，命中区间还必须【两两不相交】，否则坐标体系根本不成立。
+// 处置（保守 · 宁漏不改 · 绝不编）: 按左界升序扫描，只接受与已接受区间不相交的命中；相交者整条丢弃并计数。
+//   语义依据：先起者 = 从自己行星名开始的合法窗口（fwd 必起于本从句）；后起者多为 bwd 回溯越界侵入了前一句
+//   ⇒ 丢弃它即丢弃「越界污染」（实测被丢弃的 Sol bwd 会把 Júpiter 从句的 Géminis 伪造成 Cáncer，
+//   且其 house 修正在先起者的窗口内已被覆盖 ⇒ 零功能损失）。
+// 零回归保证：完全无相交时（生产绝大多数盘）返回的数组与输入逐元素相同 ⇒ 下游行为逐字节一致。
+// ⚠️ 语义边界：本函数是**纯过滤器**（只丢弃，不重排、不改写 hit 内容）——返回数组保持【入参顺序】。
+//   若在此处顺带排序，会令下游 `hits.sort((a,b)=>b[0]-a[0])` 的前置状态改变，并使 E13 闸门 ⑬
+//   「复刻旧版 hits 应用顺序」的注入锚点静默失去判别力（注入后恰好变成正确顺序 ⇒ 闸门假红）。
+//   ⇒ 定序职责单一归 `hits.sort`，本函数只管「不相交」。
+function _v432ResolveOverlaps(hits, tag) {
+  if (!Array.isArray(hits) || hits.length < 2) return hits || [];
+  const idx = hits.map((h, i) => i).sort((a, b) => (hits[a][0] - hits[b][0]) || (hits[b][1] - hits[a][1]));
+  const drop = new Set();
+  let last = null;
+  for (const i of idx) {
+    const h = hits[i];
+    if (last && h[0] < last[1]) { drop.add(i); continue; }   // 相交 ⇒ 丢弃后起者（先起者胜）
+    last = h;
+  }
+  if (!drop.size) return hits;
+  console.log(`[E15-R11f] ${tag}: 命中区间相交 ${drop.size} 处 → 已丢弃越界命中（防串长错位 artifact）`);
+  return hits.filter((h, i) => !drop.has(i));
+}
+
 function lockNatalTruthTh(text, astroMatrix) {
   if (!text) return text;
   const truth = astroMatrix ? _natalTruthMap10_TH(astroMatrix) : {};
@@ -3464,7 +3497,7 @@ function lockNatalTruthVi(text, astroMatrix) {
     return text;
   }
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
-  const hits = [];
+  let hits = [];
   const detail = [];
   let fixes = 0, m;
   while ((m = nameRe.exec(text)) !== null) {
@@ -3486,6 +3519,8 @@ function lockNatalTruthVi(text, astroMatrix) {
     fixes += F.count + B.count;
   }
   // 🛡️ E13/R11d: 命中区间按位置倒序应用（同 _v432LockNatal 的偏移坐标系修正，本函数同构同病）
+  // 🛡️ E15/R11f-3: 先做区间去交叉（第 3 例：相交区间 + 串长变化 ⇒ 右界失效吃掉字符）
+  hits = _v432ResolveOverlaps(hits, 'vi 本命锁');
   hits.sort((a, b) => b[0] - a[0]);
   for (let i = 0; i < hits.length; i++) {
     const [s, e, rep] = hits[i];
@@ -3650,6 +3685,14 @@ function _transitTruthMap10_FR(astroMatrix) {
 }
 
 // 法语本命从句归因（镜像 _viClause；natal 标记 = 行星后紧跟 natal/natale）
+// 🛡️ E15/R11f-2: 法语「序数指示符缩写」宫位形态 —— `5ᵉ maison` / `5e maison` / `5ème maison` / `5° maison`。
+//   与 es 的 `5ª Casa` 同源（E13「拼写式序数」的多语言孪生体）；en/es 走 _V432_CFG.houseAbbr，
+//   fr 走本独立通道（lockNatalTruthFr），故在此单列。实测 2 盘 fr 产出 0 处（纯防御性补齐）。
+//   `(?<![\d.,])` 防把 `2026 maison` / `1.5 maison` 的尾段数字当宫位号；值域 1~12 由调用方钳制。
+const _FR_HOUSE_ABBR = /(?<![\d.,])\b(\d{1,2})\s*(?:ème|eme|[eèé\u1d49\u00b0])?\s*maison\b/i;
+// 宫位引用「任一形态」（`Maison 5` ∪ `5ᵉ maison`）—— 供定语槽裁剪统一使用，避免两处漂移。
+const _FR_HOUSE_ANY = /(?:Maison\s*\d+|(?<![\d.,])\b\d{1,2}\s*(?:ème|eme|[eèé\u1d49\u00b0])?\s*maison)\b/i;
+
 function _frClause(text, i, len, explicit) {
   const aEnd = i + len;
   if (!explicit) {
@@ -3657,7 +3700,7 @@ function _frClause(text, i, len, explicit) {
     let pre = after;
     let cut = -1;
     for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
-    const hm = after.match(/Maison\s*\d+/i);
+    const hm = after.match(_FR_HOUSE_ANY);
     if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
     if (cut >= 0) pre = after.slice(0, cut);
     if (!/(?:natal|natale|de naissance|qui vous fit naître)/i.test(pre)) return null;        // 非本命标记 → 多半是 transit/泛指，不碰
@@ -3689,7 +3732,7 @@ function _frTransitClause(text, i, len) {
   let pre = after;
   let cut = -1;
   for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && (cut < 0 || k < cut)) cut = k; }
-  const hm = after.match(/Maison\s*\d+/i);
+  const hm = after.match(_FR_HOUSE_ANY);
   if (hm && (cut < 0 || hm.index < cut)) cut = hm.index;
   if (cut >= 0) pre = after.slice(0, cut);
   if (/(?:natal|natale|natif|native)/i.test(pre)) return null;                     // 本命句 → natal 锁已处理，跳过
@@ -3740,7 +3783,7 @@ function _frPatchZone(zone, sign, house, preferFirst) {
     if (best) { z = z.slice(0, best.idx) + sign + z.slice(best.idx + best.s.length); ch++; log.push(`星座 ${best.s}→${sign}`); }
     else if (!z.includes(sign)) {
       // 盲区：z 不含预期星座，也不含任何已知错误星座（如 LLM 拼写错误 Lion≠Lion? 或外文混入）→ 兜底归真
-      const hm = z.match(/Maison\s*\d+/i);
+      const hm = z.match(_FR_HOUSE_ANY);
       if (hm) {
         const before = z.slice(0, hm.index).replace(/\s+$/, '');
         const sp = before.lastIndexOf(' ');
@@ -3755,7 +3798,7 @@ function _frPatchZone(zone, sign, house, preferFirst) {
     }
   }
   if (house) {
-    let target = null, m, isOrdinal = false;
+    let target = null, m, isOrdinal = false, isAbbr = false;
     const reNum = /Maison\s*(\d+)/gi;
     while ((m = reNum.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
     if (!target) {
@@ -3763,12 +3806,19 @@ function _frPatchZone(zone, sign, house, preferFirst) {
       while ((m = reOrd.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
       isOrdinal = true;
     }
+    // 🛡️ E15/R11f-2: 序数指示符缩写形态 `5ᵉ maison` / `5e maison` / `5ème maison`（仅当窗内无 `Maison N` 时兜底）
+    if (!target) {
+      const reAbbr = new RegExp(_FR_HOUSE_ABBR.source, 'gi');
+      while ((m = reAbbr.exec(z)) !== null) { if (preferFirst) { target = m; break; } target = m; }
+      if (target) { isOrdinal = false; isAbbr = true; }
+    }
     if (target) {
       const gotHouse = isOrdinal ? (_FR_ORDINAL_TO_DIGIT[target[1].toLowerCase()] || 0) : Number(target[1]);
-      if (gotHouse !== house) {
-        const replacement = isOrdinal ? (_FR_DIGIT_TO_ORDINAL[house] + ' maison') : ('Maison ' + house);
+      if (gotHouse !== house && gotHouse >= 1 && gotHouse <= 12) {
+        const replacement = isAbbr ? (house + '\u1d49 maison')
+          : isOrdinal ? (_FR_DIGIT_TO_ORDINAL[house] + ' maison') : ('Maison ' + house);
         z = z.slice(0, target.index) + replacement + z.slice(target.index + target[0].length);
-        ch++; log.push('宫位 ' + gotHouse + '→' + house);
+        ch++; log.push('宫位 ' + gotHouse + '\u2192' + house);
       }
     }
   }
@@ -3823,7 +3873,7 @@ function _frSlotOf(text, aEnd) {
   const after = text.slice(aEnd, aEnd + 50);
   let cut = after.length;
   for (const s of _FR_SIGN_UNIQ()) { const k = after.indexOf(s); if (k >= 0 && k < cut) cut = k; }
-  const hm = after.match(/Maison\s*\d+/i);
+  const hm = after.match(_FR_HOUSE_ANY);
   if (hm && hm.index < cut) cut = hm.index;
   return after.slice(0, cut);
 }
@@ -3959,7 +4009,7 @@ function lockNatalTruthFr(text, astroMatrix) {
   // 🛠️ V430: 先做定语双向裁定（剥夺舍 / 补丢标识），再进本命真值锁
   text = adjudicateNatalDescriptorsFr(text, astroMatrix);
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
-  const hits = [];
+  let hits = [];
   const detail = [];
   let fixes = 0, m;
   while ((m = nameRe.exec(text)) !== null) {
@@ -3982,6 +4032,8 @@ function lockNatalTruthFr(text, astroMatrix) {
     fixes += F.count + B.count;
   }
   // 🛡️ E13/R11d: 命中区间按位置倒序应用（同 _v432LockNatal 的偏移坐标系修正，本函数同构同病）
+  // 🛡️ E15/R11f-3: 先做区间去交叉（第 3 例：相交区间 + 串长变化 ⇒ 右界失效吃掉字符）
+  hits = _v432ResolveOverlaps(hits, 'fr 本命锁');
   hits.sort((a, b) => b[0] - a[0]);
   for (let i = 0; i < hits.length; i++) {
     const [s, e, rep] = hits[i];
@@ -4214,8 +4266,26 @@ const _V432_CFG = {
     axis: /\beje\b|\bentre\b[^.]{0,60}\by\b/i,
     houseNum: /\bCasa\s*(\d{1,2})\b/i,
     houseOrd: /\b(primera|segunda|tercera|cuarta|quinta|sexta|s[e\u00e9]ptima|octava|novena|d[e\u00e9]cima|und[e\u00e9]cima|duod[e\u00e9]cima)\s+casa\b/i,
+    // 🛡️ E15/R11f-2: 第五类盲区（**E13「拼写式序数」的西语孪生体**）——
+    //   `5ª Casa` / `5º Casa` / `5.ª Casa` / `5a Casa`（阴性/阳性序数指示符 + 数字在前）。
+    //   病根（2026-10-04 12 盘批测实证）：es cfg 原本只有 houseNum(`Casa 5`) + houseOrd(拼写式)
+    //   两式，**不含任何「数字在前 + 指示符」形态**；LLM 文风抖动时产出 `Tu Sol en Cáncer ocupa
+    //   la 5ª Casa`（真值 Casa 4）⇒ finder 零匹配 ⇒ 本命宫位错配漏网（Ushuaia 盘实测 **54 处**，
+    //   同语 Madrid 盘 0 处 ⇒ 纯文风抖动，与 E13 的 `seventh house` 同源）。
+    //   防误伤护栏：
+    //   ① 否定后顾 `(?<![\d.,])` —— `2026 Casa` / `1.5 Casa` 不会把尾段数字当宫位号；
+    //   ② 匹配段**只吃** `<数字><指示符?> Casa` ⇒ 前缀（`la` / `tu` / `en tu`）落在匹配段之外，
+    //      写回时自动保留；
+    //   ③ 1~12 值域钳制（在 _v432FindHouse 内），第 13+ 恒非宫位；
+    //   ④ 写回**保形**（`4ª Casa`）而非归一成 `Casa 4` —— 避免与同窗内月份标题的 `Casa N`
+    //      形态相撞，且输出不再匹配本式（幂等）。
+    //   ⚠️ 已知边界：带点形态 `5.ª Casa` 会被 `_v432Clause` 的 clauseBreak（含 `.`）切成两段
+    //      ⇒ 窗口内无法整体匹配。**实测真实产出为不带点的 `5ª Casa`（Ushuaia 盘 54 处）**，已覆盖；
+    //      带点形态为低概率变体，收窄 clauseBreak 会波及 E9~E12 全部真值锁，收益远小于风险，故不做。
+    houseAbbr: /(?<![\d.,])\b(\d{1,2})\s*(?:\.?\s*[\u00ba\u00aa\u00b0oa])?\s*[Cc]asa\b/i,
     houseFmt: (n) => 'Casa ' + n,
     houseOrdFmt: (n) => (_V432_ES_ORD_FORMAT[n] || n) + ' casa',
+    houseAbbrFmt: (n) => n + '\u00aa Casa',
     ctx: /\b(?:natal(?:es)?|nacimiento|tu carta|tu cielo)\b/i,
     dayRe: [/\bD[i\u00ed]a\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i],
     dateMark: /\bD[i\u00ed]a\s*\d{1,2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b|\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s*\d{1,2}\b|\bSemana\s*\d\b/i,
@@ -4346,6 +4416,19 @@ function _v432FindHouse(cfg, zone, preferFirst) {
       const v = _V432_EN_SPELLED[String(m[1]).toLowerCase()] || null;
       if (!v || !(v >= 1 && v <= 12)) continue;
       const hit = { idx: m.index, len: m[0].length, value: v, ord: 'spelled' };
+      const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
+      if (take) best = hit;
+    }
+  }
+  // 🛡️ E15/R11f-2: 序数指示符缩写形态（es 专属：`5ª Casa` / `5º Casa` / `5a Casa` / `5.ª Casa`）
+  //   —— E13「拼写式序数」的西语孪生体；ord:'abbr' 让 PatchZone 用 houseAbbrFmt 保形写回。
+  //   1~12 值域钳制（`2026 Casa` 已被否定后顾挡在正则外，此处再兜一层）。
+  if (cfg.houseAbbr) {
+    const re = new RegExp(cfg.houseAbbr.source, 'gi');
+    while ((m = re.exec(zone)) !== null) {
+      const v = Number(m[1]);
+      if (!(v >= 1 && v <= 12)) continue;
+      const hit = { idx: m.index, len: m[0].length, value: v, ord: 'abbr' };
       const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
       if (take) best = hit;
     }
@@ -4524,8 +4607,12 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
             if (text != null && absBase != null && _v436InThMonth(text, absBase + wStart, word.length)) {
               // 候选词落在泰语月名区间内（如 กันยายน⊃กันยา）= 不是星座引用 → 跳过替换
             } else {
-              const base = z.slice(0, hm.idx).length - before.length;
-              z = z.slice(0, base + wStart) + sign + z.slice(base + wStart + word.length);
+              // 🛡️ E15/R11f-3: 偏移修正 —— `before` 只是去掉了【尾部】空白/逗号，其【首部】与 z 完全对齐
+              //   ⇒ 词在 z 中的绝对起点就是 `wStart` 本身。旧写法 `base + wStart` 把起点右移了 `base`
+              //   个字符（base = 被裁掉的尾部空白数）⇒ 保留词的前 base 个字符 + 写入 sign ⇒ 产出
+              //   `LioCáncer` 这类残字 artifact（同族缺陷，见 fr/th/vi 通道 `z.slice(0, wStart)` 的正确写法）。
+              //   `base` 仅用于「词尾到宫位之间」的定位，绝不能参与替换起点。
+              z = z.slice(0, wStart) + sign + z.slice(wStart + word.length);
               cnt++; log.push(`sign ${word}\u2192${sign}(未知/拼写兜底)`);
             }
           }
@@ -4539,9 +4626,11 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
       // 🛡️ E10/R9-R1: 裸序数命中 → houseBareFmt 保形替换（"in the 7th"→"in the 8th"，不长出 House）
       // 🛡️ E12/R11a-1: 畸形形态命中（"5 House"）→ houseBareNumFmt 补序数后缀（"5th House"）
       // 🛡️ E13/R11d-1: 拼写式命中（"in the seventh house"）→ houseSpelledFmt 保形写回（"in the 8th House"）
+      // 🛡️ E15/R11f-2: 序数指示符缩写命中（es `5ª Casa`）→ houseAbbrFmt 保形写回（`4ª Casa`）
       const repl = h.ord === 'bare' ? cfg.houseBareFmt(house)
         : h.ord === 'numHouse' ? cfg.houseBareNumFmt(house)
         : h.ord === 'spelled' ? cfg.houseSpelledFmt(house)
+        : h.ord === 'abbr' ? cfg.houseAbbrFmt(house)
         : (h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house));
       z = z.slice(0, h.idx) + repl + z.slice(h.idx + h.len);
       cnt++; log.push('house ' + h.value + '\u2192' + house);
@@ -4724,7 +4813,7 @@ function _v432LockNatal(text, lang, astroMatrix, opts = {}) {
   //   （后者依赖 claim==真值，而纠值锁恰好改变了该前提 ⇒ 二跑必插写 natal 限定词，
   //    实测 HIT 与缓存文本产生 7 处差异）。目标：HIT 响应 == 缓存落库文本（军师裁决）。
   const nameRe = new RegExp('(' + names.map(_v432Esc).join('|') + ')', 'g');
-  const hits = [];
+  let hits = [];
   let fixes = 0, m;
   while ((m = nameRe.exec(text)) !== null) {
     const name = m[1];
@@ -4767,6 +4856,10 @@ function _v432LockNatal(text, lang, astroMatrix, opts = {}) {
   //   （**吃掉 `Sun` 三字符**）并在尾部复制出 `or or`。
   //   ⇒ 排序后从后往前应用：任何前缀改动都不再影响尚未应用的靠后区间。
   //   （与 E12/R11a-2 的 cuts 同源纪律：凡「多段替换 + 区间坐标」必先定序、后应用。）
+  // 🛡️ E15/R11f-3（偏移坐标系铁律 · 第 3 例）: 倒序只解决【不相交】区间；一旦两区间【相交】，
+  //   先应用者改变串长即令后者右界失效 ⇒ 凭空吃掉/复制字符（es 盘实证 `tu tu Sol`→`tu tuSol`）。
+  //   ⇒ 应用前先做区间去交叉（保留先起者，丢弃越界者）。
+  hits = _v432ResolveOverlaps(hits, lang + ' 本命锁');
   hits.sort((a, b) => b[0] - a[0]);
   for (let i = 0; i < hits.length; i++) {
     const [s, e, rep] = hits[i];
@@ -5043,6 +5136,41 @@ function _v512PossessiveTouch(cfg, lang, clause, fwd) {
   if (!h) return false;
   return P.test(fwd.slice(Math.max(0, h.idx - 30), h.idx));
 }
+// ═══ 🛡️ E15/R11f-4（支柱 3）: 「星座 → 所辖宫位」按**真实宫头**判定（替掉等宫制退化公式） ═══
+// 病根（2026-10-04 源码盘查 + Adelaide 实证）：`((signIdx - ascIdx) % 12) + 1` 只是
+//   astro/astro_matrix.py:161 `get_house(sign, rising)` 的 **无出生时间退化分支**（等宫制）；
+//   出生时间已知时同文件走 `get_house_from_cusps` 用 Placidus **真实宫头**
+//   （Adelaide：H1 宫头 292.82°=22.82°Cap，H2 宫头 314.19°=14.19°Aqu）
+//   ⇒ 水瓶 0–14.19° 落 H1、14.19–30° 落 H2，**一个星座可跨两宫**。
+//   用退化公式去问「星座 X 是否落在本命第 N 宫」必然漏判 → ⑥ 流年一致性否决静默失效。
+// 处置：优先用 meta.house_cusps_full 的真实宫头算出该星座所辖宫位【集合】，命中集合内任一宫即弃权。
+// 零回归：cusps 缺失/结构不完整（无出生时间盘、旧缓存）⇒ 返回 null，调用方回落等宫制单宫
+//   （与 v512 逐字节一致）。绝不猜 ⇒ 结构只要有任一宫头非数即整体放弃。
+// 边界：宫头恰落在星座边界时（重叠 ≤ 1e-6）不计入，避免 0 长度交叠生出假宫位。
+function _v512SignSpanHouses(meta, si) {
+  if (!meta || !(si >= 0 && si <= 11)) return null;
+  const full = meta.house_cusps_full;
+  if (!full) return null;
+  const cusps = [];
+  for (let h = 1; h <= 12; h++) {
+    const c = full['house_' + h];
+    const d = c ? Number(c.cusp_degree) : NaN;
+    if (!Number.isFinite(d)) return null;   // 结构不完整 ⇒ 整体放弃（绝不猜）
+    cusps.push(((d % 360) + 360) % 360);
+  }
+  const lo = si * 30, hi = lo + 30;
+  const set = new Set();
+  for (let h = 0; h < 12; h++) {
+    const a = cusps[h];
+    const span = (((cusps[(h + 1) % 12] - a) % 360) + 360) % 360;
+    if (span <= 0) continue;               // 退化宫头（两宫头重合）⇒ 跳过，不生成宫位
+    for (let k = -1; k <= 1; k++) {        // 星座区间与宫位弧均可跨 0° ⇒ 平移一次覆盖双向绕行
+      const ov = Math.min(hi + k * 360, a + span) - Math.max(lo + k * 360, a);
+      if (ov > 1e-6) set.add(h + 1);
+    }
+  }
+  return set.size ? set : null;
+}
 // 本命语境准入裁定（possessive 模式唯一放行依据）
 function _v512PossessiveNatal(cfg, lang, text, i, len, clause, astroMatrix) {
   const P = _V512_POSS[lang];
@@ -5061,11 +5189,14 @@ function _v512PossessiveNatal(cfg, lang, text, i, len, clause, astroMatrix) {
   //   `Sagittarius … 12th House`，把一句**正确的流年陈述**毁掉（E11 假阳性教训的同类事故面）。
   //   判据：claim.house === 该 claim.sign 在本命盘所辖宫位（等宫制：house = ((signIdx - ascIdx) mod 12) + 1）
   //   ⇒ 该句描述的是「某星座经过其本命宫位」＝流年语境 ⇒ 弃权（宁漏不改）。
-  //   真值缺失（无 rising_sign / 非法值）⇒ 本否决整体不启用（绝不猜，V102s 纪律）。
+  //   真值缺失（无 rising_sign 且无真实宫头 / 非法值）⇒ 本否决整体不启用（绝不猜，V102s 纪律）。
   if (clause && astroMatrix && astroMatrix.meta) {
     const ascEN = astroMatrix.meta.rising_sign;
     const ri = ascEN ? SUN_SIGN_EN.findIndex((s) => s.toLowerCase() === String(ascEN).toLowerCase()) : -1;
-    if (ri >= 0) {
+    // 🛡️ E15/R11f-4（支柱 3）: 有真实宫头（house_cusps_full）时不再依赖 rising_sign —— 等宫制退化
+    //   公式只是无出生时间的兜底，真实宫头才是真值源（见 _v512SignSpanHouses 函数头）。
+    const hasCusps = !!(astroMatrix.meta.house_cusps_full);
+    if (ri >= 0 || hasCusps) {
       const claim = _v432ClaimOf(cfg, lang, clause.fwd, clause.bwd);
       // 🛡️ E13/R11d（本否决的**自证补丁**）：claim.sign 可能为 null —— 上游 _v432Clause 的 bwd
       //   是**未按句界截断的 70 字符窗口**，若跨界吃到上一个月标题里的 `20\d{2}` 会被
@@ -5085,7 +5216,15 @@ function _v512PossessiveNatal(cfg, lang, text, i, len, clause, astroMatrix) {
         // 语言无关映射：先按英文字表（en 场景 claim.sign 即英文），再按本地化字表（同序于 SUN_SIGN_EN）
         let si = SUN_SIGN_EN.findIndex((s) => s.toLowerCase() === String(signTok).toLowerCase());
         if (si < 0) { const ls = _v432Signs(lang) || []; si = ls.findIndex((s) => s.toLowerCase() === String(signTok).toLowerCase()); }
-        if (si >= 0 && ((((si - ri) % 12) + 12) % 12) + 1 === Number(claim.house)) return false;
+        if (si >= 0) {
+          // 🛡️ E15/R11f-4（支柱 3）: 真值源优先级 —— 真实宫头（Placidus，可跨宫）> 等宫制退化公式。
+          const span = _v512SignSpanHouses(astroMatrix.meta, si);
+          if (span) {
+            if (span.has(Number(claim.house))) return false;
+          } else if (ri >= 0 && ((((si - ri) % 12) + 12) % 12) + 1 === Number(claim.house)) {
+            return false;   // 无真实宫头 ⇒ 回落等宫制（v512 原行为，逐字节一致）
+          }
+        }
       }
     }
   }
@@ -5160,7 +5299,7 @@ function v426EnforceNatalRetrograde(text, lang, astroMatrix) {
   if (!names.length) return text;
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
   let m, fixes = 0;
-  const hits = [];
+  let hits = [];
   while ((m = nameRe.exec(text)) !== null) {
     const name = m[1];
     const t = truth[name];
@@ -5195,6 +5334,8 @@ function v426EnforceNatalRetrograde(text, lang, astroMatrix) {
     }
   }
   // 🛡️ E13/R11d: 命中区间按位置倒序应用（偏移坐标系纪律；本函数各命中为单段，排序后语义等价）
+  // 🛡️ E15/R11f-3: 统一去交叉（含零长插入命中；相交即丢弃后起者，防串长错位）
+  hits = _v432ResolveOverlaps(hits, lang + ' 本命逆行锁');
   hits.sort((a, b) => b[0] - a[0]);
   for (let i = 0; i < hits.length; i++) {
     const [s, e, rep] = hits[i];
@@ -7495,7 +7636,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v512:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v513:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10771,7 +10912,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v512:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v513:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -10788,7 +10929,16 @@ app.post('/api/wealth-oracle', async (req, res) => {
         if (cachedText && cachedText.length > 2000) {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
           // V103-fix6: 标准化旧缓存,确保格式统一
-          const stdCached = standardizeReport(cachedText);
+          // 🛡️ E15/R11f-0 (P0 修复, 2026-10-04): 此处必须用 `let`，**绝不可改回 `const`**。
+          //   病根: 下方 vi 分支(:~10810) / th 分支(:~10820) 会对本变量**重新赋值**
+          //   （stdCached = lockNatalTruthVi(...) 等）⇒ 若为 const 则运行时必抛
+          //   `TypeError: Assignment to constant variable`，被外层 catch 吞掉 ⇒
+          //   `return res.json({cached:true})` 永不执行 ⇒ 缓存行明明已读出却静默丢弃，
+          //   每次请求退化为全量 MISS 重新生成（vi/th 双倍 token + 100~186s）。
+          //   实证(12 盘批测): vi 阿克拉盘行已落库(created_at 早于 HIT) 却 cached=false、HIT 166.6s；
+          //   同端点 en 对照 Adelaide HIT 1166ms / 新德里 2086ms。
+          //   闸门: audit-e15-r11f-multilang-uncage（含注入缺陷自测: 改回 const 必须报红）。
+          let stdCached = standardizeReport(cachedText);
           // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
           //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
           // 🛡️ V483c: `_hitAstro` / `_hitAstroTh` / `_hitAstro432` 必须在本块**顶层**声明。
@@ -11469,7 +11619,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v512:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v513:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13137,7 +13287,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v512-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v513-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

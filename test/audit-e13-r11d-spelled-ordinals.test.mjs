@@ -354,9 +354,9 @@ test('⑮ 注入自测: 剥离 HIT 路径前导锁 → 轴点纠偏能力丢失'
   assert.ok(/O child of Leo/.test(noLead), '闸门失效: 未挂前导锁时轴点仍被纠（说明断言无效）');
 });
 
-test('⑯ 缓存 v512（server.js 四站点 + purge 补 v511 双形态）', () => {
-  const sites = [...src.matchAll(/wealth:v512/g)].length;
-  assert.ok(sites >= 4, `server.js v512 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v511'), 'server.js 残留 v511（漏改一站）');
-  assert.ok(/wealth:v511:\*/.test(purgeSrc) && /wealth:v511-v2:\*/.test(purgeSrc), 'purge 脚本未补 v511 双形态');
+test('⑯ 缓存 v513（server.js 四站点 + purge 补 v512 双形态）', () => {
+  const sites = [...src.matchAll(/wealth:v513/g)].length;
+  assert.ok(sites >= 4, `server.js v513 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v512'), 'server.js 残留 v512（漏改一站）');
+  assert.ok(/wealth:v512:\*/.test(purgeSrc) && /wealth:v512-v2:\*/.test(purgeSrc), 'purge 脚本未补 v512 双形态');
 });
