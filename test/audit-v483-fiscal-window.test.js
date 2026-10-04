@@ -317,9 +317,11 @@ test('⑭ 源码: 月份键构造一律走 _v483bMonthYM, 不得再用「当前�
 });
 
 test('【注入缺陷自测】把 lockYearlyMonthTitles 的月份号重写禁掉 → 判据⑫ 必须红', () => {
+  // 🛡️ E16/R11g: 注入锚点前移 —— 月份号写回已抽成六语统一的 `_v516RewriteMonthYear`
+  //   （原锚点 `if (_mk) { const _y = _mk[1], _mo = Number(_mk[2]);` 已不存在）。
   const degraded = serverSrc.replace(
-    '        if (_mk) {\n          const _y = _mk[1], _mo = Number(_mk[2]);',
-    '        if (false) {\n          const _y = _mk[1], _mo = Number(_mk[2]);',
+    '        if (_mk) line = _v516RewriteMonthYear(line, lang, Number(_mk[1]), Number(_mk[2]));',
+    '        if (false) line = _v516RewriteMonthYear(line, lang, Number(_mk[1]), Number(_mk[2]));',
   );
   assert.notStrictEqual(degraded, serverSrc, '未成功注入缺陷(未匹配到 lockYearlyMonthTitles 的月份号重写块)');
   const F = sandboxTitles(degraded);

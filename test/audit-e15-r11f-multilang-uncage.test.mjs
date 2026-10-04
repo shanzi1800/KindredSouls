@@ -422,12 +422,12 @@ test('⑮ 支柱3 行为级: 第 ⑥ 否决在真实宫头下弃权，等宫制�
 // ═══════════════════════════════════════════════════════════════════════
 // ⑯ 缓存 v513
 // ═══════════════════════════════════════════════════════════════════════
-test('⑯ 缓存 v513（server.js 四站点 + purge 补 v512 双形态 + MIN_CACHE_VER 前移）', () => {
-  const sites = [...src.matchAll(/wealth:v513/g)].length;
-  assert.ok(sites >= 4, `server.js v513 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v512'), 'server.js 残留 v512（漏改一站）');
-  assert.ok(/wealth:v512:\*/.test(purgeSrc) && /wealth:v512-v2:\*/.test(purgeSrc), 'purge 脚本未补 v512 双形态');
-  assert.ok(/MIN_CACHE_VER = 513/.test(yearlyTest), 'yearly 流式闸门基线未前移 v513');
+test('⑯ 缓存 v514（server.js 四站点 + purge 补 v513 双形态 + MIN_CACHE_VER 前移）', () => {
+  const sites = [...src.matchAll(/wealth:v514/g)].length;
+  assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
+  assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v513 双形态');
+  assert.ok(/MIN_CACHE_VER = 514/.test(yearlyTest), 'yearly 流式闸门基线未前移 v514');
 });
 
 // ═══════════════════════════════════════════════════════════════════════
