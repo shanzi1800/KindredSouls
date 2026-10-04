@@ -107,10 +107,12 @@ function cacheSites(src) {
   while ((m = re.exec(src))) out.push({ base: m[1], v2: !!m[2] });
   return out;
 }
-const D1_ALL_V513 = (src) => {
+// 🛡️ 基线常量：每次输出链变更 bump 时**只改这一处**（旧写法把版本号散落在 6 处字面量里）
+const LATEST_CACHE_VER = 'v514';
+const D1_ALL_LATEST = (src) => {
   const s = cacheSites(src);
-  // 🛡️ E15/R11f 基线前移: 六语预缓存解封（vi/th const stdCached 崩溃 + 多语言章名/终章口径 + es/fr 阴性序数缩写 + hits 区间去交叉 + Placidus 真实宫头）= 输出链变更 ⇒ v512 全量作废
-  return s.length >= 4 && s.every((x) => x.base === 'v513') && s.some((x) => x.v2);
+  // 🛡️ E16/R11g 基线前移: 月标题逐月真值锁六语解封（es/fr/th/vi 原「lang===en 才识别」⇒ 12 盘 54 处标题错项）+ th 行星/宫位词正字化 + house_linter 月锚点补全 es/fr 全 12 月名 = 输出链变更 ⇒ v513 全量作废
+  return s.length >= 4 && s.every((x) => x.base === LATEST_CACHE_VER) && s.some((x) => x.v2);
 };
 const D1_SITES_INTACT = (src) => {
   const s = cacheSites(src);
@@ -281,12 +283,12 @@ test('G08(护栏) house_linter 的去重/映射辅助函数仍在（结构未被
 test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
   const bad = [];
   // D1：4 站点全覆盖才绿；漏一站 / 少形态 即红
-  const OK_SRC  = '`wealth:v513:A`;`wealth:v513:B`;`wealth:v513:C`;`wealth:v513-v2:D`;';
-  const MIX_SRC = '`wealth:v512:A`;`wealth:v513:B`;`wealth:v513:C`;`wealth:v513-v2:D`;';
-  const NOV2    = '`wealth:v513:A`;`wealth:v513:B`;`wealth:v513:C`;`wealth:v513:D`;';
-  if (D1_ALL_V513(OK_SRC) !== true)   bad.push('D1: 正例未判绿');
-  if (D1_ALL_V513(MIX_SRC) !== false) bad.push('D1: 漏改一站未判红（恒真）');
-  if (D1_ALL_V513(NOV2) !== false)    bad.push('D1: -v2 形态缺失未判红');
+  const OK_SRC  = `\`wealth:${LATEST_CACHE_VER}:A\`;\`wealth:${LATEST_CACHE_VER}:B\`;\`wealth:${LATEST_CACHE_VER}:C\`;\`wealth:${LATEST_CACHE_VER}-v2:D\`;`;
+  const MIX_SRC = '`wealth:v512:A`;' + OK_SRC.slice(OK_SRC.indexOf('`;') + 2);
+  const NOV2    = `\`wealth:${LATEST_CACHE_VER}:A\`;\`wealth:${LATEST_CACHE_VER}:B\`;\`wealth:${LATEST_CACHE_VER}:C\`;\`wealth:${LATEST_CACHE_VER}:D\`;`;
+  if (D1_ALL_LATEST(OK_SRC) !== true)   bad.push('D1: 正例未判绿');
+  if (D1_ALL_LATEST(MIX_SRC) !== false) bad.push('D1: 漏改一站未判红（恒真）');
+  if (D1_ALL_LATEST(NOV2) !== false)    bad.push('D1: -v2 形态缺失未判红');
   if (D1_SITES_INTACT(OK_SRC) !== true || D1_SITES_INTACT(MIX_SRC) !== true) bad.push('G14: 站点护栏误报');
   // D2：含 Cancer 兜底即红
   if (NO_CANCER_FALLBACK("const r = meta.rising_sign || 'Cancer';") !== false) bad.push('D2: 兜底未判红（恒真）');
@@ -298,13 +300,13 @@ test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// D1 · 缓存版本 v512 → v513（E15/R11f 输出链变更：六语预缓存解封 + es/fr 形态补全 + hits 去交叉 + Placidus 宫头，4 站点全覆盖）
+// D1 · 缓存版本 v513 → v514（E16/R11g 输出链变更：月标题逐月真值锁六语解封 + th 词表正字化 + es/fr 月锚点补全，4 站点全覆盖）
 // ═══════════════════════════════════════════════════════════════════════
-test('V492-D1 缓存版本 bump 至 v513（4 站点全覆盖；E15/R11f 基线前移）', () => {
+test('V492-D1 缓存版本 bump 至 v514（4 站点全覆盖；E16/R11g 基线前移）', () => {
   const s = cacheSites(SRC);
   const detail = s.map((x, i) => ` #${i + 1} ${x.base}${x.v2 ? '-v2' : ''}`).join('');
   assert.ok(s.length >= 4, `缓存键站点仅 ${s.length} 个（应有 4：删除键/非流式/流式/年报-v2）${detail}`);
-  const stale = s.filter((x) => x.base !== 'v513');
+  const stale = s.filter((x) => x.base !== LATEST_CACHE_VER);
   assert.deepEqual(stale.map((x) => x.base + (x.v2 ? '-v2' : '')), [],
     `仍有未 bump 的缓存键（⇒ 该端点继续吃旧缓存，用户可见收益打折）：${stale.map((x) => x.base).join(', ')}`);
   assert.ok(s.some((x) => x.v2), '年报 -v2 形态丢失 ⇒ 缓存键结构被改坏');
@@ -353,7 +355,7 @@ test('ZZ 汇总：本轮待修复清单（基线预期为红）', () => {
     ['R2 海王星',     () => /第五宫/.test(run('流年海王星在白羊座（第2宫）顺行。'))],
     ['R2c 越南语太阳', () => !(CODE.match(/sun:\s*\[[^\]]*\]/g) || []).some((s) => /Mặt Trăng/.test(s))],
     ['R3 连接词',     () => /第十二宫/.test(run('金星双双沉入天蝎座（第1宫）。'))],
-    ['D1 缓存 v512→v513', () => D1_ALL_V513(SRC)],
+    ['D1 缓存 v513→v514', () => D1_ALL_LATEST(SRC)],
     ['D2 骨架不锁兜底', () => ['buildMonthlyOverviewBlock', 'buildMonthlyFactTree']
                               .every((fn) => NO_CANCER_FALLBACK(funcBody(V69, fn)))],
   ];

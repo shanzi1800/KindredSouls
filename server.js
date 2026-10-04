@@ -2183,11 +2183,17 @@ function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
     jupiter: ['木星', 'Jupiter', 'Júpiter', 'ดาวพฤหัส', 'Sao Mộc'],
     saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
     pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
-    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
-    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
-    mercury: ['水星', 'Mercury', 'Mercure', 'ดาวพุธ', 'Sao Thủy'],
+    // 🛡️ E16/R11g: 太阳/月亮补**泰语正字** `ดวงอาทิตย์`/`ดวงจันทร์` —— 原表只列 `ดาวอาทิตย์`
+    //   (星期/行星义的「ดาว」)与 `ดาวจันทร์`(非占星正字)。系统其余各处(_TH_PLANET:3122、
+    //   _TH_BODY_ANY:3135、th 提示词)一律用 `ดวง-` 形态 ⇒ 原表与产出**永不相交** ⇒
+    //   本表既有的「太阳/月亮宫位纠偏」对泰语**整体空转**(静默失效类)。
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'ดวงอาทิตย์', 'Mặt Trời'],
+    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'ดวงจันทร์', 'Mặt Trăng'],
+    // 🛡️ E16/R11g: 补**西语正字** `Mercurio`/`Marte` —— 原表只有法语 `Mercure`，
+    //   西语产出写 `Mercurio`/`Marte`（_V432_NAME.es）⇒ 水星/火星的宫位纠偏对西语空转。
+    mercury: ['水星', 'Mercury', 'Mercure', 'Mercurio', 'ดาวพุธ', 'Sao Thủy'],
     venus:   ['金星', 'Venus', 'Vénus', 'ดาวศุกร์', 'Sao Kim'],
-    mars:    ['火星', 'Mars', 'ดาวอังคาร', 'Sao Hỏa'],
+    mars:    ['火星', 'Mars', 'Marte', 'ดาวอังคาร', 'Sao Hỏa'],
     uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
     neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
   };
@@ -2246,8 +2252,9 @@ function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
         jupiter: ['木星', 'Jupiter', 'Júpiter', 'Jupiter', 'ดาวพฤหัส', 'Sao Mộc'],
         saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
         pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
-        sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
-        moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
+        // 🛡️ E16/R11g: 与 NAME_MAP_ALL/NAME_MAP2 同步 —— 补泰语正字 ดวงอาทิตย์ / ดวงจันทร์
+        sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'ดวงอาทิตย์', 'Mặt Trời'],
+        moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'ดวงจันทร์', 'Mặt Trăng'],
         // 🛡️ V492/R2: 天王星/海王星词条（全 6 语）
         uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
         neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
@@ -2282,9 +2289,26 @@ function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
   // 否则英文年报月段无法按月纠偏（Adelaide 盘实证：月段全对、非月段全错且无硬后手）。
   // split 捕获组 3 个（marker/整月词/年）⇒ 每 4 项一组；整月词捕获防 rebuild 丢后缀（September）。
   {
-    const EN_MONTH_IDX = { Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12 };
     const _hasMonths = astroMatrix && astroMatrix.months && astroMatrix.months.length > 0;
-    const enAnchorRe = /(#{1,6}[ \t]*)((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)[ \t]+(\d{4}):/g;
+    // 🛡️ E16/R11g: 月锚点词表**必须覆盖 es/fr 全 12 月名**（原表只列英文 12 月缩写）。
+    //   实测（2026-10-04 v513 线上 raw 产物，逐盘统计命中数）：
+    //     es 8/12 命中（缺 Agosto/Diciembre/Enero/Abril）；fr **5/12** 命中
+    //     （缺 Juillet/Août/Décembre/Février/Avril/Mai/Juin）。
+    //   病根：`text.split` 只在不命中处**不切段** ⇒ 未命中月份的正文被并入**上一个命中月**
+    //   的段 ⇒ 该段用**错月数据**改写行星宫位。实测 fr：`Décembre 的 Maison` 被写成
+    //   Novembre 的值、`Février` 被写成 Janvier 的值、`Avril/Mai` 被写成 Mars 的值
+    //   （标题行由更晚的 lockYearlyMonthTitles 兜住，正文行则残留错值）。
+    //   治法：词表按 _V516_MONTHS 的 en/es/fr 三语月名构建（长词优先、大小写不敏感），
+    //   月份号由**命中词本身**解析（不靠序号位置推算），彻底消除跨月串段。
+    //   ⚠️ 不引入 th/vi：泰/越月锚点形态不同（Tháng N Năm YYYY / กรกฎาคม 2569），
+    //   启用等于**新增覆盖**（新风险面），非本缺陷的修复范围。
+    const _ANCHOR_ALT = [];
+    for (const _l of ['en', 'es', 'fr']) for (let i = 0; i < 12; i++) _ANCHOR_ALT.push([_V516_MONTHS[_l][i], i + 1]);
+    _ANCHOR_ALT.sort((a, b) => b[0].length - a[0].length);
+    const _ANCHOR_IDX = {};
+    for (const [w, mo] of _ANCHOR_ALT) _ANCHOR_IDX[w.toLowerCase()] = mo;
+    const enAnchorRe = new RegExp(
+      '(#{1,6}[ \\t]*)(' + _ANCHOR_ALT.map(([w]) => _v516Esc(w)).join('|') + ')[ \\t]+(\\d{4}):', 'gi');
     const enSections = _hasMonths ? text.split(enAnchorRe) : [];
     if (enSections.length >= 5 && _hasMonths) {
       const _monthsMap = {};
@@ -2298,7 +2322,7 @@ function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
         const monWord = enSections[i + 1];
         const yearStr = enSections[i + 2];
         const body    = enSections[i + 3] !== undefined ? enSections[i + 3] : '';
-        const _mNum = EN_MONTH_IDX[monWord.slice(0, 3)] || 0;
+        const _mNum = _ANCHOR_IDX[String(monWord).toLowerCase()] || 0;
         const _key = `${yearStr}-${String(_mNum).padStart(2, '0')}`;
         const monthData = _monthsMap[_key] || astroMatrix.months[_mNum - 1] || null;
         let secText = marker + monWord + ' ' + yearStr + ':' + body;
@@ -2374,11 +2398,17 @@ function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
     saturn:  ['土星', 'Saturn', 'Saturno', 'Saturne', 'ดาวเสาร์', 'Sao Thổ'],
     pluto:   ['冥王星', 'Pluto', 'Plutón', 'Pluton', 'ดาวพลูโต', 'Sao Diêm Vương'],
     // 🛡️ V492/R2c: 越南语「太阳」词条曾被污染为 Mặt Trăng（=月亮）⇒ 太阳规则误匹配越语月亮；正字 = Mặt Trời
-    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'Mặt Trời'],
-    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'Mặt Trăng'],
-    mercury: ['水星', 'Mercury', 'Mercure', 'ดาวพุธ', 'Sao Thủy'],
+    // 🛡️ E16/R11g: 太阳/月亮补**泰语正字** `ดวงอาทิตย์`/`ดวงจันทร์` —— 原表只列 `ดาวอาทิตย์`
+    //   (星期/行星义的「ดาว」)与 `ดาวจันทร์`(非占星正字)。系统其余各处(_TH_PLANET:3122、
+    //   _TH_BODY_ANY:3135、th 提示词)一律用 `ดวง-` 形态 ⇒ 原表与产出**永不相交** ⇒
+    //   本表既有的「太阳/月亮宫位纠偏」对泰语**整体空转**(静默失效类)。
+    sun:     ['太阳', 'Sun', 'Sol', 'Soleil', 'ดาวอาทิตย์', 'ดวงอาทิตย์', 'Mặt Trời'],
+    moon:    ['月亮', 'Moon', 'Luna', 'Lune', 'ดาวจันทร์', 'ดวงจันทร์', 'Mặt Trăng'],
+    // 🛡️ E16/R11g: 补**西语正字** `Mercurio`/`Marte` —— 原表只有法语 `Mercure`，
+    //   西语产出写 `Mercurio`/`Marte`（_V432_NAME.es）⇒ 水星/火星的宫位纠偏对西语空转。
+    mercury: ['水星', 'Mercury', 'Mercure', 'Mercurio', 'ดาวพุธ', 'Sao Thủy'],
     venus:   ['金星', 'Venus', 'Vénus', 'ดาวศุกร์', 'Sao Kim'],
-    mars:    ['火星', 'Mars', 'ดาวอังคาร', 'Sao Hỏa'],
+    mars:    ['火星', 'Mars', 'Marte', 'ดาวอังคาร', 'Sao Hỏa'],
     // 🛡️ V492/R2: 天王星/海王星词条（全 6 语）
     uranus:  ['天王星', 'Uranus', 'Urano', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
     neptune: ['海王星', 'Neptune', 'Neptuno', 'ดาวเนปจูน', 'Sao Hải Vương'],
@@ -5660,6 +5690,9 @@ function applyTruthLocksEnEsZh(text, lang, astroMatrix, reportType, opts) {
     //   ② 畸形宫位归一（`in the 5 House`→`in the 5th House`，否则 houseOrd 认不出 ⇒ 纠偏链整段漏网）。
     //   🛡️ E13/R11d-1: ③ 拼写式序数归一（`in the seventh house`→`in the 7th House`，第五类盲区形态收口）。
     let out = stripLLMSelfCorrection(_v512NormalizeHouseOrdinal(text, lang));
+    // 🛡️ E16/R11g: 输出卫生（吞空格粘连拆合 + es 英文宫位混入归一）—— 必须收口在
+    //   `_v432Normalize` / 真值锁**之前**; 否则畸形形态进不了各语言形态正则 ⇒ 整段漏纠。
+    out = _v516OutputHygiene(out, lang);
     out = _v432Normalize(out, lang);
     out = _v432LockNatal(out, lang, astroMatrix, opts && opts.skipAdjudicate ? { skipAdjudicate: true } : undefined);
     // 🛡️ V478-guard: 年报(12 个月跨度)禁用单月固化【流月锁】—— 镜像 V472-guard 的既有设计。
@@ -5697,12 +5730,165 @@ const _V478_EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 //   病根(2026-09-30 生产端 1999-12-15 特罗姆瑟盘实测): 硬锁标题表对所有语种硬编码英文
 //   `Sun in X` / `House N`, 中文 Prompt 因此夹带英文 → LLM 照抄 → 整篇 12 条月标题全变
 //   「### 2026年9月: Sun in 处女座 第3宫 · …」。提示词侧已本地化(治本), 此处为输出侧兜底。
-const _V482B_TITLE_LEAD = { zh: '太阳', es: 'Sol en ', fr: 'Soleil en ', th: 'ดาวอาทิตย์ใน ', vi: 'Mặt Trời trong ' };
+// 🛡️ E16/R11g: th 两项拼写纠正 —— 原表 `ดาวอาทิตย์`(行星/星期, 错) 与 `บ้าน N`(房屋, 错),
+//   实际产出泰语形态为 `ดวงอาทิตย์`(太阳) 与 `ภพที่ N`(宫位)。原表与产出不符 ⇒
+//   ① 英文模板残渣本地化会写出 LLM 自己都不用的词; ② `sigOf` 去重签名里的 th 太阳词失配。
+const _V482B_TITLE_LEAD = { zh: '太阳', es: 'Sol en ', fr: 'Soleil en ', th: 'ดวงอาทิตย์ใน', vi: 'Mặt Trời trong ' };
 const _V482B_TITLE_HOUSE = {
   zh: (n) => '第' + n + '宫', es: (n) => 'Casa ' + n, fr: (n) => 'Maison ' + n,
-  th: (n) => 'บ้าน ' + n, vi: (n) => 'Nhà ' + n,
+  th: (n) => 'ภพที่ ' + n, vi: (n) => 'Nhà ' + n,
 };
-const _V482B_SUN_WORD = { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดาวอาทิตย์', vi: 'Mặt Trời' };
+const _V482B_SUN_WORD = { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดวงอาทิตย์', vi: 'Mặt Trời' };
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E16/R11g: 月标题行识别的【六语统一口径】
+//   病根（2026-10-04 v513 线上 12 盘六语批测实测, 真值核对 **54 处错项**）:
+//     下游三把锁（lockYearlyMonthTitles / lockYearlyTransitSigns / dedupYearlyMonthTitles）
+//     的月标题行识别**只认 zh `2026年7月` 与 `lang==='en'` 的 `July 2026`**;
+//     es `Julio 2026` / fr `Juillet 2026` / th `กรกฎาคม 2026` / vi `Tháng 7 Năm 2026`
+//     全部认不出 ⇒ 段数 <2 ⇒ 三把锁**静默 return text 集体失效**。
+//   实测后果: fr 12/12 标题星座全写 `Cancer`(首月锚点值)、th 12/12 写**本命太阳**;
+//             es/vi 星座侥幸正确, 但**宫位零纠错**(各 3/12 错)。
+//   本设施为唯一识别真源（判据同源纪律）: 三处调用点共用, 杜绝「一处补了、另一处仍盲」。
+//   ⚠️ 泰语专有风险: 星座简写是月份名的**前缀**(กรกฎ ⊂ กรกฎาคม) ⇒
+//      识别月名无碍, 但**星座匹配必须排除月份名内部**, 否则 `กรกฎาคม 2026: …ในตุลย์`
+//      会被写成 `ตุลย์าคม 2026`(月份名被改坏) —— 见 _V516_TH_SIGN_EXCL。
+// ══════════════════════════════════════════════════════════════════
+// ⚠️ 自带转义器（**不复用 `_v444Esc`**）：本设施的调用方 `applyTruthLocksEnEsZh` 会被
+//   `test/audit-en-es-zh-lock.test.js` 用 `new Function(SIGNS + BLOCK)` 抽取执行，
+//   而 `_v444Esc` 定义在抽取区间**之外** ⇒ 复用会 ReferenceError 并被 `applyTruthLocksEnEsZh`
+//   的 try/catch 静默吞掉（实测：整条真值锁退化为透传）。自带则与区间解耦。
+function _v516Esc(s) { return String(s).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'); }
+
+const _V516_MONTHS = {
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  es: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+  fr: ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'],
+  th: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
+  vi: ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'],
+};
+// 泰语星座简写 → 必须排除的月份名后缀（键=星座简写, 值=其同前缀月份名的剩余部分）
+const _V516_TH_SIGN_EXCL = { 'เมษ': 'ายน', 'พฤษภ': 'าคม', 'มิถุน': 'ายน', 'กรกฎ': 'าคม', 'กันยา': 'ยน', 'มีน': 'าคม' };
+const _V516_TH_BE_OFFSET = 543;            // 佛历 − 543 = 公历
+const _V516_HOUSE_WORD = { en: 'House', es: 'Casa', fr: 'Maison', th: '(?:ภพที่|บ้าน)', vi: 'Nhà' };
+
+// 返回 { y, mo } 或 null（y 恒为**公历**年: 泰语佛历自动 −543）。
+function _v516MonthHeadKey(line, lang) {
+  if (!line) return null;
+  const s = String(line);
+  if (!/^#{1,6}\s/.test(s.trim())) return null;
+  // ① 中文: 2026年7月
+  let m = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
+  if (m) { const mo = Number(m[2]); return (mo >= 1 && mo <= 12) ? { y: Number(m[1]), mo } : null; }
+  // ② 泰语: กรกฎาคม พ.ศ. 2569（佛历） / กรกฎาคม 2026（公历）
+  if (lang === 'th') {
+    for (let i = 0; i < 12; i++) {
+      if (s.indexOf(_V516_MONTHS.th[i]) < 0) continue;
+      const be = s.match(/พ\.ศ\.\s*(\d{4})/);
+      if (be) return { y: Number(be[1]) - _V516_TH_BE_OFFSET, mo: i + 1 };
+      const ce = s.match(/(\d{4})/);
+      return ce ? { y: Number(ce[1]), mo: i + 1 } : null;
+    }
+    return null;
+  }
+  // ③ 越南语: Tháng 7 Năm 2026
+  m = s.match(/Tháng\s*(\d{1,2})\s*Năm\s*(\d{4})/i);
+  if (m) { const mo = Number(m[1]); return (mo >= 1 && mo <= 12) ? { y: Number(m[2]), mo } : null; }
+  // ④ en/es/fr: <月名> <年>（月名独立成词, 前后不得紧贴其他字母）
+  const words = _V516_MONTHS[lang];
+  if (words) {
+    for (let i = 0; i < 12; i++) {
+      const re = new RegExp('(?:^|[^A-Za-z\u00c0-\u00ff])' + _v516Esc(words[i]) + '[^A-Za-z\u00c0-\u00ff]{1,4}(\\d{4})', 'i');
+      const mm = s.match(re);
+      if (mm) return { y: Number(mm[1]), mo: i + 1 };
+    }
+  }
+  return null;
+}
+
+// 年份/月份号真值写回（按各语原生形态; 泰语保持原历法）。幂等。
+function _v516RewriteMonthYear(line, lang, y, mo) {
+  if (!line || !(y >= 1) || !(mo >= 1 && mo <= 12)) return line;
+  const cur = _v516MonthHeadKey(line, lang);
+  if (!cur) return line;
+  if (lang === 'zh') {
+    if (cur.y === y && cur.mo === mo) return line;
+    return line.replace(/(\d{4})\s*年\s*(\d{1,2})\s*月/, String(y) + '年' + mo + '月');
+  }
+  if (lang === 'th') {
+    const w = _V516_MONTHS.th[mo - 1];
+    let out = line;
+    if (cur.mo !== mo) out = out.replace(_V516_MONTHS.th[cur.mo - 1], w);
+    if (cur.y !== y) {
+      out = /พ\.ศ\./.test(out)
+        ? out.replace(/พ\.ศ\.\s*\d{4}/, 'พ.ศ. ' + (y + _V516_TH_BE_OFFSET))
+        : out.replace(/(\d{4})/, String(y));
+    }
+    return out;
+  }
+  if (lang === 'vi') {
+    if (cur.y === y && cur.mo === mo) return line;
+    return line.replace(/Tháng\s*\d{1,2}\s*Năm\s*\d{4}/i, 'Tháng ' + mo + ' Năm ' + y);
+  }
+  const arr = _V516_MONTHS[lang];
+  if (!arr) return line;
+  const w = arr[mo - 1], wOld = arr[cur.mo - 1];
+  let out = line;
+  if (cur.mo !== mo && w && wOld) {
+    // 🛡️ E16/R11g: 保留原文大小写 —— es/fr 词表为**小写原生形态**(julio/juillet),
+    //   但标题行首月名实际是**首字母大写**(`Septiembre 2026`)。直接写小写会产出
+    //   `### julio 2026`(本地化观感瑕疵, 实测 12/12 条); 按原词的大小写风格回写。
+    out = out.replace(new RegExp(_v516Esc(wOld), 'i'), (mm) => (
+      /^[A-Z\u00c0-\u00dd]/.test(mm) ? (w.charAt(0).toUpperCase() + w.slice(1)) : w));
+  }
+  if (cur.y !== y) out = out.replace(/(\d{4})/, String(y));
+  return out;
+}
+
+// 星座匹配串: 泰语须排除月份名内部（否则 `กรกฎาคม` 被当成 `กรกฎ` 写坏）。
+function _v516SignAlt(lang, word) {
+  const ex = (lang === 'th' && _V516_TH_SIGN_EXCL[word]) ? ('(?!' + _V516_TH_SIGN_EXCL[word] + ')') : '';
+  return _v516Esc(word) + ex;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E16/R11g: 输出卫生守卫（确定性清洗; 幂等; **绝不改真值**）
+//   两条实测缺陷（2026-10-04 v513 线上 12 盘批测）:
+//   ① 吞空格粘连(en, s10 Delhi 4 处): `…also sextiles The CancerJupiter in Leo (12th House)`
+//      与 `…also trine The GeminiMoon in Gemini`, 同句另有 `trines  The` 双空格
+//      ⇒ 疑为「多段替换净长差 ⇒ 串长错位」的产物(该 artifact 在锁链输入即存在, 重跑不消除)。
+//      本守卫按【星座名|行星名】词表组合确定性拆开, 不依赖根因定位;
+//      该组合在正常文本中不存在 ⇒ 零误伤。
+//   ② 英文宫位混入(es, s8 Madrid 9 处): `Júpiter en el 7 House`。`_V432_CFG.es` 只有
+//      `Casa N` + 拼写序数两式, 对英文 `N House` 全盲 ⇒ 正文宫位形态非本地化。
+//      **只换形态(值不变)**; 冠词 `el`→`la` 仅在「介词+冠词」紧邻该形态时纠正(Casa 阴性)。
+// ══════════════════════════════════════════════════════════════════
+let _V516_GLUE_RE = null;
+function _v516GlueRe() {
+  if (_V516_GLUE_RE) return _V516_GLUE_RE;
+  // ⚠️ 延迟构造：SUN_SIGN_* 常量定义在本文件后半段, 顶层立即求值会触发 TDZ。
+  const signs = [];
+  for (const arr of [SUN_SIGN_EN, SUN_SIGN_ES, SUN_SIGN_FR]) {
+    for (const w of (arr || [])) if (signs.indexOf(w) < 0) signs.push(w);
+  }
+  const planets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+  _V516_GLUE_RE = new RegExp('(' + signs.map(_v516Esc).join('|') + ')(?=(?:' + planets.join('|') + ')\\b)', 'g');
+  return _V516_GLUE_RE;
+}
+function _v516OutputHygiene(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  const before = text;
+  let t = text.replace(_v516GlueRe(), '$1 ');
+  if (lang === 'es') {
+    // `en el 7 House` → `en la Casa 7`（介词 + 冠词整体替换; Casa 为阴性名词）
+    t = t.replace(/(\b(?:en|desde|hacia|a)\s+)(?:el|la|los|las)?\s*(\d{1,2})\s+House\b/gi, (m, prep, n) => prep + 'la Casa ' + n);
+    // 剩余裸 `7 House` → `Casa 7`（只换形态、绝不改值）
+    t = t.replace(/(?<![A-Za-z])(\d{1,2})\s+House\b/g, (m, n) => 'Casa ' + n);
+    t = t.replace(/[ \t]{2,}/g, ' ');
+  }
+  if (t !== before) console.log(`[E16/R11g] ${lang} \u8f93\u51fa\u536b\u751f: ${before.length - t.length} \u5b57\u7b26\u5dee`);
+  return t;
+}
 
 function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   if (reportType !== 'yearly') return text;
@@ -5711,11 +5897,16 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   if (!Array.isArray(months) || months.length < 12) return text;
   const signs = _v444Signs(lang);
   if (!signs) return text;
-  const signRe = new RegExp('(' + signs.map(_v444Esc).join('|') + ')');
-  // 宫位短语: zh 需同时吃「第11宫」与「第十一宫」两种写法
+  const signRe = new RegExp('(' + signs.map((w) => _v516SignAlt(lang, w)).join('|') + ')');
+  // 宫位短语: zh 需同时吃「第11宫」与「第十一宫」两种写法;
+  // 🛡️ E16/R11g: ① en 实际产出是**序数前置** `7th House`(非 `House 7`) ⇒ 原 houseRe 认不出,
+  //   标题宫位锁对 en 也失效(实测 Adelaide「12 月标题 12/12」只验了星座, 宫位是 LLM 自觉);
+  //   ② th 需同时吃「ภพที่ 11」(实际产出形态)与旧「บ้าน 11」。
   const houseRe = lang === 'zh'
     ? /(第(?:\d+|[一二三四五六七八九十]+)宫)/
-    : new RegExp('((?:' + ['House', 'Maison', 'Casa', 'บ้าน', 'Nhà'].join('|') + ')\\s+\\d+)');
+    : lang === 'en'
+      ? /((?:\d{1,2}(?:st|nd|rd|th)\s+House)|(?:House\s*\d{1,2}))/
+      : new RegExp('((?:' + ['Maison', 'Casa', 'ภพที่', 'บ้าน', 'Nhà'].join('|') + ')\\s*\\d+)');
   const ord2n = (s) => { const i = _V478_ORD_ZH.indexOf(s); return i > 0 ? i : NaN; };
   const nOfHouse = (ph) => {
     const d = ph.match(/\d+/);
@@ -5730,14 +5921,12 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   for (let i = 0; i < lines.length; i++) {
     const ln = lines[i].trim();
     if (!/^#{1,6}\s/.test(ln)) continue;
-    let y = null, mo = null;
-    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
-    if (ym) { y = +ym[1]; mo = +ym[2]; }
-    else if (lang === 'en') {
-      const em = ln.match(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'));
-      if (em) { y = +em[2]; mo = _V478_EN_MONTHS.indexOf(em[1]) + 1; }
-    }
-    if (y == null || !mo || mo < 1 || mo > 12) continue;
+    // 🛡️ E16/R11g: 六语统一识别（原实现只认 zh `2026年7月` 与 lang==='en' 的 `July 2026`
+    //   ⇒ es/fr/th/vi 的 `Julio 2026`/`Juillet 2026`/`กรกฎาคม 2026`/`Tháng 7 Năm 2026`
+    //   全部认不出 ⇒ groups<2 ⇒ 本锁对四语静默失效）。
+    const _vk = _v516MonthHeadKey(ln, lang);
+    if (!_vk) continue;
+    const y = _vk.y, mo = _vk.mo;
     const key = y * 12 + mo;
     let g = keyOf.get(key);
     if (!g) { g = { key, rows: [] }; keyOf.set(key, g); groups.push(g); }
@@ -5812,15 +6001,7 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
       //     导致 `replace(/months\[idx\]/, ...)` 打到注释而非代码 → 注入自测假红。
       {
         const _mk = /^(\d{4})-(\d{1,2})$/.exec(String(m.month_key || ''));
-        if (_mk) {
-          const _y = _mk[1], _mo = Number(_mk[2]);
-          if (lang === 'zh') {
-            line = line.replace(/(\d{4})年(\d{1,2})月/, `${_y}年${_mo}月`);
-          } else if (lang === 'en') {
-            const _mn = _V478_EN_MONTHS[_mo - 1];
-            if (_mn) line = line.replace(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'), `${_mn} ${_y}`);
-          }
-        }
+        if (_mk) line = _v516RewriteMonthYear(line, lang, Number(_mk[1]), Number(_mk[2]));
       }
       // 🛠️ V482b: 英文模板残渣本地化(输出侧兜底, 见文件上方 _V482B_TITLE_LEAD 注释)。
       //   必须在下面的星座/宫位真值重写**之前**执行: 否则 `House 3` 不匹配 zh 的 houseRe → 宫位漏纠。
@@ -5836,8 +6017,11 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
         const cur = nOfHouse(hm[1]);
         if (cur !== trueHouse) {
           const ordForm = /[一二三四五六七八九十]/.test(hm[1]) && lang === 'zh';
+          // 🛡️ E16/R11g: en 序数前置 `7th House` 的值改写必须重算后缀(否则 1st→`2th House`)
+          const enOrd = lang === 'en' && /^(\d{1,2})(?:st|nd|rd|th)\s+House$/i.test(hm[1]);
           const want = ordForm ? ('第' + _V478_ORD_ZH[trueHouse] + '宫')
-            : hm[1].replace(/\d+/, String(trueHouse));
+            : enOrd ? (trueHouse + _v432EnOrdSuf(trueHouse) + ' House')
+              : hm[1].replace(/\d+/, String(trueHouse));
           const at = line.indexOf(hm[1]);
           line = line.slice(0, at) + want + line.slice(at + hm[1].length);
         }
@@ -5850,7 +6034,11 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
       if (lang === 'zh') {
         line = line.replace(/(?:\u4f60\u7684|\u547d\u4e2d|\u672c\u547d)\s*(?=(?:\u592a\u9633|\u6708\u4eae|\u6c34\u661f|\u91d1\u661f|\u706b\u661f|\u6728\u661f|\u571f\u661f|\u5929\u738b\u661f|\u6d77\u738b\u661f|\u51a5\u738b\u661f|\u4e0a\u5347|\u4e2d\u5929))/g, '');
       } else {
-        line = line.replace(new RegExp('\\b(?:your|her|his|my|our|their|natal|natales?)\\b\\s*(?=(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto|Sol|Luna)\\b)', 'gi'), '');
+        line = line.replace(new RegExp('\\b(?:your|her|his|my|our|their|natal|natales?)\\b\\s*(?=(?:Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto|Sol|Luna|Soleil|Lune)\\b)', 'gi'), '');
+        // 🛡️ E16/R11g: **后置**形态 —— fr/es 习惯写 `Soleil natal` / `Sol natal`
+        //   (产出实测 s12/fr 标题 `Soleil natal en Capricorne`)。原实现只吃前置
+        //   ⇒ 四语月标题里的「本命定语」残留 ⇒ 语义错误(月标题的太阳恒为流月值)。
+        line = line.replace(new RegExp('\\b(Sun|Sol|Soleil|Moon|Luna|Lune|Mercury|Mercure|Venus|Mars|Jupiter|Saturne|Saturn|Uranus|Neptune|Pluton|Pluto)\\s+natal(?:e?s)?\\b', 'gi'), '$1');
       }
       if (line !== _w0) wording++;
       // 🛠️ V482c: 星座与宫位之间的装饰分隔符归一 —— `太阳处女座 · 第3宫 · 主题` → `太阳处女座 第3宫 · 主题`
@@ -5858,7 +6046,7 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
       //    与另一条「星座 宫位」形态撞车 = 同月双标题。此处只吃「紧邻宫位短语之前」的 `·`,
       //    `第3宫 · 主题` 那一个保持不动。幂等。)
       line = line.replace(
-        /\s*[\u00b7\u2022|]\s*(?=(?:第(?:\d+|[一二三四五六七八九十]+)宫)|(?:House|Maison|Casa|\u0e1a\u0e49\u0e32\u0e19|Nh\u00e0)\s+\d+)/g, ' ');
+        /\s*[\u00b7\u2022|]\s*(?=(?:第(?:\d+|[一二三四五六七八九十]+)宫)|(?:House|Maison|Casa|\u0e20\u0e1e\u0e17\u0e35\u0e48|\u0e1a\u0e49\u0e32\u0e19|Nh\u00e0)\s*\d+)/g, ' ');
       if (line !== lines[r]) { lines[r] = line; touched++; }
     }
   }
@@ -5904,14 +6092,10 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
   for (let i = 0; i < lines.length; i++) {
     const ln = lines[i].trim();
     if (!/^#{1,6}\s/.test(ln)) continue;
-    let y = null, mo = null;
-    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
-    if (ym) { y = +ym[1]; mo = +ym[2]; }
-    else if (lang === 'en') {
-      const em = ln.match(new RegExp('(' + _V478_EN_MONTHS.join('|') + ')\\s+(\\d{4})'));
-      if (em) { y = +em[2]; mo = _V478_EN_MONTHS.indexOf(em[1]) + 1; }
-    }
-    if (y == null || !mo || mo < 1 || mo > 12) continue;
+    // 🛡️ E16/R11g: 六语统一识别（同 lockYearlyMonthTitles 口径）
+    const _vk = _v516MonthHeadKey(ln, lang);
+    if (!_vk) continue;
+    const y = _vk.y, mo = _vk.mo;
     const key = y * 12 + mo;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -5920,8 +6104,15 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
   if (heads.length < 2) return text;
   heads.sort((a, b) => a.key - b.key);
   const base = heads[0].key;
-  const signSrc = '(' + signWords.map(_v444Esc).join('|') + ')';
-  const houseSrc = lang === 'zh' ? '(第\\s*\\d+\\s*宫)' : (lang === 'en' ? '(House\\s*\\d+)' : '(Casa\\s*\\d+)');
+  const signSrc = '(' + signWords.map((w) => _v516SignAlt(lang, w)).join('|') + ')';
+  // 🛡️ E16/R11g: 宫位词按语言取（原实现非 zh/en 一律用 `Casa` ⇒ fr/th/vi 的
+  //   `Maison N`/`ภพที่ N`/`Nhà N` 全部认不出, 星座改了宫位却不改 ⇒ 半改不一致）;
+  //   en 实际产出是序数前置 `7th House` ⇒ 必须同时吃两种形态。
+  const houseSrc = lang === 'zh'
+    ? '(第\\s*\\d+\\s*宫)'
+    : lang === 'en'
+      ? '((?:\\d{1,2}(?:st|nd|rd|th)\\s+House)|(?:House\\s*\\d+))'
+      : ('(' + (_V516_HOUSE_WORD[lang] || 'House') + '\\s*\\d+)');
 
   let changed = 0;
   for (let h = 0; h < heads.length; h++) {
@@ -5947,7 +6138,16 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
         const re = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'g');
         const before = line;
         line = line.replace(re, (full, signWord, houseWord, off) => {
-          if (/(?:本命|出生|原生|本盘)/.test(before.slice(Math.max(0, off - 12), off))) return full;  // 本命句归本命锁
+          // 🛡️ E16/R11g: 本命豁免补多语 —— 原豁免**只有中文四词**(本命|出生|原生|本盘),
+          //   对 en/es/fr 完全无效 ⇒ 「物主代词 + 太阳/月亮」的本命叙述被当作流年值改写。
+          //   实测(s2/en Adelaide 本命太阳射手): `Your Sun in Sagittarius is the sign of
+          //   abundance — but your Capricorn Rising…` 整句为本命陈述, 却被改成该月流年
+          //   `Your Sun in Gemini` ⇒ 语义错误。该类句子是对「你出生星盘」的陈述, 不属月度流年。
+          const _pre = before.slice(Math.max(0, off - 20), off);
+          if (/(?:本命|出生|原生|本盘)/.test(_pre)) return full;
+          if (/(?:\bnatal|\bnatale?s?|\bnative|\bof birth|\bat birth)\b/i.test(_pre + ' ' + full)) return full;
+          if (/(?:\byour|\bmy|\bhis|\bher|\btheir|\bour|\btu|\bsu|\bson|\bsa|\bton|\bta|\bvotre|\bmon|\bma|\bnotre)\s*$/i.test(_pre)
+            && /^(?:Sun|Moon|Sol|Luna|Soleil|Lune)\b/i.test(full)) return full;
           let out = full;
           // 保留原文形态: 原文写短名(无「座」)就还它短名, 写全称就还全称
           const wantSign = (lang === 'zh' && !/座$/.test(signWord)) ? trueSign.replace(/座$/, '') : trueSign;
@@ -5958,7 +6158,13 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
           // 星座改了就必须连宫位一起改, 否则产出「处女座第2宫」这种半改不一致
           if (houseWord && trueHouse) {
             const cur = Number((houseWord.match(/\d+/) || [0])[0]);
-            if (cur !== trueHouse) out = out.replace(houseWord, houseWord.replace(/\d+/, String(trueHouse)));
+            if (cur !== trueHouse) {
+              // 🛡️ E16/R11g: en 序数前置的值改写须重算后缀(否则 1st → `2th House`)
+              const _eo = lang === 'en' && /^\d{1,2}(?:st|nd|rd|th)\s+House$/i.test(houseWord);
+              const _hw = _eo ? (trueHouse + _v432EnOrdSuf(trueHouse) + ' House')
+                : houseWord.replace(/\d+/, String(trueHouse));
+              out = out.replace(houseWord, _hw);
+            }
           }
           return out;
         });
@@ -7420,11 +7626,11 @@ function dedupYearlyMonthTitles(text, lang, reportType) {
   for (let i = 0; i < lines.length; i++) {
     const ln = lines[i].trim();
     if (!/^#{1,6}\s/.test(ln)) continue;
-    const m = ln.match(/^#{1,6}\s*(\d{4})\s*年\s*(\d{1,2})\s*月/);
-    if (!m) continue;
-    const mo = Number(m[2]);
-    if (!(mo >= 1 && mo <= 12)) continue;
-    const key = m[1] + '-' + mo;
+    // 🛡️ E16/R11g: 六语统一识别（原为 zh-only 的 `^#{1,6}\s*YYYY 年 M 月`
+    //   ⇒ es/fr/th/vi 的同月重复标题**永不清理**）
+    const _vk = _v516MonthHeadKey(ln, lang);
+    if (!_vk) continue;
+    const key = _vk.y + '-' + _vk.mo;
     if (!byKey.has(key)) byKey.set(key, []);
     byKey.get(key).push(i);
   }
@@ -7636,7 +7842,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v513:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v514:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -9591,7 +9797,10 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     en: {1:'1st House',2:'2nd House',3:'3rd House',4:'4th House',5:'5th House',6:'6th House',7:'7th House',8:'8th House',9:'9th House',10:'10th House',11:'11th House',12:'12th House'},
     es: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Casa ' + (i + 1)])),
     fr: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Maison ' + (i + 1)])),
-    th: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'บ้าน ' + (i + 1)])),
+    // 🛡️ E16/R11g: 泰语宫位词纠为 `ภพที่ N` —— 原 `บ้าน N` 是「房屋/家」(口语义)，
+    //   而泰语提示词与 LLM 实际产出均为 `ภพที่ N`（占星宫位正字，实测 12/12 盘一致）。
+    //   提示词硬锁表给错词 ⇒ LLM 照抄即词汇降级; 输出侧 houseRe 两形态都认, 故只改写作侧。
+    th: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'ภพที่ ' + (i + 1)])),
     vi: Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 'Nhà ' + (i + 1)])),
   };
   const SIGN_LOCK = SIGN_LOCKS[lang] || SIGN_LOCKS.zh;
@@ -9599,7 +9808,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛠️ V482b: 月标题「行星引导词」本地化 —— 原写法对所有语种硬编码英文 `Sun in`,
   //   中文 Prompt 里因此夹带英文 → LLM 照抄, 生产实测(2026-09-30 1999-12-15 特罗姆瑟盘)
   //   整篇 12 条月标题全变「### 2026年9月: Sun in 处女座 第3宫 · …」。
-  const _V482B_SUN_LEAD = { zh: '太阳', en: 'Sun in ', es: 'Sol en ', fr: 'Soleil en ', th: 'ดาวอาทิตย์ใน ', vi: 'Mặt Trời trong ' };
+  // 🛡️ E16/R11g: th 引导词纠为 `ดวงอาทิตย์ใน `（原 `ดาวอาทิตย์ใน ` 是星期/行星义的「ดาว」形态）
+  const _V482B_SUN_LEAD = { zh: '太阳', en: 'Sun in ', es: 'Sol en ', fr: 'Soleil en ', th: 'ดวงอาทิตย์ใน ', vi: 'Mặt Trời trong ' };
   const _SUN_LEAD = _V482B_SUN_LEAD[lang] || _V482B_SUN_LEAD.en;
   const MONTH_FMT = lang === 'en'
     ? { yearPrefix: (y, m) => `${monthNamesEN[m - 1]} ${y}`, prefix: (y, m) => `${monthNamesEN[m - 1]} ${y}` }
@@ -10912,7 +11122,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v513:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v514:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11619,7 +11829,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v513:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v514:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13287,7 +13497,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v513-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v514-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

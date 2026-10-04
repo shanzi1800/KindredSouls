@@ -53,6 +53,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v511-v2:*',
   'wealth:v512:*',        // 🛡️ E15/R11f: v512 全量作废（vi/th 非流式 HIT 因 const stdCached 重赋值崩溃丢缓存 + es/fr 章名口径矛盾拒入库 + es/fr 阴性序数缩写形态盲区 + hits 区间相交串长错位 artifact）
   'wealth:v512-v2:*',
+  'wealth:v513:*',        // 🛡️ E16/R11g: v513 全量作废（es/fr/th/vi 月标题逐月真值锁**静默失效** ⇒ 12 盘实测 54 处标题星座/宫位错项 + th 行星/宫位词拼写非正字 + house_linter 英文月锚点对 es/fr 仅部分命中致跨月串段）
+  'wealth:v513-v2:*',
   'wealth:v116-v2:*',
 ];
 
