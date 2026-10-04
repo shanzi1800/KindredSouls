@@ -5771,6 +5771,9 @@ const _V516_MONTHS = {
 const _V516_TH_SIGN_EXCL = { 'เมษ': 'ายน', 'พฤษภ': 'าคม', 'มิถุน': 'ายน', 'กรกฎ': 'าคม', 'กันยา': 'ยน', 'มีน': 'าคม' };
 const _V516_TH_BE_OFFSET = 543;            // 佛历 − 543 = 公历
 const _V516_HOUSE_WORD = { en: 'House', es: 'Casa', fr: 'Maison', th: '(?:ภพที่|บ้าน)', vi: 'Nhà' };
+// 🛡️ E16/R11g-fix: 宫位词**纯字面**形态（供 `_v516OutputHygiene` 的「英文 `N House` 残渣归一」用）。
+//   th 取**占星宫位**专用词 `ภพที่`（非「房屋」`บ้าน`）—— 与标题锁 `_V482B_TITLE_HOUSE.th` 同源。
+const _V516_HOUSE_PLAIN = { es: 'Casa', fr: 'Maison', th: 'ภพที่', vi: 'Nhà' };
 
 // 返回 { y, mo } 或 null（y 恒为**公历**年: 泰语佛历自动 −543）。
 function _v516MonthHeadKey(line, lang) {
@@ -5794,13 +5797,21 @@ function _v516MonthHeadKey(line, lang) {
   // ③ 越南语: Tháng 7 Năm 2026
   m = s.match(/Tháng\s*(\d{1,2})\s*Năm\s*(\d{4})/i);
   if (m) { const mo = Number(m[1]); return (mo >= 1 && mo <= 12) ? { y: Number(m[2]), mo } : null; }
-  // ④ en/es/fr: <月名> <年>（月名独立成词, 前后不得紧贴其他字母）
+  // ④ en/es/fr/vi: <月名> <年>（月名独立成词, 前后不得紧贴其他字母/数字）
+  //   🔴🔴 E16/R11g-fix (2026-10-04 线上 12 盘批测实锤): **必须加 `(?!\d)`**。
+  //     病根: vi 的 `tháng 1` 是 `tháng 10`/`tháng 11`/`tháng 12` 的**前缀**, 原实现按 i=0..11
+  //     顺序首次命中 ⇒ `### Tháng 11 2026: …` 被识别成 **1 月**（`Tháng 1` + `1 ` + `2026`）。
+  //     后果（比「认不出」严重得多）: 10/11/12 三个月折叠成同一个 key ⇒ 下游
+  //     `dedupYearlyMonthTitles` 判为「同月重复标题」⇒ **整行清空 11、12 月标题**
+  //     （线上实测 s11 河内: 12 个标题只剩 10 个, 节距仍对齐 10 行 ⇒ 用户可见缺 2 月）。
+  //   治法（双层）: ① 月词后禁止紧跟数字 `(?!\d)`; ② 遍历顺序改**词长倒序**（长词优先）。
   const words = _V516_MONTHS[lang];
   if (words) {
-    for (let i = 0; i < 12; i++) {
-      const re = new RegExp('(?:^|[^A-Za-z\u00c0-\u00ff])' + _v516Esc(words[i]) + '[^A-Za-z\u00c0-\u00ff]{1,4}(\\d{4})', 'i');
+    const order = words.map((w, i) => [w, i + 1]).sort((a, b) => b[0].length - a[0].length);
+    for (const [w, mo] of order) {
+      const re = new RegExp('(?:^|[^A-Za-z\u00c0-\u00ff])' + _v516Esc(w) + '(?!\\d)[^A-Za-z\u00c0-\u00ff]{1,4}(\\d{4})', 'i');
       const mm = s.match(re);
-      if (mm) return { y: Number(mm[1]), mo: i + 1 };
+      if (mm) return { y: Number(mm[1]), mo };
     }
   }
   return null;
@@ -5828,7 +5839,12 @@ function _v516RewriteMonthYear(line, lang, y, mo) {
   }
   if (lang === 'vi') {
     if (cur.y === y && cur.mo === mo) return line;
-    return line.replace(/Tháng\s*\d{1,2}\s*Năm\s*\d{4}/i, 'Tháng ' + mo + ' Năm ' + y);
+    // 🛡️ E16/R11g-fix: `Năm` 可省 —— 线上产出实测为 `### Tháng 11 2026: …`（**无** `Năm`），
+    //   原正则 `/Tháng\s*\d{1,2}\s*Năm\s*\d{4}/` 强制要求 `Năm` ⇒ **永不匹配** ⇒
+    //   越南语逐月真值写回**整体空转**（月份号错了也纠不回来）。改为「原形态保留」：
+    //   原文有 `Năm` 就写回 `Năm`，没有就不加（不改变本地化观感, 只改真值）。
+    return line.replace(/Tháng\s*\d{1,2}(\s*Năm)?\s*\d{4}/i,
+      (mm, nam) => 'Tháng ' + mo + (nam ? ' Năm' : '') + ' ' + y);
   }
   const arr = _V516_MONTHS[lang];
   if (!arr) return line;
@@ -5879,11 +5895,19 @@ function _v516OutputHygiene(text, lang) {
   if (!text || typeof text !== 'string') return text;
   const before = text;
   let t = text.replace(_v516GlueRe(), '$1 ');
-  if (lang === 'es') {
-    // `en el 7 House` → `en la Casa 7`（介词 + 冠词整体替换; Casa 为阴性名词）
-    t = t.replace(/(\b(?:en|desde|hacia|a)\s+)(?:el|la|los|las)?\s*(\d{1,2})\s+House\b/gi, (m, prep, n) => prep + 'la Casa ' + n);
-    // 剩余裸 `7 House` → `Casa 7`（只换形态、绝不改值）
-    t = t.replace(/(?<![A-Za-z])(\d{1,2})\s+House\b/g, (m, n) => 'Casa ' + n);
+  // 🛡️ E16/R11g-fix: 原实现**只处理 es** ⇒ fr/th/vi 的英文宫位混入全盲
+  //   （线上实测 s5/vi 阿克拉 `Sao Mộc tại 11 House`×38、s12/fr 巴黎 `… 7 House`×1）。
+  //   原则不变: **只换形态, 绝不改值**; 幂等（换完再无 `House` 可命中）。
+  const _hp = _V516_HOUSE_PLAIN[lang];
+  if (_hp) {
+    if (lang === 'es') {
+      // `en el 7 House` → `en la Casa 7`（介词 + 冠词整体替换; Casa 为阴性名词）
+      t = t.replace(/(\b(?:en|desde|hacia|a)\s+)(?:el|la|los|las)?\s*(\d{1,2})\s+House\b/gi, (m, prep, n) => prep + 'la Casa ' + n);
+    }
+    // 裸 `7 House` → `Casa 7` / `Maison 7` / `ภพที่ 7` / `Nhà 7`
+    t = t.replace(/(?<![A-Za-z])(\d{1,2})\s+House\b/g, (m, n) => _hp + ' ' + n);
+    // `House 7` → 同上（英文模板残渣的另一形态）
+    t = t.replace(/(?<![A-Za-z])House\s+(\d{1,2})\b/g, (m, n) => _hp + ' ' + n);
     t = t.replace(/[ \t]{2,}/g, ' ');
   }
   if (t !== before) console.log(`[E16/R11g] ${lang} \u8f93\u51fa\u536b\u751f: ${before.length - t.length} \u5b57\u7b26\u5dee`);
@@ -7842,7 +7866,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v514:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v515:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11122,7 +11146,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v514:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v515:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11368,6 +11392,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = applyV434Locks(reportContent, lang, astroMatrix);   // V434
         // 🛠️ V432: MISS 非stream 路径 en/es/zh 真值双锁（与 vi/th/fr 对称）
         if (_V432_LANGS.includes(lang)) reportContent = applyTruthLocksEnEsZh(reportContent, lang, astroMatrix, reportType);
+        // 🛡️ E16/R11g-fix: fr/th/vi **不**进真值锁白名单（保守侧, E14 教训）, 但**输出卫生必须过**——
+        //   否则英文 `N House` 残渣(实测 vi 38 处/fr 1 处)无人归一。本守卫只换形态、绝不改值。
+        else reportContent = _v516OutputHygiene(reportContent, lang);
         reportContent = lockNatalAnchorRole(reportContent, lang, astroMatrix, reportType);   // 🛡️ V444
         reportContent = lockTransitPlanetSigns(reportContent, lang, astroMatrix, reportType); // 🛡️ V445
         reportContent = applyMoonWeekHardOverride(reportContent, lang, astroMatrix);  // 🛡️ V438
@@ -11829,7 +11856,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v514:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v515:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11985,6 +12012,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         }
         // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
         if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix, reportType);
+        else streamText = _v516OutputHygiene(streamText, lang);   // 🛡️ E16/R11g-fix: fr/th/vi 形态卫生（只换形态）
         streamText = lockNatalAnchorRole(streamText, lang, astroMatrix, reportType);   // 🛡️ V444
         streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix, reportType); // 🛡️ V445
         streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
@@ -13078,6 +13106,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockNatalAnchorRole(cleanedText, lang, astroMatrix, reportType);   // 🛡️ V444
     cleanedText = lockTransitPlanetSigns(cleanedText, lang, astroMatrix, reportType); // 🛡️ V445
     if (_V432_LANGS.includes(lang)) cleanedText = applyTruthLocksEnEsZh(cleanedText, lang, astroMatrix, reportType);
+    else cleanedText = _v516OutputHygiene(cleanedText, lang);   // 🛡️ E16/R11g-fix: fr/th/vi 形态卫生（落库前最后一道）
     // 🛡️ V460-fix3: 月亮周轨迹真值锁必须拿【最终话语权】。
     //   实测：V438 在 house_linter 之前跑完后，本收尾链(V434/V444/V445/V432)会把月亮轨迹再次改坏
     //   （线上 sanitized 实测 W2-W4 变成「狮子座（第9宫）、白羊座（第5宫→第10宫）…」）。
@@ -13497,7 +13526,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v514-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v515-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

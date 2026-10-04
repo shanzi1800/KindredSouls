@@ -107,13 +107,13 @@ test('④ R3: 重试设施三件齐 —— 强约束块/纯函数裁定/端点�
   assert.ok(src.includes('_e10PostProcess = (aiResult)'), '后处理链未提取(重试稿须复跑同一条链)');
 });
 
-test('⑤ 缓存 bump v514（E10 基线随 E16/R11g 前移）: server.js 四站点 + purge 脚本补 v513 模式', () => {
-  const sites = [...src.matchAll(/wealth:v514/g)].length;
+test('⑤ 缓存 bump v515（E10 基线随 E16/R11g 前移）: server.js 四站点 + purge 脚本补 v514 模式', () => {
+  const sites = [...src.matchAll(/wealth:v515/g)].length;
   assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
   assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
-  assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v513 双形态');
+  assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
   const yearly = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
-  assert.ok(/MIN_CACHE_VER = 514/.test(yearly), 'yearly 流式闸门基线未前移 v514');
+  assert.ok(/MIN_CACHE_VER = 515/.test(yearly), 'yearly 流式闸门基线未前移 v515');
 });
 
 // ═══════════════ 行为级: vm 抽取 + Adelaide 假矩阵(零 python) ═══════════════
