@@ -137,10 +137,14 @@ test('【注入缺陷自测】把 12 月标题锁退化成「只取首月」→ 
 });
 
 test('【注入缺陷自测】删掉一处月标题锁调用点 → 判据⑥ 必须红', () => {
+  // 🛡️ E16/R11i: 相对基线断言（E16 在 HIT th 链新增第 5 调用点后, 硬编码 <4 会失真）
+  const callLines = (s) => (s.match(/[^\n]*lockYearlyMonthTitles\([^\n]*/g) || [])
+    .filter(l => !/function\s+lockYearlyMonthTitles/.test(l));
+  const base = callLines(src).length;
+  assert.ok(base >= 4, '基线调用点不足: ' + base);
   const degradedSrc = src.replace(/^[^\n]*lockYearlyMonthTitles\(reportContent[^\n]*\n/m, '');
-  const cnt = (degradedSrc.match(/[^\n]*lockYearlyMonthTitles\([^\n]*/g) || [])
-    .filter(l => !/function\s+lockYearlyMonthTitles/.test(l)).length;
-  assert.ok(cnt < 4, '闸门失效: 调用点缺失未被识别, 剩余=' + cnt);
+  assert.ok(callLines(degradedSrc).length < base,
+    '闸门失效: 调用点缺失未被识别, 剩余=' + callLines(degradedSrc).length + '/基线=' + base);
 });
 
 // ── V478c: 「座座」重字防护（V432 流月锁窗口边界切断修复）──

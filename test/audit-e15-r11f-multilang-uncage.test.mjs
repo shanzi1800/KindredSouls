@@ -184,6 +184,19 @@ test('③ 支柱1 行为级: 六语本地化章名/终章 12/12 结构化通过�
   assert.ok(structOk('fr', buildReport('en')), 'fr 不再兼容英文 Chapter 标题');
 });
 
+test('③b E16/R11h 行为级: vi 终章本地化形态（LLM 波动）必须被承认（线上 s5/s11 被误拒入库 ⇒ HIT 永灭）', () => {
+  // E16 线上实测：vi 产物终章为 `### TIÊN TRI TÀI LỘC CUỐI CÙNG · Mật Mã Để Làm Chủ`，
+  // 旧判据只认 EN 形态 ⇒ integrity 误报「缺最终章」⇒ 报告被拒、拒绝写库。
+  const viLocalized = '### Chương I: Kiến Trúc\n\n正文。\n\n### Chương II: Kiến Trúc\n\n正文。\n\n### Chương III: Kiến Trúc\n\n正文。\n\n### Chương IV: Kiến Trúc\n\n正文。\n\n### Chương V: Kiến Trúc\n\n正文。\n\n### TIÊN TRI TÀI LỘC CUỐI CÙNG · Mật Mã Để Làm Chủ\n\n正文 kết。\n';
+  const r = assessYearlyReportIntegrity(viLocalized, { lang: 'vi', minChars: 0 });
+  assert.ok(r.metrics.hasFinalOracle === true, `vi 本地化终章仍不被承认: ${r.reasons.join('/')}`);
+  // 兜底短语（三盘观测稳定出现）：`Mật Mã … Làm Chủ`
+  const viSubtitle = viLocalized.replace('### TIÊN TRI TÀI LỘC CUỐI CÙNG · Mật Mã Để Làm Chủ', '### 🔮 Lời Tiên Tri Cuối Cùng · Mật Mã Của Sự Làm Chủ');
+  assert.ok(assessYearlyReportIntegrity(viSubtitle, { lang: 'vi', minChars: 0 }).metrics.hasFinalOracle === true, 'vi 终章兜底短语（Mật Mã…Làm Chủ）未被承认');
+  // 判据不得被放宽成恒真：终章整段缺失必须仍拦
+  assert.strictEqual(structOk('vi', buildReport('vi', { dropFinal: true })), false, 'vi 缺终章未拦（判据被放宽成恒真）');
+});
+
 test('④ 支柱1 行为级: 结构性截断 / 扣终章 / 空文本 必须拦（判据不得被放宽成恒真）', () => {
   for (const lang of ['zh', 'en', 'es', 'fr', 'th', 'vi']) {
     assert.strictEqual(structOk(lang, buildReport(lang, { dropFinal: true })), false, `${lang}: 缺终章未拦`);
@@ -423,11 +436,11 @@ test('⑮ 支柱3 行为级: 第 ⑥ 否决在真实宫头下弃权，等宫制�
 // ⑯ 缓存 v513
 // ═══════════════════════════════════════════════════════════════════════
 test('⑯ 缓存 v515（server.js 四站点 + purge 补 v514 双形态 + MIN_CACHE_VER 前移）', () => {
-  const sites = [...src.matchAll(/wealth:v515/g)].length;
+  const sites = [...src.matchAll(/wealth:v516/g)].length;
   assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
   assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
   assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
-  assert.ok(/MIN_CACHE_VER = 515/.test(yearlyTest), 'yearly 流式闸门基线未前移 v515');
+  assert.ok(/MIN_CACHE_VER = 516/.test(yearlyTest), 'yearly 流式闸门基线未前移 v515');
 });
 
 // ═══════════════════════════════════════════════════════════════════════

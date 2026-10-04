@@ -108,7 +108,7 @@ function cacheSites(src) {
   return out;
 }
 // 🛡️ 基线常量：每次输出链变更 bump 时**只改这一处**（旧写法把版本号散落在 6 处字面量里）
-const LATEST_CACHE_VER = 'v515';
+const LATEST_CACHE_VER = 'v516';
 const D1_ALL_LATEST = (src) => {
   const s = cacheSites(src);
   // 🛡️ E16/R11g 基线前移: 月标题逐月真值锁六语解封（es/fr/th/vi 原「lang===en 才识别」⇒ 12 盘 54 处标题错项）+ th 行星/宫位词正字化 + house_linter 月锚点补全 es/fr 全 12 月名 = 输出链变更 ⇒ v513 全量作废
@@ -300,9 +300,9 @@ test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// D1 · 缓存版本 v514 → v515（E16/R11h 输出链变更：vi 月标题识别 key 前缀碰撞治本 + vi 月标题写回支持无 Năm 形态 + 英文 `N House` 残渣本地化扩至 fr/th/vi，4 站点全覆盖）
+// D1 · 缓存版本 v515 → v516（E16/R11i 输出链变更：th natal 锁标题行豁免 + 宫位数字边界 + HIT 年报分流逐月真值锁，4 站点全覆盖）
 // ═══════════════════════════════════════════════════════════════════════
-test('V492-D1 缓存版本 bump 至 v515（4 站点全覆盖；E16/R11h 基线前移）', () => {
+test('V492-D1 缓存版本 bump 至 v516（4 站点全覆盖；E16/R11i 基线前移）', () => {
   const s = cacheSites(SRC);
   const detail = s.map((x, i) => ` #${i + 1} ${x.base}${x.v2 ? '-v2' : ''}`).join('');
   assert.ok(s.length >= 4, `缓存键站点仅 ${s.length} 个（应有 4：删除键/非流式/流式/年报-v2）${detail}`);
@@ -355,7 +355,7 @@ test('ZZ 汇总：本轮待修复清单（基线预期为红）', () => {
     ['R2 海王星',     () => /第五宫/.test(run('流年海王星在白羊座（第2宫）顺行。'))],
     ['R2c 越南语太阳', () => !(CODE.match(/sun:\s*\[[^\]]*\]/g) || []).some((s) => /Mặt Trăng/.test(s))],
     ['R3 连接词',     () => /第十二宫/.test(run('金星双双沉入天蝎座（第1宫）。'))],
-    ['D1 缓存 v514→v515', () => D1_ALL_LATEST(SRC)],
+    ['D1 缓存 v515→v516', () => D1_ALL_LATEST(SRC)],
     ['D2 骨架不锁兜底', () => ['buildMonthlyOverviewBlock', 'buildMonthlyFactTree']
                               .every((fn) => NO_CANCER_FALLBACK(funcBody(V69, fn)))],
   ];

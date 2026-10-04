@@ -3281,6 +3281,14 @@ function _v432ResolveOverlaps(hits, tag) {
   return hits.filter((h, i) => !drop.has(i));
 }
 
+// 🛡️ E16/R11i: 宫位 token 匹配必须带数字边界——`ภพที่ 1` 是 `ภพที่ 11/12` 的前缀,
+//   裸 includes 会把「真值宫位=1、文本写 11」误判为已正确 ⇒ 跳过宫位纠错（线上 v515
+//   s6/s9 月标题污染的帮凶: 星座被改而宫位 11/12 因子串误判幸存, 形成半错半对的 B 版）。
+function _thHasHouse(zone, h) {
+  if (!zone || !h) return false;
+  return new RegExp('(?:เรือนที่|บ้าน|ภพที่)\\s*' + h + '(?!\\d)').test(zone);
+}
+
 function lockNatalTruthTh(text, astroMatrix) {
   if (!text) return text;
   const truth = astroMatrix ? _natalTruthMap10_TH(astroMatrix) : {};
@@ -3289,10 +3297,29 @@ function lockNatalTruthTh(text, astroMatrix) {
     console.log('[V424] ข้อมูลนำเกิดไม่พร้อม → ข้าม Thai natal lock');
     return text;
   }
+  // 🛡️ E16/R11i: 月标题行豁免（线上 v515 实证 P0：HIT 路径本命锁把 12 个月标题星座
+  //   全部污染成 natal Sun 星座——s6 阿皮亚 12 标题全变 Libra、s9 曼谷全变 Scorpio）。
+  //   病根：本命锁对「任何」含行星名的从句按 natal 真值纠错，月标题
+  //   `ดวงอาทิตย์ในกรกฎ ภพที่ 11`（7 月流年）与 natal Sun（Libra H1）不符 ⇒ 整句被改写。
+  //   MISS 链尾有 lockYearlyMonthTitles 兜底纠回，HIT 链没有 ⇒ 同一缓存 HIT 返回坏版。
+  //   治本：标题行（# 开头）一律跳过——月标题真值由 lockYearlyMonthTitles 专职负责。
+  const _headRanges = [];
+  {
+    let _off = 0;
+    for (const _ln of String(text).split('\n')) {
+      if (/^#{1,6}[ \t]/.test(_ln)) _headRanges.push([_off, _off + _ln.length]);
+      _off += _ln.length + 1;
+    }
+  }
+  const _inHead = (i) => {
+    for (const [s, e] of _headRanges) { if (i >= s && i < e) return true; }
+    return false;
+  };
   const nameRe = new RegExp('(' + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
   let result = text;
   let m;
   while ((m = nameRe.exec(text)) !== null) {
+    if (_inHead(m.index)) continue;   // 🛡️ E16/R11i: 标题行豁免
     const name = m[1];
     const t = truth[name];
     if (!t) continue;
@@ -3300,9 +3327,8 @@ function lockNatalTruthTh(text, astroMatrix) {
     if (!clause) continue;
     const { fwd, bwd } = clause;
     const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
-    // 🛠️ V424-fix5: 三种宫位格式全认：บ้าน X / เรือนที่ X / (ภพที่ X)
-    const hPat = String(t.house);
-    const hasHouse = t.house && (fwd.includes('บ้าน ' + hPat) || fwd.includes('เรือนที่ ' + hPat) || fwd.includes('ภพที่ ' + hPat) || fwd.includes('(ภพที่ ' + hPat) || bwd.includes('บ้าน ' + hPat) || bwd.includes('เรือนที่ ' + hPat) || bwd.includes('ภพที่ ' + hPat) || bwd.includes('(ภพที่ ' + hPat));
+    // 🛠️ V424-fix5: 三种宫位格式全认：บ้าน X / เรือนที่ X / (ภพที่ X)；🛡️ E16/R11i: 数字边界
+    const hasHouse = _thHasHouse(fwd, t.house) || _thHasHouse(bwd, t.house);
     if (hasSign && hasHouse) continue;
     // 先找后段目标
     let z = fwd.length >= bwd.length ? fwd : bwd;
@@ -3378,9 +3404,9 @@ function lockTransitTruthTh(text, astroMatrix) {
     const clause = _thTransitClause(text, m.index, m[0].length);
     if (!clause) continue;
     const { fwd, bwd } = clause;
-    const hPat = String(t.house);
     const hasSign = t.sign && (fwd.includes(t.sign) || bwd.includes(t.sign));
-    const hasHouse = t.house && (fwd.includes('บ้าน ' + hPat) || fwd.includes('เรือนที่ ' + hPat) || fwd.includes('ภพที่ ' + hPat) || fwd.includes('(ภพที่ ' + hPat) || bwd.includes('บ้าน ' + hPat) || bwd.includes('เรือนที่ ' + hPat) || bwd.includes('ภพที่ ' + hPat) || bwd.includes('(ภพที่ ' + hPat));
+    // 🛡️ E16/R11i: 数字边界（`ภพที่ 1` ⊄ `ภพที่ 11`）
+    const hasHouse = _thHasHouse(fwd, t.house) || _thHasHouse(bwd, t.house);
     if (hasSign && hasHouse) continue;
     let z = fwd.length >= bwd.length ? fwd : bwd;
     const origLen = z.length;
@@ -7866,7 +7892,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v515:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v516:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11146,7 +11172,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v515:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v516:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11202,7 +11228,16 @@ app.post('/api/wealth-oracle', async (req, res) => {
           if (lang === 'th') {
             try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
             stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
-            stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
+            // 🛡️ E16/R11i: 年报/月报分流——lockTransitTruthTh 是「months[0] 单月口径」(V424-B2 为月报设计),
+            //   对年报会把 2~12 月正文/标题的流年句全部纠成首月真值（线上 v515 实证: s6 阿皮亚 12 个月标题
+            //   全被 natal 锁污染成 natal Sun 星座、HIT 直出坏版；MISS 链尾有 lockYearlyMonthTitles 兜底而
+            //   HIT 链没有）。年报改用与 MISS 链 :11401/:11403 完全对称的逐月真值锁（幂等, 对已正确文本零改动）。
+            if (reportType === 'yearly') {
+              stdCached = lockYearlyMonthTitles(stdCached, lang, _hitAstroTh, reportType);
+              stdCached = lockYearlyTransitSigns(stdCached, lang, _hitAstroTh, reportType);
+            } else {
+              stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
+            }
             stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstroTh);   // V433-fix4
             stdCached = applyV434Locks(stdCached, lang, _hitAstroTh);   // V434
           }
@@ -11856,7 +11891,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v515:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v516:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13526,7 +13561,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v515-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v516-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

@@ -57,6 +57,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v513-v2:*',
   'wealth:v514:*',        // 🛡️ E16/R11h: v514 全量作废（`_v516MonthHeadKey` vi 前缀碰撞 ⇒ 10/11/12 月折叠同 key ⇒ dedupYearlyMonthTitles 静默**删除** 11、12 月标题；vi 写回强制 Năm 致空转；英文 `N House` 残渣仅 es 归一，fr/th/vi 全盲）
   'wealth:v514-v2:*',
+  'wealth:v515:*',        // 🛡️ E16/R11i: v515 全量作废（HIT th 链 natal 锁污染月标题 + 宫位子串误判 + 年报误用 months[0] 口径 transit 锁）
+  'wealth:v515-v2:*',
   'wealth:v116-v2:*',
 ];
 
