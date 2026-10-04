@@ -107,10 +107,10 @@ function cacheSites(src) {
   while ((m = re.exec(src))) out.push({ base: m[1], v2: !!m[2] });
   return out;
 }
-const D1_ALL_V511 = (src) => {
+const D1_ALL_V512 = (src) => {
   const s = cacheSites(src);
-  // 🛡️ E12/R11 基线前移: 全章物主本命真值锁 + 畸形宫位形态归一 + LLM 自纠 artifact 剥离 = 输出链变更 ⇒ v510 全量作废
-  return s.length >= 4 && s.every((x) => x.base === 'v511') && s.some((x) => x.v2);
+  // 🛡️ E13/R11d 基线前移: 英文拼写式序数宫位盲区收口 + HIT 路径补挂前导锁 + CRITIC 判据扩面 = 输出链变更 ⇒ v511 全量作废
+  return s.length >= 4 && s.every((x) => x.base === 'v512') && s.some((x) => x.v2);
 };
 const D1_SITES_INTACT = (src) => {
   const s = cacheSites(src);
@@ -281,12 +281,12 @@ test('G08(护栏) house_linter 的去重/映射辅助函数仍在（结构未被
 test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
   const bad = [];
   // D1：4 站点全覆盖才绿；漏一站 / 少形态 即红
-  const OK_SRC  = '`wealth:v511:A`;`wealth:v511:B`;`wealth:v511:C`;`wealth:v511-v2:D`;';
-  const MIX_SRC = '`wealth:v510:A`;`wealth:v511:B`;`wealth:v511:C`;`wealth:v511-v2:D`;';
-  const NOV2    = '`wealth:v511:A`;`wealth:v511:B`;`wealth:v511:C`;`wealth:v511:D`;';
-  if (D1_ALL_V511(OK_SRC) !== true)   bad.push('D1: 正例未判绿');
-  if (D1_ALL_V511(MIX_SRC) !== false) bad.push('D1: 漏改一站未判红（恒真）');
-  if (D1_ALL_V511(NOV2) !== false)    bad.push('D1: -v2 形态缺失未判红');
+  const OK_SRC  = '`wealth:v512:A`;`wealth:v512:B`;`wealth:v512:C`;`wealth:v512-v2:D`;';
+  const MIX_SRC = '`wealth:v511:A`;`wealth:v512:B`;`wealth:v512:C`;`wealth:v512-v2:D`;';
+  const NOV2    = '`wealth:v512:A`;`wealth:v512:B`;`wealth:v512:C`;`wealth:v512:D`;';
+  if (D1_ALL_V512(OK_SRC) !== true)   bad.push('D1: 正例未判绿');
+  if (D1_ALL_V512(MIX_SRC) !== false) bad.push('D1: 漏改一站未判红（恒真）');
+  if (D1_ALL_V512(NOV2) !== false)    bad.push('D1: -v2 形态缺失未判红');
   if (D1_SITES_INTACT(OK_SRC) !== true || D1_SITES_INTACT(MIX_SRC) !== true) bad.push('G14: 站点护栏误报');
   // D2：含 Cancer 兜底即红
   if (NO_CANCER_FALLBACK("const r = meta.rising_sign || 'Cancer';") !== false) bad.push('D2: 兜底未判红（恒真）');
@@ -298,13 +298,13 @@ test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// D1 · 缓存版本 v510 → v511（E12/R11 输出链变更：全章物主本命锁 + 畸形宫位归一 + artifact 剥离，4 站点全覆盖）
+// D1 · 缓存版本 v511 → v512（E13/R11d 输出链变更：拼写式序数收口 + HIT 路径前导锁 + CRITIC 扩面，4 站点全覆盖）
 // ═══════════════════════════════════════════════════════════════════════
-test('V492-D1 缓存版本 bump 至 v511（4 站点全覆盖；E12/R11 基线前移）', () => {
+test('V492-D1 缓存版本 bump 至 v512（4 站点全覆盖；E13/R11d 基线前移）', () => {
   const s = cacheSites(SRC);
   const detail = s.map((x, i) => ` #${i + 1} ${x.base}${x.v2 ? '-v2' : ''}`).join('');
   assert.ok(s.length >= 4, `缓存键站点仅 ${s.length} 个（应有 4：删除键/非流式/流式/年报-v2）${detail}`);
-  const stale = s.filter((x) => x.base !== 'v511');
+  const stale = s.filter((x) => x.base !== 'v512');
   assert.deepEqual(stale.map((x) => x.base + (x.v2 ? '-v2' : '')), [],
     `仍有未 bump 的缓存键（⇒ 该端点继续吃旧缓存，用户可见收益打折）：${stale.map((x) => x.base).join(', ')}`);
   assert.ok(s.some((x) => x.v2), '年报 -v2 形态丢失 ⇒ 缓存键结构被改坏');
@@ -353,7 +353,7 @@ test('ZZ 汇总：本轮待修复清单（基线预期为红）', () => {
     ['R2 海王星',     () => /第五宫/.test(run('流年海王星在白羊座（第2宫）顺行。'))],
     ['R2c 越南语太阳', () => !(CODE.match(/sun:\s*\[[^\]]*\]/g) || []).some((s) => /Mặt Trăng/.test(s))],
     ['R3 连接词',     () => /第十二宫/.test(run('金星双双沉入天蝎座（第1宫）。'))],
-    ['D1 缓存 v510→v511', () => D1_ALL_V511(SRC)],
+    ['D1 缓存 v511→v512', () => D1_ALL_V512(SRC)],
     ['D2 骨架不锁兜底', () => ['buildMonthlyOverviewBlock', 'buildMonthlyFactTree']
                               .every((fn) => NO_CANCER_FALLBACK(funcBody(V69, fn)))],
   ];

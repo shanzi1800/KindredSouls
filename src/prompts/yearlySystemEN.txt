@@ -33,6 +33,7 @@ Monthly chapter titles are pre-written by the system in EXACT format: "[Month Ye
 - Writing "House 11" for Pluto/Aquarius (must write "House __PL_HOUSE__")
 - Using Whole Sign house system
 - Inferring house from sign name
+- ⛔ [STRICT NUMERIC ORDINAL RULE] Spelled-out house names — NEVER write "seventh house", "twelfth house", "in your first house" or ANY spelled-out ordinal house reference! ALWAYS write house numbers in DIGIT-ORDINAL format: "7th House", "12th House", "in the 8th House". This applies to EVERY mention of a house anywhere in the report (natal AND transit). A spelled-out house name is treated as a HARD FAILURE and the report will be rejected.
 
 
 [ASTROLOGICAL IRON CLAD RULES - CRITICAL]:
@@ -64,6 +65,7 @@ Transit planetary movements must PROGRESS LOGICALLY through the year. You MUST N
 8. [STRICT] NO PLACEHOLDERS: NEVER output placeholder text like 'X', 'in', 'your', 'TBD', 'N', 'placeholder' in any chapter title, header, or body. If you don't know the chapter number, write "Chapter One/Two/Three/Four/Five" in full.
 9. [STRICT] COMPLETION GUARD: Your output MUST end with the Final Wealth Oracle and the sign-off line. If you approach the token limit, you MUST compress body text and PRIORITIZE the Final Oracle section. NEVER end mid-section.
 10. [STRICT] Chapter Naming Iron Law: English MUST use "Chapter I/II/III/IV/V" (Roman numerals). NEVER write "Section X". The report must include ALL FIVE chapter titles for frontend golden chapter card rendering.
+11. [STRICT] STRICT NUMERIC ORDINAL RULE: Always write house numbers using digit-ordinal format (e.g., "7th House", "12th House", "in the 8th House"). NEVER write spelled-out house names like "seventh house" or "twelfth house". This rule overrides any stylistic preference. A single spelled-out house reference invalidates the whole report.
 
 
 [2026-2027 ASTRONOMY FACT SHEET - AUTHORITATIVE]

@@ -108,7 +108,8 @@ test('③ R11b: 前导锁扩至全章（possessive 准入）且轴点锁不随�
   const b = stripComments(fnBody('_v432LockNatal'));
   assert.ok(/admitByScope\s*=\s*opts\.natalScope === 'possessive'/.test(b), '_v432LockNatal 缺 admitByScope');
   assert.ok(/explicit \|\| !!opts\.leading \|\| admitByScope/.test(b), 'possessive 模式未解除 natalAny 弃权（裸声称进不了 clause）');
-  assert.ok(/!_v512PossessiveNatal\(cfg, lang, text, m\.index, m\[0\]\.length, clause\)\) continue;/.test(b),
+  // 🛡️ E13/R11d: 签名补第 7 参 astroMatrix（流年一致性否决须真值盘）——断言随签名同步
+  assert.ok(/!_v512PossessiveNatal\(cfg, lang, text, m\.index, m\[0\]\.length, clause, astroMatrix\)\) continue;/.test(b),
     '缺物主本命语境准入裁定（possessive 模式会变成「月段一律锁」=主动污染）');
   // 非前导段不得再跑定语裁定（它会插写 natal 限定词，破坏幂等）
   assert.ok(/!opts\.leading && !opts\.natalScope/.test(b), 'possessive 模式未跳过定语裁定');
@@ -120,6 +121,9 @@ test('④ R11c: wealthCriticCheck 三类新判据 + astroMatrix 形参（判据 
   assert.ok(/_v512CountNatalClaimMismatch\(text,\s*lang/.test(cc), '判据 12 未接真值错配计数器');
   assert.ok(/畸形宫位格式/.test(cc), '判据 10 缺失（畸形宫位 N House 未入告警）');
   assert.ok(/\(\\d\{1,2\}\)\\s\+House\\b/.test(cc), '判据 10 未用「数字在前」形态（会误伤我方 houseFmt 的 House N）');
+  // 🛡️ E13/R11d-3: 判据 10 扩面到拼写式序数残留，且必须与归一化**同源**（杜绝双盲）
+  assert.ok(/拼写式序数宫位残留/.test(cc), '判据 10 未扩面到拼写式序数残留（R11d-3）');
+  assert.ok(/_V512_SPELLED_HOUSE/.test(cc), '判据 10 未复用 _V512_SPELLED_HOUSE 正则源码 ⇒ 归一化与 CRITIC 可能再次双盲');
   assert.ok(/自纠\/元话语 artifact 残留/.test(cc), '判据 11 缺失（artifact 未入告警）');
   assert.ok(/本命行星\/宫位声称与 SwissEph 真值错配/.test(cc), '判据 12 缺失');
   // 无尽言句不得计入错配（否则 CRITIC 恒误报 —— E11 空数组坑的同类事故面）
@@ -131,13 +135,13 @@ test('④ R11c: wealthCriticCheck 三类新判据 + astroMatrix 形参（判据 
     '端点调用点未传 astroMatrix ⇒ 判据 12 形同虚设');
 });
 
-test('⑤ 缓存 bump v511（server.js 四站点 + purge 补 v510 双形态 + 基线前移）', () => {
-  const sites = [...src.matchAll(/wealth:v511/g)].length;
-  assert.ok(sites >= 4, `server.js v511 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v510'), 'server.js 残留 v510（漏改一站）');
-  assert.ok(/wealth:v510:\*/.test(purgeSrc) && /wealth:v510-v2:\*/.test(purgeSrc), 'purge 脚本未补 v510 双形态');
+test('⑤ 缓存 bump v512（server.js 四站点 + purge 补 v511 双形态 + 基线前移）', () => {
+  const sites = [...src.matchAll(/wealth:v512/g)].length;
+  assert.ok(sites >= 4, `server.js v512 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v511'), 'server.js 残留 v511（漏改一站）');
+  assert.ok(/wealth:v511:\*/.test(purgeSrc) && /wealth:v511-v2:\*/.test(purgeSrc), 'purge 脚本未补 v511 双形态');
   const yearly = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
-  assert.ok(/MIN_CACHE_VER = 511/.test(yearly), 'yearly 流式闸门基线未前移 v511');
+  assert.ok(/MIN_CACHE_VER = 512/.test(yearly), 'yearly 流式闸门基线未前移 v512');
 });
 
 // ═══════════════ 行为级: vm 抽取 + Adelaide 假矩阵(零 python) ═══════════════
@@ -152,6 +156,7 @@ const SEEDS = ['_v432LockLeadingNatal', '_v432LockNatal', '_v432SentTransitMarke
   '_v512NormalizeHouseOrdinal', 'stripLLMSelfCorrection', '_v512PossessiveNatal', '_v512PossessiveTouch',
   '_v512SentWindow', '_v512CountNatalClaimMismatch', '_V512_POSS', '_V512_MONTH_TOK', '_V512_POSS_NEAR',
   '_V512_TIME_QUAL', '_V512_PLACE_AFTER', '_V512_MALFORMED_HOUSE', '_V512_META_RETRACT', '_V512_SENT_CUT',
+  '_V432_EN_SPELLED', '_V512_SPELLED_HOUSE',
   '_V512_META_PLAIN', '_V512_META_DECL', '_V512_META_CORR', '_V512_META_SENT', '_V512_META_PAREN',
   'applyTruthLocksEnEsZh', '_v432LockTransit', '_v433LockMoonWeek', 'applyV434Locks', 'v426EnforceNatalRetrograde'];
 
@@ -209,10 +214,67 @@ test('⑦ 行为级 R11a-1: 畸形归一零误伤（House 5 / 日期序数 / 越
   }
 });
 
+// ═══ 🛡️ E13/R11d-1: 英文拼写式序数（第五类盲区）—— 军师裁决要求在本闸门补拼写式用例 ═══
+test('⑦b 行为级 R11d-1: 拼写式序数归一（in the seventh house → in the 7th House，形态收口不含纠值）', () => {
+  // ⚠️ 本函数是**形态归一器**（不知真值）：只把拼写式收口成 `<N>th House` 数字式，**保留原写值**；
+  //   值的真值纠正由随后的真值锁完成（见 ⑧b）。切勿在此期望纠值（否则等于把归一器当成锁）。
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('your natal Sun burns in the seventh house of your chart.', 'en'),
+    'your natal Sun burns in the 7th House of your chart.');
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('Pluto in Scorpio in your first house.', 'en'),
+    'Pluto in Scorpio in your 1st House.');
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('the Moon in Leo in the seventh house', 'en'),
+    'the Moon in Leo in the 7th House');
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('transits Cancer in your seventh house', 'en'),
+    'transits Cancer in your 7th House');
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('moves through the twelfth house', 'en'),
+    'moves through the 12th House');
+  // 幂等：数字式不再被本式二次处理
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('in the 8th House of debt', 'en'), 'in the 8th House of debt');
+});
+
+test('⑦c 行为级 R11d-1: 拼写式归一零误伤（非序数 / 行首无冠词 / 我方数字式 / 连字符 / 复数）', () => {
+  for (const t of [
+    'the White House issued a statement',           // 非序数词 ⇒ 不动
+    'first house rules, second house follows',      // 行首 / 逗号后无冠词·物主 ⇒ 不动
+    'House 1 and House 12 are angular',             // 我方 houseFmt 合法产物 ⇒ 不动
+    'your seventh-house native',                    // 连字符复合形容词（`-` 非空白）⇒ 不动
+    'seventh and eighth houses rise together',      // 并列复数（`\s+house\b` 不匹配 `houses`）⇒ 不动
+    'the twelfth of never',                         // 非 house 搭配 ⇒ 不动
+  ]) {
+    assert.strictEqual(F._v512NormalizeHouseOrdinal(t, 'en'), t, `拼写式归一误伤: ${t}`);
+  }
+});
+
+test('⑦d 域假设边界: 纯冠词引导 <序数> house 亦归一（只换形态、绝不改值）', () => {
+  // 📌 域假设（已在上游常量注释显式声明）：本产品正文无房产/乐理语义面，
+  //    「the/your + 序数 + house」恒指占星宫位；且归一**绝不改值** ⇒ 语义零风险。
+  //    本用例把该假设固化为闸门断言，防止未来被无声改动。
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('the seventh house is your partnership sector.', 'en'),
+    'the 7th House is your partnership sector.');
+  assert.strictEqual(F._v512NormalizeHouseOrdinal('he sold the first house in the seventh year.', 'en'),
+    'he sold the 1st House in the seventh year.');
+});
+
 test('⑧ 行为级 R11a-1: 真值锁必须认得畸形形态并同时纠值（in the 12 House → 8th House）', () => {
   const t = TAILED('Your natal Moon in Leo in the 12 House.');
   const out = F._v432LockLeadingNatal(t, 'en', M_ADL, 'yearly');
   assert.ok(/Your natal Moon in Leo in the 8th House\./.test(out), '畸形形态未走 numHouse 分支纠值: ' + out.slice(out.indexOf('Chapter III')));
+});
+
+// 🛡️ E13/R11d-1: 前导锁必须认得**拼写式**并纠值（finder 层的第五式覆盖，独立于归一化）
+test('⑧b 行为级 R11d-1: 前导锁认得拼写式序数并纠值（in your first house → 11th House）', () => {
+  const LEADED = (body) => [
+    '### WEALTH ORACLE · FINANCIAL REVELATION', '',
+    'O child of Sagittarius, born December 15, 1992, with the Sun blazing in the 12th House.', '',
+    body, '',
+    '### July 2026: Sun in Cancer · 7th House · The Partnership Audit',
+    'Transiting Sun enters Cancer this month.', '',
+  ].join('\n');
+  const out = F._v432LockLeadingNatal(LEADED('Pluto in Scorpio in your first house.'), 'en', M_ADL, 'yearly');
+  assert.ok(/Pluto in Scorpio in your 11th House\./.test(out), '拼写式形态未被 finder 认出（第五式盲区）: ' + out.slice(0, 400));
+  // 正确值 + 拼写式 ⇒ 锁不动值（形态收口由 _v512NormalizeHouseOrdinal 负责，不属本锁职责）
+  const keep = F._v432LockLeadingNatal(LEADED('The Sun blazing in the twelfth house.'), 'en', M_ADL, 'yearly');
+  assert.ok(/The Sun blazing in the twelfth house\./.test(keep), '正确值的拼写式被锁误改: ' + keep.slice(0, 400));
 });
 
 test('⑨ 行为级 R11a-2: artifact 剥离命中 / 零误伤', () => {

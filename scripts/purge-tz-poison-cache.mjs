@@ -49,6 +49,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v509-v2:*',
   'wealth:v510:*',        // 🛡️ E12/R11: v510 全量作废（全章物主本命真值锁 + 畸形宫位形态归一 + LLM 自纠 artifact 剥离）
   'wealth:v510-v2:*',
+  'wealth:v511:*',        // 🛡️ E13/R11d: v511 全量作废（英文拼写式序数宫位盲区 + HIT 路径前导锁缺失，第 1 章本命宫位可错配）
+  'wealth:v511-v2:*',
   'wealth:v116-v2:*',
 ];
 

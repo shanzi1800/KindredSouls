@@ -64,7 +64,8 @@ test('① lockNatalAnchorRole 必须有 reportType 入参 + 年报早退护栏',
 });
 
 test('② applyTruthLocksEnEsZh 的流月锁必须按 reportType 分yearly 停用', () => {
-  assert.ok(/function\s+applyTruthLocksEnEsZh\s*\(\s*text\s*,\s*lang\s*,\s*astroMatrix\s*,\s*reportType\s*\)/.test(src),
+  // 🛡️ E13/R11d-4: 签名补第 5 参 opts（HIT 路径 skipAdjudicate 幂等）——断言随签名同步
+  assert.ok(/function\s+applyTruthLocksEnEsZh\s*\(\s*text\s*,\s*lang\s*,\s*astroMatrix\s*,\s*reportType\s*[,)]/.test(src),
     'applyTruthLocksEnEsZh 缺少 reportType 形参');
   assert.ok(transitLockGatedByYearly(fnBody('applyTruthLocksEnEsZh')),
     '_v432LockTransit 未被 reportType 护栏包住 —— 年报 12 个月流年真值会被改写成首月快照(from months[0])');
