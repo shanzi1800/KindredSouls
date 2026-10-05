@@ -288,9 +288,11 @@ test('【注入缺陷自测】_V482_FWD_BREAK 字面量退回裸 /[.\\n。]/ →
 });
 
 test('【注入缺陷自测】bwd 退回 slice(lo, Math.max(lo, ...)) → 判据② 必须红', () => {
+  // 🛡️ E18/R11k: bwd 构造升级为「先取本从句尾段 → 截断首个其他行星名 → 回传 bwdOff 绝对起点 + bwdOther」，
+  //   注入锚点随之同步（旧 `bwd = bm >= 0 ? … : tail` 单行写法已不存在）。
   const degraded = src.replace(
-    /const tail = bwd\.slice\(lo\);[\s\S]*?bwd = bm >= 0 \? tail\.slice\(0, bm\) : tail;/,
-    'bwd = bwd.slice(lo, Math.max(lo, bwd.search(cfg.bodyAny)));',
+    /const tail = bwd\.slice\(lo\);[\s\S]*?if \(bm >= 0\) \{ bwd = tail\.slice\(0, bm\); bwdOther = true; \} else \{ bwd = tail; \}/,
+    'const tail = bwd.slice(lo);\n    const bm = tail.search(cfg.bodyAny);\n    bwd = bwd.slice(lo, Math.max(lo, bm));',
   );
   assert.notStrictEqual(degraded, src, '未能注入缺陷');
   assert.ok(!bwdFixOk(degraded), '闸门失效: 旧写法未被判据② 识别');

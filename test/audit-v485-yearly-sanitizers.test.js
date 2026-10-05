@@ -184,12 +184,13 @@ test('④ lockYearlyOuterPlanetsYear: 纠正越界外行星幻觉 + 豁免本命
 // ══════════════════════════════════════════════════════════════════════════
 // ⑤ 接线 + 缓存版本(单调判据, 不许写死)
 // ══════════════════════════════════════════════════════════════════════════
-test('⑤ 接线: 新锁必须挂在收尾链全部落点(≥4 处)', () => {
+test('⑤ 接线: 新锁必须挂在收尾链全部**写链**落点(≥3 处)', () => {
   const n = (src.match(/lockYearlyOuterPlanetsYear\(/g) || []).length;
-  assert.ok(n >= 5, `lockYearlyOuterPlanetsYear 调用点应 ≥5(1 定义 + 4 落点), 实得 ${n}`);
+  assert.ok(n >= 4, `lockYearlyOuterPlanetsYear 调用点应 ≥4(1 定义 + 3 写链落点), 实得 ${n}`);
   assert.ok(/lockYearlyOuterPlanetsYear\(reportContent, lang, astroMatrix, reportType\)/.test(src), '非流式 MISS 未接线');
-  assert.ok(/lockYearlyOuterPlanetsYear\(streamText, lang, astroMatrix, reportType\)/.test(src), '流式 HIT 未接线');
   assert.ok(/lockYearlyOuterPlanetsYear\(cleanedText, lang, astroMatrix, reportType\)/.test(src), '流式落库前未接线');
+  // 🛡️ E18/R11k: 流式 HIT 已收拢（命中即终局）
+  assert.ok(!/lockYearlyOuterPlanetsYear\(streamText/.test(src), 'HIT 侧不得再挂（E18/R11k 命中即终局）');
 });
 
 test('⑥ 缓存版本必须 ≥ V485 基线(单调判据, 防每次 bump 假红)', () => {
@@ -240,12 +241,13 @@ test('⑦ stripYearlyPromptLeakage: 清除内部字段句 + 前后句完整 + �
   assert.strictEqual(f(normal, 'zh', 'yearly'), normal, '误伤了不含字段名的正常句子');
 });
 
-test('⑦b 接线: 泄漏清理必须在收尾链全部落点(≥4 处调用)', () => {
+test('⑦b 接线: 泄漏清理必须在收尾链全部**写链**落点(≥3 处调用)', () => {
   const n = (src.match(/stripYearlyPromptLeakage\(/g) || []).length;
-  assert.ok(n >= 5, `stripYearlyPromptLeakage 调用点应 ≥5(1 定义 + 4 落点), 实得 ${n}`);
+  assert.ok(n >= 4, `stripYearlyPromptLeakage 调用点应 ≥4(1 定义 + 3 写链落点), 实得 ${n}`);
   assert.ok(/stripYearlyPromptLeakage\(reportContent, lang, reportType\)/.test(src), '非流式 MISS 未接线');
-  assert.ok(/stripYearlyPromptLeakage\(streamText, lang, reportType\)/.test(src), '流式 HIT 未接线');
   assert.ok(/stripYearlyPromptLeakage\(cleanedText, lang, reportType\)/.test(src), '流式落库前未接线');
+  // 🛡️ E18/R11k: 流式 HIT 已收拢（命中即终局）
+  assert.ok(!/stripYearlyPromptLeakage\(streamText/.test(src), 'HIT 侧不得再挂（E18/R11k 命中即终局）');
 });
 
 test('⑦c Prompt 必须显式禁止内部字段入正文', () => {

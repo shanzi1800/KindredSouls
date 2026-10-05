@@ -61,14 +61,16 @@ test('① normalizeYearlyMarkup 必须存在 + 有 reportType 护栏(月报零�
     "缺少 `if (reportType !== 'yearly') return text;` —— 会污染月报");
 });
 
-test('② 归一函数必须挂在全部年报收尾路径(至少 4 处, 且都紧随月标题真值锁)', () => {
+test('② 归一函数必须挂在全部年报**写链**路径(至少 3 处, 且都紧随月标题真值锁)', () => {
   const sites = callSites('normalizeYearlyMarkup');
-  assert.ok(sites.length >= 4, `调用点不足(仅 ${sites.length} 处)，部分年报路径会漏归一`);
+  assert.ok(sites.length >= 3, `调用点不足(仅 ${sites.length} 处)，部分年报写链路径会漏归一`);
   const bad = sites.filter((l) => !/reportType\s*\)/.test(l));
   assert.strictEqual(bad.length, 0, '有调用点漏传 reportType: \n  ' + bad.join('\n  '));
   // 必须与 lockYearlyMonthTitles 成对出现(同一个收尾块)
   const lockSites = callSites('lockYearlyMonthTitles');
-  assert.ok(lockSites.length >= 4, 'lockYearlyMonthTitles 调用点异常');
+  assert.ok(lockSites.length >= 3, 'lockYearlyMonthTitles 调用点异常');
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 命中即终局 ⇒ 不得再挂归一（否则 HIT ≠ 落库文本）
+  assert.ok(!/normalizeYearlyMarkup\(stdCached/.test(src), 'HIT 侧不得再挂 normalizeYearlyMarkup');
 });
 
 // ── 行为级: vm 抽取 + 假数据 ──

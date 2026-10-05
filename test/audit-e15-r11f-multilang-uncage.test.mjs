@@ -83,11 +83,14 @@ function p0LetDeclared(s) {
   const decls = [...s.matchAll(/(const|let|var)\s+stdCached\s*=/g)];
   if (!decls.length) return false;
   if (!decls.every((m) => m[1] === 'let')) return false;
-  // HIT 段内必须确实存在重赋值（否则本判据是空断言 —— 防「恒真」）
   const at = s.indexOf('let stdCached = ');
   if (at < 0) return false;
   const seg = s.slice(at, at + 4000);
-  return (seg.match(/\bstdCached\s*=/g) || []).length >= 3;
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局」
+  //   ⇒ `stdCached` 只被声明一次、**不再重赋值**（旧 E13/R11d-4 的 vi/th HIT 重赋值已删除）。
+  //   本判据由「必须有 ≥3 处重赋值」（旧契约）改为「重赋值必须为 0」（新契约）——
+  //   仍保留「不得 const」的历史判别力（P0 崩溃回归可测）。
+  return (seg.match(/(^|[^.\w])stdCached\s*=[^=]/g) || []).length <= 1;
 }
 
 /** 支柱 2 之 es：cfg 必须具备阴性序数指示符第六式 */
@@ -114,15 +117,18 @@ function overlapGuardWired(s) {
 // ═══════════════════════════════════════════════════════════════════════
 // ① 支柱 0（P0）：const stdCached 赋值崩溃
 // ═══════════════════════════════════════════════════════════════════════
-test('① 支柱0: 非流式 HIT 的 stdCached 必须 let 声明（vi/th 分支重赋值 ⇒ const 必抛 TypeError）', () => {
-  assert.ok(p0LetDeclared(src), 'stdCached 非 let 声明或赋值链缺失（vi/th HIT 会抛 TypeError 被 catch 吞掉 ⇒ 缓存永不命中）');
+test('① 支柱0→E18/R11k: 非流式 HIT 的 stdCached 必须 let 声明，且 HIT 侧不再重赋值（命中即终局）', () => {
+  assert.ok(p0LetDeclared(src), 'stdCached 非 let 声明或声明链缺失（vi/th HIT 会抛 TypeError 被 catch 吞掉 ⇒ 缓存永不命中）');
   // 显式钉死：不得出现 `const stdCached`
   assert.ok(!/const\s+stdCached\s*=/.test(src), '出现 `const stdCached` —— P0 崩溃回归（vi/th 非流式 HIT 永灭）');
   // 该段必须含 P0 修复说明（防后人「顺手改回 const」）
   assert.ok(/E15\/R11f-0/.test(src), '缺 P0 修复说明锚点（E15/R11f-0）');
-  // vi / th 两个分支必须确实在给 stdCached 赋值
-  assert.ok(/stdCached\s*=\s*lockNatalTruthVi\(/.test(src), 'vi 分支未对 stdCached 赋值（判据失去对象）');
-  assert.ok(/stdCached\s*=\s*lockNatalTruthTh\(/.test(src), 'th 分支未对 stdCached 赋值（判据失去对象）');
+  // 🛡️ E18/R11k（军师裁决②）: HIT 侧收拢为「命中即终局」⇒ 不得再对 stdCached 做任何真值改写
+  //   （旧 E13/R11d-4 的 vi/th 重赋值已删除；此判据防「顺手注回二次锁」）。
+  //   ⚠️ 须剥注释：留在源码里的历史注记（`（stdCached = lockNatalTruthVi(...)`）不构成真实赋值。
+  assert.ok(!/stdCached\s*=\s*lockNatalTruthVi\(/.test(stripComments(src)), 'HIT 侧不得再重赋值 stdCached（E18/R11k 命中即终局）');
+  assert.ok(!/stdCached\s*=\s*lockNatalTruthTh\(/.test(stripComments(src)), 'HIT 侧不得再重赋值 stdCached（E18/R11k 命中即终局）');
+  assert.ok(/E18\/R11k/.test(src), '缺 E18/R11k Clean HIT Pipeline 说明锚点');
 });
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -436,20 +442,26 @@ test('⑮ 支柱3 行为级: 第 ⑥ 否决在真实宫头下弃权，等宫制�
 // ⑯ 缓存 v513
 // ═══════════════════════════════════════════════════════════════════════
 test('⑯ 缓存 v515（server.js 四站点 + purge 补 v514 双形态 + MIN_CACHE_VER 前移）', () => {
-  const sites = [...src.matchAll(/wealth:v517/g)].length;
+  const sites = [...src.matchAll(/wealth:v518/g)].length;
   assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
   assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
   assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
-  assert.ok(/MIN_CACHE_VER = 517/.test(yearlyTest), 'yearly 流式闸门基线未前移 v515');
+  assert.ok(/MIN_CACHE_VER = 518/.test(yearlyTest), 'yearly 流式闸门基线未前移 v518');
 });
 
 // ═══════════════════════════════════════════════════════════════════════
 // 【注入缺陷自测】—— 每条闸门必须能复刻旧缺陷并变红
 // ═══════════════════════════════════════════════════════════════════════
 test('⑰ 注入自测: 复刻 `const stdCached` → ① 必红（P0 崩溃回归可测）', () => {
-  const hacked = src.replace('let stdCached = standardizeReport(cachedText);', 'const stdCached = standardizeReport(cachedText);');
+  const hacked = src.replace('let stdCached = cachedText;', 'const stdCached = cachedText;');
   assert.notStrictEqual(hacked, src, '注入锚点未命中');
   assert.strictEqual(p0LetDeclared(hacked), false, '闸门失效: 改回 const 后 ① 仍判绿');
+});
+
+test("⑰' 注入自测: 注回 HIT 侧二次锁 `stdCached = lockNatalTruthVi(...)` → ① 必红", () => {
+  const hacked = src.replace('let stdCached = cachedText;', 'let stdCached = cachedText;\n          stdCached = lockNatalTruthVi(stdCached, null);');
+  assert.notStrictEqual(hacked, src, '注入锚点未命中');
+  assert.strictEqual(p0LetDeclared(hacked), false, '闸门失效: HIT 侧注回二次锁后 ① 仍判绿（命中即终局契约未被守护）');
 });
 
 test('⑱ 注入自测: 剥离 es cfg 的 houseAbbr → ⑤/⑧ 必红', () => {

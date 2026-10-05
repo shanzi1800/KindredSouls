@@ -61,6 +61,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v515-v2:*',
   'wealth:v516:*',        // 🛡️ E17/R11j: v516 全量作废（年报「上升锚点」零守卫 ⇒ 同一篇出现 3 个不同上升星座；裸本命句「月亮在金牛座第十二宫」宫位错配；头部高纬告知与尾部落款混入正文）
   'wealth:v516-v2:*',
+  'wealth:v517:*',        // 🛡️ E18/R11k: v517 全量作废（HIT 链二次施加非幂等 ⇒ HIT 响应 ≠ 库内文本（12 盘 5 盘劣化，`Sagittarius…— Sun, Moon,` 被抠成 `SagittLeo…—Moon,`）+ E17 裸本命锁把 12 个月标题星座反写回 natal Sun + `standardizeReport` 非幂等再插换行；HIT 侧收拢为「命中即终局」）
+  'wealth:v517-v2:*',
   'wealth:v116-v2:*',
 ];
 

@@ -114,10 +114,12 @@ test('① 源码: server.js 的年报星盘调用点必须传 { reportType } 决
   const code = stripComments(serverSrc);
   const calls = [...code.matchAll(/getAstroMatrix\(birthDate,\s*birthTime,\s*lat,\s*lon,\s*tz([^)]*)\)/g)].map((m) => m[1]);
   assert.ok(calls.length >= 4, `预期至少 4 个路由内调用点, 实得 ${calls.length}`);
-  // 4 个路由调用点(同步 HIT ×3 + 同步 MISS + 流式)必须带 reportType；
+  // 3 个路由调用点(同步 HIT + 同步 MISS + 流式)必须带 reportType；
+  // 🛡️ E18/R11k: HIT 侧三连雷（_hitAstro/_hitAstroTh/_hitAstro432）收拢为**一处** `_hitMatrix`，
+  //   故带 reportType 的调用点由 5 降为 3（非流式 HIT / 非流式 MISS / 流式）。
   // v2 引擎 /api/wealth-oracle/v2 不传(它有自己的滚动语义, 保持不变)
   const withRt = calls.filter((a) => /reportType/.test(a)).length;
-  assert.ok(withRt >= 5, `必须至少 5 个调用点传 reportType, 实得 ${withRt} (共 ${calls.length})`);
+  assert.ok(withRt >= 3, `必须至少 3 个调用点传 reportType, 实得 ${withRt} (共 ${calls.length})`);
 });
 
 test('② 源码: v69_client.js 的月报矩阵不得再直接以「当前月」当窗口起点', () => {

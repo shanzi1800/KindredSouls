@@ -150,30 +150,34 @@ test('③ 行为级: 豁免不过度 —— 非标题行的真值纠错依然生
   assert.ok(out.includes('ภพที่ 1 '), '正文 natal 句宫位必须纠正为 1');
 });
 
-test('④ 结构级: HIT th 分支年报/月报分流 —— 年报走逐月真值锁, 月报保留 months[0] 口径', () => {
-  const at = SRC.indexOf("if (lang === 'th') {", SRC.indexOf('let stdCached = standardizeReport(cachedText)'));
-  assert.ok(at > 0, '未找到 HIT th 分支');
-  const seg = SRC.slice(at, at + 1400);
-  assert.ok(/lockNatalTruthTh\(enforceRiskThreshold\(stdCached/.test(seg), 'HIT th 链须先跑 natal 锁');
-  assert.ok(/if \(reportType === 'yearly'\) \{[\s\S]*?lockYearlyMonthTitles\(stdCached[\s\S]*?lockYearlyTransitSigns\(stdCached[\s\S]*?\} else \{[\s\S]*?lockTransitTruthTh\(stdCached/.test(seg),
-    '年报须分流到 lockYearlyMonthTitles + lockYearlyTransitSigns（与 MISS 链对称）, 月报才用 lockTransitTruthTh');
+test('④ E16/R11i→E18/R11k: HIT th 分支已收拢（命中即终局，不再跑任何锁）', () => {
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局，不再跑锁链」。
+  //   旧 E16/R11i 的「HIT th natal 锁 + 年报/月报分流（lockYearlyMonthTitles/TransitSigns/TransitTruthTh）」
+  //   已**整体删除** —— HIT 与 MISS 链「同集不同序」正是同一缓存键产出两份报告的病根
+  //   （v517 线上 12 盘实证：HIT th 链把月标题星座改写成 natal Sun）。
+  assert.ok(/Clean HIT Pipeline/.test(SRC), '缺 E18/R11k Clean HIT Pipeline 段（HIT 收拢未落地）');
+  assert.ok(!/lockNatalTruthTh\(enforceRiskThreshold\(stdCached/.test(SRC), 'HIT th 分支不得再挂 natal 锁（E18/R11k 命中即终局）');
+  assert.ok(!/lockYearlyMonthTitles\(stdCached/.test(SRC), 'HIT 侧不得再挂 lockYearlyMonthTitles（E18/R11k 命中即终局）');
+  assert.ok(!/lockYearlyTransitSigns\(stdCached/.test(SRC), 'HIT 侧不得再挂 lockYearlyTransitSigns（E18/R11k 命中即终局）');
+  assert.ok(!/lockTransitTruthTh\(stdCached/.test(SRC), 'HIT 侧不得再挂 lockTransitTruthTh（E18/R11k 命中即终局）');
 });
 
-test("④' 注入自测: 分流退化（年报误用 lockTransitTruthTh）⇒ 红", () => {
-  const at = SRC.indexOf("if (lang === 'th') {", SRC.indexOf('let stdCached = standardizeReport(cachedText)'));
-  const seg = SRC.slice(at, at + 1400);
-  const broken = seg.replace(/if \(reportType === 'yearly'\) \{[\s\S]*?\} else \{\s*stdCached = lockTransitTruthTh\(stdCached, _hitAstroTh\);\s*\}/,
-    "stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);");
-  assert.notEqual(broken, seg, '注入未生效');
-  assert.ok(!/lockYearlyMonthTitles\(stdCached/.test(broken), '注入后年报逐月锁必须消失（复刻旧缺陷形态）');
+test("④' 注入自测: 注回 HIT th natal 锁 ⇒ ④ 必红（复刻旧缺陷形态）", () => {
+  const injected = SRC.replace('let stdCached = cachedText;',
+    "let stdCached = cachedText;\n        stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);");
+  assert.notEqual(injected, SRC, '注入未生效');
+  assert.ok(/lockNatalTruthTh\(enforceRiskThreshold\(stdCached/.test(injected),
+    '注回后 HIT 锁必须出现（否则 ④ 的否定断言无判别力）');
 });
 
-test('⑤ 结构级: MISS 链四路（非流式/流式/落库/HIT）兜底锁不得回退', () => {
+test('⑤ 结构级: MISS 链两路（非流式/落库前）兜底锁不得回退；流式 HIT 侧零挂载（E18/R11k）', () => {
   const miss = SRC.indexOf('reportContent = lockYearlyMonthTitles(reportContent, lang, astroMatrix, reportType)');
-  const stream = SRC.indexOf('streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType)');
   const cleaned = SRC.indexOf('cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType)');
-  assert.ok(miss > 0 && stream > 0 && cleaned > 0, 'MISS 三路兜底锁必须齐全');
-  assert.ok(SRC.includes("stdCached = lockYearlyMonthTitles(stdCached, lang, _hitAstroTh, reportType)"), 'HIT th 链兜底锁必须存在');
+  assert.ok(miss > 0 && cleaned > 0, 'MISS 两路兜底锁必须齐全');
+  // 🛡️ E18/R11k: 流式 HIT 的 `streamText = lockYearlyMonthTitles(streamText, …)` 与
+  //   HIT th 链 `stdCached = lockYearlyMonthTitles(stdCached, …)` 均已删除（命中即终局）。
+  assert.ok(!/streamText = lockYearlyMonthTitles\(streamText/.test(SRC), '流式 HIT 侧兜底锁必须删除（E18/R11k 命中即终局）');
+  assert.ok(!SRC.includes('stdCached = lockYearlyMonthTitles('), 'HIT 侧兜底锁必须删除（E18/R11k 命中即终局）');
 });
 
 test('⑥ 种子自检: 链沙箱的 SUN_SIGN_TH 必须是生产短形（种错 ⇒ 全闸门假绿）', () => {

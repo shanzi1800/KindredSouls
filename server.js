@@ -4567,7 +4567,10 @@ function _v432Clause(cfg, lang, text, i, len, explicit, opts2 = {}) {
     const aIdx = fwd.search(cfg.axis);
     if (aIdx >= 0) fwd = fwd.slice(0, aIdx);
   }
-  let bwd = text.slice(Math.max(0, i - 70), i);
+  const bwdBase = Math.max(0, i - 70);
+  let bwd = text.slice(bwdBase, i);
+  let bwdOff = bwdBase;        // bwd 在 text 中的**绝对起点**（见下 E18 注释，调用方禁止再用长度推算）
+  let bwdOther = false;        // bwd 是否被「另一颗行星名」截断（该窗段的前置星座/宫位归属那颗行星）
   if (cfg.transitMark.test(bwd)) {
     bwd = '';
   } else {
@@ -4579,9 +4582,20 @@ function _v432Clause(cfg, lang, text, i, len, explicit, opts2 = {}) {
     //   「射手座月亮」这类漂移**从来纠不动**。改为：先取本从句尾段, 再在其中截断到首个其他行星名。
     const tail = bwd.slice(lo);
     const bm = tail.search(cfg.bodyAny);
-    bwd = bm >= 0 ? tail.slice(0, bm) : tail;
+    if (bm >= 0) { bwd = tail.slice(0, bm); bwdOther = true; } else { bwd = tail; }
+    // 🛡️ E18/R11k（偏移坐标系铁律 · 第 4 例）：bwd 必须回传**绝对起点**。
+    //   旧调用方写法 `backStart = m.index - bwd.length` 隐含「bwd 是紧贴锚点的后缀」这一前提；
+    //   而 `cfg.bodyAny = /(?:^|[\s(])(?:Sun|Moon|…)\b/` 会**吞掉前导分隔符** ⇒
+    //   `bwd = tail.slice(0, bm)` 与锚点之间还隔着 `tail.slice(bm)`（如 `" Sun, "`）⇒
+    //   起点被右移 (窗口长 − bm) 个字符。实证（s2 en 库内文本 replay）：库内正确句
+    //   `Sagittarius 12th House emphasis in your chart — Sun, Moon,` 被替换成
+    //   `SagittLeo 8th House emphasis in your chart —Moon,`（保留 `Sagitt` + 写入 `Leo`
+    //   + 吞掉 `" Sun, "`）—— 正是线上 HIT 逐字复现的 artifact。
+    //   ⇒ 起点一律由 builder 回传（`bwdOff = 窗口起点 + 从句起点`），彻底废除长度推算。
+    //   ⚠️ `bm < 0`（无其他行星名截断）时 `bwdBase + lo === i - bwd.length` ⇒ 行为逐字节不变。
+    bwdOff = bwdBase + lo;
   }
-  return { fwd, bwd, fwd2, fwd2Off };
+  return { fwd, bwd, bwdOff, bwdOther, fwd2, fwd2Off };
 }
 
 // ── 流月从句归因：需「位置描述」或「流月标记」，且无本命定语 ──
@@ -4894,10 +4908,18 @@ function _v432LockNatal(text, lang, astroMatrix, opts = {}) {
     if (!clause) continue;
     if (!explicit && !opts.leading && admitByScope
       && !_v512PossessiveNatal(cfg, lang, text, m.index, m[0].length, clause, astroMatrix)) continue;
-    const { fwd, bwd, fwd2, fwd2Off } = clause;
-    const backStart = m.index - bwd.length;
+    const { fwd, bwd, bwdOff, bwdOther, fwd2, fwd2Off } = clause;
+    // 🛡️ E18/R11k: 起点一律取 builder 回传的**绝对坐标**（旧 `m.index - bwd.length` 在
+    //   `bwdOther`（被另一颗行星名截断）时右移，产生 `SagittLeo` 类拼接 artifact —— 见 _v432Clause 注释）。
+    const backStart = (typeof bwdOff === 'number') ? bwdOff : (m.index - bwd.length);
+    // 🛡️ E18/R11k 幂等守卫：bwd 窗被「另一颗行星名」截断（`bwdOther`）⇒ 窗内前置的星座/宫位
+    //   已被那颗行星认领（`— Sun, Moon` 里的 `Sagittarius 12th` 属太阳），把它当本行星的声称 =
+    //   张冠李戴；且这一改写在二次施加时结果不稳定（f(f(x)) ≠ f(x)，实测 s3 es / s10 en）。
+    //   语义依据（与 `_v432ResolveOverlaps` 同族）：窗段与锚点之间隔着「另一颗行星名」，
+    //   中间那颗星才是该窗段的后继主体 ⇒ 弃权是**唯一保守且自洽**的选择（宁可漏改，不可编）。
+    const skipB = bwdOther;
     const F = _v432PatchZone(cfg, lang, fwd, t.sign, t.house, true, text, m.index + m[0].length);
-    const B = bwd ? _v432PatchZone(cfg, lang, bwd, t.sign, t.house, false, text, backStart) : { text: bwd, count: 0 };
+    const B = (bwd && !skipB) ? _v432PatchZone(cfg, lang, bwd, t.sign, t.house, false, text, backStart) : { text: bwd, count: 0 };
     // 🛡️ V492b/E9: 轴点后段（fwd2）同送纠值 —— "…Capricorn Ascendant, sits in Aries in the
     //   4th House" 的真声称在轴点之后；轴点词本身不在任何窗口 ⇒ 原样保留。
     const F2 = (fwd2 && fwd2.trim()) ? _v432PatchZone(cfg, lang, fwd2, t.sign, t.house, true, text, m.index + m[0].length + fwd2Off) : { count: 0 };
@@ -6753,9 +6775,25 @@ function lockYearlyBareNatalPlanets(text, lang, astroMatrix, reportType) {
   if (!Object.keys(truth).length) return text;
   const mark = _V517_TRANSIT_MARK[lang] || null;
   const signSet = new Set(signs.map((s) => String(s).toLowerCase()));
+  // 🛡️ E18/R11k（P0）：**月标题行豁免**。
+  //   病根（2026-10-05 v517 线上 s2 en 库内文本实证）：月标题 `### July 2026: Sun in Cancer · 7th House · …`
+  //   描述的是**流月**太阳，措辞极简（无 transit 词 ⇒ 流年豁免失效），被本锁当成「裸本命句」
+  //   按本命真值反写 ⇒ **12 个月标题星座全部变成 natal Sun（Sagittarius）**，而宫位仍是正确的
+  //   流年值 ⇒ 半错半对的 B 版。后果：CRITIC 判据 4/5（月标题太阳星座真值）持续告警，
+  //   且本锁挂在 `lockYearlyMonthTitles` **之后** ⇒ 把刚纠好的标题又改坏（链上实测 Δ=+55）。
+  //   识别真源复用 `_v516MonthHeadKey`（六语统一识别，与 `lockYearlyMonthTitles` **同口径**，判据同源）。
+  //   ⚠️ 与 E16/R11g 修 th/vi/fr「标题行豁免」、`_v432AdjudicateDescriptors` 的 `_v479IsMonthTitleLine`
+  //   守卫同族 —— 凡「按行星真值纠值的锁」都必须先排除月标题行。
+  const _v517InMonthTitle = (idx) => {
+    const ls = text.lastIndexOf('\n', idx - 1) + 1;
+    let le = text.indexOf('\n', idx);
+    if (le === -1) le = text.length;
+    try { return !!_v516MonthHeadKey(text.slice(ls, le), lang); } catch (e) { return false; }
+  };
   let n = 0;
   const out = text.replace(re, (m, planetTok, signTok, houseTok, off) => {
     if (!signSet.has(String(signTok).toLowerCase())) return m;
+    if (_v517InMonthTitle(off)) return m;                                      // 🛡️ E18/R11k 月标题豁免
     if (mark && mark.test(text.slice(Math.max(0, off - 30), off))) return m;   // 流年豁免
     const key = _V517_PLANET_KEY_ORDER[_V517_PLANET_ZH.indexOf(planetTok) >= 0 ? _V517_PLANET_ZH.indexOf(planetTok) : _V517_PLANET_EN.indexOf(planetTok)];
     const t = truth[key];
@@ -8197,7 +8235,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v517:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v518:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11477,7 +11515,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v517:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v518:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11503,7 +11541,13 @@ app.post('/api/wealth-oracle', async (req, res) => {
           //   实证(12 盘批测): vi 阿克拉盘行已落库(created_at 早于 HIT) 却 cached=false、HIT 166.6s；
           //   同端点 en 对照 Adelaide HIT 1166ms / 新德里 2086ms。
           //   闸门: audit-e15-r11f-multilang-uncage（含注入缺陷自测: 改回 const 必须报红）。
-          let stdCached = standardizeReport(cachedText);
+          // 🛡️ E18/R11k: **不再二次 `standardizeReport`**。
+          //   病根：`standardizeReport` 内含 `t.replace(/(?<!#)###\s+/g, '\n### ')` 与
+          //   `t.replace(/---/g, '\n---\n')` —— 二者**非幂等**（每次施加都再插一批换行）；
+          //   落库时已施加过一次（:11849 `insight: standardizeReport(reportContent)`），
+          //   HIT 再施加一次 ⇒ HIT 文本比库内文本多出一批换行（12 盘实测 `hit_identical` 恒 false）。
+          //   ⇒ 命中文本按**原样**使用，一个字符都不动（见下方 Clean HIT Pipeline）。
+          let stdCached = cachedText;
           // 🛠️ V394-fix8: 非stream端点HIT路径补齐vi清洗兜底(与stream端点6077对齐)——
           //   历史9-06脏缓存(含bạnè/trongương吞字/5.000.000越界)经此强制清洗,杜绝毒化复现
           // 🛡️ V483c: `_hitAstro` / `_hitAstroTh` / `_hitAstro432` 必须在本块**顶层**声明。
@@ -11515,58 +11559,31 @@ app.post('/api/wealth-oracle', async (req, res) => {
           //   每次请求都退化成 MISS 重新生成（LLM 费用 + 用户等待双输）。
           //   线上实测日志(2026-09-30): `[wealth-oracle] Cache check error: _hitAstro432 is not defined`。
           //   ⚠️ 与 V482d「模块级函数隐式依赖调用者局部变量」同源: 收尾/缓存路径必须自洽。
-          let _hitAstro = null;
-          let _hitAstroTh = null;
-          let _hitAstro432 = null;
-          if (lang === 'vi') {
-            // 🛠️ V421: HIT 路径锁本命盘真值。本函数 astroMatrix 在 5494 才 let（此处引用会 TDZ ReferenceError），
-            //   故另取一份局部真值盘（仅 vi HIT 触发，成本可忽）。取不到则 lockNatalTruthVi 自动跳过，绝不编。
-            try { _hitAstro = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V421] HIT matrix fetch failed: ' + e.message); }
-            stdCached = lockNatalTruthVi(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
-            stdCached = lockTransitTruthVi(stdCached, _hitAstro);
-            if (lang === 'fr') stdCached = lockNatalTruthFr(enforceRiskThreshold(fixVietnameseCorruption((stdCached || '').normalize('NFC')), lang), _hitAstro);
-            if (lang === 'fr') stdCached = lockTransitTruthFr(stdCached, _hitAstro);
-            stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstro);   // V433-fix4
-            stdCached = applyV434Locks(stdCached, lang, _hitAstro);   // V434
-          }
-          // 🛠️ V424-fix4: HIT 路径补泰语真值锁（V424 仅挂 MISS 路径，泰语旧缓存漏网）
-          if (lang === 'th') {
-            try { _hitAstroTh = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V424-fix4] HIT matrix fetch failed: ' + e.message); }
-            stdCached = lockNatalTruthTh(enforceRiskThreshold(stdCached, lang), _hitAstroTh);
-            // 🛡️ E16/R11i: 年报/月报分流——lockTransitTruthTh 是「months[0] 单月口径」(V424-B2 为月报设计),
-            //   对年报会把 2~12 月正文/标题的流年句全部纠成首月真值（线上 v515 实证: s6 阿皮亚 12 个月标题
-            //   全被 natal 锁污染成 natal Sun 星座、HIT 直出坏版；MISS 链尾有 lockYearlyMonthTitles 兜底而
-            //   HIT 链没有）。年报改用与 MISS 链 :11401/:11403 完全对称的逐月真值锁（幂等, 对已正确文本零改动）。
-            if (reportType === 'yearly') {
-              stdCached = lockYearlyMonthTitles(stdCached, lang, _hitAstroTh, reportType);
-              stdCached = lockYearlyTransitSigns(stdCached, lang, _hitAstroTh, reportType);
-            } else {
-              stdCached = lockTransitTruthTh(stdCached, _hitAstroTh);
-            }
-            stdCached = _v433LockMoonWeek(stdCached, lang, _hitAstroTh);   // V433-fix4
-            stdCached = applyV434Locks(stdCached, lang, _hitAstroTh);   // V434
-          }
-          // 🛠️ V432: HIT 路径补 en/es/zh 真值锁（与 vi/th/fr 对称；旧缓存里的 native 漂移不再裸奔）
-          let _hitFinal = stdCached;
-          if (_V432_LANGS.includes(lang)) {
-            try { _hitAstro432 = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[V432] HIT matrix fetch failed: ' + e.message); }
-            _hitFinal = applyTruthLocksEnEsZh(stdCached, lang, _hitAstro432, reportType, { skipAdjudicate: true });
-            // 🛡️ E13/R11d-4: HIT 路径补挂**前导段本命强锁**（MISS 链末最后一道话语权）。
-            //   病根（2026-10-03 v511 线上实证）：HIT 只调 applyTruthLocksEnEsZh ⇒ 缺前导锁 ⇒
-            //   行星锁 fwd2 窗口把前导段的 `Rising Capricorn` 反写为 `Rising Leo`（E9 已记载的
-            //   轴点反写隐患），而 MISS 链末的 _v432LockLeadingNatal 内含 _v492cLockAxisSalutation
-            //   会纠回来 ⇒ **同一缓存键，HIT 响应比 MISS/缓存更差**（实测 Capricorn→Leo）。
-            //   本锁自带 `reportType !== 'yearly'` 早退 + 幂等（锁定值不再重写），故对月报零影响、
-            //   对已处理过的缓存文本重跑无副作用。
-            _hitFinal = _v432LockLeadingNatal(_hitFinal, lang, _hitAstro432, reportType);
-          }
+          // ═══ 🛡️ E18/R11k（军师裁决②）: Clean HIT Pipeline —— 命中即终局，**绝不再跑锁链** ═══
+          // 病根（2026-10-05 v517 线上 12 盘 + 离线逐字复刻）：
+          //   ① 缓存键内嵌版本号（上方 cacheKey 模板字面量，查询用 `eq.` 整键精确匹配）
+          //      ⇒ 命中行**必然**由本版写链产出，其文本已是「锁链终局」；
+          //   ② 写链末还有 `standardizeReport()` 一步（落库前），而 HIT 侧重跑的是**写链的子集**
+          //      且时序错位 ⇒ 命中文本与重跑输入**根本不是同一个不动点**，二次施加在数学上无意义；
+          //   ③ 实测劣化（12 盘中 5 盘 HIT ≠ 库内文本）：
+          //      · `_v432LockLeadingNatal` 把 `Sagittarius 12th House emphasis in your chart — Sun, Moon,`
+          //        抠成 `SagittLeo 8th House … —Moon,`（拼接吃字 artifact，s2 en 逐字复现）；
+          //      · `applyTruthLocksEnEsZh` 在库内文本上净删 30~64 字；
+          //      · `standardizeReport` 二次施加再插一批换行（其 `###`/`---` 换行注入非幂等）。
+          // 治法：HIT 直接下发库内文本 ⇒ `HIT 响应 ≡ 落库文本` 由**结构**保证，
+          //   不再依赖「每把锁都恰好幂等」这一脆弱前提。被删掉的 HIT 侧补锁（V421/V424-fix4/V432/E16-R11i）
+          //   其算子集合均为写链**子集**（enforceRiskThreshold / fixVietnameseCorruption / lockNatalTruth*
+          //   / lockYearlyMonthTitles / lockYearlyTransitSigns / applyV434Locks / applyTruthLocksEnEsZh /
+          //   _v432LockLeadingNatal / _v517YearlyFinalLocks 在写链 :13450~13486 与 :11724~11751 均已挂载）
+          //   ⇒ 删除后 HIT 输出 = 写链输出，信息**只增不减**。旧代码保留于 git 历史。
+          //   本条即军师「在锁链开头增加 is_already_locked 判重」的等价实现 —— 版本号就在缓存键里，
+          //   命中行天然携带「已锁定」语义，无需再探文本。
+          // 仍需真值盘：仅为 `buildHighLatitudeMeta` 计算高纬告知（正文不再拼接）。
+          let _hitMatrix = null;
+          try { _hitMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { console.warn('[E18/R11k] HIT matrix fetch failed: ' + e.message); }
+          const _hitFinal = stdCached;
           // 🛠️ V427: HIT 路径补 data 字段(让前端 4 卡片能渲染，与 MISS 路径对称)
           const _hitMeta = buildWealthMetaFull(birthDate, lang);
-          // 返回缓存数据(包装成前端期望的格式)
-          // 🛠️ V120: 月报返回 markdown 纯文本
-          const _hitMatrix = _hitAstro432 || _hitAstro || _hitAstroTh || null;
-          // 🛡️ E17/R11j: HIT 侧同样过四道治本锁（与 MISS 链同序同集 ⇒ HIT 响应 == 落库文本，军师铁律）
-          _hitFinal = _v517YearlyFinalLocks(_hitFinal, lang, _hitMatrix, reportType);
           // 🛡️ E17/R11j ⑤-a: 高纬告知改由 JSON meta 返回（正文不再拼接，前端顶部单独渲染）
           return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal, highLatitudeNotice: buildHighLatitudeMeta(_hitMatrix, lang) });
         }
@@ -11833,8 +11850,15 @@ app.post('/api/wealth-oracle', async (req, res) => {
           }
         }
 
+        // 🛡️ E18/R11k: **响应文本与落库文本必须逐字同源**（军师裁决：Text(MISS) ≡ Text(HIT) 逐字）。
+        //   病根：落库写的是 `standardizeReport(reportContent)`（:11866），而响应返回的是 `reportContent` 原样
+        //   ⇒ 同一份报告「首屏（MISS）」与「刷新（HIT）」排版不同（12 盘实测长度差 35~156 字，全为
+        //   `###`/`---` 前后换行与 ✦ 注入）。`standardizeReport` 的换行注入**非幂等**，
+        //   故必须**只算一次**、两处共用同一字符串（否则又变成两次独立施加）。
+        const _finalText = standardizeReport(reportContent);
+
         // ═══ 写入缓存(非流式端点)═══
-        if (SB_URL && SB_KEY && reportContent && reportContent.length > 100 && !skipCache) {
+        if (SB_URL && SB_KEY && _finalText && _finalText.length > 100 && !skipCache) {
           try {
             await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
               method: 'POST',
@@ -11846,19 +11870,20 @@ app.post('/api/wealth-oracle', async (req, res) => {
               },
               body: JSON.stringify({
                 cache_key: cacheKey,
-                insight: standardizeReport(reportContent),
+                insight: _finalText,
                 prompt_version: `v1.0.0-${reportType}-${lang}`,
                 created_at: new Date().toISOString(),
               })
             });
-            console.log(`[wealth-oracle] [WRITE] Cache write: ${cacheKey}, length=${reportContent.length}`);
+            console.log(`[wealth-oracle] [WRITE] Cache write: ${cacheKey}, length=${_finalText.length}`);
           } catch (e) {
             console.warn('[wealth-oracle] Cache write error:', e.message);
           }
         }
 
         // 🛡️ E17/R11j ⑤-a: 高纬告知改由 JSON meta 返回（正文不再拼接，前端顶部单独渲染 Banner）
-        return res.json({ ...result, report: reportContent, insight: '', highLatitudeNotice: buildHighLatitudeMeta(astroMatrix, lang) });
+        // 🛡️ E18/R11k: `report` 用 `_finalText` —— 与落库同一字符串 ⇒ MISS 响应 ≡ HIT 响应（逐字）。
+        return res.json({ ...result, report: _finalText, insight: '', highLatitudeNotice: buildHighLatitudeMeta(astroMatrix, lang) });
       } catch (aiError) {
         console.error('[Wealth Oracle] AI generation failed:', aiError.message);
         return res.status(500).json({ success: false, error: 'AI generation failed: ' + aiError.message });
@@ -12205,7 +12230,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v517:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v518:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12342,43 +12367,26 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         // 🛠️ V189: 消费陷阱+括号兜底（共享函数）
         streamText = cleanConsumerTrapAndBrackets(streamText);
 
-        // 🛡️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿
-        // 🛠️ V394-fix4: HIT 路径拆词兜底清洗(入口已拦脏缓存,此处仅正常补偿)
+        // ═══ 🛡️ E18/R11k（军师裁决②）: 流式 HIT 同样「命中即终局，不再跑锁链」 ═══
+        //   与非流式 HIT（Clean HIT Pipeline）同一条铁律：缓存键内嵌版本号（`wealth:v5xx:…`，`eq.` 整键匹配）
+        //   ⇒ 命中文本**必然**是写链终局；HIT 侧重跑的是写链**子集且时序错位** ⇒ 二次施加必然劣化。
+        //   线上实证（12 盘，v517）：`_v432LockLeadingNatal` 拼接吃字（`Sagittarius…— Sun, Moon,`
+        //   → `SagittLeo…—Moon,`）、`applyTruthLocksEnEsZh` 净删 30~64 字、
+        //   `_v517YearlyFinalLocks`→`lockYearlyBareNatalPlanets` 把 12 个月标题星座反写成 natal Sun。
+        //   ⇒ 一并删除（含 vi/th/fr 补锁与月标题逐月锁）—— 全部已挂载于写链
+        //   （stream 写链 :13450~13486 / 非流式 :11724~11751），信息**只增不减**。
+        //   形态卫生类步骤（占位符替换 / 法·西清洗 / `_dedupParagraphs` / `cleanConsumerTrapAndBrackets`）
+        //   保留在上方：它们只动形态、不动真值（旧代码保留于 git 历史）。
+        // 🛠️ V222z-fix14: 越南语 DeepSeek 词边界编码缺陷后处理补偿（形态类，保留）
         if (lang === 'vi') {
           streamText = fixVietnameseCorruption(streamText);
-          // 🛠️ V394-fix7: HIT 路径补 enforceRiskThreshold——V383-fix5 仅挂 MISS cleanedText 链,
-          //   历史 MISS 写入的缓存(无拆词无占位符但陷阱段无阈值/双份残稿)在 HIT 路径直接裸奔。
-          //   与 MISS 路径对齐, 读取时强制阈值兜底。
+          // 🛠️ V394-fix7: 阈值兜底（金额形态归一，非真值改写）
           streamText = enforceRiskThreshold(streamText, lang);
-          // 🛠️ V421: HIT 路径同样锁本命盘真值，防止历史脏缓存里的 native 漂移裸奔
-          if (lang === 'vi') streamText = lockNatalTruthVi(streamText, astroMatrix);
-          if (lang === 'vi') streamText = lockTransitTruthVi(streamText, astroMatrix);
-          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
-          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
-  if (lang === 'fr') streamText = lockNatalTruthFr(streamText, astroMatrix);
-  if (lang === 'fr') streamText = lockTransitTruthFr(streamText, astroMatrix);
-          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
-          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
-          if (lang === 'th') streamText = lockNatalTruthTh(streamText, astroMatrix);
-          if (lang === 'th') streamText = lockTransitTruthTh(streamText, astroMatrix);
-          streamText = _v433LockMoonWeek(streamText, lang, astroMatrix);   // V433-fix4
-          streamText = applyV434Locks(streamText, lang, astroMatrix);   // V434
         }
-        // 🛠️ V432: HIT stream 路径 en/es/zh 真值双锁（既有 fr/th 挂载被 vi 作用域吞掉，故此处显式挂）
-        if (_V432_LANGS.includes(lang)) streamText = applyTruthLocksEnEsZh(streamText, lang, astroMatrix, reportType);
-        else streamText = _v516OutputHygiene(streamText, lang);   // 🛡️ E16/R11g-fix: fr/th/vi 形态卫生（只换形态）
-        streamText = lockNatalAnchorRole(streamText, lang, astroMatrix, reportType);   // 🛡️ V444
-        streamText = lockTransitPlanetSigns(streamText, lang, astroMatrix, reportType); // 🛡️ V445
-        streamText = applyMoonWeekHardOverride(streamText, lang, astroMatrix);  // 🛡️ V438
-        streamText = lockYearlyMonthTitles(streamText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
-        streamText = normalizeYearlyMarkup(streamText, lang, reportType);  // 🛡️ V480 年报结构归一
-        streamText = lockYearlyTransitSigns(streamText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
-        streamText = lockYearlyOuterPlanetsYear(streamText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
-        streamText = lockYearlyNonMonthSunRef(streamText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(HIT 下发前)
-        streamText = _v432LockLeadingNatal(streamText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(HIT 下发前)
-        streamText = stripYearlyPromptLeakage(streamText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
-        streamText = _v517YearlyFinalLocks(streamText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(流式 HIT 下发前)
-        streamText = dedupYearlyMonthTitles(streamText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(防历史脏缓存 24 行裸奔)
+        // 🛡️ E16/R11g-fix: fr/th/vi 形态卫生（英文 `N House` 残渣归一本地形；**只换形态、绝不改值**）
+        //   E18/R11k: en/es/zh 的真值双锁已收拢至写链（命中即终局），此处仅保留**形态类**守卫
+        //   —— 它幂等（已归一则无操作）⇒ 不破坏「HIT 响应 ≡ 库内文本」。
+        if (!_V432_LANGS.includes(lang)) streamText = _v516OutputHygiene(streamText, lang);
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
         streamText = streamText.replace(/\uFFFD/g, '');
@@ -13883,7 +13891,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v517-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v518-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

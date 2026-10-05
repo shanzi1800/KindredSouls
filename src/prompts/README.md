@@ -19,7 +19,7 @@
    node -e "import('./src/prompts/loader.js').then(m=>console.log(m.getSystemPromptByLocale('zh').slice(0,200)))"
    ```
 3. 输出链（提示词 / 清洗链 / 注入字段）任何改动，都要 bump 年报缓存版本
-   `wealth:vNNN:`（`server.js` 3 处 + `test/audit-yearly-stream.test.js` 的 `MIN_CACHE_VER`），
+   `wealth:vNNN:`（`server.js` 4 处 = 删除键/非流式/流式/年报 `-v2` + `test/audit-yearly-stream.test.js` 的 `MIN_CACHE_VER`），
    否则会复用毒缓存。
 
 ## 已删除的孪生漂移源（V487 P0 技术债）

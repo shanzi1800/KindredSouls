@@ -89,22 +89,22 @@ test('③ 流年句识别必须收窄口径（Transit / 2026 / In 2026 / 流年�
   assert.ok(/_V492B_SENT_BREAK/.test(b), '流年句识别未按句窗断句');
 });
 
-test('④ 三链挂载齐全（非流式 / 流式 HIT / 流式落库前）且均排在 V488 之后', () => {
+test('④ 写链两处挂载齐全（非流式 / 流式落库前）且均排在 V488 之后；HIT 侧零挂载（E18/R11k）', () => {
   const calls = [...src.matchAll(/_v432LockLeadingNatal\(/g)].length;
-  assert.ok(calls >= 5, `挂载点不足(定义1+调用≥4): ${calls}`);
+  assert.ok(calls >= 3, `挂载点不足(定义1+调用≥2): ${calls}`);
   const v488s = [...src.matchAll(/lockYearlyNonMonthSunRef\([^)]*\);/g)].map((m) => m.index);
   const locks = [...src.matchAll(/= _v432LockLeadingNatal\(/g)].map((m) => m.index);
-  assert.ok(locks.length >= 4, `链上调用不足 4 处: ${locks.length}`);
-  // 「链上挂载点」= 紧邻其 V488 守卫之后的 3 处（非流式 MISS / 流式 HIT 下发前 / 落库前最后一道）。
-  // 🛡️ E13/R11d-4 新增的第 4 处属**非流式 HIT 补强点**：其输入是缓存文本（已过完整 MISS 链、
-  //   含 V488），故此点只需幂等补强、**不受**「紧邻 V488」约束 ⇒ 单独统计，不削弱三链强度。
+  assert.ok(locks.length >= 2, `链上调用不足 2 处: ${locks.length}`);
+  // 「链上挂载点」= 紧邻其 V488 守卫之后（非流式 MISS / 流式落库前最后一道）。
   const onChain = locks.filter((li) => {
     const prev = v488s.filter((v) => v < li).pop();
     return prev !== undefined && li - prev < 400;
   });
-  assert.ok(onChain.length >= 3, `三链中排在 V488 之后的挂载点不足 3 处: ${onChain.length}`);
-  assert.strictEqual(locks.length - onChain.length, 1,
-    '链外挂载点应恰为非流式 HIT 补强点一处（E13/R11d-4）');
+  assert.ok(onChain.length >= 2, `链上排在 V488 之后的挂载点不足 2 处: ${onChain.length}`);
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局，不再跑锁链」
+  //   ⇒ 旧 E13/R11d-4 的**非流式 HIT 补强点**已删除，链外挂载点必须为 0
+  //   （否则二次施加非幂等：HIT 响应 ≠ 库内文本）。
+  assert.strictEqual(locks.length - onChain.length, 0, 'HIT 侧不得再有链外挂载点（E18/R11k 命中即终局）');
 });
 
 test('⑤ Prompt 侧必须补「第 1 章仅本命、严禁混入流年」强约束', () => {

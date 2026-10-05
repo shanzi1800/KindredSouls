@@ -71,10 +71,11 @@ test('② applyTruthLocksEnEsZh 的流月锁必须按 reportType 分yearly 停�
     '_v432LockTransit 未被 reportType 护栏包住 —— 年报 12 个月流年真值会被改写成首月快照(from months[0])');
 });
 
-test('③ 三个受护栏保护的锁的全部调用点必须传 reportType(否则护栏形同虚设)', () => {
+test('③ 三个受护栏保护的锁的全部**写链**调用点必须传 reportType(否则护栏形同虚设)', () => {
   for (const n of ['lockNatalAnchorRole', 'applyTruthLocksEnEsZh']) {
     const sites = callSites(n);
-    assert.ok(sites.length >= 3, `${n} 调用点异常少: ${sites.length}`);
+    // 🛡️ E18/R11k: HIT 侧挂载已收拢 ⇒ 写链调用点由 ≥3 降为 ≥2（applyTruthLocksEnEsZh: 非流式 MISS / 流式落库前）
+    assert.ok(sites.length >= 2, `${n} 调用点异常少: ${sites.length}`);
     const missing = sites.filter(l => !/reportType/.test(l));
     assert.strictEqual(missing.length, 0,
       `${n} 有 ${missing.length} 个调用点漏传 reportType:\n  ` + missing.join('\n  '));
@@ -102,11 +103,13 @@ test('⑤ lockYearlyMonthTitles(12 月逐月真值锁) 必须存在 + reportType
   assert.ok(/SUN_SIGN_EN\.indexOf/.test(b), '未做 EN→本地化星座映射');
 });
 
-test('⑥ 月标题锁必须挂在全部年报收尾路径末端(至少 4 处)', () => {
+test('⑥ 月标题锁必须挂在全部年报**写链**路径末端(至少 3 处)', () => {
   const sites = callSites('lockYearlyMonthTitles');
-  assert.ok(sites.length >= 4, `lockYearlyMonthTitles 调用点不足(仅 ${sites.length} 处)，部分年报路径会漏锁:\n  ` + sites.join('\n  '));
+  assert.ok(sites.length >= 3, `lockYearlyMonthTitles 调用点不足(仅 ${sites.length} 处)，部分年报写链路径会漏锁:\n  ` + sites.join('\n  '));
   const missing = sites.filter(l => !/reportType/.test(l));
   assert.strictEqual(missing.length, 0, 'lockYearlyMonthTitles 有调用点漏传 reportType');
+  // 🛡️ E18/R11k: 流式 HIT 侧已收拢（命中即终局）
+  assert.ok(!/streamText = lockYearlyMonthTitles\(streamText/.test(src), 'HIT 侧不得再挂月标题锁（E18/R11k）');
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
@@ -141,7 +144,7 @@ test('【注入缺陷自测】删掉一处月标题锁调用点 → 判据⑥ �
   const callLines = (s) => (s.match(/[^\n]*lockYearlyMonthTitles\([^\n]*/g) || [])
     .filter(l => !/function\s+lockYearlyMonthTitles/.test(l));
   const base = callLines(src).length;
-  assert.ok(base >= 4, '基线调用点不足: ' + base);
+  assert.ok(base >= 3, '基线调用点不足: ' + base);
   const degradedSrc = src.replace(/^[^\n]*lockYearlyMonthTitles\(reportContent[^\n]*\n/m, '');
   assert.ok(callLines(degradedSrc).length < base,
     '闸门失效: 调用点缺失未被识别, 剩余=' + callLines(degradedSrc).length + '/基线=' + base);

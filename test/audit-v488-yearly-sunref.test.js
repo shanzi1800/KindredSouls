@@ -296,17 +296,20 @@ test('⑧b diff 白名单: 改动只允许落在星座词与宫位词上', () =>
 // ══════════════════════════════════════════════════════════════════════════
 // ⑨ 接线: 4 处, 且必须紧随 lockYearlyOuterPlanetsYear(V485)
 // ══════════════════════════════════════════════════════════════════════════
-test('⑨ 接线 4 处, 且每处紧随 lockYearlyOuterPlanetsYear 之后', () => {
+test('⑨ 接线 ≥3 处（写链），且每处紧随 lockYearlyOuterPlanetsYear 之后；HIT 侧零挂载', () => {
   const code = stripComments(src);
   const all = code.match(/lockYearlyNonMonthSunRef\(/g) || [];
-  assert.ok(all.length >= 5, `lockYearlyNonMonthSunRef 应为 1 定义 + ≥4 接线, 实得 ${all.length}`);
+  assert.ok(all.length >= 4, `lockYearlyNonMonthSunRef 应为 1 定义 + ≥3 写链接线, 实得 ${all.length}`);
   const wired = code.match(/lockYearlyOuterPlanetsYear\([^\n]*\);\s*\n\s*(?:if \(ft\) )?\w+ = lockYearlyNonMonthSunRef\(/g) || [];
-  assert.ok(wired.length >= 4, `应有 4 处紧邻 V485 的接线, 实得 ${wired.length}`);
+  assert.ok(wired.length >= 3, `应有 3 处紧邻 V485 的写链接线, 实得 ${wired.length}`);
+  // 🛡️ E18/R11k: 流式 HIT 已收拢（命中即终局）
+  assert.ok(!/streamText = lockYearlyNonMonthSunRef/.test(code), 'HIT 侧不得再挂（E18/R11k 命中即终局）');
   // 接线必须在 V485 之后、清理器之前(次序错误会让纠正被后续环节冲掉)
-  const i485 = code.indexOf('streamText = lockYearlyOuterPlanetsYear');
-  const i488 = code.indexOf('streamText = lockYearlyNonMonthSunRef');
-  const iLeak = code.indexOf('streamText = stripYearlyPromptLeakage');
-  assert.ok(i485 >= 0 && i488 > i485 && iLeak > i488, '流式链路次序错误: 必须 V485 → V488 → 清理器');
+  // ⚠️ E18/R11k: 流式 HIT 段已删 ⇒ 改用**写链**变量（cleanedText）定位次序。
+  const i485 = code.indexOf('cleanedText = lockYearlyOuterPlanetsYear');
+  const i488 = code.indexOf('cleanedText = lockYearlyNonMonthSunRef');
+  const iLeak = code.indexOf('cleanedText = stripYearlyPromptLeakage');
+  assert.ok(i485 >= 0 && i488 > i485 && iLeak > i488, '流式写链次序错误: 必须 V485 → V488 → 清理器');
 });
 
 // ══════════════════════════════════════════════════════════════════════════

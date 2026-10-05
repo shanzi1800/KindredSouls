@@ -50,28 +50,21 @@ function walk(node, cb, parent = null) {
 
 const HIT_VARS = ['_hitAstro', '_hitAstroTh', '_hitAstro432'];
 
-// ── 判据 A: `_hitMatrix` 引用的三个宿主变量必须声明在其所在块的**直接层** ──
-//     （块级 let 逃逸会让「块外引用」变成 ReferenceError —— 见事故 A）
+// ── 判据 A（E18/R11k 改版）: HIT 路径**不得**再出现三连雷变量 ──
+//     旧 E15/R11f 的三连雷（`_hitAstro`(vi) / `_hitAstroTh`(th) / `_hitAstro432`(en·es·zh)
+//     在各自语言 if 块内 `let` 声明、块外引用 ⇒ ReferenceError）已随 HIT 链收拢**整体删除**。
+//     新契约：HIT 分支只保留**一处** `let _hitMatrix = null;`（顶层直声明），且不再有任何真值锁。
 function hitScopeOk(src) {
-  const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module' });
-  const parentOf = new Map();
-  let target = null;
-  walk(ast, (n, p) => { parentOf.set(n, p); if (n.type === 'VariableDeclarator' && n.id && n.id.name === '_hitMatrix') target = n; });
-  if (!target) return { ok: false, reason: '未找到 `_hitMatrix` 声明（HIT 返回体已改动？）' };
-  let node = target, hole = null;
-  while (node) {
-    if (node.type === 'BlockStatement') { hole = node; break; }
-    node = parentOf.get(node);
-  }
-  if (!hole) return { ok: false, reason: '未找到 `_hitMatrix` 所在块' };
-  const direct = new Set();
-  for (const st of hole.body) {
-    if (st.type === 'VariableDeclaration' && (st.kind === 'let' || st.kind === 'const')) {
-      for (const d of st.declarations) if (d.id && d.id.type === 'Identifier') direct.add(d.id.name);
+  const code = stripComments(src);
+  for (const v of HIT_VARS) {
+    if (new RegExp('\\b' + v + '\\b').test(code)) {
+      return { ok: false, reason: `HIT 侧仍引用已删除的 ${v}（E18/R11k 起 HIT 只取一份 _hitMatrix）` };
     }
   }
-  const missing = HIT_VARS.filter((n) => !direct.has(n));
-  return { ok: missing.length === 0, reason: missing.length ? ('逃逸到内层块的变量: ' + missing.join(', ')) : '', names: [...direct] };
+  if (!/\b_hitMatrix\b/.test(code)) return { ok: false, reason: '未找到 `_hitMatrix` 声明（HIT 返回体已被改动？）' };
+  // 必须仍是「顶层 let」（旧 P0 的块级逃逸形态不得回归）
+  if (!/\blet _hitMatrix = null;/.test(code)) return { ok: false, reason: '`_hitMatrix` 必须用顶层 `let` 声明' };
+  return { ok: true, names: ['_hitMatrix'] };
 }
 
 // ── 判据 B(语义自证): 块内 let + 块外引用 ⇒ ReferenceError；提到同层 ⇒ 正常 ──
@@ -140,10 +133,11 @@ function dedupOk(F) {
 function wiringOk(src) {
   const code = stripComments(src);
   const calls = (code.match(/dedupYearlyMonthTitles\(/g) || []).length;
-  if (calls < 4) return false;                                  // 1 定义 + ≥3 调用点
+  if (calls < 3) return false;                                  // 1 定义 + ≥2 写链调用点
   if (!/reportContent = dedupYearlyMonthTitles\(reportContent, lang, reportType\)/.test(code)) return false;   // 非流式
   if (!/cleanedText = dedupYearlyMonthTitles\(cleanedText, lang, reportType\)/.test(code)) return false;       // 流式落库前
-  if (!/streamText = dedupYearlyMonthTitles\(streamText, lang, reportType\)/.test(code)) return false;          // 流式 HIT
+  // 🛡️ E18/R11k: 流式 HIT 的 dedup 已随 HIT 链收拢删除（命中即终局）
+  if (/streamText = dedupYearlyMonthTitles\(streamText/.test(code)) return false;
   // 🛡️ V484: 改单调判据(提取版本号 ≥490), 不写死精确版本 —— 每次 bump 都不该让本闸门假红
   const _ver = (code.match(/wealth:v(\d+):/) || [])[1];
   if (!(_ver && Number(_ver) >= 490)) return false;             // 缓存版本不得低于历史基线
@@ -155,9 +149,9 @@ function wiringOk(src) {
 
 // ═══════════════════════════ 主判据 ═══════════════════════════
 
-test('【判据 A】HIT 路径: _hitAstro / _hitAstroTh / _hitAstro432 必须声明在同一块的直接层', () => {
+test('【判据 A】HIT 路径: 三连雷必须已删除，仅保留顶层 `let _hitMatrix`（E18/R11k）', () => {
   const r = hitScopeOk(serverSrc);
-  assert.ok(r.ok, r.reason + '（块级 let 逃逸 → 命中 HIT 分支必抛 ReferenceError）');
+  assert.ok(r.ok, r.reason + '（旧形态：块级 let 逃逸 → 命中 HIT 分支必抛 ReferenceError）');
 });
 
 test('【判据 B】语义自证: 块内 let + 块外引用确实抛 ReferenceError', () => {
@@ -172,32 +166,21 @@ test('【判据 C】dedupYearlyMonthTitles: 24 行 → 12 行且正文零丢失�
   assert.ok(dedupOk(F));
 });
 
-test('【判据 D】接线: 三条收尾链末端均挂 dedup + 缓存 v490 + nocache 生效', () => {
+test('【判据 D】接线: 写链两路均挂 dedup + 缓存 ≥v490 + nocache 生效（HIT 侧零挂载）', () => {
   assert.ok(wiringOk(serverSrc));
 });
 
 // ═══════════════════════════ 注入缺陷自测 ═══════════════════════════
 
-test('【注入缺陷自测】把三连雷声明退回各自的语言 if 块内 → 判据 A 必须红', () => {
-  let degraded = serverSrc.replace(
-    "          let _hitAstro = null;\n          let _hitAstroTh = null;\n          let _hitAstro432 = null;\n          if (lang === 'vi') {",
-    "          if (lang === 'vi') {"
-  );
-  degraded = degraded.replace(
-    "          if (lang === 'vi') {\n            try { _hitAstro = await getAstroMatrix(",
-    "          if (lang === 'vi') {\n            let _hitAstro = null;\n            try { _hitAstro = await getAstroMatrix("
-  );
-  degraded = degraded.replace(
-    "          if (lang === 'th') {\n            try { _hitAstroTh = await getAstroMatrix(",
-    "          if (lang === 'th') {\n            let _hitAstroTh = null;\n            try { _hitAstroTh = await getAstroMatrix("
-  );
-  degraded = degraded.replace(
-    "          if (_V432_LANGS.includes(lang)) {\n            try { _hitAstro432 = await getAstroMatrix(",
-    "          if (_V432_LANGS.includes(lang)) {\n            let _hitAstro432 = null;\n            try { _hitAstro432 = await getAstroMatrix("
+test('【注入缺陷自测】注回 HIT 三连雷块内 let → 判据 A 必须红', () => {
+  // 🛡️ E18/R11k: 旧锚点（三连雷在 HIT 段）已随收拢删除；改为**注回**一例块内 let 逃逸形态。
+  const degraded = serverSrc.replace(
+    'let _hitMatrix = null;',
+    "if (lang === 'vi') { let _hitAstro = null; }\n          let _hitMatrix = null;"
   );
   assert.notStrictEqual(degraded, serverSrc, '注入必须真的改变源码');
   const r = hitScopeOk(degraded);
-  assert.strictEqual(r.ok, false, '退回块内 let 后判据 A 必须红，实得: ok=' + r.ok);
+  assert.strictEqual(r.ok, false, '注回三连雷后判据 A 必须红，实得: ok=' + r.ok);
 });
 
 test('【注入缺陷自测】禁用 dedup 内部清算 → 判据 C 必须红', () => {

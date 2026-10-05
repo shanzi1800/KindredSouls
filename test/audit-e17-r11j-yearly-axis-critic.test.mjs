@@ -330,35 +330,37 @@ test('⑮ integrity 度量已接入（可观测, 且**不**并入 ok 判定）',
 
 /* ═══════════════ ⑥ 接线完整性 ═══════════════ */
 
-test('⑯ 结构级: 五路链（非流式 MISS / 非流式 HIT / 流式 HIT / 流式落库 / 补全）必须全部挂载', () => {
+test('⑯ 结构级: 写链三路（非流式 MISS / 流式落库 / 补全）挂载 _v517YearlyFinalLocks；HIT 侧零锁', () => {
   const calls = [...SRC.matchAll(/_v517YearlyFinalLocks\(/g)].length;
-  assert.ok(calls >= 6, `应含 1 处定义 + ≥5 处调用, 实得 ${calls}`);
+  assert.ok(calls >= 4, `应含 1 处定义 + ≥3 处写链调用, 实得 ${calls}`);
   for (const [tag, pat] of [
     ['非流式 MISS', /reportContent = _v517YearlyFinalLocks\(reportContent/],
-    ['非流式 HIT', /_hitFinal = _v517YearlyFinalLocks\(_hitFinal/],
-    ['流式 HIT', /streamText = _v517YearlyFinalLocks\(streamText/],
     ['流式落库', /cleanedText = _v517YearlyFinalLocks\(cleanedText/],
     ['补全链', /if \(ft\) ft = _v517YearlyFinalLocks\(ft/],
   ]) {
-    assert.ok(pat.test(SRC), `[${tag}] 挂载缺失 —— HIT/落库不同序同集会让同一缓存键产出两份不同报告`);
+    assert.ok(pat.test(SRC), `[${tag}] 写链挂载缺失 —— 同名缓存键由写链统一产出`);
   }
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局，不再跑锁链」
+  //   ⇒ HIT 侧**不得**再出现任何真值锁挂载（否则同一缓存键产出两份不同报告）。
+  assert.ok(!/_hitFinal = _v517YearlyFinalLocks\(_hitFinal/.test(SRC), '非流式 HIT 侧不得再挂 _v517YearlyFinalLocks');
+  assert.ok(!/streamText = _v517YearlyFinalLocks\(streamText/.test(SRC), '流式 HIT 侧不得再挂 _v517YearlyFinalLocks');
 });
 
-test("⑯' 注入自测: 抽掉一路挂载 ⇒ 接线断言必须变红", () => {
-  const INJ = SRC.replace('_hitFinal = _v517YearlyFinalLocks(_hitFinal, lang, _hitMatrix, reportType);', '');
+test("⑯' 注入自测: 抽掉写链一路挂载 ⇒ 接线断言必须变红", () => {
+  const INJ = SRC.replace('reportContent = _v517YearlyFinalLocks(reportContent, lang, astroMatrix, reportType);', '');
   assert.notEqual(INJ, SRC, '注入未生效');
-  assert.ok(!/_hitFinal = _v517YearlyFinalLocks\(_hitFinal/.test(INJ), '注入后 HIT 侧挂载必须消失');
+  assert.ok(!/reportContent = _v517YearlyFinalLocks\(reportContent/.test(INJ), '注入后 MISS 侧挂载必须消失');
 });
 
-test('⑰ 结构级: 缓存版本 v517（4 站点）+ purge 回收 v516 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v517/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v517, 实得 ${sites}`);
-  assert.ok(!/wealth:v516/.test(SRC), 'server.js 内不得残留 v516 键');
-  assert.ok(PURGE.includes("'wealth:v516:*'") && PURGE.includes("'wealth:v516-v2:*'"), 'purge 须双形态回收 v516');
+test('⑰ 结构级: 缓存版本 v518（4 站点）+ purge 回收 v517 + 旧闸门基线前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v518/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v518, 实得 ${sites}`);
+  assert.ok(!/wealth:v517/.test(SRC), 'server.js 内不得残留 v517 键');
+  assert.ok(PURGE.includes("'wealth:v517:*'") && PURGE.includes("'wealth:v517-v2:*'"), 'purge 须双形态回收 v517');
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = fs.readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(!/wealth:v516/.test(t), `${f} 基线须前移至 v517`);
+    assert.ok(!/wealth:v517/.test(t), `${f} 基线须前移至 v518`);
   }
 });

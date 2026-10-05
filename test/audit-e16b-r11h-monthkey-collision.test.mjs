@@ -187,12 +187,14 @@ console.log('\n# D. 结构契约');
 const CODE = stripComments(SRC);
 eq('D1 th 占星宫位词取 `ภพที่`（非房屋 `บ้าน`）', F6._V516_HOUSE_PLAIN.th, 'ภพที่');
 eq('D2 _V516_HOUSE_PLAIN 覆盖 es/fr/th/vi', Object.keys(F6._V516_HOUSE_PLAIN).sort().join(','), 'es,fr,th,vi');
-// fr/th/vi 不进真值锁白名单（保守侧），但必须各有卫生守卫 else 分支
+// fr/th/vi 不进真值锁白名单（保守侧），但必须各有卫生守卫（只换形态）
 const V432 = /const _V432_LANGS = \[([^\]]*)\];/.exec(SRC);
 eq('D3 `_V432_LANGS` 保持保守白名单（不得擅自放开 fr/th/vi）', (V432 ? V432[1] : '').replace(/['"\s]/g, ''), 'en,es,zh');
 for (const [name, decl] of [['非流式', 'reportContent'], ['流式', 'streamText'], ['落库前', 'cleanedText']]) {
-  const hit = CODE.includes(`else ${decl} = _v516OutputHygiene(${decl}, lang);`);
-  ok(`D4 ${name}路径存在 fr/th/vi 卫生守卫 else 分支`, hit);
+  // 🛡️ E18/R11k: 判据由「必须有 `else xxx = _v516OutputHygiene(...)`」（真值锁 if/else 形态）
+  //   放宽为「该变量必须有卫生守卫调用」—— 流式 HIT 侧 en/es/zh 真值锁已收拢，else 前缀不再适用。
+  const hit = CODE.includes(`${decl} = _v516OutputHygiene(${decl}, lang);`);
+  ok(`D4 ${name}路径存在 fr/th/vi 卫生守卫`, hit);
 }
 // 月标题识别必须走统一真源（三处同源）
 const callSites = (CODE.match(/_v516MonthHeadKey\(/g) || []).length;

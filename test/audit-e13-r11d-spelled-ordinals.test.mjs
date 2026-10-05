@@ -117,14 +117,15 @@ test('③ R11d-3: CRITIC 判据 10 拼写式扩面且与归一化同源 + 判据
   assert.ok(/replace\(\/\\s\+\$\/,\s*''\)/.test(poss), '回退提取未 trim 尾空白（endsWith 恒不命中）');
 });
 
-test('④ R11d-4: HIT 路径补挂前导锁 + skipAdjudicate 幂等', () => {
-  // HIT 路径（非流式缓存命中）必须补挂 _v432LockLeadingNatal
-  const hitIdx = src.indexOf("_hitFinal = applyTruthLocksEnEsZh(");
-  assert.ok(hitIdx > 0, '未找到 HIT 路径 applyTruthLocksEnEsZh 调用点');
-  const seg = src.slice(hitIdx, hitIdx + 1600);   // 该段含 E13/R11d-4 详注，窗口须充足
-  assert.ok(/_v432LockLeadingNatal\(_hitFinal/.test(seg), 'HIT 路径未补挂 _v432LockLeadingNatal（轴点锁在缓存命中时失效）');
-  assert.ok(/\{\s*skipAdjudicate:\s*true\s*\}/.test(seg), 'HIT 路径未启用 skipAdjudicate（定语裁定会插写 natal ⇒ 与缓存文本不一致）');
-  // applyTruthLocksEnEsZh 必须把 opts 透传给 _v432LockNatal
+test('④ E13/R11d-4→E18/R11k: HIT 路径**不再**补挂前导锁（命中即终局，结构幂等）', () => {
+  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局，不再跑锁链」。
+  //   旧 E13/R11d-4 的「HIT 补挂 applyTruthLocksEnEsZh + _v432LockLeadingNatal(+skipAdjudicate)」
+  //   已被**结构**取代（命中文本 ≡ 写链终局）⇒ 以下两处挂载**必须不存在**
+  //   （否则二次施加非幂等：`Sagittarius…— Sun, Moon,` 被抠成 `SagittLeo…—Moon,`，s2 en 实证）。
+  assert.ok(/Clean HIT Pipeline/.test(src), '缺 E18/R11k Clean HIT Pipeline 段（HIT 收拢未落地）');
+  assert.ok(!/_hitFinal = applyTruthLocksEnEsZh\(/.test(src), 'HIT 侧不得再挂 applyTruthLocksEnEsZh（E18/R11k 命中即终局）');
+  assert.ok(!/_v432LockLeadingNatal\(_hitFinal/.test(src), 'HIT 侧不得再挂 _v432LockLeadingNatal（E18/R11k 命中即终局）');
+  // 幂等契约仍有效（函数级，与 HIT 无关）: applyTruthLocksEnEsZh 须把 opts 透传给 _v432LockNatal
   const wire = stripComments(fnBody('applyTruthLocksEnEsZh'));
   assert.ok(/opts\.skipAdjudicate/.test(wire), 'applyTruthLocksEnEsZh 未把 skipAdjudicate 透传给 _v432LockNatal');
   const lock = stripComments(fnBody('_v432LockNatal'));
@@ -355,7 +356,7 @@ test('⑮ 注入自测: 剥离 HIT 路径前导锁 → 轴点纠偏能力丢失'
 });
 
 test('⑯ 缓存 v515（server.js 四站点 + purge 补 v514 双形态）', () => {
-  const sites = [...src.matchAll(/wealth:v517/g)].length;
+  const sites = [...src.matchAll(/wealth:v518/g)].length;
   assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
   assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
   assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
