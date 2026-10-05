@@ -1106,6 +1106,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   };
   const [reportLoading, setReportLoading] = useState<'wealth_monthly' | 'wealth_yearly' | 'wealth_once' | ''>('');
   const [streamedOnce, setStreamedOnce] = useState<boolean>(false); // 🛡️ 标记是否曾经流过--流结束后保持报告可见
+  // 🛡️ E17/R11j ⑤: 高纬降级告知（后端由 meta/JSON 下发，正文不再拼接 ⇒ 页面顶部独立 Banner）
+  const [hlNotice, setHlNotice] = useState<string>('');
 
   // 🛠️ V47: 流式期间追光底部,完成后归顶
   useEffect(() => {
@@ -1527,6 +1529,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       setReportData(data);
+      // 🛡️ E17/R11j ⑤: 非流式 JSON 的高纬告知 → 顶部 Banner
+      const _hlNonStream = (data as any)?.highLatitudeNotice;
+      if (_hlNonStream && _hlNonStream.notice) setHlNotice(String(_hlNonStream.notice));
     } catch (err) {
       console.error('[WealthReport] Error loading data:', err);
       setError(
@@ -1807,6 +1812,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
     setWealthReport('');
     setStreamedOnce(false);
+    setHlNotice(''); // 🛡️ E17/R11j ⑤: 每轮开始清空高纬告知，避免跨盘串味
     // 🛠️ V40: 每次年报/月报开始前清空打字机容器
     if (type === 'yearly') {
       setSacredText('');
@@ -1981,6 +1987,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 } else if (parsed.meta) {
                   // V238-fix: buildWealthMeta 发来的结构化命理元数据(bazi/zodiac/iching/tarot)
                   console.log('[WealthReport] 📋 收到元数据事件:', Object.keys(parsed.meta).join(', '));
+                  // 🛡️ E17/R11j ⑤: 高纬降级告知（后端 meta 下发）→ 顶部 Banner 渲染
+                  if (parsed.meta.highLatitudeNotice && parsed.meta.highLatitudeNotice.notice) {
+                    setHlNotice(String(parsed.meta.highLatitudeNotice.notice));
+                  }
                   // 🛠️ V368-fix: 废除 meta 即挂载空框架——改为首个真实 text chunk 到达时才挂载(见下方 parsed.text 分支)，避免空金属框架闪现
                 } else if (parsed.text) {
                   // 🔍 军师调试日志:看数据到底长啥样
@@ -2609,6 +2619,29 @@ smoothAppendText(fbText, setSacredText, 16, 4);
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* 🛡️ E17/R11j ⑤: 高纬降级告知 —— 由后端 meta/JSON 下发，页面顶部独立 Banner（不再混入报告正文） */}
+        {hlNotice && (
+          <div
+            role="status"
+            style={{
+              margin: '10px 0',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: '1px solid rgba(212,175,55,0.45)',
+              background: 'linear-gradient(90deg, rgba(212,175,55,0.16), rgba(129,216,208,0.12))',
+              color: '#F4E4B8',
+              fontSize: '12px',
+              lineHeight: 1.6,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+            }}
+          >
+            <span style={{ flex: '0 0 auto' }}>ℹ️</span>
+            <span style={{ flex: '1 1 auto' }}>{hlNotice}</span>
           </div>
         )}
 

@@ -59,6 +59,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v514-v2:*',
   'wealth:v515:*',        // 🛡️ E16/R11i: v515 全量作废（HIT th 链 natal 锁污染月标题 + 宫位子串误判 + 年报误用 months[0] 口径 transit 锁）
   'wealth:v515-v2:*',
+  'wealth:v516:*',        // 🛡️ E17/R11j: v516 全量作废（年报「上升锚点」零守卫 ⇒ 同一篇出现 3 个不同上升星座；裸本命句「月亮在金牛座第十二宫」宫位错配；头部高纬告知与尾部落款混入正文）
+  'wealth:v516-v2:*',
   'wealth:v116-v2:*',
 ];
 

@@ -2160,9 +2160,12 @@ function injectHighLatitudeNotice(text, astroMatrix, lang) {
     th: 'สถานที่เกิดของคุณอยู่ในเขตละติจูดสูงบริเวณขั้วโลก ระบบได้เปิดใช้ระบบเรือนแบบราศีเต็ม (Whole Sign) โดยอัตโนมัติ เพื่อปรับเรือนให้แม่นยำ',
     vi: 'Nơi sinh của bạn nằm ở vùng vĩ độ cao gần cực — hệ thống đã tự động chuyển sang hệ thống nhà Toàn Cung (Whole Sign) để hiệu chỉnh nhà chính xác.',
   };
-  const line = 'ℹ️ ' + (NOTICE[lang] || NOTICE.en);
-  if (text.includes(line)) return text;  // 幂等（缓存版已含告知）
-  return line + '\n\n' + text;
+  // 🛡️ E17/R11j ⑤-a（军师裁决 2026-10-05）：**停止向正文拼接**高纬告知。
+  //   病根：该提示属「系统级 UI 状态气泡」，混入 Markdown 正文会与前端自有 Banner 重复，
+  //   并在导出（PDF/复制）时破坏结构。现改为随 JSON `highLatitudeNotice` 字段返回
+  //   （见 buildHighLatitudeMeta），由前端在页面顶部单独渲染。本函数保留为**兼容 no-op**。
+  void NOTICE; void astroMatrix; void lang;
+  return text;
 }
 
 function house_linter(text, astroMatrix, currentMonth = null, opts = {}) {
@@ -6607,6 +6610,294 @@ function auditYearlyNonMonthSunRef(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j ①：年报「上升锚点」真值锁（窄锁，**不复用**整条旧锁）
+// ══════════════════════════════════════════════════════════════════
+// 【病根】（2026-10-05 v516 特罗姆瑟盘 zh 年报线上实证）
+//   ① `lockNatalAnchorRole`（V444/V453 本命锚点锁）首行 `if (reportType === 'yearly') return text;`
+//      （V478-guard，为治「流年句被强改本命值」而**整体关闭**）⇒ 年报内「上升X座」零纠错；
+//   ② 替代防线 `_v432LockNatal` 只管 **10 行星**、**不含「上升」锚点**；
+//   ③ `_v492cLockAxisSalutation` 只作用于**前导段**（月段刻意不碰，防「太阳返照上升」被强改）；
+//   ④ CRITIC 12 条判据**无一条管上升** ⇒ 写错既无人纠、也无人拦，直接写库。
+//   实测该盘一稿同时出现 **3 个不同上升**：报头「上升射手座」(真值) + 「你的上升金牛座」
+//   + 「对于上升水瓶座而言」⇒ 同篇自相矛盾（军师终审 78 分主因）。
+//
+// 【治法】军师裁决：新建**窄锁**，绝不复用整条旧锁（避免重演 V478 流年误伤）。铁律：
+//   ① 只换**星座 token**，绝不改措辞/语序/标点（保形写回，幂等：值==真值原样返回）；
+//   ② 真值缺失（无出生时间 ⇒ meta.rising_sign 空）⇒ 整锁跳过，绝不编造（V102s 纪律）；
+//   ③ 捕获 token **必须命中星座词表**，否则不算「上升X座」（如「你的上升星座与命宫」的
+//      「与命宫」⇒ 不动）—— 这条同时是「泛指句零误伤」的护栏；
+//   ④ **流年豁免**：匹配点前窗 24 字含流年标记（流年/本年/次限/返照 / transit/transiting/
+//      progressed/solar return …）⇒ 跳过（该处「上升」可能指太阳返照上升，强改=主动污染）；
+//   ⑤ 作用域 = **全文**（yearly 专属），与 `_v492cLockAxisSalutation`（仅前导段）互补。
+const _V517_TRANSIT_MARK = {
+  zh: /流年|本年|本月|当月|次限|返照|行运|未来/,
+  en: /\b(?:transit(?:ing)?|progressed|solar\s+return|this\s+month|current\s+month|annual\s+profection)\b/i,
+  es: /\b(?:tr[aá]nsito|progresad|revoluci[oó]n\s+solar|este\s+mes)\b/i,
+  fr: /\b(?:transit|progression|r[eé]volution\s+solaire|ce\s+mois)\b/i,
+  th: /จร|เดือนนี้|ปัจจุบัน/,
+  vi: /qu[aá]\s*độ|tiến\s*triển|th[aá]ng\s*n[aà]y|hiện\s*tại/i,
+};
+
+// 各语「上升 + 星座」句式（仅认明确轴点词；捕获组恒为**唯一的星座 token**）
+function _v517AxisRe(lang, signsPat) {
+  if (lang === 'zh') return new RegExp('(?:你的|本命|乃)?上升(?:星座)?(?:是|在|为)?\\s*(' + signsPat + ')', 'g');
+  if (lang === 'en') return new RegExp('(?:Rising\\s+Sign|Rising|Ascendant)(?:\\s+is|\\s+in)?\\s*(' + signsPat + ')\\b', 'g');
+  if (lang === 'es') return new RegExp('(?:Ascendente|Ascendant)(?:\\s+es|\\s+en)?\\s*(' + signsPat + ')\\b', 'g');
+  if (lang === 'fr') return new RegExp('(?:Ascendant)(?:\\s+est)?(?:\\s+en)?\\s*(' + signsPat + ')\\b', 'gi');
+  // ⚠️ th/vi 的「你的」是**中置**（ลัคนา**ของคุณ** / Ascendant **của bạn**）—— 必须显式吃掉，
+  //   否则「ลัคนาของคุณอยู่ในเมษ」永不匹配（实测：漏这两段 ⇒ 泰/越两语整锁空转）。
+  // ⚠️ 泰文**不用空格分词**（ลัคนาของคุณอยู่ในเมษ 整串无空格）⇒ 中置词必须用 `\s*` 而非 `\s+`。
+  if (lang === 'th') return new RegExp('(?:ลัคนา|Ascendant)(?:\\s*ของ\\s*คุณ)?(?:\\s*อยู่)?(?:\\s*ใน)?\\s*(' + signsPat + ')', 'g');
+  if (lang === 'vi') return new RegExp('(?:Ascendant|cung\\s+Mọc)(?:\\s*của\\s*bạn)?(?:\\s*là)?(?:\\s*ở)?\\s*(' + signsPat + ')', 'gi');
+  return null;
+}
+
+// 本地化真值（英文星座名 → 本语写法）；缺表/越界返回 null
+function _v517LocalSign(lang, enName) {
+  if (!enName) return null;
+  const i = SUN_SIGN_EN.indexOf(enName);
+  if (i < 0) return null;
+  if (lang === 'en') return enName;
+  const signs = _v444Signs(lang);
+  return (signs && signs[i]) ? signs[i] : null;
+}
+
+function lockYearlyAxisAnchor(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const trueLoc = _v517LocalSign(lang, meta && meta.rising_sign);
+  if (!trueLoc) return text;                                   // ② 真值缺失 → 整锁跳过
+  const signs = _v444Signs(lang);
+  if (!signs) return text;
+  const signsPat = signs.map(_v444Esc).join('|');
+  const re = _v517AxisRe(lang, signsPat);
+  if (!re) return text;
+  const mark = _V517_TRANSIT_MARK[lang] || null;
+  const signSet = new Set(signs.map((s) => String(s).toLowerCase()));
+  let n = 0;
+  const out = text.replace(re, (m, tok, off) => {
+    if (!signSet.has(String(tok).toLowerCase())) return m;      // ③ 非星座 token → 不动
+    if (mark && mark.test(text.slice(Math.max(0, off - 24), off))) return m;  // ④ 流年豁免
+    if (String(tok).toLowerCase() === String(trueLoc).toLowerCase()) return m; // 幂等
+    n++;
+    const j = m.indexOf(tok);
+    return m.slice(0, j) + trueLoc + m.slice(j + tok.length);
+  });
+  if (n) console.log(`[E17/R11j] ${lang} 年报轴点锁(上升): \u4fee\u6b63 ${n} \u5904 \u2192 ${trueLoc}`);
+  return out === text ? text : out;
+}
+
+// 只读出口（在线探针 / 单测直调）
+function auditYearlyAxisAnchor(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return null;
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const trueLoc = _v517LocalSign(lang, meta && meta.rising_sign);
+  if (!trueLoc) return null;
+  const signs = _v444Signs(lang) || [];
+  const re = _v517AxisRe(lang, signs.map(_v444Esc).join('|'));
+  if (!re) return null;
+  const signSet = new Set(signs.map((s) => String(s).toLowerCase()));
+  const seen = [];
+  for (const m of text.matchAll(re)) {
+    if (!signSet.has(String(m[1]).toLowerCase())) continue;
+    seen.push(m[1]);
+  }
+  const bad = seen.filter((s) => String(s).toLowerCase() !== String(trueLoc).toLowerCase());
+  return { trueSign: trueLoc, seen, total: seen.length, mismatch: bad };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j ③④：年报非月段「裸本命句」真值锁
+// ══════════════════════════════════════════════════════════════════
+// 【病根】第三章「四元素」/ 第四章「阴影审计」是**本命分析**段，但句式为**裸句**（无「你的/本命」前缀）：
+//   「月亮在金牛座第十二宫，要求你…」（真值 Moon Taurus **H6**）
+//   「太阳在双子座第七宫，要求你…」（真值 Sun Libra **H11**）
+//   「你的冥王星在水瓶座第3宫。」（真值 Pluto Scorpio **H11**）
+//   ⇒ 落在既有窄前缀盲区（`_v432LockNatal` 月段要求显式本命定语 / 物主裁定）⇒ 实测 monthly 亦不纠。
+// 【治法】在月锚点**之后**的段落，对「行星 + 在/落入/位于 + 星座(+宫位)」形态纠值；
+//   唯一豁免 = **同句前窗含流年标记**（流年太阳在双鱼座第4宫 ⇒ 不动，那是流年真值）。
+//   保形写回：只换星座 token 与宫位数字，绝不改措辞；幂等。
+const _V517_PLANET_ZH = ['太阳', '月亮', '水星', '金星', '火星', '木星', '土星', '天王星', '海王星', '冥王星'];
+const _V517_PLANET_EN = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+const _V517_PLANET_KEY_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+
+function _v517BareNatalRe(lang, signsPat) {
+  if (lang === 'zh') {
+    return new RegExp('(' + _V517_PLANET_ZH.join('|') + ')(?:在|落入|位于|驻守)\\s*(' + signsPat + ')(?:\\s*第\\s*(\\d{1,2}|[一二三四五六七八九十]{1,3})\\s*宫)?', 'g');
+  }
+  if (lang === 'en') {
+    return new RegExp('\\b(' + _V517_PLANET_EN.join('|') + ')\\s+(?:in|sits\\s+in|occupies)\\s+(' + signsPat + ')(?:\\s+(?:in\\s+)?(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)\\s+House)?', 'g');
+  }
+  return null;   // 本锁先服务 zh/en（其余语种由轴点锁 + 月标题锁覆盖；扩展需补各语介词表）
+}
+
+function lockYearlyBareNatalPlanets(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const np = meta && (meta.computed_houses || meta.natal_planets);
+  if (!meta || !np) return text;
+  const signs = _v444Signs(lang);
+  if (!signs) return text;
+  const signsPat = signs.map(_v444Esc).join('|');
+  const re = _v517BareNatalRe(lang, signsPat);
+  if (!re) return text;
+  // 真值表：行星 → { sign(本地化), house }
+  const truth = {};
+  for (const k of _V517_PLANET_KEY_ORDER) {
+    const c = np[k];
+    if (!c || !c.sign) continue;
+    truth[k] = { sign: _v517LocalSign(lang, c.sign), house: (typeof c.house === 'number' ? c.house : (c.house && c.house.house)) };
+  }
+  if (!Object.keys(truth).length) return text;
+  const mark = _V517_TRANSIT_MARK[lang] || null;
+  const signSet = new Set(signs.map((s) => String(s).toLowerCase()));
+  let n = 0;
+  const out = text.replace(re, (m, planetTok, signTok, houseTok, off) => {
+    if (!signSet.has(String(signTok).toLowerCase())) return m;
+    if (mark && mark.test(text.slice(Math.max(0, off - 30), off))) return m;   // 流年豁免
+    const key = _V517_PLANET_KEY_ORDER[_V517_PLANET_ZH.indexOf(planetTok) >= 0 ? _V517_PLANET_ZH.indexOf(planetTok) : _V517_PLANET_EN.indexOf(planetTok)];
+    const t = truth[key];
+    if (!t || !t.sign) return m;
+    let mm = m;
+    let changed = false;
+    if (String(signTok).toLowerCase() !== String(t.sign).toLowerCase()) {
+      const j = mm.indexOf(signTok);
+      if (j >= 0) { mm = mm.slice(0, j) + t.sign + mm.slice(j + signTok.length); changed = true; }
+    }
+    if (houseTok && t.house) {
+      const want = String(t.house);
+      const cur = /^\d+$/.test(houseTok) ? String(Number(houseTok)) : String(_v517Cn2Int(houseTok));
+      if (cur !== want) {
+        const j = mm.indexOf(houseTok);
+        if (j >= 0) {
+          const rep = lang === 'zh' ? (houseTok === String(Number(houseTok)) ? want : _v517Int2Cn(want)) : want;
+          mm = mm.slice(0, j) + rep + mm.slice(j + houseTok.length);
+          changed = true;
+        }
+      }
+    }
+    if (!changed) return m;
+    n++;
+    return mm;
+  });
+  if (n) console.log(`[E17/R11j] ${lang} 年报裸本命句锁: \u4fee\u6b63 ${n} \u5904`);
+  return out === text ? text : out;
+}
+
+// 整数 → 中文数字（1~12）
+function _v517Int2Cn(n) {
+  const CN = ['\u96f6', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d', '\u4e03', '\u516b', '\u4e5d', '\u5341', '\u5341\u4e00', '\u5341\u4e8c'];
+  return CN[n] || String(n);
+}
+
+// 中文数字 → 整数（1~12；失败返回 NaN）
+function _v517Cn2Int(s) {
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  const D = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+  const m = /^([一二三四五六七八九])?十([一二三四五六七八九])?$/.exec(s);
+  if (m) return (m[1] ? D[m[1]] : 1) * 10 + (m[2] ? D[m[2]] : 0);
+  if (D[s]) return D[s];
+  return NaN;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j ⑥：年报「模板标签残句」清理（zh）
+// ══════════════════════════════════════════════════════════════════
+// 【病根】v516 线上实证：「本命水星在天秤座**你的本命太阳**，与木星形成强烈共振。」
+//   /「水星在射手座**你的上升星座**，与木星形成强烈共振。」—— 模板标签词被当正文留在句中，
+//   属收尾链未洗净的残句。
+// 【铁律】只删「**紧跟星座词之后、以逗号结尾**」的插入语形态：
+//   匹配 = `(?<=座) 你的(本命)?(太阳|上升|月亮)(星座)? (?=，)`。
+//   必须保留**独立指代**用法：「这是你的上升星座与命宫。」（后面是「与」，非逗号）⇒ 不匹配、不删。
+function stripYearlyLabelResidue(text, lang, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  if (lang !== 'zh') return text;
+  let n = 0;
+  const out = text.replace(/(?<=\u5ea7)\s*\u4f60\u7684(?:\u672c\u547d)?(?:\u592a\u9633|\u4e0a\u5347|\u6708\u4eae)(?:\u661f\u5ea7)?(?=\s*[\uff0c,])/g, () => { n++; return ''; });
+  if (n) console.log(`[E17/R11j] zh \u5e74\u62a5\u6807\u7b7e\u6b8b\u53e5\u6e05\u7406: ${n} \u5904`);
+  return out === text ? text : out;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j ⑤-b：年报「尾部落款」硬剥离（六语）
+// ══════════════════════════════════════════════════════════════════
+// 【病根】`src/prompts/` 下各语提示词内**没有任何署名/落款/版权指令** ⇒ 尾部三行（本报告由…生成 /
+//   报告周期：… / © 2026 KINDREDSOULS. All rights reserved.）系 **LLM 自发**（系统提示词标题含品牌名）。
+//   该落款属**视口组件**，不应进正文 Markdown（前端已有自有 Footer ⇒ 重复叠加）。
+// 【治法】军师裁决：prompt 侧禁写 + 输出侧**确定性硬剥离**（防 LLM 换措辞）。仅删「整行即落款」的行。
+function stripYearlySignature(text, lang, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const before = text;
+  // 正则**内建**于函数（避免全局正则 lastIndex 状态复用陷阱；每篇报告仅调用一次，开销可忽略）
+  const SIG_LINE = new RegExp(
+    '^[ \\t]*\\*{0,2}[ \\t]*(?:'
+    + '\u672c\u62a5\u544a\u7531[^\\n]*KINDREDSOULS[^\\n]*|'            // 本报告由 KINDREDSOULS…
+    + '\u62a5\u544a\u5468\u671f[:\uff1a][^\\n]*|'                       // 报告周期：…
+    + 'This\\s+report\\s+(?:was\\s+)?generated\\s+by[^\\n]*|'
+    + 'Report\\s+[Pp]eriod[:\uff1a][^\\n]*|'
+    + '\u00a9[^\\n]*|'                                                  // © …
+    + 'Copyright[^\\n]*|'
+    + 'All\\s+rights\\s+reserved[^\\n]*'
+    + ')[ \\t]*\\*{0,2}[ \\t]*$', 'gim');
+  let t = text.replace(SIG_LINE, '');
+  // 落款块删除后会留下多余空行/孤立分隔线 ⇒ 收口（只动尾部，避免吃正文）
+  if (t !== before) {
+    t = t.replace(/[ \t]*\n(?:[ \t]*\n)*(?:[ \t]*---[ \t]*\n)(?:[ \t]*\n)*$/, '\n');
+    t = t.replace(/\n{3,}$/, '\n');
+  }
+  if (t !== before) console.log('[E17/R11j] \u5e74\u62a5\u5c3e\u90e8\u843d\u6b3e\u786c\u5265\u79bb: \u5df2\u6e05\u9664');
+  return t;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j ⑤-a：高纬告知 meta 化（正文不再拼接）
+// ══════════════════════════════════════════════════════════════════
+// 【病根】`injectHighLatitudeNotice` 把「ℹ️ 检测到您的出生地位于高纬度极圈区域…」**拼进正文首段**
+//   ⇒ 导出/渲染时与前端自有 Banner 重复，且破坏了 Markdown 结构（军师裁定：属 UI 状态气泡，
+//   不是「星盘神谕报告正文」）。
+// 【治法】正文**不拼**；改由 JSON `highLatitudeNotice` 字段返回（见 `buildHighLatitudeMeta`），
+//   前端在页面顶部单独渲染。本函数保留为**兼容 no-op**（旧调用点不动，行为=原样返回）。
+const _V517_HL_NOTICE = {
+  zh: '\u68c0\u6d4b\u5230\u60a8\u7684\u51fa\u751f\u5730\u4f4d\u4e8e\u9ad8\u7eac\u5ea6\u6781\u5708\u533a\u57df\uff0c\u7cfb\u7edf\u5df2\u81ea\u52a8\u542f\u7528\u7b49\u5bab\u5236\uff08Whole Sign\uff09\u4e3a\u60a8\u7cbe\u786e\u6821\u51c6\u5bab\u4f4d\u3002',
+  en: 'Your birthplace lies in the high-latitude polar region \u2014 the system has automatically switched to the Whole Sign house system for precise house calibration.',
+  es: 'Tu lugar de nacimiento se encuentra en la regi\u00f3n polar de alta latitud: el sistema ha activado autom\u00e1ticamente el sistema de casas de Signo Completo (Whole Sign) para calibrar con precisi\u00f3n tus casas.',
+  fr: 'Votre lieu de naissance se situe dans la r\u00e9gion polaire de haute latitude \u2014 le syst\u00e8me a automatiquement activ\u00e9 le syst\u00e8me des maisons en Signes Entiers (Whole Sign) afin de calibrer pr\u00e9cis\u00e9ment vos maisons.',
+  th: '\u0e2a\u0e16\u0e32\u0e19\u0e17\u0e35\u0e48\u0e40\u0e01\u0e34\u0e14\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e40\u0e02\u0e15\u0e25\u0e30\u0e15\u0e34\u0e08\u0e39\u0e14\u0e2a\u0e39\u0e07\u0e1a\u0e23\u0e34\u0e40\u0e27\u0e13\u0e02\u0e31\u0e49\u0e27\u0e42\u0e25\u0e01 \u0e23\u0e30\u0e1a\u0e1a\u0e44\u0e14\u0e49\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e0a\u0e49\u0e23\u0e30\u0e1a\u0e1a\u0e40\u0e23\u0e37\u0e2d\u0e19\u0e41\u0e1a\u0e1a\u0e23\u0e32\u0e28\u0e35\u0e40\u0e15\u0e47\u0e21 (Whole Sign) \u0e42\u0e14\u0e22\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e23\u0e31\u0e1a\u0e40\u0e23\u0e37\u0e2d\u0e19\u0e43\u0e2b\u0e49\u0e41\u0e21\u0e48\u0e19\u0e22\u0e33',
+  vi: 'N\u01a1i sinh c\u1ee7a b\u1ea1n n\u1eb1m \u1edf v\u00f9ng v\u0129 \u0111\u1ed9 cao g\u1ea7n c\u1ef1c \u2014 h\u1ec7 th\u1ed1ng \u0111\u00e3 t\u1ef1 \u0111\u1ed9ng chuy\u1ec3n sang h\u1ec7 th\u1ed1ng nh\u00e0 To\u00e0n Cung (Whole Sign) \u0111\u1ec3 hi\u1ec7u ch\u1ec9nh nh\u00e0 ch\u00ednh x\u00e1c.',
+};
+
+function buildHighLatitudeMeta(astroMatrix, lang) {
+  if (!astroMatrix || !astroMatrix.meta || astroMatrix.meta.is_high_latitude_fallback !== true) return null;
+  return {
+    is_high_latitude_fallback: true,
+    house_system: astroMatrix.meta.house_system || 'Whole Sign',
+    notice: _V517_HL_NOTICE[lang] || _V517_HL_NOTICE.en,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E17/R11j：年报四道治本锁的**统一入口**
+// ══════════════════════════════════════════════════════════════════
+// ⚠️ 铁律（军师裁决·E13/R11d-4 同源）：**MISS 链 / HIT 链 / 流式链 / 补全链 / 落库链
+//   必须同序同集**调用本函数 —— 否则「同一缓存键，HIT 响应 ≠ 落库文本」，用户刷新两次
+//   得到两份不同的报告（E9 已记载的隐性缺陷面）。
+//   幂等：四锁均为「值==真值 ⇒ 原样返回」，对已处理的文本重跑零改动。
+function _v517YearlyFinalLocks(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  let t = text;
+  t = lockYearlyAxisAnchor(t, lang, astroMatrix, reportType);         // ① 上升锚点（窄锁）
+  t = lockYearlyBareNatalPlanets(t, lang, astroMatrix, reportType);   // ③④ 裸本命句
+  t = stripYearlyLabelResidue(t, lang, reportType);                   // ⑥ 模板标签残句
+  t = stripYearlySignature(t, lang, reportType);                      // ⑤-b 尾部落款
+  return t;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V485b: 年报「Prompt 内部字段泄漏」清理
 //   病根(2026-10-01 生产实测, 上线 V485 黑天鹅差异化后立即暴露):
 //     为使黑天鹅逐月差异化, V485 在 prompt 里注入「★ 本月专属风控切入角度:XXX」,
@@ -7611,6 +7902,20 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
     if (_mis > 0) issues.push('本命行星/宫位声称与 SwissEph 真值错配: ' + _mis + ' 处');
   }
 
+  // ═══ 🛡️ E17/R11j 判据 13（军师铁律 2026-10-05）：全篇「上升/命宫 + 具体星座」必须恒等于 ASC 真值 ═══
+  //   病根：v516 特罗姆瑟盘 zh 年报同一篇出现 **3 个不同上升**（报头「上升射手座」= 真值，
+  //   正文「你的上升金牛座」+「对于上升水瓶座而言」= 幻觉），而 CRITIC 12 条判据**无一条管上升**
+  //   ⇒ 既无人纠正、也无人拦截，直接写库（军师终审 78 分主因）。
+  //   口径（与 `auditYearlyAxisAnchor` **同源**）：只认**捕获到星座词表内 token** 的「上升X座」形态；
+  //   「这是你的上升星座与命宫」这类**泛指句**（捕获 "与命宫" 非星座词 ⇒ 不计）绝不误报。
+  //   命中 ⇒ 走 R3 静默重试（重试 prompt 的 `_E10_RETRY_CONSTRAINT` 已含「全文任何上升声明一律用此值」铁律）。
+  if (astroMatrix && astroMatrix.meta && astroMatrix.meta.rising_sign) {
+    const _ax = auditYearlyAxisAnchor(text, lang || 'zh', astroMatrix, 'yearly');
+    if (_ax && _ax.mismatch && _ax.mismatch.length > 0) {
+      issues.push('上升锚点真值错配(应为 ' + _ax.trueSign + '): ' + _ax.mismatch.slice(0, 5).join(', '));
+    }
+  }
+
   return issues;
 }
 
@@ -7892,7 +8197,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v516:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v517:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11172,7 +11477,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v516:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v517:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11260,7 +11565,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
           // 返回缓存数据(包装成前端期望的格式)
           // 🛠️ V120: 月报返回 markdown 纯文本
           const _hitMatrix = _hitAstro432 || _hitAstro || _hitAstroTh || null;
-          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal });
+          // 🛡️ E17/R11j: HIT 侧同样过四道治本锁（与 MISS 链同序同集 ⇒ HIT 响应 == 落库文本，军师铁律）
+          _hitFinal = _v517YearlyFinalLocks(_hitFinal, lang, _hitMatrix, reportType);
+          // 🛡️ E17/R11j ⑤-a: 高纬告知改由 JSON meta 返回（正文不再拼接，前端顶部单独渲染）
+          return res.json({ ..._hitMeta.result, cached: true, report: _hitFinal, highLatitudeNotice: buildHighLatitudeMeta(_hitMatrix, lang) });
         }
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
@@ -11440,6 +11748,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockYearlyNonMonthSunRef(reportContent, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁 + 语义漂移审计(只检不改, 仅日志)
         reportContent = _v432LockLeadingNatal(reportContent, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(非流式, V488 之后=最终话语权)
         reportContent = stripYearlyPromptLeakage(reportContent, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
+        reportContent = _v517YearlyFinalLocks(reportContent, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(轴点/裸本命句/标签残句/落款)
         auditYearlyStyleRepetition(reportContent, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 仅日志)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
@@ -11485,7 +11794,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
             // 🛡️ E11/R10a: 必须传 lang —— wealthCriticCheck 的报头/月份/元素判据全部依赖语言适配
             // 🛡️ E12/R11c: 必须传 astroMatrix —— 判据 12 全章本命声称真值错配检测依赖 SwissEph 真值盘
             issues: wealthCriticCheck(txt, birthDate, natalSunSign, lang, astroMatrix),
-            iv: assessYearlyReportIntegrity(txt, { lang }),
+            // 🛡️ E17/R11j: 轴点度量由本处**统一计算**后传入（判据同源）—— integrity 只做可观测输出
+            iv: assessYearlyReportIntegrity(txt, Object.assign(
+              { lang },
+              (() => { const a = auditYearlyAxisAnchor(txt, lang, astroMatrix, reportType); return a ? { axisMismatch: a.mismatch.length, axisTrueSign: a.trueSign } : {}; })()
+            )),
           });
           let _j1 = _e10Judge(reportContent);
           if (_j1.issues.length > 0 || !_j1.iv.ok) {
@@ -11544,7 +11857,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
           }
         }
 
-        return res.json({ ...result, report: reportContent, insight: '' });
+        // 🛡️ E17/R11j ⑤-a: 高纬告知改由 JSON meta 返回（正文不再拼接，前端顶部单独渲染 Banner）
+        return res.json({ ...result, report: reportContent, insight: '', highLatitudeNotice: buildHighLatitudeMeta(astroMatrix, lang) });
       } catch (aiError) {
         console.error('[Wealth Oracle] AI generation failed:', aiError.message);
         return res.status(500).json({ success: false, error: 'AI generation failed: ' + aiError.message });
@@ -11891,7 +12205,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v516:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v517:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11930,6 +12244,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       };
       metaPayload.houseInfo = { sunHouse: _ctx.sunHouse, risingSign: _ctx.risingSign, sunSign: _ctx.sunSign };
     } catch (e) { /* meta 兜底不阻断 */ }
+    // 🛡️ E17/R11j ⑤-b: 高纬降级告知随 meta 下发（正文不再拼接 ⇒ 前端页面顶部独立 Banner 渲染）
+    try {
+      const _hl = buildHighLatitudeMeta(astroMatrix, lang);
+      if (_hl) metaPayload.highLatitudeNotice = _hl;
+    } catch (e) { /* 不阻断 */ }
     res.write(Buffer.from(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`, 'utf-8'));
     if (typeof res.flush === 'function') res.flush();
   } catch (e) {
@@ -12058,6 +12377,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         streamText = lockYearlyNonMonthSunRef(streamText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(HIT 下发前)
         streamText = _v432LockLeadingNatal(streamText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(HIT 下发前)
         streamText = stripYearlyPromptLeakage(streamText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
+        streamText = _v517YearlyFinalLocks(streamText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(流式 HIT 下发前)
         streamText = dedupYearlyMonthTitles(streamText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(防历史脏缓存 24 行裸奔)
 
         // 🛠️ P0-fix: 清除所有 \uFFFD 替换字符（UTF-8 多字节被切断后的乱码方块）
@@ -13097,6 +13417,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
           if (ft) ft = lockYearlyNonMonthSunRef(ft, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁
           if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
+          if (ft) ft = _v517YearlyFinalLocks(ft, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(补全链)
           if (ft && ft.length > cleanedText.length) {
             console.log(`[wealth-stream] [OK] Sync completion success, ${ft.length} chars > ${cleanedText.length}, overriding for sanitized/cache`);
             cleanedText = ft; // sanitized 事件与缓存自动使用完整版
@@ -13154,6 +13475,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockYearlyNonMonthSunRef(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(落库前)
     cleanedText = _v432LockLeadingNatal(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(落库前最后一道, 对前导段拥有最终话语权)
     cleanedText = stripYearlyPromptLeakage(cleanedText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理(落库前)
+    cleanedText = _v517YearlyFinalLocks(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(落库前最后一道)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
@@ -13561,7 +13883,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v516-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v517-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
