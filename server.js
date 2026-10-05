@@ -5334,7 +5334,35 @@ function _v512CountNatalClaimMismatch(text, lang, astroMatrix) {
     const clause = _v432Clause(cfg, lang, text, m.index, m[0].length, true, {});
     if (!clause) continue;
     if (!_v512PossessiveNatal(cfg, lang, text, m.index, m[0].length, clause, astroMatrix)) continue;   // 🛡️ E13/R11d-3: 补传 astroMatrix，令「流年一致性否决」在判据 12 同步生效（判据同源）
-    const claim = _v432ClaimOf(cfg, lang, clause.fwd, clause.bwd);
+    // 🛡️ E20/R11n③: 多声称连句防伪影（**只窄化判据，不动锁链**；s1 特罗姆瑟盘重生成实证：
+    //   「你的天秤座太阳…，你的射手座上升…，你的金牛座月亮…」全真值句被判 2 处错配）——
+    //   机制：① `_v432ClaimOf` 的 **fwd 优先**取向令太阳的 fwd 窗跨过逗号读到**下一子句**的
+    //   「射手座上升」⇒ 凭空错配；② 月亮的 bwd 被「另一行星名截断」（bwdOther，截到本句
+    //   首颗行星「太阳」处）⇒ 回退读到**别家物主**的「你的天秤座」⇒ 二次凭空错配。
+    //   治法（宁漏不改）：
+    //   ① fwd 中**星座之前**含逗号/顿号 ⇒ 该星座属下一子句的物主，把 fwd 截到逗号处重取
+    //      （fwd 因此失去星座时自然回落 bwd）；
+    //   ② fwd 截后无星座、且 bwd 被另一行星名截断（bwdOther=true）⇒ bwd 属于别家 ⇒ 整个
+    //      出现点弃权（与 E18/R11k `bwdOther ⇒ 弃权` 同一裁定）。
+    let fwdC = clause.fwd, bwdC = clause.bwd;
+    const _e20comma = fwdC.search(/[,，、]/);
+    let _e20si = -1;
+    for (const s of _v432AllSignWords(lang)) { const k = fwdC.indexOf(s); if (k >= 0 && (_e20si < 0 || k < _e20si)) _e20si = k; }
+    if (_e20si >= 0 && _e20comma >= 0 && _e20comma < _e20si) fwdC = fwdC.slice(0, _e20comma);
+    let claim = null;
+    {
+      let _hasSign = false;
+      for (const s of _v432AllSignWords(lang)) { if (fwdC.indexOf(s) >= 0) { _hasSign = true; break; } }
+      if (!_hasSign && clause.bwdOther) {
+        // ②' bwd 被另一行星名截断 ⇒ 常规 bwd 回退读到别家物主, 弃权；但「星座紧邻行星名
+        //    之前」的局部贴合形态（「天蝎座月亮」，V482 signAdjacent 同源）永远只属于本
+        //    行星, 可安全采信（宁漏不改的例外: 贴附归属无歧义）。
+        const _adj = text.slice(Math.max(0, m.index - 8), m.index).match(new RegExp('(' + _v432AllSignWords(lang).slice().sort((a, b) => b.length - a.length).map(_v432Esc).join('|') + ')$'));
+        if (_adj) claim = { sign: _adj[1], house: null };
+        else continue;
+      }
+    }
+    if (!claim) claim = _v432ClaimOf(cfg, lang, fwdC, bwdC);
     if (!claim.sign && claim.house === null) continue;   // 无尽言 ⇒ 不算错配
     if (!_v432TruthMatch(t, claim.sign, claim.house)) n++;
   }
@@ -6657,6 +6685,92 @@ function auditYearlyNonMonthSunRef(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ E20/R11n ①：年报「元素归纳段·流年坐标剪枝锁」（V488d 契约的确定性落地）
+// ══════════════════════════════════════════════════════════════════
+// 【病根】（2026-10-05 E19/R11m 终局 sweep s7 zh 实证）：yearlySystemZH.txt 4d-6（V488d）
+//   规定第三章/四/五章的「元素归类/主题归纳/能量趋势」段落**禁止**出现
+//   「流年太阳（行星）+ 星座 + 宫位」坐标断言 —— 但该契约此前只有 prompt 规则 +
+//   V488-AUDIT 埋点（只检不改），无确定性执行器 ⇒ LLM 偶发违约直达落库：
+//     · 「土元素…主要通过流年太阳在双子座第八宫2027年5月来激活」（坐标还错值，5月真值金牛）
+//     · 「火元素的能量主要通过流年土星在白羊座第六宫来激活」（无月份锚点的孤立坐标）
+//   即 V488-AUDIT「三级 3 处」告警本体，CRITIC 判据9（双子归土元素）真阳性之源。
+// 【治法】stripYearlyElementCoordLeak —— 确定性剪枝：**删坐标、保时间**。铁律：
+//   ① 仅 zh + yearly（契约只存在于中文年报 prompt；他语宁漏不改）；
+//   ② 仅「非月段」（月段有 V482 逐月锁；段判定与 V488 同源：`#{1,6}\s`+YYYY年M月 标题行）；
+//   ③ 句级准入（窄前缀，宁漏不改）：句含「元素」字样（元素归类/元素路径/火土风水元素）；
+//   ④ 打击面 = `流年<行星>在<星座><第N宫>` 坐标断言，且该坐标**无前置月份锚点**
+//      （配对规则与 V488 一级/二级同源：锚点须在坐标之前 ≤_V488_MAX_GAP 字）——
+//      「在2027年4月流年太阳在白羊座第六宫」这类有前置锚点的合法形态绝不触碰；
+//   ⑤ 本命豁免：坐标前 2 字含「本命」⇒ 跳过（本命配置是 4d-6 明文允许项）；
+//   ⑥ 动作 = 剪坐标保时间：剪后句内仍余月份词 ⇒ 坐标整段删除（时间自然承接）；
+//      无月份词 ⇒ 坐标替换为「流年行运」（保「主要通过…来激活」句法可读，零坐标零真值断言）；
+//   ⑦ 禁动句界：只做句内 span 替换，绝不跨句/跨行；幂等（替换产物不再命中准入正则）。
+const _E20_LEAK_PLANET = '(?:太阳|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星)';
+function stripYearlyElementCoordLeak(text, lang, reportType) {
+  if (lang !== 'zh' || reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  const signWords = _v432AllSignWords('zh').slice().sort((a, b) => b.length - a.length);
+  if (!signWords.length) return text;
+  const leakRe = new RegExp('流年' + _E20_LEAK_PLANET + '在(' + signWords.map(_v444Esc).join('|') + ')第\\s*(?:\\d+|[一二三四五六七八九十]{1,3})\\s*宫', 'g');
+  const lines = text.split('\n');
+  // 非月段判定（与 V488 同源：月标题行 + 其段内行集合；段尾止于 `## ` 二级章节锚点）
+  const heads = [];
+  const seenKey = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!/^#{1,6}\s/.test(ln)) continue;
+    const ym = ln.match(/(\d{4})年(\d{1,2})月/);
+    if (!ym) continue;
+    const mo = Number(ym[2]);
+    if (mo < 1 || mo > 12) continue;
+    const key = Number(ym[1]) * 12 + mo;
+    if (seenKey.has(key)) continue;
+    seenKey.add(key);
+    heads.push({ line: i, key });
+  }
+  if (heads.length < 2) return text;
+  heads.sort((a, b) => a.key - b.key);
+  const inMonth = new Set();
+  heads.forEach((h, n) => {
+    let end = n + 1 < heads.length ? heads[n + 1].line : lines.length;
+    for (let k = h.line + 1; k < end; k++) { if (/^\s*##\s/.test(lines[k])) { end = k; break; } }
+    for (let k = h.line; k < end; k++) inMonth.add(k);
+  });
+  let touchedAny = false;
+  for (let li = 0; li < lines.length; li++) {
+    if (inMonth.has(li)) continue;                              // ② 非月段
+    const line = lines[li];
+    if (!line || line.indexOf('元素') < 0 || line.indexOf('流年') < 0) continue;
+    const parts = line.split(/(?<=[。！？])/);
+    let touched = false;
+    for (let pi = 0; pi < parts.length; pi++) {
+      const s = parts[pi];
+      if (!/元素/.test(s)) continue;                            // ③ 元素归纳句
+      leakRe.lastIndex = 0;
+      if (!leakRe.test(s)) continue;
+      const anchors = [];
+      for (const m of s.matchAll(new RegExp(_V488_MONTH.source, 'g'))) anchors.push({ end: m.index + m[0].length, mo: Number(m[1]) });
+      leakRe.lastIndex = 0;
+      const hits = [...s.matchAll(leakRe)].map((m) => ({ start: m.index, len: m[0].length }));
+      let out = s;
+      for (let k = hits.length - 1; k >= 0; k--) {              // 从后往前, 避免位移（E13 铁律）
+        const h0 = hits[k];
+        if (/本命/.test(out.slice(Math.max(0, h0.start - 2), h0.start))) continue;  // ⑤ 本命豁免
+        let hasFront = false;                                   // ④ 无前置月份锚点才动
+        for (const x of anchors) if (x.end <= h0.start && h0.start - x.end <= _V488_MAX_GAP) hasFront = true;
+        if (hasFront) continue;
+        const rest = out.slice(0, h0.start) + out.slice(h0.start + h0.len);
+        const repl = /(?:\d{4}\s*年)?\s*\d{1,2}\s*月/.test(rest) ? '' : '流年行运'; // ⑥ 删坐标保时间
+        out = out.slice(0, h0.start) + repl + out.slice(h0.start + h0.len);
+      }
+      if (out !== s) { parts[pi] = out; touched = true; }
+    }
+    if (touched) { lines[li] = parts.join(''); touchedAny = true; }
+  }
+  return touchedAny ? lines.join('\n') : text;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ E17/R11j ①：年报「上升锚点」真值锁（窄锁，**不复用**整条旧锁）
 // ══════════════════════════════════════════════════════════════════
 // 【病根】（2026-10-05 v516 特罗姆瑟盘 zh 年报线上实证）
@@ -6685,10 +6799,18 @@ const _V517_TRANSIT_MARK = {
   vi: /qu[aá]\s*độ|tiến\s*triển|th[aá]ng\s*n[aà]y|hiện\s*tại/i,
 };
 
-// 各语「上升 + 星座」句式（仅认明确轴点词；捕获组恒为**唯一的星座 token**）
+// 各语「上升 + 星座」句式（仅认明确轴点词；捕获组恒为**星座 token**）
+// 🛡️ E20/R11n ②（2026-10-06 s1 zh 重生成实证「你的天秤座上升天生渴望扩张」，真值 rising=Sagittarius）：
+//   旧正则只认**前置形态**「上升X座」，**后置形态**「X座上升 / X座命宫」整锁漏接 ⇒
+//   错值直达落库、CRITIC 判据12 告警。补后置分支（双捕获组，锁体取 g1||g2）：
+//   · zh 后置：`<星座>(的)?(上升|命宫)`，且轴点词后禁跟「期/段/势」（防「双子座上升期」类
+//     非轴点用法误伤）；
+//   · en 后置：`<sign> Rising/Ascendant`，轴点词后禁跟 above/toward/from（防 "rising above"
+//     动词短语误伤）；
+//   · es/fr/th/vi 暂不补（宁漏不改，后置形态暂无线下实证）。
 function _v517AxisRe(lang, signsPat) {
-  if (lang === 'zh') return new RegExp('(?:你的|本命|乃)?(?:上升|命宫)(?:星座)?(?:是|在|为)?\\s*(' + signsPat + ')', 'g');
-  if (lang === 'en') return new RegExp('(?:Rising\\s+Sign|Rising|Ascendant)(?:\\s+is|\\s+in)?\\s*(' + signsPat + ')\\b', 'g');
+  if (lang === 'zh') return new RegExp('(?:你的|本命|乃)?(?:上升|命宫)(?:星座)?(?:是|在|为)?\\s*(' + signsPat + ')|(?:你的|本命|乃)?\\s*(' + signsPat + ')(?:的)?(?:上升|命宫)(?![期段势])', 'g');
+  if (lang === 'en') return new RegExp('(?:Rising\\s+Sign|Rising|Ascendant)(?:\\s+is|\\s+in)?\\s*(' + signsPat + ')\\b|(' + signsPat + ')\\s+(?:Rising|Ascendant)\\b(?!\\s+(?:above|toward|from))', 'gi');
   if (lang === 'es') return new RegExp('(?:Ascendente|Ascendant)(?:\\s+es|\\s+en)?\\s*(' + signsPat + ')\\b', 'g');
   if (lang === 'fr') return new RegExp('(?:Ascendant)(?:\\s+est)?(?:\\s+en)?\\s*(' + signsPat + ')\\b', 'gi');
   // ⚠️ th/vi 的「你的」是**中置**（ลัคนา**ของคุณ** / Ascendant **của bạn**）—— 必须显式吃掉，
@@ -6723,7 +6845,10 @@ function lockYearlyAxisAnchor(text, lang, astroMatrix, reportType) {
   const mark = _V517_TRANSIT_MARK[lang] || null;
   const signSet = new Set(signs.map((s) => String(s).toLowerCase()));
   let n = 0;
-  const out = text.replace(re, (m, tok, off) => {
+  // 🛡️ E20/R11n ②: zh/en 补后置形态后正则含双捕获组（前置 g1 / 后置 g2），token 取 g1||g2；
+  //   其余单组语言 g2 恒 undefined，行为不变。
+  const out = text.replace(re, (m, g1, g2, off) => {
+    const tok = g1 || g2;
     if (!signSet.has(String(tok).toLowerCase())) return m;      // ③ 非星座 token → 不动
     if (mark && mark.test(text.slice(Math.max(0, off - 24), off))) return m;  // ④ 流年豁免
     if (String(tok).toLowerCase() === String(trueLoc).toLowerCase()) return m; // 幂等
@@ -8267,7 +8392,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v520:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v521:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11547,7 +11672,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v520:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v521:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11821,6 +11946,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛡️ V483c: 年报月标题终局去重 —— 全链最末, 兜住 LLM 偶发把同一月的标题写两遍(线上实测 24 行)
         if (reportType === 'yearly') {
           reportContent = dedupYearlyMonthTitles(reportContent, lang, reportType);
+        }
+
+        // 🛡️ E20/R11n: 元素归纳段流年坐标剪枝锁（V488d 契约确定性落地, 见函数头注释）——
+        //   置于真值锁**之前**：先剪掉无锚点坐标断言, 再让真值链对剪后文本收口。
+        if (reportType === 'yearly') {
+          reportContent = stripYearlyElementCoordLeak(reportContent, lang, reportType);
         }
 
         // 🛡️ E19/R11m: 真值锁**最终话语权** —— 全部清洗/去重之后再跑一次本命真值链。
@@ -12276,7 +12407,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v520:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v521:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13532,6 +13663,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = _v517YearlyFinalLocks(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(落库前最后一道)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
+    // 🛡️ E20/R11n: 元素归纳段流年坐标剪枝锁(与 /api/wealth-oracle 非流式端点同源) —— 先剪坐标再收口。
+    if (reportType === 'yearly') cleanedText = stripYearlyElementCoordLeak(cleanedText, lang, reportType);
     // 🛡️ E19/R11m: 真值锁最终话语权(与 /api/wealth-oracle 非流式端点同源) —— 见该处函数头注释:
     //   链中段真值锁在「句窗含年份/月份词」时弃权, 而残渣随后被清掉 ⇒ 残差漏纠;
     //   故在所有清洗/去重之后收口重跑。实测 12 盘零 churn, 仅修残差, 二次施加幂等。
@@ -13941,7 +14074,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v520-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v521-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

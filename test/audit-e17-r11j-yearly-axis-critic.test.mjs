@@ -352,24 +352,24 @@ test("⑯' 注入自测: 抽掉写链一路挂载 ⇒ 接线断言必须变红",
   assert.ok(!/reportContent = _v517YearlyFinalLocks\(reportContent/.test(INJ), '注入后 MISS 侧挂载必须消失');
 });
 
-test('⑰ 结构级: 缓存版本 v520（4 站点）+ purge 回收 v519 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v520/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v520, 实得 ${sites}`);
-  assert.ok(!/wealth:v519/.test(SRC), 'server.js 内不得残留 v519 键');
-  assert.ok(PURGE.includes("'wealth:v519:*'") && PURGE.includes("'wealth:v519-v2:*'"), 'purge 须双形态回收 v519');
+test('⑰ 结构级: 缓存版本 v521（4 站点）+ purge 回收 v520 + 旧闸门基线前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v521/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v521, 实得 ${sites}`);
+  assert.ok(!/wealth:v520/.test(SRC), 'server.js 内不得残留 v520 键');
+  assert.ok(PURGE.includes("'wealth:v520:*'") && PURGE.includes("'wealth:v520-v2:*'"), 'purge 须双形态回收 v520');
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = fs.readFileSync(path.join(__dirname, f), 'utf-8');
     // 🛡️ 基线前移判据只锁「站点计数正则」（matchAll(/wealth:vNNN/g)）；
     //    旧闸门内的 purge 回收断言（wealth:vNNN:\*）与残留检查字符串是**合法**字面量，不得误伤。
-    // ⚠️ E19/R11m 修正：此处曾留缺陷 —— 两条断言**同用 v519**（「须不存在」∧「须存在」自相矛盾），
+    // ⚠️ E19/R11m 修正：此处曾留缺陷 —— 两条断言**同用 v520**（「须不存在」∧「须存在」自相矛盾），
     //    且因 `test:astro` 是 `&&` 长链、上轮大批有红 ⇒ 短路从未跑到 ⇒ 缺陷潜伏。
     //    改用纯字符串 includes（零正则转义坑）并显式断言新旧基线不同，绝不再写歪。
-    const OLD_BASE = 'matchAll(/wealth:v519/g)';
-    const NEW_BASE = 'matchAll(/wealth:v520/g)';
+    const OLD_BASE = 'matchAll(/wealth:v520/g)';
+    const NEW_BASE = 'matchAll(/wealth:v521/g)';
     assert.notStrictEqual(OLD_BASE, NEW_BASE, '判据自检：新旧基线串不得相同（否则两条断言自相矛盾）');
-    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v520`);
-    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v520`);
+    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v521`);
+    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v521`);
   }
 });
