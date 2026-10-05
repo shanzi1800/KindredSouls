@@ -356,8 +356,8 @@ test('⑮ 注入自测: 剥离 HIT 路径前导锁 → 轴点纠偏能力丢失'
 });
 
 test('⑯ 缓存 v515（server.js 四站点 + purge 补 v514 双形态）', () => {
-  const sites = [...src.matchAll(/wealth:v518/g)].length;
-  assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
-  assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
+  const sites = [...src.matchAll(/wealth:v519/g)].length;
+  assert.ok(sites >= 4, `server.js v519 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v518'), 'server.js 残留 v518（漏改一站）');
+  assert.ok(/wealth:v518:\*/.test(purgeSrc) && /wealth:v518-v2:\*/.test(purgeSrc), 'purge 脚本未补 v518 双形态');
 });

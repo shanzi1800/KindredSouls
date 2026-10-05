@@ -136,12 +136,12 @@ test('④ R11c: wealthCriticCheck 三类新判据 + astroMatrix 形参（判据 
 });
 
 test('⑤ 缓存 bump v515（server.js 四站点 + purge 补 v514 双形态 + 基线前移）', () => {
-  const sites = [...src.matchAll(/wealth:v518/g)].length;
-  assert.ok(sites >= 4, `server.js v514 站点不足 4: ${sites}`);
-  assert.ok(!src.includes('wealth:v513'), 'server.js 残留 v513（漏改一站）');
-  assert.ok(/wealth:v513:\*/.test(purgeSrc) && /wealth:v513-v2:\*/.test(purgeSrc), 'purge 脚本未补 v514 双形态');
+  const sites = [...src.matchAll(/wealth:v519/g)].length;
+  assert.ok(sites >= 4, `server.js v519 站点不足 4: ${sites}`);
+  assert.ok(!src.includes('wealth:v518'), 'server.js 残留 v518（漏改一站）');
+  assert.ok(/wealth:v518:\*/.test(purgeSrc) && /wealth:v518-v2:\*/.test(purgeSrc), 'purge 脚本未补 v518 双形态');
   const yearly = fs.readFileSync(path.join(__dirname, 'audit-yearly-stream.test.js'), 'utf-8');
-  assert.ok(/MIN_CACHE_VER = 518/.test(yearly), 'yearly 流式闸门基线未前移 v518');
+  assert.ok(/MIN_CACHE_VER = 519/.test(yearly), 'yearly 流式闸门基线未前移 v518');
 });
 
 // ═══════════════ 行为级: vm 抽取 + Adelaide 假矩阵(零 python) ═══════════════

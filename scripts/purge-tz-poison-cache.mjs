@@ -63,6 +63,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v516-v2:*',
   'wealth:v517:*',        // 🛡️ E18/R11k: v517 全量作废（HIT 链二次施加非幂等 ⇒ HIT 响应 ≠ 库内文本（12 盘 5 盘劣化，`Sagittarius…— Sun, Moon,` 被抠成 `SagittLeo…—Moon,`）+ E17 裸本命锁把 12 个月标题星座反写回 natal Sun + `standardizeReport` 非幂等再插换行；HIT 侧收拢为「命中即终局」）
   'wealth:v517-v2:*',
+  'wealth:v518:*',        // 🛡️ E19/R11l: v518 全量作废（V482 流年锁段尾守卫只认 `## ` 二级 ⇒ en `### Chapter` 三级章节被末月段吞入, 本命句被按流年改写后连锁炸掉下游本命锁门控, `Saturn in Aquarius in your 4th House`(真值 H2) 错值终局落库；守卫升级为任意级别非月标题终止 + 本命星座豁免）
+  'wealth:v518-v2:*',
   'wealth:v116-v2:*',
 ];
 

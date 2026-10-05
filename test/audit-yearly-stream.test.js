@@ -58,7 +58,7 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
 // 🛠️ V479: 缓存版本基线 —— 每次 bump 后同步上调, 不允许回退(回退=毒缓存复用)。
 //   早先写死 `wealth:v4\d\d:` + strictEqual(v480) → 每次正常 bump 都假红一次(闸门成了绊脚石);
 //   改为「同版本一致 + 不低于已发布基线」, 既守「输出链变更必须 bump」, 又不因 bump 假红。
-const MIN_CACHE_VER = 518;   // E18/R11k: 锁链幂等化（`_v432Clause` 回传 bwdOff 绝对坐标 + bwdOther 弃权）+ HIT 链收拢为「命中即终局，不再跑锁」+ E17 裸本命锁月标题豁免 + MISS 响应 ≡ 落库文本 ⇒ 全量 bump 作废历史键
+const MIN_CACHE_VER = 519;   // E19/R11l: V482 流年锁段尾守卫升级（en `### Chapter` 三级章节被末月段吞入 ⇒ 本命句被流年改写后连锁炸掉本命锁门控）+ V482 本命星座豁免 ⇒ 全量 bump 作废历史键
 
 test('④ 缓存 key 统一且不低于已发布基线 v' + MIN_CACHE_VER + '(输出链变更必须 bump,防毒缓存复用)', () => {
   // ⚠️ 只取 `const cacheKey = `wealth:vNNN:`` 赋值形式: 裸 match v\d+ 会命中注释里提及的历史键

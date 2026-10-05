@@ -108,7 +108,7 @@ function cacheSites(src) {
   return out;
 }
 // 🛡️ 基线常量：每次输出链变更 bump 时**只改这一处**（旧写法把版本号散落在 6 处字面量里）
-const LATEST_CACHE_VER = 'v518';
+const LATEST_CACHE_VER = 'v519';
 const D1_ALL_LATEST = (src) => {
   const s = cacheSites(src);
   // 🛡️ E16/R11g 基线前移: 月标题逐月真值锁六语解封（es/fr/th/vi 原「lang===en 才识别」⇒ 12 盘 54 处标题错项）+ th 行星/宫位词正字化 + house_linter 月锚点补全 es/fr 全 12 月名 = 输出链变更 ⇒ v513 全量作废
@@ -300,9 +300,9 @@ test('ok2 灵敏度自检：D1/D2/D4-js 判据均具区分力', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// D1 · 缓存版本 v517 → v518（E18/R11k 输出链变更：锁链幂等化 `_v432Clause` 回传 bwdOff 绝对坐标 + bwdOther 弃权；HIT 链收拢为「命中即终局」；E17 裸本命锁月标题豁免；MISS 响应 ≡ 落库文本，4 站点全覆盖）
+// D1 · 缓存版本 v518 → v519（E19/R11l 输出链变更：V482 流年锁段尾守卫升级为「任意级别非月标题终止」+ V482 本命星座豁免，4 站点全覆盖）
 // ═══════════════════════════════════════════════════════════════════════
-test('V492-D1 缓存版本 bump 至 v518（4 站点全覆盖；E18/R11k 基线前移）', () => {
+test('V492-D1 缓存版本 bump 至 v519（4 站点全覆盖；E19/R11l 基线前移）', () => {
   const s = cacheSites(SRC);
   const detail = s.map((x, i) => ` #${i + 1} ${x.base}${x.v2 ? '-v2' : ''}`).join('');
   assert.ok(s.length >= 4, `缓存键站点仅 ${s.length} 个（应有 4：删除键/非流式/流式/年报-v2）${detail}`);

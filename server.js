@@ -6189,16 +6189,39 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
       ? '((?:\\d{1,2}(?:st|nd|rd|th)\\s+House)|(?:House\\s*\\d+))'
       : ('(' + (_V516_HOUSE_WORD[lang] || 'House') + '\\s*\\d+)');
 
+  // 🛡️ E19/R11l: 本命星座豁免 —— 匹配星座与该行星【本命星座】一致时, 该句是对本命
+  //   位置的陈述, 绝不可按流年真值改写; 否则既污染本命句, 又会让下游本命锁的
+  //   「流年一致性门控」(_v512PossessiveNatal ⑥)误判弃权(E19/R11l 生产实证: s2 en
+  //   「Saturn in Aquarius in your 4th House」被改成流年 Aries, Aries 恰跨该盘第4宫
+  //   ⇒ 门控 false ⇒ 本命锁弃权 ⇒ 宫位错值终局落库)。宁漏不改。
+  let natalTruth = null;
+  try { natalTruth = _v432Truth(lang, astroMatrix, 'natal'); } catch (e) { natalTruth = null; }
+  const _natalSignRe = {};
+  if (natalTruth) {
+    for (const pk of Object.keys(natalTruth)) {
+      const _ns = natalTruth[pk] && natalTruth[pk].sign;
+      if (!_ns) continue;
+      try { _natalSignRe[pk] = new RegExp('^(?:' + _v516SignAlt(lang, _ns) + ')$', 'i'); } catch (e) {}
+    }
+  }
+
   let changed = 0;
   for (let h = 0; h < heads.length; h++) {
     const idx = heads[h].key - base;
     if (idx < 0 || idx >= months.length) continue;
     const m = months[idx] || {};
     const start = heads[h].line + 1;
-    // ⚠️ 段尾 = 下一个【月标题】或下一个 `## ` 章节锚点 —— 缺了后半句守卫,
+    // ⚠️ 段尾 = 下一个【月标题】或下一个非月标题的标题行 —— 缺了守卫,
     //   末月段会一路吞到文末, 把【第三章~第五章】正文按末月真值改写(生产实测误改 5 行)。
+    //   🛡️ E19/R11l: 原守卫只认 `## ` 二级锚点, 但 en 年报章节标题是 `### Chapter III~V`
+    //   (三级) ⇒ 守卫形同虚设, 末月段吞进第三~五章, 「Saturn in Aquarius in your 4th
+    //   House」(本命句)被按 6 月流年改成 Aries ⇒ 连锁炸掉下游本命锁的门控
+    //   (_v512PossessiveNatal ⑥流年一致性否决, CRITIC 判据12 余警真因)。
+    //   现改为: 任何【非月标题】的标题行都终止月段(月段内部实测无其他子标题)。
     let end = (h + 1 < heads.length) ? heads[h + 1].line : lines.length;
-    for (let k = start; k < end; k++) { if (/^\s*##\s/.test(lines[k])) { end = k; break; } }
+    for (let k = start; k < end; k++) {
+      if (/^\s*#{1,6}\s/.test(lines[k]) && !_v516MonthHeadKey(lines[k].trim(), lang)) { end = k; break; }
+    }
     for (let li = start; li < end; li++) {
       let line = lines[li];
       if (!line) continue;
@@ -6223,6 +6246,8 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
           if (/(?:\bnatal|\bnatale?s?|\bnative|\bof birth|\bat birth)\b/i.test(_pre + ' ' + full)) return full;
           if (/(?:\byour|\bmy|\bhis|\bher|\btheir|\bour|\btu|\bsu|\bson|\bsa|\bton|\bta|\bvotre|\bmon|\bma|\bnotre)\s*$/i.test(_pre)
             && /^(?:Sun|Moon|Sol|Luna|Soleil|Lune)\b/i.test(full)) return full;
+          // 🛡️ E19/R11l: 匹配星座 ≡ 本命星座 ⇒ 本命陈述句, 弃权不改(宁漏不改)
+          if (_natalSignRe[key] && _natalSignRe[key].test(signWord)) return full;
           let out = full;
           // 保留原文形态: 原文写短名(无「座」)就还它短名, 写全称就还全称
           const wantSign = (lang === 'zh' && !/座$/.test(signWord)) ? trueSign.replace(/座$/, '') : trueSign;
@@ -7872,11 +7897,15 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
     }
 
     // 8. 🛠️ 军师审计·P2: 幽灵相位--"火星形成刑克相位"缺行星对象
-    // 在完整句子内检查:含'形成刑克/三分/六分/对分'但同一句内无'与+行星名'
+    // 在完整句子内检查:含'形成刑克/三分/六分/对分'但同一句内无「行星 与 行星」对偶
+    // 🛡️ E19/R11l: 守卫扩展——行星可写「太阳/太阴/月亮」（不带星尾），否则
+    //    「流年太阳…与流年木星形成合相」被误报为幽灵相位（E18 批测 s1 zh 实证）。
+    var _c8Aspect = /形成(刑克|对分|三分|六分|合相)/;
+    var _c8Pair = /(太阳|太阴|月亮|[日月水火木金土]星)[^。\n]{0,30}与[^。\n]{0,30}(太阳|太阴|月亮|[日月水火木金土]星)/;
     var sents = text.split(/[。\n]/);
     for (var si = 0; si < sents.length; si++) {
       var s = sents[si];
-      if (/形成(刑克|对分|三分|六分|合相)/.test(s) && !/[日月水火木金土]星.*与[日月水火木金土]星/.test(s)) {
+      if (_c8Aspect.test(s) && !_c8Pair.test(s)) {
         issues.push('幽灵相位:' + s.slice(0, 50));
         break;
       }
@@ -8235,7 +8264,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v518:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v519:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11515,7 +11544,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v518:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v519:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12230,7 +12259,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v518:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v519:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13891,7 +13920,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v518-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v519-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

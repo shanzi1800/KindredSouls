@@ -288,15 +288,18 @@ test('⑨ 结构级: MISS 响应 ≡ 落库文本（`_finalText` 单次计算、
 });
 
 // ═══════════════════ D. 版本 bump ═══════════════════
-test('⑩ 结构级: 缓存 v518（4 站点）+ purge 双形态回收 v517 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v518/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v518, 实得 ${sites}`);
-  assert.ok(!/wealth:v517/.test(stripComments(SRC)), 'server.js 内不得残留 v517 键（注释历史注记除外）');
-  assert.ok(PURGE.includes("'wealth:v517:*'") && PURGE.includes("'wealth:v517-v2:*'"), 'purge 须双形态回收 v517');
+test('⑩ 结构级: 缓存 v519（4 站点）+ purge 双形态回收 v518 + 旧闸门基线前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v519/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v519, 实得 ${sites}`);
+  assert.ok(!/wealth:v518/.test(stripComments(SRC)), 'server.js 内不得残留 v518 键（注释历史注记除外）');
+  assert.ok(PURGE.includes("'wealth:v518:*'") && PURGE.includes("'wealth:v518-v2:*'"), 'purge 须双形态回收 v518');
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = fs.readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(!/wealth:v517/.test(t), `${f} 基线须前移至 v518`);
+    // 🛡️ E19/R11l: 基线前移判据只锁「站点计数正则」——旧闸门内的 purge 回收断言
+    //    （wealth:v518:\*）与残留检查字符串是合法字面量，粗暴 includes 会误伤（e17⑰ 同修）。
+    assert.ok(!/matchAll\(\/wealth:v518\/g\)/.test(t), `${f} 站点计数基线须前移至 v519`);
+    assert.ok(/matchAll\(\/wealth:v519\/g\)/.test(t), `${f} 站点计数须为 v519`);
   }
 });
