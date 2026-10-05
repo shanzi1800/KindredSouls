@@ -89,22 +89,62 @@ test('③ 流年句识别必须收窄口径（Transit / 2026 / In 2026 / 流年�
   assert.ok(/_V492B_SENT_BREAK/.test(b), '流年句识别未按句窗断句');
 });
 
-test('④ 写链两处挂载齐全（非流式 / 流式落库前）且均排在 V488 之后；HIT 侧零挂载（E18/R11k）', () => {
+/** 🛡️ E18/R11k · E19/R11m: HIT 分支区（入口/出口标记切分）。
+ *  ⚠️ 旧判据用「挂载点是否紧邻 V488(<400 字符)」来**代指**「是否在 HIT 侧」——
+ *  E19/R11m 新增的 2 处**链末收口**挂载（排在 dedupYearlyMonthTitles 之后）离 V488 有
+ *  2661 / 898 字符 ⇒ 被误判为 HIT 侧（假红）。代指法本身不成立：写链末道本就远离 V488。
+ *  故改为**直接扫描 HIT 分支区**（结构铁证，且有区分力自测）。 */
+const HIT_REGIONS = [
+  ['非流式 HIT', 'E18/R11k（军师裁决②）: Clean HIT Pipeline', 'V427: 调用 buildWealthMetaFull'],
+  ['流式 HIT', '流式 HIT 同样', '[wealth-stream] [OK] Cache instant chunked complete'],
+];
+function hitLockHits(source) {
+  return HIT_REGIONS.flatMap(([tag, from, to]) => {
+    const a = source.indexOf(from);
+    assert.ok(a > 0, `${tag} 入口标记丢失 ⇒ 区域抽取失败, 判据空转`);
+    const b = source.indexOf(to, a + from.length);
+    assert.ok(b > a, `${tag} 出口标记丢失 ⇒ 区域抽取失败, 判据空转`);
+    const body = source.slice(a, b);
+    // 空/过短切片会让「零挂载」断言恒真 ⇒ 必须显式拦住
+    assert.ok(body.length > 800, `${tag} 区域过短(${body.length} 字符) ⇒ 判据空转`);
+    return [...body.matchAll(/_v432LockLeadingNatal\(/g)].map(() => tag);
+  });
+}
+
+test('④ 写链挂载齐全（中段 2 处 + 链末收口 2 处）；HIT 侧零挂载（E18/R11k / E19/R11m）', () => {
   const calls = [...src.matchAll(/_v432LockLeadingNatal\(/g)].length;
-  assert.ok(calls >= 3, `挂载点不足(定义1+调用≥2): ${calls}`);
+  assert.ok(calls >= 5, `挂载点不足(定义1+调用≥4): ${calls}`);
   const v488s = [...src.matchAll(/lockYearlyNonMonthSunRef\([^)]*\);/g)].map((m) => m.index);
   const locks = [...src.matchAll(/= _v432LockLeadingNatal\(/g)].map((m) => m.index);
-  assert.ok(locks.length >= 2, `链上调用不足 2 处: ${locks.length}`);
-  // 「链上挂载点」= 紧邻其 V488 守卫之后（非流式 MISS / 流式落库前最后一道）。
-  const onChain = locks.filter((li) => {
-    const prev = v488s.filter((v) => v < li).pop();
+  assert.ok(locks.length >= 4, `链上调用不足 4 处: ${locks.length}`);
+  const near = (marks, li) => {
+    const prev = marks.filter((v) => v < li).pop();
     return prev !== undefined && li - prev < 400;
+  };
+  // (a) 链中段挂载点 = 紧邻其 V488 守卫之后（非流式 MISS / 流式落库前最后一道）。
+  const onChain = locks.filter((li) => near(v488s, li));
+  assert.ok(onChain.length >= 2, `链中段排在 V488 之后的挂载点不足 2 处: ${onChain.length}`);
+  // (b) 🛡️ E19/R11m: 链末收口挂载点 = 排在 dedupYearlyMonthTitles 之后（清洗/去重完毕再纠值).
+  //   动机：中段锁的「物主本命句」准入依赖句窗内容 —— 句窗含年份/月份词即弃权(宁漏不改),
+  //   而残渣随后被 cleanYearlyTimeline/dedup 清掉 ⇒ 残差漏纠（s2 en CRITIC 判据12 余警真因）。
+  //   窗口 1200：实测链末挂载距 dedup 817 / 323 字符（非流式含 10 行长注释）。
+  const dedups = [...src.matchAll(/= dedupYearlyMonthTitles\(/g)].map((m) => m.index);
+  const tailPass = locks.filter((li) => {
+    const prev = dedups.filter((v) => v < li).pop();
+    return prev !== undefined && li - prev < 1200;
   });
-  assert.ok(onChain.length >= 2, `链上排在 V488 之后的挂载点不足 2 处: ${onChain.length}`);
-  // 🛡️ E18/R11k（军师裁决② Clean HIT Pipeline）: HIT 侧收拢为「命中即终局，不再跑锁链」
-  //   ⇒ 旧 E13/R11d-4 的**非流式 HIT 补强点**已删除，链外挂载点必须为 0
-  //   （否则二次施加非幂等：HIT 响应 ≠ 库内文本）。
-  assert.strictEqual(locks.length - onChain.length, 0, 'HIT 侧不得再有链外挂载点（E18/R11k 命中即终局）');
+  assert.ok(tailPass.length >= 2, `链末收口挂载点不足 2 处: ${tailPass.length}`);
+  // (c) 全部挂载必须落在上述两类 ⇒ 链外（游离 / HIT 侧）挂载点为 0。
+  assert.strictEqual(locks.length - onChain.length - tailPass.length, 0,
+    '存在链外挂载点（HIT 侧或游离）：E18/R11k「命中即终局」⇒ HIT 侧不得有任何锁');
+  // (d) 🔴 HIT 分支内零挂载 —— 直接扫描（不再靠距离代指）
+  assert.deepEqual(hitLockHits(src), [], 'HIT 分支内出现本命锁挂载（违反 E18/R11k 命中即终局）');
+  // 注入自测：把一处挂载搬进非流式 HIT 区 ⇒ 必红（证明本判据有区分力，非恒真）
+  //   ⚠️ 必须插在**区域起点标记之后** —— `indexOf(from)` 返回的正是标记起点，
+  //   插在其前则落于 [a,b) 之外，判据自然数不到 ⇒ 自测假绿（本项目老坑）。
+  const at = src.indexOf(HIT_REGIONS[0][1]) + HIT_REGIONS[0][1].length;
+  const injected = src.slice(0, at) + 'x = _v432LockLeadingNatal(' + src.slice(at);
+  assert.deepEqual(hitLockHits(injected), ['非流式 HIT'], '注入自测失败：HIT 区内的挂载未被判红');
 });
 
 test('⑤ Prompt 侧必须补「第 1 章仅本命、严禁混入流年」强约束', () => {

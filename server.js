@@ -7900,8 +7900,11 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
     // 在完整句子内检查:含'形成刑克/三分/六分/对分'但同一句内无「行星 与 行星」对偶
     // 🛡️ E19/R11l: 守卫扩展——行星可写「太阳/太阴/月亮」（不带星尾），否则
     //    「流年太阳…与流年木星形成合相」被误报为幽灵相位（E18 批测 s1 zh 实证）。
+    // 🛡️ E19/R11m: 再扩【外行星】—— 原字符类 `[日月水火木金土]星` 认不出「冥王星/海王星/
+    //    天王星」（首字不在类内）⇒「流年太阳…与冥王星形成合相」仍被判为幽灵相位
+    //    （E19 批测 s7 zh 实证）。外行星三词均为「X王星」形态 ⇒ 单列 `[冥海天]王星`。
     var _c8Aspect = /形成(刑克|对分|三分|六分|合相)/;
-    var _c8Pair = /(太阳|太阴|月亮|[日月水火木金土]星)[^。\n]{0,30}与[^。\n]{0,30}(太阳|太阴|月亮|[日月水火木金土]星)/;
+    var _c8Pair = /(太阳|太阴|月亮|[日月水火木金土]星|[冥海天]王星)[^。\n]{0,30}与[^。\n]{0,30}(太阳|太阴|月亮|[日月水火木金土]星|[冥海天]王星)/;
     var sents = text.split(/[。\n]/);
     for (var si = 0; si < sents.length; si++) {
       var s = sents[si];
@@ -8264,7 +8267,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v519:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v520:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11544,7 +11547,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v519:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v520:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11818,6 +11821,20 @@ app.post('/api/wealth-oracle', async (req, res) => {
         // 🛡️ V483c: 年报月标题终局去重 —— 全链最末, 兜住 LLM 偶发把同一月的标题写两遍(线上实测 24 行)
         if (reportType === 'yearly') {
           reportContent = dedupYearlyMonthTitles(reportContent, lang, reportType);
+        }
+
+        // 🛡️ E19/R11m: 真值锁**最终话语权** —— 全部清洗/去重之后再跑一次本命真值链。
+        //   病根（2026-10-05 E19 收官 P0 闭环, s2 en 线上实证）：`_v432LockLeadingNatal` 挂在
+        //   链中段（V492b 位置），其「物主本命句」准入依赖句窗内容 —— 只要句窗内有**年份/月份词**
+        //   （门控① `_V492B_LEAD_TRANSIT.en` 命中任意 `20\d{2}`、门控② `_V512_MONTH_TOK`），
+        //   该句即被判为「流年语境」而弃权（宁漏不改）。链中段此时文本仍带时间线残渣/标题粘连，
+        //   于是 `Saturn in Aquarius in your 4th House`（本命 H2）整批漏纠 ⇒ CRITIC 判据12 余警；
+        //   而这些残渣随后被 cleanYearlyTimeline/dedup 清掉 ⇒ 落库文本的句窗反而是干净的
+        //   （⇒ 离线重放该锁能修、线上产物却保留错值，E18/E19 两次「离线能修、线上不修」之谜的真因）。
+        //   治本：把真值链放到**所有文本清理之后**收口 —— 此时句窗干净，纠值成立；且实测
+        //   对 11/12 盘是**零 churn**（Δ=0），对残差盘恰好修好，二次施加严格幂等（12/12 Δ=0）。
+        if (reportType === 'yearly') {
+          reportContent = _v432LockLeadingNatal(reportContent, lang, astroMatrix, reportType);
         }
 
         // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
@@ -12259,7 +12276,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v519:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v520:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13515,6 +13532,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = _v517YearlyFinalLocks(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(落库前最后一道)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
+    // 🛡️ E19/R11m: 真值锁最终话语权(与 /api/wealth-oracle 非流式端点同源) —— 见该处函数头注释:
+    //   链中段真值锁在「句窗含年份/月份词」时弃权, 而残渣随后被清掉 ⇒ 残差漏纠;
+    //   故在所有清洗/去重之后收口重跑。实测 12 盘零 churn, 仅修残差, 二次施加幂等。
+    if (reportType === 'yearly') cleanedText = _v432LockLeadingNatal(cleanedText, lang, astroMatrix, reportType);
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
     //   抹平 Thá ng(词内空格)/mayắn(吞辅音) 类越南语编码缺陷,在流式生成阶段即修复。
@@ -13920,7 +13941,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v519-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v520-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

@@ -25,6 +25,8 @@ const GHOST_NONPLANET = '火星与事业版图形成刑克相位，本月的合�
 const PAIR_CLASSIC = '太阳与木星形成合相，这是本季度最重要的扩张窗口';                       // 合法: 经典星+星
 const PAIR_MOON = '月亮与金星形成六分相位，家庭财务氛围温和';                                // 合法: 月亮形态
 const PAIR_PREFIX = FP_SENTENCE;                                                            // 合法: 流年前缀+太阳形态
+// —— E19 批测 s7 zh 真实误报句（逐字取自 raw-s7-zh.md）: 第二行星是【外行星】冥王星 ——
+const FP_OUTER = '流年太阳进入水瓶座第三宫，与冥王星形成合相——这是"知识权力"被激活的月份';
 
 // 同源抽取 server.js 的两个判据8 正则（indexOf 切片，避开 RegExp 构造器转义天坑）
 function extractRegex(name) {
@@ -71,12 +73,33 @@ test('④ 行为级: 合法对偶三形态全部 0 告警', () => {
   }
 });
 
+// ── 🛡️ E19/R11m: 外行星（冥王星/海王星/天王星）对偶形态 —— 原字符类 `[日月水火木金土]星`
+//    首字不含 冥/海/天 ⇒ 认不出「冥王星」⇒ s7 zh 真实误报。──
+test('⑦ 行为级: E19 批测 s7 zh 外行星对偶句必须 0 告警（R11m 主目标）', () => {
+  assert.equal(hasGhost(FP_OUTER), null,
+    '「流年太阳…与冥王星形成合相」仍被误报为幽灵相位（守卫未含外行星）');
+  for (const [name, p] of [['海王星', '海王星'], ['天王星', '天王星']]) {
+    const s = `流年金星与${name}形成三分相位，这是柔和的支持能量`;
+    assert.equal(hasGhost(s), null, `外行星对偶句（${name}）被误报`);
+  }
+});
+
 test('⑤ 注入自测: 守卫回退到旧正则 ⇒ ② 必红（修复是承重的）', () => {
   const oldGuard = /[日月水火木金土]星.*与[日月水火木金土]星/;
   const pair = extractRegex('_c8Pair');
   // 旧守卫对真实误报句不匹配（这正是当初误报根因）——证明若有人回退守卫，误报复发
   assert.ok(!oldGuard.test(FP_SENTENCE), '前提失效: 旧守卫居然匹配了误报句（注入场景不再成立）');
   assert.ok(pair.test(FP_SENTENCE), '新守卫未匹配真实误报句——修复无效');
+});
+
+// ── 🛡️ E19/R11m 注入自测: 复刻「R11l 版守卫」（已含 太阳/太阴/月亮，但**无**外行星）──
+test('⑧ 注入自测: 守卫退回 R11l 版（无外行星）⇒ ⑦ 必红（R11m 是承重的）', () => {
+  const r11lGuard = /(太阳|太阴|月亮|[日月水火木金土]星)[^。\n]{0,30}与[^。\n]{0,30}(太阳|太阴|月亮|[日月水火木金土]星)/;
+  const pair = extractRegex('_c8Pair');
+  assert.ok(!r11lGuard.test(FP_OUTER), '前提失效: R11l 守卫居然匹配了外行星句（注入场景不成立）');
+  assert.ok(pair.test(FP_OUTER), 'R11m 守卫未匹配外行星对偶句——修复无效');
+  // 结构性: 守卫源码必须显式含外行星字符类（防「改回旧版」静默回退）
+  assert.ok(SRC.includes('[冥海天]王星'), '判据8 守卫缺外行星字符类 [冥海天]王星');
 });
 
 test('⑥ 注入自测: 触发正则缺失/失配 ⇒ ③ 必红（拦截是承重的）', () => {
