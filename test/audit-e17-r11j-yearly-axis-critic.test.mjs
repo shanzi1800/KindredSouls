@@ -171,6 +171,14 @@ test('② 轴点锁: 泛指句「你的上升星座与命宫」零误伤 + 幂�
   assert.equal(F.lockYearlyAxisAnchor(good, 'zh', MATRIX, 'yearly'), good, '值==真值 ⇒ 原样返回（幂等）');
 });
 
+test("②' 轴点锁: 「命宫X座」同样硬锁为真值 ASC（军师①「上升X座 / 命宫X座」双形态）", () => {
+  const { F } = buildChain(SRC);
+  const s = '你的命宫水瓶座，事业宫位活跃。\n';
+  const out = F.lockYearlyAxisAnchor(s, 'zh', MATRIX, 'yearly');
+  assert.ok(out.includes('命宫射手座'), `「命宫水瓶座」应纠为命宫射手座, 实得: ${out.trim()}`);
+  assert.ok(!out.includes('命宫水瓶座'), '命宫错串必须被纠正');
+});
+
 test('③ 轴点锁: 流年豁免 —— 「流年上升在水瓶座」不得被强改', () => {
   const { F } = buildChain(SRC);
   const s = '流年上升在水瓶座，这是太阳返照盘的上升。\n';

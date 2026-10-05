@@ -6640,7 +6640,7 @@ const _V517_TRANSIT_MARK = {
 
 // 各语「上升 + 星座」句式（仅认明确轴点词；捕获组恒为**唯一的星座 token**）
 function _v517AxisRe(lang, signsPat) {
-  if (lang === 'zh') return new RegExp('(?:你的|本命|乃)?上升(?:星座)?(?:是|在|为)?\\s*(' + signsPat + ')', 'g');
+  if (lang === 'zh') return new RegExp('(?:你的|本命|乃)?(?:上升|命宫)(?:星座)?(?:是|在|为)?\\s*(' + signsPat + ')', 'g');
   if (lang === 'en') return new RegExp('(?:Rising\\s+Sign|Rising|Ascendant)(?:\\s+is|\\s+in)?\\s*(' + signsPat + ')\\b', 'g');
   if (lang === 'es') return new RegExp('(?:Ascendente|Ascendant)(?:\\s+es|\\s+en)?\\s*(' + signsPat + ')\\b', 'g');
   if (lang === 'fr') return new RegExp('(?:Ascendant)(?:\\s+est)?(?:\\s+en)?\\s*(' + signsPat + ')\\b', 'gi');
@@ -6684,7 +6684,7 @@ function lockYearlyAxisAnchor(text, lang, astroMatrix, reportType) {
     const j = m.indexOf(tok);
     return m.slice(0, j) + trueLoc + m.slice(j + tok.length);
   });
-  if (n) console.log(`[E17/R11j] ${lang} 年报轴点锁(上升): \u4fee\u6b63 ${n} \u5904 \u2192 ${trueLoc}`);
+  if (n) console.log(`[E17/R11j] ${lang} 年报轴点锁(上升/命宫): \u4fee\u6b63 ${n} \u5904 \u2192 ${trueLoc}`);
   return out === text ? text : out;
 }
 
