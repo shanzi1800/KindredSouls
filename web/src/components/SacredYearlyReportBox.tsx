@@ -26,8 +26,12 @@ export const KS_MONTH_FR = 'janvier|février|fevrier|mars|avril|mai|juin|juillet
 // 🛡️ E24③②（2026-10-06 fr/vi/th 只读扫盘实证）：越南语月表 —— 后端 `normalizeYearlyMarkup`
 //   已把越南语月标题归一为 `### Tháng 7 2026: …`（用 `<Tháng> <阿拉伯数字>`，非字面月名）⇒
 //   前端只需认该形态即可夺回 12/12 金色。实测形态 100% 数字式 ⇒ 按「宁漏不改」只覆盖数字式
-//   （字面月名 Giêng/Hai/Bảy… 线上未观测，不猜、不引入 `Tháng Năm` 之类歧义）。
-export const KS_MONTH_VI = 'Tháng\\s*\\d{1,2}';
+//   （字面月名 Giêng/Hai/Bảy… 线上未观测，不猜）。
+// 🛡️ E24④/P6（2026-10-06 线上 8 盘终验铁证）：**必须补 `(?:\s*Năm)?`** ——
+//   s5 `Tháng 7 2026:`（12/12 金）vs s11 `Tháng 7 **Năm** 2026:`（**0/12 落白**）。
+//   后端已同步归一（`_v516RewriteMonthYear` 的 `Năm` 清洗），但**流式期** `sacredText` 是 SSE
+//   原始增量文本、**未经**后端归一 ⇒ 前端必须自行容错（双向兜底，缺一即流式期白字）。
+export const KS_MONTH_VI = 'Tháng\\s*\\d{1,2}(?:\\s*Năm)?';
 // 🛡️ E24③②：泰语月表 —— **与后端 `V435_MONTHS.th`（server.js）逐词同源**（12 个月名一字不差）。
 export const KS_MONTH_TH = 'มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม';
 export const KS_MONTH_ANY = [KS_MONTH_EN, KS_MONTH_ES, KS_MONTH_FR, KS_MONTH_VI, KS_MONTH_TH].join('|');

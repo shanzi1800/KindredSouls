@@ -290,15 +290,15 @@ test('⑨ 批测工具升格: E22 咨询探针已收网为硬判据 + 同源计�
 });
 
 test('⑩ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回收 v524 + MIN_CACHE_VER=525', () => {
-  const sites = [...SRC.matchAll(/wealth:v527/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v528/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v525，实得 ${sites}`);
   assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v524 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"),
     'purge 须双形态回收 v524');
-  assert.ok(/MIN_CACHE_VER = 527/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 525');
+  assert.ok(/MIN_CACHE_VER = 528/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 525');
   assert.ok(!/MIN_CACHE_VER = 525/.test(YEARLY_TEST), 'MIN_CACHE_VER 纯数字形态仍停留在 524');
   const linter = readFileSync(path.join(REPO, 'test/audit-v492-monthly-house-linter.test.mjs'), 'utf-8');
-  assert.ok(linter.includes("LATEST_CACHE_VER = 'v527'"), 'v492 linter LATEST_CACHE_VER 未前移至 v525');
+  assert.ok(linter.includes("LATEST_CACHE_VER = 'v528'"), 'v492 linter LATEST_CACHE_VER 未前移至 v525');
   // 旧闸门站点计数基线须已前移（10 个闸门；e22 单列，见下）
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
@@ -307,7 +307,7 @@ test('⑩ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回
     'audit-e21-r11o-house-label-lock.test.mjs',
     'audit-sweep-matrix.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v527/g)'), `${f} 站点计数基线未前移至 v525`);
+    assert.ok(t.includes('matchAll(/wealth:v528/g)'), `${f} 站点计数基线未前移至 v525`);
     assert.ok(!t.includes('matchAll(/wealth:v522/g)'), `${f} 仍引用 v522 基线（前移链断裂）`);
   }
   // ⚠️ e22 特例：体内明列「前移链指纹」（`!t.includes('matchAll(/wealth:v522/g)')`、
@@ -316,10 +316,10 @@ test('⑩ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回
   //   故对 e22 只做**正向**前移断言，不做旧版残留判据（残留由 e22 自身判据负责）。
   {
     const t22 = readFileSync(path.join(__dirname, 'audit-e22-r11p-chain-end-label-lock.test.mjs'), 'utf-8');
-    assert.ok(t22.includes('matchAll(/wealth:v527/g)'), 'e22 站点计数基线未前移至 v525');
+    assert.ok(t22.includes('matchAll(/wealth:v528/g)'), 'e22 站点计数基线未前移至 v525');
   }
   // 批测工具缓存键同源
-  assert.match(SWEEP_ONLINE, /wealth:v527:\$\{d\.birth\}/, 'sweep-online cacheKeyOf 未前移至 v525');
+  assert.match(SWEEP_ONLINE, /wealth:v528:\$\{d\.birth\}/, 'sweep-online cacheKeyOf 未前移至 v525');
 });
 
 test('⑪ 交付纪律: 临时诊断（E23-DIAG）不得残留于 server.js', () => {

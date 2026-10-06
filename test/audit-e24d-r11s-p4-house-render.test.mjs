@@ -312,24 +312,24 @@ test('⑨ 判据同源接线：产品源码确实引用了新式（无牙假防�
     'vi/th 月表未并入 `KS_MONTH_ANY`');
 });
 
-// ═══════════════════ 五、版本 bump 完整性（v527） ═══════════════════
-test('⑩ bump 完整性：4 站点 v527 + purge 双形态回收 v526 + MIN_CACHE_VER/LATEST_CACHE_VER 前移 + 前移链无 v526 残留', () => {
-  // ① server.js 4 站点（含 `-v2`）；不得残留 v526
-  const sites = [...SRC.matchAll(/wealth:v527/g)].length;
-  assert.strictEqual(sites, 4, `server.js 4 个缓存站点须全为 v527，实得 ${sites}`);
-  assert.ok(!/wealth:v526/.test(SRC), 'server.js 不得残留 v526 键');
-  // ② purge 双形态回收 v526（漏一形态 ⇒ 半数毒缓存留存）
+// ═══════════════════ 五、版本 bump 完整性（v528；本闸门随 E24④ bump 前移） ═══════════════════
+test('⑩ bump 完整性：4 站点 v528 + purge 双形态回收 v527 + MIN_CACHE_VER/LATEST_CACHE_VER 前移 + 前移链无 v527 残留', () => {
+  // ① server.js 4 站点（含 `-v2`）；不得残留 v527
+  const sites = [...SRC.matchAll(/wealth:v528/g)].length;
+  assert.strictEqual(sites, 4, `server.js 4 个缓存站点须全为 v528，实得 ${sites}`);
+  assert.ok(!/wealth:v527/.test(SRC), 'server.js 不得残留 v527 键');
+  // ② purge 双形态回收 v527（漏一形态 ⇒ 半数毒缓存留存）
   const PURGE = fs.readFileSync(path.join(REPO, 'scripts', 'purge-tz-poison-cache.mjs'), 'utf-8');
-  assert.ok(PURGE.includes("'wealth:v526:*'") && PURGE.includes("'wealth:v526-v2:*'"),
-    'purge 须双形态回收 v526');
+  assert.ok(PURGE.includes("'wealth:v527:*'") && PURGE.includes("'wealth:v527-v2:*'"),
+    'purge 须双形态回收 v527');
   // ③ MIN_CACHE_VER 是**纯数字形态**（字符串映射覆盖不到）⇒ 单独前移 + 反向断言
   const YEARLY = fs.readFileSync(path.join(REPO, 'test', 'audit-yearly-stream.test.js'), 'utf-8');
-  assert.ok(/MIN_CACHE_VER = 527/.test(YEARLY), 'MIN_CACHE_VER 未前移至 527');
-  assert.ok(!/MIN_CACHE_VER = 526/.test(YEARLY), 'MIN_CACHE_VER 仍停留 526');
+  assert.ok(/MIN_CACHE_VER = 528/.test(YEARLY), 'MIN_CACHE_VER 未前移至 528');
+  assert.ok(!/MIN_CACHE_VER = 527/.test(YEARLY), 'MIN_CACHE_VER 仍停留 527');
   // ④ v492 linter 的 LATEST_CACHE_VER（模板变量形态 ⇒ 只存在于该文件）
   const linter = fs.readFileSync(path.join(REPO, 'test', 'audit-v492-monthly-house-linter.test.mjs'), 'utf-8');
-  assert.ok(linter.includes("LATEST_CACHE_VER = 'v527'"), 'v492 linter LATEST_CACHE_VER 未前移至 v527');
-  // ⑤ 前移链：所有含字面站点计数基线的闸门必须已到 v527，且**不得残留 v526**（不变式＝不得再引用前一版）
+  assert.ok(linter.includes("LATEST_CACHE_VER = 'v528'"), 'v492 linter LATEST_CACHE_VER 未前移至 v528');
+  // ⑤ 前移链：所有含字面站点计数基线的闸门必须已到 v528，且**不得残留 v527**（不变式＝不得再引用前一版）
   const CHAIN = ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs', 'audit-e17-r11j-yearly-axis-critic.test.mjs',
@@ -338,11 +338,11 @@ test('⑩ bump 完整性：4 站点 v527 + purge 双形态回收 v526 + MIN_CACH
     'audit-e23-r11q-zh-latency-and-syntax-fix.test.mjs', 'audit-sweep-matrix.test.mjs'];
   for (const f of CHAIN) {
     const t = fs.readFileSync(path.join(REPO, 'test', f), 'utf-8');
-    assert.ok(t.includes('wealth:v527'), `${f} 站点计数基线未前移至 v527`);
-    assert.ok(!t.includes('wealth:v526'), `${f} 残留 v526 基线（前移链断裂）`);
+    assert.ok(t.includes('wealth:v528'), `${f} 站点计数基线未前移至 v528`);
+    assert.ok(!t.includes('wealth:v527'), `${f} 残留 v527 基线（前移链断裂）`);
   }
   // ⑥ sweep-online 同源键
   const sw = fs.readFileSync(path.join(REPO, 'test', 'tools', 'sweep-online.mjs'), 'utf-8');
-  assert.ok(sw.includes('wealth:v527:${d.birth}'), 'sweep-online 的 cacheKeyOf 未前移至 v527');
-  assert.ok(!sw.includes('wealth:v526'), 'sweep-online 残留 v526');
+  assert.ok(sw.includes('wealth:v528:${d.birth}'), 'sweep-online 的 cacheKeyOf 未前移至 v528');
+  assert.ok(!sw.includes('wealth:v527'), 'sweep-online 残留 v527');
 });

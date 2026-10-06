@@ -156,15 +156,17 @@ test('④ 判据 c14: 与锁同源（唯一正则 + 唯一契约表）+ 病句�
   const next = SRC.indexOf('function cleanYearlyTimeline');
   assert.ok(ci > 0 && next > ci, '锚点函数未找到');
   assert.ok(c14 > ci && c14 < next, 'c14 未落在 wealthCriticCheck 函数体内');
-  // ⚠️ E24/R11r②（2026-10-06）：生效语种由「仅 en」扩为 **en + es**（西语契约锁上线后，
-  //    锁在前、判据在后 ⇒ 正常恒 0，残余即兜底告警）。两处随之**前移**，并加固为
-  //    「三处同源」：调用形态（必须传 lang） + c14 语言门（en|es） + 计数函数门控（en|es）。
+  // ⚠️ E24④/R11t（2026-10-06）：生效语种由 en+es 再扩 **vi**（越语 `Nhà N, ngôi nhà của <标签>`
+  //    契约锁上线）⇒ 「三处同源」整体前移：调用形态 + c14 语言门（en|es|vi） + 计数门控（en|es|vi）。
+  //    纪律：**锁的射程扩到哪，判据与批测就必须跟到哪**（sweep `labelMismatch` 直接回调计数函数）。
   assert.ok(SRC.includes("const _c14 = _e21CountHouseLabelMismatch(text, lang || 'zh');"),
     'c14 计数调用缺失（须传 lang —— 计数函数按语种选形态）');
-  assert.ok(SRC.includes("if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es') {"),
-    'c14 语言门缺失（须为 en|es）');
-  assert.ok(SRC.includes("if (L && L !== 'en' && L !== 'es') return 0;"),
-    'c14 计数函数门控未与语言门同源（须同为 en|es）');
+  assert.ok(SRC.includes("if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es' || (lang || 'zh') === 'vi') {"),
+    'c14 语言门缺失（须为 en|es|vi）');
+  // ⚠️ E24④/R11t（2026-10-06）：越语语义标签锁上线（`_E24_VI_HOUSE_CONTRACT` + `_E24_VI_GLOSS_RE`）
+  //    ⇒ 生效语种由 en+es 再扩 **vi**，计数函数门控随之**前移**（不变式：计数门 ≡ 锁门 ≡ c14 语言门）。
+  assert.ok(SRC.includes("if (L && L !== 'en' && L !== 'es' && L !== 'vi') return 0;"),
+    'c14 计数函数门控未与语言门同源（须同为 en|es|vi）');
   // 判据同源: 正则字面量全库唯一 + 契约表被锁与计数共用
   assert.equal(SRC.split('Houses?\\s+of').length - 1, 1, '宫位标签正则出现多份（判据与锁不同源）');
   assert.equal(SRC.split('_E21_HOUSE_LABEL_RE').length - 1, 3,
@@ -199,11 +201,11 @@ test('⑤ 注入自测（判据有区分力）: 污染契约表两个方向 ⇒ 
 });
 
 test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回收 v522 + MIN_CACHE_VER=523 + prompt 契约', () => {
-  const sites = [...SRC.matchAll(/wealth:v527/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v528/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
   assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v522 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v522');
-  assert.ok(/MIN_CACHE_VER = 527/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
+  assert.ok(/MIN_CACHE_VER = 528/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
   // ⚠️ E22/R11p 补充：`MIN_CACHE_VER` 是**纯数字形态**（无 v 前缀）⇒ 字符串映射 v522→v523 覆盖不到，
   //    必须单独补丁（E20 实测 7 红，E22 复现同坑）。断言值与实际常量同时前移，杜绝"漏改但断言也漏"。
   // prompt 侧禁昵称契约（第三管）
@@ -214,7 +216,7 @@ test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v527/g)'), `${f} 站点计数基线未前移至 v523`);
+    assert.ok(t.includes('matchAll(/wealth:v528/g)'), `${f} 站点计数基线未前移至 v523`);
     assert.ok(!t.includes('matchAll(/wealth:v525/g)'), `${f} 残留 v522 站点计数基线`);
   }
 });

@@ -125,7 +125,8 @@ test('② _v516RewriteMonthYear 必须按各语形态写回（泰语保持原历
     ['fr', '### Septembre 2026: Soleil en Vierge', 2026, 7, 'Juillet 2026'],
     ['th', '### กันยายน 2026: ดวงอาทิตย์ในกันยา', 2026, 7, 'กรกฎาคม 2026'],
     ['th', '### กันยายน พ.ศ. 2569: ดวงอาทิตย์ในกันยา', 2026, 7, 'กรกฎาคม พ.ศ. 2569'],   // 保持佛历
-    ['vi', '### Tháng 9 Năm 2026: Mặt Trời trong Xử Nữ', 2026, 7, 'Tháng 7 Năm 2026'],
+    // 🛡️ E24④/P6：`Năm` 一律清洗 ⇒ 写回形态收敛为 `Tháng 7 2026`
+    ['vi', '### Tháng 9 Năm 2026: Mặt Trời trong Xử Nữ', 2026, 7, 'Tháng 7 2026'],
   ];
   const bad = [];
   for (const [lang, line, y, mo, want] of c) {
@@ -162,7 +163,8 @@ const MONTH_HEAD = {
   es: (y, mo) => `${MNAME.es[mo - 1]} ${y}`,
   fr: (y, mo) => `${MNAME.fr[mo - 1]} ${y}`,
   th: (y, mo) => `${MNAME.th[mo - 1]} ${y}`,
-  vi: (y, mo) => `Tháng ${mo} Năm ${y}`,
+  // 🛡️ E24④/P6：vi 归一为**单形态**（`Năm` 一律清洗）⇒ 期望形态随之收敛
+  vi: (y, mo) => `Tháng ${mo} ${y}`,
 };
 const SUN_TXT = { zh: '太阳', en: 'Sun in', es: 'Sol en', fr: 'Soleil en', th: 'ดวงอาทิตย์ใน', vi: 'Mặt Trời trong' };
 const HOUSE_TXT = {

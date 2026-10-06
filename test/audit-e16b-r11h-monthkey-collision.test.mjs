@@ -131,18 +131,20 @@ if (INJ_A7 !== BLOCK) {
   eq('A7(inj) 仅靠 (?!\\d) 即可保唯一性（不依赖长词倒序）', d7, 12);
 }
 
-// ══════════════════════ B. 月标题写回（vi `Năm` 可省） ══════════════════════
-console.log('\n# B. 月标题真值写回（vi Năm 可省形态）');
+// ══════════════════════ B. 月标题写回（vi `Năm` 一律清洗 · E24④/P6） ══════════════════════
+console.log('\n# B. 月标题真值写回（vi Năm 一律清洗 → 单形态）');
 const rw1 = F6._v516RewriteMonthYear('### Tháng 7 2026: Mặt Trời trong Ma Kết Nhà 5', 'vi', 2026, 11);
 eq('B1 无 Năm 形态：Tháng 7 2026 → Tháng 11 2026（不凭空加 Năm）', rw1, '### Tháng 11 2026: Mặt Trời trong Ma Kết Nhà 5');
 const rw2 = F6._v516RewriteMonthYear('### Tháng 11 Năm 2026: X', 'vi', 2026, 12);
-eq('B2 有 Năm 形态：保留 Năm', rw2, '### Tháng 12 Năm 2026: X');
+// 🛡️ E24④/P6（2026-10-06 线上 8 盘终验铁证）：原「保留 Năm」策略 ⇒ 同语种**双形态并存**
+//   （s5 `Tháng 7 2026:` 12/12 金 ／ s11 `Tháng 7 Năm 2026:` **0/12 落白**）⇒ 改为**一律清洗**。
+eq('B2 有 Năm 形态：**清洗 Năm**（归一为单形态 `Tháng 12 2026`）', rw2, '### Tháng 12 2026: X');
 eq('B3 幂等：已正确的行原样返回', F6._v516RewriteMonthYear('### Tháng 11 2026: X', 'vi', 2026, 11), '### Tháng 11 2026: X');
 eq('B3b 幂等：再跑一次不变', F6._v516RewriteMonthYear(rw1, 'vi', 2026, 11), rw1);
 eq('B4 跨年写回：Tháng 12 2026 → Tháng 1 2027', F6._v516RewriteMonthYear('### Tháng 12 2026: X', 'vi', 2027, 1), '### Tháng 1 2027: X');
 
 const INJ_B = BLOCK.replace(
-  "return line.replace(/Tháng\\s*\\d{1,2}(\\s*Năm)?\\s*\\d{4}/i,",
+  "return line.replace(/Tháng\\s*\\d{1,2}(?:\\s*Năm)?\\s*\\d{4}/i,",
   "return line.replace(/Tháng\\s*\\d{1,2}\\s*Năm\\s*\\d{4}/i,");
 ok('B5(inj) 旧缺陷（强制 Năm）注入生效', INJ_B !== BLOCK);
 if (INJ_B !== BLOCK) {

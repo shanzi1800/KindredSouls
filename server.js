@@ -5972,13 +5972,16 @@ function _v516RewriteMonthYear(line, lang, y, mo) {
     return out;
   }
   if (lang === 'vi') {
-    if (cur.y === y && cur.mo === mo) return line;
-    // 🛡️ E16/R11g-fix: `Năm` 可省 —— 线上产出实测为 `### Tháng 11 2026: …`（**无** `Năm`），
-    //   原正则 `/Tháng\s*\d{1,2}\s*Năm\s*\d{4}/` 强制要求 `Năm` ⇒ **永不匹配** ⇒
-    //   越南语逐月真值写回**整体空转**（月份号错了也纠不回来）。改为「原形态保留」：
-    //   原文有 `Năm` 就写回 `Năm`，没有就不加（不改变本地化观感, 只改真值）。
-    return line.replace(/Tháng\s*\d{1,2}(\s*Năm)?\s*\d{4}/i,
-      (mm, nam) => 'Tháng ' + mo + (nam ? ' Năm' : '') + ' ' + y);
+    // 🛡️ E24④/P6（2026-10-06 线上 8 盘终验铁证）：`Năm` **一律清洗**（归一为 `Tháng N YYYY`）。
+    //   病根：原策略「原文有 `Năm` 就写回 `Năm`」（保本地化观感）⇒ **同一语种双形态并存**：
+    //     s5（阿克拉）`### Tháng 7 2026: …` ／ s11（河内）`### Tháng 7 **Năm** 2026: …`
+    //   ⇒ 前端 `KS_MONTH_TITLE_RE` 只认前者 ⇒ **s11 的 12 个月标题全数落白（0/12）**，
+    //     而 s5 为 12/12。同语种两种外观的本质差异只在 `Năm`，必须归一（军师令：Năm 词汇清洗）。
+    //   归一后单形态，前端零歧义（前端 `KS_MONTH_VI` **同步**补 `(?:\s*Năm)?` 容错 —— 双向兜底，
+    //   因**流式期** `sacredText` 是 SSE 原文、**不经**后端归一 ⇒ 前端仍须容忍 `Năm`）。
+    //   幂等：无 `Năm` 时该 `replace` 仅重写数字与年份（真值相同 ⇒ 文本不变）。
+    return line.replace(/Tháng\s*\d{1,2}(?:\s*Năm)?\s*\d{4}/i,
+      () => 'Tháng ' + mo + ' ' + y);
   }
   const arr = _V516_MONTHS[lang];
   if (!arr) return line;
@@ -6956,14 +6959,89 @@ const _E24_ES_LBL_WORD = '[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+';
 const _E24_ES_LBL_CAP = '[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑÜáéíóúñü]*';
 const _E24_ES_LBL_CONN = '(?:y|e|o|u|de|del|la|el|los|las|and|&|or|en)';
 // 窄触发：`<Nª|No> Casa(s) de <标签>`（`de` 与标签之间允许冠词；标签定界见文件头注释）
+// 🛡️ E24④/P5：标签**首词**由 `_E24_ES_LBL_CAP`（首字母大写）放宽为 `_E24_ES_LBL_WORD` ——
+//   真实稿标签多为小写（`la casa de la creatividad`）。实测在 4 份真实语料上**零增量**
+//   （命中 9/15/0/0 与剪除数**完全不变**）⇒ 免费放宽、无回归风险、仅作前向兜底。
 const _E24_ES_HOUSE_RE = new RegExp(
   '(\\b(\\d{1,2})\\s*[ªº]\\s*Casas?\\s+de\\s+)'
-  + '((?:(?:la|el|los|las)\\s+)?' + _E24_ES_LBL_CAP
+  + '((?:(?:la|el|los|las)\\s+)?' + _E24_ES_LBL_WORD
   + '(?:\\s+' + _E24_ES_LBL_CONN + '\\s+' + _E24_ES_LBL_WORD
   + '|\\s+' + _E24_ES_LBL_CAP
   + '|,\\s+(?:' + _E24_ES_LBL_CONN + '\\s+)?' + _E24_ES_LBL_CAP
   + '){0,8})',
   'g');
+// ── 🛡️ E24④/P5（2026-10-06）：**同位语式**契约锁补三式（es）──
+// 【病根】式1 硬性要求 `Nª/No Casa de <标签>`（**名词后置** + 序数缩写 + 无逗号），
+//   而线上主流形态是**名词前置**的逗号同位语：`Casa N, la Casa de <标签>`（靶盘 27 处）、
+//   插入语式 `Casa N de <插入语>, la Casa de <标签>`（靶盘 1 处）、数字缩写式
+//   `Nª Casa, la Casa de <标签>`（s3 15 处）⇒ 三种主流形态**全数射程外**。
+//   实测铁证（同语种两盘形态**完全相反**）：s3 命中 15 处（含 1 处真错配）/ 靶盘命中 0 处、
+//   射程外 28 处（3 处真错配）⇒ 现锁是**概率性覆盖**（命中与否取决于 LLM 采样），
+//   必须补式做到**结构性覆盖**。英文侧有第二遍 `_E23_DELIM_LABEL_RE` 兜分隔符式，
+//   **es 侧结构性缺失**（本次补齐）。
+// ⚠️ 式6（`Nª Casa, <gloss>`）**并非可选**：s3 `Plutón … en tu 10ª Casa, la Casa de las
+//   Redes y las Ganancias`（真值 Pluto=H10 ⇒ 数字对、标签错）**只有式6 能咬合**，
+//   式1（需 ` de `）与式4（需 `Casa` 在前）双双漏网 ⇒ 不加式6 则 s3 残留真错配（假绿）。
+// 【定界铁律】标签**禁逗号** —— 首版允许 `,` 连接 ⇒ 实测吞掉
+//   `, según la rueda de casas iguales desde tu Ascendente Piscis` 等后续小句（过度剪枝）。
+//   故 `_E24_ES_LBL` 仅由「词 + 空白 + 可选连接词」构成，遇 `,`/`.`/`;` 自然终止
+//   （与 `_E23_DELIM_LABEL_RE` 的 Title-Case 定界同理，仅按西语放宽大小写）。
+// 【保形写回】DELIM/NABBR 剪 `, <标签>` 只留数字；INTERJ **保留** `de tu carta natal` 插入语。
+// 【幂等】剪后 `Casa` 后不再有 `,`/` de <标签>` ⇒ 二次施加零改动（离线+线上实测已验）。
+// 【判据同源】三式与 `_e21CountHouseLabelMismatch`（CRITIC c14 / 批测 `labelMismatch`）**共用**。
+const _E24_ES_LBL = '(?:' + _E24_ES_LBL_WORD + '(?:\\s+(?:' + _E24_ES_LBL_CONN + '\\s+)?' + _E24_ES_LBL_WORD + '){0,8})';
+/** 同位语核心：`(la|el|los|las) casa (de(l|la|los|las)?)? <标签>`（标签定界**禁逗号**） */
+const _E24_ES_GLOSS = '((?:la|el|los|las)\\s+casa\\s+(?:de(?:l|la|los|las)?\\s+)?' + _E24_ES_LBL + ')';
+// 式4：逗号同位语 `Casa N, la Casa de <标签>`（靶盘主流）
+const _E24_ES_DELIM_RE = new RegExp('(\\bCasa\\s+(\\d{1,2}))\\s*[,:]\\s*' + _E24_ES_GLOSS, 'gi');
+// 式5：插入语式 `Casa N de <插入语>, la Casa de <标签>`（保形：保留插入语）
+const _E24_ES_INTERJ_RE = new RegExp('(\\bCasa\\s+(\\d{1,2}))\\s+de\\s+([^.,;\\n]{0,40}),\\s*' + _E24_ES_GLOSS, 'gi');
+// 式6：数字缩写同位语 `Nª Casa, la Casa de <标签>`（s3 主流；式1/式4 均不覆盖）
+const _E24_ES_NABBR_RE = new RegExp('(\\b(\\d{1,2})\\s*[ªº]\\s*Casas?)\\s*[,:]\\s*' + _E24_ES_GLOSS, 'gi');
+// ── 🛡️ E24④/P8（2026-10-06）：**越南语（vi）**宫位语义标签契约锁 ──
+// 【病根】es/en 有契约锁，**vi 无** ⇒ 与 P5 同族（`_viPatchZone` 会纠 `Nhà N` 的**数字**，
+//   但语义标签原地不动）。线上实测形态（s5 阿克拉）：`Nhà N, ngôi nhà của <标签>` 共 12 处。
+//   ⚠️ 现存稿 12/12 **自洽**（数字与标签一致）⇒ 本锁为**防患于未然**（军师令：防患于未然），
+//   绝不假设「发现即有错」；闸门以**注入缺陷自测**证明其有牙（否则＝无牙假防线）。
+// 【治法】同 P5 哲学：**保数字、剪错配标签** + 四重护栏（① 标题行豁免 ② 主题词锚定
+//   ③ 本宫主题 ⇒ 保留 ④ **头部锚定**）。
+// ⚠️ 与 es 的**关键差异**：越语标签**内部含逗号**
+//   （`tiềm thức, nghiệp quả, và những gì ẩn giấu`）⇒ **必须允许逗号**，改以「句末标点」定界。
+//   但放开逗号 ⇒ 存在吞并后续小句的风险（`…, và bạn cần quan tâm đến gia đình`）⇒
+//   加**头部锚定**：标签**前 2 个词**必须命中主题词，否则弃权（宁漏不改）。
+// ⚠️ 定界词类必须用 `\p{L}`（**不可用 `[^A-Za-z]`**）：越语变音字母多在 `\u1E00-\u1EFF`
+//   （`ồ`/`ự`/`ế`…）⇒ ASCII 负类会把变音字母当「非字母」，在**词内制造虚假词边界**。
+const _E24_VI_HOUSE_CONTRACT = [
+  /* 1 */ ['bản ngã', 'sức sống', 'bản sắc', 'sự khởi đầu', 'diện mạo', 'cái tôi', 'sự hiện diện'],
+  /* 2 */ ['tài sản', 'tiền bạc', 'nguồn lực', 'giá trị vật chất', 'thu nhập', 'giá trị bản thân', 'tài chính', 'thịnh vượng'],
+  /* 3 */ ['giao tiếp', 'học hỏi', 'học tập', 'anh chị em', 'chuyến đi ngắn', 'thông tin', 'ngôn từ'],
+  /* 4 */ ['gia đình', 'nguồn cội', 'nhà cửa', 'nền tảng cảm xúc', 'tổ ấm', 'cội nguồn', 'nền tảng'],
+  /* 5 */ ['sáng tạo', 'tình yêu', 'trẻ em', 'con cái', 'niềm vui', 'lãng mạn', 'đam mê', 'đầu tư'],
+  /* 6 */ ['công việc hàng ngày', 'công việc', 'sức khỏe', 'thói quen', 'phục vụ', 'kỷ luật', 'thường nhật'],
+  /* 7 */ ['đối tác', 'hôn nhân', 'hợp tác', 'bạn đời', 'cam kết', 'quan hệ đối tác'],
+  /* 8 */ ['sự chuyển hóa', 'cái chết', 'tái sinh', 'nợ nần', 'nguồn lực chung', 'bí mật', 'chuyển hóa'],
+  /* 9 */ ['sự mở rộng', 'du lịch', 'triết học', 'giáo dục cao cấp', 'tầm nhìn', 'niềm tin', 'mở rộng'],
+  /* 10 */ ['sự nghiệp', 'danh tiếng', 'địa vị xã hội', 'thành tựu công khai', 'danh vọng công chúng', 'uy tín', 'sự công nhận'],
+  /* 11 */ ['cộng đồng', 'bạn bè', 'mạng lưới xã hội', 'lợi ích tập thể', 'mạng lưới', 'nhóm'],
+  /* 12 */ ['tiềm thức', 'nghiệp quả', 'ẩn giấu', 'sự chuyển hóa tâm linh', 'tâm linh', 'cô đơn', 'vô thức'],
+];
+const _E24_VI_TOKEN = '[\\p{L}\\p{M}]+';
+const _E24_VI_LBL = '(?:' + _E24_VI_TOKEN + '(?:[ ,]+(?:và\\s+)?' + _E24_VI_TOKEN + '){0,14})';
+// ⚠️ 捕获组 ③ **只含标签本体**（`ngôi nhà của ` 前缀置于组外）—— 头部锚定（前 2 词）必须落在
+//   标签上，若把 `ngôi nhà` 也算进去 ⇒ 头部恒为「ngôi nhà」⇒ 零命中 ⇒ **锁整体空转**（实测踩过）。
+const _E24_VI_GLOSS_RE = new RegExp('(\\bNhà\\s+(\\d{1,2}))\\s*,\\s*ngôi\\s+nhà\\s+của\\s+(' + _E24_VI_LBL + ')', 'giu');
+/** 越语标签命中哪些宫的契约主题词（`\p{L}` 边界，杜绝变音字母造成的虚假词边界） */
+function _e24ViThemeHouses(label) {
+  const hits = [];
+  for (let i = 0; i < _E24_VI_HOUSE_CONTRACT.length; i++) {
+    for (const t of _E24_VI_HOUSE_CONTRACT[i]) {
+      let re = null;
+      try { re = new RegExp('(?<!\\p{L})' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?!\\p{L})', 'iu'); } catch (e) { continue; }  // 坏正则天坑兜底
+      if (re && re.test(label)) { hits.push(i + 1); break; }
+    }
+  }
+  return hits;
+}
 /** 标签命中哪些宫的契约主题词（返回宫号数组，可空）。判据同源：复用 `_E24_ES_HOUSE_CONTRACT` */
 function _e24EsThemeHouses(label) {
   const hits = [];
@@ -6993,8 +7071,62 @@ function stripHouseSemanticLabelMismatch(text, lang, reportType) {
       const cut = m0.indexOf(' de ');                          // 保数字：剪 ` de <标签>`
       return cut > 0 ? m0.slice(0, cut) : prefix.trimEnd();
     });
-    if (prunedEs > 0) console.log(`[E24/R11r] ${lang}/${reportType || ''} 西语宫位语义标签契约锁: 剪除错配标签 ${prunedEs} 处`);
-    return outEs;
+    // ── 🛡️ E24④/P5：同位语三式（逗号式 / 插入语式 / 数字缩写式）──
+    //   与式1 同哲学、同契约表、同三重护栏（标题行豁免／主题词锚定／本宫保留）。
+    let prunedGloss = 0;
+    let outEs2 = outEs.replace(_E24_ES_DELIM_RE, (m0, housePart, num, label, offset) => {
+      const n = Number(num);
+      if (!(n >= 1 && n <= 12)) return m0;                     // 越界弃权
+      if (_e23OnHeadingLine(outEs, offset)) return m0;         // ① 标题行豁免
+      const themes = _e24EsThemeHouses(label);
+      if (themes.length === 0) return m0;                      // ② 主题词锚定
+      if (themes.indexOf(n) !== -1) return m0;                 // ③ 本宫主题 ⇒ 合法保留
+      prunedGloss++;
+      return housePart;                                        // 剪 `, <标签>` 保数字
+    });
+    outEs2 = outEs2.replace(_E24_ES_INTERJ_RE, (m0, housePart, num, interj, label, offset) => {
+      const n = Number(num);
+      if (!(n >= 1 && n <= 12)) return m0;
+      if (_e23OnHeadingLine(outEs2, offset)) return m0;
+      const themes = _e24EsThemeHouses(label);
+      if (themes.length === 0) return m0;
+      if (themes.indexOf(n) !== -1) return m0;
+      prunedGloss++;
+      return housePart + ' de ' + interj.trim();               // 剪 `, <标签>` 但**保留插入语**
+    });
+    outEs2 = outEs2.replace(_E24_ES_NABBR_RE, (m0, housePart, num, label, offset) => {
+      const n = Number(num);
+      if (!(n >= 1 && n <= 12)) return m0;
+      if (_e23OnHeadingLine(outEs2, offset)) return m0;
+      const themes = _e24EsThemeHouses(label);
+      if (themes.length === 0) return m0;
+      if (themes.indexOf(n) !== -1) return m0;
+      prunedGloss++;
+      return housePart;                                        // 剪 `, <标签>` 保数字
+    });
+    if (prunedEs > 0 || prunedGloss > 0) {
+      console.log(`[E24/R11r] ${lang}/${reportType || ''} 西语宫位语义标签契约锁: 剪除错配标签 ${prunedEs + prunedGloss} 处（式1 ${prunedEs} / 同位语 ${prunedGloss}）`);
+    }
+    return outEs2;
+  }
+  if (lang === 'vi') {
+    // 🛡️ E24④/P8：越南语分支（独立契约表 + `\p{L}` 词边界；允许标签内含逗号，头部锚定兜底）
+    if (!text || typeof text !== 'string') return text;
+    let prunedVi = 0;
+    const outVi = text.replace(_E24_VI_GLOSS_RE, (m0, housePart, num, label, offset) => {
+      const n = Number(num);
+      if (!(n >= 1 && n <= 12)) return m0;                     // 越界弃权
+      if (_e23OnHeadingLine(text, offset)) return m0;          // ① 标题行豁免（月标题合法）
+      const head = label.split(/[ ,]+/).slice(0, 2).join(' '); // ④ 头部锚定（前 2 词）
+      if (_e24ViThemeHouses(head).length === 0) return m0;     // 放开逗号的代价：非主题开头一律弃权
+      const themes = _e24ViThemeHouses(label);
+      if (themes.length === 0) return m0;                      // ② 主题词锚定
+      if (themes.indexOf(n) !== -1) return m0;                 // ③ 本宫主题 ⇒ 合法保留
+      prunedVi++;
+      return housePart;                                        // 剪 `, ngôi nhà của <标签>` 保数字
+    });
+    if (prunedVi > 0) console.log(`[E24/R11r] ${lang}/${reportType || ''} 越语宫位语义标签契约锁: 剪除错配标签 ${prunedVi} 处`);
+    return outVi;
   }
   if (lang !== 'en') return text;                             // ① 仅 en（旧契约锁语义不变）
   if (!text || typeof text !== 'string') return text;
@@ -7029,8 +7161,11 @@ function _e21CountHouseLabelMismatch(text, lang) {
   //   对「锁根本不管的语种」判红（假红）。不传 lang ⇒ 保持历史行为（全量计数，兼容旧调用）。
   // 🛡️ E24/R11r②：门控扩 **es** —— 西语契约锁已上线（见 `_E24_ES_HOUSE_CONTRACT`），
   //   故 es 必须走西语形态计数（en 形态在 es 文本中不存在 ⇒ 互斥，无双重计数）。
+  // 🛡️ E24④/R11t：门控再扩 **vi** —— 越语契约锁已上线（见 `_E24_VI_HOUSE_CONTRACT`）；
+  //   批测 `sweep-online.mjs::labelMismatch` **直接回调本函数**且 `ok` 要求其为 0
+  //   ⇒ 门控漏 vi 会让 vi 盘永远报 0 = 假绿。**门控必须与锁的生效语种逐一对应**。
   const L = lang || '';
-  if (L && L !== 'en' && L !== 'es') return 0;
+  if (L && L !== 'en' && L !== 'es' && L !== 'vi') return 0;
   if (!text || typeof text !== 'string') return 0;
   let n = 0;
   if (L === 'es') {
@@ -7040,6 +7175,41 @@ function _e21CountHouseLabelMismatch(text, lang) {
       if (!(num >= 1 && num <= 12)) continue;
       if (_e23OnHeadingLine(text, m.index)) continue;
       const themes = _e24EsThemeHouses(m[3]);
+      if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+    }
+    // ── 🛡️ E24④/P5：同位语三式**同源计数**（与锁的三遍**逐一对应**，否则批测仍假绿）──
+    for (const m of text.matchAll(new RegExp(_E24_ES_DELIM_RE.source, _E24_ES_DELIM_RE.flags))) {
+      const num = Number(m[2]);
+      if (!(num >= 1 && num <= 12)) continue;
+      if (_e23OnHeadingLine(text, m.index)) continue;
+      const themes = _e24EsThemeHouses(m[3]);
+      if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+    }
+    for (const m of text.matchAll(new RegExp(_E24_ES_INTERJ_RE.source, _E24_ES_INTERJ_RE.flags))) {
+      const num = Number(m[2]);
+      if (!(num >= 1 && num <= 12)) continue;
+      if (_e23OnHeadingLine(text, m.index)) continue;
+      const themes = _e24EsThemeHouses(m[4]);
+      if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+    }
+    for (const m of text.matchAll(new RegExp(_E24_ES_NABBR_RE.source, _E24_ES_NABBR_RE.flags))) {
+      const num = Number(m[2]);
+      if (!(num >= 1 && num <= 12)) continue;
+      if (_e23OnHeadingLine(text, m.index)) continue;
+      const themes = _e24EsThemeHouses(m[3]);
+      if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+    }
+    return n;
+  }
+  if (L === 'vi') {
+    // ── 🛡️ E24④/P8：越南语形态 `Nhà N, ngôi nhà của <标签>`（与 vi 分支同判据，含头部锚定）──
+    for (const m of text.matchAll(new RegExp(_E24_VI_GLOSS_RE.source, _E24_VI_GLOSS_RE.flags))) {
+      const num = Number(m[2]);
+      if (!(num >= 1 && num <= 12)) continue;
+      if (_e23OnHeadingLine(text, m.index)) continue;
+      const head = m[3].split(/[ ,]+/).slice(0, 2).join(' ');
+      if (_e24ViThemeHouses(head).length === 0) continue;      // 头部锚定（同锁）
+      const themes = _e24ViThemeHouses(m[3]);
       if (themes.length > 0 && themes.indexOf(num) === -1) n++;
     }
     return n;
@@ -8476,7 +8646,11 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
   //   共用同一正则字面量与契约表（判据同源纪律，杜绝「锁修了、判据看不见」双盲）。
   //   🛡️ E24/R11r②：生效语种扩 **es**（西语契约锁已上线；锁在前、判据在后 ⇒ 正常情况下恒为 0，
   //      残余即兜底告警并触发 R3 静默重试，与 en 完全对称）。必须传 lang —— 计数函数按语种选形态。
-  if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es') {
+  //   🛡️ E24④/R11t（2026-10-06）：语种再扩 **vi**（越语 `Nhà N, ngôi nhà của <标签>` 契约锁上线，
+  //      同为「锁在前、判据在后」⇒ 恒 0 兜底）。**三处同源**不变式：c14 语言门 ≡ 计数函数门控 ≡
+  //      批测 `labelMismatch` 口径（sweep 直接回调 `_e21CountHouseLabelMismatch(text, lang)`）——
+  //      锁的射程扩到哪，判据与批测就必须跟到哪，否则 = 假绿死角（E24③ 8 盘全报 0 的教训）。
+  if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es' || (lang || 'zh') === 'vi') {
     const _c14 = _e21CountHouseLabelMismatch(text, lang || 'zh');
     if (_c14 > 0) issues.push('宫位语义标签错配(House-Semantic Misalignment): ' + _c14 + ' 处');
   }
@@ -8762,7 +8936,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v527:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v528:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -12042,7 +12216,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v527:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v528:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12818,7 +12992,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v527:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v528:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14496,7 +14670,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v527-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v528-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
