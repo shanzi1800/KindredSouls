@@ -154,8 +154,11 @@ test('④ 判据 c14: 与锁同源（唯一正则 + 唯一契约表）+ 病句�
   assert.equal(SRC.split('Houses?\\s+of').length - 1, 1, '宫位标签正则出现多份（判据与锁不同源）');
   assert.equal(SRC.split('_E21_HOUSE_LABEL_RE').length - 1, 3,
     '正则引用数须为 3（定义 + 锁 + 计数），实得 ' + (SRC.split('_E21_HOUSE_LABEL_RE').length - 1));
-  assert.equal(SRC.split('_E21_HOUSE_LABEL_CONTRACT').length - 1, 3,
-    '契约表引用数须为 3（契约注释 + 定义 + _e21LabelAllowed），实得 '
+  // ⚠️ E23/R11q ②（2026-10-06）：契约表引用数 3 → 6 —— 新增的 3 处来自**分隔符式**剪枝
+  //    `_e23ThemeHouses`（头注 + `length` 遍历 + 逐词遍历），它**复用同一张契约表**
+  //    （同源铁律：宽度扩展必须共享唯一真源，绝不另起一份表）⇒ 判据随同源扩展前移。
+  assert.equal(SRC.split('_E21_HOUSE_LABEL_CONTRACT').length - 1, 6,
+    '契约表引用数须为 6（契约注释 + 定义 + _e21LabelAllowed + E23 `_e23ThemeHouses` 头注 + 其 2 处引用），实得 '
     + (SRC.split('_E21_HOUSE_LABEL_CONTRACT').length - 1));
   // 计数行为: 病句 2 / 干净 0 / 合法 0
   const bad = [BAD_12TH, BAD_2ND].join(' ');
@@ -181,11 +184,11 @@ test('⑤ 注入自测（判据有区分力）: 污染契约表两个方向 ⇒ 
 });
 
 test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回收 v522 + MIN_CACHE_VER=523 + prompt 契约', () => {
-  const sites = [...SRC.matchAll(/wealth:v523/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v524/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
-  assert.ok(!SRC.includes('wealth:v522'), 'server.js 内不得残留 v522 键');
-  assert.ok(PURGE.includes("'wealth:v522:*'") && PURGE.includes("'wealth:v522-v2:*'"), 'purge 须双形态回收 v522');
-  assert.ok(/MIN_CACHE_VER = 523/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
+  assert.ok(!SRC.includes('wealth:v523'), 'server.js 内不得残留 v522 键');
+  assert.ok(PURGE.includes("'wealth:v523:*'") && PURGE.includes("'wealth:v523-v2:*'"), 'purge 须双形态回收 v522');
+  assert.ok(/MIN_CACHE_VER = 524/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
   // ⚠️ E22/R11p 补充：`MIN_CACHE_VER` 是**纯数字形态**（无 v 前缀）⇒ 字符串映射 v522→v523 覆盖不到，
   //    必须单独补丁（E20 实测 7 红，E22 复现同坑）。断言值与实际常量同时前移，杜绝"漏改但断言也漏"。
   // prompt 侧禁昵称契约（第三管）
@@ -196,7 +199,7 @@ test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v523/g)'), `${f} 站点计数基线未前移至 v523`);
-    assert.ok(!t.includes('matchAll(/wealth:v522/g)'), `${f} 残留 v522 站点计数基线`);
+    assert.ok(t.includes('matchAll(/wealth:v524/g)'), `${f} 站点计数基线未前移至 v523`);
+    assert.ok(!t.includes('matchAll(/wealth:v523/g)'), `${f} 残留 v522 站点计数基线`);
   }
 });

@@ -52,7 +52,7 @@ const DISKS = only ? SWEEP_MATRIX.filter((d) => only.includes(d.id)) : SWEEP_MAT
 // ── 判据同源：从 server.js 抽取 E21 锁（标签契约扫描） ──
 const SRC = readFileSync(path.join(REPO, 'server.js'), 'utf-8');
 const SEEDS = ['stripHouseSemanticLabelMismatch', '_e21LabelAllowed', '_E21_HOUSE_LABEL_CONTRACT',
-  '_E21_HOUSE_LABEL_RE', '_e21CountHouseLabelMismatch'];
+  '_E21_HOUSE_LABEL_RE', '_e21CountHouseLabelMismatch', 'fixHouseOrdinalSuffix', '_e23CountHouseOrdinalTypos'];
 const { closureDecls } = await import(pathToFileURL(path.join(REPO, 'test/tools/extract_decls.mjs')));
 const { map } = closureDecls(SRC, SEEDS);
 const ctx = { console, __exports: {} };
@@ -66,7 +66,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 }
 
 // ── 工具函数 ──
-const cacheKeyOf = (d) => `wealth:v523:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v524:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;
@@ -119,26 +119,14 @@ function structureCheck(text) {
   return { chapters, monthHeads: months, finalOracle, artifacts };
 }
 
-// ── 咨询性探针（E22 候选：现锁**射程外**的标签形态，只报不拦） ──
-//   ① 逗号/冒号/破折号式标签：`2nd House, Roots, and Family` / `8th House: Your Career Depth`
-//      —— E21 正则要求字面 ` of ` ⇒ 天然漏网（宁漏不改的代价，需实证后再定）。
-//   ② 序数笔误：`2th House` / `11st House`（拼写式序数锁 E13 只管**拼写式**，不管数字+错后缀）。
-function advisoryProbes(text) {
-  const THEMES = /\b(Roots|Partnership|Marriage|Enemies|Family|Home|Career|Wealth|Transformation|Subconscious|Identity|Resources|Self|Gains|Networks|Expansion|Creativity|Work|Communication|Legacy|Assets|Income|Vitality|Karma|Unseen|Intimacy|Debt)\b/;
-  let delimLabels = 0;
-  for (const m of text.matchAll(/\b(\d{1,2})(?:st|nd|rd|th)\s+Houses?\s*[,:：—–·-]\s*[^.\n*]{2,50}/g)) {
-    if (THEMES.test(m[0])) delimLabels++;
-  }
-  let ordinalTypos = 0;
-  for (const m of text.matchAll(/\b\d+(?:st|nd|rd|th)\b/g)) {
-    const d = Number(m[0].replace(/\D/g, ''));
-    const suf = m[0].replace(/^\d+/, '');
-    const want = (d % 10 === 1 && d % 100 !== 11) ? 'st' : (d % 10 === 2 && d % 100 !== 12) ? 'nd'
-      : (d % 10 === 3 && d % 100 !== 13) ? 'rd' : 'th';
-    if (suf !== want) ordinalTypos++;
-  }
-  return { delimLabels, ordinalTypos };
-}
+// ── 🛡️ E23/R11q ②：E22 的「咨询性探针」**升格为硬判据** ──
+//   E22 时期（v523 之前）两类形态在锁的**射程外**，故只报不拦；E23 已收网：
+//     ① 分隔符式标签 ⇒ 并入 `stripHouseSemanticLabelMismatch` 第二遍 ⇒ 由 `labelMismatch`
+//        （= 生产同源计数 `_e21CountHouseLabelMismatch`）覆盖，**不再单列探针**
+//        （原探针用裸 THEMES 词表，会把合法月段标题 `8th House · The Month of Shared
+//         Resources` 与星座宫位对 `, the Taurus 10th House` 误报 ⇒ 已废弃）；
+//     ② 序数笔误 `2th House` ⇒ `fixHouseOrdinalSuffix` 确定性归一 ⇒ 残留即失败，
+//        计数走生产同源的 `_e23CountHouseOrdinalTypos`（同一正则字面量）。
 
 // ── 主流程 ──
 const results = [];
@@ -190,14 +178,14 @@ for (const d of DISKS) {
     row.monthHeads = st.monthHeads;
     row.finalOracle = st.finalOracle;
     row.artifacts = st.artifacts;
-    const adv = advisoryProbes(miss.text);
-    row.delimLabels = adv.delimLabels;      // 咨询性：E21 射程外的分隔符式标签
-    row.ordinalTypos = adv.ordinalTypos;    // 咨询性：数字+错后缀
 
-    // 标签契约（同源判据）
+    // 标签契约（同源判据 —— en 生效；非 en 由 E23 语言门控返回 0，与生产锁一致）
     row.labelMismatch = X._e21CountHouseLabelMismatch(miss.text, d.lang);
+    // 🛡️ E23/R11q ②：序数笔误（同源判据）—— 归一后残留即失败
+    row.ordinalTypos = X._e23CountHouseOrdinalTypos(miss.text);
 
-    row.ok = row.missLen > 0 && row.dbLanded && row.identical && row.labelMismatch === 0 && row.artifacts === 0;
+    row.ok = row.missLen > 0 && row.dbLanded && row.identical && row.labelMismatch === 0
+      && row.artifacts === 0 && row.ordinalTypos === 0;
   } catch (e) {
     row.error = e.message;
     row.ok = false;
@@ -207,11 +195,8 @@ for (const d of DISKS) {
   console.log(`${mark}  ${row.id.padEnd(4)} ${String(row.lang).padEnd(3)} ${row.name}`);
   console.log(`      MISS ${row.missMs ?? '-'}s/${row.missLen ?? '-'}B  落库=${row.dbLanded ? 'Y' : 'N'}${row.dbInferred ? '(延迟反证)' : ''}`
     + `  HIT ${row.hitMs ?? '-'}s cached=${row.hitCached ? 'Y' : 'N'} identical=${row.identical ? 'Y' : 'N'}${row.hitAttempts > 1 ? ` ×${row.hitAttempts}` : ''}`
-    + `  标签错配=${row.labelMismatch ?? '-'}   artifact=${row.artifacts ?? '-'}`
+    + `  标签错配=${row.labelMismatch ?? '-'}  序数笔误=${row.ordinalTypos ?? '-'}  artifact=${row.artifacts ?? '-'}`
     + (row.error ? `  ⚠️ ${row.error}` : ''));
-  if (row.delimLabels || row.ordinalTypos) {
-    console.log(`      ↳ 咨询性（E22 候选·当前射程外）：分隔符式标签 ${row.delimLabels} 处 / 序数笔误 ${row.ordinalTypos} 处`);
-  }
 }
 
 const pass = results.filter((r) => r.ok).length;

@@ -139,8 +139,58 @@ export function getOuterPlanetsTruth(risingSignZH) {
   };
 }
 
+// 🛡️ E23/R11q ①（2026-10-06）：**本命外行星真值**（接受集合扩张，杜绝「本命/流年混淆」误报）
+//   病根（本地复现实证）：`getOuterPlanetsTruth` 返回的是**流年**年度主题（2026-27 木星狮子/
+//   土星白羊/冥王水瓶），而年报**合法**同时陈述**本命**盘位置 —— 特罗姆瑟盘（s1）本命
+//   Jupiter=Aquarius/H3（引擎实算），报告写「木星在水瓶座第3宫」**真值正确**，却被 validator
+//   按流年真值（狮子/H9）判「星座矛盾 + 宫位矛盾」⇒ 每稿必挂 ⇒ 三连重生成（MISS 128.9s）。
+//   治法：把本命外行星（SwissEph computed_houses）一并纳入接受集合 —— 命中**流年或本命**任一即合法。
+//   ⚠️ 检出能力不减：只有**两者都不匹配**（纯幻觉）才报错；本命侧另有 V432 锁 + CRITIC c12 把关。
+export function getNatalOuterPlanets(natalHouses) {
+  const out = {};
+  if (!natalHouses) return out;
+  const map = [['jupiter', 'Jupiter'], ['saturn', 'Saturn'], ['pluto', 'Pluto']];
+  for (const [key, enName] of map) {
+    const h = natalHouses[enName];
+    if (!h || !h.sign) continue;
+    const zh = SIGN_EN_TO_ZH[h.sign] || h.sign;
+    out[key] = { signZH: zh, house: h.house };
+  }
+  return out;
+}
+
+// 🛡️ E23/R11q ①b（2026-10-06）：**引擎实算流年外行星宫位**（Placidus 真宫头，含度数）
+//   病根（本地复现实证 s7 zh，1978-07-04 安克雷奇 上升天蝎）：`getOuterPlanetsTruth` 的宫位
+//   是**整星座等宫粗映射**（`getSignToHouseMap`，忽略度数）⇒ 土星白羊 = 第 6 宫；
+//   而**生产提示词**（V82 `houseLock`）给出的却是引擎真值 `astroMatrix.months[0].saturn.house`
+//   = 第 5 宫（白羊 0° 落在上升天蝎的第 5 宫宫头之后）。LLM 照抄引擎真值（第 5 宫）⇒
+//   validator 拿等宫值（第 6 宫）比对 ⇒「宫位矛盾」×3（土/木/冥 全部差 1）⇒ 每稿必挂
+//   ⇒ 三连重生成（MISS 111.7s）。这正是 MEMORY「等宫公式绝非通用真值」的 s7 实证
+//   （同源现象见 Adelaide 盘：水瓶 0–14.19° 落 H1，而整星座映射说 H2）。
+//   治法：把**引擎真值**作为第三接受源（与 `houseLock` 同源同取材）—— 命中「流年等宫 ∪
+//   本命 ∪ 引擎流年」任一**成对一致**即合法。检出能力不减：只有**三者全不匹配**才报错。
+//   数据形态：server.js 传入 `astroMatrix.months[0]` 的 `{jupiter,saturn,pluto}`（各含 sign/house）。
+export function getEngineOuterPlanets(engineFirstMonth) {
+  const out = {};
+  if (!engineFirstMonth) return out;
+  for (const key of ['jupiter', 'saturn', 'pluto']) {
+    const src = engineFirstMonth[key];
+    if (!src) continue;
+    const sign = typeof src === 'string' ? src : src.sign;
+    const house = (src && typeof src === 'object' && typeof src.house === 'number') ? src.house : null;
+    if (!sign || !house) continue;
+    out[key] = { signZH: SIGN_EN_TO_ZH[sign] || sign, house };
+  }
+  return out;
+}
+
 // 构造完整 truth 对象（供 Validator 使用）
-export function buildAstroTruth(birthDate, risingSignZH, lang = 'zh', startYear, startMonth) {
+// 🛡️ E23/R11q ①：新增 opts.natalHouses（本命盘 computed_houses）/ opts.providedPlanets（引擎已供给的行星）
+//   —— 供 validator 做「本命/流年双真值接受」与「未提供行星禁则**数据驱动**」两类窄化。
+// 🛡️ E23/R11q ①b：新增 opts.engineFirstMonth（`astroMatrix.months[0]`，与生产 houseLock 同源）
+//   —— 供 validator 接受**引擎实算流年宫位**（Placidus 真宫头），消除「等宫粗映射差 1」误报。
+//   ⚠️ 向后兼容：不传 opts 时行为与历史完全一致（natalOuterPlanets={}、outerPlanetsEngine={}、providedPlanets=null）。
+export function buildAstroTruth(birthDate, risingSignZH, lang = 'zh', startYear, startMonth, opts = {}) {
   const monthly = buildMonthlyTruth(risingSignZH, lang, startYear, startMonth);
   const outer = getOuterPlanetsTruth(risingSignZH);
   const natalIdx = getNatalSunSign(birthDate);
@@ -152,5 +202,11 @@ export function buildAstroTruth(birthDate, risingSignZH, lang = 'zh', startYear,
     months: monthly.months,
     monthlyTruthText: monthly.truthText,
     outerPlanets: outer,
+    // 🛡️ E23/R11q ①：本命外行星真值（接受集合扩张）
+    natalOuterPlanets: getNatalOuterPlanets(opts.natalHouses || null),
+    // 🛡️ E23/R11q ①b：引擎实算流年外行星宫位（Placidus 真宫头，与生产 houseLock **同源同取材**）
+    outerPlanetsEngine: getEngineOuterPlanets(opts.engineFirstMonth || null),
+    // 🛡️ E23/R11q ①：引擎实际供给的行星（EN 键，如 ['Sun','Moon',…,'Mars']）⇒ 未提供禁则数据驱动
+    providedPlanets: Array.isArray(opts.providedPlanets) ? opts.providedPlanets.slice() : null,
   };
 }

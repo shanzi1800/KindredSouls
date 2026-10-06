@@ -6821,6 +6821,45 @@ function _e21LabelAllowed(label, houseNum) {
   }
   return false;
 }
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E23/R11q ②（2026-10-06）：分隔符式标签（`Nth House, <标签>`）契约剪枝
+// ══════════════════════════════════════════════════════════════════
+// 【病根】E21 正则要求字面 ` of ` ⇒ 逗号/中点/破折号式天然漏网（s13 收编批测的
+//   advisoryProbes 早已把该形态列入「只报不拦」）。13 盘 v523 落库文本实测形态分布：
+//     · 真·错配 1 处：`Your natal Sun … occupies the 12th House, Marriage, and Allies`
+//       （Marriage/Allies 是 7 宫主题 ⇒ 病根原文「他宫主题词拼到正确宫号后」的逗号形态）
+//     · 合法-月段标题 12 处：`### September 2026: Sun in Virgo · 2nd House · The Harvest of Worth`
+//       （V487 自由副标题，`The Month of …` 之外的变体）⇒ **绝不能剪**
+//     · 合法-星座宫位对 4 处：`the Virgo 2nd House, the Taurus 10th House`
+//       （分隔符后是**星座**而非语义标签）⇒ **绝不能剪**
+// 【治法】窄触发 = 「标签命中**他宫**契约主题词」才剪（病根的可判定形态），配三重护栏：
+//   ① 标题行豁免（行首 `#` ⇒ 不动）② 主题词锚定（零命中主题词 ⇒ 弃权 —— 直接挡掉
+//   星座名/行星名等非法标签）③ 本宫主题词 ⇒ 合法保留。
+//   幂等：剪后 `House` 后不再有分隔符 ⇒ 二次施加零改动。
+//   判据同源：本正则与 `_e21CountHouseLabelMismatch`（CRITIC c14）共用，杜绝双盲。
+const _E23_DELIM_LABEL_RE = new RegExp(
+  '(\\b(\\d{1,2})(?:st|nd|rd|th)\\s+Houses?)(\\s*[,:：—–·-]\\s+)'
+  + '((?:the\\s+|The\\s+)?[A-Z][A-Za-z&\\x27-]*(?:\\s+(?:(?:and|&|or)\\s+)?(?:the\\s+|The\\s+)?[A-Z][A-Za-z&\\x27-]*)*'
+  + '(?:\\s*,\\s*(?:(?:and|or)\\s+)?(?:the\\s+|The\\s+)?[A-Z][A-Za-z&\\x27-]*(?:\\s+(?:(?:and|&|or)\\s+)?(?:the\\s+|The\\s+)?[A-Z][A-Za-z&\\x27-]*)*)*)',
+  'g');
+/** 标签命中哪些宫的契约主题词（返回宫号数组，可空）。判据同源：复用 `_E21_HOUSE_LABEL_CONTRACT` */
+function _e23ThemeHouses(label) {
+  const hits = [];
+  for (let i = 0; i < _E21_HOUSE_LABEL_CONTRACT.length; i++) {
+    for (const t of _E21_HOUSE_LABEL_CONTRACT[i]) {
+      let re = null;
+      try { re = new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'); } catch (e) { continue; }
+      if (re && re.test(label)) { hits.push(i + 1); break; }
+    }
+  }
+  return hits;
+}
+/** 该位置是否位于标题行（行首 `#` 起） —— 月份标题豁免护栏 */
+function _e23OnHeadingLine(source, offset) {
+  const ls = source.lastIndexOf('\n', offset) + 1;
+  return source.slice(ls, offset).trimStart().startsWith('#');
+}
+
 function stripHouseSemanticLabelMismatch(text, lang, reportType) {
   if (lang !== 'en') return text;                             // ① 仅 en
   if (!text || typeof text !== 'string') return text;
@@ -6834,9 +6873,26 @@ function stripHouseSemanticLabelMismatch(text, lang, reportType) {
     return m0.slice(0, m0.indexOf(' of '));                   // 剪 ` of <label>` 保数字（V488d 哲学）
   });
   if (pruned > 0) console.log(`[E21/R11o] ${lang}/${reportType || ''} 宫位语义标签契约锁: 剪除错配标签 ${pruned} 处`);
-  return out;
+  // 🛡️ E23/R11q ②：第二遍 —— 分隔符式（`Nth House, <标签>`）
+  let pruned2 = 0;
+  const out2 = out.replace(_E23_DELIM_LABEL_RE, (m0, housePart, num, _sep, label, offset) => {
+    const n = Number(num);
+    if (!(n >= 1 && n <= 12)) return m0;                      // 越界弃权
+    if (_e23OnHeadingLine(out, offset)) return m0;            // ① 标题行豁免（月份标题）
+    const themes = _e23ThemeHouses(label);
+    if (themes.length === 0) return m0;                       // ② 主题词锚定（挡星座/行星名）
+    if (themes.indexOf(n) !== -1) return m0;                  // ③ 本宫主题 ⇒ 合法
+    pruned2++;
+    return housePart;                                        // 剪 `, <标签>` 保数字
+  });
+  if (pruned2 > 0) console.log(`[E23/R11q] ${lang}/${reportType || ''} 分隔符式标签契约剪枝: 剪除错配 ${pruned2} 处`);
+  return out2;
 }
-function _e21CountHouseLabelMismatch(text) {
+function _e21CountHouseLabelMismatch(text, lang) {
+  // 🛡️ E23/R11q ②：语言门控（可选传参）—— 与生产链**严格同源**：`stripHouseSemanticLabelMismatch`
+  //   仅 en 生效、CRITIC c14 亦仅 en 运行 ⇒ 非 en 文本的计数必须为 0，否则批测工具会
+  //   对「锁根本不管的语种」判红（假红）。不传 lang ⇒ 保持历史行为（全量计数，兼容旧调用）。
+  if (lang && lang !== 'en') return 0;
   if (!text || typeof text !== 'string') return 0;
   let n = 0;
   for (const m of text.matchAll(_E21_HOUSE_LABEL_RE)) {
@@ -6844,6 +6900,58 @@ function _e21CountHouseLabelMismatch(text) {
     if (!(num >= 1 && num <= 12)) continue;
     const bare = m[2].replace(/^[Tt]he\s+/, '');
     if (!_e21LabelAllowed(bare, num)) n++;
+  }
+  // 🛡️ E23/R11q ②：分隔符式错配**同源计数**（与 stripHouseSemanticLabelMismatch 第二遍同判据）
+  for (const m of text.matchAll(new RegExp(_E23_DELIM_LABEL_RE.source, 'g'))) {
+    const num = Number(m[2]);
+    if (!(num >= 1 && num <= 12)) continue;
+    if (_e23OnHeadingLine(text, m.index)) continue;
+    const themes = _e23ThemeHouses(m[4]);
+    if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+  }
+  return n;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E23/R11q ②（2026-10-06）：`Nth House` **序数后缀笔误**归一
+// ══════════════════════════════════════════════════════════════════
+// 证据（13 盘 v523 落库文本扫描）：
+//   · `Your Saturn in Aquarius in the 2th House is the karmic weight of your career.` （2th→2nd）
+//   · `The career path of the Jupiter in Cancer 12st House involves expansion…`     （12st→12th）
+// E13 的拼写式序数锁只管 `in the seventh house`；「数字 + 错后缀」从未被覆盖 = 形态卫生缺口。
+// 铁律：① 仅改 `数字+后缀+\s+Houses?` 三连形态，绝不碰散文序数（`1st place` 不动）；
+//   ② 宫号越界（<1 或 >12）⇒ 弃权；③ 后缀已正确 ⇒ 零改动（幂等）；④ 语言中立。
+// 判据同源：本正则被 `fixHouseOrdinalSuffix`（归一）与 `_e23CountHouseOrdinalTypos`（计数/CRITIC 源）
+//   共用同一字面量，杜绝「归一漏了、批测看不见」双盲。
+const _E23_HOUSE_ORDINAL_RE = /\b(\d{1,2})(st|nd|rd|th)(\s+Houses?\b)/g;
+/** 英文序数后缀真值（`1st/2nd/3rd/…/11th/12th/13th` 的例外规则） */
+function _e23WantOrdinalSuffix(n) {
+  return (n % 10 === 1 && n % 100 !== 11) ? 'st'
+    : (n % 10 === 2 && n % 100 !== 12) ? 'nd'
+      : (n % 10 === 3 && n % 100 !== 13) ? 'rd' : 'th';
+}
+function fixHouseOrdinalSuffix(text) {
+  if (!text || typeof text !== 'string') return text;
+  let fixed = 0;
+  const out = text.replace(new RegExp(_E23_HOUSE_ORDINAL_RE.source, 'g'), (m0, num, suf, tail) => {
+    const n = Number(num);
+    if (!(n >= 1 && n <= 12)) return m0;
+    const want = _e23WantOrdinalSuffix(n);
+    if (suf === want) return m0;
+    fixed++;
+    return num + want + tail;
+  });
+  if (fixed > 0) console.log(`[E23/R11q] 宫位序数后缀归一: 修正 ${fixed} 处`);
+  return out;
+}
+/** 序数后缀笔误计数（与 `fixHouseOrdinalSuffix` 同源正则 —— 供批测工具做**硬判据**） */
+function _e23CountHouseOrdinalTypos(text) {
+  if (!text || typeof text !== 'string') return 0;
+  let n = 0;
+  for (const m of text.matchAll(new RegExp(_E23_HOUSE_ORDINAL_RE.source, 'g'))) {
+    const d = Number(m[1]);
+    if (!(d >= 1 && d <= 12)) continue;
+    if (m[2] !== _e23WantOrdinalSuffix(d)) n++;
   }
   return n;
 }
@@ -8480,7 +8588,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v523:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v524:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11760,7 +11868,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v523:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v524:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -11901,7 +12009,23 @@ app.post('/api/wealth-oracle', async (req, res) => {
         let aiResult = null;
         let _lastRaw = null;
         if (reportType === 'yearly') {
-          const astroTruth = buildAstroTruth(birthDate, ascendant, lang, new Date().getFullYear(), new Date().getMonth() + 1);
+          // 🛡️ E23/R11q ①（2026-10-06）：三处窄化的**同源取材** —— 全部取自 astroMatrix.meta，
+          //   杜绝「判据各自硬编码」：
+          //   ① 真值窗口 = `meta.report_window`（财年 7 月–次年 6 月，与报告月标题 1:1 对齐；
+          //      原写 `new Date()` ⇒ 当月起 12 月，与年报窗口错位，多数月份落空/错月份的月被漏检）；
+          //   ② 本命盘 = `meta.computed_houses`（SwissEph Placidus 真值）⇒ 接受「本命合法声明」；
+          //   ③ 已供给行星 = 上述真值盘的键集 ⇒ 未提供行星禁则数据驱动（火星实为已供给）。
+          // 🛡️ E23/R11q ①b（2026-10-06）：④ 引擎实算流年外行星 = `months[0]`（**与生产 `houseLock`
+          //   同源同取材**，见 V82 `jupHouse = getH2(first.jupiter?.house)`）⇒ 消除「等宫粗映射差 1」误报。
+          const _v524RW = (astroMatrix && astroMatrix.meta && astroMatrix.meta.report_window) || null;
+          const _v524CH = (astroMatrix && astroMatrix.meta && astroMatrix.meta.computed_houses) || null;
+          const _v524EF = (astroMatrix && astroMatrix.months && astroMatrix.months[0]) || null;
+          const astroTruth = buildAstroTruth(
+            birthDate, ascendant, lang,
+            _v524RW ? _v524RW.start_year : new Date().getFullYear(),
+            _v524RW ? _v524RW.start_month : new Date().getMonth() + 1,
+            { natalHouses: _v524CH, providedPlanets: _v524CH ? Object.keys(_v524CH) : null, engineFirstMonth: _v524EF }
+          );
           const MAX_RETRY = 3;
           for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
             const r = await callAI(prompt.system, prompt.user, process.env, { maxTokens, reportType });
@@ -12044,6 +12168,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // 🛡️ E21/R11o: 宫位语义标签契约锁（保数字、剪错配标签, 见函数头注释）——
         //   数字层真值锁对「数字全对、标签乱贴」无能为力 ⇒ 独立剪枝, 先剪再让真值链收口。
+        reportContent = fixHouseOrdinalSuffix(reportContent);   // 🛡️ E23/R11q ②: 序数后缀笔误归一(形态先行)
         reportContent = stripHouseSemanticLabelMismatch(reportContent, lang, reportType);
 
         // 🛡️ E19/R11m: 真值锁**最终话语权** —— 全部清洗/去重之后再跑一次本命真值链。
@@ -12070,6 +12195,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         //   治法（军师裁定 方案①·最小改动）：在所有清理/真值收口**之后**把标签契约锁再施加一次。
         //   纯过滤器 + 幂等（对已合规文本零改动、对合规标签零误伤）⇒ 与 E19「链末重跑」同一哲学，
         //   不触碰上游 `_v432LockLeadingNatal` 的物主绑定核心逻辑（零新逻辑、零侧效应）。
+        reportContent = fixHouseOrdinalSuffix(reportContent);   // 🛡️ E23/R11q ②: 序数后缀笔误归一(链末再兜一次)
         reportContent = stripHouseSemanticLabelMismatch(reportContent, lang, reportType);
 
         // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
@@ -12511,7 +12637,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v523:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v524:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13770,6 +13896,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ E20/R11n: 元素归纳段流年坐标剪枝锁(与 /api/wealth-oracle 非流式端点同源) —— 先剪坐标再收口。
     if (reportType === 'yearly') cleanedText = stripYearlyElementCoordLeak(cleanedText, lang, reportType);
     // 🛡️ E21/R11o: 宫位语义标签契约锁(与非流式端点同源) —— 保数字、剪错配标签。
+    cleanedText = fixHouseOrdinalSuffix(cleanedText);   // 🛡️ E23/R11q ②: 序数后缀笔误归一(形态先行)
     cleanedText = stripHouseSemanticLabelMismatch(cleanedText, lang, reportType);
     // 🛡️ E19/R11m: 真值锁最终话语权(与 /api/wealth-oracle 非流式端点同源) —— 见该处函数头注释:
     //   链中段真值锁在「句窗含年份/月份词」时弃权, 而残渣随后被清掉 ⇒ 残差漏纠;
@@ -13778,6 +13905,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ E22/R11p: 宫位语义标签契约锁**链末收口**（与非流式端点同源）—— 见 /api/wealth-oracle 处注释：
     //   E19/R11m 链末真值锁会把 natal 行星真值误绑到同句流年子句的宫号上（7→10、标签原地不动），
     //   而 E21 锁挂在其之前 ⇒ 后置错配直达落库。故在真值收口之后再施加一次（纯过滤器、幂等）。
+    cleanedText = fixHouseOrdinalSuffix(cleanedText);   // 🛡️ E23/R11q ②: 序数后缀笔误归一(链末再兜一次)
     cleanedText = stripHouseSemanticLabelMismatch(cleanedText, lang, reportType);
     if (reportType === 'monthly') cleanedText = fixMoonHouseParens(cleanedText);  // 🛠️ V460-fix4
     // 🛠️ V389: MISS 路径补齐越南语清洗(军师拍板) — 与 HIT 路径(6054)100%对齐,
@@ -14184,7 +14312,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v523-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v524-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
