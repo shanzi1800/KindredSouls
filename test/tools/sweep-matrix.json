@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "purpose": "KindredSouls Sweep 基准盘矩阵（s1~s13）—— 唯一真源",
+    "purpose": "KindredSouls Sweep 基准盘矩阵（s1~s14）—— 唯一真源",
     "generated_by": "test/tools/regen-sweep-truth.mjs（astro/astro_matrix.py 实算，严禁手抄）",
-    "numbering": "s1~s12 = E17/R11j 起沿用的 12 特殊生日批测盘；s13 = E21/R11o 收编的语义标签错配样本",
-    "coverage": "语言 zh/en/es/fr/th/vi 各 2 盘 + s13(en)；边界：半小时夏令时·非整数时区·半小时时区·高纬极昼·南半球高纬·赤道本初子午线·跨日界线·DST 空洞·跨年零点",
-    "last_regenerated": "2026-10-06T04:10:50.481Z"
+    "numbering": "s1~s12 = E17/R11j 起沿用的 12 特殊生日批测盘；s13 = E21/R11o 收编的语义标签错配样本；s14 = E24/R11r② 收编的多语言标题 + 西语标签错配样本",
+    "coverage": "语言 zh/en/es/fr/th/vi（es 3 盘） + s13(en)；边界：半小时夏令时·非整数时区·半小时时区·高纬极昼·南半球高纬·赤道本初子午线·跨日界线·DST 空洞·跨年零点",
+    "last_regenerated": "2026-10-06T11:21:08.657Z"
   },
   "disks": [
     {
@@ -771,6 +771,66 @@
           "Pluto": {
             "sign": "Scorpio",
             "house": 11
+          }
+        }
+      }
+    },
+    {
+      "id": "s14",
+      "lang": "es",
+      "name": "乌斯怀亚西语多语标题回归盘",
+      "edge": "south-high-lat",
+      "birth": "2002-06-21",
+      "time": "23:45",
+      "lat": "-54.8019",
+      "lon": "-68.3030",
+      "tz": "America/Argentina/Ushuaia",
+      "note": "E24/R11r② 收编（线上实证盘）：与 s3 同坐标、仅生日不同。实证三问题 —— ① 章节标题「流式金色、落库后跌白字」（后端 normalizeYearlyMarkup 剥 ✦ 且非中文章节被降级 ###）② 月标题 8 金 4 白（Agosto/Diciembre/Enero/Abril 与英文月名前缀不重合）③ 西语宫位语义标签 3 处错配（5ª Casa de Hogar y Raíces 应为 4 等）",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Pisces",
+        "sun_sign": "Cancer",
+        "ascendant_deg": 341.8496,
+        "houses": {
+          "Sun": {
+            "sign": "Cancer",
+            "house": 4
+          },
+          "Moon": {
+            "sign": "Scorpio",
+            "house": 9
+          },
+          "Mercury": {
+            "sign": "Gemini",
+            "house": 4
+          },
+          "Venus": {
+            "sign": "Leo",
+            "house": 5
+          },
+          "Mars": {
+            "sign": "Cancer",
+            "house": 5
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "house": 5
+          },
+          "Saturn": {
+            "sign": "Gemini",
+            "house": 4
+          },
+          "Uranus": {
+            "sign": "Aquarius",
+            "house": 12
+          },
+          "Neptune": {
+            "sign": "Aquarius",
+            "house": 11
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 10
           }
         }
       }

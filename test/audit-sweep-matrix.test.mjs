@@ -47,12 +47,12 @@ function engineTruth(disk) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-test('① 结构级: 13 盘 / 编号 s1~s13 唯一 / 字段齐备 / 全为 yearly', () => {
-  assert.equal(SWEEP_MATRIX.length, 13, `盘池须为 13 盘（s1~s13），实得 ${SWEEP_MATRIX.length}`);
+test('① 结构级: 14 盘 / 编号 s1~s14 唯一 / 字段齐备 / 全为 yearly', () => {
+  assert.equal(SWEEP_MATRIX.length, 14, `盘池须为 14 盘（s1~s14），实得 ${SWEEP_MATRIX.length}`);
 
   const ids = SWEEP_MATRIX.map((d) => d.id);
-  assert.equal(new Set(ids).size, 13, '编号必须唯一');
-  for (let i = 1; i <= 13; i++) {
+  assert.equal(new Set(ids).size, 14, '编号必须唯一');
+  for (let i = 1; i <= 14; i++) {
     assert.ok(ids.includes(`s${i}`), `缺少编号 s${i}`);
   }
 
@@ -137,7 +137,7 @@ test('④ 覆盖维度: 六语各 ≥2 盘 + 11 类边界全命中', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-test('⑤ 真值新鲜度: 13 盘逐盘现场实算引擎并与注册表比对（判据同源）', () => {
+test('⑤ 真值新鲜度: 14 盘逐盘现场实算引擎并与注册表比对（判据同源）', () => {
   const bad = [];
   for (const d of SWEEP_MATRIX) {
     let eng;
