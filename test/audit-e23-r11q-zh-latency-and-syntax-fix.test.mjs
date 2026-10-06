@@ -325,3 +325,41 @@ test('⑩ v524 基线: server.js 4 站点 + 无 v523 残留 + purge 双形态回
 test('⑪ 交付纪律: 临时诊断（E23-DIAG）不得残留于 server.js', () => {
   assert.ok(!SRC.includes('E23-DIAG'), '临时诊断代码未撤除（E23-DIAG 残留）');
 });
+
+test('⑫ E23③ 完整性密度阈值标定: 20 → 15（退化仍拦 / 被误拦稿放行 / 截断三重防线）', async () => {
+  const { assessYearlyReportIntegrity } = await import(pathToFileURL(path.join(REPO, 'lib', 'yearly_integrity.mjs')).href);
+  const INTEG = readFileSync(path.join(REPO, 'lib', 'yearly_integrity.mjs'), 'utf-8');
+
+  // 结构断言（防回退）：阈值字面量须为 15，旧值 20 不得残留于判据行
+  assert.match(INTEG, /if \(astroDensity < 15\)/, '密度阈值未标定为 15（回退即红）');
+  assert.ok(!/if \(astroDensity < 20\)/.test(INTEG), '旧阈值 20 仍在（临界抖动未根治）');
+
+  const garbled = readFileSync(path.join(__dirname, 'fixtures/yearly-zh-garbled-20260929.txt'), 'utf-8');
+  const healthy = readFileSync(path.join(__dirname, 'fixtures/yearly-zh-healthy-sample.txt'), 'utf-8');
+
+  // ① 事故样本（缺字退化，实测 11.0）⇒ 仍必须被拦（检出能力不减）
+  const g = assessYearlyReportIntegrity(garbled, { lang: 'zh' });
+  assert.equal(g.ok, false, '缺字退化稿未被拦（检出能力丢失）');
+  assert.ok(g.metrics.astroDensityPerK < 15, `事故样本密度须 <15，实得 ${g.metrics.astroDensityPerK}`);
+
+  // ② 健康样本 ⇒ 必须放行（未误伤）
+  const h = assessYearlyReportIntegrity(healthy, { lang: 'zh' });
+  assert.equal(h.ok, true, `健康样本误杀: ${h.reasons.join(' | ')}`);
+
+  // ③ 标定样本：用健康稿稀释到「旧阈值被拦 / 新阈值放行」的区间（= s7 首稿 19.8 所在带）
+  const hd = h.metrics.astroDensityPerK;
+  const TARGET = 19.0;
+  const synth = healthy + '的'.repeat(Math.ceil(healthy.length * (hd / TARGET - 1)));
+  const s = assessYearlyReportIntegrity(synth, { lang: 'zh' });
+  const d = s.metrics.astroDensityPerK;
+  assert.ok(d >= 15 && d < 20, `标定样本密度须落在 [15,20)，实得 ${d}`);
+  // 判据敏感度自证：同一稿在旧阈值(20)下必拦、在新阈值(15)下必过 —— 等价于「注入回退即红」
+  assert.ok(d < 20, `标定样本须落在旧阈值被拦区间，实得 ${d}`);
+  assert.equal(d >= 15, true, `标定样本须落在新阈值放行区间，实得 ${d}`);
+  assert.equal(s.ok, true, `新阈值下 [15,20) 区间仍被误拦: ${s.reasons.join(' | ')}`);
+
+  // ④ 截断仍有三重独立防线（长度 / 结构 / 密度）
+  const cut = assessYearlyReportIntegrity(healthy.slice(0, 5200), { lang: 'zh' });
+  assert.equal(cut.ok, false, '截断稿须被长度判据拦下');
+  assert.ok(cut.reasons.some((r) => r.includes('长度')), '长度判据缺失（截断防线被削弱）');
+});
