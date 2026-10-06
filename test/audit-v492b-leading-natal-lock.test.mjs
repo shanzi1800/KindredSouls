@@ -127,11 +127,14 @@ test('④ 写链挂载齐全（中段 2 处 + 链末收口 2 处）；HIT 侧零
   // (b) 🛡️ E19/R11m: 链末收口挂载点 = 排在 dedupYearlyMonthTitles 之后（清洗/去重完毕再纠值).
   //   动机：中段锁的「物主本命句」准入依赖句窗内容 —— 句窗含年份/月份词即弃权(宁漏不改),
   //   而残渣随后被 cleanYearlyTimeline/dedup 清掉 ⇒ 残差漏纠（s2 en CRITIC 判据12 余警真因）。
-  //   窗口 1200：实测链末挂载距 dedup 817 / 323 字符（非流式含 10 行长注释）。
+  //   窗口 2000（E21/R11o 放宽，原 1200）：E21 在 dedup 与链末锁之间插入宫位标签契约锁挂载
+  //   （非流式含 2 行注释 + 1 行调用）⇒ 实测非流式 1271 / 流式 643，原窗被链增长顶破。
+  //   ⚠️ 本窗是**分类启发式**（区分中段/链末两类），不变式由 (c)「4 处锁必须被两类穷尽」兜底：
+  //      中段锁距 V488 仅 140/117 字符、距 dedup 十万级 ⇒ 放宽不会误分类。
   const dedups = [...src.matchAll(/= dedupYearlyMonthTitles\(/g)].map((m) => m.index);
   const tailPass = locks.filter((li) => {
     const prev = dedups.filter((v) => v < li).pop();
-    return prev !== undefined && li - prev < 1200;
+    return prev !== undefined && li - prev < 2000;
   });
   assert.ok(tailPass.length >= 2, `链末收口挂载点不足 2 处: ${tailPass.length}`);
   // (c) 全部挂载必须落在上述两类 ⇒ 链外（游离 / HIT 侧）挂载点为 0。

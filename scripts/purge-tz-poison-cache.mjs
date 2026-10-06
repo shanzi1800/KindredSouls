@@ -69,6 +69,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v519-v2:*',
   'wealth:v520:*',        // 🛡️ E20/R11n: v520 全量作废（① 新增 stripYearlyElementCoordLeak 元素归纳段流年坐标剪枝锁（V488d 契约确定性落地，s7 zh 判据9 真阳性）② V517 轴点锁补「X座上升」后置形态（s1 zh「天秤座上升」错值实证）③ CRITIC 判据12 多声称连句防伪影）
   'wealth:v520-v2:*',
+  'wealth:v521:*',        // 🛡️ E21/R11o: v521 全量作废（新增 stripHouseSemanticLabelMismatch 宫位语义标签契约锁（保数字、剪错配标签；1993 盘「12th House of Partnership」实证）+ CRITIC 判据14 宫位语义标签错配守卫）
+  'wealth:v521-v2:*',
   'wealth:v116-v2:*',
 ];
 

@@ -442,11 +442,11 @@ test('⑮ 支柱3 行为级: 第 ⑥ 否决在真实宫头下弃权，等宫制�
 // ⑯ 缓存 v513
 // ═══════════════════════════════════════════════════════════════════════
 test('⑯ 缓存 v515（server.js 四站点 + purge 补 v514 双形态 + MIN_CACHE_VER 前移）', () => {
-  const sites = [...src.matchAll(/wealth:v521/g)].length;
-  assert.ok(sites >= 4, `server.js v521 站点不足 4: ${sites}`);
+  const sites = [...src.matchAll(/wealth:v522/g)].length;
+  assert.ok(sites >= 4, `server.js v522 站点不足 4: ${sites}`);
   assert.ok(!src.includes('wealth:v520'), 'server.js 残留 v520（漏改一站）');
   assert.ok(/wealth:v520:\*/.test(purgeSrc) && /wealth:v520-v2:\*/.test(purgeSrc), 'purge 脚本未补 v520 双形态');
-  assert.ok(/MIN_CACHE_VER = 521/.test(yearlyTest), 'yearly 流式闸门基线未前移至 v521');
+  assert.ok(/MIN_CACHE_VER = 522/.test(yearlyTest), 'yearly 流式闸门基线未前移至 v522');
 });
 
 // ═══════════════════════════════════════════════════════════════════════

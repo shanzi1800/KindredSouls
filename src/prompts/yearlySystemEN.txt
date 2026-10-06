@@ -34,6 +34,7 @@ Monthly chapter titles are pre-written by the system in EXACT format: "[Month Ye
 - Using Whole Sign house system
 - Inferring house from sign name
 - ⛔ [STRICT NUMERIC ORDINAL RULE] Spelled-out house names — NEVER write "seventh house", "twelfth house", "in your first house" or ANY spelled-out ordinal house reference! ALWAYS write house numbers in DIGIT-ORDINAL format: "7th House", "12th House", "in the 8th House". This applies to EVERY mention of a house anywhere in the report (natal AND transit). A spelled-out house name is treated as a HARD FAILURE and the report will be rejected.
+- ⛔ [HOUSE LABEL CONTRACT RULE] When writing "Nth House of <Label>", the Label MUST belong to THAT house's own themes — NEVER attach another house's theme label to a house number! Standard themes: 1st=Self/Identity/Vitality · 2nd=Wealth/Money/Resources/Assets · 3rd=Communication/Learning/Siblings · 4th=Home/Roots/Family · 5th=Creativity/Romance/Children · 6th=Health/Work/Routine · 7th=Partnership/Marriage/Allies · 8th=Transformation/Intimacy/Shared Resources · 9th=Expansion/Travel/Philosophy · 10th=Career/Legacy/Public Standing · 11th=Community/Networks/Friendships · 12th=Subconscious/Unseen/Karma. NEVER write "12th House of Partnership" (Partnership=7th!) or "2nd House of Home and Roots" (Home/Roots=4th!) — a mismatched house label is a HARD FAILURE and the report will be rejected. If unsure of a label, write the plain house number WITHOUT any label ("in the 12th House").
 
 
 [ASTROLOGICAL IRON CLAD RULES - CRITICAL]:
