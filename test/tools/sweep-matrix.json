@@ -1,0 +1,779 @@
+{
+  "_meta": {
+    "purpose": "KindredSouls Sweep 基准盘矩阵（s1~s13）—— 唯一真源",
+    "generated_by": "test/tools/regen-sweep-truth.mjs（astro/astro_matrix.py 实算，严禁手抄）",
+    "numbering": "s1~s12 = E17/R11j 起沿用的 12 特殊生日批测盘；s13 = E21/R11o 收编的语义标签错配样本",
+    "coverage": "语言 zh/en/es/fr/th/vi 各 2 盘 + s13(en)；边界：半小时夏令时·非整数时区·半小时时区·高纬极昼·南半球高纬·赤道本初子午线·跨日界线·DST 空洞·跨年零点",
+    "last_regenerated": "2026-10-06T04:10:50.481Z"
+  },
+  "disks": [
+    {
+      "id": "s1",
+      "lang": "zh",
+      "name": "特罗姆瑟高纬极昼",
+      "edge": "high-lat-aurora",
+      "birth": "1997-10-18",
+      "time": "14:30",
+      "lat": "69.6492",
+      "lon": "18.9553",
+      "tz": "Europe/Oslo",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Sagittarius",
+        "sun_sign": "Libra",
+        "ascendant_deg": 240.6269,
+        "houses": {
+          "Sun": {
+            "sign": "Libra",
+            "house": 11
+          },
+          "Moon": {
+            "sign": "Taurus",
+            "house": 6
+          },
+          "Mercury": {
+            "sign": "Libra",
+            "house": 11
+          },
+          "Venus": {
+            "sign": "Sagittarius",
+            "house": 1
+          },
+          "Mars": {
+            "sign": "Sagittarius",
+            "house": 1
+          },
+          "Jupiter": {
+            "sign": "Aquarius",
+            "house": 3
+          },
+          "Saturn": {
+            "sign": "Aries",
+            "house": 5
+          },
+          "Uranus": {
+            "sign": "Aquarius",
+            "house": 3
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 2
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "lang": "en",
+      "name": "阿德莱德半小时夏令时",
+      "edge": "half-hour-dst",
+      "birth": "1992-12-15",
+      "time": "08:15",
+      "lat": "-34.9285",
+      "lon": "138.6007",
+      "tz": "Australia/Adelaide",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Capricorn",
+        "sun_sign": "Sagittarius",
+        "ascendant_deg": 292.8179,
+        "houses": {
+          "Sun": {
+            "sign": "Sagittarius",
+            "house": 12
+          },
+          "Moon": {
+            "sign": "Leo",
+            "house": 8
+          },
+          "Mercury": {
+            "sign": "Sagittarius",
+            "house": 11
+          },
+          "Venus": {
+            "sign": "Aquarius",
+            "house": 1
+          },
+          "Mars": {
+            "sign": "Cancer",
+            "house": 7
+          },
+          "Jupiter": {
+            "sign": "Libra",
+            "house": 10
+          },
+          "Saturn": {
+            "sign": "Aquarius",
+            "house": 2
+          },
+          "Uranus": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 11
+          }
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "lang": "es",
+      "name": "乌斯怀亚南半球高纬",
+      "edge": "south-high-lat",
+      "birth": "2001-06-21",
+      "time": "23:45",
+      "lat": "-54.8019",
+      "lon": "-68.3030",
+      "tz": "America/Argentina/Ushuaia",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Pisces",
+        "sun_sign": "Cancer",
+        "ascendant_deg": 342.0097,
+        "houses": {
+          "Sun": {
+            "sign": "Cancer",
+            "house": 4
+          },
+          "Moon": {
+            "sign": "Cancer",
+            "house": 4
+          },
+          "Mercury": {
+            "sign": "Gemini",
+            "house": 4
+          },
+          "Venus": {
+            "sign": "Taurus",
+            "house": 3
+          },
+          "Mars": {
+            "sign": "Sagittarius",
+            "house": 10
+          },
+          "Jupiter": {
+            "sign": "Gemini",
+            "house": 4
+          },
+          "Saturn": {
+            "sign": "Gemini",
+            "house": 4
+          },
+          "Uranus": {
+            "sign": "Aquarius",
+            "house": 12
+          },
+          "Neptune": {
+            "sign": "Aquarius",
+            "house": 11
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 10
+          }
+        }
+      }
+    },
+    {
+      "id": "s4",
+      "lang": "fr",
+      "name": "加德满都非整数时区+5:45",
+      "edge": "fractional-tz",
+      "birth": "1988-04-12",
+      "time": "18:20",
+      "lat": "27.7172",
+      "lon": "85.3240",
+      "tz": "Asia/Kathmandu",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Libra",
+        "sun_sign": "Aries",
+        "ascendant_deg": 202.1074,
+        "houses": {
+          "Sun": {
+            "sign": "Aries",
+            "house": 7
+          },
+          "Moon": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Mercury": {
+            "sign": "Aries",
+            "house": 6
+          },
+          "Venus": {
+            "sign": "Gemini",
+            "house": 8
+          },
+          "Mars": {
+            "sign": "Aquarius",
+            "house": 4
+          },
+          "Jupiter": {
+            "sign": "Taurus",
+            "house": 7
+          },
+          "Saturn": {
+            "sign": "Capricorn",
+            "house": 3
+          },
+          "Uranus": {
+            "sign": "Capricorn",
+            "house": 3
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 3
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "lang": "vi",
+      "name": "阿克拉赤道本初子午线",
+      "edge": "prime-meridian",
+      "birth": "2005-01-01",
+      "time": "00:05",
+      "lat": "5.6037",
+      "lon": "0.0000",
+      "tz": "Africa/Accra",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Libra",
+        "sun_sign": "Capricorn",
+        "ascendant_deg": 192.5147,
+        "houses": {
+          "Sun": {
+            "sign": "Capricorn",
+            "house": 3
+          },
+          "Moon": {
+            "sign": "Virgo",
+            "house": 11
+          },
+          "Mercury": {
+            "sign": "Sagittarius",
+            "house": 3
+          },
+          "Venus": {
+            "sign": "Sagittarius",
+            "house": 3
+          },
+          "Mars": {
+            "sign": "Sagittarius",
+            "house": 2
+          },
+          "Jupiter": {
+            "sign": "Libra",
+            "house": 1
+          },
+          "Saturn": {
+            "sign": "Cancer",
+            "house": 10
+          },
+          "Uranus": {
+            "sign": "Pisces",
+            "house": 5
+          },
+          "Neptune": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "s6",
+      "lang": "th",
+      "name": "阿皮亚跨日界线+13/+14",
+      "edge": "date-line",
+      "birth": "2015-09-29",
+      "time": "06:30",
+      "lat": "-13.8333",
+      "lon": "-171.7667",
+      "tz": "Pacific/Apia",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Virgo",
+        "sun_sign": "Libra",
+        "ascendant_deg": 171.3086,
+        "houses": {
+          "Sun": {
+            "sign": "Libra",
+            "house": 1
+          },
+          "Moon": {
+            "sign": "Aries",
+            "house": 7
+          },
+          "Mercury": {
+            "sign": "Libra",
+            "house": 1
+          },
+          "Venus": {
+            "sign": "Leo",
+            "house": 12
+          },
+          "Mars": {
+            "sign": "Virgo",
+            "house": 12
+          },
+          "Jupiter": {
+            "sign": "Virgo",
+            "house": 12
+          },
+          "Saturn": {
+            "sign": "Sagittarius",
+            "house": 3
+          },
+          "Uranus": {
+            "sign": "Aries",
+            "house": 7
+          },
+          "Neptune": {
+            "sign": "Pisces",
+            "house": 6
+          },
+          "Pluto": {
+            "sign": "Capricorn",
+            "house": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "s7",
+      "lang": "zh",
+      "name": "安克雷奇西半球高纬",
+      "edge": "west-high-lat",
+      "birth": "1978-07-04",
+      "time": "16:10",
+      "lat": "61.2181",
+      "lon": "-149.9003",
+      "tz": "America/Anchorage",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Scorpio",
+        "sun_sign": "Cancer",
+        "ascendant_deg": 216.379,
+        "houses": {
+          "Sun": {
+            "sign": "Cancer",
+            "house": 9
+          },
+          "Moon": {
+            "sign": "Cancer",
+            "house": 8
+          },
+          "Mercury": {
+            "sign": "Leo",
+            "house": 9
+          },
+          "Venus": {
+            "sign": "Leo",
+            "house": 9
+          },
+          "Mars": {
+            "sign": "Virgo",
+            "house": 10
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "house": 9
+          },
+          "Saturn": {
+            "sign": "Leo",
+            "house": 9
+          },
+          "Uranus": {
+            "sign": "Scorpio",
+            "house": 1
+          },
+          "Neptune": {
+            "sign": "Sagittarius",
+            "house": 2
+          },
+          "Pluto": {
+            "sign": "Libra",
+            "house": 11
+          }
+        }
+      }
+    },
+    {
+      "id": "s8",
+      "lang": "es",
+      "name": "马德里DST不存在时间",
+      "edge": "dst-hole",
+      "birth": "1985-03-31",
+      "time": "02:30",
+      "lat": "40.4168",
+      "lon": "-3.7038",
+      "tz": "Europe/Madrid",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Capricorn",
+        "sun_sign": "Aries",
+        "ascendant_deg": 275.1468,
+        "houses": {
+          "Sun": {
+            "sign": "Aries",
+            "house": 3
+          },
+          "Moon": {
+            "sign": "Cancer",
+            "house": 7
+          },
+          "Mercury": {
+            "sign": "Aries",
+            "house": 3
+          },
+          "Venus": {
+            "sign": "Aries",
+            "house": 3
+          },
+          "Mars": {
+            "sign": "Taurus",
+            "house": 4
+          },
+          "Jupiter": {
+            "sign": "Aquarius",
+            "house": 1
+          },
+          "Saturn": {
+            "sign": "Scorpio",
+            "house": 11
+          },
+          "Uranus": {
+            "sign": "Sagittarius",
+            "house": 12
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 10
+          }
+        }
+      }
+    },
+    {
+      "id": "s9",
+      "lang": "th",
+      "name": "曼谷原生",
+      "edge": "native",
+      "birth": "1999-11-11",
+      "time": "11:11",
+      "lat": "13.7563",
+      "lon": "100.5018",
+      "tz": "Asia/Bangkok",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Capricorn",
+        "sun_sign": "Scorpio",
+        "ascendant_deg": 295.7474,
+        "houses": {
+          "Sun": {
+            "sign": "Scorpio",
+            "house": 10
+          },
+          "Moon": {
+            "sign": "Sagittarius",
+            "house": 11
+          },
+          "Mercury": {
+            "sign": "Scorpio",
+            "house": 10
+          },
+          "Venus": {
+            "sign": "Libra",
+            "house": 8
+          },
+          "Mars": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Jupiter": {
+            "sign": "Aries",
+            "house": 3
+          },
+          "Saturn": {
+            "sign": "Taurus",
+            "house": 4
+          },
+          "Uranus": {
+            "sign": "Aquarius",
+            "house": 1
+          },
+          "Neptune": {
+            "sign": "Aquarius",
+            "house": 1
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 11
+          }
+        }
+      }
+    },
+    {
+      "id": "s10",
+      "lang": "en",
+      "name": "新德里半小时时区+5:30",
+      "edge": "half-hour-tz",
+      "birth": "1990-08-15",
+      "time": "05:30",
+      "lat": "28.6139",
+      "lon": "77.2090",
+      "tz": "Asia/Kolkata",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Leo",
+        "sun_sign": "Leo",
+        "ascendant_deg": 136.784,
+        "houses": {
+          "Sun": {
+            "sign": "Leo",
+            "house": 1
+          },
+          "Moon": {
+            "sign": "Gemini",
+            "house": 10
+          },
+          "Mercury": {
+            "sign": "Virgo",
+            "house": 2
+          },
+          "Venus": {
+            "sign": "Leo",
+            "house": 12
+          },
+          "Mars": {
+            "sign": "Taurus",
+            "house": 10
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "house": 12
+          },
+          "Saturn": {
+            "sign": "Capricorn",
+            "house": 6
+          },
+          "Uranus": {
+            "sign": "Capricorn",
+            "house": 5
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 5
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "s11",
+      "lang": "vi",
+      "name": "河内原生",
+      "edge": "native",
+      "birth": "1994-02-02",
+      "time": "20:00",
+      "lat": "21.0285",
+      "lon": "105.8542",
+      "tz": "Asia/Ho_Chi_Minh",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Virgo",
+        "sun_sign": "Aquarius",
+        "ascendant_deg": 164.4798,
+        "houses": {
+          "Sun": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Moon": {
+            "sign": "Scorpio",
+            "house": 2
+          },
+          "Mercury": {
+            "sign": "Pisces",
+            "house": 6
+          },
+          "Venus": {
+            "sign": "Aquarius",
+            "house": 6
+          },
+          "Mars": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Jupiter": {
+            "sign": "Scorpio",
+            "house": 2
+          },
+          "Saturn": {
+            "sign": "Pisces",
+            "house": 6
+          },
+          "Uranus": {
+            "sign": "Capricorn",
+            "house": 5
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 5
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "s12",
+      "lang": "fr",
+      "name": "巴黎跨年零点",
+      "edge": "year-boundary",
+      "birth": "2000-01-01",
+      "time": "00:00",
+      "lat": "48.8566",
+      "lon": "2.3522",
+      "tz": "Europe/Paris",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Virgo",
+        "sun_sign": "Capricorn",
+        "ascendant_deg": 178.0152,
+        "houses": {
+          "Sun": {
+            "sign": "Capricorn",
+            "house": 4
+          },
+          "Moon": {
+            "sign": "Scorpio",
+            "house": 2
+          },
+          "Mercury": {
+            "sign": "Capricorn",
+            "house": 4
+          },
+          "Venus": {
+            "sign": "Sagittarius",
+            "house": 3
+          },
+          "Mars": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Jupiter": {
+            "sign": "Aries",
+            "house": 8
+          },
+          "Saturn": {
+            "sign": "Taurus",
+            "house": 8
+          },
+          "Uranus": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Neptune": {
+            "sign": "Aquarius",
+            "house": 5
+          },
+          "Pluto": {
+            "sign": "Sagittarius",
+            "house": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "s13",
+      "lang": "en",
+      "name": "阿德莱德语义标签错配样本",
+      "edge": "half-hour-dst",
+      "birth": "1993-12-15",
+      "time": "08:15",
+      "lat": "-34.9285",
+      "lon": "138.6007",
+      "tz": "Australia/Adelaide",
+      "note": "E21/R11o 病根实证盘：宫位数字全对、语义标签乱贴（12th House of Partnership / 2nd House of Home and Roots），落在 13 项标量判据结构性盲区外；与 s2 同坐标、仅年份差 1 的双胞盘",
+      "reportType": "yearly",
+      "truth": {
+        "rising_sign": "Capricorn",
+        "sun_sign": "Sagittarius",
+        "ascendant_deg": 292.6179,
+        "houses": {
+          "Sun": {
+            "sign": "Sagittarius",
+            "house": 12
+          },
+          "Moon": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Mercury": {
+            "sign": "Sagittarius",
+            "house": 11
+          },
+          "Venus": {
+            "sign": "Sagittarius",
+            "house": 11
+          },
+          "Mars": {
+            "sign": "Sagittarius",
+            "house": 12
+          },
+          "Jupiter": {
+            "sign": "Scorpio",
+            "house": 10
+          },
+          "Saturn": {
+            "sign": "Aquarius",
+            "house": 2
+          },
+          "Uranus": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Neptune": {
+            "sign": "Capricorn",
+            "house": 12
+          },
+          "Pluto": {
+            "sign": "Scorpio",
+            "house": 11
+          }
+        }
+      }
+    }
+  ]
+}
