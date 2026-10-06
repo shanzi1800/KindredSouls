@@ -66,7 +66,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 }
 
 // ── 工具函数 ──
-const cacheKeyOf = (d) => `wealth:v522:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v523:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;

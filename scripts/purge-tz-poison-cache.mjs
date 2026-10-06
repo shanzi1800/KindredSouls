@@ -71,6 +71,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v520-v2:*',
   'wealth:v521:*',        // 🛡️ E21/R11o: v521 全量作废（新增 stripHouseSemanticLabelMismatch 宫位语义标签契约锁（保数字、剪错配标签；1993 盘「12th House of Partnership」实证）+ CRITIC 判据14 宫位语义标签错配守卫）
   'wealth:v521-v2:*',
+  'wealth:v522:*',        // 🛡️ E22/R11p: v522 全量作废（宫位语义标签契约锁「链末收口」：E19/R11m 链末真值锁 _v432LockLeadingNatal 把 natal 行星真值误绑到同句流年子句宫号上 ⇒ 数字被改、标签原地不动 ⇒ `10th House of Partnership`；E21 锁挂在真值锁之前故拦不住 ⇒ 在所有清理/真值收口之后再施加一次标签锁）
+  'wealth:v522-v2:*',
   'wealth:v116-v2:*',
 ];
 

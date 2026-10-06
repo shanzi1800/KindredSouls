@@ -352,11 +352,11 @@ test("⑯' 注入自测: 抽掉写链一路挂载 ⇒ 接线断言必须变红",
   assert.ok(!/reportContent = _v517YearlyFinalLocks\(reportContent/.test(INJ), '注入后 MISS 侧挂载必须消失');
 });
 
-test('⑰ 结构级: 缓存版本 v522（4 站点）+ purge 回收 v520/v521 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v522/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v522, 实得 ${sites}`);
-  assert.ok(!/wealth:v521/.test(SRC), 'server.js 内不得残留 v521 键');
-  assert.ok(PURGE.includes("'wealth:v521:*'") && PURGE.includes("'wealth:v521-v2:*'"), 'purge 须双形态回收 v521');
+test('⑰ 结构级: 缓存版本 v523（4 站点）+ purge 回收 v520/v522 + 旧闸门基线前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v523/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
+  assert.ok(!/wealth:v522/.test(SRC), 'server.js 内不得残留 v522 键');
+  assert.ok(PURGE.includes("'wealth:v522:*'") && PURGE.includes("'wealth:v522-v2:*'"), 'purge 须双形态回收 v522');
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
@@ -366,10 +366,10 @@ test('⑰ 结构级: 缓存版本 v522（4 站点）+ purge 回收 v520/v521 + �
     // ⚠️ E19/R11m 修正：此处曾留缺陷 —— 两条断言**同用 v520**（「须不存在」∧「须存在」自相矛盾），
     //    且因 `test:astro` 是 `&&` 长链、上轮大批有红 ⇒ 短路从未跑到 ⇒ 缺陷潜伏。
     //    改用纯字符串 includes（零正则转义坑）并显式断言新旧基线不同，绝不再写歪。
-    const OLD_BASE = 'matchAll(/wealth:v521/g)';
-    const NEW_BASE = 'matchAll(/wealth:v522/g)';
+    const OLD_BASE = 'matchAll(/wealth:v522/g)';
+    const NEW_BASE = 'matchAll(/wealth:v523/g)';
     assert.notStrictEqual(OLD_BASE, NEW_BASE, '判据自检：新旧基线串不得相同（否则两条断言自相矛盾）');
-    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v522`);
-    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v522`);
+    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v523`);
+    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v523`);
   }
 });

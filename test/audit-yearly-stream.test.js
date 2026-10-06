@@ -58,7 +58,7 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
 // 🛠️ V479: 缓存版本基线 —— 每次 bump 后同步上调, 不允许回退(回退=毒缓存复用)。
 //   早先写死 `wealth:v4\d\d:` + strictEqual(v480) → 每次正常 bump 都假红一次(闸门成了绊脚石);
 //   改为「同版本一致 + 不低于已发布基线」, 既守「输出链变更必须 bump」, 又不因 bump 假红。
-const MIN_CACHE_VER = 522;   // E21/R11o: ① 宫位语义标签契约锁（保数字、剪错配标签；1993 盘「12th House of Partnership」实证）② CRITIC 判据14 宫位语义标签错配守卫 ⇒ 全量 bump 作废历史键
+const MIN_CACHE_VER = 523;   // E22/R11p: 宫位语义标签契约锁「链末收口」（E19/R11m 链末真值锁误绑宫号 ⇒ 数字改、标签不动 ⇒ 10th House of Partnership；E21 锁在其之前故漏）⇒ 输出链变更，全量 bump 作废历史键
 
 test('④ 缓存 key 统一且不低于已发布基线 v' + MIN_CACHE_VER + '(输出链变更必须 bump,防毒缓存复用)', () => {
   // ⚠️ 只取 `const cacheKey = `wealth:vNNN:`` 赋值形式: 裸 match v\d+ 会命中注释里提及的历史键

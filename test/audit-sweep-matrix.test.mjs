@@ -189,21 +189,22 @@ test('⑦ s13 已接入 E21 契约锁（病根语料 → 治法同源，防「�
   assert.ok(SRC.includes('_E21_HOUSE_LABEL_CONTRACT'), 'server.js 缺 _E21_HOUSE_LABEL_CONTRACT 契约表');
   const lockDef = SRC.match(/function stripHouseSemanticLabelMismatch\s*\(/g) || [];
   assert.equal(lockDef.length, 1, `stripHouseSemanticLabelMismatch 须恰好定义 1 处，实得 ${lockDef.length}`);
-  // 非流式 + 流式双链挂载（定义形态是 `function …(`，不含 `= ` ⇒ 本式只数调用点，恰 2 处）
+  // 双链 × 双挂载（定义形态是 `function …(`，不含 `= ` ⇒ 本式只数调用点）：
+  //   E21/R11o 前段挂载（E20 剪枝之后） + E22/R11p 链末收口（E19/R11m 真值锁之后）= 4 处
   const mounts = (SRC.match(/= stripHouseSemanticLabelMismatch\(/g) || []).length;
-  assert.equal(mounts, 2, `锁须在非流式/流式两链各挂载 1 处，实得 ${mounts}`);
+  assert.equal(mounts, 4, `锁须在非流式/流式两链各挂载 2 处（E21 前段 + E22 链末收口），实得 ${mounts}`);
   // CRITIC 判据14 存在
   assert.ok(SRC.includes('宫位语义标签错配'), 'CRITIC 判据14 未注入');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-test('⑧ 版本基线 v522 + 在线批测工具就位', () => {
-  const sites = [...SRC.matchAll(/wealth:v522/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v522，实得 ${sites}`);
-  assert.ok(!/wealth:v521/.test(SRC), 'server.js 内不得残留 v521 键');
-  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 522/, 'MIN_CACHE_VER 须为 522（纯数字形态）');
-  assert.ok(PURGE.includes("'wealth:v521:*'") && PURGE.includes("'wealth:v521-v2:*'"),
-    'purge 须双形态回收 v521');
+test('⑧ 版本基线 v523 + 在线批测工具就位', () => {
+  const sites = [...SRC.matchAll(/wealth:v523/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v523，实得 ${sites}`);
+  assert.ok(!/wealth:v522/.test(SRC), 'server.js 内不得残留 v522 键');
+  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 523/, 'MIN_CACHE_VER 须为 523（纯数字形态，字符串映射覆盖不到，须单独补丁）');
+  assert.ok(PURGE.includes("'wealth:v522:*'") && PURGE.includes("'wealth:v522-v2:*'"),
+    'purge 须双形态回收 v522');
 
   assert.ok(existsSync(path.join(REPO, 'test/tools/sweep-online.mjs')),
     '在线批测工具 test/tools/sweep-online.mjs 缺失（注册表须可被批测消费）');
