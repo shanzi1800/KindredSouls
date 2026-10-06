@@ -94,8 +94,11 @@ function bracketSlice(src, from) {
   }
   return src.slice(from, i) + ';';
 }
-const TABLE_NAMES = ['KS_MONTH_EN', 'KS_MONTH_ES', 'KS_MONTH_FR', 'KS_MONTH_ANY', 'KS_CHAPTER_ROMAN',
-  'KS_ORACLE_ANCHOR', 'KS_MONTH_TITLE_RE', 'KS_ROMAN_CHAPTER_RE', 'KS_ORACLE_ANCHOR_RE'];
+// ⚠️ E24③② 前移：`KS_MONTH_ANY` 新增 `KS_MONTH_VI`/`KS_MONTH_TH` 依赖、判定新引 `KS_DASHBOARD_KW`
+//   ⇒ 抽取清单必须同批纳入（漏则 buildFE 拼装时 ReferenceError ⇒ 闸门整体崩）。
+const TABLE_NAMES = ['KS_MONTH_EN', 'KS_MONTH_ES', 'KS_MONTH_FR', 'KS_MONTH_VI', 'KS_MONTH_TH', 'KS_MONTH_ANY',
+  'KS_CHAPTER_ROMAN', 'KS_ORACLE_ANCHOR', 'KS_DASHBOARD_KW', 'KS_MONTH_TITLE_RE', 'KS_ROMAN_CHAPTER_RE',
+  'KS_ORACLE_ANCHOR_RE'];
 const DET_NAMES = ['isMultilangMonthTitle', 'isRomanChapterTitle', 'isOracleAnchorTitle'];
 const tableLines = TABLE_NAMES.map((n) => grabDecl(BOX, n));
 const detLines = DET_NAMES.map((n) => grabDecl(BOX, n));

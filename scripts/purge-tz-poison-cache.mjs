@@ -79,6 +79,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v524-v2:*',
   'wealth:v525:*',        // 🛡️ E24/R11r②: v525 全量作废（① 后端 `_V480_CHAP_KW` 补六语章节 token ⇒ 非中文章节锚点归一 `## ` ② 前端标题判据语言感知（西语/法语 `Capítulo/Chapitre` + 各语神谕锚点不再跌白字；12 个月标题 12/12 金色），月表与后端 `_V480_EN_MON`/`_V480_ES_MON` 同源 ③ 西语宫位语义标签契约锁（`5ª Casa de Hogar y Raíces` 等 3 处错配剪除；CRITIC c14 生效语种扩 es）④ 西语序数缩略豁免（`5to` 不再被打散为 `5 to`））
   'wealth:v525-v2:*',
+  'wealth:v526:*',        // 🛡️ E24③/R11s: v526 全量作废（① 后端 `_V432_CFG.es` 宫位三式补 `House` 分支（houseNum/houseOrd 并入 + houseAbbr 因**保形**要求改同源独立式 `houseAbbrEn`，写回 `Nº House`）⇒ 西语本命宫位真值锁不再**结构性空转**（实测 3 处错配 `Júpiter en Escorpio en el 5º House`(H9)/`Saturno en Leo en el 2º House`(H5)/`Plutón en Sagitario en el 11º House`(H10) 全部纠正）② 前端 `KS_MONTH_ANY` 扩越南语/泰语月表（含**泰历佛历** `พ.ศ. 2569` 容错）⇒ vi/th 月标题 12/12 夺回金色 ③ 仪表盘强标题词独立判据（**去 60 字硬阈**，含 vi/th 关键词）④ vi/th 报头锚点补齐（泰文不属 `\w` ⇒ 锚点收尾由 `\b` 改负向先行））
+  'wealth:v526-v2:*',
   'wealth:v116-v2:*',
 ];
 

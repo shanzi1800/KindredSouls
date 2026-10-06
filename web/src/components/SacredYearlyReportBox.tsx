@@ -23,17 +23,39 @@ export const KS_MONTH_EN = 'January|February|March|April|May|June|July|August|Se
 export const KS_MONTH_ES = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
 // 法语：后端未归一（`normalizeYearlyMarkup` 对 fr 误用西语月表）⇒ 前端先补上，防同类白字。
 export const KS_MONTH_FR = 'janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre';
-export const KS_MONTH_ANY = [KS_MONTH_EN, KS_MONTH_ES, KS_MONTH_FR].join('|');
+// 🛡️ E24③②（2026-10-06 fr/vi/th 只读扫盘实证）：越南语月表 —— 后端 `normalizeYearlyMarkup`
+//   已把越南语月标题归一为 `### Tháng 7 2026: …`（用 `<Tháng> <阿拉伯数字>`，非字面月名）⇒
+//   前端只需认该形态即可夺回 12/12 金色。实测形态 100% 数字式 ⇒ 按「宁漏不改」只覆盖数字式
+//   （字面月名 Giêng/Hai/Bảy… 线上未观测，不猜、不引入 `Tháng Năm` 之类歧义）。
+export const KS_MONTH_VI = 'Tháng\\s*\\d{1,2}';
+// 🛡️ E24③②：泰语月表 —— **与后端 `V435_MONTHS.th`（server.js）逐词同源**（12 个月名一字不差）。
+export const KS_MONTH_TH = 'มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม';
+export const KS_MONTH_ANY = [KS_MONTH_EN, KS_MONTH_ES, KS_MONTH_FR, KS_MONTH_VI, KS_MONTH_TH].join('|');
 // 章节序数词（与后端 `_V480_CHAP_KW` 同批；含 vi/th，与既有 isVietnameseChapter/isThaiChapter 重叠无害）
 export const KS_CHAPTER_ROMAN = 'Chapter|Cap[íi]tulo|Chapitre|Chương|บทที่|Section';
 // 各语「最终神谕 / 报告主标题」锚点（不带 ✦ 也必须能判为金色标题）
-export const KS_ORACLE_ANCHOR = 'Or[áa]culo|Final Wealth Oracle|FINAL WEALTH ORACLE|Oracle';
+// 🛡️ E24③②: 补 `WEALTH ORACLE`（vi 盘首行 `WEALTH ORACLE · FINANCIAL REVELATION` —— 后端未译该行）
+//   与 `คำพยากรณ์`（th 盘首行 `คำพยากรณ์ความมั่งคั่ง · คำเปิดเผยทางการเงิน` + 终章
+//   `คำพยากรณ์ร่ำรวยขั้นสุด · รหัสแห่งการควบคุม`，共同前缀即 `คำพยากรณ์`）。
+//   ⚠️ 泰文不属 `\w` ⇒ 收尾**不能用 `\b`**（泰字符与空格之间无词边界，`\b` 恒失败）⇒ 见下改负向先行。
+export const KS_ORACLE_ANCHOR = 'Or[áa]culo|Final Wealth Oracle|FINAL WEALTH ORACLE|Oracle|WEALTH ORACLE|คำพยากรณ์';
+// 🛡️ E24③③: **仪表盘类强标题词**（模板固定标题，正文句首绝不出现）—— 走**独立、无长度上限**判据。
+//   病根：原仅靠 `chapterPatterns` 关键词路径 + 60 字硬阈 ⇒ fr `Tableau de Bord des Métriques
+//   Centrales de la Richesse Annuelle 2026-2027`（74 字）被判白字；vi/th 盘仪表盘连关键词都不在表内。
+export const KS_DASHBOARD_KW = ['Panel de Métricas', 'Tableau de Bord', 'Core Metrics Dashboard', 'Metrics Dashboard', 'Bảng Điều Khiển', 'แผนควบคุมตัวชี้วัด'];
 // 月标题：`<月名> <4 位年>` + 半/全角冒号（与后端 `normalizeYearlyMarkup` 月标题归一后的形态一致）
-const KS_MONTH_TITLE_RE = new RegExp('^(?:' + KS_MONTH_ANY + ')\\s+\\d{4}\\s*[:：]', 'i');
+// 🛡️ E24③②: 年份段加 `(?:พ\.ศ\.\s*)?` 兼容**泰历**（实测 th 盘 s9 12 个月全为 `กรกฎาคม พ.ศ. 2569:`，
+//   s6 为公历 `กรกฎาคม 2026:` ⇒ 两形态并存）；月名/年份分隔改 `(?:\s*,\s*|\s+)` 兼容越南语逗号变体
+//   `Tháng 7, 2026:`（落库实测为无逗号形态，此处仅容错，不改变既有语种行为）。
+const KS_MONTH_TITLE_RE = new RegExp('^(?:' + KS_MONTH_ANY + ')(?:\\s*,\\s*|\\s+)(?:พ\\.ศ\\.\\s*)?\\d{4}\\s*[:：]', 'i');
 // 章节锚点：行首即「章节序数词 + 编号 + **冒号**」（zh 走 chapterPatterns 原路，此处只管他语）
 // ⚠️ 冒号为**必填**判据：正文句「Capítulo II y III revelan…」不带冒号 ⇒ 不误判为标题（零误伤铁律）。
-const KS_ROMAN_CHAPTER_RE = new RegExp('^(?:' + KS_CHAPTER_ROMAN + ')\\s*[IVXLCivxlc\\d]+\\s*[:：]');
-const KS_ORACLE_ANCHOR_RE = new RegExp('^(?:' + KS_ORACLE_ANCHOR + ')\\b', 'i');
+// 🛡️ E24③②: 编号类补**泰文数字** `๐-๙`（后端 `_V480_CHAP_KW` 已含，前端同源补齐；实测为阿拉伯数字）。
+const KS_ROMAN_CHAPTER_RE = new RegExp('^(?:' + KS_CHAPTER_ROMAN + ')\\s*[IVXLCivxlc\\d\u0E50-\u0E59]+\\s*[:：]');
+// 🛡️ E24③②: 收尾判据由 `\b` 改**负向先行 `(?![A-Za-zÀ-ÿ])`** —— 泰文不属 `\w`，「泰字→空格」间无词边界
+//   ⇒ `คำพยากรณ์\b` 恒不匹配（泰语报头/终章全落白字）。改用「后接非拉丁字母（含行尾/标点）」既让泰语锚点
+//   生效，又完整保住 en/es 原语义：`Oráculo,` / `Oracle X` 仍匹配、`Oracular` 仍不匹配（等价且更严）。
+const KS_ORACLE_ANCHOR_RE = new RegExp('^(?:' + KS_ORACLE_ANCHOR + ')(?![A-Za-zÀ-ÿ])', 'i');
 
 const SacredYearlyReportBox: React.FC<{
   rawStreamText: string;
@@ -648,12 +670,19 @@ const SacredYearlyReportBox: React.FC<{
     const isRomanChapterTitle = KS_ROMAN_CHAPTER_RE.test(textWithoutIcon.trim());
     // 各语「最终神谕 / 报告主标题」锚点（`ORÁCULO DE RIQUEZA · …` / `ORÁCULO FINAL …` / `FINAL WEALTH ORACLE …`）
     const isOracleAnchorTitle = KS_ORACLE_ANCHOR_RE.test(textWithoutIcon.trim());
+    // 🛡️ E24③③: **仪表盘主标题**独立判据（**无长度上限**）—— 见顶部 `KS_DASHBOARD_KW` 处注释。
+    //   判据 = 「**剥掉行首全部非字母字符**（`#` `*` emoji 空格）后**严格以强标题词开头**」。
+    //   ⚠️ 不用 `prefix.includes(p)`（E24③ 实测即红）：`Le Tableau de Bord est un outil précieux…`
+    //   这类**正文句**含关键词但行首不是它 ⇒ `includes` 会误判为标题（`startsWith` 天然免疫）。
+    //   规范化 `replace(/^[^\p{L}]+/u, '')` 同时覆盖 `**📊 Panel de Métricas…**` 这类包裹形态。
+    //   ⚠️ `chapterPatterns` 分支的 60 字阈**保持不变** —— 防「以章节词开头的长正文」被误判为标题。
+    const isDashboardTitle = KS_DASHBOARD_KW.some((p) => textWithoutIcon.replace(/^[^\p{L}]+/u, '').startsWith(p));
     const isChapterPattern = (
       (chapterPatterns.some(p => prefix.includes(p)) && (textWithoutIcon.trim().length < 60 || startsWithBold || startsWithIcon)) ||
       /^Section\s+[IVX]+/i.test(textWithoutIcon)
     );
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
-    if (isChapterPattern || isSectionNumber || isMonthWeekHeader || isMultilangMonthTitle
+    if (isChapterPattern || isDashboardTitle || isSectionNumber || isMonthWeekHeader || isMultilangMonthTitle
         || isRomanChapterTitle || isOracleAnchorTitle) {
       if (isVietnameseChapter || isThaiChapter) {
         return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };

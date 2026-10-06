@@ -4347,8 +4347,15 @@ const _V432_CFG = {
     bodyAny: /(?:^|[\s(])(?:Sol|Luna|Mercurio|Venus|Marte|J\u00fapiter|Saturno|Urano|Neptuno|Plut\u00f3n)\b/,
     clauseBreak: /[.;!?:()\n]|\s(?:y|pero|o|mientras|cuando|aunque|entonces)\s/gi,
     axis: /\beje\b|\bentre\b[^.]{0,60}\by\b/i,
-    houseNum: /\bCasa\s*(\d{1,2})\b/i,
-    houseOrd: /\b(primera|segunda|tercera|cuarta|quinta|sexta|s[e\u00e9]ptima|octava|novena|d[e\u00e9]cima|und[e\u00e9]cima|duod[e\u00e9]cima)\s+casa\b/i,
+    // 🔴 E24③/P4（2026-10-06 线上实证 · 2006-06-21 Ushuaia 盘）：西语正文高频**借用英语宫位形态**
+    //   `5º House`（实测 3 处本命宫位错配：Júpiter→H9 / Saturno→H5 / Plutón→H10，星座全对宫位错）。
+    //   病根：原三式（houseNum / houseOrd / houseAbbr）**全部只认 `Casa`** ⇒ finder 零匹配 ⇒
+    //   本命宫位真值锁**结构性空转**（月标题恰用 `Casa N` 故 12/12 正常，缺陷只暴露在正文）。
+    //   治法（军师 E24③ P0 指令）：houseNum / houseOrd **直接并入 `House` 分支**（同式同形，写回形态无歧义）；
+    //   houseAbbr 因**保形写回**要求（`ª Casa` ↔ `º House` 两形态不可互串）改用**同源独立式** houseAbbrEn
+    //   （共享同一「否定后顾 + 数字 + 可选指示符 + 宫位词」骨架），见其定义处注释。
+    houseNum: /\b(?:Casa|House)\s*(\d{1,2})\b/i,
+    houseOrd: /\b(primera|segunda|tercera|cuarta|quinta|sexta|s[e\u00e9]ptima|octava|novena|d[e\u00e9]cima|und[e\u00e9]cima|duod[e\u00e9]cima)\s+(?:casa|house)\b/i,
     // 🛡️ E15/R11f-2: 第五类盲区（**E13「拼写式序数」的西语孪生体**）——
     //   `5ª Casa` / `5º Casa` / `5.ª Casa` / `5a Casa`（阴性/阳性序数指示符 + 数字在前）。
     //   病根（2026-10-04 12 盘批测实证）：es cfg 原本只有 houseNum(`Casa 5`) + houseOrd(拼写式)
@@ -4366,9 +4373,18 @@ const _V432_CFG = {
     //      ⇒ 窗口内无法整体匹配。**实测真实产出为不带点的 `5ª Casa`（Ushuaia 盘 54 处）**，已覆盖；
     //      带点形态为低概率变体，收窄 clauseBreak 会波及 E9~E12 全部真值锁，收益远小于风险，故不做。
     houseAbbr: /(?<![\d.,])\b(\d{1,2})\s*(?:\.?\s*[\u00ba\u00aa\u00b0oa])?\s*[Cc]asa\b/i,
+    // 🔴 E24③/P4: **英文借形宫位**（`5º House` / `5 House`）—— 与 houseAbbr **同源骨架**
+    //   （同一否定后顾 `(?<![\d.,])` + 1~12 值域钳制 + 可选序数指示符），唯宫位词换 `House`。
+    //   **独立成式**（而非并入 houseAbbr）的唯一理由 = **保形回写**：`4ª Casa` 与 `4º House`
+    //   两形态绝不互串 ⇒ 零形态污染、零回归（houseAbbr 原行为逐字不变）。
+    //   ⚠️ 词边界安全：`2026 House` 不匹配（`(\d{1,2})` 后须词边界 ⇒ 长数字回溯到单字符仍非边界）；
+    //      与 en 的 `houseNum:/\bHouse\s*(\d{1,2})\b/` 同哲学，双侧对称。带点形态 `5.º House` 同
+    //      houseAbbr 已知边界（clauseBreak 含 `.`），实测真实产出为无点形态，不扩大改动面。
+    houseAbbrEn: /(?<![\d.,])\b(\d{1,2})\s*(?:\.?\s*[\u00ba\u00aa\u00b0oa])?\s*House\b/i,
     houseFmt: (n) => 'Casa ' + n,
     houseOrdFmt: (n) => (_V432_ES_ORD_FORMAT[n] || n) + ' casa',
     houseAbbrFmt: (n) => n + '\u00aa Casa',
+    houseAbbrEnFmt: (n) => n + '\u00ba House',
     ctx: /\b(?:natal(?:es)?|nacimiento|tu carta|tu cielo)\b/i,
     dayRe: [/\bD[i\u00ed]a\s*(\d{1,2})\b/i, /\b(\d{1,2})\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i],
     dateMark: /\bD[i\u00ed]a\s*\d{1,2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b|\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s*\d{1,2}\b|\bSemana\s*\d\b/i,
@@ -4512,6 +4528,19 @@ function _v432FindHouse(cfg, zone, preferFirst) {
       const v = Number(m[1]);
       if (!(v >= 1 && v <= 12)) continue;
       const hit = { idx: m.index, len: m[0].length, value: v, ord: 'abbr' };
+      const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
+      if (take) best = hit;
+    }
+  }
+  // 🛡️ E24③/P4: 英文借形宫位（es 专属：`5º House` / `5 House`）—— E15「序数指示符缩写」的
+  //   **英文借形孪生体**；ord:'abbrEn' 让 PatchZone 用 houseAbbrEnFmt 保形写回 `Nº House`。
+  //   与 houseAbbr 分支**结构逐字对称**（同取值域钳制 + 同 best 语义），仅写回形态不同。
+  if (cfg.houseAbbrEn) {
+    const re = new RegExp(cfg.houseAbbrEn.source, 'gi');
+    while ((m = re.exec(zone)) !== null) {
+      const v = Number(m[1]);
+      if (!(v >= 1 && v <= 12)) continue;
+      const hit = { idx: m.index, len: m[0].length, value: v, ord: 'abbrEn' };
       const take = !best || (preferFirst ? hit.idx < best.idx : hit.idx > best.idx);
       if (take) best = hit;
     }
@@ -4728,6 +4757,8 @@ function _v432PatchZone(cfg, lang, zone, sign, house, preferFirst, text, absBase
         : h.ord === 'numHouse' ? cfg.houseBareNumFmt(house)
         : h.ord === 'spelled' ? cfg.houseSpelledFmt(house)
         : h.ord === 'abbr' ? cfg.houseAbbrFmt(house)
+        // 🛡️ E24③/P4: 英文借形命中（es `5º House`）→ houseAbbrEnFmt 保形写回（`4º House`）
+        : h.ord === 'abbrEn' ? cfg.houseAbbrEnFmt(house)
         : (h.ord ? cfg.houseOrdFmt(house) : cfg.houseFmt(house));
       z = z.slice(0, h.idx) + repl + z.slice(h.idx + h.len);
       cnt++; log.push('house ' + h.value + '\u2192' + house);
@@ -8731,7 +8762,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v526:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v527:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -12011,7 +12042,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v526:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v527:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12787,7 +12818,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v526:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v527:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14465,7 +14496,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v526-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v527-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
