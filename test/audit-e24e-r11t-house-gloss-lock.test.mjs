@@ -77,6 +77,35 @@ const ES2006_DELIM2_OUT = 'Júpiter, el gran benefactor, en la Casa 4, esta posi
 const ES2006_INTERJ_IN = 'El Sol en la Casa 10 de tu carta natal, la Casa de las Redes y las Ganancias, es el motor de tu carrera.';
 const ES2006_INTERJ_OUT = 'El Sol en la Casa 10 de tu carta natal, es el motor de tu carrera.';
 
+// ── 🛡️ E24④/P5b（2026-10-06）：逐字取自 **v528 线上靶盘**（2006-06-21 23:45 Ushuaia es）落库稿 ──
+//   【真缺陷实证】数值真值锁把 LLM 的**错宫号改写正确**（本命 Júpiter 5→9 / Saturno 2→5 /
+//   Plutón 11→10；引擎真值 Jupiter=H9 Scorpio / Saturn=H5 Leo / Pluto=H10 Sagittarius 已核对），
+//   而**与错宫号自洽的同位语标签原地不动** ⇒ 数字对、标签错（标签恰为被改掉的那三个旧宫号主题）。
+//   【P5 首版为何仍漏网】① 真实稿 17/17 用 `el hogar de`（**无一处** `la casa de`）⇒ 头部写死 `casa` 即全盲；
+//   ② 标签**内含逗号**（`la creatividad, el romance y los hijos`）⇒ 一刀切禁逗号只咬第一段，强剪留碎片。
+const P5B_1_IN = 'Tu Júpiter en Escorpio, en la Casa 9, el hogar de la creatividad, el romance y los hijos, es un faro de expansión.';
+const P5B_1_OUT = 'Tu Júpiter en Escorpio, en la Casa 9, es un faro de expansión.';
+const P5B_2_IN = 'Sin embargo, tu Saturno en Leo, en la Casa 5, el hogar de la riqueza y los recursos, es el gran maestro y el gran obstáculo.';
+const P5B_2_OUT = 'Sin embargo, tu Saturno en Leo, en la Casa 5, es el gran maestro y el gran obstáculo.';
+const P5B_3_IN = 'Y luego está tu Plutón en Sagitario, en la Casa 10, el hogar de las redes, las amistades y las ganancias inesperadas.';
+const P5B_3_OUT = 'Y luego está tu Plutón en Sagitario, en la Casa 10.';
+// 关系性短语（**非主题标签** ⇒ 契约弃权，宁漏不改）—— 也是「头部剥离」防线的靶句
+const P5B_RELATIONAL = 'El mes comienza con el Sol transitando tu Casa 5, el hogar de tu Júpiter en Leo.';
+// 同形态正确标签 / 中性冠词续段 ⇒ 必须逐字保留
+const P5B_KEEP = [
+  'El Sol entra en Leo el 22 de julio, activando tu Casa 6, el hogar del trabajo diario, la salud y el servicio.',
+  'activando tu Casa 7, el hogar de las asociaciones, el matrimonio y los aliados.',
+  'activando tu Casa 12, el hogar del subconsciente, lo oculto y el karma.',
+  'activando tu Casa 4, el hogar de la familia, las raíces y el hogar.',
+  P5B_RELATIONAL,
+];
+// 过度剪枝回归守卫（P5 首版病根之一）—— 续段白名单必须挡住 `según` 等小句起始词
+const P5B_GUARD_IN = 'Tu Luna natal en Tauro (que ocupa la Casa 3, el hogar de la creatividad, según la rueda de casas iguales desde tu Ascendente Piscis) indica seguridad.';
+const P5B_GUARD_OUT = 'Tu Luna natal en Tauro (que ocupa la Casa 3, según la rueda de casas iguales desde tu Ascendente Piscis) indica seguridad.';
+// 关系从句护栏（`lo que …` 不得被并入标签）
+const P5B_RELCL_IN = 'En la Casa 9, el hogar de las redes, lo que indica expansión, hay mucho que aprender.';
+const P5B_RELCL_OUT = 'En la Casa 9, lo que indica expansión, hay mucho que aprender.';
+
 // ═══════════════════ 一、es 三式咬合 + 保形 ═══════════════════
 test('① es 式6（数字缩写同位语）：s3 真错配被剪且**只留数字**（式1/式4 均不覆盖）', () => {
   assert.strictEqual(strip(S3_NABBR_IN, 'es'), S3_NABBR_OUT, '式6 未咬合 s3 真错配（P5 盲区复发）');
@@ -125,6 +154,31 @@ test('⑥ es 标题行豁免：月标题形态（行首 `#`）内的同位语**�
   assert.strictEqual(strip(H, 'es'), H, '标题行豁免失效（月标题合法标签被剪）');
 });
 
+// ═══════════ 一·五、P5b：同义头部（`el hogar de`）+ 受限逗号续段 ═══════════
+test('⑮ es 同义头部 `el hogar de`：v528 线上靶盘三处真错配必须被剪且**只留数字**', () => {
+  assert.strictEqual(strip(P5B_1_IN, 'es'), P5B_1_OUT, '同义头部 `hogar` 未咬合（Casa 9 真错配残留）');
+  assert.strictEqual(strip(P5B_2_IN, 'es'), P5B_2_OUT, '同义头部 `hogar` 未咬合（Casa 5 真错配残留）');
+  assert.strictEqual(strip(P5B_3_IN, 'es'), P5B_3_OUT, '同义头部 `hogar` 未咬合（Casa 10 真错配残留）');
+});
+test('⑯ es 同义头部零误伤：正确标签 / 关系性短语 / 中性冠词续段必须逐字不变', () => {
+  for (const s of P5B_KEEP) {
+    assert.strictEqual(strip(s, 'es'), s, `同义头部误剪合法句: ${s}`);
+  }
+});
+test('⑰ es 续段定界回归守卫：小句起始词（`según`）与关系从句（`lo que`）**绝不并入标签**', () => {
+  assert.strictEqual(strip(P5B_GUARD_IN, 'es'), P5B_GUARD_OUT, '续段贪婪吞掉了 `, según la rueda…` 后续小句（P5 首版病根复发）');
+  assert.strictEqual(strip(P5B_RELCL_IN, 'es'), P5B_RELCL_OUT, '关系从句 `, lo que …` 被误并入标签');
+});
+test('⑱ es P5b 幂等：同义头部 + 含逗号标签剪后二次施加零改动', () => {
+  for (const [inp, out] of [[P5B_1_IN, P5B_1_OUT], [P5B_2_IN, P5B_2_OUT], [P5B_3_IN, P5B_3_OUT],
+    [P5B_GUARD_IN, P5B_GUARD_OUT], [P5B_RELCL_IN, P5B_RELCL_OUT]]) {
+    const once = strip(inp, 'es');
+    assert.strictEqual(once, out);
+    assert.strictEqual(strip(once, 'es'), once, '非幂等');
+  }
+  for (const s of P5B_KEEP) assert.strictEqual(strip(strip(s, 'es'), 'es'), s, '合法句二次施加被改动');
+});
+
 // ═══════════════════ 三、注入缺陷自测（每式必须有牙） ═══════════════════
 test('【注入缺陷】摘掉式6（`_E24_ES_NABBR_RE`）⇒ s3 真错配必须复发（判据① 必须红）', () => {
   const d = beMap.get('_E24_ES_NABBR_RE');
@@ -149,6 +203,31 @@ test('【注入缺陷】摘掉越语契约命中（`_e24ViThemeHouses` 置空）
   assert.strictEqual(D.strip('Nhà 3, ngôi nhà của gia đình, nguồn cội', 'vi', 'yearly'),
     'Nhà 3, ngôi nhà của gia đình, nguồn cội',
     '闸门失效：主题判定置空后越语错配仍被剪（未红）');
+});
+test('【注入缺陷】头部同义退回只认 `casa` ⇒ v528 靶盘三句真错配必须复发（判据⑮ 必须红）', () => {
+  const d = beMap.get('_E24_ES_GLOSS');
+  assert.ok(d && d.includes('(?:casa|hogar)'), '注入未生效（未抽到 gloss 声明，或同义头已不在）');
+  const D = buildBE({ _E24_ES_GLOSS: d.replace('(?:casa|hogar)', 'casa') });
+  assert.strictEqual(D.strip(P5B_2_IN, 'es', 'yearly'), P5B_2_IN,
+    '闸门失效：头部退回只认 `casa` 后真错配仍被剪（判据⑮ 未红）');
+});
+test('【注入缺陷】摘掉逗号续段（`_E24_ES_LBL_TAIL` 段数上限 3→0）⇒ 含逗号标签必留碎片（判据⑮ 必须红）', () => {
+  const d = beMap.get('_E24_ES_LBL_TAIL');
+  assert.ok(d && d.includes('{0,3}'), '注入未生效（未抽到续段声明）');
+  const D = buildBE({ _E24_ES_LBL_TAIL: d.replace('{0,3}', '{0,0}') });
+  const got = D.strip(P5B_1_IN, 'es', 'yearly');
+  assert.notStrictEqual(got, P5B_1_OUT, '闸门失效：续段摘掉后仍剪得干净（无碎片 ⇒ 判据⑮ 未红）');
+  assert.ok(got.includes('el romance y los hijos'), '闸门失效：预期残留碎片 `, el romance y los hijos` 未出现');
+});
+test('【注入缺陷】`_e24EsGlossLabel` 置空（不剥头部）⇒ `hogar` 污染 4 宫主题 ⇒ 关系性短语被误剪（判据⑯ 必须红）', () => {
+  const d = beMap.get('_e24EsGlossLabel');
+  assert.ok(d && d.includes('slice(m[0].length)'), '注入未生效（未抽到头部剥离函数）');
+  const D = buildBE({ _e24EsGlossLabel: d.replace('return m ? s.slice(m[0].length) : s;', 'return s;') });
+  const got = D.strip(P5B_RELATIONAL, 'es', 'yearly');
+  assert.notStrictEqual(got, P5B_RELATIONAL,
+    '闸门失效：头部未剥离时关系性短语仍被保留（判据⑯ 对该修复无区分力）');
+  assert.ok(got.includes('Casa 5.') && !got.includes('Júpiter en Leo'),
+    '闸门失效：预期关系性短语被误剪为 `… tu Casa 5.`，实得 ' + JSON.stringify(got));
 });
 
 // ═══════════════════ 四、越南语契约锁 ═══════════════════
@@ -190,6 +269,10 @@ test('⑩ 判据同源：`_e21CountHouseLabelMismatch` 的 es/vi 计数必须等
     ['Nhà 6, ngôi nhà của những điều nhỏ nhặt, và bạn cần quan tâm đến gia đình.', 'vi'],
     ['Casa 3, la Casa de la Comunicación', 'es'],
     ['Nhà 11, ngôi nhà của cộng đồng', 'vi'],
+    // 🛡️ E24④/P5b：同义头部 + 含逗号标签 —— 计数与锁共用同一 gloss 建式 + 同一 `_e24EsGlossLabel`
+    [P5B_1_IN, 'es'], [P5B_2_IN, 'es'], [P5B_3_IN, 'es'],
+    [P5B_GUARD_IN, 'es'], [P5B_RELCL_IN, 'es'], [P5B_RELATIONAL, 'es'],
+    ...P5B_KEEP.map((s) => [s, 'es']),
   ];
   for (const [t, l] of CASES) {
     const cuts = count(t, l) - count(strip(t, l), l);
@@ -260,11 +343,11 @@ test('⑬ 接线：三式/vi 锁必须被生产链**真实消费**（否则新�
     '本闸门未接入 `test:astro` 长链（不接线 = 零防线）');
 });
 
-// ═══════════════════ 九、版本 bump 完整性（v528） ═══════════════════
-test('⑭ bump：本闸门随 E24④ 前移至 v528，且产品源码无 v527 残留', () => {
-  assert.strictEqual([...SRC.matchAll(/wealth:v528/g)].length, 4, 'server.js 4 站点须全为 v528');
-  assert.ok(!/wealth:v527/.test(SRC), 'server.js 残留 v527 键');
+// ═══════════════════ 九、版本 bump 完整性（v529） ═══════════════════
+test('⑭ bump：本闸门随 E24④/P5b 前移至 v529，且产品源码无 v528 残留', () => {
+  assert.strictEqual([...SRC.matchAll(/wealth:v529/g)].length, 4, 'server.js 4 站点须全为 v529');
+  assert.ok(!/wealth:v528/.test(SRC), 'server.js 残留 v527 键');
   const PURGE = fs.readFileSync(path.join(REPO, 'scripts', 'purge-tz-poison-cache.mjs'), 'utf-8');
-  assert.ok(PURGE.includes("'wealth:v527:*'") && PURGE.includes("'wealth:v527-v2:*'"),
-    'purge 须双形态回收 v527');
+  assert.ok(PURGE.includes("'wealth:v528:*'") && PURGE.includes("'wealth:v528-v2:*'"),
+    'purge 须双形态回收 v528');
 });

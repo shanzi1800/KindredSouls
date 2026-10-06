@@ -353,7 +353,7 @@ test("⑯' 注入自测: 抽掉写链一路挂载 ⇒ 接线断言必须变红",
 });
 
 test('⑰ 结构级: 缓存版本 v523（4 站点）+ purge 回收 v520/v522 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v528/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v529/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
   assert.ok(!/wealth:v524/.test(SRC), 'server.js 内不得残留 v522 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v522');
@@ -367,7 +367,7 @@ test('⑰ 结构级: 缓存版本 v523（4 站点）+ purge 回收 v520/v522 + �
     //    且因 `test:astro` 是 `&&` 长链、上轮大批有红 ⇒ 短路从未跑到 ⇒ 缺陷潜伏。
     //    改用纯字符串 includes（零正则转义坑）并显式断言新旧基线不同，绝不再写歪。
     const OLD_BASE = 'matchAll(/wealth:v525/g)';
-    const NEW_BASE = 'matchAll(/wealth:v528/g)';
+    const NEW_BASE = 'matchAll(/wealth:v529/g)';
     assert.notStrictEqual(OLD_BASE, NEW_BASE, '判据自检：新旧基线串不得相同（否则两条断言自相矛盾）');
     assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v523`);
     assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v523`);

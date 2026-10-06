@@ -6982,22 +6982,52 @@ const _E24_ES_HOUSE_RE = new RegExp(
 // ⚠️ 式6（`Nª Casa, <gloss>`）**并非可选**：s3 `Plutón … en tu 10ª Casa, la Casa de las
 //   Redes y las Ganancias`（真值 Pluto=H10 ⇒ 数字对、标签错）**只有式6 能咬合**，
 //   式1（需 ` de `）与式4（需 `Casa` 在前）双双漏网 ⇒ 不加式6 则 s3 残留真错配（假绿）。
-// 【定界铁律】标签**禁逗号** —— 首版允许 `,` 连接 ⇒ 实测吞掉
-//   `, según la rueda de casas iguales desde tu Ascendente Piscis` 等后续小句（过度剪枝）。
-//   故 `_E24_ES_LBL` 仅由「词 + 空白 + 可选连接词」构成，遇 `,`/`.`/`;` 自然终止
-//   （与 `_E23_DELIM_LABEL_RE` 的 Title-Case 定界同理，仅按西语放宽大小写）。
+// 【定界纪律（P5 首版「一刀切禁逗号」→ E24④/P5b 修正为「受限续段」）】首版允许 `,` 无限制连接
+//   ⇒ 实测吞掉 `, según la rueda de casas iguales desde tu Ascendente Piscis` 等后续小句（过度剪枝）；
+//   遂改为**禁逗号**。但 v528 线上靶盘复跑暴露**反向代价**：真实标签本身含逗号
+//   （`la creatividad, el romance y los hijos`）⇒ 禁逗号只咬第一段、强剪会留碎片。
+//   终局定界 = `_E24_ES_LBL`（禁逗号本体）+ `_E24_ES_LBL_TAIL`（**白名单首词**的受限续段）见下。
 // 【保形写回】DELIM/NABBR 剪 `, <标签>` 只留数字；INTERJ **保留** `de tu carta natal` 插入语。
 // 【幂等】剪后 `Casa` 后不再有 `,`/` de <标签>` ⇒ 二次施加零改动（离线+线上实测已验）。
 // 【判据同源】三式与 `_e21CountHouseLabelMismatch`（CRITIC c14 / 批测 `labelMismatch`）**共用**。
 const _E24_ES_LBL = '(?:' + _E24_ES_LBL_WORD + '(?:\\s+(?:' + _E24_ES_LBL_CONN + '\\s+)?' + _E24_ES_LBL_WORD + '){0,8})';
-/** 同位语核心：`(la|el|los|las) casa (de(l|la|los|las)?)? <标签>`（标签定界**禁逗号**） */
-const _E24_ES_GLOSS = '((?:la|el|los|las)\\s+casa\\s+(?:de(?:l|la|los|las)?\\s+)?' + _E24_ES_LBL + ')';
-// 式4：逗号同位语 `Casa N, la Casa de <标签>`（靶盘主流）
+// ── 🛡️ E24④/P5b（2026-10-06）：gloss **头部同义扩面** + **逗号续段**定界 ──
+// 【新缺陷 · 线上靶盘 v528 实证（3 处真错配）】数值真值锁把 LLM 的**错宫号改写正确**
+//   （本命 Júpiter 5→9 / Saturno 2→5 / Plutón 11→10，引擎真值 = H9/H5/H10 已核对），
+//   而**与错宫号自洽的同位语标签原地不动** ⇒ 落库 `en la Casa 9, el hogar de la creatividad,
+//   el romance y los hijos`（数字对、标签是 5 宫主题）。P5 首版三式漏网真因有二：
+//   ① **同义词**：真实稿 17/17 用 `el hogar de`，**没有一处** `la casa de` ⇒ 头部写死 `casa` 即全盲；
+//   ② **标签内含逗号**：`la creatividad, el romance y los hijos` —— 一刀切禁逗号只咬到第一段，
+//      强行剪会留下 `, el romance y los hijos` **碎片**（比不剪更差）⇒ 必须整体吃掉。
+// 【续段定界纪律（取代一刀切禁逗号）】续段仅在**首词为连接词或冠词**
+//   （`y|e|o|u|el|la|los|las|lo`，`lo` 为中性冠词 —— 靶盘实测 `el hogar del subconsciente,
+//   lo oculto y el karma` 续段以 `lo` 起头，漏掉它即留碎片）时并入标签；`es`/`según`/`esta`/`pero`
+//   等**小句起始词**自然终止 ⇒ 既吃全标签、又不吞后续小句。冠词后再加**关系词护栏**
+//   `(?!que|cual|cuales|quien|quienes)` —— 挡掉 `, lo que indica que…` 这类关系从句被误并。
+//   回归守卫见闸门⑰（原 `, según la rueda de casas iguales desde tu Ascendente Piscis` 过度剪枝）。
+//   段数上限 3、每段词数上限 6 ⇒ 总长有界，杜绝贪婪失控。
+const _E24_ES_LBL_TAIL = '(?:\\s*,\\s*(?:(?:y|e|o|u)\\s+)?(?:el|la|los|las|lo)\\s+'
+  + '(?!(?:que|cual|cuales|quien|quienes)\\b)' + _E24_ES_LBL_WORD
+  + '(?:\\s+(?:' + _E24_ES_LBL_CONN + '\\s+)?' + _E24_ES_LBL_WORD + '){0,6}){0,3}';
+/** 同位语核心：`(la|el|los|las) (casa|hogar) (de(l|la|los|las)?)? <标签>`（标签可含受限逗号续段） */
+const _E24_ES_GLOSS = '((?:la|el|los|las)\\s+(?:casa|hogar)\\s+(?:de(?:l|la|los|las)?\\s+)?' + _E24_ES_LBL + _E24_ES_LBL_TAIL + ')';
+// 式4：逗号同位语 `Casa N, (la Casa de|el hogar de) <标签>`（靶盘 v528 实测 17/17 用 `el hogar de`）
 const _E24_ES_DELIM_RE = new RegExp('(\\bCasa\\s+(\\d{1,2}))\\s*[,:]\\s*' + _E24_ES_GLOSS, 'gi');
-// 式5：插入语式 `Casa N de <插入语>, la Casa de <标签>`（保形：保留插入语）
+// 式5：插入语式 `Casa N de <插入语>, (la Casa de|el hogar de) <标签>`（保形：保留插入语）
 const _E24_ES_INTERJ_RE = new RegExp('(\\bCasa\\s+(\\d{1,2}))\\s+de\\s+([^.,;\\n]{0,40}),\\s*' + _E24_ES_GLOSS, 'gi');
-// 式6：数字缩写同位语 `Nª Casa, la Casa de <标签>`（s3 主流；式1/式4 均不覆盖）
+// 式6：数字缩写同位语 `Nª Casa, (la Casa de|el hogar de) <标签>`（s3 主流；式1/式4 均不覆盖）
 const _E24_ES_NABBR_RE = new RegExp('(\\b(\\d{1,2})\\s*[ªº]\\s*Casas?)\\s*[,:]\\s*' + _E24_ES_GLOSS, 'gi');
+// ── 🛡️ E24④/P5b：主题判定前**必须先剥离 gloss 头部** ──
+// 【实测铁证（本次踩中）】`_e24EsThemeHouses` 是**子串**匹配，而头部 `hogar` 恰好命中 4 宫契约词
+//   `Hogar` ⇒ 任何 `el hogar de …` 都被污染成「含 4 宫主题」⇒ ① `Casa 5, el hogar de tu Júpiter
+//   en Leo`（**关系性短语、非主题标签**，本应弃权）被误判为错配而**误剪**；② 计数随之虚增。
+//   治本：主题判定只喂**头部之后**的标签本体（头部是定界脚手架，不是标签内容）。
+const _E24_ES_GLOSS_HEAD_RE = /^\s*(?:la|el|los|las)\s+(?:casa|hogar)\s+(?:de(?:l|la|los|las)?\s+)?/i;
+function _e24EsGlossLabel(gloss) {
+  const s = String(gloss || '');
+  const m = s.match(_E24_ES_GLOSS_HEAD_RE);
+  return m ? s.slice(m[0].length) : s;
+}
 // ── 🛡️ E24④/P8（2026-10-06）：**越南语（vi）**宫位语义标签契约锁 ──
 // 【病根】es/en 有契约锁，**vi 无** ⇒ 与 P5 同族（`_viPatchZone` 会纠 `Nhà N` 的**数字**，
 //   但语义标签原地不动）。线上实测形态（s5 阿克拉）：`Nhà N, ngôi nhà của <标签>` 共 12 处。
@@ -7078,7 +7108,7 @@ function stripHouseSemanticLabelMismatch(text, lang, reportType) {
       const n = Number(num);
       if (!(n >= 1 && n <= 12)) return m0;                     // 越界弃权
       if (_e23OnHeadingLine(outEs, offset)) return m0;         // ① 标题行豁免
-      const themes = _e24EsThemeHouses(label);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(label));
       if (themes.length === 0) return m0;                      // ② 主题词锚定
       if (themes.indexOf(n) !== -1) return m0;                 // ③ 本宫主题 ⇒ 合法保留
       prunedGloss++;
@@ -7088,7 +7118,7 @@ function stripHouseSemanticLabelMismatch(text, lang, reportType) {
       const n = Number(num);
       if (!(n >= 1 && n <= 12)) return m0;
       if (_e23OnHeadingLine(outEs2, offset)) return m0;
-      const themes = _e24EsThemeHouses(label);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(label));
       if (themes.length === 0) return m0;
       if (themes.indexOf(n) !== -1) return m0;
       prunedGloss++;
@@ -7098,7 +7128,7 @@ function stripHouseSemanticLabelMismatch(text, lang, reportType) {
       const n = Number(num);
       if (!(n >= 1 && n <= 12)) return m0;
       if (_e23OnHeadingLine(outEs2, offset)) return m0;
-      const themes = _e24EsThemeHouses(label);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(label));
       if (themes.length === 0) return m0;
       if (themes.indexOf(n) !== -1) return m0;
       prunedGloss++;
@@ -7178,25 +7208,27 @@ function _e21CountHouseLabelMismatch(text, lang) {
       if (themes.length > 0 && themes.indexOf(num) === -1) n++;
     }
     // ── 🛡️ E24④/P5：同位语三式**同源计数**（与锁的三遍**逐一对应**，否则批测仍假绿）──
+    //   ⚠️ E24④/P5b：主题判定前同样**必须** `_e24EsGlossLabel` 剥离头部 —— 否则 `hogar` 命中 4 宫
+    //   契约词 `Hogar` ⇒ 计数虚增（与锁同步失效），正好又是「判据同源」纪律的同一枚硬币。
     for (const m of text.matchAll(new RegExp(_E24_ES_DELIM_RE.source, _E24_ES_DELIM_RE.flags))) {
       const num = Number(m[2]);
       if (!(num >= 1 && num <= 12)) continue;
       if (_e23OnHeadingLine(text, m.index)) continue;
-      const themes = _e24EsThemeHouses(m[3]);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(m[3]));
       if (themes.length > 0 && themes.indexOf(num) === -1) n++;
     }
     for (const m of text.matchAll(new RegExp(_E24_ES_INTERJ_RE.source, _E24_ES_INTERJ_RE.flags))) {
       const num = Number(m[2]);
       if (!(num >= 1 && num <= 12)) continue;
       if (_e23OnHeadingLine(text, m.index)) continue;
-      const themes = _e24EsThemeHouses(m[4]);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(m[4]));
       if (themes.length > 0 && themes.indexOf(num) === -1) n++;
     }
     for (const m of text.matchAll(new RegExp(_E24_ES_NABBR_RE.source, _E24_ES_NABBR_RE.flags))) {
       const num = Number(m[2]);
       if (!(num >= 1 && num <= 12)) continue;
       if (_e23OnHeadingLine(text, m.index)) continue;
-      const themes = _e24EsThemeHouses(m[3]);
+      const themes = _e24EsThemeHouses(_e24EsGlossLabel(m[3]));
       if (themes.length > 0 && themes.indexOf(num) === -1) n++;
     }
     return n;
@@ -8936,7 +8968,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v528:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v529:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -12216,7 +12248,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v528:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v529:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12992,7 +13024,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v528:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v529:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14670,7 +14702,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v528-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v529-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

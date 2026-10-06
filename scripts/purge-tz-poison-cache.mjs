@@ -82,6 +82,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v526:*',        // 🛡️ E24③/R11s: v526 全量作废（① 后端 `_V432_CFG.es` 宫位三式补 `House` 分支（houseNum/houseOrd 并入 + houseAbbr 因**保形**要求改同源独立式 `houseAbbrEn`，写回 `Nº House`）⇒ 西语本命宫位真值锁不再**结构性空转**（实测 3 处错配 `Júpiter en Escorpio en el 5º House`(H9)/`Saturno en Leo en el 2º House`(H5)/`Plutón en Sagitario en el 11º House`(H10) 全部纠正）② 前端 `KS_MONTH_ANY` 扩越南语/泰语月表（含**泰历佛历** `พ.ศ. 2569` 容错）⇒ vi/th 月标题 12/12 夺回金色 ③ 仪表盘强标题词独立判据（**去 60 字硬阈**，含 vi/th 关键词）④ vi/th 报头锚点补齐（泰文不属 `\w` ⇒ 锚点收尾由 `\b` 改负向先行））
   'wealth:v526-v2:*',
   'wealth:v527:*',        // 🛡️ E24④/R11t: v527 全量作废（① 后端**西语**宫位语义标签契约锁补三式 —— 逗号同位语 `Casa N, la Casa de <标签>`（靶盘 27 处、剪 2）/ 插入语式 `Casa N de <插入语>, la Casa de <标签>`（剪 1，**保形**保留 `de tu carta natal`）/ 数字缩写式 `Nª Casa, la Casa de <标签>`（s3 15 处、剪 1；**s3 那处真错配只有此式能咬合**）⇒ 西语标签锁射程由「概率性覆盖」改为「结构性覆盖」② 后端新增**越南语**宫位语义标签契约锁（`Nhà N, ngôi nhà của <标签>`；`\p{L}` 词边界杜绝越语变音字母造成的**虚假词边界**；标签允许内含逗号 ⇒ 加**头部锚定**）③ 后端 vi 月标题 `Năm` **一律清洗**（治 s11 `Tháng 7 Năm 2026` 12/12 落白）④ 前端 `KS_MONTH_VI` 补 `(?:\s*Năm)?`（**流式期** `sacredText` 未经后端归一 ⇒ 双向兜底）⇒ 产物文本变更，必须全量作废）
+  'wealth:v528:*',        // 🛡️ E24④/P5b: v528 全量作废（es 同位语 gloss 补**同义头部**（`el hogar de`）+ **受限逗号续段** —— v528 目标盘实证 `Casa 9/5/10` 挂错主题标签，3 处真错配）
+  'wealth:v528-v2:*',
   'wealth:v527-v2:*',
   'wealth:v116-v2:*',
 ];

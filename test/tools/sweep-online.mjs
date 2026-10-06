@@ -77,7 +77,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 //   同源纪律：直接 import 生产同一函数（`src/tz-resolver.js`），**绝不另写一份归一**。
 import { resolveTimeZone } from '../../src/tz-resolver.js';
 const tzCanonicalOf = (d) => { const r = resolveTimeZone(d.tz, d.lat, d.lon); return r && r.ok ? r.tz : d.tz; };
-const cacheKeyOf = (d) => `wealth:v528:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v529:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;
@@ -207,7 +207,8 @@ for (const d of DISKS) {
     // 🛡️ E23/R11q ④：孤立代理项（半截 emoji）—— 0 才通过（见函数头注释）
     row.loneSurrogates = countLoneSurrogates(miss.text);
 
-    // 标签契约（同源判据 —— en 生效；非 en 由 E23 语言门控返回 0，与生产锁一致）
+    // 标签契约（同源判据 —— 生效语种 en|es|vi，由 `_e21CountHouseLabelMismatch` 内部语言门控
+    //   选形态；其余语种恒 0，与生产锁一致。⚠️ 锁射程扩到哪、判据就必须跟到哪 —— 漏一即假绿）
     row.labelMismatch = X._e21CountHouseLabelMismatch(miss.text, d.lang);
     // 🛡️ E23/R11q ②：序数笔误（同源判据）—— 归一后残留即失败
     row.ordinalTypos = X._e23CountHouseOrdinalTypos(miss.text);
