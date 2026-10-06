@@ -159,7 +159,8 @@ for (const d of DISKS) {
       await new Promise((r) => setTimeout(r, HIT_RETRY_GAP_MS));
       dbRow = await readRow(d);
     }
-    row.dbLanded = !!dbRow;
+    row.dbRowFound = !!dbRow;   // 直查结果（受写库可见延迟影响 ⇒ 可能**假否**）
+    row.dbLanded = !!dbRow;     // 终值在 HIT 之后按「同一性反证」修正（见下）
 
     // HIT 复现
     let hit = await post(d);
@@ -176,6 +177,13 @@ for (const d of DISKS) {
     row.identical = hit.text === miss.text;
     // 竞态指纹：attempts>1 ⇒ 第 1 次「HIT」实为隐藏 MISS，两代际必然不等
     row.raceSuspect = attempts > 1 && !row.identical;
+
+    // 🛡️ 写库可见延迟（≤90s）会让上面的直查**假否**（E22 全量实测 3/13 盘踩中）。
+    //   反证：若 HIT **命中缓存**（cached=Y）且与 MISS 响应**逐字相同**，则该文本必然已在库中
+    //   —— 因为 MISS 侧 cached=false ⇒ 那段文本是**现场生成**的，不可能凭空被缓存命中。
+    //   故以「同一性」反证落库，消除假红；反证不成立时仍以直查为准（**宁严不宽**，绝不掩盖真失败）。
+    row.dbLanded = row.dbRowFound || (row.hitCached && row.identical);
+    row.dbInferred = !row.dbRowFound && row.dbLanded;
 
     const st = structureCheck(miss.text);
     row.chapters = st.chapters;
@@ -197,8 +205,8 @@ for (const d of DISKS) {
   results.push(row);
   const mark = row.ok ? 'PASS' : 'FAIL';
   console.log(`${mark}  ${row.id.padEnd(4)} ${String(row.lang).padEnd(3)} ${row.name}`);
-  console.log(`      MISS ${row.missMs ?? '-'}s/${row.missLen ?? '-'}B  落库=${row.dbLanded ? 'Y' : 'N'}`
-    + `  HIT ${row.hitMs ?? '-'}s cached=${row.hitCached ? 'Y' : 'N'} identical=${row.identical ? 'Y' : 'N'}`
+  console.log(`      MISS ${row.missMs ?? '-'}s/${row.missLen ?? '-'}B  落库=${row.dbLanded ? 'Y' : 'N'}${row.dbInferred ? '(延迟反证)' : ''}`
+    + `  HIT ${row.hitMs ?? '-'}s cached=${row.hitCached ? 'Y' : 'N'} identical=${row.identical ? 'Y' : 'N'}${row.hitAttempts > 1 ? ` ×${row.hitAttempts}` : ''}`
     + `  标签错配=${row.labelMismatch ?? '-'}   artifact=${row.artifacts ?? '-'}`
     + (row.error ? `  ⚠️ ${row.error}` : ''));
   if (row.delimLabels || row.ordinalTypos) {
