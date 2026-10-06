@@ -100,11 +100,19 @@ test('② 行为级: 两处线上病句剪枝保数字 + 合法标签零误伤 +
     '自然定界失败: 合法标签被连坐剪枝');
   // 越界宫号: 弃权不动
   assert.equal(S('the 13th House of Partnership'), 'the 13th House of Partnership', '越界宫号未弃权');
-  // 语言守卫: 仅 en（他语与中语零动作, 宁漏不改）
+  // 语言守卫: en 形态仅 en 生效；es 走**独立西语契约**（英文形态在 es 下零动作）；
+  //   zh/fr/th/vi 一律零动作（宁漏不改）。
   for (const lg of ['zh', 'es', 'fr', 'th', 'vi']) {
     assert.equal(S('你的太阳位于 12th House of Partnership。', lg, 'yearly'),
-      '你的太阳位于 12th House of Partnership。', `${lg} 不应改动（仅 en 生效）`);
+      '你的太阳位于 12th House of Partnership。', `${lg} 不应改动（en 形态仅 en 生效）`);
   }
+  // ⚠️ E24/R11r②：es 自有契约分支（`Nª Casa de <错配主题>` ⇒ 剪标签**保数字**），
+  //    且**不得**误伤 es 合法标签（本宫主题命中即放行）—— 与 en 契约对称无双盲。
+  const esBad = S('Tu Saturno en Géminis 5ª Casa de Hogar y Raíces.', 'es', 'yearly');
+  assert.ok(!esBad.includes('Hogar') && esBad.includes('5ª') && !esBad.includes('4ª'),
+    'es 错配标签未剪（或数字未保真）: ' + esBad);
+  assert.equal(S('Tu Saturno en Géminis 4ª Casa de Hogar y Raíces.', 'es', 'yearly'),
+    'Tu Saturno en Géminis 4ª Casa de Hogar y Raíces.', 'es 合法标签被误剪');
   // 多病句同篇: 全部剪除
   const doc = [BAD_12TH, BAD_2ND, OK_10TH].join('\n');
   const out = S(doc, 'en', 'yearly');
@@ -148,8 +156,15 @@ test('④ 判据 c14: 与锁同源（唯一正则 + 唯一契约表）+ 病句�
   const next = SRC.indexOf('function cleanYearlyTimeline');
   assert.ok(ci > 0 && next > ci, '锚点函数未找到');
   assert.ok(c14 > ci && c14 < next, 'c14 未落在 wealthCriticCheck 函数体内');
-  assert.ok(SRC.includes('const _c14 = _e21CountHouseLabelMismatch(text);'), 'c14 计数调用缺失');
-  assert.ok(SRC.includes("if ((lang || 'zh') === 'en') {"), 'c14 语言门缺失');
+  // ⚠️ E24/R11r②（2026-10-06）：生效语种由「仅 en」扩为 **en + es**（西语契约锁上线后，
+  //    锁在前、判据在后 ⇒ 正常恒 0，残余即兜底告警）。两处随之**前移**，并加固为
+  //    「三处同源」：调用形态（必须传 lang） + c14 语言门（en|es） + 计数函数门控（en|es）。
+  assert.ok(SRC.includes("const _c14 = _e21CountHouseLabelMismatch(text, lang || 'zh');"),
+    'c14 计数调用缺失（须传 lang —— 计数函数按语种选形态）');
+  assert.ok(SRC.includes("if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es') {"),
+    'c14 语言门缺失（须为 en|es）');
+  assert.ok(SRC.includes("if (L && L !== 'en' && L !== 'es') return 0;"),
+    'c14 计数函数门控未与语言门同源（须同为 en|es）');
   // 判据同源: 正则字面量全库唯一 + 契约表被锁与计数共用
   assert.equal(SRC.split('Houses?\\s+of').length - 1, 1, '宫位标签正则出现多份（判据与锁不同源）');
   assert.equal(SRC.split('_E21_HOUSE_LABEL_RE').length - 1, 3,
@@ -184,11 +199,11 @@ test('⑤ 注入自测（判据有区分力）: 污染契约表两个方向 ⇒ 
 });
 
 test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回收 v522 + MIN_CACHE_VER=523 + prompt 契约', () => {
-  const sites = [...SRC.matchAll(/wealth:v525/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v526/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
   assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v522 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v522');
-  assert.ok(/MIN_CACHE_VER = 525/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
+  assert.ok(/MIN_CACHE_VER = 526/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
   // ⚠️ E22/R11p 补充：`MIN_CACHE_VER` 是**纯数字形态**（无 v 前缀）⇒ 字符串映射 v522→v523 覆盖不到，
   //    必须单独补丁（E20 实测 7 红，E22 复现同坑）。断言值与实际常量同时前移，杜绝"漏改但断言也漏"。
   // prompt 侧禁昵称契约（第三管）
@@ -199,7 +214,7 @@ test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v525/g)'), `${f} 站点计数基线未前移至 v523`);
-    assert.ok(!t.includes('matchAll(/wealth:v524/g)'), `${f} 残留 v522 站点计数基线`);
+    assert.ok(t.includes('matchAll(/wealth:v526/g)'), `${f} 站点计数基线未前移至 v523`);
+    assert.ok(!t.includes('matchAll(/wealth:v525/g)'), `${f} 残留 v522 站点计数基线`);
   }
 });

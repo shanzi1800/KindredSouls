@@ -6884,8 +6884,88 @@ function _e23OnHeadingLine(source, offset) {
   return source.slice(ls, offset).trimStart().startsWith('#');
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E24/R11r②（2026-10-06）：**西语（es）**宫位语义标签契约锁
+// ══════════════════════════════════════════════════════════════════
+// 【病根】E21/E23 的契约锁**仅 en**（`if (lang !== 'en') return text;`）⇒ 西语同形残影无人管。
+//   2002-06-21 Ushuaia `lang=es` 落库文本实测三处（用户实测盘，军师亲点）：
+//     · `Júpiter … abandona tu 5ª Casa de Hogar y Raíces` （Hogar/Raíces = 4 宫主题 ⇒ 应 4ª）
+//     · `Plutón … en tu 10ª Casa de Redes, Amigos y Ganancias`（Redes/Amigos = 11 宫主题 ⇒ 应 11ª；
+//        同段下一句又写 `Plutón en la 11ª Casa` ⇒ **同段自相矛盾**，用户一眼可见）
+//     · `Saturno … en tu 4ª Casa de Riqueza y Recursos`（Riqueza/Recursos = 2 宫主题 ⇒ 应 2ª）
+//   与 en 病根**完全同源**：宫号数字被真值锁改正、语义标签原地不动 ⇒ 标量判据（含判据12）结构性
+//   失明（E21 已实证 c12=0）。故必须走**独立白名单契约 + 独立剪枝**。
+// 【治法】同 E21 哲学（V488d 剪枝）：**保数字、剪错配标签**
+//        `en tu 5ª Casa de Hogar y Raíces` → `en tu 5ª Casa`
+//   三重护栏（同 E23 ②）：
+//     ① 标题行豁免（月标题 `### … Casa N de …` 是**合法**标签，绝不能剪）；
+//     ② 主题词锚定（零命中 ⇒ 弃权 —— 直接挡掉星座名/行星名/人名等非法标签）；
+//     ③ 本宫主题词 ⇒ 合法保留。
+//   ④ 窄形态（只在 `Nª/No Casa de <标签>` 上动；`Casa 5 de …`／拼写式序数一律弃权 —— 宁漏不改）。
+//   ⑤ 幂等：剪后 `Casa` 后无 ` de ` ⇒ 二次施加零改动。
+//   ⑥ 判据同源：CRITIC c14 与批测 `labelMismatch` 指标均回调 `_e21CountHouseLabelMismatch`（同一正则 + 同一表）。
+//   ⚠️ 西语标签**不是** Title-Case（`Hogar y Raíces` 只有首词大写）⇒ 定界改用
+//      「首词大写 + 后续词/连接词（y|e|o|u|de|del|la|el|los|las）| 逗号后须接大写词」，
+//      遇 `.`/`;`/`:`/`(`/`)` 或**小写非连接词**即自然终止。
+const _E24_ES_HOUSE_CONTRACT = [
+  /* 1ª */ ['Identidad', 'Yo', 'Apariencia', 'Cuerpo', 'Vitalidad', 'Imagen', 'Personalidad', 'Autoconocimiento', 'Nuevos Comienzos', 'Aparicencia', 'Presencia'],
+  /* 2ª */ ['Riqueza', 'Recursos', 'Dinero', 'Finanzas', 'Bienes', 'Ingresos', 'Posesiones', 'Valores', 'Autoestima', 'Economía', 'Ganancias', 'Patrimonio', 'Ahorros'],
+  /* 3ª */ ['Comunicación', 'Aprendizaje', 'Hermanos', 'Ideas', 'Habilidades', 'Vecinos', 'Información', 'Curiosidad', 'Escritura', 'Estudios', 'Palabra'],
+  /* 4ª */ ['Hogar', 'Raíces', 'Familia', 'Fundación', 'Fundaciones', 'Base', 'Bases', 'Ancestros', 'Doméstico', 'Origen', 'Orígenes', 'Vida Doméstica', 'Tierra', 'Linaje'],
+  /* 5ª */ ['Creatividad', 'Romance', 'Hijos', 'Placer', 'Juego', 'Autoexpresión', 'Diversión', 'Pasatiempos', 'Pasión', 'Alegría', 'Talento'],
+  /* 6ª */ ['Trabajo', 'Rutina', 'Salud', 'Servicio', 'Hábitos', 'Bienestar', 'Cotidiano', 'Oficio', 'Disciplina', 'Labor', 'Cuerpo Físico'],
+  /* 7ª */ ['Asociaciones', 'Asociación', 'Matrimonio', 'Alianzas', 'Alianza', 'Relaciones', 'Relación', 'Compromiso', 'Unión', 'Socios', 'Pareja', 'Contratos', 'Sociedades'],
+  /* 8ª */ ['Transformación', 'Intimidad', 'Deudas', 'Deuda', 'Herencia', 'Recursos Compartidos', 'Profundidad', 'Crisis', 'Renacimiento', 'Finanzas Compartidas', 'Poder', 'Muerte', 'Sombra'],
+  /* 9ª */ ['Expansión', 'Viajes', 'Filosofía', 'Sabiduría', 'Creencias', 'Fe', 'Extranjero', 'Educación Superior', 'Aventura', 'Cosmovisión', 'Viajes Largos', 'Filosofía Superior', 'Horizontes'],
+  /* 10ª */ ['Carrera', 'Legado', 'Reputación', 'Ambición', 'Imagen Pública', 'Logros', 'Vocación', 'Estatus', 'Profesión', 'Llamado', 'Rol Público', 'Éxito', 'Estatus Público', 'Autoridad', 'Destino'],
+  /* 11ª */ ['Comunidad', 'Redes', 'Amistad', 'Amigos', 'Amistades', 'Grupos', 'Esperanzas', 'Deseos', 'Círculos Sociales', 'Colectivo', 'Causas', 'Ganancias', 'Contactos'],
+  /* 12ª */ ['Subconsciente', 'Inconsciente', 'Oculto', 'Ocultos', 'Karma', 'Soledad', 'Espiritualidad', 'Retiro', 'Mundo Interior', 'Secretos', 'Finales', 'Aislamiento', 'Sueños', 'Entrega', 'Asuntos Ocultos', 'Misticismo'],
+];
+const _E24_ES_LBL_WORD = '[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+';
+const _E24_ES_LBL_CAP = '[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑÜáéíóúñü]*';
+const _E24_ES_LBL_CONN = '(?:y|e|o|u|de|del|la|el|los|las|and|&|or|en)';
+// 窄触发：`<Nª|No> Casa(s) de <标签>`（`de` 与标签之间允许冠词；标签定界见文件头注释）
+const _E24_ES_HOUSE_RE = new RegExp(
+  '(\\b(\\d{1,2})\\s*[ªº]\\s*Casas?\\s+de\\s+)'
+  + '((?:(?:la|el|los|las)\\s+)?' + _E24_ES_LBL_CAP
+  + '(?:\\s+' + _E24_ES_LBL_CONN + '\\s+' + _E24_ES_LBL_WORD
+  + '|\\s+' + _E24_ES_LBL_CAP
+  + '|,\\s+(?:' + _E24_ES_LBL_CONN + '\\s+)?' + _E24_ES_LBL_CAP
+  + '){0,8})',
+  'g');
+/** 标签命中哪些宫的契约主题词（返回宫号数组，可空）。判据同源：复用 `_E24_ES_HOUSE_CONTRACT` */
+function _e24EsThemeHouses(label) {
+  const hits = [];
+  for (let i = 0; i < _E24_ES_HOUSE_CONTRACT.length; i++) {
+    for (const t of _E24_ES_HOUSE_CONTRACT[i]) {
+      let re = null;
+      try { re = new RegExp('(?:^|[^A-Za-zÁÉÍÓÚÑÜáéíóúñü])' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[^A-Za-zÁÉÍÓÚÑÜáéíóúñü])', 'i'); } catch (e) { continue; }  // 坏正则天坑兜底
+      if (re && re.test(label)) { hits.push(i + 1); break; }
+    }
+  }
+  return hits;
+}
+
 function stripHouseSemanticLabelMismatch(text, lang, reportType) {
-  if (lang !== 'en') return text;                             // ① 仅 en
+  if (lang === 'es') {
+    // 🛡️ E24/R11r②：西语分支（同哲学、独立契约表；英文形态在 es 文本中不存在，反之亦然）
+    if (!text || typeof text !== 'string') return text;
+    let prunedEs = 0;
+    const outEs = text.replace(_E24_ES_HOUSE_RE, (m0, prefix, num, label, offset) => {
+      const n = Number(num);
+      if (!(n >= 1 && n <= 12)) return m0;                     // 越界弃权
+      if (_e23OnHeadingLine(text, offset)) return m0;          // ① 标题行豁免（月标题合法）
+      const themes = _e24EsThemeHouses(label);
+      if (themes.length === 0) return m0;                      // ② 主题词锚定（挡星座/行星名）
+      if (themes.indexOf(n) !== -1) return m0;                 // ③ 本宫主题 ⇒ 合法保留
+      prunedEs++;
+      const cut = m0.indexOf(' de ');                          // 保数字：剪 ` de <标签>`
+      return cut > 0 ? m0.slice(0, cut) : prefix.trimEnd();
+    });
+    if (prunedEs > 0) console.log(`[E24/R11r] ${lang}/${reportType || ''} 西语宫位语义标签契约锁: 剪除错配标签 ${prunedEs} 处`);
+    return outEs;
+  }
+  if (lang !== 'en') return text;                             // ① 仅 en（旧契约锁语义不变）
   if (!text || typeof text !== 'string') return text;
   let pruned = 0;
   const out = text.replace(_E21_HOUSE_LABEL_RE, (m0, num, label) => {
@@ -6916,9 +6996,23 @@ function _e21CountHouseLabelMismatch(text, lang) {
   // 🛡️ E23/R11q ②：语言门控（可选传参）—— 与生产链**严格同源**：`stripHouseSemanticLabelMismatch`
   //   仅 en 生效、CRITIC c14 亦仅 en 运行 ⇒ 非 en 文本的计数必须为 0，否则批测工具会
   //   对「锁根本不管的语种」判红（假红）。不传 lang ⇒ 保持历史行为（全量计数，兼容旧调用）。
-  if (lang && lang !== 'en') return 0;
+  // 🛡️ E24/R11r②：门控扩 **es** —— 西语契约锁已上线（见 `_E24_ES_HOUSE_CONTRACT`），
+  //   故 es 必须走西语形态计数（en 形态在 es 文本中不存在 ⇒ 互斥，无双重计数）。
+  const L = lang || '';
+  if (L && L !== 'en' && L !== 'es') return 0;
   if (!text || typeof text !== 'string') return 0;
   let n = 0;
+  if (L === 'es') {
+    // ── 西语形态：`Nª Casa de <标签>`（与 `stripHouseSemanticLabelMismatch` 西语分支同判据） ──
+    for (const m of text.matchAll(new RegExp(_E24_ES_HOUSE_RE.source, 'g'))) {
+      const num = Number(m[2]);
+      if (!(num >= 1 && num <= 12)) continue;
+      if (_e23OnHeadingLine(text, m.index)) continue;
+      const themes = _e24EsThemeHouses(m[3]);
+      if (themes.length > 0 && themes.indexOf(num) === -1) n++;
+    }
+    return n;
+  }
   for (const m of text.matchAll(_E21_HOUSE_LABEL_RE)) {
     const num = Number(m[1]);
     if (!(num >= 1 && num <= 12)) continue;
@@ -7438,8 +7532,15 @@ function auditYearlyStyleRepetition(text, lang, reportType) {
 const _V480_SEP = '[：:·\\-–—|｜]';                                    // 半角+全角分隔符都要吃
 const _V480_EN_MON = 'January|February|March|April|May|June|July|August|September|October|November|December';
 const _V480_ES_MON = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
-// 章节锚点关键词(与前端 CHAPTER_KEYWORDS 对齐); 命中即锁 `## `
-const _V480_CHAP_KW = /(?:第[一二三四五六七八九十]+[章节]|先知神谕|先知天书|最终财富|通关密令|精通之钥)/;
+// 章节锚点关键词(与前端 `chapterPatterns` / `advancedUniversalChapterRegex` 对齐); 命中即锁 `## `
+// 🔴 E24/R11r②（2026-10-06 线上西语实测根治）：原表**只认中文** ⇒ 六语里除 zh，章节锚点一律被
+//   降级 `### `（与月标题同构 ⇒ 结构语义丢失；前端又把 `#` 全剥，故用户可见差异由前端判据造成）。
+//   现补全六语章节 token（zh/en/es/fr/vi/th）+ 各语「最终神谕 / 报告主标题」锚点。
+//   ⚠️ 与前端 `web/src/components/SacredYearlyReportBox.tsx` 的 `KS_CHAPTER_ROMAN` / `KS_ORACLE_ANCHOR`
+//      **同源**（同一 token 集）；断言见 `test/audit-e24-r11r-multilang-chapter-title.test.mjs`。
+//   ⚠️ 只放**章节锚点专属** token：**绝不可**加入月份名 —— 那是月标题的判据（`_V480_EN_MON`/
+//      `_V480_ES_MON`），加入即把 12 个月标题全部升格成章节锚点。
+const _V480_CHAP_KW = /(?:第[一二三四五六七八九十]+[章节]|先知神谕|先知天书|最终财富|通关密令|精通之钥|Chapter\s*[IVX0-9]|Cap[ií]tulo\s*[IVX0-9]+|Chapitre\s*[IVX0-9]+|Chương\s*[IVX0-9]+|บทที่\s*[\d๑๒๓๔๕๖๗๘๙]+|บทสรุป|Or[áa]culo|FINAL WEALTH ORACLE|Final Oracle)/i;
 // 标题/正文行首的装饰符(前端 L106 会剥除的那批 + 双 ✦)
 //
 // 🔴🔴 E23/R11q ④（2026-10-06）**必须带 `u` 标志** —— 缺它 = 半代理项污染工厂。
@@ -8342,8 +8443,10 @@ function wealthCriticCheck(text, birthDate, natalSunSign, lang, astroMatrix) {
   //   2nd House of Home and Roots）—— 宫位数字 vs SwissEph 全对 ⇒ 13 条标量判据
   //   全部空转（c12=0 实证），标签盲区直达落库。本判据与 stripHouseSemanticLabelMismatch
   //   共用同一正则字面量与契约表（判据同源纪律，杜绝「锁修了、判据看不见」双盲）。
-  if ((lang || 'zh') === 'en') {
-    const _c14 = _e21CountHouseLabelMismatch(text);
+  //   🛡️ E24/R11r②：生效语种扩 **es**（西语契约锁已上线；锁在前、判据在后 ⇒ 正常情况下恒为 0，
+  //      残余即兜底告警并触发 R3 静默重试，与 en 完全对称）。必须传 lang —— 计数函数按语种选形态。
+  if ((lang || 'zh') === 'en' || (lang || 'zh') === 'es') {
+    const _c14 = _e21CountHouseLabelMismatch(text, lang || 'zh');
     if (_c14 > 0) issues.push('宫位语义标签错配(House-Semantic Misalignment): ' + _c14 + ' 处');
   }
 
@@ -8628,7 +8731,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v525:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v526:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11908,7 +12011,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v525:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v526:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12684,7 +12787,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v525:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v526:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14362,7 +14465,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v525-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v526-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

@@ -77,6 +77,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v523-v2:*',
   'wealth:v524:*',        // 🛡️ E23/R11q ④: v524 全量作废（`_V480_DECOR`/`_V480_DECOR_TAIL` 补 `u` 标志根治「星平面字符类吞半代理项」：非 u 下 `📜`=U+D83D+DCDC ⇒ 类成员含裸 `\uD83D` ⇒ 未列入闭集的 emoji 小标题（👁️/💡/🌐）高代理项被单独删除 ⇒ 孤立低代理项 ⇒ ① 用户可见 `�` ② JSON.stringify 产 `\udc41` ⇒ PostgREST 400 PGRST102 ⇒ **写缓存静默失败、该盘永不命中**。同轮补输出端 well-formed 保证 + 非流式写库 res.ok 校验与 WRITE-FAIL 留痕）
   'wealth:v524-v2:*',
+  'wealth:v525:*',        // 🛡️ E24/R11r②: v525 全量作废（① 后端 `_V480_CHAP_KW` 补六语章节 token ⇒ 非中文章节锚点归一 `## ` ② 前端标题判据语言感知（西语/法语 `Capítulo/Chapitre` + 各语神谕锚点不再跌白字；12 个月标题 12/12 金色），月表与后端 `_V480_EN_MON`/`_V480_ES_MON` 同源 ③ 西语宫位语义标签契约锁（`5ª Casa de Hogar y Raíces` 等 3 处错配剪除；CRITIC c14 生效语种扩 es）④ 西语序数缩略豁免（`5to` 不再被打散为 `5 to`））
+  'wealth:v525-v2:*',
   'wealth:v116-v2:*',
 ];
 

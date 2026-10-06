@@ -5,6 +5,36 @@
 // ═══════════════════════════════════════════════════════════
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E24/R11r②（2026-10-06 线上西语实测根治）：**语言感知的标题判据表**
+// ═══════════════════════════════════════════════════════════════════════════
+// 【病根】`parseLine` 的标题识别只有三把尺子：① 行首 `✦`（装饰符）② `chapterPatterns`
+//   中文/英文关键词 ③ `isEnglishMonthTitle`（英文月前缀）。后端 `normalizeYearlyMarkup`
+//   对**非中文**标题必然「剥两端装饰符 + 降级 `### `」⇒ 西语/法语章节标题与报告主标题
+//   在**流式期**靠 `✦` 判为金色、**落库后** `✦` 被剥 ⇒ 全数跌成白字普通文本
+//   （用户实测：「流式输出时第一章标题是有的，输出内容全部结束后第一章标题又缺失了」）。
+//   月标题同理：`Agosto/Diciembre/Enero/Abril` 因 `Ago≠Aug / Dic≠Dec / Ene≠Jan / Abr≠Apr`
+//   前缀巧合失效 ⇒ 12 个月里 4 个落白字（用户实测第二问）。
+// 【治法】判据升级为**语言无关的结构判据 + 与后端同源的词表**（下方三张表）。
+//   ⚠️ 同源纪律：`KS_MONTH_EN` / `KS_MONTH_ES` 必须与 server.js 的 `_V480_EN_MON` /
+//      `_V480_ES_MON` **逐字节相同**（闸门 test/audit-e24-r11r-multilang-chapter-title.test.mjs 逐词比对）；
+//      `KS_CHAPTER_ROMAN` / `KS_ORACLE_ANCHOR` 必须覆盖后端 `_V480_CHAP_KW` 的同批 token。
+export const KS_MONTH_EN = 'January|February|March|April|May|June|July|August|September|October|November|December';
+export const KS_MONTH_ES = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
+// 法语：后端未归一（`normalizeYearlyMarkup` 对 fr 误用西语月表）⇒ 前端先补上，防同类白字。
+export const KS_MONTH_FR = 'janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre';
+export const KS_MONTH_ANY = [KS_MONTH_EN, KS_MONTH_ES, KS_MONTH_FR].join('|');
+// 章节序数词（与后端 `_V480_CHAP_KW` 同批；含 vi/th，与既有 isVietnameseChapter/isThaiChapter 重叠无害）
+export const KS_CHAPTER_ROMAN = 'Chapter|Cap[íi]tulo|Chapitre|Chương|บทที่|Section';
+// 各语「最终神谕 / 报告主标题」锚点（不带 ✦ 也必须能判为金色标题）
+export const KS_ORACLE_ANCHOR = 'Or[áa]culo|Final Wealth Oracle|FINAL WEALTH ORACLE|Oracle';
+// 月标题：`<月名> <4 位年>` + 半/全角冒号（与后端 `normalizeYearlyMarkup` 月标题归一后的形态一致）
+const KS_MONTH_TITLE_RE = new RegExp('^(?:' + KS_MONTH_ANY + ')\\s+\\d{4}\\s*[:：]', 'i');
+// 章节锚点：行首即「章节序数词 + 编号 + **冒号**」（zh 走 chapterPatterns 原路，此处只管他语）
+// ⚠️ 冒号为**必填**判据：正文句「Capítulo II y III revelan…」不带冒号 ⇒ 不误判为标题（零误伤铁律）。
+const KS_ROMAN_CHAPTER_RE = new RegExp('^(?:' + KS_CHAPTER_ROMAN + ')\\s*[IVXLCivxlc\\d]+\\s*[:：]');
+const KS_ORACLE_ANCHOR_RE = new RegExp('^(?:' + KS_ORACLE_ANCHOR + ')\\b', 'i');
+
 const SacredYearlyReportBox: React.FC<{
   rawStreamText: string;
   yearlyCardsReady: boolean;
@@ -341,15 +371,21 @@ const SacredYearlyReportBox: React.FC<{
 
     // 8. V67: 章节精美化（V103-fix4: 真正幂等——已带✦前后缀的直接返回，不重复注入换行）
     // 🛠️ V82: 章节正则扩展到 4 种语言 (中/英/越/泰)
-    const advancedUniversalChapterRegex = /(^|\n)\s*(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+))[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
-    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, prefix, p1, p2, p3, p4, title) => {
+    // 🛡️ E24/R11r②: 再扩 **西语 Capítulo / 法语 Chapitre**（模板 `### 📜 Capítulo I: …` 同族）。
+    //   ⚠️ 新增分支**自带必填冒号**（`Capítulo\s*(N)\s*[:：]`）—— 章节标题恒带冒号，而正文里
+    //      「Capítulo II y III revelan…」这类句子不带 ⇒ 天然拒之门外（零误伤）。原有 4 语分支
+    //      的冒号仍是可选（保持历史行为，绝不收紧）。
+    const advancedUniversalChapterRegex = /(^|\n)\s*(?:【\s*✦\s*|\[\s*✦\s*|✦\s*)?(?:第\s*([一二三四五六七八九十\d]+)\s*章|Chapter\s*([IVXivx]+|\d+)|Chương\s*([IVXivx]+|\d+)|บทที่\s*(\d+)|Cap[íi]tulo\s*([IVXivx]+|\d+)\s*[:：]|Chapitre\s*([IVXivx]+|\d+)\s*[:：])[:：]?\s*([^\n✦【】]+)(?:\s*✦\s*】|\s*✦\s*\])?/gi;
+    cleaned = cleaned.replace(advancedUniversalChapterRegex, (match, prefix, p1, p2, p3, p4, p5, p6, title) => {
       // V103-fix9: 如果原始匹配已带 ✦，直接返回原样（幂等）
       if (match.includes('✦')) return match;
       // V103-fix9: 换行注入——只在 prefix 为普通文本时加额外换行；\n 前缀时保持原样
       const heading = (p1) ? '✦ 第' + p1 + '章：' + title.trim() + ' ✦' :
                       (p2) ? '✦ Chapter ' + p2 + ': ' + title.trim() + ' ✦' :
                       (p3) ? '✦ Chương ' + p3 + ': ' + title.trim() + ' ✦' :
-                      (p4) ? '✦ บทที่ ' + p4 + ': ' + title.trim() + ' ✦' : match;
+                      (p4) ? '✦ บทที่ ' + p4 + ': ' + title.trim() + ' ✦' :
+                      (p5) ? '✦ Capítulo ' + p5 + ': ' + title.trim() + ' ✦' :
+                      (p6) ? '✦ Chapitre ' + p6 + ': ' + title.trim() + ' ✦' : match;
       return (prefix === '\n' ? '\n' : '\n\n') + heading + '\n\n';
     });
     // 最终神谕分界线
@@ -424,7 +460,15 @@ const SacredYearlyReportBox: React.FC<{
         .replace(/\btendencia aferrarse\b/gi, 'tendencia a aferrarse')
         .replace(/\bse rompe conciencia\b/gi, 'se rompe con conciencia')
         // 数字与字母/€ 粘连补空格（Día 1 y3 → Día 1 y 3, 700€ → 700 €）
-        .replace(/(\d+)(€|[a-zA-Z])/g, '$1 $2')
+        // 🛡️ E24/R11r②（2026-10-06 用户实测）：**必须豁免西语合法序数缩略词** ——
+        //   原规则 `(\d+)(€|[a-zA-Z])` 把 `5to → 5 to`、`9no → 9 no`、`2do → 2 do`、`11vo → 11 vo`
+        //   （quinto/noveno/segundo/undécimo 的规范缩写）**打散**，用户可见穿帮。
+        //   治法：一次吃掉整串字母，若是序数缩略尾缀则**原样保留**，否则才插空格。
+        .replace(/(\d+)(€|[a-zA-Z]+)/g, (m, d, w) => {
+          // 序数缩略白名单（西语 1º~20º 的合法尾缀）：to/ta/no/na/do/da/vo/va/mo/ma/ro/ra/er/os/as/avo/ava
+          if (/^(?:to|ta|no|na|do|da|vo|va|mo|ma|ro|ra|er|os|as|avo|ava)$/i.test(w)) return m;
+          return d + ' ' + w;
+        })
         .replace(/([a-zA-Z])(\d+)/g, '$1 $2');
     }
 
@@ -521,7 +565,9 @@ const SacredYearlyReportBox: React.FC<{
         // 🛠️ V387-fix: 从括号内容中提取实际 emoji 作为 icon(根治 sameLine 分支漏🔮导致普通金色非🔮金色)
         const bracketContent = sameLine[1];
         // 🛠️ V417-fix: 必须带 u 标志——字符类里的 emoji 是代理对,无 u 时只匹配到孤立高代理项(�)会渲染成 �
-        const emojiMatch = bracketContent.match(/[🔮✦💎✨⭐🟢🔴🔵⚠️🚀📈📉🎯💡]/u);
+        // 🛡️ E24/R11r②: 补 📜📅🏹🛡️📊 —— 提示词模板章节/仪表盘标题的前缀图标
+        //    （`### 📜 Capítulo I: …` / `### 📊 Panel de Métricas…`），漏列则该行 icon 丢失。
+        const emojiMatch = bracketContent.match(/[🔮✦💎✨⭐🟢🔴🔵⚠️🚀📈📉🎯💡📜📅🏹🛡️📊]/u);
         const extractedIcon = emojiMatch ? emojiMatch[0] : '✦';
         return { type: 'heading', content: cleanMarkdown(bracketContent), icon: extractedIcon, next: { type: 'text', content: cleanMarkdown(sameLine[2]) } };
       }
@@ -531,7 +577,8 @@ const SacredYearlyReportBox: React.FC<{
       }
       return { type: 'heading', content: cleanMarkdown(withoutStar), icon: '✦' };
     }
-    const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇]+)\s*/u);
+    // 🛡️ E24/R11r②: 补 📜📅🏹🛡️📊（与上方 bracketContent 字符类同批；模板章节/仪表盘标题前缀）
+    const iconMatch = t.match(/^([🚀⚠️🟢🔴🔵💡✨💰📈📉🎯⭐💎🔮✦🔆🔅🔸🔹◆◇📜📅🏹🛡️📊]+)\s*/u);
     const icon = iconMatch && iconMatch[1] ? iconMatch[1] : '';
     const textWithoutIcon = icon && iconMatch ? t.slice(iconMatch[0].length) : t;
     
@@ -563,7 +610,13 @@ const SacredYearlyReportBox: React.FC<{
       'Chương I', 'Chương II', 'Chương III', 'Chương IV', 'Chương V',
       'Chương 1', 'Chương 2', 'Chương 3', 'Chương 4', 'Chương 5',
       'Chapter I', 'Chapter II', 'Chapter III', 'Chapter IV', 'Chapter V',
-      'Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5'
+      'Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5',
+      // 🛡️ E24/R11r②: 西语/法语章节 + 仪表盘标题（与后端 `_V480_CHAP_KW` 同源；漏列即落白字）
+      'Capítulo I', 'Capítulo II', 'Capítulo III', 'Capítulo IV', 'Capítulo V',
+      'Capítulo 1', 'Capítulo 2', 'Capítulo 3', 'Capítulo 4', 'Capítulo 5',
+      'Chapitre I', 'Chapitre II', 'Chapitre III', 'Chapitre IV', 'Chapitre V',
+      'Chapitre 1', 'Chapitre 2', 'Chapitre 3', 'Chapitre 4', 'Chapitre 5',
+      'Panel de Métricas', 'Tableau de Bord', 'Core Metrics Dashboard', 'Metrics Dashboard'
     ];
     // 🛠️ V77: 泰语章节金色识别（บทที่ 1 ถึง บทที่ 5 + บทสรุปประจำปี）
     const isThaiChapter = /^บทที่\s*\d+/.test(textWithoutIcon);
@@ -583,13 +636,25 @@ const SacredYearlyReportBox: React.FC<{
     // 🛡️ V491/E1: 英文月度标题识别——后端 lockYearlyMonthTitles 内建英文月输出（### July 2026: Sun in Cancer | 7th House | …），
     // 前端 chapterPatterns 只认 Chapter I~V ⇒ 英文月份标题落 type:'text'（白字/左对齐）。补：Jan~Dec + 年份 + 冒号即金色 heading。
     // 不设 60 字上限（英文月份标题带宫位/幸运日后缀，长度常超限）。
-    const isEnglishMonthTitle = /^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*[:：]/i.test(textWithoutIcon.trim());
+    // 🛡️ E24/R11r②（2026-10-06 西语实测根治）：**原实现只认英文月前缀**，西语靠**前缀巧合**
+    //   命中（Julio←Jul / Septiembre←Sep / Octubre←Oct / Noviembre←Nov / Febrero←Feb / Marzo←Mar /
+    //   Mayo←May / Junio←Jun），而 Ago≠Aug / Dic≠Dec / Ene≠Jan / Abr≠Apr ⇒ **12 个月里 4 个落白字**
+    //   （用户实测第二问）。改为**语言感知月表**（`KS_MONTH_TITLE_RE`，与后端 `_V480_EN_MON`/
+    //   `_V480_ES_MON` 同源 + 补 fr）⇒ 12/12 金色。
+    const isMultilangMonthTitle = KS_MONTH_TITLE_RE.test(textWithoutIcon.trim());
+    // 🛡️ E24/R11r②: **语言无关的结构判据**（不再依赖 ✦）—— 后端对非中文标题必剥 ✦ 并降级
+    //   ⇒ 章节标题须靠「行首即章节序数词 + 编号 + 冒号」识别（`Capítulo I:` / `Chapitre I :` 等）。
+    //   ⚠️ 冒号为**必填**：正文句「Capítulo II y III revelan…」不带冒号 ⇒ 天然不误判。
+    const isRomanChapterTitle = KS_ROMAN_CHAPTER_RE.test(textWithoutIcon.trim());
+    // 各语「最终神谕 / 报告主标题」锚点（`ORÁCULO DE RIQUEZA · …` / `ORÁCULO FINAL …` / `FINAL WEALTH ORACLE …`）
+    const isOracleAnchorTitle = KS_ORACLE_ANCHOR_RE.test(textWithoutIcon.trim());
     const isChapterPattern = (
       (chapterPatterns.some(p => prefix.includes(p)) && (textWithoutIcon.trim().length < 60 || startsWithBold || startsWithIcon)) ||
       /^Section\s+[IVX]+/i.test(textWithoutIcon)
     );
     const isSectionNumber = textWithoutIcon.match(/^\d+\.\d+/); // 1.4, 2.1 等
-    if (isChapterPattern || isSectionNumber || isMonthWeekHeader || isEnglishMonthTitle) {
+    if (isChapterPattern || isSectionNumber || isMonthWeekHeader || isMultilangMonthTitle
+        || isRomanChapterTitle || isOracleAnchorTitle) {
       if (isVietnameseChapter || isThaiChapter) {
         return { type: 'chapter', content: cleanMarkdown(textWithoutIcon) };
       }
