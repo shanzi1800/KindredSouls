@@ -20,7 +20,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 import {
@@ -221,4 +221,36 @@ test('⑨ 注册表自足: 不依赖任何 /tmp 临时脚本（E21 教训：harn
   const runner = readFileSync(path.join(REPO, 'test/tools/sweep-online.mjs'), 'utf-8');
   assert.ok(!/\/tmp\/ks\d/.test(runner), '批测工具不得再指向历史 /tmp/ksNN 目录');
   assert.ok(/sweep-matrix\.mjs/.test(runner), '批测工具必须消费注册表（唯一真源）');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('⑩ 批测工具缓存键 tz 与生产同源规范化（E24 实测：3 盘 tz 现代名 ⇒ 键不匹配 ⇒ preDelete 失效 / 复测假绿）', async () => {
+  const runner = readFileSync(path.join(REPO, 'test/tools/sweep-online.mjs'), 'utf-8');
+  // ① 同源纪律：必须 import 生产同一函数，严禁另写一份归一（否则口径漂移再现）
+  assert.ok(/from '\.\.\/\.\.\/src\/tz-resolver\.js'/.test(runner),
+    'cacheKeyOf 必须同源引用 src/tz-resolver.js（勿另写归一，防口径漂移）');
+  assert.ok(/resolveTimeZone\(\s*d\.tz\s*,\s*d\.lat\s*,\s*d\.lon\s*\)/.test(runner),
+    'tz 规范化须调用 resolveTimeZone(d.tz, d.lat, d.lon)（与 server.js 缓存键同形参）');
+  // ①b 有牙判据（回退**模板一处**即须复现缺陷 —— 只查「import/调用存在」属假防线）
+  const keyLine = runner.split('\n').find((l) => l.includes('const cacheKeyOf'));
+  assert.ok(keyLine && keyLine.includes('wealth:v525:'), 'cacheKeyOf 定义缺失/键前缀错');
+  assert.ok(!/\$\{\s*d\.tz\s*\}/.test(keyLine),
+    'cacheKeyOf 行内不得直接使用原样 `d.tz`（必须经同源规范化，否则 3 盘键不匹配）');
+  assert.ok(/\$\{\s*tzCanonicalOf\(d\)\s*\}/.test(keyLine),
+    'cacheKeyOf 的 tz 位必须取自同源规范化访问器 tzCanonicalOf(d)');
+  // ② 行为自证 + 靶点在位：三盘现代名与生产 Intl 别名确实不同（若已改用规范名 ⇒ 判据失效须更新）
+  const { resolveTimeZone } = await import(pathToFileURL(path.join(REPO, 'src/tz-resolver.js')).href);
+  const CASES = [
+    ['Asia/Kolkata', '28.6139', '77.2090', 'Asia/Calcutta'],
+    ['Asia/Kathmandu', '27.7172', '85.3240', 'Asia/Katmandu'],
+    ['Asia/Ho_Chi_Minh', '21.0285', '105.8542', 'Asia/Saigon'],
+  ];
+  for (const [raw, la, lo, want] of CASES) {
+    const r = resolveTimeZone(raw, la, lo);
+    assert.ok(r && r.ok, `${raw} 规范化失败（tz-resolver 依赖异常 ⇒ 键必错）`);
+    assert.equal(r.tz, want, `${raw} 应规范为 ${want}（若变化 ⇒ 生产键形态已改，工具须同步）`);
+    assert.notEqual(r.tz, raw, `${raw} 未变化 ⇒ 本判据靶点失效（或注册表已改存规范名）`);
+  }
+  assert.ok(SWEEP_MATRIX.some((d) => resolveTimeZone(d.tz, d.lat, d.lon).tz !== d.tz),
+    '注册表内至少须有一盘 tz 需规范化（靶点在位；否则本判据空转）');
 });

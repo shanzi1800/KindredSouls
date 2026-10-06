@@ -66,7 +66,18 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 }
 
 // ── 工具函数 ──
-const cacheKeyOf = (d) => `wealth:v525:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
+// 🛡️ E24/R11r（2026-10-06 实测揪出）：**缓存键的 tz 必须与生产写入端同源规范化**。
+//   病根：生产 `server.js:8629` 用 `resolveTimeZone(tz, lat, lon)` 取 `Intl canonical` 规范名入键，
+//     而本工具原样拼 `d.tz` ⇒ 三盘 matrix 现代名与服务端 legacy 别名不一致 ⇒ **键不匹配**：
+//       s4  fr `Asia/Kathmandu` → 生产键 `Asia/Katmandu`
+//       s10 en `Asia/Kolkata`   → 生产键 `Asia/Calcutta`
+//       s11 vi `Asia/Ho_Chi_Minh` → 生产键 `Asia/Saigon`
+//   后果：① `preDeleteRow` 删不掉 ⇒ 复测时服务端直接 **HIT 旧产物**（「验旧不验新」假绿，覆盖率缺口）；
+//         ② `dbLanded` 直查漏行 ⇒ 退化为「同一性反证」兜底（结论仍正确，但观测变窄）。
+//   同源纪律：直接 import 生产同一函数（`src/tz-resolver.js`），**绝不另写一份归一**。
+import { resolveTimeZone } from '../../src/tz-resolver.js';
+const tzCanonicalOf = (d) => { const r = resolveTimeZone(d.tz, d.lat, d.lon); return r && r.ok ? r.tz : d.tz; };
+const cacheKeyOf = (d) => `wealth:v525:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;
