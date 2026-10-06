@@ -199,11 +199,11 @@ test('⑦ s13 已接入 E21 契约锁（病根语料 → 治法同源，防「�
 
 // ═══════════════════════════════════════════════════════════════════════════
 test('⑧ 版本基线 v523 + 在线批测工具就位', () => {
-  const sites = [...SRC.matchAll(/wealth:v524/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v525/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523，实得 ${sites}`);
-  assert.ok(!/wealth:v523/.test(SRC), 'server.js 内不得残留 v522 键');
-  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 524/, 'MIN_CACHE_VER 须为 523（纯数字形态，字符串映射覆盖不到，须单独补丁）');
-  assert.ok(PURGE.includes("'wealth:v523:*'") && PURGE.includes("'wealth:v523-v2:*'"),
+  assert.ok(!/wealth:v524/.test(SRC), 'server.js 内不得残留 v522 键');
+  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 525/, 'MIN_CACHE_VER 须为 523（纯数字形态，字符串映射覆盖不到，须单独补丁）');
+  assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"),
     'purge 须双形态回收 v522');
 
   assert.ok(existsSync(path.join(REPO, 'test/tools/sweep-online.mjs')),

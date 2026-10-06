@@ -282,17 +282,21 @@ test("⑧' 结构级: HIT 段不再二次 `standardizeReport`（其 `###`/`---` 
 });
 
 test('⑨ 结构级: MISS 响应 ≡ 落库文本（`_finalText` 单次计算、两处共用）', () => {
-  assert.ok(/const _finalText = standardizeReport\(reportContent\);/.test(SRC), '缺 `_finalText` 单次计算');
+  // 🛡️ E23/R11q: `_finalText` 外可包一层收敛净化（`_v525WellFormed(...)`），契约本质不变 ——
+  //    仍须「单次计算、源自 standardizeReport(reportContent)、响应与落库共用同一串」。
+  //    故判据放宽为「`_finalText` 单次赋值且右值含 standardizeReport(reportContent)」。
+  assert.ok(/const _finalText = [^;]*standardizeReport\(reportContent\)/.test(SRC), '缺 `_finalText` 单次计算（源自 standardizeReport(reportContent)）');
+  assert.equal((SRC.match(/const _finalText =/g) || []).length, 1, '`_finalText` 必须且只能被赋值一次（否则响应与落库可能不同源）');
   assert.ok(/report: _finalText/.test(SRC), '响应必须回传 `_finalText`（与落库文本一致）');
   assert.ok(/insight: _finalText/.test(SRC), '落库必须写 `_finalText`（与响应一致）');
 });
 
 // ═══════════════════ D. 版本 bump ═══════════════════
-test('⑩ 结构级: 缓存 v523（4 站点）+ purge 双形态回收 v522 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v524/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
-  assert.ok(!/wealth:v523/.test(stripComments(SRC)), 'server.js 内不得残留 v522 键（注释历史注记除外）');
-  assert.ok(PURGE.includes("'wealth:v523:*'") && PURGE.includes("'wealth:v523-v2:*'"), 'purge 须双形态回收 v522');
+test('⑩ 结构级: 缓存 v525（4 站点）+ purge 双形态回收 v524 + 旧闸门基线前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v525/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v525, 实得 ${sites}`);
+  assert.ok(!/wealth:v524/.test(stripComments(SRC)), 'server.js 内不得残留 v524 键（注释历史注记除外）');
+  assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v524');
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
@@ -302,10 +306,10 @@ test('⑩ 结构级: 缓存 v523（4 站点）+ purge 双形态回收 v522 + 旧
     // ⚠️ E19/R11m 修正：此处曾与 e17⑰ 同病 —— 两条断言**同用 v520**（「须不存在」∧「须存在」
     //    自相矛盾）；因 `test:astro` 是 `&&` 长链、上轮大批有红 ⇒ 短路从未跑到 ⇒ 缺陷潜伏。
     //    改纯字符串 includes（零正则转义坑）+ 显式断言新旧基线不同，绝不再写歪。
-    const OLD_BASE = 'matchAll(/wealth:v523/g)';
-    const NEW_BASE = 'matchAll(/wealth:v524/g)';
+    const OLD_BASE = 'matchAll(/wealth:v524/g)';
+    const NEW_BASE = 'matchAll(/wealth:v525/g)';
     assert.notStrictEqual(OLD_BASE, NEW_BASE, '判据自检：新旧基线串不得相同（否则两条断言自相矛盾）');
-    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v523`);
-    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v523`);
+    assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v525`);
+    assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v525`);
   }
 });

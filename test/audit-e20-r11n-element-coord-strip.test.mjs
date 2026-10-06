@@ -169,7 +169,7 @@ test('⑤ V517 后置分支注入自测: 摘除后置正则分支 ⇒ ③ 的后
 });
 
 test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留（E21 bump 前移）', () => {
-  const sites = [...SRC.matchAll(/wealth:v524/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v525/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
-  assert.ok(!SRC.includes('wealth:v523'), 'server.js 内不得残留 v522 键');
+  assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v522 键');
 });

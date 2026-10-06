@@ -133,18 +133,18 @@ test('④ s13 收编闭环: 病根语料在册且被本闸门覆盖（防「收�
   assert.ok(/Partnership/.test(S13_BAD), '闸门用例与 s13 病根语料同源（须含 Partnership 错配形态）');
 });
 
-test('⑤ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回收 v522 + MIN_CACHE_VER=523 + 旧闸门前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v524/g)].length;
-  assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
-  assert.ok(!SRC.includes('wealth:v523'), 'server.js 内不得残留 v522 键');
-  assert.ok(PURGE.includes("'wealth:v523:*'") && PURGE.includes("'wealth:v523-v2:*'"), 'purge 须双形态回收 v522');
-  assert.ok(/MIN_CACHE_VER = 524/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 523');
+test('⑤ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回收 v524 + MIN_CACHE_VER=525 + 旧闸门前移', () => {
+  const sites = [...SRC.matchAll(/wealth:v525/g)].length;
+  assert.equal(sites, 4, `4 个缓存站点须全部为 v525, 实得 ${sites}`);
+  assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v524 键');
+  assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v524');
+  assert.ok(/MIN_CACHE_VER = 525/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 525');
   // ⚠️ 纯数字形态（无 v 前缀）字符串映射覆盖不到 ⇒ 单独补丁（E20 实测 7 红，E22 复现同坑）
-  assert.ok(!/MIN_CACHE_VER = 523/.test(YEARLY_TEST), 'MIN_CACHE_VER 纯数字形态仍停留在 522');
+  assert.ok(!/MIN_CACHE_VER = 524/.test(YEARLY_TEST), 'MIN_CACHE_VER 纯数字形态仍停留在 524');
   // 旧闸门基线前移（须锁「站点计数正则」而非粗暴 includes：purge 回收项是合法字面量）
-  // ⚠️ e17⑰ / e18⑩ / e21⑥ 体内**合法保留** `matchAll(/wealth:v523/g)` —— 它们正是拿它断言
-  //    「被前移的闸门内不得出现旧基线」「供前移的旧基线须已移到 v522」；故这三个文件的
-  //    v522 字面量**不得**当作残留误伤（老坑复现：E21 收编时同类粗暴 includes 曾误伤 purge 回收断言）。
+  // ⚠️ e17⑰ / e18⑩ / e21⑥ 体内**合法保留** `matchAll(/wealth:v524/g)` —— 它们正是拿它断言
+  //    「被前移的闸门内不得出现旧基线」「供前移的旧基线须已移到 v524」；故这三个文件的
+  //    v524 字面量**不得**当作残留误伤（老坑复现：E21 收编时同类粗暴 includes 曾误伤 purge 回收断言）。
   const OLD_BASE_KEEP = new Set(['audit-e17-r11j-yearly-axis-critic.test.mjs',
     'audit-e18-r11k-idempotent-lock.test.mjs', 'audit-e21-r11o-house-label-lock.test.mjs']);
   for (const f of ['audit-e10-r9-natal-coverage.test.mjs', 'audit-e11-r10-critic-precision.test.mjs',
@@ -153,19 +153,19 @@ test('⑤ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回
     'audit-e18-r11k-idempotent-lock.test.mjs', 'audit-e20-r11n-element-coord-strip.test.mjs',
     'audit-e21-r11o-house-label-lock.test.mjs', 'audit-sweep-matrix.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v524/g)'), `${f} 站点计数基线未前移至 v523`);
-    // 共同不变式：任何闸门都不得再引用**前一版**基线 v521（前移链断裂的硬指纹）
+    assert.ok(t.includes('matchAll(/wealth:v525/g)'), `${f} 站点计数基线未前移至 v525`);
+    // 共同不变式：任何闸门都不得再引用陈旧基线 v522（前移链断裂的硬指纹）
     assert.ok(!t.includes('matchAll(/wealth:v522/g)'), `${f} 前移链断裂：仍引用 v522 基线`);
     if (!OLD_BASE_KEEP.has(f)) {
-      assert.ok(!t.includes('matchAll(/wealth:v523/g)'), `${f} 残留 v522 站点计数基线`);
+      assert.ok(!t.includes('matchAll(/wealth:v524/g)'), `${f} 残留 v524 站点计数基线`);
     }
   }
-  // e17⑰/e18⑩ 的 OLD_BASE 必须恰好前移到 v522（若仍停在 v521 ⇒ 前移链断了）
+  // e17⑰/e18⑩ 的 OLD_BASE 必须恰好前移到 v524（若仍停在 v521 ⇒ 前移链断了）
   for (const f of ['audit-e17-r11j-yearly-axis-critic.test.mjs', 'audit-e18-r11k-idempotent-lock.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes("const OLD_BASE = 'matchAll(/wealth:v523/g)'"), `${f} 的 OLD_BASE 未前移至 v522`);
+    assert.ok(t.includes("const OLD_BASE = 'matchAll(/wealth:v524/g)'"), `${f} 的 OLD_BASE 未前移至 v524`);
     assert.ok(!t.includes("const OLD_BASE = 'matchAll(/wealth:v521/g)'"), `${f} 的 OLD_BASE 仍停在 v521`);
   }
   const linter = readFileSync(path.join(__dirname, 'audit-v492-monthly-house-linter.test.mjs'), 'utf-8');
-  assert.ok(linter.includes("LATEST_CACHE_VER = 'v524'"), 'v492 linter LATEST_CACHE_VER 未前移至 v524');
+  assert.ok(linter.includes("LATEST_CACHE_VER = 'v525'"), 'v492 linter LATEST_CACHE_VER 未前移至 v524');
 });

@@ -1266,6 +1266,30 @@ function stripLoneSurrogates(str) {
   return out;
 }
 
+// 🛡️ E23/R11q ④（2026-10-06）：**well-formed 保证** + 可观测告警
+//   由来（线上实锤）：文本一旦含**孤立代理项**（半截 emoji），`JSON.stringify` 会产出 `\udc41` 之类
+//   非法转义 ⇒ PostgREST(aeson) 拒解析 ⇒ `400 PGRST102 "Empty or invalid json"` ⇒ **写缓存静默失败**
+//   ⇒ 该盘永不命中（每次 MISS 全价）。已定位真凶为 `_V480_DECOR` 缺 `u`（见该处注释）并根治；
+//   本函数是**同类缺陷的最后一道保证**：把「输出文本必为合法 UTF-16」从「碰巧」升为「不变式」。
+//   铁律：① 只删非法码元（`stripLoneSurrogates` 语义），**对合法文本零改动**（可证、已验）；
+//        ② **必须告警**（删了就打印）—— 绝不做静默兜底，否则等于掩盖上游新缺陷；
+//        ③ 非流式落在 `_finalText`、流式落在 `cleanedText` —— 均在「响应文本与落库文本共用同一字符串」的
+//           收敛点**之前**施加 ⇒ E18/R11k「Text(MISS) ≡ Text(HIT) 逐字同源」契约不破。
+function _v525WellFormed(tag, text) {
+  if (!text || typeof text !== 'string') return text;
+  const out = stripLoneSurrogates(text);
+  if (out !== text) {
+    let n = 0;
+    for (let i = 0; i < text.length; i++) {
+      const c = text.charCodeAt(i);
+      if (c >= 0xD800 && c <= 0xDBFF) { const x = text.charCodeAt(i + 1); if (!(x >= 0xDC00 && x <= 0xDFFF)) n++; }
+      else if (c >= 0xDC00 && c <= 0xDFFF) { const p = text.charCodeAt(i - 1); if (!(p >= 0xD800 && p <= 0xDBFF)) n++; }
+    }
+    console.warn(`[E23/R11q-4][WELLFORMED] ${tag} 剥离孤立代理项 ${n} 个（${text.length}→${out.length} 字）——上游仍在造半代理，请查新增/改动过的「含 emoji 字符类」正则是否缺 u 标志`);
+  }
+  return out;
+}
+
 // V116-Bug4b-fix: 英文星座名 → 中文(报头回归,前置Map + 后置清洗双保险)
 function englishSignToChinese(text){
   if(!text)return text;
@@ -7417,9 +7441,25 @@ const _V480_ES_MON = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiemb
 // 章节锚点关键词(与前端 CHAPTER_KEYWORDS 对齐); 命中即锁 `## `
 const _V480_CHAP_KW = /(?:第[一二三四五六七八九十]+[章节]|先知神谕|先知天书|最终财富|通关密令|精通之钥)/;
 // 标题/正文行首的装饰符(前端 L106 会剥除的那批 + 双 ✦)
-const _V480_DECOR = /^[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+/;
-// 标题尾部的装饰符(如「## ✦ 先知神谕 · 财富启示录 ✦」的收尾 ✦)
-const _V480_DECOR_TAIL = /[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+$/;
+//
+// 🔴🔴 E23/R11q ④（2026-10-06）**必须带 `u` 标志** —— 缺它 = 半代理项污染工厂。
+//   病根（线上实测取证，非推演）：JS 非 `u` 模式下，字符类里的**星平面字符被拆成两个独立码元**：
+//     `📜` = U+D83D + U+DCDC ⇒ 类成员集合实际上含 **裸 `\uD83D`、`\uDEE1`、`\uFE0F`** 等半代理项。
+//   于是 `^[...]+` 对**未列入本闭集**的 emoji 标题（如 `### 👁️ 潜意识阴影`）：
+//     `\uD83D` 命中类 → 被单独删除；`\uDC41` 不属类成员 → `+` 提前中断
+//     ⇒ 产出 `### \uDC41\uFE0F 潜意识阴影`（**孤立低代理项**）。
+//   后果连锁（已逐一实证）：
+//     ① 用户可见乱码 `�`（emoji 被斩首）；
+//     ② `JSON.stringify` 把孤立代理项转义成 `\udc41` ⇒ PostgREST(aeson) 判为非法 JSON
+//        ⇒ `400 PGRST102 "Empty or invalid json"` ⇒ **写缓存静默失败** ⇒ 该盘**永不命中**
+//        （线上日志实锤：`[wealth-stream] [WRITE-FAIL] status=400 body={"code":"PGRST102"...}`）；
+//     ③ 复现率：s7 zh 连抽 5 稿有 1 稿含 emoji 小标题 ⇒ 被拒库；s2 en 5/5 正常。
+//   修法：补 `u` ⇒ 类成员是**整颗 emoji** ⇒ 闭集内 emoji（📜/📅/✦…）剥离行为**完全不变**
+//     （零 churn，已逐例验证），闭集外 emoji **原样保留**（不再被斩首）。
+//   ⚠️ 同类扫描：`test/audit-e23-r11q-...` 闸门内建「锚定式星平面字符类必须带 u」全仓扫描。
+const _V480_DECOR = /^[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+/u;
+// 标题尾部的装饰符(如「## ✦ 先知神谕 · 财富启示录 ✦」的收尾 ✦) —— 同 `_V480_DECOR`，`u` 标志不可去
+const _V480_DECOR_TAIL = /[\s✦◆◇📜📅🏹🛡️🔮📊📕📌·]+$/u;
 
 function normalizeYearlyMarkup(text, lang, reportType) {
   if (reportType !== 'yearly') return text;
@@ -8588,7 +8628,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v524:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v525:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11868,7 +11908,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v524:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v525:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12262,12 +12302,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
         //   ⇒ 同一份报告「首屏（MISS）」与「刷新（HIT）」排版不同（12 盘实测长度差 35~156 字，全为
         //   `###`/`---` 前后换行与 ✦ 注入）。`standardizeReport` 的换行注入**非幂等**，
         //   故必须**只算一次**、两处共用同一字符串（否则又变成两次独立施加）。
-        const _finalText = standardizeReport(reportContent);
+        const _finalText = _v525WellFormed('nonstream/' + lang + '/' + reportType, standardizeReport(reportContent));
 
         // ═══ 写入缓存(非流式端点)═══
         if (SB_URL && SB_KEY && _finalText && _finalText.length > 100 && !skipCache) {
           try {
-            await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
+            const _wRes = await safeFetch(`${SB_URL}/rest/v1/ai_insights_cache`, {
               method: 'POST',
               headers: {
                 'apikey': SB_KEY,
@@ -12282,7 +12322,14 @@ app.post('/api/wealth-oracle', async (req, res) => {
                 created_at: new Date().toISOString(),
               })
             });
-            console.log(`[wealth-oracle] [WRITE] Cache write: ${cacheKey}, length=${_finalText.length}`);
+            // 🛡️ E23/R11q ④: **必须校验 res.status** —— 旧写法只打「Cache write」不校验，
+            //   于是 400 PGRST102（孤立代理项致非法 JSON）等失败**完全不可见** ⇒「静默不落库 ⇒ 永不命中」。
+            //   与流式 `writeToCache`（本就打印 status 与 WRITE-FAIL body）对齐，消除观测盲区。
+            console.log(`[wealth-oracle] [WRITE] Cache write: ${cacheKey}, length=${_finalText.length}, status=${_wRes ? _wRes.status : '?'}`);
+            if (_wRes && !_wRes.ok) {
+              const _wb = await _wRes.text().catch(() => '');
+              console.warn(`[wealth-oracle] [WRITE-FAIL] status=${_wRes.status} body=${String(_wb).slice(0, 300)}`);
+            }
           } catch (e) {
             console.warn('[wealth-oracle] Cache write error:', e.message);
           }
@@ -12637,7 +12684,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v524:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v525:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13913,6 +13960,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (lang === 'vi') {
       cleanedText = fixVietnameseCorruption((cleanedText || '').normalize('NFC'));
     }
+    // 🛡️ E23/R11q ④: well-formed 保证（孤立代理项 ⇒ 写库 400 PGRST102 ⇒ 永不落库）——
+    //   置于 `_sanitizedForClient`（客户端终稿）与 `writeToCache`（落库文本）的**共同上游** ⇒ 两者仍逐字同源。
+    cleanedText = _v525WellFormed('stream/' + lang + '/' + reportType, cleanedText);
 
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
     let _sanitizedForClient = cleanedText;
@@ -14312,7 +14362,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v524-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v525-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {

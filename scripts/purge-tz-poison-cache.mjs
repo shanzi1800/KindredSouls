@@ -75,6 +75,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v522-v2:*',
   'wealth:v523:*',        // 🛡️ E23/R11q: v523 全量作废（① zh 首刷三连重生成根治：规则1 外行星「本命/流年」双真值接受、规则6 未提供行星禁则数据驱动、规则2/4 改锚定月份标题行 + 星座 token 用真 12 星座词表 ② 分隔符式标签剪枝收网 + 序数后缀笔误归一）
   'wealth:v523-v2:*',
+  'wealth:v524:*',        // 🛡️ E23/R11q ④: v524 全量作废（`_V480_DECOR`/`_V480_DECOR_TAIL` 补 `u` 标志根治「星平面字符类吞半代理项」：非 u 下 `📜`=U+D83D+DCDC ⇒ 类成员含裸 `\uD83D` ⇒ 未列入闭集的 emoji 小标题（👁️/💡/🌐）高代理项被单独删除 ⇒ 孤立低代理项 ⇒ ① 用户可见 `�` ② JSON.stringify 产 `\udc41` ⇒ PostgREST 400 PGRST102 ⇒ **写缓存静默失败、该盘永不命中**。同轮补输出端 well-formed 保证 + 非流式写库 res.ok 校验与 WRITE-FAIL 留痕）
+  'wealth:v524-v2:*',
   'wealth:v116-v2:*',
 ];
 

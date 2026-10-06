@@ -66,7 +66,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 }
 
 // ── 工具函数 ──
-const cacheKeyOf = (d) => `wealth:v524:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v525:${d.birth}:${d.time}:${d.lat}:${d.lon}:${d.tz}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;
@@ -128,6 +128,21 @@ function structureCheck(text) {
 //     ② 序数笔误 `2th House` ⇒ `fixHouseOrdinalSuffix` 确定性归一 ⇒ 残留即失败，
 //        计数走生产同源的 `_e23CountHouseOrdinalTypos`（同一正则字面量）。
 
+// 🛡️ E23/R11q ④（2026-10-06）：**孤立代理项**判据（原 `artifacts` 正则对此完全失明 ⇒ 本次逃逸成因）
+//   后果：① 用户可见 `�`（emoji 被斩首）；② `JSON.stringify` 产出 `\udcNN` ⇒ PostgREST 400 PGRST102
+//   ⇒ **写缓存静默失败 ⇒ 该盘永不命中**。根因 =「含星平面 emoji 的字符类正则缺 `u` 标志」
+//   （非 `u` 下 `📜` 被拆成裸 `\uD83D`/`\uDCDC` 两个类成员 ⇒ 可单独吃掉半代理）。
+//   判据自足（不依赖任何锁函数）：直接扫 UTF-16 码元配对完整性。
+function countLoneSurrogates(t) {
+  let n = 0;
+  for (let i = 0; i < t.length; i++) {
+    const c = t.charCodeAt(i);
+    if (c >= 0xD800 && c <= 0xDBFF) { const x = t.charCodeAt(i + 1); if (!(x >= 0xDC00 && x <= 0xDFFF)) n++; }
+    else if (c >= 0xDC00 && c <= 0xDFFF) { const p = t.charCodeAt(i - 1); if (!(p >= 0xD800 && p <= 0xDBFF)) n++; }
+  }
+  return n;
+}
+
 // ── 主流程 ──
 const results = [];
 console.log(`🌊 Sweep 在线批测（${DISKS.length} 盘）｜端点 ${BASE}\n`);
@@ -178,6 +193,8 @@ for (const d of DISKS) {
     row.monthHeads = st.monthHeads;
     row.finalOracle = st.finalOracle;
     row.artifacts = st.artifacts;
+    // 🛡️ E23/R11q ④：孤立代理项（半截 emoji）—— 0 才通过（见函数头注释）
+    row.loneSurrogates = countLoneSurrogates(miss.text);
 
     // 标签契约（同源判据 —— en 生效；非 en 由 E23 语言门控返回 0，与生产锁一致）
     row.labelMismatch = X._e21CountHouseLabelMismatch(miss.text, d.lang);
@@ -185,7 +202,7 @@ for (const d of DISKS) {
     row.ordinalTypos = X._e23CountHouseOrdinalTypos(miss.text);
 
     row.ok = row.missLen > 0 && row.dbLanded && row.identical && row.labelMismatch === 0
-      && row.artifacts === 0 && row.ordinalTypos === 0;
+      && row.artifacts === 0 && row.ordinalTypos === 0 && row.loneSurrogates === 0;
   } catch (e) {
     row.error = e.message;
     row.ok = false;
@@ -195,7 +212,7 @@ for (const d of DISKS) {
   console.log(`${mark}  ${row.id.padEnd(4)} ${String(row.lang).padEnd(3)} ${row.name}`);
   console.log(`      MISS ${row.missMs ?? '-'}s/${row.missLen ?? '-'}B  落库=${row.dbLanded ? 'Y' : 'N'}${row.dbInferred ? '(延迟反证)' : ''}`
     + `  HIT ${row.hitMs ?? '-'}s cached=${row.hitCached ? 'Y' : 'N'} identical=${row.identical ? 'Y' : 'N'}${row.hitAttempts > 1 ? ` ×${row.hitAttempts}` : ''}`
-    + `  标签错配=${row.labelMismatch ?? '-'}  序数笔误=${row.ordinalTypos ?? '-'}  artifact=${row.artifacts ?? '-'}`
+    + `  标签错配=${row.labelMismatch ?? '-'}  序数笔误=${row.ordinalTypos ?? '-'}  artifact=${row.artifacts ?? '-'}  孤立代理项=${row.loneSurrogates ?? '-'}`
     + (row.error ? `  ⚠️ ${row.error}` : ''));
 }
 
