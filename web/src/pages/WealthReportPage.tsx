@@ -974,6 +974,36 @@ const UPGRADE_HINTS: Record<string, string> = {
   vi: "Kênh truy cập tối cao của bạn đã được kích hoạt. Sau khi mở khóa lá số cơ bản, bạn có đặc quyền vũ trụ để nâng cấp trực tiếp lên [VIP Tối Thượng $99.99/Năm], tiết lộ 'Niên Giám Solar Return' cho 12 tháng tới.",
 };
 
+// 🛡️ E24⑤/P0-1: 请求坐标唯一真源 = URL 参数**同步直读**（派生顺序：URL 显式参数 → 组件 state 兜底）。
+// 根因：首屏自动月报在 mount 批次读组件 state，而 URL 参数由另一 useEffect 异步写入 ⇒ 读到默认曼谷盘
+// （缓存实证 wealth:v529:…:12:00:13.7500:100.5000:Asia/Bangkok:fr:monthly，跑的是曼谷盘真值）。
+// 纯函数（无 state 依赖），供 loadWealthData / 流式 fallback / 旧非流式三处请求体统一取值；
+// 校验规则与 V491/WP-2·WP-6·WP-7 逐字同源（time 仅 HH:MM、coord-parse 成对校验、tz Intl 可解析）。
+export const deriveWealthBirthParams = (
+  search: string,
+  fallback: { birthTime: string; lat: number; lon: number; tz: string },
+): { birthTime: string; lat: number; lon: number; tz: string } => {
+  const p = new URLSearchParams(search);
+  const out = { birthTime: fallback.birthTime, lat: fallback.lat, lon: fallback.lon, tz: fallback.tz };
+  const timeP = p.get('time') || p.get('birthTime');
+  if (timeP && /^\d{1,2}:\d{2}$/.test(timeP)) out.birthTime = timeP;
+  else if (timeP) console.warn('[WealthReport] E24⑤ derive: 无效 time 参数,保留 fallback（挂载 effect 侧会另行 setError）: ' + timeP);
+  const latP = p.get('lat');
+  const lonP = p.get('lon');
+  if (latP !== null || lonP !== null) {
+    const c = resolveCoordinates(latP ?? undefined, lonP ?? undefined);
+    if (c.ok && typeof c.lat === 'number' && typeof c.lon === 'number') {
+      out.lat = c.lat;
+      out.lon = c.lon;
+    }
+  }
+  const tzP = p.get('tz');
+  if (tzP) {
+    try { new Intl.DateTimeFormat('en', { timeZone: tzP }); out.tz = tzP; } catch (_) { /* 非法 tz 保留 fallback */ }
+  }
+  return out;
+};
+
 // ── Component ──
 const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const { i18n, t } = useTranslation();
@@ -1019,6 +1049,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [yearlyCardsReady, setYearlyCardsReady] = useState<boolean>(false); // 年报是否完成
   const [monthlyCardsReady, setMonthlyCardsReady] = useState<boolean>(false); // 🛠️ V369-fix: 初始 false杜绝金属框闪现——首个text chunk到达时挂载
   const [sacredText, setSacredText] = useState<string>(''); // 🛠️ V40: 唯一天书正文状态
+  // 🛡️ E24⑤/P0-2: 画布所有权门控——sacredText 唯一画布当前归属的 report type。
+  // 跨 type（monthly/yearly）发起新请求时换主；旧 type 的所有迟到写入（流式 chunk / 容错提取 /
+  // sanitized 覆盖 / [DONE] 终稿 / fallback 打字机 / 内存命中回放）一律凭门禁丢弃，
+  // 根治「月报曼谷稿 + 年报加德满都稿拼接在同一画布」的跨稿污染。
+  const canvasOwnerRef = useRef<'' | 'monthly' | 'yearly' | 'once'>('');
   const [_stableMemKey, _setStableMemKey] = useState<string>(''); // V247: SacredYearlyReportBox 稳定 key(双通道打字机核心)
   const textContainerRef = useRef<HTMLDivElement>(null); // 🛠️ V40: 追光滚动ref
 
@@ -1435,10 +1470,14 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const _stableLon = _loadUrlP.get('lon') || '';
     const _stableTz = _loadUrlP.get('tz') || '';
     const _memKey = `${birth}_${lang}_${_stableLat}_${_stableLon}_${_stableTz}_monthly`;
+    // 🛡️ E24⑤/P0-2: 本请求接管画布所有权（在一切 sacredText 写回——含内存命中回放——之前认领）
+    canvasOwnerRef.current = 'monthly';
+    // 🛡️ E24⑤/P0-1: 坐标直读 URL（mount 批次组件 state 尚未就绪，读 state = 默认曼谷盘）
+    const _bp = deriveWealthBirthParams(window.location.search, { birthTime, lat: birthLat, lon: birthLon, tz: birthTz });
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
       console.log('[loadWealthData] 🛡️ V219 内存命中,直接渲染不重发请求');
-      setSacredText(_memHit);
+      if (canvasOwnerRef.current === 'monthly') setSacredText(_memHit); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
       setStreamedOnce(true);
       setMonthlyCardsReady(true);
       setLoading(false);
@@ -1476,10 +1515,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         headers,
         body: JSON.stringify({
           birthDate: birth,
-          birthTime,
-          lat: birthLat,
-          lon: birthLon,
-          tz: birthTz,
+          birthTime: _bp.birthTime, // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
+          lat: _bp.lat,
+          lon: _bp.lon,
+          tz: _bp.tz,
           lang: lang,
           reportType: 'monthly',
           referrer: 'standalone',
@@ -1754,6 +1793,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     const _stableTz = _urlP.get('tz') || '';
     // 🛡️ V219: 内存级去重,跨 remount 生效--同一 birth+lang+type 只发一次请求
     const _memKey = `${_stableBirth}_${_stableLang}_${_stableLat}_${_stableLon}_${_stableTz}_${type}`;
+    // 🛡️ E24⑤/P0-2: 新请求接管画布所有权，旧 type 的迟到写入凭门禁丢弃（防两稿拼接）
+    canvasOwnerRef.current = type;
+    // 🛡️ E24⑤/P0-1: 请求体坐标直读 URL（与 _memKey 同源），绝不读 mount 批次未就绪的组件 state
+    const _bp = deriveWealthBirthParams(window.location.search, { birthTime, lat: birthLat, lon: birthLon, tz: birthTz });
     // 🔒 V220b: 强制刷新(用户点 regenerate)→ 清掉 done/memcache 锁,允许重新开发请求
     if (force) {
       const _fg = _reportGen.get(_memKey);
@@ -1765,7 +1808,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
     const _memHit = _reportMemCache.get(_memKey);
     if (_memHit && _memHit.length > 200 && !_memHit.includes('{{')) {
       console.log('[generateWealthReport] 🛡️ V219 内存命中,直接渲染不重发请求');
-      setSacredText(_memHit);
+      if (canvasOwnerRef.current === type) setSacredText(_memHit); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
       setStreamedOnce(true);
       if (type === 'monthly') setMonthlyCardsReady(true);
       if (type === 'yearly') setYearlyCardsReady(true);
@@ -1778,7 +1821,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
       const gen = _reportGen.get(_memKey)!;
       // 🔒 V220b: 流已结束 → 直接复用最终全量文本,绝不重新开发请求
       if (gen.done) {
-        setSacredText(gen.partial);
+        if (canvasOwnerRef.current === type) setSacredText(gen.partial); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
         setStreamedOnce(true);
         if (type === 'monthly') setMonthlyCardsReady(true);
         if (type === 'yearly') setYearlyCardsReady(true);
@@ -1788,8 +1831,8 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
       }
       // 🔒 V220b: 先移除本实例可能的旧订阅,防止多次 remount 堆积 stale sub
       if (mySubRef.current && gen.subs.has(mySubRef.current)) gen.subs.delete(mySubRef.current);
-      setSacredText(gen.partial); // 立即渲染当前进度
-      const sub = (t: string) => setSacredText(t);
+      if (canvasOwnerRef.current === type) setSacredText(gen.partial); // 🛡️ E24⑤/P0-2: 画布已易主则弃写（立即渲染当前进度）
+      const sub = (t: string) => { if (canvasOwnerRef.current === type) setSacredText(t); }; // 🛡️ E24⑤/P0-2: 订阅回调同样过门禁
       mySubRef.current = sub;
       gen.subs.add(sub);
       return;
@@ -1840,7 +1883,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
         if (existingGen?.done) {
           console.log('[V222z-fix7] gen 已完成，跳过新 SSE，直接复用 partial（长度=' + (existingGen.partial?.length ?? 0) + '）');
           _fullMap.set(_memKey, existingGen.partial ?? ''); // V244: sync Map
-          setSacredText(existingGen.partial ?? '');
+          if (canvasOwnerRef.current === type) setSacredText(existingGen.partial ?? ''); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
           setStreamedOnce(true);
           if (type === 'monthly') setMonthlyCardsReady(true);
           if (type === 'yearly') setYearlyCardsReady(true);
@@ -1864,7 +1907,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: abortRef.current.signal, // V244: 接入 fresh AbortController
-          body: JSON.stringify({ birthDate: _stableBirth, birthTime, lat: birthLat, lon: birthLon, tz: birthTz, lang: _stableLang, reportType: type, nocache: _noCache }),
+          body: JSON.stringify({ birthDate: _stableBirth, birthTime: _bp.birthTime, lat: _bp.lat, lon: _bp.lon, tz: _bp.tz, lang: _stableLang, reportType: type, nocache: _noCache }), // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
         });
 
         // 🛡️ V491/WP-1·F4: 400 等非 2xx 响应绝不能当 SSE 读(旧缺陷=静默空白)——先解析 JSON 错误体再决定
@@ -1942,7 +1985,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 // V248: 同步清 reportLoading，破坏渲染条件
                 setReportLoading('');
                 // V248: 同步 setSacredText，让 React 批量处理时sacredText 和 monthlyCardsReady 同时就绪
-                setSacredText(_final);
+                if (canvasOwnerRef.current === type) setSacredText(_final); // 🛡️ E24⑤/P0-2: 画布已易主则弃写终稿
                 setStreamedOnce(true);
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') {
@@ -2011,7 +2054,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     _fullMap.set(_memKey, _fullMap.get(_memKey) || ''); // V244: sync Map
                     _fullMap.set(_memKey, _fullMap.get(_memKey) || '');
                     gen.subs.forEach(fn => fn(_fullMap.get(_memKey) || ''));
-                    setSacredText(_fullMap.get(_memKey)||''); // 🛡️ V219d: 全量覆盖(非 prev+= 防止并发叠加)
+                    if (canvasOwnerRef.current === type) setSacredText(_fullMap.get(_memKey)||''); // 🛡️ E24⑤/P0-2: 画布已易主则弃写 chunk 快照
                   } else {
                     // 🛡️ V220e: 智能自适应合并(与月报通道同款, 防阶梯重复)
                     const _wt = wealthReportRef.current || '';
@@ -2037,7 +2080,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     //   原长度守卫会因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
                     //   安全阈值: sanitized 至少 1000 字符才覆盖(防极端截断回归),否则保留较长流式版
                     if (fixedText && fixedText.length >= 1000) _sanMap.set(_memKey, fixedText); // 🛡️ V419: 登记终稿
-                    setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText)));
+                    if (canvasOwnerRef.current === type) setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText))); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
                   } else {
                     setWealthReportText(fixedText);
                     wealthReportRef.current = fixedText;
@@ -2051,10 +2094,11 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   const sanMatch = dataStr.match(/"sanitized"\s*:\s*"((?:[^"\\]|\\.)*)"/);
                   const textMatch = dataStr.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
                   const recovered = (sanMatch && sanMatch[1]) || (textMatch && textMatch[1]) || '';
-                  if (recovered) {
+                    if (recovered) {
                     const unescaped = recovered.replace(/\\n/g, '\n').replace(/\\\"/g, '"').replace(/\\\\/g, '\\');
                     if (type === 'yearly' || type === 'monthly') {
-                      setSacredText(prev => prev + unescaped);
+                      // 🛡️ E24⑤/P0-2: 容错提取追加同样过画布门禁，防旧流残段拼接新稿
+                      if (canvasOwnerRef.current === type) setSacredText(prev => prev + unescaped);
                     } else {
                       setWealthReportText(prev => prev + unescaped);
                       wealthReportRef.current = (wealthReportRef.current || '') + unescaped;
@@ -2080,10 +2124,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 birthDate: _stableBirth,
-                birthTime,
-                lat: birthLat,
-                lon: birthLon,
-                tz: birthTz,
+                birthTime: _bp.birthTime, // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
+                lat: _bp.lat,
+                lon: _bp.lon,
+                tz: _bp.tz,
                 lang: _stableLang,
                 reportType: type,
               }),
@@ -2095,7 +2139,8 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 console.log('[WealthReport] ✅ Fallback 成功，' + fbText.length + ' 字符，写入 UI');
                 if (type === 'yearly' || type === 'monthly') {
                   // 🛠️ V363: fallback 内容用打字机效果逐字显示，不一次性替换
-smoothAppendText(fbText, setSacredText, 16, 4);
+                  // 🛡️ E24⑤/P0-2: 打字机为异步长跑写入，每一 tick 都过画布门禁（闭包内逐 tick 复查）
+smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) setSacredText(t); }, 16, 4);
                   console.log('[V270-FALLBACK-DEBUG] setSacredText called with ' + fbText.length + ' chars, monthlyCardsReady will be set to true');
                   if (type === 'monthly') setMonthlyCardsReady(true);
                 } else {
@@ -2138,10 +2183,10 @@ smoothAppendText(fbText, setSacredText, 16, 4);
         signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
         body: JSON.stringify({
           birthDate,
-          birthTime,
-          lat: birthLat,
-          lon: birthLon,
-          tz: birthTz,
+          birthTime: _bp.birthTime, // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
+          lat: _bp.lat,
+          lon: _bp.lon,
+          tz: _bp.tz,
           lang,
           referrer: 'standalone',
           reportType: type,
@@ -2649,7 +2694,9 @@ smoothAppendText(fbText, setSacredText, 16, 4);
         {/* V356-fix: 改用 monthlyCardsReady 作为挂载条件，不再依赖 reportLoading。
             原因：reportLoading 在 [DONE] 时被清空（setReportLoading('')），导致组件卸载。
             现在：monthlyCardsReady 由 meta/text chunk/[DONE] 逐步设为 true，组件全程保持挂载。 */}
-        {(reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
+        {/* 🛡️ E24⑤/P0-2: 月报框仅当画布主权归属 monthly 时挂载——年报接管画布后，
+            月报框禁止再把同一 sacredText 渲染成月报（根治双框同文/串稿显示） */}
+        {canvasOwnerRef.current === 'monthly' && (reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
           <SacredYearlyReportBox
             key={_stableMemKey || 'monthly-pending'}
             rawStreamText={sacredText}
@@ -2664,7 +2711,8 @@ smoothAppendText(fbText, setSacredText, 16, 4);
             ⚠️ V473-fix(2026-09-27): 本渲染块曾被整段误包进 JSX 注释(自 V200c 清史后某提交起)，
             导致年报流式正文永远不渲染(后端 DONE len=59998 而页面空白)。此处恢复渲染。 */}
         {(() => {
-          if (reportLoading === 'wealth_yearly' || yearlyCardsReady) {
+          // 🛡️ E24⑤/P0-2: 年报框仅当画布主权归属 yearly 时渲染——月报流式期间禁止年报框读同一画布
+          if (canvasOwnerRef.current === 'yearly' && (reportLoading === 'wealth_yearly' || yearlyCardsReady)) {
             const isStreaming = !yearlyCardsReady;
             const trueZodiac = getTrueZodiacByDate(birthDate);
 
