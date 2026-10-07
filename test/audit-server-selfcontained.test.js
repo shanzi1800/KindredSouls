@@ -102,10 +102,15 @@ test('④ cleanYearlyTimeline 语言分支生效(es 全角括号转半角 / zh �
 });
 
 // ── ⑤ 静态: prompt 构造器不得引用不存在的标识符 ──
-test('⑤ buildWealthOncePrompt 的星座兜底必须用同函数内的 zodiacRanges, 不得引用不存在的 zodiacSigns', () => {
+// 🛡️ E25/P0（2026-10-07 军师开工令）：原 V482d 判据（「兜底必须用同函数内 zodiacRanges」）**已被取代**——
+//   手写星座日期表 `zodiacRanges` 整体废除（其临界日 6/21、10/23、11/22 与 getNatalSunSign 打架
+//   ⇒ 先天报告与月报/年报太阳星座互相矛盾）。太阳星座统一走 getNatalSunSign 单一真源。
+test('⑤ buildWealthOncePrompt 星座必须走 getNatalSunSign 单一真源, 不得再有手写星座表', () => {
   const code = stripComments(fnSrc('buildWealthOncePrompt'));
   assert.ok(!/\bzodiacSigns\b/.test(code), '出现自由变量 zodiacSigns(该标识符全文件不存在) → 兜底触发即 ReferenceError');
-  assert.ok(/zodiacRanges\s*\[\s*0\s*\]/.test(code), '缺少 zodiacRanges[0] 兜底写法');
+  assert.ok(!/\bzodiacRanges\b/.test(code), '手写星座表 zodiacRanges 未废除（E25/P0 要求统一 getNatalSunSign）');
+  assert.ok(/getNatalSunSign\s*\(/.test(code), '未调用 getNatalSunSign —— 太阳星座非单一真源');
+  assert.ok(/buildNatalAnchors\s*\(/.test(code), '未摄入 buildNatalAnchors 本命真值块（E25/P0 真值归位）');
 });
 
 // ═══════════════ 注入缺陷自测(证明闸门会红) ═══════════════
@@ -144,9 +149,27 @@ test('【注入缺陷自测】把 lang 分支关掉 → ④ 必须红(行为级)
   assert.ok(/（/.test(f('（Plutón 第8宫）', 'es')), '闸门失效: 语言分支被关后 es 仍转换了全角括号(判据④ 未红)');
 });
 
-test('【注入缺陷自测】把星座兜底改回 zodacSigns → ⑤ 必须红', () => {
-  const degraded = src.replace('if (!sunSign) sunSign = zodiacRanges[0].name;', 'if (!sunSign) sunSign = zodiacSigns[0];');
-  assert.notStrictEqual(degraded, src, '未成功注入缺陷(未匹配到兜底行)');
-  const code = stripComments(fnSrc('buildWealthOncePrompt', degraded));
-  assert.ok(/\bzodiacSigns\b/.test(code), '闸门失效: 自由变量回退未被识别');
+test('【注入缺陷自测】把 once 构造器的星座真源/真值块改回缺陷态 → ⑤ 必须红', () => {
+  const ANCHOR = 'const _sunIdx = getNatalSunSign(birthDate);';
+  // ① 塞回手写星座表（E25/P0 废除物）
+  const degraded1 = src.replace(ANCHOR, "const zodiacRanges = [{ name: 'x' }];\n  " + ANCHOR);
+  assert.notStrictEqual(degraded1, src, '未成功注入缺陷(未匹配到正源锚点)');
+  assert.ok(/\bzodiacRanges\b/.test(stripComments(fnSrc('buildWealthOncePrompt', degraded1))),
+    '闸门失效: 手写星座表回退未被识别');
+
+  // ② 彻底不调 getNatalSunSign（退化为自由变量）
+  const degraded2 = src.replace(ANCHOR, 'const _sunIdx = zodiacSigns[0];');
+  assert.notStrictEqual(degraded2, src, '未成功注入缺陷(未匹配到正源锚点)');
+  const code2 = stripComments(fnSrc('buildWealthOncePrompt', degraded2));
+  assert.ok(!/getNatalSunSign\s*\(/.test(code2) && /\bzodiacSigns\b/.test(code2),
+    '闸门失效: 星座真源缺失未被识别');
+
+  // ③ 抹掉 buildNatalAnchors 摄入（真值飞地复发）
+  const degraded3 = src.replace(
+    "const natalAnchors = astroMatrix ? buildNatalAnchors(astroMatrix) : '';",
+    "const natalAnchors = '';",
+  );
+  assert.notStrictEqual(degraded3, src, '未成功注入缺陷(未匹配到真值块锚点)');
+  assert.ok(!/buildNatalAnchors\s*\(/.test(stripComments(fnSrc('buildWealthOncePrompt', degraded3))),
+    '闸门失效: 本命真值块缺失未被识别');
 });

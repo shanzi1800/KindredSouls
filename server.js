@@ -8996,7 +8996,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v530:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v531:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10466,57 +10466,24 @@ IMPORTANT:
 function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
   if (!birthDate) return null;
 
-  // 解析出生日期
-  const [year, month, day] = birthDate.split('-').map(Number);
-  // 标准星座日期范围(修复星座判断逻辑)
-  const zodiacRanges = [
-    {name: '摩羯座', start: [12, 22], end: [1, 19]},
-    {name: '水瓶座', start: [1, 20], end: [2, 18]},
-    {name: '双鱼座', start: [2, 19], end: [3, 20]},
-    {name: '白羊座', start: [3, 21], end: [4, 19]},
-    {name: '金牛座', start: [4, 20], end: [5, 20]},
-    {name: '双子座', start: [5, 21], end: [6, 21]},
-    {name: '巨蟹座', start: [6, 22], end: [7, 22]},
-    {name: '狮子座', start: [7, 23], end: [8, 22]},
-    {name: '处女座', start: [8, 23], end: [9, 22]},
-    {name: '天秤座', start: [9, 23], end: [10, 23]},
-    {name: '天蝎座', start: [10, 24], end: [11, 22]},
-    {name: '射手座', start: [11, 23], end: [12, 21]},
-  ];
-  
-  let sunSign = '';
-  for (const range of zodiacRanges) {
-    const [sm, sd] = range.start;
-    const [em, ed] = range.end;
-    
-    // 特殊处理摩羯座(跨年)
-    if (sm > em) {
-      if ((month === sm && day >= sd) || (month === em && day <= ed)) {
-        sunSign = range.name;
-        break;
-      }
-    } else {
-      // 起始月
-      if (month === sm && day >= sd) {
-        sunSign = range.name;
-        break;
-      }
-      // 结束月
-      if (month === em && day <= ed) {
-        sunSign = range.name;
-        break;
-      }
-      // 中间月(整个月在范围内)
-      if (sm < em && month > sm && month < em) {
-        sunSign = range.name;
-        break;
-      }
-    }
-  }
-  // 🛠️ V482d: 原为 `zodiacSigns[0]` —— 该标识符**全文件不存在**(自由变量),
-  //   一旦所有日期区间都没命中 sunSign 就抛 ReferenceError 崩掉整个 prompt 构造。
-  //   本意就是「取第一个星座名兜底」, 同函数内 `zodiacRanges[0].name` 才是正确写法。
-  if (!sunSign) sunSign = zodiacRanges[0].name;
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ E25/P0（2026-10-07 军师开工令）：先天报告「真值归位」
+  //   病根1（真值飞地）：本函数原只吃 birthDate，用手写的「星座日期区间表」推太阳星座，
+  //     而 prompt 却要求「本命第2/8/10宫深挖 + 土星/冥王相位」⇒ astroMatrix 缺失时只能幻觉。
+  //   病根2（太阳星座双源打架）：手写表临界日与 getNatalSunSign 不一致 ——
+  //     6/21(双子↔巨蟹)、10/23(天秤↔天蝎)、11/22(天蝎↔射手) ⇒ 同一用户先天报告与
+  //     月报/年报的太阳星座**互相矛盾**（心细用户交叉验证即穿帮）。
+  //   治本：① 太阳星座统一走 getNatalSunSign（与月报/年报**同源**）；
+  //        ② 摄入 buildNatalAnchors(astroMatrix) 本命真值块（太阳/月亮/上升 + 全行星宫位 +
+  //           土星/冥王），三轴共享同一份 SwissEph 真值 ⇒ 2/8/10 宫与克星相位不再凭空硬推。
+  //   ⚠️ 本改动**只改真值来源**，三轴叙事结构/字数/铁律一律不动（止血且零新风险）。
+  // ═══════════════════════════════════════════════════════════════════════
+  const _sunIdx = getNatalSunSign(birthDate);
+  const _SUN_BY_LANG = { zh: SUN_SIGN_ZH, en: SUN_SIGN_EN, es: SUN_SIGN_ES, fr: SUN_SIGN_FR, th: SUN_SIGN_TH, vi: SUN_SIGN_VI };
+  const _sunArr = _SUN_BY_LANG[lang] || SUN_SIGN_EN;
+  const sunSign = _sunArr[_sunIdx] || SUN_SIGN_EN[_sunIdx] || 'Cancer';
+  // 🛡️ E25/P0: 本命真值块 —— 与月报/年报**同一函数**（buildNatalAnchors 单一真源，杜绝双份实现漂移）
+  const natalAnchors = astroMatrix ? buildNatalAnchors(astroMatrix) : '';
 
   // 六语言 Prompt
   const PROMPTS = {
@@ -10750,6 +10717,18 @@ Tạo "Báo Cáo Giải Mã DNA Giàu Có Bẩm Sinh" cho người dùng này, t
   };
 
   const prompt = PROMPTS[lang] || PROMPTS.en;
+  // 🛡️ E25/P0: 注入本命真值块（三轴共用同一份 SwissEph 真值）+ 语言锁（防英文数据块带偏输出语种）
+  if (natalAnchors) {
+    const ONCE_NATAL_TRUTH_DIRECTIVE = {
+      zh: '【真值铁律】上方 [NATAL CHART ANCHORS] 为 SwissEph 实算的本命真值（终身不变）。第一轴「金库」的 2/8/10 宫、第二轴「克星」的土星/冥王宫位与星座，必须严格引用该块真值，严禁编造未给出的宫位数字或星座。全文必须使用简体中文书写（上方英文数据块仅作真值来源，严禁照抄英文句子）。',
+      en: '[TRUTH RULE] The [NATAL CHART ANCHORS] block above is your SwissEph-computed natal truth (fixed for life). Axis 1 (houses 2/8/10) and Axis 2 (Saturn/Pluto) MUST quote the exact signs and houses given there — never invent house numbers or signs that are not provided. Write the entire report in English.',
+      es: '[REGLA DE VERDAD] El bloque [NATAL CHART ANCHORS] anterior es tu verdad natal calculada con SwissEph (fija de por vida). El Eje 1 (casas 2/8/10) y el Eje 2 (Saturno/Plutón) DEBEN citar exactamente los signos y casas indicados; nunca inventes casas o signos no proporcionados. Escribe todo el informe en español.',
+      fr: "[RÈGLE DE VÉRITÉ] Le bloc [NATAL CHART ANCHORS] ci-dessus est votre vérité natale calculée par SwissEph (fixe à vie). L'Axe 1 (maisons 2/8/10) et l'Axe 2 (Saturne/Pluton) DOIVENT citer exactement les signes et maisons indiqués; n'inventez jamais de maisons ou de signes non fournis. Rédigez tout le rapport en français.",
+      th: '[กฎความจริง] บล็อก [NATAL CHART ANCHORS] ด้านบนคือความจริงดวงกำเนิดของคุณที่คำนวณด้วย SwissEph (คงที่ไม่เปลี่ยนตลอดชีวิต) แกนที่ 1 (เรือน 2/8/10) และแกนที่ 2 (ดาวเสาร์/ดาวพลูโต) ต้องอ้างอิงตำแหน่งและเรือนตามที่ระบุไว้เท่านั้น ห้ามสร้างเรือนหรือราศีขึ้นเอง เขียนรายงานทั้งหมดเป็นภาษาไทย',
+      vi: '[QUY TẮC CHÂN LÝ] Khối [NATAL CHART ANCHORS] ở trên là chân lý bản mệnh do SwissEph tính toán (cố định suốt đời). Trục 1 (nhà 2/8/10) và Trục 2 (Sao Thổ/Diêm Vương) BẮT BUỘC trích đúng cung và nhà đã cho; tuyệt đối không tự bịa số nhà hay cung không có trong đó. Viết toàn bộ báo cáo bằng tiếng Việt.',
+    };
+    prompt.user = `${prompt.user}\n\n${natalAnchors}\n\n${ONCE_NATAL_TRUTH_DIRECTIVE[lang] || ONCE_NATAL_TRUTH_DIRECTIVE.en}`;
+  }
   return prompt;
 }
 
@@ -10770,7 +10749,9 @@ function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, bi
   if (typeof prompt.user === 'string') prompt.user = prompt.user.replace(/[\u2026]/g, '...');
 
   // ── ② 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇 ──
-  if (lang === 'zh') {
+  // 🛡️ E25/P0: once（先天三轴）无「第五章」结构 ⇒ 该块（卧室/厨房/保险柜 = 年报第五章专属）不注入，
+  //   否则会把三轴报告带向五章骨架。月报/年报行为保持不变。
+  if (lang === 'zh' && reportType !== 'once') {
     prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
   }
 
@@ -10779,7 +10760,11 @@ function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, bi
   //   ② 火星真值 2026-09=巨蟹座, 10 月起离开巨蟹(狮子→处女→天秤), 但 LLM 把「火星在巨蟹」沿用到
   //     11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误(refund 级)。
   //   本约束为语言无关的通用禁令, **不含任何个案数值**(prompt 为全用户共用, 严禁写死某盘真值)。
-  if (lang === 'zh') {
+  if (lang === 'zh' && reportType === 'once') {
+    // 🛡️ E25/P0: once（先天三轴）无「第二章 / 逐月风控」结构 ⇒ 只注入**通用**星体真值铁律，
+    //   绝不下发「第二章 风控主线分配表」（否则三轴报告被带向月报/年报骨架）。月报/年报原样不变。
+    prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n3. 【内部字段严禁入正文】真值块/数据块中的字段名(如 natalSun / computed_houses / natalAnchors)一律只是给你的写作指令, 严禁原样写进正文。';
+  } else if (lang === 'zh') {
     prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕下方分配表给出的本月风控主线展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n6. 【内部字段严禁入正文】数据块/分配表中的「内部参考」「本月风控主线」「风控切入角度」「★」等一律只是给你的写作指令, 严禁把这些字样或字段名原样写进正文(H1~H6 与正文段落都不得出现)。\n\n【📌 第二章 风控主线分配表(内部参考, 严禁在正文写出本表名/字段名)】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月风控主线」, 以该处为准。';
   } else {
     prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
@@ -13034,7 +13019,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v530:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v531:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13180,14 +13165,14 @@ app.post('/api/wealth-oracle', async (req, res) => {
     if (reportType === 'monthly' || reportType === 'yearly' || reportType === 'once') {
       // ── V69 SwissEph: Fetch computed astro matrix ──
       let astroMatrix = null;
-      // 先天财富DNA不需要astroMatrix(静态本命盘)
-      if (reportType !== 'once') {
-        try {
-          astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); // 🛠️ V91: 传精确时间/坐标/时区；🛡️ V483: 传报告类型决定时间窗口(年报=财年7月–次年6月)
-          if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
-        } catch (e) {
-          console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
-        }
+      // 🛡️ E25/P0（2026-10-07 军师开工令）：**取消 once 隔离** —— 原 `if (reportType !== 'once')`
+      //   让 $4.99 先天报告拿到 astroMatrix=null，而 prompt 却要求「本命 2/8/10 宫 + 土星/冥王相位」
+      //   ⇒ 无数据硬推 = 幻觉（且与月报/年报真值自相矛盾）。先天报告的本命招牌同样需要 SwissEph 真值。
+      try {
+        astroMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); // 🛠️ V91: 传精确时间/坐标/时区；🛡️ V483: 传报告类型决定时间窗口(年报=财年7月–次年6月)
+        if (astroMatrix) console.log(`[Wealth Oracle] [V69] Got matrix (asc=${astroMatrix.meta?.rising_sign})`);
+      } catch (e) {
+        console.warn('[Wealth Oracle] [V69] Fetch failed:', e.message);
       }
 
       try {
@@ -13931,7 +13916,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v530:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v531:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14250,13 +14235,20 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // 🔧 V90: aiTimeout 声明在 try 块外,catch 才能访问
   let aiTimeout;
   try {
-    const prompt = buildWealthReportPrompt(birthDate, lang, reportType, {
-      dayMaster: '甲',
-      wuxing: { '金':1, '木':2, '水':1, '火':1, '土':1 },
-      sunSign: realSunSign, // 🔧 V32: 使用真实星座
-      hexName: '震',
-      cardName: '隐士',
-    }, astroMatrix, hasBirthTime);  // ← Pass V69 matrix + hasBirthTime to prompt builder
+    // 🛡️ E25/P0（2026-10-07 军师开工令）：**双通道产物口径收敛** —— 本端点原**无条件**调用
+    //   buildWealthReportPrompt，而该函数内只有 monthly / (else = yearly) 两个分支
+    //   ⇒ reportType='once' 会落进**年报骨架（五章 / 财年窗口）**：用户花 $4.99 拿到的其实是 $29.99 年报。
+    //   实证（vm 直调两构造器）：buildWealthReportPrompt(…,'once') 的 system/user 与 'yearly' **逐字节同构**。
+    //   治本：once 有自己的专属构造器 buildWealthOncePrompt（三轴 natal），此处按 reportType 分流 ⇒ 两通道同源同判。
+    const prompt = reportType === 'once'
+      ? buildWealthOncePrompt(birthDate, lang, astroMatrix)
+      : buildWealthReportPrompt(birthDate, lang, reportType, {
+        dayMaster: '甲',
+        wuxing: { '金':1, '木':2, '水':1, '火':1, '土':1 },
+        sunSign: realSunSign, // 🔧 V32: 使用真实星座
+        hexName: '震',
+        cardName: '隐士',
+      }, astroMatrix, hasBirthTime);  // ← Pass V69 matrix + hasBirthTime to prompt builder
     _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
 
     // 🛡️ E24⑥③(P1①): prompt 加固全部收敛到共享守卫（双通道单一真源）
@@ -15623,7 +15615,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v530-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v531-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

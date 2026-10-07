@@ -93,11 +93,11 @@ test('A4 端点内不得再有**内联** prompt 注入（分叉回归防线）',
 });
 
 test('A5 缓存键四站点同源：3 生产键骨架一致 + v2 为 -v2 形态 + 删键时间字段与写入端同源', () => {
-  const keys = [...src.matchAll(/`wealth:v530[^`]*`/g)].map((m) => m[0]);
+  const keys = [...src.matchAll(/`wealth:v531[^`]*`/g)].map((m) => m[0]);
   assert.strictEqual(keys.length, 4, `应为 4 站点，实为 ${keys.length}`);
-  const v2 = keys.filter((k) => k.includes('v530-v2'));
+  const v2 = keys.filter((k) => k.includes('v531-v2'));
   assert.strictEqual(v2.length, 1, 'v2 站点形态异常');
-  const prod = keys.filter((k) => !k.includes('v530-v2'));
+  const prod = keys.filter((k) => !k.includes('v531-v2'));
   assert.strictEqual(prod.length, 3, '生产站点数异常');
   const shape = prod.map((k) => k.replace(/\$\{[^}]*\}/g, '#'));
   const uniq = [...new Set(shape)];
@@ -204,16 +204,16 @@ test('C3 前端两处调用点均改用同源纯函数（旧正则已清除）',
   assert.ok(!/\/\^\\d\{1,2\}:\\d\{2\}\$\//.test(webCode), '仍残留旧 time 正则（25:99 可过）');
 });
 
-// ══════════════════ 四、bump 完整性（v530） ══════════════════
+// ══════════════════ 四、bump 完整性（v531） ══════════════════
 
-test('D1 bump v530：4 站点 + purge 双形态回收 v529 + 各基线前移 + 无 v529 残留', () => {
-  assert.strictEqual([...src.matchAll(/wealth:v530/g)].length, 4, 'server.js 4 站点须全为 v530');
-  assert.ok(purgeSrc.includes("'wealth:v529:*'"), 'purge 未回收 v529');
-  assert.ok(purgeSrc.includes("'wealth:v529-v2:*'"), 'purge 未回收 v529-v2');
-  assert.ok(sweepSrc.includes('wealth:v530:${d.birth}'), 'sweep-online cacheKeyOf 未前移');
-  assert.ok(yearlyStreamSrc.includes('MIN_CACHE_VER = 530'), 'MIN_CACHE_VER 未前移至 530');
-  assert.ok(linterSrc.includes("LATEST_CACHE_VER = 'v530'"), 'LATEST_CACHE_VER 未前移至 v530');
-  assert.ok(!/wealth:v529/.test(src), 'server.js 仍有 wealth:v529 残留');
+test('D1 bump v531：4 站点 + purge 双形态回收 v530 + 各基线前移 + 无 v530 残留', () => {
+  assert.strictEqual([...src.matchAll(/wealth:v531/g)].length, 4, 'server.js 4 站点须全为 v531');
+  assert.ok(purgeSrc.includes("'wealth:v530:*'"), 'purge 未回收 v530');
+  assert.ok(purgeSrc.includes("'wealth:v530-v2:*'"), 'purge 未回收 v530-v2');
+  assert.ok(sweepSrc.includes('wealth:v531:${d.birth}'), 'sweep-online cacheKeyOf 未前移');
+  assert.ok(yearlyStreamSrc.includes('MIN_CACHE_VER = 531'), 'MIN_CACHE_VER 未前移至 530');
+  assert.ok(linterSrc.includes("LATEST_CACHE_VER = 'v531'"), 'LATEST_CACHE_VER 未前移至 v531');
+  assert.ok(!/wealth:v530/.test(src), 'server.js 仍有 wealth:v530 残留');
 });
 
 // ══════════════════ 五、注入缺陷自测（证明判据有区分力） ══════════════════
@@ -260,8 +260,8 @@ test('【注入自测】放宽值域上界 → C2 必须红', () => {
   assert.strictEqual(f('25:99'), true, '闸门失效: 值域上界放宽未被 C2 判据识别');
 });
 
-test('【注入自测】v530 回退 v529 → D1 必须红', () => {
-  const degraded = src.replace(/wealth:v530/g, 'wealth:v529');
+test('【注入自测】v531 回退 v530 → D1 必须红', () => {
+  const degraded = src.replace(/wealth:v531/g, 'wealth:v530');
   assert.notStrictEqual(degraded, src, '注入未生效');
-  assert.notStrictEqual([...degraded.matchAll(/wealth:v530/g)].length, 4, '闸门失效: 版本回退未被 D1 判据识别');
+  assert.notStrictEqual([...degraded.matchAll(/wealth:v531/g)].length, 4, '闸门失效: 版本回退未被 D1 判据识别');
 });

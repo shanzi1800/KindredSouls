@@ -201,11 +201,11 @@ test('⑤ 注入自测（判据有区分力）: 污染契约表两个方向 ⇒ 
 });
 
 test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回收 v522 + MIN_CACHE_VER=523 + prompt 契约', () => {
-  const sites = [...SRC.matchAll(/wealth:v530/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v531/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523, 实得 ${sites}`);
   assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v522 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v522');
-  assert.ok(/MIN_CACHE_VER = 530/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
+  assert.ok(/MIN_CACHE_VER = 531/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 v523');
   // ⚠️ E22/R11p 补充：`MIN_CACHE_VER` 是**纯数字形态**（无 v 前缀）⇒ 字符串映射 v522→v523 覆盖不到，
   //    必须单独补丁（E20 实测 7 红，E22 复现同坑）。断言值与实际常量同时前移，杜绝"漏改但断言也漏"。
   // prompt 侧禁昵称契约（第三管）
@@ -216,7 +216,7 @@ test('⑥ v523 基线: server.js 4 站点 + 无 v522 残留 + purge 双形态回
     'audit-e12-r11-whole-report-lock.test.mjs', 'audit-e13-r11d-spelled-ordinals.test.mjs',
     'audit-e15-r11f-multilang-uncage.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v530/g)'), `${f} 站点计数基线未前移至 v523`);
+    assert.ok(t.includes('matchAll(/wealth:v531/g)'), `${f} 站点计数基线未前移至 v523`);
     assert.ok(!t.includes('matchAll(/wealth:v525/g)'), `${f} 残留 v522 站点计数基线`);
   }
 });

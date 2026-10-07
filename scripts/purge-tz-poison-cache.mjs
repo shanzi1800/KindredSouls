@@ -87,6 +87,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v527-v2:*',
   'wealth:v529:*',        // 🛡️ E24⑥③(P1): v529 全量作废（① 双通道 prompt 收敛 —— 抽 `applyWealthReportPromptGuards` 单一真源，**非流式**端点补齐「zh 空间铁律 / 星体星座真值铁律 / 月报语言包 / 年报占位符真值兜底」⇒ 非流式产物口径变更 ② 小语种卡标签本地化：`normalizeYearlyMarkup` 原**仅 zh**，现扩 fr/es/th/vi ⇒ 年报正文标签文本变更）
   'wealth:v529-v2:*',
+  'wealth:v530:*',        // 🛡️ E25/P0: v530 全量作废（① 先天报告真值飞地归位 —— `buildWealthOncePrompt` 废除手写 zodiacRanges 日期表改用 `getNatalSunSign()`，消灭 6/21、10/23、11/22 三临界日与月报/年报打架；摄入 `buildNatalAnchors(astroMatrix)` 本命真值块（太阳/月亮/上升 + 全行星宫位 + 土星/冥王）替代幻觉 ② **流式端点 reportType 分流** —— once 原被丢进 `buildWealthReportPrompt` 年报五章缺省分支（$4.99 拿到 $29.99 骨架），现改 `once ? buildWealthOncePrompt : buildWealthReportPrompt` ③ 非流式端点取消 `if (reportType !== 'once')` 隔离 ④ `applyWealthReportPromptGuards` 对 once 分区（不下发第五章空间铁律/第二章风控表））
+  'wealth:v530-v2:*',
   'wealth:v116-v2:*',
 ];
 
