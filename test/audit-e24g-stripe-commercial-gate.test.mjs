@@ -232,6 +232,15 @@ function checkStructure(serverSrc, pageSrc) {
   need(!/webhookSecret\s*&&\s*stripeSig/.test(hookSeg),
     'B1l: 禁止 `webhookSecret && stripeSig` 形态 —— 密钥在但无签名会走 else 分支跳过验签（fail-open 漏洞）');
 
+  // ── B1m~n 原始 body 保全（🔴 P0）：全局 body-parser 不得抢在 webhook 之前解析 ──
+  //   若全局 `app.use(express.json())` 先跑，req.body 变 object，路由内 express.raw
+  //   因 req._body 已置位而跳过 ⇒ constructEvent 必抛错 ⇒ **真实回调全部 400、权益永不落库**。
+  need(/split\('\?'\)\[0\]\s*===\s*'\/api\/webhook'/.test(serverSrc)
+    || serverSrc.includes("=== '/api/webhook') return next()"),
+    'B1m: 全局 JSON 解析必须对 /api/webhook 豁免（否则原始 body 被吞，真实回调验签必失败、权益永不落库）');
+  need(!/^\s*app\.use\(express\.json\(/m.test(serverSrc),
+    'B1n: 不得存在裸的全局 app.use(express.json(...)) —— 它会先于 webhook 路由吞掉原始 body');
+
   // ── B2 create-checkout：登录校验 + 防重付 + metadata ──
   const coIdx = serverSrc.indexOf("app.post('/api/create-checkout'");
   need(coIdx !== -1, 'B2a: /api/create-checkout 路由缺失');
@@ -372,6 +381,18 @@ test('C9 注入：验签退回 fail-open（密钥在但缺签名时跳过）⇒ 
   const fails = checkStructure(broken, PAGE_SRC);
   assert.ok(fails.some(f => f.startsWith('B1j') || f.startsWith('B1l')),
     'fail-open 验签回归未被拦下 ⇒ 判据失效。fails=' + JSON.stringify(fails));
+});
+
+test('C10 注入：全局 body-parser 抢在 webhook 前解析 ⇒ B1n 必须报红', () => {
+  // 复刻真实缺陷形态：恢复裸的全局 app.use(express.json(...))
+  const broken = SERVER_SRC.replace(
+    "const _globalJsonParser = express.json({ limit: '10mb' });",
+    "app.use(express.json({ limit: '10mb' }));\nconst _globalJsonParser = express.json({ limit: '10mb' });"
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（全局解析器写法被改？请同步更新注入锚点）');
+  const fails = checkStructure(broken, PAGE_SRC);
+  assert.ok(fails.some(f => f.startsWith('B1n')),
+    '全局 body-parser 抢先解析未被拦下 ⇒ 真实回调会 400。fails=' + JSON.stringify(fails));
 });
 
 test('C7 注入：后端分档为「任一档放行」（营收漏洞回归）⇒ A5 必须报红', () => {

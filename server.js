@@ -8774,7 +8774,18 @@ function dedupYearlyMonthTitles(text, lang, reportType) {
 }
 
 // // ── Middleware ──
-app.use(express.json({ limit: '10mb' }));
+// 🔴 E24⑥（2026-10-07）P0 修正：/api/webhook 必须拿到**原始 Buffer** 才能验签
+//   —— Stripe 签名是对**原始字节**做 HMAC。全局 json 解析器一旦抢先跑，req.body 变成
+//      object，路由内的 express.raw 见 req._body 已置位便跳过 ⇒ constructEvent 必然抛错
+//      ⇒ 真实回调 100% 400、权益永不落库（用户付了钱拿不到报告）。
+//   故对 webhook 路径**豁免**全局 JSON 解析，把原始流留给路由内的 express.raw。
+//   （urlencoded 只吃 application/x-www-form-urlencoded，Stripe 发 application/json，无需豁免）
+const _globalJsonParser = express.json({ limit: '10mb' });
+app.use((req, res, next) => {
+  const _p = (req.originalUrl || '').split('?')[0];
+  if (_p === '/api/webhook') return next();
+  return _globalJsonParser(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // ── CORS ──
