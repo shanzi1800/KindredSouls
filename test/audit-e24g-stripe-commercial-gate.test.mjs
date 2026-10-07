@@ -222,6 +222,16 @@ function checkStructure(serverSrc, pageSrc) {
   need(/method:\s*'POST'/.test(hookSeg), 'B1h: webhook 缺 INSERT 兜底（行不存在时）');
   need(hookSeg.includes('express.raw'), 'B1i: webhook 必须用 express.raw 保持原始 body 供验签');
 
+  // ── B1j~l 验签 fail-closed（🔴 P0 营收洞）：配了密钥 ⇒ 必须验签，缺签名一律 400 ──
+  //   反例形态：`if (webhookSecret && stripeSig) {...} else { JSON.parse(body) }`
+  //   ⇒ 只要不带 stripe-signature 头，就绕过验签直接吃伪造 JSON 写权益（白拿 VIP）。
+  need(/if\s*\(\s*webhookSecret\s*\)/.test(hookSeg),
+    'B1j: webhook 验签必须为「已配置密钥即强制校验」的 if (webhookSecret) 形态');
+  need(hookSeg.includes('Missing stripe-signature'),
+    'B1k: 配了密钥却缺 stripe-signature 时必须 400 拒绝（否则可伪造 JSON 白拿权益）');
+  need(!/webhookSecret\s*&&\s*stripeSig/.test(hookSeg),
+    'B1l: 禁止 `webhookSecret && stripeSig` 形态 —— 密钥在但无签名会走 else 分支跳过验签（fail-open 漏洞）');
+
   // ── B2 create-checkout：登录校验 + 防重付 + metadata ──
   const coIdx = serverSrc.indexOf("app.post('/api/create-checkout'");
   need(coIdx !== -1, 'B2a: /api/create-checkout 路由缺失');
@@ -353,6 +363,15 @@ test('C8 注入：注释里塞未配平 `/*`（复刻 api/*.js 事故）⇒ B8a 
   assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（注释被改？请同步更新注入锚点）');
   const fails = checkStructure(broken, PAGE_SRC);
   assert.ok(fails.some(f => f.startsWith('B8a')), '剥注释吞代码事故未被金丝雀拦下。fails=' + JSON.stringify(fails));
+});
+
+test('C9 注入：验签退回 fail-open（密钥在但缺签名时跳过）⇒ B1j/B1l 必须报红', () => {
+  // 复刻真实漏洞形态：把 `if (webhookSecret)` 退化成 `if (webhookSecret && stripeSig)`
+  const broken = SERVER_SRC.replace('if (webhookSecret) {', 'if (webhookSecret && stripeSig) {');
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（验签分支被改？请同步更新注入锚点）');
+  const fails = checkStructure(broken, PAGE_SRC);
+  assert.ok(fails.some(f => f.startsWith('B1j') || f.startsWith('B1l')),
+    'fail-open 验签回归未被拦下 ⇒ 判据失效。fails=' + JSON.stringify(fails));
 });
 
 test('C7 注入：后端分档为「任一档放行」（营收漏洞回归）⇒ A5 必须报红', () => {

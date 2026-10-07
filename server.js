@@ -12120,19 +12120,31 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   let event = null;
 
-  // ① 验签（有密钥则强校验；无密钥=本地/灰度时容忍但**必须告警**，绝不静默）
-  try {
-    if (webhookSecret && stripeSig) {
+  // ① 验签 —— 🔴 fail-closed 铁律：**只要配了密钥就必须验签**，
+  //    缺 sig / 验签异常一律 400 拒绝。绝不可退化成「密钥在但没带签名就跳过」，
+  //    否则任何人 POST 一段伪造 JSON 即可白拿顶级权益（营收致命洞）。
+  //    仅当**完全未配置**密钥（本地开发）时才容忍，且必须响告警。
+  if (webhookSecret) {
+    if (!stripeSig) {
+      console.error('[webhook] ❌ 已配置密钥但缺失 stripe-signature 头 → 拒绝');
+      return res.status(400).json({ error: 'Missing stripe-signature' });
+    }
+    try {
       const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
       event = stripe.webhooks.constructEvent(req.body, stripeSig, webhookSecret);
       console.log('[webhook] ✅ 验签通过:', event.type);
-    } else {
-      console.warn('[webhook] ⚠️ STRIPE_WEBHOOK_SECRET 或签名缺失 → 跳过验签（仅限非生产）');
-      event = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '{}'));
+    } catch (err) {
+      console.error('[webhook] ❌ 验签失败:', err.message);
+      return res.status(400).json({ error: err.message });
     }
-  } catch (err) {
-    console.error('[webhook] ❌ 验签失败:', err.message);
-    return res.status(400).json({ error: err.message });
+  } else {
+    console.warn('[webhook] ⚠️ 未配置 STRIPE_WEBHOOK_SECRET → 跳过验签（仅限本地开发）');
+    try {
+      event = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '{}'));
+    } catch (err) {
+      console.error('[webhook] ❌ 请求体非合法 JSON:', err.message);
+      return res.status(400).json({ error: 'Invalid JSON payload' });
+    }
   }
 
   try {
