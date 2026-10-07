@@ -11993,6 +11993,15 @@ function wealthEntitledByType(plans, reportType, now) {
   return null;
 }
 
+// ── 402 引导：按**请求产物**返回应购 SKU ──
+//   旧写法把 requiredPlan 硬编成 'wealth_monthly_report' ⇒ 请求年报的用户被引导去买月报，
+//   付完仍打不开年报（二次投诉来源）。故必须与 reportType 同源。
+function requiredPlanFor(reportType) {
+  if (reportType === 'yearly') return 'wealth_yearly_report';
+  if (reportType === 'once') return 'wealth_once';
+  return 'wealth_monthly_report';
+}
+
 // ── 测试绿色通道（原样保留）：free_access=1（前端从 URL 同源转发）/ Vercel 时代测试生日 ──
 const WEALTH_TEST_BIRTHDATE = '1990-06-15';
 // ⚠️ 射程：**只**覆盖这三种付费产物的生成端点；免费预告（reportType 缺省='oracle'）不受门禁
@@ -12620,7 +12629,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         return res.status(402).json({
           error: 'Payment required',
           code: 'ENTITLEMENT_REQUIRED',
-          requiredPlan: 'wealth_monthly_report',
+          requiredPlan: requiredPlanFor(reportType),
           data: _previewData,
           preview: true,
         });
@@ -13371,7 +13380,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       return res.status(402).json({
         error: 'Payment required',
         code: 'ENTITLEMENT_REQUIRED',
-        requiredPlan: 'wealth_monthly_report',
+        requiredPlan: requiredPlanFor(reportType),
         data: _previewData,
         preview: true,
       });

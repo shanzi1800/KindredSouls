@@ -55,6 +55,7 @@ function extractServerPureFns(src) {
     'function planHasAccess(plans, target, now)',
     'function wealthIsGreenChannel(body)',
     'function wealthEntitledByType(plans, reportType, now)',
+    'function requiredPlanFor(reportType)',
   ];
   let code = '';
   // 测试白名单常量也是「单一真源」的一部分，必须一并抽取（否则闸门读不到值）
@@ -68,7 +69,7 @@ function extractServerPureFns(src) {
     assert.ok(body && body.length > 10, `抽不出「${p}」函数体`);
     code += src.slice(idx, idx + p.length) + ' ' + body + '\n';
   }
-  const names = ['buildPlanPayload', 'planHasAccess', 'wealthIsGreenChannel', 'wealthEntitledByType'];
+  const names = ['buildPlanPayload', 'planHasAccess', 'wealthIsGreenChannel', 'wealthEntitledByType', 'requiredPlanFor'];
   const make = new Function(`${code}\nreturn { ${names.join(', ')} };`);
   return make();
 }
@@ -202,6 +203,22 @@ test('A6 前后端分档**同源一致性**：同一 paid_plans 矩阵两侧判�
   assert.equal(feEntitled('yearly', {}, true), true, '前端绿色通道应放行全部档位');
 });
 
+test('A7 requiredPlanFor: 402 引导必须按产物出档（年报不得引导去买月报）', () => {
+  assert.equal(FNS.requiredPlanFor('yearly'), 'wealth_yearly_report', '年报请求应引导购买年报档');
+  assert.equal(FNS.requiredPlanFor('monthly'), 'wealth_monthly_report');
+  assert.equal(FNS.requiredPlanFor('once'), 'wealth_once');
+  // 缺省/未知产物回落月报档（免费预告 reportType='oracle' 不受门禁，取默认即可）
+  assert.equal(FNS.requiredPlanFor('oracle'), 'wealth_monthly_report');
+  assert.equal(FNS.requiredPlanFor(undefined), 'wealth_monthly_report');
+  // 引导档必须真实存在于 SKU 表（防止写出不存在的档位）
+  const mapBlock = SERVER_SRC.match(/const STRIPE_PRICE_MAP = \{[\s\S]*?\n\};/);
+  assert.ok(mapBlock, 'server.js 缺少 STRIPE_PRICE_MAP');
+  for (const t of ['yearly', 'monthly', 'once']) {
+    const sku = FNS.requiredPlanFor(t);
+    assert.ok(mapBlock[0].includes(`${sku}:`), `引导档 ${sku} 不在 STRIPE_PRICE_MAP 中 ⇒ 用户点了也买不到`);
+  }
+});
+
 // ═══════════════════════════════════════════════════════════
 // B. 结构级：三件套落位与闸门次序
 // ═══════════════════════════════════════════════════════════
@@ -272,6 +289,9 @@ function checkStructure(serverSrc, pageSrc) {
   }
   need(serverSrc.includes("ENTITLEMENT_REQUIRED"), 'B3g: 402 必须带 code=ENTITLEMENT_REQUIRED（前端靠它分流）');
   need(serverSrc.includes('wealthIsGreenChannel(body)') || serverSrc.includes('wealthIsGreenChannel(req.body)'), 'B3h: 绿色通道判定必须接入权益解析');
+  const rpCount = (serverSrc.match(/requiredPlan:\s*requiredPlanFor\(reportType\)/g) || []).length;
+  need(rpCount === 2, `B3i: 两处 402 的 requiredPlan 必须同源 requiredPlanFor(reportType)，实为 ${rpCount} 处`);
+  need(!/requiredPlan:\s*'wealth_monthly_report'/.test(serverSrc), 'B3j: 禁止把 requiredPlan 硬编成月报档（年报用户会被误导买错档，付完仍打不开）');
 
   // ── B4 前端：四处请求体带绿道标记 + 流式带 Authorization + 按钮分档 ──
   const freeCount = (pageSrc.match(/free_access:\s*isGreenChannelRef\.current\s*\?\s*1\s*:\s*0/g) || []).length;
@@ -393,6 +413,17 @@ test('C10 注入：全局 body-parser 抢在 webhook 前解析 ⇒ B1n 必须报
   const fails = checkStructure(broken, PAGE_SRC);
   assert.ok(fails.some(f => f.startsWith('B1n')),
     '全局 body-parser 抢先解析未被拦下 ⇒ 真实回调会 400。fails=' + JSON.stringify(fails));
+});
+
+test('C11 注入：把 402 的 requiredPlan 硬编成月报档 ⇒ B3i/B3j 必须报红', () => {
+  const broken = SERVER_SRC.replace(
+    "requiredPlan: requiredPlanFor(reportType),",
+    "requiredPlan: 'wealth_monthly_report',"
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（402 返回体被改？请同步更新注入锚点）');
+  const fails = checkStructure(broken, PAGE_SRC);
+  assert.ok(fails.some(f => f.startsWith('B3i') || f.startsWith('B3j')),
+    'hardcode 档位回归未被拦下 ⇒ 判据失效。fails=' + JSON.stringify(fails));
 });
 
 test('C7 注入：后端分档为「任一档放行」（营收漏洞回归）⇒ A5 必须报红', () => {
