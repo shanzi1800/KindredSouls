@@ -6,7 +6,7 @@
  *    ① 请求坐标 stale state：首屏自动月报（loadWealthData）在 mount 批次读组件
  *      state（默认 12:00 / 13.75 / 100.5 / Asia/Bangkok），而 URL 参数由另一
  *      useEffect 异步写入 ⇒ 月报跑曼谷盘（缓存实证
- *      wealth:v529:1989-04-12:12:00:13.7500:100.5000:Asia/Bangkok:fr:monthly）。
+ *      wealth:v530:1989-04-12:12:00:13.7500:100.5000:Asia/Bangkok:fr:monthly）。
  *    ② 画布跨稿污染：月报与年报共用唯一 sacredText 画布 + 流式追加 ⇒ 两稿拼接
  *      （[🟢 Semaine N] 仅月报产出 = 混入指纹）。
  *  防线契约：
@@ -87,7 +87,7 @@ function runChecks(srcRaw) {
     const fnRegion = src.slice(src.indexOf(fnM[0]), src.indexOf(fnM[0]) + 2200);
     for (const [k, re, why] of [
       ['URLSearchParams', /new URLSearchParams\(/, 'A1a: 未用 URLSearchParams 解析 URL'],
-      ['time 正则', /\\d\{1,2\}:\\d\{2\}/, 'A1b: time 仅接受 HH:MM 的校验缺失（V491/WP-6 同源）'],
+      ['time 校验', /isValidBirthTime\(/, 'A1b: time 值域校验未走同源纯函数 isValidBirthTime（V491/WP-6 → E24⑥③ P1③ 前移：由形态校验升级为值域校验）'],
       ['coord-parse', /resolveCoordinates\(/, 'A1c: 坐标未走 coord-parse 统一校验（V491/WP-2 同源）'],
       ['tz Intl', /Intl\.DateTimeFormat\(/, 'A1d: tz 未走 Intl 可解析校验（V491/WP-7 同源）'],
     ]) {

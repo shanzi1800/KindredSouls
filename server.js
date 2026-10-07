@@ -7801,12 +7801,25 @@ function normalizeYearlyMarkup(text, lang, reportType) {
   let titles = 0, chaps = 0, dropped = 0, heads = 0, tags = 0;
   let out = text;
 
-  // ── ① 卡标签本地化(zh): 中文年报里不许出现英文模板标签 ──
-  if (lang === 'zh') {
+  // ── ① 卡标签本地化(zh/es/fr/th/vi): 非英文报告里不许出现英文模板标签 ──
+  //   🛡️ E24⑥③(P1②)：原实现**只覆盖 zh** ⇒ fr/es/th/vi 年报正文残留英文骨架标签
+  //     （`[Peak Revenue Window]` / `[Financial Black Swan Day]`），与产品输出语言不一致（军师 P1 指令）。
+  //   译名取自各语言 system prompt 的官方名称（见 src/prompts/yearlySystemZH.txt 各语段落）。
+  //   ⚠️ `en` 不在此表（英文即原生语言，替换反而错）；替换**幂等**（重复跑不改变文本）。
+  //   ⚠️ 正则片段写成字符串以免逐语言重复转义。
+  const _V480_TAG_MAP = {
+    zh: [['Peak\\s+Revenue\\s+Window', '财富高峰窗口'], ['Financial\\s+Black\\s+Swan\\s+Day', '财务黑天鹅日']],
+    es: [['Peak\\s+Revenue\\s+Window', 'Ventana de Éxito y Pico de Ingresos'], ['Financial\\s+Black\\s+Swan\\s+Day', 'Día del Cisne Negro Financiero']],
+    fr: [['Peak\\s+Revenue\\s+Window', 'Fenêtre de Revenu Sommet'], ['Financial\\s+Black\\s+Swan\\s+Day', 'Jour du Cygne Noir Financier']],
+    th: [['Peak\\s+Revenue\\s+Window', 'ช่วงเวลาทองคำเปิดคลังทรัพย์'], ['Financial\\s+Black\\s+Swan\\s+Day', 'วันวิกฤตตัดกระแสเงิน']],
+    vi: [['Peak\\s+Revenue\\s+Window', 'Cửa Sổ Vàng Tăng Trưởng Tài Lộc'], ['Financial\\s+Black\\s+Swan\\s+Day', 'Ngày Thiên Nga Đen Nguy Cơ Sụt Giảm']],
+  };
+  const _tagPairs = _V480_TAG_MAP[lang];
+  if (_tagPairs) {
     const b0 = out;
-    out = out
-      .replace(/\[\s*Peak\s+Revenue\s+Window\s*\]/gi, '[财富高峰窗口]')
-      .replace(/\[\s*Financial\s+Black\s+Swan\s+Day\s*\]/gi, '[财务黑天鹅日]');
+    for (const [enRe, lc] of _tagPairs) {
+      out = out.replace(new RegExp('\\[\\s*' + enRe + '\\s*\\]', 'gi'), '[' + lc + ']');
+    }
     if (out !== b0) tags = (b0.match(/Peak\s+Revenue\s+Window|Financial\s+Black\s+Swan\s+Day/gi) || []).length;
   }
 
@@ -8979,7 +8992,11 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   写入端实际存的规范键 `...:Asia/Calcutta:...`（Intl canonical）→ 清了等于没清。
     const _tzrC = resolveTimeZone(tz, lat, lon);
     const _ckTzDel = _tzrC.ok ? _tzrC.tz : tz;
-    const cacheKey = `wealth:v529:${birthDate}:${birthTime}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    // 🛡️ E24⑥③(P1①): 时间字段与写入端 `_ckTime = birthTime || '12:00'` **同源**
+    //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
+    //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
+    const _ckTimeDel = birthTime || '12:00';
+    const cacheKey = `wealth:v530:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10735,6 +10752,96 @@ Tạo "Báo Cáo Giải Mã DNA Giàu Có Bẩm Sinh" cho người dùng này, t
   const prompt = PROMPTS[lang] || PROMPTS.en;
   return prompt;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  E24⑥③(P1①) — 财富报告 prompt 守卫「单一真源」（双通道收敛）
+// ═══════════════════════════════════════════════════════════════════════════
+//  病根：/api/wealth-oracle（非流式）与 /api/wealth-oracle/stream **各自内联** prompt 加固。
+//        流式侧 5 处注入、非流式侧仅 1 处 ⇒ 同一盘、同一语言走两条通道得到**不同的 prompt**
+//        ⇒ 产物口径分叉（军师 P1 指令「统一双通道 Prompt 骨架」）。
+//  治法：全部收敛到本函数 —— 两端点各调一次；日后新增守卫**只改此处**（单一真源）。
+//  ⚠️ 顺序敏感：脏字符清洗必须最先（防 ByteString 死锁）；年报占位符真值兜底必须最后。
+//  ⚠️ 本函数只做**语言级/结构级**约束；唯一按盘回填的是末段占位符（astroMatrix 实算值），属既有设计。
+function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, birthDate) {
+  if (!prompt) return prompt;
+
+  // ── ① 脏字符清洗(... → ...,防 ByteString 死锁)──
+  if (typeof prompt.system === 'string') prompt.system = prompt.system.replace(/[\u2026]/g, '...');
+  if (typeof prompt.user === 'string') prompt.user = prompt.user.replace(/[\u2026]/g, '...');
+
+  // ── ② 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇 ──
+  if (lang === 'zh') {
+    prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
+  }
+
+  // ── ③ 🛠️ V482: 星体星座「反串染 / 反跨月沿用」硬约束（P0）──
+  //   病根(2026-09-30 生产端 1999-12-15 盘实证): ① 月亮被写成「射手座月亮」(串用太阳星座, sign-bleed);
+  //   ② 火星真值 2026-09=巨蟹座, 10 月起离开巨蟹(狮子→处女→天秤), 但 LLM 把「火星在巨蟹」沿用到
+  //     11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误(refund 级)。
+  //   本约束为语言无关的通用禁令, **不含任何个案数值**(prompt 为全用户共用, 严禁写死某盘真值)。
+  if (lang === 'zh') {
+    prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕下方分配表给出的本月风控主线展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n6. 【内部字段严禁入正文】数据块/分配表中的「内部参考」「本月风控主线」「风控切入角度」「★」等一律只是给你的写作指令, 严禁把这些字样或字段名原样写进正文(H1~H6 与正文段落都不得出现)。\n\n【📌 第二章 风控主线分配表(内部参考, 严禁在正文写出本表名/字段名)】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月风控主线」, 以该处为准。';
+  } else {
+    prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
+  }
+
+  // ── ④ 🛡️ V487: 年报逐月「叙述镜头 + 风控表达框架」分配表（破解跨月同构）──
+  //   取值范围 = 12 项闭集表；索引口径与 V485 一致（第 i 个月 ↔ 第 i 项）。
+  if (lang === 'zh' && reportType === 'yearly') {
+    prompt.system += buildYearlyLensFrameworkBlock();
+  }
+
+  // ── ⑤ V239: 月报动态币种/宫位语言包（仅 monthly）──
+  if (reportType === 'monthly') {
+    const _ctx = buildWealthPromptContext(lang, astroMatrix ? buildWealthMeta(birthDate, lang, astroMatrix) : null);
+    void _ctx; // 保留既有调用（历史行为：仅为触发上下文构建）
+    prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh']);
+  }
+
+  // ── ⑥ 🛠️ V165-crisis: 年报 system prompt 占位符真值兜底 ──
+  //   部分占位符在 buildWealthReportPrompt 内未回填 ⇒ 在此按 astroMatrix 实算值补齐，
+  //   并以「残留占位符」自检熔断（未替换 = 提示词结构塌陷，必须可见而非静默）。
+  if (reportType === 'yearly' && typeof prompt.system === 'string') {
+    const rRising = astroMatrix?.meta?.rising_sign || 'Cancer';
+    const NATAL_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+    const natalEN = NATAL_EN[getNatalSunSign(birthDate)];
+    const first = astroMatrix?.months?.[0];
+    const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
+    const rJupH = first ? getH(first.jupiter?.house) : 2;
+    const rSatH = first ? getH(first.saturn?.house) : 10;
+    const rPlH = first ? getH(first.pluto?.house) : 8;
+    const rSunH = first ? getH(first.sun?.house) : 1;
+    const rJupS = first?.jupiter?.sign || 'Leo';
+    const rSatS = first?.saturn?.sign || 'Aries';
+    const rMoonS = first?.moon?.sign || 'Cancer';
+    const rMoonH = first ? getH(first.moon?.house) : 2;
+    // 熔断检测
+    const unreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
+    if (unreplaced.length > 0) {
+      console.warn('[V165-crisis] Unreplaced tokens:', unreplaced);
+    }
+    prompt.system = prompt.system
+      .replace(/__RISING_LOCAL__/g, rRising)
+      .replace(/__RISING_SIGN__/g, rRising)
+      .replace(/__NATAL_SUN__/g, natalEN)
+      .replace(/__NATAL_SUN_EN__/g, natalEN)
+      .replace(/__JUP_HOUSE__/g, String(rJupH))
+      .replace(/__SAT_HOUSE__/g, String(rSatH))
+      .replace(/__PL_HOUSE__/g, String(rPlH))
+      .replace(/__SUN_HOUSE__/g, String(rSunH))
+      .replace(/__MOON_HOUSE__/g, String(rMoonH))
+      .replace(/__JUP_SIGN_LOCAL__/g, rJupS)
+      .replace(/__SAT_SIGN_LOCAL__/g, rSatS)
+      .replace(/__MOON_SIGN_LOCAL__/g, rMoonS);
+    const stillUnreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
+    if (stillUnreplaced.length > 0) {
+      console.error('[V165-crisis] FATAL: After replacement still unreplaced:', stillUnreplaced);
+    }
+  }
+
+  return prompt;
+}
+
 
 function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMatrix, hasBirthTime = false) {
   if (!reportType) return null;
@@ -12927,7 +13034,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v529:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v530:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13112,11 +13219,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
 
-        // 🛡️ V487: 年报逐月「叙述镜头 + 风控表达框架」注入
-        //   与非流式/流式两端点同源 —— 修复端点间提示词漂移(军师 P0 技术债同源问题)。
-        if (lang === 'zh' && reportType === 'yearly') {
-          prompt.system += buildYearlyLensFrameworkBlock();
-        }
+        // 🛡️ E24⑥③(P1①): prompt 加固统一走共享守卫（双通道单一真源）——
+        //   原此处**仅**注入 zh 逐月镜头框架 ⇒ 月报/年报缺「空间铁律 / 星体星座真值铁律 /
+        //   月报语言包 / 年报占位符真值兜底」⇒ 与流式端点产物口径分叉（军师 P1 指令）。
+        //   实现见 applyWealthReportPromptGuards（含脏字符清洗，必须最先）。
+        applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, birthDate);
 
         // 🛠️ V211: 月报从 4000→12000
         const maxTokens = reportType === 'yearly' ? 48000 : (reportType === 'once' ? 8000 : 12000);
@@ -13824,7 +13931,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v529:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v530:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14152,83 +14259,11 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }, astroMatrix, hasBirthTime);  // ← Pass V69 matrix + hasBirthTime to prompt builder
     _v433DumpPrompt(prompt);   // V433-DIAG（env 门控）
 
-    // ── V97r: prompt 脏字符清洗(... → ...,防 ByteString 死锁)──
-    if (prompt) {
-      prompt.system = prompt.system.replace(/[\u2026]/g, '...');
-
-      // 🛠️ V148: 空间锚点Prompt仅限中文,防止泰语等非中文语言输出中文词汇
-      if (lang === 'zh') {
-        prompt.system += '\n\n【⚠️ 空间财富对齐硬性铁律 -- 严禁幻觉】\n在撰写第五章时,你必须像执行编译器代码一样,毫无保留地严格遵守以下物理空间与占星宫位的固定隐喻,严禁将其替换为任何流年行运宫位:\n1. 卧室区域:必须且只能描述为"第四宫(田宅宫)",代表财富根基与守藏。\n2. 厨房区域:必须且只能描述为"第二宫(财帛宫)与第八宫(共享资源)",代表食禄与滋养之源。\n3. 财务室/保险柜:必须且只能描述为"第八宫(共享资源)",代表核心资产与偏财。\n\n【输出格式控制】:每一个空间的标题行必须严格使用以下加粗纯文本,严禁夹杂任何斜杠或自行脑补的星座(如白羊座/土星等杂质):\n* **卧室区域:第四宫(田宅宫)**\n* **厨房区域:第二宫(财帛宫)与第八宫(共享资源)**\n* **财务室/保险柜:第八宫(共享资源)**';
-      }
-      // 🛠️ V482: 星体星座「反串染 / 反跨月沿用」硬约束（P0）
-      //   病根(2026-09-30 生产端 1999-12-15 盘实证): ① 月亮被写成「射手座月亮」(串用太阳星座, sign-bleed);
-      //   ② 火星真值 2026-09=巨蟹座, 10 月起离开巨蟹(狮子→处女→天秤), 但 LLM 把「火星在巨蟹」沿用到
-      //     11/12/次年2/3/4/5/6 月共 6 处 → 全年星座错误(refund 级)。
-      //   本约束为语言无关的通用禁令, **不含任何个案数值**(prompt 为全用户共用, 严禁写死某盘真值)。
-      if (lang === 'zh') {
-        prompt.system += '\n\n【⚠️ 星体星座真值铁律 — 严禁串染与跨月沿用】\n1. 每一颗星体的星座必须独立按其自身真值书写, 严禁把一颗星体的星座套用到另一颗上(典型错误: 把太阳的星座写成月亮的星座, 产出"射手座月亮"这类自相矛盾表述)。\n2. 流年行星(太阳/火星/木星/土星/天王星/海王星/冥王星)的星座【逐月不同】, 必须逐月使用该月真值, 严禁把任意月份的星座沿用、复制或延宕到其他月份(典型错误: 把首月星座一路写到年末)。\n3. 黑天鹅日 / 财富高峰窗口等段落, 各月必须使用【该月】真实星象, 星体星座与措辞不得跨月雷同。\n4. 【流年 vs 本命必须显式标注】提及任一行星时, 若指流年行运必须带「流年/行运」字样, 若指本命盘配置必须带「本命」字样; 严禁同一颗星在两个语义间不加前缀地来回切换(典型错误: 先写「本命冥王星在第1宫射手座」, 后文又写「冥王星在第3宫水瓶座」却不标流年)。\n5. 【黑天鹅/风控段落严禁套模板】每月黑天鹅必须围绕下方分配表给出的本月风控主线展开, 相邻月份的叙述句式、比喻与结论必须明显不同; 严禁把上一月的整句或整段复制到下一月。\n6. 【内部字段严禁入正文】数据块/分配表中的「内部参考」「本月风控主线」「风控切入角度」「★」等一律只是给你的写作指令, 严禁把这些字样或字段名原样写进正文(H1~H6 与正文段落都不得出现)。\n\n【📌 第二章 风控主线分配表(内部参考, 严禁在正文写出本表名/字段名)】\n按第二章 12 个月出现的先后顺序依次对应(第 1 个月=第 1 项, 依此类推, 不得错位/重复):\n' + _V485_CRISIS_ANGLES.map((a, idx) => `${idx + 1}. ${a}`).join('; ') + '\n若某月数据块已单独给出「本月风控主线」, 以该处为准。';
-      } else {
-        prompt.system += '\n\n[PLANET-SIGN TRUTH RULE — NO SIGN-BLEED, NO CROSS-MONTH CARRY-OVER] (1) Each planet\'s sign MUST be written independently from its own true value; NEVER reuse one planet\'s sign for another (a typical error is labelling the Moon with the Sun\'s sign). (2) Transit planets (Sun/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto) CHANGE SIGN FROM MONTH TO MONTH: always use that month\'s true sign, and NEVER copy or carry over any other month\'s sign. (3) Black-swan days / peak windows MUST use the true configuration of THAT month; wording and signs must not be identical across months.';
-      }
-      // 🛡️ V487: 逐月「叙述镜头 + 风控表达框架」分配表 —— 破解概览首句/断路器段跨月同构(打地鼠终局)
-      //   与 V485 的「风控主线分配表」同法: 逐月注入**具体**切入角度/结构, 而非只下「禁止雷同」令。
-      //   取值范围 = 上面两张 12 项闭集表; 索引口径与 V485 一致(第 i 个月 ↔ 第 i 项)。
-      if (lang === 'zh' && reportType === 'yearly') {
-        prompt.system += buildYearlyLensFrameworkBlock();
-      }
-      // V239: 月报动态币种/宫位 Prompt 注入(覆盖通用标题模板,仅 monthly)
-      if (reportType === 'monthly') {
-        const _ctx = buildWealthPromptContext(lang, astroMatrix ? buildWealthMeta(birthDate, lang, astroMatrix) : null);
-        prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh']);
-      }
-      prompt.user = prompt.user.replace(/[\u2026]/g, '...');
-
-      // 🛠️ V165-fix: 清理 user prompt 残留占位符(年报/月报流式共用药组)
-      if (prompt.user) {
-        prompt.user = prompt.user.replace(/__RISING_LOCAL__/g, 'Cancer');
-        prompt.user = prompt.user.replace(/__NATAL_SUN__/g, 'Leo');
-      }
-    }
-
-    // 🛠️ V165-crisis: 年报 system prompt 强制占位符替换(流式端点年报路径不经过 buildWealthReportPrompt 内的替换)
-    // 年报不走 buildWealthReportPrompt 的 yearlySystem 替换逻辑,在此兜底
-    if (reportType === 'yearly' && prompt) {
-      const rRising = astroMatrix?.meta?.rising_sign || 'Cancer';
-      const NATAL_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-      const natalEN = NATAL_EN[getNatalSunSign(birthDate)];
-      const first = astroMatrix?.months?.[0];
-      const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
-      const rJupH = first ? getH(first.jupiter?.house) : 2;
-      const rSatH = first ? getH(first.saturn?.house) : 10;
-      const rPlH = first ? getH(first.pluto?.house) : 8;
-      const rSunH = first ? getH(first.sun?.house) : 1;
-      const rJupS = first?.jupiter?.sign || 'Leo';
-      const rSatS = first?.saturn?.sign || 'Aries';
-      const rMoonS = first?.moon?.sign || 'Cancer';
-      const rMoonH = first ? getH(first.moon?.house) : 2;
-      // 熔断检测
-      const unreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
-      if (unreplaced.length > 0) {
-        console.warn('[V165-crisis] Unreplaced tokens:', unreplaced);
-      }
-      prompt.system = prompt.system
-        .replace(/__RISING_LOCAL__/g, rRising)
-        .replace(/__RISING_SIGN__/g, rRising)
-        .replace(/__NATAL_SUN__/g, natalEN)
-        .replace(/__NATAL_SUN_EN__/g, natalEN)
-        .replace(/__JUP_HOUSE__/g, String(rJupH))
-        .replace(/__SAT_HOUSE__/g, String(rSatH))
-        .replace(/__PL_HOUSE__/g, String(rPlH))
-        .replace(/__SUN_HOUSE__/g, String(rSunH))
-        .replace(/__MOON_HOUSE__/g, String(rMoonH))
-        .replace(/__JUP_SIGN_LOCAL__/g, rJupS)
-        .replace(/__SAT_SIGN_LOCAL__/g, rSatS)
-        .replace(/__MOON_SIGN_LOCAL__/g, rMoonS);
-      const stillUnreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
-      if (stillUnreplaced.length > 0) {
-        console.error('[V165-crisis] FATAL: After replacement still unreplaced:', stillUnreplaced);
-      }
-    }
+    // 🛡️ E24⑥③(P1①): prompt 加固全部收敛到共享守卫（双通道单一真源）
+    //   原内联 6 段（脏字符清洗 / zh 空间铁律 / 星体星座真值铁律 / zh 逐月镜头框架 /
+    //   月报语言包 / 年报占位符真值兜底）⇒ 与 /api/wealth-oracle（非流式）共用同一实现，
+    //   杜绝「同一盘走两条通道得到不同 prompt」的产物口径分叉。
+    applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, birthDate);
 
     if (!prompt) {
       res.write(Buffer.from(`data: ${JSON.stringify({ error: 'Invalid reportType' })}
@@ -15588,7 +15623,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v529-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v530-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

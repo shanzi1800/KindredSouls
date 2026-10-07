@@ -85,6 +85,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v528:*',        // 🛡️ E24④/P5b: v528 全量作废（es 同位语 gloss 补**同义头部**（`el hogar de`）+ **受限逗号续段** —— v528 目标盘实证 `Casa 9/5/10` 挂错主题标签，3 处真错配）
   'wealth:v528-v2:*',
   'wealth:v527-v2:*',
+  'wealth:v529:*',        // 🛡️ E24⑥③(P1): v529 全量作废（① 双通道 prompt 收敛 —— 抽 `applyWealthReportPromptGuards` 单一真源，**非流式**端点补齐「zh 空间铁律 / 星体星座真值铁律 / 月报语言包 / 年报占位符真值兜底」⇒ 非流式产物口径变更 ② 小语种卡标签本地化：`normalizeYearlyMarkup` 原**仅 zh**，现扩 fr/es/th/vi ⇒ 年报正文标签文本变更）
+  'wealth:v529-v2:*',
   'wealth:v116-v2:*',
 ];
 

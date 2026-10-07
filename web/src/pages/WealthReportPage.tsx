@@ -27,7 +27,7 @@ import WealthInsightCard from '../components/WealthInsightCard';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 // 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
-import { resolveCoordinates } from '../lib/coord-parse';
+import { resolveCoordinates, isValidBirthTime } from '../lib/coord-parse';
 import {
   tWuxing, tZodiacSign, tZodiacElement, tBagua, tHexagram,
   tTarotName, tTarotMeaning, tOrientation, tZodiacMode, tRuler, tChanging, tTiangan,
@@ -983,7 +983,7 @@ const UPGRADE_HINTS: Record<string, string> = {
 
 // 🛡️ E24⑤/P0-1: 请求坐标唯一真源 = URL 参数**同步直读**（派生顺序：URL 显式参数 → 组件 state 兜底）。
 // 根因：首屏自动月报在 mount 批次读组件 state，而 URL 参数由另一 useEffect 异步写入 ⇒ 读到默认曼谷盘
-// （缓存实证 wealth:v529:…:12:00:13.7500:100.5000:Asia/Bangkok:fr:monthly，跑的是曼谷盘真值）。
+// （缓存实证 wealth:v530:…:12:00:13.7500:100.5000:Asia/Bangkok:fr:monthly，跑的是曼谷盘真值）。
 // 纯函数（无 state 依赖），供 loadWealthData / 流式 fallback / 旧非流式三处请求体统一取值；
 // 校验规则与 V491/WP-2·WP-6·WP-7 逐字同源（time 仅 HH:MM、coord-parse 成对校验、tz Intl 可解析）。
 export const deriveWealthBirthParams = (
@@ -993,7 +993,9 @@ export const deriveWealthBirthParams = (
   const p = new URLSearchParams(search);
   const out = { birthTime: fallback.birthTime, lat: fallback.lat, lon: fallback.lon, tz: fallback.tz };
   const timeP = p.get('time') || p.get('birthTime');
-  if (timeP && /^\d{1,2}:\d{2}$/.test(timeP)) out.birthTime = timeP;
+  // 🛡️ E24⑥③(P1③): 值域校验（原 `/^\d{1,2}:\d{2}$/` 只查形态，`25:99`/`99:00` 可过）
+  //   —— 与 mount 老路径共用同一纯函数（coord-parse::isValidBirthTime），单一真源。
+  if (timeP && isValidBirthTime(timeP)) out.birthTime = timeP;
   else if (timeP) console.warn('[WealthReport] E24⑤ derive: 无效 time 参数,保留 fallback（挂载 effect 侧会另行 setError）: ' + timeP);
   const latP = p.get('lat');
   const lonP = p.get('lon');
@@ -1211,7 +1213,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     // 🛠️ V143: 支持从 URL 传入精确出生时间/经纬度/时区(A轨:真实上升宫位)
     // ?time=HH:MM 有时间→Placidus 精确宫位;无 time → Solar House 降级
     const timeParam = params.get('time') || params.get('birthTime');
-    if (timeParam && /^\d{1,2}:\d{2}$/.test(timeParam)) {
+    // 🛡️ E24⑥③(P1③): 值域校验 —— 与 deriveWealthBirthParams 同源纯函数（`25:99` 一律拒绝）
+    if (timeParam && isValidBirthTime(timeParam)) {
       setBirthTime(timeParam);
       sessionStorage.setItem('wealth_time', timeParam);
     } else if (timeParam) {

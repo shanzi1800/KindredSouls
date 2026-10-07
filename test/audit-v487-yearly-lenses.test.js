@@ -162,13 +162,17 @@ test('②c 必须显式禁止三张表串用(线上首验实测: 3/12 个月概�
 // ══════════════════════════════════════════════════════════════════════════
 // ③ 接线: /stream 年报 + 非流式年报 各注入一次; /v2 逐月注入
 // ══════════════════════════════════════════════════════════════════════════
-test('③ 接线: 注入块在两条年报生成路径各挂 1 次, /v2 逐月挂 3 条', () => {
+test('③ 接线: 镜头块收敛到共享守卫(注入 1 次), 守卫在两条年报路径各挂 1 次; /v2 逐月挂 3 条', () => {
   const code = stripComments(src);
-  const calls = code.match(/prompt\.system \+= buildYearlyLensFrameworkBlock\(\)/g) || [];
-  assert.ok(calls.length >= 2, `buildYearlyLensFrameworkBlock 应在 /stream 与非流式各注入 1 次, 实得 ${calls.length}`);
-  // 每处都必须有 zh + yearly 双重护栏(别把中文表注进英文/月报)
+  // 🛡️ E24⑥③(P1①)：prompt 加固已收敛到共享守卫 applyWealthReportPromptGuards（单一真源）
+  //   ⇒ 镜头块在**守卫内**注入 1 次；两条年报路径各调守卫 1 次（原「各内联 1 处」表述已随之收敛）。
+  const lensInject = (code.match(/prompt\.system \+= buildYearlyLensFrameworkBlock\(\)/g) || []).length;
+  assert.strictEqual(lensInject, 1, `镜头块须收敛到共享守卫内注入 1 次（单一真源）, 实得 ${lensInject}`);
+  const guardCalls = (code.match(/applyWealthReportPromptGuards\(prompt, lang, reportType, astroMatrix, birthDate\);/g) || []).length;
+  assert.strictEqual(guardCalls, 2, `共享守卫须在 /stream 与非流式各调 1 次, 实得 ${guardCalls}`);
+  // 注入点必须带 zh + yearly 双重护栏(别把中文表注进英文/月报)
   const guards = code.match(/lang === 'zh' && reportType === 'yearly'/g) || [];
-  assert.ok(guards.length >= 2, `注入点缺少 zh+yearly 双护栏, 实得 ${guards.length}`);
+  assert.ok(guards.length >= 1, `注入点缺少 zh+yearly 双护栏, 实得 ${guards.length}`);
   // /v2 逐月注入 3 条
   assert.ok(/lensBlock \+= '★ 内部参考·本月叙述镜头/.test(code), '/v2 未注入「本月叙述镜头」');
   assert.ok(/lensBlock \+= '★ 内部参考·本月风控表达框架/.test(code), '/v2 未注入「本月风控表达框架」');

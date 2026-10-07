@@ -108,7 +108,7 @@ function cacheSites(src) {
   return out;
 }
 // 🛡️ 基线常量：每次输出链变更 bump 时**只改这一处**（旧写法把版本号散落在 6 处字面量里）
-const LATEST_CACHE_VER = 'v529';
+const LATEST_CACHE_VER = 'v530';
 const D1_ALL_LATEST = (src) => {
   const s = cacheSites(src);
   // 🛡️ E16/R11g 基线前移: 月标题逐月真值锁六语解封（es/fr/th/vi 原「lang===en 才识别」⇒ 12 盘 54 处标题错项）+ th 行星/宫位词正字化 + house_linter 月锚点补全 es/fr 全 12 月名 = 输出链变更 ⇒ v513 全量作废

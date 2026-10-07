@@ -161,9 +161,11 @@ test('【注入缺陷自测】把分隔符收窄回半角 → 判据③ 必须�
 });
 
 test('【注入缺陷自测】删掉标签本地化 → 判据⑥ 必须红(行为级)', () => {
-  const degradedFn = map.get('normalizeYearlyMarkup')
-    .replace(/\.replace\(\/\\\[\\s\*Peak\\s\+Revenue\\s\+Window\\s\*\\\]\/gi,[^\n]*\n/, '')
-    .replace(/\.replace\(\/\\\[\\s\*Financial[^\n]*\n/, '');
+  // 🛡️ E24⑥③(P1②)：实现由「zh-only 内联 replace」改为「_V480_TAG_MAP[lang] 查表 → 循环替换」
+  //   ⇒ 注入锚点随实现前移：把查表键打断（`_V480_TAG_MAP[lang]` → undefined）即复刻"本地化被删"。
+  const orig = map.get('normalizeYearlyMarkup');
+  const degradedFn = orig.replace('_V480_TAG_MAP[lang]', 'undefined');
+  assert.notStrictEqual(degradedFn, orig, '注入锚点失配（映射表查表形态已变）');
   const G = build({ normalizeYearlyMarkup: degradedFn });
   const out = G.normalizeYearlyMarkup('**🟢 [Peak Revenue Window]**', 'zh', 'yearly');
   assert.ok(out.includes('Peak Revenue Window'), '闸门失效: 标签本地化被删未被识别(判据⑥ 未红)');
