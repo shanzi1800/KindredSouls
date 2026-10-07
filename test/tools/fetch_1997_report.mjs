@@ -5,7 +5,7 @@ console.log('→ 请求非流式 /api/wealth-oracle (yearly, nocache)...');
 const t0 = Date.now();
 const res = await fetch('https://kindredsouls.online/api/wealth-oracle', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ birthDate, birthTime, lat, lon, tz, lang, reportType: 'yearly', nocache: true }),
+  body: JSON.stringify({ free_access: 1, ...({ birthDate, birthTime, lat, lon, tz, lang, reportType: 'yearly', nocache: true }) }),
   signal: AbortSignal.timeout(600000),
 });
 const body = await res.text();

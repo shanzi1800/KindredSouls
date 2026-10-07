@@ -11839,29 +11839,271 @@ const STRIPE_PRICE_MAP = {
   star_monthly_vip:      'price_1Tl5EjRnHNva8hysoVOryjQN',  // $9.99 双引擎月卡
   all_pass_yearly:       'price_1Tl5IFRnHNva8hysWa0ndl9A',  // $99.99 全通年卡
 };
-// ── /api/create-checkout ──
+// ═══════════════════════════════════════════════════════════════
+// 🛍️ E24⑥（2026-10-07 军师开工令）：商业闭环上架闸门
+//   病根：付费三件套（webhook 落库 / 防重付 / 端点权益校验）只存在于
+//         已废弃的 Vercel 函数（web/api 目录下的 webhook / create-checkout / wealth-oracle）；Railway 生产 server.js 里
+//         webhook 仅 `console.log` ⇒ 即便 Stripe 后台把回调指向本域，
+//         paid_plans 也永远写不进去（用户付了钱也解锁不了）。
+//   治法：原样移植 Vercel 三件套语义（含测试白名单 / free_access 绿色通道），单点收敛。
+//   铁律：下方四个纯函数（buildPlanPayload / planHasAccess / wealthIsGreenChannel /
+//         wealthEntitledByPlans）为**单一真源** —— 闸门
+//         test/audit-e24g-stripe-commercial-gate.test.mjs 直接抽取其源码做行为断言，
+//         实现与断言同源，改实现不改闸门必转红。
+// ═══════════════════════════════════════════════════════════════
+
+// ── 权益周期时间（月卡配额重置 / 年卡过期）──
+function computeNextMonthStartUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0)).toISOString();
+}
+function computeOneYearLaterUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear() + 1, now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)).toISOString();
+}
+
+// ── plan → paid_plans 片段（**合并**写入，绝不覆盖无关字段）──
+//   移植自 web/api/webhook.js::buildPlanPayload（逐档对齐，禁止增删档位）
+function buildPlanPayload(plan) {
+  const resetAt = computeNextMonthStartUTC();
+  const yearLater = computeOneYearLaterUTC();
+  switch (plan) {
+    case 'compatibility_once':
+      return { compatibility_once: true };
+    case 'wealth_once':
+      return { wealth_once: true };
+    case 'compatibility_monthly_report':
+      return { compatibility_monthly_report: true };
+    case 'wealth_monthly_report':
+      return { wealth_monthly_report: true };
+    case 'compatibility_yearly_report':
+      return { compatibility_yearly_report: true };
+    case 'wealth_yearly_report':
+      return { wealth_yearly_report: true };
+    case 'star_monthly_vip':
+      return {
+        star_monthly_vip: true,
+        star_monthly_wealth_allowance: 5,
+        star_monthly_wealth_used: 0,
+        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_used: 0,
+        star_monthly_resets_at: resetAt,
+      };
+    case 'all_pass_yearly':
+      return {
+        all_pass_yearly: true,
+        all_pass_expires_at: yearLater,
+        star_monthly_wealth_allowance: 5,
+        star_monthly_wealth_used: 0,
+        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_used: 0,
+        star_monthly_resets_at: resetAt,
+      };
+    default:
+      return { [plan]: true };
+  }
+}
+
+// ── 旧 plan ID → 新 plan ID（历史 Stripe 商品兼容，含 typo 修复）──
+const PLAN_MIGRATION = {
+  'insight_once': null,
+  'monthly': null,
+  'wealth_montly': 'wealth_monthly_report', // typo fix
+  'wealth_yearly': null,
+};
+function normalizePlanId(plan) {
+  const p = String(plan == null ? '' : plan);
+  if (Object.prototype.hasOwnProperty.call(PLAN_MIGRATION, p)) return PLAN_MIGRATION[p];
+  return p;
+}
+
+// ── 已购判定（防重复扣款）：宽档覆盖窄档。now 可注入 ⇒ 可测 ──
+function planHasAccess(plans, target, now) {
+  const p = plans || {};
+  const ts = now instanceof Date ? now : new Date();
+  const valid = (d) => d && !isNaN(new Date(d).getTime());
+  if (p[target] === true) return true;
+  const ap = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+
+  if (target === 'compatibility_once' || target === 'compatibility_monthly_report' || target === 'compatibility_yearly_report') {
+    if (ap) return true;
+    if (target === 'compatibility_once' && p.star_monthly_vip === true) {
+      const used = p.star_monthly_compatibility_used || 0;
+      const allowance = p.star_monthly_compatibility_allowance || 0;
+      const resetsAt = p.star_monthly_resets_at;
+      if (used < allowance && resetsAt && ts < new Date(resetsAt)) return true;
+    }
+  }
+
+  if (target === 'wealth_once' || target === 'wealth_monthly_report' || target === 'wealth_yearly_report') {
+    if (ap) return true;
+    if (target === 'wealth_once' && p.star_monthly_vip === true) {
+      const used = p.star_monthly_wealth_used || 0;
+      const allowance = p.star_monthly_wealth_allowance || 0;
+      const resetsAt = p.star_monthly_resets_at;
+      if (used < allowance && resetsAt && ts < new Date(resetsAt)) return true;
+    }
+  }
+
+  return false;
+}
+
+// ── 财富权益（纯函数，**按产物分档**）：命中则返回方法名，无权益返回 null ──
+//   分档规则（= 产品付费阶梯，与前端 wealthEntitledFor(type) 同源）：
+//     · once（$4.99 先天报告）→ wealth_once        / 月卡配额 / 全通年卡
+//     · monthly（$2.99 月报） → wealth_monthly_report / 月卡配额 / 全通年卡
+//     · yearly（$29.99 年报） → wealth_yearly_report  / 全通年卡
+//   🔴 禁止退化成「任一财富档即放行」的宽判 —— 否则 $4.99 用户可直接白拿 $29.99 年报。
+//   （Vercel 生产版 wealth-oracle.js 正是宽判，属历史遗留营收漏洞，本次**不放行**。）
+function wealthEntitledByType(plans, reportType, now) {
+  const p = plans || {};
+  const ts = now instanceof Date ? now : new Date();
+  const apValid = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  const starQuotaOk = p.star_monthly_vip === true
+    && (p.star_monthly_wealth_used || 0) < (p.star_monthly_wealth_allowance || 0)
+    && !!p.star_monthly_resets_at && ts < new Date(p.star_monthly_resets_at);
+  if (reportType === 'once') {
+    if (p.wealth_once === true) return 'wealth_once';
+    if (starQuotaOk) return 'star_monthly_vip';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  if (reportType === 'monthly') {
+    if (p.wealth_monthly_report === true) return 'wealth_monthly_report';
+    if (starQuotaOk) return 'star_monthly_vip';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  if (reportType === 'yearly') {
+    if (p.wealth_yearly_report === true) return 'wealth_yearly_report';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  return null;
+}
+
+// ── 测试绿色通道（原样保留）：free_access=1（前端从 URL 同源转发）/ Vercel 时代测试生日 ──
+const WEALTH_TEST_BIRTHDATE = '1990-06-15';
+// ⚠️ 射程：**只**覆盖这三种付费产物的生成端点；免费预告（reportType 缺省='oracle'）不受门禁
+const WEALTH_PAID_REPORT_TYPES = new Set(['monthly', 'yearly', 'once']);
+function wealthIsGreenChannel(body) {
+  const b = body || {};
+  if (b.free_access === 1 || b.free_access === true || b.freeAccess === 1 || b.freeAccess === true) return true;
+  return b.birthDate === WEALTH_TEST_BIRTHDATE;
+}
+
+// ── 权益解析：token → 用户 → paid_plans → **按产物分档**判定。失败**闭合**（绝不静默放行）──
+async function resolveWealthEntitlement(req, reportType) {
+  const body = req.body || {};
+  if (wealthIsGreenChannel(body)) return { ok: true, method: 'green_channel' };
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  // 本地/离线环境未接 Supabase ⇒ 不设卡（与闸门「射程外安全弃权」一致）
+  if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured' };
+  const authHeader = String(req.headers.authorization || '');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { ok: false, method: null, reason: 'NO_TOKEN' };
+  try {
+    const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+    });
+    if (!userRes.ok) return { ok: false, method: null, reason: 'INVALID_TOKEN' };
+    const { id: userId } = await userRes.json();
+    if (!userId) return { ok: false, method: null, reason: 'INVALID_TOKEN' };
+    const profRes = await safeFetch(
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    const rows = profRes.ok ? await profRes.json() : [];
+    const plans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+    const method = wealthEntitledByType(plans, reportType, new Date());
+    if (method) return { ok: true, method, userId, plans };
+    return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans };
+  } catch (e) {
+    console.warn('[E24⑥] entitlement check error:', e && e.message);
+    return { ok: false, method: null, reason: 'CHECK_ERROR' };
+  }
+}
+
+// ── /api/create-checkout ──（E24⑥ 全量移植：登录校验 → 防重付 → 建客户 → 建会话(**带 metadata**)）
+//   🛡️ metadata.supabase_user_id / metadata.plan 是 webhook 落库的**唯一钥匙**，
+//      缺它则回调无从归属 ⇒ 本次移植的核心不改项（旧 Railway 版正是缺这一段）。
 app.post('/api/create-checkout', async (req, res) => {
   try {
-    const { plan, successUrl, cancelUrl } = req.body;
-    const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const { plan: rawPlan, successUrl, cancelUrl } = req.body || {};
+    const plan = normalizePlanId(rawPlan);
+    const priceId = STRIPE_PRICE_MAP[plan];
+    if (!priceId) {
+      console.error('[create-checkout] Unknown plan:', rawPlan);
+      return res.status(400).json({ error: 'Unknown plan: ' + rawPlan });
+    }
+    if (!SB_URL || !SB_KEY) return res.status(500).json({ error: 'Supabase env missing' });
 
-    // 🛡️ 映射计划名 → Stripe Price ID
-    const priceId = STRIPE_PRICE_MAP[plan] || plan; // 兼容直接传 Price ID 的情况
-    if (!STRIPE_PRICE_MAP[plan] && !plan.startsWith('price_')) {
-      console.error('[create-checkout] Unknown plan:', plan);
-      return res.status(400).json({ error: 'Unknown plan: ' + plan });
+    // ① 登录校验：必须带 Bearer（与 Vercel 版同语义）
+    const authHeader = String(req.headers.authorization || '');
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+    });
+    if (!userRes.ok) return res.status(401).json({ error: 'Invalid or expired token' });
+    const { id: userId, email } = await userRes.json();
+    if (!userId) return res.status(401).json({ error: 'Invalid or expired token' });
+
+    // ② 拉权益 → 防重复扣款
+    const profileRes = await safeFetch(
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans,paid,stripe_customer_id,subscription_id`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' } }
+    );
+    const profiles = profileRes.ok ? await profileRes.json() : [];
+    const profile = (Array.isArray(profiles) && profiles[0]) || null;
+    const paidPlans = (profile && profile.paid_plans) || {};
+    if (planHasAccess(paidPlans, plan, new Date())) {
+      console.log(`[create-checkout] ${plan} 已被现有权益覆盖 user=${String(userId).slice(0, 8)} → already_paid`);
+      return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
     }
 
-    // 🛡️ 根据 plan 决定 mode:单次产品用 payment,订阅用 subscription
+    const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
+
+    // ③ 客户：无则建 + 落库（供后续订阅/查询关联）
+    let customerId = profile && profile.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email: email || undefined, metadata: { supabase_user_id: userId } });
+      customerId = customer.id;
+      await safeFetch(`${SB_URL}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ user_id: userId, stripe_customer_id: customerId, updated_at: new Date().toISOString() }),
+      });
+    }
+
+    // ④ 过期该客户遗留的 open session（同客户不允许重复挂单/混币种）
+    try {
+      const open = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 10 });
+      for (const s of open.data) { await stripe.checkout.sessions.expire(s.id).catch(() => {}); }
+    } catch (e) {
+      console.warn('[create-checkout] expire old sessions:', e.message);
+    }
+
+    // ⑤ 建会话 —— **必须带 metadata**（webhook 靠它写权益）
     const SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly']);
-    const sessionParams = {
+    const coversWealth = plan.startsWith('wealth_') || plan === 'star_monthly_vip' || plan === 'all_pass_yearly';
+    const origin = req.headers.origin || 'https://kindredsouls.online';
+    const defaultSuccess = `${origin}/wealth/report?payment=success&plan=${plan}`;
+    const defaultCancel = `${origin}${coversWealth ? '/wealth/report?payment=cancelled' : '/?payment=cancelled'}`;
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
       mode: SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl || `${req.headers.origin || 'https://kindredsouls.com'}/result?session_id={CHECKOUT_SESSION_ID}&paid=true`,
-      cancel_url: cancelUrl || `${req.headers.origin || 'https://kindredsouls.com'}/result?canceled=true`,
-    };
-    const session = await stripe.checkout.sessions.create(sessionParams);
+      success_url: successUrl || defaultSuccess,
+      cancel_url: cancelUrl || defaultCancel,
+      metadata: { supabase_user_id: userId, plan },
+    });
+    console.log('[create-checkout] ✅ session:', session.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
     console.error('[create-checkout]', err.message);
@@ -11869,24 +12111,114 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-// ── /api/webhook ──
+// ── /api/webhook ──（E24⑥ 全量移植：验签 → 解析事件 → **合并写 paid_plans**）
+//   🔴 上架前必办：Stripe Dashboard 的 webhook 端点须指向**本域** `/api/webhook`
+//      （旧 Vercel 域名已弃用）——否则本函数永远收不到回调，权益无从落库。
+//   ⚠️ 本路由用 express.raw 保持原始 body 供验签；**不可**改成 express.json。
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const stripeSig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event = null;
+
+  // ① 验签（有密钥则强校验；无密钥=本地/灰度时容忍但**必须告警**，绝不静默）
   try {
-    const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
-    const event = stripe.webhooks.constructEvent(req.body, stripeSig, webhookSecret);
-    console.log('[webhook] Event:', event.type);
-    // Handle events here (same logic as original webhook.js)
-    if (event.type === 'checkout.session.completed' || event.type === 'customer.subscription.created') {
-      const session = event.data.object;
-      const email = session.customer_details?.email || session.customer_email;
-      console.log('[webhook] Payment from:', email, 'plan:', session.metadata?.plan || session.subscription);
+    if (webhookSecret && stripeSig) {
+      const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
+      event = stripe.webhooks.constructEvent(req.body, stripeSig, webhookSecret);
+      console.log('[webhook] ✅ 验签通过:', event.type);
+    } else {
+      console.warn('[webhook] ⚠️ STRIPE_WEBHOOK_SECRET 或签名缺失 → 跳过验签（仅限非生产）');
+      event = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '{}'));
     }
+  } catch (err) {
+    console.error('[webhook] ❌ 验签失败:', err.message);
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    if (!event || event.type !== 'checkout.session.completed') {
+      console.log('[webhook] 非落库事件，忽略:', event && event.type);
+      return res.json({ received: true });
+    }
+
+    const session = event.data.object || {};
+    const plan = normalizePlanId(session.metadata && session.metadata.plan);
+    const userId = session.metadata && session.metadata.supabase_user_id;
+    const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
+    console.log('[webhook] 💰 支付成功 user:', userId, 'email:', email, 'plan:', plan);
+
+    if (!userId) {
+      console.warn('[webhook] ⚠️ 无 metadata.supabase_user_id（旧会话/手工创建）→ 跳过落库');
+      return res.json({ received: true, skipped: 'no_user_metadata' });
+    }
+    if (!plan) {
+      console.warn('[webhook] ⚠️ 无 metadata.plan → 跳过落库');
+      return res.json({ received: true, skipped: 'no_plan_metadata' });
+    }
+
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) {
+      console.error('[webhook] ❌ Supabase env 缺失 → 无法落库');
+      return res.status(500).json({ error: 'Supabase env missing' });
+    }
+
+    // ② 读现有权益 ⇒ **合并**写入（绝不覆盖无关字段；读失败按空合并并告警）
+    let currentPlans = {};
+    try {
+      const r = await safeFetch(
+        `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' } }
+      );
+      if (r.ok) {
+        const rows = await r.json();
+        currentPlans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+      } else {
+        console.warn('[webhook] ⚠️ 读 paid_plans 失败 status=' + r.status + ' → 按空权益合并');
+      }
+    } catch (e) {
+      console.warn('[webhook] ⚠️ 读 paid_plans 异常(按空权益合并):', e.message);
+    }
+
+    const updatedPlans = Object.assign({}, currentPlans, buildPlanPayload(plan));
+    const rowPatch = {
+      paid: true,
+      paid_plans: updatedPlans,
+      stripe_customer_id: session.customer || null,
+      subscription_id: session.subscription || session.id || null,
+      email: email || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    // ③ PATCH 优先；行不存在（406/404）则 INSERT
+    const patchRes = await safeFetch(`${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(rowPatch),
+    });
+
+    if (patchRes.ok) {
+      console.log('[webhook] ✅ PATCH 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan);
+    } else {
+      const errBody = await patchRes.text().catch(() => '');
+      console.warn('[webhook] PATCH 未成功:', patchRes.status, errBody, '→ 尝试 INSERT');
+      const insRes = await safeFetch(`${SB_URL}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(Object.assign({ user_id: userId, created_at: new Date().toISOString() }, rowPatch)),
+      });
+      if (!insRes.ok) {
+        const insBody = await insRes.text().catch(() => '');
+        console.error('[webhook] ❌ INSERT 落库失败:', insRes.status, insBody);
+        return res.status(500).json({ error: 'entitlement write failed' });
+      }
+      console.log('[webhook] ✅ INSERT 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan);
+    }
+
     res.json({ received: true });
   } catch (err) {
-    console.error('[webhook]', err.message);
-    res.status(400).json({ error: err.message });
+    console.error('[webhook] ❌ 处理失败:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -12251,6 +12583,27 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const cacheKey = `wealth:v529:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    // ═══ 🛍️ E24⑥ 权益闸门（军师开工令 2026-10-07）：付费产物必须先过权益 ═══
+    //   射程：monthly / yearly / once 三种付费产物；免费预告(reportType 缺省='oracle')不受门禁。
+    //   绿色通道：free_access=1（前端从 URL 同源转发）/ Vercel 时代测试生日 1990-06-15。
+    //   ⚠️ 必须置于 Cache Hit **之前** —— 否则无权益者可直接读走缓存里的付费正文。
+    if (WEALTH_PAID_REPORT_TYPES.has(reportType)) {
+      const _ent = await resolveWealthEntitlement(req, reportType);
+      if (!_ent.ok) {
+        console.log(`[E24⑥] entitlement DENIED reason=${_ent.reason} type=${reportType} date=${birthDate}`);
+        let _previewData = null;
+        try { _previewData = buildWealthMetaFull(birthDate, lang).result.data; } catch (e) { console.warn('[E24⑥] preview build failed:', e.message); }
+        return res.status(402).json({
+          error: 'Payment required',
+          code: 'ENTITLEMENT_REQUIRED',
+          requiredPlan: 'wealth_monthly_report',
+          data: _previewData,
+          preview: true,
+        });
+      }
+      console.log(`[E24⑥] entitlement GRANTED via ${_ent.method} type=${reportType}`);
+    }
 
     // ═══ 第一道拦截:Cache Hit ═══
     if (SB_URL && SB_KEY && reportType !== 'oracle' && !noCache) {
@@ -12982,6 +13335,27 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   }
   const lat = _coord.lat;
   const lon = _coord.lon;
+
+  // ═══ 🛍️ E24⑥ 权益闸门（流式主路径）═══
+  //   铁律同 tz/坐标闸门：必须在 SSE header 建立**之前**以 JSON 402 返回，
+  //   否则前端只会看到一个 200 的 SSE 管道里塞错误（假绿、且会吞掉 402 分支）。
+  if (WEALTH_PAID_REPORT_TYPES.has(reportType)) {
+    const _ent = await resolveWealthEntitlement(req, reportType);
+    if (!_ent.ok) {
+      console.log(`[E24⑥] (stream) entitlement DENIED reason=${_ent.reason} type=${reportType} date=${birthDate}`);
+      let _previewData = null;
+      try { _previewData = buildWealthMetaFull(birthDate, lang).result.data; } catch (e) { console.warn('[E24⑥] (stream) preview build failed:', e.message); }
+      return res.status(402).json({
+        error: 'Payment required',
+        code: 'ENTITLEMENT_REQUIRED',
+        requiredPlan: 'wealth_monthly_report',
+        data: _previewData,
+        preview: true,
+      });
+    }
+    console.log(`[E24⑥] (stream) entitlement GRANTED via ${_ent.method} type=${reportType}`);
+  }
+
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
 
   // 🛠️ V122-fix: SSE 心跳保活--Railway hikari 代理在 AI 首字延迟/生成停顿期会因 idle 掐断长连接 (curl 92 / ERR_HTTP2_PROTOCOL_ERROR);每 8s 发注释事件保活

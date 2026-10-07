@@ -7,7 +7,7 @@ try { await fetch(`https://kindredsouls.online/api/clear-cache/${birthDate}/${la
 const res = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ birthDate, birthTime: '14:30', lat: '69.6492', lon: '18.9553', tz: 'Europe/Oslo', lang, reportType: 'yearly', nocache: true }),
+  body: JSON.stringify({ free_access: 1, ...({ birthDate, birthTime: '14:30', lat: '69.6492', lon: '18.9553', tz: 'Europe/Oslo', lang, reportType: 'yearly', nocache: true }) }),
 });
 let buf = '', raw = '', san = '';
 const dec = new TextDecoder();

@@ -16,7 +16,7 @@ const results = [];
 const rec = (name, pass, detail) => { results.push({ name, pass, detail }); console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`); };
 
 const postJson = (p, body) => fetch(BASE + p, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ free_access: 1, ...(body) }),
 });
 
 /** 只取首帧后主动断开（SSE 长流不必等完；能拿到 200 首帧即证明未被闸门拦下） */
@@ -26,7 +26,7 @@ async function headOfStream(p, body, ms = 20000) {
   try {
     const r = await fetch(BASE + p, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body), signal: ctrl.signal,
+      body: JSON.stringify({ free_access: 1, ...(body) }), signal: ctrl.signal,
     });
     if (r.status !== 200) return { status: r.status, head: '' };
     const reader = r.body.getReader();

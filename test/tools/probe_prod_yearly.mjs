@@ -16,7 +16,7 @@ const t0 = Date.now();
 const res = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
+  body: JSON.stringify({ free_access: 1, ...(body) }),
 });
 console.log('HTTP', res.status, res.headers.get('content-type'));
 

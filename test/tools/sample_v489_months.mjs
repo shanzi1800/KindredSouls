@@ -129,11 +129,11 @@ async function fetchOnce(chart) {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: JSON.stringify({ free_access: 1, ...({
         birthDate: chart.birthDate, birthTime: chart.birthTime,
         lat: chart.lat, lon: chart.lon, tz: chart.tz,
         lang: 'zh', reportType: 'yearly', nocache: true,
-      }),
+      }) }),
       signal: AbortSignal.timeout(900000),
     });
     httpStatus = res.status;

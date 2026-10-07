@@ -1004,6 +1004,31 @@ export const deriveWealthBirthParams = (
   return out;
 };
 
+// ── 🛍️ E24⑥ 前端按钮门控（与后端 server.js::wealthEntitledByType **同源同档**）──
+//   分档规则（= 产品付费阶梯）：
+//     once（$4.99 先天报告）→ wealth_once / 月卡配额 / 全通年卡
+//     monthly（$2.99 月报） → wealth_monthly_report / 月卡配额 / 全通年卡
+//     yearly（$29.99 年报） → wealth_yearly_report / 全通年卡
+//   绿色通道（free_access=1，测试期）→ 全放行。
+//   ⚠️ 前后端任一侧改档位，另一侧必须同批改，否则出现「按钮可见但服务端 402」/「付了钱无入口」。
+export const wealthEntitledFor = (
+  type: 'once' | 'monthly' | 'yearly',
+  paidPlans: any,
+  freeAccess: boolean
+): boolean => {
+  if (freeAccess) return true;
+  const p = paidPlans || {};
+  const now = Date.now();
+  const apValid = p.all_pass_yearly === true
+    && (!p.all_pass_expires_at || new Date(p.all_pass_expires_at).getTime() > now);
+  const starQuotaOk = p.star_monthly_vip === true
+    && (p.star_monthly_wealth_used || 0) < (p.star_monthly_wealth_allowance || 0)
+    && !!p.star_monthly_resets_at && new Date(p.star_monthly_resets_at).getTime() > now;
+  if (type === 'once') return p.wealth_once === true || starQuotaOk || apValid;
+  if (type === 'monthly') return p.wealth_monthly_report === true || starQuotaOk || apValid;
+  return p.wealth_yearly_report === true || apValid;
+};
+
 // ── Component ──
 const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const { i18n, t } = useTranslation();
@@ -1522,6 +1547,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           lang: lang,
           reportType: 'monthly',
           referrer: 'standalone',
+          free_access: isGreenChannelRef.current ? 1 : 0, // 🛍️ E24⑥: 绿色通道标记(后端权益闸门放行)
         }),
       });
 
@@ -1905,19 +1931,38 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
         const _noCache = _urlParams.get('nocache') === 'true';
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // 🛍️ E24⑥: 必须携带登录 token —— 后端 /api/wealth-oracle/stream 权益闸门靠它换 paid_plans
+          //   （绿色通道 free_access=1 时后端直接放行，不依赖此头）
+          headers: {
+            'Content-Type': 'application/json',
+            ...(currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}),
+          },
           signal: abortRef.current.signal, // V244: 接入 fresh AbortController
-          body: JSON.stringify({ birthDate: _stableBirth, birthTime: _bp.birthTime, lat: _bp.lat, lon: _bp.lon, tz: _bp.tz, lang: _stableLang, reportType: type, nocache: _noCache }), // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
+          body: JSON.stringify({ birthDate: _stableBirth, birthTime: _bp.birthTime, lat: _bp.lat, lon: _bp.lon, tz: _bp.tz, lang: _stableLang, reportType: type, nocache: _noCache, free_access: isGreenChannelRef.current ? 1 : 0 }), // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
         });
 
         // 🛡️ V491/WP-1·F4: 400 等非 2xx 响应绝不能当 SSE 读(旧缺陷=静默空白)——先解析 JSON 错误体再决定
         if (!res.ok) {
           let _streamErrCode = '';
+          let _streamErrJson: any = null;
           try {
             const _errJson = await res.json();
             _streamErrCode = _errJson?.code || '';
+            _streamErrJson = _errJson;
           } catch (_) {}
           console.error('[WealthReport] 流式请求失败:', res.status, _streamErrCode);
+          // 🛍️ E24⑥: 402 权益不足 → 与非流式同款处理：渲染免费预告数据 + 保持付费墙，
+          //   绝不显示「生成失败」（对客是引导付费，不是报错）
+          if (res.status === 402 && _streamErrJson && _streamErrJson.data) {
+            setReportData(prev => (prev ? { ...prev, data: _streamErrJson.data } : prev));
+            setError(null);
+            _reportGen.delete(_memKey);
+            _fullMap.delete(_memKey);
+            setReportLoading('');
+            setLoading(false);
+            loadingRef.current = false;
+            return;
+          }
           if (_streamErrCode && _ERR_CODE_I18N[_streamErrCode]) {
             setError(t(_ERR_CODE_I18N[_streamErrCode]));
           } else {
@@ -2130,6 +2175,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 tz: _bp.tz,
                 lang: _stableLang,
                 reportType: type,
+                free_access: isGreenChannelRef.current ? 1 : 0, // 🛍️ E24⑥
               }),
             });
             if (fbRes.ok) {
@@ -2191,6 +2237,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           referrer: 'standalone',
           reportType: type,
           includeInsight: false,
+          free_access: isGreenChannelRef.current ? 1 : 0, // 🛍️ E24⑥
         }),
       });
       if (!res.ok) {
@@ -2641,29 +2688,42 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             </div>
 
             {/* 报告页保持绝对干净 - 无任何输入框,无任何提示。看 Teaser 直接付款。 */}
-            {(paidPlans?.all_pass_yearly === true || new URLSearchParams(window.location.search).get('free_access') === '1') ? (
-              <>
-                <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
-                </button>
-                <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
-                </button>
-                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {t('wealthReport.vipFree')}</div>
-              </>
-            ) : (
-              <>
-                <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  📅 {t('wealthReport.unlockMonthly')}
-                </button>
-                <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  📆 {t('wealthReport.unlockYearly')}
-                </button>
-                <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px' }}>
-                  💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
-                </div>
-              </>
-            )}
+            {/* 🛍️ E24⑥: 月报/年报**各自独立**门控 —— 已购该档才出「生成」按钮，未购出「解锁」按钮 */}
+            {/*   旧缺陷: 条件仅认 all_pass_yearly ⇒ 单买 $2.99/$29.99 的用户付完也进不了生成入口 */}
+            {(() => {
+              const _greenChannel = isGreenChannelRef.current || new URLSearchParams(window.location.search).get('free_access') === '1';
+              const _canMonthly = wealthEntitledFor('monthly', paidPlans, _greenChannel);
+              const _canYearly = wealthEntitledFor('yearly', paidPlans, _greenChannel);
+              return (
+                <>
+                  {_canMonthly ? (
+                    <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
+                      {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
+                    </button>
+                  ) : (
+                    <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      📅 {t('wealthReport.unlockMonthly')}
+                    </button>
+                  )}
+                  {_canYearly ? (
+                    <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
+                      {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
+                    </button>
+                  ) : (
+                    <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      📆 {t('wealthReport.unlockYearly')}
+                    </button>
+                  )}
+                  {(_canMonthly && _canYearly) ? (
+                    <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {t('wealthReport.vipFree')}</div>
+                  ) : (
+                    <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px' }}>
+                      💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

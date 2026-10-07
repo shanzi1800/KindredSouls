@@ -7,7 +7,7 @@ const body = {
 };
 const t0 = Date.now();
 const r = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ free_access: 1, ...(body) }),
 });
 let buf = '', full = '', san = '', n = 0, firstAt = 0;
 const dec = new TextDecoder();

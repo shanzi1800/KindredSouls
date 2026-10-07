@@ -15,7 +15,7 @@ try {
 const body = { birthDate, birthTime: '14:30', lat, lon, tz, lang, reportType: 'yearly', nocache: true };
 const t0 = Date.now();
 const res = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ free_access: 1, ...(body) }),
 });
 console.log('HTTP', res.status, res.headers.get('content-type'));
 

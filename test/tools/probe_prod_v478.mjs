@@ -5,7 +5,7 @@ import { getAstroMatrix } from '../../v69_client.js';
 const body = { birthDate: '1989-08-15', birthTime: '14:30', lat: '69.6492', lon: '18.9553', tz: 'Europe/Oslo', lang: 'zh', reportType: 'yearly' };
 const t0 = Date.now();
 const r = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ free_access: 1, ...(body) }),
 });
 if (!r.ok) { console.error('HTTP', r.status); process.exit(1); }
 let buf = '', full = '', san = '', n = 0, firstAt = 0;

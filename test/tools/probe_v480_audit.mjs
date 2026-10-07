@@ -17,7 +17,7 @@ try {
 const res = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ birthDate, birthTime: '14:30', lat, lon, tz, lang, reportType: 'yearly', nocache: true }),
+  body: JSON.stringify({ free_access: 1, ...({ birthDate, birthTime: '14:30', lat, lon, tz, lang, reportType: 'yearly', nocache: true }) }),
 });
 let buf = '', full = '', sanitized = '';
 const decoder = new TextDecoder();

@@ -112,7 +112,7 @@ async function fetchYearly(birthDate, birthTime, lat, lon, tz) {
   const t0 = Date.now();
   const res = await fetch('https://kindredsouls.online/api/wealth-oracle/stream', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ birthDate, birthTime, lat, lon, tz, lang: 'zh', reportType: 'yearly', nocache: true }),
+    body: JSON.stringify({ free_access: 1, ...({ birthDate, birthTime, lat, lon, tz, lang: 'zh', reportType: 'yearly', nocache: true }) }),
     signal: AbortSignal.timeout(900000),
   });
   let raw = '';
