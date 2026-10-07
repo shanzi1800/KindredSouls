@@ -12,6 +12,13 @@ let _dbgSet = 0;
 const _ERR_CODE_I18N: Record<string, string> = {
   INVALID_COORDINATES: 'wealthReport.errInvalidCoordinates',
   INVALID_TIMEZONE: 'wealthReport.errInvalidTimezone',
+  // 🛍️ E24⑥② 算力护栏错误码（后端 403/429 与流式 SSE 错误帧共用同一套 code）
+  MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED: 'wealthReport.alreadyGeneratedMonthly',
+  YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED: 'wealthReport.alreadyGeneratedYearly',
+  MONTHLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED: 'wealthReport.alreadyGeneratedMonthly',
+  YEARLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED: 'wealthReport.alreadyGeneratedYearly',
+  DAILY_WEALTH_RATE_LIMIT_EXCEEDED: 'wealthReport.dailyRateLimitExceeded',
+  DAILY_COMPAT_RATE_LIMIT_EXCEEDED: 'wealthReport.dailyRateLimitExceeded',
 };
 import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
@@ -1005,10 +1012,10 @@ export const deriveWealthBirthParams = (
 };
 
 // ── 🛍️ E24⑥ 前端按钮门控（与后端 server.js::wealthEntitledByType **同源同档**）──
-//   分档规则（= 产品付费阶梯）：
-//     once（$4.99 先天报告）→ wealth_once / 月卡配额 / 全通年卡
+//   分档规则（= 产品付费阶梯，军师裁决 2026-10-07 · 圣经 V2.0 §2.1）：
+//     once（$4.99 先天报告）→ wealth_once / 全通年卡        ← 🔴 月卡**不覆盖**（once 是永久落库资产）
 //     monthly（$2.99 月报） → wealth_monthly_report / 月卡配额 / 全通年卡
-//     yearly（$29.99 年报） → wealth_yearly_report / 全通年卡
+//     yearly（$29.99 年报） → wealth_yearly_report / 月卡配额 / 全通年卡
 //   绿色通道（free_access=1，测试期）→ 全放行。
 //   ⚠️ 前后端任一侧改档位，另一侧必须同批改，否则出现「按钮可见但服务端 402」/「付了钱无入口」。
 export const wealthEntitledFor = (
@@ -1021,12 +1028,12 @@ export const wealthEntitledFor = (
   const now = Date.now();
   const apValid = p.all_pass_yearly === true
     && (!p.all_pass_expires_at || new Date(p.all_pass_expires_at).getTime() > now);
+  // 月卡 5 次配额（与后端同源：只看余量，不再以 resets_at 判「订阅有效」—— 后端跨月自动归零）
   const starQuotaOk = p.star_monthly_vip === true
-    && (p.star_monthly_wealth_used || 0) < (p.star_monthly_wealth_allowance || 0)
-    && !!p.star_monthly_resets_at && new Date(p.star_monthly_resets_at).getTime() > now;
-  if (type === 'once') return p.wealth_once === true || starQuotaOk || apValid;
+    && (Number(p.star_monthly_wealth_used) || 0) < (Number(p.star_monthly_wealth_allowance) || 0);
+  if (type === 'once') return p.wealth_once === true || apValid;
   if (type === 'monthly') return p.wealth_monthly_report === true || starQuotaOk || apValid;
-  return p.wealth_yearly_report === true || apValid;
+  return p.wealth_yearly_report === true || starQuotaOk || apValid;
 };
 
 // ── Component ──
@@ -2068,8 +2075,15 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
 
                 if (parsed.error) {
                   // 🛠️ V361-fix: 后端返回 SSE 格式错误（如无效日期），捕获并显示友好提示
-                  console.warn('[WealthReport] ⚠️ 流式路由错误:', parsed.error);
-                  setError(parsed.error);
+                  // 🛍️ E24⑥②: 算力护栏（周期死锁 403 / 每日熔断 429）无法用 HTTP 状态码下发 —— SSE 管道已是 200，
+                  //   故后端起 SSE 错误帧带 code。此处按 code 映射本地化文案（与非流式 403/429 同一套真源）。
+                  const _gcode = parsed.code || '';
+                  console.warn('[WealthReport] ⚠️ 流式路由错误:', parsed.error, _gcode);
+                  if (_gcode && _ERR_CODE_I18N[_gcode]) {
+                    setError(`${t(_ERR_CODE_I18N[_gcode])}${parsed.nextAvailable ? ' ' + parsed.nextAvailable : ''}`);
+                  } else {
+                    setError(parsed.error);
+                  }
                   if (type === 'monthly') setMonthlyCardsReady(true); // 关闭骨架屏
                   break; // 跳出 stream reader
                 } else if (parsed.meta) {

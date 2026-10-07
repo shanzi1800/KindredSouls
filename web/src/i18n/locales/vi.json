@@ -56,6 +56,7 @@
     "generateAI": "✨ Tạo AI Insight",
     "alreadyGeneratedMonthly": "Báo cáo tài lộc tháng đã được tạo trong tháng này. Lần tiếp theo: tháng sau",
     "alreadyGeneratedYearly": "Báo cáo tài lộc năm đã được tạo trong năm nay. Lần tiếp theo: năm sau",
+    "dailyRateLimitExceeded": "🚦 Đã đạt giới hạn AI mỗi ngày (10 lần/ngày). Vui lòng thử lại vào ngày mai.",
     "generateFail": "Tạo thất bại",
     "loginFirst": "Vui lòng đăng nhập trước để tạo báo cáo.",
     "almanac": "Niên Ký Tài Lộc",

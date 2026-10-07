@@ -79,7 +79,9 @@ describe('V448 i18n Key 门禁', () => {
     }
     // V491: 新增 4 个错误文案 key（errInvalidCoordinates/errInvalidTimezone/errInvalidBirthTime/errTimezoneAdjusted）
     // 46 → 50，键集合全等校验（p.ok）不变，仍是主防线
-    assert.strictEqual(p.total, 50, 'V491 新增 4 key 后基准键数应为 50');
+    // 🛍️ E24⑥②（2026-10-07）: 新增 1 个算力护栏文案 key（wealthReport.dailyRateLimitExceeded）
+    // 50 → 51（6 语种同步新增，键集合全等不变）
+    assert.strictEqual(p.total, 51, 'E24⑥② 新增 dailyRateLimitExceeded 后基准键数应为 51');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

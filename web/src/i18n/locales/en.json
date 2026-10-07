@@ -56,6 +56,7 @@
     "generateAI": "✨ Generate AI Insight",
     "alreadyGeneratedMonthly": "Monthly wealth report already generated this month. Next available: next month",
     "alreadyGeneratedYearly": "Yearly wealth report already generated. Next available: next year",
+    "dailyRateLimitExceeded": "🚦 Daily AI limit reached (10/day). Please try again tomorrow.",
     "generateFail": "Generation failed",
     "loginFirst": "Please log in first to generate report.",
     "almanac": "Wealth Almanac",

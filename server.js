@@ -11896,7 +11896,7 @@ function buildPlanPayload(plan) {
         star_monthly_vip: true,
         star_monthly_wealth_allowance: 5,
         star_monthly_wealth_used: 0,
-        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_allowance: 5,
         star_monthly_compatibility_used: 0,
         star_monthly_resets_at: resetAt,
       };
@@ -11906,7 +11906,7 @@ function buildPlanPayload(plan) {
         all_pass_expires_at: yearLater,
         star_monthly_wealth_allowance: 5,
         star_monthly_wealth_used: 0,
-        star_monthly_compatibility_allowance: 1,
+        star_monthly_compatibility_allowance: 5,
         star_monthly_compatibility_used: 0,
         star_monthly_resets_at: resetAt,
       };
@@ -11929,31 +11929,30 @@ function normalizePlanId(plan) {
 }
 
 // ── 已购判定（防重复扣款）：宽档覆盖窄档。now 可注入 ⇒ 可测 ──
+//   🛍️ E24⑥②（军师裁决 2026-10-07）：月卡配额**只覆盖月报/年报**，绝不覆盖 $4.99 先天 once
+//   （once 是「永久落库死锁」核心资产，须单买或全通年卡解锁 ⇒ 否则 $9.99 可白嫖 $4.99）。
 function planHasAccess(plans, target, now) {
   const p = plans || {};
   const ts = now instanceof Date ? now : new Date();
-  const valid = (d) => d && !isNaN(new Date(d).getTime());
   if (p[target] === true) return true;
   const ap = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  // 月卡 5 次配额（跨月由 starMonthlyQuotaRoll 归零；不再以 resets_at 作为「订阅有效」判据 —— 见该函数注释）
+  const quotaOk = (usedKey, allowKey) =>
+    p.star_monthly_vip === true
+    && (Number(p[usedKey]) || 0) < (Number(p[allowKey]) || 0);
 
-  if (target === 'compatibility_once' || target === 'compatibility_monthly_report' || target === 'compatibility_yearly_report') {
+  if (target === 'compatibility_once' || target === 'wealth_once') {
+    // 🔴 once 档：月卡**不覆盖**（自身档已在上方判定），仅全通年卡可覆盖
     if (ap) return true;
-    if (target === 'compatibility_once' && p.star_monthly_vip === true) {
-      const used = p.star_monthly_compatibility_used || 0;
-      const allowance = p.star_monthly_compatibility_allowance || 0;
-      const resetsAt = p.star_monthly_resets_at;
-      if (used < allowance && resetsAt && ts < new Date(resetsAt)) return true;
-    }
+    return false;
   }
-
-  if (target === 'wealth_once' || target === 'wealth_monthly_report' || target === 'wealth_yearly_report') {
+  if (target === 'compatibility_monthly_report' || target === 'compatibility_yearly_report') {
     if (ap) return true;
-    if (target === 'wealth_once' && p.star_monthly_vip === true) {
-      const used = p.star_monthly_wealth_used || 0;
-      const allowance = p.star_monthly_wealth_allowance || 0;
-      const resetsAt = p.star_monthly_resets_at;
-      if (used < allowance && resetsAt && ts < new Date(resetsAt)) return true;
-    }
+    if (quotaOk('star_monthly_compatibility_used', 'star_monthly_compatibility_allowance')) return true;
+  }
+  if (target === 'wealth_monthly_report' || target === 'wealth_yearly_report') {
+    if (ap) return true;
+    if (quotaOk('star_monthly_wealth_used', 'star_monthly_wealth_allowance')) return true;
   }
 
   return false;
@@ -11971,11 +11970,11 @@ function wealthEntitledByType(plans, reportType, now) {
   const ts = now instanceof Date ? now : new Date();
   const apValid = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
   const starQuotaOk = p.star_monthly_vip === true
-    && (p.star_monthly_wealth_used || 0) < (p.star_monthly_wealth_allowance || 0)
-    && !!p.star_monthly_resets_at && ts < new Date(p.star_monthly_resets_at);
+    && (Number(p.star_monthly_wealth_used) || 0) < (Number(p.star_monthly_wealth_allowance) || 0);
   if (reportType === 'once') {
+    // 🔴 军师裁决 1（2026-10-07）：月卡**绝不**赠送 $4.99 先天报告 —— once 只有自身档或全通年卡。
+    //   （旧实现给「月卡配额」覆盖 once ⇒ $9.99 白拿 $4.99 ⇒ 营收漏洞，本次封堵。）
     if (p.wealth_once === true) return 'wealth_once';
-    if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
     return null;
   }
@@ -11987,10 +11986,207 @@ function wealthEntitledByType(plans, reportType, now) {
   }
   if (reportType === 'yearly') {
     if (p.wealth_yearly_report === true) return 'wealth_yearly_report';
+    // 🛍️ E24⑥②：月卡含「财富年报免费生成 1 次」（圣经 §2.1）⇒ 补 starQuotaOk
+    if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
     return null;
   }
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🛡️ E24⑥②（2026-10-07 军师开工令）算力护栏内核 —— 纯函数＝单一真源
+//   落地圣经 V2.0：§2.1 生成周期 / §3 全局熔断 / §4 Solar Return 锚定 / §5 缓存分层。
+//   铁律：全部接受**可注入 now** ⇒ 闸门 test/audit-e24h-compute-guard-gate.test.mjs
+//         直接抽取源码做行为断言（实现与断言同源，改实现不改闸门必转红）。
+//   豁免：绿色通道（free_access=1）/ 未配置 Supabase ⇒ 端点侧一律弃权（保测试与离线可用）。
+// ═══════════════════════════════════════════════════════════════
+
+const WEALTH_DAILY_LIMIT = 10;                       // §3 每日 AI 调用上限（非 once 用户）
+const WEALTH_SHARED_CACHE_TTL_HOURS = 24;            // §5 普通（共享）缓存 TTL
+
+// ── 时间基元（全 UTC，与 Vercel 版 / 线上 paid_plans 字段语义一致）──
+function _mkDate(v) { return v instanceof Date ? v : new Date(v); }
+function startOfUTCMonth(d) { const t = _mkDate(d); return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1, 0, 0, 0, 0)); }
+function startOfNextUTCMonth(d) { const t = _mkDate(d); return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 1, 0, 0, 0, 0)); }
+function startOfUTCDay(d) { const t = _mkDate(d); return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), 0, 0, 0, 0)); }
+function startOfNextUTCDay(d) { const t = _mkDate(d); return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1, 0, 0, 0, 0)); }
+function sameUTCDay(a, b) {
+  const x = _mkDate(a), y = _mkDate(b);
+  return !isNaN(x.getTime()) && !isNaN(y.getTime())
+    && x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth() && x.getUTCDate() === y.getUTCDate();
+}
+function _daysInUTCMonth(year, month1) { return new Date(Date.UTC(year, month1, 0, 0, 0, 0, 0)).getUTCDate(); }
+
+// ── §4 Solar Return 周期：以**主账户生日**（user_profiles.birth_date）的月-日为唯一轴心 ──
+//   换测算对象不改周期（圣经 §4：防「换伴侣无限刷新」）。
+//   返回 { ok, cycleStart, cycleEnd }；生日缺失/非法 ⇒ ok:false = **弃权不误锁**
+//   （成本风险 ≪ 误锁付费用户；且闸门有正向断言保证合法生日下必锁）。
+function solarReturnCycle(userBirthDate, now) {
+  const m = typeof userBirthDate === 'string' ? userBirthDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/) : null;
+  if (!m) return { ok: false };
+  const bm = Number(m[2]); let bd = Number(m[3]);
+  if (!(bm >= 1 && bm <= 12) || !(bd >= 1 && bd <= 31)) return { ok: false };
+  const d = _mkDate(now);
+  if (isNaN(d.getTime())) return { ok: false };
+  const y = d.getUTCFullYear();
+  bd = Math.min(bd, _daysInUTCMonth(y, bm));   // 2-29 之类：非闰年钳到月末，绝不造非法日期
+  const thisYear = new Date(Date.UTC(y, bm - 1, bd, 0, 0, 0, 0));
+  let cycleStart, cycleEnd;
+  if (d >= thisYear) {
+    cycleStart = thisYear;
+    cycleEnd = new Date(Date.UTC(y + 1, bm - 1, Math.min(bd, _daysInUTCMonth(y + 1, bm)), 0, 0, 0, 0));
+  } else {
+    cycleStart = new Date(Date.UTC(y - 1, bm - 1, Math.min(bd, _daysInUTCMonth(y - 1, bm)), 0, 0, 0, 0));
+    cycleEnd = thisYear;
+  }
+  return { ok: true, cycleStart, cycleEnd };
+}
+
+// ── §2.1 生成周期死锁：月报=自然月 1 次 / 年报=Solar Return 周期 1 次 ──
+//   🔴 军师裁决 3：年卡（all_pass_yearly）**不豁免**周期死锁 —— 年卡只豁免「付费」，不豁免「算力」。
+function wealthPeriodLock(plans, reportType, userBirthDate, now) {
+  const p = plans || {};
+  const d = _mkDate(now);
+  if (reportType === 'monthly') {
+    const start = startOfUTCMonth(d), end = startOfNextUTCMonth(d);
+    const last = p.monthly_wealth_report_generated_at ? _mkDate(p.monthly_wealth_report_generated_at) : null;
+    if (last && !isNaN(last.getTime()) && last >= start && last < end) {
+      return { locked: true, nextAvailable: end.toISOString() };
+    }
+    return { locked: false, nextAvailable: null };
+  }
+  if (reportType === 'yearly') {
+    const cyc = solarReturnCycle(userBirthDate, d);
+    if (!cyc.ok) return { locked: false, nextAvailable: null };
+    const last = p.yearly_wealth_report_generated_at ? _mkDate(p.yearly_wealth_report_generated_at) : null;
+    if (last && !isNaN(last.getTime()) && last >= cyc.cycleStart && last < cyc.cycleEnd) {
+      return { locked: true, nextAvailable: cyc.cycleEnd.toISOString(), solarReturnStart: cyc.cycleStart.toISOString() };
+    }
+    return { locked: false, nextAvailable: null };
+  }
+  return { locked: false, nextAvailable: null };
+}
+
+// ── §3 每日熔断：非 once 用户 ≤10 次/日 ──
+//   once 用户走永久缓存 = 0 次 AI ⇒ 天然豁免（圣经 §3 注）。
+function wealthDailyRateLimit(plans, now) {
+  const p = plans || {};
+  if (p.wealth_once === true) return { limited: false, count: 0, resetsAt: null };
+  const d = _mkDate(now);
+  const resetAt = p.daily_wealth_call_resets_at ? _mkDate(p.daily_wealth_call_resets_at) : null;
+  const sameDay = !!resetAt && sameUTCDay(resetAt, d);
+  const count = sameDay ? (Number(p.daily_wealth_call_count) || 0) : 0;
+  return { limited: count >= WEALTH_DAILY_LIMIT, count, resetsAt: startOfNextUTCDay(d).toISOString() };
+}
+
+// ── 月卡配额自然月清零（§3：月卡每月 5 次）──
+//   病根：旧实现以 `now < star_monthly_resets_at` 作为「月卡仍有效」判据，而 Stripe 续订事件
+//   （invoice.payment_succeeded）后端不处理 ⇒ resets_at 过期即**永久失效**（付费用户次月直接 402）。
+//   治法：`star_monthly_vip === true` 即视为订阅有效，跨自然月把 used 归零 + resets_at 前移。
+function starMonthlyQuotaRoll(plans, now) {
+  const p = plans || {};
+  const d = _mkDate(now);
+  const resetsAt = p.star_monthly_resets_at ? _mkDate(p.star_monthly_resets_at) : null;
+  const expired = !resetsAt || isNaN(resetsAt.getTime()) || d >= resetsAt;
+  if (!expired) return { rolled: false, delta: {} };
+  return {
+    rolled: true,
+    delta: {
+      star_monthly_wealth_used: 0,
+      star_monthly_compatibility_used: 0,
+      star_monthly_resets_at: startOfNextUTCMonth(d).toISOString(),
+    },
+  };
+}
+
+// ── 计费/计数递增片段（调用方 merge 后 PATCH；单一真源，端点内严禁手写）──
+//   opts.withDaily=false      → 只取周期时间戳（**生成成功后**才写）
+//   opts.withTimestamp=false  → 只取配额/日计数（**AI 调用前**扣减，防双花）
+function wealthCounterDelta(plans, reportType, method, now, opts) {
+  const p = plans || {};
+  const d = _mkDate(now);
+  const o = opts || {};
+  const resetAt = p.daily_wealth_call_resets_at ? _mkDate(p.daily_wealth_call_resets_at) : null;
+  const sameDay = !!resetAt && sameUTCDay(resetAt, d);
+  const delta = {};
+  if (o.withDaily !== false) {
+    delta.daily_wealth_call_count = sameDay ? (Number(p.daily_wealth_call_count) || 0) + 1 : 1;
+    delta.daily_wealth_call_resets_at = startOfUTCDay(d).toISOString();
+  }
+  if (o.withQuota !== false && method === 'star_monthly_vip') {
+    const roll = starMonthlyQuotaRoll(p, d);
+    Object.assign(delta, roll.delta);
+    const base = roll.rolled ? 0 : (Number(p.star_monthly_wealth_used) || 0);
+    delta.star_monthly_wealth_used = base + 1;
+  }
+  if (o.withTimestamp !== false) {
+    if (reportType === 'monthly') delta.monthly_wealth_report_generated_at = d.toISOString();
+    if (reportType === 'yearly') delta.yearly_wealth_report_generated_at = d.toISOString();
+  }
+  return delta;
+}
+
+// ── §5 缓存分层 ──
+//   Tier A（共享 24h）：所有请求者共用；超过 24h 的行不再作为**共享缓存**信任。
+function wealthSharedCacheSince(now) {
+  return new Date(_mkDate(now).getTime() - WEALTH_SHARED_CACHE_TTL_HOURS * 3600 * 1000).toISOString();
+}
+//   Tier B（本人报告周期）：Tier A 过期后，**本期已生成**的报告仍必须可读 ——
+//   否则「24h TTL」× 「自然月/周期死锁」叠加会把付了钱的用户在期内锁死（可见回归）。
+//   once = 永久（null ⇒ 不加时间过滤）；monthly = 本自然月；yearly = 本 Solar Return 周期。
+function wealthPeriodCacheSince(reportType, userBirthDate, now) {
+  const d = _mkDate(now);
+  if (reportType === 'once') return null;
+  if (reportType === 'monthly') return startOfUTCMonth(d).toISOString();
+  if (reportType === 'yearly') {
+    const cyc = solarReturnCycle(userBirthDate, d);
+    return cyc.ok ? cyc.cycleStart.toISOString() : null;
+  }
+  return null;
+}
+
+// ── 护栏拒绝文案（非流式 403/429 与流式 SSE 错误帧共用同一真源）──
+const WEALTH_GUARD_MSG = {
+  MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED: '本月财富月报已生成，请下月 1 日再来（月内重复查看刷新页面即走缓存）。',
+  YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED: '本周期的财富年报已生成，请在下一个宇宙生日周期再来。',
+  DAILY_WEALTH_RATE_LIMIT_EXCEEDED: '今日财富 AI 调用已达上限（10 次/日），请明日 00:00 后再试。',
+};
+function wealthGuardBody(code, extra) {
+  return Object.assign({ success: false, error: WEALTH_GUARD_MSG[code] || code, code }, extra || {});
+}
+
+// ── 护栏增量落库（读-合并-写；**只并增量字段**，绝不整份 paid_plans 覆盖）──
+//   ⚠️ 必须校验 res.ok + 打 status/body —— 静默失败 = 计数器永不递增 = 护栏形同虚设。
+async function patchWealthPlans(userId, delta) {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY || !userId || !delta || Object.keys(delta).length === 0) {
+    return { ok: false, skipped: true };
+  }
+  try {
+    const r = await safeFetch(
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const cur = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+    const merged = Object.assign({}, cur, delta);
+    const w = await safeFetch(`${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ paid_plans: merged, updated_at: new Date().toISOString() }),
+    });
+    console.log(`[E24⑥②] counter PATCH status=${w.status} keys=${Object.keys(delta).join(',')} user=${String(userId).slice(0, 8)}`);
+    if (!w.ok) {
+      const b = await w.text().catch(() => '');
+      console.warn(`[E24⑥②] counter PATCH FAIL status=${w.status} body=${String(b).slice(0, 200)}`);
+    }
+    return { ok: w.ok, status: w.status, merged };
+  } catch (e) {
+    console.warn('[E24⑥②] counter PATCH error:', e && e.message);
+    return { ok: false, error: e && e.message };
+  }
 }
 
 // ── 402 引导：按**请求产物**返回应购 SKU ──
@@ -12031,16 +12227,135 @@ async function resolveWealthEntitlement(req, reportType) {
     const { id: userId } = await userRes.json();
     if (!userId) return { ok: false, method: null, reason: 'INVALID_TOKEN' };
     const profRes = await safeFetch(
-      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans&limit=1`,
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans,birth_date&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
     );
     const rows = profRes.ok ? await profRes.json() : [];
     const plans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+    // 🛍️ E24⑥②：一并取 birth_date —— Solar Return 周期（年报死锁 / 缓存分层）的**唯一轴心**（圣经 §4）
+    const userBirthDate = (Array.isArray(rows) && rows[0] && rows[0].birth_date) || null;
     const method = wealthEntitledByType(plans, reportType, new Date());
-    if (method) return { ok: true, method, userId, plans };
-    return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans };
+    if (method) return { ok: true, method, userId, plans, userBirthDate };
+    return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
   } catch (e) {
     console.warn('[E24⑥] entitlement check error:', e && e.message);
+    return { ok: false, method: null, reason: 'CHECK_ERROR' };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🛍️ E24⑥② 合婚域权益内核（与财富域**完全对称**，军师裁决 2：合婚配额同样 5 次/月）
+//   病根：合婚模块（/api/ai-advisor）此前**零鉴权、零权益、零配额** ⇒ 匿名 POST 直烧 AI token。
+// ═══════════════════════════════════════════════════════════════
+function compatibilityEntitledByType(plans, reportType, now) {
+  const p = plans || {};
+  const ts = now instanceof Date ? now : new Date();
+  const apValid = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  const starQuotaOk = p.star_monthly_vip === true
+    && (Number(p.star_monthly_compatibility_used) || 0) < (Number(p.star_monthly_compatibility_allowance) || 0);
+  if (reportType === 'once') {
+    // 🔴 与财富域同裁决：月卡**不覆盖** once（先天合盘是永久落库资产）
+    if (p.compatibility_once === true) return 'compatibility_once';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  if (reportType === 'monthly') {
+    if (p.compatibility_monthly_report === true) return 'compatibility_monthly_report';
+    if (starQuotaOk) return 'star_monthly_vip';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  if (reportType === 'yearly') {
+    if (p.compatibility_yearly_report === true) return 'compatibility_yearly_report';
+    if (starQuotaOk) return 'star_monthly_vip';
+    if (apValid) return 'all_pass_yearly';
+    return null;
+  }
+  return null;
+}
+function requiredPlanForCompat(reportType) {
+  if (reportType === 'yearly') return 'compatibility_yearly_report';
+  if (reportType === 'once') return 'compatibility_once';
+  return 'compatibility_monthly_report';
+}
+// 合婚域周期死锁：**复用财富域周期数学**（单一真源），仅把时间戳字段换成 compatibility_*
+function compatibilityPeriodLock(plans, reportType, userBirthDate, now) {
+  const p = Object.assign({}, plans || {});
+  if (reportType === 'monthly') p.monthly_wealth_report_generated_at = p.compatibility_monthly_report_generated_at;
+  if (reportType === 'yearly') p.yearly_wealth_report_generated_at = p.compatibility_yearly_report_generated_at;
+  return wealthPeriodLock(p, reportType, userBirthDate, now);
+}
+// 合婚域每日熔断（独立计数键 daily_ai_call_count，与财富域 daily_wealth_* 平行；once 用户天然豁免）
+function compatibilityDailyRateLimit(plans, now) {
+  const p = plans || {};
+  if (p.compatibility_once === true) return { limited: false, count: 0, resetsAt: null };
+  const d = _mkDate(now);
+  const resetAt = p.daily_ai_call_resets_at ? _mkDate(p.daily_ai_call_resets_at) : null;
+  const sameDay = !!resetAt && sameUTCDay(resetAt, d);
+  const count = sameDay ? (Number(p.daily_ai_call_count) || 0) : 0;
+  return { limited: count >= WEALTH_DAILY_LIMIT, count, resetsAt: startOfNextUTCDay(d).toISOString() };
+}
+function compatibilityCounterDelta(plans, reportType, method, now, opts) {
+  const p = plans || {};
+  const d = _mkDate(now);
+  const o = opts || {};
+  const resetAt = p.daily_ai_call_resets_at ? _mkDate(p.daily_ai_call_resets_at) : null;
+  const sameDay = !!resetAt && sameUTCDay(resetAt, d);
+  const delta = {};
+  if (o.withDaily !== false) {
+    delta.daily_ai_call_count = sameDay ? (Number(p.daily_ai_call_count) || 0) + 1 : 1;
+    delta.daily_ai_call_resets_at = startOfUTCDay(d).toISOString();
+  }
+  if (o.withQuota !== false && method === 'star_monthly_vip') {
+    const roll = starMonthlyQuotaRoll(p, d);
+    Object.assign(delta, roll.delta);
+    const base = roll.rolled ? 0 : (Number(p.star_monthly_compatibility_used) || 0);
+    delta.star_monthly_compatibility_used = base + 1;
+  }
+  if (o.withTimestamp !== false) {
+    if (reportType === 'monthly') delta.compatibility_monthly_report_generated_at = d.toISOString();
+    if (reportType === 'yearly') delta.compatibility_yearly_report_generated_at = d.toISOString();
+  }
+  return delta;
+}
+const COMPAT_GUARD_MSG = {
+  MONTHLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED: '本月情感月报已生成，请下月 1 日再来（月内重复查看走缓存）。',
+  YEARLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED: '本周期的情感年报已生成，请在下一个宇宙生日周期再来。',
+  DAILY_COMPAT_RATE_LIMIT_EXCEEDED: '今日合婚 AI 调用已达上限（10 次/日），请明日 00:00 后再试。',
+};
+function compatGuardBody(code, extra) {
+  return Object.assign({ success: false, error: COMPAT_GUARD_MSG[code] || code, code }, extra || {});
+}
+// ── 泛化权益解析（domain='wealth' 直接委托财富域解析器，保证单一真源）──
+async function resolveReportEntitlement(req, domain, reportType) {
+  if (domain === 'wealth') return resolveWealthEntitlement(req, reportType);
+  const body = req.body || {};
+  if (wealthIsGreenChannel(body)) return { ok: true, method: 'green_channel' };
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured' };
+  const authHeader = String(req.headers.authorization || '');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { ok: false, method: null, reason: 'NO_TOKEN' };
+  try {
+    const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+    });
+    if (!userRes.ok) return { ok: false, method: null, reason: 'INVALID_TOKEN' };
+    const { id: userId } = await userRes.json();
+    if (!userId) return { ok: false, method: null, reason: 'INVALID_TOKEN' };
+    const profRes = await safeFetch(
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans,birth_date&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    const rows = profRes.ok ? await profRes.json() : [];
+    const plans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+    const userBirthDate = (Array.isArray(rows) && rows[0] && rows[0].birth_date) || null;
+    const method = compatibilityEntitledByType(plans, reportType, new Date());
+    if (method) return { ok: true, method, userId, plans, userBirthDate };
+    return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
+  } catch (e) {
+    console.warn('[E24⑥②] compat entitlement check error:', e && e.message);
     return { ok: false, method: null, reason: 'CHECK_ERROR' };
   }
 }
@@ -12620,10 +12935,12 @@ app.post('/api/wealth-oracle', async (req, res) => {
     //   射程：monthly / yearly / once 三种付费产物；免费预告(reportType 缺省='oracle')不受门禁。
     //   绿色通道：free_access=1（前端从 URL 同源转发）/ Vercel 时代测试生日 1990-06-15。
     //   ⚠️ 必须置于 Cache Hit **之前** —— 否则无权益者可直接读走缓存里的付费正文。
+    //   🛍️ E24⑥②：解析结果**提升到外层** `_entRes`，供下方「算力护栏 + 计数落库」复用（避免二次解析 token）。
+    let _entRes = null;
     if (WEALTH_PAID_REPORT_TYPES.has(reportType)) {
-      const _ent = await resolveWealthEntitlement(req, reportType);
-      if (!_ent.ok) {
-        console.log(`[E24⑥] entitlement DENIED reason=${_ent.reason} type=${reportType} date=${birthDate}`);
+      _entRes = await resolveWealthEntitlement(req, reportType);
+      if (!_entRes.ok) {
+        console.log(`[E24⑥] entitlement DENIED reason=${_entRes.reason} type=${reportType} date=${birthDate}`);
         let _previewData = null;
         try { _previewData = buildWealthMetaFull(birthDate, lang).result.data; } catch (e) { console.warn('[E24⑥] preview build failed:', e.message); }
         return res.status(402).json({
@@ -12634,18 +12951,30 @@ app.post('/api/wealth-oracle', async (req, res) => {
           preview: true,
         });
       }
-      console.log(`[E24⑥] entitlement GRANTED via ${_ent.method} type=${reportType}`);
+      console.log(`[E24⑥] entitlement GRANTED via ${_entRes.method} type=${reportType}`);
     }
 
-    // ═══ 第一道拦截:Cache Hit ═══
+    // ═══ 第一道拦截:Cache Hit（🛍️ E24⑥② 分层：Tier A 共享 24h → Tier B 本人报告周期）═══
+    //   病根：只做 Tier A（24h TTL）时，与「自然月 / Solar Return 周期死锁」叠加会把**付了钱的用户**
+    //   在报告周期内锁死（24h 后共享缓存过期 → 死锁拦截 → 403），而圣经 §2.1 明确「月内/年内反复查看走缓存」。
+    //   治法：Tier A 只管「共享缓存 24h 时效」；Tier B 兜「本人当期报告」（once = 永久 / monthly = 本自然月 / yearly = 本周期）。
     if (SB_URL && SB_KEY && reportType !== 'oracle' && !noCache) {
       try {
-        const cacheRes = await safeFetch(
-          `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
-          { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-        );
-        const cacheRows = await cacheRes.json();
-        const cachedText = cacheRows?.[0]?.insight;
+        const _cacheFetchIn = async (sinceISO) => {
+          const _url = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`
+            + (sinceISO ? `&created_at=gte.${encodeURIComponent(sinceISO)}` : '')
+            + '&select=insight&order=created_at.desc&limit=1';
+          const _r = await safeFetch(_url, { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } });
+          const _rows = await _r.json();
+          return (_rows && _rows[0] && _rows[0].insight) || null;
+        };
+        let cachedText = await _cacheFetchIn(wealthSharedCacheSince(new Date()));
+        let _hitTier = cachedText ? 'A' : null;
+        if (!cachedText && WEALTH_PAID_REPORT_TYPES.has(reportType)) {
+          cachedText = await _cacheFetchIn(wealthPeriodCacheSince(reportType, (_entRes && _entRes.userBirthDate) || birthDate, new Date()));
+          if (cachedText) _hitTier = 'B';
+        }
+        if (cachedText) console.log(`[E24⑥②] cache HIT tier=${_hitTier} key=${cacheKey}`);
 
         if (cachedText && cachedText.length > 2000) {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
@@ -12708,6 +13037,31 @@ app.post('/api/wealth-oracle', async (req, res) => {
       } catch (e) {
         console.warn('[wealth-oracle] Cache check error:', e.message);
       }
+    }
+
+    // ═══ 🛡️ E24⑥② 算力护栏（HIT 全 miss 之后、AI 调用之前）═══
+    //   次序铁律：**必须**在 Cache Hit 之后 —— 圣经 §2.1「月内/年内反复查看走缓存」不得被死锁拦下。
+    //   豁免：绿色通道 / 未配置 Supabase / 非付费产物 ⇒ 不设卡（保测试与离线可用）。
+    let _guardUserId = null, _guardPlans = null, _guardMethod = null;
+    if (WEALTH_PAID_REPORT_TYPES.has(reportType) && _entRes && _entRes.ok
+        && _entRes.method !== 'green_channel' && _entRes.method !== 'no_supabase_configured') {
+      _guardUserId = _entRes.userId || null;
+      _guardPlans = _entRes.plans || {};
+      _guardMethod = _entRes.method;
+      const _now = new Date();
+      const _lock = wealthPeriodLock(_guardPlans, reportType, _entRes.userBirthDate || birthDate, _now);
+      if (_lock.locked) {
+        const _code = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
+        console.log(`[E24⑥②] period LOCKED code=${_code} next=${_lock.nextAvailable} user=${String(_guardUserId).slice(0, 8)}`);
+        return res.status(403).json(wealthGuardBody(_code, { nextAvailable: _lock.nextAvailable, solarReturnStart: _lock.solarReturnStart || null }));
+      }
+      const _rl = wealthDailyRateLimit(_guardPlans, _now);
+      if (_rl.limited) {
+        console.log(`[E24⑥②] daily RATE-LIMIT count=${_rl.count} user=${String(_guardUserId).slice(0, 8)}`);
+        return res.status(429).json(wealthGuardBody('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rl.resetsAt }));
+      }
+      // 配额/日计数在 AI 调用**之前**扣减（防双花）；周期时间戳留到生成成功后写（失败不锁死用户）。
+      await patchWealthPlans(_guardUserId, wealthCounterDelta(_guardPlans, reportType, _guardMethod, _now, { withTimestamp: false }));
     }
 
     // 🛠️ V427: 调用 buildWealthMetaFull 生成命理元数据（与 HIT 路径共用，无重复逻辑）
@@ -13029,6 +13383,11 @@ app.post('/api/wealth-oracle', async (req, res) => {
         //   故必须**只算一次**、两处共用同一字符串（否则又变成两次独立施加）。
         const _finalText = _v525WellFormed('nonstream/' + lang + '/' + reportType, standardizeReport(reportContent));
 
+        // 🛍️ E24⑥② 生成成功 ⇒ 补写生成周期时间戳（**失败不写** —— 否则 AI 偶发抖动即把用户锁死一个月）
+        if (_guardUserId) {
+          await patchWealthPlans(_guardUserId, wealthCounterDelta(_guardPlans, reportType, _guardMethod, new Date(), { withDaily: false, withQuota: false }));
+        }
+
         // ═══ 写入缓存(非流式端点)═══
         if (SB_URL && SB_KEY && _finalText && _finalText.length > 100 && !skipCache) {
           try {
@@ -13107,6 +13466,35 @@ app.use('/api/ai-advisor', async (req, res) => {
 
     // ── 月报/年报生成(AI 调用)──
     if (reportType === 'monthly' || reportType === 'yearly') {
+      // ═══ 🛍️ E24⑥② 合婚域权益闸门 + 算力护栏 ═══
+      //   病根：本端点承载合婚月报/年报生成，却**零鉴权、零权益、零配额** ⇒ 匿名 POST 即直烧 AI token。
+      //   射程：monthly / yearly（付费报告）必须过权益；'compatibility'（免费 4 句洞察，属免费层）保持开放。
+      const _cEnt = await resolveReportEntitlement(req, 'compatibility', reportType);
+      if (!_cEnt.ok) {
+        console.log(`[E24⑥②] (compat) entitlement DENIED reason=${_cEnt.reason} type=${reportType}`);
+        return res.status(402).json({
+          success: false,
+          error: 'Payment required',
+          code: 'ENTITLEMENT_REQUIRED',
+          requiredPlan: requiredPlanForCompat(reportType),
+          preview: true,
+        });
+      }
+      if (_cEnt.method !== 'green_channel' && _cEnt.method !== 'no_supabase_configured') {
+        const _nowC = new Date();
+        const _lockC = compatibilityPeriodLock(_cEnt.plans || {}, reportType, _cEnt.userBirthDate || null, _nowC);
+        if (_lockC.locked) {
+          const _codeC = reportType === 'monthly' ? 'MONTHLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED';
+          console.log(`[E24⑥②] (compat) period LOCKED code=${_codeC} next=${_lockC.nextAvailable}`);
+          return res.status(403).json(compatGuardBody(_codeC, { nextAvailable: _lockC.nextAvailable, solarReturnStart: _lockC.solarReturnStart || null }));
+        }
+        const _rlC = compatibilityDailyRateLimit(_cEnt.plans || {}, _nowC);
+        if (_rlC.limited) {
+          console.log(`[E24⑥②] (compat) daily RATE-LIMIT count=${_rlC.count}`);
+          return res.status(429).json(compatGuardBody('DAILY_COMPAT_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlC.resetsAt }));
+        }
+        await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, _nowC, { withTimestamp: false }));
+      }
       try {
         console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
         const prompt = buildCompatibilityReportPrompt(d1, d2, lang, reportType);
@@ -13118,6 +13506,10 @@ app.use('/api/ai-advisor', async (req, res) => {
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
+        // 🛍️ E24⑥② 生成成功 ⇒ 补写合婚生成周期时间戳（失败不写，避免把用户在期内锁死）
+        if (_cEnt.userId) {
+          await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, new Date(), { withDaily: false, withQuota: false }));
+        }
         return res.json({ insight, cached: false });
       } catch (aiError) {
         console.error('[AI Advisor] AI generation failed:', aiError.message);
@@ -13371,10 +13763,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   // ═══ 🛍️ E24⑥ 权益闸门（流式主路径）═══
   //   铁律同 tz/坐标闸门：必须在 SSE header 建立**之前**以 JSON 402 返回，
   //   否则前端只会看到一个 200 的 SSE 管道里塞错误（假绿、且会吞掉 402 分支）。
+  //   🛍️ E24⑥②：结果提升到函数级 `_streamEnt`，供下方「护栏 + 计数落库」复用。
+  let _streamEnt = null;
   if (WEALTH_PAID_REPORT_TYPES.has(reportType)) {
-    const _ent = await resolveWealthEntitlement(req, reportType);
-    if (!_ent.ok) {
-      console.log(`[E24⑥] (stream) entitlement DENIED reason=${_ent.reason} type=${reportType} date=${birthDate}`);
+    _streamEnt = await resolveWealthEntitlement(req, reportType);
+    if (!_streamEnt.ok) {
+      console.log(`[E24⑥] (stream) entitlement DENIED reason=${_streamEnt.reason} type=${reportType} date=${birthDate}`);
       let _previewData = null;
       try { _previewData = buildWealthMetaFull(birthDate, lang).result.data; } catch (e) { console.warn('[E24⑥] (stream) preview build failed:', e.message); }
       return res.status(402).json({
@@ -13385,7 +13779,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         preview: true,
       });
     }
-    console.log(`[E24⑥] (stream) entitlement GRANTED via ${_ent.method} type=${reportType}`);
+    console.log(`[E24⑥] (stream) entitlement GRANTED via ${_streamEnt.method} type=${reportType}`);
   }
 
   console.log(`[wealth-stream] [STREAM] Stream request: ${birthDate}/${lang}/${reportType}`);
@@ -13487,12 +13881,23 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
 
   try {
     if (SB_URL && SB_KEY && !noCache) {
-      const cacheRes = await safeFetch(
-        `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=insight&order=created_at.desc&limit=1`,
-        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-      );
-      const cacheRows = await cacheRes.json();
-      const cachedText = cacheRows?.[0]?.insight;
+      // 🛍️ E24⑥② 缓存分层（与非流式端点同源，铁律一致）：Tier A 共享 24h → Tier B 本人报告周期。
+      //   只做 Tier A 会与「自然月/周期死锁」叠加，把付了钱的用户在期内锁死（圣经 §2.1 要求期内走缓存）。
+      const _cacheFetchInS = async (sinceISO) => {
+        const _url = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`
+          + (sinceISO ? `&created_at=gte.${encodeURIComponent(sinceISO)}` : '')
+          + '&select=insight&order=created_at.desc&limit=1';
+        const _r = await safeFetch(_url, { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } });
+        const _rows = await _r.json();
+        return (_rows && _rows[0] && _rows[0].insight) || null;
+      };
+      let cachedText = await _cacheFetchInS(wealthSharedCacheSince(new Date()));
+      let _hitTierS = cachedText ? 'A' : null;
+      if (!cachedText && WEALTH_PAID_REPORT_TYPES.has(reportType)) {
+        cachedText = await _cacheFetchInS(wealthPeriodCacheSince(reportType, (_streamEnt && _streamEnt.userBirthDate) || birthDate, new Date()));
+        if (cachedText) _hitTierS = 'B';
+      }
+      if (cachedText) console.log(`[E24⑥②] (stream) cache HIT tier=${_hitTierS} key=${cacheKey}`);
 
       // 🛡️ V222z-fix9: 最小长度检查——若缓存文本 <3000字（正常月报应 >5000），说明是历史残缺缓存，强制穿透重新生成
       // 🛠️ V394-fix4: HIT 入口 vi 脏缓存拦截——任何 9-06 前旧脏缓存(不含₫500,000正确阈值/含乱码/越界大额/拆词)直接视为 MISS 强制重生成
@@ -13614,6 +14019,40 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     }
   } catch (e) {
     console.warn('[wealth-stream] Cache check error (fallthrough to AI):', e.message);
+  }
+
+  // ═══ 🛡️ E24⑥② 算力护栏（流式：HIT 全 miss 之后、AI 调用之前）═══
+  //   🔴 次序铁律：此处 SSE header 已建立（200 握手 + meta 已下发）⇒ **绝不可回 JSON 状态码**
+  //      （403/429 塞进 200 管道 = 假绿，前端只看到半截流）。必须用 **SSE 错误帧** 下发，
+  //      前端按 frame.code 渲染友好提示（与非流式 403/429 共用 wealthGuardBody 文案真源）。
+  //   豁免：绿色通道 / 未配置 Supabase ⇒ 不设卡（保测试与离线可用）。
+  let _streamGuardUserId = null, _streamGuardPlans = null, _streamGuardMethod = null;
+  const _sendGuardFrame = (code, extra) => {
+    try { res.write(Buffer.from('data: ' + JSON.stringify(wealthGuardBody(code, extra)) + '\n\n', 'utf-8')); } catch (e) { /* noop */ }
+    try { res.write('data: [DONE]\n\n'); } catch (e) { /* noop */ }
+    try { clearInterval(_hb); } catch (e) { /* noop */ }
+    try { res.end(); } catch (e) { /* noop */ }
+  };
+  if (WEALTH_PAID_REPORT_TYPES.has(reportType) && _streamEnt && _streamEnt.ok
+      && _streamEnt.method !== 'green_channel' && _streamEnt.method !== 'no_supabase_configured') {
+    _streamGuardUserId = _streamEnt.userId || null;
+    _streamGuardPlans = _streamEnt.plans || {};
+    _streamGuardMethod = _streamEnt.method;
+    const _nowG = new Date();
+    const _lockG = wealthPeriodLock(_streamGuardPlans, reportType, _streamEnt.userBirthDate || birthDate, _nowG);
+    if (_lockG.locked) {
+      const _codeG = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
+      console.log(`[E24⑥②] (stream) period LOCKED code=${_codeG} next=${_lockG.nextAvailable} user=${String(_streamGuardUserId).slice(0, 8)}`);
+      _sendGuardFrame(_codeG, { nextAvailable: _lockG.nextAvailable, solarReturnStart: _lockG.solarReturnStart || null });
+      return;
+    }
+    const _rlG = wealthDailyRateLimit(_streamGuardPlans, _nowG);
+    if (_rlG.limited) {
+      console.log(`[E24⑥②] (stream) daily RATE-LIMIT count=${_rlG.count} user=${String(_streamGuardUserId).slice(0, 8)}`);
+      _sendGuardFrame('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlG.resetsAt });
+      return;
+    }
+    await patchWealthPlans(_streamGuardUserId, wealthCounterDelta(_streamGuardPlans, reportType, _streamGuardMethod, _nowG, { withTimestamp: false }));
   }
 
   // ═══ 第二道:Cache Miss → 真流式 + 落库 ═══
@@ -14755,6 +15194,10 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
         cleanedText = _deduped;
       }
     }
+    // 🛍️ E24⑥② 生成成功 ⇒ 补写生成周期时间戳（**失败不写** —— 避免 AI 抖动把用户在期内锁死）
+    if (_streamGuardUserId && cleanedText.length > 2000) {
+      await patchWealthPlans(_streamGuardUserId, wealthCounterDelta(_streamGuardPlans, reportType, _streamGuardMethod, new Date(), { withDaily: false, withQuota: false }));
+    }
     if (cleanedText.length > 2000) {
       console.log(`[wealth-stream] [WRITE-CACHE] Streaming done, writing ${cleanedText.length} chars to cache: ${cacheKey}`);
       writeToCache(cleanedText).catch((e) => {
@@ -14814,6 +15257,43 @@ app.post('/api/wealth-oracle/v2', async (req, res) => {
   }
   const lat = _coord.lat;
   const lon = _coord.lon;
+
+  // ═══ 🛍️ E24⑥② 权益闸门 + 算力护栏（v2 = 分片滚动**年报**引擎 ⇒ 一律按 yearly 分档）═══
+  //   病根：v2 是**第三个**财富生成端点，E24⑥ 的两道闸门只覆盖 /api/wealth-oracle 与 /stream
+  //   ⇒ 任何人可直接打 v2 绕过付费墙烧 AI（营收 + 算力双漏）。
+  //   次序：必须在 SSE header 建立**之前**返回 JSON —— 否则 403/429 塞进 200 管道 = 假绿。
+  //   ⚠️ v2 无 HIT 读取（历史如此）⇒ 护栏置于生成之前，无需「HIT 优先」保护。
+  const _v2Ent = await resolveWealthEntitlement(req, 'yearly');
+  if (!_v2Ent.ok) {
+    console.log(`[E24⑥②] (v2) entitlement DENIED reason=${_v2Ent.reason} date=${birthDate}`);
+    let _v2Preview = null;
+    try { _v2Preview = buildWealthMetaFull(birthDate, lang).result.data; } catch (e) { /* noop */ }
+    return res.status(402).json({
+      error: 'Payment required',
+      code: 'ENTITLEMENT_REQUIRED',
+      requiredPlan: requiredPlanFor('yearly'),
+      data: _v2Preview,
+      preview: true,
+    });
+  }
+  let _v2GuardUserId = null, _v2GuardPlans = null, _v2GuardMethod = null;
+  if (_v2Ent.method !== 'green_channel' && _v2Ent.method !== 'no_supabase_configured') {
+    _v2GuardUserId = _v2Ent.userId || null;
+    _v2GuardPlans = _v2Ent.plans || {};
+    _v2GuardMethod = _v2Ent.method;
+    const _nowV2 = new Date();
+    const _lockV2 = wealthPeriodLock(_v2GuardPlans, 'yearly', _v2Ent.userBirthDate || birthDate, _nowV2);
+    if (_lockV2.locked) {
+      console.log(`[E24⑥②] (v2) period LOCKED next=${_lockV2.nextAvailable} user=${String(_v2GuardUserId).slice(0, 8)}`);
+      return res.status(403).json(wealthGuardBody('YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED', { nextAvailable: _lockV2.nextAvailable, solarReturnStart: _lockV2.solarReturnStart || null }));
+    }
+    const _rlV2 = wealthDailyRateLimit(_v2GuardPlans, _nowV2);
+    if (_rlV2.limited) {
+      console.log(`[E24⑥②] (v2) daily RATE-LIMIT count=${_rlV2.count} user=${String(_v2GuardUserId).slice(0, 8)}`);
+      return res.status(429).json(wealthGuardBody('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlV2.resetsAt }));
+    }
+    await patchWealthPlans(_v2GuardUserId, wealthCounterDelta(_v2GuardPlans, 'yearly', _v2GuardMethod, _nowV2, { withTimestamp: false }));
+  }
 
   // ── SSE Headers ──
   res.setHeader('Content-Type', 'text/event-stream');
@@ -15111,6 +15591,10 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     const v2CacheKey = `wealth:v529-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
+    // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）
+    if (_v2GuardUserId && allText.length > 500 && _ivV2.ok) {
+      await patchWealthPlans(_v2GuardUserId, wealthCounterDelta(_v2GuardPlans, 'yearly', _v2GuardMethod, new Date(), { withDaily: false, withQuota: false }));
+    }
     if (SB_URL && SB_KEY && allText.length > 500 && _ivV2.ok) {
       try {
         await safeFetch(SB_URL + '/rest/v1/ai_insights_cache?cache_key=eq.' + encodeURIComponent(v2CacheKey), {

@@ -46,7 +46,7 @@ function sliceBalanced(src, startIdx, openCh = '{', closeCh = '}') {
   return null;
 }
 
-// ── 从 server.js 抽取 4 个纯函数（含其依赖的时间助手）──
+// ── 从 server.js 抽取纯函数真源（含其依赖的时间助手 / 护栏内核）──
 function extractServerPureFns(src) {
   const picks = [
     'function computeNextMonthStartUTC()',
@@ -56,12 +56,39 @@ function extractServerPureFns(src) {
     'function wealthIsGreenChannel(body)',
     'function wealthEntitledByType(plans, reportType, now)',
     'function requiredPlanFor(reportType)',
+    // 🛍️ E24⑥② 算力护栏内核（周期死锁 / 每日熔断 / 配额递增 / 缓存分层）
+    'function _mkDate(v)',
+    'function startOfUTCMonth(d)',
+    'function startOfNextUTCMonth(d)',
+    'function startOfUTCDay(d)',
+    'function startOfNextUTCDay(d)',
+    'function sameUTCDay(a, b)',
+    'function _daysInUTCMonth(year, month1)',
+    'function solarReturnCycle(userBirthDate, now)',
+    'function wealthPeriodLock(plans, reportType, userBirthDate, now)',
+    'function wealthDailyRateLimit(plans, now)',
+    'function starMonthlyQuotaRoll(plans, now)',
+    'function wealthCounterDelta(plans, reportType, method, now, opts)',
+    'function wealthSharedCacheSince(now)',
+    'function wealthPeriodCacheSince(reportType, userBirthDate, now)',
+    // 合婚域（与财富域对称）
+    'function compatibilityEntitledByType(plans, reportType, now)',
+    'function requiredPlanForCompat(reportType)',
+    'function compatibilityPeriodLock(plans, reportType, userBirthDate, now)',
+    'function compatibilityDailyRateLimit(plans, now)',
+    'function compatibilityCounterDelta(plans, reportType, method, now, opts)',
   ];
   let code = '';
-  // 测试白名单常量也是「单一真源」的一部分，必须一并抽取（否则闸门读不到值）
-  const testBirthdateConst = src.match(/const WEALTH_TEST_BIRTHDATE = '[^']*';/);
-  assert.ok(testBirthdateConst, 'server.js 缺少 WEALTH_TEST_BIRTHDATE 常量定义');
-  code += testBirthdateConst[0] + '\n';
+  // 数值常量也是「单一真源」的一部分，必须一并抽取（否则闸门读不到阈值）
+  for (const re of [
+    /const WEALTH_TEST_BIRTHDATE = '[^']*';/,
+    /const WEALTH_DAILY_LIMIT = \d+;/,
+    /const WEALTH_SHARED_CACHE_TTL_HOURS = \d+;/,
+  ]) {
+    const m = src.match(re);
+    assert.ok(m, `server.js 缺少常量定义 ${re} —— 单一真源被删/改名，闸门无法取证`);
+    code += m[0] + '\n';
+  }
   for (const p of picks) {
     const idx = src.indexOf(p);
     assert.ok(idx !== -1, `server.js 缺少纯函数「${p}」—— 单一真源被删/改名，闸门无法取证`);
@@ -69,7 +96,13 @@ function extractServerPureFns(src) {
     assert.ok(body && body.length > 10, `抽不出「${p}」函数体`);
     code += src.slice(idx, idx + p.length) + ' ' + body + '\n';
   }
-  const names = ['buildPlanPayload', 'planHasAccess', 'wealthIsGreenChannel', 'wealthEntitledByType', 'requiredPlanFor'];
+  const names = [
+    'buildPlanPayload', 'planHasAccess', 'wealthIsGreenChannel', 'wealthEntitledByType', 'requiredPlanFor',
+    'solarReturnCycle', 'wealthPeriodLock', 'wealthDailyRateLimit', 'starMonthlyQuotaRoll', 'wealthCounterDelta',
+    'wealthSharedCacheSince', 'wealthPeriodCacheSince',
+    'compatibilityEntitledByType', 'requiredPlanForCompat', 'compatibilityPeriodLock',
+    'compatibilityDailyRateLimit', 'compatibilityCounterDelta',
+  ];
   const make = new Function(`${code}\nreturn { ${names.join(', ')} };`);
   return make();
 }
@@ -116,24 +149,34 @@ test('A2 buildPlanPayload: 月卡/全通年卡必须带配额字段与重置/过
   assert.equal(star.star_monthly_vip, true);
   assert.equal(star.star_monthly_wealth_allowance, 5);
   assert.equal(star.star_monthly_wealth_used, 0);
-  assert.equal(star.star_monthly_compatibility_allowance, 1);
+  // 🛍️ E24⑥② 军师裁决 2：合婚配额与财富**完全对称**（5 次/月；线上 Vercel 时代落库值即为 5）
+  assert.equal(star.star_monthly_compatibility_allowance, 5, '合婚月卡配额必须为 5（与财富对称）');
   assert.ok(!isNaN(new Date(star.star_monthly_resets_at).getTime()), '月卡重置时间必须是合法时间戳');
 
   const ap = FNS.buildPlanPayload('all_pass_yearly');
   assert.equal(ap.all_pass_yearly, true);
   assert.ok(!isNaN(new Date(ap.all_pass_expires_at).getTime()), '全通年卡必须写过期时间');
   assert.ok(new Date(ap.all_pass_expires_at) > new Date(), '过期时间必须晚于当前（+1 年）');
+  // 🛍️ E24⑥②：年卡同样双轨对称（财富/合婚皆 5 次/月）
+  assert.equal(ap.star_monthly_wealth_allowance, 5);
+  assert.equal(ap.star_monthly_compatibility_allowance, 5, '年卡合婚配额也必须为 5（双轨合龙）');
 });
 
-test('A3 planHasAccess: 防重付判定（同档命中 / 年卡覆盖 / 过期失效 / 跨档不串）', () => {
+test('A3 planHasAccess: 防重付判定（同档命中 / 年卡覆盖 / 过期失效 / 跨档不串 / 月卡不含 once）', () => {
   assert.equal(FNS.planHasAccess({ wealth_monthly_report: true }, 'wealth_monthly_report', NOW), true, '同档已购应拦下');
   assert.equal(FNS.planHasAccess({ all_pass_yearly: true, all_pass_expires_at: FUTURE }, 'wealth_yearly_report', NOW), true, '年卡有效期内应覆盖年报');
   assert.equal(FNS.planHasAccess({ all_pass_yearly: true, all_pass_expires_at: PAST }, 'wealth_yearly_report', NOW), false, '年卡过期不得再覆盖');
-  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_once', NOW), true, '月卡有余量应覆盖单次');
-  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 5, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_once', NOW), false, '月卡余量用尽不得再覆盖');
+  // 🔴 军师裁决 1：月卡**绝不**覆盖 $4.99 先天报告（once 是永久落库资产，须单买或年卡）
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_once', NOW), false, '月卡不得覆盖 once（$9.99 不能白拿 $4.99）');
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_monthly_report', NOW), true, '月卡有余量应覆盖月报');
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_yearly_report', NOW), true, '月卡有余量应覆盖年报（圣经 §2.1：年报免费生成 1 次）');
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_wealth_used: 5, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'wealth_monthly_report', NOW), false, '月卡余量用尽不得再覆盖');
   // 🔴 营收红线：$2.99 月报不得覆盖 $29.99 年报（反之亦然）
   assert.equal(FNS.planHasAccess({ wealth_monthly_report: true }, 'wealth_yearly_report', NOW), false, '月报档不得白拿年报');
   assert.equal(FNS.planHasAccess({ wealth_yearly_report: true }, 'wealth_monthly_report', NOW), false, '年报档不得白拿月报');
+  // 合婚双轨对称
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_compatibility_used: 0, star_monthly_compatibility_allowance: 5 }, 'compatibility_monthly_report', NOW), true, '月卡应覆盖合婚月报');
+  assert.equal(FNS.planHasAccess({ star_monthly_vip: true, star_monthly_compatibility_used: 0, star_monthly_compatibility_allowance: 5 }, 'compatibility_once', NOW), false, '月卡不得覆盖合婚 once');
 });
 
 test('A4 wealthIsGreenChannel: 绿色通道只认 free_access=1 与测试生日，形近值一律不认', () => {
@@ -149,7 +192,7 @@ test('A4 wealthIsGreenChannel: 绿色通道只认 free_access=1 与测试生日�
   assert.equal(FNS.wealthIsGreenChannel(null), false, '空 body 必须安全');
 });
 
-test('A5 wealthEntitledByType: 按产物分档矩阵（后端真源）', () => {
+test('A5 wealthEntitledByType: 按产物分档矩阵（后端真源；月卡不含 once、含 yearly）', () => {
   const cases = [
     // [plans, once, monthly, yearly]
     [{}, false, false, false],
@@ -158,8 +201,11 @@ test('A5 wealthEntitledByType: 按产物分档矩阵（后端真源）', () => {
     [{ wealth_yearly_report: true }, false, false, true],
     [{ all_pass_yearly: true, all_pass_expires_at: FUTURE }, true, true, true],
     [{ all_pass_yearly: true, all_pass_expires_at: PAST }, false, false, false],
-    [{ star_monthly_vip: true, star_monthly_wealth_used: 1, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, true, true, false],
+    // 🛍️ E24⑥② 军师裁决 1：月卡 = 月报 + 年报（各 1 次/周期），**绝不含 once**
+    [{ star_monthly_vip: true, star_monthly_wealth_used: 1, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, false, true, true],
     [{ star_monthly_vip: true, star_monthly_wealth_used: 5, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, false, false, false],
+    // 月卡 resets_at 已过期（Stripe 续订事件后端不处理）⇒ 不得整体失效，仅配额归零由 starMonthlyQuotaRoll 处理
+    [{ star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: PAST }, false, true, true],
   ];
   for (const [plans, once, monthly, yearly] of cases) {
     const label = JSON.stringify(plans);
@@ -169,6 +215,27 @@ test('A5 wealthEntitledByType: 按产物分档矩阵（后端真源）', () => {
   }
   // 未知类型不得误放行
   assert.equal(FNS.wealthEntitledByType({ wealth_once: true }, 'oracle', NOW), null, '免费预告类型不受门禁');
+});
+
+test('A5b compatibilityEntitledByType: 合婚域与财富域**完全对称**', () => {
+  const cases = [
+    [{}, false, false, false],
+    [{ compatibility_once: true }, true, false, false],
+    [{ compatibility_monthly_report: true }, false, true, false],
+    [{ compatibility_yearly_report: true }, false, false, true],
+    [{ all_pass_yearly: true, all_pass_expires_at: FUTURE }, true, true, true],
+    [{ star_monthly_vip: true, star_monthly_compatibility_used: 1, star_monthly_compatibility_allowance: 5 }, false, true, true],
+    [{ star_monthly_vip: true, star_monthly_compatibility_used: 5, star_monthly_compatibility_allowance: 5 }, false, false, false],
+  ];
+  for (const [plans, once, monthly, yearly] of cases) {
+    const label = JSON.stringify(plans);
+    assert.equal(!!FNS.compatibilityEntitledByType(plans, 'once', NOW), once, `compat once @ ${label}`);
+    assert.equal(!!FNS.compatibilityEntitledByType(plans, 'monthly', NOW), monthly, `compat monthly @ ${label}`);
+    assert.equal(!!FNS.compatibilityEntitledByType(plans, 'yearly', NOW), yearly, `compat yearly @ ${label}`);
+  }
+  assert.equal(FNS.requiredPlanForCompat('yearly'), 'compatibility_yearly_report');
+  assert.equal(FNS.requiredPlanForCompat('monthly'), 'compatibility_monthly_report');
+  assert.equal(FNS.requiredPlanForCompat('once'), 'compatibility_once');
 });
 
 test('A6 前后端分档**同源一致性**：同一 paid_plans 矩阵两侧判定必须一致', () => {
@@ -217,6 +284,101 @@ test('A7 requiredPlanFor: 402 引导必须按产物出档（年报不得引导�
     const sku = FNS.requiredPlanFor(t);
     assert.ok(mapBlock[0].includes(`${sku}:`), `引导档 ${sku} 不在 STRIPE_PRICE_MAP 中 ⇒ 用户点了也买不到`);
   }
+});
+
+// ═══════════════════════════════════════════════════════════
+// A8~A13 🛡️ E24⑥② 算力护栏内核（周期死锁 / Solar Return / 每日熔断 / 配额递增 / 缓存分层）
+// ═══════════════════════════════════════════════════════════
+test('A8 solarReturnCycle: 以主账户生日月-日为唯一轴心，跨生日边界正确换周期', () => {
+  // 生日 6-15；2026-10-07 时点 ⇒ 周期 = 2026-06-15 → 2027-06-15
+  const a = FNS.solarReturnCycle('1990-06-15', new Date('2026-10-07T02:00:00Z'));
+  assert.equal(a.ok, true);
+  assert.equal(a.cycleStart.toISOString(), '2026-06-15T00:00:00.000Z');
+  assert.equal(a.cycleEnd.toISOString(), '2027-06-15T00:00:00.000Z');
+  // 生日之前（2026-05-01）⇒ 仍处于上一周期
+  const b = FNS.solarReturnCycle('1990-06-15', new Date('2026-05-01T02:00:00Z'));
+  assert.equal(b.cycleStart.toISOString(), '2025-06-15T00:00:00.000Z');
+  assert.equal(b.cycleEnd.toISOString(), '2026-06-15T00:00:00.000Z');
+  // 生日当天即进入新周期（>= 语义）
+  const c = FNS.solarReturnCycle('1990-06-15', new Date('2026-06-15T00:00:00Z'));
+  assert.equal(c.cycleStart.toISOString(), '2026-06-15T00:00:00.000Z');
+  // 🔴 圣经 §4：只吃 userBirthDate（主账户生日）⇒ 换测算对象不改周期
+  // 2-29 生日在非闰年必须钳到月末，绝不造非法日期
+  const d = FNS.solarReturnCycle('2000-02-29', new Date('2027-03-01T00:00:00Z'));
+  assert.equal(d.ok, true);
+  assert.equal(d.cycleStart.toISOString(), '2027-02-28T00:00:00.000Z', '2-29 在非闰年应钳到 2-28');
+  // 无生日 / 非法 ⇒ 弃权（ok:false）而非误锁
+  assert.equal(FNS.solarReturnCycle(null, NOW).ok, false);
+  assert.equal(FNS.solarReturnCycle('not-a-date', NOW).ok, false);
+  assert.equal(FNS.solarReturnCycle('1990-13-40', NOW).ok, false);
+});
+
+test('A9 wealthPeriodLock: 月报自然月 1 次 / 年报 Solar Return 周期 1 次（🔴 年卡不豁免）', () => {
+  const now = new Date('2026-10-07T02:00:00Z');
+  assert.equal(FNS.wealthPeriodLock({ monthly_wealth_report_generated_at: '2026-10-02T00:00:00Z' }, 'monthly', '1990-06-15', now).locked, true, '同月已生成必须锁');
+  assert.equal(FNS.wealthPeriodLock({ monthly_wealth_report_generated_at: '2026-09-30T00:00:00Z' }, 'monthly', '1990-06-15', now).locked, false, '上月生成不得锁本月');
+  const lk = FNS.wealthPeriodLock({ monthly_wealth_report_generated_at: '2026-10-02T00:00:00Z' }, 'monthly', '1990-06-15', now);
+  assert.equal(lk.nextAvailable, '2026-11-01T00:00:00.000Z', '月报解锁时间必须是次月 1 日 00:00Z');
+  assert.equal(FNS.wealthPeriodLock({ yearly_wealth_report_generated_at: '2026-08-01T00:00:00Z' }, 'yearly', '1990-06-15', now).locked, true, '本 Solar Return 周期已生成必须锁');
+  assert.equal(FNS.wealthPeriodLock({ yearly_wealth_report_generated_at: '2026-03-01T00:00:00Z' }, 'yearly', '1990-06-15', now).locked, false, '上一周期生成不得锁本周期');
+  // 🔴 军师裁决 3：年卡**不豁免**周期死锁（判定只吃时间戳，不看 all_pass_yearly）
+  assert.equal(FNS.wealthPeriodLock({ all_pass_yearly: true, all_pass_expires_at: FUTURE, monthly_wealth_report_generated_at: '2026-10-02T00:00:00Z' }, 'monthly', '1990-06-15', now).locked, true, '年卡用户同样必须被周期死锁约束');
+  assert.equal(FNS.wealthPeriodLock({ yearly_wealth_report_generated_at: '2026-08-01T00:00:00Z' }, 'yearly', null, now).locked, false, '无生日锚应弃权（不误锁）');
+  assert.equal(FNS.wealthPeriodLock({ monthly_wealth_report_generated_at: '2026-10-02T00:00:00Z' }, 'once', '1990-06-15', now).locked, false, 'once 无周期限制（永久缓存）');
+});
+
+test('A10 wealthDailyRateLimit: 每日 10 次熔断（第 11 次起锁）且 once 用户天然豁免', () => {
+  const now = new Date('2026-10-07T02:00:00Z');
+  const today = '2026-10-07T00:00:00.000Z';
+  assert.equal(FNS.wealthDailyRateLimit({ daily_wealth_call_count: 9, daily_wealth_call_resets_at: today }, now).limited, false, '第 10 次调用前不得锁');
+  assert.equal(FNS.wealthDailyRateLimit({ daily_wealth_call_count: 10, daily_wealth_call_resets_at: today }, now).limited, true, '第 11 次必须锁');
+  assert.equal(FNS.wealthDailyRateLimit({ daily_wealth_call_count: 99, daily_wealth_call_resets_at: '2026-10-06T00:00:00.000Z' }, now).limited, false, '非当日计数必须清零（跨日重置）');
+  assert.equal(FNS.wealthDailyRateLimit({ wealth_once: true, daily_wealth_call_count: 99, daily_wealth_call_resets_at: today }, now).limited, false, 'once 用户走永久缓存=0 次 AI ⇒ 豁免');
+  assert.equal(FNS.wealthDailyRateLimit({ daily_wealth_call_count: 10, daily_wealth_call_resets_at: today }, now).resetsAt, '2026-10-08T00:00:00.000Z', '429 必须给出次日 00:00Z 解锁时间');
+  // 合婚域同构
+  assert.equal(FNS.compatibilityDailyRateLimit({ daily_ai_call_count: 10, daily_ai_call_resets_at: today }, now).limited, true);
+  assert.equal(FNS.compatibilityDailyRateLimit({ compatibility_once: true, daily_ai_call_count: 10, daily_ai_call_resets_at: today }, now).limited, false);
+});
+
+test('A11 wealthCounterDelta / starMonthlyQuotaRoll: 配额递增 + 自然月归零 + 时间戳', () => {
+  const now = new Date('2026-10-07T02:00:00Z');
+  const today = '2026-10-07T00:00:00.000Z';
+  // 月卡配额：同月内 +1
+  const d1 = FNS.wealthCounterDelta({ star_monthly_wealth_used: 2, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE }, 'monthly', 'star_monthly_vip', now, { withTimestamp: false });
+  assert.equal(d1.star_monthly_wealth_used, 3, '月卡配额必须 +1（消费扣减）');
+  assert.equal(d1.daily_wealth_call_count, 1, '当日首次必须置 1（跨日重置）');
+  assert.equal(d1.daily_wealth_call_resets_at, today);
+  // 跨自然月 ⇒ 先归零再 +1（否则次月永久 402）
+  const d2 = FNS.wealthCounterDelta({ star_monthly_wealth_used: 5, star_monthly_wealth_allowance: 5, star_monthly_resets_at: PAST }, 'monthly', 'star_monthly_vip', now, { withTimestamp: false });
+  assert.equal(d2.star_monthly_wealth_used, 1, '跨月必须归零后再扣');
+  assert.ok(new Date(d2.star_monthly_resets_at) > now, '归零同时必须把 resets_at 前移到下月');
+  // 非月卡方法不得触碰月卡配额键
+  const d3 = FNS.wealthCounterDelta({ wealth_monthly_report: true }, 'monthly', 'wealth_monthly_report', now, { withTimestamp: false });
+  assert.equal('star_monthly_wealth_used' in d3, false, '非月卡不得触碰月卡配额键');
+  // 时间戳只在生成成功后写
+  assert.equal(FNS.wealthCounterDelta({}, 'monthly', 'wealth_monthly_report', now, { withDaily: false, withQuota: false }).monthly_wealth_report_generated_at, now.toISOString());
+  assert.equal(FNS.wealthCounterDelta({}, 'yearly', 'wealth_yearly_report', now, { withDaily: false, withQuota: false }).yearly_wealth_report_generated_at, now.toISOString());
+  // 合婚域：独立计数键，绝不污染财富域
+  const d6 = FNS.compatibilityCounterDelta({ star_monthly_compatibility_used: 1, star_monthly_resets_at: FUTURE }, 'monthly', 'star_monthly_vip', now, { withTimestamp: false });
+  assert.equal(d6.star_monthly_compatibility_used, 2);
+  assert.equal(d6.daily_ai_call_count, 1);
+  assert.equal('daily_wealth_call_count' in d6, false, '合婚域不得污染财富域计数键');
+  assert.equal('star_monthly_wealth_used' in d6, false, '合婚域不得污染财富域配额键');
+});
+
+test('A12 缓存分层：Tier A 共享 24h；Tier B 本周期（once = 永久）', () => {
+  const now = new Date('2026-10-07T02:00:00Z');
+  assert.equal(FNS.wealthSharedCacheSince(now), '2026-10-06T02:00:00.000Z', 'Tier A 必须是 24h 前');
+  assert.equal(FNS.wealthPeriodCacheSince('once', '1990-06-15', now), null, 'once = 永久（不加时间过滤）');
+  assert.equal(FNS.wealthPeriodCacheSince('monthly', '1990-06-15', now), '2026-10-01T00:00:00.000Z', 'monthly = 本自然月起点');
+  assert.equal(FNS.wealthPeriodCacheSince('yearly', '1990-06-15', now), '2026-06-15T00:00:00.000Z', 'yearly = 本 Solar Return 周期起点');
+});
+
+test('A13 compatibilityPeriodLock: 合婚域周期死锁复用财富域周期数学（仅时间戳字段映射）', () => {
+  const now = new Date('2026-10-07T02:00:00Z');
+  assert.equal(FNS.compatibilityPeriodLock({ compatibility_monthly_report_generated_at: '2026-10-03T00:00:00Z' }, 'monthly', '1990-06-15', now).locked, true);
+  assert.equal(FNS.compatibilityPeriodLock({ compatibility_yearly_report_generated_at: '2026-08-03T00:00:00Z' }, 'yearly', '1990-06-15', now).locked, true);
+  assert.equal(FNS.compatibilityPeriodLock({ compatibility_monthly_report_generated_at: '2026-09-03T00:00:00Z' }, 'monthly', '1990-06-15', now).locked, false);
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -327,6 +489,64 @@ function checkStructure(serverSrc, pageSrc) {
       `B8a: 剥注释后锚点「${a}」消失 ⇒ 某处行注释含未配平 \`/*\`，把后续代码吞成注释（V483/V490 系闸门会集体假红）`);
   }
 
+  // ── B9 v2 端点（**第三个**财富生成端点）权益闸门 + 护栏 ──
+  //   病根：E24⑥ 的两道闸门只覆盖 /api/wealth-oracle 与 /stream ⇒ 任何人可直接打 v2 绕过付费墙烧 AI。
+  const v2Idx = serverSrc.indexOf("app.post('/api/wealth-oracle/v2'");
+  need(v2Idx !== -1, 'B9a: /api/wealth-oracle/v2 路由缺失');
+  if (v2Idx !== -1) {
+    const v2Gate = serverSrc.indexOf("resolveWealthEntitlement(req, 'yearly')", v2Idx);
+    const v2Sse = serverSrc.indexOf("res.setHeader('Content-Type', 'text/event-stream')", v2Idx);
+    need(v2Gate !== -1, 'B9b: v2 缺权益闸门（付费墙旁路 ⇒ 任何人可直烧 AI）');
+    need(v2Gate !== -1 && v2Sse !== -1 && v2Gate < v2Sse, 'B9c: v2 闸门必须早于 SSE header（否则 402 被塞进 200 管道=假绿）');
+    const v2Seg = v2Gate === -1 ? '' : serverSrc.slice(v2Gate, v2Gate + 3000);
+    need(v2Seg.includes('status(402)'), 'B9d: v2 闸门缺 402 JSON 返回');
+    need(v2Seg.includes('wealthPeriodLock('), 'B9e: v2 未接入周期死锁护栏');
+    need(v2Seg.includes('wealthDailyRateLimit('), 'B9f: v2 未接入每日熔断护栏');
+  }
+
+  // ── B10 合婚端点（/api/ai-advisor）鉴权 + 权益 + 配额 ──
+  //   病根：承载合婚月报/年报生成，却零鉴权、零权益、零配额 ⇒ 匿名 POST 直烧 AI token。
+  const advIdx = serverSrc.indexOf("app.use('/api/ai-advisor'");
+  need(advIdx !== -1, 'B10a: /api/ai-advisor 路由缺失');
+  if (advIdx !== -1) {
+    const advSeg = serverSrc.slice(advIdx, advIdx + 7000);
+    need(advSeg.includes("resolveReportEntitlement(req, 'compatibility'"), 'B10b: 合婚端点缺 compatibility 域权益解析（匿名可烧 AI）');
+    need(advSeg.includes('compatibilityPeriodLock('), 'B10c: 合婚端点缺周期死锁护栏');
+    need(advSeg.includes('compatibilityDailyRateLimit('), 'B10d: 合婚端点缺每日熔断护栏');
+    need(advSeg.includes('compatibilityCounterDelta('), 'B10e: 合婚端点缺配额递增落库');
+    const entIdx = advSeg.indexOf("resolveReportEntitlement(req, 'compatibility'");
+    const caiIdx = advSeg.indexOf('await callAI(');
+    need(entIdx !== -1 && caiIdx !== -1 && entIdx < caiIdx, 'B10f: 合婚权益闸门必须早于 callAI（否则 AI 已烧完才拦）');
+  }
+
+  // ── B11 护栏次序铁律：必须在 Cache Hit **之后**（圣经 §2.1「期内反复查看走缓存」不得被 403 拦下）──
+  const nsIdx = serverSrc.indexOf("app.post('/api/wealth-oracle',");
+  const nsHit = serverSrc.indexOf('第一道拦截:Cache Hit', nsIdx);
+  const nsLock = serverSrc.indexOf('wealthPeriodLock(_guardPlans', nsIdx);
+  need(nsHit !== -1 && nsLock !== -1 && nsHit < nsLock,
+    'B11a: 非流式周期死锁必须在 Cache Hit 之后（否则付了钱的用户期内重复查看会被 403 拦下）');
+  const stIdx = serverSrc.indexOf("app.post('/api/wealth-oracle/stream'");
+  const stHit = serverSrc.indexOf('第一道拦截:Cache Hit', stIdx);
+  const stGuard = serverSrc.indexOf('_sendGuardFrame = (code, extra) =>', stIdx);
+  const stLock = serverSrc.indexOf('wealthPeriodLock(_streamGuardPlans', stIdx);
+  need(stHit !== -1 && stGuard !== -1 && stLock !== -1 && stHit < stGuard && stGuard < stLock,
+    'B11b: 流式护栏必须在 Cache Hit 之后，且以 SSE 错误帧（_sendGuardFrame）下发 —— 该处管道已是 200，回 JSON 状态码即假绿');
+  need(serverSrc.slice(stGuard, stGuard + 1800).includes('wealthGuardBody('),
+    'B11c: 流式错误帧必须复用财富域文案真源 wealthGuardBody（否则前后端文案漂移）');
+
+  // ── B12 缓存分层：两个主端点 HIT 必须双层（Tier A 共享 24h + Tier B 本周期）──
+  const tierA = (serverSrc.match(/wealthSharedCacheSince\(new Date\(\)\)/g) || []).length;
+  // ⚠️ 判据必须钉**调用点**（含 new Date()），不可只写 wealthPeriodCacheSince(reportType
+  //   —— 函数**定义**同样匹配该前缀，会把 2 个调用点误数成 3（本闸门初版即踩此坑）。
+  const tierB = (serverSrc.match(/wealthPeriodCacheSince\(reportType,[^\n]*new Date\(\)\)/g) || []).length;
+  need(tierA === 2, `B12a: Tier A（共享 24h）必须两处端点各一，实为 ${tierA}`);
+  need(tierB === 2, `B12b: Tier B（本人报告周期）必须两处端点各一，实为 ${tierB}`);
+
+  // ── B13 前端：护栏错误码映射 + 流式帧按 code 本地化 ──
+  need(pageSrc.includes('DAILY_WEALTH_RATE_LIMIT_EXCEEDED'), 'B13a: 前端未映射每日熔断错误码（会退化成英文原文/「生成失败」）');
+  need(/MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED:\s*'wealthReport\./.test(pageSrc), 'B13b: 前端未映射周期死锁错误码');
+  need(pageSrc.includes('parsed.code'), 'B13c: 流式错误帧未读 code（护栏 403/429 会退化成后端中文原文）');
+
   return fails;
 }
 
@@ -359,7 +579,7 @@ test('C3 注入：webhook 改为整体覆盖（不再合并）⇒ B1e 必须报�
 test('C4 注入：闸门被挪到 Cache Hit 之后 ⇒ B3c 必须报红（次序判据）', () => {
   // 实现：把「Cache Hit」标记搬到非流式闸门**之前**（等价于闸门后置），
   //   因为闸门块原本紧贴标记，直接搬块是空操作（曾踩坑：moved=false ⇒ 判据看似失效）。
-  const cacheHitMarker = '    // ═══ 第一道拦截:Cache Hit ═══';
+  const cacheHitMarker = '    // ═══ 第一道拦截:Cache Hit（🛍️ E24⑥② 分层：Tier A 共享 24h → Tier B 本人报告周期）═══';
   const nonStreamIdx = SERVER_SRC.indexOf("app.post('/api/wealth-oracle',");
   const gateIdx = SERVER_SRC.indexOf('WEALTH_PAID_REPORT_TYPES.has(reportType)', nonStreamIdx);
   assert.ok(gateIdx !== -1, '找不到非流式闸门锚点');
@@ -441,4 +661,96 @@ test('C7 注入：后端分档为「任一档放行」（营收漏洞回归）�
   assert.throws(() => {
     assert.equal(!!fns.wealthEntitledByType({ wealth_once: true }, 'yearly', NOW), false, '宽判漏洞必须被 A5 拦下');
   }, /宽判漏洞必须被 A5 拦下/);
+});
+
+// ═══════════════════════════════════════════════════════════
+// C12~C17 注入自测（E24⑥② 新增判据必须全部有牙）
+// ═══════════════════════════════════════════════════════════
+const GUARD_NOW = new Date('2026-10-07T02:00:00Z');
+const GUARD_TODAY = '2026-10-07T00:00:00.000Z';
+
+test('C12 注入：月卡配额覆盖 once（$9.99 白拿 $4.99 回归）⇒ A5 必须报红', () => {
+  const broken = SERVER_SRC.replace(
+    "    if (p.wealth_once === true) return 'wealth_once';",
+    "    if (p.wealth_once === true || starQuotaOk) return 'wealth_once';"
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（once 分支被改？请同步更新锚点）');
+  const fns = extractServerPureFns(broken);
+  const plans = { star_monthly_vip: true, star_monthly_wealth_used: 0, star_monthly_wealth_allowance: 5, star_monthly_resets_at: FUTURE };
+  assert.equal(!!fns.wealthEntitledByType(plans, 'once', NOW), true, '注入必须确实放行 once（证明判据有牙）');
+  assert.throws(() => {
+    assert.equal(!!fns.wealthEntitledByType(plans, 'once', NOW), false, '月卡不得覆盖 once');
+  }, /月卡不得覆盖 once/);
+});
+
+test('C13 注入：年卡豁免周期死锁 ⇒ A9 必须报红', () => {
+  const broken = SERVER_SRC.replace(
+    'function wealthPeriodLock(plans, reportType, userBirthDate, now) {',
+    'function wealthPeriodLock(plans, reportType, userBirthDate, now) {\n  if ((plans || {}).all_pass_yearly === true) return { locked: false, nextAvailable: null };'
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（wealthPeriodLock 签名被改？）');
+  const fns = extractServerPureFns(broken);
+  const plans = { all_pass_yearly: true, all_pass_expires_at: FUTURE, monthly_wealth_report_generated_at: '2026-10-02T00:00:00Z' };
+  assert.equal(fns.wealthPeriodLock(plans, 'monthly', '1990-06-15', GUARD_NOW).locked, false, '注入必须确实豁免年卡（证明判据有牙）');
+  assert.throws(() => {
+    assert.equal(fns.wealthPeriodLock(plans, 'monthly', '1990-06-15', GUARD_NOW).locked, true, '年卡不得豁免周期死锁');
+  }, /年卡不得豁免周期死锁/);
+});
+
+test('C14 注入：每日熔断阈值被拉高（护栏失效）⇒ A10 必须报红', () => {
+  const broken = SERVER_SRC.replace('const WEALTH_DAILY_LIMIT = 10;', 'const WEALTH_DAILY_LIMIT = 1000000000;');
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（WEALTH_DAILY_LIMIT 被改？）');
+  const fns = extractServerPureFns(broken);
+  const plans = { daily_wealth_call_count: 10, daily_wealth_call_resets_at: GUARD_TODAY };
+  assert.equal(fns.wealthDailyRateLimit(plans, GUARD_NOW).limited, false, '注入后第 11 次不再受限（证明判据有牙）');
+  assert.throws(() => {
+    assert.equal(fns.wealthDailyRateLimit(plans, GUARD_NOW).limited, true, '第 11 次必须锁');
+  }, /第 11 次必须锁/);
+});
+
+test('C15 注入：月卡配额跨月不归零（次月永久 402）⇒ A11 必须报红', () => {
+  const broken = SERVER_SRC.replace(
+    'function starMonthlyQuotaRoll(plans, now) {',
+    'function starMonthlyQuotaRoll(plans, now) {\n  return { rolled: false, delta: {} };'
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（starMonthlyQuotaRoll 被改？）');
+  const fns = extractServerPureFns(broken);
+  const plans = { star_monthly_wealth_used: 5, star_monthly_wealth_allowance: 5, star_monthly_resets_at: PAST };
+  const d = fns.wealthCounterDelta(plans, 'monthly', 'star_monthly_vip', GUARD_NOW, { withTimestamp: false });
+  assert.equal(d.star_monthly_wealth_used, 6, '注入后跨月不归零（证明判据有牙）');
+  assert.throws(() => {
+    assert.equal(d.star_monthly_wealth_used, 1, '跨月必须归零后再扣');
+  }, /跨月必须归零后再扣/);
+});
+
+test('C16 注入：摘掉 v2 权益闸门（付费墙旁路回归）⇒ B9b 必须报红', () => {
+  const broken = SERVER_SRC.replace(
+    "const _v2Ent = await resolveWealthEntitlement(req, 'yearly');",
+    "const _v2Ent = { ok: true, method: 'green_channel' };"
+  );
+  assert.notEqual(broken, SERVER_SRC, '注入锚点未命中（v2 闸门被改？请同步更新锚点）');
+  const fails = checkStructure(broken, PAGE_SRC);
+  assert.ok(fails.some(f => f.startsWith('B9b')), 'v2 闸门缺失未报红 ⇒ 付费墙旁路回归。fails=' + JSON.stringify(fails));
+});
+
+test('C17 注入：合婚闸门挪到 callAI 之后（先烧后拦）⇒ B10f 必须报红', () => {
+  const advIdx = SERVER_SRC.indexOf("app.use('/api/ai-advisor'");
+  assert.ok(advIdx !== -1, '找不到合婚端点');
+  const seg = SERVER_SRC.slice(advIdx, advIdx + 7000);
+  const rel = seg.indexOf('await callAI(');
+  assert.ok(rel !== -1, '找不到合婚端点内的 callAI 锚点');
+  const abs = advIdx + rel;
+  const broken = SERVER_SRC.slice(0, abs) + 'await __DISABLED_CALLAI__(' + SERVER_SRC.slice(abs + 'await callAI('.length);
+  assert.notEqual(broken, SERVER_SRC, '注入未生效');
+  const fails = checkStructure(broken, PAGE_SRC);
+  assert.ok(fails.some(f => f.startsWith('B10f')), '合婚闸门次序倒置未报红。fails=' + JSON.stringify(fails));
+});
+
+test('C18 注入：前端摘掉护栏错误码映射与流内 code 解析 ⇒ B13 必须报红', () => {
+  const broken = PAGE_SRC
+    .replace('DAILY_WEALTH_RATE_LIMIT_EXCEEDED: ', 'DAILY_WEALTH_RATE_LIMIT_DISABLED: ')
+    .replace("const _gcode = parsed.code || '';", "const _gcode = '';");
+  assert.notEqual(broken, PAGE_SRC, '注入锚点未命中（前端错误码映射被改？请同步更新锚点）');
+  const fails = checkStructure(SERVER_SRC, broken);
+  assert.ok(fails.some(f => f.startsWith('B13')), '前端错误码映射缺失未报红。fails=' + JSON.stringify(fails));
 });

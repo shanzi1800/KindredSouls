@@ -56,6 +56,7 @@
     "generateAI": "✨ Générer l'Insight IA",
     "alreadyGeneratedMonthly": "Rapport mensuel de fortune déjà généré ce mois. Prochain disponible: mois prochain",
     "alreadyGeneratedYearly": "Rapport annuel de fortune déjà généré. Prochain disponible: année prochaine",
+    "dailyRateLimitExceeded": "🚦 Limite quotidienne d'IA atteinte (10/jour). Réessayez demain.",
     "generateFail": "Échec de génération",
     "loginFirst": "Veuillez vous connecter d'abord pour générer le rapport.",
     "almanac": "Almanach de Richesse",

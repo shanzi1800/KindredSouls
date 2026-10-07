@@ -56,6 +56,7 @@
     "generateAI": "✨ Generar Insight de IA",
     "alreadyGeneratedMonthly": "Informe mensual de riqueza ya generado este mes. Próximo disponible: próximo mes",
     "alreadyGeneratedYearly": "Informe anual de riqueza ya generado. Próximo disponible: próximo año",
+    "dailyRateLimitExceeded": "🚦 Límite diario de IA alcanzado (10/día). Inténtalo de nuevo mañana.",
     "generateFail": "Generación fallida",
     "loginFirst": "Por favor inicia sesión primero para generar el informe.",
     "almanac": "Almanaque de Riqueza",
