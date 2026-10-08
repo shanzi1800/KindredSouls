@@ -95,6 +95,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v532-v2:*',
   'wealth:v533:*',        // 🛡️ E25/P1④: v533 全量作废（阵地④ 金块完整性 + 跨月同构治理 —— ① 新增 `lockGoldNuggetIntegrity`：把「金块标签行尾冒号 + 正文被换行甩到下一行」合并回同一行（金块标签白名单 = 六语 12 个本地化名 + 2 个英文骨架；判据窄到「整行剥装饰后恰等于一个金块标签」⇒ 正常 Markdown 小标题零误伤；**射程实证**：线上 312 条产物 v471~v531 六语全量扫描，该形态 0 命中 ⇒ 防御性加锁，对现存产物零改动）② 新增 `auditYearlyCrossMonthNgram` **只检不改**：以 `_v516MonthHeadKey` 六语切月块，量化「跨月重复句」（最高跨月数）与「跨月 12-gram」（剔除月标题/emoji 标签行/金块模板行三类骨架，否则判据被骨架淹没）—— 补 V486 全文去重所缺的**月维度**）
   'wealth:v533-v2:*',
+  'wealth:v534:*',        // 🛡️ E25/P2: v534 全量作废（① A 字段名对齐 —— v69_client 两处消费点 + server.js 流式月报第三消费点改读引擎真值 { dates, window_days, reason } ② C 法语宫位漂移锁缺口：`_frClaimOf` 接单一真源 `_FR_HOUSE_ANY`，`9ème Maison` 不再逃逸 ③ D 星历日期门禁射程扩 fr/th/vi + fmtDate 原生语序回写 + 附带修复 es 月表 off-by-one（v532 起 10/11/12 月日期写成前一个月））
+  'wealth:v534-v2:*',
   'wealth:v116-v2:*',
 ];
 

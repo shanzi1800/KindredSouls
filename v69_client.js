@@ -661,10 +661,21 @@ export function buildFactSheet(astroMatrix, lang = 'en') {
     .map((r, i) => `- Mercury Retrograde #${i+1} (${r.sign}): ${r.start} – ${r.end}`)
     .join('\n');
 
+  // 🛡️ E25-P2/A（2026-10-08）: 字段名对齐引擎真值结构 { dates, window_days, reason }。
+  //   历史病根（V492/D4 起，跨三期「封盘」未察）: 此处原读 `.date` / `.type` / `.sign` ——
+  //   三个字段在引擎产出里**一个都不存在** ⇒ 注入给 LLM 的字面就是
+  //     `- July 2026: undefined (undefined in undefined)`（整行零信息）。
+  //   时间线: V492 之前 js 读复数数组名而引擎只产单数形态（无尾随 s）⇒
+  //   `.filter()` 恒空 ⇒ **整行根本不注入**；V492/D4 把引擎统一成复数后本行**开始产出垃圾**，
+  //   而「无日期」与「undefined 日期」对用户观感**完全等价** ⇒ 没有任何人察觉。
+  //   D4 的护栏 G17 只断言「js 侧不出现单数数组名 token」，对**子字段名**失明 ⇒ 假绿放行。
+  //   现直接取 `.dates`（窗口区间）+ `.reason`（相位依据）。
+  //   ⚠️ 刻意**不加** `|| ''` 兜底 —— 静默兜底会像 server.js 流式月报块那样把结构漂移藏起来，
+  //   改由第 5 层闸门 test/audit-e25-p2-truth-injection.test.mjs 断言「注入块不得含 undefined」。
   const peakWindows = months
     .filter(m => m.peak_windows && m.peak_windows.length > 0)
     .slice(0, 3)
-    .map(m => `- ${m.month_name}: ${m.peak_windows[0].date} (${m.peak_windows[0].type} in ${m.peak_windows[0].sign})`)
+    .map(m => `- ${m.month_name}: ${m.peak_windows[0].dates} (${m.peak_windows[0].reason})`)
     .join('\n');
 
   const crisisDays = months
@@ -750,7 +761,7 @@ ${months.map((m, i) => {
   Neptune: ${m.neptune?.sign || '?'} House ${m.neptune?.house || '?'} ${m.neptune?.retrograde ? '(Retrograde)' : ''}
   Pluto: ${m.pluto?.sign || '?'} House ${m.pluto?.house || '?'} ${m.pluto?.retrograde ? '(Retrograde)' : ''}
   ${m.black_swan_days?.length > 0 ? `⚠️ Crisis Days: ${m.black_swan_days.map(d => `${d.date}(${d.aspect})`).join(', ')}` : ''}
-  ${m.peak_windows?.length > 0 ? `✨ Peak Window: ${m.peak_windows[0].date} – ${m.peak_windows[0].reason}` : ''}`;
+  ${m.peak_windows?.length > 0 ? `✨ Peak Window: ${m.peak_windows[0].dates} – ${m.peak_windows[0].reason}` : ''}`;
 }).join('\n')}
 
 ── House Mapping (${meta?.house_system_used || 'Equal House'}, Rising = ${actualRising}) ──

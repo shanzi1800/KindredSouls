@@ -3774,7 +3774,15 @@ function _transitTruthMap10_FR(astroMatrix) {
 //   `(?<![\d.,])` 防把 `2026 maison` / `1.5 maison` 的尾段数字当宫位号；值域 1~12 由调用方钳制。
 const _FR_HOUSE_ABBR = /(?<![\d.,])\b(\d{1,2})\s*(?:ème|eme|[eèé\u1d49\u00b0])?\s*maison\b/i;
 // 宫位引用「任一形态」（`Maison 5` ∪ `5ᵉ maison`）—— 供定语槽裁剪统一使用，避免两处漂移。
-const _FR_HOUSE_ANY = /(?:Maison\s*\d+|(?<![\d.,])\b\d{1,2}\s*(?:ème|eme|[eèé\u1d49\u00b0])?\s*maison)\b/i;
+// 🛡️ E25-P2/C（2026-10-08）: 序数后缀补 `ère|ere|er|re|nd|nde`（军师裁决：兼容法语 `1er / 1ère / 2nd / 2nde Maison`）。
+//   ⚠️ 该改动**按构造安全**：新增形态全部落在「数字在宫位词之前」这条**已存在**的语法槽位里
+//     （原 `\d{1,2}\s*(?:ème|...)?\s*maison`），唯一语义增量是「同形但带 er/ère/nd 后缀的串现在也能命中」；
+//     此类串在现网 fr 产物中**零出现** ⇒ 对既有 4 个调用点（_frClause/_frTransitClause/_frSlotOf/_frPatchZone）
+//     的 cut 起点与命中集合**逐字节不变**（闸门 test/audit-e25-p2-fr-house.test.mjs 有前后对照断言）。
+//   ⚠️ 刻意**不含**拼写式序数（`neuvième maison`）：该形态无线上样本，且纳入会移动 `_frClause` 的
+//     pre 窗切点（当前这些串在切点上无命中）⇒ 覆盖方向不可证 ⇒ 按「未经证实的加锁=新增风险面」纪律不加。
+//     （`_frPatchZone` 自身经 reOrd 已单独覆盖拼写式，不受影响。）
+const _FR_HOUSE_ANY = /(?:Maison\s*\d+|(?<![\d.,])\b\d{1,2}\s*(?:ème|eme|ère|ere|er|re|nde|nd|[eèé\u1d49\u00b0])?\s*maison)\b/i;
 
 function _frClause(text, i, len, explicit) {
   const aEnd = i + len;
@@ -3961,16 +3969,35 @@ function _frSlotOf(text, aEnd) {
   return after.slice(0, cut);
 }
 
+// 🛡️ E25-P2/C（2026-10-08）: 宫位引用 → 数字（兼容两种语序）。
+//   历史病根: `_frClaimOf` 原先自搓 `/Maison\s*(\d+)/i` —— 只认 `Maison 9`，
+//   **不认法语自然语序 `9ème Maison`**（而同一文件里 `_FR_HOUSE_ANY` 本来就能认 ⇒ 两处口径漂移）。
+//   线上 fr 年报实证: `…votre 9ème Maison…` ⇒ claim.house 恒 null ⇒ `_frTruthMatch` 退化为
+//   「只比星座」⇒「星座对、宫位错」也被判为「无漂移」⇒ **宫位漂移全部逃逸**。
+//   注: `_frPatchZone` 本可纠正该形态，但 claim 先失守 ⇒ 永远走不到 patch。
+//   值域: 越界一律返回 null（视为「无有效宫位声明」）—— 与旧行为的保守侧等价，
+//   也与 `_frPatchZone` 的 `gotHouse >= 1 && gotHouse <= 12` 守卫同口径。
+function _frHouseNumOf(ref) {
+  const s = String(ref);
+  const a = s.match(/Maison\s*(\d+)/i);   // `Maison 9`
+  if (a) { const n = Number(a[1]); return n >= 1 && n <= 12 ? n : null; }
+  const b = s.match(/(\d{1,2})/);         // `9ème maison` / `9ᵉ maison` / `1er maison`
+  if (b) { const n = Number(b[1]); return n >= 1 && n <= 12 ? n : null; }
+  return null;
+}
+
 // 该从句「声称」的星座/宫位（fwd 优先，fwd 无则回看 bwd）
 function _frClaimOf(fwd, bwd) {
   const uniq = _FR_SIGN_UNIQ();
   let sign = null, si = -1;
   for (const s of uniq) { const k = fwd.indexOf(s); if (k >= 0 && (si < 0 || k < si)) { si = k; sign = s; } }
   let house = null;
-  const hm = fwd.match(/Maison\s*(\d+)/i);
-  if (hm) house = Number(hm[1]);
+  // 🛡️ E25-P2/C: 改用 `_FR_HOUSE_ANY`（宫位引用**任一形态**的单一真源）——
+  //   与 `_frClause` / `_frSlotOf` / `_frPatchZone` 同源，杜绝「检测认 A 形态、取值只认 B 形态」。
+  const hm = fwd.match(_FR_HOUSE_ANY);
+  if (hm) house = _frHouseNumOf(hm[0]);
   if (!sign && bwd) { let bi = -1; for (const s of uniq) { const k = bwd.lastIndexOf(s); if (k > bi) { bi = k; sign = s; } } }
-  if (house === null && bwd) { const all = [...String(bwd).matchAll(/Maison\s*(\d+)/gi)]; if (all.length) house = Number(all[all.length - 1][1]); }
+  if (house === null && bwd) { const all = [...String(bwd).matchAll(new RegExp(_FR_HOUSE_ANY.source, 'gi'))]; if (all.length) house = _frHouseNumOf(all[all.length - 1][0]); }
   return { sign, house };
 }
 
@@ -6648,40 +6675,101 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
 //   服务 es/en/zh；无 chronicle 数据 → 整体透传。
 // ══════════════════════════════════════════════════════════════════
 const _EPHEM_DAYMON = {
-  es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','setiembre','octubre','noviembre','diciembre'],
+  // 🛡️ E25-P2/D 附带修复（2026-10-08）: 本行原为 **13 项**（`'septiembre'` 后多一个 `'setiembre'`），
+  //   由 0966b70（E25-P1② 自身）引入。病根是「用**数组下标**当月号」这一脆弱契约：
+  //     · `fmtDate` 取 `es[m-1]` ⇒ m=10 取到 es[9]='setiembre'，m=11 取到 'octubre'，m=12 取到 'noviembre'
+  //       ⇒ **线上 es 年报 10/11/12 月日期整体写成前一个月**（v532 起）；
+  //     · `_EPHEM_MON_IDX` 用 `i+1` 建表 ⇒ 'octubre'→11 / 'noviembre'→12 / 'diciembre'→13(越界≈无效)
+  //       ⇒ **解析侧**同样错位。
+  //   治法: 还原为**严格 12 项**（下标 = 月号-1 的不变量恢复），把 `setiembre` 降级为**解析别名**
+  //   （见 `_EPHEM_MON_ALIAS`）—— 既能继续识别该拼写，又不污染位置契约。
+  //   闸门 test/audit-e25-p2-ephem-range.test.mjs 断言「每语种恰 12 项 + 月名↔月号双射」。
+  es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
   en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  // 🛡️ E25-P2/D（2026-10-08）: fr/th/vi 三名表 —— 与 _V516_MONTHS 同源同序（公历月号 1~12）。
+  //   仅用于「月名 → 月号」解析与 fmtDate 回写；泰语佛历(พ.ศ.)年号不在射程内（本锁只替换「日+月」子串，年份原样保留）。
+  fr: ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'],
+  th: ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'],
+  vi: ['tháng 1','tháng 2','tháng 3','tháng 4','tháng 5','tháng 6','tháng 7','tháng 8','tháng 9','tháng 10','tháng 11','tháng 12'],
+};
+// 🛡️ E25-P2/D: 解析用变体别名（重音脱落 / 缩写 / 泰语月名缩写 / 西语异拼 setiembre）
+//   —— **只参与解析，不参与回写**。纯净性保证: 键与 en/es 既有月名词（lowercase 后）**零交集**
+//   ⇒ 对 es/en 的 fmtDate 回写路径行为完全不变（闸门有断言）。
+const _EPHEM_MON_ALIAS = {
+  setiembre: 9,
+  fevrier: 2, aout: 8, decembre: 12,
+  janv: 1, fevr: 2, avr: 4, juil: 7, sept: 9, oct: 10, nov: 11, dec: 12,
+  'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6,
+  'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
 };
 const _EPHEM_MON_IDX = (() => {
   const m = {};
   for (const [lg, arr] of Object.entries(_EPHEM_DAYMON)) arr.forEach((w, i) => { m[w.toLowerCase()] = i + 1; });
+  Object.assign(m, _EPHEM_MON_ALIAS);
   return m;
 })();
+// 🛡️ E25-P2/D: 星历日期门禁的「行星本地化名」—— fr/th/vi 直接**引用**各语种既有唯一真源表
+//   （_FR_PLANET / _TH_PLANET / _VI_PLANET），绝不新写第二份名单。
+//   教训来源（根因 B）: 同一事实存在两份名单 ⇒ 必然漂移 ⇒ 一份被更新、另一份静默过期。
+const _EPHEM_L10N_NAME = { fr: _FR_PLANET, th: _TH_PLANET, vi: _VI_PLANET };
 function _ephemDateWindow(text, idx) { return text.slice(Math.max(0, idx - 60), Math.min(text.length, idx + 90)); }
 function lockEphemerisDates(text, lang, astroMatrix, reportType) {
   if (!text || typeof text !== 'string') return text;
-  if (!['es', 'en', 'zh'].includes(lang)) return text;
+  // 🛡️ E25-P2/D（2026-10-08）: 射程由 es/en/zh 扩至 **fr/th/vi**。
+  //   历史病根: 本锁在 E25-P1② 落地时白名单只覆盖当时的一等语种 ⇒ fr/th/vi **零日期兜底**
+  //   （线上 fr 年报实证: 水逆日期采信了 EN prompt 里硬编码的事实表，引擎真值无人纠正）。
+  //   风险面: 本锁只做「日期 → 最近的真实站点日」吸附，且**原日期已精确相同时直接 continue** ⇒
+  //   对正确日期零改动；无站点数据 / 无逆顺行语境时一律跳过 ⇒ 宁漏不改。
+  if (!['es', 'en', 'zh', 'fr', 'th', 'vi'].includes(lang)) return text;
   const ch = astroMatrix && astroMatrix.ephemeris_chronicle;
   if (!ch || !ch.by_planet) return text;
-  const NAME = _V432_NAME[lang];
+  // 🛡️ E25-P2/D: fr/th/vi 走 `_EPHEM_L10N_NAME`（引用各语种既有唯一真源表）；en/es/zh 仍走 `_V432_NAME`。
+  const NAME = _V432_NAME[lang] || _EPHEM_L10N_NAME[lang];
   if (!NAME) return text;
-  const RETRO_RE = lang === 'zh' ? /逆行|退行/ : /retr[oó]grad|retrograde/i;
-  const DIRECT_RE = lang === 'zh' ? /顺行/ : /(?:estacion\w*\s+direct|vuelve\s+direct|turns?\s+direct|stations?\s+direct|direct\s+again|direct\s+motion)/i;
+  const RETRO_RE = lang === 'zh' ? /逆行|退行/
+    : lang === 'fr' ? /r[eé]trograd\w*/i
+    : lang === 'th' ? /ถอยหลัง|โคจรย้อน/
+    : lang === 'vi' ? /nghịch\s*hành|xiều\s*hành\s*tụt/i
+    : /retr[oó]grad|retrograde/i;
+  // 顺行（站点恢复）—— 各语种**恒为多词短语**（与既有 es/en 口径一致），避免裸 `direct` 误判。
+  const DIRECT_RE = lang === 'zh' ? /顺行/
+    : lang === 'fr' ? /(?:redevient\s+direct|reprend\s+sa\s+marche\s+directe|marche\s+directe|devient\s+direct|stationnair\w*|repart\s+en\s+direct)/i
+    : lang === 'th' ? /(?:กลับ)?เดินหน้า|โคจรปกติ/
+    : lang === 'vi' ? /thuận\s*hành|xiều\s*hành\s*thuận/i
+    : /(?:estacion\w*\s+direct|vuelve\s+direct|turns?\s+direct|stations?\s+direct|direct\s+again|direct\s+motion)/i;
   const DATE_RE = lang === 'zh'
     ? /(\d{1,2})\s*月\s*(\d{1,2})\s*日/
     : lang === 'es'
       ? /(\d{1,2})\s+de\s+([a-záéíóúñ]+)/i
-      : /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})|(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i;
+      : lang === 'fr'
+        // 「24 juillet」/「1er octobre」/「24 aout」；`(?<![\d.,])` 防把年份尾段(2026)、小数(1.5) 当日期
+        ? /(?<![\d.,])\b(\d{1,2})(?:er|ère|ere|e)?\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)/i
+        : lang === 'th'
+          // 「24 กรกฎาคม」/「24 ก.ค.」；泰文无 \b 语义 ⇒ 只用 lookbehind 挡年份尾段
+          ? /(?<![\d.])(\d{1,2})\s+(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)/
+          : lang === 'vi'
+            // 「24 tháng 7」—— 直接捕获月号，从构造上避开「`tháng 1` 是 `tháng 10/11/12` 前缀」的老坑
+            ? /(?<![\d.])(\d{1,2})\s+tháng\s+(\d{1,2})/i
+            : /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})|(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i;
   const toMD = (m) => {
     // ⚠️ 统一返回 [月, 日]（与 mdOf 同序）—— 初版 es/en 返回 [日, 月] 导致距离计算颠倒,
     //   选站全错（vm 实测: 7/18 被改成 9/23）。
     if (lang === 'zh') return [Number(m[1]), Number(m[2])];
-    if (lang === 'es') return [_EPHEM_MON_IDX[String(m[2]).toLowerCase()] || 0, Number(m[1])];
+    // 🛡️ E25-P2/D: es/fr/th 同为「日 + 月名」序；vi 为「日 + tháng + 月号」序。
+    if (lang === 'es' || lang === 'fr' || lang === 'th') return [_EPHEM_MON_IDX[String(m[2]).toLowerCase()] || 0, Number(m[1])];
+    if (lang === 'vi') return [Number(m[2]), Number(m[1])];
     if (m[1]) return [_EPHEM_MON_IDX[String(m[1]).toLowerCase()] || 0, Number(m[2])];
     return [_EPHEM_MON_IDX[String(m[4]).toLowerCase()] || 0, Number(m[3])];
   };
   const mdOf = (iso) => [Number(String(iso).slice(5, 7)), Number(String(iso).slice(8, 10))];
   const fmtDate = (m, d) => lang === 'zh' ? `${m}\u6708${d}\u65e5`
     : lang === 'es' ? `${d} de ${_EPHEM_DAYMON.es[m - 1]}`
+    // 🛡️ E25-P2/D: 各语种**原生语序**回写 —— fr「24 juillet」/ th「24 กรกฎาคม」/ vi「24 tháng 7」。
+    //   ⚠️ 必须显式补这三支: 原 `else` 分支对**一切非 es/zh 语言**都回写英文序「July 24」
+    //   —— 若只放行射程而不补分支，fr/th/vi 的日期会被改写成英文形态（比不改更糟）。
+    : lang === 'fr' ? `${d} ${_EPHEM_DAYMON.fr[m - 1]}`
+    : lang === 'th' ? `${d} ${_EPHEM_DAYMON.th[m - 1]}`
+    : lang === 'vi' ? `${d} tháng ${m}`
     : `${_EPHEM_DAYMON.en[m - 1]} ${d}`;
   // 🛡️ E25-P1②: 扫描收集 + **倒序应用**（工作记忆铁律：多段替换按位置倒序）。
   //   在**不可变源文本**上扫描（exec 推进 lastIndex），绝不边改边扫 —— 结构上消除
@@ -9584,7 +9672,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v534:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v535:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -13615,7 +13703,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v534:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v535:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14516,7 +14604,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v534:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v535:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16141,7 +16229,12 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
       if (peakWindows.length > 0) {
         for (var pi = 0; pi < Math.min(2, peakWindows.length); pi++) {
           var pw = peakWindows[pi];
-          peakBlock += '★ 峰值窗口:' + (pw.date || '') + '(' + (pw.type || '收入高峰') + ' in ' + (pw.sign || '') + ')\n';
+          // 🛡️ E25-P2/A 第三处消费点（2026-10-08）: 同源字段名失配 —— 引擎侧
+          //   `peak_windows[0]` 只有 { dates, window_days, reason }，.date/.type/.sign **全不存在**。
+          //   原 `|| ''` / `|| '收入高峰'` 兜底把缺陷伪装成 `★ 峰值窗口:(收入高峰 in )`
+          //   —— **静默空壳**，比 v69_client 那两处更难发现（既不报错也不出现 undefined 字样）。
+          //   现取 .dates + .reason；reason 缺失时省略括号，绝不产出空壳。
+          peakBlock += '★ 峰值窗口:' + (pw.dates || '') + (pw.reason ? '(' + pw.reason + ')' : '') + '\n';
         }
       }
       // 黑天鹅
@@ -16222,7 +16315,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v534-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v535-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

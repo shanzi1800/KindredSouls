@@ -133,12 +133,15 @@ test('C3 zh：同句双日期（逆行开始 + 恢复顺行）各自按事件归
     '水星在6月29日开始逆行，持续到7月23日恢复顺行。');
 });
 
-test('C4 无 chronicle / 非三语 → 整体透传（宁漏不改）', () => {
+test('C4 无 chronicle / 射程外语种 → 整体透传（宁漏不改）', () => {
   const f = buildDateLock();
   const t = 'Mercurio el 18 de julio comienza su retrogradacion.';
-  assert.strictEqual(f(t, 'es', {}, 'yearly'), t);
-  const fr = 'Mercure le 18 juillet comienza su retrogradacion.';
-  assert.strictEqual(f(fr, 'fr', mkAM(), 'yearly'), fr);
+  assert.strictEqual(f(t, 'es', {}, 'yearly'), t, '无 chronicle 时须整体透传');
+  // 🔴 E25-P2/D（2026-10-08）: 射程已由 es/en/zh 扩至 **fr/th/vi** ⇒
+  //   原「非三语透传」的 fr 用例**已不成立**（fr 现为射程内，会被吸附到真值站，
+  //   这正是 D 修复的目标行为）。改取射程外语言（de）验证「宁漏不改」边界仍在。
+  const de = 'Merkur am 18. Juli wird rückläufig.';
+  assert.strictEqual(f(de, 'de', mkAM(), 'yearly'), de, '射程外语种必须整体透传');
 });
 
 // ═══════════════════════════ 注入缺陷自测 ═══════════════════════════
