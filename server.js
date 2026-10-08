@@ -9516,7 +9516,7 @@ app.use((req, res, next) => {
 
 // ── /api/debug-env ──
 // ── /api/debug-thai-prompt: 检查泰语 system prompt 是否正确加载 ──
-app.get('/api/debug-thai-prompt', async (req, res) => {
+app.get('/api/debug-thai-prompt', e30AdminGuard, async (req, res) => {
   try {
     const { buildWealthReportPrompt } = await import('./server.js').catch(() => ({}));
     const thPrompt = await import('./src/prompts/yearlySystemTH.ts').catch(() => null);
@@ -9538,7 +9538,7 @@ app.get('/api/debug-thai-prompt', async (req, res) => {
   }
 });
 
-app.get('/api/debug-env', (req, res) => {
+app.get('/api/debug-env', e30AdminGuard, (req, res) => {
   // 🛠️ V100e: 临时加 debug 看实际 prompt 语言
   if (req.query.lang) {
     try {
@@ -9578,6 +9578,9 @@ app.get('/api/debug-env', (req, res) => {
 //        process.env.DEBUG_ADMIN_KEY（回落 ADMIN_TOKEN）**常量时间**比对；
 //        密钥未配置 / 未携带 / 不匹配 ⇒ 一律 401，且在**任何 DB/缓存读写之前**返回。
 //   🔴 fail-closed 铁律：绝不因「服务端未配置密钥」而放行（要启用须显式配该环境变量）。
+//   ✅ E31 扩展：同一守卫覆盖全站 debug/test 调试面 7 端点
+//      （debug-thai-prompt / debug-env / debug-supabase-test / debug-source /
+//        debug-dump-cache / test-gemini / test-groq）；`/api/health` 保持开放（Railway 探活）。
 // ══════════════════════════════════════════════════════════════════
 // ═══ E30-AUTH-GUARD-1 ═══
 function _e30AdminExpectedKey() {
@@ -9617,7 +9620,7 @@ function e30RequireAdminToken(req, res) {
   return true;
 }
 // Express 中间件形态：守卫先于 body 解析与一切处理器逻辑
-const e30AdminGuard = (req, res, next) => { if (!e30RequireAdminToken(req, res)) return; next(); };
+function e30AdminGuard(req, res, next) { if (!e30RequireAdminToken(req, res)) return; next(); }
 // ═══ E30-AUTH-GUARD-END ═══
 
 // ── /api/debug-clear-cache ── 清空指定 cache_key 的财富报告缓存(调试用,生成后删除)
@@ -9625,7 +9628,7 @@ const e30AdminGuard = (req, res, next) => { if (!e30RequireAdminToken(req, res))
 
 
 // ── V98: Supabase连通性诊断端点 ──
-app.get('/api/debug-supabase-test', async (req, res) => {
+app.get('/api/debug-supabase-test', e30AdminGuard, async (req, res) => {
   // https 已在顶部 import
     const tests = [];
 
@@ -9772,7 +9775,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (r
 // ── Root health check for Railway ──
 // V342: fileLen 误读教训——src.length 是 UTF-16 字符数不是字节数。
 // 改为输出 byteLen(Buffer 字节数) + charLen + md5，杜绝字符/字节混淆。
-app.get('/api/debug-source', async (req, res) => {
+app.get('/api/debug-source', e30AdminGuard, async (req, res) => {
   try {
     const filePath = import.meta.url.replace('file://', '');
     const buf = readFileSync(filePath);
@@ -14358,7 +14361,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
 });
 
 // ── /api/test-gemini ──
-app.get('/api/test-gemini', async (req, res) => {
+app.get('/api/test-gemini', e30AdminGuard, async (req, res) => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return res.json({ error: 'GEMINI_API_KEY not set' });
   try {
@@ -16850,7 +16853,7 @@ function v2_monthly_title_lock(text, months) {
 }
 
 // ── /api/debug-dump-cache ── 只读诊断:返回某 cache_key 的所有记录(时间+版本,不含正文避免超长)
-app.get('/api/debug-dump-cache', async (req, res) => {
+app.get('/api/debug-dump-cache', e30AdminGuard, async (req, res) => {
   const cacheKey = req.query.cacheKey || req.query.key;
   if (!cacheKey) return res.status(400).json({ error: 'cacheKey required' });
   try {
@@ -16891,7 +16894,7 @@ app.listen(PORT, HOST, () => {
 // ── Groq API Test Endpoint ──────────────────────────────────────────────────
 // GET /api/test-groq?key=YOUR_KEY
 // 测试 Railway → Groq 是否可达 + key 是否有效
-app.get('/api/test-groq', async (req, res) => {
+app.get('/api/test-groq', e30AdminGuard, async (req, res) => {
   const groqKey = req.query.key || process.env.GROQ_API_KEY;
   if (!groqKey) {
     return res.json({ error: 'No Groq key provided. Add ?key=YOUR_KEY' });
