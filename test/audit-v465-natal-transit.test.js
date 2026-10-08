@@ -130,7 +130,8 @@ describe('V465: Natal vs Transit Disambiguation (样本 A · Reykjavik EN)', { c
 
     // 清缓存（强制生成，避开旧缓存）
     try {
-      await fetch(`${BASE_URL}/api/clear-cache/${CASE_A.birthDate}/en/monthly`);
+      // 🛡️ E30: clear-cache 端点已加 admin token 强鉴权（未配置则服务端 fail-closed 401）
+      await fetch(`${BASE_URL}/api/clear-cache/${CASE_A.birthDate}/en/monthly`, { headers: { 'x-admin-token': process.env.DEBUG_ADMIN_KEY || '' } });
     } catch (_) { /* ignore cache clear failure */ }
 
     // 等待缓存清理

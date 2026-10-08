@@ -448,7 +448,7 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 // Serves static frontend + all API routes on port 3000
 import express from 'express';
 import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';   // 🛡️ E30: 补 timingSafeEqual（clear-cache 端点常量时间鉴权）
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors } from './v69_client.js';
@@ -9570,7 +9570,58 @@ app.get('/api/debug-env', (req, res) => {
   });
 });
 
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E30: clear-cache 双端点强鉴权（fail-closed）
+//   病根：`POST /api/debug-clear-cache` 与 `GET /api/clear-cache/...` 无鉴权
+//        ⇒ 任意外部者可用脚本遍历清空付费用户缓存（DoS / 缓存投毒 / 推高 LLM 成本）。
+//   治法：统一校验 `x-admin-token` 或 `Authorization: Bearer <key>` 与
+//        process.env.DEBUG_ADMIN_KEY（回落 ADMIN_TOKEN）**常量时间**比对；
+//        密钥未配置 / 未携带 / 不匹配 ⇒ 一律 401，且在**任何 DB/缓存读写之前**返回。
+//   🔴 fail-closed 铁律：绝不因「服务端未配置密钥」而放行（要启用须显式配该环境变量）。
+// ══════════════════════════════════════════════════════════════════
+// ═══ E30-AUTH-GUARD-1 ═══
+function _e30AdminExpectedKey() {
+  return String(process.env.DEBUG_ADMIN_KEY || process.env.ADMIN_TOKEN || '').trim();
+}
+function _e30ExtractToken(req) {
+  const h = (req && req.headers) || {};
+  const direct = h['x-admin-token'];
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const auth = h['authorization'];
+  if (typeof auth === 'string') {
+    const m = /^Bearer\s+(\S.*)$/i.exec(auth.trim());
+    if (m) return m[1].trim();
+  }
+  return '';
+}
+function _e30SafeEqual(a, b) {
+  const ba = Buffer.from(String(a), 'utf8');
+  const bb = Buffer.from(String(b), 'utf8');
+  if (ba.length !== bb.length) return false;   // 长度守卫：timingSafeEqual 长度不等会抛
+  try { return timingSafeEqual(ba, bb); } catch { return false; }
+}
+// 返回 true=放行；false=已写出 401（调用方须立即 return / 不继续）
+function e30RequireAdminToken(req, res) {
+  const expected = _e30AdminExpectedKey();
+  if (!expected) {
+    console.warn('[E30] clear-cache 拒绝：服务端未配置 DEBUG_ADMIN_KEY（fail-closed）');
+    res.status(401).json({ error: 'unauthorized', reason: 'admin key not configured' });
+    return false;
+  }
+  const got = _e30ExtractToken(req);
+  if (!got || !_e30SafeEqual(got, expected)) {
+    console.warn('[E30] clear-cache 拒绝：token 缺失或不匹配');
+    res.status(401).json({ error: 'unauthorized' });
+    return false;
+  }
+  return true;
+}
+// Express 中间件形态：守卫先于 body 解析与一切处理器逻辑
+const e30AdminGuard = (req, res, next) => { if (!e30RequireAdminToken(req, res)) return; next(); };
+// ═══ E30-AUTH-GUARD-END ═══
+
 // ── /api/debug-clear-cache ── 清空指定 cache_key 的财富报告缓存(调试用,生成后删除)
+//    🛡️ E30: 已挂 e30AdminGuard 强鉴权（见上方 E30-AUTH-GUARD 块）
 
 
 // ── V98: Supabase连通性诊断端点 ──
@@ -9659,7 +9710,7 @@ app.get('/api/debug-supabase-test', async (req, res) => {
   res.json(result);
 });
 
-app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
+app.post('/api/debug-clear-cache', e30AdminGuard, express.json(), async (req, res) => {
   const { cacheKey } = req.body;
   if (!cacheKey) return res.status(400).json({ error: 'cacheKey required' });
   const SB_URL = process.env.SUPABASE_URL;
@@ -9677,7 +9728,7 @@ app.post('/api/debug-clear-cache', express.json(), async (req, res) => {
 });
 
 // ── /api/clear-cache ──
-app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
+app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (req, res) => {
   const { birthDate, lang, reportType } = req.params;
   const { birthTime, lat, lon, tz } = req.query;
   const SB_URL = process.env.SUPABASE_URL;
@@ -9697,7 +9748,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v539:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v540:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -13789,7 +13840,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v539:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v540:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14691,7 +14742,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v539:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v540:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16403,7 +16454,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v539-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v540-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

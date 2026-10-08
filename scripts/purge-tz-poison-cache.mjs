@@ -105,6 +105,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v537-v2:*',
   'wealth:v538:*',        // 🛡️ E29: v538 全量作废（ZH 模板净化 + 全链真值加锁 —— ① `yearlySystemZH.txt` 由「V99n 五语合体遗留文件」净化为纯中文单语模板 + 唯一锚点 `[__SWISSEPH_FACT_SHEET__]`（并入 E27 动态 FactSheet 锚点路径；旧 FACT_START/FACT_END 双标记对 zh 惰性 ⇒ 无重复注入），删除残留四语块里的 Cancer Rising 硬编码宫位图/静态水逆表/写死年份 ⇒ **zh system 层内容变更** ② `buildPeakTruthBlock` 年报 system 层逐月列引擎实算 peak reason（禁 LLM 自创相位）③ `buildSunWeekBlock` 月报周级太阳宫位真值 ④ `assertNatalCoverage` 本命主星覆盖审计 + `buildNatalAnchors` Chapitre I 全覆盖规则 ⑤ `_L10N_OR` 六语连接词 ⇒ 月报+年报全量作废）
   'wealth:v538-v2:*',
+  'wealth:v539:*',        // 🛡️ E30: v539 全量作废（clear-cache 双端点强鉴权 —— `POST /api/debug-clear-cache` 与 `GET /api/clear-cache/...` 曾**零鉴权**暴露（任意外部者可遍历清空付费用户缓存 = DoS/缓存投毒/倒逼重调 LLM 烧钱）；现统一挂 `e30AdminGuard`：校验 `x-admin-token` / `Authorization: Bearer`，与 `process.env.DEBUG_ADMIN_KEY`（回落 `ADMIN_TOKEN`）常量时间比对，未配置/未携带/不匹配一律 401 且先于任何 DB/读写返回（fail-closed）。纯防御性加锁不改输出链；版本前移 ⇒ 上一版键成孤儿，一并回收）
+  'wealth:v539-v2:*',
   'wealth:v116-v2:*',
 ];
 

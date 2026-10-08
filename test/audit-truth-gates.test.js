@@ -330,7 +330,10 @@ async function clearCache(base, c) {
     const url = `${base}/api/clear-cache/${c.birth}/${c.lang}/monthly?birthTime=${c.time}&lat=${c.lat}&lon=${c.lon}&tz=${encodeURIComponent(c.tz)}`;
     const u = new URL(url);
     await new Promise((res, rej) => {
-      https.get({ hostname:u.hostname, path:u.pathname+'? '+u.search, method:'GET' }, r => { let d=''; r.on('data',c=>d+=c); r.on('end',res); r.on('error',rej); }).on('error',rej);
+      // 🛡️ E30: clear-cache 端点已加 admin token 强鉴权 ⇒ 手动巡检需带上（未配置则服务端 fail-closed 401）
+      https.get({ hostname:u.hostname, path:u.pathname+'? '+u.search, method:'GET',
+        headers: { 'x-admin-token': process.env.DEBUG_ADMIN_KEY || '' } },
+        r => { let d=''; r.on('data',c=>d+=c); r.on('end',res); r.on('error',rej); }).on('error',rej);
     });
   } catch {}
 }
