@@ -93,6 +93,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v531-v2:*',
   'wealth:v532:*',        // 🛡️ E25/P1③: v532 全量作废（阵地③ 南半球季节反转锁 —— 新增 `lockHemisphereSeasons`：按 lat 符号判定半球，南半球把「至点/分点 + 季节名」纠正为 12月=verano/夏、6月=invierno/冬、3月=otoño/秋、9月=primavera/春，并联动纠正同句昼夜长度描述符（`Summer Solstice — longest night` 自相矛盾）；prompt 侧新增 `buildHemisphereSeasonBlock` 六语注入。线上实测：Ushuaia(lat -54.80) es 年报 4/4 处季节命名全错、Adelaide(lat -34.93) en 年报 `December 21: The Winter Solstice — the longest night` 全错。射程 es/en/fr（zh 逐字节不变），**必须存在锚点(月名/四轴星座)且与至点/分点同窗**才纠正（宁漏不改 + 防月区间句过纠））
   'wealth:v532-v2:*',
+  'wealth:v533:*',        // 🛡️ E25/P1④: v533 全量作废（阵地④ 金块完整性 + 跨月同构治理 —— ① 新增 `lockGoldNuggetIntegrity`：把「金块标签行尾冒号 + 正文被换行甩到下一行」合并回同一行（金块标签白名单 = 六语 12 个本地化名 + 2 个英文骨架；判据窄到「整行剥装饰后恰等于一个金块标签」⇒ 正常 Markdown 小标题零误伤；**射程实证**：线上 312 条产物 v471~v531 六语全量扫描，该形态 0 命中 ⇒ 防御性加锁，对现存产物零改动）② 新增 `auditYearlyCrossMonthNgram` **只检不改**：以 `_v516MonthHeadKey` 六语切月块，量化「跨月重复句」（最高跨月数）与「跨月 12-gram」（剔除月标题/emoji 标签行/金块模板行三类骨架，否则判据被骨架淹没）—— 补 V486 全文去重所缺的**月维度**）
+  'wealth:v533-v2:*',
   'wealth:v116-v2:*',
 ];
 

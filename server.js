@@ -6957,6 +6957,175 @@ function lockHemisphereSeasons(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ E25-P1④① 金块完整性锁 —— 「金块标签行尾冒号 + 正文换行」合并（幂等; 窄判据）
+// ══════════════════════════════════════════════════════════════════
+//   军师令(#238①): 每月恰 1×[财富高峰窗口] + 1×[财务黑天鹅日]；金块标签行**不得**以冒号
+//   结尾而把正文甩到下一行 —— 标签与正文被拆成两行后，前端金色金块渲染破碎（另一语序下
+//   只剩孤立的 `: <正文>` 残骸，即军师所报「金块整个标题丢失」的同一事故面）。
+//
+//   🔴 射程实证（2026-10-08，线上 312 条产物 v471~v531 六语全量扫描，非推演）:
+//     ·「行尾冒号的短行」501 例 —— **全部**是正常 Markdown 小标题（如 `**仪式准备**：`），
+//       含金块标签词者 **0**；
+//     ·「整行仅冒号」**0** 例；「空方括号 / 空加粗」**0** 例；
+//     · 规范金块行（标签 + 冒号 + 同行正文）2412 例。
+//     ⇒ 该缺陷在**落库文本层零存在**（只能复现于旧版/渲染层）。故本锁为**防御性加锁**：
+//       判据窄到「整行剥掉全部装饰后**恰等于一个金块标签**，且以冒号结尾」，对现存产物
+//       **零改动**（可离线批扫证明），仅防线上偶发。符合「宁漏不改 + 射程明确」纪律。
+//
+//   判据（全部满足才动手）:
+//     ① 语言在六语射程内（zh/en/es/fr/th/vi）；报告类型 yearly 或 monthly；
+//     ② 该行 trim 后**以冒号（半/全角）结尾**（允许冒号后残留 `**`）；
+//     ③ 剥掉「空白 + `*` + `-` + `•` + `·` + `[` + `]` + `✦` + 金块 emoji」后，
+//        整行**恰等于**金块标签白名单中的一项（⇒ 正常小标题天然不命中）；
+//     ④ 下一行存在、非空、不是 Markdown 标题、不是引用行、本身也不是悬挂标签。
+//   动作: 合并为「<原行去尾冒号> + ': ' + 下一行 trim>」，并吃掉下一行。幂等。
+//   ⚠️ 尾冒号判定用 `[:：]\s*\*{0,2}\s*$`（半/全角 + 尾部加粗残星），与 V480 的归一
+//      口径一致（V480 只把全角冒号吃进**月标题**，金块行不在其射程内 ⇒ 本锁补空白区）。
+// ══════════════════════════════════════════════════════════════════
+const _GN_LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+// 金块标签白名单 = 生成契约的 12 个本地化名 + 2 个英文骨架（与 V480 `_V480_TAG_MAP` 同源）。
+// ⚠️ 只放**金块专属**词；不得加入通用小标题词（否则会误并正常「标题+列表」结构）。
+const _GN_LABELS = [
+  'Peak Revenue Window', 'Financial Black Swan Day',
+  '财富高峰窗口', '财务黑天鹅日',
+  'Ventana de Éxito y Pico de Ingresos', 'Día del Cisne Negro Financiero',
+  'Fenêtre de Revenu Sommet', 'Jour du Cygne Noir Financier',
+  'ช่วงเวลาทองคำเปิดคลังทรัพย์', 'วันวิกฤตตัดกระแสเงิน',
+  'Cửa Sổ Vàng Tăng Trưởng Tài Lộc', 'Ngày Thiên Nga Đen Nguy Cơ Sụt Giảm',
+];
+// 行内装饰符（剥除用）。🔴 字符类含 emoji ⇒ **必须带 `u`**（本项目铁律：缺 `u` 会把代理对
+//   拆成半代理项，产出 `�` 并进而导致写库 400）。emoji 在 `u` 模式下是单码点，语义正确。
+const _GN_DECOR_RE = /[\s*\-•·\[\]✦🟢🔴📈📉💰]/gu;
+const _GN_SET = new Set(_GN_LABELS.map((s) => s.replace(_GN_DECOR_RE, '')));
+// 标签「出现即命中」正则（长词优先）—— 供跨月审计剔除**模板金块行**用（见 ④② ③ 段）
+const _GN_ANY_RE = new RegExp(_GN_LABELS.slice().sort((a, b) => b.length - a.length)
+  .map((s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('|'));
+
+// 判定「该行是否为**悬挂的金块标签行**」（标签在、正文被换行甩走）
+function _gnIsDanglingLabel(line) {
+  const s = String(line == null ? '' : line).trim();
+  if (!s) return false;
+  if (!/[:：]\s*\*{0,2}\s*$/.test(s)) return false;
+  const head = s.replace(/\s*[:：]\s*\*{0,2}\s*$/, '');
+  const core = head.replace(_GN_DECOR_RE, '');
+  return core !== '' && _GN_SET.has(core);
+}
+
+function lockGoldNuggetIntegrity(text, lang, reportType) {
+  if (reportType !== 'yearly' && reportType !== 'monthly') return text;
+  if (!text || typeof text !== 'string') return text;
+  if (!_GN_LANGS.includes(lang)) return text;
+  const lines = text.split('\n');
+  const out = [];
+  let merged = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!_gnIsDanglingLabel(line)) { out.push(line); continue; }
+    const j = i + 1;
+    if (j >= lines.length) { out.push(line); continue; }
+    const nxt = lines[j].trim();
+    // 下一行必须是**同段的正文**：空行/空标题/引用行/另一个悬挂标签一律不动（宁漏不改）
+    if (!nxt) { out.push(line); continue; }
+    if (/^#{1,6}\s/.test(nxt) || /^>/.test(nxt) || _gnIsDanglingLabel(nxt)) { out.push(line); continue; }
+    const lead = line.match(/^\s*/)[0];
+    // 去掉尾冒号（及其后的空白）；**但保留**出现在冒号之后、结尾之前的收尾加粗星 ——
+    // 形态 `**[Tag]：**`（加粗包着冒号）归一为 `**[Tag]**:`，避免产出不成对的 `**`。
+    const head = line.trim().replace(/\s*[:：]\s*(\*{0,2})\s*$/, '$1');
+    out.push(lead + head + ': ' + nxt);
+    merged++;
+    i = j;                       // 下一行已被并入，跳过
+  }
+  if (!merged) return text;      // 零改动 ⇒ 原样返回（连同换行符逐字节一致）
+  const res = out.join('\n');
+  console.log(`[E25-P1④①] ${lang} 金块完整性锁: 合并悬挂标签 ${merged} 处`);
+  return res;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 📊 E25-P1④② 跨月同构审计（句级 + 10-gram）—— **只检不改**
+// ══════════════════════════════════════════════════════════════════
+//   军师令(#238④后半): 12 个月跨月同构（同一风险收尾句/窗口号召句反复出现）必须可量化、
+//   可回归。V486 的 `auditYearlyStyleRepetition` 是**全文**句级去重 —— 它无法区分
+//   「同一个月内重复」（局部臃肿）与「跨月复用」（V486 的真正病灶）。本审计补上**月维度**:
+//     ① 以 `_v516MonthHeadKey`（六语月标题**唯一真源**）切月块 ⇒ 段数 <2 直接弃权；
+//     ② 月块内抽句（去列表符/装饰符，跳过 emoji 标签行），归一（去全部空白）后
+//        长度 ≥12 的句，统计其出现在**多少个不同月份块**；
+//     ③ 另计字符 10-gram 的跨月共现数（捕捉「句式同构但换词」的隐藏复用）。
+//   ⚠️ 只统计 + 日志，**绝不改文本**（与 V486 同纪律：确定性改写正文 = 造词/语义损伤事故面）。
+//   ⚠️ 弃权即 null（非年报 / 非字符串 / 切不出 ≥2 个月）—— 调用方不得把 null 当文本用。
+// ══════════════════════════════════════════════════════════════════
+function auditYearlyCrossMonthNgram(text, lang, reportType) {
+  if (reportType !== 'yearly') return null;
+  if (!text || typeof text !== 'string') return null;
+  // ① 切月块（回归「月标题识别唯一真源」，杜绝另起一套月名表）
+  const blocks = [];
+  let cur = null;
+  for (const line of text.split('\n')) {
+    if (_v516MonthHeadKey(line, lang)) { cur = []; blocks.push(cur); }
+    if (cur) cur.push(line);
+  }
+  if (blocks.length < 2) return null;
+  // ② 句级跨月统计（Map<归一句, {n, last}>，last 记最后出现过的月块号 ⇒ 天然去同月重复）
+  const sentMap = new Map();
+  blocks.forEach((blk, bi) => {
+    for (const line of blk) {
+      const s0 = line.replace(/^\s*(?:#{1,6}\s*|[*\-•]\s*)/, '');
+      const c0 = s0.codePointAt(0) || 0;
+      // 跳过 emoji/图形符号起手的标签行（码点区间判定，避免代理对误伤正文）
+      if ((c0 >= 0x2190 && c0 <= 0x2BFF) || (c0 >= 0x1F300 && c0 <= 0x1FAFF)) continue;
+      for (const raw of s0.split(/(?<=[。！？!?;；])/)) {
+        const n = raw.replace(/\s+/g, '').replace(/^[*\-•>]+/, '').trim();
+        if (n.length < 12) continue;
+        const rec = sentMap.get(n);
+        if (!rec) sentMap.set(n, { n: 1, last: bi });
+        else if (rec.last !== bi) { rec.n++; rec.last = bi; }
+      }
+    }
+  });
+  // ③ 字符 12-gram 跨月共现 —— 🔴 **只吃散文行**
+  //   必须排除【月标题 / emoji 引导标签行 / 金块模板行】三类**契约要求的骨架**：
+  //   实测（2026-10-08 离线批扫）不排除时，干净样本也报 42 个跨月 10-gram
+  //   （全是 `🔴**[财务黑天鹅日]**:` 之类的模板残片）⇒ 判据被骨架淹没、零判别力。
+  const _GN_GRAM_N = 12;
+  const gramMap = new Map();
+  blocks.forEach((blk, bi) => {
+    const keep = [];
+    for (const line of blk) {
+      if (_v516MonthHeadKey(line, lang)) continue;                 // 月标题（契约骨架）
+      const t = String(line).trim();
+      if (!t) continue;
+      const c0 = t.replace(/^[*\-•]\s*/, '').codePointAt(0) || 0;
+      if ((c0 >= 0x2190 && c0 <= 0x2BFF) || (c0 >= 0x1F300 && c0 <= 0x1FAFF)) continue;  // 🟢/🔴 标签行
+      if (_GN_ANY_RE.test(t)) continue;                            // 金块模板行
+      keep.push(t);
+    }
+    const txt = keep.join('\n').replace(/\s+/g, '');
+    for (let k = 0; k + _GN_GRAM_N <= txt.length; k++) {
+      const g = txt.slice(k, k + _GN_GRAM_N);
+      const rec = gramMap.get(g);
+      if (!rec) gramMap.set(g, { n: 1, last: bi });
+      else if (rec.last !== bi) { rec.n++; rec.last = bi; }
+    }
+  });
+  const shared = [...sentMap.entries()].filter(([, r]) => r.n >= 2).sort((a, b) => b[1].n - a[1].n);
+  let sharedNgrams = 0;
+  for (const r of gramMap.values()) if (r.n >= 2) sharedNgrams++;
+  const stat = {
+    months: blocks.length,
+    sharedSents: shared.length,
+    maxMonths: shared.length ? shared[0][1].n : 0,
+    sharedNgrams,
+    worst: shared.slice(0, 3).map(([s, r]) => `×${r.n}月 ${s.slice(0, 34)}`),
+  };
+  if (stat.sharedSents || stat.sharedNgrams) {
+    console.log(`[E25-P1④②] ${lang} 跨月同构审计(只检不改): ${stat.months}月 / 跨月重复句 ${stat.sharedSents} 类(最高跨 ${stat.maxMonths} 月) / 跨月 12-gram ${stat.sharedNgrams} 个 ｜ ${stat.worst.join(' ｜ ')}`);
+  } else {
+    console.log(`[E25-P1④②] ${lang} 跨月同构审计(只检不改): ${stat.months}月 / 零跨月重复 ✅`);
+  }
+  return stat;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V488: 年报「非月段·流年太阳引用」真值锁 + 语义漂移审计
 //   病根(2026-10-01 立项调研, 跨 2 盘实证: 可定位真值的非月段流年太阳引用 9 处中 8 处错 = 89%):
 //     非月段(开篇/第一章/第三章/第四章/第五章/最终神谕)是现有真值锁体系的**作用域真空**——
@@ -9415,7 +9584,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v533:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v534:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -13446,7 +13615,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v533:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v534:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13770,12 +13939,14 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         reportContent = lockEphemerisDates(reportContent, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(编造逆行/顺行日期)
         reportContent = lockHemisphereSeasons(reportContent, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁
+        reportContent = lockGoldNuggetIntegrity(reportContent, lang, reportType);  // 🛡️ E25-P1④① 金块完整性锁(悬挂标签合并)
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
         reportContent = lockYearlyNonMonthSunRef(reportContent, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁 + 语义漂移审计(只检不改, 仅日志)
         reportContent = _v432LockLeadingNatal(reportContent, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(非流式, V488 之后=最终话语权)
         reportContent = stripYearlyPromptLeakage(reportContent, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
         reportContent = _v517YearlyFinalLocks(reportContent, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(轴点/裸本命句/标签残句/落款)
         auditYearlyStyleRepetition(reportContent, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 仅日志)
+        auditYearlyCrossMonthNgram(reportContent, lang, reportType);  // 📊 E25-P1④② 跨月同构审计(只检不改, 仅日志)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -14345,7 +14516,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v533:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v534:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -15519,6 +15690,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
           if (ft) ft = lockEphemerisDates(ft, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁
           if (ft) ft = lockHemisphereSeasons(ft, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁
+          if (ft) ft = lockGoldNuggetIntegrity(ft, lang, reportType);  // 🛡️ E25-P1④① 金块完整性锁(悬挂标签合并)
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
           if (ft) ft = lockYearlyNonMonthSunRef(ft, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁
           if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
@@ -15578,12 +15750,14 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     cleanedText = lockEphemerisDates(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(落库前)
     cleanedText = lockHemisphereSeasons(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁(落库前)
+    cleanedText = lockGoldNuggetIntegrity(cleanedText, lang, reportType);  // 🛡️ E25-P1④① 金块完整性锁(悬挂标签合并, 落库前)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
     cleanedText = lockYearlyNonMonthSunRef(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(落库前)
     cleanedText = _v432LockLeadingNatal(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(落库前最后一道, 对前导段拥有最终话语权)
     cleanedText = stripYearlyPromptLeakage(cleanedText, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理(落库前)
     cleanedText = _v517YearlyFinalLocks(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(落库前最后一道)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
+    auditYearlyCrossMonthNgram(cleanedText, lang, reportType);  // 📊 E25-P1④② 跨月同构审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     // 🛡️ E20/R11n: 元素归纳段流年坐标剪枝锁(与 /api/wealth-oracle 非流式端点同源) —— 先剪坐标再收口。
     if (reportType === 'yearly') cleanedText = stripYearlyElementCoordLeak(cleanedText, lang, reportType);
@@ -16048,7 +16222,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v533-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v534-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

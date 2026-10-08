@@ -293,7 +293,7 @@ test('⑨ 结构级: MISS 响应 ≡ 落库文本（`_finalText` 单次计算、
 
 // ═══════════════════ D. 版本 bump ═══════════════════
 test('⑩ 结构级: 缓存 v525（4 站点）+ purge 双形态回收 v524 + 旧闸门基线前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v533/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v534/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v525, 实得 ${sites}`);
   assert.ok(!/wealth:v524/.test(stripComments(SRC)), 'server.js 内不得残留 v524 键（注释历史注记除外）');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v524');
@@ -307,7 +307,7 @@ test('⑩ 结构级: 缓存 v525（4 站点）+ purge 双形态回收 v524 + 旧
     //    自相矛盾）；因 `test:astro` 是 `&&` 长链、上轮大批有红 ⇒ 短路从未跑到 ⇒ 缺陷潜伏。
     //    改纯字符串 includes（零正则转义坑）+ 显式断言新旧基线不同，绝不再写歪。
     const OLD_BASE = 'matchAll(/wealth:v525/g)';
-    const NEW_BASE = 'matchAll(/wealth:v533/g)';
+    const NEW_BASE = 'matchAll(/wealth:v534/g)';
     assert.notStrictEqual(OLD_BASE, NEW_BASE, '判据自检：新旧基线串不得相同（否则两条断言自相矛盾）');
     assert.ok(!t.includes(OLD_BASE), `${f} 站点计数基线须前移至 v525`);
     assert.ok(t.includes(NEW_BASE), `${f} 站点计数须为 v525`);

@@ -58,7 +58,7 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
 // 🛠️ V479: 缓存版本基线 —— 每次 bump 后同步上调, 不允许回退(回退=毒缓存复用)。
 //   早先写死 `wealth:v4\d\d:` + strictEqual(v480) → 每次正常 bump 都假红一次(闸门成了绊脚石);
 //   改为「同版本一致 + 不低于已发布基线」, 既守「输出链变更必须 bump」, 又不因 bump 假红。
-const MIN_CACHE_VER = 533;   // E25/P1③: 阵地③ 南半球季节反转锁 —— `lockHemisphereSeasons`(lat<0 ⇒ 12月=verano/夏、6月=invierno/冬、3月=otoño/秋、9月=primavera/春) + 昼夜长度描述符联动纠正（Summer Solstice—longest night 自相矛盾）+ prompt 侧 `buildHemisphereSeasonBlock` 六语注入；射程 es/en/fr（zh 逐字节不变）；**必须存在锚点(月名/四轴星座)且与至点/分点同窗**才纠正（宁漏不改 + 防月区间句过纠出重复词）⇒ 产物文本变更，全量 bump 作废历史键。（历史：v532 = E25/P1①② es 真值锁射程补齐 + 全财年星历编年史与日期门禁；v531 = E25/P0 先天报告真值归位 + 双通道同源；v530 = E24⑥③(P1) 双通道口径收敛 + 小语种标签本地化；v529 = E24⑥③ 首版；v528 = E24④ 首版 es 同位语三式 + vi Năm 归一）
+const MIN_CACHE_VER = 534;   // E25/P1④: 阵地④ 金块完整性 + 跨月同构治理 —— ① 新增 `lockGoldNuggetIntegrity`（金块标签行尾冒号 + 正文换行 ⇒ 合并回同一行；白名单=六语 12 本地化名 + 2 英文骨架，判据窄到「整行剥装饰后恰等于一个金块标签」⇒ 正常小标题零误伤；**射程实证 0 命中** ⇒ 防御性加锁，对现存产物零改动）② 新增 `auditYearlyCrossMonthNgram`（**只检不改**：`_v516MonthHeadKey` 六语切月块 + 跨月重复句/跨月 12-gram 量化，剔除模板骨架）。输出链新增一环 ⇒ bump 作废历史键。（历史：v533 = E25/P1③ 南半球季节反转锁；v532 = E25/P1①② es 真值锁射程补齐 + 全财年星历编年史与日期门禁；v531 = E25/P0 先天报告真值归位 + 双通道同源；v530 = E24⑥③(P1) 双通道口径收敛 + 小语种标签本地化；v529 = E24⑥③ 首版；v528 = E24④ 首版 es 同位语三式 + vi Năm 归一）
 
 test('④ 缓存 key 统一且不低于已发布基线 v' + MIN_CACHE_VER + '(输出链变更必须 bump,防毒缓存复用)', () => {
   // ⚠️ 只取 `const cacheKey = `wealth:vNNN:`` 赋值形式: 裸 match v\d+ 会命中注释里提及的历史键

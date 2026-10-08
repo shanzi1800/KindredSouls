@@ -199,10 +199,10 @@ test('⑦ s13 已接入 E21 契约锁（病根语料 → 治法同源，防「�
 
 // ═══════════════════════════════════════════════════════════════════════════
 test('⑧ 版本基线 v523 + 在线批测工具就位', () => {
-  const sites = [...SRC.matchAll(/wealth:v533/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v534/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v523，实得 ${sites}`);
   assert.ok(!/wealth:v524/.test(SRC), 'server.js 内不得残留 v522 键');
-  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 533/, 'MIN_CACHE_VER 须为 523（纯数字形态，字符串映射覆盖不到，须单独补丁）');
+  assert.match(YEARLY_TEST, /MIN_CACHE_VER = 534/, 'MIN_CACHE_VER 须为 523（纯数字形态，字符串映射覆盖不到，须单独补丁）');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"),
     'purge 须双形态回收 v522');
 
@@ -233,7 +233,7 @@ test('⑩ 批测工具缓存键 tz 与生产同源规范化（E24 实测：3 盘
     'tz 规范化须调用 resolveTimeZone(d.tz, d.lat, d.lon)（与 server.js 缓存键同形参）');
   // ①b 有牙判据（回退**模板一处**即须复现缺陷 —— 只查「import/调用存在」属假防线）
   const keyLine = runner.split('\n').find((l) => l.includes('const cacheKeyOf'));
-  assert.ok(keyLine && keyLine.includes('wealth:v533:'), 'cacheKeyOf 定义缺失/键前缀错');
+  assert.ok(keyLine && keyLine.includes('wealth:v534:'), 'cacheKeyOf 定义缺失/键前缀错');
   assert.ok(!/\$\{\s*d\.tz\s*\}/.test(keyLine),
     'cacheKeyOf 行内不得直接使用原样 `d.tz`（必须经同源规范化，否则 3 盘键不匹配）');
   assert.ok(/\$\{\s*tzCanonicalOf\(d\)\s*\}/.test(keyLine),
