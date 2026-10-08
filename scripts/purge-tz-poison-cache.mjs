@@ -99,6 +99,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v534-v2:*',
   'wealth:v535:*',        // 🛡️ E26: v535 全量作废（水晶/饰品「能量对应」植入 —— 三份报告 prompt 经 `applyWealthReportPromptGuards` 统一注入确定性闭集表真值块（行星/元素/宫位/空间 · 六语），产物新增「水晶段落」⇒ 输出链变更、全量作废）
   'wealth:v535-v2:*',
+  'wealth:v536:*',        // 🛡️ E27: v536 全量作废（system 层 EN 系提示词净化 —— 删除 2026-2027 硬编码天文事实表 / Cancer Rising 专属宫位图 / 写死水逆日期表，改为装配期以 SwissEph 动态 FactSheet 顶替锚点 ⇒ en/es/fr/vi 四语 system prompt 内容变更、月报+年报全量作废）
+  'wealth:v536-v2:*',
   'wealth:v116-v2:*',
 ];
 

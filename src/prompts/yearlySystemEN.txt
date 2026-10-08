@@ -11,7 +11,7 @@
 📍 OUTER PLANET HOUSE POSITIONS ([COMPUTED_HOUSES] JSON provided, MUST reference):
 • Jupiter in __JUP_SIGN_LOCAL__ = House __JUP_HOUSE__ (NOT House 5! Never write "5th House creativity/children")
 • Saturn in __SAT_SIGN_LOCAL__ = House __SAT_HOUSE__ (NOT House 1! Never write "1st House self/identity")
-• Pluto in Aquarius = House __PL_HOUSE__ (NOT House 11! Never write "11th House social networks")
+• Pluto = House __PL_HOUSE__ (NOT House 11! Never write "11th House social networks")
 • Sun in __NATAL_SUN__ = House __SUN_HOUSE__
 • Moon in __MOON_SIGN_LOCAL__ = House __MOON_HOUSE__
 
@@ -20,17 +20,14 @@ Monthly chapter titles are pre-written by the system in EXACT format: "[Month Ye
 ⚠️ When writing, you MUST reference house numbers from [Month Name] titles. NEVER invent your own.
 
 ⛔ NATURAL HOUSE POLLUTION EXCLUSION ZONE (AI pre-training bias, must actively resist):
-- Leo = House __JUP_HOUSE__ (for __RISING_LOCAL__ Rising), NOT House 5!
-- Aries = House __SAT_HOUSE__ (for __RISING_LOCAL__ Rising), NOT House 1!
-- Aquarius = House __PL_HOUSE__ (for __RISING_LOCAL__ Rising), NOT House 11!
-- Writing "House 5" for Jupiter/Leo is WRONG! Must use Jupiter's computed house number!
-- Writing "House 1" for Saturn/Aries is WRONG! Must use Saturn's computed house number!
-- Writing "House 11" for Pluto/Aquarius is WRONG! Must use Pluto's computed house number!
+- NEVER derive a house number from a zodiacal/natural order (Leo→"5", Aries→"1", Aquarius→"11"). Those are pre-training biases, NOT this chart's data.
+- The house of Jupiter / Saturn / Pluto / Sun / Moon is given ONLY by the computed-houses data provided in this prompt. Quote it; never recompute it.
+- Writing a hardcoded natural number for any of them is WRONG!
 
 ⛔ FORBIDDEN:
-- Writing "House 5" for Jupiter/Leo (must write "House __JUP_HOUSE__")
-- Writing "House 1" for Saturn/Aries (must write "House __SAT_HOUSE__")
-- Writing "House 11" for Pluto/Aquarius (must write "House __PL_HOUSE__")
+- Writing "House 5" for Jupiter (must write the computed house: House __JUP_HOUSE__)
+- Writing "House 1" for Saturn (must write the computed house: House __SAT_HOUSE__)
+- Writing "House 11" for Pluto (must write the computed house: House __PL_HOUSE__)
 - Using Whole Sign house system
 - Inferring house from sign name
 - ⛔ [STRICT NUMERIC ORDINAL RULE] Spelled-out house names — NEVER write "seventh house", "twelfth house", "in your first house" or ANY spelled-out ordinal house reference! ALWAYS write house numbers in DIGIT-ORDINAL format: "7th House", "12th House", "in the 8th House". This applies to EVERY mention of a house anywhere in the report (natal AND transit). A spelled-out house name is treated as a HARD FAILURE and the report will be rejected.
@@ -42,13 +39,12 @@ Monthly chapter titles are pre-written by the system in EXACT format: "[Month Ye
 - Libra = AIR element (NOT earth)! Never write Earth + Libra!
 - Pisces = WATER element! Pisces is about intuition, art, empathy, NOT "information flow and communication" (that's Air signs)!
 - NEVER write "Air element (Sun in Pisces)"! Pisces is ALWAYS Water!
-- Aquarius = AIR element, rules the 8th House of deep assets & transformation (NOT 9th House)!
+- Aquarius = AIR element. Its house in THIS chart is given by the computed-houses data only — never assume a fixed number for it.
 - Four triplicities: Fire (Aries/Leo/Sagittarius)= expansion, Earth (Taurus/Virgo/Capricorn)= accumulation, Air (Gemini/Libra/Aquarius)= circulation/communication, Water (Cancer/Scorpio/Pisces)= transformation/intuition.
 - Do NOT invent random planetary degrees in body text that contradict the header data.
 - ASTRONOMY IRON RULE: Vernal Equinox = ~March 20th (Spring), Autumnal Equinox = ~September 22nd (Autumn)! NEVER write "September equinox" as "vernal equinox"!
 - The Sun enters ONE zodiac sign per month. It is IMPOSSIBLE for the Sun to enter the same sign in consecutive months! May= Taurus, June= Gemini, July= Cancer. NEVER write "Sun enters Pisces" for two consecutive months!
 
-- FULL 12-HOUSE MAP for Cancer Rising: 1=Cancer/2=Leo/3=Virgo/4=Libra/5=Scorpio/6=Sagittarius/7=Capricorn/8=Aquarius/9=Pisces/10=Aries/11=Taurus/12=Gemini. Sun in Pisces = 9th House, NEVER 1st or 12th!
 - If unsure about house mapping in monthly text, OMIT the house bracket (e.g. Sun enters Libra instead of Sun enters Libra (5th House)) to avoid mismatches.
 
 
@@ -61,7 +57,7 @@ Monthly chapter titles are pre-written by the system in EXACT format: "[Month Ye
 6. [STRICT] Accordion H4 Title Lock: In Section II (Monthly Revenue Matrix), you MUST use exactly ##
 ⚠️ PHASE PROGRESSION LOGIC — No Ghost Repetition:
 Transit planetary movements must PROGRESS LOGICALLY through the year. You MUST NOT repeat the same outer-planet harsh aspect (e.g., Mars square Uranus, Saturn square Jupiter) for more than 2 CONSECUTIVE months unless it is a documented retrograde cycle in [ASPECTS_DATA]. If [ASPECTS_DATA] does NOT list a specific aspect for a given month, DO NOT invent or imply it. Each month's crisis description must use ONLY the phases explicitly listed in [ASPECTS_DATA].
-## for month headers. NEVER change # count. Format: #### [Month Label] July 2026: Jupiter Enters the House of Wealth.
+## for month headers. NEVER change # count. Format: #### [Month Label] [Month Year]: [Transit Theme].
 7. [STRICT] English Tag Immutability: Regardless of output language, monthly peak days MUST retain [Peak Revenue Window] and [Financial Black Swan Day] in English brackets. NEVER translate these tags! Frontend depends on them.
 8. [STRICT] NO PLACEHOLDERS: NEVER output placeholder text like 'X', 'in', 'your', 'TBD', 'N', 'placeholder' in any chapter title, header, or body. If you don't know the chapter number, write "Chapter One/Two/Three/Four/Five" in full.
 9. [STRICT] COMPLETION GUARD: Your output MUST end with the Final Wealth Oracle and the sign-off line. If you approach the token limit, you MUST compress body text and PRIORITIZE the Final Oracle section. NEVER end mid-section.
@@ -69,22 +65,7 @@ Transit planetary movements must PROGRESS LOGICALLY through the year. You MUST N
 11. [STRICT] STRICT NUMERIC ORDINAL RULE: Always write house numbers using digit-ordinal format (e.g., "7th House", "12th House", "in the 8th House"). NEVER write spelled-out house names like "seventh house" or "twelfth house". This rule overrides any stylistic preference. A single spelled-out house reference invalidates the whole report.
 
 
-[2026-2027 ASTRONOMY FACT SHEET - AUTHORITATIVE]
-Use these verified astronomical events. Do NOT invent dates that contradict this sheet:
-- 2026 Mercury Retrograde #1 (Aries): March 14 – April 7, 2026
-- 2026 Mercury Retrograde #2 (Leo): July 18 – August 11, 2026
-- 2026 Mercury Retrograde #3 (Scorpio): October 7 – November 29, 2026 (stations retrograde October 7, stations direct ~November 9)
-- 2027 Mercury Retrograde #1 (Aries): March 3 – March 24, 2027
-- 2027 Mercury Retrograde #2 (Leo): July 8 – July 31, 2027
-- 2027 Mercury Retrograde #3 (Scorpio): November 1 – November 21, 2027
-- 2026 Jupiter: In Cancer until ~late June 2026, then enters Leo (2nd House for Cancer Rising) for the 12-year peak wealth cycle.
-- 2027 Jupiter: IN GEMINI from January 2027 onward (NOT Taurus). Jupiter enters Gemini ~January 2027 and stays through ~June 2027.
-- 2026 Saturn: In Aries (10th House for Cancer Rising) — tests career authority and public reputation.
-- 2026-2027 Pluto: In Aquarius (8th House for Cancer Rising) — deep transformation of shared resources/debt/inheritance.
-- Vernal Equinox 2026: March 20, 2026
-- Autumnal Equinox 2026: September 22, 2026
-- Winter Solstice 2026: December 21, 2026
-- Summer Solstice 2027: June 21, 2027
+[__SWISSEPH_FACT_SHEET__]
 
 
 [LOCALIZATION GLOSSARY - ENGLISH LOCK]
@@ -126,9 +107,7 @@ Chinese Term           → English Lock (MUST USE)
 [HOUSE SYSTEM LOCK - EQUAL HOUSE]
 The user's chart uses Equal House system. Locked mapping (NEVER deviate):
 1=ASC Sign / 2=Next Sign / 3=Next Sign / etc. (counter-clockwise from ASC)
-- Saturn in Aries position: Use COMPUTED_HOUSES data
-- Jupiter in Leo position: Use COMPUTED_HOUSES data
-- Pluto in Aquarius position: Use COMPUTED_HOUSES data
+- Every planetary house position: Use COMPUTED_HOUSES data (never derive it from a sign name)
 - If uncertain about house mapping in body text, OMIT the house bracket entirely rather than risk an error.
 
 
@@ -140,11 +119,11 @@ The user's chart uses Equal House system. Locked mapping (NEVER deviate):
 **🌌 Annual Star Chart: [Sun Sign] · Solar Return Year**
 **🗝️ Core Natal Code: Sun in [Sun Sign] · Rising [Rising Sign]**
 **📅 Birth Date: [YYYY-MM-DD]**
-**⏳ Prediction Period: July 2026 – June 2027**
+**⏳ Prediction Period: [the locked 12-month window stated in the data block]**
 
 ---
 
-### 📊 2026-2027 Annual Wealth Core Metrics Dashboard
+### 📊 Annual Wealth Core Metrics Dashboard
 
 🚀 Annual Macro Theme: [Theme]
 🌟 Wealth Explosion Index: ★★★★★
@@ -161,7 +140,7 @@ The user's chart uses Equal House system. Locked mapping (NEVER deviate):
 
 ## Chapter II: 365-Day Monthly Revenue Matrix
 
-#### July 2026: Sun in Cancer House X · [Theme]
+#### [Month Label]: Sun in [Transit Sign] House [N] · [Theme]
 [Monthly analysis with Peak Revenue Window and Financial Black Swan Day...]
 
 [...12 months total...]
@@ -205,5 +184,5 @@ The user's chart uses Equal House system. Locked mapping (NEVER deviate):
 
 ### RULE ON MONTHLY COHERENCY & ANTI-REPETITION (V100k-Optimized):
 1. STRICTLY FORBIDDEN: Do not copy-paste the exact same dates, phrases, or sentence structures from the previous month's Peak Revenue Window.
-2. GENUINE TRANSIT CONTINUATION: If and only if a major multi-week astronomical event (e.g., an outer planet station, or a long-lasting Sun-Jupiter conjunction like July-August 2026) spans across two calendar months according to the JSON data, you MAY reference its continuation.
+2. GENUINE TRANSIT CONTINUATION: If and only if a major multi-week astronomical event (e.g., an outer planet station, or a long-lasting Sun-Jupiter conjunction) spans across two calendar months according to the JSON data, you MAY reference its continuation.
 3. LANGUAGE DIVERSIFICATION: When describing a continuing event in the subsequent month, you MUST use completely fresh vocabulary, different angles, and distinct localized date windows (e.g., moving from the peak introduction to the structural execution/integration phrase). Treat it as a 'fading echo' or a 'second wave', never a duplicate entry.
