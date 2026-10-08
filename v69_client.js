@@ -1425,6 +1425,82 @@ export function buildEphemerisChronicleBlock(astroMatrix, lang = 'zh') {
   return lines.join('\n');
 }
 
+// ── 🛡️ E25-P1③: 南半球季节真值块（prompt 侧注入）────────────────────────
+//   病根（2026-10-08 线上取证）: 模型对「至点/分点」的季节命名**恒取北半球口径**,
+//     而引擎早已按 lat 符号确知半球 —— 半球信息从未进过 prompt。
+//   线上铁证:
+//     · Ushuaia (lat -54.80) es 年报 4/4 处季节命名全错
+//       （22 sep=equinoccio de otoño / 21 dic=solsticio de invierno /
+//         20 mar=equinoccio de primavera / 21 jun=solsticio de verano）
+//     · Adelaide (lat -34.93) en 年报 "December 21: The Winter Solstice — the longest night"
+//       （南半球 12/21 应为 Summer Solstice + 最长白昼）
+//   口径（军师裁决）: 南半球 ⇒ 12月=verano/夏、6月=invierno/冬、3月=otoño/秋、9月=primavera/春。
+//   射程: es/en/fr/th/vi（**zh 排除** —— 中文里「春/夏/秋/冬」大量作隐喻/文风词,
+//     且「冬至/夏至/春分/秋分」是固定节气专名, 中文语境下不随半球反转;
+//     既有纪律亦要求 zh 判定路径逐字节不变）。
+//   ⚠️ 北半球 / lat 未知 ⇒ 返回空串（拼进 prompt 后与原串逐字节一致, 绝不影响既有用户）。
+const _HS_SEASON_BLOCK = {
+  es: (lat) => [
+    `⛔ [VERDAD DE ESTACIONES — HEMISFERIO SUR · latitud natal ${lat}]`,
+    'La ubicación natal está en el HEMISFERIO SUR: las estaciones están INVERTIDAS respecto al hemisferio norte.',
+    '  · Marzo (~20 mar, equinoccio)      = OTOÑO     (NO primavera)',
+    '  · Junio (~21 jun, solsticio)       = INVIERNO  (NO verano)',
+    '  · Septiembre (~22 sep, equinoccio) = PRIMAVERA (NO otoño)',
+    '  · Diciembre (~21 dic, solsticio)   = VERANO    (NO invierno)',
+    '⛔ PROHIBIDO escribir "solsticio de invierno" para diciembre, "solsticio de verano" para junio, "equinoccio de primavera" para marzo ni "equinoccio de otoño" para septiembre: es un error factual grave.',
+    '⛔ Diciembre = el día MÁS LARGO del año (no la noche más larga); Junio = la noche MÁS LARGA del año (no el día más largo).',
+  ].join('\n'),
+  en: (lat) => [
+    `⛔ [SEASON TRUTH — SOUTHERN HEMISPHERE · natal latitude ${lat}]`,
+    'The birth location is in the SOUTHERN HEMISPHERE: the seasons are INVERTED relative to the northern hemisphere.',
+    '  · March (~Mar 20, equinox)     = AUTUMN (NOT spring)',
+    '  · June (~Jun 21, solstice)     = WINTER (NOT summer)',
+    '  · September (~Sep 22, equinox) = SPRING (NOT autumn)',
+    '  · December (~Dec 21, solstice) = SUMMER (NOT winter)',
+    '⛔ FORBIDDEN: writing "winter solstice" for December, "summer solstice" for June, "spring equinox" for March or "autumn equinox" for September — that is a serious factual error.',
+    '⛔ December = the LONGEST day of the year (not the longest night); June = the LONGEST night of the year (not the longest day).',
+  ].join('\n'),
+  fr: (lat) => [
+    `⛔ [VÉRITÉ DES SAISONS — HÉMISPHÈRE SUD · latitude natale ${lat}]`,
+    "Le lieu de naissance est dans l'HÉMISPHÈRE SUD: les saisons sont INVERSÉES par rapport à l'hémisphère nord.",
+    '  · Mars (~20 mars, équinoxe)      = AUTOMNE (PAS printemps)',
+    '  · Juin (~21 juin, solstice)      = HIVER (PAS été)',
+    '  · Septembre (~22 sept, équinoxe) = PRINTEMPS (PAS automne)',
+    '  · Décembre (~21 déc, solstice)   = ÉTÉ (PAS hiver)',
+    '⛔ INTERDIT: écrire « solstice d\'hiver » pour décembre, « solstice d\'été » pour juin, « équinoxe de printemps » pour mars ou « équinoxe d\'automne » pour septembre.',
+    '⛔ Décembre = le jour LE PLUS LONG de l\'année (pas la nuit la plus longue); Juin = la nuit LA PLUS LONGUE de l\'année (pas le jour le plus long).',
+  ].join('\n'),
+  th: (lat) => [
+    `⛔ [ความจริงเรื่องฤดูกาล — ซีกโลกใต้ · ละติจูดเกิด ${lat}]`,
+    'สถานที่เกิดอยู่ซีกโลกใต้ ฤดูกาลจึงกลับด้านกับซีกโลกเหนือ:',
+    '  · มีนาคม (~20 มี.ค.) = ฤดูใบไม้ร่วง (ไม่ใช่ฤดูใบไม้ผลิ)',
+    '  · มิถุนายน (~21 มิ.ย.) = ฤดูหนาว (ไม่ใช่ฤดูร้อน)',
+    '  · กันยายน (~22 ก.ย.) = ฤดูใบไม้ผลิ (ไม่ใช่ฤดูใบไม้ร่วง)',
+    '  · ธันวาคม (~21 ธ.ค.) = ฤดูร้อน (ไม่ใช่ฤดูหนาว)',
+    '⛔ ห้ามเขียนว่าธันวาคมเป็นฤดูหนาว หรือมิถุนายนเป็นฤดูร้อน เด็ดขาด',
+    '⛔ ธันวาคม = กลางวันยาวที่สุดของปี; มิถุนายน = กลางคืนยาวที่สุดของปี',
+  ].join('\n'),
+  vi: (lat) => [
+    `⛔ [SỰ THẬT VỀ MÙA — NAM BÁN CẦU · vĩ độ sinh ${lat}]`,
+    'Nơi sinh thuộc NAM BÁN CẦU: các mùa ĐẢO NGƯỢC so với bắc bán cầu.',
+    '  · Tháng 3 (~20/3, xuân phân)       = mùa THU (KHÔNG phải mùa xuân)',
+    '  · Tháng 6 (~21/6, hạ chí)          = mùa ĐÔNG (KHÔNG phải mùa hè)',
+    '  · Tháng 9 (~22/9, thu phân)        = mùa XUÂN (KHÔNG phải mùa thu)',
+    '  · Tháng 12 (~21/12, đông chí)      = mùa HÈ (KHÔNG phải mùa đông)',
+    '⛔ CẤM viết tháng 12 là mùa đông hay tháng 6 là mùa hè — đó là lỗi thực tế nghiêm trọng.',
+    '⛔ Tháng 12 = ngày DÀI NHẤT trong năm; tháng 6 = đêm DÀI NHẤT trong năm.',
+  ].join('\n'),
+};
+
+export function buildHemisphereSeasonBlock(astroMatrix, lang = 'zh') {
+  const lat = Number(astroMatrix && astroMatrix.meta && astroMatrix.meta.natal_lat);
+  if (!Number.isFinite(lat) || lat >= 0) return '';      // 北半球 / lat 未知 → 空串（不改动既有 prompt）
+  if (lang === 'zh') return '';                           // zh 射程外（见上方纪律）
+  const f = _HS_SEASON_BLOCK[lang];
+  if (!f) return '';
+  return f(lat.toFixed(2));
+}
+
 export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
   const factTree = computeMonthlyFactTree(astroMatrix, lang, monthLabel);
   const weekBlocks = factTree.weeklyMoonTransits;

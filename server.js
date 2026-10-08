@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -6756,6 +6756,207 @@ function lockEphemerisDates(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ E25-P1③: 南半球季节反转锁（输出侧兜底 · output-side backstop）
+//   病根（2026-10-08 线上取证, 跨 3 盘 4 语）: 报告由 LLM 生成, 其「至点/分点」季节命名
+//     **恒取北半球口径**, 而引擎早已按 lat 符号确知半球。线上铁证:
+//       · Ushuaia (lat -54.80) es 年报 4/4 全错
+//         （22 sep=equinoccio de otoño / 21 dic=solsticio de invierno /
+//           20 mar=equinoccio de primavera / 21 jun=solsticio de verano）
+//       · Adelaide (lat -34.93) en 年报 "December 21: The Winter Solstice — the longest night"
+//       · 附带: es 2002 "nacido bajo el solsticio de verano de 2002"（6/21 生 ⇒ 南半球应为 invierno）
+//   口径（军师裁决）: lat<0 ⇒ 12月=verano/夏、6月=invierno/冬、3月=otoño/秋、9月=primavera/春。
+//   射程: es/en/fr（**zh 排除** —— 中文「春/夏/秋/冬」大量作隐喻, 节气专名「冬至/夏至」不随半球改,
+//     且既有纪律要求 zh 判定路径逐字节不变; th/vi 词形过短/歧义大, 交由 prompt 块治理）。
+//   ⚠️ 宁漏不改: **必须存在锚点**（月名 或 四轴星座名）才纠正; 无锚点一律弃权。
+//     绝不做「无锚点裸反转」—— 文本若**已经**是南半球正确写法(如 "Summer Solstice" 配 December),
+//     裸反转会把它改错(vm 反例: 双重反转)。
+//   ⚠️ 幂等: 纠正后 want===cls ⇒ 再跑不改。仅改季节词/昼夜长度词, 不动句式与其余任何字符。
+// ══════════════════════════════════════════════════════════════════
+const _HS_LANGS = ['es', 'en', 'fr'];
+// 季节词 → 季节类别（northern 语义, 即文中所指的那颗「至点/分点」）
+const _HS_SEASON_CLASS = {
+  es: { primavera: 'spring', verano: 'summer', 'oto\u00f1o': 'autumn', otono: 'autumn', invierno: 'winter' },
+  en: { spring: 'spring', summer: 'summer', autumn: 'autumn', fall: 'autumn', winter: 'winter' },
+  fr: { printemps: 'spring', '\u00e9t\u00e9': 'summer', ete: 'summer', automne: 'autumn', hiver: 'winter' },
+};
+// 季节类别 → 该语言主写法（回写用）
+const _HS_CANON_WORD = {
+  es: { spring: 'primavera', summer: 'verano', autumn: 'oto\u00f1o', winter: 'invierno' },
+  en: { spring: 'spring', summer: 'summer', autumn: 'autumn', winter: 'winter' },
+  fr: { spring: 'printemps', summer: '\u00e9t\u00e9', autumn: 'automne', winter: 'hiver' },
+};
+// 月名词表（en 大小写敏感 —— 月名恒首字母大写, 小写 "may" 是情态动词不得当锚点）
+const _HS_MONTH_WORDS = {
+  es: { enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12 },
+  en: { January: 1, February: 2, March: 3, April: 4, May: 5, June: 6, July: 7, August: 8, September: 9, October: 10, November: 11, December: 12 },
+  fr: { janvier: 1, 'f\u00e9vrier': 2, fevrier: 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, 'ao\u00fbt': 8, aout: 8, septembre: 9, octobre: 10, novembre: 11, 'd\u00e9cembre': 12, decembre: 12 },
+};
+// 四轴星座（英文键）→ 所属「至点/分点」月份
+const _HS_SIGN_MONTH = { Aries: 3, Cancer: 6, Libra: 9, Capricorn: 12 };
+// 至点/分点关键词（**射程门**: 季节词必须与此同窗才纠正 —— 军师所举形态即「solsticio/equinoccio + 季节名」）
+const _HS_CARDINAL_RE = { es: /solsticio|equinoccio/i, en: /solstice|equinox/i, fr: /solstice|[e\u00e9]quinoxe/i };
+const _HS_ANCHOR_MAXD = 45;   // 锚点与季节词的最大字距（超出视为无关, 防「句内远月」错配）
+// 南半球某自然月所属季节
+function _hsSeasonOfMonth(mo) {
+  if (mo === 12 || mo === 1 || mo === 2) return 'summer';
+  if (mo >= 3 && mo <= 5) return 'autumn';
+  if (mo >= 6 && mo <= 8) return 'winter';
+  if (mo >= 9 && mo <= 11) return 'spring';
+  return '';
+}
+// 保形回写：源词全大写 → 目标全大写; 源词首字母大写 → 目标首字母大写
+function _hsMatchCase(src, dst) {
+  if (!src || !dst) return dst;
+  if (src === src.toUpperCase() && src !== src.toLowerCase()) return dst.toUpperCase();
+  if (src[0] === src[0].toUpperCase() && src[0] !== src[0].toLowerCase()) return dst[0].toUpperCase() + dst.slice(1);
+  return dst;
+}
+// 昼夜长度描述符（仅 en/es/fr）—— 季节名被反转后, 同句的「最长夜」会自我矛盾(如 Summer Solstice—longest night)
+const _HS_DESC_RE = {
+  en: () => /(?<![\p{L}])(longest|shortest|darkest|brightest)(\s+)(day|night)(?![\p{L}])/giu,
+  es: () => /(?<![\p{L}])(d[i\u00ed]a|noche|punto)(\s+m[\u00e1a]s\s+)(larg[oa]|cort[oa]|oscuro|oscura|luminoso|luminosa)(?![\p{L}])/giu,
+  fr: () => /(?<![\p{L}])(jour|nuit)(\s+l[ae]\s+plus\s+)(long|longue|court|courte|sombre|clair|claire)(?![\p{L}])/giu,
+};
+
+function lockHemisphereSeasons(text, lang, astroMatrix, reportType) {
+  if (!text || typeof text !== 'string') return text;
+  if (!_HS_LANGS.includes(lang)) return text;
+  if (reportType !== 'yearly' && reportType !== 'monthly') return text;
+  const lat = Number(astroMatrix && astroMatrix.meta && astroMatrix.meta.natal_lat);
+  if (!Number.isFinite(lat) || lat >= 0) return text;                  // 北半球 / lat 未知 → 弃权
+  const clsm = _HS_SEASON_CLASS[lang], canon = _HS_CANON_WORD[lang], monthMap = _HS_MONTH_WORDS[lang];
+  if (!clsm || !canon || !monthMap) return text;
+  const cardinalRe = _HS_CARDINAL_RE[lang];
+  if (!cardinalRe) return text;
+
+  // ── 锚点探针：月名 + 四轴星座名 → 至点/分点月份 ──
+  const monthProbes = Object.keys(monthMap).map((w) => ({
+    mo: monthMap[w],
+    re: new RegExp('(?<![\\p{L}])' + _v444Esc(w) + '(?![\\p{L}])', 'gu'),
+  }));
+  const signs = _v444Signs(lang) || [];
+  const signProbes = [];
+  for (let i = 0; i < signs.length && i < SUN_SIGN_EN.length; i++) {
+    const mo = _HS_SIGN_MONTH[SUN_SIGN_EN[i]];
+    if (!mo || !signs[i]) continue;
+    signProbes.push({ mo, re: new RegExp('(?<![\\p{L}])' + _v444Esc(signs[i]) + '(?![\\p{L}])', 'gu') });
+  }
+  const anchorMonth = (s, at) => {
+    let best = 0, bestD = _HS_ANCHOR_MAXD + 1;
+    for (const list of [monthProbes, signProbes]) {
+      for (const p of list) {
+        p.re.lastIndex = 0;
+        let m;
+        while ((m = p.re.exec(s)) !== null) {
+          const d = Math.abs(m.index + Math.floor(m[0].length / 2) - at);
+          if (d < bestD) { bestD = d; best = p.mo; }
+        }
+      }
+    }
+    return best;
+  };
+
+  const patches = [];
+  // ① 季节名词反转
+  const keys = Object.keys(clsm).sort((a, b) => b.length - a.length);
+  const seasonRe = new RegExp('(?<![\\p{L}])(?:' + keys.map(_v444Esc).join('|') + ')(?![\\p{L}])', 'giu');
+  let m;
+  while ((m = seasonRe.exec(text)) !== null) {
+    const raw = m[0], at = m.index;
+    const cls = clsm[raw] || clsm[raw.toLowerCase()];
+    if (!cls) continue;
+    const lo = Math.max(0, at - 60), hi = Math.min(text.length, at + raw.length + 60);
+    const win = text.slice(lo, hi);
+    // 🛡️ 射程门: 季节词必须与「至点/分点」关键词同窗（军师所举形态）。
+    //   病根（2026-10-08 端到端实测）: 仅凭「最近月名」锚定会把月区间句改坏 ——
+    //   en "Phase Two (October 2026–February 2027). The autumn and winter months"
+    //   两个季节词都被最近月(February)锚成 summer ⇒ 产出「The summer and summer months」重复词。
+    //   月区间本身跨季, 最近月启发式在结构上不可判 ⇒ 一律弃权（宁漏不改）。
+    if (!cardinalRe.test(win)) continue;
+    const mo = anchorMonth(win, at - lo);
+    if (!mo) continue;                                                 // 无锚点 → 弃权
+    const want = _hsSeasonOfMonth(mo);
+    if (!want || want === cls) continue;                               // 已正确 → 幂等跳过
+    const wantWord = canon[want];
+    if (!wantWord || wantWord === raw) continue;
+    patches.push({ start: at, end: at + raw.length, text: _hsMatchCase(raw, wantWord) });
+  }
+  // ② 昼夜长度描述符（同锚点口径；仅二分/至点月份 12 或 6 才有意义）
+  const dscFactory = _HS_DESC_RE[lang];
+  if (dscFactory) {
+    const dscRe = dscFactory();
+    let dm;
+    while ((dm = dscRe.exec(text)) !== null) {
+      const at = dm.index;
+      const lo = Math.max(0, at - 60), hi = Math.min(text.length, at + dm[0].length + 60);
+      const dwin = text.slice(lo, hi);
+      if (!cardinalRe.test(dwin)) continue;                            // 同射程门：必须与至点/分点同窗
+      const mo = anchorMonth(dwin, at - lo);
+      if (mo !== 12 && mo !== 6) continue;
+      const raw = dm[0];
+      let fix = null;
+      if (lang === 'en') {
+        const q = dm[1].toLowerCase(), noun = dm[3].toLowerCase();
+        // 12月(南半球夏至): 昼最长/夜最短 → longest|brightest 配 day; shortest|darkest 配 night
+        const wantNight = (mo === 12) ? (q === 'shortest' || q === 'darkest') : (q === 'longest' || q === 'brightest');
+        const want = wantNight ? 'night' : 'day';
+        if (noun !== want) fix = dm[1] + dm[2] + _hsMatchCase(dm[3], want);
+      } else if (lang === 'es') {
+        const noun = dm[1].toLowerCase(), adj = dm[3].toLowerCase();
+        const dayLike = noun !== 'noche';                              // día / punto 视作「昼侧」
+        const q = /^larg/.test(adj) ? 'long' : /^cort/.test(adj) ? 'short' : /^oscur/.test(adj) ? 'dark' : 'bright';
+        const ok = (mo === 12)
+          ? (dayLike ? (q === 'long' || q === 'bright') : (q === 'short' || q === 'dark'))
+          : (dayLike ? (q === 'short' || q === 'dark') : (q === 'long' || q === 'bright'));
+        if (!ok) {
+          const fem = /a$/.test(adj);
+          const flip = { long: 'short', short: 'long', dark: 'bright', bright: 'dark' };
+          const nq = flip[q];
+          const MAP = { long: 'larg' + (fem ? 'a' : 'o'), short: 'cort' + (fem ? 'a' : 'o'), dark: 'oscur' + (fem ? 'a' : 'o'), bright: 'luminos' + (fem ? 'a' : 'o') };
+          fix = dm[1] + dm[2] + MAP[nq];
+        }
+      } else if (lang === 'fr') {
+        const noun = dm[1].toLowerCase(), adj = dm[3].toLowerCase();
+        const dayLike = noun === 'jour';
+        const q = /^long/.test(adj) ? 'long' : /^court/.test(adj) ? 'short' : /^sombre/.test(adj) ? 'dark' : 'bright';
+        const ok = (mo === 12)
+          ? (dayLike ? (q === 'long' || q === 'bright') : (q === 'short' || q === 'dark'))
+          : (dayLike ? (q === 'short' || q === 'dark') : (q === 'long' || q === 'bright'));
+        if (!ok) {
+          const fem = /e$/.test(adj) && adj !== 'sombre';
+          const flip = { long: 'short', short: 'long', dark: 'bright', bright: 'dark' };
+          const nq = flip[q];
+          const MAP = { long: fem ? 'longue' : 'long', short: fem ? 'courte' : 'court', dark: 'sombre', bright: fem ? 'claire' : 'clair' };
+          fix = dm[1] + dm[2] + MAP[nq];
+        }
+      }
+      if (fix && fix !== raw) patches.push({ start: at, end: at + raw.length, text: fix });
+    }
+  }
+
+  if (!patches.length) return text;
+  // 去重（同坐标只留一个）+ 倒序应用 + 相交过滤（与星历日期门禁同源纪律）
+  const uniq = [];
+  const seen = new Set();
+  for (const p of patches) {
+    if (p.start < 0 || p.end > text.length || p.start >= p.end) continue;
+    if (seen.has(p.start)) continue;
+    seen.add(p.start);
+    uniq.push(p);
+  }
+  uniq.sort((a, b) => b.start - a.start);
+  let out = text, changed = 0, lastStart = Infinity;
+  for (const p of uniq) {
+    if (p.end > lastStart) continue;
+    out = out.slice(0, p.start) + p.text + out.slice(p.end);
+    lastStart = p.start;
+    changed++;
+  }
+  if (changed) console.log(`[E25-P1③] ${lang} 南半球季节反转锁: 修正 ${changed} 处 (lat=${lat})`);
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V488: 年报「非月段·流年太阳引用」真值锁 + 语义漂移审计
 //   病根(2026-10-01 立项调研, 跨 2 盘实证: 可定位真值的非月段流年太阳引用 9 处中 8 处错 = 89%):
 //     非月段(开篇/第一章/第三章/第四章/第五章/最终神谕)是现有真值锁体系的**作用域真空**——
@@ -9214,7 +9415,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v532:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v533:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11149,6 +11350,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   // 🛡️ E25-P1②: 财年星历编年史块（引擎真值派生, 替换 en/es 模板里的硬编码单月水星段;
   //   es 年报终考缺陷2: 硬编码只覆盖 7 月 ⇒ 其余 11 月水逆日期 LLM 全靠幻觉编造）。
   const _ephemBlock = astroMatrix ? buildEphemerisChronicleBlock(astroMatrix, lang) : '';
+  // 🛡️ E25-P1③: 南半球季节真值块（lat<0 才有内容; 空串时拼进模板与原串逐字节一致）
+  const _hsBlock = astroMatrix ? buildHemisphereSeasonBlock(astroMatrix, lang) : '';
+  const _hemiBlock = _hsBlock ? ('\n\n' + _hsBlock) : '';
   const monthlyDataBlockMoon = (_moonWeeks
     ? monthlyDataBlock.replace(/\s*Moon=[^\s]+\*snap\*/g, '')
     : monthlyDataBlock) + moonWeekBlock;
@@ -11483,7 +11687,7 @@ ${monthlyDataBlockMoon}
 
 ${factTreeBlock}
 
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [宫位直写铁律]: 提到行星宫位时，直接写"第N宫"（如"木星在狮子座第2宫带来财富"），严禁使用任何 {{}} 模板占位符或英文 token 标记。后端不再做占位符替换。
@@ -11542,7 +11746,7 @@ ASTROGRAPHIC RULES:
 • Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
 • Do NOT write "unexpected windfall" for tense aspects
 • When a planet is in a house, describe the THEMATIC wealth energy of that house
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 • Moon NEVER goes retrograde — always Direct
 • NO invented planetary positions — use only the data above
 
@@ -11576,7 +11780,7 @@ REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
 • NO usar terminología de aspectos como trino, cuadratura o sextil — usar descripción de energía
 • Cuando un planeta esté en una casa, describir el tema de RIQUEZA de esa casa
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 • La Luna NUNCA es retrógrada
 
 FORMATO DE SALIDA — MARKDOWN LIMPIO (6 secciones):
@@ -11613,7 +11817,7 @@ RÈGLES ASTROGRAPHIQUES:
 • Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
 • Ne PAS utiliser la terminologie des aspects (trine/carré/sextile) — utiliser la description d'énergie
 • Quand une planète est dans une maison, décrire le thème de RICHESSE de cette maison
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 • La Lune N'EST JAMAIS rétrograde
 
 FORMAT DE SORTIE — MARKDOWN PROPRE (6 sections):
@@ -11657,7 +11861,7 @@ ${monthlyDataBlockMoon}
 กฎดาราศาสตร์:
 • ตำแหน่งดาวเคราะห์ทั้งหมดมาจาก Swiss Ephemeris — ปฏิบัติตามอย่างเคร่งครัด
 • ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 • ดวงจันทร์ไม่เคยวงใน
 
 🛠️ [ดวงชะตากำเนิด — NATAL CHART ANCHORS ภาษาไทย (SwissEph คำนวณจริง · ห้ามเปลี่ยนแปลง)]
@@ -11699,7 +11903,7 @@ ${monthlyDataBlockMoon}
 QUY TẮC THIÊN VĂN:
 • Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC
 • Không dùng thuật ngữ góc chiếu (trine/square/sextile) — dùng mô tả năng lượng
-${_ephemBlock}
+${_ephemBlock}${_hemiBlock}
 • Mặt Trăng không bao giờ nghịch hành
 
 ĐỊNH DẠNG ĐẦU RA — MARKDOWN SẠCH (6 phần):
@@ -13242,7 +13446,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v532:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v533:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13565,6 +13769,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
         reportContent = lockEphemerisDates(reportContent, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(编造逆行/顺行日期)
+        reportContent = lockHemisphereSeasons(reportContent, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
         reportContent = lockYearlyNonMonthSunRef(reportContent, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁 + 语义漂移审计(只检不改, 仅日志)
         reportContent = _v432LockLeadingNatal(reportContent, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(非流式, V488 之后=最终话语权)
@@ -14140,7 +14345,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v532:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v533:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -15313,6 +15518,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
           if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
           if (ft) ft = lockEphemerisDates(ft, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁
+          if (ft) ft = lockHemisphereSeasons(ft, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
           if (ft) ft = lockYearlyNonMonthSunRef(ft, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁
           if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
@@ -15371,6 +15577,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
     cleanedText = lockEphemerisDates(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(落库前)
+    cleanedText = lockHemisphereSeasons(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E25-P1③ 南半球季节反转锁(落库前)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
     cleanedText = lockYearlyNonMonthSunRef(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(落库前)
     cleanedText = _v432LockLeadingNatal(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(落库前最后一道, 对前导段拥有最终话语权)
@@ -15841,7 +16048,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v532-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v533-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

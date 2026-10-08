@@ -91,6 +91,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v530-v2:*',
   'wealth:v531:*',        // 🛡️ E25/P1①②: v531 全量作废（阵地① es 真值锁射程补齐 —— `lockYearlyTransitSigns`(V482) houseSrc 扩 es 全形态 + 匹配 flag `g`→`gi`（es 正文小写星座零匹配）+ 本命豁免由「撞 sign 即整体弃权」收窄为【transit 语境门控 + sign↔house 成对裁决】，并根治 E19 键名错位（`_v432Truth('natal')` 键为本地化行星名 ⇒ 旧英文键回查恒 undefined ⇒ 豁免在 es/zh 结构性空转）；`lockYearlyOuterPlanetsYear`(V485) 语言守卫扩 es + 新增形态C；阵地② 全财年星历编年史 —— 引擎 `compute_ephemeris_chronicle`（逐日扫描 + 二分精化站点）取代硬编码 `find_all_stations`，六语 prompt 注入 `buildEphemerisChronicleBlock`，新增 `lockEphemerisDates` 日期门禁（编造逆行/顺行日期保形写回真值最近站））
   'wealth:v531-v2:*',
+  'wealth:v532:*',        // 🛡️ E25/P1③: v532 全量作废（阵地③ 南半球季节反转锁 —— 新增 `lockHemisphereSeasons`：按 lat 符号判定半球，南半球把「至点/分点 + 季节名」纠正为 12月=verano/夏、6月=invierno/冬、3月=otoño/秋、9月=primavera/春，并联动纠正同句昼夜长度描述符（`Summer Solstice — longest night` 自相矛盾）；prompt 侧新增 `buildHemisphereSeasonBlock` 六语注入。线上实测：Ushuaia(lat -54.80) es 年报 4/4 处季节命名全错、Adelaide(lat -34.93) en 年报 `December 21: The Winter Solstice — the longest night` 全错。射程 es/en/fr（zh 逐字节不变），**必须存在锚点(月名/四轴星座)且与至点/分点同窗**才纠正（宁漏不改 + 防月区间句过纠））
+  'wealth:v532-v2:*',
   'wealth:v116-v2:*',
 ];
 
