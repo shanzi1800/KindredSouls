@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -7214,6 +7214,31 @@ function auditYearlyCrossMonthNgram(text, lang, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🛡️ E29-P0-6: 年报「本命主星全覆盖」审计（只检不改，仅日志）
+//   病根（1988-04-12 盘 / fr 年报实测）：Chapitre I 只写了 9 颗本命行星，**漏掉 Mars**
+//     （真值 Mars Aquarius 3°25′；注入侧 `buildNatalAnchors` 明明含 Mars）
+//     ⇒ 产物层完全没有「本命主星是否被逐一提到」的运行时校验：
+//        `lockYearlyBareNatalPlanets` 只做「提到才纠值」，**无 presence 校验**；
+//        `assessYearlyReportIntegrity` 只查结构/长度/语言密度，**无主星覆盖指标**。
+//   治法：以 `assertNatalCoverage`（六语别名表，提到即算覆盖，不校验值）在产物层做存在性审计。
+//   ⚠️ 只统计 + 日志，**绝不改文本**（与 V486 / E25-P1④② 同纪律：确定性改写正文 = 造词事故面）。
+//   ⚠️ 判据与 v69_client.js `assertNatalCoverage` **同源**（单一真源，禁在此自搓别名表）。
+//   ⚠️ 弃权即 null（非年报 / 非字符串 / 无 computed_houses）—— 调用方不得把 null 当结果用。
+// ══════════════════════════════════════════════════════════════════
+function auditYearlyNatalCoverage(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return null;
+  if (!text || typeof text !== 'string') return null;
+  const r = assertNatalCoverage(text, lang, astroMatrix);
+  if (!r.applicable) return null;
+  if (r.missing.length) {
+    console.warn(`[E29-P0-6] ${lang} 年报本命主星覆盖审计(只检不改): 缺失 ${r.missing.length}/${r.total} — ${r.missing.join(' · ')}`);
+  } else {
+    console.log(`[E29-P0-6] ${lang} 年报本命主星覆盖审计(只检不改): ${r.covered}/${r.total} 全覆盖 ✅`);
+  }
+  return r;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V488: 年报「非月段·流年太阳引用」真值锁 + 语义漂移审计
 //   病根(2026-10-01 立项调研, 跨 2 盘实证: 可定位真值的非月段流年太阳引用 9 处中 8 处错 = 89%):
 //     非月段(开篇/第一章/第三章/第四章/第五章/最终神谕)是现有真值锁体系的**作用域真空**——
@@ -9672,7 +9697,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v538:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v539:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11623,6 +11648,11 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   //    改用引擎自带的月名（如 'Sep 2026' → 'Sep'），语言无关、无作用域依赖。
   const _mwMonthLabel = String(astroMatrix?.months?.[0]?.month_name || '').replace(/\s*\d{4}\s*$/, '').trim();
   const moonWeekBlock = buildMoonWeekBlock(astroMatrix, lang, _mwMonthLabel);
+  // 🛡️ E29-P0-5: 太阳「周级真值」块（月报四周卡片专用）——
+  //   病根：周卡沿用**月级**太阳宫位快照，而太阳月中跨过 1 宫宫头（上升点）时宫位必然变化
+  //   （1988-04-12 盘真值 W1/W2=12 宫、W3/W4=1 宫）⇒ 四周卡片把整月写成「1 宫」。
+  //   与 V433 月亮块同构：把正确文本做成最省力路径 + 硬规则。只服务月报。
+  const sunWeekBlock = reportType === 'monthly' ? buildSunWeekBlock(astroMatrix, lang, _mwMonthLabel) : '';
   // 🛠️ V441: JSON 事实宪法块（剥夺 LLM 生成天体事实的最后自留地）
   const factTreeBlock = buildMonthlyFactTree(astroMatrix, lang, _mwMonthLabel);
   // 🛡️ E25-P1②: 财年星历编年史块（引擎真值派生, 替换 en/es 模板里的硬编码单月水星段;
@@ -11633,7 +11663,7 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const _hemiBlock = _hsBlock ? ('\n\n' + _hsBlock) : '';
   const monthlyDataBlockMoon = (_moonWeeks
     ? monthlyDataBlock.replace(/\s*Moon=[^\s]+\*snap\*/g, '')
-    : monthlyDataBlock) + moonWeekBlock;
+    : monthlyDataBlock) + moonWeekBlock + sunWeekBlock;
   if (_moonWeeks) {
     console.log(`[V433] 月亮周级真值注入: ${_moonWeeks.map(w => `W${w.week}=${w.legs.length}腿/${(w.changes || []).filter(c => c.kind === 'sign').length}换座`).join(' ')}`);
   }
@@ -12314,6 +12344,20 @@ ${HT_RP.trap}
           : '[ASTRONOMY FACT SHEET — UNAVAILABLE]\nNo computed ephemeris is available for this chart. Do NOT state any specific planetary position, transit date or house number beyond what the other data blocks in this prompt provide.'
       );
       console.log(`[E27] SwissEph FACT_SHEET placeholder replaced (${v69FactSheet ? 'computed' : 'no-data-fallback'})`);
+    }
+
+    // ── 🛡️ E29-P0-3/P0-4: Peak Revenue Window「相位真值」块 ─────────────────────────
+    //   病根（1988-04-12 盘 / fr 年报实测）：`[Peak Revenue Window]` 行的**行星对 + 相位名**由 LLM 自创 ——
+    //     3 月写「Soleil en Poissons trigone Jupiter (orbe 6,7°)」，而太阳当时已在白羊 9.07°、
+    //     与木星 sep 128.24°，**根本不存在 trigone**；5 月 Vénus 星座亦错 ⇒ 引擎实算的相位被幻觉顶替。
+    //   治法：把 `find_peak_windows` 实算的 reason（形如 "Venus trine Jupiter (orb 1.8°)"）逐月列出，
+    //     行星对与相位类型**不可变**；与 v69FactSheet 的 `── Peak Revenue Windows ──` 小节**同源互补**
+    //     （此处是把该真值升级为带硬规则的显式指令，落在 system 层 > user 层）。
+    //   ⚠️ 只服务年报（月报分支已在上方 early-return）；once 走独立构造器 buildWealthOncePrompt，不经此处。
+    const _peakTruthBlock = (reportType === 'yearly' && astroMatrix) ? buildPeakTruthBlock(astroMatrix, lang) : '';
+    if (_peakTruthBlock) {
+      yearlySystem += '\n\n' + _peakTruthBlock;
+      console.log('[E29] PEAK TRUTH block injected (yearly system layer)');
     }
 
     // ── 🛠️ V80 FIX: Thai/Vietnamese 动态宫位替换 ──
@@ -13745,7 +13789,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v538:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v539:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14077,6 +14121,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = _v517YearlyFinalLocks(reportContent, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(轴点/裸本命句/标签残句/落款)
         auditYearlyStyleRepetition(reportContent, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 仅日志)
         auditYearlyCrossMonthNgram(reportContent, lang, reportType);  // 📊 E25-P1④② 跨月同构审计(只检不改, 仅日志)
+        auditYearlyNatalCoverage(reportContent, lang, astroMatrix, reportType);  // 📊 E29-P0-6 本命主星全覆盖审计(只检不改, 仅日志)
         // 🛠️ V460-fix4b: 非流式 MISS 路径补月亮轨迹「换宫写在括号外」脏尾归一
         //   根因：V460-fix4 只挂在流式路径(9874)，此端点漏调 → 正文偶发「（第8宫）→第9宫）」悬空脏尾。
         if (reportType === 'monthly') reportContent = fixMoonHouseParens(reportContent);
@@ -14646,7 +14691,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v538:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v539:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -15888,6 +15933,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = _v517YearlyFinalLocks(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E17/R11j 年报四锁(落库前最后一道)
     auditYearlyStyleRepetition(cleanedText, lang, reportType);  // 📊 V486 文风复读审计(只检不改, 落库前, 仅日志)
     auditYearlyCrossMonthNgram(cleanedText, lang, reportType);  // 📊 E25-P1④② 跨月同构审计(只检不改, 落库前, 仅日志)
+    auditYearlyNatalCoverage(cleanedText, lang, astroMatrix, reportType);  // 📊 E29-P0-6 本命主星全覆盖审计(只检不改, 落库前, 仅日志)
     cleanedText = dedupYearlyMonthTitles(cleanedText, lang, reportType);  // 🛡️ V483c 年报月标题终局去重(落库前最后一道, 防 24 行毒缓存)
     // 🛡️ E20/R11n: 元素归纳段流年坐标剪枝锁(与 /api/wealth-oracle 非流式端点同源) —— 先剪坐标再收口。
     if (reportType === 'yearly') cleanedText = stripYearlyElementCoordLeak(cleanedText, lang, reportType);
@@ -16357,7 +16403,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v538-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v539-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

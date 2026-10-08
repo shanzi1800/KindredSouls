@@ -478,6 +478,12 @@ ${transitLines.join('\n')}`
     `  You MUST NOT mix 2026 transits into the natal analysis.`,
     `  WRONG: "Your Sun sits in Sagittarius in the 7th House" (7th = a transit position).`,
     `  RIGHT: state each natal planet's sign and house EXACTLY as in PROSE REFERENCE.`,
+    ``,
+    `⚠️ CHAPTER 1 — FULL NATAL COVERAGE (E29 · ABSOLUTE · NON-NEGOTIABLE):`,
+    `  Chapter 1 MUST name EVERY one of the ${Object.keys(jsonEntries).length} natal placements listed in PROSE REFERENCE,`,
+    `  each with its exact sign and house: ${Object.keys(jsonEntries).join(' · ')}.`,
+    `  Leaving ANY of them out is a HARD FAILURE — never silently drop a planet.`,
+    `  (Real production defect E29: Mars — the 5th of the ten — was omitted while the other nine were written.)`,
   ].join('\n');
 
   return [
@@ -690,6 +696,11 @@ export const _CRYSTAL_PLACEMENT = {
   },
 };
 
+// 🛡️ E29-P2: 六语连接词字典
+//   病根：`pair()` 里硬编码中文「或」⇒ es/fr/th/vi 报告的水晶/饰品句里混入中文字符
+//   （如 `Citrine 或 Pyrite`）。治法：连接词随报告语言本地化。
+export const _L10N_OR = { zh: '或', en: 'or', es: 'o', fr: 'ou', th: 'หรือ', vi: 'hoặc' };
+
 // ── 真值块 + 指令生成器（六语 · 分区）※ 导出供 server.js 注入 + 闸门核验 ──
 //  返回 { block, directive, usedIds }；无真值 ⇒ null（绝不伪造）
 export function buildCrystalAnchors(astroMatrix, lang, reportType) {
@@ -700,10 +711,11 @@ export function buildCrystalAnchors(astroMatrix, lang, reportType) {
   if (!_meta.house_cusps_full && !_meta.rising_sign && !_meta.computed_houses) return null;
   const L = _CRYSTAL_LANGS.includes(lang) ? lang : 'en';
   const name = (id) => crystalName(id, L);
+  const _OR = _L10N_OR[L] || _L10N_OR.en;   // 🛡️ E29-P2: 连接词本地化（禁硬编码中文「或」）
   const pair = (rec) => {
     if (!rec || !name(rec.main)) return null;
     const a = name(rec.alt);
-    return a ? `${name(rec.main)} 或 ${a}` : name(rec.main);
+    return a ? `${name(rec.main)} ${_OR} ${a}` : name(rec.main);
   };
 
   const lines = [];
@@ -885,6 +897,46 @@ export function assertNatalPlanetTruth(text, lang, astroMatrix) {
   }
 
   return { violations, checked, passed: violations.length === 0 };
+}
+
+// 🛡️ E29-P0-6: 本命主星「六语别名表」——用于覆盖度校验（提到即算覆盖，不校验值）
+export const _NATAL_LOCALIZED = {
+  Sun: ['Sun', '太阳', 'Soleil', 'Sol ', 'ดวงอาทิตย์', 'Mặt Trời'],
+  Moon: ['Moon', '月亮', 'Lune', 'Luna', 'ดวงจันทร์', 'Mặt Trăng'],
+  Mercury: ['Mercury', '水星', 'Mercure', 'Mercurio', 'ดาวพุธ', 'Sao Thủy'],
+  Venus: ['Venus', 'Vénus', '金星', 'ดาวศุกร์', 'Sao Kim'],
+  Mars: ['Mars', 'Marte', '火星', 'ดาวอังคาร', 'Sao Hỏa'],
+  Jupiter: ['Jupiter', 'Júpiter', '木星', 'ดาวพฤหัสบดี', 'Sao Mộc'],
+  Saturn: ['Saturn', 'Saturne', 'Saturno', '土星', 'ดาวเสาร์', 'Sao Thổ'],
+  Uranus: ['Uranus', 'Urano', '天王星', 'ดาวยูเรนัส', 'Sao Thiên Vương'],
+  Neptune: ['Neptune', 'Neptuno', '海王星', 'ดาวเนปจูน', 'Sao Hải Vương'],
+  Pluto: ['Pluto', 'Pluton', 'Plutón', '冥王星', 'ดาวพลูโต', 'Sao Diêm Vương'],
+};
+
+/**
+ * 🛡️ E29-P0-6：本命 10 主星「覆盖度」校验（诊断器，只报不改）
+ *
+ * 病根（1988-04-12 盘 / fr 年报实测）：Chapitre I 只写了 9 颗本命行星，**漏掉 Mars**
+ *   （真值 Mars Aquarius 3°25′；注入侧 `buildNatalAnchors` 明明含 Mars）
+ *   ⇒ 产物层完全没有「本命主星是否被逐一提到」的运行时校验。
+ * 本函数只做**存在性**判定（提到即算覆盖），值正确性由 lockNatalAnchorRole /
+ *   lockYearlyBareNatalPlanets / assertNatalPlanetTruth 负责。
+ *
+ * @returns {{applicable:boolean, covered:number, total:number, missing:string[]}}
+ */
+export function assertNatalCoverage(text, lang, astroMatrix) {
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const ch = meta && (meta.computed_houses || meta.natal_planets);
+  if (!ch || !text || typeof text !== 'string') {
+    return { applicable: false, covered: 0, total: 0, missing: [] };
+  }
+  const keys = NATAL_PLANETS_ORDER.filter((k) => ch[k] && ch[k].sign);
+  if (!keys.length) return { applicable: false, covered: 0, total: 0, missing: [] };
+  const missing = keys.filter((k) => {
+    const names = _NATAL_LOCALIZED[k] || [k];
+    return !names.some((n) => text.includes(n));
+  });
+  return { applicable: true, covered: keys.length - missing.length, total: keys.length, missing };
 }
 
 export function buildFactSheet(astroMatrix, lang = 'en') {
@@ -1208,6 +1260,99 @@ export function buildMoonWeekBlock(astroMatrix, lang, monthName = '') {
     '\n⛔ HARD RULE: In each weekly section you may ONLY name the Moon signs listed for THAT week (in that order); describe the passage when several are listed. NEVER repeat one Moon sign across two different weeks (the Moon enters each sign only ONCE per month). NEVER use a Moon sign absent from that week\'s list. HOUSES MUST MATCH the (H…) values above.' +
     '\n⛔ HOUSE RULE: the house of a TRANSITING Moon sign is the (H…) value shown after that sign on that week\'s line — copy it exactly. NEVER use the NATAL Moon\'s house for a transiting Moon position (different cycle, different house).';
 }
+// 🛡️ E29-P0-5: 太阳「周级真值」照抄句语言模板（与 V433 月亮同构）
+const SUN_SUBJECT = {
+  zh: '流年太阳本周位于 ',
+  en: 'The transiting Sun this week is in ',
+  es: 'El Sol en tránsito esta semana está en ',
+  fr: 'Le Soleil en transit cette semaine est en ',
+  th: 'ดวงอาทิตย์ทรานซิสสัปดาห์นี้อยู่ที่ ',
+  vi: 'Mặt Trời hành vận tuần này ở ',
+};
+
+/**
+ * 🛡️ E29-P0-5：太阳「周级真值」Prompt 块（根治「月级宫位口径被套到周卡上」）
+ *
+ * 病根（1988-04-12 盘 / 2026-10 fr 月报实测）：月报四周卡片（W1~W4）沿用**月级**太阳宫位快照，
+ *   而太阳在月中跨过 1 宫宫头（= 上升点）时宫位**必然变化**（该盘真值：W1/W2 = 12 宫，W3/W4 = 1 宫）
+ *   ⇒ 四周卡片把整月都写成「Maison 1」。这与 V433 月亮「月中快照充当全月」是**同构病根**。
+ * 治法：把引擎 w1~w4 周级太阳（sign + 宫头实算宫位，与月级同函数、不同采样点）做成
+ *   「照抄句」+ 硬规则（照抄比推演省力 ⇒ LLM 走最短路径）。
+ *
+ * @param {object} astroMatrix 引擎矩阵（需含 months[0].w1~w4）
+ * @param {string} lang 语言码
+ * @param {string} monthName 当月本地化名（如 "Oct"）
+ * @returns {string} 供 prompt 注入的块文本；无数据时返回 ''
+ */
+export function buildSunWeekBlock(astroMatrix, lang, monthName = '') {
+  const m0 = astroMatrix?.months?.[0];
+  if (!m0) return '';
+  const L = SIGN_L10N[lang] || SIGN_L10N.en;
+  const loc = (s) => { const i = SIGN_FULL.indexOf(s); return (i >= 0 && L[i]) || s; };
+  const HW = (MOON_HOUSE_WORD[lang] || 'House') + (MOON_HOUSE_SUF[lang] || '');
+  const SUBJ = SUN_SUBJECT[lang] || SUN_SUBJECT.en;
+  const mw = Array.isArray(m0.moon_weeks) ? m0.moon_weeks : null;
+  const rows = [];
+  for (let i = 0; i < 4; i++) {
+    const w = m0['w' + (i + 1)];
+    if (!w || !w.sign) continue;
+    const h = _getH(w.house);
+    const range = (mw && mw[i]) ? `${mw[i].from_day}–${mw[i].to_day}` : '';
+    const signLoc = loc(w.sign);
+    const houseLoc = (lang === 'zh') ? `第${h}宫` : `${HW} ${h}`;
+    const copy = `${SUBJ}${signLoc} (${houseLoc})`;
+    rows.push({ n: i + 1, sign: w.sign, house: h, range, copy });
+  }
+  if (!rows.length) return '';
+  const lines = rows.map((x) => `- Week ${x.n}${x.range && monthName ? ` (${monthName} ${x.range})` : ''}: Sun ${x.sign} → House ${x.house}`
+    + `\n  📋 ${String(lang).toUpperCase()} copy-ready: "${x.copy}"`);
+  const distinct = new Set(rows.map((x) => x.house));
+  const varied = distinct.size > 1
+    ? '\n⚠️ NOTICE: this month the Sun CHANGES HOUSE between weeks (' + [...distinct].join(' → ') + '). The four weekly cards MUST NOT share one house.'
+    : '';
+  return '\n\n⚠️ [SUN PER-WEEK TRUTH E29 — SwissEph computed · cusp-based houses · THIS IS THE ONLY VALID PER-WEEK SUN SOURCE]\n'
+    + 'The Sun advances ~1° per day and its HOUSE changes the instant it crosses a house cusp (for this chart the\n'
+    + '1st-house cusp is the Ascendant). The single month-level Sun house in the month title is a MID-MONTH snapshot\n'
+    + 'and CANNOT represent all four weeks. For every weekly card use ONLY the per-week values below:\n'
+    + lines.join('\n')
+    + varied
+    + '\n⛔ HARD RULE: in each weekly card the Sun\'s house MUST be the value listed for THAT week. NEVER reuse the month-level house for all four weeks. NEVER state a Sun house that is not listed for that week.'
+    + '\n⛔ SCOPE: this per-week rule governs the weekly cards only; the month-level title keeps the month snapshot.';
+}
+
+/**
+ * 🛡️ E29-P0-3/P0-4：Peak Revenue Window「相位真值」Prompt 块
+ *
+ * 病根（1988-04-12 盘 / fr 年报实测）：[Peak Revenue Window] 行的**行星对 + 相位名**由 LLM 自创：
+ *   3 月写「Soleil en Poissons trigone Jupiter (orbe 6,7°)」，而引擎实算当月最优吉照并非太阳-木星、
+ *   且太阳当时已在白羊 9.07°（sep 128.24°，根本不存在 trigone）⇒ 伪相位。
+ * 治法：把引擎 `find_peak_windows` 实算的 reason（形如 "Venus trine Jupiter (orb 1.8°)"）逐月列出，
+ *   行星对与相位类型**不可变**，只允许按报告语言翻译措辞。
+ */
+export function buildPeakTruthBlock(astroMatrix, lang) {
+  const months = astroMatrix?.months;
+  if (!Array.isArray(months) || !months.length) return '';
+  const rows = [];
+  for (const m of months) {
+    const pw = Array.isArray(m.peak_windows) ? m.peak_windows : [];
+    if (!pw.length) continue;
+    const w = pw[0] || {};
+    const reason = (typeof w.reason === 'string') ? w.reason.trim() : '';
+    const dates = (typeof w.dates === 'string') ? w.dates.trim() : '';
+    if (!reason || !dates) continue;
+    rows.push(`- ${m.month_name}: window ${dates} — the ONLY aspect you may name: "${reason}"`);
+  }
+  if (!rows.length) return '';
+  return '\n\n⚠️ [PEAK REVENUE WINDOW TRUTH E29 — engine-computed aspects · DO NOT INVENT ASPECTS]\n'
+    + 'Each month\'s 🟢 Peak Revenue Window below was computed from Swiss Ephemeris. The two PLANETS and the ASPECT\n'
+    + 'TYPE are FIXED. Translate the aspect name into the report language, but you MUST keep the SAME two planets and\n'
+    + 'the SAME aspect type (conjunction / sextile / trine). NEVER swap in another planet (never turn a "Venus trine\n'
+    + 'Jupiter" into a "Sun trine Jupiter"), NEVER invent a different aspect, and NEVER attach a sign, planet or orb\n'
+    + 'that is not given here. You may narrate the window freely, but the aspect itself is immutable.\n'
+    + rows.join('\n')
+    + '\n⛔ HARD RULE: copy the window dates above VERBATIM. If they differ from what you would guess, the data above wins.';
+}
+
 const _sunOf = (m) => m.sun || (m.positions?.Sun ? {sign: m.positions.Sun.sign, house: m.positions.Sun.house} : {});
 const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
 
