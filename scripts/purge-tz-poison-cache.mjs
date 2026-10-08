@@ -101,6 +101,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v535-v2:*',
   'wealth:v536:*',        // 🛡️ E27: v536 全量作废（system 层 EN 系提示词净化 —— 删除 2026-2027 硬编码天文事实表 / Cancer Rising 专属宫位图 / 写死水逆日期表，改为装配期以 SwissEph 动态 FactSheet 顶替锚点 ⇒ en/es/fr/vi 四语 system prompt 内容变更、月报+年报全量作废）
   'wealth:v536-v2:*',
+  'wealth:v537:*',        // 🛡️ E28: v537 全量作废（前端渲染层 reportType 门控归位 —— SacredYearlyReportBox 的 8 条「月报周卡片/陷阱卡」兜底规则原先**无门控**作用在年报上 ⇒ 年报仪表盘第 2 格 Indice d'Explosion de Richesse : ★★★★★ 被整行替换成月报第四周卡片、★★★★★ 评级被吞；同时 Pièges Financiers 卡片月份由浏览器当月改为**沿用原文**。纯渲染层修复，作废以保证版本线一致可追踪）
+  'wealth:v537-v2:*',
   'wealth:v116-v2:*',
 ];
 

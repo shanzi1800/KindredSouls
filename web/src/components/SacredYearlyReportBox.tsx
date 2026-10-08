@@ -180,6 +180,20 @@ const SacredYearlyReportBox: React.FC<{
     // 必须在周标题兜底之前执行，否则兜底会把 [🔵[ 套成 [🔵 [🔵[ 双括号更糟
     cleaned = cleaned.replace(/\[([🟢🔴🔵⚠️])\[/gu, '[$1 ');
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ E28-GUARD-1（2026-10-08）：**月报专属「周卡片 / 陷阱卡」兜底规则必须按 reportType 门控**
+    // 【P0 病根】本组件被 `WealthReportPage` 三态复用（月报传 `reportType="monthly"`；年报**未传**
+    //   ⇒ 缺省 `'yearly'`；once 传 `'once'`）。原实现把这一整组**仅对月报有意义**的规则
+    //   **无门控**地作用在年报文本上 ⇒ 年报仪表盘第 2 格
+    //   `🌟 Indice d'Explosion de Richesse : ★★★★★` 被**整行替换**成月报第四周卡片
+    //   `✦ [🟢 Semaine 4: Explosion de Richesse]` ⇒ ★★★★★ 评级被吞（用户实测）。
+    // 【治法】收窄射程：仅 `reportType === 'monthly'` 时执行。年报 / once 文本本身不含
+    //   「Semaine / Semana / Tuần / สัปดาห์ที่ / 第 N 周」与「Pièges Financiers」卡片语义
+    //   ⇒ 门控零回归（"宁漏不改"：只收窄，不改写任何既有月报行为）。
+    // 【同源纪律】本块行数与闸门 `test/audit-e28-frontend-reporttype-guard.test.mjs` 的
+    //   源码级断言同源；块尾以 `// 🛡️ E28-GUARD-1-END` 收口（闸门按标记配平扫描）。
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (reportType === 'monthly') {
     // Step 2: 法语周标题漏标兜底——检测到 "Semaine N:" 但前面没有 ✦ 时，自动补全标签
     // 仅在当前行没有 ✦ 时触发，避免重复包裹已有标签的行
     cleaned = cleaned.replace(
@@ -214,9 +228,17 @@ const SacredYearlyReportBox: React.FC<{
       '✦ [🟢 Semaine 4: Explosion de Richesse]'
     );
     // 财务陷阱兜底：检测到 Pièges Financiers 但前面没有 ✦
+    // 🛡️ E28-GUARD-1②（P0 根治）：月份一律**沿用原文**（LLM 依「本报告窗口」写出正确月份）。
+    //   原实现用 `new Date().toLocaleString('fr-FR', …)` 取**浏览器当月** ⇒ 用户跨月回看
+    //   **缓存**报告时，陷阱卡月份会被动态篡改成当月（例：10 月报告 11 月打开 → 错标 Novembre）
+    //   —— 纯渲染层自伤，且换非流式也躲不掉。
+    //   治本：只补 `✦ [ … ] ✦` 形态，月份**只从原文捕获**；原文未给月份则保持原样（宁漏不改）。
     cleaned = cleaned.replace(
       /^(?!✦)([^\n]*Pièges\s+Financiers[^\n]*)$/gm,
-      '✦ [⚠️ Pièges Financiers: ' + new Date().toLocaleString('fr-FR', { month: 'long', year: 'numeric' }).replace(/^./, c => c.toUpperCase()) + '] ✦'
+      (m) => {
+        const _mois = m.match(/Pi[eè]ges?\s+Financiers\s*[:：]\s*([^\]]+?)\s*\]?\s*$/i);
+        return '✦ [⚠️ Pièges Financiers' + (_mois && _mois[1] ? ': ' + _mois[1].trim() : '') + '] ✦';
+      }
     );
     // 西班牙语周标题漏标兜底
     cleaned = cleaned.replace(
@@ -245,6 +267,7 @@ const SacredYearlyReportBox: React.FC<{
         return `✦ [${emojiMap[weekNum]} ${_clean}]`;
       }
     );
+    } // 🛡️ E28-GUARD-1-END —— 月报专属兜底规则射程收口（reportType === 'monthly'）
 
 
     // 🛠️ V370-fix: 清除空括号 （）/() ——LLM 按 prompt 模板生成时偶发残留空副标题
