@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -4399,7 +4399,7 @@ const _V432_CFG = {
     natalAny: /(?:\u672c\u547d|\u51fa\u751f|\u539f\u751f|\u672c\u76d8)/,
     transitSuf: /^\s*[(\uff08]?\s*(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)/,
     transitPre: /(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d)\s*$/,
-    transitMark: /(?:\u6d41\u5e74|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d|\u8fdb\u5165|\u5165\u9a7b|\u7ecf\u8fc7|\u79fb\u81f3|\u8d70\u5230)/,
+    transitMark: /(?:\u6d41\u5e74|\u6d41\u6708|\u884c\u8fd0|\u8fc7\u5883|\u672c\u6708|\u5f53\u6708|\u5f53\u524d|\u8fdb\u5165|\u5165\u9a7b|\u7ecf\u8fc7|\u79fb\u81f3|\u8d70\u5230)/,
     transitVerb: /(?:\u8fdb\u5165|\u5165\u9a7b|\u7ecf\u8fc7|\u79fb\u81f3|\u8d70\u5230|\u884c\u81f3|\u8fd0\u884c|\u56de\u5230|\u62b5\u8fbe|\u626b\u8fc7)/,
     ingress: /(?:\u8fdb\u5165|\u5165\u9a7b)/,
     posMark: /(?:\u5728|\u4e8e|\u4f4d\u4e8e)/,
@@ -6269,11 +6269,19 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
   // 🛡️ E16/R11g: 宫位词按语言取（原实现非 zh/en 一律用 `Casa` ⇒ fr/th/vi 的
   //   `Maison N`/`ภพที่ N`/`Nhà N` 全部认不出, 星座改了宫位却不改 ⇒ 半改不一致）;
   //   en 实际产出是序数前置 `7th House` ⇒ 必须同时吃两种形态。
+  // 🛡️ E25-P1①: es 宫位从单式 `Casa N` 扩为**全形态**（与 _V432_CFG.es 五式 Finder
+  //   判据同宽 —— 判据宽度=防线宽度, V431 实锤）：
+  //     ① `Casa N`（现行式）; ② `N ª/º/°/a/o Casa`（E15/R11f-2 缩写式, 否定后顾防 2026）;
+  //     ③ `N º House`（E24③/P4 英文借形）; ④ 可选冠词/物主前缀 `la|el|tu|mis|sus|…`
+  //        （真实产线形态 `en tu Casa 4` / `en la 5ª Casa`, 无前缀式则 pname+verb 后
+  //        撞上冠词 ⇒ 整句零匹配）。⚠️ 内部全用 (?:…) 非捕获, 保回调 (full,sign,house,off) 组序。
   const houseSrc = lang === 'zh'
     ? '(第\\s*\\d+\\s*宫)'
     : lang === 'en'
       ? '((?:\\d{1,2}(?:st|nd|rd|th)\\s+House)|(?:House\\s*\\d+))'
-      : ('(' + (_V516_HOUSE_WORD[lang] || 'House') + '\\s*\\d+)');
+      : lang === 'es'
+        ? '((?:(?:en|del|al|la|el|tu|sus|mis|su|nuestro|nuestra|los|las)\\s+){0,2}(?:[Cc]asa\\s*\\d{1,2}|(?<![\\d.,])\\d{1,2}\\s*\\.?\\s*[\\u00ba\\u00aa\\u00b0oa]?\\s*[Cc]asa|(?<![\\d.,])\\d{1,2}\\s*\\.?\\s*[\\u00ba\\u00aa]?\\s*House))'
+        : ('(' + (_V516_HOUSE_WORD[lang] || 'House') + '\\s*\\d+)');
 
   // 🛡️ E19/R11l: 本命星座豁免 —— 匹配星座与该行星【本命星座】一致时, 该句是对本命
   //   位置的陈述, 绝不可按流年真值改写; 否则既污染本命句, 又会让下游本命锁的
@@ -6284,8 +6292,14 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
   try { natalTruth = _v432Truth(lang, astroMatrix, 'natal'); } catch (e) { natalTruth = null; }
   const _natalSignRe = {};
   if (natalTruth) {
-    for (const pk of Object.keys(natalTruth)) {
-      const _ns = natalTruth[pk] && natalTruth[pk].sign;
+    // 🛡️ E25-P1①: 修 E19 键名错位 —— _v432Truth('natal') 的 map 键是【本地化行星名】
+    //   （es 'Júpiter' / zh '木星'），旧码直接用英文键 pk（'Jupiter'）回查 ⇒ 恒 undefined
+    //   ⇒ E19 本命豁免在 es/zh **结构性空转**（vm 探针实证: natalTruth['Jupiter']===undefined、
+    //   natalTruth['Júpiter']==={sign:'Géminis',house:4}）⇒ es 年报「本命星座撞流年语境」的
+    //   本命句会被流月值错误改写。现经 _V432_NAME 把英文键映射到本地化键回查。
+    for (const pk of _V482_TRANSIT_KEYS) {
+      const _nt = natalTruth[NAME[pk] || pk];
+      const _ns = _nt && _nt.sign;
       if (!_ns) continue;
       try { _natalSignRe[pk] = new RegExp('^(?:' + _v516SignAlt(lang, _ns) + ')$', 'i'); } catch (e) {}
     }
@@ -6319,7 +6333,9 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
         if (zi < 0) continue;
         const trueSign = signs[zi];
         const trueHouse = Number(pm.house) || 0;
-        const re = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'g');
+        // 🛡️ E25-P1①: 'gi'（原 'g' 大小写敏感 ⇒ es 正文小写星座 `cáncer`/`géminis`
+        //   零匹配；真实产物句中星座常小写。写回仍为规范真值形态, 顺带修正大小写）。
+        const re = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'gi');
         const before = line;
         line = line.replace(re, (full, signWord, houseWord, off) => {
           // 🛡️ E16/R11g: 本命豁免补多语 —— 原豁免**只有中文四词**(本命|出生|原生|本盘),
@@ -6332,8 +6348,35 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
           if (/(?:\bnatal|\bnatale?s?|\bnative|\bof birth|\bat birth)\b/i.test(_pre + ' ' + full)) return full;
           if (/(?:\byour|\bmy|\bhis|\bher|\btheir|\bour|\btu|\bsu|\bson|\bsa|\bton|\bta|\bvotre|\bmon|\bma|\bnotre)\s*$/i.test(_pre)
             && /^(?:Sun|Moon|Sol|Luna|Soleil|Lune)\b/i.test(full)) return full;
-          // 🛡️ E19/R11l: 匹配星座 ≡ 本命星座 ⇒ 本命陈述句, 弃权不改(宁漏不改)
-          if (_natalSignRe[key] && _natalSignRe[key].test(signWord)) return full;
+          // 🛡️ E19/R11l: 匹配星座 ≡ 本命星座 ⇒ 疑似本命陈述句。
+          // 🛡️ E25-P1①: 豁免从「撞 sign 即整体弃权」收窄为【sign↔house 成对裁决】——
+          //   旧版缺陷（乌斯怀亚靶盘实证）: sign 恰撞本命星座时, 无论 house 对错整体弃权,
+          //   「本命 sign + 三不靠 house」自相矛盾句永久漏网。
+          //   裁决表（宁漏哲学保留）:
+          //     · 无宫位词          → 维持 E19 弃权（无成对信息可裁）;
+          //     · house ≡ 本命宫位  → sign+house 成对 ≡ 本命 ⇒ 本命句, 弃权;
+          //     · house ≡ 流月宫位  → E19/R11l 生产实证歧义句(s2 Adelaide「Aquarius in your
+          //                           4th House」), 弃权;
+          //     · 其余（三不靠）    → house 必错: sign 语境判属本命 ⇒ house 修回本命宫位
+          //                           （sign 不动 —— 修 house 不会触发 E19 的「流年一致性门控」连锁）。
+          // 🛡️ E25-P1①: transit 语境门控 —— 句窗含明确流年标记（流月/流年/行运/transit/this month/
+          //   del mes…）时, 该句判为**流年陈述**, sign 撞本命不构成豁免（否则「流月太阳在射手座
+          //   第6宫」这类句子会被当本命句整体弃权 ⇒ 流月真值(xx座)漏纠, audit-v482 ⑩ 回归）。
+          const _ctxWin = before.slice(Math.max(0, off - 24), off) + ' ' + full;
+          const _tmRe = (_V432_CFG[lang] || {}).transitMark;
+          const _isTransitCtx = _tmRe ? _tmRe.test(_ctxWin) : false;
+          if (!_isTransitCtx && _natalSignRe[key] && _natalSignRe[key].test(signWord)) {
+            if (!houseWord) return full;
+            // 🛡️ E25-P1①: 键名映射（natalTruth 键 = 本地化行星名, 见上方豁免表构建注释）
+            const _nh = Number((natalTruth[NAME[key] || key] && natalTruth[NAME[key] || key].house) || 0);
+            const _ch = Number((houseWord.match(/\d{1,2}/) || [0])[0]);
+            if (!_nh || !_ch) return full;
+            if (_ch === _nh || _ch === trueHouse) return full;
+            // house 修回本命值（保形: 数字形态原位换数; en 序数前置重算后缀; es `5ª Casa` 同法）
+            const _eo2 = /^\d{1,2}(?:st|nd|rd|th)\s+House$/i.test(houseWord);
+            const _hw2 = _eo2 ? (_nh + _v432EnOrdSuf(_nh) + ' House') : houseWord.replace(/\d{1,2}/, String(_nh));
+            return full.replace(houseWord, _hw2);
+          }
           let out = full;
           // 保留原文形态: 原文写短名(无「座」)就还它短名, 写全称就还全称
           const wantSign = (lang === 'zh' && !/座$/.test(signWord)) ? trueSign.replace(/座$/, '') : trueSign;
@@ -6462,7 +6505,10 @@ function buildYearlyLensFrameworkBlock() {
 }
 function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
   if (reportType !== 'yearly') return text;
-  if (lang !== 'zh') return text;
+  // 🛡️ E25-P1①: 扩 es —— 原「暂只做 zh」导致 es 终章神谕/开篇的非月段恒定外行星陈述
+  //   整体无锁（乌斯怀亚靶盘实证: 终章「Plutón en tu Casa 10」×4, 流年真值 Casa 11,
+  //   错误被写进全文最后的定调句）。zh 判据路径逐字节不变。
+  if (lang !== 'zh' && lang !== 'es') return text;
   if (!text || typeof text !== 'string') return text;
   const months = astroMatrix && astroMatrix.months;
   if (!Array.isArray(months) || months.length < 12) return text;
@@ -6471,6 +6517,10 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
   const signWords = _v432AllSignWords(lang).slice().sort((a, b) => b.length - a.length);
   const verb = _V482_TVERB[lang];
   if (!NAME || !signs || !signWords.length || !verb) return text;
+  // 🛡️ E25-P1①: es 'gi' 大小写不敏感的词判别索引（捕获组原文形态可能小写,
+  //   `signWords.indexOf(x)` 会判空 ⇒ 星座不改只改宫位 = 半改不一致）
+  const _swLower = {};
+  for (const w of signWords) if (!_swLower[w.toLowerCase()]) _swLower[w.toLowerCase()] = w;
 
   // ── 取年度真值: 12 个月必须同值, 否则该行星年内换座 → 弃权(交给 V482 月段锁) ──
   const truth = {};
@@ -6491,8 +6541,31 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
   }
   if (!Object.keys(truth).length) return text;
 
+  // 🛡️ E25-P1①: 本命宫位真源（形态C 纯宫位句的弃权判据 —— house ≡ 本命宫位 ⇒
+  //   可能是本命陈述, 宁漏不改）。与 V482 同源 _v432Truth。
+  let _natalHouse = null;
+  try {
+    const _nt0 = _v432Truth(lang, astroMatrix, 'natal');
+    // 🛡️ E25-P1①: 同 V482 键名错位修复 —— _v432Truth 键为本地化行星名, 须经 _V432_NAME 映射英文键
+    if (_nt0) {
+      const NAME2 = _V432_NAME[lang] || {};
+      _natalHouse = {};
+      for (const k of _V485_OUTER_KEYS) {
+        const _v = _nt0[NAME2[k] || k];
+        if (_v && _v.house) _natalHouse[k] = Number(_v.house) || 0;
+      }
+    }
+  } catch (e) { _natalHouse = null; }
+
   const signSrc = '(' + signWords.map(_v444Esc).join('|') + ')';
-  const houseSrc = '(第\\s*\\d+\\s*宫)';
+  // 🛡️ E25-P1①: es 宫位全形态（与 V482 月段锁同源同宽: Casa N / N ª Casa / N º House +
+  //   可选冠词/物主前缀; 内部全非捕获, 保 (full,a1,a2,off) 组序）。
+  const houseSrc = lang === 'zh'
+    ? '(第\\s*\\d+\\s*宫)'
+    : '((?:(?:en|del|al|la|el|tu|sus|mis|su|nuestro|nuestra|los|las)\\s+){0,2}(?:[Cc]asa\\s*\\d{1,2}|(?<![\\d.,])\\d{1,2}\\s*\\.?\\s*[\\u00ba\\u00aa\\u00b0oa]?\\s*[Cc]asa|(?<![\\d.,])\\d{1,2}\\s*\\.?\\s*[\\u00ba\\u00aa]?\\s*House))';
+  const _isHouseWord = (x, sw) => (lang === 'zh')
+    ? /第\s*\d+\s*宫/.test(x)
+    : (sw == null || x.toLowerCase() !== sw.toLowerCase());
   const lines = text.split('\n');
   let changed = 0;
   for (let li = 0; li < lines.length; li++) {
@@ -6504,37 +6577,182 @@ function lockYearlyOuterPlanetsYear(text, lang, astroMatrix, reportType) {
       const pname = NAME[key];
       if (!pname || line.indexOf(pname) < 0) continue;
       // 形态A: 木星进入「双子座第9宫」 / 形态B: 木星进入「第9宫狮子座」
-      const reA = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'g');
-      const reB = new RegExp(_v444Esc(pname) + verb + '\\s*' + houseSrc + '\\s*' + signSrc, 'g');
+      // 🛡️ E25-P1①: 'gi'（es 正文小写星座 `acuario` 等）; 形态C: 纯宫位陈述
+      //   「Plutón en la Casa 9」（无星座词 —— V482 要求 sign 必现 ⇒ 纯宫位句全漏）。
+      //   形态C 豁免: house ≡ 本命宫位 ⇒ 可能是本命句, 宁漏不改。
+      const reA = new RegExp(_v444Esc(pname) + verb + '\\s*' + signSrc + '(?:\\s*' + houseSrc + ')?', 'gi');
+      const reB = new RegExp(_v444Esc(pname) + verb + '\\s*' + houseSrc + '\\s*' + signSrc, 'gi');
+      // 形态C（纯宫位, **仅 es** —— zh 判据路径逐字节不变纪律）:
+      //   「Plutón en la Casa 9」无星座词, V482/V485 形态A/B 要求 sign 必现 ⇒ 纯宫位句全漏。
+      const reC = (lang === 'es')
+        ? new RegExp(_v444Esc(pname) + verb + '\\s*' + houseSrc, 'gi')
+        : null;
+      const _natalRe = (lang === 'es')
+        ? _V432_CFG.es.natalAny
+        : /(?:本命|出生|原生|本盘)/;
       const fix = (full, a1, a2, off) => {
         // a1/a2 依形态而序不定 → 逐个判别
         const args = [a1, a2].filter((x) => typeof x === 'string');
-        const signWord = args.find((x) => signWords.indexOf(x) >= 0);
-        const houseWord = args.find((x) => /第\s*\d+\s*宫/.test(x));
-        if (/(?:本命|出生|原生|本盘)/.test(line.slice(Math.max(0, off - 12), off))) return full;  // 本命句归本命锁
+        const signWord = args.find((x) => _swLower[x.toLowerCase()] != null);
+        const houseWord = args.find((x) => _isHouseWord(x, signWord));
+        // 🛡️ E25-P1①: es 本命豁免（原 zh 四词硬编码 ⇒ es natal 句被改）——
+        //   es 用 cfg.natalAny 且窗口含命中段（es natal 常为后置定语「Saturno natal」）;
+        //   zh 判据路径逐字节不变: 仍只测前 12 字（原版语义）。
+        const _pre = line.slice(Math.max(0, off - 12 - (lang === 'es' ? 8 : 0)), off);
+        if (lang === 'es' ? _natalRe.test(_pre + ' ' + full) : _natalRe.test(_pre)) return full;
         let out = full;
         if (signWord) {
-          const wantSign = /座$/.test(signWord) ? tv.sign : tv.sign.replace(/座$/, '');
-          if (signWord !== wantSign) {
+          const wantSign = (lang === 'zh' && !/座$/.test(signWord)) ? tv.sign.replace(/座$/, '') : tv.sign;
+          if (signWord.toLowerCase() !== wantSign.toLowerCase()) {
             const si = out.indexOf(signWord);
             if (si >= 0) out = out.slice(0, si) + wantSign + out.slice(si + signWord.length);
           }
         }
         if (houseWord && tv.house) {
-          const cur = Number((houseWord.match(/\d+/) || [0])[0]);
-          if (cur !== tv.house) out = out.replace(houseWord, houseWord.replace(/\d+/, String(tv.house)));
+          const cur = Number((houseWord.match(/\d{1,2}/) || [0])[0]);
+          if (cur !== tv.house) out = out.replace(houseWord, houseWord.replace(/\d{1,2}/, String(tv.house)));
         }
         return out;
       };
       const before = line;
       line = line.replace(reA, (full, a1, a2, off) => fix(full, a1, a2, off));
       line = line.replace(reB, (full, a1, a2, off) => fix(full, a1, a2, off));
+      // 形态C（纯宫位, es-only）: 与 A/B 叠加执行 —— A 改完后 cur===tv.house 时 C 命中即空转,
+      //   幂等; A/B 因缺星座未命中的纯宫位句由此补射。
+      if (reC) line = line.replace(reC, (full, hw, off) => {
+        const _nh = Number((_natalHouse && _natalHouse[key]) || 0);
+        const cur = Number((hw.match(/\d{1,2}/) || [0])[0]);
+        if (!cur) return full;
+        if (_nh && cur === _nh) return full;   // house ≡ 本命宫位 ⇒ 疑似本命句, 宁漏不改
+        const _preC = line.slice(Math.max(0, off - 20), off);
+        if (_natalRe.test(_preC + ' ' + full)) return full;
+        return full.replace(hw, hw.replace(/\d{1,2}/, String(tv.house)));
+      });
       if (line !== before) changed++;
     }
     if (line !== lines[li]) lines[li] = line;
   }
   if (changed) console.log(`[V485] ${lang} 年报年度外行星真值锁: 修正 ${changed} 处`);
   return lines.join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E25-P1②「星历日期门禁」（军师处方：'comienza su retrogradación' 日期必须命中注入表）
+//   病根（es 年报终考缺陷2）: LLM 编造水星逆行日期（7/18 说成开始逆行、8/11 说成转顺、
+//   2027-4/3 当月根本无站点）—— 即便 prompt 注入了真值表，长文尾部仍会飘。
+//   判据（窄射程 + 宁漏不改）: 仅当【行星名 + 逆行/顺行语义词 + 显式日期】三者同窗
+//   （±60 字）时动作:
+//     · 日期命中该行星该类站点真值 → 不动;
+//     · 未命中但该行星该类站点存在 → 换成**与原文日期最接近**的真值站日期（保形写回）;
+//     · 该行星本年无该类站点 → 删除日期短语（宁删不编，句子主体保留）。
+//   服务 es/en/zh；无 chronicle 数据 → 整体透传。
+// ══════════════════════════════════════════════════════════════════
+const _EPHEM_DAYMON = {
+  es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','setiembre','octubre','noviembre','diciembre'],
+  en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+};
+const _EPHEM_MON_IDX = (() => {
+  const m = {};
+  for (const [lg, arr] of Object.entries(_EPHEM_DAYMON)) arr.forEach((w, i) => { m[w.toLowerCase()] = i + 1; });
+  return m;
+})();
+function _ephemDateWindow(text, idx) { return text.slice(Math.max(0, idx - 60), Math.min(text.length, idx + 90)); }
+function lockEphemerisDates(text, lang, astroMatrix, reportType) {
+  if (!text || typeof text !== 'string') return text;
+  if (!['es', 'en', 'zh'].includes(lang)) return text;
+  const ch = astroMatrix && astroMatrix.ephemeris_chronicle;
+  if (!ch || !ch.by_planet) return text;
+  const NAME = _V432_NAME[lang];
+  if (!NAME) return text;
+  const RETRO_RE = lang === 'zh' ? /逆行|退行/ : /retr[oó]grad|retrograde/i;
+  const DIRECT_RE = lang === 'zh' ? /顺行/ : /(?:estacion\w*\s+direct|vuelve\s+direct|turns?\s+direct|stations?\s+direct|direct\s+again|direct\s+motion)/i;
+  const DATE_RE = lang === 'zh'
+    ? /(\d{1,2})\s*月\s*(\d{1,2})\s*日/
+    : lang === 'es'
+      ? /(\d{1,2})\s+de\s+([a-záéíóúñ]+)/i
+      : /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})|(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i;
+  const toMD = (m) => {
+    // ⚠️ 统一返回 [月, 日]（与 mdOf 同序）—— 初版 es/en 返回 [日, 月] 导致距离计算颠倒,
+    //   选站全错（vm 实测: 7/18 被改成 9/23）。
+    if (lang === 'zh') return [Number(m[1]), Number(m[2])];
+    if (lang === 'es') return [_EPHEM_MON_IDX[String(m[2]).toLowerCase()] || 0, Number(m[1])];
+    if (m[1]) return [_EPHEM_MON_IDX[String(m[1]).toLowerCase()] || 0, Number(m[2])];
+    return [_EPHEM_MON_IDX[String(m[4]).toLowerCase()] || 0, Number(m[3])];
+  };
+  const mdOf = (iso) => [Number(String(iso).slice(5, 7)), Number(String(iso).slice(8, 10))];
+  const fmtDate = (m, d) => lang === 'zh' ? `${m}\u6708${d}\u65e5`
+    : lang === 'es' ? `${d} de ${_EPHEM_DAYMON.es[m - 1]}`
+    : `${_EPHEM_DAYMON.en[m - 1]} ${d}`;
+  // 🛡️ E25-P1②: 扫描收集 + **倒序应用**（工作记忆铁律：多段替换按位置倒序）。
+  //   在**不可变源文本**上扫描（exec 推进 lastIndex），绝不边改边扫 —— 结构上消除
+  //   位置漂移/自锁死循环（初版 indexOf 游标法在 vm 实测出现重复命中同一坐标的自锁）。
+  const patches = [];
+  for (const pk of _V482_TRANSIT_KEYS) {
+    const loc = NAME[pk];
+    if (!loc) continue;
+    const arr = ch.by_planet[pk.toLowerCase()];
+    if (!Array.isArray(arr) || !arr.length) continue;
+    const retroDates = arr.filter((s) => s.type === 'RETROGRADE').map((s) => s.date);
+    const directDates = arr.filter((s) => s.type === 'DIRECT').map((s) => s.date);
+    if (!retroDates.length && !directDates.length) continue;
+    const reLoc = new RegExp(_v444Esc(loc), 'g');
+    const reDateG = new RegExp(DATE_RE.source, 'gi');
+    let m;
+    while ((m = reLoc.exec(text)) !== null) {
+      const at = m.index;
+      const winBase = Math.max(0, at - 60);
+      const win = _ephemDateWindow(text, at);
+      // 🛡️ E25-P1②: 窗口内**全部日期**逐一判定（初版只取首个 ⇒ 「7月18日开始逆行，
+      //   持续到8月11日恢复顺行」的第二日期漏网, zh 实测）。
+      reDateG.lastIndex = 0;
+      let dm;
+      while ((dm = reDateG.exec(win)) !== null) {
+        // 🛡️ E25-P1②: 事件归属 = 取该日期**之后 30 字**的最近语义词（各语言真实语序:
+        //   es「18 de julio … comienza su retrogradación」/ zh「8月11日恢复顺行」词均在日期后）;
+        //   该窄窗无词则回退行星宽窗 win。宽窗只判「本句确属逆行语境」, 不判归属。
+        const ctx = win.slice(dm.index, dm.index + dm[0].length + 30);
+        const hasRetro = RETRO_RE.test(win), hasDirect = DIRECT_RE.test(win);
+        if (!hasRetro && !hasDirect) continue;
+        const cRetro = RETRO_RE.test(ctx), cDirect = DIRECT_RE.test(ctx);
+        const isDirect = cDirect
+          ? (!cRetro || ctx.search(DIRECT_RE) < ctx.search(RETRO_RE))
+          : (cRetro ? false : (hasDirect && (!hasRetro || win.search(DIRECT_RE) < win.search(RETRO_RE))));
+        const pool = isDirect ? directDates : retroDates;
+        if (!pool.length) continue;
+        const [cm, cd] = toMD(dm);
+        if (!cm || !cd) continue;
+        const exact = pool.some((iso) => { const mo = mdOf(iso); return mo[0] === cm && mo[1] === cd; });
+        if (exact) continue;
+        const cur = cm * 31 + cd;
+        let best = pool[0], bestD = Infinity;
+        for (const iso of pool) { const md = mdOf(iso); const dd = Math.abs(md[0] * 31 + md[1] - cur); if (dd < bestD) { bestD = dd; best = iso; } }
+        const md2 = mdOf(best);
+        const newStr = fmtDate(md2[0], md2[1]);
+        const absStart = winBase + dm.index;
+        patches.push({ start: absStart, end: absStart + dm[0].length, text: newStr });
+      }
+    }
+  }
+  if (!patches.length) return text;
+  // 去重（同坐标只留一个）+ 倒序应用 + 相交过滤（区间不与已应用区间重叠）
+  const _uniq = [];
+  const _seenStart = new Set();
+  for (const p of patches) {
+    if (p.start < 0 || p.end > text.length || p.start >= p.end) continue;
+    if (_seenStart.has(p.start)) continue;
+    _seenStart.add(p.start);
+    _uniq.push(p);
+  }
+  _uniq.sort((a, b) => b.start - a.start);
+  let out = text, changed = 0, lastStart = Infinity;
+  for (const p of _uniq) {
+    if (p.end > lastStart) continue;   // 与已应用区间相交 → 丢弃
+    out = out.slice(0, p.start) + p.text + out.slice(p.end);
+    lastStart = p.start;
+    changed++;
+  }
+  if (changed) console.log(`[E25-P1②] ${lang} 星历日期门禁: 修正 ${changed} 处`);
+  return out;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -8996,7 +9214,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', async (req, res) => {
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v531:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v532:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -10928,6 +11146,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
   const moonWeekBlock = buildMoonWeekBlock(astroMatrix, lang, _mwMonthLabel);
   // 🛠️ V441: JSON 事实宪法块（剥夺 LLM 生成天体事实的最后自留地）
   const factTreeBlock = buildMonthlyFactTree(astroMatrix, lang, _mwMonthLabel);
+  // 🛡️ E25-P1②: 财年星历编年史块（引擎真值派生, 替换 en/es 模板里的硬编码单月水星段;
+  //   es 年报终考缺陷2: 硬编码只覆盖 7 月 ⇒ 其余 11 月水逆日期 LLM 全靠幻觉编造）。
+  const _ephemBlock = astroMatrix ? buildEphemerisChronicleBlock(astroMatrix, lang) : '';
   const monthlyDataBlockMoon = (_moonWeeks
     ? monthlyDataBlock.replace(/\s*Moon=[^\s]+\*snap\*/g, '')
     : monthlyDataBlock) + moonWeekBlock;
@@ -11262,6 +11483,8 @@ ${monthlyDataBlockMoon}
 
 ${factTreeBlock}
 
+${_ephemBlock}
+
 ⛔ [宫位系统一致性]: 禁止写"狮子座是第10宫"——宫位由上升星座决定，严格使用上方数据中的第N宫编号。
 ⛔ [宫位直写铁律]: 提到行星宫位时，直接写"第N宫"（如"木星在狮子座第2宫带来财富"），严禁使用任何 {{}} 模板占位符或英文 token 标记。后端不再做占位符替换。
 
@@ -11319,7 +11542,7 @@ ASTROGRAPHIC RULES:
 • Do NOT use aspect terminology (trine/square/sextile/opposition) — use energy description instead
 • Do NOT write "unexpected windfall" for tense aspects
 • When a planet is in a house, describe the THEMATIC wealth energy of that house
-• ⛔ [MERCURY RX TIMELINE LOCK] Mercury entered retrograde in Cancer on ~June 28, 2026. It stations DIRECT on July 24, 2026. FORBIDDEN to say Mercury turns direct before July 24 or that it "reaches retrograde apex" after July 24. The correct narrative: "Mercury stations direct on July 24." • Venus enters Virgo Jul 14; Sun enters Leo Jul 23
+${_ephemBlock}
 • Moon NEVER goes retrograde — always Direct
 • NO invented planetary positions — use only the data above
 
@@ -11353,7 +11576,7 @@ REGLAS ASTROGRÁFICAS:
 • Todas las posiciones planetarias son de Swiss Ephemeris — seguir EXACTAMENTE
 • NO usar terminología de aspectos como trino, cuadratura o sextil — usar descripción de energía
 • Cuando un planeta esté en una casa, describir el tema de RIQUEZA de esa casa
-• ⛔ [CRONOLOGÍA DE MERCURIO RETRÓGRADO] Mercurio entró retrógrado en Cáncer aprox. el 28 de Junio. Estaciona directo el 24 de Julio. PROHIBIDO decir que Mercurio cambia a directo antes del 24 de Julio. • Venus entra en Virgo Jul 14; Sol entra en Leo Jul 23
+${_ephemBlock}
 • La Luna NUNCA es retrógrada
 
 FORMATO DE SALIDA — MARKDOWN LIMPIO (6 secciones):
@@ -11390,7 +11613,7 @@ RÈGLES ASTROGRAPHIQUES:
 • Toutes les positions planétaires viennent de Swiss Ephemeris — suivre EXACTEMENT
 • Ne PAS utiliser la terminologie des aspects (trine/carré/sextile) — utiliser la description d'énergie
 • Quand une planète est dans une maison, décrire le thème de RICHESSE de cette maison
-• Mercure rétrograde en Cancer du ~8 au ~25 juillet; Vénus entre en Vierge le 14 juillet; Soleil entre en Lion le 23 juillet
+${_ephemBlock}
 • La Lune N'EST JAMAIS rétrograde
 
 FORMAT DE SORTIE — MARKDOWN PROPRE (6 sections):
@@ -11434,7 +11657,7 @@ ${monthlyDataBlockMoon}
 กฎดาราศาสตร์:
 • ตำแหน่งดาวเคราะห์ทั้งหมดมาจาก Swiss Ephemeris — ปฏิบัติตามอย่างเคร่งครัด
 • ห้ามใช้ศัพท์มุม (trine/square/sextile) — ใช้คำอธิบายพลังงานแทน
-• ดาวพุธวงในในราศีกรกฎ ประมาณ 8-25 กรกฎาคม; ดาวศูกรเข้าราศีกันยา 14 กรกฎาคม; ดวงอาทิตย์เข้าราศีสิงห์ 23 กรกฎาคม
+${_ephemBlock}
 • ดวงจันทร์ไม่เคยวงใน
 
 🛠️ [ดวงชะตากำเนิด — NATAL CHART ANCHORS ภาษาไทย (SwissEph คำนวณจริง · ห้ามเปลี่ยนแปลง)]
@@ -11476,7 +11699,7 @@ ${monthlyDataBlockMoon}
 QUY TẮC THIÊN VĂN:
 • Tất cả vị trí hành tinh từ Swiss Ephemeris — tuân thủ CHÍNH XÁC
 • Không dùng thuật ngữ góc chiếu (trine/square/sextile) — dùng mô tả năng lượng
-• Sao Thủy nghịch hành trong Cự Giải khoảng 8-25/7; Sao Kim vào Xử Nữ 14/7; Mặt Trời vào Sư Tử 23/7
+${_ephemBlock}
 • Mặt Trăng không bao giờ nghịch hành
 
 ĐỊNH DẠNG ĐẦU RA — MARKDOWN SẠCH (6 phần):
@@ -13019,7 +13242,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v531:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v532:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -13341,6 +13564,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = lockYearlyMonthTitles(reportContent, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(最后一道)
         reportContent = normalizeYearlyMarkup(reportContent, lang, reportType);  // 🛡️ V480 年报结构归一(层级/分隔符/标签)
         reportContent = lockYearlyTransitSigns(reportContent, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
+        reportContent = lockEphemerisDates(reportContent, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(编造逆行/顺行日期)
         reportContent = lockYearlyOuterPlanetsYear(reportContent, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(木星笔误等越界句)
         reportContent = lockYearlyNonMonthSunRef(reportContent, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁 + 语义漂移审计(只检不改, 仅日志)
         reportContent = _v432LockLeadingNatal(reportContent, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(非流式, V488 之后=最终话语权)
@@ -13916,7 +14140,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v531:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v532:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -15088,6 +15312,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
           if (ft) ft = lockYearlyMonthTitles(ft, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁
           if (ft) ft = normalizeYearlyMarkup(ft, lang, reportType);  // 🛡️ V480 年报结构归一
           if (ft) ft = lockYearlyTransitSigns(ft, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁
+          if (ft) ft = lockEphemerisDates(ft, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁
           if (ft) ft = lockYearlyOuterPlanetsYear(ft, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁
           if (ft) ft = lockYearlyNonMonthSunRef(ft, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁
           if (ft) ft = stripYearlyPromptLeakage(ft, lang, reportType);  // 🛡️ V485b Prompt 字段泄漏清理
@@ -15145,6 +15370,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = lockYearlyMonthTitles(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V478b 年报月标题逐月真值锁(落库前最后一道)
     cleanedText = normalizeYearlyMarkup(cleanedText, lang, reportType);  // 🛡️ V480 年报结构归一(落库前最后一道)
     cleanedText = lockYearlyTransitSigns(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V482 年报逐月流年行星真值锁(落库前最后一道)
+    cleanedText = lockEphemerisDates(cleanedText, lang, astroMatrix, reportType);  // 🛡️ E25-P1② 星历日期门禁(落库前)
     cleanedText = lockYearlyOuterPlanetsYear(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V485 年度恒定外行星全文真值锁(落库前)
     cleanedText = lockYearlyNonMonthSunRef(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V488 年报非月段流年太阳真值锁(落库前)
     cleanedText = _v432LockLeadingNatal(cleanedText, lang, astroMatrix, reportType);  // 🛡️ V492b/E9 年报前导段本命真值强锁(落库前最后一道, 对前导段拥有最终话语权)
@@ -15615,7 +15841,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v531-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v532-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

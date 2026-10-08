@@ -56,7 +56,12 @@ function fnBody(name, source = src) {
 // 源码字面量(与 server.js 逐字一致; 判据与注入自测共用, 保证「自测证明判据会红」)
 const GUARD_NEW = 'if (/^\\s*#{1,6}\\s/.test(lines[k]) && !_v516MonthHeadKey(lines[k].trim(), lang)) { end = k; break; }';
 const GUARD_OLD = 'if (/^\\s*##\\s/.test(lines[k])) { end = k; break; }';
-const EXEMPT_LINE = 'if (_natalSignRe[key] && _natalSignRe[key].test(signWord)) return full;';
+// 🛡️ E25-P1① 前移: E19 豁免由「撞 sign 即整体弃权」单行升级为
+//   【transit 语境门控 + sign↔house 成对裁决】块 ⇒ 旧单行字面量已不存在，判据必须同源前移
+//   （否则实现升级 → 本闸门假红，且新引入的 transit 门控与键名映射**零防线**）。
+const EXEMPT_LINE = 'if (!_isTransitCtx && _natalSignRe[key] && _natalSignRe[key].test(signWord)) {';
+const EXEMPT_COND = '!_isTransitCtx && _natalSignRe[key] && _natalSignRe[key].test(signWord)';
+const TRANSIT_CTX_GATE = 'const _isTransitCtx = _tmRe ? _tmRe.test(_ctxWin) : false;';
 const TRUTH_CALL = "_v432Truth(lang, astroMatrix, 'natal')";
 
 test('① 段尾守卫: 必须是「任意级别非月标题终止月段」, 旧 `## ` 单级守卫不得残留', () => {
@@ -64,10 +69,17 @@ test('① 段尾守卫: 必须是「任意级别非月标题终止月段」, 旧
   assert.ok(b.includes(GUARD_NEW), 'V482 缺新段尾守卫(任意级别非月标题终止)');
   assert.ok(!b.includes(GUARD_OLD), '旧 `## ` 单级守卫残留');
 });
-test('② 本命星座豁免接线: _v432Truth(natal) + _natalSignRe 弃权必须存在', () => {
+test('② 本命星座豁免接线: _v432Truth(natal) + 成对裁决块 + transit 门控 + 本地化键映射', () => {
   const b = fnBody('lockYearlyTransitSigns');
   assert.ok(b.includes(TRUTH_CALL), '缺 _v432Truth(natal) 真值源');
-  assert.ok(b.includes(EXEMPT_LINE), '缺本命星座豁免弃权行');
+  assert.ok(b.includes(EXEMPT_LINE), '缺本命星座豁免块（E25-P1① 成对裁决形态）');
+  // 🛡️ E25-P1①: 无门控 ⇒ 「流月太阳在射手座第6宫」等流年句被当本命句整体弃权
+  //   ⇒ 流月真值漏纠（audit-v482 ⑩ 曾回归）⇒ 门控是豁免块的必要组成, 必须单独设防。
+  assert.ok(b.includes(TRANSIT_CTX_GATE), '缺 transit 语境门控（豁免会误吞流年句）');
+  // 🛡️ E25-P1①: 键名铁律 —— _v432Truth('natal') 的键是【本地化行星名】（es 'Júpiter' / zh '木星'），
+  //   不经 _V432_NAME 映射的英文键回查恒 undefined ⇒ 豁免在 es/zh **结构性空转**（vm 实证过）。
+  assert.ok(/natalTruth\[NAME\[key\] \|\| key\]/.test(b),
+    'E19 豁免回查未做本地化键映射（es/zh 结构性空转）');
 });
 
 // ═══════════════ 行为级: vm 抽取 + 假矩阵(零 python) ═══════════════
@@ -167,8 +179,9 @@ test('⑥ 注入自测: 段尾守卫回退为旧 `## ` 单级 ⇒ 三级章节�
 });
 test('⑦ 注入自测: 删除本命星座豁免 ⇒ 月段内本命句必须被改写(判据④会红)', () => {
   const b = fnBody('lockYearlyTransitSigns');
-  assert.ok(b.includes(EXEMPT_LINE), '注入失败: 未找到本命星座豁免(与实现脱钩)');
-  const H = build({ lockYearlyTransitSigns: b.replace(EXEMPT_LINE + '\n', '') });
+  assert.ok(b.includes(EXEMPT_COND), '注入失败: 未找到本命星座豁免条件(与实现脱钩)');
+  // 🛡️ E25-P1①: 豁免已是**块**(内含成对裁决), 删单行会留悬空块 ⇒ 改为把条件短路为 false。
+  const H = build({ lockYearlyTransitSigns: b.replace(EXEMPT_COND, 'false') });
   const t = [EN_HEAD(0), NATAL_SENT, EN_HEAD(1), 'August body.'].join('\n');
   const out = H.lockYearlyTransitSigns(t, 'en', M, 'yearly');
   assert.ok(out.includes('Saturn in Aries'), '注入后本命句未被改写 ⇒ 判据④证明失效');

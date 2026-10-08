@@ -58,7 +58,7 @@ test('③ 通道纪律: 年报重试链必须 DeepSeek#1 → DeepSeek#2 → Gemi
 // 🛠️ V479: 缓存版本基线 —— 每次 bump 后同步上调, 不允许回退(回退=毒缓存复用)。
 //   早先写死 `wealth:v4\d\d:` + strictEqual(v480) → 每次正常 bump 都假红一次(闸门成了绊脚石);
 //   改为「同版本一致 + 不低于已发布基线」, 既守「输出链变更必须 bump」, 又不因 bump 假红。
-const MIN_CACHE_VER = 531;   // E24④/P5b: ① es 同位语 gloss 锁补**同义头部**（`el hogar de` —— v528 目标盘 17/17 全用该形态，写死 `casa` 即全盲）② 补**受限逗号续段**（标签内含逗号，禁逗号定界会留碎片）③ 主题判定前剥离 gloss 头部（否则 `hogar` 命中 4 宫契约词 `Hogar` ⇒ 误剪关系性短语）④ vi `Năm` 归一 + 越语标签锁（E24④ 首版）⇒ 产物文本变更，全量 bump 作废历史键。（历史：v528 = E24④ 首版 es 同位语三式 + vi Năm 归一；v527 = E24③ es 宫位「英文借形」+ fr/th/vi 渲染补盲）
+const MIN_CACHE_VER = 532;   // E25/P1①②: ① 阵地① —— `_V432_CFG.es` 宫位全形态 + `lockYearlyTransitSigns`(V482) 段尾守卫/gi 大小写/本命豁免**成对裁决**（含 E19 键名错位根治：`_v432Truth('natal')` 键为本地化行星名，旧英文键回查恒 undefined ⇒ es/zh 豁免结构性空转）+ `lockYearlyOuterPlanetsYear`(V485) 扩 es ② 阵地② —— 引擎新增 `compute_ephemeris_chronicle`（逐日扫描+二分精化站点，取代硬编码 `find_all_stations`），六语 prompt 注入全财年星历编年史块（`buildEphemerisChronicleBlock`），新增 `lockEphemerisDates` 星历日期门禁（编造逆行/顺行日期保形写回）⇒ 产物文本变更，全量 bump 作废历史键。（历史：v531 = E25/P0 先天报告真值归位 + 双通道同源；v530 = E24⑥③(P1) 双通道口径收敛 + 小语种标签本地化；v529 = E24⑥③ 首版；v528 = E24④ 首版 es 同位语三式 + vi Năm 归一）
 
 test('④ 缓存 key 统一且不低于已发布基线 v' + MIN_CACHE_VER + '(输出链变更必须 bump,防毒缓存复用)', () => {
   // ⚠️ 只取 `const cacheKey = `wealth:vNNN:`` 赋值形式: 裸 match v\d+ 会命中注释里提及的历史键

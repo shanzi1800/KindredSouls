@@ -1325,6 +1325,106 @@ export function getMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
   return computeMonthlyFactTree(astroMatrix, lang, monthLabel);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E25-P1②: 财年星历编年史块（prompt 注入用）
+//   病根（es 年报终考缺陷2）: prompt 只注入 7 月水星编年史（server.js 硬编码），其余
+//   11 个月 LLM 全靠幻觉 ⇒ 水星逆行日期 3 处编造（7/18 说成开始逆行、8/11 说成转顺、
+//   2027-4/3 当月根本无站点）。本块 = 引擎 compute_ephemeris_chronicle 的确定性数据
+//   （astroMatrix.ephemeris_chronicle），含五行星逆行期 + 六星换座，逐月对齐财年窗口。
+//   语言: zh 原生 / es 原生 / 其余回落 en（与 _V432 分层口径一致）。
+// ═══════════════════════════════════════════════════════════════════════════
+const _EPHEM_L = {
+  zh: {
+    head: '⛔ [财年星历编年史 — SwissEph 算法生成 · 唯一真源 · 禁止编造任何未列出的逆行/换座日期]',
+    stationHead: '【五行星逆行站点（回/顺）】',
+    ingressHead: '【逐月行星换座（含太阳每月入座）】',
+    retro: '开始逆行', direct: '恢复顺行', none: '（本行星本财年无站点）',
+    rule: '⚠️ 凡写「开始逆行/恢复顺行」必须使用上表日期, 严禁编写表外日期; 表中无站点的月份禁止声称有逆行变化。',
+  },
+  es: {
+    head: '⛔ [CRONOLOGÍA EFEMÉRIDES DEL AÑO FISCAL — generada por SwissEph · ÚNICA FUENTE · PROHIBIDO inventar fechas de retrogradación/ingreso no listadas]',
+    stationHead: '【Estaciones retrógradas (retrógrado/directo) de los 5 planetas】',
+    ingressHead: '【Ingresos mensuales de signo (incl. el Sol cada mes)】',
+    retro: 'comienza su retrogradación', direct: 'se estaciona directo', none: '(sin estación este año fiscal)',
+    rule: '⚠️ Toda mención de "comienza su retrogradación / se estaciona directo" DEBE usar las fechas de arriba; PROHIBIDO escribir fechas fuera de la tabla; en meses sin estación NO afirmes cambios de retrogradación.',
+  },
+  en: {
+    head: '⛔ [FISCAL-YEAR EPHEMERIS CHRONICLE — SwissEph-computed · SOLE SOURCE · do NOT invent retrograde/ingress dates not listed]',
+    stationHead: '[Retrograde stations (retrograde/direct) of the 5 planets]',
+    ingressHead: '[Monthly sign ingresses (incl. the Sun each month)]',
+    retro: 'begins retrograde', direct: 'stations direct', none: '(no station this fiscal year)',
+    rule: '⚠️ Any "begins retrograde / stations direct" statement MUST use the dates above; NEVER write dates outside the table; in months with no station do NOT claim retrograde changes.',
+  },
+};
+
+const _EPHEM_PN = {
+  zh: { sun: '太阳', mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' },
+  es: { sun: 'Sol', mercury: 'Mercurio', venus: 'Venus', mars: 'Marte', jupiter: 'Júpiter', saturn: 'Saturno' },
+  en: { sun: 'Sun', mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn' },
+};
+const _EPHEM_SIGN = {
+  zh: ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],
+  es: ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'],
+  en: ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
+};
+const _EN_SIGNS_ORD = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+
+export function buildEphemerisChronicleBlock(astroMatrix, lang = 'zh') {
+  const ch = astroMatrix && astroMatrix.ephemeris_chronicle;
+  if (!ch || typeof ch !== 'object') return '';
+  // 🛡️ 守卫只吃**本块实际消费的字段**（by_planet / ingresses）—— 初版误以 `ch.stations`
+  //   是否存在为闸（该字段本块根本不用）⇒ 引擎若省略 stations 即静默退化为空串
+  //   （闸门 B1 实测: 空串 ⇒ es 句式锚缺失）。宁漏不改: 两者皆空才弃权。
+  const _hasByPlanet = ch.by_planet && typeof ch.by_planet === 'object'
+    && Object.values(ch.by_planet).some((a) => Array.isArray(a) && a.length > 0);
+  const _hasIngress = Array.isArray(ch.ingresses) && ch.ingresses.length > 0;
+  if (!_hasByPlanet && !_hasIngress) return '';
+  const L = _EPHEM_L[lang] || _EPHEM_L.en;
+  const MONTHS_LOCAL = {
+    zh: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+    en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  };
+  const ML = MONTHS_LOCAL[lang] || MONTHS_LOCAL.en;
+  const PN = _EPHEM_PN[lang] || _EPHEM_PN.en;
+  const SGN = _EPHEM_SIGN[lang] || _EPHEM_SIGN.en;
+  const locSign = (s) => { const i = _EN_SIGNS_ORD.indexOf(s); return i >= 0 ? SGN[i] : s; };
+  const locPlanet = (p) => PN[String(p).toLowerCase()] || p;
+  const monthKeyOf = (d) => String(d || '').slice(0, 7);
+  const byPlanet = (ch.by_planet && typeof ch.by_planet === 'object') ? ch.by_planet : {};
+  const lines = [L.head];
+  lines.push(L.stationHead);
+  const stationLines = [];
+  for (const [pn, arr] of Object.entries(byPlanet)) {
+    if (!Array.isArray(arr) || !arr.length) continue;
+    const segs = [];
+    let retStart = null;
+    for (const s of arr) {
+      if (s.type === 'RETROGRADE') retStart = s;
+      else if (s.type === 'DIRECT' && retStart) {
+        segs.push(`${retStart.date} ${L.retro} (${locSign(retStart.sign)}) → ${s.date} ${L.direct}`);
+        retStart = null;
+      }
+    }
+    if (retStart) segs.push(`${retStart.date} ${L.retro} (${locSign(retStart.sign)})`);
+    if (segs.length) stationLines.push(`• ${locPlanet(pn)}: ${segs.join('; ')}`);
+  }
+  lines.push(stationLines.length ? stationLines.join('\n') : `• ${L.none}`);
+  lines.push(L.ingressHead);
+  const ingressByMonth = {};
+  for (const g of (ch.ingresses || [])) {
+    const k = monthKeyOf(g.date);
+    (ingressByMonth[k] = ingressByMonth[k] || []).push(`${g.date} ${locPlanet(g.planet)}: ${locSign(g.from)} → ${locSign(g.to)}`);
+  }
+  const igLines = Object.keys(ingressByMonth).sort().map((k) => {
+    const [y, m] = k.split('-');
+    return `• ${y} ${ML[Number(m) - 1] || m}: ${ingressByMonth[k].join('; ')}`;
+  });
+  lines.push(igLines.length ? igLines.join('\n') : `• ${L.none}`);
+  lines.push(L.rule);
+  return lines.join('\n');
+}
+
 export function buildMonthlyFactTree(astroMatrix, lang, monthLabel = '') {
   const factTree = computeMonthlyFactTree(astroMatrix, lang, monthLabel);
   const weekBlocks = factTree.weeklyMoonTransits;

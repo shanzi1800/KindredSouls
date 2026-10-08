@@ -322,8 +322,11 @@ test('【注入】缓存版本降级一档 → ⑥ 必须红', () => {
 });
 
 test('【注入】给外行星锁摘掉本命豁免 → ④ 必须红', () => {
+  // 🛡️ E25-P1①: 注入锚点随实现前移 —— 豁免行已从「zh 四词硬编码」升级为
+  //   「es 用 cfg.natalAny + zh 窗口保持 12 字」的双分支形态（原锚点字符串已不存在,
+  //   会导致注入静默失败 = 零防线）。
   const degraded = src.replace(
-    "if (/(?:本命|出生|原生|本盘)/.test(line.slice(Math.max(0, off - 12), off))) return full;  // 本命句归本命锁",
+    "if (lang === 'es' ? _natalRe.test(_pre + ' ' + full) : _natalRe.test(_pre)) return full;",
     '');
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const f = loadOuter(degraded);

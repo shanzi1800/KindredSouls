@@ -595,9 +595,14 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
             month = 1
             year += 1
     
-    # Add retrograde station data
-    stations = find_all_stations()
-    
+    # 🛡️ E25-P1②: 星历编年史改为**真值派生**（原 find_all_stations 硬编码 2026-07~2028-01
+    #   且只含水星 ⇒ 换财年/换盘即失效、其余行星全无）。同时产出换座表供 prompt 注入。
+    try:
+        chronicle = compute_ephemeris_chronicle(start_year, start_month, len(months))
+    except Exception as _ce:
+        print(f"[AstroMatrix] ephemeris chronicle failed: {_ce}", file=sys.stderr)
+        chronicle = {'stations': [], 'by_planet': {}, 'ingresses': [], 'months': 0}
+
     return {
         'meta': {
             'birth_date': birth_date,
@@ -611,12 +616,16 @@ def compute_full_matrix(birth_date: str, rising_sign: str = 'Cancer',
         'rising_sign_source': 'from_natal',
         },
         'months': months,
-        'retrograde_stations': stations,
+        # 兼容既有消费方（v69_client.js buildFactSheet 读 retrograde_stations.mercury）
+        'retrograde_stations': chronicle.get('by_planet') or {'mercury': []},
+        'ephemeris_chronicle': chronicle,
     }
 
 
 def find_all_stations() -> Dict:
-    """Find all Mercury retrograde stations for 2026-2027 by scanning every day."""
+    """⚠️ DEPRECATED（E25-P1②）: 硬编码 2026-07~2028-01 水星 —— 换财年/换盘即失效。
+    保留仅为向后兼容（离线历史 harness 可能引用）; 生产路径已改 compute_ephemeris_chronicle。
+    """
     mercury_stations = []
     current = datetime(2026, 7, 1)
     end = datetime(2028, 1, 1)
@@ -648,6 +657,83 @@ def find_all_stations() -> Dict:
         current += timedelta(days=1)
     
     return {'mercury': mercury_stations}
+
+
+# ── E25-P1②: 财年星历编年史（真值派生；替换 find_all_stations 硬编码年份）─────────
+# 病根（es 年报终考缺陷2 实证）: prompt 只注入 7 月水星编年史（server.js 硬编码段），
+#   其余 11 个月 LLM 全靠幻觉 ⇒ 水星逆行日期 3 处编造（7/18 说成开始逆行、8/11 说成
+#   转顺、2027-4/3 当月根本无站点）。正解 = 引擎确定性生成 12 个月全部站点/换座表。
+_EPHEM_PLANETS = [
+    ('Sun', swe.SUN), ('Mercury', swe.MERCURY), ('Venus', swe.VENUS),
+    ('Mars', swe.MARS), ('Jupiter', swe.JUPITER), ('Saturn', swe.SATURN),
+]
+
+
+def compute_ephemeris_chronicle(start_year: int, start_month: int, months: int = 12) -> Dict:
+    """E25-P1②: 财年星历编年史（逐日扫描 + 二分精化站点日）。
+
+    返回:
+      {
+        'start': 'YYYY-MM', 'end': 'YYYY-MM', 'months': N,
+        'stations': [{planet,type,date,position,sign}...],     # 水/金/火/木/土 逆行站
+        'by_planet': {'Mercury': [...], 'Venus': [...] ...},   # 兼容 retrograde_stations 分键消费
+        'ingresses': [{planet,date,from,to}...],               # 6 星换座（含太阳每月入座）
+      }
+    """
+    stations: List[Dict] = []
+    ingresses: List[Dict] = []
+    # ⚠️ 键**小写**（与旧 find_all_stations 的 'mercury' 口径一致 —— v69_client.js
+    #   buildFactSheet 读 retrograde_stations.mercury; 大小写不一致会让 stationArray 变成对象 ⇒ for..of 抛错）
+    by_planet: Dict[str, List[Dict]] = {name.lower(): [] for name, _ in _EPHEM_PLANETS}
+    prev: Dict[str, Dict] = {}
+    # 🛡️ E25-P1②: 起点**前推 20 天** —— 财年首月月初常有上月结转的站点（实测 2026-06-30
+    #   水星留逆，正为该财年水逆期的起点），只扫当月会漏。前推不影响月份推进口径
+    #   （循环仍按自然月末推进, 末月整月覆盖）。
+    cur = datetime(start_year, start_month, 1)
+    day0 = cur - timedelta(days=20)
+    for _i in range(months):
+        m_end = cur.month + 1
+        y_end = cur.year
+        if m_end > 12:
+            m_end = 1
+            y_end += 1
+        month_end_dt = datetime(y_end, m_end, 1)
+        day = day0 if _i == 0 else cur
+        while day < month_end_dt:
+            jd = swe.julday(day.year, day.month, day.day, 12)
+            for name, pid in _EPHEM_PLANETS:
+                deg, speed = get_planet_pos(jd, pid)
+                sign = get_sign(deg)
+                p = prev.get(name)
+                if p is not None:
+                    if p['sign'] != sign:
+                        ingresses.append({
+                            'planet': name, 'date': day.strftime('%Y-%m-%d'),
+                            'from': p['sign'], 'to': sign,
+                        })
+                    if (p['speed'] > 0) != (speed > 0) and abs(speed) > 1e-9:
+                        stype = 'RETROGRADE' if speed < 0 else 'DIRECT'
+                        exact_jd = find_station_day(day - timedelta(days=1), day, pid, stype)
+                        ed = swe.revjul(exact_jd)
+                        rec = {
+                            'planet': name, 'type': stype,
+                            'date': f"{int(ed[0]):04d}-{int(ed[1]):02d}-{int(ed[2]):02d}",
+                            'position': format_pos(deg), 'sign': sign,
+                        }
+                        stations.append(rec)
+                        by_planet[name.lower()].append(rec)
+                prev[name] = {'sign': sign, 'speed': speed}
+            day += timedelta(days=1)
+        cur = month_end_dt
+    last = cur - timedelta(days=1)
+    return {
+        'start': f"{start_year:04d}-{start_month:02d}",
+        'end': f"{last.year:04d}-{last.month:02d}",
+        'months': months,
+        'stations': stations,
+        'by_planet': by_planet,
+        'ingresses': ingresses,
+    }
 
 
 def test_verification():

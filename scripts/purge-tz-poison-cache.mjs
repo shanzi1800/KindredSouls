@@ -89,6 +89,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v529-v2:*',
   'wealth:v530:*',        // 🛡️ E25/P0: v530 全量作废（① 先天报告真值飞地归位 —— `buildWealthOncePrompt` 废除手写 zodiacRanges 日期表改用 `getNatalSunSign()`，消灭 6/21、10/23、11/22 三临界日与月报/年报打架；摄入 `buildNatalAnchors(astroMatrix)` 本命真值块（太阳/月亮/上升 + 全行星宫位 + 土星/冥王）替代幻觉 ② **流式端点 reportType 分流** —— once 原被丢进 `buildWealthReportPrompt` 年报五章缺省分支（$4.99 拿到 $29.99 骨架），现改 `once ? buildWealthOncePrompt : buildWealthReportPrompt` ③ 非流式端点取消 `if (reportType !== 'once')` 隔离 ④ `applyWealthReportPromptGuards` 对 once 分区（不下发第五章空间铁律/第二章风控表））
   'wealth:v530-v2:*',
+  'wealth:v531:*',        // 🛡️ E25/P1①②: v531 全量作废（阵地① es 真值锁射程补齐 —— `lockYearlyTransitSigns`(V482) houseSrc 扩 es 全形态 + 匹配 flag `g`→`gi`（es 正文小写星座零匹配）+ 本命豁免由「撞 sign 即整体弃权」收窄为【transit 语境门控 + sign↔house 成对裁决】，并根治 E19 键名错位（`_v432Truth('natal')` 键为本地化行星名 ⇒ 旧英文键回查恒 undefined ⇒ 豁免在 es/zh 结构性空转）；`lockYearlyOuterPlanetsYear`(V485) 语言守卫扩 es + 新增形态C；阵地② 全财年星历编年史 —— 引擎 `compute_ephemeris_chronicle`（逐日扫描 + 二分精化站点）取代硬编码 `find_all_stations`，六语 prompt 注入 `buildEphemerisChronicleBlock`，新增 `lockEphemerisDates` 日期门禁（编造逆行/顺行日期保形写回真值最近站））
+  'wealth:v531-v2:*',
   'wealth:v116-v2:*',
 ];
 
