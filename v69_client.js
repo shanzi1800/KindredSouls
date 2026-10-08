@@ -491,6 +491,287 @@ ${transitLines.join('\n')}`
   ].join('\n');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  E26 — 水晶/饰品「能量对应」植入：确定性闭集表 + 真值块生成器 + 六语指令
+// ═══════════════════════════════════════════════════════════════════════════
+//  规范：《KindredSouls 水晶/饰品植入设计规范 v1.1》（2026-10-08 主公三项裁决）
+//  铁律：① 只做「能量对应」不做功效承诺 ② 报告与商城彻底解耦（无 SKU/价格/入口）
+//        ③ 真值推导 + 单一建议（1 主石 + 至多 1 同级次石，禁列表化）
+//        ④ **确定性闭集表**，严禁 LLM 自创矿石名（规范 §3 / §8.1）
+//  真值来源：既有 astroMatrix（SwissEph 实算）—— house_cusps_full（宫头 sign）/ computed_houses。
+//  ⚠️ 本层为「注入层真值」：只**新增**内容，不触碰任何既有真值锁的行为（规范 §8.6）。
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const _CRYSTAL_LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+
+// ── ① 矿石名词典（id → 六语）※ 唯一真源；新增矿石必须六语齐备 + 闸门同步 ──
+export const _CRYSTAL_NAME = {
+  ruby:        { zh: '红宝石', en: 'Ruby',             es: 'Rubí',              fr: 'Rubis',            th: 'ทับทิม',        vi: 'Hồng ngọc' },
+  garnet:      { zh: '石榴石', en: 'Garnet',           es: 'Granate',           fr: 'Grenat',           th: 'การ์เนต',        vi: 'Ngọc hồng lựu' },
+  rutilated:   { zh: '金发晶', en: 'Rutilated Quartz', es: 'Cuarzo rutilado',   fr: 'Quartz rutilé',    th: 'รูไทล์ควอตซ์',   vi: 'Thạch anh tóc vàng' },
+  moonstone:   { zh: '月光石', en: 'Moonstone',        es: 'Piedra de luna',    fr: 'Pierre de lune',   th: 'มูนสโตน',        vi: 'Đá mặt trăng' },
+  pearl:       { zh: '珍珠',   en: 'Pearl',            es: 'Perla',             fr: 'Perle',            th: 'ไข่มุก',         vi: 'Ngọc trai' },
+  rockcrystal: { zh: '白水晶', en: 'Rock Crystal',     es: 'Cristal de roca',   fr: 'Cristal de roche', th: 'คริสตัลใส',      vi: 'Thạch anh trắng' },
+  turquoise:   { zh: '绿松石', en: 'Turquoise',        es: 'Turquesa',          fr: 'Turquoise',        th: 'เทอร์ควอยซ์',    vi: 'Ngọc lam' },
+  citrine:     { zh: '黄水晶', en: 'Citrine',          es: 'Citrino',           fr: 'Citrine',          th: 'ซิทริน',         vi: 'Thạch anh vàng' },
+  agate:       { zh: '玛瑙',   en: 'Agate',            es: 'Ágata',             fr: 'Agate',            th: 'อาเกต',          vi: 'Mã não' },
+  emerald:     { zh: '祖母绿', en: 'Emerald',          es: 'Esmeralda',         fr: 'Émeraude',         th: 'มรกต',           vi: 'Ngọc lục bảo' },
+  rosequartz:  { zh: '粉晶',   en: 'Rose Quartz',      es: 'Cuarzo rosa',       fr: 'Quartz rose',      th: 'โรสควอตซ์',      vi: 'Thạch anh hồng' },
+  jade:        { zh: '玉',     en: 'Jade',             es: 'Jade',              fr: 'Jade',             th: 'หยก',            vi: 'Ngọc' },
+  carnelian:   { zh: '红玉髓', en: 'Carnelian',        es: 'Cornalina',         fr: 'Cornaline',        th: 'คาร์เนเลียน',    vi: 'Carnelian' },
+  bloodstone:  { zh: '血滴石', en: 'Bloodstone',       es: 'Heliotropo',        fr: 'Héliotrope',       th: 'เฮลิโอโทรป',     vi: 'Đá heliotrope' },
+  topaz:       { zh: '黄玉',   en: 'Topaz',            es: 'Topacio',           fr: 'Topaze',           th: 'บุษราคัม',       vi: 'Hoàng ngọc' },
+  amber:       { zh: '琥珀',   en: 'Amber',            es: 'Ámbar',             fr: 'Ambre',            th: 'อำพัน',          vi: 'Hổ phách' },
+  sapphire:    { zh: '蓝宝石', en: 'Sapphire',         es: 'Zafiro',            fr: 'Saphir',           th: 'ไพลิน',          vi: 'Lam ngọc' },
+  lapis:       { zh: '青金石', en: 'Lapis Lazuli',     es: 'Lapislázuli',       fr: 'Lapis-lazuli',     th: 'แลพิสลาซูลี',    vi: 'Đá lapis lazuli' },
+  obsidian:    { zh: '黑曜石', en: 'Obsidian',         es: 'Obsidiana',         fr: 'Obsidienne',       th: 'ออบซิเดียน',     vi: 'Đá obsidian' },
+  blacktour:   { zh: '黑碧玺', en: 'Black Tourmaline', es: 'Turmalina negra',   fr: 'Tourmaline noire', th: 'ทัวร์มาลีนดำ',   vi: 'Tourmaline đen' },
+  amethyst:    { zh: '紫水晶', en: 'Amethyst',         es: 'Amatista',          fr: 'Améthyste',        th: 'อเมทิสต์',       vi: 'Thạch anh tím' },
+  ametgeode:   { zh: '紫晶洞', en: 'Amethyst Geode',   es: 'Geoda de amatista', fr: "Géode d'améthyste", th: 'จีโอดอเมทิสต์', vi: 'Hang thạch anh tím' },
+  fluorite:    { zh: '萤石',   en: 'Fluorite',         es: 'Fluorita',          fr: 'Fluorite',         th: 'ฟลูออไรต์',      vi: 'Đá fluorit' },
+  aquamarine:  { zh: '海蓝宝', en: 'Aquamarine',       es: 'Aguamarina',        fr: 'Aigue-marine',     th: 'อะความารีน',     vi: 'Đá aquamarine' },
+  pyrite:      { zh: '黄铁矿', en: 'Pyrite',           es: 'Pirita',            fr: 'Pyrite',           th: 'ไพไรต์',         vi: 'Pyrit' },
+  tiger:       { zh: '虎眼石', en: "Tiger's Eye",      es: 'Ojo de tigre',      fr: "Œil de tigre",     th: 'ตาเสือ',         vi: 'Đá mắt hổ' },
+  sunstone:    { zh: '太阳石', en: 'Sunstone',         es: 'Piedra de sol',     fr: 'Pierre de soleil', th: 'ซันสโตน',        vi: 'Đá mặt trời' },
+};
+
+// ── ② 行星 → 助运石（规范 §3.1）─────────────────────────────────────────
+export const _CRYSTAL_BY_PLANET = {
+  Sun:     { main: 'ruby',       alt: 'rutilated' },
+  Moon:    { main: 'moonstone',  alt: 'pearl' },
+  Mercury: { main: 'turquoise',  alt: 'citrine' },
+  Venus:   { main: 'emerald',    alt: 'rosequartz' },
+  Mars:    { main: 'carnelian',  alt: 'agate' },
+  Jupiter: { main: 'citrine',    alt: 'topaz' },
+  Saturn:  { main: 'sapphire',   alt: 'lapis' },
+  Uranus:  { main: 'fluorite',   alt: 'rockcrystal' },
+  Neptune: { main: 'amethyst',   alt: 'aquamarine' },
+  Pluto:   { main: 'garnet',     alt: 'bloodstone' },
+};
+
+// ── ③ 元素 → 助运石（规范 §3.3）─────────────────────────────────────────
+export const _CRYSTAL_BY_ELEMENT = {
+  Fire:  { main: 'garnet',    alt: 'carnelian' },
+  Earth: { main: 'citrine',   alt: 'tiger' },
+  Air:   { main: 'turquoise', alt: 'rockcrystal' },
+  Water: { main: 'moonstone', alt: 'amethyst' },
+};
+
+// ── ④ 财富三宫 → 领域石（规范 §3.4；宫主星缺失时兜底）───────────────────
+export const _CRYSTAL_BY_HOUSE = {
+  2:  { main: 'citrine',   alt: 'rosequartz' },
+  8:  { main: 'blacktour', alt: 'obsidian' },
+  10: { main: 'sapphire',  alt: 'rutilated' },
+};
+
+// ── ⑤ 年报第五章「空间 × 宫位」固定配石（规范 §5.3，严格对齐既有宫位铁律）──
+export const _CRYSTAL_BY_SPACE = {
+  bedroom: { house: 4, main: 'ametgeode', alt: 'obsidian' },
+  kitchen: { house: 2, main: 'citrine',   alt: 'pyrite' },
+  vault:   { house: 8, main: 'blacktour', alt: 'rutilated' },
+};
+
+// ── ⑥ 月报四周固定周主星（与既有诗意意象严格对齐：水星/海王/土星/木星）────
+export const _CRYSTAL_WEEK_PLANETS = ['Mercury', 'Neptune', 'Saturn', 'Jupiter'];
+
+// ── ⑦ 星座 → 守护主星 / 元素（现代主星）────────────────────────────────
+export const _CRYSTAL_SIGN_ORDER = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+export const _CRYSTAL_SIGN_RULER = {
+  Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun', Virgo: 'Mercury',
+  Libra: 'Venus', Scorpio: 'Pluto', Sagittarius: 'Jupiter', Capricorn: 'Saturn', Aquarius: 'Uranus', Pisces: 'Neptune',
+};
+export const _CRYSTAL_SIGN_ELEMENT = {
+  Aries: 'Fire', Leo: 'Fire', Sagittarius: 'Fire',
+  Taurus: 'Earth', Virgo: 'Earth', Capricorn: 'Earth',
+  Gemini: 'Air', Libra: 'Air', Aquarius: 'Air',
+  Cancer: 'Water', Scorpio: 'Water', Pisces: 'Water',
+};
+
+// ── 矿石显示名：本地语名 + 英文锚定（防 LLM 改写/漂移）；未知 id ⇒ null（绝不伪造）──
+export function crystalName(id, lang) {
+  const e = _CRYSTAL_NAME[id];
+  if (!e) return null;
+  const L = _CRYSTAL_LANGS.includes(lang) ? lang : 'en';
+  const local = e[L] || e.en;
+  return `${local} (${e.en})`;
+}
+
+// ── 宫头星座（Placidus 真值优先；无 cusps 回落等宫制 = 上升星座起算）──
+export function _crystalHouseSign(astroMatrix, houseNum) {
+  const meta = astroMatrix?.meta || {};
+  const cusps = meta.house_cusps_full;
+  if (cusps) {
+    const h = cusps['house_' + houseNum];
+    if (h && h.sign) return h.sign;
+  }
+  const rising = meta.rising_sign || astroMatrix?.rising_sign;
+  const rIdx = _CRYSTAL_SIGN_ORDER.indexOf(rising);
+  if (rIdx < 0) return null;   // 真值缺失 ⇒ null（绝不伪造）
+  return _CRYSTAL_SIGN_ORDER[(rIdx + houseNum - 1) % 12];
+}
+
+// ── 「主运星」= 该周期首月太阳所在星座的守护主星（月报=当月 / 年报=财年首月）──
+export function _crystalTransitRuler(astroMatrix) {
+  const m0 = astroMatrix?.months?.[0];
+  const sunSign = m0?.sun?.sign || astroMatrix?.meta?.sun_sign;
+  if (!sunSign) return null;
+  return _CRYSTAL_SIGN_RULER[sunSign] || null;
+}
+
+// ── 本命主导元素（日月加权；稳定排序，平局按 Fire>Earth>Air>Water）──
+export function _crystalDominantElement(astroMatrix) {
+  const ch = astroMatrix?.meta?.computed_houses || {};
+  const tally = { Fire: 0, Earth: 0, Air: 0, Water: 0 };
+  let any = false;
+  for (const { en } of _planets) {
+    const info = ch[en];
+    if (!info || !info.sign) continue;
+    const el = _CRYSTAL_SIGN_ELEMENT[info.sign];
+    if (!el) continue;
+    tally[el] += (en === 'Sun' || en === 'Moon') ? 2 : 1;
+    any = true;
+  }
+  if (!any) return null;
+  const order = ['Fire', 'Earth', 'Air', 'Water'];
+  let best = null;
+  for (const el of order) if (best === null || tally[el] > tally[best]) best = el;
+  return best;
+}
+
+// ── 守财/化煞石（规范 §3.2）──
+export function _crystalGuardStone(astroMatrix) {
+  const ch = astroMatrix?.meta?.computed_houses || {};
+  if (ch.Pluto?.house === 8) return 'blacktour';                 // 冥王落 8 宫（借贷/共享）→ 黑碧玺
+  if ([2, 8, 10].includes(ch.Saturn?.house)) return 'obsidian';  // 土星压财富宫 → 黑曜石
+  return 'obsidian';
+}
+
+// ── 六语「红线」（规范 §2.5 / §3.6 / §7）※ 每次注入必附 ─────────────────
+export const _CRYSTAL_REDLINES = {
+  zh: '【红线 · 违反即不合格】① 矿物名必须逐字取自上方块（禁改写/翻译/引入块外矿石）；② 只陈述「矿物 ↔ 行星/元素/宫位」的能量对应与象征语义，严禁任何因果功效承诺（如「戴上就会发财/转运/治病」）；③ 严禁出现价格、品牌、产地、购买渠道、商城名称或任何导流信息；④ 每处只给 1 个主石（可附块中给出的 1 个次级石），严禁列多个让用户自选；⑤ 语气必须与所在段落一致。',
+  en: '[RED LINES — non-negotiable] (1) Mineral names MUST be copied verbatim from the block above (no rewriting / translating / introducing outside minerals). (2) State ONLY the energy correspondence between mineral and planet/element/house; NEVER make causal efficacy claims ("wearing it will bring wealth / cure illness"). (3) NEVER mention price, brand, origin, purchase channel or shop name. (4) Give only ONE primary stone (plus at most the ONE secondary stone provided), never a list to choose from. (5) The tone MUST match the surrounding passage.',
+  es: '[LÍNEAS ROJAS — obligatorias] (1) Los nombres de minerales DEBEN copiarse literalmente del bloque superior (sin reescribir/traducir/añadir otros). (2) Declara ÚNICAMENTE la correspondencia energética mineral ↔ planeta/elemento/casa; NUNCA prometas efectos causales ("usarlo traerá riqueza/curará enfermedades"). (3) NUNCA menciones precio, marca, origen, canal de compra ni nombre de tienda. (4) Da solo UNA piedra principal (más, como máximo, LA secundaria indicada), nunca una lista. (5) El tono DEBE coincidir con el párrafo.',
+  fr: "[LIGNES ROUGES — obligatoires] (1) Les noms de minéraux DOIVENT être copiés mot pour mot du bloc ci-dessus (sans réécriture/traduction/ajout). (2) Énoncez UNIQUEMENT la correspondance énergétique minéral ↔ planète/élément/maison ; NE promettez JAMAIS d'effet causal (« le porter apportera la richesse/guérira »). (3) NE mentionnez JAMAIS prix, marque, origine, canal d'achat ou nom de boutique. (4) Donnez UNE seule pierre principale (au plus LA secondaire indiquée), jamais de liste. (5) Le ton DOIT correspondre au passage.",
+  th: '[เส้นแดง — บังคับ] (1) ชื่อแร่ต้องคัดลอกจากบล็อกด้านบนแบบคำต่อคำ (ห้ามเขียนใหม่/แปล/เพิ่มแร่อื่น) (2) กล่าวถึงเฉพาะความสอดคล้องพลังงานระหว่างแร่กับดาว/ธาตุ/เรือน ห้ามกล่าวอ้างผลเชิงเหตุผล (เช่น "ใส่แล้วจะรวย/รักษาโรค") (3) ห้ามเอ่ยราคา แบรนด์ แหล่งผลิต ช่องทางซื้อ หรือชื่อร้าน (4) ให้หินหลักเพียง 1 ชนิด (บวกหินรองที่ระบุได้ไม่เกิน 1) ห้ามให้เป็นรายการ (5) น้ำเสียงต้องสอดคล้องกับย่อหน้า',
+  vi: '[GIỚI HẠN ĐỎ — bắt buộc] (1) Tên khoáng thạch PHẢI sao chép nguyên văn từ khối trên (không viết lại/dịch/thêm loại khác). (2) Chỉ nêu sự tương ứng năng lượng giữa khoáng thạch và hành tinh/nguyên tố/nhà; TUYỆT ĐỐI không hứa hẹn hiệu quả nhân quả. (3) TUYỆT ĐỐI không nhắc giá, thương hiệu, xuất xứ, kênh mua hay tên cửa hàng. (4) Chỉ đưa MỘT đá chính (tối đa thêm MỘT đá phụ đã cho), không bao giờ liệt kê. (5) Giọng điệu PHẢI khớp với đoạn.',
+};
+
+// ── 六语「植入位置」（分区：once / monthly / yearly）────────────────────────
+export const _CRYSTAL_PLACEMENT = {
+  zh: {
+    once: '【植入位置（先天报告 · 三轴）】① 第一轴末尾加一段「本命财帛守护石」（依据 [A. ...]，载体：手链）；② 第二轴末尾加一段「破财化解锚」（依据 [B. ...]，载体：手链或戒指）；③ 第三轴末尾加一段「元素助运石」（依据 [C. ...]，载体：手链）。每处 2–3 句，写成「终身佩戴」主张。',
+    monthly: '【植入位置（月报）】① 本月命运主题卡末尾加 1–2 句「本月随身调频石」（依据 [A. ...]）；② 四张周卡片的正文最末各加 1 句（第 1 周用 W1 石、第 2 周 W2、第 3 周 W3、第 4 周 W4，顺序不可错）；③ 消费陷阱卡正文末加 1–2 句「钱包守财石」（依据 [C. ...]）。严禁新增任何标题行、严禁改动既有 ✦ [...] 标题格式与标题出现次数。',
+    yearly: '【植入位置（年报）】① 第五章「神谕显化仪式」三个空间的正文中，各嵌入 1–2 句摆件建议（卧室区域→bedroom 石、厨房区域→kitchen 石、财务室/保险柜→vault 石）；每条空间的标题行格式严禁改动，物件句只写在标题行下方的正文里；② 第一章末尾加 1–2 句「年度护身石」（依据 [B. ...]，载体：项链）；③ 第三章末尾加 1–2 句（依据 [C. ...]，载体：办公桌摆件）。',
+  },
+  en: {
+    once: '[PLACEMENT (Natal report · three axes)] (1) Append a "Natal Wealth Guardian Stone" paragraph at the end of Axis 1 (per [A. ...], carrier: bracelet). (2) Append a "Loss-Breaker Anchor" paragraph at the end of Axis 2 (per [B. ...], carrier: bracelet or ring). (3) Append an "Element Aid Stone" paragraph at the end of Axis 3 (per [C. ...], carrier: bracelet). 2–3 sentences each, phrased as a lifetime-wear proposition.',
+    monthly: '[PLACEMENT (Monthly report)] (1) Append 1–2 sentences of a "Monthly Attunement Stone" at the end of the Destiny Theme card (per [A. ...]). (2) Add exactly 1 sentence at the very end of each of the 4 weekly cards (Week 1 uses W1 stone, Week 2 W2, Week 3 W3, Week 4 W4 — order must not be swapped). (3) Append 1–2 sentences of a "Wallet Guard Stone" at the end of the Spending Trap card (per [C. ...]). NEVER add any new title line, NEVER alter the existing ✦ [...] header format or header counts.',
+    yearly: '[PLACEMENT (Yearly report)] (1) Inside the prose (below the header line) of each of the three spaces in Chapter 5 "Oracle Manifestation Ritual", embed 1–2 sentences of a placement-stone suggestion (bedroom→bedroom stone, kitchen→kitchen stone, vault/safe→vault stone). The header-line format of each space MUST NOT be altered; the stone sentences go ONLY into the body below the header. (2) Append 1–2 sentences of a "Year Amulet Stone" at the end of Chapter 1 (per [B. ...], carrier: necklace). (3) Append 1–2 sentences at the end of Chapter 3 (per [C. ...], carrier: desk object).',
+  },
+  es: {
+    once: '[UBICACIÓN (Informe natal · tres ejes)] (1) Añade un párrafo "Piedra Guardiana de la Riqueza Natal" al final del Eje 1 (según [A. ...], soporte: pulsera). (2) Un párrafo "Ancla Rompe-Pérdidas" al final del Eje 2 (según [B. ...], soporte: pulsera o anillo). (3) Un párrafo "Piedra de Apoyo Elemental" al final del Eje 3 (según [C. ...], soporte: pulsera). 2–3 frases cada uno, como propuesta de uso vitalicio.',
+    monthly: '[UBICACIÓN (Informe mensual)] (1) Añade 1–2 frases de una "Piedra de Sintonía Mensual" al final de la tarjeta de Tema del Destino (según [A. ...]). (2) Añade exactamente 1 frase al final del cuerpo de cada una de las 4 tarjetas semanales (Semana 1 usa W1, Semana 2 W2, Semana 3 W3, Semana 4 W4 — el orden no debe alterarse). (3) Añade 1–2 frases de una "Piedra Guardiana de Cartera" al final de la tarjeta de Trampas de Gasto (según [C. ...]). NUNCA añadas nuevas líneas de título ni alteres el formato ✦ [...] existente ni su número.',
+    yearly: '[UBICACIÓN (Informe anual)] (1) Dentro de la prosa (bajo la línea de título) de cada uno de los tres espacios del Capítulo 5 "Ritual de Manifestación del Oráculo", inserta 1–2 frases de sugerencia de piedra (dormitorio→bedroom, cocina→kitchen, caja fuerte→vault). El formato de la línea de título de cada espacio NO debe alterarse; las frases van SOLO en el cuerpo bajo el título. (2) Añade 1–2 frases de una "Piedra Amuleto Anual" al final del Capítulo 1 (según [B. ...], soporte: collar). (3) Añade 1–2 frases al final del Capítulo 3 (según [C. ...], soporte: objeto de escritorio).',
+  },
+  fr: {
+    once: '[PLACEMENT (Rapport natal · trois axes)] (1) Ajoutez un paragraphe « Pierre Gardienne de la Richesse Natale » à la fin de l\'Axe 1 (selon [A. ...], support : bracelet). (2) Un paragraphe « Ancre Brise-Pertes » à la fin de l\'Axe 2 (selon [B. ...], support : bracelet ou bague). (3) Un paragraphe « Pierre d\'Appui Élémentaire » à la fin de l\'Axe 3 (selon [C. ...], support : bracelet). 2–3 phrases chacun, formulées comme une proposition de port à vie.',
+    monthly: '[PLACEMENT (Rapport mensuel)] (1) Ajoutez 1–2 phrases d\'une « Pierre d\'Harmonisation Mensuelle » à la fin de la carte Thème du Destin (selon [A. ...]). (2) Ajoutez exactement 1 phrase à la toute fin du corps de chacune des 4 cartes hebdomadaires (Semaine 1 → W1, Semaine 2 → W2, Semaine 3 → W3, Semaine 4 → W4 — l\'ordre ne doit pas être modifié). (3) Ajoutez 1–2 phrases d\'une « Pierre Gardienne du Portefeuille » à la fin de la carte Pièges Financiers (selon [C. ...]). N\'ajoutez JAMAIS de nouvelle ligne de titre, ne modifiez JAMAIS le format ✦ [...] existant ni son nombre.',
+    yearly: '[PLACEMENT (Rapport annuel)] (1) Dans la prose (sous la ligne de titre) de chacun des trois espaces du Chapitre 5 « Rituel de Manifestation de l\'Oracle », insérez 1–2 phrases de suggestion de pierre (chambre→bedroom, cuisine→kitchen, coffre-fort→vault). Le format de la ligne de titre de chaque espace NE doit PAS être modifié ; les phrases vont UNIQUEMENT dans le corps sous le titre. (2) Ajoutez 1–2 phrases d\'une « Pierre Amulette Annuelle » à la fin du Chapitre 1 (selon [B. ...], support : collier). (3) Ajoutez 1–2 phrases à la fin du Chapitre 3 (selon [C. ...], support : objet de bureau).',
+  },
+  th: {
+    once: '[ตำแหน่งฝัง (รายงานดวงกำเนิด · สามแกน)] (1) เพิ่มย่อหน้า "หินผู้พิทักษ์ทรัพย์ประจำดวง" ท้ายแกนที่ 1 (ตาม [A. ...] พาหะ: สร้อยข้อมือ) (2) ย่อหน้า "สมอสลายการสูญเงิน" ท้ายแกนที่ 2 (ตาม [B. ...] พาหะ: สร้อยข้อมือหรือแหวน) (3) ย่อหน้า "หินเสริมธาตุ" ท้ายแกนที่ 3 (ตาม [C. ...] พาหะ: สร้อยข้อมือ) แกนละ 2–3 ประโยค เขียนเป็นข้อเสนอสวมใส่ตลอดชีวิต',
+    monthly: '[ตำแหน่งฝัง (รายงานรายเดือน)] (1) เพิ่ม 1–2 ประโยค "หินปรับคลื่นประจำเดือน" ท้ายการ์ดธีมโชคชะตา (ตาม [A. ...]) (2) เพิ่ม 1 ประโยคท้ายเนื้อความของการ์ดรายสัปดาห์ทั้ง 4 (สัปดาห์ที่ 1 ใช้ W1, 2 ใช้ W2, 3 ใช้ W3, 4 ใช้ W4 ห้ามสลับลำดับ) (3) เพิ่ม 1–2 ประโยค "หินผู้พิทักษ์กระเป๋าเงิน" ท้ายการ์ดกับดักการใช้จ่าย (ตาม [C. ...]) ห้ามเพิ่มบรรทัดหัวข้อใหม่ ห้ามแก้รูปแบบ ✦ [...] เดิมหรือจำนวนหัวข้อ',
+    yearly: '[ตำแหน่งฝัง (รายงานรายปี)] (1) ในเนื้อความ (ใต้บรรทัดหัวข้อ) ของทั้งสามพื้นที่ในบทที่ 5 "พิธีสำแดงคำพยากรณ์" แทรก 1–2 ประโยคคำแนะนำหินตั้ง (ห้องนอน→bedroom, ครัว→kitchen, ตู้นิรภัย→vault) ห้ามแก้รูปแบบบรรทัดหัวข้อของแต่ละพื้นที่ ประโยคหินอยู่ในเนื้อความใต้หัวข้อเท่านั้น (2) เพิ่ม 1–2 ประโยค "หินเครื่องรางประจำปี" ท้ายบทที่ 1 (ตาม [B. ...] พาหะ: สร้อยคอ) (3) เพิ่ม 1–2 ประโยคท้ายบทที่ 3 (ตาม [C. ...] พาหะ: ของตั้งโต๊ะ)',
+  },
+  vi: {
+    once: '[VỊ TRÍ CHÈN (Báo cáo bản mệnh · ba trục)] (1) Thêm đoạn "Đá Hộ Mệnh Tài Lộc Bẩm Sinh" ở cuối Trục 1 (theo [A. ...], vật mang: vòng tay). (2) Đoạn "Neo Phá-Tán Tài" ở cuối Trục 2 (theo [B. ...], vật mang: vòng tay hoặc nhẫn). (3) Đoạn "Đá Trợ Nguyên Tố" ở cuối Trục 3 (theo [C. ...], vật mang: vòng tay). Mỗi đoạn 2–3 câu, viết như đề xuất đeo suốt đời.',
+    monthly: '[VỊ TRÍ CHÈN (Báo cáo tháng)] (1) Thêm 1–2 câu "Đá Điều Hòa Hàng Tháng" ở cuối thẻ Chủ Đề Vận Mệnh (theo [A. ...]). (2) Thêm đúng 1 câu ở cuối thân của mỗi thẻ trong 4 tuần (Tuần 1 dùng W1, Tuần 2 W2, Tuần 3 W3, Tuần 4 W4 — không được đổi thứ tự). (3) Thêm 1–2 câu "Đá Hộ Ví" ở cuối thẻ Bẫy Chi Tiêu (theo [C. ...]). TUYỆT ĐỐI không thêm dòng tiêu đề mới, không đổi định dạng ✦ [...] hiện có hay số lượng tiêu đề.',
+    yearly: '[VỊ TRÍ CHÈN (Báo cáo năm)] (1) Trong phần văn xuôi (dưới dòng tiêu đề) của cả ba không gian ở Chương 5 "Nghi Thức Hiển Linh Thần Khải", chèn 1–2 câu gợi ý đá bài trí (phòng ngủ→bedroom, nhà bếp→kitchen, két sắt→vault). Định dạng dòng tiêu đề của mỗi không gian KHÔNG được đổi; câu về đá CHỈ nằm trong thân dưới tiêu đề. (2) Thêm 1–2 câu "Đá Bùa Hộ Mệnh Năm" ở cuối Chương 1 (theo [B. ...], vật mang: dây chuyền). (3) Thêm 1–2 câu ở cuối Chương 3 (theo [C. ...], vật mang: vật bài trí bàn làm việc).',
+  },
+};
+
+// ── 真值块 + 指令生成器（六语 · 分区）※ 导出供 server.js 注入 + 闸门核验 ──
+//  返回 { block, directive, usedIds }；无真值 ⇒ null（绝不伪造）
+export function buildCrystalAnchors(astroMatrix, lang, reportType) {
+  if (!astroMatrix) return null;
+  const _meta = astroMatrix.meta || {};
+  // 完全无本命真值 ⇒ 不注入（绝不伪造）。注意：仅「无 cusps 但有 rising」仍走等宫制兜底（有据）；
+  // 只有三者全缺（无 cusps / 无 rising / 无 computed_houses）才算真值缺失。
+  if (!_meta.house_cusps_full && !_meta.rising_sign && !_meta.computed_houses) return null;
+  const L = _CRYSTAL_LANGS.includes(lang) ? lang : 'en';
+  const name = (id) => crystalName(id, L);
+  const pair = (rec) => {
+    if (!rec || !name(rec.main)) return null;
+    const a = name(rec.alt);
+    return a ? `${name(rec.main)} 或 ${a}` : name(rec.main);
+  };
+
+  const lines = [];
+  const used = new Set();
+  const emit = (label, value) => { if (value) lines.push(`- ${label}: ${value}`); };
+  const track = (rec) => { if (rec) { if (rec.main) used.add(rec.main); if (rec.alt) used.add(rec.alt); } };
+
+  if (reportType === 'once') {
+    const h2 = _crystalHouseSign(astroMatrix, 2);
+    const r2 = h2 ? _CRYSTAL_SIGN_RULER[h2] : null;
+    const recA = (r2 && _CRYSTAL_BY_PLANET[r2]) || _CRYSTAL_BY_HOUSE[2];
+    track(recA);
+    emit('Ruler of the 2nd House (财帛宫主星)', h2 && r2 ? `${h2} → ${r2}` : null);
+    emit('A. Wealth Guardian Stone (第一轴末)', pair(recA));
+    const g = _crystalGuardStone(astroMatrix);
+    used.add(g);
+    emit('B. Guard Stone (第二轴末)', name(g));
+    const el = _crystalDominantElement(astroMatrix);
+    const recC = el ? _CRYSTAL_BY_ELEMENT[el] : null;
+    track(recC);
+    emit('Dominant Element (本命主导元素)', el);
+    emit('C. Element Aid Stone (第三轴末)', pair(recC));
+  } else if (reportType === 'monthly') {
+    const r = _crystalTransitRuler(astroMatrix);
+    const recA = r ? _CRYSTAL_BY_PLANET[r] : null;
+    track(recA);
+    emit('Transit Ruler (本月主运星)', r);
+    emit('A. Monthly Attunement Stone (主题卡末)', pair(recA));
+    const wkParts = _CRYSTAL_WEEK_PLANETS.map((p, i) => {
+      const rec = _CRYSTAL_BY_PLANET[p];
+      track(rec);
+      return `W${i + 1}=${pair(rec)}`;
+    });
+    emit('B. Weekly Stones (四周卡正文末 · 顺序对应第1~4周)', wkParts.join(' | '));
+    used.add('obsidian');
+    emit('C. Wallet Guard Stone (消费陷阱卡)', name('obsidian'));
+  } else if (reportType === 'yearly') {
+    const sp = _CRYSTAL_BY_SPACE;
+    [sp.bedroom, sp.kitchen, sp.vault].forEach(track);
+    emit('A. Space Stones (第五章三空间 · 与既有宫位铁律一一对应)',
+      `bedroom(H4)=${pair(sp.bedroom)} || kitchen(H2/H8)=${pair(sp.kitchen)} || vault(H8)=${pair(sp.vault)}`);
+    const r = _crystalTransitRuler(astroMatrix);
+    const recB = r ? _CRYSTAL_BY_PLANET[r] : null;
+    track(recB);
+    emit('Transit Ruler (本财年主运星)', r);
+    emit('B. Year Amulet Stone (第一章末)', pair(recB));
+    const el = _crystalDominantElement(astroMatrix);
+    const recC = el ? _CRYSTAL_BY_ELEMENT[el] : null;
+    track(recC);
+    emit('Dominant Element (本命主导元素)', el);
+    emit('C. Career Element Stone (第三章末)', pair(recC));
+  } else {
+    return null;   // once / monthly / yearly 之外不注入
+  }
+
+  if (lines.length === 0) return null;
+
+  const block = [
+    '// ─── CRYSTAL ALIGNMENT (E26 · deterministic closed-set · DO NOT INVENT MINERALS) ───',
+    ...lines,
+  ].join('\n');
+
+  const directive = (_CRYSTAL_PLACEMENT[L] || _CRYSTAL_PLACEMENT.en)[reportType]
+    + '\n' + (_CRYSTAL_REDLINES[L] || _CRYSTAL_REDLINES.en);
+
+  return { block, directive, usedIds: [...used] };
+}
+
 export function assertNatalPlanetTruth(text, lang, astroMatrix) {
   /**
    * V461 STEP 3 (CI铁闸): 后置断言 —— 扫描正文里所有行星+星座+宫位引用,

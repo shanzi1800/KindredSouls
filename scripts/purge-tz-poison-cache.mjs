@@ -97,6 +97,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v533-v2:*',
   'wealth:v534:*',        // 🛡️ E25/P2: v534 全量作废（① A 字段名对齐 —— v69_client 两处消费点 + server.js 流式月报第三消费点改读引擎真值 { dates, window_days, reason } ② C 法语宫位漂移锁缺口：`_frClaimOf` 接单一真源 `_FR_HOUSE_ANY`，`9ème Maison` 不再逃逸 ③ D 星历日期门禁射程扩 fr/th/vi + fmtDate 原生语序回写 + 附带修复 es 月表 off-by-one（v532 起 10/11/12 月日期写成前一个月））
   'wealth:v534-v2:*',
+  'wealth:v535:*',        // 🛡️ E26: v535 全量作废（水晶/饰品「能量对应」植入 —— 三份报告 prompt 经 `applyWealthReportPromptGuards` 统一注入确定性闭集表真值块（行星/元素/宫位/空间 · 六语），产物新增「水晶段落」⇒ 输出链变更、全量作废）
+  'wealth:v535-v2:*',
   'wealth:v116-v2:*',
 ];
 
