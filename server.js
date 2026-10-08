@@ -114,11 +114,11 @@ const SLIM_LANG_PACKS = {
 - 语法: 严格法语语法，介词/冠词完整（l', d', de, à），数字加空格（700 €）。
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag. DO NOT omit, rename, or modify any tag:
   ✦ [🔮 Thème de Destin du Mois]   ← 月度主题开头
-  ✦ [🟢 Semaine 1: Août 1–7]      ← 第1周（🟢=低风险）
-  ✦ [🔴 Semaine 2: Août 8–14]     ← 第2周（🔴=高风险）
-  ✦ [🔵 Semaine 3: Août 15–21]    ← 第3周（🔵=中风险）
-  ✦ [🟢 Semaine 4: Août 22–31]    ← 第4周（🟢=低风险）
-  ✦ [⚠️ Pièges Financiers: Août 2026] ✦ ← 财务陷阱结尾
+  ✦ [🟢 Semaine 1: {MONTH} 1–7]      ← 第1周（🟢=低风险）
+  ✦ [🔴 Semaine 2: {MONTH} 8–14]     ← 第2周（🔴=高风险）
+  ✦ [🔵 Semaine 3: {MONTH} 15–21]    ← 第3周（🔵=中风险）
+  ✦ [🟢 Semaine 4: {MONTH} 22–31]    ← 第4周（🟢=低风险）
+  ✦ [⚠️ Pièges Financiers: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - 行星拼写: Soleil（太阳）, Lune（月亮）, Mars（火星）, Mercure（水星）, Jupiter（木星）, Saturne（土星）, Vénus（金星）, Neptune（海王星）, Pluton（冥王星）, Uranus（天王星）。
 - 宫位: Maison 1–12（禁止写"宫"字）。
 - 风险图标: 🟢 Faible | 🔴 Élevé | 🔵 Modéré | ⚠️ Avertissement。
@@ -132,11 +132,11 @@ const SLIM_LANG_PACKS = {
 - 语法: 介词/冠词完整（el, la, de, a, del），数字加空格（700 €）。
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag. DO NOT omit, rename, or modify any tag:
   ✦ [🔮 Tema del Destino Mensual]   ← 月度主题开头
-  ✦ [🟢 Semana 1: Agosto 1–7]      ← 第1周（🟢=低风险）
-  ✦ [🔴 Semana 2: Agosto 8–14]     ← 第2周（🔴=高风险）
-  ✦ [🔵 Semana 3: Agosto 15–21]    ← 第3周（🔵=中风险）
-  ✦ [🟢 Semana 4: Agosto 22–31]    ← 第4周（🟢=低风险）
-  ✦ [⚠️ Trampas Financieras: Agosto 2026] ✦ ← 财务陷阱结尾
+  ✦ [🟢 Semana 1: {MONTH} 1–7]      ← 第1周（🟢=低风险）
+  ✦ [🔴 Semana 2: {MONTH} 8–14]     ← 第2周（🔴=高风险）
+  ✦ [🔵 Semana 3: {MONTH} 15–21]    ← 第3周（🔵=中风险）
+  ✦ [🟢 Semana 4: {MONTH} 22–31]    ← 第4周（🟢=低风险）
+  ✦ [⚠️ Trampas Financieras: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
 
@@ -147,11 +147,11 @@ const SLIM_LANG_PACKS = {
 - ⚠️ CONSONANT+VOWEL INTEGRITY: Every Thai consonant (ก-ฮ), vowel mark (่ ้ ๊ ๋ ็ ์ ํ), and tone mark MUST appear intact in output. Common dropped letters: น (dropped from ซึ่ง→ซ่), ษ (dropped from สัญญาณ→สัญ信号), ห (dropped from หุ้น→หุ้น). NEVER truncate mid-syllable.
 - CRITICAL MANDATORY HEADERS — Each section MUST begin with its exact tag:
   ✦ [🔮 ธีมโชคชะตารายเดือน]   ← 月度主题开头
-  ✦ [🟢 สัปดาห์ที่ 1: สิงหาคม 1–7]   ← 第1周（🟢=低风险）
-  ✦ [🔴 สัปดาห์ที่ 2: สิงหาคม 8–14]   ← 第2周（🔴=高风险）
-  ✦ [🔵 สัปดาห์ที่ 3: สิงหาคม 15–21]  ← 第3周（🔵=中风险）
-  ✦ [🟢 สัปดาห์ที่ 4: สิงหาคม 22–31]  ← 第4周（🟢=低风险）
-  ✦ [⚠️ กับดักทางการเงิน: สิงหาคม 2026] ✦ ← 财务陷阱结尾
+  ✦ [🟢 สัปดาห์ที่ 1: {MONTH} 1–7]   ← 第1周（🟢=低风险）
+  ✦ [🔴 สัปดาห์ที่ 2: {MONTH} 8–14]   ← 第2周（🔴=高风险）
+  ✦ [🔵 สัปดาห์ที่ 3: {MONTH} 15–21]  ← 第3周（🔵=中风险）
+  ✦ [🟢 สัปดาห์ที่ 4: {MONTH} 22–31]  ← 第4周（🟢=低风险）
+  ✦ [⚠️ กับดักทางการเงิน: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
 
@@ -1393,7 +1393,14 @@ function normalizeReportTags(text, lang) {
     }
     // 财务陷阱漏标
     if (/Pièges\s*Financiers/i.test(text) && !/✦.*Pièges\s*Financiers/.test(text)) {
-      text = text.replace(/(Pièges\s*Financiers[^\n]*)/i, '✦ [⚠️ Pièges Financiers: Août 2026] ✦');
+      // 🛡️ E32-C：月份**沿用原文**（LLM 写对时不被覆盖）；原文无可辨识月份 ⇒ 按报告当月实填。
+      //   病根：原实现把该行整体硬编码成「Août 2026」⇒ 10 月月报的陷阱卡被写成 8 月（E28 候选池·日期穿越）。
+      const _pkN = new Date();
+      text = text.replace(/(Pièges\s*Financiers[^\n]*)/i, (_line) => {
+        const _mm = _line.match(/(?:Janvier|Février|Fevrier|Mars|Avril|Mai|Juin|Juillet|Août|Aout|Septembre|Octobre|Novembre|Décembre)\s*(?:20\d{2})?/i);
+        const _stamp = _mm ? _mm[0].trim() : ((MONTH_NAMES.fr[_pkN.getMonth()] || '') + ' ' + _pkN.getFullYear());
+        return '✦ [⚠️ Pièges Financiers: ' + _stamp + '] ✦';
+      });
     }
   }
 
@@ -1407,7 +1414,13 @@ function normalizeReportTags(text, lang) {
       }
     );
     if (/Trampas\s*Financieras/i.test(text) && !/✦.*Trampas\s*Financieras/.test(text)) {
-      text = text.replace(/(Trampas\s*Financieras[^\n]*)/i, '✦ [⚠️ Trampas Financieras: Agosto 2026] ✦');
+      // 🛡️ E32-C：月份**沿用原文**；原文无月份 ⇒ 按报告当月实填（同上，禁硬编码 Agosto 2026）。
+      const _pkN = new Date();
+      text = text.replace(/(Trampas\s*Financieras[^\n]*)/i, (_line) => {
+        const _mm = _line.match(/(?:Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Setiembre|Octubre|Noviembre|Diciembre)\s*(?:20\d{2})?/i);
+        const _stamp = _mm ? _mm[0].trim() : ((MONTH_NAMES.es[_pkN.getMonth()] || '') + ' ' + _pkN.getFullYear());
+        return '✦ [⚠️ Trampas Financieras: ' + _stamp + '] ✦';
+      });
     }
   }
 
@@ -9751,7 +9764,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (r
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v540:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v541:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11535,7 +11548,18 @@ function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, bi
   if (reportType === 'monthly') {
     const _ctx = buildWealthPromptContext(lang, astroMatrix ? buildWealthMeta(birthDate, lang, astroMatrix) : null);
     void _ctx; // 保留既有调用（历史行为：仅为触发上下文构建）
-    prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh']);
+    // 🛡️ E32-C：SLIM_LANG_PACKS 内的 {MONTH}/{YEAR} 必须按「报告当月」**实填**。
+    //   病根：fr/es/th 曾把月份**硬编码为 8 月**（Août / Agosto / สิงหาคม）⇒ LLM 照抄样例 ⇒
+    //   10 月月报的周标题与陷阱卡出现 8 月（军师所报「月报日期穿越」）。
+    //   此处统一实填；连 en/zh/vi 原本**未被替换**的 {MONTH} 字面量一并根治。
+    {
+      const _pkNow = new Date();
+      const _pkMonth = (MONTH_NAMES[lang] || MONTH_NAMES.en)[_pkNow.getMonth()];
+      const _pkYear = String(_pkNow.getFullYear());
+      prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh'])
+        .split('{MONTH}').join(_pkMonth)
+        .split('{YEAR}').join(_pkYear);
+    }
   }
 
   // ── ⑦ 🛡️ E26: 水晶/饰品「能量对应」真值块（确定性闭集表 · 六语 · 按报告分区）──
@@ -13123,11 +13147,26 @@ function wealthIsGreenChannel(body) {
   if (b.free_access === 1 || b.free_access === true || b.freeAccess === 1 || b.freeAccess === true) return true;
   return b.birthDate === WEALTH_TEST_BIRTHDATE;
 }
+// ── 🛡️ E32：绿道是**特权通道** ⇒ 除绿道标识外，还必须同时持有有效管理员令牌 ──
+//   病根：`free_access=1`（及测试生日）走**请求体**且无任何环境门控 ⇒ 生产环境任何人
+//         POST 该字段即可免费领走 $4.99 先天报告 = 活体收入泄漏（与 E30/E31 同类的 fail-open，
+//         只不过这次漏的是**钱**而不是缓存）。
+//   治法：复用 E30 的**常量时间**令牌比对（`_e30AdminExpectedKey` / `_e30ExtractToken` /
+//         `_e30SafeEqual`）；未配置 DEBUG_ADMIN_KEY（或令牌缺失/不符）一律**不成立**
+//         ⇒ 绿道整体失效（fail-closed，绝不回退放行）。
+//   ⚠️ 射程说明：本地/离线（未配 SUPABASE_*）本就不设卡（`no_supabase_configured`），
+//      故离线批扫**无需令牌**；本闸门只作用于「已配 Supabase 的生产/预发」。
+function wealthGreenChannelAuthorized(req, body) {
+  if (!wealthIsGreenChannel(body)) return false;
+  const expected = _e30AdminExpectedKey();
+  if (!expected) return false;
+  return _e30SafeEqual(_e30ExtractToken(req), expected);
+}
 
 // ── 权益解析：token → 用户 → paid_plans → **按产物分档**判定。失败**闭合**（绝不静默放行）──
 async function resolveWealthEntitlement(req, reportType) {
   const body = req.body || {};
-  if (wealthIsGreenChannel(body)) return { ok: true, method: 'green_channel' };
+  if (wealthGreenChannelAuthorized(req, body)) return { ok: true, method: 'green_channel' }; // 🛡️ E32: 绿道需管理员令牌
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   // 本地/离线环境未接 Supabase ⇒ 不设卡（与闸门「射程外安全弃权」一致）
@@ -13246,7 +13285,7 @@ function compatGuardBody(code, extra) {
 async function resolveReportEntitlement(req, domain, reportType) {
   if (domain === 'wealth') return resolveWealthEntitlement(req, reportType);
   const body = req.body || {};
-  if (wealthIsGreenChannel(body)) return { ok: true, method: 'green_channel' };
+  if (wealthGreenChannelAuthorized(req, body)) return { ok: true, method: 'green_channel' }; // 🛡️ E32: 绿道需管理员令牌
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured' };
@@ -13843,7 +13882,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v540:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v541:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -14745,7 +14784,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v540:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v541:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16457,7 +16496,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v540-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v541-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

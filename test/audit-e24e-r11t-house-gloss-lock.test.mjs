@@ -345,7 +345,7 @@ test('⑬ 接线：三式/vi 锁必须被生产链**真实消费**（否则新�
 
 // ═══════════════════ 九、版本 bump 完整性（v529） ═══════════════════
 test('⑭ bump：本闸门随 E24④/P5b 前移至 v529，且产品源码无 v528 残留', () => {
-  assert.strictEqual([...SRC.matchAll(/wealth:v540/g)].length, 4, 'server.js 4 站点须全为 v529');
+  assert.strictEqual([...SRC.matchAll(/wealth:v541/g)].length, 4, 'server.js 4 站点须全为 v529');
   assert.ok(!/wealth:v528/.test(SRC), 'server.js 残留 v527 键');
   const PURGE = fs.readFileSync(path.join(REPO, 'scripts', 'purge-tz-poison-cache.mjs'), 'utf-8');
   assert.ok(PURGE.includes("'wealth:v528:*'") && PURGE.includes("'wealth:v528-v2:*'"),

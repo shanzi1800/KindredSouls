@@ -1066,6 +1066,17 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     sessionStorage.setItem('⚡_FREE_PASS', '1');
   }
 
+  // 🛡️ E32：绿道（free_access）是**特权通道** —— 后端 `wealthGreenChannelAuthorized` 要求
+  //   同时持有管理员令牌（未配置/不符一律 fail-closed）。此处**仅**在测试者显式把令牌
+  //   写入 session/localStorage 时转发（源码内**零令牌**，生产不配置即彻底失效）。
+  const _ksGreenAuthHeader = (): Record<string, string> => {
+    if (!isGreenChannelRef.current) return {};
+    try {
+      const _t = sessionStorage.getItem('KS_DEBUG_ADMIN_TOKEN') || localStorage.getItem('KS_DEBUG_ADMIN_TOKEN') || '';
+      return _t ? { 'x-admin-token': _t } : {};
+    } catch { return {}; }
+  };
+
   // 🏅 第二斧:isUnlocked 初始值从 ref 读取,拒绝首帧 false
   const [isUnlocked, setIsUnlocked] = useState(() => isGreenChannelRef.current);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -1538,6 +1549,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        ..._ksGreenAuthHeader(), // 🛡️ E32: 绿道需管理员令牌
       };
 
       if (token) {
@@ -1946,6 +1958,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
           headers: {
             'Content-Type': 'application/json',
             ...(currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}),
+            ..._ksGreenAuthHeader(), // 🛡️ E32: 绿道需管理员令牌
           },
           signal: abortRef.current.signal, // V244: 接入 fresh AbortController
           body: JSON.stringify({ birthDate: _stableBirth, birthTime: _bp.birthTime, lat: _bp.lat, lon: _bp.lon, tz: _bp.tz, lang: _stableLang, reportType: type, nocache: _noCache, free_access: isGreenChannelRef.current ? 1 : 0 }), // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
@@ -2183,7 +2196,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
           try {
             const fbRes = await fetch('/api/wealth-oracle', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ..._ksGreenAuthHeader() }, // 🛡️ E32: 绿道需管理员令牌
               body: JSON.stringify({
                 birthDate: _stableBirth,
                 birthTime: _bp.birthTime, // 🛡️ E24⑤/P0-1: URL 直读，绝不退回 Bangkok 默认 state
@@ -2242,6 +2255,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`,
+          ..._ksGreenAuthHeader(), // 🛡️ E32: 绿道需管理员令牌
         },
         signal: abortRef.current?.signal ?? new AbortController().signal, // 🔒 V220: 接入 AbortController
         body: JSON.stringify({

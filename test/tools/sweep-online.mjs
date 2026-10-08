@@ -7,13 +7,19 @@
 //   本工具即其消费端 —— 禁止再写一次性 /tmp 脚本。
 //
 // 用法：
-//   node test/tools/sweep-online.mjs                  # 全 13 盘
+//   node test/tools/sweep-online.mjs                  # 全 14 盘
 //   node test/tools/sweep-online.mjs --only s13       # 单盘（快速回归）
 //   node test/tools/sweep-online.mjs --only s2,s13
+//   node test/tools/sweep-online.mjs --trio           # 🛡️ E32 三位一体：每盘 × yearly/monthly/once
+//   node test/tools/sweep-online.mjs --trio --only s2 # 组合使用
 //   KS_BASE=https://kindredsouls.online node test/tools/sweep-online.mjs
 //
 // 环境变量（可选，缺失则跳过「库内落盘」核查）：
 //   SUPABASE_URL / SUPABASE_SERVICE_KEY
+//   KS_ADMIN_TOKEN（或 DEBUG_ADMIN_KEY）—— 🛡️ E32：绿道已改为**特权通道**
+//     后端 `wealthGreenChannelAuthorized` 要求 `free_access=1` 必须同时持管理员令牌；
+//     未配置/不符一律 fail-closed（402）。线上批扫**必须**提供该令牌，否则全部 402。
+//     本地/离线（未配 SUPABASE_*）不受影响，无需令牌。
 //
 // 🔴 历史踩坑（本工具已内建对应处置）：
 //   1. `nocache:true` **只跳读不跳写**；写库到可见有延迟（≤90s）
@@ -30,7 +36,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import vm from 'node:vm';
 
-import { SWEEP_MATRIX } from './sweep-matrix.mjs';
+import { SWEEP_MATRIX, SWEEP_REPORT_TYPES } from './sweep-matrix.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.join(__dirname, '..', '..');
@@ -44,10 +50,15 @@ const HIT_RETRY_GAP_MS = 20000;
 // ── CLI 解析 ──
 const argv = process.argv.slice(2);
 let only = null;
+let trio = false;   // 🛡️ E32：三位一体模式（每盘 × yearly/monthly/once）
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--only' && argv[i + 1]) only = argv[i + 1].split(',').map((s) => s.trim());
+  if (argv[i] === '--trio') trio = true;
 }
 const DISKS = only ? SWEEP_MATRIX.filter((d) => only.includes(d.id)) : SWEEP_MATRIX;
+// 🛡️ E32：--trio 时把每盘展开为「盘 × 3 产物」；reportType 覆盖在作业副本上，
+//   下游 cacheKeyOf / post / structureCheck 全部按作业的 reportType 走（零额外分支）。
+const JOBS = trio ? DISKS.flatMap((d) => SWEEP_REPORT_TYPES.map((t) => ({ ...d, reportType: t }))) : DISKS;
 
 // ── 判据同源：从 server.js 抽取 E21 锁（标签契约扫描） ──
 const SRC = readFileSync(path.join(REPO, 'server.js'), 'utf-8');
@@ -77,7 +88,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 //   同源纪律：直接 import 生产同一函数（`src/tz-resolver.js`），**绝不另写一份归一**。
 import { resolveTimeZone } from '../../src/tz-resolver.js';
 const tzCanonicalOf = (d) => { const r = resolveTimeZone(d.tz, d.lat, d.lon); return r && r.ok ? r.tz : d.tz; };
-const cacheKeyOf = (d) => `wealth:v540:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v541:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;
@@ -105,11 +116,17 @@ async function readRow(d) {
   return rows[0];
 }
 
+// 🛡️ E32：绿道令牌（特权通道）；未提供则线上受权益闸门 402 拦截
+const ADMIN_TOKEN = String(process.env.KS_ADMIN_TOKEN || process.env.DEBUG_ADMIN_KEY || '').trim();
+
 async function post(d) {
   const t0 = Date.now();
   const res = await fetch(`${BASE}/api/wealth-oracle`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(ADMIN_TOKEN ? { 'x-admin-token': ADMIN_TOKEN } : {}),
+    },
     body: JSON.stringify({
       birthDate: d.birth, birthTime: d.time, lat: Number(d.lat), lon: Number(d.lon),
       tz: d.tz, lang: d.lang, reportType: d.reportType, free_access: 1,
@@ -156,10 +173,10 @@ function countLoneSurrogates(t) {
 
 // ── 主流程 ──
 const results = [];
-console.log(`🌊 Sweep 在线批测（${DISKS.length} 盘）｜端点 ${BASE}\n`);
+console.log(`🌊 Sweep 在线批测（${JOBS.length} 作业${trio ? ` = ${DISKS.length} 盘 × ${SWEEP_REPORT_TYPES.length} 产物` : ''}）｜端点 ${BASE}\n`);
 
-for (const d of DISKS) {
-  const row = { id: d.id, lang: d.lang, name: d.name };
+for (const d of JOBS) {
+  const row = { id: d.id, lang: d.lang, name: d.name, reportType: d.reportType };
   try {
     row.predelete = await preDeleteRow(d);
     const miss = await post(d);
@@ -221,7 +238,7 @@ for (const d of DISKS) {
   }
   results.push(row);
   const mark = row.ok ? 'PASS' : 'FAIL';
-  console.log(`${mark}  ${row.id.padEnd(4)} ${String(row.lang).padEnd(3)} ${row.name}`);
+  console.log(`${mark}  ${row.id.padEnd(4)} ${String(row.lang).padEnd(3)} ${String(row.reportType).padEnd(7)} ${row.name}`);
   console.log(`      MISS ${row.missMs ?? '-'}s/${row.missLen ?? '-'}B  落库=${row.dbLanded ? 'Y' : 'N'}${row.dbInferred ? '(延迟反证)' : ''}`
     + `  HIT ${row.hitMs ?? '-'}s cached=${row.hitCached ? 'Y' : 'N'} identical=${row.identical ? 'Y' : 'N'}${row.hitAttempts > 1 ? ` ×${row.hitAttempts}` : ''}`
     + `  标签错配=${row.labelMismatch ?? '-'}  序数笔误=${row.ordinalTypos ?? '-'}  artifact=${row.artifacts ?? '-'}  孤立代理项=${row.loneSurrogates ?? '-'}`

@@ -79,3 +79,17 @@ export const SWEEP_EDGE_TAGS = [
 
 /** 支持语种（sweep 覆盖要求：六语各 ≥2 盘）。 */
 export const SWEEP_LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+
+/**
+ * 🛡️ E32：财富**三报告**批扫契约 —— 每盘须在 yearly / monthly / once 三种产物下同测。
+ *
+ * 由来：E17~E31 的注册表只声明单盘 `reportType`（一律 `yearly`）⇒ $4.99 **先天财富报告
+ *   （once）** 与**月报（monthly）** 从未进入批扫矩阵 ⇒ 「三位一体同源同测」契约缺位。
+ *
+ * 语义：`reportType` 仍是该盘的**规范/主类型**（其 truth 与缓存键以它为准），本表声明
+ *   **附加批扫维度**；消费方据此把每盘展开为 `盘 × 3 产物` 的作业列表。
+ *   消费方：`test/tools/sweep-online.mjs --trio`、`test/audit-e32-wealth-trio-matrix.test.mjs`。
+ * ⚠️ 与后端 `WEALTH_PAID_REPORT_TYPES`（server.js）必须同源 —— 新增付费产物须两处同步。
+ */
+export const SWEEP_REPORT_TYPES = ['yearly', 'monthly', 'once'];
+

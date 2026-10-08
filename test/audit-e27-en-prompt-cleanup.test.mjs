@@ -54,7 +54,10 @@ const SERVER = fs.readFileSync(P('server.js'), 'utf8');
 
 const MARKER = '[__SWISSEPH_FACT_SHEET__]';
 const FALLBACK_TAG = 'ASTRONOMY FACT SHEET — UNAVAILABLE';
-const FOUR_LANGS = ['en', 'es', 'fr', 'vi'];
+// 🛡️ E32-C（2026-10-08）：TH 模板经净化（删 3 处年份字面量 + 补唯一锚点）后**并入锚点路径**
+//   ⇒ 装配批扫射程补 `th`（E27 原射程 = en/es/fr/vi；TH 当时为「原生模板 + 无注入位」被留证）。
+//   ⚠️ 变量名沿用 FOUR_LANGS 以最小化改动面（现内容为五语）。
+const FOUR_LANGS = ['en', 'es', 'fr', 'vi', 'th'];
 
 // ═══════════════════ A 静态净化（同源判据）═══════════════════
 
@@ -198,7 +201,7 @@ function assemble(factSheetOrNull) {
   return EN.split(MARKER).join(repl);
 }
 
-test('D1 14 靶盘 × en/es/fr/vi：装配后零残留 / 零伪造年份 / 零 undefined', async () => {
+test('D1 14 靶盘 × en/es/fr/vi/th：装配后零残留 / 零伪造年份 / 零 undefined', async () => {
   const M = JSON.parse(fs.readFileSync(P('test', 'tools', 'sweep-matrix.json'), 'utf8'));
   assert.ok(Array.isArray(M.disks) && M.disks.length >= 14, `基准盘不足 14（实得 ${M.disks?.length}）`);
 
@@ -289,16 +292,32 @@ test('E4 注入自测：把 Cancer Rising 12 宫图塞回 ⇒ A1 判据必红', 
   assert.ok(bad.some((x) => x.includes('12 宫硬映射图')), `注入未被捕获: ${JSON.stringify(bad)}`);
 });
 
-test('E5 射程边界留证：TH 模板缺陷仅限「写死年份」格式样例（军师 E27 射程 = en/es/fr/vi，TH 单独排期）', () => {
+test('E5 射程已收编：TH 模板经 E32-C 净化后与 EN/ZH 同形（零硬编码天文事实 · 唯一锚点）', () => {
+  // E32-C（2026-10-08）：
+  //   E27 首轮实测 TH 有 5 处年份字面量，其中 3 处是**格式样例**（预测期 / 仪表盘标题 / 月列表示例），
+  //   无事实表 / 无 Cancer Rising / 无静态配对 ⇒ 缺陷**弱于** EN，被列为「射程边界留证」并排期 E28。
+  //   本轮同批收编：删 3 处年份字面量（改 `[ ... ]` 占位，对齐 EN 的
+  //   `Prediction Period: [the locked 12-month window stated in the data block]` 形态）
+  //   + 补**唯一锚点** `[__SWISSEPH_FACT_SHEET__]`（glossary 后 / OUTPUT STRUCTURE 前）。
+  //   ⇒ TH 并入 E27 锚点路径：server.js 的 `includes` 守卫**语言无关**，无需改接线。
   const bad = hardcodeDefects(TH);
-  // TH 暴露面 = 纯格式样例年份（L89 预测期 / L93 年份表头 / L117 月列表示例），
-  // 无事实表 / 无 Cancer Rising / 无静态配对 ⇒ 缺陷类**弱于** EN。
-  // ⚠️ TH 为原生模板且**无动态 FactSheet 注入位** ⇒ 删其年份须同批补锚点注入，
-  //    按军师令列 E28（射程外），本轮不动 TH 文本。
-  const beyondYear = bad.filter((x) => !x.startsWith('年份字面量'));
-  assert.deepStrictEqual(beyondYear, [], `TH 出现射程外新形态缺陷（须升级为 E28 处理）: ${beyondYear.join(', ')}`);
-  // 反向提醒：一旦 TH 也被净化，本断言会红 ⇒ 强制把 TH 收编进 E27 判据（防「修了但没接线」）
-  assert.ok(bad.length > 0, 'TH 已无硬编码年份 ⇒ 应立即把 TH 收编进 E27 判据并更新本断言');
+  assert.deepStrictEqual(bad, [], `yearlySystemTH.txt 净化不彻底: ${bad.join(', ')}`);
+  assert.strictEqual(TH.split(MARKER).length - 1, 1,
+    `yearlySystemTH.txt 的锚点数须恰 1（实得 ${TH.split(MARKER).length - 1}）`);
+  // TH 原生占位符齐备（装配链路可完整替换，无孤儿/漏配）
+  for (const k of ['__RISING_LOCAL__', '__JUP_HOUSE__', '__SAT_HOUSE__', '__PL_HOUSE__',
+    '__SUN_HOUSE__', '__MOON_HOUSE__', '__NATAL_SUN__']) {
+    assert.ok(TH.includes(k), `TH 模板缺动态占位符: ${k}`);
+  }
+});
+
+test('E5b 注入自测：把写死年份塞回 TH ⇒ 同源判据必红（防「净化了但判据没接线」）', () => {
+  const broken = TH.replace(
+    '[...12 เดือนทั้งหมด: [เดือนแรก]-[เดือนสุดท้าย]...]',
+    '[...12 เดือนทั้งหมด: มกราคม-ธันวาคม 2027...]');
+  assert.notStrictEqual(broken, TH, '注入未生效（月列表示例行被改？）');
+  assert.ok(hardcodeDefects(broken).some((x) => x.startsWith('年份字面量')),
+    `注入写死年份后判据未命中 ⇒ 判据空转: ${JSON.stringify(hardcodeDefects(broken))}`);
 });
 
 test('E6 射程已收编：ZH 模板经 E29 净化后与 EN 同形（零硬编码天文事实 · 唯一锚点 · 无多语遗留段）', () => {

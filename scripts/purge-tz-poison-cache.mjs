@@ -107,6 +107,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v538-v2:*',
   'wealth:v539:*',        // 🛡️ E30: v539 全量作废（clear-cache 双端点强鉴权 —— `POST /api/debug-clear-cache` 与 `GET /api/clear-cache/...` 曾**零鉴权**暴露（任意外部者可遍历清空付费用户缓存 = DoS/缓存投毒/倒逼重调 LLM 烧钱）；现统一挂 `e30AdminGuard`：校验 `x-admin-token` / `Authorization: Bearer`，与 `process.env.DEBUG_ADMIN_KEY`（回落 `ADMIN_TOKEN`）常量时间比对，未配置/未携带/不匹配一律 401 且先于任何 DB/读写返回（fail-closed）。纯防御性加锁不改输出链；版本前移 ⇒ 上一版键成孤儿，一并回收）
   'wealth:v539-v2:*',
+  'wealth:v540:*',        // 🛡️ E32-C: v540 全量作废（TH 模板净化 + 月报「日期穿越」确定性病根治理 —— ① `yearlySystemTH.txt` 删 3 处年份字面量（预测期/仪表盘标题/月列表示例）+ 补唯一锚点 `[__SWISSEPH_FACT_SHEET__]` ⇒ TH 并入 E27 动态 FactSheet 锚点路径；② 月报 `SLIM_LANG_PACKS` 的 fr/es/th 周卡样例原**硬编码 8 月**（Août / Agosto / สิงหาคม）⇒ 改 `{MONTH}` 并在拼接处按报告当月**实填**（连 en/zh/vi 原本未被替换的 `{MONTH}` 字面量一并根治）；③ `normalizeReportTags` 陷阱卡原硬编码「Août 2026 / Agosto 2026」⇒ 改**原文月份优先 + 当月兜底** ⇒ 月报 + 年报 prompt 层内容变更、全量作废）
+  'wealth:v540-v2:*',
   'wealth:v116-v2:*',
 ];
 
