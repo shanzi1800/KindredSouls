@@ -463,6 +463,7 @@ import { getSystemPromptByLocale } from './src/prompts/loader.js';
 import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ V475: 采样参数单一真源
+import { buildCompatPrompt, buildCompatTimeContext, computeCompatScores } from './api/ai-advisor.js';  // 🛍️ E39-A: 合婚四段骨架真值资产（六语 + 动态时间轴 + 强制数据锁，单一真源引渡）
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
@@ -12833,11 +12834,23 @@ Write in ${lang}. Use native ${lang} astrological and Jungian psychological term
 
 
 // ── Compatibility Report Prompt Builder ──
-function buildCompatibilityReportPrompt(d1, d2, lang, reportType) {
-  if (reportType === 'monthly') {
-    return `Generate a ${lang} monthly compatibility report for two people (birth dates: ${d1} and ${d2}) for July 2026.\n\nREQUIREMENTS:\n1. Total length: 1200-1500 words\n2. Style: Romantic, card-style\n3. MUST have 4 weeks\n\nOUTPUT FORMAT (JSON): {\n  \"headline\": \"...\",\n  \"weeks\": [...]\n}`;
-  }
-  return `分析 ${d1} 和 ${d2} 的命理合盘。`;
+// ── 🛍️ E39-B: 合婚报告提示骨架（委托 api/ai-advisor.js 真值资产，单一真源）──
+//   三档：monthly=动态自然月 4 周轴｜yearly=宇宙生日/自然年 12 个月窗｜once=无时段四段深报。
+//   出参 {system, user}；user 为 \n\n 分段纯文本（🎯核心结论 → ⚡命运冲突 → 💡破局建议 → 🌿灵性指引
+//   ＋强制数据锁），与前端 reportText.split('\n\n') 渲染契约严格对齐（E39 军师裁决 4）。
+//   🔴 铁律：时间轴一律由 buildCompatTimeContext 现算，真值块严禁出现固定年月字面量（闸门 B 剥注释扫描，复辟即红）。
+function buildCompatibilityReportPrompt(d1, d2, lang, reportType, extras) {
+  const x = extras || {};
+  const scores = computeCompatScores(x.bazi, x.zodiac, x.iching);
+  const timeCtx = buildCompatTimeContext(reportType, new Date(), x.userBirthDate || null, lang);
+  return buildCompatPrompt({
+    lang,
+    reportType,
+    scores,
+    timeCtx,
+    tarot: x.tarot || null,
+    zodiacMeta: x.zodiacMeta || null,
+  });
 }
 
 // ── Stripe Price ID 映射表 ──
@@ -14935,8 +14948,8 @@ app.use('/api/ai-advisor', async (req, res) => {
   try {
     const { d1, d2, lang = 'zh', reportType = 'compatibility' } = req.body || {};
 
-    // ── 月报/年报生成(AI 调用)──
-    if (reportType === 'monthly' || reportType === 'yearly') {
+    // ── 付费报告生成（monthly / yearly / once · E39-B 三档分流；免费层 'compatibility' 不入此分支）──
+    if (reportType === 'monthly' || reportType === 'yearly' || reportType === 'once') {
       // ═══ 🛍️ E24⑥② 合婚域权益闸门 + 算力护栏 ═══
       //   病根：本端点承载合婚月报/年报生成，却**零鉴权、零权益、零配额** ⇒ 匿名 POST 即直烧 AI token。
       //   射程：monthly / yearly（付费报告）必须过权益；'compatibility'（免费 4 句洞察，属免费层）保持开放。
@@ -14968,11 +14981,19 @@ app.use('/api/ai-advisor', async (req, res) => {
       }
       try {
         console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
-        const prompt = buildCompatibilityReportPrompt(d1, d2, lang, reportType);
+        // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
+        const _compat = buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
+          bazi: req.body.bazi || null,
+          zodiac: req.body.zodiac || null,
+          iching: req.body.iching || null,
+          tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
+          zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+          userBirthDate: _cEnt.userBirthDate || null,
+        });
 
         const insight = await callAI(
-          `You are a relationship astrologer generating a ${reportType} report.`,
-          prompt,
+          _compat.system,
+          _compat.user,
           process.env
         );
 

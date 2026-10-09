@@ -41,7 +41,8 @@ function cacheKey(d1, d2, lang, reportType) {
 // ============================================================
 
 // 1. 通用多语言分数截获正则
-function extractScore(text) {
+// 🛡️ E39：导出为合婚分数**唯一真源**（server.js 不得另写一份截获正则 ⇒ 防漂移）
+export function extractScore(text) {
   if (!text || typeof text !== 'string') return 70;
   const match = text.match(/(\d+)\s*\/\s*100/);
   if (match) {
@@ -183,7 +184,8 @@ function getTarotCoreKeyword(meaning, lang) {
 }
 
 // 5. 全量6语言系统指令 + 参数化命题模板矩阵 (V9)
-const LANGUAGE_CONFIGS = {
+// 🛡️ E39：**导出**为可引渡骨架资产 —— server.js 物理 import 本模块，生产不再走劣质 stub。
+export const LANGUAGE_CONFIGS = {
   th: {
     systemPrompt: "คุณเป็นปรมาจารย์ด้านโหราศาสตร์และจิตวิญญาณระดับสูง เขียนบทวิเคราะห์เชิงลึกโดยใช้โครงสร้าง 4 ส่วนที่กำหนดอย่างเคร่งครัด ห้ามเขียนคำนำ ห้ามเขียนหัวข้อเกิน ห้ามพร่ำเพ้อ ย่อหน้าละ 2-3 ประโยค ห้ามเปลี่ยนตัวเลข ห้ามเปลี่ยนสถานะไพ่จากที่ระบุ ห้ามเขียน (ตั้งตรง) เองโดยเด็ดขาดต้องใช้งานสถานะไพ่จากข้อมูลที่ให้มาทุกตัวอักษร ห้ามเขียนคำแนะนำพิธีกรรมทางศาสนาหรือไสยศาสตร์เด็ดขาด เช่น นั่งสมาธิ สวดมนต์ บูชาวิญญาณ ให้เน้นคำแนะนำการใช้ชีวิตร่วมกันในโลกจริงที่มนุษย์พูดคุยกันได้ รวมความยาวไม่เกิน 200 คำ\n\n[บังคับการสะกดคำ] ตรวจสอบการสะกดภาษาไทยก่อนตอบ ห้ามใช้คำผิด\n\n[บังคับราศีคะแนนสูง] หากราศีได้คะแนนสูง (>75) แต่อธิบายว่ายังมีความขัดแย้ง กรุณาอธิบายด้านมืด (dark side) ของมุมมองนั้น: ความกลมกลืนที่ผิวเผินซ่อนความขัดแย้งภายใน หรือพลังงานที่เหมือนกันเกินไปขาดแรงกระตุ้น\n\n【โหมดรายงานรายเดือน/รายปี】คุณกำลังเขียนรายงานความสัมพันธ์รายเดือนหรือรายปี ต้องเน้นคำแนะนำเฉพาะช่วงเวลาที่กำหนด (รายเดือน=30วันข้างหน้า รายปี=12เดือนข้างหน้า) ห้ามพูดกว้างๆ",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
@@ -225,7 +227,7 @@ const LANGUAGE_CONFIGS = {
         `🌿 **พลังจิตวิญญาณ:** [1 ประโยคปิดท้ายให้กำลังใจและดึงสติ] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'th');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'th');
@@ -233,7 +235,7 @@ const LANGUAGE_CONFIGS = {
       const sign2 = zodiacMeta?.[1] || '';
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
-      const timeText = reportType === 'monthly' ? '30 วันข้างหน้า' : '12 เดือนข้างหน้า';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? '30 วันข้างหน้า' : '12 เดือนข้างหน้า');
       return [
         `[ข้อมูลบังคับ] คะแนนรวม=${overall}, บาซี=${baziScore}, ราศี=${zodiacScore}, อี้จิง=${ichingScore}, ไพ่=${cardName}, สถานะไพ่=${statusText}, ช่วงเวลา=${timeText}`,
         `ไพ่เชิงลึก: ${tarot?.meaning || ''}`,
@@ -293,13 +295,13 @@ const LANGUAGE_CONFIGS = {
         `🌿 **灵性指引:** [1句话收尾祝福] 🌿 ✨ 🔮`,
       ].join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'zh');
       const cardName = tarot?.name || '';
       const coreKeyword = getTarotCoreKeyword(tarot?.meaning, 'zh');
       const sign1 = zodiacMeta?.[0] || '';
       const sign2 = zodiacMeta?.[1] || '';
-      const timeText = reportType === 'monthly' ? '未来30天' : '未来12个月';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? '未来30天' : '未来12个月');
       return [
         `[强制数据锁] 综合评分=${overall}, 八字=${baziScore}, 星座=${zodiacScore}, 易经=${ichingScore}, 塔罗=${cardName}, 正逆位=${statusText}, 报告类型=${timeText}`,
         `牌意: ${tarot?.meaning || ''}`,
@@ -361,7 +363,7 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Hướng dẫn tâm linh:** [1 câu chúc phúc kết thúc] 🌿 ✨ 🔮`,
       ].filter(Boolean).join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'vi');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -369,7 +371,7 @@ const LANGUAGE_CONFIGS = {
       const sign2 = zodiacMeta?.[1] || '';
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
-      const timeText = reportType === 'monthly' ? '30 ngày tới' : '12 tháng tới';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? '30 ngày tới' : '12 tháng tới');
       return [
         `[Khóa dữ liệu] Tổng=${overall}, Bát Tự=${baziScore}, Cung Hoàng Đạo=${zodiacScore}, Kinh Dịch=${ichingScore}, Tarot=${cardName}, Trạng thái=${statusText}, Loại báo cáo=${timeText}`,
         `Ý nghĩa: ${tarot?.meaning || ''}`,
@@ -423,7 +425,7 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Spiritual Guidance:** [1 closing blessing] 🌿 ✨ 🔮`,
       ].join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'en');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -431,7 +433,7 @@ const LANGUAGE_CONFIGS = {
       const sign2 = zodiacMeta?.[1] || '';
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
-      const timeText = reportType === 'monthly' ? 'next 30 days' : 'next 12 months';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? 'next 30 days' : 'next 12 months');
       return [
         `[DATA LOCK] Overall=${overall}, Bazi=${baziScore}, Zodiac=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}, Report period=${timeText}`,
         `Meaning: ${tarot?.meaning || ''}`,
@@ -485,7 +487,7 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Guía espiritual:** [1 bendición final] 🌿 ✨ 🔮`,
       ].join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -493,7 +495,7 @@ const LANGUAGE_CONFIGS = {
       const sign2 = zodiacMeta?.[1] || '';
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
-      const timeText = reportType === 'monthly' ? 'próximos 30 días' : 'próximos 12 meses';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? 'próximos 30 días' : 'próximos 12 meses');
       return [
         `[BLOQUEO DE DATOS] General=${overall}, Bazi=${baziScore}, Horóscopo=${zodiacScore}, IChing=${ichingScore}, Tarot=${cardName}, Orientación=${statusText}, Período=${timeText}`,
         `Significado: ${tarot?.meaning || ''}`,
@@ -547,7 +549,7 @@ const LANGUAGE_CONFIGS = {
         `🌿 **Guidance spirituelle:** [1 bénédiction finale] 🌿 ✨ 🔮`,
       ].join('\n');
     },
-    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
+    buildReportPrompt: (reportType, overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects, timeCtx) => {
       const statusText = getOrientText(tarot, 'fr');
       const cardName = tarot?.name || '';
       const coreKeyword = tarot?.meaning?.split('—')[0]?.trim() || '';
@@ -555,7 +557,7 @@ const LANGUAGE_CONFIGS = {
       const sign2 = zodiacMeta?.[1] || '';
       const luckyText = (luckyAspects && luckyAspects.length > 0) ? luckyAspects.join(', ') : '';
       const challengeText = (challengingAspects && challengingAspects.length > 0) ? challengingAspects.join(', ') : '';
-      const timeText = reportType === 'monthly' ? '30 prochains jours' : '12 prochains mois';
+      const timeText = (timeCtx && timeCtx.timeText) || (reportType === 'monthly' ? '30 prochains jours' : '12 prochains mois');
       return [
         `[VERROUILLAGE DES DONNÉES] Global=${overall}, Bazi=${baziScore}, Horoscope=${zodiacScore}, YiJing=${ichingScore}, Tarot=${cardName}, Orientation=${statusText}, Période=${timeText}`,
         `Signification: ${tarot?.meaning || ''}`,
@@ -1170,4 +1172,202 @@ export default async function handler(req, res) {
     console.error('AI Advisor Error:', error);
     return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E39（2026-10-09 军师《合婚三位一体履约骨架终极归正令》）：合婚报告骨架真值层
+// ═══════════════════════════════════════════════════════════════════════════
+// 【病根·实码取证】server.js 旧 stub 的 buildCompatibilityReportPrompt：
+//   ① 月报把时间窗**硬编码**成一个固定年月字面量（闸门 B 禁词的病根，此处刻意不落字面引文，
+//      防止未来有人全仓 grep 误报）⇒ 任何月份调用都写死同一个窗口（静默伪造真值）；
+//   ② 月报要求 JSON 出参 `{headline, weeks}`，而合婚前端 App.tsx 是 `reportText.split('\n\n')`
+//      **纯文本分段渲染** ⇒ 真按 JSON 输出，用户看到的就是一坨原始 JSON（前后端契约错配）；
+//   ③ 年报无分支，直接落到一行兜底 `分析 d1 和 d2 的命理合盘。`（$29.99 交付空壳）；
+//   ④ 模板是英文的，lang 被直接插进英文句 ⇒ 六语实际未本地化；
+//   ⑤ $4.99 一次性（compatibility_once）端点上**既无门控也无专属骨架**。
+//
+// 【治法】本资产（api/ai-advisor.js）**物理入主服务**：server.js import
+//   `buildCompatPrompt` / `buildCompatTimeContext` / `extractScore` / `computeCompatScores`。
+//   唯一入口 `buildCompatPrompt(...)` 一次性产出：
+//     · 四段叙事骨架 🎯核心结论 → ⚡命运冲突 → 💡破局建议 → 🌿灵性指引（六语，取自 LANGUAGE_CONFIGS）；
+//     · [强制数据锁]（八字/星座/易经真值分数 + 塔罗正逆位锁）—— 由原模板携带，封杀 LLM 编造分数；
+//     · 动态时间轴真值块（月报=当下自然月 + 严格 4 周区间；年报=宇宙周期 12 个月；一次性=贯穿全程）。
+//
+// 【铁律】① 时间轴一律由 buildCompatTimeContext **现算**，全仓禁止出现硬编码月份字面量；
+//         ② 缺真值（非法 now/birthDate）⇒ 回退到当下并**如实标注锚点**，绝不伪造窗口；
+//         ③ 报告模式以 reportClause **显式覆盖**各语 systemPrompt 的「不超过 200 字」上限，
+//            不靠模型自觉（避免「说了但没约束」的软约束）；
+//         ④ 出参一律 `\n\n` 纯文本分段 —— **废除 JSON 契约**（与前端 split('\n\n') 严丝合缝）。
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 六语报告层文案（骨架之外的**唯一**可本地化文案源；日期一律 ISO，语言中立）──
+export const COMPAT_REPORT_I18N = {
+  zh: {
+    reportClause: '【报告模式 · 覆盖声明】上文任何篇幅上限自本条起作废：请输出 800-1200 字的深度报告；🎯/⚡/💡/🌿 四段小标题必须原样保留；每段 3-5 句；段与段之间用空行分隔；严格使用用户消息给出的时间窗与周次区间，严禁使用其他月份或年份；严禁输出 JSON 或键值结构。',
+    timeHead: '[报告时间轴真值 — 必须严格遵守，严禁使用其他月份/年份]',
+    week: '第{n}周',
+    onceText: '贯穿全程（一次性深度合盘，不切分时段）',
+    formatRule: '四段头 🎯/⚡/💡/🌿 原样保留；段间空行；纯文本输出（严禁 JSON）。',
+  },
+  en: {
+    reportClause: '[REPORT MODE · OVERRIDE] Every earlier length cap is void from this clause on: produce an 800-1200 word in-depth report; keep the four headings 🎯/⚡/💡/🌿 verbatim; 3-5 sentences per section; separate sections with a blank line; strictly use the time window and week ranges given in the user message, no other month or year; never output JSON or key-value structures.',
+    timeHead: '[REPORT TIME-AXIS TRUTH — must be obeyed; no other month/year allowed]',
+    week: 'Week {n}',
+    onceText: 'Full journey (one-time deep synastry, no period split)',
+    formatRule: 'Keep the four headings 🎯/⚡/💡/🌿 verbatim; blank line between sections; plain text only (no JSON).',
+  },
+  es: {
+    reportClause: '[MODO INFORME · ANULACIÓN] Todo límite de extensión anterior queda anulado desde esta cláusula: redacte un informe profundo de 800-1200 palabras; conserve los cuatro encabezados 🎯/⚡/💡/🌿 tal cual; 3-5 oraciones por sección; línea en blanco entre secciones; use estrictamente la ventana temporal y las semanas indicadas en el mensaje del usuario, ningún otro mes o año; nunca genere JSON ni estructuras clave-valor.',
+    timeHead: '[VERDAD DEL EJE TEMPORAL — obligatorio; no se permite otro mes/año]',
+    week: 'Semana {n}',
+    onceText: 'Todo el trayecto (sinastría profunda única, sin división por períodos)',
+    formatRule: 'Conserve los encabezados 🎯/⚡/💡/🌿 tal cual; línea en blanco entre secciones; solo texto plano (sin JSON).',
+  },
+  fr: {
+    reportClause: "[MODE RAPPORT · DÉROGATION] Toute limite de longueur antérieure est annulée à partir de cette clause : rédigez un rapport approfondi de 800 à 1200 mots ; conservez les quatre titres 🎯/⚡/💡/🌿 tels quels ; 3 à 5 phrases par section ; ligne vide entre les sections ; respectez strictement la fenêtre temporelle et les semaines indiquées dans le message utilisateur, aucun autre mois ni année ; jamais de JSON ni de structures clé-valeur.",
+    timeHead: "[VÉRITÉ DE L'AXE TEMPOREL — impératif ; aucun autre mois/année autorisé]",
+    week: 'Semaine {n}',
+    onceText: 'Tout le parcours (synastrie approfondie unique, sans découpage)',
+    formatRule: 'Conservez les titres 🎯/⚡/💡/🌿 tels quels ; ligne vide entre les sections ; texte brut uniquement (pas de JSON).',
+  },
+  th: {
+    reportClause: '[โหมดรายงาน · คำสั่งยกเว้น] ขีดจำกัดความยาวก่อนหน้าทั้งหมดเป็นโมฆะนับจากข้อนี้: เขียนรายงานเชิงลึก 800-1200 คำ; คงหัวข้อสี่ส่วน 🎯/⚡/💡/🌿 ไว้ตามเดิม; ส่วนละ 3-5 ประโยค; เว้นบรรทัดว่างระหว่างส่วน; ต้องใช้ช่วงเวลาและสัปดาห์ที่ระบุในข้อความผู้ใช้เท่านั้น ห้ามใช้เดือนหรือปีอื่น; ห้ามส่งออก JSON หรือโครงสร้างคีย์-ค่า',
+    timeHead: '[ความจริงของแกนเวลา — ต้องปฏิบัติตามอย่างเคร่งครัด ห้ามใช้เดือน/ปีอื่น]',
+    week: 'สัปดาห์ที่ {n}',
+    onceText: 'ตลอดเส้นทาง (บทวิเคราะห์เชิงลึกครั้งเดียว ไม่แบ่งช่วงเวลา)',
+    formatRule: 'คงหัวข้อ 🎯/⚡/💡/🌿 ไว้ตามเดิม; เว้นบรรทัดว่างระหว่างส่วน; ส่งออกเป็นข้อความล้วน (ห้าม JSON).',
+  },
+  vi: {
+    reportClause: '[CHẾ ĐỘ BÁO CÁO · GHI ĐÈ] Mọi giới hạn độ dài trước đó bị vô hiệu kể từ điều khoản này: hãy viết báo cáo chuyên sâu 800-1200 từ; giữ nguyên bốn tiêu đề 🎯/⚡/💡/🌿; mỗi phần 3-5 câu; cách nhau bằng dòng trống; chỉ dùng khung thời gian và các tuần nêu trong tin nhắn người dùng, không dùng tháng hay năm khác; tuyệt đối không xuất JSON hay cấu trúc khóa-giá trị.',
+    timeHead: '[CHÂN LÝ TRỤC THỜI GIAN — bắt buộc tuân thủ; không dùng tháng/năm khác]',
+    week: 'Tuần {n}',
+    onceText: 'Toàn trình (luận giải chuyên sâu một lần, không chia giai đoạn)',
+    formatRule: 'Giữ nguyên bốn tiêu đề 🎯/⚡/💡/🌿; dòng trống giữa các phần; chỉ văn bản thuần (không JSON).',
+  },
+};
+
+// ── 分数归位（后端重算，不用前端传来的 overall ⇒ 与资产同源，防漂移）──
+export function computeCompatScores(baziRaw, zodiacRaw, ichingRaw) {
+  const bazi = extractScore(baziRaw);
+  const zodiac = extractScore(zodiacRaw);
+  const iching = extractScore(ichingRaw);
+  const overall = Math.round(bazi * 0.40 + zodiac * 0.40 + iching * 0.20);
+  return { overall, bazi, zodiac, iching };
+}
+
+function _pad2(n) { return String(n).padStart(2, '0'); }
+function _isoDate(d) { return `${d.getUTCFullYear()}-${_pad2(d.getUTCMonth() + 1)}-${_pad2(d.getUTCDate())}`; }
+
+// ── 年报宇宙周期窗（Solar Return 优先；缺出生日 ⇒ 当下起算 365 天，并如实标注锚点）──
+function _compatSolarWindow(birthDate, now) {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(birthDate == null ? '' : birthDate).trim());
+  if (m) {
+    const bm = Number(m[2]), bd = Number(m[3]);
+    const y = now.getUTCFullYear();
+    let start = new Date(Date.UTC(y, bm - 1, bd));
+    if (now < start) start = new Date(Date.UTC(y - 1, bm - 1, bd));
+    const end = new Date(Date.UTC(start.getUTCFullYear() + 1, bm - 1, bd));
+    return { start: _isoDate(start), end: _isoDate(end), anchor: 'solar_return' };
+  }
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 365));
+  return { start: _isoDate(now), end: _isoDate(end), anchor: 'now_plus_365d' };
+}
+
+/**
+ * 🛡️ E39 动态时间轴真值（**唯一真源**，全仓不得另算一份）。
+ *   monthly ⇒ 当下自然月 + 严格 4 周区间（1-7 / 8-14 / 15-21 / 22-月末，严丝合缝覆盖整月）；
+ *   yearly  ⇒ 宇宙周期 12 个月（Solar Return 优先，回退当下起算 365 天）；
+ *   once    ⇒ 贯穿全程（无时段切分）。
+ * 缺真值（非法 now）⇒ 以当下回退，绝不伪造月份字面量。
+ */
+export function buildCompatTimeContext(reportType, now, birthDate, lang) {
+  const d = (now instanceof Date && !isNaN(now.getTime())) ? now : new Date();
+  const L = Object.prototype.hasOwnProperty.call(COMPAT_REPORT_I18N, lang) ? lang : 'zh';
+  if (reportType === 'monthly') {
+    const y = d.getUTCFullYear(), mo = d.getUTCMonth();
+    const first = new Date(Date.UTC(y, mo, 1));
+    const last = new Date(Date.UTC(y, mo + 1, 0));
+    const lastDay = last.getUTCDate();
+    const bounds = [[1, 7], [8, 14], [15, 21], [22, lastDay]];
+    const weeks = bounds.map((b, i) => ({
+      index: i + 1,
+      start: _isoDate(new Date(Date.UTC(y, mo, b[0]))),
+      end: _isoDate(new Date(Date.UTC(y, mo, b[1]))),
+    }));
+    const label = (L === 'zh') ? `${y}年${mo + 1}月` : `${y}-${_pad2(mo + 1)}`;
+    return {
+      kind: 'monthly',
+      timeText: `${label} (${_isoDate(first)} ~ ${_isoDate(last)})`,
+      windowStart: _isoDate(first),
+      windowEnd: _isoDate(last),
+      monthKey: `${y}-${_pad2(mo + 1)}`,
+      weeks,
+      anchor: 'calendar_month',
+    };
+  }
+  if (reportType === 'yearly') {
+    const w = _compatSolarWindow(birthDate, d);
+    return {
+      kind: 'yearly',
+      timeText: `${w.start} ~ ${w.end}`,
+      windowStart: w.start,
+      windowEnd: w.end,
+      monthKey: w.start.slice(0, 7),
+      weeks: [],
+      anchor: w.anchor,
+    };
+  }
+  if (reportType === 'once') {
+    return {
+      kind: 'once',
+      timeText: COMPAT_REPORT_I18N[L].onceText,
+      windowStart: null,
+      windowEnd: null,
+      monthKey: null,
+      weeks: [],
+      anchor: 'none',
+    };
+  }
+  return { kind: 'none', timeText: '', windowStart: null, windowEnd: null, monthKey: null, weeks: [], anchor: 'none' };
+}
+
+// ── 时间轴真值块（注入 user 提示词头部；日期语言中立，标签取自六语文案源）──
+function renderCompatTimeBlock(reportType, timeCtx, lang) {
+  if (reportType !== 'once' && reportType !== 'monthly' && reportType !== 'yearly') return '';
+  const i18n = COMPAT_REPORT_I18N[lang] || COMPAT_REPORT_I18N.zh;
+  const ctx = timeCtx || {};
+  const lines = [i18n.timeHead];
+  if (ctx.timeText) lines.push(`timeText=${ctx.timeText}`);
+  if (ctx.windowStart && ctx.windowEnd) lines.push(`window=${ctx.windowStart} ~ ${ctx.windowEnd}`);
+  if (Array.isArray(ctx.weeks) && ctx.weeks.length > 0) {
+    for (const w of ctx.weeks) lines.push(`${i18n.week.replace('{n}', String(w.index))}=${w.start} ~ ${w.end}`);
+  }
+  lines.push(i18n.formatRule);
+  return lines.join('\n');
+}
+
+/**
+ * 🛡️ E39 合婚报告骨架唯一入口（server.js 只准通过本函数取提示词）。
+ * 入参：lang / reportType('once'|'monthly'|'yearly'|其他) / scores{overall,bazi,zodiac,iching}
+ *       / tarot / zodiacMeta / luckyAspects / challengingAspects / timeCtx
+ * 出参：{ system, user } —— system = 该语 systemPrompt（报告模式追加 reportClause 覆盖声明）
+ *       user   = 时间轴真值块 + 四段骨架（含 [强制数据锁]）
+ * 未知 lang ⇒ 回退 zh；未知 reportType ⇒ 走基础 insight 骨架（免费层）。
+ */
+export function buildCompatPrompt(opts) {
+  const o = opts || {};
+  const L = Object.prototype.hasOwnProperty.call(LANGUAGE_CONFIGS, o.lang) ? o.lang : 'zh';
+  const cfg = LANGUAGE_CONFIGS[L];
+  const i18n = COMPAT_REPORT_I18N[L];
+  const sc = o.scores || {};
+  const reportType = o.reportType;
+  const isReport = reportType === 'once' || reportType === 'monthly' || reportType === 'yearly';
+  const timeCtx = o.timeCtx || buildCompatTimeContext(reportType, new Date(), null, L);
+  const system = isReport ? `${cfg.systemPrompt}\n\n${i18n.reportClause}` : cfg.systemPrompt;
+  const base = isReport
+    ? cfg.buildReportPrompt(reportType, sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null, timeCtx)
+    : cfg.buildPrompt(sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null);
+  const timeBlock = renderCompatTimeBlock(reportType, timeCtx, L);
+  const user = timeBlock ? `${timeBlock}\n${base}` : base;
+  return { system, user, lang: L, reportType: reportType || null, timeCtx };
 }

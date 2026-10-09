@@ -925,7 +925,8 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
       insightLockRef.current = false;
     }
   };
-  const generateReport = async (type: 'monthly' | 'yearly') => {
+  // 🛍️ E39-C: 三档报告生成（monthly 月报 / yearly 年报 / once 完整合盘 $4.99 四段深报）
+  const generateReport = async (type: 'monthly' | 'yearly' | 'once') => {
     if (reportLoading) return;
     setReportLoading(type);
     setReportText(null);
@@ -1123,21 +1124,49 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
               {/* 年卡/VIP → 免费生成 */}
               {paidPlansLocal.all_pass_yearly === true ? (<>
                 <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成财富月报' : '📅 Monthly Wealth Report')}
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报' : '📅 Monthly Report')}
                 </button>
-                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成财富年报' : '📆 Yearly Wealth Report')}
+                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报' : '📆 Yearly Report')}
+                </button>
+                {/* 🛍️ E39-C: VIP 补齐 once 四段完整报告入口（权益内核 compatibilityEntitledByType('once') 认 all_pass_yearly） */}
+                <button onClick={() => generateReport('once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                  {reportLoading ? '⏳...' : (lang === 'zh' ? '💎 生成完整合盘报告' : '💎 Full Compatibility Report')}
                 </button>
                 <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
               </>) : (
-                /* 非VIP → 加购按钮触发 Stripe Checkout */
+                /* 非VIP → E39-C 按权益分档：已购档直达生成（修复"买完找不到入口"断层），未购档保留加购 */
                 <>
-                  <button onClick={() => handlePurchase('compatibility_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                    📅 {lang === 'zh' ? '解锁流月报告 $2.99' : 'Unlock Monthly $2.99'}
-                  </button>
-                  <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                    📆 {lang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
-                  </button>
+                  {paidPlansLocal.compatibility_monthly_report === true && (
+                    <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报（已解锁）' : '📅 Monthly Report (Unlocked)')}
+                    </button>
+                  )}
+                  {paidPlansLocal.compatibility_yearly_report === true && (
+                    <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报（已解锁）' : '📆 Yearly Report (Unlocked)')}
+                    </button>
+                  )}
+                  {paidPlansLocal.compatibility_once === true && (
+                    <button onClick={() => generateReport('once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      {reportLoading ? '⏳...' : (lang === 'zh' ? '💎 生成完整合盘报告（已解锁）' : '💎 Full Compatibility Report (Unlocked)')}
+                    </button>
+                  )}
+                  {paidPlansLocal.compatibility_monthly_report !== true && (
+                    <button onClick={() => handlePurchase('compatibility_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      📅 {lang === 'zh' ? '解锁情感月报 $2.99' : 'Unlock Monthly $2.99'}
+                    </button>
+                  )}
+                  {paidPlansLocal.compatibility_yearly_report !== true && (
+                    <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      📆 {lang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
+                    </button>
+                  )}
+                  {paidPlansLocal.compatibility_once !== true && (
+                    <button onClick={() => handlePurchase('compatibility_once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                      💎 {lang === 'zh' ? '解锁完整合盘报告 $4.99' : 'Unlock Full Report $4.99'}
+                    </button>
+                  )}
                   <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
                     💡 {lang === 'zh' ? `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。` : lang === 'en' ? `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.` : lang === 'es' ? `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.` : lang === 'fr' ? `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.` : lang === 'th' ? `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด` : `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`}
                   </div>
