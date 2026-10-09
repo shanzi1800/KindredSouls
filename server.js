@@ -13782,6 +13782,129 @@ app.post('/api/familiar/adopt', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🌌 E35：Soul OS 开放协议预留端点骨架（社交 + 具身智能底座）
+//   依据：军师《Soul OS 具身智能与社交生态协议底座开工令》2026-10-09
+//         （主公圣旨：为千亿级灵魂社交网络与具身智能全设备合作预留架构）
+//   北极星：docs/SOUL_OS_OPEN_SPEC.md（契约版本 SOUL_OS_PROTOCOL_VERSION = '1.0'）
+//   范式：沿用 V463 法器预留（冻结契约 + inert 默认值 + 消费方忽略，零 UI 污染）
+//
+//   🔴 对外协议层命名空间：`/api/v1/…`（与内部 `/api/…` 天然分野；第三方依赖版本承诺）
+//      ⚠️ 刻意避开「斜杠 + 星号」形态：下游闸门的注释剥离器（先剥块注释、后剥行注释）
+//         会把行注释里的裸起始符误判为块注释开头 ⇒ 跨行吞码、假红（E35 实测踩坑，D7 防守）
+//   🔴 门控默认关（fail-closed）：SOUL_OS_OPEN_PROTOCOL === '1' 才可能返回数据；
+//      未启用 ⇒ 一律 503 SOUL_OS_PROTOCOL_DISABLED，且在**任何数据读取之前**返回。
+//   🔴 启用后仍须设备 API Key 鉴权（常量时间比对）；未配 / 未带 / 不匹配 ⇒ 401。
+//   🔴 严禁任何前端可控的请求体特权开关（防重造 E32-A 那类活体洞）。
+//   🔴 设备与协议中立：入参/出参走标准 REST JSON，禁写死 Web 前端专属字段。
+//   ⚠️ 本批为**骨架**：即便启用，也仅返回 inert 契约（live:false），不含真实档案/记忆。
+// ═══════════════════════════════════════════════════════════════
+
+// 契约版本：三侧同源（本常量 ↔ astro/familiar_engine.py::SOUL_OS_PROTOCOL_VERSION ↔ 北极星文档）
+const SOUL_OS_PROTOCOL_VERSION = '1.0';
+
+// 记忆来源枚举：唯一真源 = db/familiar_profiles.sql §8.3 的 CHECK 约束
+//   （此处为服务端早拒副本；闸门 audit-e35 A 组断言与 SQL CHECK 逐值同源）
+const SOUL_OS_MEMORY_SOURCES = new Set(['app', 'embodied_device', 'im_chat']);
+
+// Synastry 关系共振张量（冻结契约 · 本期 inert）
+//   🔴 唯一真源：任何链路都必须经 buildSynastryTensor() 产出，严禁手写第二份字面量。
+const SOUL_SYNASTRY_TENSOR_RESERVED = Object.freeze({
+  pair: [],
+  harmony_score: null,
+  communication_score: null,
+  attraction_score: null,
+  aspect_highlights: [],
+  relation_tensor: { group_dynamics: null, members: [] },
+  schema_version: SOUL_OS_PROTOCOL_VERSION,
+});
+function buildSynastryTensor(overrides) {
+  return Object.assign({}, SOUL_SYNASTRY_TENSOR_RESERVED, overrides || {});
+}
+
+// 具身/社交端点出参骨架（冻结契约 · 本期 inert · 设备中立）
+const SOUL_OS_RESERVED = Object.freeze({
+  success: true,
+  live: false,                 // 🔴 封仓期恒 false：无真实数据
+  protocol_version: SOUL_OS_PROTOCOL_VERSION,
+  motion_intent: null,         // 动作意图挂点（具身设备：hug_warm / nod / ear_perk）
+  emotion_state: 'neutral',    // 情绪状态值：neutral | happy | tired | comfort | excited
+  display_palette: null,       // 设备灯效/配色（由引擎 palette 填充，本期留空）
+});
+function buildSoulOsReserved(overrides) {
+  return Object.assign({}, SOUL_OS_RESERVED, overrides || {});
+}
+
+// ── 门控：默认关（fail-closed）──
+function soulOsProtocolEnabled() {
+  return process.env.SOUL_OS_OPEN_PROTOCOL === '1';
+}
+// 未启用统一回应：503 + 明确 code（**绝不泄漏任何数据**）
+function soulOsDisabled(res) {
+  return res.status(503).json({
+    success: false,
+    code: 'SOUL_OS_PROTOCOL_DISABLED',
+    protocol_version: SOUL_OS_PROTOCOL_VERSION,
+    error: 'Soul OS open protocol is reserved but not enabled (set SOUL_OS_OPEN_PROTOCOL=1 to activate).',
+  });
+}
+// 设备 Key 鉴权（启用后）：常量时间比对（复用 E30 的 timingSafeEqual 工具）
+function soulOsRequireDeviceKey(req, res) {
+  const expected = String(process.env.SOUL_DEVICE_KEY || '').trim();
+  if (!expected) {
+    console.warn('[E35] soul-os 拒绝：服务端未配置 SOUL_DEVICE_KEY（fail-closed）');
+    res.status(401).json({ success: false, code: 'SOUL_DEVICE_KEY_NOT_CONFIGURED' });
+    return false;
+  }
+  const h = req.headers || {};
+  let got = typeof h['x-soul-device-key'] === 'string' ? h['x-soul-device-key'].trim() : '';
+  if (!got && typeof h['authorization'] === 'string') {
+    const m = /^Bearer\s+(\S.*)$/i.exec(h['authorization'].trim());
+    if (m) got = m[1].trim();
+  }
+  if (!got || !_e30SafeEqual(got, expected)) {
+    console.warn('[E35] soul-os 拒绝：设备 key 缺失或不匹配');
+    res.status(401).json({ success: false, code: 'SOUL_DEVICE_UNAUTHORIZED' });
+    return false;
+  }
+  return true;
+}
+// 统一前置门：① 门控关 ⇒ 503 ② 设备 Key ⇒ 401。返回 true 表示可继续。
+function soulOsGate(req, res) {
+  if (!soulOsProtocolEnabled()) { soulOsDisabled(res); return false; }
+  return soulOsRequireDeviceKey(req, res);
+}
+
+// ① 灵魂名片（Soul Card）· GET — 第三方读脱敏快照（真实脱敏实现见 E35-B 批次）
+app.get('/api/v1/soul/card/:userId', (req, res) => {
+  if (!soulOsGate(req, res)) return;
+  return res.json(buildSoulOsReserved({ endpoint: 'soul.card', soul_id: String(req.params.userId || '') }));
+});
+
+// ② 人格与语气装载（具身设备开机后拉取灵宠形态与关系人格）
+app.get('/api/v1/embodied/persona', (req, res) => {
+  if (!soulOsGate(req, res)) return;
+  return res.json(buildSoulOsReserved({ endpoint: 'embodied.persona' }));
+});
+
+// ③ 多模态感知上报（摄像头/传感器标签 → 隐式强化学习输入）
+app.post('/api/v1/embodied/perception-sync', (req, res) => {
+  if (!soulOsGate(req, res)) return;
+  return res.json(buildSoulOsReserved({ endpoint: 'embodied.perception-sync' }));
+});
+
+// ④ 肢体与微表情驱动指令（动作意图码联动机械臂/表情）
+app.get('/api/v1/embodied/action-intent', (req, res) => {
+  if (!soulOsGate(req, res)) return;
+  return res.json(buildSoulOsReserved({ endpoint: 'embodied.action-intent' }));
+});
+
+// ⑤ 具身记忆双向同步（现实互动 → familiar_memories，source='embodied_device'）
+app.post('/api/v1/embodied/memory-stream', (req, res) => {
+  if (!soulOsGate(req, res)) return;
+  return res.json(buildSoulOsReserved({ endpoint: 'embodied.memory-stream', memory_source: 'embodied_device' }));
+});
+
+// ═══════════════════════════════════════════════════════════════
 // 🛍️ V463：爆款/物理法器（Physical Artefacts & CTA）商业闭环预留节点
 //   军师指令 2026-09-21（优先级 Low，仅预留不占工期）
 //   ── 封仓期（当前）：has_recommended_item=false，其余字段 null

@@ -239,3 +239,49 @@ CREATE POLICY "users_manage_own_familiar_memories" ON familiar_memories
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- ─────────────────────────────────────────────────────────────
+-- 8. 增量迁移 · E35 Soul OS 开放协议预留（社交 + 具身智能）
+--    军师号令 2026-10-09（主公圣旨：为社交帝国与具身智能全设备合作预留架构）。
+--    🔴 沿用 V463 法器预留范式：**只建槽位、不写入、不开放 API**（封仓期 inert）。
+--    全部幂等，可重复执行。
+--    北极星文档：docs/SOUL_OS_OPEN_SPEC.md（契约版本 SOUL_OS_PROTOCOL_VERSION = '1.0'）
+-- ─────────────────────────────────────────────────────────────
+
+-- 8.1 生态扩展槽：具身设备绑定（未来挂各种硬件 UUID，一份灵魂可绑多设备）
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS device_bindings JSONB NOT NULL DEFAULT '[]'::jsonb;
+--   结构约定（文档，非约束）：
+--   [{ "device_id": "...", "vendor": "...", "model": "...",
+--      "api_key_ref": "...", "bound_at": "...", "revoked_at": null }, ...]
+
+-- 8.2 社交偏好与隐私域（Peer Handshake Slot 容器 · 杜绝列爆炸）
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS social_preferences JSONB NOT NULL DEFAULT '{}'::jsonb;
+--   结构约定（文档，非约束）：
+--   { "allow_soul_match": false,     -- 🔴 默认 false（隐私第一铁律）：允许被灵魂匹配
+--     "social_status": "offline",    -- offline | open_to_match | busy
+--     "visibility": "private",       -- private | friends | public（控制 Soul Card 可见级）
+--     "blocked_users": [] }          -- 黑名单（命中即无条件拒绝握手 / 名片）
+
+-- 8.3 记忆来源解耦（App / 具身设备 / IM 会话 → 同一座「灵魂记忆图谱」）
+ALTER TABLE familiar_memories
+  ADD COLUMN IF NOT EXISTS source VARCHAR(24) NOT NULL DEFAULT 'app';
+
+-- CHECK 约束无 IF NOT EXISTS ⇒ 先探测 pg_constraint 再添加（幂等）
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'familiar_memories_source_check'
+      AND conrelid = 'familiar_memories'::regclass
+  ) THEN
+    ALTER TABLE familiar_memories
+      ADD CONSTRAINT familiar_memories_source_check
+      CHECK (source IN ('app', 'embodied_device', 'im_chat'));
+  END IF;
+END $$;
+
+-- 记忆来源分布索引（异步萃取器/后台按来源统计用）
+CREATE INDEX IF NOT EXISTS idx_familiar_memories_source
+  ON familiar_memories (source);
+

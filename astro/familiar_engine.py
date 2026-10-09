@@ -44,6 +44,14 @@ DEGRADED_COLOR = '#808080'    # 中性灰
 DEGRADED_TOKEN = 'standard'   # 降级形态标记（外观层）
 DEGRADED_UNKNOWN = 'unknown'  # 降级图腾/名称标记
 
+# ═══════════════════════════════════════════════════════════════
+# Soul OS 开放协议（E35）· 契约版本
+#   🔴 与缓存版本 vNNN 是**两条独立版本线**，勿混用。
+#   三侧同源：本常量 ↔ server.js::SOUL_OS_PROTOCOL_VERSION ↔ docs/SOUL_OS_OPEN_SPEC.md
+#   依据：军师《Soul OS 具身智能与社交生态协议底座开工令》2026-10-09
+# ═══════════════════════════════════════════════════════════════
+SOUL_OS_PROTOCOL_VERSION = '1.0'
+
 
 # ═══════════════════════════════════════════════════════════════
 # 0. 关系层（E34-B1）· 2 个 IP × 2 种关系 = 4 重人格
@@ -492,6 +500,9 @@ def calculate_familiar_profile(
     rel = RELATION_MODES[relation_mode]
     appearance = _appearance(sun_sign, moon_sign, asc_sign, time_uncertain=time_uncertain)
     personality = _personality_vector(sun_sign, moon_sign, asc_sign)
+    # 调色板单一真源：relation.palette 与 display_palette 必须**同源**
+    #   （只调一次 ⇒ 杜绝两处参数漂移；闸门 audit-e35 B 组逐值断言二者一致）
+    palette = resolve_familiar_palette(relation_mode, sun_sign=sun_sign)
 
     # 🔴 E34-B1：全站只有 2 个 IP 名 ⇒ 默认名由所选 IP 决定
     #   （原「元素意象 + 月亮意象」两字名随 2-IP 定位作废）
@@ -517,7 +528,7 @@ def calculate_familiar_profile(
             'pet_name': rel['pet_name'],
             'persona_zh': rel['persona_zh'],
             'persona_en': rel['persona_en'],
-            'palette': resolve_familiar_palette(relation_mode, sun_sign=sun_sign),
+            'palette': palette,
         },
         'degraded': appearance['degraded'],
 
@@ -529,6 +540,22 @@ def calculate_familiar_profile(
         'memory_summary': {},
         'intimacy_level': 1,
         'last_interaction_at': None,
+
+        # ── E35 Soul OS 开放协议预留槽（**设备中立** · 本期全 inert）──────────
+        #   依据：军师 2026-10-09《Soul OS 具身智能与社交生态协议底座开工令》。
+        #   出参统一预留三槽 + 契约版本 ⇒ 未来机器人 / 智能座舱读取标准槽位，零改接口。
+        #   北极星文档：docs/SOUL_OS_OPEN_SPEC.md §4.2
+        #   🔴 本期三槽均为 inert：motion_intent 由 LLM + 情绪层产码（未实现）；
+        #      emotion_state 恒 'neutral'；display_palette 是 palette 的规范化别名。
+        #   🔴 display_palette 与 relation.palette **同源**（同一 palette 变量，闸门 B 逐值断言）。
+        'motion_intent': None,
+        'emotion_state': 'neutral',
+        'display_palette': {
+            'skin': palette['skin'],
+            'primary': palette['primary'],
+            'secondary': palette['secondary'],
+        },
+        'schema_version': SOUL_OS_PROTOCOL_VERSION,
     }
 
 
