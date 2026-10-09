@@ -270,6 +270,8 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
   if (natalData.ascendant) matrix.meta.ascendant = natalData.ascendant;
   if (natalData.midheaven !== undefined) matrix.meta.midheaven = natalData.midheaven;
   if (natalData.house_cusps_full) matrix.meta.house_cusps_full = natalData.house_cusps_full;
+  // 🛡️ E37/S1: 合并宫位主星真值（古典/现代双轨 + 庙旺陷落）—— 引擎唯一真源，前端零重算
+  if (natalData.house_rulers) matrix.meta.house_rulers = natalData.house_rulers;
   // 🛠️ V143: 合并本命盘宫位映射 (computed_houses) —— Mode A 激活关键
   if (natalData.computed_houses && Object.keys(natalData.computed_houses).length > 0) {
     matrix.meta.computed_houses = natalData.computed_houses;
@@ -556,6 +558,52 @@ ${_planets
 ${transitLines.join('\n')}`
     : '';
 
+  // ── Part 2c: 🛡️ E37/S1 宫头星座 + 宫位主星真值（SwissEph Placidus · 唯一真源）──
+  //   军师 E37 裁决：宫头（Cusps）与飞星（Ruler）+ 庙旺陷落（Dignity）必须 100% 物理真值驱动。
+  //   ⚠️ 真值缺失（既无 house_cusps_full 又无 house_rulers）⇒ **整段不注入**（绝不伪造，V492/D2）。
+  //   ⚠️ 文本内严禁出现 null / undefined 哨兵字面量（e25-p2 注入块哨兵闸门会判红）。
+  //   ⚠️ 与 buildFactSheet 的 houseMapping 同源（同一 meta.house_cusps_full），非第二份实现。
+  const houseTruthSection = (() => {
+    const _cusps = meta.house_cusps_full || null;
+    const _rulers = meta.house_rulers || null;
+    if (!_cusps && !_rulers) return '';
+    const lines = [];
+    if (_cusps) {
+      const items = [];
+      for (let i = 1; i <= 12; i++) {
+        const h = _cusps['house_' + i];
+        if (!h || !h.sign) continue;
+        const d = (typeof h.cusp_degree === 'number') ? h.cusp_degree
+          : ((typeof h.degree_in_sign === 'number') ? h.degree_in_sign : null);
+        items.push(`${i}=${h.sign}${d == null ? '' : ' ' + d.toFixed(2) + '°'}`);
+      }
+      if (items.length === 12) {
+        lines.push('// ─── NATAL HOUSE CUSPS (SwissEph truth · physical cusp signs · NEVER invert) ───');
+        lines.push(items.join(' / '));
+      }
+    }
+    if (_rulers) {
+      const rows = [];
+      for (let i = 1; i <= 12; i++) {
+        const rec = _rulers['house_' + i];
+        if (!rec) continue;
+        const seg = [`H${i}(cusp ${rec.cusp_sign || '?'})`];
+        for (const k of ['classical', 'modern']) {
+          const t = rec[k];
+          if (!t || !t.planet) { seg.push(`${k}: n/a`); continue; }
+          const hs = (t.house === null || t.house === undefined) ? '?' : t.house;
+          seg.push(`${k}: ${t.planet} in ${t.sign || '?'} H${hs}${t.dignity ? ' (' + t.dignity + ')' : ''}`);
+        }
+        rows.push(seg.join(' · '));
+      }
+      if (rows.length) {
+        lines.push('// ─── NATAL HOUSE RULERS (classical + modern · ruler natal placement & dignity) ───');
+        lines.push(rows.join('\n'));
+      }
+    }
+    return lines.length ? lines.join('\n') : '';
+  })();
+
   // ── Part 3: 铁锁规则 (最高优先级 · 不可绕过) ────────────────────────
   // V465 强化：显式示范 natal vs transit 混淆的失败案例
   const natalExamplePlanets = Object.keys(jsonEntries).slice(0, 3); // 取前3个做示范
@@ -593,6 +641,14 @@ ${transitLines.join('\n')}`
     `  each with its exact sign and house: ${Object.keys(jsonEntries).join(' · ')}.`,
     `  Leaving ANY of them out is a HARD FAILURE — never silently drop a planet.`,
     `  (Real production defect E29: Mars — the 5th of the ten — was omitted while the other nine were written.)`,
+    ...(houseTruthSection ? [
+      ``,
+      `⚠️ HOUSE CUSPS & RULERS (E37 · ABSOLUTE · NON-NEGOTIABLE):`,
+      `  Use ONLY the cusp signs and house rulers listed in the NATAL HOUSE CUSPS / RULERS block above.`,
+      `  "The ruler of house N" MUST be the ruler named for that exact house above — never invent one.`,
+      `  Describe a ruler's condition strictly by its natal sign/house and the dignity tag given`,
+      `  (domicile / exaltation / detriment / fall / peregrine). NEVER claim detriment or fall unless tagged.`,
+    ] : []),
   ].join('\n');
 
   return [
@@ -601,6 +657,7 @@ ${transitLines.join('\n')}`
     `// ─── PROSE REFERENCE (Human-Readable · Your Natal Chart) ───`,
     proseLines.join('\n'),
     transitSection,
+    houseTruthSection,
     `// ─── RULES (Highest Priority · Non-Negotiable) ───`,
     rules,
   ].join('\n');

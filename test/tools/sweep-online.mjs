@@ -88,7 +88,7 @@ if (typeof X._e21CountHouseLabelMismatch !== 'function') {
 //   同源纪律：直接 import 生产同一函数（`src/tz-resolver.js`），**绝不另写一份归一**。
 import { resolveTimeZone } from '../../src/tz-resolver.js';
 const tzCanonicalOf = (d) => { const r = resolveTimeZone(d.tz, d.lat, d.lon); return r && r.ok ? r.tz : d.tz; };
-const cacheKeyOf = (d) => `wealth:v542:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
+const cacheKeyOf = (d) => `wealth:v543:${d.birth}:${d.time}:${d.lat}:${d.lon}:${tzCanonicalOf(d)}:${d.lang}:${d.reportType}`;
 
 async function sbFetch(qs, opts = {}) {
   if (!SB_URL || !SB_KEY) return null;

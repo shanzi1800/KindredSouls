@@ -149,6 +149,90 @@ CANCER_RISING_HOUSES = {
     'Aries': 10, 'Taurus': 11, 'Gemini': 12,
 }
 
+# ══ E37/S1: 宫位主星（Ruler）与庙旺陷落（Dignity）闭集表 · 唯一真源 ══════════
+# 纪律（军师 E37 裁决 ②）：古典/现代**双轨**确定性飞星；一切由 SwissEph 实算真值
+#   （宫头星座 + 行星本命落座）派生，严禁 LLM 自创、严禁任何调用方另写一套。
+# ⚠️ 本表为**闭集**：新增星座/主星必须同步第 17 道闸门（audit-e37-*）。
+SIGN_RULER_CLASSICAL = {
+    'Aries': 'Mars', 'Taurus': 'Venus', 'Gemini': 'Mercury', 'Cancer': 'Moon',
+    'Leo': 'Sun', 'Virgo': 'Mercury', 'Libra': 'Venus', 'Scorpio': 'Mars',
+    'Sagittarius': 'Jupiter', 'Capricorn': 'Saturn', 'Aquarius': 'Saturn', 'Pisces': 'Jupiter',
+}
+# 现代主星：仅三处与古典分治（天蝎→冥王 / 水瓶→天王 / 双鱼→海王）
+SIGN_RULER_MODERN = dict(SIGN_RULER_CLASSICAL, Scorpio='Pluto', Aquarius='Uranus', Pisces='Neptune')
+# 旺（Exaltation）闭集：古典传统承认的 7 处，其余星座无旺星（None/缺键皆视为无）
+SIGN_EXALTATION = {
+    'Aries': 'Sun', 'Taurus': 'Moon', 'Cancer': 'Jupiter', 'Virgo': 'Mercury',
+    'Libra': 'Saturn', 'Capricorn': 'Mars', 'Pisces': 'Venus',
+}
+# 陷（Detriment）/ 落（Fall）一律由闭集**反向派生**（禁人工二次录入 ⇒ 零漂移）
+_OPPOSITE_SIGN = {s: SIGNS[(i + 6) % 12] for i, s in enumerate(SIGNS)}
+
+
+def _invert_sign_ruler(table: Dict[str, str]) -> Dict[str, set]:
+    """「星座→主星」反推「主星→所辖星座集合」（土/木/火/金/水 各辖两宫）。"""
+    idx: Dict[str, set] = {}
+    for _sign, _planet in table.items():
+        idx.setdefault(_planet, set()).add(_sign)
+    return idx
+
+
+_RULERSHIP_CLASSICAL = _invert_sign_ruler(SIGN_RULER_CLASSICAL)
+_RULERSHIP_MODERN = _invert_sign_ruler(SIGN_RULER_MODERN)
+_DETRIMENT_CLASSICAL = {p: {_OPPOSITE_SIGN[s] for s in v} for p, v in _RULERSHIP_CLASSICAL.items()}
+_DETRIMENT_MODERN = {p: {_OPPOSITE_SIGN[s] for s in v} for p, v in _RULERSHIP_MODERN.items()}
+_FALL = {planet: {_OPPOSITE_SIGN[sign]} for sign, planet in SIGN_EXALTATION.items()}
+
+
+def dignity_of(planet: str, sign: str, modern: bool = False) -> Optional[str]:
+    """行星在给定星座的庙旺陷落（闭集）：domicile 庙 | exaltation 旺 |
+    detriment 陷 | fall 落 | peregrine 平（无特别尊贵）。
+    真值缺失（未知行星/非法星座）⇒ None —— 绝不猜（V492/D2 纪律）。"""
+    if not planet or not sign or sign not in SIGNS:
+        return None
+    rup = _RULERSHIP_MODERN if modern else _RULERSHIP_CLASSICAL
+    det = _DETRIMENT_MODERN if modern else _DETRIMENT_CLASSICAL
+    if sign in rup.get(planet, ()):
+        return 'domicile'
+    if SIGN_EXALTATION.get(sign) == planet:
+        return 'exaltation'
+    if sign in det.get(planet, ()):
+        return 'detriment'
+    if sign in _FALL.get(planet, ()):
+        return 'fall'
+    return 'peregrine'
+
+
+def compute_house_rulers(cusps: List[float], positions: Dict[str, Dict[str, Any]]) -> Dict[str, Dict]:
+    """E37/S1: 12 宫主星真值（古典/现代双轨）+ 主星落座/落宫/庙旺陷落。
+
+    纯函数：入参为 SwissEph 实算的 12 宫头度数 + 本命行星位置（含 sign/house）。
+    每宫输出 {cusp_sign, classical:{planet,sign,house,dignity}, modern:{...}}。
+    「主星状态」= 该主星在**自身本命落座**的庙旺陷落（如「2 宫主星落陷」= 2 宫宫头
+    星座的主星，其本命星座恰为其陷位）—— 这正是 prompt 诉求的物理真值。
+    """
+    out: Dict[str, Dict] = {}
+    for i in range(12):
+        _cusp_sign = get_sign(cusps[i]) if i < len(cusps) else None
+        rec: Dict[str, Any] = {'cusp_sign': _cusp_sign}
+        for key, modern in (('classical', False), ('modern', True)):
+            table = SIGN_RULER_MODERN if modern else SIGN_RULER_CLASSICAL
+            planet = table.get(_cusp_sign) if _cusp_sign else None
+            if not planet:
+                rec[key] = None
+                continue
+            pos = positions.get(planet) or {}
+            _psign = pos.get('sign') or None
+            rec[key] = {
+                'planet': planet,
+                'sign': _psign,
+                'house': pos.get('house'),
+                'dignity': dignity_of(planet, _psign, modern) if _psign else None,
+            }
+        out['house_%d' % (i + 1)] = rec
+    return out
+
+
 # Generic rising sign house mapping (parametrizable)
 def get_house(sign: str, rising_sign: str) -> int:
     """Return house number (1-12) for a given sign, given the rising sign.
@@ -1167,6 +1251,8 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
                 'degree_in_sign': round(cusps[i] % 30, 2),
             } for i in range(12)
         },
+        # 🛡️ E37/S1: 宫位主星（古典/现代双轨）+ 主星落座/落宫/庙旺陷落（闭集纯函数派生）
+        'house_rulers': compute_house_rulers(cusps, positions),
         'ascendant': {'sign': rising_sign, 'degree': round(asc_deg % 30, 2)},
         'midheaven': ({'sign': get_sign(mc_deg), 'degree': round(mc_deg % 30, 2)}
                       if mc_deg is not None else None),

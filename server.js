@@ -9810,7 +9810,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (r
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v542:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v543:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -11058,6 +11058,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   Thai:     ✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦
   Vietnamese: ✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦
 The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the title without them.
+7b. [E37/S4 · WEEK-SCOPE TIME-LINE LOCK — NON-NEGOTIABLE] Each weekly card (Week 1 = days 1–7, Week 2 = 8–14, Week 3 = 15–22, Week 4 = 23–31) may cite ONLY events whose dates fall inside that card's own day-range, and only the Sun/Moon truth listed for THAT week. A date, sign or house belonging to another week must NEVER appear in this card. The Spending-Trap card MUST (a) name the specific week (Week 1–4) whose risk window it is warning about, and (b) name that week's dominant planet/門 from the WEEK-SCOPED truth blocks above — never its own invented planet. If a cited date and the week it is placed in disagree, the week placement is a CRITICAL ERROR.
 
 ❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
 ✅ Good Output: For Week 1, naming the Moon signs listed on the "Week 1" line of WEEK-SCOPED MOON TRUTH, in order.
@@ -11071,44 +11072,45 @@ The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the t
 ### [LITERARY POLISH — V460 MASTER EDITION]
 You are a top-tier spiritual wealth mentor with both Jungian psychological insight and architectural-level aesthetic sensibility. You are writing a one-of-a-kind, privately-tailored wealth monthly report for the user.
 
+⚠️ [NON-NEGOTIABLE · E37/S3] 本块**只给技法与负面样例（❌），一律不提供任何可照抄的正面范文（✅ 无示例句）**。
+理由（V462 教训）：给出完整范例句会被 LLM 整句搬运 ⇒ 12 个月/多用户同构。技法描述已足够指导，正文必须每一次重新创造。
+
 **8. LITERARY TRANSFORMATION RULE:**
-Transform rigid astrological coordinates into rich, evocative language:
+把生硬的占星坐标转写为有画面感的语言：禁止「X 星在第 N 宫带来机遇」这类坐标直陈句，必须以意象、光影、材质或潮汐一类的自然过程承载同一事实，并让结论落在「本月该怎么动钱」上。
   ❌ Bad: "本周是财富能量整合期。木星在第10宫带来机遇。本周需要注意财务决策。"
-  ✅ Good: "木星的光芒此刻正照耀你的第10宫，那是一扇缓缓开启的职业之门——并非轰轰烈烈地推开，而是如黎明前的潮汐，悄然将你推向更开阔的水域。本周不宜仓促决策，尤其是涉及中长期资金配置时，让节奏慢下来。"
+  ✅ 技法（无样例句，请自行创造）：以该行星的象征材质/光线为画面主体 → 以自然过程（潮汐/破晓/潮位）隐喻推进 → 收束为一条具体的资金动作指令。
 
 **9. SENTENCE VARIETY RULE:**
 Vary opening structures. Avoid starting consecutive paragraphs with the same phrase:
   ❌ Bad (Chinese): "本周是...本周能量...本周财富能量...本周整体..." — mechanical repetition of "本周".
-  ✅ Good: Use natural transitions: "此刻..." / "随着..." / "第X周的重心在于..." / "这股能量...".
+  ✅ 技法（无样例句）：连续段落的起句骨架必须互不相同（时间状语起 / 主语前置 / 短语切入 / 疑问起 交替使用）。
 
 **10. EMOTIONAL RESONANCE RULE:**
 When describing financial risks, embed the guidance in felt experience, not dry warnings:
   ❌ Bad: "Evite préstamos rápidos entre el 9 y el 14."
-  ✅ Good: "Entre el 9 y el 14, el riesgo de decisiones impulsivas se intensifica — si una oportunidad financiera se presenta con urgencia irresistible, esa misma urgencia es la señal de alerta."
+  ✅ 技法（无样例句）：把风险规则写成「身体感受 + 冲动识别信号」，让读者在情绪层面认出自己正处在危险模式。
 
 **11. PARAGRAPH FLUENCY RULE:**
 Each paragraph must feel like one continuous breath, not a bulleted report:
   ❌ Bad: "木星在第10宫。土星在第6宫。本周需要注意的是..."
-  ✅ Good: "木星正以它一贯的乐观照耀第10宫，而土星则以一种近乎严苛的耐心在第6宫等待——两者之间形成的张力，本周将以一种不易察觉却持续发酵的方式影响你的决策节奏。"
+  ✅ 技法（无样例句）：以两颗行星之间形成的**张力**为叙事主线，用一句连贯长句把对立力量编织进同一段呼吸。
 
 **12. SENSORY METAPHOR & LIGHTING TEXTURE (感官隐喻与光影质感):**
 严禁空洞的心理学术语堆砌。必须引入建筑学、光影、自然材质的感官意象，让文字自带触感与画面：
-  ❌ Bad: "你对金钱的执念反映了自我价值的不确定。"
-  ✅ Good: "你对金钱的执念，或许正是对自我价值不确定的一场暗涌——如同深夜海面上那道若有若无的反光，看似触手可及，俯身却只剩冰凉的虚空。"
-  ❌ Bad: "财务防线需要稳固。"
-  ✅ Good: "你的财务防线，应如一座历经风雨的古老石桥——在巨浪之中需要的不是仓促的贴金，而是沉入河床的、沉默而笃定的基石。"
+  ❌ Bad: "你对金钱的执念反映了自我价值的不确定。" / "财务防线需要稳固。"
+  ✅ 技法（无样例句）：抽象心理 → 具象材质（石桥/深水反光/旧木/潮线），并让材质自身承担隐喻，不得再解释隐喻。
 
 **13. RHYTHMIC CADENCE (长短句错落的音乐感):**
 必须通过句式长短制造呼吸感与情绪起伏：
-  • 描写「高危熔断区」（如第2周）时：多用短句、断句，制造紧张感与压迫感。例："拉响警报。停下。深呼吸。" / "这一周，刀锋悬顶。"
+  • 描写「高危熔断区」（如第2周）时：多用短句、断句，制造紧张感与压迫感。
   • 描写「蓄力与爆发期」（如第3、4周）时：用流畅的排比与舒展的长句，形成语调的舒展与释放。
   ❌ Bad (均质长句): "本周是高危区，流年海王星让你容易冲动消费，单笔超过5000元必须暂停24小时。"
-  ✅ Good (短句压迫+长句释放): "本周的空气中弥漫着海王星的迷雾。当情感与占有欲交织成一张无形之网，请记住——停下。深呼吸。那条单笔5000元的暂停线，不是冰冷的枷锁，而是你在巨浪之中，写给未来自己的清醒契约。"
+  ✅ 技法（无样例句）：高危段用三到四字的断句阵列制造压迫；释放段用排比长句；风控数字只出现在释放段的落地句里。
 
 **14. POETIC RISK GROUNDING (硬核风控的诗意化降落):**
 行为经济学风控底线（如"单笔超过{{risk_limit}}元必须暂停{{cooldown_hours}}小时"）绝不可生硬突兀。必须将其与当周的星象心理自然缝合：
   ❌ Bad: "高危日期为9日、12日、14日，严禁签署合同、大额转账或听信他人投资建议。财务安全底线：单笔超过5000元必须暂停24小时后再评估。"
-  ✅ Good: "9日、12日、14日——这三天，海王星的迷雾最浓。当他人递来一份看似完美的合约，或一句"机不可失"的耳语，请让那条5000元的暂停线成为你与未来之间的缓冲带：它不是迟疑，而是你在迷雾中写给自己的清醒契约。"
+  ✅ 技法（无样例句）：把清单式禁令改写为「雾中缓冲带」类心理契约意象；日期必须编进叙事流。
   ⚠️ 风控金额与冷却时长必须使用注入值 {{risk_limit}} / {{cooldown_hours}}，不得硬编数字。
 
 **15. ARCHETYPE CUSTOMIZATION (命盘原型的专属高光):**
@@ -11118,27 +11120,25 @@ Each paragraph must feel like one continuous breath, not a bulleted report:
   • 太阳天秤座 → 贯穿「天平、两端、在关系与自我间寻找平衡」隐喻暗线
   • 太阳摩羯座 → 贯穿「山峰、阶梯、时间淬炼的基石」隐喻暗线
   ❌ Bad: "你是一个上升狮子座的人，喜欢被关注。"
-  ✅ Good: "你的灵魂生来便站在聚光灯下——那不是虚荣，是狮子座与生俱来的、对"被看见"的庄严渴望。当本月财务决策来临，问问自己：这束光，照的是真实的丰盛，还是焦虑搭建的舞台？"
+  ✅ 技法（无样例句）：只用该原型的**意象体系**说话，绝不直白复述星座名与性格评语；并让它与本月财务决策发生真实碰撞。
 
 **16. ZERO-TEMPLATE & ZERO-AI-FOOTPRINT (彻底去模版化 · V461):**
 严禁任何「结构化汇报套话」与「AI 生成痕迹」。绝不解释逻辑框架，只呈现画面：
-  ❌ Bad: "以天文标签式前缀开头（如「◯◯过境：」），紧接着把星座与宫位罗列成清单。"
-  ✅ Good: "当月光的足迹穿过白羊座的炽热，落进金牛座的深谷，再攀上双子座的风口——这一周，月轨在事业与社群的高地上画下一道上行弧线。"
-  ❌ Bad: "用干瘪的「本周能量从……起步，逐步攀升至……」句式平铺直叙。"
-  ✅ Good: "财富的能量从远方的星火燃起，一路陡峭地攀上你事业与社群的高地。"
+  ❌ Bad: 以天文标签式前缀开头（如「◯◯过境：」），紧接着把星座与宫位罗列成清单。
+  ❌ Bad: 用干瘪的「本周能量从……起步，逐步攀升至……」句式平铺直叙。
+  ✅ 技法（无样例句）：以月光/能量的移动轨迹为线索，把星座与宫位溶解进一条连续的上行弧线句。
   ⚠️ 禁止前缀：天文标签式前缀、干瘪的「本周能量从……起步」句式（一律融入意象句，不单独成句）。
 
 **17. LITERARY TENSION (戏剧张力句式 · V461):**
 摒弃平铺直叙的客观分析句。多采用富有文学张力、对比鲜明、直击心灵的锤击句式：
   ❌ Bad: "你天生擅长在关系与言语中寻找平衡，而此刻宇宙要求你把这份平衡感带入具体的账目、技能与实物资产之中。"
-  ✅ Good: "天秤座习惯把优雅挂在唇边，用言语筑造平稳的假象。然而此刻，处女座的严苛逼你揭开帷幕——把所有轻盈的遐想，锤打成具体、沉重且无法逃避的资产明细。"
   ❌ Bad: "流年土星要求你重新审视长期财务信念的根基。"
-  ✅ Good: "土星把一枚冰冷的砝码压上你信念的天平——那些你从父辈血脉里继承的\"钱是危险的\"、\"必须拼命才配安全\"的脚本，正在被它逐一拆封、摊平、重审。"
+  ✅ 技法（无样例句）：用「优雅假象 vs 严苛现实」的对撞结构；把继承来的金钱信念写成可被拆封、摊平的实物。
 
 **18. SPATIAL BREATHING & TYPOGRAPHY (金字塔式呼吸排版 · V461):**
 采用轻盈的段落结构，2–3 句即成一自然段，增加页面呼吸感，营造如同阅读高级封蜡信件的仪式感：
-  ❌ Bad: "本周能量由深潜转向蓄力。流年土星在白羊座第1宫顺行持续施压，要求你重新审视长期财务信念的根基。那些你从原生家庭继承的关于钱是危险的或必须拼命才能安全的脚本，正在被逆行土星逐一拆解。16日月亮进入射手座第1宫，家庭与内在安全感的议题浮现。"（一整段，密不透风）
-  ✅ Good: "本周的能量，由深潜转向蓄力。\n\n土星把一枚冰冷的砝码压上你信念的天平。那些从父辈血脉里继承的\"钱是危险的\"脚本，正在被它逐一拆封。\n\n16日，月亮切入射手座——家庭与内在安全感的议题浮现，像一封迟到的家书。"（三段式呼吸）
+  ❌ Bad: 一整段密不透风（多句堆叠、无空行分隔）。
+  ✅ 技法（无样例句）：三段式呼吸——「过渡句 / 核心意象句 / 具体日期落点句」各成一自然段。
   ⚠️ 每自然段不超过 3 句；句与句之间留出心理停顿；高危周用更短的断句制造压迫。
 
 **19. NEGATIVE CONSTRAINTS — ZERO TOLERANCE（V461 黑名单 · 触之即死）:**
@@ -11149,7 +11149,7 @@ Each paragraph must feel like one continuous breath, not a bulleted report:
     · 严禁列举「N日 X座、N日 Y座」这种排版表格式文字
     · 正确姿势：直接以诗意画面或情感氛围开篇
     ❌ 错误 BAD: 先贴一个天文标签，再直列星座与宫位。
-    ✅ 正确 GOOD: 当月光的足迹从白羊座的炽热中起步，踏过金牛座的深谷……
+    ✅ 正确做法（不提供样例句，请自行创造）：以一条连续的自然意象轨迹开篇，让星座与宫位在轨迹中被顺带点亮。
 
   ❌ FORBIDDEN #2 — 干瘪分类词：
     · 严禁在周标题副标或正文中出现「财富充能」「高危熔断」「顺流蓄力」「财富爆发」等老套分类词
@@ -11309,20 +11309,20 @@ function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
 
 【输出格式 - 三轴聚焦】
 
-**第一轴：你的先天「金库」解密**（本命第2/8/10宫深挖）
-- 直接用最毒辣的语言戳痛点
-- 示例：「你的2宫主星落陷，天生就是'赚得多、花得快'的漏斗体质，千万别碰高风险理财」
-- 必须包含：财运格局、吸金体质、存钱能力
+**第一轴：你的先天「金库」解密**（本命第2/5宫深挖 · 天赋变现与风险创造闭环）
+- 直接用最毒辣的语言戳痛点，论断根基必须是上方 [NATAL HOUSE RULERS] 真值块中的 H2 与 H5 两行
+- 写法示范（槽位必须按上方真值块逐字代入，严禁照抄本句字面）：你的第2宫主星是【H2 主星】，本命落在【H2 星座】第【H2 宫位】宫（状态：【H2 庙旺陷落】）——这决定了你究竟是「赚得多、花得快」的漏斗体质，还是「越攒越厚」的蓄水体质；而第5宫由【H5 主星】主管，决定你的投机胆量与副业创造力边界。据此给出专属对策。
+- 必须包含：财运格局、吸金体质、存钱能力、投机偏好与副业创造力
 
-**第二轴：终身财富克星警示**（土星/冥王星相位）
-- 精准指出人生最大的「财务陷阱」会在哪里出现
+**第二轴：终身财富克星与资本杠杆警示**（本命第8/11宫深挖 + 土星/冥王星相位）
+- 精准指出人生最大的「财务陷阱」会在哪里出现，并说明第8宫（借贷/共享资源/他人资本）与第11宫（社群资本/大平台借力/人脉福德）如何成为你的杠杆或绞索
 - 示例：「因盲目创业破产、被亲友借钱拖垮、盲目跟风买房被套」
-- 必须包含：破财雷区、投资陷阱、消费黑洞
+- 必须包含：破财雷区、投资陷阱、消费黑洞、外部借力通道（第11宫）
 
-**第三轴：专属「搞钱姿势」指南**
-- 根据星盘元素（风林火山），明确指出最适合的副业方向
+**第三轴：专属「搞钱姿势」指南**（本命第10宫 · 社会名望与事业上限压轴）
+- 根据星盘元素（风林火山）与第10宫真值，明确指出最适合的副业方向与事业天花板
 - 示例：「靠个人IP变现、靠技术死磕、靠资源倒腾」
-- 必须包含：副业方向、赚钱路径、财富密码
+- 必须包含：副业方向、赚钱路径、财富密码、事业上限
 
 【铁律】
 ✓ 每轴必须800字以上，总字数2400-3000字
@@ -11347,20 +11347,20 @@ You are not a fortune teller. You are a destiny anatomist. You dissect the user'
 
 【Output Format - Three-Axis Focus】
 
-**Axis 1: Your Innate "Vault" Decoded** (Natal 2nd/8th/10th House Deep Dive)
-- Use the most incisive language to hit pain points directly
-- Example: "Your 2nd house ruler is in detriment - you're naturally a 'earn fast, spend faster' funnel type. Stay away from high-risk investments."
-- Must include: wealth structure, money-magnetizing nature, saving ability
+**Axis 1: Your Innate "Vault" Decoded** (Natal 2nd/5th House Deep Dive · talent monetization & risk creation)
+- Use the most incisive language to hit pain points directly; every claim must be grounded in the H2 and H5 rows of the [NATAL HOUSE RULERS] truth block above
+- Fill-in template (substitute the slots VERBATIM from the truth block; do NOT copy this sentence literally): "Your 2nd-house ruler is [H2 ruler], natally in [H2 sign], House [H2 house] ([H2 dignity]) — that is why you are a 'earn fast, spend faster' funnel type (or a 'the more you earn, the thicker it stacks' reservoir type). Your 5th house is ruled by [H5 ruler], which sets your appetite for speculation and the ceiling of your side-hustle creativity."
+- Must include: wealth structure, money-magnetizing nature, saving ability, speculation appetite & side-hustle creativity
 
-**Axis 2: Lifetime Wealth Nemesis Warning** (Saturn/Pluto Aspects)
-- Precisely point out where life's biggest "financial trap" will appear
+**Axis 2: Lifetime Wealth Nemesis & Capital Leverage Warning** (Natal 8th/11th House + Saturn/Pluto Aspects)
+- Precisely point out where life's biggest "financial trap" will appear, and explain how the 8th house (loans / shared resources / other people's capital) and the 11th house (community capital / platform leverage / network fortune) become either your lever or your noose
 - Example: "bankruptcy from blind entrepreneurship, dragged down by lending to friends, trapped in real estate speculation"
-- Must include: money-draining zones, investment traps, spending black holes
+- Must include: money-draining zones, investment traps, spending black holes, external leverage channel (11th house)
 
-**Axis 3: Your Exclusive "Money-Making Posture" Guide**
-- Based on chart elements (Fire/Earth/Air/Water), specify the best side-hustle direction
+**Axis 3: Your Exclusive "Money-Making Posture" Guide** (Natal 10th House · social standing & career ceiling)
+- Based on chart elements (Fire/Earth/Air/Water) together with the 10th-house truth, specify the best side-hustle direction and your career ceiling
 - Example: "monetize personal brand, grind with technical skills, flip resources"
-- Must include: side-hustle direction, wealth path, money code
+- Must include: side-hustle direction, wealth path, money code, career ceiling
 
 【Iron Rules】
 ✓ Each axis must be 800+ words, total 2400-3000 words
@@ -11385,20 +11385,20 @@ No eres un adivino. Eres un anatomista del destino. Diseccionas los genes de riq
 
 【Formato de Salida - Enfoque de Tres Ejes】
 
-**Eje 1: Tu "Bóveda" Innata Decodificada** (Cavado Profundo de Casas 2/8/10 Natal)
-- Usa el lenguaje más incisivo para golpear puntos dolorosos directamente
-- Ejemplo: "El regente de tu casa 2 está en detrimento - eres naturalmente un tipo de 'ganar rápido, gastar más rápido'. Aléjate de inversiones de alto riesgo."
-- Debe incluir: estructura de riqueza, naturaleza de imán de dinero, capacidad de ahorro
+**Eje 1: Tu "Bóveda" Innata Decodificada** (Cavado Profundo de Casas 2/5 Natal · monetización del talento y creación de riesgo)
+- Usa el lenguaje más incisivo para golpear puntos dolorosos directamente; cada afirmación debe apoyarse en las filas H2 y H5 del bloque [NATAL HOUSE RULERS] de arriba
+- Plantilla a rellenar (sustituye las ranuras LITERALMENTE desde el bloque; NO copies esta frase tal cual): "El regente de tu casa 2 es [regente H2], natalmente en [signo H2], Casa [casa H2] ([dignidad H2]) — por eso eres un tipo de 'ganar rápido, gastar más rápido' (o un tipo depósito: 'cuanto más gano, más se acumula'). Tu casa 5 está regida por [regente H5], que fija tu apetito especulativo y el techo de tu creatividad secundaria."
+- Debe incluir: estructura de riqueza, naturaleza de imán de dinero, capacidad de ahorro, apetito especulativo y creatividad secundaria
 
-**Eje 2: Advertencia del Némesis de Riqueza de por Vida** (Aspectos de Saturno/Plutón)
-- Señala con precisión dónde aparecerá la "trampa financiera" más grande de la vida
+**Eje 2: Advertencia del Némesis de Riqueza y Apalancamiento de Capital** (Casas 8/11 Natal + Aspectos de Saturno/Plutón)
+- Señala con precisión dónde aparecerá la "trampa financiera" más grande de la vida, y explica cómo la casa 8 (préstamos / recursos compartidos / capital ajeno) y la casa 11 (capital comunitario / apalancamiento de plataformas / fortuna de redes) se convierten en tu palanca o en tu soga
 - Ejemplo: "bancarrota por emprendimiento ciego, arrastrado por préstamos a amigos, atrapado en especulación inmobiliaria"
-- Debe incluir: zonas de drenaje de dinero, trampas de inversión, agujeros negros de gasto
+- Debe incluir: zonas de drenaje de dinero, trampas de inversión, agujeros negros de gasto, canal de apalancamiento externo (casa 11)
 
-**Eje 3: Tu Guía Exclusiva de "Postura para Hacer Dinero"**
-- Basado en elementos de la carta (Fuego/Tierra/Aire/Agua), especifica la mejor dirección de trabajo secundario
+**Eje 3: Tu Guía Exclusiva de "Postura para Hacer Dinero"** (Casa 10 Natal · reputación social y techo profesional)
+- Basado en los elementos de la carta (Fuego/Tierra/Aire/Agua) junto con la verdad de la casa 10, especifica la mejor dirección de trabajo secundario y tu techo profesional
 - Ejemplo: "monetizar marca personal, moler con habilidades técnicas, voltear recursos"
-- Debe incluir: dirección de trabajo secundario, camino de riqueza, código de dinero
+- Debe incluir: dirección de trabajo secundario, camino de riqueza, código de dinero, techo profesional
 
 【Reglas de Hierro】
 ✓ Cada eje debe tener 800+ palabras, total 2400-3000 palabras
@@ -11423,20 +11423,20 @@ Vous n'êtes pas un diseur de bonne aventure. Vous êtes un anatomiste du destin
 
 【Format de Sortie - Focus sur Trois Axes】
 
-**Axe 1: Votre "Coffre-Fort" Inné Décrypté** (Plongée Profonde Maisons 2/8/10 Natales)
-- Utilisez le langage le plus tranchant pour toucher directement les points douloureux
-- Exemple: "Le maître de votre 2ème maison est en chute - vous êtes naturellement un type 'gagner vite, dépenser plus vite'. Éloignez-vous des investissements à haut risque."
-- Doit inclure: structure de richesse, nature d'aimant à argent, capacité d'épargne
+**Axe 1: Votre "Coffre-Fort" Inné Décrypté** (Plongée Profonde Maisons 2/5 Natales · monétisation du talent et création de risque)
+- Utilisez le langage le plus tranchant pour toucher directement les points douloureux ; chaque affirmation doit s'appuyer sur les lignes H2 et H5 du bloc [NATAL HOUSE RULERS] ci-dessus
+- Gabarit à remplir (substituez les emplacements MOT POUR MOT depuis le bloc ; ne recopiez PAS cette phrase telle quelle) : "Le maître de votre maison 2 est [maître H2], natalement en [signe H2], Maison [maison H2] ([dignité H2]) — c'est pourquoi vous êtes un type 'gagner vite, dépenser plus vite' (ou un type réservoir : 'plus je gagne, plus ça s'accumule'). Votre maison 5 est régie par [maître H5], qui fixe votre appétit spéculatif et le plafond de votre créativité secondaire."
+- Doit inclure : structure de richesse, nature d'aimant à argent, capacité d'épargne, appétit spéculatif et créativité secondaire
 
-**Axe 2: Avertissement du Némésis de Richesse à Vie** (Aspects Saturne/Pluton)
-- Pointez avec précision où apparaîtra le "piège financier" le plus grand de la vie
+**Axe 2: Avertissement du Némésis de Richesse et de l'Effet de Levier** (Maisons 8/11 Natales + Aspects Saturne/Pluton)
+- Pointez avec précision où apparaîtra le "piège financier" le plus grand de la vie, et expliquez comment la maison 8 (prêts / ressources partagées / capital d'autrui) et la maison 11 (capital communautaire / levier des plateformes / fortune du réseau) deviennent votre levier ou votre corde
 - Exemple: "faillite par entrepreneuriat aveugle, traîné par des prêts à des amis, piégé dans la spéculation immobilière"
-- Doit inclure: zones de drainage d'argent, pièges d'investissement, trous noirs de dépenses
+- Doit inclure : zones de drainage d'argent, pièges d'investissement, trous noirs de dépenses, canal de levier externe (maison 11)
 
-**Axe 3: Votre Guide Exclusif de "Posture pour Faire de l'Argent"**
-- Basé sur les éléments de la carte (Feu/Terre/Air/Eau), spécifiez la meilleure direction de travail secondaire
+**Axe 3: Votre Guide Exclusif de "Posture pour Faire de l'Argent"** (Maison 10 Natale · réputation sociale et plafond de carrière)
+- Basé sur les éléments de la carte (Feu/Terre/Air/Eau) ainsi que la vérité de la maison 10, spécifiez la meilleure direction de travail secondaire et votre plafond de carrière
 - Exemple: "monétiser la marque personnelle, moudre avec des compétences techniques, retourner des ressources"
-- Doit inclure: direction de travail secondaire, chemin de richesse, code argent
+- Doit inclure : direction de travail secondaire, chemin de richesse, code argent, plafond de carrière
 
 【Règles de Fer】
 ✓ Chaque axe doit avoir 800+ mots, total 2400-3000 mots
@@ -11461,20 +11461,20 @@ Générez le "Rapport de Décryptage de l'ADN de Richesse Innée" pour cet utili
 
 【รูปแบบผลลัพธ์ - โฟกัสสามแกน】
 
-**แกนที่ 1: "ตู้นิรภัย"โดยกำเนิดของคุณถอดรหัสแล้ว** (การขุดลึกบ้านที่ 2/8/10 ในแผนภูมิเกิด)
-- ใช้ภาษาที่คมที่สุดเพื่อตีจุดที่เจ็บปวดโดยตรง
-- ตัวอย่าง: "ผู้ปกครองบ้านที่ 2 ของคุณอยู่ในตำแหน่งตก - คุณเป็นคนประเภท 'หาเงินเร็ว ใช้เงินเร็วกว่า' โดยธรรมชาติ อย่ายุ่งกับการลงทุนที่มีความเสี่ยงสูง"
-- ต้องมี: โครงสร้างความมั่งคั่ง ธรรมชาติแม่เหล็กดึงดูดเงิน ความสามารถในการออม
+**แกนที่ 1: "ตู้นิรภัย"โดยกำเนิดของคุณถอดรหัสแล้ว** (การขุดลึกเรือนที่ 2/5 ในแผนภูมิเกิด · การเปลี่ยนพรสวรรค์เป็นเงินและการสร้างความเสี่ยง)
+- ใช้ภาษาที่คมที่สุดเพื่อตีจุดที่เจ็บปวดโดยตรง ทุกข้อสรุปต้องอ้างอิงแถว H2 และ H5 ในบล็อก [NATAL HOUSE RULERS] ด้านบน
+- เทมเพลตให้เติม (ให้แทนที่ช่องว่างตามบล็อกแบบคำต่อคำ ห้ามคัดลอกประโยคนี้ทั้งประโยค): "ดาวเจ้าเรือนที่ 2 ของคุณคือ [ดาวเจ้าเรือน H2] ประจำอยู่ใน [ราศี H2] เรือนที่ [เรือน H2] ([สถานะ H2]) — นี่คือเหตุผลที่คุณเป็นแบบ 'หาเงินเร็ว ใช้เร็ว' (หรือแบบอ่างเก็บน้ำ 'ยิ่งหา ยิ่งกองพูน') ส่วนเรือนที่ 5 มี [ดาวเจ้าเรือน H5] เป็นเจ้าของ กำหนดความอยากเก็งกำไรและเพดานความคิดสร้างสรรค์งานเสริมของคุณ"
+- ต้องมี: โครงสร้างความมั่งคั่ง ธรรมชาติแม่เหล็กดึงดูดเงิน ความสามารถในการออม ความอยากเก็งกำไรและความคิดสร้างสรรค์งานเสริม
 
-**แกนที่ 2: คำเตือนจากศัตรูความมั่งคั่งตลอดชีวิต** (แง่มุมดาวเสาร์/ดาวพลูโต)
-- ชี้ให้เห็นอย่างแม่นยำว่า "กับดักทางการเงิน" ที่ใหญ่ที่สุดในชีวิตจะปรากฏที่ไหน
+**แกนที่ 2: คำเตือนศัตรูความมั่งคั่งและคานงัดทุน** (เรือนที่ 8/11 ในแผนภูมิเกิด + แง่มุมดาวเสาร์/ดาวพลูโต)
+- ชี้ให้เห็นอย่างแม่นยำว่า "กับดักทางการเงิน" ที่ใหญ่ที่สุดในชีวิตจะปรากฏที่ไหน และอธิบายว่าเรือนที่ 8 (เงินกู้/ทรัพยากรร่วม/ทุนของผู้อื่น) กับเรือนที่ 11 (ทุนชุมชน/การใช้พลังแพลตฟอร์ม/บุญวาสนาเครือข่าย) กลายเป็นคานงัดหรือเป็นบ่วงของคุณได้อย่างไร
 - ตัวอย่าง: "ล้มละลายจากการเป็นผู้ประกอบการตาบอด ถูกลากจากการให้ยืมเงินเพื่อน ติดกับดักการเก็งกำไรอสังหาริมทรัพย์"
-- ต้องมี: เขตระบายเงิน กับดักการลงทุน หลุมดำการใช้จ่าย
+- ต้องมี: เขตระบายเงิน กับดักการลงทุน หลุมดำการใช้จ่าย ช่องทางใช้พลังจากภายนอก (เรือนที่ 11)
 
-**แกนที่ 3: คู่มือ "ท่าทางทำเงิน" สำหรับคุณโดยเฉพาะ**
-- อิงตามธาตุในแผนภูมิ (ไฟ/ดิน/ลม/น้ำ) ระบุทิศทางงานเสริมที่ดีที่สุด
-- ตัวอย่าง: "สร้างรายได้จากแบรนด์ส่วนตัว บินเคี้ยวด้วยทักษะเทคนิค พลิกทรัพยากร"
-- ต้องมี: ทิศทางงานเสริม เส้นทางความมั่งคั่ง รหัสเงิน
+**แกนที่ 3: คู่มือ "ท่าทางทำเงิน" สำหรับคุณโดยเฉพาะ** (เรือนที่ 10 ในแผนภูมิเกิด · ชื่อเสียงสังคมและเพดานอาชีพ)
+- อิงตามธาตุในแผนภูมิ (ไฟ/ดิน/ลม/น้ำ) พร้อมความจริงของเรือนที่ 10 ระบุทิศทางงานเสริมที่ดีที่สุดและเพดานอาชีพของคุณ
+- ตัวอย่าง: "สร้างรายได้จากแบรนด์ส่วนตัว บดขยี้ด้วยทักษะเทคนิค พลิกทรัพยากร"
+- ต้องมี: ทิศทางงานเสริม เส้นทางความมั่งคั่ง รหัสเงิน เพดานอาชีพ
 
 【กฎเหล็ก】
 ✓ แต่ละแกนต้องมี 800+ คำ รวม 2400-3000 คำ
@@ -11499,20 +11499,20 @@ Bạn không phải là người bói toán. Bạn là nhà giải phẫu học 
 
 【Định Dạng Đầu Ra - Tập Trung Ba Trục】
 
-**Trục 1: "Kho Báu" Bẩm Sinh Của Bạn Được Giải Mã** (Đào Sâu Nhà 2/8/10 Bản Mệnh)
-- Sử dụng ngôn ngữ sắc bén nhất để đánh trúng điểm đau trực tiếp
-- Ví dụ: "Chủ nhân nhà 2 của bạn ở vị trí suy - bạn là kiểu 'kiếm nhanh, tiêu nhanh hơn' tự nhiên. Tránh xa đầu tư rủi ro cao."
-- Phải bao gồm: cấu trúc giàu có, bản chất nam châm hút tiền, khả năng tiết kiệm
+**Trục 1: "Kho Báu" Bẩm Sinh Của Bạn Được Giải Mã** (Đào Sâu Nhà 2/5 Bản Mệnh · biến tài năng thành tiền và tạo rủi ro)
+- Sử dụng ngôn ngữ sắc bén nhất để đánh trúng điểm đau trực tiếp; mọi luận điểm phải dựa trên hai hàng H2 và H5 của khối [NATAL HOUSE RULERS] ở trên
+- Mẫu điền chỗ trống (thay các chỗ trống NGUYÊN VĂN theo khối; KHÔNG sao chép nguyên câu này): "Chủ tinh nhà 2 của bạn là [chủ tinh H2], bản mệnh ở [cung H2], Nhà [nhà H2] ([phẩm chất H2]) — đó là lý do bạn thuộc kiểu 'kiếm nhanh, tiêu nhanh hơn' (hoặc kiểu hồ chứa: 'càng kiếm càng dày'). Nhà 5 do [chủ tinh H5] cai quản, quyết định mức độ ưa đầu cơ và trần sáng tạo việc phụ của bạn."
+- Phải bao gồm: cấu trúc giàu có, bản chất nam châm hút tiền, khả năng tiết kiệm, mức ưa đầu cơ và sáng tạo việc phụ
 
-**Trục 2: Cảnh Báo Kẻ Thù Giàu Có Suốt Đời** (Khía cạnh Sao Thổ/Diêm Vương)
-- Chỉ ra chính xác nơi "bẫy tài chính" lớn nhất trong đời sẽ xuất hiện
+**Trục 2: Cảnh Báo Kẻ Thù Giàu Có và Đòn Bẩy Vốn** (Nhà 8/11 Bản Mệnh + Khía cạnh Sao Thổ/Diêm Vương)
+- Chỉ ra chính xác nơi "bẫy tài chính" lớn nhất trong đời sẽ xuất hiện, và giải thích nhà 8 (vay mượn / nguồn lực chia sẻ / vốn của người khác) cùng nhà 11 (vốn cộng đồng / đòn bẩy nền tảng / phúc lộc quan hệ) trở thành đòn bẩy hay thòng lọng của bạn
 - Ví dụ: "phá sản từ khởi nghiệp mù quáng, bị kéo xuống bởi cho bạn bè vay, mắc kẹt trong đầu cơ bất động sản"
-- Phải bao gồm: vùng rò rỉ tiền, bẫy đầu tư, hố đen chi tiêu
+- Phải bao gồm: vùng rò rỉ tiền, bẫy đầu tư, hố đen chi tiêu, kênh đòn bẩy bên ngoài (nhà 11)
 
-**Trục 3: Hướng Dẫn "Tư Thế Kiếm Tiền" Riêng Của Bạn**
-- Dựa trên yếu tố biểu đồ (Lửa/Đất/Khí/Nước), chỉ định hướng công việc phụ tốt nhất
+**Trục 3: Hướng Dẫn "Tư Thế Kiếm Tiền" Riêng Của Bạn** (Nhà 10 Bản Mệnh · danh vọng xã hội và trần sự nghiệp)
+- Dựa trên yếu tố biểu đồ (Lửa/Đất/Khí/Nước) cùng chân lý nhà 10, chỉ định hướng công việc phụ tốt nhất và trần sự nghiệp của bạn
 - Ví dụ: "kiếm tiền từ thương hiệu cá nhân, chinh phục bằng kỹ năng, lật ngược tài nguyên"
-- Phải bao gồm: hướng công việc phụ, con đường giàu có, mã tiền
+- Phải bao gồm: hướng công việc phụ, con đường giàu có, mã tiền, trần sự nghiệp
 
 【Quy Tắc Sắt】
 ✓ Mỗi trục phải có 800+ từ, tổng 2400-3000 từ
@@ -11534,12 +11534,12 @@ Tạo "Báo Cáo Giải Mã DNA Giàu Có Bẩm Sinh" cho người dùng này, t
   // 🛡️ E25/P0: 注入本命真值块（三轴共用同一份 SwissEph 真值）+ 语言锁（防英文数据块带偏输出语种）
   if (natalAnchors) {
     const ONCE_NATAL_TRUTH_DIRECTIVE = {
-      zh: '【真值铁律】上方 [NATAL CHART ANCHORS] 为 SwissEph 实算的本命真值（终身不变）。第一轴「金库」的 2/8/10 宫、第二轴「克星」的土星/冥王宫位与星座，必须严格引用该块真值，严禁编造未给出的宫位数字或星座。全文必须使用简体中文书写（上方英文数据块仅作真值来源，严禁照抄英文句子）。',
-      en: '[TRUTH RULE] The [NATAL CHART ANCHORS] block above is your SwissEph-computed natal truth (fixed for life). Axis 1 (houses 2/8/10) and Axis 2 (Saturn/Pluto) MUST quote the exact signs and houses given there — never invent house numbers or signs that are not provided. Write the entire report in English.',
-      es: '[REGLA DE VERDAD] El bloque [NATAL CHART ANCHORS] anterior es tu verdad natal calculada con SwissEph (fija de por vida). El Eje 1 (casas 2/8/10) y el Eje 2 (Saturno/Plutón) DEBEN citar exactamente los signos y casas indicados; nunca inventes casas o signos no proporcionados. Escribe todo el informe en español.',
-      fr: "[RÈGLE DE VÉRITÉ] Le bloc [NATAL CHART ANCHORS] ci-dessus est votre vérité natale calculée par SwissEph (fixe à vie). L'Axe 1 (maisons 2/8/10) et l'Axe 2 (Saturne/Pluton) DOIVENT citer exactement les signes et maisons indiqués; n'inventez jamais de maisons ou de signes non fournis. Rédigez tout le rapport en français.",
-      th: '[กฎความจริง] บล็อก [NATAL CHART ANCHORS] ด้านบนคือความจริงดวงกำเนิดของคุณที่คำนวณด้วย SwissEph (คงที่ไม่เปลี่ยนตลอดชีวิต) แกนที่ 1 (เรือน 2/8/10) และแกนที่ 2 (ดาวเสาร์/ดาวพลูโต) ต้องอ้างอิงตำแหน่งและเรือนตามที่ระบุไว้เท่านั้น ห้ามสร้างเรือนหรือราศีขึ้นเอง เขียนรายงานทั้งหมดเป็นภาษาไทย',
-      vi: '[QUY TẮC CHÂN LÝ] Khối [NATAL CHART ANCHORS] ở trên là chân lý bản mệnh do SwissEph tính toán (cố định suốt đời). Trục 1 (nhà 2/8/10) và Trục 2 (Sao Thổ/Diêm Vương) BẮT BUỘC trích đúng cung và nhà đã cho; tuyệt đối không tự bịa số nhà hay cung không có trong đó. Viết toàn bộ báo cáo bằng tiếng Việt.',
+      zh: '【真值铁律】上方 [NATAL CHART ANCHORS] 为 SwissEph 实算的本命真值（终身不变）。第一轴「金库」的第2/5宫、第二轴「克星与杠杆」的第8/11宫与土星/冥王宫位，以及全文任何「宫位主星/飞星」表述，都必须严格引用该块真值（[NATAL HOUSE CUSPS] 宫头星座 + [NATAL HOUSE RULERS] 主星落座·落宫·庙旺陷落）；严禁编造未给出的宫位数字、星座或主星；真值块未标记为陷（detriment）或落（fall）者，严禁写成「落陷/入陷」。全文必须使用简体中文书写（上方英文数据块仅作真值来源，严禁照抄英文句子）。',
+      en: '[TRUTH RULE] The [NATAL CHART ANCHORS] block above is your SwissEph-computed natal truth (fixed for life). Axis 1 (houses 2/5), Axis 2 (houses 8/11 + Saturn/Pluto) and EVERY house-ruler statement MUST quote the exact cusp signs and rulers given there ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]). Never invent a house number, sign or ruler; never call a ruler "in detriment/fall" unless the truth block tags it so. Write the entire report in English.',
+      es: '[REGLA DE VERDAD] El bloque [NATAL CHART ANCHORS] anterior es tu verdad natal calculada con SwissEph (fija de por vida). El Eje 1 (casas 2/5), el Eje 2 (casas 8/11 + Saturno/Plutón) y TODA afirmación sobre regentes DEBEN citar exactamente los signos de cúspide y los regentes indicados ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]); nunca inventes casas, signos ni regentes, y nunca digas que un regente está "en detrimento/caída" si el bloque no lo marca. Escribe todo el informe en español.',
+      fr: "[RÈGLE DE VÉRITÉ] Le bloc [NATAL CHART ANCHORS] ci-dessus est votre vérité natale calculée par SwissEph (fixe à vie). L'Axe 1 (maisons 2/5), l'Axe 2 (maisons 8/11 + Saturne/Pluton) et TOUTE mention de maître de maison DOIVENT citer exactement les signes de cuspide et les maîtres indiqués ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]) ; n'inventez jamais de maison, de signe ni de maître, et n'écrivez jamais qu'un maître est « en chute/détriqué » si le bloc ne le marque pas. Rédigez tout le rapport en français.",
+      th: '[กฎความจริง] บล็อก [NATAL CHART ANCHORS] ด้านบนคือความจริงดวงกำเนิดของคุณที่คำนวณด้วย SwissEph แกนที่ 1 (เรือน 2/5) แกนที่ 2 (เรือน 8/11 + ดาวเสาร์/ดาวพลูโต) และข้อความเรื่อง "ดาวเจ้าเรือน" ทุกแห่ง ต้องอ้างอิงราศีต้นเรือนและดาวเจ้าเรือนตามที่ระบุไว้เท่านั้น ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]) ห้ามสร้างเรือน ราศี หรือดาวเจ้าเรือนขึ้นเอง และห้ามเขียนว่าดาวตกต่ำ หากบล็อกไม่ได้ระบุ เขียนรายงานทั้งหมดเป็นภาษาไทย',
+      vi: '[QUY TẮC CHÂN LÝ] Khối [NATAL CHART ANCHORS] ở trên là chân lý bản mệnh do SwissEph tính toán (cố định suốt đời). Trục 1 (nhà 2/5), Trục 2 (nhà 8/11 + Sao Thổ/Diêm Vương) và MỌI phát biểu về "chủ tinh của nhà" BẮT BUỘC trích đúng cung đầu nhà và chủ tinh đã cho ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]); tuyệt đối không tự bịa số nhà, cung hay chủ tinh, và không được nói một chủ tinh "suy nhược/rơi" nếu khối chân lý không ghi như vậy. Viết toàn bộ báo cáo bằng tiếng Việt.',
     };
     prompt.user = `${prompt.user}\n\n${natalAnchors}\n\n${ONCE_NATAL_TRUTH_DIRECTIVE[lang] || ONCE_NATAL_TRUTH_DIRECTIVE.en}`;
   }
@@ -11638,14 +11638,22 @@ function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, bi
     const natalEN = NATAL_EN[getNatalSunSign(birthDate)];
     const first = astroMatrix?.months?.[0];
     const getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
-    const rJupH = first ? getH(first.jupiter?.house) : 2;
-    const rSatH = first ? getH(first.saturn?.house) : 10;
-    const rPlH = first ? getH(first.pluto?.house) : 8;
-    const rSunH = first ? getH(first.sun?.house) : 1;
-    const rJupS = first?.jupiter?.sign || 'Leo';
-    const rSatS = first?.saturn?.sign || 'Aries';
-    const rMoonS = first?.moon?.sign || 'Cancer';
-    const rMoonH = first ? getH(first.moon?.house) : 2;
+    // 🔴 E37/S4（A5 缺陷归位）：第五章「本命宫位锁死」必须是**本命**真值 ——
+    //   原实现一律取 `months[0]`（财年首月＝7 月的**流年快照**）⇒ 本命/流年混用同一变量，
+    //   名义写「本命木星=第N宫」实则填了流年宫位（语义含混 + 锁错值）。
+    //   治法：优先 `meta.computed_houses`（本命真值，唯一真源）；本命缺失才**显式降级**回落
+    //   流年快照，仍缺则 '?'（V492/D2：绝不静默伪造）。
+    const _nch = astroMatrix?.meta?.computed_houses || {};
+    const _nHouse = (p) => (typeof _nch[p]?.house === 'number' ? _nch[p].house : null);
+    const _nSign = (p) => _nch[p]?.sign || null;
+    const rJupH = _nHouse('Jupiter') ?? (first ? getH(first.jupiter?.house) : '?');
+    const rSatH = _nHouse('Saturn') ?? (first ? getH(first.saturn?.house) : '?');
+    const rPlH = _nHouse('Pluto') ?? (first ? getH(first.pluto?.house) : '?');
+    const rSunH = _nHouse('Sun') ?? (first ? getH(first.sun?.house) : '?');
+    const rMoonH = _nHouse('Moon') ?? (first ? getH(first.moon?.house) : '?');
+    const rJupS = _nSign('Jupiter') || first?.jupiter?.sign || '?';
+    const rSatS = _nSign('Saturn') || first?.saturn?.sign || '?';
+    const rMoonS = _nSign('Moon') || first?.moon?.sign || '?';
     // 熔断检测
     const unreplaced = (prompt.system.match(/__[A-Z0-9_]+__/g) || []);
     if (unreplaced.length > 0) {
@@ -11962,11 +11970,16 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     // 🛠️ V126-fix: 年报/月报模板共用变量必须在两者共同的父作用域声明
     //    月报 if() 里 let 声明的变量对年报 if() 不可见 → TDZ
     //    统一在外层声明,月报/年报内只做赋值(含条件赋值)
-    let jupHouse=2, satHouse=10, plHouse=8, sunHouse=1, moonHouse=2;
-    let jupSign='Leo', satSign='Aries', moonSign='Cancer';
+    // 🛡️ E37/S1（军师裁决 ② 执行纪律）：剥离历史硬编码本命 fallback ——
+    //   旧初值「木星=2宫 / 土星=10宫 / 冥王=8宫 / 太阳=1宫 / 月亮=2宫 / 狮子·白羊·巨蟹」
+    //   是 ASC=Cancer 的**等宫制残影**，与本盘真值毫无关系；真值缺失时它会被静默写进
+    //   Prompt 的 houseLock ⇒ 与 buildNatalAnchors 的「? 显式缺失」铁律**两套策略打架**。
+    //   治法：真值缺失一律显式 '?'（V492/D2：绝不静默伪造）。
+    let jupHouse='?', satHouse='?', plHouse='?', sunHouse='?', moonHouse='?';
+    let jupSign='?', satSign='?', moonSign='?';
     let natalSunSign = natalSunFallback;
     let natalSunSignEN = natalSunENFallback;
-    let risingLocal = 'Cancer', jupSignLocal = 'Leo', satSignLocal = 'Aries', moonSignLocal = 'Cancer';
+    let risingLocal = '?', jupSignLocal = '?', satSignLocal = '?', moonSignLocal = '?';
     let natalMoonSign = 'Cancer', natalMoonSignEN = 'Cancer';
     let _mZH='', _mEN='', _mES='', _mFR='', _mTH='', _mVI='';
     if (reportType === 'monthly') {
@@ -11999,8 +12012,9 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
     const getH2 = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? v?.[0] ?? 1);
     // 🛠️ V120-fix5: fallback 修正为 ASC=Cancer 真值(与年报旧 fallback 对齐:木星狮子=2宫,土星白羊=10宫,冥王水瓶=8宫)
     // ⚠️ jupHouse/jupSign 等已在外层(let)声明,此处只赋值不重声明
-    jupHouse=2; satHouse=10; plHouse=8; sunHouse=1; moonHouse=2;
-    jupSign='Leo'; satSign='Aries'; moonSign='Cancer';
+    // 🛡️ E37/S1: 剥离伪造 fallback ⇒ 缺失显式 '?'（V492/D2）
+    jupHouse='?'; satHouse='?'; plHouse='?'; sunHouse='?'; moonHouse='?';
+    jupSign='?'; satSign='?'; moonSign='?';
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
       jupHouse = getH2(first.jupiter?.house);
@@ -12370,11 +12384,12 @@ ${HT_RP.trap}
     };
   }
 
-    jupHouse = 2;
-    if (!satHouse || satHouse === 0) satHouse = 10;
-    if (!plHouse || plHouse === 0) plHouse = 8;
-    if (!sunHouse || sunHouse === 0) sunHouse = 1;
-    if (!moonHouse || moonHouse === 0) moonHouse = 2;
+    // 🛡️ E37/S1: 剥离历史硬编码本命 fallback（原为 ASC=Cancer 等宫制残影）⇒ 缺失显式 '?'
+    jupHouse = '?';
+    if (!satHouse || satHouse === 0) satHouse = '?';
+    if (!plHouse || plHouse === 0) plHouse = '?';
+    if (!sunHouse || sunHouse === 0) sunHouse = '?';
+    if (!moonHouse || moonHouse === 0) moonHouse = '?';
 
     const DATA_CONSUMPTION_RULE_ZH = `
 [数据消费铁律 - 必须遵守]
@@ -12550,10 +12565,11 @@ ${HT_RP.trap}
     //    年报块不再重声明,只做赋值
     natalSunSign = natalSunFallback;
     natalSunSignEN = natalSunENFallback;
-    risingLocal = 'Cancer'; // 年报默认上升,无出生时间时用 Cancer
-    jupSignLocal = 'Leo'; satSignLocal = 'Aries'; moonSignLocal = 'Cancer';
-    natalMoonSign = 'Cancer'; natalMoonSignEN = 'Cancer';
-    jupHouse = 2; satHouse = 10; plHouse = 8; sunHouse = 1; moonHouse = 2;
+    // 🛡️ E37/S1: 剥离伪造成星象常量的 fallback ⇒ 真值缺失一律显式 '?'（V492/D2）
+    risingLocal = '?';
+    jupSignLocal = '?'; satSignLocal = '?'; moonSignLocal = '?';
+    natalMoonSign = '?'; natalMoonSignEN = '?';
+    jupHouse = '?'; satHouse = '?'; plHouse = '?'; sunHouse = '?'; moonHouse = '?';
 
     if (astroMatrix && astroMatrix.months && astroMatrix.months[0]) {
       const first = astroMatrix.months[0];
@@ -12564,8 +12580,8 @@ ${HT_RP.trap}
       plHouse = getH2(first.pluto?.house);
       sunHouse = getH2(_sunOf(first).house);
       moonHouse = getH2(first.moon?.house);
-      jupSign = first.jupiter?.sign || 'Leo';
-      satSign = first.saturn?.sign || 'Aries';
+      jupSign = first.jupiter?.sign || '?';
+      satSign = first.saturn?.sign || '?';
 
       // 🛠️ V83: 计算 natal Sun Sign(不依赖 transit month)
       const natalSunIdx = getNatalSunSign(birthDate);
@@ -14269,7 +14285,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v542:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v543:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -15171,7 +15187,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v542:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v543:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16883,7 +16899,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v542-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v543-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

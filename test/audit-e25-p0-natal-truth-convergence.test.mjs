@@ -120,7 +120,8 @@ test('B1 行为级：once 构造器产出「三轴」骨架，且注入本命真
   const out = ctx.__once('1990-06-21', 'zh', { meta: { sun_sign: 'Cancer', saturn_house: 8 } });
   assert.ok(out && typeof out.system === 'string' && typeof out.user === 'string', 'once 构造器未返回 {system,user}');
   assert.ok(/三轴聚焦/.test(out.system), 'once system 缺「三轴聚焦」骨架');
-  assert.ok(/第2\/8\/10宫/.test(out.system), 'once system 缺第一轴（2/8/10 宫）规格');
+  // E37 起第一轴 = 2+5 宫（11/5 宫已按军师三轴并入裁决改写，原 2/8/10 不再成立）
+  assert.ok(/第2\/5宫/.test(out.system), 'once system 缺第一轴（2/5 宫）规格（E37 骨架）');
   assert.ok(out.user.includes('[ANCHORS natalSun=Cancer SatH=8]'), 'once user 未注入 buildNatalAnchors 真值块');
   assert.ok(/真值铁律/.test(out.user), 'once user 缺真值铁律/语言锁指令');
   // 非 zh 语种同样注入
