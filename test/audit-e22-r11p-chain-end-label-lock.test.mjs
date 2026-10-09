@@ -134,11 +134,11 @@ test('④ s13 收编闭环: 病根语料在册且被本闸门覆盖（防「收�
 });
 
 test('⑤ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回收 v524 + MIN_CACHE_VER=525 + 旧闸门前移', () => {
-  const sites = [...SRC.matchAll(/wealth:v541/g)].length;
+  const sites = [...SRC.matchAll(/wealth:v542/g)].length;
   assert.equal(sites, 4, `4 个缓存站点须全部为 v525, 实得 ${sites}`);
   assert.ok(!SRC.includes('wealth:v524'), 'server.js 内不得残留 v524 键');
   assert.ok(PURGE.includes("'wealth:v524:*'") && PURGE.includes("'wealth:v524-v2:*'"), 'purge 须双形态回收 v524');
-  assert.ok(/MIN_CACHE_VER = 541/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 525');
+  assert.ok(/MIN_CACHE_VER = 542/.test(YEARLY_TEST), 'yearly 流式闸门基线未前移至 525');
   // ⚠️ 纯数字形态（无 v 前缀）字符串映射覆盖不到 ⇒ 单独补丁（E20 实测 7 红，E22 复现同坑）
   assert.ok(!/MIN_CACHE_VER = 525/.test(YEARLY_TEST), 'MIN_CACHE_VER 纯数字形态仍停留在 524');
   // 旧闸门基线前移（须锁「站点计数正则」而非粗暴 includes：purge 回收项是合法字面量）
@@ -153,7 +153,7 @@ test('⑤ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回
     'audit-e18-r11k-idempotent-lock.test.mjs', 'audit-e20-r11n-element-coord-strip.test.mjs',
     'audit-e21-r11o-house-label-lock.test.mjs', 'audit-sweep-matrix.test.mjs']) {
     const t = readFileSync(path.join(__dirname, f), 'utf-8');
-    assert.ok(t.includes('matchAll(/wealth:v541/g)'), `${f} 站点计数基线未前移至 v525`);
+    assert.ok(t.includes('matchAll(/wealth:v542/g)'), `${f} 站点计数基线未前移至 v525`);
     // 共同不变式：任何闸门都不得再引用陈旧基线 v522（前移链断裂的硬指纹）
     assert.ok(!t.includes('matchAll(/wealth:v522/g)'), `${f} 前移链断裂：仍引用 v522 基线`);
     if (!OLD_BASE_KEEP.has(f)) {
@@ -167,5 +167,5 @@ test('⑤ v525 基线: server.js 4 站点 + 无 v524 残留 + purge 双形态回
     assert.ok(!t.includes("const OLD_BASE = 'matchAll(/wealth:v521/g)'"), `${f} 的 OLD_BASE 仍停在 v521`);
   }
   const linter = readFileSync(path.join(__dirname, 'audit-v492-monthly-house-linter.test.mjs'), 'utf-8');
-  assert.ok(linter.includes("LATEST_CACHE_VER = 'v541'"), 'v492 linter LATEST_CACHE_VER 未前移至 v524');
+  assert.ok(linter.includes("LATEST_CACHE_VER = 'v542'"), 'v492 linter LATEST_CACHE_VER 未前移至 v524');
 });

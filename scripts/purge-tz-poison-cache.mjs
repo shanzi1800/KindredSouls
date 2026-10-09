@@ -109,6 +109,8 @@ const STALE_VERSION_PATTERNS = [
   'wealth:v539-v2:*',
   'wealth:v540:*',        // 🛡️ E32-C: v540 全量作废（TH 模板净化 + 月报「日期穿越」确定性病根治理 —— ① `yearlySystemTH.txt` 删 3 处年份字面量（预测期/仪表盘标题/月列表示例）+ 补唯一锚点 `[__SWISSEPH_FACT_SHEET__]` ⇒ TH 并入 E27 动态 FactSheet 锚点路径；② 月报 `SLIM_LANG_PACKS` 的 fr/es/th 周卡样例原**硬编码 8 月**（Août / Agosto / สิงหาคม）⇒ 改 `{MONTH}` 并在拼接处按报告当月**实填**（连 en/zh/vi 原本未被替换的 `{MONTH}` 字面量一并根治）；③ `normalizeReportTags` 陷阱卡原硬编码「Août 2026 / Agosto 2026」⇒ 改**原文月份优先 + 当月兜底** ⇒ 月报 + 年报 prompt 层内容变更、全量作废）
   'wealth:v540-v2:*',
+  'wealth:v541:*',        // 🛡️ E33: v541 全量作废（军师裁决 ③ 落地 —— 三语 Prompt 追加 V486c「句子骨架级重复惩罚」硬规则：① zh/en/th 各自在既有「严禁整句复读」之外，补一条**结构级**判据（旧规则盲区：换词不换骨架 = 12/12 同构，逐字去重完全抓不到）；② 同时 `auditYearlyStyleRepetition` 扩为**骨架级**监控（数字/日期/行星/星座/宫位号归一化后比对结构），严守「只检不改」（纯统计 + 日志，绝不回写正文）。system 层 Prompt 内容变更 ⇒ 生成结果会变 ⇒ 全量作废）
+  'wealth:v541-v2:*',
   'wealth:v116-v2:*',
 ];
 

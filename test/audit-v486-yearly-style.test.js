@@ -96,6 +96,20 @@ test('①b 提示词不得写入生产高危复读句当「反例」(V462 教训
   }
 });
 
+test('①d 三语必须含 V486c 句子骨架级重复惩罚规则(E33 军师裁决 ③-(b) 落地)', () => {
+  // 军师下旨: 采纳方案 (b) 强化 Prompt 硬规则 —— 在既有「严禁整句复读」之外,
+  // 补一条**结构级**判据(旧规则的盲区: 换词不换骨架 = 12/12 同构, 逐字去重完全抓不到)。
+  assert.ok(/V486c/.test(ZH) && /句子骨架级重复惩罚/.test(ZH), 'zh 缺 V486c 句子骨架级规则');
+  assert.ok(/V486c/.test(EN) && /SENTENCE-SKELETON REPETITION PENALTY/.test(EN), 'en 缺 V486c skeleton rule(en 为 fr/es/vi 回落源)');
+  assert.ok(/V486c/.test(TH) && /การซ้ำโครงประโยค/.test(TH), 'th 缺 V486c โครงประโยค rule');
+  // 三语都必须点明「相邻月份禁同骨架」这一机械可判点(否则规则退化成抽象号召 —— V486 的失败教训)
+  assert.ok(/相邻两个月不得用同一骨架起句/.test(ZH), 'zh 缺「相邻月份禁同骨架」机械判据');
+  assert.ok(/two ADJACENT months must not open with the same skeleton/.test(EN), 'en 缺 adjacent-month 判据');
+  assert.ok(/สองเดือนที่ติดกันห้ามขึ้นต้นด้วยโครงเดียวกัน/.test(TH), 'th 缺 adjacent-month 判据');
+  // 追加式强化 ⇒ 旧四条 token 必须仍在(叠加而非替换)
+  assert.ok(/严禁整句复读/.test(ZH) && /NO VERBATIM SENTENCE REUSE/i.test(EN), '1c 挤掉了 1 的「严禁整句复读」');
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 // ② 「只检不改」不变量: 函数不得改写正文, 调用方不得把返回值赋回文本
 // ══════════════════════════════════════════════════════════════════════════
@@ -164,6 +178,35 @@ test('③b 行为: 干净文本零报(阴性对照, 防闸门恒定红) + 幂等
   assert.strictEqual(f(null, 'zh', 'yearly'), null, 'null 必须返回 null(护栏)');
 });
 
+// ── E33: 骨架同构样本(每句的可变量都不同 ⇒ 逐字去重必为 0, 只有骨架审计能抓到) ──
+const SKELETON_DIRTY = Array.from({ length: 12 }, (_, i) =>
+  `### 2026年${i + 1}月: 概览\n流年太阳进入天秤座，点亮你的第${i + 1}宫——这是关于关系与契约的宫位。`).join('\n');
+
+test('③c 行为: 骨架级 —— 逐字各不相同但句式同构 ⇒ 逐字 0 / 骨架必报(E33 新增)', () => {
+  const f = loadAudit();
+  const before = String(SKELETON_DIRTY);
+  const r = f(SKELETON_DIRTY, 'zh', 'yearly');
+  assert.strictEqual(SKELETON_DIRTY, before, '骨架审计同样不得改动文本');
+  assert.strictEqual(r.dupTypes, 0,
+    `逐字去重对「换词不换骨架」必须无感(实得 ${r.dupTypes}) —— 这正是 V486 的盲区, 也是 E33 立项理由`);
+  assert.ok(r.skeletonTypes >= 1 && r.skeletonMaxRepeat >= 12,
+    `骨架审计必须抓到 12 月同构, 实得 ${JSON.stringify({ t: r.skeletonTypes, m: r.skeletonMaxRepeat })}`);
+  assert.ok(r.topSkeletons.length >= 1 && /·P·/.test(r.topSkeletons[0]),
+    `骨架摘要应含归一化占位符(数字/行星/星座/宫位号被替换), 实得 ${JSON.stringify(r.topSkeletons)}`);
+});
+
+test('③d 行为: 骨架审计阴性对照(干净文本零报) + EN 英文句号切分覆盖', () => {
+  const f = loadAudit();
+  const clean = '### 2026年7月\n流年太阳进入巨蟹座，点亮你的第八宫。资源结构开始重排。\n### 2026年8月\n木星把远方的门推开，跨界机会先行到账。';
+  assert.strictEqual(f(clean, 'zh', 'yearly').skeletonTypes, 0, '干净文本骨架不得报(防闸门恒定红)');
+  // EN 年报按英文句号断句 ⇒ 骨架监控必须覆盖(en/fr/es/vi 共用 en 模板); 旧 split 只认中文句号
+  const en = Array.from({ length: 5 }, (_, i) =>
+    `The transiting Sun enters Libra, lighting up your ${i + 1}th house — this is the house of partnership.`).join(' ');
+  const r = f(en, 'en', 'yearly');
+  assert.ok(r.skeletonTypes >= 1 && r.skeletonMaxRepeat >= 5,
+    `EN 骨架监控未生效(句号切分缺失?): ${JSON.stringify({ t: r.skeletonTypes, m: r.skeletonMaxRepeat })}`);
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 // ④ 接线: 只在「新生成」两条路径上跑(非流式 MISS + 流式落库前), 避免 HIT 噪音
 // ══════════════════════════════════════════════════════════════════════════
@@ -223,6 +266,22 @@ test('【注入】摘掉非流式接线 → ④ 必须红', () => {
   assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
   const hits = [...degraded.matchAll(/auditYearlyStyleRepetition\(\s*(\w+)\s*,\s*lang\s*,\s*reportType\s*\)/g)];
   assert.ok(!hits.map((m) => m[1]).includes('reportContent'), '注入后 ④ 应命中失败');
+});
+
+test('【注入】抹掉 zh 的 V486c 骨架规则 → ①d 必须红', () => {
+  const degraded = ZH.replace('句子骨架级重复惩罚', '句式多样性建议');
+  assert.notStrictEqual(degraded, ZH, '注入必须真的改变源码');
+  assert.ok(!/句子骨架级重复惩罚/.test(degraded), '注入后 ①d 判据应命中失败');
+});
+
+test('【注入】摘掉骨架累加 → ③c 必须红(证明骨架判据有牙)', () => {
+  const degraded = src.replace(
+    /\s*if \(sk\.length >= 8\) _skelSeen\.set\(sk, \(_skelSeen\.get\(sk\) \|\| 0\) \+ 1\);/,
+    '');
+  assert.notStrictEqual(degraded, src, '注入必须真的改变源码');
+  const f = loadAudit(degraded);
+  const r = f(SKELETON_DIRTY, 'zh', 'yearly');
+  assert.strictEqual(r.skeletonTypes, 0, '注入后 ③c 应命中失败(骨架却仍被捕获 ⇒ 判据空转)');
 });
 
 test('【注入】缓存版本降级一档 → ⑤ 必须红', () => {
