@@ -99,6 +99,19 @@ function getFamiliarScriptPath() {
   return candidates[0];
 }
 
+// 🛡️ E38-C/D：合婚引擎脚本路径（与 familiar_engine 同目录策略）
+function getSynastryScriptPath() {
+  const candidates = [
+    '/app/astro/synastry_engine.py',                        // Railway Docker
+    path.join(__dirname, 'astro', 'synastry_engine.py'),
+    path.join(process.cwd(), 'astro', 'synastry_engine.py'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0];
+}
+
 // ── 🛡️ V490: 时区无效的识别与上抛 ───────────────────────────────────────────
 // Python 侧 (astro/astro_matrix.py) 对无效 tz **显式失败**：stderr 打 INVALID_TIMEZONE
 // 且进程退出码 = 3。此处据此构造带 code 的错误，**绝不降级**（历史行为会把引擎失败
@@ -272,6 +285,12 @@ async function computeViaPython(birthDate, birthTime, lat, lon, tz, opts = {}) {
   if (natalData.house_cusps_full) matrix.meta.house_cusps_full = natalData.house_cusps_full;
   // 🛡️ E37/S1: 合并宫位主星真值（古典/现代双轨 + 庙旺陷落）—— 引擎唯一真源，前端零重算
   if (natalData.house_rulers) matrix.meta.house_rulers = natalData.house_rulers;
+  // 🛡️ E38-B: 合并本命 10 行星**绝对黄经**（[0,360)）—— 合婚双盘 Synastry 相位张量唯一真值。
+  //   直取引擎实算 `deg`，**绝不由 sign+degree 前端反算**（positions.degree 已被 round 到座内 2 位 ⇒ 反算失真）。
+  if (natalData.planet_longitudes && Object.keys(natalData.planet_longitudes).length > 0) {
+    matrix.meta.planet_longitudes = natalData.planet_longitudes;
+    console.log('[E38-B] Merged planet_longitudes:', Object.keys(natalData.planet_longitudes).join(','));
+  }
   // 🛠️ V143: 合并本命盘宫位映射 (computed_houses) —— Mode A 激活关键
   if (natalData.computed_houses && Object.keys(natalData.computed_houses).length > 0) {
     matrix.meta.computed_houses = natalData.computed_houses;
@@ -396,6 +415,30 @@ export function extractPlanetHouses(computedHouses) {
   return out;
 }
 
+/**
+ * 🛡️ E38-B：从本命盘 meta.planet_longitudes 提取「行星 → 绝对黄经 [0,360)」真值映射。
+ *
+ * 🔴 复用真值通路（严禁另起一套）：只认 astro_matrix.py::compute_natal_chart 的
+ *    planet_longitudes（SwissEph 本命盘实算的 `deg`），**不做任何二次推断/反算**。
+ *    仅接受 NATAL_PLANETS_ORDER 闭集内的行星名 + 有限数值（[0,360)）；
+ *    非法条目 / 非有限数（NaN/Infinity）⇒ 该条直接丢弃（缺真值 ⇒ 返回 {}），
+ *    交由 Python 合婚引擎显式 fail-closed —— 绝不伪造黄经（V490b / V492-D2 同源）。
+ *
+ * @param {object|null} planetLongitudes meta.planet_longitudes
+ * @returns {Object<string, number>} 如 { Sun: 213.4, Venus: 175.3 }
+ */
+export function extractPlanetLongitudes(planetLongitudes) {
+  const out = {};
+  if (!planetLongitudes || typeof planetLongitudes !== 'object') return out;
+  for (const [planet, value] of Object.entries(planetLongitudes)) {
+    if (!NATAL_PLANETS_ORDER.includes(planet)) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    const lon = ((value % 360) + 360) % 360;
+    out[planet] = Math.round(lon * 1e4) / 1e4;
+  }
+  return out;
+}
+
 export function extractNatalTriad(astroMatrix) {
   const meta = astroMatrix?.meta || {};
   const ch = meta.computed_houses || {};
@@ -410,6 +453,8 @@ export function extractNatalTriad(astroMatrix) {
     birthTimeKnown: typeof meta.birth_time_known === 'boolean' ? meta.birth_time_known : null,
     // 🐾 E38-A：宫内星真值（灵宠 5 维宫位微调的输入）；缺真值 ⇒ {}（零微调）
     planetHouses: extractPlanetHouses(ch),
+    // 🛡️ E38-B：本命 10 行星**绝对黄经**真值（合婚双盘 Synastry 输入）；缺真值 ⇒ {}
+    planetLongitudes: extractPlanetLongitudes(meta.planet_longitudes),
   };
 }
 
@@ -492,6 +537,69 @@ export async function getFamiliarProfile({
   } catch (e) {
     console.error('[E34-B1] familiar JSON parse failed:', (raw || '').slice(0, 120));
     throw new Error('FAMILIAR_JSON_PARSE_FAILURE: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E38-C/D · 合婚双盘（Synastry 相位张量 + 反向拟合虚拟星盘）
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * 调 astro/synastry_engine.py 计算「用户本命 × 四象人格」的反向拟合虚拟星盘
+ * （纯函数，零 LLM 参与）。
+ *
+ * 🔴 入参**通用解耦**（与 getFamiliarProfile 同纪律）：只收「本命 10 星绝对黄经真值 +
+ *    关系模式 + 宫内星真值」，不含任何业务线专有字段名 ⇒ 合婚线 / 未来字段对齐线可直接复用。
+ *
+ * 🔴 失败绝不静默返回 null（V490 / V492-D2 同源）：
+ *    - 输入非法（未知 relation_mode / 黄经真值全缺）⇒ 抛 code='SYNASTRY_INVALID_INPUT'
+ *    - 引擎故障 / JSON 坏 ⇒ 抛 SYNASTRY_ENGINE_FAILURE / SYNASTRY_JSON_PARSE_FAILURE
+ *    上层据此转 400 / 500，**绝不放行一份伪造虚拟星盘**。
+ *
+ * @param {object} p
+ * @param {Object<string,number>|null} p.planetLongitudes 本命 10 星绝对黄经（来自 extractNatalTriad）
+ * @param {string} p.relationMode  girlfriend | buddy | bestie | boyfriend
+ * @param {Object<string,number>|null} p.planetHouses 宫内星真值（算子强调宫位加权）；缺省不传
+ */
+export async function getSynastryProfile({
+  planetLongitudes = null,
+  relationMode = 'girlfriend',
+  planetHouses = null,
+} = {}) {
+  const scriptPath = getSynastryScriptPath();
+  const args = [
+    scriptPath,
+    '--mode', 'synergy',
+    '--relation-mode', String(relationMode),
+    '--natal-longitudes', JSON.stringify(planetLongitudes || {}),
+  ];
+  // 🐾 宫内星真值（仅在有可用条目时才传 —— 空对象等价于「不参与」）
+  if (planetHouses && typeof planetHouses === 'object' && Object.keys(planetHouses).length > 0) {
+    args.push('--planet-houses', JSON.stringify(planetHouses));
+  }
+
+  let raw;
+  try {
+    raw = execFileSync('python3', args, {
+      encoding: 'utf8',
+      timeout: 30000,          // 纯函数无星历重算，30s 足够
+      maxBuffer: 8 * 1024 * 1024,
+    }).trim();
+  } catch (e) {
+    const blob = `${e.stderr || ''}\n${e.message || ''}`;
+    if (Number(e.status) === 2 || /SYNASTRY_INVALID_INPUT/.test(blob)) {
+      const err = new Error('SYNASTRY_INVALID_INPUT: ' + blob.trim().slice(0, 300));
+      err.code = 'SYNASTRY_INVALID_INPUT';
+      throw err;
+    }
+    console.error('[E38-C/D] synastry engine failed:', e.message);
+    throw new Error('SYNASTRY_ENGINE_FAILURE: ' + e.message);
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('[E38-C/D] synastry JSON parse failed:', (raw || '').slice(0, 120));
+    throw new Error('SYNASTRY_JSON_PARSE_FAILURE: ' + e.message);
   }
 }
 

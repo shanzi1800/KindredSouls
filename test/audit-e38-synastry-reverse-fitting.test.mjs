@@ -1,12 +1,15 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🐾 E38 闸门：合婚双盘真值与反向合盘实体化 · 第一期
- *            「E38-A 四象算子精准化 + 宫位微调层」（第 18 道防线）
+ * 🐾 E38 闸门：合婚双盘真值与反向合盘实体化（第 18 道防线）
+ *   第一期「E38-A 四象算子精准化 + 宫位微调层」
+ *   第二期「E38-B 黄经真值贯通 + E38-C 相位张量 + E38-D 反向拟合闭环」
  * ═══════════════════════════════════════════════════════════════════════════
  * 立项（2026-10-09 军师《E38 合婚双盘真值与反向合盘实体化》开工令 · 三裁全准）：
  *   ① D1/D2/D3 三处口径差异闭合 —— 唯一真源 `RELATION_DECISION_OPERATORS` 精准化；
  *   ② 灵宠人格 5 维引入 `emphasis_houses` 微调（House Modifier，纯函数 0.10~0.20）；
  *   ③ 宫内星真值通路复用（`computed_houses` → 引擎），缺真值**零微调**，绝不伪造。
+ * 第二期（军师三阶段）：① 黄经真值贯通（`planet_longitudes` → 合婚引擎）
+ *   ② 双盘 Synastry 相位张量（Conj/Sxt/Sqr/Tri/Opp）③ 反向拟合实体化 ⇒ Virtual Natal Chart。
  *
  * 四路取证（**刻意避让 E32/E36 既有射程**：不重复声线矩阵、两槽契约、门控阵列）：
  *   A 源码级：算子精准化独立解析 + 三裁字面量正面证据 + 系数区间与牵引值域
@@ -371,3 +374,288 @@ test('D7 注入：缺真值守卫被破坏（planet_houses 缺省仍参与）⇒
   assert.throws(() => assertZeroModifierWhenNoTruth(prof),
     '判据失效: 缺真值却仍参与微调（零回归防线被突破）');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══ 第二期：E38-B 黄经真值贯通 + E38-C 相位张量 + E38-D 反向拟合闭环 ═══
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SYN_SRC = read('astro/synastry_engine.py');
+const MATRIX_SRC = read('astro/astro_matrix.py');
+const SYN_PATH = path.join(ROOT, 'astro', 'synastry_engine.py');
+const FAMILIAR_PATH = path.join(ROOT, 'astro', 'familiar_engine.py');
+
+// 真实本命十星绝对黄经（1990-08-05 14:30 @ 13.75N,100.5E Asia/Bangkok · SwissEph 实算）
+const SY_SAMPLE = {
+  Sun: 132.6353, Moon: 297.4658, Mercury: 159.148, Venus: 109.5248, Mars: 45.3241,
+  Jupiter: 117.1864, Saturn: 290.4838, Uranus: 276.2446, Neptune: 282.4049, Pluto: 224.9988,
+};
+
+// ── 独立几何真源（**与引擎各写一份**，互为独立判据；否则同源=自证自洽）──
+const SY_SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+const SY_ELEMENTS = ['fire', 'earth', 'air', 'water'];
+const SY_SWAP2 = { fire: 'air', air: 'fire', earth: 'water', water: 'earth' };
+const SY_HARMONIOUS = ['conjunction', 'sextile', 'trine'];
+const syIdx = (lon) => Math.floor((((lon % 360) + 360) % 360) / 30) % 12;
+const sySignOf = (lon) => SY_SIGNS[syIdx(lon)];
+const syElemOf = (lon) => SY_ELEMENTS[syIdx(lon) % 4];
+const syReachable = (elem) => [elem, SY_SWAP2[elem]].sort();
+
+/**
+ * 合婚结果合规判据（**同一份判据**服务正向断言与注入自测）。
+ * ① 闭合校验必须通过且预测相位零缺失；② 拟合**只采信调和相**；
+ * ③ 虚拟星元素必落在锚的「调和可达集」内；④ 偏好调和可达时必被采纳；
+ * ⑤ 快照（signs/elements/longitudes/assignments）互相一致。
+ */
+function assertSynastryCompliant(res) {
+  assert.ok(res && typeof res === 'object', '缺合婚结果');
+  assert.ok(res.closure && res.closure.ok === true, `闭合校验未通过: ${JSON.stringify(res.closure)}`);
+  assert.deepEqual(res.closure.missing, [], '预测相位未被独立复现（闭合失败）');
+  assert.ok(res.tensor && res.tensor.total > 0, '相位张量为空');
+  const vc = res.virtual_chart;
+  assert.ok(vc && vc.longitudes && Object.keys(vc.longitudes).length === 10, '虚拟星盘不齐备');
+  assert.deepEqual(vc.dropped, [], '真值齐备时不得有缺星');
+  const pref = res.decision_operators.element_preference;
+  for (const a of res.fit_assignments) {
+    assert.ok(SY_HARMONIOUS.includes(a.aspect), `${a.planet} 采信了非调和相 ${a.aspect}（调和优先被破坏）`);
+    const anchorLon = res.user_longitudes[a.anchor];
+    assert.equal(typeof anchorLon, 'number', `锚 ${a.anchor} 缺黄经真值`);
+    const reach = syReachable(syElemOf(anchorLon));
+    assert.ok(reach.includes(a.element),
+      `${a.planet} 结果元素 ${a.element} 越出调和可达集 ${JSON.stringify(reach)}（疑似硬相凑元素）`);
+    if (pref.some((e) => reach.includes(e))) {
+      assert.ok(pref.includes(a.element), `${a.planet} 偏好 ${JSON.stringify(pref)} 可达却未被采纳`);
+    }
+    assert.equal(a.element, syElemOf(a.longitude), `${a.planet} element 快照与黄经不一致`);
+    assert.equal(a.longitude, vc.longitudes[a.planet], `${a.planet} 分配黄经与虚拟盘不一致`);
+  }
+  for (const [p, lon] of Object.entries(vc.longitudes)) {
+    assert.equal(vc.elements[p], syElemOf(lon), `虚拟盘 ${p} element 快照漂移`);
+    assert.equal(vc.signs[p], sySignOf(lon), `虚拟盘 ${p} sign 快照漂移`);
+  }
+}
+
+/** 合婚源码不变式：唯一真源复用（禁第二份算子表）+ 调和优先的结构性保证 */
+function assertSourceSynastryInvariants(src) {
+  // ① 唯一真源：只**导入** familiar_engine.RELATION_DECISION_OPERATORS，禁复制第二份字面量
+  assert.ok(src.includes('from familiar_engine import'), '未复用 familiar_engine 唯一真源');
+  assert.ok(/RELATION_DECISION_OPERATORS/.test(src), '未引用唯一真源算子表');
+  assert.ok(!/^RELATION_DECISION_OPERATORS\s*[:=]/m.test(src),
+    '出现第二份 RELATION_DECISION_OPERATORS 字面量（复制=漂移=专利实施例证据链污染）');
+  // ② 元素几何真源
+  assert.ok(src.includes('ELEMENT_SWAP2'), '缺元素互换对真源');
+  assert.ok(src.includes('def harmonious_element_reachable'), '缺调和可达性纯函数');
+  // ③ 调和优先的**结构性**保证：硬相权重 × 元素加成 必须小于合相权重
+  const blk = src.slice(src.indexOf('ASPECT_FIT_WEIGHT'), src.indexOf('}', src.indexOf('ASPECT_FIT_WEIGHT')) + 1);
+  const w = (k) => { const m = blk.match(new RegExp(`'${k}':\\s*([0-9.]+)`)); return m ? Number(m[1]) : NaN; };
+  const bonusM = src.match(/ELEMENT_BONUS\s*=\s*([0-9.]+)/);
+  assert.ok(bonusM, '缺 ELEMENT_BONUS');
+  const bonus = Number(bonusM[1]);
+  assert.ok(bonus >= 1.0, `元素加成不得低于 1.0（实得 ${bonus}）`);
+  for (const k of ['conjunction', 'trine', 'sextile']) {
+    assert.ok(Number.isFinite(w(k)) && w(k) > 0, `ASPECT_FIT_WEIGHT.${k} 解析失败`);
+  }
+  for (const k of ['square', 'opposition']) {
+    assert.ok(Number.isFinite(w(k)), `ASPECT_FIT_WEIGHT.${k} 解析失败`);
+    assert.ok(w(k) * bonus < w('conjunction'),
+      `硬相 ${k} 权重 ${w(k)} × 加成 ${bonus} 不小于合相权重 ⇒ 「拟合只用调和相」不再结构性成立`);
+  }
+  assert.ok(src.includes('CLOSURE_MIN_HARMONIOUS'), '缺闭合校验调和相下界常量');
+}
+
+// ── 真实 CLI（synastry 纯函数，无 swisseph 依赖 ⇒ 裸 python3 即可）──
+function synCli(args, scriptAbs) {
+  const out = execFileSync('python3', [scriptAbs || SYN_PATH, ...args],
+    { cwd: ROOT, encoding: 'utf8', timeout: 30000 });
+  return JSON.parse(out);
+}
+const synOf = (mode, lons) => synCli(
+  ['--mode', 'synergy', '--relation-mode', mode, '--natal-longitudes', JSON.stringify(lons || SY_SAMPLE)]);
+
+/** 用**改写后的源码**跑真实合婚引擎（注入自测用；连同真源一起落在临时目录，不污染仓） */
+function runMutatedSynastry(src, args) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e38-syn-inject-'));
+  fs.copyFileSync(FAMILIAR_PATH, path.join(dir, 'familiar_engine.py'));
+  fs.writeFileSync(path.join(dir, 'synastry_engine.py'), src, 'utf8');
+  try {
+    return synCli(args, path.join(dir, 'synastry_engine.py'));
+  } finally {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* noop */ }
+  }
+}
+function synExitCode(args, scriptAbs) {
+  try {
+    execFileSync('python3', [scriptAbs || SYN_PATH, ...args], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
+    return 0;
+  } catch (e) { return Number(e.status); }
+}
+
+/** 以指定脚本为入口的退出码运行器（正向用真脚本，注入用变异脚本副本） */
+function synRunner(scriptAbs) {
+  return (args) => synExitCode(args, scriptAbs);
+}
+
+/** 真值纪律 fail-closed 判据（**同一份判据**服务正向断言与注入自测） */
+function assertTruthGuardedSynastry(run) {
+  const c1 = run(['--mode', 'synergy', '--natal-longitudes', '{}']);
+  assert.equal(c1, 2, `空黄经必须退出码 2 fail-closed（实得 ${c1} ⇒ 伪造虚拟星盘）`);
+  const c2 = run(['--mode', 'synergy', '--natal-longitudes', '{"Nibiru":1}']);
+  assert.equal(c2, 2, `闭集外行星必须退出码 2（实得 ${c2}）`);
+  const c3 = run(['--mode', 'synergy', '--relation-mode', 'pet', '--natal-longitudes', JSON.stringify(SY_SAMPLE)]);
+  assert.equal(c3, 2, `非法 relation_mode 必须退出码 2（实得 ${c3}）`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// E. E38-C/D 源码级：唯一真源复用 + 调和优先结构性不变式
+// ═══════════════════════════════════════════════════════════
+
+test('E1 合婚引擎存在且源码不变式成立（禁第二份算子表 / 调和优先结构性成立）', () => {
+  assert.ok(SYN_SRC.includes('def reverse_synergy'), '缺反向拟合主入口');
+  assert.ok(SYN_SRC.includes('def compute_synastry_tensor'), '缺相位张量测量函数');
+  assert.ok(SYN_SRC.includes('def fit_virtual_chart'), '缺虚拟星盘拟合函数');
+  assert.ok(SYN_SRC.includes('def verify_closure'), '缺闭合校验函数');
+  assertSourceSynastryInvariants(SYN_SRC);
+});
+
+test('E2 五相闭集与退出码契约落盘（Conj/Sxt/Sqr/Tri/Opp + 0/2/1）', () => {
+  for (const a of ['conjunction', 'sextile', 'square', 'trine', 'opposition']) {
+    assert.ok(SYN_SRC.includes(`'${a}'`), `相位闭集缺 ${a}`);
+  }
+  assert.ok(SYN_SRC.includes('SynastryInputError'), '缺输入非法异常类型');
+  assert.ok(/return 2/.test(SYN_SRC), '缺输入非法退出码 2（fail-closed）');
+  // 无参数运行 = 引擎自测（与 familiar_engine 同形态）
+  assert.ok(SYN_SRC.includes('_self_test()'), '缺引擎自测入口');
+});
+
+test('E3 引擎自测真实通过（相位闭集/真值纪律/反向拟合/闭合/算子实体化）', () => {
+  const out = execFileSync('python3', [SYN_PATH], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+  assert.ok(out.includes('全部自测通过'), `引擎自测未通过:\n${out.slice(-600)}`);
+});
+
+// ═══════════════════════════════════════════════════════════
+// F. E38-B/C/D 行为级：真实 CLI 出参
+// ═══════════════════════════════════════════════════════════
+
+test('F1 四象反向拟合真实出参合规（闭合 + 调和可达 + 偏好采纳）', () => {
+  for (const m of MODES) assertSynastryCompliant(synOf(m));
+});
+
+test('F2 四象虚拟星盘互异 + 调和分隔离（算子实体化非空转）', () => {
+  const lons = {};
+  const scores = {};
+  for (const m of MODES) {
+    const r = synOf(m);
+    lons[m] = JSON.stringify(r.virtual_chart.longitudes);
+    scores[m] = r.harmony.score;
+  }
+  assert.equal(new Set(Object.values(lons)).size, 4, '四象必须拟合出互异虚拟星盘');
+  assert.equal(new Set(Object.values(scores)).size, 4, `四象调和分未隔离: ${JSON.stringify(scores)}`);
+});
+
+test('F3 幂等 + 真值纪律 fail-closed（缺/非法黄经 ⇒ 退出码 2，绝不伪造）', () => {
+  assert.deepEqual(synOf('girlfriend'), synOf('girlfriend'), '反向拟合必须幂等');
+  assertTruthGuardedSynastry(synRunner(SYN_PATH));
+  assert.equal(synExitCode(['--mode', 'synergy']), 2, '缺 --natal-longitudes 必须退出码 2');
+  assert.equal(synExitCode(['--mode', 'synergy', '--natal-longitudes', '{bad']), 2, '非法 JSON 必须退出码 2');
+});
+
+// ═══════════════════════════════════════════════════════════
+// G. E38-B 链路级：astro_matrix → v69_client → 合婚引擎 黄经真值贯通
+// ═══════════════════════════════════════════════════════════
+
+test('G1 astro_matrix.py 本命出参新增 planet_longitudes（[0,360) 绝对黄经）', () => {
+  assert.ok(MATRIX_SRC.includes("'planet_longitudes': planet_longitudes"),
+    '本命出参未携带 planet_longitudes（E38-B 链路断点）');
+  assert.ok(/planet_longitudes\[name\] = round\(deg % 360\.0, 4\)/.test(MATRIX_SRC),
+    '黄经必须直取 SwissEph deg 归一化（不得由 sign+degree 反算）');
+});
+
+test('G2 v69_client 真值提取与合并（禁前端反算）', () => {
+  assert.ok(CLIENT_SRC.includes('export function extractPlanetLongitudes'), '缺黄经真值提取函数');
+  assert.ok(CLIENT_SRC.includes('planetLongitudes: extractPlanetLongitudes(meta.planet_longitudes)'),
+    'extractNatalTriad 未回传 planetLongitudes（链路断点）');
+  assert.ok(CLIENT_SRC.includes('matrix.meta.planet_longitudes = natalData.planet_longitudes'),
+    '未把引擎实算黄经合并进 meta（唯一真值通路）');
+  assert.ok(CLIENT_SRC.includes('export async function getSynastryProfile'), '缺合婚引擎调用封装');
+});
+
+test('G3 server.js 合婚端点透传黄经真值（预留 · 只读不落库）', () => {
+  assert.ok(SERVER_SRC.includes("app.post('/api/synastry/reverse-fit'"), '未预留合婚端点');
+  assert.ok(SERVER_SRC.includes('planetLongitudes: triad2.planetLongitudes'),
+    '合婚端点未透传黄经真值（E38-B 链路断点）');
+  assert.ok(SERVER_SRC.includes('getSynastryProfile'), '合婚端点未调用引擎封装');
+});
+
+test('G4 端到端：真实本命盘（SwissEph）→ 黄经 → 合婚引擎回传闭合虚拟星盘', async () => {
+  const client = await import(path.join(ROOT, 'v69_client.js'));
+  // 单元：黄经提取（闭集过滤 / 非有限数丢弃 / 400 归一化）
+  assert.deepEqual(client.extractPlanetLongitudes(null), {});
+  assert.deepEqual(client.extractPlanetLongitudes({ Sun: 400, Nibiru: 10, Moon: 'x', Venus: 90 }),
+    { Sun: 40, Venus: 90 }, '非法条目必须丢弃、越界必须归一化（绝不伪造）');
+  // 端到端：真实 spawn 引擎
+  const r = await client.getSynastryProfile({ planetLongitudes: SY_SAMPLE, relationMode: 'girlfriend' });
+  assertSynastryCompliant(r);
+  assert.deepEqual(r.decision_operators.element_preference, ['water', 'earth']);
+  // 空真值 ⇒ 引擎 fail-closed 上抛（绝不返回伪造虚拟星盘）
+  await assert.rejects(() => client.getSynastryProfile({ planetLongitudes: {}, relationMode: 'girlfriend' }),
+    (e) => e && e.code === 'SYNASTRY_INVALID_INPUT');
+});
+
+// ═══════════════════════════════════════════════════════════
+// H. 注入级：破坏调和优先 / 偏好参与 / 闭合 / 真值纪律 / 唯一真源 ⇒ 必红
+// ═══════════════════════════════════════════════════════════
+
+test('H1 注入：square 权重抬到 5.0 ⇒ 硬相凑元素，行为判据 + 源码不变式双双必红', () => {
+  const broken = SYN_SRC.replace("'square':      0.35,", "'square':      5.00,");
+  assert.notEqual(broken, SYN_SRC, '注入未生效（square 权重锚点漂移？）');
+  assert.throws(() => assertSourceSynastryInvariants(broken), '源码不变式失效: 硬相权重越界未被识别');
+  assert.throws(() => assertSynastryCompliant(runMutatedSynastry(broken,
+    ['--mode', 'synergy', '--relation-mode', 'boyfriend', '--natal-longitudes', JSON.stringify(SY_SAMPLE)])),
+    '行为判据失效: 拟合采信硬相未被识别');
+});
+
+test('H2 注入：ELEMENT_BONUS 抹平为 1.0 ⇒ 元素偏好空转，判据必红', () => {
+  const broken = SYN_SRC.replace('ELEMENT_BONUS = 1.60', 'ELEMENT_BONUS = 1.00');
+  assert.notEqual(broken, SYN_SRC, '注入未生效（元素加成锚点漂移？）');
+  assert.throws(() => assertSynastryCompliant(runMutatedSynastry(broken,
+    ['--mode', 'synergy', '--relation-mode', 'boyfriend', '--natal-longitudes', JSON.stringify(SY_SAMPLE)])),
+    '判据失效: 偏好调和可达却未被采纳（元素偏好空转未被识别）');
+});
+
+test('H3 注入：闭合校验预测三元组序对调 ⇒ 闭合判据必红（自证自洽防线）', () => {
+  const broken = SYN_SRC.replace(
+    "predicted = [(a['anchor'], a['planet'], a['aspect']) for a in assignments]",
+    "predicted = [(a['planet'], a['anchor'], a['aspect']) for a in assignments]");
+  assert.notEqual(broken, SYN_SRC, '注入未生效（闭合预测序锚点漂移？）');
+  assert.throws(() => assertSynastryCompliant(runMutatedSynastry(broken,
+    ['--mode', 'synergy', '--relation-mode', 'girlfriend', '--natal-longitudes', JSON.stringify(SY_SAMPLE)])),
+    '判据失效: 闭合缺失未被识别（假绿）');
+});
+
+test('H4 注入：真值守卫被拆（空黄经 ⇒ 伪造一颗星）⇒ fail-closed 判据必红', () => {
+  const broken = SYN_SRC.replace(
+    "    lons = normalize_longitudes(raw)\n    if not lons:",
+    "    lons = normalize_longitudes(raw)\n    if not lons:\n        return {'Sun': 0.0}\n    if False:");
+  assert.notEqual(broken, SYN_SRC, '注入未生效（真值守卫锚点漂移？）');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e38-syn-inject-'));
+  fs.copyFileSync(FAMILIAR_PATH, path.join(dir, 'familiar_engine.py'));
+  fs.writeFileSync(path.join(dir, 'synastry_engine.py'), broken, 'utf8');
+  try {
+    const run = synRunner(path.join(dir, 'synastry_engine.py'));
+    // 正向：注入后引擎对空真值不再 fail-closed（改出假绿）
+    assert.equal(run(['--mode', 'synergy', '--natal-longitudes', '{}']), 0,
+      '注入未生效: 空黄经仍被拒绝');
+    // 判据必须咬住这个假绿
+    assert.throws(() => assertTruthGuardedSynastry(run),
+      '判据失效: 空黄经伪装成成功未被识别（fail-closed 防线被突破）');
+  } finally {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* noop */ }
+  }
+});
+
+test('H5 注入：新增第二份 RELATION_DECISION_OPERATORS 字面量 ⇒ 唯一真源判据必红', () => {
+  const broken = `${SYN_SRC}\n\nRELATION_DECISION_OPERATORS = {'pet': {}}\n`;
+  assert.throws(() => assertSourceSynastryInvariants(broken),
+    '判据失效: 第二份算子表未被识别（唯一真源被污染）');
+});
+

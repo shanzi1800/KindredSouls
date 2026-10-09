@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash, timingSafeEqual } from 'crypto';   // 🛡️ E30: 补 timingSafeEqual（clear-cache 端点常量时间鉴权）
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad, getSynastryProfile } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -13800,6 +13800,111 @@ app.post('/api/familiar/adopt', async (req, res) => {
   } catch (e) {
     console.error('[E34-B4] adopt error:', e && e.message);
     return res.status(500).json({ success: false, code: 'FAMILIAR_ADOPT_ERROR', error: e && e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🌌 E38-C/D：合婚双盘反向拟合端点 · POST /api/synastry/reverse-fit（预留）
+//   依据：军师《E38 合婚双盘真值与反向合盘实体化》开工令（三裁全准）2026-10-09
+//         —— ③「RELATION_DECISION_OPERATORS **实体化** ⇒ Virtual Natal Chart」。
+//
+//   🔴 入参**通用解耦**（与 /api/familiar/adopt 同纪律）：只收「出生时空 + 关系模式」，
+//      **不含任何业务线专有字段名**（无 wealth* / 无 reportType）⇒ 合婚产品线上线时可直接复用。
+//
+//   🔴 真值通路**唯一**：复用 getAstroMatrix（v69_client 既有星历真源）
+//      + extractNatalTriad（与 buildNatalAnchors 逐字同源）取本命 10 星**绝对黄经**
+//      （astro_matrix.py::planet_longitudes）⇒ 合婚引擎。禁另起一套推断/反算。
+//
+//   🔴 只读计算端点：**不写库**（本期预留；无任何持久化副作用 ⇒ 无「活体洞」面）。
+//   ⚠️ 与灵宠端点同策：匿名可用（纯函数、零 LLM、零密钥），但输入校验 fail-closed；
+//      严禁任何前端可控的特权开关。
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/synastry/reverse-fit', async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    // ── ① 入参校验（通用字段名，业务线无关）──
+    const birthDate = String(body.birthDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+      return res.status(400).json({ success: false, code: 'INVALID_BIRTH_DATE', error: 'birthDate must be YYYY-MM-DD' });
+    }
+    const rawBirthTime = body.birthTime == null ? '' : String(body.birthTime).trim();
+    const relationMode = String(body.relationMode || '').trim() || 'girlfriend';
+    if (!FAMILIAR_RELATION_MODES.has(relationMode)) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_RELATION_MODE',
+        error: `relationMode must be one of ${[...FAMILIAR_RELATION_MODES].join(', ')}`,
+      });
+    }
+
+    // ── ② 真值前置两关（与财富线同源：时区 → 坐标，绝不静默降级）──
+    const _tzr2 = resolveTimeZone(body.tz, body.lat, body.lon);
+    if (!_tzr2.ok) {
+      console.warn(`[E38-CD] TZ_REJECTED input=${JSON.stringify(body.tz)} → HTTP 400`);
+      return res.status(400).json({ success: false, code: 'INVALID_TIMEZONE', error: `Invalid time zone: ${body.tz}` });
+    }
+    const tz2 = _tzr2.tz;
+    const _coord2 = resolveCoordinates(body.lat, body.lon);
+    if (!_coord2.ok) {
+      console.warn(`[E38-CD] COORD_REJECTED lat=${JSON.stringify(body.lat)} lon=${JSON.stringify(body.lon)} → HTTP 400`);
+      return res.status(400).json(invalidCoordinatesBody(_coord2.message));
+    }
+    const lat2 = _coord2.lat;
+    const lon2 = _coord2.lon;
+
+    // ── ③ 星盘真值（唯一通路）──
+    const _btForEngine2 = rawBirthTime.length > 0 ? rawBirthTime : undefined;
+    let astroMatrix2;
+    try {
+      astroMatrix2 = await getAstroMatrix(birthDate, _btForEngine2, lat2, lon2, tz2, {});
+    } catch (e) {
+      if (e && (e.code === 'INVALID_TIMEZONE' || e.code === 'INVALID_COORDINATES')) {
+        return res.status(400).json({ success: false, code: e.code, error: e.message });
+      }
+      throw e;
+    }
+    if (!astroMatrix2) {
+      return res.status(503).json({ success: false, code: 'ASTRO_ENGINE_UNAVAILABLE', error: 'astro matrix unavailable' });
+    }
+
+    const triad2 = extractNatalTriad(astroMatrix2);
+
+    // ── ④ 引擎算反向拟合虚拟星盘（纯函数，零 LLM 参与）──
+    let synergy;
+    try {
+      synergy = await getSynastryProfile({
+        planetLongitudes: triad2.planetLongitudes,
+        relationMode,
+        planetHouses: triad2.planetHouses,
+      });
+    } catch (e) {
+      const code = (e && e.code) || '';
+      if (code === 'SYNASTRY_INVALID_INPUT') {
+        // 黄经真值全缺 / 非法模式 —— 如实 400，绝不放行伪造虚拟星盘
+        return res.status(400).json({ success: false, code, error: e.message });
+      }
+      console.error('[E38-CD] synastry engine failure:', e && e.message);
+      return res.status(503).json({ success: false, code: 'SYNASTRY_ENGINE_UNAVAILABLE', error: (e && e.message) || 'engine failure' });
+    }
+
+    console.log(`[E38-CD] reverse-fit mode=${relationMode} closure=${synergy.closure && synergy.closure.ok} total=${synergy.tensor && synergy.tensor.total}`);
+    return res.json({
+      success: true,
+      persisted: false,          // 🔴 本期预留：只算不存
+      relation_mode: relationMode,
+      synergy,
+      triad: {
+        sunSign: triad2.sunSign || null,
+        moonSign: triad2.moonSign || null,
+        ascSign: triad2.ascSign || null,
+        risingSource: triad2.risingSource || null,
+        birthTimeKnown: triad2.birthTimeKnown,
+      },
+    });
+  } catch (e) {
+    console.error('[E38-CD] reverse-fit error:', e && e.message);
+    return res.status(500).json({ success: false, code: 'SYNASTRY_ENDPOINT_ERROR', error: e && e.message });
   }
 });
 

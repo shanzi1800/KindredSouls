@@ -1213,6 +1213,10 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
     }
     
     positions = {}
+    # 🛡️ E38-B: 行星**绝对黄经**（[0,360)，4 位小数）—— 合婚双盘 Synastry 相位张量的唯一真值来源。
+    #   加法式新键（既有闸门无「精确键集」断言 ⇒ 零回归）；直取 SwissEph `deg`，**不经 sign+degree 反算**
+    #   （positions[name]['degree'] 已被 round 到座内 2 位小数，反算会引入精度损失）。
+    planet_longitudes = {}
     for name, pid in planets.items():
         deg, speed = get_planet_pos(jd_birth, pid)
         sign = get_sign(deg)
@@ -1223,6 +1227,7 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
             'house': house,
             'retrograde': is_retrograde(speed),
         }
+        planet_longitudes[name] = round(deg % 360.0, 4)
     
     # Build computed_houses dict
     computed_houses = {}
@@ -1243,6 +1248,8 @@ def compute_natal_chart(birth_date: str, birth_time: str = '12:00',
         'lon': lon,
         'tz': tz,
         'computed_houses': computed_houses,
+        # 🛡️ E38-B: 行星绝对黄经（[0,360)）—— 合婚双盘 Synastry 相位张量真值
+        'planet_longitudes': planet_longitudes,
         'house_cusps': [round(c, 4) for c in house_cusps],
         'house_cusps_full': {
             f'house_{i+1}': {
