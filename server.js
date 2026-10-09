@@ -13712,6 +13712,9 @@ app.post('/api/familiar/adopt', async (req, res) => {
         timeUncertain,
         natalHash,
         userName: body.userName ? String(body.userName).slice(0, 64) : null,
+        // 🐾 E38-A：宫内星真值（本命实算 computed_houses ⇒ 灵宠 5 维宫位微调）
+        //    复用 extractNatalTriad 唯一通路；无真值 ⇒ {} ⇒ 引擎侧零微调
+        planetHouses: triad.planetHouses,
       });
     } catch (e) {
       const code = (e && e.code) || '';

@@ -201,22 +201,38 @@ test('C2 四象声线确定性：emotional_tone 四值互异且在网关闭集�
   assert.equal(voices.size, 4, '四象声线 ID 必须两两互异');
 });
 
-test('C3 🔴 四象决策算子权重隔离（专利级 Reverse Synergy）', () => {
+test('C3 🔴 四象决策算子权重隔离（专利级 Reverse Synergy · E38-A 元素偏好纳入签名）', () => {
   const sig = {};
   for (const m of MODES) {
     const ops = profileOf(m).decision_operators;
     assert.ok(ops && typeof ops === 'object', `${m} 缺 decision_operators`);
     assert.ok(Array.isArray(ops.primary_factors) && ops.primary_factors.length > 0, `${m} 主因子缺失`);
     assert.ok(Array.isArray(ops.emphasis_houses) && ops.emphasis_houses.length > 0, `${m} 重点宫位缺失`);
+    assert.ok(Array.isArray(ops.element_preference) && ops.element_preference.length === 2,
+      `${m} 元素偏好缺失或非 2 项（E38-A / D3）`);
     assert.ok(typeof ops.intent_zh === 'string' && ops.intent_zh.length > 0, `${m} 缺决策意图`);
-    sig[m] = JSON.stringify([ops.primary_factors, ops.emphasis_houses]);
+    sig[m] = JSON.stringify([ops.primary_factors, ops.emphasis_houses, ops.element_preference]);
   }
   assert.equal(new Set(Object.values(sig)).size, 4, `四象算子未隔离: ${JSON.stringify(sig)}`);
   // 抽验两侧关键因子（与主公圣旨逐条对应）
   assert.deepEqual(profileOf('girlfriend').decision_operators.primary_factors, ['venus', 'mars', 'moon']);
   assert.deepEqual(profileOf('buddy').decision_operators.emphasis_houses, [11, 3]);
-  assert.deepEqual(profileOf('boyfriend').decision_operators.primary_factors, ['sun', 'jupiter']);
+  assert.deepEqual(profileOf('boyfriend').decision_operators.primary_factors, ['sun', 'jupiter', 'venus']); // E38-A / D2
   assert.deepEqual(profileOf('bestie').decision_operators.primary_factors, ['mercury', 'moon']);
+  // ── E38-A 追加：D1 女友补 5 宫 + D3 四象元素偏好（闭集 / 恰 2 项 / 两两互异）──
+  assert.deepEqual(profileOf('girlfriend').decision_operators.emphasis_houses, [7, 5], 'D1 女友缺第 5 宫');
+  const EXPECT_EL = {
+    girlfriend: ['water', 'earth'], buddy: ['fire', 'air'],
+    bestie: ['air', 'water'], boyfriend: ['fire', 'earth'],
+  };
+  const elSets = new Set();
+  for (const m of MODES) {
+    const el = profileOf(m).decision_operators.element_preference;
+    assert.deepEqual(el, EXPECT_EL[m], `${m} 元素偏好不符（E38-A / D3）`);
+    assert.ok(el.every((x) => ['fire', 'earth', 'air', 'water'].includes(x)), `${m} 元素越出闭集`);
+    elSets.add(JSON.stringify(el));
+  }
+  assert.equal(elSets.size, 4, '四象元素偏好必须两两互异（同质化 ⇒ 实施例退化）');
 });
 
 test('C4 引擎四表键集不变式（配色/算子/声线不得漏项）', () => {
@@ -224,6 +240,15 @@ test('C4 引擎四表键集不变式（配色/算子/声线不得漏项）', () 
     '引擎缺四表键集一致性不变式（漏项会让人格静默拿不到配色/声线/算子）');
   assert.match(ENGINE_SRC, /== set\(RELATION_DECISION_OPERATORS\) == set\(RELATION_VOICE_MATRIX\)\)/,
     '不变式未覆盖决策算子与声线矩阵');
+  // 🐾 E38-A：元素偏好闭集不变式必须**定义且被调用**（防「写了校验却忘了跑」）
+  assert.ok(ENGINE_SRC.includes('def _assert_element_preference_invariants'),
+    '引擎缺元素偏好闭集不变式（E38-A / D3）');
+  assert.ok(ENGINE_SRC.includes('_assert_element_preference_invariants()'),
+    '元素偏好不变式定义了却未被调用 ⇒ 形同虚设');
+  // 🔴 E38-A：宫位微调层必须存在且系数落在军师令区间
+  assert.match(ENGINE_SRC, /HOUSE_MODIFIER_COEFF = 0\.1[0-9]|HOUSE_MODIFIER_COEFF = 0\.20/,
+    '引擎缺宫位微调系数（或系数越出 0.10~0.20 区间）');
+  assert.ok(ENGINE_SRC.includes('def house_modifier_delta'), '引擎缺宫位微调纯函数');
 });
 
 test('C5 转换器本批恒 inert，无真值显式 null（绝不伪造）', () => {
@@ -242,7 +267,7 @@ test('C6 转换器只读消费算子：真值块零自造权重表（自指悖�
     const t = L.trim();
     return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
   }).join('\n');
-  for (const banned of ['primary_factors:', 'emphasis_houses:', 'RELATION_DECISION_OPERATORS =']) {
+  for (const banned of ['primary_factors:', 'emphasis_houses:', 'element_preference:', 'RELATION_DECISION_OPERATORS =']) {
     assert.ok(!codeOnly.includes(banned), `转换器真值块出现自造算子表: ${banned}`);
   }
   assert.ok(TRANSLATOR_SRC.includes('只读消费'), '转换器缺「只读消费」纪律声明（正面证据）');

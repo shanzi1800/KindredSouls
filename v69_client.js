@@ -375,6 +375,27 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
 //   ⚠️ 真值缺失返回 null（不返回 '?'）—— 由 familiar_engine 显式降级，
 //      绝不静默伪造（V492/D2）。
 // ═══════════════════════════════════════════════════════════════════════════
+/**
+ * 🐾 E38-A：从本命盘 computed_houses 提取「行星 → 宫位」真值映射。
+ *
+ * 🔴 复用真值通路（严禁另起一套）：只认 astro_matrix.py::compute_natal_chart 的
+ *    computed_houses（SwissEph 本命盘实算结果），**不做任何二次推断/兜底**。
+ *    无真值 / 非对象 / 宫位非 1~12 整数 ⇒ 该条直接丢弃（缺真值 ⇒ 返回 {}），
+ *    交由 Python 引擎退化为「零宫位微调」—— 绝不伪造宫位（V490b / V492-D2 同源）。
+ *
+ * @param {object|null} computedHouses meta.computed_houses
+ * @returns {Object<string, number>} 如 { Sun: 4, Moon: 9, Venus: 7 }
+ */
+export function extractPlanetHouses(computedHouses) {
+  const out = {};
+  if (!computedHouses || typeof computedHouses !== 'object') return out;
+  for (const [planet, info] of Object.entries(computedHouses)) {
+    const h = info && typeof info === 'object' ? info.house : null;
+    if (Number.isInteger(h) && h >= 1 && h <= 12) out[planet] = h;
+  }
+  return out;
+}
+
 export function extractNatalTriad(astroMatrix) {
   const meta = astroMatrix?.meta || {};
   const ch = meta.computed_houses || {};
@@ -387,6 +408,8 @@ export function extractNatalTriad(astroMatrix) {
     risingSource: meta.rising_sign_source || null,
     // 🛡️ 唯一权威判据（v69_client 合并本命盘时写入 meta.birth_time_known）
     birthTimeKnown: typeof meta.birth_time_known === 'boolean' ? meta.birth_time_known : null,
+    // 🐾 E38-A：宫内星真值（灵宠 5 维宫位微调的输入）；缺真值 ⇒ {}（零微调）
+    planetHouses: extractPlanetHouses(ch),
   };
 }
 
@@ -413,6 +436,9 @@ export function extractNatalTriad(astroMatrix) {
  * @param {boolean} p.timeUncertain   无精准出生时间 ⇒ 外观层显式降级
  * @param {string} p.natalHash        星盘快照 Hash（改生日需重孵的判据）
  * @param {string|null} p.userName    用户自定义灵宠名（缺省用所选 IP 默认名）
+ * @param {Object<string,number>|null} p.planetHouses
+ *        🐾 E38-A：宫内星真值 {行星名: 宫位号}（来自 extractNatalTriad，本命实算）；
+ *        缺省 / 空 ⇒ **不传该参数** ⇒ 引擎退化为零宫位微调（绝不伪造）。
  */
 export async function getFamiliarProfile({
   sunSign = null,
@@ -422,6 +448,7 @@ export async function getFamiliarProfile({
   timeUncertain = false,
   natalHash = '',
   userName = null,
+  planetHouses = null,
 } = {}) {
   const scriptPath = getFamiliarScriptPath();
   // 🛡️ 用 execFileSync（**不经 shell**）：userName / 星座名可能含非 ASCII，
@@ -437,6 +464,10 @@ export async function getFamiliarProfile({
   if (timeUncertain) args.push('--time-uncertain');
   if (natalHash) args.push('--natal-hash', String(natalHash));
   if (userName) args.push('--user-name', String(userName));
+  // 🐾 E38-A：宫内星真值（仅在有可用条目时才传 —— 空对象等价于「不参与」）
+  if (planetHouses && typeof planetHouses === 'object' && Object.keys(planetHouses).length > 0) {
+    args.push('--planet-houses', JSON.stringify(planetHouses));
+  }
 
   let raw;
   try {

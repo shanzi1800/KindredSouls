@@ -23,7 +23,7 @@ E34-B1 变更（2026-10-09 军师开工令）:
      transit（行运）**预留挂点**，后续按用户时间星盘决定颜色，前端无需改码。
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 # ═══════════════════════════════════════════════════════════════
 # 星座 → 元素映射（与 astro_matrix.py SIGN_ELEMENTS 逐项一致，禁漂移）
@@ -103,44 +103,60 @@ RELATION_PALETTE = {
 
 
 # ═══════════════════════════════════════════════════════════════
-# 0b. 四象决策算子（E36）· 专利级「真值驱动决策（Reverse Synergy）」唯一真源
-#   依据：军师《Soul OS 具身决策与 Agent 执行中枢预留战备号令》2026-10-09
-#         （主公圣旨：用户的信任只给懂他命运的灵魂 —— 巨头做「手脚」，我们做「脑核」）
+# 0b. 四象决策算子（E36 立 · E38-A 精准化）
+#     · 专利级「真值驱动决策（Reverse Synergy）」唯一真源
+#   依据一：军师《Soul OS 具身决策与 Agent 执行中枢预留战备号令》2026-10-09
+#          （主公圣旨：用户的信任只给懂他命运的灵魂 —— 巨头做「手脚」，我们做「脑核」）
+#   依据二：军师《E38 合婚双盘真值与反向合盘实体化》开工令 2026-10-09（三裁全准）
 #
 #   🔴 唯一真源纪律：本表是全仓**唯一**一份四象算子权重表。
 #      embodied/core/intent_translator.js 及任何前端 **只读消费**，严禁复制第二份
 #      （复制 = 漂移 = 专利实施例证据链被污染）。
 #   🔴 本表决定「反向相位拟合」时抬高哪些因子的权重：
-#        女友   → 金/火/月 + 7 宫（吸引与情感互补）
+#        女友   → 金/火/月 + 7/5 宫（吸引、恋爱激情与情感互补）
 #        哥们儿 → 日/火   + 11/3 宫（同频义气与事业共振）
-#        男友   → 日/木   + 7/5 宫（庇护偏爱与安全感）
+#        男友   → 日/木/金 + 7/5 宫（庇护偏爱与安全感）
 #        闺蜜   → 水/月   + 3/11 宫（敏锐共鸣与情绪解压）
-#   ⚠️ 本期仅冻结**算子权重结构**，真实相位求解依赖合婚线双盘字段对齐（E35-C 前置）。
+#   🔴 E38-A 军师裁决（D1 / D2 / D3 三处对账差异，全部采纳并闭合）：
+#        D1 girlfriend.emphasis_houses  [7] → [7, 5]
+#           （7 宫主婚姻正缘与契约互补，5 宫主恋爱激情与浪漫吸引 ——
+#             缺 5 宫则吸引力算子只剩「老夫老妻的契约」）
+#        D2 boyfriend.primary_factors  ['sun','jupiter'] → ['sun','jupiter','venus']
+#           （太阳给安全感、木星给庇护，而金星才是「心动 / 爱情荷尔蒙」的绝对核心）
+#        D3 四象新增 element_preference（元素偏好）—— **结构扩展**，
+#           须同批前移 audit-e36 C3/C6 与 embodied D4 的算子签名/禁词射程
+#   ⚠️ 本期仍只冻结**算子权重结构**；真实相位求解（双盘 Synastry 张量 + 反向拟合
+#      虚拟星盘 Virtual Natal Chart）由 **E38-C / E38-D** 承接
+#      （前置底座：E37 已备齐 12 宫头 / 宫主星 / 庙旺陷落）。
 # ═══════════════════════════════════════════════════════════════
 
 RELATION_DECISION_OPERATORS = {
     'girlfriend': {
         'intent_zh': '情感互补与吸引',
         'primary_factors': ['venus', 'mars', 'moon'],
-        'emphasis_houses': [7],
+        'emphasis_houses': [7, 5],                  # D1：7=婚姻正缘契约 / 5=恋爱激情浪漫
+        'element_preference': ['water', 'earth'],   # D3：柔情治愈 + 稳固安全感
         'tone': 'tender',
     },
     'buddy': {
         'intent_zh': '同频义气与事业共振',
         'primary_factors': ['sun', 'mars'],
         'emphasis_houses': [11, 3],
+        'element_preference': ['fire', 'air'],      # D3：炽热义气 + 干练思维
         'tone': 'upright',
     },
     'bestie': {
         'intent_zh': '敏锐共鸣与情绪解压',
         'primary_factors': ['mercury', 'moon'],
         'emphasis_houses': [3, 11],
+        'element_preference': ['air', 'water'],     # D3：灵动通透 + 情绪共鸣
         'tone': 'lively',
     },
     'boyfriend': {
         'intent_zh': '庇护偏爱与安全感',
-        'primary_factors': ['sun', 'jupiter'],
+        'primary_factors': ['sun', 'jupiter', 'venus'],   # D2：太阳=安全 / 木星=庇护 / 金星=心动
         'emphasis_houses': [7, 5],
+        'element_preference': ['fire', 'earth'],    # D3：行动力守护 + 坚实靠谱
         'tone': 'protective',
     },
 }
@@ -161,6 +177,27 @@ RELATION_VOICE_MATRIX = {
 assert (set(RELATION_MODES) == set(RELATION_PALETTE)
         == set(RELATION_DECISION_OPERATORS) == set(RELATION_VOICE_MATRIX)), \
     'familiar_engine: 四象表键集不一致（RELATION_MODES / PALETTE / DECISION_OPERATORS / VOICE_MATRIX）'
+
+
+# 🔴 E38-A：元素偏好闭集不变式 —— 每象恰 2 项、⊆ 闭集、且四象两两互异。
+#   动因：偏好同质化会让四个人格的「元素亲和」失去区分度 ⇒ 专利实施例退化。
+ELEMENT_PREFERENCE_DOMAIN: Tuple[str, ...] = ('fire', 'earth', 'air', 'water')
+
+
+def _assert_element_preference_invariants() -> None:
+    """元素偏好 fail-fast 校验（模块导入即执行；供闸门以源码正则同源断言）。"""
+    for _mode, _op in RELATION_DECISION_OPERATORS.items():
+        _els = _op.get('element_preference')
+        assert isinstance(_els, list) and len(_els) == 2, \
+            f'familiar_engine: {_mode} element_preference 必须恰为 2 项'
+        assert set(_els) <= set(ELEMENT_PREFERENCE_DOMAIN), \
+            f'familiar_engine: {_mode} element_preference 含闭集外元素 {_els}'
+    _sets = [tuple(_op['element_preference']) for _op in RELATION_DECISION_OPERATORS.values()]
+    assert len(set(_sets)) == len(_sets), \
+        f'familiar_engine: 四象元素偏好必须两两互异: {_sets}'
+
+
+_assert_element_preference_invariants()
 
 
 
@@ -211,6 +248,114 @@ def resolve_familiar_palette(
         out['source'] = 'relation'
 
     return out
+
+
+# ═══════════════════════════════════════════════════════════════
+# 0c. 宫位微调层（E38-A）· House Modifier —— 被强调宫位内的行星 ⇒ 5 维微调
+#   依据：军师 2026-10-09《E38 合婚双盘真值与反向合盘实体化》开工令第 3 项：
+#         「灵宠人格 5 维是否引入 emphasis_houses 修正项 —— **坚决引入！**」
+#   原理：日/月/升只给宏观大框架；若算子强调的宫位（女友/男友 7+5、哥们 11+3、
+#         闺蜜 3+11）内有强星落入，灵宠的黏人度 / 话痨度 / 治愈度理应随该宫位
+#         能量做微调加权（House Modifier）。
+#   🔴 工程约束（军师令）：纯函数推导；加权系数落 **0.10 ~ 0.20** 区间；
+#      单维总修正上限 ≤ HOUSE_MODIFIER_CAP —— 体现宫位深度，决不喧宾夺主
+#      颠覆日月升基调。
+#   🔴 真值纪律：未提供 planet_houses ⇒ 修正**恒 0**（不降级、不编造；
+#      与 resolve_familiar_palette 的 transit 参数同构：缺省即不参与运算）。
+#      ⚠️ 也因此**不改动** degraded 清单（缺省输入非「真值缺失故障」）。
+# ═══════════════════════════════════════════════════════════════
+
+HOUSE_MODIFIER_COEFF = 0.15   # 单颗宫内强调行星的单位牵引系数（军师令区间 0.10~0.20）
+HOUSE_MODIFIER_CAP = 20       # 单维总修正上限（0~100 制下的「微调」天花板）
+
+# 行星 → 五维单位牵引（离散闭集 {±1, ±0.5, 0}：可断言、可审计、禁连续魔数）
+PLANET_DIM_PULL: Dict[str, Dict[str, float]] = {
+    'Sun':     {'talkative': +1.0, 'clingy': 0.0, 'moody': 0.0, 'sarcastic': 0.0, 'healing': +0.5},
+    'Moon':    {'talkative': 0.0, 'clingy': +1.0, 'moody': +1.0, 'sarcastic': 0.0, 'healing': +0.5},
+    'Mercury': {'talkative': +1.0, 'clingy': 0.0, 'moody': 0.0, 'sarcastic': +1.0, 'healing': 0.0},
+    'Venus':   {'talkative': +0.5, 'clingy': +1.0, 'moody': 0.0, 'sarcastic': -0.5, 'healing': +1.0},
+    'Mars':    {'talkative': +0.5, 'clingy': -0.5, 'moody': +0.5, 'sarcastic': +1.0, 'healing': -0.5},
+    'Jupiter': {'talkative': +0.5, 'clingy': 0.0, 'moody': 0.0, 'sarcastic': 0.0, 'healing': +1.0},
+    'Saturn':  {'talkative': -0.5, 'clingy': -0.5, 'moody': +0.5, 'sarcastic': +0.5, 'healing': 0.0},
+    'Uranus':  {'talkative': +0.5, 'clingy': -1.0, 'moody': -0.5, 'sarcastic': +1.0, 'healing': 0.0},
+    'Neptune': {'talkative': 0.0, 'clingy': +0.5, 'moody': +0.5, 'sarcastic': -1.0, 'healing': +1.0},
+    'Pluto':   {'talkative': -0.5, 'clingy': +0.5, 'moody': +1.0, 'sarcastic': +0.5, 'healing': -0.5},
+}
+
+_PULL_DOMAIN: Tuple[float, ...] = (-1.0, -0.5, 0.0, 0.5, 1.0)
+assert all(v in _PULL_DOMAIN for _p in PLANET_DIM_PULL.values() for v in _p.values()), \
+    'familiar_engine: PLANET_DIM_PULL 出现闭集外系数（只允许 0 / ±0.5 / ±1）'
+assert 0.10 <= HOUSE_MODIFIER_COEFF <= 0.20, \
+    'familiar_engine: HOUSE_MODIFIER_COEFF 必须落在军师令区间 0.10~0.20'
+
+
+def _norm_planet(name: Any) -> Optional[str]:
+    """行星名归一化（'sun' / 'SUN' → 'Sun'）；非字符串 / 空值返回 None。"""
+    if not name or not isinstance(name, str):
+        return None
+    s = name.strip()
+    if not s:
+        return None
+    return s[0].upper() + s[1:].lower()
+
+
+def house_modifier_delta(
+    emphasis_houses: List[int],
+    planet_houses: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, int], List[str]]:
+    """
+    被强调宫位内的行星 ⇒ 5 维微调增量（**纯函数**：零 IO / 零副作用 / 零 AI）。
+
+    算法（确定性）:
+        delta[dim] = clamp( Σ_{p ∈ 强调宫位内的行星} PLANET_DIM_PULL[p][dim]
+                            × HOUSE_MODIFIER_COEFF × 100 , ±HOUSE_MODIFIER_CAP )
+
+    真值纪律:
+        - planet_houses 缺省 / 空 / 非 dict ⇒ **恒返回全 0 增量 + 空 contributors**
+          （不降级、不编造；与 resolve_familiar_palette 的 transit 同构）。
+        - 未知行星名 / 非法宫位号 ⇒ 该条**静默跳过**（不计入，也不抛错）。
+
+    Args:
+        emphasis_houses: 算子强调的宫位（1~12）
+        planet_houses:   {行星名: 宫位号} —— 来自 astroMatrix.meta.computed_houses
+
+    Returns:
+        (delta, contributors)：
+          delta        —— 5 维增量（int，|v| ≤ HOUSE_MODIFIER_CAP）
+          contributors —— 形如 ['Moon@H5', 'Venus@H7'] 的**排序后**来源清单
+                           （专利实施例证据：可追溯到「是哪颗星落在哪个宫」）
+    """
+    delta: Dict[str, int] = {d: 0 for d in PERSONALITY_DIMS}
+    if not planet_houses or not isinstance(planet_houses, dict):
+        return delta, []
+
+    _emph = set()
+    for h in (emphasis_houses or []):
+        try:
+            _emph.add(int(h))
+        except (TypeError, ValueError):
+            continue
+
+    raw: Dict[str, float] = {d: 0.0 for d in PERSONALITY_DIMS}
+    contributors: List[str] = []
+    for planet, house in planet_houses.items():
+        pname = _norm_planet(planet)
+        if pname not in PLANET_DIM_PULL:
+            continue
+        try:
+            h = int(house)
+        except (TypeError, ValueError):
+            continue
+        if h not in _emph:
+            continue
+        contributors.append(f'{pname}@H{h}')
+        for d in PERSONALITY_DIMS:
+            raw[d] += PLANET_DIM_PULL[pname].get(d, 0.0)
+
+    for d in PERSONALITY_DIMS:
+        scaled = raw[d] * HOUSE_MODIFIER_COEFF * 100.0
+        delta[d] = int(max(-HOUSE_MODIFIER_CAP, min(HOUSE_MODIFIER_CAP, round(scaled))))
+    return delta, sorted(contributors)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -364,18 +509,26 @@ def _ruling_planet(sign: str) -> Optional[str]:
     return RULING.get(s)
 
 
-def _personality_vector(sun_sign: str, moon_sign: str, asc_sign: str) -> Dict[str, int]:
+def _personality_vector(
+    sun_sign: str,
+    moon_sign: str,
+    asc_sign: str,
+    house_delta: Optional[Dict[str, int]] = None,
+) -> Dict[str, int]:
     """
     加权计算 5 维性格向量
 
     算法（三要素齐全时与 V461 逐字一致，保证零回归）:
       base[dimension] = sun_base * 0.5 + moon_base * 0.3 + asc_base * 0.2
-      result[dimension] = clamp(base + element_modifier[sun_element][dimension])
+      result[dimension] = clamp(base + element_modifier[sun_element][dimension]
+                                + house_delta[dimension])            # ← E38-A 宫位微调
 
     🔴 E34-B1 防伪造：
       - 未知星座**不参与**加权，其余已知星座按权重**重新归一化**；
       - 太阳元素未知 ⇒ 不加元素修正（而非套用 Fire 的修正值）；
       - 三要素全部未知 ⇒ **抛错**，拒绝生成（绝不静默伪造）。
+    🛡️ E38-A：house_delta 缺省（None）⇒ 视为全 0 ⇒ **L1 锚值零回归**；
+       增量一律由 house_modifier_delta() 产出，且已被 HOUSE_MODIFIER_CAP 截断。
     """
     _b = SIGN_PERSONALITY_BASE
     _known = [(sun_sign, WEIGHTS['sun']), (moon_sign, WEIGHTS['moon']), (asc_sign, WEIGHTS['asc'])]
@@ -388,6 +541,7 @@ def _personality_vector(sun_sign: str, moon_sign: str, asc_sign: str) -> Dict[st
         )
 
     _mod = ELEMENT_MODIFIER.get(_element_of(sun_sign), {})
+    _hd = house_delta or {}
     result: Dict[str, int] = {}
 
     for dim in PERSONALITY_DIMS:
@@ -401,7 +555,7 @@ def _personality_vector(sun_sign: str, moon_sign: str, asc_sign: str) -> Dict[st
         else:
             _tot = sum(w for _, w in _usable) or 1.0
             weighted = sum(_b[s][dim] * w for s, w in _usable) / _tot
-        result[dim] = _clamp(round(weighted + _mod.get(dim, 0)))
+        result[dim] = _clamp(round(weighted + _mod.get(dim, 0) + _hd.get(dim, 0)))
 
     return result
 
@@ -533,6 +687,7 @@ def calculate_familiar_profile(
     user_name: str = None,
     relation_mode: str = 'girlfriend',
     time_uncertain: bool = False,
+    planet_houses: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     基于太阳(0.5) / 月亮(0.3) / 上升(0.2) + 元素修正 计算灵宠完整 Profile
@@ -548,10 +703,14 @@ def calculate_familiar_profile(
         user_name:      用户自定义灵宠名 (None 则用所选 IP 的默认名)
         relation_mode:  四象人格之一（E34-B1 新增）
         time_uncertain: 无精准出生时间 ⇒ 上升不可信（E34-B1 新增）
+        planet_houses:  宫内星真值 {行星名: 宫位号}（**E38-A 新增**）
+                        —— 用于「被算子强调宫位内的行星 ⇒ 5 维微调」；
+                        缺省 ⇒ 修正恒 0（不降级、不编造）。
 
     Returns:
         完整灵宠 Profile dict, 字段与 familiar_profiles 表对齐。
-        额外含 relation（人格 + 调色板）与 degraded（降级字段清单）。
+        额外含 relation（人格 + 调色板）、degraded（降级字段清单）、
+        decision_operators（四象算子只读快照）与 house_modifier（宫位微调快照）。
     """
     if relation_mode not in RELATION_MODES:
         raise ValueError(
@@ -560,15 +719,19 @@ def calculate_familiar_profile(
         )
 
     rel = RELATION_MODES[relation_mode]
+    # 四象算子（E36 立 / E38-A 精准化）：同一 relation_mode 派生；
+    #   键集齐备由模块级不变式保证（见 RELATION_VOICE_MATRIX 之后的 assert）。
+    operators = RELATION_DECISION_OPERATORS[relation_mode]
+    # 🐾 E38-A：宫位微调 —— 被强调宫位内的行星 ⇒ 5 维微调；缺真值 ⇒ 恒 0
+    _h_delta, _h_contributors = house_modifier_delta(
+        operators['emphasis_houses'], planet_houses)
     appearance = _appearance(sun_sign, moon_sign, asc_sign, time_uncertain=time_uncertain)
-    personality = _personality_vector(sun_sign, moon_sign, asc_sign)
+    personality = _personality_vector(sun_sign, moon_sign, asc_sign, house_delta=_h_delta)
     # 调色板单一真源：relation.palette 与 display_palette 必须**同源**
     #   （只调一次 ⇒ 杜绝两处参数漂移；闸门 audit-e35 B 组逐值断言二者一致）
     palette = resolve_familiar_palette(relation_mode, sun_sign=sun_sign)
-    # 四象声线 + 决策算子（E36）：同一 relation_mode 派生；
-    #   键集齐备由模块级不变式保证（见 RELATION_VOICE_MATRIX 之后的 assert）。
+    # 四象声线（E36）：同一 relation_mode 派生。
     voice = RELATION_VOICE_MATRIX[relation_mode]
-    operators = RELATION_DECISION_OPERATORS[relation_mode]
 
     # 🔴 E34-B1：全站只有 2 个 IP 名 ⇒ 默认名由所选 IP 决定
     #   （原「元素意象 + 月亮意象」两字名随 2-IP 定位作废）
@@ -640,7 +803,19 @@ def calculate_familiar_profile(
             'intent_zh': operators['intent_zh'],
             'primary_factors': list(operators['primary_factors']),
             'emphasis_houses': list(operators['emphasis_houses']),
+            'element_preference': list(operators['element_preference']),   # E38-A / D3
             'tone': operators['tone'],
+        },
+
+        # ── E38-A：宫位微调快照（专利实施例证据 · 审计可追溯）─────────────
+        #   delta        —— 5 维实际增量（已落在 ±HOUSE_MODIFIER_CAP 内）
+        #   contributors —— 参与微调的行星@宫位（空 ⇒ source = 'none'）
+        #   source       —— 'natal'（有宫内星真值参与）| 'none'（未提供 / 未命中）
+        'house_modifier': {
+            'delta': {d: _h_delta[d] for d in PERSONALITY_DIMS},
+            'emphasis_houses': list(operators['emphasis_houses']),
+            'contributors': list(_h_contributors),
+            'source': 'natal' if _h_contributors else 'none',
         },
         'schema_version': SOUL_OS_PROTOCOL_VERSION,
     }
@@ -675,7 +850,19 @@ def _cli(argv: Optional[List[str]] = None) -> int:
                         help='星盘快照 Hash（用于检测改生日需重孵）')
     parser.add_argument('--user-name', dest='user_name', default=None,
                         help='用户自定义灵宠名（缺省用所选 IP 默认名）')
+    parser.add_argument('--planet-houses', dest='planet_houses', default=None,
+                        help='宫内星真值 JSON（E38-A 宫位微调），如 {"Sun":1,"Venus":7}')
     args = parser.parse_args(argv)
+
+    # 🐾 E38-A：宫内星真值（可选）—— 非法 JSON 一律按「输入非法」退出码 2，
+    #    绝不静默忽略（否则会悄悄退化成「零微调」的假档案）。
+    _planet_houses = None
+    if args.planet_houses:
+        try:
+            _planet_houses = json.loads(args.planet_houses)
+        except (ValueError, TypeError) as e:
+            print(f'FAMILIAR_INVALID_INPUT: --planet-houses 不是合法 JSON: {e}', file=sys.stderr)
+            return 2
 
     try:
         profile = calculate_familiar_profile(
@@ -684,6 +871,7 @@ def _cli(argv: Optional[List[str]] = None) -> int:
             user_name=args.user_name,
             relation_mode=args.relation_mode,
             time_uncertain=args.time_uncertain,
+            planet_houses=_planet_houses,
         )
     except ValueError as e:
         # 输入非法：未知 relation_mode / 三要素全缺失 —— 绝不返回伪档案
@@ -788,13 +976,63 @@ if __name__ == '__main__':
         assert pe['schema_version'] == SOUL_OS_PROTOCOL_VERSION, f"{mode} 契约版本漂移"
         _tones.add(v['emotional_tone'])
         _op_sig[mode] = (tuple(pe['decision_operators']['primary_factors']),
-                         tuple(pe['decision_operators']['emphasis_houses']))
+                         tuple(pe['decision_operators']['emphasis_houses']),
+                         tuple(pe['decision_operators']['element_preference']))
         print(f"  {mode:11s} -> tone={v['emotional_tone']:14s} voice={v['voice_id']:18s} "
               f"ops={pe['decision_operators']['intent_zh']}")
     assert len(_tones) == 4, "四象语调必须两两互异（否则声线无法区分人格）"
-    # 🔴 决策算子权重隔离：四象的（主因子集合 + 重点宫位）签名两两不同
+    # 🔴 决策算子权重隔离：四象的（主因子集合 + 重点宫位 + 元素偏好）签名两两不同
     assert len(set(_op_sig.values())) == 4, f"四象决策算子未隔离: {_op_sig}"
     print("E36 验证通过（action_intent 恒 inert；四象声线/算子两两隔离）")
+
+    # ── E38-A：四象算子精准化（D1 / D2 / D3 军师三裁）──
+    print("\n=== E38-A 四象算子精准化（D1/D2/D3）===")
+    _EXPECT_OPS = {
+        'girlfriend': (['venus', 'mars', 'moon'], [7, 5], ['water', 'earth']),
+        'buddy':      (['sun', 'mars'], [11, 3], ['fire', 'air']),
+        'bestie':     (['mercury', 'moon'], [3, 11], ['air', 'water']),
+        'boyfriend':  (['sun', 'jupiter', 'venus'], [7, 5], ['fire', 'earth']),
+    }
+    for _mode, (_f, _h, _e) in _EXPECT_OPS.items():
+        _ops = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus',
+                                          relation_mode=_mode)['decision_operators']
+        assert _ops['primary_factors'] == _f, f"{_mode} D2 主因子未闭合: {_ops['primary_factors']}"
+        assert _ops['emphasis_houses'] == _h, f"{_mode} D1 重点宫位未闭合: {_ops['emphasis_houses']}"
+        assert _ops['element_preference'] == _e, f"{_mode} D3 元素偏好未闭合: {_ops['element_preference']}"
+        print(f"  {_mode:11s} factors={_f} houses={_h} elements={_e}")
+    assert len({tuple(_v[2]) for _v in _EXPECT_OPS.values()}) == 4, '四象元素偏好必须两两互异'
+    print("D1（女友补 5 宫）/ D2（男友补金星）/ D3（四象元素偏好）验证通过")
+
+    # ── E38-A：宫位微调层（House Modifier）──
+    print("\n=== E38-A 宫位微调层（House Modifier）===")
+    assert 0.10 <= HOUSE_MODIFIER_COEFF <= 0.20, '系数越出军师令区间 0.10~0.20'
+    _ZERO = {d: 0 for d in PERSONALITY_DIMS}
+    # ① 未提供宫内星真值 ⇒ 修正恒 0（L1 锚值零回归）
+    p_no = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='girlfriend')
+    assert p_no['house_modifier']['delta'] == _ZERO, '缺真值时增量必须全 0'
+    assert p_no['house_modifier']['source'] == 'none', '缺真值时 source 必须 none'
+    assert p_no['personality'] == p1['personality'], '缺真值时人格必须零变化（L1 锚值）'
+    # ② 提供宫内星真值 ⇒ 仅「被强调宫位」（女友 7/5）生效
+    p_h = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='girlfriend',
+                                     planet_houses={'Venus': 7, 'Moon': 5, 'Saturn': 12})
+    assert p_h['house_modifier']['contributors'] == ['Moon@H5', 'Venus@H7'], \
+        f"贡献来源错: {p_h['house_modifier']['contributors']}"
+    assert p_h['house_modifier']['source'] == 'natal'
+    assert p_h['house_modifier']['delta']['clingy'] > 0, '金星入 7 宫应提升黏人度'
+    assert p_h['house_modifier']['delta']['healing'] > 0, '金/月入 5/7 宫应提升治愈度'
+    assert p_h['personality']['clingy'] != p_no['personality']['clingy'], '宫位微调必须可见'
+    # ③ 上限截断：十星全挤进强调宫位，单维仍不得越界
+    p_cap = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='girlfriend',
+                                       planet_houses={_p: 7 for _p in PLANET_DIM_PULL})
+    for _d in PERSONALITY_DIMS:
+        assert abs(p_cap['house_modifier']['delta'][_d]) <= HOUSE_MODIFIER_CAP, f'{_d} 越上限'
+    # ④ 幂等 + 非法值（非数字宫位/None/非字符串行星）静默跳过 ⇒ 零微调
+    assert p_h == calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='girlfriend',
+                                             planet_houses={'Venus': 7, 'Moon': 5, 'Saturn': 12})
+    p_bad = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='girlfriend',
+                                       planet_houses={'Venus': 'H7', 'Moon': None, 99: 5})
+    assert p_bad['house_modifier']['source'] == 'none', '非法值必须静默跳过 ⇒ 零微调'
+    print(f"  两态 / 上限 / 幂等 / 非法值 验证通过（COEFF={HOUSE_MODIFIER_COEFF}，CAP={HOUSE_MODIFIER_CAP}）")
 
     # ── 无出生时间盘：上升降级（军师 E34-B1 裁决）──
     print("\n=== 无出生时间盘（time_uncertain=True）===")
@@ -848,4 +1086,4 @@ if __name__ == '__main__':
     except ValueError:
         print("\n非法 relation_mode 正确抛错")
 
-    print("\n全部自测通过（E34-Familiar-B1 + E36-Agent/声线/算子）")
+    print("\n全部自测通过（E34-Familiar-B1 + E36-Agent/声线/算子 + E38-A 算子精准化/宫位微调）")

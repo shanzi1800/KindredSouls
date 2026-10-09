@@ -248,16 +248,25 @@
 引擎出参 `decision_operators` 为该表的**只读快照**；`embodied/core/intent_translator.js`
 **只读消费**，全仓**禁止**第二份权重表（复制 = 漂移 = 专利实施例证据链被污染）。
 
-| `relation_mode` | 决策意图 | 抬高权重的因子 | 重点宫位 |
-|---|---|---|---|
-| `girlfriend` | 情感互补与吸引 | `venus` / `mars` / `moon` | 7 |
-| `buddy` | 同频义气与事业共振 | `sun` / `mars` | 11 / 3 |
-| `bestie` | 敏锐共鸣与情绪解压 | `mercury` / `moon` | 3 / 11 |
-| `boyfriend` | 庇护偏爱与安全感 | `sun` / `jupiter` | 7 / 5 |
+| `relation_mode` | 决策意图 | 抬高权重的因子 | 重点宫位 | 元素偏好 |
+|---|---|---|---|---|
+| `girlfriend` | 情感互补与吸引 | `venus` / `mars` / `moon` | 7 / 5 | `water` / `earth` |
+| `buddy` | 同频义气与事业共振 | `sun` / `mars` | 11 / 3 | `fire` / `air` |
+| `bestie` | 敏锐共鸣与情绪解压 | `mercury` / `moon` | 3 / 11 | `air` / `water` |
+| `boyfriend` | 庇护偏爱与安全感 | `sun` / `jupiter` / `venus` | 7 / 5 | `fire` / `earth` |
 
-- 🔴 四象签名（主因子集合 + 重点宫位）**两两互异**，闸门逐项断言「算子隔离」。
+- 🔴 四象签名（主因子集合 + 重点宫位 + 元素偏好）**两两互异**，闸门逐项断言「算子隔离」。
 - 🔴 输入恒为**用户 SwissEph 本命盘真值**；无真值 ⇒ 显式 `null`，**绝不伪造**。
-- ⚠️ 本期仅冻结**算子权重结构**，真实相位求解依赖**合婚线双盘字段对齐**（E35-C 前置）。
+- 🔴 **E38-A 军师三裁**（口径对账 D1/D2/D3 全部采纳闭合）：
+  D1 女友 `emphasis_houses` `[7] → [7, 5]`（7=婚姻正缘契约 / 5=恋爱激情浪漫）；
+  D2 男友 `primary_factors` `+venus`（金星 = 心动与爱情荷尔蒙核心）；
+  D3 四象新增 `element_preference` 元素偏好（结构扩展）。
+- 🐾 **E38-A 宫位微调层（House Modifier）**：被算子 `emphasis_houses` 强调的宫位内
+  若落入行星，则按 `PLANET_DIM_PULL` 闭集表对灵宠人格 5 维做微调加权 ——
+  纯函数、系数 `HOUSE_MODIFIER_COEFF = 0.15`（区间 0.10~0.20）、单维上限
+  `HOUSE_MODIFIER_CAP = 20`；**缺 `planet_houses` 真值 ⇒ 增量恒 0**（不降级不编造）。
+- ⚠️ 本期仅冻结**算子权重结构 + 宫位微调层**；真实相位求解（双盘 Synergy 张量 +
+  反向拟合虚拟星盘）依赖**合婚线双盘字段对齐**（E38-C / E38-D 承接）。
 
 
 ---

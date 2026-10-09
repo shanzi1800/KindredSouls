@@ -201,7 +201,7 @@ test('D4 转换器只读消费算子，不自造权重表（防真值漂移）',
     const t = L.trim();
     return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
   }).join('\n');
-  for (const banned of ['primary_factors:', 'emphasis_houses:', 'RELATION_DECISION_OPERATORS =']) {
+  for (const banned of ['primary_factors:', 'emphasis_houses:', 'element_preference:', 'RELATION_DECISION_OPERATORS =']) {
     assert.ok(!codeOnly.includes(banned), `转换器真值块出现自造算子表痕迹: ${banned}`);
   }
   // 正面证据：转换器在注释中已明示「不复制第二份权重表」的纪律
