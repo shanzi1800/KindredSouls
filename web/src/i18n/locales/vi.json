@@ -65,5 +65,23 @@
     "errInvalidTimezone": "Múi giờ không hợp lệ và không thể suy ra từ tọa độ nơi sinh. Vui lòng kiểm tra tham số tz rồi thử lại.",
     "errInvalidBirthTime": "Định dạng giờ sinh không nhận diện được (cần là HH:MM). Báo cáo đã được tạo với 12:00; độ chính xác của các cung có thể giảm.",
     "errTimezoneAdjusted": "Không nhận diện được múi giờ của bạn. Đã suy ra từ tọa độ nơi sinh là {{tz}}."
+  },
+  "familiar": {
+    "title": "Ấp linh thú đồng hành của bạn",
+    "subtitle": "Chọn một linh hồn dẫn đường theo lá số bản mệnh",
+    "girlfriend": "Bạn gái dịu dàng",
+    "girlfriendDesc": "Dịu dàng, chữa lành, thấu hiểu",
+    "bestie": "Bạn gái thân",
+    "bestieDesc": "Hoạt bát, tinh tế",
+    "buddy": "Anh em chí cốt",
+    "buddyDesc": "Nắng, nghĩa khí, đáng tin",
+    "boyfriend": "Bạn trai điển trai",
+    "boyfriendDesc": "Chung thủy, bao bọc, ấm áp",
+    "adopting": "Đang ấp…",
+    "adopted": "Linh thú đã sẵn sàng",
+    "leadHome": "Để nó dẫn về trang chủ",
+    "skip": "Để sau",
+    "degradedNote": "Không có giờ sinh chính xác: ngoại hình đã giảm cấp về kiểu trung tính",
+    "error": "Ấp thất bại, vui lòng thử lại"
   }
 }

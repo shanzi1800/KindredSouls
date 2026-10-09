@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const require = createRequire(import.meta.url);
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -84,6 +84,19 @@ function getScriptPath() {
     if (fs.existsSync(p)) return p;
   }
   return candidates[0]; // fallback 到第一个候选
+}
+
+// ── E34-B1: 灵宠引擎脚本路径（与 astro_matrix.py 同目录，候选列表同构）───────
+function getFamiliarScriptPath() {
+  const candidates = [
+    '/app/astro/familiar_engine.py',                        // Railway Docker
+    path.join(__dirname, 'astro', 'familiar_engine.py'),    // 本地相对路径
+    path.join(process.cwd(), 'astro', 'familiar_engine.py'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0];
 }
 
 // ── 🛡️ V490: 时区无效的识别与上抛 ───────────────────────────────────────────
@@ -350,6 +363,102 @@ export async function getAstroMatrix(birthDate, birthTime, lat = 13.75, lon = 10
     if (e && e.code === 'INVALID_COORDINATES') throw e;   // 🛡️ V490b: 坐标非法同样上抛（不得 return null）
     console.error('[V134] getAstroMatrix FAILED:', e.message);
     return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E34-B1 · 灵宠入参取真值（**唯一真源**）
+//   🔴 表达式与 buildNatalAnchors 逐字同源 —— 严禁在任何调用方另写一套
+//      （历史踩坑：键名写错 → undefined → 静默回落流月月亮）。
+//   ⚠️ 真值缺失返回 null（不返回 '?'）—— 由 familiar_engine 显式降级，
+//      绝不静默伪造（V492/D2）。
+// ═══════════════════════════════════════════════════════════════════════════
+export function extractNatalTriad(astroMatrix) {
+  const meta = astroMatrix?.meta || {};
+  const ch = meta.computed_houses || {};
+  const _natalMoon = meta.natal_moon || ch.Moon || {};
+  return {
+    sunSign: meta.sun_sign || ch.Sun?.sign || null,
+    moonSign: _natalMoon.sign || null,
+    ascSign: meta.rising_sign || astroMatrix?.rising_sign || null,
+    // 如实反映来源：'computed'（有出生时间）| 'solar_house_no_time'（无出生时间）
+    risingSource: meta.rising_sign_source || null,
+    // 🛡️ 唯一权威判据（v69_client 合并本命盘时写入 meta.birth_time_known）
+    birthTimeKnown: typeof meta.birth_time_known === 'boolean' ? meta.birth_time_known : null,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E34-B1 · 灵宠档案（四象关系层）—— 星盘三要素 → 灵宠 Profile
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * 调 astro/familiar_engine.py 计算灵宠完整档案（纯函数，零 LLM 参与）。
+ *
+ * 🔴 入参**通用解耦**（军师圣旨 2026-10-09）：只收「星盘三要素 + 关系模式 +
+ *    真值完整性标记」，**不含任何业务线专有字段名**（如 wealth / compat 前缀）⇒
+ *    财富线与未来字段对齐后的合婚线可**直接复用同一封装**，无需分叉。
+ *
+ * 🔴 失败绝不静默返回 null（与 getAstroMatrix 的 V490 / V492-D2 纪律同源）：
+ *    - 输入非法（未知 relation_mode / 三要素全缺失）⇒ 抛 code='FAMILIAR_INVALID_INPUT'
+ *    - 引擎故障 / JSON 坏 ⇒ 抛 FAMILIAR_ENGINE_FAILURE / FAMILIAR_JSON_PARSE_FAILURE
+ *    上层据此转 400 / 500，**绝不降级成一份伪造档案**。
+ *
+ * @param {object} p
+ * @param {string|null} p.sunSign     本命太阳星座（英文，缺真值传 null）
+ * @param {string|null} p.moonSign    本命月亮星座（英文）
+ * @param {string|null} p.ascSign     上升星座（英文；无出生时间时不可信）
+ * @param {string} p.relationMode     girlfriend | buddy | bestie | boyfriend
+ * @param {boolean} p.timeUncertain   无精准出生时间 ⇒ 外观层显式降级
+ * @param {string} p.natalHash        星盘快照 Hash（改生日需重孵的判据）
+ * @param {string|null} p.userName    用户自定义灵宠名（缺省用所选 IP 默认名）
+ */
+export async function getFamiliarProfile({
+  sunSign = null,
+  moonSign = null,
+  ascSign = null,
+  relationMode = 'girlfriend',
+  timeUncertain = false,
+  natalHash = '',
+  userName = null,
+} = {}) {
+  const scriptPath = getFamiliarScriptPath();
+  // 🛡️ 用 execFileSync（**不经 shell**）：userName / 星座名可能含非 ASCII，
+  //    走 shell 字符串拼接会被引号/emoji 撕裂（V525 系同源教训）。
+  const args = [
+    scriptPath,
+    '--mode', 'profile',
+    '--sun', sunSign == null ? '' : String(sunSign),
+    '--moon', moonSign == null ? '' : String(moonSign),
+    '--asc', ascSign == null ? '' : String(ascSign),
+    '--relation-mode', String(relationMode),
+  ];
+  if (timeUncertain) args.push('--time-uncertain');
+  if (natalHash) args.push('--natal-hash', String(natalHash));
+  if (userName) args.push('--user-name', String(userName));
+
+  let raw;
+  try {
+    raw = execFileSync('python3', args, {
+      encoding: 'utf8',
+      timeout: 30000,          // 纯函数无星历重算，30s 足够
+      maxBuffer: 4 * 1024 * 1024,
+    }).trim();
+  } catch (e) {
+    const blob = `${e.stderr || ''}\n${e.message || ''}`;
+    if (Number(e.status) === 2 || /FAMILIAR_INVALID_INPUT/.test(blob)) {
+      const err = new Error('FAMILIAR_INVALID_INPUT: ' + blob.trim().slice(0, 300));
+      err.code = 'FAMILIAR_INVALID_INPUT';
+      throw err;
+    }
+    console.error('[E34-B1] familiar engine failed:', e.message);
+    throw new Error('FAMILIAR_ENGINE_FAILURE: ' + e.message);
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('[E34-B1] familiar JSON parse failed:', (raw || '').slice(0, 120));
+    throw new Error('FAMILIAR_JSON_PARSE_FAILURE: ' + e.message);
   }
 }
 

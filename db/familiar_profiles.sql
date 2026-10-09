@@ -34,6 +34,23 @@ CREATE TABLE IF NOT EXISTS familiar_profiles (
     "healing": 50
   }'::jsonb,
 
+  -- ── 关系层（E34-B1：四象陪伴人格 · 2026-10-09 军师开工令）──
+  --   ⚠️ 全站只有 2 个 IP 角色名（Milo / Sophia）；本字段决定「呈现为哪一重人格」：
+  --     girlfriend = 善良女友   （男用户 × Sophia）
+  --     buddy      = 铁哥们儿   （男用户 × Milo）
+  --     bestie     = 闺蜜       （女用户 × Sophia）
+  --     boyfriend  = 帅气男友   （女用户 × Milo）
+  --   🛡️ 刻意不采集用户性别 —— 由用户直接选关系（军师裁决「方案 b」）。
+  --   命名层 name 与关系层解耦：name 默认由所选 IP 决定（Sophia / Milo）。
+  relation_mode VARCHAR(16) NOT NULL DEFAULT 'girlfriend'
+    CHECK (relation_mode IN ('girlfriend', 'buddy', 'bestie', 'boyfriend')),
+
+  -- ── 真值完整性标记（E34-B1）──
+  --   true = 用户未提供精准出生时间 ⇒ 上升星座不可信 ⇒ 外观层显式降级
+  --          （body_type / texture = 'standard'），严禁静默伪造上升出盘。
+  --   依据：V490b（argparse 非法坐标 → 伪造 Cancer rising）+ V492/D2（真值缺失显示 ?）。
+  time_uncertain BOOLEAN NOT NULL DEFAULT FALSE,
+
   -- ── 身份层 ──
   name         VARCHAR(64) DEFAULT 'Milo',  -- 灵宠名称（用户可自定义，默认由星盘生成）
   name_source  VARCHAR(16) DEFAULT 'auto',  -- 'auto'(星盘生成) | 'custom'(用户自定义)
@@ -41,6 +58,29 @@ CREATE TABLE IF NOT EXISTS familiar_profiles (
   -- ── 轻养成预留（L1 仅骨架，不开放 API）──
   stardust     INTEGER NOT NULL DEFAULT 0,  -- 星尘余额（喂养成货币）
   level        INTEGER NOT NULL DEFAULT 1,  -- 灵宠等级
+
+  -- ── 灵魂记忆层（E34-B1 骨架预留 · 2026-10-09 军师「认知进化与记忆系统」号令）──
+  --   三层记忆架构（严禁把全部历史塞进上下文）：
+  --     第 1 层 星历出厂底色 = personality(5 维) + relation_mode（本表既有列，不可动摇）
+  --     第 2 层 语义画像 / 记忆图谱 = memory_summary（本列，Key-Value / 语义标签摘要）
+  --     第 3 层 短程流动上下文 = familiar_memories 表最近 N 轮（见 §5，滑动窗口，不入本表）
+  --   ⚠️ 本期**只建槽位、不写入、不开放 API**（避免未来二次大改 DDL）。
+  memory_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+  --   结构约定（文档，非约束）：
+  --   {
+  --     "user_trait":     ["熬夜", "做量化交易"],          -- 用户特征/职业
+  --     "speech_style":   ["干练", "不喜欢废话"],          -- 言谈举止口癖
+  --     "comfort_trigger":["疲惫时喜欢被倾听"],            -- 情绪安抚触发点
+  --     "likes":          ["手冲咖啡"], "dislikes": ["吵闹"],-- 喜好厌恶
+  --     "strengths":      ["逻辑推演"],                     -- 擅长领域
+  --     "updated_at":     "2026-10-09T00:00:00Z"           -- 摘要生成时间
+  --   }
+
+  --   亲密度等级（隐式/显式反馈的**累积结果**，1 起；仅作权重调制的粗粒度轴）
+  intimacy_level INTEGER NOT NULL DEFAULT 1,
+
+  --   最近一次互动时间（隐式反馈奖励信号的时间锚；RL 异步批次按此排序/衰减）
+  last_interaction_at TIMESTAMPTZ,
 
   -- ── 时间戳 ──
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -102,3 +142,100 @@ CREATE POLICY "users_manage_own_familiar" ON familiar_profiles
 
 -- ai_insights_cache 的 familiar_meta 列继承该表现有 RLS 策略
 -- （如果 ai_insights_cache 已有 RLS，familiar_meta 自动受保护，无需额外策略）
+
+-- ─────────────────────────────────────────────────────────────
+-- 4. 增量迁移 · E34-B1 关系层（表若已先行建好时补齐）
+--    说明：上方 §1 的 CREATE TABLE 只对**新库**生效。若生产表在本指令下发前
+--    已按 L1 版建好，则下方的 ALTER 才是唯一生效路径。全部幂等，可重复执行。
+-- ─────────────────────────────────────────────────────────────
+
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS relation_mode VARCHAR(16) NOT NULL DEFAULT 'girlfriend';
+
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS time_uncertain BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- CHECK 约束无 IF NOT EXISTS ⇒ 先探测 pg_constraint 再添加（幂等）
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'familiar_profiles_relation_mode_check'
+      AND conrelid = 'familiar_profiles'::regclass
+  ) THEN
+    ALTER TABLE familiar_profiles
+      ADD CONSTRAINT familiar_profiles_relation_mode_check
+      CHECK (relation_mode IN ('girlfriend', 'buddy', 'bestie', 'boyfriend'));
+  END IF;
+END $$;
+
+-- 关系层分布索引（后台按人格统计用）
+CREATE INDEX IF NOT EXISTS idx_familiar_profiles_relation_mode
+  ON familiar_profiles (relation_mode);
+
+-- ─────────────────────────────────────────────────────────────
+-- 5. 增量迁移 · E34-B1 灵魂记忆层（表若已先行建好时补齐）
+--    同上：全部幂等，可重复执行。
+-- ─────────────────────────────────────────────────────────────
+
+-- 第 2 层：语义画像摘要（Key-Value / 语义标签）
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS memory_summary JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- 亲密度等级（1 起；仅作交互权重的粗粒度调制轴）
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS intimacy_level INTEGER NOT NULL DEFAULT 1;
+
+-- 最近互动时间（隐式反馈信号的时间锚）
+ALTER TABLE familiar_profiles
+  ADD COLUMN IF NOT EXISTS last_interaction_at TIMESTAMPTZ;
+
+-- ─────────────────────────────────────────────────────────────
+-- 6. 第 3 层：familiar_memories —— 短程/长程记忆条目表（E34-B1 骨架预留）
+--    定位：**记忆的明细落盘**，非「全量对话流水」。异步萃取器只写「已提炼的事实」，
+--          不写原始 transcript（原始流式响应留在前端，从不落这里）。
+--    读取：滑动窗口（最近 10~20 条 kind='turn'）+ 长程语义（kind='fact'）。
+-- ⚠️ 本期**只建表、不写入、不开放 API**。
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS familiar_memories (
+  id           BIGSERIAL PRIMARY KEY,
+
+  -- 归属：直接绑 auth.users(id)（同时冗余 familiar_user），保证 RLS 判定无需 JOIN
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  familiar_user UUID NOT NULL REFERENCES familiar_profiles(user_id) ON DELETE CASCADE,
+
+  -- 记忆种类：turn=短程对话轮 · fact=异步萃取的语义事实 · feedback=显式反馈打标
+  kind         VARCHAR(16) NOT NULL DEFAULT 'fact'
+    CHECK (kind IN ('turn', 'fact', 'feedback')),
+
+  -- 记忆正文（已提炼的摘要，非原始流水）+ 语义标签
+  summary      TEXT NOT NULL DEFAULT '',
+  tags         JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+  -- 权重（RL 用：隐式/显式反馈累积；越大越优先注入 Few-Shot）
+  weight       REAL NOT NULL DEFAULT 1.0,
+
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 按用户 + 时间倒序取滑动窗口（唯一高频查询路径）
+CREATE INDEX IF NOT EXISTS idx_familiar_memories_user_time
+  ON familiar_memories (user_id, created_at DESC);
+
+-- 按种类取长程语义（异步萃取器去重时用）
+CREATE INDEX IF NOT EXISTS idx_familiar_memories_kind
+  ON familiar_memories (kind);
+
+-- ─────────────────────────────────────────────────────────────
+-- 7. RLS（记忆隐私铁律：仅本人可读写，零跨租户泄漏）
+-- ─────────────────────────────────────────────────────────────
+
+ALTER TABLE familiar_memories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users_manage_own_familiar_memories" ON familiar_memories;
+CREATE POLICY "users_manage_own_familiar_memories" ON familiar_memories
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+

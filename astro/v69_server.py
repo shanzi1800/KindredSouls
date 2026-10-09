@@ -18,6 +18,19 @@ import json
 import math
 from copy import deepcopy
 
+# ── E34-B1 · 灵宠引擎（同目录 familiar_engine.py）─────────────────────────────
+#   ⚠️ 架构说明：生产实际通路是 Node 侧 execSync 直调
+#      `python3 astro/familiar_engine.py --mode profile ...`（见 v69_client.js）。
+#      本 FastAPI 路由仅作**接口形态对齐**（军师指定形态），与此文件同属备用 HTTP 通道。
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from familiar_engine import calculate_familiar_profile, RELATION_MODES
+    _FAMILIAR_IMPORT_OK = True
+    _FAMILIAR_IMPORT_ERR = ''
+except Exception as _fam_err:  # pragma: no cover - 防御性
+    _FAMILIAR_IMPORT_OK = False
+    _FAMILIAR_IMPORT_ERR = str(_fam_err)
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
@@ -647,6 +660,46 @@ def astro_matrix(req: AstroRequest):
 @app.get("/api/v1/health")
 def health():
     return {"status": "ok", "engine": "V69 SwissEph", "version": "1.0.0"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# E34-B1 · 灵宠档案（四象关系层）
+#   入参**通用解耦**：只收「星盘三要素 + 关系模式」，不含任何业务线专有字段名
+#   ⇒ 财富线与未来对齐后的合婚线均可复用（军师圣旨 2026-10-09）。
+# ═══════════════════════════════════════════════════════════════════════════
+
+class FamiliarRequest(BaseModel):
+    sun_sign: Optional[str] = None    # 本命太阳（英文）
+    moon_sign: Optional[str] = None   # 本命月亮（英文）
+    asc_sign: Optional[str] = None    # 上升（英文；无出生时间时不可信）
+    relation_mode: Optional[str] = 'girlfriend'  # girlfriend|buddy|bestie|boyfriend
+    time_uncertain: Optional[bool] = False       # 无精准出生时间 ⇒ 外观层显式降级
+    natal_hash: Optional[str] = ''
+    user_name: Optional[str] = None
+
+
+@app.post("/api/v1/familiar-profile")
+def familiar_profile(req: FamiliarRequest):
+    """星盘三要素 → 灵宠完整档案（纯函数引擎，零幻觉）。
+
+    退出语义与 CLI 对齐：输入非法 → 400；引擎不可用 → 503。
+    """
+    if not _FAMILIAR_IMPORT_OK:
+        raise HTTPException(status_code=503, detail=f'familiar_engine unavailable: {_FAMILIAR_IMPORT_ERR}')
+    try:
+        return calculate_familiar_profile(
+            req.sun_sign, req.moon_sign, req.asc_sign,
+            natal_hash=req.natal_hash or '',
+            user_name=req.user_name,
+            relation_mode=req.relation_mode or 'girlfriend',
+            time_uncertain=bool(req.time_uncertain),
+        )
+    except ValueError as e:
+        # 未知 relation_mode / 三要素全缺失 —— 绝不返回伪档案
+        raise HTTPException(status_code=400, detail=f'FAMILIAR_INVALID_INPUT: {e}')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'FAMILIAR_ENGINE_FAILURE: {e}')
+
 
 
 @app.get("/api/v1/verify")

@@ -24,6 +24,8 @@ import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
+import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
+import type { FamiliarProfile } from '../components/FamiliarPicker';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 // 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
@@ -1052,6 +1054,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
+  // 🐾 E34-B5: 已领养灵宠（懒初始化自 localStorage ⇒ 刷新后仍显示「带路」状态）
+  const [familiarLead, setFamiliarLead] = useState<FamiliarProfile | null>(() => {
+    try {
+      const raw = localStorage.getItem(FAMILIAR_LS_KEY);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      return o && o.profile ? (o.profile as FamiliarProfile) : null;
+    } catch { return null; }
+  });
   // 🏅 第一斧:useRef 同步锁定免死金牌,在所有 render 之前抢跑
   const isGreenChannelRef = useRef<boolean>(
     typeof window !== 'undefined' && (
@@ -1583,7 +1594,11 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
               birthDate: birth,
               lang,
               data: errData.data,
-              insight: errData.preview ? errData.preview : '',
+              // 🐾 E34-B5 顺手修：后端 402 回执里 `preview` 是**布尔 true**（不是文本），
+              //   旧写法 `errData.preview ? errData.preview : ''` 把 insight 赋成了布尔值
+              //   ⇒ 类型污染（WealthInsightCard 期望 string）。免费四项走 reportData.data 渲染，
+              //   insight 在此场景本就应留空。
+              insight: '',
               referrer: 'standalone',
             } as any);
           }
@@ -2386,6 +2401,14 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
     );
   }
 
+  // 🐾 E34-B5: 灵宠选择器所需的出生时空参数（与请求体同源派生，URL 直读优先）
+  const _familiarBp = deriveWealthBirthParams(window.location.search, {
+    birthTime,
+    lat: birthLat,
+    lon: birthLon,
+    tz: birthTz,
+  });
+
   const baziField = reportData?.data?.bazi
     ? (() => {
         const b = reportData.data.bazi as any;
@@ -2695,6 +2718,39 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           tarot={tarotField}
           lang={currentLang}
         />
+
+        {/* 🐾 E34-B5 方案二漏斗：免费四项之后 → 选灵宠（跳过支付拦截）→ 带路进首页 */}
+        {!authChecking && !isUnlocked && reportData && familiarLead && (
+          <div style={{
+            marginTop: '16px', padding: '12px 14px', borderRadius: '12px',
+            background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+          }}>
+            <span style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 700 }}>
+              🐾 {t('familiar.adopted')} · {familiarLead.name}
+            </span>
+            <button
+              onClick={() => onNavigate('/')}
+              style={{
+                padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.5)',
+                background: 'rgba(212,175,55,0.12)', color: '#D4AF37',
+                fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {t('familiar.leadHome')} →
+            </button>
+          </div>
+        )}
+        {!authChecking && !isUnlocked && showPaywall && reportData && !familiarLead && (
+          <FamiliarPicker
+            birthDate={birthDate}
+            birthTime={_familiarBp.birthTime}
+            lat={_familiarBp.lat}
+            lon={_familiarBp.lon}
+            tz={_familiarBp.tz}
+            onAdopted={(p) => setFamiliarLead(p)}
+          />
+        )}
 
         {!authChecking && !isUnlocked && showPaywall && (
           <WealthPaywall

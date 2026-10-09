@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash, timingSafeEqual } from 'crypto';   // 🛡️ E30: 补 timingSafeEqual（clear-cache 端点常量时间鉴权）
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -13592,6 +13592,192 @@ app.post('/api/save-result', async (req, res) => {
   } catch (err) {
     console.error('[save-result]', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🐾 E34-B4：灵宠领养端点 · POST /api/familiar/adopt
+//   定位：方案二「免费 4 项 → 选灵宠 → 带路进首页」的服务端承接。
+//
+//   🔴 入参**通用解耦**（军师圣旨 2026-10-09）：只收「出生时空 + 关系模式」，
+//      **不含任何财富线专有字段名**（无 wealth* / 无 reportType）⇒
+//      未来合婚线字段对齐后，**同一端点可直接复用**，无需分叉。
+//
+//   🔴 真值通路**唯一**：复用 getAstroMatrix（v69_client 既有星历真源）
+//      + extractNatalTriad（与 buildNatalAnchors 逐字同源），禁另起一套。
+//
+//   🔴 落库 fail-closed（军师 E34-B 裁决）：
+//      有登录 token + 已配 Supabase ⇒ upsert 落库 persisted:true；
+//      未登录 / 未配 ⇒ **只算不存** persisted:false（前端本地带路）。
+//      ⚠️ **严禁任何前端可控的 bypass 参数** —— 否则等于重造 E32-A
+//         `free_access:1` 那样的白名单式 fail-open 特权通道。
+//   ⚠️ 本端点**不加管理员门**（匿名可用是产品设计：方案二跳过支付选灵宠）。
+// ═══════════════════════════════════════════════════════════════
+// 四象关系模式：唯一真源在 astro/familiar_engine.py::RELATION_MODES
+//   （此处为服务端「早拒」副本，避免无谓 spawn Python；闸门 audit-e34 断言三侧同源）
+const FAMILIAR_RELATION_MODES = new Set(['girlfriend', 'buddy', 'bestie', 'boyfriend']);
+
+// 星盘快照 Hash：改生日/时辰/坐标/关系模式 须重新孵化（与 L1 schema natal_hash 语义一致）
+function familiarNatalHash(birthDate, birthTime, lat, lon, tz, relationMode) {
+  return createHash('sha256')
+    .update([birthDate, birthTime || '', lat, lon, tz || '', relationMode].join('|'))
+    .digest('hex');
+}
+
+app.post('/api/familiar/adopt', async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    // ── ① 入参校验（通用字段名，业务线无关）──
+    const birthDate = String(body.birthDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+      return res.status(400).json({ success: false, code: 'INVALID_BIRTH_DATE', error: 'birthDate must be YYYY-MM-DD' });
+    }
+    const rawBirthTime = body.birthTime == null ? '' : String(body.birthTime).trim();
+    const relationMode = String(body.relationMode || '').trim() || 'girlfriend';
+    if (!FAMILIAR_RELATION_MODES.has(relationMode)) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_RELATION_MODE',
+        error: `relationMode must be one of ${[...FAMILIAR_RELATION_MODES].join(', ')}`,
+      });
+    }
+
+    // ── ② 真值前置两关（与财富线同源：时区 → 坐标，绝不静默降级）──
+    const _tzr = resolveTimeZone(body.tz, body.lat, body.lon); // ⚠️ 传原值（null 不可被 Number() 洗成 0）
+    if (!_tzr.ok) {
+      console.warn(`[E34-B4] TZ_REJECTED input=${JSON.stringify(body.tz)} → HTTP 400`);
+      return res.status(400).json({ success: false, code: 'INVALID_TIMEZONE', error: `Invalid time zone: ${body.tz}` });
+    }
+    const tz = _tzr.tz;
+    const _coord = resolveCoordinates(body.lat, body.lon);
+    if (!_coord.ok) {
+      console.warn(`[E34-B4] COORD_REJECTED lat=${JSON.stringify(body.lat)} lon=${JSON.stringify(body.lon)} → HTTP 400`);
+      return res.status(400).json(invalidCoordinatesBody(_coord.message));
+    }
+    const lat = _coord.lat;
+    const lon = _coord.lon;
+
+    // ── ③ 星盘真值（唯一通路）──
+    //   ⚠️ 无出生时间 ⇒ 传 undefined（如实触发 Solar House 降级），绝不喂 '12:00' 伪造上升。
+    const _btForEngine = rawBirthTime.length > 0 ? rawBirthTime : undefined;
+    let astroMatrix;
+    try {
+      astroMatrix = await getAstroMatrix(birthDate, _btForEngine, lat, lon, tz, {});
+    } catch (e) {
+      if (e && (e.code === 'INVALID_TIMEZONE' || e.code === 'INVALID_COORDINATES')) {
+        return res.status(400).json({ success: false, code: e.code, error: e.message });
+      }
+      throw e;
+    }
+    if (!astroMatrix) {
+      return res.status(503).json({ success: false, code: 'ASTRO_ENGINE_UNAVAILABLE', error: 'astro matrix unavailable' });
+    }
+
+    const triad = extractNatalTriad(astroMatrix);
+    // 🔴 无精准出生时间 ⇒ 上升不可信 ⇒ 外观层显式降级（军师 E34-B1 裁决，防伪造上升出盘）
+    const timeUncertain =
+      triad.birthTimeKnown === false ||
+      triad.risingSource === 'solar_house_no_time' ||
+      !(rawBirthTime.length > 0);
+
+    // ── ④ 引擎算档案（纯函数，零 LLM 参与）──
+    const natalHash = familiarNatalHash(birthDate, rawBirthTime, lat, lon, tz, relationMode);
+    let profile;
+    try {
+      profile = await getFamiliarProfile({
+        sunSign: triad.sunSign,
+        moonSign: triad.moonSign,
+        ascSign: triad.ascSign,
+        relationMode,
+        timeUncertain,
+        natalHash,
+        userName: body.userName ? String(body.userName).slice(0, 64) : null,
+      });
+    } catch (e) {
+      const code = (e && e.code) || '';
+      if (code === 'FAMILIAR_INVALID_INPUT') {
+        // 真值全缺失 / 非法模式 —— 如实 400，绝不返回伪档案
+        return res.status(400).json({ success: false, code, error: e.message });
+      }
+      console.error('[E34-B4] familiar engine failure:', e && e.message);
+      return res.status(503).json({ success: false, code: 'FAMILIAR_ENGINE_UNAVAILABLE', error: (e && e.message) || 'engine failure' });
+    }
+
+    // 回执里带上真值来源（前端可展示「由 太阳X / 月亮Y / 上升Z 孵化」；升源用于降级提示）
+    const _triadEcho = {
+      sunSign: triad.sunSign || null,
+      moonSign: triad.moonSign || null,
+      ascSign: triad.ascSign || null,
+      risingSource: triad.risingSource || null,
+      timeUncertain,
+    };
+
+    // ── ⑤ 落库（fail-closed：无 token / 未配 Supabase ⇒ 只算不存）──
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) {
+      return res.json({ success: true, persisted: false, reason: 'no_supabase_configured', profile, triad: _triadEcho });
+    }
+    const authHeader = String(req.headers.authorization || '');
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.json({ success: true, persisted: false, reason: 'no_token', profile, triad: _triadEcho });
+    }
+
+    let userId = null;
+    try {
+      const uRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+        headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+      });
+      if (uRes.ok) userId = (await uRes.json()).id || null;
+    } catch (e) {
+      console.warn('[E34-B4] token verify error:', e && e.message);
+    }
+    if (!userId) {
+      return res.json({ success: true, persisted: false, reason: 'invalid_token', profile, triad: _triadEcho });
+    }
+
+    // upsert：只写「本期可确定」的列。
+    // 🔴 刻意**不写** memory_summary / intimacy_level / last_interaction_at ——
+    //    PostgREST merge-duplicates 只更新 payload 出现的列，省略即保留既有值
+    //    ⇒ 防「每次领养把灵魂记忆清零」（记忆由异步萃取器独占写入）。
+    const row = {
+      user_id: userId,
+      natal_hash: profile.natal_hash,
+      species: profile.species,
+      crystal_color: profile.crystal_color,
+      eye_color: profile.eye_color,
+      body_type: profile.body_type,
+      texture: profile.texture,
+      totem: profile.totem,
+      personality: profile.personality,
+      relation_mode: profile.relation_mode,
+      time_uncertain: profile.time_uncertain,
+      name: profile.name,
+      name_source: profile.name_source,
+    };
+    const w = await safeFetch(`${SB_URL}/rest/v1/familiar_profiles`, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!w.ok) {
+      const b = await w.text().catch(() => '');
+      console.warn(`[E34-B4] upsert FAIL status=${w.status} body=${String(b).slice(0, 200)}`);
+      // 落库失败 ≠ 生成失败：档案照常可用（前端本地带路），但**如实**告知未持久化
+      return res.json({ success: true, persisted: false, reason: `upsert_${w.status}`, profile, triad: _triadEcho });
+    }
+    console.log(`[E34-B4] adopted mode=${relationMode} user=${String(userId).slice(0, 8)} persisted=true`);
+    return res.json({ success: true, persisted: true, profile, triad: _triadEcho });
+  } catch (e) {
+    console.error('[E34-B4] adopt error:', e && e.message);
+    return res.status(500).json({ success: false, code: 'FAMILIAR_ADOPT_ERROR', error: e && e.message });
   }
 });
 

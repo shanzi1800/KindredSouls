@@ -65,5 +65,23 @@
     "errInvalidTimezone": "Fuseau horaire invalide, et impossible à déduire des coordonnées de naissance. Vérifiez le paramètre tz et réessayez.",
     "errInvalidBirthTime": "Format d'heure de naissance non reconnu (attendu HH:MM). Le rapport a été généré avec 12:00 ; la précision des maisons peut être réduite.",
     "errTimezoneAdjusted": "Votre fuseau horaire n'a pas pu être reconnu. Il a été déduit des coordonnées de naissance : {{tz}}."
+  },
+  "familiar": {
+    "title": "Faites éclore votre familier",
+    "subtitle": "Choisissez une âme guide selon votre thème natal",
+    "girlfriend": "Petite amie bienveillante",
+    "girlfriendDesc": "Tendre, apaisante, compréhensive",
+    "bestie": "Meilleure amie",
+    "bestieDesc": "Vive, perspicace",
+    "buddy": "Ami fidèle",
+    "buddyDesc": "Solaire, franc, fiable",
+    "boyfriend": "Petit ami séduisant",
+    "boyfriendDesc": "Exclusif, protecteur, chaleureux",
+    "adopting": "Incubation…",
+    "adopted": "Votre familier est prêt",
+    "leadHome": "Qu'il vous guide vers l'accueil",
+    "skip": "Plus tard",
+    "degradedNote": "Heure de naissance non fournie : l'apparence a été dégradée en style neutre",
+    "error": "Échec de l'incubation, réessayez"
   }
 }

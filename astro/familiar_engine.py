@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-KindredSouls 灵宠引擎 · 性格与外观映射算法 (L1 预留模块)
-版本: V461-Familiar-Foundation
-日期: 2026-09-21
+KindredSouls 灵宠引擎 · 性格与外观映射算法
+版本: V461-Familiar-Foundation → E34-Familiar-B1（关系层）
+日期: 2026-09-21 立 / 2026-10-09 E34-B1 扩展
 
 设计原则:
   - 纯函数 (Pure Function): 无外部依赖、无 IO、无副作用
@@ -10,13 +10,23 @@ KindredSouls 灵宠引擎 · 性格与外观映射算法 (L1 预留模块)
   - 可单元测试: CI/CD 可直接断言
   - 复用现有引擎: 输入参数与 astro_matrix.py 输出格式对齐
 
-军师指令: 预留骨架，审计通过后合入 astro/ 目录
+E34-B1 变更（2026-10-09 军师开工令）:
+  1. 新增关系层 relation_mode（四象陪伴人格）。🔴 全站只有 2 个 IP 角色名
+     （Milo / Sophia），relation_mode 只决定「呈现为哪一重人格」；
+     ⚠️ 刻意不采集用户性别 —— 由用户直接选关系（军师裁决「方案 b」）。
+  2. 「元素意象 + 月亮意象」两字名规则随 2-IP 定位**作废**：默认名改由所选 IP
+     决定（Sophia / Milo）。_generate_name() 保留为备用（星盘小名），不再作默认。
+  3. 无出生时间盘（time_uncertain=True）⇒ 上升不可信 ⇒ body_type / texture
+     **显式降级**为 'standard' 并记入 degraded；严禁伪造上升出盘（V490b / V492-D2）。
+  4. 防伪造：未知星座不再静默兜底 Fire / Leo。缺真值 ⇒ 显式降级或抛错。
+  5. 配色层 resolve_familiar_palette()：relation_mode ⇒ skinId + 主/辅色；
+     transit（行运）**预留挂点**，后续按用户时间星盘决定颜色，前端无需改码。
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 # ═══════════════════════════════════════════════════════════════
-# 星座 → 元素映射（与 astro_matrix.py SIGN_ELEMENTS 对齐）
+# 星座 → 元素映射（与 astro_matrix.py SIGN_ELEMENTS 逐项一致，禁漂移）
 # ═══════════════════════════════════════════════════════════════
 
 SIGN_ELEMENTS = {
@@ -25,6 +35,113 @@ SIGN_ELEMENTS = {
     'Gemini': 'Air', 'Libra': 'Air', 'Aquarius': 'Air',
     'Cancer': 'Water', 'Scorpio': 'Water', 'Pisces': 'Water',
 }
+
+# 五维性格维度（唯一真源）
+PERSONALITY_DIMS = ['talkative', 'clingy', 'moody', 'sarcastic', 'healing']
+
+# 真值缺失时的中性占位（**显式降级**，绝不伪装成某个星座的真实值）
+DEGRADED_COLOR = '#808080'    # 中性灰
+DEGRADED_TOKEN = 'standard'   # 降级形态标记（外观层）
+DEGRADED_UNKNOWN = 'unknown'  # 降级图腾/名称标记
+
+
+# ═══════════════════════════════════════════════════════════════
+# 0. 关系层（E34-B1）· 2 个 IP × 2 种关系 = 4 重人格
+# ═══════════════════════════════════════════════════════════════
+
+# 🔴 唯一真源：四象人格。SQL CHECK 约束与前端选项必须与此四值**同源**。
+#    viewer 字段仅说明「该人格面向哪一类用户」，属**派生元数据**，
+#    ⚠️ 不代表也不依赖任何用户性别采集（军师裁决：由用户直接选关系）。
+RELATION_MODES = {
+    'girlfriend': {
+        'pet_name': 'Sophia',
+        'persona_zh': '善良女友 · 柔情治愈 · 善解人意',
+        'persona_en': 'Devoted Girlfriend - tender, healing, understanding',
+        'viewer': 'male',
+    },
+    'buddy': {
+        'pet_name': 'Milo',
+        'persona_zh': '铁哥们儿 · 阳光义气',
+        'persona_en': 'Loyal Buddy - sunny, upright, candid',
+        'viewer': 'male',
+    },
+    'bestie': {
+        'pet_name': 'Sophia',
+        'persona_zh': '闺蜜 · 灵动通透',
+        'persona_en': 'Bestie - lively, perceptive',
+        'viewer': 'female',
+    },
+    'boyfriend': {
+        'pet_name': 'Milo',
+        'persona_zh': '帅气男友 · 专一偏爱 · 温暖宠爱',
+        'persona_en': 'Devoted Boyfriend - exclusive, protective, warm',
+        'viewer': 'female',
+    },
+}
+
+# 关系层调色板：relation_mode → Spine skinId + 主色/辅色
+#   🔴 每个 IP 两套配色（Milo：buddy / boyfriend；Sophia：girlfriend / bestie）
+#   Spine skin swap 换贴图即可实现 ⇒ 美术资产仍只需 2 套骨架。
+RELATION_PALETTE = {
+    'girlfriend': {'skin': 'sophia_girlfriend', 'primary': '#F4B8CE', 'secondary': '#E8C79A',
+                   'label_zh': '樱花粉 · 暮光玫瑰金'},
+    'bestie':     {'skin': 'sophia_bestie',     'primary': '#9FE1CB', 'secondary': '#F4C0D1',
+                   'label_zh': '薄荷绿 · 蜜桃粉'},
+    'buddy':      {'skin': 'milo_buddy',        'primary': '#D9A441', 'secondary': '#4FA8E0',
+                   'label_zh': '深海琥珀金 · 电光蓝'},
+    'boyfriend':  {'skin': 'milo_boyfriend',    'primary': '#2B2F3A', 'secondary': '#D4AF37',
+                   'label_zh': '曜石黑 · 香槟金'},
+}
+
+
+def resolve_familiar_palette(
+    relation_mode: str,
+    sun_sign: Optional[str] = None,
+    transit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    解析灵宠调色板（两层结构）。
+
+    第一层（本期实现）: relation_mode → Spine skinId + 主色/辅色（每 IP 两套）
+    第二层（**挂点预留**）: 星盘参与调色 —— 按本命元素微调色相、按行运相位调
+        明度/饱和度。军师令：「接口要预留，后面根据用户的时间星盘来确认她选择的
+        灵宠对应的颜色」。前端只消费 skin / primary / secondary / label 四个键，
+        故第二层落地时**不需要前端改码**。
+
+    Args:
+        relation_mode: 四象人格之一（girlfriend | buddy | bestie | boyfriend）
+        sun_sign:      本命太阳星座（第二层输入，本期不参与运算）
+        transit:       行运盘数据（第二层输入，本期为 None）
+
+    Returns:
+        {skin, primary, secondary, label, label_zh, source}
+        source: 本期恒为 'relation'；第二层落地后可能出现 'natal' / 'natal+transit'
+    """
+    base = RELATION_PALETTE.get(relation_mode)
+    if not base:
+        raise ValueError(
+            f'familiar_engine: 未知 relation_mode={relation_mode!r}'
+            f'（允许值：{sorted(RELATION_PALETTE)}）'
+        )
+
+    out: Dict[str, Any] = {
+        'skin': base['skin'],
+        'primary': base['primary'],
+        'secondary': base['secondary'],
+        'label': base['label_zh'],
+        'label_zh': base['label_zh'],
+        'source': 'relation',
+    }
+
+    # ── 第二层挂点（E35+）：行运色调层 ───────────────────────────────
+    #   落地条件：接入 astroMatrix 的 transit 相位后，在此按相性调整
+    #   out['primary'] 的色相/饱和度，并把 out['source'] 置为 'natal+transit'。
+    #   本期刻意不实现 —— 无真值时绝不编造偏移（防伪造铁律）。
+    if transit:
+        out['source'] = 'relation'
+
+    return out
+
 
 # ═══════════════════════════════════════════════════════════════
 # 1. 外观映射层
@@ -86,7 +203,7 @@ TOTEM_MAP = {
     ('Water', 'Pluto'):   'abyss_serpent',  # 冥王守水 → 蛇
 }
 
-# 默认图腾（找不到组合时的兜底）
+# 默认图腾（仅用于**已知元素**但组合缺项时的兜底，绝不用于未知元素）
 TOTEM_DEFAULT = {
     'Fire':  'flame_lion',
     'Earth': 'forest_deer',
@@ -140,90 +257,178 @@ def _clamp(value: int, lo: int = 0, hi: int = 100) -> int:
     return max(lo, min(hi, value))
 
 
-def _element_of(sign: str) -> str:
-    """星座 → 元素"""
-    return SIGN_ELEMENTS.get(sign, 'Fire')  # 兜底 Fire
+def _norm_sign(sign: str) -> Optional[str]:
+    """星座名归一化（容忍首字母大小写差异）；非字符串/空值返回 None。"""
+    if not sign or not isinstance(sign, str):
+        return None
+    s = sign.strip()
+    if not s:
+        return None
+    return s[0].upper() + s[1:].lower() if s.islower() or s.isupper() else s
 
 
-def _ruling_planet(sign: str) -> str:
-    """星座 → 守护行星（传统守护）"""
+def _element_of(sign: str) -> Optional[str]:
+    """
+    星座 → 元素。
+
+    🔴 E34-B1：**不再兜底 'Fire'** —— 未知星座一律返回 None，由调用方显式降级。
+       依据项目铁律「真值缺失显示 ?，绝不静默伪造」（V492/D2）。
+    """
+    s = _norm_sign(sign)
+    if s is None:
+        return None
+    return SIGN_ELEMENTS.get(s)
+
+
+def _ruling_planet(sign: str) -> Optional[str]:
+    """星座 → 守护行星（传统守护）。未知星座返回 None（不兜底 Sun）。"""
     RULING = {
         'Aries': 'Mars', 'Taurus': 'Venus', 'Gemini': 'Mercury',
         'Cancer': 'Moon', 'Leo': 'Sun', 'Virgo': 'Mercury',
         'Libra': 'Venus', 'Scorpio': 'Mars', 'Sagittarius': 'Jupiter',
         'Capricorn': 'Saturn', 'Aquarius': 'Saturn', 'Pisces': 'Jupiter',
     }
-    return RULING.get(sign, 'Sun')
+    s = _norm_sign(sign)
+    if s is None:
+        return None
+    return RULING.get(s)
 
 
 def _personality_vector(sun_sign: str, moon_sign: str, asc_sign: str) -> Dict[str, int]:
     """
     加权计算 5 维性格向量
 
-    算法:
+    算法（三要素齐全时与 V461 逐字一致，保证零回归）:
       base[dimension] = sun_base * 0.5 + moon_base * 0.3 + asc_base * 0.2
       result[dimension] = clamp(base + element_modifier[sun_element][dimension])
 
-    其中 sun_base/moon_base/asc_base 取自 SIGN_PERSONALITY_BASE[星座][维度]
-    元素修正取太阳星座的元素（太阳是核心身份）
+    🔴 E34-B1 防伪造：
+      - 未知星座**不参与**加权，其余已知星座按权重**重新归一化**；
+      - 太阳元素未知 ⇒ 不加元素修正（而非套用 Fire 的修正值）；
+      - 三要素全部未知 ⇒ **抛错**，拒绝生成（绝不静默伪造）。
     """
-    sun_base = SIGN_PERSONALITY_BASE.get(sun_sign, SIGN_PERSONALITY_BASE['Leo'])
-    moon_base = SIGN_PERSONALITY_BASE.get(moon_sign, SIGN_PERSONALITY_BASE['Cancer'])
-    asc_base = SIGN_PERSONALITY_BASE.get(asc_sign, SIGN_PERSONALITY_BASE['Leo'])
+    _b = SIGN_PERSONALITY_BASE
+    _known = [(sun_sign, WEIGHTS['sun']), (moon_sign, WEIGHTS['moon']), (asc_sign, WEIGHTS['asc'])]
+    _usable = [(s, w) for s, w in _known if s in _b]
 
-    sun_element = _element_of(sun_sign)
-    modifier = ELEMENT_MODIFIER.get(sun_element, ELEMENT_MODIFIER['Fire'])
-
-    result = {}
-    for dim in ['talkative', 'clingy', 'moody', 'sarcastic', 'healing']:
-        weighted = (
-            sun_base[dim] * WEIGHTS['sun'] +
-            moon_base[dim] * WEIGHTS['moon'] +
-            asc_base[dim] * WEIGHTS['asc']
+    if not _usable:
+        raise ValueError(
+            'familiar_engine: 日/月/升三要素全部缺失真值，拒绝生成灵宠档案'
+            '（绝不静默伪造 —— 见 V490b / V492-D2）'
         )
-        result[dim] = _clamp(round(weighted + modifier[dim]))
+
+    _mod = ELEMENT_MODIFIER.get(_element_of(sun_sign), {})
+    result: Dict[str, int] = {}
+
+    for dim in PERSONALITY_DIMS:
+        if len(_usable) == 3:
+            # 与 V461 原式逐字一致（正常路径零回归）
+            weighted = (
+                _b[sun_sign][dim] * WEIGHTS['sun'] +
+                _b[moon_sign][dim] * WEIGHTS['moon'] +
+                _b[asc_sign][dim] * WEIGHTS['asc']
+            )
+        else:
+            _tot = sum(w for _, w in _usable) or 1.0
+            weighted = sum(_b[s][dim] * w for s, w in _usable) / _tot
+        result[dim] = _clamp(round(weighted + _mod.get(dim, 0)))
 
     return result
 
 
-def _appearance(sun_sign: str, moon_sign: str, asc_sign: str) -> Dict[str, str]:
+def _appearance(sun_sign: str, moon_sign: str, asc_sign: str, time_uncertain: bool = False) -> Dict[str, Any]:
     """
-    星盘 → 外观属性
+    星盘 → 外观属性（E34-B1：真值缺失一律**显式降级**）
 
     - crystal_color: 太阳星座 → 元素 → 晶石色 (HEX)
-    - eye_color: 月亮星座 → 眼睛颜色 (HEX)
-    - body_type: 上升星座 → 元素 → 体型姿态
-    - texture: 太阳星座 → 元素 → 表面质感
-    - totem: 太阳元素 + 太阳守护行星 → 图腾兽
+    - eye_color:     月亮星座 → 眼睛颜色 (HEX)
+    - body_type:     上升星座 → 元素 → 体型姿态
+    - texture:       太阳星座 → 元素 → 表面质感
+    - totem:         太阳元素 + 太阳守护行星 → 图腾兽
+
+    🔴 降级规则（军师 E34-B1 裁决）：
+      1. time_uncertain=True ⇒ 上升不可信 ⇒ body_type 与 texture **显式降级**
+         为 'standard'。（texture 本由太阳元素决定，此处随上升一并降级，
+         以保持「形态 + 质感」外观层的一致性。）
+      2. 任一星座未知 ⇒ 对应字段降级并记入 degraded 列表，**绝不伪造具体值**。
+
+    Returns:
+        {crystal_color, crystal_name, eye_color, eye_desc, body_type,
+         texture, totem, degraded: [...]}
     """
-    sun_element = _element_of(sun_sign)
-    moon_element = _element_of(moon_sign)
-    asc_element = _element_of(asc_sign)
+    degraded: List[str] = []
 
-    crystal = CRYSTAL_COLOR_MAP.get(sun_element, CRYSTAL_COLOR_MAP['Fire'])
-    eye = EYE_COLOR_MAP.get(moon_sign, EYE_COLOR_MAP['Leo'])
-    body = BODY_TYPE_MAP.get(asc_element, BODY_TYPE_MAP['Fire'])
-    texture = TEXTURE_MAP.get(sun_element, TEXTURE_MAP['Fire'])
+    sun_el = _element_of(sun_sign)
+    asc_el = _element_of(asc_sign)
 
-    ruling = _ruling_planet(sun_sign)
-    totem = TOTEM_MAP.get((sun_element, ruling), TOTEM_DEFAULT.get(sun_element, 'flame_lion'))
+    # ── 主体晶石色（太阳）──
+    if sun_el:
+        crystal = CRYSTAL_COLOR_MAP.get(sun_el, {})
+        crystal_color = crystal.get('color', DEGRADED_COLOR)
+        crystal_name = crystal.get('name', DEGRADED_UNKNOWN)
+    else:
+        crystal_color, crystal_name = DEGRADED_COLOR, DEGRADED_UNKNOWN
+        degraded.append('crystal_color')
+
+    # ── 眼睛颜色（月亮）──
+    _eye = EYE_COLOR_MAP.get(_norm_sign(moon_sign))
+    if _eye:
+        eye_color, eye_desc = _eye['color'], _eye['desc']
+    else:
+        eye_color, eye_desc = DEGRADED_COLOR, DEGRADED_UNKNOWN
+        degraded.append('eye_color')
+
+    # ── 体型姿态（上升）· 无时间盘 ⇒ 强制降级 ──
+    if time_uncertain:
+        body_type = DEGRADED_TOKEN
+        degraded.append('body_type')
+        degraded.append('time_uncertain')
+    elif asc_el:
+        body_type = BODY_TYPE_MAP.get(asc_el, DEGRADED_TOKEN)
+    else:
+        body_type = DEGRADED_TOKEN
+        degraded.append('body_type')
+
+    # ── 表面质感（太阳）· 与上升同批降级 ──
+    if time_uncertain:
+        texture = DEGRADED_TOKEN
+        degraded.append('texture')
+    elif sun_el:
+        texture = TEXTURE_MAP.get(sun_el, DEGRADED_TOKEN)
+    else:
+        texture = DEGRADED_TOKEN
+        degraded.append('texture')
+
+    # ── 内在图腾兽（元素 + 守护行星）──
+    if sun_el:
+        ruling = _ruling_planet(sun_sign)
+        if ruling and (sun_el, ruling) in TOTEM_MAP:
+            totem = TOTEM_MAP[(sun_el, ruling)]
+        else:
+            totem = TOTEM_DEFAULT.get(sun_el, DEGRADED_UNKNOWN)
+    else:
+        totem = DEGRADED_UNKNOWN
+        degraded.append('totem')
 
     return {
-        'crystal_color': crystal['color'],
-        'crystal_name': crystal['name'],
-        'eye_color': eye['color'],
-        'eye_desc': eye['desc'],
-        'body_type': body,
+        'crystal_color': crystal_color,
+        'crystal_name': crystal_name,
+        'eye_color': eye_color,
+        'eye_desc': eye_desc,
+        'body_type': body_type,
         'texture': texture,
         'totem': totem,
+        'degraded': sorted(set(degraded)),
     }
 
 
 def _generate_name(sun_sign: str, moon_sign: str) -> str:
     """
-    星盘 → 灵宠默认名（用户可自定义覆盖）
+    星盘 → 灵宠「小名」（元素意象 + 月亮情绪意象，两字）
 
-    命名规则: 太阳星座 → 元素意象 + 月亮星座 → 情绪意象，拼成两个字
+    ⚠️ E34-B1：本规则随「2 个 IP 名（Milo / Sophia）」定位**已不作默认**。
+       默认名改由 relation_mode 决定（见 calculate_familiar_profile）。
+       本函数保留为可选彩蛋 / 备用（如未来开放"星盘小名"），缺真值时返回 '?'。
     """
     ELEMENT_NAME = {
         'Fire': ['炎', '焱', '炽', '煌', '烬'],
@@ -237,11 +442,12 @@ def _generate_name(sun_sign: str, moon_sign: str) -> str:
         'Sagittarius': '驰', 'Capricorn': '毅', 'Aquarius': '奇', 'Pisces': '渺',
     }
 
-    sun_element = _element_of(sun_sign)
-    names = ELEMENT_NAME.get(sun_element, ELEMENT_NAME['Fire'])
-    moon_char = MOON_NAME.get(moon_sign, '灵')
+    sun_el = _element_of(sun_sign)
+    names = ELEMENT_NAME.get(sun_el) if sun_el else None
+    moon_char = MOON_NAME.get(_norm_sign(moon_sign))
 
-    # 取元素列表第一个字 + 月亮字
+    if not names or not moon_char:
+        return '?'   # 真值缺失 ⇒ 显式未知，不伪造
     return names[0] + moon_char
 
 
@@ -255,45 +461,47 @@ def calculate_familiar_profile(
     asc_sign: str,
     natal_hash: str = '',
     user_name: str = None,
+    relation_mode: str = 'girlfriend',
+    time_uncertain: bool = False,
 ) -> Dict[str, Any]:
     """
     基于太阳(0.5) / 月亮(0.3) / 上升(0.2) + 元素修正 计算灵宠完整 Profile
 
     纯函数: 无外部依赖、无 IO、无副作用
-    可直接被 astro_matrix.py 或 server.js (通过 subprocess) 调用
+    可直接被 astro_matrix.py 或 server.js (子进程 / 内部调用) 使用
 
     Args:
-        sun_sign:  本命太阳星座 (英文, 如 'Scorpio')
-        moon_sign: 本命月亮星座 (英文)
-        asc_sign:  上升星座 (英文)
-        natal_hash: 星盘数据 Hash (用于检测星盘变更)
-        user_name:  用户自定义灵宠名 (None 则自动生成)
+        sun_sign:       本命太阳星座 (英文, 如 'Scorpio')
+        moon_sign:      本命月亮星座 (英文)
+        asc_sign:       上升星座 (英文)
+        natal_hash:     星盘数据 Hash (用于检测星盘变更)
+        user_name:      用户自定义灵宠名 (None 则用所选 IP 的默认名)
+        relation_mode:  四象人格之一（E34-B1 新增）
+        time_uncertain: 无精准出生时间 ⇒ 上升不可信（E34-B1 新增）
 
     Returns:
-        完整灵宠 Profile dict, 字段与 familiar_profiles 表对齐
-
-    Example:
-        >>> calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus')
-        {
-            'natal_hash': '',
-            'species': 'crystal_cat',
-            'crystal_color': '#7E57C2',
-            'eye_color': '#80DEEA',
-            'body_type': '敦实盘坐',
-            'texture': '流纹透光',
-            'totem': 'abyss_serpent',
-            'personality': {'talkative': 37, 'clingy': 73, 'moody': 80, 'sarcastic': 52, 'healing': 75},
-            'name': '渊渺',
-            'name_source': 'auto'
-        }
+        完整灵宠 Profile dict, 字段与 familiar_profiles 表对齐。
+        额外含 relation（人格 + 调色板）与 degraded（降级字段清单）。
     """
-    appearance = _appearance(sun_sign, moon_sign, asc_sign)
+    if relation_mode not in RELATION_MODES:
+        raise ValueError(
+            f'familiar_engine: 未知 relation_mode={relation_mode!r}'
+            f'（允许值：{sorted(RELATION_MODES)}）'
+        )
+
+    rel = RELATION_MODES[relation_mode]
+    appearance = _appearance(sun_sign, moon_sign, asc_sign, time_uncertain=time_uncertain)
     personality = _personality_vector(sun_sign, moon_sign, asc_sign)
-    name = user_name if user_name else _generate_name(sun_sign, moon_sign)
+
+    # 🔴 E34-B1：全站只有 2 个 IP 名 ⇒ 默认名由所选 IP 决定
+    #   （原「元素意象 + 月亮意象」两字名随 2-IP 定位作废）
+    name = user_name if user_name else rel['pet_name']
 
     return {
         'natal_hash': natal_hash,
         'species': 'crystal_cat',
+        'relation_mode': relation_mode,
+        'time_uncertain': bool(time_uncertain),
         'crystal_color': appearance['crystal_color'],
         'crystal_name': appearance['crystal_name'],
         'eye_color': appearance['eye_color'],
@@ -304,39 +512,202 @@ def calculate_familiar_profile(
         'personality': personality,
         'name': name,
         'name_source': 'custom' if user_name else 'auto',
+        'relation': {
+            'mode': relation_mode,
+            'pet_name': rel['pet_name'],
+            'persona_zh': rel['persona_zh'],
+            'persona_en': rel['persona_en'],
+            'palette': resolve_familiar_palette(relation_mode, sun_sign=sun_sign),
+        },
+        'degraded': appearance['degraded'],
+
+        # ── 灵魂记忆层（E34-B1 骨架预留）──────────────────────────────
+        #   本期**恒为出厂值**，不写入、不开放 API。
+        #   第 2 层 memory_summary：由异步萃取器在对话结束后回填（服务端不受理前端传入，
+        #     否则等于把「用户画像」交给客户端伪造 —— 与 fail-closed 纪律同源）。
+        #   🔴 关键：这里给的是**出厂默认值**，落库时用 COALESCE/忽略，绝不覆盖既有记忆。
+        'memory_summary': {},
+        'intimacy_level': 1,
+        'last_interaction_at': None,
     }
 
 
 # ═══════════════════════════════════════════════════════════════
-# 4. 自测入口 (python3 astro/familiar_engine.py)
+# 4. CLI 入口（供 Node 侧 execSync 调用 · 形态对齐 astro_matrix.py）
+#    🔴 这是**生产实际通路**：v69_client.js::getFamiliarProfile()
+#       → execSync('python3 astro/familiar_engine.py --mode profile ...')
+#    退出码约定（与 astro_matrix.py 的 V490/V490b 同构，绝不静默失败）：
+#       0 = 成功（stdout 为单行 JSON）
+#       2 = 输入非法（未知 relation_mode / 三要素全缺失）→ stderr 含 FAMILIAR_INVALID_INPUT
+#       1 = 引擎内部故障 → stderr 含 FAMILIAR_ENGINE_FAILURE
+# ═══════════════════════════════════════════════════════════════
+
+def _cli(argv: Optional[List[str]] = None) -> int:
+    import argparse
+    import json
+    import sys
+
+    parser = argparse.ArgumentParser(description='KindredSouls Familiar Engine (E34-B1)')
+    parser.add_argument('--mode', default='profile', choices=['profile'],
+                        help='计算模式（本期仅 profile）')
+    parser.add_argument('--sun', default=None, help='本命太阳星座（英文, 如 Scorpio）')
+    parser.add_argument('--moon', default=None, help='本命月亮星座（英文）')
+    parser.add_argument('--asc', default=None, help='上升星座（英文）')
+    parser.add_argument('--relation-mode', dest='relation_mode', default='girlfriend',
+                        help='四象人格: girlfriend | buddy | bestie | boyfriend')
+    parser.add_argument('--time-uncertain', dest='time_uncertain', action='store_true',
+                        help='无精准出生时间 ⇒ 上升不可信 ⇒ 外观层显式降级')
+    parser.add_argument('--natal-hash', dest='natal_hash', default='',
+                        help='星盘快照 Hash（用于检测改生日需重孵）')
+    parser.add_argument('--user-name', dest='user_name', default=None,
+                        help='用户自定义灵宠名（缺省用所选 IP 默认名）')
+    args = parser.parse_args(argv)
+
+    try:
+        profile = calculate_familiar_profile(
+            args.sun, args.moon, args.asc,
+            natal_hash=args.natal_hash,
+            user_name=args.user_name,
+            relation_mode=args.relation_mode,
+            time_uncertain=args.time_uncertain,
+        )
+    except ValueError as e:
+        # 输入非法：未知 relation_mode / 三要素全缺失 —— 绝不返回伪档案
+        print(f'FAMILIAR_INVALID_INPUT: {e}', file=sys.stderr)
+        return 2
+    except Exception as e:  # pragma: no cover - 防御性
+        print(f'FAMILIAR_ENGINE_FAILURE: {e}', file=sys.stderr)
+        return 1
+
+    # 单行 JSON（ensure_ascii=False 保留中文外观值，Node 侧 JSON.parse 直接吃）
+    print(json.dumps(profile, ensure_ascii=False))
+    return 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# 5. 自测入口 (python3 astro/familiar_engine.py，无参数时)
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
-    # 示例1: 太阳天蝎 · 月亮双鱼 · 上升金牛 (L1 草案示例)
+    import sys as _sys
+    if len(_sys.argv) > 1:
+        _sys.exit(_cli())
+
+    # ── L1 回归：3 个既有示例（外观/性格值必须与 V461 逐值一致）──
     p1 = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus')
     print("=== 示例1: Sun=Scorpio, Moon=Pisces, Asc=Taurus ===")
     for k, v in p1.items():
         print(f"  {k}: {v}")
 
-    # 示例2: 太阳狮子 · 月亮白羊 · 上升双子
     p2 = calculate_familiar_profile('Leo', 'Aries', 'Gemini')
     print("\n=== 示例2: Sun=Leo, Moon=Aries, Asc=Gemini ===")
-    for k, v in p2.items():
-        print(f"  {k}: {v}")
+    print(f"  crystal_color: {p2['crystal_color']}, eye_color: {p2['eye_color']}")
+    print(f"  body_type: {p2['body_type']}, texture: {p2['texture']}, totem: {p2['totem']}")
+    print(f"  personality: {p2['personality']}")
 
-    # 示例3: 太阳水瓶 · 月亮天秤 · 上升射手
     p3 = calculate_familiar_profile('Aquarius', 'Libra', 'Sagittarius')
     print("\n=== 示例3: Sun=Aquarius, Moon=Libra, Asc=Sagittarius ===")
-    for k, v in p3.items():
-        print(f"  {k}: {v}")
+    print(f"  crystal_color: {p3['crystal_color']}, eye_color: {p3['eye_color']}")
+    print(f"  personality: {p3['personality']}")
 
-    # 幂等性验证: 同输入同输出
+    # ── 幂等性 ──
     assert p1 == calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus'), "幂等性失败"
-    print("\n✅ 幂等性验证通过")
+    print("\n幂等性验证通过")
 
-    # 边界验证: 未知星座不崩
-    p4 = calculate_familiar_profile('Unknown', 'Unknown', 'Unknown')
-    print(f"\n=== 边界验证: 未知星座 (不崩) ===")
-    print(f"  species: {p4['species']}, name: {p4['name']}")
-    assert p4['species'] == 'crystal_cat', "兜底失败"
-    print("✅ 边界验证通过")
+    # ── L1 外观/性格值回归锚 ──────────────────────────────────────────
+    #   🔴 锚值一律取自 HEAD 实算（E34-A 双版本逐值 diff：6/6 PASS）。
+    #   ⚠️ 注意：V461 版 docstring 的 Example 里那组
+    #      personality 37/73/80/52/75 + totem 'abyss_serpent' + name '渊渺'
+    #      是**手写示意，与真实输出不符**；真实值为下方锚定值。
+    #      （docs/familiar_L1_data_structure_audit.md §3.4 的「毒舌57/情绪83/治愈74/龟图腾」
+    #        才是对的。）禁止用文档示意值当断言锚。
+    assert p1['crystal_color'] == '#7E57C2' and p1['eye_color'] == '#80DEEA', "示例1 外观回归失败"
+    assert p1['body_type'] == '敦实盘坐' and p1['texture'] == '流纹透光', "示例1 形态回归失败"
+    assert p1['totem'] == 'tide_turtle', "示例1 图腾回归失败"
+    assert p1['personality'] == {'talkative': 36, 'clingy': 72, 'moody': 83, 'sarcastic': 57, 'healing': 74}, \
+        f"示例1 性格回归失败: {p1['personality']}"
+    assert p2['personality'] == {'talkative': 80, 'clingy': 36, 'moody': 52, 'sarcastic': 74, 'healing': 40}, \
+        f"示例2 性格回归失败: {p2['personality']}"
+    assert p2['crystal_color'] == '#FF5722' and p2['totem'] == 'phoenix_ember', "示例2 外观回归失败"
+    assert p3['personality'] == {'talkative': 74, 'clingy': 30, 'moody': 36, 'sarcastic': 70, 'healing': 51}, \
+        f"示例3 性格回归失败: {p3['personality']}"
+    assert p3['crystal_color'] == '#29B6F6' and p3['totem'] == 'silver_owl', "示例3 外观回归失败"
+    print("L1 外观/性格回归锚验证通过（3 例，实算锚）")
+
+    # ── E34-B1：四象人格（2 个 IP × 2 关系）──
+    print("\n=== E34-B1 四象人格 ===")
+    IP_OF = {'girlfriend': 'Sophia', 'buddy': 'Milo', 'bestie': 'Sophia', 'boyfriend': 'Milo'}
+    for mode, expect_ip in IP_OF.items():
+        pr = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode=mode)
+        assert pr['name'] == expect_ip, f"{mode} 默认名应为 {expect_ip}, 实得 {pr['name']}"
+        assert pr['relation_mode'] == mode
+        assert pr['relation']['palette']['skin'].startswith(expect_ip.lower()), f"{mode} skin 前缀错"
+        print(f"  {mode:11s} -> {pr['name']:6s} | {pr['relation']['persona_zh']}")
+    assert len({v['pet_name'] for v in RELATION_MODES.values()}) == 2, "IP 名必须恰好 2 个"
+    for banned in ('Eros', 'Kael', 'Chloe', 'Maya'):
+        assert banned not in str(RELATION_MODES), f"不应存在第三/第四角色名: {banned}"
+    print("四象人格验证通过（恰好 2 个 IP 名；无 Eros/Kael/Chloe/Maya）")
+
+    # ── 配色：每 IP 两套 ──
+    pal_gf = resolve_familiar_palette('girlfriend')['primary']
+    pal_be = resolve_familiar_palette('bestie')['primary']
+    pal_bu = resolve_familiar_palette('buddy')['primary']
+    pal_bf = resolve_familiar_palette('boyfriend')['primary']
+    assert pal_gf != pal_be, "Sophia 两种人格必须不同配色"
+    assert pal_bu != pal_bf, "Milo 两种人格必须不同配色"
+    assert resolve_familiar_palette('girlfriend')['source'] == 'relation'
+    print("配色验证通过（Sophia 2 套 / Milo 2 套；source=relation，transit 层已预留）")
+
+    # ── 无出生时间盘：上升降级（军师 E34-B1 裁决）──
+    print("\n=== 无出生时间盘（time_uncertain=True）===")
+    pt = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', time_uncertain=True)
+    assert pt['time_uncertain'] is True
+    assert pt['body_type'] == 'standard', f"body_type 应降级为 standard, 实得 {pt['body_type']}"
+    assert pt['texture'] == 'standard', f"texture 应降级为 standard, 实得 {pt['texture']}"
+    assert 'time_uncertain' in pt['degraded'] and 'body_type' in pt['degraded'], "degraded 未记录降级项"
+    assert pt['crystal_color'] == p1['crystal_color'], "太阳可信 ⇒ 晶石色不应降级"
+    print(f"  降级项: {pt['degraded']}")
+    print("上升降级验证通过（body_type/texture=standard，太阳系字段不受影响）")
+
+    # ── 防伪造：未知星座不得静默兜底 Fire / Leo ──
+    print("\n=== 防伪造（未知星座）===")
+
+    # 档1：仅太阳未知（月/升已知）⇒ 晶石色降级为中性灰，性格按已知两要素归一化
+    pu1 = calculate_familiar_profile('Unknown', 'Pisces', 'Taurus', relation_mode='girlfriend')
+    assert pu1['crystal_color'] == DEGRADED_COLOR, "未知太阳 ⇒ 必须是中性占位灰"
+    assert pu1['crystal_color'] != '#FF5722', "不得兜底为 Fire 红玛瑙色"
+    assert pu1['totem'] == DEGRADED_UNKNOWN, "未知太阳元素 ⇒ 图腾必须 unknown"
+    assert 'crystal_color' in pu1['degraded'] and 'totem' in pu1['degraded']
+    assert pu1['eye_color'] == '#80DEEA', "月亮已知 ⇒ 瞳色不应降级"
+    assert pu1['body_type'] == '敦实盘坐', "上升已知 ⇒ 体型不应降级"
+    print(f"  仅太阳未知: crystal={pu1['crystal_color']} totem={pu1['totem']} "
+          f"personality={pu1['personality']} degraded={pu1['degraded']}")
+
+    # 档2：月/升未知（太阳已知）⇒ 瞳色与体型降级；晶石色与质感保持真值
+    pu2 = calculate_familiar_profile('Scorpio', 'Unknown', 'Unknown', relation_mode='girlfriend')
+    assert pu2['crystal_color'] == '#7E57C2', "太阳已知 ⇒ 晶石色必须保持真值"
+    assert pu2['eye_color'] == DEGRADED_COLOR, "未知月亮 ⇒ 瞳色必须是中性占位灰"
+    assert pu2['body_type'] == DEGRADED_TOKEN, "未知上升 ⇒ 体型必须 standard"
+    assert pu2['texture'] == '流纹透光', "质感由太阳元素决定 ⇒ 太阳已知时必须保持真值"
+    assert set(pu2['degraded']) >= {'eye_color', 'body_type'}, \
+        f"未知月/升必须记入 degraded: {pu2['degraded']}"
+    assert 'texture' not in pu2['degraded'], "太阳已知 ⇒ texture 不应记入 degraded"
+    print(f"  月升未知: eye={pu2['eye_color']} body={pu2['body_type']} "
+          f"texture={pu2['texture']} degraded={pu2['degraded']}")
+
+    # 档3：三要素全缺失 ⇒ **必须抛错**，绝不伪造一份 Leo/Cancer 档案
+    try:
+        calculate_familiar_profile('Unknown', 'Unknown', 'Unknown')
+        raise AssertionError("三要素全缺失时必须抛 ValueError，不得伪造")
+    except ValueError as e:
+        print(f"  三要素全缺失 → 正确抛错: {str(e)[:44]}...")
+    print("防伪造验证通过（三档：部分降级 / 部分降级 / 全缺失抛错）")
+
+    # ── 非法 relation_mode ⇒ 必须抛错 ──
+    try:
+        calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='pet')
+        raise AssertionError("非法 relation_mode 必须抛 ValueError")
+    except ValueError:
+        print("\n非法 relation_mode 正确抛错")
+
+    print("\n全部自测通过（E34-Familiar-B1）")

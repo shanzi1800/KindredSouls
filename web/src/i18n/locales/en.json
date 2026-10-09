@@ -65,5 +65,23 @@
     "errInvalidTimezone": "Invalid time zone, and it could not be inferred from the birth coordinates. Please check the tz parameter and try again.",
     "errInvalidBirthTime": "Unrecognized birth time format (expected HH:MM). The report was generated using 12:00 instead; house precision may be reduced.",
     "errTimezoneAdjusted": "Your time zone could not be recognized. It has been inferred from the birth coordinates as {{tz}}."
+  },
+  "familiar": {
+    "title": "Incubate your soul companion",
+    "subtitle": "Pick a guiding soul derived from your natal chart",
+    "girlfriend": "Devoted Girlfriend",
+    "girlfriendDesc": "Tender, healing, understanding",
+    "bestie": "Bestie",
+    "bestieDesc": "Lively, perceptive",
+    "buddy": "Loyal Buddy",
+    "buddyDesc": "Sunny, candid, dependable",
+    "boyfriend": "Devoted Boyfriend",
+    "boyfriendDesc": "Exclusive, protective, warm",
+    "adopting": "Incubating…",
+    "adopted": "Your companion is ready",
+    "leadHome": "Let it lead you home",
+    "skip": "Later",
+    "degradedNote": "No exact birth time: appearance degraded to a neutral style",
+    "error": "Incubation failed, please retry"
   }
 }

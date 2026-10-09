@@ -65,5 +65,23 @@
     "errInvalidTimezone": "Zona horaria no válida y no se pudo deducir de las coordenadas de nacimiento. Comprueba el parámetro tz e inténtalo de nuevo.",
     "errInvalidBirthTime": "Formato de hora de nacimiento no reconocido (se esperaba HH:MM). Se generó con 12:00; la precisión de las casas puede ser menor.",
     "errTimezoneAdjusted": "No se pudo reconocer tu zona horaria. Se ha deducido de las coordenadas de nacimiento como {{tz}}."
+  },
+  "familiar": {
+    "title": "Incuba tu compañero espiritual",
+    "subtitle": "Elige un alma guía según tu carta natal",
+    "girlfriend": "Novia bondadosa",
+    "girlfriendDesc": "Tierna, sanadora, comprensiva",
+    "bestie": "Mejor amiga",
+    "bestieDesc": "Vivaz, perceptiva",
+    "buddy": "Amigo leal",
+    "buddyDesc": "Solar, franco, fiable",
+    "boyfriend": "Novio apuesto",
+    "boyfriendDesc": "Exclusivo, protector, cálido",
+    "adopting": "Incubando…",
+    "adopted": "Tu compañero está listo",
+    "leadHome": "Que te guíe al inicio",
+    "skip": "Más tarde",
+    "degradedNote": "Sin hora exacta de nacimiento: la apariencia se degradó a un estilo neutro",
+    "error": "No se pudo incubar, inténtalo de nuevo"
   }
 }

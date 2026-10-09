@@ -97,10 +97,13 @@ function runChecks(srcRaw) {
 
   // ── A2: 恰好 2 处调用（loadWealthData + generateWealthReport） ──
   const callSites = countMatches(src, /deriveWealthBirthParams\(window\.location\.search/g);
-  if (callSites !== 2) fails.push(`A2: deriveWealthBirthParams(window.location.search) 调用须恰 2 处，实为 ${callSites}`);
+  // 🐾 E34-B5（2026-10-09）：第 3 处为**渲染层**派生 —— 灵宠选择器需与请求体同源的
+  //   birthTime/lat/lon/tz，故在 render 体内复用同一纯函数（fallback 入参形状逐字相同）
+  //   ⇒ 2 → 3。语义不变：仍「只允许 URL 同源直读 + 同一 fallback 形状」。
+  if (callSites !== 3) fails.push(`A2: deriveWealthBirthParams(window.location.search) 调用须恰 3 处（2 请求路径 + 1 渲染层灵宠入参），实为 ${callSites}`);
 
   // ── A3: 四处请求体（loadWealthData / 流式主请求 / 流式 fallback / 旧非流式）一律 _bp.*；
-  //     裸 state 读只允许作为 fallback 入参（恰 2 处） ──
+  //     裸 state 读只允许作为 fallback 入参（恰 3 处：上述 2 处 + E34-B5 渲染层 1 处） ──
   const bpBody = countMatches(src, /birthTime:\s*_bp\.birthTime/g);
   if (bpBody !== 4) fails.push(`A3a: 请求体 birthTime: _bp.birthTime 须恰 4 处（loadWealthData/流式主请求/fallback/旧非流式），实为 ${bpBody}`);
   for (const [k, re] of [
@@ -109,7 +112,7 @@ function runChecks(srcRaw) {
     ['tz: birthTz', /tz:\s*birthTz\b/g],
   ]) {
     const c = countMatches(src, re);
-    if (c !== 2) fails.push(`A3b: 「${k}」只允许作为 deriveWealthBirthParams 的 fallback 入参出现恰 2 处，实为 ${c}`);
+    if (c !== 3) fails.push(`A3b: 「${k}」只允许作为 deriveWealthBirthParams 的 fallback 入参出现恰 3 处，实为 ${c}`);
   }
 
   // ── B1: canvasOwnerRef 声明 + 两处认领 ──
