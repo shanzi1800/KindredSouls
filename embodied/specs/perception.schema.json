@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kindredsouls.online/embodied/specs/perception.schema.json",
+  "title": "Soul OS Embodied · Perception Contract",
+  "$comment": "KindredSouls / Soul OS Embodied Intelligence Open Protocol · (c) 2026 KindredSouls. PATENT-PENDING: 双母 PCT 国际专利实施例证据链。仅供授权合作方按许可范围使用。",
+  "description": "多模态感知输入与同步契约。设备 ➜ 中枢单向上报：只上报**脱敏标签**，绝不上传原始音视频。经 /api/v1/embodied/perception-sync 入库后作为隐式强化学习输入。",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["sensor_kind", "labels", "captured_at"],
+  "properties": {
+    "sensor_kind": {
+      "type": "string",
+      "enum": ["camera", "microphone", "wearable_hr", "touch", "ambient_light", "gps_zone"],
+      "description": "传感器种类。🔴 仅须声明种类，不须（也不得上报）原始数据。"
+    },
+    "labels": {
+      "type": "array",
+      "description": "🔴 **脱敏标签**（结构化枚举），非原始像素/音频。示例：'face_calm' / 'voice_low_energy' / 'hr_elevated'。",
+      "items": { "type": "string", "maxLength": 48 },
+      "maxItems": 32
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "采集时刻（ISO 8601，含时区）。"
+    },
+    "intensity": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "标签强度 0~1（弱 → 强）；缺真值 ⇒ null，禁臆造。"
+    },
+    "zone_radius_km": {
+      "type": ["number", "null"],
+      "description": "位置类感知的**模糊半径**（🔴 只上报区域，永不上报精确坐标）。"
+    },
+    "consent": {
+      "type": "object",
+      "description": "🔴 采集同意凭据（设备侧留痕，中枢侧仅校验存在性）。",
+      "required": ["granted", "scope"],
+      "properties": {
+        "granted": {
+          "type": "boolean",
+          "description": "用户是否已授权该类感知采集。未授权 ⇒ 设备侧**不得上报**。"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["session", "daily", "persistent"],
+          "description": "授权时效。"
+        }
+      }
+    }
+  }
+}

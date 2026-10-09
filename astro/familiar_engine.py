@@ -102,6 +102,68 @@ RELATION_PALETTE = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════
+# 0b. 四象决策算子（E36）· 专利级「真值驱动决策（Reverse Synergy）」唯一真源
+#   依据：军师《Soul OS 具身决策与 Agent 执行中枢预留战备号令》2026-10-09
+#         （主公圣旨：用户的信任只给懂他命运的灵魂 —— 巨头做「手脚」，我们做「脑核」）
+#
+#   🔴 唯一真源纪律：本表是全仓**唯一**一份四象算子权重表。
+#      embodied/core/intent_translator.js 及任何前端 **只读消费**，严禁复制第二份
+#      （复制 = 漂移 = 专利实施例证据链被污染）。
+#   🔴 本表决定「反向相位拟合」时抬高哪些因子的权重：
+#        女友   → 金/火/月 + 7 宫（吸引与情感互补）
+#        哥们儿 → 日/火   + 11/3 宫（同频义气与事业共振）
+#        男友   → 日/木   + 7/5 宫（庇护偏爱与安全感）
+#        闺蜜   → 水/月   + 3/11 宫（敏锐共鸣与情绪解压）
+#   ⚠️ 本期仅冻结**算子权重结构**，真实相位求解依赖合婚线双盘字段对齐（E35-C 前置）。
+# ═══════════════════════════════════════════════════════════════
+
+RELATION_DECISION_OPERATORS = {
+    'girlfriend': {
+        'intent_zh': '情感互补与吸引',
+        'primary_factors': ['venus', 'mars', 'moon'],
+        'emphasis_houses': [7],
+        'tone': 'tender',
+    },
+    'buddy': {
+        'intent_zh': '同频义气与事业共振',
+        'primary_factors': ['sun', 'mars'],
+        'emphasis_houses': [11, 3],
+        'tone': 'upright',
+    },
+    'bestie': {
+        'intent_zh': '敏锐共鸣与情绪解压',
+        'primary_factors': ['mercury', 'moon'],
+        'emphasis_houses': [3, 11],
+        'tone': 'lively',
+    },
+    'boyfriend': {
+        'intent_zh': '庇护偏爱与安全感',
+        'primary_factors': ['sun', 'jupiter'],
+        'emphasis_houses': [7, 5],
+        'tone': 'protective',
+    },
+}
+
+# 四象声线矩阵（E36）· 星盘/关系人格 → TTS 声线 ID + 情感语调
+#   🔴 emotional_tone 值域 = server.js / docs 的 VOICE_EMOTIONAL_TONES 闭集，四值一一对应。
+#   真实音频合成由前端渲染层承接（web/src/components/FamiliarOverlay.tsx），
+#   本引擎只输出**确定性声线参数**，不持有任何 TTS 凭据（零密钥铁律）。
+RELATION_VOICE_MATRIX = {
+    'girlfriend': {'voice_id': 'sophia_tender',     'emotional_tone': 'caring'},
+    'bestie':     {'voice_id': 'sophia_lively',     'emotional_tone': 'witty'},
+    'buddy':      {'voice_id': 'milo_upright',      'emotional_tone': 'energetic'},
+    'boyfriend':  {'voice_id': 'milo_protective',   'emotional_tone': 'deep_affection'},
+}
+
+# 🔴 四张关系表必须**键集完全一致**（fail-fast 不变式）：
+#   任何一张漏项都会让某个人格静默地拿不到配色/声线/算子 —— 那是最危险的「看似正常」。
+assert (set(RELATION_MODES) == set(RELATION_PALETTE)
+        == set(RELATION_DECISION_OPERATORS) == set(RELATION_VOICE_MATRIX)), \
+    'familiar_engine: 四象表键集不一致（RELATION_MODES / PALETTE / DECISION_OPERATORS / VOICE_MATRIX）'
+
+
+
 def resolve_familiar_palette(
     relation_mode: str,
     sun_sign: Optional[str] = None,
@@ -503,6 +565,10 @@ def calculate_familiar_profile(
     # 调色板单一真源：relation.palette 与 display_palette 必须**同源**
     #   （只调一次 ⇒ 杜绝两处参数漂移；闸门 audit-e35 B 组逐值断言二者一致）
     palette = resolve_familiar_palette(relation_mode, sun_sign=sun_sign)
+    # 四象声线 + 决策算子（E36）：同一 relation_mode 派生；
+    #   键集齐备由模块级不变式保证（见 RELATION_VOICE_MATRIX 之后的 assert）。
+    voice = RELATION_VOICE_MATRIX[relation_mode]
+    operators = RELATION_DECISION_OPERATORS[relation_mode]
 
     # 🔴 E34-B1：全站只有 2 个 IP 名 ⇒ 默认名由所选 IP 决定
     #   （原「元素意象 + 月亮意象」两字名随 2-IP 定位作废）
@@ -554,6 +620,27 @@ def calculate_familiar_profile(
             'skin': palette['skin'],
             'primary': palette['primary'],
             'secondary': palette['secondary'],
+        },
+
+        # ── E36 Agent 执行 + 语音双模态预留槽（**设备中立** · 本期全 inert）──────
+        #   依据：军师《E36 战略架构升级战备号令》2026-10-09（主公摊牌 Soul OS 护城河）。
+        #   🔴 action_intent 本期恒 None —— 真实动作须过「真值锁 + 用户显式确认」双闸门；
+        #      执行意图一律由 embodied/core/embodied_gateway.js::buildAgentIntentAction()
+        #      构造（确认位**不可翻转**），本引擎**绝不**手写第二份执行契约。
+        #   🔴 voice_stream_meta：声线由 relation_mode 确定性映射（见 RELATION_VOICE_MATRIX），
+        #      viseme_timeline（嘴型音素时间轴）无音频流 ⇒ 恒 None，由前端渲染层承接。
+        #   🔴 decision_operators：四象算子权重**只读快照**（专利级 Reverse Synergy 证据）。
+        'action_intent': None,
+        'voice_stream_meta': {
+            'voice_id': voice['voice_id'],
+            'emotional_tone': voice['emotional_tone'],
+            'viseme_timeline': None,
+        },
+        'decision_operators': {
+            'intent_zh': operators['intent_zh'],
+            'primary_factors': list(operators['primary_factors']),
+            'emphasis_houses': list(operators['emphasis_houses']),
+            'tone': operators['tone'],
         },
         'schema_version': SOUL_OS_PROTOCOL_VERSION,
     }
@@ -685,6 +772,30 @@ if __name__ == '__main__':
     assert resolve_familiar_palette('girlfriend')['source'] == 'relation'
     print("配色验证通过（Sophia 2 套 / Milo 2 套；source=relation，transit 层已预留）")
 
+    # ── E36：Agent 执行槽（inert）+ 四象声线 + 决策算子隔离 ──
+    print("\n=== E36 Agent 执行槽 / 四象声线 / 决策算子 ===")
+    _EXPECT_TONE = {'girlfriend': 'caring', 'buddy': 'energetic',
+                    'bestie': 'witty', 'boyfriend': 'deep_affection'}
+    _tones, _op_sig = set(), {}
+    for mode, expect_tone in _EXPECT_TONE.items():
+        pe = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode=mode)
+        assert pe['action_intent'] is None, f"{mode} 的 action_intent 本期必须 inert（None）"
+        v = pe['voice_stream_meta']
+        assert v['emotional_tone'] == expect_tone, \
+            f"{mode} 语调应为 {expect_tone}, 实得 {v['emotional_tone']}"
+        assert v['viseme_timeline'] is None, "无音频流 ⇒ viseme_timeline 必须 None"
+        assert v['voice_id'], f"{mode} 缺 voice_id"
+        assert pe['schema_version'] == SOUL_OS_PROTOCOL_VERSION, f"{mode} 契约版本漂移"
+        _tones.add(v['emotional_tone'])
+        _op_sig[mode] = (tuple(pe['decision_operators']['primary_factors']),
+                         tuple(pe['decision_operators']['emphasis_houses']))
+        print(f"  {mode:11s} -> tone={v['emotional_tone']:14s} voice={v['voice_id']:18s} "
+              f"ops={pe['decision_operators']['intent_zh']}")
+    assert len(_tones) == 4, "四象语调必须两两互异（否则声线无法区分人格）"
+    # 🔴 决策算子权重隔离：四象的（主因子集合 + 重点宫位）签名两两不同
+    assert len(set(_op_sig.values())) == 4, f"四象决策算子未隔离: {_op_sig}"
+    print("E36 验证通过（action_intent 恒 inert；四象声线/算子两两隔离）")
+
     # ── 无出生时间盘：上升降级（军师 E34-B1 裁决）──
     print("\n=== 无出生时间盘（time_uncertain=True）===")
     pt = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', time_uncertain=True)
@@ -737,4 +848,4 @@ if __name__ == '__main__':
     except ValueError:
         print("\n非法 relation_mode 正确抛错")
 
-    print("\n全部自测通过（E34-Familiar-B1）")
+    print("\n全部自测通过（E34-Familiar-B1 + E36-Agent/声线/算子）")

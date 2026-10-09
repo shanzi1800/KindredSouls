@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kindredsouls.online/embodied/specs/motion.schema.json",
+  "title": "Soul OS Embodied · Motion Contract",
+  "$comment": "KindredSouls / Soul OS Embodied Intelligence Open Protocol · (c) 2026 KindredSouls. PATENT-PENDING: 双母 PCT 国际专利实施例证据链。仅供授权合作方按许可范围使用。",
+  "description": "肢体意图、微表情与灯效驱动契约。中枢 ➜ 设备单向下发：设备只需把 intent 码映射为本机机械/灯效动作，禁自行解释语义。封仓期 motion_intent 恒 null。",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["motion_intent"],
+  "properties": {
+    "motion_intent": {
+      "type": ["string", "null"],
+      "description": "🔴 动作意图码。封仓期恒 null（inert）。改值须经中枢引擎层（LLM + 情绪层产码），设备侧只读不写。",
+      "examples": ["hug_warm", "nod", "ear_perk", "idle_breathe", "lean_close"]
+    },
+    "emotion_state": {
+      "type": "string",
+      "enum": ["neutral", "happy", "tired", "comfort", "excited"],
+      "description": "情绪状态值 —— 与 persona 契约同值域，供微表情层取用。"
+    },
+    "display_palette": {
+      "type": ["object", "null"],
+      "description": "灯效 / 配色（同源 relation.palette）。",
+      "properties": {
+        "skin": { "type": "string" },
+        "primary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "secondary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+      }
+    },
+    "lip_sync": {
+      "type": ["object", "null"],
+      "description": "嘴型驱动槽（Spine 2D 骨骼张合）。无音频流 ⇒ null。",
+      "required": ["viseme_timeline"],
+      "properties": {
+        "viseme_timeline": {
+          "type": ["array", "null"],
+          "description": "音素时间轴：每项 { t_ms, viseme }。"
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "description": "🔴 动作安全闸（设备端必须遵行的硬约束）。",
+      "required": ["requires_user_confirmation", "max_intensity", "never_autonomous_spend"],
+      "properties": {
+        "requires_user_confirmation": { "const": true },
+        "max_intensity": {
+          "type": "string",
+          "enum": ["gentle", "normal"],
+          "description": "动作幅度上限；涉及接触类动作（如 hug_warm）恒为 'gentle'。"
+        },
+        "never_autonomous_spend": {
+          "const": true,
+          "description": "🔴 设备侧永不自主产生任何消费 / 支付行为。"
+        }
+      }
+    }
+  }
+}

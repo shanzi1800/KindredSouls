@@ -1,8 +1,10 @@
 # 🌌 KindredSouls · Soul OS 开放协议规范（北极星）
 
-> 状态：**已落地骨架（E35-A）** · 阶段：**封仓期（仅预留协议与数据槽位，不对外提供任何真实数据）**
+> 状态：**已落地骨架（E35-A 基线 + E36 Agent 执行与语音双模态增量）** · 阶段：**封仓期（仅预留协议与数据槽位，不对外提供任何真实数据）**
 > 契约版本：`SOUL_OS_PROTOCOL_VERSION = '1.0'`（**独立于**缓存版本 `vNNN`，勿混用）
+> 具身实现归仓：`embodied/`（专利取证 + SDK 分发 + 沙箱隔离；见 `embodied/README.md`）
 > 立项依据：军师《Soul OS 具身智能与社交生态协议底座开工令》2026-10-09
+>         + 军师《E36 战略架构升级战备号令》2026-10-09（Agent 执行中枢与语音双模态预留）
 > 主公圣旨：为「**千亿级灵魂社交网络**」与「**具身智能（Embodied AI）全设备合作**」提前预留架构接口，
 > 杜绝工业界最常见的翻车姿势 ——「先做单体工具，爆火后想接生态才发现底层写死，只能推倒重构」。
 > 范式来源：本项目 **V463 法器预留**（`docs/ARTEFACT_CTA_RESERVED.md`）—— 冻结契约 + inert 默认值 + 消费方忽略。
@@ -144,7 +146,7 @@
 
 ### 4.2 出参规范化（**设备与协议中立**铁律）
 
-所有灵宠相关端点（含内部 `/api/familiar/*`）出参**统一预留**三槽 —— 未来机器人 / 智能座舱读取**标准槽位**：
+所有灵宠相关端点（含内部 `/api/familiar/*`）出参**统一预留**五槽 —— 未来机器人 / 智能座舱读取**标准槽位**：
 
 ```jsonc
 {
@@ -155,13 +157,22 @@
     "primary": "#D9A441",
     "secondary": "#4FA8E0"
   },
+  "action_intent": {              // 🔴 E36 新增：Agent 执行挂点（详见 §4.4）
+    "action_type": "none",
+    "action_payload": { "service": null, "reasoning_astral": null, "target_params": {} },
+    "requires_user_confirmation": true
+  },
+  "voice_stream_meta": {          // 🔴 E36 新增：语音双模态挂点（详见 §4.5）
+    "voice_id": null, "emotional_tone": null, "viseme_timeline": null
+  },
   "schema_version": "1.0"
 }
 ```
 
 - 🔴 **`display_palette` 与 `relation.palette` 同源**（`skin` / `primary` / `secondary` 逐值一致），
   由 `astro/familiar_engine.py::resolve_familiar_palette()` 唯一真源产出，**禁前端/设备侧重算**。
-- 🔴 三槽位本期均为 **inert**（`motion_intent=null` / `emotion_state='neutral'`），
+- 🔴 五槽位本期均为 **inert**（`motion_intent=null` / `emotion_state='neutral'` /
+  `action_intent.action_type='none'` / `voice_stream_meta` 三字段全 null），
   **改值须经引擎层**（`motion_intent` 由 LLM + 情绪层产码），设备侧只读不写。
 
 ### 4.3 记忆双向同步（与设备流解耦）
@@ -175,6 +186,80 @@
 | `embodied_device` | 具身硬件（摸头 / 递水 / 语音） | ④ `memory-stream`（未来） |
 | `im_chat` | 社交 IM 会话 | 社交上线后（未来） |
 
+### 4.4 Agent 执行协议（AgentIntentAction · E36 立）
+
+**定位**：巨头（Meta / OpenAI）的动漫小人装上 API 就能下单订餐，那是「**手脚**」；
+我们的灵宠要长出执行手脚，但每一步必须由「**星历真值决策 + 用户显式确认**」双闸门驱动 ——
+「订餐厅」不是一句「已为您预订」，而是「金星相位极佳且火星避险，故为您避开辛辣、预留靠窗静谧位」。
+
+```jsonc
+{
+  "action_type": "none",                 // none | lifestyle_reserve | calendar_schedule | commerce_order
+  "action_payload": {
+    "service": null,                     // opentable | flight | shopify（**只描述服务类型**）
+    "reasoning_astral": null,            // 星历决策依据（人话）
+    "target_params": {}                  // 如 { "seats": 2, "atmosphere": "quiet", "window_seat": true }
+  },
+  "requires_user_confirmation": true     // 🔴 恒 true —— 构造器强制覆写，任何调用方都无法翻转
+}
+```
+
+- **单一真源**：`embodied/core/embodied_gateway.js::buildAgentIntentAction()`
+  （冻结契约 `AGENT_INTENT_RESERVED` + 唯一构造器）。🔴 任何链路都必须经该构造器产出，
+  **严禁手写第二份字面量**。
+- 🔴 **确认位不可翻转**：即便调用方显式传 `requires_user_confirmation: false`，构造器也会强制改回 `true`。
+  依据军师战略：「用户的信任只给懂他命运的灵魂」——**AI 绝不自主花用户的钱**。
+- 🔴 **越界 fail-closed**：未知 `action_type` ⇒ 降级 `'none'`；未知 `service` ⇒ 置 `null`（不猜、不执行）。
+- 🔴 **零密钥**：电商 / 订餐 / 日程 / 支付凭据一律由 B 端服务方持有，本仓**永不落地**；
+  本层只描述**意图**，绝不代理支付。
+- 🔴 本期**恒 inert**（`action_type='none'`），真实落地依赖：① 引擎决策算子就位；
+  ② 服务方授权；③ 用户二次确认弹窗。
+
+### 4.5 语音双模态协议（voice_stream_meta · E36 立）
+
+**定位**：声音是情感传递效率最高的介质。灵宠语音不是「把文字念出来」，而是
+「**星盘性格声线 + 情绪驱动语调 + 实时嘴型对齐**」。
+
+```jsonc
+{
+  "voice_id": null,          // 声线 ID（由 relation_mode 确定性映射，见下表）
+  "emotional_tone": null,    // caring | energetic | deep_affection | witty
+  "viseme_timeline": null    // 🔴 嘴型音素时间轴（前端 Spine 2D 骨骼张合驱动槽；无音频 ⇒ null）
+}
+```
+
+**四象声线矩阵**（唯一真源：`astro/familiar_engine.py::RELATION_VOICE_MATRIX`）：
+
+| `relation_mode` | 灵宠 | `voice_id` | `emotional_tone` | 听感 |
+|---|---|---|---|---|
+| `girlfriend` | Sophia · 女友 | `sophia_tender` | `caring` | 温润治愈 |
+| `buddy` | Milo · 哥们儿 | `milo_upright` | `energetic` | 阳光干劲 |
+| `bestie` | Sophia · 闺蜜 | `sophia_lively` | `witty` | 灵动俏皮 |
+| `boyfriend` | Milo · 男友 | `milo_protective` | `deep_affection` | 沉稳偏爱 |
+
+- 🔴 本层**不合成音频、不持有 TTS 凭据**：音频合成与音素时间轴由前端渲染层承接
+  （`web/src/components/FamiliarOverlay.tsx` 插拔桩 + 未来 Spine 2D skin swap）。
+- 🔴 `emotional_tone` 值域闭集**四值齐备**（`embodied/core/embodied_gateway.js::VOICE_EMOTIONAL_TONES`
+  ↔ 上表 ↔ 引擎矩阵），越界一律 fail-closed 置 `null`。
+
+### 4.6 四象决策算子（真值驱动决策 · Reverse Synergy）
+
+**唯一真源**：`astro/familiar_engine.py::RELATION_DECISION_OPERATORS`。
+引擎出参 `decision_operators` 为该表的**只读快照**；`embodied/core/intent_translator.js`
+**只读消费**，全仓**禁止**第二份权重表（复制 = 漂移 = 专利实施例证据链被污染）。
+
+| `relation_mode` | 决策意图 | 抬高权重的因子 | 重点宫位 |
+|---|---|---|---|
+| `girlfriend` | 情感互补与吸引 | `venus` / `mars` / `moon` | 7 |
+| `buddy` | 同频义气与事业共振 | `sun` / `mars` | 11 / 3 |
+| `bestie` | 敏锐共鸣与情绪解压 | `mercury` / `moon` | 3 / 11 |
+| `boyfriend` | 庇护偏爱与安全感 | `sun` / `jupiter` | 7 / 5 |
+
+- 🔴 四象签名（主因子集合 + 重点宫位）**两两互异**，闸门逐项断言「算子隔离」。
+- 🔴 输入恒为**用户 SwissEph 本命盘真值**；无真值 ⇒ 显式 `null`，**绝不伪造**。
+- ⚠️ 本期仅冻结**算子权重结构**，真实相位求解依赖**合婚线双盘字段对齐**（E35-C 前置）。
+
+
 ---
 
 ## 五、四项接口预留铁律（军师号令 · 落点表）
@@ -185,6 +270,16 @@
 | ② **数据模型扩展槽** | 预留 `device_bindings` / `social_preferences` | DDL §8.1 / §8.2 | 闸门 C |
 | ③ **记忆与设备流解耦** | `familiar_memories.source` 枚举 `app`/`embodied_device`/`im_chat` | DDL §8.3 | 闸门 A / C |
 | ④ **文档与 Schema 封仓** | 顶层构想入库为全仓架构北极星 | 本文件 | 闸门 E |
+
+### 5.1 E36 增量铁律（Agent 执行与语音双模态 · 落点表）
+
+| 铁律 | 要求 | 工程落点 | 验收判据 |
+|---|---|---|---|
+| ⑤ **动作须人确认** | `requires_user_confirmation` **恒 true**，构造器强制覆写，不可翻转 | `embodied/core/embodied_gateway.js::buildAgentIntentAction` | `embodied/tests` B2 / 闸门 16 |
+| ⑥ **越界 fail-closed** | 未知 `action_type` 降级 `none`；未知 `service` 置 `null` | 同上 | `embodied/tests` B3 |
+| ⑦ **零密钥** | 电商 / 订餐 / 日程 / 支付凭据一律由 B 端持有，本仓永不落地 | `embodied/**` 全目录扫描 | `embodied/tests` E3 / 闸门 16 |
+| ⑧ **逻辑物理归仓** | 具身协议演进 / 测试 / Mock 全在 `embodied/` 内闭环，**零反向依赖**业务线 | `embodied/` 目录 + 路由解耦 | `embodied/tests` E4 / 闸门 16 |
+| ⑨ **算子唯一真源** | 四象决策算子权重**只此一份**，转换器只读消费 | `astro/familiar_engine.py::RELATION_DECISION_OPERATORS` | `embodied/tests` D4 / 闸门 16 |
 
 ---
 
@@ -205,11 +300,14 @@
 
 | 批次 | 内容 | 状态 |
 |---|---|---|
-| **E35-A** | 本文档 + DDL §8 槽位 + 引擎出参四槽 + 5 端点骨架（env 门控）+ 第 15 道闸门 | ✅ 本批 |
+| **E35-A** | 本文档 + DDL §8 槽位 + 引擎出参四槽 + 5 端点骨架（env 门控）+ 第 15 道闸门 | ✅ 已封盘结项（`e322905`） |
+| **E36** | Agent 执行槽（`action_intent`）+ 语音双模态槽（`voice_stream_meta`）+ 四象决策算子 + `embodied/` 独立领地 + 第 16 道闸门 | ✅ 本批 |
 | E35-B | Soul Card 真实实现（脱敏 + 三级授权） | 待排期 |
 | E35-C | Synastry 张量引擎（依赖合婚线双盘字段对齐） | 待排期 |
 | E35-D | Embodied 真实实现（人格装载 / 感知回流 / 动作意图 / 记忆同步） | 待排期 |
 | E35-E | 对外协议版本冻结（`1.0` 转正） | 待排期 |
+| E36-B | 生活执行真实接入（OpenTable / 航班 / 下单，凭据由 B 端持有） | 待排期 |
+| E36-C | 语音真实落地（流式 TTS + Spine 2D Lip-Sync 音素对齐） | 待排期 |
 
 > **缓存版本策略**：Soul OS 协议骨架属**纯新增**（无 LLM prompt / 无报告输出变更）⇒ **不 bump `vNNN`**，
 > 不清全站缓存。`SOUL_OS_PROTOCOL_VERSION` 是**契约版本**，与缓存版本是两条独立的版本线。
@@ -217,3 +315,4 @@
 ---
 
 *文档建立：2026-10-09 · E35-A · 契约版本 `SOUL_OS_PROTOCOL_VERSION = '1.0'`*
+*最近修订：2026-10-09 · E36（新增 §4.4 Agent 执行协议 / §4.5 语音双模态协议 / §4.6 四象决策算子 / §5.1 增量铁律）*

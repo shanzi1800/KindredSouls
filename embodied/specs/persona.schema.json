@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kindredsouls.online/embodied/specs/persona.schema.json",
+  "title": "Soul OS Embodied · Persona Contract",
+  "$comment": "KindredSouls / Soul OS Embodied Intelligence Open Protocol · (c) 2026 KindredSouls. PATENT-PENDING: 双母 PCT 国际专利实施例证据链。仅供授权合作方按许可范围使用。",
+  "description": "人格、声线与情绪状态契约。具身设备绑定用户后，经 /api/v1/embodied/persona 拉取，用于装载灵宠形态（Milo / Sophia）与关系人格（relation_mode）。封仓期 live=false，全部字段为 inert 契约。",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["success", "live", "protocol_version", "emotion_state", "schema_version"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "live": {
+      "type": "boolean",
+      "description": "🔴 封仓期恒 false —— 骨架 inert，不含任何真实用户档案。"
+    },
+    "protocol_version": {
+      "type": "string",
+      "description": "契约版本（唯一真源：SOUL_OS_PROTOCOL_VERSION，独立于缓存版本 vNNN）。"
+    },
+    "schema_version": { "type": "string" },
+    "endpoint": { "type": "string" },
+    "emotion_state": {
+      "type": "string",
+      "enum": ["neutral", "happy", "tired", "comfort", "excited"],
+      "description": "情绪状态值。封仓期恒 'neutral'；改值须经引擎层（LLM + 情绪层产码），设备侧只读。"
+    },
+    "display_palette": {
+      "type": ["object", "null"],
+      "description": "🔴 与 relation.palette 同源（skin / primary / secondary 逐值一致）——由 resolve_familiar_palette() 唯一真源产出，禁设备侧重算。",
+      "required": ["skin", "primary", "secondary"],
+      "properties": {
+        "skin": { "type": "string" },
+        "primary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "secondary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+      }
+    },
+    "relation_mode": {
+      "type": "string",
+      "enum": ["girlfriend", "buddy", "bestie", "boyfriend"],
+      "description": "四象人格。唯一真源：astro/familiar_engine.py::RELATION_MODES（2 个 IP × 2 种关系）。"
+    },
+    "voice_stream_meta": {
+      "$ref": "#/$defs/voiceStreamMeta",
+      "description": "语音双模态挂点（E36 立）。封仓期三字段全 null。"
+    },
+    "action_intent": {
+      "$ref": "#/$defs/agentIntentAction",
+      "description": "Agent 执行挂点（E36 立）。封仓期 action_type='none'，确认位恒 true。"
+    }
+  },
+  "$defs": {
+    "voiceStreamMeta": {
+      "type": "object",
+      "required": ["voice_id", "emotional_tone", "viseme_timeline"],
+      "additionalProperties": false,
+      "properties": {
+        "voice_id": {
+          "type": ["string", "null"],
+          "description": "声线 ID。由 relation_mode 确定性映射（见 RELATION_VOICE_MATRIX），封仓期 null。"
+        },
+        "emotional_tone": {
+          "type": ["string", "null"],
+          "enum": ["caring", "energetic", "deep_affection", "witty", null],
+          "description": "情感语调闭集。caring=女友 · energetic=哥们儿 · deep_affection=男友 · witty=闺蜜。"
+        },
+        "viseme_timeline": {
+          "type": ["array", "null"],
+          "description": "🔴 嘴型音素时间轴（前端 Spine 2D 骨骼张合驱动槽）。无音频流 ⇒ 恒 null。"
+        }
+      }
+    },
+    "agentIntentAction": {
+      "type": "object",
+      "required": ["action_type", "action_payload", "requires_user_confirmation"],
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "type": "string",
+          "enum": ["none", "lifestyle_reserve", "calendar_schedule", "commerce_order"],
+          "description": "执行动作类型闭集。越界一律 fail-closed 降级为 'none'（不猜、不执行）。"
+        },
+        "action_payload": {
+          "type": "object",
+          "required": ["service", "reasoning_astral", "target_params"],
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": ["string", "null"],
+              "enum": ["opentable", "flight", "shopify", null],
+              "description": "服务类型闭集。🔴 只描述服务类型，绝不含任何凭据 / 端点 / 密钥。"
+            },
+            "reasoning_astral": {
+              "type": ["string", "null"],
+              "description": "星历决策依据（人话）。如「金星相位极佳且火星避险，推荐静谧低刺激餐厅」。"
+            },
+            "target_params": {
+              "type": "object",
+              "description": "目标参数（如 seats / atmosphere / window_seat）。"
+            }
+          }
+        },
+        "requires_user_confirmation": {
+          "const": true,
+          "description": "🔴 恒 true —— 构造器强制覆写，任何调用方都无法翻转。AI 绝不自主花用户的钱。"
+        }
+      }
+    }
+  }
+}

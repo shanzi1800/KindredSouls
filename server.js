@@ -464,6 +464,9 @@ import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ V475: 采样参数单一真源
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
+// 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
+//   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
+import { embodiedReservedExtras } from './embodied/core/embodied_gateway.js';
 
 // ─────────────────────────────────────────────────────────
 // 🛠️ V332-fix: StringDecoder 字节级安全分块
@@ -13829,6 +13832,9 @@ const SOUL_OS_RESERVED = Object.freeze({
   motion_intent: null,         // 动作意图挂点（具身设备：hug_warm / nod / ear_perk）
   emotion_state: 'neutral',    // 情绪状态值：neutral | happy | tired | comfort | excited
   display_palette: null,       // 设备灯效/配色（由引擎 palette 填充，本期留空）
+  // ── E36 新增两槽（Agent 执行 + 语音双模态；具身端点由 embodied/core 装配真实 inert 值）──
+  action_intent: null,         // E36：Agent 执行挂点（默认 inert；真实动作须用户显式确认）
+  voice_stream_meta: null,     // E36：语音双模态挂点（voice_id / emotional_tone / viseme_timeline）
 });
 function buildSoulOsReserved(overrides) {
   return Object.assign({}, SOUL_OS_RESERVED, overrides || {});
@@ -13883,25 +13889,28 @@ app.get('/api/v1/soul/card/:userId', (req, res) => {
 // ② 人格与语气装载（具身设备开机后拉取灵宠形态与关系人格）
 app.get('/api/v1/embodied/persona', (req, res) => {
   if (!soulOsGate(req, res)) return;
-  return res.json(buildSoulOsReserved({ endpoint: 'embodied.persona' }));
+  return res.json(buildSoulOsReserved(embodiedReservedExtras('embodied.persona')));
 });
 
 // ③ 多模态感知上报（摄像头/传感器标签 → 隐式强化学习输入）
 app.post('/api/v1/embodied/perception-sync', (req, res) => {
   if (!soulOsGate(req, res)) return;
-  return res.json(buildSoulOsReserved({ endpoint: 'embodied.perception-sync' }));
+  return res.json(buildSoulOsReserved(embodiedReservedExtras('embodied.perception-sync')));
 });
 
 // ④ 肢体与微表情驱动指令（动作意图码联动机械臂/表情）
 app.get('/api/v1/embodied/action-intent', (req, res) => {
   if (!soulOsGate(req, res)) return;
-  return res.json(buildSoulOsReserved({ endpoint: 'embodied.action-intent' }));
+  return res.json(buildSoulOsReserved(embodiedReservedExtras('embodied.action-intent')));
 });
 
 // ⑤ 具身记忆双向同步（现实互动 → familiar_memories，source='embodied_device'）
 app.post('/api/v1/embodied/memory-stream', (req, res) => {
   if (!soulOsGate(req, res)) return;
-  return res.json(buildSoulOsReserved({ endpoint: 'embodied.memory-stream', memory_source: 'embodied_device' }));
+  return res.json(buildSoulOsReserved(Object.assign(
+    embodiedReservedExtras('embodied.memory-stream'),
+    { memory_source: 'embodied_device' },
+  )));
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -13924,6 +13933,32 @@ const ACTIONABLE_ARTEFACT_RESERVED = Object.freeze({
 function buildActionableArtefact(overrides) {
   return Object.assign({}, ACTIONABLE_ARTEFACT_RESERVED, overrides || {});
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 🤖 E36：Soul OS Agent 执行中枢与语音双模态预留（桥接节点）
+//   依据：军师《E36 战略架构升级战备号令》2026-10-09（主公全面摊牌 Soul OS 护城河）
+//         ——「巨头做手脚（下单/订餐），我们做脑核（真值驱动的信任决策）」。
+//
+//   ── 逻辑物理归仓 `embodied/`（主公最高指示：具身合作代码独立成目录）──
+//      · embodied/README.md                    协议总览 + 专利交底索引 + 硬件对接规范
+//      · embodied/specs/                      三份设备侧契约（persona / motion / perception）
+//      · embodied/core/embodied_gateway.js     Agent 执行槽 + 语音槽 + 路由注册表（唯一真源）
+//      · embodied/core/intent_translator.js    星历决策 ➜ 动作意图转换器（只读消费算子）
+//      · embodied/adapters/{cockpit,humanoid,companion_pet}/   硬件适配预留槽
+//      · embodied/tests/embodied_contract.test.mjs             契约套件（纳入 test:astro 长链）
+//      价值：专利取证可整包交付；B 端合作可整包作 SDK 分发；演进与 Mock 全在目录内闭环。
+//
+//   ── 本文件侧的三处落点 ──
+//      ① 出参两槽：SOUL_OS_RESERVED 增 action_intent / voice_stream_meta（默认 inert）；
+//      ② 路由解耦：4 个具身端点出参一律经 embodiedReservedExtras() 装配（handler 首行门控不动）；
+//      ③ 契约版本：仍由本文件的 SOUL_OS_PROTOCOL_VERSION 唯一持有（embodied/ 不再复制一份）。
+//
+//   ── 三条铁律（与 embodied/core 同源，改动须同步）──
+//      ① 🔴 动作**必须经用户显式确认**：requires_user_confirmation 由构造器强制覆写为 true，
+//         任何调用方（含请求体）都无法翻转 ⇒ 杜绝「AI 自主花用户的钱」。
+//      ② 🔴 越界 fail-closed：未知 action_type 降级 'none'，未知 service 置 null（不猜、不执行）。
+//      ③ 🔴 零密钥：电商 / 订餐 / 日程 / 支付凭据一律由 B 端服务方持有，本仓永不落地。
+// ═══════════════════════════════════════════════════════════════
 
 // ── [V238-STREAM-META] 共享: 结构化命理元数据(八字/星座/易经/塔罗)供流式端点报头渲染 ──
 function buildWealthMeta(birthDate, lang, astroMatrix) {
