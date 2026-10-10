@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "note": "首页背景插拔式轮播容器 · 运营热插拔配置。改 items 数组即可增删轮播内容，刷新即生效，无需改组件内核。type: ambient=默认星空底(story=短剧切片 15s / ad=商业广告位 30s)；holdMs 单位毫秒(5000~300000)。新增视频须放入 web/public/ 并确认已入库(git ls-files web/dist/<名>.mp4)。",
+  "items": [
+    {
+      "id": "default-cosmic",
+      "src": "/cosmic_bg.mp4",
+      "holdMs": 30000,
+      "type": "ambient"
+    }
+  ]
+}

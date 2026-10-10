@@ -27,4 +27,4 @@ dist-ssr
 SECRETS.md
 *.mp4
 !public/*.mp4
-!dist/cosmic_bg.mp4
+!dist/*.mp4

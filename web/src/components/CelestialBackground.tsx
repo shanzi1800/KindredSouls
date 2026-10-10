@@ -1,22 +1,188 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  BG_QUEUE_CONFIG_PATH,
+  BG_VIDEOS,
+  nextQueueIndex,
+  pickQueueItem,
+  resolveHoldMs,
+  sanitizeBgQueue,
+  shouldDegradeToSingle,
+} from '../lib/bgQueue';
+import type { BgItem } from '../lib/bgQueue';
 
 /**
- * CelestialBackground — 视频背景 + 星尘粒子双层动画 v3
- * 
- * 底层：cosmic_bg.mp4 循环播放（粉紫星河视频）
+ * CelestialBackground — 视频背景 + 星尘粒子双层动画 v4
+ *
+ * 底层：**插拔式轮播容器**（队列驱动；队列只有 1 支时自动退化为单支常驻循环）
  * 上层：Canvas 粒子动画（半透明，视频透出来）
  * 中央粒子密集区自然覆盖视频水印位置
+ *
+ * ── 容器承载的三类内容（军师令）────────────────────────────
+ *   ambient  默认星空底（兜底态，永不空场）
+ *   story    15s 短剧切片（Milo / Sophia IP 宣发）
+ *   ad       30s 商业广告位
+ *
+ * ── 引擎三件套（咬合锁死）──────────────────────────────────
+ *   ① 时间控制器：按 resolveHoldMs(item) 定时切槽，固定列表顺序 Queue Loop
+ *   ② 预加载：切换后立即把下一支塞进隐藏槽（preload=auto），杜绝等待黑屏
+ *   ③ 双槽无缝过渡：A/B 两槽 opacity 交叉淡入；单元素换 src 必闪黑，故不用
+ *
+ * ── 插拔方式（运营侧，均无需改组件内核）────────────────────
+ *   ① 运行期热插拔（推荐）：改 web/public/bg-queue.json → 刷新即生效
+ *   ② 编译期：改 src/lib/bgQueue.ts 的 BG_VIDEOS
+ *   ⚠️ 新增视频三件套：放入 web/public/ ＋ web/.gitignore 已配 !dist/*.mp4 豁免 ＋
+ *      必须入库（git ls-files web/dist/<名>.mp4 能查到，否则生产镜像无此文件 —— E40+FIX 血训）
  */
+
+const CROSSFADE_MS = 1500; // 交叉淡入淡出时长（毫秒）
+// 弱网/省流开关：true = 命中 saveData / prefers-reduced-motion 时仍照常轮播；
+// 默认 false ⇒ 降级为单支常驻（主干逻辑不阻断，弱网分支只降载不换轨 —— 军师令）
+const ALLOW_ROTATION_ON_SLOW_NETWORK = false;
+
+function envSaveData(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  return Boolean(conn?.saveData);
+}
+
+function envReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export default function CelestialBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const slotARef = useRef<HTMLVideoElement>(null);
+  const slotBRef = useRef<HTMLVideoElement>(null);
   const animRef = useRef<number>(0);
   const [isMuted, setIsMuted] = useState(true);
-  const [videoReady, setVideoReady] = useState(false);
+
+  // ── 插拔式队列：默认 1 支（自动退化为单支常驻循环，零额外请求）；可由 /bg-queue.json 热插拔 ──
+  const [queue, setQueue] = useState<BgItem[]>(() =>
+    shouldDegradeToSingle(BG_VIDEOS, {
+      saveData: envSaveData(),
+      reducedMotion: envReducedMotion(),
+      allowOnSlow: ALLOW_ROTATION_ON_SLOW_NETWORK,
+    })
+      ? BG_VIDEOS.slice(0, 1)
+      : BG_VIDEOS,
+  );
+  // 双槽轮播：a / b 各承载一支视频，交叉淡入实现无缝切换（单支时仅渲染 a）
+  const [idxA, setIdxA] = useState(0);
+  const [idxB, setIdxB] = useState(0);
+  const [visible, setVisible] = useState<'a' | 'b'>('a');
+  const [readyA, setReadyA] = useState(false);
+  const [readyB, setReadyB] = useState(false);
+  const [switches, setSwitches] = useState(0);
+
+  const multi = queue.length > 1;
+  const itemA = pickQueueItem(queue, idxA);
+  const itemB = pickQueueItem(queue, idxB);
+  // 当前可见支是否可播 —— 决定整个视频层是否淡入（首屏体验与原版一致）
+  const layerReady = visible === 'a' ? readyA : readyB;
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.volume = 1.0;
+    if (slotARef.current) slotARef.current.volume = 1.0;
+    if (slotBRef.current) slotBRef.current.volume = 1.0;
   }, [isMuted]);
+
+  // ── 运行期热插拔：拉取 /bg-queue.json 覆盖队列；失败/为空/非法一律静默回退默认，绝不阻断首屏 ──
+  useEffect(() => {
+    let alive = true;
+    fetch(BG_QUEUE_CONFIG_PATH, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((raw) => {
+        if (!alive || !raw) return;
+        let q = sanitizeBgQueue(raw);
+        if (q.length === 0) return; // 配置不可用 ⇒ 保持默认队列
+        if (
+          shouldDegradeToSingle(q, {
+            saveData: envSaveData(),
+            reducedMotion: envReducedMotion(),
+            allowOnSlow: ALLOW_ROTATION_ON_SLOW_NETWORK,
+          })
+        ) {
+          q = q.slice(0, 1);
+        }
+        setQueue(q);
+      })
+      .catch(() => {
+        /* 无配置文件 / 网络异常 ⇒ 保持默认单支，不影响首屏 */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // 队列热插拔后归位：A 槽自 0 起展示，B 槽预载下一支
+  useEffect(() => {
+    setVisible('a');
+    setIdxA(0);
+    setIdxB(queue.length > 1 ? nextQueueIndex(0, queue.length) : 0);
+  }, [queue]);
+
+  // src 变化时重置对应槽的可播标记（key 触发重挂载，等 onCanPlay 重新点亮）
+  const prevSrcA = useRef(itemA.src);
+  useEffect(() => {
+    if (prevSrcA.current !== itemA.src) {
+      prevSrcA.current = itemA.src;
+      setReadyA(false);
+    }
+  }, [itemA.src]);
+  const prevSrcB = useRef(itemB.src);
+  useEffect(() => {
+    if (prevSrcB.current !== itemB.src) {
+      prevSrcB.current = itemB.src;
+      setReadyB(false);
+    }
+  }, [itemB.src]);
+
+  // ── ① 时间控制器：当前支播满 holdMs 即切槽（固定列表顺序 Queue Loop）──
+  useEffect(() => {
+    if (!multi || !layerReady) return;
+    const cur = visible === 'a' ? idxA : idxB;
+    const hold = resolveHoldMs(pickQueueItem(queue, cur));
+    const timer = window.setTimeout(() => {
+      const next = nextQueueIndex(cur, queue.length);
+      console.log('[bg-queue] switch', { from: pickQueueItem(queue, cur).id, to: pickQueueItem(queue, next).id, holdMs: hold });
+      setVisible((v) => (v === 'a' ? 'b' : 'a'));
+      setSwitches((n) => n + 1);
+    }, hold);
+    return () => window.clearTimeout(timer);
+  }, [multi, layerReady, visible, idxA, idxB, queue]);
+
+  // ── ②③ 切换后：播放新可见支 ＋ 把下一支预载进隐藏槽（交叉淡入不闪黑）──
+  useEffect(() => {
+    if (!multi) return;
+    const curEl = (visible === 'a' ? slotARef : slotBRef).current;
+    const hidEl = (visible === 'a' ? slotBRef : slotARef).current;
+    if (curEl) {
+      try {
+        curEl.currentTime = 0;
+        const p = curEl.play();
+        if (p && typeof p.then === 'function') p.catch(() => {});
+      } catch {
+        /* 自动播放被拦截时静默降级（仍有深色星空兜底） */
+      }
+    }
+    if (hidEl) hidEl.pause();
+    const cur = visible === 'a' ? idxA : idxB;
+    const next = nextQueueIndex(cur, queue.length);
+    if (visible === 'a') setIdxB(next);
+    else setIdxA(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // ── 观测钩子：轮播态写入 <html data-bg-*>（仅多支时），供本地/线上实证与运营排障 ──
+  useEffect(() => {
+    if (!multi || typeof document === 'undefined') return;
+    const cur = visible === 'a' ? idxA : idxB;
+    const el = document.documentElement;
+    el.dataset.bgSlot = visible;
+    el.dataset.bgIndex = String(cur);
+    el.dataset.bgId = pickQueueItem(queue, cur).id;
+    el.dataset.bgSwitches = String(switches);
+  }, [multi, visible, idxA, idxB, switches, queue]);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -442,16 +608,18 @@ export default function CelestialBackground() {
           zIndex: 0,
         }}
       />
-      {/* 底层：视频背景 — 懒加载，加载完再淡入 */}
+      {/* 底层：视频背景 A 槽 — 加载完再淡入；多支时按 holdMs 轮播 */}
       <video
-        ref={videoRef}
-        src="/cosmic_bg.mp4"
+        key={`a:${itemA.src}`}
+        ref={slotARef}
+        src={itemA.src}
         autoPlay
         loop
         playsInline
         muted={isMuted}
+        preload="auto"
         onClick={() => setIsMuted(m => !m)}
-        onCanPlay={() => setVideoReady(true)}
+        onCanPlay={() => setReadyA(true)}
         style={{
           position: 'fixed',
           inset: 0,
@@ -459,10 +627,36 @@ export default function CelestialBackground() {
           height: '100vh',
           objectFit: 'cover',
           zIndex: 0,
-          opacity: videoReady ? 1 : 0,
-          transition: 'opacity 1.5s ease-in-out',
+          opacity: visible === 'a' && readyA ? 1 : 0,
+          transition: `opacity ${CROSSFADE_MS}ms ease-in-out`,
+          pointerEvents: visible === 'a' ? 'auto' : 'none',
         }}
       />
+      {/* 底层：视频背景 B 槽 — 仅多支队列时渲染，预载下一支以实现交叉淡入 */}
+      {multi && (
+        <video
+          key={`b:${itemB.src}`}
+          ref={slotBRef}
+          src={itemB.src}
+          loop
+          playsInline
+          muted={isMuted}
+          preload="auto"
+          onClick={() => setIsMuted(m => !m)}
+          onCanPlay={() => setReadyB(true)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            width: '100vw',
+            height: '100vh',
+            objectFit: 'cover',
+            zIndex: 0,
+            opacity: visible === 'b' && readyB ? 1 : 0,
+            transition: `opacity ${CROSSFADE_MS}ms ease-in-out`,
+            pointerEvents: visible === 'b' ? 'auto' : 'none',
+          }}
+        />
+      )}
       {/* 上层：粒子动画（半透明，覆盖水印） */}
       <canvas
         ref={canvasRef}
