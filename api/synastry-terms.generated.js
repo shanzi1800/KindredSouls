@@ -1,13 +1,16 @@
 /* eslint-disable */
 /**
- * synastry-terms.generated.js — 合婚术语派生物（Gate 39）
+ * synastry-terms.generated.js — 合婚术语派生物（Gate 39 / Gate 40）
  *
  * ⚠️ 本文件由 scripts/gen-synastry-terms.mjs 自动生成，**禁止手工修改**。
- *    真值源：astro/astro_terms_dict.json（域 domains.planetsShort）
- *    任何手改都会被 Gate 39 一致性断言判定为失败；重新生成：npm run gen:synastry-terms
+ *    真值源：astro/astro_terms_dict.json（域 domains.planetsShort ↔ SYNASTRY_PLANETS
+ *                                      ＋ domains.aspectsShort ↔ SYNASTRY_ASPECTS）
+ *    任何手改都会被闸门一致性断言判定为失败；重新生成：npm run gen:synastry-terms
  *
  * 本文件在 api/ 与 web/api/ 两份镜像中**逐字节相同**（内联常量、零路径依赖），
  * 以确保 ai-advisor.js 镜像的 md5 铁律不被破坏。
+ *
+ * 🔴 纯投影：相位键为小写、值与字典逐字节相同；词间内联间隔符由消费者按语种施加。
  */
 export const SYNASTRY_PLANETS = {
   zh: {
@@ -81,6 +84,52 @@ export const SYNASTRY_PLANETS = {
     "Uranus": "Sao Thiên Vương",
     "Neptune": "Sao Hải Vương",
     "Pluto": "Sao Diêm Vương",
+  },
+};
+
+/** 合婚五相位 chip 词干（键小写；内联间隔符由消费者按语种书写习惯施加） */
+export const SYNASTRY_ASPECTS = {
+  zh: {
+    "conjunction": "合",
+    "sextile": "六合",
+    "square": "刑",
+    "trine": "三合",
+    "opposition": "冲",
+  },
+  en: {
+    "conjunction": "conjunct",
+    "sextile": "sextile",
+    "square": "square",
+    "trine": "trine",
+    "opposition": "opposite",
+  },
+  es: {
+    "conjunction": "conjunción",
+    "sextile": "sextil",
+    "square": "cuadratura",
+    "trine": "trígono",
+    "opposition": "oposición",
+  },
+  fr: {
+    "conjunction": "conjonction",
+    "sextile": "sextile",
+    "square": "carré",
+    "trine": "trigone",
+    "opposition": "opposition",
+  },
+  th: {
+    "conjunction": "ร่วม",
+    "sextile": "หก",
+    "square": "ฉาก",
+    "trine": "ตรีโกณ",
+    "opposition": "ตรงข้าม",
+  },
+  vi: {
+    "conjunction": "hợp",
+    "sextile": "lục hợp",
+    "square": "vuông góc",
+    "trine": "tam hợp",
+    "opposition": "đối",
   },
 };
 

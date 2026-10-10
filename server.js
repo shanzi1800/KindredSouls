@@ -469,6 +469,8 @@ import { exec } from 'child_process';
 import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码器，根治泰语/越南语掉辅音
 import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ V475: 采样参数单一真源
 import { buildCompatPrompt, buildCompatTimeContext, computeCompatScores } from './api/ai-advisor.js';  // 🛍️ E39-A: 合婚四段骨架真值资产（六语 + 动态时间轴 + 强制数据锁，单一真源引渡）
+import { SYNASTRY_I18N } from './api/ai-advisor.js';  // 🛡️ Gate 40: 合盘报告六语真值表（Payload 装配注入；独立成行，不污染 E39 封仓引渡契约行）
+import { buildReportPayload, createReportPipeline, REPORT_PAYLOAD_SCHEMA } from './lib/reportPipeline.mjs';  // 🛡️ Gate 40: 合盘报告生成管线（状态机 + 标准化 Payload 契约，纯逻辑核）
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
@@ -12946,6 +12948,8 @@ async function buildCompatSynastryTruth(body, d1, d2) {
       hard: Number(harm.hard) || 0,
       total: Number(harm.total) || 0,
       ratio: (typeof harm.ratio === 'number') ? harm.ratio : null,
+      // 🛡️ Gate 40：五相位计数逐字透传自引擎张量（counts），供标准化 Payload 结构化映射
+      counts: (dual.tensor && dual.tensor.counts && typeof dual.tensor.counts === 'object') ? dual.tensor.counts : {},
       unknown: Array.isArray(dual.unknown) ? dual.unknown : [],
       bonds: Array.isArray(summ.bonds) ? summ.bonds : [],
       frictions: Array.isArray(summ.frictions) ? summ.frictions : [],
@@ -15085,6 +15089,10 @@ app.use('/api/ai-advisor', async (req, res) => {
       }
       try {
         console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
+        // 🛡️ Gate 40：报告生成状态机（pending → calculating → assembling → ready ／ failed 旁路）
+        //   🔴 内部英文状态机；前端只识 toViewModel() 的 available/degraded（前后端彻底解耦）。
+        const _pipe = createReportPipeline();
+        _pipe.advance('calculating');
         // 🌌 E40+：真实双盘天体羁绊锁真值（缺真值 ⇒ 降级/显式未知，绝不伪造；失败不阻断报告）
         const _compatSyn = await buildCompatSynastryTruth(req.body || {}, d1, d2);
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
@@ -15105,10 +15113,34 @@ app.use('/api/ai-advisor', async (req, res) => {
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
+        // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）
+        //   · truth 逐字映射引擎张量摘要（禁二次算法漂移）；
+        //   · cards[] 每项必回查 astro_terms_dict.json（经 lib/reportPipeline.mjs 字典取词层）；
+        //   · 结构化真值**绝不**从 LLM 正文反推（prose 只进 sections 四段壳）。
+        //   🔴 报告失败永不阻断：装配异常 ⇒ payload 省略，insight 照常交付（前端优雅回退）。
+        _pipe.advance('assembling');
+        let _pipelinePayload = null;
+        try {
+          _pipelinePayload = buildReportPayload({
+            lang,
+            reportType,
+            truth: _compatSyn,
+            prose: insight,
+            i18n: (SYNASTRY_I18N[lang] || SYNASTRY_I18N.zh),
+            generatedAt: new Date().toISOString(),
+          });
+          _pipe.advance('ready');
+          console.log(`[Gate40] report payload ready: schema=${REPORT_PAYLOAD_SCHEMA} cards=${_pipelinePayload.cards.length} sections=${_pipelinePayload.sections.length}`);
+        } catch (_pErr) {
+          _pipe.fail('payload_assembly_failed');
+          console.warn('[Gate40] payload assembly skipped:', (_pErr && _pErr.message) || _pErr);
+        }
         // 🛍️ E24⑥② 生成成功 ⇒ 补写合婚生成周期时间戳（失败不写，避免把用户在期内锁死）
         if (_cEnt.userId) {
           await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, new Date(), { withDaily: false, withQuota: false }));
         }
+        // 🔴 增量契约：payload 存在则附带（前端画布用）；缺省时回退既有回执形态（向后兼容）
+        if (_pipelinePayload) return res.json({ insight, cached: false, payload: _pipelinePayload });
         return res.json({ insight, cached: false });
       } catch (aiError) {
         console.error('[AI Advisor] AI generation failed:', aiError.message);

@@ -1,6 +1,25 @@
-import { SYNASTRY_PLANETS } from './synastry-terms.generated.js';
+import { SYNASTRY_PLANETS, SYNASTRY_ASPECTS } from './synastry-terms.generated.js';
 
 export const runtime = 'nodejs';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ Gate 40：合婚五相位 chip 词干**零硬编码**（真值源 astro/astro_terms_dict.json
+//    → domains.aspectsShort → synastry-terms.generated.js ⇒ SYNASTRY_ASPECTS）
+//
+//   本函数只施加「词间内联间隔符」——属**渲染排版约定**，非术语：
+//     拉丁/越语族以空格分词（`Venus trine Jupiter`）⇒ 前后各一空格；
+//     zh / th 无词间空格（`金星三合木星` / `ศุกร์ ตรีโกณ พฤหัสบดี`）⇒ 不加。
+//   术语本体一律逐字取自字典（SYNASTRY_ASPECTS[lang]），本文件不得再出现
+//   '合' / 'conjunct' / 'ตรีโกณ' 等任何相位字面量（闸门 C 源码级锁定）。
+// ═══════════════════════════════════════════════════════════════════════════
+const SYNASTRY_ASPECT_SPACED = new Set(['en', 'es', 'fr', 'vi']);
+function _synAspectTerms(lang) {
+  const core = SYNASTRY_ASPECTS[lang] || SYNASTRY_ASPECTS.zh;
+  const pad = SYNASTRY_ASPECT_SPACED.has(lang) ? ' ' : '';
+  const out = {};
+  for (const k of Object.keys(core)) out[k] = pad ? `${pad}${core[k]}${pad}` : core[k];
+  return out;
+}
 
 // ── In-memory rate limit (IP per minute) ──
 const rateLimitMap = new Map();
@@ -1266,7 +1285,7 @@ export const SYNASTRY_I18N = {
       bonds: '柔和相位（借力）', frictions: '张力相位（冲突）', signatures: '核心羁绊',
     },
     planets: SYNASTRY_PLANETS.zh,
-    aspects: { conjunction: '合', sextile: '六合', square: '刑', trine: '三合', opposition: '冲' },
+    aspects: _synAspectTerms('zh'),
     pairFmt: '{a}{asp}{b}(天距{orb}°)',
     listSep: '、',
     tenor: { harmonious: '共振基调偏调和', balanced: '调和与张力相当', hard: '共振基调偏考验' },
@@ -1284,7 +1303,7 @@ export const SYNASTRY_I18N = {
       bonds: 'soft aspects (leverage)', frictions: 'hard aspects (conflict)', signatures: 'core bonds',
     },
     planets: SYNASTRY_PLANETS.en,
-    aspects: { conjunction: ' conjunct ', sextile: ' sextile ', square: ' square ', trine: ' trine ', opposition: ' opposite ' },
+    aspects: _synAspectTerms('en'),
     pairFmt: '{a}{asp}{b} (orb {orb}°)',
     listSep: ', ',
     tenor: { harmonious: 'resonance leans harmonious', balanced: 'harmony and tension balanced', hard: 'resonance leans testing' },
@@ -1302,7 +1321,7 @@ export const SYNASTRY_I18N = {
       bonds: 'aspectos suaves (apoyo)', frictions: 'aspectos duros (conflicto)', signatures: 'vínculos clave',
     },
     planets: SYNASTRY_PLANETS.es,
-    aspects: { conjunction: ' conjunción ', sextile: ' sextil ', square: ' cuadratura ', trine: ' trígono ', opposition: ' oposición ' },
+    aspects: _synAspectTerms('es'),
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
     tenor: { harmonious: 'la resonancia tiende a la armonía', balanced: 'armonía y tensión equilibradas', hard: 'la resonancia tiende a la prueba' },
@@ -1320,7 +1339,7 @@ export const SYNASTRY_I18N = {
       bonds: 'aspects doux (appui)', frictions: 'aspects durs (conflit)', signatures: 'liens clés',
     },
     planets: SYNASTRY_PLANETS.fr,
-    aspects: { conjunction: ' conjonction ', sextile: ' sextile ', square: ' carré ', trine: ' trigone ', opposition: ' opposition ' },
+    aspects: _synAspectTerms('fr'),
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
     tenor: { harmonious: 'la résonance penche vers l\'harmonie', balanced: 'harmonie et tension équilibrées', hard: 'la résonance penche vers l\'épreuve' },
@@ -1338,7 +1357,7 @@ export const SYNASTRY_I18N = {
       bonds: 'มุมอ่อน (ใช้เป็นพลังหนุน)', frictions: 'มุมตึง (จุดขัดแย้ง)', signatures: 'พันธะหลัก',
     },
     planets: SYNASTRY_PLANETS.th,
-    aspects: { conjunction: 'ร่วม', sextile: 'หก', square: 'ฉาก', trine: 'ตรีโกณ', opposition: 'ตรงข้าม' },
+    aspects: _synAspectTerms('th'),
     pairFmt: '{a} มุม{asp} {b} (ระยะ{orb}°)',
     listSep: ' ',
     tenor: { harmonious: 'โทนเสียงสะท้อนเอนไปทางสมาน', balanced: 'ความสมานและความตึงสมดุลกัน', hard: 'โทนเสียงสะท้อนเอนไปทางบททดสอบ' },
@@ -1356,7 +1375,7 @@ export const SYNASTRY_I18N = {
       bonds: 'góc mềm (điểm tựa)', frictions: 'góc cứng (xung đột)', signatures: 'ràng buộc cốt lõi',
     },
     planets: SYNASTRY_PLANETS.vi,
-    aspects: { conjunction: ' hợp ', sextile: ' lục hợp ', square: ' vuông góc ', trine: ' tam hợp ', opposition: ' đối ' },
+    aspects: _synAspectTerms('vi'),
     pairFmt: '{a}{asp}{b} (lệch {orb}°)',
     listSep: ', ',
     tenor: { harmonious: 'âm hưởng nghiêng về hòa hợp', balanced: 'hòa hợp và căng thẳng cân bằng', hard: 'âm hưởng nghiêng về thử thách' },

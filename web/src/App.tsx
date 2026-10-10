@@ -16,6 +16,8 @@ import { TimeInput } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
+import CompatReportCanvas from './components/CompatReportCanvas';
+import { isCompatReportPayload, type CompatReportPayload } from './lib/reportLayout';
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
 import PolicyPage from './pages/PolicyPage';
@@ -467,6 +469,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   const [paidPlansLocal, setPaidPlansLocal] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | false>(false);
   const [reportText, setReportText] = useState<string | null>(null);
+  // 🛡️ Gate 40：标准化报告 Payload（服务端 report_payload.v1）—— 缺省则优雅回退纯文本渲染
+  const [reportPayload, setReportPayload] = useState<CompatReportPayload | null>(null);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -993,6 +997,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     if (reportLoading) return;
     setReportLoading(type);
     setReportText(null);
+    setReportPayload(null);
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1021,6 +1026,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         }),
       });
       const data = await res.json();
+      // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
+      setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
       if (data.insight) {
         setReportText(data.insight);
       } else {
@@ -1028,6 +1035,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
     } catch (err) {
       console.error('[AIInsightBlock] generateReport error:', err);
+      setReportPayload(null);
       setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
     } finally {
       setReportLoading(false);
@@ -1240,7 +1248,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                   </div>
                 </>
               )}
-              {reportText && (
+              {reportText && reportPayload && (
+                /* 🛡️ Gate 40：标准化画布（张量卡 + 四段壳；溢出三道防线） */
+                <CompatReportCanvas payload={reportPayload} lang={lang} />
+              )}
+              {reportText && !reportPayload && (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
                   {reportText.split('\n\n').map((para, i) => (
                     <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
