@@ -433,6 +433,15 @@ export default function CelestialBackground() {
 
   return (
     <>
+      {/* 最底层：深色星空兜底 —— 视频缺失/加载失败时保住暗色底，绝不露白 */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'radial-gradient(ellipse at 20% 50%, #0F0E26 0%, #0A0914 50%, #0A0914 100%)',
+          zIndex: 0,
+        }}
+      />
       {/* 底层：视频背景 — 懒加载，加载完再淡入 */}
       <video
         ref={videoRef}
