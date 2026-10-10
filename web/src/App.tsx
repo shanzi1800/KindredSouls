@@ -12,6 +12,9 @@ import DailyDashboard from './components/DailyDashboard';
 import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
+import { TimeInput } from './components/TimeInput';
+import { CitySearchInput } from './components/CitySearchInput';
+import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
@@ -140,11 +143,42 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
 
 
 
-function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2: string) => void, onNavigateToWealth: () => void }) {
+// 🌌 E40+：合婚「双人补齐」时空真值采集（可选，缺省 ⇒ 服务端如实降级，绝不伪造）
+export type CompatTimeTruth = {
+  t1: string; c1: CityRecord | null;
+  t2: string; c2: CityRecord | null;
+};
+
+function InputPage({ onSubmit, onNavigateToWealth }: {
+  onSubmit: (d1: string, d2: string, tt: CompatTimeTruth) => void,
+  onNavigateToWealth: () => void
+}) {
   const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<'landing' | 'compatibility' | 'wealth'>('landing');
   const [d1, setD1] = useState('');
   const [d2, setD2] = useState('');
+  // 🌌 E40+：双方出生时间 / 出生城市（可选；有则服务端走真实双盘 timed，无则日期级降级）
+  const [t1, setT1] = useState('');
+  const [c1, setC1] = useState<CityRecord | null>(null);
+  const [t2, setT2] = useState('');
+  const [c2, setC2] = useState<CityRecord | null>(null);
+  const lang = ((i18n.language || 'en').split('-')[0] || 'en') as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+  const L_MORE = ({
+    zh: '+ 补齐出生时间 / 城市（可选 · 提升星历精度）',
+    en: '+ Add birth time / city (optional · sharper ephemeris)',
+    es: '+ Añadir hora / ciudad (opcional · mayor precisión)',
+    fr: '+ Ajouter heure / ville (optionnel · plus précis)',
+    th: '+ เพิ่มเวลา / เมืองเกิด (เลือกได้ · แม่นขึ้น)',
+    vi: '+ Thêm giờ / thành phố (tùy chọn · chính xác hơn)',
+  } as Record<string, string>)[lang] || '+ Add birth time / city (optional)';
+  const L_TIME = ({
+    zh: '出生时间（可选）', en: 'Birth Time (optional)', es: 'Hora de nacimiento (opcional)',
+    fr: 'Heure de naissance (optionnel)', th: 'เวลาเกิด (เลือกได้)', vi: 'Giờ sinh (tùy chọn)',
+  } as Record<string, string>)[lang] || 'Birth Time (optional)';
+  const L_CITY = ({
+    zh: '出生城市（可选）', en: 'Birth City (optional)', es: 'Ciudad de nacimiento (opcional)',
+    fr: 'Ville de naissance (optionnel)', th: 'เมืองเกิด (เลือกได้)', vi: 'Thành phố sinh (tùy chọn)',
+  } as Record<string, string>)[lang] || 'Birth City (optional)';
   const [d2Key, setD2Key] = React.useState(0);
   const [dateError, setDateError] = useState('');
   const [shaking1, setShaking1] = useState(false);
@@ -190,7 +224,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2
     if (err1) { shake(1); return; }
     const err2 = validateDate(d2);
     if (err2) { shake(2); return; }
-    onSubmit(d1, d2);
+    onSubmit(d1, d2, { t1, c1, t2, c2 });
   };
 
   const toggleModal = () => setModalOpen(v => !v);
@@ -266,10 +300,36 @@ function InputPage({ onSubmit, onNavigateToWealth }: { onSubmit: (d1: string, d2
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
           <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
+          <details style={{ marginTop: '6px', textAlign: 'left' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#81D8D0', listStyle: 'none', userSelect: 'none' }}>{L_MORE}</summary>
+            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+                <TimeInput value={t1} onChange={setT1} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+                <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+              </div>
+            </div>
+          </details>
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
+          <details style={{ marginTop: '6px', textAlign: 'left' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#81D8D0', listStyle: 'none', userSelect: 'none' }}>{L_MORE}</summary>
+            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+                <TimeInput value={t2} onChange={setT2} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+                <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+              </div>
+            </div>
+          </details>
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
@@ -378,8 +438,11 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
+  // 🌌 E40+：双人时空真值（可选；缺省 ⇒ 服务端如实降级，不伪造）
+  t1?: string; c1?: { key: string; tz: string; lat: number; lon: number } | null;
+  t2?: string; c2?: { key: string; tz: string; lat: number; lon: number } | null;
   dims: CompatibilityResult['dimensions'];
   bazi: string; zodiac: string; iching: string;
   baziMeta?: string[]; zodiacMeta?: string[]; ichingMeta?: string[];
@@ -950,6 +1013,11 @@ function AIInsightBlock({ d1, d2, overall, dims, bazi, zodiac, iching, baziMeta,
           d1, d2, lang,
           bazi, zodiac, iching, tarot,
           reportType: type,
+          // 🌌 E40+：瑞士星历双人时空真值（全空 ⇒ 服务端零引擎调用 + 显式未知声明）
+          timeTruth: {
+            a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
+            b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '' },
+          },
         }),
       });
       const data = await res.json();
@@ -1270,6 +1338,10 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
       <AIInsightBlock
         d1={result._d1!}
         d2={result._d2!}
+        t1={result._t1}
+        c1={result._c1}
+        t2={result._t2}
+        c2={result._c2}
         overall={overall}
         dims={dimensions}
         bazi={engines.bazi.detail}
@@ -1521,7 +1593,7 @@ export default function App() {
   }, []);
 
 
-  const handleCalculate = (d1: string, d2: string) => {
+  const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth) => {
     setErr('');
     _setPage('loading');
     // Ensure we have a user_id
@@ -1544,6 +1616,11 @@ export default function App() {
         const r = res as CompatibilityResult & { _d1: string; _d2: string };
         r._d1 = d1;
         r._d2 = d2;
+        // 🌌 E40+：双人时空真值随结果下传（ResultPage → AIInsightBlock → /api/ai-advisor）
+        r._t1 = tt.t1 || '';
+        r._c1 = tt.c1 || null;
+        r._t2 = tt.t2 || '';
+        r._c2 = tt.c2 || null;
         setResult(r);
         _setPage('result');
         // ✅ 更新 URL hash，确保 OAuth 回调后能跳回正确页面

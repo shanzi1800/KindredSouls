@@ -1246,6 +1246,187 @@ export const COMPAT_REPORT_I18N = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E40+ 瑞士星历天体羁绊锁（Synastry Tensor Fusion）
+//   把真实双盘交叉相位张量注入 E39 四段骨架：
+//     🎯 调和占比与共振基调 ｜ ⚡ 逐一点名真实硬相 ｜ 💡 依托真实柔和相借力 ｜ 🌿 结合宿命羁绊
+//   🔴 铁律：只可引用注入的真值相位；未知因子（如缺出生时间时的月亮）严禁臆测。
+//   🔴 六语标签**全量本地化**（行星/相位/字段），杜绝中英夹杂与机翻乱码。
+// ═══════════════════════════════════════════════════════════════════════════
+export const SYNASTRY_I18N = {
+  zh: {
+    lockHead: '[瑞士星历天体羁绊锁 — 双盘真实交叉相位真值；仅可引用下列相位，严禁脑补任何其他相位或度数]',
+    unavailableNote: '[瑞士星历天体羁绊锁] 本次双盘黄经真值不可得（缺出生信息）——严禁编造任何天体相位或度数，请退回传统合盘论述。',
+    labels: {
+      precision: '建盘精度', timed: '双人精确建盘', dateLevel: '日期级降级（缺出生时间）',
+      harmony: '调和', hard: '硬相', total: '总相位', ratio: '调和占比',
+      unknown: '未知因子（不可得，严禁编造）', none: '无',
+      bonds: '柔和相位（借力）', frictions: '张力相位（冲突）', signatures: '核心羁绊',
+    },
+    planets: { Sun: '太阳', Moon: '月亮', Mercury: '水星', Venus: '金星', Mars: '火星', Jupiter: '木星', Saturn: '土星', Uranus: '天王星', Neptune: '海王星', Pluto: '冥王星' },
+    aspects: { conjunction: '合', sextile: '六合', square: '刑', trine: '三合', opposition: '冲' },
+    pairFmt: '{a}{asp}{b}(天距{orb}°)',
+    listSep: '、',
+    tenor: { harmonious: '共振基调偏调和', balanced: '调和与张力相当', hard: '共振基调偏考验' },
+    noHard: '本次双盘无刑冲硬相——如实呈现，严禁编造冲突',
+    noSoft: '本次双盘无柔和相位——如实呈现，严禁编造助缘',
+    mapClause: '【瑞士星历天体羁绊锁 · 四段映射（必须执行）】🎯 核心结论须点明双盘调和占比与共振基调；⚡ 命运冲突须**逐一点名**上列真实硬相（严禁编造其他刑冲）；💡 破局建议须依托上列真实柔和相位给出可执行借力；🌿 灵性指引须结合上列宿命羁绊收束。凡标注为未知的因子，严禁臆测其位置或相位。',
+  },
+  en: {
+    lockHead: '[SWISSEPH SYNASTRY BOND LOCK — real cross-aspect truth of the two charts; cite ONLY the aspects listed below; never invent any other aspect or degree]',
+    unavailableNote: '[SWISSEPH SYNASTRY BOND LOCK] Cross-aspect truth is unavailable this time (missing birth data) — never fabricate any aspect or degree; fall back to the traditional compatibility reading.',
+    labels: {
+      precision: 'Chart precision', timed: 'exact charts (both birth times known)', dateLevel: 'date-level fallback (birth time missing)',
+      harmony: 'harmonious', hard: 'hard', total: 'total aspects', ratio: 'harmony ratio',
+      unknown: 'unknown factors (unavailable — never fabricate)', none: 'none',
+      bonds: 'soft aspects (leverage)', frictions: 'hard aspects (conflict)', signatures: 'core bonds',
+    },
+    planets: { Sun: 'Sun', Moon: 'Moon', Mercury: 'Mercury', Venus: 'Venus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluto' },
+    aspects: { conjunction: ' conjunct ', sextile: ' sextile ', square: ' square ', trine: ' trine ', opposition: ' opposite ' },
+    pairFmt: '{a}{asp}{b} (orb {orb}°)',
+    listSep: ', ',
+    tenor: { harmonious: 'resonance leans harmonious', balanced: 'harmony and tension balanced', hard: 'resonance leans testing' },
+    noHard: 'No hard aspects in this synastry — report honestly, never invent conflict',
+    noSoft: 'No soft aspects in this synastry — report honestly, never invent support',
+    mapClause: '[SWISSEPH SYNASTRY BOND LOCK · FOUR-SECTION MAPPING (MANDATORY)] 🎯 state the harmony ratio and resonance tone; ⚡ name EVERY hard aspect listed above (never invent others); 💡 build actionable leverage on the soft aspects listed above; 🌿 close with the karmic bonds above. Never guess the position or aspect of any factor marked unknown.',
+  },
+  es: {
+    lockHead: '[CANDADO DE VÍNCULO SINÁSTRICO SWISSEPH — verdad real de los aspectos cruzados de ambas cartas; cite SOLO los aspectos listados abajo; nunca invente otro aspecto ni grado]',
+    unavailableNote: '[CANDADO DE VÍNCULO SINÁSTRICO SWISSEPH] La verdad de aspectos cruzados no está disponible esta vez (faltan datos de nacimiento) — nunca invente ningún aspecto ni grado; vuelva a la lectura tradicional de compatibilidad.',
+    labels: {
+      precision: 'Precisión de carta', timed: 'cartas exactas (ambas horas conocidas)', dateLevel: 'nivel de fecha (falta la hora)',
+      harmony: 'armónicos', hard: 'duros', total: 'aspectos totales', ratio: 'proporción armónica',
+      unknown: 'factores desconocidos (no disponibles — nunca inventar)', none: 'ninguno',
+      bonds: 'aspectos suaves (apoyo)', frictions: 'aspectos duros (conflicto)', signatures: 'vínculos clave',
+    },
+    planets: { Sun: 'Sol', Moon: 'Luna', Mercury: 'Mercurio', Venus: 'Venus', Mars: 'Marte', Jupiter: 'Júpiter', Saturn: 'Saturno', Uranus: 'Urano', Neptune: 'Neptuno', Pluto: 'Plutón' },
+    aspects: { conjunction: ' conjunción ', sextile: ' sextil ', square: ' cuadratura ', trine: ' trígono ', opposition: ' oposición ' },
+    pairFmt: '{a}{asp}{b} (orbe {orb}°)',
+    listSep: ', ',
+    tenor: { harmonious: 'la resonancia tiende a la armonía', balanced: 'armonía y tensión equilibradas', hard: 'la resonancia tiende a la prueba' },
+    noHard: 'No hay aspectos duros en esta sinastría — informe con honestidad, nunca invente conflicto',
+    noSoft: 'No hay aspectos suaves en esta sinastría — informe con honestidad, nunca invente apoyo',
+    mapClause: '[CANDADO DE VÍNCULO SINÁSTRICO SWISSEPH · MAPEO EN CUATRO SECCIONES (OBLIGATORIO)] 🎯 indique la proporción armónica y el tono de resonancia; ⚡ nombre TODOS los aspectos duros listados arriba (nunca invente otros); 💡 construya un apoyo accionable sobre los aspectos suaves listados arriba; 🌿 cierre con los vínculos kármicos de arriba. Nunca adivine la posición ni el aspecto de cualquier factor marcado como desconocido.',
+  },
+  fr: {
+    lockHead: "[VERROU DE LIEN SYNASTRIQUE SWISSEPH — vérité réelle des aspects croisés des deux thèmes ; ne citez QUE les aspects listés ci-dessous ; n'inventez jamais d'autre aspect ni degré]",
+    unavailableNote: "[VERROU DE LIEN SYNASTRIQUE SWISSEPH] La vérité des aspects croisés est indisponible cette fois (données de naissance manquantes) — n'inventez jamais d'aspect ni de degré ; revenez à la lecture de compatibilité traditionnelle.",
+    labels: {
+      precision: 'Précision du thème', timed: 'thèmes exacts (heures connues)', dateLevel: 'niveau date (heure manquante)',
+      harmony: 'harmonieux', hard: 'durs', total: 'aspects totaux', ratio: 'part harmonieuse',
+      unknown: 'facteurs inconnus (indisponibles — ne jamais inventer)', none: 'aucun',
+      bonds: 'aspects doux (appui)', frictions: 'aspects durs (conflit)', signatures: 'liens clés',
+    },
+    planets: { Sun: 'Soleil', Moon: 'Lune', Mercury: 'Mercure', Venus: 'Vénus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluton' },
+    aspects: { conjunction: ' conjonction ', sextile: ' sextile ', square: ' carré ', trine: ' trigone ', opposition: ' opposition ' },
+    pairFmt: '{a}{asp}{b} (orbe {orb}°)',
+    listSep: ', ',
+    tenor: { harmonious: 'la résonance penche vers l\'harmonie', balanced: 'harmonie et tension équilibrées', hard: 'la résonance penche vers l\'épreuve' },
+    noHard: "Aucun aspect dur dans cette synastrie — rendez compte honnêtement, n'inventez jamais de conflit",
+    noSoft: "Aucun aspect doux dans cette synastrie — rendez compte honnêtement, n'inventez jamais de soutien",
+    mapClause: "[VERROU DE LIEN SYNASTRIQUE SWISSEPH · MAPPAGE EN QUATRE SECTIONS (OBLIGATOIRE)] 🎯 indiquez la part harmonieuse et le ton de résonance ; ⚡ nommez CHAQUE aspect dur listé ci-dessus (n'en inventez jamais d'autres) ; 💡 bâtissez un appui concret sur les aspects doux listés ci-dessus ; 🌿 concluez avec les liens karmiques ci-dessus. Ne devinez jamais la position ni l'aspect d'un facteur marqué inconnu.",
+  },
+  th: {
+    lockHead: '[ตัวล็อกพันธะดวงคู่ SwissEph — ค่าจริงของมุมตัดขวางระหว่างสองดวง; อ้างอิงได้เฉพาะมุมที่ระบุด้านล่างเท่านั้น ห้ามแต่งมุมหรือองศาอื่นเพิ่ม]',
+    unavailableNote: '[ตัวล็อกพันธะดวงคู่ SwissEph] ครั้งนี้ไม่มีค่าจริงของมุมตัดขวาง (ขาดข้อมูลวันเกิด) — ห้ามแต่งมุมหรือองศาขึ้นเอง กลับไปใช้การวิเคราะห์ดวงคู่แบบดั้งเดิม',
+    labels: {
+      precision: 'ความละเอียดการสร้างดวง', timed: 'ดวงแม่นยำ (ทราบเวลาเกิดทั้งคู่)', dateLevel: 'ระดับวันที่ (ไม่ทราบเวลาเกิด)',
+      harmony: 'มุมสมาน', hard: 'มุมตึง', total: 'มุมทั้งหมด', ratio: 'สัดส่วนมุมสมาน',
+      unknown: 'ปัจจัยที่ไม่ทราบ (ไม่มีข้อมูล — ห้ามแต่งขึ้นเอง)', none: 'ไม่มี',
+      bonds: 'มุมอ่อน (ใช้เป็นพลังหนุน)', frictions: 'มุมตึง (จุดขัดแย้ง)', signatures: 'พันธะหลัก',
+    },
+    planets: { Sun: 'อาทิตย์', Moon: 'จันทร์', Mercury: 'พุธ', Venus: 'ศุกร์', Mars: 'อังคาร', Jupiter: 'พฤหัสบดี', Saturn: 'เสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต' },
+    aspects: { conjunction: 'ร่วม', sextile: 'หก', square: 'ฉาก', trine: 'ตรีโกณ', opposition: 'ตรงข้าม' },
+    pairFmt: '{a} มุม{asp} {b} (ระยะ{orb}°)',
+    listSep: ' ',
+    tenor: { harmonious: 'โทนเสียงสะท้อนเอนไปทางสมาน', balanced: 'ความสมานและความตึงสมดุลกัน', hard: 'โทนเสียงสะท้อนเอนไปทางบททดสอบ' },
+    noHard: 'ดวงคู่นี้ไม่มีมุมตึง — นำเสนอตามจริง ห้ามแต่งความขัดแย้ง',
+    noSoft: 'ดวงคู่นี้ไม่มีมุมอ่อน — นำเสนอตามจริง ห้ามแต่งพลังหนุน',
+    mapClause: '[ตัวล็อกพันธะดวงคู่ SwissEph · การแมปสี่ส่วน (บังคับ)] 🎯 บทสรุปหลักต้องระบุสัดส่วนมุมสมานและโทนเสียงสะท้อน; ⚡ จุดขัดแย้งต้อง**ระบุชื่อมุมตึงจริงทีละมุม**ตามที่ระบุด้านบน (ห้ามแต่งมุมตึงอื่น); 💡 ทางออกต้องอาศัยมุมอ่อนจริงด้านบนเพื่อให้คำแนะนำที่ทำได้จริง; 🌿 พลังจิตวิญญาณต้องผสานพันธะกรรมด้านบน ห้ามเดาตำแหน่งหรือมุมของปัจจัยที่ระบุว่าไม่ทราบ',
+  },
+  vi: {
+    lockHead: '[Khóa ràng buộc tinh tú Synastry SwissEph — chân lý góc chiếu chéo thật giữa hai lá số; CHỈ được dẫn các góc liệt kê dưới đây; tuyệt đối không bịa góc hay độ khác]',
+    unavailableNote: '[Khóa ràng buộc tinh tú Synastry SwissEph] Lần này không có chân lý góc chiếu chéo (thiếu dữ liệu ngày sinh) — tuyệt đối không bịa góc hay độ; hãy quay về luận giải tương hợp truyền thống.',
+    labels: {
+      precision: 'Độ chính xác lá số', timed: 'lá số chính xác (biết giờ sinh cả hai)', dateLevel: 'mức ngày (thiếu giờ sinh)',
+      harmony: 'hòa hợp', hard: 'góc cứng', total: 'tổng góc', ratio: 'tỷ lệ hòa hợp',
+      unknown: 'yếu tố chưa biết (không có dữ liệu — cấm bịa)', none: 'không có',
+      bonds: 'góc mềm (điểm tựa)', frictions: 'góc cứng (xung đột)', signatures: 'ràng buộc cốt lõi',
+    },
+    planets: { Sun: 'Mặt Trời', Moon: 'Mặt Trăng', Mercury: 'Sao Thủy', Venus: 'Sao Kim', Mars: 'Sao Hỏa', Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương', Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương' },
+    aspects: { conjunction: ' hợp ', sextile: ' lục hợp ', square: ' vuông góc ', trine: ' tam hợp ', opposition: ' đối ' },
+    pairFmt: '{a}{asp}{b} (lệch {orb}°)',
+    listSep: ', ',
+    tenor: { harmonious: 'âm hưởng nghiêng về hòa hợp', balanced: 'hòa hợp và căng thẳng cân bằng', hard: 'âm hưởng nghiêng về thử thách' },
+    noHard: 'Lá số đôi này không có góc cứng — trình bày trung thực, không bịa xung đột',
+    noSoft: 'Lá số đôi này không có góc mềm — trình bày trung thực, không bịa trợ duyên',
+    mapClause: '[Khóa ràng buộc tinh tú Synastry SwissEph · ÁNH XẠ BỐN PHẦN (BẮT BUỘC)] 🎯 phần kết luận phải nêu tỷ lệ hòa hợp và âm hưởng cộng hưởng; ⚡ phần xung đột phải **điểm danh từng góc cứng** đã liệt kê ở trên (không bịa góc khác); 💡 phần giải pháp phải dựa trên các góc mềm thật ở trên; 🌿 phần tâm linh phải kết lại bằng ràng buộc nghiệp duyên ở trên. Tuyệt đối không suy đoán vị trí hay góc của yếu tố ghi là chưa biết.',
+  },
+};
+
+// 建盘精度 → 张力/调和基调（确定性：同分值同基调）
+function _synTenor(t, ratio) {
+  if (typeof ratio !== 'number' || !isFinite(ratio)) return t.tenor.balanced;
+  if (ratio >= 0.65) return t.tenor.harmonious;
+  if (ratio <= 0.35) return t.tenor.hard;
+  return t.tenor.balanced;
+}
+
+function _synPlanet(t, name) {
+  return (t.planets && t.planets[name]) || String(name);
+}
+
+// 相位条目 → 本地化短语（如「金星三合木星(天距1.2°)」/「Venus trine Jupiter (orb 1.2°)」）
+function _synPair(t, item) {
+  const a = _synPlanet(t, item && item.a);
+  const b = _synPlanet(t, item && item.b);
+  const asp = (t.aspects && t.aspects[item && item.aspect]) || String((item && item.aspect) || '');
+  const orb = (item && typeof item.orb === 'number') ? item.orb : '?';
+  return t.pairFmt.replace('{a}', a).replace('{asp}', asp).replace('{b}', b).replace('{orb}', String(orb));
+}
+
+function _synList(t, items, emptyText) {
+  if (!Array.isArray(items) || items.length === 0) return emptyText;
+  return items.map(x => _synPair(t, x)).join(t.listSep);
+}
+
+/**
+ * 🛡️ E40+ 天体羁绊锁真值块（注入 user 提示词；纯文本 `\n` 行）。
+ *   syn 形如：
+ *   { available, precision:'timed'|'date_level', harmonious, hard, total, ratio,
+ *     unknown:['Moon'], bonds:[{a,b,aspect,orb}], frictions:[...], signatures:{tag:[...]} }
+ *   - syn 缺省 / null ⇒ 返回 ''（免费层不注入）
+ *   - available=false ⇒ 返回**显式未知**声明（严禁编造）
+ */
+export function renderSynastryBlock(syn, lang) {
+  if (!syn) return '';
+  const L = Object.prototype.hasOwnProperty.call(SYNASTRY_I18N, lang) ? lang : 'zh';
+  const t = SYNASTRY_I18N[L];
+  if (!syn.available) return t.unavailableNote;
+  const lb = t.labels;
+  const prec = syn.precision === 'date_level' ? lb.dateLevel : lb.timed;
+  const h = Number(syn.harmonious) || 0;
+  const hd = Number(syn.hard) || 0;
+  const tot = Number(syn.total) || 0;
+  const ratio = (h + hd) > 0 ? (h / (h + hd)) : null;
+  const lines = [
+    t.lockHead,
+    `${lb.precision}=${prec}`,
+    `${lb.harmony}=${h} / ${lb.hard}=${hd} / ${lb.total}=${tot} / ${lb.ratio}=${ratio === null ? lb.none : ratio.toFixed(3)}`,
+    `${lb.unknown}=${(Array.isArray(syn.unknown) && syn.unknown.length > 0) ? syn.unknown.map(x => _synPlanet(t, x)).join(t.listSep) : lb.none}`,
+    `${lb.bonds}=${_synList(t, syn.bonds, t.noSoft)}`,
+    `${lb.frictions}=${_synList(t, syn.frictions, t.noHard)}`,
+  ];
+  const sig = syn.signatures || {};
+  const sigItems = [];
+  for (const tag of Object.keys(sig)) {
+    const arr = sig[tag];
+    if (Array.isArray(arr)) sigItems.push(...arr.map(x => _synPair(t, x)));
+  }
+  if (sigItems.length > 0) lines.push(`${lb.signatures}=${sigItems.join(t.listSep)}`);
+  return lines.join('\n');
+}
+
 // ── 分数归位（后端重算，不用前端传来的 overall ⇒ 与资产同源，防漂移）──
 export function computeCompatScores(baziRaw, zodiacRaw, ichingRaw) {
   const bazi = extractScore(baziRaw);
@@ -1350,8 +1531,9 @@ function renderCompatTimeBlock(reportType, timeCtx, lang) {
  * 🛡️ E39 合婚报告骨架唯一入口（server.js 只准通过本函数取提示词）。
  * 入参：lang / reportType('once'|'monthly'|'yearly'|其他) / scores{overall,bazi,zodiac,iching}
  *       / tarot / zodiacMeta / luckyAspects / challengingAspects / timeCtx
- * 出参：{ system, user } —— system = 该语 systemPrompt（报告模式追加 reportClause 覆盖声明）
- *       user   = 时间轴真值块 + 四段骨架（含 [强制数据锁]）
+ *       / 🛡️ E40+ synastry（真实双盘天体羁绊锁真值；缺省 ⇒ 不注入）
+ * 出参：{ system, user } —— system = 该语 systemPrompt（报告模式追加 reportClause + 天体羁绊锁映射令）
+ *       user   = 时间轴真值块 + 天体羁绊锁真值块 + 四段骨架（含 [强制数据锁]）
  * 未知 lang ⇒ 回退 zh；未知 reportType ⇒ 走基础 insight 骨架（免费层）。
  */
 export function buildCompatPrompt(opts) {
@@ -1363,11 +1545,27 @@ export function buildCompatPrompt(opts) {
   const reportType = o.reportType;
   const isReport = reportType === 'once' || reportType === 'monthly' || reportType === 'yearly';
   const timeCtx = o.timeCtx || buildCompatTimeContext(reportType, new Date(), null, L);
-  const system = isReport ? `${cfg.systemPrompt}\n\n${i18n.reportClause}` : cfg.systemPrompt;
+  // 🛡️ E40+：真实双盘天体羁绊锁（仅报告档注入；缺真值 ⇒ 显式未知声明，绝不编造）
+  const syn = o.synastry || null;
+  const synBlock = (isReport && syn) ? renderSynastryBlock(syn, L) : '';
+  const synClause = (isReport && syn && syn.available) ? SYNASTRY_I18N[L].mapClause : '';
+  const system = isReport
+    ? `${cfg.systemPrompt}\n\n${i18n.reportClause}${synClause ? '\n\n' + synClause : ''}`
+    : cfg.systemPrompt;
   const base = isReport
     ? cfg.buildReportPrompt(reportType, sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null, timeCtx)
     : cfg.buildPrompt(sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null);
   const timeBlock = renderCompatTimeBlock(reportType, timeCtx, L);
-  const user = timeBlock ? `${timeBlock}\n${base}` : base;
-  return { system, user, lang: L, reportType: reportType || null, timeCtx };
+  const head = [timeBlock, synBlock].filter(Boolean).join('\n');
+  const user = head ? `${head}\n${base}` : base;
+  return {
+    system,
+    user,
+    lang: L,
+    reportType: reportType || null,
+    timeCtx,
+    synastry: syn
+      ? { available: !!syn.available, precision: syn.precision || null, unknown: Array.isArray(syn.unknown) ? syn.unknown : [] }
+      : null,
+  };
 }

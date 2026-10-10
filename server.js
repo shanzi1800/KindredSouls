@@ -451,7 +451,7 @@ import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
 import { createHash, timingSafeEqual } from 'crypto';   // 🛡️ E30: 补 timingSafeEqual（clear-cache 端点常量时间鉴权）
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad, getSynastryProfile } from './v69_client.js';
+import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad, getSynastryProfile, getDualSynastryTensor } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -12850,7 +12850,99 @@ function buildCompatibilityReportPrompt(d1, d2, lang, reportType, extras) {
     timeCtx,
     tarot: x.tarot || null,
     zodiacMeta: x.zodiacMeta || null,
+    synastry: x.synastry || null,   // 🌌 E40+：真实双盘天体羁绊锁真值（缺省 ⇒ 不注入）
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🌌 E40+：合婚报告「瑞士星历天体羁绊锁」真值装配（Synastry Tensor Fusion）
+//   依据：军师《E40+ 星历张量注入四段骨架》出征令（2026-10-10）
+//         —— 「接收双方时空真值 ⇒ 真实双盘交叉相位张量 ⇒ 注入四段骨架」。
+//
+//   🔴 与 E38 `/api/synastry/reverse-fit` 的分野：那里是「用户真盘 × 虚拟拟合盘」，
+//      这里是「A 真盘 × B 真盘」—— **不拟合、不搜索**，调用引擎 `--mode dual-tensor`。
+//
+//   🔴 真值纪律（铁律，军师令一字不易）：
+//      · 任一侧缺出生时间 ⇒ 降级 `date_level`（引擎主动剔除月亮 + 如实标注 unknown）；
+//      · 缺坐标 / 时区不可解析 ⇒ 该侧退回「日期级」（**绝不静默伪造假坐标**）；
+//      · 全无真值 / 引擎故障 ⇒ `available:false` ⇒ 前端渲染**显式未知声明**，
+//        退回传统宏观合盘 —— **绝不用 LLM 脑补物理相位度数**。
+//   🔴 失败永不阻断报告：本函数只返回结构对象，任何异常一律收敛为 `{available:false}`。
+//   🔴 真值通路**唯一**：getAstroMatrix（星历真源）→ extractNatalTriad → getDualSynastryTensor。
+// ═══════════════════════════════════════════════════════════════
+function _compatTimeTruthSide(body, side) {
+  const tt = (body && typeof body.timeTruth === 'object') ? body.timeTruth : null;
+  const nested = tt ? tt[side] : null;
+  if (nested && typeof nested === 'object') return nested;
+  const up = side === 'a' ? 'A' : 'B';           // 兼容扁平字段（timeTruth 缺省时）
+  return {
+    birthTime: body ? body['birthTime' + up] : undefined,
+    tz: body ? body['tz' + up] : undefined,
+    lat: body ? body['lat' + up] : undefined,
+    lon: body ? body['lon' + up] : undefined,
+  };
+}
+
+async function buildCompatSynastryTruth(body, d1, d2) {
+  const specA = _compatTimeTruthSide(body, 'a');
+  const specB = _compatTimeTruthSide(body, 'b');
+  const _provided = (s) => !!s && (
+    String(s.birthTime || '').trim() !== ''
+    || String(s.tz || '').trim() !== ''
+    || (s.lat !== undefined && s.lat !== null && s.lat !== '')
+    || (s.lon !== undefined && s.lon !== null && s.lon !== '')
+  );
+  if (!_provided(specA) && !_provided(specB)) return { available: false, reason: 'no_time_truth' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d1 || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(d2 || ''))) {
+    return { available: false, reason: 'missing_birth_date' };
+  }
+  try {
+    const sides = [];
+    for (const pair of [[specA, d1], [specB, d2]]) {
+      const spec = pair[0] || {};
+      const bd = pair[1];
+      const bt = String(spec.birthTime == null ? '' : spec.birthTime).trim();
+      // 建盘资格：出生时间 + 可定位时区（显式 tz / 官方别名 / typo 纠正 / 坐标最近邻）
+      const tzr = resolveTimeZone(spec.tz, spec.lat, spec.lon);
+      const coord = resolveCoordinates(spec.lat, spec.lon);
+      const tzUsable = tzr.ok && tzr.tier >= 1;     // tier 0 = 空值默认（不算真值）
+      const coordExplicit = coord.ok && coord.tier === 'explicit';
+      const timed = bt !== '' && (tzUsable || coordExplicit);
+      const matrix = timed
+        ? await getAstroMatrix(bd, bt, coord.lat, coord.lon, tzr.tz, {})
+        : await getAstroMatrix(bd, undefined, undefined, undefined, undefined, {});
+      if (!matrix) return { available: false, reason: 'astro_unavailable' };
+      const triad = extractNatalTriad(matrix);
+      sides.push({ longitudes: triad.planetLongitudes || {}, timed });
+    }
+    if (Object.keys(sides[0].longitudes).length === 0 || Object.keys(sides[1].longitudes).length === 0) {
+      return { available: false, reason: 'insufficient_longitudes' };
+    }
+    const precision = (sides[0].timed && sides[1].timed) ? 'timed' : 'date_level';
+    const dual = await getDualSynastryTensor({
+      longitudesA: sides[0].longitudes,
+      longitudesB: sides[1].longitudes,
+      precision,
+    });
+    const harm = dual.harmony || {};
+    const summ = dual.summary || {};
+    console.log(`[E40+] compat synastry: precision=${dual.precision || precision} harmonious=${harm.harmonious} hard=${harm.hard} total=${harm.total}`);
+    return {
+      available: true,
+      precision: dual.precision || precision,
+      harmonious: Number(harm.harmonious) || 0,
+      hard: Number(harm.hard) || 0,
+      total: Number(harm.total) || 0,
+      ratio: (typeof harm.ratio === 'number') ? harm.ratio : null,
+      unknown: Array.isArray(dual.unknown) ? dual.unknown : [],
+      bonds: Array.isArray(summ.bonds) ? summ.bonds : [],
+      frictions: Array.isArray(summ.frictions) ? summ.frictions : [],
+      signatures: (summ.signatures && typeof summ.signatures === 'object') ? summ.signatures : {},
+    };
+  } catch (e) {
+    console.warn('[E40+] compat synastry truth degraded:', (e && e.message) || e);
+    return { available: false, reason: (e && e.code) || 'engine_error' };
+  }
 }
 
 // ── Stripe Price ID 映射表 ──
@@ -14981,6 +15073,8 @@ app.use('/api/ai-advisor', async (req, res) => {
       }
       try {
         console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
+        // 🌌 E40+：真实双盘天体羁绊锁真值（缺真值 ⇒ 降级/显式未知，绝不伪造；失败不阻断报告）
+        const _compatSyn = await buildCompatSynastryTruth(req.body || {}, d1, d2);
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
         const _compat = buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
           bazi: req.body.bazi || null,
@@ -14989,6 +15083,7 @@ app.use('/api/ai-advisor', async (req, res) => {
           tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
           zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
           userBirthDate: _cEnt.userBirthDate || null,
+          synastry: _compatSyn,
         });
 
         const insight = await callAI(

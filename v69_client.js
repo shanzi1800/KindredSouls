@@ -603,6 +603,71 @@ export async function getSynastryProfile({
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// E40+ · 真实双盘交叉相位张量（Synastry Tensor Fusion）
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * 调 astro/synastry_engine.py `--mode dual-tensor` 计算 **A 真盘 × B 真盘** 的
+ * 真实交叉相位张量（纯函数，零 LLM 参与）。
+ *
+ * 🔴 与 getSynastryProfile 的分野：**不拟合、不搜索** —— 两端皆为实算本命黄经
+ *    （A = 用户侧 / B = 对方侧），Direct Cross-Aspect Measurement。
+ *
+ * 🔴 真值缺省纪律（V490 / E38 同源）：
+ *    - 任一侧黄经全缺 / 未知精度 ⇒ 抛 code='SYNASTRY_INVALID_INPUT'（上层转 400）
+ *    - 引擎故障 / JSON 坏 ⇒ SYNASTRY_ENGINE_FAILURE / SYNASTRY_JSON_PARSE_FAILURE
+ *    - date_level 降级由引擎侧**主动剔除**不可信天体并如实标注 unknown（绝不臆测）
+ *
+ * @param {object} p
+ * @param {Object<string,number>|null} p.longitudesA 用户侧真实本命十星黄经（extractNatalTriad）
+ * @param {Object<string,number>|null} p.longitudesB 对方侧真实本命十星黄经
+ * @param {string} p.precision 'timed'（双方有出生时间）| 'date_level'（缺时间降级）
+ * @param {string[]|null} p.unknown 额外如实标注的未知因子
+ */
+export async function getDualSynastryTensor({
+  longitudesA = null,
+  longitudesB = null,
+  precision = 'timed',
+  unknown = null,
+} = {}) {
+  const scriptPath = getSynastryScriptPath();
+  const args = [
+    scriptPath,
+    '--mode', 'dual-tensor',
+    '--natal-longitudes', JSON.stringify(longitudesA || {}),
+    '--partner-longitudes', JSON.stringify(longitudesB || {}),
+    '--precision', String(precision),
+  ];
+  if (Array.isArray(unknown) && unknown.length > 0) {
+    args.push('--unknown', JSON.stringify(unknown));
+  }
+
+  let raw;
+  try {
+    raw = execFileSync('python3', args, {
+      encoding: 'utf8',
+      timeout: 30000,          // 纯函数无星历重算，30s 足够
+      maxBuffer: 8 * 1024 * 1024,
+    }).trim();
+  } catch (e) {
+    const blob = `${e.stderr || ''}\n${e.message || ''}`;
+    if (Number(e.status) === 2 || /SYNASTRY_INVALID_INPUT/.test(blob)) {
+      const err = new Error('SYNASTRY_INVALID_INPUT: ' + blob.trim().slice(0, 300));
+      err.code = 'SYNASTRY_INVALID_INPUT';
+      throw err;
+    }
+    console.error('[E40+] dual synastry engine failed:', e.message);
+    throw new Error('SYNASTRY_ENGINE_FAILURE: ' + e.message);
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('[E40+] dual synastry JSON parse failed:', (raw || '').slice(0, 120));
+    throw new Error('SYNASTRY_JSON_PARSE_FAILURE: ' + e.message);
+  }
+}
+
 // ── Build FACT_SHEET from Astro Matrix ───────────────────────────────────────
 /**
  * Generate the FACT_SHEET section of the prompt from V69 computed data.

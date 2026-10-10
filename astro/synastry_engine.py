@@ -272,6 +272,111 @@ def compute_synastry_tensor(
 
 
 # ═══════════════════════════════════════════════════════════════
+# 2.5 真实双盘交叉相位张量（E40+ 融合）· A 真盘 × B 真盘
+#      —— 与 2. 同一把量尺（compute_synastry_tensor），但两端都是**真实本命盘**
+#         （非 E38-D 的虚拟反向拟合盘）。军师《E40+ 星历张量注入四段骨架》令。
+# ═══════════════════════════════════════════════════════════════
+
+DUAL_TENSOR_MODE = 'dual_tensor'
+
+# 建盘精度分级（真值诚实性的唯一分野）：
+#   timed      —— 双方均有出生时间 + 坐标 ⇒ 全 10 星可信；
+#   date_level —— 缺出生时间（按本地 12:00 建盘）⇒ 剔除高变化率天体，如实标注未知。
+PRECISION_TIMED = 'timed'
+PRECISION_DATE_LEVEL = 'date_level'
+
+# 🔴 date_level 下**不可信**的天体：月亮日行 ~13°（±12h ⇒ ±6.5°），足以整档翻转相位。
+#    —— 与 E38「宁缺不伪造」同源：剔除 + 记入 unknown，绝不臆测其位置。
+DATE_LEVEL_UNRELIABLE: Tuple[str, ...] = ('Moon',)
+
+# 军师指定「核心天体对羁绊」（有序对；方向登记完整，A×B 与 B×A 各归其位）
+SALIENT_SIGNATURES: Tuple[Tuple[str, str, str], ...] = (
+    ('Sun', 'Moon', 'luminaries'), ('Moon', 'Sun', 'luminaries'),
+    ('Venus', 'Mars', 'attraction'), ('Mars', 'Venus', 'attraction'),
+    ('Jupiter', 'Venus', 'blessing'), ('Venus', 'Jupiter', 'blessing'),
+    ('Saturn', 'Sun', 'karmic'), ('Sun', 'Saturn', 'karmic'),
+    ('Saturn', 'Moon', 'karmic'), ('Moon', 'Saturn', 'karmic'),
+    ('Saturn', 'Venus', 'karmic'), ('Venus', 'Saturn', 'karmic'),
+    ('Saturn', 'Mars', 'karmic'), ('Mars', 'Saturn', 'karmic'),
+    ('Pluto', 'Sun', 'karmic'), ('Sun', 'Pluto', 'karmic'),
+    ('Pluto', 'Moon', 'karmic'), ('Moon', 'Pluto', 'karmic'),
+)
+
+
+def build_synastry_summary(tensor: Dict[str, Any], limit: int = 6) -> Dict[str, Any]:
+    """
+    张量 → 可注入提示词的**摘要**（纯派生，不改张量本身）。
+
+    产出：
+      · signatures —— 军师点名的核心羁绊（日月/金火/木金/土冥×个人星），按 tag 归类；
+      · bonds      —— orb 最小的调和相（借力指引用）；
+      · frictions  —— orb 最小的硬相（命运冲突用）。
+    排序一律 (orb 升序, a, b) ⇒ **确定性**，同盘同序（可复现）。
+    """
+    aspects = tensor.get('aspects') or []
+    sig: Dict[str, List[Dict[str, Any]]] = {}
+    for item in aspects:
+        key = (item.get('a'), item.get('b'))
+        for pa, pb, tag in SALIENT_SIGNATURES:
+            if key == (pa, pb):
+                sig.setdefault(tag, []).append(dict(item))
+                break
+    _key = lambda x: (x.get('orb', 99.0), str(x.get('a')), str(x.get('b')))
+    bonds = sorted((dict(x) for x in aspects if x.get('polarity') == 'harmonious'), key=_key)[:limit]
+    frictions = sorted((dict(x) for x in aspects if x.get('polarity') == 'hard'), key=_key)[:limit]
+    return {'signatures': sig, 'bonds': bonds, 'frictions': frictions}
+
+
+def dual_synastry_tensor(
+    longitudes_a: Any,
+    longitudes_b: Any,
+    precision: str = PRECISION_TIMED,
+    unknown: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    A 真盘 × B 真盘 ⇒ 真实交叉相位张量（军师 E40+ 融合的物理真值源）。
+
+    🔴 与 E38-D `reverse_synergy` 的分野：**不拟合、不搜索**——两端都是用户实算本命盘。
+    🔴 真值缺省纪律（铁律）：任一侧无有效黄经 ⇒ 抛 SynastryInputError；
+       `date_level` ⇒ 主动剔除 `DATE_LEVEL_UNRELIABLE` 天体并**如实标注 unknown**，绝不臆测。
+    """
+    if precision not in (PRECISION_TIMED, PRECISION_DATE_LEVEL):
+        raise SynastryInputError(
+            f'未知 precision={precision!r}（允许：{PRECISION_TIMED} | {PRECISION_DATE_LEVEL}）'
+        )
+    a = normalize_longitudes(longitudes_a)
+    b = normalize_longitudes(longitudes_b)
+    unk = {str(u) for u in (unknown or []) if str(u).strip()}
+    if precision == PRECISION_DATE_LEVEL:
+        for planet in DATE_LEVEL_UNRELIABLE:
+            a.pop(planet, None)
+            b.pop(planet, None)
+            unk.add(planet)
+    if not a or not b:
+        raise SynastryInputError(
+            '双盘真值不足（A/B 至少各需一颗有效行星黄经）—— 拒绝伪造双盘张量'
+        )
+    tensor = compute_synastry_tensor(a, b)
+    h, hard, total = tensor['harmonious'], tensor['hard'], tensor['total']
+    return {
+        'mode': DUAL_TENSOR_MODE,
+        'precision': precision,
+        'unknown': sorted(unk),
+        'side_a_planets': sorted(a),
+        'side_b_planets': sorted(b),
+        'tensor': tensor,
+        'harmony': {
+            'harmonious': h,
+            'hard': hard,
+            'total': total,
+            'ratio': (round(h / (h + hard), 3) if (h + hard) > 0 else None),
+        },
+        'summary': build_synastry_summary(tensor),
+        'schema_version': SOUL_OS_PROTOCOL_VERSION,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # 3. 算子实体化（E38-D 前置）· 把权重结构变成可执行打分函数
 # ═══════════════════════════════════════════════════════════════
 
@@ -563,13 +668,20 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     import json
 
     parser = argparse.ArgumentParser(description='KindredSouls Synastry Engine (E38-C/D)')
-    parser.add_argument('--mode', default='synergy', choices=['synergy'],
-                        help='计算模式（本期仅 synergy）')
+    parser.add_argument('--mode', default='synergy', choices=['synergy', 'dual-tensor'],
+                        help='计算模式：synergy（反向拟合虚拟盘）| dual-tensor（真实双盘张量）')
     parser.add_argument('--relation-mode', dest='relation_mode', default='girlfriend',
                         help='关系人格: girlfriend | buddy | bestie | boyfriend'
                              '（E40-A 保留第五形态: self / twin_self / higher_self）')
     parser.add_argument('--natal-longitudes', dest='natal_longitudes', default=None,
                         help='本命十星黄经真值 JSON，如 {"Sun":213.4,"Venus":88.1}')
+    parser.add_argument('--partner-longitudes', dest='partner_longitudes', default=None,
+                        help='dual-tensor 模式：对方真实本命十星黄经 JSON')
+    parser.add_argument('--precision', dest='precision', default=PRECISION_TIMED,
+                        choices=[PRECISION_TIMED, PRECISION_DATE_LEVEL],
+                        help='dual-tensor 建盘精度：timed（双方有出生时间）| date_level（缺时间）')
+    parser.add_argument('--unknown', dest='unknown', default=None,
+                        help='dual-tensor：无法建盘的因子 JSON 数组（如实标注未知），如 ["Moon"]')
     parser.add_argument('--planet-houses', dest='planet_houses', default=None,
                         help='宫内星真值 JSON（算子强调宫位加权），如 {"Venus":7}')
     args = parser.parse_args(argv)
@@ -584,6 +696,36 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     except (ValueError, TypeError) as e:
         print(f'SYNASTRY_INVALID_INPUT: --natal-longitudes 不是合法 JSON: {e}', file=sys.stderr)
         return 2
+
+    # ── E40+ dual-tensor：真实双盘张量（不拟合、不搜索；两端皆实算本命盘）──
+    if args.mode == 'dual-tensor':
+        if not args.partner_longitudes:
+            print('SYNASTRY_INVALID_INPUT: dual-tensor 缺少 --partner-longitudes'
+                  '（无对方真值 ⇒ 拒绝伪造双盘）', file=sys.stderr)
+            return 2
+        try:
+            partner = json.loads(args.partner_longitudes)
+        except (ValueError, TypeError) as e:
+            print(f'SYNASTRY_INVALID_INPUT: --partner-longitudes 不是合法 JSON: {e}',
+                  file=sys.stderr)
+            return 2
+        unknown = None
+        if args.unknown:
+            try:
+                unknown = json.loads(args.unknown)
+            except (ValueError, TypeError) as e:
+                print(f'SYNASTRY_INVALID_INPUT: --unknown 不是合法 JSON: {e}', file=sys.stderr)
+                return 2
+        try:
+            dual = dual_synastry_tensor(longitudes, partner, args.precision, unknown)
+        except SynastryInputError as e:
+            print(f'SYNASTRY_INVALID_INPUT: {e}', file=sys.stderr)
+            return 2
+        except Exception as e:  # pragma: no cover - 防御性
+            print(f'SYNASTRY_ENGINE_FAILURE: {e}', file=sys.stderr)
+            return 1
+        print(json.dumps(dual, ensure_ascii=False))
+        return 0
 
     planet_houses = None
     if args.planet_houses:
@@ -613,6 +755,12 @@ def _cli(argv: Optional[List[str]] = None) -> int:
 _SAMPLE = {
     'Sun': 213.4, 'Moon': 348.9, 'Mercury': 226.1, 'Venus': 175.3, 'Mars': 250.7,
     'Jupiter': 340.2, 'Saturn': 349.8, 'Uranus': 275.5, 'Neptune': 272.3, 'Pluto': 215.9,
+}
+
+# E40+ dual-tensor 自测用「对方真实本命盘」（固定样例 ⇒ 确定性、可复现）
+_PARTNER = {
+    'Sun': 33.4, 'Moon': 168.9, 'Mercury': 46.1, 'Venus': 55.3, 'Mars': 250.7,
+    'Jupiter': 160.2, 'Saturn': 169.8, 'Uranus': 95.5, 'Neptune': 92.3, 'Pluto': 35.9,
 }
 
 
@@ -757,7 +905,49 @@ def _self_test() -> None:
     except SynastryInputError:
         print('非法 relation_mode 正确抛错')
 
-    print('\n全部自测通过（E38-C 相位张量 + E38-D 反向拟合/闭合校验/算子实体化 + E40-A 第五形态镜像）')
+    # ── E40+：真实双盘交叉相位张量（dual-tensor）──
+    print('\n=== E40+ 真实双盘交叉相位张量（dual-tensor）===')
+    dual = dual_synastry_tensor(_SAMPLE, _PARTNER)
+    assert dual['mode'] == DUAL_TENSOR_MODE
+    assert dual['precision'] == PRECISION_TIMED, 'timed 精度标记漂移'
+    assert dual['unknown'] == [], 'timed 模式不得有未知因子'
+    # ① 同一把量尺：dual 张量 ≡ compute_synastry_tensor(A, B)（逐字节同一读数）
+    assert dual['tensor'] == compute_synastry_tensor(_SAMPLE, _PARTNER), \
+        'dual-tensor 与基础量尺读数不一致（尺子被偷换）'
+    # ② 张量键契约锁定（E38 六键，不外扩）
+    assert set(dual['tensor']) == {'aspects', 'matrix', 'counts', 'total', 'harmonious', 'hard'}
+    h, hard, total = dual['tensor']['harmonious'], dual['tensor']['hard'], dual['tensor']['total']
+    assert h + hard == total, '调和 + 硬相 必须等于总相位（极性闭集完备）'
+    assert total > 0 and 0.0 <= dual['harmony']['ratio'] <= 1.0, '调和占比越界'
+    # ③ 摘要结构齐备且确定性（同盘同序）
+    assert set(dual['summary']) == {'signatures', 'bonds', 'frictions'}
+    assert all(x['polarity'] == 'harmonious' for x in dual['summary']['bonds']), 'bonds 混入硬相'
+    assert all(x['polarity'] == 'hard' for x in dual['summary']['frictions']), 'frictions 混入调和相'
+    assert dual_synastry_tensor(_SAMPLE, _PARTNER) == dual, 'dual-tensor 非幂等/非确定'
+    # ④ date_level 降级：剔除月亮（高变化率），如实标注 unknown，绝不臆测
+    dl = dual_synastry_tensor(_SAMPLE, _PARTNER, PRECISION_DATE_LEVEL)
+    assert 'Moon' in dl['unknown'], 'date_level 必须如实标注月亮为未知'
+    assert 'Moon' not in dl['side_a_planets'] and 'Moon' not in dl['side_b_planets'], \
+        'date_level 必须剔除月亮（不可信天体不得进入张量）'
+    assert dl['tensor']['total'] <= dual['tensor']['total'], '剔除天体后相位不应增多'
+    # ⑤ 真值纪律：任一侧缺真值 ⇒ 抛错；未知精度 ⇒ 抛错
+    for bad_a, bad_b in (({}, _PARTNER), (_SAMPLE, {}), (None, _PARTNER)):
+        try:
+            dual_synastry_tensor(bad_a, bad_b)
+            raise AssertionError('双盘任一侧缺真值必须抛错')
+        except SynastryInputError:
+            pass
+    try:
+        dual_synastry_tensor(_SAMPLE, _PARTNER, 'guessed')
+        raise AssertionError('未知精度必须抛错')
+    except SynastryInputError:
+        pass
+    print(f"  两侧={len(dual['side_a_planets'])}×{len(dual['side_b_planets'])} "
+          f"相位={total} 调和={h} 硬相={hard} 调和占比={dual['harmony']['ratio']} "
+          f"签名={sorted(dual['summary']['signatures'])}")
+    print('真实双盘张量验证通过（同一量尺 / 键契约锁定 / date_level 降级如实标注 / 缺真值抛错）')
+
+    print('\n全部自测通过（E38-C 相位张量 + E38-D 反向拟合/闭合校验/算子实体化 + E40-A 第五形态镜像 + E40+ 真实双盘张量）')
 
 
 if __name__ == '__main__':

@@ -38,4 +38,9 @@ export interface CompatibilityResult {
   dimensions: DimensionScore;  // 四维度评分
   _d1?: string;
   _d2?: string;
+  // 🌌 E40+：双人时空真值（可选采集；缺省 ⇒ 服务端如实降级为传统宏观合盘，绝不伪造）
+  _t1?: string;
+  _c1?: { key: string; tz: string; lat: number; lon: number } | null;
+  _t2?: string;
+  _c2?: { key: string; tz: string; lat: number; lon: number } | null;
 }
