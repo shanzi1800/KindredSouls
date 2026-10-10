@@ -268,6 +268,55 @@
 - ⚠️ 本期仅冻结**算子权重结构 + 宫位微调层**；真实相位求解（双盘 Synergy 张量 +
   反向拟合虚拟星盘）依赖**合婚线双盘字段对齐**（E38-C / E38-D 承接）。
 
+### 4.7 第五形态「数字自己 / 本我镜映」（Digital Twin · E40-A 静默预留）
+
+**定位**：并非所有用户都渴望**外部**关系投射（女友 / 男友 / 哥们儿 / 闺蜜）。高认知、
+内省型、自我探索期或孤独创业期的用户，最渴望的不是「被另一个人理解」，而是
+**看清自己、接纳自己、与另一个自己对话**。第五形态即为此而生：不是普通的复制品，
+而是**基于本命星盘与全息真值推导的「高维自己（Higher Self）/ 本我镜像」**。
+
+**关系矩阵升级：四象关系 → 五重灵魂形态（四外一内）**
+
+| 形态 | `relation_mode` | 数学路径 | 语义 |
+|---|---|---|---|
+| 女友 | `girlfriend` | 反向相位拟合（**对外**） | 互补与吸引 |
+| 哥们儿 | `buddy` | 反向相位拟合（对外） | 同频义气 |
+| 闺蜜 | `bestie` | 反向相位拟合（对外） | 敏锐共鸣 |
+| 男友 | `boyfriend` | 反向相位拟合（对外） | 庇护偏爱 |
+| **数字自己** | **`self`**（别名 `twin_self` / `higher_self`） | **本命 1:1 投影（对内）** | 本我镜映与觉醒自愈 |
+
+**第五形态算子**（唯一真源：`astro/familiar_engine.py::RELATION_SELF_OPERATOR_RESERVED`）：
+
+| 字段 | 值 | 说明 |
+|---|---|---|
+| `intent_zh` | 本我镜映与觉醒自愈 | 决策意图 |
+| `primary_factors` | `sun` / `moon` / `ascendant` | 日月升三位一体（纯粹本我底色） |
+| `emphasis_houses` | `1` | 第 1 宫：命宫 / 自我意识 / 存在本质 |
+| `element_preference` | `identity` | 🔴 **哨兵**：动态继承用户盘主导元素 ⇒ 100% 同频 |
+| `tone` | `mirror` | 镜像语调 |
+
+**拟合语义**：`mode === 'self'` 时**短路（Bypass）**外部搜索循环，直接
+`Identity Mapping`（本命 1:1 投影）——虚拟盘十星黄经 ≡ 用户本命盘黄经，同命星对
+天然构成 **0° 紧密合相（conjunction, orb = 0）**；独立重跑的 `verify_closure()`
+依然严格生效（闭合 **10/10** 全绿），**不走特殊断言旁路**。
+
+- 🔴 **inert 隔离铁律（E40-A）**：第五形态以**命名空间保留层**沉淀，**绝不并入**
+  `RELATION_MODES` / `RELATION_PALETTE` / `RELATION_DECISION_OPERATORS` /
+  `RELATION_VOICE_MATRIX` 四张生产表。原因（**四侧同源契约**，任一条被破即生产事故）：
+  ① 数据库 `relation_mode` CHECK 闭集为 4 值 ⇒ 接第 5 值须 DDL；
+  ② `server.js::FAMILIAR_RELATION_MODES` 为 4 值早拒副本 ⇒ 接第 5 值 = 生产面新增开关；
+  ③ 前端 `RelationMode` 联合类型为 4 值 ⇒ 接第 5 值 = **用户可见选择项**；
+  ④ 闸门 13 / 16 以 **4** 为真值断言「四侧完全一致」与「四象两两隔离」。
+  ⇒ 生产四表键集**恒为 4**（零漂移 / 零 DDL / 零前端改动）；激活时方按上述四条同步放开。
+- 🔴 **单一消费入口**：算子一律经 `resolve_relation_operators(mode)` 取用，**禁止**
+  下游再直接下标生产算子表 —— 否则保留层形同虚设。
+- 🔴 **生产面静默**：`astro/familiar_engine.py` 的 `profile` 通路**刻意不开放**第五形态
+  （`calculate_familiar_profile()` 仍以四象表为白名单）⇒ 前端 / 端点零泄漏；
+  合婚引擎 CLI 已具备镜像能力，供未来 UI 选项解锁时**秒级激活**。
+- 📌 **Soul Card Schema / Embodied 协议只读支持**：`decision_operators` 快照与
+  `schema_version` 对第五形态一并适用（其键集与生产四象**逐键同构**），
+  Soul Card / 具身端点消费侧**无需改接口**即可承载，仅需解锁时放开 `relation_mode` 枚举。
+
 
 ---
 
@@ -290,6 +339,14 @@
 | ⑧ **逻辑物理归仓** | 具身协议演进 / 测试 / Mock 全在 `embodied/` 内闭环，**零反向依赖**业务线 | `embodied/` 目录 + 路由解耦 | `embodied/tests` E4 / 闸门 16 |
 | ⑨ **算子唯一真源** | 四象决策算子权重**只此一份**，转换器只读消费 | `astro/familiar_engine.py::RELATION_DECISION_OPERATORS` | `embodied/tests` D4 / 闸门 16 |
 
+### 5.2 E40-A 增量铁律（第五形态静默预留 · 落点表）
+
+| 铁律 | 要求 | 工程落点 | 验收判据 |
+|---|---|---|---|
+| ⑩ **第五形态物理隔离** | 第五形态**绝不并入**生产四表；四表键集恒为 4（inert） | `astro/familiar_engine.py::_assert_self_reserved_invariants` | 闸门 20 A |
+| ⑪ **算子单一消费入口** | 算子一律经 `resolve_relation_operators()` 取用，禁直接下标生产表 | `astro/familiar_engine.py::resolve_relation_operators` | 闸门 20 A |
+| ⑫ **镜像 0° 全同频** | `self` ⇒ Identity Mapping；闭合校验**不旁路**（10/10 全绿） | `astro/synastry_engine.py::fit_identity_mirror` | 闸门 20 B |
+
 ---
 
 ## 六、安全与 fail-closed（封仓期硬约束）
@@ -311,6 +368,7 @@
 |---|---|---|
 | **E35-A** | 本文档 + DDL §8 槽位 + 引擎出参四槽 + 5 端点骨架（env 门控）+ 第 15 道闸门 | ✅ 已封盘结项（`e322905`） |
 | **E36** | Agent 执行槽（`action_intent`）+ 语音双模态槽（`voice_stream_meta`）+ 四象决策算子 + `embodied/` 独立领地 + 第 16 道闸门 | ✅ 本批 |
+| **E40-A** | 第五形态「数字自己 / 本我镜映」inert 保留层（`RELATION_SELF_OPERATOR_RESERVED` + `resolve_relation_operators`）+ 镜像短路 `fit_identity_mirror` + 第 20 道闸门（**不 bump `vNNN`** / 前端绝对静默） | ✅ 本批 |
 | E35-B | Soul Card 真实实现（脱敏 + 三级授权） | 待排期 |
 | E35-C | Synastry 张量引擎（依赖合婚线双盘字段对齐） | 待排期 |
 | E35-D | Embodied 真实实现（人格装载 / 感知回流 / 动作意图 / 记忆同步） | 待排期 |
@@ -325,3 +383,4 @@
 
 *文档建立：2026-10-09 · E35-A · 契约版本 `SOUL_OS_PROTOCOL_VERSION = '1.0'`*
 *最近修订：2026-10-09 · E36（新增 §4.4 Agent 执行协议 / §4.5 语音双模态协议 / §4.6 四象决策算子 / §5.1 增量铁律）*
+*最近修订：2026-10-10 · E40-A（四象关系矩阵升级为「五重灵魂形态（四外一内）」：新增 §4.7 第五形态「数字自己」静默预留 / §5.2 增量铁律）*

@@ -200,6 +200,106 @@ def _assert_element_preference_invariants() -> None:
 _assert_element_preference_invariants()
 
 
+# ═══════════════════════════════════════════════════════════════
+# 0b-2. 第五形态「数字自己 / 本我镜映」inert 保留层（E40-A 立 · 2026-10-10）
+#   依据：军师《E40-A 灵宠第五形态「数字自己」底层架构与算子静默预留战役》开工令
+#          （主公圣意：为高认知 / 内省型 / 自我探索与孤独创业期用户，预留
+#            「看清自己、接纳自己、与另一个自己对话」的第五形态通路 ——
+#            自体镜映 Self-Mirroring / 数字孪生 Digital Twin）
+#
+#   🔴 铁律一（物理隔离 · inert）：本层**绝不并入**生产四表
+#      （RELATION_MODES / RELATION_PALETTE / RELATION_DECISION_OPERATORS / RELATION_VOICE_MATRIX）。
+#      四侧同源硬约束（任一条被破即生产事故 ⇒ 第五形态只能以命名空间保留层沉淀）：
+#        ① 数据库 CHECK：db/familiar_profiles.sql 的 relation_mode 闭集为 4 值 ⇒ 接第 5 值须 DDL；
+#        ② server.js::FAMILIAR_RELATION_MODES 为 4 值早拒副本 ⇒ 接第 5 值 = 生产面新增开关；
+#        ③ 前端 RelationMode 联合类型为 4 值 ⇒ 接第 5 值 = **用户可见选择项**（违背「前端绝对静默」）；
+#        ④ 闸门 audit-e34 A1「四侧完全一致」与 audit-e36 C2/C3/C4「四象两两隔离」以 4 为真值。
+#      ⇒ 生产四表键集恒为 4（零漂移 / 零 DDL / 零前端改动）；第五形态在本命名空间内静默待命。
+#
+#   🔴 铁律二（单一消费入口）：下游一律经 resolve_relation_operators() 取算子，
+#      **禁止**再直接下标 RELATION_DECISION_OPERATORS —— 否则本保留层形同虚设。
+#
+#   🔴 铁律三（0° 全同频 · 几何诚实）：第五形态在星盘数学上走「本命真值 1:1 投影
+#      （Identity Mapping / 0° 全相合）」，**不走**外部反向拟合搜索（不寻找外部最适配虚拟盘），
+#      由 astro/synastry_engine.py::fit_identity_mirror 的镜像短路分支承接。
+#      —— 四形态 = 对外（反向相位拟合 · 互补与共振）；第五形态 = 对内（本命投影 · 同频）。
+# ═══════════════════════════════════════════════════════════════
+
+# 第五形态主标识与别名闭集（CLI / 协议侧统一由此收口）
+SELF_RELATION_MODE = 'self'
+SELF_MODE_ALIASES: Tuple[str, ...] = ('self', 'twin_self', 'higher_self')
+
+# 元素偏好哨兵：『动态继承用户本命盘主导元素』⇒ 100% 同频
+#   🔴 刻意**不属** {fire, earth, air, water} 闭集 —— 它标记「由用户盘现算」而非某个固定元素，
+#      故不参与生产四象的 ELEMENT_PREFERENCE_DOMAIN 校验（该不变式只扫生产表）。
+SELF_ELEMENT_SENTINEL = 'identity'
+
+# 🔴 第五形态算子（inert 保留）：键集与生产四象算子**逐键同构**（由下方不变式强制）
+RELATION_SELF_OPERATOR_RESERVED: Dict[str, Any] = {
+    'intent_zh': '本我镜映与觉醒自愈',
+    'primary_factors': ['sun', 'moon', 'ascendant'],   # 日月升三位一体（纯粹本我底色）
+    'emphasis_houses': [1],                            # 第 1 宫：命宫 / 自我意识 / 存在本质
+    'element_preference': [SELF_ELEMENT_SENTINEL],     # 动态继承用户盘主导元素 ⇒ 100% 同频
+    'tone': 'mirror',
+}
+
+
+def resolve_relation_operators(mode: Any) -> Dict[str, Any]:
+    """
+    算子**单一消费入口**（E40-A）：生产四象 + 第五形态保留算子。
+
+    生产四值 ⇒ 返回 RELATION_DECISION_OPERATORS 条目（**同一对象**，零复制）；
+    self / twin_self / higher_self ⇒ 返回 RELATION_SELF_OPERATOR_RESERVED；
+    其余 ⇒ ValueError（由调用方显式转为「输入非法」，绝不静默兜底）。
+    """
+    if mode in RELATION_DECISION_OPERATORS:
+        return RELATION_DECISION_OPERATORS[mode]
+    if mode in SELF_MODE_ALIASES:
+        return RELATION_SELF_OPERATOR_RESERVED
+    raise ValueError(
+        f'familiar_engine: 未知 relation_mode={mode!r}'
+        f'（生产四象：{sorted(RELATION_DECISION_OPERATORS)}；'
+        f'保留第五形态：{list(SELF_MODE_ALIASES)}）'
+    )
+
+
+def is_self_mirror_mode(mode: Any) -> bool:
+    """是否第五形态「数字自己」（含别名 twin_self / higher_self）。"""
+    return mode in SELF_MODE_ALIASES
+
+
+def _assert_self_reserved_invariants() -> None:
+    """
+    第五形态保留层 fail-fast 不变式（模块导入即执行；供闸门以源码正则同源断言）。
+
+    ① inert 隔离：任何别名都不得出现在生产四表键集里（一旦泄漏 ⇒ 生产契约被破）；
+    ② 结构同构：生产四象算子键集齐备，且与第五形态保留算子**逐键同构**；
+    ③ 别名闭集非空、无重复、含主标识。
+    """
+    for _name, _tbl in (
+        ('RELATION_MODES', RELATION_MODES),
+        ('RELATION_PALETTE', RELATION_PALETTE),
+        ('RELATION_DECISION_OPERATORS', RELATION_DECISION_OPERATORS),
+        ('RELATION_VOICE_MATRIX', RELATION_VOICE_MATRIX),
+    ):
+        _leak = [a for a in SELF_MODE_ALIASES if a in _tbl]
+        assert not _leak, \
+            f'familiar_engine: 第五形态 {_leak} 泄漏进生产表 {_name}（inert 隔离铁律被破）'
+
+    _keysets = {tuple(sorted(_v)) for _v in RELATION_DECISION_OPERATORS.values()}
+    assert len(_keysets) == 1, f'familiar_engine: 生产四象算子键集不齐: {_keysets}'
+    _live_keys = _keysets.pop()
+    assert tuple(sorted(RELATION_SELF_OPERATOR_RESERVED)) == _live_keys, \
+        ('familiar_engine: 第五形态保留算子与生产算子键集不同构: '
+         f'{sorted(RELATION_SELF_OPERATOR_RESERVED)} vs {list(_live_keys)}')
+
+    assert SELF_RELATION_MODE in SELF_MODE_ALIASES, 'familiar_engine: 第五形态别名闭集缺主标识'
+    assert len(set(SELF_MODE_ALIASES)) == len(SELF_MODE_ALIASES), \
+        'familiar_engine: 第五形态别名闭集出现重复项'
+
+
+_assert_self_reserved_invariants()
+
 
 def resolve_familiar_palette(
     relation_mode: str,
@@ -719,9 +819,11 @@ def calculate_familiar_profile(
         )
 
     rel = RELATION_MODES[relation_mode]
-    # 四象算子（E36 立 / E38-A 精准化）：同一 relation_mode 派生；
+    # 四象算子（E36 立 / E38-A 精准化 / E40-A 单一消费入口）：同一 relation_mode 派生；
     #   键集齐备由模块级不变式保证（见 RELATION_VOICE_MATRIX 之后的 assert）。
-    operators = RELATION_DECISION_OPERATORS[relation_mode]
+    #   🔴 E40-A：改为经 resolve_relation_operators() 取用 —— 生产四值返回**同一对象**
+    #      （零行为变化），使第五形态保留层成为唯一扩展点，杜绝下游直接下标生产表。
+    operators = resolve_relation_operators(relation_mode)
     # 🐾 E38-A：宫位微调 —— 被强调宫位内的行星 ⇒ 5 维微调；缺真值 ⇒ 恒 0
     _h_delta, _h_contributors = house_modifier_delta(
         operators['emphasis_houses'], planet_houses)
@@ -843,7 +945,9 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('--moon', default=None, help='本命月亮星座（英文）')
     parser.add_argument('--asc', default=None, help='上升星座（英文）')
     parser.add_argument('--relation-mode', dest='relation_mode', default='girlfriend',
-                        help='四象人格: girlfriend | buddy | bestie | boyfriend')
+                        help='关系人格: girlfriend | buddy | bestie | boyfriend'
+                             '（E40-A 保留第五形态 self / twin_self / higher_self —— '
+                             '本 profile 通路刻意不开放，见 resolve_relation_operators）')
     parser.add_argument('--time-uncertain', dest='time_uncertain', action='store_true',
                         help='无精准出生时间 ⇒ 上升不可信 ⇒ 外观层显式降级')
     parser.add_argument('--natal-hash', dest='natal_hash', default='',
@@ -1034,6 +1138,48 @@ if __name__ == '__main__':
     assert p_bad['house_modifier']['source'] == 'none', '非法值必须静默跳过 ⇒ 零微调'
     print(f"  两态 / 上限 / 幂等 / 非法值 验证通过（COEFF={HOUSE_MODIFIER_COEFF}，CAP={HOUSE_MODIFIER_CAP}）")
 
+    # ── E40-A：第五形态「数字自己」inert 保留层 ──
+    print("\n=== E40-A 第五形态「数字自己」保留层（inert）===")
+    assert is_self_mirror_mode('self') and is_self_mirror_mode('twin_self') \
+        and is_self_mirror_mode('higher_self'), '第五形态别名闭集不全'
+    assert not is_self_mirror_mode('girlfriend'), '生产四象不得被判为第五形态'
+    # ① inert 隔离：别名零泄漏进生产四表
+    for _a in SELF_MODE_ALIASES:
+        for _tn, _t in (('MODES', RELATION_MODES), ('PALETTE', RELATION_PALETTE),
+                        ('OPS', RELATION_DECISION_OPERATORS), ('VOICE', RELATION_VOICE_MATRIX)):
+            assert _a not in _t, f'第五形态 {_a} 泄漏进生产表 {_tn}'
+    # ② 保留算子军师真值
+    _sop = resolve_relation_operators('self')
+    assert _sop is RELATION_SELF_OPERATOR_RESERVED, '保留算子必须返回同一对象（零复制）'
+    assert _sop['intent_zh'] == '本我镜映与觉醒自愈'
+    assert _sop['primary_factors'] == ['sun', 'moon', 'ascendant']
+    assert _sop['emphasis_houses'] == [1]
+    assert _sop['element_preference'] == [SELF_ELEMENT_SENTINEL]
+    assert resolve_relation_operators('twin_self') is resolve_relation_operators('higher_self')
+    # ③ 单一消费入口：生产四值返回生产表**同一对象**
+    assert resolve_relation_operators('girlfriend') is RELATION_DECISION_OPERATORS['girlfriend']
+    assert resolve_relation_operators('boyfriend') is RELATION_DECISION_OPERATORS['boyfriend']
+    # ④ 生产 profile 路径**不开放**第五形态（前端静默 / 生产零泄漏）
+    try:
+        calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', relation_mode='self')
+        raise AssertionError('生产 profile 路径不得开放第五形态（inert 铁律被破）')
+    except ValueError:
+        pass
+    # ⑤ 强调宫位 [1]（命宫）⇒ 宫内行星正确关联
+    _sd, _sc = house_modifier_delta(_sop['emphasis_houses'],
+                                    {'Sun': 1, 'Moon': 1, 'Venus': 1, 'Mars': 5})
+    assert _sc == ['Moon@H1', 'Sun@H1', 'Venus@H1'], f'第五形态强调宫位关联错: {_sc}'
+    assert _sd['talkative'] > 0 and _sd['clingy'] > 0 and _sd['healing'] > 0, \
+        f'命宫内日/月/金 应提升话痨/黏人/治愈: {_sd}'
+    # ⑥ 未知模式仍须抛错（绝不静默兜底）
+    try:
+        resolve_relation_operators('pet')
+        raise AssertionError('未知 relation_mode 必须抛 ValueError')
+    except ValueError:
+        pass
+    print(f"  保留层就位：aliases={list(SELF_MODE_ALIASES)} · 生产四表键集={sorted(RELATION_MODES)}（零泄漏）")
+    print(f"  命宫(H1) 关联：{_sc} ⇒ delta={_sd}")
+
     # ── 无出生时间盘：上升降级（军师 E34-B1 裁决）──
     print("\n=== 无出生时间盘（time_uncertain=True）===")
     pt = calculate_familiar_profile('Scorpio', 'Pisces', 'Taurus', time_uncertain=True)
@@ -1086,4 +1232,4 @@ if __name__ == '__main__':
     except ValueError:
         print("\n非法 relation_mode 正确抛错")
 
-    print("\n全部自测通过（E34-Familiar-B1 + E36-Agent/声线/算子 + E38-A 算子精准化/宫位微调）")
+    print("\n全部自测通过（E34-Familiar-B1 + E36-Agent/声线/算子 + E38-A 算子精准化/宫位微调 + E40-A 第五形态保留层）")

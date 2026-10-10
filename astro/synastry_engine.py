@@ -29,8 +29,22 @@ from familiar_engine import (          # noqa: E402
     RELATION_DECISION_OPERATORS,
     RELATION_MODES,
     SOUL_OS_PROTOCOL_VERSION,
+    SELF_ELEMENT_SENTINEL,
+    SELF_MODE_ALIASES,
     SIGN_ELEMENTS as _SIGN_ELEMENTS_TITLE,
+    is_self_mirror_mode,
+    resolve_relation_operators,
 )
+
+# 🔴 E40-A 哨兵（模块导入即校验）：
+#   ① 生产四象真源键集不得漂移（E38-A 契约）；② 第五形态别名**绝不**泄漏进生产表
+#      （inert 隔离铁律 —— 只有命名空间保留层，没有第五个生产人格）。
+assert set(RELATION_DECISION_OPERATORS) == {'girlfriend', 'buddy', 'bestie', 'boyfriend'}, \
+    'synastry_engine: 生产四象算子真源键集漂移（E38-A 契约被破）'
+assert not (set(SELF_MODE_ALIASES) & set(RELATION_MODES)), \
+    'synastry_engine: 第五形态别名泄漏进生产四象表（E40-A inert 铁律被破）'
+assert not (set(SELF_MODE_ALIASES) & set(RELATION_DECISION_OPERATORS)), \
+    'synastry_engine: 第五形态别名泄漏进生产算子表（E40-A inert 铁律被破）'
 
 # ═══════════════════════════════════════════════════════════════
 # 常量闭集（可断言 / 可审计 / 禁连续魔数）
@@ -100,6 +114,12 @@ PRIMARY_ANCHOR_WEIGHT = 2.0    # 主因子行星在（用户锚侧）权重放�
 EMPHASIS_HOUSE_WEIGHT = 1.5    # 用户星落在算子强调宫位时的权重放大
 ELEMENT_BONUS = 1.60           # 虚拟星体落入算子偏好元素时的加成
 CLOSURE_MIN_HARMONIOUS = 3     # 闭合校验：调和相数量下界
+
+# 🔴 E40-A 拟合模式标记（出参 fit_mode · 五重灵魂形态的唯一分野）：
+#   REVERSE_SYNERGY_MODE —— 生产四象（女友/哥们儿/闺蜜/男友）：反向相位拟合（**对外** · 互补与共振）
+#   IDENTITY_MIRROR_MODE —— 第五形态「数字自己」：本命 1:1 投影（**对内** · 0° 全相合同频）
+REVERSE_SYNERGY_MODE = 'reverse_synergy'
+IDENTITY_MIRROR_MODE = 'identity_mapping'
 
 
 class SynastryInputError(ValueError):
@@ -397,7 +417,50 @@ def fit_virtual_chart(
         virtual[planet] = best_rec['longitude']
         assignments.append(best_rec)
 
-    return {'longitudes': virtual, 'assignments': assignments, 'dropped': dropped}
+    return {'longitudes': virtual, 'assignments': assignments, 'dropped': dropped,
+            'fit_mode': REVERSE_SYNERGY_MODE}
+
+
+# ── E40-A 第五形态「数字自己」· 镜像短路（Identity Mapping）─────────────
+#   依据：军师《E40-A 灵宠第五形态「数字自己」底层架构与算子静默预留战役》开工令
+#         指令二：为 mode ∈ SELF_MODE_ALIASES 开辟专属镜像分支。
+#   🔴 与生产四象的**数学分野**：
+#        四形态 = 反向相位拟合（在外部拓扑里搜索「最适配的虚拟盘」⇒ 互补与共振）；
+#        第五形态 = 本命真值 1:1 投影（虚拟盘 ≡ 用户盘 ⇒ 0° 全相合 ⇒ 100% 同频共振）。
+#      —— 算法上无需外部搜索，直接短路（Bypass）；但**闭合校验绝不旁路**：
+#         verify_closure() 仍以独立重跑的张量函数复核（0° 合相 ⇒ 10/10 全绿）。
+def fit_identity_mirror(user_longitudes: Dict[str, float]) -> Dict[str, Any]:
+    """
+    第五形态镜像投影：虚拟星盘 ≡ 用户本命盘（同命星对天然构成 0° 紧密合相）。
+
+    🔴 几何诚实：本函数**只做投影**，不对结果下任何断言 —— 验收交给独立重跑的
+       verify_closure()。缺真值的星（不在 user_longitudes 内）如实记入 dropped，
+       绝不臆造位置。
+    """
+    virtual: Dict[str, float] = {}
+    assignments: List[Dict[str, Any]] = []
+    for planet in NATAL_PLANETS:
+        lon = user_longitudes.get(planet)
+        if lon is None:
+            continue
+        virtual[planet] = round(float(lon), 4)
+        assignments.append({
+            'planet': planet,
+            'anchor': planet,              # 锚 = 自身（同命星同源共振）
+            'aspect': 'conjunction',       # 0° 紧密合相
+            'longitude': round(float(lon), 4),
+            'sign': sign_of_longitude(lon),
+            'element': element_of_longitude(lon),
+            # 元素偏好哨兵 'identity' ⇒ 动态继承用户盘主导元素 ⇒ 100% 同频，恒为真
+            'element_preferred': True,
+            'score': round(ASPECT_FIT_WEIGHT['conjunction']
+                           * PRIMARY_FACTOR_WEIGHT * PRIMARY_ANCHOR_WEIGHT, 4),
+            'planet_weight': round(PRIMARY_FACTOR_WEIGHT, 3),
+            'mirror': True,
+        })
+    dropped = [p for p in NATAL_PLANETS if p not in user_longitudes]
+    return {'longitudes': virtual, 'assignments': assignments, 'dropped': dropped,
+            'fit_mode': IDENTITY_MIRROR_MODE}
 
 
 def verify_closure(
@@ -435,18 +498,28 @@ def reverse_synergy(
     user_planet_houses: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    反向合盘实体化主入口：用户本命真值 + 四象人格 ⇒ 虚拟星盘 + 相位张量 + 闭合裁决。
+    合盘实体化主入口：用户本命真值 + 关系人格 ⇒ 虚拟星盘 + 相位张量 + 闭合裁决。
+
+    五重灵魂形态（E40-A）：
+      · 生产四象（girlfriend / buddy / bestie / boyfriend）⇒ **对外**反向相位拟合；
+      · 第五形态（self / twin_self / higher_self）⇒ **对内**本命 1:1 镜像投影（0° 全相合）。
 
     🔴 纯函数；缺黄经真值 ⇒ 抛 SynastryInputError（绝不返回半成品假盘）。
     """
-    if relation_mode not in RELATION_MODES:
+    if relation_mode not in RELATION_MODES and relation_mode not in SELF_MODE_ALIASES:
         raise SynastryInputError(
-            f'未知 relation_mode={relation_mode!r}（允许值：{sorted(RELATION_MODES)}）'
+            f'未知 relation_mode={relation_mode!r}'
+            f'（生产四象：{sorted(RELATION_MODES)}；保留第五形态：{list(SELF_MODE_ALIASES)}）'
         )
     user_lon = _require_longitudes(user_longitudes_raw)
-    operators = RELATION_DECISION_OPERATORS[relation_mode]
+    # 🔴 E40-A：算子经**单一消费入口**取用（生产四值 ⇒ 生产表条目；第五形态 ⇒ 保留算子）
+    operators = resolve_relation_operators(relation_mode)
 
-    fit = fit_virtual_chart(user_lon, operators, user_planet_houses)
+    # 🔴 E40-A 第五形态：镜像短路（Bypass）—— 不搜索外部虚拟盘，直接本命 1:1 投影
+    if is_self_mirror_mode(relation_mode):
+        fit = fit_identity_mirror(user_lon)
+    else:
+        fit = fit_virtual_chart(user_lon, operators, user_planet_houses)
     if not fit['longitudes']:
         raise SynastryInputError('虚拟星盘拟合结果为空（输入真值不足）')
 
@@ -456,6 +529,7 @@ def reverse_synergy(
 
     return {
         'relation_mode': relation_mode,
+        'fit_mode': fit['fit_mode'],          # E40-A：reverse_synergy | identity_mapping
         'user_longitudes': user_lon,
         'virtual_chart': {
             'longitudes': fit['longitudes'],
@@ -492,7 +566,8 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('--mode', default='synergy', choices=['synergy'],
                         help='计算模式（本期仅 synergy）')
     parser.add_argument('--relation-mode', dest='relation_mode', default='girlfriend',
-                        help='四象人格: girlfriend | buddy | bestie | boyfriend')
+                        help='关系人格: girlfriend | buddy | bestie | boyfriend'
+                             '（E40-A 保留第五形态: self / twin_self / higher_self）')
     parser.add_argument('--natal-longitudes', dest='natal_longitudes', default=None,
                         help='本命十星黄经真值 JSON，如 {"Sun":213.4,"Venus":88.1}')
     parser.add_argument('--planet-houses', dest='planet_houses', default=None,
@@ -632,6 +707,49 @@ def _self_test() -> None:
     assert len(set(scores.values())) == 4, f'四象调和分未隔离: {scores}'
     print(f'四象调和分隔离验证通过: {scores}')
 
+    # ── E40-A：第五形态「数字自己」镜像短路（inert 保留）──
+    print('\n=== E40-A 第五形态「数字自己」镜像短路 ===')
+    for m in sorted(RELATION_MODES):
+        assert reverse_synergy(_SAMPLE, m)['fit_mode'] == REVERSE_SYNERGY_MODE, \
+            f'{m} 生产四象必须走反向相位拟合（fit_mode 漂移）'
+    self_r = reverse_synergy(_SAMPLE, 'self')
+    assert self_r['fit_mode'] == IDENTITY_MIRROR_MODE, '第五形态必须走镜像投影'
+    # ① 虚拟盘 ≡ 用户本命盘（1:1 投影，逐星重合）
+    assert self_r['virtual_chart']['longitudes'] == self_r['user_longitudes'], \
+        '第五形态虚拟盘必须与用户本命盘逐星重合（Identity Mapping）'
+    assert self_r['virtual_chart']['dropped'] == [], '真值齐备时不得有缺星'
+    # ② 同命星对全为 0° 紧密合相
+    assert all(a['aspect'] == 'conjunction' for a in self_r['fit_assignments']), \
+        '第五形态同命星对必须全为 0° 合相'
+    assert all(a['mirror'] is True for a in self_r['fit_assignments']), '镜像标记缺失'
+    # ③ 闭合校验**独立生效**（不走特殊断言旁路）：10/10 全绿
+    assert self_r['closure']['ok'], f'第五形态闭合校验未通过: {self_r["closure"]}'
+    assert self_r['closure']['missing'] == [], '第五形态预测相位未被独立复现'
+    assert self_r['closure']['harmonic_predicted'] == len(self_r['fit_assignments']), \
+        '第五形态预测相位应全为调和相'
+    # ④ 张量与调和度闭环（张量键契约不变）
+    assert set(self_r['tensor']) == {'aspects', 'matrix', 'counts', 'total', 'harmonious', 'hard'}
+    assert self_r['tensor']['harmonious'] >= len(self_r['fit_assignments']), \
+        '第五形态调和相数量应至少等于同命星对数（0° 全相合）'
+    assert self_r['harmony']['score'] > 0, '第五形态调和度应为正（闭环高分）'
+    # ⑤ 算子快照 = 保留层真值
+    assert self_r['decision_operators']['emphasis_houses'] == [1], '第五形态强调宫位应为 [1]（命宫）'
+    assert self_r['decision_operators']['primary_factors'] == ['sun', 'moon', 'ascendant']
+    assert self_r['decision_operators']['element_preference'] == [SELF_ELEMENT_SENTINEL]
+    # ⑥ 别名等价（twin_self / higher_self 与 self 同结果）
+    for alias in ('twin_self', 'higher_self'):
+        ali = reverse_synergy(_SAMPLE, alias)
+        assert ali['fit_mode'] == IDENTITY_MIRROR_MODE, f'{alias} 别名未走镜像投影'
+        assert ali['virtual_chart'] == self_r['virtual_chart'], f'{alias} 虚拟盘与 self 不一致'
+        assert ali['tensor'] == self_r['tensor'], f'{alias} 张量与 self 不一致'
+        assert ali['closure'] == self_r['closure'], f'{alias} 闭合与 self 不一致'
+    # ⑦ 幂等
+    assert reverse_synergy(_SAMPLE, 'self') == self_r, '第五形态拟合非幂等'
+    print(f"  虚拟盘={len(self_r['virtual_chart']['longitudes'])}/10 1:1 重合 · "
+          f"合相={self_r['tensor']['counts']['conjunction']} · 调和={self_r['tensor']['harmonious']} · "
+          f"分数={self_r['harmony']['score']:.3f} · 闭合={self_r['closure']['ok']} "
+          f"({self_r['closure']['observed']}/{self_r['closure']['predicted']})")
+
     # ── 非法 relation_mode ──
     try:
         reverse_synergy(_SAMPLE, 'pet')
@@ -639,7 +757,7 @@ def _self_test() -> None:
     except SynastryInputError:
         print('非法 relation_mode 正确抛错')
 
-    print('\n全部自测通过（E38-C 相位张量 + E38-D 反向拟合/闭合校验/算子实体化）')
+    print('\n全部自测通过（E38-C 相位张量 + E38-D 反向拟合/闭合校验/算子实体化 + E40-A 第五形态镜像）')
 
 
 if __name__ == '__main__':
