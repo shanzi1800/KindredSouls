@@ -400,6 +400,11 @@ test('D1 注入：拆掉 buildCompatPrompt 的真值块注入 ⇒ A 组判据必
   try {
     const f = path.join(dir, 'mutated.mjs');
     fs.writeFileSync(f, mutated, 'utf8');
+    // 🛡️ E41+ Gate 39：归正后资产新增【同目录兄弟依赖】——合婚术语派生物 synastry-terms.generated.js
+    //    临时变异副本须一并带入；并补 package.json{type:module}（临时目录无此声明时 .js 视作 CJS）。
+    fs.copyFileSync(path.join(ROOT, 'api', 'synastry-terms.generated.js'),
+      path.join(dir, 'synastry-terms.generated.js'));
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ type: 'module' }), 'utf8');
     const m = require2(f);
     assert.ok(!assetInjectsTruth(m, 'zh', RATIO_TEXT), '判据失效：真值块已拆掉却仍判绿');
   } finally {

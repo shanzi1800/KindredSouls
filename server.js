@@ -455,6 +455,11 @@ import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlo
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
+// 🛡️ E41+ Gate 39：多语言术语唯一真值源 = astro/astro_terms_dict.json。
+//   本文件的 6 张 SUN_SIGN_* 数组 + _TH_PLANET/_VI_PLANET/_FR_PLANET/_FR_SIGN_FR 保持
+//   【内联字面量】形态 —— 仓内 13 道既有闸门以「源码文本抽取 + new Function VM 沙箱」消费，
+//   若改为 import 引用，沙箱内符号未定义即崩（实测 13 段红）。故与 ai-advisor 镜像同理，
+//   采用「闸门同源」范式：字面量与字典的逐字一致性由 test/audit-e41-gate39 G 组断言硬锁定。
 import { buildAstroTruth, SIGN_ARCHETYPE, getSignToHouseMap, SIGN_ORDER_ZH } from './astro-truth.js';
 import { validateAstroLogic } from './astro-validator.js';
 import https from 'https';
@@ -3193,6 +3198,7 @@ const _VI_BODY_SPLIT = /(?:^|\s)(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|
 const _VI_CLAUSE_BREAK = /[.;,!?:()\n]|\s(?:và|với|nhưng|song|trong khi|đồng thời|khi|cùng)\s/gi;
 
 // ── V424: 泰语本命真值锁（镜像 V421/V423 越南语锁，泰语无显式 natal 标记，用 transit 动词排除）
+// 🛡️ E41+ Gate 39：泰语行星名与 astro/astro_terms_dict.json 逐字一致（Gate 39 G 组锁定）
 const _TH_PLANET = {
   Sun: 'ดวงอาทิตย์', Moon: 'ดวงจันทร์', Mercury: 'ดาวพุธ', Venus: 'ดาวศุกร์', Mars: 'ดาวอังคาร',
   Jupiter: 'ดาวพฤหัสบดี', Saturn: 'ดาวเสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต',
@@ -3474,6 +3480,7 @@ function lockTransitTruthTh(text, astroMatrix) {
 
 const _VI_BODY_ANY = /(?:^|\s)(?:Mặt|Sao|Hành|Thiên Vương|Hải Vương|Diêm Vương)\s/;
 // 10 行星越语名（V423 全量覆盖；锁按此表匹配正文）
+// 🛡️ E41+ Gate 39：越语行星名与 astro/astro_terms_dict.json 逐字一致（Gate 39 G 组锁定）
 const _VI_PLANET = {
   Sun: 'Mặt Trời', Moon: 'Mặt Trăng', Mercury: 'Sao Thủy', Venus: 'Sao Kim', Mars: 'Sao Hỏa',
   Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương', Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương',
@@ -3732,12 +3739,14 @@ function lockTransitTruthVi(text, astroMatrix) {
 // ── V426: 法语本命+transit 真值双锁（镜像 V423/V424/V425，治 LLM 二次翻译偷抄本命锚点）
 // 根因同源：labels.fr 此前喂英文缩写 ['Ari','Tau'...] 逼 LLM 翻译 → 偷抄本命锚点混进 transit 段。
 // 现在 labels.fr 已本土化（v69_client.js），本锁负责输出后置硬归真兜底。
+// 🛡️ E41+ Gate 39：法语行星名与 astro/astro_terms_dict.json 逐字一致（Gate 39 G 组锁定）
 const _FR_PLANET = {
   Sun: 'Soleil', Moon: 'Lune', Mercury: 'Mercure', Venus: 'Vénus', Mars: 'Mars',
   Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluton',
 };
 const _FR_PLANET_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
 // 法语标准星座名（与山子大叔路线图 + labels.fr 完全一致）
+// 🛡️ E41+ Gate 39：法语星座名与 astro/astro_terms_dict.json 逐字一致（Gate 39 G 组锁定）
 const _FR_SIGN_FR = ['Bélier', 'Taureau', 'Gémeaux', 'Cancer', 'Lion', 'Vierge', 'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons'];
 // 🛠️ 惰性函数避免 TDZ（声明在本行之后会被读取，运行时才解析）
 let _FR_SIGN_UNIQ_CACHE = null;
@@ -9990,6 +9999,9 @@ function getNatalSunSign(birthDate) {
   }
   return 11;
 }
+// 🛡️ E41+ Gate 39：6 语星座名与 astro/astro_terms_dict.json 逐字一致（Gate 39 G 组锁定）
+//   保持【内联字面量】形态（仓内 13 道既有闸门以「源码文本抽取 + VM 沙箱」消费）。
+//   SUN_SIGN_TH 为泰语紧凑形（เมษ/มิถุน/กันยา…，月名族形语域，见字典 legacyConflicts 登记）。
 const SUN_SIGN_EN = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
 const SUN_SIGN_VI = ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'];
 const SUN_SIGN_TH = ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'];

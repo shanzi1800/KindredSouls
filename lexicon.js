@@ -1,26 +1,38 @@
 /**
- * lexicon.js — 占星专有名词多语言映射表
- * 纯 JavaScript（无 TypeScript 语法）
- * 用于 server.js 的行星/星座名本地化
+ * lexicon.js — 占星专有名词多语言映射表（Gate 39 · 消费者归正版）
+ * 纯 JavaScript（无 TypeScript 语法），用于 server.js 的行星/星座名本地化。
+ *
+ * ⚠️ 归正说明（E41+ 第二阶段）：
+ *   本文件**不再持有任何独立术语字面量**。星座名一律从唯一真值源
+ *   astro/astro_terms_dict.json 派生（经 astroTerms.js 适配层）。
+ *   语义保持完全向后兼容：LEXICON[lang].signs[SignKey] = 该语种名。
+ *     · 泰语取「紧凑式 signsShort」（裸名 เมษ/สิงห์…）—— 因下游 server.js
+ *       自行拼 `ราศี` 前缀（见 V80 / V100g 泰语宫位注入），故须为裸名。
+ *     · 其余五语取「完整式 signs」。
+ *   宫位（houses）不在 Gate 39 射程内，保持既有本地化表（TH 仍用 เรือน，
+ *   server.js 运行时另有 ภพ 覆盖，属既存设计，未纳入本次归正）。
  */
+import { TERMS_DICT } from './astroTerms.js';
 
-// ── 星座名 ──────────────────────────────────────────────────────────────────
-const SIGNS = {
-  Aries: { zh:'白羊座', en:'Aries', es:'Aries', fr:'Bélier', th:'เมษ', vi:'Bạch Dương' },
-  Taurus: { zh:'金牛座', en:'Taurus', es:'Tauro', fr:'Taureau', th:'พฤษภ', vi:'Kim Ngưu' },
-  Gemini: { zh:'双子座', en:'Gemini', es:'Géminis', fr:'Gémeaux', th:'มิถุน', vi:'Song Tử' },
-  Cancer: { zh:'巨蟹座', en:'Cancer', es:'Cáncer', fr:'Cancer', th:'กรกฏ', vi:'Cự Giải' },
-  Leo: { zh:'狮子座', en:'Leo', es:'Leo', fr:'Lion', th:'สิงห์', vi:'Sư Tử' },
-  Virgo: { zh:'处女座', en:'Virgo', es:'Virgo', fr:'Vierge', th:'กันยา', vi:'Xử Nữ' },
-  Libra: { zh:'天秤座', en:'Libra', es:'Libra', fr:'Balance', th:'ตุลย์', vi:'Thiên Bình' },
-  Scorpio: { zh:'天蝎座', en:'Scorpio', es:'Escorpio', fr:'Scorpion', th:'พิจิก', vi:'Bọ Cạp' },
-  Sagittarius: { zh:'射手座', en:'Sagittarius', es:'Sagitario', fr:'Sagittaire', th:'ธนู', vi:'Nhân Mã' },
-  Capricorn: { zh:'摩羯座', en:'Capricorn', es:'Capricornio', fr:'Capricorne', th:'มังกร', vi:'Ma Kết' },
-  Aquarius: { zh:'水瓶座', en:'Aquarius', es:'Acuario', fr:'Verseau', th:'กุมภ์', vi:'Bảo Bình' },
-  Pisces: { zh:'双鱼座', en:'Pisces', es:'Piscis', fr:'Poissons', th:'มีน', vi:'Song Ngư' },
-};
+const __signs = TERMS_DICT.domains.signs;
+const __signsShort = TERMS_DICT.domains.signsShort;
 
-// ── 宫位名 ────────────────────────────────────────────────────────────────────
+// ── 星座名（由字典派生：zh/en/es/fr/vi 取完整式，th 取紧凑式裸名）────────────
+const SIGNS = Object.fromEntries(
+  Object.keys(__signs).map((key) => [
+    key,
+    {
+      zh: __signs[key].zh,
+      en: __signs[key].en,
+      es: __signs[key].es,
+      fr: __signs[key].fr,
+      th: __signsShort[key].th,
+      vi: __signs[key].vi,
+    },
+  ])
+);
+
+// ── 宫位名 ──────────────────────────────────────────────────────────────────
 const HOUSES_ZH = {
   1:'第一宫', 2:'第二宫', 3:'第三宫', 4:'第四宫',
   5:'第五宫', 6:'第六宫', 7:'第七宫', 8:'第八宫',

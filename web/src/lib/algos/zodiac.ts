@@ -1,5 +1,7 @@
 import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
+// 🛡️ E41+ Gate 39 归正：多语言术语唯一真值源 = astro/astro_terms_dict.json（经生成物）
+import { ASTRO_TERMS } from './astroTerms.generated';
 
 // ═════════════════════════════════════════
 // 星座合盘引擎(真实算法)
@@ -149,50 +151,41 @@ function t(dict: Record<LangKey, string>, lang: AlgLang): string {
   return dict[lang as LangKey] || dict['en'];
 }
 
-// ── 星座名 ──
-const ZODIAC_NAMES: Record<ZodiacSign, Record<LangKey, string>> = {
-  '白羊座': { zh: '白羊座', en: 'Aries', es: 'Aries', fr: 'Bélier', th: 'เมษ', vi: 'Bạch Dương' },
-  '金牛座': { zh: '金牛座', en: 'Taurus', es: 'Tauro', fr: 'Taureau', th: 'พฤษภ', vi: 'Kim Ngưu' },
-  '双子座': { zh: '双子座', en: 'Gemini', es: 'Géminis', fr: 'Gémeaux', th: 'เมถุน', vi: 'Song Tử' },
-  '巨蟹座': { zh: '巨蟹座', en: 'Cancer', es: 'Cáncer', fr: 'Cancer', th: 'กรกฎ', vi: 'Cự Giải' },
-  '狮子座': { zh: '狮子座', en: 'Leo', es: 'Leo', fr: 'Lion', th: 'สิงห์', vi: 'Sư Tử' },
-  '处女座': { zh: '处女座', en: 'Virgo', es: 'Virgo', fr: 'Vierge', th: 'กันย์', vi: 'Xử Nữ' },
-  '天秤座': { zh: '天秤座', en: 'Libra', es: 'Libra', fr: 'Balance', th: 'ตุลย์', vi: 'Thiên Bình' },
-  '天蝎座': { zh: '天蝎座', en: 'Scorpio', es: 'Escorpio', fr: 'Scorpion', th: 'พิจิก', vi: 'Bọ Cạp' },
-  '射手座': { zh: '射手座', en: 'Sagittarius', es: 'Sagitario', fr: 'Sagittaire', th: 'ธนู', vi: 'Nhân Mã' },
-  '摩羯座': { zh: '摩羯座', en: 'Capricorn', es: 'Capricornio', fr: 'Capricorne', th: 'มังกร', vi: 'Ma Kết' },
-  '水瓶座': { zh: '水瓶座', en: 'Aquarius', es: 'Acuario', fr: 'Verseau', th: 'กุมภ์', vi: 'Bảo Bình' },
-  '双鱼座': { zh: '双鱼座', en: 'Pisces', es: 'Piscis', fr: 'Poissons', th: 'มีน', vi: 'Song Ngư' },
-};
+// ═══ E41+ Gate 39 归正：以下四张术语表全部由 astro_terms_dict.json 派生 ═══
+//   本文件不再持有任何独立术语字面量；语域选择与生产严格对齐（零行为变化）。
+//   反查：以字典的中文名为键，建立「中文 → 英文键」索引。
+function zhKeyIndex(domain: string): Record<string, string> {
+  const dom = (ASTRO_TERMS.domains[domain] ?? {}) as Record<string, { zh: string }>;
+  return Object.fromEntries(Object.entries(dom).map(([en, entry]) => [entry.zh, en]));
+}
 
-// ── 元素名 ──
-const ELEMENT_NAMES: Record<string, Record<LangKey, string>> = {
-  '火': { zh: '火象', en: 'Fire', es: 'Fuego', fr: 'Feu', th: 'ธาตุไฟ', vi: 'Hỏa' },
-  '土': { zh: '土象', en: 'Earth', es: 'Tierra', fr: 'Terre', th: 'ธาตุดิน', vi: 'Thổ' },
-  '风': { zh: '风象', en: 'Air', es: 'Aire', fr: 'Air', th: 'ธาตุลม', vi: 'Phong' },
-  '水': { zh: '水象', en: 'Water', es: 'Agua', fr: 'Eau', th: 'ธาตุน้ำ', vi: 'Thủy' },
-};
+const SIGN_ZH2EN = zhKeyIndex('signs');
+const ELEM_ZH2EN = zhKeyIndex('elements');
+const MODE_ZH2EN = zhKeyIndex('modes');
+const PLANET_ZH2EN = zhKeyIndex('planets');
 
-// ── 模式名 ──
-const MODE_NAMES: Record<string, Record<LangKey, string>> = {
-  '基本': { zh: '基本宫', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Cung Thống Lĩnh' },
-  '固定': { zh: '固定宫', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cố Định' },
-  '变动': { zh: '变动宫', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Cung Linh Hoạt' },
-};
+// ── 星座名（th 取紧凑裸名语域 signsShort，与 server.js / lexicon.js 同源）──
+const ZODIAC_NAMES = Object.fromEntries(
+  Object.keys(SIGN_ZH2EN).map((zh) => {
+    const en = SIGN_ZH2EN[zh];
+    return [zh, { ...ASTRO_TERMS.domains.signs[en], th: ASTRO_TERMS.domains.signsShort[en].th }];
+  })
+) as Record<ZodiacSign, Record<LangKey, string>>;
 
-// ── 守护星名 ──
-const RULER_NAMES: Record<string, Record<LangKey, string>> = {
-  '火星': { zh: '火星', en: 'Mars', es: 'Marte', fr: 'Mars', th: 'ดาวอังคาร', vi: 'Sao Hỏa' },
-  '金星': { zh: '金星', en: 'Venus', es: 'Venus', fr: 'Vénus', th: 'ดาวศุกร์', vi: 'Sao Kim' },
-  '水星': { zh: '水星', en: 'Mercury', es: 'Mercurio', fr: 'Mercure', th: 'ดาวพุธ', vi: 'Sao Thủy' },
-  '月亮': { zh: '月亮', en: 'Moon', es: 'Luna', fr: 'Lune', th: 'ดวงจันทร์', vi: 'Mặt Trăng' },
-  '太阳': { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดวงอาทิตย์', vi: 'Mặt Trời' },
-  '木星': { zh: '木星', en: 'Jupiter', es: 'Júpiter', fr: 'Jupiter', th: 'ดาวพฤหัสบดี', vi: 'Sao Mộc' },
-  '土星': { zh: '土星', en: 'Saturn', es: 'Saturno', fr: 'Saturne', th: 'ดาวเสาร์', vi: 'Sao Thổ' },
-  '天王星': { zh: '天王星', en: 'Uranus', es: 'Urano', fr: 'Uranus', th: 'ดาวยูเรนัส', vi: 'Sao Thiên Vương' },
-  '海王星': { zh: '海王星', en: 'Neptune', es: 'Neptuno', fr: 'Neptune', th: 'ดาวเนปจูน', vi: 'Sao Hải Vương' },
-  '冥王星': { zh: '冥王星', en: 'Pluto', es: 'Plutón', fr: 'Pluton', th: 'ดาวพลูโต', vi: 'Sao Diêm Vương' },
-};
+// ── 元素名（象形语域 elementsLong：火象/ธาตุไฟ）──
+const ELEMENT_NAMES = Object.fromEntries(
+  Object.keys(ELEM_ZH2EN).map((zh) => [zh, ASTRO_TERMS.domains.elementsLong[ELEM_ZH2EN[zh]]])
+) as Record<string, Record<LangKey, string>>;
+
+// ── 模式名（象形语域 modesLong：基本宫）──
+const MODE_NAMES = Object.fromEntries(
+  Object.keys(MODE_ZH2EN).map((zh) => [zh, ASTRO_TERMS.domains.modesLong[MODE_ZH2EN[zh]]])
+) as Record<string, Record<LangKey, string>>;
+
+// ── 守护星名（行星域 planets 完整式）──
+const RULER_NAMES = Object.fromEntries(
+  Object.keys(PLANET_ZH2EN).map((zh) => [zh, ASTRO_TERMS.domains.planets[PLANET_ZH2EN[zh]]])
+) as Record<string, Record<LangKey, string>>;
 
 // ── 相位描述 ──
 const PHASE_DESCS = {

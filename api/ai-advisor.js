@@ -1,3 +1,5 @@
+import { SYNASTRY_PLANETS } from './synastry-terms.generated.js';
+
 export const runtime = 'nodejs';
 
 // ── In-memory rate limit (IP per minute) ──
@@ -1263,7 +1265,7 @@ export const SYNASTRY_I18N = {
       unknown: '未知因子（不可得，严禁编造）', none: '无',
       bonds: '柔和相位（借力）', frictions: '张力相位（冲突）', signatures: '核心羁绊',
     },
-    planets: { Sun: '太阳', Moon: '月亮', Mercury: '水星', Venus: '金星', Mars: '火星', Jupiter: '木星', Saturn: '土星', Uranus: '天王星', Neptune: '海王星', Pluto: '冥王星' },
+    planets: SYNASTRY_PLANETS.zh,
     aspects: { conjunction: '合', sextile: '六合', square: '刑', trine: '三合', opposition: '冲' },
     pairFmt: '{a}{asp}{b}(天距{orb}°)',
     listSep: '、',
@@ -1281,7 +1283,7 @@ export const SYNASTRY_I18N = {
       unknown: 'unknown factors (unavailable — never fabricate)', none: 'none',
       bonds: 'soft aspects (leverage)', frictions: 'hard aspects (conflict)', signatures: 'core bonds',
     },
-    planets: { Sun: 'Sun', Moon: 'Moon', Mercury: 'Mercury', Venus: 'Venus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluto' },
+    planets: SYNASTRY_PLANETS.en,
     aspects: { conjunction: ' conjunct ', sextile: ' sextile ', square: ' square ', trine: ' trine ', opposition: ' opposite ' },
     pairFmt: '{a}{asp}{b} (orb {orb}°)',
     listSep: ', ',
@@ -1299,7 +1301,7 @@ export const SYNASTRY_I18N = {
       unknown: 'factores desconocidos (no disponibles — nunca inventar)', none: 'ninguno',
       bonds: 'aspectos suaves (apoyo)', frictions: 'aspectos duros (conflicto)', signatures: 'vínculos clave',
     },
-    planets: { Sun: 'Sol', Moon: 'Luna', Mercury: 'Mercurio', Venus: 'Venus', Mars: 'Marte', Jupiter: 'Júpiter', Saturn: 'Saturno', Uranus: 'Urano', Neptune: 'Neptuno', Pluto: 'Plutón' },
+    planets: SYNASTRY_PLANETS.es,
     aspects: { conjunction: ' conjunción ', sextile: ' sextil ', square: ' cuadratura ', trine: ' trígono ', opposition: ' oposición ' },
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
@@ -1317,7 +1319,7 @@ export const SYNASTRY_I18N = {
       unknown: 'facteurs inconnus (indisponibles — ne jamais inventer)', none: 'aucun',
       bonds: 'aspects doux (appui)', frictions: 'aspects durs (conflit)', signatures: 'liens clés',
     },
-    planets: { Sun: 'Soleil', Moon: 'Lune', Mercury: 'Mercure', Venus: 'Vénus', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturne', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluton' },
+    planets: SYNASTRY_PLANETS.fr,
     aspects: { conjunction: ' conjonction ', sextile: ' sextile ', square: ' carré ', trine: ' trigone ', opposition: ' opposition ' },
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
@@ -1335,7 +1337,7 @@ export const SYNASTRY_I18N = {
       unknown: 'ปัจจัยที่ไม่ทราบ (ไม่มีข้อมูล — ห้ามแต่งขึ้นเอง)', none: 'ไม่มี',
       bonds: 'มุมอ่อน (ใช้เป็นพลังหนุน)', frictions: 'มุมตึง (จุดขัดแย้ง)', signatures: 'พันธะหลัก',
     },
-    planets: { Sun: 'อาทิตย์', Moon: 'จันทร์', Mercury: 'พุธ', Venus: 'ศุกร์', Mars: 'อังคาร', Jupiter: 'พฤหัสบดี', Saturn: 'เสาร์', Uranus: 'ดาวยูเรนัส', Neptune: 'ดาวเนปจูน', Pluto: 'ดาวพลูโต' },
+    planets: SYNASTRY_PLANETS.th,
     aspects: { conjunction: 'ร่วม', sextile: 'หก', square: 'ฉาก', trine: 'ตรีโกณ', opposition: 'ตรงข้าม' },
     pairFmt: '{a} มุม{asp} {b} (ระยะ{orb}°)',
     listSep: ' ',
@@ -1353,7 +1355,7 @@ export const SYNASTRY_I18N = {
       unknown: 'yếu tố chưa biết (không có dữ liệu — cấm bịa)', none: 'không có',
       bonds: 'góc mềm (điểm tựa)', frictions: 'góc cứng (xung đột)', signatures: 'ràng buộc cốt lõi',
     },
-    planets: { Sun: 'Mặt Trời', Moon: 'Mặt Trăng', Mercury: 'Sao Thủy', Venus: 'Sao Kim', Mars: 'Sao Hỏa', Jupiter: 'Sao Mộc', Saturn: 'Sao Thổ', Uranus: 'Sao Thiên Vương', Neptune: 'Sao Hải Vương', Pluto: 'Sao Diêm Vương' },
+    planets: SYNASTRY_PLANETS.vi,
     aspects: { conjunction: ' hợp ', sextile: ' lục hợp ', square: ' vuông góc ', trine: ' tam hợp ', opposition: ' đối ' },
     pairFmt: '{a}{asp}{b} (lệch {orb}°)',
     listSep: ', ',

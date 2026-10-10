@@ -1,0 +1,935 @@
+/* eslint-disable */
+/**
+ * astroTerms.generated.ts — 前端多语言术语派生物（Gate 39）
+ *
+ * ⚠️ 本文件由 web/scripts/gen-astro-terms.mjs 自动生成，**禁止手工修改**。
+ *    真值源：astro/astro_terms_dict.json
+ *    任何手改都会被 Gate 39 一致性断言判定为失败；重新生成：npm run gen:terms
+ *
+ * 术语口径：凡前端渲染 / 提示词填充涉及行星、星座、相位、元素、三态、学说词汇，
+ * 一律经本文件按 key 硬查，禁止自由机翻直达专业术语。
+ */
+
+export type TermLang = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+
+export const TERM_LANGS: readonly TermLang[] = ['zh', 'en', 'es', 'fr', 'th', 'vi'] as const;
+/** 一级核心红线语种（阻塞级） */
+export const TERM_LOCKED_LANGS: readonly TermLang[] = ['zh', 'en', 'th', 'vi'] as const;
+/** 加固守备语种（告警级） */
+export const TERM_EXTENDED_LANGS: readonly TermLang[] = ['es', 'fr'] as const;
+
+export type TermEntry = Record<TermLang, string>;
+
+export interface AstroTermsDict {
+  version: number;
+  langs: TermLang[];
+  lockedLangs: TermLang[];
+  extendedLangs: TermLang[];
+  domains: Record<string, Record<string, TermEntry>>;
+  slots: {
+    budgets: Record<string, { maxGraphemes: number; note: string }>;
+    assignment: Record<string, string>;
+  };
+  reviewPending: { keys: string[]; langs: TermLang[] };
+  legacyConflicts: { entries: { id: string; verdict: string }[] };
+}
+
+export const ASTRO_TERMS = {
+  "version": 1,
+  "meta": {
+    "name": "astro_terms_dict",
+    "title": "多语言命理与算法字典真值表（Gate 39）",
+    "purpose": "全系统多语言生成的唯一绝对真值来源。凡提示词工程 / 模板填充 / 前端渲染涉及下列术语，必须按 key 硬查本表，禁止自由机翻直达专业术语。",
+    "langs": [
+      "zh",
+      "en",
+      "es",
+      "fr",
+      "th",
+      "vi"
+    ],
+    "lockedLangs": [
+      "zh",
+      "en",
+      "th",
+      "vi"
+    ],
+    "extendedLangs": [
+      "es",
+      "fr"
+    ],
+    "keyStyle": "语义英文 CamelCase / 天文专名，跨语恒定；值随语种变化",
+    "registerPolicy": "同一概念可并存两套语域：完整形（labelCard 槽位）与紧凑形（chip / degreeOverlay 槽位）。两套均为合法真值，按槽位取用，禁止混用。",
+    "slug": "命中槽位预算见 slots；每条目的槽位归属见 slots.assignment"
+  },
+  "domains": {
+    "planets": {
+      "Sun": {
+        "zh": "太阳",
+        "en": "Sun",
+        "es": "Sol",
+        "fr": "Soleil",
+        "th": "ดวงอาทิตย์",
+        "vi": "Mặt Trời"
+      },
+      "Moon": {
+        "zh": "月亮",
+        "en": "Moon",
+        "es": "Luna",
+        "fr": "Lune",
+        "th": "ดวงจันทร์",
+        "vi": "Mặt Trăng"
+      },
+      "Mercury": {
+        "zh": "水星",
+        "en": "Mercury",
+        "es": "Mercurio",
+        "fr": "Mercure",
+        "th": "ดาวพุธ",
+        "vi": "Sao Thủy"
+      },
+      "Venus": {
+        "zh": "金星",
+        "en": "Venus",
+        "es": "Venus",
+        "fr": "Vénus",
+        "th": "ดาวศุกร์",
+        "vi": "Sao Kim"
+      },
+      "Mars": {
+        "zh": "火星",
+        "en": "Mars",
+        "es": "Marte",
+        "fr": "Mars",
+        "th": "ดาวอังคาร",
+        "vi": "Sao Hỏa"
+      },
+      "Jupiter": {
+        "zh": "木星",
+        "en": "Jupiter",
+        "es": "Júpiter",
+        "fr": "Jupiter",
+        "th": "ดาวพฤหัสบดี",
+        "vi": "Sao Mộc"
+      },
+      "Saturn": {
+        "zh": "土星",
+        "en": "Saturn",
+        "es": "Saturno",
+        "fr": "Saturne",
+        "th": "ดาวเสาร์",
+        "vi": "Sao Thổ"
+      },
+      "Uranus": {
+        "zh": "天王星",
+        "en": "Uranus",
+        "es": "Urano",
+        "fr": "Uranus",
+        "th": "ดาวยูเรนัส",
+        "vi": "Sao Thiên Vương"
+      },
+      "Neptune": {
+        "zh": "海王星",
+        "en": "Neptune",
+        "es": "Neptuno",
+        "fr": "Neptune",
+        "th": "ดาวเนปจูน",
+        "vi": "Sao Hải Vương"
+      },
+      "Pluto": {
+        "zh": "冥王星",
+        "en": "Pluto",
+        "es": "Plutón",
+        "fr": "Pluton",
+        "th": "ดาวพลูโต",
+        "vi": "Sao Diêm Vương"
+      }
+    },
+    "planetsShort": {
+      "Sun": {
+        "zh": "太阳",
+        "en": "Sun",
+        "es": "Sol",
+        "fr": "Soleil",
+        "th": "อาทิตย์",
+        "vi": "Mặt Trời"
+      },
+      "Moon": {
+        "zh": "月亮",
+        "en": "Moon",
+        "es": "Luna",
+        "fr": "Lune",
+        "th": "จันทร์",
+        "vi": "Mặt Trăng"
+      },
+      "Mercury": {
+        "zh": "水星",
+        "en": "Mercury",
+        "es": "Mercurio",
+        "fr": "Mercure",
+        "th": "พุธ",
+        "vi": "Sao Thủy"
+      },
+      "Venus": {
+        "zh": "金星",
+        "en": "Venus",
+        "es": "Venus",
+        "fr": "Vénus",
+        "th": "ศุกร์",
+        "vi": "Sao Kim"
+      },
+      "Mars": {
+        "zh": "火星",
+        "en": "Mars",
+        "es": "Marte",
+        "fr": "Mars",
+        "th": "อังคาร",
+        "vi": "Sao Hỏa"
+      },
+      "Jupiter": {
+        "zh": "木星",
+        "en": "Jupiter",
+        "es": "Júpiter",
+        "fr": "Jupiter",
+        "th": "พฤหัสบดี",
+        "vi": "Sao Mộc"
+      },
+      "Saturn": {
+        "zh": "土星",
+        "en": "Saturn",
+        "es": "Saturno",
+        "fr": "Saturne",
+        "th": "เสาร์",
+        "vi": "Sao Thổ"
+      },
+      "Uranus": {
+        "zh": "天王星",
+        "en": "Uranus",
+        "es": "Urano",
+        "fr": "Uranus",
+        "th": "ยูเรนัส",
+        "vi": "Sao Thiên Vương"
+      },
+      "Neptune": {
+        "zh": "海王星",
+        "en": "Neptune",
+        "es": "Neptuno",
+        "fr": "Neptune",
+        "th": "เนปจูน",
+        "vi": "Sao Hải Vương"
+      },
+      "Pluto": {
+        "zh": "冥王星",
+        "en": "Pluto",
+        "es": "Plutón",
+        "fr": "Pluton",
+        "th": "พลูโต",
+        "vi": "Sao Diêm Vương"
+      }
+    },
+    "points": {
+      "Ascendant": {
+        "zh": "上升",
+        "en": "Ascendant",
+        "es": "Ascendente",
+        "fr": "Ascendant",
+        "th": "ลัคนา",
+        "vi": "Cung Mọc"
+      },
+      "Descendant": {
+        "zh": "下降",
+        "en": "Descendant",
+        "es": "Descendente",
+        "fr": "Descendant",
+        "th": "ปัตนิ",
+        "vi": "Cung Lặn"
+      },
+      "Midheaven": {
+        "zh": "天顶",
+        "en": "Midheaven",
+        "es": "Medio Cielo",
+        "fr": "Milieu du Ciel",
+        "th": "กลางฟ้า",
+        "vi": "Thiên Đỉnh"
+      },
+      "ImumCoeli": {
+        "zh": "天底",
+        "en": "Imum Coeli",
+        "es": "Fondo del Cielo",
+        "fr": "Fond du Ciel",
+        "th": "ใต้ฟ้า",
+        "vi": "Đáy Trời"
+      },
+      "NorthNode": {
+        "zh": "北交点",
+        "en": "North Node",
+        "es": "Nodo Norte",
+        "fr": "Nœud Nord",
+        "th": "ราหู",
+        "vi": "Bắc Giao Điểm"
+      },
+      "Vertex": {
+        "zh": "宿命点",
+        "en": "Vertex",
+        "es": "Vértice",
+        "fr": "Vertex",
+        "th": "เวอร์เท็กซ์",
+        "vi": "Điểm Đỉnh"
+      }
+    },
+    "signs": {
+      "Aries": {
+        "zh": "白羊座",
+        "en": "Aries",
+        "es": "Aries",
+        "fr": "Bélier",
+        "th": "ราศีเมษ",
+        "vi": "Bạch Dương"
+      },
+      "Taurus": {
+        "zh": "金牛座",
+        "en": "Taurus",
+        "es": "Tauro",
+        "fr": "Taureau",
+        "th": "ราศีพฤษภ",
+        "vi": "Kim Ngưu"
+      },
+      "Gemini": {
+        "zh": "双子座",
+        "en": "Gemini",
+        "es": "Géminis",
+        "fr": "Gémeaux",
+        "th": "ราศีเมถุน",
+        "vi": "Song Tử"
+      },
+      "Cancer": {
+        "zh": "巨蟹座",
+        "en": "Cancer",
+        "es": "Cáncer",
+        "fr": "Cancer",
+        "th": "ราศีกรกฎ",
+        "vi": "Cự Giải"
+      },
+      "Leo": {
+        "zh": "狮子座",
+        "en": "Leo",
+        "es": "Leo",
+        "fr": "Lion",
+        "th": "ราศีสิงห์",
+        "vi": "Sư Tử"
+      },
+      "Virgo": {
+        "zh": "处女座",
+        "en": "Virgo",
+        "es": "Virgo",
+        "fr": "Vierge",
+        "th": "ราศีกันย์",
+        "vi": "Xử Nữ"
+      },
+      "Libra": {
+        "zh": "天秤座",
+        "en": "Libra",
+        "es": "Libra",
+        "fr": "Balance",
+        "th": "ราศีตุลย์",
+        "vi": "Thiên Bình"
+      },
+      "Scorpio": {
+        "zh": "天蝎座",
+        "en": "Scorpio",
+        "es": "Escorpio",
+        "fr": "Scorpion",
+        "th": "ราศีพิจิก",
+        "vi": "Bọ Cạp"
+      },
+      "Sagittarius": {
+        "zh": "射手座",
+        "en": "Sagittarius",
+        "es": "Sagitario",
+        "fr": "Sagittaire",
+        "th": "ราศีธนู",
+        "vi": "Nhân Mã"
+      },
+      "Capricorn": {
+        "zh": "摩羯座",
+        "en": "Capricorn",
+        "es": "Capricornio",
+        "fr": "Capricorne",
+        "th": "ราศีมังกร",
+        "vi": "Ma Kết"
+      },
+      "Aquarius": {
+        "zh": "水瓶座",
+        "en": "Aquarius",
+        "es": "Acuario",
+        "fr": "Verseau",
+        "th": "ราศีกุมภ์",
+        "vi": "Bảo Bình"
+      },
+      "Pisces": {
+        "zh": "双鱼座",
+        "en": "Pisces",
+        "es": "Piscis",
+        "fr": "Poissons",
+        "th": "ราศีมีน",
+        "vi": "Song Ngư"
+      }
+    },
+    "signsShort": {
+      "Aries": {
+        "zh": "白羊",
+        "en": "Aries",
+        "es": "Aries",
+        "fr": "Bélier",
+        "th": "เมษ",
+        "vi": "Bạch Dương"
+      },
+      "Taurus": {
+        "zh": "金牛",
+        "en": "Taurus",
+        "es": "Tauro",
+        "fr": "Taureau",
+        "th": "พฤษภ",
+        "vi": "Kim Ngưu"
+      },
+      "Gemini": {
+        "zh": "双子",
+        "en": "Gemini",
+        "es": "Géminis",
+        "fr": "Gémeaux",
+        "th": "มิถุน",
+        "vi": "Song Tử"
+      },
+      "Cancer": {
+        "zh": "巨蟹",
+        "en": "Cancer",
+        "es": "Cáncer",
+        "fr": "Cancer",
+        "th": "กรกฎ",
+        "vi": "Cự Giải"
+      },
+      "Leo": {
+        "zh": "狮子",
+        "en": "Leo",
+        "es": "Leo",
+        "fr": "Lion",
+        "th": "สิงห์",
+        "vi": "Sư Tử"
+      },
+      "Virgo": {
+        "zh": "处女",
+        "en": "Virgo",
+        "es": "Virgo",
+        "fr": "Vierge",
+        "th": "กันยา",
+        "vi": "Xử Nữ"
+      },
+      "Libra": {
+        "zh": "天秤",
+        "en": "Libra",
+        "es": "Libra",
+        "fr": "Balance",
+        "th": "ตุลย์",
+        "vi": "Thiên Bình"
+      },
+      "Scorpio": {
+        "zh": "天蝎",
+        "en": "Scorpio",
+        "es": "Escorpio",
+        "fr": "Scorpion",
+        "th": "พิจิก",
+        "vi": "Bọ Cạp"
+      },
+      "Sagittarius": {
+        "zh": "射手",
+        "en": "Sagittarius",
+        "es": "Sagitario",
+        "fr": "Sagittaire",
+        "th": "ธนู",
+        "vi": "Nhân Mã"
+      },
+      "Capricorn": {
+        "zh": "摩羯",
+        "en": "Capricorn",
+        "es": "Capricornio",
+        "fr": "Capricorne",
+        "th": "มังกร",
+        "vi": "Ma Kết"
+      },
+      "Aquarius": {
+        "zh": "水瓶",
+        "en": "Aquarius",
+        "es": "Acuario",
+        "fr": "Verseau",
+        "th": "กุมภ์",
+        "vi": "Bảo Bình"
+      },
+      "Pisces": {
+        "zh": "双鱼",
+        "en": "Pisces",
+        "es": "Piscis",
+        "fr": "Poissons",
+        "th": "มีน",
+        "vi": "Song Ngư"
+      }
+    },
+    "elements": {
+      "Fire": {
+        "zh": "火",
+        "en": "Fire",
+        "es": "Fuego",
+        "fr": "Feu",
+        "th": "ไฟ",
+        "vi": "Hỏa"
+      },
+      "Earth": {
+        "zh": "土",
+        "en": "Earth",
+        "es": "Tierra",
+        "fr": "Terre",
+        "th": "ดิน",
+        "vi": "Thổ"
+      },
+      "Air": {
+        "zh": "风",
+        "en": "Air",
+        "es": "Aire",
+        "fr": "Air",
+        "th": "ลม",
+        "vi": "Phong"
+      },
+      "Water": {
+        "zh": "水",
+        "en": "Water",
+        "es": "Agua",
+        "fr": "Eau",
+        "th": "น้ำ",
+        "vi": "Thủy"
+      }
+    },
+    "elementsLong": {
+      "Fire": {
+        "zh": "火象",
+        "en": "Fire",
+        "es": "Fuego",
+        "fr": "Feu",
+        "th": "ธาตุไฟ",
+        "vi": "Hỏa"
+      },
+      "Earth": {
+        "zh": "土象",
+        "en": "Earth",
+        "es": "Tierra",
+        "fr": "Terre",
+        "th": "ธาตุดิน",
+        "vi": "Thổ"
+      },
+      "Air": {
+        "zh": "风象",
+        "en": "Air",
+        "es": "Aire",
+        "fr": "Air",
+        "th": "ธาตุลม",
+        "vi": "Phong"
+      },
+      "Water": {
+        "zh": "水象",
+        "en": "Water",
+        "es": "Agua",
+        "fr": "Eau",
+        "th": "ธาตุน้ำ",
+        "vi": "Thủy"
+      }
+    },
+    "modes": {
+      "Cardinal": {
+        "zh": "基本",
+        "en": "Cardinal",
+        "es": "Cardinal",
+        "fr": "Cardinal",
+        "th": "ราศีเริ่มต้น",
+        "vi": "Cung Thống Lĩnh"
+      },
+      "Fixed": {
+        "zh": "固定",
+        "en": "Fixed",
+        "es": "Fijo",
+        "fr": "Fixe",
+        "th": "ราศีคงที่",
+        "vi": "Cung Cố Định"
+      },
+      "Mutable": {
+        "zh": "变动",
+        "en": "Mutable",
+        "es": "Mutable",
+        "fr": "Mutable",
+        "th": "ราศีเปลี่ยนแปลง",
+        "vi": "Cung Linh Hoạt"
+      }
+    },
+    "modesLong": {
+      "Cardinal": {
+        "zh": "基本宫",
+        "en": "Cardinal",
+        "es": "Cardinal",
+        "fr": "Cardinal",
+        "th": "ราศีเริ่มต้น",
+        "vi": "Cung Thống Lĩnh"
+      },
+      "Fixed": {
+        "zh": "固定宫",
+        "en": "Fixed",
+        "es": "Fijo",
+        "fr": "Fixe",
+        "th": "ราศีคงที่",
+        "vi": "Cố Định"
+      },
+      "Mutable": {
+        "zh": "变动宫",
+        "en": "Mutable",
+        "es": "Mutable",
+        "fr": "Mutable",
+        "th": "ราศีเปลี่ยนแปลง",
+        "vi": "Cung Linh Hoạt"
+      }
+    },
+    "aspects": {
+      "Conjunction": {
+        "zh": "合相",
+        "en": "Conjunction",
+        "es": "Conjunción",
+        "fr": "Conjonction",
+        "th": "ร่วม",
+        "vi": "Hợp"
+      },
+      "Sextile": {
+        "zh": "六合",
+        "en": "Sextile",
+        "es": "Sextil",
+        "fr": "Sextile",
+        "th": "หก",
+        "vi": "Lục Hợp"
+      },
+      "Square": {
+        "zh": "刑相",
+        "en": "Square",
+        "es": "Cuadratura",
+        "fr": "Carré",
+        "th": "ฉาก",
+        "vi": "Vuông Góc"
+      },
+      "Trine": {
+        "zh": "三合",
+        "en": "Trine",
+        "es": "Trígono",
+        "fr": "Trigone",
+        "th": "ตรีโกณ",
+        "vi": "Tam Hợp"
+      },
+      "Opposition": {
+        "zh": "对冲",
+        "en": "Opposition",
+        "es": "Oposición",
+        "fr": "Opposition",
+        "th": "ตรงข้าม",
+        "vi": "Đối"
+      }
+    },
+    "aspectsShort": {
+      "Conjunction": {
+        "zh": "合",
+        "en": "conjunct",
+        "es": "conjunción",
+        "fr": "conjonction",
+        "th": "ร่วม",
+        "vi": "hợp"
+      },
+      "Sextile": {
+        "zh": "六合",
+        "en": "sextile",
+        "es": "sextil",
+        "fr": "sextile",
+        "th": "หก",
+        "vi": "lục hợp"
+      },
+      "Square": {
+        "zh": "刑",
+        "en": "square",
+        "es": "cuadratura",
+        "fr": "carré",
+        "th": "ฉาก",
+        "vi": "vuông góc"
+      },
+      "Trine": {
+        "zh": "三合",
+        "en": "trine",
+        "es": "trígono",
+        "fr": "trigone",
+        "th": "ตรีโกณ",
+        "vi": "tam hợp"
+      },
+      "Opposition": {
+        "zh": "冲",
+        "en": "opposite",
+        "es": "oposición",
+        "fr": "opposition",
+        "th": "ตรงข้าม",
+        "vi": "đối"
+      }
+    },
+    "aspectKinds": {
+      "Soft": {
+        "zh": "柔和相位",
+        "en": "Soft Aspect",
+        "es": "Aspecto Suave",
+        "fr": "Aspect Doux",
+        "th": "มุมสัมพันธ์นุ่มนวล",
+        "vi": "Góc Hợp Dịu"
+      },
+      "Hard": {
+        "zh": "硬相",
+        "en": "Hard Aspect",
+        "es": "Aspecto Duro",
+        "fr": "Aspect Dur",
+        "th": "มุมสัมพันธ์ตึงเครียด",
+        "vi": "Góc Cứng"
+      }
+    },
+    "motions": {
+      "Retrograde": {
+        "zh": "逆行",
+        "en": "Retrograde",
+        "es": "Retrógrado",
+        "fr": "Rétrograde",
+        "th": "พักร",
+        "vi": "Nghịch Hành"
+      }
+    },
+    "measures": {
+      "Orb": {
+        "zh": "容许度",
+        "en": "Orb",
+        "es": "Orbe",
+        "fr": "Orbe",
+        "th": "ออร์บ",
+        "vi": "Dung Sai Góc"
+      }
+    },
+    "familiar": {
+      "Familiar": {
+        "zh": "灵宠",
+        "en": "Familiar",
+        "es": "Familiar",
+        "fr": "Familier",
+        "th": "สัตว์วิญญาณ",
+        "vi": "Linh Thú"
+      },
+      "AffinityScore": {
+        "zh": "契合度",
+        "en": "Affinity Score",
+        "es": "Puntuación de Afinidad",
+        "fr": "Score d'Affinité",
+        "th": "คะแนนความเข้ากัน",
+        "vi": "Điểm Hòa Hợp"
+      },
+      "NatalChart": {
+        "zh": "本命盘",
+        "en": "Natal Chart",
+        "es": "Carta Natal",
+        "fr": "Thème Natal",
+        "th": "ดวงกำเนิด",
+        "vi": "Bản Đồ Sao"
+      },
+      "SynastryChart": {
+        "zh": "合盘",
+        "en": "Synastry Chart",
+        "es": "Carta de Sinastría",
+        "fr": "Thème de Synastrie",
+        "th": "ดวงสมพงษ์",
+        "vi": "Bản Đồ Giao Hợp"
+      },
+      "SynastryEnergy": {
+        "zh": "合盘交互能量",
+        "en": "Synastry Interaction Energy",
+        "es": "Energía de Interacción Sinástrica",
+        "fr": "Énergie d'Interaction Synastrique",
+        "th": "พลังงานปฏิสัมพันธ์ดวงสมพงษ์",
+        "vi": "Năng Lượng Tương Tác Giao Hợp"
+      },
+      "FamiliarBond": {
+        "zh": "灵宠羁绊",
+        "en": "Familiar Bond",
+        "es": "Vínculo del Familiar",
+        "fr": "Lien du Familier",
+        "th": "พันธะสัตว์วิญญาณ",
+        "vi": "Sợi Dây Linh Thú"
+      },
+      "BondSignature": {
+        "zh": "羁绊签名",
+        "en": "Bond Signature",
+        "es": "Firma del Vínculo",
+        "fr": "Signature du Lien",
+        "th": "ลายเซ็นพันธะ",
+        "vi": "Chữ Ký Sợi Dây"
+      },
+      "KarmicContract": {
+        "zh": "命运契约",
+        "en": "Karmic Contract",
+        "es": "Contrato Kármico",
+        "fr": "Contrat Karmique",
+        "th": "สัญญาแห่งกรรม",
+        "vi": "Khế Ước Nghiệp"
+      }
+    }
+  },
+  "slots": {
+    "budgets": {
+      "labelCard": {
+        "maxGraphemes": 34,
+        "note": "结果页/设置页卡片标题槽位"
+      },
+      "chip": {
+        "maxGraphemes": 18,
+        "note": "药丸标签 / 内联 chip 槽位"
+      },
+      "degreeOverlay": {
+        "maxGraphemes": 16,
+        "note": "星盘度数浮层（星座名 + 度数）槽位"
+      },
+      "hardCap": {
+        "maxGraphemes": 40,
+        "note": "绝对上限：任何槽位任何语种不得超过"
+      }
+    },
+    "assignment": {
+      "planets": "labelCard",
+      "planetsShort": "chip",
+      "points": "chip",
+      "signs": "labelCard",
+      "signsShort": "degreeOverlay",
+      "elements": "chip",
+      "elementsLong": "labelCard",
+      "modes": "chip",
+      "modesLong": "labelCard",
+      "aspects": "chip",
+      "aspectsShort": "chip",
+      "aspectKinds": "labelCard",
+      "motions": "chip",
+      "measures": "chip",
+      "familiar": "labelCard"
+    }
+  },
+  "reviewPending": {
+    "note": "待母语校对定版条目。校对确认后从此清单移除；闸门仅允许此清单内的 key 存在，禁止静默扩张。",
+    "referenceGlossary": {
+      "note": "军师 2026-10-10 朱批提供的标准口径参考词（备忘留痕，供母语润色，不作为当前生效真值）。",
+      "points.Descendant": {
+        "th": "จุดอัสดง (Jut Assadaong)",
+        "vi": "Điểm Lặn"
+      },
+      "points.ImumCoeli": {
+        "th": "จุดใต้ดิน / จุดก้นฟ้า (IC)",
+        "vi": "Thiên Đế"
+      },
+      "points.Vertex": {
+        "th": "จุดเวอร์เทกซ์ (音译)",
+        "vi": "Điểm Định Mệnh"
+      },
+      "measures.Orb": {
+        "th": "ระยะวังกะ (Wang-ka，占星专用)",
+        "vi": "Phạm vi góc chiếu"
+      },
+      "aspectKinds.Soft": {
+        "th": "มุมราบรื่น",
+        "vi": "Góc thuận / Góc mềm"
+      },
+      "aspectKinds.Hard": {
+        "th": "มุมตึงเครียด",
+        "vi": "Góc nghịch / Góc cứng"
+      },
+      "familiar.BondSignature": {
+        "th": "รหัสพันธะจิต",
+        "vi": "Chữ Ký Gắn Kết"
+      },
+      "familiar.KarmicContract": {
+        "th": "พันธสัญญาแห่งโชคชะตา",
+        "vi": "Khế Ước Nghiệp Duyên"
+      }
+    },
+    "keys": [
+      "points.Descendant",
+      "points.ImumCoeli",
+      "points.Vertex",
+      "measures.Orb",
+      "aspectKinds.Soft",
+      "aspectKinds.Hard",
+      "familiar.BondSignature",
+      "familiar.KarmicContract"
+    ],
+    "langs": [
+      "th",
+      "vi"
+    ]
+  },
+  "legacyConflicts": {
+    "note": "与既有真值源（lexicon.js / web/src/lib/algos/i18n.ts / server.js）的已知分歧登记。归正后此清单须逐条清空；清单非空期间，闸门据此锁定现状。",
+    "entries": [
+      {
+        "id": "signs.scorpio.vi",
+        "dict": "Bọ Cạp",
+        "legacy": {
+          "source": "web/src/lib/algos/i18n.ts",
+          "value": "Thiên Xung"
+        },
+        "verdict": "dict 为准（Thiên Xung 非天蝎座标准越语名；lexicon.js 与 server.js SUN_SIGN_VI 均为 Bọ Cạp）"
+      },
+      {
+        "id": "signs.thai.register",
+        "dict": "signs=ราศี米式 / signsShort=裸名",
+        "legacy": {
+          "source": "lexicon.js 仅裸名；i18n.ts 仅 ราศี 式"
+        },
+        "verdict": "语域差，非错误。dict 双轨并存，按槽位取用"
+      },
+      {
+        "id": "planets.thai.register",
+        "dict": "planets=ดาว/ดวง 全称式 / planetsShort=裸名",
+        "legacy": {
+          "source": "server.js 用全称式；SYNASTRY_I18N 用裸名"
+        },
+        "verdict": "语域差，非错误。dict 双轨并存，按槽位取用"
+      },
+      {
+        "id": "signsShort.thai.transliteration",
+        "dict": "signs=标准转写(ราศีเมถุน/ราศีกันย์) / signsShort=月名族转写(มิถุน/กันยา)",
+        "legacy": {
+          "source": "zodiac.ts 原用标准短名(เมถุน/กันย์)；i18n.ts 原用 ราศีมิถุน(族形)"
+        },
+        "verdict": "族形为生产基准（server.js SUN_SIGN_TH 与泰语月名排除逻辑 _V516_TH_SIGN_EXCL 字形耦合：มิถุน⊂มิถุนายน / กันยา⊂กันยายน）。归正后 zodiac.ts 收敛至族形、i18n.ts 收敛至标准形，两者均以本 dict 为准。"
+      },
+      {
+        "id": "aspects.thai.register",
+        "dict": "aspects=占星标准词(ร่วม/หก/ฉาก/ตรีโกณ/ตรงข้าม)",
+        "legacy": {
+          "source": "astrology_engine.py / zodiac.ts 自然语言用口语形(รวม/สี่เหลี่ยม/สามเหลี่ยม)"
+        },
+        "verdict": "语域差：标签槽位用占星标准词，自然语言正文用口语形。本轮保留引擎现状（避免泰语报告用词漂移），登记待母语校对专项统一。"
+      },
+      {
+        "id": "planets.thai.jupiter.shortform",
+        "dict": "planets.th Jupiter=ดาวพฤหัสบดี（全称）",
+        "legacy": {
+          "source": "astrology_engine.py 自然语言用简写 ดาวพฤหัส"
+        },
+        "verdict": "语域差（简写 vs 全称），泰语中二者皆通用。本轮保留引擎现状，登记待母语校对专项统一。"
+      }
+    ]
+  }
+} as unknown as AstroTermsDict;
+
+export const TERM_DICT_VERSION = 1;
+
+/** 按 key 硬查术语（域 → 条目 → 语种）；未命中返回 undefined，绝不回退机翻。 */
+export function termOf(domain: string, key: string, lang: TermLang): string | undefined {
+  return ASTRO_TERMS.domains[domain]?.[key]?.[lang];
+}

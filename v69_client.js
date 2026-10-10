@@ -7,6 +7,8 @@
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+// 🛡️ E41+ Gate 39 归正：多语言星座名唯一真值源 = astro/astro_terms_dict.json
+import { SIGN_KEYS, SUN_SIGNS } from './astroTerms.js';
 
 const require = createRequire(import.meta.url);
 const { execSync, execFileSync } = require('child_process');
@@ -1548,7 +1550,8 @@ const SIGN_NAMES = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap',
 //   SIGN_NAMES.indexOf('Virgo') 永远 = -1 → labels[lang] 本地化字典从未生效，
 //   所有语种的数据块一直在喂英文星座名 → 逼 LLM 二次翻译（V432 病根分析所指的同一条机制）。
 //   注：V432 改 labels.vi/labels.fr 那次改动其实是死代码，真正生效的是后置锁。
-const SIGN_FULL = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+// 🛡️ E41+ Gate 39 归正：英文星座全称唯一真值源 = astro/astro_terms_dict.json
+const SIGN_FULL = SIGN_KEYS;
 function _signIdxOf(s) {
   if (!s) return -1;
   const i = SIGN_FULL.indexOf(s);
@@ -1558,13 +1561,15 @@ function _signIdxOf(s) {
 }
 
 // 🛠️ V432/V433: 全语言「本地化全称星座名」字典（喂缩写会逼 LLM 二次翻译，进而偷抄本命锚点）
+// 🛡️ E41+ Gate 39 归正：6 语全称星座名唯一真值源 = astro/astro_terms_dict.json
+//    （th 取紧凑裸名语域 signsShort，与 server.js SUN_SIGN_TH / lexicon 同源）
 const SIGN_L10N = {
-  zh: ['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座'],
-  en: ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
-  es: ['Aries','Tauro','Géminis','Cáncer','Leo','Virgo','Libra','Escorpio','Sagitario','Capricornio','Acuario','Piscis'],
-  fr: ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'],
-  th: ['เมษ','พฤษภ','มิถุน','กรกฎ','สิงห์','กันยา','ตุลย์','พิจิก','ธนู','มังกร','กุมภ์','มีน'],
-  vi: ['Bạch Dương','Kim Ngưu','Song Tử','Cự Giải','Sư Tử','Xử Nữ','Thiên Bình','Bọ Cạp','Nhân Mã','Ma Kết','Bảo Bình','Song Ngư'],
+  zh: SUN_SIGNS.zh,
+  en: SUN_SIGNS.en,
+  es: SUN_SIGNS.es,
+  fr: SUN_SIGNS.fr,
+  th: SUN_SIGNS.th,
+  vi: SUN_SIGNS.vi,
 };
 
 /**

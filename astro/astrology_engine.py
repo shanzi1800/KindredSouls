@@ -16,24 +16,22 @@ from typing import Dict, List, Any, Optional
 # ═══════════════════════════════════════════════
 ZODIAC_SIGNS = v69.SIGNS
 
-ZODIAC_SIGN_ZH = {
-    "Aries": "白羊座", "Taurus": "金牛座", "Gemini": "双子座",
-    "Cancer": "巨蟹座", "Leo": "狮子座", "Virgo": "处女座",
-    "Libra": "天秤座", "Scorpio": "天蝎座", "Sagittarius": "射手座",
-    "Capricorn": "摩羯座", "Aquarius": "水瓶座", "Pisces": "双鱼座"
-}
-ZODIAC_TH = {
-    "Aries": "ราศีเมษ", "Taurus": "ราศีพฤษภ", "Gemini": "ราศีเมถุน",
-    "Cancer": "ราศีกรกฏ", "Leo": "ราศีสิงห์", "Virgo": "ราศีกันย์",
-    "Libra": "ราศีตุลย์", "Scorpio": "ราศีพิจิก", "Sagittarius": "ราศีธนู",
-    "Capricorn": "ราศีมังกร", "Aquarius": "ราศีกุมภ", "Pisces": "ราศีมีน"
-}
-ZODIAC_VI = {
-    "Aries": "Bạch Dương", "Taurus": "Kim Ngưu", "Gemini": "Song Tử",
-    "Cancer": "Cự Giải", "Leo": "Sư Tử", "Virgo": "Xử Nữ",
-    "Libra": "Thiên Bình", "Scorpio": "Bọ Cạp", "Sagittarius": "Nhân Mã",
-    "Capricorn": "Ma Kết", "Aquarius": "Bảo Bình", "Pisces": "Song Ngư"
-}
+# ═══ E41+ Gate 39 归正：多语言术语唯一真值源 = astro/astro_terms_dict.json ═══
+#   原先手写的 ZODIAC_SIGN_ZH / ZODIAC_TH / ZODIAC_VI 全部改由字典派生，
+#   顺带纠正历史错字：Cancer 泰语 กรกฏ→กรกฎ、Aquarius 泰语 กุมภ→กุมภ์。
+_TERMS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'astro_terms_dict.json')
+with open(_TERMS_PATH, encoding='utf-8') as _terms_file:
+    ASTRO_TERMS = json.load(_terms_file)
+
+
+def _term_map(domain: str, lang: str) -> Dict[str, str]:
+    """从唯一真值源取「英文键 → 本地名」映射（Gate 39）。"""
+    return {en: entry[lang] for en, entry in ASTRO_TERMS['domains'][domain].items()}
+
+
+ZODIAC_SIGN_ZH = _term_map('signs', 'zh')
+ZODIAC_TH = _term_map('signs', 'th')
+ZODIAC_VI = _term_map('signs', 'vi')
 
 PLANET_NAMES_ZH = {
     "Sun": "太阳", "Moon": "月亮", "Mercury": "水星", "Venus": "金星",

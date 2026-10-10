@@ -1,6 +1,18 @@
+// 🛡️ E41+ Gate 39 归正：术语唯一真值源 = astro/astro_terms_dict.json（经生成物）
+import { ASTRO_TERMS } from './astroTerms.generated';
+
 export type AlgLang = "zh" | "en" | "es" | "fr" | "th" | "vi";
 
 const SUPPORTED: AlgLang[] = ["zh", "en", "es", "fr", "th", "vi"];
+
+/**
+ * 以字典「中文名」为键，建立 术语表 → 本地名 的映射（Gate 39 消费者归正）。
+ * 本文件一切星座 / 元素 / 模式 / 守护星术语均由此派生，不再持有硬编码字面量。
+ */
+const byZh = (domain: string): Record<string, Record<AlgLang, string>> => {
+  const dom = (ASTRO_TERMS.domains[domain] ?? {}) as Record<string, Record<AlgLang, string>>;
+  return Object.fromEntries(Object.entries(dom).map(([, e]) => [e.zh, e]));
+};
 
 export function normalizeLang(raw: string): AlgLang {
   const base = raw.split("-")[0] as string;
@@ -47,33 +59,15 @@ export function tWuxing(cn: string, lang: AlgLang): string {
   return WUXING_NAMES[cn]?.[lang] ?? cn;
 }
 
-// ── 星座（12宫） ──
-const ZODIAC_SIGNS: Record<string, Record<AlgLang, string>> = {
-  白羊座: { zh: '白羊座', en: 'Aries',         es: 'Aries',           fr: 'Bélier',           th: 'ราศีเมษ',         vi: 'Bạch Dương' },
-  金牛座: { zh: '金牛座', en: 'Taurus',        es: 'Tauro',            fr: 'Taureau',          th: 'ราศีพฤษภ',         vi: 'Kim Ngưu' },
-  双子座: { zh: '双子座', en: 'Gemini',        es: 'Géminis',          fr: 'Gémeaux',          th: 'ราศีมิถุน',        vi: 'Song Tử' },
-  巨蟹座: { zh: '巨蟹座', en: 'Cancer',        es: 'Cáncer',            fr: 'Cancer',           th: 'ราศีกรกฎ',        vi: 'Cự Giải' },
-  狮子座: { zh: '狮子座', en: 'Leo',           es: 'Leo',               fr: 'Lion',             th: 'ราศีสิงห์',         vi: 'Sư Tử' },
-  处女座: { zh: '处女座', en: 'Virgo',         es: 'Virgo',             fr: 'Vierge',           th: 'ราศีกันย์',         vi: 'Xử Nữ' },
-  天秤座: { zh: '天秤座', en: 'Libra',        es: 'Libra',             fr: 'Balance',          th: 'ราศีตุลย์',          vi: 'Thiên Bình' },
-  天蝎座: { zh: '天蝎座', en: 'Scorpio',      es: 'Escorpio',          fr: 'Scorpion',         th: 'ราศีพิจิก',      vi: 'Thiên Xung' },
-  射手座: { zh: '射手座', en: 'Sagittarius',  es: 'Sagitario',         fr: 'Sagittaire',       th: 'ราศีธนู',         vi: 'Nhân Mã' },
-  摩羯座: { zh: '摩羯座', en: 'Capricorn',    es: 'Capricornio',       fr: 'Capricorne',       th: 'ราศีมังกร',          vi: 'Ma Kết' },
-  水瓶座: { zh: '水瓶座', en: 'Aquarius',     es: 'Acuario',           fr: 'Verseau',          th: 'ราศีกุมภ์',      vi: 'Bảo Bình' },
-  双鱼座: { zh: '双鱼座', en: 'Pisces',       es: 'Piscis',            fr: 'Poissons',         th: 'ราศีมีน',          vi: 'Song Ngư' },
-};
+// ── 星座（12宫）── 🛡️ Gate 39 归正：取字典 signs（完整式，含天蝎越语 Bọ Cạp 纠错）
+const ZODIAC_SIGNS = byZh('signs');
 
 export function tZodiacSign(sign: string, lang: AlgLang): string {
   return ZODIAC_SIGNS[sign]?.[lang] ?? sign;
 }
 
-// ── 星座元素（水/火/风/土） ──
-const ZODIAC_ELEMENTS: Record<string, Record<AlgLang, string>> = {
-  火: { zh: '火', en: 'Fire',   es: 'Fuego',    fr: 'Feu',    th: 'ไฟ',      vi: 'Hỏa' },
-  土: { zh: '土', en: 'Earth',  es: 'Tierra',   fr: 'Terre',  th: 'ดิน',    vi: 'Thổ' },
-  风: { zh: '风', en: 'Air',    es: 'Aire',     fr: 'Air',    th: 'ลม',     vi: 'Phong' },
-  水: { zh: '水', en: 'Water',  es: 'Agua',     fr: 'Eau',    th: 'น้ำ',    vi: 'Thủy' },
-};
+// ── 星座元素（水/火/风/土）── 🛡️ Gate 39 归正：取字典 elements（裸名语域）
+const ZODIAC_ELEMENTS = byZh('elements');
 
 export function tZodiacElement(elem: string, lang: AlgLang): string {
   return ZODIAC_ELEMENTS[elem]?.[lang] ?? elem;
@@ -158,26 +152,11 @@ const ORIENTATION_LABELS: Record<AlgLang, { upright: string; reversed: string }>
   vi: { upright: 'Thuận', reversed: 'Nghịch' },
 };
 
-// ── 星座模式（基本/固定/变动）─
-const ZODIAC_MODES: Record<string, Record<AlgLang, string>> = {
-  '基本': { zh: '基本', en: 'Cardinal', es: 'Cardinal', fr: 'Cardinal', th: 'ราศีเริ่มต้น', vi: 'Cung Thống Lĩnh' },
-  '固定': { zh: '固定', en: 'Fixed', es: 'Fijo', fr: 'Fixe', th: 'ราศีคงที่', vi: 'Cung Cố Định' },
-  '变动': { zh: '变动', en: 'Mutable', es: 'Mutable', fr: 'Mutable', th: 'ราศีเปลี่ยนแปลง', vi: 'Cung Linh Hoạt' },
-};
+// ── 星座模式（基本/固定/变动）── 🛡️ Gate 39 归正：取字典 modes（裸名语域）
+const ZODIAC_MODES = byZh('modes');
 
-// ── 行星守护星 ──
-const RULER_NAMES: Record<string, Record<AlgLang, string>> = {
-  '火星': { zh: '火星', en: 'Mars', es: 'Marte', fr: 'Mars', th: 'ดาวอังคาร', vi: 'Sao Hỏa' },
-  '金星': { zh: '金星', en: 'Venus', es: 'Venus', fr: 'Vénus', th: 'ดาวศุกร์', vi: 'Sao Kim' },
-  '水星': { zh: '水星', en: 'Mercury', es: 'Mercurio', fr: 'Mercure', th: 'ดาวพุธ', vi: 'Sao Thủy' },
-  '月亮': { zh: '月亮', en: 'Moon', es: 'Luna', fr: 'Lune', th: 'ดวงจันทร์', vi: 'Mặt Trăng' },
-  '太阳': { zh: '太阳', en: 'Sun', es: 'Sol', fr: 'Soleil', th: 'ดวงอาทิตย์', vi: 'Mặt Trời' },
-  '木星': { zh: '木星', en: 'Jupiter', es: 'Júpiter', fr: 'Jupiter', th: 'ดาวพฤหัสบดี', vi: 'Sao Mộc' },
-  '土星': { zh: '土星', en: 'Saturn', es: 'Saturno', fr: 'Saturne', th: 'ดาวเสาร์', vi: 'Sao Thổ' },
-  '天王星': { zh: '天王星', en: 'Uranus', es: 'Urano', fr: 'Uranus', th: 'ดาวยูเรนัส', vi: 'Sao Thiên Vương' },
-  '海王星': { zh: '海王星', en: 'Neptune', es: 'Neptuno', fr: 'Neptune', th: 'ดาวเนปจูน', vi: 'Sao Hải Vương' },
-  '冥王星': { zh: '冥王星', en: 'Pluto', es: 'Plutón', fr: 'Pluton', th: 'ดาวพลูโต', vi: 'Sao Diêm Vương' },
-};
+// ── 行星守护星 ── 🛡️ Gate 39 归正：取字典 planets（与 server.js / zodiac.ts 同源）
+const RULER_NAMES = byZh('planets');
 
 // ── 变爻描述翻译（处理"第2爻动"或纯数字）──
 const CHANGING_LINE_LABELS: Record<AlgLang, { prefix: string; suffix: string }> = {

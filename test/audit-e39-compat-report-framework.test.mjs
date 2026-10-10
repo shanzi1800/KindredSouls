@@ -185,6 +185,12 @@ test('B4 注入必红：把动态月窗替换为固定字面量 ⇒ B2 判据必
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e39-b4-'));
   try {
     fs.writeFileSync(path.join(dir, 'mutated.mjs'), mutated, 'utf8');
+    // 🛡️ E41+ Gate 39：归正后资产新增【同目录兄弟依赖】——合婚术语派生物 synastry-terms.generated.js
+    //    临时变异副本须一并带入；并补 package.json{type:module}（临时目录无此声明时 .js 视作 CJS，
+    //    ESM 的 export 语法将解析失败）。此夹具更新是归正的必要配套，等价于生产打包器的依赖追踪。
+    fs.copyFileSync(path.join(ROOT, 'api', 'synastry-terms.generated.js'),
+      path.join(dir, 'synastry-terms.generated.js'));
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ type: 'module' }), 'utf8');
     const m = require2(path.join(dir, 'mutated.mjs'));
     const a = m.buildCompatTimeContext('monthly', new Date('2027-03-15T00:00:00Z'), null, 'zh');
     const b = m.buildCompatTimeContext('monthly', new Date('2027-08-15T00:00:00Z'), null, 'zh');
