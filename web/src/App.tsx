@@ -343,44 +343,55 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto', padding: '24px 16px 60px' }}>
         {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
         {modeModal}
-        {/* 🌌 对齐财富模块：顶部返回键（流内 · 财富页同款；点击回落地页并自动弹模式选择） */}
-        <button onClick={() => { setMode('landing'); setShowModeModal(true); }} style={{ display: 'block', margin: '0 0 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
+        {/* 🌌 对齐财富模块：顶部返回键（流内 · 居中；点击回落地页并自动弹模式选择） */}
+        <button onClick={() => { setMode('landing'); setShowModeModal(true); }} style={{ display: 'block', width: 'fit-content', margin: '0 auto 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
           ← {t('input.back')}
         </button>
         <h1 className="title" style={{ textAlign: 'center' }}>{t('input.title')}</h1>
         <p className="subtitle" style={{ textAlign: 'center' }}>{t('app.name')}</p>
         <p className="desc" style={{ textAlign: 'center' }}>{t('input.subtitle')}</p>
-      <div className="form">
-        <div className="date-field">
-          <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
+      {/* 🌌 45-B5 对齐财富模块：字段行序＝城市 → 时间 → 出生日期；行间距 gap:8px 与财富一致；
+              「测算缘分」CTA 移出蓝框置框下方；白色合规条款紧贴按钮。 */}
+      <div className="form" style={{ gap: '8px' }}>
+        {/* 你 · 第1行 出生城市（可选） */}
+        <div>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+          <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+        </div>
+        {/* 你 · 第2行 出生时间（可选） */}
+        <div>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+          <TimeInput value={t1} onChange={setT1} />
+        </div>
+        {/* 你 · 第3行 出生日期 */}
+        <div>
+          <label className="date-label" htmlFor="d1" style={{ textAlign: 'center', marginBottom: '8px' }}>{t('input.yourBirthday')}</label>
           <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
-          {/* 🌌 对齐财富模块：出生城市 / 出生时间常显（可选填写；有则 timed 真盘，无则服务端如实降级） */}
-          <div style={{ marginTop: '10px', textAlign: 'left' }}>
-            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
-            <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
-            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
-            <TimeInput value={t1} onChange={setT1} />
-          </div>
         </div>
-        <div className="date-field">
-          <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
+        {/* TA · 第1行 出生城市（可选） */}
+        <div>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+          <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+        </div>
+        {/* TA · 第2行 出生时间（可选） */}
+        <div>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+          <TimeInput value={t2} onChange={setT2} />
+        </div>
+        {/* TA · 第3行 出生日期 */}
+        <div>
+          <label className="date-label" htmlFor="d2" style={{ textAlign: 'center', marginBottom: '8px' }}>{t('input.theirBirthday')}</label>
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
-          {/* 🌌 对齐财富模块：TA 的出生城市 / 出生时间常显 */}
-          <div style={{ marginTop: '10px', textAlign: 'left' }}>
-            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
-            <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
-            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
-            <TimeInput value={t2} onChange={setT2} />
-          </div>
         </div>
-        {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip） */}
-        <div style={{ marginTop: '14px', padding: '12px 14px', background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '12px', fontSize: '11px', color: '#F0D060', lineHeight: 1.6, textAlign: 'left' }}>
-          🔮 {t('wealthInput.birthTip')}
+        {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip；间距/内边距与财富框内一致） */}
+        <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '12px', fontSize: '11px', color: '#F0D060', fontWeight: 400, lineHeight: 1.6, boxShadow: '0 2px 8px rgba(212,175,55,0.15)', textShadow: '0 1px 2px rgba(0,0,0,0.4)', textAlign: 'left' }}>
+          <span style={{ marginRight: '6px' }}>🔮</span>{t('wealthInput.birthTip')}
         </div>
-        <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
-      {/* ⚖️ 对齐财富模块：法律合规条款（六语；点击按钮即视为同意；卡外 · 财富页同位） */}
-      <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
+      {/* 🌌 45-B5：CTA 移出蓝框 · 框下方（对齐财富按钮规格；压平 .btn 自带 40px 下边距使条款紧贴） */}
+      <button className="btn btn-primary" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{t('input.calculate')}</button>
+      {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
+      <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }}>
           {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
           {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
           {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
