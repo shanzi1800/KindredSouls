@@ -336,17 +336,20 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
 
   // ── Compatibility input mode ──
   return (
-    <div className="page input-page">
-      <CelestialBackground />
-      {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
-      {modeModal}
-      {/* 🌌 对齐财富模块：顶部返回键（内部复位 → 落地页并自动弹模式选择；与财富页返回终态一致） */}
-      <button onClick={() => { setMode('landing'); setShowModeModal(true); }} style={{ display: 'block', margin: '0 auto 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
-        ← {t('input.back')}
-      </button>
-      <h1 className="title">{t('input.title')}</h1>
-      <p className="subtitle">{t('app.name')}</p>
-      <p className="desc">{t('input.subtitle')}</p>
+    <div style={{ position: 'fixed', inset: 0, overflowY: 'auto' }}>
+      {/* 🌌 军师令：本页去除背景视频（UI 调整期）；换财富模块同款深色星空 CSS 底（自带 #080810 深色兜底，防白屏）。
+          结构逐字复刻 WealthPage：fixed 背景层与 relative 内容层为兄弟（真机已验证的渲染形态）。 */}
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(1.5px 1.5px at 20% 30%, rgba(212,175,55,0.3) 50%, transparent 50%), radial-gradient(1.5px 1.5px at 80% 70%, rgba(129,216,208,0.3) 50%, transparent 50%), radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.2) 50%, transparent 50%), #080810', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto', padding: '24px 16px 60px' }}>
+        {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
+        {modeModal}
+        {/* 🌌 对齐财富模块：顶部返回键（流内 · 财富页同款；点击回落地页并自动弹模式选择） */}
+        <button onClick={() => { setMode('landing'); setShowModeModal(true); }} style={{ display: 'block', margin: '0 0 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
+          ← {t('input.back')}
+        </button>
+        <h1 className="title" style={{ textAlign: 'center' }}>{t('input.title')}</h1>
+        <p className="subtitle" style={{ textAlign: 'center' }}>{t('app.name')}</p>
+        <p className="desc" style={{ textAlign: 'center' }}>{t('input.subtitle')}</p>
       <div className="form">
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
@@ -375,8 +378,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           🔮 {t('wealthInput.birthTip')}
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
-        {/* ⚖️ 对齐财富模块：法律合规条款（六语；点击按钮即视为同意） */}
-        <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
+      </div>
+      {/* ⚖️ 对齐财富模块：法律合规条款（六语；点击按钮即视为同意；卡外 · 财富页同位） */}
+      <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
           {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
           {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
           {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
