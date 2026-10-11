@@ -204,10 +204,9 @@ export type CompatTimeTruth = {
   t2: string; c2: CityRecord | null;
 };
 
-function InputPage({ onSubmit, onNavigateToWealth, onBack }: {
+function InputPage({ onSubmit, onNavigateToWealth }: {
   onSubmit: (d1: string, d2: string, tt: CompatTimeTruth) => void,
-  onNavigateToWealth: () => void,
-  onBack: () => void
+  onNavigateToWealth: () => void
 }) {
   const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<'landing' | 'compatibility' | 'wealth'>('landing');
@@ -341,8 +340,8 @@ function InputPage({ onSubmit, onNavigateToWealth, onBack }: {
       <CelestialBackground />
       {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
       {modeModal}
-      {/* 🌌 对齐财富模块：顶部返回键（→ 首页并自动弹模式选择） */}
-      <button onClick={onBack} style={{ display: 'block', margin: '0 auto 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
+      {/* 🌌 对齐财富模块：顶部返回键（内部复位 → 落地页并自动弹模式选择；与财富页返回终态一致） */}
+      <button onClick={() => { setMode('landing'); setShowModeModal(true); }} style={{ display: 'block', margin: '0 auto 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
         ← {t('input.back')}
       </button>
       <h1 className="title">{t('input.title')}</h1>
@@ -1793,7 +1792,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       {wealthPath === SANDBOX_PAY_PATH && <SandboxPayPage onNavigate={navigate} />}
       {/* 🧪 Gate 45-B：全局沙盘收银台模态（任意调用点经总线唤起；未唤起 ⇒ 零渲染） */}
       <SandboxCashier lang={currentLang} />
-      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} onBack={() => navigate('/?showMode=true')} />}
+      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
       {!wealthPath && err && <p className="error-msg">{err}</p>}
