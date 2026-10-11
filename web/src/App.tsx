@@ -18,10 +18,48 @@ import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
 import CompatReportCanvas from './components/CompatReportCanvas';
 import { isCompatReportPayload, type CompatReportPayload } from './lib/reportLayout';
+// 🛡️ Gate 43：合盘 SSE 推演流（进度帧纯解析核 + 仪式感进度卡）
+import SynastryProgress from './components/SynastryProgress';
+// @ts-ignore —— sseParser.mjs 为纯 JS 解析核（运行时形状由 Gate 43 闸门守备）
+import { createSSEParser, classifySSEFrame, reduceSSEFrames } from './lib/sseParser.mjs';
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
 import PolicyPage from './pages/PolicyPage';
 import './App.css';
+
+/**
+ * 🛡️ Gate 43：读 SSE 推演流 → 实时回调进度 + 返回终局载体。
+ *   切帧/归约逻辑 100% 委托 lib/sseParser.mjs（纯逻辑核，Node 可单测）；本函数只负责「读流 + 回调」。
+ *   🔴 降级纪律：任何读流异常 ⇒ 返回 null（调用方走既有失败路径，绝不悬挂 loading）。
+ */
+async function readCompatSSEStream(
+  body: ReadableStream<Uint8Array>,
+  onStage: (s: { title: string; label: string; pct: number; index: number; total: number }) => void,
+): Promise<any> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  const parser = createSSEParser();
+  const seen: any[] = [];
+  const ingest = (frames: any[]) => {
+    for (const ev of frames) {
+      seen.push(ev);
+      const c = classifySSEFrame(ev);
+      if (c.type === 'stage') {
+        const snap = reduceSSEFrames([ev]).stage;
+        if (snap) onStage(snap);
+      }
+    }
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) ingest(parser.push(decoder.decode(value, { stream: true })));
+  }
+  ingest(parser.flush());
+  const r = reduceSSEFrames(seen);
+  if (r.error) return { error: r.error.error };
+  return r.ready || null;
+}
 
   // ── 6语言文案映射（避免三元链漏语言）──
   const TXT = {
@@ -471,6 +509,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   const [reportText, setReportText] = useState<string | null>(null);
   // 🛡️ Gate 40：标准化报告 Payload（服务端 report_payload.v1）—— 缺省则优雅回退纯文本渲染
   const [reportPayload, setReportPayload] = useState<CompatReportPayload | null>(null);
+  // 🛡️ Gate 43：推演进度帧（服务端 SSE 真实里程碑；缺帧 ⇒ null ⇒ 不渲染进度卡，优雅降级）
+  const [reportStage, setReportStage] = useState<{ title: string; label: string; pct: number; index: number; total: number } | null>(null);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -998,6 +1038,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     setReportLoading(type);
     setReportText(null);
     setReportPayload(null);
+    setReportStage(null);
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1018,6 +1059,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           d1, d2, lang,
           bazi, zodiac, iching, tarot,
           reportType: type,
+          // 🛡️ Gate 43：请求推演进度帧（服务端不支持/中间件拦截 ⇒ 自动回退 JSON，前端无缝降级）
+          stream: true,
           // 🌌 E40+：瑞士星历双人时空真值（全空 ⇒ 服务端零引擎调用 + 显式未知声明）
           timeTruth: {
             a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
@@ -1025,7 +1068,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           },
         }),
       });
-      const data = await res.json();
+      // 🛡️ Gate 43：双模分流 —— ① 服务端以 SSE 应答 ⇒ 流式读帧（进度实时上屏）
+      //   ② 其余一切情形（402/403/429 JSON、代理层剥流式、老客户端）⇒ 原样 res.json()，契约零回归
+      const _ctype = String(res.headers.get('content-type') || '');
+      let data: any = null;
+      if (res.ok && _ctype.includes('text/event-stream') && res.body && typeof res.body.getReader === 'function') {
+        data = await readCompatSSEStream(res.body, (s) => setReportStage(s));
+      } else {
+        data = await res.json();
+      }
+      if (!data) data = {};
       // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
       setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
       // 🛡️ Gate 41：Report ID 索引（同名输入 ⇒ 服务端 read-through 秒级复读，零算力消耗）
@@ -1046,6 +1098,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       setReportPayload(null);
       setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
     } finally {
+      setReportStage(null);
       setReportLoading(false);
     }
   };
@@ -1255,6 +1308,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                     💡 {lang === 'zh' ? `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。` : lang === 'en' ? `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.` : lang === 'es' ? `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.` : lang === 'fr' ? `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.` : lang === 'th' ? `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด` : `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`}
                   </div>
                 </>
+              )}
+              {/* 🛡️ Gate 43：推演仪式感进度卡 —— 仅当服务端下发了真实里程碑帧才渲染（降级通路零空壳） */}
+              {reportLoading && reportStage && (
+                <SynastryProgress
+                  title={reportStage.title}
+                  label={reportStage.label}
+                  pct={reportStage.pct}
+                  index={reportStage.index}
+                  total={reportStage.total}
+                />
               )}
               {reportText && reportPayload && (
                 /* 🛡️ Gate 40：标准化画布（张量卡 + 四段壳；溢出三道防线） */

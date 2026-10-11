@@ -472,6 +472,7 @@ import { buildCompatPrompt, buildCompatTimeContext, computeCompatScores } from '
 import { SYNASTRY_I18N } from './api/ai-advisor.js';  // 🛡️ Gate 40: 合盘报告六语真值表（Payload 装配注入；独立成行，不污染 E39 封仓引渡契约行）
 import { buildReportPayload, createReportPipeline, REPORT_PAYLOAD_SCHEMA } from './lib/reportPipeline.mjs';  // 🛡️ Gate 40: 合盘报告生成管线（状态机 + 标准化 Payload 契约，纯逻辑核）
 import { deriveCompatReportId, deserializePersistedPayload, planPersistRow } from './lib/reportPipeline.mjs';  // 🛡️ Gate 41: 实名持久化三件套（Report ID 派生 + 行构造 + 反序列化守卫；独立成行，不污染既有引渡契约行）
+import { buildStageFrame, buildReadyFrame, buildErrorFrame, sseData, SSE_DONE, SSE_HEARTBEAT, SSE_CONTENT_TYPE } from './lib/stageFrames.mjs';  // 🛡️ Gate 43: SSE 推演进度帧纯逻辑核（六语真值取词自字典；独立成行，不污染既有引渡契约行）
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
@@ -13520,6 +13521,58 @@ async function replayCompatReportRow({ userId, reportId }) {
   }
 }
 
+// ── 🛡️ Gate 43：合盘 SSE 推演流建流器（写流适配层；造帧一律委托 lib/stageFrames.mjs 纯逻辑核）──
+//   🔴 铁律：本函数**只可在权益闸门（402/403/429）判定之后**调用 —— 一旦 setHeader 建流，
+//      便无法再回退 JSON 错误码，故 fail-closed 必须先行。
+//   🔴 断连自愈：客户端关闭 ⇒ 清心跳 + 标记 closed ⇒ 后续写帧静默跳过（绝不抛错崩进程）。
+function openCompatStream(res) {
+  res.setHeader('Content-Type', SSE_CONTENT_TYPE);
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('X-No-Compression', '1');     // 绕过 compression 中间件（若有）
+  res.setHeader('Connection', 'keep-alive');
+  if (res.flushHeaders) res.flushHeaders();   // HTTP 200 握手后立刻冲刷首包，防代理层缓冲
+
+  let closed = false;
+  const hb = setInterval(() => {
+    if (closed) return;
+    try { res.write(SSE_HEARTBEAT); } catch (e) { /* noop */ }
+  }, 8000);
+  const onClose = () => {
+    closed = true;
+    try { clearInterval(hb); } catch (e) { /* noop */ }
+    console.warn(`[Gate43] (compat) SSE 连接关闭：destroyed=${res.destroyed} ended=${res.writableEnded}`);
+  };
+  res.on('close', onClose);
+
+  const _write = (obj) => {
+    if (closed) return false;
+    const wire = sseData(obj);
+    if (wire === null) return false;
+    try { res.write(wire); return true; } catch (e) { return false; }
+  };
+  return {
+    /** 下发第 index 阶进度帧（越界 ⇒ 无声忽略，绝不造伪帧） */
+    stage(index, lang) { return _write(buildStageFrame(index, lang)); },
+    /** 终帧：ready 载体 + [DONE] + 关流（幂等：closed 后静默） */
+    ready(lang, body) {
+      const ok = _write(buildReadyFrame(lang, body));
+      try { if (!closed) { res.write(SSE_DONE); res.end(); } } catch (e) { /* noop */ }
+      try { clearInterval(hb); } catch (e) { /* noop */ }
+      return ok;
+    },
+    /** 失败帧：fail-closed，绝不伪造成 ready */
+    fail(code, message) {
+      try { _write(buildErrorFrame(code, message)); } catch (e) { /* noop */ }
+      try { if (!closed) { res.write(SSE_DONE); res.end(); } } catch (e) { /* noop */ }
+      try { clearInterval(hb); } catch (e) { /* noop */ }
+      return false;
+    },
+    /** 已断连？（上游可据此提前止损；当前实现为纯观测口） */
+    isClosed() { return closed; },
+  };
+}
+
 // ── /api/create-checkout ──（E24⑥ 全量移植：登录校验 → 防重付 → 建客户 → 建会话(**带 metadata**)）
 //   🛡️ metadata.supabase_user_id / metadata.plan 是 webhook 落库的**唯一钥匙**，
 //      缺它则回调无从归属 ⇒ 本次移植的核心不改项（旧 Railway 版正是缺这一段）。
@@ -15080,6 +15133,10 @@ app.use('/api/ai-advisor', async (req, res) => {
 
     // ── 付费报告生成（monthly / yearly / once · E39-B 三档分流；免费层 'compatibility' 不入此分支）──
     if (reportType === 'monthly' || reportType === 'yearly' || reportType === 'once') {
+      // 🛡️ Gate 43：SSE 推演流开关 —— 仅**显式**请求才建流（缺省 false ⇒ 既有 JSON 契约逐字节不变）。
+      //   客户端不支持流式/解析失败 ⇒ 自动回退本 JSON 通路（优雅降级，绝不阻塞报告交付）。
+      const _stream = !!(req.body && (req.body.stream === true || req.body.streamMode === true));
+
       // ═══ 🛍️ E24⑥② 合婚域权益闸门 + 算力护栏 ═══
       //   病根：本端点承载合婚月报/年报生成，却**零鉴权、零权益、零配额** ⇒ 匿名 POST 即直烧 AI token。
       //   射程：monthly / yearly（付费报告）必须过权益；'compatibility'（免费 4 句洞察，属免费层）保持开放。
@@ -15110,6 +15167,11 @@ app.use('/api/ai-advisor', async (req, res) => {
       const _g41Replay = await replayCompatReportRow({ userId: _cEnt.userId || null, reportId: _g41ReportId });
       if (_g41Replay) {
         console.log(`[Gate41] report replay HIT: reportId=${_g41ReportId} type=${reportType} lang=${lang}`);
+        // 🛡️ Gate 43：流式模式下命中复读 ⇒ **单帧 ready 直出**（零算力、零阶段帧：如实反映"无推演发生"）
+        if (_stream) {
+          const _rps = openCompatStream(res);
+          return _rps.ready(lang, { insight: _g41Replay.insight, cached: true, payload: _g41Replay.payload, reportId: _g41Replay.reportId || _g41ReportId });
+        }
         return res.json({ insight: _g41Replay.insight, cached: true, payload: _g41Replay.payload, reportId: _g41Replay.reportId || _g41ReportId });
       }
       if (_cEnt.method !== 'green_channel' && _cEnt.method !== 'no_supabase_configured') {
@@ -15127,14 +15189,21 @@ app.use('/api/ai-advisor', async (req, res) => {
         }
         await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, _nowC, { withTimestamp: false }));
       }
+      // 🛡️ Gate 43：SSE 建流点 —— 🔴 必须在全部 fail-closed 闸门（402 权益 / 403 周期锁 / 429 日限流）之后；
+      //   一旦建流便不可再回退 JSON 错误码，故此处即"放行"的唯一分界。
+      const _sse = _stream ? openCompatStream(res) : null;
       try {
-        console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType });
+        console.log('[AI Advisor] Generating report:', { d1, d2, lang, reportType, stream: _stream });
         // 🛡️ Gate 40：报告生成状态机（pending → calculating → assembling → ready ／ failed 旁路）
         //   🔴 内部英文状态机；前端只识 toViewModel() 的 available/degraded（前后端彻底解耦）。
         const _pipe = createReportPipeline();
         _pipe.advance('calculating');
+        // 🛡️ Gate 43：Stage 0 —— 真值里程碑①「调取瑞士星历精算引擎」
+        if (_sse) _sse.stage(0, lang);
         // 🌌 E40+：真实双盘天体羁绊锁真值（缺真值 ⇒ 降级/显式未知，绝不伪造；失败不阻断报告）
         const _compatSyn = await buildCompatSynastryTruth(req.body || {}, d1, d2);
+        // 🛡️ Gate 43：Stage 1 —— 真值里程碑②「推演双盘行星与虚点相位」（张量算毕）
+        if (_sse) _sse.stage(1, lang);
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
         const _compat = buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
           bazi: req.body.bazi || null,
@@ -15146,6 +15215,8 @@ app.use('/api/ai-advisor', async (req, res) => {
           synastry: _compatSyn,
         });
 
+        // 🛡️ Gate 43：Stage 2 —— 真值里程碑③「解析灵宠羁绊契约能量」（AI 正文生成中，最长的真实等待段）
+        if (_sse) _sse.stage(2, lang);
         const insight = await callAI(
           _compat.system,
           _compat.user,
@@ -15159,6 +15230,8 @@ app.use('/api/ai-advisor', async (req, res) => {
         //   · 结构化真值**绝不**从 LLM 正文反推（prose 只进 sections 四段壳）。
         //   🔴 报告失败永不阻断：装配异常 ⇒ payload 省略，insight 照常交付（前端优雅回退）。
         _pipe.advance('assembling');
+        // 🛡️ Gate 43：Stage 3 —— 真值里程碑④「装配专属灵宠合盘报告」
+        if (_sse) _sse.stage(3, lang);
         let _pipelinePayload = null;
         try {
           _pipelinePayload = buildReportPayload({
@@ -15199,6 +15272,14 @@ app.use('/api/ai-advisor', async (req, res) => {
         if (_cEnt.userId) {
           await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, new Date(), { withDaily: false, withQuota: false }));
         }
+        // 🛡️ Gate 43：流式模式 ⇒ 终帧 ready。载体与下方 JSON 回执**逐字段同源**（同一构造纪律，双路等价）。
+        //   🔴 旁置设计：JSON 通路**逐字节原样保留**（E39/E40 C5 / Gate 41 D4 等封仓断言锚定的字面量分毫不动）。
+        if (_sse) {
+          const _sseBody = { insight, cached: false };
+          if (_pipelinePayload) _sseBody.payload = _pipelinePayload;
+          if (_pipelinePayload && _g41Persisted) _sseBody.reportId = _g41ReportId;
+          return _sse.ready(lang, _sseBody);
+        }
         // 🔴 增量契约：payload 存在则附带（前端画布用）；缺省时回退既有回执形态（向后兼容）
         //   🛡️ Gate 41：落库成功附带 reportId（复读索引）；失败缺省 ⇒ 前端照常回退。
         if (_pipelinePayload) {
@@ -15209,6 +15290,8 @@ app.use('/api/ai-advisor', async (req, res) => {
         return res.json({ insight, cached: false });
       } catch (aiError) {
         console.error('[AI Advisor] AI generation failed:', aiError.message);
+        // 🛡️ Gate 43：流式已建流 ⇒ 只能下发失败帧（fail-closed，绝不伪造成 ready）；JSON 通路保持 500 原样
+        if (_sse) return _sse.fail('AI_GENERATION_FAILED', aiError.message);
         return res.status(500).json({ error: 'AI generation failed: ' + aiError.message });
       }
     }

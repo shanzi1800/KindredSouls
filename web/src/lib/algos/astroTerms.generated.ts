@@ -852,6 +852,48 @@ export const ASTRO_TERMS = {
         "th": "พันธสัญญารอ",
         "vi": "Khế Ước Chờ Định"
       }
+    },
+    "pipelineStages": {
+      "PipelineRunning": {
+        "zh": "星盘推演中",
+        "en": "Chart in progress",
+        "es": "Carta en curso",
+        "fr": "Thème en cours",
+        "th": "กำลังพยากรณ์ดวง",
+        "vi": "Đang luận giải"
+      },
+      "EphemerisFetch": {
+        "zh": "调取瑞士星历精算引擎",
+        "en": "Consulting Swiss Ephemeris",
+        "es": "Consultando el Swiss Ephemeris",
+        "fr": "Consultation de l'éphéméride",
+        "th": "ดึงข้อมูลดาวจากตารางสวิส",
+        "vi": "Truy xuất lịch thiên văn Thụy Sĩ"
+      },
+      "TensorFusion": {
+        "zh": "推演双盘行星与虚点相位",
+        "en": "Fusing the dual-chart geometry",
+        "es": "Fusionando la geometría dual",
+        "fr": "Fusion des géométries duales",
+        "th": "ประมวลเรขาคณิตสองดวง",
+        "vi": "Dung hợp hình học hai lá số"
+      },
+      "ContractResolve": {
+        "zh": "解析灵宠羁绊契约能量",
+        "en": "Resolving the karmic contract",
+        "es": "Resolviendo el contrato kármico",
+        "fr": "Résolution du contrat karmique",
+        "th": "คลี่สัญญากรรมและพลังรัก",
+        "vi": "Giải mã khế ước nghiệp duyên"
+      },
+      "ReportAssemble": {
+        "zh": "装配专属灵宠合盘报告",
+        "en": "Assembling your soulmate report",
+        "es": "Componiendo tu informe de almas",
+        "fr": "Assemblage de votre rapport",
+        "th": "ประกอบรายงานคู่แท้ของคุณ",
+        "vi": "Lắp ghép báo cáo tri kỷ"
+      }
     }
   },
   "slots": {
@@ -888,7 +930,8 @@ export const ASTRO_TERMS = {
       "aspectKinds": "labelCard",
       "motions": "chip",
       "measures": "chip",
-      "familiar": "labelCard"
+      "familiar": "labelCard",
+      "pipelineStages": "labelCard"
     }
   },
   "reviewPending": {
