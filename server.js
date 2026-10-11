@@ -473,6 +473,12 @@ import { SYNASTRY_I18N } from './api/ai-advisor.js';  // 🛡️ Gate 40: 合盘
 import { buildReportPayload, createReportPipeline, REPORT_PAYLOAD_SCHEMA } from './lib/reportPipeline.mjs';  // 🛡️ Gate 40: 合盘报告生成管线（状态机 + 标准化 Payload 契约，纯逻辑核）
 import { deriveCompatReportId, deserializePersistedPayload, planPersistRow } from './lib/reportPipeline.mjs';  // 🛡️ Gate 41: 实名持久化三件套（Report ID 派生 + 行构造 + 反序列化守卫；独立成行，不污染既有引渡契约行）
 import { buildStageFrame, buildReadyFrame, buildErrorFrame, sseData, SSE_DONE, SSE_HEARTBEAT, SSE_CONTENT_TYPE } from './lib/stageFrames.mjs';  // 🛡️ Gate 43: SSE 推演进度帧纯逻辑核（六语真值取词自字典；独立成行，不污染既有引渡契约行）
+import {
+  PAYMENT_MODE_SANDBOX, SANDBOX_DISABLED_STATUS,
+  resolvePaymentMode, isSandboxPaymentMode,
+  resolveVoucher, resolveVoucherTable,
+  buildSandboxSession, buildSignedSandboxDispatch,
+} from './lib/sandboxPayment.mjs';  // 🧪 Gate 45-A: 沙盘支付纯逻辑核（会话/事件/签名复刻 + 券兑现；独立成行，不污染既有引渡契约行）
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
@@ -13597,6 +13603,99 @@ function openCompatStream(res) {
   };
 }
 
+// ── 🧪 Gate 45-A：沙盘支付端点（**仅在 PAYMENT_MODE=sandbox 时开放**；缺省 live ⇒ 一律 404 fail-closed）──
+//   🔴 铁律①：本段**绝不直接写权益** —— 一律构造 Stripe 格式签名事件，POST 回**真实 /api/webhook**，
+//      由 webhook 的权益片段构造 + 合并落库通路派发（唯一真源 ⇒ 切 live 时零改造）。
+//   🔴 铁律②：登录校验在本段内**自带**（不抽取 create-checkout ⇒ 不碰 24g B2b 的 status(401) 断言）。
+//   🔴 铁律③：不复用 create-checkout 内层局部常量（避免触其段窗口断言）。
+const SANDBOX_SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly']);
+
+async function _sandboxResolveUser(req) {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return { error: 500, message: 'Supabase env missing' };
+  const authHeader = String(req.headers.authorization || '');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { error: 401, message: 'Not authenticated' };
+  const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+  });
+  if (!userRes.ok) return { error: 401, message: 'Invalid or expired token' };
+  const { id: userId, email } = await userRes.json();
+  if (!userId) return { error: 401, message: 'Invalid or expired token' };
+  return { userId, email: email || null };
+}
+
+// 沙盘事件派发：**自环真打** —— 同 HTTP 通路、同验签、同落库（拒绝旁路分叉）
+async function _sandboxDispatch(req, plan, userId, email) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return { error: 500, message: 'STRIPE_WEBHOOK_SECRET missing (sandbox self-post requires signature verification)' };
+  const origin = req.headers.origin || 'https://kindredsouls.online';
+  const nonce = String(Date.now()) + Math.random().toString(36).slice(2, 8);
+  const d = buildSignedSandboxDispatch({
+    secret, plan, userId, email, origin, now: new Date(), nonce,
+    mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
+  });
+  // 🔴 必用**原生 fetch**：safeFetch 内部是 `https.request` 硬编码（rejectUnauthorized:false），
+  //    无法打 http:// 回环 —— 实测会抛 `EPROTO ... packet length too long`（Gate 45-A 血训）。
+  const r = await fetch(`http://127.0.0.1:${PORT}/api/webhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'stripe-signature': d.header },
+    body: d.body,
+    signal: AbortSignal.timeout(15000),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) return { error: 502, message: 'sandbox webhook dispatch failed', detail: out };
+  return { sessionId: d.session.id, plan, received: out.received === true, skipped: out.skipped || null, webhook: out };
+}
+
+app.post('/api/sandbox/status', async (req, res) => {
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  return res.json({
+    sandbox: true,
+    mode: PAYMENT_MODE_SANDBOX,
+    plans: Object.keys(STRIPE_PRICE_MAP),
+    voucherCount: Object.keys(resolveVoucherTable(process.env)).length,
+  });
+});
+
+app.post('/api/sandbox/complete', async (req, res) => {
+  // 🔴 沙盘闸门：缺省 live ⇒ 端点视为不存在（fail-closed）
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  try {
+    const who = await _sandboxResolveUser(req);
+    if (who.error) return res.status(who.error).json({ error: who.message });
+    const rawPlan = (req.body || {}).plan;
+    const plan = normalizePlanId(rawPlan);
+    if (!STRIPE_PRICE_MAP[plan]) return res.status(400).json({ error: 'Unknown plan: ' + rawPlan });
+    const out = await _sandboxDispatch(req, plan, who.userId, who.email);
+    if (out.error) return res.status(out.error).json({ error: out.message, detail: out.detail });
+    return res.json({ ok: true, sandbox: true, plan, sessionId: out.sessionId, granted: out.received && !out.skipped, webhook: out.webhook });
+  } catch (err) {
+    console.error('[sandbox/complete]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/sandbox/redeem', async (req, res) => {
+  // 🔴 沙盘闸门：缺省 live ⇒ 端点视为不存在（fail-closed）
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  try {
+    const who = await _sandboxResolveUser(req);
+    if (who.error) return res.status(who.error).json({ error: who.message });
+    const table = resolveVoucherTable(process.env);
+    const v = resolveVoucher((req.body || {}).code, table, new Date());
+    if (!v.ok) return res.status(400).json({ ok: false, reason: v.reason });
+    if (!STRIPE_PRICE_MAP[v.plan]) return res.status(400).json({ ok: false, reason: 'plan_not_sellable' });
+    const out = await _sandboxDispatch(req, v.plan, who.userId, who.email);
+    if (out.error) return res.status(out.error).json({ error: out.message, detail: out.detail });
+    return res.json({ ok: true, sandbox: true, code: v.code, plan: v.plan, sessionId: out.sessionId, granted: out.received && !out.skipped, webhook: out.webhook });
+  } catch (err) {
+    console.error('[sandbox/redeem]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ── /api/create-checkout ──（E24⑥ 全量移植：登录校验 → 防重付 → 建客户 → 建会话(**带 metadata**)）
 //   🛡️ metadata.supabase_user_id / metadata.plan 是 webhook 落库的**唯一钥匙**，
 //      缺它则回调无从归属 ⇒ 本次移植的核心不改项（旧 Railway 版正是缺这一段）。
@@ -13636,6 +13735,19 @@ app.post('/api/create-checkout', async (req, res) => {
     if (planHasAccess(paidPlans, plan, new Date())) {
       console.log(`[create-checkout] ${plan} 已被现有权益覆盖 user=${String(userId).slice(0, 8)} → already_paid`);
       return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
+    }
+
+    // 🧪 Gate 45-A：沙盘分支 —— 仅在 PAYMENT_MODE=sandbox 时生效（缺省 live ⇒ 本段零执行、Stripe 路径逐字不变）
+    //   🔴 位于防重付（planHasAccess）**之后**：已购仍先返回 already_paid，绝不重复下单。
+    if (isSandboxPaymentMode(process.env)) {
+      const _sbSession = buildSandboxSession({
+        plan, userId, email,
+        origin: (req.headers.origin || 'https://kindredsouls.online'),
+        mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
+        nonce: String(Date.now()) + Math.random().toString(36).slice(2, 8),
+      });
+      console.log('[create-checkout] 🧪 sandbox session:', _sbSession.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
+      return res.json({ url: _sbSession.url, sessionId: _sbSession.id, sandbox: true, plan });
     }
 
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
