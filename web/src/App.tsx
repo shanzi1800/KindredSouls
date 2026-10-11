@@ -204,9 +204,10 @@ export type CompatTimeTruth = {
   t2: string; c2: CityRecord | null;
 };
 
-function InputPage({ onSubmit, onNavigateToWealth }: {
+function InputPage({ onSubmit, onNavigateToWealth, onBack }: {
   onSubmit: (d1: string, d2: string, tt: CompatTimeTruth) => void,
-  onNavigateToWealth: () => void
+  onNavigateToWealth: () => void,
+  onBack: () => void
 }) {
   const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<'landing' | 'compatibility' | 'wealth'>('landing');
@@ -340,6 +341,10 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       <CelestialBackground />
       {modalOpen && <LangModal open={modalOpen} onClose={() => setModalOpen(false)} />}
       {modeModal}
+      {/* 🌌 对齐财富模块：顶部返回键（→ 首页并自动弹模式选择） */}
+      <button onClick={onBack} style={{ display: 'block', margin: '0 auto 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 12px', color: '#8B8778', fontSize: '12px', cursor: 'pointer' }}>
+        ← {t('input.back')}
+      </button>
       <h1 className="title">{t('input.title')}</h1>
       <p className="subtitle">{t('app.name')}</p>
       <p className="desc">{t('input.subtitle')}</p>
@@ -349,9 +354,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
           {/* 🌌 对齐财富模块：出生城市 / 出生时间常显（可选填写；有则 timed 真盘，无则服务端如实降级） */}
           <div style={{ marginTop: '10px', textAlign: 'left' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
             <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
-            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
+            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
             <TimeInput value={t1} onChange={setT1} />
           </div>
         </div>
@@ -360,9 +365,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
           {/* 🌌 对齐财富模块：TA 的出生城市 / 出生时间常显 */}
           <div style={{ marginTop: '10px', textAlign: 'left' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
             <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
-            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
+            <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
             <TimeInput value={t2} onChange={setT2} />
           </div>
         </div>
@@ -371,6 +376,15 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           🔮 {t('wealthInput.birthTip')}
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
+        {/* ⚖️ 对齐财富模块：法律合规条款（六语；点击按钮即视为同意） */}
+        <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
+          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
+          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
+          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
+          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('input.calculate')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
+          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('input.calculate')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Chính Sách Bảo Mật</a>.</> : null}
+          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('input.calculate')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Privacy Policy</a>.</> : null}
+        </p>
       </div>
     </div>
   );
@@ -1779,7 +1793,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       {wealthPath === SANDBOX_PAY_PATH && <SandboxPayPage onNavigate={navigate} />}
       {/* 🧪 Gate 45-B：全局沙盘收银台模态（任意调用点经总线唤起；未唤起 ⇒ 零渲染） */}
       <SandboxCashier lang={currentLang} />
-      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
+      {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} onBack={() => navigate('/?showMode=true')} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
       {!wealthPath && err && <p className="error-msg">{err}</p>}
