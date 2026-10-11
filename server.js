@@ -13886,29 +13886,47 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
       updated_at: new Date().toISOString(),
     };
 
-    // ③ PATCH 优先；行不存在（406/404）则 INSERT
+    // ③ PATCH 优先；**未命中行**则 INSERT
+    //   🔴 E42+ 45-C 血训（线上沙盘演习首曝 · P0 营收缺陷）：
+    //     PostgREST 对**不存在的行**执行 PATCH 会返回 **204「成功」但影响 0 行**
+    //     （行不存在并非错误，而是「0 行受影响」）。旧写法 `Prefer: return=minimal`
+    //     不返回受影响行 ⇒ `patchRes.ok` 恒真 ⇒ **INSERT 兜底永不触发**
+    //     ⇒ 无 `user_profiles` 行的用户付款后权益**静默丢失**（付了钱仍 402）。
+    //     线上实测：auth.users 7 个，user_profiles 仅 3 行（真实 signup 路径也不建行）；
+    //     沙盘支付 granted:true、webhook received:true，但权益未落库 ⇒ 402 不解除。
+    //   治法：改 `return=representation` 取回被更新行，**以行数判成败**；0 行 ⇒ INSERT 兜底。
+    //   ⚠️ 字面量 `method: 'PATCH'` / `method: 'POST'` 必须原样保留（Gate 24g B1g/B1h
+    //      与 Gate 45-A D6「封仓段要素守恒」断言）。
     const patchRes = await safeFetch(`${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
       method: 'PATCH',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
       body: JSON.stringify(rowPatch),
     });
 
+    let _patchedRows = [];
     if (patchRes.ok) {
-      console.log('[webhook] ✅ PATCH 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan);
+      try { const _pj = await patchRes.json(); _patchedRows = Array.isArray(_pj) ? _pj : []; } catch (_pe) { _patchedRows = []; }
+    }
+
+    if (patchRes.ok && _patchedRows.length > 0) {
+      console.log('[webhook] ✅ PATCH 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan, 'rows:', _patchedRows.length);
     } else {
-      const errBody = await patchRes.text().catch(() => '');
-      console.warn('[webhook] PATCH 未成功:', patchRes.status, errBody, '→ 尝试 INSERT');
+      console.warn('[webhook] PATCH 未命中行 (status=' + patchRes.status + ', rows=' + _patchedRows.length + ') → 尝试 INSERT（新用户首次落库）');
       const insRes = await safeFetch(`${SB_URL}/rest/v1/user_profiles`, {
         method: 'POST',
-        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(Object.assign({ user_id: userId, created_at: new Date().toISOString() }, rowPatch)),
       });
-      if (!insRes.ok) {
-        const insBody = await insRes.text().catch(() => '');
+      let _insRows = [];
+      if (insRes.ok) {
+        try { const _ij = await insRes.json(); _insRows = Array.isArray(_ij) ? _ij : []; } catch (_ie) { _insRows = []; }
+      }
+      if (!insRes.ok || _insRows.length === 0) {
+        const insBody = insRes.ok ? '(0 rows)' : await insRes.text().catch(() => '');
         console.error('[webhook] ❌ INSERT 落库失败:', insRes.status, insBody);
         return res.status(500).json({ error: 'entitlement write failed' });
       }
-      console.log('[webhook] ✅ INSERT 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan);
+      console.log('[webhook] ✅ INSERT 落库成功 user:', String(userId).slice(0, 8), 'plan:', plan, 'rows:', _insRows.length);
     }
 
     res.json({ received: true });
