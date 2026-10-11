@@ -25,6 +25,13 @@ import { createSSEParser, classifySSEFrame, reduceSSEFrames } from './lib/ssePar
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
 import PolicyPage from './pages/PolicyPage';
+// 🧪 Gate 45-B：沙盘收银台（create-checkout 回执 sandbox:true ⇒ 截断外链、就地唤起）
+import SandboxCashier from './components/SandboxCashier';
+import SandboxPayPage from './pages/SandboxPayPage';
+// 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
+import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
+// @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
+import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
 import './App.css';
 
 /**
@@ -158,6 +165,8 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
 }
 
   // ── handlePurchaseWithToken: shared checkout helper ──
+  //   🧪 Gate 45-B：回执分流统一交纯核 dispatchCheckoutRoute ——
+  //      sandbox:true ⇒ **截断外链**、就地唤起沙盘收银台；url ⇒ 照旧外跳 Stripe；already_paid ⇒ 静默。
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     try {
       const res = await fetch('/api/create-checkout', {
@@ -166,9 +175,15 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         body: JSON.stringify({ plan }),
       });
       const data = await res.json();
-      if (data.url) {
-        console.log('[KindredSouls] Redirecting to Stripe:', data.url);
-        window.location.href = data.url;
+      const route = dispatchCheckoutRoute(data, { origin: window.location.origin, onGranted: () => window.location.reload() });
+      if (route.kind === 'redirect') {
+        console.log('[KindredSouls] Redirecting to Stripe:', route.url);
+        window.location.href = route.url;
+      } else if (route.kind === 'sandbox') {
+        // 🔴 沙盘截断：绝不跳外链 —— 收银台已由总线就地唤起（真金白银路径逐字未改）
+        console.log('[KindredSouls] 🧪 sandbox checkout — cashier opened in place:', route.plan);
+      } else if (route.kind === 'paid') {
+        console.log('[KindredSouls] Already covered by existing plan, skipping checkout');
       } else {
         console.error('[KindredSouls] Stripe checkout failed:', data);
         alert('Payment initiation failed. Please try again or contact support.');
@@ -1343,6 +1358,19 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 /* 🛡️ Gate 40：标准化画布（张量卡 + 四段壳；溢出三道防线） */
                 <CompatReportCanvas payload={reportPayload} lang={lang} houseOverlay={reportHouseOverlay} delivery={reportDelivery} />
               )}
+              {/* 🐾 Gate 45-B：报告尾「灵宠认领」承接位 —— 合盘报告交付后顺势领养
+                  🔴 E34 D5：只传出生真值（白名单构造）；且**须有真实出生城市**才挂载
+                     （缺 c1 ⇒ 不挂载，绝不送 lat/lon=0 的伪造坐标） */}
+              {reportText && reportPayload && c1 && (
+                <AdoptFamiliarCTA
+                  birthDate={d1}
+                  birthTime={t1 || ''}
+                  lat={c1.lat}
+                  lon={c1.lon}
+                  tz={c1.tz}
+                  lang={lang}
+                />
+              )}
               {reportText && !reportPayload && (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
                   {reportText.split('\n\n').map((para, i) => (
@@ -1486,6 +1514,8 @@ export default function App() {
       if (/^\/(?:artefact|shop\/item)\/[^/]+\/?$/.test(path)) return null;
       if (path === '/wealth') return '/wealth';
       if (path === '/wealth/report') return '/wealth/report';
+      // 🧪 Gate 45-B：沙盘收银台同源直达路由（兜底承载）
+      if (path === SANDBOX_PAY_PATH) return SANDBOX_PAY_PATH;
     }
     return null;
   });
@@ -1671,7 +1701,7 @@ export default function App() {
   useEffect(() => {
     const handlePopstate = () => {
       const path = window.location.pathname;
-      if (path === '/wealth' || path === '/wealth/report') {
+      if (path === '/wealth' || path === '/wealth/report' || path === SANDBOX_PAY_PATH) {
         setWealthPath(path);
       } else {
         setWealthPath(null);
@@ -1761,6 +1791,10 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       )}
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
       {wealthPath?.startsWith('/wealth/report') && <WealthReportPage key="wealth-report" onNavigate={navigate} />}
+      {/* 🧪 Gate 45-B：沙盘收银台直达路由页（挂载即由总线唤起模态） */}
+      {wealthPath === SANDBOX_PAY_PATH && <SandboxPayPage onNavigate={navigate} />}
+      {/* 🧪 Gate 45-B：全局沙盘收银台模态（任意调用点经总线唤起；未唤起 ⇒ 零渲染） */}
+      <SandboxCashier lang={currentLang} />
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
       {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}

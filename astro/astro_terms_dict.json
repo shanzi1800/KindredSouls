@@ -157,7 +157,34 @@
       "HouseSelf":        { "zh": "你",           "en": "You",                       "es": "Tú",                           "fr": "Vous",                      "th": "คุณ",                  "vi": "Bạn" },
       "AuthPassed":       { "zh": "鉴权已通过",   "en": "Auth verified",             "es": "Autenticación verificada",     "fr": "Authentification vérifiée", "th": "ยืนยันสิทธิ์แล้ว",       "vi": "Đã xác thực quyền" },
       "DeliveryStream":   { "zh": "流式推演送达", "en": "Streamed live",             "es": "Entrega en directo",           "fr": "Diffusion en direct",       "th": "ส่งแบบสตรีมสด",         "vi": "Truyền trực tiếp" },
-      "DeliveryDirect":   { "zh": "安全直连送达", "en": "Secure direct delivery",    "es": "Entrega directa segura",       "fr": "Livraison directe sûre",    "th": "ส่งตรงอย่างปลอดภัย",     "vi": "Truyền trực tiếp an toàn" }
+      "DeliveryDirect":   { "zh": "安全直连送达", "en": "Secure direct delivery",    "es": "Entrega directa segura",       "fr": "Livraison directe sûre",    "th": "ส่งตรงอย่างปลอดภัย",     "vi": "Truyền trực tiếp an toàn" },
+
+      "AdoptTitle":       { "zh": "认领你的灵宠",                 "en": "Adopt Your Familiar",           "es": "Adopta tu Familiar",              "fr": "Adoptez votre Familier",     "th": "รับเลี้ยงภูตคู่ใจ",        "vi": "Nhận Nuôi Linh Thú" },
+      "AdoptDesc":        { "zh": "报告已交付 · 为它选一位灵魂伙伴", "en": "Report ready · pick its partner", "es": "Informe listo · elige su par",    "fr": "Rapport prêt · choisir son binôme", "th": "รายงานพร้อม · เลือกคู่หูวิญญาณ", "vi": "Báo cáo xong · chọn bạn đồng hành" },
+      "AdoptCta":         { "zh": "去认领灵宠",                   "en": "Adopt Familiar",                "es": "Adoptar Familiar",                "fr": "Adopter le Familier",        "th": "ไปรับเลี้ยง",            "vi": "Đi Nhận Nuôi" },
+      "AdoptDone":        { "zh": "灵宠已认领",                   "en": "Familiar Adopted",              "es": "Familiar Adoptado",               "fr": "Familier Adopté",            "th": "รับเลี้ยงแล้ว",           "vi": "Đã Nhận Nuôi" }
+    },
+
+    "sandbox": {
+      "SandboxMode":      { "zh": "沙盘测试环境",             "en": "Sandbox Mode",                 "es": "Modo Sandbox",                    "fr": "Mode Bac à Sable",           "th": "โหมดทดลอง",              "vi": "Chế Độ Thử Nghiệm" },
+      "SandboxHint":      { "zh": "演示环境 · 不产生真实扣款", "en": "Demo only · no real charge",    "es": "Solo demo · sin cargo real",      "fr": "Démo · aucun débit réel",    "th": "เดโม · ไม่เรียกเก็บจริง",  "vi": "Chỉ demo · không trừ tiền thật" },
+      "SandboxPay":       { "zh": "一键模拟付款",             "en": "Simulate Payment",              "es": "Simular Pago",                    "fr": "Simuler le Paiement",        "th": "จำลองชำระเงิน",           "vi": "Mô Phỏng Thanh Toán" },
+      "SandboxVoucher":   { "zh": "特权券兑换",               "en": "Redeem Voucher",                "es": "Canjear Cupón",                   "fr": "Échanger un Bon",            "th": "แลกรหัสสิทธิ์",           "vi": "Đổi Mã Ưu Đãi" },
+      "SandboxCode":      { "zh": "输入券码",                 "en": "Enter voucher code",            "es": "Ingresa el cupón",                "fr": "Saisir le code",             "th": "ป้อนรหัส",                "vi": "Nhập mã" },
+      "SandboxRedeem":    { "zh": "立即兑换",                 "en": "Redeem Now",                    "es": "Canjear Ya",                      "fr": "Échanger",                   "th": "แลกเลย",                  "vi": "Đổi Ngay" },
+      "SandboxClose":     { "zh": "关闭",                     "en": "Close",                         "es": "Cerrar",                          "fr": "Fermer",                     "th": "ปิด",                     "vi": "Đóng" },
+      "SandboxGranted":   { "zh": "权益已开通",               "en": "Access Granted",                "es": "Acceso Concedido",                "fr": "Accès Accordé",              "th": "ได้รับสิทธิ์แล้ว",         "vi": "Đã Mở Quyền" },
+      "SandboxFailed":    { "zh": "模拟支付失败",             "en": "Sandbox payment failed",        "es": "Pago sandbox fallido",            "fr": "Paiement sandbox échoué",    "th": "การชำระทดลองล้มเหลว",     "vi": "Thanh toán thử thất bại" },
+      "SandboxNoCode":    { "zh": "请输入券码",               "en": "Enter a voucher code",          "es": "Ingresa un cupón",                "fr": "Saisissez un code",          "th": "กรุณากรอกรหัส",           "vi": "Vui lòng nhập mã" },
+      "SandboxBadCode":   { "zh": "券码无效",                 "en": "Invalid voucher",               "es": "Cupón inválido",                  "fr": "Code invalide",              "th": "รหัสไม่ถูกต้อง",           "vi": "Mã không hợp lệ" },
+      "SandboxCodeOff":   { "zh": "券码已停用",               "en": "Voucher disabled",              "es": "Cupón desactivado",               "fr": "Code désactivé",             "th": "รหัสถูกปิด",              "vi": "Mã đã tắt" },
+      "SandboxCodeOld":   { "zh": "券码已过期",               "en": "Voucher expired",               "es": "Cupón vencido",                   "fr": "Code expiré",                "th": "รหัสหมดอายุ",             "vi": "Mã hết hạn" },
+      "SandboxUnsellable":{ "zh": "该券商品暂不可售",         "en": "Voucher plan unavailable",      "es": "Plan no disponible",              "fr": "Offre indisponible",         "th": "สินค้านี้ยังไม่เปิดขาย",   "vi": "Gói chưa mở bán" },
+      "SandboxOrigin":    { "zh": "同源沙盒 · 真实验签",     "en": "Same origin · real webhook",    "es": "Mismo origen · webhook real",     "fr": "Même origine · webhook réel", "th": "ต้นทางเดียว · เว็บฮุกจริง", "vi": "Cùng nguồn · webhook thật" },
+
+      "SandboxPlanWealth":{ "zh": "先天财富一次性报告",       "en": "Wealth One-Time Report",        "es": "Informe de riqueza",              "fr": "Rapport de richesse",        "th": "รายงานโหราศาสตร์การเงิน", "vi": "Báo cáo tài lộc" },
+      "SandboxPlanCompat":{ "zh": "合盘一次性报告",           "en": "Compatibility One-Time Report", "es": "Informe de sinastría",            "fr": "Rapport de synastrie",       "th": "รายงานดวงสมพงษ์ชุดเดียว", "vi": "Báo cáo hợp duyên" },
+      "SandboxPlanOther": { "zh": "会员权益",                 "en": "Membership Access",             "es": "Membresía",                       "fr": "Abonnement",                 "th": "สิทธิ์สมาชิก",            "vi": "Hội viên" }
     },
 
     "pipelineStages": {
@@ -192,6 +219,7 @@
       "motions": "chip",
       "measures": "chip",
       "familiar": "labelCard",
+      "sandbox": "labelCard",
       "pipelineStages": "labelCard"
     }
   },

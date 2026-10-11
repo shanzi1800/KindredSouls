@@ -26,6 +26,10 @@ import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
 import type { FamiliarProfile } from '../components/FamiliarPicker';
+// 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
+import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
+// @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
+import { dispatchCheckoutRoute, hasExplicitBirthCoords } from '../lib/sandboxCheckout.mjs';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 // 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
@@ -1754,6 +1758,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       return;
     }
 
+    // 🔓 解锁通路（already_paid 与沙盘 granted 共用同一条，禁两套语义）
+    const applyWealthGrant = () => {
+      setIsUnlocked(true);
+      setShowPaywall(false);
+      // 💎 wealth_once: 支付成功后自动生成先天财富DNA报告
+      if (plan === 'wealth_once') {
+        generateWealthReport('once');
+      } else if (reportData && !reportData.insight) {
+        loadWealthData(birthDate, lang, token ?? undefined);
+      }
+    };
+
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
@@ -1775,18 +1791,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
 
-      if (data.url) {
-        console.log('[WealthReport] Redirecting to Stripe:', data.url);
-        window.location.href = data.url;
-      } else if (data.already_paid) {
-        setIsUnlocked(true);
-        setShowPaywall(false);
-        // 💎 wealth_once: 支付成功后自动生成先天财富DNA报告
-        if (plan === 'wealth_once') {
-          generateWealthReport('once');
-        } else if (reportData && !reportData.insight) {
-          loadWealthData(birthDate, lang, token ?? undefined);
-        }
+      // 🧪 Gate 45-B：回执分流交给纯核 —— sandbox:true ⇒ 截断外链、就地唤起收银台；
+      //    granted 后复用 applyWealthGrant（与 already_paid 同一解锁通路）。
+      const route = dispatchCheckoutRoute(data, { origin: window.location.origin, onGranted: applyWealthGrant });
+      if (route.kind === 'redirect') {
+        console.log('[WealthReport] Redirecting to Stripe:', route.url);
+        window.location.href = route.url;
+      } else if (route.kind === 'sandbox') {
+        console.log('[WealthReport] 🧪 sandbox checkout — cashier opened in place:', route.plan);
+      } else if (route.kind === 'paid') {
+        applyWealthGrant();
       } else {
         console.error('[WealthReport] Checkout failed:', data);
         setError(data.detail || data.error || 'Checkout failed');
@@ -3040,6 +3054,21 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           >
             ✨ {t('wealthReport.generateAI')}
           </button>
+        )}
+
+        {/* 🐾 Gate 45-B：报告尾「灵宠认领」独立承接位（报告解锁后呈现）
+            🔴 E34 D5：只传出生真值（白名单构造）；
+            🔴 且须 URL **显式**携带真实坐标 —— 禁以默认盘坐标冒充（缺坐标 ⇒ 不挂载）。
+            ⚠️ 既有付费墙漏斗（!isUnlocked && showPaywall 的 FamiliarPicker）寸步未动。 */}
+        {isUnlocked && reportData && hasExplicitBirthCoords(window.location.search) && (
+          <AdoptFamiliarCTA
+            birthDate={birthDate}
+            birthTime={_familiarBp.birthTime}
+            lat={_familiarBp.lat}
+            lon={_familiarBp.lon}
+            tz={_familiarBp.tz}
+            lang={currentLang}
+          />
         )}
 
         {error && (

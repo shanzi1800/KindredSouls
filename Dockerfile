@@ -64,7 +64,12 @@ RUN echo "[V339-SMOKE] server.js BYTES: $(wc -c < /app/server.js) (expect > 4000
     fi && \
     echo "[V339-SMOKE] ✅ server.js passed (new code confirmed, $(wc -c < /app/server.js) bytes)"
 
-RUN npm install && npm install express stripe
+# ── 依赖安装 ──
+# 🧪 Gate 45-B：stripe 已**正式钉入** package.json dependencies（"stripe": "23.0.0"）并同步 package-lock.json。
+#    🔴 旧写法 `npm install express stripe` 的 `npm install stripe`（无版本）会在每次构建把 stripe
+#       升到**当时最新**，与锁文件/线上实测版本漂移 —— 属于「同一份代码两次构建产物不同」的隐患。
+#       现改为单一 `npm install`：express / stripe 一律以 package-lock.json 为准（可复现构建）。
+RUN npm install
 
 # ── 前端构建: Vite 环境变量注入 ──
 # 🛠️ V318: 禁用容器内 rebuild —— Railway Docker build 缓存会命中旧 web/dist(BJ1vp0PL, V324时代)
