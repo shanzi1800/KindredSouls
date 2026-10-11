@@ -851,6 +851,54 @@ export const ASTRO_TERMS = {
         "fr": "Contrat en Attente",
         "th": "พันธสัญญารอ",
         "vi": "Khế Ước Chờ Định"
+      },
+      "HouseOverlay": {
+        "zh": "宫位映射",
+        "en": "House Overlay",
+        "es": "Superposición de Casas",
+        "fr": "Superposition des Maisons",
+        "th": "การซ้อนทับเรือนชะตา",
+        "vi": "Bản Đồ 12 Cung"
+      },
+      "HouseResonance": {
+        "zh": "宫位共鸣",
+        "en": "House Resonance",
+        "es": "Resonancia de Casas",
+        "fr": "Résonance des Maisons",
+        "th": "เสียงสะท้อนเรือนชะตา",
+        "vi": "Cộng Hưởng Cung"
+      },
+      "HouseSelf": {
+        "zh": "你",
+        "en": "You",
+        "es": "Tú",
+        "fr": "Vous",
+        "th": "คุณ",
+        "vi": "Bạn"
+      },
+      "AuthPassed": {
+        "zh": "鉴权已通过",
+        "en": "Auth verified",
+        "es": "Autenticación verificada",
+        "fr": "Authentification vérifiée",
+        "th": "ยืนยันสิทธิ์แล้ว",
+        "vi": "Đã xác thực quyền"
+      },
+      "DeliveryStream": {
+        "zh": "流式推演送达",
+        "en": "Streamed live",
+        "es": "Entrega en directo",
+        "fr": "Diffusion en direct",
+        "th": "ส่งแบบสตรีมสด",
+        "vi": "Truyền trực tiếp"
+      },
+      "DeliveryDirect": {
+        "zh": "安全直连送达",
+        "en": "Secure direct delivery",
+        "es": "Entrega directa segura",
+        "fr": "Livraison directe sûre",
+        "th": "ส่งตรงอย่างปลอดภัย",
+        "vi": "Truyền trực tiếp an toàn"
       }
     },
     "pipelineStages": {

@@ -687,3 +687,59 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   0%, 100% { opacity: 0.45; transform: scale(0.85); }
   50%      { opacity: 1;    transform: scale(1.15); }
 }
+
+/* 🛡️ Gate 44：画布视觉二期（宫位交互网格 + 卡面质感；纯装饰，缺真值不渲染） */
+@keyframes ksShimmer {
+  0%   { background-position: 180% 0; }
+  100% { background-position: -180% 0; }
+}
+@keyframes ksResGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(212, 175, 55, 0); }
+  50%      { box-shadow: 0 0 12px rgba(212, 175, 55, 0.38); }
+}
+
+/* 流光扫过（羁绊签名卡 / 命运契约卡 / 宫位网格卡） */
+.ks-card-shimmer,
+.ks-house-card { position: relative; overflow: hidden; }
+.ks-card-shimmer::after,
+.ks-house-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.07) 50%, transparent 58%);
+  background-size: 260% 100%;
+  animation: ksShimmer 7s linear infinite;
+  pointer-events: none;
+}
+
+/* 命运契约卡：古老羊皮纸质感（径向微光叠加） */
+.ks-card-parchment {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(212, 175, 55, 0.07), transparent 58%),
+    radial-gradient(circle at 82% 78%, rgba(212, 175, 55, 0.055), transparent 55%);
+}
+
+/* 宫位格：共鸣宫高亮脉冲；平时平滑过渡 */
+.ks-house-cell { transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease; }
+.ks-house-cell--res { animation: ksResGlow 3.4s ease-in-out infinite; }
+.ks-house-cell:hover { transform: translateY(-1px); }
+
+/* 实时状态绿点（鉴权 / 投递路径 —— 真实真值，复用 ksPulse） */
+.ks-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4CAF50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.7);
+  animation: ksPulse 2.4s ease-in-out infinite;
+  flex: 0 0 auto;
+}
+
+/* 无障碍：尊重系统「减弱动态」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .ks-card-shimmer::after,
+  .ks-house-card::after,
+  .ks-house-cell--res,
+  .ks-dot { animation: none; }
+}

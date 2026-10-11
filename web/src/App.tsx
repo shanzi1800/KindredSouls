@@ -17,7 +17,7 @@ import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
 import CompatReportCanvas from './components/CompatReportCanvas';
-import { isCompatReportPayload, type CompatReportPayload } from './lib/reportLayout';
+import { isCompatReportPayload, type CompatReportPayload, type CompatHouseTruthSidecar, type CompatDeliveryMode } from './lib/reportLayout';
 // 🛡️ Gate 43：合盘 SSE 推演流（进度帧纯解析核 + 仪式感进度卡）
 import SynastryProgress from './components/SynastryProgress';
 // @ts-ignore —— sseParser.mjs 为纯 JS 解析核（运行时形状由 Gate 43 闸门守备）
@@ -511,6 +511,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   const [reportPayload, setReportPayload] = useState<CompatReportPayload | null>(null);
   // 🛡️ Gate 43：推演进度帧（服务端 SSE 真实里程碑；缺帧 ⇒ null ⇒ 不渲染进度卡，优雅降级）
   const [reportStage, setReportStage] = useState<{ title: string; label: string; pct: number; index: number; total: number } | null>(null);
+  // 🛡️ Gate 44：信封旁置宫位真值（houseOverlay；缺省/非精确建盘 ⇒ null ⇒ 宫位网格不渲染）
+  const [reportHouseOverlay, setReportHouseOverlay] = useState<CompatHouseTruthSidecar | null>(null);
+  // 🛡️ Gate 44：报告投递溯源（真实路径：流式 SSE / 安全直连；仅供卡面状态可视化，非 payload 字段）
+  const [reportDelivery, setReportDelivery] = useState<CompatDeliveryMode | null>(null);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -1039,6 +1043,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     setReportText(null);
     setReportPayload(null);
     setReportStage(null);
+    setReportHouseOverlay(null);
+    setReportDelivery(null);
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1072,7 +1078,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       //   ② 其余一切情形（402/403/429 JSON、代理层剥流式、老客户端）⇒ 原样 res.json()，契约零回归
       const _ctype = String(res.headers.get('content-type') || '');
       let data: any = null;
+      let _usedStream = false;
       if (res.ok && _ctype.includes('text/event-stream') && res.body && typeof res.body.getReader === 'function') {
+        _usedStream = true;
         data = await readCompatSSEStream(res.body, (s) => setReportStage(s));
       } else {
         data = await res.json();
@@ -1080,6 +1088,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       if (!data) data = {};
       // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
       setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
+      // 🛡️ Gate 44：宫位真值（信封旁置字段；仅 available === true 时下沉，缺真值 ⇒ null ⇒ 网格不渲染）
+      setReportHouseOverlay(
+        (data.houseOverlay && typeof data.houseOverlay === 'object' && data.houseOverlay.available === true)
+          ? (data.houseOverlay as CompatHouseTruthSidecar)
+          : null,
+      );
+      // 🛡️ Gate 44：投递溯源（真实路径；仅报告实际送达时置位 —— 与画布挂载同真值域）
+      setReportDelivery(
+        (typeof data.insight === 'string' && data.insight) ? (_usedStream ? 'stream' : 'direct') : null,
+      );
       // 🛡️ Gate 41：Report ID 索引（同名输入 ⇒ 服务端 read-through 秒级复读，零算力消耗）
       if (data.reportId) {
         try {
@@ -1096,6 +1114,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     } catch (err) {
       console.error('[AIInsightBlock] generateReport error:', err);
       setReportPayload(null);
+      setReportHouseOverlay(null);
+      setReportDelivery(null);
       setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
     } finally {
       setReportStage(null);
@@ -1321,7 +1341,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               )}
               {reportText && reportPayload && (
                 /* 🛡️ Gate 40：标准化画布（张量卡 + 四段壳；溢出三道防线） */
-                <CompatReportCanvas payload={reportPayload} lang={lang} />
+                <CompatReportCanvas payload={reportPayload} lang={lang} houseOverlay={reportHouseOverlay} delivery={reportDelivery} />
               )}
               {reportText && !reportPayload && (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>

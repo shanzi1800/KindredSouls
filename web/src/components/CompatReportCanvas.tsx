@@ -13,11 +13,15 @@
 import React from 'react';
 import {
   type CompatReportPayload, type CompatPayloadCard, type PayloadTermRef, type CompatCanvasModel,
+  type CompatHouseOverlayModel, type CompatHouseTruthSidecar, type CompatDeliveryMode,
   SLOT_BUDGETS, clampToSlot, graphemes, sectionAccent,
 } from '../lib/reportLayout';
 import { ASTRO_TERMS } from '../lib/algos/astroTerms.generated';
+import CompatHouseGrid from './CompatHouseGrid';
 // @ts-ignore —— canvasModel.mjs 为纯 JS 派生核（运行时形状由 Gate 42 闸门守备）
 import { deriveCanvasModel } from '../lib/canvasModel.mjs';
+// @ts-ignore —— houseOverlay.mjs 为纯 JS 派生核（运行时形状由 Gate 44 闸门守备）
+import { deriveHouseOverlay } from '../lib/houseOverlay.mjs';
 
 const GOLD = '#D4AF37';
 const GOLD_SOFT = 'rgba(212,175,55,0.16)';
@@ -113,11 +117,20 @@ const CardBlock: React.FC<{ card: CompatPayloadCard }> = ({ card }) => (
   </div>
 );
 
-const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string }> = ({ payload }) => {
+const CompatReportCanvas: React.FC<{
+  payload: CompatReportPayload;
+  lang?: string;
+  /** 🛡️ Gate 44：信封旁置宫位真值（非 payload 契约字段；缺省 ⇒ 网格不渲染） */
+  houseOverlay?: CompatHouseTruthSidecar | null;
+  /** 🛡️ Gate 44：报告投递溯源（真实路径：流式 SSE / 安全直连） */
+  delivery?: CompatDeliveryMode | null;
+}> = ({ payload, houseOverlay = null, delivery = null }) => {
   const t = payload.truth;
   const lb = payload.labels || {};
   // 🛡️ Gate 42：三卡视觉模型（前端纯派生；不可用 ⇒ null，绝不渲染 undefined/NaN）
   const canvasMap = deriveCanvasModel(payload, ASTRO_TERMS) as CompatCanvasModel | null;
+  // 🛡️ Gate 44：宫位交互网格模型（信封旁置真值纯派生；缺真值/非精确建盘 ⇒ null，绝不臆造宫位）
+  const houseModel = deriveHouseOverlay(payload, houseOverlay, ASTRO_TERMS) as CompatHouseOverlayModel | null;
   const synLabel = (payload.terms && payload.terms.synastry && payload.terms.synastry.label) || '';
   const ratioText = (typeof t.ratio === 'number' && isFinite(t.ratio))
     ? `${(t.ratio * 100).toFixed(1)}%`
@@ -171,7 +184,7 @@ const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string
           {canvasMap && (
             <div style={{ marginBottom: '12px' }}>
               {/* ① 羁绊签名卡 —— 称号 + 调和占比 + 核心能量 Chip */}
-              <div data-testid="bond-signature-card" style={CARD_BOX}>
+              <div data-testid="bond-signature-card" className="ks-card-shimmer" style={CARD_BOX}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '7px', minWidth: 0 }}>
                   <span style={{ fontSize: '16px', fontWeight: 800, color: GOLD, ...SAFE_TEXT }}>
                     {clampToSlot(canvasMap.signature.tier ? canvasMap.signature.tier.label : '', 'labelCard')}
@@ -192,7 +205,7 @@ const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string
               </div>
 
               {/* ② 命运契约卡 —— 契约态 + 命中虚点 + 箴言锚 */}
-              <div data-testid="karmic-contract-card" style={CARD_BOX}>
+              <div data-testid="karmic-contract-card" className="ks-card-parchment ks-card-shimmer" style={CARD_BOX}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px', minWidth: 0 }}>
                   <span style={{
                     fontSize: '13px', fontWeight: 800,
@@ -228,6 +241,9 @@ const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string
               </div>
             </div>
           )}
+
+          {/* 🛡️ Gate 44：宫位交互网格（信封旁置真值 ⊗ 相位连线；缺真值 ⇒ 组件自返 null，零空壳） */}
+          {houseModel && <CompatHouseGrid model={houseModel} lang={payload.lang} delivery={delivery} />}
 
           {(payload.cards || []).map((card) => <CardBlock key={card.id} card={card} />)}
 

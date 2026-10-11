@@ -112,6 +112,53 @@ export interface CompatCanvasModel {
   energy: CompatCanvasEnergyAxis[];
 }
 
+// ── Gate 44 宫位交互网格（**信封旁置真值**，非 payload 契约字段；守 payload 双向键集零污染）──
+/** 服务端信封旁置字段 `houseOverlay`（真源 astroMatrix.meta.computed_houses） */
+export interface CompatHouseTruthSidecar {
+  available: boolean;
+  precision: string | null;
+  /** 甲侧行星英文键 → 宫位号（1..12）；缺值/非精确建盘 ⇒ {} */
+  a: Record<string, number>;
+  b: Record<string, number>;
+}
+
+export interface CompatHouseCell {
+  house: number;
+  numeral: string;
+  a: { key: string; label: string }[];
+  b: { key: string; label: string }[];
+  resonance: boolean;
+}
+
+export interface CompatHouseLink {
+  id: string;
+  aLabel: string;
+  bLabel: string;
+  aspectLabel: string;
+  orb: number | null;
+  polarity: 'harmonious' | 'hard' | null;
+  houseA: number;
+  houseB: number;
+  houseNumeralA: string;
+  houseNumeralB: string;
+}
+
+export interface CompatHouseOverlayModel {
+  available: boolean;
+  precision: string | null;
+  title: PayloadTermRef | null;
+  resonanceLabel: PayloadTermRef | null;
+  legend: { self: PayloadTermRef | null; familiar: PayloadTermRef | null };
+  numerals: string[];
+  cols: number;
+  cells: CompatHouseCell[];
+  resonanceCount: number;
+  links: CompatHouseLink[];
+}
+
+/** 报告投递溯源（真实路径：流式 SSE / 安全直连 JSON；仅供前端状态可视化，真值不落 payload） */
+export type CompatDeliveryMode = 'stream' | 'direct';
+
 // ── 字素工具（Intl.Segmenter：泰语声调符/越语变音符号不误判为独立字素）──────────
 const SEG: Intl.Segmenter | null = (typeof Intl !== 'undefined' && typeof (Intl as { Segmenter?: unknown }).Segmenter === 'function')
   ? new Intl.Segmenter('en', { granularity: 'grapheme' })

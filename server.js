@@ -12900,6 +12900,19 @@ function _compatTimeTruthSide(body, side) {
 }
 
 async function buildCompatSynastryTruth(body, d1, d2) {
+  // 🛡️ Gate 44：宫位真值采集（真源 astroMatrix.meta.computed_houses —— 全站唯一宫位真值源）。
+  //   🔴 **必须内联定义**：本函数被 E40 闸门以「源码抽取 + new Function」消费（VM 抽取式消费者铁律）
+  //      ⇒ 任何外部 helper 在抽取片段里即 ReferenceError（实测 B3/B4/B6/D2 四红）。
+  //   只采 1..12 整数宫位；缺值一律剔除（如实「未知」，绝不臆造宫位号）。
+  const _houseOf = (mx) => {
+    const ch = (mx && mx.meta && mx.meta.computed_houses) || {};
+    const o = {};
+    for (const p of Object.keys(ch)) {
+      const h = Number(ch[p] && ch[p].house);
+      if (Number.isInteger(h) && h >= 1 && h <= 12) o[p] = h;
+    }
+    return o;
+  };
   const specA = _compatTimeTruthSide(body, 'a');
   const specB = _compatTimeTruthSide(body, 'b');
   const _provided = (s) => !!s && (
@@ -12929,7 +12942,7 @@ async function buildCompatSynastryTruth(body, d1, d2) {
         : await getAstroMatrix(bd, undefined, undefined, undefined, undefined, {});
       if (!matrix) return { available: false, reason: 'astro_unavailable' };
       const triad = extractNatalTriad(matrix);
-      sides.push({ longitudes: triad.planetLongitudes || {}, timed });
+      sides.push({ longitudes: triad.planetLongitudes || {}, timed, houses: _houseOf(matrix) });
     }
     if (Object.keys(sides[0].longitudes).length === 0 || Object.keys(sides[1].longitudes).length === 0) {
       return { available: false, reason: 'insufficient_longitudes' };
@@ -12942,6 +12955,13 @@ async function buildCompatSynastryTruth(body, d1, d2) {
     });
     const harm = dual.harmony || {};
     const summ = dual.summary || {};
+    // 🛡️ Gate 44：宫位映射真值（**信封旁置通道** —— 与 payload 并列，绝不注入 payload ⇒ Gate 40 双向键集零污染）。
+    //   宫位由上升点决定 ⇒ 仅双人皆精确建盘（timed）且两侧均采到宫位时方可判定，否则如实弃权（available:false）。
+    const _g44Prec = dual.precision || precision;
+    const _g44HouseA = sides[0].houses || {};
+    const _g44HouseB = sides[1].houses || {};
+    const _g44OverlayOk = _g44Prec === 'timed'
+      && Object.keys(_g44HouseA).length > 0 && Object.keys(_g44HouseB).length > 0;
     console.log(`[E40+] compat synastry: precision=${dual.precision || precision} harmonious=${harm.harmonious} hard=${harm.hard} total=${harm.total}`);
     return {
       available: true,
@@ -12956,6 +12976,10 @@ async function buildCompatSynastryTruth(body, d1, d2) {
       bonds: Array.isArray(summ.bonds) ? summ.bonds : [],
       frictions: Array.isArray(summ.frictions) ? summ.frictions : [],
       signatures: (summ.signatures && typeof summ.signatures === 'object') ? summ.signatures : {},
+      // 🛡️ Gate 44：宫位映射真值（true ⇒ 双人皆精确建盘 + 两侧宫位齐备；false ⇒ 如实弃权）
+      houseOverlay: _g44OverlayOk
+        ? { available: true, precision: 'timed', a: _g44HouseA, b: _g44HouseB }
+        : { available: false, precision: _g44Prec, a: {}, b: {} },
     };
   } catch (e) {
     console.warn('[E40+] compat synastry truth degraded:', (e && e.message) || e);
@@ -15204,6 +15228,10 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _compatSyn = await buildCompatSynastryTruth(req.body || {}, d1, d2);
         // 🛡️ Gate 43：Stage 1 —— 真值里程碑②「推演双盘行星与虚点相位」（张量算毕）
         if (_sse) _sse.stage(1, lang);
+        // 🛡️ Gate 44：宫位映射真值（**信封旁置字段** —— 与 payload 并列独立通道，payload 双向键集零污染）。
+        //   仅在双人皆精确建盘且两侧宫位齐备时下发；否则 null ⇒ 前端网格如实不渲染（绝不臆造宫位）。
+        const _g44House = (_compatSyn && _compatSyn.houseOverlay && _compatSyn.houseOverlay.available)
+          ? _compatSyn.houseOverlay : null;
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
         const _compat = buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
           bazi: req.body.bazi || null,
@@ -15278,6 +15306,7 @@ app.use('/api/ai-advisor', async (req, res) => {
           const _sseBody = { insight, cached: false };
           if (_pipelinePayload) _sseBody.payload = _pipelinePayload;
           if (_pipelinePayload && _g41Persisted) _sseBody.reportId = _g41ReportId;
+          if (_pipelinePayload && _g44House) _sseBody.houseOverlay = _g44House;
           return _sse.ready(lang, _sseBody);
         }
         // 🔴 增量契约：payload 存在则附带（前端画布用）；缺省时回退既有回执形态（向后兼容）
@@ -15285,6 +15314,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         if (_pipelinePayload) {
           const _g41Body = { insight, cached: false, payload: _pipelinePayload };
           if (_g41Persisted) _g41Body.reportId = _g41ReportId;
+          if (_g44House) _g41Body.houseOverlay = _g44House;
           return res.json(_g41Body);
         }
         return res.json({ insight, cached: false });
