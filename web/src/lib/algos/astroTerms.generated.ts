@@ -779,6 +779,78 @@ export const ASTRO_TERMS = {
         "fr": "Contrat Karmique",
         "th": "สัญญาแห่งกรรม",
         "vi": "Khế Ước Nghiệp"
+      },
+      "BondRadiant": {
+        "zh": "辉映之绊",
+        "en": "Radiant Bond",
+        "es": "Vínculo Radiante",
+        "fr": "Lien Radieux",
+        "th": "พันธะเรืองรอง",
+        "vi": "Duyên Sáng Ngời"
+      },
+      "BondHarmonic": {
+        "zh": "和鸣之绊",
+        "en": "Harmonic Bond",
+        "es": "Vínculo Armónico",
+        "fr": "Lien Harmonieux",
+        "th": "พันธะกลมกลืน",
+        "vi": "Duyên Hòa Thanh"
+      },
+      "BondTempered": {
+        "zh": "磨合之绊",
+        "en": "Tempered Bond",
+        "es": "Vínculo Templado",
+        "fr": "Lien Trempé",
+        "th": "พันธะหล่อหลอม",
+        "vi": "Duyên Tôi Luyện"
+      },
+      "BondTesting": {
+        "zh": "试炼之绊",
+        "en": "Testing Bond",
+        "es": "Vínculo de Prueba",
+        "fr": "Lien d'Épreuve",
+        "th": "พันธะทดสอบ",
+        "vi": "Duyên Thử Luyện"
+      },
+      "IntimacyBond": {
+        "zh": "亲密共振",
+        "en": "Intimate Resonance",
+        "es": "Resonancia Íntima",
+        "fr": "Résonance Intime",
+        "th": "เสียงสะท้อนใกล้ชิด",
+        "vi": "Cộng Hưởng Thân Mật"
+      },
+      "EmotionalSync": {
+        "zh": "情绪默契",
+        "en": "Emotional Sync",
+        "es": "Sincronía Emocional",
+        "fr": "Harmonie Émotionnelle",
+        "th": "ความเข้าอกเข้าใจ",
+        "vi": "Đồng Điệu Cảm Xúc"
+      },
+      "TerritoryFit": {
+        "zh": "领地磨合",
+        "en": "Territory Fit",
+        "es": "Ajuste Territorial",
+        "fr": "Ajustement Territorial",
+        "th": "การปรับตัวถิ่นฐาน",
+        "vi": "Hòa Hợp Lãnh Thổ"
+      },
+      "ContractSealed": {
+        "zh": "契约已成",
+        "en": "Contract Sealed",
+        "es": "Contrato Sellado",
+        "fr": "Contrat Scellé",
+        "th": "พันธสัญญาประทับ",
+        "vi": "Khế Ước Đã Niêm"
+      },
+      "ContractPending": {
+        "zh": "契约未明",
+        "en": "Contract Pending",
+        "es": "Contrato Pendiente",
+        "fr": "Contrat en Attente",
+        "th": "พันธสัญญารอ",
+        "vi": "Khế Ước Chờ Định"
       }
     }
   },

@@ -82,6 +82,36 @@ export interface CompatReportPayload {
   sections: CompatPayloadSection[];
 }
 
+// ── Gate 42 画布三卡视图模型（**前端派生**，非 payload 契约字段；守 payload 顶层键集零污染）──
+export interface CompatCanvasSignature {
+  tierKey: string | null;
+  tier: PayloadTermRef | null;
+  ratioPct: number | null;
+  chips: CompatPayloadAspectItem[];
+}
+
+export interface CompatCanvasContract {
+  sealed: boolean;
+  state: PayloadTermRef | null;
+  points: PayloadTermRef[];
+  quote: CompatPayloadAspectItem | null;
+}
+
+export interface CompatCanvasEnergyAxis {
+  id: string;
+  axis: PayloadTermRef | null;
+  known: boolean;
+  harmonious: number;
+  hard: number;
+  value: number | null;
+}
+
+export interface CompatCanvasModel {
+  signature: CompatCanvasSignature;
+  contract: CompatCanvasContract;
+  energy: CompatCanvasEnergyAxis[];
+}
+
 // ── 字素工具（Intl.Segmenter：泰语声调符/越语变音符号不误判为独立字素）──────────
 const SEG: Intl.Segmenter | null = (typeof Intl !== 'undefined' && typeof (Intl as { Segmenter?: unknown }).Segmenter === 'function')
   ? new Intl.Segmenter('en', { granularity: 'grapheme' })

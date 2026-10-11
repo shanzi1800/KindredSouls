@@ -17,7 +17,7 @@
  *   C 反序列化守卫（双版本 + 最小形状；历史/异构/被篡改行一律 null）
  *   D server.js 接线（次序铁律 / 回执契约 / fail-safe / 引渡行独立 / 归属双键）
  *   E 注入反漂移（稳定排序被摘 / 版本守卫被摘 ⇒ 必红）
- *   F 段位守备（40 段 · Gate 41 居收口位 audit-e40-compat 之前 · 链尾 python）
+ *   F 段位守备（≥40 段 · Gate 41 居收口位 audit-e40-compat 之前 · 链尾 python）
  *
  * 纯 Node 运行（无 DOM / 无网络 / 无 LLM）。
  */
@@ -218,12 +218,14 @@ test('E2 注入：persistVersion 版本守卫被摘 ⇒ C2 判据必红（异构
 });
 
 /* ══════════════════ F 组 · 段位守备 ══════════════════ */
-test('F1 段位：test:astro 40 段 · Gate 41 居收口位（e40-compat）之前 · 链尾 python', () => {
+test('F1 段位：test:astro ≥40 段 · Gate 41 居收口位（e40-compat）之前 · 链尾 python', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim());
-  assert.equal(segs.length, 40, `段数漂移：${segs.length}`);
+  // 🔴 下界 + 相对位置（漂移免疫）：与 Gate 40 G1 同范式 —— 后续新段入编不得撞红本闸门
+  assert.ok(segs.length >= 40, `段数须 ≥ 40（39 + Gate 41），实为 ${segs.length}`);
   const iG41 = segs.findIndex((s) => s.includes('audit-e41plus-gate41-persist-loop'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat-synastry-tensor-fusion'));
   assert.ok(iG41 > 0, 'Gate 41 段未入编');
   assert.ok(iG41 < iCap, `Gate 41 必须插在收口位（e40-compat）之前：g41=${iG41} cap=${iCap}`);
+  assert.equal(iCap, segs.length - 2, 'e40-compat 必须保持收口位（倒数第二段）');
   assert.match(segs[segs.length - 1], /^python3?\s+scripts\//, '链尾必为 python 段');
 });

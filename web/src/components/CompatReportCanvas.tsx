@@ -12,9 +12,12 @@
  */
 import React from 'react';
 import {
-  type CompatReportPayload, type CompatPayloadCard, type PayloadTermRef,
+  type CompatReportPayload, type CompatPayloadCard, type PayloadTermRef, type CompatCanvasModel,
   SLOT_BUDGETS, clampToSlot, graphemes, sectionAccent,
 } from '../lib/reportLayout';
+import { ASTRO_TERMS } from '../lib/algos/astroTerms.generated';
+// @ts-ignore —— canvasModel.mjs 为纯 JS 派生核（运行时形状由 Gate 42 闸门守备）
+import { deriveCanvasModel } from '../lib/canvasModel.mjs';
 
 const GOLD = '#D4AF37';
 const GOLD_SOFT = 'rgba(212,175,55,0.16)';
@@ -54,6 +57,34 @@ const TermChip: React.FC<{ term: PayloadTermRef; polarity?: 'harmonious' | 'hard
   </span>
 );
 
+/* ── Gate 42 三卡容器样式（防线 ③：一律带 SAFE_TEXT 断行兜底 + minWidth:0）── */
+const CARD_BOX: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(212,175,55,0.18)',
+  borderRadius: '12px',
+  padding: '11px 12px',
+  marginBottom: '10px',
+  minWidth: 0,
+  ...SAFE_TEXT,
+};
+
+const CARD_TITLE: React.CSSProperties = {
+  fontSize: '12px', fontWeight: 700, color: GOLD, letterSpacing: '0.5px',
+  marginBottom: '6px', ...SAFE_TEXT,
+};
+
+const BAR_TRACK: React.CSSProperties = {
+  height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)',
+  overflow: 'hidden', minWidth: 0, flex: '1 1 auto',
+};
+
+const barFill = (pct: number): React.CSSProperties => ({
+  height: '100%',
+  width: `${Math.max(0, Math.min(100, pct))}%`,
+  background: pct >= 60 ? '#A5D6A7' : pct >= 40 ? GOLD : '#FF8A80',
+  borderRadius: '999px',
+});
+
 const MetricCell: React.FC<{ label: string; value: string; accent?: string }> = ({ label, value, accent = GOLD }) => (
   <div style={{
     flex: '1 1 72px', minWidth: 0, background: 'rgba(255,255,255,0.04)',
@@ -85,6 +116,8 @@ const CardBlock: React.FC<{ card: CompatPayloadCard }> = ({ card }) => (
 const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string }> = ({ payload }) => {
   const t = payload.truth;
   const lb = payload.labels || {};
+  // 🛡️ Gate 42：三卡视觉模型（前端纯派生；不可用 ⇒ null，绝不渲染 undefined/NaN）
+  const canvasMap = deriveCanvasModel(payload, ASTRO_TERMS) as CompatCanvasModel | null;
   const synLabel = (payload.terms && payload.terms.synastry && payload.terms.synastry.label) || '';
   const ratioText = (typeof t.ratio === 'number' && isFinite(t.ratio))
     ? `${(t.ratio * 100).toFixed(1)}%`
@@ -134,6 +167,67 @@ const CompatReportCanvas: React.FC<{ payload: CompatReportPayload; lang?: string
             <MetricCell label={lb.total || ''} value={String(t.total)} />
             <MetricCell label={lb.ratio || ''} value={ratioText} />
           </div>
+
+          {canvasMap && (
+            <div style={{ marginBottom: '12px' }}>
+              {/* ① 羁绊签名卡 —— 称号 + 调和占比 + 核心能量 Chip */}
+              <div data-testid="bond-signature-card" style={CARD_BOX}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '7px', minWidth: 0 }}>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: GOLD, ...SAFE_TEXT }}>
+                    {clampToSlot(canvasMap.signature.tier ? canvasMap.signature.tier.label : '', 'labelCard')}
+                  </span>
+                  {canvasMap.signature.ratioPct !== null && (
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', ...SAFE_TEXT }}>
+                      {clampToSlot(lb.ratio || '', 'chip')} {canvasMap.signature.ratioPct}%
+                    </span>
+                  )}
+                </div>
+                {canvasMap.signature.chips.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minWidth: 0 }}>
+                    {canvasMap.signature.chips.map((it) => (
+                      <TermChip key={it.id} term={{ domain: 'pair', key: it.id, label: it.text, slot: 'chip' }} polarity={it.polarity} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ② 命运契约卡 —— 契约态 + 命中虚点 + 箴言锚 */}
+              <div data-testid="karmic-contract-card" style={CARD_BOX}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px', minWidth: 0 }}>
+                  <span style={{
+                    fontSize: '13px', fontWeight: 800,
+                    color: canvasMap.contract.sealed ? GOLD : 'rgba(255,255,255,0.55)', ...SAFE_TEXT,
+                  }}>
+                    {canvasMap.contract.sealed ? '🔗 ' : '⛓︎ '}
+                    {clampToSlot(canvasMap.contract.state ? canvasMap.contract.state.label : '', 'labelCard')}
+                  </span>
+                  {canvasMap.contract.points.map((p) => <TermChip key={p.key} term={p} />)}
+                </div>
+                {canvasMap.contract.quote && (
+                  <div style={{ fontSize: '12px', lineHeight: 1.6, color: 'rgba(255,255,255,0.82)', ...SAFE_TEXT }}>
+                    {clampToSlot(canvasMap.contract.quote.text, 'hardCap')}
+                  </div>
+                )}
+              </div>
+
+              {/* ③ 双星能量图谱 —— 亲密共振 / 情绪默契 / 领地磨合 */}
+              <div data-testid="energy-grid-card" style={CARD_BOX}>
+                {canvasMap.energy.map((ax) => (
+                  <div key={ax.id} style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '7px', minWidth: 0 }}>
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', flex: '0 0 auto', maxWidth: '44%', ...SAFE_TEXT }}>
+                      {clampToSlot(ax.axis ? ax.axis.label : '', 'chip')}
+                    </span>
+                    <div style={BAR_TRACK}>
+                      {ax.known && typeof ax.value === 'number' && <div style={barFill(ax.value)} />}
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.75)', flex: '0 0 auto', minWidth: '26px', textAlign: 'right' }}>
+                      {ax.known && typeof ax.value === 'number' ? ax.value : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {(payload.cards || []).map((card) => <CardBlock key={card.id} card={card} />)}
 
