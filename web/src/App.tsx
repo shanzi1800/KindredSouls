@@ -218,14 +218,6 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
   const [t2, setT2] = useState('');
   const [c2, setC2] = useState<CityRecord | null>(null);
   const lang = ((i18n.language || 'en').split('-')[0] || 'en') as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
-  const L_MORE = ({
-    zh: '+ 补齐出生时间 / 城市（可选 · 提升星历精度）',
-    en: '+ Add birth time / city (optional · sharper ephemeris)',
-    es: '+ Añadir hora / ciudad (opcional · mayor precisión)',
-    fr: '+ Ajouter heure / ville (optionnel · plus précis)',
-    th: '+ เพิ่มเวลา / เมืองเกิด (เลือกได้ · แม่นขึ้น)',
-    vi: '+ Thêm giờ / thành phố (tùy chọn · chính xác hơn)',
-  } as Record<string, string>)[lang] || '+ Add birth time / city (optional)';
   const L_TIME = ({
     zh: '出生时间（可选）', en: 'Birth Time (optional)', es: 'Hora de nacimiento (opcional)',
     fr: 'Heure de naissance (optionnel)', th: 'เวลาเกิด (เลือกได้)', vi: 'Giờ sinh (tùy chọn)',
@@ -355,36 +347,28 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         <div className="date-field">
           <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
           <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
-          <details style={{ marginTop: '6px', textAlign: 'left' }}>
-            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#81D8D0', listStyle: 'none', userSelect: 'none' }}>{L_MORE}</summary>
-            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
-                <TimeInput value={t1} onChange={setT1} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
-                <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
-              </div>
-            </div>
-          </details>
+          {/* 🌌 对齐财富模块：出生城市 / 出生时间常显（可选填写；有则 timed 真盘，无则服务端如实降级） */}
+          <div style={{ marginTop: '10px', textAlign: 'left' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+            <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
+            <TimeInput value={t1} onChange={setT1} />
+          </div>
         </div>
         <div className="date-field">
           <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
-          <details style={{ marginTop: '6px', textAlign: 'left' }}>
-            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#81D8D0', listStyle: 'none', userSelect: 'none' }}>{L_MORE}</summary>
-            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
-                <TimeInput value={t2} onChange={setT2} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
-                <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
-              </div>
-            </div>
-          </details>
+          {/* 🌌 对齐财富模块：TA 的出生城市 / 出生时间常显 */}
+          <div style={{ marginTop: '10px', textAlign: 'left' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+            <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+            <label style={{ display: 'block', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px', marginTop: '8px' }}>{L_TIME}</label>
+            <TimeInput value={t2} onChange={setT2} />
+          </div>
+        </div>
+        {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip） */}
+        <div style={{ marginTop: '14px', padding: '12px 14px', background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '12px', fontSize: '11px', color: '#F0D060', lineHeight: 1.6, textAlign: 'left' }}>
+          🔮 {t('wealthInput.birthTip')}
         </div>
         <button className="btn btn-primary" onClick={submit}>{t('input.calculate')}</button>
       </div>
