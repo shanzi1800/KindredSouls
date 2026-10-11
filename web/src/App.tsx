@@ -1028,6 +1028,14 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       const data = await res.json();
       // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
       setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
+      // 🛡️ Gate 41：Report ID 索引（同名输入 ⇒ 服务端 read-through 秒级复读，零算力消耗）
+      if (data.reportId) {
+        try {
+          localStorage.setItem(`compatReportId:${lang}:${type}`, String(data.reportId));
+        } catch (e) {
+          console.warn('[generateReport] reportId index skipped:', e);
+        }
+      }
       if (data.insight) {
         setReportText(data.insight);
       } else {

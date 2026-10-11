@@ -471,6 +471,7 @@ import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ 
 import { buildCompatPrompt, buildCompatTimeContext, computeCompatScores } from './api/ai-advisor.js';  // 🛍️ E39-A: 合婚四段骨架真值资产（六语 + 动态时间轴 + 强制数据锁，单一真源引渡）
 import { SYNASTRY_I18N } from './api/ai-advisor.js';  // 🛡️ Gate 40: 合盘报告六语真值表（Payload 装配注入；独立成行，不污染 E39 封仓引渡契约行）
 import { buildReportPayload, createReportPipeline, REPORT_PAYLOAD_SCHEMA } from './lib/reportPipeline.mjs';  // 🛡️ Gate 40: 合盘报告生成管线（状态机 + 标准化 Payload 契约，纯逻辑核）
+import { deriveCompatReportId, deserializePersistedPayload, planPersistRow } from './lib/reportPipeline.mjs';  // 🛡️ Gate 41: 实名持久化三件套（Report ID 派生 + 行构造 + 反序列化守卫；独立成行，不污染既有引渡契约行）
 import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // 🛡️ V475: 年报文本完整度闸门
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
@@ -13498,6 +13499,27 @@ async function resolveReportEntitlement(req, domain, reportType) {
   }
 }
 
+// ── 🛡️ Gate 41：合婚报告持久化复读（read-through 的取数适配器）──
+//   落点 compatibility_results（合婚域天然归属表；ai_context/ai_insight 两列经实证零占用 ⇒ 零 DDL）。
+//   🔴 只认 user_id 归属 + ai_context->>reportId 双键命中 ⇒ 越权读不到（隐私守恒）。
+//   🔴 取数任何异常 ⇒ 返回 null（自然走 MISS 生成链路，绝不阻断、绝不伪造）。
+async function replayCompatReportRow({ userId, reportId }) {
+  if (!userId || !reportId) return null;
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return null;
+  try {
+    const url = `${SB_URL}/rest/v1/compatibility_results?user_id=eq.${encodeURIComponent(userId)}&ai_context->>reportId=eq.${encodeURIComponent(reportId)}&select=ai_insight,ai_context&order=created_at.desc&limit=1`;
+    const r = await safeFetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return deserializePersistedPayload(Array.isArray(rows) ? rows[0] : null);
+  } catch (e) {
+    console.warn('[Gate41] replay lookup skipped:', (e && e.message) || e);
+    return null;
+  }
+}
+
 // ── /api/create-checkout ──（E24⑥ 全量移植：登录校验 → 防重付 → 建客户 → 建会话(**带 metadata**)）
 //   🛡️ metadata.supabase_user_id / metadata.plan 是 webhook 落库的**唯一钥匙**，
 //      缺它则回调无从归属 ⇒ 本次移植的核心不改项（旧 Railway 版正是缺这一段）。
@@ -15072,6 +15094,24 @@ app.use('/api/ai-advisor', async (req, res) => {
           preview: true,
         });
       }
+      // 🛡️ Gate 41：实名持久化 read-through —— 复读命中 ⇒ 零算力秒级复读（军师红线 ④）
+      //   🔴 次序铁律：位于权益闸门之后（401/402 fail-closed 守恒）、周期锁/日限流/配额递增**之前**
+      //      （复读是零成本读取，绝不重复扣减算力）。
+      //   🔴 绿道/无 Supabase 配置（无 userId）⇒ 无归属可查 ⇒ 自然走 MISS 生成链路。
+      const _g41ReportId = deriveCompatReportId({
+        reportType, lang, d1, d2,
+        bazi: req.body.bazi || null,
+        zodiac: req.body.zodiac || null,
+        iching: req.body.iching || null,
+        tarot: req.body.tarot || null,
+        zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+        userBirthDate: _cEnt.userBirthDate || null,
+      });
+      const _g41Replay = await replayCompatReportRow({ userId: _cEnt.userId || null, reportId: _g41ReportId });
+      if (_g41Replay) {
+        console.log(`[Gate41] report replay HIT: reportId=${_g41ReportId} type=${reportType} lang=${lang}`);
+        return res.json({ insight: _g41Replay.insight, cached: true, payload: _g41Replay.payload, reportId: _g41Replay.reportId || _g41ReportId });
+      }
       if (_cEnt.method !== 'green_channel' && _cEnt.method !== 'no_supabase_configured') {
         const _nowC = new Date();
         const _lockC = compatibilityPeriodLock(_cEnt.plans || {}, reportType, _cEnt.userBirthDate || null, _nowC);
@@ -15135,12 +15175,37 @@ app.use('/api/ai-advisor', async (req, res) => {
           _pipe.fail('payload_assembly_failed');
           console.warn('[Gate40] payload assembly skipped:', (_pErr && _pErr.message) || _pErr);
         }
+        // 🛡️ Gate 41：payload 落库（compatibility_results · 零 DDL 复用零占用列）—— 复读零算力底座
+        //   🔴 fail-safe：落库失败/缺真值（绿道无 userId 等）⇒ 仅 console.warn，报告照常交付
+        //      （响应缺 reportId 即前端回退，与 Gate 40 缺省契约同构）。
+        let _g41Persisted = false;
+        if (_pipelinePayload && _cEnt.userId) {
+          try {
+            const _g41Row = planPersistRow({ reportId: _g41ReportId, reportType, lang, insight, payload: _pipelinePayload, userId: _cEnt.userId });
+            if (_g41Row) {
+              const _g41Res = await safeFetch(`${process.env.SUPABASE_URL}/rest/v1/compatibility_results`, {
+                method: 'POST',
+                headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                body: JSON.stringify(_g41Row),
+              });
+              _g41Persisted = !!_g41Res.ok;
+              if (!_g41Res.ok) console.warn('[Gate41] persist skipped:', _g41Res.status);
+            }
+          } catch (_g41Err) {
+            console.warn('[Gate41] persist error:', (_g41Err && _g41Err.message) || _g41Err);
+          }
+        }
         // 🛍️ E24⑥② 生成成功 ⇒ 补写合婚生成周期时间戳（失败不写，避免把用户在期内锁死）
         if (_cEnt.userId) {
           await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, new Date(), { withDaily: false, withQuota: false }));
         }
         // 🔴 增量契约：payload 存在则附带（前端画布用）；缺省时回退既有回执形态（向后兼容）
-        if (_pipelinePayload) return res.json({ insight, cached: false, payload: _pipelinePayload });
+        //   🛡️ Gate 41：落库成功附带 reportId（复读索引）；失败缺省 ⇒ 前端照常回退。
+        if (_pipelinePayload) {
+          const _g41Body = { insight, cached: false, payload: _pipelinePayload };
+          if (_g41Persisted) _g41Body.reportId = _g41ReportId;
+          return res.json(_g41Body);
+        }
         return res.json({ insight, cached: false });
       } catch (aiError) {
         console.error('[AI Advisor] AI generation failed:', aiError.message);
