@@ -276,7 +276,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
           marginBottom: '12px',
         }}
       >
-        💎 $4.99/{c.subscription}
+        💎 $9.99/{c.subscription}
       </button>
 
       {/* 年卡按钮 — 金色渐变 */}
