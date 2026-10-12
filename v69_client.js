@@ -836,6 +836,42 @@ ${transitLines.join('\n')}`
       ].join('\n')
     : '';
 
+  // ── Part 2e: 🛡️ 45-F 十二宫位法定权威矩阵（宫头星座 × 法定宫主星 × 主星本命落座）──
+  //   军师 2026-10-12 攻坚令「Gate 45-F · 宫位体系与主星归属硬核锁死」之①前置死锁。
+  //   病根：Part 2c 的「宫头 / 主星」是**行内散文**（`H11(cusp Aquarius) · classical: Saturn …`），
+  //        长文展开时模型会 ① 记错宫头星座 ② 宫主星串行（第 N 宫的宫主星安到第 N±1 宫）
+  //        ③ 同一篇报告前后自相矛盾（同一宫位两个宫头星座）——45-D2 只锁「行星×星座」，宫位层全在射程外。
+  //   治法：把 house_cusps_full + house_rulers 拧成**一张 12 行矩阵表**（第三种冗余表述，
+  //        与 Part 2d 死锁表同构），并配 Part 3 零容忍负向规则；后置 `lintHouseRulersAndCups` 兜底。
+  //   ⚠️ 纯**追加**：不动 Part 1/2/2b/2c/2d 任何字节。
+  //   ⚠️ 真值缺任一（无 cusps / 无 rulers / 任一行不完整）⇒ **整段不注入**（绝不半真半假、绝不写哨兵字面量）。
+  const houseMatrixSection = (() => {
+    const _cusps = meta.house_cusps_full || null;
+    const _rulers = meta.house_rulers || null;
+    if (!_cusps || !_rulers) return '';
+    const rows = [];
+    for (let i = 1; i <= 12; i++) {
+      const h = _cusps['house_' + i];
+      const rec = _rulers['house_' + i];
+      if (!h || !h.sign || !rec) return '';
+      const cl = rec.classical || null;
+      const md = rec.modern || null;
+      if (!cl || !cl.planet) return '';
+      const mName = (md && md.planet) ? md.planet : cl.planet;
+      const hs = (cl.house === null || cl.house === undefined) ? 1 : cl.house;
+      const seat = `${cl.planet} in ${cl.sign || '?'} H${hs}${cl.dignity ? ' (' + cl.dignity + ')' : ''}`;
+      rows.push(`| ${i} | ${h.sign} | ${cl.planet} | ${mName} | ${seat} |`);
+    }
+    if (rows.length !== 12) return '';
+    return [
+      '// ─── NATAL HOUSE MATRIX (12 houses · cusp sign · ruling planet · ruler natal seat) ───',
+      '// This matrix is the ONE AND ONLY truth for house cusps and house rulers. Copy character-for-character.',
+      '| House | Cusp Sign | Classical Ruler | Modern Ruler | Classical Ruler Natal Seat |',
+      '|---|---|---|---|---|',
+      ...rows,
+    ].join('\n');
+  })();
+
   // ── Part 3: 铁锁规则 (最高优先级 · 不可绕过) ────────────────────────
   // V465 强化：显式示范 natal vs transit 混淆的失败案例
   const natalExamplePlanets = Object.keys(jsonEntries).slice(0, 3); // 取前3个做示范
@@ -894,6 +930,20 @@ ${transitLines.join('\n')}`
       `   was written as Scorpio — both are THIS MONTH's transit signs, and the same report had already`,
       `   stated "natal Venus in Libra, House 11, dignified" earlier — a self-contradiction.)`,
     ] : []),
+    ...(houseMatrixSection ? [
+      ``,
+      `⚠️ NATAL HOUSE MATRIX — CUSPS & RULERS (45-F · ABSOLUTE · ZERO TOLERANCE):`,
+      `  The NATAL HOUSE MATRIX above is the ONE AND ONLY truth for house cusps and house rulers.`,
+      `  Copy a house's cusp sign, its Classical Ruler and its Modern Ruler from that house's own row.`,
+      `  FORBIDDEN: giving house N a cusp sign different from that row's Cusp Sign.`,
+      `  FORBIDDEN: calling any planet other than that row's Classical/Modern Ruler the ruler of house N.`,
+      `  FORBIDDEN: writing "house N is ruled by <planet>" when <planet> is not that row's ruler.`,
+      `  FORBIDDEN: giving the same house two different cusp signs, or two different rulers, in this report.`,
+      `  FORBIDDEN: the "ruler slip" — attaching a house's ruler to the neighbouring house.`,
+      `  A house sentence that contradicts the MATRIX is a REJECTED DRAFT — never ship it.`,
+      `  (Real production defect 2026-10-12: in one and the same once report the 10th-house cusp sign`,
+      `   and the ruler of the 11th house were both stated wrongly, contradicting the chart itself.)`,
+    ] : []),
   ].join('\n');
 
   return [
@@ -904,6 +954,7 @@ ${transitLines.join('\n')}`
     transitSection,
     houseTruthSection,
     deadlockSection,
+    houseMatrixSection,
     `// ─── RULES (Highest Priority · Non-Negotiable) ───`,
     rules,
   ].join('\n');
@@ -1481,6 +1532,383 @@ export function correctNatalPlanetSigns(text, lang, astroMatrix) {
     if (out.slice(h.offset, h.offset + found.length) !== found) continue;   // 位置守卫：索引漂移则弃权
     out = out.slice(0, h.offset) + to + out.slice(h.offset + found.length);
     corrections.push({ planet: h.planet, from: found, to, context: h.context });
+  }
+  return { text: out, corrections, checked, passed: corrections.length === 0 };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ 45-F 宫位体系与主星归属硬核锁 —— 宫头(cusp) / 宫主星(ruler) / 本命落宫 一致性
+// ═══════════════════════════════════════════════════════════════════════════
+// 病根（2026-10-12 once 先天报告审读实捕）：「宫位叙述层」成片幻觉 ——
+//   ① 宫头星座错（第 10 宫写成射手，真值摩羯）；
+//   ② **宫主星串行**（「第 11 宫由月亮主管」；真值 H11 宫头水瓶 ⇒ 法定主星土星/天王星，
+//      月亮实为本盘 H3/H4 主星）—— 把某宫的宫主星安到别的宫；
+//   ③ 上升/第 1 宫宫头错（上升双鱼写成白羊）；
+//   ④ **同一篇报告自相矛盾**（同一宫位出现两个宫头星座 / 两个主星）。
+//   45-D2 的 `correctNatalPlanetSigns` 只锁「行星×星座」，宫位 / 宫头 / 主星**完全在射程外** ⇒ 本锁补位。
+//
+// 真值源（单一真源 · 禁第二份）：
+//   宫头 = astroMatrix.meta.house_cusps_full（SwissEph Placidus，逐宫 sign）；
+//   宫主星 = astroMatrix.meta.house_rulers（逐宫 classical + modern 法定主星）；
+//   本命落宫 = astroMatrix.meta.computed_houses（与 45-D2/月报/年报同源）；
+//   多语言名词表 = astroTerms.js（Gate 39 唯一绝对真值源）。
+//
+// 🔴 射程与边界（刻意保守，宁漏不改）：
+//   ① 只认**明确契约句式**：宫头必带「宫头/宫始/宫首/cusp/cúspide/…」关键槽，
+//      或「第N宫 + 紧邻星座」且**左窗 14 字内无行星名**（防「木星在第2宫巨蟹座」被误读为宫头）；
+//      宫主星必带「主管/主星/宫主星/ruler/ruled by/rules/…」关键槽；
+//      本命落宫只认**本命语境**（与 45-D2 `_ksScanNatalSigns` 同纪律：本命修饰词 + 左窗流年守卫）。
+//   ② 所有匹配起点左窗 16 字内出现流年词 ⇒ 一律弃权（绝不误伤流年句，V472/V478 血训）。
+//   ③ 只替换**令牌本体**（星座名 / 行星名 / 宫号数字），句内其他字符一字不动 ⇒ **严格幂等**。
+//   ④ 缺真值（无 house_cusps_full / house_rulers / computed_houses / 未知语言）⇒
+//      原样返回、零动作（**绝不伪造、绝不崩**）。
+//   ⑤ lint 与 correct **共用同一检出核**；correct 从后往前替换 + 位置守卫（索引漂移即弃权）。
+const _KS_ZH_HOUSE_NUM = {
+  '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
+  '十': 10, '十一': 11, '十二': 12,
+};
+const _KS_ZH_HOUSE_NUM_INV = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十', 11: '十一', 12: '十二' };
+
+/** 各语「宫位令牌」形态（无捕获组 · 名称由外层具名组包裹） */
+const _KS_HNUM_SRC = {
+  zh: '第\\s*(?:\\d{1,2}|[一二三四五六七八九十]{1,3})\\s*宫',
+  en: '(?:\\d{1,2}(?:st|nd|rd|th)?\\s+house|house\\s+\\d{1,2})',
+  es: '(?:casa\\s+\\d{1,2}|\\d{1,2}\\s*(?:ª|a)?\\s*casa)',
+  fr: '(?:maison\\s+\\d{1,2}|\\d{1,2}\\s*(?:e|ème)?\\s*maison)',
+  th: '(?:เรือน|บ้าน)(?:ที่)?\\s*\\d{1,2}',
+  vi: '(?:nhà|cung)(?:\\s*thứ)?\\s*\\d{1,2}',
+};
+
+/** 宫头关键槽（无此槽则不认「宫头声称」，宁漏不改） */
+const _KS_CUSP_KW = {
+  zh: '(?:宫头|宫始|宫首|宫口|起于|始于)',
+  en: '(?:cusp|begins\\s+in|starts\\s+in|opens\\s+in)',
+  es: '(?:cúspide|cuspide|empieza\\s+en|comienza\\s+en)',
+  fr: '(?:cuspide|commence\\s+en|débute\\s+en)',
+  th: '(?:ปลาย(?:เรือน)?|จุดเริ่ม|เริ่มต้น(?:ที่)?)',
+  vi: '(?:đỉnh|điểm\\s+bắt\\s+đầu|bắt\\s+đầu\\s+từ)',
+};
+
+/** 宫主星关键槽（无此槽则不认「主星声称」，宁漏不改） */
+const _KS_RULER_KW = {
+  zh: '(?:宫主星|主管|主星|守护星|主宰|统辖)',
+  en: '(?:ruled\\s+by|ruler\\s+of|ruler\\s+is|is\\s+the\\s+ruler|rules|governs|governed\\s+by|lord\\s+of)',
+  es: '(?:regido\\s+por|regente|gobernado\\s+por|rige|gobierna)',
+  fr: '(?:gouverné(?:e)?\\s+par|gouverneur|régent|régit|gouverne)',
+  th: '(?:เจ้าเรือน|ผู้ครอง|ปกครอง)',
+  vi: '(?:chủ\\s+tinh|thống\\s+trị|cai\\s+quản)',
+};
+
+/** 宫主星「名词式」关键槽（用于「行星 + 宫位 + 主星名词」语序，如「火星是第7宫的宫主星」） */
+const _KS_RULER_NOUN_KW = {
+  zh: '(?:宫主星|主星|守护星|主宰)',
+  en: '(?:the\\s+ruler|ruler)',
+  es: '(?:el\\s+regente|regente)',
+  fr: '(?:le\\s+gouverneur|gouverneur|régent)',
+  th: '(?:เจ้าเรือน|ผู้ครอง)',
+  vi: '(?:chủ\\s+tinh)',
+};
+
+/** 宫位令牌 → 宫号（阿拉伯数字优先；zh 数词兜底）；越值域/无数字 ⇒ NaN */
+function _ksHouseNumFromToken(tok) {
+  const s = String(tok || '');
+  const d = s.match(/\d{1,2}/);
+  if (d) return Number(d[0]);
+  const zm = s.match(/[一二三四五六七八九十]{1,3}/);
+  if (zm) {
+    const v = _KS_ZH_HOUSE_NUM[zm[0]];
+    return (v === undefined) ? NaN : v;
+  }
+  return NaN;
+}
+
+const _ksHouseClaimReCache = new Map();
+/** 编译某语的「宫头声称 / 宫主星声称」双正则（含具名组；缓存复用；lastIndex 每次复位） */
+function _ksHouseClaimRes(lang) {
+  const L = SUN_SIGNS[lang] ? lang : null;
+  if (!L) return null;
+  if (_ksHouseClaimReCache.has(L)) return _ksHouseClaimReCache.get(L);
+  const H = _KS_HNUM_SRC[L];
+  const lex = _ksLexicon(L);
+  if (!H || !lex) return null;
+  // 星座匹配域：本语完整式 + 本语裸式（zh 省「座」）+ 英文兜底；**长令牌优先**（'白羊座' 先于 '白羊'）
+  const localNames = lex.hasBareSuffix ? [...lex.signs, ...lex.bare] : [...lex.signs];
+  const signAlt = [...localNames, ...SUN_SIGNS.en].map(_ksEsc).join('|');
+  const planLocal = Object.values(lex.planets).filter(Boolean);
+  const planEn = Object.values(_KS_PLANET_NAME.en || {}).filter(Boolean);
+  const planetAlt = [...new Set([...planLocal, ...planEn])]
+    .sort((a, b) => b.length - a.length).map(_ksEsc).join('|');
+  const G = '[^。\\n！？!?；;，,、]{0,16}?';   // 关键词↔令牌 容差窗（禁跨句/跨分句，宁漏不改）
+  const GT = '[^。\\n！？!?；;，,、]{0,4}?';   // 「紧邻」容差窗（裸声称式专用，最小射程）
+  const LINK = (L === 'zh') ? '(?:由|为|是|被|乃|即)' : '(?!)';   // 仅 zh 有「由 X 主管」语序
+  const RW = _KS_RULER_KW[L];
+  const RN = _KS_RULER_NOUN_KW[L];
+  const CK = _KS_CUSP_KW[L];
+  // ⚠️ th：「เจ้าเรือน」(宫主星) 内含「เรือน」(宫) ⇒ 关键词在前时宫位令牌的「宫」字被吃掉，
+  //    故 order-1 单独放宽为「宫名词可省」。仅 order-1 放宽（其余语序仍用严格 HNUM），射程受控。
+  const R1H = (L === 'th') ? '(?:เรือน|บ้าน)?(?:ที่)?\\s*\\d{1,2}' : H;
+  const ruler = new RegExp(
+    '(?:' + RW + G + '(?<h1>' + R1H + ')' + G + '(?<p1>' + planetAlt + ')'
+    + '|(?<h2>' + H + ')' + G + RW + G + '(?<p2>' + planetAlt + ')'
+    + '|(?<p3>' + planetAlt + ')' + G + RW + G + '(?<h3>' + H + ')'
+    + '|(?<h4>' + H + ')' + LINK + GT + '(?<p4>' + planetAlt + ')' + GT + RW
+    + '|(?<p5>' + planetAlt + ')' + G + '(?<h8>' + H + ')' + G + RN
+    + ')', 'gi');
+  const cusp = new RegExp(
+    '(?:' + '(?<h5>' + H + ')' + G + CK + G + '(?<s5>' + signAlt + ')'
+    + '|' + CK + G + '(?<h6>' + H + ')' + G + '(?<s6>' + signAlt + ')'
+    + '|(?<h7>' + H + ')' + GT + '(?<s7>' + signAlt + ')'
+    + ')', 'gi');
+  const out = { lang: L, lex, ruler, cusp, G, GT };
+  _ksHouseClaimReCache.set(L, out);
+  return out;
+}
+
+/**
+ * 共用检出核（45-F）：扫描正文里的「宫头星座声称 / 宫主星声称 / 本命行星落宫声称」，
+ * 与 house_cusps_full / house_rulers / computed_houses 真值对撞。
+ * @returns {{hits: Array, mentions: Array, checked: number}}
+ *   hits —— 违背项（含 found / fix / offset，可直接就地纠偏）
+ *   mentions —— **全部**声称（含合规项），供「同篇自相矛盾」判定
+ */
+function _ksScanHouseClaims(text, lang, astroMatrix) {
+  const out = { hits: [], mentions: [], checked: 0 };
+  if (!text || typeof text !== 'string' || !astroMatrix) return out;
+  const meta = astroMatrix.meta || {};
+  const cusps = meta.house_cusps_full || null;
+  const rulers = meta.house_rulers || null;
+  const ch = meta.computed_houses || null;
+  if (!cusps && !rulers && !ch) return out;
+  const res = _ksHouseClaimRes(lang);
+  if (!res) return out;
+  const { lex, ruler, cusp } = res;
+  const planMap = lex.planets || {};
+  const planEn = _KS_PLANET_NAME.en || {};
+  const localPlanetVals = new Set(Object.values(planMap).filter(Boolean));
+  const allPlanetVals = [...new Set([...localPlanetVals, ...Object.values(planEn).filter(Boolean)])];
+  const _revPlanet = (tok) => {
+    const t = String(tok || '').trim();
+    for (const k of Object.keys(planMap)) if (planMap[k] === t) return k;
+    for (const k of Object.keys(planEn)) if (planEn[k] === t) return k;
+    return null;
+  };
+  const _signIdx = (tok) => {
+    const t = String(tok || '').trim();
+    let i = lex.signs.indexOf(t);
+    if (i < 0 && lex.hasBareSuffix) i = lex.bare.indexOf(t);
+    if (i < 0) i = SUN_SIGNS.en.indexOf(t);
+    return i;
+  };
+  const _ctx = _KS_NATAL_CTX[lex.lang] || _KS_NATAL_CTX.en;
+  const _isTransit = (idx) => {
+    const lw = text.slice(Math.max(0, idx - 16), idx);
+    return _KS_TRANSIT_WORDS.some((w) => lw.includes(w));
+  };
+  const GAP2 = '[^。\\n！？!?；;，,、]{0,10}?';
+
+  let m;
+  /* ── ① 宫主星声称 ─────────────────────────────────────────────── */
+  if (rulers) {
+    ruler.lastIndex = 0;
+    while ((m = ruler.exec(text)) !== null) {
+      if (!m[0] || m[0].length === 0) { ruler.lastIndex++; continue; }
+      const g = m.groups || {};
+      const hTok = g.h1 || g.h2 || g.h3 || g.h4 || g.h8 || '';
+      const pTok = g.p1 || g.p2 || g.p3 || g.p4 || g.p5 || '';
+      const num = _ksHouseNumFromToken(hTok);
+      if (!(num >= 1 && num <= 12)) continue;
+      const pKey = _revPlanet(pTok);
+      if (!pKey) continue;
+      if (_isTransit(m.index)) continue;
+      const rec = rulers['house_' + num];
+      if (!rec) continue;
+      const valid = [];
+      for (const k of ['classical', 'modern']) {
+        if (rec[k] && rec[k].planet && valid.indexOf(rec[k].planet) < 0) valid.push(rec[k].planet);
+      }
+      if (!valid.length) continue;
+      out.checked++;
+      out.mentions.push({ kind: 'ruler', key: 'H' + num, house: num, value: pKey });
+      if (valid.indexOf(pKey) >= 0) continue;   // 合法主星（classical 或 modern 任一）
+      const target = (rec.classical && rec.classical.planet) || valid[0];
+      const rel = m[0].indexOf(pTok);
+      if (rel < 0) continue;
+      const to = localPlanetVals.has(pTok) ? (planMap[target] || target) : (planEn[target] || target);
+      out.hits.push({
+        kind: 'ruler', house: num, planet: pKey, expectedPlanet: target,
+        found: pTok, fix: to, offset: m.index + rel, context: m[0].slice(0, 80),
+      });
+    }
+  }
+
+  /* ── ② 宫头星座声称 ───────────────────────────────────────────── */
+  if (cusps) {
+    cusp.lastIndex = 0;
+    while ((m = cusp.exec(text)) !== null) {
+      if (!m[0] || m[0].length === 0) { cusp.lastIndex++; continue; }
+      const g = m.groups || {};
+      const hTok = g.h5 || g.h6 || g.h7 || '';
+      const sTok = g.s5 || g.s6 || g.s7 || '';
+      const num = _ksHouseNumFromToken(hTok);
+      if (!(num >= 1 && num <= 12)) continue;
+      const si = _signIdx(sTok);
+      if (si < 0) continue;
+      // 裸声称式（无「宫头」关键槽）：左窗 14 字内有行星名 ⇒ 属「行星落座」句，弃权
+      if (g.h7 !== undefined && g.h7 !== null) {
+        const lw = text.slice(Math.max(0, m.index - 14), m.index);
+        if (allPlanetVals.some((p) => p && lw.includes(p))) continue;
+      }
+      if (_isTransit(m.index)) continue;
+      const hrec = cusps['house_' + num];
+      const cuspSign = hrec && hrec.sign;
+      if (!cuspSign) continue;
+      const ti = SIGN_KEYS.indexOf(cuspSign);
+      if (ti < 0) continue;
+      out.checked++;
+      out.mentions.push({ kind: 'cusp', key: 'H' + num, house: num, value: SIGN_KEYS[si] });
+      if (si === ti) continue;
+      const raw = m[0];
+      const rel = raw.indexOf(sTok);
+      if (rel < 0) continue;
+      const localFull = (SUN_SIGNS[lex.lang] || [])[ti];
+      let to;
+      if (!(lex.signs.indexOf(sTok) >= 0 || (lex.hasBareSuffix && lex.bare.indexOf(sTok) >= 0))) {
+        to = SUN_SIGNS.en[ti];                                   // 原文用英文星座名 ⇒ 纠英文
+      } else if (lex.hasBareSuffix) {
+        to = sTok.endsWith('座') ? localFull : String(localFull || sTok).replace(/座$/, '');
+      } else {
+        to = localFull;
+      }
+      if (!to) continue;
+      out.hits.push({
+        kind: 'cusp', house: num, expectedSign: cuspSign,
+        found: sTok, fix: to, offset: m.index + rel, context: raw.slice(0, 80),
+      });
+    }
+  }
+
+  /* ── ③ 本命行星落宫声称（与 45-D2 同纪律：本命修饰词 + 左窗流年守卫）─────── */
+  if (ch && _KS_HNUM_SRC[lex.lang]) {
+    for (const pEn of Object.keys(planMap)) {
+      const truth = ch[pEn];
+      if (!truth || !truth.sign) continue;
+      const tHouse = Number(truth.house);
+      if (!(tHouse >= 1 && tHouse <= 12)) continue;
+      const pLocal = planMap[pEn];
+      if (!pLocal) continue;
+      const pEsc = _ksEsc(pLocal);
+      const head = '(?:' + _ctx + GAP2 + pEsc + '|' + pEsc + GAP2 + _ctx + ')';
+      const re = new RegExp(head + GAP2 + '(' + _KS_HNUM_SRC[lex.lang] + ')', 'gi');
+      let mm;
+      while ((mm = re.exec(text)) !== null) {
+        if (!mm[0] || mm[0].length === 0) { re.lastIndex++; continue; }
+        const hTok = mm[1];
+        const num = _ksHouseNumFromToken(hTok);
+        if (!(num >= 1 && num <= 12)) continue;
+        if (_isTransit(mm.index)) continue;
+        out.checked++;
+        out.mentions.push({ kind: 'planet_house', key: pEn, planet: pEn, value: num });
+        if (num === tHouse) continue;
+        const relH = mm[0].indexOf(hTok);
+        if (relH < 0) continue;
+        let relOff, found, fix;
+        const d = hTok.match(/\d{1,2}/);
+        if (d) {
+          relOff = hTok.indexOf(d[0]); found = d[0]; fix = String(tHouse);
+        } else {
+          const zm = hTok.match(/[一二三四五六七八九十]{1,3}/);
+          if (!zm) continue;
+          const zi = _KS_ZH_HOUSE_NUM[zm[0]];
+          if (!(zi >= 1 && zi <= 12)) continue;
+          relOff = hTok.indexOf(zm[0]); found = zm[0]; fix = _KS_ZH_HOUSE_NUM_INV[tHouse];
+          if (!fix) continue;
+        }
+        out.hits.push({
+          kind: 'planet_house', planet: pEn, house: num, expectedHouse: tHouse,
+          found, fix, offset: mm.index + relH + relOff, context: mm[0].slice(0, 80),
+        });
+      }
+    }
+  }
+
+  // 去重（同名同位）+ 稳定排序（供从后往前替换）
+  const seen = new Set();
+  out.hits = out.hits
+    .filter((h) => {
+      const k = h.offset + '|' + h.found;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .sort((a, b) => a.offset - b.offset);
+  return out;
+}
+
+/**
+ * 只检不改（45-F）：审计正丈里的宫头 / 宫主星 / 本命落宫声称是否与真值一致，
+ * 并给出**同篇自相矛盾**清单（同一宫位出现两个不同宫头星座 / 两个不同主星）。
+ * @returns {{violations: Array, conflicts: Array, checked: number, passed: boolean}}
+ */
+export function lintHouseRulersAndCups(text, lang, astroMatrix) {
+  const { hits, mentions, checked } = _ksScanHouseClaims(text, lang, astroMatrix);
+  // 「同篇自相矛盾」判定：同一个 key 被赋予两个**不同**的**原文声称值** ⇒ 报告内部自打嘴巴。
+  //   cusp     → key=宫位（同一宫两个宫头星座）
+  //   ruler    → key=宫位（同一宫两个宫主星）
+  //   planet_house → key=行星（同一本命行星两个宫位）
+  const byKey = new Map();
+  for (const mn of mentions) {
+    const k = mn.kind + '|' + mn.key;
+    if (!byKey.has(k)) byKey.set(k, { kind: mn.kind, key: mn.key, house: mn.house, values: new Set() });
+    byKey.get(k).values.add(mn.value);
+  }
+  const conflicts = [];
+  for (const rec of byKey.values()) {
+    if (rec.values.size > 1) {
+      conflicts.push({
+        kind: rec.kind, key: rec.key,
+        house: (rec.house === undefined) ? null : rec.house,
+        values: [...rec.values],
+      });
+    }
+  }
+  return {
+    violations: hits.map((h) => ({
+      kind: h.kind,
+      house: h.house,
+      planet: h.planet || null,
+      expected: (h.kind === 'cusp') ? h.expectedSign
+        : (h.kind === 'ruler') ? h.expectedPlanet : h.expectedHouse,
+      found: h.found,
+      context: h.context,
+    })),
+    conflicts,
+    checked,
+    passed: hits.length === 0,
+  };
+}
+
+/**
+ * 确定性纠偏（45-F）：把宫头星座 / 宫主星 / 本命落宫宫号就地改写为真值（同语域、同形态）。
+ * @returns {{text: string, corrections: Array, checked: number, passed: boolean}}
+ */
+export function correctHouseRulersAndCups(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return { text, corrections: [], checked: 0, passed: true };
+  const { hits, checked } = _ksScanHouseClaims(text, lang, astroMatrix);
+  if (!hits.length) return { text, corrections: [], checked, passed: true };
+  const ordered = [...hits].sort((a, b) => b.offset - a.offset);   // 从后往前（保索引有效）
+  let out = text;
+  const corrections = [];
+  for (const h of ordered) {
+    const found = h.found;
+    if (!found) continue;
+    if (out.slice(h.offset, h.offset + found.length) !== found) continue;   // 位置守卫：漂移即弃权
+    const to = h.fix;
+    if (!to || to === found) continue;
+    out = out.slice(0, h.offset) + to + out.slice(h.offset + found.length);
+    corrections.push({
+      kind: h.kind, house: h.house, planet: h.planet || null,
+      from: found, to, context: h.context,
+    });
   }
   return { text: out, corrections, checked, passed: corrections.length === 0 };
 }

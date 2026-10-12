@@ -457,6 +457,8 @@ import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad, getSynastryProfile, getDualSynastryTensor } from './v69_client.js';
 // ⚠️ E42+/45-D2：**另起一行导入**（禁在上面那行加名）—— 该行被上游闸门做字节级漂移锁，稀释即撞红。
 import { correctNatalPlanetSigns, lintNatalPlanetSigns } from './v69_client.js';
+// 🛡️ 45-F: 宫位/宫头/宫主星后置锁（同一实现，禁在此第二份）—— 另起一行导入（E39 A3：封仓闸门精确匹配不可稀释）
+import { lintHouseRulersAndCups, correctHouseRulersAndCups } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -10428,6 +10430,50 @@ function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// 🛡️ 45-F 主力战后置锁：once 报告「宫头星座 / 宫主星归属 / 本命落宫」确定性纠偏 + 审计
+//   军师 2026-10-12 攻坚令「Gate 45-F · 宫位体系与主星归属硬核锁死」之②后置锁（Deterministic Linter）。
+//   病根（2026-10-12 once 实兵报告审读实捕）：
+//     ① 宫头星座错 —— 第 10 宫宫头写成射手座（真值摩羯座）；
+//     ② **宫主星串行** —— 「第 11 宫由月亮主管」；真值 H11 宫头水瓶 ⇒ 法定主星土星/天王星，
+//        月亮实为本盘 H3/H4 主星（把某宫的宫主星安到了别的宫）；
+//     ③ 本命落宫错 —— 月亮第 11 宫 vs 第 1 宫；
+//     ④ **同一篇报告自相矛盾** —— 同一宫位出现两个宫头星座。
+//   治法：调用 v69_client 的 `correctHouseRulersAndCups`（**同一实现，禁在此第二份**）就地纠偏，
+//        并用 `lintHouseRulersAndCups` **复检归零** + 同篇自相矛盾审计；
+//        真值源 = astroMatrix.meta.house_cusps_full / house_rulers / computed_houses（SwissEph 实算）。
+//   🔴 射程**限定 once**：月报/年报各有 V432/V444/V445/V478b/V482/V492b 既有真值链，
+//      本锁不介入（避免与既有锁叠加产生 churn —— E19 血训）。
+//   🔴 挂载顺序：必在 `applyOnceNatalSignLock` **之后**（收口位最末端）⇒ 对本命星座锁拥有最终话语权，
+//      且两者目标互不重叠（一个换星座令牌、一个换宫号/主星令牌）。
+//   🔴 fail-safe：任何异常一律原文透传，**绝不阻断报告交付**。
+//   🔴 幂等：纠偏基于「令牌本体同语域替换」，二次施加 Δ=0（gate 有断言）。
+// ══════════════════════════════════════════════════════════════════════════
+function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
+  try {
+    if (reportType !== 'once') return text;
+    if (!text || typeof text !== 'string' || !astroMatrix) return text;
+    const r = correctHouseRulersAndCups(text, lang, astroMatrix);
+    if (r.corrections && r.corrections.length) {
+      console.log('[45-F][ONCE-HOUSE-LOCK] 纠偏 ' + r.corrections.length + ' 处宫位/主星幻觉 (lang=' + lang + ')：'
+        + r.corrections.map((c) => c.kind + '#' + c.house + ':' + c.from + '→' + c.to).join(', '));
+    }
+    const v = lintHouseRulersAndCups(r.text, lang, astroMatrix);
+    if (!v.passed) {
+      console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 残余违背 ' + v.violations.length + ' 处（已尽力，不阻断）：'
+        + v.violations.map((x) => x.kind + '#' + x.house + ':' + x.found + '(期望 ' + x.expected + ')').join(', '));
+    }
+    if (v.conflicts && v.conflicts.length) {
+      console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 同篇自相矛盾 ' + v.conflicts.length + ' 处：'
+        + v.conflicts.map((c) => c.kind + '|' + c.key + '=' + c.values.join('/')).join(', '));
+    }
+    return r.text;
+  } catch (e) {
+    console.warn('[45-F][ONCE-HOUSE-LOCK] 异常，原文透传:', e && e.message);
+    return text;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // 🛡️ E42+/45-D2 顺带修正：月报「周卡片标题日期区间」真值锁（Template + Output 双归一）
 //   军师 2026-10-12 攻坚令「顺手修正：月报第 1 周标题起止日期反转越窗缺陷」。
 //   线上实捕（2026 年 10 月盘）：
@@ -15307,6 +15353,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = injectHighLatitudeNotice(reportContent, astroMatrix, lang);
         // 🛡️ E42+/45-D2: once 本命星座确定性纠偏（**收口位**：所有清洗/真值链之后、交付之前）
         reportContent = applyOnceNatalSignLock(reportContent, lang, astroMatrix, reportType);
+        // 🛡️ 45-F: once 宫头/宫主星/本命落宫确定性纠偏（同收口位；必在星座锁**之后**，射程互不重叠）
+        reportContent = applyOnceHouseLock(reportContent, lang, astroMatrix, reportType);
         // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同收口位；仅 monthly 生效）
         reportContent = lockMonthlyWeekRanges(reportContent, lang, astroMatrix, reportType);
         return reportContent;
@@ -17290,6 +17338,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ E42+/45-D2: once 本命星座确定性纠偏 —— 置于 `_sanitizedForClient`（客户端终稿）与
     //   `writeToCache`（落库文本）的**共同上游** ⇒ 两者仍逐字同源；且已在全部清洗/真值链之后（收口位）。
     cleanedText = applyOnceNatalSignLock(cleanedText, lang, astroMatrix, reportType);
+    // 🛡️ 45-F: once 宫头/宫主星/本命落宫确定性纠偏 —— 同一共同上游（`_sanitizedForClient` 与
+    //   `writeToCache` 仍逐字同源）；必在星座锁**之后**（射程互不重叠：一个换星座令牌、一个换宫号/主星令牌）。
+    cleanedText = applyOnceHouseLock(cleanedText, lang, astroMatrix, reportType);
     // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同一共同上游；仅 monthly 生效）
     cleanedText = lockMonthlyWeekRanges(cleanedText, lang, astroMatrix, reportType);
 
