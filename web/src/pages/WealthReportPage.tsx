@@ -2179,11 +2179,19 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   // 否则用户首次生成看到未清洗的旧星座/宫位/缩写标题,刷新走缓存才干净
                   // 🛠️ V133f-fix: 防止后端同时发text+sanitized导致全文复读--sanitized以【开篇】开头说明是全量替换
                   const fixedText = parsed.sanitized || parsed.text;
+                  // 🛡️ E42+/45-D2 P0（2026-10-12 线上实兵演习取证 · 帧序 meta→text→sanitized→DONE）：
+                  //   **终稿登记必须对 once 通道同样生效**。
+                  //   病根：原 `_sanMap.set` 只写在 yearly/monthly 分支内 ⇒ once 通道 `_sanMap` 恒空
+                  //   ⇒ [DONE] 时 `_sanFinal=''` ⇒ `_final` 回退**流式原文**，`_reportMemCache` 同样存原文
+                  //   ⇒ 后端 V444/V445/V492b 等**全部本命真值锁对 once 产物形同虚设**
+                  //   （线上实捕证据：后端 sanitized 已是锁后真值，DOM 实际交付的却是带幻觉的流式原文
+                  //      ——「本命木星狮子座」「你的金星天蝎座」，两轮独立复现；逐句比对确认 ≠ sanitized）。
+                  //   治法：登记上移到分支之外（与类型无关），`else` 分支原有行为逐字保留。
+                  if (fixedText && fixedText.length >= 1000) _sanMap.set(_memKey, fixedText); // 🛡️ V419 + 45-D2: 全通道登记终稿
                   if (type === 'yearly' || type === 'monthly') {
                     // 🛡️ V410: sanitized 是后端全量清洗终稿(已修拆词+₫500,000阈值),月报/年报无条件覆盖流式脏文本
                     //   原长度守卫会因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
                     //   安全阈值: sanitized 至少 1000 字符才覆盖(防极端截断回归),否则保留较长流式版
-                    if (fixedText && fixedText.length >= 1000) _sanMap.set(_memKey, fixedText); // 🛡️ V419: 登记终稿
                     if (canvasOwnerRef.current === type) setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText))); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
                   } else {
                     setWealthReportText(fixedText);

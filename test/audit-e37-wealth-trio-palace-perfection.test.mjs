@@ -292,10 +292,18 @@ test('D1 V486 文风规则：六语全覆盖（zh/en/th 原生 + fr/es/vi 回落
 
 // ═══════════════════════════ E. 时间线（周卡 / 陷阱卡 / 月表） ═══════════════════════════
 
-test('E1 月报时间线锁：周区间 1–7 / 8–14 / 15–22 / 23–31 + 陷阱卡周主星硬规则在位', () => {
+test('E1 月报时间线锁：周区间 1–7 / 8–14 / 15–21 / 22–月末 + 陷阱卡周主星硬规则在位', () => {
   assert.ok(/WEEK-SCOPE TIME-LINE LOCK/.test(SERVER_SRC), '缺 E37/S4 周级时间线锁（STRICT_GROUNDING）');
-  for (const r of ['1–7', '8–14', '15–22', '23–31']) {
+  // 🛡️ E42+/45-D2 口径归正：周区间唯一真值 = 引擎 astro_matrix.py `compute_moon_weeks`
+  //   week_ranges = [(1,7),(8,14),(15,21),(22,last_day)]。
+  //   旧断言锁住的 `15–22 / 23–31` **系模板漂移**（线上实捕 W3/W4 越窗缺陷的根源），已纠；
+  //   并新增「旧口径必不得复现」的反漂移断言。
+  for (const r of ['1–7', '8–14', '15–21']) {
     assert.ok(SERVER_SRC.includes(r), `缺周区间 ${r}（四周卡口径丢失）`);
+  }
+  assert.ok(/Week 4 = 22 through the month's last day/.test(SERVER_SRC), '缺 Week 4 = 22–月末 口径');
+  for (const bad of ['Week 3 = 15–22', 'Week 4 = 23–31']) {
+    assert.ok(!SERVER_SRC.includes(bad), `周区间口径漂移未归正（命中禁列 ${bad}）`);
   }
   assert.ok(/Spending-Trap card MUST/.test(SERVER_SRC), '陷阱卡未强制「点名风险周 + 该周主星」');
 });

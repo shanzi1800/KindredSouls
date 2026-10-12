@@ -38,7 +38,14 @@ export function useCitySearch() {
 
   useEffect(() => {
     if (cacheRef.current) { setCities(cacheRef.current); setLoading(false); return; }
-    const url_json = '/data/cities.json';
+    // 🛡️ E42+ 45-D2 先锋战：城市库 URL 携带**内容指纹**。
+    //   服务端对 /data/cities.json 下发 `Cache-Control: public, max-age=31536000, immutable`
+    //   （6.63MB→616KB brotli 预压缩，强缓存后二次访问零字节）。
+    //   immutable 必须配内容指纹 URL：内容变 ⇒ 指纹变 ⇒ URL 变 ⇒ 自动穿透旧缓存，
+    //   否则升级城市库后老用户会被一年缓存永久钉死在旧数据上。
+    //   ⚠️ `__CITIES_VERSION__` 由 vite define 注入；非 Vite 环境取 'dev'（绝不裸用，防 ReferenceError）。
+    const _ver = (typeof __CITIES_VERSION__ === 'string' && __CITIES_VERSION__) ? __CITIES_VERSION__ : 'dev';
+    const url_json = `/data/cities.json?v=${encodeURIComponent(_ver)}`;
     fetch(url_json)
       .then(r => r.text())
       .then(text => {

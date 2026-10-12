@@ -117,7 +117,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 Semaine 1: {MONTH} 1–7]      ← 第1周（🟢=低风险）
   ✦ [🔴 Semaine 2: {MONTH} 8–14]     ← 第2周（🔴=高风险）
   ✦ [🔵 Semaine 3: {MONTH} 15–21]    ← 第3周（🔵=中风险）
-  ✦ [🟢 Semaine 4: {MONTH} 22–31]    ← 第4周（🟢=低风险）
+  ✦ [🟢 Semaine 4: {MONTH} 22–{LASTDAY}]    ← 第4周（🟢=低风险）
   ✦ [⚠️ Pièges Financiers: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - 行星拼写: Soleil（太阳）, Lune（月亮）, Mars（火星）, Mercure（水星）, Jupiter（木星）, Saturne（土星）, Vénus（金星）, Neptune（海王星）, Pluton（冥王星）, Uranus（天王星）。
 - 宫位: Maison 1–12（禁止写"宫"字）。
@@ -135,7 +135,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 Semana 1: {MONTH} 1–7]      ← 第1周（🟢=低风险）
   ✦ [🔴 Semana 2: {MONTH} 8–14]     ← 第2周（🔴=高风险）
   ✦ [🔵 Semana 3: {MONTH} 15–21]    ← 第3周（🔵=中风险）
-  ✦ [🟢 Semana 4: {MONTH} 22–31]    ← 第4周（🟢=低风险）
+  ✦ [🟢 Semana 4: {MONTH} 22–{LASTDAY}]    ← 第4周（🟢=低风险）
   ✦ [⚠️ Trampas Financieras: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
@@ -150,7 +150,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 สัปดาห์ที่ 1: {MONTH} 1–7]   ← 第1周（🟢=低风险）
   ✦ [🔴 สัปดาห์ที่ 2: {MONTH} 8–14]   ← 第2周（🔴=高风险）
   ✦ [🔵 สัปดาห์ที่ 3: {MONTH} 15–21]  ← 第3周（🔵=中风险）
-  ✦ [🟢 สัปดาห์ที่ 4: {MONTH} 22–31]  ← 第4周（🟢=低风险）
+  ✦ [🟢 สัปดาห์ที่ 4: {MONTH} 22–{LASTDAY}]  ← 第4周（🟢=低风险）
   ✦ [⚠️ กับดักทางการเงิน: {MONTH} {YEAR}] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
@@ -164,7 +164,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 Tuần 1: {MONTH}, Ngày 1–7]    ← 第1周（🟢=低风险）
   ✦ [🔴 Tuần 2: {MONTH}, Ngày 8–14]    ← 第2周（🔴=高风险）
   ✦ [🔵 Tuần 3: {MONTH}, Ngày 15–21]   ← 第3周（🔵=中风险）
-  ✦ [🟢 Tuần 4: {MONTH}, Ngày 22–31]   ← 第4周（🟢=低风险）
+  ✦ [🟢 Tuần 4: {MONTH}, Ngày 22–{LASTDAY}]   ← 第4周（🟢=低风险）
   ✦ [⚠️ Cạm bẫy Tài chính: Tháng 8, 2026] ✦ ← 财务陷阱结尾
 - V270-fix: 标题行之后才能写正文，绝对不能在标题之前出现任何内容。
 `,
@@ -178,7 +178,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 Week 1: {MONTH} 1–7]
   ✦ [🔴 Week 2: {MONTH} 8–14]
   ✦ [🔵 Week 3: {MONTH} 15–21]
-  ✦ [🟢 Week 4: {MONTH} 22–31]
+  ✦ [🟢 Week 4: {MONTH} 22–{LASTDAY}]
   ✦ [⚠️ Financial Traps & Risk Mitigation]
 - 风险图标: 🟢 Low | 🔴 High | 🔵 Moderate | ⚠️ Warning。
 `,
@@ -191,7 +191,7 @@ const SLIM_LANG_PACKS = {
   ✦ [🟢 第1周: {MONTH}1日–7日]
   ✦ [🔴 第2周: {MONTH}8日–14日]
   ✦ [🔵 第3周: {MONTH}15日–21日]
-  ✦ [🟢 第4周: {MONTH}22日–31日]
+  ✦ [🟢 第4周: {MONTH}22日–{LASTDAY}日]
   ✦ [⚠️ 财务避坑指南]
 - 风险图标: 🟢 低危 | 🔴 高危 | 🔵 中危 | ⚠️ 警示。
 `
@@ -433,7 +433,7 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 [emoji สัปดาห์ที่ N: ก.ค. D–D (主题)]
 内容
 
-#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–22 日\n  • Week 4 = 当月 23–31 日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（23–31日），严禁写在 Week 3（15–22日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n
+#### C-2. 周次时间段与星象日期严格对应（P1）\n每张周卡片内的星象事件日期（如 Mercury stations direct、Sun enters、Venus enters 等）必须落在该周时间段内，不得跨周次错置：\n  • Week 1 = 当月 1–7 日\n  • Week 2 = 当月 8–14 日\n  • Week 3 = 当月 15–21 日\n  • Week 4 = 当月 22 日起至当月最后一日\n例：若 Mercury stations direct on July 24，则必须写在 Week 4（22 日起至月末），严禁写在 Week 3（15–21 日）。\n\n#### D. 消费陷阱卡片（P0）\n必须：  ✦\n[⚠️ 消费陷阱关键词：描述 YYYY年M月]\n内容\n禁止缺失 ⚠️、禁止在方括号内断行。\n\n#### E. 冒号与连接符规范\n[emoji 标题：副标题] 中，冒号必须紧贴文字，不得在冒号后加空格再写内容。\n\n#### F. 泰国数字与月份名禁止拆分\n绝不能拆成 ก] .ค. 或 ก .ค.，必须写成 ก.ค. 或 กรกฎาคม。\n
 
 #### G. 严格单次输出约束（P0）
 全文必须严格遵守以下出现次数限制，禁止超出：
@@ -448,10 +448,15 @@ const FORMAT_FIREWALL = `\n\n### 🛑 格式绝对铁律（System Boundary — Z
 // Serves static frontend + all API routes on port 3000
 import express from 'express';
 import { readFileSync, existsSync, statSync, writeFileSync } from 'fs';
+// ⚠️ E42+ 45-D2：**另起一行导入**（禁在本行加名）—— 上游封仓闸门对上述 import 行做字节级匹配，稀释即撞红。
+import { createReadStream } from 'fs';
+import { extname } from 'path';
 import { createHash, timingSafeEqual } from 'crypto';   // 🛡️ E30: 补 timingSafeEqual（clear-cache 端点常量时间鉴权）
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getAstroMatrix, buildFactSheet, buildPerMonthData, buildPerMonthDataBlock, buildAspectsData, v69HealthCheck, buildNatalAnchors, buildMoonWeekBlock, buildSunWeekBlock, buildPeakTruthBlock, assertNatalCoverage, buildMonthlyOverviewBlock, buildMonthlyTrapBlock, buildMonthlyFactTree, v462NormalizeMoonLabel, buildEphemerisChronicleBlock, buildHemisphereSeasonBlock, buildCrystalAnchors, getFamiliarProfile, extractNatalTriad, getSynastryProfile, getDualSynastryTensor } from './v69_client.js';
+// ⚠️ E42+/45-D2：**另起一行导入**（禁在上面那行加名）—— 该行被上游闸门做字节级漂移锁，稀释即撞红。
+import { correctNatalPlanetSigns, lintNatalPlanetSigns } from './v69_client.js';
 import { resolveTimeZone } from './src/tz-resolver.js';  // 🛡️ V490: 时区强校验与三级回退
 import { resolveCoordinates, invalidCoordinatesBody } from './src/coord-validator.js';  // 🛡️ V490b: 坐标强校验
 import { LEXICON } from './lexicon.js';
@@ -10388,6 +10393,143 @@ function lockNatalAnchorRole(text, lang, astroMatrix, reportType) {
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 🛡️ E42+/45-D2 主力战后置锁：once 报告「本命行星 × 星座」确定性纠偏 + 审计
+//   军师 2026-10-12 攻坚令「破局三道锁」之②③：后置锁（服务端 Deterministic Linter）。
+//   病根：模型长文展开时本命/流年混淆 —— once 实捕「本命木星狮子座」(真值双子座)、
+//        「你的金星天蝎座」(真值天秤座，且同报告前文已自写「本命金星落在天秤座第11宫」自相矛盾)；
+//        两处幻觉值**恰等于流年值**（months[0].jupiter=Leo / .venus=Scorpio）。
+//   治法：调用 v69_client 的 `correctNatalPlanetSigns`（**同一实现，禁在此第二份**）就地纠偏，
+//        并用 `lintNatalPlanetSigns` **复检归零**；真值源 = buildNatalAnchors(computed_houses)。
+//   🔴 射程**限定 once**：月报/年报各有 V432/V444/V445/V478b/V482/V492b 既有真值链，
+//      本锁不介入（避免与既有锁叠加产生 churn —— E19 血训）。
+//   🔴 fail-safe：任何异常一律原文透传，**绝不阻断报告交付**。
+//   🔴 幂等：纠偏基于「星座令牌本体同语域替换」，二次施加 Δ=0（gate 有断言）。
+// ══════════════════════════════════════════════════════════════════════════
+function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
+  try {
+    if (reportType !== 'once') return text;
+    if (!text || typeof text !== 'string' || !astroMatrix) return text;
+    const r = correctNatalPlanetSigns(text, lang, astroMatrix);
+    if (r.corrections && r.corrections.length) {
+      console.log('[45-D2][ONCE-NATAL-SIGN-LOCK] 纠偏 ' + r.corrections.length + ' 处本命星座幻觉 (lang=' + lang + ')：'
+        + r.corrections.map((c) => c.planet + ':' + c.from + '→' + c.to).join(', '));
+    }
+    const v = lintNatalPlanetSigns(r.text, lang, astroMatrix);
+    if (!v.passed) {
+      console.warn('[45-D2][ONCE-NATAL-SIGN-LOCK] ⚠️ 残余违背 ' + v.violations.length + ' 处（已尽力，不阻断）：'
+        + v.violations.map((x) => x.planet + ':' + x.foundSign + '(期望 ' + x.expectedSign + ')').join(', '));
+    }
+    return r.text;
+  } catch (e) {
+    console.warn('[45-D2][ONCE-NATAL-SIGN-LOCK] 异常，原文透传:', e && e.message);
+    return text;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 🛡️ E42+/45-D2 顺带修正：月报「周卡片标题日期区间」真值锁（Template + Output 双归一）
+//   军师 2026-10-12 攻坚令「顺手修正：月报第 1 周标题起止日期反转越窗缺陷」。
+//   线上实捕（2026 年 10 月盘）：
+//     [🟢 第1周：11月13日–7日（…）]   ← 月/日双错（11 月混入 10 月报）
+//     [🔵 第3周：10月15日–22日（…）]  ← 引擎真值 15–21（15–22 系模板漂移）
+//     [🟢 第4周：10月23日–31日（…）]  ← 引擎真值 22–31（23–31 系模板漂移）
+//   真值唯一源 = `astroMatrix.months[0].moon_weeks`（astro/astro_matrix.py
+//     `compute_moon_weeks`：week_ranges = [(1,7),(8,14),(15,21),(22,last_day)]）。
+//   🔴 射程**限定 monthly**（once/yearly 各有既有真值链，不介入）。
+//   🔴 精确锚点：仅改写「周前缀（第N周/Week N/…）+ 紧随的日期段」，绝不动正文相位日期
+//       与消费陷阱段区间（后者无「第N周：」前缀 ⇒ 天然射程外）。
+//   🔴 缺真值 / 坏真值 ⇒ **原文透传**（绝不伪造区间）；幂等（规范串 Δ=0）；异常 fail-safe。
+// ══════════════════════════════════════════════════════════════════════════
+const _MWR_MONTH_ABBR = {
+  zh: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+  fr: ['Janv', 'Févr', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'],
+  th: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
+  vi: ['Thg1', 'Thg2', 'Thg3', 'Thg4', 'Thg5', 'Thg6', 'Thg7', 'Thg8', 'Thg9', 'Thg10', 'Thg11', 'Thg12'],
+};
+// 全称月份令牌（与 SLIM_LANG_PACKS 的 {MONTH} 实填同源）—— 用于**保留原文语域**：
+//   LLM 可能写 'October 1–7'（系统提示实填全称）或 'Oct 1–7'（header 模板用缩写）
+//   ⇒ 本锁**只改错的月份/日区间，不改其语域**（避免对正确文本制造无谓 churn）。
+const _MWR_MONTH_FULL = {
+  zh: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+  fr: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+  th: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
+  vi: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
+};
+const _MWR_ZH_NUM = { '一': 1, '二': 2, '三': 3, '四': 4, '1': 1, '2': 2, '3': 3, '4': 4 };
+// 各语种「周前缀 + 月份令牌 + 日区间」精确捕型（前缀与日期段**必须紧邻** ⇒ 不误伤正文/陷阱段）。
+//   统一捕获语义：g1=周前缀｜g2=周号｜g3=分隔符｜g4=月份令牌｜g5=起始日｜g6=结束日。
+const _MWR_RULES = {
+  zh: /(第\s*)([一二三四1-4])(\s*周\s*[:：]\s*)(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*[–—\-]\s*(\d{1,2})\s*日/g,
+  en: /(Week\s*)(\d)(\s*[:：]\s*)([A-Za-z]{3,10})\.?\s*(\d{1,2})\s*[–—\-]\s*(\d{1,2})/gi,
+  es: /(Semana\s*)(\d)(\s*[:：]\s*)([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,10})\.?\s*(\d{1,2})\s*[–—\-]\s*(\d{1,2})/gi,
+  fr: /(Semaine\s*)(\d)(\s*[:：]\s*)([A-Za-zÀ-ÿ]{3,10})\.?\s*(\d{1,2})\s*[–—\-]\s*(\d{1,2})/gi,
+  th: /(สัปดาห์ที่\s*)(\d)(\s*[:：]\s*)([ก-๙.]{2,12})\s*(\d{1,2})\s*[–—\-]\s*(\d{1,2})/g,
+  vi: /(Tuần\s*)(\d)(\s*[:：]\s*)([A-Za-zÀ-ÿ\d ]{2,12}?)\s*,\s*Ngày\s*(\d{1,2})\s*[–—\-]\s*(\d{1,2})/gi,
+};
+/** 判定原文月份令牌语域（full/abbr）：先验真值月，未命中（原月写错）则按其「形」归类的兜底。*/
+function _mwrStyle(lang, tok, mi) {
+  const t = String(tok || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const full = _MWR_MONTH_FULL[lang] || _MWR_MONTH_FULL.zh;
+  const abbr = _MWR_MONTH_ABBR[lang] || _MWR_MONTH_ABBR.zh;
+  if (mi < 0 || mi > 11) return 'abbr';
+  if (t === String(full[mi]).toLowerCase()) return 'full';
+  if (t === String(abbr[mi]).toLowerCase()) return 'abbr';
+  if (full.some((x) => String(x).toLowerCase() === t)) return 'full';
+  return 'abbr';
+}
+/** 以真值（月 + 起止日）重建日期段，**保持原语域**。zh 用「N月D日–D日」、vi 用「M, Ngày D–D」、其余「M D–D」。*/
+function _mwrRender(lang, style, mi, a, b) {
+  const dict = (style === 'full' ? _MWR_MONTH_FULL : _MWR_MONTH_ABBR)[lang] || _MWR_MONTH_ABBR.zh;
+  const M = dict[mi];
+  if (lang === 'zh') return `${M}${a}日–${b}日`;
+  if (lang === 'vi') return `${M}, Ngày ${a}–${b}`;
+  return `${M} ${a}–${b}`;
+}
+function lockMonthlyWeekRanges(text, lang, astroMatrix, reportType) {
+  try {
+    if (reportType !== 'monthly') return text;
+    if (!text || typeof text !== 'string' || !astroMatrix) return text;
+    const m0 = astroMatrix.months && astroMatrix.months[0];
+    const mw = m0 && m0.moon_weeks;
+    if (!Array.isArray(mw) || mw.length < 4) return text;   // 缺周表 ⇒ 原文透传（禁伪造）
+    const truth = [];
+    for (let i = 0; i < 4; i++) {
+      const w = mw[i] || {};
+      const a = Number(w.from_day), b = Number(w.to_day);
+      if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a || b > 31) return text;  // 坏真值 ⇒ 透传
+      truth.push([a, b]);
+    }
+    const mk = String(m0.month_key || '').match(/(\d{4})-(\d{2})/);
+    const mi = mk ? (Number(mk[2]) - 1) : -1;
+    if (!(mi >= 0 && mi < 12)) return text;   // 无月份真值 ⇒ 透传
+    if (!(_MWR_MONTH_ABBR[lang] && _MWR_MONTH_ABBR[lang][mi])) return text;
+    const re = _MWR_RULES[lang] || _MWR_RULES.zh;
+    let fixed = 0;
+    const out = text.replace(re, (full, g1, g2, g3, g4, g5, g6) => {
+      const n = (lang === 'zh') ? _MWR_ZH_NUM[g2] : Number(g2);
+      if (!n || n < 1 || n > 4) return full;
+      const seg = _mwrRender(lang, _mwrStyle(lang, g4, mi), mi, truth[n - 1][0], truth[n - 1][1]);
+      const canonical = g1 + g2 + g3 + seg;
+      if (canonical !== full) fixed++;
+      return canonical;
+    });
+    if (fixed > 0) {
+      console.log('[45-D2][MONTHLY-WEEK-RANGE-LOCK] 归一 ' + fixed + ' 处周标题日期区间 (lang=' + lang
+        + ')：W1=' + truth[0][0] + '–' + truth[0][1] + ' W2=' + truth[1][0] + '–' + truth[1][1]
+        + ' W3=' + truth[2][0] + '–' + truth[2][1] + ' W4=' + truth[3][0] + '–' + truth[3][1]);
+    }
+    return out;
+  } catch (e) {
+    console.warn('[45-D2][MONTHLY-WEEK-RANGE-LOCK] 异常，原文透传:', e && e.message);
+    return text;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 🛡️ V445：流年行星星座归属锁（军师 9-14 主公令·极致封仓）
 // 目的：V444 只锁本命锚点(上升/太阳/月亮)。但陷阱段 LLM 仍会把
@@ -10967,8 +11109,8 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       overview:    '✦ [🔮 Monthly Destiny Theme: Strategic Alignment & Wealth Expansion] ✦',
       week1:       `✦ [Week 1: ${curMonthName} 1–7] ${V462_WEEK_SUB.en[0]}`,
       week2:       `✦ [Week 2: ${curMonthName} 8–14] ${V462_WEEK_SUB.en[1]}`,
-      week3:       `✦ [Week 3: ${curMonthName} 15–22] ${V462_WEEK_SUB.en[2]}`,
-      week4:       `✦ [Week 4: ${curMonthName} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
+      week3:       `✦ [Week 3: ${curMonthName} 15–21] ${V462_WEEK_SUB.en[2]}`,
+      week4:       `✦ [Week 4: ${curMonthName} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
       trap:        `✦ [⚠️ Spending Traps: ${curMonthName} ${currentYear}] ✦`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -10977,8 +11119,8 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       overview:    '✦ [🔮 Tema de Destino Mensual] ✦',
       week1:       `✦ [Semana 1: {MONTH} 1–7] ${V462_WEEK_SUB.es[0]}`,
       week2:       `✦ [Semana 2: {MONTH} 8–14] ${V462_WEEK_SUB.es[1]}`,
-      week3:       `✦ [Semana 3: {MONTH} 15–22] ${V462_WEEK_SUB.es[2]}`,
-      week4:       `✦ [Semana 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
+      week3:       `✦ [Semana 3: {MONTH} 15–21] ${V462_WEEK_SUB.es[2]}`,
+      week4:       `✦ [Semana 4: {MONTH} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
       trap:        `✦ [⚠️ Trampas Financieras: {MONTH} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -10987,8 +11129,8 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       overview:    '✦ [🔮 Thème de Destin du Mois] ✦',
       week1:       `✦ [Semaine 1: {MONTH} 1–7] ${V462_WEEK_SUB.fr[0]}`,
       week2:       `✦ [Semaine 2: {MONTH} 8–14] ${V462_WEEK_SUB.fr[1]}`,
-      week3:       `✦ [Semaine 3: {MONTH} 15–22] ${V462_WEEK_SUB.fr[2]}`,
-      week4:       `✦ [Semaine 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
+      week3:       `✦ [Semaine 3: {MONTH} 15–21] ${V462_WEEK_SUB.fr[2]}`,
+      week4:       `✦ [Semaine 4: {MONTH} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
       trap:        `✦ [⚠️ Pièges Financiers: {MONTH} ${currentYear}] ✦`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -10997,8 +11139,8 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       overview:    '✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦',
       week1:       `✦ [สัปดาห์ที่ 1: {MONTH} 1–7] ${V462_WEEK_SUB.th[0]}`,
       week2:       `✦ [สัปดาห์ที่ 2: {MONTH} 8–14] ${V462_WEEK_SUB.th[1]}`,
-      week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–22] ${V462_WEEK_SUB.th[2]}`,
-      week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
+      week3:       `✦ [สัปดาห์ที่ 3: {MONTH} 15–21] ${V462_WEEK_SUB.th[2]}`,
+      week4:       `✦ [สัปดาห์ที่ 4: {MONTH} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
       trap:        `✦ [⚠️ กับดักทางการเงิน: {MONTH} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -11007,8 +11149,8 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
       overview:    '✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦',
       week1:       `✦ [Tuần 1: {MONTH} 1–7] ${V462_WEEK_SUB.vi[0]}`,
       week2:       `✦ [Tuần 2: {MONTH} 8–14] ${V462_WEEK_SUB.vi[1]}`,
-      week3:       `✦ [Tuần 3: {MONTH} 15–22] ${V462_WEEK_SUB.vi[2]}`,
-      week4:       `✦ [Tuần 4: {MONTH} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
+      week3:       `✦ [Tuần 3: {MONTH} 15–21] ${V462_WEEK_SUB.vi[2]}`,
+      week4:       `✦ [Tuần 4: {MONTH} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
       trap:        `✦ [⚠️ Cạm bẫy Tài chính: {MONTH} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -11081,7 +11223,7 @@ function buildMonthlyPrompt(birthDate, lang, astroMatrix) {
   Thai:     ✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦
   Vietnamese: ✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦
 The ✦ and [🔮 ] brackets are MANDATORY for ALL languages. NEVER output the title without them.
-7b. [E37/S4 · WEEK-SCOPE TIME-LINE LOCK — NON-NEGOTIABLE] Each weekly card (Week 1 = days 1–7, Week 2 = 8–14, Week 3 = 15–22, Week 4 = 23–31) may cite ONLY events whose dates fall inside that card's own day-range, and only the Sun/Moon truth listed for THAT week. A date, sign or house belonging to another week must NEVER appear in this card. The Spending-Trap card MUST (a) name the specific week (Week 1–4) whose risk window it is warning about, and (b) name that week's dominant planet/門 from the WEEK-SCOPED truth blocks above — never its own invented planet. If a cited date and the week it is placed in disagree, the week placement is a CRITICAL ERROR.
+7b. [E37/S4 · WEEK-SCOPE TIME-LINE LOCK — NON-NEGOTIABLE] Each weekly card (Week 1 = days 1–7, Week 2 = 8–14, Week 3 = 15–21, Week 4 = 22 through the month's last day) may cite ONLY events whose dates fall inside that card's own day-range, and only the Sun/Moon truth listed for THAT week. A date, sign or house belonging to another week must NEVER appear in this card. The Spending-Trap card MUST (a) name the specific week (Week 1–4) whose risk window it is warning about, and (b) name that week's dominant planet/門 from the WEEK-SCOPED truth blocks above — never its own invented planet. If a cited date and the week it is placed in disagree, the week placement is a CRITICAL ERROR.
 
 ❌ Bad Output: Mentioning "Moon in Scorpio (ราศีพิจิก)" in Week 1, Week 2, Week 3, and Week 4.
 ✅ Good Output: For Week 1, naming the Moon signs listed on the "Week 1" line of WEEK-SCOPED MOON TRUTH, in order.
@@ -11621,13 +11763,18 @@ function applyWealthReportPromptGuards(prompt, lang, reportType, astroMatrix, bi
     //   病根：fr/es/th 曾把月份**硬编码为 8 月**（Août / Agosto / สิงหาคม）⇒ LLM 照抄样例 ⇒
     //   10 月月报的周标题与陷阱卡出现 8 月（军师所报「月报日期穿越」）。
     //   此处统一实填；连 en/zh/vi 原本**未被替换**的 {MONTH} 字面量一并根治。
+    // 🛡️ E42+/45-D2：{LASTDAY} = 报告当月**末日**（与引擎 week_ranges 第 4 周 `22–末日` 同源）。
+    //   病根：模板原写死 `22–31` ⇒ 2/4/6/9/11 月（28/29/30 日）被误导成 31 ⇒ 周 4 越窗。
+    //   与 {MONTH}/{YEAR} 同一处实填（单一填充点），口径同为「报告当月」。
     {
       const _pkNow = new Date();
       const _pkMonth = (MONTH_NAMES[lang] || MONTH_NAMES.en)[_pkNow.getMonth()];
       const _pkYear = String(_pkNow.getFullYear());
+      const _pkLastDay = String(new Date(_pkNow.getFullYear(), _pkNow.getMonth() + 1, 0).getDate());
       prompt.system += '\n\n' + (SLIM_LANG_PACKS[lang] || SLIM_LANG_PACKS['zh'])
         .split('{MONTH}').join(_pkMonth)
-        .split('{YEAR}').join(_pkYear);
+        .split('{YEAR}').join(_pkYear)
+        .split('{LASTDAY}').join(_pkLastDay);
     }
   }
 
@@ -11838,8 +11985,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 本月命运主题] ✦',
       week1:       `✦ [🟢 第1周：${curMonthLocal}1日–7日（${V462_WEEK_SUB.zh[0]}）]`,
       week2:       `✦ [🔴 第2周：${curMonthLocal}8日–14日（${V462_WEEK_SUB.zh[1]}）]`,
-      week3:       `✦ [🔵 第3周：${curMonthLocal}15日–22日（${V462_WEEK_SUB.zh[2]}）]`,
-      week4:       `✦ [🟢 第4周：${curMonthLocal}23日–${lastDayOfMonth}日（${V462_WEEK_SUB.zh[3]}）]`,
+      week3:       `✦ [🔵 第3周：${curMonthLocal}15日–21日（${V462_WEEK_SUB.zh[2]}）]`,
+      week4:       `✦ [🟢 第4周：${curMonthLocal}22日–${lastDayOfMonth}日（${V462_WEEK_SUB.zh[3]}）]`,
       trap:        `✦ [⚠️ 消费陷阱：${currentYear}年${curMonthLocal}] ✦`,
       circuit:     '核心天机：',
       circuit_tag: '【风险提示：】',
@@ -11848,8 +11995,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 Monthly Destiny Theme: Strategic Alignment & Wealth Expansion] ✦',
       week1:       `✦ [Week 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.en[0]}`,
       week2:       `✦ [Week 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.en[1]}`,
-      week3:       `✦ [Week 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.en[2]}`,
-      week4:       `✦ [Week 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
+      week3:       `✦ [Week 3: ${curMonthLocal} 15–21] ${V462_WEEK_SUB.en[2]}`,
+      week4:       `✦ [Week 4: ${curMonthLocal} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.en[3]}`,
       trap:        `✦ [⚠️ Spending Traps: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Core Cosmic Window: ',
       circuit_tag: '【Risk Alert:】'
@@ -11858,8 +12005,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 Tema de Destino Mensual] ✦',
       week1:       `✦ [Semana 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.es[0]}`,
       week2:       `✦ [Semana 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.es[1]}`,
-      week3:       `✦ [Semana 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.es[2]}`,
-      week4:       `✦ [Semana 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
+      week3:       `✦ [Semana 3: ${curMonthLocal} 15–21] ${V462_WEEK_SUB.es[2]}`,
+      week4:       `✦ [Semana 4: ${curMonthLocal} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.es[3]}`,
       trap:        `✦ [⚠️ Trampas de Gasto: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Ventana Cósmica Clave: ',
       circuit_tag: '【Alerta de Riesgo:】',
@@ -11868,8 +12015,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 Thème de Destin du Mois] ✦',
       week1:       `✦ [Semaine 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.fr[0]}`,
       week2:       `✦ [Semaine 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.fr[1]}`,
-      week3:       `✦ [Semaine 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.fr[2]}`,
-      week4:       `✦ [Semaine 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
+      week3:       `✦ [Semaine 3: ${curMonthLocal} 15–21] ${V462_WEEK_SUB.fr[2]}`,
+      week4:       `✦ [Semaine 4: ${curMonthLocal} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.fr[3]}`,
       trap:        `✦ [⚠️ Pièges Financiers: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Fenêtre Cosmique Clé: ',
       circuit_tag: '【Alerte de Risque :】',
@@ -11878,8 +12025,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 ธีมโชคชะตาประจำเดือน] ✦',
       week1:       `✦ [สัปดาห์ที่ 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.th[0]}`,
       week2:       `✦ [สัปดาห์ที่ 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.th[1]}`,
-      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.th[2]}`,
-      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
+      week3:       `✦ [สัปดาห์ที่ 3: ${curMonthLocal} 15–21] ${V462_WEEK_SUB.th[2]}`,
+      week4:       `✦ [สัปดาห์ที่ 4: ${curMonthLocal} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.th[3]}`,
       trap:        `✦ [⚠️ กับดักการใช้จ่าย: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'หน้าต่างจักรวาลหลัก: ',
       circuit_tag: '【คำเตือนความเสี่ยง:】',
@@ -11888,8 +12035,8 @@ function buildWealthReportPrompt(birthDate, lang, reportType, astroData, astroMa
       overview:    '✦ [🔮 Chủ Đề Vận Mệnh Tháng] ✦',
       week1:       `✦ [Tuần 1: ${curMonthLocal} 1–7] ${V462_WEEK_SUB.vi[0]}`,
       week2:       `✦ [Tuần 2: ${curMonthLocal} 8–14] ${V462_WEEK_SUB.vi[1]}`,
-      week3:       `✦ [Tuần 3: ${curMonthLocal} 15–22] ${V462_WEEK_SUB.vi[2]}`,
-      week4:       `✦ [Tuần 4: ${curMonthLocal} 23–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
+      week3:       `✦ [Tuần 3: ${curMonthLocal} 15–21] ${V462_WEEK_SUB.vi[2]}`,
+      week4:       `✦ [Tuần 4: ${curMonthLocal} 22–${lastDayOfMonth}] ${V462_WEEK_SUB.vi[3]}`,
       trap:        `✦ [⚠️ Bẫy Chi Tiêu: ${curMonthLocal} ${currentYear}] ✦`,
       circuit:     'Cửa sổ Vũ trụ chính: ',
       circuit_tag: '【Cảnh Báo Rủi Ro:】',
@@ -15140,6 +15287,10 @@ app.post('/api/wealth-oracle', async (req, res) => {
 
         // 🛡️ V492/R5: 高纬告知——WholeSignFallback 盘首段注入等宫制告知（后端拼接，非 LLM 生成）
         reportContent = injectHighLatitudeNotice(reportContent, astroMatrix, lang);
+        // 🛡️ E42+/45-D2: once 本命星座确定性纠偏（**收口位**：所有清洗/真值链之后、交付之前）
+        reportContent = applyOnceNatalSignLock(reportContent, lang, astroMatrix, reportType);
+        // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同收口位；仅 monthly 生效）
+        reportContent = lockMonthlyWeekRanges(reportContent, lang, astroMatrix, reportType);
         return reportContent;
         };  // ── end _e10PostProcess ──
         let reportContent = _e10PostProcess(aiResult);
@@ -15578,6 +15729,78 @@ app.use('/api/ai-advisor', async (req, res) => {
 
 // ── Serve static frontend (dist/) ──
 const distPath = join(__dirname, 'web', 'dist');
+
+// ══════════════════════════════════════════════════════════════════════════
+// 🛡️ E42+ 45-D2 先锋战：预压缩静态资产 + 内容指纹强缓存
+//   病根（2026-10-12 线上实兵演习实测）：`/data/cities.json` 6.94MB **明文裸传**——
+//     全仓无 compression 中间件、响应无 `content-encoding`，且 `express.static` 默认
+//     `Cache-Control: public, max-age=0`（连缓存都没有）⇒ 弱网下城市检索首可用 31~56s。
+//   治法：
+//     ① 构建期预压缩兄弟文件（web/scripts/precompress-data.mjs）⇒ 6.63MB → 616KB(brotli)；
+//     ② 本层按 `Accept-Encoding` **择优直发**（br 优先 gzip），绕过 express.static 的弱默认；
+//     ③ 白名单路径配 `public, max-age=31536000, immutable` + `Vary: Accept-Encoding`。
+//   🔴 铁律：
+//     - 只服务 `web/dist` 内**已存在的普通文件**；路径穿越（`..`/`\0`）与目录一律 `next()`
+//       （**绝不 open**，把拒绝权交给 express.static 既有行为，不引入新的越权面）。
+//     - `immutable` 仅限两类：显式白名单（`/data/cities.json`，配前端内容指纹 URL）与
+//       **带内容指纹命名的** `/assets/*`（vite 输出名恒含 hash）⇒ 绝不会把可变更资源钉死一年。
+//       指纹判据与 vite.config.ts 的 `[name]-[hash]-${Date.now()}` 同源（Gate 45-D2 锁定）。
+//     - 命中预压缩兄弟文件时**必须同时**给出 `Content-Encoding` 与 `Content-Type`，缺一浏览器不认。
+//     - `HEAD` 只回头不写体。
+// ══════════════════════════════════════════════════════════════════════════
+const _PRECOMPRESS_EXTS = new Set(['.json', '.js', '.css', '.svg', '.html', '.txt']);
+const _IMMUTABLE_PATHS = new Set(['/data/cities.json']);
+const _MIME_BY_EXT = {
+  '.json': 'application/json; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.html': 'text/html; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+};
+function _pickPrecompressed(filePath, acceptEncoding) {
+  const ae = String(acceptEncoding || '');
+  if (/\bbr\b/.test(ae) && existsSync(filePath + '.br')) return { file: filePath + '.br', encoding: 'br' };
+  if (/\bgzip\b/.test(ae) && existsSync(filePath + '.gz')) return { file: filePath + '.gz', encoding: 'gzip' };
+  return null;
+}
+function _isFingerprintedAsset(rel) {
+  // 与 vite.config.ts `[name]-[hash]-${Date.now()}.[ext]` 同源：末段必须是「hash + 13 位时间戳」
+  return /^\/assets\//.test(rel) && /-[A-Za-z0-9_-]{6,}-\d{10,}\.[A-Za-z0-9]+$/.test(rel);
+}
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const p = req.path || '';
+  if (!p || p.startsWith('/api')) return next();
+  let rel;
+  try { rel = decodeURIComponent(p); } catch (e) { return next(); }
+  if (rel.includes('..') || rel.includes('\0')) return next();
+  const target = join(distPath, rel);
+  if (!target.startsWith(distPath)) return next();
+  let st;
+  try { st = statSync(target); } catch (e) { return next(); }
+  if (!st.isFile()) return next();
+  const ext2 = extname(target).toLowerCase();
+  const pick = _PRECOMPRESS_EXTS.has(ext2) ? _pickPrecompressed(target, req.headers['accept-encoding']) : null;
+  const immutable = _IMMUTABLE_PATHS.has(rel) || _isFingerprintedAsset(rel);
+  if (!pick && !immutable) return next();   // 射程外 ⇒ 原样交给 express.static
+  res.setHeader('Vary', 'Accept-Encoding');
+  if (immutable) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  const ctype = _MIME_BY_EXT[ext2];
+  if (ctype) res.setHeader('Content-Type', ctype);
+  let fileToServe = target, size = st.size;
+  if (pick) {
+    try { size = statSync(pick.file).size; } catch (e) { return next(); }
+    fileToServe = pick.file;
+    res.setHeader('Content-Encoding', pick.encoding);
+  }
+  res.setHeader('Content-Length', String(size));
+  if (req.method === 'HEAD') return res.end();
+  const stream = createReadStream(fileToServe);
+  stream.on('error', () => { try { res.end(); } catch (e) {} });
+  return stream.pipe(res);
+});
+
 if (existsSync(distPath)) {
   app.use(express.static(distPath));
   // SPA fallback: 所有非 /api 路由返回 index.html（包括 /）
@@ -17030,6 +17253,12 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     // 🛡️ E23/R11q ④: well-formed 保证（孤立代理项 ⇒ 写库 400 PGRST102 ⇒ 永不落库）——
     //   置于 `_sanitizedForClient`（客户端终稿）与 `writeToCache`（落库文本）的**共同上游** ⇒ 两者仍逐字同源。
     cleanedText = _v525WellFormed('stream/' + lang + '/' + reportType, cleanedText);
+
+    // 🛡️ E42+/45-D2: once 本命星座确定性纠偏 —— 置于 `_sanitizedForClient`（客户端终稿）与
+    //   `writeToCache`（落库文本）的**共同上游** ⇒ 两者仍逐字同源；且已在全部清洗/真值链之后（收口位）。
+    cleanedText = applyOnceNatalSignLock(cleanedText, lang, astroMatrix, reportType);
+    // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同一共同上游；仅 monthly 生效）
+    cleanedText = lockMonthlyWeekRanges(cleanedText, lang, astroMatrix, reportType);
 
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
     let _sanitizedForClient = cleanedText;

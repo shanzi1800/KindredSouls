@@ -9,10 +9,11 @@
     "verify:regex": "node scripts/check-runtime-regex.mjs",
     "verify:render": "node scripts/check-yearly-render-guards.mjs",
     "test:report": "node --test test/*.test.mjs",
+    "precompress": "node scripts/precompress-data.mjs",
     "preflight": "npm run verify:regex && npm run verify:render && npm run test:report",
-    "prebuild": "node scripts/check-i18n-keys.mjs && npm run preflight",
+    "prebuild": "node scripts/check-i18n-keys.mjs && npm run preflight && node scripts/precompress-data.mjs",
     "build": "tsc -b && vite build",
-    "build:web": "node scripts/check-i18n-keys.mjs && npm run preflight && vite build",
+    "build:web": "node scripts/check-i18n-keys.mjs && npm run preflight && node scripts/precompress-data.mjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

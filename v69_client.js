@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 // 🛡️ E41+ Gate 39 归正：多语言星座名唯一真值源 = astro/astro_terms_dict.json
 import { SIGN_KEYS, SUN_SIGNS } from './astroTerms.js';
+// ⚠️ E42+/45-D2：**另起一行导入**（禁在上面那行加名）—— 上游 Gate 39/A1 类闸门对该行做字节级漂移锁。
+import { PLANETS as _KS_PLANET_NAME } from './astroTerms.js';
 
 const require = createRequire(import.meta.url);
 const { execSync, execFileSync } = require('child_process');
@@ -810,6 +812,30 @@ ${transitLines.join('\n')}`
     return lines.length ? lines.join('\n') : '';
   })();
 
+  // ── Part 2d: 🛡️ E42+/45-D2 本命行星真值死锁表（Markdown 表格 · 逐字引用 · 禁止改写）──
+  //   军师 2026-10-12 攻坚令「破局三道锁」之①前置锁（Prompt 硬栅栏）。
+  //   病根：模型在长文展开时「自由放飞」，甚至同一份报告前文写「金星天秤入庙」、后文自相矛盾
+  //        写成「金星天蝎」（真值天秤；天蝎恰为流年值）= 本命/流年混淆，砸穿专业公信力。
+  //   治法：把真值以**表格**形式再打印一遍（JSON/散文之外第三种冗余表述），并配零容忍负向规则。
+  //   ⚠️ 纯**追加**，不动既有 jsonBlock / proseLines / transitSection / houseTruthSection 任何字节
+  //      （上游 audit-natal-anchors 闸门用 assert.match 做存在性断言，追加安全）。
+  const deadlockRows = _planets
+    .filter(({ en }) => jsonEntries[en])
+    .map(({ en, vi }) => {
+      const e = jsonEntries[en];
+      const rx = (ch[en] && ch[en].retrograde) ? 'R' : '-';
+      return `| ${en} (${vi}) | ${e.sign} | ${e.house} | ${rx} |`;
+    });
+  const deadlockSection = deadlockRows.length
+    ? [
+        '// ─── NATAL PLANET x SIGN x HOUSE — DEADLOCK TABLE (E42+/45-D2 · VERBATIM ONLY) ───',
+        '// This table is the ONE AND ONLY truth for natal signs/houses. Copy character-for-character.',
+        '| Planet | Sign | House | Retro |',
+        '|---|---|---|---|',
+        ...deadlockRows,
+      ].join('\n')
+    : '';
+
   // ── Part 3: 铁锁规则 (最高优先级 · 不可绕过) ────────────────────────
   // V465 强化：显式示范 natal vs transit 混淆的失败案例
   const natalExamplePlanets = Object.keys(jsonEntries).slice(0, 3); // 取前3个做示范
@@ -855,6 +881,19 @@ ${transitLines.join('\n')}`
       `  Describe a ruler's condition strictly by its natal sign/house and the dignity tag given`,
       `  (domicile / exaltation / detriment / fall / peregrine). NEVER claim detriment or fall unless tagged.`,
     ] : []),
+    ...(deadlockSection ? [
+      ``,
+      `⚠️ NATAL PLANET x SIGN x HOUSE — DEADLOCK TABLE (E42+/45-D2 · ABSOLUTE · ZERO TOLERANCE):`,
+      `  The DEADLOCK TABLE above is the ONE AND ONLY truth for every planet's natal sign and house.`,
+      `  Every natal reference MUST copy its sign and house from that table, character for character.`,
+      `  FORBIDDEN: paraphrasing, "polishing", literary embellishment, or inferring a sign from element/theme.`,
+      `  FORBIDDEN: taking a sign or house from the TRANSIT POSITIONS block into a natal sentence.`,
+      `  FORBIDDEN: writing the same natal planet with two different signs anywhere in this report.`,
+      `  A natal sentence whose sign differs from the DEADLOCK TABLE is a REJECTED DRAFT — never ship it.`,
+      `  (Real production defect 2026-10-12: natal Jupiter Gemini was written as Leo, and natal Venus Libra`,
+      `   was written as Scorpio — both are THIS MONTH's transit signs, and the same report had already`,
+      `   stated "natal Venus in Libra, House 11, dignified" earlier — a self-contradiction.)`,
+    ] : []),
   ].join('\n');
 
   return [
@@ -864,6 +903,7 @@ ${transitLines.join('\n')}`
     proseLines.join('\n'),
     transitSection,
     houseTruthSection,
+    deadlockSection,
     `// ─── RULES (Highest Priority · Non-Negotiable) ───`,
     rules,
   ].join('\n');
@@ -1269,6 +1309,180 @@ export function assertNatalPlanetTruth(text, lang, astroMatrix) {
   }
 
   return { violations, checked, passed: violations.length === 0 };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ E42+/45-D2 主力战：本命行星「星座」真值 —— 确定性审计(lint) + 纠偏(correct)
+// ═══════════════════════════════════════════════════════════════════════════
+// 病根（2026-10-12 线上实兵演习实捕，两轮独立复现）：
+//   once 先天报告写「本命木星狮子座」（真值双子座）、「你的金星天蝎座」（真值天秤座），
+//   且**同一份报告前文**自写「本命金星落在天秤座第11宫（入庙）」⇒ 前言不搭后语，砸穿专业公信力。
+//   实测两处幻觉值恰等于**流年**值（months[0].jupiter=Leo / months[0].venus=Scorpio）
+//   ⇒ 本命/流年混淆（`buildNatalAnchors` 的 TRANSIT 段隔离警告未能拦住）。
+//
+// 真值源（单一真源 · 禁第二份）：
+//   行星真值 = astroMatrix.meta.computed_houses（SwissEph 实算，与 V444/V453/月报/年报同源）；
+//   多语言名词表 = astroTerms.js（= astro/astro_terms_dict.json，Gate 39 唯一绝对真值源）。
+//
+// 🔴 射程与边界（刻意保守，宁漏不改）：
+//   ① 只认**本命语境**：行星名左侧必须出现本命修饰词（本命/你的/乃 · your/natal · votre/ton ·
+//      tu/su · ของคุณ · của bạn），且**匹配起点左窗 16 字内不得出现流年词**
+//      （流年|流月|行运|今年|本月|当月|下月|上月|当周|这周|下周|上周|transit|tránsito|…）
+//      ⇒ 绝不误伤流年句（V472/V478 血训：错改流年句比漏改更致命）。
+//   ② 只替换**星座令牌本体**，句内其他字符一字不动；同语域就地替换 ⇒ **严格幂等**（二次施加 Δ=0）。
+//   ③ 缺真值（无 astroMatrix / computed_houses 空 / 未知语言）⇒ 原样返回、零动作（**绝不伪造**）。
+//   ④ 只检不改的 `lintNatalPlanetSigns` 与纠偏 `correctNatalPlanetSigns` **共用同一检出核**，
+//      杜绝「审计与纠偏各写一套」的实现漂移。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 本命修饰词（六语）—— 行星名左侧必须命中其一，才认定为本命引用 */
+const _KS_NATAL_CTX = {
+  zh: '(?:你的本命|我的本命|本命|你的|我的|乃)',
+  en: '(?:your|Your|my|My|natal|Natal|of the birth)',
+  es: '(?:tu|su|mi|nuestra|nuestro|natal|de nacimiento)',
+  fr: '(?:ton|ta|votre|mon|ma|notre|natal|de naissance)',
+  th: '(?:ของ\\s*คุณ| natal)',
+  vi: '(?:của\\s+bạn|natal)',
+};
+
+/** 流年词（左窗排除）—— 命中即判为流年语境，弃权（宁漏不改） */
+const _KS_TRANSIT_WORDS = [
+  '流年', '流月', '行运', '今年', '明年', '去年', '本月', '当月', '下月', '上月',
+  '当周', '这周', '本周', '下周', '上周', '本季', '这一周',
+  'transit', 'Transit', 'transiting', 'this month', 'next month', 'last month',
+  'this year', 'tránsito', 'este mes', 'ce mois', 'tháng này', 'quá cảnh',
+  'เดือนนี้', 'ปีนี้',
+];
+
+function _ksEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'); }
+
+/** 语言 → { signs: 有序表, planets: {EN:local}, signsBare: 去尾缀的有序表 } */
+function _ksLexicon(lang) {
+  const L = SUN_SIGNS[lang] ? lang : 'en';
+  const signs = SUN_SIGNS[L];
+  if (!Array.isArray(signs) || signs.length !== SIGN_KEYS.length) return null;
+  const planets = _KS_PLANET_NAME[L] || _KS_PLANET_NAME.en;
+  if (!planets) return null;
+  // zh 的星座名常被省略尾字「座」（「金星天蝎」）⇒ 建「裸名」表并把尾缀设为可选
+  const bare = signs.map((s) => (typeof s === 'string' && s.endsWith('座') ? s.slice(0, -1) : s));
+  return { lang: L, signs, bare, planets, hasBareSuffix: bare.some((b, i) => b !== signs[i]) };
+}
+
+/**
+ * 共用检出核：扫描正文里**本命语境**下的「行星 + 星座」搭配，与 computed_houses 真值对撞。
+ * @returns {{hits: Array<{planet,fromIndex,fromLen,foundSign,foundLang,expectedSign,context}>, checked:number}}
+ */
+function _ksScanNatalSigns(text, lang, astroMatrix) {
+  const out = { hits: [], checked: 0 };
+  if (!text || typeof text !== 'string' || !astroMatrix) return out;
+  const ch = (astroMatrix.meta && astroMatrix.meta.computed_houses) || null;
+  if (!ch || typeof ch !== 'object') return out;
+  const lex = _ksLexicon(lang);
+  if (!lex) return out;
+
+  const ctxPat = _KS_NATAL_CTX[lex.lang] || _KS_NATAL_CTX.en;
+  // 星座匹配域：本语有序名（完整式 + 裸式）+ 英文名兜底（非英文报告偶见英文星座名）
+  const localNames = lex.hasBareSuffix ? [...lex.signs, ...lex.bare] : [...lex.signs];
+  const allNames = [...localNames, ...SUN_SIGNS.en];
+  const signBody = allNames.map(_ksEsc).join('|');
+  // 尾缀独立成组 ⇒ 令牌全长 = body + tail，偏移可精确反推（不必做 startsWith 猜测）
+  const signTail = lex.hasBareSuffix ? '(座?)' : '()';
+  // 容差窗刻意排除逗号/顿号/分号 —— 跨分句的「行星…另一分句的星座」一律弃权（宁漏不改）。
+  const GAP = '[^。\\n！？!?；;，,、]{0,14}?';   // 修饰词↔行星 的容差窗（禁跨句/跨分句）
+  const GAP2 = '[^。\\n！？!?；;，,、]{0,10}?'; // 行星↔星座 的容差窗（「金星在」/「主星本命」等）
+  // 语序双覆盖：zh/en/es/fr 为「修饰词在前」，vi/th 为「行星在前 + 修饰词在后」
+  //   （实机核验：vi「Sao Mộc natal của bạn ở Sư Tử」、th「ดาวพฤหัสบดี natal」）
+
+  for (const pEn of Object.keys(lex.planets)) {
+    const truth = ch[pEn];
+    if (!truth || !truth.sign) continue;
+    const truthIdx = SIGN_KEYS.indexOf(truth.sign);
+    if (truthIdx < 0) continue;
+    const pLocal = lex.planets[pEn];
+    if (!pLocal) continue;
+    const pEsc = _ksEsc(pLocal);
+    // 前置式 | 后置式 —— 二者共用同一「星座捕获组」，射程一致
+    const head = '(?:' + ctxPat + GAP + pEsc + '|' + pEsc + GAP + ctxPat + ')';
+    const re = new RegExp(head + GAP2 + '(' + signBody + ')' + signTail, 'g');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const body = m[1];
+      const tail = m[2] || '';
+      const found = body + tail;
+      const offset = m.index + m[0].length - found.length;   // 正则末尾即令牌末尾 ⇒ 反推起点
+      // 左窗流年守卫（匹配起点前 16 字）
+      const leftWin = text.slice(Math.max(0, m.index - 16), m.index);
+      if (_KS_TRANSIT_WORDS.some((w) => leftWin.includes(w))) continue;
+      out.checked++;
+      // 判定 found 属于哪个语域（本地完整式 / 本地裸式 / 英文）
+      let foundIdx = lex.signs.indexOf(body);
+      let foundLang = 'local';
+      if (foundIdx < 0 && lex.hasBareSuffix) {
+        const bi = lex.bare.indexOf(body);
+        if (bi >= 0) { foundIdx = bi; foundLang = 'localBare'; }
+      }
+      if (foundIdx < 0) {
+        const ei = SUN_SIGNS.en.indexOf(body);
+        if (ei >= 0) { foundIdx = ei; foundLang = 'en'; }
+      }
+      if (foundIdx === truthIdx) continue;   // 真值一致 ⇒ 非违背
+      out.hits.push({
+        planet: pEn,
+        found,
+        foundBody: body,
+        foundLang,
+        expectedSign: truth.sign,
+        expectedLocal: lex.signs[truthIdx],
+        expectedEn: SUN_SIGNS.en[truthIdx],
+        offset,
+        context: m[0].slice(0, 80),
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * 只检不改：审计正文里本命语境下的行星-星座搭配是否与真值一致。
+ * @returns {{violations: Array, checked: number, passed: boolean}}
+ */
+export function lintNatalPlanetSigns(text, lang, astroMatrix) {
+  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix);
+  return {
+    violations: hits.map((h) => ({
+      planet: h.planet, expectedSign: h.expectedSign, foundSign: h.foundSign, context: h.context,
+    })),
+    checked,
+    passed: hits.length === 0,
+  };
+}
+
+/**
+ * 确定性纠偏：把本命语境下的**错误星座令牌**就地改写为真值星座（同语域、同尾缀形态）。
+ * @returns {{text: string, corrections: Array, checked: number, passed: boolean}}
+ */
+export function correctNatalPlanetSigns(text, lang, astroMatrix) {
+  if (!text || typeof text !== 'string') return { text, corrections: [], checked: 0, passed: true };
+  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix);
+  if (!hits.length) return { text, corrections: [], checked, passed: true };
+  const lex = _ksLexicon(lang);
+  // 从后往前替换（保索引有效）
+  const ordered = [...hits].sort((a, b) => b.offset - a.offset);
+  let out = text;
+  const corrections = [];
+  for (const h of ordered) {
+    const found = h.found;
+    const hadSuffix = lex && lex.hasBareSuffix && found.endsWith('座');
+    let to;
+    if (h.foundLang === 'en') to = h.expectedEn;
+    else if (lex && lex.hasBareSuffix) to = hadSuffix ? h.expectedLocal : h.expectedLocal.replace(/座$/, '');
+    else to = h.expectedLocal;
+    if (!to || to === found) continue;
+    if (out.slice(h.offset, h.offset + found.length) !== found) continue;   // 位置守卫：索引漂移则弃权
+    out = out.slice(0, h.offset) + to + out.slice(h.offset + found.length);
+    corrections.push({ planet: h.planet, from: found, to, context: h.context });
+  }
+  return { text: out, corrections, checked, passed: corrections.length === 0 };
 }
 
 // 🛡️ E29-P0-6: 本命主星「六语别名表」——用于覆盖度校验（提到即算覆盖，不校验值）
