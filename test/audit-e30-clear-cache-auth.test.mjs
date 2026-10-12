@@ -287,3 +287,65 @@ describe('E30 clear-cache 端点强鉴权', () => {
     }
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🛡️ E45-E 段：缓存 HIT 最小长度门槛「语系分化」（2026-10-12 线上实锤）
+//
+// 【病根】非流式 HIT 门槛 `length > 2000`、流式 `> 2000 && > 3000`（≡>3000）按外文月报
+//   长度（fr/es/vi 5300~7700 字符）制定；zh 月报合法落库长度在 1600~2200 区间
+//   ⇒ 约半数 zh 月报「已生成落库、却永远 HIT 不过」⇒ 叠加月报周期锁（当月锁死）
+//   ⇒ 用户整月只见 403「本月已生成」，复读死锁（实锤：主公盘 1685 字在库读不出）。
+//
+// 【治法】单一真源 `wealthCacheHitMinLen(lang)`（CJK=800 / th=1200 / 其余=2000），
+//   两处 HIT 判定同源调用，严禁内联字面量回潮。
+//
+// 【验什么】E1 函数语义（切片抽取 + new Function 行为级）｜E2 两处消费点同源调用＋裸门槛零残留
+//   ｜E3 注入自测（回滚成裸 2000 ⇒ E2 必红）
+// ════════════════════════════════════════════════════════════════════════════
+describe('E45-E 缓存 HIT 门槛语系分化（zh 月报死锁修复）', () => {
+  const SERVER_SRC = SERVER;
+
+  // 按铁律「先切片再剥」：抽取函数块后再做轻量清理，规避失衡 /* 吞段
+  const fnBlock = () => {
+    const i = SERVER_SRC.indexOf('function wealthCacheHitMinLen(');
+    assert.ok(i >= 0, 'server.js 缺失 wealthCacheHitMinLen 定义');
+    const j = SERVER_SRC.indexOf('\nfunction ', i + 1);
+    const k = SERVER_SRC.indexOf('\nconst ', i + 1);
+    const ends = [j, k].filter((x) => x > 0);
+    const end = ends.length ? Math.min(...ends) : SERVER_SRC.length;
+    return SERVER_SRC.slice(i, end);
+  };
+
+  test('E1 行为级：CJK=800 / th=1200 / 其余=2000 / 缺省=2000', () => {
+    const factory = new Function(`${fnBlock()} return wealthCacheHitMinLen;`)();
+    assert.strictEqual(factory('zh'), 800);
+    assert.strictEqual(factory('ZH'), 800, '大小写须归一');
+    assert.strictEqual(factory('ja'), 800);
+    assert.strictEqual(factory('ko'), 800);
+    assert.strictEqual(factory('th'), 1200);
+    assert.strictEqual(factory('en'), 2000);
+    assert.strictEqual(factory('fr'), 2000);
+    assert.strictEqual(factory('vi'), 2000);
+    assert.strictEqual(factory(''), 2000);
+    assert.strictEqual(factory(undefined), 2000, '缺省不得抛错，回落 2000');
+    assert.strictEqual(factory(null), 2000);
+  });
+
+  test('E2 两处 HIT 判定同源调用 wealthCacheHitMinLen，且裸长度门槛零残留', () => {
+    const calls = SERVER_SRC.match(/cachedText\.length\s*>\s*wealthCacheHitMinLen\(lang\)/g) || [];
+    assert.strictEqual(calls.length, 2, `两处消费点（非流式 + stream）都须同源调用，实测 ${calls.length} 处`);
+    // 裸门槛回潮扫描：HIT 判定行禁再出现 length > 2000 / > 3000 字面量
+    const bare = SERVER_SRC.match(/cachedText\.length\s*>\s*\d+/g) || [];
+    assert.strictEqual(bare.length, 0, `HIT 判定出现裸长度字面量（门槛回潮）：${bare.join(' | ')}`);
+  });
+
+  test('E3 注入自测：任一消费点回滚成裸 2000 ⇒ E2 判据必红', () => {
+    const broken = SERVER_SRC.replace(
+      /cachedText\.length\s*>\s*wealthCacheHitMinLen\(lang\)/,
+      'cachedText.length > 2000'
+    );
+    assert.notStrictEqual(broken, SERVER_SRC, '注入未生效');
+    const bare = (broken.match(/cachedText\.length\s*>\s*\d+/g) || []).length;
+    assert.strictEqual(bare, 1, '注入后必须恰好出现 1 处裸门槛（否则 E2 射程不足）');
+  });
+});

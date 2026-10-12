@@ -13504,6 +13504,23 @@ function requiredPlanFor(reportType) {
 const WEALTH_TEST_BIRTHDATE = '1990-06-15';
 // ⚠️ 射程：**只**覆盖这三种付费产物的生成端点；免费预告（reportType 缺省='oracle'）不受门禁
 const WEALTH_PAID_REPORT_TYPES = new Set(['monthly', 'yearly', 'once']);
+
+// ── 🛡️ E45-E：缓存 HIT 最小长度门槛（语系分化 · 单一真源）──
+//   病根（2026-10-12 线上实锤）：非流式 HIT 门槛 `length > 2000` 与流式 `> 2000 && > 3000`
+//   是按外文月报长度（fr/es/vi 实测 5300~7700 字符）制定的；而 zh 月报合法落库长度
+//   就在 1600~2200 区间（历史 10 行：1613/1685/1712/1752/1770/1871/1932/2023/2124/2216）
+//   ⇒ 约半数 zh 月报「已生成落库、却永远 HIT 不过」⇒ 叠加月报周期锁（生成当月锁死）
+//   ⇒ 用户整月只见 403「本月已生成」，复读死锁（报告在库内但读不出）。
+//   治法：按语系分化最小长度。CJK（zh/ja/ko）信息密度高取 800（仍能拦住半截/残缺文本）；
+//   th 无空格文字取 1200；其余维持 2000（防脏缓存初衷不变）。
+//   ⚠️ 两处消费点（非流式 / stream 端点 HIT 判定）必须同源调用本函数，严禁内联字面量。
+function wealthCacheHitMinLen(lang) {
+  const l = String(lang || '').toLowerCase();
+  if (l === 'zh' || l === 'ja' || l === 'ko') return 800;
+  if (l === 'th') return 1200;
+  return 2000;
+}
+
 function wealthIsGreenChannel(body) {
   const b = body || {};
   if (b.free_access === 1 || b.free_access === true || b.freeAccess === 1 || b.freeAccess === true) return true;
@@ -14939,7 +14956,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         }
         if (cachedText) console.log(`[E24⑥②] cache HIT tier=${_hitTier} key=${cacheKey}`);
 
-        if (cachedText && cachedText.length > 2000) {
+        // 🛡️ E45-E：门槛按语系分化（zh 月报 1600~2200 合法区间曾被 >2000 恒判 MISS ⇒ 周期锁死锁）
+        if (cachedText && cachedText.length > wealthCacheHitMinLen(lang)) {
           console.log(`[wealth-oracle] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}`);
           // V103-fix6: 标准化旧缓存,确保格式统一
           // 🛡️ E15/R11f-0 (P0 修复, 2026-10-04): 此处必须用 `let`，**绝不可改回 `const`**。
@@ -16087,7 +16105,9 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
       if (_viDirtyHit) {
         console.warn(`[V394] HIT缓存含vi拆词脏文本, 拦截强制MISS重生成: ${cacheKey}`);
       }
-      if (cachedText && !_viDirtyHit && cachedText.length > 2000 && cachedText.length > 3000) {
+      // 🛡️ E45-E：门槛同源收敛到 wealthCacheHitMinLen(lang)——旧写法 `>2000 && >3000` 等价 >3000，
+      //   对 fr/es/vi（5300+）无碍，但对 zh（1600~2200 合法区间）全灭 ⇒ stream 复读同样死锁。
+      if (cachedText && !_viDirtyHit && cachedText.length > wealthCacheHitMinLen(lang)) {
         // ── V113: 缓存命中 → 完美终稿直传(写入时已清洗,读取时零处理)──
         console.log(`[wealth-stream] [HIT] Cache HIT: ${cacheKey}, length=${cachedText.length}, instant response`);
         // V113: 写入时已跑完全套清洗,缓存=完美终稿;读取时零处理直接分块 SSE 输出
