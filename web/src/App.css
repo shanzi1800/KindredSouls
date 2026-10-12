@@ -546,6 +546,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   padding: 32px 24px;
   max-width: 340px;
   width: 100%;
+  /* 主公令 45-B11：弹窗整体下移 1cm —— flex 居中下 margin-top 取 2cm（对称抵消一半）即净下移 1cm ≈ 37.8px */
+  margin-top: 2cm;
   animation: slideUp 0.4s ease-out;
 }
 
