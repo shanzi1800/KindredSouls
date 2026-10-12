@@ -166,6 +166,14 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
         params.birthTz = birthCity.tz;
         params.birthLat = String(birthCity.lat);
         params.birthLon = String(birthCity.lon);
+        // 🔴 P0 修复（UI 实兵演习 2026-10-12 实锤）：报告页 deriveWealthBirthParams / mount
+        //   坐标门控 / 灵宠 CTA hasExplicitBirthCoords **只认 lat/lon/tz**，
+        //   旧参数名错位 ⇒ 用户所选城市坐标被静默丢弃 ⇒ 本命盘全程按 Bangkok 默认盘计算
+        //   （精度承诺「+40%」实际为零）。此处补发标准名；birth* 旧名保留向后兼容。
+        //   ⚠️ E34 D5：下方 else 分支（未选城）**绝不**补发 lat/lon —— 禁以默认盘冒充真实出生地。
+        params.lat = String(birthCity.lat);
+        params.lon = String(birthCity.lon);
+        params.tz = birthCity.tz;
       } else {
         // 兜底：没选城市时用 Asia/Bangkok 默认坐标，WealthReportPage 的 useState 默认值已对齐
         params.birthTz = 'Asia/Bangkok';
