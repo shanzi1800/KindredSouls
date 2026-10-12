@@ -30,6 +30,8 @@ import type { FamiliarProfile } from '../components/FamiliarPicker';
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, hasExplicitBirthCoords } from '../lib/sandboxCheckout.mjs';
+// @ts-ignore —— wealthRestore.mjs 为纯 JS 逻辑核（形状由 45-D2c 闸门守备）
+import { buildWealthRestoreUrl } from '../lib/wealthRestore.mjs';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 // 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
@@ -1019,6 +1021,11 @@ export const deriveWealthBirthParams = (
   return out;
 };
 
+// ── 🛡️ 45-D2c：「现场恢复」回跳 URL 构造已抽为独立纯核（单一真源）──
+//   实现与契约见 web/src/lib/wealthRestore.mjs（可被闸门直接 import 做行为断言）。
+//   封锁的缺陷：回跳 URL 只带 birth+lang ⇒ 冷启动/Stripe 回跳恢复现场时
+//   时间·城市·经纬度·时区全丢 ⇒ 退回曼谷默认盘（45-D1 孪生暗雷）。
+
 // ── 🛍️ E24⑥ 前端按钮门控（与后端 server.js::wealthEntitledByType **同源同档**）──
 //   分档规则（= 产品付费阶梯，军师裁决 2026-10-07 · 圣经 V2.0 §2.1）：
 //     once（$4.99 先天报告）→ wealth_once / 全通年卡        ← 🔴 月卡**不覆盖**（once 是永久落库资产）
@@ -1659,7 +1666,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
     // ── 绿色通道:测试账号不走 OAuth / Stripe,直接跳免费报告页 ──
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
-      const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang) + '&free_access=1';
+      // 🛡️ 45-D2c: 全参透传（旧写法只带 birth+lang ⇒ 冷启动恢复退回曼谷默认盘）
+      const backUrl = buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang }, { free_access: '1' });
       window.location.href = backUrl;
       return;
     }
@@ -1674,7 +1682,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       localStorage.removeItem('ks_auth_success_trigger');
       localStorage.setItem('ks_pending_checkout_plan', plan);
       if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
-      const backUrl = window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang);
+      // 🛡️ 45-D2c: 全参透传 —— 时间·城市·经纬度·时区一个不丢，
+      //    冷启动/Stripe 回跳恢复现场不再退回曼谷默认盘（45-D1 孪生暗雷）
+      const backUrl = buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang });
       localStorage.setItem('ks_oauth_back_url', backUrl);
 
       const popup = window.open('about:blank', 'KindredSouls Auth', 'width=500,height=600');

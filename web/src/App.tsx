@@ -1681,7 +1681,13 @@ export default function App() {
  if (wealthPlans.includes(pendingPlan || '')) {
    const birthDate = r?.birthDate || localStorage.getItem('wealth_birth') || '';
    const lang = r?.lang || localStorage.getItem('wealth_lang') || 'en';
-   window.location.href = `/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}&intent=checkout&plan=${pendingPlan}`;
+   // 🛡️ 45-D2c:「现场秒级恢复」优先复用**全参**回跳 URL（time/城市/经纬度/时区齐备）。
+   //   旧写法硬编码 `/wealth?birth=…&lang=…` ⇒ 坐标全丢（冷启动退回曼谷默认盘），
+   //   且落回**输入页**而非报告页。仅当 ks_oauth_back_url 缺失时才回退。
+   const restored = localStorage.getItem('ks_oauth_back_url')
+     || `/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}`;
+   const rsep = restored.includes('?') ? '&' : '?';
+   window.location.href = restored + rsep + 'intent=checkout&plan=' + pendingPlan;
  } else {
    setResult(r);
    _setPage('result');

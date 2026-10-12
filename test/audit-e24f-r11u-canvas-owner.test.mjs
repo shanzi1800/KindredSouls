@@ -28,6 +28,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
+import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_PATH = path.join(__dirname, '..', 'web', 'src', 'pages', 'WealthReportPage.tsx');
@@ -180,4 +182,134 @@ test('E24⑤/r11u: 注入④ —— 删除请求体 _bp 直读（回退 birthTim
   const injected = REAL_SRC.replace(/birthTime:\s*_bp\.birthTime/g, 'birthTime, // E24F-INJECT');
   const f = runChecks(injected);
   assert.ok(f.some((x) => /^A3a/.test(x)), '缺陷④必须命中 A3a（请求体 _bp 直读缺失）');
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * D. 45-D2c —— 冷启动「现场恢复」全参透传（回跳 URL 不得丢坐标）
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 缺陷史：回跳 URL 旧写法只带 `birth` + `lang` ⇒ 冷启动重载 / 移动端后台回收 /
+ * 微信内置浏览器 / Stripe 支付成功回跳恢复现场时，出生时间·城市·经纬度·时区
+ * **全丢** ⇒ 退回曼谷默认盘（与 45-D1「参数名错位」同源的孪生暗雷）。
+ * 契约以**消费方**为准（deriveWealthBirthParams 只认 time|birthTime / lat / lon / tz）；
+ * ⚠️ E34 D5：源 = 当前 URL，未选城时本就不发 lat/lon ⇒ **绝不臆造**默认坐标。
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const APP_PATH = path.join(__dirname, '..', 'web', 'src', 'App.tsx');
+const REAL_APP_SRC = fs.readFileSync(APP_PATH, 'utf8');
+const RESTORE_MODULE_PATH = path.join(__dirname, '..', 'web', 'src', 'lib', 'wealthRestore.mjs');
+const RESTORE_MODULE_SRC = fs.readFileSync(RESTORE_MODULE_PATH, 'utf8');
+const R = await import(pathToFileURL(RESTORE_MODULE_PATH).href);
+
+const _tmpRestoreRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ks-45d2c-'));
+let _rseq = 0;
+async function loadMutatedRestore(mutate) {
+  const src = mutate(RESTORE_MODULE_SRC);
+  assert.notEqual(src, RESTORE_MODULE_SRC, '注入未命中锚点（锚点漂移，注入自测失效）');
+  const p = path.join(_tmpRestoreRoot, 'r' + (++_rseq) + '.mjs');
+  fs.writeFileSync(p, src, 'utf8');
+  return await import(pathToFileURL(p).href);
+}
+
+// 真值样本：WealthPage 生产形态（标准名 lat/lon/tz + 兼容名 birth*）
+const ORACLE_SEARCH = '?birth=1976-12-03&lang=zh&birthTime=03%3A30&birthCity=Yichang'
+  + '&birthLat=30.7144&birthLon=111.2847&birthTz=Asia%2FShanghai'
+  + '&lat=30.7144&lon=111.2847&tz=Asia%2FShanghai';
+const qsOf = (u) => new URLSearchParams(String(u).split('?')[1] || '');
+
+/* ── 判据（主测与注入自测**同源**取用）── */
+const restoreCarriesAllBirthParams = (mod) => {
+  const p = qsOf(mod.buildWealthRestoreUrl('/wealth/report', ORACLE_SEARCH, { birthDate: '', lang: '' }));
+  return p.get('birth') === '1976-12-03' && p.get('lang') === 'zh'
+    && p.get('birthTime') === '03:30' && p.get('birthCity') === 'Yichang'
+    && p.get('lat') === '30.7144' && p.get('lon') === '111.2847' && p.get('tz') === 'Asia/Shanghai';
+};
+const restoreNeverFabricatesCoords = (mod) => {
+  const u = mod.buildWealthRestoreUrl('/wealth/report', '?birth=1990-01-01&lang=zh&birthTime=12%3A00', { birthDate: '', lang: '' });
+  return !/[?&]lat=/.test(u) && !/[?&]lon=/.test(u) && !/[?&]tz=/.test(u);
+};
+const restoreFallbackOk = (mod) => {
+  const p = qsOf(mod.buildWealthRestoreUrl('/wealth/report', '', { birthDate: '1990-02-03', lang: 'fr' }, { free_access: '1' }));
+  return p.get('birth') === '1990-02-03' && p.get('lang') === 'fr' && p.get('free_access') === '1';
+};
+const restoreCallSitesOk = (srcRaw) => {
+  const s = stripComments(srcRaw);
+  const calls = countMatches(s, /buildWealthRestoreUrl\(\s*window\.location\.pathname\s*,\s*window\.location\.search/g);
+  const legacy = countMatches(s, /window\.location\.pathname\s*\+\s*'\?birth='/g);
+  return calls === 2 && legacy === 0;
+};
+const appRestorePrefersBackUrlOk = (srcRaw) => {
+  const s = stripComments(srcRaw);
+  if (s.includes('`/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}&intent=checkout&plan=${pendingPlan}`')) return false;
+  const i = s.indexOf("const restored = localStorage.getItem('ks_oauth_back_url')");
+  if (i === -1) return false;
+  const region = s.slice(i, i + 420);
+  return region.includes('||') && /window\.location\.href\s*=\s*restored\s*\+/.test(region);
+};
+
+const baseRestoreFails = [];
+if (!restoreCarriesAllBirthParams(R)) baseRestoreFails.push('D1: 回跳 URL 未全参透传（时间/城市/坐标/时区缺失）');
+if (!restoreNeverFabricatesCoords(R)) baseRestoreFails.push('D2: 未选城时臆造默认坐标（违反 E34 D5）');
+if (!restoreFallbackOk(R)) baseRestoreFails.push('D3: 缺参兜底 / extra 追加失效');
+if (!restoreCallSitesOk(REAL_SRC)) baseRestoreFails.push('D4: 回跳调用点未走纯核（须恰 2 处）或旧形态残留');
+if (!appRestorePrefersBackUrlOk(REAL_APP_SRC)) baseRestoreFails.push('D5: App 恢复链未优先复用全参回跳 URL');
+
+test('45-D2c: 基线 —— 冷启动「现场恢复」全参透传到位（回跳不丢坐标）', () => {
+  assert.deepEqual(baseRestoreFails, [], '闸门失败项:\n' + baseRestoreFails.join('\n'));
+});
+
+test('45-D2c: D6 白名单键与消费方契约对齐（标准名 + 兼容名齐备）', () => {
+  for (const k of ['birth', 'lang', 'time', 'birthTime', 'birthCity', 'lat', 'lon', 'tz']) {
+    assert.ok(R.WEALTH_RESTORE_KEYS.includes(k), `白名单缺键 ${k}`);
+  }
+  // 漂移锁：消费方（报告页 deriveWealthBirthParams）真实读取的键名必须被白名单覆盖
+  const consumer = stripComments(REAL_SRC);
+  for (const k of ['time', 'birthTime', 'lat', 'lon', 'tz']) {
+    assert.ok(new RegExp("p\\.get\\('" + k + "'\\)").test(consumer), `消费方未读取 ${k}（契约漂移须复查）`);
+  }
+});
+
+test('45-D2c: 注入① —— 纯核丢弃坐标（只透传 birth+lang）⇒ D1 必红', async () => {
+  const mod = await loadMutatedRestore((s) => s.replace(
+    "  for (const k of WEALTH_RESTORE_KEYS) {",
+    "  for (const k of ['birth', 'lang']) {"));
+  assert.equal(restoreCarriesAllBirthParams(mod), false, 'D1 判据必须能识破坐标丢失');
+});
+
+test('45-D2c: 注入② —— 纯核臆造曼谷默认坐标 ⇒ D2 必红（E34 D5）', async () => {
+  const mod = await loadMutatedRestore((s) => s.replace(
+    "  if (!out.get('birth') && fallback.birthDate) out.set('birth', fallback.birthDate);",
+    "  if (!out.get('lat')) out.set('lat', '13.75');\n  if (!out.get('lon')) out.set('lon', '100.5');\n"
+    + "  if (!out.get('birth') && fallback.birthDate) out.set('birth', fallback.birthDate);"));
+  assert.equal(restoreNeverFabricatesCoords(mod), false, 'D2 判据必须能识破默认盘臆造');
+});
+
+test('45-D2c: 注入③ —— 回跳退回「只带 birth+lang」旧形态 ⇒ D4 必红', () => {
+  const bad = REAL_SRC.replace(
+    'buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang });',
+    "window.location.pathname + '?birth=' + encodeURIComponent(birthDate) + '&lang=' + encodeURIComponent(lang);");
+  assert.notEqual(bad, REAL_SRC, 'D4 注入锚点漂移');
+  assert.equal(restoreCallSitesOk(bad), false, 'D4 判据必须能识破旧形态回跳');
+});
+
+test('45-D2c: 注入④ —— App 恢复链改回硬编码 birth+lang ⇒ D5 必红', () => {
+  const bad = REAL_APP_SRC.replace(
+    /const restored = localStorage\.getItem\('ks_oauth_back_url'\)\s*\n\s*\|\|[^;]*;/,
+    'const restored = `/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}`;');
+  assert.notEqual(bad, REAL_APP_SRC, 'D5 注入锚点漂移');
+  assert.equal(appRestorePrefersBackUrlOk(bad), false, 'D5 判据必须能识破硬编码恢复链');
+});
+
+test('45-D2c: 注入⑤ —— App 恢复链退回「旧整行硬编码 + intent」原形 ⇒ D5 必红', () => {
+  const bad = REAL_APP_SRC.replace(
+    /const restored = [\s\S]*?window\.location\.href = restored \+ rsep \+ 'intent=checkout&plan=' \+ pendingPlan;/,
+    "window.location.href = `/wealth?birth=${encodeURIComponent(birthDate)}&lang=${lang}&intent=checkout&plan=${pendingPlan}`;");
+  assert.notEqual(bad, REAL_APP_SRC, 'D5 注入锚点漂移（旧原形）');
+  assert.equal(appRestorePrefersBackUrlOk(bad), false, 'D5 判据必须能识破旧原形');
+});
+
+test('45-D2c: 注入⑥ —— 判据射程自证（正例全绿，禁射程断层）', () => {
+  assert.ok(restoreCarriesAllBirthParams(R), 'D1 判据射程失效');
+  assert.ok(restoreNeverFabricatesCoords(R), 'D2 判据射程失效');
+  assert.ok(restoreFallbackOk(R), 'D3 判据射程失效');
+  assert.ok(restoreCallSitesOk(REAL_SRC), 'D4 判据射程失效');
+  assert.ok(appRestorePrefersBackUrlOk(REAL_APP_SRC), 'D5 判据射程失效');
 });
