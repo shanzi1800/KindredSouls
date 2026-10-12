@@ -227,27 +227,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .input:focus { border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.15); }
 .input::placeholder { color: #bbb; }
 
-/* ── Manual Date Input — equal-width fields ── */
+/* ── Manual Date Input — 对齐财富模块：单框内嵌三段透明输入（YYYY / MM / DD） ── */
 .date-manual {
   display: flex; align-items: center; gap: 3px;
-  width: 100%;
+  width: 100%; padding: 11px 14px; box-sizing: border-box;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(212,175,55,0.3);
+  border-radius: 10px;
 }
 .date-part {
-  flex: 1; height: 52px; border: 2px solid #0891b2; border-radius: 12px;
-  padding: 0 14px; font-size: 16px; font-weight: 600;
-  color: #a855f7 !important; background: #fff !important;
+  flex: 1; border: none; background: transparent;
+  padding: 0; font-size: 14px; font-weight: 600;
+  color: #D4AF37 !important;
   outline: none; text-align: center;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: none;
   -webkit-appearance: none; appearance: none;
   font-family: inherit;
   min-width: 0;
 }
-.date-part:focus {
-  border-color: #81D8D0; box-shadow: 0 0 0 3px rgba(129,216,208,0.2);
-}
-.date-part::placeholder { color: #c4b5fd; }
+.date-part:focus { box-shadow: none; }
+.date-part::placeholder { color: #8B8778; }
 .date-slash {
-  color: rgba(46,203,247,0.5); font-size: 18px; font-weight: 200;
+  color: #8B8778; font-size: 14px; font-weight: 400;
   user-select: none; flex-shrink: 0;
 }
 
@@ -445,9 +446,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: celestialShake 0.3s ease-in-out;
 }
 
-.date-manual.date-error-border .date-part {
-  border-color: rgba(239, 68, 68, 0.8) !important;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3) !important;
+.date-manual.date-error-border {
+  border-color: #E05C5C !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
 }
 
 
