@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { normalizeLang } from '../lib/algos/i18n';
 import { CitySearchInput } from '../components/CitySearchInput';
 import { TimeInput } from '../components/TimeInput';
+import { slotNext } from '../components/TimeInput';
 import type { CityRecord } from '../hooks/useCitySearch';
 
 interface WealthPageProps {
@@ -43,19 +44,24 @@ const DateInput: React.FC<{
   };
 
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  // 🛠️ 45-B8：捕获本次实际按下的数字键（真机/点击中点时光标可能落在字符中间）
+  const typed = useRef('');
 
   const handleChange = (pi: number, raw: string) => {
-    const cleaned = raw.replace(/\D/g, '').slice(0, partDefs[pi].max);
     const p = getParts();
-    p[partDefs[pi].key] = cleaned;
+    const key = partDefs[pi].key;
+    // 🛠️ 45-B8：绝不吞键 —— 满格续打即整格重写（原 maxLength + slice(0,N) 会静默吃掉按键）
+    p[key] = slotNext(p[key] || '', raw, partDefs[pi].max, typed.current);
+    typed.current = '';
     onChange(p.join('-'));  // 保持三段结构，parent 拿到完整的 YYYY-MM-DD
-    if (cleaned.length === partDefs[pi].max && pi < partDefs.length - 1) {
+    if (p[key].length === partDefs[pi].max && pi < partDefs.length - 1) {
       refs[pi + 1].current?.focus();
     }
   };
 
-  // Backspace 智能跳到上一位
+  // Backspace 智能跳到上一位（同时捕获本次按下的数字键）
   const handleKeyDown = (pi: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    typed.current = /^[0-9]$/.test(e.key) ? e.key : '';
     if (e.key === 'Backspace') {
       const p = getParts();
       if (!p[partDefs[pi].key] && pi > 0) {
@@ -86,10 +92,11 @@ const DateInput: React.FC<{
             <input
               ref={refs[pi]}
               style={{ flex: 1, border: 'none', background: 'transparent', color: '#D4AF37', fontSize: '14px', textAlign: 'center', outline: 'none', minWidth: 0 }}
-              type="text" inputMode="numeric" maxLength={def.max} placeholder={def.ph}
+              type="text" inputMode="numeric" autoComplete="off" pattern="[0-9]*" placeholder={def.ph}
               value={parts[def.key]}
               onChange={e => handleChange(pi, e.target.value)}
               onKeyDown={e => handleKeyDown(pi, e)}
+              onFocus={e => { const el = e.currentTarget; setTimeout(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* 忽略 */ } }, 0); }}
             />
           </React.Fragment>
         ))}

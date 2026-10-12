@@ -1,70 +1,82 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
-// ── 出生时间输入（HH:MM 两位数字，左自动跳栏；与财富线同源逐字搬迁）──
-//   🛠️ 45-B7 修复：原 HH_MAX=[2,4] 硬限小时个位 ≤4 ⇒ 15/16/17/18/19 点**无法输入**（且放行了非法的 24:00）。
-//   现按真值域收紧/放开：H1∈0-2；H2 依赖 H1（H1='2' ⇒ 0-3，否则 0-9）⇒ 小时域 00-23；
-//   分钟 M1∈0-5、M2∈0-9 ⇒ 分钟域 00-59。与服务端规范校验器（test/audit-e24h：24:00 属非法）逐位对齐。
-const H1_MAX = 2;
-const H2_MAX_WHEN_H1_IS_2 = 3;
-const MM_MAX = [5, 9];  // 分钟十位 ≤5、个位 ≤9 ⇒ 00-59
-/** 小时个位上限：十位为 2 时只能 0-3（23），否则 0-9（09/19） */
-const hourUnitMax = (h1: string): number => (h1 === '2' ? H2_MAX_WHEN_H1_IS_2 : 9);
+// ── 出生时间输入（HH:MM 两位数字，左自动跳栏；合婚 / 财富共用）──
+//   真值域：小时 00-23、分钟 00-59（与服务端校验器 test/audit-e24h 同源；24:00 属非法）。
+//
+//   🔴 45-B8 设计铁律：**绝不吞键**（真机血训：`maxLength` 挡字 + 依赖 `select()` 覆盖
+//      + 打字即改写受控值 ⇒ iOS / 微信 WebView 上表现为「很多数字打不进」）。
+//   规则：
+//     ① 不设 maxLength —— DOM 永不拦输入，每一个数字键必有反馈；
+//     ② 每格只保留「后 2 位数字」（满格续打 = 整格重写）⇒ 已有值上直接打即可改，
+//        完全不依赖聚焦全选，真机光标落点无所谓；
+//     ③ 键入不拒值（3-9 作十位也照收，用户看得见可改，不静默吞掉）；
+//     ④ 自动跳栏仅在「小时已成合法两位值（≤23）」时触发；
+//     ⑤ 失焦兜底：补零 + 越界夹紧（HH≤23 / MM≤59），缺省 12:00 / 00:00（值恒为 HH:MM）。
+const H_DEFAULT = '12';
+const M_DEFAULT = '00';
+const H_MAX = 23;
+const M_MAX = 59;
 
-//   🛠️ 45-B7 第二修：小时输满 2 位后自动跳栏到分钟，而分钟已被失焦兜底预填 "00"，
-//   叠加 maxLength=2 ⇒ 用户「打不进分钟数」。修法：两框 onFocus 即全选（打字直接覆盖），
-//   保留「值恒为 HH:MM 规范化」不变式（缺省 12:00 / 00:00）。
+/** 槽位取值：结果在容量内直接采用（覆盖/删除/粘贴都自然）；
+ *  满格续打 ⇒ 视为整格重写（优先取**本次实际按下的那位数字**，真机光标落点无关；
+ *  虚拟键盘不报 key 时退化为「取末位」）；未满格却溢出（粘贴）⇒ 取末 N 位。
+ *  **全程不丢键**：任何一次按键都会带来可见变化。 */
+export const slotNext = (prev: string, raw: string, cap: number, typed?: string): string => {
+  const next = (raw || '').replace(/\D/g, '');
+  if (next.length <= cap) return next;
+  if ((prev || '').length >= cap) return (typed && /^[0-9]$/.test(typed)) ? typed : next.slice(-1);
+  return next.slice(-cap);
+};
+
+/** 失焦归一：空 ⇒ 缺省；越界 ⇒ 夹紧；补零两位 */
+const normalizeSlot = (v: string, def: string, max: number): string =>
+  v ? String(Math.min(parseInt(v, 10) || 0, max)).padStart(2, '0') : def;
+
+/** 聚焦即把光标移到末尾（居中短槽内点击落点不可控 ⇒ 真机上会「前插」成 10/32 这类乱序）；
+ *  延后一拍执行，确保晚于浏览器自身的 tap 落点逻辑。 */
+const caretToEnd = (e: React.FocusEvent<HTMLInputElement>) => {
+  const el = e.currentTarget;
+  setTimeout(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* 忽略 */ } }, 0);
+};
+
 export const TimeInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
   const hh = value.split(':')[0] || '';
   const mm = value.split(':')[1] || '';
   const hhRef = useRef<HTMLInputElement>(null);
   const mmRef = useRef<HTMLInputElement>(null);
+  // 写穿式最新值（消除「失焦闭包读到旧值 ⇒ 吞掉刚键入的数字」竞态）
+  const latest = useRef({ h: hh, m: mm });
+  // 本次实际按下的数字键（真机光标落在字符中间时也能精确整格重写）
+  const typed = useRef('');
+  useEffect(() => { latest.current = { h: hh, m: mm }; }, [hh, mm]);
 
-  // 每位置数字上限验证（🛠️ 45-B7：小时个位上限随十位动态；分钟十位 ≤5、个位 ≤9）
   const handleHH = (raw: string) => {
-    let cleaned = raw.replace(/\D/g, '').slice(0, 2);
-    if (cleaned.length >= 1 && parseInt(cleaned[0], 10) > H1_MAX) {
-      cleaned = '';  // H1 超过上限（3-9），整段拒
-    } else if (cleaned.length === 2 && parseInt(cleaned[1], 10) > hourUnitMax(cleaned[0])) {
-      cleaned = cleaned[0];  // H2 超过动态上限（如 25/26），保留 H1
-    }
-    if (cleaned.length === 2) {
-      // 🔴 45-B7 关键次序：分钟兜底种子必须**随小时这一拍同批落盘**（此刻 mm 为空则补 '00'），
-      //   下一拍才自动跳栏 ⇒ 聚焦分钟时 DOM 已是 '00' ⇒ onFocus 全选生效 ⇒ 打字直接覆盖。
-      //   （若改由 HH 失焦兜底，种子在 focus 事件之后才写入 ⇒ 全选落空 + maxLength 挡字 ⇒ 分钟打不进。）
-      onChange(cleaned + ':' + (mm || '00'));
+    const cleaned = slotNext(latest.current.h, raw, 2, typed.current);
+    typed.current = '';
+    latest.current = { h: cleaned, m: latest.current.m };
+    onChange(cleaned + ':' + latest.current.m);
+    // 合法两位小时才跳栏；非法（如 25/90）留在本格，用户可继续改（绝不静默吞键）
+    if (cleaned.length === 2 && parseInt(cleaned, 10) <= H_MAX) {
       setTimeout(() => mmRef.current?.focus(), 0);
-    } else {
-      onChange(cleaned + (mm ? ':' + mm : ''));
     }
   };
 
   const handleMM = (raw: string) => {
-    let cleaned = raw.replace(/\D/g, '').slice(0, 2);
-    if (cleaned.length >= 1 && parseInt(cleaned[0], 10) > MM_MAX[0]) {
-      cleaned = '';
-    } else if (cleaned.length === 2 && parseInt(cleaned[1], 10) > MM_MAX[1]) {
-      cleaned = cleaned[0];
-    }
-    onChange((hh || '') + ':' + cleaned);
+    const cleaned = slotNext(latest.current.m, raw, 2, typed.current);
+    typed.current = '';
+    latest.current = { h: latest.current.h, m: cleaned };
+    onChange(latest.current.h + ':' + cleaned);
   };
 
-  // 失焦时补零并验证边界（真值域：HH 00-23、MM 00-59；与服务端校验器同源）
+  // 失焦（离开本格）：补零 + 夹紧；值恒为规范 HH:MM
+  //   🔴 以 **DOM 实际显示值** 为真源（用户看到什么就归一到什么），防「状态落后于 DOM」竞态。
   const handleBlur = () => {
-    let newHH = hh;
-    let newMM = mm;
-    if (hh) {
-      const n = Math.min(parseInt(hh, 10) || 0, 23);
-      newHH = String(n).padStart(2, '0');
-    } else {
-      newHH = '12';
-    }
-    if (mm) {
-      const n = Math.min(parseInt(mm, 10) || 0, 59);
-      newMM = String(n).padStart(2, '0');
-    } else {
-      newMM = '00';
-    }
-    onChange(newHH + ':' + newMM);
+    const rawH = (hhRef.current?.value ?? latest.current.h).replace(/\D/g, '').slice(-2);
+    const rawM = (mmRef.current?.value ?? latest.current.m).replace(/\D/g, '').slice(-2);
+    const h = normalizeSlot(rawH, H_DEFAULT, H_MAX);
+    const m = normalizeSlot(rawM, M_DEFAULT, M_MAX);
+    latest.current = { h, m };
+    onChange(h + ':' + m);
   };
 
   // 统一的内联样式（保证 input 和冒号基线完全一致）
@@ -105,11 +117,13 @@ export const TimeInput: React.FC<{ value: string; onChange: (v: string) => void 
         style={inputBase}
         type="text"
         inputMode="numeric"
-        maxLength={2}
+        autoComplete="off"
+        pattern="[0-9]*"
         placeholder="HH"
         value={hh}
         onChange={e => handleHH(e.target.value)}
-        onFocus={e => e.currentTarget.select()}
+        onKeyDown={e => { typed.current = /^[0-9]$/.test(e.key) ? e.key : ''; }}
+        onFocus={caretToEnd}
         onBlur={handleBlur}
       />
       <span style={{
@@ -125,11 +139,13 @@ export const TimeInput: React.FC<{ value: string; onChange: (v: string) => void 
         style={inputBase}
         type="text"
         inputMode="numeric"
-        maxLength={2}
+        autoComplete="off"
+        pattern="[0-9]*"
         placeholder="MM"
         value={mm}
         onChange={e => handleMM(e.target.value)}
-        onFocus={e => e.currentTarget.select()}
+        onKeyDown={e => { typed.current = /^[0-9]$/.test(e.key) ? e.key : ''; }}
+        onFocus={caretToEnd}
         onBlur={handleBlur}
       />
     </div>

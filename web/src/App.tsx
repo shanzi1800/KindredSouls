@@ -13,6 +13,7 @@ import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import { TimeInput } from './components/TimeInput';
+import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
@@ -123,24 +124,25 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
 
   const parts = (value ? value.split('-') : ['', '', '']).map(s => s || '');
   const refs = [React.useRef<HTMLInputElement>(null), React.useRef<HTMLInputElement>(null), React.useRef<HTMLInputElement>(null)];
+  // 🛠️ 45-B8：捕获本次实际按下的数字键（真机/点击中点时光标可能落在字符中间）
+  const typed = React.useRef('');
 
   React.useImperativeHandle(firstFieldRef, () => refs[0].current!, []);
 
-  const update = (idx: number, val: string) => {
+  const update = (idx: number, val: string): string => {
     const p = [...parts];
-    let cleaned = val.replace(/\D/g, '');
-    if (idx === 0) { p[0] = cleaned.slice(0, 4); }
-    else if (idx === 1) { p[1] = cleaned.slice(0, 2); }
-    else { p[2] = cleaned.slice(0, 2); }
+    // 🛠️ 45-B8：绝不吞键 —— 满格续打即整格重写（原 `slice(0,N)` + maxLength 会静默吃掉按键）
+    p[idx] = slotNext(p[idx] || '', val, idx === 0 ? 4 : 2, typed.current);
+    typed.current = '';
     const newVal = p.join('-');
     onChange(newVal);
+    return p[idx];
   };
 
   const handleFieldChange = (partIdx: number, val: string) => {
     const def = partDefs[partIdx];
-    update(def.key, val);
-    const digits = val.replace(/\D/g, '').length;
-    if (digits === def.max) {
+    const slot = update(def.key, val);
+    if (slot.length === def.max) {   // 以槽位实际长度判跳栏（而非原始按键位数）
       if (partIdx < partDefs.length - 1) {
         refs[partIdx + 1].current?.focus();
       } else if (partIdx === partDefs.length - 1) {
@@ -155,8 +157,10 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         <React.Fragment key={def.key}>
           {pi > 0 && <span className="date-slash">/</span>}
           <input ref={refs[pi]} className={`date-part${hasError ? ' date-part-error' : ''}`} type="text" inputMode="numeric"
-            maxLength={def.max} placeholder={def.ph} value={parts[def.key]}
+            placeholder={def.ph} value={parts[def.key]}
             onChange={e => handleFieldChange(pi, e.target.value)}
+            onKeyDown={e => { typed.current = /^[0-9]$/.test(e.key) ? e.key : ''; }}
+            onFocus={e => { const el = e.currentTarget; setTimeout(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* 忽略 */ } }, 0); }}
             autoFocus={autoFocus && pi === 0} />
         </React.Fragment>
       ))}
