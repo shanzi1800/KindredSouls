@@ -180,8 +180,10 @@ function matrixFromTruth(d) {
   };
 }
 
+// 🛠️ 主公令 2026-10-12：zh 用户可见标题「第一/二/三轴」→「第一/二/三篇」⇒ 骨架标记 zh 项同步；
+//    其余五语 prompt 未动（保持原生 Axis/Ejes 词形）。
 const AXIS_MARK = {
-  zh: '三轴聚焦', en: 'Three-Axis Focus', es: 'Enfoque de Tres Ejes',
+  zh: '三篇聚焦', en: 'Three-Axis Focus', es: 'Enfoque de Tres Ejes',
   fr: 'Focus sur Trois Axes', th: 'โฟกัสสามแกน', vi: 'Tập Trung Ba Trục',
 };
 const SUN_ARRAY = {

@@ -909,10 +909,10 @@ export const ASTRO_TERMS = {
         "vi": "Nhận Nuôi Linh Thú"
       },
       "AdoptDesc": {
-        "zh": "报告已交付 · 为它选一位灵魂伙伴",
-        "en": "Report ready · pick its partner",
-        "es": "Informe listo · elige su par",
-        "fr": "Rapport prêt · choisir son binôme",
+        "zh": "报告已交付，请选一位灵魂伙伴",
+        "en": "Report ready · pick a soul partner",
+        "es": "Informe listo · elige un par",
+        "fr": "Rapport prêt · choisir un binôme",
         "th": "รายงานพร้อม · เลือกคู่หูวิญญาณ",
         "vi": "Báo cáo xong · chọn bạn đồng hành"
       },

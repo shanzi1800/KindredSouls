@@ -125,6 +125,8 @@ const FamiliarPicker: React.FC<FamiliarPickerProps> = ({ birthDate, birthTime, l
   }
 
   const byIp = (ip: 'Sophia' | 'Milo') => RELATION_CARDS.filter((c) => c.ip === ip);
+  // 🛡️ URL 直读（E24⑤/P0-1 同款）：URL 显式带 birthTime ⇒ 视为已提供精准时间
+  const hasExplicitBirthTime = !!new URLSearchParams(window.location.search).get('birthTime');
 
   return (
     <div style={S.wrap}>
@@ -160,7 +162,9 @@ const FamiliarPicker: React.FC<FamiliarPickerProps> = ({ birthDate, birthTime, l
       </div>
 
       {err && <div style={S.err}>{err}</div>}
-      <div style={S.note}>{t('familiar.degradedNote')}</div>
+      {/* 🛠️ 主公令 2026-10-12：降级告知**条件渲染**——仅当 URL 未显式携带出生时间才提示
+          （旧写法无条件渲染 ⇒ 提供了时间的用户也看到「降级」字样，造成困惑） */}
+      {!hasExplicitBirthTime && <div style={S.note}>{t('familiar.degradedNote')}</div>}
     </div>
   );
 };

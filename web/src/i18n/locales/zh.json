@@ -71,7 +71,7 @@
     "subtitle": "依你的本命星盘，选一位带路的灵魂伙伴",
     "girlfriend": "善良女友",
     "girlfriendDesc": "柔情治愈 · 善解人意",
-    "bestie": "闺蜜",
+    "bestie": "热情闺蜜",
     "bestieDesc": "灵动通透 · 懂你小心思",
     "buddy": "铁哥们儿",
     "buddyDesc": "阳光义气 · 靠谱",
@@ -81,7 +81,7 @@
     "adopted": "灵宠已就位",
     "leadHome": "由它带路进首页",
     "skip": "稍后再说",
-    "degradedNote": "未提供精准出生时间，外观层已按中性样式降级",
+    "degradedNote": "补充精准出生时间，灵宠外观将更贴合你的命格",
     "error": "孵化失败，请重试"
   }
 }

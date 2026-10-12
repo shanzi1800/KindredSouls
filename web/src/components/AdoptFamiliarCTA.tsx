@@ -15,6 +15,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { clampToSlot } from '../lib/reportLayout';
 import { ASTRO_TERMS } from '../lib/algos/astroTerms.generated';
 import { supabase } from '../lib/supabase';
@@ -40,6 +41,7 @@ interface AdoptFamiliarCTAProps {
 }
 
 const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh' }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState(false);
@@ -136,7 +138,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px', minWidth: 0 }}>
             <span style={{ fontSize: '16px' }} aria-hidden="true">🐾</span>
             <span style={{ fontSize: '14px', fontWeight: 800, color: GOLD, ...SAFE_TEXT }}>{term('AdoptTitle')}</span>
           </div>
@@ -173,7 +175,9 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
                   }}
                 >
                   <span style={{ fontSize: '11px', fontWeight: 700, color: card.accent, ...SAFE_TEXT }}>
-                    {pending === card.mode ? '⏳' : card.mode}
+                    {/* 🛠️ 主公令 2026-10-12：关系卡标签走 i18n（与 FamiliarPicker 同源 zh.json familiar.*），
+                        禁再渲染英文原始键（girlfriend/bestie/…） */}
+                    {pending === card.mode ? '⏳' : t(`familiar.${card.mode}`)}
                   </span>
                 </button>
               ))}

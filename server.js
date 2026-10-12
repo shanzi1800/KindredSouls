@@ -11472,25 +11472,25 @@ function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
 【角色定位】
 你不是算命的，你是命运的解剖师。你用手术刀般的精准语言，剖开用户的先天财富基因。
 
-【输出格式 - 三轴聚焦】
+【输出格式 - 三篇聚焦】
 
-**第一轴：你的先天「金库」解密**（本命第2/5宫深挖 · 天赋变现与风险创造闭环）
+**第一篇：你的先天「金库」解密**（本命第2/5宫深挖 · 天赋变现与风险创造闭环）
 - 直接用最毒辣的语言戳痛点，论断根基必须是上方 [NATAL HOUSE RULERS] 真值块中的 H2 与 H5 两行
 - 写法示范（槽位必须按上方真值块逐字代入，严禁照抄本句字面）：你的第2宫主星是【H2 主星】，本命落在【H2 星座】第【H2 宫位】宫（状态：【H2 庙旺陷落】）——这决定了你究竟是「赚得多、花得快」的漏斗体质，还是「越攒越厚」的蓄水体质；而第5宫由【H5 主星】主管，决定你的投机胆量与副业创造力边界。据此给出专属对策。
 - 必须包含：财运格局、吸金体质、存钱能力、投机偏好与副业创造力
 
-**第二轴：终身财富克星与资本杠杆警示**（本命第8/11宫深挖 + 土星/冥王星相位）
+**第二篇：终身财富克星与资本杠杆警示**（本命第8/11宫深挖 + 土星/冥王星相位）
 - 精准指出人生最大的「财务陷阱」会在哪里出现，并说明第8宫（借贷/共享资源/他人资本）与第11宫（社群资本/大平台借力/人脉福德）如何成为你的杠杆或绞索
 - 示例：「因盲目创业破产、被亲友借钱拖垮、盲目跟风买房被套」
 - 必须包含：破财雷区、投资陷阱、消费黑洞、外部借力通道（第11宫）
 
-**第三轴：专属「搞钱姿势」指南**（本命第10宫 · 社会名望与事业上限压轴）
+**第三篇：专属「搞钱姿势」指南**（本命第10宫 · 社会名望与事业上限压轴）
 - 根据星盘元素（风林火山）与第10宫真值，明确指出最适合的副业方向与事业天花板
 - 示例：「靠个人IP变现、靠技术死磕、靠资源倒腾」
 - 必须包含：副业方向、赚钱路径、财富密码、事业上限
 
 【铁律】
-✓ 每轴必须800字以上，总字数2400-3000字
+✓ 每篇必须800字以上，总字数2400-3000字
 ✓ 语言毒辣、直击灵魂，不说正确的废话
 ✓ 用「你是」「你必须」「你千万别」等强力句式
 ✓ 本命盘终身不变，内容必须经得起时间检验
@@ -11501,7 +11501,7 @@ function buildWealthOncePrompt(birthDate, lang, astroMatrix) {
       user: `用户生日：${birthDate}
 本命太阳：${sunSign}
 
-请为该用户生成「先天财富DNA解码报告」，严格按照三轴聚焦结构输出。`
+请为该用户生成「先天财富DNA解码报告」，严格按照三篇聚焦结构输出，三篇标题必须逐字使用「第一篇：」「第二篇：」「第三篇：」开头。`
     },
 
     en: {
@@ -11699,7 +11699,7 @@ Tạo "Báo Cáo Giải Mã DNA Giàu Có Bẩm Sinh" cho người dùng này, t
   // 🛡️ E25/P0: 注入本命真值块（三轴共用同一份 SwissEph 真值）+ 语言锁（防英文数据块带偏输出语种）
   if (natalAnchors) {
     const ONCE_NATAL_TRUTH_DIRECTIVE = {
-      zh: '【真值铁律】上方 [NATAL CHART ANCHORS] 为 SwissEph 实算的本命真值（终身不变）。第一轴「金库」的第2/5宫、第二轴「克星与杠杆」的第8/11宫与土星/冥王宫位，以及全文任何「宫位主星/飞星」表述，都必须严格引用该块真值（[NATAL HOUSE CUSPS] 宫头星座 + [NATAL HOUSE RULERS] 主星落座·落宫·庙旺陷落）；严禁编造未给出的宫位数字、星座或主星；真值块未标记为陷（detriment）或落（fall）者，严禁写成「落陷/入陷」。全文必须使用简体中文书写（上方英文数据块仅作真值来源，严禁照抄英文句子）。',
+      zh: '【真值铁律】上方 [NATAL CHART ANCHORS] 为 SwissEph 实算的本命真值（终身不变）。第一篇「金库」的第2/5宫、第二篇「克星与杠杆」的第8/11宫与土星/冥王宫位，以及全文任何「宫位主星/飞星」表述，都必须严格引用该块真值（[NATAL HOUSE CUSPS] 宫头星座 + [NATAL HOUSE RULERS] 主星落座·落宫·庙旺陷落）；严禁编造未给出的宫位数字、星座或主星；真值块未标记为陷（detriment）或落（fall）者，严禁写成「落陷/入陷」。全文必须使用简体中文书写（上方英文数据块仅作真值来源，严禁照抄英文句子）。',
       en: '[TRUTH RULE] The [NATAL CHART ANCHORS] block above is your SwissEph-computed natal truth (fixed for life). Axis 1 (houses 2/5), Axis 2 (houses 8/11 + Saturn/Pluto) and EVERY house-ruler statement MUST quote the exact cusp signs and rulers given there ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]). Never invent a house number, sign or ruler; never call a ruler "in detriment/fall" unless the truth block tags it so. Write the entire report in English.',
       es: '[REGLA DE VERDAD] El bloque [NATAL CHART ANCHORS] anterior es tu verdad natal calculada con SwissEph (fija de por vida). El Eje 1 (casas 2/5), el Eje 2 (casas 8/11 + Saturno/Plutón) y TODA afirmación sobre regentes DEBEN citar exactamente los signos de cúspide y los regentes indicados ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]); nunca inventes casas, signos ni regentes, y nunca digas que un regente está "en detrimento/caída" si el bloque no lo marca. Escribe todo el informe en español.',
       fr: "[RÈGLE DE VÉRITÉ] Le bloc [NATAL CHART ANCHORS] ci-dessus est votre vérité natale calculée par SwissEph (fixe à vie). L'Axe 1 (maisons 2/5), l'Axe 2 (maisons 8/11 + Saturne/Pluton) et TOUTE mention de maître de maison DOIVENT citer exactement les signes de cuspide et les maîtres indiqués ([NATAL HOUSE CUSPS] + [NATAL HOUSE RULERS]) ; n'inventez jamais de maison, de signe ni de maître, et n'écrivez jamais qu'un maître est « en chute/détriqué » si le bloc ne le marque pas. Rédigez tout le rapport en français.",

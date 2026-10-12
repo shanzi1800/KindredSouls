@@ -3037,7 +3037,10 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             const cleaned = displayText
               .replace(/[\uFFFD\u0000\uFFFE\uFFF0-\uFFFF]/g, '')
               .replace(/<fe0f>/gi, '').replace(/<unknown>/gi, '')
-              .replace(/\\n/g, '');
+              .replace(/\\n/g, '')
+              // 🛠️ 主公令 2026-10-12：三段标题「第一/二/三轴」→「第一/二/三篇」（prompt 已同步改词；
+              //   此处兜底 once 永久缓存中的旧标题，HIT 复读同样呈现新词）
+              .replace(/第一轴/g, '第一篇').replace(/第二轴/g, '第二篇').replace(/第三轴/g, '第三篇');
 
             return (
               <SacredYearlyReportBox

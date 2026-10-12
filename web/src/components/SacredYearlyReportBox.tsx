@@ -932,7 +932,7 @@ const SacredYearlyReportBox: React.FC<{
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 16px' }}>
+    <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 0' }}>
       <style>{`
         @keyframes skeleton2s {
           0%, 100% { opacity: 0.12; transform: scaleX(0.95); }
@@ -980,6 +980,8 @@ const SacredYearlyReportBox: React.FC<{
           }}>
             {(reportType === 'monthly'
               ? (lang === 'en' ? 'Monthly Wealth Report' : lang === 'es' ? 'Informe de Riqueza Mensual' : lang === 'fr' ? 'Rapport de Richesse Mensuel' : lang === 'th' ? 'รายงานความมั่งคั่งรายเดือน' : lang === 'vi' ? 'Báo Cáo Tài Sản Hàng Tháng' : '月度财富报告')
+              : reportType === 'once'
+              ? (lang === 'en' ? 'Innate Wealth Report' : lang === 'es' ? 'Informe de Riqueza Innata' : lang === 'fr' ? 'Rapport de Richesse Innée' : lang === 'th' ? 'รายงานความมั่งคั่งประจำตัว' : lang === 'vi' ? 'Báo Cáo Tài Sản Bẩm Sinh' : '先天财富报告')
               : (lang === 'en' ? 'Annual Wealth Report' : lang === 'es' ? 'Informe de Riqueza Anual' : lang === 'fr' ? 'Rapport de Richesse Annuel' : lang === 'th' ? 'รายงานความมั่งคั่งประจำปี' : lang === 'vi' ? 'Báo Cáo Tài Sản Thường Niên' : '年度财富报告'))}
           </h3>
         </div>
