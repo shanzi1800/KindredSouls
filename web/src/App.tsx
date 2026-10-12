@@ -350,37 +350,38 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         <h1 className="title" style={{ textAlign: 'center' }}>{t('input.title')}</h1>
         <p className="subtitle" style={{ textAlign: 'center' }}>{t('app.name')}</p>
         <p className="desc" style={{ textAlign: 'center' }}>{t('input.subtitle')}</p>
-      {/* 🌌 45-B5 对齐财富模块：字段行序＝城市 → 时间 → 出生日期；行间距 gap:8px 与财富一致；
+      {/* 🌌 45-B5 对齐财富模块：字段行序＝城市 → 时间 → 出生日期；
+              45-B7：框内 6 行行距整体缩小 30%（gap 8→5.6px、label 下边距 8→5.6px）；
               「测算缘分」CTA 移出蓝框置框下方；白色合规条款紧贴按钮。 */}
-      <div className="form" style={{ gap: '8px' }}>
+      <div className="form" style={{ gap: '5.6px' }}>
         {/* 你 · 第1行 出生城市（可选） */}
         <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_CITY}</label>
           <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
         </div>
         {/* 你 · 第2行 出生时间（可选） */}
         <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_TIME}</label>
           <TimeInput value={t1} onChange={setT1} />
         </div>
         {/* 你 · 第3行 出生日期 */}
         <div>
-          <label className="date-label" htmlFor="d1" style={{ textAlign: 'center', marginBottom: '8px' }}>{t('input.yourBirthday')}</label>
+          <label className="date-label" htmlFor="d1" style={{ textAlign: 'center', marginBottom: '5.6px' }}>{t('input.yourBirthday')}</label>
           <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
         </div>
         {/* TA · 第1行 出生城市（可选） */}
         <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_CITY}</label>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_CITY}</label>
           <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
         </div>
         {/* TA · 第2行 出生时间（可选） */}
         <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '8px' }}>{L_TIME}</label>
+          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_TIME}</label>
           <TimeInput value={t2} onChange={setT2} />
         </div>
         {/* TA · 第3行 出生日期 */}
         <div>
-          <label className="date-label" htmlFor="d2" style={{ textAlign: 'center', marginBottom: '8px' }}>{t('input.theirBirthday')}</label>
+          <label className="date-label" htmlFor="d2" style={{ textAlign: 'center', marginBottom: '5.6px' }}>{t('input.theirBirthday')}</label>
           <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         </div>
         {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip；间距/内边距与财富框内一致） */}
