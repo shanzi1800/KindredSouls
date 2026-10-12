@@ -940,6 +940,8 @@ ${transitLines.join('\n')}`
       `  FORBIDDEN: writing "house N is ruled by <planet>" when <planet> is not that row's ruler.`,
       `  FORBIDDEN: giving the same house two different cusp signs, or two different rulers, in this report.`,
       `  FORBIDDEN: the "ruler slip" — attaching a house's ruler to the neighbouring house.`,
+      `  FORBIDDEN: giving a natal planet a sign/house pair that differs from that planet's own seat,`,
+      `   INCLUDING elided-subject phrasings ("…the ruler is natal Saturn, natal it falls in <Sign> house N").`,
       `  A house sentence that contradicts the MATRIX is a REJECTED DRAFT — never ship it.`,
       `  (Real production defect 2026-10-12: in one and the same once report the 10th-house cusp sign`,
       `   and the ruler of the 11th house were both stated wrongly, contradicting the chart itself.)`,
@@ -1640,7 +1642,14 @@ function _ksHouseClaimRes(lang) {
     .sort((a, b) => b.length - a.length).map(_ksEsc).join('|');
   const G = '[^。\\n！？!?；;，,、]{0,16}?';   // 关键词↔令牌 容差窗（禁跨句/跨分句，宁漏不改）
   const GT = '[^。\\n！？!?；;，,、]{0,4}?';   // 「紧邻」容差窗（裸声称式专用，最小射程）
-  const LINK = (L === 'zh') ? '(?:由|为|是|被|乃|即)' : '(?!)';   // 仅 zh 有「由 X 主管」语序
+  // 🔴 45-F 查缺补漏（2026-10-12 线上实兵捕获）：「星座↔宫位」紧邻窗。中文宫头**常写成
+  //   `<星座>第N宫`**（Sign 在前），原三式（H 在前 / 需「宫头」关键词）**完全漏检**这类
+  //   宫头幻觉 ⇒ 线上残留「狮子座第10宫/第11宫」「白羊座第1宫」。窗宽取 {0,2}（最紧）。
+  const GS = '[^。\\n！？!?；;，,、]{0,2}?';
+  // ⚠️ zh 专属语序：`<宫位>由<行星>主管`。可选前缀分句标点（「第8宫**，**由月亮主管」）
+  //    —— 线上实捕：分句标点会把原式阻断 ⇒ 「天蝎座第8宫，由月亮主管」整条漏检（主星归属幻觉留存）。
+  //    ⚠️ 该放宽仅在 order-4 生效，且 loop 内有「主管后接内容字 ⇒ 动词用法弃权」的专门守卫。
+  const LINK = (L === 'zh') ? '(?:[，,、]\\s*)?(?:由|为|是|被|乃|即)' : '(?!)';
   const RW = _KS_RULER_KW[L];
   const RN = _KS_RULER_NOUN_KW[L];
   const CK = _KS_CUSP_KW[L];
@@ -1658,8 +1667,9 @@ function _ksHouseClaimRes(lang) {
     '(?:' + '(?<h5>' + H + ')' + G + CK + G + '(?<s5>' + signAlt + ')'
     + '|' + CK + G + '(?<h6>' + H + ')' + G + '(?<s6>' + signAlt + ')'
     + '|(?<h7>' + H + ')' + GT + '(?<s7>' + signAlt + ')'
+    + '|(?<s8>' + signAlt + ')' + GS + '(?<h9>' + H + ')'
     + ')', 'gi');
-  const out = { lang: L, lex, ruler, cusp, G, GT };
+  const out = { lang: L, lex, ruler, cusp, G, GT, RW, CK };
   _ksHouseClaimReCache.set(L, out);
   return out;
 }
@@ -1681,7 +1691,7 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
   if (!cusps && !rulers && !ch) return out;
   const res = _ksHouseClaimRes(lang);
   if (!res) return out;
-  const { lex, ruler, cusp } = res;
+  const { lex, ruler, cusp, RW, CK } = res;
   const planMap = lex.planets || {};
   const planEn = _KS_PLANET_NAME.en || {};
   const localPlanetVals = new Set(Object.values(planMap).filter(Boolean));
@@ -1704,6 +1714,29 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
     const lw = text.slice(Math.max(0, idx - 16), idx);
     return _KS_TRANSIT_WORDS.some((w) => lw.includes(w));
   };
+  // 真值「落座对」（星座×宫位）集合 —— Sign+H 裸式**歧义消解**用：
+  //   「巨蟹座第4宫」既可能是「H4 宫头=巨蟹」也可能是「（某行星）在巨蟹座第4宫」。
+  //   若该 (星座,宫位) 对**确实是某行星的落座** ⇒ 视为歧义 ⇒ 宫头锁**弃权**（宁漏不改）。
+  const seatedPairs = new Set();
+  if (ch) {
+    for (const k of Object.keys(ch)) {
+      const t = ch[k];
+      if (!t || !t.sign) continue;
+      const i = SIGN_KEYS.indexOf(t.sign);
+      if (i >= 0) seatedPairs.add(i + '|' + Number(t.house));
+    }
+  }
+  // 「紧跟其后是否为宫头/宫主星关键槽」——用于 Sign+H 裸式的**占位歧义豁免**：
+  //   「水瓶座第11宫**主星**是土星」是**明确的宫头声称**（随后即主星槽），不可因
+  //   「火星正好落在水瓶第11宫」而弃权（线上实录残渣）。
+  const _tailKwRe = (() => {
+    // 尾窗**含**宫头/宫主星关键槽即视为「明确声称」（不限锚首 —— 中文常写「X座第N宫**，由…主管**」）。
+    try { return new RegExp('(?:' + RW + '|' + CK + ')'); } catch (_) { return null; }
+  })();
+  // 本命主语槽（用于「承前省略主语」判定：紧邻窗前无行星名却含主语槽 ⇒ 主语承前）
+  const _ctxRe = (() => {
+    try { return _ctx ? new RegExp('(?:' + _ctx + ')') : null; } catch (_) { return null; }
+  })();
   const GAP2 = '[^。\\n！？!?；;，,、]{0,10}?';
 
   let m;
@@ -1720,6 +1753,13 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
       const pKey = _revPlanet(pTok);
       if (!pKey) continue;
       if (_isTransit(m.index)) continue;
+      // 🔴 跨分句「H**，**由X主管」专属守卫（2026-10-12）：该路径放宽了分句标点，须防
+      //    「由X主管<宾语>」的**动词**用法（「第8宫，由月亮主管情绪」）被误判为主星声称。
+      //    判据：匹配以主星槽收尾，其后**紧接内容字**（非标点/空白/行尾）⇒ 判为动词用法 ⇒ 弃权。
+      if (/[，,、]\s*(?:由|为|是|被|乃|即)/.test(m[0])) {
+        const _after = text.slice(m.index + m[0].length, m.index + m[0].length + 1);
+        if (_after && !/[，,、。；：！？\s\n)）」』\]]/.test(_after)) continue;
+      }
       const rec = rulers['house_' + num];
       if (!rec) continue;
       const valid = [];
@@ -1747,16 +1787,110 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
     while ((m = cusp.exec(text)) !== null) {
       if (!m[0] || m[0].length === 0) { cusp.lastIndex++; continue; }
       const g = m.groups || {};
-      const hTok = g.h5 || g.h6 || g.h7 || '';
-      const sTok = g.s5 || g.s6 || g.s7 || '';
+      const hTok = g.h5 || g.h6 || g.h7 || g.h9 || '';
+      const sTok = g.s5 || g.s6 || g.s7 || g.s8 || '';
       const num = _ksHouseNumFromToken(hTok);
       if (!(num >= 1 && num <= 12)) continue;
       const si = _signIdx(sTok);
       if (si < 0) continue;
-      // 裸声称式（无「宫头」关键槽）：左窗 14 字内有行星名 ⇒ 属「行星落座」句，弃权
-      if (g.h7 !== undefined && g.h7 !== null) {
+      // 裸声称式（无「宫头」关键槽）共两型：H→Sign（h7）与 Sign→H（h9）。二者皆须过「行星守卫」。
+      const bareH = (g.h7 !== undefined && g.h7 !== null);
+      const bareS = (g.s8 !== undefined && g.s8 !== null);
+      if (bareH || bareS) {
+        // ① 左窗 14 字内有行星名 ⇒ 疑为「行星落座」句，须先分「这是谁的落座语」：
         const lw = text.slice(Math.max(0, m.index - 14), m.index);
-        if (allPlanetVals.some((p) => p && lw.includes(p))) continue;
+        const _lwTok = allPlanetVals.filter((p) => p && lw.includes(p));
+        if (_lwTok.length) {
+          if (!ch) continue;                     // 缺真值盘 ⇒ 无法判落座 ⇒ 保守弃权（宁漏不改）
+          const _seatOk = _lwTok.some((p) => {
+            const k = _revPlanet(p);
+            const t = k ? ch[k] : null;
+            return !!(t && t.sign === SIGN_KEYS[si] && Number(t.house) === num);
+          });
+          if (_seatOk) continue;                 // 左窗行星**确实**落座于此 ⇒ 落座语 ⇒ 弃权
+          const near = text.slice(Math.max(0, m.index - 5), m.index);
+          //   · 紧邻前 5 字**含行星名**（「本命金星**在**水瓶座…」）⇒ 该行星自己的落座语
+          //     （宫号可能另有错，但星座归属明确）⇒ 宫头锁弃权（星座归属由 45-D2 负责）。
+          if (allPlanetVals.some((p) => p && near.includes(p))) continue;
+          //   · 🔴 紧邻含**本命主语槽**且左窗行星**唯一** ⇒ **主语承前省略** ⇒ 本匹配是**落座语**，
+          //     **绝非宫头声称** ⇒ 按该行星真值就地改写【星座 + 宫号】。
+          //     ⚠️ 血训（2026-10-12 线上实兵）：早先把这条误判为「错值宫头声称」⇒ 会把落座语的
+          //        星座篡改成**宫头星座**（实测「…本命落在水瓶座第9宫」被改成「天蝎座」= H9 宫头）
+          //        ⇒ 伪造新幻觉。铁律：宫头锁**绝不越权改落座语的星座**；归属明确时按其真值改写。
+          if (_ctxRe && _ctxRe.test(near) && _lwTok.length === 1) {
+            const pKey = _revPlanet(_lwTok[0]);
+            const t = pKey ? ch[pKey] : null;
+            const tHouse = t ? Number(t.house) : NaN;
+            const ti2 = t ? SIGN_KEYS.indexOf(t.sign) : -1;
+            if (t && t.sign && ti2 >= 0) {
+              out.checked++;
+              out.mentions.push({ kind: 'planet_house', key: pKey, planet: pKey, value: num, elided: true });
+              // ① 宫号（与 ③ 同纪律：阿拉伯数字优先，zh 数词兜底）
+              if (tHouse >= 1 && tHouse <= 12 && num !== tHouse) {
+                const hRel = m[0].indexOf(hTok);
+                if (hRel >= 0) {
+                  const d = hTok.match(/\d{1,2}/);
+                  let relOff, found, fix;
+                  if (d) { relOff = hTok.indexOf(d[0]); found = d[0]; fix = String(tHouse); }
+                  else {
+                    const zm = hTok.match(/[一二三四五六七八九十]{1,3}/);
+                    if (zm && _KS_ZH_HOUSE_NUM[zm[0]] >= 1) {
+                      relOff = hTok.indexOf(zm[0]); found = zm[0];
+                      fix = _KS_ZH_HOUSE_NUM_INV[tHouse] || '';
+                    }
+                  }
+                  if (found && fix) {
+                    out.hits.push({
+                      kind: 'seat_house', planet: pKey, house: num, expectedHouse: tHouse,
+                      found, fix, offset: m.index + hRel + relOff, context: m[0].slice(0, 80),
+                    });
+                  }
+                }
+              }
+              // ② 星座（同语域同形态，与宫头纠偏共用同一套「本语完整式 / 裸式 / 英文兜底」规则）
+              if (si !== ti2) {
+                const localFull = (SUN_SIGNS[lex.lang] || [])[ti2];
+                let to;
+                if (!(lex.signs.indexOf(sTok) >= 0 || (lex.hasBareSuffix && lex.bare.indexOf(sTok) >= 0))) {
+                  to = SUN_SIGNS.en[ti2];
+                } else if (lex.hasBareSuffix) {
+                  to = sTok.endsWith('座') ? localFull : String(localFull || sTok).replace(/座$/, '');
+                } else {
+                  to = localFull;
+                }
+                const sRel = m[0].indexOf(sTok);
+                if (to && sRel >= 0) {
+                  out.hits.push({
+                    kind: 'seat_sign', planet: pKey, house: num, expectedSign: t.sign,
+                    found: sTok, fix: to, offset: m.index + sRel, context: m[0].slice(0, 80),
+                  });
+                }
+              }
+              continue;
+            }
+          }
+          //   · 左窗有行星却无落座语线索 ⇒ 保守弃权（宁漏不改）。**绝不**落入下方宫头纠偏 ——
+          //     否则会把「某行星的落座语」误当宫头声称，凭空改写星座（防伪造）。
+          continue;
+        } else if (bareS && seatedPairs.has(si + '|' + num)) {
+          // ③ Sign→H 型专属**歧义豁免**：无行星线索时，若该 (星座,宫位) 对确实是某行星的
+          //    真值落座（「巨蟹座第4宫」可能是木星落座语）⇒ 弃权；但紧跟宫头/宫主星关键槽
+          //    （「水瓶座第11宫**主星**是…」）即为**明确宫头声称** ⇒ 不予豁免。
+          const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 6);
+          const _isClaimTail = _tailKwRe ? _tailKwRe.test(tail) : false;
+          if (!_isClaimTail) continue;
+        }
+        // ② 🔴 **夹窗**行星守卫（2026-10-12 线上实兵捕获 · 致命）：
+        //    `H + (≤4字) + Sign` 的容差窗**足以容下「本命火星」**（恰 4 字）⇒
+        //    「第11宫本命火星水瓶座」曾被误读为「H11 宫头=水瓶座」，纠偏把**行星落座**
+        //    篡改成宫头星座 ⇒ 凭空造出「本命火星摩羯座」（真值 Aquarius），
+        //    且与 45-D2 星座锁**往复震荡**（实测非幂等）。铁律同左窗：
+        //    H 与 Sign **之间**出现行星名 ⇒ 这是落座句（该行星**必为本句主语**）⇒ 弃权。
+        const ia = m[0].indexOf(hTok), ib = m[0].indexOf(sTok);
+        const between = (ia >= 0 && ib >= 0)
+          ? (ia < ib ? m[0].slice(ia + hTok.length, ib) : m[0].slice(ib + sTok.length, ia))
+          : '';
+        if (allPlanetVals.some((p) => p && between.includes(p))) continue;
       }
       if (_isTransit(m.index)) continue;
       const hrec = cusps['house_' + num];
@@ -1876,7 +2010,7 @@ export function lintHouseRulersAndCups(text, lang, astroMatrix) {
       kind: h.kind,
       house: h.house,
       planet: h.planet || null,
-      expected: (h.kind === 'cusp') ? h.expectedSign
+      expected: (h.kind === 'cusp' || h.kind === 'seat_sign') ? h.expectedSign
         : (h.kind === 'ruler') ? h.expectedPlanet : h.expectedHouse,
       found: h.found,
       context: h.context,

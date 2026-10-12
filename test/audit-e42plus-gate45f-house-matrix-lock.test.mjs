@@ -65,6 +65,8 @@ const hasHouseRules = (src) =>
   && /FORBIDDEN: writing "house N is ruled by <planet>" when <planet> is not that row's ruler\./.test(src)
   && /FORBIDDEN: giving the same house two different cusp signs, or two different rulers, in this report\./.test(src)
   && /FORBIDDEN: the "ruler slip" — attaching a house's ruler to the neighbouring house\./.test(src)
+  && /FORBIDDEN: giving a natal planet a sign\/house pair that differs from that planet's own seat,/.test(src)
+  && /INCLUDING elided-subject phrasings/.test(src)
   && /A house sentence that contradicts the MATRIX is a REJECTED DRAFT — never ship it\./.test(src);
 
 /* ④ 后置锁导出 */
@@ -84,9 +86,24 @@ const countHouseLockCalls = (src) => (src.match(/applyOnceHouseLock\(/g) || []).
 /* ⑦ 主星合法性守卫（modern 主星必须被承认 ⇒ 不得无差别纠偏） */
 const hasRulerValidityGuard = (src) => src.includes('if (valid.indexOf(pKey) >= 0) continue;');
 
-/* ⑧ 裸宫头声称式的「左窗行星守卫」（防「木星在第2宫巨蟹座」被误读为宫头） */
+/* ⑧ 裸宫头声称式的「行星守卫」双窗（防「行星落座句」被误读为宫头）：
+      · 夹窗（致命）：H 与 Sign **之间**出现行星名 ⇒ 落座句 —— 复刻线上「第11宫本命火星水瓶座」
+        被读成「H11 宫头=水瓶座」⇒ 纠偏把行星落座篡改为宫头星座（真值火星水瓶）。
+      · 左窗三分判：左窗行星真值落座 == 本匹配 (星座,宫位) ⇒ 弃权；紧邻前 5 字含行星名 ⇒
+        该行星自己的落座语 ⇒ 弃权；紧邻含本命主语槽 ⇒ **承前省略** ⇒ 继续纠偏
+        —— 复刻线上「…第11宫主星是本命土星，本命落在水瓶座第11宫」漏检（真值土星摩羯）。 */
 const hasBareCuspPlanetGuard = (src) =>
-  /allPlanetVals\.some\(\(p\) => p && lw\.includes\(p\)\)/.test(src);
+  /const between = \(ia >= 0 && ib >= 0\)/.test(src)
+  && /allPlanetVals\.some\(\(p\) => p && between\.includes\(p\)\)/.test(src)
+  && /const _lwTok = allPlanetVals\.filter\(\(p\) => p && lw\.includes\(p\)\)/.test(src)
+  && /if \(_seatOk\) continue;/.test(src);
+
+/* ⑧b Sign 在前的裸式 `<星座>第N宫`（中文最常见写法）：
+       · 声称式在位（cusp 正则第 4 式 s8/h9 + 紧邻窗 GS）—— 复刻线上漏检的「狮子座第10宫/第11宫」
+       · 「落座对歧义豁免」在位（该 (星座,宫位) 确为某行星真值落座 ⇒ 弃权，宁漏不改） */
+const hasSignFirstClaimForm = (src) =>
+  /signAlt \+ '\)' \+ GS \+ '\(\?<h9>' \+ H \+ '\)'/.test(src)
+  && /else if \(bareS && seatedPairs\.has\(si \+ '\|' \+ num\)\)/.test(src);
 
 /* ⑨ 流年左窗守卫（宁漏不改） */
 const hasTransitGuard = (src) => /const _isTransit = \(idx\) => \{/.test(src);
@@ -170,11 +187,13 @@ test('A5 后置·锁本体（纠偏 + 复检 + once 门控）与双通道接入�
   assert.ok(n >= 3, `applyOnceHouseLock 调用点应 ≥3（1 定义 + 非流式 + 流式），实得 ${n}`);
 });
 
-test('A6 后置·三层护栏在位（主星合法性 / 裸宫头左窗行星守卫 / 流年左窗守卫）', () => {
+test('A6 后置·四层护栏在位（主星合法性 / 裸宫头双窗行星守卫 / Sign 先式声称式 / 流年左窗守卫）', () => {
   assert.ok(hasRulerValidityGuard(CLIENT),
     '缺「classical|modern 主星合法性」守卫 ⇒ 会把合法的现代主星误纠（假阳）');
   assert.ok(hasBareCuspPlanetGuard(CLIENT),
-    '缺裸宫头声称式的左窗行星守卫 ⇒「木星在第2宫巨蟹座」会被误判为宫头（假阳）');
+    '缺裸宫头声称式的行星守卫（夹窗 / 左窗三分判）⇒「木星在第2宫巨蟹座」「第11宫本命火星水瓶座」会被误判为宫头');
+  assert.ok(hasSignFirstClaimForm(CLIENT),
+    '缺 Sign 先式 `<星座>第N宫` 声称式（或其落座对歧义豁免）⇒ 线上「狮子座第11宫」整类漏检');
   assert.ok(hasTransitGuard(CLIENT), '缺流年左窗守卫 ⇒ 会误伤流年句（V472/V478 血训）');
 });
 
@@ -320,8 +339,10 @@ test('B3 行为·射程守卫（流年弃权 / 行星落座句弃权 / 缺真值
   // ⑤ once 门控在 applyOnceHouseLock 层（源码抽取断言，避免依赖 server 运行环境）
   const fnSrc = SERVER.slice(SERVER.indexOf('function applyOnceHouseLock('));
   const body = fnSrc.slice(0, fnSrc.indexOf('\n}\n') + 2);
-  const fn = new Function('correctHouseRulersAndCups', 'lintHouseRulersAndCups', 'console',
-    body + '\n; return applyOnceHouseLock;')(correctHouseRulersAndCups, lintHouseRulersAndCups, console);
+  const fn = new Function('correctHouseRulersAndCups', 'lintHouseRulersAndCups',
+    'correctNatalPlanetSigns', 'lintNatalPlanetSigns', 'console',
+    body + '\n; return applyOnceHouseLock;')(correctHouseRulersAndCups, lintHouseRulersAndCups,
+    mod.correctNatalPlanetSigns, mod.lintNatalPlanetSigns, console);
   const src = '第10宫的宫头是射手座。';
   assert.equal(fn(src, 'zh', HOUSE_MATRIX, 'monthly'), src, 'monthly 通道越权介入');
   assert.equal(fn(src, 'zh', HOUSE_MATRIX, 'yearly'), src, 'yearly 通道越权介入');
@@ -355,8 +376,40 @@ test('B4 行为·同篇自相矛盾审计（同一宫两个宫头 / 同一行星
     '同宫双主星未被判为自相矛盾');
 });
 
-/* ═══════════ C 组：注入反漂移（复刻真实缺陷形态 ⇒ 判据必红）═══════════ */
+test('B5 行为·收敛式收口（两锁互相触发 ⇒ 求不动点）+ 落座语防伪造', async () => {
+  const mod = await import(pathToFileURL(join(ROOT, 'v69_client.js')).href);
+  const { correctHouseRulersAndCups, lintHouseRulersAndCups, correctNatalPlanetSigns, lintNatalPlanetSigns } = mod;
 
+  // ① 🔴 防伪造（2026-10-12 线上实兵血训）：承前省略的**落座语**绝不能被宫头锁当成宫头声称。
+  //    「第9宫的主星是木星，本命落在水瓶座第9宫」——H9 宫头=射手座（合成盘），若误判为宫头声称
+  //    会把落座语星座篡改为**射手座**（真值木星=巨蟹座 H2）⇒ 凭空造幻觉。必须按**行星真值**改写。
+  const seat = '第9宫的主星是木星，本命落在水瓶座第9宫。';
+  const seatOut = correctHouseRulersAndCups(seat, 'zh', HOUSE_MATRIX).text;
+  assert.ok(!seatOut.includes('射手座'), '宫头锁把落座语星座篡改成宫头星座（伪造幻觉）');
+  assert.equal(seatOut, '第9宫的主星是木星，本命落在巨蟹座第2宫。', '承前省略落座语未按行星真值（星座+宫号）纠偏');
+
+  // ② 收敛式收口：宫位锁替换主星令牌 ⇒ 新生成「本命X在Y座」按语须被连带纠偏（单轮不幂等）。
+  const cross = '第8宫的主星本命金星在天蝎座第8宫落陷。';
+  const one = correctHouseRulersAndCups(cross, 'zh', HOUSE_MATRIX);
+  assert.notEqual(one.text, cross, '宫位锁未纠偏（射程失守）');
+  assert.ok(!lintHouseRulersAndCups(one.text, 'zh', HOUSE_MATRIX).passed
+    || !lintNatalPlanetSigns(one.text, 'zh', HOUSE_MATRIX).passed,
+  '单轮即已归零 ⇒ 该用例未复刻「两锁互相触发」形态（用例失效）');
+
+  // ③ 抽取 applyOnceHouseLock（收口位）实际执行 ⇒ 必须一轮内到不动点且幂等
+  const fnSrc = SERVER.slice(SERVER.indexOf('function applyOnceHouseLock('));
+  const body = fnSrc.slice(0, fnSrc.indexOf('\n}\n') + 2);
+  const fn = new Function('correctHouseRulersAndCups', 'lintHouseRulersAndCups',
+    'correctNatalPlanetSigns', 'lintNatalPlanetSigns', 'console',
+    body + '\n; return applyOnceHouseLock;')(correctHouseRulersAndCups, lintHouseRulersAndCups,
+    correctNatalPlanetSigns, lintNatalPlanetSigns, { log() {}, warn() {} });
+  const out1 = fn(cross, 'zh', HOUSE_MATRIX, 'once');
+  assert.ok(lintHouseRulersAndCups(out1, 'zh', HOUSE_MATRIX).passed, '宫位/主星未归零：' + out1);
+  assert.ok(lintNatalPlanetSigns(out1, 'zh', HOUSE_MATRIX).passed, '连带星座未归零：' + out1);
+  assert.equal(fn(out1, 'zh', HOUSE_MATRIX, 'once'), out1, '收口未达不动点（二次施加仍有变更）');
+});
+
+/* ═══════════ C 组：注入反漂移（复刻真实缺陷形态 ⇒ 判据必红）═══════════ */
 test('C1 注入：摘掉矩阵装配行 ⇒ A2 判据必红', () => {
   const broken = CLIENT.replace(/^ {4}houseMatrixSection,$\n/m, '');
   assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中矩阵装配行）');
@@ -383,10 +436,23 @@ test('C4 注入：摘掉主星合法性守卫 ⇒ A6 判据必红（复刻「无
   assert.ok(!hasRulerValidityGuard(broken), '注入后仍判为守卫在位 ⇒ A6 判据射程不全');
 });
 
-test('C5 注入：摘掉裸宫头左窗行星守卫 ⇒ A6 判据必红（复刻「落座句被误读为宫头」）', () => {
-  const broken = CLIENT.replace('if (allPlanetVals.some((p) => p && lw.includes(p))) continue;', 'if (false) continue;');
-  assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中左窗行星守卫）');
+test('C5 注入：摘掉裸宫头「夹窗」行星守卫 ⇒ A6 判据必红（复刻「第N宫本命X星座」被误读为宫头）', () => {
+  const broken = CLIENT.replace(
+    'if (allPlanetVals.some((p) => p && between.includes(p))) continue;', 'if (false) continue;');
+  assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中夹窗行星守卫）');
   assert.ok(!hasBareCuspPlanetGuard(broken), '注入后仍判为守卫在位 ⇒ A6 判据射程不全');
+});
+
+test('C5b 注入：摘掉裸宫头「左窗三分判」seat 判据 ⇒ A6 判据必红（复刻承前省略主语漏检）', () => {
+  const broken = CLIENT.replace('if (_seatOk) continue;', 'if (false) continue;');
+  assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中左窗 seat 判据）');
+  assert.ok(!hasBareCuspPlanetGuard(broken), '注入后仍判为守卫在位 ⇒ A6 判据射程不全');
+});
+
+test('C5c 注入：摘掉 Sign 先式 `<星座>第N宫` 声称式 ⇒ A6 判据必红（复刻线上整类漏检）', () => {
+  const broken = CLIENT.replace("+ '|(?<s8>' + signAlt + ')' + GS + '(?<h9>' + H + ')'", '');
+  assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中 Sign 先式声称式）');
+  assert.ok(!hasSignFirstClaimForm(broken), '注入后仍判为声称式在位 ⇒ A6 判据射程不全');
 });
 
 test('C6 注入：把 45-F import 并回既有 import 行 ⇒ A7 判据必红（E39 A3）', () => {

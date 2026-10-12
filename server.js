@@ -10443,21 +10443,46 @@ function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
 //        真值源 = astroMatrix.meta.house_cusps_full / house_rulers / computed_houses（SwissEph 实算）。
 //   🔴 射程**限定 once**：月报/年报各有 V432/V444/V445/V478b/V482/V492b 既有真值链，
 //      本锁不介入（避免与既有锁叠加产生 churn —— E19 血训）。
-//   🔴 挂载顺序：必在 `applyOnceNatalSignLock` **之后**（收口位最末端）⇒ 对本命星座锁拥有最终话语权，
-//      且两者目标互不重叠（一个换星座令牌、一个换宫号/主星令牌）。
+//   🔴 挂载顺序：必在 `applyOnceNatalSignLock` **之后**（收口位最末端）。
+//   🔴🔴 契约修正（2026-10-12 线上实兵逐字审计实捕）：原注「两者目标互不重叠（一个换星座令牌、
+//      一个换宫号/主星令牌）」**是错的** —— 本锁替换主星令牌会生成**新的**「本命X在Y座」按语，
+//      而星座锁已先跑过 ⇒ 该按语的星座/宫号再无人纠（「两锁互相触发」）。故本锁内部改为
+//      **对【星座锁 × 宫位锁】求不动点**（≤3 轮，零 churn 即停；详见函数内注释）。
 //   🔴 fail-safe：任何异常一律原文透传，**绝不阻断报告交付**。
-//   🔴 幂等：纠偏基于「令牌本体同语域替换」，二次施加 Δ=0（gate 有断言）。
+//   🔴 幂等：纠偏基于「令牌本体同语域替换」，且不动点循环保证**收敛后**再施加 Δ=0（gate 有断言）。
 // ══════════════════════════════════════════════════════════════════════════
 function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
   try {
     if (reportType !== 'once') return text;
     if (!text || typeof text !== 'string' || !astroMatrix) return text;
-    const r = correctHouseRulersAndCups(text, lang, astroMatrix);
-    if (r.corrections && r.corrections.length) {
-      console.log('[45-F][ONCE-HOUSE-LOCK] 纠偏 ' + r.corrections.length + ' 处宫位/主星幻觉 (lang=' + lang + ')：'
-        + r.corrections.map((c) => c.kind + '#' + c.house + ':' + c.from + '→' + c.to).join(', '));
+    // ── 收敛式收口（线上实兵捕获 · 「两锁互相触发」血训）────────────────────────
+    //   线上实录（1990-03-15 北京盘 zh once）：
+    //     「第8宫主星本命月亮在天蝎座第8宫」→ 本锁把主星换成金星后，
+    //      整句「本命金星在天蝎座第8宫」**残留落库**（星座锁已跑过、无人回头纠）。
+    //     ⇒ 单轮施加既不充分、也**不幂等**（gate 实测 Δ≠0）。
+    //   治法：在本收口位对【星座锁 × 宫位锁】求不动点（≤3 轮，零 churn 即停）。
+    //     两锁皆为「向真值单向改写」⇒ 不动点必存在且唯一；对干净文本首轮即零 churn（零副作用）。
+    const MAX_ROUNDS = 3;
+    let cur = text;
+    const houseFixes = [];
+    const signFixes = [];
+    for (let i = 1; i <= MAX_ROUNDS; i++) {
+      const s = correctNatalPlanetSigns(cur, lang, astroMatrix);
+      const h = correctHouseRulersAndCups(s.text, lang, astroMatrix);
+      if (s.corrections && s.corrections.length) signFixes.push(...s.corrections);
+      if (h.corrections && h.corrections.length) houseFixes.push(...h.corrections);
+      if (h.text === cur) break;
+      cur = h.text;
     }
-    const v = lintHouseRulersAndCups(r.text, lang, astroMatrix);
+    if (signFixes.length) {
+      console.log('[45-F][ONCE-HOUSE-LOCK] 收口连带纠偏 ' + signFixes.length + ' 处本命星座幻觉 (lang=' + lang + ')：'
+        + signFixes.map((c) => c.planet + ':' + c.from + '→' + c.to).join(', '));
+    }
+    if (houseFixes.length) {
+      console.log('[45-F][ONCE-HOUSE-LOCK] 纠偏 ' + houseFixes.length + ' 处宫位/主星幻觉 (lang=' + lang + ')：'
+        + houseFixes.map((c) => c.kind + '#' + c.house + ':' + c.from + '→' + c.to).join(', '));
+    }
+    const v = lintHouseRulersAndCups(cur, lang, astroMatrix);
     if (!v.passed) {
       console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 残余违背 ' + v.violations.length + ' 处（已尽力，不阻断）：'
         + v.violations.map((x) => x.kind + '#' + x.house + ':' + x.found + '(期望 ' + x.expected + ')').join(', '));
@@ -10466,7 +10491,13 @@ function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
       console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 同篇自相矛盾 ' + v.conflicts.length + ' 处：'
         + v.conflicts.map((c) => c.kind + '|' + c.key + '=' + c.values.join('/')).join(', '));
     }
-    return r.text;
+    // 收敛后连带复检星座锁（不动点循环可能修出新的合规句，须终局归零才算真正收口）
+    const v2 = lintNatalPlanetSigns(cur, lang, astroMatrix);
+    if (!v2.passed) {
+      console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 星座残余违反 ' + v2.violations.length + ' 处（已尽力，不阻断）：'
+        + v2.violations.map((x) => x.planet + ':' + x.foundSign + '(期望 ' + x.expectedSign + ')').join(', '));
+    }
+    return cur;
   } catch (e) {
     console.warn('[45-F][ONCE-HOUSE-LOCK] 异常，原文透传:', e && e.message);
     return text;
