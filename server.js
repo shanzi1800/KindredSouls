@@ -15802,6 +15802,19 @@ app.use((req, res, next) => {
 });
 
 if (existsSync(distPath)) {
+  // 🛡️ 45-D2b: OAuth 回调页「无扩展名路径」必须显式投递 auth/callback.html。
+  //    express.static 只认 /auth/callback.html 实体文件；/auth/callback 会穿透到下方
+  //    SPA 通吃回退被吞成 index.html ⇒ callback.html 里的 exchangeCodeForSession 永不执行
+  //    ⇒ ks_auth_success_trigger 永不写入 ⇒ 主页 polling 30s 超时、支付意图丢失
+  //    （线上实测：kindredsouls.online/auth/callback 返回 538B index.html 而非 2976B 回调页）。
+  app.get('/auth/callback', (req, res, next) => {
+    const cbFile = join(distPath, 'auth', 'callback.html');
+    if (existsSync(cbFile)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.sendFile(cbFile);
+    }
+    next();
+  });
   app.use(express.static(distPath));
   // SPA fallback: 所有非 /api 路由返回 index.html（包括 /）
   // 🛠️ V120-fix28: 使用正则表达式兼容新版 path-to-regexp

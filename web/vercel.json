@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
+    { "source": "/auth/callback", "destination": "/auth/callback.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
