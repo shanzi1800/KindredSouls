@@ -260,6 +260,37 @@ test('C5 五键锁死不破：ai_context 仍恰五键（本渠禁走入库通路
   assert.ok(!/ai_context[\s\S]{0,120}houseOverlay/.test(srv), '旁置真值疑似被塞进 ai_context（硬约束：不可入库）');
 });
 
+test('C6 服务端 HIT 主通路（SSE 单帧 ready）必须携带 reportId —— 回放的唯一索引入口', () => {
+  // 🔴 射程缺口修复：前端 `stream: true` 为默认投递 ⇒ SSE HIT 帧即 P0-1 回放的**主通路**；
+  //    原仅有 Gate 41 D2 锚定 JSON 回执字面量 ⇒ SSE HIT 帧无守备（本段补位）。
+  const srv = readSrc('server.js');
+  const i = srv.indexOf('return _rps.ready(lang, { insight: _g41Replay.insight');
+  assert.notEqual(i, -1, 'SSE HIT 单帧 ready 缺失（P0-1 主通路无索引来源）');
+  const line = srv.slice(i, srv.indexOf('});', i));
+  assert.ok(line.includes('cached: true'), 'SSE HIT 帧未标 cached:true');
+  assert.ok(line.includes('payload: _g41Replay.payload'), 'SSE HIT 帧缺 payload');
+  assert.ok(line.includes('reportId: _g41Replay.reportId || _g41ReportId'), 'SSE HIT 帧缺 reportId（回放将静默失效）');
+  // 双路同源：JSON 回执照旧（Gate 41 D2 锚点）不得被改写
+  assert.ok(srv.includes('return res.json({ insight: _g41Replay.insight, cached: true, payload: _g41Replay.payload, reportId: _g41Replay.reportId || _g41ReportId });'),
+    'JSON HIT 回执字面量被改写（Gate 41 D2 零回归）');
+});
+
+test('C7 命中路径零算力：HIT 分支必须在建流水线/调 AI 之前返回（不重跑引擎、不扣配额）', () => {
+  const srv = readSrc('server.js');
+  const iReplayBranch = srv.indexOf('if (_g41Replay) {');
+  const iHitJson = srv.indexOf('return res.json({ insight: _g41Replay.insight');
+  const iHitSse = srv.indexOf('return _rps.ready(lang, { insight: _g41Replay.insight');
+  const iPipe = srv.indexOf('const _pipe = createReportPipeline();');
+  const iCallAI = srv.indexOf('const insight = await callAI(');
+  assert.ok(iReplayBranch > 0 && iHitJson > iReplayBranch && iHitSse > iReplayBranch, 'HIT 分支接线缺失');
+  assert.ok(iPipe > 0 && iCallAI > 0, 'MISS 生成链路锚点缺失');
+  assert.ok(iHitJson < iPipe && iHitSse < iPipe, 'HIT 回执未在建流水线之前返回（零算力红线）');
+  assert.ok(iHitJson < iCallAI && iHitSse < iCallAI, 'HIT 回执未在调用 AI 之前返回（零算力红线）');
+  // 周期锁/日限流/配额递增须仍在 HIT 之后（命中不扣配额）
+  const iPeriodLock = srv.indexOf('const _lockC = compatibilityPeriodLock(');
+  assert.ok(iPeriodLock > iHitSse, '周期锁位置前移（命中将被误锁）');
+});
+
 /* ═══════════ D 段位守备 ═══════════ */
 
 test('D1 P0-1 居收口位（e40-compat）之前 · 段数 ≥ 49', () => {
