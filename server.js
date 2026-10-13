@@ -3207,6 +3207,9 @@ function fixVietnameseCorruption(text) {
 //   🔴 闭集成员以**实弹实证**为准（禁臆造）：126 份 before 报告中，非中文语种的全部中文残留串仅 4 种
 //      ——「主导」×3 /「因为你」×2 /「因为它」×1 /「填补」×1；前三者已在表内，故**补入「填补」**
 //      （S04 th monthly 实录：「เพื่อ填补ความไม่มั่นใจในตนเอง」），并同族补入连接词「并且/或者」留余量。
+//   🔴 45-G 第二轮实弹（216 份 matrix_final）再捕 3 串残留 ——「而非」/「妥协」/「保护」（含其前导「和」）：
+//      S01 th yearly「ท่านอาจยอม妥协 มากเกินไป」· S08 th yearly「การดูแล和保护ตอบแทน」⇒ 同批补入闭集。
+//      补入后 S01→「ประนีประนอม」、S08→「การดูแลและปกป้องตอบแทน」（连接词「和」并入后自动成立）。
 // ═══════════════════════════════════════════════════════════════════════════
 const _FOREIGN_GLUE_TABLE = [
   ['因为你', { en: 'because you', es: 'porque tú', fr: 'parce que vous', th: 'เพราะคุณ', vi: 'bởi vì bạn' }],
@@ -3223,6 +3226,11 @@ const _FOREIGN_GLUE_TABLE = [
   ['填补', { en: 'fill', es: 'llenar', fr: 'combler', th: 'เติมเต็ม', vi: 'lấp đầy' }],
   ['其实', { en: 'actually', es: 'en realidad', fr: 'en fait', th: 'จริงๆ', vi: 'thực ra' }],
   ['因此', { en: 'therefore', es: 'por lo tanto', fr: 'par conséquent', th: 'เพราะฉะนั้น', vi: 'do đó' }],
+  // ── 45-G 第二轮实弹补入（实证：th yearly S01/S08）─────────────────────────
+  ['而非', { en: 'rather than', es: 'en lugar de', fr: 'plutôt que', th: 'แทนที่จะ', vi: 'thay vì' }],
+  ['妥协', { en: 'compromise', es: 'ceder', fr: 'céder', th: 'ประนีประนอม', vi: 'nhượng bộ' }],
+  ['保护', { en: 'protect', es: 'proteger', fr: 'protéger', th: 'ปกป้อง', vi: 'bảo vệ' }],
+  ['和', { en: 'and', es: 'y', fr: 'et', th: 'และ', vi: 'và' }],
 ];
 function stripForeignChineseGlue(text, lang) {
   if (!text || typeof text !== 'string') return text;

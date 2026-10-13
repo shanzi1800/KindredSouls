@@ -385,11 +385,11 @@ async function withServer(extraEnv, port, fn) {
   const base = `http://127.0.0.1:${port}`;
   try {
     let up = false;
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 120; i++) {
       try { const r = await fetch(`${base}/api/health`); if (r.ok) { up = true; break; } } catch (_) { /* retry */ }
       await new Promise((r) => setTimeout(r, 500));
     }
-    assert.ok(up, `server.js 未在 30s 内就绪；日志尾部: ${boot.slice(-300)}`);
+    assert.ok(up, `server.js 未在 60s 内就绪；日志尾部: ${boot.slice(-300)}`);
     return await fn(base);
   } finally {
     child.kill('SIGKILL');

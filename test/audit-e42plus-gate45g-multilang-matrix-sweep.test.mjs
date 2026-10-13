@@ -314,6 +314,10 @@ function judgeForeignGlue(fn, warns) {
     ['es', 'Sientes porque tú te importa.', 'porque tú'],
     ['fr', 'Tu le sens parce que vous aimez.', 'parce que vous'],
     ['vi', 'Bạn cảm thấy bởi vì bạn quan tâm.', 'bởi vì bạn'],
+    // ── 45-G 第二轮 216 份实弹实证（th yearly S01/S08 原句节选）────────────────
+    ['th', 'ท่านอาจยอม妥协 มากเกินไปในความสัมพันธ์ทางธุรกิจ', 'ประนีประนอม'],
+    ['th', 'ในขณะเดียวกันก็ต้องการการดูแล和保护ตอบแทนอย่างลึกซึ้ง', 'และปกป้อง'],
+    ['th', 'การตัดสินใจทางการเงินที่มาจากความกลัว而非ความมั่นใจ', 'แทนที่จะ'],
   ];
   for (const [lang, src, want] of pure) {
     const out = fn(src, lang);
@@ -468,7 +472,9 @@ test('A3 Mine C · 双轨主星冲突豁免（须与检出核同源取用 house_
 
 test('A4 Mine B · 非中文语种「中文粘连词」本地化核在位（闭集 + 长词优先 + split/join + zh 射程外）', () => {
   assert.ok(hasForeignGlueScrubber(SERVER), '本地化核要素缺失（表 / 函数 / zh 射程外 / split-join / 缺映射守卫）');
-  const GLUE = ['因为你', '因为它', '因为', '所以', '但是', '而且', '以及', '并且', '或者', '如果', '主导', '填补', '其实', '因此'];
+  const GLUE = ['因为你', '因为它', '因为', '所以', '但是', '而且', '以及', '并且', '或者', '如果', '主导', '填补', '其实', '因此',
+    // 45-G 第二轮 216 份实弹实证补入（th yearly S01/S08）
+    '而非', '妥协', '保护', '和'];
   for (const g of GLUE) assert.ok(SERVER.includes("['" + g + "',"), '词表缺成员：' + g);
   const iLong = SERVER.indexOf("['因为你',");
   const iShort = SERVER.indexOf("['因为',");
@@ -701,6 +707,29 @@ test('C5b 注入：本地化改 `replace`（只换首处）⇒ B4 判据必红�
   const fn = new Function('console',
     tampered + '\n; return stripForeignChineseGlue;')({ log() {}, warn(...a) { warns.push(a.join(' ')); } });
   assert.ok(judgeForeignGlue(fn, warns).length > 0, 'B4 判据失能（未识别「只换首处」缺陷）');
+});
+
+test('C5c 注入：摘掉第二轮实弹实证词条（而非/妥协/保护/和）⇒ A4 判据必红 + B4 行为必变', () => {
+  const rows = [
+    "  ['而非', { en: 'rather than', es: 'en lugar de', fr: 'plutôt que', th: 'แทนที่จะ', vi: 'thay vì' }],\n",
+    "  ['妥协', { en: 'compromise', es: 'ceder', fr: 'céder', th: 'ประนีประนอม', vi: 'nhượng bộ' }],\n",
+    "  ['保护', { en: 'protect', es: 'proteger', fr: 'protéger', th: 'ปกป้อง', vi: 'bảo vệ' }],\n",
+    "  ['和', { en: 'and', es: 'y', fr: 'et', th: 'และ', vi: 'và' }],\n",
+  ];
+  let tampered = SERVER;
+  for (const r of rows) {
+    assert.ok(tampered.includes(r), '注入锚点漂移（未命中实弹实证词条）：' + r);
+    tampered = tampered.replace(r, '');
+  }
+  assert.ok(!tampered.includes("['而非',") && !tampered.includes("['妥协',")
+    && !tampered.includes("['保护',") && !tampered.split('const _FOREIGN_GLUE_TABLE = [')[1].includes("['和',"),
+    '注入未生效（实证词条仍残留）');
+  const src = extractGlueScrubber(tampered);
+  const warns = [];
+  const fn = new Function('console',
+    src + '\n; return stripForeignChineseGlue;')({ log() {}, warn(...a) { warns.push(a.join(' ')); } });
+  assert.ok(judgeForeignGlue(fn, warns).length > 0,
+    'B4 判据失能（未识别实证词条被撤 ⇒ th 年报中文残留复现）');
 });
 
 test('C6 注入：摘掉非流式接线 ⇒ A5 判据必红（客户端终稿与落库文本失守）', () => {
