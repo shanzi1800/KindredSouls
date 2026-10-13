@@ -73,12 +73,12 @@ const hasHouseRules = (src) =>
 const hasHouseLintExports = (src) =>
   /export function lintHouseRulersAndCups/.test(src) && /export function correctHouseRulersAndCups/.test(src);
 
-/* ⑤ 后置锁本体（纠偏 + 复检 + once 门控 + fail-safe） */
+/* ⑤ 后置锁本体（纠偏 + 复检 + 板块白名单门控 + fail-safe） */
 const hasHouseLockBody = (src) =>
   /function applyOnceHouseLock\(/.test(src)
   && /correctHouseRulersAndCups\(/.test(src)
   && /lintHouseRulersAndCups\(/.test(src)
-  && /reportType\s*!==\s*'once'/.test(src);
+  && /_HOUSE_LOCK_TYPES\.has\(reportType\)/.test(src);
 
 /* ⑥ 调用点计数（1 定义 + 非流式 + 流式）—— 下界判据，注入摘除必降 */
 const countHouseLockCalls = (src) => (src.match(/applyOnceHouseLock\(/g) || []).length;
@@ -183,8 +183,8 @@ test('A4 后置·Linter 导出（纠偏 + 只检不改 + 矛盾审计）', () =>
   assert.ok(hasHouseLintExports(CLIENT), 'v69_client 未导出 lintHouseRulersAndCups / correctHouseRulersAndCups');
 });
 
-test('A5 后置·锁本体（纠偏 + 复检 + once 门控）与双通道接入（≥3 调用点）', () => {
-  assert.ok(hasHouseLockBody(SERVER), 'applyOnceHouseLock 本体缺失（或未接纠偏/复检/once 门控）');
+test('A5 后置·锁本体（纠偏 + 复检 + 板块白名单门控）与双通道接入（≥3 调用点）', () => {
+  assert.ok(hasHouseLockBody(SERVER), 'applyOnceHouseLock 本体缺失（或未接纠偏/复检/板块白名单门控）');
   const n = countHouseLockCalls(SERVER);
   assert.ok(n >= 3, `applyOnceHouseLock 调用点应 ≥3（1 定义 + 非流式 + 流式），实得 ${n}`);
 });
@@ -338,7 +338,10 @@ test('B3 行为·射程守卫（流年弃权 / 行星落座句弃权 / 缺真值
   assert.equal(correctHouseRulersAndCups(null, 'zh', HOUSE_MATRIX).text, null, 'null 入参未原样返回（崩）');
   assert.equal(correctHouseRulersAndCups(undefined, 'zh', HOUSE_MATRIX).text, undefined, 'undefined 入参未原样返回（崩）');
   assert.equal(correctHouseRulersAndCups('', 'zh', HOUSE_MATRIX).text, '', '空串入参未原样返回');
-  // ⑤ once 门控在 applyOnceHouseLock 层（源码抽取断言，避免依赖 server 运行环境）
+  // ⑤ 板块白名单门控在 applyOnceHouseLock 层（源码抽取断言，避免依赖 server 运行环境）
+  //    🔴 45-G 第二轮**反转旧红线**：monthly / yearly 由「不得介入」改为「必须介入」——
+  //       大阅兵实弹证伪「不介入更安全」：无锁的 monthly 残余 7 处 / yearly 残余 33 处，
+  //       全为「把落在第 N 宫的行星当作第 N 宫宫头/主星」同族伪造；未知板块仍 fail-closed 透传。
   const fnSrc = SERVER.slice(SERVER.indexOf('function applyOnceHouseLock('));
   const body = fnSrc.slice(0, fnSrc.indexOf('\n}\n') + 2);
   const fn = new Function('correctHouseRulersAndCups', 'lintHouseRulersAndCups',
@@ -346,10 +349,13 @@ test('B3 行为·射程守卫（流年弃权 / 行星落座句弃权 / 缺真值
     body + '\n; return applyOnceHouseLock;')(correctHouseRulersAndCups, lintHouseRulersAndCups,
     mod.correctNatalPlanetSigns, mod.lintNatalPlanetSigns, console);
   const src = '第10宫的宫头是射手座。';
-  assert.equal(fn(src, 'zh', HOUSE_MATRIX, 'monthly'), src, 'monthly 通道越权介入');
-  assert.equal(fn(src, 'zh', HOUSE_MATRIX, 'yearly'), src, 'yearly 通道越权介入');
+  assert.ok(fn(src, 'zh', HOUSE_MATRIX, 'monthly').includes('摩羯座'), 'monthly 通道未介入（射程缺口）');
+  assert.ok(fn(src, 'zh', HOUSE_MATRIX, 'yearly').includes('摩羯座'), 'yearly 通道未介入（射程缺口）');
   assert.equal(fn(src, 'zh', null, 'once'), src, '缺真值时未透传');
   assert.ok(fn(src, 'zh', HOUSE_MATRIX, 'once').includes('摩羯座'), 'once 通道未生效');
+  for (const t of ['oracle', '', undefined, null]) {
+    assert.equal(fn(src, 'zh', HOUSE_MATRIX, t), src, `[${String(t)}] 未知板块越权介入（fail-closed 破防）`);
+  }
 });
 
 test('B4 行为·同篇自相矛盾审计（同一宫两个宫头 / 同一行星两个宫位）', async () => {
@@ -455,6 +461,12 @@ test('C5c 注入：摘掉 Sign 先式 `<星座>第N宫` 声称式 ⇒ A6 判据�
   const broken = CLIENT.replace("+ '|(?<s8>' + signAlt + ')' + GS + '(?<h9>' + H + ')'", '');
   assert.notEqual(broken, CLIENT, '注入锚点漂移（未命中 Sign 先式声称式）');
   assert.ok(!hasSignFirstClaimForm(broken), '注入后仍判为声称式在位 ⇒ A6 判据射程不全');
+});
+
+test('C5d 注入：把 45-F 板块白名单门控退化为恒真 ⇒ A5 判据必红（射程口径不可稀释）', () => {
+  const broken = SERVER.replace('if (!_HOUSE_LOCK_TYPES.has(reportType)) return text;', 'if (false) return text;');
+  assert.notEqual(broken, SERVER, '注入锚点漂移（未命中 45-F 板块白名单门控）');
+  assert.ok(!hasHouseLockBody(broken), '注入后仍判为门控在位 ⇒ A5 判据射程不全');
 });
 
 test('C6 注入：把 45-F import 并回既有 import 行 ⇒ A7 判据必红（E39 A3）', () => {

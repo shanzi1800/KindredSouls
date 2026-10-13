@@ -127,6 +127,18 @@ const hasSignLockWideScope = (src) => {
     && !/if \(reportType !== 'once'\) return text;/.test(body);
 };
 
+/* A12 宫位锁三板块门控（fail-closed 白名单；45-G 第二轮扩准）
+      —— 实弹铁证：once 72/72 宫位违背 0（有锁） vs monthly 残余 7 / yearly 残余 33（无锁），
+         全部为「把落在第 N 宫的行星当作第 N 宫宫头/主星」同族伪造；
+         离线仿真 136 份：违背 40 → 0、恶化 0、过纠 0、全达不动点 ⇒ 扩准安全。 */
+const hasHouseLockWideScope = (src) => {
+  const body = extractFn(src, 'applyOnceHouseLock') || '';
+  return body.includes("const _HOUSE_LOCK_TYPES = new Set(['once', 'monthly', 'yearly']);")
+    && body.includes('if (!_HOUSE_LOCK_TYPES.has(reportType)) return text;')
+    && !/if \(reportType !== 'once'\) return text;/.test(body);
+};
+
+
 /* A7 Mine J：本命语境词「拉丁短词加 ASCII 字母边界」（禁命中文内） */
 const hasCtxLatinBoundary = (src) =>
   src.includes("const _KS_CTX_L = '(?<![A-Za-z])';")
@@ -511,6 +523,11 @@ test('A11 Mine K-adj · 形容词式宫主星槽（`Mercury-ruled 8th House`）�
     '形容词式宫主星槽缺登记 ⇒ 「受X主宰的第N宫」被读作本命落宫');
 });
 
+test('A12 宫位锁射程由 once 扩至三板块（fail-closed 白名单；月报/年报同级硬锁）', () => {
+  assert.ok(hasHouseLockWideScope(SERVER),
+    '宫位锁仍限定 once（或白名单缺失）⇒ 月报/年报「把落宫行星当宫头/主星」批量伪造留存');
+});
+
 /* ═══════════ B 组：行为真值（跑实现，不做纯文本猜测）═══════════ */
 
 test('B1 行为·Mine A 极限环根治：宫主星句式不得被误读为落宫句式（zh + en 双证）', async () => {
@@ -578,10 +595,19 @@ test('B6 行为·收敛式收口（applyOnceHouseLock）：Mine A 句求不动�
     assert.ok(M.lintNatalPlanetSigns(out, lang, MX).passed, `[${lang}] 连带星座未归零：${out}`);
     assert.equal(fn(out, lang, MX, 'once'), out, `[${lang}] 收口未达不动点（二次施加仍有变更）`);
   }
-  // 射程守备：月报/年报不得越权介入（宫位锁仍限定 once —— E19 血训）
+  // 🔴 射程守备（45-G 第二轮**反转旧红线**）：monthly / yearly **必须生效**（同级硬锁），
+  //    未知板块（oracle / 空 / undefined / null）**原文透传**（fail-closed 白名单）。
+  //    旧断言「monthly/yearly 不得介入」已被大阅兵实弹证伪 —— 无锁者残余 40 处同族伪造。
   const src = cases[0][1];
-  assert.equal(fn(src, 'zh', MX, 'monthly'), src, 'monthly 通道越权介入（宫位锁射程红线）');
-  assert.equal(fn(src, 'zh', MX, 'yearly'), src, 'yearly 通道越权介入（宫位锁射程红线）');
+  assert.ok(M.lintHouseRulersAndCups(fn(src, 'zh', MX, 'monthly'), 'zh', MX).passed,
+    'monthly 通道未介入 ⇒ 宫位/主星伪造留存（射程缺口）');
+  assert.ok(M.lintHouseRulersAndCups(fn(src, 'zh', MX, 'yearly'), 'zh', MX).passed,
+    'yearly 通道未介入 ⇒ 宫位/主星伪造留存（射程缺口）');
+  assert.equal(fn(fn(src, 'zh', MX, 'yearly'), 'zh', MX, 'yearly'), fn(src, 'zh', MX, 'yearly'),
+    'yearly 通道收敛后未达不动点（二次施加仍有变更）');
+  for (const t of ['oracle', '', undefined, null]) {
+    assert.equal(fn(src, 'zh', MX, t), src, `[${String(t)}] 未知板块越权介入（fail-closed 破防）`);
+  }
 });
 
 test('B7 行为·Mine J（拉丁短词边界）：单词内部伪语境词零生效 + 真本命句仍必判', async () => {
@@ -750,6 +776,25 @@ test('C12 注入：③ 段窗口守卫摘掉形容词式主星槽 ⇒ A1/A11 判
   const M = await loadClientVariant(tampered);
   assert.ok(judgeCtxObjectMisbind(M).some((m) => m.includes('Mercury-ruled')),
     'B10 判据失能（未识别形容词式主星句被读作本命落宫）');
+});
+
+test('C13 注入：宫位锁白名单剔除 yearly ⇒ A12 判据必红 + B6 行为必变（复刻年报同族伪造留存）', async () => {
+  const tampered = SERVER.replace(
+    "const _HOUSE_LOCK_TYPES = new Set(['once', 'monthly', 'yearly']);",
+    "const _HOUSE_LOCK_TYPES = new Set(['once', 'monthly']);");
+  assert.notEqual(tampered, SERVER, '注入锚点漂移（未命中宫位锁白名单）');
+  assert.ok(!hasHouseLockWideScope(tampered), 'A12 判据失能（注入后仍判为三板块放行）');
+  const body = extractFn(tampered, 'applyOnceHouseLock');
+  assert.ok(body, 'applyOnceHouseLock 抽取失败（收口位锚点漂移）');
+  const M = await loadClient();
+  const fn = new Function('correctHouseRulersAndCups', 'lintHouseRulersAndCups',
+    'correctNatalPlanetSigns', 'lintNatalPlanetSigns', 'console',
+    body + '\n; return applyOnceHouseLock;')(
+    M.correctHouseRulersAndCups, M.lintHouseRulersAndCups,
+    M.correctNatalPlanetSigns, M.lintNatalPlanetSigns, fakeConsole);
+  const bad = '你的死穴是「第1宫主星木星落陷+第1宫主星火星在第1宫」的冲动与赌性。';
+  assert.equal(fn(bad, 'zh', MX, 'yearly'), bad,
+    'B6 判据失能（白名单剔除 yearly 后，yearly 通道仍被介入）');
 });
 
 /* ═══════════ D 组：段位守备（下界 + 相对位置，禁精确段数）═══════════ */

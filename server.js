@@ -10498,8 +10498,16 @@ function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
 //   治法：调用 v69_client 的 `correctHouseRulersAndCups`（**同一实现，禁在此第二份**）就地纠偏，
 //        并用 `lintHouseRulersAndCups` **复检归零** + 同篇自相矛盾审计；
 //        真值源 = astroMatrix.meta.house_cusps_full / house_rulers / computed_houses（SwissEph 实算）。
-//   🔴 射程**限定 once**：月报/年报各有 V432/V444/V445/V478b/V482/V492b 既有真值链，
-//      本锁不介入（避免与既有锁叠加产生 churn —— E19 血训）。
+//   🔴 射程（2026-10-13 大阅兵第二轮扩准）：**once | monthly | yearly 全板块**。
+//      ⚠️ 历史注记（E19 血训）：本锁曾限定 once，理由是月报/年报各有 V432/V444/V445/V478b/V482/V492b
+//      既有真值链，恐叠加 churn。**大阅兵实弹证伪了「不介入更安全」**：
+//        · 有本锁的 once：72/72 宫位违背 = 0；
+//        · 无本锁的 monthly：残余 7 处 / yearly：残余 33 处 —— 全为「把落在第 N 宫的行星
+//          当作第 N 宫宫头/主星」的同族伪造（S04 en yearly「Your 4th House cusp is Aquarius」，
+//          而 Aquarius 恰为**落于 H4 的火星**星座；真值 H4 宫头 = Capricorn）。
+//      ⇒ 离线仿真（136 份 monthly+yearly，收敛 cap 4 轮）实测：违背 **40 → 0**、
+//        **恶化 0 份 / 过纠 0 处 / 全部达不动点** ⇒ 扩准安全（详见当日日志）。
+//   🔴 fail-closed：白名单外（oracle / 未知板块）一律**原文透传**。
 //   🔴 挂载顺序：必在 `applyOnceNatalSignLock` **之后**（收口位最末端）。
 //   🔴🔴 契约修正（2026-10-12 线上实兵逐字审计实捕）：原注「两者目标互不重叠（一个换星座令牌、
 //      一个换宫号/主星令牌）」**是错的** —— 本锁替换主星令牌会生成**新的**「本命X在Y座」按语，
@@ -10510,7 +10518,10 @@ function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
 // ══════════════════════════════════════════════════════════════════════════
 function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
   try {
-    if (reportType !== 'once') return text;
+    // 🔴 fail-closed 白名单（45-G 第二轮扩准）：once | monthly | yearly；未知板块**原文透传**。
+    //   （⚠️ 必须声明在**函数体内**：闸门以「源码抽取 + new Function」消费本函数，模块级常量不可见。）
+    const _HOUSE_LOCK_TYPES = new Set(['once', 'monthly', 'yearly']);
+    if (!_HOUSE_LOCK_TYPES.has(reportType)) return text;
     if (!text || typeof text !== 'string' || !astroMatrix) return text;
     // ── 收敛式收口（线上实兵捕获 · 「两锁互相触发」血训）────────────────────────
     //   线上实录（1990-03-15 北京盘 zh once）：
