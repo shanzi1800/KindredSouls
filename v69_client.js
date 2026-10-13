@@ -1388,14 +1388,29 @@ export function assertNatalPlanetTruth(text, lang, astroMatrix) {
 //      杜绝「审计与纠偏各写一套」的实现漂移。
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine J · 拉丁短词无界命中文内**）：
+//   en/es/fr 的语境词里有一批 1~2 字母的短词（`ta`/`ma`/`my`/`tu`/`su`/`mi`），原式**不加词边界**
+//   ⇒ 一律命中**普通单词内部**，把**流年/落座句**误判为「本命句」。
+//   线上实捕（12 黄金样本大阅兵 · 月报）：
+//     · fr「… Mercure en Scorpion, Maison 9 …」——`ta` 命中 **«tandis»** 内部（«tandis que Mercure»）；
+//     · fr「La Lune en Taureau (Maison 5)」——`ma` 命中 **«Maison»** 内部；
+//     · es「… la Luna entra en Escorpio, Casa 10 …」——`tu` 命中 **«octubre»** 内部。
+//   后果：本命星座锁（45-D2）与落宫锁把**完全正确的流年句**按本命真值改写 ⇒ **伪造幻觉**
+//   （Mine F 把星座锁射程扩至 monthly/yearly 后，该缺陷的受害面被显著放大 ⇒ 必须同时根治）。
+//   治法：拉丁语系语境词加**ASCII 字母边界**（`(?<![A-Za-z]) … (?![A-Za-z])`）；
+//   zh/th 语境词为 CJK/泰文（无词边界概念），**一字不动**（`\\b` 禁用于非 ASCII —— 血训）。
+const _KS_CTX_L = '(?<![A-Za-z])'; // 左界：前一字符非 ASCII 字母
+const _KS_CTX_R = '(?![A-Za-z])';  // 右界：后一字符非 ASCII 字母
+const _KS_CTX_WRAP = (body) => _KS_CTX_L + '(?:' + body + ')' + _KS_CTX_R;
+
 /** 本命修饰词（六语）—— 行星名左侧必须命中其一，才认定为本命引用 */
 const _KS_NATAL_CTX = {
   zh: '(?:你的本命|我的本命|本命|你的|我的|乃)',
-  en: '(?:your|Your|my|My|natal|Natal|of the birth)',
-  es: '(?:tu|su|mi|nuestra|nuestro|natal|de nacimiento)',
-  fr: '(?:ton|ta|votre|mon|ma|notre|natal|de naissance)',
+  en: _KS_CTX_WRAP('your|Your|my|My|natal|Natal|of the birth'),
+  es: _KS_CTX_WRAP('tu|su|mi|nuestra|nuestro|natal|de nacimiento'),
+  fr: _KS_CTX_WRAP('ton|ta|votre|mon|ma|notre|natal|de naissance'),
   th: '(?:ของ\\s*คุณ| natal)',
-  vi: '(?:của\\s+bạn|natal)',
+  vi: _KS_CTX_WRAP('của\\s+bạn|natal'),
 };
 
 /** 流年词（左窗排除）—— 命中即判为流年语境，弃权（宁漏不改） */
@@ -1406,6 +1421,75 @@ const _KS_TRANSIT_WORDS = [
   'this year', 'tránsito', 'este mes', 'ce mois', 'tháng này', 'quá cảnh',
   'เดือนนี้', 'ปีนี้',
 ];
+
+// 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H · 第二形态**）：「落座 / 过境」语境信号表。
+//   仅用于 `Sign→House` **裸声称式**（bareS，无「宫头」关键槽、左窗无行星）——命中即弃权（宁漏不改）。
+//   病根：`<Sign> <House>` 紧邻窗在**落座/过境叙述**里同样成立，但语义**恰相反**——
+//     它是「（某行星）**位于**该星座 · 第 N 宫」，**不是**「第 N 宫宫头 = 该星座」。
+//   线上实捕（12 黄金样本大阅兵 · 月报与本命报告，全部为**审计假阳**；若月报启用宫位锁即为**篡改**）：
+//     · th「…เริ่มถอยหลังในราศีพิจิก เรือนที่ 8」金星逆行落天蝎第8宫 ⇒ 读成「H8 宫头=天蝎」（真值狮子）；
+//     · th「…ทรานซิสในราศีสิงห์ เรือนที่ 7」火星木星过境狮子第7宫 ⇒ 读成「H7 宫头=狮子」（真值巨蟹）；
+//     · th「…มี **ดาวพฤหัสบดีในราศีกุมภ์ เรือนที่ 1** เป็นเจ้าเรือน」木星落水瓶（真值）⇒ 被反复改写成
+//       「ในราศีธนู เรือนที่ 1」，与星座锁（ธนู→กุมภ์）**互为逆运动 ⇒ 2-周期极限环，Δ≠0 永不收敛**；
+//     · vi「Sao Kim nghịch hành … **tại Bọ Cạp Nhà 10**」/「Sư Tử Nhà 7→Nhà 8, **Xử Nữ Nhà 8**」（轨迹枚举）；
+//     · zh「**狮子座第10宫**的火星与第十宫的木星」「白羊座第2宫（逆行）」「狮子座第11宫顺行的天王星」；
+//     · fr「La Lune en Taureau **(Maison 5)**」——落座括号记号（Mine D 的近亲，语序相反）。
+const _KS_PLACE_PREP = {
+  zh: '(?:在|于|落|入|位于|落入|落在|进入|临|臨|驻|駐)',
+  en: '(?:in|into|at|through|within|enters|entering|visits)',
+  es: '(?:en|entra|entrando|dentro|pasa)',
+  fr: '(?:en|dans|entre|entrant|passe)',
+  th: '(?:ราศี|ใน|แห่ง|เข้าสู่|ผ่าน)',
+  vi: '(?:tại|trong|ở|vào|qua)',
+};
+/** 落座/过境「动状词」（顺逆/行经/过境）——左右各 24 字窗口内命中 ⇒ 落座叙述 ⇒ 弃权 */
+const _KS_ORBIT_WORDS = [
+  '顺行', '逆行', '行经', '经过', '过境', '行进', '穿过', '落入', '推移',
+  '掠过', '途经', '造访', '驶入', '移入', '穿行', '走遍', '横扫', '回落到',
+  'retrograde', 'Retrograde', 'entering', 'passes through', 'passing through',
+  'retrógrado', 'retrogrado', 'entrando',
+  'rétrograde', 'entrant',
+  'nghịch hành', 'thuận hành', 'đi qua', 'đi vào', 'băng qua',
+  'ถอยหลัง', 'เดินหน้า', 'เคลื่อน', 'เข้าสู่', 'ผ่าน',
+];
+/** 「区间连接号」——宫位令牌**紧随**区间号/箭头（「第2宫**至**第10宫」·「Nhà 7 **→** Nhà 8」）⇒ 过境轨迹 ⇒ 弃权 */
+const _KS_RANGE_RE = /^[\s*`]*(?:至|到|—|–|~|～|→|->)/;
+const _KS_ARROW_RE = /(?:→|->)/;
+
+/**
+ * 45-G（Mine H · 第二形态）「落座 / 轨迹」语境守卫 —— 仅用于 `Sign→House` 裸声称式。
+ * @param {string} text 全文
+ * @param {number} idx  匹配起点（= 星座令牌起点）
+ * @param {number} len  匹配全长
+ * @param {string} lang 语种
+ * @param {string[]} planetVals 该语 + 英文行星名全集（判「匹配后紧接行星」的落座语）
+ * @returns {boolean} true = 落座/轨迹叙述（应弃权）
+ */
+function _ksIsPlacementSeat(text, idx, len, lang, planetVals) {
+  const L = (SUN_SIGNS[lang] ? lang : null);
+  const left24 = text.slice(Math.max(0, idx - 24), idx);
+  const left10 = text.slice(Math.max(0, idx - 10), idx);
+  const right6 = text.slice(idx + len, idx + len + 6);
+  const right4 = text.slice(idx + len, idx + len + 4);
+  // ① 紧邻前的「落座介词」（锚尾，容许尾随空白）——如 th「ในราศี」·vi「tại」·zh「在」
+  const prep = _KS_PLACE_PREP[L];
+  if (prep) {
+    try { if (new RegExp('(?:' + prep + ')\\s*$').test(left10)) return true; } catch (_) {}
+  }
+  // ② 轨迹箭头：左窗 24 字内含 `→` / `->`（vi 月报「Sư Tử Nhà 7→Nhà 8, Xử Nữ Nhà 8」枚举）
+  if (_KS_ARROW_RE.test(left24)) return true;
+  // ③ 落座/过境动状词：左窗 24 字内（顺逆/行经/过境…）
+  if (_KS_ORBIT_WORDS.some((w) => left24.includes(w))) return true;
+  // ④ 动状词**紧随其后**（zh「狮子座第11宫顺行的天王星」·th「เรือนที่ 8 แห่ง…」的逆行语序）
+  if (_KS_ORBIT_WORDS.some((w) => right6.includes(w))) return true;
+  // ⑤ 紧接括号（落座/轨迹记号）：fr「(Maison 5)」·zh「（逆行）」·es「(Casa 5)」
+  if (/^[\s]*[（(【\[]/.test(right6)) return true;
+  // ⑥ 匹配后**紧跟行星名** ⇒ 「<星座><宫>的<行星>」= 该行星的落座语（zh 最常见形态）
+  if (planetVals.some((p) => p && right4.includes(p))) return true;
+  // ⑦ 匹配后**紧跟区间连接号**（「第二宫至第10宫」）⇒ 过境轨迹区间 ⇒ 弃权
+  if (_KS_RANGE_RE.test(right6)) return true;
+  return false;
+}
 
 function _ksEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'); }
 
@@ -1441,10 +1525,20 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
   // 尾缀独立成组 ⇒ 令牌全长 = body + tail，偏移可精确反推（不必做 startsWith 猜测）
   const signTail = lex.hasBareSuffix ? '(座?)' : '()';
   // 容差窗刻意排除逗号/顿号/分号 —— 跨分句的「行星…另一分句的星座」一律弃权（宁漏不改）。
-  const GAP = '[^。\\n！？!?；;，,、]{0,14}?';   // 修饰词↔行星 的容差窗（禁跨句/跨分句）
-  const GAP2 = '[^。\\n！？!?；;，,、]{0,10}?'; // 行星↔星座 的容差窗（「金星在」/「主星本命」等）
+  // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine L · 拉丁句界未入禁集**）：原禁集只有 CJK/全角标点，
+  //   **ASCII 句号 `.` 与破折号 `—`/`–` 缺失** ⇒ 拉丁报告可**跨句桥接**：
+  //   fr「… révéler une vérité sur votre valeur**. **Mercure en Scorpion, Maison 9 …」——
+  //   `votre`（**上一句**的语境词）+ `.` + `Mercure` ⇒ 把**流年水星**误认作**本命水星** ⇒ 伪造。
+  //   治法：`. — –` 入禁集（GAP 另加 `:`/`：`；GAP2 不加冒号 —— 保留「本命太阳：狮子座」合法形态）。
+  const GAP = '[^。.\\n！？!?；;，,、:：—–]{0,14}?';   // 修饰词↔行星 的容差窗（禁跨句/跨分句）
+  const GAP2 = '[^。.\\n！？!?；;，,、—–]{0,10}?';    // 行星↔星座 的容差窗（「金星在」/「主星本命」等）
   // 语序双覆盖：zh/en/es/fr 为「修饰词在前」，vi/th 为「行星在前 + 修饰词在后」
   //   （实机核验：vi「Sao Mộc natal của bạn ở Sư Tử」、th「ดาวพฤหัสบดี natal」）
+  // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H**）：「复合主语句」的**第二个行星名**守卫用词表。
+  const _allPlanetVals = [...new Set([
+    ...Object.values(lex.planets || {}).filter(Boolean),
+    ...Object.values(_KS_PLANET_NAME.en || {}).filter(Boolean),
+  ])];
 
   for (const pEn of Object.keys(lex.planets)) {
     const truth = ch[pEn];
@@ -1466,6 +1560,13 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
       // 左窗流年守卫（匹配起点前 16 字）
       const leftWin = text.slice(Math.max(0, m.index - 16), m.index);
       if (_KS_TRANSIT_WORDS.some((w) => leftWin.includes(w))) continue;
+      // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H · 复合主语句串染**）：
+      //   匹配窗内出现**第二个行星名** ⇒ 本命修饰词极可能属于**另一颗行星**的从句 ⇒ 弃权（宁漏不改）。
+      //   线上实录（S08 zh once）：「…第3宫主星木星牵制——金星本命落在白羊座第3宫（状态：陷）」
+      //     —— 真值金星=白羊座第3宫（**本句本就正确**）。原式以「木星+牵制——金星」为 GAP 桥接上
+      //     「本命」，把**金星**的落座语星座按**木星**真值改写 ⇒ 把正确的「白羊座」篡改成「水瓶座」
+      //     （伪造幻觉），并与宫位锁互为逆运动 ⇒ **2-周期极限环**（收口链 Δ≠0 永不收敛、带病交付）。
+      if (_allPlanetVals.some((p) => p && p !== pLocal && m[0].includes(p))) continue;
       out.checked++;
       // 判定 found 属于哪个语域（本地完整式 / 本地裸式 / 英文）
       let foundIdx = lex.signs.indexOf(body);
@@ -1571,6 +1672,21 @@ const _KS_ZH_HOUSE_NUM = {
 };
 const _KS_ZH_HOUSE_NUM_INV = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十', 11: '十一', 12: '十二' };
 
+// 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine K 补充 · 形容词式宫主星**）：宫主星槽除动词式
+//   （`ruled by` / `governs` / `主管`）外，还有**形容词式**——`Mercury-ruled 8th House`
+//   （「受水星主宰的第8宫」）。后者**不含**动词式关键槽 ⇒ 落宫声称 ③ 段的窗口守卫漏判：
+//   线上实捕（S01 en monthly）：「harmonizing with your **Mercury-ruled** 8th House energy」
+//   ⇒ 被读成「Mercury 落在第8宫」（真值第 11 宫）⇒ 月报若启用落宫锁即**篡改正确的宫主星句**。
+//   本表**仅**用于 ③ 段窗口守卫（弃权），不参与 ① 段宫主星声称识别 ⇒ 零侵入。
+const _KS_RULER_ADJ = {
+  zh: '(?:所属|所主|受其)',
+  en: '(?:-?\\s*ruled|-?\\s*ruling|governed)',
+  es: '(?:-?\\s*regid[ao]s?|gobernad[ao]s?)',
+  fr: '(?:-?\\s*régi(?:e|es|s)?|gouverné(?:e|es|s)?)',
+  th: '(?:ที่ปกครอง|ผู้ปกครอง)',
+  vi: '(?:-?\\s*cai\\s*quản)',
+};
+
 /** 各语「宫位令牌」形态（无捕获组 · 名称由外层具名组包裹） */
 const _KS_HNUM_SRC = {
   zh: '第\\s*(?:\\d{1,2}|[一二三四五六七八九十]{1,3})\\s*宫',
@@ -1611,8 +1727,7 @@ const _KS_RULER_NOUN_KW = {
   vi: '(?:chủ\\s+tinh)',
 };
 
-/** 宫位令牌 → 宫号（阿拉伯数字优先；zh 数词兜底）；越值域/无数字 ⇒ NaN */
-function _ksHouseNumFromToken(tok) {
+/** 宫位令牌 → 宫号（阿拉伯数字优先；zh 数词兜底）；越值域/无数字 ⇒ NaN */function _ksHouseNumFromToken(tok) {
   const s = String(tok || '');
   const d = s.match(/\d{1,2}/);
   if (d) return Number(d[0]);
@@ -1737,7 +1852,8 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
   const _ctxRe = (() => {
     try { return _ctx ? new RegExp('(?:' + _ctx + ')') : null; } catch (_) { return null; }
   })();
-  const GAP2 = '[^。\\n！？!?；;，,、]{0,10}?';
+  // 🔴 45-G（Mine L）：`. — –` 同属句界（防跨句桥接，详见 `_ksScanNatalSigns` 同位注释）。
+  const GAP2 = '[^。.\\n！？!?；;，,、—–]{0,10}?';
 
   let m;
   /* ── ① 宫主星声称 ─────────────────────────────────────────────── */
@@ -1884,13 +2000,20 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
           //   · 左窗有行星却无落座语线索 ⇒ 保守弃权（宁漏不改）。**绝不**落入下方宫头纠偏 ——
           //     否则会把「某行星的落座语」误当宫头声称，凭空改写星座（防伪造）。
           continue;
-        } else if (bareS && seatedPairs.has(si + '|' + num)) {
-          // ③ Sign→H 型专属**歧义豁免**：无行星线索时，若该 (星座,宫位) 对确实是某行星的
-          //    真值落座（「巨蟹座第4宫」可能是木星落座语）⇒ 弃权；但紧跟宫头/宫主星关键槽
-          //    （「水瓶座第11宫**主星**是…」）即为**明确宫头声称** ⇒ 不予豁免。
-          const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 6);
-          const _isClaimTail = _tailKwRe ? _tailKwRe.test(tail) : false;
-          if (!_isClaimTail) continue;
+        } else {
+          // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H · 第二形态**）：`Sign→House` 裸式的
+          //   「**落座 / 轨迹**」语境守卫 —— 命中即弃权（宁漏不改，绝不改一字）。
+          //   判据与词表见 `_ksIsPlacementSeat`；`_lwTok` 为空（左窗 14 字无行星）时方生效，
+          //   故不侵扰「承前省略主语」落座句（那条通路已在左窗行星分支内先行处理）。
+          if (bareS && _ksIsPlacementSeat(text, m.index, m[0].length, lex.lang, allPlanetVals)) continue;
+          if (bareS && seatedPairs.has(si + '|' + num)) {
+            // ③ Sign→H 型专属**歧义豁免**：无行星线索时，若该 (星座,宫位) 对确实是某行星的
+            //    真值落座（「巨蟹座第4宫」可能是木星落座语）⇒ 弃权；但紧跟宫头/宫主星关键槽
+            //    （「水瓶座第11宫**主星**是…」）即为**明确宫头声称** ⇒ 不予豁免。
+            const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 6);
+            const _isClaimTail = _tailKwRe ? _tailKwRe.test(tail) : false;
+            if (!_isClaimTail) continue;
+          }
         }
         // ② 🔴 **夹窗**行星守卫（2026-10-12 线上实兵捕获 · 致命）：
         //    `H + (≤4字) + Sign` 的容差窗**足以容下「本命火星」**（恰 4 字）⇒
@@ -1949,7 +2072,9 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
     //     ③ **末次定位**：宫位捕捉组恒在式末 ⇒ 相对偏移一律取 `mm[0].length − hTok.length`。
     //        （原 `mm[0].indexOf(hTok)` 取**首次**出现；同窗同令牌出现两次即**改写错位** ⇒ 伪造新幻觉。）
     const _guardWinRe = (() => {
-      try { return new RegExp('(?:' + RW + '|' + CK + '|' + _KS_HNUM_SRC[lex.lang] + ')'); } catch (_) { return null; }
+      try {
+        return new RegExp('(?:' + RW + '|' + CK + '|' + _KS_HNUM_SRC[lex.lang] + '|' + (_KS_RULER_ADJ[lex.lang] || '(?!)') + ')');
+      } catch (_) { return null; }
     })();
     for (const pEn of Object.keys(planMap)) {
       const truth = ch[pEn];
@@ -1959,14 +2084,47 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
       const pLocal = planMap[pEn];
       if (!pLocal) continue;
       const pEsc = _ksEsc(pLocal);
-      const head = '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))';
+      // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine K · 语境词误绑宾语**）：
+      //   `planet GAP2 _ctx`（**后置式**）**仅在 th / vi 生效** —— 这两语的本命修饰词**后置**是惯用式
+      //   （泰「ดาวพฤหัสบดี natal」·越「Sao Mộc natal của bạn」）；而 zh/en/es/fr 的本命修饰词
+      //   **一律前置**（「**你的**本命月亮」/「**your** natal Moon」/「**su** Sol natal」），
+      //   后置式在这四语中**只会**命中「行星 <动词/介词> **你的**<宾语>」这一**宾语误绑**形态。
+      //   线上实捕（大阅兵残余分桶 182/236 条，**全部为审计假阳**；若月报/年报启用落宫锁即为**篡改**）：
+      //     · en「the Sun **enters your** 8th House on October 23」·「Mars and Jupiter **in your** 9th House」；
+      //     · fr「Le Soleil **transite votre** 7ème Maison」（年报逐月 103 条）·「… dans **votre** Maison 10」；
+      //     · es「La Luna **cruza su** Casa 10 y su Casa 9」·「la retrogradación de Venus **en su** Casa 2」；
+      //     · zh「月亮…**行经你的**第二宫」·「冥王星…**在你的**第4宫」。
+      //   铁律：这些**完全正确的流年/过境句**绝不可被按本命真值改写（改宫号即伪造幻觉）。
+      const _postfix = (lex.lang === 'th' || lex.lang === 'vi');
+      const head = _postfix
+        ? '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))'
+        : '(?<w1>' + _ctx + GAP2 + pEsc + ')';
       const re = new RegExp(head + '(?<br>' + GAP2 + ')(?<hh>' + _KS_HNUM_SRC[lex.lang] + ')', 'gi');
       let mm;
       while ((mm = re.exec(text)) !== null) {
         if (!mm[0] || mm[0].length === 0) { re.lastIndex++; continue; }
         const g2 = mm.groups || {};
         // ① ② 窗口守卫（三段以 NUL 分隔拼接，杜绝跨窗误配）
-        if (_guardWinRe && _guardWinRe.test((g2.w1 || '') + '\u0000' + (g2.w2 || '') + '\u0000' + (g2.br || ''))) continue;
+        const _winTxt = (g2.w1 || '') + '\u0000' + (g2.w2 || '') + '\u0000' + (g2.br || '');
+        if (_guardWinRe && _guardWinRe.test(_winTxt)) continue;
+        // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H · 复合主语句串染**）：
+        //   窗内出现**第二个行星名** ⇒ 本命修饰词可能属于另一行星从句 ⇒ 弃权（宁漏不改）。
+        //   线上实录（S08 zh once）：「…第3宫主星木星牵制——金星本命落在白羊座第3宫」——
+        //   `w2` = 「木星牵制——金星本命」含「金星」⇒ 该「本命」属金星，与 木星 无关。
+        //   原式据此把**金星**的正确落宫（第3宫）按**木星**真值改成第1宫 ⇒ 伪造幻觉 + 2-周期极限环。
+        if (allPlanetVals.some((p) => p && p !== pLocal && _winTxt.indexOf(p) >= 0)) continue;
+        // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine K · 宫位令牌属宫主星声称**）：
+        //   宫位令牌**紧跟宫主星槽**（尾窗 ≤6 字含 RW）⇒ 该宫位是「**是第N宫的（宫主星）**」的宾语，
+        //   **不是**本行星的落宫位数 ⇒ 弃权（宁漏不改）。
+        //   线上实捕（S01 th once）：**ดาวพฤหัสบดีในราศีธนู เรือนที่ 1** เป็น**เจ้าเรือน**
+        //     ——「木星在射手座，**是第1宫的宫主星**」（木星确为 H1 射手之法定主星）——
+        //     原式读成「木星落在第1宫」（真值第3宫）⇒ 会把 `เรือนที่ 1` 改写成 `เรือนที่ 3`
+        //     ⇒ 把**正确**的宫主星句篡改成**错误**的宫号（伪造幻觉）。
+        {
+          // 尾窗 16 字；**先剥 Markdown 强调符与空白**（泰/zh 报告常把该句加粗 ⇒ `** เป็นเจ้าเรือน`）。
+          const _tailRaw = text.slice(mm.index + mm[0].length, mm.index + mm[0].length + 16).replace(/[*`\s]/g, '');
+          if (RW && (() => { try { return new RegExp('(?:' + RW + ')').test(_tailRaw); } catch (_) { return false; } })()) continue;
+        }
         const hTok = g2.hh || '';
         const num = _ksHouseNumFromToken(hTok);
         if (!(num >= 1 && num <= 12)) continue;

@@ -99,11 +99,13 @@ const hasBareCuspPlanetGuard = (src) =>
   && /if \(_seatOk\) continue;/.test(src);
 
 /* ⑧b Sign 在前的裸式 `<星座>第N宫`（中文最常见写法）：
-       · 声称式在位（cusp 正则第 4 式 s8/h9 + 紧邻窗 GS）—— 复刻线上漏检的「狮子座第10宫/第11宫」
-       · 「落座对歧义豁免」在位（该 (星座,宫位) 确为某行星真值落座 ⇒ 弃权，宁漏不改） */
+      · 声称式在位（cusp 正则第 4 式 s8/h9 + 紧邻窗 GS）—— 复刻线上漏检的「狮子座第10宫/第11宫」
+      · 「落座对歧义豁免」在位（该 (星座,宫位) 确为某行星真值落座 ⇒ 弃权，宁漏不改）
+      · ⚠️ 45-G 起该分支由独立 `if` 起手（前置 `_ksIsPlacementSeat` 守卫提前 `continue`）⇒
+        判据须同时容纳 `if (...)` 与 `else if (...)` 两形态，禁绑死 `else `。 */
 const hasSignFirstClaimForm = (src) =>
   /signAlt \+ '\)' \+ GS \+ '\(\?<h9>' \+ H \+ '\)'/.test(src)
-  && /else if \(bareS && seatedPairs\.has\(si \+ '\|' \+ num\)\)/.test(src);
+  && /(?:else )?if \(bareS && seatedPairs\.has\(si \+ '\|' \+ num\)\)/.test(src);
 
 /* ⑨ 流年左窗守卫（宁漏不改） */
 const hasTransitGuard = (src) => /const _isTransit = \(idx\) => \{/.test(src);

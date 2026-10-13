@@ -75,13 +75,13 @@ const extractGlueScrubber = (src) => {
 
 /* ═══════════ 源码判据（主测与注入自测同源取用）═══════════ */
 
-/* A1 Mine A（一/二）：头窗 + 桥窗守卫 */
+/* A1 Mine A（一/二）：头窗 + 桥窗守卫（45-G 追加：Mine K-adj 形容词式宫主星槽入窗） */
 const hasPlanetHouseWindowGuard = (src) =>
   src.includes('const _guardWinRe = (() => {')
-  && src.includes("new RegExp('(?:' + RW + '|' + CK + '|' + _KS_HNUM_SRC[lex.lang] + ')')")
-  && src.includes("const head = '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))';")
+  && src.includes("(_KS_RULER_ADJ[lex.lang] || '(?!)')")
+  && src.includes("const _winTxt = (g2.w1 || '') + '\\u0000' + (g2.w2 || '') + '\\u0000' + (g2.br || '');")
+  && src.includes('if (_guardWinRe && _guardWinRe.test(_winTxt)) continue;')
   && src.includes("const re = new RegExp(head + '(?<br>' + GAP2 + ')(?<hh>' + _KS_HNUM_SRC[lex.lang] + ')', 'gi');")
-  && src.includes("if (_guardWinRe && _guardWinRe.test((g2.w1 || '') + '\\u0000' + (g2.w2 || '') + '\\u0000' + (g2.br || ''))) continue;")
   && src.includes("const hTok = g2.hh || '';");
 
 /* A1b Mine A（三）：末次定位 */
@@ -126,6 +126,58 @@ const hasSignLockWideScope = (src) => {
   return body.includes("if (reportType !== 'once' && reportType !== 'monthly' && reportType !== 'yearly') return text;")
     && !/if \(reportType !== 'once'\) return text;/.test(body);
 };
+
+/* A7 Mine J：本命语境词「拉丁短词加 ASCII 字母边界」（禁命中文内） */
+const hasCtxLatinBoundary = (src) =>
+  src.includes("const _KS_CTX_L = '(?<![A-Za-z])';")
+  && src.includes("const _KS_CTX_R = '(?![A-Za-z])';")
+  && src.includes('const _KS_CTX_WRAP = (body) => _KS_CTX_L + \'(?:\' + body + \')\' + _KS_CTX_R;')
+  && /en: _KS_CTX_WRAP\('your\|Your\|my\|My\|natal\|Natal\|of the birth'\),/.test(src)
+  && /es: _KS_CTX_WRAP\('tu\|su\|mi\|nuestra\|nuestro\|natal\|de nacimiento'\),/.test(src)
+  && /fr: _KS_CTX_WRAP\('ton\|ta\|votre\|mon\|ma\|notre\|natal\|de naissance'\),/.test(src)
+  && /vi: _KS_CTX_WRAP\('của\\\\s\+bạn\|natal'\),/.test(src)
+  // zh / th 语境词为 CJK / 泰文（无词边界概念）⇒ 必须**一字未包**
+  && /zh: '\(\?:你的本命\|我的本命\|本命\|你的\|我的\|乃\)',/.test(src)
+  && /th: '\(\?:ของ\\\\s\*คุณ\| natal\)',/.test(src);
+
+/* A8 Mine L：拉丁句界标点入禁集（GAP / GAP2 双双在位） */
+const hasClausePunctGuard = (src) =>
+  src.includes("const GAP = '[^。.\\\\n！？!?；;，,、:：—–]{0,14}?';")
+  && src.split("const GAP2 = '[^。.\\\\n！？!?；;，,、—–]{0,10}?';").length === 3   // 星座核 + 落宫核 各一
+  && !/const GAP = '\[\^。\\\\n！？!\?；;，,、\]/.test(src);
+
+/* A9 Mine H-2：Sign→House 裸声称式的「落座 / 轨迹」语境守卫 */
+const hasPlacementSeatGuard = (src) => {
+  const body = extractFn(src, '_ksIsPlacementSeat') || '';
+  return src.includes('const _KS_PLACE_PREP = {')
+    && src.includes('const _KS_ORBIT_WORDS = [')
+    && src.includes('const _KS_ARROW_RE = /(?:→|->)/;')
+    && src.includes('const _KS_RANGE_RE = /^[\\s*`]*(?:至|到|—|–|~|～|→|->)/;')
+    && body.includes('if (new RegExp(\'(?:\' + prep + \')\\\\s*$\').test(left10)) return true;')
+    && body.includes('if (_KS_ARROW_RE.test(left24)) return true;')
+    && body.includes('if (_KS_ORBIT_WORDS.some((w) => left24.includes(w))) return true;')
+    && body.includes('if (/^[\\s]*[（(【\\[]/.test(right6)) return true;')
+    && body.includes('if (planetVals.some((p) => p && right4.includes(p))) return true;')
+    && body.includes('if (_KS_RANGE_RE.test(right6)) return true;')
+    && src.includes('if (bareS && _ksIsPlacementSeat(text, m.index, m[0].length, lex.lang, allPlanetVals)) continue;')
+    && !src.includes('if (bareH && _ksIsPlacementSeat(');
+};
+
+/* A10 Mine K：语境词误绑宾语双守卫（后置式限 th/vi + 尾窗宫主星槽弃权） */
+const hasCtxObjectMisbindGuard = (src) => {
+  const body = extractFn(src, '_ksScanHouseClaims') || '';
+  return src.includes("const _postfix = (lex.lang === 'th' || lex.lang === 'vi');")
+    && body.includes(": '(?<w1>' + _ctx + GAP2 + pEsc + ')';")
+    && body.includes("const _tailRaw = text.slice(mm.index + mm[0].length, mm.index + mm[0].length + 16).replace(/[*`\\s]/g, '');")
+    && body.includes("if (RW && (() => { try { return new RegExp('(?:' + RW + ')').test(_tailRaw); } catch (_) { return false; } })()) continue;");
+};
+
+/* A11 Mine K-adj：形容词式宫主星槽（`Mercury-ruled 8th House`）表在位 */
+const hasRulerAdjectiveGuard = (src) =>
+  src.includes('const _KS_RULER_ADJ = {')
+  && src.includes("en: '(?:-?\\\\s*ruled|-?\\\\s*ruling|governed)',")
+  && src.includes("fr: '(?:-?\\\\s*régi(?:e|es|s)?|gouverné(?:e|es|s)?)',")
+  && src.includes("es: '(?:-?\\\\s*regid[ao]s?|gobernad[ao]s?)',");
 
 /* ═══════════ 合成真值盘（确定性 · 无需 Python）═══════════
    上升射手 ⇒ H1 宫头射手 ⇒ 法定主星木星（Mine A 的「合法宫主星句」载体）。
@@ -175,6 +227,7 @@ function judgeRulerAsHouseOverread(mod) {
   const bad = [];
   const cases = [
     ['zh', '你的死穴是「第1宫主星木星落陷+第1宫主星火星在第1宫」的冲动与赌性。'],
+    ['zh', '你的第1宫主星木星在第1宫落陷。'],
     ['en', 'Mercury rules your 8th house, which colours your mind.'],
   ];
   for (const [lang, src] of cases) {
@@ -187,17 +240,21 @@ function judgeRulerAsHouseOverread(mod) {
   const r = mod.correctHouseRulersAndCups(zh, 'zh', MX);
   if (!r.text.includes('第1宫主星木星落陷')) bad.push('[zh] 合法宫主星句被错位改写：' + r.text);
   // en 侧：宫号必须留在原地（H8），不得被落宫锁挪走
-  const re = mod.correctHouseRulersAndCups(cases[1][1], 'en', MX);
+  const re = mod.correctHouseRulersAndCups(cases[2][1], 'en', MX);
   if (!/rules your 8th house/.test(re.text)) bad.push('[en] 宫号被落宫锁错位改写：' + re.text);
   return bad;
 }
 
-/* Mine D：轨迹/落座括号记号 ⇒ 零声称 + 原句零改动 */
+/* Mine D：轨迹/落座括号记号 ⇒ 零声称 + 原句零改动
+   ⚠️ 用例刻意取「**仅**括号/箭头」的最小形态（不含过境动状词）—— 45-G 新增的落座守卫
+      （`_ksIsPlacementSeat`）射程更广，会把「passes through … (House 10)」一并接管 ⇒
+      若此处用带动状词的原句，C3 注入（摘掉 Mine D 守卫）将**不再变红** ⇒ 判据失能。
+      带动状词的线上原句改由 B9（落座守卫）覆盖。 */
 function judgeTrajectoryMark(mod) {
   const bad = [];
   const cases = [
-    ['en', 'The transiting Moon passes through Virgo (House 10), Libra (House 10→House 11→House 12), Scorpio (House 12).'],
-    ['zh', '流月月亮依次行经处女座（第10宫）、天秤座（第10宫→第11宫→第12宫）。'],
+    ['en', 'Libra (House 10), Scorpio (House 12).'],
+    ['zh', '处女座（第10宫）、天秤座（第12宫）。'],
   ];
   for (const [lang, src] of cases) {
     const l = mod.lintHouseRulersAndCups(src, lang, MX);
@@ -274,6 +331,107 @@ function judgeForeignGlue(fn, warns) {
   return bad;
 }
 
+/* Mine J：本命语境词「拉丁短词加 ASCII 字母边界」
+   —— 单词内部的伪语境词（fr «tandis»→`ta` / «Maison»→`ma`、es «octubre»→`tu`）不得生效；
+      而**真本命句**（`Your natal Mercury in Scorpio`）仍必判（射程不得过度收紧）。 */
+function judgeCtxWordBoundary(mod) {
+  const bad = [];
+  const fake = [
+    ['fr', 'La Lune en Taureau (Maison 5) en fin de semaine.'],          // ma ∈ «Maison»
+    ['fr', 'tandis que Mercure en Scorpion, Maison 9, prépare sa rétrogradation.'], // ta ∈ «tandis»
+    ['es', 'El 12 de octubre la Luna entra en Escorpio, Casa 10.'],      // tu ∈ «octubre»
+  ];
+  for (const [lang, src] of fake) {
+    const lh = mod.lintHouseRulersAndCups(src, lang, MX);
+    const ls = mod.lintNatalPlanetSigns(src, lang, MX);
+    if (!lh.passed || !ls.passed) {
+      bad.push(`[${lang}] 单词内部伪语境词生效（假阳）：${src} → H:${JSON.stringify(lh.violations)} S:${JSON.stringify(ls.violations)}`);
+    }
+    if (mod.correctHouseRulersAndCups(src, lang, MX).text !== src
+      || mod.correctNatalPlanetSigns(src, lang, MX).text !== src) {
+      bad.push(`[${lang}] 正确的流年/落座句被改写（伪造幻觉）：${src}`);
+    }
+  }
+  // 真本命句仍必判（MX：Mercury = Gemini/7）
+  const l = mod.lintNatalPlanetSigns('Your natal Mercury in Scorpio, House 11, receives a boost.', 'en', MX);
+  if (l.passed) bad.push('[en] 真本命星座句漏检（边界把射程收死了）：' + JSON.stringify(l.violations));
+  return bad;
+}
+
+/* Mine L：拉丁句界标点（`.`/`—`）必须入禁集 —— 禁「上一句语境词 + `.` + 本句行星」跨句桥接。
+   同句合法引用仍必判。 */
+function judgeClauseBoundary(mod) {
+  const bad = [];
+  const cross = [
+    ['fr', 'votre valeur. Mercure en Scorpion, Maison 9, prépare sa rétrogradation.'],
+    ['en', 'it matters to your security. Mercury in Scorpio colours the mind.'],
+  ];
+  for (const [lang, src] of cross) {
+    const ls = mod.lintNatalPlanetSigns(src, lang, MX);
+    if (!ls.passed) bad.push(`[${lang}] 跨句桥接生效（假阳）：${JSON.stringify(ls.violations)}`);
+    if (mod.correctNatalPlanetSigns(src, lang, MX).text !== src) bad.push(`[${lang}] 跨句句被擅改`);
+  }
+  const same = mod.lintNatalPlanetSigns('Your natal Mercury in Scorpio colours the mind.', 'en', MX);
+  if (same.passed) bad.push('[en] 同句本命引用漏检（句界守卫过度）');
+  return bad;
+}
+
+/* Mine H·第二形态：`Sign→House` 裸声称式的「落座 / 轨迹」语境守卫
+   —— 落座/过境句零宫头声称 + 原句零改动；而**合法宫头声称**仍必判。 */
+function judgePlacementSeat(mod) {
+  const bad = [];
+  const seats = [
+    ['th', 'คุณมี ดาวพฤหัสบดีในราศีกุมภ์ เรือนที่ 1 เป็นเจ้าเรือน'],
+    ['th', 'ดาวศุกร์เริ่มถอยหลังในราศีพิจิก เรือนที่ 8 แห่งเกียรติยศ'],
+    ['vi', 'Sao Kim nghịch hành tại Bọ Cạp Nhà 10'],
+    ['vi', 'Sư Tử Nhà 7 → Nhà 8, Xử Nữ Nhà 8'],
+    ['zh', '狮子座第10宫的火星与第十宫的木星联手'],
+    ['zh', '白羊座第2宫（逆行）与天蝎座第10宫'],
+    ['zh', '16日至18日月光的足迹掠过摩羯座第2宫至第3宫'],
+    ['en', 'The transiting Moon passes through Virgo (House 10), Libra (House 10→House 11→House 12), Scorpio (House 12).'],
+    ['zh', '流月月亮依次行经处女座（第10宫）、天秤座（第10宫→第11宫→第12宫）。'],
+    ['fr', 'La Lune en Taureau (Maison 5) en fin de semaine'],
+  ];
+  for (const [lang, src] of seats) {
+    const l = mod.lintHouseRulersAndCups(src, lang, MX);
+    const cusp = l.violations.filter((v) => v.kind === 'cusp');
+    if (cusp.length) bad.push(`[${lang}] 落座/轨迹句被读作宫头声称（假阳）：${src} → ${JSON.stringify(cusp)}`);
+    if (mod.correctHouseRulersAndCups(src, lang, MX).text !== src) bad.push(`[${lang}] 落座/轨迹句被擅改`);
+  }
+  // 合法宫头声称仍必判（MX：H10 宫头 = Virgo）
+  for (const src of ['你的上升狮子座第10宫，代表你的事业。', '第10宫的宫头是狮子座。']) {
+    if (mod.lintHouseRulersAndCups(src, 'zh', MX).passed) bad.push('[zh] 合法宫头声称漏检：' + src);
+  }
+  return bad;
+}
+
+/* Mine K：本命语境词「误绑宾语」双守卫
+   —— `planet <动/介词> your House N`（流年/过境）与 `Mercury-ruled 8th House`（形容词式主星）
+      一律零落宫声称；而**合法本命落宫**（`你的本命月亮在第11宫`）仍必判。 */
+function judgeCtxObjectMisbind(mod) {
+  const bad = [];
+  const cases = [
+    ['en', 'the Sun enters your 8th House on October 23.'],
+    ['en', 'Mars and Jupiter in your 9th House fuel a grandiose belief.'],
+    ['fr', 'Le Soleil transite votre 7ème Maison, celle des partenariats.'],
+    ['es', 'La Luna cruza su Casa 10 y su Casa 9.'],
+    ['zh', '月亮在5日至7日行经你的第二宫与第11宫。'],
+    ['en', 'harmonizing with your Mercury-ruled 8th House energy.'],
+  ];
+  for (const [lang, src] of cases) {
+    const l = mod.lintHouseRulersAndCups(src, lang, MX);
+    const ph = l.violations.filter((v) => v.kind === 'planet_house');
+    if (ph.length) bad.push(`[${lang}] 过境/形容词式主星句被读作本命落宫（假阳）：${src} → ${JSON.stringify(ph)}`);
+    if (mod.correctHouseRulersAndCups(src, lang, MX).text !== src) bad.push(`[${lang}] 过境句被擅改`);
+  }
+  // 合法本命落宫仍必判（MX：Moon = Cancer/8）
+  const zhOk = mod.lintHouseRulersAndCups('你的本命月亮在第11宫发光。', 'zh', MX);
+  if (!zhOk.violations.some((v) => v.kind === 'planet_house')) bad.push('[zh] 合法本命落宫漏检');
+  const enOk = mod.lintHouseRulersAndCups('Your natal Moon in the 11th house shines.', 'en', MX);
+  if (!enOk.violations.some((v) => v.kind === 'planet_house')) bad.push('[en] 合法本命落宫漏检');
+  return bad;
+}
+
 /* ═══════════ A 组：修复在位（源码级真值）═══════════ */
 
 test('A1 Mine A · 落宫声称扫描的「头窗 + 桥窗」守卫在位（三重守卫之一二）', () => {
@@ -326,6 +484,31 @@ test('A5 Mine B · 双通路接线（非流式 + 流式，且与 vi 清洗同位
 test('A6 Mine F · 本命星座锁射程由 once 扩至三板块（月报/年报同级硬锁）', () => {
   assert.ok(hasSignLockWideScope(SERVER),
     '射程未扩至 monthly/yearly（或旧「只认 once」门控残留）⇒ 月报/年报本命星座幻觉继续批量留存');
+});
+
+test('A7 Mine J · 本命语境词「拉丁短词 ASCII 字母边界」在位（en/es/fr/vi 包裹；zh/th 一字不动）', () => {
+  assert.ok(hasCtxLatinBoundary(CLIENT),
+    '拉丁短词语境词缺字母边界（`ta` 命中 «tandis»、`ma` 命中 «Maison»、`tu` 命中 «octubre»）⇒ 流年句被当本命句改写');
+});
+
+test('A8 Mine L · 拉丁句界标点入禁集（星座核 + 落宫核 GAP/GAP2 双双在位，旧禁集零残留）', () => {
+  assert.ok(hasClausePunctGuard(CLIENT),
+    'GAP/GAP2 缺 `.`/`—`/`–` ⇒ 拉丁报告可跨句桥接语境词（伪造本命归属）');
+});
+
+test('A9 Mine H·第二形态 · Sign→House 裸式的「落座 / 轨迹」语境守卫在位（且仅限 bareS）', () => {
+  assert.ok(hasPlacementSeatGuard(CLIENT),
+    '落座/轨迹守卫缺失或不完整 ⇒ 过境落座句被读作宫头声称（与星座锁互逆 ⇒ 2-周期极限环）');
+});
+
+test('A10 Mine K · 语境词误绑宾语双守卫在位（后置式限 th/vi + 尾窗宫主星槽弃权）', () => {
+  assert.ok(hasCtxObjectMisbindGuard(CLIENT),
+    '缺 «后置式限 th/vi» 或 «尾窗宫主星槽弃权» ⇒ 流年句按本命真值改写（伪造幻觉）');
+});
+
+test('A11 Mine K-adj · 形容词式宫主星槽（`Mercury-ruled 8th House`）入 ③ 段窗口守卫', () => {
+  assert.ok(hasRulerAdjectiveGuard(CLIENT),
+    '形容词式宫主星槽缺登记 ⇒ 「受X主宰的第N宫」被读作本命落宫');
 });
 
 /* ═══════════ B 组：行为真值（跑实现，不做纯文本猜测）═══════════ */
@@ -401,6 +584,26 @@ test('B6 行为·收敛式收口（applyOnceHouseLock）：Mine A 句求不动�
   assert.equal(fn(src, 'zh', MX, 'yearly'), src, 'yearly 通道越权介入（宫位锁射程红线）');
 });
 
+test('B7 行为·Mine J（拉丁短词边界）：单词内部伪语境词零生效 + 真本命句仍必判', async () => {
+  const mod = await loadClient();
+  assert.deepEqual(judgeCtxWordBoundary(mod), []);
+});
+
+test('B8 行为·Mine L（句界标点）：跨句桥接零生效 + 同句引用仍必判', async () => {
+  const mod = await loadClient();
+  assert.deepEqual(judgeClauseBoundary(mod), []);
+});
+
+test('B9 行为·Mine H 第二形态（落座/轨迹守卫）：六语落座句零声称零改动 + 合法宫头仍必判', async () => {
+  const mod = await loadClient();
+  assert.deepEqual(judgePlacementSeat(mod), []);
+});
+
+test('B10 行为·Mine K（语境词误绑宾语）：过境/形容词式主星句零落宫声称 + 合法本命落宫仍必判', async () => {
+  const mod = await loadClient();
+  assert.deepEqual(judgeCtxObjectMisbind(mod), []);
+});
+
 /* ═══════════ C 组：注入反漂移（真实源码篡改 ⇒ 判据必红）═══════════ */
 
 /* v69_client.js 以 `data:` URL 形态加载需重写三处「非相对可解析」锚点：
@@ -423,7 +626,8 @@ async function loadClientVariant(tampered) {
 
 test('C1 注入：摘掉头窗/桥窗守卫 ⇒ A1 判据必红 + B1 行为必变（复刻致命极限环）', async () => {
   const tampered = CLIENT.replace(
-    "        if (_guardWinRe && _guardWinRe.test((g2.w1 || '') + '\\u0000' + (g2.w2 || '') + '\\u0000' + (g2.br || ''))) continue;\n", '');
+    '        if (_guardWinRe && _guardWinRe.test(_winTxt)) continue;\n', '');
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中头窗/桥窗守卫）');
   assert.ok(!hasPlanetHouseWindowGuard(tampered), 'A1 判据失能（注入后仍判为守卫在位）');
   const M = await loadClientVariant(tampered);
   assert.ok(judgeRulerAsHouseOverread(M).length > 0,
@@ -494,8 +698,61 @@ test('C7 注入：本命星座锁门控回退 once ⇒ A6 判据必红 + B5 行�
     'B5 判据失能（未识别射程回退：月报本命星座幻觉未被纠偏）');
 });
 
-/* ═══════════ D 组：段位守备（下界 + 相对位置，禁精确段数）═══════════ */
+test('C8 注入：撤掉拉丁短词字母边界 ⇒ A7 判据必红 + B7 行为必变（复刻 «tandis»/«Maison»/«octubre» 假阳）', async () => {
+  const tampered = CLIENT.replace(
+    "const _KS_CTX_WRAP = (body) => _KS_CTX_L + '(?:' + body + ')' + _KS_CTX_R;",
+    "const _KS_CTX_WRAP = (body) => '(?:' + body + ')';");
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中语境词边界包装器）');
+  assert.ok(!hasCtxLatinBoundary(tampered), 'A7 判据失能（注入后仍判为边界在位）');
+  const M = await loadClientVariant(tampered);
+  assert.ok(judgeCtxWordBoundary(M).length > 0,
+    'B7 判据失能（未识别边界缺失 ⇒ 单词内部伪语境词生效）');
+});
 
+test('C9 注入：句界标点退集 ⇒ A8 判据必红 + B8 行为必变（复刻跨句桥接）', async () => {
+  const tampered = CLIENT
+    .split("const GAP = '[^。.\\\\n！？!?；;，,、:：—–]{0,14}?';").join("const GAP = '[^。\\\\n！？!?；;，,、]{0,14}?';")
+    .split("const GAP2 = '[^。.\\\\n！？!?；;，,、—–]{0,10}?';").join("const GAP2 = '[^。\\\\n！？!?；;，,、]{0,10}?';");
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中句界禁集）');
+  assert.ok(!hasClausePunctGuard(tampered), 'A8 判据失能（注入后仍判为句界守卫在位）');
+  const M = await loadClientVariant(tampered);
+  assert.ok(judgeClauseBoundary(M).length > 0, 'B8 判据失能（未识别跨句桥接）');
+});
+
+test('C10 注入：摘掉落座/轨迹守卫调用 ⇒ A9 判据必红 + B9 行为必变（复刻 S01 th 极限环）', async () => {
+  const tampered = CLIENT.replace(
+    '          if (bareS && _ksIsPlacementSeat(text, m.index, m[0].length, lex.lang, allPlanetVals)) continue;\n', '');
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中落座守卫调用点）');
+  assert.ok(!hasPlacementSeatGuard(tampered), 'A9 判据失能（注入后仍判为守卫在位）');
+  const M = await loadClientVariant(tampered);
+  assert.ok(judgePlacementSeat(M).length > 0, 'B9 判据失能（未识别落座句被读作宫头声称）');
+});
+
+test('C11 注入：后置式语境词放开到全语 ⇒ A10 判据必红 + B10 行为必变（复刻 182 条宾语误绑）', async () => {
+  const tampered = CLIENT.replace(
+    "      const _postfix = (lex.lang === 'th' || lex.lang === 'vi');\n"
+    + "      const head = _postfix\n"
+    + "        ? '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))'\n"
+    + "        : '(?<w1>' + _ctx + GAP2 + pEsc + ')';",
+    "      const head = '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))';");
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中后置式门控）');
+  assert.ok(!hasCtxObjectMisbindGuard(tampered), 'A10 判据失能（注入后仍判为门控在位）');
+  const M = await loadClientVariant(tampered);
+  assert.ok(judgeCtxObjectMisbind(M).length > 0, 'B10 判据失能（未识别宾语误绑）');
+});
+
+test('C12 注入：③ 段窗口守卫摘掉形容词式主星槽 ⇒ A1/A11 判据必红 + B10 行为必变', async () => {
+  const tampered = CLIENT.replace(
+    "+ '|' + (_KS_RULER_ADJ[lex.lang] || '(?!)')", '');
+  assert.notEqual(tampered, CLIENT, '注入锚点漂移（未命中形容词式主星槽接线）');
+  assert.ok(!hasPlanetHouseWindowGuard(tampered), 'A1 判据失能（注入后仍判为窗口守卫在位）');
+  assert.ok(!tampered.includes("(_KS_RULER_ADJ[lex.lang] || '(?!)')"), 'A11 接线判据失能');
+  const M = await loadClientVariant(tampered);
+  assert.ok(judgeCtxObjectMisbind(M).some((m) => m.includes('Mercury-ruled')),
+    'B10 判据失能（未识别形容词式主星句被读作本命落宫）');
+});
+
+/* ═══════════ D 组：段位守备（下界 + 相对位置，禁精确段数）═══════════ */
 test('D1 段位守备：下界 ≥50 且 e40-compat 仍居收口位 len-2（禁精确段数）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim());
   assert.ok(segs.length >= 50, `test:astro 段数下界应 ≥50（49 + Gate45G），实得 ${segs.length}`);
