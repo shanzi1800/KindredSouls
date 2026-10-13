@@ -3191,6 +3191,57 @@ function fixVietnameseCorruption(text) {
   return fixViReportSanitize(text);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ 45-G（2026-10-13 · 12 黄金样本三板块全语言大阅兵捕获）：非中文语种的**中文粘连词**本地化
+//   病根（线上实兵 · th 实测三连中）：
+//     · 「แต่**因为你**มีดาวเนปจูนในเรือนที่ 2 …」（S01 th once ×2）
+//     · 「…สอดคล้องกับธาตุไฟ**主导**ในดวงของคุณ」（S02 th once）
+//     · 「**因为它**…」（S03 th once）
+//   ⇒ **中文功能词整段混入泰文**，踩 Gate 39 语言红线（小语种严禁夹中文）。prompt 已含
+//   `[LANG_RULE]` 且 V137 已按语种隔离模板，仍无法根除 LLM 偶发滑码 ⇒ 必须加**确定性兜底**。
+//   治法（三重纪律）：
+//     ① **闭集功能词逐语替换** —— 只收连接/判断/修饰类功能词（无语义歧义 ⇒ 替换后语句依旧通顺）；
+//     ② **长词优先**（「因为你」先于「因为」）＋全程 `split/join`（禁用正则，规避元字符/转义坑）；
+//     ③ 闭集外的残留 CJK 串（≥2 字）**只告警、绝不静默删字**（吞字铁律：宁可留痕也不吞）。
+//   ⚠️ 射程：**zh 为射程外**（中文即母语）；仅 en/es/fr/th/vi 生效。
+//   🔴 闭集成员以**实弹实证**为准（禁臆造）：126 份 before 报告中，非中文语种的全部中文残留串仅 4 种
+//      ——「主导」×3 /「因为你」×2 /「因为它」×1 /「填补」×1；前三者已在表内，故**补入「填补」**
+//      （S04 th monthly 实录：「เพื่อ填补ความไม่มั่นใจในตนเอง」），并同族补入连接词「并且/或者」留余量。
+// ═══════════════════════════════════════════════════════════════════════════
+const _FOREIGN_GLUE_TABLE = [
+  ['因为你', { en: 'because you', es: 'porque tú', fr: 'parce que vous', th: 'เพราะคุณ', vi: 'bởi vì bạn' }],
+  ['因为它', { en: 'because it', es: 'porque ello', fr: 'parce que cela', th: 'เพราะมัน', vi: 'bởi vì nó' }],
+  ['因为', { en: 'because', es: 'porque', fr: 'parce que', th: 'เพราะ', vi: 'bởi vì' }],
+  ['所以', { en: 'so', es: 'por eso', fr: 'donc', th: 'ดังนั้น', vi: 'vì vậy' }],
+  ['但是', { en: 'but', es: 'pero', fr: 'mais', th: 'แต่', vi: 'nhưng' }],
+  ['而且', { en: 'and', es: 'y', fr: 'et', th: 'และ', vi: 'và' }],
+  ['以及', { en: 'and', es: 'y', fr: 'et', th: 'และ', vi: 'và' }],
+  ['并且', { en: 'and', es: 'y', fr: 'et', th: 'และ', vi: 'và' }],
+  ['或者', { en: 'or', es: 'o', fr: 'ou', th: 'หรือ', vi: 'hoặc' }],
+  ['如果', { en: 'if', es: 'si', fr: 'si', th: 'ถ้า', vi: 'nếu' }],
+  ['主导', { en: 'dominant', es: 'dominante', fr: 'dominant', th: 'หลัก', vi: 'chủ đạo' }],
+  ['填补', { en: 'fill', es: 'llenar', fr: 'combler', th: 'เติมเต็ม', vi: 'lấp đầy' }],
+  ['其实', { en: 'actually', es: 'en realidad', fr: 'en fait', th: 'จริงๆ', vi: 'thực ra' }],
+  ['因此', { en: 'therefore', es: 'por lo tanto', fr: 'par conséquent', th: 'เพราะฉะนั้น', vi: 'do đó' }],
+];
+function stripForeignChineseGlue(text, lang) {
+  if (!text || typeof text !== 'string') return text;
+  if (!lang || lang === 'zh') return text;                 // zh 射程外
+  let out = text;
+  for (const pair of _FOREIGN_GLUE_TABLE) {
+    const cn = pair[0], map = pair[1] || {};
+    const rep = map[lang];
+    if (!rep || out.indexOf(cn) < 0) continue;
+    out = out.split(cn).join(rep);                         // 🔴 只用 split/join（禁正则）
+  }
+  const left = out.match(/[\u4e00-\u9fff]{2,}/g);
+  if (left && left.length) {
+    console.warn('[45-G][LANG-GUARD] ⚠️ ' + lang + ' 报告仍有中文残留 ' + left.length + ' 处（闭集外，仅告警不删字）：'
+      + left.slice(0, 6).join('/'));
+  }
+  return out;
+}
+
 // ── 🛠️ V421: 越南语本命盘真值硬锁（军令 P0 收口）────────────────────────
 // 病根2（Prompt 软约束的天花板）：即使把 NATAL CHART ANCHORS 真值注进 prompt，实测仍会漂：
 //   ① 1990-08-05 本命月亮 Ma Kết 第5宫 → 首句写对 Nhà 5，后续 5 句漂成 Nhà 8
@@ -10410,7 +10461,13 @@ function lockNatalAnchorRole(text, lang, astroMatrix, reportType) {
 // ══════════════════════════════════════════════════════════════════════════
 function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
   try {
-    if (reportType !== 'once') return text;
+    // 🔴 45-G（2026-10-13 · 12 黄金样本三板块大阅兵捕获）：**射程由 once 扩至全板块**。
+    //   大阅兵铁证（S07 en monthly 原文）：「your natal Mercury in **Scorpio**」（真值 Leo）、
+    //   「your natal Jupiter in **Leo**」（真值 Cancer）—— 本命星座幻觉在月报/年报中**批量留存**，
+    //   根因即本锁此前只认 once ⇒ 月报/年报**完全没有**与 once 同级的本命星座硬锁。
+    //   守纪律不变（本命修饰词锚定 + 左窗 16 字流年守卫 ⇒ 流年句一律弃权），故扩射程后
+    //   流年叙述仍不被动（宁漏不改）；日志前缀保留历史字面量（闸门锚点不动）。
+    if (reportType !== 'once' && reportType !== 'monthly' && reportType !== 'yearly') return text;
     if (!text || typeof text !== 'string' || !astroMatrix) return text;
     const r = correctNatalPlanetSigns(text, lang, astroMatrix);
     if (r.corrections && r.corrections.length) {
@@ -15332,6 +15389,8 @@ app.post('/api/wealth-oracle', async (req, res) => {
         if (lang === 'vi') {
           reportContent = fixVietnameseCorruption((reportContent || '').normalize('NFC'));
         }
+        // 🛡️ 45-G: 非中文语种「中文粘连词」本地化 —— 与 vi 清洗同一位（客户端终稿与落库文本的共同上游）⇒ 两者逐字同源。
+        reportContent = stripForeignChineseGlue(reportContent, lang);
 
         // ── ⛔ 时间线强行熔断重组(防 DeepSeek Streaming 污染)──
         if (reportType === 'yearly') {
@@ -17362,6 +17421,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     if (lang === 'vi') {
       cleanedText = fixVietnameseCorruption((cleanedText || '').normalize('NFC'));
     }
+    // 🛡️ 45-G: 非中文语种「中文粘连词」本地化（同上游，落库与客户端终稿逐字同源）。
+    cleanedText = stripForeignChineseGlue(cleanedText, lang);
     // 🛡️ E23/R11q ④: well-formed 保证（孤立代理项 ⇒ 写库 400 PGRST102 ⇒ 永不落库）——
     //   置于 `_sanitizedForClient`（客户端终稿）与 `writeToCache`（落库文本）的**共同上游** ⇒ 两者仍逐字同源。
     cleanedText = _v525WellFormed('stream/' + lang + '/' + reportType, cleanedText);

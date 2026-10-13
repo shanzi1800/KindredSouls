@@ -1797,6 +1797,18 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
       const bareH = (g.h7 !== undefined && g.h7 !== null);
       const bareS = (g.s8 !== undefined && g.s8 !== null);
       if (bareH || bareS) {
+        // 🔴 45-G（2026-10-13 · 12 黄金样本大阅兵捕获）：`Sign (House N)` 与 `Sign (House N→M)` 属
+        //   **括号落座 / 过境轨迹**记号，**不是宫头声称** ⇒ 宫头锁一律弃权。
+        //   线上月报实录（S07 en）：「the transiting Moon passes through Virgo (House 10),
+        //   **Libra (House 10→House 11→House 12)**, Scorpio (House 12→House 1)…」——
+        //   原式把「Libra (House 10」读成「H10 宫头=天秤」⇒ 审计假阳；若月报启用宫位锁则
+        //   会**篡改轨迹句**（真值 H10=狮子）⇒ 伪造幻觉。判据：Sign 与 House 之间见括号，
+        //   或 House 之后紧接箭头/连接号 ⇒ 属轨迹/落座记号 ⇒ 弃权（宁漏不改）。
+        if (bareS) {
+          const _gap = m[0].slice(m[0].indexOf(sTok) + sTok.length, m[0].lastIndexOf(hTok));
+          const _af = text.slice(m.index + m[0].length, m.index + m[0].length + 2);
+          if (/[(（]/.test(_gap) || /^(?:→|->)/.test(_af)) continue;
+        }
         // ① 左窗 14 字内有行星名 ⇒ 疑为「行星落座」句，须先分「这是谁的落座语」：
         const lw = text.slice(Math.max(0, m.index - 14), m.index);
         const _lwTok = allPlanetVals.filter((p) => p && lw.includes(p));
@@ -1923,6 +1935,22 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
 
   /* ── ③ 本命行星落宫声称（与 45-D2 同纪律：本命修饰词 + 左窗流年守卫）─────── */
   if (ch && _KS_HNUM_SRC[lex.lang]) {
+    // 🔴 45-G（2026-10-13 · 12 黄金样本大阅兵捕获 · **致命极限环**）：
+    //   原式 `(_ctx GAP2 planet | planet GAP2 _ctx) GAP2 house` 会把**宫主星句式**误读成**落宫句式**：
+    //     · zh「**你的**死穴是「第1宫主星**木星**落陷…」——`_ctx` 含「你的」且 GAP2 宽 10 字，
+    //       可越过「第1宫主星」把「木星」接上**后一句**的宫位令牌 ⇒ 伪造「木星在第1宫」（真值第3宫）；
+    //     · en「Mercury **rules your** 8th house」——`planet GAP2 _ctx` 以 `rules your` 为桥
+    //       ⇒ 伪造「Mercury 在第8宫」（真值第9宫）。
+    //   一旦改写即与**宫主星锁**互为逆运算 ⇒ **2-周期极限环**
+    //   （线上实兵逐轮实录：ruler#8→planet_house#8:8→9→ruler#9→planet_house#9:9→8，永远回不到不动点），
+    //   4 轮上限必然带病交付。治法（宁漏不改，三重守卫）：
+    //     ① **头窗守卫**：`_ctx↔planet` 窗内出现宫主星槽/宫头槽/宫位令牌 ⇒ 宫主星句式 ⇒ 弃权；
+    //     ② **桥窗守卫**：`planet↔house` 窗内出现上述任一 ⇒ 跨过了别的主张 ⇒ 弃权；
+    //     ③ **末次定位**：宫位捕捉组恒在式末 ⇒ 相对偏移一律取 `mm[0].length − hTok.length`。
+    //        （原 `mm[0].indexOf(hTok)` 取**首次**出现；同窗同令牌出现两次即**改写错位** ⇒ 伪造新幻觉。）
+    const _guardWinRe = (() => {
+      try { return new RegExp('(?:' + RW + '|' + CK + '|' + _KS_HNUM_SRC[lex.lang] + ')'); } catch (_) { return null; }
+    })();
     for (const pEn of Object.keys(planMap)) {
       const truth = ch[pEn];
       if (!truth || !truth.sign) continue;
@@ -1931,19 +1959,22 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
       const pLocal = planMap[pEn];
       if (!pLocal) continue;
       const pEsc = _ksEsc(pLocal);
-      const head = '(?:' + _ctx + GAP2 + pEsc + '|' + pEsc + GAP2 + _ctx + ')';
-      const re = new RegExp(head + GAP2 + '(' + _KS_HNUM_SRC[lex.lang] + ')', 'gi');
+      const head = '(?:(?<w1>' + _ctx + GAP2 + pEsc + ')|(?<w2>' + pEsc + GAP2 + _ctx + '))';
+      const re = new RegExp(head + '(?<br>' + GAP2 + ')(?<hh>' + _KS_HNUM_SRC[lex.lang] + ')', 'gi');
       let mm;
       while ((mm = re.exec(text)) !== null) {
         if (!mm[0] || mm[0].length === 0) { re.lastIndex++; continue; }
-        const hTok = mm[1];
+        const g2 = mm.groups || {};
+        // ① ② 窗口守卫（三段以 NUL 分隔拼接，杜绝跨窗误配）
+        if (_guardWinRe && _guardWinRe.test((g2.w1 || '') + '\u0000' + (g2.w2 || '') + '\u0000' + (g2.br || ''))) continue;
+        const hTok = g2.hh || '';
         const num = _ksHouseNumFromToken(hTok);
         if (!(num >= 1 && num <= 12)) continue;
         if (_isTransit(mm.index)) continue;
         out.checked++;
         out.mentions.push({ kind: 'planet_house', key: pEn, planet: pEn, value: num });
         if (num === tHouse) continue;
-        const relH = mm[0].indexOf(hTok);
+        const relH = mm[0].length - hTok.length;   // ③ 末次定位（禁 indexOf 首现）
         if (relH < 0) continue;
         let relOff, found, fix;
         const d = hTok.match(/\d{1,2}/);
@@ -1995,13 +2026,29 @@ export function lintHouseRulersAndCups(text, lang, astroMatrix) {
     if (!byKey.has(k)) byKey.set(k, { kind: mn.kind, key: mn.key, house: mn.house, values: new Set() });
     byKey.get(k).values.add(mn.value);
   }
+  // 🔴 45-G（2026-10-13 · 12 黄金样本大阅兵捕获）：**古典/现代双轨主星不算矛盾**。
+  //   同一宫位在报告里分别按古典主星与现代主星叙述（如天蝎 H11 = 火星/冥王、
+  //   水瓶 H2 = 土星/天王）是**合规双轨**（与检出核的合法性守卫同源），不是自打嘴巴。
+  //   原实现只看「同一 key 出现两个值」⇒ 把双轨全部误报为矛盾（大阅兵实测 8 例假阳）。
+  //   治法：ruler 类矛盾须**至少一个值落在该宫合法双轨集之外**才成立（真矛盾仍必判）。
+  const _hrAll = (astroMatrix && astroMatrix.meta && astroMatrix.meta.house_rulers) || null;
   const conflicts = [];
   for (const rec of byKey.values()) {
     if (rec.values.size > 1) {
+      const vals = [...rec.values];
+      if (rec.kind === 'ruler' && _hrAll && rec.house) {
+        const _rr = _hrAll['house_' + rec.house];
+        const _valid = [];
+        for (const t of ['classical', 'modern']) {
+          const p = _rr && _rr[t] && _rr[t].planet;
+          if (p && _valid.indexOf(p) < 0) _valid.push(p);
+        }
+        if (_valid.length && vals.every((v) => _valid.indexOf(v) >= 0)) continue;   // 纯双轨 ⇒ 非矛盾
+      }
       conflicts.push({
         kind: rec.kind, key: rec.key,
         house: (rec.house === undefined) ? null : rec.house,
-        values: [...rec.values],
+        values: vals,
       });
     }
   }
