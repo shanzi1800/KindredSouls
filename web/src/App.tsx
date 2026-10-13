@@ -33,6 +33,9 @@ import SandboxPayPage from './pages/SandboxPayPage';
 import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
+// 🛡️ P0-1：read-through 旁置真值回放（Gate 41 五键锁死 ⇒ 旁置真值不可入库 ⇒ 客户端本地留存通路）
+// @ts-ignore —— houseOverlayStore.mjs 为纯 JS 旁置留存核（形状由 P0-1 闸门守备）
+import { loadHouseOverlay, saveHouseOverlay } from './lib/houseOverlayStore.mjs';
 import './App.css';
 
 /**
@@ -1121,11 +1124,18 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
       setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
       // 🛡️ Gate 44：宫位真值（信封旁置字段；仅 available === true 时下沉，缺真值 ⇒ null ⇒ 网格不渲染）
-      setReportHouseOverlay(
-        (data.houseOverlay && typeof data.houseOverlay === 'object' && data.houseOverlay.available === true)
-          ? (data.houseOverlay as CompatHouseTruthSidecar)
-          : null,
-      );
+      // 🛡️ P0-1：read-through 旁置真值回放 —— HIT 秒回不带旁置字段（不可入库）
+      //   ⇒ 按 reportId 从**客户端本地留存**回放；MISS 首见 ⇒ 就地留存供后续命中回放。
+      //   🔴 零算力零配额（纯本地读写）；缺留存（换设备/清缓存）⇒ null ⇒ 如实不渲染（零伪造）。
+      const _g44Wire = (data.houseOverlay && typeof data.houseOverlay === 'object' && data.houseOverlay.available === true)
+        ? (data.houseOverlay as CompatHouseTruthSidecar)
+        : null;
+      const _reportIdForStore = (typeof data.reportId === 'string' && data.reportId) ? data.reportId : null;
+      const _g44Replayed = (!_g44Wire && _reportIdForStore)
+        ? (loadHouseOverlay(_reportIdForStore) as CompatHouseTruthSidecar | null)
+        : null;
+      setReportHouseOverlay(_g44Wire || _g44Replayed);
+      if (_g44Wire && _reportIdForStore) saveHouseOverlay(_reportIdForStore, _g44Wire);
       // 🛡️ Gate 44：投递溯源（真实路径；仅报告实际送达时置位 —— 与画布挂载同真值域）
       setReportDelivery(
         (typeof data.insight === 'string' && data.insight) ? (_usedStream ? 'stream' : 'direct') : null,
