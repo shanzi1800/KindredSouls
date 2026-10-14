@@ -13922,7 +13922,41 @@ const WEALTH_GUARD_MSG = {
   DAILY_WEALTH_RATE_LIMIT_EXCEEDED: '今日财富 AI 调用已达上限（10 次/日），请明日 00:00 后再试。',
 };
 function wealthGuardBody(code, extra) {
-  return Object.assign({ success: false, error: WEALTH_GUARD_MSG[code] || code, code }, extra || {});
+  // 🛡️ E47（主公亲令 2026-10-14）: 信封带 `sandbox` 标记 —— 前端据此在真机测试态
+  //   显示「测试重置 / 重新推演」按钮，且**绝不**把测试态渲染成商业锁死死胡同。
+  return Object.assign({ success: false, error: WEALTH_GUARD_MSG[code] || code, code, sandbox: isSandboxPaymentMode(process.env) }, extra || {});
+}
+
+// ── 🛡️ E47（主公亲令 2026-10-14）: 跨版本 read-through「已有报告就地吐稿」──
+//   病根（主公真机实测 2026-10-14 17:41）：
+//     ① 缓存键内嵌版本号（`wealth:<ver>:…`）⇒ 版本 bump 后旧版生成的老盘**全线失联**；
+//     ② 护栏的周期锁是**账号级**（`monthly_wealth_report_generated_at`），不是盘级
+//        ⇒ 本月已为 A 盘生成过 1 份，换 B 盘再要月报必被 403 拦死；
+//     ③ 叠加日熔断（count≥10）⇒ 主公被「周期锁 + 日限」双重锁死，且库里**根本没有该盘任何行**
+//        （实测 `ai_insights_cache` 中 1972-08-08 = **0 行**）。
+//   治法：护栏判决前先按「同盘（日期+时辰+坐标+时区+语种+类型）、版本号通配」回捞最近一份已生成报告；
+//   捞到即按正常成功载荷**原地吐长卷**（`cached:true`），严禁弹窗阻断 —— 与公告文案
+//   「同一份出生信息重新查看时，会直接读取已生成的报告」对齐（此前只有代码之外的口头承诺）。
+async function readThroughWealthReport(SB_URL, SB_KEY, p) {
+  if (!SB_URL || !SB_KEY || !p || !p.birthDate) return null;
+  // ⚠️ PostgREST 的 like 通配符是 `*`（映射为 SQL `%`）：版本号段用 `*` 通配，其余段逐字锚定。
+  const pat = `wealth:*:${p.birthDate}:${p.time}:${p.lat}:${p.lon}:${p.tz}:${p.lang}:${p.reportType}`;
+  try {
+    const url = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=like.${encodeURIComponent(pat)}`
+      + '&select=insight,cache_key,created_at&order=created_at.desc&limit=5';
+    const r = await safeFetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!Array.isArray(rows)) return null;
+    for (const row of rows) {
+      const txt = (row && typeof row.insight === 'string') ? row.insight : '';
+      if (txt.length > 200) return { insight: txt, cacheKey: row.cache_key, createdAt: row.created_at };
+    }
+    return null;
+  } catch (e) {
+    console.warn('[E47] read-through failed: ' + e.message);
+    return null;
+  }
 }
 
 // ── 护栏增量落库（读-合并-写；**只并增量字段**，绝不整份 paid_plans 覆盖）──
@@ -14288,6 +14322,31 @@ app.post('/api/sandbox/status', async (req, res) => {
     plans: Object.keys(STRIPE_PRICE_MAP),
     voucherCount: Object.keys(resolveVoucherTable(process.env)).length,
   });
+});
+
+// ── 🧪 E47（主公亲令 2026-10-14）: 「测试重置 / 重新推演」──
+//   主公真机巡检被「本月已生成 / 下月 1 日再来」拦死（周期锁为**账号级**，换新盘即死）。
+//   本端点只在沙箱测试态开放（缺省 live ⇒ 404 fail-closed），且**只清调用者自己**的
+//   周期时间戳与日计数（越权无从谈起：userId 取自验签后的 token，不接受 body 传参）。
+app.post('/api/sandbox/reset-locks', async (req, res) => {
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  try {
+    const who = await _sandboxResolveUser(req);
+    if (who.error) return res.status(who.error).json({ error: who.message });
+    // 🔴 只清「周期与日计数」，**绝不动**权益位（wealth_once / wealth_monthly_report / …）
+    const delta = {
+      monthly_wealth_report_generated_at: null,
+      yearly_wealth_report_generated_at: null,
+      daily_wealth_call_count: 0,
+      daily_wealth_call_resets_at: null,
+    };
+    const w = await patchWealthPlans(who.userId, delta);
+    console.log(`[E47] sandbox reset-locks user=${String(who.userId).slice(0, 8)} ok=${w.ok !== false}`);
+    return res.json({ success: true, sandbox: true, cleared: Object.keys(delta) });
+  } catch (e) {
+    console.error('[E47] sandbox reset-locks failed:', e && e.message);
+    return res.status(500).json({ error: 'reset failed' });
+  }
 });
 
 app.post('/api/sandbox/complete', async (req, res) => {
@@ -15498,15 +15557,32 @@ app.post('/api/wealth-oracle', async (req, res) => {
       _guardMethod = _entRes.method;
       const _now = new Date();
       const _lock = wealthPeriodLock(_guardPlans, reportType, _entRes.userBirthDate || birthDate, _now);
-      if (_lock.locked) {
-        const _code = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
-        console.log(`[E24⑥②] period LOCKED code=${_code} next=${_lock.nextAvailable} user=${String(_guardUserId).slice(0, 8)}`);
-        return res.status(403).json(wealthGuardBody(_code, { nextAvailable: _lock.nextAvailable, solarReturnStart: _lock.solarReturnStart || null }));
-      }
       const _rl = wealthDailyRateLimit(_guardPlans, _now);
-      if (_rl.limited) {
-        console.log(`[E24⑥②] daily RATE-LIMIT count=${_rl.count} user=${String(_guardUserId).slice(0, 8)}`);
-        return res.status(429).json(wealthGuardBody('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rl.resetsAt }));
+      // 🛡️ E47（主公亲令 2026-10-14）: **严禁**把「已有报告」或「真机测试态」拦在门外。
+      //   判决序（铁律）：① 跨版本回捞已有报告 → 有则原地吐长卷；② 沙箱测试态 → 放行重新生成；
+      //   ③ 皆非 → 才落 403/429 锁定信封。
+      if (_lock.locked || _rl.limited) {
+        const _rt = await readThroughWealthReport(SB_URL, SB_KEY, {
+          birthDate, time: _ckTime, lat: _ckLat, lon: _ckLon, tz: _ckTz, lang, reportType,
+        });
+        if (_rt) {
+          console.log(`[E47] guard bypass via read-through (${_lock.locked ? 'periodLock' : 'dailyLimit'}) key=${_rt.cacheKey}`);
+          const _rtMeta = buildWealthMetaFull(birthDate, lang);
+          let _rtMatrix = null;
+          try { _rtMatrix = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { /* 高纬告知失败不阻断 */ }
+          return res.json({ ..._rtMeta.result, cached: true, report: _rt.insight, highLatitudeNotice: buildHighLatitudeMeta(_rtMatrix, lang) });
+        }
+        if (!isSandboxPaymentMode(process.env)) {
+          if (_lock.locked) {
+            const _code = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
+            console.log(`[E24⑥②] period LOCKED code=${_code} next=${_lock.nextAvailable} user=${String(_guardUserId).slice(0, 8)}`);
+            return res.status(403).json(wealthGuardBody(_code, { nextAvailable: _lock.nextAvailable, solarReturnStart: _lock.solarReturnStart || null }));
+          }
+          console.log(`[E24⑥②] daily RATE-LIMIT count=${_rl.count} user=${String(_guardUserId).slice(0, 8)}`);
+          return res.status(429).json(wealthGuardBody('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rl.resetsAt }));
+        }
+        // 🧪 沙箱真机测试态（PAYMENT_MODE=sandbox）：主公亲令「严禁弹窗阻断」——放行重新推演。
+        console.log(`[E47] sandbox mode ⇒ guard bypass (no existing report; lock=${_lock.locked} daily=${_rl.limited}) user=${String(_guardUserId).slice(0, 8)}`);
       }
       // 配额/日计数在 AI 调用**之前**扣减（防双花）；周期时间戳留到生成成功后写（失败不锁死用户）。
       await patchWealthPlans(_guardUserId, wealthCounterDelta(_guardPlans, reportType, _guardMethod, _now, { withTimestamp: false }));
@@ -16709,17 +16785,38 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     _streamGuardMethod = _streamEnt.method;
     const _nowG = new Date();
     const _lockG = wealthPeriodLock(_streamGuardPlans, reportType, _streamEnt.userBirthDate || birthDate, _nowG);
-    if (_lockG.locked) {
-      const _codeG = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
-      console.log(`[E24⑥②] (stream) period LOCKED code=${_codeG} next=${_lockG.nextAvailable} user=${String(_streamGuardUserId).slice(0, 8)}`);
-      _sendGuardFrame(_codeG, { nextAvailable: _lockG.nextAvailable, solarReturnStart: _lockG.solarReturnStart || null });
-      return;
-    }
     const _rlG = wealthDailyRateLimit(_streamGuardPlans, _nowG);
-    if (_rlG.limited) {
-      console.log(`[E24⑥②] (stream) daily RATE-LIMIT count=${_rlG.count} user=${String(_streamGuardUserId).slice(0, 8)}`);
-      _sendGuardFrame('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlG.resetsAt });
-      return;
+    // 🛡️ E47（主公亲令 2026-10-14）: 与非流式**逐字同源**的判决序（①回捞 → ②沙箱放行 → ③才锁定）。
+    if (_lockG.locked || _rlG.limited) {
+      const _rtG = await readThroughWealthReport(SB_URL, SB_KEY, {
+        birthDate, time: _ckTime, lat: _ckLat, lon: _ckLon, tz: _ckTz, lang, reportType,
+      });
+      if (_rtG) {
+        console.log(`[E47] (stream) guard bypass via read-through (${_lockG.locked ? 'periodLock' : 'dailyLimit'}) key=${_rtG.cacheKey}`);
+        try {
+          const _rtMetaG = buildWealthMetaFull(birthDate, lang);
+          let _rtMatrixG = null;
+          try { _rtMatrixG = await getAstroMatrix(birthDate, birthTime, lat, lon, tz, { reportType }); } catch (e) { /* noop */ }
+          // ⚠️ SSE header 早在 16552 行已 setHeader + flushHeaders ⇒ 此处**绝不可**再 setHeader（抛 ERR_HTTP_HEADERS_SENT）。
+          res.write(Buffer.from('data: ' + JSON.stringify({ ..._rtMetaG.result, cached: true, report: _rtG.insight, highLatitudeNotice: buildHighLatitudeMeta(_rtMatrixG, lang) }) + '\n\n', 'utf-8'));
+          res.write('data: [DONE]\n\n');
+          clearInterval(_hb);
+          res.end();
+        } catch (e) { try { clearInterval(_hb); } catch (_) {} try { res.end(); } catch (_) {} }
+        return;
+      }
+      if (!isSandboxPaymentMode(process.env)) {
+        if (_lockG.locked) {
+          const _codeG = reportType === 'monthly' ? 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
+          console.log(`[E24⑥②] (stream) period LOCKED code=${_codeG} next=${_lockG.nextAvailable} user=${String(_streamGuardUserId).slice(0, 8)}`);
+          _sendGuardFrame(_codeG, { nextAvailable: _lockG.nextAvailable, solarReturnStart: _lockG.solarReturnStart || null });
+          return;
+        }
+        console.log(`[E24⑥②] (stream) daily RATE-LIMIT count=${_rlG.count} user=${String(_streamGuardUserId).slice(0, 8)}`);
+        _sendGuardFrame('DAILY_WEALTH_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlG.resetsAt });
+        return;
+      }
+      console.log(`[E47] (stream) sandbox mode ⇒ guard bypass (no existing report; lock=${_lockG.locked} daily=${_rlG.limited}) user=${String(_streamGuardUserId).slice(0, 8)}`);
     }
     await patchWealthPlans(_streamGuardUserId, wealthCounterDelta(_streamGuardPlans, reportType, _streamGuardMethod, _nowG, { withTimestamp: false }));
   }

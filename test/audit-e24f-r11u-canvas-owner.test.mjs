@@ -125,7 +125,9 @@ function runChecks(srcRaw) {
   // ── B2: 除两处清屏外，一切 setSacredText 写入必须过主权门禁 ──
   const CLEAR_TOKEN = "setSacredText('')";
   const clearCount = countMatches(src, /setSacredText\(''\)/g);
-  if (clearCount !== 2) fails.push(`B2a: 认领后清屏 setSacredText('') 须恰 2 处，实为 ${clearCount}`);
+  // 🧪 E47（2026-10-14）: 第 3 处合法清屏 —— `forceRegenerate`（测试重置 / 重新推演）内主动清空画布。
+  //   守备语义不变：除这 3 处（2 认领 + 1 重置）外，一切 sacredText 写入仍必须过主权门禁（B2b）。
+  if (clearCount !== 3) fails.push(`B2a: 认领后清屏 setSacredText('') 须恰 3 处（2 认领 + 1 重置），实为 ${clearCount}`);
   const writeRe = /setSacredText\(/g;
   let m;
   while ((m = writeRe.exec(src)) !== null) {

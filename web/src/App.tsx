@@ -31,6 +31,8 @@ import SandboxCashier from './components/SandboxCashier';
 import SandboxPayPage from './pages/SandboxPayPage';
 // 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
 import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
+// 🐾 E46（主公特赦令 · 前端呈现线）：首页「灵宠座位卡」——认领入口 ＋ 生成后首页呈现形态
+import FamiliarHomeCard from './components/FamiliarHomeCard';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
 // 🛡️ P0-1：read-through 旁置真值回放（Gate 41 五键锁死 ⇒ 旁置真值不可入库 ⇒ 客户端本地留存通路）
@@ -317,6 +319,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <p className="subtitle">{t('app.name')}</p>
           <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
         </div>
+        {/* 🐾 E46：灵宠座位卡 —— 与 DailyDashboard **同级兄弟**（复刻已验渲染形态，避 .input-page 内嵌 inline 不绘制之踵）；
+            折叠态零网络；城市搜索框仅认领表单展开时才挂载（避首屏拉 6.6MB cities.json）。 */}
+        <FamiliarHomeCard />
         <DailyDashboard lang={(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'zh':b==='en'?'en':b==='es'?'es':b==='fr'?'fr':b==='th'?'th':b==='vi'?'vi':'en'; })()} />
       </div>
     );

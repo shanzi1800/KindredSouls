@@ -8,6 +8,10 @@ const _reportGen = new Map<string, { partial: string; subs: Set<(t: string) => v
 // 🔬 V219g-DEBUG: 诊断用计数器(确认后删除)
 let _dbgCall = 0;
 let _dbgSet = 0;
+// 🧪 E47（主公亲令 2026-10-14）: 「测试重置 / 重新推演」强制绕过缓存。
+//   置 true ⇒ `/api/wealth-oracle/stream` 的请求体带 `nocache:true`（与 URL `?nocache=true` 同源）。
+//   仅由沙箱测试态的按钮置位，**绝不**由 URL 之外的任何默认路径改动 ⇒ 生产 live 行为零变化。
+let _forceNoCache = false;
 // 🛡️ V491/WP-4·F7: 后端 400 错误码 → i18n key 映射(流式与非流式两条路径共用)
 const _ERR_CODE_I18N: Record<string, string> = {
   INVALID_COORDINATES: 'wealthReport.errInvalidCoordinates',
@@ -1082,7 +1086,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
   // 🛡️ E45-G/P0（2026-10-14）: 周期锁态（月报/年报 403）—— 由「裸错误文本 + 无效重试」改渲染体面锁定卡
-  const [lockInfo, setLockInfo] = useState<{ code: string; nextAvailable?: string } | null>(null);
+  //   🧪 E47: 增记 `sandbox` 标记 —— 沙箱测试态下后端**已不再**下 403（改走「回捞已有报告 → 放行重推」），
+  //   此处仅作防御性兜底：万一拿到沙箱信封，锁定卡也要给出「测试重置 / 重新推演」出口，绝不设死胡同。
+  const [lockInfo, setLockInfo] = useState<{ code: string; nextAvailable?: string; sandbox?: boolean } | null>(null);
+  // 🧪 E47（主公亲令 2026-10-14）: 沙箱测试态探测 + 「测试重置 / 重新推演」执行态
+  const [sandboxMode, setSandboxMode] = useState(false);
+  const [resetting, setResetting] = useState(false);
   // 🐾 E34-B5: 已领养灵宠（懒初始化自 localStorage ⇒ 刷新后仍显示「带路」状态）
   const [familiarLead, setFamiliarLead] = useState<FamiliarProfile | null>(() => {
     try {
@@ -1542,6 +1551,60 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧪 E47（主公亲令 2026-10-14）: 沙箱测试态探测 + 「测试重置 / 重新推演」
+  //   主公真机巡检命门（截屏 17:41 实测）：
+  //     ① 周期锁是**账号级**（`monthly_wealth_report_generated_at`），不是盘级 ⇒ 本月为 A 盘生成过，
+  //        换 B 盘要月报必被 403「下次可生成 11月1日」拦死；
+  //     ② 叠加日熔断（10 次/日）⇒ 双重锁死，且新盘库里**根本没有行**，无缓存可救。
+  //   本按钮只做两件小事（均只在 `PAYMENT_MODE=sandbox` 下可用）：
+  //     ① 调后端 `POST /api/sandbox/reset-locks` 清掉**自己**的周期时间戳与日计数（token 鉴权，无越权面）；
+  //     ② 清本地内存缓存 + 置 `_forceNoCache` ⇒ 下一次生成强制 MISS，真跑一遍完整生成链。
+  //   铁律：live 态探测不到沙箱 ⇒ 按钮**根本不渲染**（生产零副作用、零改观）。
+  // ═══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/sandbox/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j && j.sandbox === true) setSandboxMode(true); })
+      .catch(() => { /* live 态 / 端点不存在 ⇒ 静默不显示，绝不影响正常渲染 */ });
+    return () => { alive = false; };
+  }, []);
+
+  const forceRegenerate = async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      // ① 清服务端周期锁 + 日计数（清锁失败不阻断重推——很可能本来就没锁）
+      if (currentToken) {
+        try {
+          await fetch('/api/sandbox/reset-locks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentToken}` },
+            body: JSON.stringify({}),
+          });
+        } catch (_) { /* noop */ }
+      }
+      // ② 清本地内存缓存 + 置强制 MISS ⇒ 下一次生成真跑生成链
+      for (const g of _reportGen.values()) { try { g.subs.clear(); } catch (_) {} }
+      _reportMemCache.clear();
+      _reportGen.clear();
+      _forceNoCache = true;
+      // ③ 复位一切渲染态，避免旧稿残留造成「没重推」的错觉
+      setLockInfo(null);
+      setError(null);
+      setSacredText('');
+      setWealthReportText('');
+      canvasOwnerRef.current = '';
+      // ④ 重拉四卡元数据（非流式）+ 真流式重推当期长卷
+      await loadWealthData(birthDate, lang, currentToken || undefined);
+      await generateWealthReport('monthly', true);
+      console.log('[E47] 🧪 forceRegenerate done (nocache=' + _forceNoCache + ')');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   // 🏅 第三斧B:loadWealthData 物理断路器
   const loadWealthData = async (birth: string, lang: string, token?: string) => {
     // 🔒 物理锁:如果正在加载,直接返回
@@ -1609,6 +1672,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
           lang: lang,
           reportType: 'monthly',
           referrer: 'standalone',
+          nocache: _forceNoCache, // 🧪 E47: 「测试重置 / 重新推演」强制 MISS（默认 false ⇒ 生产行为零变化）
           free_access: isGreenChannelRef.current ? 1 : 0, // 🛍️ E24⑥: 绿色通道标记(后端权益闸门放行)
         }),
       });
@@ -1650,8 +1714,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         //   与 generateWealthReport 的流式/非流式两径互为独立，必须同帧统一路由到锁定卡。
         if (isPeriodLockCode(_errCode)) {
           let _nextAvail: string | undefined;
-          try { _nextAvail = JSON.parse(_errRaw)?.nextAvailable; } catch (_) {}
-          setLockInfo({ code: _errCode, nextAvailable: _nextAvail });
+          let _sbx = false;
+          try { const _j = JSON.parse(_errRaw); _nextAvail = _j?.nextAvailable; _sbx = _j?.sandbox === true; } catch (_) {}
+          setLockInfo({ code: _errCode, nextAvailable: _nextAvail, sandbox: _sbx || sandboxMode });
           return;
         }
         if (_errCode && _ERR_CODE_I18N[_errCode]) {
@@ -2018,7 +2083,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
         _fullMap.set(_memKey, '');
         // V306: 从 URL 读取 nocache 参数，传递给后端强制绕过缓存
         const _urlParams = new URLSearchParams(window.location.search);
-        const _noCache = _urlParams.get('nocache') === 'true';
+        const _noCache = _urlParams.get('nocache') === 'true' || _forceNoCache;
         const res = await fetch('/api/wealth-oracle/stream', {
           method: 'POST',
           // 🛍️ E24⑥: 必须携带登录 token —— 后端 /api/wealth-oracle/stream 权益闸门靠它换 paid_plans
@@ -2169,7 +2234,8 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   console.warn('[WealthReport] ⚠️ 流式路由错误:', parsed.error, _gcode);
                   if (isPeriodLockCode(_gcode)) {
                     // 🛡️ E45-G/P0: 周期锁 ⇒ 体面锁定卡（非死胡同）；「重试」对本态无意义故不再出现
-                    setLockInfo({ code: _gcode, nextAvailable: parsed.nextAvailable });
+                    // 🧪 E47: 沙箱态下后端已不下 403（改「回捞已有报告 → 放行重推」），此处兜底记 sandbox 标记
+                    setLockInfo({ code: _gcode, nextAvailable: parsed.nextAvailable, sandbox: parsed.sandbox === true || sandboxMode });
                   } else if (_gcode && _ERR_CODE_I18N[_gcode]) {
                     setError(`${t(_ERR_CODE_I18N[_gcode])}${parsed.nextAvailable ? ' ' + parsed.nextAvailable : ''}`);
                   } else {
@@ -2368,7 +2434,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         const errCode = (errData as any)?.code || '';
         // 🛡️ E45-G/P0: 周期锁（月报/年报）⇒ 体面锁定卡，与非流式 403 同一真源
         if (isPeriodLockCode(errCode)) {
-          setLockInfo({ code: errCode, nextAvailable: (errData as any)?.nextAvailable });
+          setLockInfo({ code: errCode, nextAvailable: (errData as any)?.nextAvailable, sandbox: (errData as any)?.sandbox === true || sandboxMode });
           return;
         }
         let userMsg: string;
@@ -2479,6 +2545,28 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             </p>
           ) : null}
           <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* 🧪 E47（主公亲令 2026-10-14）: 沙箱态绝不设死胡同 —— 锁定卡上直给「测试重置 / 重新推演」出口 */}
+            {(lockInfo.sandbox || sandboxMode) ? (
+              <button
+                onClick={forceRegenerate}
+                disabled={resetting}
+                style={{
+                  padding: '13px 20px',
+                  borderRadius: '12px',
+                  border: '1px solid #81D8D0',
+                  background: 'rgba(129,216,208,0.14)',
+                  color: '#81D8D0',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: resetting ? 'not-allowed' : 'pointer',
+                  marginBottom: 0,
+                }}
+              >
+                {resetting
+                  ? (currentLang === 'zh' ? '⏳ 重推中…' : '⏳ Re-generating…')
+                  : (currentLang === 'zh' ? '🧪 测试重置 / 重新推演' : '🧪 Reset & Re-generate')}
+              </button>
+            ) : null}
             {_lastUrl ? (
               <button
                 onClick={() => { window.location.href = _lastUrl; }}
@@ -2831,6 +2919,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px', margin: '0 auto' }}>
         <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px' }}>
           <button
             onClick={() => onNavigate('/wealth')}
             style={{
@@ -2841,11 +2930,37 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               color: '#8B8778',
               fontSize: '12px',
               cursor: 'pointer',
-              marginBottom: '16px',
+              marginBottom: 0,
             }}
           >
             ← {currentLang === 'zh' ? '返回' : 'Back'}
           </button>
+          {/* 🧪 E47（主公亲令 2026-10-14）: 沙箱态「测试重置 / 重新推演」—— 清周期锁 + 日计数后强制 MISS 重推。
+              铁律：仅 `PAYMENT_MODE=sandbox` 探测到才渲染 ⇒ live 生产零观感变化。 */}
+          {sandboxMode && (
+            <button
+              onClick={forceRegenerate}
+              disabled={resetting}
+              title={currentLang === 'zh' ? '清空周期锁与日计数后强制重新推演' : 'Clear period locks & daily counter, then force re-generate'}
+              style={{
+                background: resetting ? 'rgba(129,216,208,0.06)' : 'rgba(129,216,208,0.12)',
+                border: '1px solid rgba(129,216,208,0.45)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                color: '#81D8D0',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: resetting ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+                marginBottom: 0,
+              }}
+            >
+              {resetting
+                ? (currentLang === 'zh' ? '⏳ 重推中…' : '⏳ Re-generating…')
+                : (currentLang === 'zh' ? '🧪 测试重置 / 重新推演' : '🧪 Reset & Re-generate')}
+            </button>
+          )}
+          </div>
 
           <h1 style={{
             fontSize: '22px',

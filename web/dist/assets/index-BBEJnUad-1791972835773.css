@@ -868,10 +868,343 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 0 0 auto;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   🐾 E46 · 灵宠首页座位卡（主公特赦令 · 前端呈现线）
+   三态：折叠条 / 认领表单 / 已认领座位卡。
+   占位立绘**纯 CSS**（呼吸 ＋ 瞳随指动）—— 零 Spine/PixiJS/Live2D/Rive/Three，
+   包体积零增长；未来经 renderAvatar 插槽换骨骼渲染，契约不变。
+   ══════════════════════════════════════════════════════════════════════ */
+.ks-pet-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 18px auto 0;
+  padding: 0 20px;
+  box-sizing: border-box;
+  /* 🔴 视频背景（fixed inset:0 z-index:0 pointerEvents:auto）会吞静态内容点击 ——
+     仓内惯例（.btn-primary / .input-page）：定位提升浮到视频上层，否则整卡可看不可点。 */
+  position: relative;
+  z-index: 2;
+}
+
+/* ── 一 · 未认领折叠条 ── */
+.ks-pet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.07) 0%, rgba(129, 216, 208, 0.05) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.20);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.ks-pet-bar:hover { border-color: rgba(212, 175, 55, 0.45); transform: translateY(-1px); }
+.ks-pet-bar-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ks-pet-bar-emoji { font-size: 18px; flex: 0 0 auto; }
+.ks-pet-bar-title { display: block; font-size: 13px; font-weight: 700; color: #D4AF37; }
+.ks-pet-bar-sub { display: block; font-size: 10.5px; color: #8B8778; margin-top: 2px; line-height: 1.45; }
+.ks-pet-bar-cta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0D0D1A;
+  padding: 7px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #D4AF37 0%, #F0D060 100%);
+}
+
+/* ── 二 · 认领表单 ── */
+.ks-pet-form {
+  padding: 14px 15px 15px;
+  border-radius: 14px;
+  box-sizing: border-box;
+  background: linear-gradient(160deg, rgba(212, 175, 55, 0.08), rgba(168, 85, 247, 0.04));
+  border: 1px solid rgba(212, 175, 55, 0.24);
+}
+.ks-pet-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ks-pet-form-title { font-size: 13px; font-weight: 800; color: #D4AF37; }
+.ks-pet-link {
+  border: none;
+  background: transparent;
+  color: #8B8778;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ks-pet-link:hover { color: #D4AF37; }
+.ks-pet-field { margin-bottom: 10px; }
+.ks-pet-field-label { display: block; font-size: 10.5px; color: #8B8778; margin-bottom: 5px; letter-spacing: 0.4px; }
+.ks-pet-date {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(212, 175, 55, 0.3);
+  color: #D4AF37;
+  font-size: 15px;
+  text-align: center;
+  outline: none;
+  color-scheme: dark;
+}
+.ks-pet-date:focus { border-color: rgba(212, 175, 55, 0.6); }
+.ks-pet-truth {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(129, 216, 208, 0.06);
+  border: 1px solid rgba(129, 216, 208, 0.16);
+  font-size: 11.5px;
+  color: #81D8D0;
+  font-family: "Roboto Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+/* 「修改」链接禁换行（窄条内曾被挤成竖排） */
+.ks-pet-truth .ks-pet-link { flex: 0 0 auto; white-space: nowrap; }
+.ks-pet-pick {
+  margin: 12px 0 8px;
+  font-size: 11px;
+  color: #8B8778;
+  text-align: center;
+  letter-spacing: 0.4px;
+}
+.ks-pet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.ks-pet-rel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border-radius: 10px;
+  border: 1px solid;
+  transition: opacity 0.2s ease;
+}
+.ks-pet-rel-ip { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; opacity: 0.85; }
+.ks-pet-rel-name { font-size: 11.5px; font-weight: 700; }
+.ks-pet-rel-desc { font-size: 9.5px; color: #8B8778; text-align: center; line-height: 1.4; }
+.ks-pet-err { margin-top: 10px; font-size: 11px; color: #F87171; text-align: center; }
+
+/* ── 三 · 已认领座位卡 ── */
+.ks-pet-seat {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 15px 14px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  background: linear-gradient(160deg, rgba(212, 175, 55, 0.09), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(212, 175, 55, 0.26);
+}
+.ks-pet-seat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #D4AF37;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.ks-pet-badge {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2px 7px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  letter-spacing: 0;
+}
+
+/* 占位立绘 */
+.ks-pet-avatar {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  cursor: crosshair;
+  animation: ksPetBreathe 4.6s ease-in-out infinite;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+.ks-pet-avatar-halo {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1px solid;
+  opacity: 0.42;
+  animation: ksPetHalo 4.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.ks-pet-eye {
+  position: absolute;
+  top: 40%;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ksPetBlink 6.4s ease-in-out infinite;
+}
+.ks-pet-eye-l { left: 27%; }
+.ks-pet-eye-r { right: 27%; }
+.ks-pet-pupil {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #12121E;
+  transition: transform 120ms ease-out;
+}
+.ks-pet-mouth {
+  position: absolute;
+  left: 50%;
+  bottom: 27%;
+  width: 18px;
+  height: 9px;
+  margin-left: -9px;
+  border-bottom: 2px solid;
+  border-radius: 0 0 18px 18px;
+  opacity: 0.75;
+}
+
+.ks-pet-name {
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.4px;
+}
+.ks-pet-relation {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #8B8778;
+  text-align: center;
+}
+
+/* 五维性格条 */
+.ks-pet-axes { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+.ks-pet-axis { display: flex; align-items: center; gap: 8px; }
+.ks-pet-axis-label { flex: 0 0 46px; font-size: 10.5px; color: #a0a0c0; }
+.ks-pet-axis-track {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.ks-pet-axis-track > i { display: block; height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.ks-pet-axis-val { flex: 0 0 24px; font-size: 10px; color: #8B8778; text-align: right; font-family: "Roboto Mono", Menlo, monospace; }
+
+/* 星源三真相 */
+.ks-pet-triad {
+  margin-top: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  justify-content: center;
+  font-size: 10.5px;
+  color: #b0b0d0;
+}
+.ks-pet-triad > span {
+  padding: 3px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* 今日寄语 */
+.ks-pet-whisper {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border-radius: 3px 12px 12px 3px;
+  border-left: 3px solid;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #d8d8e8;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ks-pet-whisper-tag { font-size: 9.5px; color: #8B8778; letter-spacing: 0.6px; }
+.ks-pet-note { margin-top: 10px; font-size: 10px; color: #777; line-height: 1.5; text-align: center; }
+.ks-pet-reset {
+  display: block;
+  margin: 13px auto 0;
+  padding: 6px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: transparent;
+  color: #8B8778;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.ks-pet-reset:hover { border-color: rgba(212, 175, 55, 0.6); color: #D4AF37; }
+
+/* ═══ 可读性底座（E46 像素验证补丁）═══
+   病根：三容器原本近全透明 ⇒ 直接叠在 fixed 星河视频上，暗底吞掉灰字
+   （实测：「善良女友 · 上升 Aquarius」与性格轴标签几乎不可见）。
+   治法：暗色玻璃实底（毛玻璃 ＋ 描边），并把卡内灰字统一提亮到暗底可读档。
+   作用域严格限 .ks-pet-* —— 不动全站 #8B8778 灰。 */
+.ks-pet-bar,
+.ks-pet-form,
+.ks-pet-seat {
+  background: linear-gradient(160deg, rgba(13, 13, 26, 0.62), rgba(20, 16, 38, 0.55));
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.32);
+}
+.ks-pet-bar .ks-pet-bar-sub,
+.ks-pet-form .ks-pet-link,
+.ks-pet-form .ks-pet-field-label,
+.ks-pet-form .ks-pet-pick,
+.ks-pet-form .ks-pet-rel-desc,
+.ks-pet-seat .ks-pet-relation,
+.ks-pet-seat .ks-pet-axis-val,
+.ks-pet-seat .ks-pet-whisper-tag,
+.ks-pet-seat .ks-pet-reset { color: rgba(255, 255, 255, 0.62); }
+.ks-pet-seat .ks-pet-axis-label { color: rgba(255, 255, 255, 0.72); }
+.ks-pet-seat .ks-pet-note { color: rgba(255, 255, 255, 0.48); }
+.ks-pet-seat .ks-pet-axis-track { background: rgba(255, 255, 255, 0.14); }
+.ks-pet-form .ks-pet-rel { background: rgba(255, 255, 255, 0.05); }
+
+@keyframes ksPetBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+@keyframes ksPetHalo {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0.58; transform: scale(1.05); }
+}
+@keyframes ksPetBlink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.12); }
+}
+
 /* 无障碍：尊重系统「减弱动态」偏好 */
 @media (prefers-reduced-motion: reduce) {
   .ks-card-shimmer::after,
   .ks-house-card::after,
   .ks-house-cell--res,
+  .ks-pet-avatar,
+  .ks-pet-avatar-halo,
+  .ks-pet-eye,
   .ks-dot { animation: none; }
 }
