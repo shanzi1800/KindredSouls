@@ -1442,6 +1442,36 @@ const _KS_PLACE_PREP = {
   th: '(?:ราศี|ใน|แห่ง|เข้าสู่|ผ่าน)',
   vi: '(?:tại|trong|ở|vào|qua)',
 };
+
+// 🔴 P0-4（2026-10-14 冒烟实捕 · **幂等裂缝**）：「行星↔星座」之间的**并列连词**表。
+//   病根：倒装式/无锚行星式在**并列句**里会跨连词桥接 ——
+//     「与你的狮子座火星**及**射手座金星形成呼应」：修复金星（狮子座→射手座）后，
+//     第二轮火星的**无锚行星式**会以「**及**」为桥把「射手座」（金星的）接上火星 ⇒
+//     反向改写「射手座→狮子座」⇒ **Δ≠0（非幂等）**、且把已正确的句子改坏。
+//   治法：行星↔星座之间命中连词 ⇒ 该星座属**另一并列项** ⇒ 弃权（宁漏不改）。
+//   仅用于裸式（锚定式有显式「本命」锚，不受影响）。
+const _KS_CONJ = {
+  zh: '(?:以及|及|和|与|跟|同)',
+  en: _KS_CTX_WRAP('and|&'),
+  es: _KS_CTX_WRAP('y|e|and'),
+  fr: _KS_CTX_WRAP('et|and'),
+  th: '(?:และ|กับ|พร้อมทั้ง)',
+  vi: _KS_CTX_WRAP('và|với|and'),
+};
+
+// 🔴 P0-4（2026-10-14 冒烟实捕 · **真实过纠**）：「行星↔星座」之间的**合法连接虚词**白名单。
+//   病根：「你的太阳与一位**射手座**的人结合」（en `Sun with a Sagittarius`）——**无锚行星式**
+//     以 `with a` 为桥，把「射手座」误当作**太阳**的星座 ⇒ 按太阳真值改写 ⇒ 伪造新幻觉。
+//   治法：裸式（无「本命」锚）的**行星式**，行星与星座之间**只允许**本表所列虚词（或空）
+//     ⇒ 其余一律弃权（宁漏不改）。**仅作用于裸式**（锚定式有显式锚，不受影响）。
+const _KS_SIGN_LINK = {
+  zh: /^(?:|在|是|为|落|落入|落在|落于|位于|处于|临|的|之|也是|便是|则为|即)$/,
+  en: /^(?:|in|is in|are in|at|is at|is|conjunct)$/i,
+  es: /^(?:|en|está en|esta en|conjunto a)$/i,
+  fr: /^(?:|en|est en|est dans|conjoint à)$/i,
+  th: /^(?:|ใน|ราศี|ในราศี|แห่ง|อยู่ที่)$/,
+  vi: /^(?:|ở|tại|trong|thuộc)$/i,
+};
 /** 落座/过境「动状词」（顺逆/行经/过境）——左右各 24 字窗口内命中 ⇒ 落座叙述 ⇒ 弃权 */
 const _KS_ORBIT_WORDS = [
   '顺行', '逆行', '行经', '经过', '过境', '行进', '穿过', '落入', '推移',
@@ -1507,9 +1537,16 @@ function _ksLexicon(lang) {
 
 /**
  * 共用检出核：扫描正文里**本命语境**下的「行星 + 星座」搭配，与 computed_houses 真值对撞。
+ * @param {string} text 正文
+ * @param {string} lang 语种
+ * @param {object} astroMatrix 真值盘
+ * @param {{bareForms?:boolean}} [opts] 🔴 P0-4：`bareForms=true` 时**额外**纳入「倒装式 / 无锚行星式」
+ *        （<星座>座<行星>、<行星><星座>、en `Planet in Sign`）。**默认 false**（= 历史行为，
+ *        仅「本命修饰词锚定」射程）⇒ 既有调用方与闸门零影响。
+ *        线上升级：仅 `once` 板块开启（monthly/yearly 流年密集，开启会误伤流年句 ⇒ 宁漏不改）。
  * @returns {{hits: Array<{planet,fromIndex,fromLen,foundSign,foundLang,expectedSign,context}>, checked:number}}
  */
-function _ksScanNatalSigns(text, lang, astroMatrix) {
+function _ksScanNatalSigns(text, lang, astroMatrix, opts) {
   const out = { hits: [], checked: 0 };
   if (!text || typeof text !== 'string' || !astroMatrix) return out;
   const ch = (astroMatrix.meta && astroMatrix.meta.computed_houses) || null;
@@ -1539,6 +1576,12 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
     ...Object.values(lex.planets || {}).filter(Boolean),
     ...Object.values(_KS_PLANET_NAME.en || {}).filter(Boolean),
   ])];
+  // 🔴 P0-4：本语「并列连词」正则（幂等守卫用；见 loop 内注释）—— 编译一次，避开热路径 new RegExp
+  const _conjReN = (() => {
+    const c = _KS_CONJ[lex.lang];
+    if (!c) return null;
+    try { return new RegExp('(?:' + c + ')'); } catch (_) { return null; }
+  })();
 
   for (const pEn of Object.keys(lex.planets)) {
     const truth = ch[pEn];
@@ -1560,6 +1603,15 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
       // 左窗流年守卫（匹配起点前 16 字）
       const leftWin = text.slice(Math.max(0, m.index - 16), m.index);
       if (_KS_TRANSIT_WORDS.some((w) => leftWin.includes(w))) continue;
+      // 🔴 P0-4（2026-10-14 冒烟实捕 · **幂等守卫**）：锚定式「行星↔星座」窗内的**并列连词**。
+      //   病根：锚定式 GAP（0-14）足以让「你的 + 狮子座 + 火星」跨过一个**前置星座**接上行星，
+      //     再由 GAP2 跨连词接上**后一处并列项**的星座（「…狮子座火星**及**射手座金星…」）——
+      //     把「射手座」（属金星）误判为火星的落座语。裸式修好金星后，第二轮即反向改写
+      //     （Δ≠0），把**已正确**的句子改坏。治法：行星↔星座窗内含连词 ⇒ 弃权（宁漏不改）。
+      if (_conjReN) {
+        const _pi = m[0].indexOf(pLocal);
+        if (_pi >= 0 && _conjReN.test(m[0].slice(_pi + pLocal.length, m[0].length - found.length))) continue;
+      }
       // 🔴 45-G（2026-10-13 大阅兵捕获 · **Mine H · 复合主语句串染**）：
       //   匹配窗内出现**第二个行星名** ⇒ 本命修饰词极可能属于**另一颗行星**的从句 ⇒ 弃权（宁漏不改）。
       //   线上实录（S08 zh once）：「…第3宫主星木星牵制——金星本命落在白羊座第3宫（状态：陷）」
@@ -1585,6 +1637,10 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
         found,
         foundBody: body,
         foundLang,
+        // 🔴 P0-4 顺带修复（历史遗留字段缺失）：两条 loop 均漏设 `foundSign`，
+        //   而 `lintNatalPlanetSigns` 以 `h.foundSign` 出参 ⇒ 违背报告的 foundSign **恒为 undefined**，
+        //   server.js 的「残余违背」告警遂长年打印 `X:undefined(期望 Y)`（可观测性破口，非行为缺陷）。
+        foundSign: SIGN_KEYS[foundIdx],
         expectedSign: truth.sign,
         expectedLocal: lex.signs[truthIdx],
         expectedEn: SUN_SIGNS.en[truthIdx],
@@ -1593,15 +1649,173 @@ function _ksScanNatalSigns(text, lang, astroMatrix) {
       });
     }
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🔴 P0-4（2026-10-14 军师朱批 · C）倒装式 / 无锚行星式纳入射程 —— **仅 opts.bareForms**
+  //   ══════════════════════════════════════════════════════════════════════════
+  //   病根：LLM 一换语序即**整体脱靶** —— 原式要求「本命修饰词 + 行星 + 星座」，而中文最常用的
+  //     占星修辞恰恰是**倒装**（「天秤座月亮让你…」「狮子座金星」）与**无锚**（「金星天蝎座在第10宫」），
+  //     英文则写「Mercury in Scorpio」。缺修饰词 ⇒ 整条弃权、纠偏量 0（完全空转）。
+  //     线上 once 实捕（1979-11-11 上海盘）：zh 4 处 / en 6 处硬违背。
+  //   射程**限 opts.bareForms === true**（线上升级仅 `once` 开启）：monthly/yearly 通篇流年叙述，
+  //     无修饰词句式与流年句**结构同形** ⇒ 开启极易误伤，严守「宁漏不改」（另立挂账）。
+  //   🔴 六重守卫（缺一即弃权，全部向「不改」倾斜）：
+  //     ① 左窗 **24 字**含流年词（比锚定式的 16 字更宽）⇒ 弃权；
+  //     ② 窗内出现**宫位令牌 / 宫头槽 / 宫主星槽** ⇒ 弃权 —— 关键！拦「狮子座第7宫的木星」
+  //        （那是**宫头语**，星座属宫头、不属木星）与「射手座第10宫由火星主管」；
+  //     ③ 窗内出现**第二个行星名** ⇒ 弃权（复合主语句串染，45-G Mine H 血训同源）；
+  //     ④ 倒装式的**右侧 6 字**出现宫位令牌 ⇒ 弃权（防「<星座> 第N宫」被倒装式抢先改写）；
+  //     ⑤ 行星↔星座**之间**出现顺逆行/过境动状词 ⇒ 弃权（落座叙述）；
+  //     ⑥ 行星↔星座之间出现**落座介词**（仅 zh/th/vi；拉丁语系保留 `in`，否则 en「Mercury in Scorpio」失效）
+  //        ⇒ 弃权。
+  //   偏移：倒装式星座在**式首**、行星式在**式末** ⇒ 一律取 `m[0].indexOf(found)` 反推（两式通用）。
+  if (opts && opts.bareForms) {
+    const _hsRe = (() => {
+      try {
+        const hsrc = _KS_HNUM_SRC[lex.lang];
+        return new RegExp('(?:' + hsrc + '|' + _KS_CUSP_KW[lex.lang] + '|' + (_KS_RULER_KW[lex.lang] || '(?!)') + ')');
+      } catch (_) { return null; }
+    })();
+    const _hOnlyRe = (() => {
+      try { return new RegExp('(?:' + _KS_HNUM_SRC[lex.lang] + ')'); } catch (_) { return null; }
+    })();
+    const _orbitRe = (() => {
+      try { return new RegExp('(?:' + _KS_ORBIT_WORDS.map(_ksEsc).join('|') + ')'); } catch (_) { return null; }
+    })();
+    const _prepRe = (() => {
+      if (lex.lang !== 'zh' && lex.lang !== 'th' && lex.lang !== 'vi') return null;   // 拉丁语系保留 `in`
+      const prep = _KS_PLACE_PREP[lex.lang];
+      if (!prep) return null;
+      try { return new RegExp('(?:' + prep + ')'); } catch (_) { return null; }
+    })();
+    const _conjRe = (() => {
+      const c = _KS_CONJ[lex.lang];
+      if (!c) return null;
+      try { return new RegExp('(?:' + c + ')'); } catch (_) { return null; }
+    })();
+    const _adjudicate = (pEn, truthIdx, raw, body, tail, offset) => {
+      out.checked++;
+      let foundIdx = lex.signs.indexOf(body);
+      let foundLang = 'local';
+      if (foundIdx < 0 && lex.hasBareSuffix) {
+        const bi = lex.bare.indexOf(body);
+        if (bi >= 0) { foundIdx = bi; foundLang = 'localBare'; }
+      }
+      if (foundIdx < 0) {
+        const ei = SUN_SIGNS.en.indexOf(body);
+        if (ei >= 0) { foundIdx = ei; foundLang = 'en'; }
+      }
+      if (foundIdx === truthIdx) return;   // 真值一致 ⇒ 非违背
+      out.hits.push({
+        planet: pEn,
+        found: body + tail,
+        foundBody: body,
+        foundLang,
+        foundSign: SIGN_KEYS[foundIdx],   // 🔴 P0-4 顺带修复：同锚定式，补 `foundSign`（见上注）
+        expectedSign: SIGN_KEYS[truthIdx],
+        expectedLocal: lex.signs[truthIdx],
+        expectedEn: SUN_SIGNS.en[truthIdx],
+        offset,
+        context: raw.slice(0, 80),
+      });
+    };
+
+    for (const pEn of Object.keys(lex.planets)) {
+      const truth = ch[pEn];
+      if (!truth || !truth.sign) continue;
+      const truthIdx = SIGN_KEYS.indexOf(truth.sign);
+      if (truthIdx < 0) continue;
+      const pLocal = lex.planets[pEn];
+      if (!pLocal) continue;
+      const pEsc = _ksEsc(pLocal);
+      // 两式：① 倒装（星座在前）② 无锚行星式（行星在前）
+      const forms = [
+        { re: new RegExp('(' + signBody + ')' + signTail + GAP2 + pEsc, 'g'), inv: true },
+        { re: new RegExp(pEsc + GAP2 + '(' + signBody + ')' + signTail, 'g'), inv: false },
+      ];
+      for (const f of forms) {
+        let mm;
+        while ((mm = f.re.exec(text)) !== null) {
+          if (!mm[0] || mm[0].length === 0) { f.re.lastIndex++; continue; }
+          // 🔴 P0-4 血训（冒烟实捕）：「与新你的狮子座火星及狮子座金星形成呼应」——
+          //   倒装式 GAP2 可在同句内**贪心跨越**到后一处同名牌，把一个合法位吞掉；若直接
+          //   `continue`（lastIndex 落到式末），后续**合法位**再无机会 ⇒ 漏纠。
+          //   治法：任何守卫拒绝一律**从 +1 位重扫**（宁多扫、不越权；守卫语义不变）。
+          const _retry = () => { f.re.lastIndex = mm.index + 1; };
+          const body = mm[1];
+          const tail = mm[2] || '';
+          const found = body + tail;
+          const rel = mm[0].indexOf(found);
+          if (rel < 0) { _retry(); continue; }
+          const offset = mm.index + rel;
+          // 守卫 ②③：窗内禁宫位令牌 / 宫头·宫主星关键槽
+          if (_hsRe && _hsRe.test(mm[0])) { _retry(); continue; }
+          // 守卫 ④：倒装式右侧 6 字禁宫位令牌
+          if (f.inv && _hOnlyRe) {
+            const r6 = text.slice(offset + found.length, offset + found.length + 6);
+            if (_hOnlyRe.test(r6)) { _retry(); continue; }
+          }
+          // 守卫 ③：窗内禁第二个行星名
+          if (_allPlanetVals.some((p) => p && p !== pLocal && mm[0].includes(p))) { _retry(); continue; }
+          // 守卫 ①：左窗 24 字禁流年词
+          const lw24 = text.slice(Math.max(0, offset - 24), offset);
+          if (_KS_TRANSIT_WORDS.some((w) => lw24.includes(w))) { _retry(); continue; }
+          // 守卫 ⑤⑥：行星↔星座之间的动状词 / 落座介词
+          const _btw = f.inv
+            ? mm[0].slice(found.length, mm[0].length - pLocal.length)
+            : mm[0].slice(pLocal.length, mm[0].length - found.length);
+          // 🔴 守卫 ⑧（**倒装式专属** · 2026-10-14 冒烟实捕的**真实过纠**）：
+          //   病根：事实栏「**Sun: Capricorn · Moon: Scorpio**…」（planet: sign 列表）——
+          //     倒装式把「Capricorn · Moon」读成「月亮在摩羯座」⇒ 把**本来正确**的 Sun 星座
+          //     从 Capricorn 改写成 Scorpio（伪造新幻觉）。列表/标签式文本与倒装修辞**结构同形**。
+          //   治法：倒装式的星座↔行星之间**只允许**空白与本语属格虚词（zh「的/之」）；
+          //     出现任何分隔符（· | / : ： 、 ; , …）或实词 ⇒ 弃权（宁漏不改）。
+          if (f.inv && !/^[\s\u7684\u4e4b]*$/.test(_btw)) { _retry(); continue; }
+          // 🔴 守卫 ⑩（**倒装式专属** · 2026-10-14 冒烟实捕 · 真实过纠）：
+          //   病根：zh「你的**第1宫处女座水星**在天秤座第1宫」——该「处女座」是**第1宫宫头**的属性
+          //     （同篇他句已自证「你的第1宫宫头在处女座…本命水星落在天秤座第1宫」），
+          //     倒装式却读成「水星在处女座」⇒ 按水星真值改写 ⇒ 篡改宫头信息 + 制造收口链震荡。
+          //   治法：倒装式的星座**左窗 8 字**内出现宫位令牌 ⇒ 该星座归属宫头/宫位 ⇒ 弃权（宁漏不改）。
+          if (f.inv && _hOnlyRe) {
+            const l8 = text.slice(Math.max(0, offset - 8), offset);
+            if (_hOnlyRe.test(l8)) { _retry(); continue; }
+          }
+          // 🔴 守卫 ⑨（**无锚行星式专属** · 真实过纠）：行星↔星座之间的连接虚词必须落在白名单内
+          //   病根：en「your Sun **with a** Sagittarius…」把「射手座」误当作太阳的星座 ⇒ 伪造。
+          if (!f.inv && _KS_SIGN_LINK[lex.lang]) {
+            const _link = _btw.replace(/[\s*`_]+/g, '');
+            if (!_KS_SIGN_LINK[lex.lang].test(_link)) { _retry(); continue; }
+          }
+          if (_orbitRe && _orbitRe.test(_btw)) { _retry(); continue; }
+          if (_prepRe && _prepRe.test(_btw)) { _retry(); continue; }
+          // 守卫 ⑦：行星↔星座之间出现**并列连词** ⇒ 星座属另一并列项 ⇒ 弃权（防跨连词桥接 + 保幂等）
+          if (_conjRe && _conjRe.test(_btw)) { _retry(); continue; }
+          _adjudicate(pEn, truthIdx, mm[0], body, tail, offset);
+        }
+      }
+    }
+  }
+
+  // 去重（同名同位）—— 锚定式与裸式可能命中同一处 ⇒ 报告与纠偏都不许重复计数
+  const _seenHit = new Set();
+  out.hits = out.hits
+    .filter((h) => {
+      const k = h.offset + '|' + h.found;
+      if (_seenHit.has(k)) return false;
+      _seenHit.add(k);
+      return true;
+    })
+    .sort((a, b) => a.offset - b.offset);
   return out;
 }
 
 /**
  * 只检不改：审计正文里本命语境下的行星-星座搭配是否与真值一致。
+ * @param {object} [opts] 🔴 P0-4：`{ bareForms:true }` 时额外覆盖倒装式/无锚行星式（线上仅 once）
  * @returns {{violations: Array, checked: number, passed: boolean}}
  */
-export function lintNatalPlanetSigns(text, lang, astroMatrix) {
-  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix);
+export function lintNatalPlanetSigns(text, lang, astroMatrix, opts) {
+  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix, opts);
   return {
     violations: hits.map((h) => ({
       planet: h.planet, expectedSign: h.expectedSign, foundSign: h.foundSign, context: h.context,
@@ -1613,11 +1827,12 @@ export function lintNatalPlanetSigns(text, lang, astroMatrix) {
 
 /**
  * 确定性纠偏：把本命语境下的**错误星座令牌**就地改写为真值星座（同语域、同尾缀形态）。
+ * @param {object} [opts] 🔴 P0-4：`{ bareForms:true }` 时额外覆盖倒装式/无锚行星式（线上仅 once）
  * @returns {{text: string, corrections: Array, checked: number, passed: boolean}}
  */
-export function correctNatalPlanetSigns(text, lang, astroMatrix) {
+export function correctNatalPlanetSigns(text, lang, astroMatrix, opts) {
   if (!text || typeof text !== 'string') return { text, corrections: [], checked: 0, passed: true };
-  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix);
+  const { hits, checked } = _ksScanNatalSigns(text, lang, astroMatrix, opts);
   if (!hits.length) return { text, corrections: [], checked, passed: true };
   const lex = _ksLexicon(lang);
   // 从后往前替换（保索引有效）
@@ -1708,9 +1923,12 @@ const _KS_CUSP_KW = {
 };
 
 /** 宫主星关键槽（无此槽则不认「主星声称」，宁漏不改） */
+// 🔴 P0-4（2026-10-14 军师朱批 · A）：补入**古典/现代双轨主星**显式词形
+//   （「第7宫宫头是狮子座，**古典主星**火星」「…**现代主星**冥王星」——线上 once 实捕 2 处）。
+//   ⚠️ 纯**增补**（原「主星」本可内含匹配），不改任何既有分支的语义；长词优先 ⇒ 令牌跨度更准。
 const _KS_RULER_KW = {
-  zh: '(?:宫主星|主管|主星|守护星|主宰|统辖)',
-  en: '(?:ruled\\s+by|ruler\\s+of|ruler\\s+is|is\\s+the\\s+ruler|rules|governs|governed\\s+by|lord\\s+of)',
+  zh: '(?:古典主星|现代主星|宫主星|主管|主星|守护星|主宰|统辖)',
+  en: '(?:classical\\s+ruler|modern\\s+ruler|traditional\\s+ruler|ruled\\s+by|ruler\\s+of|ruler\\s+is|is\\s+the\\s+ruler|rules|governs|governed\\s+by|lord\\s+of)',
   es: '(?:regido\\s+por|regente|gobernado\\s+por|rige|gobierna)',
   fr: '(?:gouverné(?:e)?\\s+par|gouverneur|régent|régit|gouverne)',
   th: '(?:เจ้าเรือน|ผู้ครอง|ปกครอง)',
@@ -1757,6 +1975,21 @@ function _ksHouseClaimRes(lang) {
     .sort((a, b) => b.length - a.length).map(_ksEsc).join('|');
   const G = '[^。\\n！？!?；;，,、]{0,16}?';   // 关键词↔令牌 容差窗（禁跨句/跨分句，宁漏不改）
   const GT = '[^。\\n！？!?；;，,、]{0,4}?';   // 「紧邻」容差窗（裸声称式专用，最小射程）
+  // 🔴 P0-4（2026-10-14 军师朱批 · A · 跨标点槽位容错）：
+  //   病根：自然中文最顺口的写法是「第10宫宫头是天蝎座**，**主星本命水星」——一个逗号把 16 字窗
+  //   一刀切断 ⇒ 主星声称整条弃权（线上 once 实捕 4 处：H10/H7 宫头+主星复合句）。纯正则硬伤。
+  //   🔴🔴 治法：**条件内建于正则**（2026-10-14 实捕回归后纠偏）。
+  //     一度把 order-2 整体换成无约束宽窗 GL，实测「第11宫由月亮主管**，**第11宫的主星其实是金星」
+  //     被**整段吞成一个匹配** ⇒ 同一起点上 order-4（H 由 X 主管）永不触发 ⇒
+  //     **同篇自相矛盾审计静默失守**（gate45f B4③ 实捕：OLD=V2/C1 → NEW=V0/C0）。
+  //     ⇒ 宽窗只是把「漏检」换成了「吞噬」，不可取。
+  //     正解：order-2 保持历史严格窗 `G`（不跨分句标点），**另立 order-2b 复合句分支**，并把
+  //     「分句标点之前必须是宫头声称」**写进正则本体**：
+  //        `<H>` GL `<宫头槽 CK | 星座令牌>` GL `<分句标点>` GL `<主星槽>` GL `<行星>`
+  //     ⇒ 越界桥接（「H 主管<宾语>，<另一分句的行星>」）**根本不匹配**；无需 loop 内事后守卫，
+  //       也绝不吞噬后续合法声称（零回归 —— 事后守卫做不到这一点）。
+  const GL = '[^。\\n！？!?—–]{0,16}?';   // 分句内窗：放行 ，,、；;：:，仍禁句末标点与破折号
+  const SEP = '[，,、；;：:]';              // 复合句分隔标点（仅 order-2b 使用）
   // 🔴 45-F 查缺补漏（2026-10-12 线上实兵捕获）：「星座↔宫位」紧邻窗。中文宫头**常写成
   //   `<星座>第N宫`**（Sign 在前），原三式（H 在前 / 需「宫头」关键词）**完全漏检**这类
   //   宫头幻觉 ⇒ 线上残留「狮子座第10宫/第11宫」「白羊座第1宫」。窗宽取 {0,2}（最紧）。
@@ -1774,6 +2007,7 @@ function _ksHouseClaimRes(lang) {
   const ruler = new RegExp(
     '(?:' + RW + G + '(?<h1>' + R1H + ')' + G + '(?<p1>' + planetAlt + ')'
     + '|(?<h2>' + H + ')' + G + RW + G + '(?<p2>' + planetAlt + ')'
+    + '|(?<h2b>' + H + ')' + GL + '(?:' + CK + '|' + signAlt + ')' + GL + SEP + GL + RW + GL + '(?<p2b>' + planetAlt + ')'
     + '|(?<p3>' + planetAlt + ')' + G + RW + G + '(?<h3>' + H + ')'
     + '|(?<h4>' + H + ')' + LINK + GT + '(?<p4>' + planetAlt + ')' + GT + RW
     + '|(?<p5>' + planetAlt + ')' + G + '(?<h8>' + H + ')' + G + RN
@@ -1784,7 +2018,7 @@ function _ksHouseClaimRes(lang) {
     + '|(?<h7>' + H + ')' + GT + '(?<s7>' + signAlt + ')'
     + '|(?<s8>' + signAlt + ')' + GS + '(?<h9>' + H + ')'
     + ')', 'gi');
-  const out = { lang: L, lex, ruler, cusp, G, GT, RW, CK };
+  const out = { lang: L, lex, ruler, cusp, G, GT, GL, RW, CK, signAlt };
   _ksHouseClaimReCache.set(L, out);
   return out;
 }
@@ -1806,7 +2040,7 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
   if (!cusps && !rulers && !ch) return out;
   const res = _ksHouseClaimRes(lang);
   if (!res) return out;
-  const { lex, ruler, cusp, RW, CK } = res;
+  const { lex, ruler, cusp, RW, CK, signAlt } = res;
   const planMap = lex.planets || {};
   const planEn = _KS_PLANET_NAME.en || {};
   const localPlanetVals = new Set(Object.values(planMap).filter(Boolean));
@@ -1852,6 +2086,9 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
   const _ctxRe = (() => {
     try { return _ctx ? new RegExp('(?:' + _ctx + ')') : null; } catch (_) { return null; }
   })();
+  // 🔴 P0-4（军师朱批 · A）：复合句判别**已内建于 order-2b 正则本体**（见 `_ksHouseClaimRes`），
+  //   此处**不再设 loop 内事后守卫** —— 事后守卫只能「弃权」，**无法阻止宽窗把后续合法声称一并吞噬**
+  //   （2026-10-14 gate45f B4③ 实捕回归：同篇自相矛盾审计静默失守）。「宁漏不改」≠ 允许吞检。
   // 🔴 45-G（Mine L）：`. — –` 同属句界（防跨句桥接，详见 `_ksScanNatalSigns` 同位注释）。
   const GAP2 = '[^。.\\n！？!?；;，,、—–]{0,10}?';
 
@@ -1862,8 +2099,8 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
     while ((m = ruler.exec(text)) !== null) {
       if (!m[0] || m[0].length === 0) { ruler.lastIndex++; continue; }
       const g = m.groups || {};
-      const hTok = g.h1 || g.h2 || g.h3 || g.h4 || g.h8 || '';
-      const pTok = g.p1 || g.p2 || g.p3 || g.p4 || g.p5 || '';
+      const hTok = g.h1 || g.h2 || g.h2b || g.h3 || g.h4 || g.h8 || '';
+      const pTok = g.p1 || g.p2 || g.p2b || g.p3 || g.p4 || g.p5 || '';
       const num = _ksHouseNumFromToken(hTok);
       if (!(num >= 1 && num <= 12)) continue;
       const pKey = _revPlanet(pTok);
@@ -1872,10 +2109,12 @@ function _ksScanHouseClaims(text, lang, astroMatrix) {
       // 🔴 跨分句「H**，**由X主管」专属守卫（2026-10-12）：该路径放宽了分句标点，须防
       //    「由X主管<宾语>」的**动词**用法（「第8宫，由月亮主管情绪」）被误判为主星声称。
       //    判据：匹配以主星槽收尾，其后**紧接内容字**（非标点/空白/行尾）⇒ 判为动词用法 ⇒ 弃权。
-      if (/[，,、]\s*(?:由|为|是|被|乃|即)/.test(m[0])) {
+      if (/(?:[，,、]\s*)?(?:由|为|是|被|乃|即)/.test(m[0])) {
         const _after = text.slice(m.index + m[0].length, m.index + m[0].length + 1);
         if (_after && !/[，,、。；：！？\s\n)）」』\]]/.test(_after)) continue;
       }
+      // 🔴 P0-4（军师朱批 · A）：复合句（跨分句标点的 order-2b）判别已在**正则本体**完成，
+      //   此处无需事后守卫（详见 `_ksHouseClaimRes` 内 GL/SEP 注释 —— 宽窗 + 事后守卫会吞噬后续声称）。
       const rec = rulers['house_' + num];
       if (!rec) continue;
       const valid = [];

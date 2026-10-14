@@ -10477,12 +10477,21 @@ function applyOnceNatalSignLock(text, lang, astroMatrix, reportType) {
     //   流年叙述仍不被动（宁漏不改）；日志前缀保留历史字面量（闸门锚点不动）。
     if (reportType !== 'once' && reportType !== 'monthly' && reportType !== 'yearly') return text;
     if (!text || typeof text !== 'string' || !astroMatrix) return text;
-    const r = correctNatalPlanetSigns(text, lang, astroMatrix);
+    // 🔴 P0-4（2026-10-14 军师朱批 · C「收纳倒装形态」）：**射程开关** —— 仅 `once` 追加
+    //   「倒装式 `<星座>座<行星>`」与「无锚行星式 `<行星><星座>`／en `Planet in Sign`」两种
+    //   最常用占星修辞（`天秤座月亮让你…`／`Mercury in Scorpio`）。
+    //   病根：原式强依赖「本命」修饰词锚定 ⇒ LLM 一换语序即**整体脱靶**、纠偏 0（完全空转）。
+    //   🔴 为何**只开 once**：monthly/yearly 通篇流年叙述，无修饰词句式与流年句**结构同形**
+    //   （离线取证：全开会误改 `transiting Mars and Jupiter in Leo`、`2027年5月: 太阳金牛座`）
+    //   ⇒ 严守「宁漏不改」（monthly/yearly 另立挂账）。
+    //   ⚠️ 常量必须声明在**函数体内**：闸门以「源码抽取 + `new Function`」消费本函数，模块级不可见。
+    const _signOpts = { bareForms: reportType === 'once' };
+    const r = correctNatalPlanetSigns(text, lang, astroMatrix, _signOpts);
     if (r.corrections && r.corrections.length) {
       console.log('[45-D2][ONCE-NATAL-SIGN-LOCK] 纠偏 ' + r.corrections.length + ' 处本命星座幻觉 (lang=' + lang + ')：'
         + r.corrections.map((c) => c.planet + ':' + c.from + '→' + c.to).join(', '));
     }
-    const v = lintNatalPlanetSigns(r.text, lang, astroMatrix);
+    const v = lintNatalPlanetSigns(r.text, lang, astroMatrix, _signOpts);
     if (!v.passed) {
       console.warn('[45-D2][ONCE-NATAL-SIGN-LOCK] ⚠️ 残余违背 ' + v.violations.length + ' 处（已尽力，不阻断）：'
         + v.violations.map((x) => x.planet + ':' + x.foundSign + '(期望 ' + x.expectedSign + ')').join(', '));
@@ -10531,6 +10540,10 @@ function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
     const _HOUSE_LOCK_TYPES = new Set(['once', 'monthly', 'yearly']);
     if (!_HOUSE_LOCK_TYPES.has(reportType)) return text;
     if (!text || typeof text !== 'string' || !astroMatrix) return text;
+    // 🔴 P0-4：与 `applyOnceNatalSignLock` **同口径** —— 不动点循环内的星座锁必须携带同一射程开关，
+    //   否则「宫位锁纠出主星令牌 ⇒ 生成新的本命星座按语」在 monthly/yearly 上仍会漏纠（两锁口径分立）。
+    //   ⚠️ 同 `applyOnceNatalSignLock`：常量须声明在函数体内（闸门源码抽取 + `new Function`）。
+    const _signOpts = { bareForms: reportType === 'once' };
     // ── 收敛式收口（线上实兵捕获 · 「两锁互相触发」血训）────────────────────────
     //   线上实录（1990-03-15 北京盘 zh once）：
     //     「第8宫主星本命月亮在天蝎座第8宫」→ 本锁把主星换成金星后，
@@ -10543,7 +10556,7 @@ function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
     const houseFixes = [];
     const signFixes = [];
     for (let i = 1; i <= MAX_ROUNDS; i++) {
-      const s = correctNatalPlanetSigns(cur, lang, astroMatrix);
+      const s = correctNatalPlanetSigns(cur, lang, astroMatrix, _signOpts);
       const h = correctHouseRulersAndCups(s.text, lang, astroMatrix);
       if (s.corrections && s.corrections.length) signFixes.push(...s.corrections);
       if (h.corrections && h.corrections.length) houseFixes.push(...h.corrections);
@@ -10568,7 +10581,7 @@ function applyOnceHouseLock(text, lang, astroMatrix, reportType) {
         + v.conflicts.map((c) => c.kind + '|' + c.key + '=' + c.values.join('/')).join(', '));
     }
     // 收敛后连带复检星座锁（不动点循环可能修出新的合规句，须终局归零才算真正收口）
-    const v2 = lintNatalPlanetSigns(cur, lang, astroMatrix);
+    const v2 = lintNatalPlanetSigns(cur, lang, astroMatrix, _signOpts);
     if (!v2.passed) {
       console.warn('[45-F][ONCE-HOUSE-LOCK] ⚠️ 星座残余违反 ' + v2.violations.length + ' 处（已尽力，不阻断）：'
         + v2.violations.map((x) => x.planet + ':' + x.foundSign + '(期望 ' + x.expectedSign + ')').join(', '));
