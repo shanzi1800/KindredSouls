@@ -120,6 +120,64 @@ const FamiliarHomeCard: React.FC = () => {
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState('');
 
+  /* 🔒 E48（主公亲令 2026-10-14）: 首页认领入口与报告页**同规则**的商业门禁 ——
+     未付 $4.99（或非沙箱已购）一律拦截，堵死「首页 form 态免费认领」侧门。
+     paidOk 三态：true=已购放行 / false=未购拦截 / null=判定中（fail-closed 同拦截） */
+  const [paidOk, setPaidOk] = useState<boolean | null>(null);
+  const [homeToast, setHomeToast] = useState<string | null>(null);
+  const homeToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* 🔒 E48: 权益自检（与 WealthReportPage::isWealthPaid 同源谓词，简化版同语义） */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('free_access') === '1' || sessionStorage.getItem('⚡_FREE_PASS') === '1') {
+          if (alive) setPaidOk(true);
+          return;
+        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) { if (alive) setPaidOk(false); return; }
+        const { data: profiles, error: dbErr } = await supabase
+          .from('user_profiles')
+          .select('paid_plans')
+          .eq('user_id', session.user.id)
+          .limit(1);
+        if (dbErr) { if (alive) setPaidOk(false); return; }
+        const raw = profiles?.[0]?.paid_plans;
+        const planMap: Record<string, any> = {};
+        if (Array.isArray(raw)) {
+          for (const p of raw) {
+            if (typeof p === 'string') planMap[p] = true;
+            else if (p && typeof p === 'object' && p.plan) planMap[p.plan] = p;
+          }
+        } else if (raw && typeof raw === 'object') {
+          Object.assign(planMap, raw);
+        }
+        const now = Date.now();
+        let ok = planMap.wealth_once === true
+          || planMap.wealth_monthly_report === true
+          || planMap.wealth_yearly_report === true;
+        if (!ok && planMap.all_pass_yearly) {
+          const ap = planMap.all_pass_yearly;
+          const exp = (ap && (ap.expires_at || ap.all_pass_expires_at)) || planMap.all_pass_expires_at;
+          ok = !exp || new Date(exp).getTime() > now;
+        }
+        if (!ok && planMap.star_monthly_vip) {
+          const sv = typeof planMap.star_monthly_vip === 'object' ? planMap.star_monthly_vip : planMap;
+          const used = Number(sv.star_monthly_wealth_used ?? 0) || 0;
+          const allow = Number(sv.star_monthly_wealth_allowance ?? 0) || 0;
+          ok = allow > 0 && used < allow; // 与后端同源：只看余量
+        }
+        if (alive) setPaidOk(!!ok);
+      } catch (_) {
+        if (alive) setPaidOk(false); // fail-closed：判不了 ⇒ 视同未购
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   /* ── 取词（🔴 全部为**静态字面量**调用 ⇒ i18n 门禁可静态收录，防 key 字面量上屏）── */
   const axisLabel = (key: string): string => (
     key === 'talkative' ? t('familiar.axisTalkative')
@@ -163,6 +221,13 @@ const FamiliarHomeCard: React.FC = () => {
   }, [city, truth]);
 
   const adopt = async (mode: string) => {
+    // 🔒 E48（主公亲令 2026-10-14）: 未付费一律拦截 —— 严禁写入领养状态、严禁触达 adopt 端点
+    if (paidOk !== true) {
+      setHomeToast(t('familiar.needUnlock'));
+      if (homeToastTimerRef.current) clearTimeout(homeToastTimerRef.current);
+      homeToastTimerRef.current = setTimeout(() => setHomeToast(null), 5000);
+      return;
+    }
     if (pending) return;
     setErr('');
     if (!isPlausibleBirthDate(birthDate)) { setErr(t('familiar.homeNeedDate')); return; }
@@ -284,6 +349,23 @@ const FamiliarHomeCard: React.FC = () => {
   /* ═══════════ 二 · 未认领：折叠条 / 认领表单 ═══════════ */
   return (
     <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
+      {/* 🔒 E48: 未付费拦截 Toast（首页侧门同规则；5s 自动消散） */}
+      {homeToast && (
+        <div
+          onClick={() => { setHomeToast(null); }}
+          style={{
+            position: 'fixed', top: '18px', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 9999, maxWidth: 'min(92vw, 480px)', width: 'max-content',
+            padding: '10px 18px', borderRadius: '12px',
+            background: 'rgba(20, 18, 12, 0.94)', border: '1px solid rgba(212, 175, 55, 0.55)',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.55)',
+            color: '#F0E6C8', fontSize: '13px', fontWeight: 600, lineHeight: 1.55,
+            cursor: 'pointer', textAlign: 'center', pointerEvents: 'auto',
+          }}
+        >
+          {homeToast}
+        </div>
+      )}
       {phase === 'collapsed' ? (
         <button
           type="button"
