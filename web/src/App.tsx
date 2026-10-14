@@ -317,9 +317,16 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         <div className="landing-container">
           <h1 className="title">{t('input.title')}</h1>
           <p className="subtitle">{t('app.name')}</p>
-          <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
+          {/* 🐾 E51 破框骑键：wrap 提供定位坐标系（宽=按钮宽）；FamiliarHomeCard 认领后
+              经 portal 把灵宠（主公钦定原画）骑到按钮上沿 —— 外层 pointer-events:none
+              物理穿透，按钮点击 100% 命中（军令铁律）。 */}
+          <div className="landing-start-wrap">
+            <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
+            <div id="ks-familiar-anchor" aria-hidden="true" />
+          </div>
         </div>
-        {/* 🐾 E46：灵宠座位卡 —— 与 DailyDashboard **同级兄弟**（复刻已验渲染形态，避 .input-page 内嵌 inline 不绘制之踵）；
+        {/* 🐾 E46/E51：灵宠首页呈现 —— 未认领＝折叠条/认领表单（主公裁决：零灵宠呈现）；
+            已认领＝破框骑键 portal 至 #ks-familiar-anchor（E51 起取代座位卡）。
             折叠态零网络；城市搜索框仅认领表单展开时才挂载（避首屏拉 6.6MB cities.json）。 */}
         <FamiliarHomeCard />
         <DailyDashboard lang={(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'zh':b==='en'?'en':b==='es'?'es':b==='fr'?'fr':b==='th'?'th':b==='vi'?'vi':'en'; })()} />

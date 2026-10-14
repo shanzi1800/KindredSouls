@@ -23,28 +23,40 @@
  *   **白名单构造** ＋ `isCleanFamiliarAdoptPayload()` 自检；自检失败 ⇒ 宁可不发（fail-closed）。
  *   且**四件不全**（日期 / 成对坐标 / 时区）时绝不提交 —— 禁以默认盘（曼谷）冒充出生地。
  *
- * 🔴 呈现纪律：占位立绘**纯 CSS**（零 Spine/PixiJS/Live2D/Rive/Three，包体积零增长）；
- *   降级/缺真值一律如实告知，绝不伪造配色或星座。
+ * 🔴 呈现纪律：E51（主公钦定原画 2026-10-14）起，已认领呈现**升维为「破框骑键」**——
+ *   Milo / Sophia（主公钦定 Gemini 原画切片，Alpha 透明 WebP）骑在首页「开始测算」
+ *   金色大按钮上沿（破框突破卡片边界）；外层 pointer-events:none 物理穿透，
+ *   仅头部/爱心宝石命中区保留点击（呼吸微光 + 今日寄语气泡）。
+ *   座位卡（E46 CSS 占位立绘版）就此退役；未认领态仍走折叠条/表单，零灵宠呈现（主公裁决）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { RELATION_CARDS, FAMILIAR_LS_KEY, type FamiliarProfile } from './FamiliarPicker';
 import { CitySearchInput } from './CitySearchInput';
 import { TimeInput } from './TimeInput';
 import { supabase } from '../lib/supabase';
 import type { CityRecord } from '../hooks/useCitySearch';
+// 🐾 E51：主公钦定原画切片（macOS Vision 主体提取 + Alpha 透明 WebP，几何真值见 /tmp/e51_assets/out/geometry.json）
+import miloSprite from '../assets/familiar_milo.webp';
+import sophiaSprite from '../assets/familiar_sophia.webp';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, FAMILIAR_ADOPT_PATH } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
-import { FAMILIAR_HOME_TESTID, FAMILIAR_HOME_BAR_TESTID, FAMILIAR_HOME_FORM_TESTID, FAMILIAR_HOME_SEAT_TESTID, FAMILIAR_HOME_AVATAR_TESTID, readFamiliarRecord, writeFamiliarRecord, clearFamiliarRecord, personalityAxes, familiarPalette, triadTruth, hasDegradation, whisperIndex, localDateKey, extractBirthTruth, isPlausibleBirthDate, familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
+import { FAMILIAR_HOME_TESTID, FAMILIAR_HOME_BAR_TESTID, FAMILIAR_HOME_FORM_TESTID, readFamiliarRecord, writeFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, isPlausibleBirthDate, familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 
 const GOLD = '#D4AF37';
 const WHISPER_COUNT = 5;
 
 const SAFE: React.CSSProperties = { overflowWrap: 'anywhere', wordBreak: 'break-word', minWidth: 0 };
 
-type Phase = 'collapsed' | 'form' | 'seat';
+type Phase = 'collapsed' | 'form';
+
+/** 🐾 E51：relation_mode ⇒ IP（与服务端 familiar_engine.IP_OF 同源白名单） */
+const IP_OF_MODE: Record<string, 'Sophia' | 'Milo'> = {
+  girlfriend: 'Sophia', bestie: 'Sophia', buddy: 'Milo', boyfriend: 'Milo',
+};
 
 interface HomeRecord {
   profile: FamiliarProfile;
@@ -60,50 +72,6 @@ function latLonText(lat: number, lon: number): string {
   const lo = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
   return `${la}, ${lo}`;
 }
-
-/** 内置 CSS 占位立绘：呼吸 ＋ 瞳随指动（未来经 renderAvatar 插槽换 Spine，契约不变） */
-const PetAvatar: React.FC<{ primary: string; secondary: string; crystal: string; eye: string }> = ({
-  primary, secondary, crystal, eye,
-}) => {
-  const boxRef = useRef<HTMLDivElement | null>(null);
-  const [look, setLook] = useState({ x: 0, y: 0 });
-
-  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = boxRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    const x = ((e.clientX - r.left) / r.width) * 2 - 1;
-    const y = ((e.clientY - r.top) / r.height) * 2 - 1;
-    setLook({ x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) });
-  }, []);
-
-  /** 瞳孔随指针微移（±3px；不由位次偏移承担定位 —— 定位交给 CSS 类，二者不叠加冲突） */
-  const lookShift = (): React.CSSProperties => ({
-    transform: `translate(${(look.x * 3).toFixed(2)}px, ${(look.y * 3).toFixed(2)}px)`,
-  });
-
-  return (
-    <div
-      ref={boxRef}
-      data-testid={FAMILIAR_HOME_AVATAR_TESTID}
-      className="ks-pet-avatar"
-      onMouseMove={onMove}
-      onMouseLeave={() => setLook({ x: 0, y: 0 })}
-      style={{ background: `radial-gradient(circle at 36% 30%, ${crystal}, ${primary})` }}
-      aria-hidden="true"
-    >
-      <span className="ks-pet-avatar-halo" style={{ borderColor: primary }} />
-      <span className="ks-pet-eye ks-pet-eye-l" style={{ background: eye }}>
-        <i className="ks-pet-pupil" style={lookShift()} />
-      </span>
-      <span className="ks-pet-eye ks-pet-eye-r" style={{ background: eye }}>
-        <i className="ks-pet-pupil" style={lookShift()} />
-      </span>
-      <span className="ks-pet-mouth" style={{ borderBottomColor: secondary }} />
-    </div>
-  );
-};
 
 const FamiliarHomeCard: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -182,14 +150,6 @@ const FamiliarHomeCard: React.FC = () => {
   }, []);
 
   /* ── 取词（🔴 全部为**静态字面量**调用 ⇒ i18n 门禁可静态收录，防 key 字面量上屏）── */
-  const axisLabel = (key: string): string => (
-    key === 'talkative' ? t('familiar.axisTalkative')
-      : key === 'clingy' ? t('familiar.axisClingy')
-        : key === 'moody' ? t('familiar.axisMoody')
-          : key === 'sarcastic' ? t('familiar.axisSarcastic')
-            : key === 'healing' ? t('familiar.axisHealing')
-              : key
-  );
   const whisperText = (i: number): string => (
     i === 0 ? t('familiar.whisper1')
       : i === 1 ? t('familiar.whisper2')
@@ -216,7 +176,8 @@ const FamiliarHomeCard: React.FC = () => {
       if (tr && !recordMatchesChart(r, { birthDate: tr.birthDate, birthTime: tr.birthTime || '', lat: tr.lat, lon: tr.lon, tz: tr.tz })) {
         clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗，落回待选态
       } else {
-        setRec(r as HomeRecord); setPhase('seat'); return;
+        setRec(r as HomeRecord); // 🐾 E51: 有档 ⇒ 破框骑键（render 由 rec 短路，不再有 seat 卡）
+        return;
       }
     }
     if (tr) {
@@ -279,7 +240,7 @@ const FamiliarHomeCard: React.FC = () => {
       };
       writeFamiliarRecord(window.localStorage, next, FAMILIAR_LS_KEY);
       setRec(next);
-      setPhase('seat');
+      setPhase('collapsed'); // 🐾 E51: 认领成功 ⇒ rec 短路进破框骑键层
     } catch (_) {
       setErr(t('familiar.error'));
     } finally {
@@ -319,82 +280,71 @@ const FamiliarHomeCard: React.FC = () => {
     } catch (_) { /* 本机已清 ⇒ 服务端清理失败不阻断 */ }
   };
 
-  /* ═══════════ 三 · 已认领座位卡 ═══════════ */
-  if (phase === 'seat' && rec) {
-    const profile = rec.profile;
-    const pal = familiarPalette(profile);
-    const axes = personalityAxes(profile);
-    const triad = triadTruth(rec);
-    const degraded = hasDegradation(profile);
-    const riseUncertain = !!(rec.triad && (rec.triad as Record<string, unknown>).timeUncertain === true);
-    const wIdx = whisperIndex(profile, localDateKey(new Date()), WHISPER_COUNT);
-    const whisper = wIdx >= 0 ? whisperText(wIdx) : '';
+  /* ═══════════ 三 · 已认领 ⇒ E51 破框骑键（主公裁决：取代座位卡，2026-10-14）═══════════
+     🔒 E50 门禁：paidOk!==true（含判定中 / 查库失败）一律不呈现 —— fail-closed。
+     物理穿透（军令铁律）：容器 pointer-events:none，灵宠身体与爪子区域 100% 让路给
+     「开始测算」按钮；仅头部 / 爱心宝石命中区保留点击（呼吸微光 + 今日寄语气泡）。 */
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setAnchorEl(document.getElementById('ks-familiar-anchor'));
+  }, []);
+  const [famPulse, setFamPulse] = useState(false);
+  const famPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string } | null>(null);
+  const famBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const tapFamiliar = useCallback((rec0: HomeRecord) => {
+    const profile = rec0.profile;
+    const mode = String(profile.relation_mode || '');
+    const name = String(profile.name || '') || (IP_OF_MODE[mode] ?? 'Sophia');
+    setFamPulse(true);
+    if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
+    famPulseTimer.current = setTimeout(() => setFamPulse(false), 1500);
+    const wIdx = whisperIndex(profile, localDateKey(new Date()), WHISPER_COUNT);
+    setFamBubble({ name, sub: relationLabel(mode), line: wIdx >= 0 ? whisperText(wIdx) : '' });
+    if (famBubbleTimer.current) clearTimeout(famBubbleTimer.current);
+    famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
+  }, [relationLabel, whisperText]);
+
+  if (rec) {
+    const mode = String(rec.profile.relation_mode || '');
+    const ip = IP_OF_MODE[mode] ?? 'Sophia';
+    const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
     return (
       <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
-        <div className="ks-pet-seat" data-testid={FAMILIAR_HOME_SEAT_TESTID} data-relation={String(profile.relation_mode || '')}>
-          <div className="ks-pet-seat-head">
-            <span style={{ ...SAFE }}>🐾 {t('familiar.homeTitle')}</span>
-            {!rec.persisted && <span className="ks-pet-badge">{t('familiar.homeLocalOnly')}</span>}
-          </div>
-
-          <PetAvatar primary={pal.primary} secondary={pal.secondary} crystal={pal.crystal} eye={pal.eye} />
-
-          <div className="ks-pet-name" style={{ color: pal.primary, ...SAFE }}>
-            {String(profile.name || '')}
-          </div>
-          <div className="ks-pet-relation" style={{ ...SAFE }}>
-            {relationLabel(String(profile.relation_mode || ''))}
-            {triad && triad.rise ? ` · ${t('familiar.homeTriadRise')} ${triad.rise}` : ''}
-          </div>
-
-          {/* 五维性格条（只画真有的轴） */}
-          {axes.length > 0 && (
-            <div className="ks-pet-axes">
-              {axes.map((a: { key: string; value: number }) => (
-                <div className="ks-pet-axis" key={a.key}>
-                  <span className="ks-pet-axis-label" style={{ ...SAFE }}>{axisLabel(a.key)}</span>
-                  <span className="ks-pet-axis-track">
-                    <i style={{ width: `${a.value}%`, background: `linear-gradient(90deg, ${pal.secondary}, ${pal.primary})` }} />
-                  </span>
-                  <span className="ks-pet-axis-val">{a.value}</span>
-                </div>
-              ))}
+        {anchorEl && showBreakout && createPortal(
+          <div
+            className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}`}
+            data-testid="familiar-breakout"
+            data-ip={ip}
+          >
+            <div className="ks-fam-breathe" aria-hidden="true">
+              <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} />
             </div>
-          )}
-
-          {/* 星源三真相（缺则整行不渲染） */}
-          {triad && (
-            <div className="ks-pet-triad">
-              {triad.sun && <span>☀️ {t('familiar.homeTriadSun')} {triad.sun}</span>}
-              {triad.moon && <span>🌙 {t('familiar.homeTriadMoon')} {triad.moon}</span>}
-              {triad.rise && <span>⬆️ {t('familiar.homeTriadRise')} {triad.rise}</span>}
-            </div>
-          )}
-
-          {whisper && (
-            <div className="ks-pet-whisper" style={{ borderColor: pal.primary }}>
-              <span className="ks-pet-whisper-tag">{t('familiar.homeToday')}</span>
-              <span style={{ ...SAFE }}>{whisper}</span>
-            </div>
-          )}
-
-          {degraded && <div className="ks-pet-note">{t('familiar.degradedNote')}</div>}
-          {riseUncertain && <div className="ks-pet-note">{t('familiar.homeTimeUncertain')}</div>}
-
-          <button type="button" className="ks-pet-reset" onClick={reset}>{t('familiar.homeReset')}</button>
-          {sandboxMode && (
-            <button
-              type="button"
-              className="ks-pet-reset"
-              data-testid="familiar-home-purge"
-              onClick={purgeTestFamiliar}
-              style={{ marginTop: '6px', color: '#81D8D0' }}
-            >
-              🧪 {lang === 'zh' ? '重置测试数据 / 清除领养状态' : 'Reset Test Familiar'}
-            </button>
-          )}
-        </div>
+            {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
+            <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec)} aria-hidden="true" tabIndex={-1} />
+            <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec)} aria-hidden="true" tabIndex={-1} />
+            {famBubble && (
+              <div className="ks-fam-bubble" aria-hidden="true">
+                <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
+                {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
+              </div>
+            )}
+            <button type="button" className="ks-fam-chip" onClick={reset} title={t('familiar.homeReset')} aria-label={t('familiar.homeReset')}>↺</button>
+            {sandboxMode && (
+              <button
+                type="button"
+                className="ks-fam-chip ks-fam-chip-test"
+                data-testid="familiar-home-purge"
+                onClick={purgeTestFamiliar}
+                title={lang === 'zh' ? '重置测试数据 / 清除领养状态' : 'Reset Test Familiar'}
+              >
+                🧪
+              </button>
+            )}
+          </div>,
+          anchorEl,
+        )}
       </div>
     );
   }

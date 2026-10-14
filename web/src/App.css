@@ -527,6 +527,120 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   box-shadow: 0 6px 30px rgba(212, 175, 55, 0.6);
 }
 
+/* ── 🐾 E51 破框骑键（灵宠骑「开始测算」按钮上沿 · 主公钦定原画 2026-10-14）── */
+.landing-start-wrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 40px; /* 与按钮自身 margin-top 叠加 ⇒ 为灵宠留出「缘分天定→按钮」黄金空隙 */
+}
+#ks-familiar-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 0;
+  pointer-events: none;
+}
+.ks-fam-breakout {
+  position: absolute;
+  bottom: 100%;          /* 灵宠底边先对齐按钮顶沿，再按自身高百分比下垂复现「搭键爪垫」 */
+  pointer-events: none;  /* 🔒 物理穿透（军令铁律）：身体/爪子 100% 让路，按钮点击 100% 命中 */
+  z-index: 6;
+  filter: drop-shadow(0 10px 24px rgba(20, 10, 40, 0.45));
+}
+/* 几何真值（源图实测，单位=按钮宽）：Milo 居左 -14.77% 宽 71.46%；Sophia 居右 58.45% 宽 69.93% */
+.ks-fam-milo   { left: -14.77%; width: 71.46%; transform: translateY(23.62%); }
+.ks-fam-sophia { left:  58.45%; width: 69.93%; transform: translateY(25.88%); }
+.ks-fam-breathe {
+  animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
+  transform-origin: 50% 88%;
+}
+.ks-fam-sophia .ks-fam-breathe { animation-name: ksFamBreatheSophia; animation-duration: 5.4s; }
+.ks-fam-img { display: block; width: 100%; height: auto; user-select: none; }
+@keyframes ksFamBreatheMilo {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.035) rotate(0.5deg); }
+  78% { transform: scale(1.012) rotate(-0.35deg); } /* Milo 耳朵微动 */
+}
+@keyframes ksFamBreatheSophia {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  45% { transform: scale(1.03) rotate(-0.8deg); }
+  70% { transform: scale(1.015) rotate(0.6deg); }  /* Sophia 尾巴微摆 */
+}
+/* 点击命中区：仅头部 / 爱心宝石（透明圆区，其余全部穿透） */
+.ks-fam-zone {
+  position: absolute;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ks-fam-zone-head { left: 24%; top: 1%; width: 46%; height: 34%; border-radius: 46% 54% 50% 50%; }
+.ks-fam-zone-gem  { left: 30%; top: 38%; width: 42%; height: 32%; border-radius: 50%; }
+/* 呼吸微光脉冲（点中头部/宝石时） */
+.ks-fam-pulse .ks-fam-breathe { animation: ksFamPulse 0.75s ease-in-out 2; }
+@keyframes ksFamPulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(167, 139, 250, 0)); }
+  50% { filter: drop-shadow(0 0 16px rgba(190, 160, 255, 0.95)) drop-shadow(0 0 42px rgba(140, 110, 250, 0.5)); }
+}
+/* 命理气泡轻语（纯展示，pointer-events:none 绝不挡操作） */
+.ks-fam-bubble {
+  position: absolute;
+  bottom: 86%;
+  left: 62%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(250px, 62vw);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  background: rgba(24, 18, 38, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  border-radius: 14px 14px 14px 3px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: ksFamBubbleIn 0.28s ease-out;
+}
+.ks-fam-sophia .ks-fam-bubble { left: 34%; border-radius: 14px 14px 3px 14px; }
+.ks-fam-bubble-name { color: #F0D060; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.ks-fam-bubble-line { color: rgba(240, 230, 200, 0.92); font-size: 12.5px; line-height: 1.55; }
+@keyframes ksFamBubbleIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+/* 管理小圆钮（↺ 重置领养 / 🧪 沙箱清档） */
+.ks-fam-chip {
+  position: absolute;
+  top: -3%;
+  right: 1%;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 16, 34, 0.72);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: auto;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ks-fam-chip:hover { opacity: 1; }
+.ks-fam-chip-test { top: auto; bottom: -3%; right: auto; left: 1%; color: #81D8D0; }
+@media (prefers-reduced-motion: reduce) {
+  .ks-fam-breathe,
+  .ks-fam-pulse .ks-fam-breathe { animation: none; }
+}
+
 /* ── Mode Selection Modal ── */
 .mode-modal-overlay {
   position: fixed;
