@@ -14349,6 +14349,29 @@ app.post('/api/sandbox/reset-locks', async (req, res) => {
   }
 });
 
+// ── 🔒 E49（主公亲令 2026-10-14）: 沙箱一键清除灵宠绑定 ──
+//   「重置测试数据 / 清除领养状态」的服务端承接：删调用者**自己**的
+//   familiar_profiles 行（userId 取自验签 token，不接受 body 传参）。
+//   仅沙箱测试态开放（缺省 live ⇒ 404 fail-closed）；live 用户灵宠档**绝不可**由此擦除。
+app.post('/api/sandbox/reset-familiar', async (req, res) => {
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  try {
+    const who = await _sandboxResolveUser(req);
+    if (who.error) return res.status(who.error).json({ error: who.message });
+    const del = await safeFetch(`${SB_URL}/rest/v1/familiar_profiles?user_id=eq.${encodeURIComponent(who.userId)}`, {
+      method: 'DELETE',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=representation' },
+    });
+    const rows = del.ok ? await del.json().catch(() => []) : null;
+    const removed = Array.isArray(rows) ? rows.length : -1;
+    console.log(`[E49] sandbox reset-familiar user=${String(who.userId).slice(0, 8)} removed=${removed}`);
+    return res.json({ success: del.ok, sandbox: true, removed });
+  } catch (e) {
+    console.error('[E49] sandbox reset-familiar failed:', e && e.message);
+    return res.status(500).json({ error: 'reset failed' });
+  }
+});
+
 app.post('/api/sandbox/complete', async (req, res) => {
   // 🔴 沙盘闸门：缺省 live ⇒ 端点视为不存在（fail-closed）
   if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });

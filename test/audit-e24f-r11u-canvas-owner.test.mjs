@@ -102,7 +102,10 @@ function runChecks(srcRaw) {
   // 🐾 E34-B5（2026-10-09）：第 3 处为**渲染层**派生 —— 灵宠选择器需与请求体同源的
   //   birthTime/lat/lon/tz，故在 render 体内复用同一纯函数（fallback 入参形状逐字相同）
   //   ⇒ 2 → 3。语义不变：仍「只允许 URL 同源直读 + 同一 fallback 形状」。
-  if (callSites !== 3) fails.push(`A2: deriveWealthBirthParams(window.location.search) 调用须恰 3 处（2 请求路径 + 1 渲染层灵宠入参），实为 ${callSites}`);
+  // 🔒 E49（2026-10-14）：第 4 处为 familiarLead 懒初始化内的**挂载签名校验** ——
+  //   认领档按盘隔离须在首帧读取时派生当前盘特征（useState 初始化器早于渲染层 const
+  //   ⇒ 无法复用 _familiarBp，必须独立调用同一纯函数，fallback 形状逐字相同）⇒ 3 → 4。
+  if (callSites !== 4) fails.push(`A2: deriveWealthBirthParams(window.location.search) 调用须恰 4 处（2 请求路径 + 1 渲染层灵宠入参 + 1 挂载签名校验），实为 ${callSites}`);
 
   // ── A3: 四处请求体（loadWealthData / 流式主请求 / 流式 fallback / 旧非流式）一律 _bp.*；
   //     裸 state 读只允许作为 fallback 入参（恰 3 处：上述 2 处 + E34-B5 渲染层 1 处） ──

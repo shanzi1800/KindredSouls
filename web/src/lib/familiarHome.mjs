@@ -79,7 +79,37 @@ export function normalizeFamiliarRecord(raw) {
     triad: (o.triad && typeof o.triad === 'object' && !Array.isArray(o.triad)) ? o.triad : null,
     persisted: o.persisted === true,
     adoptedAt: typeof o.adoptedAt === 'string' ? o.adoptedAt : '',
+    // 🔒 E49（主公亲令 2026-10-14）: 星盘签名 —— 认领档必须与出生盘绑定；
+    //   旧档无签名 ⇒ 空串（读取侧判为不匹配 ⇒ 清洗，见 recordMatchesChart）
+    chartSig: typeof o.chartSig === 'string' ? o.chartSig : '',
   };
+}
+
+/* ═══════════ 一·B 星盘绑定（E49 · 按盘隔离，禁全局裸存）═══════════ */
+
+/**
+ * 星盘签名：birthDate|birthTime|lat|lon|tz（坐标 4 位小数归一）。
+ * 🔴 灵宠认领档**严禁**脱离星盘全局裸存 —— 写入必带签名，读取必校验；
+ *   用户换生日/城市重新生成报告 ⇒ 新盘未认领前必须呈现原始待选态。
+ */
+export function familiarChartSig(chart) {
+  const c = (chart && typeof chart === 'object') ? chart : {};
+  const r4 = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? String(Math.round(n * 10000) / 10000) : '';
+  };
+  const bt = typeof c.birthTime === 'string' ? c.birthTime.trim() : '';
+  return [String(c.birthDate || '').trim(), bt, r4(c.lat), r4(c.lon), String(c.tz || '').trim()].join('|');
+}
+
+/**
+ * 认领档与当前盘是否匹配。🔴 旧档无签名（chartSig 空）⇒ 一律不匹配
+ * （军令「清查 localStorage 旧键值」：历史裸存态在下次读取时自动清洗）。
+ */
+export function recordMatchesChart(rec, chart) {
+  const r = normalizeFamiliarRecord(rec);
+  if (!r || !r.chartSig) return false;
+  return r.chartSig === familiarChartSig(chart);
 }
 
 /** 读档（storage 注入；无档 / 坏档 / 隐私模式 ⇒ null） */

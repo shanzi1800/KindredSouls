@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
+// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
+import { familiarChartSig } from '../lib/familiarHome.mjs';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🐾 E34-B5 · 灵宠选择器（原方案二：免费 4 项 → 选灵宠 → 带路进首页）
@@ -109,12 +111,14 @@ const FamiliarPicker: React.FC<FamiliarPickerProps> = ({ birthDate, birthTime, l
       }
       const profile = data.profile as FamiliarProfile;
       // 本地持久化（无 localStorage 持久化铁律的**唯一例外**：灵宠档案须跨刷新留存）
+      // 🔒 E49（主公亲令 2026-10-14）: 档案必带星盘签名 —— 换盘即失效，严禁全局裸存串味
       try {
         localStorage.setItem(FAMILIAR_LS_KEY, JSON.stringify({
           profile,
           triad: data.triad || null,
           persisted: !!data.persisted,
           adoptedAt: new Date().toISOString(),
+          chartSig: familiarChartSig({ birthDate, birthTime, lat, lon, tz }),
         }));
       } catch (_) { /* 隐私模式忽略 */ }
       setDone(profile.name);

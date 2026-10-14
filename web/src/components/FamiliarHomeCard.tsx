@@ -37,7 +37,7 @@ import type { CityRecord } from '../hooks/useCitySearch';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, FAMILIAR_ADOPT_PATH } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
-import { FAMILIAR_HOME_TESTID, FAMILIAR_HOME_BAR_TESTID, FAMILIAR_HOME_FORM_TESTID, FAMILIAR_HOME_SEAT_TESTID, FAMILIAR_HOME_AVATAR_TESTID, readFamiliarRecord, writeFamiliarRecord, clearFamiliarRecord, personalityAxes, familiarPalette, triadTruth, hasDegradation, whisperIndex, localDateKey, extractBirthTruth, isPlausibleBirthDate } from '../lib/familiarHome.mjs';
+import { FAMILIAR_HOME_TESTID, FAMILIAR_HOME_BAR_TESTID, FAMILIAR_HOME_FORM_TESTID, FAMILIAR_HOME_SEAT_TESTID, FAMILIAR_HOME_AVATAR_TESTID, readFamiliarRecord, writeFamiliarRecord, clearFamiliarRecord, personalityAxes, familiarPalette, triadTruth, hasDegradation, whisperIndex, localDateKey, extractBirthTruth, isPlausibleBirthDate, familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 
 const GOLD = '#D4AF37';
 const WHISPER_COUNT = 5;
@@ -51,6 +51,8 @@ interface HomeRecord {
   triad: Record<string, unknown> | null;
   persisted: boolean;
   adoptedAt: string;
+  /** 🔒 E49: 星盘签名（birthDate|birthTime|lat|lon|tz 归一）—— 按盘隔离 */
+  chartSig?: string;
 }
 
 function latLonText(lat: number, lon: number): string {
@@ -198,13 +200,24 @@ const FamiliarHomeCard: React.FC = () => {
   /** 关系模式 ⇒ 标签（与 FamiliarPicker 同源键 familiar.girlfriend/…） */
   const relationLabel = (mode: string): string => t(`familiar.${mode}`);
 
-  /* ── 挂载：读认领档 ⇒ 有档即座位卡；无档则只读抽取出生真值预填 ── */
+  /* ── 挂载：读认领档 ⇒ 有档即座位卡；无档则只读抽取出生真值预填 ──
+     🔒 E49（主公亲令 2026-10-14）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
+        ② 星盘绑定校验 —— 有当前盘真值且签名不匹配（或旧档无签名）⇒ 即弃即清，
+        换生日后严禁串出上一张盘的灵宠；无真值可校验（纯首页会话）⇒ 保留呈现。 */
   useEffect(() => {
     const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
-    const r = readFamiliarRecord(store, FAMILIAR_LS_KEY);
-    if (r) { setRec(r as HomeRecord); setPhase('seat'); return; }
     const search = (typeof window !== 'undefined' && window.location) ? window.location.search : '';
+    const _rp = new URLSearchParams(search).get('reset');
+    if (_rp === '1' || _rp === 'true') clearFamiliarRecord(store, FAMILIAR_LS_KEY);
+    const r = readFamiliarRecord(store, FAMILIAR_LS_KEY);
     const tr = extractBirthTruth(search, store);
+    if (r) {
+      if (tr && !recordMatchesChart(r, { birthDate: tr.birthDate, birthTime: tr.birthTime || '', lat: tr.lat, lon: tr.lon, tz: tr.tz })) {
+        clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗，落回待选态
+      } else {
+        setRec(r as HomeRecord); setPhase('seat'); return;
+      }
+    }
     if (tr) {
       setTruth({ birthDate: tr.birthDate, birthTime: tr.birthTime, lat: tr.lat, lon: tr.lon, tz: tr.tz });
       setBirthDate(tr.birthDate);
@@ -260,6 +273,8 @@ const FamiliarHomeCard: React.FC = () => {
         triad: data.triad || null,
         persisted: !!data.persisted,
         adoptedAt: new Date().toISOString(),
+        // 🔒 E49: 认领档必带星盘签名（按盘隔离，禁全局裸存串味）
+        chartSig: familiarChartSig({ birthDate, birthTime, lat: coords.lat, lon: coords.lon, tz: coords.tz }),
       };
       writeFamiliarRecord(window.localStorage, next, FAMILIAR_LS_KEY);
       setRec(next);
@@ -275,6 +290,32 @@ const FamiliarHomeCard: React.FC = () => {
     clearFamiliarRecord(window.localStorage, FAMILIAR_LS_KEY);
     setRec(null);
     setPhase('collapsed');
+  };
+
+  /* 🔒 E49（主公亲令 2026-10-14）: 沙箱/管理员态一键重置 —— 清本机灵宠档 + 服务端该账号绑定 */
+  const [sandboxMode, setSandboxMode] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/sandbox/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j && j.sandbox === true) setSandboxMode(true); })
+      .catch(() => { /* live 态 ⇒ 静默不显示 */ });
+    return () => { alive = false; };
+  }, []);
+  const purgeTestFamiliar = async () => {
+    clearFamiliarRecord(window.localStorage, FAMILIAR_LS_KEY);
+    setRec(null);
+    setPhase('collapsed');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await fetch('/api/sandbox/reset-familiar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: '{}',
+        });
+      }
+    } catch (_) { /* 本机已清 ⇒ 服务端清理失败不阻断 */ }
   };
 
   /* ═══════════ 三 · 已认领座位卡 ═══════════ */
@@ -341,6 +382,17 @@ const FamiliarHomeCard: React.FC = () => {
           {riseUncertain && <div className="ks-pet-note">{t('familiar.homeTimeUncertain')}</div>}
 
           <button type="button" className="ks-pet-reset" onClick={reset}>{t('familiar.homeReset')}</button>
+          {sandboxMode && (
+            <button
+              type="button"
+              className="ks-pet-reset"
+              data-testid="familiar-home-purge"
+              onClick={purgeTestFamiliar}
+              style={{ marginTop: '6px', color: '#81D8D0' }}
+            >
+              🧪 {lang === 'zh' ? '重置测试数据 / 清除领养状态' : 'Reset Test Familiar'}
+            </button>
+          )}
         </div>
       </div>
     );

@@ -30,6 +30,8 @@ import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
 import type { FamiliarProfile } from '../components/FamiliarPicker';
+// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
+import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
@@ -1093,12 +1095,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [sandboxMode, setSandboxMode] = useState(false);
   const [resetting, setResetting] = useState(false);
   // 🐾 E34-B5: 已领养灵宠（懒初始化自 localStorage ⇒ 刷新后仍显示「带路」状态）
+  // 🔒 E49（主公亲令 2026-10-14）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
+  //    ② 星盘绑定校验 —— 档案签名与当前盘不一致（或旧档无签名）⇒ 串味，即弃即清；
+  //    换生日重新生成报告后，新盘未认领前必须呈现原始「为你孵化专属灵宠」待选态。
   const [familiarLead, setFamiliarLead] = useState<FamiliarProfile | null>(() => {
     try {
+      const _rp = new URLSearchParams(window.location.search).get('reset');
+      if (_rp === '1' || _rp === 'true') { localStorage.removeItem(FAMILIAR_LS_KEY); return null; }
       const raw = localStorage.getItem(FAMILIAR_LS_KEY);
       if (!raw) return null;
       const o = JSON.parse(raw);
-      return o && o.profile ? (o.profile as FamiliarProfile) : null;
+      if (!o || !o.profile) return null;
+      const _bd = new URLSearchParams(window.location.search).get('birth') || '';
+      const _famSigBp = deriveWealthBirthParams(window.location.search, { birthTime: '12:00', lat: 13.75, lon: 100.5, tz: 'Asia/Bangkok' });
+      if (!recordMatchesChart(o, { birthDate: _bd, birthTime: _famSigBp.birthTime, lat: _famSigBp.lat, lon: _famSigBp.lon, tz: _famSigBp.tz })) {
+        localStorage.removeItem(FAMILIAR_LS_KEY);
+        return null;
+      }
+      return o.profile as FamiliarProfile;
     } catch { return null; }
   });
   // 🔒 E48（主公亲令 2026-10-14）: 灵宠未付费拦截 —— 轻量 Toast + 平滑滚动至解锁按钮
@@ -1586,6 +1600,22 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       try { paywallRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
     });
   }, [t]);
+
+  // 🔒 E49（主公亲令 2026-10-14）: 沙箱一键清除灵宠档 —— 本机 localStorage + 服务端该账号绑定
+  const resetFamiliarTest = async () => {
+    try { localStorage.removeItem(FAMILIAR_LS_KEY); } catch (_) { /* 隐私模式忽略 */ }
+    setFamiliarLead(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await fetch('/api/sandbox/reset-familiar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: '{}',
+        });
+      }
+    } catch (_) { /* 本机已清 ⇒ 服务端清理失败不阻断 */ }
+  };
 
   const forceRegenerate = async () => {
     if (resetting) return;
@@ -2974,6 +3004,29 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               {resetting
                 ? (currentLang === 'zh' ? '⏳ 重推中…' : '⏳ Re-generating…')
                 : (currentLang === 'zh' ? '🧪 测试重置 / 重新推演' : '🧪 Reset & Re-generate')}
+            </button>
+          )}
+          {/* 🔒 E49（主公亲令 2026-10-14）: 沙箱态「重置测试数据 / 清除领养状态」——
+              清本机灵宠档 + 服务端该账号 familiar_profiles 绑定，恢复干净待选态。 */}
+          {sandboxMode && (
+            <button
+              onClick={resetFamiliarTest}
+              title={currentLang === 'zh' ? '清除本机与服务端的灵宠认领档案' : 'Purge local & server familiar records'}
+              style={{
+                background: 'rgba(212,175,55,0.10)',
+                border: '1px solid rgba(212,175,55,0.45)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                color: '#D4AF37',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                marginBottom: 0,
+                marginLeft: '6px',
+              }}
+            >
+              {currentLang === 'zh' ? '🐾 清除灵宠档' : '🐾 Reset Test Familiar'}
             </button>
           )}
           </div>

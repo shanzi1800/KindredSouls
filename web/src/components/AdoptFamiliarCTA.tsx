@@ -22,6 +22,8 @@ import { supabase } from '../lib/supabase';
 import { RELATION_CARDS, FAMILIAR_LS_KEY, type FamiliarProfile } from './FamiliarPicker';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, dictTerm, FAMILIAR_ADOPT_PATH, ADOPT_CTA_TESTID } from '../lib/sandboxCheckout.mjs';
+// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
+import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 
 const GOLD = '#D4AF37';
 
@@ -49,6 +51,8 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
   const [persisted, setPersisted] = useState(false);
 
   // 跨刷新留存（灵宠档案是 localStorage 持久化铁律的**唯一例外**，与 FamiliarPicker 同源键）
+  // 🔒 E49（主公亲令 2026-10-14）: 星盘绑定校验 —— 签名与当前盘不一致（或旧档无签名）⇒ 即弃即清，
+  //   换生日重新生成报告后严禁串出上一张盘的灵宠。
   useEffect(() => {
     try {
       const raw = localStorage.getItem(FAMILIAR_LS_KEY);
@@ -56,11 +60,15 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
       const rec = JSON.parse(raw);
       const name = rec && rec.profile && rec.profile.name;
       if (typeof name === 'string' && name) {
+        if (!recordMatchesChart(rec, { birthDate, birthTime, lat, lon, tz })) {
+          localStorage.removeItem(FAMILIAR_LS_KEY);
+          return;
+        }
         setAdopted(name);
         setPersisted(!!rec.persisted);
       }
     } catch (_) { /* 隐私模式忽略 */ }
-  }, []);
+  }, [birthDate, birthTime, lat, lon, tz]);
 
   const term = (key: string) => {
     const t = dictTerm(ASTRO_TERMS, 'familiar', key, lang);
@@ -100,6 +108,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
           triad: data.triad || null,
           persisted: !!data.persisted,
           adoptedAt: new Date().toISOString(),
+          chartSig: familiarChartSig({ birthDate, birthTime, lat, lon, tz }), // 🔒 E49 按盘隔离
         }));
       } catch (_) { /* 隐私模式忽略 */ }
       setAdopted(profile.name);
