@@ -52,8 +52,9 @@ const dispatchSegOf = (src) => between(src, 'async function _sandboxDispatch', "
 /* ── 断言谓词（主测与注入自测**同源**取用，防射程断层）── */
 // 🧪 E47（2026-10-14）: 新增第 4 个沙盘端点 `/api/sandbox/reset-locks`（测试重置 / 重新推演）
 // 🔒 E49（2026-10-14）: 新增第 5 个沙盘端点 `/api/sandbox/reset-familiar`（清除灵宠绑定）
-//    ⇒ 闸门计数下限由 3 → 4 → 5（5 端点各一）。G4 注入（删掉 complete 那一个 ⇒ 剩 4）因此仍能识破。
-const hasSandboxGate = (seg) => (seg.match(/isSandboxPaymentMode\(process\.env\)/g) || []).length >= 5;
+// 💳 E50（2026-10-14）: 新增第 6 个沙盘端点 `/api/sandbox/reset-purchase`（重置购买态）
+//    ⇒ 闸门计数下限由 3 → 4 → 5 → 6（6 端点各一）。G4 注入（删掉 complete 那一个 ⇒ 剩 5）因此仍能识破。
+const hasSandboxGate = (seg) => (seg.match(/isSandboxPaymentMode\(process\.env\)/g) || []).length >= 6;
 const sandboxWritesEntitlement = (seg) => seg.includes('paid_plans') || seg.includes('buildPlanPayload(');
 const hasSelfPostDispatch = (seg) =>
   seg.includes('/api/webhook') && seg.includes('stripe-signature') && /method:\s*'POST'/.test(seg);
@@ -208,12 +209,12 @@ test('C6 券表解析：坏配置 ⇒ null（不炸不放宽）／env 覆盖优�
 
 /* ═══════════ D 服务端接线铁律 ═══════════ */
 
-test('D1 五个沙盘端点齐备，且**各自**带模式闸门（缺省 live ⇒ 一律 404）', () => {
-  for (const p of ['/api/sandbox/status', '/api/sandbox/complete', '/api/sandbox/redeem', '/api/sandbox/reset-locks', '/api/sandbox/reset-familiar']) {
+test('D1 六个沙盘端点齐备，且**各自**带模式闸门（缺省 live ⇒ 一律 404）', () => {
+  for (const p of ['/api/sandbox/status', '/api/sandbox/complete', '/api/sandbox/redeem', '/api/sandbox/reset-locks', '/api/sandbox/reset-familiar', '/api/sandbox/reset-purchase']) {
     assert.ok(SANDBOX_SEG.includes(`app.post('${p}'`) || SANDBOX_SEG.includes(`app.post("${p}"`), `缺端点 ${p}`);
   }
   assert.ok(SANDBOX_SEG.includes('SANDBOX_DISABLED_STATUS'), '关闭码必须来自纯核常量（单一真源）');
-  assert.ok(hasSandboxGate(SANDBOX_SEG), '模式闸门计数不足（5 端点各一 ⇒ ≥5）');
+  assert.ok(hasSandboxGate(SANDBOX_SEG), '模式闸门计数不足（6 端点各一 ⇒ ≥6）');
 });
 
 test('D2 create-checkout 沙盘分支：位于防线内、且**晚于**防重付与登录校验', () => {

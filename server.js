@@ -14372,6 +14372,34 @@ app.post('/api/sandbox/reset-familiar', async (req, res) => {
   }
 });
 
+// ── 💳 E50（主公亲令 2026-10-14）: 沙箱一键重置购买态 ──
+//   「重置购买态」的服务端承接：清调用者**自己**的账号权益位（经 patchWealthPlans 单源合并写），
+//   让该账号回到【未付费】⇒ 报告页必现「🔒 AI 深度洞察 / $4.99 立即解锁」付费墙，
+//   主公可完整端到端重测收银台与解锁交互。仅沙箱测试态开放（缺省 live ⇒ 404 fail-closed）；
+//   userId 取自验签 token（不接受 body 传参）；真实付费用户的权益**绝不可**由此触碰。
+app.post('/api/sandbox/reset-purchase', async (req, res) => {
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  try {
+    const who = await _sandboxResolveUser(req);
+    if (who.error) return res.status(who.error).json({ error: who.message });
+    const cleared = [
+      'wealth_once', 'wealth_monthly_report', 'wealth_yearly_report',
+      'compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report',
+      'star_monthly_vip', 'all_pass_yearly',
+    ];
+    const delta = {};
+    for (const k of cleared) delta[k] = false;
+    delta.all_pass_expires_at = null;
+    delta.star_monthly_resets_at = null;
+    const w = await patchWealthPlans(who.userId, delta);
+    console.log(`[E50] sandbox reset-purchase user=${String(who.userId).slice(0, 8)} ok=${w.ok !== false}`);
+    return res.json({ success: w.ok !== false, sandbox: true, cleared });
+  } catch (e) {
+    console.error('[E50] sandbox reset-purchase failed:', e && e.message);
+    return res.status(500).json({ error: 'reset failed' });
+  }
+});
+
 app.post('/api/sandbox/complete', async (req, res) => {
   // 🔴 沙盘闸门：缺省 live ⇒ 端点视为不存在（fail-closed）
   if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });

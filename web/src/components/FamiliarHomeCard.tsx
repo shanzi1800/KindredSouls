@@ -135,7 +135,8 @@ const FamiliarHomeCard: React.FC = () => {
     (async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('free_access') === '1' || sessionStorage.getItem('⚡_FREE_PASS') === '1') {
+        // 💳 E50: 绿道去粘性 —— 只认当前 URL 显式 free_access=1（同 WealthReportPage E50 整改）
+        if (params.get('free_access') === '1') {
           if (alive) setPaidOk(true);
           return;
         }

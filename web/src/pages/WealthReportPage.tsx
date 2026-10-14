@@ -1120,17 +1120,24 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [familiarToast, setFamiliarToast] = useState<string | null>(null);
   // 🏅 第一斧:useRef 同步锁定免死金牌,在所有 render 之前抢跑
+  // 💳 E50（主公亲令 2026-10-14）: 【绿道去粘性】—— 绿道**只认当前 URL 显式携带**
+  //   `free_access=1`（一次性），**废除** sessionStorage `⚡_FREE_PASS` 粘性补丁：
+  //   旧机制只要本 tab 曾用过一次 free_access，整个会话所有盘永久免检解锁
+  //   ⇒ 这就是「测试账号全局已付费」的真凶（账号 paid_plans 实查全 false）。
+  //   新盘/换盘必须老老实实回到未付费付费墙形态；测试者显式带参仍可走绿道。
   const isGreenChannelRef = useRef<boolean>(
     typeof window !== 'undefined' && (
       // 🛡️ V491/WP-8·F9: 精确匹配 free_access 参数值(禁用 includes 宽松写法,防 query 串误命中)
-      new URLSearchParams(window.location.search).get('free_access') === '1' ||
-      sessionStorage.getItem('⚡_FREE_PASS') === '1'
+      new URLSearchParams(window.location.search).get('free_access') === '1'
     )
   );
   console.log('🔍 [REF INIT] search=' + (typeof window !== 'undefined' ? window.location.search : 'SSR') + ' ref=' + isGreenChannelRef.current);
-  // 一旦检测到,立刻往 sessionStorage 打补丁,防止 URL 被 strip 后丢失凭证
-  if (isGreenChannelRef.current && typeof window !== 'undefined') {
-    sessionStorage.setItem('⚡_FREE_PASS', '1');
+  // 💳 E50: 清除历史粘性标记 —— URL ?reset=1 时顺带把旧 bundle 时代留下的 ⚡_FREE_PASS 擦掉
+  if (typeof window !== 'undefined') {
+    const _rp0 = new URLSearchParams(window.location.search).get('reset');
+    if (_rp0 === '1' || _rp0 === 'true') {
+      try { sessionStorage.removeItem('⚡_FREE_PASS'); } catch (_) { /* noop */ }
+    }
   }
 
   // 🛡️ E32：绿道（free_access）是**特权通道** —— 后端 `wealthGreenChannelAuthorized` 要求
@@ -1339,7 +1346,7 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     console.log('🔍 [URL CHECK] urlHasFreeAccess=' + urlHasFreeAccess + ' ref=' + isGreenChannelRef.current + ' final=' + freeAccess);
     if (urlHasFreeAccess) {
       isGreenChannelRef.current = true;
-      sessionStorage.setItem('⚡_FREE_PASS', '1');
+      // 💳 E50: 粘性补丁已废除（见 ref init 注释）—— 绿道仅当次加载有效，换盘必回付费墙
     }
     console.log('[WealthReport] 🧪 useEffect run: freeAccess=', freeAccess, 'birth=', birth, 'lang=', langParam);
 
@@ -1473,6 +1480,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       setShowPaywall(false);
       setAuthChecking(false);
       return;
+    }
+    // 💳 E50（主公亲令 2026-10-14）: URL ?reset=1 ⇒ 先清购买态（沙箱端点，live 态 404 无害）
+    //   再继续常规判定 ⇒ 该盘必落【未付费付费墙形态】，供主公完整端到端重测收银台。
+    if (new URLSearchParams(window.location.search).get('reset') === '1' || new URLSearchParams(window.location.search).get('reset') === 'true') {
+      try {
+        const { data: { session: _rs } } = await supabase.auth.getSession();
+        if (_rs?.access_token) {
+          await fetch('/api/sandbox/reset-purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_rs.access_token}` },
+            body: '{}',
+          });
+        }
+      } catch (_) { /* 清理失败不阻断判定（live 态端点本就不存在） */ }
     }
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -1615,6 +1636,23 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         });
       }
     } catch (_) { /* 本机已清 ⇒ 服务端清理失败不阻断 */ }
+  };
+
+  // 💳 E50（主公亲令 2026-10-14）: 沙箱一键重置购买态 —— 清账号权益位 + 擦绿道粘性残留，
+  //   整页重载后该盘必回【未付费付费墙形态】（🔒 AI 深度洞察 / $4.99 立即解锁），端到端重测收银台。
+  const resetPurchaseTest = async () => {
+    try { sessionStorage.removeItem('⚡_FREE_PASS'); } catch (_) { /* noop */ }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await fetch('/api/sandbox/reset-purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: '{}',
+        });
+      }
+    } catch (_) { /* 服务端清理失败仍回退本地形态 */ }
+    window.location.reload();
   };
 
   const forceRegenerate = async () => {
@@ -3027,6 +3065,29 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               }}
             >
               {currentLang === 'zh' ? '🐾 清除灵宠档' : '🐾 Reset Test Familiar'}
+            </button>
+          )}
+          {/* 💳 E50（主公亲令 2026-10-14）: 沙箱态「重置购买态」—— 清账号权益位，
+              该盘必回未付费付费墙形态，主公可完整端到端重测 $4.99 收银台与解锁交互。 */}
+          {sandboxMode && (
+            <button
+              onClick={resetPurchaseTest}
+              title={currentLang === 'zh' ? '清除账号购买权益，回到未付费付费墙形态' : 'Clear account entitlements, back to unpaid paywall'}
+              style={{
+                background: 'rgba(232,101,114,0.10)',
+                border: '1px solid rgba(232,101,114,0.45)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                color: '#E86572',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                marginBottom: 0,
+                marginLeft: '6px',
+              }}
+            >
+              {currentLang === 'zh' ? '💳 重置购买态' : '💳 Reset Purchase'}
             </button>
           )}
           </div>
