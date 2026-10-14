@@ -90,6 +90,7 @@
     "skip": "Plus tard",
     "degradedNote": "Heure de naissance non fournie : l'apparence a été dégradée en style neutre",
     "error": "Échec de l'incubation, réessayez",
+    "needUnlock": "✨ Débloquez dabord le rapport de richesse approfondi (4,99 $) pour incuber et sceller votre familier exclusif",
     "homeTitle": "Votre familier",
     "homeEmpty": "Pas encore de familier",
     "homeEmptyDesc": "Saisissez vos données de naissance pour faire éclore une âme guide",

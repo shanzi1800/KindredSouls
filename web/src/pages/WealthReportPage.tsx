@@ -1101,6 +1101,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       return o && o.profile ? (o.profile as FamiliarProfile) : null;
     } catch { return null; }
   });
+  // 🔒 E48（主公亲令 2026-10-14）: 灵宠未付费拦截 —— 轻量 Toast + 平滑滚动至解锁按钮
+  const paywallRef = useRef<HTMLDivElement | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [familiarToast, setFamiliarToast] = useState<string | null>(null);
   // 🏅 第一斧:useRef 同步锁定免死金牌,在所有 render 之前抢跑
   const isGreenChannelRef = useRef<boolean>(
     typeof window !== 'undefined' && (
@@ -1570,6 +1574,18 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       .catch(() => { /* live 态 / 端点不存在 ⇒ 静默不显示，绝不影响正常渲染 */ });
     return () => { alive = false; };
   }, []);
+
+  // 🔒 E48（主公亲令 2026-10-14）: 未付费点击灵宠角色卡 ⇒ 轻量 Toast + 平滑滚动至
+  //    「🔒 AI 深度洞察 / 立即解锁」按钮，促成支付转化。绝不写入领养状态、绝不跳转。
+  const handleFamiliarLockedTap = React.useCallback(() => {
+    setFamiliarToast(t('familiar.needUnlock'));
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setFamiliarToast(null), 5000);
+    // 视线平滑滚动至付费墙（下一帧执行，确保 Toast 已挂载）
+    requestAnimationFrame(() => {
+      try { paywallRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    });
+  }, [t]);
 
   const forceRegenerate = async () => {
     if (resetting) return;
@@ -2983,8 +2999,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           lang={currentLang}
         />
 
-        {/* 🐾 E34-B5 方案二漏斗：免费四项之后 → 选灵宠（跳过支付拦截）→ 带路进首页 */}
-        {!authChecking && !isUnlocked && reportData && familiarLead && (
+        {/* 🔒 E48（主公亲令 2026-10-14）: 「已就位·带路」条仅**已解锁**后呈现 ——
+            未付费严禁展示领养成果、严禁跳转（旧免费漏斗按新商业门禁收口） */}
+        {!authChecking && isUnlocked && reportData && familiarLead && (
           <div style={{
             marginTop: '16px', padding: '12px 14px', borderRadius: '12px',
             background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.35)',
@@ -3005,22 +3022,29 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             </button>
           </div>
         )}
-        {!authChecking && !isUnlocked && showPaywall && reportData && !familiarLead && (
+        {/* 🔒 E48（主公亲令 2026-10-14）: 未付费态灵宠选择器 —— 卡片保留但**全部上锁**，
+            点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转 */}
+        {!authChecking && !isUnlocked && showPaywall && reportData && (
           <FamiliarPicker
             birthDate={birthDate}
             birthTime={_familiarBp.birthTime}
             lat={_familiarBp.lat}
             lon={_familiarBp.lon}
             tz={_familiarBp.tz}
+            locked={true}
+            onLockedTap={handleFamiliarLockedTap}
             onAdopted={(p) => setFamiliarLead(p)}
           />
         )}
 
+        {/* 🔒 E48: 付费墙挂 ref —— 灵宠拦截 Toast 的平滑滚动落点（「🔒 AI 深度洞察 / 立即解锁」） */}
         {!authChecking && !isUnlocked && showPaywall && (
-          <WealthPaywall
-            lang={currentLang}
-            onPurchase={handlePurchase}
-          />
+          <div ref={paywallRef}>
+            <WealthPaywall
+              lang={currentLang}
+              onPurchase={handlePurchase}
+            />
+          </div>
         )}
 
         {isUnlocked && reportData?.insight && (
@@ -3312,7 +3336,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         {/* 🐾 Gate 45-B：报告尾「灵宠认领」独立承接位（报告解锁后呈现）
             🔴 E34 D5：只传出生真值（白名单构造）；
             🔴 且须 URL **显式**携带真实坐标 —— 禁以默认盘坐标冒充（缺坐标 ⇒ 不挂载）。
-            ⚠️ 既有付费墙漏斗（!isUnlocked && showPaywall 的 FamiliarPicker）寸步未动。 */}
+            🔒 E48（主公亲令 2026-10-14）: 付费墙漏斗已按新商业门禁收口 ——
+            未付费态 FamiliarPicker 全卡上锁（locked ⇒ Toast + 滚动引导），
+            仅解锁后（本承接位 / isUnlocked 态）方可真正契约。 */}
         {isUnlocked && reportData && hasExplicitBirthCoords(window.location.search) && (
           <AdoptFamiliarCTA
             birthDate={birthDate}
@@ -3326,6 +3352,24 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
 
         {error && (
           <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }}>{error}</p>
+        )}
+
+        {/* 🔒 E48: 灵宠未付费拦截 Toast（轻量、可点击 ⇒ 再触发滚动，5s 自动消散） */}
+        {familiarToast && (
+          <div
+            onClick={handleFamiliarLockedTap}
+            style={{
+              position: 'fixed', top: '18px', left: '50%', transform: 'translateX(-50%)',
+              zIndex: 9999, maxWidth: 'min(92vw, 480px)', width: 'max-content',
+              padding: '10px 18px', borderRadius: '12px',
+              background: 'rgba(20, 18, 12, 0.94)', border: '1px solid rgba(212, 175, 55, 0.55)',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.55)',
+              color: '#F0E6C8', fontSize: '13px', fontWeight: 600, lineHeight: 1.55,
+              cursor: 'pointer', textAlign: 'center', pointerEvents: 'auto',
+            }}
+          >
+            {familiarToast}
+          </div>
         )}
       </div>
     </div>

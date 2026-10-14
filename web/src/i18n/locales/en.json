@@ -90,6 +90,7 @@
     "skip": "Later",
     "degradedNote": "No exact birth time: appearance degraded to a neutral style",
     "error": "Incubation failed, please retry",
+    "needUnlock": "✨ Unlock the $4.99 natal wealth deep report first — then you can hatch & contract your exclusive familiar",
     "homeTitle": "Your Familiar",
     "homeEmpty": "No companion yet",
     "homeEmptyDesc": "Enter your birth details to hatch a guiding soul",

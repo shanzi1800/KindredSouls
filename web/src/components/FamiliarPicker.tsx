@@ -55,16 +55,26 @@ interface FamiliarPickerProps {
   lat: number;
   lon: number;
   tz: string;
+  /** 🔒 E48（主公亲令 2026-10-14）: 未付 $4.99 ⇒ true，点击角色卡一律拦截 */
+  locked?: boolean;
+  /** 🔒 E48: 拦截时回调（Toast 提示 + 平滑滚动至解锁按钮），由宿主页注入 */
+  onLockedTap?: () => void;
   onAdopted?: (profile: FamiliarProfile, persisted: boolean) => void;
 }
 
-const FamiliarPicker: React.FC<FamiliarPickerProps> = ({ birthDate, birthTime, lat, lon, tz, onAdopted }) => {
+const FamiliarPicker: React.FC<FamiliarPickerProps> = ({ birthDate, birthTime, lat, lon, tz, locked = false, onLockedTap, onAdopted }) => {
   const { t } = useTranslation();
   const [pending, setPending] = useState<RelationMode | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   const adopt = async (card: RelationCard) => {
+    // 🔒 E48（主公亲令 2026-10-14）: 未付费门禁 —— 严禁写入领养状态、严禁跳转、
+    //    严禁触达 /api/familiar/adopt（双保险：点击处与 adopt 入口各拦一道）。
+    if (locked) {
+      if (onLockedTap) onLockedTap();
+      return;
+    }
     if (pending) return;
     setPending(card.mode);
     setErr(null);
