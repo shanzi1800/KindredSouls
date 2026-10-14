@@ -83,7 +83,9 @@ describe('V448 i18n Key 门禁', () => {
     // 50 → 51（6 语种同步新增，键集合全等不变）
     // 🐾 E34-B5（2026-10-09）: 新增 familiar.* 命名空间 16 个 key（灵宠选择器六语文案）
     // 51 → 67（6 语种同步新增，键集合全等不变）
-    assert.strictEqual(p.total, 67, 'E34-B5 新增 familiar.* 16 键后基准键数应为 67');
+    // 🛡️ P0（2026-10-14）: 新增 wealthReport.locked* 7 个 key（周期锁体面锁定卡六语文案）
+    // 67 → 74（6 语种同步新增，键集合全等不变）
+    assert.strictEqual(p.total, 74, 'P0 新增 wealthReport.locked* 7 键后基准键数应为 74');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

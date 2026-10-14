@@ -250,8 +250,18 @@ function callEndpoint(base, ep, headers) {
   });
 }
 
+// 🔴 端口基址迁至 14710+（2026-10-14 修 · 测试基建，断言一字未改）：
+//   原基址 4710/4760/4810/4860（各 +pid%40 ⇒ 四条 40 宽区间）实测与**本机常驻服务**冲突——
+//   E2 段区间 [4760,4799] 覆盖 4780/4781，而这两口被本机代理（mihomo）以 `*:4780/4781` 占住
+//   ⇒ `node server.js` 在 0.0.0.0 上 EADDRINUSE（实测枚举：4760–4799 仅 4780/4781 不可用）
+//   ⇒ 服务 60s 不就绪 ⇒ E2 假红（standalone 因 pid%40 未落在 20/21 而恰好通过；链内 pid 取模
+//   稳定落在 20/21 ⇒ 确定性失败，两次全链跑测失败耗时 60699ms/60646ms 几乎相同即为铁证）。
+//   治法：基址整体迁至高位空闲段，四条区间 [14710,14749]/[14760,14799]/[14810,14849]/
+//   [14860,14899] 实测 0.0.0.0 上全空闲，彻底避开本机常驻服务占用带。
+//   （同族隐患：audit-e34 的 `4300 + pid%500` 区间 [4300,4799] 亦含 4780/4781，但其命中概率
+//     2/500 且本轮未复现，暂按最小改动不动，已挂账。）
 test('E1 门控关（默认）⇒ 五端点全 503 SOUL_OS_PROTOCOL_DISABLED，绝不泄漏数据', async () => {
-  await withServer({}, 4710 + (process.pid % 40), async (base) => {
+  await withServer({}, 14710 + (process.pid % 40), async (base) => {
     for (const ep of ENDPOINTS) {
       const r = await callEndpoint(base, ep);
       assert.equal(r.status, 503, `${ep.method} ${ep.path} 门控关应 503，实得 ${r.status}`);
@@ -266,7 +276,7 @@ test('E1 门控关（默认）⇒ 五端点全 503 SOUL_OS_PROTOCOL_DISABLED，�
 });
 
 test('E2 门控开 + 未配/未带设备 Key ⇒ 401 fail-closed', async () => {
-  await withServer({ SOUL_OS_OPEN_PROTOCOL: '1' }, 4760 + (process.pid % 40), async (base) => {
+  await withServer({ SOUL_OS_OPEN_PROTOCOL: '1' }, 14760 + (process.pid % 40), async (base) => {
     const r = await callEndpoint(base, ENDPOINTS[1]);
     assert.equal(r.status, 401, `应 401，实得 ${r.status}`);
     assert.equal((await r.json()).code, 'SOUL_DEVICE_KEY_NOT_CONFIGURED', '未配 Key 应明确 code');
@@ -275,7 +285,7 @@ test('E2 门控开 + 未配/未带设备 Key ⇒ 401 fail-closed', async () => {
 
 test('E3 门控开 + 正确设备 Key ⇒ 200 且 live:false（骨架 inert，无真实数据）', async () => {
   await withServer({ SOUL_OS_OPEN_PROTOCOL: '1', SOUL_DEVICE_KEY: 'e35-unit-test-key' },
-    4810 + (process.pid % 40), async (base) => {
+    14810 + (process.pid % 40), async (base) => {
       const r = await callEndpoint(base, ENDPOINTS[1], { 'x-soul-device-key': 'e35-unit-test-key' });
       assert.equal(r.status, 200, `应 200，实得 ${r.status}`);
       const j = await r.json();
@@ -288,7 +298,7 @@ test('E3 门控开 + 正确设备 Key ⇒ 200 且 live:false（骨架 inert，�
 
 test('E4 门控开 + 错误设备 Key ⇒ 401（常量时间比对不放行）', async () => {
   await withServer({ SOUL_OS_OPEN_PROTOCOL: '1', SOUL_DEVICE_KEY: 'e35-unit-test-key' },
-    4860 + (process.pid % 40), async (base) => {
+    14860 + (process.pid % 40), async (base) => {
       const r = await callEndpoint(base, ENDPOINTS[1], { 'x-soul-device-key': 'wrong-key' });
       assert.equal(r.status, 401, `错误 Key 应 401，实得 ${r.status}`);
       assert.equal((await r.json()).code, 'SOUL_DEVICE_UNAUTHORIZED');

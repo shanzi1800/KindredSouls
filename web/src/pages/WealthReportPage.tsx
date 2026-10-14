@@ -32,6 +32,8 @@ import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 import { dispatchCheckoutRoute, hasExplicitBirthCoords } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— wealthRestore.mjs 为纯 JS 逻辑核（形状由 45-D2c 闸门守备）
 import { buildWealthRestoreUrl } from '../lib/wealthRestore.mjs';
+// @ts-ignore —— lastReportUrl.mjs 为纯 JS 逻辑核（形状由 P0 周期锁态闸门守备）
+import { isPeriodLockCode, saveLastReport, readLastReport, formatLockDate } from '../lib/lastReportUrl.mjs';
 import SacredYearlyReportBox from '../components/SacredYearlyReportBox';
 import { supabase } from '../lib/supabase';
 // 🛡️ V491/WP-2·F1b: 坐标解析抽为纯函数模块(与后端 coord-validator.js 对称),严禁静默退曼谷
@@ -43,6 +45,20 @@ import {
 } from '../lib/algos/i18n';
 import { cleanYearlyTimeline, parseYearlyReport } from '../lib/yearly-report-parser';
 export { cleanYearlyTimeline };
+
+// ═══ 🛡️ E45-G/P0（2026-10-14）: 周期锁态「查看已生成报告」═══
+//  病根（主公实测截屏 2026-10-14 08:26）：月报**账号级月锁**命中后，报告页只渲染一行
+//  裸错误文本 + 「重试」按钮（点下去必然再次失败）⇒ 死胡同：用户既不知规则、也无路可走。
+//  治法：① 锁态改渲染**体面锁定卡**（规则说明 + 下次可生成时间 + 查看已生成报告 + 返回修改）；
+//        ② 「查看已生成报告」需**现场留痕** ⇒ 生成成功时把本次请求的出生全参经
+//           `buildWealthRestoreUrl`（45-D2c 白名单单一真源）落 localStorage；
+//           同参重开 ⇒ 服务端 Cache HIT ⇒ 直接下发库内已生成报告（不重跑锁链）。
+//  纯核与行为断言见 `web/src/lib/lastReportUrl.mjs`（含空值守卫铁律：禁 'undefined' 毒化 URL）。
+const _ksSaveLastReport = (type: string, req: { birthDate?: string; lang?: string; birthTime?: unknown; lat?: unknown; lon?: unknown; tz?: unknown }) => {
+  saveLastReport(window.localStorage, type, req, window.location.search);
+};
+const _ksReadLastReport = (type: string): string => readLastReport(window.localStorage, type);
+const _ksFormatLockDate = (iso: unknown, lang: string): string => formatLockDate(iso, lang);
 
 
 // 🛠️ 军师方案D完全体:年报单向指针对齐流锚点体系
@@ -1065,6 +1081,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<WealthOracleResponse | null>(null);
+  // 🛡️ E45-G/P0（2026-10-14）: 周期锁态（月报/年报 403）—— 由「裸错误文本 + 无效重试」改渲染体面锁定卡
+  const [lockInfo, setLockInfo] = useState<{ code: string; nextAvailable?: string } | null>(null);
   // 🐾 E34-B5: 已领养灵宠（懒初始化自 localStorage ⇒ 刷新后仍显示「带路」状态）
   const [familiarLead, setFamiliarLead] = useState<FamiliarProfile | null>(() => {
     try {
@@ -1627,6 +1645,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         const _errRaw = await res.text().catch(() => '');
         let _errCode = '';
         try { _errCode = JSON.parse(_errRaw)?.code || ''; } catch (_) {}
+        // 🛡️ E45-G/P0（2026-10-14）: 周期锁（月报/年报 403）⇒ 体面锁定卡。
+        //   ⚠️ 这正是主公实测死胡同的命中路径——本 fetch 是**挂载自动加载**（reportType:'monthly'），
+        //   与 generateWealthReport 的流式/非流式两径互为独立，必须同帧统一路由到锁定卡。
+        if (isPeriodLockCode(_errCode)) {
+          let _nextAvail: string | undefined;
+          try { _nextAvail = JSON.parse(_errRaw)?.nextAvailable; } catch (_) {}
+          setLockInfo({ code: _errCode, nextAvailable: _nextAvail });
+          return;
+        }
         if (_errCode && _ERR_CODE_I18N[_errCode]) {
           setError(t(_ERR_CODE_I18N[_errCode]));
           return;
@@ -1642,6 +1669,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       setReportData(data);
+      // 🛡️ E45-G/P0: 挂载自动加载成功亦留痕（月报）——同参重开走 Cache HIT，供锁定卡回跳
+      _ksSaveLastReport('monthly', { birthDate: birth, lang, ..._bp });
       // 🛡️ E17/R11j ⑤: 非流式 JSON 的高纬告知 → 顶部 Banner
       const _hlNonStream = (data as any)?.highLatitudeNotice;
       if (_hlNonStream && _hlNonStream.notice) setHlNotice(String(_hlNonStream.notice));
@@ -2094,6 +2123,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 // V248: 同步 setSacredText，让 React 批量处理时sacredText 和 monthlyCardsReady 同时就绪
                 if (canvasOwnerRef.current === type) setSacredText(_final); // 🛡️ E24⑤/P0-2: 画布已易主则弃写终稿
                 setStreamedOnce(true);
+                // 🛡️ E45-G/P0（2026-10-14）: 现场留痕——本次成功生成的出生全参（供锁定卡「查看已生成报告」同参重开走 Cache HIT）
+                //   ⚠️ 用 `..._bp` 展开而非逐键字面量：r11u 闸门钉死「请求体 birthTime: _bp.birthTime 恰 4 处」，
+                //   留痕调用若复用该字面量会污染计数（语义等价，_bp 本就是 URL 直读的唯一真源）。
+                _ksSaveLastReport(type, { birthDate: _stableBirth, lang: _stableLang, ..._bp });
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') {
                   // 🛠️ V368-fix: 只在有有效内容时才挂载卡片，杜绝 [DONE] 时 _final=0 字符仍挂载空金属框架
@@ -2134,7 +2167,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                   //   故后端起 SSE 错误帧带 code。此处按 code 映射本地化文案（与非流式 403/429 同一套真源）。
                   const _gcode = parsed.code || '';
                   console.warn('[WealthReport] ⚠️ 流式路由错误:', parsed.error, _gcode);
-                  if (_gcode && _ERR_CODE_I18N[_gcode]) {
+                  if (isPeriodLockCode(_gcode)) {
+                    // 🛡️ E45-G/P0: 周期锁 ⇒ 体面锁定卡（非死胡同）；「重试」对本态无意义故不再出现
+                    setLockInfo({ code: _gcode, nextAvailable: parsed.nextAvailable });
+                  } else if (_gcode && _ERR_CODE_I18N[_gcode]) {
                     setError(`${t(_ERR_CODE_I18N[_gcode])}${parsed.nextAvailable ? ' ' + parsed.nextAvailable : ''}`);
                   } else {
                     setError(parsed.error);
@@ -2330,12 +2366,13 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         }
         // 403/429 等其他错误:显示具体原因
         const errCode = (errData as any)?.code || '';
+        // 🛡️ E45-G/P0: 周期锁（月报/年报）⇒ 体面锁定卡，与非流式 403 同一真源
+        if (isPeriodLockCode(errCode)) {
+          setLockInfo({ code: errCode, nextAvailable: (errData as any)?.nextAvailable });
+          return;
+        }
         let userMsg: string;
-        if (errCode === 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
-          userMsg = `${t('wealthReport.alreadyGeneratedMonthly')} ${(errData as any)?.nextAvailable || ''}`;
-        } else if (errCode === 'YEARLY_WEALTH_REPORT_QUOTA_EXHAUSTED') {
-          userMsg = `${t('wealthReport.alreadyGeneratedYearly')} ${(errData as any)?.nextAvailable || ''}`;
-        } else {
+        {
           const errMsg = (errData as any)?.error || (errData as any)?.message || `错误码 ${res.status}`;
           userMsg = `${t('wealthReport.generateFail')}: ${errMsg}`;
         }
@@ -2367,6 +2404,8 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         .replace(/^\s+/, '')
         .replace(/\s+$/, '');
       setWealthReport(cleanText);
+      // 🛡️ E45-G/P0（2026-10-14）: 非流式成功亦留痕（与流式路径同源，供锁定卡回跳走 Cache HIT）
+      _ksSaveLastReport(type, { birthDate: _stableBirth, lang: _stableLang, ..._bp });
     } catch (err) {
       console.error('[WealthReport] generateWealthReport error:', err);
       setWealthReport(currentLang === 'zh' ? '网络错误,请检查网络连接后重试。' : 'Network error, please try again.');
@@ -2398,6 +2437,84 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         <p style={{ color: '#D4AF37', fontSize: '14px' }}>
           {t('wealth.loading')}
         </p>
+      </div>
+    );
+  }
+
+  // 🛡️ E45-G/P0（2026-10-14）: 周期锁态 —— 体面锁定卡（说明规则 + 下次可生成 + 查看已生成 + 返回修改）
+  //  取代原「一行裸错误文本 + 重试（点了必然再失败）」死胡同（主公实测截屏 08:26 触发）。
+  if (lockInfo && !reportData) {
+    const _isMonthly = lockInfo.code === 'MONTHLY_WEALTH_REPORT_QUOTA_EXHAUSTED';
+    const _lastUrl = _ksReadLastReport(_isMonthly ? 'monthly' : 'yearly');
+    const _nextDate = _ksFormatLockDate(lockInfo.nextAvailable, currentLang);
+    const _gold = '#D4AF37';
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #080810 0%, #0D0D1A 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}>
+        <div style={{
+          maxWidth: '460px',
+          width: '100%',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(212,175,55,0.35)',
+          borderRadius: '20px',
+          padding: '32px 24px',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '40px', lineHeight: 1, marginBottom: '14px' }}>{_isMonthly ? '📅' : '📆'}</div>
+          <h2 style={{ color: _gold, fontSize: '19px', fontWeight: 700, margin: '0 0 12px' }}>
+            {t(_isMonthly ? 'wealthReport.lockedMonthlyTitle' : 'wealthReport.lockedYearlyTitle')}
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '14px', lineHeight: 1.7, margin: 0 }}>
+            {t(_isMonthly ? 'wealthReport.lockedMonthlyDesc' : 'wealthReport.lockedYearlyDesc')}
+          </p>
+          {_nextDate ? (
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: '14px 0 0' }}>
+              {t('wealthReport.lockedNextAvailable')}<span style={{ color: _gold, fontWeight: 700 }}> {_nextDate}</span>
+            </p>
+          ) : null}
+          <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {_lastUrl ? (
+              <button
+                onClick={() => { window.location.href = _lastUrl; }}
+                style={{
+                  padding: '13px 20px',
+                  borderRadius: '12px',
+                  border: `1px solid ${_gold}`,
+                  background: _gold,
+                  color: '#0B0B14',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginBottom: 0,
+                }}
+              >
+                {t('wealthReport.lockedViewGenerated')}
+              </button>
+            ) : null}
+            <button
+              onClick={() => onNavigate('/wealth')}
+              style={{
+                padding: '13px 20px',
+                borderRadius: '12px',
+                border: '1px solid rgba(212,175,55,0.5)',
+                background: 'transparent',
+                color: _gold,
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginBottom: 0,
+              }}
+            >
+              {t('wealthReport.lockedBackToEdit')}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

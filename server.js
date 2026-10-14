@@ -10684,6 +10684,307 @@ function lockMonthlyWeekRanges(text, lang, astroMatrix, reportType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🔴 P0-2（2026-10-14 主公朱批 · P0 熔断级生产热修）
+//   年报「金块日期」确定性后置硬锁 —— 高峰窗口 / 黑天鹅日期 = 引擎真值，绝非 LLM 自编。
+//
+// 病根（1979-11-11 线上年报实测，44 违背的第 1 与第 5 类）：
+//   · 引擎真值**早已注入 prompt**（v69_client.js::buildPeakTruthBlock 含 HARD RULE
+//     「copy the window dates above VERBATIM … the data above wins」），且**相位行星对 +
+//     容许度 12/12 全对**可证「真值确实到达」——但**日期**仍被 LLM 篡改：
+//     高峰窗口起点错 10/12（`1月10日` 出现 5 次、`4月1日` 出现 6 次 ⇒ 集中污染，非随机幻觉），
+//     并造出「区间倒挂」（2027-03：4月1日 - 3月31日）与「同日起止」（2027-04/05）。
+//   · 黑天鹅：真值有值 ⇒ 8/8 分毫不差；真值**空缺** ⇒ 4/4 **静默自编**（且编得「很像真的」）
+//     ⇒ 与产品铁律「缺真值 ⇒ 标注，禁静默伪造」正面相悖。
+//   ⇒ 结论：缺的不是真值，是**后置锁**；本锁纯确定性字符串覆盖，不触碰 LLM 行为。
+//
+// 治法（军师朱批原文）：按分段（`### YYYY年M月`）做确定性正则/文本覆盖替换；真值算出来
+//   本月没有黑天鹅高危日，后端就坚决替换为「本月星象平稳，无高危黑天鹅破财日」。
+//
+// 🔴 射程如实声明（军令立石：凡报「0 违背」必报射程；未测维度一律标「未测」）：
+//   · 射程 = **年报**（reportType==='yearly'）金块**日期区间**（起止）。
+//   · 🔴 **月报不在射程内 —— 且非疏漏**：月报交付文本**不含** [财富高峰窗口]/[财务黑天鹅日]
+//     金块（其结构为「命运主题 / 第N周周卡 / 消费陷阱」）；2026-10-14 以 1979-11-11 线上
+//     月报全文逐字核验确认 ⇒ **结构上不存在锚点**，非未覆盖。月报日期类真值由既有
+//     lockMonthlyWeekRanges（周标题区间）覆盖。
+//   · 🔴 **明确未测 / 未覆盖（挂账，禁当场扩射程 —— 防滑坡铁律）**：金块**子行**（执行指令 /
+//     断路器警告）里的自由散文日期（如「最晚在8月17日之前」）；流年行星落宫；同篇自相矛盾；
+//     残句；Mine E 周度流年太阳。以上均不在本锁射程内，修复后一律不得对外称「报告全对」。
+//
+// 纪律：幂等（已等于真值 ⇒ 零改动）；宁漏不改（标签认不出 / 段切不出 / 日期 token > 2 ⇒ 弃权 +
+//   日志）；**绝不改行数**（真值空缺只重写金块行与紧邻子行的**冒号后正文**）。
+// ══════════════════════════════════════════════════════════════════
+const _YG_LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+// 🔴 金块标签分组 —— 与 `_GN_LABELS` **同源**（该表偶数位 = 高峰窗口词，奇数位 = 黑天鹅词）。
+//   ⚠️ 必须以**函数**形式延迟求值，**禁止**写成模块顶层 `const _YG_PEAK_LABELS = _GN_LABELS.filter(…)`。
+//   血训（2026-10-14 实测）：多个既有闸门（audit-v452-v453 / audit-v445-outer-planets /
+//     audit-moon-week-hard-override）用「区间切片 + `new Function`」装配 server.js 源码，
+//     其切片区间 [10098, 11212) 会**连带**把本段代码带进一个**没有 `_GN_LABELS` 的作用域**；
+//     顶层 `const` 是**立即求值**的 ⇒ 直接 `ReferenceError: _GN_LABELS is not defined` ⇒ 老闸门全红。
+//   治法：本段顶层只允许「纯字面量 + 函数声明（函数体延迟求值）」，对既有常量的引用一律
+//     放进函数体内 —— 老闸门不调用本段函数 ⇒ 永不触发求值 ⇒ 零碰撞。
+//   ⚠️ 依赖该顺序契约 ⇒ 闸门断言「_GN_LABELS 长度 12 + 偶数位含 Peak/高峰 + 奇数位含 Swan/黑天鹅」。
+function _ygLabelsOf(kind) {
+  return _GN_LABELS.filter((_, i) => i % 2 === (kind === 'swan' ? 1 : 0));
+}
+// 🔴 真值空缺声明句（六语）—— 军师朱批原文即 zh 句；其余语种**等义直译**（禁增删语义）。
+const _YG_NO_SWAN_TEXT = {
+  zh: '本月星象平稳，无高危黑天鹅破财日。',
+  en: 'This month the sky is calm — no high-risk financial black-swan day.',
+  es: 'Este mes el cielo está tranquilo — sin día de cisne negro financiero de alto riesgo.',
+  fr: 'Ce mois-ci le ciel est calme — aucun jour de cygne noir financier à haut risque.',
+  th: 'เดือนนี้ดวงดาวสงบ ไม่มีวันวิกฤตการเงินความเสี่ยงสูง',
+  vi: 'Tháng này bầu trời bình yên — không có ngày thiên nga đen tài chính rủi ro cao.',
+};
+// 子行（断路器警告 / 执行指令）在真值空缺时的同步改写句 —— 防「主句说平稳、子句却仍在警告」的新矛盾。
+const _YG_NO_RISK_TEXT = {
+  zh: '无需特别防范，按常规财务纪律执行即可。',
+  en: 'No special precaution is needed — follow your usual financial discipline.',
+  es: 'No se requiere precaución especial — siga su disciplina financiera habitual.',
+  fr: 'Aucune précaution particulière — suivez votre discipline financière habituelle.',
+  th: 'ไม่ต้องระวังเป็นพิเศษ ปฏิบัติตามวินัยการเงินปกติ',
+  vi: 'Không cần đề phòng đặc biệt — hãy tuân thủ kỷ luật tài chính thường lệ.',
+};
+// 日期 token 扫描表：每语种一组「模板 + 分量角色」。
+//   roles 决定「该捕获组的值应替换为真值中的哪一分量」（y=年 / m=月号 / d=日 / mon=月名）。
+//   ⚠️ 只做**就地分量替换**（不重建整串）⇒ 原文的语序、标点、`ngày`/`de`/`tháng` 等虚词全保形。
+//   ⚠️ 年份槽可选（es/fr/th/vi）⇒ 原文无年份则不动年份（保形）；原文有年份则一并校正。
+const _YG_DATE_PATS = {
+  zh: [{ src: '(\\d{4})\\s*年\\s*(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日', roles: ['y', 'm', 'd'] }],
+  en: [
+    { src: '([A-Za-z\\u00c0-\\u00ff]+)\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})', roles: ['mon', 'd', 'y'] },
+    { src: '(\\d{1,2})(?:st|nd|rd|th)?\\s+([A-Za-z\\u00c0-\\u00ff]+),?\\s+(\\d{4})', roles: ['d', 'mon', 'y'] },
+  ],
+  es: [{ src: '(\\d{1,2})\\s+de\\s+([A-Za-z\\u00c0-\\u00ff]+)(?:\\s+de\\s+(\\d{4}))?', roles: ['d', 'mon', 'y'], i: true }],
+  fr: [{ src: '(\\d{1,2})(?:er|ère|e)?\\s+([A-Za-z\\u00c0-\\u00ff]+)(?:\\s+(\\d{4}))?', roles: ['d', 'mon', 'y'], i: true }],
+  th: [{ src: '(\\d{1,2})\\s+([\\u0e00-\\u0e7f.]+)(?:\\s+(?:พ\\.ศ\\.\\s*)?(\\d{4}))?', roles: ['d', 'mon', 'y'] }],
+  vi: [{ src: '(?:ngày\\s+)?(\\d{1,2})\\s+tháng\\s+(\\d{1,2})(?:,?\\s*năm\\s+(\\d{4}))?', roles: ['d', 'm', 'y'], i: true }],
+};
+// 各语种「完整日期」回写形态（仅用于原文**完全无日期 token** 的兜底插入）。
+const _YG_FMT_FULL = {
+  zh: (y, m, d) => `${y}年${m}月${d}日`,
+  en: (y, m, d) => `${_EPHEM_DAYMON.en[m - 1]} ${d}, ${y}`,
+  es: (y, m, d) => `${d} de ${_EPHEM_DAYMON.es[m - 1]} de ${y}`,
+  fr: (y, m, d) => `${d} ${_EPHEM_DAYMON.fr[m - 1]} ${y}`,
+  th: (y, m, d) => `${d} ${_EPHEM_DAYMON.th[m - 1]} ${y}`,
+  vi: (y, m, d) => `ngày ${d} tháng ${m} năm ${y}`,
+};
+const _YG_ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// 段内金块行分类（标签「出现即命中」，长词优先已由 _GN_LABELS 内部保证）
+function _ygLabelKind(line) {
+  const s = String(line == null ? '' : line);
+  if (!s) return null;
+  for (const L of _ygLabelsOf('peak')) if (s.indexOf(L) >= 0) return 'peak';
+  for (const L of _ygLabelsOf('swan')) if (s.indexOf(L) >= 0) return 'swan';
+  return null;
+}
+
+// 引擎真值 → 高峰窗口起止 [isoStart, isoEnd]；无值 ⇒ null（弃权，绝不自编）
+function _ygPeakRange(m) {
+  const pw = (m && Array.isArray(m.peak_windows)) ? m.peak_windows : [];
+  const w = pw[0] || {};
+  const days = (Array.isArray(w.window_days) ? w.window_days : [])
+    .map((s) => String(s)).filter((s) => _YG_ISO_RE.test(s)).sort();
+  if (days.length) return [days[0], days[days.length - 1]];
+  const ds = String(w.dates || '').match(/\d{4}-\d{2}-\d{2}/g);
+  if (ds && ds.length) { const s = ds.slice().sort(); return [s[0], s[s.length - 1]]; }
+  return null;
+}
+
+// 引擎真值 → 黑天鹅起止 [isoStart, isoEnd]；真值空缺（引擎确无高危日）⇒ null（触发「声明无高危日」分支）
+function _ygSwanRange(m) {
+  const arr = (m && Array.isArray(m.black_swan_days)) ? m.black_swan_days : [];
+  const days = arr.map((d) => (d && _YG_ISO_RE.test(String(d.date)) ? String(d.date) : null))
+    .filter(Boolean).sort();
+  if (!days.length) return null;
+  return [days[0], days[days.length - 1]];
+}
+
+// 行内日期 token 扫描（就地分量索引由 `d` flag 提供；月名合法性用 _EPHEM_MON_IDX 校验）
+function _ygScanDates(line, lang) {
+  const pats = _YG_DATE_PATS[lang];
+  if (!pats) return [];
+  const toks = [];
+  for (const P of pats) {
+    const re = new RegExp(P.src, P.i ? 'gdi' : 'gd');
+    let mm;
+    while ((mm = re.exec(line)) !== null) {
+      if (mm[0] === '') { re.lastIndex++; continue; }
+      const groups = [];
+      let ok = false;
+      for (let gi = 1; gi <= P.roles.length; gi++) {
+        const role = P.roles[gi - 1];
+        const gtext = mm[gi];
+        const gidx = mm.indices && mm.indices[gi];
+        if (gtext === undefined || !gidx) { groups.push(null); continue; }
+        if (role === 'mon') {
+          if (!_EPHEM_MON_IDX[String(gtext).toLowerCase()]) { groups.push(null); continue; }
+        } else {
+          const n = Number(gtext);
+          if (!Number.isInteger(n)) { groups.push(null); continue; }
+          if (role === 'm' && !(n >= 1 && n <= 12)) { groups.push(null); continue; }
+          if (role === 'd' && !(n >= 1 && n <= 31)) { groups.push(null); continue; }
+          if (role === 'y' && !(n >= 1000 && n <= 9999)) { groups.push(null); continue; }
+        }
+        groups.push({ role, start: gidx[0], end: gidx[1], text: String(gtext) });
+        ok = true;
+      }
+      if (ok) toks.push({ start: mm.index, end: mm.index + mm[0].length, raw: mm[0], groups });
+    }
+  }
+  toks.sort((a, b) => a.start - b.start);
+  const uniq = [];
+  for (const t of toks) { if (uniq.length && t.start < uniq[uniq.length - 1].end) continue; uniq.push(t); }
+  return uniq;
+}
+
+// 单个 token → 就地分量替换 patches（值取自真值 iso；月名保原文大小写风格）
+function _ygTokenPatches(tok, lang, iso, usedBeYear) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const out = [];
+  for (const g of tok.groups) {
+    if (!g) continue;
+    let v = null;
+    if (g.role === 'y') v = String(usedBeYear ? (y + _V516_TH_BE_OFFSET) : y);
+    else if (g.role === 'm') v = String(m);
+    else if (g.role === 'd') v = String(d);
+    else if (g.role === 'mon') {
+      const arr = _EPHEM_DAYMON[lang] || _EPHEM_DAYMON.en;
+      if (!arr[m - 1]) continue;
+      v = _hsMatchCase(g.text, arr[m - 1]);   // 保形：源词大写 ⇒ 目标大写（July/juillet 两制并存）
+    }
+    if (v === null || v === g.text) continue;
+    out.push({ start: g.start, end: g.end, text: v });
+  }
+  return out;
+}
+
+// 真值起止 → 该语种完整日期区间文本（用于「单 token」与「无 token」两条兜底路径）
+function _ygRangeText(lang, range) {
+  const f = _YG_FMT_FULL[lang] || _YG_FMT_FULL.zh;
+  const A = f.apply(null, range[0].split('-').map(Number));
+  if (range[0] === range[1]) return A;
+  return A + ' - ' + f.apply(null, range[1].split('-').map(Number));
+}
+
+// 在指定行上把日期区间改写为真值。返回 1=已改，0=弃权/无变化（幂等）。
+function _ygRewriteRangeOnLine(lines, j, lang, range) {
+  const line = lines[j];
+  if (typeof line !== 'string' || !line) return 0;
+  const toks = _ygScanDates(line, lang);
+  if (toks.length > 2) return 0;                 // 宁漏不改（>2 个日期 ⇒ 区间跨接会吞正文）
+  const usedBe = (lang === 'th') && /พ\.ศ\./.test(line);
+  let out;
+  if (toks.length === 0) {
+    const ci = line.search(/[:：]/);
+    if (ci < 0) return 0;                        // 结构认不出 ⇒ 弃权
+    out = line.slice(0, ci + 1) + ' **' + _ygRangeText(lang, range) + '**' + line.slice(ci + 1);
+  } else if (toks.length === 1) {
+    const t = toks[0];
+    out = line.slice(0, t.start) + _ygRangeText(lang, range) + line.slice(t.end);
+  } else {
+    const patches = _ygTokenPatches(toks[0], lang, range[0], usedBe)
+      .concat(_ygTokenPatches(toks[1], lang, range[1], usedBe));
+    if (!patches.length) return 0;
+    patches.sort((a, b) => b.start - a.start);
+    out = line;
+    for (const p of patches) out = out.slice(0, p.start) + p.text + out.slice(p.end);
+  }
+  if (out === line) return 0;
+  lines[j] = out;
+  return 1;
+}
+
+// 黑天鹅真值空缺 ⇒ 金块行改写为「本月星象平稳，无高危黑天鹅破财日」（禁自编）
+function _ygVacantLine(line, lang) {
+  const ci = line.search(/[:：]/);
+  if (ci < 0) return line;                       // 认不出结构 ⇒ 弃权
+  const txt = _YG_NO_SWAN_TEXT[lang] || _YG_NO_SWAN_TEXT.zh;
+  if (line.slice(ci + 1).indexOf(txt) >= 0) return line;   // 幂等
+  return line.slice(0, ci + 1) + ' ' + txt;
+}
+
+// 子行判定：列表符起手 + 含冒号 + 长度合理（宁漏不改）
+function _ygIsSubline(line) {
+  const s = String(line == null ? '' : line);
+  if (!s) return false;
+  if (!/^\s*[*\-•]\s+/.test(s)) return false;
+  if (!/[:：]/.test(s)) return false;
+  return s.length <= 400;
+}
+function _ygRewriteSubline(line, lang) {
+  const ci = line.search(/[:：]/);
+  if (ci < 0) return null;
+  const txt = _YG_NO_RISK_TEXT[lang] || _YG_NO_RISK_TEXT.zh;
+  if (line.slice(ci + 1).indexOf(txt) >= 0) return null;   // 幂等
+  return line.slice(0, ci + 1) + ' ' + txt;
+}
+
+function lockYearlyGoldNuggetDates(text, lang, astroMatrix, reportType) {
+  try {
+    if (reportType !== 'yearly') return text;
+    if (!text || typeof text !== 'string') return text;
+    if (!_YG_LANGS.includes(lang)) return text;
+    const months = astroMatrix && astroMatrix.months;
+    if (!Array.isArray(months) || months.length < 2) return text;
+
+    const lines = text.split('\n');
+    // ① 月标题行 → 段界（复用 `_v516MonthHeadKey`：六语月标题识别**唯一真源**，杜绝另起月名表）
+    const heads = [];
+    for (let i = 0; i < lines.length; i++) {
+      const k = _v516MonthHeadKey(lines[i], lang);
+      if (k) heads.push({ i, key: k.y * 12 + k.mo });
+    }
+    if (heads.length < 2) return text;            // 切不出多月矩阵 ⇒ 弃权
+    // ② month_key → 矩阵下标（比「标题出现顺序」更稳：标题乱序也能对上）
+    const idxByKey = new Map();
+    for (let i = 0; i < months.length; i++) {
+      const mk = /^(\d{4})-(\d{1,2})$/.exec(String(months[i].month_key || ''));
+      if (mk) idxByKey.set(Number(mk[1]) * 12 + Number(mk[2]), i);
+    }
+
+    let dateFixes = 0, swanVacant = 0, sublineFixes = 0, skipped = 0;
+    for (let s = 0; s < heads.length; s++) {
+      const from = heads[s].i;
+      const to = (s + 1 < heads.length) ? heads[s + 1].i : lines.length;
+      const mi = idxByKey.get(heads[s].key);
+      if (mi === undefined) continue;
+      const m = months[mi] || {};
+      for (let j = from + 1; j < to; j++) {
+        const kind = _ygLabelKind(lines[j]);
+        if (!kind) continue;
+        if (kind === 'peak') {
+          const r = _ygPeakRange(m);            // 引擎保底 ⇒ 恒有值；无值即弃权
+          if (!r) { skipped++; continue; }
+          if (_ygRewriteRangeOnLine(lines, j, lang, r) > 0) dateFixes++; else skipped++;
+        } else {
+          const r = _ygSwanRange(m);
+          if (r) {
+            if (_ygRewriteRangeOnLine(lines, j, lang, r) > 0) dateFixes++; else skipped++;
+          } else {
+            // 🔴 真值空缺 ⇒ 声明无高危日（军师铁律：绝罚自编）+ 紧邻子行同步（禁新矛盾）
+            const nl = _ygVacantLine(lines[j], lang);
+            if (nl !== lines[j]) { lines[j] = nl; swanVacant++; }
+            const j2 = j + 1;
+            if (j2 < to && _ygIsSubline(lines[j2])) {
+              const sl = _ygRewriteSubline(lines[j2], lang);
+              if (sl !== null && sl !== lines[j2]) { lines[j2] = sl; sublineFixes++; }
+            }
+          }
+        }
+      }
+    }
+    if (!dateFixes && !swanVacant && !sublineFixes) return text;   // 零改动 ⇒ 逐字节返回原文（幂等）
+    console.log(`[P0-2][YEARLY-GOLD-DATE-LOCK] ${lang} 年报金块日期后置硬锁: 日期区间修正 ${dateFixes} 处`
+      + ` | 黑天鹅真值空缺改声明 ${swanVacant} 处 | 子行同步 ${sublineFixes} 处 | 弃权 ${skipped} 处`);
+    return lines.join('\n');
+  } catch (e) {
+    console.warn('[P0-2][YEARLY-GOLD-DATE-LOCK] 异常，原文透传:', e && e.message);
+    return text;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🛡️ V445：流年行星星座归属锁（军师 9-14 主公令·极致封仓）
 // 目的：V444 只锁本命锚点(上升/太阳/月亮)。但陷阱段 LLM 仍会把
 //   流年行星(水/金/火/木/土)的星座写错——如把火星写成天蝎座(实则在巨蟹)，
@@ -15466,6 +15767,9 @@ app.post('/api/wealth-oracle', async (req, res) => {
         reportContent = applyOnceHouseLock(reportContent, lang, astroMatrix, reportType);
         // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同收口位；仅 monthly 生效）
         reportContent = lockMonthlyWeekRanges(reportContent, lang, astroMatrix, reportType);
+        // 🔴 P0-2: 年报金块日期后置硬锁（同收口位；仅 yearly 生效）—— 高峰窗口 / 黑天鹅日期
+        //   强制等于引擎真值；真值空缺 ⇒ 改「本月星象平稳，无高危黑天鹅破财日」（禁自编）。
+        reportContent = lockYearlyGoldNuggetDates(reportContent, lang, astroMatrix, reportType);
         return reportContent;
         };  // ── end _e10PostProcess ──
         let reportContent = _e10PostProcess(aiResult);
@@ -17454,6 +17758,8 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
     cleanedText = applyOnceHouseLock(cleanedText, lang, astroMatrix, reportType);
     // 🛡️ E42+/45-D2 顺带修正: 月报周卡片标题日期区间真值锁（同一共同上游；仅 monthly 生效）
     cleanedText = lockMonthlyWeekRanges(cleanedText, lang, astroMatrix, reportType);
+    // 🔴 P0-2: 年报金块日期后置硬锁（与非流式端点同源、同一共同上游 ⇒ 客户端终稿与落库文本逐字同源）
+    cleanedText = lockYearlyGoldNuggetDates(cleanedText, lang, astroMatrix, reportType);
 
     // 🛠️ V316-fix3: sanitized 事件去重——在发送前调用去重，确保客户端收到的 sanitized 是单份完整报告
     let _sanitizedForClient = cleanedText;

@@ -2715,10 +2715,21 @@ const _getH = (v) => typeof v === 'number' ? v : (v?.house ?? v?.natal_house ?? 
 // ── V439 月报骨架生成 ─────────────────────────────────────────────────────────
 // 治本：概述句和陷阱段内容由算法硬生成真值骨架，剥夺 LLM 编造天文事实的最后自留地。
 
+// 🔴 P0-1 热修（2026-10-14）：**键恒为小写**，与全部消费方的入参形态同源。
+//   血训（同源字段名失配 ⇒ 静默回落，与 E25-P2/A、45-D1 参数名错位同族）：
+//     原表键为**大写**（`Sun`/`Mercury`…），而下方两处消费点的入参 `p.k` / `d.k` 恒为
+//     **小写**（`pNames = ['sun','mercury',…]` / `dangerPlanets = ['venus','mars',…]`）
+//     ⇒ `PLANET_ZH_MAP[p.k]` **恒为 undefined**、恒回落 `|| p.k` ⇒ 月报真值块的行星名
+//     恒为小写英文（实测 dump：`· mercury: 天蝎座第9宫`），**中文行星名全线丢失**。
+//   后果：LLM 收到的真值是「`mercury`: 天蝎座第9宫」而非「水星：天蝎座第9宫」，
+//     真值锚定强度被削弱（LLM 须自行做英文小写→中文行星名映射）——与线上实测
+//     「高频词（太阳/火星/木星）全对、低频词（水星/土星/海王星/天王星/冥王星）集中出错」吻合。
+//   守备：闸门 test/audit-p0-golddate-lock.test.mjs 断言「表键全小写 + 与 pNames 双射」
+//     并以注入反漂移（键改回大写 ⇒ 输出回落英文 ⇒ 必红）锁定。
 const PLANET_ZH_MAP = {
-  Sun:'太阳', Moon:'月亮', Mercury:'水星', Venus:'金星',
-  Mars:'火星', Jupiter:'木星', Saturn:'土星',
-  Uranus:'天王星', Neptune:'海王星', Pluto:'冥王星',
+  sun:'太阳', moon:'月亮', mercury:'水星', venus:'金星',
+  mars:'火星', jupiter:'木星', saturn:'土星',
+  uranus:'天王星', neptune:'海王星', pluto:'冥王星',
 };
 
 const RISK_LANG = {
