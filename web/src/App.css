@@ -505,7 +505,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 
 .landing-start-btn {
-  margin-top: 32px;
+  margin-top: 0; /* 🐾 E52: 上间距整体上移至 .landing-start-wrap（锚点线 = 按钮顶，几何可算） */
   padding: 16px 48px;
   font-size: 18px;
   font-weight: 700;
@@ -531,7 +531,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .landing-start-wrap {
   position: relative;
   display: inline-block;
-  margin-top: 40px; /* 与按钮自身 margin-top 叠加 ⇒ 为灵宠留出「缘分天定→按钮」黄金空隙 */
+  /* 🐾 E52: 40+32=72px 总空隙整体上移到此（按钮自身 margin-top 已归零）⇒ 锚点 top:0 即按钮顶，
+     灵宠「体底压键沿」可纯数学定位（体底比例实测：Milo 0.780 / Sophia 0.775） */
+  margin-top: 72px;
 }
 #ks-familiar-anchor {
   position: absolute;
@@ -561,12 +563,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: ksFamPatrolSophia 9.5s ease-in-out infinite alternate;
 }
 @keyframes ksFamPatrolMilo {
-  from { transform: translateY(19.4%) translateX(-14%); }
-  to   { transform: translateY(19.4%) translateX(14%); }
+  from { transform: translateY(24.2%) translateX(-14%); }
+  to   { transform: translateY(24.2%) translateX(14%); }
 }
 @keyframes ksFamPatrolSophia {
-  from { transform: translateY(25%) translateX(14%); }
-  to   { transform: translateY(25%) translateX(-14%); }
+  from { transform: translateY(24.7%) translateX(14%); }
+  to   { transform: translateY(24.7%) translateX(-14%); }
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -655,15 +657,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 /* 命理气泡轻语（纯展示，pointer-events:none 绝不挡操作） */
 .ks-fam-bubble {
   position: absolute;
-  bottom: 86%;
+  /* 🐾 E52: 气泡抬到灵宠**正上方**（bottom 86% 时正好盖住自己的头，主公点击将看不到脸） */
+  bottom: 106%;
   left: 62%;
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(250px, 62vw);
+  max-width: min(230px, 60vw);
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 10px 14px;
+  gap: 2px;
+  padding: 8px 12px;
   background: rgba(24, 18, 38, 0.94);
   border: 1px solid rgba(212, 175, 55, 0.55);
   border-radius: 14px 14px 14px 3px;
@@ -671,9 +674,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   pointer-events: none;
   animation: ksFamBubbleIn 0.28s ease-out;
 }
-.ks-fam-sophia .ks-fam-bubble { left: 34%; border-radius: 14px 14px 3px 14px; }
-.ks-fam-bubble-name { color: #F0D060; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
-.ks-fam-bubble-line { color: rgba(240, 230, 200, 0.92); font-size: 12.5px; line-height: 1.55; }
+.ks-fam-sophia .ks-fam-bubble { left: 38%; border-radius: 14px 14px 3px 14px; }
+.ks-fam-bubble-name { color: #F0D060; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4; }
+.ks-fam-bubble-line { color: rgba(240, 230, 200, 0.92); font-size: 12px; line-height: 1.5; }
 @keyframes ksFamBubbleIn {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -706,8 +709,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
   /* 🐾 E52: 巡视 / 眨眼 / 尾蠕动一并降级为静帧（趴键位保持） */
-  .ks-fam-milo { animation: none; transform: translateY(19.4%); }
-  .ks-fam-sophia { animation: none; transform: translateY(25%); }
+  .ks-fam-milo { animation: none; transform: translateY(24.2%); }
+  .ks-fam-sophia { animation: none; transform: translateY(24.7%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
