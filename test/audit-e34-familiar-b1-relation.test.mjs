@@ -98,10 +98,11 @@ test('A2 前端卡片 skin 与 Python RELATION_PALETTE 逐值同源', () => {
   }
 });
 
-test('A3 六语 i18n 全部具备 familiar 命名空间（16 键）', () => {
+test('A3 六语 i18n 全部具备 familiar 命名空间（17 键）', () => {
+  // 🐾 E52（主公亲令 2026-10-15）: leadHome 退役 → 性别化 leadHomeShe/He 两键入列（16 → 17 键）
   const keys = ['title', 'subtitle', 'girlfriend', 'girlfriendDesc', 'bestie', 'bestieDesc',
-    'buddy', 'buddyDesc', 'boyfriend', 'boyfriendDesc', 'adopting', 'adopted', 'leadHome',
-    'skip', 'degradedNote', 'error'];
+    'buddy', 'buddyDesc', 'boyfriend', 'boyfriendDesc', 'adopting', 'adopted', 'leadHomeShe',
+    'leadHomeHe', 'skip', 'degradedNote', 'error'];
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
     assert.ok(o.familiar, `${l}.json 缺 familiar 命名空间`);

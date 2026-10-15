@@ -39,8 +39,14 @@ import { TimeInput } from './TimeInput';
 import { supabase } from '../lib/supabase';
 import type { CityRecord } from '../hooks/useCitySearch';
 // 🐾 E51：主公钦定原画切片（macOS Vision 主体提取 + Alpha 透明 WebP，几何真值见 /tmp/e51_assets/out/geometry.json）
+// 🐾 E52（主公亲令 2026-10-15）：本体已擦尾（尾层独立可摆）＋ 眨眼帧（毛色环形取样盖眼＋闭眼弧）；
+//   Sophia 本体经脸型收窄 warp（y0=0.92 → y320=1.0，对齐 Milo 头身比）
 import miloSprite from '../assets/familiar_milo.webp';
 import sophiaSprite from '../assets/familiar_sophia.webp';
+import miloTail from '../assets/familiar_milo_tail.webp';
+import miloBlink from '../assets/familiar_milo_blink.webp';
+import sophiaTail from '../assets/familiar_sophia_tail.webp';
+import sophiaBlink from '../assets/familiar_sophia_blink.webp';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, FAMILIAR_ADOPT_PATH } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
@@ -320,6 +326,10 @@ const FamiliarHomeCard: React.FC = () => {
           >
             <div className="ks-fam-breathe" aria-hidden="true">
               <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} />
+              {/* 🐾 E52：眨眼帧叠加（周期性瞬目，3~5s 一次；reduced-motion 降级为不眨） */}
+              <img className="ks-fam-img-blink" src={ip === 'Milo' ? miloBlink : sophiaBlink} alt="" draggable={false} />
+              {/* 🐾 E52：独立尾层（transform-origin 在尾根，正弦蠕动；真源 geometry.json E52） */}
+              <img className="ks-fam-tail" src={ip === 'Milo' ? miloTail : sophiaTail} alt="" draggable={false} />
             </div>
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec)} aria-hidden="true" tabIndex={-1} />

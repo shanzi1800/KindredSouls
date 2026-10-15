@@ -3114,7 +3114,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         />
 
         {/* 🔒 E48（主公亲令 2026-10-14）: 「已就位·带路」条仅**已解锁**后呈现 ——
-            未付费严禁展示领养成果、严禁跳转（旧免费漏斗按新商业门禁收口） */}
+            未付费严禁展示领养成果、严禁跳转（旧免费漏斗按新商业门禁收口）
+            🐾 E52（主公亲令 2026-10-15）: ① 右侧按钮高亮方框化，文案性别化（她/他 按 relation_mode）；
+            ② 点击 = onNavigate('/') **单页路由直跳首页** —— 严禁 history.back 多次返回 */}
         {!authChecking && isUnlocked && reportData && familiarLead && (
           <div style={{
             marginTop: '16px', padding: '12px 14px', borderRadius: '12px',
@@ -3127,12 +3129,17 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             <button
               onClick={() => onNavigate('/')}
               style={{
-                padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.5)',
-                background: 'rgba(212,175,55,0.12)', color: '#D4AF37',
-                fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                padding: '8px 14px', borderRadius: '9px', border: '1px solid rgba(240,208,96,0.85)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 100%)',
+                color: '#0D0D1A',
+                fontSize: '11.5px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
+                boxShadow: '0 2px 10px rgba(212,175,55,0.35)',
               }}
             >
-              {t('familiar.leadHome')} →
+              {(String(familiarLead.relation_mode || '') === 'buddy' || String(familiarLead.relation_mode || '') === 'boyfriend')
+                ? t('familiar.leadHomeHe')
+                : t('familiar.leadHomeShe')}
+              {' '}→
             </button>
           </div>
         )}
@@ -3461,6 +3468,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             lon={_familiarBp.lon}
             tz={_familiarBp.tz}
             lang={currentLang}
+            onLeadHome={() => onNavigate('/')}
           />
         )}
 

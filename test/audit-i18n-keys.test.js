@@ -88,7 +88,8 @@ describe('V448 i18n Key 门禁', () => {
     // 🐾 E34-D5（2026-10-14）: 新增灵宠首页座位卡 29 个 key（familiar.home* 19 ＋ axis* 5 ＋ whisper* 5）
     // 74 → 103（6 语种同步新增，键集合全等不变）
     // 103 → 104（E48 主公亲令 2026-10-14: familiar.needUnlock 未付费拦截 Toast，6 语种同步）
-    assert.strictEqual(p.total, 104, 'E48 新增 familiar.needUnlock 1 键后基准键数应为 104');
+    // 104 → 105（E52 主公亲令 2026-10-15: familiar.leadHomeShe/He 性别化带路两键入列、leadHome 退役，6 语种同步）
+    assert.strictEqual(p.total, 105, 'E52 性别化带路两键（leadHome 退役）后基准键数应为 105');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

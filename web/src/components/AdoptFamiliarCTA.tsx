@@ -40,14 +40,18 @@ interface AdoptFamiliarCTAProps {
   lon: number;
   tz: string;
   lang?: string;
+  /** 🐾 E52（主公亲令 2026-10-15）: 认领成功后「带路」直达回调 —— 宿主页注入 SPA 路由直跳；
+      未注入时兜底 window.location.href='/'（同样是直达，严禁 history.back） */
+  onLeadHome?: () => void;
 }
 
-const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh' }) => {
+const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState(false);
   const [adopted, setAdopted] = useState<string | null>(null);
+  const [adoptedMode, setAdoptedMode] = useState<string>('');
   const [persisted, setPersisted] = useState(false);
 
   // 跨刷新留存（灵宠档案是 localStorage 持久化铁律的**唯一例外**，与 FamiliarPicker 同源键）
@@ -65,6 +69,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
           return;
         }
         setAdopted(name);
+        setAdoptedMode(String((rec.profile && rec.profile.relation_mode) || ''));
         setPersisted(!!rec.persisted);
       }
     } catch (_) { /* 隐私模式忽略 */ }
@@ -112,6 +117,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
         }));
       } catch (_) { /* 隐私模式忽略 */ }
       setAdopted(profile.name);
+      setAdoptedMode(mode);
       setPersisted(!!data.persisted);
       setOpen(false);
     } catch (_) {
@@ -144,6 +150,25 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
               ({lang === 'zh' ? '本机留存' : lang === 'en' ? 'local only' : lang === 'es' ? 'solo local' : lang === 'fr' ? 'local seul' : lang === 'th' ? 'เก็บในเครื่อง' : 'chỉ cục bộ'})
             </span>
           )}
+          {/* 🐾 E52（主公亲令 2026-10-15）: 右侧高亮方框「带路」按钮 —— 点击**单页路由直跳首页**，
+              严禁 history.back 多次返回；文案性别化（她/他 按 relation_mode 白名单二分） */}
+          <button
+            type="button"
+            data-testid="adopt-lead-home"
+            onClick={() => { if (onLeadHome) onLeadHome(); else { try { window.location.href = '/'; } catch (_) {} } }}
+            style={{
+              marginLeft: 'auto', padding: '8px 14px', borderRadius: '9px',
+              border: '1px solid rgba(240,208,96,0.85)',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 100%)',
+              color: '#0D0D1A', fontSize: '11.5px', fontWeight: 800, cursor: 'pointer',
+              whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(212,175,55,0.35)',
+            }}
+          >
+            {(adoptedMode === 'buddy' || adoptedMode === 'boyfriend')
+              ? t('familiar.leadHomeHe')
+              : t('familiar.leadHomeShe')}
+            {' '}→
+          </button>
         </div>
       ) : (
         <>
