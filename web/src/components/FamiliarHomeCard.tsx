@@ -1,63 +1,58 @@
 /**
- * FamiliarHomeCard.tsx —— 灵宠「首页座位卡」（主公特赦令 · 前端呈现线 · E46）
+ * FamiliarHomeCard.tsx —— 灵宠首页「破框骑键」宿主（E53 净化版 · 主公亲令 2026-10-15）
  * ═══════════════════════════════════════════════════════════════════════════
- * 主公令（2026-10-14）：「灵宠的认领环节和生成灵宠后再首页呈现的形态都需要实现」。
+ * 🔴 E53-1 首页净化铁律（主公钦定白名单）：首页只允许保留
+ *    星空背景 ＋ 缘分天定 ＋ 趴在「开始测算」按钮上的灵宠 ＋ 极简切换语言。
+ *    ⇒ ① E46 时代的「未认领折叠条 / 生辰认领表单」整体拔除（认领全链路收归
+ *      报告页付费流：付费墙 FamiliarPicker ＋ 报告尾 AdoptFamiliarCTA）；
+ *    ⇒ ② 「换一位伙伴」（↺ 重置浮钮）扫地出门 —— 更换灵宠属 $99.99 高阶灵契
+ *      特权（见下方商业锚点契约），首页不再提供任何更换入口；
+ *    ⇒ ③ 本组件在「未认领」时渲染空壳（零网络 / 零挂件），有档且有权益才呈现灵宠。
  *
- * 现状（落码前已勘察）：认领入口已有**两处**（付费墙 FamiliarPicker ＋ 报告尾 AdoptFamiliarCTA），
- *   但**首页毫无呈现**（FamiliarOverlay 是未挂载的 Stub）⇒ 认领完就再也见不到灵宠。
- *   本组件即补齐「首页呈现」这一空白，并把认领环节在首页也开出一处轻量入口。
+ * 🔴 E53-2 商业锚点契约（本期仅预留架构，不接支付）：
+ *    - $4.99 首次解锁报告 ⇒ 免费契约认领 1 只灵宠入驻首页（现状，唯一通路＝报告页）；
+ *    - FAMILIAR_DUAL_PRICE_USD = $99.99 ⇒「Milo ＋ Sophia 双宠齐聚骑键」高阶灵契
+ *      （未来实现：支付成功 ⇒ 权益位 familiar_dual ⇒ 第二档灵宠写入 ⇒ 本组件
+ *      recs 数组天然容纳两条 HomeRecord，破框骑键层双宠同台：Milo 左 / Sophia 右，
+ *      CSS 定位已按 IP 自洽，无需新增样式）。
  *
- * 🔴 三态（主公钦定）：
- *   ① collapsed 未认领折叠条 —— 一行轻提示 ＋ 「去认领」，不占版面；
- *   ② form      出生信息 ＋ 四象关系认领 —— 选一位伙伴即认领；
- *   ③ seat      已认领座位卡 —— 内置 CSS 占位立绘（呼吸 ＋ 瞳随指动）＋
- *                名字 / IP / 关系 / 五维性格条 / 星源三真相 / 降级告知 / 今日寄语。
- *
- * 🔴 两条硬约束（勘察所得，非可选）：
- *   A. **首页拿不到出生真值**（全站无任何 localStorage 键存用户生日）⇒ 本卡**自己承接**采集，
- *      并优先从三重来源只读抽取（当前 URL ⇒ `ks_last_wealth_report` ⇒ `ks_oauth_back_url`）；
- *   B. **`CitySearchInput` 挂载即拉 6.6MB `cities.json`** ⇒ 城市搜索框**只在 form 态渲染**
- *      （折叠态与座位卡态零网络），保住首屏。
- *
- * 🔴 E34 D5 红线：认领入参只许出生时空 ＋ 关系模式六键，经 `buildFamiliarAdoptPayload()`
- *   **白名单构造** ＋ `isCleanFamiliarAdoptPayload()` 自检；自检失败 ⇒ 宁可不发（fail-closed）。
- *   且**四件不全**（日期 / 成对坐标 / 时区）时绝不提交 —— 禁以默认盘（曼谷）冒充出生地。
- *
- * 🔴 呈现纪律：E51（主公钦定原画 2026-10-14）起，已认领呈现**升维为「破框骑键」**——
- *   Milo / Sophia（主公钦定 Gemini 原画切片，Alpha 透明 WebP）骑在首页「开始测算」
- *   金色大按钮上沿（破框突破卡片边界）；外层 pointer-events:none 物理穿透，
- *   仅头部/爱心宝石命中区保留点击（呼吸微光 + 今日寄语气泡）。
- *   座位卡（E46 CSS 占位立绘版）就此退役；未认领态仍走折叠条/表单，零灵宠呈现（主公裁决）。
+ * 🔴 沿袭铁律（E48/E49/E50/E51/E52，一概不放松）：
+ *    - E50 门禁 fail-closed：paidOk !== true（判定中 / 查库失败）一律不呈现；
+ *    - E49 按盘隔离：认领档必带 chartSig，URL ?reset=1 自洁，签名不匹配即弃即清；
+ *    - E51/E52 破框骑键：外层 pointer-events:none 物理穿透，仅头部/宝石命中区可点；
+ *      眨眼帧 ＋ 独立尾层蠕动 ＋ 巡视动画（CSS 真值见 App.css E52 区）；
+ *    - 沙箱态保留 🧪 一键重置（live 态零呈现，测试基建不属「挂件」）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { RELATION_CARDS, FAMILIAR_LS_KEY, type FamiliarProfile } from './FamiliarPicker';
-import { CitySearchInput } from './CitySearchInput';
-import { TimeInput } from './TimeInput';
+import { FAMILIAR_LS_KEY, type FamiliarProfile } from './FamiliarPicker';
 import { supabase } from '../lib/supabase';
-import type { CityRecord } from '../hooks/useCitySearch';
 // 🐾 E51：主公钦定原画切片（macOS Vision 主体提取 + Alpha 透明 WebP，几何真值见 /tmp/e51_assets/out/geometry.json）
 // 🐾 E52（主公亲令 2026-10-15）：本体已擦尾（尾层独立可摆）＋ 眨眼帧（毛色环形取样盖眼＋闭眼弧）；
 //   Sophia 本体经脸型收窄 warp（y0=0.92 → y320=1.0，对齐 Milo 头身比）
+// 🐾 E53-3（主公亲令 2026-10-15）：Sophia 鼻/吻线/晶簇咬合角对齐 Milo 同源雕琢
+//   ＋ 头部及耳后「深曜紫玉矿石外壳」（加工真源 /tmp/e53_assets/e53_process.py）
 import miloSprite from '../assets/familiar_milo.webp';
 import sophiaSprite from '../assets/familiar_sophia.webp';
 import miloTail from '../assets/familiar_milo_tail.webp';
 import miloBlink from '../assets/familiar_milo_blink.webp';
 import sophiaTail from '../assets/familiar_sophia_tail.webp';
 import sophiaBlink from '../assets/familiar_sophia_blink.webp';
-// @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
-import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, FAMILIAR_ADOPT_PATH } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
-import { FAMILIAR_HOME_TESTID, FAMILIAR_HOME_BAR_TESTID, FAMILIAR_HOME_FORM_TESTID, readFamiliarRecord, writeFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, isPlausibleBirthDate, familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
+import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, recordMatchesChart } from '../lib/familiarHome.mjs';
 
-const GOLD = '#D4AF37';
 const WHISPER_COUNT = 5;
 
 const SAFE: React.CSSProperties = { overflowWrap: 'anywhere', wordBreak: 'break-word', minWidth: 0 };
 
-type Phase = 'collapsed' | 'form';
+/** 💎 E53-2 商业锚点：$99.99「双宠齐聚」高阶灵契（本期仅常量入列，支付链路后续接） */
+export const FAMILIAR_DUAL_PRICE_USD = 99.99;
+/** 💎 E53-2 双宠特权 SKU（未来 Stripe price / 权益位 familiar_dual 的契约名） */
+export const FAMILIAR_DUAL_SKU = 'familiar_dual_unlock';
+/** 💎 E53-2 首页骑键位上限：1 只（$4.99 免费契约）→ 2 只（$99.99 双宠齐聚） */
+export const FAMILIAR_MAX_HOME_SLOTS = 2;
 
 /** 🐾 E51：relation_mode ⇒ IP（与服务端 familiar_engine.IP_OF 同源白名单） */
 const IP_OF_MODE: Record<string, 'Sophia' | 'Milo'> = {
@@ -73,35 +68,14 @@ interface HomeRecord {
   chartSig?: string;
 }
 
-function latLonText(lat: number, lon: number): string {
-  const la = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
-  const lo = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
-  return `${la}, ${lo}`;
-}
-
 const FamiliarHomeCard: React.FC = () => {
   const { t, i18n } = useTranslation();
   const lang = String((i18n.language || 'zh').split('-')[0] || 'zh');
 
-  const [phase, setPhase] = useState<Phase>('collapsed');
   const [rec, setRec] = useState<HomeRecord | null>(null);
 
-  /* 出生真值（form 态用） */
-  const [truth, setTruth] = useState<{ birthDate: string; birthTime: string; lat: number; lon: number; tz: string } | null>(null);
-  const [birthDate, setBirthDate] = useState('');
-  const [birthTime, setBirthTime] = useState('12:00');
-  const [city, setCity] = useState<CityRecord | null>(null);
-  const [editBirth, setEditBirth] = useState(true);
-
-  const [pending, setPending] = useState<string | null>(null);
-  const [err, setErr] = useState('');
-
-  /* 🔒 E48（主公亲令 2026-10-14）: 首页认领入口与报告页**同规则**的商业门禁 ——
-     未付 $4.99（或非沙箱已购）一律拦截，堵死「首页 form 态免费认领」侧门。
-     paidOk 三态：true=已购放行 / false=未购拦截 / null=判定中（fail-closed 同拦截） */
+  /* 🔒 E48（沿袭）: 呈现门禁 —— paidOk 三态：true=放行 / false=拦截 / null=判定中（fail-closed 同拦截） */
   const [paidOk, setPaidOk] = useState<boolean | null>(null);
-  const [homeToast, setHomeToast] = useState<string | null>(null);
-  const homeToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* 🔒 E48: 权益自检（与 WealthReportPage::isWealthPaid 同源谓词，简化版同语义） */
   useEffect(() => {
@@ -167,8 +141,8 @@ const FamiliarHomeCard: React.FC = () => {
   /** 关系模式 ⇒ 标签（与 FamiliarPicker 同源键 familiar.girlfriend/…） */
   const relationLabel = (mode: string): string => t(`familiar.${mode}`);
 
-  /* ── 挂载：读认领档 ⇒ 有档即座位卡；无档则只读抽取出生真值预填 ──
-     🔒 E49（主公亲令 2026-10-14）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
+  /* ── 挂载：读认领档 ⇒ 有档即破框骑键 ──
+     🔒 E49（沿袭）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
         ② 星盘绑定校验 —— 有当前盘真值且签名不匹配（或旧档无签名）⇒ 即弃即清，
         换生日后严禁串出上一张盘的灵宠；无真值可校验（纯首页会话）⇒ 保留呈现。 */
   useEffect(() => {
@@ -180,87 +154,14 @@ const FamiliarHomeCard: React.FC = () => {
     const tr = extractBirthTruth(search, store);
     if (r) {
       if (tr && !recordMatchesChart(r, { birthDate: tr.birthDate, birthTime: tr.birthTime || '', lat: tr.lat, lon: tr.lon, tz: tr.tz })) {
-        clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗，落回待选态
+        clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗（认领收归报告页，首页不再补录）
       } else {
-        setRec(r as HomeRecord); // 🐾 E51: 有档 ⇒ 破框骑键（render 由 rec 短路，不再有 seat 卡）
-        return;
+        setRec(r as HomeRecord);
       }
-    }
-    if (tr) {
-      setTruth({ birthDate: tr.birthDate, birthTime: tr.birthTime, lat: tr.lat, lon: tr.lon, tz: tr.tz });
-      setBirthDate(tr.birthDate);
-      if (tr.birthTime) setBirthTime(tr.birthTime);
-      setEditBirth(false); // 已有可靠出生地 ⇒ 默认收起表单，直接选伙伴
     }
   }, []);
 
-  /* ── 效坐标：用户自选城市优先，其次只读抽取所得（🔴 二者皆无 ⇒ null，绝不退默认盘）── */
-  const coords = useMemo(() => {
-    if (city) return { lat: city.lat, lon: city.lon, tz: city.tz };
-    if (truth) return { lat: truth.lat, lon: truth.lon, tz: truth.tz };
-    return null;
-  }, [city, truth]);
-
-  const adopt = async (mode: string) => {
-    // 🔒 E48（主公亲令 2026-10-14）: 未付费一律拦截 —— 严禁写入领养状态、严禁触达 adopt 端点
-    if (paidOk !== true) {
-      setHomeToast(t('familiar.needUnlock'));
-      if (homeToastTimerRef.current) clearTimeout(homeToastTimerRef.current);
-      homeToastTimerRef.current = setTimeout(() => setHomeToast(null), 5000);
-      return;
-    }
-    if (pending) return;
-    setErr('');
-    if (!isPlausibleBirthDate(birthDate)) { setErr(t('familiar.homeNeedDate')); return; }
-    if (!coords) { setErr(t('familiar.homeNeedCity')); return; }
-    setPending(mode);
-    try {
-      // 🔴 E34 D5：白名单构造 —— 只出六键，业务线字段在此被物理剔除
-      const payload = buildFamiliarAdoptPayload(
-        { birthDate, birthTime, lat: coords.lat, lon: coords.lon, tz: coords.tz },
-        mode,
-      );
-      if (!isCleanFamiliarAdoptPayload(payload)) throw new Error('adopt payload not clean'); // 宁可不发
-
-      let authHeader: Record<string, string> = {};
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) authHeader.Authorization = `Bearer ${session.access_token}`;
-      } catch (_) { /* 未配 Supabase ⇒ 匿名领养（后端只算不存） */ }
-
-      const res = await fetch(FAMILIAR_ADOPT_PATH, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data || !data.success || !data.profile) throw new Error(String(res.status));
-
-      const next: HomeRecord = {
-        profile: data.profile as FamiliarProfile,
-        triad: data.triad || null,
-        persisted: !!data.persisted,
-        adoptedAt: new Date().toISOString(),
-        // 🔒 E49: 认领档必带星盘签名（按盘隔离，禁全局裸存串味）
-        chartSig: familiarChartSig({ birthDate, birthTime, lat: coords.lat, lon: coords.lon, tz: coords.tz }),
-      };
-      writeFamiliarRecord(window.localStorage, next, FAMILIAR_LS_KEY);
-      setRec(next);
-      setPhase('collapsed'); // 🐾 E51: 认领成功 ⇒ rec 短路进破框骑键层
-    } catch (_) {
-      setErr(t('familiar.error'));
-    } finally {
-      setPending(null);
-    }
-  };
-
-  const reset = () => {
-    clearFamiliarRecord(window.localStorage, FAMILIAR_LS_KEY);
-    setRec(null);
-    setPhase('collapsed');
-  };
-
-  /* 🔒 E49（主公亲令 2026-10-14）: 沙箱/管理员态一键重置 —— 清本机灵宠档 + 服务端该账号绑定 */
+  /* 🔒 E49（沿袭）: 沙箱/管理员态一键重置 —— 清本机灵宠档 + 服务端该账号绑定 */
   const [sandboxMode, setSandboxMode] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -273,7 +174,6 @@ const FamiliarHomeCard: React.FC = () => {
   const purgeTestFamiliar = async () => {
     clearFamiliarRecord(window.localStorage, FAMILIAR_LS_KEY);
     setRec(null);
-    setPhase('collapsed');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
@@ -286,10 +186,12 @@ const FamiliarHomeCard: React.FC = () => {
     } catch (_) { /* 本机已清 ⇒ 服务端清理失败不阻断 */ }
   };
 
-  /* ═══════════ 三 · 已认领 ⇒ E51 破框骑键（主公裁决：取代座位卡，2026-10-14）═══════════
+  /* ═══════════ E53 净化版：唯一渲染态＝破框骑键（未认领 ⇒ 空壳）═══════════
      🔒 E50 门禁：paidOk!==true（含判定中 / 查库失败）一律不呈现 —— fail-closed。
      物理穿透（军令铁律）：容器 pointer-events:none，灵宠身体与爪子区域 100% 让路给
-     「开始测算」按钮；仅头部 / 爱心宝石命中区保留点击（呼吸微光 + 今日寄语气泡）。 */
+     「开始测算」按钮；仅头部 / 爱心宝石命中区保留点击（呼吸微光 + 今日寄语气泡）。
+     💎 E53-2 双宠预留：recs 恒从单档装配（本期）；未来 $99.99 双宠档 ⇒ 两条
+        HomeRecord 同列，Milo/Sophia 各按 IP 类名左右自洽落位，渲染核零改动。 */
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setAnchorEl(document.getElementById('ks-familiar-anchor'));
@@ -312,14 +214,18 @@ const FamiliarHomeCard: React.FC = () => {
     famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
   }, [relationLabel, whisperText]);
 
-  if (rec) {
-    const mode = String(rec.profile.relation_mode || '');
-    const ip = IP_OF_MODE[mode] ?? 'Sophia';
-    const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
-    return (
-      <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
-        {anchorEl && showBreakout && createPortal(
+  /* 💎 E53-2：骑键位装配（本期单档；双宠契约见文件头 —— 渲染核已按数组就位） */
+  const recs: HomeRecord[] = rec ? [rec] : [];
+  const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
+
+  return (
+    <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
+      {anchorEl && showBreakout && recs.map((rec0) => {
+        const mode = String(rec0.profile.relation_mode || '');
+        const ip = IP_OF_MODE[mode] ?? 'Sophia';
+        return createPortal(
           <div
+            key={`${rec0.adoptedAt}-${mode}`}
             className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}`}
             data-testid="familiar-breakout"
             data-ip={ip}
@@ -328,19 +234,18 @@ const FamiliarHomeCard: React.FC = () => {
               <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} />
               {/* 🐾 E52：眨眼帧叠加（周期性瞬目，3~5s 一次；reduced-motion 降级为不眨） */}
               <img className="ks-fam-img-blink" src={ip === 'Milo' ? miloBlink : sophiaBlink} alt="" draggable={false} />
-              {/* 🐾 E52：独立尾层（transform-origin 在尾根，正弦蠕动；真源 geometry.json E52） */}
+              {/* 🐾 E52：独立尾层（transform-origin 在尾根，正弦蠕动；真源 geometry.json E52/E53） */}
               <img className="ks-fam-tail" src={ip === 'Milo' ? miloTail : sophiaTail} alt="" draggable={false} />
             </div>
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
-            <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec)} aria-hidden="true" tabIndex={-1} />
-            <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec)} aria-hidden="true" tabIndex={-1} />
+            <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
+            <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             {famBubble && (
               <div className="ks-fam-bubble" aria-hidden="true">
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
                 {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
               </div>
             )}
-            <button type="button" className="ks-fam-chip" onClick={reset} title={t('familiar.homeReset')} aria-label={t('familiar.homeReset')}>↺</button>
             {sandboxMode && (
               <button
                 type="button"
@@ -354,127 +259,8 @@ const FamiliarHomeCard: React.FC = () => {
             )}
           </div>,
           anchorEl,
-        )}
-      </div>
-    );
-  }
-
-  /* ═══════════ 二 · 未认领：折叠条 / 认领表单 ═══════════ */
-  return (
-    <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
-      {/* 🔒 E48: 未付费拦截 Toast（首页侧门同规则；5s 自动消散） */}
-      {homeToast && (
-        <div
-          onClick={() => { setHomeToast(null); }}
-          style={{
-            position: 'fixed', top: '18px', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 9999, maxWidth: 'min(92vw, 480px)', width: 'max-content',
-            padding: '10px 18px', borderRadius: '12px',
-            background: 'rgba(20, 18, 12, 0.94)', border: '1px solid rgba(212, 175, 55, 0.55)',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.55)',
-            color: '#F0E6C8', fontSize: '13px', fontWeight: 600, lineHeight: 1.55,
-            cursor: 'pointer', textAlign: 'center', pointerEvents: 'auto',
-          }}
-        >
-          {homeToast}
-        </div>
-      )}
-      {phase === 'collapsed' ? (
-        <button
-          type="button"
-          className="ks-pet-bar"
-          data-testid={FAMILIAR_HOME_BAR_TESTID}
-          onClick={() => setPhase('form')}
-        >
-          <span className="ks-pet-bar-main" style={{ ...SAFE }}>
-            <span className="ks-pet-bar-emoji" aria-hidden="true">🐾</span>
-            <span>
-              <span className="ks-pet-bar-title">{t('familiar.homeEmpty')}</span>
-              <span className="ks-pet-bar-sub">{t('familiar.homeEmptyDesc')}</span>
-            </span>
-          </span>
-          <span className="ks-pet-bar-cta">{t('familiar.homeClaim')}</span>
-        </button>
-      ) : (
-        <div className="ks-pet-form" data-testid={FAMILIAR_HOME_FORM_TESTID}>
-          <div className="ks-pet-form-head">
-            <span className="ks-pet-form-title" style={{ ...SAFE }}>🐾 {t('familiar.homeTitle')}</span>
-            <button type="button" className="ks-pet-link" onClick={() => { setErr(''); setPhase('collapsed'); }}>
-              {t('familiar.homeCancel')}
-            </button>
-          </div>
-
-          {editBirth ? (
-            <>
-              {/* 出生日期 */}
-              <div className="ks-pet-field">
-                <span className="ks-pet-field-label">{t('familiar.homeBirthDate')}</span>
-                <input
-                  type="date"
-                  className="ks-pet-date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              {/* 出生时间（复用 45-B8「绝不吞键」核） */}
-              <div className="ks-pet-field">
-                <span className="ks-pet-field-label">{t('familiar.homeBirthTime')}</span>
-                <TimeInput value={birthTime} onChange={setBirthTime} />
-              </div>
-              {/* 出生城市（🔴 仅本态渲染 ⇒ 首屏不拉 6.6MB cities.json） */}
-              <div className="ks-pet-field">
-                <span className="ks-pet-field-label">{t('familiar.homeBirthCity')}</span>
-                <CitySearchInput
-                  value={city ? city.key : ''}
-                  tz={city ? city.tz : ''}
-                  lat={city ? city.lat : 0}
-                  lon={city ? city.lon : 0}
-                  onSelect={(c: CityRecord) => setCity(c)}
-                  lang={lang}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="ks-pet-truth">
-              <span style={{ ...SAFE }}>
-                {birthDate}{birthTime ? ` · ${birthTime}` : ''}{truth ? ` · ${latLonText(truth.lat, truth.lon)}` : ''}
-              </span>
-              <button type="button" className="ks-pet-link" onClick={() => setEditBirth(true)}>
-                {t('familiar.homeEdit')}
-              </button>
-            </div>
-          )}
-
-          <div className="ks-pet-pick">{t('familiar.homePickRelation')}</div>
-
-          <div className="ks-pet-grid">
-            {RELATION_CARDS.map((card) => (
-              <button
-                key={card.mode}
-                type="button"
-                onClick={() => adopt(card.mode)}
-                disabled={!!pending}
-                className="ks-pet-rel"
-                style={{
-                  borderColor: card.accent,
-                  background: `linear-gradient(135deg, ${card.accent}22, ${card.accent2}14)`,
-                  opacity: pending && pending !== card.mode ? 0.45 : 1,
-                  cursor: pending ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <span className="ks-pet-rel-ip" style={{ color: card.accent }}>{card.ip}</span>
-                <span className="ks-pet-rel-name" style={{ color: card.accent, ...SAFE }}>
-                  {pending === card.mode ? t('familiar.adopting') : relationLabel(card.mode)}
-                </span>
-                <span className="ks-pet-rel-desc" style={{ ...SAFE }}>{t(`familiar.${card.mode}Desc`)}</span>
-              </button>
-            ))}
-          </div>
-
-          {err && <div className="ks-pet-err">{err}</div>}
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 };

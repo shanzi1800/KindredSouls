@@ -89,7 +89,9 @@ describe('V448 i18n Key 门禁', () => {
     // 74 → 103（6 语种同步新增，键集合全等不变）
     // 103 → 104（E48 主公亲令 2026-10-14: familiar.needUnlock 未付费拦截 Toast，6 语种同步）
     // 104 → 105（E52 主公亲令 2026-10-15: familiar.leadHomeShe/He 性别化带路两键入列、leadHome 退役，6 语种同步）
-    assert.strictEqual(p.total, 105, 'E52 性别化带路两键（leadHome 退役）后基准键数应为 105');
+    // 105 → 81（E53-1 主公亲令 2026-10-15: 首页净化白名单 —— familiar 首页认领表单/折叠条/
+    //   座位卡/换一位伙伴 24 个死键退役（home* 19 ＋ axis* 5），6 语种同步删除）
+    assert.strictEqual(p.total, 81, 'E53-1 首页净化死键清场后基准键数应为 81');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

@@ -8,7 +8,6 @@ import { normalizeLang } from './lib/algos/i18n';
 import { getTarot } from './lib/tarot';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
-import DailyDashboard from './components/DailyDashboard';
 import PaywallCard from './components/PaywallCard';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
@@ -31,7 +30,8 @@ import SandboxCashier from './components/SandboxCashier';
 import SandboxPayPage from './pages/SandboxPayPage';
 // 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
 import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
-// 🐾 E46（主公特赦令 · 前端呈现线）：首页「灵宠座位卡」——认领入口 ＋ 生成后首页呈现形态
+// 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
+//    已认领＝破框骑键 portal 至 #ks-familiar-anchor。
 import FamiliarHomeCard from './components/FamiliarHomeCard';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
@@ -325,11 +325,10 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
             <div id="ks-familiar-anchor" aria-hidden="true" />
           </div>
         </div>
-        {/* 🐾 E46/E51：灵宠首页呈现 —— 未认领＝折叠条/认领表单（主公裁决：零灵宠呈现）；
-            已认领＝破框骑键 portal 至 #ks-familiar-anchor（E51 起取代座位卡）。
-            折叠态零网络；城市搜索框仅认领表单展开时才挂载（避首屏拉 6.6MB cities.json）。 */}
+        {/* 🐾 E53（主公亲令 2026-10-15）首页净化白名单：星空背景＋缘分天定＋骑键灵宠＋极简切换语言。
+            未认领＝空壳零挂件（认领全链路收归报告页付费流）；已认领＝破框骑键 portal。
+            🧹 E53-1：E46 折叠条/认领表单与「今日运势卡」均撤下首页（组件文件保留备复活）。 */}
         <FamiliarHomeCard />
-        <DailyDashboard lang={(() => { const b = (i18n.language||'en').split('-')[0]; return b==='zh'?'zh':b==='en'?'en':b==='es'?'es':b==='fr'?'fr':b==='th'?'th':b==='vi'?'vi':'en'; })()} />
       </div>
     );
   }
