@@ -3144,8 +3144,22 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             </button>
           </div>
         )}
+        {/* 🔓 E58（主公亲令 2026-10-16）: 付费墙必须先于灵宠选择卡呈现 ——
+            E58 前旧序＝锁定灵宠卡在上、付费墙压底，主公真机复测实锤「填完生辰没见付费墙、
+            直接落到选宠页」⇒ 商业漏斗首屏被灵宠卡抢占。新序＝免费预告 → 付费墙 → 灵宠卡。
+            付费墙挂 ref 仍是灵宠拦截 Toast 的平滑滚动落点（「🔒 AI 深度洞察 / 立即解锁」） */}
+        {!authChecking && !isUnlocked && showPaywall && (
+          <div ref={paywallRef}>
+            <WealthPaywall
+              lang={currentLang}
+              onPurchase={handlePurchase}
+            />
+          </div>
+        )}
+
         {/* 🔒 E48（主公亲令 2026-10-14）: 未付费态灵宠选择器 —— 卡片保留但**全部上锁**，
-            点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转 */}
+            点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转
+            （E58: 已移到付费墙下方，作付费墙次屏增值展示，不再抢占转化首屏） */}
         {!authChecking && !isUnlocked && showPaywall && reportData && (
           <FamiliarPicker
             birthDate={birthDate}
@@ -3157,16 +3171,6 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             onLockedTap={handleFamiliarLockedTap}
             onAdopted={(p) => setFamiliarLead(p)}
           />
-        )}
-
-        {/* 🔒 E48: 付费墙挂 ref —— 灵宠拦截 Toast 的平滑滚动落点（「🔒 AI 深度洞察 / 立即解锁」） */}
-        {!authChecking && !isUnlocked && showPaywall && (
-          <div ref={paywallRef}>
-            <WealthPaywall
-              lang={currentLang}
-              onPurchase={handlePurchase}
-            />
-          </div>
         )}
 
         {isUnlocked && reportData?.insight && (
