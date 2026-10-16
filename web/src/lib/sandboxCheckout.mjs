@@ -42,12 +42,37 @@ export const VOUCHER_MAX_LEN = 32;
 const VOUCHER_RE = /^[A-Z0-9][A-Z0-9-]*$/;
 
 /* ── SKU ⇒ 字典词条键（双 SKU 标识；未知 SKU 走 Other，绝不臆造商品名）── */
+//   🔴 E59（主公雷霆军令 2026-10-16）：商业阶梯解耦后，月报 $2.99 / 年报 $29.99 成为**独立商品**
+//   ⇒ 必须各有专属标签词条（否则收银台把 $2.99 的流月报告显示成「会员权益」，与实付档位不符）。
 export const SANDBOX_PLAN_TERM_KEYS = Object.freeze({
   wealth_once: 'SandboxPlanWealth',
+  wealth_monthly_report: 'SandboxPlanMonthly',
+  wealth_yearly_report: 'SandboxPlanYearly',
   compatibility_once: 'SandboxPlanCompat',
   star_monthly_vip: 'SandboxPlanOther',
   all_pass_yearly: 'SandboxPlanOther',
 });
+
+/* ── SKU ⇒ 标价（**仅供沙盘收银台展示**，绝不参与计价；真实金额由 Stripe Price 决定）──
+ *   🔴 E59：沙盘「一键模拟付款」按钮必须让主公一眼看清**本次模拟买的是哪一档多少钱**
+ *     （此前按钮只有「一键模拟付款」无金额 ⇒ 逐级验收 $4.99/$2.99/$29.99 时无从分辨）。
+ *   与 server.js::STRIPE_PRICE_MAP 的档位**同集**；未知 SKU ⇒ 空串（绝不臆造价格）。 */
+export const SANDBOX_PLAN_PRICE = Object.freeze({
+  wealth_once: '$4.99',
+  wealth_monthly_report: '$2.99',
+  wealth_yearly_report: '$29.99',
+  compatibility_once: '$4.99',
+  compatibility_monthly_report: '$2.99',
+  compatibility_yearly_report: '$29.99',
+  star_monthly_vip: '$9.99',
+  all_pass_yearly: '$99.99',
+});
+
+/** SKU 标价取词：未知/畸形 ⇒ ''（空串，由调用方决定是否省略） */
+export function sandboxPlanPrice(plan) {
+  const k = String(plan == null ? '' : plan);
+  return Object.prototype.hasOwnProperty.call(SANDBOX_PLAN_PRICE, k) ? SANDBOX_PLAN_PRICE[k] : '';
+}
 
 /* ═══════════ 一 · 分流：沙盘回执就地改道（截断外链）═══════════ */
 

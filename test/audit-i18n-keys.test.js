@@ -93,7 +93,10 @@ describe('V448 i18n Key 门禁', () => {
     //   座位卡/换一位伙伴 24 个死键退役（home* 19 ＋ axis* 5），6 语种同步删除）
     // 81 → 87（E54-2 主公亲令 2026-10-15: 今日运势内容**灵魂融合**进灵宠交互池 ——
     //   familiar.luckLead/luckNum/luckColor/luckFlower/luckDir/luckSeed 6 键入列，6 语种同步）
-    assert.strictEqual(p.total, 87, 'E54-2 灵宠接管今日运势后基准键数应为 87');
+    // 87 → 93（E59 主公雷霆军令 2026-10-16: 商业阶梯漏斗门禁 —— 权益严格按 SKU 解耦，
+    //   月光/年报**专属升阶付费墙**六语入列：wealthReport.upgradeTitle / upgradeMonthlyDesc /
+    //   upgradeYearlyDesc / upgradeCta / sandboxPayMonthly / sandboxPayYearly 6 键，6 语种同步）
+    assert.strictEqual(p.total, 93, 'E59 商业阶梯升阶付费墙入列后基准键数应为 93');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

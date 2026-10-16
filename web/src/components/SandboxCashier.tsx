@@ -18,7 +18,7 @@ import { clampToSlot } from '../lib/reportLayout';
 import { ASTRO_TERMS } from '../lib/algos/astroTerms.generated';
 import { supabase } from '../lib/supabase';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
-import { subscribeSandboxCashier, getSandboxCashier, closeSandboxCashier, buildSandboxCompleteRequest, buildSandboxRedeemRequest, describeSandboxOutcome, dictTerm, planTerm, isVoucherSubmittable, SANDBOX_CASHIER_TESTID, SANDBOX_WATERMARK_TESTID, SANDBOX_PAY_BTN_TESTID, SANDBOX_CODE_INPUT_TESTID, SANDBOX_REDEEM_BTN_TESTID, SANDBOX_STATUS_TESTID } from '../lib/sandboxCheckout.mjs';
+import { subscribeSandboxCashier, getSandboxCashier, closeSandboxCashier, buildSandboxCompleteRequest, buildSandboxRedeemRequest, describeSandboxOutcome, dictTerm, planTerm, sandboxPlanPrice, isVoucherSubmittable, SANDBOX_CASHIER_TESTID, SANDBOX_WATERMARK_TESTID, SANDBOX_PAY_BTN_TESTID, SANDBOX_CODE_INPUT_TESTID, SANDBOX_REDEEM_BTN_TESTID, SANDBOX_STATUS_TESTID } from '../lib/sandboxCheckout.mjs';
 
 const GOLD = '#D4AF37';
 const TEAL = '#81D8D0';
@@ -68,6 +68,8 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
     const t = planTerm(ASTRO_TERMS, req.plan, L);
     return t ? clampToSlot(t.label, t.slot || 'labelCard') : req.plan;
   })();
+  // 🔴 E59：按钮带上 SKU 标价 ⇒ 主公逐级验收 $4.99 / $2.99 / $29.99 时一眼可辨本次模拟买的是哪一档。
+  const planPrice = sandboxPlanPrice(req.plan);
 
   const authHeader = async (): Promise<Record<string, string>> => {
     try {
@@ -196,7 +198,7 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
             ...SAFE_TEXT,
           }}
         >
-          {busy === 'pay' ? '⏳ …' : `✨ ${term('SandboxPay')}`}
+          {busy === 'pay' ? '⏳ …' : `✨ ${term('SandboxPay')}${planPrice ? ' ' + planPrice : ''}`}
         </button>
 
         {/* 操作点 ②：特权券兑换 */}

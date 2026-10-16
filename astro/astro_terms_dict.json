@@ -183,6 +183,8 @@
       "SandboxOrigin":    { "zh": "同源沙盒 · 真实验签",     "en": "Same origin · real webhook",    "es": "Mismo origen · webhook real",     "fr": "Même origine · webhook réel", "th": "ต้นทางเดียว · เว็บฮุกจริง", "vi": "Cùng nguồn · webhook thật" },
 
       "SandboxPlanWealth":{ "zh": "先天财富一次性报告",       "en": "Wealth One-Time Report",        "es": "Informe de riqueza",              "fr": "Rapport de richesse",        "th": "รายงานโหราศาสตร์การเงิน", "vi": "Báo cáo tài lộc" },
+      "SandboxPlanMonthly":{ "zh": "流月财富报告",             "en": "Wealth Monthly Report",         "es": "Informe mensual",                 "fr": "Rapport mensuel",            "th": "รายงานรายเดือน",          "vi": "Báo cáo hàng tháng" },
+      "SandboxPlanYearly":{ "zh": "年度财富年鉴",               "en": "Wealth Yearly Almanac",         "es": "Almanaque anual",                 "fr": "Almanach annuel",            "th": "ปฏิทินรายปี",              "vi": "Niên ký hàng năm" },
       "SandboxPlanCompat":{ "zh": "合盘一次性报告",           "en": "Compatibility One-Time Report", "es": "Informe de sinastría",            "fr": "Rapport de synastrie",       "th": "รายงานดวงสมพงษ์ชุดเดียว", "vi": "Báo cáo hợp duyên" },
       "SandboxPlanOther": { "zh": "会员权益",                 "en": "Membership Access",             "es": "Membresía",                       "fr": "Abonnement",                 "th": "สิทธิ์สมาชิก",            "vi": "Hội viên" }
     },

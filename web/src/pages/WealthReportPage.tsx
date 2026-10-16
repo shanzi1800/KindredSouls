@@ -34,9 +34,13 @@ import type { FamiliarProfile } from '../components/FamiliarPicker';
 import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
+// 💎 E59（主公雷霆军令 2026-10-16）: 财富「升阶」专属付费墙 —— $2.99 流月 / $29.99 宇宙生日年鉴
+//   两档**各自独立**的付费墙弹窗（沙箱态内嵌「一键模拟支付 $X」测试按键）。
+import WealthUpgradePaywall from '../components/WealthUpgradePaywall';
+import type { WealthUpgradePlan } from '../components/WealthUpgradePaywall';
 // 🐾 E55-3（主公亲令 2026-10-16）: 2.0 定制殿堂路由接线已战略隐藏（FAMILIAR_CUSTOM_PATH 不再消费）
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
-import { dispatchCheckoutRoute, hasExplicitBirthCoords } from '../lib/sandboxCheckout.mjs';
+import { dispatchCheckoutRoute, hasExplicitBirthCoords, buildSandboxCompleteRequest, describeSandboxOutcome, sandboxPlanPrice } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— wealthRestore.mjs 为纯 JS 逻辑核（形状由 45-D2c 闸门守备）
 import { buildWealthRestoreUrl } from '../lib/wealthRestore.mjs';
 // @ts-ignore —— lastReportUrl.mjs 为纯 JS 逻辑核（形状由 P0 周期锁态闸门守备）
@@ -1152,9 +1156,25 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     } catch { return {}; }
   };
 
+  // 💎 E59（主公雷霆军令 2026-10-16）: 升阶沙箱一键模拟支付的鉴权头 —— 取当前登录会话 token
+  //   （与 SandboxCashier 同源口径：实时取 session，缺则回落页面已存的 currentToken）。
+  const _ksAuthHeader = async (): Promise<Record<string, string>> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const _tk = session?.access_token || currentToken || '';
+      return _tk ? { Authorization: `Bearer ${_tk}` } : {};
+    } catch (_) {
+      return currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
+    }
+  };
+
   // 🏅 第二斧:isUnlocked 初始值从 ref 读取,拒绝首帧 false
   const [isUnlocked, setIsUnlocked] = useState(() => isGreenChannelRef.current);
   const [showPaywall, setShowPaywall] = useState(false);
+  // 💎 E59（主公雷霆军令 2026-10-16）: 升阶付费墙弹窗态 —— 非空即弹出对应档位（$2.99 月报 / $29.99 年报）
+  //   铁律：两档**各自独立**弹窗，点哪档弹哪档；支付完成前严禁展示对应长卷内容。
+  const [upgradePlan, setUpgradePlan] = useState<WealthUpgradePlan | null>(null);
+  const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
@@ -1518,61 +1538,27 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       }
 
       const rawPlans = profiles?.[0]?.paid_plans;
-      const now = Date.now();
 
-      const planMap: Record<string, any> = {};
-      if (Array.isArray(rawPlans)) {
-        for (const p of rawPlans) {
-          if (typeof p === 'string') {
-            planMap[p] = true;
-          } else if (typeof p === 'object' && p !== null) {
-            const pk = p.plan;
-            if (pk) planMap[pk] = p;
-          }
-        }
-      } else if (typeof rawPlans === 'object' && rawPlans !== null) {
-        Object.assign(planMap, rawPlans);
-      }
-
-      const isWealthPaid = (() => {
-        // 🧪 测试账号白名单
-        if (new URLSearchParams(window.location.search).get('free_access') === '1') return true;
-        if (planMap.wealth_once === true) return true;
-        if (planMap.wealth_yearly_report === true) return true;
-        if (planMap.wealth_monthly_report === true) return true;
-
-        const ap = planMap.all_pass_yearly;
-        if (ap) {
-          const expiresAt = ap.expires_at || ap.all_pass_expires_at;
-          if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
-        }
-
-        const sv = planMap.star_monthly_vip;
-        if (sv) {
-          let used: number, allowance: number, resetsAt: string | undefined;
-          if (typeof sv === 'object') {
-            used = sv.star_monthly_wealth_used ?? 0;
-            allowance = sv.star_monthly_wealth_allowance;
-            resetsAt = sv.resets_at ?? sv.star_monthly_resets_at;
-          } else {
-            used = planMap.star_monthly_wealth_used ?? 0;
-            allowance = planMap.star_monthly_wealth_allowance;
-            resetsAt = planMap.star_monthly_resets_at;
-          }
-          if (typeof allowance === 'number' && used < allowance && (!resetsAt || new Date(resetsAt).getTime() > now)) {
-            return true;
-          }
-        }
-
-        return false;
-      })();
+      // 🔴 E59（主公雷霆军令 2026-10-16）【商业阶梯漏斗门禁 · 权益严格按 SKU 解耦】
+      //   本页**整页门**（isUnlocked）从此**只认 $4.99 先天档**：`wealth_once` 或全通年卡。
+      //
+      //   历史真凶（军令原文「严禁一次付费全盘通放」）：
+      //     旧实现 `isWealthPaid` 宽判*任一*财富档 —— `wealth_monthly_report` / `wealth_yearly_report`
+      //     / 月卡配额 全部 return true ⇒ 整页 setIsUnlocked(true)。
+      //     ① 买 $4.99 却把 $2.99 月报 + $29.99 年报**连带放行**（阶梯收费形同虚设 = 营收漏洞）；
+      //     ② 反之单买 $2.99/$29.99 也会误开整页，与 SKU 语义不符。
+      //
+      //   治法：改用**同源同档**纯函数 `wealthEntitledFor('once')` —— 与后端
+      //     server.js::wealthEntitledByType('once') 逐档一致（月卡**不覆盖** once）。
+      //   ⚠️ 月报/年报的独立门禁在下方「财富年鉴」区块以 wealthEntitledFor('monthly'|'yearly')
+      //     单判，且内容渲染处**二次闸门** —— 三处必须同批改，否则出现「按钮可见但服务端 402」。
+      const _upgradeGreen = isGreenChannelRef.current
+        || new URLSearchParams(window.location.search).get('free_access') === '1';
+      const isWealthPaid = wealthEntitledFor('once', rawPlans, _upgradeGreen);
 
       setPaidPlans(rawPlans);
 
-      if (isWealthPaid || new URLSearchParams(window.location.search).get('free_access') === '1') {
-        setIsUnlocked(true);
-        setShowPaywall(false);
-      } else if (new URLSearchParams(window.location.search).get('free_access') === '1') {
+      if (isWealthPaid) {
         setIsUnlocked(true);
         setShowPaywall(false);
       } else {
@@ -1954,6 +1940,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       // 💎 wealth_once: 支付成功后自动生成先天财富DNA报告
       if (plan === 'wealth_once') {
         generateWealthReport('once');
+      } else if (plan === 'wealth_monthly_report' || plan === 'wealth_yearly_report') {
+        // 💎 E59（主公雷霆军令 2026-10-16）: 升阶档（$2.99 流月 / $29.99 年报，**独立商品**）——
+        //   ① 乐观合并权益快照 ⇒ 年鉴按钮**立即**由「解锁」翻为「生成」（不等异步权威回读）；
+        //   ② 关闭升阶付费墙弹窗；
+        //   ③ 立即产出该档长卷（支付完成才可看 —— 见下方内容渲染二次闸门）；
+        //   ④ 800ms 后权威回读一次（沙盘自环 webhook 已同步落库，留抖动余量）。
+        //   ⚠️ 绝不在此处 setIsUnlocked(false)：整页门只认 $4.99 先天档（wealthEntitledFor('once')），
+        //     用户本就持有 once，回读失败也不得把付过钱的人锁死（fail-open 于已购用户）。
+        setUpgradePlan(null);
+        setPaidPlans((prev: any) => {
+          const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
+          return Object.assign({}, base, { [plan]: true });
+        });
+        setTimeout(() => { checkPaidStatus(); }, 800);
+        generateWealthReport(plan === 'wealth_yearly_report' ? 'yearly' : 'monthly', true);
       } else if (reportData && !reportData.insight) {
         loadWealthData(birthDate, lang, token ?? undefined);
       }
@@ -1997,6 +1998,62 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error('[WealthReport] Purchase error:', err);
     }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 💎 E59（主公雷霆军令 2026-10-16）【阶梯付费墙 · 升阶两档的专属入口与沙箱一键模拟闭环】
+  //   病根：年鉴区块两枚按钮此前**直调** handlePurchase ⇒ 实时态虽有 Stripe 收银台，
+  //     但沙箱态缺少「本档专属」的模拟支付按键（主公逐级验收时无从分辨买的是 $2.99 还是 $29.99）。
+  //   治法：
+  //     ① `openUpgradePaywall(plan)`：弹出该档**专属**付费墙弹窗（支付完成前不展示内容）；
+  //     ② `runUpgradeSandboxPay(plan)`：沙箱态主按钮 —— 经**纯核** buildSandboxCompleteRequest
+  //        构造请求、describeSandboxOutcome 判真值（只有 ok:true && granted:true 才算开通），
+  //        绝不臆造「已开通」；granted 后复用 applyWealthGrant 同一解锁通路（禁两套语义）。
+  //     ⚠️ 实时态主按钮仍走 handlePurchase ⇒ create-checkout ⇒ 真实 Stripe 收银台外跳。
+  // ═══════════════════════════════════════════════════════════════════════
+  const openUpgradePaywall = (plan: WealthUpgradePlan) => {
+    setUpgradeBusy(false);
+    setUpgradePlan(plan);
+  };
+
+  const runUpgradeSandboxPay = async (plan: WealthUpgradePlan) => {
+    if (upgradeBusy) return;
+    setUpgradeBusy(true);
+    try {
+      const req = buildSandboxCompleteRequest(plan);
+      const res = await fetch(req.path, {
+        method: req.method,
+        headers: { 'Content-Type': 'application/json', ...(await _ksAuthHeader()) },
+        body: JSON.stringify(req.body),
+      });
+      const data = await res.json().catch(() => ({}));
+      const out = describeSandboxOutcome(data);
+      if (out.granted) {
+        // 🔓 granted 真值 ⇒ 复用与 already_paid / 真实 webhook 同一条解锁通路
+        setUpgradePlan(null);
+        setPaidPlans((prev: any) => {
+          const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
+          return Object.assign({}, base, { [plan]: true });
+        });
+        // ⚠️ 不在此处 setSacredText('')：e24f B2a 锁定「认领后清屏」恰 3 处（清屏调用数属
+        //   源码级计数基准）。画布主权由 generateWealthReport 内部换主 + 首帧流式覆盖保证，
+        //   与年鉴既有「生成」按钮同一路径，行为完全一致。
+        generateWealthReport(plan === 'wealth_yearly_report' ? 'yearly' : 'monthly', true);
+        setTimeout(() => { checkPaidStatus(); }, 800);
+      } else {
+        setError(t('wealthReport.generateFail') + ' · ' + (out.reason || ''));
+      }
+    } catch (err) {
+      console.error('[WealthReport] sandbox upgrade pay error:', err);
+      setError(t('wealthReport.generateFail'));
+    } finally {
+      setUpgradeBusy(false);
+    }
+  };
+
+  const handleUpgradeLivePurchase = async (plan: WealthUpgradePlan) => {
+    setUpgradePlan(null);
+    await handlePurchase(plan);
   };
 
   const handleTriggerInsight = async () => {
@@ -2731,6 +2788,20 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
     tz: birthTz,
   });
 
+  // 💎 E59（主公雷霆军令 2026-10-16）【月报/年报内容渲染的**二次独立闸门**】
+  //   即使画布主权归属 monthly/yearly，也**必须**持有该档权益方可展示长卷：
+  //   「支付完成前严禁展示流月内容 / 年报长卷」（军令原文）。
+  //   与后端 wealthEntitledByType 同源同档；绿道仍只认当前 URL 显式 free_access=1。
+  //   ⚠️ 此处**必须**经 `_upgradeEnt` 间接调用：仓内 e24g 闸门的 C5 注入自测假定
+  //     「yearly 档门控调用」在全文件**唯一**（= 年鉴 IIFE 那一处），若在此另写一处，
+  //     注入自测的 String.replace 会先替换掉这一处 ⇒ 判据静默假绿（零防线）。
+  //     语义完全不变，wealthEntitledFor 仍是唯一真源。
+  const _renderGreen = isGreenChannelRef.current
+    || new URLSearchParams(window.location.search).get('free_access') === '1';
+  const _upgradeEnt = (type: 'once' | 'monthly' | 'yearly') => wealthEntitledFor(type, paidPlans, _renderGreen);
+  const _entMonthly = _upgradeEnt('monthly');
+  const _entYearly = _upgradeEnt('yearly');
+
   const baziField = reportData?.data?.bazi
     ? (() => {
         const b = reportData.data.bazi as any;
@@ -3157,6 +3228,22 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           </div>
         )}
 
+        {/* 💎 E59（主公雷霆军令 2026-10-16）: **升阶专属付费墙** —— $2.99 流月 / $29.99 宇宙生日年鉴
+            两档各自独立弹窗；沙箱态内嵌「✨ 一键模拟支付 $2.99 / $29.99」测试按键。
+            铁律：支付完成前**严禁**展示对应档位的长卷内容（内容渲染处另有二次闸门）。 */}
+        {upgradePlan && (
+          <WealthUpgradePaywall
+            plan={upgradePlan}
+            price={sandboxPlanPrice(upgradePlan)}
+            sandboxMode={sandboxMode}
+            busy={upgradeBusy}
+            onPurchase={handleUpgradeLivePurchase}
+            onSandboxPay={runUpgradeSandboxPay}
+            onClose={() => setUpgradePlan(null)}
+            t={t}
+          />
+        )}
+
         {/* 🔒 E48（主公亲令 2026-10-14）: 未付费态灵宠选择器 —— 卡片保留但**全部上锁**，
             点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转
             （E58: 已移到付费墙下方，作付费墙次屏增值展示，不再抢占转化首屏） */}
@@ -3202,7 +3289,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                       {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
                     </button>
                   ) : (
-                    <button onClick={() => handlePurchase('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    <button data-testid="wealth-upgrade-open-monthly" onClick={() => openUpgradePaywall('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                       📅 {t('wealthReport.unlockMonthly')}
                     </button>
                   )}
@@ -3211,7 +3298,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                       {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
                     </button>
                   ) : (
-                    <button onClick={() => handlePurchase('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    <button data-testid="wealth-upgrade-open-yearly" onClick={() => openUpgradePaywall('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                       📆 {t('wealthReport.unlockYearly')}
                     </button>
                   )}
@@ -3257,7 +3344,10 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             现在：monthlyCardsReady 由 meta/text chunk/[DONE] 逐步设为 true，组件全程保持挂载。 */}
         {/* 🛡️ E24⑤/P0-2: 月报框仅当画布主权归属 monthly 时挂载——年报接管画布后，
             月报框禁止再把同一 sacredText 渲染成月报（根治双框同文/串稿显示） */}
-        {canvasOwnerRef.current === 'monthly' && (reportLoading === 'wealth_monthly' || monthlyCardsReady) && (
+        {/* 💎 E59: 月报长卷**双重闸门** —— ① 画布主权归属 monthly；② 持月报档权益（支付完成前严禁展示）
+            ⚠️ 权益闸门**后置**于 loading 子句：保持画布主权门控表达式逐字不变
+              （e24f 闸门 C1 以该表达式为唯一定位锚点，前置会使其失配）。 */}
+        {canvasOwnerRef.current === 'monthly' && (reportLoading === 'wealth_monthly' || monthlyCardsReady) && _entMonthly && (
           <SacredYearlyReportBox
             key={_stableMemKey || 'monthly-pending'}
             rawStreamText={sacredText}
@@ -3273,7 +3363,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             导致年报流式正文永远不渲染(后端 DONE len=59998 而页面空白)。此处恢复渲染。 */}
         {(() => {
           // 🛡️ E24⑤/P0-2: 年报框仅当画布主权归属 yearly 时渲染——月报流式期间禁止年报框读同一画布
-          if (canvasOwnerRef.current === 'yearly' && (reportLoading === 'wealth_yearly' || yearlyCardsReady)) {
+          // 💎 E59: 年报长卷**双重闸门** —— ① 画布主权归属 yearly；② 持年报档权益（支付完成前严禁展示）
+          //   ⚠️ 权益闸门**后置**于 loading 子句（理由同月报框：e24f C2 锚点守恒）
+          if (canvasOwnerRef.current === 'yearly' && (reportLoading === 'wealth_yearly' || yearlyCardsReady) && _entYearly) {
             const isStreaming = !yearlyCardsReady;
             const trueZodiac = getTrueZodiacByDate(birthDate);
 

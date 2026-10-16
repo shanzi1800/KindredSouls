@@ -1062,6 +1062,22 @@ export const ASTRO_TERMS = {
         "th": "รายงานโหราศาสตร์การเงิน",
         "vi": "Báo cáo tài lộc"
       },
+      "SandboxPlanMonthly": {
+        "zh": "流月财富报告",
+        "en": "Wealth Monthly Report",
+        "es": "Informe mensual",
+        "fr": "Rapport mensuel",
+        "th": "รายงานรายเดือน",
+        "vi": "Báo cáo hàng tháng"
+      },
+      "SandboxPlanYearly": {
+        "zh": "年度财富年鉴",
+        "en": "Wealth Yearly Almanac",
+        "es": "Almanaque anual",
+        "fr": "Almanach annuel",
+        "th": "ปฏิทินรายปี",
+        "vi": "Niên ký hàng năm"
+      },
       "SandboxPlanCompat": {
         "zh": "合盘一次性报告",
         "en": "Compatibility One-Time Report",
