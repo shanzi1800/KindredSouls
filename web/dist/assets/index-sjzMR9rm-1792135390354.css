@@ -736,9 +736,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 /* 尾巴动效：独立尾层（本体已擦尾），transform-origin 钉在尾根（geometry.json E52 真值）；
    🐾 E55-2（主公亲令 2026-10-16）: 弃左右正弦摆动（真机僵硬），改**尾梢慢速画圆**
-   （Tail Circling）—— rotate 基线 ±3° 叠加椭圆 translate 轨迹 + skew 微扭，
-   7s 自闭环 infinite（不用 alternate，轨迹首尾相接成小圈），像猫咪惬意趴着时
-   尾尖在键侧慢悠悠转小圈的慵懒活体感；translate 5%≈尾图自身 3~4px（真机可见）。 */
+   （Tail Circling）—— rotate 基线叠加椭圆 translate 轨迹 + skew 微扭，
+   自闭环 infinite（不用 alternate，轨迹首尾相接成小圈），像猫咪惬意趴着时
+   尾尖在键侧慢悠悠转小圈的慵懒活体感。
+   🐾 E56-2（主公亲令 2026-10-16 · 真机复测「尾巴没有转到」）: 真机尾层仅 ~90px 宽，
+   E55 幅度（rotate ±3°/translate 6%）尾梢行程仅 ~10px，手机上肉眼难辨 ⇒ 幅度翻倍：
+   rotate ±7°/translate 12%/skew 9°，尾梢行程 ~22px；7s→6s。reduced-motion 降级保持。 */
 .ks-fam-tail {
   position: absolute;
   pointer-events: none;
@@ -748,27 +751,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-fam-milo .ks-fam-tail {
   left: 0%; top: 56.12%; width: 33.33%;
   transform-origin: 62.5% 15.8%;
-  animation: ksFamTailMilo 7s ease-in-out infinite;
+  animation: ksFamTailMilo 6s ease-in-out infinite;
 }
 .ks-fam-sophia .ks-fam-tail {
   left: 55.14%; top: 65.82%; width: 44.86%;
   transform-origin: 58.2% 13.38%;
-  animation: ksFamTailSophia 7s ease-in-out infinite;
+  animation: ksFamTailSophia 6s ease-in-out infinite;
 }
 /* Milo 尾在图左（逆时针小圈）；Sophia 尾在图右（顺时针小圈）——镜像对称 */
 @keyframes ksFamTailMilo {
-  0%   { transform: rotate(-2.5deg) translate(0%, 0%)   skewX(0deg); }
-  25%  { transform: rotate(0.8deg)  translate(-4.5%, -2.6%) skewX(2.5deg); }
-  50%  { transform: rotate(3deg)    translate(-6%, 0.8%)  skewX(4.5deg); }
-  75%  { transform: rotate(0.5deg)  translate(-2%, 3%)    skewX(2deg); }
-  100% { transform: rotate(-2.5deg) translate(0%, 0%)     skewX(0deg); }
+  0%   { transform: rotate(-6deg) translate(0%, 0%)    skewX(0deg); }
+  25%  { transform: rotate(-2deg) translate(-9%, -5%)  skewX(5deg); }
+  50%  { transform: rotate(6deg)  translate(-12%, 1.5%) skewX(9deg); }
+  75%  { transform: rotate(-1deg) translate(-4%, 6%)   skewX(4deg); }
+  100% { transform: rotate(-6deg) translate(0%, 0%)    skewX(0deg); }
 }
 @keyframes ksFamTailSophia {
-  0%   { transform: rotate(2.5deg)  translate(0%, 0%)   skewX(0deg); }
-  25%  { transform: rotate(-0.8deg) translate(4.5%, -2.6%) skewX(-2.5deg); }
-  50%  { transform: rotate(-3deg)   translate(6%, 0.8%)  skewX(-4.5deg); }
-  75%  { transform: rotate(-0.5deg) translate(2%, 3%)    skewX(-2deg); }
-  100% { transform: rotate(2.5deg)  translate(0%, 0%)    skewX(0deg); }
+  0%   { transform: rotate(6deg)  translate(0%, 0%)   skewX(0deg); }
+  25%  { transform: rotate(2deg)  translate(9%, -5%)  skewX(-5deg); }
+  50%  { transform: rotate(-6deg) translate(12%, 1.5%) skewX(-9deg); }
+  75%  { transform: rotate(1deg)  translate(4%, 6%)   skewX(-4deg); }
+  100% { transform: rotate(6deg)  translate(0%, 0%)   skewX(0deg); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }
