@@ -741,7 +741,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    尾尖在键侧慢悠悠转小圈的慵懒活体感。
    🐾 E56-2（主公亲令 2026-10-16 · 真机复测「尾巴没有转到」）: 真机尾层仅 ~90px 宽，
    E55 幅度（rotate ±3°/translate 6%）尾梢行程仅 ~10px，手机上肉眼难辨 ⇒ 幅度翻倍：
-   rotate ±7°/translate 12%/skew 9°，尾梢行程 ~22px；7s→6s。reduced-motion 降级保持。 */
+   rotate ±7°/translate 12%/skew 9°，尾梢行程 ~22px；7s→6s。reduced-motion 降级保持。
+   🐾 E57-2（主公亲令 2026-10-16 · 真机复测「幅度还是太小，还可以翻倍」）: 再翻倍——
+   rotate ±14°/translate 24%/skew ±18°，尾梢行程 ~45px，慵懒大圈一望即知。 */
 .ks-fam-tail {
   position: absolute;
   pointer-events: none;
@@ -760,18 +762,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 /* Milo 尾在图左（逆时针小圈）；Sophia 尾在图右（顺时针小圈）——镜像对称 */
 @keyframes ksFamTailMilo {
-  0%   { transform: rotate(-6deg) translate(0%, 0%)    skewX(0deg); }
-  25%  { transform: rotate(-2deg) translate(-9%, -5%)  skewX(5deg); }
-  50%  { transform: rotate(6deg)  translate(-12%, 1.5%) skewX(9deg); }
-  75%  { transform: rotate(-1deg) translate(-4%, 6%)   skewX(4deg); }
-  100% { transform: rotate(-6deg) translate(0%, 0%)    skewX(0deg); }
+  0%   { transform: rotate(-12deg) translate(0%, 0%)    skewX(0deg); }
+  25%  { transform: rotate(-4deg)  translate(-18%, -10%) skewX(10deg); }
+  50%  { transform: rotate(12deg)  translate(-24%, 3%)   skewX(18deg); }
+  75%  { transform: rotate(-2deg)  translate(-8%, 12%)   skewX(8deg); }
+  100% { transform: rotate(-12deg) translate(0%, 0%)    skewX(0deg); }
 }
 @keyframes ksFamTailSophia {
-  0%   { transform: rotate(6deg)  translate(0%, 0%)   skewX(0deg); }
-  25%  { transform: rotate(2deg)  translate(9%, -5%)  skewX(-5deg); }
-  50%  { transform: rotate(-6deg) translate(12%, 1.5%) skewX(-9deg); }
-  75%  { transform: rotate(1deg)  translate(4%, 6%)   skewX(-4deg); }
-  100% { transform: rotate(6deg)  translate(0%, 0%)   skewX(0deg); }
+  0%   { transform: rotate(12deg)  translate(0%, 0%)   skewX(0deg); }
+  25%  { transform: rotate(4deg)   translate(18%, -10%) skewX(-10deg); }
+  50%  { transform: rotate(-12deg) translate(24%, 3%)   skewX(-18deg); }
+  75%  { transform: rotate(2deg)   translate(8%, 12%)   skewX(-8deg); }
+  100% { transform: rotate(12deg)  translate(0%, 0%)   skewX(0deg); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }
