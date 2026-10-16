@@ -43,9 +43,22 @@ interface AdoptFamiliarCTAProps {
   /** 🐾 E52（主公亲令 2026-10-15）: 认领成功后「带路」直达回调 —— 宿主页注入 SPA 路由直跳；
       未注入时兜底 window.location.href='/'（同样是直达，严禁 history.back） */
   onLeadHome?: () => void;
+  /** 🐾 E54-4（主公亲令 2026-10-15）: [ 进阶定制 / 灵魂镜像 ✦ ] 入口 —— 宿主页注入 SPA 路由
+      直跳 /familiar/custom；未注入时兜底 location.href（同样直达） */
+  onOpenCustom?: () => void;
 }
 
-const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome }) => {
+/** 🐾 E54-4：[进阶定制 / 灵魂镜像 ✦] 按钮的六语文案（本组件内联先例一致） */
+const CUSTOM_LABEL: Record<string, string> = {
+  zh: '进阶定制 / 灵魂镜像 ✦',
+  en: 'Advanced · Soul Mirror ✦',
+  es: 'Avanzado · Espejo del Alma ✦',
+  fr: "Avancé · Miroir de l'Âme ✦",
+  th: 'ขั้นสูง · กระจกวิญญาณ ✦',
+  vi: 'Nâng cao · Gương Linh hồn ✦',
+};
+
+const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome, onOpenCustom }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -78,6 +91,20 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
   const term = (key: string) => {
     const t = dictTerm(ASTRO_TERMS, 'familiar', key, lang);
     return t ? clampToSlot(t.label, t.slot || 'labelCard') : '';
+  };
+
+  /* 🐾 E54-4：进阶定制殿堂入口（SPA 直达；兜底 location.href —— 严禁 history.back 多次返回） */
+  const customLabel = CUSTOM_LABEL[String(lang || 'zh').slice(0, 2).toLowerCase()] || CUSTOM_LABEL.zh;
+  const openCustom = () => {
+    if (onOpenCustom) onOpenCustom();
+    else { try { window.location.href = '/familiar/custom'; } catch (_) { /* noop */ } }
+  };
+  const customBtnStyle: React.CSSProperties = {
+    padding: '8px 12px', borderRadius: '9px',
+    border: '1px solid rgba(168,135,220,0.75)',
+    background: 'linear-gradient(135deg, rgba(168,85,247,0.28), rgba(129,216,208,0.16))',
+    color: '#E6D9FF', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer',
+    whiteSpace: 'nowrap', ...SAFE_TEXT,
   };
 
   const adopt = async (mode: string) => {
@@ -150,6 +177,15 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
               ({lang === 'zh' ? '本机留存' : lang === 'en' ? 'local only' : lang === 'es' ? 'solo local' : lang === 'fr' ? 'local seul' : lang === 'th' ? 'เก็บในเครื่อง' : 'chỉ cục bộ'})
             </span>
           )}
+          {/* 🐾 E54-4（主公亲令 2026-10-15）: 进阶定制 / 灵魂镜像殿堂入口 */}
+          <button
+            type="button"
+            data-testid="adopt-open-custom"
+            onClick={openCustom}
+            style={{ ...customBtnStyle, marginLeft: 'auto' }}
+          >
+            {customLabel}
+          </button>
           {/* 🐾 E52（主公亲令 2026-10-15）: 右侧高亮方框「带路」按钮 —— 点击**单页路由直跳首页**，
               严禁 history.back 多次返回；文案性别化（她/他 按 relation_mode 白名单二分） */}
           <button
@@ -157,7 +193,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
             data-testid="adopt-lead-home"
             onClick={() => { if (onLeadHome) onLeadHome(); else { try { window.location.href = '/'; } catch (_) {} } }}
             style={{
-              marginLeft: 'auto', padding: '8px 14px', borderRadius: '9px',
+              padding: '8px 14px', borderRadius: '9px',
               border: '1px solid rgba(240,208,96,0.85)',
               background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 100%)',
               color: '#0D0D1A', fontSize: '11.5px', fontWeight: 800, cursor: 'pointer',
@@ -223,6 +259,16 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
               ⚠️ {lang === 'zh' ? '认领失败，请重试' : lang === 'en' ? 'Adoption failed, please retry' : lang === 'es' ? 'Adopción fallida, reintenta' : lang === 'fr' ? 'Adoption échouée, réessayez' : lang === 'th' ? 'รับเลี้ยงไม่สำเร็จ ลองใหม่' : 'Nhận nuôi thất bại, thử lại'}
             </div>
           )}
+
+          {/* 🐾 E54-4（主公亲令 2026-10-15）: 进阶定制 / 灵魂镜像殿堂入口（未认领态同样可浏览） */}
+          <button
+            type="button"
+            data-testid="adopt-open-custom-idle"
+            onClick={openCustom}
+            style={{ ...customBtnStyle, display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'center', marginTop: '10px' }}
+          >
+            {customLabel}
+          </button>
         </>
       )}
     </div>

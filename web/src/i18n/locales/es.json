@@ -96,6 +96,12 @@
     "whisper2": "Ve más despacio, vas por buen camino.",
     "whisper3": "Descansa pronto esta noche, te cuidaré.",
     "whisper4": "Di lo que sientes, te escucho.",
-    "whisper5": "Estás mejor que ayer, de verdad."
+    "whisper5": "Estás mejor que ayer, de verdad.",
+    "luckLead": "✦ Fortuna de Hoy ✦",
+    "luckNum": "Número de suerte",
+    "luckColor": "Color de suerte",
+    "luckFlower": "Flor de suerte",
+    "luckDir": "Dirección benefactora",
+    "luckSeed": "Lleva un cristal o acércate a las plantas — atraen energía de ganancias inesperadas~"
   }
 }

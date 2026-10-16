@@ -34,6 +34,8 @@ import type { FamiliarProfile } from '../components/FamiliarPicker';
 import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
+// 🐾 E54-4（主公亲令 2026-10-15）：进阶定制殿堂路由常量（单一真源，禁复制字面量）
+import { FAMILIAR_CUSTOM_PATH } from './FamiliarCustomPage';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, hasExplicitBirthCoords } from '../lib/sandboxCheckout.mjs';
 // @ts-ignore —— wealthRestore.mjs 为纯 JS 逻辑核（形状由 45-D2c 闸门守备）
@@ -3469,6 +3471,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             tz={_familiarBp.tz}
             lang={currentLang}
             onLeadHome={() => onNavigate('/')}
+            onOpenCustom={() => onNavigate(FAMILIAR_CUSTOM_PATH)}
           />
         )}
 

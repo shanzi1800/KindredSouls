@@ -96,6 +96,12 @@
     "whisper2": "Ralentissez, vous êtes sur la bonne voie.",
     "whisper3": "Couchez-vous tôt ce soir, je veille sur vous.",
     "whisper4": "Dites ce que vous ressentez, je vous écoute.",
-    "whisper5": "Vous allez mieux qu'hier, vraiment."
+    "whisper5": "Vous allez mieux qu'hier, vraiment.",
+    "luckLead": "✦ Fortune du Jour ✦",
+    "luckNum": "Numéro porte-bonheur",
+    "luckColor": "Couleur porte-bonheur",
+    "luckFlower": "Fleur porte-bonheur",
+    "luckDir": "Direction bienfaitrice",
+    "luckSeed": "Portez un cristal ou restez près des plantes — elles attirent l'énergie des gains inattendus~"
   }
 }

@@ -680,8 +680,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 /* 几何真值（源图实测，单位=按钮宽）：Milo 居左 -14.77% 宽 71.46%；Sophia 居右 58.45% 宽 69.93%
    🐾 E52（主公亲令 2026-10-15）：① 整体缩至约 67%（宽度 71.46%→48% / 69.93%→46.9%），高度完全
-   容纳于「缘分天定」与按钮之间；② translateY 按**体底接触**重算（体底=钮顶+2%h，尾巴垂搭键面）；
-   ③ 巡视通道：±14% 自体宽缓移（translateX 与趴键 translateY 同帧合成，禁 margin 重排） */
+   容纳于「缘分天定」与按钮之间；② 巡视通道：±14% 自体宽缓移（translateX 与趴键 translateY
+   同帧合成，禁 margin 重排）。
+   🐾 E54-1（主公亲令 2026-10-15 · 真机截屏抓形「Sophia 悬挂半空」）：垂直锚点**重标定** ——
+   病根＝E52 的「体底 0.780/0.775」实测的是**爪尖/尾梢**（alpha 最下极值），而灵宠本体是
+   圆球坐姿：身体球底（行宽 ≥ 峰值 20% 的实心轮廓底）才是视觉"坐上去"的接触点。
+   逐行 alpha 实测真值：Milo 球底 0.7806（图 793px）/ Sophia 球底 0.7485（图 831px）
+   ⇒ 球底距图底 0.2194h / 0.2515h；目标＝球底压在按钮顶沿**下方约 3.5%h（≈3px）**，
+   故 translateY = 0.2194+0.035 ⇒ **25.4%** / 0.2515+0.035 ⇒ **28.6%**。
+   残余的图底透明区下垂（爪垫 0.95 / 尾梢 0.99）自然搭在金色键面上 —— 真正的"扒在键沿"。 */
 .ks-fam-milo {
   left: -12%; width: 48%;
   animation: ksFamPatrolMilo 9.5s ease-in-out infinite alternate;
@@ -691,12 +698,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: ksFamPatrolSophia 9.5s ease-in-out infinite alternate;
 }
 @keyframes ksFamPatrolMilo {
-  from { transform: translateY(24.2%) translateX(-14%); }
-  to   { transform: translateY(24.2%) translateX(14%); }
+  from { transform: translateY(25.4%) translateX(-14%); }
+  to   { transform: translateY(25.4%) translateX(14%); }
 }
 @keyframes ksFamPatrolSophia {
-  from { transform: translateY(24.7%) translateX(14%); }
-  to   { transform: translateY(24.7%) translateX(-14%); }
+  from { transform: translateY(28.6%) translateX(14%); }
+  to   { transform: translateY(28.6%) translateX(-14%); }
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -727,8 +734,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   94.8%, 97.2% { opacity: 1; }
   98%, 100% { opacity: 0; }
 }
-/* 尾巴蠕动：独立尾层（本体已擦尾），transform-origin 钉在尾根（geometry.json E52 真值），
-   正弦式 ±3.5° 往返 —— 摆动幅度留到极限目检验证过根部无缝 */
+/* 尾巴摆动：独立尾层（本体已擦尾），transform-origin 钉在尾根（geometry.json E52 真值）；
+   🐾 E54-3（主公亲令 2026-10-15）: 改为**仿生猫咪慢摇** —— 统一 4s ease-in-out infinite
+   alternate（与 4~5s 错峰眨眼同频呼吸），幅度 Milo ±4° / Sophia ±3.5°（舒展而非抽搐）；
+   尾层原始定位使其**清晰露在按钮侧边**（Milo 尾在图左 / Sophia 尾在图右），随本体下移后
+   尾梢自然搭在键面。 */
 .ks-fam-tail {
   position: absolute;
   pointer-events: none;
@@ -738,20 +748,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-fam-milo .ks-fam-tail {
   left: 0%; top: 56.12%; width: 33.33%;
   transform-origin: 62.5% 15.8%;
-  animation: ksFamTailMilo 3.8s ease-in-out infinite alternate;
+  animation: ksFamTailMilo 4s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
   left: 55.14%; top: 65.82%; width: 44.86%;
   transform-origin: 58.2% 13.38%;
-  animation: ksFamTailSophia 4.4s ease-in-out infinite alternate;
+  animation: ksFamTailSophia 4s ease-in-out infinite alternate;
 }
 @keyframes ksFamTailMilo {
-  from { transform: rotate(-3.5deg); }
-  to   { transform: rotate(3.5deg); }
+  from { transform: rotate(-4deg); }
+  to   { transform: rotate(4deg); }
 }
 @keyframes ksFamTailSophia {
-  from { transform: rotate(3deg); }
-  to   { transform: rotate(-3deg); }
+  from { transform: rotate(3.5deg); }
+  to   { transform: rotate(-3.5deg); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }
@@ -836,9 +846,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
-  /* 🐾 E52: 巡视 / 眨眼 / 尾蠕动一并降级为静帧（趴键位保持） */
-  .ks-fam-milo { animation: none; transform: translateY(24.2%); }
-  .ks-fam-sophia { animation: none; transform: translateY(24.7%); }
+  /* 🐾 E52/E54: 巡视 / 眨眼 / 慢摇尾一并降级为静帧（趴键位保持 —— E54-1 球底压键真值） */
+  .ks-fam-milo { animation: none; transform: translateY(25.4%); }
+  .ks-fam-sophia { animation: none; transform: translateY(28.6%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }

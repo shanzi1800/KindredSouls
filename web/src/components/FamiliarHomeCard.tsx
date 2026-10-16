@@ -16,6 +16,14 @@
  *      recs 数组天然容纳两条 HomeRecord，破框骑键层双宠同台：Milo 左 / Sophia 右，
  *      CSS 定位已按 IP 自洽，无需新增样式）。
  *
+ * 🔴 E54（主公亲令 2026-10-15 · 终极整合军令）：
+ *    - E54-1 **绝对趴键落位**：真机抓形「Sophia 悬挂半空」⇒ 垂直锚点重标定 —— 旧值
+ *      0.780/0.775 实测的是爪尖/尾梢，真实**身体球底** Milo 0.7806 / Sophia 0.7485
+ *      ⇒ translateY 25.4% / 28.6%（球底压键 ≈3px，CSS 真值见 App.css E54-1 段）；
+ *    - E54-2 **接管今日运势**：E53 撤下的幸运数字/颜色/花朵/贵人方位**灵魂融合**进灵宠
+ *      交互池（dailyFortune.mjs 真值核 + 点击轮播 + 9s 主动锦囊气泡），首页仍零方框；
+ *    - E54-3 尾巴仿生慢摇 4s（App.css）；E54-4 进阶定制殿堂页 `/familiar/custom`。
+ *
  * 🔴 沿袭铁律（E48/E49/E50/E51/E52，一概不放松）：
  *    - E50 门禁 fail-closed：paidOk !== true（判定中 / 查库失败）一律不呈现；
  *    - E49 按盘隔离：认领档必带 chartSig，URL ?reset=1 自洁，签名不匹配即弃即清；
@@ -41,7 +49,11 @@ import miloBlink from '../assets/familiar_milo_blink.webp';
 import sophiaTail from '../assets/familiar_sophia_tail.webp';
 import sophiaBlink from '../assets/familiar_sophia_blink.webp';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
-import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, recordMatchesChart } from '../lib/familiarHome.mjs';
+import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, recordMatchesChart, triadTruth } from '../lib/familiarHome.mjs';
+// 🌟 E54-2（主公亲令 2026-10-15）：今日命理赋能真值核 —— 幸运数字/颜色/花朵/贵人方位
+//   （自 E53 撤下的 DailyDashboard 迁移而来；灵宠亲口轮播分享，首页零方框）
+// @ts-ignore —— dailyFortune.mjs 纯逻辑核（确定性/四象方位；见文件头契约）
+import { dailyFortune } from '../lib/dailyFortune.mjs';
 
 const WHISPER_COUNT = 5;
 
@@ -141,6 +153,21 @@ const FamiliarHomeCard: React.FC = () => {
   /** 关系模式 ⇒ 标签（与 FamiliarPicker 同源键 familiar.girlfriend/…） */
   const relationLabel = (mode: string): string => t(`familiar.${mode}`);
 
+  /* ── 🌟 E54-2 今日运势锦囊（主公亲令 2026-10-15）──
+     军令：E53 撤下的「今日幸运数字/颜色/花朵/贵人方位」**不是删除而是灵魂融合** ——
+     全部注入灵宠交互池，由灵宠亲昵口吻轮播分享，首页保持零方框极简。
+     🔴 本命赋能：太阳星座取自认领档 triad（本命真值）⇒ 四象收窄贵人方位池；
+        无本命真值 ⇒ 回落全八方位（绝不臆造）。
+     🔴 取词全部为**静态字面量**（i18n 门禁可静态收录，防 key 字面量上屏）。 */
+  const luckLine = useCallback((seq: number, rec0: HomeRecord | null): string => {
+    const sun = rec0 ? String((triadTruth(rec0) || {}).sun || '') : '';
+    const f = dailyFortune({ lang, sunSign: sun });
+    if (seq === 0) return `🔢 ${t('familiar.luckNum')} ${f.luckyNumber} · 🎨 ${t('familiar.luckColor')} ${f.color.name}`;
+    if (seq === 1) return `${f.flower.emoji} ${t('familiar.luckFlower')} ${f.flower.name} —— ${f.flower.meaning}`;
+    if (seq === 2) return `🧭 ${t('familiar.luckDir')} ${f.direction.name} · ${f.vibe}`;
+    return '';
+  }, [lang, t]);
+
   /* ── 挂载：读认领档 ⇒ 有档即破框骑键 ──
      🔒 E49（沿袭）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
         ② 星盘绑定校验 —— 有当前盘真值且签名不匹配（或旧档无签名）⇒ 即弃即清，
@@ -200,19 +227,48 @@ const FamiliarHomeCard: React.FC = () => {
   const famPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string } | null>(null);
   const famBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 🌟 E54-2: 点击轮播序（0/1=幸运数字+色 → 2=幸运花 → 3=贵人方位 → 4=轻语，如此循环） */
+  const tapSeqRef = useRef(0);
+
+  /** 弹出气泡（统一收口：计时重置 + 6.5s 自动消散） */
+  const showBubble = useCallback((name: string, sub: string, line: string) => {
+    setFamBubble({ name, sub, line });
+    if (famBubbleTimer.current) clearTimeout(famBubbleTimer.current);
+    famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
+  }, []);
+
+  const nameOf = (rec0: HomeRecord): string => {
+    const mode = String(rec0.profile.relation_mode || '');
+    return String(rec0.profile.name || '') || (IP_OF_MODE[mode] ?? 'Sophia');
+  };
 
   const tapFamiliar = useCallback((rec0: HomeRecord) => {
     const profile = rec0.profile;
     const mode = String(profile.relation_mode || '');
-    const name = String(profile.name || '') || (IP_OF_MODE[mode] ?? 'Sophia');
     setFamPulse(true);
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 1500);
-    const wIdx = whisperIndex(profile, localDateKey(new Date()), WHISPER_COUNT);
-    setFamBubble({ name, sub: relationLabel(mode), line: wIdx >= 0 ? whisperText(wIdx) : '' });
-    if (famBubbleTimer.current) clearTimeout(famBubbleTimer.current);
-    famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
-  }, [relationLabel, whisperText]);
+    // 🌟 E54-2 轮播：0/1/2 ⇒ 今日锦囊三段（数字+色 / 花+花语 / 贵人方位+能量语）；3 ⇒ 命理轻语
+    const seq = tapSeqRef.current++ % 4;
+    if (seq < 3) {
+      showBubble(nameOf(rec0), t('familiar.luckLead'), luckLine(seq, rec0));
+    } else {
+      const wIdx = whisperIndex(profile, localDateKey(new Date()), WHISPER_COUNT);
+      showBubble(nameOf(rec0), relationLabel(mode), wIdx >= 0 ? whisperText(wIdx) : '');
+    }
+  }, [luckLine, relationLabel, showBubble, t, whisperText]);
+
+  /* 🌟 E54-2 日常主动气泡：认领且权益就位后 9s，灵宠**主动**衔来今日锦囊一次
+     （用户若已主动点击互动过 ⇒ 不打扰；仅一次，绝不循环骚扰） */
+  useEffect(() => {
+    if (!rec || paidOk !== true) return;
+    const tid = setTimeout(() => {
+      if (tapSeqRef.current > 0) return;
+      showBubble(nameOf(rec), t('familiar.luckLead'), luckLine(0, rec));
+    }, 9000);
+    return () => clearTimeout(tid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rec, paidOk, showBubble, luckLine, t]);
 
   /* 💎 E53-2：骑键位装配（本期单档；双宠契约见文件头 —— 渲染核已按数组就位） */
   const recs: HomeRecord[] = rec ? [rec] : [];

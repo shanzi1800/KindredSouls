@@ -28,6 +28,8 @@ import PolicyPage from './pages/PolicyPage';
 // 🧪 Gate 45-B：沙盘收银台（create-checkout 回执 sandbox:true ⇒ 截断外链、就地唤起）
 import SandboxCashier from './components/SandboxCashier';
 import SandboxPayPage from './pages/SandboxPayPage';
+// 🐾 E54-4（主公亲令 2026-10-15）：进阶定制 · 灵魂镜像殿堂（独立页 /familiar/custom）
+import FamiliarCustomPage, { FAMILIAR_CUSTOM_PATH } from './pages/FamiliarCustomPage';
 // 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
 import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
 // 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
@@ -1554,6 +1556,8 @@ export default function App() {
       if (path === '/wealth/report') return '/wealth/report';
       // 🧪 Gate 45-B：沙盘收银台同源直达路由（兜底承载）
       if (path === SANDBOX_PAY_PATH) return SANDBOX_PAY_PATH;
+      // 🐾 E54-4：进阶定制殿堂同源直达路由（刷新/直链均可落页）
+      if (path === FAMILIAR_CUSTOM_PATH) return FAMILIAR_CUSTOM_PATH;
     }
     return null;
   });
@@ -1745,7 +1749,7 @@ export default function App() {
   useEffect(() => {
     const handlePopstate = () => {
       const path = window.location.pathname;
-      if (path === '/wealth' || path === '/wealth/report' || path === SANDBOX_PAY_PATH) {
+      if (path === '/wealth' || path === '/wealth/report' || path === SANDBOX_PAY_PATH || path === FAMILIAR_CUSTOM_PATH) {
         setWealthPath(path);
       } else {
         setWealthPath(null);
@@ -1837,6 +1841,8 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       {wealthPath?.startsWith('/wealth/report') && <WealthReportPage key="wealth-report" onNavigate={navigate} />}
       {/* 🧪 Gate 45-B：沙盘收银台直达路由页（挂载即由总线唤起模态） */}
       {wealthPath === SANDBOX_PAY_PATH && <SandboxPayPage onNavigate={navigate} />}
+      {/* 🐾 E54-4：进阶定制 · 灵魂镜像殿堂（报告页认领条 [进阶定制 / 灵魂镜像 ✦] 直达） */}
+      {wealthPath === FAMILIAR_CUSTOM_PATH && <FamiliarCustomPage onNavigate={navigate} lang={currentLang} />}
       {/* 🧪 Gate 45-B：全局沙盘收银台模态（任意调用点经总线唤起；未唤起 ⇒ 零渲染） */}
       <SandboxCashier lang={currentLang} />
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}

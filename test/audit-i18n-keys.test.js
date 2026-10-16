@@ -91,7 +91,9 @@ describe('V448 i18n Key 门禁', () => {
     // 104 → 105（E52 主公亲令 2026-10-15: familiar.leadHomeShe/He 性别化带路两键入列、leadHome 退役，6 语种同步）
     // 105 → 81（E53-1 主公亲令 2026-10-15: 首页净化白名单 —— familiar 首页认领表单/折叠条/
     //   座位卡/换一位伙伴 24 个死键退役（home* 19 ＋ axis* 5），6 语种同步删除）
-    assert.strictEqual(p.total, 81, 'E53-1 首页净化死键清场后基准键数应为 81');
+    // 81 → 87（E54-2 主公亲令 2026-10-15: 今日运势内容**灵魂融合**进灵宠交互池 ——
+    //   familiar.luckLead/luckNum/luckColor/luckFlower/luckDir/luckSeed 6 键入列，6 语种同步）
+    assert.strictEqual(p.total, 87, 'E54-2 灵宠接管今日运势后基准键数应为 87');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

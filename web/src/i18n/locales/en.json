@@ -96,6 +96,12 @@
     "whisper2": "Slow down — you're on the right path.",
     "whisper3": "Rest early tonight — I'll watch over you.",
     "whisper4": "Say what's on your mind — I'm listening.",
-    "whisper5": "You're doing better than yesterday. Truly."
+    "whisper5": "You're doing better than yesterday. Truly.",
+    "luckLead": "✦ Today's Fortune ✦",
+    "luckNum": "Lucky number",
+    "luckColor": "Lucky color",
+    "luckFlower": "Lucky flower",
+    "luckDir": "Benefactor direction",
+    "luckSeed": "Wear a crystal or stay near plants — they gather windfall energy for you~"
   }
 }
