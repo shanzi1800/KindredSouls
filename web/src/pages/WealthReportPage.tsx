@@ -2192,6 +2192,11 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
 
     // 🌊 流式输出开关(开发中,暂用旧接口)
     const USE_STREAM = true; // 🔥 军师下令:全量开火!
+    // 🚀 E60-①: 合并帧计时器（声明在 try 之外 ⇒ finally/catch 也能兜底撤销）
+    let _flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const _cancelFlush = () => {
+      if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
+    };
 
     if (USE_STREAM) {
       // 🚀 流式接收(V99f: 军师缓冲区方案--防断包/粘包)
@@ -2223,6 +2228,32 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
         abortRef.current = new AbortController();
         // V244: 初始化本请求的 _fullMap 条目（每个请求独立累加，不被 HMR / 重挂重置）
         _fullMap.set(_memKey, '');
+        // ═══════════════════════════════════════════════════════════════════
+        // 🚀 E60-①（主公亲令 2026-10-17）：SSE 消费端**合并节流**（146 帧/秒 → ≈11 帧/秒）
+        // ═══════════════════════════════════════════════════════════════════
+        // 【病根·线上实测】年报 13,855 字 / 8,544 个 SSE 帧 / 58.45s ⇒ **146 帧/秒**。
+        //   旧实现每帧无条件 `setSacredText`（顶层 State）+ `gen.subs` 广播 ⇒ 整页
+        //   （$4.99 先天档 + 月报长卷 + 灵宠卡 + 年报长卷，数万 DOM 节点）每秒被
+        //   **连坐重绘 146 次**，且父级每帧还要对全文重跑 `formatAndCleanSacredText`
+        //   等 O(n) 清洗 ⇒ 主线程饱和、页面卡死（单测年报丝滑，是因为同屏没有其它报告）。
+        // 【治法】碎片帧只进 `_fullMap`（纯字符串累积，零渲染代价）；**渲染唯一入口**
+        //   收敛为 `_flushStream`，由 `_FLUSH_MS`（90ms ≈ 11fps）合并刷出。
+        //   ⚠️ 终局三处（sanitized 全量终稿 / [DONE] / 异常与非 2xx）必须 `_cancelFlush()`
+        //      先撤销未决的合并帧，再同步写入——否则迟到的合并帧会用流式原文盖掉终稿
+        //      （与 V419「终稿优先」同一条红线）。
+        const _FLUSH_MS = 90;
+        // 合并刷帧：把累积文本一次性写画布 + 广播订阅者（remount 后的新实例靠 subs 续流）
+        const _flushStream = () => {
+          _cancelFlush();
+          const _cur = _fullMap.get(_memKey) || '';
+          const _g = _reportGen.get(_memKey);
+          if (_g) { _g.partial = _cur; _g.subs.forEach(fn => fn(_cur)); }
+          if (canvasOwnerRef.current === type) setSacredText(_cur);
+        };
+        const _scheduleFlush = () => {
+          if (_flushTimer) return; // 已有未决帧 ⇒ 本帧只入缓冲，与下一帧合并（这正是节流本体）
+          _flushTimer = setTimeout(() => { _flushTimer = null; _flushStream(); }, _FLUSH_MS);
+        };
         // V306: 从 URL 读取 nocache 参数，传递给后端强制绕过缓存
         const _urlParams = new URLSearchParams(window.location.search);
         const _noCache = _urlParams.get('nocache') === 'true' || _forceNoCache;
@@ -2302,6 +2333,7 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
 
               if (dataStr === '[DONE]') {
                 _streamDone = true; // 🛡️ V446: 流正常完成，后续 fallback 不再误触发
+                _cancelFlush(); // 🚀 E60-①: 撤销未决合并帧，保证终端终稿不被迟到帧覆盖
                 console.log('[V242-DEBUG] [DONE] len=' + (_fullMap.get(_memKey)||'').length + ' | first80=' + JSON.stringify((_fullMap.get(_memKey)||'').slice(0,80)));
                 console.log('[V242-DEBUG] [DONE] _full 中 ✦ 出现次数=' + ((_fullMap.get(_memKey)||'').match(/\✦/g) || []).length + ' | 第4个✦位置=' + ((_fullMap.get(_memKey)||'').indexOf('\✦') !== -1 ? (_fullMap.get(_memKey)||'').indexOf('\✦') : -1));
                 console.log('[WealthReport] 🔮 [DONE] 天书刻印完成 V99f-Fix!');
@@ -2412,7 +2444,8 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     _fullMap.set(_memKey, _fullMap.get(_memKey) || ''); // V244: sync Map
                     _fullMap.set(_memKey, _fullMap.get(_memKey) || '');
                     gen.subs.forEach(fn => fn(_fullMap.get(_memKey) || ''));
-                    if (canvasOwnerRef.current === type) setSacredText(_fullMap.get(_memKey)||''); // 🛡️ E24⑤/P0-2: 画布已易主则弃写 chunk 快照
+                    // 🚀 E60-①: 旧实现在此逐帧 `setSacredText`（146 次/秒全树连坐重绘）⇒ 改为合并节流刷帧
+                    _scheduleFlush();
                   } else {
                     // 🛡️ V220e: 智能自适应合并(与月报通道同款, 防阶梯重复)
                     const _wt = wealthReportRef.current || '';
@@ -2446,6 +2479,8 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     // 🛡️ V410: sanitized 是后端全量清洗终稿(已修拆词+₫500,000阈值),月报/年报无条件覆盖流式脏文本
                     //   原长度守卫会因"清洗删空格后变短"误保留脏流式文本(军师 9-10 抓包:làúc/bạnè/khiý 实时可见)
                     //   安全阈值: sanitized 至少 1000 字符才覆盖(防极端截断回归),否则保留较长流式版
+                    // 🚀 E60-①: 终稿到达即撤销未决合并帧（V419「终稿优先」在节流下的同一条红线）
+                    _cancelFlush();
                     if (canvasOwnerRef.current === type) setSacredText(prev => (fixedText && fixedText.length >= 1000 ? fixedText : (prev || fixedText))); // 🛡️ E24⑤/P0-2: 画布已易主则弃写
                   } else {
                     setWealthReportText(fixedText);
@@ -2464,6 +2499,10 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                     const unescaped = recovered.replace(/\\n/g, '\n').replace(/\\\"/g, '"').replace(/\\\\/g, '\\');
                     if (type === 'yearly' || type === 'monthly') {
                       // 🛡️ E24⑤/P0-2: 容错提取追加同样过画布门禁，防旧流残段拼接新稿
+                      // 🚀 E60-①: 救回的字符必须同步并入 _fullMap —— 否则未决的合并帧会用旧累积
+                      //   覆盖画布，把这段脏帧抢救下来的正文悄悄抹掉（节流引入的新风险，此处闭合）
+                      _fullMap.set(_memKey, (_fullMap.get(_memKey) || '') + unescaped);
+                      _cancelFlush();
                       if (canvasOwnerRef.current === type) setSacredText(prev => prev + unescaped);
                     } else {
                       setWealthReportText(prev => prev + unescaped);
@@ -2526,12 +2565,14 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         }
 } catch (err) {
         console.error('[WealthReport] Stream error:', err);
+        _cancelFlush(); // 🚀 E60-①: 异常中断 ⇒ 撤销未决合并帧（异常分支不写画布）
       } finally {
 
         // 🛠️ V40: finally只做月报兜底,年报不需要([DONE]已处理)
         if (type === 'monthly' && !streamedOnce) {
           setTimeout(() => setVisibleWeeks(1), 500);
         }
+        _cancelFlush(); // 🚀 E60-①: 流已收口 ⇒ 计时器不得再触达画布（终稿/回捞已同步写就）
         const _genAbort = _reportGen.get(_memKey);
         if (_genAbort) { _genAbort.subs.clear(); }
         _reportGen.delete(_memKey); // 🛡️ V219d: 流异常/abort 中断时释放单例锁,防止锁死

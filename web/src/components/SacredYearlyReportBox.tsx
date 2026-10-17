@@ -3,7 +3,7 @@
 // 🔒 参数封仓 V79 — 本文件所有样式参数已锁定，禁止修改
 // 详见: ~/qclaw/workspace/KindredSouls_SacredYearlyReportBox_参数封仓手册.md
 // ═══════════════════════════════════════════════════════════
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ E24/R11r②（2026-10-06 线上西语实测根治）：**语言感知的标题判据表**
@@ -79,12 +79,16 @@ const SacredYearlyReportBox: React.FC<{
   const [smoothText, setSmoothText] = useState('');
   const smoothIdxRef = useRef(0);
   const targetTextRef = useRef('');
+  // 🚀 E60-②（主公亲令 2026-10-17）: 清洗节流缓存 —— 见下方 getCleanedText
+  const cleanCacheRef = useRef<{ raw: string; cleaned: string; at: number }>({ raw: '', cleaned: '', at: 0 });
   const hasContent = rawStreamText && rawStreamText.trim().length > 0;
   if (hasContent && !contentArrived.current) contentArrived.current = true;
   const showSkeleton = contentArrived.current === false;
 
-  // 🛠️ V370-fix4: 平滑打字机核心逻辑
-  // 每 20ms 推进 2-3 个字符，把 80 字 chunk 视觉上变成逐字流
+  // 🚀 E60-②（主公亲令 2026-10-17）: 打字机 20ms → 50ms
+  //   旧节奏 50 拍/秒 × 每拍一次 `setSmoothText`（局部重绘）+ 一次强制触底回流，
+  //   与 SSE 146 帧/秒叠加后主线程饱和。50ms（20 拍/秒）在观感上仍是"逐字展开"，
+  //   但每拍推进量同比放大（÷180 而非 ÷400），万字长卷依旧约 8 秒内追平。
   useEffect(() => {
     if (!rawStreamText) return;
     targetTextRef.current = rawStreamText;
@@ -97,16 +101,15 @@ const SacredYearlyReportBox: React.FC<{
       const target = targetTextRef.current;
       const idx = smoothIdxRef.current;
       if (idx < target.length) {
-        // 🛡️ V476: 自适应速度——年报 1.4 万字按 3字/20ms 要 91 秒,体感"卡死后一次性吐出"。
-        //   按总长自适应:全文约 8 秒内追平,同时保留逐字流式仪式感。
-        const advance = Math.min(Math.max(3, Math.ceil(target.length / 400)), target.length - idx);
+        // 🛡️ V476: 自适应速度——按总长自适应（50ms 拍距下的等价推进量）
+        const advance = Math.min(Math.max(8, Math.ceil(target.length / 180)), target.length - idx);
         smoothIdxRef.current = idx + advance;
         setSmoothText(target.slice(0, idx + advance));
       } else {
         // 已追上目标文本，清除定时器
         clearInterval(timer);
       }
-    }, 20);
+    }, 50);
     return () => clearInterval(timer);
   }, [rawStreamText]);
 
@@ -123,13 +126,18 @@ const SacredYearlyReportBox: React.FC<{
   // 原逻辑依赖 yearlyCardsReady，但 monthlyCardsReady 在首个 chunk 就置 true，导致 isStreaming 永远 false
   const isStreaming = hasContent && smoothText.length < (rawStreamText?.length || 0);
 
-  // 🛠️ V372-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
-  // 关键：用 isStreaming 判断（smoothText 还在追 rawStreamText），而非 yearlyCardsReady
-  // V372-fix2: 加 isAutoScrollingRef 防止程序性 scrollTop 触发 handleScroll 误判 atBottom=false
+  // 🚀 E60-③（主公亲令 2026-10-17）: 触底滚动 250ms 节流 + rAF
+  //   旧实现每拍都 `el.scrollTop = el.scrollHeight`，这是**强制同步回流（Forced Synchronous
+  //   Layout）**：460px 视口内数万字富文本每写一次就要重排一次，50 拍/秒 × 万字长卷 =
+  //   主线程被排版吃掉。改为 250ms 一次（4 次/秒），且仍在 rAF 内执行以免打断合成帧。
+  const lastAutoScrollAtRef = useRef(0);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !hasContent) return;
     if (!isStreaming) return;
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (now - lastAutoScrollAtRef.current < 250) return; // ⏱ 节流窗内不排帧、不触发回流
+    lastAutoScrollAtRef.current = now;
     const rafId = requestAnimationFrame(() => {
       isAutoScrollingRef.current = true;
       el.scrollTop = el.scrollHeight;
@@ -776,12 +784,35 @@ const SacredYearlyReportBox: React.FC<{
     return { type: 'text', content: cleanMarkdown(t) };
   };
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚀 E60-②（主公亲令 2026-10-17）: 清洗节流 —— 禁止每拍对万字历史段落重跑全量正则
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 【实测】`cleanAndInjectChapters` 对 14,000 字年报 = **1.5ms/趟**（60+ 趟正则 + 全文
+  //   去重切分）。旧实现每个渲染帧跑一次 ⇒ 20 拍/秒 × 1.5ms = 30ms/秒 全烧在重复扫描
+  //   已经稳定的历史段落上；叠加 SSE 146 帧/秒时更是 220ms/秒。
+  // 【治法】节流窗 `_CLEAN_MS` 内**复用上一稳定帧结果**（纯追加才允许复用，前缀一改即重算）：
+  //   ① 流式期最多 ~8 次/秒，历史段落不再被反复扫；
+  //   ② `force=true`（打字机已追平 / 终稿就位）一律现算，绝不把滞后结果当终稿；
+  //   ③ 节流窗内返回的是**同一个字符串对象** ⇒ 下游 `useMemo` 直接命中，行树零重建。
+  // ⚠️ 射程声明：本优化只改"多久算一次"，不改"算什么"——清洗规则链一字未动，
+  //   e28/e24 系列闸门对 `cleanAndInjectChapters` 函数体的断言不受影响。
+  const _CLEAN_MS = 130;
+  const getCleanedText = (raw: string, force: boolean): string => {
+    const c = cleanCacheRef.current;
+    if (c.raw === raw) return c.cleaned;
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    // 纯追加判定（前 32 字不变）——只有追加才允许复用，重生成/换稿一律现算
+    const isAppend = c.raw.length > 0 && raw.length > c.raw.length && raw.startsWith(c.raw.slice(0, 32));
+    if (!force && isAppend && now - c.at < _CLEAN_MS) return c.cleaned;
+    const cleaned = cleanAndInjectChapters(raw);
+    cleanCacheRef.current = { raw, cleaned, at: now };
+    return cleaned;
+  };
+
   const renderLines = (processedText: string) => {
     if (!processedText) return null;
     try {
-    // V248-debug: 精确诊断只渲染一段的问题
     const _lines = processedText.split('\n');
-    console.log('[SacredYearlyReportBox] V248 render: raw len=' + (rawStreamText?.length||0) + ' lines=' + _lines.length + ' firstLine=' + JSON.stringify(_lines[0]||'EMPTY') + ' ✦ count in raw=' + ((rawStreamText||'').match(/\✦/g)||[]).length);
     return _lines.map((line, idx) => {
       const { type, content, icon, next } = parseLine(line);
 
@@ -920,6 +951,12 @@ const SacredYearlyReportBox: React.FC<{
   }
   };
 
+  // 🚀 E60-②（主公亲令 2026-10-17）: 行树记忆化 —— 清洗结果字符串未变 ⇒ 整棵行树零重建
+  //   `getCleanedText` 在节流窗内返回**同一个字符串对象**，故 130ms 内的其余渲染帧
+  //   （父级 re-render、滚动 state、isStreaming 翻转）全部命中缓存，不做任何 regex / 元素创建。
+  const renderedClean = getCleanedText(smoothText, !isStreaming);
+  const renderedBody = useMemo(() => renderLines(renderedClean), [renderedClean]);
+
   // 🛠️ V78: 星光呼吸灯 — 3种周期琥珀色脉冲，模拟星尘洒落
   const SkeletonBar = ({ delay, w, period }: { delay: number; w: string; period: 2 | 2.5 | 3 }) => {
     // 💎 E59b（主公亲令 2026-10-17）: 年报生成静默期体感「卡顿」根治——
@@ -1030,7 +1067,8 @@ const SacredYearlyReportBox: React.FC<{
             </div>
           ) : (
             <>
-              <div>{renderLines(cleanAndInjectChapters(smoothText))}</div>
+              {/* 🚀 E60-②: 用记忆化的行树，替代每帧 renderLines(cleanAndInjectChapters(smoothText)) */}
+              <div>{renderedBody}</div>
             </>
           )}
         </div>
@@ -1052,4 +1090,13 @@ const SacredYearlyReportBox: React.FC<{
   );
 };
 
-export default SacredYearlyReportBox;
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚀 E60-④（主公亲令 2026-10-17）: 组件级渲染隔离 —— 破除"多报告同屏连坐"
+// ═══════════════════════════════════════════════════════════════════════════
+// 【病根】报告页同屏挂 3 个本组件（$4.99 先天档 / $2.99 月报 / $29.99 年报）+ 灵宠卡，
+//   父级 `sacredText` 一变，**所有**子组件无条件重跑 render（各自动全文清洗 + 重建整棵行树），
+//   哪怕它们的 props 一个都没变。年报吐字时把上方数万字旧报告一起拉着重绘。
+// 【治法】`React.memo` 浅比较（本组件 props 全为原始值：字符串/布尔/可选函数）：
+//   年报流式期只有年报框自己重绘，已完成的旧报告零重绘。
+//   ⚠️ 内部 `smoothText` 是组件自有 state，memo 不影响其打字机推进（state 更新照常穿透）。
+export default React.memo(SacredYearlyReportBox);
