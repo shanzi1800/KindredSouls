@@ -34,7 +34,7 @@ const V69_PATH = path.join(ROOT, 'v69_client.js');
 
 // ── server.js 真源装配（lockYearlyGoldNuggetDates + 其闭包依赖）──────────────
 const NEED = ['_GN_LABELS', '_V516_MONTHS', '_V516_TH_BE_OFFSET', '_EPHEM_DAYMON', '_EPHEM_MON_ALIAS',
-  '_EPHEM_MON_IDX', '_v516Esc', '_v516MonthHeadKey', '_hsMatchCase', 'lockYearlyGoldNuggetDates'];
+  '_EPHEM_MON_IDX', '_v516Esc', '_e62StripHeadDecor', '_e62PlainHeadShape', '_v516MonthHeadKey', '_hsMatchCase', 'lockYearlyGoldNuggetDates'];
 const _YG_NEED = [...new Set(NEED.concat(
   Array.from(indexDecls(SRC).keys()).filter((n) => n.startsWith('_YG_') || n.startsWith('_yg'))))];
 

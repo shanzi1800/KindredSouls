@@ -6039,10 +6039,60 @@ const _V516_HOUSE_WORD = { en: 'House', es: 'Casa', fr: 'Maison', th: '(?:ภพ
 const _V516_HOUSE_PLAIN = { es: 'Casa', fr: 'Maison', th: 'ภพที่', vi: 'Nhà' };
 
 // 返回 { y, mo } 或 null（y 恒为**公历**年: 泰语佛历自动 −543）。
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E62（2026-10-17 主公令）: 月标题「形态盲区」修复 —— 识别真源**去装饰前置**。
+//   病根（1977-03-27 深圳 zh 盘离线复现实锤）: 月标题行不一定是 `#` 前缀:
+//     ① `### 2027年6月: 太阳双子座 第3宫 · …`   （标准形态）
+//     ② `**2027年6月: 太阳白羊座 第3宫** · …`   （整行加粗）
+//     ③ `2027年6月: 太阳白羊座 第3宫 · …`       （纯文本）
+//   旧判据只认 ① ⇒ ②③ 形态下 月标题锁/流年行星锁/去重锁等全部消费方**集体静默失效**
+//   （不报错、不改字、错值原样落库），且 normalizeYearlyMarkup 不会把 ②③ 转成 ①
+//   （其排序又在标题锁之后）⇒ 无任何下游补救。
+//   治法（判据宽度=防线宽度）: ①② 视为强标题意图（# 前缀 / 整行强调包裹）直接认；
+//     ③ 纯文本必须**自证标题形**: 月词紧贴行首 + 后随标题分隔符（冒号/中点/竖线/破折
+//     号/行尾）。正文散文「2026年7月，木星进入狮子座…」用逗号衔接 ⇒ 不构成段界，宁漏不误。
+//   幂等；对 ① 形态行为与旧版逐字节一致（唯一识别真源地位不变，全部消费方自动受益）。
+// ══════════════════════════════════════════════════════════════════
+// 剥掉月标题行的「装饰外壳」: 前置 `#` 井号（1~6 个 + 空白）与整行强调包裹
+//   （`**…**` / `__…__` / `*…*` / `_…_`，可叠两层）。返回 { bare, hasMark }:
+//   hasMark=true 表示存在任一装饰（标题意图的强证据）; 纯文本行 hasMark=false。
+function _e62StripHeadDecor(line) {
+  let t = String(line == null ? '' : line).trim();
+  let hasMark = false;
+  const hm = /^#{1,6}\s+/.exec(t);
+  if (hm) { t = t.slice(hm[0].length).trim(); hasMark = true; }
+  for (let i = 0; i < 2; i++) {
+    const m = /^(\*\*|__)([\s\S]+?)\1$/.exec(t) || /^(\*|_)(\S(?:[\s\S]*?\S)?)\1$/.exec(t);
+    if (!m) break;
+    t = m[2].trim(); hasMark = true;
+  }
+  return { bare: t, hasMark };
+}
+// 纯文本行「自证标题形」: 月词必须紧贴行首（允许行首强调前缀 `**`/`__` ——
+//   实测半行加粗 `**2027年6月: …** · 主题` 同为标题意图），且后随标题分隔符（或行尾）。
+function _e62PlainHeadShape(bare, lang) {
+  const t = String(bare || '').trim().replace(/^(?:\*{1,2}|_{1,2})\s*/, '');
+  if (!t) return false;
+  // zh: `2027年6月: …` / `2027年6月`
+  if (/^\d{4}\s*年\s*\d{1,2}\s*月\s*(?:[:：·•|｜—–\-]|$)/.test(t)) return true;
+  // vi: `Tháng 7 Năm 2026: …`
+  if (/^tháng\s*\d{1,2}\s*(?:năm\s*)?\d{4}\s*(?:[:：·•|｜—–\-]|$)/i.test(t)) return true;
+  // en/es/fr/th: `<月名> [พ.ศ.] 2026: …`
+  const words = _V516_MONTHS[lang];
+  if (words) {
+    for (const w of words.slice().sort((a, b) => b.length - a.length)) {
+      const re = new RegExp('^' + _v516Esc(w) + '(?:\\s*พ\\.ศ\\.)?\\s*\\d{4}\\s*(?:[:：·•|｜—–\\-]|$)', 'i');
+      if (re.test(t)) return true;
+    }
+  }
+  return false;
+}
 function _v516MonthHeadKey(line, lang) {
   if (!line) return null;
-  const s = String(line);
-  if (!/^#{1,6}\s/.test(s.trim())) return null;
+  const _d = _e62StripHeadDecor(line);
+  const s = _d.bare;
+  if (!s) return null;
+  if (!_d.hasMark && !_e62PlainHeadShape(s, lang)) return null;
   // ① 中文: 2026年7月
   let m = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
   if (m) { const mo = Number(m[2]); return (mo >= 1 && mo <= 12) ? { y: Number(m[1]), mo } : null; }
@@ -6209,12 +6259,8 @@ function lockYearlyMonthTitles(text, lang, astroMatrix, reportType) {
   const groups = [];
   const keyOf = new Map();
   for (let i = 0; i < lines.length; i++) {
-    const ln = lines[i].trim();
-    if (!/^#{1,6}\s/.test(ln)) continue;
-    // 🛡️ E16/R11g: 六语统一识别（原实现只认 zh `2026年7月` 与 lang==='en' 的 `July 2026`
-    //   ⇒ es/fr/th/vi 的 `Julio 2026`/`Juillet 2026`/`กรกฎาคม 2026`/`Tháng 7 Năm 2026`
-    //   全部认不出 ⇒ groups<2 ⇒ 本锁对四语静默失效）。
-    const _vk = _v516MonthHeadKey(ln, lang);
+    // 🛡️ E62: 形态盲区修复 —— 识别全权交给 _v516MonthHeadKey（唯一真源，含加粗/纯文本月标题）。
+    const _vk = _v516MonthHeadKey(lines[i], lang);
     if (!_vk) continue;
     const y = _vk.y, mo = _vk.mo;
     const key = y * 12 + mo;
@@ -6380,10 +6426,8 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
   const heads = [];
   const seen = new Set();
   for (let i = 0; i < lines.length; i++) {
-    const ln = lines[i].trim();
-    if (!/^#{1,6}\s/.test(ln)) continue;
-    // 🛡️ E16/R11g: 六语统一识别（同 lockYearlyMonthTitles 口径）
-    const _vk = _v516MonthHeadKey(ln, lang);
+    // 🛡️ E62: 形态盲区修复 —— 识别全权交给 _v516MonthHeadKey（同 lockYearlyMonthTitles 口径）。
+    const _vk = _v516MonthHeadKey(lines[i], lang);
     if (!_vk) continue;
     const y = _vk.y, mo = _vk.mo;
     const key = y * 12 + mo;
@@ -6447,9 +6491,14 @@ function lockYearlyTransitSigns(text, lang, astroMatrix, reportType) {
     //   House」(本命句)被按 6 月流年改成 Aries ⇒ 连锁炸掉下游本命锁的门控
     //   (_v512PossessiveNatal ⑥流年一致性否决, CRITIC 判据12 余警真因)。
     //   现改为: 任何【非月标题】的标题行都终止月段(月段内部实测无其他子标题)。
+    //   🛡️ E62: 月标题已放开到加粗/纯文本形态 ⇒ 守卫同步补**整行加粗**形态:
+    //     模型若用 `**第三章 …**` 写章节标题, 末月段同样不得吞进章后正文
+    //     (整行加粗 = 标题意图, 与月标题识别同宽度; 句中局部强调不影响)。
     let end = (h + 1 < heads.length) ? heads[h + 1].line : lines.length;
     for (let k = start; k < end; k++) {
-      if (/^\s*#{1,6}\s/.test(lines[k]) && !_v516MonthHeadKey(lines[k].trim(), lang)) { end = k; break; }
+      const _lnT = String(lines[k] || '').trim();
+      const _isHeadLike = /^#{1,6}\s/.test(_lnT) || /^\*\*[^*][\s\S]*\*\*$/.test(_lnT) || /^__[^_][\s\S]*__$/.test(_lnT);
+      if (_isHeadLike && !_v516MonthHeadKey(_lnT, lang)) { end = k; break; }
     }
     for (let li = start; li < end; li++) {
       let line = lines[li];
@@ -9896,7 +9945,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (r
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v543:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v544:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -15484,7 +15533,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v543:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v544:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16618,7 +16667,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v543:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v544:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -18366,7 +18415,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v543-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v544-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）

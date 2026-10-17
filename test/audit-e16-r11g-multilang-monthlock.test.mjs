@@ -267,7 +267,8 @@ test('④ _v516OutputHygiene 必须拆粘连、归 es 宫位形态，且零误�
 // ═══════════════════════════════════════════════════════════════════════
 test('⑤ 源码: 三处调用点必须共用 _v516MonthHeadKey（判据同源纪律）', () => {
   const code = stripComments(src);
-  const uses = [...code.matchAll(/_v516MonthHeadKey\(ln,\s*lang\)/g)].length;
+  // 🛡️ E62: 识别形态放开后调用点第一实参可为 ln / lines[i] / _lnT —— 判据只锁「共用识别真源」。
+  const uses = [...code.matchAll(/_v516MonthHeadKey\([^(),]*,\s*lang\)/g)].length;
   assert.ok(uses >= 3, `lockYearlyMonthTitles / lockYearlyTransitSigns / dedupYearlyMonthTitles 必须共用识别真源, 实得 ${uses} 处`);
   // 旧 zh/en-only 识别写法不得残留
   assert.ok(!/_V478_EN_MONTHS\.indexOf\(em\[1\]\) \+ 1/.test(code), '仍残留「lang === en 才识别」的旧写法');
@@ -384,7 +385,10 @@ test('【注入】禁掉 _v516MonthHeadKey 的泰语分支 → ① 泰语识别�
   const deg = src.replace('  if (lang === \'th\') {\n    for (let i = 0; i < 12; i++) {\n      if (s.indexOf(_V516_MONTHS.th[i]) < 0) continue;',
     '  if (false) {\n    for (let i = 0; i < 12; i++) {\n      if (s.indexOf(_V516_MONTHS.th[i]) < 0) continue;');
   assert.notStrictEqual(deg, src, '未成功注入（未匹配泰语专用分支）');
-  const deg2 = deg.replace('const words = _V516_MONTHS[lang];', "const words = (lang === 'th') ? null : _V516_MONTHS[lang];");
+  // 🛡️ E62: `_e62PlainHeadShape`（自证标题形）内也有同款 `_V516_MONTHS[lang]` 兜底行,
+  //    且排在 `_v516MonthHeadKey` 之前 ⇒ String.replace 只打第一处会漏掉真源 ⇒ 全量禁。
+  const deg2 = deg.split('const words = _V516_MONTHS[lang];')
+    .join("const words = (lang === 'th') ? null : _V516_MONTHS[lang];");
   assert.notStrictEqual(deg2, deg, '未成功注入（未匹配通用月名兜底）');
   const G = buildF(deg2);
   assert.strictEqual(G._v516MonthHeadKey('### กรกฎาคม 2026: ดวงอาทิตย์ในตุลย์ ภพที่ 11', 'th'), null,
@@ -395,8 +399,9 @@ test('【注入】禁掉 _v516MonthHeadKey 的泰语分支 → ① 泰语识别�
 });
 
 test('【注入】把识别强制为 en → ③ es/fr/th/vi 逐月锁必红', () => {
-  const deg = src.replace("const _vk = _v516MonthHeadKey(ln, lang);\n    if (!_vk) continue;\n    const y = _vk.y, mo = _vk.mo;\n    const key = y * 12 + mo;\n    let g = keyOf.get(key);",
-    "const _vk = _v516MonthHeadKey(ln, 'en');\n    if (!_vk) continue;\n    const y = _vk.y, mo = _vk.mo;\n    const key = y * 12 + mo;\n    let g = keyOf.get(key);");
+  // 🛡️ E62: 调用点实参已由 `ln` 改为 `lines[i]`（识别全权交唯一真源）—— 锚点同步。
+  const deg = src.replace("const _vk = _v516MonthHeadKey(lines[i], lang);\n    if (!_vk) continue;\n    const y = _vk.y, mo = _vk.mo;\n    const key = y * 12 + mo;\n    let g = keyOf.get(key);",
+    "const _vk = _v516MonthHeadKey(lines[i], 'en');\n    if (!_vk) continue;\n    const y = _vk.y, mo = _vk.mo;\n    const key = y * 12 + mo;\n    let g = keyOf.get(key);");
   assert.notStrictEqual(deg, src, '未成功注入（未匹配 lockYearlyMonthTitles 识别点）');
   const G = buildF(deg);
   const text = ['### Juillet 2026: Soleil en Cancer · Maison 1', '### Août 2026: Soleil en Cancer · Maison 1'].join('\n');

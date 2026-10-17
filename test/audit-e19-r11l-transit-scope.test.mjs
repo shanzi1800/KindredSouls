@@ -54,7 +54,8 @@ function fnBody(name, source = src) {
 }
 
 // 源码字面量(与 server.js 逐字一致; 判据与注入自测共用, 保证「自测证明判据会红」)
-const GUARD_NEW = 'if (/^\\s*#{1,6}\\s/.test(lines[k]) && !_v516MonthHeadKey(lines[k].trim(), lang)) { end = k; break; }';
+// 🛡️ E62: 段尾守卫升级为 _isHeadLike（任意级别井号 + 整行加粗，非月标题即终止月段）。
+const GUARD_NEW = 'if (_isHeadLike && !_v516MonthHeadKey(_lnT, lang)) { end = k; break; }';
 const GUARD_OLD = 'if (/^\\s*##\\s/.test(lines[k])) { end = k; break; }';
 // 🛡️ E25-P1① 前移: E19 豁免由「撞 sign 即整体弃权」单行升级为
 //   【transit 语境门控 + sign↔house 成对裁决】块 ⇒ 旧单行字面量已不存在，判据必须同源前移
