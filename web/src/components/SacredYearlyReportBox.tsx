@@ -67,7 +67,8 @@ const SacredYearlyReportBox: React.FC<{
   realSunSign?: string;
   lang?: string;
   reportType?: 'yearly' | 'monthly' | 'once';  // 🛠️ V120: 控制标题显示
-}> = ({ rawStreamText, yearlyCardsReady, lang = 'zh', reportType = 'yearly' }) => {
+  loadingHint?: string;  // 💎 E59b（主公亲令 2026-10-17）: 生成静默期状态提示——文案由调用方 i18n 注入，组件自身零硬编码自然语言
+}> = ({ rawStreamText, yearlyCardsReady, lang = 'zh', reportType = 'yearly', loadingHint }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const isAutoScrollingRef = useRef(false);  // V372-fix: 程序性滚动时跳过 handleScroll 防止误判 atBottom=false
@@ -920,12 +921,16 @@ const SacredYearlyReportBox: React.FC<{
   };
 
   // 🛠️ V78: 星光呼吸灯 — 3种周期琥珀色脉冲，模拟星尘洒落
-  const SkeletonBar = ({ delay, w, period }: { delay: number; w: string; period: 2 | 25 | 3 }) => {
-    const anim = period === 2 ? 'skeleton2s' : period === 25 ? 'skeleton25s' : 'skeleton3s';
+  const SkeletonBar = ({ delay, w, period }: { delay: number; w: string; period: 2 | 2.5 | 3 }) => {
+    // 💎 E59b（主公亲令 2026-10-17）: 年报生成静默期体感「卡顿」根治——
+    //   病根①：period={25} 系 2.5s 之误 ⇒ 两条骨架棒以 25s 周期呼吸 ⇒ 大部分时间近乎凝滞暗灭；
+    //   病根②：基础透明度 0.08~0.15 过暗 ⇒ 深底上肉眼难辨 ⇒ 主公实拍呈「纯黑空框」。
+    //   治法：25→2.5 修正 + 全系提亮（基础 ~0.24~0.32 / 峰值 ~0.8~0.9），并加 loadingHint 状态行。
+    const anim = period === 2 ? 'skeleton2s' : period === 2.5 ? 'skeleton25s' : 'skeleton3s';
     return (
       <div style={{
         height: '11px', width: w, marginBottom: '14px', borderRadius: '5px',
-        background: `linear-gradient(90deg, rgba(212,175,55,${period === 2 ? 0.15 : period === 25 ? 0.12 : 0.10}), rgba(212,175,55,${period === 2 ? 0.05 : period === 25 ? 0.04 : 0.03}))`,
+        background: `linear-gradient(90deg, rgba(212,175,55,${period === 2 ? 0.32 : period === 2.5 ? 0.28 : 0.24}), rgba(212,175,55,${period === 2 ? 0.16 : period === 2.5 ? 0.14 : 0.12}))`,
         animation: `${anim} ${period}s ease-in-out ${delay}s infinite`,
       }} />
     );
@@ -935,16 +940,16 @@ const SacredYearlyReportBox: React.FC<{
     <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', padding: '8px 0' }}>
       <style>{`
         @keyframes skeleton2s {
-          0%, 100% { opacity: 0.12; transform: scaleX(0.95); }
-          50% { opacity: 0.75; transform: scaleX(1.03); }
+          0%, 100% { opacity: 0.25; transform: scaleX(0.95); }
+          50% { opacity: 0.9; transform: scaleX(1.03); }
         }
         @keyframes skeleton25s {
-          0%, 100% { opacity: 0.10; transform: scaleX(0.93); }
-          50% { opacity: 0.65; transform: scaleX(1.05); }
+          0%, 100% { opacity: 0.22; transform: scaleX(0.93); }
+          50% { opacity: 0.85; transform: scaleX(1.05); }
         }
         @keyframes skeleton3s {
-          0%, 100% { opacity: 0.08; transform: scaleX(0.90); }
-          50% { opacity: 0.60; transform: scaleX(1.07); }
+          0%, 100% { opacity: 0.2; transform: scaleX(0.90); }
+          50% { opacity: 0.8; transform: scaleX(1.07); }
         }
         @keyframes sacredGlow {
           0%, 100% { opacity: 0.35; }
@@ -1003,13 +1008,22 @@ const SacredYearlyReportBox: React.FC<{
         >
           {(showSkeleton || !hasContent) ? (
             // 🛠️ V78: 星光呼吸灯骨架 — 3组琥珀色脉冲条，交错呼吸（2s/2.5s/3s），模拟星尘洒落
+            // 💎 E59b（主公亲令 2026-10-17）: 骨架期加「推演中」状态行（文案经 props 由调用方 i18n 注入，
+            //   组件零硬编码自然语言；未传 hint 时保持原纯骨架形态，零行为漂移）
             <div style={{ padding: '20px 0' }}>
+              {loadingHint ? (
+                <div style={{
+                  marginBottom: '18px', fontSize: '12.5px', fontWeight: 700,
+                  color: 'rgba(232,196,92,0.92)', lineHeight: 1.75, textAlign: 'center',
+                  textShadow: '0 0 12px rgba(212,175,55,0.35)',
+                }}>{loadingHint}</div>
+              ) : null}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <SkeletonBar delay={0.0} w="60%"  period={2} />
-                <SkeletonBar delay={0.8} w="72%"  period={25} />
+                <SkeletonBar delay={0.8} w="72%"  period={2.5} />
                 <SkeletonBar delay={1.6} w="85%"  period={3} />
                 <SkeletonBar delay={0.3} w="55%"  period={2} />
-                <SkeletonBar delay={1.1} w="68%"  period={25} />
+                <SkeletonBar delay={1.1} w="68%"  period={2.5} />
                 <SkeletonBar delay={1.9} w="78%"  period={3} />
                 <SkeletonBar delay={0.5} w="50%"  period={2} />
               </div>

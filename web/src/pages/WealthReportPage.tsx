@@ -3355,6 +3355,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             realSunSign={getTrueZodiacByDate(birthDate) || '双鱼座'}
             lang={currentLang}
             reportType="monthly"
+            loadingHint={reportLoading === 'wealth_monthly' ? t('wealthReport.generatingHint') : undefined}
           />
         )}
 
@@ -3494,6 +3495,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                 yearlyCardsReady={yearlyCardsReady}
                 realSunSign={trueZodiac || '双鱼座'}
                 lang={currentLang}
+                loadingHint={reportLoading === 'wealth_yearly' ? t('wealthReport.generatingHint') : undefined}
               />
             );
           }
@@ -3524,6 +3526,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                 realSunSign={trueZodiac || '双鱼座'}
                 lang={currentLang}
                 reportType="once"
+                loadingHint={reportLoading === 'wealth_once' ? t('wealthReport.generatingHint') : undefined}
               />
             );
           }

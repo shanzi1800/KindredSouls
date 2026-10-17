@@ -96,7 +96,9 @@ describe('V448 i18n Key 门禁', () => {
     // 87 → 93（E59 主公雷霆军令 2026-10-16: 商业阶梯漏斗门禁 —— 权益严格按 SKU 解耦，
     //   月光/年报**专属升阶付费墙**六语入列：wealthReport.upgradeTitle / upgradeMonthlyDesc /
     //   upgradeYearlyDesc / upgradeCta / sandboxPayMonthly / sandboxPayYearly 6 键，6 语种同步）
-    assert.strictEqual(p.total, 93, 'E59 商业阶梯升阶付费墙入列后基准键数应为 93');
+    // 93 → 94（E59b 主公亲令 2026-10-17: 年报生成静默期体感治理 —— 骨架期状态行
+    //   wealthReport.generatingHint 1 键入列，6 语种同步）
+    assert.strictEqual(p.total, 94, 'E59b 生成状态提示行入列后基准键数应为 94');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {
