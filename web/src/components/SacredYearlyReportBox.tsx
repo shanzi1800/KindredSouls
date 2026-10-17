@@ -89,14 +89,25 @@ const SacredYearlyReportBox: React.FC<{
   //   旧节奏 50 拍/秒 × 每拍一次 `setSmoothText`（局部重绘）+ 一次强制触底回流，
   //   与 SSE 146 帧/秒叠加后主线程饱和。50ms（20 拍/秒）在观感上仍是"逐字展开"，
   //   但每拍推进量同比放大（÷180 而非 ÷400），万字长卷依旧约 8 秒内追平。
+  //
+  // 🚨 E61-fix1（2026-10-17 主公实测「年报输出时一直在拉扯」根因①）:
+  //   **打字机计时器绝不可随每次 prop 变化重建**。E60-① 把父级 flush 收敛到 90ms 一次
+  //   ⇒ 此 effect 原来 `[rawStreamText]` 依赖意味着 **每 90ms 就 clearInterval + setInterval**
+  //   ⇒ 50ms 的拍距永远走不满，推进变成"90ms 一跳"的锯齿；且"更短则重置"分支一旦被
+  //   清洗链的瞬时收缩触发，就 `setSmoothText('')` 把万字长卷**整篇清空重打**（视觉爆炸）。
+  //   治法：①计时器只挂载一次（依赖 `[]`），目标文本走 ref；②回退只做**钳制**，绝不重打
+  //   （真要换稿，父级用 `key` 重挂载，state 自然归零，无需这里猜）。
   useEffect(() => {
-    if (!rawStreamText) return;
-    targetTextRef.current = rawStreamText;
-    // 如果新文本比当前平滑文本短（重新生成），重置
-    if (rawStreamText.length < smoothIdxRef.current) {
-      smoothIdxRef.current = 0;
-      setSmoothText('');
+    targetTextRef.current = rawStreamText || '';
+    if (smoothIdxRef.current > targetTextRef.current.length) {
+      smoothIdxRef.current = targetTextRef.current.length;
     }
+    if (smoothText.length > targetTextRef.current.length) {
+      setSmoothText(targetTextRef.current.slice(0, smoothIdxRef.current));
+    }
+  }, [rawStreamText]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       const target = targetTextRef.current;
       const idx = smoothIdxRef.current;
@@ -105,13 +116,12 @@ const SacredYearlyReportBox: React.FC<{
         const advance = Math.min(Math.max(8, Math.ceil(target.length / 180)), target.length - idx);
         smoothIdxRef.current = idx + advance;
         setSmoothText(target.slice(0, idx + advance));
-      } else {
-        // 已追上目标文本，清除定时器
-        clearInterval(timer);
       }
+      // 追平后**不清除计时器**：父级 flush 随时会追加新文本，计时器留下待命即可
+      // （清掉再重建正是上面那条锯齿的成因）。
     }, 50);
     return () => clearInterval(timer);
-  }, [rawStreamText]);
+  }, []);
 
   // 🛠️ V371-fix: 平滑文本变化时触底滚动——用 rAF 确保在 DOM layout 后再触发
   // V366-fix 兼容: 流式完成时强制平滑文本追上完整文本
@@ -123,8 +133,16 @@ const SacredYearlyReportBox: React.FC<{
   }, [yearlyCardsReady]);
 
   // 🛠️ V371-fix: 流式状态感知——只看 smoothText 是否还在追赶 rawStreamText
-  // 原逻辑依赖 yearlyCardsReady，但 monthlyCardsReady 在首个 chunk 就置 true，导致 isStreaming 永远 false
-  const isStreaming = hasContent && smoothText.length < (rawStreamText?.length || 0);
+  //
+  // 🚨 E61-fix2（根因②）: **「流是否结束」必须由完成标志判定，不能由「打字机是否追平」判定。**
+  //   旧判据「打字机是否追平目标文本」在 E60-① 之后会高频翻假：
+  //   父级 90ms 才灌一次新文本，而打字机每 50ms 能推进 `max(8, len/180)` 字（1.4 万字时 ≈77 字/拍，
+  //   是灌入速率 234 字/秒的 6 倍）⇒ 每灌一帧，打字机 50ms 内就追平 ⇒ isStreaming 立刻变 false。
+  //   而下面「完成后回顶部」的 effect 依赖 `!isStreaming`，于是**每 90ms 就把视口拉回顶部一次**，
+  //   新字又把人拽到底部 ⇒ 浏览器实测 59 秒内归顶调用触发 **322 次**、滚动方向反转 215 次
+  //   = 主公肉眼看到的「一直在拉扯」。
+  //   治法：isStreaming = 有内容且**尚未收到完成标志**（yearly/monthly 由父级 [DONE] 置位；once 恒 true）。
+  const isStreaming = hasContent && !yearlyCardsReady;
 
   // 🚀 E60-③（主公亲令 2026-10-17）: 触底滚动 250ms 节流 + rAF
   //   旧实现每拍都 `el.scrollTop = el.scrollHeight`，这是**强制同步回流（Forced Synchronous
@@ -148,15 +166,22 @@ const SacredYearlyReportBox: React.FC<{
   }, [smoothText, isStreaming, hasContent]);
 
   // 🛠️ V371-fix: 仅在真正完成时回顶部（isStreaming false 且有内容）
-  // 原依赖 yearlyCardsReady，但首个 chunk 就触发 scrollTo top:0 把滚动条拉回顶部
+  //
+  // 🚨 E61-fix3（根因③）: **归顶只准发生一次。** 旧实现把 `smoothText` 放进依赖，
+  //   配合上面那条会抖动的 `isStreaming` ⇒ 流式期间每 50ms 都可能重跑一次 `scrollTo(top:0, smooth)`，
+  //   与 250ms 的触底拉锯。现改为「一次闸门 + 只认完成」：`snappedTopRef` 一旦置位永不复位
+  //   （真要换稿，父级 `key` 重挂载会重建本组件与 ref）。
+  const snappedTopRef = useRef(false);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (!isStreaming && hasContent && smoothText.length > 100) {
-      autoScrollRef.current = false;
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [isStreaming, hasContent, smoothText]);
+    if (isStreaming || !hasContent) return;
+    if (snappedTopRef.current) return;
+    if (smoothText.length < 100) return;
+    snappedTopRef.current = true;
+    autoScrollRef.current = false;
+    el.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [isStreaming, hasContent, smoothText.length]);
 
   // 🛠️ V372-fix: 滚动处理——流式期间自动触底，完成后允许用户自由滚动
   const handleScroll = useCallback(() => {
