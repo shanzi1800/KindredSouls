@@ -24,6 +24,13 @@
  *      交互池（dailyFortune.mjs 真值核 + 点击轮播 + 9s 主动锦囊气泡），首页仍零方框；
  *    - E54-3 尾巴仿生慢摇 4s（App.css）；E54-4 进阶定制殿堂页 `/familiar/custom`。
  *
+ * 🔴 E63（主公亲令 2026-10-17 · 「灵魂兽」终版定妆总令）：
+ *    - E63-1 **Milo 朝向核验**：「面朝右、尾在左、与 Sophia 相对」——现渲染即军令形态
+ *      （Milo 尾层 left:0% 在左＋面朝右前；主公所附原画截图为尾右形态，按军令调左后＝现渲染），
+ *      经 PIL 双形态合成实测后**不做翻转**（翻转后尾右面左，双违军令）；
+ *    - E63-2 **尾梢慢旋小圈**：主公钦定 keyframes ksFamTailLeisurely（4.5s ease-in-out
+ *      infinite alternate，rotate ±1.8°/skew ±1°/translateY ±0.5px），与瞬目错峰。
+ *
  * 🔴 沿袭铁律（E48/E49/E50/E51/E52，一概不放松）：
  *    - E50 门禁 fail-closed：paidOk !== true（判定中 / 查库失败）一律不呈现；
  *    - E49 按盘隔离：认领档必带 chartSig，URL ?reset=1 自洁，签名不匹配即弃即清；

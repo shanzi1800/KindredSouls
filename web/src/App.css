@@ -615,7 +615,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    E55 幅度（rotate ±3°/translate 6%）尾梢行程仅 ~10px，手机上肉眼难辨 ⇒ 幅度翻倍：
    rotate ±7°/translate 12%/skew 9°，尾梢行程 ~22px；7s→6s。reduced-motion 降级保持。
    🐾 E57-2（主公亲令 2026-10-16 · 真机复测「幅度还是太小，还可以翻倍」）: 再翻倍——
-   rotate ±14°/translate 24%/skew ±18°，尾梢行程 ~45px，慵懒大圈一望即知。 */
+   rotate ±14°/translate 24%/skew ±18°，尾梢行程 ~45px，慵懒大圈一望即知。
+   🐾 E63（主公钦定终版 2026-10-17）: 回归「尾梢自然转小圈」终版节奏 —— 见下方
+   ksFamTailLeisurely（4.5s alternate，rotate ±1.8°/skew ±1°/translateY ±0.5px）。
+   🐾 E63-1（主公亲令「Milo 面朝右、尾在左、与 Sophia 相对」核验结论）: **现渲染即军令形态**——
+   Milo 尾层布局盒 left:0%（尾在左）、本体面朝右前，与 Sophia（尾 left:55.14% 在右）天然镜像相对；
+   主公所附终版原画截图（image_47）为「尾在右」形态，按军令末句调整到左边后 ＝ 现渲染形态，
+   故**不做 scaleX(-1) 翻转**（PIL 双形态合成实测：翻转后尾翻到右、面翻向左，双违军令）。 */
 .ks-fam-tail {
   position: absolute;
   pointer-events: none;
@@ -625,27 +631,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-fam-milo .ks-fam-tail {
   left: 0%; top: 56.12%; width: 33.33%;
   transform-origin: 62.5% 15.8%;
-  animation: ksFamTailMilo 6s ease-in-out infinite;
+  animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
   left: 55.14%; top: 65.82%; width: 44.86%;
   transform-origin: 58.2% 13.38%;
-  animation: ksFamTailSophia 6s ease-in-out infinite;
+  animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
+  animation-delay: 0.9s; /* E63: 与 4.7s/5.3s 瞬目错峰的相位差 */
 }
-/* Milo 尾在图左（逆时针小圈）；Sophia 尾在图右（顺时针小圈）——镜像对称 */
-@keyframes ksFamTailMilo {
-  0%   { transform: rotate(-12deg) translate(0%, 0%)    skewX(0deg); }
-  25%  { transform: rotate(-4deg)  translate(-18%, -10%) skewX(10deg); }
-  50%  { transform: rotate(12deg)  translate(-24%, 3%)   skewX(18deg); }
-  75%  { transform: rotate(-2deg)  translate(-8%, 12%)   skewX(8deg); }
-  100% { transform: rotate(-12deg) translate(0%, 0%)    skewX(0deg); }
-}
-@keyframes ksFamTailSophia {
-  0%   { transform: rotate(12deg)  translate(0%, 0%)   skewX(0deg); }
-  25%  { transform: rotate(4deg)   translate(18%, -10%) skewX(-10deg); }
-  50%  { transform: rotate(-12deg) translate(24%, 3%)   skewX(-18deg); }
-  75%  { transform: rotate(2deg)   translate(8%, 12%)   skewX(-8deg); }
-  100% { transform: rotate(12deg)  translate(0%, 0%)   skewX(0deg); }
+/* 🐾 E63（主公钦定终版 keyframes 2026-10-17 · 「慢速悠闲轻旋/画圆微动」总令）:
+   弃大幅画圈，改**尾梢自然转小圈**——rotate ±1.8°/skew ±1°/translateY ±0.5px，
+   4.5s ease-in-out infinite alternate（0%≡100%，alternate 正反往复＝连续小圈）。
+   军令即单组 keyframes 双宠共用（.ks-tail-sophia/.ks-tail-milo ⇒ 本仓类名
+   .ks-fam-milo/.ks-fam-tail 与 .ks-fam-sophia/.ks-fam-tail）；Sophia +0.9s 相位差与瞬目错峰。 */
+@keyframes ksFamTailLeisurely {
+  0%   { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
+  33%  { transform: rotate(1.8deg)  skewX(1deg)  translateY(0.5px); }
+  66%  { transform: rotate(-1.5deg) skewX(-1deg) translateY(-0.5px); }
+  100% { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }
@@ -730,7 +733,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
-  /* 🐾 E52/E54: 巡视 / 眨眼 / 慢摇尾一并降级为静帧（趴键位保持 —— E54-1 球底压键真值） */
+  /* 🐾 E52/E54: 巡视 / 眨眼 / 慢旋尾一并降级为静帧（趴键位保持 —— E54-1 球底压键真值） */
   .ks-fam-milo { animation: none; transform: translateY(25.4%); }
   .ks-fam-sophia { animation: none; transform: translateY(28.6%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
