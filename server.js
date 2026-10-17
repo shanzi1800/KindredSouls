@@ -8354,6 +8354,15 @@ function lockYearlyBareNatalPlanets(text, lang, astroMatrix, reportType) {
           changed = true;
         }
       }
+    } else if (!houseTok && t.house && lang === 'zh') {
+      // 🛡️ E64（主公钦令 2026-10-17）: 有座缺宫 ⇒ 补「第N宫」。
+      //   仅当星座词后**紧跟句读/行尾**时才补（「本命木星在金牛座，」✓；
+      //   「本命月亮在双子座与木星形成相位」⇒ 后接「与」，从句未完，不插 —— 宁漏不误）。
+      const _e64Tail = text.slice(off + m.length, off + m.length + 3);
+      if (/^\s*(?:[，。；！？、\n]|$)/.test(_e64Tail)) {
+        mm = mm + '\u7b2c' + _v517Int2Cn(t.house) + '\u5bab';
+        changed = true;
+      }
     }
     if (!changed) return m;
     n++;
@@ -8377,6 +8386,101 @@ function _v517Cn2Int(s) {
   if (m) return (m[1] ? D[m[1]] : 1) * 10 + (m[2] ? D[m[2]] : 0);
   if (D[s]) return D[s];
   return NaN;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ E64（主公钦令 2026-10-17 · E63-B 定责后的兜底补全）：本命星「落座落宫」Presence 真值补全
+// ══════════════════════════════════════════════════════════════════
+// 【病根（2026-10-17 主公物证 · 1977-03-27 年报）】模型偶发「整段漏写落座落宫短语」，
+//   句子仍是**本命声明**却既无星座也无宫位：
+//     「你的本命金星，且处于逆行状态。」「你的本命火星。第十二宫是隐藏、消融…」
+//     「你的本命天王星，逆行。」「你的本命海王星，逆行，意味着…」
+//   而 `lockYearlyBareNatalPlanets` 是「提到才纠值」——它的正则要求
+//   「行星 + 在/落入/位于」**且带星座名**，这类残句连匹配都进不去
+//   ⇒ 既纠不了值，也无从补句。十星里四星就这样裸奔出稿。
+// 【治法（主公裁决方案②）】Presence 拦截：检出「本命 + 行星」声明但小句内无座无宫时，
+//   按 SwissEph 引擎真值**插入**标准句式「落在{sign}座第{cn}宫」；
+//   原标点与原修饰语一概保留（「，且处于逆行状态」「，逆行」「。第十二宫是…」照旧接续）。
+//   另补一类：有座缺宫（「本命木星在金牛座，」）⇒ 星座词后紧跟句读时补「第N宫」。
+// 【铁律·宁漏不误】
+//   ① 只认「本命」紧贴行星名的声明形态；「本命主导元素」「本命之火」等一律不匹配；
+//   ② 已有落座动词（落在/落于/在/落入/位于/驻守/坐镇）⇒ 交给既有裸本命锁纠值，本函数不插；
+//   ③ 小句内出现任意星座名 / 「第N宫」⇒ 视为已有座宫信息，跳过；
+//   ④ 「与X同宫/同座」句：先校验**真值是否真的同宫**——真值同宫才补（补完自洽），
+//      真值不同宫则跳过（那种句子本身是模型断言错误，补座宫只会制造自相矛盾，不属本锁射程）；
+//   ⑤ 射程＝**仅 zh**（物证语种）。en 及余下四语的介词句式无生产物证，
+//      按「宁漏不误」暂不臆造 —— 属已声明盲区，见 E64 战报射程声明；
+//   ⑥ 幂等：补全后的文本「本命X落在Y座第N宫」命中铁律② ⇒ 重跑零改动。
+const _E64_DECL_RE = new RegExp('本命(' + _V517_PLANET_ZH.join('|') + ')', 'g');
+const _E64_LAND_RE = /^\s*(?:落在|落于|落入|位于|驻守|坐镇|在)/;
+const _E64_CLAUSE_END = /[，。；！？、\n]/;
+
+function lockYearlyNatalPresence(text, lang, astroMatrix, reportType) {
+  if (reportType !== 'yearly') return text;
+  if (!text || typeof text !== 'string') return text;
+  if (lang !== 'zh') return text;                                    // ⑤ 射程：仅 zh
+  const meta = (astroMatrix && astroMatrix.meta) || null;
+  const np = meta && (meta.computed_houses || meta.natal_planets);
+  if (!meta || !np) return text;
+  const signs = _v444Signs('zh');
+  if (!signs || !signs.length) return text;
+  const truth = {};
+  for (const k of _V517_PLANET_KEY_ORDER) {
+    const c = np[k];
+    if (!c || !c.sign) continue;
+    const h = (typeof c.house === 'number' ? c.house : (c.house && c.house.house));
+    truth[k] = { sign: _v517LocalSign('zh', c.sign), house: (typeof h === 'number' ? h : null) };
+  }
+  if (!Object.keys(truth).length) return text;
+  let n = 0;
+  let skipSame = 0;
+  const out = text.replace(_E64_DECL_RE, (m, planetTok, off) => {
+    const key = _V517_PLANET_KEY_ORDER[_V517_PLANET_ZH.indexOf(planetTok)];
+    const t = key ? truth[key] : null;
+    if (!t || !t.sign || !t.house) return m;
+    const after = text.slice(off + m.length, off + m.length + 40);
+    if (_E64_LAND_RE.test(after)) return m;                          // ② 已有落座动词
+    // ⑦ 并列义护栏（E64 落码后物证实测的 3 处误伤，全部是「本命X」并非声明句）：
+    //    a. 后置并列 ——「你的本命太阳**与水星**，…」⇒ 太阳是并列主语之一，不是声明 ⇒ 插句会拆断主语；
+    //    b. 前置共格 ——「与你的本命木星**同宫**」「将与本命木星**同频共振**」⇒ 木星是比较/共格宾语
+    //       （该句已在说「流年太阳进入金牛座第二宫」，本命木星只是参照物）⇒ 补句必成病句。
+    //    判据：行星名前后紧邻并列/共格连词，一律不插（宁漏不误）。
+    if (/^[与和及跟同、]/.test(after)) return m;                     // ⑦a
+    const _e64Pre = text.slice(Math.max(0, off - 3), off);
+    if (/[与和及跟同、]$/.test(_e64Pre)) return m;                   // ⑦b
+    // 判定窗口（双窗口，E64 物证两轮实测后定型）：
+    //   winShort = 到第一个**句读**（，。；！？、换行）为止，上限 30 字 —— 判「已带宫位 / 已带星座」；
+    //   winSame  = 到第一个**句末**（。！？换行）为止，上限 24 字 —— 判「与X同宫」。
+    // ⚠️ 二者不能合一：只按逗号截断 ⇒「本命水星**，与太阳同宫**」同宫信息落在窗口外（同宫校验恒失效）；
+    //    只按句号截断 ⇒「本命海王星，逆行，意味着你对远方与宏大叙事有天然的向往…」超长 ⇒ 被当长句跳过（漏补）。
+    let cut = -1;
+    for (let i = 0; i < after.length && i < 30; i++) {
+      if (_E64_CLAUSE_END.test(after[i])) { cut = i; break; }
+    }
+    if (cut === -1) return m;                                        // 30 字内无句读 ⇒ 长句，保守跳过
+    const win = after.slice(0, cut);
+    if (/\d{1,2}\s*宫/.test(win)) return m;                           // ③ 已带宫位
+    for (const s of signs) { if (win.indexOf(s) >= 0) return m; }     // ③ 已带星座
+    let sameCut = Math.min(after.length, 24);
+    for (let i = 0; i < sameCut; i++) {
+      const ch = after[i];
+      if (ch === '\u3002' || ch === '\uff1f' || ch === '\uff01' || ch === '\n') { sameCut = i; break; }
+    }
+    const winSame = after.slice(0, sameCut);
+    const mSame = /与(太阳|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星)(?:星座)?同(?:宫|座)/.exec(winSame);
+    if (mSame) {
+      const peerKey = _V517_PLANET_KEY_ORDER[_V517_PLANET_ZH.indexOf(mSame[1])];
+      const peer = peerKey ? truth[peerKey] : null;
+      if (!peer || peer.house !== t.house) { skipSame++; return m; }  // ④ 真值不同宫 ⇒ 不插
+    }
+    n++;
+    // ⚠️ `_v517LocalSign` 对 zh 返回的**已含「座」**（如「白羊座」）⇒ 此处不得再拼「座」，
+    //    否则出「白羊座座」（E64 首版物证实测踩过）。
+    return m + '落在' + t.sign + '第' + _v517Int2Cn(t.house) + '宫';
+  });
+  if (n) console.log(`[E64] zh \u5e74\u62a5\u672c\u547d\u661f\u843d\u5ea7\u843d\u5bab\u8865\u5168: \u8865\u9f50 ${n} \u5904`);
+  if (skipSame) console.log(`[E64] zh \u5e74\u62a5\u540c\u5bab\u53e5\u771f\u503c\u4e0d\u7b26: \u8df3\u8fc7 ${skipSame} \u5904`);
+  return out === text ? text : out;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -8468,7 +8572,8 @@ function _v517YearlyFinalLocks(text, lang, astroMatrix, reportType) {
   if (!text || typeof text !== 'string') return text;
   let t = text;
   t = lockYearlyAxisAnchor(t, lang, astroMatrix, reportType);         // ① 上升锚点（窄锁）
-  t = lockYearlyBareNatalPlanets(t, lang, astroMatrix, reportType);   // ③④ 裸本命句
+  t = lockYearlyNatalPresence(t, lang, astroMatrix, reportType);       // 🛡️ E64 本命星 Presence 补全（先补全）
+  t = lockYearlyBareNatalPlanets(t, lang, astroMatrix, reportType);   // ③④ 裸本命句（再纠值）
   t = stripYearlyLabelResidue(t, lang, reportType);                   // ⑥ 模板标签残句
   t = stripYearlySignature(t, lang, reportType);                      // ⑤-b 尾部落款
   return t;
@@ -9945,7 +10050,7 @@ app.get('/api/clear-cache/:birthDate/:lang/:reportType', e30AdminGuard, async (r
     //   —— 原用裸 `birthTime`：调用方省略该 query 参数时算出 `...::...`，
     //   与真实键（`:12:00:`）不等 ⇒ 清了等于没清（删键与写入键口径分叉）。
     const _ckTimeDel = birthTime || '12:00';
-    const cacheKey = `wealth:v544:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v545:${birthDate}:${_ckTimeDel}:${_ckLat}:${_ckLon}:${_ckTzDel}:${lang}:${reportType}`;
     delUrl = `${SB_URL}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}`;
   } else {
     // 模式B: 通配清理该生日下所有旧/新格式缓存 (PostgREST like 通配符用 *, 非 %)
@@ -15533,7 +15638,7 @@ app.post('/api/wealth-oracle', async (req, res) => {
     const _ckLat = lat.toFixed(4);
     const _ckLon = lon.toFixed(4);
     const _ckTz = tz || 'Asia/Bangkok';
-    const cacheKey = `wealth:v544:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+    const cacheKey = `wealth:v545:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -16667,7 +16772,7 @@ app.post('/api/wealth-oracle/stream', async (req, res) => {
   const _ckLat = lat.toFixed(4);
   const _ckLon = lon.toFixed(4);
   const _ckTz = tz || 'Asia/Bangkok';
-  const cacheKey = `wealth:v544:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
+  const cacheKey = `wealth:v545:${birthDate}:${_ckTime}:${_ckLat}:${_ckLon}:${_ckTz}:${lang}:${reportType}`;
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -18415,7 +18520,7 @@ Không được thêm cung hoàng đạo ngoài dấu ngoặc hay tự nghĩ ra 
     // 🛠️ V178-P0: 年报缓存键同样纳入 birthTime/lat/lon/tz, 与月报/先天同标准, 杜绝跨用户串盘
     // 🛡️ V490: 前缀 v116-v2 → v505-v2 —— 历史键可能含「静默退 UTC 的毒 tz」，随版本作废
     // 🛡️ V490b: lat/lon 已由三元组入参第一关校验为数值；tz 亦为 V490 解析后的**规范名**
-    const v2CacheKey = `wealth:v544-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
+    const v2CacheKey = `wealth:v545-v2:${birthDate}:${birthTime || '12:00'}:${lat.toFixed(4)}:${lon.toFixed(4)}:${tz || 'Asia/Bangkok'}:${lang}:yearly`;
     // 🛡️ V492/E5: v2 年报写缓存前强校验完整性（全语言 5 章 + Final Oracle）——不完整坚决不入库
     const _ivV2 = assessYearlyReportIntegrity(allText, { lang });
     // 🛍️ E24⑥② 生成成功且完整性通过 ⇒ 补写年报周期时间戳（失败/截断不写，避免把用户在期内锁死）
