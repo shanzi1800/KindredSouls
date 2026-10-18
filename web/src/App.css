@@ -566,26 +566,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    按钮黄键剔除 → 尾身分离（尾根结合部斜线）→ Milo 水平镜像（军令「面朝右·尾在左」）
    → 按旧球宽 686/695px 定标 → 排上 945×1073 / 962×1099 画布。
    🐾 E65b（主公亲令 2026-10-18「手脚要放在按键上」）: 趴键锚点由球底改**爪脚坐底线**
-   （行宽≥20% 峰值底缘：Milo 0.6438 / Sophia 0.6423）⇒ 肚底贴键沿、爪脚明确搭在金键面，
-   压键量保持 3.3%H（同 E54 公式）⇒ translateY **38.9% / 39.1%**。
+   （行宽≥20% 峰值底缘：Milo 0.6438 / Sophia 0.6423）。
+   🐾 E65c（主公亲令 2026-10-18「不用移动·固定此位·后脚要能看到」）：
+   ①撤水平巡逻（translateX ±7%），灵宠**定住**不漂移，尾巴摇摆/眨眼/呼吸保留；
+   ②压键量 3.3%H→**4%H**（球体主底 0.6114/0.6078 压入键沿下 4%H）⇒ 爪脚整体落在
+   金色键面内（避开按键左圆角盲区），后脚深色对亮金高对比清晰可见
+   ⇒ translateY = (1−0.6114)+0.04 ⇒ **42.9%** / (1−0.6078)+0.04 ⇒ **43.2%**。
    ⚠️ 尾层资产已裁剪至 bbox（尾盒 358×575 / 400×687），CSS left/top/width 即 bbox 百分比，
    与全画布旧口径（42.16%/42.52% 时代）不兼容 —— 两套数值禁混用。
    ⚠️ 旧 E51/E52/E54 几何（48%/46.9%、25.4%/28.6%）随旧画布退役。 */
 .ks-fam-milo {
   left: -27.2%; width: 63%;
-  animation: ksFamPatrolMilo 9.5s ease-in-out infinite alternate;
+  transform: translateY(42.9%);
 }
 .ks-fam-sophia {
   left: 56.01%; width: 63.39%;
-  animation: ksFamPatrolSophia 9.5s ease-in-out infinite alternate;
-}
-@keyframes ksFamPatrolMilo {
-  from { transform: translateY(38.9%) translateX(-7%); }
-  to   { transform: translateY(38.9%) translateX(7%); }
-}
-@keyframes ksFamPatrolSophia {
-  from { transform: translateY(39.1%) translateX(7%); }
-  to   { transform: translateY(39.1%) translateX(-7%); }
+  transform: translateY(43.2%);
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -748,9 +744,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
-  /* 🐾 E52/E54/E65b: 巡视 / 眨眼 / 慢旋尾一并降级为静帧（趴键位保持 —— E65b 爪脚坐底线压键真值） */
-  .ks-fam-milo { animation: none; transform: translateY(38.9%); }
-  .ks-fam-sophia { animation: none; transform: translateY(39.1%); }
+  /* 🐾 E52/E54/E65c: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65c 固定坐键真值，巡逻已撤） */
+  .ks-fam-milo { transform: translateY(42.9%); }
+  .ks-fam-sophia { transform: translateY(43.2%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
