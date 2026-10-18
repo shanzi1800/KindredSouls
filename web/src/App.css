@@ -729,15 +729,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   0%, 100% { filter: drop-shadow(0 0 0 rgba(167, 139, 250, 0)); }
   50% { filter: drop-shadow(0 0 16px rgba(190, 160, 255, 0.95)) drop-shadow(0 0 42px rgba(140, 110, 250, 0.5)); }
 }
-/* 命理气泡轻语（纯展示，pointer-events:none 绝不挡操作） */
+/* 命理气泡轻语（纯展示，pointer-events:none 绝不挡操作）
+   🐾 E65h（主公亲令 2026-10-18「气泡调整到 Sophia 左侧空间/Milo 右侧空间」）：
+   旧位 bottom:106% 正上方在 390 视口实测压住「缘分天定」标题（气泡 y399~453 vs 标题 y402~450），
+   且标题群底(450)到球顶(460)仅 10px —— 垂直无解 ⇒ 移到灵宠**侧面**、与球体中上部同高：
+   bottom:56%（气泡 y≈447~519，副标题下/按钮上，球顶侧旁）；Milo（右侧宠区右缘 390 屏）
+   ⇒ left:100% 向右展开；Sophia ⇒ right:100% 向左展开（左侧空间 155px）。
+   max-width 收至 min(150px,40vw) 保两侧不溢出屏。真页实测：不遮标题/脸/按钮 ✓。 */
 .ks-fam-bubble {
   position: absolute;
-  /* 🐾 E52: 气泡抬到灵宠**正上方**（bottom 86% 时正好盖住自己的头，主公点击将看不到脸） */
-  bottom: 106%;
-  left: 62%;
-  transform: translateX(-50%);
+  bottom: 56%;
+  left: 100%;
+  margin-left: 6px;
+  transform: none;
   width: max-content;
-  max-width: min(230px, 60vw);
+  max-width: min(150px, 40vw);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -749,12 +755,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   pointer-events: none;
   animation: ksFamBubbleIn 0.28s ease-out;
 }
-.ks-fam-sophia .ks-fam-bubble { left: 38%; border-radius: 14px 14px 3px 14px; }
+.ks-fam-sophia .ks-fam-bubble { left: auto; right: 100%; margin-left: 0; margin-right: 6px; border-radius: 14px 14px 3px 14px; }
 .ks-fam-bubble-name { color: #F0D060; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4; }
 .ks-fam-bubble-line { color: rgba(240, 230, 200, 0.92); font-size: 12px; line-height: 1.5; }
 @keyframes ksFamBubbleIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 /* 管理小圆钮（↺ 重置领养 / 🧪 沙箱清档） */
 .ks-fam-chip {
