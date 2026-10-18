@@ -6,7 +6,7 @@
  *   B. 后端 /api/familiar/chat 骨架：Gemini 流式主通道 + DeepSeek 降级 + 三层
  *      System Prompt（人设/本命底牌/今日运势）+ 输出铁律 + 门控 fail-closed
  *      （401/402 在 SSE header 之前）+ 算力防盗刷（日上限/最小间隔/断连 abort）；
- *   C. 前端抽屉舱：毛玻璃半屏（68vh）、气泡 CTA 衔接入口、90ms 节流、
+ *   C. 前端抽屉舱：移动端 55vh 半屏 + 桌面端右下角 420px 悬浮舱（E68）、90ms 节流、
  *      麦克风语音槽位、零路由跳转（portal 而非 navigate）。
  * 🔴 纪律：新增段随 test:astro 全量入编；不触碰既有 56 段真值锁（纯增量文件）。
  * ═══════════════════════════════════════════════════════════════════════════
@@ -96,11 +96,18 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   assert.ok(sheet.includes('createPortal'), '应以 portal 挂载（零路由跳转）');
   assert.ok(sheet.includes('onTouchEnd'), '缺下滑手势收起');
   assert.ok(!/navigate\(/.test(sheet), '抽屉舱严禁路由跳转');
+  // E68 军令①：输入栏独立微组件 —— 打字 state 局部化，禁触发对话流重渲染
+  assert.ok(sheet.includes('ChatInputBar') && sheet.includes('React.memo'), 'E68 输入栏未拆独立微组件');
+  assert.ok(sheet.includes('isComposing'), 'E68 缺中文输入法组词回车保护');
   const card = read('web/src/components/FamiliarHomeCard.tsx');
   assert.ok(card.includes('FamiliarChatSheet'), '首页卡未接入抽屉舱');
   assert.ok(card.includes('familiar-chat-cta'), '缺气泡 CTA 衔接入口');
   const css = read('web/src/App.css');
   assert.ok(css.includes('.ks-chat-sheet'), '缺抽屉舱样式');
-  assert.ok(css.includes('68vh'), '抽屉高度须约 68vh（军令 65%~70%）');
+  // E68 军令②：移动端 55vh；桌面端右下角 420px 悬浮舱（768px 断点），背景视频透出
+  assert.ok(css.includes('55vh'), '移动端抽屉高度应为 55vh（E68 军令②）');
+  assert.ok(css.includes('min-width: 768px'), '缺桌面端断点（E68 悬浮舱分流）');
+  assert.ok(css.includes('420px'), '桌面端悬浮舱宽度应为 420px（E68 军令②）');
+  assert.ok(css.includes('contain: content'), '缺渲染隔离（E68 军令①）');
   assert.ok(css.includes('backdrop-filter'), '缺毛玻璃');
 });

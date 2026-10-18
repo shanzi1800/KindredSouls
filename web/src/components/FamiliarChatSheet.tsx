@@ -49,10 +49,51 @@ interface Props {
 
 const THROTTLE_MS = 90;
 
+/**
+ * 🧩 E68 输入栏独立微组件（军令①：根除打字滞后）——
+ * 打字 state 局部化在本组件内，敲键只重渲染这 38px 输入栏，
+ * 严禁触发外层对话流 / 毛玻璃抽屉重渲染（此前 input 在父级，每键全树 diff）。
+ */
+const ChatInputBar: React.FC<{
+  streaming: boolean;
+  placeholder: string;
+  micTitle: string;
+  sendLabel: string;
+  onSend: (text: string) => void;
+}> = ({ streaming, placeholder, micTitle, sendLabel, onSend }) => {
+  const [text, setText] = useState('');
+  const submit = () => {
+    const v = text.trim();
+    if (!v || streaming) return;
+    setText('');
+    onSend(v);
+  };
+  return (
+    <div className="ks-chat-bar">
+      <input
+        className="ks-chat-input"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          // 中文输入法组词中的回车只上屏不发送（isComposing 保护）
+          if (e.key === 'Enter' && !(e.nativeEvent as KeyboardEvent).isComposing) submit();
+        }}
+        placeholder={placeholder}
+        maxLength={300}
+        disabled={streaming}
+        autoComplete="off"
+      />
+      {/* 🎙 E66 语音扩展槽位：清朗少年音 Milo / 温柔少女音 Sophia（UI 锚点，功能待接入） */}
+      <button type="button" className="ks-chat-mic" disabled title={micTitle} aria-label={micTitle}>🎙</button>
+      <button type="button" className="ks-chat-send" onClick={submit} disabled={streaming || !text.trim()} aria-label={sendLabel}>↑</button>
+    </div>
+  );
+};
+const MemoChatInputBar = React.memo(ChatInputBar);
+
 const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingVars }) => {
   const { t } = useTranslation();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
-  const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
@@ -88,7 +129,6 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     setStreaming(false);
     bufRef.current = '';
     if (throttleRef.current) { clearInterval(throttleRef.current); throttleRef.current = null; }
-    setInput('');
   }, [open]);
 
   /** 90ms 节流：把缓冲 delta 批量落到最后一条 assistant 消息上 */
@@ -121,7 +161,6 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const text = String(raw || '').trim();
     if (!text || streaming) return;
     setNotice(null);
-    setInput('');
     const uid = `u-${Date.now()}`;
     const aid = `a-${Date.now()}`;
     setMsgs((prev) => [...prev, { id: uid, role: 'user', text }, { id: aid, role: 'assistant', text: '' }]);
@@ -281,20 +320,14 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           ))}
         </div>
 
-        <div className="ks-chat-bar">
-          <input
-            className="ks-chat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') send(input); }}
-            placeholder={t('familiar.chatPlaceholder')}
-            maxLength={300}
-            disabled={streaming}
-          />
-          {/* 🎙 E66 语音扩展槽位：清朗少年音 Milo / 温柔少女音 Sophia（UI 锚点，功能待接入） */}
-          <button type="button" className="ks-chat-mic" disabled title={t('familiar.chatMicSoon')} aria-label={t('familiar.chatMicSoon')}>🎙</button>
-          <button type="button" className="ks-chat-send" onClick={() => send(input)} disabled={streaming || !input.trim()} aria-label={t('familiar.chatSend')}>↑</button>
-        </div>
+        {/* 🧩 E68：输入栏为独立微组件 —— 打字不触发对话流/毛玻璃重渲染 */}
+        <MemoChatInputBar
+          streaming={streaming}
+          placeholder={t('familiar.chatPlaceholder')}
+          micTitle={t('familiar.chatMicSoon')}
+          sendLabel={t('familiar.chatSend')}
+          onSend={send}
+        />
       </div>
     </div>,
     document.body

@@ -1079,8 +1079,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-chat-sheet {
   position: relative;
   width: 100%;
-  height: 68vh;
-  max-height: 68vh;
+  height: 55vh; /* E68 军令②：移动端 68→55vh，留出上半屏让背景视频透出 */
+  max-height: 55vh;
   display: flex;
   flex-direction: column;
   padding: 0 14px calc(10px + env(safe-area-inset-bottom));
@@ -1095,7 +1095,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: ksChatUp 0.32s cubic-bezier(0.22, 0.9, 0.24, 1);
   transition: transform 0.22s ease;
   will-change: transform;
+  transform: translateZ(0); /* E68 军令①：图层提升，隔离合成避免打字全屏 Reflow */
+  contain: content;         /* E68 军令①：渲染隔离，输入态变化不再外溢 */
 }
+
+/* 🖥 E68 军令②：桌面端废除 100% 大通栏 ⇒ 右下角精致悬浮陪伴舱 */
+@media (min-width: 768px) {
+  .ks-chat-layer { justify-content: flex-end; padding: 0 24px 20px 0; }
+  .ks-chat-mask {
+    background: rgba(6, 5, 14, 0.18); /* 桌面端只轻微压暗，视频/星空完整透出 */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .ks-chat-sheet {
+    width: 420px;
+    max-width: 90vw;
+    height: 600px;
+    max-height: 75vh;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.66);
+    animation: ksChatPop 0.28s cubic-bezier(0.22, 0.9, 0.24, 1);
+  }
+}
+@keyframes ksChatPop { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateZ(0) scale(1); } }
 @keyframes ksChatUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes ksChatFade { from { opacity: 0; } to { opacity: 1; } }
 
@@ -1289,4 +1312,5 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-chat-sheet, .ks-chat-mask, .ks-chat-bubble { animation: none; }
   .ks-chat-avatar, .ks-chat-dot, .ks-chat-typing i { animation: none; }
+  .ks-chat-sheet { transform: translateZ(0); }
 }
