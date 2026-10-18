@@ -110,6 +110,10 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   assert.ok(css.includes('420px'), '桌面端悬浮舱宽度应为 420px（E68 军令②）');
   assert.ok(css.includes('contain: content'), '缺渲染隔离（E68 军令①）');
   assert.ok(css.includes('backdrop-filter'), '缺毛玻璃');
+  // E70：药丸行必须换行完整显示（旧 overflow-x:auto 在真机无滚动提示 ⇒ 第三条被裁半截）
+  assert.ok(/\.ks-chat-pills\s*\{[^}]*flex-wrap:\s*wrap/.test(css), 'E70 药丸行必须 flex-wrap: wrap');
+  assert.ok(!/\.ks-chat-pills\s*\{[^}]*overflow-x:\s*auto/.test(css), 'E70 药丸行禁横向滚动裁切');
+  assert.ok(/\.ks-chat-pill\s*\{[^}]*max-width:\s*100%/.test(css), 'E70 单颗药丸须限宽 max-width: 100%');
 });
 
 test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守卫', () => {
