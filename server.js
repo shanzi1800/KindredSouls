@@ -19186,6 +19186,7 @@ async function streamFamiliarChatGemini({ systemText, messages, signal, onDelta 
   const dec = new TextDecoder();
   let buf = '';
   let out = '';
+  let lastFinish = '';
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -19199,13 +19200,39 @@ async function streamFamiliarChatGemini({ systemText, messages, signal, onDelta 
       if (!payload || payload === '[DONE]') continue;
       try {
         const j = JSON.parse(payload);
+        if (j?.candidates?.[0]?.finishReason) lastFinish = j.candidates[0].finishReason;
         const txt = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
         if (txt) { out += txt; onDelta(txt); }
       } catch { /* 半包忽略，下一轮补齐 */ }
     }
   }
+  // E69：非正常收流（SAFETY/RECITATION 等会砍半截正文）必须留痕
+  if (out && lastFinish && lastFinish !== 'STOP' && lastFinish !== 'MAX_TOKENS') {
+    console.warn(`[E69] gemini 流 finishReason=${lastFinish}（非 STOP）len=${out.length}`);
+  }
   return out;
 }
+
+/** E69：句子完整性守卫——正文不以终止符收尾 ⇒ 视为半句（触发断点续写） */
+function _e69IsCompleteSentence(t) {
+  if (!t) return true;
+  const raw = String(t);
+  if (/\s$/.test(raw)) return true; // th/vi 以空格断句：空白收尾视为完整，防过度续写
+  const s = raw.replace(/\s+$/, '');
+  if (!s) return true;
+  // 终止符：中英标点＋常见装饰/表情收尾（年报与对话 UI 常态）；星平面 emoji 必须带 u 标志（E23/R11q4）
+  return /[。！？…!?~～.；;："'"'）)\]】」』》%°✦✧☆★💫✨🌙☀️🔥❤️💜🖤]$/u.test(s);
+}
+
+/** E69：断点续写指令（按语种；以 user 轮次注入，禁止重复已说内容） */
+const E69_CONTINUE_HINT = {
+  zh: '（系统提示：你上一条回复被传输截断了。请从断点处直接无缝继续说完剩余内容——禁止重复任何已说过的字、禁止重新打招呼或另起话头，只输出后续正文。）',
+  en: "(System note: your previous reply was cut off mid-transmission. Continue seamlessly from the exact break point — do NOT repeat any words already said, do NOT greet again or restart; output only the remaining part.)",
+  es: "(Nota del sistema: tu respuesta anterior se cortó a mitad. Continúa sin costuras desde el punto exacto — NO repitas lo ya dicho, NO saludes de nuevo; escribe solo la parte restante.)",
+  fr: "(Note système : votre réponse précédente a été coupée en plein milieu. Reprenez sans couture là où elle s'est arrêtée — ne répétez rien de ce qui a été dit, ne saluez pas à nouveau ; écrivez uniquement la suite.)",
+  th: "(System note: คำตอบก่อนหน้าของคุณถูกตัดกลางคัน ให้เชื่อมต่อต่อจากจุดที่ขาดทันที — ห้ามพูดซ้ำ ห้ามทักใหม่ ให้เขียนเฉพาะส่วนที่เหลือ)",
+  vi: "(Ghi chú hệ thống: câu trả lời trước của bạn bị cắt giữa chừng. Hãy nối tiếp mượt mà từ điểm đứt — KHÔNG lặp lại chữ đã nói, KHÔNG chào lại; chỉ viết phần còn lại.)",
+};
 
 /** 🐾 E66：Gemini 非流式兜底（复用既有线上验证形态 generateContent → 切块伪流式） */
 async function fetchFamiliarChatGeminiOnce({ systemText, messages, signal, onDelta }) {
@@ -19351,6 +19378,18 @@ app.post('/api/familiar/chat', async (req, res) => {
 
   let text = '';
   let model = 'gemini-3.5-flash';
+  /** E69：断点续写一次——把已有半句回填为 model 轮次，请求无缝续文（伪流直推前端） */
+  const tryContinue = async (partial) => {
+    const hint = E69_CONTINUE_HINT[lang] || E69_CONTINUE_HINT.en;
+    const delta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } };
+    const cont = await fetchFamiliarChatGeminiOnce({
+      systemText,
+      messages: [...messages, { role: 'assistant', content: partial }, { role: 'user', content: hint }],
+      signal: ctrl.signal,
+      onDelta: delta,
+    });
+    return cont || '';
+  };
   try {
     res.write(`data: ${JSON.stringify({
       meta: {
@@ -19366,8 +19405,17 @@ app.post('/api/familiar/chat', async (req, res) => {
       });
     } catch (e1) {
       if (ctrl.signal.aborted) throw e1;
-      console.warn('[E66] gemini 流式失败，改非流式兜底:', e1 && e1.message);
-      if (!text) {
+      if (text) {
+        // E69：流中断于半句（此前会直接 done ⇒ 用户看到句中截断）。续写一次补全。
+        console.warn(`[E69] gemini 流中断于半句 len=${text.length}: ${e1 && e1.message}`);
+        try {
+          text += await tryContinue(text);
+          model = 'gemini-3.5-flash:resumed';
+        } catch (e2) {
+          console.warn('[E69] 续写失败，按已有部分收尾:', e2 && e2.message);
+        }
+      } else {
+        console.warn('[E66] gemini 流式失败，改非流式兜底:', e1 && e1.message);
         try {
           text = await fetchFamiliarChatGeminiOnce({
             systemText, messages, signal: ctrl.signal,
@@ -19384,6 +19432,16 @@ app.post('/api/familiar/chat', async (req, res) => {
             onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
           });
         }
+      }
+    }
+    // E69 句子完整性守卫：正文非空但不以终止符收尾（SAFETY/RECITATION/半句 STOP）⇒ 续写一次
+    if (!ctrl.signal.aborted && text && !_e69IsCompleteSentence(text)) {
+      console.warn(`[E69] 句不完整（末字「${text.slice(-1)}」len=${text.length}）⇒ 完整性续写`);
+      try {
+        const cont = await tryContinue(text);
+        if (cont) { text += cont; if (!model.includes('resumed')) model += '+resumed'; }
+      } catch (e3) {
+        console.warn('[E69] 完整性续写失败:', e3 && e3.message);
       }
     }
     if (!text || !text.trim()) throw new Error('EMPTY_COMPLETION');

@@ -111,3 +111,24 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   assert.ok(css.includes('contain: content'), '缺渲染隔离（E68 军令①）');
   assert.ok(css.includes('backdrop-filter'), '缺毛玻璃');
 });
+
+test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守卫', () => {
+  const s = read('server.js');
+  // ① finishReason 追踪：非 STOP 收流必须留痕（SAFETY/RECITATION 砍半截正文）
+  assert.ok(s.includes('lastFinish'), '流式解析未追踪 finishReason');
+  assert.ok(s.includes("finishReason=${lastFinish}"), '非 STOP finishReason 缺日志留痕');
+  // ② 断点续写器：半句回填为 model 轮次 + user 续写指令（六语 hint）
+  assert.ok(s.includes('tryContinue'), '缺断点续写器 tryContinue');
+  assert.ok(s.includes("{ role: 'assistant', content: partial }"), '续写须把半句回填为 model 轮次');
+  assert.ok(s.includes('E69_CONTINUE_HINT'), '缺六语续写指令表');
+  assert.ok(s.includes('E69_CONTINUE_HINT[lang]'), '续写指令须按 lang 取用');
+  // ③ 句子完整性守卫：正文不以终止符收尾 ⇒ 续写一次
+  assert.ok(s.includes('_e69IsCompleteSentence'), '缺句子完整性守卫函数');
+  assert.ok(s.includes('!_e69IsCompleteSentence(text)'), '端点未挂完整性守卫');
+  // ④ 流中断于半句（text 非空）必须走续写，禁止直接 done（E69 病根直塞）
+  assert.ok(s.includes('流中断于半句'), '缺「流中断于半句」续写分支');
+  // ⑤ 续写指令六语齐全（zh/en/es/fr/th/vi）
+  for (const lg of ['zh', 'en', 'es', 'fr', 'th', 'vi']) {
+    assert.ok(new RegExp(`^  ${lg}: ` + "'" , 'm').test(s) || s.includes(`  ${lg}: `), `续写指令缺语种 ${lg}`);
+  }
+});
