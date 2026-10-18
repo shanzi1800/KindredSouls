@@ -697,19 +697,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    （行宽≥20% 峰值底缘：Milo 0.6438 / Sophia 0.6423）。
    🐾 E65c（主公亲令 2026-10-18「不用移动·固定此位·后脚要能看到」）：
    ①撤水平巡逻（translateX ±7%），灵宠**定住**不漂移，尾巴摇摆/眨眼/呼吸保留；
-   ②压键量 3.3%H→**4%H**（球体主底 0.6114/0.6078 压入键沿下 4%H）⇒ 爪脚整体落在
-   金色键面内（避开按键左圆角盲区），后脚深色对亮金高对比清晰可见
-   ⇒ translateY = (1−0.6114)+0.04 ⇒ **42.9%** / (1−0.6078)+0.04 ⇒ **43.2%**。
-   ⚠️ 尾层资产已裁剪至 bbox（尾盒 358×575 / 400×687），CSS left/top/width 即 bbox 百分比，
-   与全画布旧口径（42.16%/42.52% 时代）不兼容 —— 两套数值禁混用。
-   ⚠️ 旧 E51/E52/E54 几何（48%/46.9%、25.4%/28.6%）随旧画布退役。 */
+   🐾 E65d（主公亲令 2026-10-18「后脚位置没有体现出来，要和参照稿手脚呈现一样」）：
+   **横向重锚** —— 病根＝Milo left:-27.2% 时大半个身子悬在按键左侧外，后脚恰落
+   按键左圆角盲区/键外（参照稿实测：球心≈键宽 50%、球宽≈键宽 52%、球底贴键沿、
+   四爪垂搭在金面）。按参照稿重算：
+   ①球宽 63%→**70%** 键宽（球宽/键宽 ≈ 51.8% 对齐参照稿）；
+   ②球心落位：Milo **44%** / Sophia **56%**（左右镜像偏置，都落在键面平金区）
+     ⇒ 资产球心占比 Milo 0.636 / Sophia 0.360（擦尾后偏侧）⇒
+     left = 球心目标 − 球心占比×宽 ⇒ Milo **-0.5%** / Sophia **30.8%**；
+   ③ty = (1−球底0.6114/0.6078)+微压 ⇒ **40.2% / 40.4%**（球底压键沿下 ~2px，
+     爪脚主体垂搭在金面上，与参照稿同款「趴键垂爪」形态）。
+   ⚠️ 尾层资产已裁剪至 bbox（尾盒 358×575 / 400×687），CSS left/top/width 即 bbox 百分比。
+   ⚠️ 旧 E51/E52/E54/E65b/E65c 几何（-27.2%/56.01%、63%、38.9%~43.2%）全数退役。 */
 .ks-fam-milo {
-  left: -27.2%; width: 63%;
-  transform: translateY(42.9%);
+  left: -0.5%; width: 70%;
+  transform: translateY(40.2%);
 }
 .ks-fam-sophia {
-  left: 56.01%; width: 63.39%;
-  transform: translateY(43.2%);
+  left: 30.8%; width: 70%;
+  transform: translateY(40.4%);
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -872,9 +878,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
-  /* 🐾 E52/E54/E65c: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65c 固定坐键真值，巡逻已撤） */
-  .ks-fam-milo { transform: translateY(42.9%); }
-  .ks-fam-sophia { transform: translateY(43.2%); }
+  /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
+  .ks-fam-milo { transform: translateY(40.2%); }
+  .ks-fam-sophia { transform: translateY(40.4%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
