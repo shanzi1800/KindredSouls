@@ -536,8 +536,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .landing-start-wrap {
   position: relative;
   display: inline-block;
-  /* 🐾 E65g: isolation 锁死 wrap 内 stacking（灵宠必须压在按钮之上，跨浏览器一致） */
-  isolation: isolate;
+  /* 🐾 E65g: 显式 z1 —— 高于星空视频(fixed z0)，低于无；与 anchor z2 构成「视频 < 按钮 < 灵宠」序。
+     ⚠️ 勿用 isolation:isolate（会把灵宠锁进 wrap 层域反被 z0 视频盖住——E65g 线上实测翻车）。 */
+  z-index: 1;
   /* 🐾 E52: 40+32=72px 总空隙整体上移到此（按钮自身 margin-top 已归零）⇒ 锚点 top:0 即按钮顶，
      灵宠「体底压键沿」可纯数学定位（体底比例实测：Milo 0.780 / Sophia 0.775） */
   margin-top: 72px;
