@@ -506,6 +506,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 
 .landing-start-btn {
   margin-top: 0; /* 🐾 E52: 上间距整体上移至 .landing-start-wrap（锚点线 = 按钮顶，几何可算） */
+  /* 🐾 E65g: 显式图层序（主公实机截图 0ee1ac52 物证：灵宠与按钮重叠的身体被按钮吞掉
+     —— WebKit/微信 WebView 对「无显式 z-index 的兄弟 + filter 合成层」排序与 Chrome
+     不一致）。wrap 内 isolation 锁死比较域：按钮 z1 < anchor z2，灵宠稳在按钮之上。 */
+  position: relative;
+  z-index: 1;
   padding: 16px 48px;
   font-size: 18px;
   font-weight: 700;
@@ -531,6 +536,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .landing-start-wrap {
   position: relative;
   display: inline-block;
+  /* 🐾 E65g: isolation 锁死 wrap 内 stacking（灵宠必须压在按钮之上，跨浏览器一致） */
+  isolation: isolate;
   /* 🐾 E52: 40+32=72px 总空隙整体上移到此（按钮自身 margin-top 已归零）⇒ 锚点 top:0 即按钮顶，
      灵宠「体底压键沿」可纯数学定位（体底比例实测：Milo 0.780 / Sophia 0.775） */
   margin-top: 72px;
@@ -542,6 +549,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   width: 100%;
   height: 0;
   pointer-events: none;
+  /* 🐾 E65g: z2 > 按钮 z1 —— 灵宠锚定层明确高于按钮（WebKit 实机物证修复） */
+  z-index: 2;
 }
 .ks-fam-breakout {
   position: absolute;
@@ -595,14 +604,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    ＋ **30px 坐键深压**（按钮高 46px 的 65%，参照稿同款）：translateY(calc(38.9% + 30px))。
    agent-browser 线上真页双视口实测：桌面 1280 与手机 390 同为键高 46px，压入比例一致，
    「开始测算」文字完整可见，尾巴垂键左下与参照稿同款。⚠️ 核验铁律：**几何验收必须在
-   线上真页 getBoundingClientRect＋截图比对参照稿**，自建仿真页与 grep 自写数值皆为假绿。 */
+   线上真页 getBoundingClientRect＋截图比对参照稿**，自建仿真页与 grep 自写数值皆为假绿。
+   ⚠️ E65f 的 30px 深压被主公实机否决（0ee1ac52）——且暴露 stacking 真雷：与按钮重叠的
+   身体在主公 WebKit/微信 WebView 里被按钮吞掉（Chrome 里灵宠在上故桌面验证假绿）。
+   🐾 E65g（主公实机终裁 2026-10-18「你自己看现在搞成什么样子啦」）：
+   ①**图层序显式化**：wrap `isolation:isolate` + 按钮 z1 + anchor z2 —— 灵宠跨浏览器稳压按钮之上（真凶修复）；
+   ②**压深回调 30px→6px**：参照稿本意是「球底微压＋爪垂搭金面」，30px 是把参照稿「爪压区」
+     误读成「球身坐键区」⇒ 整个身子没进按钮。ty = calc(38.9% + 6px)：球底压 6px、
+     爪底（球底下 6%H≈12px）垂搭金面 12~18px 清晰可见，形态即参照稿。 */
 .ks-fam-milo {
   left: -0.5%; width: 70%;
-  transform: translateY(calc(38.9% + 30px));
+  transform: translateY(calc(38.9% + 6px));
 }
 .ks-fam-sophia {
   left: 30.8%; width: 70%;
-  transform: translateY(calc(39.2% + 30px));
+  transform: translateY(calc(39.2% + 6px));
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -766,8 +782,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
   /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
-  .ks-fam-milo { transform: translateY(calc(38.9% + 30px)); }
-  .ks-fam-sophia { transform: translateY(calc(39.2% + 30px)); }
+  .ks-fam-milo { transform: translateY(calc(38.9% + 6px)); }
+  .ks-fam-sophia { transform: translateY(calc(39.2% + 6px)); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
