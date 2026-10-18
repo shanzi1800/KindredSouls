@@ -19136,6 +19136,16 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune }) {
   ].join('\n');
 }
 
+/** 🐾 E66：对话生成参数 —— 关 thinking（陪伴对话求快求稳；且防思考 token 吃掉 60~120 字的正文字额） */
+const FAMILIAR_CHAT_GEN_CONFIG = {
+  temperature: 0.9,
+  topP: 0.95,
+  maxOutputTokens: 800,
+  thinkingConfig: { thinkingBudget: 0 },
+};
+/** 兼容壳：未来模型版本若不接受 thinkingConfig（400），摘掉该字段重试 */
+const FAMILIAR_CHAT_GEN_CONFIG_PLAIN = { temperature: 0.9, topP: 0.95, maxOutputTokens: 800 };
+
 /** 🐾 E66：Gemini 流式（主通道，alt=sse 原生流） */
 async function streamFamiliarChatGemini({ systemText, messages, signal, onDelta }) {
   const key = getGeminiKey();
@@ -19143,25 +19153,31 @@ async function streamFamiliarChatGemini({ systemText, messages, signal, onDelta 
   // 🧪 GEMINI_BASE_URL 仅用于本地离线验真（mock SSE），生产不设 ⇒ 默认官方端点
   const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
   const url = `${base}/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${key}`;
-  const r = await fetch(url, {
+  const buildBody = (gen) => JSON.stringify({
+    systemInstruction: { parts: [{ text: systemText }] },
+    contents: messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: gen,
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  });
+  const post = (gen) => fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemText }] },
-      contents: messages.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 512 },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-      ],
-    }),
+    body: buildBody(gen),
   });
+  let r = await post(FAMILIAR_CHAT_GEN_CONFIG);
+  if (r.status === 400) {
+    console.warn('[E66] gemini 400 with thinkingConfig, retry plain');
+    r = await post(FAMILIAR_CHAT_GEN_CONFIG_PLAIN);
+  }
   if (!r.ok) {
     const errText = await r.text().catch(() => '');
     throw new Error(`gemini http ${r.status} ${errText.slice(0, 160)}`);
@@ -19196,19 +19212,29 @@ async function fetchFamiliarChatGeminiOnce({ systemText, messages, signal, onDel
   const key = getGeminiKey();
   if (!key) throw new Error('GEMINI_API_KEY not configured');
   const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
-  const r = await fetch(`${base}/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
+  const url = `${base}/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
+  const buildBody = (gen) => JSON.stringify({
+    systemInstruction: { parts: [{ text: systemText }] },
+    contents: messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: gen,
+  });
+  let r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemText }] },
-      contents: messages.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 512 },
-    }),
+    body: buildBody(FAMILIAR_CHAT_GEN_CONFIG),
   });
+  if (r.status === 400) {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: buildBody(FAMILIAR_CHAT_GEN_CONFIG_PLAIN),
+    });
+  }
   if (!r.ok) throw new Error(`gemini once http ${r.status}`);
   const j = await r.json();
   const text = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
