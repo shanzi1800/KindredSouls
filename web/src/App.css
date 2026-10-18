@@ -561,21 +561,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    ⇒ 球底距图底 0.2194h / 0.2515h；目标＝球底压在按钮顶沿**下方约 3.5%h（≈3px）**，
    故 translateY = 0.2194+0.035 ⇒ **25.4%** / 0.2515+0.035 ⇒ **28.6%**。
    残余的图底透明区下垂（爪垫 0.95 / 尾梢 0.99）自然搭在金色键面上 —— 真正的"扒在键沿"。 */
+/* 几何真值（🛡️ E65 终版原画重制 2026-10-18 主公补料 image_46/47）：
+   新原画 = Gemini 终版（玄武岩暗 Milo × 灰白壳粉耳 Sophia），macOS Vision 主体提取 →
+   按钮黄键剔除 → 尾身分离（尾根结合部斜线）→ Milo 水平镜像（军令「面朝右·尾在左」）
+   → 按旧球宽 686/695px 定标 → 排上 945×1073 / 962×1099 画布。
+   球底（行宽≥20% 峰值铁律）：Milo 0.6114 / Sophia 0.6078 ⇒ 趴键 translateY 42.16% / 42.52%
+   （(1−ratio)+3.3%H 压键，同 E54 公式）。突破盒宽 63% / 63.39%（球屏宽＝旧版对齐）。
+   ⚠️ 旧 E51/E52/E54 几何（48%/46.9%、25.4%/28.6%）随旧画布退役。 */
 .ks-fam-milo {
-  left: -12%; width: 48%;
+  left: -27.2%; width: 63%;
   animation: ksFamPatrolMilo 9.5s ease-in-out infinite alternate;
 }
 .ks-fam-sophia {
-  left: 55%; width: 46.9%;
+  left: 56.01%; width: 63.39%;
   animation: ksFamPatrolSophia 9.5s ease-in-out infinite alternate;
 }
 @keyframes ksFamPatrolMilo {
-  from { transform: translateY(25.4%) translateX(-14%); }
-  to   { transform: translateY(25.4%) translateX(14%); }
+  from { transform: translateY(42.16%) translateX(-7%); }
+  to   { transform: translateY(42.16%) translateX(7%); }
 }
 @keyframes ksFamPatrolSophia {
-  from { transform: translateY(28.6%) translateX(14%); }
-  to   { transform: translateY(28.6%) translateX(-14%); }
+  from { transform: translateY(42.52%) translateX(7%); }
+  to   { transform: translateY(42.52%) translateX(-7%); }
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -629,13 +636,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   height: auto;
 }
 .ks-fam-milo .ks-fam-tail {
-  left: 0%; top: 56.12%; width: 33.33%;
-  transform-origin: 62.5% 15.8%;
+  left: 0%; top: 46.41%; width: 37.88%;
+  transform-origin: 86.2% 26.4%;
   animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
-  left: 55.14%; top: 65.82%; width: 44.86%;
-  transform-origin: 58.2% 13.38%;
+  left: 58.42%; top: 37.49%; width: 41.58%;
+  transform-origin: 20.8% 38.6%;
   animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
   animation-delay: 0.9s; /* E63: 与 4.7s/5.3s 瞬目错峰的相位差 */
 }
@@ -673,6 +680,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 .ks-fam-zone-head { left: 24%; top: 1%; width: 46%; height: 34%; border-radius: 46% 54% 50% 50%; }
 .ks-fam-zone-gem  { left: 30%; top: 38%; width: 42%; height: 32%; border-radius: 50%; }
+/* 🛡️ E65：新画布（945×1073 / 962×1099）命中区真值（脸部/蓝心宝石实测框） */
+.ks-fam-milo .ks-fam-zone-head { left: 45.6%; top: 0%; width: 45.3%; height: 30.1%; }
+.ks-fam-milo .ks-fam-zone-gem  { left: 54.7%; top: 35.4%; width: 28.1%; height: 22.1%; }
+.ks-fam-sophia .ks-fam-zone-head { left: 9.8%; top: 0%; width: 45.5%; height: 29.2%; }
+.ks-fam-sophia .ks-fam-zone-gem  { left: 17.9%; top: 35.4%; width: 28.3%; height: 22.2%; }
 /* 呼吸微光脉冲（点中头部/宝石时） */
 .ks-fam-pulse .ks-fam-breathe { animation: ksFamPulse 0.75s ease-in-out 2; }
 @keyframes ksFamPulse {
@@ -734,8 +746,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
   /* 🐾 E52/E54: 巡视 / 眨眼 / 慢旋尾一并降级为静帧（趴键位保持 —— E54-1 球底压键真值） */
-  .ks-fam-milo { animation: none; transform: translateY(25.4%); }
-  .ks-fam-sophia { animation: none; transform: translateY(28.6%); }
+  .ks-fam-milo { animation: none; transform: translateY(42.16%); }
+  .ks-fam-sophia { animation: none; transform: translateY(42.52%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
