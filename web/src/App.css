@@ -565,8 +565,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    新原画 = Gemini 终版（玄武岩暗 Milo × 灰白壳粉耳 Sophia），macOS Vision 主体提取 →
    按钮黄键剔除 → 尾身分离（尾根结合部斜线）→ Milo 水平镜像（军令「面朝右·尾在左」）
    → 按旧球宽 686/695px 定标 → 排上 945×1073 / 962×1099 画布。
-   球底（行宽≥20% 峰值铁律）：Milo 0.6114 / Sophia 0.6078 ⇒ 趴键 translateY 42.16% / 42.52%
-   （(1−ratio)+3.3%H 压键，同 E54 公式）。突破盒宽 63% / 63.39%（球屏宽＝旧版对齐）。
+   🐾 E65b（主公亲令 2026-10-18「手脚要放在按键上」）: 趴键锚点由球底改**爪脚坐底线**
+   （行宽≥20% 峰值底缘：Milo 0.6438 / Sophia 0.6423）⇒ 肚底贴键沿、爪脚明确搭在金键面，
+   压键量保持 3.3%H（同 E54 公式）⇒ translateY **38.9% / 39.1%**。
+   ⚠️ 尾层资产已裁剪至 bbox（尾盒 358×575 / 400×687），CSS left/top/width 即 bbox 百分比，
+   与全画布旧口径（42.16%/42.52% 时代）不兼容 —— 两套数值禁混用。
    ⚠️ 旧 E51/E52/E54 几何（48%/46.9%、25.4%/28.6%）随旧画布退役。 */
 .ks-fam-milo {
   left: -27.2%; width: 63%;
@@ -577,12 +580,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: ksFamPatrolSophia 9.5s ease-in-out infinite alternate;
 }
 @keyframes ksFamPatrolMilo {
-  from { transform: translateY(42.16%) translateX(-7%); }
-  to   { transform: translateY(42.16%) translateX(7%); }
+  from { transform: translateY(38.9%) translateX(-7%); }
+  to   { transform: translateY(38.9%) translateX(7%); }
 }
 @keyframes ksFamPatrolSophia {
-  from { transform: translateY(42.52%) translateX(7%); }
-  to   { transform: translateY(42.52%) translateX(-7%); }
+  from { transform: translateY(39.1%) translateX(7%); }
+  to   { transform: translateY(39.1%) translateX(-7%); }
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -745,9 +748,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
-  /* 🐾 E52/E54: 巡视 / 眨眼 / 慢旋尾一并降级为静帧（趴键位保持 —— E54-1 球底压键真值） */
-  .ks-fam-milo { animation: none; transform: translateY(42.16%); }
-  .ks-fam-sophia { animation: none; transform: translateY(42.52%); }
+  /* 🐾 E52/E54/E65b: 巡视 / 眨眼 / 慢旋尾一并降级为静帧（趴键位保持 —— E65b 爪脚坐底线压键真值） */
+  .ks-fam-milo { animation: none; transform: translateY(38.9%); }
+  .ks-fam-sophia { animation: none; transform: translateY(39.1%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
