@@ -61,6 +61,8 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 //   （自 E53 撤下的 DailyDashboard 迁移而来；灵宠亲口轮播分享，首页零方框）
 // @ts-ignore —— dailyFortune.mjs 纯逻辑核（确定性/四象方位；见文件头契约）
 import { dailyFortune } from '../lib/dailyFortune.mjs';
+// 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
+import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
 
 const WHISPER_COUNT = 5;
 
@@ -281,6 +283,15 @@ const FamiliarHomeCard: React.FC = () => {
   const recs: HomeRecord[] = rec ? [rec] : [];
   const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
 
+  /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatIp: FamiliarIp = (rec && (IP_OF_MODE[String(rec.profile.relation_mode || '')] === 'Milo')) ? 'Milo' : 'Sophia';
+  const chatGreeting = React.useMemo(() => {
+    const sun = rec ? String((triadTruth(rec) || {}).sun || '') : '';
+    const f = dailyFortune({ lang, sunSign: sun });
+    return { sun, color: f.color && f.color.name, num: f.luckyNumber };
+  }, [rec, lang]);
+
   return (
     <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
       {anchorEl && showBreakout && recs.map((rec0) => {
@@ -304,9 +315,18 @@ const FamiliarHomeCard: React.FC = () => {
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             {famBubble && (
-              <div className="ks-fam-bubble" aria-hidden="true">
+              <div className="ks-fam-bubble">
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
                 {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
+                {/* 🐾 E66 衔接入口：气泡末尾的「与 TA 聊聊」引子 —— 平滑唤醒半屏抽屉舱 */}
+                <button
+                  type="button"
+                  className="ks-fam-bubble-cta"
+                  data-testid="familiar-chat-cta"
+                  onClick={() => { setFamBubble(null); setChatOpen(true); }}
+                >
+                  {t('familiar.chatCta')}
+                </button>
               </div>
             )}
             {sandboxMode && (
@@ -324,6 +344,17 @@ const FamiliarHomeCard: React.FC = () => {
           anchorEl,
         );
       })}
+      {/* 🐾 E66：半屏毛玻璃抽屉舱（portal 到 body；零路由跳转，不破坏首页上下文） */}
+      <FamiliarChatSheet
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        ip={chatIp}
+        name={rec ? nameOf(rec) : chatIp}
+        relationMode={rec ? String(rec.profile.relation_mode || '') : ''}
+        lang={lang}
+        paidOk={paidOk}
+        greetingVars={chatGreeting}
+      />
     </div>
   );
 };

@@ -109,6 +109,22 @@
     "luckColor": "Couleur porte-bonheur",
     "luckFlower": "Fleur porte-bonheur",
     "luckDir": "Direction bienfaitrice",
-    "luckSeed": "Portez un cristal ou restez près des plantes — elles attirent l'énergie des gains inattendus~"
+    "luckSeed": "Portez un cristal ou restez près des plantes — elles attirent l'énergie des gains inattendus~",
+    "chatCta": "✦ Parle-moi",
+    "chatStatus": "{{name}} lit ta carte…",
+    "chatHello": "{{name}} : ta couleur porte-bonheur du jour est {{color}} et ton chiffre est {{num}}. Dis-moi ce que tu ressens.",
+    "chatHelloPlain": "{{name}} : je suis là. On parle de quoi aujourd'hui ?",
+    "chatClose": "Fermer",
+    "chatPlaceholder": "Dis-moi ce que tu as sur le cœur…",
+    "chatSend": "Envoyer",
+    "chatThinking": "Je ressens…",
+    "chatMicSoon": "Compagnon vocal bientôt disponible",
+    "chatNetErr": "Le signal a coupé, rappelle-moi ?",
+    "chatNeedLogin": "Connecte-toi pour que je puisse t’entendre",
+    "chatNeedUnlock": "Débloque le rapport et je resterai près de toi",
+    "chatTooFast": "Doucement, je suis là, sans hâte",
+    "chatQ1": "💰 Chance financière et pièges du jour",
+    "chatQ2": "🌙 Apaise ma fatigue émotionnelle",
+    "chatQ3": "🔮 Un conseil du jour selon ma carte"
   }
 }

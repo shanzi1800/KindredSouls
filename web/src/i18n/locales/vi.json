@@ -109,6 +109,22 @@
     "luckColor": "Màu may mắn",
     "luckFlower": "Hoa may mắn",
     "luckDir": "Hướng quý nhân",
-    "luckSeed": "Đeo pha lê hoặc ở gần cây cỏ — sẽ tụ năng lượng tài lộc cho bạn nhé~"
+    "luckSeed": "Đeo pha lê hoặc ở gần cây cỏ — sẽ tụ năng lượng tài lộc cho bạn nhé~",
+    "chatCta": "✦ Trò chuyện với tôi",
+    "chatStatus": "{{name}} đang cảm nhận lá số của bạn…",
+    "chatHello": "{{name}}: hôm nay màu may mắn của bạn là {{color}}, con số may mắn là {{num}}. Kể tôi nghe đi.",
+    "chatHelloPlain": "{{name}}: tôi đây. Hôm nay mình nói chuyện gì?",
+    "chatClose": "Đóng",
+    "chatPlaceholder": "Nói tôi nghe điều trong lòng bạn…",
+    "chatSend": "Gửi",
+    "chatThinking": "Đang cảm nhận…",
+    "chatMicSoon": "Trò chuyện bằng giọng nói sắp có",
+    "chatNetErr": "Mất kết nối rồi, gọi tôi lại nhé?",
+    "chatNeedLogin": "Đăng nhập trước để tôi nghe được bạn",
+    "chatNeedUnlock": "Mở khóa báo cáo để tôi ở bên bạn mỗi ngày",
+    "chatTooFast": "Từ từ thôi, tôi ở đây, không vội",
+    "chatQ1": "💰 Tài lộc hôm nay và điều nên tránh",
+    "chatQ2": "🌙 Xoa dịu hao mòn cảm xúc của tôi",
+    "chatQ3": "🔮 Cho tôi chỉ dẫn hôm nay từ lá số"
   }
 }

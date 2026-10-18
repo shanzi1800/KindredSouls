@@ -109,6 +109,22 @@
     "luckColor": "Color de suerte",
     "luckFlower": "Flor de suerte",
     "luckDir": "Dirección benefactora",
-    "luckSeed": "Lleva un cristal o acércate a las plantas — atraen energía de ganancias inesperadas~"
+    "luckSeed": "Lleva un cristal o acércate a las plantas — atraen energía de ganancias inesperadas~",
+    "chatCta": "✦ Habla conmigo",
+    "chatStatus": "{{name}} está leyendo tu carta…",
+    "chatHello": "{{name}}: hoy tu color de suerte es {{color}} y tu número es {{num}}. Cuéntame qué sientes.",
+    "chatHelloPlain": "{{name}}: aquí estoy. ¿De qué hablamos hoy?",
+    "chatClose": "Cerrar",
+    "chatPlaceholder": "Dime lo que llevas dentro…",
+    "chatSend": "Enviar",
+    "chatThinking": "Sintiendo…",
+    "chatMicSoon": "Voz pronto disponible",
+    "chatNetErr": "Se cortó la señal, ¿me llamas otra vez?",
+    "chatNeedLogin": "Inicia sesión para que pueda oírte",
+    "chatNeedUnlock": "Desbloquea el informe y estaré contigo a diario",
+    "chatTooFast": "Tranquilo, aquí estoy, sin prisa",
+    "chatQ1": "💰 Suerte económica y trampas de hoy",
+    "chatQ2": "🌙 Calma mi desgaste emocional",
+    "chatQ3": "🔮 Guía de hoy según mi carta"
   }
 }

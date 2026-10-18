@@ -109,6 +109,22 @@
     "luckColor": "Lucky color",
     "luckFlower": "Lucky flower",
     "luckDir": "Benefactor direction",
-    "luckSeed": "Wear a crystal or stay near plants — they gather windfall energy for you~"
+    "luckSeed": "Wear a crystal or stay near plants — they gather windfall energy for you~",
+    "chatCta": "✦ Talk to me",
+    "chatStatus": "{{name}} is reading your chart…",
+    "chatHello": "{{name}}: your lucky color today is {{color}} and your lucky number is {{num}}. Tell me what is on your mind.",
+    "chatHelloPlain": "{{name}}: I'm here. What shall we talk about today?",
+    "chatClose": "Close",
+    "chatPlaceholder": "Tell me what is in your heart…",
+    "chatSend": "Send",
+    "chatThinking": "Sensing…",
+    "chatMicSoon": "Voice companion coming soon",
+    "chatNetErr": "The signal dropped — call me again?",
+    "chatNeedLogin": "Sign in first so I can hear you",
+    "chatNeedUnlock": "Unlock the report and I can stay with you daily",
+    "chatTooFast": "Easy — I'm here, no rush",
+    "chatQ1": "💰 Money luck and pitfalls today",
+    "chatQ2": "🌙 Soothe my emotional drain",
+    "chatQ3": "🔮 A reading from my chart today"
   }
 }

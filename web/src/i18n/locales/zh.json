@@ -109,6 +109,22 @@
     "luckColor": "幸运色",
     "luckFlower": "幸运花",
     "luckDir": "贵人方位",
-    "luckSeed": "佩戴晶石、靠近花草，都能为你聚拢偏财能量哦～"
+    "luckSeed": "佩戴晶石、靠近花草，都能为你聚拢偏财能量哦～",
+    "chatCta": "✦ 与 TA 聊聊",
+    "chatStatus": "{{name}} 正在感应你的星盘磁场…",
+    "chatHello": "{{name}}：今天你的幸运色是{{color}}、幸运数字{{num}}。想聊什么，我都听着。",
+    "chatHelloPlain": "{{name}}：我在呢。今天想聊点什么？",
+    "chatClose": "收起",
+    "chatPlaceholder": "把心里的话说给我听…",
+    "chatSend": "发送",
+    "chatThinking": "正在感应…",
+    "chatMicSoon": "语音陪伴即将开放",
+    "chatNetErr": "信号断了，再唤我一次好吗？",
+    "chatNeedLogin": "先登录，我才能听见你说话",
+    "chatNeedUnlock": "解锁报告后，我就能天天陪你了",
+    "chatTooFast": "慢一点，我一直在，不用急",
+    "chatQ1": "💰 今日财运与破财避坑",
+    "chatQ2": "🌙 抚平我今天的情绪内耗",
+    "chatQ3": "🔮 结合我的星盘给点今日指引"
   }
 }

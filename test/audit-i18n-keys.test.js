@@ -98,7 +98,11 @@ describe('V448 i18n Key 门禁', () => {
     //   upgradeYearlyDesc / upgradeCta / sandboxPayMonthly / sandboxPayYearly 6 键，6 语种同步）
     // 93 → 94（E59b 主公亲令 2026-10-17: 年报生成静默期体感治理 —— 骨架期状态行
     //   wealthReport.generatingHint 1 键入列，6 语种同步）
-    assert.strictEqual(p.total, 94, 'E59b 生成状态提示行入列后基准键数应为 94');
+    // 94 → 110（E66 主公军令 2026-10-18: 灵魂兽对话抽屉舱 —— familiar.chat* 16 键入列
+    //   （chatCta/chatStatus/chatHello/chatHelloPlain/chatClose/chatPlaceholder/chatSend/
+    //   chatThinking/chatMicSoon/chatNetErr/chatNeedLogin/chatNeedUnlock/chatTooFast/
+    //   chatQ1/chatQ2/chatQ3），6 语种同步新增，键集合全等不变）
+    assert.strictEqual(p.total, 110, 'E66 灵魂兽对话 16 键入列后基准键数应为 110');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

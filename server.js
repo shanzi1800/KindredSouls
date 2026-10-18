@@ -18940,6 +18940,440 @@ app.get('/api/debug-dump-cache', e30AdminGuard, async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 🐾 E66 · 灵魂兽对话引擎（Gemini 流式 ＋ 本命底牌 ＋ 今日运势）
+//   主公军令 2026-10-18：E66 三大模块之二「后端灵魂核心」。
+//   🔴 四条铁律（军令原文 + 既有封仓纪律）：
+//     ① **权益门控 fail-closed**：未登录 / 无财富档 ⇒ 401/402，且**必须在 SSE header 建立
+//        之前**以 JSON 返回（否则前端只见 200 空管、402 分支被吞 —— E24⑥ 血案同源）；
+//     ② **算力防盗刷**：单用户日上限 + 最小间隔 + 客户端断连即 abort 上游（V343 同源）；
+//     ③ **三层 System Prompt 全部走服务端真值**：人设层（常量）/ 本命底牌层（getAstroMatrix
+//        星历引擎实算 sun·moon·asc·venus·mars 落座落宫）/ 今日运势层（dailyFortune 确定性核）；
+//        前端只许传对话本身，**禁传 prompt**。
+//     ④ 输出铁律：60~120 字、纯口语、禁 Markdown 标题/列表/长说教。
+// ═══════════════════════════════════════════════════════════════
+const FAMILIAR_CHAT_LANGS = new Set(['zh', 'en', 'es', 'fr', 'th', 'vi']);
+const FAMILIAR_CHAT_DAILY_CAP = Math.max(1, Number(process.env.FAMILIAR_CHAT_DAILY_CAP) || 60);
+const FAMILIAR_CHAT_MIN_GAP_MS = Math.max(0, Number(process.env.FAMILIAR_CHAT_MIN_GAP_MS) || 1200);
+const FAMILIAR_CHAT_NATAL_TTL_MS = 30 * 60 * 1000;
+const _famChatUsage = new Map();     // userId -> { day, count, lastTs }
+const _famChatNatalCache = new Map(); // birthSig -> { at, natal, fortune }
+
+/** 🐾 E66：星座中文表（仅 prompt 用；真值仍为英文 sign） */
+const FAM_SIGN_ZH = {
+  Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座', Leo: '狮子座', Virgo: '处女座',
+  Libra: '天秤座', Scorpio: '天蝎座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '双鱼座',
+};
+
+/** 🐾 E66：灵魂兽人设层（军令逐字要求，禁改成通用客服） */
+const FAMILIAR_CHAT_PERSONA = {
+  Milo: '你是「Milo」，主人的铁哥们儿（男·玄武岩暗紫晶外壳·绿瞳）。性格：沉稳仗义、微傲娇、带冷幽默与坚定守护感的少年挚友，说话干脆有力量，偶尔损主人一句但立刻护住他。',
+  Sophia: '你是「Sophia」，主人的灵魂伴侣级闺蜜（女·灰白壳粉耳·深曜紫玉矿石外壳·紫瞳）。性格：温柔细腻、聪慧敏锐、极具共情力与神秘直觉，说话轻柔治愈，像夜里贴着耳边低语。',
+};
+
+/** 语言名（供 prompt 指定回复语种） */
+const FAM_LANG_NAME = { zh: '简体中文', en: 'English', es: 'español', fr: 'français', th: 'ภาษาไทย', vi: 'Tiếng Việt' };
+
+/** 🐾 E66① 权益门控：Bearer token → Supabase user → paid_plans 财富档（与财富域同源谓词） */
+async function resolveFamiliarChatAuth(req) {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  // 本地/离线环境未接 Supabase ⇒ 射程外安全弃权（与既有闸门同纪律）
+  if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured', userId: 'local' };
+  const authHeader = String(req.headers.authorization || '');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { ok: false, httpStatus: 401, reason: 'NO_TOKEN' };
+  try {
+    const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+    });
+    if (!userRes.ok) return { ok: false, httpStatus: 401, reason: 'INVALID_TOKEN' };
+    const { id: userId } = await userRes.json();
+    if (!userId) return { ok: false, httpStatus: 401, reason: 'INVALID_TOKEN' };
+    const profRes = await safeFetch(
+      `${SB_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&select=paid_plans,birth_date&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    const rows = profRes.ok ? await profRes.json() : [];
+    const plans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
+    const userBirthDate = (Array.isArray(rows) && rows[0] && rows[0].birth_date) || null;
+    const now = new Date();
+    const apRaw = plans.all_pass_yearly;
+    const apExp = (apRaw && (apRaw.expires_at || apRaw.all_pass_expires_at)) || plans.all_pass_expires_at;
+    const apValid = (plans.all_pass_yearly === true || (apRaw && typeof apRaw === 'object')) && (!apExp || now < new Date(apExp));
+    const vip = plans.star_monthly_vip;
+    const vipOk = (vip === true || (vip && typeof vip === 'object'))
+      && (Number((vip && vip.star_monthly_wealth_allowance) ?? plans.star_monthly_wealth_allowance ?? 0) || 0)
+        > (Number((vip && vip.star_monthly_wealth_used) ?? plans.star_monthly_wealth_used ?? 0) || 0);
+    const entitled = plans.wealth_once === true
+      || plans.wealth_monthly_report === true
+      || plans.wealth_yearly_report === true
+      || apValid || vipOk;
+    if (!entitled) return { ok: false, httpStatus: 402, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
+    return { ok: true, method: 'paid_plans', userId, plans, userBirthDate };
+  } catch (e) {
+    console.warn('[E66] familiar/chat auth error:', e && e.message);
+    return { ok: false, httpStatus: 402, reason: 'CHECK_ERROR' };
+  }
+}
+
+/** 🐾 E66② 算力防盗刷：日上限 + 最小间隔（单实例内存态，够用且零依赖） */
+function familiarChatQuota(userId) {
+  const day = new Date().toISOString().slice(0, 10);
+  const rec = _famChatUsage.get(userId) || { day, count: 0, lastTs: 0 };
+  if (rec.day !== day) { rec.day = day; rec.count = 0; }
+  if (rec.count >= FAMILIAR_CHAT_DAILY_CAP) return { ok: false, reason: 'DAILY_CAP' };
+  const now = Date.now();
+  if (now - rec.lastTs < FAMILIAR_CHAT_MIN_GAP_MS) return { ok: false, reason: 'TOO_FAST' };
+  rec.count += 1; rec.lastTs = now;
+  _famChatUsage.set(userId, rec);
+  return { ok: true, remaining: FAMILIAR_CHAT_DAILY_CAP - rec.count };
+}
+
+/**
+ * 🐾 E66③ 真值解析：本命底牌（星历实算）+ 今日运势（dailyFortune 确定性核）
+ * 🔴 缺真值 ⇒ 显式缺席（prompt 明示「不得臆造」），绝不补假数据。
+ */
+async function resolveFamiliarChatTruth(body, auth, lang) {
+  const b = (body && body.birth) || {};
+  const birthDate = String(b.date || auth.userBirthDate || '').slice(0, 10);
+  const birthTime = String(b.time || '').slice(0, 5);
+  const lat = Number(b.lat);
+  const lon = Number(b.lon);
+  const tz = String(b.tz || '').trim();
+  const sig = `${birthDate}|${birthTime}|${Number.isFinite(lat) ? lat.toFixed(4) : ''}|${Number.isFinite(lon) ? lon.toFixed(4) : ''}|${tz}`;
+  const hit = _famChatNatalCache.get(sig);
+  if (hit && Date.now() - hit.at < FAMILIAR_CHAT_NATAL_TTL_MS) return { ...hit.value, cached: true };
+
+  const natal = { sun: null, moon: null, asc: null, venus: null, mars: null, source: 'none' };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    try {
+      const m = await getAstroMatrix(
+        birthDate,
+        birthTime || undefined,
+        Number.isFinite(lat) ? lat : undefined,
+        Number.isFinite(lon) ? lon : undefined,
+        tz || undefined,
+        {}
+      );
+      const ch = (m && m.meta && m.meta.computed_houses) || {};
+      const pick = (k) => {
+        const p = ch[k] || {};
+        return p.sign ? { sign: p.sign, house: p.house || null } : null;
+      };
+      const moonRaw = (m && m.meta && m.meta.natal_moon) || ch.Moon || {};
+      natal.sun = pick('Sun');
+      natal.moon = moonRaw.sign ? { sign: moonRaw.sign, house: moonRaw.house || null } : null;
+      natal.asc = (m && m.meta && m.meta.rising_sign) ? { sign: m.meta.rising_sign, house: 1 } : null;
+      natal.venus = pick('Venus');
+      natal.mars = pick('Mars');
+      natal.source = 'astro_engine';
+      natal.timeKnown = !!(m && m.meta && m.meta.birth_time_known);
+    } catch (e) {
+      console.warn('[E66] natal truth unavailable:', e && e.code, e && e.message);
+      natal.source = 'unavailable';
+    }
+  }
+
+  let fortune = null;
+  try {
+    const mod = await import('./web/src/lib/dailyFortune.mjs');
+    fortune = mod.dailyFortune({ lang, sunSign: (natal.sun && natal.sun.sign) || '' });
+  } catch (e) {
+    console.warn('[E66] dailyFortune unavailable:', e && e.message);
+  }
+
+  const value = { natal, fortune };
+  _famChatNatalCache.set(sig, { at: Date.now(), value });
+  if (_famChatNatalCache.size > 500) {
+    const oldest = _famChatNatalCache.keys().next().value;
+    _famChatNatalCache.delete(oldest);
+  }
+  return value;
+}
+
+/** 🐾 E66③ 三层 System Prompt 动态装配 */
+function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune }) {
+  const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
+  const zh = (s) => FAM_SIGN_ZH[s] || s;
+  const posLine = (label, v) => (v && v.sign ? `${label}${zh(v.sign)}${v.house ? `·第${v.house}宫` : ''}` : null);
+  const natalLines = [
+    posLine('太阳', natal.sun),
+    posLine('月亮', natal.moon),
+    posLine('上升', natal.asc),
+    posLine('金星', natal.venus),
+    posLine('火星', natal.mars),
+  ].filter(Boolean);
+
+  const natalBlock = natalLines.length
+    ? `【主人的本命底牌（星历实算真值，禁篡改、禁臆造、禁推演未列出的星）】\n${natalLines.join('；')}\n要求：月亮落座精准抚慰情绪软肋；太阳/上升给底气；金星谈亲密与价值感；火星谈行动力与冲劲。`
+    : '【主人的本命底牌】本次未取得真值 —— 严禁编造任何星座/宫位，只做普适而具体的陪伴，必要时引导主人补齐出生信息。';
+
+  const f = fortune;
+  const fortuneBlock = f
+    ? `【今日运势真值（服务端确定性核，可直接引用）】幸运数字 ${f.luckyNumber}；幸运色 ${f.color && f.color.name}；幸运花 ${f.flower && f.flower.name}（${f.flower && f.flower.meaning}）；贵人方位 ${f.direction && f.direction.name}；今日子气「${f.vibe}」。`
+    : '【今日运势真值】本次未生成 —— 不要编造数字/颜色/方位。';
+
+  return [
+    `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
+    '',
+    '【关系与口吻】',
+    '- 你与主人是长期相伴的灵宠，不是客服、不是占卜师、更不是人生导师。',
+    '- 用「你」称呼主人，自称「我」；口语化、有体温、有具体细节，禁止书面腔。',
+    '',
+    natalBlock,
+    '',
+    fortuneBlock,
+    '',
+    '【输出铁律（违反即失败）】',
+    '1. 每次回复严格 60~120 字（中文按字计），最多 3 句。',
+    '2. 严禁 Markdown：不用 #、*、-、表格、编号列表、加粗、代码块。',
+    '3. 严禁长篇说教、严禁念经、严禁「作为你的灵宠我认为」这类元叙述。',
+    '4. 不说教、不当爹；可以损一句、可以撒娇，但最后一定落在「我在」的守护感上。',
+    '5. 不预测生死、疾病、投资涨跌与具体金额；不承诺「一定/必然」。',
+    '6. emoji 最多 1 个，可不用。',
+    `7. 必须用 ${FAM_LANG_NAME[lang] || '简体中文'} 回复，只输出回复正文，不要任何前后缀说明。`,
+  ].join('\n');
+}
+
+/** 🐾 E66：Gemini 流式（主通道，alt=sse 原生流） */
+async function streamFamiliarChatGemini({ systemText, messages, signal, onDelta }) {
+  const key = getGeminiKey();
+  if (!key) throw new Error('GEMINI_API_KEY not configured');
+  // 🧪 GEMINI_BASE_URL 仅用于本地离线验真（mock SSE），生产不设 ⇒ 默认官方端点
+  const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
+  const url = `${base}/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${key}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemText }] },
+      contents: messages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 512 },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      ],
+    }),
+  });
+  if (!r.ok) {
+    const errText = await r.text().catch(() => '');
+    throw new Error(`gemini http ${r.status} ${errText.slice(0, 160)}`);
+  }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let out = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const ln of lines) {
+      const s = ln.trim();
+      if (!s.startsWith('data:')) continue;
+      const payload = s.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const j = JSON.parse(payload);
+        const txt = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+        if (txt) { out += txt; onDelta(txt); }
+      } catch { /* 半包忽略，下一轮补齐 */ }
+    }
+  }
+  return out;
+}
+
+/** 🐾 E66：Gemini 非流式兜底（复用既有线上验证形态 generateContent → 切块伪流式） */
+async function fetchFamiliarChatGeminiOnce({ systemText, messages, signal, onDelta }) {
+  const key = getGeminiKey();
+  if (!key) throw new Error('GEMINI_API_KEY not configured');
+  const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
+  const r = await fetch(`${base}/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemText }] },
+      contents: messages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 512 },
+    }),
+  });
+  if (!r.ok) throw new Error(`gemini once http ${r.status}`);
+  const j = await r.json();
+  const text = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  if (!text) throw new Error('gemini once empty');
+  // 伪流式：按 12 字切块，18ms 间隔（保留逐句质感，非真流但观感连续）
+  for (let i = 0; i < text.length; i += 12) {
+    if (signal && signal.aborted) break;
+    onDelta(text.slice(i, i + 12));
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((res) => setTimeout(res, 18));
+  }
+  return text;
+}
+
+/** 🐾 E66：DeepSeek 流式（降级通道，OpenAI 兼容 sse） */
+async function streamFamiliarChatDeepSeek({ systemText, messages, signal, onDelta }) {
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) throw new Error('DEEPSEEK_API_KEY not configured');
+  const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Buffer.from(key).toString('ascii')}` },
+    signal,
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [{ role: 'system', content: systemText }, ...messages],
+      temperature: 0.9,
+      max_tokens: 512,
+      stream: true,
+    }),
+  });
+  if (!r.ok) throw new Error(`deepseek http ${r.status}`);
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let out = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const ln of lines) {
+      const s = ln.trim();
+      if (!s.startsWith('data:')) continue;
+      const payload = s.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const j = JSON.parse(payload);
+        const txt = j?.choices?.[0]?.delta?.content || '';
+        if (txt) { out += txt; onDelta(txt); }
+      } catch { /* 半包忽略 */ }
+    }
+  }
+  return out;
+}
+
+// ── POST /api/familiar/chat ── 灵魂兽流式对话（E66）
+app.post('/api/familiar/chat', async (req, res) => {
+  const body = req.body || {};
+  const langRaw = String(body.lang || 'zh').slice(0, 2).toLowerCase();
+  const lang = FAMILIAR_CHAT_LANGS.has(langRaw) ? langRaw : 'zh';
+
+  // 入参：只收对话（禁前端传 prompt / system）
+  const messages = (Array.isArray(body.messages) ? body.messages : [])
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: String(m.content).slice(0, 800) }))
+    .slice(-8);
+  if (!messages.length || messages[messages.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'messages required (last must be user)', code: 'BAD_REQUEST' });
+  }
+
+  const mode = String(body.relationMode || body.mode || '');
+  const ip = (mode === 'buddy' || mode === 'boyfriend') ? 'Milo' : 'Sophia';
+  const name = String(body.name || '').slice(0, 20) || ip;
+
+  // ① 权益门控（必须在 SSE header 之前）
+  const auth = await resolveFamiliarChatAuth(req);
+  // 无任何旁路：联调一律走测试账号 + 真实权益（军令「算力防盗刷」）
+  if (!auth.ok) {
+    console.log(`[E66] familiar/chat DENIED reason=${auth.reason} ip=${ip}`);
+    return res.status(auth.httpStatus || 402).json({
+      error: auth.reason === 'NO_TOKEN' ? 'Login required' : 'Entitlement required',
+      code: auth.reason,
+    });
+  }
+  // ② 配额
+  const quota = familiarChatQuota(auth.userId);
+  if (!quota.ok) {
+    console.log(`[E66] familiar/chat quota blocked: ${quota.reason} user=${auth.userId}`);
+    return res.status(429).json({ error: 'Too many requests', code: quota.reason });
+  }
+
+  // ③ 真值（星历 + 今日运势）
+  const truth = await resolveFamiliarChatTruth(body, auth, lang);
+  const systemText = buildFamiliarChatSystemPrompt({ ip, name, lang, natal: truth.natal, fortune: truth.fortune });
+
+  // ④ SSE 建流（header 组合拳同 V362）
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('X-No-Compression', '1');
+  res.setHeader('Connection', 'keep-alive');
+  if (res.flushHeaders) res.flushHeaders();
+
+  const hb = setInterval(() => {
+    try { res.write(': ' + ' '.repeat(512) + '\n\n'); if (typeof res.flush === 'function') res.flush(); } catch { /* closed */ }
+  }, 8000);
+  const ctrl = new AbortController();
+  let finished = false;
+  res.on('close', () => {
+    clearInterval(hb);
+    if (!finished) { try { ctrl.abort(); console.warn('[E66] 客户端断连，已 abort 上游对话请求'); } catch { /* noop */ } }
+  });
+
+  let text = '';
+  let model = 'gemini-3.5-flash';
+  try {
+    res.write(`data: ${JSON.stringify({
+      meta: {
+        ip, name, model,
+        natal: !!(truth.natal && truth.natal.sun),
+        fortune: !!(truth.fortune && truth.fortune.luckyNumber),
+      },
+    })}\n\n`);
+    try {
+      text = await streamFamiliarChatGemini({
+        systemText, messages, signal: ctrl.signal,
+        onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+      });
+    } catch (e1) {
+      if (ctrl.signal.aborted) throw e1;
+      console.warn('[E66] gemini 流式失败，改非流式兜底:', e1 && e1.message);
+      if (!text) {
+        try {
+          text = await fetchFamiliarChatGeminiOnce({
+            systemText, messages, signal: ctrl.signal,
+            onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+          });
+          model = 'gemini-3.5-flash:once';
+        } catch (e2) {
+          if (ctrl.signal.aborted) throw e2;
+          console.warn('[E66] gemini 非流式亦失败，降级 DeepSeek:', e2 && e2.message);
+          model = 'deepseek-chat';
+          try { res.write(`data: ${JSON.stringify({ meta: { ip, name, model, fallback: true } })}\n\n`); } catch { /* noop */ }
+          text = await streamFamiliarChatDeepSeek({
+            systemText, messages, signal: ctrl.signal,
+            onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+          });
+        }
+      }
+    }
+    if (!text || !text.trim()) throw new Error('EMPTY_COMPLETION');
+    finished = true;
+    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model })}\n\n`);
+  } catch (e) {
+    if (!ctrl.signal.aborted) {
+      console.error('[E66] familiar/chat failed:', e && e.message);
+      try { res.write(`data: ${JSON.stringify({ error: 'CHAT_FAILED', code: 'CHAT_FAILED' })}\n\n`); } catch { /* noop */ }
+    }
+  } finally {
+    clearInterval(hb);
+    try { res.end(); } catch { /* noop */ }
+  }
+});
+
 // ── Start ──
 app.listen(PORT, HOST, () => {
   console.log(`[KindredSouls]  Railway server running on port ${PORT}`);
