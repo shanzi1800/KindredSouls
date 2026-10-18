@@ -708,14 +708,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    ③ty = (1−球底0.6114/0.6078)+微压 ⇒ **40.2% / 40.4%**（球底压键沿下 ~2px，
      爪脚主体垂搭在金面上，与参照稿同款「趴键垂爪」形态）。
    ⚠️ 尾层资产已裁剪至 bbox（尾盒 358×575 / 400×687），CSS left/top/width 即 bbox 百分比。
-   ⚠️ 旧 E51/E52/E54/E65b/E65c 几何（-27.2%/56.01%、63%、38.9%~43.2%）全数退役。 */
+   ⚠️ 旧 E51/E52/E54/E65b/E65c 几何（-27.2%/56.01%、63%、38.9%~43.2%）全数退役。
+   🐾 E65e（主公亲令 2026-10-18「你自己比对灵宠的手脚和尾巴状态」）—— 断爪移植 + 尾层降层 + 球底贴沿：
+   ①**断爪真因**＝E65 黄键剔除把原画中压在金键上的爪身误吞（资产爪垂搭仅 3.4%H，参照稿 ≈6%H）；
+     治法＝以绿眼距定标（S=2.0119/1.9001）+ 蓝图翻转对齐，从原画源图把键沿以下的爪身
+     **画布中心逆向采样**移植回资产（⚠️ 1源像素→1画布像素会因 2× 缩放欠采样成点阵；
+     爪根色调按暗爪均值/方差仿射匹配；逐列桥接过渡；密度<0.55 的影瓣点阵剔除）。
+     新爪底：Milo 0.6711H（原 0.6463）/ Sophia 0.6433H（原 0.6433，资产本就完好免移植）。
+   ②**尾层降层**：DOM 尾层移到身体之前（下层）—— 参照稿尾根藏球后，分离切口与根际残片被球遮蔽。
+   ③**球底贴沿**：ty 改 (1−球底) 精确贴沿 ⇒ **38.9% / 39.2%**，爪全量垂搭金面（Milo 12px/Sophia 7px）。 */
 .ks-fam-milo {
   left: -0.5%; width: 70%;
-  transform: translateY(40.2%);
+  transform: translateY(38.9%);
 }
 .ks-fam-sophia {
   left: 30.8%; width: 70%;
-  transform: translateY(40.4%);
+  transform: translateY(39.2%);
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -879,8 +887,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
   /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
-  .ks-fam-milo { transform: translateY(40.2%); }
-  .ks-fam-sophia { transform: translateY(40.4%); }
+  .ks-fam-milo { transform: translateY(38.9%); }
+  .ks-fam-sophia { transform: translateY(39.2%); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }

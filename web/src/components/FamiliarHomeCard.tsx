@@ -294,11 +294,11 @@ const FamiliarHomeCard: React.FC = () => {
             data-ip={ip}
           >
             <div className="ks-fam-breathe" aria-hidden="true">
+              {/* 🐾 E65e：尾层置于身体下层（主公参照稿铁律「尾根藏球后」）——分离切口与根际残片被球体遮蔽，尾巴自球后自然生出 */}
+              <img className="ks-fam-tail" src={ip === 'Milo' ? miloTail : sophiaTail} alt="" draggable={false} />
               <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} />
               {/* 🐾 E52：眨眼帧叠加（周期性瞬目，3~5s 一次；reduced-motion 降级为不眨） */}
               <img className="ks-fam-img-blink" src={ip === 'Milo' ? miloBlink : sophiaBlink} alt="" draggable={false} />
-              {/* 🐾 E52：独立尾层（transform-origin 在尾根，正弦蠕动；真源 geometry.json E52/E53） */}
-              <img className="ks-fam-tail" src={ip === 'Milo' ? miloTail : sophiaTail} alt="" draggable={false} />
             </div>
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
