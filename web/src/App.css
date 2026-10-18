@@ -588,14 +588,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
      爪根色调按暗爪均值/方差仿射匹配；逐列桥接过渡；密度<0.55 的影瓣点阵剔除）。
      新爪底：Milo 0.6711H（原 0.6463）/ Sophia 0.6433H（原 0.6433，资产本就完好免移植）。
    ②**尾层降层**：DOM 尾层移到身体之前（下层）—— 参照稿尾根藏球后，分离切口与根际残片被球遮蔽。
-   ③**球底贴沿**：ty 改 (1−球底) 精确贴沿 ⇒ **38.9% / 39.2%**，爪全量垂搭金面（Milo 12px/Sophia 7px）。 */
+   ③**球底贴沿**：ty 改 (1−球底) 精确贴沿 ⇒ **38.9% / 39.2%**，爪全量垂搭金面（Milo 12px/Sophia 7px）。
+   🐾 E65f（主公实机终裁 2026-10-18「还是老样子」· 线上真页取证）：**历轮全在「贴沿」级（0~2px），
+   参照稿是「坐键」级** —— 逐像素量参照稿：球宽/键宽 51%（现渲染 52% ✓ 尺寸无误），但球底
+   **深入按钮内部约 65% 按钮高**（灵宠整个人「坐」在按键上）。治法＝贴沿公式保留（% 锚球底）
+   ＋ **30px 坐键深压**（按钮高 46px 的 65%，参照稿同款）：translateY(calc(38.9% + 30px))。
+   agent-browser 线上真页双视口实测：桌面 1280 与手机 390 同为键高 46px，压入比例一致，
+   「开始测算」文字完整可见，尾巴垂键左下与参照稿同款。⚠️ 核验铁律：**几何验收必须在
+   线上真页 getBoundingClientRect＋截图比对参照稿**，自建仿真页与 grep 自写数值皆为假绿。 */
 .ks-fam-milo {
   left: -0.5%; width: 70%;
-  transform: translateY(38.9%);
+  transform: translateY(calc(38.9% + 30px));
 }
 .ks-fam-sophia {
   left: 30.8%; width: 70%;
-  transform: translateY(39.2%);
+  transform: translateY(calc(39.2% + 30px));
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -759,8 +766,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-breathe,
   .ks-fam-pulse .ks-fam-breathe { animation: none; }
   /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
-  .ks-fam-milo { transform: translateY(38.9%); }
-  .ks-fam-sophia { transform: translateY(39.2%); }
+  .ks-fam-milo { transform: translateY(calc(38.9% + 30px)); }
+  .ks-fam-sophia { transform: translateY(calc(39.2% + 30px)); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
 }
