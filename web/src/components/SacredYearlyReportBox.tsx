@@ -964,7 +964,11 @@ const SacredYearlyReportBox: React.FC<{
       
       return (
         <div key={idx} data-line-type="text" style={{
-          color: 'rgb(240,240,245)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px'
+          color: 'rgb(240,240,245)', fontSize: '12px', lineHeight: 1.7, marginBottom: '4px',
+          // 🛡️ E74（主公亲令 2026-10-19）: 正文两端对齐 —— 左对齐下中文自然换行右端参差，
+          //   手机窄行尤为明显（主公实测「右侧边框和文字的距离不均等；左侧均等」）。
+          //   justify 只作用非末行，末行仍左对齐 ⇒ 段尾自然；标题/警示/列表行有自带对齐不受影响。
+          textAlign: 'justify',
         }}>
           {content}
         </div>
@@ -1064,7 +1068,9 @@ const SacredYearlyReportBox: React.FC<{
             // 🔒 LOCKED: overflowY=auto，禁止修改
             overflowY: 'auto', 
             marginRight: '-8px',  // 🛡️ V321: 滚动条再向右平移1mm(V320 4px不够→加到8px≈2mm),容器右边界继续外扩使滑条更贴金边
-            paddingRight: '10px',  // V258: 向右移动1mm 
+            // 🛡️ E74（主公亲令 2026-10-19）: 10→8px —— 手机无滚动条占位时，右内边距
+            //   = 框padding20 − 外扩8 + paddingRight ⇒ 8px 恰使左右内边距对称（20/20）。
+            paddingRight: '8px',
             textAlign: 'left',
           }}
         >

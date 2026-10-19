@@ -390,3 +390,18 @@ test('E73 【登录方式选择门】未登录购买绝不静默失败（Google 
   assert.ok(page.includes("redirectTo: window.location.origin + '/auth/callback'"), 'E73 拆分后 E72 redirectTo 丢失');
   assert.ok(!/window\.open\s*\(/.test(page), 'E73 禁止回潮弹窗式 OAuth');
 });
+
+test('E74 【手机报告排版对齐】正文两端对齐＋左右内边距对称（滑轨维持 V257 原生 PC-only）', () => {
+  const box = read('web/src/components/SacredYearlyReportBox.tsx');
+  // ① 正文行两端对齐：左对齐中文换行右端参差 ⇒ 主公实测「右侧不均、左侧均」
+  assert.ok(/data-line-type="text"[\s\S]{0,500}textAlign:\s*'justify'/.test(box), 'E74 正文行缺 textAlign:justify');
+  // ② 内边距对称：框padding20 − marginRight外扩8 + paddingRight8 ⇒ 手机左右各 20px
+  assert.ok(/paddingRight:\s*'8px'/.test(box), 'E74 容器 paddingRight 应为 8px（10px 时右距 22≠左 20）');
+  // ③ 滑轨维持 V257 原生方案（PC 渲染、iOS overlay 不渲染＝主公接受形态），禁自绘回潮
+  assert.ok(/\.dark-scrollbar::-webkit-scrollbar \{ width: 5px/.test(box), 'E74 V257 原生滑轨被改动');
+  assert.ok(!/thumbRef|updateThumb/.test(box), 'E74 禁自绘滑轨逻辑残留');
+  assert.ok(!/display:\s*none.*webkit-scrollbar|scrollbar-width:\s*none/.test(box), 'E74 禁隐藏原生滑轨');
+  // ④ 年鉴双按钮 flex 排版（PC 并排 / 窄屏堆叠，同一规则）
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  assert.ok(/display:\s*'flex',\s*flexWrap:\s*'wrap',\s*gap:\s*'8px',\s*justifyContent:\s*'center'/.test(page), 'E74 年鉴双按钮缺 flex 容器');
+});

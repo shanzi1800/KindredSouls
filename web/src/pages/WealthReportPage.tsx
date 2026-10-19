@@ -3323,28 +3323,32 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               const _canYearly = wealthEntitledFor('yearly', paidPlans, _greenChannel);
               return (
                 <>
-                  {_canMonthly ? (
-                    <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
-                      {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
-                    </button>
-                  ) : (
-                    <button data-testid="wealth-upgrade-open-monthly" onClick={() => openUpgradePaywall('wealth_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      📅 {t('wealthReport.unlockMonthly')}
-                    </button>
-                  )}
-                  {_canYearly ? (
-                    <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ marginRight: '8px', marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
-                      {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
-                    </button>
-                  ) : (
-                    <button data-testid="wealth-upgrade-open-yearly" onClick={() => openUpgradePaywall('wealth_yearly_report')} disabled={!!reportLoading} style={{ marginBottom: '4px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      📆 {t('wealthReport.unlockYearly')}
-                    </button>
-                  )}
+                  {/* 🛡️ E74（主公亲令 2026-10-19）: 双按钮统一 flex 排版 —— PC 宽屏一行两颗、
+                      窄屏自动换行堆叠居中，同一规则驱动 ⇒ 手机/PC 排版一致（gap 统一 8px） */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', paddingTop: '2px' }}>
+                    {_canMonthly ? (
+                      <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
+                        {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
+                      </button>
+                    ) : (
+                      <button data-testid="wealth-upgrade-open-monthly" onClick={() => openUpgradePaywall('wealth_monthly_report')} disabled={!!reportLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                        📅 {t('wealthReport.unlockMonthly')}
+                      </button>
+                    )}
+                    {_canYearly ? (
+                      <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
+                        {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
+                      </button>
+                    ) : (
+                      <button data-testid="wealth-upgrade-open-yearly" onClick={() => openUpgradePaywall('wealth_yearly_report')} disabled={!!reportLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                        📆 {t('wealthReport.unlockYearly')}
+                      </button>
+                    )}
+                  </div>
                   {(_canMonthly && _canYearly) ? (
-                    <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px' }}>✨ {t('wealthReport.vipFree')}</div>
+                    <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px', textAlign: 'center' }}>✨ {t('wealthReport.vipFree')}</div>
                   ) : (
-                    <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px' }}>
+                    <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px', textAlign: 'center' }}>
                       💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
                     </div>
                   )}
