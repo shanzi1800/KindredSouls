@@ -121,6 +121,11 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   assert.ok(/\.ks-fam-sophia \.ks-fam-bubble::after[^}]*border-left:\s*15px/.test(css), 'E71 缺 Sophia 右下尖角（金边外层三角）');
   assert.ok(/\.ks-fam-bubble::before[\s\S]{0,200}border-right:\s*13px/.test(css), 'E71 缺 Milo 尖角内层底色三角');
   assert.ok(/\.ks-fam-sophia \.ks-fam-bubble::before[\s\S]{0,200}border-left:\s*13px/.test(css), 'E71 缺 Sophia 尖角内层底色三角');
+  // E71c：.input-page 严禁非 visible 溢出值 —— 非 visible 纵向值会把横向轴强制成裁切容器，
+  // 真页 A/B 实锤把 44px 位移后的运势气泡横向裁切（390 屏 18/11px，1440 桌面 17/9px）
+  const inputPageRule = (css.match(/\.input-page\s*\{([^}]*)\}/) || [])[1] || '';
+  assert.ok(inputPageRule.length > 0, 'E71c 缺 .input-page 规则');
+  assert.ok(!/overflow/.test(inputPageRule), 'E71c .input-page 规则块内禁任何溢出裁切值（气泡会被页盒横向裁切）');
 });
 
 test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守卫', () => {

@@ -144,10 +144,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .desc { font-size: 13px; color: #a855f7; line-height: 1.6; margin-bottom: 18px; }
 
 /* ── Input Page ── */
+/* 🔴 E71c 真页实测血训：本规则严禁添加任何非 visible 的纵向溢出值 —— 非 visible 纵向值
+   会按 CSS 规范把横向轴强制计算成 auto，令 .page 成为双向裁切的滚动容器：E71 运势气泡
+   加 44px 位移后宽于页盒，390 屏 Sophia 左缘被裁 18px、Milo 右缘被裁 11px，1440 桌面
+   同样中招（A/B 对比实锤）。落地页滚动一直由 body 承担（实测 window.scrollY 生效、
+   .page 无内部滚动条），该遗留值自 V200c 起从未真正生效 ⇒ 摘除即根治，闸门锁死禁回潮。 */
 .input-page {
   padding-top: 56px; position: relative; z-index: 2; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center;
-  background: transparent; overflow-y: auto;
+  background: transparent;
 }
 /* Prevent iOS Safari zoom-on-input */
 @media screen and (max-width: 500px) {
