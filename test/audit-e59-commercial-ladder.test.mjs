@@ -363,3 +363,30 @@ test('E72 【移动端支付阻塞根治】OAuth 禁弹窗全量重定向（Logi
   assert.ok(cb.includes("ks_oauth_back_url") && cb.includes("intent=checkout&plan="), 'E72 回调页缺回跳现场续跑');
   assert.ok(cb.includes('window.location.replace'), 'E72 回调页须 replace 跳回（防回退死循环）');
 });
+
+test('E73 【登录方式选择门】未登录购买绝不静默失败（Google 12s 超时兜底＋邮箱验证码页内通道）', () => {
+  const gate = read('web/src/components/WealthLoginGate.tsx');
+  // ① 邮箱验证码通道在位：signInWithOtp → verifyOtp 全程留在页内（国内可用，不依赖 Google）
+  assert.ok(gate.includes('signInWithOtp'), 'E73 缺 signInWithOtp 发码');
+  assert.ok(gate.includes("verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' })"), 'E73 缺 verifyOtp 换 session');
+  assert.ok(gate.includes('shouldCreateUser: true'), 'E73 OTP 未允许新用户注册');
+  assert.ok(gate.includes('onEmailVerified(s.access_token)'), 'E73 验证通过未回传 token 续跑收银台');
+  // ② 绝不静默失败：双通道全部 12s 超时兜底 + 显式错误呈现
+  assert.ok(gate.includes('_gateTimeout'), 'E73 缺超时包装器');
+  assert.ok((gate.match(/12000/g) || []).length >= 2, 'E73 发码/验证须各带 12s 超时');
+  assert.ok(gate.includes("googleErr === 'timeout' ? t.timeout : googleErr"), 'E73 Google 超时提示未接门内六语文案');
+  assert.ok(gate.includes("noSession"), 'E73 缺无 session 兜底文案');
+  // ③ 六语文案齐备（zh/en/es/fr/th/vi 各含关键键）
+  for (const k of ['title', 'google', 'email', 'send', 'codePh', 'verify', 'timeout']) {
+    assert.ok((gate.match(new RegExp(`^ {4}${k}:`, 'gm')) || []).length === 6, `E73 i18n 键 ${k} 须六语齐备`);
+  }
+  // ④ 页面接线：未登录购买 ⇒ 弹门而非直接跳 Google；E72 重定向链路保留且带 12s race
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  assert.ok(page.includes('setLoginGatePlan(plan)'), 'E73 未登录购买未接入登录门');
+  assert.ok(page.includes('startGoogleRedirect'), 'E73 缺 Google 重定向启动器');
+  assert.ok(page.includes("Promise.race([oauth, new Promise<'timeout'>"), 'E73 Google 通道缺 12s race 超时');
+  assert.ok(page.includes('<WealthLoginGate'), 'E73 登录门未渲染');
+  assert.ok(page.includes('E72 整页重定向 OAuth'), 'E73 拆分后 E72 标记丢失');
+  assert.ok(page.includes("redirectTo: window.location.origin + '/auth/callback'"), 'E73 拆分后 E72 redirectTo 丢失');
+  assert.ok(!/window\.open\s*\(/.test(page), 'E73 禁止回潮弹窗式 OAuth');
+});

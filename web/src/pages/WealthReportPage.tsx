@@ -38,6 +38,8 @@ import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 //   两档**各自独立**的付费墙弹窗（沙箱态内嵌「一键模拟支付 $X」测试按键）。
 import WealthUpgradePaywall from '../components/WealthUpgradePaywall';
 import type { WealthUpgradePlan } from '../components/WealthUpgradePaywall';
+import WealthLoginGate from '../components/WealthLoginGate'; // 🛡️ E73: 登录方式选择门（Google 重定向 / 邮箱验证码）
+import type { WealthGatePlan } from '../components/WealthLoginGate';
 // 🐾 E55-3（主公亲令 2026-10-16）: 2.0 定制殿堂路由接线已战略隐藏（FAMILIAR_CUSTOM_PATH 不再消费）
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, hasExplicitBirthCoords, buildSandboxCompleteRequest, describeSandboxOutcome, sandboxPlanPrice } from '../lib/sandboxCheckout.mjs';
@@ -1177,6 +1179,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+  // 🛡️ E73: 登录方式选择门状态（未登录点购买 ⇒ 弹门，Google 12s 超时回传改道提示）
+  const [loginGatePlan, setLoginGatePlan] = useState<WealthGatePlan | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleErr, setGoogleErr] = useState<string | null>(null);
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
@@ -1828,6 +1834,33 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // E72 起 OAuth 全量整页重定向：登录意图落 localStorage，回跳后由
   // App.tsx 冷启动续跑（session + pending plan）＋ /wealth?intent=checkout 自动收银台
   // ═══════════════════════════════════════════════════════════════════════
+  // ═══ E73: Google 整页重定向（登录门内选择后触发）——12s 超时兜底，绝不静默失败 ═══
+  const startGoogleRedirect = async (plan: WealthGatePlan) => {
+    setGoogleBusy(true);
+    setGoogleErr(null);
+    try {
+      console.log('[WealthReport] 🔄 E72 整页重定向 OAuth（禁弹窗）plan:', plan);
+      const oauth = supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback',
+          queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang, access_type: 'offline', prompt: 'consent' },
+        },
+      }).then(({ error }) => error || null);
+      // skipBrowserRedirect 缺省 false ⇒ 未出错时 SDK 已整页跳转 Google，不会执行到这里；
+      // 手机网络不可达 Google 时 authorize 可能挂起 ⇒ 12s 超时回门内提示改用邮箱验证码
+      const err = await Promise.race([oauth, new Promise<'timeout'>((res) => setTimeout(() => res('timeout'), 12000))]);
+      if (err === 'timeout') {
+        setGoogleErr('timeout');
+      } else if (err) {
+        console.error('[WealthReport] ❌ E72 重定向 OAuth URL 获取失败:', err);
+        setGoogleErr(err.message || 'error');
+      }
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
   const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
 
     // ── 绿色通道:测试账号不走 OAuth / Stripe,直接跳免费报告页 ──
@@ -1851,27 +1884,21 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       // ⇒ 双端皆废。治法：登录意图先落 localStorage（pending plan + 全参回跳 URL），
       // SDK 统一整页跳 Google，回跳 /auth/callback 由 E72 双模收口跳回现场＋
       // intent=checkout 自动续跑收银台（军令②：用户无需二次寻找入口）。
-      localStorage.removeItem('ks_auth_success_trigger');
-      localStorage.setItem('ks_pending_checkout_plan', plan);
-      if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
-      // 🛡️ 45-D2c: 全参透传 —— 时间·城市·经纬度·时区一个不丢，
-      //    冷启动/Stripe 回跳恢复现场不再退回曼谷默认盘（45-D1 孪生暗雷）
-      const backUrl = buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang });
-      localStorage.setItem('ks_oauth_back_url', backUrl);
+      try {
+        localStorage.removeItem('ks_auth_success_trigger');
+        localStorage.setItem('ks_pending_checkout_plan', plan);
+        if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
+        // 🛡️ 45-D2c: 全参透传 —— 时间·城市·经纬度·时区一个不丢，
+        //    冷启动/Stripe 回跳恢复现场不再退回曼谷默认盘（45-D1 孪生暗雷）
+        const backUrl = buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang });
+        localStorage.setItem('ks_oauth_back_url', backUrl);
+      } catch (_e73ls) { /* iOS 无痕模式 localStorage 可能抛错：不阻塞登录门 */ }
 
-      console.log('[WealthReport] 🔄 E72 整页重定向 OAuth（禁弹窗）plan:', plan);
-      const { error: e72oauthErr } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/auth/callback',
-          queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang, access_type: 'offline', prompt: 'consent' },
-        },
-      });
-      // skipBrowserRedirect 缺省 false ⇒ 未出错时 SDK 已整页跳转 Google，不会执行到这里
-      if (e72oauthErr) {
-        console.error('[WealthReport] ❌ E72 重定向 OAuth URL 获取失败:', e72oauthErr);
-        setError('Login failed. Please try again.');
-      }
+      // ═══ E73（主公军令 2026-10-19）: 不再静默跳 Google —— 弹「登录方式选择门」═══
+      // 病根：signInWithOAuth 的 authorize 请求无超时，手机网络对 Google 不可达时
+      // 静默挂起 ⇒ 用户视角「点了没反应」。门内双通道（Google 整页重定向带 12s 超时
+      // 兜底提示改道 ＋ 邮箱验证码全程留在页内），任何通道绝不静默失败。
+      setLoginGatePlan(plan);
       return;
     }
 
@@ -3223,6 +3250,21 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               onPurchase={handlePurchase}
             />
           </div>
+        )}
+
+        {/* ═══ E73（主公军令 2026-10-19）: 登录方式选择门 —— 未登录点购买不再静默跳 Google：
+            国内手机网络对 Google 常不可达且 authorize 无超时 ⇒ 静默白屏「没反应」。
+            门内双通道：Google 整页重定向（12s 超时回传改道提示）＋ 邮箱验证码 OTP
+            （signInWithOtp → verifyOtp 全程留在页内，国内可用），验证通过自动续跑收银台 */}
+        {loginGatePlan && (
+          <WealthLoginGate
+            lang={currentLang}
+            googleBusy={googleBusy}
+            googleErr={googleErr}
+            onClose={() => { setLoginGatePlan(null); setGoogleErr(null); }}
+            onGoogle={() => startGoogleRedirect(loginGatePlan)}
+            onEmailVerified={(tok) => { const p = loginGatePlan; setLoginGatePlan(null); setGoogleErr(null); handlePurchase(p as any, tok); }}
+          />
         )}
 
         {/* 💎 E59（主公雷霆军令 2026-10-16）: **升阶专属付费墙** —— $2.99 流月 / $29.99 宇宙生日年鉴
