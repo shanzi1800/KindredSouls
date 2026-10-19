@@ -405,3 +405,19 @@ test('E74 【手机报告排版对齐】正文两端对齐＋左右内边距对�
   const page = read('web/src/pages/WealthReportPage.tsx');
   assert.ok(/display:\s*'flex',\s*flexWrap:\s*'wrap',\s*gap:\s*'8px',\s*justifyContent:\s*'center'/.test(page), 'E74 年鉴双按钮缺 flex 容器');
 });
+
+test('E75 【骨架期提示退役】三份报告六语一律纯骨架，禁「推演中」状态行回潮', () => {
+  // ① 三处 SacredYearlyReportBox 调用均不再传 loadingHint
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  assert.ok(!/loadingHint=/.test(page), 'E75 页面仍有 loadingHint 传参（主公令：三份报告全语言去除）');
+  // ② 六语 generatingHint 键已退役
+  const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
+  for (const l of LANGS) {
+    const j = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
+    assert.ok(!(j.wealthReport && 'generatingHint' in j.wealthReport), `${l}.json generatingHint 键未删净`);
+  }
+  // ③ 组件骨架逻辑保留（未传 hint 即纯骨架，E59b 行为兼容），禁整段误删
+  const box = read('web/src/components/SacredYearlyReportBox.tsx');
+  assert.ok(box.includes('loadingHint'), 'E75 组件 loadingHint 可选接口被误删');
+  assert.ok(box.includes('SkeletonBar'), 'E75 组件骨架条被误删');
+});

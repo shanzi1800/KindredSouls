@@ -102,7 +102,9 @@ describe('V448 i18n Key 门禁', () => {
     //   （chatCta/chatStatus/chatHello/chatHelloPlain/chatClose/chatPlaceholder/chatSend/
     //   chatThinking/chatMicSoon/chatNetErr/chatNeedLogin/chatNeedUnlock/chatTooFast/
     //   chatQ1/chatQ2/chatQ3），6 语种同步新增，键集合全等不变）
-    assert.strictEqual(p.total, 110, 'E66 灵魂兽对话 16 键入列后基准键数应为 110');
+    // 110 → 109（E75 主公亲令 2026-10-19: 三份报告骨架期「推演中」状态行退役 ——
+    //   wealthReport.generatingHint 1 键六语同步删除，loadingHint 调用点三处同删，键集合全等不变）
+    assert.strictEqual(p.total, 109, 'E75 骨架期推演提示退役后基准键数应为 109');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {
