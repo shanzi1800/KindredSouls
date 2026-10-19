@@ -110,10 +110,17 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   assert.ok(css.includes('420px'), '桌面端悬浮舱宽度应为 420px（E68 军令②）');
   assert.ok(css.includes('contain: content'), '缺渲染隔离（E68 军令①）');
   assert.ok(css.includes('backdrop-filter'), '缺毛玻璃');
-  // E70：药丸行必须换行完整显示（旧 overflow-x:auto 在真机无滚动提示 ⇒ 第三条被裁半截）
+  // E70：药丸行必须换行完整显示（旧横滚方案在真机无滚动提示 ⇒ 第三条被裁半截）
   assert.ok(/\.ks-chat-pills\s*\{[^}]*flex-wrap:\s*wrap/.test(css), 'E70 药丸行必须 flex-wrap: wrap');
   assert.ok(!/\.ks-chat-pills\s*\{[^}]*overflow-x:\s*auto/.test(css), 'E70 药丸行禁横向滚动裁切');
   assert.ok(/\.ks-chat-pill\s*\{[^}]*max-width:\s*100%/.test(css), 'E70 单颗药丸须限宽 max-width: 100%');
+  // E71：运势气泡避让中央标题（双距 44px）＋ 手绘漫画尖角（双 Tail 双层三角）
+  assert.ok(/\.ks-fam-bubble\s*\{[^}]*margin-left:\s*44px/.test(css), 'E71 Milo 气泡须右移（margin-left 44px）');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-bubble\s*\{[^}]*margin-right:\s*44px/.test(css), 'E71 Sophia 气泡须左移（margin-right 44px）');
+  assert.ok(/\.ks-fam-bubble::after[^}]*border-right:\s*15px/.test(css), 'E71 缺 Milo 左下尖角（金边外层三角）');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-bubble::after[^}]*border-left:\s*15px/.test(css), 'E71 缺 Sophia 右下尖角（金边外层三角）');
+  assert.ok(/\.ks-fam-bubble::before[\s\S]{0,200}border-right:\s*13px/.test(css), 'E71 缺 Milo 尖角内层底色三角');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-bubble::before[\s\S]{0,200}border-left:\s*13px/.test(css), 'E71 缺 Sophia 尖角内层底色三角');
 });
 
 test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守卫', () => {

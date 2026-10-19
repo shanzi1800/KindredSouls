@@ -740,7 +740,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   position: absolute;
   bottom: 56%;
   left: 100%;
-  margin-left: 6px;
+  margin-left: 44px; /* 🧩 E71：右移 10mm（≈38px＋原 6px 间隙），让出中央标题右缘 */
   transform: none;
   width: max-content;
   max-width: min(150px, 40vw);
@@ -750,12 +750,51 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   padding: 8px 12px;
   background: rgba(24, 18, 38, 0.94);
   border: 1px solid rgba(212, 175, 55, 0.55);
-  border-radius: 14px 14px 14px 3px;
+  border-radius: 14px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   animation: ksFamBubbleIn 0.28s ease-out;
 }
-.ks-fam-sophia .ks-fam-bubble { left: auto; right: 100%; margin-left: 0; margin-right: 6px; border-radius: 14px 14px 3px 14px; }
+/* 🧩 E71 漫画尖角（Milo · 左下角朝左刺向 Milo 脑袋）：外层金边 + 内层底色双层三角，与框体融为一体 */
+.ks-fam-bubble::after {
+  content: '';
+  position: absolute;
+  right: 100%;
+  bottom: -1px;
+  width: 0;
+  height: 0;
+  border-top: 11px solid transparent;
+  border-right: 15px solid rgba(212, 175, 55, 0.55);
+}
+.ks-fam-bubble::before {
+  content: '';
+  position: absolute;
+  right: calc(100% + 2px);
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-right: 13px solid rgba(24, 18, 38, 0.94);
+}
+.ks-fam-sophia .ks-fam-bubble {
+  left: auto;
+  right: 100%;
+  margin-left: 0;
+  margin-right: 44px; /* 🧩 E71：左移 10mm，让出「缘分天定」的「缘」字 */
+  border-radius: 14px;
+}
+.ks-fam-sophia .ks-fam-bubble::after {
+  right: auto;
+  left: 100%;
+  border-right: 0;
+  border-left: 15px solid rgba(212, 175, 55, 0.55);
+}
+.ks-fam-sophia .ks-fam-bubble::before {
+  right: auto;
+  left: calc(100% + 2px);
+  border-right: 0;
+  border-left: 13px solid rgba(24, 18, 38, 0.94);
+}
 .ks-fam-bubble-name { color: #F0D060; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4; }
 .ks-fam-bubble-line { color: rgba(240, 230, 200, 0.92); font-size: 12px; line-height: 1.5; }
 @keyframes ksFamBubbleIn {
