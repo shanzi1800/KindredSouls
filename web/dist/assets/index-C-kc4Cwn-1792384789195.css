@@ -871,7 +871,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   margin-left: 44px; /* 🧩 E71：右移 10mm（≈38px＋原 6px 间隙），让出中央标题右缘 */
   transform: none;
   width: max-content;
-  max-width: min(150px, 40vw);
+  max-width: min(150px, calc(40vw - 44px)); /* 🧩 E71：限宽须扣 44px 位移，防 390 屏气泡出屏被裁 */
   display: flex;
   flex-direction: column;
   gap: 2px;
