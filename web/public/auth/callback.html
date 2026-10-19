@@ -69,8 +69,24 @@
         localStorage.setItem('ks_auth_success_trigger', trigger);
         localStorage.removeItem('ks_oauth_in_progress');
 
-        // 0ms 暴力关闭弹窗——父窗口的 polling 会接管
+        // ══════════════════════════════════════════════════════
+        // 🔄 E72（主公军令 2026-10-19）双模收口：
+        //   弹窗模式（脚本开窗）：close() 生效 ⇒ 父窗 polling 接管；
+        //   重定向模式（E72 移动端/统一链路）：顶层页签 close() 静默无效
+        //   ⇒ 350ms 后仍在 ⇒ 整页跳回全参现场＋intent=checkout 自动续跑收银台
+        //   （旧行为直接停在回调页，用户被晾死在转圈页）
+        // ══════════════════════════════════════════════════════
         window.close();
+        setTimeout(() => {
+          if (window.closed) return; // 弹窗模式已关 ⇒ 父窗接管
+          const back = localStorage.getItem('ks_oauth_back_url');
+          let target = back || '/';
+          if (pendingPlan) {
+            target += (target.includes('?') ? '&' : '?') + 'intent=checkout&plan=' + encodeURIComponent(pendingPlan);
+          }
+          console.log('[KS Auth Callback] 🔄 E72 重定向模式收口 →', target);
+          window.location.replace(target);
+        }, 350);
       } catch (e) {
         console.error('[KS Auth Callback] ❌ Exchange failed:', e);
         document.getElementById('msg').textContent = 'Session error: ' + (e.message || 'unknown');

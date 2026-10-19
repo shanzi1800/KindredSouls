@@ -346,3 +346,20 @@ test('D5 射程自证：主测与注入同源取用，禁射程断层', () => {
   assert.ok(contentIsEntitlementGated(PAGE_SRC), 'B2 判据射程失效');
   assert.ok(sandboxClosureWired(PAGE_SRC), 'B5 判据射程失效');
 });
+
+test('E72 【移动端支付阻塞根治】OAuth 禁弹窗全量重定向（Login-then-Checkout）', () => {
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  // ① 弹窗式 OAuth 已根除：脚本开窗与「允许弹窗」死路告警一个不留（含注释字面量一并清理）
+  assert.ok(!/window\.open\s*\(/.test(page), 'E72 WealthReportPage 仍残留脚本开窗（移动端必被拦）');
+  assert.ok(!/允许浏览器弹窗/.test(page), 'E72 弹窗告警死路文案未拔除');
+  assert.ok(!/popup\.close\(\)/.test(page), 'E72 弹窗引用残留');
+  // ② 重定向模式在位：SDK 整页跳 Google（缺省 skipBrowserRedirect=false 即导航），意图先落库
+  assert.ok(page.includes('E72 整页重定向 OAuth'), 'E72 缺重定向实现标记');
+  assert.ok(page.includes("redirectTo: window.location.origin + '/auth/callback'"), 'E72 缺回调 redirectTo');
+  assert.ok(/ks_pending_checkout_plan/.test(page) && /ks_oauth_back_url/.test(page), 'E72 登录意图未先落 localStorage');
+  // ③ 回调页双模收口：顶层页签（重定向模式）跳回现场＋intent=checkout 自动续跑收银台
+  const cb = read('web/public/auth/callback.html');
+  assert.ok(cb.includes('E72') && cb.includes('window.close()'), 'E72 回调页缺双模收口');
+  assert.ok(cb.includes("ks_oauth_back_url") && cb.includes("intent=checkout&plan="), 'E72 回调页缺回跳现场续跑');
+  assert.ok(cb.includes('window.location.replace'), 'E72 回调页须 replace 跳回（防回退死循环）');
+});

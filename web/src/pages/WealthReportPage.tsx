@@ -1825,7 +1825,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🛡️ localStorage 单一信号源:OAuth → Stripe 全链路
-  // callback.html 只写 ks_auth_success_trigger,父窗口 polling 接管跳转
+  // E72 起 OAuth 全量整页重定向：登录意图落 localStorage，回跳后由
+  // App.tsx 冷启动续跑（session + pending plan）＋ /wealth?intent=checkout 自动收银台
   // ═══════════════════════════════════════════════════════════════════════
   const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
 
@@ -1843,7 +1844,13 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     if (token && !currentToken) setCurrentToken(token);
 
     if (!token) {
-      // ── 阶段A:弹窗 + localStorage 存 pending plan ──
+      // ═══ E72（主公军令 2026-10-19）: OAuth 全量改整页重定向（Login-then-Checkout）═══
+      // 病根：旧实现用弹窗式 OAuth —— iOS Safari / 手机浏览器对异步回调触发的弹窗一律拦截
+      // ⇒ 弹窗拿不到引用 ⇒ 卡死在弹窗告警，移动端付费链路全断；且 supabase signInWithOAuth
+      // 缺省本就 window.location.assign 整页跳转，旧桌面弹窗分支实为主页跳走＋弹窗永停转圈
+      // ⇒ 双端皆废。治法：登录意图先落 localStorage（pending plan + 全参回跳 URL），
+      // SDK 统一整页跳 Google，回跳 /auth/callback 由 E72 双模收口跳回现场＋
+      // intent=checkout 自动续跑收银台（军令②：用户无需二次寻找入口）。
       localStorage.removeItem('ks_auth_success_trigger');
       localStorage.setItem('ks_pending_checkout_plan', plan);
       if (reportData) localStorage.setItem('ks_result', JSON.stringify(reportData));
@@ -1852,71 +1859,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const backUrl = buildWealthRestoreUrl(window.location.pathname, window.location.search, { birthDate, lang });
       localStorage.setItem('ks_oauth_back_url', backUrl);
 
-      const popup = window.open('about:blank', 'KindredSouls Auth', 'width=500,height=600');
-      if (!popup) {
-        alert(currentLang === 'zh' ? '请允许浏览器弹窗以完成安全登录!' : 'Please allow popups for authentication!');
-        return;
-      }
-      popup.document.write('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#D4AF37;background:#0D0D1A;font-size:16px;">🔮 正在连接宇宙安全加密通道,请稍候...</div>');
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      console.log('[WealthReport] 🔄 E72 整页重定向 OAuth（禁弹窗）plan:', plan);
+      const { error: e72oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin + '/auth/callback',
           queryParams: { hl: lang === 'zh' ? 'zh-CN' : lang, access_type: 'offline', prompt: 'consent' },
         },
       });
-
-      if (error || !data?.url) {
-        popup.close();
-        console.error('[WealthReport] ❌ OAuth URL 获取失败:', error);
+      // skipBrowserRedirect 缺省 false ⇒ 未出错时 SDK 已整页跳转 Google，不会执行到这里
+      if (e72oauthErr) {
+        console.error('[WealthReport] ❌ E72 重定向 OAuth URL 获取失败:', e72oauthErr);
         setError('Login failed. Please try again.');
-        return;
       }
-
-      popup.location.href = data.url;
-
-      // ── 阶段B:polling 扫描单一信号源 ks_auth_success_trigger ──
-      await new Promise<void>((resolve) => {
-        const pollTimer = setInterval(async () => {
-          if (popup.closed) {
-            clearInterval(pollTimer);
-            console.log('[WealthReport] ⚠️ 用户关闭了登录窗口');
-            resolve();
-            return;
-          }
-
-          // 🛡️ 单一信号源:ks_auth_success_trigger 是唯一权威标志
-          const triggerRaw = localStorage.getItem('ks_auth_success_trigger');
-          if (triggerRaw) {
-            try {
-              const trigger = JSON.parse(triggerRaw);
-              console.log('[WealthReport] 🛡️ OAuth信号检测到, plan:', trigger.plan, 'expected:', plan);
-              if (trigger.plan === plan) {
-                clearInterval(pollTimer);
-                localStorage.removeItem('ks_auth_success_trigger');
-                popup.close();
-                // setTimeout(0) 让 Supabase SDK 有机会完成 session 持久化
-                await new Promise(r => setTimeout(r, 300));
-                const { data: { session: s } } = await supabase.auth.getSession();
-                console.log('[WealthReport] Session after OAuth:', s?.user?.email, 'token?', !!s?.access_token);
-                if (s?.access_token) {
-                  token = s.access_token;
-                  setCurrentToken(token);
-                }
-                resolve();
-              }
-            } catch (_) { /* ignore */ }
-          }
-        }, 200);
-
-        setTimeout(() => {
-          clearInterval(pollTimer);
-          if (!popup.closed) popup.close();
-          console.warn('[WealthReport] ⏰ polling 超时30秒');
-          resolve();
-        }, 30000);
-      });
+      return;
     }
 
     // ── 阶段C:拿 token 调 Stripe ──
