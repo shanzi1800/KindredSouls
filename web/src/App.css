@@ -914,6 +914,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   display: block;
 }
 
+/* 🌐 E79（主公军令 2026-10-20）: icon＋文字列排版——文字列吃掉剩余宽度并受控换行，
+   fr/es/th/vi 长副标题绝不挤压左侧 48px 图标；标题保持单行优先 */
+.mode-text {
+  flex: 1;
+  min-width: 0; /* flex 子项默认 min-width:auto 会拒绝收缩 ⇒ 必须归零才能触发换行 */
+  display: block;
+}
+
+.mode-text .mode-label {
+  white-space: nowrap; /* 主标题（Code/Clé/Código/รหัสลับ/Mật Mã）军令已控长度 ⇒ 单行优雅 */
+  overflow: hidden;
+  text-overflow: ellipsis; /* 兜底：极端窄屏标题截断省略号，绝不动图标 */
+}
+
+.mode-text .mode-desc {
+  overflow-wrap: anywhere; /* 泰/越长副标题在词界缺失时也可断行 */
+  word-break: normal;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

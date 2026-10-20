@@ -303,15 +303,22 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <div className="mode-modal-overlay" onClick={() => setShowModeModal(false)}>
             <div className="mode-modal" onClick={e => e.stopPropagation()}>
               <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
+              {/* 🌐 E79（主公军令 2026-10-20）: 六语词条焕新——「合婚密码」→「姻缘密码」＋
+                  五语母语级黑话（Code/Clé/Código/รหัสลับ/Mật Mã）。排版：icon＋文字列
+                  （mode-text 收编 label/desc 纵排），长副标题在列内受控换行，禁挤压左侧图标 */}
               <button className="mode-option" onClick={() => { setMode('compatibility'); setShowModeModal(false); }}>
                 <span className="mode-icon">💞</span>
-                <span className="mode-label">{t('input.compatibilityMode')}</span>
-                <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+                <span className="mode-text">
+                  <span className="mode-label">{t('input.compatibilityMode')}</span>
+                  <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+                </span>
               </button>
               <button className="mode-option" onClick={() => { onNavigateToWealth(); setShowModeModal(false); }}>
                 <span className="mode-icon">💰</span>
-                <span className="mode-label">{t('input.wealthMode')}</span>
-                <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+                <span className="mode-text">
+                  <span className="mode-label">{t('input.wealthMode')}</span>
+                  <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+                </span>
               </button>
             </div>
           </div>
@@ -342,13 +349,17 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
         <button className="mode-option" onClick={() => handleModeSelect('compatibility')}>
           <span className="mode-icon">💞</span>
-          <span className="mode-label">{t('input.compatibilityMode')}</span>
-          <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+          <span className="mode-text">
+            <span className="mode-label">{t('input.compatibilityMode')}</span>
+            <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
+          </span>
         </button>
         <button className="mode-option" onClick={() => handleModeSelect('wealth')}>
           <span className="mode-icon">💰</span>
-          <span className="mode-label">{t('input.wealthMode')}</span>
-          <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+          <span className="mode-text">
+            <span className="mode-label">{t('input.wealthMode')}</span>
+            <span className="mode-desc">{t('input.wealthModeDesc')}</span>
+          </span>
         </button>
       </div>
     </div>

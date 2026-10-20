@@ -214,3 +214,38 @@ test('E77 【视觉动线镜像】桌面悬浮舱按角色朝向左右分流（M
   assert.ok(!/\.ks-chat-layer\[data-familiar="sophia"\]/.test(outside),
     'E77 镜像规则误落在桌面断点之外（会污染移动端）');
 });
+
+test('E79 【六语词条焕新】模式弹窗「姻缘密码/财富密码」母语级黑话＋icon 文字列排版', () => {
+  // ① 六语 24 键值逐字对齐军令总表（禁机翻；泰语บุพเพสันนิวาส/越语Mật Mã 汉越词根必须原样）
+  const TABLE = {
+    zh: { compatibilityMode: '姻缘密码', compatibilityModeDesc: '解锁双人关系密码', wealthMode: '财富密码', wealthModeDesc: '解锁先天财库密码' },
+    en: { compatibilityMode: 'Destiny Love Code', compatibilityModeDesc: 'Unlock Your Relationship Blueprint', wealthMode: 'Wealth Code', wealthModeDesc: 'Unlock Your Natal Wealth Vault' },
+    fr: { compatibilityMode: 'Clé du Destin Amoureux', compatibilityModeDesc: 'Déverrouillez le secret de votre relation', wealthMode: 'Clé de la Richesse', wealthModeDesc: 'Déverrouillez votre trésor de richesse inné' },
+    es: { compatibilityMode: 'Código del Destino Amoroso', compatibilityModeDesc: 'Desbloquea el código de tu relación', wealthMode: 'Código de la Riqueza', wealthModeDesc: 'Desbloquea tu bóveda de riqueza natal' },
+    th: { compatibilityMode: 'รหัสลับบุพเพสันนิวาส', compatibilityModeDesc: 'ปลดล็อกรหัสลับความสัมพันธ์คู่', wealthMode: 'รหัสลับความมั่งคั่ง', wealthModeDesc: 'ปลดล็อกรหัสลับคลังสมบัติพื้นดวง' },
+    vi: { compatibilityMode: 'Mật Mã Nhân Duyên', compatibilityModeDesc: 'Mở khóa mật mã mối quan hệ đôi lứa', wealthMode: 'Mật Mã Tài Lộc', wealthModeDesc: 'Mở khóa mật mã kho tài lộc bẩm sinh' },
+  };
+  for (const [lang, kv] of Object.entries(TABLE)) {
+    const d = JSON.parse(read(`web/src/i18n/locales/${lang}.json`));
+    for (const [k, v] of Object.entries(kv)) {
+      assert.strictEqual(d.input && d.input[k], v, `E79 ${lang}.input.${k} 未逐字对齐军令总表`);
+    }
+  }
+  assert.ok(!JSON.parse(read('web/src/i18n/locales/zh.json')).input.compatibilityMode.includes('合婚'), 'E79 旧「合婚密码」残留');
+
+  // ② 两处弹窗调用点均为 icon＋文字列结构（mode-text 收编 label/desc，禁退回三并列 flex 项）
+  const app = read('web/src/App.tsx');
+  const modeTextCount = (app.match(/className="mode-text"/g) || []).length;
+  assert.ok(modeTextCount >= 4, 'E79 两处弹窗×两模式均须包 mode-text 文字列（≥4）');
+  // label/desc 必须包在 mode-text 内（flex 三并列项会让长副标题挤压图标）
+  const pairs = app.match(/<span className="mode-text">\s*<span className="mode-label">[\s\S]*?<span className="mode-desc">/g) || [];
+  assert.ok(pairs.length >= 4, 'E79 mode-option 内 label/desc 未收进文字列（两处弹窗×两模式）');
+
+  // ③ CSS：文字列吃剩余宽＋min-width 归零触发换行＋标题单行省略号兜底＋副标题 anywhere 断行
+  const css = read('web/src/App.css');
+  assert.ok(/\.mode-text\s*\{[^}]*flex:\s*1[^}]*min-width:\s*0/.test(css), 'E79 缺 mode-text 弹性列（flex:1＋min-width:0）');
+  assert.ok(/\.mode-text \.mode-label\s*\{[^}]*white-space:\s*nowrap/.test(css), 'E79 主标题未锁单行（nowrap）');
+  assert.ok(/\.mode-text \.mode-desc\s*\{[^}]*overflow-wrap:\s*anywhere/.test(css), 'E79 副标题缺 anywhere 断行');
+  // 图标 48px 固定宽守恒（禁被挤压）
+  assert.ok(/\.mode-icon\s*\{[^}]*width:\s*48px/.test(css), 'E79 mode-icon 48px 固定宽被破坏');
+});
