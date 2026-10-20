@@ -164,3 +164,36 @@ test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动
   assert.ok(/if \(!rec\) return/.test(eseg), 'E76 缺无灵宠档守卫（防空舱）');
   assert.ok(eseg.includes('setChatOpen(true)'), 'E76 未唤醒抽屉舱');
 });
+
+test('E77 【视觉动线镜像】桌面悬浮舱按角色朝向左右分流（Milo 右下 / Sophia 左下）', () => {
+  const sheet = read('web/src/components/FamiliarChatSheet.tsx');
+  const css = read('web/src/App.css');
+
+  // ① 组件：定位真源＝IP（禁止按用户可自定义的名字串猜）
+  assert.ok(/data-familiar=\{ip === 'Milo' \? 'milo' : 'sophia'\}/.test(sheet),
+    'E77 舱根节点缺 data-familiar（须按 ip 判定，不得按 name 猜）');
+  assert.ok(!/data-familiar=\{[^}]*name/.test(sheet), 'E77 定位禁止依赖 name（用户可自定义名字）');
+
+  // ② 桌面断点块内：Milo 保持右下、Sophia 镜像左下（flex 换边＋左右内边距对调）
+  const mediaIdx = css.indexOf('@media (min-width: 768px)');
+  assert.ok(mediaIdx > -1, 'E77 缺桌面断点');
+  const mediaBlock = css.slice(mediaIdx, mediaIdx + 1600);
+  assert.ok(/\.ks-chat-layer\s*\{[^}]*justify-content:\s*flex-end[^}]*padding:\s*0 24px 20px 0/.test(mediaBlock),
+    'E77 Milo 侧默认须保持右下（flex-end ＋ padding 0 24px 20px 0）');
+  assert.ok(/\.ks-chat-layer\[data-familiar="sophia"\]\s*\{[^}]*justify-content:\s*flex-start[^}]*padding:\s*0 0 20px 24px/.test(mediaBlock),
+    'E77 Sophia 须镜像左下（flex-start ＋ 左右内边距对调）');
+  // 镜像对称：舱体尺寸与底距不得另起一套（禁分角色改宽高/底距）
+  assert.ok(/\.ks-chat-sheet\s*\{[^}]*width:\s*420px[^}]*height:\s*600px/.test(mediaBlock),
+    'E77 两侧舱体须同尺寸（width 420 / height 600 单源）');
+  assert.ok(!/\.ks-chat-sheet\[data-familiar[^{]*\{[^}]*\b(left|right):/.test(css),
+    'E77 禁给 sheet 加 left/right 绝对定位（须在流内保证严格镜像）');
+
+  // ③ 动画纯纵向：换边不得出现横向闪现残影
+  assert.ok(!/@keyframes ksChatPop[^}]*translateX/.test(css), 'E77 入场动画禁横向位移（translateX）');
+  assert.ok(!/@keyframes ksChatUp[^}]*translateX/.test(css), 'E77 移动端上滑动画禁横向位移');
+
+  // ④ 移动端不受影响：sophia 镜像规则必须落在 768px 断点内（不得外溢成全端生效）
+  const outside = css.replace(mediaBlock, '');
+  assert.ok(!/\.ks-chat-layer\[data-familiar="sophia"\]/.test(outside),
+    'E77 镜像规则误落在桌面断点之外（会污染移动端）');
+});

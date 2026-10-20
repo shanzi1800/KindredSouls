@@ -1146,6 +1146,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 /* 🖥 E68 军令②：桌面端废除 100% 大通栏 ⇒ 右下角精致悬浮陪伴舱 */
 @media (min-width: 768px) {
   .ks-chat-layer { justify-content: flex-end; padding: 0 24px 20px 0; }
+  /* 🐾 E77（主公亲令 2026-10-20）: 视觉动线按**角色朝向**分流 ——
+     Milo 身子朝左、脸朝右 ⇒ 保持右下角，视线上抬即落对话框（原样不动）；
+     Sophia 身子朝右、脸朝左 ⇒ 镜像到左下角，否则「背对聊天窗说话」。
+     治法＝在 flex 层换边（justify-content + 左右内边距对调），**不是**给 sheet 加
+     left/right 绝对定位：舱体在流内才能与右侧 Milo 窗严格 100% 镜像对称
+     （同宽 420、同高 600、同底距 20px、同侧边距 24px），且不引入脱离文档流的叠层风险。
+     入场动画 ksChatPop 是纯纵向（translateY + scale），换边不会出现横向闪现残影。 */
+  .ks-chat-layer[data-familiar="sophia"] { justify-content: flex-start; padding: 0 0 20px 24px; }
   .ks-chat-mask {
     background: rgba(6, 5, 14, 0.18); /* 桌面端只轻微压暗，视频/星空完整透出 */
     backdrop-filter: none;

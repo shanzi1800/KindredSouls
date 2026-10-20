@@ -278,7 +278,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   const avatar = ip === 'Milo' ? miloSprite : sophiaSprite;
 
   return createPortal(
-    <div className="ks-chat-layer" role="dialog" aria-modal="true" aria-label={name}>
+    /* 🐾 E77（主公亲令 2026-10-20）: 桌面悬浮舱按**角色朝向**左右镜像 ——
+       Milo 脸朝右 ⇒ 舱居右下（顺视线）；Sophia 脸朝左 ⇒ 舱居左下（同理），
+       并与其左侧「今日运势锦囊」气泡形成左右呼应。
+       `data-familiar` 是唯一定位真源（禁止按名字串猜 IP，名字可被用户自定义）。 */
+    <div
+      className="ks-chat-layer"
+      data-familiar={ip === 'Milo' ? 'milo' : 'sophia'}
+      role="dialog" aria-modal="true" aria-label={name}
+    >
       <div className="ks-chat-mask" onClick={onClose} />
       <div
         className="ks-chat-sheet"
