@@ -285,6 +285,17 @@ const FamiliarHomeCard: React.FC = () => {
 
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
+  // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
+  //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
+  //   无灵宠档（rec 为空）时不动：避免弹出一个无内容的空舱。
+  useEffect(() => {
+    if (!rec) return;
+    try {
+      if (sessionStorage.getItem('ks_open_familiar_chat') !== '1') return;
+      sessionStorage.removeItem('ks_open_familiar_chat');
+      setChatOpen(true);
+    } catch (_) { /* iOS 无痕模式下 sessionStorage 抛错 → 静默降级为不自动开舱 */ }
+  }, [rec]);
   const chatIp: FamiliarIp = (rec && (IP_OF_MODE[String(rec.profile.relation_mode || '')] === 'Milo')) ? 'Milo' : 'Sophia';
   const chatGreeting = React.useMemo(() => {
     const sun = rec ? String((triadTruth(rec) || {}).sun || '') : '';

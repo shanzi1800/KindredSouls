@@ -148,3 +148,19 @@ test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守
     assert.ok(new RegExp(`^  ${lg}: ` + "'" , 'm').test(s) || s.includes(`  ${lg}: `), `续写指令缺语种 ${lg}`);
   }
 });
+
+test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动吧」回首页即唤醒对话舱', () => {
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  // ① 报告页 CTA：写一次性意图标记 + 单页跳首页（不得只跳转）
+  assert.ok(page.includes('data-testid="wealth-lead-home"'), 'E76 带路按钮缺 testid');
+  const seg = page.slice(page.indexOf('data-testid="wealth-lead-home"'), page.indexOf('data-testid="wealth-lead-home"') + 900);
+  assert.ok(seg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), 'E76 带路按钮未写一次性意图标记');
+  assert.ok(seg.includes("onNavigate('/')"), 'E76 带路按钮未跳首页');
+  // ② 首页消费：读到标记即开舱 + 消费即删（防刷新重复弹）+ 无灵宠档不开空舱
+  const card = read('web/src/components/FamiliarHomeCard.tsx');
+  assert.ok(card.includes("sessionStorage.getItem('ks_open_familiar_chat')"), 'E76 首页未消费意图标记');
+  assert.ok(card.includes("sessionStorage.removeItem('ks_open_familiar_chat')"), 'E76 意图标记未消费即删');
+  const eseg = card.slice(card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") - 300, card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") + 500);
+  assert.ok(/if \(!rec\) return/.test(eseg), 'E76 缺无灵宠档守卫（防空舱）');
+  assert.ok(eseg.includes('setChatOpen(true)'), 'E76 未唤醒抽屉舱');
+});

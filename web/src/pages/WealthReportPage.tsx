@@ -3223,7 +3223,17 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               🐾 {t('familiar.adopted')} · {familiarLead.name}
             </span>
             <button
-              onClick={() => onNavigate('/')}
+              data-testid="wealth-lead-home"
+              onClick={() => {
+                // 🐾 E76（主公亲令 2026-10-20）: 文案「由她/他带路开始互动吧」必须名副其实 ——
+                //   旧实现只 onNavigate('/')，回首页后用户还得再点一次灵宠才唤醒对话舱
+                //   （承诺「开始互动」却只做跳转＝体验断点）。治法：落一次性 sessionStorage
+                //   标记，首页 FamiliarHomeCard 挂载时消费即删并直接唤醒抽屉舱（E66）。
+                //   用 sessionStorage 而非 localStorage：单次意图、关页即失效；
+                //   try/catch 兜底 iOS 无痕模式抛错（不阻断跳转）。
+                try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* noop */ }
+                onNavigate('/');
+              }}
               style={{
                 padding: '8px 14px', borderRadius: '9px', border: '1px solid rgba(240,208,96,0.85)',
                 background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 100%)',
