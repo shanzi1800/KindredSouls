@@ -3209,46 +3209,12 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           lang={currentLang}
         />
 
-        {/* 🔒 E48（主公亲令 2026-10-14）: 「已就位·带路」条仅**已解锁**后呈现 ——
-            未付费严禁展示领养成果、严禁跳转（旧免费漏斗按新商业门禁收口）
-            🐾 E52（主公亲令 2026-10-15）: ① 右侧按钮高亮方框化，文案性别化（她/他 按 relation_mode）；
-            ② 点击 = onNavigate('/') **单页路由直跳首页** —— 严禁 history.back 多次返回 */}
-        {!authChecking && isUnlocked && reportData && familiarLead && (
-          <div style={{
-            marginTop: '16px', padding: '12px 14px', borderRadius: '12px',
-            background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-          }}>
-            <span style={{ fontSize: '12px', color: '#D4AF37', fontWeight: 700 }}>
-              🐾 {t('familiar.adopted')} · {familiarLead.name}
-            </span>
-            <button
-              data-testid="wealth-lead-home"
-              onClick={() => {
-                // 🐾 E76（主公亲令 2026-10-20）: 文案「由她/他带路开始互动吧」必须名副其实 ——
-                //   旧实现只 onNavigate('/')，回首页后用户还得再点一次灵宠才唤醒对话舱
-                //   （承诺「开始互动」却只做跳转＝体验断点）。治法：落一次性 sessionStorage
-                //   标记，首页 FamiliarHomeCard 挂载时消费即删并直接唤醒抽屉舱（E66）。
-                //   用 sessionStorage 而非 localStorage：单次意图、关页即失效；
-                //   try/catch 兜底 iOS 无痕模式抛错（不阻断跳转）。
-                try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* noop */ }
-                onNavigate('/');
-              }}
-              style={{
-                padding: '8px 14px', borderRadius: '9px', border: '1px solid rgba(240,208,96,0.85)',
-                background: 'linear-gradient(135deg, #D4AF37 0%, #F0D060 100%)',
-                color: '#0D0D1A',
-                fontSize: '11.5px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
-                boxShadow: '0 2px 10px rgba(212,175,55,0.35)',
-              }}
-            >
-              {(String(familiarLead.relation_mode || '') === 'buddy' || String(familiarLead.relation_mode || '') === 'boyfriend')
-                ? t('familiar.leadHomeHe')
-                : t('familiar.leadHomeShe')}
-              {' '}→
-            </button>
-          </div>
-        )}
+        {/* 🐾 E78（主公亲令 2026-10-20）: 中部「灵宠已就位 · 带路」条**整体退役** ——
+            易经/塔罗下方、财富年鉴上方不再插横条（与页尾 AdoptFamiliarCTA 认领态
+            「灵宠已认领 · 带路」完全同质，同屏双入口打断「四宫格 → 财富年鉴 →
+            生成 AI 洞察」的垂直转化动线）。唯一保留＝页尾 Gate 45-B 承接位；
+            E76「带路即唤醒对话舱」意图标记已迁入 AdoptFamiliarCTA 的带路按钮。
+            （历史沿革：E48 门禁＋E52 性别化文案＋E76 自动唤醒，均由页尾按钮继承） */}
         {/* 🔓 E58（主公亲令 2026-10-16）: 付费墙必须先于灵宠选择卡呈现 ——
             E58 前旧序＝锁定灵宠卡在上、付费墙压底，主公真机复测实锤「填完生辰没见付费墙、
             直接落到选宠页」⇒ 商业漏斗首屏被灵宠卡抢占。新序＝免费预告 → 付费墙 → 灵宠卡。

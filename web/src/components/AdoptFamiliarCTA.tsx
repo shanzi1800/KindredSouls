@@ -160,7 +160,14 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
           <button
             type="button"
             data-testid="adopt-lead-home"
-            onClick={() => { if (onLeadHome) onLeadHome(); else { try { window.location.href = '/'; } catch (_) {} } }}
+            onClick={() => {
+              // 🐾 E78（主公亲令 2026-10-20）: 中部「灵宠已就位」条退役后，本按钮＝报告页
+              //   唯一带路口。E76 承诺「开始互动」——落一次性 sessionStorage 意图标记，
+              //   首页 FamiliarHomeCard 挂载时消费即删并自动唤醒对话舱（E66 抽屉舱）；
+              //   try/catch 兜底 iOS 无痕模式抛错（不阻断跳转）。
+              try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* noop */ }
+              if (onLeadHome) onLeadHome(); else { try { window.location.href = '/'; } catch (_) {} }
+            }}
             style={{
               padding: '8px 14px', borderRadius: '9px',
               border: '1px solid rgba(240,208,96,0.85)',

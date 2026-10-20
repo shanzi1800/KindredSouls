@@ -150,12 +150,14 @@ test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守
 });
 
 test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动吧」回首页即唤醒对话舱', () => {
-  const page = read('web/src/pages/WealthReportPage.tsx');
-  // ① 报告页 CTA：写一次性意图标记 + 单页跳首页（不得只跳转）
-  assert.ok(page.includes('data-testid="wealth-lead-home"'), 'E76 带路按钮缺 testid');
-  const seg = page.slice(page.indexOf('data-testid="wealth-lead-home"'), page.indexOf('data-testid="wealth-lead-home"') + 900);
+  // 🐾 E78（主公亲令 2026-10-20）: 中部「灵宠已就位」条退役，唯一带路口＝页尾
+  //   AdoptFamiliarCTA 认领态按钮（adopt-lead-home），意图标记锚点随之迁移。
+  const cta = read('web/src/components/AdoptFamiliarCTA.tsx');
+  // ① 报告尾 CTA：写一次性意图标记 + 单页跳首页（不得只跳转）
+  assert.ok(cta.includes('data-testid="adopt-lead-home"'), 'E76 带路按钮缺 testid');
+  const seg = cta.slice(cta.indexOf('data-testid="adopt-lead-home"'), cta.indexOf('data-testid="adopt-lead-home"') + 900);
   assert.ok(seg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), 'E76 带路按钮未写一次性意图标记');
-  assert.ok(seg.includes("onNavigate('/')"), 'E76 带路按钮未跳首页');
+  assert.ok(seg.includes('onLeadHome'), 'E76 带路按钮未走宿主跳转回调');
   // ② 首页消费：读到标记即开舱 + 消费即删（防刷新重复弹）+ 无灵宠档不开空舱
   const card = read('web/src/components/FamiliarHomeCard.tsx');
   assert.ok(card.includes("sessionStorage.getItem('ks_open_familiar_chat')"), 'E76 首页未消费意图标记');
@@ -163,6 +165,21 @@ test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动
   const eseg = card.slice(card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") - 300, card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") + 500);
   assert.ok(/if \(!rec\) return/.test(eseg), 'E76 缺无灵宠档守卫（防空舱）');
   assert.ok(eseg.includes('setChatOpen(true)'), 'E76 未唤醒抽屉舱');
+});
+
+test('E78 【界面去重】中部「灵宠已就位」条退役，报告页灵宠入口唯一化（仅页尾 AdoptFamiliarCTA）', () => {
+  const page = read('web/src/pages/WealthReportPage.tsx');
+  // ① 中部夹层模块（易经/塔罗与财富年鉴之间）严禁回潮：
+  //    旧条特征 = data-testid="wealth-lead-home" ＋ t('familiar.adopted')「灵宠已就位」
+  assert.ok(!page.includes('data-testid="wealth-lead-home"'), 'E78 旧中部带路条 testid 回潮');
+  assert.ok(!page.includes("t('familiar.adopted')"), 'E78 中部「灵宠已就位」文案回潮');
+  assert.ok(!/marginTop: '16px', padding: '12px 14px', borderRadius: '12px'/.test(page),
+    'E78 旧中部条样式块回潮');
+  // ② 唯一入口＝页尾 Gate 45-B 承接位（AdoptFamiliarCTA 恰一次挂载）
+  assert.strictEqual((page.match(/<AdoptFamiliarCTA/g) || []).length, 1, 'E78 AdoptFamiliarCTA 挂载数须恰为 1');
+  // ③ E76 意图链路在唯一入口上仍然完整（组件内 setItem ＋ 首页消费）
+  const cta = read('web/src/components/AdoptFamiliarCTA.tsx');
+  assert.ok(cta.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), 'E78 唯一入口未继承 E76 意图标记');
 });
 
 test('E77 【视觉动线镜像】桌面悬浮舱按角色朝向左右分流（Milo 右下 / Sophia 左下）', () => {
