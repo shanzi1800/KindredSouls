@@ -496,7 +496,10 @@ test('⑳ 注入自测: 把 es 章名改回仅 `Chapter` → ③ 必红（口径
     assert.notStrictEqual(r.metrics.chaptersFound, 5,
       '闸门失效: 章名只认英文后 es 仍判 5/5（说明 ③ 测不到本地化章名）');
     assert.ok(r.reasons.some((x) => /缺章节标记/.test(x)), '闸门失效: es 缺章未给出 reasons');
-  } finally { fs.unlinkSync(tmp); }
+  } finally {
+    // E80：清理属收尾杂务，删不掉（沙箱拒绝 unlink ⇒ EPERM）不得反噬已通过的断言
+    try { fs.unlinkSync(tmp); } catch (_) { /* 临时文件残留无害 */ }
+  }
 });
 
 test('㉑ 注入自测: 让真实宫头判定恒 null → ⑦/⑮ 必红（Placidus 对齐可测）', () => {

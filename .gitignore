@@ -44,3 +44,6 @@ SECRETS.md
 __pycache__/
 
 LESSONS.md
+
+# E80 巡检产物（截图 / report.json / 资产试跑输出）—— 本地产物不入库
+dev-artifacts/

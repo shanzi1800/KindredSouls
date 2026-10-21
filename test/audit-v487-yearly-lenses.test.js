@@ -482,6 +482,7 @@ test('【注入】把 .ts 孪生漂移源放回去 → ⑥b 必须红(阳性对�
     assert.deepStrictEqual(strayPromptTwins(tmp).sort(), ['index.ts', 'yearlySystemZH.ts'],
       '注入后 ⑥b 判据应命中失败(且不得误伤 .txt/loader.js)');
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    // E80：清理属收尾杂务，删不掉（沙箱拒绝 rm ⇒ EPERM）不得反噬已通过的断言
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { /* 临时目录残留无害 */ }
   }
 });
