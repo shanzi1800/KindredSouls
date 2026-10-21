@@ -1,0 +1,273 @@
+{
+  "$schema": "kindredsouls-lessons-v1",
+  "version": 1,
+  "updated": "2026-10-21",
+  "purpose": "KindredSouls 错题基因库（E81 自我进化引擎真源）。禁止 E 编号流水账：每条按 [触发场景 trigger] -> [历史踩坑根因 rootCause] -> [永久免疫铁律 ironRule] -> [对应守护断言 gate/gateAnchor] 四元组固化。gateAnchor 必须在 gate 指向的文件中逐字存在（test/audit-e81-self-evolve.test.mjs 强制校验）——没有牙齿的记忆禁止入库。",
+  "howto": {
+    "reflexion": "主公指出瑕疵并修复后，立即按四元组追加一条 lesson（id 递增 L{n}），gate 必须指向真实存在的断言文件，gateAnchor 为该文件中逐字可查的字符串。",
+    "preFlightRecall": "接令动工前执行：npm run skill:evolve -- --recall <模块关键词>（如 bubble mirror i18n oauth layout），在开工方案里显式声明已激活哪几条铁律。",
+    "gateEscalation": "新增 lesson 时若历史无对应闸门，必须在 test/audit-e81-self-evolve.test.mjs 长出新断言段，再回填 gateAnchor——记忆必须编译成牙齿。"
+  },
+  "lessons": [
+    {
+      "id": "L01",
+      "title": "几何判据的 0px² 假绿（锚点缺失即未测）",
+      "modules": [
+        "ui-doctor",
+        "geometry",
+        "collision",
+        "视觉验收"
+      ],
+      "trigger": "写任何『不重叠 / 不越界 = 0 即通过』的几何判据（气泡 vs 标题、元素 vs 视口）",
+      "rootCause": "E80 自检实测：锚点元素（如 .title）缺失或选择器写错时，overlap() 照样返回 0，判据恒绿——『无射程声明的 0 = 未测』（铁律 3）",
+      "ironRule": "几何碰撞判据必须三条件合取：锚点存在 ∧ 目标存在 ∧ overlap===0；任一锚点缺失必须显式判『未测』报错，禁止静默通过。",
+      "gate": "scripts/skill-ui-doctor.mjs",
+      "gateAnchor": "锚点缺失时 overlap() 返回 0",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L02",
+      "title": "position:fixed 诱饵被 transform 祖先甩飞",
+      "modules": [
+        "ui-doctor",
+        "geometry",
+        "css",
+        "自检"
+      ],
+      "trigger": "自检/测试中用 JS 临时挪动页面元素位置（注入遮挡诱饵、模拟位移）",
+      "rootCause": "E80 自检实测：元素处于带 transform 的祖先坐标系内时，position:fixed + left/top 不按视口定位，实测把气泡甩成 112×18 出屏——自检诱饵失效等于判据无牙。",
+      "ironRule": "动态挪元素一律用 transform 增量（在本元素自身坐标系内生效），并对 rect 做多次迭代校正；禁止假设 fixed 即视口坐标。",
+      "gate": "scripts/skill-ui-doctor.mjs",
+      "gateAnchor": "transform 在本元素坐标系内生效",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L03",
+      "title": "eval 返回值双层 JSON 编码 ⇒ 字段恒 undefined",
+      "modules": [
+        "agent-browser",
+        "mobile-check",
+        "自动化量测"
+      ],
+      "trigger": "用 agent-browser CLI 的 eval 取页面数据（navigator/rect/计数器）",
+      "rootCause": "E80 实测：eval 的返回值由 CLI 统一 JSON 编码一次；脚本内再包一层 JSON.stringify 则 parse 出来是字符串，所有字段恒 undefined——断言全部误判且不报错。",
+      "ironRule": "eval 表达式一律返回裸对象字面量，序列化交给 CLI；解析侧不做双重 JSON.parse。",
+      "gate": "scripts/skill-mobile-check.mjs",
+      "gateAnchor": "eval 的返回值由 CLI 统一 JSON 编码一次",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L04",
+      "title": "sharp 链式 trim().metadata() 返回源图假尺寸",
+      "modules": [
+        "asset-optimize",
+        "sharp",
+        "图像管线"
+      ],
+      "trigger": "用 sharp 做 trim/裁切后再读尺寸或元数据做报表/断言",
+      "rootCause": "E80 实测：sharp(buf).trim().metadata() 返回的是**源图**元数据——裁切后尺寸列全是假数。",
+      "ironRule": "取中间产物真实尺寸必须 toBuffer({ resolveWithObject: true }) 读 info.width/height；禁止对链式实例直接 metadata()。",
+      "gate": "scripts/skill-asset-optimize.mjs",
+      "gateAnchor": "resolveWithObject",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L05",
+      "title": "移动端 window.open 弹窗被 Safari/WebKit 拦截",
+      "modules": [
+        "oauth",
+        "payment",
+        "mobile",
+        "redirect"
+      ],
+      "trigger": "任何登录（Google OAuth/OTP）或收银台跳转代码",
+      "rootCause": "E72 实锤：移动端 WebKit 弹窗拦截器会吞掉异步 window.open，用户点了没反应=静默失败。",
+      "ironRule": "付费/登录跳转一律整页重定向（location.href / redirectTo），严禁 window.open；意图先行（ks_pending_checkout_plan + ks_oauth_back_url）入 sessionStorage，回跳后自动续跑。",
+      "gate": "test/audit-e41plus-gate45b-sandbox-cashier.test.mjs",
+      "gateAnchor": "外跳赋值必在",
+      "episodes": [
+        "E72",
+        "E73"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L06",
+      "title": "同页重复渲染相同入口（报告页灵宠带路）",
+      "modules": [
+        "layout",
+        "report-page",
+        "入口去重"
+      ],
+      "trigger": "在报告页/长页添加任何『带路/认领/CTA』入口模块",
+      "rootCause": "E78 主公指出：报告页中部『灵宠已就位·带路』横条与页尾认领卡功能重复，页面冗余。",
+      "ironRule": "报告页灵宠带路入口全页唯一（仅页尾 AdoptFamiliarCTA）；中部横条 testid（wealth-lead-home）与 t('familiar.adopted') 永禁回潮。",
+      "gate": "test/audit-e66-familiar-chat.test.mjs",
+      "gateAnchor": "E78 旧中部带路条 testid 回潮",
+      "episodes": [
+        "E78"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L07",
+      "title": "命理黑话机翻失真（合婚密码→姻缘密码）",
+      "modules": [
+        "i18n",
+        "六语",
+        "translation"
+      ],
+      "trigger": "任何 UI 文案的多语言翻译/新增词条（zh/en/fr/es/th/vi）",
+      "rootCause": "E79 主公指出：『合婚密码』生硬、玄学词被机翻成 login Password 类失真；法/西/泰/越长副标题还会挤压图标。",
+      "ironRule": "六语一律母语级玄学黑话（zh 四字对仗 / en Destiny Love Code / fr Clé du Destin Amoureux 注意性数配合 / es Código del Destino Amoroso / th บุพเพสันนิวาส / vi Mật Mã Nhân Duyên 汉越词），icon 恒 48px + mode-text 文字列（flex:1 + min-width:0）受控换行。",
+      "gate": "test/audit-e66-familiar-chat.test.mjs",
+      "gateAnchor": "姻缘密码",
+      "episodes": [
+        "E79"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L08",
+      "title": "灵宠档 relation_mode 脏值整档判坏丢弃",
+      "modules": [
+        "familiar",
+        "档守卫",
+        "fail-closed"
+      ],
+      "trigger": "读写 ks_familiar 档案 / familiarHome 记录归一化",
+      "rootCause": "E76 血训：历史档或注入档带白名单外 relation_mode 时，整档被 normalizeFamiliarRecord 判坏丢弃——灵宠凭空消失。",
+      "ironRule": "relation_mode 只认 {girlfriend,bestie,buddy,boyfriend} 四值，且 Python/SQL/server.js/前端四侧同源（CHECK 约束在位）；报告页 familiarLead 要求 chartSig 与派生真值严格相等。",
+      "gate": "test/audit-e34-familiar-b1-relation.test.mjs",
+      "gateAnchor": "relation_mode CHECK",
+      "episodes": [
+        "E76"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L09",
+      "title": "SSE 流式截断（finishReason!=STOP 静默吞尾）",
+      "modules": [
+        "familiar-chat",
+        "sse",
+        "streaming"
+      ],
+      "trigger": "对话舱/报告页流式生成链路（Gemini sse / DeepSeek 降级）",
+      "rootCause": "E69：maxOutputTokens 截断时 finishReason=MAX_TOKENS，旧逻辑不追踪 ⇒ 回答静默腰斩无痕。",
+      "ironRule": "流式解析必须追踪 lastFinish 留痕（非 STOP 打日志），断点续写限一次＋完整性守卫；流式内绝不可 setHeader（建流后置 402/403/429）。",
+      "gate": "test/audit-e66-familiar-chat.test.mjs",
+      "gateAnchor": "流式解析未追踪 finishReason",
+      "episodes": [
+        "E66",
+        "E69"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L10",
+      "title": "桌面对话舱角色镜像（Sophia 左 / Milo 右）",
+      "modules": [
+        "familiar",
+        "chat-layer",
+        "mirror",
+        "css"
+      ],
+      "trigger": "改桌面悬浮对话舱（420×600）位置或方向",
+      "rootCause": "E77 前两角色舱位同侧，Sophia 朝左却挂右下，视觉拧巴。",
+      "ironRule": "portal 根按 IP 写 data-familiar（禁按 name）；Sophia [data-familiar=\"sophia\"]{justify-content:flex-start; padding:0 0 20px 24px} 镜像左下，Milo 默认右下 gapRight≈24；量测用 documentElement.clientWidth（innerWidth 含滚动条）。",
+      "gate": "test/audit-e81-self-evolve.test.mjs",
+      "gateAnchor": "E77 镜像铁律断言",
+      "episodes": [
+        "E77"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L11",
+      "title": "GenConfig 不关 thinking ⇒ 空气泡",
+      "modules": [
+        "familiar-chat",
+        "gemini",
+        "genconfig"
+      ],
+      "trigger": "调 Gemini 生成（对话舱 / 任何 sse 通道）",
+      "rootCause": "E67：Gemini thinking 阶段先推空白 chunk，前端照渲染 ⇒ 用户看到空气泡闪现。",
+      "ironRule": "GenConfig 必须 thinkingBudget: 0（根除 thinking 空气泡）＋ maxOutputTokens 800 / PLAIN 400 兼容壳。",
+      "gate": "test/audit-e81-self-evolve.test.mjs",
+      "gateAnchor": "E67 关 thinking 断言",
+      "episodes": [
+        "E67"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L12",
+      "title": "气泡限宽未扣位移 ⇒ 390 屏出屏被裁",
+      "modules": [
+        "bubble",
+        "css",
+        "mobile",
+        "layout"
+      ],
+      "trigger": "改灵宠气泡宽度/位移或换视口",
+      "rootCause": "E71：max-width 只按 40vw 算，没扣 44px 横向位移，390 屏气泡右缘出屏被祖先裁切链吃掉。",
+      "ironRule": "气泡限宽必扣位移：max-width: min(150px, calc(40vw - 44px))；验收必查祖先裁切链（.page 禁 overflow 滚动值），双侧位移必双端复验。",
+      "gate": "test/audit-e81-self-evolve.test.mjs",
+      "gateAnchor": "E71 限宽扣位移断言",
+      "episodes": [
+        "E71"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L13",
+      "title": "新闸门插错链位 ⇒ 二十条旧闸门集体翻红",
+      "modules": [
+        "test-astro",
+        "gate",
+        "链位"
+      ],
+      "trigger": "向 test:astro 长链插入任何新审计段",
+      "rootCause": "E80 首版把闸门 append 到链尾、次版插在 python 之前，均把 e40-compat 顶离 len-2 收口位 ⇒ 20+ 条旧闸门（含 e64/e59 段位断言）集体翻红。",
+      "ironRule": "新闸门一律插在收口位 e40-compat 之前（e40 恒 len-2、python 峰值审计恒链尾）；插入后必跑段位断言复核。",
+      "gate": "test/audit-e80-skills.test.mjs",
+      "gateAnchor": "收口位漂移",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L14",
+      "title": "finally 清理抛 EPERM 反噬已通过断言",
+      "modules": [
+        "test",
+        "cleanup",
+        "eprem",
+        "沙箱"
+      ],
+      "trigger": "测试用例在 finally 中 unlinkSync/rmSync 清理临时文件",
+      "rootCause": "E80 全量 685 项假红 2 项：断言已全过，finally 清理被沙箱删除拦截抛 EPERM，把整条用例判死。",
+      "ironRule": "测试收尾清理必须 try/catch 容错（临时文件残留无害），严禁让清理失败否定已通过的断言。",
+      "gate": "test/audit-e15-r11f-multilang-uncage.test.mjs",
+      "gateAnchor": "不得反噬已通过的断言",
+      "episodes": [
+        "E80"
+      ],
+      "date": "2026-10-21"
+    }
+  ]
+}
