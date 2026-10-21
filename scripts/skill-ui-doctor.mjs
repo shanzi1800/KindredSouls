@@ -285,6 +285,53 @@ function runViewport(base, vp) {
   ab('close', '--all');
 }
 
+/* ── 🧩 E82 六语巡检（主公亲令 2026-10-21）：六语 × 双宠全量断言 ──
+   军令：①灵宠体型锁 98px（EN 基准，六语零缩放跳变）；②气泡 vs 标题 overlap===0
+   且边缘间隙 ≥24px（E71 静态 44px 只按中文 4 字标定，真页实测 EN 947px²/fr 5580px² 重叠）。 */
+function runLangSweep(base) {
+  rotateSession();
+  ab('close', '--all');
+  ab('set', 'viewport', '1440', '900');
+  const LANGS = ['zh', 'en', 'fr', 'es', 'th', 'vi'];
+  const petWs = [];
+  for (const lang of LANGS) {
+    for (const [name, mode] of [['Sophia', 'girlfriend'], ['Milo', 'buddy']]) {
+      const key = `${lang}/${mode === 'girlfriend' ? 'sophia' : 'milo'}`;
+      ab('open', `${base}/?lang=${lang}&free_access=1`);
+      waitFor('.landing-start-btn');
+      seedFamiliar(name, mode);
+      ab('reload'); waitFor('.landing-start-btn'); sleep(900);
+      tapPetHead();
+      const m = abEval(MEASURE_JS);
+      shot(`e82-${key}.png`);
+      check(`[${key}] 灵宠在位`, !!m.pet, m.pet || '未渲染（seed 未生效）', 'lang-sweep');
+      if (m.pet && m.pet.w > 0) petWs.push(m.pet.w);
+      // 军令①：体型锁 —— 桌面恒 98px（EN 基准），禁语言切换缩放跳变
+      check(`[${key}] 灵宠体型锁 98px（EN 基准）`, !!m.pet && m.pet.w > 0 && Math.abs(m.pet.w - 98) <= 2,
+        m.pet ? `petW=${m.pet.w}` : '未测（灵宠缺失）', 'lang-sweep');
+      check(`[${key}] 气泡已唤出`, !!m.bubble, m.bubble ? `${m.bubble.w}×${m.bubble.h}` : '未唤出 ⇒ 碰撞未测', 'lang-sweep');
+      check(`[${key}] 气泡不遮主标题`, m.anchors.title && !!m.bubble && m.overlaps.bubbleVsTitle === 0,
+        !m.anchors.title ? '锚点 .title 缺失 ⇒ 未测' : `overlap=${m.overlaps.bubbleVsTitle}px²`, 'collision');
+      // 军令②：与标题文字边缘间距 ≥24px（水平或垂直抬升其一成立）
+      if (m.bubble && m.title) {
+        const hGap = m.bubble.right <= m.title.left ? m.title.left - m.bubble.right
+          : (m.bubble.left >= m.title.right ? m.bubble.left - m.title.right : -1);
+        const vGap = m.bubble.bottom <= m.title.top ? m.title.top - m.bubble.bottom : -1;
+        check(`[${key}] 气泡与标题边缘间距 ≥24px`, Math.max(hGap, vGap) >= 24, `hGap=${hGap} vGap=${vGap}`, 'lang-sweep');
+      } else {
+        check(`[${key}] 气泡与标题边缘间距 ≥24px`, false, '气泡或标题缺失 ⇒ 未测', 'lang-sweep');
+      }
+      check(`[${key}] 无元素出屏`, m.outOfView.length === 0, m.outOfView.join(',') || 'ok', 'lang-sweep');
+    }
+  }
+  if (petWs.length === LANGS.length * 2) {
+    const spread = Math.max(...petWs) - Math.min(...petWs);
+    check('[lang-sweep] 六语体型极差 ≤2px（语言切换零缩放跳变）', spread <= 2,
+      `min=${Math.min(...petWs)} max=${Math.max(...petWs)} spread=${spread}`, 'lang-sweep');
+  }
+  ab('close', '--all');
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   let srv = null;
@@ -297,6 +344,7 @@ function runViewport(base, vp) {
   try {
     runViewport(base, { device: 'iPhone 14' });
     runViewport(base, { w: 1440, h: 900 });
+    runLangSweep(base); // 🧩 E82：六语 × 双宠全量断言（桌面视口）
   } finally {
     try { ab('close', '--all'); } catch (_) { /* noop */ }
     if (srv) { try { srv.kill('SIGTERM'); } catch (_) { /* noop */ } }

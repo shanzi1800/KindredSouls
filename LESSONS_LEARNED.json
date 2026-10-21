@@ -1,6 +1,6 @@
 {
   "$schema": "kindredsouls-lessons-v1",
-  "version": 1,
+  "version": 2,
   "updated": "2026-10-21",
   "purpose": "KindredSouls 错题基因库（E81 自我进化引擎真源）。禁止 E 编号流水账：每条按 [触发场景 trigger] -> [历史踩坑根因 rootCause] -> [永久免疫铁律 ironRule] -> [对应守护断言 gate/gateAnchor] 四元组固化。gateAnchor 必须在 gate 指向的文件中逐字存在（test/audit-e81-self-evolve.test.mjs 强制校验）——没有牙齿的记忆禁止入库。",
   "howto": {
@@ -266,6 +266,46 @@
       "gateAnchor": "不得反噬已通过的断言",
       "episodes": [
         "E80"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L15",
+      "title": "元素几何绑定文字宽度坐标系 ⇒ 随语言缩放跳变",
+      "modules": [
+        "familiar",
+        "geometry",
+        "i18n",
+        "css",
+        "layout"
+      ],
+      "trigger": "任何以 % 锚定到「含文字的兄弟元素」（按钮/卡片/标题）的图形定位",
+      "rootCause": "E82 主公真机实测：灵宠 width:70% 绑定「开始测算」按钮宽，按钮宽随语言伸缩（六语真页 138.5~202.8px）⇒ 灵宠 98→143px 忽大忽小；E71 气泡静态 44px 位移只按中文 4 字标题标定 ⇒ EN 重叠 947px²、fr 5580px²。",
+      "ironRule": "视觉主元素尺寸必须用绝对像素锁定语言基准（EN=98px，width: min(98px,70%) 窄屏回退），锚点用 calc(基准% − 球心占比×锁宽) 保落位；气泡类邻接元素禁止静态位移，必须运行时实测标题盒动态解耦（间隙 ≥24px，屏内钳制，窄屏垂直兜底）。",
+      "gate": "test/audit-e82-home-pet-i18n.test.mjs",
+      "gateAnchor": "E82 体型语言不变式断言",
+      "episodes": [
+        "E82",
+        "E71"
+      ],
+      "date": "2026-10-21"
+    },
+    {
+      "id": "L16",
+      "title": "会话型文案「一生一次」缓存 ⇒ i18n 切换后语言错乱",
+      "modules": [
+        "familiar-chat",
+        "i18n",
+        "react",
+        "greeting"
+      ],
+      "trigger": "任何用 ref/flag 只生成一次的欢迎语/提示语/占位文案（openedRef 模式）",
+      "rootCause": "E82 主公真机实测：对话舱开场白用 openedRef 只生成一次且 msgs 跨关闭不重置 ⇒ 首次 zh 开舱后切 EN，首句永远中文（顶部语言与弹窗全英文、开场白中文的『精神分裂』）。",
+      "ironRule": "会话型文案必须每次会话开启时按当前 i18n 语言重建（关闭即复位 ⇒ 重开必新句）；语言切换事件发生时，纯开场白态实时替换为新语言（已展开对话不扰）。",
+      "gate": "test/audit-e82-home-pet-i18n.test.mjs",
+      "gateAnchor": "E82 开场白语言联动断言",
+      "episodes": [
+        "E82"
       ],
       "date": "2026-10-21"
     }

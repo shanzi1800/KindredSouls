@@ -234,17 +234,54 @@ const FamiliarHomeCard: React.FC = () => {
   }, []);
   const [famPulse, setFamPulse] = useState(false);
   const famPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string } | null>(null);
+  const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string; hShift: number; vRaise: number } | null>(null);
   const famBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 🌟 E54-2: 点击轮播序（0/1=幸运数字+色 → 2=幸运花 → 3=贵人方位 → 4=轻语，如此循环） */
   const tapSeqRef = useRef(0);
 
-  /** 弹出气泡（统一收口：计时重置 + 6.5s 自动消散） */
+  /** 弹出气泡（统一收口：计时重置 + 6.5s 自动消散）
+   * 🧩 E82 防遮挡动态解耦（主公亲令 2026-10-21 军令②「锚点与主标题外边界彻底解耦」）：
+   * 旧 E71 静态 44px 位移只按中文 4 字标题标定，六语真页实测 EN 已重叠 947px²、fr 5580px²、vi 4019px²。
+   * 策略：横向优先外推（保持漫画侧位，与标题边缘间隙 ≥24px，屏内钳制）；
+   * 窄屏横向无解（390 屏标题宽 380 几乎满幅）⇒ 垂直抬升到标题上方（bottom 增量）。
+   * 双宠对称：Sophia 向左 / Milo 向右，量测与钳制全对称。 */
   const showBubble = useCallback((name: string, sub: string, line: string) => {
-    setFamBubble({ name, sub, line });
+    let hShift = 0;
+    let vRaise = 0;
+    try {
+      const breakout = anchorEl?.querySelector('.ks-fam-breakout');
+      const titleEl = document.querySelector('.title');
+      if (breakout && titleEl) {
+        const b = breakout.getBoundingClientRect();
+        const tr = titleEl.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const BUB = 150; // 气泡 max-width 上限（App.css）
+        const GAP = 24;  // 军令：与标题文字边缘恒 ≥24px
+        const MARGIN = 44; // E71 基础位移
+        if (breakout.classList.contains('ks-fam-sophia')) {
+          const curOuter = b.left - MARGIN;               // 气泡右缘现值
+          const need = curOuter - (tr.left - GAP);        // >0 ⇒ 标题左缘入侵，需左移
+          const room = curOuter - 8 - BUB;                // 屏内可移空间（留 8px 安全边）
+          if (need > 0) {
+            if (need <= room) hShift = Math.ceil(need);
+            else vRaise = Math.ceil((b.bottom - 0.56 * b.height) - (tr.top - GAP));
+          }
+        } else {
+          const curOuter = b.right + MARGIN;              // 气泡左缘现值
+          const need = tr.right + GAP - curOuter;         // >0 ⇒ 标题右缘入侵，需右移
+          const room = vw - 8 - BUB - curOuter;
+          if (need > 0) {
+            if (need <= room) hShift = Math.ceil(need);
+            else vRaise = Math.ceil((b.bottom - 0.56 * b.height) - (tr.top - GAP));
+          }
+        }
+        if (vRaise < 0) vRaise = 0;
+      }
+    } catch (_) { /* 量测失败 ⇒ 保持 E71 原位，绝不阻塞气泡 */ }
+    setFamBubble({ name, sub, line, hShift, vRaise });
     if (famBubbleTimer.current) clearTimeout(famBubbleTimer.current);
     famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
-  }, []);
+  }, [anchorEl]);
 
   const nameOf = (rec0: HomeRecord): string => {
     const mode = String(rec0.profile.relation_mode || '');
@@ -326,7 +363,16 @@ const FamiliarHomeCard: React.FC = () => {
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             {famBubble && (
-              <div className="ks-fam-bubble">
+              <div
+                className="ks-fam-bubble"
+                /* 🧩 E82 动态解耦落点：横向外推（覆盖 E71 的 44px 基础位移）＋窄屏垂直抬升 */
+                style={{
+                  ...(ip === 'Sophia'
+                    ? { marginRight: 44 + famBubble.hShift }
+                    : { marginLeft: 44 + famBubble.hShift }),
+                  ...(famBubble.vRaise ? { bottom: `calc(56% + ${famBubble.vRaise}px)` } : null),
+                } as React.CSSProperties}
+              >
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
                 {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
                 {/* 🐾 E66 衔接入口：气泡末尾的「与 TA 聊聊」引子 —— 平滑唤醒半屏抽屉舱 */}

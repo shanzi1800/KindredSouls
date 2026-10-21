@@ -102,14 +102,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   const bufRef = useRef('');
   const throttleRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const openedRef = useRef(false);
   const listRef = useRef<ChatMsg[]>([]);
   listRef.current = msgs;
 
-  /** 开场问候：结合今日运势真值（前端已有 dailyFortune）与本命太阳 —— 零网络、零伪造 */
+  /** 开场问候（🧩 E82 语言联动根治，主公亲令 2026-10-21 军令③）：
+   * 旧「一生一次」ref 门闩＋ msgs 跨关闭不重置 ⇒ 首次 zh 开舱后，切 EN 重开永远中文旧句
+   * （六语真机实锤）。现改为：每次唤醒都按当前语言重建干净会话（关闭即复位的既定语义）；
+   * 舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰，历史即历史）。 */
   useEffect(() => {
-    if (!open || openedRef.current) return;
-    openedRef.current = true;
+    if (!open) return;
     const hello = greetingVars && greetingVars.color
       ? t('familiar.chatHello', {
         name,
@@ -119,7 +120,24 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       })
       : t('familiar.chatHelloPlain', { name });
     setMsgs([{ id: 'hello', role: 'assistant', text: hello }]);
-  }, [open, name, greetingVars, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    setMsgs((prev) => {
+      if (!(prev.length === 1 && prev[0].id === 'hello')) return prev;
+      const hello = greetingVars && greetingVars.color
+        ? t('familiar.chatHello', {
+          name,
+          sun: greetingVars.sun || '',
+          color: greetingVars.color,
+          num: greetingVars.num ?? '',
+        })
+        : t('familiar.chatHelloPlain', { name });
+      return [{ id: 'hello', role: 'assistant', text: hello }];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, name, greetingVars]);
 
   /** 关闭即复位（下次唤醒仍是干净会话，不残留上一次的私密内容） */
   useEffect(() => {

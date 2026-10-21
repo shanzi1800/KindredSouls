@@ -748,11 +748,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
      误读成「球身坐键区」⇒ 整个身子没进按钮。ty = calc(38.9% + 6px)：球底压 6px、
      爪底（球底下 6%H≈12px）垂搭金面 12~18px 清晰可见，形态即参照稿。 */
 .ks-fam-milo {
-  left: -0.5%; width: 70%;
+  /* 🧩 E82 体型语言不变式（主公亲令 2026-10-21「以 EN 为唯一真源锁死」）：
+     旧 width:70% 绑定按钮宽坐标系，按钮宽随语言伸缩（六语真页实测 138.5~202.8px）
+     ⇒ 灵宠渲染宽 98→143px 跳变。锁定 EN 基准 98px（138.5×70%），窄屏回 70% 适配；
+     left 改 calc 保球心恒落键面 44%/56%（0.636/0.360 = E65d 资产球心占比真值）。 */
+  left: calc(44% - 62.3px); width: min(98px, 70%);
   transform: translateY(calc(38.9% + 6px));
 }
 .ks-fam-sophia {
-  left: 30.8%; width: 70%;
+  left: calc(56% - 35.3px); width: min(98px, 70%);
   transform: translateY(calc(39.2% + 6px));
 }
 .ks-fam-breathe {
