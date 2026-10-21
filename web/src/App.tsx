@@ -40,6 +40,9 @@ import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.m
 // 🛡️ P0-1：read-through 旁置真值回放（Gate 41 五键锁死 ⇒ 旁置真值不可入库 ⇒ 客户端本地留存通路）
 // @ts-ignore —— houseOverlayStore.mjs 为纯 JS 旁置留存核（形状由 P0-1 闸门守备）
 import { loadHouseOverlay, saveHouseOverlay } from './lib/houseOverlayStore.mjs';
+// 🎨 E83：星际黑金设计令牌（深空曜石底 / 流光毛玻璃 / 星轨进度条 / 三级排版）——
+//    全站奢华重构唯一真源，先于 App.css 载入，供其覆盖具体页面样式。
+import './styles/celestial-tokens.css';
 import './App.css';
 
 /**

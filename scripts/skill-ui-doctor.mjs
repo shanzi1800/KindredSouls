@@ -17,6 +17,9 @@
  *   node scripts/skill-ui-doctor.mjs                  # 自带静态服务（web/dist + mock API）
  *   node scripts/skill-ui-doctor.mjs --base https://kindredsouls.online
  *   node scripts/skill-ui-doctor.mjs --self-test      # 注入人造遮挡，验证检测器有牙
+ *   node scripts/skill-ui-doctor.mjs --aesthetic      # 🎨 E83 暗黑一致性 + WCAG AA 对比度探针
+ *   node scripts/skill-ui-doctor.mjs --aesthetic --route /wealth/report
+ *   node scripts/skill-ui-doctor.mjs --aesthetic --self-test   # 美学诱饵验牙
  *   node scripts/skill-ui-doctor.mjs --json           # 只输出 JSON 摘要
  *
  * 退出码：0 全绿；1 有违规；2 崩溃。截图落 dev-artifacts/ui-doctor/。
@@ -37,6 +40,8 @@ const flag = (n) => argv.includes(n);
 const opt = (n, d = '') => { const i = argv.indexOf(n); return i > -1 ? (argv[i + 1] || d) : d; };
 const JSON_OUT = flag('--json');
 const SELF_TEST = flag('--self-test');
+const AESTHETIC = flag('--aesthetic');
+const ROUTE = opt('--route', '');
 const BASE = opt('--base', '');
 
 const BIRTH_QS = 'birth=1976-12-03&time=12:00&lat=22.5431&lon=114.0579&tz=Asia/Shanghai';
@@ -332,6 +337,150 @@ function runLangSweep(base) {
   ab('close', '--all');
 }
 
+/* ── 🎨 E83 暗黑一致性与对比度探针（主公军令 2026-10-21）──────────────────
+   母题：合盘/报告链路「惨白医院背景 + 隐形灰字」在重构前须有自动拦截能力。
+   判据（军令口径）：
+     ① 大面积亮白背景：元素自身有效背景 RGB 均值 > 200 且面积 ≥ 12000px² ⇒ 违规；
+     ② 文本对比度 WCAG AA：正文 ≥ 4.5:1、大字（≥24px 或粗体 ≥18.66px）≥ 3:1 ⇒ 不足违规；
+     ③ 亮底小面积元素（<12000px²）上的低对比字 ⇒ 挂账 warning 不翻红（重构军令统一清剿）。
+   有效背景算法：元素自身 backgroundColor + backgroundImage(渐变取色标均值) →
+   祖先逐层 alpha 合成（≤12 层），全透明回落曜石底 --ks-bg-obsidian-solid #0A0914。
+   ⚠️ 必须 String.raw 承载：普通模板字面量会把正则里的 \( \) 吞成 ( ) —— 正则括号
+   语义反转 ⇒ m[1] 汕头带 '(' ⇒ Number('(255')=NaN ⇒ over() 全链 NaN ⇒ 探针恒假绿
+   （E83 血训：诊断脚本读磁盘文本有牙、模块运行无牙，两小时才定位到这一行）。 */
+const AESTHETIC_JS = String.raw`(() => {
+  const BASE = [10, 9, 20];
+  const MIN_AREA = 12000, WHITE_AVG = 200;
+  const parse = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return null;
+    const p = m[1].split(',').map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+  const over = (f, b) => [0, 1, 2].map((i) => f[i] * f[3] + b[i] * (1 - f[3]));
+  const avg = (c) => (c[0] + c[1] + c[2]) / 3;
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const gradMix = (bi) => { if (!bi || bi === 'none' || !/gradient/.test(bi)) return null;
+    const g = [...bi.matchAll(/rgba?\([^)]+\)/g)].map((m) => parse(m[0])).filter(Boolean);
+    if (!g.length) return null;
+    const a = g.reduce((s, c) => s + c[3], 0) / g.length;
+    return [0, 1, 2].map((i) => g.reduce((s, c) => s + c[i], 0) / g.length).concat([a]); };
+  // 自身背景层（image 盖 color 之上）：返回 [层, 提供背景的元素] 或 null
+  const ownLayers = (el) => { const cs = getComputedStyle(el); const L = [];
+    const g = gradMix(cs.backgroundImage); if (g) L.push([g, el]);
+    const b = parse(cs.backgroundColor); if (b && b[3] > 0) L.push([b, el]);
+    return L; };
+  // 有效背景 + 亮底来源元素（首个 alpha≥0.6 层）
+  // 全屏星幕感知：.bg-video/.starfield-fallback（fixed 全屏 z0）视觉盖住 html/body 底色
+  // ——DOM 祖先链算不到视觉堆叠，须在此截断，否则星空上的白字被误判「白底白字」假阳。
+  const fullScreenVeil = !!document.querySelector('.bg-video, .starfield-fallback');
+  const effBg = (el) => { const layers = []; let src = null;
+    for (let n = el, i = 0; n && i < 12; n = n.parentElement, i++) {
+      if (fullScreenVeil && (n === document.body || n === document.documentElement)) break;
+      for (const [c, e] of ownLayers(n)) { layers.push(c); if (!src && c[3] >= 0.6) src = e; } }
+    let eff = BASE; for (const c of layers.slice().reverse()) eff = over(c, eff);
+    return { eff, src }; };
+  const visible = (el) => { const cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || 1) > 0.05; };
+  const tag = (el) => el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
+  // ① 大面积亮白块扫描（元素自身背景，不经祖先——白卡自身必带背景）
+  const whiteBlocks = [];
+  const dbg = { wTooSmall: 0, wInvis: 0, wNoLayer: 0, wNotWhite: 0, tInvis: 0, tNoOwn: 0, tSmall: 0, tPass: 0 };
+  for (const el of document.querySelectorAll('body *')) {
+    const r = el.getBoundingClientRect();
+    if (r.width * r.height < MIN_AREA || r.width < 80 || r.height < 40) { dbg.wTooSmall++; continue; }
+    if (!visible(el)) { dbg.wInvis++; continue; }
+    const L = ownLayers(el); if (!L.length) { dbg.wNoLayer++; continue; }
+    // 🧯 E83 血训：ownLayers 返回 [色层, 元素] 二元组——不解构直接 over() 会把整个二元组
+    //    当色层（c[3]=undefined ⇒ NaN），avg(NaN)>200 恒 false ⇒ 白卡永不报（实测假绿）。
+    let eff = BASE; for (const [c] of L.slice().reverse()) eff = over(c, eff);
+    if (avg(eff) > WHITE_AVG) whiteBlocks.push({ el: tag(el), w: Math.round(r.width), h: Math.round(r.height), avgRGB: Math.round(avg(eff)) });
+    else dbg.wNotWhite++;
+  }
+  // ② 文本对比度扫描（leaf 文本节点）
+  const lowContrast = [], warnings = [];
+  for (const el of document.querySelectorAll('body *')) {
+    if (!visible(el)) { dbg.tInvis++; continue; }
+    const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    if (!own) { dbg.tNoOwn++; continue; }
+    const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 8) { dbg.tSmall++; continue; }
+    const cs = getComputedStyle(el);
+    const col = parse(cs.color) || BASE;
+    const { eff, src } = effBg(el);
+    const fs = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight, 10) >= 700;
+    const large = fs >= 24 || (fs >= 18.66 && bold);
+    const need = large ? 3.0 : 4.5;
+    const ratio = Math.round(contrast(col, eff) * 100) / 100;
+    if (ratio < need) {
+      const bright = avg(eff) > WHITE_AVG;
+      const srcArea = src ? (() => { const s = src.getBoundingClientRect(); return s.width * s.height; })() : 0;
+      const item = { text: (el.textContent || '').trim().slice(0, 18), el: tag(el), fs, ratio, need, col: cs.color, eff: eff.map(Math.round).join(',') };
+      if (bright && srcArea < MIN_AREA) warnings.push(item);  // 小面积亮底挂账
+      else lowContrast.push(item);                            // 暗底灰字 / 大面积白底灰字 ⇒ 违规
+    } else dbg.tPass++;
+  }
+  return { whiteBlocks: whiteBlocks.slice(0, 20), lowContrast: lowContrast.slice(0, 20), warnings: warnings.slice(0, 20),
+    baitSeen: !!document.querySelector('[data-ks-bait]'),
+    elsTotal: document.querySelectorAll('body *').length, href: location.href, dbg,
+    scanned: { white: whiteBlocks.length, text: lowContrast.length + warnings.length } };
+})()`;
+
+/* 美学诱饵（--self-test 专用）：大白底卡（300×180=54000px²）+ 白底浅灰字（ratio≈1.6）
+   ⇒ 判据①②双牙独立验证——诱饵双红才算探针有牙。 */
+const BAIT_AESTHETIC_JS = `(() => {
+  const d = document.createElement('div');
+  d.setAttribute('data-ks-bait', 'aesthetic');
+  d.style.cssText = 'position:fixed;left:12px;top:90px;width:300px;height:180px;background:#ffffff;z-index:99999;border-radius:8px;';
+  const t = document.createElement('div');
+  t.style.cssText = 'color:#c9c9c9;font-size:14px;padding:20px;';
+  t.textContent = 'bait low contrast grey text';
+  d.appendChild(t); document.body.appendChild(d);
+  return 'BAIT_AESTHETIC';
+})()`;
+
+function runAesthetic(base) {
+  const routes = ROUTE ? [ROUTE] : ['/'];
+  for (const route of routes) {
+    const key = route === '/' ? 'home' : route.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'route';
+    rotateSession();
+    ab('close', '--all');
+    ab('set', 'viewport', '1440', '900');
+    ab('open', `${(route.startsWith('http') ? route : base + route)}${route.includes('?') ? '&' : '?'}free_access=1`);
+    // 🧯 E83 血训：页面加载早期的 eval 会把 agent-browser daemon「钉」在加载中的旧 frame，
+    //    后续所有 eval（含诱饵+扫描）都落在已被导航替换的空文档上 ⇒ scanned 全 0 假绿。
+    //    解法：先静默等页面稳定（React 首屏挂载），再做就绪探测与扫描。
+    sleep(4500);
+    // 🧯 E83 血训：waitFor('body') 只等 HTML 骨架——React 未渲染时 body* 近空、诱饵可被
+    //    导航替换吞掉（实测 scanned 全 0 假绿）。必须等「多元素 ∧ 有可见文本」真就绪。
+    let ready = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) {
+      const st = abEval(`(() => ({ els: document.querySelectorAll('body *').length, txt: (document.body.innerText || '').trim().length }))()`);
+      if (st && typeof st === 'object' && st.els > 5 && st.txt > 10) { ready = true; break; }
+      sleep(400);
+    }
+    if (!ready) console.log(`  ⚠️ [${key}] 页面 15s 未就绪（按当前 DOM 尽力扫描）`);
+    sleep(600);
+    // 🧯 E83 血训：诱饵与扫描必须**同一次 eval** —— 分两次时，首页消费 free_access 后
+    //    会整页重写 URL（实测 400ms 窗口内诱饵随旧文档销毁 ⇒ 探针扫到空页面假绿）。
+    const m = SELF_TEST ? abEval(`${BAIT_AESTHETIC_JS};\n${AESTHETIC_JS}`) : abEval(AESTHETIC_JS);
+    if (SELF_TEST && m && typeof m === 'object' && !m.baitSeen) {
+      // 诱饵未贯穿到扫描时刻 ⇒ 本轮结果按未测处理（禁假绿）
+      check(`[${key}] 美学诱饵贯穿扫描时刻`, false, 'baitSeen=false —— 诱饵被页面导航吞掉，本轮未测', 'aesthetic');
+    }
+    if (process.env.KS_AESTHETIC_DEBUG) console.log('🔍 AESTHETIC_JS 返回：', JSON.stringify(m).slice(0, 600));
+    shot(`aesthetic-${key}-desktop.png`);
+    check(`[${key}] 无大面积亮白背景（RGB 均值>200 且 ≥12000px²）`,
+      !!m && m.whiteBlocks.length === 0,
+      m ? (m.whiteBlocks.length ? JSON.stringify(m.whiteBlocks.slice(0, 3)) : `扫描 ${m.scanned.white} 块全暗`) : '探针未返回 ⇒ 未测', 'aesthetic');
+    check(`[${key}] 文本对比度 WCAG AA（正文 ≥4.5:1 / 大字 ≥3:1）`,
+      !!m && m.lowContrast.length === 0,
+      m ? (m.lowContrast.length ? JSON.stringify(m.lowContrast.slice(0, 3)) : `扫描 ${m.scanned.text} 处文本全达标`) : '探针未返回 ⇒ 未测', 'aesthetic');
+    if (m && m.warnings.length && !JSON_OUT) {
+      console.log(`  ⚠️ [${key}] 亮底小元素挂账 ${m.warnings.length} 项（重构军令统一清剿）：${JSON.stringify(m.warnings.slice(0, 3))}`);
+    }
+  }
+  ab('close', '--all');
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   let srv = null;
@@ -342,9 +491,13 @@ function runLangSweep(base) {
     srv = s.child; base = `http://127.0.0.1:${s.port}`;
   }
   try {
-    runViewport(base, { device: 'iPhone 14' });
-    runViewport(base, { w: 1440, h: 900 });
-    runLangSweep(base); // 🧩 E82：六语 × 双宠全量断言（桌面视口）
+    if (AESTHETIC) {
+      runAesthetic(base); // 🎨 E83：暗黑一致性 + WCAG AA 对比度探针（独立模式，几何三连不跑）
+    } else {
+      runViewport(base, { device: 'iPhone 14' });
+      runViewport(base, { w: 1440, h: 900 });
+      runLangSweep(base); // 🧩 E82：六语 × 双宠全量断言（桌面视口）
+    }
   } finally {
     try { ab('close', '--all'); } catch (_) { /* noop */ }
     if (srv) { try { srv.kill('SIGTERM'); } catch (_) { /* noop */ } }
@@ -352,7 +505,9 @@ function runLangSweep(base) {
   const fails = results.filter((r) => !r.ok);
   const collisions = results.filter((r) => r.kind === 'collision');
   const baitCaught = collisions.filter((r) => !r.ok).length;
-  const summary = { base, selfTest: SELF_TEST, engine: 'agent-browser (Chromium + device emulation)', total: results.length, pass: results.length - fails.length, fail: fails.length, collisionChecks: collisions.length, baitCaught, shots, fails };
+  const aesthetics = results.filter((r) => r.kind === 'aesthetic');
+  const aBaitCaught = aesthetics.filter((r) => !r.ok).length;
+  const summary = { base, selfTest: SELF_TEST, mode: AESTHETIC ? 'aesthetic' : 'geometry', engine: 'agent-browser (Chromium + device emulation)', total: results.length, pass: results.length - fails.length, fail: fails.length, collisionChecks: collisions.length, baitCaught, aestheticChecks: aesthetics.length, aBaitCaught, shots, fails };
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify({ ...summary, results }, null, 2));
   if (JSON_OUT) console.log(JSON.stringify(summary, null, 2));
   else {
@@ -361,11 +516,16 @@ function runLangSweep(base) {
   }
   // 🧯 自检语义反转：自检「通过」＝诱饵被抓到（判据有牙），而非全绿。
   //    若注入人造遮挡后仍全绿 ⇒ 说明遮挡判据恒真（0px² 假绿），必须报错。
+  //    E83 扩展：--aesthetic 模式自检按美学诱饵双牙（白底块 ∧ 隐形灰字）判。
   if (SELF_TEST) {
-    const ok = baitCaught > 0;
-    console.log(ok
-      ? `🎯 自检通过：人造遮挡被捕获（${baitCaught}/${collisions.length} 项遮挡判据翻红）⇒ 判据有牙`
-      : `💀 自检失败：人造遮挡未被捕获（${collisions.length} 项遮挡判据全绿）⇒ 遮挡判据无牙，禁止信任日常跑批`);
+    const ok = AESTHETIC ? aBaitCaught > 0 : baitCaught > 0;
+    console.log(AESTHETIC
+      ? (ok
+        ? `🎯 美学自检通过：诱饵被抓到（${aBaitCaught}/${aesthetics.length} 项美学判据翻红）⇒ 探针有牙`
+        : `💀 美学自检失败：白底卡/灰字诱饵未被捕获（${aesthetics.length} 项美学判据全绿）⇒ 探针无牙，禁止信任日常跑批`)
+      : (ok
+        ? `🎯 自检通过：人造遮挡被捕获（${baitCaught}/${collisions.length} 项遮挡判据翻红）⇒ 判据有牙`
+        : `💀 自检失败：人造遮挡未被捕获（${collisions.length} 项遮挡判据全绿）⇒ 遮挡判据无牙，禁止信任日常跑批`));
     process.exit(ok ? 0 : 1);
   }
   process.exit(fails.length ? 1 : 0);

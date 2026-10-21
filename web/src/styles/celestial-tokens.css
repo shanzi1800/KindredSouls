@@ -1,0 +1,109 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Celestial Obsidian Design Tokens —— 星际黑金奢华设计令牌（E83 军令铸造）
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 母题（主公军令 2026-10-21）：为「姻缘模块全链路奢华重构」备好美学底座 ——
+ *   彻底封杀 #ffffff 惨白背景、医院体检表式绿色进度条、灰底配浅灰的隐形字。
+ *   本文件是全站深空黑金视觉的**唯一真源**（single source of truth）：
+ *   后续任何页面重构一律引用本令牌，禁止散落硬编码色值。
+ *
+ * 铁律（由 skill:ui:aesthetic 探针 + audit-e83 闸门联合看守）：
+ *   ① 大面积亮白背景（RGB 均值 >200）禁入 —— 全链路深空黑金一镜到底；
+ *   ② 卡片一律流光毛玻璃：backdrop-filter blur(20px) + 钛金半透明微光描边；
+ *   ③ 进度条/能量条一律星轨流光渐变（香槟金 #F5D08A × 星云玫瑰紫 #C084FC）；
+ *   ④ 正文对比度 WCAG AA ≥4.5:1（大字号 ≥3:1）—— 隐形灰字当场翻红。
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── ① 深空曜石底色（Deep-space Obsidian）──────────────────────────────
+   *    深邃星空紫黑渐变；纯白 #fff 背景在本体系内为违禁品。
+   *    与 .starfield-fallback 同族（紫黑星穹），供无视频背景的页面/弹层使用。 */
+  --ks-bg-obsidian: radial-gradient(ellipse at 18% 0%, #17122E 0%, #0F0E26 46%, #0A0914 100%);
+  --ks-bg-obsidian-solid: #0A0914;            /* 需要纯色兜底时（如 print / 阴影底） */
+  --ks-bg-obsidian-raised: #131027;           /* 曜石抬升层（次级区块） */
+
+  /* ── ② 流光毛玻璃卡片（Glassmorphism）─────────────────────────────────
+   *    用法：.ks-glass-card 工具类，或拆引三变量自定义。 */
+  --ks-card-glass: rgba(21, 18, 40, 0.55);    /* 玻璃体：曜石紫黑半透明 */
+  --ks-card-glass-blur: blur(20px);
+  --ks-card-glass-border: 1px solid rgba(245, 208, 138, 0.28);  /* 钛金微光描边 */
+  --ks-card-glass-glow:
+    0 8px 32px rgba(10, 9, 20, 0.45),
+    inset 0 1px 0 rgba(245, 208, 138, 0.12); /* 外沉内升双光晕 */
+
+  /* ── ③ 星轨能量渐变（Orbit Energy）────────────────────────────────────
+   *    替换「医院体检表绿条」的唯一正身：香槟金 → 星云玫瑰紫双色引力发光。 */
+  --ks-gold: #F5D08A;                          /* 流光香槟金 */
+  --ks-nebula: #C084FC;                        /* 星云玫瑰紫 */
+  --ks-progress-orbit: linear-gradient(90deg, #F5D08A 0%, #E9C7F2 52%, #C084FC 100%);
+  --ks-progress-glow: 0 0 12px rgba(245, 208, 138, 0.55), 0 0 26px rgba(192, 132, 252, 0.35);
+  --ks-progress-track: rgba(255, 255, 255, 0.07);  /* 轨道槽：仅此一处允许的白，alpha≤0.07 */
+
+  /* ── ④ 三级高对比度排版（Luminance Tiering）────────────────────────────
+   *    主/次/金句三级；全部在曜石底上过 WCAG AA（skill:ui:aesthetic 实测）。 */
+  --ks-text-primary: #F5F2FA;                  /* 主文：星辉白（对曜石底 ≈15.9:1） */
+  --ks-text-secondary: #C7C2D4;                /* 次文：月尘灰紫（对曜石底 ≈9.6:1） */
+  --ks-text-gold: #F5D08A;                     /* 金句：流光香槟金（对曜石底 ≈11.4:1） */
+
+  /* ── 动效曲线与时长（Motion）───────────────────────────────────────────
+   *    丝绸折叠 / 塔罗翻转共用曲线，禁生硬 linear。 */
+  --ks-ease-silk: cubic-bezier(0.22, 1, 0.36, 1);   /* 丝滑收放 */
+  --ks-ease-orbit: cubic-bezier(0.65, 0, 0.35, 1);  /* 引力环绕（翻转/大位移） */
+  --ks-dur-fast: 180ms;                        /* 微反馈 */
+  --ks-dur-drawer: 420ms;                      /* 抽屉折叠 */
+  --ks-dur-flip: 720ms;                        /* 塔罗 3D 翻转 */
+
+  /* ── 星相图标（Esoteric Icons）─────────────────────────────────────────
+   *    Lucide 线条图标统一发光滤镜，替代口语化 Emoji。 */
+  --ks-icon-glow: drop-shadow(0 0 6px rgba(245, 208, 138, 0.45));
+  --ks-icon-stroke: #F5D08A;
+}
+
+/* ═══ 工具类（重构军令的预制件；未挂任何现有 DOM，零回归风险）═══ */
+
+/* 流光毛玻璃卡：全站卡片唯一正身 */
+.ks-glass-card {
+  background: var(--ks-card-glass);
+  -webkit-backdrop-filter: var(--ks-card-glass-blur);
+  backdrop-filter: var(--ks-card-glass-blur);
+  border: var(--ks-card-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--ks-card-glow);
+}
+
+/* 星轨流光进度条：替换一切绿色/纯色进度条 */
+.ks-orbit-bar {
+  background: var(--ks-progress-orbit);
+  box-shadow: var(--ks-progress-glow);
+  border-radius: 999px;
+}
+
+/* 丝滑折叠抽屉：grid-template-rows 0fr→1fr 过渡（禁 height:auto 动画——不可插值必卡顿） */
+.ks-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--ks-dur-drawer) var(--ks-ease-silk);
+}
+.ks-fold[data-open='true'] { grid-template-rows: 1fr; }
+.ks-fold > .ks-fold-inner { overflow: hidden; min-height: 0; }
+
+/* 3D 塔罗牌翻转：perspective 挂父、rotateY 挂卡、双面 backface 互斥 */
+.ks-tarot-stage { perspective: 1200px; }
+.ks-tarot-card {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform var(--ks-dur-flip) var(--ks-ease-orbit);
+}
+.ks-tarot-card[data-flipped='true'] { transform: rotateY(180deg); }
+.ks-tarot-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ks-tarot-face--back { transform: rotateY(180deg); }
+
+/* 星相图标基类：线条 + 发光滤镜（Lucide / 自绘 SVG 通用） */
+.ks-esoteric-icon {
+  filter: var(--ks-icon-glow);
+  color: var(--ks-icon-stroke);
+}

@@ -308,6 +308,25 @@
         "E82"
       ],
       "date": "2026-10-21"
+    },
+    {
+      "id": "L17",
+      "title": "模板字面量吞正则反斜杠 ⇒ 浏览器探针 NaN 全链假绿",
+      "modules": [
+        "skills",
+        "testing",
+        "browser-automation",
+        "regex"
+      ],
+      "trigger": "任何把「含正则字面量的浏览器 eval 载荷」写进 JS 模板字符串（反引号）的场景",
+      "rootCause": "E83 美学探针：AESTHETIC_JS 用普通模板字面量承载，正则里的 ( ) 被模板转义求值吞成 ( ) ⇒ rgba?(([^)]+)) 变 rgba?(([^)]+))（括号语义从字面量反转为分组）⇒ m[1] 汕头带 ( ⇒ Number((255)=)NaN ⇒ over() 全链 NaN ⇒ avg(NaN)>200 恒 false ⇒ 白卡永不报；叠加诱饵分两次 eval 被首页 free_access 消费后的整页重写吞掉 ⇒ scanned 全 0 双重假绿。诊断脚本读磁盘文本（反斜杠原样保留）有牙、模块运行无牙，耗时两小时定位。",
+      "ironRule": "含正则的浏览器 eval 载荷必须 String.raw 承载（或反斜杠双写）；诱饵与扫描必须同一次 eval 合并执行并回传 baitSeen 自证贯穿；探针上线前必须 --self-test 诱饵验牙，无牙即禁跑批。",
+      "gate": "test/audit-e83-celestial-ui.test.mjs",
+      "gateAnchor": "E83 美学探针断言：白底拦截＋WCAG AA＋诱饵同 eval 合并＋String.raw 承载",
+      "episodes": [
+        "E83"
+      ],
+      "date": "2026-10-21"
     }
   ]
 }
