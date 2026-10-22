@@ -35,6 +35,9 @@ import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
 // 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
 //    已认领＝破框骑键 portal 至 #ks-familiar-anchor。
 import FamiliarHomeCard from './components/FamiliarHomeCard';
+// ✦ E84（主公军令 2026-10-22）：Emoji 退役令——模式弹窗图标由 💞/💰 换成
+//    星芒微光 SVG 神秘学矢量（双星交汇星环 / 先天星盘金库），真源 EsotericIcons.tsx。
+import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
 // 🛡️ P0-1：read-through 旁置真值回放（Gate 41 五键锁死 ⇒ 旁置真值不可入库 ⇒ 客户端本地留存通路）
@@ -189,7 +192,13 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         body: JSON.stringify({ plan }),
       });
       const data = await res.json();
-      const route = dispatchCheckoutRoute(data, { origin: window.location.origin, onGranted: () => window.location.reload() });
+      // ✦ E84（主公军令 2026-10-22）「付费即刻呈现」：沙盒/兑换授予后落支付成功标志再刷新——
+      //    复用 ks_payment_success → ResultPage → pendingInsightTrigger → 自动流式生成链，
+      //    消灭「付完 $4.99 还要再点一次『生成 AI 洞察』按钮」的商业漏斗断点。
+      const route = dispatchCheckoutRoute(data, { origin: window.location.origin, onGranted: () => {
+        sessionStorage.setItem('ks_payment_success', '1');
+        window.location.reload();
+      } });
       if (route.kind === 'redirect') {
         console.log('[KindredSouls] Redirecting to Stripe:', route.url);
         window.location.href = route.url;
@@ -240,6 +249,39 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
     zh: '出生城市（可选）', en: 'Birth City (optional)', es: 'Ciudad de nacimiento (opcional)',
     fr: 'Ville de naissance (optionnel)', th: 'เมืองเกิด (เลือกได้)', vi: 'Thành phố sinh (tùy chọn)',
   } as Record<string, string>)[lang] || 'Birth City (optional)';
+  // ✦ E84（主公军令 2026-10-22）：双星分卡六语字典——星卡标题＋折叠触发条。
+  //    军令原文：【你的星盘坐标 (Your Natal Coordinates)】/【TA 的星盘坐标 (Partner's Coordinates)】。
+  //    折叠条＝渐进式披露：补充出生时辰与城市（测算精度提升 40% · 可选），默认收起。
+  const L_CARD1 = ({
+    zh: '你的星盘坐标', en: 'Your Natal Coordinates', es: 'Tus Coordenadas Natales',
+    fr: 'Vos Coordonnées Natales', th: 'พิกัดดวงดาวของคุณ', vi: 'Tọa độ bản đồ sao của bạn',
+  } as Record<string, string>)[lang] || 'Your Natal Coordinates';
+  const L_CARD2 = ({
+    zh: 'TA 的星盘坐标', en: "Partner's Coordinates", es: 'Coordenadas de tu pareja',
+    fr: 'Coordonnées de votre partenaire', th: 'พิกัดดวงดาวของเขา/เธอ', vi: 'Tọa độ bản đồ sao của người ấy',
+  } as Record<string, string>)[lang] || "Partner's Coordinates";
+  const L_FOLD = ({
+    zh: '补充出生时辰与城市（测算精度提升 40% · 可选）', en: 'Add birth time & city (+40% accuracy · optional)',
+    es: 'Añade hora y ciudad de nacimiento (+40% de precisión · opcional)', fr: 'Ajoutez l’heure et la ville de naissance (+40% de précision · facultatif)',
+    th: 'เพิ่มเวลาและเมืองเกิด (ความแม่นยำ +40% · เลือกได้)', vi: 'Thêm giờ và thành phố sinh (độ chính xác +40% · tùy chọn)',
+  } as Record<string, string>)[lang] || 'Add birth time & city (+40% accuracy · optional)';
+  // ✦ E84 折叠状态：fold* 控展开、settled* 在丝滑动画（420ms）落地后放开 overflow
+  //    ——CitySearchInput 下拉建议层为 absolute 定位，须防 .ks-fold 的 overflow:hidden
+  //    裁切（E71 祖先裁切链血训）；收起时立即恢复 hidden 保折叠动画。
+  const [fold1, setFold1] = useState(false);
+  const [fold1Settled, setFold1Settled] = useState(false);
+  const [fold2, setFold2] = useState(false);
+  const [fold2Settled, setFold2Settled] = useState(false);
+  React.useEffect(() => {
+    if (!fold1) { setFold1Settled(false); return; }
+    const id = setTimeout(() => setFold1Settled(true), 480);
+    return () => clearTimeout(id);
+  }, [fold1]);
+  React.useEffect(() => {
+    if (!fold2) { setFold2Settled(false); return; }
+    const id = setTimeout(() => setFold2Settled(true), 480);
+    return () => clearTimeout(id);
+  }, [fold2]);
   const [d2Key, setD2Key] = React.useState(0);
   const [dateError, setDateError] = useState('');
   const [shaking1, setShaking1] = useState(false);
@@ -308,16 +350,17 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
               <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
               {/* 🌐 E79（主公军令 2026-10-20）: 六语词条焕新——「合婚密码」→「姻缘密码」＋
                   五语母语级黑话（Code/Clé/Código/รหัสลับ/Mật Mã）。排版：icon＋文字列
-                  （mode-text 收编 label/desc 纵排），长副标题在列内受控换行，禁挤压左侧图标 */}
+                  （mode-text 收编 label/desc 纵排），长副标题在列内受控换行，禁挤压左侧图标。
+                  ✦ E84：icon 位由 💞/💰 Emoji 升格为星芒 SVG 神秘学矢量（Emoji 退役令）。 */}
               <button className="mode-option" onClick={() => { setMode('compatibility'); setShowModeModal(false); }}>
-                <span className="mode-icon">💞</span>
+                <span className="mode-icon"><IconTwinStars /></span>
                 <span className="mode-text">
                   <span className="mode-label">{t('input.compatibilityMode')}</span>
                   <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
                 </span>
               </button>
               <button className="mode-option" onClick={() => { onNavigateToWealth(); setShowModeModal(false); }}>
-                <span className="mode-icon">💰</span>
+                <span className="mode-icon"><IconNatalVault /></span>
                 <span className="mode-text">
                   <span className="mode-label">{t('input.wealthMode')}</span>
                   <span className="mode-desc">{t('input.wealthModeDesc')}</span>
@@ -351,14 +394,14 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       <div className="mode-modal" onClick={e => e.stopPropagation()}>
         <h2 className="mode-modal-title">{t('input.selectMode')}</h2>
         <button className="mode-option" onClick={() => handleModeSelect('compatibility')}>
-          <span className="mode-icon">💞</span>
+          <span className="mode-icon"><IconTwinStars /></span>
           <span className="mode-text">
             <span className="mode-label">{t('input.compatibilityMode')}</span>
             <span className="mode-desc">{t('input.compatibilityModeDesc')}</span>
           </span>
         </button>
         <button className="mode-option" onClick={() => handleModeSelect('wealth')}>
-          <span className="mode-icon">💰</span>
+          <span className="mode-icon"><IconNatalVault /></span>
           <span className="mode-text">
             <span className="mode-label">{t('input.wealthMode')}</span>
             <span className="mode-desc">{t('input.wealthModeDesc')}</span>
@@ -384,40 +427,52 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         <h1 className="title" style={{ textAlign: 'center' }}>{t('input.title')}</h1>
         <p className="subtitle" style={{ textAlign: 'center' }}>{t('app.name')}</p>
         <p className="desc" style={{ textAlign: 'center' }}>{t('input.subtitle')}</p>
-      {/* 🌌 45-B5 对齐财富模块：字段行序＝城市 → 时间 → 出生日期；
-              45-B7：框内 6 行行距整体缩小 30%（gap 8→5.6px、label 下边距 8→5.6px）；
-              「测算缘分」CTA 移出蓝框置框下方；白色合规条款紧贴按钮。 */}
-      <div className="form" style={{ gap: '5.6px' }}>
-        {/* 你 · 第1行 出生城市（可选） */}
-        <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_CITY}</label>
-          <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+      {/* ✦ E84（主公军令 2026-10-22）：双星分卡架构——两张深空曜石星卡（你 / TA），
+              必填生日绝对置顶，选填时辰＋城市折叠收纳（.ks-fold 丝滑披露，默认收起）。
+              首屏视觉清爽度 ↑60%；推翻 45-B5 的 6 黑框垂直堆叠（报销单形态）。 */}
+      <div className="ks-starcard">
+        <div className="ks-starcard-head">
+          <IconStarYou />
+          <span className="ks-starcard-title">{L_CARD1}</span>
         </div>
-        {/* 你 · 第2行 出生时间（可选） */}
-        <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_TIME}</label>
-          <TimeInput value={t1} onChange={setT1} />
+        {/* 必填置顶：出生年月日 */}
+        <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
+        <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
+        {/* 渐进式丝滑折叠：选填时辰＋城市默认收起 */}
+        <button type="button" className="ks-fold-trigger" onClick={() => setFold1(v => !v)} aria-expanded={fold1}>
+          <span className="ks-fold-sign">{fold1 ? '−' : '＋'}</span>
+          <span className="ks-fold-label">{L_FOLD}</span>
+        </button>
+        <div className="ks-fold" data-open={fold1 ? 'true' : 'false'} data-settled={fold1Settled ? 'true' : 'false'}>
+          <div className="ks-fold-inner">
+            <label className="ks-field-label">{L_TIME}</label>
+            <TimeInput value={t1} onChange={setT1} />
+            <label className="ks-field-label">{L_CITY}</label>
+            <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+          </div>
         </div>
-        {/* 你 · 第3行 出生日期 */}
-        <div>
-          <label className="date-label" htmlFor="d1" style={{ textAlign: 'center', marginBottom: '5.6px' }}>{t('input.yourBirthday')}</label>
-          <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
+      </div>
+      <div className="ks-starcard">
+        <div className="ks-starcard-head">
+          <IconMoonTA />
+          <span className="ks-starcard-title">{L_CARD2}</span>
         </div>
-        {/* TA · 第1行 出生城市（可选） */}
-        <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_CITY}</label>
-          <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+        <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
+        <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
+        <button type="button" className="ks-fold-trigger" onClick={() => setFold2(v => !v)} aria-expanded={fold2}>
+          <span className="ks-fold-sign">{fold2 ? '−' : '＋'}</span>
+          <span className="ks-fold-label">{L_FOLD}</span>
+        </button>
+        <div className="ks-fold" data-open={fold2 ? 'true' : 'false'} data-settled={fold2Settled ? 'true' : 'false'}>
+          <div className="ks-fold-inner">
+            <label className="ks-field-label">{L_TIME}</label>
+            <TimeInput value={t2} onChange={setT2} />
+            <label className="ks-field-label">{L_CITY}</label>
+            <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+          </div>
         </div>
-        {/* TA · 第2行 出生时间（可选） */}
-        <div>
-          <label style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: '#D4AF37', fontWeight: 600, marginBottom: '5.6px' }}>{L_TIME}</label>
-          <TimeInput value={t2} onChange={setT2} />
-        </div>
-        {/* TA · 第3行 出生日期 */}
-        <div>
-          <label className="date-label" htmlFor="d2" style={{ textAlign: 'center', marginBottom: '5.6px' }}>{t('input.theirBirthday')}</label>
-          <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
-        </div>
+      </div>
+      <div className="ks-dual-stack">
         {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip；间距/内边距与财富框内一致） */}
         <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '12px', fontSize: '11px', color: '#F0D060', fontWeight: 400, lineHeight: 1.6, boxShadow: '0 2px 8px rgba(212,175,55,0.15)', textShadow: '0 1px 2px rgba(0,0,0,0.4)', textAlign: 'left' }}>
           <span style={{ marginRight: '6px' }}>🔮</span>{t('wealthInput.birthTip')}
@@ -455,14 +510,25 @@ function ScoreRing({ score }: { score: number }) {
   const R = 52, C = 2 * Math.PI * R;
   const offset = C - (score / 100) * C;
   return (
+    // ✦ E84（主公军令 2026-10-22）：双星共振环——青绿体检表环退役，
+    //    星轨流光渐变（香槟金 #F5D08A → 星云玫瑰紫 #C084FC）＋双环嵌套（外曜石槽＋内流光）。
     <div className="score-ring">
       <svg viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={R} fill="none" stroke="#e8faf8" strokeWidth="10" />
-        <circle cx="60" cy="60" r={R} fill="none" stroke="#81D8D0" strokeWidth="10"
+        <defs>
+          <linearGradient id="ks-ring-orbit" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F5D08A" />
+            <stop offset="52%" stopColor="#E9C7F2" />
+            <stop offset="100%" stopColor="#C084FC" />
+          </linearGradient>
+        </defs>
+        <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
+        <circle cx="60" cy="60" r={R} fill="none" stroke="url(#ks-ring-orbit)" strokeWidth="10"
           strokeLinecap="round" strokeDasharray={C} strokeDashoffset={offset}
-          transform="rotate(-90 60 60)" style={{ transition: 'stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1)' }} />
-        <text x="60" y="68" textAnchor="middle" fontSize="30" fontWeight="800" fill="#1A1F4B">{score}</text>
+          transform="rotate(-90 60 60)" style={{ transition: 'stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1)', filter: 'drop-shadow(0 0 6px rgba(245,208,138,0.55))' }} />
       </svg>
+      {/* ✦ E84：分数改 HTML 覆盖层（color 驱动）——SVG <text> 的 fill 不入 computed color，
+          美学探针（WCAG 口径）读 color 会拿 body 继承 #222 判假阳；HTML div 天然同口径。 */}
+      <div className="score-ring-num">{score}</div>
     </div>
   );
 }
@@ -588,6 +654,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
+
+  // ✦ E84（主公军令 2026-10-22）「付费即刻呈现」二段链：支付返回 ⇒ AI 洞察＋塔罗自动上屏后，
+  //    若 $4.99（compatibility_once）权益在册 ⇒ 自动流式生成四段完整合盘深报
+  //    （推演进度卡 + 张量画布 + 灵宠认领闭环）。等待 paidPlansLocal 就绪（checkPaidStatus 异步），
+  //    仅在 pendingInsightTrigger（真实支付返回）时触发一次 ⇒ VIP 日常刷新绝不误烧配额。
+  //    旧「💎 once 四段深报（已解锁）」手动按钮随之退役（军令：砍冗余模块）。
+  const autoReportLockRef = useRef(false);
+  useEffect(() => {
+    if (!pendingInsightTrigger || autoReportLockRef.current) return;
+    if (paidPlansLocal && (paidPlansLocal.compatibility_once === true || paidPlansLocal.all_pass_yearly === true)) {
+      autoReportLockRef.current = true;
+      generateReport('once');
+    }
+  }, [pendingInsightTrigger, paidPlansLocal]);
 
   // 🎯 Paywall auto-show: when paidStatus becomes false, show paywall
   useEffect(() => {
@@ -1235,6 +1315,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '20px',
+            color: '#F5D08A', /* ✦ E84：图标色金辉（原继承 #222 在深底上 1.37:1 违 WCAG） */
           }}>🔮</div>
           <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
         </div>
@@ -1272,6 +1353,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '20px',
+            color: '#F5D08A', /* ✦ E84：图标色金辉（原继承 #222 在深底上 1.37:1 违 WCAG） */
           }}>🔮</div>
           <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
         </div>
@@ -1308,14 +1390,26 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       )}
       {error && <p style={{ color: '#ff6b6b', marginTop: '8px' }}>{error}</p>}
       {insight && (
+        /* ✦ E84（主公军令 2026-10-22）：AI 洞察高定排版——分级段落＋金句高亮框：
+           【】开头段＝金句铭牌（金框高亮），其余段落香槟白左对齐、行距 1.75 呼吸感。 */
         <div className="insight-result">
-          {insight.split('\n\n').map((para, i) => (
-            <p key={i}>{para}</p>
-          ))}
+          {insight.split('\n\n').map((para, i) => {
+            const trimmed = para.trim();
+            if (/^【.+】$/.test(trimmed) || /^【/.test(trimmed)) {
+              return <p key={i} className="ks-insight-quote">{para}</p>;
+            }
+            if (trimmed.startsWith('✦') || trimmed.startsWith('✨') || trimmed.startsWith('🌟')) {
+              return <p key={i} className="ks-insight-highlight">{para}</p>;
+            }
+            return <p key={i}>{para}</p>;
+          })}
           {tarotCard && (
-            <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '8px', transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
-              <div style={{ fontWeight: 700, color: '#D4AF37', fontSize: '15px' }}>{tarotCard.name} {tarotCard.isReversed ? '(Reversed)' : '(Upright)'}</div>
+            /* ✦ E84（主公军令 2026-10-22）：塔罗牌卡面精修——🌍 emoji 裸奔退役，
+               暗金铭牌框（.ks-tarot-frame）＋微光悬浮动效＋正逆位旋转；正逆位文案取
+               tarot.ts 六语真源 orientation（原硬编码英文 Upright/Reversed 退役）。 */
+            <div className="ks-tarot-frame">
+              <div className="ks-tarot-glyph" style={{ transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
+              <div className="ks-tarot-name">{tarotCard.name}<span className="ks-tarot-orient"> · {tarotCard.orientation}</span></div>
             </div>
           )}
           {tarotLine && (
@@ -1339,12 +1433,14 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
           {/* 🎂 宇宙生日年鉴（AI 洞察解锁后始终显示） */}
+          {/* ✦ E84（主公军令 2026-10-22）：灰字看不清根治＋统一归入黑金高对比度卡片
+              （.ks-glass-card 毛玻璃＋钛金描边；说明文字 rgba(212,175,55,0.6)→#E9D8A6 金辉可读） */}
           {insight && paidPlansLocal && (
-            <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(212,175,55,0.06)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.25)' }}>
-              <div style={{ fontSize: '13px', color: '#D4AF37', fontWeight: 700, marginBottom: '8px' }}>
+            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
               </div>
-              <div style={{ fontSize: '11px', color: 'rgba(212,175,55,0.6)', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#E9D8A6', marginBottom: '8px', lineHeight: 1.5 }}>
                 {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
               </div>
               {/* 年卡/VIP → 免费生成 */}
@@ -1352,14 +1448,13 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报' : '📅 Monthly Report')}
                 </button>
-                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                   {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报' : '📆 Yearly Report')}
                 </button>
-                {/* 🛍️ E39-C: VIP 补齐 once 四段完整报告入口（权益内核 compatibilityEntitledByType('once') 认 all_pass_yearly） */}
-                <button onClick={() => generateReport('once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '💎 生成完整合盘报告' : '💎 Full Compatibility Report')}
-                </button>
-                <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，点击免费生成' : 'VIP free access'}</div>
+                {/* 🛍️ E39-C→🧹 E84（主公军令 2026-10-22）：VIP once 四段报告入口退役——
+                    E84「付费即刻呈现」自动流式生成链已覆盖（autoReportLockRef 二段链），
+                    军令铁令：彻底删除 once 深报手动入口及旧版冗余按钮。 */}
+                <div style={{ fontSize: '10px', color: '#E9D8A6', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，月报/年报点击免费生成' : 'VIP free access — Monthly & Yearly on demand'}</div>
               </>) : (
                 /* 非VIP → E39-C 按权益分档：已购档直达生成（修复"买完找不到入口"断层），未购档保留加购 */
                 <>
@@ -1369,31 +1464,26 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                     </button>
                   )}
                   {paidPlansLocal.compatibility_yearly_report === true && (
-                    <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                       {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报（已解锁）' : '📆 Yearly Report (Unlocked)')}
                     </button>
                   )}
-                  {paidPlansLocal.compatibility_once === true && (
-                    <button onClick={() => generateReport('once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      {reportLoading ? '⏳...' : (lang === 'zh' ? '💎 生成完整合盘报告（已解锁）' : '💎 Full Compatibility Report (Unlocked)')}
-                    </button>
-                  )}
+                  {/* 🧹 E84（主公军令 2026-10-22）：「💎 once 四段深报（已解锁）」手动按钮退役——
+                      支付返回后 autoReportLockRef 二段链已自动流式生成四段深报（付费即刻呈现），
+                      军令铁令：彻底删除「已解锁」按钮与旧版冗余入口。 */}
                   {paidPlansLocal.compatibility_monthly_report !== true && (
                     <button onClick={() => handlePurchase('compatibility_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                       📅 {lang === 'zh' ? '解锁情感月报 $2.99' : 'Unlock Monthly $2.99'}
                     </button>
                   )}
                   {paidPlansLocal.compatibility_yearly_report !== true && (
-                    <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
+                    <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
                       📆 {lang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
                     </button>
                   )}
-                  {paidPlansLocal.compatibility_once !== true && (
-                    <button onClick={() => handlePurchase('compatibility_once')} disabled={!!reportLoading} style={{ marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,182,193,0.45)', background: reportLoading ? '#444' : 'rgba(255,182,193,0.08)', color: '#FFB6C1', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      💎 {lang === 'zh' ? '解锁完整合盘报告 $4.99' : 'Unlock Full Report $4.99'}
-                    </button>
-                  )}
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
+                  {/* 🧹 E84：未购「💎 once 深报 $4.99」加购入口退役——$4.99 主购买入口
+                      仍在付费墙 PaywallCard（未购即显），此处二次推销属军令点名冗余，砍。 */}
+                  <div style={{ fontSize: '10px', color: 'var(--ks-text-secondary, #C7C2D4)', marginTop: '6px' }}>
                     💡 {lang === 'zh' ? `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。` : lang === 'en' ? `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.` : lang === 'es' ? `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.` : lang === 'fr' ? `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.` : lang === 'th' ? `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด` : `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`}
                   </div>
                 </>
@@ -1472,25 +1562,14 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
       <DimensionBars dims={dimensions} lang={lang} />
 
       {/* ── Collapsible Details (Engine Cards + Aspects) ── */}
+      {/* ✦ E84：折叠开关黑金化（原内联 #fff 白底退役，改 ks-detail-toggle 毛玻璃触发条） */}
       <div style={{ marginTop: '24px' }}>
         <button
+          className={`ks-detail-toggle${showDetails ? ' ks-detail-open' : ''}`}
           onClick={() => setShowDetails(!showDetails)}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            border: '1px solid rgba(26,31,75,0.15)',
-            background: showDetails ? 'rgba(26,31,75,0.05)' : '#fff',
-            color: '#1A1F4B',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
         >
-          <span>{showDetails ? (TXT.detailHide[lang] || TXT.detailHide.en) : (TXT.detailShow[lang] || TXT.detailShow.en)}</span>
+          <span className="ks-detail-toggle-label">{showDetails ? (TXT.detailHide[lang] || TXT.detailHide.en) : (TXT.detailShow[lang] || TXT.detailShow.en)}</span>
+          <span className={`chevron ${showDetails ? 'open' : ''}`}>›</span>
         </button>
         {showDetails && (
           <div style={{ marginTop: '16px' }}>

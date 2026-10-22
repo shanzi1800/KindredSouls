@@ -120,23 +120,31 @@ test('A5 装配真值：bazi/zodiac/iching/tarot/userBirthDate 五真值 + syste
   assert.match(text, /_compat\.system,/, 'system 提示未进 callAI');
   assert.match(text, /_compat\.user,/, 'user 提示未进 callAI');
 });
-test('A6 前端三档入口：generateReport 类型放宽 + VIP/非VIP 双分支 once 齐备', () => {
+test('A6 前端三档入口：generateReport 类型放宽 + VIP/非VIP 双分支（E84 付费即刻呈现版）', () => {
   assert.match(APP_TSX, /const generateReport = async \(type: 'monthly' \| 'yearly' \| 'once'\) =>/, 'generateReport 类型未放宽');
-  // VIP 分支：once 生成按钮
+  // 🧹 E84（主公军令 2026-10-22）「付费即刻呈现」：once 手动按钮（VIP/非VIP 已购/未购加购）全面退役，
+  //   由 autoReportLockRef 二段链在支付返回后自动流式生成（详见 audit-e84 闸门 E84-④ 段）。
+  //   本段改锁 E84 新形态：① once 权益判定仍在（fail-closed）；② 月报/年报手动入口保留；③ once 手动入口禁回流。
   const iVip = APP_TSX.indexOf('all_pass_yearly === true');
   assert.notEqual(iVip, -1, 'VIP 分支缺失');
   const iVipEnd = APP_TSX.indexOf('</>) : (', iVip);
   const vipSeg = APP_TSX.slice(iVip, iVipEnd);
-  assert.match(vipSeg, /generateReport\('once'\)/, 'VIP 分支缺 once 生成入口');
-  assert.match(vipSeg, /完整合盘报告/, 'VIP 分支缺完整报告文案');
-  // 非 VIP 分支：权益分档（已购直达生成 + 未购加购）
+  assert.match(vipSeg, /generateReport\('monthly'\)/, 'VIP 分支缺月报入口');
+  assert.match(vipSeg, /generateReport\('yearly'\)/, 'VIP 分支缺年报入口');
+  // E84：once 自动二段链（等权益就绪，仅支付返回场景触发）
+  assert.ok(APP_TSX.includes('autoReportLockRef'), 'E84 once 自动流式二段链缺失');
+  assert.match(APP_TSX, /generateReport\('once'\)/, 'once 生成通路丢失（二段链仍在用）');
+  // E84：once 手动按钮禁回流（军令铁令：砍冗余模块）
+  assert.ok(!APP_TSX.includes('完整合盘报告'), 'E84 once 手动入口文案回流违令');
+  assert.ok(!APP_TSX.includes("handlePurchase('compatibility_once')"), 'E84 once 未购加购入口回流违令');
+  // 非 VIP 分支：权益分档（已购档直达生成 + 未购加购；once 档由二段链接管）
   const iNonVip = iVipEnd;
   const iRender = APP_TSX.indexOf("reportText.split('\\n\\n')", iNonVip);
   const nonVipSeg = APP_TSX.slice(iNonVip, iRender);
-  for (const k of ['compatibility_monthly_report === true', 'compatibility_yearly_report === true', 'compatibility_once === true']) {
+  for (const k of ['compatibility_monthly_report === true', 'compatibility_yearly_report === true']) {
     assert.ok(nonVipSeg.includes(k), `非 VIP 分支缺已购档直达生成条件：${k}`);
   }
-  for (const k of ["handlePurchase('compatibility_monthly_report')", "handlePurchase('compatibility_yearly_report')", "handlePurchase('compatibility_once')"]) {
+  for (const k of ["handlePurchase('compatibility_monthly_report')", "handlePurchase('compatibility_yearly_report')"]) {
     assert.ok(nonVipSeg.includes(k), `非 VIP 分支缺加购入口：${k}`);
   }
 });
@@ -290,17 +298,18 @@ test('E1 闸门接线：test:astro 链路含本闸门且 node 段 +1', () => {
   assert.ok(chain.includes('audit-e39-compat-report-framework.test.mjs'), '本闸门未接线 test:astro');
   assert.ok(chain.split('&&').length >= 34, `链路段数异常（${chain.split('&&').length}）`);
 });
-test('E2 dist 产物带新入口（前端 build 已落地）', () => {
+test('E2 dist 产物带新入口（前端 build 已落地；E84 版锚点）', () => {
   const distDir = path.join(ROOT, 'web', 'dist');
   assert.ok(fs.existsSync(distDir), 'web/dist 缺失（build 未跑）');
+  // 🧹 E84：once 手动按钮文案已退役 => 锚点改为 E84 黑金重塑特征类名（塔罗铭牌框＋金句高亮）
   let hit = false;
   const scan = (d) => {
     for (const f of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, f.name);
       if (f.isDirectory()) scan(p);
-      else if (f.name.endsWith('.js') && fs.readFileSync(p, 'utf-8').includes('完整合盘报告')) hit = true;
+      else if (f.name.endsWith('.js') && (fs.readFileSync(p, 'utf8').includes('ks-tarot-frame') || fs.readFileSync(p, 'utf8').includes('ks-insight-quote'))) hit = true;
     }
   };
   scan(distDir);
-  assert.ok(hit, 'dist 产物未包含 once 入口文案（build 未重跑或入口丢失）');
+  assert.ok(hit, 'dist 产物未包含 E84 黑金锚点（build 未重跑或特征丢失）');
 });

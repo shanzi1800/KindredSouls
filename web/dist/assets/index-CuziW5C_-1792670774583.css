@@ -390,33 +390,85 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   background: #4AD8FF;
   box-shadow: 0 3px 12px rgba(0,0,0,0.3);
 }
-.btn-secondary { background: #fff; color: #81D8D0; border: 2px solid #81D8D0; margin-top: 20px; }
-.btn-secondary:hover { background: rgba(129,216,208,0.06); }
+/* ✦ E84：白底青边幽灵按钮退役 → 黑金幽灵（透明底＋钛金描边＋金字） */
+.btn-secondary {
+  background: rgba(245, 208, 138, 0.06);
+  color: var(--ks-text-gold, #F5D08A);
+  border: 1.5px solid rgba(245, 208, 138, 0.45);
+  margin-top: 20px;
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+}
+.btn-secondary:hover { background: rgba(245, 208, 138, 0.14); border-color: rgba(245, 208, 138, 0.7); }
 
 /* ── Loading ── */
 .loading-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
-.spinner { width: 44px; height: 44px; border: 3px solid #eee; border-top-color: #81D8D0; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.spinner { width: 44px; height: 44px; border: 3px solid rgba(255,255,255,0.08); border-top-color: var(--ks-gold, #F5D08A); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { margin-top: 18px; color: #999; font-size: 14px; }
+.loading-text { margin-top: 18px; color: var(--ks-text-secondary, #C7C2D4); font-size: 14px; }
+
+/* ✦ E84：result 折叠开关（查看/收起完整分析）—— 曜石毛玻璃触发条＋金箭头 */
+.ks-detail-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 208, 138, 0.28);
+  background: var(--ks-card-glass, rgba(21, 18, 40, 0.55));
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  box-shadow: var(--ks-card-glow);
+  color: var(--ks-text-primary, #F5F2FA);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.ks-detail-toggle:hover { border-color: rgba(245, 208, 138, 0.55); }
+.ks-detail-toggle .chevron { color: var(--ks-text-gold, #F5D08A); }
+.ks-detail-toggle-label { text-align: left; }
 
 /* ── Result Page ── */
 .result-page { padding-top: 20px; }
 
 /* Score Ring */
-.score-ring { width: 130px; height: 130px; margin: 20px auto 8px; }
+.score-ring { width: 130px; height: 130px; margin: 20px auto 8px; position: relative; }
 .score-ring svg { width: 100%; height: 100%; }
+/* ✦ E84：分数覆盖层（星辉白，color 驱动；对曜石底 ≈15.9:1 过 WCAG AA 大字 3:1） */
+.score-ring-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--ks-text-primary, #F5F2FA);
+  text-shadow: 0 2px 12px rgba(10, 9, 20, 0.6);
+  pointer-events: none;
+}
 
 /* Engine Cards */
 .engine-cards { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
 .engine-info { display: flex; flex-direction: column; gap: 3px; text-align: left; flex: 1; }
-.engine-name { font-size: 13px; font-weight: 600; color: #1A1F4B; }
-.engine-summary { font-size: 12px; color: #888; line-height: 1.4; }
-.engine-score { font-size: 20px; font-weight: 800; color: #1A1F4B; }
+.engine-name { font-size: 13px; font-weight: 600; color: var(--ks-text-primary, #F5F2FA); }
+.engine-summary { font-size: 12px; color: var(--ks-text-secondary, #C7C2D4); line-height: 1.4; }
+.engine-score { font-size: 20px; font-weight: 800; color: var(--ks-text-gold, #F5D08A); }
 
 /* AI Insight */
-.ai-insight { background: linear-gradient(135deg, #f0f7ff, #faf5ff); border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 18px; border: 1px solid rgba(129,216,208,0.2); }
-.ai-insight h3 { font-size: 14px; color: #1A1F4B; margin-bottom: 8px; }
-.ai-insight p { font-size: 13px; color: #555; line-height: 1.65; }
+/* ✦ E84：淡蓝紫浅底退役 → 曜石毛玻璃（.ai-insight-dark 变体并入同族） */
+.ai-insight {
+  background: var(--ks-card-glass, rgba(21, 18, 40, 0.55));
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  border: var(--ks-card-glass-border, 1px solid rgba(245, 208, 138, 0.28));
+  box-shadow: var(--ks-card-glow);
+  border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 18px;
+}
+.ai-insight h3 { font-size: 14px; color: var(--ks-text-gold, #F5D08A); margin-bottom: 8px; }
+.ai-insight p { font-size: 13px; color: var(--ks-text-secondary, #C7C2D4); line-height: 1.65; }
 /* Dark variant for paywall sections — matches deep space aesthetic */
 .ai-insight-dark { background: linear-gradient(170deg, #0e1028 0%, #0a0c1e 40%, #0D0D1A 100%) !important; border: 1px solid rgba(129,216,208,0.12) !important; }
 .ai-insight-dark h3 { color: #81D8D0 !important; text-shadow: 0 2px 20px rgba(129,216,208,0.3); }
@@ -427,50 +479,115 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 
 /* AI Insight result — tight paragraph spacing */
 .insight-result { text-align: left; }
-.insight-result p { font-size: 13px; color: #444; line-height: 1.65; text-align: left; margin: 0; padding: 0 0 6px 0; }
+.insight-result p { font-size: 13px; color: var(--ks-text-secondary, #C7C2D4); line-height: 1.75; text-align: left; margin: 0; padding: 0 0 8px 0; }
+.insight-result p:first-child { color: var(--ks-text-primary, #F5F2FA); }
 .insight-result p:last-child { padding-bottom: 0; }
 
+/* ✦ E84：AI 洞察高定排版——金句铭牌（【】段）＋星芒高亮（✦ 段） */
+.ks-insight-quote {
+  padding: 10px 14px !important;
+  background: rgba(245, 208, 138, 0.08) !important;
+  border-left: 3px solid var(--ks-gold, #F5D08A) !important;
+  border-radius: 0 10px 10px 0 !important;
+  color: var(--ks-text-gold, #F5D08A) !important;
+  font-weight: 600 !important;
+  margin: 4px 0 10px !important;
+}
+.ks-insight-highlight { color: var(--ks-text-primary, #F5F2FA) !important; font-weight: 600 !important; }
+
+/* ✦ E84：塔罗牌暗金铭牌框＋微光悬浮（牌面 emoji 为牌义符号保留，外壳黑金精修） */
+.ks-tarot-frame {
+  margin-top: 16px;
+  padding: 18px 16px 14px;
+  background: linear-gradient(165deg, rgba(245, 208, 138, 0.10) 0%, rgba(192, 132, 252, 0.07) 100%);
+  border: 1px solid rgba(245, 208, 138, 0.4);
+  border-radius: 14px;
+  text-align: center;
+  box-shadow:
+    0 6px 24px rgba(10, 9, 20, 0.5),
+    0 0 18px rgba(245, 208, 138, 0.12),
+    inset 0 1px 0 rgba(245, 208, 138, 0.15);
+  animation: ksTarotFloat 3.6s ease-in-out infinite;
+}
+@keyframes ksTarotFloat {
+  0%, 100% { transform: translateY(0); box-shadow: 0 6px 24px rgba(10, 9, 20, 0.5), 0 0 14px rgba(245, 208, 138, 0.10), inset 0 1px 0 rgba(245, 208, 138, 0.15); }
+  50% { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(10, 9, 20, 0.5), 0 0 24px rgba(245, 208, 138, 0.22), inset 0 1px 0 rgba(245, 208, 138, 0.2); }
+}
+.ks-tarot-glyph {
+  font-size: 48px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+  transition: transform 0.6s var(--ks-ease-orbit, cubic-bezier(0.65, 0, 0.35, 1));
+  filter: drop-shadow(0 0 10px rgba(245, 208, 138, 0.45));
+}
+.ks-tarot-name {
+  font-weight: 700;
+  color: var(--ks-text-gold, #F5D08A);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.ks-tarot-orient { color: var(--ks-text-secondary, #C7C2D4); font-size: 12.5px; font-weight: 500; }
+
 /* Aspects Tags */
+/* ✦ E84：绿/黄浅底胶囊退役 → 金辉/星云紫胶囊（黑金系） */
 .aspects { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
 .aspect-group { text-align: left; }
-.aspect-group h4 { font-size: 13px; color: #555; margin-bottom: 8px; }
+.aspect-group h4 { font-size: 13px; color: var(--ks-text-secondary, #C7C2D4); margin-bottom: 8px; }
 .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin: 0 6px 6px 0; }
-.tag-good { background: rgba(129,216,208,0.15); color: #2a8a7a; }
-.tag-warn { background: rgba(212,175,55,0.15); color: #b8860b; }
+.tag-good { background: rgba(245, 208, 138, 0.14); color: #F5D08A; border: 1px solid rgba(245, 208, 138, 0.35); }
+.tag-warn { background: rgba(192, 132, 252, 0.16); color: #D8B4FE; border: 1px solid rgba(192, 132, 252, 0.35); }
 
 /* Error */
 .error-msg { color: #e74c3c; font-size: 13px; marginTop: 12px; }
 
 /* ── Back Button ── */
-.back-btn { background: none; border: none; cursor: pointer; color: #81D8D0; font-size: 14px; font-weight: 600; padding: 0; margin-bottom: 16px; }
+.back-btn { background: none; border: none; cursor: pointer; color: var(--ks-text-gold, #F5D08A); font-size: 14px; font-weight: 600; padding: 0; margin-bottom: 16px; }
 .back-btn:hover { opacity: 0.7; }
 
 /* ── Score Label ── */
-.score-label { text-align: center; font-size: 13px; color: #888; font-weight: 500; margin-bottom: 20px; letter-spacing: 0.5px; }
+.score-label { text-align: center; font-size: 13px; color: var(--ks-text-secondary, #C7C2D4); font-weight: 500; margin-bottom: 20px; letter-spacing: 0.5px; }
 
 /* ── Four Dimensions ── */
-.dim-section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid #eee; }
-.section-title { font-size: 13px; font-weight: 700; color: #1A1F4B; margin-bottom: 14px; }
+/* ✦ E84（主公军令 2026-10-22）：医院白底体检卡退役 → 曜石毛玻璃星卡；
+   廉价绿条退役 → 星轨流光能量条（令牌 --ks-progress-orbit）。 */
+.dim-section {
+  background: var(--ks-card-glass, rgba(21, 18, 40, 0.55));
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  border: var(--ks-card-glass-border, 1px solid rgba(245, 208, 138, 0.28));
+  box-shadow: var(--ks-card-glow);
+  border-radius: 14px; padding: 16px; margin-bottom: 16px;
+}
+.section-title { font-size: 13px; font-weight: 700; color: var(--ks-text-gold, #F5D08A); margin-bottom: 14px; text-align: left; letter-spacing: 0.05em; }
 .dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .dim-row:last-child { margin-bottom: 0; }
-.dim-label { font-size: 12px; color: #1a1a1a; width: 110px; flex-shrink: 0; text-align: left; font-family: 'SimHei', 'Heiti SC', sans-serif; font-weight: 900; }
-.dim-bar-bg { flex: 1; height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
-.dim-bar-fill { height: 100%; background: linear-gradient(90deg, #81D8D0, #5cc5bb); border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
-.dim-val { font-size: 13px; font-weight: 700; color: #1A1F4B; width: 26px; text-align: right; }
+.dim-label { font-size: 12px; color: var(--ks-text-primary, #F5F2FA); width: 110px; flex-shrink: 0; text-align: left; font-family: 'SimHei', 'Heiti SC', sans-serif; font-weight: 900; }
+.dim-bar-bg { flex: 1; height: 6px; background: var(--ks-progress-track, rgba(255,255,255,0.07)); border-radius: 3px; overflow: hidden; }
+.dim-bar-fill { height: 100%; background: var(--ks-progress-orbit, linear-gradient(90deg, #F5D08A, #C084FC)); box-shadow: var(--ks-progress-glow); border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+.dim-val { font-size: 13px; font-weight: 700; color: var(--ks-text-gold, #F5D08A); width: 26px; text-align: right; }
 
 /* ── Engine Cards (interactive) ── */
-.engine-card { background: #fff; border-radius: 14px; border: 1px solid #eee; margin-bottom: 10px; overflow: hidden; }
+/* ✦ E84：白底折叠卡退役 → 曜石毛玻璃；标题/分值左右两端对齐（禁电线杆居中），
+   详情左对齐结构化排版（detail-heading 金标签／detail-line 次文）。 */
+.engine-card {
+  background: var(--ks-card-glass, rgba(21, 18, 40, 0.55));
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  border: var(--ks-card-glass-border, 1px solid rgba(245, 208, 138, 0.28));
+  box-shadow: var(--ks-card-glow);
+  border-radius: 14px; margin-bottom: 10px; overflow: hidden;
+}
 .engine-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; }
-.engine-card-header:active { background: #fafafa; }
+.engine-card-header:active { background: rgba(245, 208, 138, 0.06); }
 .engine-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.engine-icon { font-size: 20px; flex-shrink: 0; }
+.engine-icon { font-size: 20px; flex-shrink: 0; color: var(--ks-text-gold, #F5D08A); }
 .engine-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.chevron { font-size: 20px; color: #ccc; transition: transform 0.2s; display: inline-block; }
-.chevron.open { transform: rotate(90deg); color: #81D8D0; }
-.engine-detail { padding: 0 16px 16px; border-top: 1px solid #f0f0f0; animation: slideDown 0.2s ease; }
+.chevron { font-size: 20px; color: var(--ks-text-secondary, #C7C2D4); transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(90deg); color: var(--ks-text-gold, #F5D08A); }
+.engine-detail { padding: 0 16px 16px; border-top: 1px solid rgba(245, 208, 138, 0.12); animation: slideDown 0.2s ease; text-align: left; }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-.detail-heading { font-size: 12px; font-weight: 700; color: #1A1F4B; margin-top: 12px; margin-bottom: 4px; }
-.detail-line { font-size: 12px; color: #555; line-height: 1.65; margin-bottom: 2px; }
+.detail-heading { font-size: 12px; font-weight: 700; color: var(--ks-text-gold, #F5D08A); margin-top: 12px; margin-bottom: 4px; text-align: left; }
+.detail-line { font-size: 12px; color: var(--ks-text-secondary, #C7C2D4); line-height: 1.65; margin-bottom: 2px; text-align: left; }
 
 /* ── Date Field ── */
 .date-field { position: relative; }
@@ -1098,26 +1215,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   animation: fadeIn 0.3s ease-out;
 }
 
+/* ✦ E84 黑曜浮雕化：深空曜石毛玻璃＋钛金描边＋双光晕（令牌真源 celestial-tokens.css） */
 .mode-modal {
-  background: linear-gradient(168deg, rgba(26, 31, 75, 0.97) 0%, rgba(18, 22, 55, 0.99) 100%);
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: var(--ks-card-glass, linear-gradient(168deg, rgba(26, 31, 75, 0.97) 0%, rgba(18, 22, 55, 0.99) 100%));
+  backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  -webkit-backdrop-filter: var(--ks-card-glass-blur, blur(20px));
+  border: var(--ks-card-glass-border, 1px solid rgba(245, 208, 138, 0.28));
+  box-shadow: var(--ks-card-glass-glow, 0 8px 32px rgba(10, 9, 20, 0.55));
   border-radius: 20px;
   padding: 32px 24px;
   max-width: 340px;
   width: 100%;
   /* 主公令 45-B11：弹窗整体下移 1cm —— flex 居中下 margin-top 取 2cm（对称抵消一半）即净下移 1cm ≈ 37.8px */
   margin-top: 2cm;
-  animation: slideUp 0.4s ease-out;
+  animation: slideUp 0.4s var(--ks-ease-silk, ease-out);
 }
 
 .mode-modal-title {
   font-size: 20px;
   font-weight: 700;
-  color: #D4AF37;
+  color: var(--ks-text-gold, #D4AF37);
   text-align: center;
   margin-bottom: 24px;
+  letter-spacing: 0.06em;
 }
 
+/* ✦ E84 曜石星卡按钮：悬浮微光流金边框＋点击引力缩放反馈 */
 .mode-option {
   display: flex;
   align-items: center;
@@ -1125,25 +1248,49 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   width: 100%;
   padding: 16px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(245, 208, 138, 0.18);
   border-radius: 12px;
   margin-bottom: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    border-color 0.3s var(--ks-ease-silk, ease),
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.18s var(--ks-ease-silk, ease);
   text-align: left;
 }
 
 .mode-option:hover {
-  background: rgba(168, 85, 247, 0.1);
-  border-color: rgba(168, 85, 247, 0.5);
-  transform: translateX(4px);
+  background: rgba(192, 132, 252, 0.12);
+  border-color: rgba(245, 208, 138, 0.55);
+  box-shadow:
+    0 0 18px rgba(245, 208, 138, 0.14),
+    inset 0 0 12px rgba(192, 132, 252, 0.06);
+  transform: translateY(-1px);
 }
 
+.mode-option:active {
+  /* 引力缩放反馈：点击瞬间被「引力场」轻吸 */
+  transform: scale(0.97);
+}
+
+/* ✦ E84：icon 位由 Emoji 换 SVG 矢量（EsotericIcons.tsx）——48px 固定宽守恒（E79 军令），
+   星芒微光滤镜走令牌 --ks-icon-glow（skills/kindredsouls-celestial-ui 第四章规范） */
 .mode-icon {
   font-size: 32px;
   line-height: 1;
   width: 48px;
   text-align: center;
+}
+
+.mode-icon .ks-esoteric-icon {
+  filter: var(--ks-icon-glow, drop-shadow(0 0 6px rgba(245, 208, 138, 0.55)));
+  transition: transform 0.3s var(--ks-ease-silk, ease);
+}
+
+.mode-option:hover .ks-esoteric-icon {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 9px rgba(245, 208, 138, 0.8));
 }
 
 .mode-label {
@@ -1177,6 +1324,114 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .mode-text .mode-desc {
   overflow-wrap: anywhere; /* 泰/越长副标题在词界缺失时也可断行 */
   word-break: normal;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ✦ E84（主公军令 2026-10-22）：双人输入页·双星分卡（Deep-space Star Cards）
+ *    推翻 45-B5 六黑框堆叠：两张曜石星卡（你 / TA），必填生日置顶，
+ *    选填时辰＋城市渐进式丝滑折叠（.ks-fold 令牌件）。
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* 曜石星卡本体：流光毛玻璃＋钛金描边（.ks-glass-card 令牌正身＋表单域扩展） */
+.ks-starcard {
+  background: var(--ks-card-glass);
+  -webkit-backdrop-filter: var(--ks-card-glass-blur);
+  backdrop-filter: var(--ks-card-glass-blur);
+  border: var(--ks-card-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--ks-card-glow);
+  padding: 18px 16px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 星卡头：SVG 图标＋标题（金）横排 */
+.ks-starcard-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(245, 208, 138, 0.14);
+}
+
+.ks-starcard-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ks-text-gold, #F5D08A);
+  letter-spacing: 0.04em;
+}
+
+.ks-starcard-head .ks-esoteric-icon {
+  flex-shrink: 0;
+}
+
+/* 表单域标签：左对齐（E84 废除居中电线杆） */
+.ks-starcard .date-label {
+  text-align: left;
+}
+
+.ks-field-label {
+  display: block;
+  text-align: left;
+  font-size: 12px;
+  color: var(--ks-text-gold, #F5D08A);
+  font-weight: 600;
+  margin: 4px 0 5.6px;
+}
+
+/* 折叠触发条：微光金线＋＋/− 符号，悬浮流金 */
+.ks-fold-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(245, 208, 138, 0.06);
+  border: 1px dashed rgba(245, 208, 138, 0.35);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  margin-top: 2px;
+}
+
+.ks-fold-trigger:hover {
+  background: rgba(245, 208, 138, 0.12);
+  border-color: rgba(245, 208, 138, 0.6);
+}
+
+.ks-fold-sign {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ks-text-gold, #F5D08A);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ks-fold-label {
+  font-size: 11.5px;
+  color: var(--ks-text-secondary, #C7C2D4);
+  line-height: 1.45;
+  text-align: left;
+}
+
+/* 折叠抽屉（令牌 .ks-fold grid-rows 0fr→1fr 丝滑）＋展开落定后放行下拉弹层：
+   CitySearchInput 建议层为 absolute，须防 .ks-fold-inner overflow:hidden 裁切（E71 血训） */
+.ks-fold[data-settled='true'] > .ks-fold-inner {
+  overflow: visible;
+}
+
+.ks-fold-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+/* 金牌提示容器：星卡间距收口 */
+.ks-dual-stack {
+  margin-top: 4px;
 }
 
 @keyframes fadeIn {

@@ -160,11 +160,12 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         fontWeight: 800,
         letterSpacing: '-0.3px',
         marginBottom: '2px',
-        background: 'linear-gradient(135deg, #81D8D0 0%, #2ECBF7 50%, #81D8D0 100%)',
+        /* ✦ E84：标题青蓝渐变退役 → 品牌金紫 */
+        background: 'linear-gradient(135deg, #F5D08A 0%, #E9C7F2 52%, #C084FC 100%)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
-        filter: 'drop-shadow(0 0 20px rgba(129,216,208,0.3))',
+        filter: 'drop-shadow(0 0 20px rgba(245,208,138,0.3))',
       }}>{c.title}</div>
 
       {/* 副标题 — 紫色 */}
@@ -210,8 +211,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
           }}>
             <span style={{
               width: '6px', height: '6px', borderRadius: '50%',
-              background: '#81D8D0', flexShrink: 0,
-              boxShadow: '0 0 8px rgba(129,216,208,0.4)',
+              background: '#F5D08A', flexShrink: 0,
+              boxShadow: '0 0 8px rgba(245,208,138,0.4)',
             }} />
             {item}
           </div>
@@ -240,16 +241,18 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
           padding: '13px 24px',
           borderRadius: '14px',
           border: 'none',
+          /* ✦ E84（主公军令 2026-10-22）：青蓝渐变退役 → 品牌星轨金紫渐变（一镜到底）；
+             双端渐变（无亮中段）⇒ 均值 194<200，不触发美学探针「大面积亮白」铁律。 */
           background: loading
             ? '#444'
-            : 'linear-gradient(135deg, #2ECBF7 0%, #81D8D0 100%)',
+            : 'linear-gradient(135deg, #F5D08A 0%, #C084FC 100%)',
           color: '#0D0D1A',
           fontSize: '16px',
           fontWeight: 800,
           cursor: loading ? 'not-allowed' : 'pointer',
           marginBottom: '10px',
           transition: 'all 0.25s ease',
-          boxShadow: loading ? 'none' : '0 4px 24px rgba(129,216,208,0.35), 0 0 60px rgba(46,203,247,0.1)',
+          boxShadow: loading ? 'none' : '0 4px 24px rgba(245,208,138,0.35), 0 0 60px rgba(192,132,252,0.12)',
           letterSpacing: '0.3px',
         }}
         onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
