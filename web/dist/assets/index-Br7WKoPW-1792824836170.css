@@ -552,6 +552,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   letter-spacing: 0.04em;
 }
 .ks-tarot-orient { color: var(--ks-text-secondary, #C7C2D4); font-size: 12.5px; font-weight: 500; }
+/* ✦ E87-①（主公军令 2026-10-25）：塔罗解读行——暗淡透明度退役，
+   亮度与姻缘报告正文单源同令牌（--ks-text-secondary），正文同款 13px/1.75 行距。 */
+.ks-tarot-line { margin: 12px 0 0; font-style: italic; font-size: 13px; line-height: 1.75; color: var(--ks-text-secondary, #C7C2D4); }
 
 /* Aspects Tags */
 /* ✦ E84：绿/黄浅底胶囊退役 → 金辉/星云紫胶囊（黑金系） */

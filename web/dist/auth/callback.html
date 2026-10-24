@@ -79,12 +79,21 @@
         window.close();
         setTimeout(() => {
           if (window.closed) return; // 弹窗模式已关 ⇒ 父窗接管
-          const back = localStorage.getItem('ks_oauth_back_url');
-          let target = back || '/';
+          // 🔴 E87-④/⑤（主公军令 2026-10-25）：ks_oauth_back_url 只服务「财富购买意图」
+          //    的回场续跑（E72 intent=checkout 全参现场）；纯登录（无 pendingPlan）与
+          //    姻缘购买意图一律回 '/'——陈年 backUrl（财富页所写、只写不清）曾把
+          //    重新登录劫持进 /wealth/report?… 死循环，首页永不可达。用后即清，绝不滞留。
+          const WEALTH_PLANS = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly'];
+          let target = '/';
+          if (pendingPlan && WEALTH_PLANS.indexOf(pendingPlan) !== -1) {
+            const back = localStorage.getItem('ks_oauth_back_url');
+            if (back) target = back;
+          }
+          try { localStorage.removeItem('ks_oauth_back_url'); } catch (e) { /* noop */ }
           if (pendingPlan) {
             target += (target.includes('?') ? '&' : '?') + 'intent=checkout&plan=' + encodeURIComponent(pendingPlan);
           }
-          console.log('[KS Auth Callback] 🔄 E72 重定向模式收口 →', target);
+          console.log('[KS Auth Callback] 🔄 E72/E87 重定向模式收口 →', target);
           window.location.replace(target);
         }, 350);
       } catch (e) {

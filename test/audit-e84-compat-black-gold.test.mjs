@@ -83,7 +83,8 @@ test('E84-③ result 页黑金一镜到底：白底/绿条退役＋流光金紫�
 test('E84-④→E85-① 付费即刻呈现：沙盒授予落支付标志＋per-session 解锁自动揭晓链', () => {
   const app = read('web/src/App.tsx');
   // 沙盒 onGranted：先落 ks_payment_success 再 reload（复用自动触发链）
-  const onGranted = app.slice(app.indexOf('onGranted:'), app.indexOf('onGranted:') + 260);
+  // （E87-③ 扩容锚窗 260→700：onGranted 增付讫报告路由标记后 reload 被旧窗挤出）
+  const onGranted = app.slice(app.indexOf('onGranted:'), app.indexOf('onGranted:') + 700);
   assert.ok(onGranted.includes("sessionStorage.setItem('ks_payment_success', '1')"), 'E84 沙盒授予未落支付成功标志');
   assert.ok(onGranted.includes('window.location.reload()'), 'E84 沙盒授予未刷新承接');
   // 🧹 E85（主公军令 2026-10-24）：autoReportLockRef 二段链（支付后自动生成 once 合盘

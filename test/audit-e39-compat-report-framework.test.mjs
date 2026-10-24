@@ -129,14 +129,18 @@ test('A6 前端两档入口：generateReport 收窄 monthly/yearly（E85 合盘�
   assert.ok(!APP_TSX.includes('autoReportLockRef'), 'E85 once 二段链残留违令');
   assert.ok(!APP_TSX.includes('完整合盘报告'), 'E85 once 手动入口文案回流违令');
   assert.ok(!APP_TSX.includes("handlePurchase('compatibility_once')"), 'E85 once 未购加购入口回流违令');
-  // 年鉴统一按钮：行为按权益分流（已购/VIP 点击＝生成，未购点击＝购买）
+  // 年鉴统一按钮：E87-②（主公军令 2026-10-25）购买先行——账号级权益旁路退役，
+  //   点击一律先走购买链（沙盒/already_paid 由收口统一处理），付讫回场经
+  //   pendingReportTrigger 消费效应自动生成（generateReport 仅存自动链一途）。
   const iAlm = APP_TSX.indexOf('L_ALMANAC_BTN[lang]');
   assert.notEqual(iAlm, -1, 'E85 年鉴六语统一词条缺失');
   const almSeg = APP_TSX.slice(Math.max(0, iAlm - 2600), iAlm + 1600);
-  assert.ok(almSeg.includes("generateReport('monthly')"), 'E85 年鉴月报按钮缺生成分流');
-  assert.ok(almSeg.includes("generateReport('yearly')"), 'E85 年鉴年报按钮缺生成分流');
+  assert.ok(!almSeg.includes("generateReport('monthly')"), 'E87 年鉴月报按钮生成分流残留违令（未付严禁直调生成接口）');
+  assert.ok(!almSeg.includes("generateReport('yearly')"), 'E87 年鉴年报按钮生成分流残留违令（未付严禁直调生成接口）');
   assert.ok(almSeg.includes("handlePurchase('compatibility_monthly_report')"), 'E85 年鉴月报按钮缺购买分流');
   assert.ok(almSeg.includes("handlePurchase('compatibility_yearly_report')"), 'E85 年鉴年报按钮缺购买分流');
+  // E87-③：付讫报告自动生成链（消费效应）为 generateReport 的唯一合法调用形态
+  assert.ok(APP_TSX.includes('generateReport(pendingReportTrigger)'), 'E87 付讫报告自动生成消费链缺失');
 });
 
 // ══════════════════ B 组 · 时间真值（裁决 2）══════════════════

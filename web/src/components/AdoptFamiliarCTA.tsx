@@ -139,6 +139,12 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
         localStorage.removeItem('ks_result');
         sessionStorage.removeItem('ks_result');
         sessionStorage.removeItem('ks_compat_session_unlocked');
+        // 🔴 E87-④（主公军令 2026-10-25）：认领＝消费终局——同步清除陈年回跳劫持源。
+        //    ks_oauth_back_url（财富报告页所写、只写不清）曾在「回首页」冷启动时把
+        //    用户整页劫持进 /wealth/report?… 死循环；ks_pending_checkout_plan 同为
+        //    冷启动自动续跑源，一并清零，认领后 '/' 只认星空首页。
+        localStorage.removeItem('ks_oauth_back_url');
+        localStorage.removeItem('ks_pending_checkout_plan');
       } catch (_) { /* 隐私模式忽略 */ }
       if (onAdopted) {
         onAdopted();

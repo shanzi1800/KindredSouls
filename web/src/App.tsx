@@ -194,6 +194,12 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
       //    消灭「付完 $4.99 还要再点一次『生成 AI 洞察』按钮」的商业漏斗断点。
       const route = dispatchCheckoutRoute(data, { origin: window.location.origin, onGranted: () => {
         sessionStorage.setItem('ks_payment_success', '1');
+        // 🔴 E87-③（主公军令 2026-10-25）：月报/年报付讫 ⇒ 落报告路由标记——冷启动
+        //    自动分诊到对应报告生成（不再误触 once 洞察自动链）。
+        try {
+          if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
+          else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
+        } catch { /* noop */ }
         window.location.reload();
       } });
       if (route.kind === 'redirect') {
@@ -203,20 +209,17 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         // 🔴 沙盘截断：绝不跳外链 —— 收银台已由总线就地唤起（真金白银路径逐字未改）
         console.log('[KindredSouls] 🧪 sandbox checkout — cashier opened in place:', route.plan);
       } else if (route.kind === 'paid') {
-        // 🔴 E86-③（主公军令 2026-10-24）：already_paid 静默吞噬根治——
-        //    $4.99 按次消费品语义下，账号已持有 once 权益（服务端防重付挡死重复下单）
-        //    ⇒ 点击「立即解锁」视作当次会话解锁：落 per-session 标记＋复用
-        //    ks_payment_success → ResultPage → pendingInsightTrigger 全自动揭晓链。
-        //    （E85「付费墙必现」与「点击必响应」自此闭环：墙不白送、点击必有下文。）
-        if (plan === 'compatibility_once') {
-          try {
-            sessionStorage.setItem('ks_payment_success', '1');
-            sessionStorage.setItem('ks_compat_session_unlocked', '1');
-          } catch { /* noop */ }
-          window.location.reload();
-        } else {
-          console.log('[KindredSouls] Already covered by existing plan, skipping checkout');
-        }
+        // 🔴 E86-③＋E87-②/③（主公军令 2026-10-24/25）：already_paid 静默吞噬根治——
+        //    服务端防重付挡死重复下单 ⇒ 点击「解锁」一律视作当次会话解锁：落支付成功
+        //    标志＋对应报告路由标记后 reload（once ⇒ 洞察自动揭晓；monthly/yearly ⇒
+        //    报告自动生成）。
+        try {
+          sessionStorage.setItem('ks_payment_success', '1');
+          if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
+          else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
+          if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
+        } catch { /* noop */ }
+        window.location.reload();
       } else {
         console.error('[KindredSouls] Stripe checkout failed:', data);
         alert('Payment initiation failed. Please try again or contact support.');
@@ -633,7 +636,7 @@ const L_ALMANAC_BTN: Record<string, { monthly: string; yearly: string }> = {
   vi: { monthly: '📅 Mở Khóa Báo Cáo Nhân Duyên Tháng $2.99', yearly: '👑 Mở Khóa Báo Cáo Nhân Duyên Năm $29.99' },
 };
 
-function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
+function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, pendingReportTrigger, onReportConsumed, onLogout }: {
   d1: string; d2: string; overall: number;
   // 🌌 E40+：双人时空真值（可选；缺省 ⇒ 服务端如实降级，不伪造）
   t1?: string; c1?: { key: string; tz: string; lat: number; lon: number } | null;
@@ -645,6 +648,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   onTriggerInsight?: () => void;
   pendingInsightTrigger?: boolean;
+  // ✦ E87-③：月报/年报付讫回场的报告自动生成信号（消费即清防重触）
+  pendingReportTrigger?: 'monthly' | 'yearly' | null;
+  onReportConsumed?: () => void;
   onLogout?: () => void;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
@@ -1264,6 +1270,18 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       setReportLoading(false);
     }
   };
+  // ✦ E87-③（主公军令 2026-10-25）：月报/年报付讫回场自动生成链——沙盒付款 reload 后
+  //    组件冷启动（insight 等局部 state 已清）：先落会话解锁，再并行复活 once 洞察
+  //    （服务端 Gate41 缓存秒回）＋自动生成对应报告；消费即清防重触。
+  useEffect(() => {
+    if (pendingReportTrigger === 'monthly' || pendingReportTrigger === 'yearly') {
+      try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
+      setSessionUnlocked(true);
+      if (!insight) triggerInsight();
+      generateReport(pendingReportTrigger);
+      onReportConsumed?.();
+    }
+  }, [pendingReportTrigger]);
   // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
   const urlHasToken = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
   if (!sessionChecked || (paidStatus === null && !showAuthWall) || isAuthParsing) {
@@ -1417,7 +1435,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             </div>
           )}
           {tarotLine && (
-            <p style={{ marginTop: '12px', fontStyle: 'italic', opacity: 0.85, fontSize: '13px' }}>{tarotLine}</p>
+            /* ✦ E87-①（主公军令 2026-10-25）：解读行内 opacity:0.85 压暗样式退役，
+               改挂 .ks-tarot-line——与上方报告正文同一亮度令牌单源。 */
+            <p className="ks-tarot-line">{tarotLine}</p>
           )}
           {/* 🐾 E85-③/④（主公军令 2026-10-24）：付费揭晓区纯净结构之二 —— 🐾 认领专属灵宠卡
               （原挂在合盘报告交付后，随合盘退役提升为 AI 洞察直后的独立板块；
@@ -1446,23 +1466,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               <div style={{ fontSize: '11px', color: '#E9D8A6', marginBottom: '8px', lineHeight: 1.5 }}>
                 {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
               </div>
-              {/* 📅 月报按钮：统一待解锁购买样式（永久带金额）；已购/VIP 点击＝生成，未购点击＝购买 */}
+              {/* 📅 月报按钮：E87-②（主公军令 2026-10-25）——账号级权益旁路退役
+                  （曾致未付直调生成接口被后端按当次权益判定拒绝、报「生成报告失败」）。
+                  点击一律先走购买链：沙盒收银台/already_paid 由 handlePurchaseWithToken
+                  统一收口，付讫回场经 ks_paid_report_type 自动生成对应报告。 */}
               <button
-                onClick={() => {
-                  const owned = !!paidPlansLocal && (paidPlansLocal.all_pass_yearly === true || paidPlansLocal.compatibility_monthly_report === true);
-                  if (owned) generateReport('monthly'); else handlePurchase('compatibility_monthly_report');
-                }}
+                onClick={() => { handlePurchase('compatibility_monthly_report'); }}
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', marginBottom: '8px', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
                 {reportLoading === 'monthly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly}
               </button>
-              {/* 👑 年报按钮：同上统一待解锁购买样式（永久带金额） */}
+              {/* 👑 年报按钮：E87-② 同令——购买先行，付讫回场自动生成年报 */}
               <button
-                onClick={() => {
-                  const owned = !!paidPlansLocal && (paidPlansLocal.all_pass_yearly === true || paidPlansLocal.compatibility_yearly_report === true);
-                  if (owned) generateReport('yearly'); else handlePurchase('compatibility_yearly_report');
-                }}
+                onClick={() => { handlePurchase('compatibility_yearly_report'); }}
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
@@ -1501,7 +1518,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
 }
 
 /* ── Result Page ── */
-function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; onLogout?: () => void }) {
+function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, pendingReportTrigger = null, setPendingReportTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; pendingReportTrigger?: 'monthly' | 'yearly' | null; setPendingReportTrigger?: (v: 'monthly' | 'yearly' | null) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions, luckyAspects, challengingAspects } = result;
 
@@ -1515,10 +1532,18 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
   const [showDetails, setShowDetails] = useState(false);
 
   // Auto-trigger AI insight after Stripe payment success
+  // ✦ E87-③（主公军令 2026-10-25）：付讫信号分诊——ks_paid_report_type 在场 ⇒ 月报/
+  //    年报自动生成；否则 once 洞察自动揭晓（E84 链保持不动）。
   useEffect(() => {
     if (sessionStorage.getItem('ks_payment_success') === '1') {
+      const paidType = sessionStorage.getItem('ks_paid_report_type');
       sessionStorage.removeItem('ks_payment_success');
-      setPendingInsightTrigger && setPendingInsightTrigger(true);
+      if (paidType === 'monthly' || paidType === 'yearly') {
+        sessionStorage.removeItem('ks_paid_report_type');
+        setPendingReportTrigger && setPendingReportTrigger(paidType);
+      } else {
+        setPendingInsightTrigger && setPendingInsightTrigger(true);
+      }
     }
   }, []);
 
@@ -1588,6 +1613,8 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         challengingAspects={challengingAspects}
         lang={lang}
         pendingInsightTrigger={pendingInsightTrigger}
+        pendingReportTrigger={pendingReportTrigger}
+        onReportConsumed={() => setPendingReportTrigger && setPendingReportTrigger(null)}
         onLogout={onLogout}
       />
 
@@ -1703,6 +1730,8 @@ export default function App() {
   const [currentLang, setCurrentLang] = useState<'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'>(() => (i18n.language as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi') || 'en');
 // ✅ Restore result page after OAuth login or payment success (not every refresh)
  const [pendingInsightTrigger, setPendingInsightTrigger] = useState(false);
+ // ✦ E87-③：月报/年报付讫回场的报告自动生成信号（ResultPage 消费 ks_paid_report_type 落此）
+ const [pendingReportTrigger, setPendingReportTrigger] = useState<'monthly' | 'yearly' | null>(null);
 
   // ── handlePurchase 核心逻辑（接收明确的 token 参数）──
 
@@ -1746,7 +1775,11 @@ export default function App() {
 
  useEffect(() => {
  const search = window.location.search;
- const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
+ // 🔴 E87-③（主公军令 2026-10-25）「年报支付后黑屏」主病灶：沙盒付讫回场只有
+ //    会话标志（URL 无 payment=success），旧判定不认 ⇒ 走纯冷启动分支——既不恢复
+ //    result 又清掉 ks_result ⇒ /result 零渲染＝黑屏。纳入会话信号后照常恢复现场。
+ const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success'
+   || sessionStorage.getItem('ks_payment_success') === '1';
  // Detect OAuth callback: Supabase returns with access_token or code in URL hash
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
@@ -1792,12 +1825,18 @@ export default function App() {
    if (backUrl && wealthPlans.includes(pendingPlan || '')) {
      const sep = backUrl.includes('?') ? '&' : '?';
      window.location.href = backUrl + sep + 'intent=checkout&plan=' + pendingPlan;
-   } else if (backUrl) {
-     window.location.href = backUrl;
    }
+   // 🔴 E87-④/⑤（主公军令 2026-10-25）：通用 backUrl 盲跳分支退役——陈年
+   //    ks_oauth_back_url（财富报告页所写、只写不清）曾把「OAuth 回调上下文＋
+   //    无 ks_result」的 '/' 冷启动（认领灵宠回首页/重新登录皆此形态）整页劫持进
+   //    /wealth/report?… 死循环，首页永不可达。回跳现场仅保留上一分支的
+   //    「财富购买意图」单一合法通道（intent=checkout 全参续跑）。
  } else if (!isOAuthCallback && !justLoggedIn && !paymentSuccess) {
  // Only clear ks_result if NOT returning from OAuth/payment
  localStorage.removeItem('ks_result');
+ // 🔴 E87-④：纯冷启动（无 OAuth/支付/回场上下文）⇒ 同步清陈年回跳劫持源，
+ //    '/' 永不被旧 wealth 现场污染。
+ try { localStorage.removeItem('ks_oauth_back_url'); } catch { /* noop */ }
  }
  }, []);
 
@@ -1912,7 +1951,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       <SandboxCashier lang={currentLang} />
       {!wealthPath && _page === 'input' && <InputPage onSubmit={handleCalculate} onNavigateToWealth={handleNavigateToWealth} />}
       {!wealthPath && _page === 'loading' && <LoadingPage />}
-      {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} onLogout={handleLogout} />}
+      {!wealthPath && _page === 'result' && result && <ResultPage result={result} onBack={() => { localStorage.removeItem('ks_return_to_result'); localStorage.removeItem('ks_result'); setResult(null); _setPage('input'); window.history.pushState({}, '', '/'); }} lang={currentLang} pendingInsightTrigger={pendingInsightTrigger} setPendingInsightTrigger={setPendingInsightTrigger} pendingReportTrigger={pendingReportTrigger} setPendingReportTrigger={setPendingReportTrigger} onLogout={handleLogout} />}
       {!wealthPath && err && <p className="error-msg">{err}</p>}
       {policyPage && (
         <PolicyPage
