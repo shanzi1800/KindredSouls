@@ -80,20 +80,21 @@ test('E84-③ result 页黑金一镜到底：白底/绿条退役＋流光金紫�
   assert.ok(app.includes('ks-detail-toggle'), 'E84 result 折叠开关未黑金化');
 });
 
-test('E84-④ 付费即刻呈现：沙盒授予落支付标志＋once 二段自动流式链', () => {
+test('E84-④→E85-① 付费即刻呈现：沙盒授予落支付标志＋per-session 解锁自动揭晓链', () => {
   const app = read('web/src/App.tsx');
   // 沙盒 onGranted：先落 ks_payment_success 再 reload（复用自动触发链）
   const onGranted = app.slice(app.indexOf('onGranted:'), app.indexOf('onGranted:') + 260);
   assert.ok(onGranted.includes("sessionStorage.setItem('ks_payment_success', '1')"), 'E84 沙盒授予未落支付成功标志');
   assert.ok(onGranted.includes('window.location.reload()'), 'E84 沙盒授予未刷新承接');
-  // once 二段链：autoReportLockRef 一次性锁＋等权益就绪
-  assert.ok(app.includes('autoReportLockRef'), 'E84 缺 once 自动流式二段链');
-  const seg = app.slice(app.indexOf('autoReportLockRef = useRef'), app.indexOf('autoReportLockRef = useRef') + 700);
-  assert.ok(seg.includes("generateReport('once')"), 'E84 二段链未自动生成 once 深报');
-  assert.ok(seg.includes('paidPlansLocal.compatibility_once === true'), 'E84 二段链未校验 once 权益（fail-closed）');
-  assert.ok(seg.includes('all_pass_yearly === true'), 'E84 二段链未认 VIP 权益');
-  // 触发条件锁定 pendingInsightTrigger（VIP 日常刷新绝不误烧）
-  assert.ok(seg.includes('pendingInsightTrigger'), 'E84 二段链未锁定支付返回场景');
+  // 🧹 E85（主公军令 2026-10-24）：autoReportLockRef 二段链（支付后自动生成 once 合盘
+  // 四段深报）随「合盘」板块整体退役；断言改锁 per-session 解锁链：
+  //   支付返回（pendingInsightTrigger）⇒ 解锁当次会话 + 自动流式揭晓 AI 洞察＋塔罗。
+  assert.ok(!app.includes('autoReportLockRef'), 'E85 autoReportLockRef once 二段链残留违令');
+  assert.ok(!app.includes("generateReport('once')"), 'E85 once 深报生成调用残留违令');
+  const seg = app.slice(app.indexOf('if (pendingInsightTrigger) {'), app.indexOf('if (pendingInsightTrigger) {') + 420);
+  assert.ok(seg.includes("sessionStorage.setItem('ks_compat_session_unlocked', '1')"), 'E85 支付返回未落 per-session 解锁标志');
+  assert.ok(seg.includes('setSessionUnlocked(true)'), 'E85 支付返回未解锁当次会话');
+  assert.ok(seg.includes('triggerInsight()'), 'E85 支付返回未自动流式揭晓 AI 洞察');
 });
 
 test('E84-⑤ 减法大重构：「生成完整合盘报告」冗余入口彻底退役', () => {
@@ -151,10 +152,11 @@ test('E84-⑩ 链位军规：e83 < e84 < e40-compat(len-2) < python(链尾)', ()
   const segs = chain.split('&&').map(s => s.trim());
   const e83 = segs.findIndex(s => s.includes('audit-e83-celestial-ui'));
   const e84 = segs.findIndex(s => s.includes('audit-e84-compat-black-gold'));
+  const e85 = segs.findIndex(s => s.includes('audit-e85-compat-funnel'));
   const e40 = segs.findIndex(s => s.includes('audit-e40-compat-synastry-tensor-fusion'));
   const py = segs.findIndex(s => s.includes('python3'));
   assert.ok(e83 >= 0 && e84 === e83 + 1, 'E84 闸门必须紧跟 e83 之后');
-  assert.ok(e40 === e84 + 1, 'E84 之后必须是 e40-compat');
+  assert.ok(e85 === e84 + 1, 'E85 闸门必须紧跟 e84 之后（E85 军令入编）');
   assert.strictEqual(e40, segs.length - 2, 'e40-compat 必须恒为 len-2');
   assert.strictEqual(py, segs.length - 1, 'python 必须恒为链尾');
   // 段位下界（结构改动 ⇒ 基准 61→62 同步）

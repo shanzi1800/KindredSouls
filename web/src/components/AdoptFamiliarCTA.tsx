@@ -43,13 +43,18 @@ interface AdoptFamiliarCTAProps {
   /** 🐾 E52（主公亲令 2026-10-15）: 认领成功后「带路」直达回调 —— 宿主页注入 SPA 路由直跳；
       未注入时兜底 window.location.href='/'（同样是直达，严禁 history.back） */
   onLeadHome?: () => void;
+  /** 🔴 E85-④（主公军令 2026-10-24）：认领完成回调 —— 认领成功即绑定触发；
+      未注入时默认行为＝清当前测算结果（ks_result/ks_compat_session_unlocked）＋落
+      ks_open_familiar_chat 意图标记＋整页导航 / 回星空大首页（React 状态天然全清，
+      大灵宠舞台＋今日幸运卡＋聊天舱问候自动呈现）。 */
+  onAdopted?: () => void;
 }
 
 /* 🐾 E55-3（主公亲令 2026-10-16）: 2.0 进阶定制殿堂入口**战略隐藏** —— CUSTOM_LABEL 与
    两个入口按钮随 E55 撤下（底座 FamiliarCustomPage.tsx 与 $99.99 常量静默保留待 2.0 激活），
    1.0 极致聚焦 $4.99 商业漏斗转化。 */
 
-const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome }) => {
+const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome, onAdopted }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -124,6 +129,22 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
       setAdoptedMode(mode);
       setPersisted(!!data.persisted);
       setOpen(false);
+      // 🔴 E85-④（主公军令 2026-10-24）：认领完成 ⇒ 即回星空大首页。
+      //    默认行为＝清当前测算结果状态（resultData/step/viewMode 整页重载天然全清：
+      //    ks_result 双仓清除 ⇒ 冷启动不会复活旧报告页）＋落一次性对话舱意图标记，
+      //    首页 FamiliarHomeCard 挂载消费即删并自动唤醒 E66 聊天舱（问候即认领反馈）。
+      //    宿主注入 onAdopted 时由宿主接管（本组件不再自行跳转）。
+      try {
+        try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* iOS 无痕兜底 */ }
+        localStorage.removeItem('ks_result');
+        sessionStorage.removeItem('ks_result');
+        sessionStorage.removeItem('ks_compat_session_unlocked');
+      } catch (_) { /* 隐私模式忽略 */ }
+      if (onAdopted) {
+        onAdopted();
+      } else {
+        try { window.location.href = '/'; } catch (_) { /* noop */ }
+      }
     } catch (_) {
       setErr(true);
     } finally {

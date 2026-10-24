@@ -214,37 +214,32 @@ test('B7 幂等：同键重复留存 ⇒ 单条记录（覆盖写，不累积）
   assert.deepEqual(STORE.loadHouseOverlay(RID, S), OK_OVERLAY);
 });
 
-/* ═══════════ C 接线守备（App.tsx） ═══════════ */
+/* ═══════════ C 接线守备（App.tsx · E85 合盘退役版） ═══════════ */
 
-test('C1 导入纪律：@ts-ignore 居上一行 + 实名导入留存核（.mjs 纯 JS 核契约）', () => {
+test('C1 导入纪律退役（E85）：houseOverlayStore 留存核不再由 App 导入（纯 JS 库留作离线资产）', () => {
+  // 🧹 E85（主公军令 2026-10-24）：App 的旁置真值消费/回放/留存接线随合盘画布下架；
+  //   houseOverlayStore.mjs 纯库与 B 组单元测试保留（离线资产，零运行时挂载）。
   const app = readSrc('web/src/App.tsx');
-  assert.ok(app.includes(
-    '// @ts-ignore —— houseOverlayStore.mjs 为纯 JS 旁置留存核（形状由 P0-1 闸门守备）\n'
-    + "import { loadHouseOverlay, saveHouseOverlay } from './lib/houseOverlayStore.mjs';",
-  ), '导入行或 @ts-ignore 上一行纪律被破坏');
+  assert.ok(!app.includes("loadHouseOverlay, saveHouseOverlay"), 'E85 App 仍导入留存核违令');
+  assert.ok(!app.includes('houseOverlayStore.mjs'), 'E85 App 留存核导入行残留违令');
 });
 
-test('C2 MISS 留存：旁置真值（wire）齐备时按 reportId 就地留存', () => {
+test('C2 MISS 留存接线退役（E85）：旁置真值不再由 App 消费（月报/年报走纯文本）', () => {
   const app = readSrc('web/src/App.tsx');
-  assert.ok(/if \(_g44Wire && _reportIdForStore\) saveHouseOverlay\(_reportIdForStore, _g44Wire\);/.test(app),
-    '缺 MISS 留存接线（或条件守卫被削弱）');
+  assert.ok(!/_g44Wire/.test(app), 'E85 旁置真值 wire 判定残留违令');
+  assert.ok(!/saveHouseOverlay\(/.test(app), 'E85 MISS 留存调用残留违令');
 });
 
-test('C3 HIT 回放：仅当**响应不带**旁置真值且 reportId 可用时按键回放（缺留存 ⇒ null 不渲染）', () => {
+test('C3 HIT 回放接线退役（E85）：回放/下沉零残留（DOM 一根像素不留）', () => {
   const app = readSrc('web/src/App.tsx');
-  assert.ok(/const _g44Replayed = \(!_g44Wire && _reportIdForStore\)/.test(app), '缺回放前置守卫（!_g44Wire）');
-  assert.ok(/loadHouseOverlay\(_reportIdForStore\)/.test(app), '缺回放调用');
-  assert.ok(/setReportHouseOverlay\(_g44Wire \|\| _g44Replayed\);/.test(app), '回放结果未下沉到旁置真值状态');
+  assert.ok(!/_g44Replayed/.test(app), 'E85 回放守卫残留违令');
+  assert.ok(!/loadHouseOverlay\(/.test(app), 'E85 回放调用残留违令');
+  assert.ok(!/setReportHouseOverlay\(/.test(app), 'E85 旁置真值状态下沉残留违令');
 });
 
-test('C4 次序：回放早于留存；且旁置真值 wire 判据与 Gate 44 同源（available === true）', () => {
+test('C4 wire 判据退役（E85）：data.houseOverlay 消费面零残留（与 Gate 44 同步退役）', () => {
   const app = readSrc('web/src/App.tsx');
-  const iLoad = app.indexOf('loadHouseOverlay(_reportIdForStore)');
-  const iSave = app.indexOf('saveHouseOverlay(_reportIdForStore, _g44Wire)');
-  assert.ok(iLoad > 0 && iSave > 0, '回放/留存接线缺失');
-  assert.ok(iLoad < iSave, '次序错误：回放须先于留存（同一响应内先读后写）');
-  assert.ok(/data\.houseOverlay\.available === true/.test(app), 'wire 判据被削弱（须与 Gate 44 派生核同纪律）');
-  assert.ok(/setReportHouseOverlay\(/.test(app), 'Gate 44 E5 锚点（setReportHouseOverlay）被移除');
+  assert.ok(!/data\.houseOverlay/.test(app), 'E85 wire 判据消费残留违令');
 });
 
 test('C5 五键锁死不破：ai_context 仍恰五键（本渠禁走入库通路）', () => {

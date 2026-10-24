@@ -264,12 +264,14 @@ test('E4 画布接线：派生核接入 + 网格挂载 + 旁置入参透传', ()
   assert.ok(/\{houseModel && <CompatHouseGrid model=\{houseModel\}/.test(src), '宫位网格未条件挂载');
 });
 
-test('E5 App 透传：旁置真值状态 + 投递溯源（零 payload 污染）', () => {
+test('E5 App 透传退役（E85 合盘下架版）：旁置真值/投递溯源消费链零回流', () => {
   const app = readSrc('web/src/App.tsx');
-  assert.ok(/setReportHouseOverlay\(/.test(app), 'App 未接收旁置宫位真值');
-  assert.ok(/houseOverlay=\{reportHouseOverlay\}/.test(app), 'App 未透传旁置真值给画布');
-  assert.ok(/delivery=\{reportDelivery\}/.test(app), 'App 未透传投递溯源');
-  assert.ok(/_usedStream \? 'stream' : 'direct'/.test(app), '投递路径判定缺失');
+  // 🧹 E85（主公军令 2026-10-24）：App 不再消费旁置宫位真值/投递溯源（合盘画布渲染
+  //   退役，月报/年报交付走纯文本段落）；旧透传断言改为零回流守备。
+  assert.ok(!/setReportHouseOverlay\(/.test(app), 'E85 App 旁置真值接收回流违令');
+  assert.ok(!/houseOverlay=\{reportHouseOverlay\}/.test(app), 'E85 App 旁置真值透传回流违令');
+  assert.ok(!/delivery=\{reportDelivery\}/.test(app), 'E85 App 投递溯源透传回流违令');
+  assert.ok(!/_usedStream \? 'stream' : 'direct'/.test(app), 'E85 投递路径判定回流违令');
 });
 
 /* ═══════════ F 段位守备 ═══════════ */

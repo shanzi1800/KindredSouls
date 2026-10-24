@@ -399,10 +399,13 @@ test('D3 渲染层三道防线齐备：预算取自字典派生物 + 字素裁�
   assert.ok(/wordBreak: 'break-word'/.test(canvas), '画布缺 word-break 兜底');
   assert.ok(/minWidth: 0/.test(canvas), '画布缺 flex 收缩兜底（长词撑爆网格）');
   assert.ok(/clampToSlot\(/.test(canvas), '画布未做字素裁剪');
-  // 前端接线：有 Payload ⇒ 画布；无 ⇒ 纯文本零回归
-  assert.ok(/isCompatReportPayload\(data\.payload\)/.test(pkgApp), 'App 未做 Payload 形状守卫');
-  assert.ok(/<CompatReportCanvas/.test(pkgApp), 'App 未渲染合盘画布');
-  assert.ok(/reportText\.split\('\\n\\n'\)/.test(pkgApp), '无 Payload 时的回退渲染被误删（零回归契约）');
+  // 🧹 E85（主公军令 2026-10-24）：合盘张量画布渲染退役——App 不再消费 report_payload
+  //   （月报/年报交付改纯文本段落）；画布组件与 reportLayout 契约作为离线资产保留
+  //   （服务端 payload 契约不动、后端封仓零改动）。断言改锁 E85 反向形态：
+  assert.ok(!/isCompatReportPayload\(data\.payload\)/.test(pkgApp), 'E85 App 仍在消费 Payload 形状守卫违令');
+  assert.ok(!/<CompatReportCanvas/.test(pkgApp), 'E85 App 仍在渲染合盘画布违令');
+  assert.ok(!/<SynastryProgress/.test(pkgApp), 'E85 App 仍在渲染合盘进度卡违令');
+  assert.ok(/reportText\.split\('\\n\\n'\)/.test(pkgApp), '报告文本段落渲染被误删（零回归契约）');
 });
 
 /* ═══════════ E 端到端向量 V1–V4 ═══════════ */

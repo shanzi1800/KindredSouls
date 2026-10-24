@@ -120,33 +120,23 @@ test('A5 装配真值：bazi/zodiac/iching/tarot/userBirthDate 五真值 + syste
   assert.match(text, /_compat\.system,/, 'system 提示未进 callAI');
   assert.match(text, /_compat\.user,/, 'user 提示未进 callAI');
 });
-test('A6 前端三档入口：generateReport 类型放宽 + VIP/非VIP 双分支（E84 付费即刻呈现版）', () => {
-  assert.match(APP_TSX, /const generateReport = async \(type: 'monthly' \| 'yearly' \| 'once'\) =>/, 'generateReport 类型未放宽');
-  // 🧹 E84（主公军令 2026-10-22）「付费即刻呈现」：once 手动按钮（VIP/非VIP 已购/未购加购）全面退役，
-  //   由 autoReportLockRef 二段链在支付返回后自动流式生成（详见 audit-e84 闸门 E84-④ 段）。
-  //   本段改锁 E84 新形态：① once 权益判定仍在（fail-closed）；② 月报/年报手动入口保留；③ once 手动入口禁回流。
-  const iVip = APP_TSX.indexOf('all_pass_yearly === true');
-  assert.notEqual(iVip, -1, 'VIP 分支缺失');
-  const iVipEnd = APP_TSX.indexOf('</>) : (', iVip);
-  const vipSeg = APP_TSX.slice(iVip, iVipEnd);
-  assert.match(vipSeg, /generateReport\('monthly'\)/, 'VIP 分支缺月报入口');
-  assert.match(vipSeg, /generateReport\('yearly'\)/, 'VIP 分支缺年报入口');
-  // E84：once 自动二段链（等权益就绪，仅支付返回场景触发）
-  assert.ok(APP_TSX.includes('autoReportLockRef'), 'E84 once 自动流式二段链缺失');
-  assert.match(APP_TSX, /generateReport\('once'\)/, 'once 生成通路丢失（二段链仍在用）');
-  // E84：once 手动按钮禁回流（军令铁令：砍冗余模块）
-  assert.ok(!APP_TSX.includes('完整合盘报告'), 'E84 once 手动入口文案回流违令');
-  assert.ok(!APP_TSX.includes("handlePurchase('compatibility_once')"), 'E84 once 未购加购入口回流违令');
-  // 非 VIP 分支：权益分档（已购档直达生成 + 未购加购；once 档由二段链接管）
-  const iNonVip = iVipEnd;
-  const iRender = APP_TSX.indexOf("reportText.split('\\n\\n')", iNonVip);
-  const nonVipSeg = APP_TSX.slice(iNonVip, iRender);
-  for (const k of ['compatibility_monthly_report === true', 'compatibility_yearly_report === true']) {
-    assert.ok(nonVipSeg.includes(k), `非 VIP 分支缺已购档直达生成条件：${k}`);
-  }
-  for (const k of ["handlePurchase('compatibility_monthly_report')", "handlePurchase('compatibility_yearly_report')"]) {
-    assert.ok(nonVipSeg.includes(k), `非 VIP 分支缺加购入口：${k}`);
-  }
+test('A6 前端两档入口：generateReport 收窄 monthly/yearly（E85 合盘退役＋年鉴统一按钮版）', () => {
+  // 🧹 E85（主公军令 2026-10-24）：「合盘」板块及 once 深报整体退役 ⇒ generateReport
+  //   类型收窄为 monthly | yearly；autoReportLockRef 二段链下架；年鉴双按钮六语统一
+  //   「解锁姻缘月报 $2.99 / 解锁姻缘年报 $29.99」永久带金额（取消「已解锁」覆盖态）。
+  assert.match(APP_TSX, /const generateReport = async \(type: 'monthly' \| 'yearly'\) =>/, 'E85 generateReport 类型未收窄（once 残留违令）');
+  assert.ok(!APP_TSX.includes("generateReport('once')"), 'E85 once 生成通路残留违令');
+  assert.ok(!APP_TSX.includes('autoReportLockRef'), 'E85 once 二段链残留违令');
+  assert.ok(!APP_TSX.includes('完整合盘报告'), 'E85 once 手动入口文案回流违令');
+  assert.ok(!APP_TSX.includes("handlePurchase('compatibility_once')"), 'E85 once 未购加购入口回流违令');
+  // 年鉴统一按钮：行为按权益分流（已购/VIP 点击＝生成，未购点击＝购买）
+  const iAlm = APP_TSX.indexOf('L_ALMANAC_BTN[lang]');
+  assert.notEqual(iAlm, -1, 'E85 年鉴六语统一词条缺失');
+  const almSeg = APP_TSX.slice(Math.max(0, iAlm - 2600), iAlm + 1600);
+  assert.ok(almSeg.includes("generateReport('monthly')"), 'E85 年鉴月报按钮缺生成分流');
+  assert.ok(almSeg.includes("generateReport('yearly')"), 'E85 年鉴年报按钮缺生成分流');
+  assert.ok(almSeg.includes("handlePurchase('compatibility_monthly_report')"), 'E85 年鉴月报按钮缺购买分流');
+  assert.ok(almSeg.includes("handlePurchase('compatibility_yearly_report')"), 'E85 年鉴年报按钮缺购买分流');
 });
 
 // ══════════════════ B 组 · 时间真值（裁决 2）══════════════════

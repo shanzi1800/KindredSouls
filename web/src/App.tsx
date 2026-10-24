@@ -16,10 +16,10 @@ import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
-import CompatReportCanvas from './components/CompatReportCanvas';
-import { isCompatReportPayload, type CompatReportPayload, type CompatHouseTruthSidecar, type CompatDeliveryMode } from './lib/reportLayout';
-// 🛡️ Gate 43：合盘 SSE 推演流（进度帧纯解析核 + 仪式感进度卡）
-import SynastryProgress from './components/SynastryProgress';
+// 🧹 E85（主公军令 2026-10-24）：「合盘」整个功能板块及报告退役 —— CompatReportCanvas /
+//    SynastryProgress 进度卡 / 报告张量画布 / houseOverlay 宫位网格渲染链全部下架
+//    （月报·年报交付改走纯文本段落呈现，服务端 report_payload 契约不动、后端封仓零改动）。
+//    保留 SSE 读流核（readCompatSSEStream/sseParser）：月报/年报流式获取数据仍走此通路。
 // @ts-ignore —— sseParser.mjs 为纯 JS 解析核（运行时形状由 Gate 43 闸门守备）
 import { createSSEParser, classifySSEFrame, reduceSSEFrames } from './lib/sseParser.mjs';
 import WealthPage from './pages/WealthPage';
@@ -40,9 +40,6 @@ import FamiliarHomeCard from './components/FamiliarHomeCard';
 import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
-// 🛡️ P0-1：read-through 旁置真值回放（Gate 41 五键锁死 ⇒ 旁置真值不可入库 ⇒ 客户端本地留存通路）
-// @ts-ignore —— houseOverlayStore.mjs 为纯 JS 旁置留存核（形状由 P0-1 闸门守备）
-import { loadHouseOverlay, saveHouseOverlay } from './lib/houseOverlayStore.mjs';
 // 🎨 E83：星际黑金设计令牌（深空曜石底 / 流光毛玻璃 / 星轨进度条 / 三级排版）——
 //    全站奢华重构唯一真源，先于 App.css 载入，供其覆盖具体页面样式。
 import './styles/celestial-tokens.css';
@@ -606,6 +603,19 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
+/* 🎂 E85-②（主公军令 2026-10-24）：宇宙生日年鉴双按钮六语统一词条——
+   「解锁姻缘月报 $2.99 / 解锁姻缘年报 $29.99」永久带金额呈现；
+   取消「(已解锁)」覆盖态与「生成情感月报/年报」免费文案态（军令原文给定，
+   行为按权益分流：已购/VIP 点击＝生成，未购点击＝购买）。 */
+const L_ALMANAC_BTN: Record<string, { monthly: string; yearly: string }> = {
+  zh: { monthly: '📅 解锁姻缘月报 $2.99', yearly: '👑 解锁姻缘年报 $29.99' },
+  en: { monthly: '📅 Unlock Monthly Love Report $2.99', yearly: '👑 Unlock Annual Love Report $29.99' },
+  fr: { monthly: "📅 Débloquer le Rapport Mensuel d'Amour $2.99", yearly: "👑 Débloquer le Rapport Annuel d'Amour $29.99" },
+  es: { monthly: '📅 Desbloquear Informe Mensual de Amor $2.99', yearly: '👑 Desbloquear Informe Anual de Amor $29.99' },
+  th: { monthly: '📅 ปลดล็อกรายงานดวงความรักรายเดือน $2.99', yearly: '👑 ปลดล็อกรายงานดวงความรักรายปี $29.99' },
+  vi: { monthly: '📅 Mở Khóa Báo Cáo Nhân Duyên Tháng $2.99', yearly: '👑 Mở Khóa Báo Cáo Nhân Duyên Năm $29.99' },
+};
+
 function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, onLogout }: {
   d1: string; d2: string; overall: number;
   // 🌌 E40+：双人时空真值（可选；缺省 ⇒ 服务端如实降级，不伪造）
@@ -633,41 +643,30 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   // 🔑 状态驱动：全局持有受信任的 access token
   const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(null);
   const [paidPlansLocal, setPaidPlansLocal] = useState<any>(null);
+  // 🔴 E85-①（主公军令 2026-10-24）：$4.99 按次消费品——per-session 解锁状态。
+  //    每次新测算（handleCalculate/重新测算）重置为 unpaid；账号级旧权益（测试残留 paid 标记）
+  //    不得跨次白送。当次支付返回（pendingInsightTrigger）才置 unlocked ⇒ 付费墙 100% 必现。
+  const [sessionUnlocked, setSessionUnlocked] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('ks_compat_session_unlocked') === '1'; } catch { return false; }
+  });
   const [reportLoading, setReportLoading] = useState<string | false>(false);
   const [reportText, setReportText] = useState<string | null>(null);
-  // 🛡️ Gate 40：标准化报告 Payload（服务端 report_payload.v1）—— 缺省则优雅回退纯文本渲染
-  const [reportPayload, setReportPayload] = useState<CompatReportPayload | null>(null);
-  // 🛡️ Gate 43：推演进度帧（服务端 SSE 真实里程碑；缺帧 ⇒ null ⇒ 不渲染进度卡，优雅降级）
-  const [reportStage, setReportStage] = useState<{ title: string; label: string; pct: number; index: number; total: number } | null>(null);
-  // 🛡️ Gate 44：信封旁置宫位真值（houseOverlay；缺省/非精确建盘 ⇒ null ⇒ 宫位网格不渲染）
-  const [reportHouseOverlay, setReportHouseOverlay] = useState<CompatHouseTruthSidecar | null>(null);
-  // 🛡️ Gate 44：报告投递溯源（真实路径：流式 SSE / 安全直连；仅供卡面状态可视化，非 payload 字段）
-  const [reportDelivery, setReportDelivery] = useState<CompatDeliveryMode | null>(null);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
   const insightLockRef = useRef(false);
 
   // 🚀 Watch pendingInsightTrigger from parent (App) and auto-trigger
+  // 🔴 E85-①（主公军令 2026-10-24）：pendingInsightTrigger ＝ 当次支付真实返回 ⇒ 此刻才解锁
+  //    per-session 状态（落 sessionStorage 跨 reload 存续）并自动流式揭晓 AI 洞察＋塔罗。
+  //    🧹 E85-③：旧「支付后自动生成 once 合盘四段深报」的二段链随合盘板块退役。
   useEffect(() => {
     if (pendingInsightTrigger) {
+      try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
+      setSessionUnlocked(true);
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
-
-  // ✦ E84（主公军令 2026-10-22）「付费即刻呈现」二段链：支付返回 ⇒ AI 洞察＋塔罗自动上屏后，
-  //    若 $4.99（compatibility_once）权益在册 ⇒ 自动流式生成四段完整合盘深报
-  //    （推演进度卡 + 张量画布 + 灵宠认领闭环）。等待 paidPlansLocal 就绪（checkPaidStatus 异步），
-  //    仅在 pendingInsightTrigger（真实支付返回）时触发一次 ⇒ VIP 日常刷新绝不误烧配额。
-  //    旧「💎 once 四段深报（已解锁）」手动按钮随之退役（军令：砍冗余模块）。
-  const autoReportLockRef = useRef(false);
-  useEffect(() => {
-    if (!pendingInsightTrigger || autoReportLockRef.current) return;
-    if (paidPlansLocal && (paidPlansLocal.compatibility_once === true || paidPlansLocal.all_pass_yearly === true)) {
-      autoReportLockRef.current = true;
-      generateReport('once');
-    }
-  }, [pendingInsightTrigger, paidPlansLocal]);
 
   // 🎯 Paywall auto-show: when paidStatus becomes false, show paywall
   useEffect(() => {
@@ -1178,15 +1177,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       insightLockRef.current = false;
     }
   };
-  // 🛍️ E39-C: 三档报告生成（monthly 月报 / yearly 年报 / once 完整合盘 $4.99 四段深报）
-  const generateReport = async (type: 'monthly' | 'yearly' | 'once') => {
+  // 🛍️ E39-C→🧹 E85（主公军令 2026-10-24）：两档报告生成（monthly 姻缘月报 / yearly 姻缘年报）。
+  //    once 合盘四段深报随「合盘」板块整体退役；交付改纯文本段落（张量画布渲染链已下架）。
+  const generateReport = async (type: 'monthly' | 'yearly') => {
     if (reportLoading) return;
     setReportLoading(type);
     setReportText(null);
-    setReportPayload(null);
-    setReportStage(null);
-    setReportHouseOverlay(null);
-    setReportDelivery(null);
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1216,37 +1212,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           },
         }),
       });
-      // 🛡️ Gate 43：双模分流 —— ① 服务端以 SSE 应答 ⇒ 流式读帧（进度实时上屏）
-      //   ② 其余一切情形（402/403/429 JSON、代理层剥流式、老客户端）⇒ 原样 res.json()，契约零回归
+      // 🛡️ Gate 43（🧹 E85 后仅保留读流核）：服务端以 SSE 应答 ⇒ 流式读帧取终局载体
+      //   （进度卡已退役，onStage 置 noop）；其余情形走既有 JSON 降级，契约零回归。
       const _ctype = String(res.headers.get('content-type') || '');
       let data: any = null;
-      let _usedStream = false;
       if (res.ok && _ctype.includes('text/event-stream') && res.body && typeof res.body.getReader === 'function') {
-        _usedStream = true;
-        data = await readCompatSSEStream(res.body, (s) => setReportStage(s));
+        data = await readCompatSSEStream(res.body, () => { /* E85: 进度帧无消费者 */ });
       } else {
         data = await res.json();
       }
       if (!data) data = {};
-      // 🛡️ Gate 40：形状守卫 —— 只接受 report_payload.v1；结构不合 ⇒ null（回退纯文本）
-      setReportPayload(isCompatReportPayload(data.payload) ? data.payload : null);
-      // 🛡️ Gate 44：宫位真值（信封旁置字段；仅 available === true 时下沉，缺真值 ⇒ null ⇒ 网格不渲染）
-      // 🛡️ P0-1：read-through 旁置真值回放 —— HIT 秒回不带旁置字段（不可入库）
-      //   ⇒ 按 reportId 从**客户端本地留存**回放；MISS 首见 ⇒ 就地留存供后续命中回放。
-      //   🔴 零算力零配额（纯本地读写）；缺留存（换设备/清缓存）⇒ null ⇒ 如实不渲染（零伪造）。
-      const _g44Wire = (data.houseOverlay && typeof data.houseOverlay === 'object' && data.houseOverlay.available === true)
-        ? (data.houseOverlay as CompatHouseTruthSidecar)
-        : null;
-      const _reportIdForStore = (typeof data.reportId === 'string' && data.reportId) ? data.reportId : null;
-      const _g44Replayed = (!_g44Wire && _reportIdForStore)
-        ? (loadHouseOverlay(_reportIdForStore) as CompatHouseTruthSidecar | null)
-        : null;
-      setReportHouseOverlay(_g44Wire || _g44Replayed);
-      if (_g44Wire && _reportIdForStore) saveHouseOverlay(_reportIdForStore, _g44Wire);
-      // 🛡️ Gate 44：投递溯源（真实路径；仅报告实际送达时置位 —— 与画布挂载同真值域）
-      setReportDelivery(
-        (typeof data.insight === 'string' && data.insight) ? (_usedStream ? 'stream' : 'direct') : null,
-      );
       // 🛡️ Gate 41：Report ID 索引（同名输入 ⇒ 服务端 read-through 秒级复读，零算力消耗）
       if (data.reportId) {
         try {
@@ -1262,12 +1237,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
     } catch (err) {
       console.error('[AIInsightBlock] generateReport error:', err);
-      setReportPayload(null);
-      setReportHouseOverlay(null);
-      setReportDelivery(null);
       setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
     } finally {
-      setReportStage(null);
       setReportLoading(false);
     }
   };
@@ -1303,7 +1274,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   // Stripe paywall — logged in but not paid
   // 🎯 明牌流：先弹价格，用户愿意付费才登录
   // ── 付费墙：优先显示（无论登录状态）──
-  if (showPaywall) {
+  // 🔴 E85-①（主公军令 2026-10-24）：当次测算会话未解锁（sessionUnlocked=false）⇒
+  //    /result 底部 100% 呈现 $4.99 付费墙——账号级旧权益（paidStatus=true）不得跨次白送，
+  //    严禁出现「跳过付费墙直接出报告」与孤立「生成 AI 洞察」按钮。
+  if (showPaywall || !sessionUnlocked) {
     return (
       <div className="ai-insight ai-insight-dark">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -1367,7 +1341,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   return (
     <div className="ai-insight">
       <h3>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
-      {!insight && !loading && !error && (
+      {/* 🔴 E85-①（主公军令 2026-10-24）：孤立「✨ 生成 AI 洞察」按钮废除——未付费时付费墙
+          100% 呈现（上面分支拦截），本按钮仅作「当次已解锁＋洞察缺场（网络失败等）」的
+          合法重试入口；正常流＝支付返回自动流式揭晓，无需手点。 */}
+      {sessionUnlocked && !insight && !loading && !error && (
         <button
           onClick={() => triggerInsight()}
           style={{
@@ -1415,6 +1392,64 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           {tarotLine && (
             <p style={{ marginTop: '12px', fontStyle: 'italic', opacity: 0.85, fontSize: '13px' }}>{tarotLine}</p>
           )}
+          {/* 🐾 E85-③/④（主公军令 2026-10-24）：付费揭晓区纯净结构之二 —— 🐾 认领专属灵宠卡
+              （原挂在合盘报告交付后，随合盘退役提升为 AI 洞察直后的独立板块；
+               🔴 E34 D5 白名单纪律不变：须有真实出生城市才挂载，缺 c1 ⇒ 不挂载零伪造坐标） */}
+          {insight && c1 && (
+            <AdoptFamiliarCTA
+              birthDate={d1}
+              birthTime={t1 || ''}
+              lat={c1.lat}
+              lon={c1.lon}
+              tz={c1.tz}
+              lang={lang}
+            />
+          )}
+          {/* 🎂 E85-②/③（主公军令 2026-10-24）：宇宙生日年鉴（付费揭晓区纯净结构收尾）——
+              双按钮六语统一「解锁姻缘月报 $2.99 / 解锁姻缘年报 $29.99」永久带金额呈现，
+              取消「(已解锁)」覆盖态与「生成情感月报/年报」文案态；行为按权益分流
+              （已购/VIP 点击＝生成，未购点击＝购买）。
+              🧹 合盘张量画布（CompatReportCanvas）与推演进度卡（SynastryProgress）渲染退役，
+              月报/年报交付＝纯文本段落呈现（服务端 payload 契约不动，后端封仓零改动）。 */}
+          {insight && (
+            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
+                🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#E9D8A6', marginBottom: '8px', lineHeight: 1.5 }}>
+                {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
+              </div>
+              {/* 📅 月报按钮：统一待解锁购买样式（永久带金额）；已购/VIP 点击＝生成，未购点击＝购买 */}
+              <button
+                onClick={() => {
+                  const owned = !!paidPlansLocal && (paidPlansLocal.all_pass_yearly === true || paidPlansLocal.compatibility_monthly_report === true);
+                  if (owned) generateReport('monthly'); else handlePurchase('compatibility_monthly_report');
+                }}
+                disabled={!!reportLoading}
+                style={{ display: 'block', width: '100%', marginBottom: '8px', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {reportLoading === 'monthly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly}
+              </button>
+              {/* 👑 年报按钮：同上统一待解锁购买样式（永久带金额） */}
+              <button
+                onClick={() => {
+                  const owned = !!paidPlansLocal && (paidPlansLocal.all_pass_yearly === true || paidPlansLocal.compatibility_yearly_report === true);
+                  if (owned) generateReport('yearly'); else handlePurchase('compatibility_yearly_report');
+                }}
+                disabled={!!reportLoading}
+                style={{ display: 'block', width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {reportLoading === 'yearly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly}
+              </button>
+              {reportText && (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
+                  {reportText.split('\n\n').map((para, i) => (
+                    <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button
             onClick={onLogout}
             style={{
@@ -1432,98 +1467,6 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           >
             {TXT.signOut[lang] || TXT.signOut.en}
           </button>
-          {/* 🎂 宇宙生日年鉴（AI 洞察解锁后始终显示） */}
-          {/* ✦ E84（主公军令 2026-10-22）：灰字看不清根治＋统一归入黑金高对比度卡片
-              （.ks-glass-card 毛玻璃＋钛金描边；说明文字 rgba(212,175,55,0.6)→#E9D8A6 金辉可读） */}
-          {insight && paidPlansLocal && (
-            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
-                🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
-              </div>
-              <div style={{ fontSize: '11px', color: '#E9D8A6', marginBottom: '8px', lineHeight: 1.5 }}>
-                {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
-              </div>
-              {/* 年卡/VIP → 免费生成 */}
-              {paidPlansLocal.all_pass_yearly === true ? (<>
-                <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报' : '📅 Monthly Report')}
-                </button>
-                <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                  {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报' : '📆 Yearly Report')}
-                </button>
-                {/* 🛍️ E39-C→🧹 E84（主公军令 2026-10-22）：VIP once 四段报告入口退役——
-                    E84「付费即刻呈现」自动流式生成链已覆盖（autoReportLockRef 二段链），
-                    军令铁令：彻底删除 once 深报手动入口及旧版冗余按钮。 */}
-                <div style={{ fontSize: '10px', color: '#E9D8A6', marginTop: '6px' }}>✨ {lang === 'zh' ? 'VIP 尊享，月报/年报点击免费生成' : 'VIP free access — Monthly & Yearly on demand'}</div>
-              </>) : (
-                /* 非VIP → E39-C 按权益分档：已购档直达生成（修复"买完找不到入口"断层），未购档保留加购 */
-                <>
-                  {paidPlansLocal.compatibility_monthly_report === true && (
-                    <button onClick={() => generateReport('monthly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      {reportLoading ? '⏳...' : (lang === 'zh' ? '📅 生成情感月报（已解锁）' : '📅 Monthly Report (Unlocked)')}
-                    </button>
-                  )}
-                  {paidPlansLocal.compatibility_yearly_report === true && (
-                    <button onClick={() => generateReport('yearly')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      {reportLoading ? '⏳...' : (lang === 'zh' ? '📆 生成情感年报（已解锁）' : '📆 Yearly Report (Unlocked)')}
-                    </button>
-                  )}
-                  {/* 🧹 E84（主公军令 2026-10-22）：「💎 once 四段深报（已解锁）」手动按钮退役——
-                      支付返回后 autoReportLockRef 二段链已自动流式生成四段深报（付费即刻呈现），
-                      军令铁令：彻底删除「已解锁」按钮与旧版冗余入口。 */}
-                  {paidPlansLocal.compatibility_monthly_report !== true && (
-                    <button onClick={() => handlePurchase('compatibility_monthly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      📅 {lang === 'zh' ? '解锁情感月报 $2.99' : 'Unlock Monthly $2.99'}
-                    </button>
-                  )}
-                  {paidPlansLocal.compatibility_yearly_report !== true && (
-                    <button onClick={() => handlePurchase('compatibility_yearly_report')} disabled={!!reportLoading} style={{ marginRight: '8px', marginBottom: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                      📆 {lang === 'zh' ? '解锁年度报告 $29.99' : 'Unlock Yearly $29.99'}
-                    </button>
-                  )}
-                  {/* 🧹 E84：未购「💎 once 深报 $4.99」加购入口退役——$4.99 主购买入口
-                      仍在付费墙 PaywallCard（未购即显），此处二次推销属军令点名冗余，砍。 */}
-                  <div style={{ fontSize: '10px', color: 'var(--ks-text-secondary, #C7C2D4)', marginTop: '6px' }}>
-                    💡 {lang === 'zh' ? `您的至尊全通通道已开启。由于您已成功解锁基础格局，现可获得直接跃迁【$99.99/年 终极 VIP】的宇宙特权，全盘解锁未来 12 个月『宇宙生日年鉴』与所有高阶算法。` : lang === 'en' ? `Your supreme all-access channel is now open. Having unlocked your base pattern, you are now eligible to ascend to【$99.99/year Ultimate VIP】cosmic privilege — full access to the 12-month Solar Return Almanac and all advanced algorithms.` : lang === 'es' ? `Su canal supremo de acceso total ya está abierto. Al haber desbloqueado su patrón base, ahora puede ascender directamente al【$99.99/año VIP Ultimate】privilegio cósmico: acceso completo al Almanaque Solar de 12 meses y todos los algoritmos avanzados.` : lang === 'fr' ? `Votre canal suprême d'accès total est maintenant ouvert. Ayant débloqué votre schéma de base, vous pouvez maintenant accéder directement au【$99.99/an VIP Ultime】privilège cosmique — accès complet à l'Almanach Solaire de 12 mois et à tous les algorithmes avancés.` : lang === 'th' ? `ช่องทางการเข้าถึงสูงสุดของคุณเปิดแล้ว เนื่องจากคุณปลดล็อคแบบแผนพื้นฐานแล้ว คุณจึงสามารถก้าวขึ้นสู่【$99.99/ปี VIP สูงสุด】สิทธิพิเศษจักรวาล — เข้าถึงเต็มรูปแบบของ ปฏิทินสุริยะ 12 เดือนและอัลกอริธึมขั้นสูงทั้งหมด` : `Kênh toàn quyền tối cao của bạn đã mở. Vì bạn đã mở khóa bộ dạng cơ bản, nay bạn có thể thăng hoa trực tiếp lên【$99.99/năm VIP Tối Thượng】đặc quyền vũ trụ — toàn quyền truy cập Niên Ký Mặt Trời 12 tháng và mọi thuật toán cao cấp.`}
-                  </div>
-                </>
-              )}
-              {/* 🛡️ Gate 43：推演仪式感进度卡 —— 仅当服务端下发了真实里程碑帧才渲染（降级通路零空壳） */}
-              {reportLoading && reportStage && (
-                <SynastryProgress
-                  title={reportStage.title}
-                  label={reportStage.label}
-                  pct={reportStage.pct}
-                  index={reportStage.index}
-                  total={reportStage.total}
-                />
-              )}
-              {reportText && reportPayload && (
-                /* 🛡️ Gate 40：标准化画布（张量卡 + 四段壳；溢出三道防线） */
-                <CompatReportCanvas payload={reportPayload} lang={lang} houseOverlay={reportHouseOverlay} delivery={reportDelivery} />
-              )}
-              {/* 🐾 Gate 45-B：报告尾「灵宠认领」承接位 —— 合盘报告交付后顺势领养
-                  🔴 E34 D5：只传出生真值（白名单构造）；且**须有真实出生城市**才挂载
-                     （缺 c1 ⇒ 不挂载，绝不送 lat/lon=0 的伪造坐标） */}
-              {reportText && reportPayload && c1 && (
-                <AdoptFamiliarCTA
-                  birthDate={d1}
-                  birthTime={t1 || ''}
-                  lat={c1.lat}
-                  lon={c1.lon}
-                  tz={c1.tz}
-                  lang={lang}
-                />
-              )}
-              {reportText && !reportPayload && (
-                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
-                  {reportText.split('\n\n').map((para, i) => (
-                    <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -1870,6 +1813,9 @@ export default function App() {
   const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth) => {
     setErr('');
     _setPage('loading');
+    // 🔴 E85-①（主公军令 2026-10-24）：$4.99 按次消费品——每次新测算（开始测算/重新测算）
+    //    强制重置当次会话解锁状态为 unpaid ⇒ /result 必现付费墙，账号级旧权益不得跨次白送。
+    try { sessionStorage.removeItem('ks_compat_session_unlocked'); } catch { /* noop */ }
     // Ensure we have a user_id
     let uid = userId;
     if (!uid) {

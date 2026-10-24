@@ -322,11 +322,15 @@ test('E2 App 双模分流：SSE 优先 + 一切异常情形回退 JSON（优雅�
   assert.ok(/reduceSSEFrames\(seen\)/.test(app), 'App 未接入纯解析核归约');
 });
 
-test('E3 进度卡条件渲染（缺帧零空壳）+ loading 收尾清理（绝不悬挂）', () => {
+test('E3 进度卡装配退役（E85 合盘板块下架）+ SSE 读流核保留（月报/年报交付零回归）', () => {
   const app = readSrc('web/src/App.tsx');
-  assert.ok(/\{reportLoading && reportStage && \(/.test(app), '进度卡未做条件渲染守备');
-  assert.ok(/<SynastryProgress/.test(app), '进度卡未装配进 App');
-  assert.ok(/setReportStage\(null\);/.test(app), '缺进度态清理（可能悬挂）');
+  // 🧹 E85（主公军令 2026-10-24）：「合盘」整个功能板块及报告退役——进度卡条件渲染、
+  //   SynastryProgress 装配、reportStage 态全部下架；SSE 读流核（readCompatSSEStream）
+  //   保留供月报/年报流式取数据（onStage 置 noop，进度帧零消费者零渲染）。
+  assert.ok(!/\{reportLoading && reportStage && \(/.test(app), 'E85 进度卡条件渲染残留违令');
+  assert.ok(!/<SynastryProgress/.test(app), 'E85 进度卡装配残留违令');
+  assert.ok(!app.includes('reportStage'), 'E85 reportStage 态残留违令');
+  assert.ok(/readCompatSSEStream\(res\.body, \(\) => \{ \/\* E85: 进度帧无消费者 \*\/ \}\)/.test(app), 'E85 SSE 读流核被误删（月报/年报交付回归）');
 });
 
 /* ═══════════════════════════ F 段位守备 ═══════════════════════════ */

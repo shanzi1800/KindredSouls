@@ -231,10 +231,13 @@ test('E3 三卡为条件渲染（canvasMap 为 null 时不渲染，绝不缺省�
   assert.ok(/ax\.known && typeof ax\.value === 'number'/.test(src), '能量条未按 known 分支（可能渲染 null）');
 });
 
-test('E4 App 零回归：无 payload 回退纯文本渲染契约保留', () => {
+test('E4 App 零回归（E85 合盘退役版）：报告文本段落渲染契约保留＋画布消费链禁回流', () => {
   const app = readSrc('web/src/App.tsx');
-  assert.ok(/reportText\.split\('\\n\\n'\)/.test(app), '无 Payload 回退渲染被误删');
-  assert.ok(/isCompatReportPayload\(data\.payload\)/.test(app), 'App 形状守卫被误删');
+  // 🧹 E85（主公军令 2026-10-24）：App 不再消费 report_payload（合盘画布渲染退役，
+  //   月报/年报交付走纯文本段落）；isCompatReportPayload 形状守卫随消费链下架。
+  assert.ok(/reportText\.split\('\\n\\n'\)/.test(app), '报告文本段落渲染被误删（零回归契约）');
+  assert.ok(!/isCompatReportPayload\(data\.payload\)/.test(app), 'E85 App 形状守卫回流违令（画布消费链应已退役）');
+  assert.ok(!/<CompatReportCanvas/.test(app), 'E85 App 画布装配回流违令');
 });
 
 /* ═══════════ F 段位守备 ═══════════ */
