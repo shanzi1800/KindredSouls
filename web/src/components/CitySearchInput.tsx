@@ -233,7 +233,9 @@ export const CitySearchInput: React.FC<CitySearchInputProps> = ({
 
       {/* 搜索结果下拉 */}
       {open && results.length > 0 && (
-        <div style={{
+        <div
+          className="celestial-scrollbar"
+          style={{
           position: 'absolute',
           top: '100%',
           left: 0,

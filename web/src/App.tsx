@@ -203,7 +203,20 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         // 🔴 沙盘截断：绝不跳外链 —— 收银台已由总线就地唤起（真金白银路径逐字未改）
         console.log('[KindredSouls] 🧪 sandbox checkout — cashier opened in place:', route.plan);
       } else if (route.kind === 'paid') {
-        console.log('[KindredSouls] Already covered by existing plan, skipping checkout');
+        // 🔴 E86-③（主公军令 2026-10-24）：already_paid 静默吞噬根治——
+        //    $4.99 按次消费品语义下，账号已持有 once 权益（服务端防重付挡死重复下单）
+        //    ⇒ 点击「立即解锁」视作当次会话解锁：落 per-session 标记＋复用
+        //    ks_payment_success → ResultPage → pendingInsightTrigger 全自动揭晓链。
+        //    （E85「付费墙必现」与「点击必响应」自此闭环：墙不白送、点击必有下文。）
+        if (plan === 'compatibility_once') {
+          try {
+            sessionStorage.setItem('ks_payment_success', '1');
+            sessionStorage.setItem('ks_compat_session_unlocked', '1');
+          } catch { /* noop */ }
+          window.location.reload();
+        } else {
+          console.log('[KindredSouls] Already covered by existing plan, skipping checkout');
+        }
       } else {
         console.error('[KindredSouls] Stripe checkout failed:', data);
         alert('Payment initiation failed. Please try again or contact support.');
@@ -442,10 +455,13 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         </button>
         <div className="ks-fold" data-open={fold1 ? 'true' : 'false'} data-settled={fold1Settled ? 'true' : 'false'}>
           <div className="ks-fold-inner">
-            <label className="ks-field-label">{L_TIME}</label>
-            <TimeInput value={t1} onChange={setT1} />
+            {/* 🔴 E86-①（主公军令 2026-10-24）：出生城市上移置于出生时间之上——
+                城市联想下拉（absolute+zIndex 1000）展开时只覆盖本卡时间框，
+                不再跨卡遮挡 TA 的星盘卡与「测算缘分」主按钮（军令截图 1/2 病灶根治）。 */}
             <label className="ks-field-label">{L_CITY}</label>
             <CitySearchInput value={c1?.key || ''} tz={c1?.tz || 'Asia/Shanghai'} lat={c1?.lat || 31.23} lon={c1?.lon || 121.47} onSelect={setC1} lang={lang} />
+            <label className="ks-field-label">{L_TIME}</label>
+            <TimeInput value={t1} onChange={setT1} />
           </div>
         </div>
       </div>
@@ -462,10 +478,11 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         </button>
         <div className="ks-fold" data-open={fold2 ? 'true' : 'false'} data-settled={fold2Settled ? 'true' : 'false'}>
           <div className="ks-fold-inner">
-            <label className="ks-field-label">{L_TIME}</label>
-            <TimeInput value={t2} onChange={setT2} />
+            {/* 🔴 E86-①（主公军令 2026-10-24）：TA 卡同款对调——城市在上、时间在下（双卡对齐）。 */}
             <label className="ks-field-label">{L_CITY}</label>
             <CitySearchInput value={c2?.key || ''} tz={c2?.tz || 'Asia/Shanghai'} lat={c2?.lat || 31.23} lon={c2?.lon || 121.47} onSelect={setC2} lang={lang} />
+            <label className="ks-field-label">{L_TIME}</label>
+            <TimeInput value={t2} onChange={setT2} />
           </div>
         </div>
       </div>
@@ -1112,14 +1129,19 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
 
 
   // 🐮 简化版：只存 localStorage + 弹登录墙，不返回 Promise
+  // 🔴 E86-③（主公军令 2026-10-24）：点击「立即解锁」即刻触发加载态（军令验收
+  //    「点击 → 加载态 → 跳转网关」三段链）——异步等待期间绝不 window.open，
+  //    全部 window.location.href 全页定向（E72 铁律同源）。
   const handlePurchase = (plan: string) => {
+    setLoading(true);
     // 先检查是否已登录
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
-        // 已登录，直接触发 Stripe
+        // 已登录，直接触发 Stripe（loading 保持至跳转/沙盘收银台/already_paid reload）
         handlePurchaseWithToken(session.access_token, plan);
       } else {
-        // 没登录：存意图 + 弹登录墙
+        // 没登录：存意图 + 弹登录墙（loading 收口，登录门上屏）
+        setLoading(false);
         localStorage.setItem('ks_pending_checkout_plan', plan);
         setShowPaywall(false);
         setShowAuthWall(true);
@@ -1271,12 +1293,40 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       </div>
     );
   }
+  // Auth wall — not logged in (ONLY shown after user clicked "解锁" on paywall)
+  // 🔴 E86-③（主公军令 2026-10-24）：AuthWall 分支必须前置——E85 后付费墙条件
+  //    `showPaywall || !sessionUnlocked` 恒真（未支付前），原顺序把登录墙顶死成
+  //    永不可达 ⇒ 未登录点「立即解锁」只落 ks_pending_checkout_plan 无人接盘，
+  //    按钮看似「点击无效」。前置后：未登录点击 → 登录门即刻呈现（E72 意图先行链）。
+  if (showAuthWall && insight === null) {
+    return (
+      <div className="ai-insight ai-insight-dark">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
+          <div style={{
+            width: '36px', height: '36px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 38% 38%, rgba(129,216,208,0.35) 0%, rgba(26,31,75,0.6) 45%, rgba(13,13,26,0.9) 100%)',
+            border: '1.5px solid rgba(129,216,208,0.25)',
+            boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '20px',
+            color: '#F5D08A', /* ✦ E84：图标色金辉（原继承 #222 在深底上 1.37:1 违 WCAG） */
+          }}>🔮</div>
+          <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <AuthWallCard lang={lang} />
+        </div>
+      </div>
+    );
+  }
   // Stripe paywall — logged in but not paid
   // 🎯 明牌流：先弹价格，用户愿意付费才登录
   // ── 付费墙：优先显示（无论登录状态）──
   // 🔴 E85-①（主公军令 2026-10-24）：当次测算会话未解锁（sessionUnlocked=false）⇒
   //    /result 底部 100% 呈现 $4.99 付费墙——账号级旧权益（paidStatus=true）不得跨次白送，
   //    严禁出现「跳过付费墙直接出报告」与孤立「生成 AI 洞察」按钮。
+  // 🔴 E86-③：本分支已在 AuthWall 之后（登录门优先——未登录点击「立即解锁」的合法承接位）。
   if (showPaywall || !sessionUnlocked) {
     return (
       <div className="ai-insight ai-insight-dark">
@@ -1310,29 +1360,6 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           }}>
             <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
           </div>
-        </div>
-      </div>
-    );
-  }
-  // Auth wall — not logged in (ONLY shown after user clicked "解锁" on paywall)
-  if (showAuthWall && insight === null) {
-    return (
-      <div className="ai-insight ai-insight-dark">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
-          <div style={{
-            width: '36px', height: '36px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 38% 38%, rgba(129,216,208,0.35) 0%, rgba(26,31,75,0.6) 45%, rgba(13,13,26,0.9) 100%)',
-            border: '1.5px solid rgba(129,216,208,0.25)',
-            boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '20px',
-            color: '#F5D08A', /* ✦ E84：图标色金辉（原继承 #222 在深底上 1.37:1 违 WCAG） */
-          }}>🔮</div>
-          <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <AuthWallCard lang={lang} />
         </div>
       </div>
     );

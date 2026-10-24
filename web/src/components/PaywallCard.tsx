@@ -20,9 +20,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: '看透TA此时此刻对你的真实想法',
       priceLabel: '单次',
       unlock: '立即解锁',
-      subscription: '月 · 无限次解读',
-      yearly: '年 · 全通卡',
-      yearlyPrice: '$99.99/年',
+      monthlyBtn: '解锁姻缘月报 $2.99/月',
+      yearlyBtn: '解锁姻缘年报 $29.99/年',
       secure: '安全支付 · 即时生成 · 支持退款',
     },
     en: {
@@ -39,9 +38,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: 'See what they truly think about you now',
       priceLabel: 'one-time',
       unlock: 'Unlock Now',
-      subscription: 'mo · Unlimited',
-      yearly: 'yr · All-Access',
-      yearlyPrice: '$99.99/yr',
+      monthlyBtn: 'Love Monthly $2.99/mo',
+      yearlyBtn: 'Love Annual $29.99/yr',
       secure: 'Secure Payment · Instant AI · Refundable',
     },
     es: {
@@ -58,9 +56,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: 'Descubre qué piensan realmente de ti ahora',
       priceLabel: 'una vez',
       unlock: 'Desbloquear Ahora',
-      subscription: 'mes · Ilimitado',
-      yearly: 'año · Acceso Total',
-      yearlyPrice: '$99.99/año',
+      monthlyBtn: 'Informe Mensual $2.99/mes',
+      yearlyBtn: 'Informe Anual $29.99/año',
       secure: 'Pago · IA Instantánea · Reembolsable',
     },
     fr: {
@@ -77,9 +74,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: 'Découvrez ce qu\'ils pensent vraiment de vous maintenant',
       priceLabel: 'une fois',
       unlock: 'Débloquer Maintenant',
-      subscription: 'mois · Illimité',
-      yearly: 'an · Accès Total',
-      yearlyPrice: '$99.99/an',
+      monthlyBtn: 'Rapport Mensuel $2.99/mois',
+      yearlyBtn: 'Rapport Annuel $29.99/an',
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
     },
     th: {
@@ -96,9 +92,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: 'ดูสิ่งที่พวกเขาคิดเกี่ยวกับคุณตอนนี้',
       priceLabel: 'ครั้งเดียว',
       unlock: 'ปลดล็อกเลย',
-      subscription: 'เดือน · ไม่จำกัด',
-      yearly: 'ปี · ใช้งานได้ทั้งหมด',
-      yearlyPrice: '$99.99/ปี',
+      monthlyBtn: 'รายงานรายเดือน $2.99/เดือน',
+      yearlyBtn: 'รายงานรายปี $29.99/ปี',
       secure: 'ชำระเงินปลอดภัย · AI ทันที · คืนเงินได้',
     },
     vi: {
@@ -115,9 +110,8 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       bonusDetail: 'Xem họ thực sự nghĩ gì về bạn ngay bây giờ',
       priceLabel: 'lần dùng',
       unlock: 'Mở khóa ngay',
-      subscription: 'tháng · Không giới hạn',
-      yearly: 'năm · Toàn quyền',
-      yearlyPrice: '$99.99/năm',
+      monthlyBtn: 'Báo Cáo Tháng $2.99/tháng',
+      yearlyBtn: 'Báo Cáo Năm $29.99/năm',
       secure: 'Thanh toán An toàn · AI Tức thì · Hoàn tiền được',
     },
   };
@@ -261,9 +255,9 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         {loading ? '⏳ ...' : `✨ ${c.unlock}`}
       </button>
 
-      {/* 订阅按钮 — 金色边框 */}
+      {/* 月报档 — 金色边框（E86-③：旧双引擎月卡档退役 → E85 姻缘月报 $2.99） */}
       <button
-        onClick={() => onPurchase('star_monthly_vip')}
+        onClick={() => onPurchase('compatibility_monthly_report')}
         disabled={loading}
         style={{
           width: '100%',
@@ -279,12 +273,12 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
           marginBottom: '12px',
         }}
       >
-        💎 $9.99/{c.subscription}
+        📅 {c.monthlyBtn}
       </button>
 
-      {/* 年卡按钮 — 金色渐变 */}
+      {/* 年报档 — 金色渐变（E86-③：旧全通年卡档退役 → E85 姻缘年报 $29.99） */}
       <button
-        onClick={() => onPurchase('all_pass_yearly')}
+        onClick={() => onPurchase('compatibility_yearly_report')}
         disabled={loading}
         style={{
           width: '100%',
@@ -306,7 +300,7 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
         onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { (e.target as HTMLButtonElement).style.transform = 'translateY(0)'; }}
       >
-        {loading ? '⏳ ...' : `🏆 ${c.yearlyPrice}`}
+        {loading ? '⏳ ...' : `👑 ${c.yearlyBtn}`}
       </button>
 
       {/* 信任标识 — 提亮与bonusDetail同色 */}

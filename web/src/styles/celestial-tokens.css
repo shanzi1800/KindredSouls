@@ -107,3 +107,28 @@
   filter: var(--ks-icon-glow);
   color: var(--ks-icon-stroke);
 }
+
+/* ═══ E86（主公军令 2026-10-24）：统一黑金滚动条标准 ═══
+ * 规格逐字复制「财富月报」金属框内的滚动槽：细长胶囊轨道（5px）、
+ * 深黑半透滑轨、暗金→古铜金渐变滑块、悬停鎏金提亮。
+ * 统领所有城市联想下拉浮层（姻缘/财富全模块），彻底剔除原生灰白粗滚动槽。 */
+.celestial-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.45) rgba(15, 13, 25, 0.6);
+}
+.celestial-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.celestial-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 13, 25, 0.7);
+  border-radius: 999px;
+}
+.celestial-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.6), rgba(180, 140, 30, 0.35));
+  border-radius: 999px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+}
+.celestial-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.85), rgba(212, 175, 55, 0.6));
+}
