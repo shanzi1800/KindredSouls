@@ -75,7 +75,9 @@ test('E86-③-1 already_paid 静默吞噬根治（点击必响应）', () => {
   const app = read('web/src/App.tsx');
   const iPaid = app.indexOf("} else if (route.kind === 'paid') {");
   assert.ok(iPaid > 0, 'paid 分支缺失');
-  const seg = app.slice(iPaid, iPaid + 900);
+  // 🔴 E88-①（主公军令 2026-10-26）语义演进：paid 分支前置月报/年报沙盒分流 ⇒
+  //    once 支路后移，锚窗放宽 2600（语义不变：点击必有下文，无静默吞噬）。
+  const seg = app.slice(iPaid, iPaid + 2600);
   // compatibility_once ⇒ 当次会话解锁＋复用全自动揭晓链（点击必有下文）
   assert.ok(seg.includes("plan === 'compatibility_once'"), 'paid 分支未认 compatibility_once（静默吞噬违令）');
   assert.ok(seg.includes("sessionStorage.setItem('ks_payment_success', '1')"), 'paid 分支未复用支付成功自动链');

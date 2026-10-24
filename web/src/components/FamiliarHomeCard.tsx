@@ -128,9 +128,16 @@ const FamiliarHomeCard: React.FC = () => {
           Object.assign(planMap, raw);
         }
         const now = Date.now();
+        // 🔴 E88-④（主公军令 2026-10-26）：姻缘线权益纳入门禁白名单——旧白名单只认
+        //    财富线（wealth_*/all_pass/star_vip），姻缘 $4.99 解锁用户（compatibility_*）
+        //    认领灵宠回首页后被 fail-closed 拦死（灵宠不显示的真正根因，非账号冲突）。
+        //    本地 ks_familiar 档为渲染真源；权益门禁只决定「呈现」，两全其美。
         let ok = planMap.wealth_once === true
           || planMap.wealth_monthly_report === true
-          || planMap.wealth_yearly_report === true;
+          || planMap.wealth_yearly_report === true
+          || planMap.compatibility_once === true
+          || planMap.compatibility_monthly_report === true
+          || planMap.compatibility_yearly_report === true;
         if (!ok && planMap.all_pass_yearly) {
           const ap = planMap.all_pass_yearly;
           const exp = (ap && (ap.expires_at || ap.all_pass_expires_at)) || planMap.all_pass_expires_at;

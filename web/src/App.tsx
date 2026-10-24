@@ -39,7 +39,7 @@ import FamiliarHomeCard from './components/FamiliarHomeCard';
 //    星芒微光 SVG 神秘学矢量（双星交汇星环 / 先天星盘金库），真源 EsotericIcons.tsx。
 import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
-import { dispatchCheckoutRoute, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
+import { dispatchCheckoutRoute, openSandboxCashier, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
 // 🎨 E83：星际黑金设计令牌（深空曜石底 / 流光毛玻璃 / 星轨进度条 / 三级排版）——
 //    全站奢华重构唯一真源，先于 App.css 载入，供其覆盖具体页面样式。
 import './styles/celestial-tokens.css';
@@ -209,17 +209,36 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         // 🔴 沙盘截断：绝不跳外链 —— 收银台已由总线就地唤起（真金白银路径逐字未改）
         console.log('[KindredSouls] 🧪 sandbox checkout — cashier opened in place:', route.plan);
       } else if (route.kind === 'paid') {
-        // 🔴 E86-③＋E87-②/③（主公军令 2026-10-24/25）：already_paid 静默吞噬根治——
-        //    服务端防重付挡死重复下单 ⇒ 点击「解锁」一律视作当次会话解锁：落支付成功
-        //    标志＋对应报告路由标记后 reload（once ⇒ 洞察自动揭晓；monthly/yearly ⇒
-        //    报告自动生成）。
-        try {
-          sessionStorage.setItem('ks_payment_success', '1');
-          if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
-          else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
-          if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
-        } catch { /* noop */ }
-        window.location.reload();
+        // 🔴 E88-①（主公军令 2026-10-26）：already_paid 旁路终极收口——月报/年报点击
+        //    **无条件**呈现沙盒收银台（不论账号历史 already_paid 残留），用户主动确认
+        //    付款后才触发生成链：complete ⇒ webhook 幂等重授（received:true ⇒ granted）⇒
+        //    onGranted 落支付成功标志＋报告路由标记后 reload（与正常沙盒付讫同一条链）。
+        //    🔴 军令射程＝月报/年报两档；once 已购用户沿用 E86 当次会话解锁语义（不动）。
+        //    技术底座：/api/sandbox/complete 只需 plan（自建 session+webhook 派发），
+        //    SandboxCashier 的 sessionId 仅展示用 ⇒ 空串唤起合法。
+        if (plan === 'compatibility_monthly_report' || plan === 'compatibility_yearly_report') {
+          openSandboxCashier({
+            plan,
+            sessionId: '',
+            url: '',
+            onGranted: () => {
+              try {
+                sessionStorage.setItem('ks_payment_success', '1');
+                if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
+                else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
+              } catch { /* noop */ }
+              window.location.reload();
+            },
+          });
+        } else {
+          // 🔴 E86-③＋E87-②/③（沿袭）：once 档 already_paid 静默吞噬根治——
+          //    服务端防重付挡死重复下单 ⇒ 点击「解锁」一律视作当次会话解锁。
+          try {
+            sessionStorage.setItem('ks_payment_success', '1');
+            if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
+          } catch { /* noop */ }
+          window.location.reload();
+        }
       } else {
         console.error('[KindredSouls] Stripe checkout failed:', data);
         alert('Payment initiation failed. Please try again or contact support.');
@@ -674,6 +693,24 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   });
   const [reportLoading, setReportLoading] = useState<string | false>(false);
   const [reportText, setReportText] = useState<string | null>(null);
+  // 🔴 E88-②（主公军令 2026-10-26）：报告长卷「打字机」渐进渲染——
+  //    SSE 协议不动（阶段帧+终帧整文契约封仓），前端以段落为粒度逐段揭示，
+  //    观感＝流式打字机长卷展开。Infinity ⇒ 全量直显（失败文案/冷启动旧文）。
+  const [revealedParas, setRevealedParas] = useState<number>(Number.POSITIVE_INFINITY);
+  const reportParas = React.useMemo(
+    () => (reportText ? reportText.split('\n\n').map((p) => p.trim()).filter((p) => p !== '') : []),
+    [reportText],
+  );
+  const reportTyping = revealedParas !== Number.POSITIVE_INFINITY && revealedParas < reportParas.length;
+  React.useEffect(() => {
+    if (!reportText || revealedParas !== 0) return;
+    if (reportParas.length === 0) { setRevealedParas(Number.POSITIVE_INFINITY); return; }
+    const id = setInterval(() => {
+      setRevealedParas((p) => (p + 1 >= reportParas.length ? Number.POSITIVE_INFINITY : p + 1));
+    }, 130);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportText, revealedParas === 0, reportParas.length]);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -1260,12 +1297,15 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
       if (data.insight) {
         setReportText(data.insight);
+        setRevealedParas(0); // 🔴 E88-②：长卷打字机渐进渲染起点（0 ⇒ 逐段揭示）
       } else {
         setReportText(lang === 'zh' ? '生成报告失败，请重试。' : 'Failed to generate report. Please try again.');
+        setRevealedParas(Number.POSITIVE_INFINITY);
       }
     } catch (err) {
       console.error('[AIInsightBlock] generateReport error:', err);
       setReportText(lang === 'zh' ? '网络错误，请重试。' : 'Network error. Please try again.');
+      setRevealedParas(Number.POSITIVE_INFINITY);
     } finally {
       setReportLoading(false);
     }
@@ -1486,10 +1526,21 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 {reportLoading === 'yearly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly}
               </button>
               {reportText && (
-                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
-                  {reportText.split('\n\n').map((para, i) => (
-                    <p key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', margin: '0 0 8px' }}>{para}</p>
-                  ))}
+                /* 🔴 E88-②（主公军令 2026-10-26）：黑金长卷渲染容器——
+                   · 章节头（第X章/Chapter N 六语形态）＝金标题铭牌（.ks-report-chapter）；
+                   · 正文段＝香槟白（.ks-report-para）；
+                   · 打字机渐进：逐段揭示（revealedParas），进行中尾部缀 ✦ 光标；
+                   · 超长内容自持滚动槽（.ks-report-scroll 复用 E86 .celestial-scrollbar）。 */
+                <div className="ks-report-scroll" data-testid="compat-report-scroll" style={{ marginTop: '12px', padding: '14px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', textAlign: 'left' }}>
+                  {reportParas
+                    .slice(0, reportTyping ? revealedParas : reportParas.length)
+                    .map((para, i) => {
+                      const isChapterHead = /^(第[一二三四五六七八九十]+章|Chapter\s+\d|Cap[íi]tulo\s+\d|Chapitre\s+\d|บทที่\s+\d|Chương\s+\d)/.test(para);
+                      return isChapterHead
+                        ? <p key={i} className="ks-report-chapter">{para}</p>
+                        : <p key={i} className="ks-report-para">{para}</p>;
+                    })}
+                  {reportTyping && <p className="ks-report-cursor" aria-hidden="true">✦ …</p>}
                 </div>
               )}
             </div>

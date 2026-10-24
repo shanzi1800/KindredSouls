@@ -115,15 +115,24 @@ test('E85-④-1 认领完成回调绑定（组件级默认：清 result 状态�
   const cta = read('web/src/components/AdoptFamiliarCTA.tsx');
   // onAdopted prop 契约
   assert.ok(cta.includes('onAdopted?: () => void;'), 'E85 缺 onAdopted 回调契约');
-  // adopt 成功后触发链
-  const iAdopt = cta.indexOf('setPersisted(!!data.persisted);');
-  const seg = cta.slice(iAdopt, iAdopt + 1200);
-  assert.ok(seg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), '认领后未落对话舱意图标记');
-  assert.ok(seg.includes("localStorage.removeItem('ks_result')"), '认领后未清 ks_result（旧报告页会复活）');
-  assert.ok(seg.includes("sessionStorage.removeItem('ks_result')"), '认领后未清 sessionStorage 结果副本');
-  assert.ok(seg.includes("sessionStorage.removeItem('ks_compat_session_unlocked')"), '认领后未清 per-session 解锁标记');
+  // 🔴 E88-④（主公军令 2026-10-26）语义演进：认领成功 ⇒ 停留本页（两段交互第一段）——
+  //    意图标记/清 result/回首页全部后移到带路按钮（用户亲手点击才触发）。
+  //    本断言看守：认领成功段只写档＋宿主回调，不再擅自落意图/跳转。
+  const iAdopt = cta.indexOf('const profile = data.profile as FamiliarProfile;');
+  assert.ok(iAdopt > 0, '认领成功段锚点定位失败');
+  const seg = cta.slice(iAdopt, iAdopt + 1500);
+  assert.ok(seg.includes('localStorage.setItem(FAMILIAR_LS_KEY'), '认领后未写灵宠档（首页渲染真源断裂）');
   assert.ok(seg.includes('if (onAdopted)'), '认领后未绑定宿主回调');
-  assert.ok(seg.includes("window.location.href = '/'"), '认领后未整页导航回星空首页');
+  assert.ok(!seg.includes('window.location.href'), '认领选角成功即整页跳转（E88-④ 自动跳走复辟违令）');
+  // 两段交互第二段（带路按钮）：落意图＋清 result 双仓＋清解锁标记＋回首页出口
+  const iLead = cta.indexOf('data-testid="adopt-lead-home"');
+  assert.ok(iLead > 0, '带路按钮缺失');
+  const leadSeg = cta.slice(iLead, iLead + 1800);
+  assert.ok(leadSeg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), '带路按钮未落对话舱意图标记');
+  assert.ok(leadSeg.includes("localStorage.removeItem('ks_result')"), '带路按钮未清 ks_result（旧报告页会复活）');
+  assert.ok(leadSeg.includes("sessionStorage.removeItem('ks_result')"), '带路按钮未清 sessionStorage 结果副本');
+  assert.ok(leadSeg.includes("sessionStorage.removeItem('ks_compat_session_unlocked')"), '带路按钮未清 per-session 解锁标记');
+  assert.ok(leadSeg.includes("window.location.href = '/'"), '带路按钮未整页导航回星空首页');
 });
 
 test('E85-④-2 认领带路按钮仍守 E52 直达纪律（禁 history.back）', () => {

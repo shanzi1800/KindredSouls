@@ -33,10 +33,13 @@ test('E87-①-2 .ks-tarot-line 令牌铸成（与姻缘正文同源亮度）', (
   const css = read('web/src/App.css');
   const m = css.match(/\.ks-tarot-line\s*\{[^}]*\}/);
   assert.ok(m, '.ks-tarot-line 规则缺失');
-  // 亮度令牌＝正文 .insight-result p 同款 --ks-text-secondary（单源）
-  assert.ok(m[0].includes('var(--ks-text-secondary, #C7C2D4)'), '塔罗解读行未绑定正文亮度令牌');
-  assert.ok(!/opacity/.test(m[0]), '塔罗解读行透明度残留违令');
-  assert.ok(/font-size:\s*13px/.test(m[0]) && /line-height:\s*1\.75/.test(m[0]), '塔罗解读行排版未对齐正文（13px/1.75）');
+  // 🔴 E88-③（主公军令 2026-10-26）语义演进：亮度令牌升级为主文令牌
+  //   --ks-text-primary（≈15.9:1，与一次性报告正文完全同源）＋ opacity:1 强制
+  //   ＋ line-height 1.7（旧 --ks-text-secondary 次文令牌退役）。
+  assert.ok(m[0].includes('var(--ks-text-primary, rgba(245, 245, 247, 0.95))'), '塔罗解读行未绑定主文亮度令牌（E88-③）');
+  assert.ok(m[0].includes('opacity: 1 !important'), '塔罗解读行 opacity 强制缺失（压暗残留违令）');
+  assert.ok(/line-height:\s*1\.7/.test(m[0]), '塔罗解读行行距未按 E88-③ 军令对齐（1.7）');
+  assert.ok(/font-size:\s*13px/.test(m[0]), '塔罗解读行字号未对齐正文（13px）');
 });
 
 /* ─── ② 月报/年报未付严禁直调生成接口（购买先行） ─── */
@@ -81,13 +84,19 @@ test('E87-③-2 paid 分支月报/年报同享会话解锁＋自动生成承接'
   const app = read('web/src/App.tsx');
   const iPaid = app.indexOf("} else if (route.kind === 'paid') {");
   assert.ok(iPaid > 0, 'paid 分支缺失');
-  const seg = app.slice(iPaid, iPaid + 1400);
-  // E86 once 语义保持 + E87 扩展到月报/年报（点击必有下文，无静默吞噬）
-  assert.ok(seg.includes("plan === 'compatibility_once'"), 'paid 分支 once 语义丢失');
+  const seg = app.slice(iPaid, iPaid + 2600);
+  // 🔴 E88-①（主公军令 2026-10-26）语义演进：paid 分支月报/年报 ⇒ **无条件弹沙盒
+  //    收银台**（openSandboxCashier 就地唤起，用户确认付款才走 onGranted 生成链）；
+  //    once 沿用 E86 当次会话解锁。三档不得静默吞噬。
   assert.ok(seg.includes("plan === 'compatibility_monthly_report'"), 'paid 分支未认月报（静默吞噬违令）');
   assert.ok(seg.includes("plan === 'compatibility_yearly_report'"), 'paid 分支未认年报（静默吞噬违令）');
+  assert.ok(seg.includes('openSandboxCashier({'), 'paid 分支未就地弹沙盒收银台（E88-① 军令）');
+  // 沙盒确认后承接：onGranted 落支付成功信号＋报告路由标记＋reload
   assert.ok(seg.includes("sessionStorage.setItem('ks_payment_success', '1')"), 'paid 分支未落支付成功信号');
+  assert.ok(seg.includes("sessionStorage.setItem('ks_paid_report_type', 'monthly')"), 'paid 分支 onGranted 未落月报路由标记');
   assert.ok(seg.includes('window.location.reload()'), 'paid 分支未刷新承接');
+  // E86 once 语义保持（else 支路）
+  assert.ok(seg.includes("plan === 'compatibility_once'"), 'paid 分支 once 语义丢失');
   // 静默分支退役：paid 分支内不得再有无动作 console.log 收口
   assert.ok(!seg.includes('Already covered by existing plan, skipping checkout'), 'paid 分支静默吞噬残留违令');
 });

@@ -554,7 +554,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-tarot-orient { color: var(--ks-text-secondary, #C7C2D4); font-size: 12.5px; font-weight: 500; }
 /* ✦ E87-①（主公军令 2026-10-25）：塔罗解读行——暗淡透明度退役，
    亮度与姻缘报告正文单源同令牌（--ks-text-secondary），正文同款 13px/1.75 行距。 */
-.ks-tarot-line { margin: 12px 0 0; font-style: italic; font-size: 13px; line-height: 1.75; color: var(--ks-text-secondary, #C7C2D4); }
+/* 🔴 E88-③（主公军令 2026-10-26）：塔罗解读行亮度终极收口——弃次文令牌，
+   强绑主文字亮度令牌（与一次性报告正文同源 ≈15.9:1），opacity 强制 1，
+   任何上游/继承压暗（inline opacity / 祖先半透明）一律被 !important 压制。 */
+.ks-tarot-line {
+  margin: 12px 0 0;
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ks-text-primary, rgba(245, 245, 247, 0.95)) !important;
+  opacity: 1 !important;
+}
+
+/* 🔴 E88-②（主公军令 2026-10-26）：姻缘报告「黑金长卷」三类——
+   章节头金铭牌（年报五章/月报段落皆可命中）＋正文香槟白＋打字机光标。 */
+.ks-report-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.ks-report-chapter {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ks-text-gold, #F5D08A);
+  letter-spacing: 0.4px;
+  border-left: 3px solid rgba(212, 175, 55, 0.65);
+  padding-left: 10px;
+}
+.ks-report-para {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ks-text-primary, #F5F2FA);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ks-report-cursor {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ks-text-gold, #F5D08A);
+  animation: ksReportCursorPulse 1.1s ease-in-out infinite;
+}
+@keyframes ksReportCursorPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
 
 /* Aspects Tags */
 /* ✦ E84：绿/黄浅底胶囊退役 → 金辉/星云紫胶囊（黑金系） */

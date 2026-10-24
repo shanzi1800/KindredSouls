@@ -155,7 +155,9 @@ test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动
   const cta = read('web/src/components/AdoptFamiliarCTA.tsx');
   // ① 报告尾 CTA：写一次性意图标记 + 单页跳首页（不得只跳转）
   assert.ok(cta.includes('data-testid="adopt-lead-home"'), 'E76 带路按钮缺 testid');
-  const seg = cta.slice(cta.indexOf('data-testid="adopt-lead-home"'), cta.indexOf('data-testid="adopt-lead-home"') + 900);
+  // 🔴 E88-④（主公军令 2026-10-26）窗放宽 1800：带路按钮 onClick 承接两段交互第二段
+  //    （意图标记＋清 result 双仓＋清劫持源＋回首页），onLeadHome 调用位相应后移。
+  const seg = cta.slice(cta.indexOf('data-testid="adopt-lead-home"'), cta.indexOf('data-testid="adopt-lead-home"') + 1800);
   assert.ok(seg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), 'E76 带路按钮未写一次性意图标记');
   assert.ok(seg.includes('onLeadHome'), 'E76 带路按钮未走宿主跳转回调');
   // ② 首页消费：读到标记即开舱 + 消费即删（防刷新重复弹）+ 无灵宠档不开空舱

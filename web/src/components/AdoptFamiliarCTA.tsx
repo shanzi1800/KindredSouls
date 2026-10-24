@@ -129,27 +129,15 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
       setAdoptedMode(mode);
       setPersisted(!!data.persisted);
       setOpen(false);
-      // 🔴 E85-④（主公军令 2026-10-24）：认领完成 ⇒ 即回星空大首页。
-      //    默认行为＝清当前测算结果状态（resultData/step/viewMode 整页重载天然全清：
-      //    ks_result 双仓清除 ⇒ 冷启动不会复活旧报告页）＋落一次性对话舱意图标记，
-      //    首页 FamiliarHomeCard 挂载消费即删并自动唤醒 E66 聊天舱（问候即认领反馈）。
-      //    宿主注入 onAdopted 时由宿主接管（本组件不再自行跳转）。
-      try {
-        try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* iOS 无痕兜底 */ }
-        localStorage.removeItem('ks_result');
-        sessionStorage.removeItem('ks_result');
-        sessionStorage.removeItem('ks_compat_session_unlocked');
-        // 🔴 E87-④（主公军令 2026-10-25）：认领＝消费终局——同步清除陈年回跳劫持源。
-        //    ks_oauth_back_url（财富报告页所写、只写不清）曾在「回首页」冷启动时把
-        //    用户整页劫持进 /wealth/report?… 死循环；ks_pending_checkout_plan 同为
-        //    冷启动自动续跑源，一并清零，认领后 '/' 只认星空首页。
-        localStorage.removeItem('ks_oauth_back_url');
-        localStorage.removeItem('ks_pending_checkout_plan');
-      } catch (_) { /* 隐私模式忽略 */ }
+      // 🔴 E88-④（主公军令 2026-10-26）：认领完成 ⇒ **停留本页**（严禁自动跳转）。
+      //    旧病根：认领成功即 onAdopted/整页跳 '/' ⇒ 用户只短暂瞥见「已就位＋带路
+      //    按钮」就被劫走，永远点不到带路按钮（首页灵宠亦无从唤醒）。军令两段交互：
+      //    ① 选角成功 ⇒ 高亮所选（AdoptDone 态）＋稳固呈现「由TA带路开启互动吧」；
+      //    ② 用户亲手点击带路按钮 ⇒ 才落一次性对话舱意图＋清劫持源＋回星空首页。
+      //    重新认领视作「切换/唤醒」（见 adopted 态 ↺ 重选入口），废除自动跳走守卫。
+      //    宿主 onAdopted 通知保留（宿主自行切换内部态，但不得替用户跳转）。
       if (onAdopted) {
         onAdopted();
-      } else {
-        try { window.location.href = '/'; } catch (_) { /* noop */ }
       }
     } catch (_) {
       setErr(true);
@@ -181,6 +169,24 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
               ({lang === 'zh' ? '本机留存' : lang === 'en' ? 'local only' : lang === 'es' ? 'solo local' : lang === 'fr' ? 'local seul' : lang === 'th' ? 'เก็บในเครื่อง' : 'chỉ cục bộ'})
             </span>
           )}
+          {/* 🐾 E88-④（主公军令 2026-10-26）：重新认领＝「切换/唤醒」——废除已有灵宠
+              自动跳走守卫的同族补丁：已认领态提供 ↺ 重选入口，重选即覆盖旧档（服务端
+              familiar_adopt 原生支持换绑，localStorage 同键覆盖写）。内联六语（零 i18n
+              基准扰动，与上方 local-only 同模式）。 */}
+          <button
+            type="button"
+            data-testid="adopt-reselect"
+            onClick={() => { setAdopted(null); setAdoptedMode(''); setPersisted(false); setOpen(true); }}
+            style={{
+              padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.22)',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.72)', fontSize: '10.5px', fontWeight: 600,
+              whiteSpace: 'nowrap', ...SAFE_TEXT,
+            }}
+          >
+            ↺ {lang === 'zh' ? '重新选择' : lang === 'en' ? 'Switch companion' : lang === 'es' ? 'Cambiar' : lang === 'fr' ? 'Changer' : lang === 'th' ? 'เปลี่ยนใหม่' : 'Đổi lại'}
+          </button>
           {/* 🐾 E55-3: 2.0 定制殿堂入口已战略隐藏（原 E54-4 位置，待 2.0 激活） */}
           {/* 🐾 E52（主公亲令 2026-10-15）: 右侧高亮方框「带路」按钮 —— 点击**单页路由直跳首页**，
               严禁 history.back 多次返回；文案性别化（她/他 按 relation_mode 白名单二分） */}
@@ -192,7 +198,18 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
               //   唯一带路口。E76 承诺「开始互动」——落一次性 sessionStorage 意图标记，
               //   首页 FamiliarHomeCard 挂载时消费即删并自动唤醒对话舱（E66 抽屉舱）；
               //   try/catch 兜底 iOS 无痕模式抛错（不阻断跳转）。
-              try { sessionStorage.setItem('ks_open_familiar_chat', '1'); } catch (_) { /* noop */ }
+              // 🔴 E88-④（主公军令 2026-10-26）两段交互第二段：用户**亲手点击**才
+              //    落意图标记＋清当前测算结果（ks_result 双仓 / ks_compat_session_unlocked）
+              //    ＋清陈年回跳劫持源（ks_oauth_back_url / ks_pending_checkout_plan，
+              //    E87-④ 沿袭）＋回星空首页——一气呵成。
+              try {
+                sessionStorage.setItem('ks_open_familiar_chat', '1');
+                localStorage.removeItem('ks_result');
+                sessionStorage.removeItem('ks_result');
+                sessionStorage.removeItem('ks_compat_session_unlocked');
+                localStorage.removeItem('ks_oauth_back_url');
+                localStorage.removeItem('ks_pending_checkout_plan');
+              } catch (_) { /* iOS 无痕兜底（不阻断跳转） */ }
               if (onLeadHome) onLeadHome(); else { try { window.location.href = '/'; } catch (_) {} }
             }}
             style={{

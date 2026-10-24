@@ -272,7 +272,10 @@ test('C6 服务端 HIT 主通路（SSE 单帧 ready）必须携带 reportId —�
 
 test('C7 命中路径零算力：HIT 分支必须在建流水线/调 AI 之前返回（不重跑引擎、不扣配额）', () => {
   const srv = readSrc('server.js');
-  const iReplayBranch = srv.indexOf('if (_g41Replay) {');
+  // 🔴 E88-②（主公军令 2026-10-26）语义演进：HIT 分支改挂守卫变量
+  //    _g41ReplayUsable（yearly 旧短壳 <2000 字符 ⇒ 忽略复读走 MISS 新生成；
+  //    月报/once 复读语义零改动）——锚随演进，零算力红线不变。
+  const iReplayBranch = srv.indexOf('if (_g41ReplayUsable) {');
   const iHitJson = srv.indexOf('return res.json({ insight: _g41Replay.insight');
   const iHitSse = srv.indexOf('return _rps.ready(lang, { insight: _g41Replay.insight');
   const iPipe = srv.indexOf('const _pipe = createReportPipeline();');

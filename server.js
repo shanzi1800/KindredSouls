@@ -477,6 +477,7 @@ import { StringDecoder } from 'string_decoder';  // P0-fix: UTF-8 增量解码�
 import { buildDeepSeekSamplingParams } from './lib/llm_params.mjs';  // 🛡️ V475: 采样参数单一真源
 import { buildCompatPrompt, buildCompatTimeContext, computeCompatScores } from './api/ai-advisor.js';  // 🛍️ E39-A: 合婚四段骨架真值资产（六语 + 动态时间轴 + 强制数据锁，单一真源引渡）
 import { SYNASTRY_I18N } from './api/ai-advisor.js';  // 🛡️ Gate 40: 合盘报告六语真值表（Payload 装配注入；独立成行，不污染 E39 封仓引渡契约行）
+import { renderSynastryBlock } from './api/ai-advisor.js';  // 🔴 E88-②: 年报五章 prompt 复用同一双盘真值块渲染器（独立成行，不污染既有引渡契约行）
 import { buildReportPayload, createReportPipeline, REPORT_PAYLOAD_SCHEMA } from './lib/reportPipeline.mjs';  // 🛡️ Gate 40: 合盘报告生成管线（状态机 + 标准化 Payload 契约，纯逻辑核）
 import { deriveCompatReportId, deserializePersistedPayload, planPersistRow } from './lib/reportPipeline.mjs';  // 🛡️ Gate 41: 实名持久化三件套（Report ID 派生 + 行构造 + 反序列化守卫；独立成行，不污染既有引渡契约行）
 import { buildStageFrame, buildReadyFrame, buildErrorFrame, sseData, SSE_DONE, SSE_HEARTBEAT, SSE_CONTENT_TYPE } from './lib/stageFrames.mjs';  // 🛡️ Gate 43: SSE 推演进度帧纯逻辑核（六语真值取词自字典；独立成行，不污染既有引渡契约行）
@@ -13645,6 +13646,121 @@ function buildCompatibilityReportPrompt(d1, d2, lang, reportType, extras) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 🔴 E88-②（主公军令 2026-10-26）：姻缘年报「五大章节」长卷 prompt
+//   病根：E39-B 四段骨架月报/年报共用——systemPrompt 限「4 段、每段 2-3 句、
+//   总不超 200 词」⇒ $29.99 年报内容近零（主公线上实测实锤）。军令：年报完整
+//   交付 5 大章节长篇（Solar Return 总括 / 12 月全景 / 四大维度 / 三大十字
+//   路口 / 易经流年卦）。
+//   🔴 铁律（沿袭 E39）：时间轴一律 buildCompatTimeContext 现算——本模板零固定
+//      年月字面量（闸门 B 剥注释扫描口径不变）；评分/星座/塔罗/双盘真值全部
+//      与 buildCompatibilityReportPrompt 同一入参管道（含 renderSynastryBlock
+//      真值块，缺真值 ⇒ 不注入，绝不伪造）。
+//   🔴 月报（monthly/once）零影响：仍走 buildCompatibilityReportPrompt 四段骨架。
+// ═══════════════════════════════════════════════════════════════
+const _E88_YEARLY_LANG_LOCK = Object.freeze({
+  zh: '你是资深命理情感顾问，为 KindredSouls 撰写年度姻缘年报。全程只用简体中文输出。',
+  en: 'You are a senior relationship astrologer writing the annual love report for KindredSouls. Write in English only.',
+  es: 'Eres un astrólogo senior de relaciones escribiendo el informe anual de amor de KindredSouls. Escribe solo en español.',
+  fr: 'Tu es un astrologue senior des relations rédigeant le rapport annuel amoureux de KindredSouls. Écris uniquement en français.',
+  th: 'คุณเป็นโหรความสัมพันธ์อาวุโสผู้เขียนรายงานประจำปีความรักของ KindredSouls เขียนเป็นภาษาไทยเท่านั้น',
+  vi: 'Bạn là nhà chiêm tinh quan hệ cấp cao viết báo cáo tình yêu thường năm của KindredSouls. Chỉ viết bằng tiếng Việt.',
+});
+
+const _E88_YEARLY_CHAPTERS = Object.freeze({
+  zh: Object.freeze([
+    '第一章 · 太阳返照盘：宇宙天机总括',
+    '第二章 · 未来12个月流年月度演变全景',
+    '第三章 · 双人关系四大硬核维度推演',
+    '第四章 · 全年三大命运十字路口',
+    '第五章 · 易经流年大卦与年度开运调频指南',
+  ]),
+  en: Object.freeze([
+    'Chapter 1 · Solar Return: The Cosmic Overview',
+    'Chapter 2 · The 12-Month Monthly Evolution Panorama',
+    'Chapter 3 · Four Hard-Core Relationship Dimensions',
+    'Chapter 4 · Three Destiny Crossroads of the Year',
+    'Chapter 5 · I Ching Annual Hexagram & Luck Tuning Guide',
+  ]),
+  es: Object.freeze([
+    'Capítulo 1 · Retorno Solar: Panorama Cósmico',
+    'Capítulo 2 · Panorama de Evolución Mensual de 12 Meses',
+    'Capítulo 3 · Cuatro Dimensiones Duras de la Relación',
+    'Capítulo 4 · Tres Encrucijadas del Destino del Año',
+    'Capítulo 5 · Hexagrama Anual del I Ching y Guía de Sintonía',
+  ]),
+  fr: Object.freeze([
+    'Chapitre 1 · Retour Solaire : Le Panorama Cosmique',
+    'Chapitre 2 · Panorama de l’Évolution Mensuelle sur 12 Mois',
+    'Chapitre 3 · Quatre Dimensions Dures de la Relation',
+    'Chapitre 4 · Trois Carrefours du Destin de l’Année',
+    'Chapitre 5 · Hexagramme Annuel du I Ching et Guide d’Accordage',
+  ]),
+  th: Object.freeze([
+    'บทที่ 1 · Solar Return: ภาพรวมจักรวาล',
+    'บทที่ 2 · พาโนรามา 12 เดือนแห่งการหมุนเวียนรายเดือน',
+    'บทที่ 3 · สี่มิติหลักของความสัมพันธ์',
+    'บทที่ 4 · สามทางแยกแห่งโชคชะตาของปี',
+    'บทที่ 5 · ยี่จิงรายปีและคู่มือปรับคลื่นดวง',
+  ]),
+  vi: Object.freeze([
+    'Chương 1 · Solar Return: Toàn Cảnh Vũ Trụ',
+    'Chương 2 · Toàn Cảnh Tiến Hóa 12 Tháng',
+    'Chương 3 · Bốn Chiều Khía Căn Bản của Mối Quan Hệ',
+    'Chương 4 · Ba Ngã Rẽ Số Phận của Năm',
+    'Chương 5 · Quẻ Dịch Niên & Cẩm Nang Điều Chỉnh Vận Khí',
+  ]),
+});
+
+function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
+  const x = extras || {};
+  const L = Object.prototype.hasOwnProperty.call(_E88_YEARLY_LANG_LOCK, lang) ? lang : 'zh';
+  const scores = computeCompatScores(x.bazi, x.zodiac, x.iching);
+  const timeCtx = buildCompatTimeContext('yearly', new Date(), x.userBirthDate || null, L);
+  const tarot = (x.tarot && x.tarot.name) ? x.tarot : null;
+  const sign1 = (Array.isArray(x.zodiacMeta) && x.zodiacMeta[0]) || '';
+  const sign2 = (Array.isArray(x.zodiacMeta) && x.zodiacMeta[1]) || '';
+  const ch = _E88_YEARLY_CHAPTERS[L] || _E88_YEARLY_CHAPTERS.zh;
+  const syn = x.synastry || null;
+  const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
+
+  const system = [
+    _E88_YEARLY_LANG_LOCK[L],
+    '',
+    '[ANNUAL REPORT CONTRACT — MANDATORY]',
+    `1. Write EXACTLY 5 chapters, in order, each starting with the exact title line: ${ch[0]} / ${ch[1]} / ${ch[2]} / ${ch[3]} / ${ch[4]}.`,
+    '2. Chapter 1 (600+ words): Solar Return overview — the year\'s keynote, core conclusion, and a relationship-axis score (0-100) with one-line justification.',
+    '3. Chapter 2 (900+ words): the full 12-month panorama — analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
+    '4. Chapter 3 (900+ words): four hard-core dimensions, one sub-section each — ① daily communication & mental rapport, ② intimacy & attraction fluctuations, ③ material reality & family tests, ④ fated bond & soul growth.',
+    '5. Chapter 4 (600+ words): exactly THREE destiny crossroads of the year — each with a concrete month range (derived from the given time window), the trigger of conflict, and the breakthrough secret.',
+    '6. Chapter 5 (600+ words): the I Ching annual hexagram reading (derive it from the given I Ching score & data lock) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
+    '7. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
+    '8. Separate chapters with a blank line. Use plain text paragraphs; the first character of each chapter title line must be the chapter marker as given.',
+  ].join('\n');
+
+  const dataLock = [
+    `[DATA LOCK] Overall=${scores.overall}, Bazi=${scores.bazi}, Zodiac=${scores.zodiac}, IChing=${scores.iching}`,
+    `Tarot=${tarot ? tarot.name : ''}, Orientation=${tarot ? (tarot.orientation || '') : ''}`,
+    `Zodiac signs: ${sign1} and ${sign2}`,
+    `Time window (Solar Return, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
+    `Partners: ${d1} and ${d2}`,
+  ].filter(Boolean).join('\n');
+
+  const user = [
+    dataLock,
+    synBlock ? '\n' + synBlock : '',
+    '\n[STRUCTURE — copy the exact 5 chapter titles]',
+    ch[0],
+    ch[1],
+    ch[2],
+    ch[3],
+    ch[4],
+    `\nWrite the complete 5-chapter annual report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, at least 3600 words total. Every month, every dimension and every crossroad must be concrete and specific — no filler, no generic advice.`,
+  ].join('\n');
+
+  return { system, user, lang: L, reportType: 'yearly', timeCtx, fiveChapter: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 🌌 E40+：合婚报告「瑞士星历天体羁绊锁」真值装配（Synastry Tensor Fusion）
 //   依据：军师《E40+ 星历张量注入四段骨架》出征令（2026-10-10）
 //         —— 「接收双方时空真值 ⇒ 真实双盘交叉相位张量 ⇒ 注入四段骨架」。
@@ -16243,7 +16359,14 @@ app.use('/api/ai-advisor', async (req, res) => {
         userBirthDate: _cEnt.userBirthDate || null,
       });
       const _g41Replay = await replayCompatReportRow({ userId: _cEnt.userId || null, reportId: _g41ReportId });
-      if (_g41Replay) {
+      // 🔴 E88-②（主公军令 2026-10-26）：年报旧短壳守卫——E39 四段骨架时代的年报缓存
+      //    （≤200 词短壳）会经 Gate41 复读命中，挡死新五章长卷交付。口径：yearly 复读
+      //    命中但正文长度 < 2000 字符 ⇒ 视为旧壳，忽略复读走 MISS 重新生成（新报告
+      //    落库后 reportId 同键覆盖，下次复读即新长卷）。月报/once 复读语义零改动。
+      const _g41ReplayUsable = _g41Replay
+        && (reportType !== 'yearly'
+          || (typeof _g41Replay.insight === 'string' && _g41Replay.insight.length >= 2000));
+      if (_g41ReplayUsable) {
         console.log(`[Gate41] report replay HIT: reportId=${_g41ReportId} type=${reportType} lang=${lang}`);
         // 🛡️ Gate 43：流式模式下命中复读 ⇒ **单帧 ready 直出**（零算力、零阶段帧：如实反映"无推演发生"）
         if (_stream) {
@@ -16287,22 +16410,35 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _g44House = (_compatSyn && _compatSyn.houseOverlay && _compatSyn.houseOverlay.available)
           ? _compatSyn.houseOverlay : null;
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
-        const _compat = buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
-          bazi: req.body.bazi || null,
-          zodiac: req.body.zodiac || null,
-          iching: req.body.iching || null,
-          tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
-          zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
-          userBirthDate: _cEnt.userBirthDate || null,
-          synastry: _compatSyn,
-        });
+        // 🔴 E88-②（主公军令 2026-10-26）：年报分流五章长卷 prompt（月报/once 沿用四段骨架零改动）。
+        const _compat = reportType === 'yearly'
+          ? buildCompatYearlyFiveChapterPrompt(d1, d2, lang, {
+              bazi: req.body.bazi || null,
+              zodiac: req.body.zodiac || null,
+              iching: req.body.iching || null,
+              tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
+              zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+              userBirthDate: _cEnt.userBirthDate || null,
+              synastry: _compatSyn,
+            })
+          : buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
+              bazi: req.body.bazi || null,
+              zodiac: req.body.zodiac || null,
+              iching: req.body.iching || null,
+              tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
+              zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+              userBirthDate: _cEnt.userBirthDate || null,
+              synastry: _compatSyn,
+            });
 
         // 🛡️ Gate 43：Stage 2 —— 真值里程碑③「解析灵宠羁绊契约能量」（AI 正文生成中，最长的真实等待段）
         if (_sse) _sse.stage(2, lang);
+        // 🔴 E88-②：年报五章长卷 ⇒ maxTokens 48000（与财富年报同档）；月报/once 沿用默认 12000。
         const insight = await callAI(
           _compat.system,
           _compat.user,
-          process.env
+          process.env,
+          { maxTokens: reportType === 'yearly' ? 48000 : 12000, reportType }
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
