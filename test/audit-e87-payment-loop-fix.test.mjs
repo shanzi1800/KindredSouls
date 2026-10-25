@@ -47,7 +47,9 @@ test('E87-①-2 .ks-tarot-line 令牌铸成（与姻缘正文同源亮度）', (
 test('E87-②-1 年鉴按钮账号权益旁路退役（点击恒走购买链）', () => {
   const app = read('web/src/App.tsx');
   const iAlm = app.indexOf('🎂 {lang');
-  const iSignOut = app.indexOf('{TXT.signOut[lang] || TXT.signOut.en}', iAlm);
+  // 🔴 E91 语义演进：原结束锚 {TXT.signOut…} 随「退出登录」按钮退役而消失——
+  //   渲染区结束锚迁至 ks-report-cursor（渲染容器末端恒存）。
+  const iSignOut = app.indexOf('ks-report-cursor', iAlm);
   assert.ok(iAlm > 0 && iSignOut > iAlm, '年鉴渲染区定位失败');
   const seg = app.slice(iAlm, iSignOut);
   // 旁路退役：账号级权益判定（owned/paidPlansLocal 读取）禁回流
@@ -61,7 +63,8 @@ test('E87-②-1 年鉴按钮账号权益旁路退役（点击恒走购买链）'
 test('E87-②-2 年鉴渲染区禁直调生成接口（沙盒先行铁律）', () => {
   const app = read('web/src/App.tsx');
   const iAlm = app.indexOf('🎂 {lang');
-  const iSignOut = app.indexOf('{TXT.signOut[lang] || TXT.signOut.en}', iAlm);
+  // 🔴 E91 语义演进：结束锚迁 ks-report-cursor（signOut 按钮退役）。
+  const iSignOut = app.indexOf('ks-report-cursor', iAlm);
   const seg = app.slice(iAlm, iSignOut);
   // 渲染区内严禁出现生成直调（军令：未付前严禁调生成接口）
   assert.ok(!seg.includes("generateReport('monthly')"), '月报渲染区直调生成接口违令');

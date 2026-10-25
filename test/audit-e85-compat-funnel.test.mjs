@@ -73,10 +73,11 @@ test('E85-②-1 年鉴六语统一词条（军令原文给定，永久带金额�
 
 test('E85-②-2 「(已解锁)」覆盖态退役＋按钮统一待解锁购买样式', () => {
   const app = read('web/src/App.tsx');
-  // 审计口径＝年鉴渲染区（{insight && ( 年鉴卡到 signOut 按钮段）的**按钮文案**，
+  // 审计口径＝年鉴渲染区（🎂 {lang 年鉴卡到渲染容器末端）的**按钮文案**，
   // 注释与状态变量名（sessionUnlocked）不在射程（军令禁现的是按钮覆盖态文案）。
+  // 🔴 E91 语义演进：原结束锚 {TXT.signOut…} 随「退出登录」按钮退役而消失——迁 ks-report-cursor。
   const iAlmRender = app.indexOf('🎂 {lang');
-  const iSignOut = app.indexOf('{TXT.signOut[lang] || TXT.signOut.en}', iAlmRender);
+  const iSignOut = app.indexOf('ks-report-cursor', iAlmRender);
   assert.ok(iAlmRender > 0 && iSignOut > iAlmRender, '年鉴渲染区定位失败');
   const renderSeg = app.slice(iAlmRender, iSignOut);
   for (const banned of ['生成情感月报', '生成情感年报', '已解锁', 'Unlocked', 'VIP 尊享', 'VIP free access', '解锁情感月报', '解锁年度报告']) {

@@ -111,7 +111,7 @@ async function readCompatSSEStream(
     },
     blurredPreview: { zh:'🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。', en:'🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.', es:'🌙 Existe una resonancia de alma rara entre ustedes dos… El aspecto Luna-Venus sugiere una conexión emocional profunda que solo el 3% de las parejas tienen.', fr:"🌙 Une résonnance d'âme rare existe entre vous deux… L'aspect Lune-Vénus suggère une connexion émotionnelle profonde que seul 3% des couples ont.", th:'🌙 มีการจับคลื่นวิญญาณที่หายากระหว่างคุณทั้งสอง… มุมจันทร์-ศุกร์บ่งบอกถึงการเชื่อมต่อทางอารมณ์ที่ลึกซึ้งที่พบได้ในเพียง 3% ของคู่รัก', vi:'🌙 Có một cộng hưởng linh hồn hiếm thấy giữa hai bạn… Khía cạnh Mặt trăng-Sao Kim gợi ý một kết nối cảm xúc sâu sắc chỉ có ở 3% các cặp đôi.' },
     genBtn: { zh:'生成 AI 洞察', en:'Generate AI Insight', es:'Generar Perspectiva AI', fr:'Générer Perspective IA', th:'วิเคราะห์ AI', vi:'Xem Luận giải AI' },
-    signOut: { zh:'退出登录', en:'Sign Out', es:'Cerrar Sesión', fr:'Déconnexion', th:'ออกจากระบบ', vi:'Đăng xuất' },
+    // 🔴 E91-①：signOut 词条随「退出登录」按钮一并退役（渲染区结束锚已迁 ks-report-cursor）。
     detailHide: { zh:'收起详情 ▲', en:'Hide Details ▲', es:'Ocultar ▲', fr:'Masquer ▲', th:'ซ่อนรายละเอียด ▲', vi:'Thu gọn ▲' },
     detailShow: { zh:'查看完整分析 ▼', en:'View Full Analysis ▼', es:'Ver Análisis Completo ▼', fr:'Voir Analyse Complète ▼', th:'ดูการวิเคราะห์เต็ม ▼', vi:'Xem chi tiết ▼' },
   } as const;
@@ -1559,11 +1559,13 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                    · 章节头（第X章/Chapter N 六语形态）＝金标题铭牌（.ks-report-chapter）；
                    · 正文段＝香槟白（.ks-report-para）；
                    · 打字机渐进：逐段揭示（revealedParas），进行中尾部缀 ✦ 光标；
-                   · 超长内容自持滚动槽（.ks-report-scroll 复用 E86 .celestial-scrollbar）。
-                   🔴 E90-③（主公军令 2026-10-25）：金属框全模块对齐——容器升级为与
-                   财富月报/年报同款「黑金金属框」（深空渐变底＋2px 金边＋内外金光＋顶部
-                   流光线），规格逐字移植 WealthReportPage 封面卡；简陋扁平黑底退役。 */
-                <div className="ks-report-scroll celestial-scrollbar" data-testid="compat-report-scroll">
+                   · 超长内容自持滚动槽。
+                   🔴 E90-③：容器升级财富同款金属框。
+                   🔴 E91-②/③（主公军令 2026-10-25）：底色与光效逐字对齐财富正文真源
+                   SacredYearlyReportBox（曜黑渐变）；滑轨改 .ks-report-scroll 自带
+                   ::-webkit-scrollbar 逐字克隆 Sacred .dark-scrollbar（V257 封仓规格）——
+                   celestial-scrollbar 并挂退役（两套规格打架根因）。规格全在 App.css。 */
+                <div className="ks-report-scroll" data-testid="compat-report-scroll">
                   {reportParas
                     .slice(0, reportTyping ? revealedParas : reportParas.length)
                     .map((para, i) => {
@@ -1577,23 +1579,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               )}
             </div>
           )}
-          <button
-            onClick={onLogout}
-            style={{
-              marginTop: '16px',
-              padding: '6px 14px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '6px',
-              color: '#999',
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'block',
-              margin: '16px auto 0',
-            }}
-          >
-            {TXT.signOut[lang] || TXT.signOut.en}
-          </button>
+          {/* 🔴 E91-①（主公军令 2026-10-25）：「退出登录」按钮退役——
+             黑屏根因＝handleLogout 清数据后 reload ⇒ result 为空 ⇒ 渲染空白页；
+             退出登录归属全局个人中心，绝不出现在交付长卷（军令逐字）。
+             「重新测算」back-btn 链路已核验合规（清缓存＋平滑回表单）。 */}
         </div>
       )}
     </div>

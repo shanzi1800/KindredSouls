@@ -89,26 +89,33 @@ test('E90-②-4 SSE 读流契约零回归（classifySSEFrame/reduceSSEFrames 归
 
 /* ════════ ③ 金属框全模块对齐（财富同款规格） ════════ */
 
-test('E90-③-1 报告容器金属框规格（渐变底＋2px 金边＋金光内衬）', () => {
+test('E90-③-1 报告容器金属框规格（曜黑渐变底＋2px 金边＋黑幕金辉，E91 对齐 Sacred 真源）', () => {
   const i = CSS.indexOf('.ks-report-scroll {');
   assert.ok(i > 0, 'ks-report-scroll 类缺失');
-  const seg = CSS.slice(i, i + 900);
-  assert.ok(seg.includes('linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'),
-    '深空渐变底缺失（财富同款规格）');
+  const seg = CSS.slice(i, i + 1100);
+  // 🔴 E91-② 语义演进：E90 误移植封面卡蓝紫渐变（#1a1a2e→#0f3460）——主公肉眼
+  //   实锤两模块底色不一致；真源＝财富正文 SacredYearlyReportBox 曜黑纵向渐变。
+  assert.ok(seg.includes('linear-gradient(180deg, rgba(12, 14, 22, 0.98) 0%, rgba(6, 7, 12, 0.99) 100%)'),
+    '曜黑渐变底缺失（E91 对齐 Sacred 真源）');
+  assert.ok(!seg.includes('linear-gradient(135deg, #1a1a2e'), '蓝紫渐变代码残留违令（E91 退役）');
   assert.ok(seg.includes('border: 2px solid rgba(212, 175, 55, 0.4)'), '2px 钛金边缺失');
-  assert.ok(seg.includes('0 8px 32px rgba(212, 175, 55, 0.15), inset 0 0 60px rgba(212, 175, 55, 0.05)'),
-    '内外金光双层阴影缺失');
+  assert.ok(seg.includes('0 0 30px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(212, 175, 55, 0.015), 0 0 15px rgba(212, 175, 55, 0.1)'),
+    '黑幕金辉三层阴影缺失（Sacred 真源）');
   assert.ok(seg.includes('border-radius: 20px'), '20px 圆角缺失');
 });
 
-test('E90-③-2 顶部鎏金流光线＋黑金滚动槽（.celestial-scrollbar 并挂）', () => {
+test('E90-③-2 顶部鎏金流光线＋黑金滚动槽（E91 逐字克隆 Sacred .dark-scrollbar）', () => {
   assert.ok(CSS.includes('.ks-report-scroll::before'), '顶部流光线伪元素缺失');
   const i = CSS.indexOf('.ks-report-scroll::before');
   const seg = CSS.slice(i, i + 400);
   assert.ok(seg.includes('linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.8), transparent)'),
     '流光线渐变规格缺失');
-  // 容器挂载点：App.tsx 须并挂 celestial-scrollbar（黑金滚动槽与财富全站统一）
-  assert.ok(APP.includes('"ks-report-scroll celestial-scrollbar"'), '滚动槽未并挂 celestial-scrollbar');
+  // 🔴 E91-③ 语义演进：滑轨逐字克隆 Sacred .dark-scrollbar（V257 封仓规格，
+  //   5px 胶囊/哑光金 0.3/轨道 0.05）——celestial 并挂与 0.45 亮金规格退役。
+  assert.ok(CSS.includes('.ks-report-scroll::-webkit-scrollbar { width: 5px; border-radius: 4px; }'), '滑轨 5px 胶囊规格缺失');
+  assert.ok(CSS.includes('.ks-report-scroll::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }'), '哑光金滑块 0.3 缺失');
+  assert.ok(CSS.includes('.ks-report-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }'), '深黑半透轨道 0.05 缺失');
+  assert.ok(!APP.includes('"ks-report-scroll celestial-scrollbar"'), 'celestial 并挂残留违令（E91 退役，两套规格打架根因）');
 });
 
 test('E90-③-3 章节头金铭牌带金分隔底线（长卷层次与财富对齐）', () => {
@@ -120,11 +127,11 @@ test('E90-③-3 章节头金铭牌带金分隔底线（长卷层次与财富对�
 
 /* ════════ ④ 闸门接线（入编位军规） ════════ */
 
-test('E90-④-1 闸门接线：test:astro 含本闸门（67 段）＋入编位（e89 后、e40-compat 前、python 链尾）', () => {
+test('E90-④-1 闸门接线：test:astro 含本闸门（68 段）＋入编位（e89 后、e40-compat 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e90-paywall-typing-metal.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 67, `链段数异常（实得 ${parts.length}，基线 67）`);
+  assert.equal(parts.length, 68, `链段数异常（实得 ${parts.length}，基线 68）`);
   const iE90 = parts.findIndex((p) => p.includes('audit-e90-paywall-typing-metal'));
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

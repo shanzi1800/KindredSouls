@@ -13722,14 +13722,37 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
   const ch = _E88_YEARLY_CHAPTERS[L] || _E88_YEARLY_CHAPTERS.zh;
   const syn = x.synastry || null;
   const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
+  // 🔴 E91-④（主公军令 2026-10-25）：第二章「未来12个月」时序疑惑根治——
+  //   在第二章标题下强制输出「太阳返照起点释义」一行（六语），锚定口径＝
+  //   年度能量周期以测算者公历出生月为宇宙新起点（太阳返照年，非公历自然年）。
+  //   释义月＝timeCtx.windowStart 年月现算（VM 抽取消费者铁律：常量置函数体内，
+  //   零模块级新依赖；windowStart 真源＝_compatSolarWindow 生日锚）。
+  const _anchorYm = String(timeCtx.windowStart || '').slice(0, 7); // 'YYYY-MM'
+  const _anchorMonthLabel = {
+    zh: `${Number(_anchorYm.slice(5, 7))}月`,
+    en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(_anchorYm.slice(5, 7)) - 1] || _anchorYm,
+    es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][Number(_anchorYm.slice(5, 7)) - 1] || _anchorYm,
+    fr: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'][Number(_anchorYm.slice(5, 7)) - 1] || _anchorYm,
+    th: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][Number(_anchorYm.slice(5, 7)) - 1] || _anchorYm,
+    vi: `tháng ${Number(_anchorYm.slice(5, 7))}`,
+  }[L] || _anchorYm;
+  const _solarAnchorNote = {
+    zh: `✦ 能量起点释义：太阳返照年以您诞生日所在月份（${_anchorMonthLabel}）为宇宙能量新起点，推演未来完整一岁（12个月）的流年起伏。`,
+    en: `✦ Energy anchor: the solar-return year begins in your birth month (${_anchorMonthLabel}), unfolding a full 12 months from that cosmic new beginning.`,
+    es: `✦ Ancla de energía: el año de retorno solar comienza en tu mes de nacimiento (${_anchorMonthLabel}) y se despliega durante 12 meses completos.`,
+    fr: `✦ Ancrage énergétique : l'année de retour solaire débute le mois de votre naissance (${_anchorMonthLabel}) et se déploie sur 12 mois complets.`,
+    th: `✦ จุดยึดพลังงาน: ปี Solar Return เริ่มต้นในเดือนเกิดของคุณ (${_anchorMonthLabel}) แล้วไหลไปครบ 12 เดือน`,
+    vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
+  }[L] || '';
 
   const system = [
     _E88_YEARLY_LANG_LOCK[L],
     '',
     '[ANNUAL REPORT CONTRACT — MANDATORY]',
     `1. Write EXACTLY 5 chapters, in order, each starting with the exact title line: ${ch[0]} / ${ch[1]} / ${ch[2]} / ${ch[3]} / ${ch[4]}.`,
+    '1a. Immediately below the Chapter 2 title line, output VERBATIM (one line, do not paraphrase, do not translate, do not omit) the solar-return anchor note line provided in the user prompt.',
     '2. Chapter 1 (600+ words): Solar Return overview — the year\'s keynote, core conclusion, and a relationship-axis score (0-100) with one-line justification.',
-    '3. Chapter 2 (900+ words): the full 12-month panorama — analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
+    '3. Chapter 2 (900+ words): the full 12-month panorama — the 12 months run strictly from the FIRST month of the given time window (the solar-return birth month) through 12 consecutive months; analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
     '4. Chapter 3 (900+ words): four hard-core dimensions, one sub-section each — ① daily communication & mental rapport, ② intimacy & attraction fluctuations, ③ material reality & family tests, ④ fated bond & soul growth.',
     '5. Chapter 4 (600+ words): exactly THREE destiny crossroads of the year — each with a concrete month range (derived from the given time window), the trigger of conflict, and the breakthrough secret.',
     '6. Chapter 5 (600+ words): the I Ching annual hexagram reading (derive it from the given I Ching score & data lock) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
@@ -13751,13 +13774,14 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '\n[STRUCTURE — copy the exact 5 chapter titles]',
     ch[0],
     ch[1],
+    _solarAnchorNote,
     ch[2],
     ch[3],
     ch[4],
-    `\nWrite the complete 5-chapter annual report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, at least 3600 words total. Every month, every dimension and every crossroad must be concrete and specific — no filler, no generic advice.`,
+    `\nWrite the complete 5-chapter annual report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, at least 3600 words total. Every month, every dimension and every crossroad must be concrete and specific — no filler, no generic advice. The 12 months of Chapter 2 must start from the solar-return window start month, NOT from January.`,
   ].join('\n');
 
-  return { system, user, lang: L, reportType: 'yearly', timeCtx, fiveChapter: true };
+  return { system, user, lang: L, reportType: 'yearly', timeCtx, fiveChapter: true, solarAnchorNote: _solarAnchorNote };
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -574,18 +574,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-report-scroll {
   position: relative;
   margin-top: 12px;
-  padding: 18px 16px;
+  padding: 20px;
   text-align: left;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  /* 🔴 E91-②（主公军令 2026-10-25）：底色对齐财富报告正文真源 SacredYearlyReportBox——
+     曜黑纵向渐变（rgba(12,14,22)→rgba(6,7,12)），E90 误移植的封面卡蓝紫渐变
+     （#1a1a2e→#16213e→#0f3460）退役（主公肉眼实锤两模块底色不一致）。 */
+  background: linear-gradient(180deg, rgba(12, 14, 22, 0.98) 0%, rgba(6, 7, 12, 0.99) 100%);
   border: 2px solid rgba(212, 175, 55, 0.4);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15), inset 0 0 60px rgba(212, 175, 55, 0.05);
+  /* 🔴 E91-②：光效逐字对齐 Sacred 真源（外黑幕＋内微金辉＋贴边金晕）。 */
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(212, 175, 55, 0.015), 0 0 15px rgba(212, 175, 55, 0.1);
   overflow-y: auto;
   max-height: 60vh;
-  scrollbar-width: thin;
   overflow-wrap: anywhere;
   word-break: break-word;
+  /* 🔴 E91-③：滑轨逐字对齐 Sacred .dark-scrollbar（哑光金 0.3 / 轨道 0.05）；
+     E90 的 celestial-scrollbar 并挂与 0.45 亮金规格退役（主公实锤滑轨不一致）。 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.3) rgba(255, 255, 255, 0.05);
 }
+/* 🔴 E91-③：黑金滑轨（5px 胶囊 · 逐字克隆 Sacred .dark-scrollbar V257 封仓规格） */
+.ks-report-scroll::-webkit-scrollbar { width: 5px; border-radius: 4px; }
+.ks-report-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.ks-report-scroll::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
+.ks-report-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
 /* 顶部鎏金流光线（对齐军令 .celestial-metallic-card::before 规格） */
 .ks-report-scroll::before {
   content: '';
