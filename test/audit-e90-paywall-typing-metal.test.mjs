@@ -127,11 +127,11 @@ test('E90-③-3 章节头金铭牌带金分隔底线（长卷层次与财富对�
 
 /* ════════ ④ 闸门接线（入编位军规） ════════ */
 
-test('E90-④-1 闸门接线：test:astro 含本闸门（68 段）＋入编位（e89 后、e40-compat 前、python 链尾）', () => {
+test('E90-④-1 闸门接线：test:astro 含本闸门（69 段）＋入编位（e89 后、e40-compat 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e90-paywall-typing-metal.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 68, `链段数异常（实得 ${parts.length}，基线 68）`);
+  assert.equal(parts.length, 69, `链段数异常（实得 ${parts.length}，基线 69）`);
   const iE90 = parts.findIndex((p) => p.includes('audit-e90-paywall-typing-metal'));
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

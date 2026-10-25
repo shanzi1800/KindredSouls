@@ -92,11 +92,11 @@ test('E91-④-2 prompt 契约：第二章标题下 VERBATIM 输出锚定行＋12
 
 /* ════════ ⑤ 闸门接线（入编位军规） ════════ */
 
-test('E91-⑤-1 闸门接线：test:astro 含本闸门（68 段）＋入编位（e40-compat 前、python 链尾）', () => {
+test('E91-⑤-1 闸门接线：test:astro 含本闸门（69 段）＋入编位（e40-compat 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e91-solar-metal-logout.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 68, `链段数异常（实得 ${parts.length}，基线 68）`);
+  assert.equal(parts.length, 69, `链段数异常（实得 ${parts.length}，基线 69）`);
   const iE91 = parts.findIndex((p) => p.includes('audit-e91-solar-metal-logout'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));

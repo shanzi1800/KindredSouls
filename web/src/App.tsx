@@ -1228,11 +1228,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (useToken) headers['Authorization'] = `Bearer ${useToken}`;
       // Compute tarot card deterministically (same logic as AuthButton)
+      // 🔴 E92-①：洞察请求补 t1/t2 出生时辰（服务端八字硬锁算时柱用；缺省 ⇒ 三柱如实）
       const tarot = getTarot(d1, d2, lang);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot }),
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot, t1, t2 }),
       });
       const data = await res.json();
       if (data.insight) {
@@ -1278,7 +1279,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         token = session?.access_token || null;
       }
       if (!token) throw new Error('No session');
-      const tarot = getTarot(d1, d2, lang);
+      // 🔴 E92-②：三档抽卡解耦——报告档掺档位盐（monthly/yearly 独立卡槽，
+      //    与 $4.99 洞察的默认 'insight' 互不覆盖，终结「全盘女皇逆位」撞车）。
+      const tarot = getTarot(d1, d2, lang, type);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

@@ -13642,6 +13642,7 @@ function buildCompatibilityReportPrompt(d1, d2, lang, reportType, extras) {
     tarot: x.tarot || null,
     zodiacMeta: x.zodiacMeta || null,
     synastry: x.synastry || null,   // 🌌 E40+：真实双盘天体羁绊锁真值（缺省 ⇒ 不注入）
+    baziLock: x.baziLock || null,   // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺省 ⇒ 不注入）
   });
 }
 
@@ -13745,7 +13746,7 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
   }[L] || '';
 
-  const system = [
+  const sysLines = [
     _E88_YEARLY_LANG_LOCK[L],
     '',
     '[ANNUAL REPORT CONTRACT — MANDATORY]',
@@ -13758,15 +13759,21 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '6. Chapter 5 (600+ words): the I Ching annual hexagram reading (derive it from the given I Ching score & data lock) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
     '7. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '8. Separate chapters with a blank line. Use plain text paragraphs; the first character of each chapter title line must be the chapter marker as given.',
-  ].join('\n');
+  ];
+  // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺 ⇒ 不注入，绝不伪造）
+  const bl = (x.baziLock && typeof x.baziLock.lock === 'string') ? x.baziLock : null;
+  if (bl) sysLines.push(bl.guard);
+  const system = sysLines.join('\n');
 
-  const dataLock = [
+  const lockLines = [
     `[DATA LOCK] Overall=${scores.overall}, Bazi=${scores.bazi}, Zodiac=${scores.zodiac}, IChing=${scores.iching}`,
     `Tarot=${tarot ? tarot.name : ''}, Orientation=${tarot ? (tarot.orientation || '') : ''}`,
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (Solar Return, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
-  ].filter(Boolean).join('\n');
+  ];
+  if (bl) lockLines.push(bl.lock);
+  const dataLock = lockLines.filter(Boolean).join('\n');
 
   const user = [
     dataLock,
@@ -13855,8 +13862,10 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
   const md = _E89_MONTHLY_MODULES[L] || _E89_MONTHLY_MODULES.zh;
   const syn = x.synastry || null;
   const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
+  // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺 ⇒ 不注入，绝不伪造）
+  const bl = (x.baziLock && typeof x.baziLock.lock === 'string') ? x.baziLock : null;
 
-  const system = [
+  const sysLines = [
     _E89_MONTHLY_LANG_LOCK[L],
     '',
     '[MONTHLY REPORT CONTRACT — MANDATORY]',
@@ -13868,15 +13877,19 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     '6. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '7. Separate modules with a blank line. Use plain text paragraphs; the first character of each module title line must be the module marker as given.',
     '8. Total length 1200-1800 words.',
-  ].join('\n');
+  ];
+  if (bl) sysLines.push(bl.guard);
+  const system = sysLines.join('\n');
 
-  const dataLock = [
+  const lockLines = [
     `[DATA LOCK] Overall=${scores.overall}, Bazi=${scores.bazi}, Zodiac=${scores.zodiac}, IChing=${scores.iching}`,
     `Tarot=${tarot ? tarot.name : ''}, Orientation=${tarot ? (tarot.orientation || '') : ''}`,
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (monthly, day 1 = the first day of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
-  ].filter(Boolean).join('\n');
+  ];
+  if (bl) lockLines.push(bl.lock);
+  const dataLock = lockLines.filter(Boolean).join('\n');
 
   const user = [
     dataLock,
@@ -13890,6 +13903,123 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
   ].join('\n');
 
   return { system, user, lang: L, reportType: 'monthly', timeCtx, fourModule: true };
+}
+
+// ─── 🔴 E92-①③（主公军令 2026-10-25）：八字地支硬锁＋代词温度规范 ───
+//   病根（主公实测三报告军师级审计实锤）：
+//     ① $4.99 洞察捏造「亥卯未三合木局/丑未相冲」——双盘根本没有卯与未（LLM 地支幻觉，
+//        真因＝payload 只传八字分数，四柱地支从未进 prompt）；
+//     ③ 报告高频输出「XXXX年一方」档案式冰冷代词（prompt 只给裸生日串，无命名规范）。
+//   治法：服务端预计算双方真实四柱（年/月/日[＋时]）＋跨盘真实刑冲合害清单，以
+//     [BAZI DATA LOCK] 注入三档报告 prompt；System 侧附「绝对红线」（严禁捏造盘中
+//     未现地支）＋「代词温度规范」（禁机械年份代词）。
+//   🔴 算法口径（双锚验证）：节气近似月令（立春2/4…大雪12/7）＋JDN 纯整数日柱
+//     （锚 1900-01-01=甲戌、1949-10-01=甲子 双锚核验）＋五虎遁月干＋五鼠遁时干。
+//   🔴 真值纪律：任一侧日期解析失败 ⇒ 返回 null 不注入（绝不伪造）；时辰缺省 ⇒
+//     仅三柱（如三陈述，不补时柱）。
+//   🔴 VM 抽取式消费者铁律：全部常量（天干地支/节气边界/遁干表/关系表）置函数体内。
+function _E92CompatBaziLock(d1, d2, tA, tB) {
+  const TG = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const DZ = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const TERM = { 1: 6, 2: 4, 3: 6, 4: 5, 5: 6, 6: 6, 7: 7, 8: 8, 9: 8, 10: 8, 11: 7, 12: 7 }; // 节气近似日（立春2/4…大雪12/7）
+  const HU_DUN = { '甲': 0, '己': 0, '乙': 2, '庚': 2, '丙': 4, '辛': 4, '丁': 6, '壬': 6, '戊': 8, '癸': 8 }; // 五虎遁：年干⇒寅月天干起
+  const CHONG = { '子': '午', '午': '子', '丑': '未', '未': '丑', '寅': '申', '申': '寅', '卯': '酉', '酉': '卯', '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳' };
+  const LIUHE = { '子': '丑', '丑': '子', '寅': '亥', '亥': '寅', '卯': '戌', '戌': '卯', '辰': '酉', '酉': '辰', '巳': '申', '申': '巳', '午': '未', '未': '午' };
+  const SANHE = [['申', '子', '辰'], ['亥', '卯', '未'], ['寅', '午', '戌'], ['巳', '酉', '丑']];
+  const XING = [['寅', '巳'], ['巳', '申'], ['寅', '申'], ['丑', '戌'], ['戌', '未'], ['丑', '未'], ['子', '卯']];
+
+  const _parseYmd = (s) => {
+    const m = String(s || '').match(/(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})/);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (y < 1900 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return { y, mo, d };
+  };
+  const _parseHm = (s) => {
+    const m = String(s || '').match(/(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const h = Number(m[1]);
+    if (h < 0 || h > 23) return null;
+    return h;
+  };
+  // JDN（格里历纯整数；日柱口径 stem=(J+9)%10、branch=(J+1)%12——1949-10-01=甲子双锚核验）
+  const _jdn = (y, m, d) => {
+    const a = Math.floor((14 - m) / 12);
+    const yy = y + 4800 - a;
+    const mm = m + 12 * a - 3;
+    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  };
+  const _pillars = (ymd, hm) => {
+    let by = ymd.y;
+    if ((ymd.mo < 2) || (ymd.mo === 2 && ymd.d < TERM[2])) by -= 1; // 立春前 ⇒ 年柱归上一年
+    const yStem = (((by - 4) % 10) + 10) % 10;
+    const yBranch = (((by - 4) % 12) + 12) % 12;
+    const mBranch = (ymd.d >= TERM[ymd.mo] ? (ymd.mo % 12) : ((ymd.mo - 1 + 12) % 12));
+    const mStem = (((HU_DUN[TG[yStem]] + mBranch) % 10) + 10) % 10;
+    const j = _jdn(ymd.y, ymd.mo, ymd.d);
+    const dStem = (((j + 9) % 10) + 10) % 10;
+    const dBranch = (((j + 1) % 12) + 12) % 12;
+    const parts = [
+      { label: '年柱', stem: yStem, branch: yBranch },
+      { label: '月柱', stem: mStem, branch: mBranch },
+      { label: '日柱', stem: dStem, branch: dBranch },
+    ];
+    if (hm !== null && hm !== undefined) {
+      const hBranch = Math.floor((hm + 1) / 2) % 12; // 23:00-00:59=子…（近似口径，23 时归当日子时）
+      const hStem = (((dStem % 5) * 2 + hBranch) % 10 + 10) % 10; // 五鼠遁
+      parts.push({ label: '时柱', stem: hStem, branch: hBranch });
+    }
+    return parts;
+  };
+
+  const a1 = _parseYmd(d1);
+  const a2 = _parseYmd(d2);
+  if (!a1 || !a2) return null;
+  const h1 = _parseHm(tA);
+  const h2 = _parseHm(tB);
+  const pA = _pillars(a1, h1);
+  const pB = _pillars(a2, h2);
+  const _pstr = (p) => p.map((x) => `${TG[x.stem]}${DZ[x.branch]}（${x.label}）`).join(' ');
+
+  // 跨盘刑冲合害（A 每支 × B 每支；冲优先，刑不与冲重复计）
+  const rels = [];
+  const _has = (arr, b) => arr.includes(b);
+  for (const pa of pA) {
+    for (const pb of pB) {
+      const ba = DZ[pa.branch], bb = DZ[pb.branch];
+      if (CHONG[ba] === bb) rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}相冲）`);
+      else if (LIUHE[ba] === bb) rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}六合）`);
+      else if (SANHE.some((g) => _has(g, ba) && _has(g, bb))) {
+        const g = SANHE.find((grp) => _has(grp, ba) && _has(grp, bb));
+        rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}半合，属${g.join('')}局）`);
+      } else if (XING.some((pr) => (pr[0] === ba && pr[1] === bb) || (pr[0] === bb && pr[1] === ba))) {
+        rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}相刑）`);
+      }
+    }
+  }
+  const allBranches = [...pA, ...pB].map((x) => DZ[x.branch]);
+  const fullSanHe = SANHE.filter((g) => g.every((b) => _has(allBranches, b)));
+  const relText = rels.length
+    ? rels.join('；') + (fullSanHe.length ? `；并集成局：${fullSanHe.map((g) => g.join('')).join('、')}` : '')
+    : '跨盘无主要刑冲合害（如实陈述，不得虚构）';
+
+  const lock = [
+    '[BAZI DATA LOCK / 八字命理数据锁 — 系统预计算真值，论述八字时唯一可信源]',
+    `A（${d1}）四柱：${_pstr(pA)}`,
+    `B（${d2}）四柱：${_pstr(pB)}`,
+    `跨盘真实刑冲合害：${relText}`,
+    '（除本锁列出的地支与关系外，盘中任何刑冲合害一律不得提及）',
+  ].join('\n');
+
+  const guard = [
+    '【八字命理绝对红线 / BAZI ABSOLUTE RED LINE】',
+    '合化分析严禁凭空捏造双方原局未包含的地支——盘中没有的地支（例如无卯、无未时）绝不允许虚构「亥卯未三合」「丑未相冲」等任何结构；所有刑冲克害论述必须 100% 基于 [BAZI DATA LOCK] 列出的真实地支与真实关系展开，数据锁未列出的冲合一律不得提及。',
+    'NEVER fabricate earthly branches absent from the charts; every chong/he/xing/hai claim must map exactly to a relation listed in [BAZI DATA LOCK].',
+    '【代词温度规范 / WARM DESIGNATION RULE】',
+    '严禁机械高频输出「XXXX年一方」式档案代词。首次建立指代后改用有温度的雅称（如「年长沉稳的TA」「灵动明亮的TA」，或依年柱气质的自然称谓），其后自然使用 TA／他／她。NEVER spam mechanical labels like "the 19xx-born party"; introduce warm literary designations, then use natural pronouns.',
+  ].join('\n');
+
+  return { lock, guard };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -16550,6 +16680,14 @@ app.use('/api/ai-advisor', async (req, res) => {
         if (_sse) _sse.stage(0, lang);
         // 🌌 E40+：真实双盘天体羁绊锁真值（缺真值 ⇒ 降级/显式未知，绝不伪造；失败不阻断报告）
         const _compatSyn = await buildCompatSynastryTruth(req.body || {}, d1, d2);
+        // 🔴 E92-①③（主公军令 2026-10-25）：八字地支硬锁＋代词温度规范——服务端预计算双方
+        //    真实四柱＋跨盘真实刑冲合害，注入三档报告 prompt（解析失败 ⇒ null 不注入，绝不伪造；
+        //    时辰取 timeTruth 优先、洞察请求的 t1/t2 兜底）。
+        const _e92TtA = (_compatTimeTruthSide(req.body || {}, 'a') || {}).birthTime
+          || (req.body && typeof req.body.t1 === 'string' ? req.body.t1 : '') || '';
+        const _e92TtB = (_compatTimeTruthSide(req.body || {}, 'b') || {}).birthTime
+          || (req.body && typeof req.body.t2 === 'string' ? req.body.t2 : '') || '';
+        const _e92BL = _E92CompatBaziLock(d1, d2, _e92TtA, _e92TtB);
         // 🛡️ Gate 43：Stage 1 —— 真值里程碑②「推演双盘行星与虚点相位」（张量算毕）
         if (_sse) _sse.stage(1, lang);
         // 🛡️ Gate 44：宫位映射真值（**信封旁置字段** —— 与 payload 并列独立通道，payload 双向键集零污染）。
@@ -16569,6 +16707,7 @@ app.use('/api/ai-advisor', async (req, res) => {
               zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
               userBirthDate: _cEnt.userBirthDate || null,
               synastry: _compatSyn,
+              baziLock: _e92BL,
             })
           : (reportType === 'monthly'
             ? buildCompatMonthlyFourModulePrompt(d1, d2, lang, {
@@ -16579,6 +16718,7 @@ app.use('/api/ai-advisor', async (req, res) => {
                 zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
                 userBirthDate: _cEnt.userBirthDate || null,
                 synastry: _compatSyn,
+                baziLock: _e92BL,
               })
             : buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
                 bazi: req.body.bazi || null,
@@ -16588,6 +16728,7 @@ app.use('/api/ai-advisor', async (req, res) => {
                 zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
                 userBirthDate: _cEnt.userBirthDate || null,
                 synastry: _compatSyn,
+                baziLock: _e92BL,
               }));
 
         // 🛡️ Gate 43：Stage 2 —— 真值里程碑③「解析灵宠羁绊契约能量」（AI 正文生成中，最长的真实等待段）

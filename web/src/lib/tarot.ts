@@ -1,5 +1,10 @@
 // Deterministic tarot card from birthdays + today (22 Major Arcana)
 type L = Record<string, string>;
+// 🔴 E92-②（主公军令 2026-10-25）：三档报告抽卡解耦——同一天内 $4.99 洞察 /
+//    $2.99 月报 / $29.99 年报曾共用同一 hash（生日+今日）⇒ 数学上必然同卡
+//    （主公实测「全盘女皇逆位」连环撞车根因）。治法＝hash 掺入档位盐 scope：
+//    'insight'（默认，行为向后兼容）/ 'monthly' / 'yearly' —— 三档独立卡牌槽位，
+//    互不覆盖；重生成同档同卡（同档同报告语义），跨档必异卡。
 
 export interface TarotCard {
   id: number;
@@ -197,11 +202,11 @@ const ORIENT_SUFFIX: Record<string, (reversed: boolean) => string> = {
   vi: (r) => r ? ' (Ngược)' : ' (Thuận)',
 };
 
-export function getTarot(d1: string, d2: string, lang: string = 'en'): TarotCard {
+export function getTarot(d1: string, d2: string, lang: string = 'en', scope: string = 'insight'): TarotCard {
   const today = new Date().toISOString().slice(0, 10);
   let hash = 0;
   const sorted = [d1, d2].sort();
-  const str = sorted[0] + '|' + sorted[1] + '|' + today;
+  const str = sorted[0] + '|' + sorted[1] + '|' + today + '|' + (scope || 'insight');
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
     hash |= 0;

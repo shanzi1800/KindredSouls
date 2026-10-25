@@ -1570,14 +1570,19 @@ export function buildCompatPrompt(opts) {
   const syn = o.synastry || null;
   const synBlock = (isReport && syn) ? renderSynastryBlock(syn, L) : '';
   const synClause = (isReport && syn && syn.available) ? SYNASTRY_I18N[L].mapClause : '';
-  const system = isReport
+  // 🔴 E92-①③（主公军令 2026-10-25）：八字地支硬锁＋代词温度规范——
+  //   lock 块（[BAZI DATA LOCK] 四柱真值＋跨盘真实刑冲合害）注入 user 头部；
+  //   guard（绝对红线＋代词温度规范）追加 system；缺省 ⇒ 不注入，绝不伪造。
+  const bl = (o.baziLock && typeof o.baziLock.lock === 'string') ? o.baziLock : null;
+  const blGuard = (bl && typeof bl.guard === 'string') ? bl.guard : '';
+  const system = (isReport
     ? `${cfg.systemPrompt}\n\n${i18n.reportClause}${synClause ? '\n\n' + synClause : ''}`
-    : cfg.systemPrompt;
+    : cfg.systemPrompt) + (blGuard ? `\n\n${blGuard}` : '');
   const base = isReport
     ? cfg.buildReportPrompt(reportType, sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null, timeCtx)
     : cfg.buildPrompt(sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null);
   const timeBlock = renderCompatTimeBlock(reportType, timeCtx, L);
-  const head = [timeBlock, synBlock].filter(Boolean).join('\n');
+  const head = [timeBlock, synBlock, bl ? bl.lock : ''].filter(Boolean).join('\n');
   const user = head ? `${head}\n${base}` : base;
   return {
     system,
