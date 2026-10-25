@@ -2,9 +2,13 @@ interface PaywallCardProps {
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   loading: boolean;
   onPurchase: (plan: string) => void;
+  // 🔴 E90-①（主公军令 2026-10-25）：付费按钮加载态解耦——全局单一 loading 布尔会让
+  //    点 $4.99「立即解锁」连带年报按钮同现 ⏳＋灰底（状态污染，主公截图实锤）。
+  //    治法：按 plan 精确隔离——仅被点击档位进入加载态，其余按钮文案/可点击态原样。
+  activePlan?: string | false;
 }
 
-const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
+const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallCardProps) => {
   const t = {
     zh: {
       title: '解锁你们的灵魂密码',
@@ -225,11 +229,12 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
       </div>
 
       {/* 主按钮 — 薄荷→青蓝 */}
+      {/* 🔴 E90-①：本档位加载态＝activePlan === 'compatibility_once'（其余档位零连带） */}
       <button
         onClick={() => { console.log('[KindredSouls Debug] PaywallCard button clicked, loading:', loading); onPurchase('compatibility_once'); }}
         onMouseDown={() => console.log('[KindredSouls Debug] PaywallCard mousedown')}
         onTouchStart={() => console.log('[KindredSouls Debug] PaywallCard touchstart')}
-        disabled={loading}
+        disabled={loading && activePlan === 'compatibility_once'}
         style={{
           width: '100%',
           padding: '13px 24px',
@@ -237,70 +242,74 @@ const PaywallCard = ({ lang, loading, onPurchase }: PaywallCardProps) => {
           border: 'none',
           /* ✦ E84（主公军令 2026-10-22）：青蓝渐变退役 → 品牌星轨金紫渐变（一镜到底）；
              双端渐变（无亮中段）⇒ 均值 194<200，不触发美学探针「大面积亮白」铁律。 */
-          background: loading
+          background: (loading && activePlan === 'compatibility_once')
             ? '#444'
             : 'linear-gradient(135deg, #F5D08A 0%, #C084FC 100%)',
           color: '#0D0D1A',
           fontSize: '16px',
           fontWeight: 800,
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: (loading && activePlan === 'compatibility_once') ? 'not-allowed' : 'pointer',
           marginBottom: '10px',
           transition: 'all 0.25s ease',
-          boxShadow: loading ? 'none' : '0 4px 24px rgba(245,208,138,0.35), 0 0 60px rgba(192,132,252,0.12)',
+          boxShadow: (loading && activePlan === 'compatibility_once') ? 'none' : '0 4px 24px rgba(245,208,138,0.35), 0 0 60px rgba(192,132,252,0.12)',
           letterSpacing: '0.3px',
         }}
-        onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+        onMouseEnter={e => { if (!(loading && activePlan === 'compatibility_once')) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { (e.target as HTMLButtonElement).style.transform = 'translateY(0)'; }}
       >
-        {loading ? '⏳ ...' : `✨ ${c.unlock}`}
+        {(loading && activePlan === 'compatibility_once') ? '⏳ ...' : `✨ ${c.unlock}`}
       </button>
 
       {/* 月报档 — 金色边框（E86-③：旧双引擎月卡档退役 → E85 姻缘月报 $2.99） */}
+      {/* 🔴 E90-①：月报档自己的加载态（旧：被全局 loading 连带禁用） */}
       <button
         onClick={() => onPurchase('compatibility_monthly_report')}
-        disabled={loading}
+        disabled={loading && activePlan === 'compatibility_monthly_report'}
         style={{
           width: '100%',
           padding: '10px 20px',
           borderRadius: '12px',
           border: '1px solid rgba(212,175,55,0.4)',
-          background: 'rgba(212,175,55,0.05)',
+          background: (loading && activePlan === 'compatibility_monthly_report')
+            ? '#444'
+            : 'rgba(212,175,55,0.05)',
           color: '#D4AF37',
           fontSize: '13px',
           fontWeight: 600,
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: (loading && activePlan === 'compatibility_monthly_report') ? 'not-allowed' : 'pointer',
           transition: 'all 0.25s ease',
           marginBottom: '12px',
         }}
       >
-        📅 {c.monthlyBtn}
+        {(loading && activePlan === 'compatibility_monthly_report') ? '⏳ ...' : `📅 ${c.monthlyBtn}`}
       </button>
 
       {/* 年报档 — 金色渐变（E86-③：旧全通年卡档退役 → E85 姻缘年报 $29.99） */}
+      {/* 🔴 E90-①：年报档自己的加载态（旧：被全局 loading 连带 ⏳＋灰底——主公截图①病灶） */}
       <button
         onClick={() => onPurchase('compatibility_yearly_report')}
-        disabled={loading}
+        disabled={loading && activePlan === 'compatibility_yearly_report'}
         style={{
           width: '100%',
           padding: '12px 20px',
           borderRadius: '14px',
           border: '2px solid rgba(212,175,55,0.6)',
-          background: loading
+          background: (loading && activePlan === 'compatibility_yearly_report')
             ? '#444'
             : 'linear-gradient(135deg, #D4AF37 0%, #F0D060 50%, #D4AF37 100%)',
           color: '#0D0D1A',
           fontSize: '15px',
           fontWeight: 800,
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: (loading && activePlan === 'compatibility_yearly_report') ? 'not-allowed' : 'pointer',
           marginBottom: '10px',
           transition: 'all 0.25s ease',
-          boxShadow: loading ? 'none' : '0 4px 24px rgba(212,175,55,0.3)',
+          boxShadow: (loading && activePlan === 'compatibility_yearly_report') ? 'none' : '0 4px 24px rgba(212,175,55,0.3)',
           letterSpacing: '0.3px',
         }}
-        onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+        onMouseEnter={e => { if (!(loading && activePlan === 'compatibility_yearly_report')) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { (e.target as HTMLButtonElement).style.transform = 'translateY(0)'; }}
       >
-        {loading ? '⏳ ...' : `👑 ${c.yearlyBtn}`}
+        {(loading && activePlan === 'compatibility_yearly_report') ? '⏳ ...' : `👑 ${c.yearlyBtn}`}
       </button>
 
       {/* 信任标识 — 提亮与bonusDetail同色 */}

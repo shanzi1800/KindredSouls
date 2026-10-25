@@ -693,6 +693,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   });
   const [reportLoading, setReportLoading] = useState<string | false>(false);
   const [reportText, setReportText] = useState<string | null>(null);
+  // 🔴 E90-①（主公军令 2026-10-25）：付费墙按钮加载态隔离——被点击的档位 plan
+  //    （'compatibility_once' | 'compatibility_monthly_report' | 'compatibility_yearly_report'）；
+  //    false ⇒ 无任何档位处于唤起中（PaywallCard 三按钮零连带加载态）。
+  const [activePurchasePlan, setActivePurchasePlan] = useState<string | false>(false);
   // 🔴 E88-②（主公军令 2026-10-26）：报告长卷「打字机」渐进渲染——
   //    SSE 协议不动（阶段帧+终帧整文契约封仓），前端以段落为粒度逐段揭示，
   //    观感＝流式打字机长卷展开。Infinity ⇒ 全量直显（失败文案/冷启动旧文）。
@@ -703,14 +707,24 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   );
   const reportTyping = revealedParas !== Number.POSITIVE_INFINITY && revealedParas < reportParas.length;
   React.useEffect(() => {
-    if (!reportText || revealedParas !== 0) return;
-    if (reportParas.length === 0) { setRevealedParas(Number.POSITIVE_INFINITY); return; }
+    if (!reportText || reportParas.length === 0) return;
+    // 🔴 E90-②（主公军令 2026-10-25）：打字机卡死在第一章标题的真凶根治。
+    //    旧病灶：依赖数组含 `revealedParas === 0` ⇒ 130ms 后 0→1 触发依赖变更 →
+    //    React 跑 cleanup（clearInterval）→ 新 effect 直接 return 不再启动 → 揭示
+    //    **永远停在第一段**（＝主公只看到第一章标题＋孤零零光标）。
+    //    治法：依赖只挂 [reportText, reportParas.length]（打字中途不变 ⇒ interval 存活），
+    //    起点 0 由当次渲染闭包判定；终点 Infinity 时 interval 自清（不空转）。
+    if (revealedParas !== 0) return;
     const id = setInterval(() => {
-      setRevealedParas((p) => (p + 1 >= reportParas.length ? Number.POSITIVE_INFINITY : p + 1));
+      setRevealedParas((p) => {
+        const next = p + 1 >= reportParas.length ? Number.POSITIVE_INFINITY : p + 1;
+        if (next === Number.POSITIVE_INFINITY) clearInterval(id);
+        return next;
+      });
     }, 130);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportText, revealedParas === 0, reportParas.length]);
+  }, [reportText, reportParas.length]);
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -1177,6 +1191,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   //    全部 window.location.href 全页定向（E72 铁律同源）。
   const handlePurchase = (plan: string) => {
     setLoading(true);
+    // 🔴 E90-①（主公军令 2026-10-25）：付费墙按钮加载态按档位隔离——记下被点击的
+    //    plan ⇒ PaywallCard 仅该档位按钮转 ⏳，其余按钮文案/可点击态原样（互不干扰）。
+    setActivePurchasePlan(plan);
     // 先检查是否已登录
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
@@ -1185,6 +1202,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       } else {
         // 没登录：存意图 + 弹登录墙（loading 收口，登录门上屏）
         setLoading(false);
+        setActivePurchasePlan(false);
         localStorage.setItem('ks_pending_checkout_plan', plan);
         setShowPaywall(false);
         setShowAuthWall(true);
@@ -1427,7 +1445,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '20px 0',
           }}>
-            <PaywallCard lang={lang} loading={loading} onPurchase={handlePurchase} />
+            <PaywallCard lang={lang} loading={loading} activePlan={activePurchasePlan} onPurchase={handlePurchase} />
           </div>
         </div>
       </div>
@@ -1541,8 +1559,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                    · 章节头（第X章/Chapter N 六语形态）＝金标题铭牌（.ks-report-chapter）；
                    · 正文段＝香槟白（.ks-report-para）；
                    · 打字机渐进：逐段揭示（revealedParas），进行中尾部缀 ✦ 光标；
-                   · 超长内容自持滚动槽（.ks-report-scroll 复用 E86 .celestial-scrollbar）。 */
-                <div className="ks-report-scroll" data-testid="compat-report-scroll" style={{ marginTop: '12px', padding: '14px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', textAlign: 'left' }}>
+                   · 超长内容自持滚动槽（.ks-report-scroll 复用 E86 .celestial-scrollbar）。
+                   🔴 E90-③（主公军令 2026-10-25）：金属框全模块对齐——容器升级为与
+                   财富月报/年报同款「黑金金属框」（深空渐变底＋2px 金边＋内外金光＋顶部
+                   流光线），规格逐字移植 WealthReportPage 封面卡；简陋扁平黑底退役。 */
+                <div className="ks-report-scroll celestial-scrollbar" data-testid="compat-report-scroll">
                   {reportParas
                     .slice(0, reportTyping ? revealedParas : reportParas.length)
                     .map((para, i) => {

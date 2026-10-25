@@ -306,10 +306,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 
 /* 🔴 E88-②（主公军令 2026-10-26）：姻缘报告「黑金长卷」三类——
    章节头金铭牌（年报五章/月报段落皆可命中）＋正文香槟白＋打字机光标。 */
+/* 🔴 E90-③（主公军令 2026-10-25）：金属框全模块对齐——规格逐字移植财富报告封面卡
+   （WealthReportPage：深空渐变底＋2px 钛金边＋内外金光＋顶部流光线），
+   主公军令「姻缘月报/年报与财富月报/年报视觉一致」收官件。 */
 .ks-report-scroll {
-  max-height: 60vh;
+  position: relative;
+  margin-top: 12px;
+  padding: 18px 16px;
+  text-align: left;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15), inset 0 0 60px rgba(212, 175, 55, 0.05);
   overflow-y: auto;
+  max-height: 60vh;
   scrollbar-width: thin;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* 顶部鎏金流光线（对齐军令 .celestial-metallic-card::before 规格） */
+.ks-report-scroll::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.8), transparent);
+  pointer-events: none;
 }
 .ks-report-chapter {
   margin: 14px 0 8px;
@@ -319,6 +341,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   letter-spacing: 0.4px;
   border-left: 3px solid rgba(212, 175, 55, 0.65);
   padding-left: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
 .ks-report-para {
   margin: 0 0 8px;

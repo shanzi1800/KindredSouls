@@ -1,0 +1,136 @@
+/**
+ * ══════════════════════════════════════════════════════════════════════
+ * E90（主公军令 2026-10-25）：付费按钮加载态解耦、打字机卡死根治、金属框全模块对齐
+ * ══════════════════════════════════════════════════════════════════════
+ * 主公实测三患（截图四张实锤）：
+ *  ① 点 $4.99「立即解锁」⇒ 主按钮与年报按钮**同时**转 ⏳＋灰底（全局单布尔状态污染）；
+ *  ②③ 沙盒付款后月报/年报只显示第一章标题＋孤零零光标，无后续正文——
+ *     真凶＝打字机 effect 依赖含 `revealedParas === 0`：130ms 后 0→1 触发依赖变更 →
+ *     React cleanup 杀 interval → 揭示永远停在第一段。SSE 造帧/解析链全绿（本闸
+ *     守卫证据链）；军令 Reader 提前 done 假说经真源复核不成立。
+ *  ④  姻缘月报/年报容器须与财富报告同款「黑金金属框」（渐变底＋2px 金边＋流光线）。
+ * 守卫射程：①3 段（状态隔离）＋②4 段（打字机根治＋SSE 契约不回归）＋③3 段（金属框）
+ *          ＋④1 段（入编位）＝11 段。
+ */
+import { test } from 'node:test';
+import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const read = (p) => readFileSync(path.join(ROOT, p), 'utf-8');
+
+const APP = read('web/src/App.tsx');
+const CSS = read('web/src/App.css');
+const PW = read('web/src/components/PaywallCard.tsx');
+const PKG = JSON.parse(read('package.json'));
+
+/* ════════ ① 付费墙按钮加载态隔离 ════════ */
+
+test('E90-①-1 PaywallCard 接收 activePlan 档位枚举（状态隔离契约）', () => {
+  assert.ok(PW.includes('activePlan?: string | false'), 'activePlan prop 契约缺失');
+  assert.ok(PW.includes("activePlan = false }: PaywallCardProps"), 'activePlan 缺省 false 形态异常');
+});
+
+test('E90-①-2 三按钮各按档位判加载（零连带）', () => {
+  // 三档位判别齐全：谁被点击谁 ⏳，其余按钮保持原文案与可点击态
+  for (const plan of ['compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report']) {
+    const cond = `activePlan === '${plan}'`;
+    assert.ok(PW.includes(cond), `档位判别缺失：${plan}`);
+  }
+  // 连带病灶（旧形态）：`disabled={loading}` 裸全局布尔直接判——必须退役
+  assert.ok(!/\bdisabled=\{loading\}/.test(PW), '裸 disabled={loading} 连带禁用残留违令（状态污染回归）');
+  // 三按钮的 ⏳ 文案必须各自跟档位判别（旧：`{loading ? '⏳ ...' : ...}` 连带）
+  const bareHourglass = (PW.match(/\{loading \? '/g) || []).length;
+  assert.equal(bareHourglass, 0, `裸 {loading ? '⏳'} 连带加载文案残留 ${bareHourglass} 处违令`);
+});
+
+test('E90-①-3 App 侧注入 activePurchasePlan', () => {
+  assert.ok(APP.includes("const [activePurchasePlan, setActivePurchasePlan] = useState<string | false>(false)"),
+    'activePurchasePlan 状态缺失');
+  assert.ok(APP.includes('setActivePurchasePlan(plan);'), 'handlePurchase 未记入被点击档位');
+  assert.ok(APP.includes('setActivePurchasePlan(false);'), '登录墙收口未复位档位');
+  assert.ok(APP.includes('activePlan={activePurchasePlan}'), 'PaywallCard 未接收 activePlan');
+  // e86-③-2 锚点语义守恒：setLoading(true) 即刻加载态链不得被拆
+  assert.ok(APP.includes('setLoading(true);'), '点击未即刻触发加载态（e86 锚点回归）');
+});
+
+/* ════════ ② 打字机卡死根治（interval 不被 cleanup 杀） ════════ */
+
+test('E90-②-1 打字机 effect 依赖摘除 revealedParas===0（自杀病灶拔除）', () => {
+  // 旧病灶字面量：依赖数组含 revealedParas === 0 ⇒ 130ms 后依赖变更触发 cleanup 杀 interval
+  assert.ok(!APP.includes('[reportText, revealedParas === 0, reportParas.length]'),
+    '自杀依赖数组残留违令（打字机必然卡死在第一段）');
+  // 新形态：依赖只挂 [reportText, reportParas.length]
+  assert.ok(APP.includes('[reportText, reportParas.length]'), '打字机新依赖形态缺失');
+});
+
+test('E90-②-2 终点自清（到达 Infinity 时 clearInterval，不空转）', () => {
+  const i = APP.indexOf('const id = setInterval(() => {');
+  assert.ok(i > 0, '打字机 interval 缺失');
+  const seg = APP.slice(i, i + 400);
+  assert.ok(seg.includes('clearInterval(id)'), 'interval 终点自清缺失（空转耗电）');
+  assert.ok(seg.includes('Number.POSITIVE_INFINITY'), '终点 Infinity 语义缺失');
+});
+
+test('E90-②-3 起点 0 判定由闭包承接（0 才启动打字机）', () => {
+  const i = APP.indexOf('if (revealedParas !== 0) return;');
+  assert.ok(i > 0, '打字机起点判定缺失（非 0 状态误启动＝全量直显被破坏）');
+});
+
+test('E90-②-4 SSE 读流契约零回归（classifySSEFrame/reduceSSEFrames 归约仍在）', () => {
+  // 军令 Reader 假说虽不成立，读流核契约仍须守卫：任何回归会引入真断流
+  assert.ok(APP.includes('await reader.read()'), 'SSE 读流循环缺失');
+  assert.ok(APP.includes('readCompatSSEStream'), 'SSE 读流入口缺失');
+  assert.ok(APP.includes('decoder.decode(value, { stream: true })'), '跨 chunk 多字节解码缺失（截断风险回归）');
+});
+
+/* ════════ ③ 金属框全模块对齐（财富同款规格） ════════ */
+
+test('E90-③-1 报告容器金属框规格（渐变底＋2px 金边＋金光内衬）', () => {
+  const i = CSS.indexOf('.ks-report-scroll {');
+  assert.ok(i > 0, 'ks-report-scroll 类缺失');
+  const seg = CSS.slice(i, i + 900);
+  assert.ok(seg.includes('linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'),
+    '深空渐变底缺失（财富同款规格）');
+  assert.ok(seg.includes('border: 2px solid rgba(212, 175, 55, 0.4)'), '2px 钛金边缺失');
+  assert.ok(seg.includes('0 8px 32px rgba(212, 175, 55, 0.15), inset 0 0 60px rgba(212, 175, 55, 0.05)'),
+    '内外金光双层阴影缺失');
+  assert.ok(seg.includes('border-radius: 20px'), '20px 圆角缺失');
+});
+
+test('E90-③-2 顶部鎏金流光线＋黑金滚动槽（.celestial-scrollbar 并挂）', () => {
+  assert.ok(CSS.includes('.ks-report-scroll::before'), '顶部流光线伪元素缺失');
+  const i = CSS.indexOf('.ks-report-scroll::before');
+  const seg = CSS.slice(i, i + 400);
+  assert.ok(seg.includes('linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.8), transparent)'),
+    '流光线渐变规格缺失');
+  // 容器挂载点：App.tsx 须并挂 celestial-scrollbar（黑金滚动槽与财富全站统一）
+  assert.ok(APP.includes('"ks-report-scroll celestial-scrollbar"'), '滚动槽未并挂 celestial-scrollbar');
+});
+
+test('E90-③-3 章节头金铭牌带金分隔底线（长卷层次与财富对齐）', () => {
+  const i = CSS.indexOf('.ks-report-chapter {');
+  const seg = CSS.slice(i, i + 500);
+  assert.ok(seg.includes('border-left: 3px solid rgba(212, 175, 55, 0.65)'), '金边令牌左侧金条缺失（回归）');
+  assert.ok(seg.includes('border-bottom: 1px solid rgba(212, 175, 55, 0.18)'), '章节头金分隔底线缺失');
+});
+
+/* ════════ ④ 闸门接线（入编位军规） ════════ */
+
+test('E90-④-1 闸门接线：test:astro 含本闸门（67 段）＋入编位（e89 后、e40-compat 前、python 链尾）', () => {
+  const chain = PKG.scripts['test:astro'] || '';
+  assert.ok(chain.includes('audit-e90-paywall-typing-metal.test.mjs'), '本闸门未接线 test:astro');
+  const parts = chain.split('&&').map((s) => s.trim());
+  assert.equal(parts.length, 67, `链段数异常（实得 ${parts.length}，基线 67）`);
+  const iE90 = parts.findIndex((p) => p.includes('audit-e90-paywall-typing-metal'));
+  const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
+  const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
+  const iPy = parts.findIndex((p) => p.includes('python3'));
+  assert.ok(iE90 > iE89, 'E90 须在 e89 之后');
+  assert.ok(iE40 > iE90, 'E90 须在 e40-compat 之前（收口位军规）');
+  assert.ok(parts[parts.length - 2].includes('audit-e40-compat-synastry-tensor-fusion'), 'e40-compat 恒 len-2 被破坏');
+  assert.ok(iPy === parts.length - 1, 'python 恒链尾被破坏');
+});

@@ -213,10 +213,11 @@ test('E88-④-3 首页门禁白名单纳入姻缘线权益（灵宠不显示根�
 
 test('E88-⑤-1 闸门接线：test:astro 含本闸门（66 段）＋入编位（e40-compat 前、python 链尾）', () => {
   // 🔴 E89 语义演进：E89 军令入编独立段（插 e88 后、e40 前）⇒ 基线 65→66。
+  // 🔴 E90 语义演进：E90 军令入编独立段（插 e89 后、e40 前）⇒ 基线 66→67。
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e88-compat-five-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 66, `链段数异常（实得 ${parts.length}，基线 66）`);
+  assert.equal(parts.length, 67, `链段数异常（实得 ${parts.length}，基线 67）`);
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));
