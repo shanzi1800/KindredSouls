@@ -1299,6 +1299,17 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         setReportText(data.insight);
         setRevealedParas(0); // 🔴 E88-②：长卷打字机渐进渲染起点（0 ⇒ 逐段揭示）
       } else {
+        // 🔴 E89-④（主公军令 2026-10-25）：解封真实报错——严禁静默吞并。
+        //    UI 保持友好文案；真因（HTTP 状态/错误码/requiredPlan/nextAvailable）
+        //    一并浮现开发日志（console），排障不再靠猜。
+        console.error('[Report Gen Error]:', {
+          status: res.status,
+          error: data.error || null,
+          code: data.code || null,
+          requiredPlan: data.requiredPlan || null,
+          nextAvailable: data.nextAvailable || null,
+          reportType: type,
+        });
         setReportText(lang === 'zh' ? '生成报告失败，请重试。' : 'Failed to generate report. Please try again.');
         setRevealedParas(Number.POSITIVE_INFINITY);
       }

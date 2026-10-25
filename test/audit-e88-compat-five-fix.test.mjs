@@ -96,25 +96,29 @@ test('E88-②-1 五章 prompt 构造器铸成（章节标题六语齐备）', ()
   }
 });
 
-test('E88-②-2 生成分流：yearly 走五章 / monthly+once 沿用四段骨架（零回归）', () => {
+test('E88-②-2 生成分流：yearly 五章 / monthly 四模块（E89）/ once 四段骨架（零回归）', () => {
   const iBranch = SERVER.indexOf("reportType === 'yearly'\n          ? buildCompatYearlyFiveChapterPrompt");
   assert.ok(iBranch > 0, '年报五章分流缺失（三元形态）');
-  const seg = SERVER.slice(iBranch, iBranch + 1200);
+  const seg = SERVER.slice(iBranch, iBranch + 2400);
   assert.ok(seg.includes('buildCompatYearlyFiveChapterPrompt(d1, d2, lang, {'), 'yearly 未接入五章构造器');
-  assert.ok(seg.includes(': buildCompatibilityReportPrompt(d1, d2, lang, reportType, {'), 'monthly/once 四段骨架分流丢失（回归违令）');
+  // 🔴 E89 语义演进（主公军令 2026-10-25）：monthly 分流四模块构造器；once 沿用四段骨架。
+  assert.ok(seg.includes('buildCompatMonthlyFourModulePrompt(d1, d2, lang, {'), 'monthly 未接入四模块构造器（E89 军令）');
+  assert.ok(seg.includes(': buildCompatibilityReportPrompt(d1, d2, lang, reportType, {'), 'once 四段骨架分流丢失（回归违令）');
 });
 
-test('E88-②-3 年报 maxTokens 48000（与财富年报同档）', () => {
-  assert.ok(SERVER.includes('maxTokens: reportType === \'yearly\' ? 48000 : 12000'),
-    '年报 callAI 未传 48000 档 maxTokens');
+test('E88-②-3 年报 maxTokens 档位（E89 校准：48000→7000 军令口径）', () => {
+  assert.ok(SERVER.includes("maxTokens: reportType === 'yearly' ? 7000 : (reportType === 'monthly' ? 3000 : 12000)"),
+    'callAI maxTokens 未按 E89 军令口径校准（48000 残留违令）');
 });
 
 test('E88-②-4 replay 旧短壳守卫（旧四段壳不得挡死新长卷交付）', () => {
   const i = SERVER.indexOf('const _g41ReplayUsable = _g41Replay');
   assert.ok(i > 0, 'replay 可用性守卫缺失');
-  const seg = SERVER.slice(i, i + 500);
-  assert.ok(seg.includes("reportType !== 'yearly'"), '守卫未限定 yearly 射程（月报复读语义被误伤）');
-  assert.ok(seg.includes('.insight.length >= 2000'), '旧短壳长度下限缺失（2000）');
+  const seg = SERVER.slice(i, i + 700);
+  // 🔴 E89 语义演进：once 零门槛 / yearly ≥2000（E88 口径不变）/ monthly ≥1200（E89 新增）。
+  assert.ok(seg.includes("reportType === 'once'"), 'once 复读零门槛语义丢失');
+  assert.ok(seg.includes('.insight.length >= 2000'), 'yearly 旧短壳长度下限缺失（2000）');
+  assert.ok(seg.includes('.insight.length >= 1200'), 'monthly 旧短壳长度下限缺失（1200，E89 军令）');
   // 复读消费点必须改用守卫变量
   const iUse = SERVER.indexOf('if (_g41ReplayUsable) {');
   assert.ok(iUse > 0, '复读命中未走守卫变量（守卫旁路＝形同虚设）');
@@ -207,11 +211,12 @@ test('E88-④-3 首页门禁白名单纳入姻缘线权益（灵宠不显示根�
 
 /* ════════ ⑤ 链位军规与入编 ════════ */
 
-test('E88-⑤-1 闸门接线：test:astro 含本闸门（65 段）＋入编位（e40-compat 前、python 链尾）', () => {
+test('E88-⑤-1 闸门接线：test:astro 含本闸门（66 段）＋入编位（e40-compat 前、python 链尾）', () => {
+  // 🔴 E89 语义演进：E89 军令入编独立段（插 e88 后、e40 前）⇒ 基线 65→66。
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e88-compat-five-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 65, `链段数异常（实得 ${parts.length}，基线 65）`);
+  assert.equal(parts.length, 66, `链段数异常（实得 ${parts.length}，基线 66）`);
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));

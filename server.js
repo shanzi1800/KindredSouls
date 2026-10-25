@@ -13761,6 +13761,114 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 🔴 E89-②（主公军令 2026-10-25）：姻缘月报「四大模块」prompt（$2.99 达标交付）
+//   病根：E39 四段骨架「每段 2-3 句、总不超 200 词」对月报同样偏薄——军令规格
+//   定死四模块：①当月合盘能量总纲（共振指数 0-100）②四维情感能量雷达（默契/
+//   情绪/激情/现实压力百分比）③30 天高能吉凶日历（2 升温吉日＋2 争执高危日，
+//   带天象缘由与应对）④月度易经调频锦囊（值月卦＋灵性互补行动）。
+//   🔴 铁律（沿袭 E39/E88）：时间轴一律 buildCompatTimeContext('monthly') 现算——
+//      本模板零固定年月字面量；评分/星座/塔罗/双盘真值与年报构造器同一入参管道
+//      （含 renderSynastryBlock 真值块，缺真值 ⇒ 不注入，绝不伪造）。
+//   🔴 模块标题沿用「第X章/Chapter N」形态——前端 .ks-report-chapter 章节头正则
+//      与 130ms 打字机渐进渲染链零改动直接复用。
+// ═══════════════════════════════════════════════════════════════
+const _E89_MONTHLY_LANG_LOCK = Object.freeze({
+  zh: '你是资深命理情感顾问，为 KindredSouls 撰写月度姻缘月报。全程只用简体中文输出。',
+  en: 'You are a senior relationship astrologer writing the monthly love report for KindredSouls. Write in English only.',
+  es: 'Eres un astrólogo senior de relaciones escribiendo el informe mensual de amor de KindredSouls. Escribe solo en español.',
+  fr: 'Tu es un astrologue senior des relations rédigeant le rapport mensuel amoureux de KindredSouls. Écris uniquement en français.',
+  th: 'คุณเป็นโหรความสัมพันธ์อาวุโสผู้เขียนรายงานความรักรายเดือนของ KindredSouls เขียนเป็นภาษาไทยเท่านั้น',
+  vi: 'Bạn là nhà chiêm tinh quan hệ cấp cao viết báo cáo tình yêu hàng tháng của KindredSouls. Chỉ viết bằng tiếng Việt.',
+});
+
+const _E89_MONTHLY_MODULES = Object.freeze({
+  zh: Object.freeze([
+    '第一章 · 当月合盘能量总纲',
+    '第二章 · 四维情感能量雷达',
+    '第三章 · 30天高能吉凶日历',
+    '第四章 · 月度易经调频锦囊',
+  ]),
+  en: Object.freeze([
+    'Chapter 1 · Monthly Synastry Energy Overview',
+    'Chapter 2 · Four-Dimension Emotional Radar',
+    'Chapter 3 · The 30-Day Lucky & Storm Calendar',
+    'Chapter 4 · I Ching Monthly Tuning Guide',
+  ]),
+  es: Object.freeze([
+    'Capítulo 1 · Panorama Energético Mensual',
+    'Capítulo 2 · Radar Emocional de Cuatro Dimensiones',
+    'Capítulo 3 · Calendario de 30 Días: Días Afortunados y Críticos',
+    'Capítulo 4 · Guía de Sintonía Mensual del I Ching',
+  ]),
+  fr: Object.freeze([
+    'Chapitre 1 · Panorama Énergétique Mensuel',
+    'Chapitre 2 · Radar Émotionnel en Quatre Dimensions',
+    'Chapitre 3 · Calendrier 30 Jours : Jours Chanceux et Critiques',
+    'Chapitre 4 · Guide d’Accordage Mensuel du I Ching',
+  ]),
+  th: Object.freeze([
+    'บทที่ 1 · ภาพรวมพลังงานความสัมพันธ์ประจำเดือน',
+    'บทที่ 2 · เรดาร์อารมณ์สี่มิติ',
+    'บทที่ 3 · ปฏิทิน 30 วัน วันรุ่งเรือง–วันเสี่ยงขัดแย้ง',
+    'บทที่ 4 · คู่มือปรับคลื่นยี่จิงประจำเดือน',
+  ]),
+  vi: Object.freeze([
+    'Chương 1 · Toàn Cảnh Năng Lượng Hợp Bàn Tháng',
+    'Chương 2 · Radar Cảm Xúc Bốn Chiều',
+    'Chương 3 · Lịch 30 Ngày: Ngày May Mắn & Ngày Nguy Hiểm',
+    'Chương 4 · Cẩm Nang Điều Chỉnh Kinh Dịch Hàng Tháng',
+  ]),
+});
+
+function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
+  const x = extras || {};
+  const L = Object.prototype.hasOwnProperty.call(_E89_MONTHLY_LANG_LOCK, lang) ? lang : 'zh';
+  const scores = computeCompatScores(x.bazi, x.zodiac, x.iching);
+  const timeCtx = buildCompatTimeContext('monthly', new Date(), x.userBirthDate || null, L);
+  const tarot = (x.tarot && x.tarot.name) ? x.tarot : null;
+  const sign1 = (Array.isArray(x.zodiacMeta) && x.zodiacMeta[0]) || '';
+  const sign2 = (Array.isArray(x.zodiacMeta) && x.zodiacMeta[1]) || '';
+  const md = _E89_MONTHLY_MODULES[L] || _E89_MONTHLY_MODULES.zh;
+  const syn = x.synastry || null;
+  const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
+
+  const system = [
+    _E89_MONTHLY_LANG_LOCK[L],
+    '',
+    '[MONTHLY REPORT CONTRACT — MANDATORY]',
+    `1. Write EXACTLY 4 modules, in order, each starting with the exact title line: ${md[0]} / ${md[1]} / ${md[2]} / ${md[3]}.`,
+    '2. Module 1 (300+ words): the monthly synastry energy overview — open with a monthly resonance index (0-100, one clear number with a one-line justification), then the core celestial influence on this couple within the given time window.',
+    '3. Module 2 (300+ words): the four-dimension emotional radar — ① rapport/tacit understanding, ② emotional weather, ③ passion/attraction, ④ reality pressure; each with a percentage (0-100) and 2-3 sentences of interpretation.',
+    '4. Module 3 (400+ words): the 30-day calendar — exactly 2 relationship-warming lucky days + 2 high-friction risk days; each day gives its day-of-month number, the astrological reason, and one concrete coping tip.',
+    '5. Module 4 (300+ words): the I Ching monthly hexagram (derive it from the given I Ching score & data lock) and the couple\'s spiritual complement action (practical, ritual-free).',
+    '6. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
+    '7. Separate modules with a blank line. Use plain text paragraphs; the first character of each module title line must be the module marker as given.',
+    '8. Total length 1200-1800 words.',
+  ].join('\n');
+
+  const dataLock = [
+    `[DATA LOCK] Overall=${scores.overall}, Bazi=${scores.bazi}, Zodiac=${scores.zodiac}, IChing=${scores.iching}`,
+    `Tarot=${tarot ? tarot.name : ''}, Orientation=${tarot ? (tarot.orientation || '') : ''}`,
+    `Zodiac signs: ${sign1} and ${sign2}`,
+    `Time window (monthly, day 1 = the first day of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
+    `Partners: ${d1} and ${d2}`,
+  ].filter(Boolean).join('\n');
+
+  const user = [
+    dataLock,
+    synBlock ? '\n' + synBlock : '',
+    '\n[STRUCTURE — copy the exact 4 module titles]',
+    md[0],
+    md[1],
+    md[2],
+    md[3],
+    `\nWrite the complete 4-module monthly report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, 1200-1800 words total. Every radar dimension and every calendar day must be concrete and specific — no filler, no generic advice.`,
+  ].join('\n');
+
+  return { system, user, lang: L, reportType: 'monthly', timeCtx, fourModule: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 🌌 E40+：合婚报告「瑞士星历天体羁绊锁」真值装配（Synastry Tensor Fusion）
 //   依据：军师《E40+ 星历张量注入四段骨架》出征令（2026-10-10）
 //         —— 「接收双方时空真值 ⇒ 真实双盘交叉相位张量 ⇒ 注入四段骨架」。
@@ -16362,10 +16470,16 @@ app.use('/api/ai-advisor', async (req, res) => {
       // 🔴 E88-②（主公军令 2026-10-26）：年报旧短壳守卫——E39 四段骨架时代的年报缓存
       //    （≤200 词短壳）会经 Gate41 复读命中，挡死新五章长卷交付。口径：yearly 复读
       //    命中但正文长度 < 2000 字符 ⇒ 视为旧壳，忽略复读走 MISS 重新生成（新报告
-      //    落库后 reportId 同键覆盖，下次复读即新长卷）。月报/once 复读语义零改动。
+      //    落库后 reportId 同键覆盖，下次复读即新长卷）。
+      // 🔴 E89-②（主公军令 2026-10-25）：月报同款守卫（< 1200 字符 ⇒ 旧四段壳）——
+      //    沙盒豁免打通后，月报复读若命中 E39 短壳（~200 词 ≈ 900 字符）会挡死
+      //    新四模块交付。once 复读语义零门槛不变。
       const _g41ReplayUsable = _g41Replay
-        && (reportType !== 'yearly'
-          || (typeof _g41Replay.insight === 'string' && _g41Replay.insight.length >= 2000));
+        && (reportType === 'once'
+          || (reportType === 'yearly'
+            && (typeof _g41Replay.insight === 'string' && _g41Replay.insight.length >= 2000))
+          || (reportType === 'monthly'
+            && (typeof _g41Replay.insight === 'string' && _g41Replay.insight.length >= 1200)));
       if (_g41ReplayUsable) {
         console.log(`[Gate41] report replay HIT: reportId=${_g41ReportId} type=${reportType} lang=${lang}`);
         // 🛡️ Gate 43：流式模式下命中复读 ⇒ **单帧 ready 直出**（零算力、零阶段帧：如实反映"无推演发生"）
@@ -16378,15 +16492,24 @@ app.use('/api/ai-advisor', async (req, res) => {
       if (_cEnt.method !== 'green_channel' && _cEnt.method !== 'no_supabase_configured') {
         const _nowC = new Date();
         const _lockC = compatibilityPeriodLock(_cEnt.plans || {}, reportType, _cEnt.userBirthDate || null, _nowC);
-        if (_lockC.locked) {
-          const _codeC = reportType === 'monthly' ? 'MONTHLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED';
-          console.log(`[E24⑥②] (compat) period LOCKED code=${_codeC} next=${_lockC.nextAvailable}`);
-          return res.status(403).json(compatGuardBody(_codeC, { nextAvailable: _lockC.nextAvailable, solarReturnStart: _lockC.solarReturnStart || null }));
-        }
         const _rlC = compatibilityDailyRateLimit(_cEnt.plans || {}, _nowC);
-        if (_rlC.limited) {
-          console.log(`[E24⑥②] (compat) daily RATE-LIMIT count=${_rlC.count}`);
-          return res.status(429).json(compatGuardBody('DAILY_COMPAT_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlC.resetsAt }));
+        // 🛡️ E89-①（主公军令 2026-10-25）：姻缘线沙盒豁免——对齐财富线 E47「严禁弹窗阻断」亲令。
+        //   病根（线上日志实锤）：沙盒付款（webhook 落 plan）不清周期锁 ⇒ 生成请求被
+        //   period LOCKED 403 拦死 ⇒ 前端吐「生成报告失败」——沙盒链路形同虚设。
+        //   治法：PAYMENT_MODE=sandbox ⇒ 周期锁/日限流放行重新推演（live 模式 fail-closed 逐字不变）。
+        //   🔴 次序语义与财富线 E47 同构：Gate41 replay 在前（新长卷已复读直出），到这里必为 MISS。
+        if (_lockC.locked || _rlC.limited) {
+          if (!isSandboxPaymentMode(process.env)) {
+            if (_lockC.locked) {
+              const _codeC = reportType === 'monthly' ? 'MONTHLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED' : 'YEARLY_COMPATIBILITY_REPORT_QUOTA_EXHAUSTED';
+              console.log(`[E24⑥②] (compat) period LOCKED code=${_codeC} next=${_lockC.nextAvailable}`);
+              return res.status(403).json(compatGuardBody(_codeC, { nextAvailable: _lockC.nextAvailable, solarReturnStart: _lockC.solarReturnStart || null }));
+            }
+            console.log(`[E24⑥②] (compat) daily RATE-LIMIT count=${_rlC.count}`);
+            return res.status(429).json(compatGuardBody('DAILY_COMPAT_RATE_LIMIT_EXCEEDED', { limit: WEALTH_DAILY_LIMIT, resetsAt: _rlC.resetsAt }));
+          }
+          // 🧪 沙箱真机测试态（PAYMENT_MODE=sandbox）：放行重新推演（财富线 E47 同款口径）。
+          console.log(`[E89] sandbox mode => compat guard bypass (no existing report; lock=${_lockC.locked} daily=${_rlC.limited}) type=${reportType}`);
         }
         await patchWealthPlans(_cEnt.userId, compatibilityCounterDelta(_cEnt.plans || {}, reportType, _cEnt.method, _nowC, { withTimestamp: false }));
       }
@@ -16410,7 +16533,9 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _g44House = (_compatSyn && _compatSyn.houseOverlay && _compatSyn.houseOverlay.available)
           ? _compatSyn.houseOverlay : null;
         // 🛍️ E39-B: 骨架真值引渡 —— 四段 🎯⚡💡🌿 纯文本 + 强制数据锁 + 动态时间轴（固定年月字面量已全数拔除，闸门 B 病根不再）
-        // 🔴 E88-②（主公军令 2026-10-26）：年报分流五章长卷 prompt（月报/once 沿用四段骨架零改动）。
+        // 🔴 E88-②（主公军令 2026-10-26）：年报分流五章长卷 prompt。
+        // 🔴 E89-②（主公军令 2026-10-25）：月报分流四模块 prompt（能量总纲/四维雷达/30天吉凶日历/易经调频）；
+        //    once 沿用四段骨架零改动。
         const _compat = reportType === 'yearly'
           ? buildCompatYearlyFiveChapterPrompt(d1, d2, lang, {
               bazi: req.body.bazi || null,
@@ -16421,24 +16546,38 @@ app.use('/api/ai-advisor', async (req, res) => {
               userBirthDate: _cEnt.userBirthDate || null,
               synastry: _compatSyn,
             })
-          : buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
-              bazi: req.body.bazi || null,
-              zodiac: req.body.zodiac || null,
-              iching: req.body.iching || null,
-              tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
-              zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
-              userBirthDate: _cEnt.userBirthDate || null,
-              synastry: _compatSyn,
-            });
+          : (reportType === 'monthly'
+            ? buildCompatMonthlyFourModulePrompt(d1, d2, lang, {
+                bazi: req.body.bazi || null,
+                zodiac: req.body.zodiac || null,
+                iching: req.body.iching || null,
+                tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
+                zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+                userBirthDate: _cEnt.userBirthDate || null,
+                synastry: _compatSyn,
+              })
+            : buildCompatibilityReportPrompt(d1, d2, lang, reportType, {
+                bazi: req.body.bazi || null,
+                zodiac: req.body.zodiac || null,
+                iching: req.body.iching || null,
+                tarot: (req.body.tarot && req.body.tarot.name) ? req.body.tarot : null,
+                zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
+                userBirthDate: _cEnt.userBirthDate || null,
+                synastry: _compatSyn,
+              }));
 
         // 🛡️ Gate 43：Stage 2 —— 真值里程碑③「解析灵宠羁绊契约能量」（AI 正文生成中，最长的真实等待段）
         if (_sse) _sse.stage(2, lang);
-        // 🔴 E88-②：年报五章长卷 ⇒ maxTokens 48000（与财富年报同档）；月报/once 沿用默认 12000。
+        // 🔴 E88-②：年报五章长卷 ⇒ maxTokens 与财富年报同档；月报/once 沿用默认 12000。
+        // 🔴 E89-①（主公军令 2026-10-25）：maxTokens 校准——军令数字有算术依据
+        //    （年报 3500~5000 字 ≈ 6500 tokens、月报 1200~1800 字 ≈ 2500 tokens），
+        //    且 DeepSeek 网关实测对 12000/48000 均放行（军师 400 假说证伪）——
+        //    按军令收缩为 7000/3000 降本无害；once 沿用 12000 零改动。
         const insight = await callAI(
           _compat.system,
           _compat.user,
           process.env,
-          { maxTokens: reportType === 'yearly' ? 48000 : 12000, reportType }
+          { maxTokens: reportType === 'yearly' ? 7000 : (reportType === 'monthly' ? 3000 : 12000), reportType }
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
