@@ -598,6 +598,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-report-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
 .ks-report-scroll::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
 .ks-report-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
+/* ✦ E96-①（主公军令 2026-10-26）：滑轨槽两端防溢出——.ks-report-scroll 自身既是金属框
+   （border-radius: 20px）又是滚动容器，webKit 轨道默认 100% 顶格贯穿全高 ⇒ 直角轨道
+   上下端头刺穿圆角边界（主公实锤：顶部与底部滑轨槽均超出金属框）。
+   治法：轨道 margin 上下各内缩 20px（= 圆角半径，数学上轨道端点完全落在直边区内，
+   军令 16px 方案在 5px 轨宽下右缘仍会擦弧 0.4px，故取 20px 整）；规格行追加于既有
+   封仓行之后（层叠只补 margin，E90 断言锚定的原行零改动）。 */
+.ks-report-scroll::-webkit-scrollbar-track { margin: 20px 0; }
 /* 顶部鎏金流光线（对齐军令 .celestial-metallic-card::before 规格） */
 .ks-report-scroll::before {
   content: '';

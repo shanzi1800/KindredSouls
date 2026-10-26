@@ -64,11 +64,12 @@ export function createSSEParser() {
 }
 
 /**
- * 帧分类：把解析结果归一为前端可消费的四类语义。
+ * 帧分类：把解析结果归一为前端可消费的五类语义。
  *   · stage  —— 进度帧（含 label/pct/index/total）
  *   · ready  —— 终帧（携带报告载体）
  *   · error  —— 失败帧（fail-closed）
  *   · done   —— `[DONE]` 哨兵
+ *   · text   —— 正文增量帧（E96-② 真流式：data: {"text": "..."}，逐 delta 边收边显）
  *   · ignore —— 未知形状（**绝不**误当 ready，防契约漂移静默通过）
  */
 export function classifySSEFrame(ev) {
@@ -79,6 +80,9 @@ export function classifySSEFrame(ev) {
   if (d.stage === 'ready' && typeof d.insight === 'string') return { type: 'ready', body: d };
   if (d.stage === 'failed' || typeof d.error === 'string') return { type: 'error', body: d };
   if (typeof d.stage === 'string' && typeof d.label === 'string') return { type: 'stage', body: d };
+  // 🛡️ E96-②（主公军令 2026-10-26）：正文增量帧（无 stage 字段、text 为字符串；
+  //   与财富线流式正文帧 {"text": "..."} 同构）。ready/error/stage 判定在前 ⇒ 零误判。
+  if (typeof d.text === 'string') return { type: 'text', body: d };
   return { type: 'ignore' };
 }
 

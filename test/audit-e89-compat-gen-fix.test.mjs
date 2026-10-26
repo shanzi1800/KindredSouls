@@ -137,7 +137,9 @@ test('E89-③-2 48000 违令字面量零容忍（全仓 callAI 消费点）', ()
   // 军令「立即停止传递 48000」——生成分流消费点不得残留
   const i = SERVER.indexOf('const insight = await callAI(');
   assert.ok(i > 0, '生成 callAI 消费点缺失');
-  const seg = SERVER.slice(i, i + 400);
+  // 🛡️ E96-② 后继化：options 已前移为 _e96Opts 构造（onText 流式注入）——
+  //    断言窗口向前扩 300 字以覆盖 options 构造行；48000 零容忍语义不变。
+  const seg = SERVER.slice(Math.max(0, i - 300), i + 400);
   assert.ok(!seg.includes('48000'), '生成链 48000 残留违令');
   assert.ok(seg.includes('reportType'), 'callAI 未传 reportType（回执诊断信号丢失）');
 });
@@ -176,7 +178,7 @@ test('E89-⑥-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   assert.ok(chain.includes('audit-e89-compat-gen-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
   // 🔴 E90 语义演进：E90 入编（69 段），本闸门历史基线同步上调。
-  assert.equal(parts.length, 71, `链段数异常（实得 ${parts.length}，基线 71）`);
+  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

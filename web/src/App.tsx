@@ -49,10 +49,13 @@ import './App.css';
  * 🛡️ Gate 43：读 SSE 推演流 → 实时回调进度 + 返回终局载体。
  *   切帧/归约逻辑 100% 委托 lib/sseParser.mjs（纯逻辑核，Node 可单测）；本函数只负责「读流 + 回调」。
  *   🔴 降级纪律：任何读流异常 ⇒ 返回 null（调用方走既有失败路径，绝不悬挂 loading）。
+ *   🛡️ E96-②（主公军令 2026-10-26）：新增第三参 onText —— 正文增量帧（data: {"text": "…"}）
+ *      逐 delta 实时回调（边收边显，TTFT<2s）；缺省不回调 ⇒ 既有行为零漂移。
  */
 async function readCompatSSEStream(
   body: ReadableStream<Uint8Array>,
   onStage: (s: { title: string; label: string; pct: number; index: number; total: number }) => void,
+  onText?: (t: string) => void,
 ): Promise<any> {
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8');
@@ -60,8 +63,13 @@ async function readCompatSSEStream(
   const seen: any[] = [];
   const ingest = (frames: any[]) => {
     for (const ev of frames) {
-      seen.push(ev);
       const c = classifySSEFrame(ev);
+      if (c.type === 'text') {
+        // 正文增量帧不进归约集（终帧 ready 仍携全文幂等收口）
+        if (typeof onText === 'function') onText(String(c.body.text));
+        continue;
+      }
+      seen.push(ev);
       if (c.type === 'stage') {
         const snap = reduceSSEFrames([ev]).stage;
         if (snap) onStage(snap);
@@ -701,6 +709,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   //    SSE 协议不动（阶段帧+终帧整文契约封仓），前端以段落为粒度逐段揭示，
   //    观感＝流式打字机长卷展开。Infinity ⇒ 全量直显（失败文案/冷启动旧文）。
   const [revealedParas, setRevealedParas] = useState<number>(Number.POSITIVE_INFINITY);
+  // 🛡️ E96-②（主公军令 2026-10-26）：真流式增量帧曾到达标记——终帧收口时区分
+  //    「已逐字流式呈现 ⇒ 直显收口」与「零增量帧降级 ⇒ E88-② 打字机渐进」两路径。
+  const e96StreamedRef = useRef(false);
   const reportParas = React.useMemo(
     () => (reportText ? reportText.split('\n\n').map((p) => p.trim()).filter((p) => p !== '') : []),
     [reportText],
@@ -1267,6 +1278,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     if (reportLoading) return;
     setReportLoading(type);
     setReportText(null);
+    e96StreamedRef.current = false;  // 🛡️ E96-②：增量帧标志复位（每次生成独立判定）
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1300,10 +1312,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       });
       // 🛡️ Gate 43（🧹 E85 后仅保留读流核）：服务端以 SSE 应答 ⇒ 流式读帧取终局载体
       //   （进度卡已退役，onStage 置 noop）；其余情形走既有 JSON 降级，契约零回归。
+      //   🛡️ E96-②（主公军令 2026-10-26）：onText —— 正文增量帧边收边显（TTFT<2s），
+      //      消灭月报 20s/年报 50s 黑等；服务端不支持流式时零增量帧 ⇒ 打字机降级照旧。
       const _ctype = String(res.headers.get('content-type') || '');
       let data: any = null;
       if (res.ok && _ctype.includes('text/event-stream') && res.body && typeof res.body.getReader === 'function') {
-        data = await readCompatSSEStream(res.body, () => { /* E85: 进度帧无消费者 */ });
+        data = await readCompatSSEStream(res.body, () => { /* E85: 进度帧无消费者 */ }, (t: string) => {
+          e96StreamedRef.current = true;
+          setReportText((prev) => (prev == null ? String(t) : prev + String(t)));
+          setRevealedParas(Number.POSITIVE_INFINITY);  // 真流式逐字直显（无需打字机）
+        });
       } else {
         data = await res.json();
       }
@@ -1318,7 +1336,14 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
       if (data.insight) {
         setReportText(data.insight);
-        setRevealedParas(0); // 🔴 E88-②：长卷打字机渐进渲染起点（0 ⇒ 逐段揭示）
+        if (e96StreamedRef.current) {
+          // 🔴 E96-②（主公军令 2026-10-26）：真流式已逐字呈现 ⇒ 终帧全文幂等收口、直显。
+          setRevealedParas(Number.POSITIVE_INFINITY);
+        } else {
+          // 🔴 E88-②：长卷打字机渐进渲染起点（0 ⇒ 逐段揭示）——降级路径（JSON 回退/
+          //    旧后端零增量帧）保持原行为不动。
+          setRevealedParas(0);
+        }
       } else {
         // 🔴 E89-④（主公军令 2026-10-25）：解封真实报错——严禁静默吞并。
         //    UI 保持友好文案；真因（HTTP 状态/错误码/requiredPlan/nextAvailable）

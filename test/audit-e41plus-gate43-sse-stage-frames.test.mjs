@@ -330,7 +330,9 @@ test('E3 进度卡装配退役（E85 合盘板块下架）+ SSE 读流核保留�
   assert.ok(!/\{reportLoading && reportStage && \(/.test(app), 'E85 进度卡条件渲染残留违令');
   assert.ok(!/<SynastryProgress/.test(app), 'E85 进度卡装配残留违令');
   assert.ok(!app.includes('reportStage'), 'E85 reportStage 态残留违令');
-  assert.ok(/readCompatSSEStream\(res\.body, \(\) => \{ \/\* E85: 进度帧无消费者 \*\/ \}\)/.test(app), 'E85 SSE 读流核被误删（月报/年报交付回归）');
+  // 🛡️ E96-②（主公军令 2026-10-26）断言后继化：读流核调用新增第三参 onText（正文增量帧
+  //   边收边显，TTFT<2s）——原 E85 双参形态随之演进，守卫语义不变（读流核仍在＋真流式消费在线）。
+  assert.ok(/readCompatSSEStream\(res\.body, \(\) => \{ \/\* E85: 进度帧无消费者 \*\/ \}, \(t: string\) =>/.test(app), 'E96 后继：SSE 读流核＋真流式 onText 消费缺失（月报/年报交付回归）');
 });
 
 /* ═══════════════════════════ F 段位守备 ═══════════════════════════ */

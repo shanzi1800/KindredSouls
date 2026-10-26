@@ -10137,11 +10137,77 @@ function seedFromUserPrompt(userPrompt) {
 }
 
 // ── AI Call Helper (DeepSeek + Gemini fallback) ──
+// ── 🛡️ E96-②（主公军令 2026-10-26）：DeepSeek 原生流式取文器（姻缘月/年报真流式底座）──
+//   与 callDeepSeekStream（财富线专用、深度耦合 res/heartbeat/dupGuard）分野：本函数是
+//   「纯取文器」——只负责 stream:true 逐 delta 回调 onText + 累积全文返回，不碰 res、
+//   不碰 SSE 帧格式（帧化由 openCompatStream.text() 适配层承担，关注点分离）。
+//   🔴 失败 ⇒ 返回 null（调用方回退 callAI 既有非流式链 + Gemini 兜底，优雅降级不断交付）。
+//   🔴 native fetch（V131 实测 Railway 上 https.request 流式丢数据、fetch 完美）。
+async function _e96DeepSeekStreamText(systemPrompt, userPrompt, deepseekKey, maxTokens, onText) {
+  let acc = '';
+  const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-flash',
+      thinking: { type: 'disabled' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0,
+      seed: seedFromUserPrompt(userPrompt),
+      stream: true,
+    }),
+  });
+  if (!resp.ok || !resp.body || typeof resp.body.getReader !== 'function') return null;
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buf = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n')) !== -1) {
+      const line = buf.slice(0, idx).replace(/\r$/, '');
+      buf = buf.slice(idx + 1);
+      if (!line.startsWith('data:')) continue;          // SSE 注释/空行一律忽略
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') return acc;
+      try {
+        const j = JSON.parse(payload);
+        const delta = j && j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+        if (typeof delta === 'string' && delta.length > 0) {
+          acc += delta;
+          if (typeof onText === 'function') { try { onText(delta); } catch (e) { /* 单帧回调失败不断流 */ } }
+        }
+      } catch (e) { /* 坏帧丢弃（绝不中断流） */ }
+    }
+  }
+  return acc.length > 0 ? acc : null;
+}
+
 async function callAI(systemPrompt, userPrompt, env, options = {}) {
   // 🛠️ V211: 月报默认从 4000→12000
-  const { maxTokens = 12000, reportType = 'monthly' } = options;
+  // 🛡️ E96-②（主公军令 2026-10-26）：onText 回调在场（SSE 已建流）⇒ DeepSeek 走原生
+  //    stream:true 逐 delta 即时回调（TTFT<2s）；流式失败/空文 ⇒ 回落下方非流式链
+  //    （含 Gemini 兜底），JSON 通路契约零改动。
+  const { maxTokens = 12000, reportType = 'monthly', onText } = options;
   const deepseekKey = getDeepSeekKey();
   const geminiKey = env.GEMINI_API_KEY;
+
+  // 🛡️ E96-②：真流式优先（DeepSeek 通道）
+  if (deepseekKey && typeof onText === 'function') {
+    try {
+      const streamed = await _e96DeepSeekStreamText(systemPrompt, userPrompt, deepseekKey, maxTokens, onText);
+      if (streamed && streamed.trim()) return streamed.trim();
+      console.error('[AI] (E96) DeepSeek stream empty/failed -> non-stream fallback');
+    } catch (e) {
+      console.error('[AI] (E96) DeepSeek stream error -> fallback:', e.message);
+    }
+  }
 
   // 优先 DeepSeek-V4.1-Flash（月报/年报主输出引擎，V4.1 2026-09-10 上线）
   if (deepseekKey) {
@@ -14058,6 +14124,59 @@ function _E92CompatBaziLock(d1, d2, tA, tB) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 🛡️ E96-③（主公军令 2026-10-26）：八字硬锁外语本地化——非中文交付正文零汉字裸露。
+//   病根（军师英文实测实锤）：_E92CompatBaziLock 注入的 [BAZI DATA LOCK] 纯中文
+//   （亥巳相冲/辰酉六合/巳酉丑…），非中文语种的 LLM 为守「不得更改硬锁」死命令，
+//   把汉字原样搬进英文正文（欧美用户视为乱码/未翻译残留）。
+//   治法：非 zh 语种时**就地转译** bl.lock（拼音 + 动物/三合局英文标准占星表达），
+//   并向 bl.guard 追加【语言纯粹性绝对铁律】——严禁正文输出任何未翻译的独立汉字。
+//   🔴 zh 通路零触碰（E92/E94 闸门行为断言与中文交付契约原样）。
+//   🔴 [BAZI DATA LOCK 前缀保留（E95 探针断言锚点口径不变）。
+// ═══════════════════════════════════════════════════════════════
+function _e96LocalizeCompatBaziLock(bl) {
+  if (!bl || typeof bl.lock !== 'string' || bl._e96Localized === true) return bl;
+  const BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
+  const AN = { '子': 'Rat', '丑': 'Ox', '寅': 'Tiger', '卯': 'Rabbit', '辰': 'Dragon', '巳': 'Snake', '午': 'Horse', '未': 'Goat', '申': 'Monkey', '酉': 'Rooster', '戌': 'Dog', '亥': 'Pig' };
+  const ST = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
+  const TRINE = { '申子辰': 'Water', '亥卯未': 'Wood', '寅午戌': 'Fire', '巳酉丑': 'Metal' };
+  const B = '([子丑寅卯辰巳午未申酉戌亥])';
+  let t = bl.lock;
+  // ① 关系短语整体转译（先于逐支替换，防拼音粘连）：
+  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
+  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
+  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  t = t.replace(new RegExp(B + B + '半合，属' + B + B + B + '局', 'g'),
+    (m, a, b, x, y, z) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) half-combination of the ${TRINE[x + y + z]} trine`);
+  // ② 集成局：`并集成局：巳酉丑、亥卯未` ⇒ integrated trine formations: Metal (Snake-Rooster-Ox), …
+  t = t.replace(/并集成局：((?:[子丑寅卯辰巳午未申酉戌亥]{3})(?:、[子丑寅卯辰巳午未申酉戌亥]{3})*)/g, (m, grp) => {
+    const names = grp.split('、').filter((g) => TRINE[g]);
+    return 'integrated trine formations: ' + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
+  });
+  // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (year pillar)）
+  for (const [k, v] of Object.entries(ST)) t = t.split(k).join(v + ' ');
+  for (const [k, v] of Object.entries(BR)) t = t.split(k).join(v + ' ');
+  // ④ 结构短语英文化（长串全角括号形态优先 → 柱 label 裸形态 → 全角括号规整为半角）
+  t = t.split('）四柱：').join(') four pillars: ').split('四柱：').join('four pillars: ');
+  t = t.split('跨盘真实刑冲合害：').join('True cross-chart clash/harmony/friction relations: ');
+  t = t.split('跨盘无主要刑冲合害（如实陈述，不得虚构）').join('No major cross-chart clash/harmony/friction exists (state as-is, never fabricate)');
+  t = t.split('（除本锁列出的地支与关系外，盘中任何刑冲合害一律不得提及）').join('(Apart from the branches and relations listed in this lock, never mention any other clash/harmony/friction in these charts)');
+  t = t.split('八字命理数据锁 — 系统预计算真值，论述八字时唯一可信源').join('system pre-computed truth; the single trusted source for all Bazi discussion');
+  t = t.split('年柱').join('year pillar').split('月柱').join('month pillar')
+       .split('日柱').join('day pillar').split('时柱').join('hour pillar');
+  t = t.split('（').join(' (').split('）').join(') ');
+  // ⑤ 观感规整：A/B-柱位粘连插空格、↔ 两侧留白、全角分号转半角（不影响断言锚）
+  t = t.replace(/([AB])(year|month|day|hour) pillar/g, '$1 $2 pillar');
+  t = t.replace(/(year|month|day|hour) pillar([A-Z][a-z]{1,3})/g, '$1 pillar $2');
+  t = t.split('↔').join(' ↔ ').split('；').join('; ');
+  t = t.replace(/\s{2,}/g, ' ').trim();   // 拼音化空距规整
+  bl.lock = t;
+  // ⑤ 语言纯粹性绝对铁律（军令文案；引号内的汉字是「禁止示例」，非输出指令）
+  bl.guard = bl.guard + '\n【语言纯粹性绝对铁律 / LANGUAGE PURITY】(E96-③) In this non-Chinese deliverable, NEVER output any standalone untranslated Chinese characters in the report body (never write 亥巳相冲, 辰酉六合, 巳酉丑 etc. verbatim). All Eastern metaphysics and Bazi terms must be rendered in fluent English with standard esoteric expressions, e.g. "the Pig-Snake (Hai-Si) clash", "the Dragon-Rooster (Chen-You) six-harmony", "the Metal trine (Snake-Rooster-Ox)". The data lock above is already romanized and translated — narrate it in English only.';
+  bl._e96Localized = true;   // 幂等标记（防重复转译）
+  return bl;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 🌌 E40+：合婚报告「瑞士星历天体羁绊锁」真值装配（Synastry Tensor Fusion）
 //   依据：军师《E40+ 星历张量注入四段骨架》出征令（2026-10-10）
 //         —— 「接收双方时空真值 ⇒ 真实双盘交叉相位张量 ⇒ 注入四段骨架」。
@@ -14814,6 +14933,9 @@ function openCompatStream(res) {
     try { res.write(wire); return true; } catch (e) { return false; }
   };
   return {
+    /** 🛡️ E96-②（主公军令 2026-10-26）：正文增量帧（data: {"text": "..."} —— 与财富线流式
+     *  正文帧同构）；closed 后静默跳过。终帧 ready 仍携全文幂等收口（双保险）。 */
+    text(delta) { return _write({ text: String(delta == null ? '' : delta) }); },
     /** 下发第 index 阶进度帧（越界 ⇒ 无声忽略，绝不造伪帧） */
     stage(index, lang) { return _write(buildStageFrame(index, lang)); },
     /** 终帧：ready 载体 + [DONE] + 关流（幂等：closed 后静默） */
@@ -16727,6 +16849,9 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _e92TtB = (_compatTimeTruthSide(req.body || {}, 'b') || {}).birthTime
           || (req.body && typeof req.body.t2 === 'string' ? req.body.t2 : '') || '';
         const _e92BL = _E92CompatBaziLock(d1, d2, _e92TtA, _e92TtB);
+        // 🛡️ E96-③（主公军令 2026-10-26）：非中文语种 ⇒ 八字硬锁就地本地化（拼音+动物/三合局
+        //    英文表达＋语言纯粹性铁律），外语正文零汉字裸露；zh 通路零触碰。
+        if (_e92BL && !/^zh/i.test(String(lang || 'zh'))) _e96LocalizeCompatBaziLock(_e92BL);
         // 🛡️ Gate 43：Stage 1 —— 真值里程碑②「推演双盘行星与虚点相位」（张量算毕）
         if (_sse) _sse.stage(1, lang);
         // 🛡️ Gate 44：宫位映射真值（**信封旁置字段** —— 与 payload 并列独立通道，payload 双向键集零污染）。
@@ -16787,11 +16912,16 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _e94MaxTokens = reportType === 'yearly'
           ? (_e94IsZh ? 7500 : 12000)
           : (reportType === 'monthly' ? 3000 : 12000);
+        // 🛡️ E96-②（主公军令 2026-10-26）：真流式——SSE 建流 ⇒ callAI 携 onText 回调，
+        //    DeepSeek 走 stream:true 逐 delta 经 _sse.text() 即时下发（TTFT<2s，
+        //    消灭月报 20s/年报 50s 黑等）；JSON 通路（无回调）契约逐字节零改动。
+        const _e96Opts = { maxTokens: _e94MaxTokens, reportType };
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(d); } catch (e) { /* 单帧失败不断流 */ } };
         const insight = await callAI(
           _compat.system,
           _compat.user,
           process.env,
-          { maxTokens: _e94MaxTokens, reportType }
+          _e96Opts
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);

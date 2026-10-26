@@ -111,11 +111,11 @@ test('E95-③-1 $4.99 once 生成管道硬锁完备：server 透传＋buildCompa
   assert.strictEqual(ADV, ADV_WEB, '镜像漂移（web/api 未同步）');
 });
 
-test('E95-⑤-1 闸门接线：test:astro 含本闸门（71 段）＋入编位（e94 后、e40 前、python 链尾）', () => {
+test('E95-⑤-1 闸门接线：test:astro 含本闸门（72 段）＋入编位（e94 后、e40 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e95-chapter-line-once-salt.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 71, `链段数异常（实得 ${parts.length}，基线 71）`);
+  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
   const iE95 = parts.findIndex((p) => p.includes('audit-e95-'));
   const iE94 = parts.findIndex((p) => p.includes('audit-e94-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
