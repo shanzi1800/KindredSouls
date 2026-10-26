@@ -269,8 +269,14 @@ async function ds(messages, maxTokens) {
 const TIER_SPECS = {
   once: { maxTokens: 12000, label: '4.99 洞察' },
   monthly: { maxTokens: 3000, label: '2.99 月报' },
-  yearly: { maxTokens: 7000, label: '29.99 年报' },
+  // E94-②（2026-10-26）：镜像生产语种分流——zh 7500 / 非中语 12000（截断根治后继）
+  yearly: { maxTokens: 7000, label: '29.99 年报' }, // 兼容字段；实际按语种现算（见 dsReport）
 };
+function maxT(tier, lang) { // E94-②：镜像生产语种分流
+  if (tier === 'yearly') return /^zh/i.test(String(lang || 'zh')) ? 7500 : 12000;
+  if (tier === 'monthly') return 3000;
+  return 12000;
+}
 const SCORE_FIX = [ // 分数固定具（同案三档一致＝生产同源口径；文档注明）
   { bazi: { a: 6, b: 4 }, zodiac: { a: 5, b: 5 }, iching: { a: 7, b: 3 } },
   { bazi: { a: 5, b: 5 }, zodiac: { a: 6, b: 4 }, iching: { a: 4, b: 6 } },
@@ -301,7 +307,7 @@ const texts = {}; // key: `${caseId}_${tier}_${lang}`
 for (const c of CASES) {
   for (const tier of ['once', 'monthly', 'yearly']) {
     const { p } = buildPromptFor(c, tier, 'zh');
-    const r = await ds([{ role: 'system', content: p.system }, { role: 'user', content: p.user }], TIER_SPECS[tier].maxTokens);
+    const r = await ds([{ role: 'system', content: p.system }, { role: 'user', content: p.user }], maxT(tier, 'zh'));
     texts[`${c.id}_${tier}_zh`] = r.text;
     fs.writeFileSync(path.join(OUT, `case${c.id}_${tier}_zh.txt`), r.text);
     console.log(`Case${c.id} ${tier}(zh): ${r.status} ${r.text.length}字 ${r.tokens}tok`);
@@ -311,7 +317,7 @@ for (const lang of ['en', 'fr', 'es', 'th', 'vi']) {
   const c = CASES[0];
   for (const tier of ['once', 'monthly', 'yearly']) {
     const { p } = buildPromptFor(c, tier, lang);
-    const r = await ds([{ role: 'system', content: p.system }, { role: 'user', content: p.user }], TIER_SPECS[tier].maxTokens);
+    const r = await ds([{ role: 'system', content: p.system }, { role: 'user', content: p.user }], maxT(tier, lang));
     texts[`1_${tier}_${lang}`] = r.text;
     fs.writeFileSync(path.join(OUT, `case1_${tier}_${lang}.txt`), r.text);
     console.log(`Case1 ${tier}(${lang}): ${r.status} ${r.text.length}字 ${r.tokens}tok`);

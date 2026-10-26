@@ -1575,8 +1575,76 @@ export function buildCompatPrompt(opts) {
   //   guard（绝对红线＋代词温度规范）追加 system；缺省 ⇒ 不注入，绝不伪造。
   const bl = (o.baziLock && typeof o.baziLock.lock === 'string') ? o.baziLock : null;
   const blGuard = (bl && typeof bl.guard === 'string') ? bl.guard : '';
+  // 🔴 E94-①（主公军令 2026-10-26）：$4.99 洞察「轻量破冰」定位锁定（圣裁：禁字数膨胀）
+  //   病灶（E93 实测实锤）：systemPrompt 残留 E39「总字数不超过200字」与 reportClause「800-1200字」
+  //   两条互相打架的篇幅指令 ⇒ LLM 折中，实测只落 250~300 字，且五大要素残缺。
+  //   治法：once 档追加唯一权威契约，显式作废前两条，并把付费墙卡片承诺的五要素逐条钉死。
+  //   🔴 铁律：常量置函数体内（VM 抽取式消费者零新依赖）；非 once 档零影响。
+  const _E94_ONCE_CONTRACT = {
+    zh: `【篇幅与要素 · 最高优先级契约（本条覆盖前文一切篇幅指令）】
+- 正文字数硬区间：300~500 字。前文「不超过200字」与「800-1200字」自本条起一律作废。
+- 沿用 🎯/⚡/💡/🌿 四段，但四段合计必须落在 300~500 字内；宁精炼，不注水。
+- 必须完整兑现付费墙卡片承诺的五大要素（缺一不合格）：
+  ① 塔罗潜意识显化：点明牌名与正逆位，说清它照见的潜意识状态；
+  ② 灵魂共鸣深度分析：这段关系为何在灵魂层面彼此吸引；
+  ③ 情感流动能量图谱：一两句话说清当下能量的流向与强弱；
+  ④ 未来6个月关系走向：给一句轻量趋势判断（起势/升温/考验/沉淀之一）；
+  ⑤ 专属提升建议：恰好 3 条可立刻执行的具体动作。
+- 文风干脆明快、一针见血，句句有信息量；结尾自然收束，便于顺畅衔接「去认领灵宠」。`,
+    en: `[LENGTH & ELEMENTS — HIGHEST-PRIORITY CONTRACT (voids every earlier length instruction)]
+- Hard range: 300-500 words. The earlier "max 200 words" and "800-1200 words" clauses are VOID from here on.
+- Keep the 🎯/⚡/💡/🌿 four-section skeleton, but all four combined must stay within 300-500 words. Terse over padded.
+- Deliver all FIVE elements promised by the paywall card (missing one = fail):
+  ① Tarot subconscious reveal: name the card and its orientation, explain the subconscious state it mirrors;
+  ② Soul-resonance analysis: why these two souls are drawn together;
+  ③ Emotional energy-flow map: one or two sentences on the current direction and intensity;
+  ④ Six-month outlook: one light trend verdict (rising / warming / testing / settling);
+  ⑤ Exactly 3 concrete, immediately actionable suggestions.
+- Voice: crisp and incisive, every sentence carrying information. End naturally so it flows into "claim your familiar".`,
+    es: `[EXTENSIÓN Y ELEMENTOS — CONTRATO DE MÁXIMA PRIORIDAD (anula toda instrucción anterior de extensión)]
+- Rango estricto: 300-500 palabras. Las cláusulas previas de "máx. 200 palabras" y "800-1200 palabras" quedan ANULADAS.
+- Mantén el esqueleto 🎯/⚡/💡/🌿, pero las cuatro secciones juntas deben quedar entre 300 y 500 palabras. Conciso antes que relleno.
+- Entrega los CINCO elementos prometidos por el muro de pago (falta uno = no válido):
+  ① Revelación del tarot: nombra la carta y su orientación, explica el estado subconsciente que refleja;
+  ② Análisis de resonancia del alma: por qué estas dos almas se atraen;
+  ③ Mapa de flujo energético emocional: una o dos frases sobre dirección e intensidad actuales;
+  ④ Perspectiva a seis meses: un veredicto ligero de tendencia (ascenso / calidez / prueba / asentamiento);
+  ⑤ Exactamente 3 sugerencias concretas y accionables de inmediato.
+- Voz: directa e incisiva, cada frase con información. Cierra de forma natural para enlazar con "reclama tu familiar".`,
+    fr: `[LONGUEUR ET ÉLÉMENTS — CONTRAT PRIORITAIRE ABSOLU (annule toute consigne de longueur antérieure)]
+- Plage stricte : 300 à 500 mots. Les clauses « max 200 mots » et « 800-1200 mots » sont NULLES à partir d'ici.
+- Conserve la structure 🎯/⚡/💡/🌿, mais les quatre sections réunies doivent tenir en 300-500 mots. Concis plutôt que gonflé.
+- Livre les CINQ éléments promis par le mur de paiement (un manquant = non conforme) :
+  ① Révélation du tarot : nomme la carte et son orientation, explique l'état inconscient qu'elle reflète ;
+  ② Analyse de résonance des âmes : pourquoi ces deux âmes s'attirent ;
+  ③ Carte du flux énergétique émotionnel : une ou deux phrases sur la direction et l'intensité actuelles ;
+  ④ Perspective à six mois : un verdict de tendance léger (montée / réchauffement / épreuve / apaisement) ;
+  ⑤ Exactement 3 suggestions concrètes et immédiatement applicables.
+- Ton : direct et incisif, chaque phrase porteuse d'information. Termine naturellement pour enchaîner sur « réclamez votre familier ».`,
+    th: `[ความยาวและองค์ประกอบ — สัญญาระดับสูงสุด (ยกเลิกคำสั่งเรื่องความยาวทั้งหมดก่อนหน้า)]
+- ช่วงความยาวบังคับ: 300-500 คำ คำสั่งเดิม "ไม่เกิน 200 คำ" และ "800-1200 คำ" เป็นโมฆะตั้งแต่ข้อนี้
+- คงโครง 🎯/⚡/💡/🌿 แต่ทั้งสี่ส่วนรวมกันต้องอยู่ภายใน 300-500 คำ กระชับดีกว่าเยิ่นเย้อ
+- ต้องส่งมอบครบทั้ง 5 องค์ประกอบที่การ์ดจ่ายเงินสัญญาไว้ (ขาดข้อใดข้อหนึ่ง = ไม่ผ่าน):
+  ① เผยจิตใต้สำนึกจากไพ่ทาโรต์: ระบุชื่อไพ่และสถานะตั้งตรง/กลับด้าน พร้อมอธิบายจิตใต้สำนึกที่ไพ่สะท้อน
+  ② วิเคราะห์เสียงสะท้อนของวิญญาณ: ทำไมสองวิญญาณนี้จึงดึงดูดกัน
+  ③ แผนที่การไหลของพลังงานอารมณ์: หนึ่งถึงสองประโยคบอกทิศทางและความเข้มข้นของพลังงานตอนนี้
+  ④ แนวโน้มหกเดือนข้างหน้า: หนึ่งประโยคสรุปแนวโน้มแบบเบา (เริ่มก่อตัว / อบอุ่นขึ้น / บททดสอบ / ตกผลึก)
+  ⑤ คำแนะนำเฉพาะบุคคล: 3 ข้อพอดี ลงมือทำได้ทันที
+- น้ำเสียง: กระชับ เฉียบทุกประโยคมีข้อมูล ปิดท้ายอย่างเป็นธรรมชาติเพื่อเชื่อมไปสู่ "ไปรับสัตว์คู่ใจ"`,
+    vi: `[ĐỘ DÀI VÀ YẾU TỐ — HỢP ĐỒNG ƯU TIÊN CAO NHẤT (vô hiệu mọi chỉ dẫn độ dài trước đó)]
+- Khoảng bắt buộc: 300-500 từ. Các điều khoản "tối đa 200 từ" và "800-1200 từ" VÔ HIỆU từ đây.
+- Giữ khung 🎯/⚡/💡/🌿, nhưng tổng bốn phần phải nằm trong 300-500 từ. Súc tích hơn là dài dòng.
+- Phải cung cấp đủ NĂM yếu tố mà thẻ tường phí cam kết (thiếu một = không đạt):
+  ① Giải mã tiềm thức bằng tarot: nêu tên lá bài và chiều xuôi/ngược, giải thích trạng thái tiềm thức mà lá bài phản chiếu;
+  ② Phân tích cộng hưởng linh hồn: vì sao hai linh hồn này hút nhau;
+  ③ Bản đồ dòng chảy năng lượng cảm xúc: một hai câu về hướng và cường độ hiện tại;
+  ④ Xu hướng sáu tháng tới: một câu kết luận nhẹ (khởi tạo / ấm lên / thử thách / lắng đọng);
+  ⑤ Đúng 3 gợi ý cụ thể, làm được ngay.
+- Giọng điệu: dứt khoát, sắc bén, mỗi câu đều mang thông tin. Kết tự nhiên để nối sang "nhận linh vật".`,
+  };
+  const _e94OnceClause = (reportType === 'once') ? (_E94_ONCE_CONTRACT[L] || '') : '';
   const system = (isReport
-    ? `${cfg.systemPrompt}\n\n${i18n.reportClause}${synClause ? '\n\n' + synClause : ''}`
+    ? `${cfg.systemPrompt}\n\n${i18n.reportClause}${synClause ? '\n\n' + synClause : ''}${_e94OnceClause ? '\n\n' + _e94OnceClause : ''}`
     : cfg.systemPrompt) + (blGuard ? `\n\n${blGuard}` : '');
   const base = isReport
     ? cfg.buildReportPrompt(reportType, sc.overall, sc.bazi, sc.zodiac, sc.iching, o.tarot || null, o.zodiacMeta || null, o.luckyAspects || null, o.challengingAspects || null, timeCtx)

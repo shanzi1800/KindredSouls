@@ -13745,6 +13745,20 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     th: `✦ จุดยึดพลังงาน: ปี Solar Return เริ่มต้นในเดือนเกิดของคุณ (${_anchorMonthLabel}) แล้วไหลไปครบ 12 เดือน`,
     vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
   }[L] || '';
+  // 🔴 E94-④（主公军令 2026-10-26）：①第二章 Q1~Q4 季度基调词表——与月报构造器
+  //   buildCompatMonthlyFourModulePrompt 内 _e94Tone 逐字同源（单一措辞真源 ⇒ 宏微必然咬合）；
+  //   ②塔罗年度灵魂原型牌跨卷串联句（与月报第 10 条互为回响）。
+  //   常量置函数体内（VM 抽取消费者铁律：零模块级新依赖）。
+  const _e94QTone = {
+    zh: ['起势与磨合', '升温与试探', '考验与深化', '收束与沉淀'],
+    en: ['rising and adjustment', 'warming and probing', 'testing and deepening', 'settling and consolidation'],
+    es: ['ascenso y ajuste', 'calidez y tanteo', 'prueba y profundización', 'asentamiento y consolidación'],
+    fr: ['montée et ajustement', 'réchauffement et tâtonnement', 'épreuve et approfondissement', 'apaisement et consolidation'],
+    th: ['เริ่มก่อตัวและปรับตัว', 'อบอุ่นขึ้นและหยั่งเชิง', 'บททดสอบและลงลึก', 'ตกผลึกและมั่นคง'],
+    vi: ['khởi tạo và điều chỉnh', 'ấm lên và thăm dò', 'thử thách và đào sâu', 'lắng đọng và củng cố'],
+  }[L] || ['起势与磨合', '升温与试探', '考验与深化', '收束与沉淀'];
+  const _e94ThreadZh = `你们的年度灵魂原型牌【${tarot ? tarot.name : '灵魂主牌'}】，将为每一次流月指引注入贯穿全年的精神主轴。`;
+  const _e94ThreadEn = `Your annual soul-archetype card ${tarot ? tarot.name : '(the soul card)'} is the spiritual axis that threads every monthly guidance into one year-long growth.`;
 
   const sysLines = [
     _E88_YEARLY_LANG_LOCK[L],
@@ -13759,6 +13773,8 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '6. Chapter 5 (600+ words): the I Ching annual hexagram reading (derive it from the given I Ching score & data lock) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
     '7. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '8. Separate chapters with a blank line. Use plain text paragraphs; the first character of each chapter title line must be the chapter marker as given.',
+    `9. [QUARTER KEYNOTE — macro/micro coherence, MANDATORY] In Chapter 2, each quarterly section MUST carry its fixed keynote label, verbatim: Q1 "${_e94QTone[0]}", Q2 "${_e94QTone[1]}", Q3 "${_e94QTone[2]}", Q4 "${_e94QTone[3]}" (rendered naturally in the report language). The 12-month narrative must rise and fall around these four keynotes; never assert a direction opposite to the quarter keynote.`,
+    `10. [TAROT THREAD — annual soul archetype, close Chapter 5 with exactly ONE sentence, rendered naturally in the report language] ${_e94ThreadZh} / ${_e94ThreadEn}`,
   ];
   // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺 ⇒ 不注入，绝不伪造）
   const bl = (x.baziLock && typeof x.baziLock.lock === 'string') ? x.baziLock : null;
@@ -13864,6 +13880,21 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
   const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
   // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺 ⇒ 不注入，绝不伪造）
   const bl = (x.baziLock && typeof x.baziLock.lock === 'string') ? x.baziLock : null;
+  // 🔴 E94-④（主公军令 2026-10-26）：宏微时空咬合——月报注入「当年该季度基调锚点」，
+  //   与年报第二章 Q1~Q4 使用同一张表、同一套措辞（单一真源 ⇒ 必然咬合，
+  //   彻底消除「月报说有冲、年报说无事」的基调打架）。常量置函数体内（VM 抽取零新依赖）。
+  const _e94Tone = {
+    zh: ['起势与磨合', '升温与试探', '考验与深化', '收束与沉淀'],
+    en: ['rising and adjustment', 'warming and probing', 'testing and deepening', 'settling and consolidation'],
+    es: ['ascenso y ajuste', 'calidez y tanteo', 'prueba y profundización', 'asentamiento y consolidación'],
+    fr: ['montée et ajustement', 'réchauffement et tâtonnement', 'épreuve et approfondissement', 'apaisement et consolidation'],
+    th: ['เริ่มก่อตัวและปรับตัว', 'อบอุ่นขึ้นและหยั่งเชิง', 'บททดสอบและลงลึก', 'ตกผลึกและมั่นคง'],
+    vi: ['khởi tạo và điều chỉnh', 'ấm lên và thăm dò', 'thử thách và đào sâu', 'lắng đọng và củng cố'],
+  }[L] || ['起势与磨合', '升温与试探', '考验与深化', '收束与沉淀'];
+  const _e94QIdx = Math.floor((new Date().getMonth() % 12) / 3); // 0=Q1 1=Q2 2=Q3 3=Q4
+  const _e94QName = 'Q' + (_e94QIdx + 1);
+  const _e94ThreadZh = `当月这枚【${tarot ? tarot.name : '流月牌'}】的微观指引，正是在为你们全年的灵魂成长注入当下的定力。`;
+  const _e94ThreadEn = `The micro-guidance of ${tarot ? tarot.name : 'this month\'s card'} is exactly what anchors your soul growth for the whole year.`;
 
   const sysLines = [
     _E89_MONTHLY_LANG_LOCK[L],
@@ -13877,6 +13908,8 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     '6. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '7. Separate modules with a blank line. Use plain text paragraphs; the first character of each module title line must be the module marker as given.',
     '8. Total length 1200-1800 words.',
+    `9. [YEAR TONE ANCHOR — macro/micro coherence, MANDATORY] This month falls in ${_e94QName}, whose annual keynote is exactly: "${_e94Tone[_e94QIdx]}". Module 1 MUST open with this keynote as its macro premise, so the monthly verdict never contradicts the annual report; never assert a direction opposite to this keynote.`,
+    `10. [TAROT THREAD — close Module 4 with exactly ONE sentence, rendered naturally in the report language] ${_e94ThreadZh} / ${_e94ThreadEn}`,
   ];
   if (bl) sysLines.push(bl.guard);
   const system = sysLines.join('\n');
@@ -14016,7 +14049,9 @@ function _E92CompatBaziLock(d1, d2, tA, tB) {
     '合化分析严禁凭空捏造双方原局未包含的地支——盘中没有的地支（例如无卯、无未时）绝不允许虚构「亥卯未三合」「丑未相冲」等任何结构；所有刑冲克害论述必须 100% 基于 [BAZI DATA LOCK] 列出的真实地支与真实关系展开，数据锁未列出的冲合一律不得提及。',
     'NEVER fabricate earthly branches absent from the charts; every chong/he/xing/hai claim must map exactly to a relation listed in [BAZI DATA LOCK].',
     '【代词温度规范 / WARM DESIGNATION RULE】',
-    '严禁机械高频输出「XXXX年一方」式档案代词。首次建立指代后改用有温度的雅称（如「年长沉稳的TA」「灵动明亮的TA」，或依年柱气质的自然称谓），其后自然使用 TA／他／她。NEVER spam mechanical labels like "the 19xx-born party"; introduce warm literary designations, then use natural pronouns.',
+    '严禁机械高频输出「XXXX年一方」式档案代词；同时严禁把一个雅称当复读机。',
+    '【代词使用铁律 / PRONOUN FREQUENCY CAP】（E94-③ 军令）「年长沉稳的TA」「灵动明亮的TA」这类复合修饰代称，全篇累计不得超过 2 次。确立上下文后，请自然流畅地使用「他」「她」、双方日主／星宿特征，或直接以第二人称「你与他／她」展开，文风须如老友围炉畅谈般温润流淌。NEVER repeat compound designations such as "the mature steady TA" more than TWICE in the whole report; after the context is set, use plain he/she, their Day-Master or star traits, or second-person "you and him/her".',
+    '【数据锁忠实铁律 / DATA-LOCK FIDELITY】（E94-④ 军令）当 [BAZI DATA LOCK] 已列出具体刑冲合害时，正文严禁出现「本月无刑冲」「全年无冲克」「毫无冲突」等与锁相悖的断言；反之锁内写明「跨盘无主要刑冲合害」时，也不得虚构冲克。数据锁是唯一事实源，正文基调必须与之一致。When the lock lists concrete clashes, NEVER claim "no clashes this month/year"; when the lock states none exist, NEVER invent them. The lock is the single source of truth.',
   ].join('\n');
 
   return { lock, guard };
@@ -16738,11 +16773,21 @@ app.use('/api/ai-advisor', async (req, res) => {
         //    （年报 3500~5000 字 ≈ 6500 tokens、月报 1200~1800 字 ≈ 2500 tokens），
         //    且 DeepSeek 网关实测对 12000/48000 均放行（军师 400 假说证伪）——
         //    按军令收缩为 7000/3000 降本无害；once 沿用 12000 零改动。
+        // 🔴 E94-②（主公军令 2026-10-26）：非中语年报「截断断头」根治（P0 级生产真缺陷）
+        //   病根（E93 六语实测实锤）：西文/泰/越的 token 密度远高于中文，死板 7000 令外语年报
+        //   尾句被硬切（fr/vi/th 撞 maxTokens 顶格截断，finish_reason≠stop）。
+        //   治法：按语种动态分流——zh 7500（足载 8000+ 汉字）；非中语 12000
+        //   （token/字符比 ≈1.6~2.2，外语五章长卷需显著余量，确保收束至祝福语）。
+        //   🔴 月报 3000 / once 12000 维持 E89 军令原值，零改动。
+        const _e94IsZh = /^zh/i.test(String(lang || 'zh'));
+        const _e94MaxTokens = reportType === 'yearly'
+          ? (_e94IsZh ? 7500 : 12000)
+          : (reportType === 'monthly' ? 3000 : 12000);
         const insight = await callAI(
           _compat.system,
           _compat.user,
           process.env,
-          { maxTokens: reportType === 'yearly' ? 7000 : (reportType === 'monthly' ? 3000 : 12000), reportType }
+          { maxTokens: _e94MaxTokens, reportType }
         );
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
