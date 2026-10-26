@@ -118,10 +118,12 @@ test('E90-③-2 顶部鎏金流光线＋黑金滚动槽（E91 逐字克隆 Sacre
   assert.ok(!APP.includes('"ks-report-scroll celestial-scrollbar"'), 'celestial 并挂残留违令（E91 退役，两套规格打架根因）');
 });
 
-test('E90-③-3 章节头金铭牌带金分隔底线（长卷层次与财富对齐）', () => {
+test('E90-③-3 章节头金铭牌带金分隔底线（E95 后继：左侧金条已按军令退役）', () => {
   const i = CSS.indexOf('.ks-report-chapter {');
   const seg = CSS.slice(i, i + 500);
-  assert.ok(seg.includes('border-left: 3px solid rgba(212, 175, 55, 0.65)'), '金边令牌左侧金条缺失（回归）');
+  // 🔴 E95-①（主公军令 2026-10-26）：「第」字左侧金色短竖线拔除——E90 左金条口径作废
+  assert.ok(!seg.includes('border-left: 3px solid rgba(212, 175, 55, 0.65)'), 'E95 军令违令：左金条仍在');
+  assert.ok(seg.includes('border-left: none'), 'E95 显式 border-left: none 缺失');
   assert.ok(seg.includes('border-bottom: 1px solid rgba(212, 175, 55, 0.18)'), '章节头金分隔底线缺失');
 });
 
@@ -131,7 +133,7 @@ test('E90-④-1 闸门接线：test:astro 含本闸门（69 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e90-paywall-typing-metal.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 70, `链段数异常（实得 ${parts.length}，基线 70）`);
+  assert.equal(parts.length, 71, `链段数异常（实得 ${parts.length}，基线 71）`);
   const iE90 = parts.findIndex((p) => p.includes('audit-e90-paywall-typing-metal'));
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

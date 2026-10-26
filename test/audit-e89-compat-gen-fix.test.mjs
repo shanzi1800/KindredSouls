@@ -176,7 +176,7 @@ test('E89-⑥-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   assert.ok(chain.includes('audit-e89-compat-gen-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
   // 🔴 E90 语义演进：E90 入编（69 段），本闸门历史基线同步上调。
-  assert.equal(parts.length, 70, `链段数异常（实得 ${parts.length}，基线 70）`);
+  assert.equal(parts.length, 71, `链段数异常（实得 ${parts.length}，基线 71）`);
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

@@ -16648,6 +16648,10 @@ app.use('/api/ai-advisor', async (req, res) => {
       //   🔴 绿道/无 Supabase 配置（无 userId）⇒ 无归属可查 ⇒ 自然走 MISS 生成链路。
       const _g41ReportId = deriveCompatReportId({
         reportType, lang, d1, d2,
+        // 🔴 E95-②（主公军令 2026-10-26）：once 档版本盐——E92 锁前旧存量（八字地支幻觉回潮）
+        //    reportId 一次性作废 ⇒ replay MISS ⇒ 强制走带 _E92CompatBaziLock 的新生成管道。
+        //    月报/年报不掺盐（长度守卫在位，防 live 周期锁误伤已购用户）。
+        promptSalt: reportType === 'once' ? 'e95_bazi_lock' : null,
         bazi: req.body.bazi || null,
         zodiac: req.body.zodiac || null,
         iching: req.body.iching || null,

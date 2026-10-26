@@ -345,14 +345,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.8), transparent);
   pointer-events: none;
 }
+/* ✦ E95（主公军令 2026-10-26）：章节头金色左竖线退役——「第」字左侧 border-left 与
+   padding-left 拔除（金属框已有顶部流光＋下方金色分隔底线，左竖线多余且易与「第」字粘连）；
+   保留 border-bottom 分隔线。 */
 .ks-report-chapter {
   margin: 14px 0 8px;
   font-size: 14px;
   font-weight: 800;
   color: var(--ks-text-gold, #F5D08A);
   letter-spacing: 0.4px;
-  border-left: 3px solid rgba(212, 175, 55, 0.65);
-  padding-left: 10px;
+  border-left: none;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
