@@ -13961,6 +13961,18 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
   const _e94QName = 'Q' + (_e94QIdx + 1);
   const _e94ThreadZh = `当月这枚【${tarot ? tarot.name : '流月牌'}】的微观指引，正是在为你们全年的灵魂成长注入当下的定力。`;
   const _e94ThreadEn = `The micro-guidance of ${tarot ? tarot.name : 'this month\'s card'} is exactly what anchors your soul growth for the whole year.`;
+  // 🛡️ E98-③（主公军令 2026-10-29 增补）：第 10 条塔罗引线旧版「zh 句 / en 句」双拼参考——
+  //    fr/es/th/vi 无母语参考句时模型直接复读中文句进外语正文（fr 实弹探针实锤：
+  //    「当月这枚【La Lune】的微观指引…」整句渗入法语月报）。治法＝六语各给唯一参考句；
+  //    zh/en 两句原文逐字节保全（zh 契约、en 旧输出零触碰）。
+  const _e98Thread = {
+    zh: _e94ThreadZh,
+    en: _e94ThreadEn,
+    es: `La micro-guía de ${tarot ? tarot.name : 'la carta del mes'} es precisamente lo que ancla el crecimiento de sus almas para todo el año.`,
+    fr: `La micro-guidance de ${tarot ? tarot.name : 'la carte du mois'} est précisément ce qui ancre la croissance de vos âmes pour toute l'année.`,
+    th: `คำแนะนำจิตวิญญาณของ${tarot ? tarot.name : 'ไพ่เดือนนี้'}ในเดือนนี้ คือสิ่งที่หล่อเลี้ยงการเติบโตของจิตวิญญาณของคุณทั้งปี`,
+    vi: `Hướng dẫn vi mô của ${tarot ? tarot.name : 'lá bài tháng này'} chính là điều neo giữ sự trưởng thành tâm hồn của hai bạn suốt cả năm.`,
+  }[L] || _e94ThreadZh;
 
   const sysLines = [
     _E89_MONTHLY_LANG_LOCK[L],
@@ -13975,7 +13987,7 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     '7. Separate modules with a blank line. Use plain text paragraphs; the first character of each module title line must be the module marker as given.',
     '8. Total length 1200-1800 words.',
     `9. [YEAR TONE ANCHOR — macro/micro coherence, MANDATORY] This month falls in ${_e94QName}, whose annual keynote is exactly: "${_e94Tone[_e94QIdx]}". Module 1 MUST open with this keynote as its macro premise, so the monthly verdict never contradicts the annual report; never assert a direction opposite to this keynote.`,
-    `10. [TAROT THREAD — close Module 4 with exactly ONE sentence, rendered naturally in the report language] ${_e94ThreadZh} / ${_e94ThreadEn}`,
+    `10. [TAROT THREAD — close Module 4 with exactly ONE sentence, rendered naturally in the report language] ${_e98Thread}`,
   ];
   if (bl) sysLines.push(bl.guard);
   const system = sysLines.join('\n');

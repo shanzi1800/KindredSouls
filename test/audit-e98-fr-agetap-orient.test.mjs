@@ -167,6 +167,49 @@ test('E98-③-4 源级：军令钦定法语十二生肖表全 12 词＋三语分
   assert.ok(SERVER.includes("} else if (_e98Fr) {"), 'fr 结构短语分支缺失');
 });
 
+test('E98-③-5 行为级：月报塔罗引线六语单句（fr 实弹中文渗漏根治）', async () => {
+  // 病根（E98 实弹探针实锤）：第 10 条旧版「zh 句 / en 句」双拼参考，fr/es/th/vi
+  // 无母语参考句 ⇒ 模型整句复读中文「当月这枚【…】…」渗入法语月报正文。
+  // 治法＝六语各给唯一参考句（_e98Thread 表）；zh/en 原句逐字节保全。
+  const i0 = SERVER.indexOf('const _E89_MONTHLY_LANG_LOCK');
+  const monthlyTables = SERVER.slice(i0, SERVER.indexOf('\n\n// ═══', i0));
+  function fnB(anchor) {
+    const i = SERVER.indexOf(anchor);
+    let depth = 0, started = false;
+    for (let j = SERVER.indexOf('{', i); j < SERVER.length; j++) {
+      if (SERVER[j] === '{') { depth++; started = true; }
+      else if (SERVER[j] === '}') { depth--; if (started && depth === 0) return SERVER.slice(i, j + 1); }
+    }
+    throw new Error(`unbalanced fn: ${anchor}`);
+  }
+  const { computeCompatScores, buildCompatTimeContext, renderSynastryBlock } = await import(path.join(ROOT, 'api/ai-advisor.js'));
+  const build = new Function('computeCompatScores', 'buildCompatTimeContext', 'renderSynastryBlock',
+    `${monthlyTables}\n${fnB('function buildCompatMonthlyFourModulePrompt(')}\nreturn buildCompatMonthlyFourModulePrompt;`)(computeCompatScores, buildCompatTimeContext, renderSynastryBlock);
+  const cases = [
+    { lang: 'zh', needle: '当月这枚【La Lune】的微观指引' },
+    { lang: 'en', needle: 'The micro-guidance of La Lune' },
+    { lang: 'es', needle: 'La micro-guía de La Lune' },
+    { lang: 'fr', needle: 'La micro-guidance de La Lune' },
+    { lang: 'th', needle: 'คำแนะนำจิตวิญญาณ' },
+    { lang: 'vi', needle: 'Hướng dẫn vi mô' },
+  ];
+  for (const c of cases) {
+    const p = build('1976-12-03', '1997-10-18', c.lang, {
+      bazi: { a: 6, b: 4 }, zodiac: { a: 5, b: 5 }, iching: { a: 7, b: 3 },
+      tarot: { name: 'La Lune', orientation: ' (Inversée)' },
+      zodiacMeta: ['Sagittaire', 'Balance'], baziLock: null, userBirthDate: '1976-12-03',
+    });
+    assert.ok(p.system.includes(c.needle), `${c.lang} 塔罗引线母语句缺失`);
+  }
+  // 非 zh 时不再出现双拼中文参考句（病根封口）
+  const frP = build('1976-12-03', '1997-10-18', 'fr', {
+    bazi: { a: 6, b: 4 }, zodiac: { a: 5, b: 5 }, iching: { a: 7, b: 3 },
+    tarot: { name: 'La Lune', orientation: ' (Inversée)' },
+    zodiacMeta: ['Sagittaire', 'Balance'], baziLock: null, userBirthDate: '1976-12-03',
+  });
+  assert.ok(!frP.system.includes('当月这枚'), 'fr system 不得残留中文参考句（双拼病根）');
+});
+
 /* ═══════════════════ ④ 法语塔罗正逆位规范 ═══════════════════ */
 
 test('E98-④-1 源级：tarot.ts fr 后缀（À l\'endroit 正位＋Inversé/Inversée 阴阳性分流）', () => {
