@@ -712,6 +712,31 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   // 🛡️ E96-②（主公军令 2026-10-26）：真流式增量帧曾到达标记——终帧收口时区分
   //    「已逐字流式呈现 ⇒ 直显收口」与「零增量帧降级 ⇒ E88-② 打字机渐进」两路径。
   const e96StreamedRef = useRef(false);
+  // 🛡️ E97-②（主公军令 2026-10-28）：流式伴读视口自动贴底——真流式增量帧逐段增长
+  //    （及 E88 打字机降级逐段揭示）时，用户未上拖（autoFollow）⇒ 长卷容器恒贴底；
+  //    用户上拖离开底部 ⇒ 暂停贴底（自由回读）；拖回底部 40px 内 ⇒ 自动恢复伴读；
+  //    新报告起点（reportText 归 null）自动复位伴读。财富线 SacredYearlyReportBox
+  //    「完成后回顶部」封仓设计零触碰（射程纪律）。
+  const compatScrollRef = useRef<HTMLDivElement | null>(null);
+  const compatAutoFollowRef = useRef(true);
+  // 监听器随容器存在性挂载（容器只在 reportText 非空时渲染 ⇒ 依赖其空/非空翻转）
+  React.useEffect(() => {
+    const el = compatScrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      compatAutoFollowRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [reportText === null]);
+  React.useEffect(() => {
+    if (reportText === null) compatAutoFollowRef.current = true;
+  }, [reportText]);
+  React.useEffect(() => {
+    const el = compatScrollRef.current;
+    if (!el || !compatAutoFollowRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [reportText, revealedParas]);
   const reportParas = React.useMemo(
     () => (reportText ? reportText.split('\n\n').map((p) => p.trim()).filter((p) => p !== '') : []),
     [reportText],
@@ -1251,7 +1276,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         setInsight(data.insight);
         // Use the freshly computed tarot, not the API response (API echoes it back too)
         setTarotLine(data.tarotLine || tarot.meaning);
-        const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido'].some(s => tarot.orientation.includes(s));
+        const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida'].some(s => tarot.orientation.includes(s));
         setTarotCard({ id: tarot.id, name: tarot.name, emoji: tarot.emoji, isReversed, orientation: tarot.orientation });
         onTriggerInsight?.();
       }
@@ -1593,7 +1618,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                    SacredYearlyReportBox（曜黑渐变）；滑轨改 .ks-report-scroll 自带
                    ::-webkit-scrollbar 逐字克隆 Sacred .dark-scrollbar（V257 封仓规格）——
                    celestial-scrollbar 并挂退役（两套规格打架根因）。规格全在 App.css。 */
-                <div className="ks-report-scroll" data-testid="compat-report-scroll">
+                <div className="ks-report-scroll" data-testid="compat-report-scroll" ref={compatScrollRef}>
                   {reportParas
                     .slice(0, reportTyping ? revealedParas : reportParas.length)
                     .map((para, i) => {

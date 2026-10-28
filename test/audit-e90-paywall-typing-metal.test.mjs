@@ -133,7 +133,7 @@ test('E90-④-1 闸门接线：test:astro 含本闸门（69 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e90-paywall-typing-metal.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
+  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97-④ 升 73 段））`);
   const iE90 = parts.findIndex((p) => p.includes('audit-e90-paywall-typing-metal'));
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

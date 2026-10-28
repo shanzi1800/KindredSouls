@@ -193,10 +193,18 @@ const CARDS: { id: number; emoji: string; name: L; meaning: L }[] = [
   }},
 ];
 
-const ORIENT_SUFFIX: Record<string, (reversed: boolean) => string> = {
+// 🔴 E97-③（主公军令 2026-10-28）：西语塔罗阴性大牌逆位阴阳性一致——
+//   La Sacerdotisa/La Emperatriz/La Fuerza/La Justicia/La Muerte/La Templanza/
+//   La Torre/La Estrella/La Luna/Rueda de la Fortuna 逆位 ⇒ (Invertida)；
+//   阳性大牌（El …）维持 (Invertido)；正位 (Normal) 零改动。
+//   注意：朝向词消费链（App.tsx / server.js / ai-advisor.js 的 isReversed 检测）
+//   已同步补 'Invertida' 关键词——漏检即正逆位锁整体失效。
+const esIsFeminine = (name: string) => /^(La\s|Rueda\b)/i.test(String(name || ''));
+
+const ORIENT_SUFFIX: Record<string, (reversed: boolean, name?: string) => string> = {
   zh: (r) => r ? '（逆位）' : '（正位）',
   en: (r) => r ? ' (Reversed)' : ' (Upright)',
-  es: (r) => r ? ' (Invertido)' : ' (Normal)',
+  es: (r, name) => r ? (esIsFeminine(name || '') ? ' (Invertida)' : ' (Invertido)') : ' (Normal)',
   fr: (r) => r ? ' (Inversé)' : ' (Droit)',
   th: (r) => r ? ' (กลับด้าน)' : ' (ตั้งตรง)',
   vi: (r) => r ? ' (Ngược)' : ' (Thuận)',
@@ -220,7 +228,7 @@ export function getTarot(d1: string, d2: string, lang: string = 'en', scope: str
     name: card.name[L] || card.name.en,
     meaning: card.meaning[L] || card.meaning.en,
     emoji: card.emoji,
-    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed),
+    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed, card.name[L] || card.name.en),
   };
 }
 
@@ -246,6 +254,6 @@ export function getWealthTarot(birthDate: string, lang: string = 'zh'): TarotCar
     name: card.name[L] || card.name.en,
     meaning: card.meaning[L] || card.meaning.en,
     emoji: card.emoji,
-    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed),
+    orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed, card.name[L] || card.name.en),
   };
 }

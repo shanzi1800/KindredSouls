@@ -510,8 +510,9 @@ function checkStructure(serverSrc, pageSrc) {
   need(advIdx !== -1, 'B10a: /api/ai-advisor 路由缺失');
   if (advIdx !== -1) {
     // 🔴 E89 语义演进（2026-10-25）：E89 沙盒豁免＋月报四模块分流使「权益闸门 → callAI」
-    //    段距拉长（结构次序未变，闸门仍在 callAI 之前）⇒ 窗口 7000 → 11000。
-    const advSeg = serverSrc.slice(advIdx, advIdx + 11000);
+    //    段距拉长（结构次序未变，闸门仍在 callAI 之前）⇒ 窗口 7000 → 11000 → 12000
+    //    （🔴 E97 后继化：E92/E94/E96/E97 锁与流式注入拉长段距，实测 11042 ⇒ 12000 留余量）。
+    const advSeg = serverSrc.slice(advIdx, advIdx + 12000);
     need(advSeg.includes("resolveReportEntitlement(req, 'compatibility'"), 'B10b: 合婚端点缺 compatibility 域权益解析（匿名可烧 AI）');
     need(advSeg.includes('compatibilityPeriodLock('), 'B10c: 合婚端点缺周期死锁护栏');
     need(advSeg.includes('compatibilityDailyRateLimit('), 'B10d: 合婚端点缺每日熔断护栏');
@@ -738,8 +739,8 @@ test('C16 注入：摘掉 v2 权益闸门（付费墙旁路回归）⇒ B9b 必�
 test('C17 注入：合婚闸门挪到 callAI 之后（先烧后拦）⇒ B10f 必须报红', () => {
   const advIdx = SERVER_SRC.indexOf("app.use('/api/ai-advisor'");
   assert.ok(advIdx !== -1, '找不到合婚端点');
-  // 🔴 E89 语义演进：同 B10f 窗口径（7000 → 11000，E89 护栏增补拉长段距）。
-  const seg = SERVER_SRC.slice(advIdx, advIdx + 11000);
+  // 🔴 E89 语义演进：同 B10f 窗口径（7000 → 11000 → 12000，E97 后继化拉长段距）。
+  const seg = SERVER_SRC.slice(advIdx, advIdx + 12000);
   const rel = seg.indexOf('await callAI(');
   assert.ok(rel !== -1, '找不到合婚端点内的 callAI 锚点');
   const abs = advIdx + rel;

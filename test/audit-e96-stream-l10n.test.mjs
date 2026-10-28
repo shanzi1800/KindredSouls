@@ -152,7 +152,8 @@ test('E96-③-3 handler 门控：仅非 zh 本地化（zh 通路零触碰）', (
   const hStart = SERVER.indexOf("app.use('/api/ai-advisor'");
   const hEnd = SERVER.indexOf("app.use((req, res, next)", hStart);
   const handler = SERVER.slice(hStart, hEnd);
-  assert.ok(handler.includes('_e96LocalizeCompatBaziLock(_e92BL)'), '本地化调用缺失');
+  // 🛡️ E97-③ 后继化：本地化调用携 lang 实参（es 走纯西语转译）——旧单参调用形态退役
+  assert.ok(handler.includes('_e96LocalizeCompatBaziLock(_e92BL, String(lang || \'zh\'))'), '本地化调用缺失（E97-③ 双参形态）');
   assert.ok(handler.includes("if (_e92BL && !/^zh/i.test(String(lang || 'zh')))"), 'zh 门控缺失（中文交付误伤风险）');
   // e92 锚点串守卫：函数签名/调用行/baziLock 三注入零改动
   assert.ok(SERVER.includes('function _E92CompatBaziLock(d1, d2, tA, tB)'), 'E92 函数签名被误改');
@@ -165,7 +166,7 @@ test('E96-④-1 闸门接线：test:astro 含本闸门（72 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e96-stream-l10n.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
+  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97-④ 升 73 段））`);
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE95 = parts.findIndex((p) => p.includes('audit-e95-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

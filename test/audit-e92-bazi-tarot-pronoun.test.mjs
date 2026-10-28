@@ -72,7 +72,8 @@ test('E92-①-2 行为级：军令测试用例四柱＋真实刑冲合害（JDN 
 test('E92-①-3 端点接线：三档 extras 均注入 baziLock（timeTruth 优先/t1t2 兜底）', () => {
   const i = SERVER.indexOf('const _e92BL = _E92CompatBaziLock(d1, d2, _e92TtA, _e92TtB)');
   assert.ok(i > 0, '端点锁计算缺失');
-  const seg = SERVER.slice(i, i + 2600);
+  // 🔴 E97 后继化：E97-① maxTokens 注释块＋语种分流表达式拉长段距（实测第三注入 2647）⇒ 窗口 2600 → 3000。
+  const seg = SERVER.slice(i, i + 3000);
   assert.equal((seg.match(/baziLock: _e92BL,/g) || []).length, 3, '三档 extras 注入不全');
   assert.ok(SERVER.includes('baziLock: x.baziLock || null,'), 'once/oracle 通道透传缺失');
   assert.ok(SERVER.includes("req.body && typeof req.body.t1 === 'string'"), 't1 兜底缺失');
@@ -114,7 +115,7 @@ test('E92-⑤-1 闸门接线：test:astro 含本闸门（69 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e92-bazi-tarot-pronoun.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
+  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97-④ 升 73 段））`);
   const iE92 = parts.findIndex((p) => p.includes('audit-e92-'));
   const iE91 = parts.findIndex((p) => p.includes('audit-e91-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

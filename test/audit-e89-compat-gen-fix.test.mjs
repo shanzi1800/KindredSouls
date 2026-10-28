@@ -126,11 +126,12 @@ test('E89-②-5 月报模块标题复用前端章节头正则（六语形态闭�
 
 /* ════════ ③ maxTokens 军令口径 ═══════ */
 
-test('E89-③-1 maxTokens 校准（E94 后继：zh 7500/非中语 12000/月 3000/once 12000）', () => {
+test('E89-③-1 maxTokens 校准（E94/E97 后继：zh 年 7500/非中语年 12000/月 zh 3500·非中语 5500/once 12000）', () => {
   assert.ok(SERVER.includes('_e94IsZh ? 7500 : 12000'),
     'maxTokens 未按 E94 语种分流（外语截断根治缺失）');
-  assert.ok(SERVER.includes("reportType === 'monthly' ? 3000 : 12000"),
-    '月/once 档位漂移');
+  // 🛡️ E97-① 后继化：月报语种分流（非中语 5500 扩容根治截断）——旧 3000 字面量退役
+  assert.ok(SERVER.includes("reportType === 'monthly' ? (_e94IsZh ? 3500 : 5500) : 12000"),
+    '月/once 档位漂移（E97-① 月报分流表达式缺失）');
 });
 
 test('E89-③-2 48000 违令字面量零容忍（全仓 callAI 消费点）', () => {
@@ -178,7 +179,7 @@ test('E89-⑥-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   assert.ok(chain.includes('audit-e89-compat-gen-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
   // 🔴 E90 语义演进：E90 入编（69 段），本闸门历史基线同步上调。
-  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
+  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97-④ 升 73 段））`);
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

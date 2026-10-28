@@ -61,7 +61,7 @@ test('E94-①-3 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
   assert.strictEqual(ADV, ADV_WEB, '镜像漂移（web/api 未同步）');
 });
 
-test('E94-②-1 行为级：maxTokens 语种分流（zh 年 7500／非中语年 12000／月 3000／once 12000）', () => {
+test('E94-②-1 行为级：maxTokens 语种分流（zh 年 7500／非中语年 12000／月 zh 3500·非中语 5500（E97-①）／once 12000）', () => {
   const i = SERVER.indexOf('const _e94IsZh =');
   assert.ok(i > 0, '语种分流计算缺失');
   const seg = SERVER.slice(i, SERVER.indexOf('const insight = await callAI(', i));
@@ -73,8 +73,11 @@ test('E94-②-1 行为级：maxTokens 语种分流（zh 年 7500／非中语年 
   assert.equal(calc('th', 'yearly'), 12000, 'th 年报应为 12000');
   assert.equal(calc('vi', 'yearly'), 12000, 'vi 年报应为 12000');
   assert.equal(calc('en', 'yearly'), 12000, 'en 年报应为 12000');
-  assert.equal(calc('fr', 'monthly'), 3000, '月报维持 3000（E89 原值）');
-  assert.equal(calc('zh', 'monthly'), 3000, '月报维持 3000');
+  // 🛡️ E97-① 后继化（主公军令 2026-10-28）：非中语月报扩容 5500、zh 3500——
+  //    旧「月报维持 3000」退役（西语审核实锤外语月报撞 3000 顶格截断）。
+  assert.equal(calc('fr', 'monthly'), 5500, '月报非中语应为 5500（E97-① 扩容）');
+  assert.equal(calc('es', 'monthly'), 5500, '月报 es 应为 5500（E97-① 扩容）');
+  assert.equal(calc('zh', 'monthly'), 3500, '月报 zh 应为 3500（E97-①）');
   assert.equal(calc('fr', 'once'), 12000, 'once 维持 12000');
   assert.equal(calc(undefined, 'yearly'), 7500, '缺省 lang 应按 zh fail-closed');
 });
@@ -149,7 +152,7 @@ test('E94-⑤-1 闸门接线：test:astro 含本闸门（70 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e94-tier-cohesion.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 72, `链段数异常（实得 ${parts.length}，基线 72）`);
+  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97-④ 升 73 段））`);
   const iE94 = parts.findIndex((p) => p.includes('audit-e94-'));
   const iE92 = parts.findIndex((p) => p.includes('audit-e92-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

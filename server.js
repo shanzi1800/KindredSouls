@@ -14133,28 +14133,54 @@ function _E92CompatBaziLock(d1, d2, tA, tB) {
 //   🔴 zh 通路零触碰（E92/E94 闸门行为断言与中文交付契约原样）。
 //   🔴 [BAZI DATA LOCK 前缀保留（E95 探针断言锚点口径不变）。
 // ═══════════════════════════════════════════════════════════════
-function _e96LocalizeCompatBaziLock(bl) {
+function _e96LocalizeCompatBaziLock(bl, lang) {
   if (!bl || typeof bl.lock !== 'string' || bl._e96Localized === true) return bl;
+  // 🔴 E97-③（主公军令 2026-10-28）：西语专属转译——生肖/三合局/关系短语纯西语
+  //   （去拼音化，年报对齐月报「Buey/Perro」纯西语生肖口径，根治「Chou (Buey)」
+  //   「fricción Chou-Xu」拼音残留）；其余非 zh 语种维持 E96 英文转译逐字节零改动。
+  const _e97Es = String(lang || '') === 'es';
   const BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
-  const AN = { '子': 'Rat', '丑': 'Ox', '寅': 'Tiger', '卯': 'Rabbit', '辰': 'Dragon', '巳': 'Snake', '午': 'Horse', '未': 'Goat', '申': 'Monkey', '酉': 'Rooster', '戌': 'Dog', '亥': 'Pig' };
+  const AN = _e97Es
+    ? { '子': 'Rata', '丑': 'Buey', '寅': 'Tigre', '卯': 'Conejo', '辰': 'Dragón', '巳': 'Serpiente', '午': 'Caballo', '未': 'Cabra', '申': 'Mono', '酉': 'Gallo', '戌': 'Perro', '亥': 'Cerdo' }
+    : { '子': 'Rat', '丑': 'Ox', '寅': 'Tiger', '卯': 'Rabbit', '辰': 'Dragon', '巳': 'Snake', '午': 'Horse', '未': 'Goat', '申': 'Monkey', '酉': 'Rooster', '戌': 'Dog', '亥': 'Pig' };
   const ST = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
-  const TRINE = { '申子辰': 'Water', '亥卯未': 'Wood', '寅午戌': 'Fire', '巳酉丑': 'Metal' };
+  const TRINE = _e97Es
+    ? { '申子辰': 'Agua', '亥卯未': 'Madera', '寅午戌': 'Fuego', '巳酉丑': 'Metal' }
+    : { '申子辰': 'Water', '亥卯未': 'Wood', '寅午戌': 'Fire', '巳酉丑': 'Metal' };
   const B = '([子丑寅卯辰巳午未申酉戌亥])';
   let t = bl.lock;
-  // ① 关系短语整体转译（先于逐支替换，防拼音粘连）：
-  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
-  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
-  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语无拼音，en 沿 E96 原格式）：
+  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
+  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
+  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
   t = t.replace(new RegExp(B + B + '半合，属' + B + B + B + '局', 'g'),
-    (m, a, b, x, y, z) => `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) half-combination of the ${TRINE[x + y + z]} trine`);
-  // ② 集成局：`并集成局：巳酉丑、亥卯未` ⇒ integrated trine formations: Metal (Snake-Rooster-Ox), …
+    (m, a, b, x, y, z) => _e97Es
+      ? `${AN[a]}-${AN[b]} media combinación del trígono de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
+      : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) half-combination of the ${TRINE[x + y + z]} trine`);
+  // ② 集成局：`并集成局：巳酉丑、亥卯未` ⇒ es: trígonos integrados: Metal (Serpiente-Gallo-Buey), …
   t = t.replace(/并集成局：((?:[子丑寅卯辰巳午未申酉戌亥]{3})(?:、[子丑寅卯辰巳午未申酉戌亥]{3})*)/g, (m, grp) => {
     const names = grp.split('、').filter((g) => TRINE[g]);
-    return 'integrated trine formations: ' + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
+    return (_e97Es ? 'trígonos integrados: ' : 'integrated trine formations: ') + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
   });
-  // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (year pillar)）
+  // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (pilar del año)）
   for (const [k, v] of Object.entries(ST)) t = t.split(k).join(v + ' ');
   for (const [k, v] of Object.entries(BR)) t = t.split(k).join(v + ' ');
+  if (_e97Es) {
+    // ④-es 结构短语西语化（E97-③：es 交付全文西语；四柱干支保留标准拼音）
+    t = t.split('）四柱：').join(') cuatro pilares: ').split('四柱：').join('cuatro pilares: ');
+    t = t.split('跨盘真实刑冲合害：').join('Relaciones reales de choque/armonía/fricción entre ambas cartas: ');
+    t = t.split('跨盘无主要刑冲合害（如实陈述，不得虚构）').join('No existen choques/armonías/fricciones mayores entre ambas cartas (enúncielo tal cual, jamás los invente)');
+    t = t.split('（除本锁列出的地支与关系外，盘中任何刑冲合害一律不得提及）').join('(Salvo las ramas y relaciones listadas en este bloque, no mencione ningún otro choque/armonía/fricción en estas cartas)');
+    t = t.split('八字命理数据锁 — 系统预计算真值，论述八字时唯一可信源').join('bloque de verdad precalculada por el sistema; la única fuente confiable para todo análisis de Bazi');
+    t = t.split('年柱').join('pilar del año').split('月柱').join('pilar del mes')
+         .split('日柱').join('pilar del día').split('时柱').join('pilar de la hora');
+    t = t.split('（').join(' (').split('）').join(') ');
+    // ⑤-es 观感规整：↔ 两侧留白、全角分号转半角、A/B-柱位粘连插空格（en 分支同族正则的 es 等价物）
+    t = t.replace(/([AB])pilar/g, '$1 pilar');
+    t = t.replace(/(año|mes|día|hora)([A-Z][a-z]{1,3})/g, '$1 $2');
+    t = t.split('↔').join(' ↔ ').split('；').join('; ');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+  } else {
   // ④ 结构短语英文化（长串全角括号形态优先 → 柱 label 裸形态 → 全角括号规整为半角）
   t = t.split('）四柱：').join(') four pillars: ').split('四柱：').join('four pillars: ');
   t = t.split('跨盘真实刑冲合害：').join('True cross-chart clash/harmony/friction relations: ');
@@ -14169,9 +14195,12 @@ function _e96LocalizeCompatBaziLock(bl) {
   t = t.replace(/(year|month|day|hour) pillar([A-Z][a-z]{1,3})/g, '$1 pillar $2');
   t = t.split('↔').join(' ↔ ').split('；').join('; ');
   t = t.replace(/\s{2,}/g, ' ').trim();   // 拼音化空距规整
+  }
   bl.lock = t;
-  // ⑤ 语言纯粹性绝对铁律（军令文案；引号内的汉字是「禁止示例」，非输出指令）
-  bl.guard = bl.guard + '\n【语言纯粹性绝对铁律 / LANGUAGE PURITY】(E96-③) In this non-Chinese deliverable, NEVER output any standalone untranslated Chinese characters in the report body (never write 亥巳相冲, 辰酉六合, 巳酉丑 etc. verbatim). All Eastern metaphysics and Bazi terms must be rendered in fluent English with standard esoteric expressions, e.g. "the Pig-Snake (Hai-Si) clash", "the Dragon-Rooster (Chen-You) six-harmony", "the Metal trine (Snake-Rooster-Ox)". The data lock above is already romanized and translated — narrate it in English only.';
+  // ⑤ 语言纯粹性绝对铁律（E96 英文版 / E97-③ 西语版；引号内的汉字是「禁止示例」，非输出指令）
+  bl.guard = bl.guard + (_e97Es
+    ? '\n【PUREZA DEL IDIOMA / 语言纯粹性绝对铁律】(E97-③) En este informe en español, NUNCA escriba caracteres chinos sin traducir en el cuerpo del informe (nunca escriba 亥巳相冲, 辰酉六合, 巳酉丑 literalmente). Todo término de metafísica oriental y de Bazi debe expresarse en español fluido, p. ej. "el choque entre Cerdo y Serpiente", "la seis-armonía Dragón-Gallo", "el trígono de Metal (Serpiente-Gallo-Buey)". El bloque de datos de arriba ya está traducido al español — narre únicamente en español.'
+    : '\n【语言纯粹性绝对铁律 / LANGUAGE PURITY】(E96-③) In this non-Chinese deliverable, NEVER output any standalone untranslated Chinese characters in the report body (never write 亥巳相冲, 辰酉六合, 巳酉丑 etc. verbatim). All Eastern metaphysics and Bazi terms must be rendered in fluent English with standard esoteric expressions, e.g. "the Pig-Snake (Hai-Si) clash", "the Dragon-Rooster (Chen-You) six-harmony", "the Metal trine (Snake-Rooster-Ox)". The data lock above is already romanized and translated — narrate it in English only.');
   bl._e96Localized = true;   // 幂等标记（防重复转译）
   return bl;
 }
@@ -16851,7 +16880,8 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _e92BL = _E92CompatBaziLock(d1, d2, _e92TtA, _e92TtB);
         // 🛡️ E96-③（主公军令 2026-10-26）：非中文语种 ⇒ 八字硬锁就地本地化（拼音+动物/三合局
         //    英文表达＋语言纯粹性铁律），外语正文零汉字裸露；zh 通路零触碰。
-        if (_e92BL && !/^zh/i.test(String(lang || 'zh'))) _e96LocalizeCompatBaziLock(_e92BL);
+        // 🛡️ E97-③ 后继化：本地化携 lang 实参（es 走纯西语转译，其余非 zh 维持 E96 英文转译）
+        if (_e92BL && !/^zh/i.test(String(lang || 'zh'))) _e96LocalizeCompatBaziLock(_e92BL, String(lang || 'zh'));
         // 🛡️ Gate 43：Stage 1 —— 真值里程碑②「推演双盘行星与虚点相位」（张量算毕）
         if (_sse) _sse.stage(1, lang);
         // 🛡️ Gate 44：宫位映射真值（**信封旁置字段** —— 与 payload 并列独立通道，payload 双向键集零污染）。
@@ -16908,10 +16938,15 @@ app.use('/api/ai-advisor', async (req, res) => {
         //   治法：按语种动态分流——zh 7500（足载 8000+ 汉字）；非中语 12000
         //   （token/字符比 ≈1.6~2.2，外语五章长卷需显著余量，确保收束至祝福语）。
         //   🔴 月报 3000 / once 12000 维持 E89 军令原值，零改动。
+        // 🔴 E97-①（主公军令 2026-10-28）：非中语月报 Token 扩容——西语审核实锤
+        //   fr/es/th/vi 月报撞 3000 顶格截断（finish_reason≠stop、尾梢断头）。
+        //   治法＝月报按语种分流：zh 3500（E89 口径上浮 500 保收束余量）、
+        //   非中语 5500（西/泰/越 token/字符比 ≈1.6~2.2，四模块长卷需显著余量）。
+        //   年 7500/12000、once 12000 维持 E94 军令原值零改动。
         const _e94IsZh = /^zh/i.test(String(lang || 'zh'));
         const _e94MaxTokens = reportType === 'yearly'
           ? (_e94IsZh ? 7500 : 12000)
-          : (reportType === 'monthly' ? 3000 : 12000);
+          : (reportType === 'monthly' ? (_e94IsZh ? 3500 : 5500) : 12000);
         // 🛡️ E96-②（主公军令 2026-10-26）：真流式——SSE 建流 ⇒ callAI 携 onText 回调，
         //    DeepSeek 走 stream:true 逐 delta 经 _sse.text() 即时下发（TTFT<2s，
         //    消灭月报 20s/年报 50s 黑等）；JSON 通路（无回调）契约逐字节零改动。
@@ -17020,14 +17055,15 @@ app.use('/api/ai-advisor', async (req, res) => {
 
     // ── V9 塔罗方向锁 prompt(从 web/api/ai-advisor.js 迁移,2026-07-19)──
     const tarotOrient = (req.body.tarot && req.body.tarot.orientation) ? req.body.tarot.orientation : '';
-    const isReversed = tarotOrient.includes('Reversed') || tarotOrient.includes('Invertido') || tarotOrient.includes('Inversé') || tarotOrient.includes('กลับด้าน') || tarotOrient.includes('Ngược');
+    // 🔴 E97-③：es 逆位检测补 'Invertida'（阴性大牌朝向后缀改阴性形态，漏检即锁失效）
+    const isReversed = tarotOrient.includes('Reversed') || tarotOrient.includes('Invertido') || tarotOrient.includes('Invertida') || tarotOrient.includes('Inversé') || tarotOrient.includes('กลับด้าน') || tarotOrient.includes('Ngược');
     const isUpright  = tarotOrient.includes('Upright')  || tarotOrient.includes('Derecho')   || tarotOrient.includes('Droit')     || tarotOrient.includes('ตั้งตรง') || tarotOrient.includes('Xuôi');
 
     // 各语言塔罗正逆位强制锁(从 V9 迁移)
     const tarotLock =
       lang === 'zh' ? (isReversed ? '【强制】塔罗牌为逆位,全程禁止出现"正位"或"Upright"字样。' : isUpright ? '【强制】塔罗牌为正位,全程禁止出现"逆位"或"Reversed"字样。' : '') :
       lang === 'en' ? (isReversed ? '[LOCK] Tarot is Reversed. FORBIDDEN: upright, Upright, 正位. ALWAYS say Reversed.' : isUpright ? '[LOCK] Tarot is Upright. FORBIDDEN: reversed, Reversed, 逆位. ALWAYS say Upright.' : '') :
-      lang === 'es' ? (isReversed ? '[BLOQUEO] La carta es Invertido. PROHIBIDO: upright, Derecho.' : isUpright ? '[BLOQUEO] La carta es Derecho. PROHIBIDO: inverted, Invertido.' : '') :
+      lang === 'es' ? (isReversed ? '[BLOQUEO] La carta está invertida. PROHIBIDO: upright, Derecho.' : isUpright ? '[BLOQUEO] La carta está derecha. PROHIBIDO: inverted, invertida.' : '') :
       lang === 'fr' ? (isReversed ? '[VERROU] La carte est Inversé. DÉFENDU: upright, Droit.' : isUpright ? '[VERROU] La carte est Droit. DÉFENDU: reversed, Inversé.' : '') :
       lang === 'th' ? (isReversed ? '[🔒] ไพ่กลับด้าน ห้ามพูด"ตั้งตรง"หรือ"Upright"แม้แต่คําเดียว' : isUpright ? '[🔒] ไพ่ตั้งตรง ห้ามพูด"กลับด้าน"หรือ"Reversed"แม้แต่คําเดียว' : '') :
       lang === 'vi' ? (isReversed ? '[KHOÁ] Lá bài là Ngược. CẤM: Xuôi, Upright. Luôn nói Ngược.' : isUpright ? '[KHOÁ] Lá bài là Xuôi. CẤM: Ngược, Reversed. Luôn nói Xuôi.' : '') :

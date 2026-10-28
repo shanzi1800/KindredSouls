@@ -83,7 +83,8 @@ function filterTarotMeaning(meaning, orientation, lang) {
     th: ['กลับด้าน'],
     zh: ['逆位', '逆'],
     en: ['Reversed', 'reversed'],
-    es: ['Invertido', 'invertido'],
+    // 🔴 E97-③：补阴性形态 Invertida（阴性大牌逆位后缀改 (Invertida)，漏检即截取失效）
+    es: ['Invertido', 'invertido', 'Invertida', 'invertida'],
     fr: ['Inversé', 'inversé']
   };
   
@@ -96,7 +97,8 @@ function filterTarotMeaning(meaning, orientation, lang) {
     th: ['เมื่ออยู่ในตำแหน่งกลับด้าน', 'กลับด้าน', 'หากกลับด้าน'],
     zh: ['逆位时', '逆位', '如果逆位'],
     en: ['Reversed,', 'Reversed.', 'If reversed', 'When reversed'],
-    es: ['Invertido,', 'Invertido.', 'Si aparece invertido', 'Cuando está invertido'],
+    // 🔴 E97-③：补阴性牌牌意标记（La Sacerdotisa/La Emperatriz 等牌意用 Invertida,）
+    es: ['Invertido,', 'Invertido.', 'Invertida,', 'Invertida.', 'Si aparece invertido', 'Si aparece invertida', 'Cuando está invertido', 'Cuando está invertida'],
     fr: ['Inversé,', 'Inversé.', 'Si inversé', 'Quand inversé']
   };
   
@@ -127,6 +129,10 @@ function filterTarotMeaning(meaning, orientation, lang) {
           { pattern: /^Si aparece invertido,?\s*/i, replacement: 'Actualmente, ' },
           { pattern: /^Cuando está invertido,?\s*/i, replacement: 'Actualmente, ' },
           { pattern: /^Invertido,?\s*/i, replacement: 'Actualmente, ' },
+          // 🔴 E97-③：阴性牌意开头改写（Invertida 形态）
+          { pattern: /^Si aparece invertida,?\s*/i, replacement: 'Actualmente, ' },
+          { pattern: /^Cuando está invertida,?\s*/i, replacement: 'Actualmente, ' },
+          { pattern: /^Invertida,?\s*/i, replacement: 'Actualmente, ' },
           { pattern: /^Si inversé,?\s*/i, replacement: 'Actuellement, ' },
           { pattern: /^Quand inversé,?\s*/i, replacement: 'Actuellement, ' },
           { pattern: /^Inversé,?\s*/i, replacement: 'Actuellement, ' },
@@ -177,9 +183,12 @@ function getOrientText(tarot, lang) {
   const m = ORIENT_MAP[lang] || ORIENT_MAP['en'];
   // orientation 字段格式：" (Ngược)" 或 " (Thuận)"（越南语）
   // 需要判断是否包含逆位关键词
+  // 🔴 E97-③：检测表补 'Invertida'（阴性大牌逆位后缀）；es 返回值随牌名阴阳性
   const orient = tarot?.orientation || '';
-  const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','逆位'].some(s => orient.includes(s));
-  return isReversed ? m.rev : m.up;
+  const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida','逆位'].some(s => orient.includes(s));
+  if (!isReversed) return m.up;
+  if (lang === 'es') return /^(La\s|Rueda\b)/i.test(String(tarot?.name || '')) ? 'Invertida' : 'Invertido';
+  return m.rev;
 }
 
 // 4. 工具函数：从 tarot.meaning 提取核心关键词（给 AI 的意图约束，防止瞎编仪式）
@@ -481,7 +490,7 @@ export const LANGUAGE_CONFIGS = {
 
   },
   es: {
-    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).\n\n[Modo informe mensual/anual] Estás escribiendo un informe de relación mensual o anual. DEBES enfocarte en consejos específicos dentro del período definido (mensual=próximos 30 días, anual=próximos 12 meses). No des consejos genéricos.",
+    systemPrompt: "Eres un maestro astrólogo espiritual. Escribe en exactamente 4 secciones, 2-3 oraciones cada una, bajo 200 palabras. Sin preámbulo, sin numeración. Nunca alteres ninguna puntuación. CRÍTICO — Si la Orientación del tarot es \"Invertido\" o \"Invertida\": QUEDA TERMINANTEMENTE PROHIBIDO usar las palabras \"en derecho\", \"al derecho\" o cualquier término que signifique posición normal. Si la Orientación es \"Derecho\": QUEDA TERMINANTEMENTE PROHIBIDO usar \"invertido\" o \"invertida\". Nunca sugieras rituales supersticiosos (quemar papel, rezar, hacer hechizos).\n\n[Modo informe mensual/anual] Estás escribiendo un informe de relación mensual o anual. DEBES enfocarte en consejos específicos dentro del período definido (mensual=próximos 30 días, anual=próximos 12 meses). No des consejos genéricos.",
     buildPrompt: (overall, baziScore, zodiacScore, ichingScore, tarot, zodiacMeta, luckyAspects, challengingAspects) => {
       const statusText = getOrientText(tarot, 'es');
       const cardName = tarot?.name || '';
@@ -495,7 +504,7 @@ export const LANGUAGE_CONFIGS = {
         `Signos zodiacales reales: ${sign1} y ${sign2}`,
         ``,
         `[REGLAS CRÍTICAS]`,
-        `- Si Orientación = "Derecho": Todo la explicación de la carta DEBE describir SOLO el significado derecho. PROHIBIDO escribir "Invertido" o "si aparece invertido".`,
+        `- Si Orientación = "Derecho": Todo la explicación de la carta DEBE describir SOLO el significado derecho. PROHIBIDO escribir "Invertido", "Invertida" o "si aparece invertido".`,
         `- Análisis zodiacal DEBE usar solo ${sign1} y ${sign2}. PROHIBIDO usar otros signos.`,
         ``,
         `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
@@ -526,8 +535,8 @@ export const LANGUAGE_CONFIGS = {
         challengeText ? `Aspectos a cuidar: ${challengeText}` : '',
         ``,
         `[REGLAS CRÍTICAS]`,
-        `- Si Orientación = "Derecho": PROHIBIDO escribir "Invertido".`,
-        `- Si Orientación = "Invertido": PROHIBIDO escribir "Derecho".`,
+        `- Si Orientación = "Derecho": PROHIBIDO escribir "Invertido" o "Invertida".`,
+        `- Si Orientación = "Invertido" o "Invertida": PROHIBIDO escribir "Derecho".`,
         `- Análisis zodiacal DEBE usar solo ${sign1} y ${sign2}.`,
         ``,
         `[ESTRUCTURA OBLIGATORIA — no cambiar emojis ni títulos]`,
