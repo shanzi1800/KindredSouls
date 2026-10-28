@@ -254,6 +254,11 @@ test('E98-④-4 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
 
 /* ═══════════════════ ⑤ 闸门接线 ═══════════════════ */
 
+test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION v2（E98 修复触达旧报告）', () => {
+  const PIPE = fs.readFileSync(path.join(ROOT, 'lib/reportPipeline.mjs'), 'utf8');
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v2';"), '持久化版本须升 v2（E98-⑤ 一次性作废旧存量；旧报告缺年龄差真值行）');
+});
+
 test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位（e97 后、e40 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
