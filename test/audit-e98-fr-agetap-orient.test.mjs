@@ -256,9 +256,11 @@ test('E98-④-4 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
 
 /* ═══════════════════ ⑤ 闸门接线 ═══════════════════ */
 
-test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION v2（E98 修复触达旧报告）', () => {
+test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION（后继化：E100-⑤ 已升 v3）', () => {
   const PIPE = fs.readFileSync(path.join(ROOT, 'lib/reportPipeline.mjs'), 'utf8');
-  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v2';"), '持久化版本须升 v2（E98-⑤ 一次性作废旧存量；旧报告缺年龄差真值行）');
+  // 🔴 E100 后继化：E100 四刀（终章印章/周易真值/CJK 剥离/泰语八字锁）须触达旧存量
+  //   ⇒ v2 → v3（E98-⑤ 同款一次性作废；本断言随真源前移）。
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v3';"), '持久化版本须为 v3（E100-⑤ 一次性作废旧存量；旧泰语报告含 CJK 渗漏/幻觉卦）');
 });
 
 test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位（e97 后、e40 前、python 链尾）', () => {

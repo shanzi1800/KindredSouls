@@ -172,6 +172,14 @@ test('E100-④ ratio 百分比化：两镜像 toFixed(3) 全废、百分比呈�
   }
 });
 
+// ── E100-⑥ 存量作废：COMPAT_PERSIST_VERSION v2→v3（月/年 Gate41 replay 全 MISS 强制重生）──
+test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION v3（旧泰语毒行长度守卫挡不住 ⇒ 版本作废）', () => {
+  const PIPE = read('lib/reportPipeline.mjs');
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v3';"), '持久化版本须为 v3');
+  assert.ok(PIPE.includes('E100-⑤'), 'v3 升版注释（E100-⑤ 军令记录）缺失');
+  assert.ok(!PIPE.includes("'compat_report.v2';"), 'v2 字面量残留（旧存量作废不彻底）');
+});
+
 // ── 军规链基线（E100 入编后 76 段；e40-compat 恒 len-2、python 恒链尾）──
 test('E100-⑤ 军规链基线 76 段（e40-compat 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
