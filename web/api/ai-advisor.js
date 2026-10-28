@@ -176,7 +176,7 @@ const ORIENT_MAP = {
   vi: { up: 'Xuôi', rev: 'Ngược' },
   en: { up: 'Upright', rev: 'Reversed' },
   es: { up: 'Derecho', rev: 'Invertido' },
-  fr: { up: 'Droit', rev: 'Inversé' },
+  fr: { up: "À l'endroit", rev: 'Inversé' },
 };
 
 function getOrientText(tarot, lang) {
@@ -184,10 +184,12 @@ function getOrientText(tarot, lang) {
   // orientation 字段格式：" (Ngược)" 或 " (Thuận)"（越南语）
   // 需要判断是否包含逆位关键词
   // 🔴 E97-③：检测表补 'Invertida'（阴性大牌逆位后缀）；es 返回值随牌名阴阳性
+  // 🔴 E98-④：检测表补 'Inversée'（fr 阴性大牌逆位后缀）；fr 返回值随牌名阴阳性
   const orient = tarot?.orientation || '';
-  const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida','逆位'].some(s => orient.includes(s));
+  const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Inversée','Invertido','Invertida','逆位'].some(s => orient.includes(s));
   if (!isReversed) return m.up;
   if (lang === 'es') return /^(La\s|Rueda\b)/i.test(String(tarot?.name || '')) ? 'Invertida' : 'Invertido';
+  if (lang === 'fr') return /^(La\s)/i.test(String(tarot?.name || '')) ? 'Inversée' : 'Inversé';
   return m.rev;
 }
 
@@ -566,7 +568,7 @@ export const LANGUAGE_CONFIGS = {
         `Signes zodiacaux réels: ${sign1} et ${sign2}`,
         ``,
         `[RÈGLES CRITIQUES]`,
-        `- Si Orientation = "Droit": Toute l'explication de la carte DOIT décrire UNIQUEMENT le sens droit. INTERDIT d'écrire "Inversé" ou "si inversé".`,
+        `- Si Orientation = "À l'endroit": Toute l'explication de la carte DOIT décrire UNIQUEMENT le sens droit. INTERDIT d'écrire "Inversé" ou "si inversé".`,
         `- L'analyse zodiacale DOIT utiliser uniquement ${sign1} et ${sign2}. INTERDIT d'utiliser d'autres signes.`,
         ``,
         `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,
@@ -597,8 +599,8 @@ export const LANGUAGE_CONFIGS = {
         challengeText ? `Aspects à surveiller: ${challengeText}` : '',
         ``,
         `[RÈGLES CRITIQUES]`,
-        `- Si Orientation = "Droit": INTERDIT d'écrire "Inversé".`,
-        `- Si Orientation = "Inversé": INTERDIT d'écrire "Droit".`,
+        `- Si Orientation = "À l'endroit": INTERDIT d'écrire "Inversé" ou "Inversée".`,
+        `- Si Orientation = "Inversé" ou "Inversée": INTERDIT d'écrire "À l'endroit".`,
         `- Analyse zodiacale DOIT utiliser uniquement ${sign1} et ${sign2}.`,
         ``,
         `[STRUCTURE OBLIGATOIRE — ne pas modifier emojis ni titres]`,

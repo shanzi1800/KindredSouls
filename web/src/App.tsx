@@ -742,6 +742,21 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     [reportText],
   );
   const reportTyping = revealedParas !== Number.POSITIVE_INFINITY && revealedParas < reportParas.length;
+  // 🛡️ E98-①（主公军令 2026-10-29）：流式终章平滑回顶——流式 done（loading 收口＋全文
+  //    揭示完毕）或打字机揭示完毕后，延迟 300ms 平滑回卷长卷顶部，一次性触发（ref 防重；
+  //    新报告起点 reportText 归 null 自动复位）。与 E97-② 贴底伴读不冲突：终章完成前
+  //    贴底伴读，完成后回顶；失败/网络错误短文案同样回顶（顶部即全文，无割裂观感）。
+  const compatReturnTopRef = useRef(false);
+  React.useEffect(() => {
+    if (reportText === null) { compatReturnTopRef.current = false; return; }
+    const done = !reportTyping && !reportLoading;
+    if (!done || compatReturnTopRef.current) return;
+    compatReturnTopRef.current = true;
+    const id = setTimeout(() => {
+      compatScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 300);
+    return () => clearTimeout(id);
+  }, [reportText === null, reportTyping, reportLoading]);
   React.useEffect(() => {
     if (!reportText || reportParas.length === 0) return;
     // 🔴 E90-②（主公军令 2026-10-25）：打字机卡死在第一章标题的真凶根治。
@@ -1276,7 +1291,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         setInsight(data.insight);
         // Use the freshly computed tarot, not the API response (API echoes it back too)
         setTarotLine(data.tarotLine || tarot.meaning);
-        const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida'].some(s => tarot.orientation.includes(s));
+        const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Inversée','Invertido','Invertida'].some(s => tarot.orientation.includes(s));
         setTarotCard({ id: tarot.id, name: tarot.name, emoji: tarot.emoji, isReversed, orientation: tarot.orientation });
         onTriggerInsight?.();
       }

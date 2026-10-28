@@ -147,7 +147,7 @@ const ORIENTATION_LABELS: Record<AlgLang, { upright: string; reversed: string }>
   zh: { upright: '正位', reversed: '逆位' },
   en: { upright: 'Upright', reversed: 'Reversed' },
   es: { upright: 'Normal', reversed: 'Invertido' },
-  fr: { upright: 'Droit', reversed: 'Inversé' },
+  fr: { upright: "À l'endroit", reversed: 'Inversé' },
   th: { upright: 'ตั้งตรง', reversed: 'กลับหลัง' },
   vi: { upright: 'Thuận', reversed: 'Nghịch' },
 };

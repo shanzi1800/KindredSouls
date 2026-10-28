@@ -201,11 +201,17 @@ const CARDS: { id: number; emoji: string; name: L; meaning: L }[] = [
 //   已同步补 'Invertida' 关键词——漏检即正逆位锁整体失效。
 const esIsFeminine = (name: string) => /^(La\s|Rueda\b)/i.test(String(name || ''));
 
+// 🔴 E98-④（主公军令 2026-10-29）：法语塔罗方位规范（Tarot de Marseille 体系）——
+//   正位 (À l'endroit)；逆位随牌名阴阳性：(Inversé)/(Inversée)（阴性大牌 La … ⇒ Inversée）。
+//   注意：朝向词消费链（App.tsx / server.js / ai-advisor.js 的 isReversed 检测）
+//   'Inversée'.includes('Inversé') === true 天然覆盖阴性形态——检测表已明确补齐更稳。
+const frIsFeminine = (name: string) => /^(La\s)/i.test(String(name || ''));
+
 const ORIENT_SUFFIX: Record<string, (reversed: boolean, name?: string) => string> = {
   zh: (r) => r ? '（逆位）' : '（正位）',
   en: (r) => r ? ' (Reversed)' : ' (Upright)',
   es: (r, name) => r ? (esIsFeminine(name || '') ? ' (Invertida)' : ' (Invertido)') : ' (Normal)',
-  fr: (r) => r ? ' (Inversé)' : ' (Droit)',
+  fr: (r, name) => r ? (frIsFeminine(name || '') ? ' (Inversée)' : ' (Inversé)') : " (À l'endroit)",
   th: (r) => r ? ' (กลับด้าน)' : ' (ตั้งตรง)',
   vi: (r) => r ? ' (Ngược)' : ' (Thuận)',
 };

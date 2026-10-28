@@ -42,12 +42,14 @@ function useTarot(d1: string, d2: string, lang: string = 'en') {
   const card = cards[cardId] || cards[0];
   const L = lang;
   // 🔴 E97-③：es 阴性大牌（La …/Rueda …）逆位后缀阴性形态 (Invertida)
+  // 🔴 E98-④：fr 阴性大牌（La …）逆位后缀阴性形态 (Inversée)；正位 (À l'endroit)
   const esFem = /^(La\s|Rueda\b)/i.test(String(card.name[L] || ''));
+  const frFem = /^(La\s)/i.test(String(card.name[L] || ''));
   const orient: Record<string,string> = {
     zh: reversed ? '（逆位）' : '',
     en: reversed ? ' (Reversed)' : '',
     es: reversed ? (esFem ? ' (Invertida)' : ' (Invertido)') : '',
-    fr: reversed ? ' (Inversé)' : '',
+    fr: reversed ? (frFem ? ' (Inversée)' : ' (Inversé)') : '',
     th: reversed ? ' (กลับด้าน)' : '',
     vi: reversed ? ' (Ngược)' : '',
   };

@@ -157,7 +157,8 @@ test('E97-③-4 行为级：getOrientText es 阴阳性分流（真源 server 侧
   assert.equal(getOrientText({ name: 'El Loco', orientation: ' (Invertido)' }, 'es'), 'Invertido', 'El Loco 逆位须阳性 Invertido');
   assert.equal(getOrientText({ name: 'La Sacerdotisa', orientation: ' (Normal)' }, 'es'), 'Derecho', '正位须 Derecho');
   // 检测表补 Invertida（漏检即正逆位锁整体失效）
-  assert.ok(ADV.includes("['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida','逆位']"), 'getOrientText 检测表未补 Invertida');
+  // 🔴 E98-④ 后继化：检测表补 'Inversée'（fr 阴性大牌逆位形态）——字面量随 E98 升版。
+  assert.ok(ADV.includes("['Ngược','Reversed','กลับด้าน','Inversé','Inversée','Invertido','Invertida','逆位']"), 'getOrientText 检测表未补 Invertida');
 });
 
 test('E97-③-5 行为级：filterTarotMeaning es 阴性牌意截取改写（Invertida, → Actualmente, ）', () => {
@@ -177,8 +178,8 @@ test('E97-③-5 行为级：filterTarotMeaning es 阴性牌意截取改写（Inv
 test('E97-③-6 全链检测表同步：server 洞察线＋App 洞察线＋迷你塔罗 es 后缀', () => {
   // server.js 旧逻辑塔罗锁 isReversed 检测表（漏检即锁失效）
   assert.ok(SERVER.includes("tarotOrient.includes('Invertido') || tarotOrient.includes('Invertida')"), 'server isReversed 检测表未补 Invertida');
-  // App.tsx 洞察线检测数组
-  assert.ok(APP.includes("['Ngược','Reversed','กลับด้าน','Inversé','Invertido','Invertida']"), 'App 洞察线检测表未补 Invertida');
+  // App.tsx 洞察线检测数组（🔴 E98-④ 后继化：补 'Inversée' fr 阴性形态）
+  assert.ok(APP.includes("['Ngược','Reversed','กลับด้าน','Inversé','Inversée','Invertido','Invertida']"), 'App 洞察线检测表未补 Invertida');
   // AuthButton 迷你塔罗 es 阴阳性后缀
   assert.ok(AUTHBTN.includes("es: reversed ? (esFem ? ' (Invertida)' : ' (Invertido)') : ''"), '迷你塔罗 es 阴阳性后缀缺失');
   // es 规则行：正逆位锁双形态封口
@@ -196,7 +197,7 @@ test('E97-④-1 闸门接线：test:astro 含本闸门（73 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e97-es-l10n-tokens.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 73, `链段数异常（实得 ${parts.length}，基线 73（E97 入编））`);
+  assert.equal(parts.length, 74, `链段数异常（实得 ${parts.length}，基线 74（E98 入编））`);
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
