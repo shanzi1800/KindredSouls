@@ -14940,7 +14940,18 @@ async function resolveReportEntitlement(req, domain, reportType) {
   if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured' };
   const authHeader = String(req.headers.authorization || '');
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token) return { ok: false, method: null, reason: 'NO_TOKEN' };
+  if (!token) {
+    // 🔴 E99-①（主公军令 2026-10-28）：沙盒内测态「零阻力」放行——无登录匿名请求
+    //    直通（三档解锁绝不被登录墙阻断；绿道同构：userId=null ⇒ Gate41 复读自然 MISS、
+    //    落库/计数/时间戳段全有 userId 守卫跳过）。live 模式 fail-closed 旧语义逐字不变。
+    //    ⚠️ 仅豁免 NO_TOKEN（无登录）；INVALID_TOKEN（token 失效）不豁免——旧会话过期
+    //    仍须走重登链，绝不放行陈旧凭证。
+    if (isSandboxPaymentMode(process.env)) {
+      console.log('[E99] sandbox mode => compat entitlement anonymous bypass (no token, type=' + reportType + ')');
+      return { ok: true, method: 'sandbox_anonymous' };
+    }
+    return { ok: false, method: null, reason: 'NO_TOKEN' };
+  }
   try {
     const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
@@ -15176,6 +15187,18 @@ app.post('/api/sandbox/complete', async (req, res) => {
   // 🔴 沙盘闸门：缺省 live ⇒ 端点视为不存在（fail-closed）
   if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
   try {
+    // 🔴 E99-①（主公军令 2026-10-28）：无登录匿名沙盒付讫——本地签发回执直返。
+    //    军令口径：模拟付款后「本地自动写入/签发沙盒临时权益」，无需账号落库
+    //    （无 userId ⇒ webhook 派发无从归属，权益由前端 per-session 标志签发）。
+    //    ⚠️ 仅 NO_TOKEN 走此旁路；带 token（含失效 token）仍走原用户链逐字不变。
+    const _e99Hdr = String(req.headers.authorization || '');
+    if (!_e99Hdr.startsWith('Bearer ')) {
+      const rawPlanAnon = (req.body || {}).plan;
+      const planAnon = normalizePlanId(rawPlanAnon);
+      if (!STRIPE_PRICE_MAP[planAnon]) return res.status(400).json({ error: 'Unknown plan: ' + rawPlanAnon });
+      console.log('[E99] sandbox anonymous complete (no user) plan:', planAnon);
+      return res.json({ ok: true, sandbox: true, anonymous: true, plan: planAnon, sessionId: null, granted: true, webhook: { received: true, anonymous: true } });
+    }
     const who = await _sandboxResolveUser(req);
     if (who.error) return res.status(who.error).json({ error: who.message });
     const rawPlan = (req.body || {}).plan;

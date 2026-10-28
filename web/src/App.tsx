@@ -1251,13 +1251,47 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         // 已登录，直接触发 Stripe（loading 保持至跳转/沙盘收银台/already_paid reload）
         handlePurchaseWithToken(session.access_token, plan);
       } else {
-        // 没登录：存意图 + 弹登录墙（loading 收口，登录门上屏）
-        setLoading(false);
-        setActivePurchasePlan(false);
-        localStorage.setItem('ks_pending_checkout_plan', plan);
-        setShowPaywall(false);
-        setShowAuthWall(true);
-        console.log('[KindredSouls Debug] 🐮 Stored pending plan:', plan);
+        // 🔴 E99-①（主公军令 2026-10-28）：沙盒内测态「零阻力」直通——未登录也**绝不**
+        //    弹第三方登录墙，三档统一就地唤起 SANDBOX 沙盘收银台（免 token 端点探测，
+        //    沙盒态才生效；模拟付讫后本地签发 per-session 临时权益直接解锁报告）。
+        //    live 模式：旧 OAuth 意图链逐字保留（上架后商业铁律不动——E72 同源）。
+        const _e99LegacyWall = () => {
+          setLoading(false);
+          setActivePurchasePlan(false);
+          localStorage.setItem('ks_pending_checkout_plan', plan);
+          setShowPaywall(false);
+          setShowAuthWall(true);
+          console.log('[KindredSouls Debug] 🐮 Stored pending plan:', plan);
+        };
+        fetch('/api/sandbox/status', { method: 'POST' })
+          .then((r) => r.json())
+          .then((st) => {
+            if (st && st.sandbox === true) {
+              console.log('[KindredSouls] 🧪 E99 sandbox zero-friction — cashier opened anonymously:', plan);
+              openSandboxCashier({
+                plan,
+                sessionId: '',
+                url: '',
+                lang,
+                onGranted: () => {
+                  try {
+                    sessionStorage.setItem('ks_payment_success', '1');
+                    if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
+                    else if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
+                    else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
+                  } catch { /* noop */ }
+                  window.location.reload();
+                },
+              });
+            } else {
+              // 没登录：存意图 + 弹登录墙（loading 收口，登录门上屏）
+              _e99LegacyWall();
+            }
+          })
+          .catch(() => {
+            // 探测失败 ⇒ fail-safe 回退旧登录墙链（绝不静默失败）
+            _e99LegacyWall();
+          });
       }
     });
   };
@@ -1330,13 +1364,26 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         const { data: { session } } = await supabase.auth.getSession();
         token = session?.access_token || null;
       }
-      if (!token) throw new Error('No session');
+      if (!token) {
+        // 🔴 E99-①（主公军令 2026-10-28）：沙盒内测态无登录 ⇒ 匿名直发（服务端
+        //    E99 沙盒豁免放行，同 triggerInsight 无 token 通路）；live 模式维持
+        //    旧语义 throw（登录墙链承接）。探测失败 ⇒ 同 throw（fail-safe 不静默）。
+        let _e99Sandbox = false;
+        try {
+          const _e99St = await fetch('/api/sandbox/status', { method: 'POST' }).then((r) => r.json());
+          _e99Sandbox = !!(_e99St && _e99St.sandbox === true);
+        } catch { /* noop */ }
+        if (!_e99Sandbox) throw new Error('No session');
+        console.log('[generateReport] 🧪 E99 sandbox anonymous generation:', type);
+      }
       // 🔴 E92-②：三档抽卡解耦——报告档掺档位盐（monthly/yearly 独立卡槽，
       //    与 $4.99 洞察的默认 'insight' 互不覆盖，终结「全盘女皇逆位」撞车）。
       const tarot = getTarot(d1, d2, lang, type);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: token
+          ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+          : { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           d1, d2, lang,
           bazi, zodiac, iching, tarot,
