@@ -921,8 +921,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         } else {
           // ❌ 真正未登录的用户 → 先显示付费墙（明牌流：先给价格，再登录）
           sessionStorage.removeItem('ks_oauth_in_progress');
-          setPaidStatus(false);
-          setShowPaywall(true);
+          // 🔴 E99-① 补刀2（主公军令 2026-10-28）：INITIAL_SESSION 异步晚于付讫承接位收墙
+          //    到达（Supabase 事件时序），未登录分支若无条件拉墙会「墙复活」把洞察顶死。
+          //    匿名沙盒付讫回场（per-session 已解锁）⇒ paidStatus 视作已解锁（true）且不拉墙
+          //    （既免 797 effect 复拉、又免 paidStatus=null 卡 1476 骨架分支）。
+          //    live 模式无匿名付讫链 ⇒ ks_compat_session_unlocked 恒空 ⇒ 旧明牌流逐字不变。
+          let _e99AnonUnlocked = false;
+          try { _e99AnonUnlocked = sessionStorage.getItem('ks_compat_session_unlocked') === '1'; } catch { /* noop */ }
+          if (_e99AnonUnlocked) {
+            console.log('[KindredSouls] 🧪 E99 anon session-unlocked on INITIAL_SESSION — paywall bypass');
+            setPaidStatus(true);
+          } else {
+            setPaidStatus(false);
+            setShowPaywall(true);
+          }
           setIsAuthParsing(false);
         }
       } else if (event === 'SIGNED_IN') {
