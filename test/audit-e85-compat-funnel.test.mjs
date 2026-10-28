@@ -43,7 +43,9 @@ test('E85-①-2 未付费 100% 必现付费墙（账号旧权益不得短路）'
 
 test('E85-①-3 当次付款返回自动揭晓（解锁＋自动流式）', () => {
   const app = read('web/src/App.tsx');
-  const seg = app.slice(app.indexOf('if (pendingInsightTrigger) {'), app.indexOf('if (pendingInsightTrigger) {') + 420);
+  // （E99-① 扩容锚窗 420→700：pendingInsightTrigger 承接位增付讫收墙补刀后
+  //  triggerInsight() 被旧窗挤出——同 e84/e87-③ 锚窗先例）
+  const seg = app.slice(app.indexOf('if (pendingInsightTrigger) {'), app.indexOf('if (pendingInsightTrigger) {') + 700);
   assert.ok(seg.includes("sessionStorage.setItem('ks_compat_session_unlocked', '1')"), '支付返回未落 per-session 解锁标志');
   assert.ok(seg.includes('setSessionUnlocked(true)'), '支付返回未解锁当次会话');
   assert.ok(seg.includes('triggerInsight()'), '支付返回未自动流式揭晓 AI 洞察＋塔罗');

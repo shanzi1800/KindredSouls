@@ -119,6 +119,18 @@ test('E99-③-3 三档 onGranted 落 per-session 临时权益（本地签发军�
   assert.ok(APP.includes("else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');"), '年报档临时权益缺失');
 });
 
+test('E99-③-4 付讫回场收墙（匿名链无 checkPaidStatus ⇒ 必须在承接位收墙）', () => {
+  // once 链：pendingInsightTrigger 承接位收墙
+  assert.ok(APP.includes('setSessionUnlocked(true);\n      // 🔴 E99-① 补刀（主公军令 2026-10-28）：付讫回场收墙'), 'once 链收墙补刀缺失');
+  // 月/年链：pendingReportTrigger 承接位收墙
+  assert.ok(APP.includes('setSessionUnlocked(true);\n      // 🔴 E99-① 补刀（主公军令 2026-10-28）：同 once 链'), '月/年链收墙补刀缺失');
+  // 两处补刀均紧跟 setShowPaywall(false)
+  const seg1 = APP.slice(APP.indexOf('E99-① 补刀（主公军令 2026-10-28）：付讫回场收墙'), APP.indexOf('E99-① 补刀（主公军令 2026-10-28）：付讫回场收墙') + 400);
+  assert.ok(seg1.includes('setShowPaywall(false);'), 'once 链收墙执行体缺失');
+  const seg2 = APP.slice(APP.indexOf('E99-① 补刀（主公军令 2026-10-28）：同 once 链'), APP.indexOf('E99-① 补刀（主公军令 2026-10-28）：同 once 链') + 400);
+  assert.ok(seg2.includes('setShowPaywall(false);'), '月/年链收墙执行体缺失');
+});
+
 /* ═══════════════════ ④ generateReport 无 token 沙盒直发 ═══════════════════ */
 
 test('E99-④-1 generateReport 无 token 沙盒探测直发（旧 throw 后继化）', () => {

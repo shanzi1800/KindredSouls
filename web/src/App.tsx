@@ -789,6 +789,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     if (pendingInsightTrigger) {
       try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
       setSessionUnlocked(true);
+      // 🔴 E99-① 补刀（主公军令 2026-10-28）：付讫回场收墙——匿名沙盒链无 checkPaidStatus
+      //    权益回查（无 session ⇒ INITIAL_SESSION 落 showPaywall=true 恒立），若不在此
+      //    收墙，付费墙分支 `showPaywall || !sessionUnlocked` 会把洞察顶死在墙后。
+      //    已登录链此置位冗余无害（paidStatus=true 通路本就收墙）。
+      setShowPaywall(false);
       triggerInsight();
     }
   }, [pendingInsightTrigger]);
@@ -1461,6 +1466,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     if (pendingReportTrigger === 'monthly' || pendingReportTrigger === 'yearly') {
       try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
       setSessionUnlocked(true);
+      // 🔴 E99-① 补刀（主公军令 2026-10-28）：同 once 链——匿名沙盒付讫回场收墙
+      //    （无 session ⇒ showPaywall=true 恒立，不收墙则报告渲染被付费墙分支顶死）。
+      setShowPaywall(false);
       if (!insight) triggerInsight();
       generateReport(pendingReportTrigger);
       onReportConsumed?.();
