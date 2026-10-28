@@ -166,7 +166,7 @@ test('E96-④-1 闸门接线：test:astro 含本闸门（72 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e96-stream-l10n.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE95 = parts.findIndex((p) => p.includes('audit-e95-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

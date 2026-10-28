@@ -13778,6 +13778,67 @@ const _E88_YEARLY_CHAPTERS = Object.freeze({
   ]),
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E100-③（主公军令 2026-10-29）：周易六十四卦真值锁——根治卦名幻觉
+//   病根（泰语月报实测实锤）：Module 4/Chapter 5 只给 IChing 分数无具体卦象 ⇒
+//   LLM 自创玄幻卦名「นักบวชเรี่ยมใจ (The Priest of the Gathered Heart)」——
+//   周易六十四卦绝无此卦，严肃玄学公信力塌方。
+//   治法：King Wen 序 64 卦标准映射表（表内四字段：拼音/中文/英文/泰语主题词，
+//   军令钦定第 45 卦口径：กั้วที่ 45: ฉุ่ย (萃 - การชุมนุมแห่งดวงใจ)）＋
+//   确定性选卦（FNV 哈希 d1|d2|windowStart ⇒ 同对同窗恒定、跨月/跨卷流转），
+//   注入月报/年报 DATA LOCK——指令同步改为「只用锁内卦，禁自创卦名」。
+//   🔴 VM 抽取式消费者铁律：全表置函数体内（零模块级新依赖）。
+//   🔴 非 zh 行零汉字（防 CJK 渗漏正文）；th 行军令钦定泰语主题词。
+// ═══════════════════════════════════════════════════════════════
+function _e100IchingHexLine(d1, d2, windowStart, L) {
+  const HEX = [
+    ['Qian', '乾', 'The Creative', 'สวรรค์ผู้สร้างสรรค์'], ['Kun', '坤', 'The Receptive', 'ปฐพีผู้อดทนอ่อนโยน'],
+    ['Zhun', '屯', 'Difficulty at the Beginning', 'ความยากในการเริ่มต้น'], ['Meng', '蒙', 'Youthful Folly', 'บทเรียนแห่งความไร้เดียงสา'],
+    ['Xu', '需', 'Waiting', 'การรอคอยอย่างมีสติ'], ['Song', '讼', 'Conflict', 'ความขัดแย้งที่ควรเลี่ยง'],
+    ['Shi', '师', 'The Army', 'การรวมพลังอย่างมีวินัย'], ['Bi', '比', 'Holding Together', 'การรวมใจเป็นพันธมิตร'],
+    ['Xiao Xu', '小畜', 'Small Accumulation', 'การสะสมอย่างค่อยเป็นค่อยไป'], ['Lu', '履', 'Treading', 'การก้าวเดินอย่างระวัง'],
+    ['Tai', '泰', 'Peace', 'ความร่มเย็นเป็นสุข'], ['Pi', '否', 'Standstill', 'ความหยุดนิ่งที่ต้องเปลี่ยน'],
+    ['Tong Ren', '同人', 'Fellowship', 'ความสามัคคีของดวงใจ'], ['Da You', '大有', 'Great Possession', 'ความมั่งคั่งใหญ่หลวง'],
+    ['Qian2', '谦', 'Modesty', 'ความถ่อมตน'], ['Yu', '豫', 'Enthusiasm', 'ความเบิกบานรื่นเริง'],
+    ['Sui', '随', 'Following', 'การปฏิบัติตามอย่างฉลาด'], ['Gu', '蛊', 'Work on the Decayed', 'การแก้ไขสิ่งที่ทรุดโทรม'],
+    ['Lin', '临', 'Approach', 'การเข้าถึงอย่างใกล้ชิด'], ['Guan', '观', 'Contemplation', 'การมองภาพรวม'],
+    ['Shi He', '噬嗑', 'Biting Through', 'การตัดสินใจเด็ดเดี่ยว'], ['Bi2', '贲', 'Grace', 'ความสง่างาม'],
+    ['Bo', '剥', 'Splitting Apart', 'การสลายตัว'], ['Fu', '复', 'Return', 'การหวนคืนสู่จุดเริ่มต้น'],
+    ['Wu Wang', '无妄', 'Innocence', 'ความบริสุทธิ์ไร้มายา'], ['Da Xu', '大畜', 'Great Accumulation', 'การสะสมพลังอันใหญ่'],
+    ['Yi', '颐', 'Nourishment', 'การบำรุงเลี้ยงจิตใจ'], ['Da Guo', '大过', 'Great Excess', 'ความเกินพอดีที่ต้องสมดุล'],
+    ['Kan', '坎', 'The Abysmal Water', 'น้ำลึกแห่งการทดสอบ'], ['Li', '离', 'The Clinging Fire', 'ไฟแห่งความสว่าง'],
+    ['Xian', '咸', 'Influence', 'แรงดึงดูดซึ่งกันและกัน'], ['Heng', '恒', 'Duration', 'ความคงยืนนาน'],
+    ['Dun', '遯', 'Retreat', 'การถอยอย่างชาญฉลาด'], ['Da Zhuang', '大壮', 'Great Power', 'พลังอันยิ่งใหญ่'],
+    ['Jin', '晋', 'Progress', 'ความก้าวหน้า'], ['Ming Yi', '明夷', 'Darkening of the Light', 'แสงที่ถูกบดบังชั่วคราว'],
+    ['Jia Ren', '家人', 'The Family', 'ครอบครัวอันอบอุ่น'], ['Kui', '睽', 'Opposition', 'ความต่างที่ต้องปรับคลื่น'],
+    ['Jian', '蹇', 'Obstruction', 'อุปสรรคที่ต้องอดทน'], ['Xie', '解', 'Deliverance', 'การคลายปมปม'],
+    ['Sun', '损', 'Decrease', 'การลดทอนเพื่อสิ่งแท้จริง'], ['Yi2', '益', 'Increase', 'การเสริมพลังแก่กัน'],
+    ['Guai', '夬', 'Breakthrough', 'การตัดสินแบบเด็ดขาด'], ['Gou', '姤', 'Coming to Meet', 'การพบกันโดยไม่คาดคิด'],
+    ['Cui', '萃', 'Gathering Together', 'การชุมนุมแห่งดวงใจ'], ['Sheng', '升', 'Pushing Upward', 'การเติบโตขึ้นเบื้องบน'],
+    ['Kun2', '困', 'Oppression', 'ความยากลำบากชั่วคราว'], ['Jing', '井', 'The Well', 'บ่อน้ำแห่งจิตวิญญาณ'],
+    ['Ge', '革', 'Revolution', 'การเปลี่ยนแปลงอย่างแท้จริง'], ['Ding', '鼎', 'The Cauldron', 'ภาชนะแห่งการหล่อหลอม'],
+    ['Zhen', '震', 'Shock', 'ฟ้าร้องปลุกจิตให้ตื่น'], ['Gen', '艮', 'Stillness', 'ความนิ่งสงบ'],
+    ['Jian2', '渐', 'Gradual Progress', 'ความก้าวหน้าทีละขั้น'], ['Gui Mei', '归妹', 'The Marrying Maiden', 'ความสัมพันธ์ที่ต้องเคารพกัน'],
+    ['Feng', '丰', 'Abundance', 'ความเฟื่องฟู'], ['Lu2', '旅', 'The Wanderer', 'ผู้เดินทาง'],
+    ['Xun', '巽', 'The Gentle Wind', 'ลมแห่งความอ่อนโยน'], ['Dui', '兑', 'The Joyous Lake', 'ทะเลสาบแห่งความสุข'],
+    ['Huan', '涣', 'Dispersion', 'การรวมใจที่กระจัดกระจาย'], ['Jie', '节', 'Limitation', 'ขอบเขตอันชาญฉลาด'],
+    ['Zhong Fu', '中孚', 'Inner Truth', 'ความจริงในหัวใจ'], ['Xiao Guo', '小过', 'Small Excess', 'ความละเอียดรอบคอบ'],
+    ['Ji Ji', '既济', 'After Completion', 'ความสำเร็จที่ต้องรักษา'], ['Wei Ji', '未济', 'Before Completion', 'เส้นทางที่ยังไม่สิ้นสุด'],
+  ];
+  let _h = 2166136261;
+  const _s = String(d1) + '|' + String(d2) + '|' + String(windowStart || '');
+  for (let i = 0; i < _s.length; i++) { _h ^= _s.charCodeAt(i); _h = (_h * 16777619) >>> 0; }
+  const _hex = HEX[_h % 64];
+  const _n = HEX.indexOf(_hex) + 1;
+  const _L = String(L || 'zh');
+  if (_L === 'th') return `กั้วที่ ${_n}: ${_hex[0]} (${_hex[3]})`;
+  if (_L === 'zh') return `第${_n}卦：${_hex[1]}（${_hex[0]}）— 卦意：${_hex[2]}`;
+  if (_L === 'es') return `Hexagrama n.º ${_n}: ${_hex[0]} (${_hex[2]})`;
+  if (_L === 'fr') return `Hexagramme n°${_n} : ${_hex[0]} (${_hex[2]})`;
+  if (_L === 'vi') return `Quẻ số ${_n}: ${_hex[0]} (${_hex[2]})`;
+  return `Hexagram No.${_n}: ${_hex[0]} (${_hex[2]})`;
+}
+
 function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
   const x = extras || {};
   const L = Object.prototype.hasOwnProperty.call(_E88_YEARLY_LANG_LOCK, lang) ? lang : 'zh';
@@ -13836,11 +13897,14 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '3. Chapter 2 (900+ words): the full 12-month panorama — the 12 months run strictly from the FIRST month of the given time window (the solar-return birth month) through 12 consecutive months; analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
     '4. Chapter 3 (900+ words): four hard-core dimensions, one sub-section each — ① daily communication & mental rapport, ② intimacy & attraction fluctuations, ③ material reality & family tests, ④ fated bond & soul growth.',
     '5. Chapter 4 (600+ words): exactly THREE destiny crossroads of the year — each with a concrete month range (derived from the given time window), the trigger of conflict, and the breakthrough secret.',
-    '6. Chapter 5 (600+ words): the I Ching annual hexagram reading (derive it from the given I Ching score & data lock) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
+    '6. Chapter 5 (600+ words): the I Ching annual hexagram reading — use the EXACT hexagram given in the data lock (its number and name are sole truth; NEVER invent, rename, or translate a hexagram by yourself) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
     '7. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '8. Separate chapters with a blank line. Use plain text paragraphs; the first character of each chapter title line must be the chapter marker as given.',
     `9. [QUARTER KEYNOTE — macro/micro coherence, MANDATORY] In Chapter 2, each quarterly section MUST carry its fixed keynote label, verbatim: Q1 "${_e94QTone[0]}", Q2 "${_e94QTone[1]}", Q3 "${_e94QTone[2]}", Q4 "${_e94QTone[3]}" (rendered naturally in the report language). The 12-month narrative must rise and fall around these four keynotes; never assert a direction opposite to the quarter keynote.`,
     `10. [TAROT THREAD — annual soul archetype, close Chapter 5 with exactly ONE sentence, rendered naturally in the report language] ${_e94ThreadZh} / ${_e94ThreadEn}`,
+    // 🛡️ E100-①（主公军令 2026-10-29）：终章闭环守卫（Ending Seal Guard）——
+    //    泰语年报终章断头于年度牌解读处、无庄重结案加持。与月报第 11 条同构。
+    '11. [ENDING SEAL GUARD — MANDATORY] Whatever the total length, the report MUST end with a complete final paragraph: a solemn year-closing blessing for the couple (2-3 sentences, closed punctuation), followed by the fixed signature line "✦ SOUL OS" as the very last line. Never end mid-sentence; never omit the signature line.',
   ];
   // 🔴 E92-①③：八字地支硬锁＋代词温度规范（缺 ⇒ 不注入，绝不伪造）
   const bl = (x.baziLock && typeof x.baziLock.lock === 'string') ? x.baziLock : null;
@@ -13853,6 +13917,8 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (Solar Return, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
+    // 🛡️ E100-③：周易真值卦锁（确定性选卦：FNV d1|d2|windowStart——同对同窗恒定）
+    `IChing Annual Hexagram (sole truth): ${_e100IchingHexLine(d1, d2, timeCtx.windowStart, L)}`,
   ];
   if (bl) lockLines.push(bl.lock);
   const dataLock = lockLines.filter(Boolean).join('\n');
@@ -13982,12 +14048,16 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     '2. Module 1 (300+ words): the monthly synastry energy overview — open with a monthly resonance index (0-100, one clear number with a one-line justification), then the core celestial influence on this couple within the given time window.',
     '3. Module 2 (300+ words): the four-dimension emotional radar — ① rapport/tacit understanding, ② emotional weather, ③ passion/attraction, ④ reality pressure; each with a percentage (0-100) and 2-3 sentences of interpretation.',
     '4. Module 3 (400+ words): the 30-day calendar — exactly 2 relationship-warming lucky days + 2 high-friction risk days; each day gives its day-of-month number, the astrological reason, and one concrete coping tip.',
-    '5. Module 4 (300+ words): the I Ching monthly hexagram (derive it from the given I Ching score & data lock) and the couple\'s spiritual complement action (practical, ritual-free).',
+    '5. Module 4 (300+ words): the I Ching monthly hexagram — use the EXACT hexagram given in the data lock (its number and name are sole truth; NEVER invent, rename, or translate a hexagram by yourself) and the couple\'s spiritual complement action (practical, ritual-free).',
     '6. NEVER alter any number in the data lock. NEVER predict breakups. NO superstitious rituals (burning paper, chanting, spells). Always end with hope and concrete actions.',
     '7. Separate modules with a blank line. Use plain text paragraphs; the first character of each module title line must be the module marker as given.',
     '8. Total length 1200-1800 words.',
     `9. [YEAR TONE ANCHOR — macro/micro coherence, MANDATORY] This month falls in ${_e94QName}, whose annual keynote is exactly: "${_e94Tone[_e94QIdx]}". Module 1 MUST open with this keynote as its macro premise, so the monthly verdict never contradicts the annual report; never assert a direction opposite to this keynote.`,
     `10. [TAROT THREAD — close Module 4 with exactly ONE sentence, rendered naturally in the report language] ${_e98Thread}`,
+    // 🛡️ E100-①（主公军令 2026-10-29）：终章闭环守卫（Ending Seal Guard）——
+    //    泰语实弹实锤月报尾梢被物理截断、缺祝祷收口。无论章节多长，最后一行必须
+    //    是完整闭合的宇宙祝祷结语＋固定封印签名行，禁止句子中途断头。
+    '11. [ENDING SEAL GUARD — MANDATORY] Whatever the total length, the report MUST end with a complete final paragraph: a cosmic blessing for the couple (2-3 sentences, closed punctuation), followed by the fixed signature line "✦ SOUL OS" as the very last line. Never end mid-sentence; never omit the signature line.',
   ];
   if (bl) sysLines.push(bl.guard);
   const system = sysLines.join('\n');
@@ -13998,6 +14068,8 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (monthly, day 1 = the first day of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
+    // 🛡️ E100-③：周易真值卦锁（确定性选卦：FNV d1|d2|windowStart——同对同窗恒定）
+    `IChing Monthly Hexagram (sole truth): ${_e100IchingHexLine(d1, d2, timeCtx.windowStart, L)}`,
   ];
   if (bl) lockLines.push(bl.lock);
   const dataLock = lockLines.filter(Boolean).join('\n');
@@ -14160,37 +14232,49 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
   //   军令钦定），关系词地道法语（choc/six-harmonie/friction/trigone）；
   //   根治法语正文渗漏英文 l'Ox（fr 原先走英文 fallback 的全局根因）。
   //   en 转译契约（无参/非 es·fr 调用 ⇒ 英文路径）逐字节保全。
+  // 🔴 E100-②（主公军令 2026-10-29）：泰语专属转译——军令钦定泰语命理口径
+  //   （生肖 ฉลู/มะโรง/จอ/กุน/มะเส็ง/ขาล/มะเมีย…；关系词 การปะทะ/ความสอดคล้องห六/
+  //   แรงเสียดทาน；三合局 ไตรภาคีธาตุไฟ/ธาตุทอง/ธาตุน้ำ/ธาตุไม้）。
+  //   根治泰语正文渗漏英文（Dragon-Dog clash / Fire trine / half-combination of
+  //   the Metal trine / coupled chart——th 原先走英文 fallback 的全局根因）。
   const _e98Lang = String(lang || '');
   const _e97Es = _e98Lang === 'es';
   const _e98Fr = _e98Lang === 'fr';
+  const _e100Th = _e98Lang === 'th';
   const BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
   const AN = _e97Es
     ? { '子': 'Rata', '丑': 'Buey', '寅': 'Tigre', '卯': 'Conejo', '辰': 'Dragón', '巳': 'Serpiente', '午': 'Caballo', '未': 'Cabra', '申': 'Mono', '酉': 'Gallo', '戌': 'Perro', '亥': 'Cerdo' }
     : _e98Fr
     ? { '子': 'Rat', '丑': 'Bœuf', '寅': 'Tigre', '卯': 'Lièvre', '辰': 'Dragon', '巳': 'Serpent', '午': 'Cheval', '未': 'Chèvre', '申': 'Singe', '酉': 'Coq', '戌': 'Chien', '亥': 'Cochon' }
+    : _e100Th
+    ? { '子': 'ชด', '丑': 'ฉลู', '寅': 'ขาล', '卯': 'เถาะ', '辰': 'มะโรง', '巳': 'มะเส็ง', '午': 'มะเมีย', '未': 'มะแม', '申': 'วาน', '酉': 'ระกา', '戌': 'จอ', '亥': 'กุน' }
     : { '子': 'Rat', '丑': 'Ox', '寅': 'Tiger', '卯': 'Rabbit', '辰': 'Dragon', '巳': 'Snake', '午': 'Horse', '未': 'Goat', '申': 'Monkey', '酉': 'Rooster', '戌': 'Dog', '亥': 'Pig' };
   const ST = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
   const TRINE = _e97Es
     ? { '申子辰': 'Agua', '亥卯未': 'Madera', '寅午戌': 'Fuego', '巳酉丑': 'Metal' }
     : _e98Fr
     ? { '申子辰': 'Eau', '亥卯未': 'Bois', '寅午戌': 'Feu', '巳酉丑': 'Métal' }
+    : _e100Th
+    ? { '申子辰': 'ธาตุน้ำ', '亥卯未': 'ธาตุไม้', '寅午戌': 'ธาตุไฟ', '巳酉丑': 'ธาตุทอง' }
     : { '申子辰': 'Water', '亥卯未': 'Wood', '寅午戌': 'Fire', '巳酉丑': 'Metal' };
   const B = '([子丑寅卯辰巳午未申酉戌亥])';
   let t = bl.lock;
-  // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语、fr 纯法语，en 沿 E96 原格式）：
-  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : _e98Fr ? `${AN[a]}-${AN[b]} choc` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
-  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : _e98Fr ? `${AN[a]}-${AN[b]} six-harmonie` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
-  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : _e98Fr ? `${AN[a]}-${AN[b]} friction` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语、fr 纯法语、th 纯泰语带拼音锚，en 沿 E96 原格式）：
+  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : _e98Fr ? `${AN[a]}-${AN[b]} choc` : _e100Th ? `การปะทะ ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
+  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : _e98Fr ? `${AN[a]}-${AN[b]} six-harmonie` : _e100Th ? `ความสอดคล้องหก ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
+  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : _e98Fr ? `${AN[a]}-${AN[b]} friction` : _e100Th ? `แรงเสียดทาน ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
   t = t.replace(new RegExp(B + B + '半合，属' + B + B + B + '局', 'g'),
     (m, a, b, x, y, z) => _e97Es
       ? `${AN[a]}-${AN[b]} media combinación del trígono de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
       : _e98Fr
       ? `${AN[a]}-${AN[b]} demi-combinaison du trigone de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
+      : _e100Th
+      ? `ครึ่งไตรภาคี${TRINE[x + y + z]} (${AN[a]}-${AN[b]})`
       : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) half-combination of the ${TRINE[x + y + z]} trine`);
   // ② 集成局：`并集成局：巳酉丑、亥卯未` ⇒ es: trígonos integrados: Metal (Serpiente-Gallo-Buey), …
   t = t.replace(/并集成局：((?:[子丑寅卯辰巳午未申酉戌亥]{3})(?:、[子丑寅卯辰巳午未申酉戌亥]{3})*)/g, (m, grp) => {
     const names = grp.split('、').filter((g) => TRINE[g]);
-    return (_e97Es ? 'trígonos integrados: ' : _e98Fr ? 'trigones intégrés : ' : 'integrated trine formations: ') + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
+    return (_e97Es ? 'trígonos integrados: ' : _e98Fr ? 'trigones intégrés : ' : _e100Th ? 'ไตรภาคีรวม: ' : 'integrated trine formations: ') + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
   });
   // ②-b E98-② 年龄差真值行转译（须在 ③ 逐字拼音化前——保留数字、三语纯语化）：
   t = t.replace(/真实年龄差：A 与 B 出生年份相差(\d+)年[^\n]*/g, (m, n) =>
@@ -14198,6 +14282,8 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
       ? `Diferencia de edad real: ${n} años separan a A y B (cite esta cifra exacta; NUNCA calcule ni altere la diferencia de edad por su cuenta)`
       : _e98Fr
       ? `Écart d'âge réel : ${n} ans séparent A et B (citez ce chiffre exact ; INTERDIT d'estimer ou de modifier vous-même l'écart d'âge)`
+      : _e100Th
+      ? `ช่องว่างอายุจริง: A และ B เกิดห่างกัน ${n} ปี (อ้างอิงตัวเลขนี้ตามตัว; ห้ามคำนวณหรือเปลี่ยนแปลงช่องว่างอายุด้วยตนเอง)`
       : `True age gap: A and B were born ${n} years apart (quote this exact figure verbatim; NEVER estimate or alter the age difference yourself)`);
   // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (pilar del año)）
   for (const [k, v] of Object.entries(ST)) t = t.split(k).join(v + ' ');
@@ -14232,6 +14318,20 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
     t = t.replace(/(année|mois|jour|heure)([A-Z][a-z]{1,3})/g, '$1 $2');
     t = t.split('↔').join(' ↔ ').split('；').join('; ');
     t = t.replace(/\s{2,}/g, ' ').trim();
+  } else if (_e100Th) {
+    // ④-th 结构短语泰语化（E100-②：th 交付全文泰语；四柱干支保留标准拼音锚）
+    t = t.split('）四柱：').join(') เสาทั้งสี่: ').split('四柱：').join('เสาทั้งสี่: ');
+    t = t.split('跨盘真实刑冲合害：').join('ความสัมพันธ์ปะทะ/สอดคล้อง/เสียดทานข้ามแผนภูมิทั้งสอง: ');
+    t = t.split('跨盘无主要刑冲合害（如实陈述，不得虚构）').join('ไม่มีความปะทะ/สอดคล้อง/เสียดทานสำคัญข้ามแผนภูมิ (ระบุตามความจริง ห้ามแต่งเติม)');
+    t = t.split('（除本锁列出的地支与关系外，盘中任何刑冲合害一律不得提及）').join('(นอกเหนือจากสาขาและความสัมพันธ์ที่ระบุในบล็อกนี้ ห้ามกล่าวถึงความปะทะ/สอดคล้อง/เสียดทานอื่นใดในแผนภูมิทั้งสอง)');
+    t = t.split('八字命理数据锁 — 系统预计算真值，论述八字时唯一可信源').join('บล็อกความจริงปาจื่อที่ระบบคำนวณล่วงหน้า — แหล่งข้อมูลเดียวที่เชื่อถือได้สำหรับการวิเคราะห์ปาจื่อทั้งหมด');
+    t = t.split('年柱').join('เสาปี').split('月柱').join('เสาเดือน')
+         .split('日柱').join('เสาวัน').split('时柱').join('เสาชั่วโมง');
+    t = t.split('（').join(' (').split('）').join(') ');
+    // ⑤-th 观感规整：↔ 两侧留白、全角分号转半角、泰语-拼音混排多空格归一（es/fr 同族正则的 th 等价物）
+    t = t.replace(/เสา(ปี|เดือน|วัน|ชั่วโมง)([A-Z][a-z]{1,3})/g, 'เสา$1 $2');
+    t = t.split('↔').join(' ↔ ').split('；').join('; ');
+    t = t.replace(/\s{2,}/g, ' ').trim();
   } else {
   // ④ 结构短语英文化（长串全角括号形态优先 → 柱 label 裸形态 → 全角括号规整为半角）
   t = t.split('）四柱：').join(') four pillars: ').split('四柱：').join('four pillars: ');
@@ -14249,14 +14349,31 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
   t = t.replace(/\s{2,}/g, ' ').trim();   // 拼音化空距规整
   }
   bl.lock = t;
-  // ⑤ 语言纯粹性绝对铁律（E96 英文版 / E97-③ 西语版 / E98-③ 法语版；引号内的汉字是「禁止示例」，非输出指令）
+  // ⑤ 语言纯粹性绝对铁律（E96 英文版 / E97-③ 西语版 / E98-③ 法语版 / E100-② 泰语版；引号内的汉字是「禁止示例」，非输出指令）
   bl.guard = bl.guard + (_e97Es
     ? '\n【PUREZA DEL IDIOMA / 语言纯粹性绝对铁律】(E97-③) En este informe en español, NUNCA escriba caracteres chinos sin traducir en el cuerpo del informe (nunca escriba 亥巳相冲, 辰酉六合, 巳酉丑 literalmente). Todo término de metafísica oriental y de Bazi debe expresarse en español fluido, p. ej. "el choque entre Cerdo y Serpiente", "la seis-armonía Dragón-Gallo", "el trígono de Metal (Serpiente-Gallo-Buey)". El bloque de datos de arriba ya está traducido al español — narre únicamente en español.'
     : _e98Fr
     ? '\n【PURETÉ LINGUISTIQUE / 语言纯粹性绝对铁律】(E98-③) Dans ce rapport en français, N\'ÉCRIVEZ JAMAIS de caractères chinois non traduits dans le corps du rapport (jamais 亥巳相冲, 辰酉六合, 巳酉丑 tels quels). Tout terme de métaphysique orientale et de Bazi doit s\'exprimer en français fluide, p. ex. « le choc entre Cochon et Serpent », « la six-harmonie Dragon-Coq », « le trigone de Métal (Serpent-Coq-Bœuf) ». Le bloc de données ci-dessus est déjà traduit en français — narrez uniquement en français.'
+    : _e100Th
+    ? '\n【ความบริสุทธิ์ของภาษา / 语言纯粹性绝对铁律】(E100-②) ในรายงานภาษาไทยนี้ ห้ามเด็ดขาดที่จะเขียนอักขระจีนที่ยังไม่แปลในเนื้อหารายงาน (ห้ามเขียน 亥巳相冲, 辰酉六合, 巳酉丑, 重生 ตรงตามตัว) และห้ามมีคำศัพท์ภาษาอังกฤษหลงเหลือในเนื้อหา เช่น Dragon-Dog clash, Fire trine, Metal trine, half-combination, coupled chart, heaven, earth, hexagram คำศัพท์โหราศาสตร์ตะวันออกและปาจื่อทั้งหมดต้องเรียบเรียงเป็นภาษาไทยลื่นไหล เช่น "การปะทะระหว่างกุนกับมะเส็ง", "ไตรภาคีธาตุไฟ (ขาล-มะเมีย-จอ)", "ไตรภาคีธาตุทอง (ฉลู-มะเส็ง)", "แผนภูมิดวงคู่สัมพันธ์", "กั้ว", "ฟ้าและดิน", "การเกิดใหม่ทางจิตวิญญาณ" บล็อกข้อมูลข้างบนแปลเป็นภาษาไทยแล้ว — เล่าเรื่องเป็นภาษาไทยล้วนเท่านั้น'
     : '\n【语言纯粹性绝对铁律 / LANGUAGE PURITY】(E96-③) In this non-Chinese deliverable, NEVER output any standalone untranslated Chinese characters in the report body (never write 亥巳相冲, 辰酉六合, 巳酉丑 etc. verbatim). All Eastern metaphysics and Bazi terms must be rendered in fluent English with standard esoteric expressions, e.g. "the Pig-Snake (Hai-Si) clash", "the Dragon-Rooster (Chen-You) six-harmony", "the Metal trine (Snake-Rooster-Ox)". The data lock above is already romanized and translated — narrate it in English only.');
   bl._e96Localized = true;   // 幂等标记（防重复转译）
   return bl;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E100-②（主公军令 2026-10-29）：非 zh 报告 CJK 输出侧硬清洗（兜底层）
+//   病理（泰语实弹实测实锤）：guard 拦不住词级偶发渗漏——「การ重生」「การ收回」
+//   单个中文词混入泰文连写流（LLM 中文源词未完全转译直出）。
+//   治法＝交付层最后防线：非 zh 报告在输出前剥除全部 CJK 统一表意字符
+//   （逐字符删除 ⇒ 流式增量帧任意切分下依然安全）＋空格规整。
+//   zh 报告零触碰；prompt/guard/锁层转译（根治层）在前，此为军令
+//   「正则 [\u4e00-\u9fa5] 命中计数 = 0」的硬验收兜底。
+// ═══════════════════════════════════════════════════════════════
+function _e100StripCjk(text) {
+  const s = String(text || '');
+  if (!/[\u4e00-\u9fff]/.test(s)) return s;
+  return s.replace(/[\u4e00-\u9fff]/g, ' ').replace(/\s{2,}/g, ' ');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -17020,21 +17137,32 @@ app.use('/api/ai-advisor', async (req, res) => {
         //   治法＝月报按语种分流：zh 3500（E89 口径上浮 500 保收束余量）、
         //   非中语 5500（西/泰/越 token/字符比 ≈1.6~2.2，四模块长卷需显著余量）。
         //   年 7500/12000、once 12000 维持 E94 军令原值零改动。
+        // 🔴 E100-①（主公军令 2026-10-29）：泰语审核实锤——th 5500/12000 仍撞顶格
+        //   截断（泰文连写无空格、token 密度冠绝六语，实测月/年尾梢断头缺祝祷收口）。
+        //   治法＝th/vi 单列高档：月 7500、年 16000（泰/越 token/字符比 ≈1.4~1.6
+        //   保守上浮 2000/4000，确保五章长卷完整收束至封印签名）；es/fr/en 已实证
+        //   收束（E98 fr 年报终章完好）零改动。
         const _e94IsZh = /^zh/i.test(String(lang || 'zh'));
+        const _e100HighDensity = /^(th|vi)$/i.test(String(lang || ''));
         const _e94MaxTokens = reportType === 'yearly'
-          ? (_e94IsZh ? 7500 : 12000)
-          : (reportType === 'monthly' ? (_e94IsZh ? 3500 : 5500) : 12000);
+          ? (_e94IsZh ? 7500 : (_e100HighDensity ? 16000 : 12000))
+          : (reportType === 'monthly' ? (_e94IsZh ? 3500 : (_e100HighDensity ? 7500 : 5500)) : 12000);
         // 🛡️ E96-②（主公军令 2026-10-26）：真流式——SSE 建流 ⇒ callAI 携 onText 回调，
         //    DeepSeek 走 stream:true 逐 delta 经 _sse.text() 即时下发（TTFT<2s，
         //    消灭月报 20s/年报 50s 黑等）；JSON 通路（无回调）契约逐字节零改动。
         const _e96Opts = { maxTokens: _e94MaxTokens, reportType };
-        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(d); } catch (e) { /* 单帧失败不断流 */ } };
-        const insight = await callAI(
+        // 🛡️ E100-② 输出侧兜底：非 zh 报告 CJK 硬清洗——SSE 增量帧逐字符剥除
+        //    （帧任意切分下安全）＋终帧全文再洗一遍（词级偶发渗漏如「การ重生」根治）。
+        const _e100NonZh = !/^zh/i.test(String(lang || 'zh'));
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? _e100StripCjk(d) : d); } catch (e) { /* 单帧失败不断流 */ } };
+        let insight = await callAI(
           _compat.system,
           _compat.user,
           process.env,
           _e96Opts
         );
+        // 🛡️ E100-② 终帧清洗（军令验收铁指标：[\u4e00-\u9fa5] 命中 = 0；zh 零触碰）
+        if (_e100NonZh) insight = _e100StripCjk(insight);
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）

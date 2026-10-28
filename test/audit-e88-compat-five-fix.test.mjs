@@ -110,10 +110,14 @@ test('E88-②-3 年报 maxTokens 档位（E89 校准→E94 语种分流后继）
   // E94-② 军令（2026-10-26）：zh 年 7500 / 非中语年 12000（截断根治）
   // 🔴 E97-① 后继化（2026-10-28）：月报 zh 3500／非中语 5500（外语月报撞 3000 顶格截断根治）；
   //    once 12000 沿袭不变。
-  assert.ok(SERVER.includes('_e94IsZh ? 7500 : 12000'),
+  // 🛡️ E100-① 后继化：th/vi 高密度单列档挤掉旧三元字面量——语义断言改为
+  //    变量存在性＋高密度档（zh 7500/es·fr·en 12000/th·vi 16000 语义不变）。
+  assert.ok(SERVER.includes('const _e94IsZh ='),
     'callAI maxTokens 未按 E94 语种分流口径（7000 死板残留）');
-  assert.ok(SERVER.includes("reportType === 'monthly' ? (_e94IsZh ? 3500 : 5500) : 12000"),
-    '月/once 档位漂移（应 E97-① 月 zh 3500／非中 5500／once 12000）');
+  assert.ok(SERVER.includes('_e100HighDensity ? 16000 : 12000'),
+    'E100-① th/vi 年报高密度档缺失');
+  assert.ok(SERVER.includes("reportType === 'monthly' ? (_e94IsZh ? 3500 :"),
+    '月/once 档位漂移（应 E97-① 月 zh 3500／E100-① th·vi 7500／once 12000）');
 });
 
 test('E88-②-4 replay 旧短壳守卫（旧四段壳不得挡死新长卷交付）', () => {
@@ -222,7 +226,7 @@ test('E88-⑤-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e88-compat-five-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));

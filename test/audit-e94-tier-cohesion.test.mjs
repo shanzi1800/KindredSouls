@@ -64,20 +64,23 @@ test('E94-①-3 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
 test('E94-②-1 行为级：maxTokens 语种分流（zh 年 7500／非中语年 12000／月 zh 3500·非中语 5500（E97-①）／once 12000）', () => {
   const i = SERVER.indexOf('const _e94IsZh =');
   assert.ok(i > 0, '语种分流计算缺失');
-  const seg = SERVER.slice(i, SERVER.indexOf('const insight = await callAI(', i));
+  const seg = SERVER.slice(i, SERVER.indexOf('let insight = await callAI(', i));
   const expr = seg.slice(seg.indexOf('const _e94IsZh'), seg.indexOf(';', seg.indexOf('const _e94MaxTokens') ) + 1);
   const calc = new Function('lang', 'reportType', `${expr}\nreturn _e94MaxTokens;`);
   assert.equal(calc('zh', 'yearly'), 7500, 'zh 年报应为 7500');
   assert.equal(calc('zh-CN', 'yearly'), 7500, 'zh 前缀方言应归 zh');
   assert.equal(calc('fr', 'yearly'), 12000, 'fr 年报应为 12000（截断根治）');
-  assert.equal(calc('th', 'yearly'), 12000, 'th 年报应为 12000');
-  assert.equal(calc('vi', 'yearly'), 12000, 'vi 年报应为 12000');
+  // 🛡️ E100-① 后继化：th/vi 高密度单列（泰语审核实锤 12000 仍截断）
+  assert.equal(calc('th', 'yearly'), 16000, 'th 年报应为 16000（E100-①）');
+  assert.equal(calc('vi', 'yearly'), 16000, 'vi 年报应为 16000（E100-①）');
   assert.equal(calc('en', 'yearly'), 12000, 'en 年报应为 12000');
   // 🛡️ E97-① 后继化（主公军令 2026-10-28）：非中语月报扩容 5500、zh 3500——
   //    旧「月报维持 3000」退役（西语审核实锤外语月报撞 3000 顶格截断）。
   assert.equal(calc('fr', 'monthly'), 5500, '月报非中语应为 5500（E97-① 扩容）');
   assert.equal(calc('es', 'monthly'), 5500, '月报 es 应为 5500（E97-① 扩容）');
   assert.equal(calc('zh', 'monthly'), 3500, '月报 zh 应为 3500（E97-①）');
+  assert.equal(calc('th', 'monthly'), 7500, '月报 th 应为 7500（E100-① 高密度）');
+  assert.equal(calc('vi', 'monthly'), 7500, '月报 vi 应为 7500（E100-① 高密度）');
   assert.equal(calc('fr', 'once'), 12000, 'once 维持 12000');
   assert.equal(calc(undefined, 'yearly'), 7500, '缺省 lang 应按 zh fail-closed');
 });
@@ -152,7 +155,7 @@ test('E94-⑤-1 闸门接线：test:astro 含本闸门（70 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e94-tier-cohesion.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE94 = parts.findIndex((p) => p.includes('audit-e94-'));
   const iE92 = parts.findIndex((p) => p.includes('audit-e92-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

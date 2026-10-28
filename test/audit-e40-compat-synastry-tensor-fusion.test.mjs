@@ -154,7 +154,8 @@ SYNASTRY_FIXTURE = {
   frictions: DUAL_TIMED.summary.frictions,
   signatures: DUAL_TIMED.summary.signatures,
 };
-const RATIO_TEXT = Number(DUAL_TIMED.harmony.ratio).toFixed(3);
+// 🔴 E100 后继化：裸浮点 0.694 ⇒ 百分比 69.4%（刀④裸浮点清洗，ai-advisor.js synastry ratio 行）
+const RATIO_TEXT = (Number(DUAL_TIMED.harmony.ratio) * 100).toFixed(1) + '%';
 
 test('A1 引擎 dual-tensor 契约锁定：键集精确 / harmony 与 tensor 自洽 / 确定性幂等', () => {
   assert.deepEqual(Object.keys(DUAL_TIMED).sort(), [...DUAL_KEYS].sort(), 'dual-tensor 出参键集漂移');

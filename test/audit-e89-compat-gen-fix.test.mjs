@@ -127,20 +127,26 @@ test('E89-②-5 月报模块标题复用前端章节头正则（六语形态闭�
 /* ════════ ③ maxTokens 军令口径 ═══════ */
 
 test('E89-③-1 maxTokens 校准（E94/E97 后继：zh 年 7500/非中语年 12000/月 zh 3500·非中语 5500/once 12000）', () => {
-  assert.ok(SERVER.includes('_e94IsZh ? 7500 : 12000'),
+  // 🛡️ E100-① 后继化：th/vi 高密度单列档挤掉 E94/E97 旧三元形态——语义断言改为
+  //    分流变量存在性＋高密度档存在性（旧「: 12000」/「: 5500」字面量退役）。
+  assert.ok(SERVER.includes('const _e94IsZh ='),
     'maxTokens 未按 E94 语种分流（外语截断根治缺失）');
   // 🛡️ E97-① 后继化：月报语种分流（非中语 5500 扩容根治截断）——旧 3000 字面量退役
-  assert.ok(SERVER.includes("reportType === 'monthly' ? (_e94IsZh ? 3500 : 5500) : 12000"),
+  assert.ok(SERVER.includes("reportType === 'monthly' ? (_e94IsZh ? 3500 :"),
     '月/once 档位漂移（E97-① 月报分流表达式缺失）');
+  assert.ok(SERVER.includes('_e100HighDensity ? 16000 : 12000') && SERVER.includes('_e100HighDensity ? 7500 : 5500'),
+    'E100-① th/vi 高密度档缺失');
 });
 
 test('E89-③-2 48000 违令字面量零容忍（全仓 callAI 消费点）', () => {
   // 军令「立即停止传递 48000」——生成分流消费点不得残留
-  const i = SERVER.indexOf('const insight = await callAI(');
+  const i = SERVER.indexOf('let insight = await callAI(');
   assert.ok(i > 0, '生成 callAI 消费点缺失');
   // 🛡️ E96-② 后继化：options 已前移为 _e96Opts 构造（onText 流式注入）——
   //    断言窗口向前扩 300 字以覆盖 options 构造行；48000 零容忍语义不变。
-  const seg = SERVER.slice(Math.max(0, i - 300), i + 400);
+  // 🛡️ E100-② 后继化：callAI 前插入 CJK 清洗层（_e100NonZh/帧级 strip）——
+  //    窗口再扩 300→700 覆盖 _e96Opts 构造行；reportType 语义不变。
+  const seg = SERVER.slice(Math.max(0, i - 700), i + 400);
   assert.ok(!seg.includes('48000'), '生成链 48000 残留违令');
   assert.ok(seg.includes('reportType'), 'callAI 未传 reportType（回执诊断信号丢失）');
 });
@@ -179,7 +185,7 @@ test('E89-⑥-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   assert.ok(chain.includes('audit-e89-compat-gen-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
   // 🔴 E90 语义演进：E90 入编（69 段），本闸门历史基线同步上调。
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

@@ -259,7 +259,8 @@ test('D2 里程碑次序：calculating → stage0 → 星历张量 → stage1 �
   const iStage1 = BRANCH.indexOf('if (_sse) _sse.stage(1, lang);');
   // 🔴 stage2（「解析灵宠羁绊契约能量」）必须**先于** callAI 下发 —— 它宣告的正是最长的那段真实等待（AI 正文生成）
   const iStage2 = BRANCH.indexOf('if (_sse) _sse.stage(2, lang);');
-  const iCall = BRANCH.indexOf('const insight = await callAI(');
+  // 🔴 E100-② 后继化：终帧 CJK 清洗需重赋值 ⇒ const→let（锚随真源，语义不变）
+  const iCall = BRANCH.indexOf('let insight = await callAI(');
   const iAsm = BRANCH.indexOf("_pipe.advance('assembling')");
   const iStage3 = BRANCH.indexOf('if (_sse) _sse.stage(3, lang);');
   const seq = [['calculating', iCalc], ['stage0', iStage0], ['synastry', iSyn], ['stage1', iStage1],

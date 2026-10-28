@@ -279,7 +279,7 @@ test('C7 命中路径零算力：HIT 分支必须在建流水线/调 AI 之前�
   const iHitJson = srv.indexOf('return res.json({ insight: _g41Replay.insight');
   const iHitSse = srv.indexOf('return _rps.ready(lang, { insight: _g41Replay.insight');
   const iPipe = srv.indexOf('const _pipe = createReportPipeline();');
-  const iCallAI = srv.indexOf('const insight = await callAI(');
+  const iCallAI = srv.indexOf('let insight = await callAI(');
   assert.ok(iReplayBranch > 0 && iHitJson > iReplayBranch && iHitSse > iReplayBranch, 'HIT 分支接线缺失');
   assert.ok(iPipe > 0 && iCallAI > 0, 'MISS 生成链路锚点缺失');
   assert.ok(iHitJson < iPipe && iHitSse < iPipe, 'HIT 回执未在建流水线之前返回（零算力红线）');

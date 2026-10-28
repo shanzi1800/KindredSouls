@@ -45,7 +45,7 @@ function fnBody(src, anchor) {
 test('E97-①-1 行为级：月报 maxTokens 语种分流（zh 3500／非中语 5500；年/once 维持 E94 原值）', () => {
   const i = SERVER.indexOf('const _e94IsZh =');
   assert.ok(i > 0, '语种分流计算缺失');
-  const seg = SERVER.slice(i, SERVER.indexOf('const insight = await callAI(', i));
+  const seg = SERVER.slice(i, SERVER.indexOf('let insight = await callAI(', i));
   const expr = seg.slice(seg.indexOf('const _e94IsZh'), seg.indexOf(';', seg.indexOf('const _e94MaxTokens')) + 1);
   const calc = new Function('lang', 'reportType', `${expr}\nreturn _e94MaxTokens;`);
   // 月报：军令主刀位（西语审核实锤 fr/es 撞 3000 顶格截断）
@@ -54,8 +54,10 @@ test('E97-①-1 行为级：月报 maxTokens 语种分流（zh 3500／非中语 
   assert.equal(calc('es', 'monthly'), 5500, 'es 月报应为 5500（E97-① 扩容）');
   assert.equal(calc('fr', 'monthly'), 5500, 'fr 月报应为 5500');
   assert.equal(calc('en', 'monthly'), 5500, 'en 月报应为 5500');
-  assert.equal(calc('th', 'monthly'), 5500, 'th 月报应为 5500');
-  assert.equal(calc('vi', 'monthly'), 5500, 'vi 月报应为 5500');
+  // 🛡️ E100-① 后继化：th 高密度单列 7500（泰语审核实锤 5500 仍截断）
+  assert.equal(calc('th', 'monthly'), 7500, 'th 月报应为 7500（E100-①）');
+  // 🛡️ E100-① 后继化：vi 高密度单列 7500
+  assert.equal(calc('vi', 'monthly'), 7500, 'vi 月报应为 7500（E100-①）');
   // 年报/once：E94 军令原值零改动（回归护栏）
   assert.equal(calc('zh', 'yearly'), 7500, 'zh 年报维持 7500');
   assert.equal(calc('es', 'yearly'), 12000, 'es 年报维持 12000');
@@ -197,7 +199,7 @@ test('E97-④-1 闸门接线：test:astro 含本闸门（73 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e97-es-l10n-tokens.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

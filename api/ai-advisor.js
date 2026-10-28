@@ -1444,7 +1444,7 @@ export function renderSynastryBlock(syn, lang) {
   const lines = [
     t.lockHead,
     `${lb.precision}=${prec}`,
-    `${lb.harmony}=${h} / ${lb.hard}=${hd} / ${lb.total}=${tot} / ${lb.ratio}=${ratio === null ? lb.none : ratio.toFixed(3)}`,
+    `${lb.harmony}=${h} / ${lb.hard}=${hd} / ${lb.total}=${tot} / ${lb.ratio}=${ratio === null ? lb.none : (ratio * 100).toFixed(1) + '%'}`, // 🛡️ E100-④：裸浮点 0.694 被模型逐字复读进正文（泰语实测实锤）⇒ 百分比呈现 69.4%
     `${lb.unknown}=${(Array.isArray(syn.unknown) && syn.unknown.length > 0) ? syn.unknown.map(x => _synPlanet(t, x)).join(t.listSep) : lb.none}`,
     `${lb.bonds}=${_synList(t, syn.bonds, t.noSoft)}`,
     `${lb.frictions}=${_synList(t, syn.frictions, t.noHard)}`,

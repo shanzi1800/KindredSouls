@@ -183,8 +183,10 @@ test('E98-③-5 行为级：月报塔罗引线六语单句（fr 实弹中文渗�
     throw new Error(`unbalanced fn: ${anchor}`);
   }
   const { computeCompatScores, buildCompatTimeContext, renderSynastryBlock } = await import(path.join(ROOT, 'api/ai-advisor.js'));
-  const build = new Function('computeCompatScores', 'buildCompatTimeContext', 'renderSynastryBlock',
-    `${monthlyTables}\n${fnB('function buildCompatMonthlyFourModulePrompt(')}\nreturn buildCompatMonthlyFourModulePrompt;`)(computeCompatScores, buildCompatTimeContext, renderSynastryBlock);
+  // 🔴 E100 后继化：月报构造器新增 I Ching 真值锁消费（_e100IchingHexLine）⇒ VM 依赖注入补位。
+  const _e100IchingHexLine = new Function(`${fnB('function _e100IchingHexLine(')}\nreturn _e100IchingHexLine;`)();
+  const build = new Function('computeCompatScores', 'buildCompatTimeContext', 'renderSynastryBlock', '_e100IchingHexLine',
+    `${monthlyTables}\n${fnB('function buildCompatMonthlyFourModulePrompt(')}\nreturn buildCompatMonthlyFourModulePrompt;`)(computeCompatScores, buildCompatTimeContext, renderSynastryBlock, _e100IchingHexLine);
   const cases = [
     { lang: 'zh', needle: '当月这枚【La Lune】的微观指引' },
     { lang: 'en', needle: 'The micro-guidance of La Lune' },
@@ -263,7 +265,7 @@ test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 75, `链段数异常（实得 ${parts.length}，基线 75（E99 升 75 段））`);
+  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
   const iE98 = parts.findIndex((p) => p.includes('audit-e98-'));
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
