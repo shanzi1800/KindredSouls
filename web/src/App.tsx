@@ -16,10 +16,22 @@ import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
-/* 🐾🏆 E105（主公军令 2026-10-30）：伴读共鸣状态机＋命盘金卡导出＋骨架承接 */
-import CompanionResonance from './components/companion/CompanionResonance';
+/* 🏆 E105→E106（主公军令 2026-10-30）：命盘金卡导出＋骨架承接。
+   🧹 E106-刀二（主公军令 2026-10-30）：E105 伴读共鸣状态机 import 物理拔除——
+   全站交互收拢铁律（主公钦定）：所有交流/专业解答/互动信息全部归首页与选定灵宠，
+   结果页仅留①报告正文②金卡导出③带路回首页，零伴读气泡/抽屉/浮动条。 */
 import GoldCardExporter from './components/exporter/GoldCardExporter';
 import SkeletonMountGuard from './components/SkeletonMountGuard';
+// 🏆 E106-刀一（主公军令 2026-10-30）：金卡干支矩阵/格局徽记/六爻卦名 纯函数核
+//    （结构化真值取代 engines.bazi.detail 调试串直通）
+import {
+  computeCardPillars,
+  formatPillarRows,
+  deriveCardTrine,
+  parseIchingHeadline,
+  composeHexCardLabel,
+  hexLinePattern,
+} from './lib/goldCardChart.mjs';
 // 🧹 E85（主公军令 2026-10-24）：「合盘」整个功能板块及报告退役 —— CompatReportCanvas /
 //    SynastryProgress 进度卡 / 报告张量画布 / houseOverlay 宫位网格渲染链全部下架
 //    （月报·年报交付改走纯文本段落呈现，服务端 report_payload 契约不动、后端封仓零改动）。
@@ -1643,7 +1655,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             /* ✦ E84（主公军令 2026-10-22）：塔罗牌卡面精修——🌍 emoji 裸奔退役，
                暗金铭牌框（.ks-tarot-frame）＋微光悬浮动效＋正逆位旋转；正逆位文案取
                tarot.ts 六语真源 orientation（原硬编码英文 Upright/Reversed 退役）。 */
-            <div className="ks-tarot-frame" data-companion-anchor="tarot">
+            <div className="ks-tarot-frame">
               <div className="ks-tarot-glyph" style={{ transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
               <div className="ks-tarot-name">{tarotCard.name}<span className="ks-tarot-orient"> · {tarotCard.orientation}</span></div>
             </div>
@@ -1657,6 +1669,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               （Canvas 375×667×dpr3；桌面 a download 落盘／移动端长按保存弹层；
               金句决策树＝塔罗主牌命中→八字三合兜底，零异步） */}
           {insight && (
+            /* 🏆 E105-刀二→E106-刀一（主公军令 2026-10-30）：深空黑金命盘金卡纯前端离线导出
+                （Canvas 375×667×dpr3；桌面 a download 落盘／移动端长按保存弹层）。
+                🔴 E106-刀一：payload 改结构化真值装配——干支对称矩阵（computeCardPillars/
+                formatPillarRows，与报告显示同口径）＋格局徽记（deriveCardTrine）＋六爻卦名
+                卦序与线谱（parseIchingHeadline/composeHexCardLabel/hexLinePattern）——
+                旧调试串直通通道物理拔除（主公核验截图①病根）。 */
             <GoldCardExporter
               locale={lang}
               payload={{
@@ -1665,7 +1683,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 isReversed: tarotCard ? tarotCard.isReversed : false,
                 tarotName: tarotCard ? tarotCard.name : '',
                 tarotOrientation: tarotCard ? tarotCard.orientation : '',
-                baziPattern: bazi || '',
+                pillarRows: formatPillarRows(lang, computeCardPillars(d1, d2) || { a: [], b: [] }),
+                trineBadge: deriveCardTrine(lang, computeCardPillars(d1, d2) || { a: [], b: [] }).badge,
+                hexLabel: (() => {
+                  const h = parseIchingHeadline(iching);
+                  return h ? composeHexCardLabel(lang, h) : '';
+                })(),
+                hexLines: (() => {
+                  const h = parseIchingHeadline(iching);
+                  return h ? hexLinePattern(h.lower, h.upper) : null;
+                })(),
                 overall,
                 d1,
                 d2,
@@ -1692,7 +1719,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               🧹 合盘张量画布（CompatReportCanvas）与推演进度卡（SynastryProgress）渲染退役，
               月报/年报交付＝纯文本段落呈现（服务端 payload 契约不动，后端封仓零改动）。 */}
           {insight && (
-            <div className="ks-glass-card" data-companion-anchor="bazi" style={{ marginTop: '20px', padding: '16px' }}>
+            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
               <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
               </div>
@@ -1747,22 +1774,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
              黑屏根因＝handleLogout 清数据后 reload ⇒ result 为空 ⇒ 渲染空白页；
              退出登录归属全局个人中心，绝不出现在交付长卷（军令逐字）。
              「重新测算」back-btn 链路已核验合规（清缓存＋平滑回表单）。 */}
-          {/* 🐾 E105-刀一（主公军令 2026-10-30）：灵宠双端伴读共鸣状态机——
-              报告挂载 300ms 首句定调；IO 监听塔罗/八字锚点（视口 60%）共鸣点拨 4s 自退；
-              点击 EXPANDED；台词本地规则匹配零异步（<16ms 禁 LLM）。
-              ⚠️ 仅随 insight 洞察区挂载（首页白名单零触碰）。 */}
-          {insight && (
-            <CompanionResonance
-              locale={lang}
-              ast={{
-                cardId: tarotCard ? tarotCard.id : null,
-                isReversed: tarotCard ? tarotCard.isReversed : false,
-                tarotName: tarotCard ? tarotCard.name : '',
-                overall,
-                bazi: bazi || '',
-              }}
-            />
-          )}
+          {/* 🧹 E106-刀二（主公军令 2026-10-30）：E105 伴读共鸣状态机挂载位整体拔除——
+              主公钦定全站交互收拢铁律：所有交流/专业解答/互动信息全部归首页与选定
+              灵宠互动（唯一互动窗口＝首页 FamiliarChatSheet）；结果页零伴读气泡/
+              抽屉/「我在这里，想问什么随时点我」浮动条，只留报告正文＋金卡导出＋
+              灵宠认领带路回跳（伴读组件文件保留备复活，未挂载）。 */}
         </div>
       )}
     </div>

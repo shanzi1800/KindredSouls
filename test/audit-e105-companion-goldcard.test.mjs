@@ -262,7 +262,8 @@ test('④-1 金卡画布军令锚（375×667×3／深空渐变／噪点／双层
   assert.ok(SRC.includes('#08090C'), '缺深空黑渐变终点 #08090C');
   assert.ok(/0\.03|3%/.test(SRC), '缺 3% 噪点');
   assert.ok(SRC.includes('212, 175, 55, 0.45'), '缺暗金外框 rgba(212,175,55,0.45)');
-  assert.ok(SRC.includes('212, 175, 55, 0.15'), '缺暗金内框 rgba(212,175,55,0.15)');
+  // 🏆 E106-刀一 后继化：内框升级香槟金发丝线 rgba(243,229,171,0.55)（军令字体阶梯同款色阶）
+  assert.ok(SRC.includes('243, 229, 171, 0.55'), '缺香槟金内框 rgba(243,229,171,0.55)（E106 升级）');
   assert.ok(SRC.includes('✦'), '缺四角十字星标/印章 ✦');
   assert.ok(SRC.includes('SOUL OS'), '缺防伪底栏 SOUL OS');
   assert.ok(SRC.includes('COSMIC IMMUTABLE ARCHIVE'), '缺防伪底栏 COSMIC IMMUTABLE ARCHIVE');
@@ -352,25 +353,28 @@ test('⑥-1 Shimmer 骨架屏（微光动效＋CLS=0 高度预留）', async () 
 
 // ═══════════════ 挂载与入编（刀四）═══════════════
 
-test('⑦-1 三组件挂载 App.tsx（金卡 CTA／伴读共鸣／骨架承接）', async () => {
+test('⑦-1 三组件挂载 App.tsx（金卡 CTA／骨架承接＋E106 伴读拔除后继化）', async () => {
   assert.ok(APP.includes('GoldCardExporter'), 'App.tsx 未挂金卡导出器');
-  assert.ok(APP.includes('CompanionResonance'), 'App.tsx 未挂伴读共鸣状态机');
   assert.ok(APP.includes('SkeletonMountGuard'), 'App.tsx 未挂骨架承接');
+  // 🧹 E106-刀二 后继化（主公军令 2026-10-30 交流收拢首页铁律）：伴读共鸣状态机
+  //    挂载位物理拔除——App.tsx 不得再 import/实例化伴读组件（组件文件保留备复活）；
+  //    IO 共鸣锚点 data-companion-anchor 同步退役（无监听者即死属性）。
+  assert.ok(!APP.includes('CompanionResonance'), 'E106-刀二违例：App.tsx 仍挂伴读状态机');
+  assert.ok(!APP.includes('data-companion-anchor'), 'E106-刀二违例：残留 IO 共鸣锚点');
   // 挂载位：付费墙收起⇒报告挂载链（$4.99 once 洞察区）
-  assert.ok(APP.includes('<CompanionResonance'), '伴读组件未实例化');
   assert.ok(APP.includes('<GoldCardExporter'), '金卡导出器未实例化');
   assert.ok(APP.includes('<SkeletonMountGuard'), '骨架屏未实例化');
-  // 共鸣锚点：八字局/塔罗牌 data 属性（IO 监听靶）
-  assert.ok(APP.includes('data-companion-anchor'), '缺 IO 共鸣锚点');
 });
 
-test('⑦-2 军规链 80 段入编（e105 居 e104 后 e40 前）', async () => {
+test('⑦-2 军规链段数入编（E106 后继化：81 段／e105 居 e106 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 80, `军规链段数异常（实得 ${segs.length}，基线 80（E105 升 80 段））`);
+  // 🏆 E106-刀五 后继化：E105 基线 80 段 → E106 升 81 段（e106 插 e105 后 e40 前）
+  assert.equal(segs.length, 81, `军规链段数异常（实得 ${segs.length}，基线 81（E106 升 81 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 3].includes('audit-e105'), 'e105 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 4].includes('audit-e104'), 'e104 须居 len-4');
+  assert.ok(segs[segs.length - 3].includes('audit-e106'), 'e106 须居 len-3（e40 前）');
+  assert.ok(segs[segs.length - 4].includes('audit-e105'), 'e105 须居 len-4（e106 后）');
+  assert.ok(segs[segs.length - 5].includes('audit-e104'), 'e104 须居 len-5');
 });
 
 test('⑦-3 双端视口防重叠（断言守卫源码级：无绝对重叠几何）', async () => {

@@ -98,7 +98,14 @@ const FamiliarHomeCard: React.FC = () => {
   /* 🔒 E48（沿袭）: 呈现门禁 —— paidOk 三态：true=放行 / false=拦截 / null=判定中（fail-closed 同拦截） */
   const [paidOk, setPaidOk] = useState<boolean | null>(null);
 
-  /* 🔒 E48: 权益自检（与 WealthReportPage::isWealthPaid 同源谓词，简化版同语义） */
+  /* 🔒 E48: 权益自检（与 WealthReportPage::isWealthPaid 同源谓词，简化版同语义）
+     🏆 E106-刀三（主公军令 2026-10-30）：合法灵宠档熔断付费拦截——病根＝沙盒 $4.99
+        匿名直通（E99）不落 user_profiles ⇒ 旧判定无 session 恒 paidOk=false ⇒
+        付讫认领回首页后趴键不渲染、对话舱被「解锁报告后我就能天天陪你了」拦截。
+        军令钦定：首页检测到**合法灵宠档**（ks_familiar 经 readFamiliarRecord 形状
+        守卫＋E49 按盘隔离清洗链）即熔断付费拦截——认领档只能经付费漏斗产生
+        （付费墙 FamiliarPicker 全卡上锁＋报告尾 AdoptFamiliarCTA 解锁后承接），
+        档在场＝付费证明；fail-closed 契约不动（无档仍须账号/绿道判定）。 */
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -106,6 +113,12 @@ const FamiliarHomeCard: React.FC = () => {
         const params = new URLSearchParams(window.location.search);
         // 💳 E50: 绿道去粘性 —— 只认当前 URL 显式 free_access=1（同 WealthReportPage E50 整改）
         if (params.get('free_access') === '1') {
+          if (alive) setPaidOk(true);
+          return;
+        }
+        // 🏆 E106-刀三：合法灵宠档熔断（沙盒匿名付讫用户的主通路）
+        const famStore = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+        if (readFamiliarRecord(famStore, FAMILIAR_LS_KEY)) {
           if (alive) setPaidOk(true);
           return;
         }
@@ -295,21 +308,19 @@ const FamiliarHomeCard: React.FC = () => {
     return String(rec0.profile.name || '') || (IP_OF_MODE[mode] ?? 'Sophia');
   };
 
-  const tapFamiliar = useCallback((rec0: HomeRecord) => {
-    const profile = rec0.profile;
-    const mode = String(profile.relation_mode || '');
+  /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
+  const [chatOpen, setChatOpen] = useState(false);
+
+  const tapFamiliar = useCallback((_rec0: HomeRecord) => {
+    /* 🏆 E106-刀四（主公军令 2026-10-30）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋联动
+       呼出对话舱（交流收拢铁律——首页是全站唯一互动窗口；今日锦囊改由 9s 主动
+       气泡与舱内问候承载，点击恒直开舱）。 */
     setFamPulse(true);
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
-    famPulseTimer.current = setTimeout(() => setFamPulse(false), 1500);
-    // 🌟 E54-2 轮播：0/1/2 ⇒ 今日锦囊三段（数字+色 / 花+花语 / 贵人方位+能量语）；3 ⇒ 命理轻语
-    const seq = tapSeqRef.current++ % 4;
-    if (seq < 3) {
-      showBubble(nameOf(rec0), t('familiar.luckLead'), luckLine(seq, rec0));
-    } else {
-      const wIdx = whisperIndex(profile, localDateKey(new Date()), WHISPER_COUNT);
-      showBubble(nameOf(rec0), relationLabel(mode), wIdx >= 0 ? whisperText(wIdx) : '');
-    }
-  }, [luckLine, relationLabel, showBubble, t, whisperText]);
+    famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
+    setFamBubble(null);
+    setChatOpen(true);
+  }, []);
 
   /* 🌟 E54-2 日常主动气泡：认领且权益就位后 9s，灵宠**主动**衔来今日锦囊一次
      （用户若已主动点击互动过 ⇒ 不打扰；仅一次，绝不循环骚扰） */
@@ -327,8 +338,6 @@ const FamiliarHomeCard: React.FC = () => {
   const recs: HomeRecord[] = rec ? [rec] : [];
   const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
 
-  /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
-  const [chatOpen, setChatOpen] = useState(false);
   // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
   //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
   //   无灵宠档（rec 为空）时不动：避免弹出一个无内容的空舱。

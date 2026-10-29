@@ -187,11 +187,12 @@ test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已�
 // ── 军规链基线（后继化：E102 入编后 77 段；e40-compat 恒 len-2、python 恒链尾）──
 test('E100-⑤ 军规链基线（后继化：E102 升 77 段；e40-compat 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 80, '基线 80（E105 升 80 段）');   // 🛡️ E103/E104 后继化：77→79
-  assert.ok(parts[parts.length - 3].includes('e105'), 'e105 未居 e40-compat 前');   // 🛡️ E105 后继化：位置链整体顺移一位
-  assert.ok(parts[parts.length - 4].includes('e104'), 'e104 未居 e105 前');
-  assert.ok(parts[parts.length - 5].includes('e103'), 'e103 未居 e104 前');
-  assert.ok(parts[parts.length - 6].includes('e102'), 'e102 未居 e103 前');
+  assert.strictEqual(parts.length, 81, '基线 81（E106 升 81 段）');   // 🛡️ E106 后继化：80→81；E103/E104 后继化：77→79
+  assert.ok(parts[parts.length - 3].includes('e106'), 'e106 未居 e40-compat 前');   // 🛡️ E106 后继化：位置链整体顺移一位
+  assert.ok(parts[parts.length - 4].includes('e105'), 'e105 未居 e106 前');
+  assert.ok(parts[parts.length - 5].includes('e104'), 'e104 未居 e105 前');
+  assert.ok(parts[parts.length - 6].includes('e103'), 'e103 未居 e104 前');
+  assert.ok(parts[parts.length - 7].includes('e102'), 'e102 未居 e103 前');
   assert.ok(parts[parts.length - 2].includes('e40-compat'), 'e40-compat 未居 len-2');
   assert.ok(parts[parts.length - 1].includes('python'), 'python 未居链尾');
 });
