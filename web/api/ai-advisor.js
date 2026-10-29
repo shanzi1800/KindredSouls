@@ -1335,6 +1335,7 @@ export const SYNASTRY_I18N = {
     aspects: _synAspectTerms('es'),
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
+    decComma: true,   // 🛡️ E103-③：es 小数逗号（5,54° / 69,4 %）
     tenor: { harmonious: 'la resonancia tiende a la armonía', balanced: 'armonía y tensión equilibradas', hard: 'la resonancia tiende a la prueba' },
     noHard: 'No hay aspectos duros en esta sinastría — informe con honestidad, nunca invente conflicto',
     noSoft: 'No hay aspectos suaves en esta sinastría — informe con honestidad, nunca invente apoyo',
@@ -1353,6 +1354,7 @@ export const SYNASTRY_I18N = {
     aspects: _synAspectTerms('fr'),
     pairFmt: '{a}{asp}{b} (orbe {orb}°)',
     listSep: ', ',
+    decComma: true,   // 🛡️ E103-③：fr 小数逗号（5,54° / 69,4 %）
     tenor: { harmonious: 'la résonance penche vers l\'harmonie', balanced: 'harmonie et tension équilibrées', hard: 'la résonance penche vers l\'épreuve' },
     noHard: "Aucun aspect dur dans cette synastrie — rendez compte honnêtement, n'inventez jamais de conflit",
     noSoft: "Aucun aspect doux dans cette synastrie — rendez compte honnêtement, n'inventez jamais de soutien",
@@ -1414,7 +1416,9 @@ function _synPair(t, item) {
   const b = _synPlanet(t, item && item.b);
   const asp = (t.aspects && t.aspects[item && item.aspect]) || String((item && item.aspect) || '');
   const orb = (item && typeof item.orb === 'number') ? item.orb : '?';
-  return t.pairFmt.replace('{a}', a).replace('{asp}', asp).replace('{b}', b).replace('{orb}', String(orb));
+  // 🛡️ E103-③（主公军令 2026-10-30）：fr/es 度数小数逗号化（orbe 5,54°——军令刀三）
+  const orbStr = t.decComma ? String(orb).replace('.', ',') : String(orb);
+  return t.pairFmt.replace('{a}', a).replace('{asp}', asp).replace('{b}', b).replace('{orb}', orbStr);
 }
 
 function _synList(t, items, emptyText) {
@@ -1444,7 +1448,7 @@ export function renderSynastryBlock(syn, lang) {
   const lines = [
     t.lockHead,
     `${lb.precision}=${prec}`,
-    `${lb.harmony}=${h} / ${lb.hard}=${hd} / ${lb.total}=${tot} / ${lb.ratio}=${ratio === null ? lb.none : (ratio * 100).toFixed(1) + '%'}`, // 🛡️ E100-④：裸浮点 0.694 被模型逐字复读进正文（泰语实测实锤）⇒ 百分比呈现 69.4%
+    `${lb.harmony}=${h} / ${lb.hard}=${hd} / ${lb.total}=${tot} / ${lb.ratio}=${ratio === null ? lb.none : (t.decComma ? (ratio * 100).toFixed(1).replace('.', ',') + ' %' : (ratio * 100).toFixed(1) + '%')}`, // 🛡️ E100-④：裸浮点 0.694 被模型逐字复读进正文（泰语实测实锤）⇒ 百分比呈现 69.4%；🛡️ E103-③：fr/es 小数逗号＋% 前空格（69,4 %，军令刀三数字本地化）
     `${lb.unknown}=${(Array.isArray(syn.unknown) && syn.unknown.length > 0) ? syn.unknown.map(x => _synPlanet(t, x)).join(t.listSep) : lb.none}`,
     `${lb.bonds}=${_synList(t, syn.bonds, t.noSoft)}`,
     `${lb.frictions}=${_synList(t, syn.frictions, t.noHard)}`,

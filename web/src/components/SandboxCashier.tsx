@@ -69,7 +69,11 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
     return t ? clampToSlot(t.label, t.slot || 'labelCard') : req.plan;
   })();
   // 🔴 E59：按钮带上 SKU 标价 ⇒ 主公逐级验收 $4.99 / $2.99 / $29.99 时一眼可辨本次模拟买的是哪一档。
-  const planPrice = sandboxPlanPrice(req.plan);
+  const planPrice = (() => {
+    const _p = sandboxPlanPrice(req.plan);
+    // 🔴 E103-③（主公军令 2026-10-30）：fr/es 标价小数逗号化（$4.99 → $4,99——军令刀三数字本地化）
+    return (_p && (L === 'fr' || L === 'es')) ? String(_p).replace('.', ',') : _p;
+  })();
 
   const authHeader = async (): Promise<Record<string, string>> => {
     try {
@@ -191,6 +195,8 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
           disabled={!!busy}
           style={{
             width: '100%', padding: '12px 20px', borderRadius: '13px', border: 'none',
+            /* 🔴 E103-③：CTA 390px 防爆——min-h 48px＋居中（E102 whiteSpace normal 之上的军令刀三口径） */
+            minHeight: '48px', textAlign: 'center', lineHeight: 1.3,
             background: busy ? '#444' : 'linear-gradient(135deg, #2ECBF7 0%, #81D8D0 100%)',
             color: '#0D0D1A', fontSize: '15px', fontWeight: 800, letterSpacing: '0.3px',
             cursor: busy ? 'not-allowed' : 'pointer', marginBottom: '14px',

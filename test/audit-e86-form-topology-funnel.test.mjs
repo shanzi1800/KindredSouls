@@ -110,8 +110,10 @@ test('E86-③-4 付费墙档位对齐 E85 军令（$2.99/$29.99；旧档退役�
   assert.ok(pw.includes('monthlyBtn'), '月报档统一文案键缺失');
   assert.ok(pw.includes('yearlyBtn'), '年报档统一文案键缺失');
   // 六语金额全覆盖
-  const moneyCount = (pw.match(/\$2\.99/g) || []).length;
-  const yearCount = (pw.match(/\$29\.99/g) || []).length;
+  // 🛡️ E103-③ 后继化（主公军令 2026-10-30 刀三数字本地化）：fr/es 档位标价小数逗号化
+  //   （$2.99 → $2,99、$29.99 → $29,99——军令钦定欧洲数字格式）；六语覆盖改「点号＋逗号」合计计权。
+  const moneyCount = (pw.match(/\$2[.,]99/g) || []).length;
+  const yearCount = (pw.match(/\$29[.,]99/g) || []).length;
   assert.ok(moneyCount >= 6, `六语月报 $2.99 未全覆盖（实得 ${moneyCount}）`);
   assert.ok(yearCount >= 6, `六语年报 $29.99 未全覆盖（实得 ${yearCount}）`);
   // 旧档文案/旧 plan 禁回流

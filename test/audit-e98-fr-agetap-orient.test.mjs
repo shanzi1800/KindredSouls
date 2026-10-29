@@ -103,17 +103,20 @@ test('E98-③-1 行为级：fr 锁零汉字·零 Ox·军令钦定生肖表·21 a
   assert.ok(!/[\u4e00-\u9fff]/.test(fr.lock), 'fr 锁须零汉字');
   // 根治病灶：英文 Ox 渗漏（军令审核实锤 l'Ox）
   assert.ok(!/\bOx\b/.test(fr.lock), 'fr 锁须零英文 Ox（军令钦定 Bœuf）');
-  // 军令钦定生肖词（抽验 6 词）
-  // 🔴 E102-刀三③ 后继化：Lièvre 原自「亥亥伪半合（亥卯未局）」三合名渗出——同气纠偏后不存在；换 Coq（Métal 三合名真值）
-  for (const w of ['Bœuf', 'Chien', 'Cochon', 'Serpent', 'Dragon', 'Coq']) {
+  // 军令钦定生肖词（抽验）
+  // 🔴 E102-刀三③ 后继化：Lièvre 原自「亥亥伪半合（亥卯未局）」三合名渗出——同气纠偏后不存在
+  // 🔴 E103-① 后继化：Coq 原自旧半合模板三合括号（Serpent-Coq-Bœuf）渗出——军令钦定
+  //   新半合「Demi-combinaison de Métal (Chou-Si)」不带生肖括号 ⇒ 本用例 Coq 不再出现
+  for (const w of ['Bœuf', 'Chien', 'Cochon', 'Serpent', 'Dragon']) {
     assert.ok(fr.lock.includes(w), `fr 生肖词缺失：${w}`);
   }
-  // 军令样例：la friction Bœuf-Chien（丑戌相刑）＋ Dragon-Chien choc（辰戌相冲）
-  assert.ok(fr.lock.includes('Bœuf-Chien friction'), 'Bœuf-Chien friction 军令样例缺失');
-  assert.ok(fr.lock.includes('Dragon-Chien choc'), 'Dragon-Chien choc 缺失');
-  // 法语三合局术语 trigone（非英文 trine）
-  assert.ok(fr.lock.includes('demi-combinaison du trigone de'), 'fr 三合局术语须 trigone');
-  assert.ok(fr.lock.includes('trigone de Métal'), 'fr Métal 三合局缺失');
+  // 🔴 E103-① 后继化（主公军令 2026-10-30）：fr 关系词改军令钦定口径
+  //   （Opposition Chen-Xu (Dragon-Chien) / Friction Chou-Xu / Demi-combinaison de Métal (Chou-Si)）
+  assert.ok(fr.lock.includes('Opposition Chen-Xu (Dragon-Chien)'), 'fr 冲军令钦定样例缺失（E103-①）');
+  assert.ok(fr.lock.includes('Friction Chou-Xu'), 'fr 刑军令钦定样例缺失（E103-①）');
+  // 法语三合局术语（E103-① 军令钦定：Demi-combinaison de Métal/Trigone élémentaire de Feu）
+  assert.ok(fr.lock.includes('Demi-combinaison de Métal (Chou-Si)'), 'fr 半合军令钦定缺失（E103-①）');
+  assert.ok(fr.lock.includes('Demi-combinaison de'), 'fr 三合局术语须 Demi-combinaison/Trigone 军令口径');
   assert.ok(!/\btrine\b/.test(fr.lock), 'fr 锁不得残留英文 trine');
   // 年龄差法语真值（刀②在 fr 路径的转译）
   assert.ok(fr.lock.includes('21 ans séparent A et B'), 'fr 年龄差真值行缺失');
@@ -142,7 +145,7 @@ test('E98-③-3 行为级：es/en 转译契约保全（E96/E97 零回归）', ()
   // es：E97 纯西语契约（Buey/Perro + 年龄差 es 行）
   const es = JSON.parse(JSON.stringify(bl));
   _e96LocalizeCompatBaziLock(es, 'es');
-  assert.ok(es.lock.includes('Buey-Perro fricción'), 'es E97 契约（Buey-Perro fricción）回归');
+  assert.ok(es.lock.includes('Fricción Chou-Xu'), 'es E103-① 军令钦定契约（Fricción Chou-Xu）回归');   // 🛡️ E103 后继化：E97 旧词形退役
   assert.ok(es.lock.includes('21 años separan a A y B'), 'es 年龄差转译缺失');
   assert.ok(!/[\u4e00-\u9fff]/.test(es.lock), 'es 锁须零汉字（E97 契约）');
   // en：E96 英文转译契约（Ox 拼音括号风格＋True age gap）
@@ -260,16 +263,17 @@ test('E98-④-4 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
 
 test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已升 v4）', () => {
   const PIPE = fs.readFileSync(path.join(ROOT, 'lib/reportPipeline.mjs'), 'utf8');
-  // 🔴 E102 后继化：E102 三刀（vi 八字锁汉越/64 卦结构锁/孤儿句拔除）须触达旧 vi 存量
-  //   ⇒ v3 → v4（E98/E100 同款一次性作废；本断言随真源前移）。
-  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v4';"), '持久化版本须为 v4（E102-⑤ 一次性作废旧存量；旧 vi 报告含 Qian2/英文渗漏/孤儿句）');
+  // 🔴 E103 后继化：E103 四刀（法西词典正统化/地山谦 fr es 结构锁/NBSP＋小数逗号/
+  //   synastry 逗号化）须触达旧 fr/es 存量 ⇒ v4 → v5（E98/E100/E102 同款一次性作废；
+  //   旧 v4 fr/es 报告含 Qian2/旧口径术语/点号小数——本断言随真源前移）。
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v5';"), '持久化版本须为 v5（E103-⑤ 一次性作废旧存量）');
 });
 
 test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位（e97 后、e40 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 77, `链段数异常（实得 ${parts.length}，基线 77（E102 升 77 段））`);
+  assert.equal(parts.length, 79, `链段数异常（实得 ${parts.length}，基线 79（E103/E104 升 79 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE98 = parts.findIndex((p) => p.includes('audit-e98-'));
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

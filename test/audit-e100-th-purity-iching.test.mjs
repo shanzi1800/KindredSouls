@@ -115,7 +115,8 @@ test('E100-②-3 输出侧清洗：_e100StripCjk 行为级＋交付层接入（�
   assert.strictEqual(fn('และการ重生 ที่ลึกซึ้ง'), 'และการ ที่ลึกซึ้ง', '重生渗漏剥除失败（军令原句）');
   // 交付层：SSE 增量帧级＋终帧全文双保险（非 zh）；zh 零触碰
   // 🔴 E102-④ 后继化：vi 语种在 E100 CJK 剥离外再叠 _e102ViWash 英文/拼音清洗（双层）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级清洗缺失（E102 vi 双层后继形态）');
+  // 🛡️ E103-③ 后继化：SSE 帧级清洗链接入 fr/es 排版层（vi 层零改动，结构外扩）
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级清洗缺失（E103 扩链形态）');
   assert.ok(SERVER.includes("if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);"), '终帧清洗缺失（E102 vi 双层后继形态）');
   assert.ok(SERVER.includes("const _e100NonZh = !/^zh/i.test(String(lang || 'zh'));"), '非 zh 判定缺失');
 });
@@ -176,8 +177,9 @@ test('E100-④ ratio 百分比化：两镜像 toFixed(3) 全废、百分比呈�
 // ── E100-⑥ 存量作废：COMPAT_PERSIST_VERSION v2→v3→v4（月/年 Gate41 replay 全 MISS 强制重生）──
 test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已升 v4）', () => {
   const PIPE = read('lib/reportPipeline.mjs');
-  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v4';"), '持久化版本须为 v4（E102-⑤ vi 旧毒行作废；E100 旧泰语毒行同款）');
-  assert.ok(PIPE.includes('E102-⑤'), 'v4 升版注释（E102-⑤ 军令记录）缺失');
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v5';"), '持久化版本须为 v5（🛡️ E103-⑤ 后继化：fr/es 旧口径作废；E102/E100 同款先例）');
+  assert.ok(PIPE.includes('E103-⑤'), 'v5 升版注释（E103 军令记录）缺失');
+  assert.ok(!PIPE.includes("'compat_report.v4';"), 'v4 字面量残留（旧存量作废不彻底）');
   assert.ok(!PIPE.includes("'compat_report.v3';"), 'v3 字面量残留（旧存量作废不彻底）');
   assert.ok(!PIPE.includes("'compat_report.v2';"), 'v2 字面量残留（旧存量作废不彻底）');
 });
@@ -185,9 +187,10 @@ test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已�
 // ── 军规链基线（后继化：E102 入编后 77 段；e40-compat 恒 len-2、python 恒链尾）──
 test('E100-⑤ 军规链基线（后继化：E102 升 77 段；e40-compat 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 77, '基线 77（E102 升 77 段）');
-  assert.ok(parts[parts.length - 3].includes('e102'), 'e102 未居 e40-compat 前（e100 现居 len-4）');
-  assert.ok(parts[parts.length - 4].includes('e100'), 'e100 未居 e102 前（后继化位置）');
+  assert.strictEqual(parts.length, 79, '基线 79（E103/E104 升 79 段）');   // 🛡️ E103/E104 后继化：77→79
+  assert.ok(parts[parts.length - 3].includes('e104'), 'e104 未居 e40-compat 前');
+  assert.ok(parts[parts.length - 4].includes('e103'), 'e103 未居 e104 前');
+  assert.ok(parts[parts.length - 5].includes('e102'), 'e102 未居 e103 前');
   assert.ok(parts[parts.length - 2].includes('e40-compat'), 'e40-compat 未居 len-2');
   assert.ok(parts[parts.length - 1].includes('python'), 'python 未居链尾');
 });

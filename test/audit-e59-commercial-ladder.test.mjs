@@ -285,8 +285,13 @@ test('B7 i18n：升阶付费墙六键在 6 语种全部就位', () => {
       assert.equal(typeof v, 'string', `${l}.json 缺 wealthReport.${k}`);
       assert.ok(v.trim().length > 0, `${l}.json wealthReport.${k} 为空串`);
     }
-    assert.ok(j.wealthReport.sandboxPayMonthly.includes('$2.99'), `${l} 沙箱月报按键未带 $2.99`);
-    assert.ok(j.wealthReport.sandboxPayYearly.includes('$29.99'), `${l} 沙箱年报按键未带 $29.99`);
+    // 🛡️ E103-③ 后继化（主公军令 2026-10-30 刀三数字本地化）：fr/es 标价小数逗号化
+    //   （$2.99 → $2,99——军令钦定欧洲数字格式）；zh/en/th/vi 点号契约零改动。
+    const _e59Price = (l, v) => (l === 'fr' || l === 'es' ? v.replace('.', ',') : v);
+    assert.ok(j.wealthReport.sandboxPayMonthly.includes(_e59Price(l, '$2.99')),
+      `${l} 沙箱月报按键未带 ${_e59Price(l, '$2.99')}`);
+    assert.ok(j.wealthReport.sandboxPayYearly.includes(_e59Price(l, '$29.99')),
+      `${l} 沙箱年报按键未带 ${_e59Price(l, '$29.99')}`);
   }
 });
 

@@ -146,7 +146,9 @@ test('E89-③-2 48000 违令字面量零容忍（全仓 callAI 消费点）', ()
   //    断言窗口向前扩 300 字以覆盖 options 构造行；48000 零容忍语义不变。
   // 🛡️ E100-② 后继化：callAI 前插入 CJK 清洗层（_e100NonZh/帧级 strip）——
   //    窗口再扩 300→700 覆盖 _e96Opts 构造行；reportType 语义不变。
-  const seg = SERVER.slice(Math.max(0, i - 700), i + 400);
+  // 🛡️ E103-③ 后继化：wash 链再插 fr/es 排版层（_e103FrLang/_e103EsLang 两声明
+  //    ＋注释）⇒ 窗口 700→1100 覆盖 _e96Opts 构造行；48000/reportType 语义不变。
+  const seg = SERVER.slice(Math.max(0, i - 1100), i + 400);
   assert.ok(!seg.includes('48000'), '生成链 48000 残留违令');
   assert.ok(seg.includes('reportType'), 'callAI 未传 reportType（回执诊断信号丢失）');
 });
@@ -185,7 +187,7 @@ test('E89-⑥-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   assert.ok(chain.includes('audit-e89-compat-gen-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
   // 🔴 E90 语义演进：E90 入编（69 段），本闸门历史基线同步上调。
-  assert.equal(parts.length, 77, `链段数异常（实得 ${parts.length}，基线 77（E102 升 77 段））`);
+  assert.equal(parts.length, 79, `链段数异常（实得 ${parts.length}，基线 79（E103/E104 升 79 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE89 = parts.findIndex((p) => p.includes('audit-e89-compat-gen-fix'));
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

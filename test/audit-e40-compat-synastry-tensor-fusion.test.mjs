@@ -206,7 +206,12 @@ test('A4 注入层行为级：可用盘 ⇒ 比值 + 真实相位名入 user，�
 test('A6 六语注入齐备：每语均见羁绊锁真值块 + 四段映射令 + 本地化相位名', () => {
   const mod = require2(path.join(ROOT, 'api', 'ai-advisor.js'));
   for (const lang of LANGS) {
-    assert.ok(assetInjectsTruth(mod, lang, RATIO_TEXT), `${lang}：星历张量真值未落地（六语守备缺口）`);
+    // 🛡️ E103-③ 后继化（主公军令 2026-10-30 刀三数字本地化）：fr/es decComma ⇒
+    //   比值小数逗号化＋% 前空格（69.4% → 69,4 %）；zh/en/th/vi 点号契约零改动。
+    const _e40RatioText = (mod.SYNASTRY_I18N[lang] && mod.SYNASTRY_I18N[lang].decComma)
+      ? RATIO_TEXT.replace('.', ',').replace('%', ' %')
+      : RATIO_TEXT;
+    assert.ok(assetInjectsTruth(mod, lang, _e40RatioText), `${lang}：星历张量真值未落地（六语守备缺口）`);
   }
 });
 

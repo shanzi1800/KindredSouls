@@ -84,9 +84,9 @@ test('E102-③-2 四语契约逐字保全（vi 分支零外溢）', () => {
   assert.ok(th.lock.includes('ครึ่งไตรภาคีธาตุทอง'), 'th 契约漂移（E100 锚）');
   assert.ok(th.guard.includes('ความบริสุทธิ์ของภาษา'), 'th guard 漂移');
   const es = mk(); _e96(es, 'es');
-  assert.ok(es.lock.includes('media combinación del trígono de Metal'), 'es 契约漂移');
+  assert.ok(es.lock.includes('Semialianza de Metal (Chou-Si)'), 'es 契约漂移（🛡️ E103-① 后继化：军令钦定口径）');
   const fr = mk(); _e96(fr, 'fr');
-  assert.ok(fr.lock.includes('demi-combinaison du trigone de Métal'), 'fr 契约漂移');
+  assert.ok(fr.lock.includes('Demi-combinaison de Métal (Chou-Si)'), 'fr 契约漂移（🛡️ E103-① 后继化：军令钦定口径）');
   // zh 零触碰：调用点守卫（_e96 仅非 zh 语种调用 ⇒ zh 同气关系行原样保留中文）
   assert.ok(SERVER.includes("if (_e92BL && !/^zh/i.test(String(lang || 'zh'))) _e96LocalizeCompatBaziLock"), 'zh 必须经调用守卫零触碰 _e96');
 });
@@ -141,7 +141,8 @@ test('E102-④-1 _e102ViWash 行为级：军令正则零命中＋换行保全＋
   // 纯净文本零触碰
   assert.strictEqual(W('Trái tim thuần khiết của đôi hồn'), 'Trái tim thuần khiết của đôi hồn', '纯净 vi 文本被误触');
   // 交付层接入：SSE 帧级＋终帧（vi 双层清洗；其他语种 E100 层不动）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级 vi 双层清洗缺失');
+  // 🛡️ E103-③ 后继化：SSE 帧级清洗链接入 fr/es 排版层（vi 层零改动，结构外扩）
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级 vi 双层清洗缺失（E103 扩链形态）');
   assert.ok(SERVER.includes("if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);"), '终帧 vi 双层清洗缺失');
 });
 
@@ -175,8 +176,9 @@ test('E102-④-3 刀四 vi 大标题禁 uppercase＋CTA 可换行（活体组件
 
 // ── E102-⑤ 存量作废：COMPAT_PERSIST_VERSION v3→v4 ──
 test('E102-⑤-0 存量作废：COMPAT_PERSIST_VERSION v4（旧 vi 毒行长度守卫挡不住 ⇒ 版本作废）', () => {
-  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v4';"), '持久化版本须为 v4（E102-⑤ 军令）');
-  assert.ok(PIPE.includes('E102-⑤'), 'v4 升版注释（E102-⑤ 军令记录）缺失');
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v5';"), '持久化版本须为 v5（🛡️ E103-⑤ 后继化：fr/es 旧口径作废）');
+  assert.ok(PIPE.includes('E103-⑤'), 'v5 升版注释（E103 军令记录）缺失');
+  assert.ok(!PIPE.includes("'compat_report.v4';"), 'v4 字面量残留（作废不彻底）');
   assert.ok(!PIPE.includes("'compat_report.v3';"), 'v3 字面量残留（作废不彻底）');
   assert.ok(!PIPE.includes("'compat_report.v2';"), 'v2 字面量残留（作废不彻底）');
 });
@@ -184,7 +186,7 @@ test('E102-⑤-0 存量作废：COMPAT_PERSIST_VERSION v4（旧 vi 毒行长度�
 // ── 军规链基线（E102 入编后 77 段；e102 恒插 e40-compat 之前、python 恒链尾）──
 test('E102-⑥ 军规链基线 77 段（e102 居 e100 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 77, '军规链段数漂移：' + parts.length);
+  assert.strictEqual(parts.length, 79, '军规链段数漂移：' + parts.length);   // 🛡️ E103/E104 后继化：77→79
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

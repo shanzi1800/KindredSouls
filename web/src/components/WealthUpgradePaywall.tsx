@@ -45,6 +45,8 @@ interface WealthUpgradePaywallProps {
   onClose: () => void;
   /** i18n 取词函数（调用方注入 useTranslation 的 t） */
   t: (key: string) => string;
+  /** 🛡️ E103-③（主公军令 2026-10-30）：界面语言（fr/es ⇒ 标价小数逗号 $2,99） */
+  lang?: string;
 }
 
 const GOLD = '#D4AF37';
@@ -65,8 +67,11 @@ const WealthUpgradePaywall: React.FC<WealthUpgradePaywallProps> = ({
   onSandboxPay,
   onClose,
   t,
+  lang,
 }) => {
   const isMonthly = plan === 'wealth_monthly_report';
+  // 🛡️ E103-③：fr/es 标价小数逗号化（$2.99 → $2,99——军令刀三数字本地化）
+  const priceLabel = (price && (lang === 'fr' || lang === 'es')) ? String(price).replace('.', ',') : price;
   const accent = isMonthly ? GOLD : TEAL;
   const accentBorder = isMonthly ? 'rgba(212,175,55,0.42)' : 'rgba(129,216,208,0.42)';
   const accentFill = isMonthly ? 'rgba(212,175,55,0.08)' : 'rgba(129,216,208,0.08)';
@@ -121,8 +126,8 @@ const WealthUpgradePaywall: React.FC<WealthUpgradePaywallProps> = ({
           }}>
             {icon} {isMonthly ? t('wealthReport.unlockMonthly') : t('wealthReport.unlockYearly')}
           </span>
-          {price ? (
-            <span style={{ fontSize: '24px', fontWeight: 900, color: '#F5F1E6', letterSpacing: '0.5px' }}>{price}</span>
+          {priceLabel ? (
+            <span style={{ fontSize: '24px', fontWeight: 900, color: '#F5F1E6', letterSpacing: '0.5px' }}>{priceLabel}</span>
           ) : null}
         </div>
 
@@ -138,6 +143,8 @@ const WealthUpgradePaywall: React.FC<WealthUpgradePaywallProps> = ({
           disabled={busy}
           style={{
             width: '100%', padding: '13px 20px', borderRadius: '13px', border: 'none',
+            /* 🔴 E103-③：CTA 390px 防爆——min-h 48px＋居中折行（军令刀三） */
+            minHeight: '48px', textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.3,
             background: busy
               ? '#444'
               : (isMonthly
@@ -151,7 +158,7 @@ const WealthUpgradePaywall: React.FC<WealthUpgradePaywallProps> = ({
         >
           {busy
             ? '⏳ …'
-            : (sandboxMode ? t(sandboxKey) : `${t('wealthReport.upgradeCta')}${price ? ' ' + price : ''}`)}
+            : (sandboxMode ? t(sandboxKey) : `${t('wealthReport.upgradeCta')}${priceLabel ? ' ' + priceLabel : ''}`)}
         </button>
 
         {/* 关闭（符号化，无自然语言） */}

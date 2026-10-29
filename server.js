@@ -13833,8 +13833,28 @@ function _e100IchingHexLine(d1, d2, windowStart, L) {
   const _L = String(L || 'zh');
   if (_L === 'th') return `กั้วที่ ${_n}: ${_hex[0]} (${_hex[3]})`;
   if (_L === 'zh') return `第${_n}卦：${_hex[1]}（${_hex[0]}）— 卦意：${_hex[2]}`;
-  if (_L === 'es') return `Hexagrama n.º ${_n}: ${_hex[0]} (${_hex[2]})`;
-  if (_L === 'fr') return `Hexagramme n°${_n} : ${_hex[0]} (${_hex[2]})`;
+  // 🔴 E103-②（主公军令 2026-10-30）：法西卦行正统化——四钦定卦（15 谦/24 复/45 萃/
+  //    13 同人）输出外内卦体结构锁全行（军令钦定逐字：trigramme supérieur Khôn
+  //    (La Terre) / trigramme inférieur Cấn (La Montagne) — Hexagramme 15 :
+  //    L'Humilité；军令原文 fr/es 句中渗漏的 vi 结构词 Ngoại quái/Nội quái 已
+  //    裁决为本语结构词）。其余 60 卦降级：拼音基名（拔除 Qian2/Fu1 带调数字尾——
+  //    军令刀一 Qian[0-9] 检出=0）＋英文释义，结构映射置函数体内（VM 抽取铁律）。
+  if (_L === 'fr' || _L === 'es') {
+    const _e103FX = {
+      15: { u: 'Khôn', uf: 'La Terre', ue: 'La Tierra', l: 'Cấn', lf: 'La Montagne', le: 'La Montaña', nf: "L'Humilité", ne: 'La Modestia' },
+      24: { u: 'Khôn', uf: 'La Terre', ue: 'La Tierra', l: 'Chấn', lf: 'Le Tonnerre', le: 'El Trueno', nf: 'Le Retour', ne: 'El Retorno' },
+      45: { u: 'Đoài', uf: 'Le Lac', ue: 'El Lago', l: 'Khôn', lf: 'La Terre', le: 'La Tierra', nf: 'Le Rassemblement', ne: 'La Reunión' },
+      13: { u: 'Càn', uf: 'Le Ciel', ue: 'El Cielo', l: 'Ly', lf: 'Le Feu', le: 'El Fuego', nf: 'La Fraternité', ne: 'La Comunidad' },
+    };
+    const fx = _e103FX[_n];
+    if (fx) {
+      if (_L === 'fr') return `trigramme supérieur ${fx.u} (${fx.uf}) / trigramme inférieur ${fx.l} (${fx.lf}) — Hexagramme ${_n} : ${fx.nf}`;
+      return `Trigrama superior ${fx.u} (${fx.ue}) / trigrama inferior ${fx.l} (${fx.le}) — Hexagrama ${_n}: ${fx.ne}`;
+    }
+    const _e103Pinyin = String(_hex[0]).replace(/\d+$/, '');
+    if (_L === 'fr') return `Hexagramme n°${_n} : ${_e103Pinyin} (${_hex[2]})`;
+    return `Hexagrama n.º ${_n}: ${_e103Pinyin} (${_hex[2]})`;
+  }
   if (_L === 'vi') {
     // 🔴 E102-③（主公军令 2026-10-29）：vi 汉越 64 卦表＋卦体结构锁——
     //    根治「Quẻ số 15: Qian2 (Modesty)」拼音/英文渗漏；军令钦定格式
@@ -13884,8 +13904,8 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
   const _solarAnchorNote = {
     zh: `✦ 能量起点释义：太阳返照年以您诞生日所在月份（${_anchorMonthLabel}）为宇宙能量新起点，推演未来完整一岁（12个月）的流年起伏。`,
     en: `✦ Energy anchor: the solar-return year begins in your birth month (${_anchorMonthLabel}), unfolding a full 12 months from that cosmic new beginning.`,
-    es: `✦ Ancla de energía: el año de retorno solar comienza en tu mes de nacimiento (${_anchorMonthLabel}) y se despliega durante 12 meses completos.`,
-    fr: `✦ Ancrage énergétique : l'année de retour solaire débute le mois de votre naissance (${_anchorMonthLabel}) et se déploie sur 12 mois complets.`,
+    es: `✦ Ancla de energía: el año de Revolución Solar comienza en tu mes de nacimiento (${_anchorMonthLabel}) y se despliega durante 12 meses completos.`,
+    fr: `✦ Ancrage énergétique\u00a0: l'année de Révolution Solaire débute le mois de votre naissance (${_anchorMonthLabel}) et se déploie sur 12 mois complets.`,
     th: `✦ จุดยึดพลังงาน: ปี Solar Return เริ่มต้นในเดือนเกิดของคุณ (${_anchorMonthLabel}) แล้วไหลไปครบ 12 เดือน`,
     vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
   }[L] || '';
@@ -14297,17 +14317,17 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
   const B = '([子丑寅卯辰巳午未申酉戌亥])';
   let t = bl.lock;
   // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语、fr 纯法语、th 纯泰语带拼音锚、vi 汉越军令口径，en 沿 E96 原格式）：
-  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : _e98Fr ? `${AN[a]}-${AN[b]} choc` : _e100Th ? `การปะทะ ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? `${BRV[a]}–${BRV[b]} tương xung` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
+  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `Oposición ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e98Fr ? `Opposition ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e100Th ? `การปะทะ ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? `${BRV[a]}–${BRV[b]} tương xung` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
   t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : _e98Fr ? `${AN[a]}-${AN[b]} six-harmonie` : _e100Th ? `ความสอดคล้องหก ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? `${BRV[a]}–${BRV[b]} lục hợp` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
   // ①-vi E102-刀三③：相刑寅巳钦定 tương hại（军令 Tiger–Snake friction ➔ Dần–Tỵ tương hại），其余刑＝tương hình
-  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : _e98Fr ? `${AN[a]}-${AN[b]} friction` : _e100Th ? `แรงเสียดทาน ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? ((a === '寅' && b === '巳') || (a === '巳' && b === '寅') ? `${BRV[a]}–${BRV[b]} tương hại` : `${BRV[a]}–${BRV[b]} tương hình`) : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `Fricción ${BR[a]}-${BR[b]}` : _e98Fr ? `Friction ${BR[a]}-${BR[b]}` : _e100Th ? `แรงเสียดทาน ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? ((a === '寅' && b === '巳') || (a === '巳' && b === '寅') ? `${BRV[a]}–${BRV[b]} tương hại` : `${BRV[a]}–${BRV[b]} tương hình`) : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
   // ①-sb E102-刀三③：同气（非合化）关系行六语转译（生成侧 E102 新关系；en/es/fr/th/vi 全覆盖防 CJK 裸出）
   t = t.replace(new RegExp(B + B + '同气，非合化', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} misma rama: energía afín, no es combinación` : _e98Fr ? `${AN[a]}-${AN[b]} même branche : énergie semblable, pas une combinaison` : _e100Th ? `สาขาเดียวกัน ${BR[a]}-${BR[b]} (มิใช่การรวม)` : _e102Vi ? `${BRV[a]}–${BRV[b]} đồng khí tương ứng (không phải hợp hóa)` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) same-branch kinship, not a combination`);
   t = t.replace(new RegExp(B + B + '半合，属' + B + B + B + '局', 'g'),
     (m, a, b, x, y, z) => _e97Es
-      ? `${AN[a]}-${AN[b]} media combinación del trígono de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
+      ? `Semialianza de ${TRINE[x + y + z]} (${BR[a]}-${BR[b]})`
       : _e98Fr
-      ? `${AN[a]}-${AN[b]} demi-combinaison du trigone de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
+      ? `Demi-combinaison de ${TRINE[x + y + z]} (${BR[a]}-${BR[b]})`
       : _e100Th
       ? `ครึ่งไตรภาคี${TRINE[x + y + z]} (${AN[a]}-${AN[b]})`
       : _e102Vi
@@ -14318,7 +14338,7 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
     const names = grp.split('、').filter((g) => TRINE[g]);
     // 🛡️ E102-③：vi 钦定格式＝Tam hợp Hỏa cục (Dần–Ngọ–Tuất)
     const hdr = _e97Es ? 'trígonos integrados: ' : _e98Fr ? 'trigones intégrés : ' : _e100Th ? 'ไตรภาคีรวม: ' : _e102Vi ? 'Các cục tam hợp: ' : 'integrated trine formations: ';
-    return hdr + names.map((g) => _e102Vi ? `Tam hợp ${TRINEV[g]} cục (${BRV[g[0]]}–${BRV[g[1]]}–${BRV[g[2]]})` : `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
+    return hdr + names.map((g) => _e102Vi ? `Tam hợp ${TRINEV[g]} cục (${BRV[g[0]]}–${BRV[g[1]]}–${BRV[g[2]]})` : _e98Fr ? `Trigone élémentaire de ${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})` : _e97Es ? `Trígono elemental de ${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})` : `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
   });
   // ②-b E98-② 年龄差真值行转译（须在 ③ 逐字拼音化前——保留数字、四语纯语化；vi E102-③ 汉越）：
   t = t.replace(/真实年龄差：A 与 B 出生年份相差(\d+)年[^\n]*/g, (m, n) =>
@@ -14432,9 +14452,9 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
   bl.lock = t;
   // ⑤ 语言纯粹性绝对铁律（E96 英文版 / E97-③ 西语版 / E98-③ 法语版 / E100-② 泰语版；引号内的汉字是「禁止示例」，非输出指令）
   bl.guard = bl.guard + (_e97Es
-    ? '\n【PUREZA DEL IDIOMA / 语言纯粹性绝对铁律】(E97-③) En este informe en español, NUNCA escriba caracteres chinos sin traducir en el cuerpo del informe (nunca escriba 亥巳相冲, 辰酉六合, 巳酉丑 literalmente). Todo término de metafísica oriental y de Bazi debe expresarse en español fluido, p. ej. "el choque entre Cerdo y Serpiente", "la seis-armonía Dragón-Gallo", "el trígono de Metal (Serpiente-Gallo-Buey)". El bloque de datos de arriba ya está traducido al español — narre únicamente en español.'
+    ? '\n【PUREZA DEL IDIOMA / 语言纯粹性绝对铁律】(E97-③) En este informe en español, NUNCA escriba caracteres chinos sin traducir en el cuerpo del informe (nunca escriba 亥巳相冲, 辰酉六合, 巳酉丑 literalmente). Todo término de metafísica oriental y de Bazi debe expresarse en español fluido, p. ej. "el choque entre Cerdo y Serpiente", "la seis-armonía Dragón-Gallo", "el trígono de Metal (Serpiente-Gallo-Buey)". El bloque de datos de arriba ya está traducido al español — narre únicamente en español. 🔴 FORMATO DE NÚMEROS (E103-③): presente las puntuaciones como «75 sobre 100» y los decimales con coma — 5,54°; 69,4 % — (nunca punto decimal inglés); abra toda pregunta con ¿ y toda exclamación con ¡ cerrando siempre con ? / ! (nunca suelte el signo de apertura).'
     : _e98Fr
-    ? '\n【PURETÉ LINGUISTIQUE / 语言纯粹性绝对铁律】(E98-③) Dans ce rapport en français, N\'ÉCRIVEZ JAMAIS de caractères chinois non traduits dans le corps du rapport (jamais 亥巳相冲, 辰酉六合, 巳酉丑 tels quels). Tout terme de métaphysique orientale et de Bazi doit s\'exprimer en français fluide, p. ex. « le choc entre Cochon et Serpent », « la six-harmonie Dragon-Coq », « le trigone de Métal (Serpent-Coq-Bœuf) ». Le bloc de données ci-dessus est déjà traduit en français — narrez uniquement en français.'
+    ? '\n【PURETÉ LINGUISTIQUE / 语言纯粹性绝对铁律】(E98-③) Dans ce rapport en français, N\'ÉCRIVEZ JAMAIS de caractères chinois non traduits dans le corps du rapport (jamais 亥巳相冲, 辰酉六合, 巳酉丑 tels quels). Tout terme de métaphysique orientale et de Bazi doit s\'exprimer en français fluide, p. ex. « le choc entre Cochon et Serpent », « la six-harmonie Dragon-Coq », « le trigone de Métal (Serpent-Coq-Bœuf) ». Le bloc de données ci-dessus est déjà traduit en français — narrez uniquement en français. 🔴 MISE EN FORME DES NOMBRES (E103-③) : présentez les scores sous la forme « 75 sur 100 », les décimales à la française — 5,54°, 69,4 % — (jamais de point décimal anglais), et une espace insécable avant : ; ! ? et à l\'intérieur de « » (jamais de ponctuation double rejetée en début de ligne).'
     : _e100Th
     ? '\n【ความบริสุทธิ์ของภาษา / 语言纯粹性绝对铁律】(E100-②) ในรายงานภาษาไทยนี้ ห้ามเด็ดขาดที่จะเขียนอักขระจีนที่ยังไม่แปลในเนื้อหารายงาน (ห้ามเขียน 亥巳相冲, 辰酉六合, 巳酉丑, 重生 ตรงตามตัว) และห้ามมีคำศัพท์ภาษาอังกฤษหลงเหลือในเนื้อหา เช่น Dragon-Dog clash, Fire trine, Metal trine, half-combination, coupled chart, heaven, earth, hexagram คำศัพท์โหราศาสตร์ตะวันออกและปาจื่อทั้งหมดต้องเรียบเรียงเป็นภาษาไทยลื่นไหล เช่น "การปะทะระหว่างกุนกับมะเส็ง", "ไตรภาคีธาตุไฟ (ขาล-มะเมีย-จอ)", "ไตรภาคีธาตุทอง (ฉลู-มะเส็ง)", "แผนภูมิดวงคู่สัมพันธ์", "กั้ว", "ฟ้าและดิน", "การเกิดใหม่ทางจิตวิญญาณ" บล็อกข้อมูลข้างบนแปลเป็นภาษาไทยแล้ว — เล่าเรื่องเป็นภาษาไทยล้วนเท่านั้น'
     : _e102Vi
@@ -14490,6 +14510,34 @@ function _e102ViWash(text) {
   s = s.replace(/Qian2 \(Modesty\)/gi, 'Quẻ Khiêm (Địa Sơn Khiêm)');
   s = s.replace(/Qian[0-9]/g, 'Quẻ Khiêm');
   s = s.replace(/\bFu \(Return\)/g, 'Quẻ Phục (Địa Lôi Phục)');
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E103-③（主公军令 2026-10-30 刀三）：法西报告输出侧排版硬清洗（兜底层）
+//   ① fr 法语排版铁律：双标点（: ; ! ?）与 « » 内侧必须不换行空格 U+00A0——
+//     防标点被排版引擎挤到行首（军令「espace insécable」暗坑）；
+//   ② fr/es 数字本地化：度数与百分比小数点逗号化（5.54°→5,54°、69.4%→69,4 %）
+//     ——军令刀三「度数小数点 fr/es 逗号化」交付层兜底（锁层真值已逗号，此防 LLM
+//     叙事回潮英文点号）；zh/en/th/vi 零触碰。
+//   幂等：NBSP/逗号二次替换不变；zh 报告不经此层（_e100NonZh 链内 fr/es 分支）。
+// ═══════════════════════════════════════════════════════════════
+function _e103FrWash(text) {
+  let s = String(text || '');
+  // ① 双标点前普通空格 → 不换行空格（已有 NBSP 幂等不重复匹配）
+  s = s.replace(/ ([;:!?])/g, '\u00a0$1');
+  s = s.replace(/« /g, '«\u00a0').replace(/ »/g, '\u00a0»');
+  // ② 度数/百分比小数点逗号化（仅数字.数字紧跟 ° 或 % —— 绝不误伤句号）
+  s = s.replace(/(\d)\.(\d+)(?=°)/g, '$1,$2');
+  s = s.replace(/(\d)\.(\d+)(?= ?%)/g, '$1,$2');
+  return s;
+}
+
+function _e103EsWash(text) {
+  let s = String(text || '');
+  // ② es 数字本地化：度数/百分比小数点逗号化（同 fr ②；es 无 NBSP 规约）
+  s = s.replace(/(\d)\.(\d+)(?=°)/g, '$1,$2');
+  s = s.replace(/(\d)\.(\d+)(?= ?%)/g, '$1,$2');
   return s;
 }
 
@@ -17274,7 +17322,11 @@ app.use('/api/ai-advisor', async (req, res) => {
         //    终帧全文硬验收；军令刀三④ 12 组词表）。
         const _e100NonZh = !/^zh/i.test(String(lang || 'zh'));
         const _e102ViLang = /^vi$/i.test(String(lang || ''));
-        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d); } catch (e) { /* 单帧失败不断流 */ } };
+        // 🛡️ E103-③（主公军令 2026-10-30）：fr/es 输出侧排版清洗（帧级尽力而为；
+        //    fr＝NBSP＋小数逗号、es＝小数逗号；zh/en/th/vi 通路零触碰）
+        const _e103FrLang = /^fr$/i.test(String(lang || ''));
+        const _e103EsLang = /^es$/i.test(String(lang || ''));
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d); } catch (e) { /* 单帧失败不断流 */ } };
         let insight = await callAI(
           _compat.system,
           _compat.user,
@@ -17285,6 +17337,10 @@ app.use('/api/ai-advisor', async (req, res) => {
         // 🛡️ E102-③ 终帧 vi 词表清洗（军令刀五铁指标：Dragon-Dog/Pig-Snake/Ox-Dog/
         //    Metal trine/Fire trine/Qian[0-9] 命中 = 0——落库全文双保险）。
         if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);
+        // 🛡️ E103-③ 终帧 fr/es 排版收口（幂等：NBSP/小数逗号二次替换不变——
+        //    军令刀三「: ; ! ? 前不换行空格、5.54°→5,54°」交付层硬验收）
+        if (_e103FrLang) insight = _e103FrWash(insight);
+        if (_e103EsLang) insight = _e103EsWash(insight);
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）

@@ -60,8 +60,8 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
       bonusDetail: 'Descubre qué piensan realmente de ti ahora',
       priceLabel: 'una vez',
       unlock: 'Desbloquear Ahora',
-      monthlyBtn: 'Informe Mensual $2.99/mes',
-      yearlyBtn: 'Informe Anual $29.99/año',
+      monthlyBtn: 'Informe Mensual $2,99/mes',
+      yearlyBtn: 'Informe Anual $29,99/año',
       secure: 'Pago · IA Instantánea · Reembolsable',
     },
     fr: {
@@ -78,8 +78,8 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
       bonusDetail: 'Découvrez ce qu\'ils pensent vraiment de vous maintenant',
       priceLabel: 'une fois',
       unlock: 'Débloquer Maintenant',
-      monthlyBtn: 'Rapport Mensuel $2.99/mois',
-      yearlyBtn: 'Rapport Annuel $29.99/an',
+      monthlyBtn: 'Rapport Mensuel $2,99/mois',
+      yearlyBtn: 'Rapport Annuel $29,99/an',
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
     },
     th: {
@@ -224,7 +224,7 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
           fontWeight: 900,
           color: '#fff',
           letterSpacing: '-1px',
-        }}>$4.99</span>
+        }}>{['fr', 'es'].includes(lang) ? '$4,99' : '$4.99'}</span>
         <span style={{ fontSize: '12px', color: '#8888aa' }}>{c.priceLabel}</span>
       </div>
 
@@ -238,6 +238,14 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
         style={{
           width: '100%',
           padding: '13px 24px',
+          /* 🔴 E103-③（主公军令 2026-10-30）：390px 视口 CTA 防爆——
+             whitespace-normal＋min-h 48px＋居中折行（军令钦定 py-3 px-4 min-h-[48px]
+             口径的 inline-style 等价物；fr/es 长文案两行内优雅折行不破框） */
+          minHeight: '48px',
+          textAlign: 'center',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.3,
           borderRadius: '14px',
           border: 'none',
           /* ✦ E84（主公军令 2026-10-22）：青蓝渐变退役 → 品牌星轨金紫渐变（一镜到底）；
@@ -268,6 +276,12 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
         style={{
           width: '100%',
           padding: '10px 20px',
+          /* 🔴 E103-③：月报 CTA 390px 防爆（同主按钮口径） */
+          minHeight: '48px',
+          textAlign: 'center',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.3,
           borderRadius: '12px',
           border: '1px solid rgba(212,175,55,0.4)',
           background: (loading && activePlan === 'compatibility_monthly_report')
@@ -292,6 +306,12 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
         style={{
           width: '100%',
           padding: '12px 20px',
+          /* 🔴 E103-③：年报 CTA 390px 防爆（同主按钮口径） */
+          minHeight: '48px',
+          textAlign: 'center',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.3,
           borderRadius: '14px',
           border: '2px solid rgba(212,175,55,0.6)',
           background: (loading && activePlan === 'compatibility_yearly_report')

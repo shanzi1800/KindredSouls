@@ -9,6 +9,22 @@ import fr from './locales/fr.json';
 import th from './locales/th.json';
 import vi from './locales/vi.json';
 
+// 🔴 E104-刀二（主公军令 2026-10-30）：六语玄学真值全局字典统一导出——
+//    产品线/相位/干支合冲刑害/四大卦象/三张塔罗/UI 锚点七类术语六语逐键锁定，
+//    getMetaphysicsTerm(category, key, locale) 为唯一寻址入口（fail-closed）。
+export {
+  METAPHYSICS_TRUTH_TABLE,
+  SOUL_OS_SIGNATURE,
+  getMetaphysicsTerm,
+} from './metaphysicsTruthTable';
+export type {
+  SupportedLocale,
+  TermRecord,
+  IChingCanonicalEntry,
+  TarotEntry,
+  MetaphysicsTruthTableSchema,
+} from './metaphysicsTruthTable';
+
 const resources = {
   en: { translation: en },
   zh: { translation: zh },

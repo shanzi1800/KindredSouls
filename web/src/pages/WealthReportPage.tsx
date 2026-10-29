@@ -2940,7 +2940,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           es: {
             0: { upright: 'Catalizador Diario: El Loco señala una nueva aventura financiera-toma riesgos calculados hoy.', reversed: 'Catalizador Diario: El Loco invertido advierte contra gastos impulsivos-pausa antes de movimientos financieros arriesgados.' },
             1: { upright: 'Catalizador Diario: El Mago señala el poder de manifestación de riqueza-tus herramientas financieras están listas.', reversed: 'Catalizador Diario: El Mago invertido advierte sobre potencial financiero desperdiciado-activa tus habilidades de dinero.' },
-            2: { upright: 'Catalizador Diario: La Sacerdotisa señala que la intuición financiera alcanza su punto máximo-confía en tu instinto hoy.', reversed: 'Catalizador Diario: La Sacerdotisa invertida advierte sobre intuición financiera bloqueada-verifica decisiones de dinero.' },
+            2: { upright: 'Catalizador Diario: La Gran Sacerdotisa señala que la intuición financiera alcanza su punto máximo-confía en tu instinto hoy.', reversed: 'Catalizador Diario: La Gran Sacerdotisa invertida advierte sobre intuición financiera bloqueada-verifica decisiones de dinero.' },
             3: { upright: 'Catalizador Diario: La Emperatriz señala abundancia financiera fluyendo-la riqueza crece con cuidado paciente.', reversed: 'Catalizador Diario: La Emperatriz invertida advierte sobre negligencia financiera-cuida tu jardín de dinero.' },
             4: { upright: 'Catalizador Diario: El Emperador señala base financiera sólida-construye riqueza con reglas claras.', reversed: 'Catalizador Diario: El Emperador invertido advierte sobre problemas de control financiero-audita tu estructura de dinero.' },
             5: { upright: 'Catalizador Diario: El Papa señala alineación de riqueza-tu camino del dinero coincide con tus valores.', reversed: 'Catalizador Diario: El Papa invertido advierte sobre dogmatismo financiero-cuestiona tus creencias sobre el dinero.' },
@@ -2964,7 +2964,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           fr: {
             0: { upright: 'Catalyseur Quotidien: Le Mat signale une nouvelle aventure financière-prends des risques calculés aujourd\'hui.', reversed: 'Catalyseur Quotidien: Le Mat inversé avertit contre les dépenses impulsives-pause avant les mouvements financiers risqués.' },
             1: { upright: 'Catalyseur Quotidien: Le Bateleur signale le pouvoir de manifestation de richesse-tes outils financiers sont prêts.', reversed: 'Catalyseur Quotidien: Le Bateleur inversé avertit du potentiel financier gaspillé-active tes compétences financières.' },
-            2: { upright: 'Catalyseur Quotidien: La Papesse signale que l\'intuition financière atteint son sommet-fais confiance à ton instinct.', reversed: 'Catalyseur Quotidien: La Papesse inversée avertit de l\'intuition financière bloquée-vérifie tes décisions.' },
+            2: { upright: 'Catalyseur Quotidien: La Grande Prêtresse signale que l\'intuition financière atteint son sommet-fais confiance à ton instinct.', reversed: 'Catalyseur Quotidien: La Grande Prêtresse inversée avertit de l\'intuition financière bloquée-vérifie tes décisions.' },
             3: { upright: 'Catalyseur Quotidien: L\'Impératrice signale l\'abondance financière-la richesse croît avec des soins patients.', reversed: 'Catalyseur Quotidien: L\'Impératrice inversée avertit de la négligence financière-prends soin de ton jardin financier.' },
             4: { upright: 'Catalyseur Quotidien: L\'Empereur signale une base financière solide-construis ta richesse avec des règles claires.', reversed: 'Catalyseur Quotidien: L\'Empereur inversé avertit des problèmes de contrôle financier-vérifie ta structure.' },
             5: { upright: 'Catalyseur Quotidien: Le Pape signale l\'alignement de richesse-ton chemin financier correspond à tes valeurs.', reversed: 'Catalyseur Quotidien: Le Pape inversé avertit du dogmatisme financier-remets en question tes croyances.' },
@@ -3250,6 +3250,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           <WealthUpgradePaywall
             plan={upgradePlan}
             price={sandboxPlanPrice(upgradePlan)}
+            lang={String(i18n.language || 'en').slice(0, 2)}
             sandboxMode={sandboxMode}
             busy={upgradeBusy}
             onPurchase={handleUpgradeLivePurchase}

@@ -121,7 +121,7 @@ export function tBagua(cn: string, lang: AlgLang): string {
 const TAROT_CARD_NAMES: Record<number, Record<AlgLang, string>> = {
   0:  { zh: '愚人',     en: 'The Fool',       es: 'El Loco',         fr: 'Le Fou',          th: 'ไพ่คนบ้า',          vi: 'Kẻ Ngốc' },
   1:  { zh: '魔术师',   en: 'The Magician',    es: 'El Mago',          fr: 'Le Magicien',      th: 'ไพ่จอมเวทย์',       vi: 'Nhà Ảo Thuật' },
-  2:  { zh: '女祭司',   en: 'The High Priestess', es: 'La Sacerdotisa',  fr: 'La Grande Prêtresse', th: 'ไพ่นักบวชหญิง', vi: 'Nữ Giáo Chủ' },
+  2:  { zh: '女祭司',   en: 'The High Priestess', es: 'La Gran Sacerdotisa',  fr: 'La Grande Prêtresse', th: 'ไพ่นักบวชหญิง', vi: 'Nữ Giáo Chủ' },
   3:  { zh: '女皇',     en: 'The Empress',    es: 'La Emperadora',    fr: 'L\'Impératrice',   th: 'ไพ่จักรพรรดินี',         vi: 'Nữ Hoàng' },
   4:  { zh: '皇帝',     en: 'The Emperor',    es: 'El Emperador',     fr: 'L\'Empereur',      th: 'ไพ่จักรพรรดิ',         vi: 'Nam Hoàng' },
   5:  { zh: '教皇',     en: 'The Hierophant', es: 'El Hierofante',    fr: 'Le Pape',          th: 'ไพ่สมเด็จพระสังฆราช',      vi: 'Giáo Chủ' },

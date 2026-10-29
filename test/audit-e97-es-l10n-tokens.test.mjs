@@ -102,15 +102,18 @@ test('E97-③-1 行为级：军令用例 es 本地化——零汉字＋生肖/�
   _e96LocalizeCompatBaziLock(bl, 'es');
   // 零汉字铁律（lock 全文无 CJK；四柱干支为标准拼音非汉字）
   assert.ok(!/[\u4e00-\u9fff]/.test(bl.lock), `lock 汉字残留：${(bl.lock.match(/[\u4e00-\u9fff]+/g) || []).join(',')}`);
-  // 真值转译抽查：辰戌相冲 → Dragón-Perro choque（纯西语，无 Chou (Buey) 式拼音残留）
-  assert.ok(bl.lock.includes('Dragón-Perro choque'), '辰戌相冲 es 纯西语映射缺失');
-  assert.ok(bl.lock.includes('Cerdo-Serpiente choque'), '亥巳相冲 es 映射缺失');
-  assert.ok(bl.lock.includes('media combinación del trígono de Fuego (Tigre-Caballo-Perro)'), '寅午戌火局 es 映射缺失');
-  assert.ok(bl.lock.includes('trígonos integrados: Fuego (Tigre-Caballo-Perro)'), '集成局 es 映射缺失');
-  assert.ok(bl.lock.includes('Buey-Perro fricción'), '丑戌相刑 es 映射缺失');
-  // 🔴 军令主病灶根治：拼音残留「Chou (Buey)」「Chou-Xu」必须绝迹（四柱干支拼音不在此列）
+  // 🔴 E103-① 后继化（主公军令 2026-10-30）：es 关系词改军令钦定拼音锚格式
+  //   （Oposición Chen-Xu (Dragón-Perro) / Fricción Chou-Xu / Semialianza de Metal (Chou-Si)——
+  //   与 en 契约同构的「拼音键＋生肖括号」军令钦定口径，取代 E97 纯西语旧词形）
+  assert.ok(bl.lock.includes('Oposición Chen-Xu (Dragón-Perro)'), '辰戌相冲 es 军令钦定映射缺失（E103-①）');
+  assert.ok(bl.lock.includes('Oposición Hai-Si (Cerdo-Serpiente)'), '亥巳相冲 es 军令钦定映射缺失');
+  assert.ok(bl.lock.includes('Semialianza de Fuego (Yin-Wu)'), '寅午半合火局 es 军令钦定映射缺失');
+  assert.ok(bl.lock.includes('trígonos integrados: Trígono elemental de Fuego (Tigre-Caballo-Perro)'), '集成局 es 军令钦定映射缺失（E103-① Trígono elemental）');
+  assert.ok(bl.lock.includes('Fricción Chou-Xu'), '丑戌相刑 es 军令钦定映射缺失（E103-①）');
+  // 旧词形绝迹（军令钦定所替代的 E97 旧口径）
+  assert.ok(!bl.lock.includes('Dragón-Perro choque'), 'es 旧口径 choque 残留');
+  assert.ok(!bl.lock.includes('media combinación del trígono de'), 'es 旧口径 media combinación 残留');
   assert.ok(!bl.lock.includes('Chou (Buey)'), '拼音残留 Chou (Buey) 复燃');
-  assert.ok(!bl.lock.includes('Chou-Xu'), '拼音残留 Chou-Xu 复燃');
   assert.ok(!bl.lock.includes('Dragon-Dog') && !bl.lock.includes('(Ox)'), '英文生肖残留（es 须纯西语）');
   // 结构短语西语化：柱位/关系导语
   assert.ok(bl.lock.includes('pilar del año') && bl.lock.includes('pilar de la hora'), '柱位 es 标注缺失');
@@ -199,7 +202,7 @@ test('E97-④-1 闸门接线：test:astro 含本闸门（73 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e97-es-l10n-tokens.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 77, `链段数异常（实得 ${parts.length}，基线 77（E102 升 77 段））`);
+  assert.equal(parts.length, 79, `链段数异常（实得 ${parts.length}，基线 79（E103/E104 升 79 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
