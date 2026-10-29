@@ -2016,3 +2016,94 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-chat-avatar, .ks-chat-dot, .ks-chat-typing i { animation: none; }
   .ks-chat-sheet { transform: translateZ(0); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   🐾🏆💠 E105（主公军令 2026-10-30）：伴读共鸣／命盘金卡／骨架承接样式
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 刀一 · 灵宠伴读（微光呼吸态＋共鸣气泡浮现）── */
+@keyframes ks-companion-breathe {
+  0%, 100% { box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 0 rgba(212,175,55,0); }
+  50% { box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 14px rgba(212,175,55,0.35); }
+}
+.ks-companion-milo, .ks-companion-sophia, .ks-companion-badge {
+  transition: transform 180ms ease, filter 180ms ease;
+}
+.ks-companion-milo:hover, .ks-companion-sophia:hover, .ks-companion-badge:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212,175,55,0.8);
+}
+.ks-companion-toast {
+  animation: ks-companion-slidein 260ms ease-out;
+}
+@keyframes ks-companion-slidein {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ks-companion-drawer {
+  animation: ks-companion-drawer-up 280ms ease-out;
+}
+@keyframes ks-companion-drawer-up {
+  from { transform: translateY(60%); }
+  to { transform: translateY(0); }
+}
+
+/* ── 刀二 · 金卡导出（CTA 微光＋移动端全屏弹层）── */
+.ks-goldcard-export button {
+  transition: box-shadow 200ms ease, transform 180ms ease;
+}
+.ks-goldcard-export button:not(:disabled):hover {
+  box-shadow: 0 6px 24px rgba(212,175,55,0.28);
+  transform: translateY(-1px);
+}
+.ks-goldcard-modal {
+  animation: ks-goldcard-fadein 220ms ease-out;
+}
+@keyframes ks-goldcard-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── 刀三 · 深空黑金 Shimmer 骨架屏（付讫→Hydrate 承接，CLS=0）── */
+.ks-skeleton-guard {
+  border-radius: 14px;
+  border: 1px solid rgba(212,175,55,0.18);
+  background: rgba(14, 15, 20, 0.4);
+  padding: 22px 18px;
+}
+.ks-shimmer-line {
+  position: relative;
+  height: 16px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: linear-gradient(100deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.14) 40%, rgba(212,175,55,0.06) 80%);
+}
+.ks-shimmer-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(243,229,171,0.10) 50%, transparent 80%);
+  animation: ks-shimmer-sweep 1.6s ease-in-out infinite;
+}
+@keyframes ks-shimmer-sweep {
+  0% { transform: translateX(-70%); }
+  100% { transform: translateX(70%); }
+}
+.ks-shimmer-w80 { width: 80%; }
+.ks-shimmer-w90 { width: 90%; }
+.ks-shimmer-w75 { width: 75%; }
+.ks-shimmer-w60 { width: 60%; }
+.ks-shimmer-w50 { width: 50%; }
+
+/* ── 双端视口分流（桌面双宠对角 / 移动单宠徽章——组件内 matchMedia 驱动，此处为降级兜底）── */
+@media (max-width: 768px) {
+  .ks-companion-milo, .ks-companion-sophia { display: none; }
+  .ks-skeleton-guard { padding: 16px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ks-companion-milo, .ks-companion-sophia, .ks-companion-badge,
+  .ks-companion-toast, .ks-companion-drawer, .ks-goldcard-modal,
+  .ks-shimmer-line::after { animation: none; }
+}

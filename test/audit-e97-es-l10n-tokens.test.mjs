@@ -202,7 +202,7 @@ test('E97-④-1 闸门接线：test:astro 含本闸门（73 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e97-es-l10n-tokens.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 79, `链段数异常（实得 ${parts.length}，基线 79（E103/E104 升 79 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 80, `链段数异常（实得 ${parts.length}，基线 79（E103/E104 升 79 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE96 = parts.findIndex((p) => p.includes('audit-e96-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

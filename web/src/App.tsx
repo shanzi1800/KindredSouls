@@ -16,6 +16,10 @@ import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
+/* 🐾🏆 E105（主公军令 2026-10-30）：伴读共鸣状态机＋命盘金卡导出＋骨架承接 */
+import CompanionResonance from './components/companion/CompanionResonance';
+import GoldCardExporter from './components/exporter/GoldCardExporter';
+import SkeletonMountGuard from './components/SkeletonMountGuard';
 // 🧹 E85（主公军令 2026-10-24）：「合盘」整个功能板块及报告退役 —— CompatReportCanvas /
 //    SynastryProgress 进度卡 / 报告张量画布 / houseOverlay 宫位网格渲染链全部下架
 //    （月报·年报交付改走纯文本段落呈现，服务端 report_payload 契约不动、后端封仓零改动）。
@@ -1594,6 +1598,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           100% 呈现（上面分支拦截），本按钮仅作「当次已解锁＋洞察缺场（网络失败等）」的
           合法重试入口；正常流＝支付返回自动流式揭晓，无需手点。 */}
       {sessionUnlocked && !insight && !loading && !error && (
+        /* 💠 E105-刀三（主公军令 2026-10-30）：付讫→报告 Hydrate 的 200~400ms 窗口
+           深空黑金 Shimmer 骨架屏承接（minHeight 预留 ⇒ CLS=0 平滑衔接）；
+           重试按钮保留于骨架屏之后（网络失败等的合法重入口，E85-① 契约不动） */
+        <SkeletonMountGuard />
+      )}
+      {sessionUnlocked && !insight && !loading && !error && (
         <button
           onClick={() => triggerInsight()}
           style={{
@@ -1633,7 +1643,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             /* ✦ E84（主公军令 2026-10-22）：塔罗牌卡面精修——🌍 emoji 裸奔退役，
                暗金铭牌框（.ks-tarot-frame）＋微光悬浮动效＋正逆位旋转；正逆位文案取
                tarot.ts 六语真源 orientation（原硬编码英文 Upright/Reversed 退役）。 */
-            <div className="ks-tarot-frame">
+            <div className="ks-tarot-frame" data-companion-anchor="tarot">
               <div className="ks-tarot-glyph" style={{ transform: tarotCard.isReversed ? 'rotate(180deg)' : 'none' }}>{tarotCard.emoji}</div>
               <div className="ks-tarot-name">{tarotCard.name}<span className="ks-tarot-orient"> · {tarotCard.orientation}</span></div>
             </div>
@@ -1642,6 +1652,25 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             /* ✦ E87-①（主公军令 2026-10-25）：解读行内 opacity:0.85 压暗样式退役，
                改挂 .ks-tarot-line——与上方报告正文同一亮度令牌单源。 */
             <p className="ks-tarot-line">{tarotLine}</p>
+          )}
+          {/* 🏆 E105-刀二（主公军令 2026-10-30）：深空黑金命盘金卡纯前端离线导出
+              （Canvas 375×667×dpr3；桌面 a download 落盘／移动端长按保存弹层；
+              金句决策树＝塔罗主牌命中→八字三合兜底，零异步） */}
+          {insight && (
+            <GoldCardExporter
+              locale={lang}
+              payload={{
+                locale: lang,
+                cardId: tarotCard ? tarotCard.id : null,
+                isReversed: tarotCard ? tarotCard.isReversed : false,
+                tarotName: tarotCard ? tarotCard.name : '',
+                tarotOrientation: tarotCard ? tarotCard.orientation : '',
+                baziPattern: bazi || '',
+                overall,
+                d1,
+                d2,
+              }}
+            />
           )}
           {/* 🐾 E85-③/④（主公军令 2026-10-24）：付费揭晓区纯净结构之二 —— 🐾 认领专属灵宠卡
               （原挂在合盘报告交付后，随合盘退役提升为 AI 洞察直后的独立板块；
@@ -1663,7 +1692,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               🧹 合盘张量画布（CompatReportCanvas）与推演进度卡（SynastryProgress）渲染退役，
               月报/年报交付＝纯文本段落呈现（服务端 payload 契约不动，后端封仓零改动）。 */}
           {insight && (
-            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
+            <div className="ks-glass-card" data-companion-anchor="bazi" style={{ marginTop: '20px', padding: '16px' }}>
               <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
               </div>
@@ -1718,6 +1747,22 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
              黑屏根因＝handleLogout 清数据后 reload ⇒ result 为空 ⇒ 渲染空白页；
              退出登录归属全局个人中心，绝不出现在交付长卷（军令逐字）。
              「重新测算」back-btn 链路已核验合规（清缓存＋平滑回表单）。 */}
+          {/* 🐾 E105-刀一（主公军令 2026-10-30）：灵宠双端伴读共鸣状态机——
+              报告挂载 300ms 首句定调；IO 监听塔罗/八字锚点（视口 60%）共鸣点拨 4s 自退；
+              点击 EXPANDED；台词本地规则匹配零异步（<16ms 禁 LLM）。
+              ⚠️ 仅随 insight 洞察区挂载（首页白名单零触碰）。 */}
+          {insight && (
+            <CompanionResonance
+              locale={lang}
+              ast={{
+                cardId: tarotCard ? tarotCard.id : null,
+                isReversed: tarotCard ? tarotCard.isReversed : false,
+                tarotName: tarotCard ? tarotCard.name : '',
+                overall,
+                bazi: bazi || '',
+              }}
+            />
+          )}
         </div>
       )}
     </div>

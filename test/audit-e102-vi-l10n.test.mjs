@@ -186,7 +186,7 @@ test('E102-⑤-0 存量作废：COMPAT_PERSIST_VERSION v4（旧 vi 毒行长度�
 // ── 军规链基线（E102 入编后 77 段；e102 恒插 e40-compat 之前、python 恒链尾）──
 test('E102-⑥ 军规链基线 77 段（e102 居 e100 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 79, '军规链段数漂移：' + parts.length);   // 🛡️ E103/E104 后继化：77→79
+  assert.strictEqual(parts.length, 80, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80   // 🛡️ E103/E104 后继化：77→79
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');
