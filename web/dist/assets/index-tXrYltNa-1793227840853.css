@@ -296,6 +296,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .date-part { font-size: 16px !important; }
 }
 
+/* 🔴 E102-刀四-③（军令 2026-10-29）：390px 窄断点月/年报纵向堆叠——
+   双列神谕卡 / 事实卡网格在 390px 以下强制单列，东南亚长词不挤压。 */
+.ks-duo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ks-fact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+@media screen and (max-width: 390px) {
+  .ks-duo-grid, .ks-fact-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Background Video ── */
 .bg-video {
   position: fixed;
@@ -624,6 +632,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   color: var(--ks-text-gold, #F5D08A);
   letter-spacing: 0.4px;
   border-left: none;
+  /* 🔴 E102-刀四-①：泰语声调符/堆叠元音削顶防护（军令 line-height 1.55+ ＋ padding-top 4px） */
+  padding-top: 4px;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
@@ -634,6 +644,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   color: var(--ks-text-primary, #F5F2FA);
   overflow-wrap: anywhere;
   word-break: break-word;
+  /* 🔴 E102-刀四-①：泰语声调符/堆叠元音削顶防护（1.75 已达标，补 padding-top 4px 军令下限） */
+  padding-top: 4px;
 }
 .ks-report-cursor {
   margin: 0;

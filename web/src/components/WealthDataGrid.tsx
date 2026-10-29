@@ -146,7 +146,7 @@ const WealthDataGrid: React.FC<WealthDataGridProps> = ({ bazi, zodiac, iching, t
                 <span style={{ fontSize: '28px', fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}>{card.icon}</span>
               )}
             </div>
-            <div style={{ fontSize: '11px', color: '#8B8778', marginBottom: '6px', textTransform: 'uppercase' as const }}>
+            <div style={{ fontSize: '11px', color: '#8B8778', marginBottom: '6px', textTransform: (lang === 'vi' ? 'none' : 'uppercase') as 'none' | 'uppercase' }}>
               {card.label[lang] || card.label.en}
             </div>
             <div style={{ fontSize: '14px', color: '#E8E4D9', fontWeight: 700, lineHeight: 1.4 }}>

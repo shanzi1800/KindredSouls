@@ -243,7 +243,7 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
               color: '#7777aa',
               marginBottom: '10px',
               letterSpacing: '2px',
-              textTransform: 'uppercase',
+              textTransform: lang === 'vi' ? 'none' : 'uppercase', /* 🔴 E102-刀四-② vi 禁 uppercase */
             }}>
               {t.vipLabel}
             </div>

@@ -104,7 +104,8 @@ test('E98-③-1 行为级：fr 锁零汉字·零 Ox·军令钦定生肖表·21 a
   // 根治病灶：英文 Ox 渗漏（军令审核实锤 l'Ox）
   assert.ok(!/\bOx\b/.test(fr.lock), 'fr 锁须零英文 Ox（军令钦定 Bœuf）');
   // 军令钦定生肖词（抽验 6 词）
-  for (const w of ['Bœuf', 'Chien', 'Cochon', 'Serpent', 'Dragon', 'Lièvre']) {
+  // 🔴 E102-刀三③ 后继化：Lièvre 原自「亥亥伪半合（亥卯未局）」三合名渗出——同气纠偏后不存在；换 Coq（Métal 三合名真值）
+  for (const w of ['Bœuf', 'Chien', 'Cochon', 'Serpent', 'Dragon', 'Coq']) {
     assert.ok(fr.lock.includes(w), `fr 生肖词缺失：${w}`);
   }
   // 军令样例：la friction Bœuf-Chien（丑戌相刑）＋ Dragon-Chien choc（辰戌相冲）
@@ -193,7 +194,8 @@ test('E98-③-5 行为级：月报塔罗引线六语单句（fr 实弹中文渗�
     { lang: 'es', needle: 'La micro-guía de La Lune' },
     { lang: 'fr', needle: 'La micro-guidance de La Lune' },
     { lang: 'th', needle: 'คำแนะนำจิตวิญญาณ' },
-    { lang: 'vi', needle: 'Hướng dẫn vi mô' },
+    // 🔴 E102-① 后继化：vi 引线句由军令换为 quẻ Phục 寄语（孤儿句拔除）
+    { lang: 'vi', needle: 'Lời chỉ dẫn sâu sắc từ quẻ Phục' },
   ];
   for (const c of cases) {
     const p = build('1976-12-03', '1997-10-18', c.lang, {
@@ -256,18 +258,18 @@ test('E98-④-4 镜像同步：api/ai-advisor.js ≡ web/api/ai-advisor.js（e40
 
 /* ═══════════════════ ⑤ 闸门接线 ═══════════════════ */
 
-test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION（后继化：E100-⑤ 已升 v3）', () => {
+test('E98-⑤-0 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已升 v4）', () => {
   const PIPE = fs.readFileSync(path.join(ROOT, 'lib/reportPipeline.mjs'), 'utf8');
-  // 🔴 E100 后继化：E100 四刀（终章印章/周易真值/CJK 剥离/泰语八字锁）须触达旧存量
-  //   ⇒ v2 → v3（E98-⑤ 同款一次性作废；本断言随真源前移）。
-  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v3';"), '持久化版本须为 v3（E100-⑤ 一次性作废旧存量；旧泰语报告含 CJK 渗漏/幻觉卦）');
+  // 🔴 E102 后继化：E102 三刀（vi 八字锁汉越/64 卦结构锁/孤儿句拔除）须触达旧 vi 存量
+  //   ⇒ v3 → v4（E98/E100 同款一次性作废；本断言随真源前移）。
+  assert.ok(PIPE.includes("export const COMPAT_PERSIST_VERSION = 'compat_report.v4';"), '持久化版本须为 v4（E102-⑤ 一次性作废旧存量；旧 vi 报告含 Qian2/英文渗漏/孤儿句）');
 });
 
 test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位（e97 后、e40 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 76, `链段数异常（实得 ${parts.length}，基线 76（E100 升 76 段））`);
+  assert.equal(parts.length, 77, `链段数异常（实得 ${parts.length}，基线 77（E102 升 77 段））`);
   const iE98 = parts.findIndex((p) => p.includes('audit-e98-'));
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

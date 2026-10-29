@@ -270,7 +270,7 @@ const MonthlyReportCard: React.FC<{ content: string; lang: string }> = ({ conten
         <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '2px', marginBottom: '8px', fontWeight: 600 }}>
           {UI.theme[safeLang] || UI.theme.en}
         </div>
-        <div style={{ fontSize: '17px', fontWeight: 800, color: '#fff', lineHeight: 1.5, textShadow: '0 2px 6px rgba(0,0,0,0.5)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+        <div style={{ fontSize: '17px', fontWeight: 800, color: '#fff', lineHeight: 1.6, textShadow: '0 2px 6px rgba(0,0,0,0.5)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
           {data.headline}
         </div>
       </div>
@@ -767,7 +767,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
         <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 600 }}>
           ✦ 先知天书 · 财富天启 ✦
         </div>
-        <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: '12px', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', lineHeight: 1.55, marginBottom: '12px', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
           {parsed.title}
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
@@ -884,7 +884,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
 
                 {/* 财富行动 + 阴影觉察 双列神谕卡 */}
                 {(month.wealthAction.length > 0 || month.shadowWork.length > 0) && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div className="ks-duo-grid">{/* 🔴 E102-刀四-③：390px 纵向堆叠（军令窄断点月报单列） */}
                     {/* 财富行动 */}
                     {month.wealthAction.length > 0 && (
                       <div style={{
@@ -938,7 +938,7 @@ const YearlyReportCard: React.FC<{ content: string; birthDate: string }> = ({ co
           marginBottom: '16px',
           border: '1px solid rgba(212,175,55,0.15)'
         }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#D4AF37', marginBottom: '12px', lineHeight: 1.4 }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#D4AF37', marginBottom: '12px', lineHeight: 1.55 }}>
             {ch.title}
           </div>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.9, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>

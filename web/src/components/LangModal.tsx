@@ -45,7 +45,7 @@ export default function LangModal({ open, onClose }: LangModalProps) {
     <div className="lang-modal-backdrop" onClick={handleBackdrop}>
       <div className="lang-modal" ref={modalRef}>
         <button className="lang-modal-close" onClick={onClose}>✕</button>
-        <div className="lang-modal-title">{i18n.language === 'zh' ? '选择语言' : i18n.language === 'es' ? 'Seleccionar idioma' : i18n.language === 'fr' ? 'Choisir la langue' : i18n.language === 'th' ? 'เลือกภาษา' : i18n.language === 'vi' ? 'Chọn ngôn ngữ' : 'Select Language'}</div>
+        <div className="lang-modal-title" style={{ textTransform: i18n.language === 'vi' ? 'none' : 'uppercase' /* 🔴 E102-刀四-② vi 禁 uppercase */ }}>{i18n.language === 'zh' ? '选择语言' : i18n.language === 'es' ? 'Seleccionar idioma' : i18n.language === 'fr' ? 'Choisir la langue' : i18n.language === 'th' ? 'เลือกภาษา' : i18n.language === 'vi' ? 'Chọn ngôn ngữ' : 'Select Language'}</div>
         {LANG_LIST.map(({ code, label, flag }) => (
           <button
             key={code}

@@ -124,10 +124,8 @@ const MonthlyFactCards: React.FC<{ factTree: MonthlyFactTree | null; lang: strin
 
       {/* 流年行星宫位网格 */}
       <SectionTitle zh="流年行星落位" en="Transit Planets" lang={L} />
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-        gap: '8px', marginBottom: '16px',
-      }}>
+      {/* 🔴 E102-刀四-③：390px 纵向堆叠（inline grid 提类，军令窄断点月报单列） */}
+      <div className="ks-fact-grid" style={{ marginBottom: '16px' }}>
         {(factTree.transitPlanets || []).map((p, i) => (
           <div key={i} style={{
             background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '8px 10px',
@@ -169,7 +167,9 @@ const MonthlyFactCards: React.FC<{ factTree: MonthlyFactTree | null; lang: strin
 const SectionTitle: React.FC<{ zh: string; en: string; lang: string }> = ({ zh, en, lang }) => (
   <div style={{
     fontSize: '11px', fontWeight: 700, color: GOLD, letterSpacing: '1px',
-    marginBottom: '8px', textTransform: 'uppercase',
+    marginBottom: '8px',
+    /* 🔴 E102-刀四-②：vi 大标题禁 uppercase（重音符大写化损伤可读性，军令钦定） */
+    textTransform: lang === 'vi' ? 'none' : 'uppercase',
   }}>
     {lang === 'zh' ? zh : en}
   </div>

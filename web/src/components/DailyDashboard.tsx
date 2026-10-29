@@ -160,7 +160,7 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ lang }) => {
         textAlign: 'center',
         marginBottom: '14px',
         letterSpacing: '1px',
-        textTransform: 'uppercase',
+        textTransform: lang === 'vi' ? 'none' : 'uppercase', /* 🔴 E102-刀四-② vi 禁 uppercase（Vận Hạn 重音保全） */
       }}>
         {title}
       </div>

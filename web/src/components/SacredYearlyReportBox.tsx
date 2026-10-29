@@ -916,7 +916,7 @@ const SacredYearlyReportBox: React.FC<{
       
       if (type === 'table') return (
         <div key={idx} style={{
-          color: 'rgba(255,255,255,0.75)', fontSize: '11px', lineHeight: 1.5,
+          color: 'rgba(255,255,255,0.75)', fontSize: '11px', lineHeight: 1.6, /* 🔴 E102-刀四-① 泰语削顶 1.5→1.6 */
           marginBottom: '4px', paddingLeft: '12px'
         }}>
           {content}

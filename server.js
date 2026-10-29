@@ -13792,38 +13792,38 @@ const _E88_YEARLY_CHAPTERS = Object.freeze({
 // ═══════════════════════════════════════════════════════════════
 function _e100IchingHexLine(d1, d2, windowStart, L) {
   const HEX = [
-    ['Qian', '乾', 'The Creative', 'สวรรค์ผู้สร้างสรรค์'], ['Kun', '坤', 'The Receptive', 'ปฐพีผู้อดทนอ่อนโยน'],
-    ['Zhun', '屯', 'Difficulty at the Beginning', 'ความยากในการเริ่มต้น'], ['Meng', '蒙', 'Youthful Folly', 'บทเรียนแห่งความไร้เดียงสา'],
-    ['Xu', '需', 'Waiting', 'การรอคอยอย่างมีสติ'], ['Song', '讼', 'Conflict', 'ความขัดแย้งที่ควรเลี่ยง'],
-    ['Shi', '师', 'The Army', 'การรวมพลังอย่างมีวินัย'], ['Bi', '比', 'Holding Together', 'การรวมใจเป็นพันธมิตร'],
-    ['Xiao Xu', '小畜', 'Small Accumulation', 'การสะสมอย่างค่อยเป็นค่อยไป'], ['Lu', '履', 'Treading', 'การก้าวเดินอย่างระวัง'],
-    ['Tai', '泰', 'Peace', 'ความร่มเย็นเป็นสุข'], ['Pi', '否', 'Standstill', 'ความหยุดนิ่งที่ต้องเปลี่ยน'],
-    ['Tong Ren', '同人', 'Fellowship', 'ความสามัคคีของดวงใจ'], ['Da You', '大有', 'Great Possession', 'ความมั่งคั่งใหญ่หลวง'],
-    ['Qian2', '谦', 'Modesty', 'ความถ่อมตน'], ['Yu', '豫', 'Enthusiasm', 'ความเบิกบานรื่นเริง'],
-    ['Sui', '随', 'Following', 'การปฏิบัติตามอย่างฉลาด'], ['Gu', '蛊', 'Work on the Decayed', 'การแก้ไขสิ่งที่ทรุดโทรม'],
-    ['Lin', '临', 'Approach', 'การเข้าถึงอย่างใกล้ชิด'], ['Guan', '观', 'Contemplation', 'การมองภาพรวม'],
-    ['Shi He', '噬嗑', 'Biting Through', 'การตัดสินใจเด็ดเดี่ยว'], ['Bi2', '贲', 'Grace', 'ความสง่างาม'],
-    ['Bo', '剥', 'Splitting Apart', 'การสลายตัว'], ['Fu', '复', 'Return', 'การหวนคืนสู่จุดเริ่มต้น'],
-    ['Wu Wang', '无妄', 'Innocence', 'ความบริสุทธิ์ไร้มายา'], ['Da Xu', '大畜', 'Great Accumulation', 'การสะสมพลังอันใหญ่'],
-    ['Yi', '颐', 'Nourishment', 'การบำรุงเลี้ยงจิตใจ'], ['Da Guo', '大过', 'Great Excess', 'ความเกินพอดีที่ต้องสมดุล'],
-    ['Kan', '坎', 'The Abysmal Water', 'น้ำลึกแห่งการทดสอบ'], ['Li', '离', 'The Clinging Fire', 'ไฟแห่งความสว่าง'],
-    ['Xian', '咸', 'Influence', 'แรงดึงดูดซึ่งกันและกัน'], ['Heng', '恒', 'Duration', 'ความคงยืนนาน'],
-    ['Dun', '遯', 'Retreat', 'การถอยอย่างชาญฉลาด'], ['Da Zhuang', '大壮', 'Great Power', 'พลังอันยิ่งใหญ่'],
-    ['Jin', '晋', 'Progress', 'ความก้าวหน้า'], ['Ming Yi', '明夷', 'Darkening of the Light', 'แสงที่ถูกบดบังชั่วคราว'],
-    ['Jia Ren', '家人', 'The Family', 'ครอบครัวอันอบอุ่น'], ['Kui', '睽', 'Opposition', 'ความต่างที่ต้องปรับคลื่น'],
-    ['Jian', '蹇', 'Obstruction', 'อุปสรรคที่ต้องอดทน'], ['Xie', '解', 'Deliverance', 'การคลายปมปม'],
-    ['Sun', '损', 'Decrease', 'การลดทอนเพื่อสิ่งแท้จริง'], ['Yi2', '益', 'Increase', 'การเสริมพลังแก่กัน'],
-    ['Guai', '夬', 'Breakthrough', 'การตัดสินแบบเด็ดขาด'], ['Gou', '姤', 'Coming to Meet', 'การพบกันโดยไม่คาดคิด'],
-    ['Cui', '萃', 'Gathering Together', 'การชุมนุมแห่งดวงใจ'], ['Sheng', '升', 'Pushing Upward', 'การเติบโตขึ้นเบื้องบน'],
-    ['Kun2', '困', 'Oppression', 'ความยากลำบากชั่วคราว'], ['Jing', '井', 'The Well', 'บ่อน้ำแห่งจิตวิญญาณ'],
-    ['Ge', '革', 'Revolution', 'การเปลี่ยนแปลงอย่างแท้จริง'], ['Ding', '鼎', 'The Cauldron', 'ภาชนะแห่งการหล่อหลอม'],
-    ['Zhen', '震', 'Shock', 'ฟ้าร้องปลุกจิตให้ตื่น'], ['Gen', '艮', 'Stillness', 'ความนิ่งสงบ'],
-    ['Jian2', '渐', 'Gradual Progress', 'ความก้าวหน้าทีละขั้น'], ['Gui Mei', '归妹', 'The Marrying Maiden', 'ความสัมพันธ์ที่ต้องเคารพกัน'],
-    ['Feng', '丰', 'Abundance', 'ความเฟื่องฟู'], ['Lu2', '旅', 'The Wanderer', 'ผู้เดินทาง'],
-    ['Xun', '巽', 'The Gentle Wind', 'ลมแห่งความอ่อนโยน'], ['Dui', '兑', 'The Joyous Lake', 'ทะเลสาบแห่งความสุข'],
-    ['Huan', '涣', 'Dispersion', 'การรวมใจที่กระจัดกระจาย'], ['Jie', '节', 'Limitation', 'ขอบเขตอันชาญฉลาด'],
-    ['Zhong Fu', '中孚', 'Inner Truth', 'ความจริงในหัวใจ'], ['Xiao Guo', '小过', 'Small Excess', 'ความละเอียดรอบคอบ'],
-    ['Ji Ji', '既济', 'After Completion', 'ความสำเร็จที่ต้องรักษา'], ['Wei Ji', '未济', 'Before Completion', 'เส้นทางที่ยังไม่สิ้นสุด'],
+    ['Qian', '乾', 'The Creative', 'สวรรค์ผู้สร้างสรรค์', 'Thuần Càn'], ['Kun', '坤', 'The Receptive', 'ปฐพีผู้อดทนอ่อนโยน', 'Thuần Khôn'],
+    ['Zhun', '屯', 'Difficulty at the Beginning', 'ความยากในการเริ่มต้น', 'Thủy Lôi Truân'], ['Meng', '蒙', 'Youthful Folly', 'บทเรียนแห่งความไร้เดียงสา', 'Sơn Thủy Mông'],
+    ['Xu', '需', 'Waiting', 'การรอคอยอย่างมีสติ', 'Thủy Thiên Nhu'], ['Song', '讼', 'Conflict', 'ความขัดแย้งที่ควรเลี่ยง', 'Thiên Thủy Tụng'],
+    ['Shi', '师', 'The Army', 'การรวมพลังอย่างมีวินัย', 'Địa Thủy Sư'], ['Bi', '比', 'Holding Together', 'การรวมใจเป็นพันธมิตร', 'Thủy Địa Tỷ'],
+    ['Xiao Xu', '小畜', 'Small Accumulation', 'การสะสมอย่างค่อยเป็นค่อยไป', 'Phong Thiên Tiểu Súc'], ['Lu', '履', 'Treading', 'การก้าวเดินอย่างระวัง', 'Thiên Trạch Lý'],
+    ['Tai', '泰', 'Peace', 'ความร่มเย็นเป็นสุข', 'Địa Thiên Thái'], ['Pi', '否', 'Standstill', 'ความหยุดนิ่งที่ต้องเปลี่ยน', 'Thiên Địa Bĩ'],
+    ['Tong Ren', '同人', 'Fellowship', 'ความสามัคคีของดวงใจ', 'Thiên Hỏa Đồng Nhân'], ['Da You', '大有', 'Great Possession', 'ความมั่งคั่งใหญ่หลวง', 'Hỏa Thiên Đại Hữu'],
+    ['Qian2', '谦', 'Modesty', 'ความถ่อมตน', 'Địa Sơn Khiêm'], ['Yu', '豫', 'Enthusiasm', 'ความเบิกบานรื่นเริง', 'Lôi Địa Dự'],
+    ['Sui', '随', 'Following', 'การปฏิบัติตามอย่างฉลาด', 'Trạch Lôi Tùy'], ['Gu', '蛊', 'Work on the Decayed', 'การแก้ไขสิ่งที่ทรุดโทรม', 'Sơn Phong Cổ'],
+    ['Lin', '临', 'Approach', 'การเข้าถึงอย่างใกล้ชิด', 'Địa Trạch Lâm'], ['Guan', '观', 'Contemplation', 'การมองภาพรวม', 'Phong Địa Quán'],
+    ['Shi He', '噬嗑', 'Biting Through', 'การตัดสินใจเด็ดเดี่ยว', 'Hỏa Lôi Sĩ Hạp'], ['Bi2', '贲', 'Grace', 'ความสง่างาม', 'Sơn Hỏa Bí'],
+    ['Bo', '剥', 'Splitting Apart', 'การสลายตัว', 'Sơn Địa Bác'], ['Fu', '复', 'Return', 'การหวนคืนสู่จุดเริ่มต้น', 'Địa Lôi Phục'],
+    ['Wu Wang', '无妄', 'Innocence', 'ความบริสุทธิ์ไร้มายา', 'Thiên Lôi Vô Vọng'], ['Da Xu', '大畜', 'Great Accumulation', 'การสะสมพลังอันใหญ่', 'Sơn Thiên Đại Súc'],
+    ['Yi', '颐', 'Nourishment', 'การบำรุงเลี้ยงจิตใจ', 'Sơn Lôi Di'], ['Da Guo', '大过', 'Great Excess', 'ความเกินพอดีที่ต้องสมดุล', 'Trạch Phong Đại Quá'],
+    ['Kan', '坎', 'The Abysmal Water', 'น้ำลึกแห่งการทดสอบ', 'Thuần Khảm'], ['Li', '离', 'The Clinging Fire', 'ไฟแห่งความสว่าง', 'Thuần Ly'],
+    ['Xian', '咸', 'Influence', 'แรงดึงดูดซึ่งกันและกัน', 'Trạch Sơn Hàm'], ['Heng', '恒', 'Duration', 'ความคงยืนนาน', 'Lôi Phong Hằng'],
+    ['Dun', '遯', 'Retreat', 'การถอยอย่างชาญฉลาด', 'Thiên Sơn Độn'], ['Da Zhuang', '大壮', 'Great Power', 'พลังอันยิ่งใหญ่', 'Lôi Thiên Đại Tráng'],
+    ['Jin', '晋', 'Progress', 'ความก้าวหน้า', 'Hỏa Địa Tấn'], ['Ming Yi', '明夷', 'Darkening of the Light', 'แสงที่ถูกบดบังชั่วคราว', 'Địa Hỏa Minh Di'],
+    ['Jia Ren', '家人', 'The Family', 'ครอบครัวอันอบอุ่น', 'Phong Hỏa Gia Nhân'], ['Kui', '睽', 'Opposition', 'ความต่างที่ต้องปรับคลื่น', 'Hỏa Trạch Khuê'],
+    ['Jian', '蹇', 'Obstruction', 'อุปสรรคที่ต้องอดทน', 'Sơn Thủy Kiển'], ['Xie', '解', 'Deliverance', 'การคลายปมปม', 'Lôi Thủy Giải'],
+    ['Sun', '损', 'Decrease', 'การลดทอนเพื่อสิ่งแท้จริง', 'Sơn Trạch Tổn'], ['Yi2', '益', 'Increase', 'การเสริมพลังแก่กัน', 'Phong Lôi Ích'],
+    ['Guai', '夬', 'Breakthrough', 'การตัดสินแบบเด็ดขาด', 'Trạch Thiên Quải'], ['Gou', '姤', 'Coming to Meet', 'การพบกันโดยไม่คาดคิด', 'Thiên Phong Cấu'],
+    ['Cui', '萃', 'Gathering Together', 'การชุมนุมแห่งดวงใจ', 'Trạch Địa Tụy'], ['Sheng', '升', 'Pushing Upward', 'การเติบโตขึ้นเบื้องบน', 'Địa Phong Thăng'],
+    ['Kun2', '困', 'Oppression', 'ความยากลำบากชั่วคราว', 'Trạch Thủy Khốn'], ['Jing', '井', 'The Well', 'บ่อน้ำแห่งจิตวิญญาณ', 'Thủy Phong Tỉnh'],
+    ['Ge', '革', 'Revolution', 'การเปลี่ยนแปลงอย่างแท้จริง', 'Trạch Hỏa Cách'], ['Ding', '鼎', 'The Cauldron', 'ภาชนะแห่งการหล่อหลอม', 'Hỏa Phong Đỉnh'],
+    ['Zhen', '震', 'Shock', 'ฟ้าร้องปลุกจิตให้ตื่น', 'Thuần Chấn'], ['Gen', '艮', 'Stillness', 'ความนิ่งสงบ', 'Thuần Cấn'],
+    ['Jian2', '渐', 'Gradual Progress', 'ความก้าวหน้าทีละขั้น', 'Phong Sơn Tiệm'], ['Gui Mei', '归妹', 'The Marrying Maiden', 'ความสัมพันธ์ที่ต้องเคารพกัน', 'Lôi Trạch Quy Muội'],
+    ['Feng', '丰', 'Abundance', 'ความเฟื่องฟู', 'Lôi Hỏa Phong'], ['Lu2', '旅', 'The Wanderer', 'ผู้เดินทาง', 'Hỏa Sơn Lữ'],
+    ['Xun', '巽', 'The Gentle Wind', 'ลมแห่งความอ่อนโยน', 'Thuần Tốn'], ['Dui', '兑', 'The Joyous Lake', 'ทะเลสาบแห่งความสุข', 'Thuần Đoài'],
+    ['Huan', '涣', 'Dispersion', 'การรวมใจที่กระจัดกระจาย', 'Phong Thủy Hoán'], ['Jie', '节', 'Limitation', 'ขอบเขตอันชาญฉลาด', 'Thủy Trạch Tiết'],
+    ['Zhong Fu', '中孚', 'Inner Truth', 'ความจริงในหัวใจ', 'Phong Trạch Trung Phu'], ['Xiao Guo', '小过', 'Small Excess', 'ความละเอียดรอบคอบ', 'Lôi Sơn Tiểu Quá'],
+    ['Ji Ji', '既济', 'After Completion', 'ความสำเร็จที่ต้องรักษา', 'Hỏa Thủy Ký Tế'], ['Wei Ji', '未济', 'Before Completion', 'เส้นทางที่ยังไม่สิ้นสุด', 'Thủy Hỏa Vị Tế'],
   ];
   let _h = 2166136261;
   const _s = String(d1) + '|' + String(d2) + '|' + String(windowStart || '');
@@ -13835,7 +13835,24 @@ function _e100IchingHexLine(d1, d2, windowStart, L) {
   if (_L === 'zh') return `第${_n}卦：${_hex[1]}（${_hex[0]}）— 卦意：${_hex[2]}`;
   if (_L === 'es') return `Hexagrama n.º ${_n}: ${_hex[0]} (${_hex[2]})`;
   if (_L === 'fr') return `Hexagramme n°${_n} : ${_hex[0]} (${_hex[2]})`;
-  if (_L === 'vi') return `Quẻ số ${_n}: ${_hex[0]} (${_hex[2]})`;
+  if (_L === 'vi') {
+    // 🔴 E102-③（主公军令 2026-10-29）：vi 汉越 64 卦表＋卦体结构锁——
+    //    根治「Quẻ số 15: Qian2 (Modesty)」拼音/英文渗漏；军令钦定格式
+    //    「Quẻ số 15: Khiêm (Địa Sơn Khiêm)」＋外内卦结构真值行（刀三①：
+    //    严禁「Cấn ở trên và Khôn ở dưới」类倒置——外卦 Khôn 在上、内卦 Cấn 在下）。
+    //    结构映射表置函数体内（VM 抽取式消费者铁律）。
+    const _viW = String(_hex[4] || '').split(' ').filter(Boolean);
+    if (_viW.length >= 2) {
+      const _VTR8 = { 'Thiên': ['Càn', 'Trời'], 'Địa': ['Khôn', 'Đất'], 'Sơn': ['Cấn', 'Núi'], 'Thủy': ['Khảm', 'Nước'], 'Lôi': ['Chấn', 'Sấm'], 'Hỏa': ['Ly', 'Lửa'], 'Phong': ['Tốn', 'Gió'], 'Trạch': ['Đoài', 'Hồ'] };
+      const _VTR8R = { 'Càn': ['Thiên', 'Trời'], 'Khôn': ['Địa', 'Đất'], 'Khảm': ['Thủy', 'Nước'], 'Ly': ['Hỏa', 'Lửa'], 'Chấn': ['Lôi', 'Sấm'], 'Cấn': ['Sơn', 'Núi'], 'Tốn': ['Phong', 'Gió'], 'Đoài': ['Trạch', 'Hồ'] };
+      const _pure = _viW[0] === 'Thuần';
+      const _short = _viW.slice(_pure ? 1 : 2).join(' ');
+      const _u = _pure ? [_viW[1], (_VTR8R[_viW[1]] || [])[1]] : _VTR8[_viW[0]];
+      const _l = _pure ? [_viW[1], (_VTR8R[_viW[1]] || [])[1]] : _VTR8[_viW[1]];
+      if (_u && _l) return `Quẻ số ${_n}: ${_short} (${_hex[4]}) — ngoại quái là ${_u[0]} (${_u[1]}) ở trên, nội quái là ${_l[0]} (${_l[1]}) ở dưới`;
+    }
+    return `Quẻ số ${_n}: ${_hex[4]}`;
+  }
   return `Hexagram No.${_n}: ${_hex[0]} (${_hex[2]})`;
 }
 
@@ -14037,7 +14054,10 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     es: `La micro-guía de ${tarot ? tarot.name : 'la carta del mes'} es precisamente lo que ancla el crecimiento de sus almas para todo el año.`,
     fr: `La micro-guidance de ${tarot ? tarot.name : 'la carte du mois'} est précisément ce qui ancre la croissance de vos âmes pour toute l'année.`,
     th: `คำแนะนำจิตวิญญาณของ${tarot ? tarot.name : 'ไพ่เดือนนี้'}ในเดือนนี้ คือสิ่งที่หล่อเลี้ยงการเติบโตของจิตวิญญาณของคุณทั้งปี`,
-    vi: `Hướng dẫn vi mô của ${tarot ? tarot.name : 'lá bài tháng này'} chính là điều neo giữ sự trưởng thành tâm hồn của hai bạn suốt cả năm.`,
+    // 🛡️ E102-①（主公军令 2026-10-29 刀一③）：vi 句改铸 quẻ Phục 寄语——旧句「Hướng dẫn vi mô
+    //    của ${tarot.name}」被模型逐字复读进月报第四章末尾，成上下文污染孤儿句（Ẩn Sĩ 残留）。
+    //    钦定寄语锚定本月复卦（Quẻ Phục），并去 tarot.name 引用（牌名不再注入引线）。
+    vi: `Lời chỉ dẫn sâu sắc từ quẻ Phục chính là ngọn đèn ấm áp soi sáng sự trưởng thành tâm hồn của hai bạn suốt cả tháng này.`,
   }[L] || _e94ThreadZh;
 
   const sysLines = [
@@ -14175,6 +14195,11 @@ function _E92CompatBaziLock(d1, d2, tA, tB) {
       const ba = DZ[pa.branch], bb = DZ[pb.branch];
       if (CHONG[ba] === bb) rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}相冲）`);
       else if (LIUHE[ba] === bb) rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}六合）`);
+      // 🛡️ E102-刀三③（主公军令 2026-10-29）：同支＝同气非合化——此前同支对（如丑×丑）
+      //    会命中 SANHE 组输出「丑丑半合，属巳酉丑局」（vi 实弹实锤被模型复读成
+      //    Sửu-Sửu 伪合化）。命理正解：同一地支＝同气/伏吟，绝不可称合化；
+      //    半合仅存在于异支对（如 Sửu–Tỵ）。全语种生成侧事实修正。
+      else if (ba === bb) rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}同气，非合化）`);
       else if (SANHE.some((g) => _has(g, ba) && _has(g, bb))) {
         const g = SANHE.find((grp) => _has(grp, ba) && _has(grp, bb));
         rels.push(`A${pa.label}${ba}↔B${pb.label}${bb}（${ba}${bb}半合，属${g.join('')}局）`);
@@ -14237,11 +14262,21 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
   //   แรงเสียดทาน；三合局 ไตรภาคีธาตุไฟ/ธาตุทอง/ธาตุน้ำ/ธาตุไม้）。
   //   根治泰语正文渗漏英文（Dragon-Dog clash / Fire trine / half-combination of
   //   the Metal trine / coupled chart——th 原先走英文 fallback 的全局根因）。
+  // 🔴 E102-③（主公军令 2026-10-29）：越南语专属转译——汉越命理正统口径
+  //   （干支 Giáp/Ất/Bính/Đinh/Mậu/Kỷ/Canh/Tân/Nhâm/Quý 与 Tý/Sửu/Dần/Mão/Thìn/
+  //   Tỵ/Ngọ/Mùi/Thân/Dậu/Tuất/Hợi；关系词 tương xung/lục hợp/tương hình/
+  //   tương hại（寅巳钦定）/bán hợp Kim cục/Tam hợp Hỏa cục），干支不走拼音走汉越
+  //   （根治「(Ji Chou)」「(Gui)」拼音渗漏）；附日主五行真值行（刀三②：Kỷ Sửu âm
+  //   Thổ——根治「bản tính Kim」自相矛盾）。vi 原先走英文 fallback 的全局根因同 th。
   const _e98Lang = String(lang || '');
   const _e97Es = _e98Lang === 'es';
   const _e98Fr = _e98Lang === 'fr';
   const _e100Th = _e98Lang === 'th';
+  const _e102Vi = _e98Lang === 'vi';
   const BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
+  // 🛡️ E102-③：汉越地支/天干表（vi 专属；军令钦定 Kỷ Sửu / Quý Tỵ / Thìn–Tuất 相互口径）
+  const BRV = { '子': 'Tý', '丑': 'Sửu', '寅': 'Dần', '卯': 'Mão', '辰': 'Thìn', '巳': 'Tỵ', '午': 'Ngọ', '未': 'Mùi', '申': 'Thân', '酉': 'Dậu', '戌': 'Tuất', '亥': 'Hợi' };
+  const STV = { '甲': 'Giáp', '乙': 'Ất', '丙': 'Bính', '丁': 'Đinh', '戊': 'Mậu', '己': 'Kỷ', '庚': 'Canh', '辛': 'Tân', '壬': 'Nhâm', '癸': 'Quý' };
   const AN = _e97Es
     ? { '子': 'Rata', '丑': 'Buey', '寅': 'Tigre', '卯': 'Conejo', '辰': 'Dragón', '巳': 'Serpiente', '午': 'Caballo', '未': 'Cabra', '申': 'Mono', '酉': 'Gallo', '戌': 'Perro', '亥': 'Cerdo' }
     : _e98Fr
@@ -14257,12 +14292,17 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
     : _e100Th
     ? { '申子辰': 'ธาตุน้ำ', '亥卯未': 'ธาตุไม้', '寅午戌': 'ธาตุไฟ', '巳酉丑': 'ธาตุทอง' }
     : { '申子辰': 'Water', '亥卯未': 'Wood', '寅午戌': 'Fire', '巳酉丑': 'Metal' };
+  // 🛡️ E102-③：三合局汉越五行（军令钦定：bán hợp Kim cục / Tam hợp Hỏa cục (Dần–Ngọ–Tuất)）
+  const TRINEV = { '申子辰': 'Thủy', '亥卯未': 'Mộc', '寅午戌': 'Hỏa', '巳酉丑': 'Kim' };
   const B = '([子丑寅卯辰巳午未申酉戌亥])';
   let t = bl.lock;
-  // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语、fr 纯法语、th 纯泰语带拼音锚，en 沿 E96 原格式）：
-  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : _e98Fr ? `${AN[a]}-${AN[b]} choc` : _e100Th ? `การปะทะ ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
-  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : _e98Fr ? `${AN[a]}-${AN[b]} six-harmonie` : _e100Th ? `ความสอดคล้องหก ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
-  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : _e98Fr ? `${AN[a]}-${AN[b]} friction` : _e100Th ? `แรงเสียดทาน ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  // ① 关系短语整体转译（先于逐支替换，防拼音粘连；es 纯西语、fr 纯法语、th 纯泰语带拼音锚、vi 汉越军令口径，en 沿 E96 原格式）：
+  t = t.replace(new RegExp(B + B + '相冲', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} choque` : _e98Fr ? `${AN[a]}-${AN[b]} choc` : _e100Th ? `การปะทะ ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? `${BRV[a]}–${BRV[b]} tương xung` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) clash`);
+  t = t.replace(new RegExp(B + B + '六合', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} seis-armonía` : _e98Fr ? `${AN[a]}-${AN[b]} six-harmonie` : _e100Th ? `ความสอดคล้องหก ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? `${BRV[a]}–${BRV[b]} lục hợp` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) six-harmony`);
+  // ①-vi E102-刀三③：相刑寅巳钦定 tương hại（军令 Tiger–Snake friction ➔ Dần–Tỵ tương hại），其余刑＝tương hình
+  t = t.replace(new RegExp(B + B + '相刑', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} fricción` : _e98Fr ? `${AN[a]}-${AN[b]} friction` : _e100Th ? `แรงเสียดทาน ${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]})` : _e102Vi ? ((a === '寅' && b === '巳') || (a === '巳' && b === '寅') ? `${BRV[a]}–${BRV[b]} tương hại` : `${BRV[a]}–${BRV[b]} tương hình`) : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) friction`);
+  // ①-sb E102-刀三③：同气（非合化）关系行六语转译（生成侧 E102 新关系；en/es/fr/th/vi 全覆盖防 CJK 裸出）
+  t = t.replace(new RegExp(B + B + '同气，非合化', 'g'), (m, a, b) => _e97Es ? `${AN[a]}-${AN[b]} misma rama: energía afín, no es combinación` : _e98Fr ? `${AN[a]}-${AN[b]} même branche : énergie semblable, pas une combinaison` : _e100Th ? `สาขาเดียวกัน ${BR[a]}-${BR[b]} (มิใช่การรวม)` : _e102Vi ? `${BRV[a]}–${BRV[b]} đồng khí tương ứng (không phải hợp hóa)` : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) same-branch kinship, not a combination`);
   t = t.replace(new RegExp(B + B + '半合，属' + B + B + B + '局', 'g'),
     (m, a, b, x, y, z) => _e97Es
       ? `${AN[a]}-${AN[b]} media combinación del trígono de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
@@ -14270,13 +14310,17 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
       ? `${AN[a]}-${AN[b]} demi-combinaison du trigone de ${TRINE[x + y + z]} (${AN[x]}-${AN[y]}-${AN[z]})`
       : _e100Th
       ? `ครึ่งไตรภาคี${TRINE[x + y + z]} (${AN[a]}-${AN[b]})`
+      : _e102Vi
+      ? `${BRV[a]}–${BRV[b]} bán hợp ${TRINEV[x + y + z]} cục`
       : `${BR[a]}-${BR[b]} (${AN[a]}-${AN[b]}) half-combination of the ${TRINE[x + y + z]} trine`);
   // ② 集成局：`并集成局：巳酉丑、亥卯未` ⇒ es: trígonos integrados: Metal (Serpiente-Gallo-Buey), …
   t = t.replace(/并集成局：((?:[子丑寅卯辰巳午未申酉戌亥]{3})(?:、[子丑寅卯辰巳午未申酉戌亥]{3})*)/g, (m, grp) => {
     const names = grp.split('、').filter((g) => TRINE[g]);
-    return (_e97Es ? 'trígonos integrados: ' : _e98Fr ? 'trigones intégrés : ' : _e100Th ? 'ไตรภาคีรวม: ' : 'integrated trine formations: ') + names.map((g) => `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
+    // 🛡️ E102-③：vi 钦定格式＝Tam hợp Hỏa cục (Dần–Ngọ–Tuất)
+    const hdr = _e97Es ? 'trígonos integrados: ' : _e98Fr ? 'trigones intégrés : ' : _e100Th ? 'ไตรภาคีรวม: ' : _e102Vi ? 'Các cục tam hợp: ' : 'integrated trine formations: ';
+    return hdr + names.map((g) => _e102Vi ? `Tam hợp ${TRINEV[g]} cục (${BRV[g[0]]}–${BRV[g[1]]}–${BRV[g[2]]})` : `${TRINE[g]} (${AN[g[0]]}-${AN[g[1]]}-${AN[g[2]]})`).join(', ');
   });
-  // ②-b E98-② 年龄差真值行转译（须在 ③ 逐字拼音化前——保留数字、三语纯语化）：
+  // ②-b E98-② 年龄差真值行转译（须在 ③ 逐字拼音化前——保留数字、四语纯语化；vi E102-③ 汉越）：
   t = t.replace(/真实年龄差：A 与 B 出生年份相差(\d+)年[^\n]*/g, (m, n) =>
     _e97Es
       ? `Diferencia de edad real: ${n} años separan a A y B (cite esta cifra exacta; NUNCA calcule ni altere la diferencia de edad por su cuenta)`
@@ -14284,10 +14328,15 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
       ? `Écart d'âge réel : ${n} ans séparent A et B (citez ce chiffre exact ; INTERDIT d'estimer ou de modifier vous-même l'écart d'âge)`
       : _e100Th
       ? `ช่องว่างอายุจริง: A และ B เกิดห่างกัน ${n} ปี (อ้างอิงตัวเลขนี้ตามตัว; ห้ามคำนวณหรือเปลี่ยนแปลงช่องว่างอายุด้วยตนเอง)`
+      : _e102Vi
+      ? `Chênh lệch tuổi thật: A và B sinh cách nhau ${n} năm (trích nguyên văn con số này; TUYỆT ĐỐI không tự ước lượng hay thay đổi chênh lệch tuổi)`
       : `True age gap: A and B were born ${n} years apart (quote this exact figure verbatim; NEVER estimate or alter the age difference yourself)`);
-  // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (pilar del año)）
-  for (const [k, v] of Object.entries(ST)) t = t.split(k).join(v + ' ');
-  for (const [k, v] of Object.entries(BR)) t = t.split(k).join(v + ' ');
+  // ③ 天干地支逐字拼音化（四柱串：丙辰（年柱）⇒ Bing Chen (pilar del año)）；
+  //    🛡️ E102-③：vi 例外——走汉越表（Kỷ Sửu / Quý Tỵ，军令刀三②：坚决清除 (Ji Chou)/(Gui) 拼音）
+  const _stMap = _e102Vi ? STV : ST;
+  const _brMap = _e102Vi ? BRV : BR;
+  for (const [k, v] of Object.entries(_stMap)) t = t.split(k).join(v + ' ');
+  for (const [k, v] of Object.entries(_brMap)) t = t.split(k).join(v + ' ');
   if (_e97Es) {
     // ④-es 结构短语西语化（E97-③：es 交付全文西语；四柱干支保留标准拼音）
     t = t.split('）四柱：').join(') cuatro pilares: ').split('四柱：').join('cuatro pilares: ');
@@ -14332,6 +14381,38 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
     t = t.replace(/เสา(ปี|เดือน|วัน|ชั่วโมง)([A-Z][a-z]{1,3})/g, 'เสา$1 $2');
     t = t.split('↔').join(' ↔ ').split('；').join('; ');
     t = t.replace(/\s{2,}/g, ' ').trim();
+  } else if (_e102Vi) {
+    // ④-vi 结构短语越南语化（E102-③：vi 交付全文越南语；四柱干支已走汉越表）
+    t = t.split('）四柱：').join(') bốn trụ: ').split('四柱：').join('bốn trụ: ');
+    t = t.split('跨盘真实刑冲合害：').join('Quan hệ tương xung/lục hợp/tương hình thật giữa hai lá số: ');
+    t = t.split('跨盘无主要刑冲合害（如实陈述，不得虚构）').join('Không có quan hệ xung/hợp/hình lớn giữa hai lá số (kể lại đúng như vậy, tuyệt đối không bịa đặt)');
+    t = t.split('（除本锁列出的地支与关系外，盘中任何刑冲合害一律不得提及）').join('(Ngoài các chi và quan hệ đã liệt kê trong khóa này, tuyệt đối không đề cập bất kỳ xung/hợp/hình nào khác trong hai lá số)');
+    t = t.split('八字命理数据锁 — 系统预计算真值，论述八字时唯一可信源').join('Khóa chân lý Bazi do hệ thống tính toán sẵn — nguồn duy nhất đáng tin cậy cho mọi phân tích Bazi');
+    t = t.split('年柱').join('trụ năm').split('月柱').join('trụ tháng')
+         .split('日柱').join('trụ ngày').split('时柱').join('trụ giờ');
+    t = t.split('（').join(' (').split('）').join(') ');
+    // 🛡️ E102-刀三②：日主五行真值行——vi 实弹实锤「bản tính Kim (Ji Chou, âm Thổ)」
+    //    五行自相矛盾 ⇒ 从已汉越化的四柱行确定性提取日柱干支，注入五行阴阳真值
+    //    （十干五行情区置函数体内，VM 抽取式消费者铁律）。提取失败 ⇒ 不注入（绝不伪造）。
+    const _WUX = { 'Giáp': 'dương Mộc', 'Ất': 'âm Mộc', 'Bính': 'dương Hỏa', 'Đinh': 'âm Hỏa', 'Mậu': 'dương Thổ', 'Kỷ': 'âm Thổ', 'Canh': 'dương Kim', 'Tân': 'âm Kim', 'Nhâm': 'dương Thủy', 'Quý': 'âm Thủy' };
+    const _dm = [];
+    for (const _side of ['A', 'B']) {
+      const _ln = t.split('\n').find((x) => new RegExp('^' + _side + ' \\([^)]*\\) bốn trụ: ').test(x));
+      if (_ln) {
+        const _seg = _ln.split('(trụ ngày)')[0].trim().split(/\s+/);
+        const _stem = _seg[_seg.length - 2], _branch = _seg[_seg.length - 1];
+        if (_WUX[_stem] && BRV && Object.values(BRV).includes(_branch)) _dm.push(`${_side}: ${_stem} ${_branch} (${_WUX[_stem]})`);
+      }
+    }
+    if (_dm.length > 0) {
+      const _dmLine = `Nhật Chủ ${_dm.join('; ')} — luận ngũ hành ngày chủ PHẢI khớp nguyên văn chân trị này (cấm tự gán "bản tính Kim", cấm mọi dạng pinyin chữ Hán)`;
+      t = t.replace(/\n(Quan hệ tương xung\/lục hợp\/tương hình thật giữa hai lá số:)/, '\n' + _dmLine + '\n$1');
+    }
+    // ⑤-vi 观感规整：↔ 两侧留白、全角分号转半角、A/B-柱位粘连与柱标签-干支粘连插空格（es/fr/th 同族正则的 vi 等价物）
+    t = t.replace(/([AB])trụ/g, '$1 trụ');
+    t = t.replace(/(trụ (?:năm|tháng|ngày|giờ))([A-ZĐ][a-zà-ỹA-ZÀ-Ỹ]{1,5})/g, '$1 $2');
+    t = t.split('↔').join(' ↔ ').split('；').join('; ');
+    t = t.replace(/\s{2,}/g, ' ').trim();
   } else {
   // ④ 结构短语英文化（长串全角括号形态优先 → 柱 label 裸形态 → 全角括号规整为半角）
   t = t.split('）四柱：').join(') four pillars: ').split('四柱：').join('four pillars: ');
@@ -14356,6 +14437,8 @@ function _e96LocalizeCompatBaziLock(bl, lang) {
     ? '\n【PURETÉ LINGUISTIQUE / 语言纯粹性绝对铁律】(E98-③) Dans ce rapport en français, N\'ÉCRIVEZ JAMAIS de caractères chinois non traduits dans le corps du rapport (jamais 亥巳相冲, 辰酉六合, 巳酉丑 tels quels). Tout terme de métaphysique orientale et de Bazi doit s\'exprimer en français fluide, p. ex. « le choc entre Cochon et Serpent », « la six-harmonie Dragon-Coq », « le trigone de Métal (Serpent-Coq-Bœuf) ». Le bloc de données ci-dessus est déjà traduit en français — narrez uniquement en français.'
     : _e100Th
     ? '\n【ความบริสุทธิ์ของภาษา / 语言纯粹性绝对铁律】(E100-②) ในรายงานภาษาไทยนี้ ห้ามเด็ดขาดที่จะเขียนอักขระจีนที่ยังไม่แปลในเนื้อหารายงาน (ห้ามเขียน 亥巳相冲, 辰酉六合, 巳酉丑, 重生 ตรงตามตัว) และห้ามมีคำศัพท์ภาษาอังกฤษหลงเหลือในเนื้อหา เช่น Dragon-Dog clash, Fire trine, Metal trine, half-combination, coupled chart, heaven, earth, hexagram คำศัพท์โหราศาสตร์ตะวันออกและปาจื่อทั้งหมดต้องเรียบเรียงเป็นภาษาไทยลื่นไหล เช่น "การปะทะระหว่างกุนกับมะเส็ง", "ไตรภาคีธาตุไฟ (ขาล-มะเมีย-จอ)", "ไตรภาคีธาตุทอง (ฉลู-มะเส็ง)", "แผนภูมิดวงคู่สัมพันธ์", "กั้ว", "ฟ้าและดิน", "การเกิดใหม่ทางจิตวิญญาณ" บล็อกข้อมูลข้างบนแปลเป็นภาษาไทยแล้ว — เล่าเรื่องเป็นภาษาไทยล้วนเท่านั้น'
+    : _e102Vi
+    ? '\n【SỰ THUẦN KHIẾT CỦA NGÔN NGỮ / 语言纯粹性绝对铁律】(E102-③) Trong báo cáo tiếng Việt này, TUYỆT ĐỐI không viết ký tự Trung Quốc chưa dịch trong nội dung báo cáo (không viết 亥巳相冲, 辰酉六合, 巳酉丑 nguyên văn) và TUYỆT ĐỐI không để sót thuật ngữ tiếng Anh trong nội dung (như Dragon-Dog clash, Pig-Snake clash, Ox-Dog friction, Tiger-Snake friction, half-combination of the Metal trine, Fire trine, keynote, synastry) hay pinyin có dấu (như Qian2, Fu, Ji, Gui). Mọi thuật ngữ Bazi và metaphysics phương Đông phải diễn đạt bằng tiếng Việt trôi chảy theo chuẩn Hán-Việt, ví dụ "Thìn–Tuất tương xung", "Tỵ–Hợi tương xung", "Sửu–Tuất tương hình", "Dần–Tỵ tương hại", "lục hợp Thìn–Dậu", "Sửu–Tỵ bán hợp Kim cục", "Tam hợp Hỏa cục (Dần–Ngọ–Tuất)", "Quẻ Khiêm (Địa Sơn Khiêm)". Khóa dữ liệu phía trên đã dịch sẵn sang tiếng Việt Hán-Việt — chỉ kể chuyện bằng tiếng Việt thuần khiết. 🔴 NGŨ HÀNH NGÀY CHỦ (E102-刀三②): luận ngũ hành của Nhật Chủ hai bên PHẢI khớp nguyên văn dòng "Nhật Chủ" trong khóa (ví dụ Kỷ Sửu = âm Thổ, Quý Tỵ = âm Thủy); TUYỆT ĐỐI không tự gán "bản tính Kim" hay bất kỳ ngũ hành nào mâu thuẫn với chân trị. 🔴 ĐỒNG CHI KHÔNG PHẢI HỢP HÓA (E102-刀三③): hai chi giống nhau (ví dụ Sửu–Sửu) là "đồng khí tương ứng", TUYỆT ĐỐI không gọi là hợp hóa hay bán hợp; chỉ các cặp khác chi thuộc cùng cục (như Sửu–Tỵ) mới là bán hợp Kim cục.'
     : '\n【语言纯粹性绝对铁律 / LANGUAGE PURITY】(E96-③) In this non-Chinese deliverable, NEVER output any standalone untranslated Chinese characters in the report body (never write 亥巳相冲, 辰酉六合, 巳酉丑 etc. verbatim). All Eastern metaphysics and Bazi terms must be rendered in fluent English with standard esoteric expressions, e.g. "the Pig-Snake (Hai-Si) clash", "the Dragon-Rooster (Chen-You) six-harmony", "the Metal trine (Snake-Rooster-Ox)". The data lock above is already romanized and translated — narrate it in English only.');
   bl._e96Localized = true;   // 幂等标记（防重复转译）
   return bl;
@@ -14374,6 +14457,40 @@ function _e100StripCjk(text) {
   const s = String(text || '');
   if (!/[\u4e00-\u9fff]/.test(s)) return s;
   return s.replace(/[\u4e00-\u9fff]/g, ' ').replace(/\s{2,}/g, ' ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E102-③（主公军令 2026-10-29 刀三④）：vi 报告输出侧英文/拼音专业词硬清洗（兜底层）
+//   病理（vi 三档实弹实测实锤）：vi 历史落 en fallback ⇒ "half-combination of the
+//   Metal trine / Dragon-Dog clash / Ox-Dog friction" 等 en 契约术语直出越南语正文；
+//   卦行 "Qian2 (Modesty)" 拼音泄漏。prompt 侧 vi 分支（根治层）已在前，
+//   此为军令「(Dragon-Dog|Pig-Snake|Ox-Dog|Metal trine|Fire trine) 命中=0、
+//   Qian[0-9] 命中=0」的交付层最后防线（终帧全文洗为硬验收，帧级为尽力而为——
+//   词组可能被 SSE 增量帧切开，终帧幂等收口覆盖）。zh/es/fr/th/en 零触碰。
+//   12 组替换词表＝军令钦定逐字（Thìn–Tuất tương xung 等）。
+// ═══════════════════════════════════════════════════════════════
+function _e102ViWash(text) {
+  let s = String(text || '');
+  if (!/Dragon|Pig[–-]Snake|Ox[–-]Dog|Tiger[–-]Snake|trine|keynote|lá số|Qian[0-9]|Fu \(Return\)/i.test(s)) return s;
+  // 关系术语（带/不带括号、friction/clash 后缀可选——军令钦定汉越词逐字；
+  //    后缀匹配用 [ \t]+ 防吞换行，前导不吞空白防段落粘连）
+  s = s.replace(/\(?Dragon[–—-]Dog\)?[ \t]?clash/gi, 'Thìn–Tuất tương xung');
+  s = s.replace(/\(?Pig[–—-]Snake\)?[ \t]?clash/gi, 'Tỵ–Hợi tương xung');
+  s = s.replace(/\(?Ox[–—-]Dog\)?(?:[ \t]+friction)?/gi, 'Sửu–Tuất tương hình');
+  s = s.replace(/\(?Tiger[–—-]Snake\)?(?:[ \t]+friction)?/gi, 'Dần–Tỵ tương hại');
+  // 裸词组兜底（不带关系后缀的残余形态）
+  s = s.replace(/Dragon[–—-]Dog/gi, 'Thìn–Tuất');
+  s = s.replace(/Pig[–—-]Snake/gi, 'Tỵ–Hợi');
+  s = s.replace(/Ox[–—-]Dog/gi, 'Sửu–Tuất');
+  s = s.replace(/Tiger[–—-]Snake/gi, 'Dần–Tỵ');
+  s = s.replace(/half[–—-]combination of the Metal trine/gi, 'bán hợp Kim cục');
+  s = s.replace(/half[–—-]combination of the Fire trine/gi, 'bán hợp Hỏa cục');
+  s = s.replace(/lá số synastry/gi, 'bản đồ sao cặp đôi (synastry)');
+  s = s.replace(/\bkeynote\b/g, 'thông điệp dẫn lối');
+  s = s.replace(/Qian2 \(Modesty\)/gi, 'Quẻ Khiêm (Địa Sơn Khiêm)');
+  s = s.replace(/Qian[0-9]/g, 'Quẻ Khiêm');
+  s = s.replace(/\bFu \(Return\)/g, 'Quẻ Phục (Địa Lôi Phục)');
+  return s;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -17153,8 +17270,11 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _e96Opts = { maxTokens: _e94MaxTokens, reportType };
         // 🛡️ E100-② 输出侧兜底：非 zh 报告 CJK 硬清洗——SSE 增量帧逐字符剥除
         //    （帧任意切分下安全）＋终帧全文再洗一遍（词级偶发渗漏如「การ重生」根治）。
+        // 🛡️ E102-③ 输出侧兜底：vi 报告额外英文/拼音专业词清洗（帧级尽力而为＋
+        //    终帧全文硬验收；军令刀三④ 12 组词表）。
         const _e100NonZh = !/^zh/i.test(String(lang || 'zh'));
-        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? _e100StripCjk(d) : d); } catch (e) { /* 单帧失败不断流 */ } };
+        const _e102ViLang = /^vi$/i.test(String(lang || ''));
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d); } catch (e) { /* 单帧失败不断流 */ } };
         let insight = await callAI(
           _compat.system,
           _compat.user,
@@ -17162,7 +17282,9 @@ app.use('/api/ai-advisor', async (req, res) => {
           _e96Opts
         );
         // 🛡️ E100-② 终帧清洗（军令验收铁指标：[\u4e00-\u9fa5] 命中 = 0；zh 零触碰）
-        if (_e100NonZh) insight = _e100StripCjk(insight);
+        // 🛡️ E102-③ 终帧 vi 词表清洗（军令刀五铁指标：Dragon-Dog/Pig-Snake/Ox-Dog/
+        //    Metal trine/Fire trine/Qian[0-9] 命中 = 0——落库全文双保险）。
+        if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）

@@ -36,7 +36,7 @@ const SAFE_TEXT: React.CSSProperties = {
 
 const CHIP: React.CSSProperties = {
   fontSize: '11px',
-  lineHeight: 1.5,
+  lineHeight: 1.6, /* 🔴 E102-刀四-①：泰语声调符削顶防护（1.5→1.6，军令下限 1.55+） */
   color: '#F5F1E6',
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.09)',

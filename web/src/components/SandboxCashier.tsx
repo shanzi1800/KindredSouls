@@ -229,7 +229,7 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
               style={{
                 padding: '10px 16px', borderRadius: '10px',
                 border: '1px solid rgba(212,175,55,0.45)', background: busy ? '#333' : 'rgba(212,175,55,0.1)',
-                color: GOLD, fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                color: GOLD, fontSize: '12px', fontWeight: 700, whiteSpace: 'normal', /* 🔴 E102-刀四-② CTA 可换行（vi 长标签 390px 不溢出） */
                 cursor: busy ? 'not-allowed' : 'pointer', ...SAFE_TEXT,
               }}
             >

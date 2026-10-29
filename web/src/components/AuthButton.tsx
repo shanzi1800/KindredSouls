@@ -281,7 +281,7 @@ export default function AuthButton({ onAuthSuccess: _onAuthSuccess, lang = 'en',
           border: '1px solid rgba(212,175,55,0.3)',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '1px', marginBottom: '6px', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '11px', color: '#D4AF37', letterSpacing: '1px', marginBottom: '6px', textTransform: lang === 'vi' ? 'none' : 'uppercase' }}>
             🔮 {(lang === 'zh' ? '今日塔罗指引' : lang === 'es' ? 'Guía del Día' : lang === 'fr' ? "Guide d'Aujourd'hui" : lang === 'th' ? 'แนวทางไพ่ทาโรต์วันนี้' : lang === 'vi' ? 'Hướng dẫn Tarot hôm nay' : "Today's Tarot Guidance")}
           </div>
           <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
