@@ -8,7 +8,7 @@
 //      上下文注入命盘真值：今日塔罗牌 + 本命三合局）；
 // 刀四 军规链 81 → 82 段（e107 居 e106 后、e40 前）。
 // 🔴 沿袭纪律：源码级计数闸门（i18n 基准 109→112；14 处段数 81→82 由各文件自行后继化）。
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import test from 'node:test';
@@ -16,11 +16,13 @@ import assert from 'node:assert';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
+const exists = (p) => existsSync(path.join(ROOT, p));
 const SERVER = read('server.js');
 const PKG = JSON.parse(read('package.json'));
 const HOME = read('web/src/components/FamiliarHomeCard.tsx');
 const SHEET = read('web/src/components/FamiliarChatSheet.tsx');
-const LUCK = read('web/src/components/FamiliarLuckCard.tsx');
+// 🍀 E108-刀三 后继化：居中大 Modal「今日幸运卡片」已物理废除（组件文件删除），
+//    复活贴身伴随式「今日运势锦囊」轻气泡（图 9 形态）——③ 段断言随之演进。
 const DRAW = read('web/src/lib/drawGoldCard.ts');
 const LANGS = ['zh', 'en', 'fr', 'es', 'th', 'vi'];
 
@@ -93,13 +95,17 @@ test('②-3 金卡绘制接图腾库（卡面图腾与塔罗牌名严格对应�
 
 // ═══════════════ 刀二 · 首页灵宠三阶动线 ═══════════════
 
-test('③-1 点灵宠 ⇒ 今日幸运卡片（不再直开对话舱）', async () => {
-  assert.ok(HOME.includes('FamiliarLuckCard'), '首页未接幸运卡片组件');
-  assert.ok(HOME.includes('setLuckCardOpen(true)'), '点灵宠未呼出今日幸运卡片');
-  // tapFamiliar 内禁直接 setChatOpen(true)——开舱权只属幸运卡片 CTA
-  const tapSeg = HOME.split('const tapFamiliar =')[1]?.split('}, []);')[0] || '';
-  assert.ok(tapSeg.includes('setLuckCardOpen(true)'), 'tapFamiliar 缺幸运卡片呼出');
-  assert.ok(!tapSeg.includes('setChatOpen(true)'), 'tapFamiliar 仍直开舱（三阶动线违例）');
+test('③-1 点灵宠 ⇒ 贴身今日运势锦囊气泡（不再直开对话舱）', async () => {
+  // 🍀 E108-刀三 后继化（主公军令 2026-11-01）：E107 居中大 Modal「今日幸运卡片」
+  //    物理废除（遮挡灵宠＋交互割裂实锤）⇒ 复活图 9 贴身伴随式锦囊气泡。
+  assert.ok(!exists('web/src/components/FamiliarLuckCard.tsx'), 'FamiliarLuckCard 组件文件仍存在（居中大 Modal 未物理废除）');
+  assert.ok(!HOME.includes('FamiliarLuckCard'), '首页仍挂居中幸运卡片组件');
+  assert.ok(!HOME.includes('setLuckCardOpen'), 'luckCardOpen 状态残留（居中 Modal 动线未拔净）');
+  const tapSeg = HOME.split('const tapFamiliar =')[1]?.split('}, [')[0] || '';
+  assert.ok(tapSeg.includes('showBubble'), '点灵宠未呼出贴身锦囊气泡');
+  assert.ok(tapSeg.includes('setFamPulse(true)'), '点灵宠缺 0.75s 微光脉冲');
+  // tapFamiliar 内禁直接 setChatOpen(true)——开舱权只属气泡 CTA
+  assert.ok(!tapSeg.includes('setChatOpen(true)'), 'tapFamiliar 仍直开舱（动线违例）');
 });
 
 test('③-2 E76 带路令牌改微光提示（回首页禁自动弹舱）', async () => {
@@ -109,13 +115,18 @@ test('③-2 E76 带路令牌改微光提示（回首页禁自动弹舱）', asyn
   assert.ok(!e76Seg.includes('setChatOpen(true)'), 'E76 仍自动弹舱（军令刀二违例）');
 });
 
-test('③-3 幸运卡片三阶承接（幸运真值＋金卡缩略图＋深度聊天 CTA）', async () => {
-  assert.ok(LUCK.includes('dailyFortune'), '幸运卡片未接 dailyFortune 真值核');
-  assert.ok(LUCK.includes('goldCardTotem'), '幸运卡片缺金卡图腾缩略图');
-  assert.ok(LUCK.includes('getWealthTarot'), '幸运卡片缺今日塔罗真源（getWealthTarot）');
-  assert.ok(/chatDeepCta|onChat/.test(LUCK), '幸运卡片缺「与TA深度聊聊」CTA');
-  // 幸运三宝：色/数字/能量微语
-  assert.ok(/luckColor/.test(LUCK) && /luckyNumber/.test(LUCK) && /vibe/.test(LUCK), '幸运卡片缺幸运色/数字/能量微语');
+test('③-3 贴身锦囊气泡三宝真值承接（幸运数字/色/能量微语＋聊聊胶囊 CTA）', async () => {
+  // 🍀 E108-刀三 后继化：锦囊真值随气泡复活（dailyFortune 确定性核；塔罗真值层
+  //    已由 /api/familiar/chat 服务端 prompt 第四层命盘真值承载，前端缩略图随
+  //    居中 Modal 一并退场）。
+  assert.ok(HOME.includes('dailyFortune'), '首页未接 dailyFortune 真值核');
+  const pouchSeg = HOME.split('const luckPouch =')[1]?.split('}, [')[0] || '';
+  assert.ok(/luckyNumber/.test(pouchSeg) && /luckNum/.test(pouchSeg), '锦囊缺幸运数字');
+  assert.ok(/luckColor/.test(pouchSeg) && /color\.name/.test(pouchSeg), '锦囊缺幸运色');
+  assert.ok(/vibe/.test(pouchSeg), '锦囊缺能量微语（f.vibe）');
+  assert.ok(HOME.includes("famBubble.line2"), '气泡缺第二行渲染（能量微语行）');
+  // 开舱胶囊：气泡 CTA「✦ 与TA聊聊」⇒ 气泡隐退开舱
+  assert.ok(HOME.includes('ks-fam-bubble-cta') || HOME.includes('familiar-chat-cta'), '气泡缺「与TA聊聊」胶囊 CTA');
 });
 
 test('③-4 i18n 三新键六语同步（luckCardTitle/luckVibe/chatDeepCta）', async () => {
@@ -164,12 +175,12 @@ test('④-4 前端零登录拦阻（无 token 亦发流——灵宠档随行证�
 
 // ═══════════════ 刀四 · 军规链入编（81 → 82 段）═══════════════
 
-test('⑤-1 军规链段数入编（E107 后继化：82 段／e107 居 e106 前、e40 前）', async () => {
+test('⑤-1 军规链段数入编（E108 后继化：83 段／e107 居 e106 前、e40 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 82, `军规链段数异常（实得 ${segs.length}，基线 82（E107 升 82 段））`);
+  assert.equal(segs.length, 83, `军规链段数异常（实得 ${segs.length}，基线 83（E108 升 83 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 3].includes('audit-e107'), 'e107 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 4].includes('audit-e106'), 'e106 须居 len-4（e107 后）');
-  assert.ok(segs[segs.length - 5].includes('audit-e105'), 'e105 须居 len-5');
+  assert.ok(segs[segs.length - 4].includes('audit-e107'), 'e107 须居 len-4（e108 后、e40 前）');
+  assert.ok(segs[segs.length - 5].includes('audit-e106'), 'e106 须居 len-5（e107 后）');
+  assert.ok(segs[segs.length - 6].includes('audit-e105'), 'e105 须居 len-6');
 });

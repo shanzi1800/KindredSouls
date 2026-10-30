@@ -17,7 +17,7 @@
  *      🔴 旧「世界牌椭圆花环恒直通」通道物理拔除——图腾与卡面塔罗牌名严格对应）；
  *   ⑦ 字体阶梯：Cinzel / Noto Serif 衬线体系（离线系统栈逐级降级）；
  *   ⑧ 文本：六语折行引擎（goldCardLayout.mjs）居中绘制主/副标＋塔罗当头牌＋年度金句；
- *   ⑨ 防伪底栏：✦ SOUL OS | COSMIC IMMUTABLE ARCHIVE ＋ 唯一命盘 Hash 码（FNV-1a）。
+ *   ⑨ 防伪底栏（E108-刀一）：✦ SOUL OS · kindredsouls.online ✦ ／ HASH · COSMIC IMMUTABLE ARCHIVE ＋ 唯一命盘 Hash 码（FNV-1a）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import {
@@ -260,13 +260,14 @@ export async function drawGoldCard(canvas: HTMLCanvasElement, payload: GoldCardP
     maxLines: 3, maxWidth: L.safeZoneWidth, minFontSize: 10,
   }, GOLD_SOFT, '');
 
-  // ⑨ 防伪底栏：✦ SOUL OS | COSMIC IMMUTABLE ARCHIVE ＋ 唯一命盘 Hash 码
-  ctx.font = '10px "Segoe UI", sans-serif';
+  // ⑨ 防伪底栏（🏆 E108-刀一：注入官方域名 kindredsouls.online——社交分享流量回流）
+  //    双层居中：行一 ✦ SOUL OS · kindredsouls.online ✦／行二 HASH · COSMIC IMMUTABLE ARCHIVE
+  ctx.font = `10px ${serif}`;
   ctx.fillStyle = 'rgba(212, 175, 55, 0.75)';
-  ctx.fillText('✦ SOUL OS | COSMIC IMMUTABLE ARCHIVE', L.centerX, L.canvasHeight - 54);
+  ctx.fillText('✦ SOUL OS · kindredsouls.online ✦', L.centerX, L.canvasHeight - 54);
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(243, 229, 171, 0.5)';
-  ctx.fillText(`HASH ${hashHex}`, L.centerX, L.canvasHeight - 36);
+  ctx.fillText(`HASH ${hashHex} · COSMIC IMMUTABLE ARCHIVE`, L.centerX, L.canvasHeight - 36);
 
   return canvas;
 }

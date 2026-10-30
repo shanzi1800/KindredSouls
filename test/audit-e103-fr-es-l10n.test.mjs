@@ -184,7 +184,7 @@ test('E103-③-2 行为级：_e103FrWash NBSP＋小数逗号（幂等）／_e103
   assert.ok(outEs.includes('5,54°') && outEs.includes('69,4 %'), 'es wash 小数逗号化缺失');
   assert.strictEqual(E('El corazón puro'), 'El corazón puro', 'es wash 纯文本误触');
   // 交付层双保险：SSE 帧级＋终帧（fr/es 层与 vi 层并列；zh 通路零触碰）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级 fr/es 排版清洗缺失');
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d))"), 'SSE 帧级 fr/es 排版清洗缺失');
   assert.ok(SERVER.includes('if (_e103FrLang) insight = _e103FrWash(insight);'), '终帧 fr 排版收口缺失');
   assert.ok(SERVER.includes('if (_e103EsLang) insight = _e103EsWash(insight);'), '终帧 es 排版收口缺失');
 });
@@ -275,7 +275,7 @@ test('E103-⑤ 存量作废：COMPAT_PERSIST_VERSION v5（旧 fr/es 报告 Qian2
 
 test('E103-⑥ 军规链基线 79 段（e103/e104 居 e102 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 82, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
+  assert.strictEqual(parts.length, 83, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

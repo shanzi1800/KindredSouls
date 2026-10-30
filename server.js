@@ -13909,6 +13909,31 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     th: `✦ จุดยึดพลังงาน: ปี Solar Return เริ่มต้นในเดือนเกิดของคุณ (${_anchorMonthLabel}) แล้วไหลไปครบ 12 เดือน`,
     vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
   }[L] || '';
+  // 🔴 E108-刀二（主公军令 2026-11-01）：第二章季度区间硬约束——根治「第4季度 7月-10月」
+  //   历法算术溢出（4 个月跨度＝窗口外第 13 月硬伤）。四季严格各 3 个月、自窗口
+  //   首月起算：Q1=第1~3月、Q2=第4~6月、Q3=第7~9月、Q4=第10~12月；窗口末月之后
+  //   ＝下一太阳返照年首月（至多第五章新岁交接一句收束，第二章绝无第 13 月）。
+  //   区间标签六语渲染、窗口相对现算（VM 抽取消费者铁律：常量置函数体内）。
+  const _e108MonL = {
+    en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+    fr: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'],
+    th: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
+  }[L] || null;
+  const _e108Y0 = Number(_anchorYm.slice(0, 4));
+  const _e108M0 = Number(_anchorYm.slice(5, 7));
+  const _e108Mon = (i) => ((_e108M0 - 1 + i) % 12) + 1;                 // 窗口第 i 月（0 基）月号
+  const _e108Yr = (i) => _e108Y0 + Math.floor((_e108M0 - 1 + i) / 12);  // 窗口第 i 月年号
+  const _e108MLbl = (i) => (L === 'zh')
+    ? `${_e108Yr(i)}年${_e108Mon(i)}月`
+    : (L === 'vi' ? `tháng ${_e108Mon(i)}/${_e108Yr(i)}` : `${_e108MonL[_e108Mon(i) - 1]} ${_e108Yr(i)}`);
+  const _e108QRange = (q) => {
+    const a = 3 * q, b = 3 * q + 2;
+    if (L === 'zh' && _e108Yr(a) === _e108Yr(b)) return `${_e108Yr(a)}年${_e108Mon(a)}月—${_e108Mon(b)}月`;
+    return `${_e108MLbl(a)}—${_e108MLbl(b)}`;
+  };
+  const _e108Q = [0, 1, 2, 3].map(_e108QRange);
+  const _e108M13 = _e108MLbl(12); // 窗口外第 13 月＝下一太阳返照年首月
   // 🔴 E94-④（主公军令 2026-10-26）：①第二章 Q1~Q4 季度基调词表——与月报构造器
   //   buildCompatMonthlyFourModulePrompt 内 _e94Tone 逐字同源（单一措辞真源 ⇒ 宏微必然咬合）；
   //   ②塔罗年度灵魂原型牌跨卷串联句（与月报第 10 条互为回响）。
@@ -13932,6 +13957,8 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '1a. Immediately below the Chapter 2 title line, output VERBATIM (one line, do not paraphrase, do not translate, do not omit) the solar-return anchor note line provided in the user prompt.',
     '2. Chapter 1 (600+ words): Solar Return overview — the year\'s keynote, core conclusion, and a relationship-axis score (0-100) with one-line justification.',
     '3. Chapter 2 (900+ words): the full 12-month panorama — the 12 months run strictly from the FIRST month of the given time window (the solar-return birth month) through 12 consecutive months; analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
+    // 🛡️ E108-刀二：季度历法硬约束——四季严格各 3 个月、区间逐字声明、第 13 月禁令
+    `3a. [QUARTER CALENDAR — strict 12-month quarters, MANDATORY] Chapter 2 divides the time window into EXACTLY four quarters of 3 months each, counted from the FIRST month of the window: Q1 (window months 1-3) = ${_e108Q[0]}; Q2 (window months 4-6) = ${_e108Q[1]}; Q3 (window months 7-9) = ${_e108Q[2]}; Q4 (window months 10-12) = ${_e108Q[3]}. When introducing each quarter, state its month range exactly as given here. NEVER let any quarter spill into a 4th month, and NEVER name any month outside the window: ${_e108M13} already belongs to the NEXT solar-return year — it may be mentioned only once in Chapter 5 as a new-year handover blessing, never inside Chapter 2. The whole report covers exactly 12 months — there is no 13th month.`,
     '4. Chapter 3 (900+ words): four hard-core dimensions, one sub-section each — ① daily communication & mental rapport, ② intimacy & attraction fluctuations, ③ material reality & family tests, ④ fated bond & soul growth.',
     '5. Chapter 4 (600+ words): exactly THREE destiny crossroads of the year — each with a concrete month range (derived from the given time window), the trigger of conflict, and the breakthrough secret.',
     '6. Chapter 5 (600+ words): the I Ching annual hexagram reading — use the EXACT hexagram given in the data lock (its number and name are sole truth; NEVER invent, rename, or translate a hexagram by yourself) and a year-round luck-tuning guide (color / direction / ritual-free daily practices only).',
@@ -13970,10 +13997,42 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     ch[2],
     ch[3],
     ch[4],
-    `\nWrite the complete 5-chapter annual report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, at least 3600 words total. Every month, every dimension and every crossroad must be concrete and specific — no filler, no generic advice. The 12 months of Chapter 2 must start from the solar-return window start month, NOT from January.`,
+    `\nWrite the complete 5-chapter annual report for ${d1} and ${d2} now, in ${L === 'zh' ? 'Simplified Chinese' : 'the language locked in the system instruction'}, at least 3600 words total. Every month, every dimension and every crossroad must be concrete and specific — no filler, no generic advice. The 12 months of Chapter 2 must start from the solar-return window start month, NOT from January. Quarter calendar (state each range verbatim when introducing the quarter): Q1 ${_e108Q[0]} / Q2 ${_e108Q[1]} / Q3 ${_e108Q[2]} / Q4 ${_e108Q[3]}.`,
   ].join('\n');
 
   return { system, user, lang: L, reportType: 'yearly', timeCtx, fiveChapter: true, solarAnchorNote: _solarAnchorNote };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E108-刀二（主公军令 2026-11-01）：年报季度区间算术溢出锁（输出侧兜底）
+//   病根（主公线上实锤）：第二章第4季度写成「7月—10月」——4 个月跨度、溢出到
+//   窗口外第 13 月（下一太阳返照年首月）。Prompt 侧 3a QUARTER CALENDAR 硬约束
+//   为主治；本锁为终帧/复读兜底：仅在「季度标记语境内」（第X季度/Q N 后 48 字）
+//   把 N月—(N+3)月 的溢出跨度纠正回真实季度末月——防误伤第四章十字路口合法
+//   跨季区间。确定性＋幂等；HIT（Gate41 复读）/ MISS（终帧）双路同施，旧缓存
+//   「7月—10月」就地修复零算力。🔴 纯函数零外部依赖（VM 抽取消费者可整函数搬运）。
+// ═══════════════════════════════════════════════════════════════
+function _e108LockQuarterRanges(text, windowStart) {
+  if (typeof text !== 'string' || !text || typeof windowStart !== 'string') return text;
+  const ym = /^(\d{4})-(\d{1,2})/.exec(windowStart.trim());
+  if (!ym) return text;
+  const sm = Number(ym[2]);
+  if (!(sm >= 1 && sm <= 12)) return text;
+  let out = text;
+  for (let q = 0; q < 4; q++) {
+    const qs = ((sm - 1 + 3 * q) % 12) + 1;      // 该季真实起始月
+    const qe = ((sm - 1 + 3 * q + 2) % 12) + 1;  // 该季真实结束月
+    const ov = (qe % 12) + 1;                     // 溢出末月＝真实末月+1
+    if (ov === qs) continue;
+    const zhQ = ['一', '二', '三', '四'][q];
+    const rx = new RegExp(
+      `(第\\s*${q + 1}\\s*季度|第\\s*${zhQ}\\s*季度|Q\\s*${q + 1})([^。；;\\n]{0,48}?)((?:\\d{4}\\s*年\\s*)?${qs}\\s*月\\s*)(?:\\d{4}\\s*年\\s*)?([—\\-~～至])\\s*(?:(\\d{4})\\s*年\\s*)?${ov}\\s*月`,
+      'g'
+    );
+    out = out.replace(rx, (m, marker, mid, startLbl, sep, yr) =>
+      `${marker}${mid}${startLbl}${sep}${yr ? yr + '年' : ''}${qe}月`);
+  }
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -17185,6 +17244,15 @@ app.use('/api/ai-advisor', async (req, res) => {
             && (typeof _g41Replay.insight === 'string' && _g41Replay.insight.length >= 1200)));
       if (_g41ReplayUsable) {
         console.log(`[Gate41] report replay HIT: reportId=${_g41ReportId} type=${reportType} lang=${lang}`);
+        // 🛡️ E108-刀二：yearly 复读文本同施季度溢出锁（幂等确定性纠偏——旧缓存
+        //   「7月—10月」就地修复，复读零算力语义不变；窗口按 userBirthDate 现算，
+        //   与生成期同源生日锚）。
+        if (reportType === 'yearly' && typeof _g41Replay.insight === 'string') {
+          _g41Replay.insight = _e108LockQuarterRanges(
+            _g41Replay.insight,
+            buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart
+          );
+        }
         // 🛡️ Gate 43：流式模式下命中复读 ⇒ **单帧 ready 直出**（零算力、零阶段帧：如实反映"无推演发生"）
         if (_stream) {
           const _rps = openCompatStream(res);
@@ -17326,7 +17394,9 @@ app.use('/api/ai-advisor', async (req, res) => {
         //    fr＝NBSP＋小数逗号、es＝小数逗号；zh/en/th/vi 通路零触碰）
         const _e103FrLang = /^fr$/i.test(String(lang || ''));
         const _e103EsLang = /^es$/i.test(String(lang || ''));
-        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d); } catch (e) { /* 单帧失败不断流 */ } };
+        // 🛡️ E108-刀二：zh 年报帧级季度溢出锁（帧级尽力而为——跨帧切断的跨度由终帧全文兜底；
+        //    非 zh 通路零触碰，monthly/once 通路零触碰）。
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d)); } catch (e) { /* 单帧失败不断流 */ } };
         let insight = await callAI(
           _compat.system,
           _compat.user,
@@ -17341,6 +17411,9 @@ app.use('/api/ai-advisor', async (req, res) => {
         //    军令刀三「: ; ! ? 前不换行空格、5.54°→5,54°」交付层硬验收）
         if (_e103FrLang) insight = _e103FrWash(insight);
         if (_e103EsLang) insight = _e103EsWash(insight);
+        // 🛡️ E108-刀二 终帧季度溢出锁（yearly：季度标记语境内 N月—(N+3)月 ⇒ 真实季末月；
+        //    幂等——帧级已纠偏的文本再施一遍不变；流式终帧与 JSON 通路同一收口点）。
+        if (reportType === 'yearly') insight = _e108LockQuarterRanges(insight, _compat.timeCtx.windowStart);
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）

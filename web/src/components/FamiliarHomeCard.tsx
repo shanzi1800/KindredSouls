@@ -63,9 +63,10 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 import { dailyFortune } from '../lib/dailyFortune.mjs';
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
-// 🍀 E107-刀二（主公军令 2026-10-31）：今日幸运卡片——三阶动线第二阶
-//   点灵宠 ⇒ 中央深空黑金幸运卡片（幸运真值＋今日塔罗金卡缩略图）⇒ CTA 才开舱
-import FamiliarLuckCard from './FamiliarLuckCard';
+// 🍀 E108-刀三（主公军令 2026-11-01）：废除 E107 居中大 Modal「今日幸运卡片」
+//   （遮挡灵宠＋交互割裂实锤），复活图 9 贴身伴随式「今日运势锦囊」轻气泡——
+//   点灵宠 ⇒ 0.75s 微光脉冲＋两翼贴身锦囊气泡（幸运数字/色/能量微语＋
+//   「✦ 与TA聊聊」胶囊 ⇒ 气泡隐退开舱 420×600 对话窗）。
 
 const WHISPER_COUNT = 5;
 
@@ -257,7 +258,7 @@ const FamiliarHomeCard: React.FC = () => {
   }, []);
   const [famPulse, setFamPulse] = useState(false);
   const famPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string; hShift: number; vRaise: number } | null>(null);
+  const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string; line2?: string; hShift: number; vRaise: number } | null>(null);
   const famBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 🌟 E54-2: 点击轮播序（0/1=幸运数字+色 → 2=幸运花 → 3=贵人方位 → 4=轻语，如此循环） */
   const tapSeqRef = useRef(0);
@@ -268,7 +269,7 @@ const FamiliarHomeCard: React.FC = () => {
    * 策略：横向优先外推（保持漫画侧位，与标题边缘间隙 ≥24px，屏内钳制）；
    * 窄屏横向无解（390 屏标题宽 380 几乎满幅）⇒ 垂直抬升到标题上方（bottom 增量）。
    * 双宠对称：Sophia 向左 / Milo 向右，量测与钳制全对称。 */
-  const showBubble = useCallback((name: string, sub: string, line: string) => {
+  const showBubble = useCallback((name: string, sub: string, line: string, line2?: string) => {
     let hShift = 0;
     let vRaise = 0;
     try {
@@ -301,7 +302,7 @@ const FamiliarHomeCard: React.FC = () => {
         if (vRaise < 0) vRaise = 0;
       }
     } catch (_) { /* 量测失败 ⇒ 保持 E71 原位，绝不阻塞气泡 */ }
-    setFamBubble({ name, sub, line, hShift, vRaise });
+    setFamBubble({ name, sub, line, line2, hShift, vRaise });
     if (famBubbleTimer.current) clearTimeout(famBubbleTimer.current);
     famBubbleTimer.current = setTimeout(() => setFamBubble(null), 6500);
   }, [anchorEl]);
@@ -313,20 +314,29 @@ const FamiliarHomeCard: React.FC = () => {
 
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
-  /* 🍀 E107-刀二：三阶动线——点灵宠先出「今日幸运卡片」，开舱权只属卡片 CTA
-     （旧「点击直开舱」动线粗暴，主公六问⑤钦定整改） */
-  const [luckCardOpen, setLuckCardOpen] = useState(false);
 
-  const tapFamiliar = useCallback((_rec0: HomeRecord) => {
-    /* 🏆 E107-刀二（主公军令 2026-10-31）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋
-       呼出「今日幸运卡片」（三阶动线第二阶）。今日锦囊由卡片与 9s 主动气泡承载；
-       对话舱只可经卡片「与TA深度聊聊」CTA 或气泡 CTA 显式点开——禁直开。 */
+  /** 🍀 E108-刀三：贴身锦囊真值（幸运数字/色/能量微语——dailyFortune 确定性核） */
+  const luckPouch = useCallback((rec0: HomeRecord | null) => {
+    const sun = rec0 ? String((triadTruth(rec0) || {}).sun || '') : '';
+    const f = dailyFortune({ lang, sunSign: sun });
+    return {
+      line: `🔢 ${t('familiar.luckNum')} ${f.luckyNumber} · 🎨 ${t('familiar.luckColor')} ${f.color.name}`,
+      line2: String(f.vibe || ''),
+    };
+  }, [lang, t]);
+
+  const tapFamiliar = useCallback((rec0: HomeRecord) => {
+    /* 🏆 E108-刀三（主公军令 2026-11-01）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋
+       贴身「今日运势锦囊」气泡（图 9 形态：幸运数字/色/能量微语＋「✦ 与TA聊聊」
+       胶囊⇒气泡隐退开舱）。E107 居中大 Modal「今日幸运卡片」物理废除（遮挡灵宠
+       ＋交互割裂实锤）；对话舱只可经气泡 CTA 显式点开——禁直开。 */
     setFamPulse(true);
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
     setFamBubble(null);
-    setLuckCardOpen(true);
-  }, []);
+    const p = luckPouch(rec0);
+    showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
+  }, [luckPouch, showBubble, t]);
 
   /* 🌟 E54-2 日常主动气泡：认领且权益就位后 9s，灵宠**主动**衔来今日锦囊一次
      （用户若已主动点击互动过 ⇒ 不打扰；仅一次，绝不循环骚扰） */
@@ -404,6 +414,7 @@ const FamiliarHomeCard: React.FC = () => {
               >
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
                 {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
+                {famBubble.line2 && <span className="ks-fam-bubble-line" style={{ ...SAFE, color: 'rgba(240, 230, 200, 0.78)' }}>{famBubble.line2}</span>}
                 {/* 🐾 E66 衔接入口：气泡末尾的「与 TA 聊聊」引子 —— 平滑唤醒半屏抽屉舱 */}
                 <button
                   type="button"
@@ -430,16 +441,8 @@ const FamiliarHomeCard: React.FC = () => {
           anchorEl,
         );
       })}
-      {/* 🍀 E107-刀二：今日幸运卡片（三阶动线第二阶——点灵宠浮现；CTA 才开舱） */}
-      <FamiliarLuckCard
-        open={luckCardOpen}
-        onClose={() => setLuckCardOpen(false)}
-        onChat={() => setChatOpen(true)}
-        name={rec ? nameOf(rec) : chatIp}
-        lang={lang}
-        chartSig={rec ? String(rec.chartSig || '') : ''}
-        triad={rec ? rec.triad : null}
-      />
+      {/* 🍀 E108-刀三：居中大 Modal「今日幸运卡片」物理废除——贴身锦囊气泡即三阶动线
+          第二阶（点灵宠呼出；气泡「✦ 与TA聊聊」胶囊才开舱） */}
       {/* 🐾 E66：半屏毛玻璃抽屉舱（portal 到 body；零路由跳转，不破坏首页上下文） */}
       <FamiliarChatSheet
         open={chatOpen}

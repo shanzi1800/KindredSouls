@@ -1896,7 +1896,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex-direction: column;
   gap: 8px;
   overscroll-behavior: contain;
+  /* 🔴 E108-刀四（主公军令 2026-11-01）：对话窗滚动槽对齐月报黑金细轨——
+     主公实锤：对话窗右侧为原生灰白粗滚动槽，与深空黑金舱体不融。
+     规格逐字克隆月报 .ks-report-scroll（E91-③ Sacred .dark-scrollbar 封仓源）：
+     5px 胶囊轨、近透明轨道、哑光暗金 0.3 滑块、hover 鎏金提亮。 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.3) rgba(255, 255, 255, 0.05);
 }
+/* 🔴 E108-刀四：黑金滑轨（5px 胶囊 · 逐字克隆 .ks-report-scroll 规格） */
+.ks-chat-flow::-webkit-scrollbar { width: 5px; border-radius: 4px; }
+.ks-chat-flow::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.ks-chat-flow::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
+.ks-chat-flow::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
 .ks-chat-bubble {
   max-width: 82%;
   padding: 9px 12px;

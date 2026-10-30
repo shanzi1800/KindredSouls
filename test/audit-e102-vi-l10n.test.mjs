@@ -142,7 +142,7 @@ test('E102-④-1 _e102ViWash 行为级：军令正则零命中＋换行保全＋
   assert.strictEqual(W('Trái tim thuần khiết của đôi hồn'), 'Trái tim thuần khiết của đôi hồn', '纯净 vi 文本被误触');
   // 交付层接入：SSE 帧级＋终帧（vi 双层清洗；其他语种 E100 层不动）
   // 🛡️ E103-③ 后继化：SSE 帧级清洗链接入 fr/es 排版层（vi 层零改动，结构外扩）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : d)"), 'SSE 帧级 vi 双层清洗缺失（E103 扩链形态）');
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d))"), 'SSE 帧级 vi 双层清洗缺失（E103 扩链形态）');
   assert.ok(SERVER.includes("if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);"), '终帧 vi 双层清洗缺失');
 });
 
@@ -186,7 +186,7 @@ test('E102-⑤-0 存量作废：COMPAT_PERSIST_VERSION v4（旧 vi 毒行长度�
 // ── 军规链基线（E102 入编后 77 段；e102 恒插 e40-compat 之前、python 恒链尾）──
 test('E102-⑥ 军规链基线 77 段（e102 居 e100 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 82, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80   // 🛡️ E103/E104 后继化：77→79
+  assert.strictEqual(parts.length, 83, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80   // 🛡️ E103/E104 后继化：77→79
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');
