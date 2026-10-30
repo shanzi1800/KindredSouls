@@ -20104,6 +20104,22 @@ function _e107DailyTarotFor(birthDate) {
   return { id, name: FAMILIAR_CHAT_TAROT_ZH[id] || '', reversed };
 }
 
+/** 🏆 E109-刀一（主公军令 2026-10-30）：当次付费报告塔罗绑定（拔「隐士」幽灵）。
+ *  病根（查验实锤）＝塔罗双链不同源：结果页/金卡塔罗走合盘双人生日＋今日散列
+ *  （web getTarot(d1,d2)），chat 今日塔罗走主人单人本命生日＋今日散列（上方
+ *  _e107DailyTarotFor）——两链输入不同 ⇒ 牌面天然分歧（主公实锤：金卡「恋人」
+ *  vs Sophia 口吐「隐士」，非跨盘缓存残留）。修正契约「一盘一清，绝对隔离」：
+ *  前端报告生成成功时把当次牌 id 持久化（sessionStorage ks_compat_report_tarot，
+ *  新报告即覆写＝旧牌物理出局），chat 请求随行 body.reportTarot ⇒ 本函数形状
+ *  校验＋服务端查表（前端只传 id/isReversed，牌名一律本表真源——不信任前端，
+ *  fail-closed）；合法 ⇒ 优先于 E107 本命核；缺省/非法 ⇒ null 回退本命核。 */
+function _e109ReportTarot(rt) {
+  if (!rt || typeof rt !== 'object') return null;
+  const id = rt.id;
+  if (typeof id !== 'number' || !Number.isInteger(id) || id < 0 || id > 21) return null;
+  return { id, name: FAMILIAR_CHAT_TAROT_ZH[id] || '', reversed: !!rt.isReversed };
+}
+
 /** 🐾 E66：星座中文表（仅 prompt 用；真值仍为英文 sign） */
 const FAM_SIGN_ZH = {
   Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座', Leo: '狮子座', Virgo: '处女座',
@@ -20555,9 +20571,13 @@ app.post('/api/familiar/chat', async (req, res) => {
 
   // ③ 真值（星历 + 今日运势 + E107 命盘真值层：今日塔罗 + 本命三合局）
   const truth = await resolveFamiliarChatTruth(body, auth, lang);
+  // 🏆 E109-刀一：当次付费报告塔罗优先绑定——合法 reportTarot（服务端查表
+  //    fail-closed）作为 prompt 第四层唯一塔罗真值（新盘「恋人」直接贯通）；
+  //    缺省/非法 ⇒ 回退 E107 主人本命核（守无报告会话的既有体验）。
+  const _e109Tarot = _e109ReportTarot(body.reportTarot);
   const systemText = buildFamiliarChatSystemPrompt({
     ip, name, lang, natal: truth.natal, fortune: truth.fortune,
-    tarot: truth.tarot, trine: truth.trine,
+    tarot: _e109Tarot || truth.tarot, trine: truth.trine,
   });
 
   // ④ SSE 建流（header 组合拳同 V362）

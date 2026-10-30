@@ -186,21 +186,6 @@ const FamiliarHomeCard: React.FC = () => {
   /** 关系模式 ⇒ 标签（与 FamiliarPicker 同源键 familiar.girlfriend/…） */
   const relationLabel = (mode: string): string => t(`familiar.${mode}`);
 
-  /* ── 🌟 E54-2 今日运势锦囊（主公亲令 2026-10-15）──
-     军令：E53 撤下的「今日幸运数字/颜色/花朵/贵人方位」**不是删除而是灵魂融合** ——
-     全部注入灵宠交互池，由灵宠亲昵口吻轮播分享，首页保持零方框极简。
-     🔴 本命赋能：太阳星座取自认领档 triad（本命真值）⇒ 四象收窄贵人方位池；
-        无本命真值 ⇒ 回落全八方位（绝不臆造）。
-     🔴 取词全部为**静态字面量**（i18n 门禁可静态收录，防 key 字面量上屏）。 */
-  const luckLine = useCallback((seq: number, rec0: HomeRecord | null): string => {
-    const sun = rec0 ? String((triadTruth(rec0) || {}).sun || '') : '';
-    const f = dailyFortune({ lang, sunSign: sun });
-    if (seq === 0) return `🔢 ${t('familiar.luckNum')} ${f.luckyNumber} · 🎨 ${t('familiar.luckColor')} ${f.color.name}`;
-    if (seq === 1) return `${f.flower.emoji} ${t('familiar.luckFlower')} ${f.flower.name} —— ${f.flower.meaning}`;
-    if (seq === 2) return `🧭 ${t('familiar.luckDir')} ${f.direction.name} · ${f.vibe}`;
-    return '';
-  }, [lang, t]);
-
   /* ── 挂载：读认领档 ⇒ 有档即破框骑键 ──
      🔒 E49（沿袭）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
         ② 星盘绑定校验 —— 有当前盘真值且签名不匹配（或旧档无签名）⇒ 即弃即清，
@@ -260,8 +245,11 @@ const FamiliarHomeCard: React.FC = () => {
   const famPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [famBubble, setFamBubble] = useState<{ name: string; sub: string; line: string; line2?: string; hShift: number; vRaise: number } | null>(null);
   const famBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** 🌟 E54-2: 点击轮播序（0/1=幸运数字+色 → 2=幸运花 → 3=贵人方位 → 4=轻语，如此循环） */
-  const tapSeqRef = useRef(0);
+
+  /* 🛡️ E109-刀二（主公军令 2026-10-30）：灵宠本体加载守卫——webp 首帧解码
+     （100~300ms）未就绪前，锦囊气泡容器一律不渲染（消除「气泡抢跑灵宠」
+     时序跳闪）；onLoad 即置位（任一帧到达 ⇒ 视为就绪，双宠未来同构）。 */
+  const [petLoaded, setPetLoaded] = useState(false);
 
   /** 弹出气泡（统一收口：计时重置 + 6.5s 自动消散）
    * 🧩 E82 防遮挡动态解耦（主公亲令 2026-10-21 军令②「锚点与主标题外边界彻底解耦」）：
@@ -338,17 +326,9 @@ const FamiliarHomeCard: React.FC = () => {
     showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
   }, [luckPouch, showBubble, t]);
 
-  /* 🌟 E54-2 日常主动气泡：认领且权益就位后 9s，灵宠**主动**衔来今日锦囊一次
-     （用户若已主动点击互动过 ⇒ 不打扰；仅一次，绝不循环骚扰） */
-  useEffect(() => {
-    if (!rec || paidOk !== true) return;
-    const tid = setTimeout(() => {
-      if (tapSeqRef.current > 0) return;
-      showBubble(nameOf(rec), t('familiar.luckLead'), luckLine(0, rec));
-    }, 9000);
-    return () => clearTimeout(tid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rec, paidOk, showBubble, luckLine, t]);
+  /* 🛡️ E109-刀二（主公军令 2026-10-30）：E54-2「9s 主动锦囊气泡」定时器整段拔除——
+     军令钦定「彻底拔除任何 useEffect 内的自动开舱/冒泡定时器」：锦囊气泡只可由
+     点击灵宠身体/爱心显式呼出（初态恒 null）。微光脉冲（E76 带路提示）保留。 */
 
   /* 💎 E53-2：骑键位装配（本期单档；双宠契约见文件头 —— 渲染核已按数组就位） */
   const recs: HomeRecord[] = rec ? [rec] : [];
@@ -356,19 +336,19 @@ const FamiliarHomeCard: React.FC = () => {
 
   // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
   //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
-  //   🍀 E107-刀二（主公军令 2026-10-31）：回首页**禁自动弹舱**改微光提示——
-  //   0.75s 灵宠微光脉冲＋今日运势锦囊气泡静候主人点触（军令钦定三阶动线第一阶）。
-  //   无灵宠档（rec 为空）时不动：避免弹出一个无内容的空提示。
+  //   🍀 E107-刀二：回首页禁自动弹舱改微光提示；🛡️ E109-刀二（主公军令 2026-10-30）
+  //   再收紧：带路回首页**仅 0.75s 微光脉冲**提示灵宠在此——自动冒锦囊气泡一并拔除
+  //   （气泡抢跑灵宠 webp 解码 100~300ms ⇒ 「气泡先冒、灵宠后现」时序破相实锤；
+  //   军令钦定：锦囊只可由点击灵宠身体/爱心显式呼出）。无灵宠档时不动。
   useEffect(() => {
     if (!rec) return;
     try {
       if (sessionStorage.getItem('ks_open_familiar_chat') !== '1') return;
       sessionStorage.removeItem('ks_open_familiar_chat');
-      // 微光提示（不弹舱）：脉冲一次＋锦囊气泡 6.5s 静候
+      // 微光提示（不弹舱、不冒气泡）：脉冲一次，静候主人点触
       setFamPulse(true);
       if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
       famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
-      showBubble(nameOf(rec), t('familiar.luckLead'), luckLine(0, rec));
     } catch (_) { /* iOS 无痕模式下 sessionStorage 抛错 → 静默降级为不提示 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rec]);
@@ -394,14 +374,16 @@ const FamiliarHomeCard: React.FC = () => {
             <div className="ks-fam-breathe" aria-hidden="true">
               {/* 🐾 E65e：尾层置于身体下层（主公参照稿铁律「尾根藏球后」）——分离切口与根际残片被球体遮蔽，尾巴自球后自然生出 */}
               <img className="ks-fam-tail" src={ip === 'Milo' ? miloTail : sophiaTail} alt="" draggable={false} />
-              <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} />
+              {/* 🛡️ E109-刀二：本体 onLoad ⇒ petLoaded 置位（气泡渲染守卫解锁） */}
+              <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} onLoad={() => setPetLoaded(true)} />
               {/* 🐾 E52：眨眼帧叠加（周期性瞬目，3~5s 一次；reduced-motion 降级为不眨） */}
               <img className="ks-fam-img-blink" src={ip === 'Milo' ? miloBlink : sophiaBlink} alt="" draggable={false} />
             </div>
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
-            {famBubble && (
+            {/* 🛡️ E109-刀二：petLoaded 守卫——灵宠未解码就绪前气泡一律不出（点击驱动的显式气泡也可能被守卫延迟到首帧后） */}
+            {famBubble && petLoaded && (
               <div
                 className="ks-fam-bubble"
                 /* 🧩 E82 动态解耦落点：横向外推（覆盖 E71 的 44px 基础位移）＋窄屏垂直抬升 */

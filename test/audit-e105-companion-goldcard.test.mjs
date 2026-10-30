@@ -376,13 +376,13 @@ test('⑦-1 三组件挂载 App.tsx（金卡 CTA／骨架承接＋E106 伴读拔
 test('⑦-2 军规链段数入编（E108 后继化：83 段／e105 居 e106 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
   // 🏆 E107-刀四 后继化：E106 基线 81 段 → E107 升 82 段（e107 插 e106 后 e40 前）
-  assert.equal(segs.length, 83, `军规链段数异常（实得 ${segs.length}，基线 83（E108 升 83 段））`);
+  assert.equal(segs.length, 84, `军规链段数异常（实得 ${segs.length}，基线 84（E109 升 84 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 4].includes('audit-e107'), 'e107 须居 len-4（e108 后、e40 前）');
-  assert.ok(segs[segs.length - 5].includes('audit-e106'), 'e106 须居 len-5（e107 后）');
-  assert.ok(segs[segs.length - 6].includes('audit-e105'), 'e105 须居 len-6');
-  assert.ok(segs[segs.length - 7].includes('audit-e104'), 'e104 须居 len-7');
+  assert.ok(segs[segs.length - 5].includes('audit-e107'), 'e107 须居 len-5（e108 后）');
+  assert.ok(segs[segs.length - 6].includes('audit-e106'), 'e106 须居 len-6（e107 后）');
+  assert.ok(segs[segs.length - 7].includes('audit-e105'), 'e105 须居 len-7');
+  assert.ok(segs[segs.length - 8].includes('audit-e104'), 'e104 须居 len-8');
 });
 
 test('⑦-3 双端视口防重叠（断言守卫源码级：无绝对重叠几何）', async () => {

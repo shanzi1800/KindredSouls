@@ -1360,6 +1360,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         setTarotLine(data.tarotLine || tarot.meaning);
         const isReversed = ['Ngược','Reversed','กลับด้าน','Inversé','Inversée','Invertido','Invertida'].some(s => tarot.orientation.includes(s));
         setTarotCard({ id: tarot.id, name: tarot.name, emoji: tarot.emoji, isReversed, orientation: tarot.orientation });
+        // 🏆 E109-刀一（主公军令 2026-10-30）：当次报告塔罗持久化（一盘一清）——
+        //   新报告生成成功即覆写（旧盘牌物理出局）；灵宠对话随行此牌 ⇒ 服务端
+        //   prompt 第四层塔罗真值与结果页/金卡 100% 同源（拔「隐士」幽灵）。
+        try {
+          sessionStorage.setItem('ks_compat_report_tarot', JSON.stringify({ id: tarot.id, isReversed }));
+        } catch { /* 无痕模式静默降级：chat 回退本命核 */ }
         onTriggerInsight?.();
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {

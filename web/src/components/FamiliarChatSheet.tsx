@@ -211,12 +211,25 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
         FAMILIAR_LS_KEY
       );
+      // 🏆 E109-刀一（主公军令 2026-10-30）：当次付费报告塔罗随行——读
+      //    sessionStorage 持久化牌档（App.tsx 报告成功时写入，一盘一清），
+      //    形状守卫后随 body 上行；服务端查表 fail-closed 优先绑定为本命核
+      //    之上的唯一塔罗真值（拔「隐士」幽灵）；坏档/无档 ⇒ 不传 ⇒ 回退本命核。
+      let reportTarot: { id: number; isReversed: boolean } | undefined;
+      try {
+        const rt = JSON.parse(sessionStorage.getItem('ks_compat_report_tarot') || 'null');
+        if (rt && typeof rt === 'object' && Number.isInteger(rt.id) && rt.id >= 0 && rt.id <= 21) {
+          reportTarot = { id: rt.id, isReversed: !!rt.isReversed };
+        }
+      } catch { /* 坏档忽略：服务端回退 E107 本命核 */ }
       // 🔒 只传对话 + 本命锚点 + 灵宠档证明；星盘与运势由服务端真值装配
       const bt = extractBirthTruth(window.location.search, window.localStorage);
       const body = {
         lang,
         relationMode,
         name,
+        // 🏆 E109-刀一：当次报告塔罗（恋人牌等）随行绑定
+        reportTarot,
         // 🏆 E107-刀三：合法 ks_familiar 档随行（服务端 fail-closed 形状校验后放行）
         familiar: (token || !famRec) ? undefined : {
           relationMode: String(famRec.profile.relation_mode || ''),
