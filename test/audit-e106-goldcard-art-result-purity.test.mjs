@@ -129,8 +129,11 @@ test('①-6 金卡 payload 艺术级重构（拔调试串＋新结构化字段�
 });
 
 test('①-7 世界牌图腾＋六爻暗金衬底＋字体阶梯（源码契约）', async () => {
-  // 韦特塔罗世界牌矢量线稿（椭圆花环＋四象徽记）替换旧圆环四芒星
-  assert.ok(/wreath|Wreath|WorldCard|world.?card/i.test(GOLD), '缺世界牌花环图腾');
+  // 🏆 E107-刀一 后继化：图腾库迁 goldCardTotems.mjs（22 张按 cardId 分发）——
+  //    世界牌（id=21）花环线稿在库内存续；drawGoldCard 经 goldCardTotemUri 消费。
+  const TOTEMS = read('web/src/lib/goldCardTotems.mjs');
+  assert.ok(/wreath|Wreath|WorldCard|world.?card|goldCardTotem/i.test(GOLD), '金卡绘制未接图腾库出口');
+  assert.ok(TOTEMS.includes('ellipse'), '图腾库缺世界牌花环椭圆线稿（第 21 张存续）');
   assert.ok(!/tarotEmblemDataUri/.test(GOLD), '旧圆环四芒星图腾未拔除');
   // 六爻暗金衬底框（卦象六线谱 + 卦名卦序）
   assert.ok(/hexLines/.test(GOLD) && /hexLabel/.test(GOLD), '缺六爻线谱/卦名卦序渲染');
@@ -143,7 +146,7 @@ test('①-7 世界牌图腾＋六爻暗金衬底＋字体阶梯（源码契约�
   assert.ok(GOLD.includes('#D4AF37'), '缺暗金 #D4AF37');
   // 离线铁律沿袭
   assert.ok(!GOLD.includes('fetch('), '金卡绘制混入 fetch（违离线铁律）');
-  assert.ok(GOLD.includes('data:image/svg+xml'), '缺内联 SVG 图腾');
+  assert.ok(TOTEMS.includes('data:image/svg+xml'), '图腾库缺内联 data: SVG 出口');
 });
 
 test('①-8 App.tsx 金卡装配改结构化真值（不再直通 bazi 调试串）', async () => {
@@ -211,11 +214,13 @@ test('④-2 E82 趴键几何真值回归锁（EN 基准 98px）', async () => {
 
 // ═══════════════ 刀五 · 军规链入编 ════════════════
 
-test('⑤-1 军规链 81 段入编（e106 居 e105 后 e40 前）', async () => {
+test('⑤-1 军规链 82 段入编（E107 后继化：e106 居 e107 后 e40 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 81, `军规链段数异常（实得 ${segs.length}，基线 81（E106 升 81 段））`);
+  // 🛡️ E107 后继化：81→82（e107 插 e106 后 e40 前）⇒ e106 顺移至 len-4
+  assert.equal(segs.length, 82, `军规链段数异常（实得 ${segs.length}，基线 82（E107 升 82 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 3].includes('audit-e106'), 'e106 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 4].includes('audit-e105'), 'e105 须居 len-4');
+  assert.ok(segs[segs.length - 3].includes('audit-e107'), 'e107 须居 len-3（e40 前）');
+  assert.ok(segs[segs.length - 4].includes('audit-e106'), 'e106 须居 len-4（e107 后）');
+  assert.ok(segs[segs.length - 5].includes('audit-e105'), 'e105 须居 len-5');
 });

@@ -19999,6 +19999,38 @@ const FAMILIAR_CHAT_NATAL_TTL_MS = 30 * 60 * 1000;
 const _famChatUsage = new Map();     // userId -> { day, count, lastTs }
 const _famChatNatalCache = new Map(); // birthSig -> { at, natal, fortune }
 
+/* ═══ 🐾 E107-刀三（主公军令 2026-10-31）：聊天免登录绿道彻底贯通 ═══
+ * 病根（主公核验六问⑥实锤）：匿名付讫用户（E99 沙盒直通不落 user_profiles）
+ * 在已生成的对话舱里发消息，被 NO_TOKEN 401「先登录」拦死。
+ * 军令钦定两条绿道（均先于 NO_TOKEN 判死）：
+ *   ① sandbox_green —— 沙盒匿名直通（E99 绿道同构；算力防盗刷由配额闸兜底）；
+ *   ② familiar_proof —— 合法 ks_familiar 档放行（档案在场＝付费证明——认领档
+ *      只能经付费漏斗产生，E106-刀三首页熔断同构；fail-closed：关系模式白名单
+ *      ＋chartSig 形状缺一即拒）。
+ * 上下文注入命盘真值：今日塔罗牌（getWealthTarot 同源确定性核）＋本命三合局
+ * （goldCardChart.mjs 干支纯函数核）。 */
+const FAMILIAR_CHAT_RELATION_MODES = new Set(['girlfriend', 'bestie', 'buddy', 'boyfriend']);
+const FAMILIAR_CHART_SIG_RE = /^\d{4}-\d{2}-\d{2}\|[^|]*\|-?[\d.]+\|-?[\d.]+\|[^|]*$/;
+/** 今日塔罗牌名（zh——tarot.ts 大阿卡纳同序 0~21；注入 prompt 用） */
+const FAMILIAR_CHAT_TAROT_ZH = ['愚人', '魔术师', '女祭司', '女皇', '皇帝', '教皇', '恋人', '战车', '力量', '隐士', '命运之轮', '正义', '倒吊人', '死神', '节制', '恶魔', '塔', '星星', '月亮', '太阳', '审判', '世界'];
+
+/** 🐾 E107-刀三：今日塔罗（与 web/src/lib/tarot.ts getWealthTarot 逐字同源——
+ *  birthday|today 五位散列 ⇒ 22 张确定性抽取＋奇偶逆位；同一生日同一天恒出同牌，
+ *  天天不同；缺生日 ⇒ null 显式缺席绝不臆造） */
+function _e107DailyTarotFor(birthDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ''))) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const str = `${birthDate}|${today}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const id = Math.abs(hash) % 22;
+  const reversed = Math.floor(Math.abs(hash) / 22) % 2 === 1;
+  return { id, name: FAMILIAR_CHAT_TAROT_ZH[id] || '', reversed };
+}
+
 /** 🐾 E66：星座中文表（仅 prompt 用；真值仍为英文 sign） */
 const FAM_SIGN_ZH = {
   Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座', Leo: '狮子座', Virgo: '处女座',
@@ -20014,15 +20046,32 @@ const FAMILIAR_CHAT_PERSONA = {
 /** 语言名（供 prompt 指定回复语种） */
 const FAM_LANG_NAME = { zh: '简体中文', en: 'English', es: 'español', fr: 'français', th: 'ภาษาไทย', vi: 'Tiếng Việt' };
 
-/** 🐾 E66① 权益门控：Bearer token → Supabase user → paid_plans 财富档（与财富域同源谓词） */
-async function resolveFamiliarChatAuth(req) {
+/** 🐾 E66① 权益门控：Bearer token → Supabase user → paid_plans 财富档（与财富域同源谓词）
+ *  🏆 E107-刀三：沙盒匿名直通＋合法 ks_familiar 档放行两条绿道先于 NO_TOKEN 判死
+ *    （live 态无 token 且无合法档 ⇒ 仍 401 fail-closed，绝不静默放水） */
+async function resolveFamiliarChatAuth(req, body) {
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
   // 本地/离线环境未接 Supabase ⇒ 射程外安全弃权（与既有闸门同纪律）
   if (!SB_URL || !SB_KEY) return { ok: true, method: 'no_supabase_configured', userId: 'local' };
+  // 🟢 E107-刀三绿道①：沙盒匿名直通（E99 绿道同构——沙盒零阻力，配额闸兜底防刷）
+  if (isSandboxPaymentMode(process.env)) {
+    return { ok: true, method: 'sandbox_green', userId: 'sandbox_anon' };
+  }
   const authHeader = String(req.headers.authorization || '');
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token) return { ok: false, httpStatus: 401, reason: 'NO_TOKEN' };
+  if (!token) {
+    // 🟢 E107-刀三绿道②：合法 ks_familiar 档放行（档案在场＝付费证明——
+    //    认领档只能经付费漏斗产生（付费墙 FamiliarPicker 全卡上锁），档在场即付费
+    //    已完成；userId 取 chartSig 指纹供配额闸按盘防刷；形状不合法 ⇒ fail-closed 401）
+    const fam = (body && body.familiar) || null;
+    const relationMode = fam && typeof fam.relationMode === 'string' ? fam.relationMode : '';
+    const chartSig = fam && typeof fam.chartSig === 'string' ? fam.chartSig : '';
+    if (FAMILIAR_CHAT_RELATION_MODES.has(relationMode) && FAMILIAR_CHART_SIG_RE.test(chartSig)) {
+      return { ok: true, method: 'familiar_proof', userId: `fam:${chartSig.slice(0, 48)}` };
+    }
+    return { ok: false, httpStatus: 401, reason: 'NO_TOKEN' };
+  }
   try {
     const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
@@ -20083,7 +20132,9 @@ async function resolveFamiliarChatTruth(body, auth, lang) {
   const tz = String(b.tz || '').trim();
   const sig = `${birthDate}|${birthTime}|${Number.isFinite(lat) ? lat.toFixed(4) : ''}|${Number.isFinite(lon) ? lon.toFixed(4) : ''}|${tz}`;
   const hit = _famChatNatalCache.get(sig);
-  if (hit && Date.now() - hit.at < FAMILIAR_CHAT_NATAL_TTL_MS) return { ...hit.value, cached: true };
+  if (hit && Date.now() - hit.at < FAMILIAR_CHAT_NATAL_TTL_MS) {
+    return { ...hit.value, ...(await _e107ChatTruthExtras(birthDate)), cached: true };
+  }
 
   const natal = { sun: null, moon: null, asc: null, venus: null, mars: null, source: 'none' };
   if (/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
@@ -20129,11 +20180,32 @@ async function resolveFamiliarChatTruth(body, auth, lang) {
     const oldest = _famChatNatalCache.keys().next().value;
     _famChatNatalCache.delete(oldest);
   }
-  return value;
+  return { ...value, ...(await _e107ChatTruthExtras(birthDate)) };
 }
 
-/** 🐾 E66③ 三层 System Prompt 动态装配 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune }) {
+/** 🐾 E107-刀三：上下文注入命盘真值补充层——今日塔罗牌＋本命三合局
+ *  （纯函数核直算、零 LLM：塔罗与客户端 getWealthTarot 逐字同源；三合局走
+ *  goldCardChart.mjs 干支核按单人本命三柱地支凑整判定；缺席 ⇒ null 绝不臆造） */
+async function _e107ChatTruthExtras(birthDate) {
+  // ① 今日塔罗（同源确定性核——不入 30min 缓存：午夜翻牌即时生效）
+  const tarot = _e107DailyTarotFor(birthDate);
+  // ② 本命三合局（goldCardChart 纯函数核：B 侧同 A ⇒ 仅取 a 三柱做单人本命判定）
+  let trine = null;
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ''))) {
+      const chartMod = await import('./web/src/lib/goldCardChart.mjs');
+      const pillars = chartMod.computeCardPillars(birthDate, birthDate);
+      if (pillars) trine = chartMod.deriveCardTrine('zh', { a: pillars.a, b: [] });
+    }
+  } catch (e) {
+    console.warn('[E107] chat trine unavailable:', e && e.message);
+  }
+  return { tarot, trine };
+}
+
+/** 🐾 E66③ 三层 System Prompt 动态装配
+ *  🏆 E107-刀三：增第四层命盘真值——今日塔罗牌＋本命三合局（服务端确定性核） */
+function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune, tarot, trine }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
   const posLine = (label, v) => (v && v.sign ? `${label}${zh(v.sign)}${v.house ? `·第${v.house}宫` : ''}` : null);
@@ -20154,6 +20226,14 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune }) {
     ? `【今日运势真值（服务端确定性核，可直接引用）】幸运数字 ${f.luckyNumber}；幸运色 ${f.color && f.color.name}；幸运花 ${f.flower && f.flower.name}（${f.flower && f.flower.meaning}）；贵人方位 ${f.direction && f.direction.name}；今日子气「${f.vibe}」。`
     : '【今日运势真值】本次未生成 —— 不要编造数字/颜色/方位。';
 
+  // 🏆 E107-刀三：第四层命盘真值（今日塔罗＋本命三合局——禁臆造）
+  const tarotBlock = tarot && tarot.name
+    ? `【今日塔罗真值（服务端确定性核，可直接引用）】今日牌「${tarot.name}${tarot.reversed ? '·逆位' : '·正位'}」。主人若问金卡/塔罗/今日牌的含义，围绕此牌温柔展开一两句，禁编造其他牌名。`
+    : '【今日塔罗真值】本次未取得 —— 不要编造任何牌名。';
+  const trineBlock = trine && trine.badge
+    ? `【本命三合局真值（干支纯函数核）】${trine.badge}。谈命格底色时可自然引用一句，禁臆造其他格局。`
+    : '【本命三合局真值】本次未取得 —— 不要编造三合局。';
+
   return [
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
@@ -20164,6 +20244,10 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune }) {
     natalBlock,
     '',
     fortuneBlock,
+    '',
+    tarotBlock,
+    '',
+    trineBlock,
     '',
     '【输出铁律（违反即失败）】',
     '1. 每次回复严格 60~120 字（中文按字计），最多 3 句。',
@@ -20378,7 +20462,9 @@ app.post('/api/familiar/chat', async (req, res) => {
   const name = String(body.name || '').slice(0, 20) || ip;
 
   // ① 权益门控（必须在 SSE header 之前）
-  const auth = await resolveFamiliarChatAuth(req);
+  //    🏆 E107-刀三：沙盒匿名直通/合法灵宠档放行两条绿道在 resolveFamiliarChatAuth
+  //    内先于 NO_TOKEN 判死（body 随行供灵宠档证明校验）；live 态无凭据仍 fail-closed。
+  const auth = await resolveFamiliarChatAuth(req, body);
   // 无任何旁路：联调一律走测试账号 + 真实权益（军令「算力防盗刷」）
   if (!auth.ok) {
     console.log(`[E66] familiar/chat DENIED reason=${auth.reason} ip=${ip}`);
@@ -20394,9 +20480,12 @@ app.post('/api/familiar/chat', async (req, res) => {
     return res.status(429).json({ error: 'Too many requests', code: quota.reason });
   }
 
-  // ③ 真值（星历 + 今日运势）
+  // ③ 真值（星历 + 今日运势 + E107 命盘真值层：今日塔罗 + 本命三合局）
   const truth = await resolveFamiliarChatTruth(body, auth, lang);
-  const systemText = buildFamiliarChatSystemPrompt({ ip, name, lang, natal: truth.natal, fortune: truth.fortune });
+  const systemText = buildFamiliarChatSystemPrompt({
+    ip, name, lang, natal: truth.natal, fortune: truth.fortune,
+    tarot: truth.tarot, trine: truth.trine,
+  });
 
   // ④ SSE 建流（header 组合拳同 V362）
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');

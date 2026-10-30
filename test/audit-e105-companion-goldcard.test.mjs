@@ -65,12 +65,13 @@ const LANGS = ['zh', 'en', 'fr', 'es', 'th', 'vi'];
 
 test('①-1 布局常量军令锚定（CARD_LAYOUT_TOKENS 逐值）', async () => {
   const { GOLD_CARD_LAYOUT: L } = await loadLayout();
-  assert.equal(L.canvasWidth, 375, 'canvasWidth 须 375');
-  assert.equal(L.canvasHeight, 667, 'canvasHeight 须 667');
-  assert.equal(L.safeZoneWidth, 300, 'safeZoneWidth 须 300（375*0.8）');
-  assert.equal(L.centerX, 187.5, 'centerX 须 187.5');
+  // 🏆 E107-刀一 后继化：神圣黄金比例 1:1.618 —— 375×667 → 400×648（1200×1944 物理）
+  assert.equal(L.canvasWidth, 400, 'canvasWidth 须 400（E107 黄金比例）');
+  assert.equal(L.canvasHeight, 648, 'canvasHeight 须 648（E107 黄金比例）');
+  assert.equal(L.safeZoneWidth, 320, 'safeZoneWidth 须 320（400*0.8）');
+  assert.equal(L.centerX, 200, 'centerX 须 200');
   assert.equal(L.maxLines, 3, 'maxLines 须 3');
-  assert.equal(L.exportPixelRatio, 3, '导出物理分辨率倍率须 3（1125×2001）');
+  assert.equal(L.exportPixelRatio, 3, '导出物理分辨率倍率须 3（1200×1944）');
   assert.equal(L.locales.zh.fontSize, 13, 'zh fontSize 13');
   assert.equal(L.locales.zh.lineHeight, 22, 'zh lineHeight 22');
   assert.equal(L.locales.zh.letterSpacing, 1, 'zh letterSpacing 1');
@@ -199,7 +200,8 @@ test('②-6 军令金句全矩阵折行边界（六语×三原型 1≤lines≤3�
         assert.ok(line.length > 0, `${l} 出现空行`);
         assert.ok(!/NaN|undefined/.test(line), `${l} 行内出现 NaN/undefined`);
         const w = measureStub(line, r.fontSize) + (line.length - 1) * (cfg.letterSpacing || 0);
-        assert.ok(w <= 300 + 1, `${l} 行宽 ${w} > 300：「${line.slice(0, 24)}…」`);
+        // 🏆 E107-刀一 后继化：safeZone 320（400*0.8）——旧 300 字面量随黄金比例升维
+        assert.ok(w <= L.safeZoneWidth + 1, `${l} 行宽 ${w} > ${L.safeZoneWidth}：「${line.slice(0, 24)}…」`);
       }
       if (l === 'zh') assert.equal(r.lines.join(''), quote[l], 'zh 折行丢字');
     }
@@ -253,10 +255,11 @@ test('③-3 金句库 ↔ 真值字典 parity（cardId 与 E104 真源对齐）'
 
 // ═══════════════ 刀二 · drawGoldCard 源码契约（离线与视觉军令）═══════════════
 
-test('④-1 金卡画布军令锚（375×667×3／深空渐变／噪点／双层暗金框）', async () => {
+test('④-1 金卡画布军令锚（400×648×3 黄金比例／深空渐变／噪点／双层暗金框）', async () => {
   const SRC = read('web/src/lib/drawGoldCard.ts');
-  assert.ok(SRC.includes('375'), '缺逻辑宽 375');
-  assert.ok(SRC.includes('667'), '缺逻辑高 667');
+  // 🏆 E107-刀一 后继化：375×667 → 400×648（神圣黄金比例 1:1.618）
+  assert.ok(SRC.includes('400'), '缺逻辑宽 400（E107 黄金比例）');
+  assert.ok(SRC.includes('648'), '缺逻辑高 648（E107 黄金比例）');
   assert.ok(/exportPixelRatio|devicePixelRatio|,\s*3\b/.test(SRC), '缺 dpr=3 超清导出');
   assert.ok(SRC.includes('#161922'), '缺深空黑渐变起点 #161922');
   assert.ok(SRC.includes('#08090C'), '缺深空黑渐变终点 #08090C');
@@ -275,7 +278,11 @@ test('④-2 离线安全铁律（零远程请求·零跨域图·仅 data: 图腾
   assert.ok(!SRC.includes('fetch('), '金卡绘制混入 fetch（违离线铁律）');
   assert.ok(!SRC.includes('XMLHttpRequest'), '金卡绘制混入 XHR');
   assert.ok(!/https?:\/\/[^'"\s]+\.(png|jpe?g|webp|svg)/i.test(SRC), '金卡引用远程位图（Canvas Tainted 风险）');
-  assert.ok(SRC.includes('data:image/svg+xml'), '缺内联 Base64/SVG 图腾');
+  // 🏆 E107-刀一 后继化：图腾真源迁 goldCardTotems.mjs（22 张按 cardId 分发）——
+  //    data: URI 出口随迁；drawGoldCard 经 goldCardTotemUri 消费（离线铁律不变）
+  const TOTEMS = read('web/src/lib/goldCardTotems.mjs');
+  assert.ok(TOTEMS.includes('data:image/svg+xml'), '图腾库缺内联 data: SVG 真源');
+  assert.ok(SRC.includes('goldCardTotemUri'), '金卡绘制未接图腾库 URI 出口');
   const EXP = read('web/src/components/exporter/GoldCardExporter.tsx');
   assert.ok(!EXP.includes('fetch('), '导出器混入 fetch（违离线铁律）');
   assert.ok(EXP.includes('toBlob'), '导出器缺 canvas.toBlob');
@@ -366,15 +373,16 @@ test('⑦-1 三组件挂载 App.tsx（金卡 CTA／骨架承接＋E106 伴读拔
   assert.ok(APP.includes('<SkeletonMountGuard'), '骨架屏未实例化');
 });
 
-test('⑦-2 军规链段数入编（E106 后继化：81 段／e105 居 e106 前）', async () => {
+test('⑦-2 军规链段数入编（E107 后继化：82 段／e105 居 e106 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  // 🏆 E106-刀五 后继化：E105 基线 80 段 → E106 升 81 段（e106 插 e105 后 e40 前）
-  assert.equal(segs.length, 81, `军规链段数异常（实得 ${segs.length}，基线 81（E106 升 81 段））`);
+  // 🏆 E107-刀四 后继化：E106 基线 81 段 → E107 升 82 段（e107 插 e106 后 e40 前）
+  assert.equal(segs.length, 82, `军规链段数异常（实得 ${segs.length}，基线 82（E107 升 82 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 3].includes('audit-e106'), 'e106 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 4].includes('audit-e105'), 'e105 须居 len-4（e106 后）');
-  assert.ok(segs[segs.length - 5].includes('audit-e104'), 'e104 须居 len-5');
+  assert.ok(segs[segs.length - 3].includes('audit-e107'), 'e107 须居 len-3（e40 前）');
+  assert.ok(segs[segs.length - 4].includes('audit-e106'), 'e106 须居 len-4（e107 后）');
+  assert.ok(segs[segs.length - 5].includes('audit-e105'), 'e105 须居 len-5');
+  assert.ok(segs[segs.length - 6].includes('audit-e104'), 'e104 须居 len-6');
 });
 
 test('⑦-3 双端视口防重叠（断言守卫源码级：无绝对重叠几何）', async () => {

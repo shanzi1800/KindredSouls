@@ -149,9 +149,12 @@ test('E69 截断修复：finishReason 留痕 + 断点续写 + 句子完整性守
   }
 });
 
-test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动吧」回首页即唤醒对话舱', () => {
+test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动吧」回首页即微光提示（E107 后继化）', () => {
   // 🐾 E78（主公亲令 2026-10-20）: 中部「灵宠已就位」条退役，唯一带路口＝页尾
   //   AdoptFamiliarCTA 认领态按钮（adopt-lead-home），意图标记锚点随之迁移。
+  // 🍀 E107-刀二 后继化（主公军令 2026-10-31）: 回首页禁自动弹舱——意图标记消费
+  //   改「0.75s 微光脉冲＋锦囊气泡」静候点触（三阶动线第一阶），开舱权归
+  //   幸运卡片 CTA／气泡 CTA；标记写入/消费即删契约不变。
   const cta = read('web/src/components/AdoptFamiliarCTA.tsx');
   // ① 报告尾 CTA：写一次性意图标记 + 单页跳首页（不得只跳转）
   assert.ok(cta.includes('data-testid="adopt-lead-home"'), 'E76 带路按钮缺 testid');
@@ -160,13 +163,14 @@ test('E76 【带路按钮名副其实】报告尾「由她/他带路开始互动
   const seg = cta.slice(cta.indexOf('data-testid="adopt-lead-home"'), cta.indexOf('data-testid="adopt-lead-home"') + 1800);
   assert.ok(seg.includes("sessionStorage.setItem('ks_open_familiar_chat', '1')"), 'E76 带路按钮未写一次性意图标记');
   assert.ok(seg.includes('onLeadHome'), 'E76 带路按钮未走宿主跳转回调');
-  // ② 首页消费：读到标记即开舱 + 消费即删（防刷新重复弹）+ 无灵宠档不开空舱
+  // ② 首页消费：读到标记即微光提示（脉冲＋锦囊气泡）+ 消费即删（防刷新重复弹）+ 无灵宠档不提示
   const card = read('web/src/components/FamiliarHomeCard.tsx');
   assert.ok(card.includes("sessionStorage.getItem('ks_open_familiar_chat')"), 'E76 首页未消费意图标记');
   assert.ok(card.includes("sessionStorage.removeItem('ks_open_familiar_chat')"), 'E76 意图标记未消费即删');
-  const eseg = card.slice(card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") - 300, card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") + 500);
+  const eseg = card.slice(card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") - 300, card.indexOf("sessionStorage.getItem('ks_open_familiar_chat')") + 700);
   assert.ok(/if \(!rec\) return/.test(eseg), 'E76 缺无灵宠档守卫（防空舱）');
-  assert.ok(eseg.includes('setChatOpen(true)'), 'E76 未唤醒抽屉舱');
+  assert.ok(/setFamPulse\(true\)|showBubble\(/.test(eseg), 'E107 微光提示缺场（脉冲/气泡）');
+  assert.ok(!eseg.includes('setChatOpen(true)'), 'E107 违例：回首页仍自动弹舱');
 });
 
 test('E78 【界面去重】中部「灵宠已就位」条退役，报告页灵宠入口唯一化（仅页尾 AdoptFamiliarCTA）', () => {

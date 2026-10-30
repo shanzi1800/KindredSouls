@@ -104,7 +104,10 @@ describe('V448 i18n Key 门禁', () => {
     //   chatQ1/chatQ2/chatQ3），6 语种同步新增，键集合全等不变）
     // 110 → 109（E75 主公亲令 2026-10-19: 三份报告骨架期「推演中」状态行退役 ——
     //   wealthReport.generatingHint 1 键六语同步删除，loadingHint 调用点三处同删，键集合全等不变）
-    assert.strictEqual(p.total, 109, 'E75 骨架期推演提示退役后基准键数应为 109');
+    // 🍀 E107（主公军令 2026-10-31 刀二）: 首页灵宠三阶动线 —— 今日幸运卡片三键入列
+    //   （familiar.luckCardTitle/luckVibe/chatDeepCta），6 语种同步新增，键集合全等不变
+    // 109 → 112
+    assert.strictEqual(p.total, 112, 'E107 幸运卡片三键入列后基准键数应为 112');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

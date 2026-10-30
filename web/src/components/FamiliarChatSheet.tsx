@@ -24,7 +24,9 @@ import { supabase } from '../lib/supabase';
 import miloSprite from '../assets/familiar_milo.webp';
 import sophiaSprite from '../assets/familiar_sophia.webp';
 // @ts-ignore —— 纯逻辑核（本命真值提取；形状由既有 E46/E49 闸门守备）
-import { extractBirthTruth } from '../lib/familiarHome.mjs';
+import { extractBirthTruth, readFamiliarRecord } from '../lib/familiarHome.mjs';
+// @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
+import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 
 export type FamiliarIp = 'Milo' | 'Sophia';
 
@@ -193,20 +195,34 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         setMsgs((prev) => prev.filter((m) => m.id !== aid));
         return;
       }
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        setNotice(t('familiar.chatNeedLogin'));
-        setStreaming(false); stopThrottle();
-        setMsgs((prev) => prev.filter((m) => m.id !== aid));
-        return;
-      }
-      // 🔒 只传对话 + 本命锚点；星盘与运势由服务端真值装配
+      /* 🏆 E107-刀三（主公军令 2026-10-31）：客户端无 token 硬拦截拔除——
+       * 旧「无 session ⇒ 先登录，我才能听见你说话」把沙盒匿名付讫用户（E99 直通
+       * 不落 user_profiles）拦死在舱外（主公核验六问⑥实锤）。现：
+       *   ① 有 session ⇒ 带 Bearer（服务端按 paid_plans 判权益）；
+       *   ② 无 session ⇒ 随行合法灵宠档证明（body.familiar——readFamiliarRecord
+       *      形状守卫，档案在场＝付费证明，E106-刀三首页熔断同构）匿名发流；
+       *   ③ 401 兜底映射保留（live 态档案亦缺 ⇒ fail-closed 提示仍体面）。 */
+      let token: string | null = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || null;
+      } catch { /* 无痕/断网 ⇒ 走灵宠档匿名绿道 */ }
+      const famRec = readFamiliarRecord(
+        (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+        FAMILIAR_LS_KEY
+      );
+      // 🔒 只传对话 + 本命锚点 + 灵宠档证明；星盘与运势由服务端真值装配
       const bt = extractBirthTruth(window.location.search, window.localStorage);
       const body = {
         lang,
         relationMode,
         name,
+        // 🏆 E107-刀三：合法 ks_familiar 档随行（服务端 fail-closed 形状校验后放行）
+        familiar: (token || !famRec) ? undefined : {
+          relationMode: String(famRec.profile.relation_mode || ''),
+          chartSig: String(famRec.chartSig || ''),
+          adoptedAt: String(famRec.adoptedAt || ''),
+        },
         birth: bt ? {
           date: bt.birthDate, time: bt.birthTime || '', lat: bt.lat, lon: bt.lon, tz: bt.tz,
         } : undefined,
@@ -217,7 +233,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       };
       const res = await fetch('/api/familiar/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {

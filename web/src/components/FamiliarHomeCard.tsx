@@ -63,6 +63,9 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 import { dailyFortune } from '../lib/dailyFortune.mjs';
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
+// 🍀 E107-刀二（主公军令 2026-10-31）：今日幸运卡片——三阶动线第二阶
+//   点灵宠 ⇒ 中央深空黑金幸运卡片（幸运真值＋今日塔罗金卡缩略图）⇒ CTA 才开舱
+import FamiliarLuckCard from './FamiliarLuckCard';
 
 const WHISPER_COUNT = 5;
 
@@ -310,16 +313,19 @@ const FamiliarHomeCard: React.FC = () => {
 
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
+  /* 🍀 E107-刀二：三阶动线——点灵宠先出「今日幸运卡片」，开舱权只属卡片 CTA
+     （旧「点击直开舱」动线粗暴，主公六问⑤钦定整改） */
+  const [luckCardOpen, setLuckCardOpen] = useState(false);
 
   const tapFamiliar = useCallback((_rec0: HomeRecord) => {
-    /* 🏆 E106-刀四（主公军令 2026-10-30）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋联动
-       呼出对话舱（交流收拢铁律——首页是全站唯一互动窗口；今日锦囊改由 9s 主动
-       气泡与舱内问候承载，点击恒直开舱）。 */
+    /* 🏆 E107-刀二（主公军令 2026-10-31）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋
+       呼出「今日幸运卡片」（三阶动线第二阶）。今日锦囊由卡片与 9s 主动气泡承载；
+       对话舱只可经卡片「与TA深度聊聊」CTA 或气泡 CTA 显式点开——禁直开。 */
     setFamPulse(true);
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
     setFamBubble(null);
-    setChatOpen(true);
+    setLuckCardOpen(true);
   }, []);
 
   /* 🌟 E54-2 日常主动气泡：认领且权益就位后 9s，灵宠**主动**衔来今日锦囊一次
@@ -340,14 +346,21 @@ const FamiliarHomeCard: React.FC = () => {
 
   // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
   //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
-  //   无灵宠档（rec 为空）时不动：避免弹出一个无内容的空舱。
+  //   🍀 E107-刀二（主公军令 2026-10-31）：回首页**禁自动弹舱**改微光提示——
+  //   0.75s 灵宠微光脉冲＋今日运势锦囊气泡静候主人点触（军令钦定三阶动线第一阶）。
+  //   无灵宠档（rec 为空）时不动：避免弹出一个无内容的空提示。
   useEffect(() => {
     if (!rec) return;
     try {
       if (sessionStorage.getItem('ks_open_familiar_chat') !== '1') return;
       sessionStorage.removeItem('ks_open_familiar_chat');
-      setChatOpen(true);
-    } catch (_) { /* iOS 无痕模式下 sessionStorage 抛错 → 静默降级为不自动开舱 */ }
+      // 微光提示（不弹舱）：脉冲一次＋锦囊气泡 6.5s 静候
+      setFamPulse(true);
+      if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
+      famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
+      showBubble(nameOf(rec), t('familiar.luckLead'), luckLine(0, rec));
+    } catch (_) { /* iOS 无痕模式下 sessionStorage 抛错 → 静默降级为不提示 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rec]);
   const chatIp: FamiliarIp = (rec && (IP_OF_MODE[String(rec.profile.relation_mode || '')] === 'Milo')) ? 'Milo' : 'Sophia';
   const chatGreeting = React.useMemo(() => {
@@ -417,6 +430,16 @@ const FamiliarHomeCard: React.FC = () => {
           anchorEl,
         );
       })}
+      {/* 🍀 E107-刀二：今日幸运卡片（三阶动线第二阶——点灵宠浮现；CTA 才开舱） */}
+      <FamiliarLuckCard
+        open={luckCardOpen}
+        onClose={() => setLuckCardOpen(false)}
+        onChat={() => setChatOpen(true)}
+        name={rec ? nameOf(rec) : chatIp}
+        lang={lang}
+        chartSig={rec ? String(rec.chartSig || '') : ''}
+        triad={rec ? rec.triad : null}
+      />
       {/* 🐾 E66：半屏毛玻璃抽屉舱（portal 到 body；零路由跳转，不破坏首页上下文） */}
       <FamiliarChatSheet
         open={chatOpen}
