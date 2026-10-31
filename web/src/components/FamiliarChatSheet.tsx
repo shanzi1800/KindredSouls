@@ -55,6 +55,10 @@ const THROTTLE_MS = 90;
  * 🧩 E68 输入栏独立微组件（军令①：根除打字滞后）——
  * 打字 state 局部化在本组件内，敲键只重渲染这 38px 输入栏，
  * 严禁触发外层对话流 / 毛玻璃抽屉重渲染（此前 input 在父级，每键全树 diff）。
+ * 🏆 E110-刀三：焦点自动保活——
+ *   ① 发送（Enter/点击↑）清空文本后立即 focus() 光标回输入框；
+ *   ② 流式期间只置灰发送按钮防连击，input 绝不 disabled（disabled 会强制移焦）；
+ *   ③ 流式结束（streaming true→false）兜底 refocus，支持连续敲字零鼠标。
  */
 const ChatInputBar: React.FC<{
   streaming: boolean;
@@ -64,15 +68,26 @@ const ChatInputBar: React.FC<{
   onSend: (text: string) => void;
 }> = ({ streaming, placeholder, micTitle, sendLabel, onSend }) => {
   const [text, setText] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const wasStreamingRef = useRef(false);
   const submit = () => {
     const v = text.trim();
     if (!v || streaming) return;
     setText('');
     onSend(v);
+    // 🏆 E110-刀三：发送后光标保活（清空即回焦，连续键入零鼠标）
+    inputRef.current?.focus();
   };
+  // 🏆 E110-刀三：流式收尾兜底 refocus（仅 true→false 转变时触发，
+  //    首次挂载/舱未开时不抢焦——防移动端键盘误弹）
+  useEffect(() => {
+    if (wasStreamingRef.current && !streaming) inputRef.current?.focus();
+    wasStreamingRef.current = streaming;
+  }, [streaming]);
   return (
     <div className="ks-chat-bar">
       <input
+        ref={inputRef}
         className="ks-chat-input"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -82,7 +97,6 @@ const ChatInputBar: React.FC<{
         }}
         placeholder={placeholder}
         maxLength={300}
-        disabled={streaming}
         autoComplete="off"
       />
       {/* 🎙 E66 语音扩展槽位：清朗少年音 Milo / 温柔少女音 Sophia（UI 锚点，功能待接入） */}

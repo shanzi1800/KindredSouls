@@ -275,7 +275,7 @@ test('E103-⑤ 存量作废：COMPAT_PERSIST_VERSION v5（旧 fr/es 报告 Qian2
 
 test('E103-⑥ 军规链基线 79 段（e103/e104 居 e102 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 84, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
+  assert.strictEqual(parts.length, 85, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

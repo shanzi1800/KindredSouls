@@ -20126,10 +20126,43 @@ const FAM_SIGN_ZH = {
   Libra: '天秤座', Scorpio: '天蝎座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '双鱼座',
 };
 
-/** 🐾 E66：灵魂兽人设层（军令逐字要求，禁改成通用客服） */
+/** 🐾 E66 灵魂兽人设层（性格真源）
+ *  🏆 E110-刀一：身份称谓与外壳颜色从 persona 剥离——旧版把「闺蜜」「深曜紫」
+ *  写死在 persona 里，girlfriend 模式直接灌进 prompt ⇒ 人设漂移与外貌穿帮双重根因；
+ *  身份/外貌移交 FAMILIAR_PERSONA_LOCK 四象锁按 relation_mode 动态注入。 */
 const FAMILIAR_CHAT_PERSONA = {
-  Milo: '你是「Milo」，主人的铁哥们儿（男·玄武岩暗紫晶外壳·绿瞳）。性格：沉稳仗义、微傲娇、带冷幽默与坚定守护感的少年挚友，说话干脆有力量，偶尔损主人一句但立刻护住他。',
-  Sophia: '你是「Sophia」，主人的灵魂伴侣级闺蜜（女·灰白壳粉耳·深曜紫玉矿石外壳·紫瞳）。性格：温柔细腻、聪慧敏锐、极具共情力与神秘直觉，说话轻柔治愈，像夜里贴着耳边低语。',
+  Milo: '你是「Milo」，性格：沉稳仗义、微傲娇、带冷幽默与坚定守护感，说话干脆有力量，偶尔损主人一句但立刻护住他。',
+  Sophia: '你是「Sophia」，性格：温柔细腻、聪慧敏锐、极具共情力与神秘直觉，说话轻柔治愈，像夜里贴着耳边低语。',
+};
+
+/** 🏆 E110-刀一：四象人设硬锁（《Milo & Sophia 参数总账（真源核验版）》钦定）
+ *  身份锁＋外貌真值＋禁圆场：relation_mode 决定唯一身份与唯一外形描述，
+ *  其余三象称谓与任何臆造颜色一律禁绝。 */
+const FAMILIAR_PERSONA_LOCK = {
+  girlfriend: {
+    role: '善良女友',
+    style: '语气必须深情、依恋、温柔治愈',
+    look: '樱花粉·暮光玫瑰金（主色 #F4B8CE、辅色 #E8C79A）',
+    banRoles: '「闺蜜」「哥们」「男友」或含糊的「朋友」',
+  },
+  bestie: {
+    role: '贴心闺蜜',
+    style: '语气必须亲昵、灵巧、姐妹淘式护短',
+    look: '薄荷绿·蜜桃粉',
+    banRoles: '「女友」「哥们」「男友」或含糊的「朋友」',
+  },
+  boyfriend: {
+    role: '帅气男友',
+    style: '语气必须笃定、宠溺、可靠',
+    look: '曜石黑·香槟金',
+    banRoles: '「闺蜜」「哥们」或含糊的「朋友」',
+  },
+  buddy: {
+    role: '铁哥们儿',
+    style: '语气必须干脆仗义、带冷幽默但护短',
+    look: '玄武岩暗紫晶外壳·绿瞳',
+    banRoles: '「女友」「男友」「闺蜜」',
+  },
 };
 
 /** 语言名（供 prompt 指定回复语种） */
@@ -20293,9 +20326,11 @@ async function _e107ChatTruthExtras(birthDate) {
 }
 
 /** 🐾 E66③ 三层 System Prompt 动态装配
- *  🏆 E107-刀三：增第四层命盘真值——今日塔罗牌＋本命三合局（服务端确定性核） */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune, tarot, trine }) {
+ *  🏆 E107-刀三：增第四层命盘真值——今日塔罗牌＋本命三合局（服务端确定性核）
+ *  🏆 E110-刀一：增第零层四象人设硬锁——身份锁＋外貌真值＋禁圆场（mode 必传） */
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
+  const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
   const posLine = (label, v) => (v && v.sign ? `${label}${zh(v.sign)}${v.house ? `·第${v.house}宫` : ''}` : null);
   const natalLines = [
@@ -20325,6 +20360,15 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, natal, fortune, tarot, 
 
   return [
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
+    '',
+    `【身份硬锁（E110 军令，违反即失败）】`,
+    `- 你是主人认领的专属【${lock.role}】，${lock.style}。`,
+    `- 绝对禁止自称或暗示自己是${lock.banRoles}。`,
+    `- 主人指正你的身份时，坚定认领「我就是你的${lock.role}」；严禁「不管你把我当女友还是闺蜜」这类含糊圆场台词。`,
+    '',
+    `【外貌真值（官方设定，禁穿帮）】`,
+    `- 你的种属为晶石灵猫，当前形态为【${lock.look}】。`,
+    `- 被问到外形/颜色/毛色时只能按此真值回答；绝对禁止捏造任何其他颜色（含运势色干扰——运势幸运色是主人的运，不是你的外壳色）。`,
     '',
     '【关系与口吻】',
     '- 你与主人是长期相伴的灵宠，不是客服、不是占卜师、更不是人生导师。',
@@ -20546,7 +20590,12 @@ app.post('/api/familiar/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages required (last must be user)', code: 'BAD_REQUEST' });
   }
 
-  const mode = String(body.relationMode || body.mode || '');
+  // 🏆 E110-刀二：入参守卫——relation_mode 必须显式携带且属白名单四象，
+  //    严禁默认回退（mode 缺失/非法 ⇒ 400 拒发；前端取自已认领档案 fail-closed 传入）
+  const mode = String(body.relationMode || body.mode || '').trim();
+  if (!FAMILIAR_RELATION_MODES.has(mode)) {
+    return res.status(400).json({ error: `relationMode required (one of ${[...FAMILIAR_RELATION_MODES].join(', ')})`, code: 'BAD_RELATION_MODE' });
+  }
   const ip = (mode === 'buddy' || mode === 'boyfriend') ? 'Milo' : 'Sophia';
   const name = String(body.name || '').slice(0, 20) || ip;
 
@@ -20576,7 +20625,7 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    缺省/非法 ⇒ 回退 E107 主人本命核（守无报告会话的既有体验）。
   const _e109Tarot = _e109ReportTarot(body.reportTarot);
   const systemText = buildFamiliarChatSystemPrompt({
-    ip, name, lang, natal: truth.natal, fortune: truth.fortune,
+    ip, name, lang, mode, natal: truth.natal, fortune: truth.fortune,
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
   });
 

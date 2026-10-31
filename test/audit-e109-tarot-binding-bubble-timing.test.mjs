@@ -135,12 +135,12 @@ test('②-3 petLoaded 加载守卫（本体 img onLoad 前气泡容器不渲染�
 
 // ═══════════════ 刀三 · 军规链入编（83 → 84 段）═══════════════
 
-test('③-1 军规链段数入编（E109 后继化：84 段／e109 居 e108 前、e40 前）', () => {
+test('③-1 军规链段数入编（E110 后继化：85 段／e109 居 e108 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 84, `军规链段数异常（实得 ${segs.length}，基线 84（E109 升 84 段））`);
+  assert.equal(segs.length, 85, `军规链段数异常（实得 ${segs.length}，基线 85（E110 升 85 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 3].includes('audit-e109'), 'e109 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 4].includes('audit-e108'), 'e108 须居 len-4（e109 后）');
-  assert.ok(segs[segs.length - 5].includes('audit-e107'), 'e107 须居 len-5');
+  assert.ok(segs[segs.length - 4].includes('audit-e109'), 'e109 须居 len-4（e110 后、e40 前）');
+  assert.ok(segs[segs.length - 5].includes('audit-e108'), 'e108 须居 len-5（e109 后）');
+  assert.ok(segs[segs.length - 6].includes('audit-e107'), 'e107 须居 len-6');
 });
