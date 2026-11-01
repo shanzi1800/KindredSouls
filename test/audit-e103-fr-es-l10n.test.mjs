@@ -17,7 +17,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const SERVER = read('server.js');
 const PIPE = read('lib/reportPipeline.mjs');
-const TAROT = read('web/src/lib/tarot.ts');
+// 🏆 E114-刀一 后继化：22×6 牌名表已自 tarot.ts 迁出至 tarotNames.mjs 单源
+const TAROT = read('web/src/lib/tarotNames.mjs');
 const ALGOS_I18N = read('web/src/lib/algos/i18n.ts');
 const WRPAGE = read('web/src/pages/WealthReportPage.tsx');
 const AUTHBTN = read('web/src/components/AuthButton.tsx');
@@ -97,8 +98,8 @@ test('E103-①-2 行为级：es 锁军令钦定术语逐字＋零汉字＋¿¡ �
 
 test('E103-①-3 塔罗二号牌统一：tarot.ts/algos/AuthButton/财富催化剂四真源零 La Papesse', () => {
   // 军令钦定：fr La Grande Prêtresse／es La Gran Sacerdotisa（拔除马赛旧称 La Papesse）
-  assert.ok(TAROT.includes("fr:'La Grande Prêtresse'"), 'tarot.ts fr 女祭司钦定译名缺失');
-  assert.ok(TAROT.includes("es:'La Gran Sacerdotisa'"), 'tarot.ts es 女祭司钦定译名缺失');
+  assert.ok(TAROT.includes("fr:'La Grande Prêtresse'"), 'tarotNames.mjs fr 女祭司钦定译名缺失');
+  assert.ok(TAROT.includes("es:'La Gran Sacerdotisa'"), 'tarotNames.mjs es 女祭司钦定译名缺失');
   assert.ok(!TAROT.includes("fr:'La Papesse'"), 'tarot.ts fr 马赛旧称残留');
   assert.ok(ALGOS_I18N.includes("es: 'La Gran Sacerdotisa'"), 'algos/i18n.ts es 钦定译名缺失');
   assert.ok(AUTHBTN.includes("fr:'La Grande Prêtresse'"), 'AuthButton 迷你塔罗 fr 钦定译名缺失');
@@ -275,7 +276,7 @@ test('E103-⑤ 存量作废：COMPAT_PERSIST_VERSION v5（旧 fr/es 报告 Qian2
 
 test('E103-⑥ 军规链基线 79 段（e103/e104 居 e102 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 88, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
+  assert.strictEqual(parts.length, 89, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

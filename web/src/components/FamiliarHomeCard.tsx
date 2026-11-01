@@ -63,6 +63,9 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 import { dailyFortune } from '../lib/dailyFortune.mjs';
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
+// 🎵 E114-刀四（主公军令 2026-11-01）：灵宠微音效——Web Audio 纯合成
+//    （Sophia 528/852Hz 空灵晶鸣；Milo 吐泡「啵」＋星尘碎裂；master 0.15 锁）
+import { playSophiaPurrChime, playMiloBubblePop } from '../lib/familiarSfx';
 // 🍀 E108-刀三（主公军令 2026-11-01）：废除 E107 居中大 Modal「今日幸运卡片」
 //   （遮挡灵宠＋交互割裂实锤），复活图 9 贴身伴随式「今日运势锦囊」轻气泡——
 //   点灵宠 ⇒ 0.75s 微光脉冲＋两翼贴身锦囊气泡（幸运数字/色/能量微语＋
@@ -266,6 +269,9 @@ const FamiliarHomeCard: React.FC = () => {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleFirstRef = useRef(true); // E112：首触发标记（15~20s 后翻 false）
+  /* 🎵 E114-刀四：当前灵宠 IP 锚（音效分流——scheduleIdle 零依赖 useCallback
+   * 不可闭包 rec，经 ref 取当前 IP：Sophia ⇒ 空灵晶鸣；Milo ⇒ 吐泡破裂） */
+  const idleIpRef = useRef<'Sophia' | 'Milo'>('Sophia');
   const scheduleIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     // 🏆 E113-刀一（主公军令 2026-11-01）：循环计程移至 2.4s 回落终点——绝不在此
@@ -290,6 +296,10 @@ const FamiliarHomeCard: React.FC = () => {
     idleTimer.current = setTimeout(() => {
       idleFirstRef.current = false; // E112：首触发已耗 ⇒ 后续按 25~30s 循环计程
       setIdleAct(true);
+      // 🎵 E114-刀四（军令「动效匹配声音更生动」）：待机动效触发即伴音——
+      //    SSR/未解锁/静音策略下 play 内部静默降级，绝不阻断动效
+      if (idleIpRef.current === 'Milo') playMiloBubblePop();
+      else playSophiaPurrChime();
       idleOffTimer.current = setTimeout(() => {
         setIdleAct(false);   // 2.4s 回落（class 摘除 ⇒ 下轮重挂重启 CSS 动画）
         scheduleIdle();      // 🏆 E113：回落终点自续下一轮（循环计程唯一真源）
@@ -450,6 +460,14 @@ const FamiliarHomeCard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rec]);
   const chatIp: FamiliarIp = (rec && (IP_OF_MODE[String(rec.profile.relation_mode || '')] === 'Milo')) ? 'Milo' : 'Sophia';
+  /* 🎵 E114-刀四：idle 音效分流锚随档刷新（scheduleIdle 零依赖经 ref 取 IP） */
+  useEffect(() => { idleIpRef.current = chatIp; }, [chatIp]);
+  /* 🏆 E114-刀五（主公军令 2026-11-01）：SSE 吐字共鸣姿态——ChatSheet 的
+   * streaming 状态上行（onStreamingChange）驱动 breakout 加 .ks-fam-live：
+   *   Sophia ⇒ 双耳前倾＋宝石 4Hz 呼吸微光＋尾梢规律轻打（共鸣倾听态）；
+   *   Milo   ⇒ 尾巴 1.8s 大幅欢快摆＋头顶 1~2 颗金色微尘上飘（欢快分享态）。
+   * 流式结束 ⇒ class 摘除平滑回落待机趴键态（CSS transition 抚平收尾）。 */
+  const [chatLive, setChatLive] = useState(false);
   /* 🏆 E111-刀二（主公军令 2026-11-01）：对话舱首语情境破冰——彻底拔除「幸运色是
    * 琥珀黄、幸运数字 54」复读（旧 chatGreeting 注入 dailyFortune color/num＝复读
    * 病根，与锦囊气泡 100% 重合）。情境首语映射引擎（Context First-Strike）判定
@@ -484,7 +502,7 @@ const FamiliarHomeCard: React.FC = () => {
         return createPortal(
           <div
             key={`${rec0.adoptedAt}-${mode}`}
-            className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}${idleAct ? ' ks-fam-idle' : ''}`}
+            className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}${idleAct ? ' ks-fam-idle' : ''}${chatLive ? ' ks-fam-live' : ''}`}
             data-testid="familiar-breakout"
             data-ip={ip}
           >
@@ -495,15 +513,28 @@ const FamiliarHomeCard: React.FC = () => {
               <img className="ks-fam-img" src={ip === 'Milo' ? miloSprite : sophiaSprite} alt="" draggable={false} onLoad={() => setPetLoaded(true)} />
               {/* 🐾 E52：眨眼帧叠加（周期性瞬目，3~5s 一次；reduced-motion 降级为不眨） */}
               <img className="ks-fam-img-blink" src={ip === 'Milo' ? miloBlink : sophiaBlink} alt="" draggable={false} />
+              {/* 🏆 E114-刀二（主公军令 2026-11-01）：Sophia 双耳独立摇摆层——本体
+                  耳部同源帧 clip-path 复制叠加（静止时与本体逐像素重合不可见，
+                  idle 时 rotate ±8deg＋scaleY(1.05) 绕耳基独立摆动，与拱背节奏
+                  错落；live 时双耳微幅前倾共鸣。零新增资产零几何改动）。 */}
+              {ip === 'Sophia' && (
+                <img className="ks-fam-ears" src={sophiaSprite} alt="" draggable={false} aria-hidden="true" />
+              )}
             </div>
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             {/* 🌟 E111-刀一：待机光效层——Sophia 宝石粉金呼吸光（与 gem 命中区同框，E65 真值）；
-                🏆 E112-刀一（军令钦定）：Milo 升级为「星芒气泡」——14px 晶蓝带金边小气泡
-                嘴边呼出⇒上浮 20px⇒「啵」破裂⇒4 颗金色微尘向星空消散（少年活力神态，
-                消灭木雕感）。纯装饰叠加层，pointer-events:none 物理穿透铁律不破。 */}
-            {idleAct && ip === 'Sophia' && <span className="ks-fam-gemglow" aria-hidden="true" data-testid="familiar-gemglow" />}
+                🏆 E112-刀一（军令钦定）：Milo 升级为「星芒气泡」——晶蓝带金边小气泡
+                嘴边呼出⇒斜上漂移⇒「啵」破裂⇒金色微尘向星空消散（少年活力神态，
+                消灭木雕感）。纯装饰叠加层，pointer-events:none 物理穿透铁律不破。
+                🏆 E114-刀五：gemglow 在 SSE 吐字期（chatLive）常驻呈现（4Hz 共鸣
+                呼吸微光——CSS .ks-fam-live 分流）；气泡直径 22px＋漂移 50px＋
+                5 颗金尘（军令 E114-刀三物理参数）。 */}
+            {(idleAct || chatLive) && ip === 'Sophia' && <span className="ks-fam-gemglow" aria-hidden="true" data-testid="familiar-gemglow" />}
+            {/* 🏆 E114-刀二（军令钦定）：宝石高光扩散脉冲层——径向渐变＋screen
+                混合，踩奶顶点扩散至 48px 半径能量爆发（心跳般纯正能量脉冲） */}
+            {idleAct && ip === 'Sophia' && <span className="ks-fam-gempulse" aria-hidden="true" data-testid="familiar-gempulse" />}
             {idleAct && ip === 'Milo' && (
               <span className="ks-fam-pop" aria-hidden="true" data-testid="familiar-spark">
                 <i className="ks-fam-pop-bub" />
@@ -511,6 +542,15 @@ const FamiliarHomeCard: React.FC = () => {
                 <i className="ks-fam-pop-dust" />
                 <i className="ks-fam-pop-dust" />
                 <i className="ks-fam-pop-dust" />
+                <i className="ks-fam-pop-dust" />
+              </span>
+            )}
+            {/* 🏆 E114-刀五：Milo 欢快分享态——SSE 吐字期头顶 1~2 颗金色微尘
+                周期性上飘（2 颗错相位；Sophia 共鸣态由 gemglow 4Hz＋双耳前倾承担） */}
+            {chatLive && ip === 'Milo' && (
+              <span className="ks-fam-live-dust" aria-hidden="true" data-testid="familiar-live-dust">
+                <i />
+                <i />
               </span>
             )}
             {/* 💫 E111-刀三：每日灵犀星打卡＋首点 +1 飘字（宝石上方上飘消散）。
@@ -577,6 +617,7 @@ const FamiliarHomeCard: React.FC = () => {
         paidOk={paidOk}
         greetingMode={chatGreetingMode}
         starCount={starCount}
+        onStreamingChange={setChatLive}
       />
     </div>
   );

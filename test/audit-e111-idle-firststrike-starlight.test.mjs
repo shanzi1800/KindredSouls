@@ -62,13 +62,13 @@ test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾
   assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层高光 drop-shadow 20px 1（E113 军令真值）');
   assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层粉金光 drop-shadow 35px 0.85（E113 军令真值）');
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 35\.4%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值）');
-  // ④ Milo 尾巴大弧度甩动 22deg 弹性阻尼回弹（E113 军令）＋星芒气泡 14px 晶蓝金边→斜上漂 25px 破裂 4 金尘
+  // ④ Milo 尾巴大弧度甩动 22deg 弹性阻尼回弹（E113 军令）＋星芒气泡 22px 晶蓝金边→斜上漂 50px 破裂 5 金尘（E114-刀三 后继）
   assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾摆动画');
   assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-tail'), '尾摆未挂尾层');
   assert.ok(css.includes('ksFamPopBub'), '缺星芒气泡动画（E112 少年活力神态）');
   assert.ok(css.includes('ksFamPopDust'), '缺气泡破裂金尘动画');
-  assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 14px;[\s\S]{0,120}height: 14px/.test(css), '星芒气泡须 14px（E112 军令钦定）');
+  assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 22px;[\s\S]{0,120}height: 22px/.test(css), '星芒气泡须 22px（E114-刀三 军令钦定 14→22px）');
   // ⑤ 光效层物理穿透（pointer-events:none 铁律不破）
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*pointer-events: none/.test(css), 'gemglow 缺 pointer-events:none');
   assert.ok(/\.ks-fam-pop\s*\{[^}]*pointer-events: none/.test(css), 'pop 气泡缺 pointer-events:none');
@@ -90,7 +90,8 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   }
   // ③ 组件侧：E111/E112 渲染层为纯叠加（gemglow/pop/span），禁触碰 img/尾层结构
   const s = read('web/src/components/FamiliarHomeCard.tsx');
-  assert.ok(/idleAct && ip === 'Sophia' && <span className="ks-fam-gemglow"/.test(s), 'gemglow 渲染层缺失');
+  // 🏆 E114-刀五 后继化：gemglow 渲染条件扩为 idleAct || chatLive（SSE 吐字期 4Hz 共鸣常驻）
+  assert.ok(/\(idleAct \|\| chatLive\) && ip === 'Sophia' && <span className="ks-fam-gemglow"/.test(s), 'gemglow 渲染层缺失');
   assert.ok(/idleAct && ip === 'Milo' && \(\s*<span className="ks-fam-pop"/.test(s), 'Milo 星芒气泡渲染层缺失（E112）');
   assert.ok(/ks-fam-pop-dust/.test(s), '气泡破裂金尘粒子层缺失（E112）');
 });
@@ -191,7 +192,8 @@ test('E111 S8 刀三负向：微运势卡永不复活＋六语三键入列＋链
     assert.ok(o.familiar.starBadge.includes('{{count}}'), `${l} starBadge 缺 {{count}} 插值`);
   }
   const zh = JSON.parse(read('web/src/i18n/locales/zh.json'));
-  assert.ok(zh.familiar.chatHello.includes('恋人'), 'zh chatHello 须含《恋人》牌情境（军令钦定甜句）');
+  // 🏆 E114-刀一 后继化：chatHello 硬编码《恋人》已拔除改 {{tarotCard}} 动态插值
+  assert.ok(zh.familiar.chatHello.includes('{{tarotCard}}'), 'zh chatHello 须含 {{tarotCard}} 动态插值（E114 军令钦定）');
   assert.ok(zh.familiar.chatHelloSoothe.includes('磨合'), 'zh chatHelloSoothe 须含磨合规慰核（军令钦定慰句）');
 
   // ③ 链位自保：E111 闸门挂入 test:astro（e110 之后、收口位 e40-compat 之前；

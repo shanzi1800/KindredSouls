@@ -223,7 +223,8 @@ test('E98-④-1 源级：tarot.ts fr 后缀（À l\'endroit 正位＋Inversé/In
   assert.ok(TAROT.includes("const frIsFeminine = (name: string) => /^(La\\s)/i.test(String(name || ''));"), 'fr 阴性大牌判别式缺失');
   assert.ok(TAROT.includes("fr: (r, name) => r ? (frIsFeminine(name || '') ? ' (Inversée)' : ' (Inversé)') : \" (À l'endroit)\","), 'fr 朝向后缀阴阳性分流缺失');
   // 双装配点牌名透传（E97 契约同时适用 fr 后缀）
-  assert.equal((TAROT.match(/orientation: \(ORIENT_SUFFIX\[L\] \|\| ORIENT_SUFFIX\['en'\]\)\(reversed, card\.name\[L\] \|\| card\.name\.en\)/g) || []).length, 2, '双装配点牌名透传缺失（须恰 2 处）');
+  // 🏆 E114-刀一 后继化：牌名表迁 tarotNames.mjs 单源后，双装配点透传查表变量 name
+  assert.equal((TAROT.match(/orientation: \(ORIENT_SUFFIX\[L\] \|\| ORIENT_SUFFIX\['en'\]\)\(reversed, name\)/g) || []).length, 2, '双装配点牌名透传缺失（须恰 2 处）');
 });
 
 test('E98-④-2 行为级：getOrientText fr 阴阳性分流（真源 server 侧消费口径＝字符串牌名）', () => {
@@ -273,7 +274,7 @@ test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 88, `链段数异常（实得 ${parts.length}，基线 88（E113 升 88 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 89, `链段数异常（实得 ${parts.length}，基线 89（E114 升 89 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE98 = parts.findIndex((p) => p.includes('audit-e98-'));
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

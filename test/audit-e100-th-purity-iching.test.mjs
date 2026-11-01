@@ -13,7 +13,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const SERVER = read('server.js');
 const APP = read('web/src/App.tsx');
-const TAROT = read('web/src/lib/tarot.ts');
+// 🏆 E114-刀一 后继化：22×6 牌名表已自 tarot.ts 迁出至 tarotNames.mjs 单源
+const TAROT = read('web/src/lib/tarotNames.mjs');
 const AUTHBTN = read('web/src/components/AuthButton.tsx');
 const ADV_API = read('api/ai-advisor.js');
 const ADV_WEB = read('web/api/ai-advisor.js');
@@ -160,9 +161,9 @@ test('E100-③-2 卦锁注入：月报/年报 DATA LOCK 各携 IChing Hexagram �
 
 test('E100-③-3 塔罗女祭司译名归正：นางพราหมณี 废除 → ไพ่นักบวชหญิง', () => {
   // 真源 tarot.ts + AuthButton 镜像双双归正；dist 产物旧名随 build 失效（rebuild 由部署链保证）
-  assert.ok(TAROT.includes("th:'ไพ่นักบวชหญิง'"), 'tarot.ts 泰语女祭司译名未归正');
+  assert.ok(TAROT.includes("th:'ไพ่นักบวชหญิง'"), 'tarotNames.mjs 泰语女祭司译名未归正');
   assert.ok(AUTHBTN.includes("th:'ไพ่นักบวชหญิง'"), 'AuthButton 镜像译名未归正');
-  assert.ok(!TAROT.includes('นางพราหมณี'), 'tarot.ts 旧译名残留');
+  assert.ok(!TAROT.includes('นางพราหมณี'), 'tarotNames.mjs 旧译名残留');
   assert.ok(!AUTHBTN.includes('นางพราหมณี'), 'AuthButton 旧译名残留');
 });
 
@@ -187,13 +188,13 @@ test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已�
 // ── 军规链基线（后继化：E102 入编后 77 段；e40-compat 恒 len-2、python 恒链尾）──
 test('E100-⑤ 军规链基线（后继化：E102 升 77 段；e40-compat 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 88, '基线 88（E113 升 88 段）');   // 🛡️ E107 后继化：81→82；E106 后继化：80→81；E103/E104 后继化：77→79
-  assert.ok(parts[parts.length - 9].includes('e107'), 'e107 未居 e40-compat 前');   // 🛡️ E108 后继化：位置链整体再顺移一位
-  assert.ok(parts[parts.length - 10].includes('e106'), 'e106 未居 e107 前');
-  assert.ok(parts[parts.length - 11].includes('e105'), 'e105 未居 e106 前');
-  assert.ok(parts[parts.length - 12].includes('e104'), 'e104 未居 e105 前');
-  assert.ok(parts[parts.length - 13].includes('e103'), 'e103 未居 e104 前');
-  assert.ok(parts[parts.length - 14].includes('e102'), 'e102 未居 e103 前');
+  assert.strictEqual(parts.length, 89, '基线 89（E114 升 89 段）');   // 🛡️ E107 后继化：81→82；E106 后继化：80→81；E103/E104 后继化：77→79
+  assert.ok(parts[parts.length - 10].includes('e107'), 'e107 未居 e40-compat 前');   // 🛡️ E108 后继化：位置链整体再顺移一位
+  assert.ok(parts[parts.length - 11].includes('e106'), 'e106 未居 e107 前');
+  assert.ok(parts[parts.length - 12].includes('e105'), 'e105 未居 e106 前');
+  assert.ok(parts[parts.length - 13].includes('e104'), 'e104 未居 e105 前');
+  assert.ok(parts[parts.length - 14].includes('e103'), 'e103 未居 e104 前');
+  assert.ok(parts[parts.length - 15].includes('e102'), 'e102 未居 e103 前');
   assert.ok(parts[parts.length - 2].includes('e40-compat'), 'e40-compat 未居 len-2');
   assert.ok(parts[parts.length - 1].includes('python'), 'python 未居链尾');
 });

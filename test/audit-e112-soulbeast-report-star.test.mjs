@@ -4,7 +4,7 @@
  * 【军令 E112：活体动效振幅增强 · 灵魂兽物种硬锁 · 六大报告首语深度咬合 · 灵犀星归位对话框顶部】
  * 五刀八段（源码级 + 六语资产级，不烧算力、不连外网）：
  *   刀一（S1）：待机首触发 15~20s＋后续 30s；Sophia 拱背 -7px＋多层高光脉冲；
- *     Milo 尾 ±15deg＋坏笑眯眼＋14px 晶蓝金边星芒气泡破裂 4 金尘。
+ *     Milo 尾 ±15deg＋坏笑眯眼＋22px 晶蓝金边星芒气泡破裂 5 金尘（E114-刀三 后继）。
  *   刀二（S2~S4）：soul_recent_unlocked_report 追踪凭证（六档全咬合）＋
  *     对话舱首语六档报告第一击最优先（严禁「我在呢」空话）＋服务端第五层注入。
  *   刀三（S5）：灵犀星徽章物理迁移对话舱 Header（✕ 左侧胶囊）＋首页旧位拆除。
@@ -47,16 +47,16 @@ test('E112 S1 刀一动效：初触发提前＋振幅增强＋Milo 星芒气泡�
   assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-img-blink'), '缺 Milo 坏笑眯眼帧');
   assert.ok(css.includes('ksFamMiloSmirk'), '缺 Milo 坏笑挑眉 smirk 层（E113 军令「必须注入」）');
-  // ⑤ 星芒气泡：14px 晶蓝带金边→斜上漂 25px→「啵」破裂→4 颗金尘消散
-  assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 14px/.test(css), '气泡直径须 14px（军令钦定）');
+  // ⑤ 星芒气泡：22px 晶蓝带金边→斜上漂 50px→「啵」破裂→5 颗金尘消散（E114-刀三）
+  assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 22px/.test(css), '气泡直径须 22px（E114-刀三 军令钦定 14→22px）');
   assert.ok(css.includes('ksFamPopBub'), '缺气泡动画 ksFamPopBub');
   assert.ok(css.includes('ksFamPopDust'), '缺金尘消散动画 ksFamPopDust');
   const bub = (css.match(/@keyframes ksFamPopBub \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/translate\([0-9]+px, -25px\)/.test(bub), '气泡须斜上漂 25px（E113 军令钦定）');
+  assert.ok(/translate\(28px, -41px\)/.test(bub), '气泡须斜上漂 50px（E114-刀三 军令钦定 35° 倾角）');
   const popCls = css.slice(css.indexOf('.ks-fam-pop {'), css.indexOf('.ks-fam-pop {') + 3000);
   assert.ok(popCls.includes('rgba(129, 216, 208'), '气泡须晶蓝底（军令钦定晶蓝）');
   assert.ok(popCls.includes('rgba(240, 208, 96, 0.75)'), '气泡须金边（军令钦定带金边）');
-  assert.equal((read('web/src/components/FamiliarHomeCard.tsx').match(/ks-fam-pop-dust/g) || []).length, 4, '破裂金尘须 4 颗粒子节点');
+  assert.equal((read('web/src/components/FamiliarHomeCard.tsx').match(/ks-fam-pop-dust/g) || []).length, 5, '破裂金尘须 5 颗粒子节点（E114-刀三 后继）');
   // ⑥ E113 断链根治：循环计程在回落终点自续（scheduleIdle 内禁清 idleOffTimer）
   assert.ok(/setIdleAct\(false\);[^\n]*\n\s*scheduleIdle\(\);/.test(card), '循环计程须在 2.4s 回落终点自续（E113 断链根治）');
 });
@@ -225,5 +225,5 @@ test('E112 S8 六语六键＋链位自保（e111 后、e40-compat 前；全链 8
   assert.ok(i111 < i112 && i112 < iCap, 'E112 须按序排在 e111 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 88, `军规链段数须为 87（E112 入编后 86→87；实为 ${segs.length}）`);
+  assert.equal(segs.length, 89, `军规链段数须为 89（E114 后继化 88→89；实为 ${segs.length}）`);
 });

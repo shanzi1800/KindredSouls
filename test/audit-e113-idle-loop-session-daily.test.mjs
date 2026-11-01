@@ -65,10 +65,10 @@ test('E113 S2 刀一振幅再强化：-10px 拱背＋rotate 仰角＋20px35px �
   // ④ Milo 坏笑/自信挑眉微表情 smirk 层（军令「必须注入」）
   assert.ok(css.includes('ksFamMiloSmirk'), '缺 Milo smirk 坏笑挑眉层（E113 军令）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-breathe'), 'smirk 须挂 breathe 叠加层（禁动几何）');
-  // ⑤ 星芒气泡斜上漂 25px＋金尘破裂点随迁
+  // ⑤ 星芒气泡斜上漂 50px＋金尘破裂点随迁（E114-刀三 后继）
   const bub = (css.match(/@keyframes ksFamPopBub \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/translate\(13px, -25px\)/.test(bub), '气泡须斜上漂 25px 破裂（军令钦定）');
-  assert.ok(/top: -25px;/.test(css), '金尘破裂点须随迁 -25px（斜上漂终点）');
+  assert.ok(/translate\(28px, -41px\)/.test(bub), '气泡须斜上漂 50px 破裂（E114-刀三 军令钦定）');
+  assert.ok(/top: -41px;/.test(css), '金尘破裂点须随迁 -41px（斜上漂 50px 终点）');
   // ⑥ reduced-motion 降级守备不破（E111/E112 层全静默）
   assert.ok(/\.ks-fam-gemglow, \.ks-fam-pop \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
   // ⑦ 趴键几何铁律（E65g/E82）零漂移
@@ -93,7 +93,7 @@ test('E113 S3 刀二润色：helloLoveCore 军令定版逐字核＋六语六档�
   const zh = JSON.parse(read('web/src/i18n/locales/zh.json')).familiar;
   // zh 军令定版句逐字核（刀二钦定新句——温柔灵动灵魂兽共情风）
   assert.ok(zh.helloLoveCore.includes('星轨的微光还在我手心跳动'), 'zh helloLoveCore 须军令定版句首（星轨的微光）');
-  assert.ok(zh.helloLoveCore.includes('《恋人》牌与三合木局'), 'zh helloLoveCore 须军令定版塔罗+三合咬合');
+  assert.ok(zh.helloLoveCore.includes('《{{tarotCard}}》牌与{{trinePattern}}'), 'zh helloLoveCore 须含 {{tarotCard}}/{{trinePattern}} 动态插值（E114-刀一 拔硬编码）');
   assert.ok(zh.helloLoveCore.includes('想先听我慢慢说给你听吗'), 'zh helloLoveCore 须军令定版句尾');
   // zh 六档情境核保留（e112 断言口径不破）
   assert.ok(zh.helloLoveCore.includes('合盘'), 'zh helloLoveCore 须含合盘（e112 口径）');
@@ -239,7 +239,7 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 88, `军规链段数须为 88（E113 入编后 87→88；实为 ${segs.length}）`);
+  assert.equal(segs.length, 89, `军规链段数须为 89（E114 入编后 88→89；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));

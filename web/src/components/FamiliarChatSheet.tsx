@@ -33,6 +33,10 @@ import { readRecentReport } from '../lib/soulRecentReport.mjs';
 import { loadDailyChatSession, saveDailyChatSession, readLastChatDay, chatSessionDateKey, sessionToChatMsgs } from '../lib/dailyChatSession.mjs';
 // @ts-ignore —— dailyFortune.mjs 确定性今日运势核（helloDaily 插值真值·与首页锦囊同源）
 import { dailyFortune } from '../lib/dailyFortune.mjs';
+// 🏆 E114-刀一（主公军令 2026-11-01）：首语插值真值核——六语模板占位符
+//    {{tarotCard}}/{{trinePattern}} 的运行时变量（报告真值查表，禁硬编码牌名）
+// @ts-ignore —— greetingTruth.mjs 纯 JS 逻辑核（形状由 E114 闸门守备）
+import { readReportTarotId, readRecentTarotId, readTrineKey, resolveHelloVars } from '../lib/greetingTruth.mjs';
 // @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
 import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 
@@ -71,6 +75,12 @@ interface Props {
    *  首页灵宠身侧旧徽章物理拆除（贴在「开始测算」按钮下方破坏布局——主公
    *  实机验收实锤）。每日 +1 打卡逻辑仍在首页 FamiliarHomeCard。 */
   starCount?: number;
+  /** 🏆 E114-刀五（主公军令 2026-11-01）：SSE 吐字流状态上行——isStreaming=true
+   *  期间首页灵宠切入「共鸣倾听/欢快分享」姿态（Sophia 双耳前倾＋宝石 4Hz
+   *  呼吸微光＋尾梢打拍；Milo 摇尾 1.8s 周期＋头顶金色星尘），流式完毕平滑
+   *  回落待机趴键态。由 FamiliarHomeCard 注入 setChatLive（breakout 加
+   *  .ks-fam-live class 驱动 CSS 姿态）。 */
+  onStreamingChange?: (streaming: boolean) => void;
 }
 
 const THROTTLE_MS = 90;
@@ -131,7 +141,7 @@ const ChatInputBar: React.FC<{
 };
 const MemoChatInputBar = React.memo(ChatInputBar);
 
-const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode, starCount }) => {
+const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode, starCount, onStreamingChange }) => {
   const { t } = useTranslation();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -166,8 +176,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
   const sessionSigRef = useRef('anon');
   const sessionDateRef = useRef('');
+  /* 🏆 E114-刀一：首语插值真值锚（open 时读报告真值一次；helloFor 按当前
+   * 语言即时查表——舱开着切语言 t 变更效应会用当前 lang 重渲染首语） */
+  const helloTruthRef = useRef<{ tarotId: number | null; trineKey: string | null }>({ tarotId: null, trineKey: null });
   const helloFor = useCallback((mode: HelloMode): string => {
-    if (mode === 'love_core') return t('familiar.helloLoveCore');
+    // 🏆 E114-刀一（主公军令 2026-11-01）：六语模板占位符运行时插值——牌名/局名
+    //  走报告真值查表（tarotNames.mjs 单源），无真值 ⇒ 中性词（fail-closed，
+    //  绝不臆造具体牌名——《恋人》写死病根物理拔除）
+    const vars = () => resolveHelloVars(lang, helloTruthRef.current);
+    if (mode === 'love_core') return t('familiar.helloLoveCore', vars());
     if (mode === 'love_monthly') return t('familiar.helloLoveMonthly');
     if (mode === 'love_yearly') return t('familiar.helloLoveYearly');
     if (mode === 'wealth_core') return t('familiar.helloWealthCore');
@@ -179,7 +196,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       const f = dailyFortune({ lang, sunSign: '' });
       return t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) });
     }
-    if (mode === 'sweet') return t('familiar.chatHello');
+    if (mode === 'sweet') return t('familiar.chatHello', { tarotCard: vars().tarotCard });
     if (mode === 'soothe') return t('familiar.chatHelloSoothe');
     return t('familiar.chatHelloPlain', { name });
   }, [t, name, lang]);
@@ -199,6 +216,13 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     } catch { /* 隐私模式 ⇒ anon 共享档兜底（fail-soft） */ }
     sessionSigRef.current = sig;
     sessionDateRef.current = today;
+    // 🏆 E114-刀一：首语插值真值装配（开舱一次）——sessionStorage 当次报告塔罗
+    //    （E109 一盘一清）→ localStorage 最近解锁报告 keyAspects（E112 跨会话）
+    //    → null；三合/六合走 ks_result bazi.meta（E92 真值）。坏档 fail-soft。
+    try {
+      const tarotId = readReportTarotId(sessionStorage) ?? readRecentTarotId(store);
+      helloTruthRef.current = { tarotId, trineKey: readTrineKey(sessionStorage) };
+    } catch { /* 无痕模式 ⇒ 中性词兜底（fail-soft 不臆造） */ }
     try {
       const rr = readRecentReport(store);
       // E113-刀四：当日新解锁判定（unlockedAt 落今日本地日期）
@@ -243,6 +267,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
     saveDailyChatSession(store, sessionSigRef.current, sessionDateRef.current, msgs);
   }, [msgs, open]);
+  /* 🏆 E114-刀五（主公军令 2026-11-01）：SSE 吐字流状态上行——streaming 翻转
+   * 即上报 HomeCard（灵宠切「共鸣倾听/欢快分享」姿态；关舱复位效应已把
+   * streaming 归 false ⇒ 姿态平滑回落待机趴键态，禁常驻卡姿态） */
+  useEffect(() => {
+    onStreamingChange?.(streaming);
+  }, [streaming, onStreamingChange]);
   useEffect(() => {
     if (!open) return;
     setMsgs((prev) => {

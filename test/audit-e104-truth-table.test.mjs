@@ -20,7 +20,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const TS = read('web/src/i18n/metaphysicsTruthTable.ts');
 const I18N_INDEX = read('web/src/i18n/index.ts');
-const TAROT = read('web/src/lib/tarot.ts');
+// 🏆 E114-刀一 后继化：22×6 牌名表已自 tarot.ts 迁出至 tarotNames.mjs 单源（无 emoji 字段，抽取式同步收窄）
+const TAROT = read('web/src/lib/tarotNames.mjs');
 const SERVER = read('server.js');
 
 /* ── TS 字典 eval 抽取（军令适配：node:test 无 TS 运行时）── */
@@ -193,13 +194,13 @@ test('E104-③-2 西语 ¿ 句首闭合＋法语冒号不换行保护（字典�
 /* ═══ 真源 parity（防字典与仓内真源漂移）═══ */
 test('E104-④-1 tarot parity：字典牌名 ≡ tarot.ts 真源（女祭司/皇帝/隐士六语逐字）', () => {
   for (const [key, id] of [['high_priestess', 2], ['emperor', 4], ['hermit', 9]]) {
-    const m = TAROT.match(new RegExp("\\{id:" + id + ", emoji:'[^']*', name:\\{([^}]*)\\}"));
-    assert.ok(m, 'tarot.ts 牌 ' + id + ' 真源抽取失败');
+    const m = TAROT.match(new RegExp("\\{id:" + id + ", name:\\{([^}]*)\\}"));
+    assert.ok(m, 'tarotNames.mjs 牌 ' + id + ' 真源抽取失败');
     for (const lc of LOCALES) {
       // 单引号转义形态兼容（fr 'L\'Empereur'——regex 不吞转义引号）
       const name = m[1].match(new RegExp(lc + ":'((?:\\\\.|[^'])*)'"));
-      assert.ok(name, 'tarot.ts ' + id + ' ' + lc + ' 牌名抽取失败');
-      assert.strictEqual(TABLE.tarot[key].name[lc], name[1].replace(/\\'/g, "'"), `tarot.${key}.name.${lc} 与 tarot.ts 真源漂移`);
+      assert.ok(name, 'tarotNames.mjs ' + id + ' ' + lc + ' 牌名抽取失败');
+      assert.strictEqual(TABLE.tarot[key].name[lc], name[1].replace(/\\'/g, "'"), `tarot.${key}.name.${lc} 与 tarotNames.mjs 真源漂移`);
     }
   }
 });
