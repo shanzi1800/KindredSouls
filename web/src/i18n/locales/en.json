@@ -131,11 +131,13 @@
     "chatQ1": "💰 Money luck and pitfalls today",
     "chatQ2": "🌙 Soothe my emotional drain",
     "chatQ3": "🔮 A reading from my chart today",
-    "helloLoveCore": "I've just gone through your core compatibility report — the moment the cards and charts wove together, my heart skipped for you two. Want my take on where your connection is heading?",
-    "helloLoveMonthly": "Your 30-day love report is fully decoded! The radar shows a small emotional ripple mid-month, but the turning point hides a lovely surprise. Want me to highlight the key days first?",
-    "helloLoveYearly": "The full 365-day love yearly report is complete! The momentum runs strong all year, though the Q3 reality check deserves early planning. Which season shall we start reviewing from?",
-    "helloWealthCore": "I've read your natal wealth report from cover to cover — your wealth stars are well-placed, a true hidden treasury. Want to see where your financial breakthrough point lies?",
-    "helloWealthMonthly": "This month's wealth forecast is ready! Watch out for a drain-star cluster late in the month, while steady income runs strong early on. Shall I map out your money rhythm first?",
-    "helloWealthYearly": "Your full-year wealth panorama is ready! The four-quarter curves are crystal clear, and a rare breakthrough chance hides around mid-year. Shall we walk through it season by season?"
+    "helloLoveCore": "The starlight is still dancing in my paws... In your chart, seeing The Lovers resonate with the Wood Trine made even my own heart skip a beat. Shall I unveil the gentlest secrets of your timing right now?",
+    "helloLoveMonthly": "The moon's tides for this month have only just settled in my heart... Somewhere mid-month there's a small ripple of feeling, but just past that bend hides a lovely surprise for you two. Shall I whisper the tender highlights of this moonlight to you first?",
+    "helloLoveYearly": "I walked all 365 days of your star path for you... The year gathers your bond so warmly — only the third season holds a crossroads of reality, and I'd love to help you carry an umbrella early. Which season shall we begin with, nice and slow?",
+    "helloWealthCore": "I quietly peeked into your innate treasury... your wealth star sits strong and the promise is grand — a true hidden golden vault. That breakthrough point is tucked into the fine details of your chart. Shall I point it out to you first?",
+    "helloWealthMonthly": "This month's wealth reading has just come to a close... mind the loss star in the last ten days, though the steady income early on flows warm. Shall I gently walk you through this month's rhythm of gain?",
+    "helloWealthYearly": "I've spread out your entire year's wealth map... The rise and fall across the four seasons is clear, and mid-year glows with one rare breakthrough. Shall we unfold it season by season, nice and slow?",
+    "helloDaily": "A new day, and the stars have turned for you again! Today I sense your lucky color is [{{color}}], and your lucky number is [{{num}}]. Stay at ease — which aspect of the stars shall we explore first today?",
+    "starTooltip": "Soul Resonance Stars: redeemable for exclusive Soul Beast outfits in version 2.0"
   }
 }

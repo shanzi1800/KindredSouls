@@ -24,19 +24,26 @@ import { supabase } from '../lib/supabase';
 import miloSprite from '../assets/familiar_milo.webp';
 import sophiaSprite from '../assets/familiar_sophia.webp';
 // @ts-ignore —— 纯逻辑核（本命真值提取；形状由既有 E46/E49 闸门守备）
-import { extractBirthTruth, readFamiliarRecord } from '../lib/familiarHome.mjs';
+import { extractBirthTruth, readFamiliarRecord, familiarChartSig } from '../lib/familiarHome.mjs';
 // 🏆 E112-刀二（主公军令 2026-11-01）：最近解锁付费报告读取（形状守卫 fail-closed）
 // @ts-ignore —— soulRecentReport.mjs 纯 JS 逻辑核（形状由 E112 闸门守备）
 import { readRecentReport } from '../lib/soulRecentReport.mjs';
+// 🏆 E113-刀三/刀四（主公军令 2026-11-01）：按日会话固化核（24:00 失效＋跨日判定）
+// @ts-ignore —— dailyChatSession.mjs 纯 JS 逻辑核（形状由 E113 闸门守备）
+import { loadDailyChatSession, saveDailyChatSession, readLastChatDay, chatSessionDateKey, sessionToChatMsgs } from '../lib/dailyChatSession.mjs';
+// @ts-ignore —— dailyFortune.mjs 确定性今日运势核（helloDaily 插值真值·与首页锦囊同源）
+import { dailyFortune } from '../lib/dailyFortune.mjs';
 // @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
 import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 
 export type FamiliarIp = 'Milo' | 'Sophia';
 
 /** 🏆 E112-刀二：开场首语九分支——六档报告第一击（love/wealth × core/monthly/
- *  annual）＋E111 情境三分支（sweet/soothe/plain） */
+ *  annual）＋E111 情境三分支（sweet/soothe/plain）；
+ *  🏆 E113-刀四：新增 daily 分支——跨自然日无当日新解锁 ⇒ 流转今日幸运锦囊
+ *  问候（{{color}}/{{num}} 插值真值来自 dailyFortune 确定性核）。 */
 type HelloMode =
-  | 'sweet' | 'soothe' | 'plain'
+  | 'sweet' | 'soothe' | 'plain' | 'daily'
   | 'love_core' | 'love_monthly' | 'love_yearly'
   | 'wealth_core' | 'wealth_monthly' | 'wealth_yearly';
 
@@ -140,18 +147,25 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
 
   /** 开场问候（🧩 E82 语言联动根治，主公亲令 2026-10-21 军令③）：
    * 旧「一生一次」ref 门闩＋ msgs 跨关闭不重置 ⇒ 首次 zh 开舱后，切 EN 重开永远中文旧句
-   * （六语真机实锤）。现改为：每次唤醒都按当前语言重建干净会话（关闭即复位的既定语义）；
-   * 舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰，历史即历史）。
+   * （六语真机实锤）。舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰）。
    * 🏆 E111-刀二（主公军令 2026-11-01）：彻底拔除「幸运色/幸运数字」复读——
    *  sweet（恋人牌/三合六合）⇒ chatHello 甜句；soothe（六冲/低分磨合）⇒ 慰句；
    *  plain ⇒ chatHelloPlain 中性陪伴句。首语只在「带路回首页后开舱」或「当日
    *  首次开舱」出现一次（sessionStorage ks_familiar_firststrike_day 日标记）。
-   * 🏆 E112-刀二（主公军令 2026-11-01）：六档报告第一击**最优先**——本地存在
-   *  最近解锁付费报告（soul_recent_unlocked_report：姻缘/财富 × core/monthly/
-   *  annual）⇒ 每次开舱首语直接切入该报告情境（军令断言：严禁「我在呢。今天
-   *  想聊点什么？」空话；日标记不约束报告分支——「最近解锁」长期有效，新报告
-   *  覆写即切换）。无报告档 ⇒ 维持 E111 情境链（日标记契约照旧）。 */
+   * 🏆 E112-刀二（主公军令 2026-11-01）：六档报告第一击——本地存在最近解锁
+   *  付费报告（soul_recent_unlocked_report）⇒ 首语直接切入该报告情境。
+   * 🏆 E113-刀三/刀四（主公军令 2026-11-01）：会话按日固化＋跨日流转三路判定：
+   *  ① 当日未过期会话档在场 ⇒ **复原全部历史，禁止重复首句**（军令验收②）；
+   *     除非当日新解锁报告晚于最后一条消息 ⇒ 立即重置为最新报告第一击；
+   *  ② 当日新解锁报告（unlockedAt 落今日）⇒ 六档报告第一击（E112 语义收窄为
+   *     「当日有效」——军令刀四「新解锁⇒立即重置」）；
+   *  ③ 跨自然日（昨聊过 lastChatDay < today 且无当日新解锁）⇒ 首语流转为
+   *     今日幸运锦囊问候 helloDaily（{{color}}/{{num}} 真值插值）；
+   *  ④ 其余 ⇒ 维持 E111 情境链（日标记契约照旧）。 */
   const [helloMode, setHelloMode] = useState<HelloMode>('plain');
+  /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
+  const sessionSigRef = useRef('anon');
+  const sessionDateRef = useRef('');
   const helloFor = useCallback((mode: HelloMode): string => {
     if (mode === 'love_core') return t('familiar.helloLoveCore');
     if (mode === 'love_monthly') return t('familiar.helloLoveMonthly');
@@ -159,28 +173,76 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     if (mode === 'wealth_core') return t('familiar.helloWealthCore');
     if (mode === 'wealth_monthly') return t('familiar.helloWealthMonthly');
     if (mode === 'wealth_yearly') return t('familiar.helloWealthYearly');
+    if (mode === 'daily') {
+      // 🏆 E113-刀四：今日锦囊真值（dailyFortune 确定性核——与首页 luckPouch 同源，
+      //    同日同盘恒定不抖动；无本命太阳 ⇒ 回落全池，绝不臆造）
+      const f = dailyFortune({ lang, sunSign: '' });
+      return t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) });
+    }
     if (mode === 'sweet') return t('familiar.chatHello');
     if (mode === 'soothe') return t('familiar.chatHelloSoothe');
     return t('familiar.chatHelloPlain', { name });
-  }, [t, name]);
+  }, [t, name, lang]);
   useEffect(() => {
     if (!open) return;
-    let mode: HelloMode = greetingMode || 'plain';
+    const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+    const today = chatSessionDateKey();
+    // 🏆 E113-刀三：chartSig 会话键真源——认领档绑定签名优先，本命真值推导兜底
+    let sig = 'anon';
     try {
-      // 🏆 E112-刀二：最近解锁付费报告在场 ⇒ 六档报告第一击最优先（无日标记约束）
-      const rr = readRecentReport((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
-      if (rr) mode = `${rr.category}_${rr.tier}` as HelloMode;
+      const famRec = readFamiliarRecord(store, FAMILIAR_LS_KEY);
+      if (famRec && typeof famRec.chartSig === 'string' && famRec.chartSig) sig = famRec.chartSig;
       else {
-        const day = new Date().toISOString().slice(0, 10);
-        const key = 'ks_familiar_firststrike_day';
-        if (sessionStorage.getItem(key) === day) mode = 'plain'; // 当日已给过情境首语 ⇒ 不再给
-        else sessionStorage.setItem(key, day);
+        const bt = extractBirthTruth(window.location.search, window.localStorage);
+        if (bt) sig = familiarChartSig({ birthDate: bt.birthDate, birthTime: bt.birthTime || '', lat: bt.lat, lon: bt.lon, tz: bt.tz });
       }
-    } catch { /* iOS 无痕模式存储抛错 ⇒ 首语照给（fail-soft） */ }
-    setHelloMode(mode);
-    setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
+    } catch { /* 隐私模式 ⇒ anon 共享档兜底（fail-soft） */ }
+    sessionSigRef.current = sig;
+    sessionDateRef.current = today;
+    try {
+      const rr = readRecentReport(store);
+      // E113-刀四：当日新解锁判定（unlockedAt 落今日本地日期）
+      const freshReport = !!(rr && chatSessionDateKey(new Date(Number(rr.unlockedAt))) === today);
+      // ① E113-刀三：当日未过期会话档在场 ⇒ 复原全部历史（禁重复首句）
+      const sess = loadDailyChatSession(store, sig, today);
+      const lastTs = (sess && sess.messages.length)
+        ? Number(sess.messages[sess.messages.length - 1].timestamp) : 0;
+      if (sess && sess.messages.length > 0 && !(freshReport && Number(rr.unlockedAt) > lastTs)) {
+        setHelloMode('plain');
+        setMsgs(sessionToChatMsgs(sess));
+        return;
+      }
+      let mode: HelloMode = greetingMode || 'plain';
+      if (rr && freshReport) {
+        mode = `${rr.category}_${rr.tier}` as HelloMode; // 当日新解锁 ⇒ 报告第一击（军令刀四）
+      } else {
+        const lastDay = readLastChatDay(store);
+        if (lastDay && lastDay < today) {
+          mode = 'daily'; // ③ 跨自然日无当日新解锁 ⇒ 流转今日锦囊问候（军令刀四）
+        } else {
+          const day = today;
+          const key = 'ks_familiar_firststrike_day';
+          if (sessionStorage.getItem(key) === day) mode = 'plain'; // 当日已给过情境首语 ⇒ 不再给
+          else sessionStorage.setItem(key, day);
+        }
+      }
+      setHelloMode(mode);
+      setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
+    } catch {
+      /* iOS 无痕模式存储抛错 ⇒ 首语照给（fail-soft） */
+      const mode: HelloMode = greetingMode || 'plain';
+      setHelloMode(mode);
+      setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  /* 🏆 E113-刀三：消息变更实时落档（军令钦定——当日 24:00 固化，
+   * 流式空壳空文本不落档；写满/无痕 fail-soft 静默） */
+  useEffect(() => {
+    if (!open || !msgs.length || !sessionDateRef.current) return;
+    const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+    saveDailyChatSession(store, sessionSigRef.current, sessionDateRef.current, msgs);
+  }, [msgs, open]);
   useEffect(() => {
     if (!open) return;
     setMsgs((prev) => {
@@ -190,7 +252,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t, name, helloMode]);
 
-  /** 关闭即复位（下次唤醒仍是干净会话，不残留上一次的私密内容） */
+  /** 关舱复位（仅交互态； msgs 历史保留——🏆 E113-刀三 军令：重开按当日
+   *  会话档复原全部聊天记录，禁首语复读；私密内容随当日 24:00 过期自动清理） */
   useEffect(() => {
     if (open) return;
     setDragY(0);
@@ -412,8 +475,16 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
             </div>
           </div>
           {/* 🏆 E112-刀三：灵犀星徽章归位——与标题行平行靠右（✕ 左侧），
-              深空黑金轻奢胶囊 [ ✦ 灵犀星: N ]；首页按钮下方旧徽章已拆除 */}
-          <div className="ks-chat-star" data-testid="familiar-starlight">
+              深空黑金轻奢胶囊 [ ✦ 灵犀星: N ]；首页按钮下方旧徽章已拆除。
+              🏆 E113-刀五（军令钦定静默化）：2.0 兑换功能未就绪——胶囊零点击
+              绑定（pointer-events:none 物理穿透），cursor:default 拔手型指针，
+              悬浮提示 title 走 i18n（starTooltip：累计可在 2.0 版本兑换专属
+              灵魂兽装扮——锁定 2.0 空间伏笔，防误触空框）。 */}
+          <div
+            className="ks-chat-star"
+            data-testid="familiar-starlight"
+            title={t('familiar.starTooltip')}
+          >
             {t('familiar.starBadge', { count: Number(starCount) || 0 })}
           </div>
           <button type="button" className="ks-chat-close" onClick={onClose} aria-label={t('familiar.chatClose')}>✕</button>

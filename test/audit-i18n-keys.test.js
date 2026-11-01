@@ -116,7 +116,11 @@ describe('V448 i18n Key 门禁', () => {
     //    helloWealthCore/helloWealthMonthly/helloWealthYearly），6 语种同步新增，
     //   键集合全等不变（starBadge 同步改胶囊文案，不增键）
     // 115 → 121
-    assert.strictEqual(p.total, 121, 'E112 六档报告第一击六键入列后基准键数应为 121');
+    // 🏆 E113（主公军令 2026-11-01 刀四/刀五）: 跨日锦囊流转＋灵犀星悬浮提示
+    //   两键入列（familiar.helloDaily 跨日首语 {{color}}/{{num}} 插值 /
+    //    starTooltip 胶囊 title），6 语种同步新增，键集合全等不变
+    // 121 → 123
+    assert.strictEqual(p.total, 123, 'E113 跨日锦囊流转＋灵犀星悬浮提示两键入列后基准键数应为 123');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

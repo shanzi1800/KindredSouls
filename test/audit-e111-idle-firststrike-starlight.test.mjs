@@ -26,12 +26,13 @@ const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 /* ═══════════ 刀一：待机活体微动效 ═══════════ */
 
-test('E111 S1 刀一调度器：待机触发活体循环 2.4s（E112 后继：首触发 15~20s、后续 30s；reduced-motion 静默）', () => {
+test('E111 S1 刀一调度器：待机触发活体循环 2.4s（E113 后继：首触发 15~20s、后续 25~30s；reduced-motion 静默）', () => {
   const s = read('web/src/components/FamiliarHomeCard.tsx');
-  // ① JS 调度器在场：E112-刀一 军令真值——首触发 15~20s（idleFirstRef），后续 30s 循环
+  // ① JS 调度器在场：E112-刀一 军令真值——首触发 15~20s（idleFirstRef）；
+  //    E113-刀一 后继：后续循环 25~30s 恒定（军令钦定区间）
   assert.ok(s.includes('scheduleIdle'), '缺待机调度器 scheduleIdle');
   assert.ok(/15000 \+ Math\.floor\(Math\.random\(\) \* 5001\)/.test(s), '首触发区间须为 15~20s（E112 军令真值）');
-  assert.ok(/30000 \+ Math\.floor\(Math\.random\(\) \* 2001\)/.test(s), '后续循环须为 30s（E112 军令钦定）');
+  assert.ok(/25000 \+ Math\.floor\(Math\.random\(\) \* 5001\)/.test(s), '后续循环须为 25~30s（E113 军令钦定区间）');
   assert.ok(s.includes('idleFirstRef'), '缺首触发标记 idleFirstRef');
   assert.ok(s.includes('2400'), '活体循环时长须为 2.4s（军令真值）');
   // ② 交互重置：点灵宠（tapFamiliar）与开舱 CTA 都重置计程
@@ -43,27 +44,27 @@ test('E111 S1 刀一调度器：待机触发活体循环 2.4s（E112 后继：�
   assert.ok(/\$\{idleAct \? ' ks-fam-idle' : ''\}/.test(s), 'idle class 未挂 breakout');
 });
 
-test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾摆＋星芒气泡（E112 后继：2.4s 全家·振幅增强版）', () => {
+test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾摆＋星芒气泡（E113 后继：2.4s 全家·振幅再强化版）', () => {
   const css = read('web/src/App.css');
-  // ① Sophia 踩奶微拱背：scale 0.96 ＋ 背抬 -7px（E112 军令增强真值）覆盖 breathe 层
+  // ① Sophia 踩奶微拱背：scale 0.96 ＋ 背抬 -10px（E113 军令强化真值）覆盖 breathe 层
   assert.ok(css.includes('ksFamSophiaKnead'), '缺 Sophia 踩奶拱背动画');
   const knead = (css.match(/@keyframes ksFamSophiaKnead \{[\s\S]*?\n\}/) || [''])[0];
   assert.ok(/scale\(0\.96\)/.test(knead), '踩奶微压须 scale 0.96（双爪不离宝石）');
-  assert.ok(/translateY\(-7px\)/.test(knead), '背抬须 -7px（E112 军令增强真值——3px 肉眼不可辨实锤）');
+  assert.ok(/translateY\(-10px\)/.test(knead), '背抬须 -10px（E113 军令强化真值）');
   assert.ok(css.includes('.ks-fam-sophia.ks-fam-idle .ks-fam-breathe'), '踩奶动画未挂 breathe 层（禁动几何层）');
   // ② 闭眼月牙：idle 期 blink 层常态显（Sophia＋Milo 坏笑眯眼双挂）
   assert.ok(css.includes('ksFamIdleBlink'), '缺 idle 闭眼月牙动画');
   assert.ok(css.includes('.ks-fam-sophia.ks-fam-idle .ks-fam-img-blink'), '闭眼未挂 blink 叠加层');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-img-blink'), 'Milo 坏笑眯眼未挂 blink 叠加层（E112 少年气）');
-  // ③ 宝石微光（E112 增强）：多层 drop-shadow 高光脉冲＋与 gem 命中区同框
+  // ③ 宝石微光（E113 强化）：多层 drop-shadow 高光脉冲＋与 gem 命中区同框
   assert.ok(css.includes('ksFamGemGlow'), '缺宝石呼吸光动画');
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/drop-shadow\(0 0 16px rgba\(244, ?184, ?206, ?0\.95\)\)/.test(glow), '缺第一层高光 drop-shadow 16px 0.95（E112 军令真值）');
-  assert.ok(/drop-shadow\(0 0 30px rgba\(232, ?199, ?154, ?0\.8\)\)/.test(glow), '缺第二层粉金光 drop-shadow 30px 0.8（E112 军令真值）');
+  assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层高光 drop-shadow 20px 1（E113 军令真值）');
+  assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层粉金光 drop-shadow 35px 0.85（E113 军令真值）');
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 35\.4%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值）');
-  // ④ Milo 尾巴欢快摆动 ±15deg（E112 军令）＋星芒气泡 14px 晶蓝金边→破裂 4 金尘
+  // ④ Milo 尾巴大弧度甩动 22deg 弹性阻尼回弹（E113 军令）＋星芒气泡 14px 晶蓝金边→斜上漂 25px 破裂 4 金尘
   assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾摆动画');
-  assert.ok(/rotate\(15deg\)/.test(css) && /rotate\(-15deg\)/.test(css), '尾摆须 ±15deg（E112 军令钦定）');
+  assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-tail'), '尾摆未挂尾层');
   assert.ok(css.includes('ksFamPopBub'), '缺星芒气泡动画（E112 少年活力神态）');
   assert.ok(css.includes('ksFamPopDust'), '缺气泡破裂金尘动画');

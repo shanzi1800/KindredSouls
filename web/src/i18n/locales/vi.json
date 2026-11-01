@@ -131,11 +131,13 @@
     "chatQ1": "💰 Tài lộc hôm nay và điều nên tránh",
     "chatQ2": "🌙 Xoa dịu hao mòn cảm xúc của tôi",
     "chatQ3": "🔮 Cho tôi chỉ dẫn hôm nay từ lá số",
-    "helloLoveCore": "Em vừa xem xong báo cáo hợp đôi cốt lõi của hai người rồi — khoảnh khắc lá bài và bản đồ sao đan xen vào nhau khiến em hồi hộp thay hai người. Muốn nghe gợi ý của em về cơ hội của mối quan hệ lúc này không?",
-    "helloLoveMonthly": "Báo cáo tình yêu 30 ngày của tháng này đã được em giải mã xong rồi! Ra-đa cho thấy giữa tháng có một đợt cảm xúc nhỏ, nhưng ngày bước ngoặt lại giấu bất ngờ lớn. Để em tô sáng các ngày trọng điểm trước nhé?",
-    "helloLoveYearly": "Báo cáo tình yêu trọn 365 ngày đã diễn xong hoàn chỉnh! Thế cả năm rất mạnh, riêng bài kiểm tra thực tế quý 3 cần tính trước. Chúng ta bắt đầu ôn lại từ mùa nào?",
-    "helloWealthCore": "Em đã đọc kỹ báo cáo kho bẩm sinh của bạn rồi — sao tài lộc nằm đúng vị trí, đúng là một kho báu tiềm ẩn. Muốn biết điểm bứt phá tài chính của mình nằm ở đâu không?",
-    "helloWealthMonthly": "Dự báo tài lộc tháng này đã có rồi! Cuối tháng có cụm sao hao tổn cần đặc biệt tránh, còn đầu tháng tài chính chính rất vượng. Để em sắp nhịp thu chi của tháng trước nhé?",
-    "helloWealthYearly": "Toàn cảnh tài lộc cả năm đã sẵn sàng! Đường cong bốn quý rõ nét, đặc biệt giữa năm còn giấu một cơ hội bứt phá hiếm có. Chúng ta đi qua từng mùa nhé?"
+    "helloLoveCore": "Ánh sáng tinh tú vẫn còn ấm áp nơi bàn tay... Thấy lá bài The Lovers hòa cùng Tam Hợp Mộc Cục khiến trái tim ta cũng rung động. Ngươi có muốn ta sẻ chia chìa khóa kết nối dịu dàng nhất lúc này không?",
+    "helloLoveMonthly": "Thủy triều của trăng tháng này vừa lặng xuống trong tim ta... giữa tháng có một gợn sóng cảm xúc nho nhỏ, nhưng qua khúc quanh ấy lại giấu một bất ngờ đáng yêu cho hai người. Để ta thì thầm những điểm sáng dịu dàng của tháng trăng này cho bạn nghe trước nhé?",
+    "helloLoveYearly": "Ta đã đi trọn 365 ngày trên con đường tinh tú thay cho hai người... cả năm duyên phận hội tụ thật ấm áp, chỉ quý ba có một ngã rẽ rất thực tế mà ta muốn giúp bạn chuẩn bị ô từ sớm. Chúng ta bắt đầu từ mùa nào, từ từ nhé?",
+    "helloWealthCore": "Ta lén nhìn vào kho báu bẩm sinh của bạn rồi... sao tài ngời ngời đắc vị, khí tượng rất lớn, đúng là một rương vàng khuất thật. Điểm phá thế ấy đang nằm trong từng chi tiết của lá số. Để ta chỉ cho bạn xem trước nhé?",
+    "helloWealthMonthly": "Lời giải vận tài tháng này vừa khép lại... cuối tháng nhớ né sao hao tài, còn thu nhập ổn định đầu tháng lại chảy về rất ấm. Để ta nhẹ nhàng xếp lại nhịp tiền tài của tháng này cho bạn nghe nhé?",
+    "helloWealthYearly": "Ta đã trải toàn bộ bản đồ tài lộc cả năm của bạn ra rồi... đường cong lên xuống bốn mùa rõ ràng, giữa năm còn sáng lên một cơ hội phá thế hiếm có. Chúng ta cứ từ từ đi từng mùa một, nhé?",
+    "helloDaily": "Một ngày mới, và các vì sao lại chuyển động vì bạn rồi! Hôm nay ta cảm nhận màu may mắn của bạn là [{{color}}], con số may mắn là [{{num}}]. Hãy bình tĩnh nhé — hôm nay muốn nghe lời chỉ dẫn tinh tú ở phương diện nào trước?",
+    "starTooltip": "Sao Lin Tâm: tích lũy để đổi trang phục riêng cho Thú Linh Hồn ở phiên bản 2.0"
   }
 }

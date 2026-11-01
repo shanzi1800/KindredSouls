@@ -131,11 +131,13 @@
     "chatQ1": "💰 Suerte económica y trampas de hoy",
     "chatQ2": "🌙 Calma mi desgaste emocional",
     "chatQ3": "🔮 Guía de hoy según mi carta",
-    "helloLoveCore": "Acabo de revisar vuestro informe de compatibilidad esencial: el momento en que las cartas y los mapas se entrelazaron me hizo ilusión por vosotros. ¿Quieres que te cuente hacia dónde va vuestra conexión?",
-    "helloLoveMonthly": "¡Tu informe de amor de 30 días ya está descifrado! El radar marca una pequeña onda emocional a mitad de mes, pero el punto de inflexión esconde una buena sorpresa. ¿Te destaco primero los días clave?",
-    "helloLoveYearly": "¡El informe anual de amor de 365 días está completo! El impulso del año es muy fuerte, aunque el examen de realidad del T3 merece planificarse pronto. ¿Por qué estación empezamos la revisión?",
-    "helloWealthCore": "He leído tu informe de riqueza natal de principio a fin: tus estrellas de riqueza están bien ubicadas, todo un tesoro oculto. ¿Quieres ver dónde está tu punto de breakthrough financiero?",
-    "helloWealthMonthly": "¡El pronóstico de riqueza de este mes ya está listo! Cuida con un grupo de estrellas de fuga a fin de mes, mientras el ingreso estable se mantiene fuerte al principio. ¿Te ordeno primero el ritmo de ganancias?",
-    "helloWealthYearly": "¡Tu panorama de riqueza del año entero está listo! Las curvas de los cuatro trimestres son clarísimas y hay una oportunidad única escondida a mitad de año. ¿Lo repasamos estación por estación?"
+    "helloLoveCore": "La luz estelar aún vibra en mis patitas... En su sinastría, ver a Los Enamorados alinearse con el Trino de Madera me llenó de ternura. ¿Quieres que te revele el secreto más hermoso de su momento actual?",
+    "helloLoveMonthly": "Las mareas lunares de este mes apenas acaban de asentarse en mi corazón... hacia la mitad del mes hay una pequeña onda de emociones, pero tras esa curva se esconde una sorpresa preciosa para ustedes. ¿Te susurro primero lo más tierno de esta lunación?",
+    "helloLoveYearly": "Caminé por ti los 365 días completos de tu sendero estelar... todo el año reúne su vínculo con calidez; solo el tercer trimestre guarda un cruce de realidad donde quiero ayudarte a llevar paraguas temprano. ¿Por qué estación empezamos, sin prisa?",
+    "helloWealthCore": "Me asomé en silencio a tu tesoro innato... tu estrella de la riqueza está bien posicionada y promete mucho: un cofre dorado oculto de verdad. Ese punto de quiebre se guarda en los detalles finos de tu carta. ¿Te lo señalo primero?",
+    "helloWealthMonthly": "La lectura de riqueza de este mes recién termina... cuida de la estrella de pérdidas en los últimos días, aunque el ingreso estable del comienzo fluye tibio. ¿Te acompaño con suavidad por el ritmo de este mes?",
+    "helloWealthYearly": "Ya desplegué todo el mapa de riqueza de tu año... el vaivén de las cuatro estaciones se ve clarísimo, y en mitad del año brilla una oportunidad de quiebre única. ¿Lo recorremos estación por estación, sin prisa?",
+    "helloDaily": "¡Un nuevo día, y los astros volvieron a girar para ti! Hoy percibo que tu color de la suerte es [{{color}}] y tu número de la suerte es [{{num}}]. Mantén la calma — ¿qué aspecto del cielo quieres explorar primero hoy?",
+    "starTooltip": "Estrellas de Resonancia: canjeables por atuendos exclusivos de tu Bestia Alma en la versión 2.0"
   }
 }

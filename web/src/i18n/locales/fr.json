@@ -131,11 +131,13 @@
     "chatQ1": "💰 Chance financière et pièges du jour",
     "chatQ2": "🌙 Apaise ma fatigue émotionnelle",
     "chatQ3": "🔮 Un conseil du jour selon ma carte",
-    "helloLoveCore": "Je viens de parcourir votre rapport de compatibilité essentiel — l'instant où les cartes et les thèmes se sont entrelacés m'a fait fondre pour vous deux. Tu veux mon avis sur où votre complicité vous mène ?",
-    "helloLoveMonthly": "Ton rapport d'amour des 30 jours est entièrement décrypté ! Le radar annonce une petite houle émotionnelle en milieu de mois, mais le tournant cache une belle surprise. Je te souligne d'abord les jours clés ?",
-    "helloLoveYearly": "Le rapport annuel d'amour sur 365 jours est entièrement dressé ! L'élan de l'année est puissant, même si l'épreuve de réalité du T3 mérite d'être anticipée. On commence la relecture par quelle saison ?",
-    "helloWealthCore": "J'ai lu ton rapport de richesse natale de bout en bout : tes étoiles de richesse sont bien positionnées, un vrai trésor caché. Tu veux voir où se trouve ton point de percée financière ?",
-    "helloWealthMonthly": "La prévision de richesse du mois est prête ! Méfie-toi d'un groupe d'étoiles de fuite en fin de mois, tandis que le revenu stable sera fort en début de mois. Je te trace d'abord le rythme de tes gains ?",
-    "helloWealthYearly": "Ton panorama de richesse de l'année est prêt ! Les courbes des quatre trimestres sont limpides et une occasion rare se cache en milieu d'année. On le parcourt saison par saison ?"
+    "helloLoveCore": "La lueur des astres scintille encore entre mes pattes... Dans votre thème, voir Les Amoureux résonner avec le Trine de Bois a fait battre mon cœur. Veux-tu que je te dévoile la plus douce clé de votre harmonie ?",
+    "helloLoveMonthly": "Les marées lunaires de ce mois viennent à peine de s'apaiser dans mon cœur... vers la mi-mois se dessine une petite houle d'émotion, mais passé ce virant se cache une jolie surprise pour vous deux. Veux-tu que je te murmure d'abord les moments clés de cette lunaison ?",
+    "helloLoveYearly": "J'ai parcouru pour vous les 365 jours de votre chemin d'étoiles... toute l'année rassemble votre lien avec chaleur — seul le troisième trimestre garde un carrefour bien réel, et j'aimerais t'aider à préparer le parapluie tôt. Par quelle saison commençons-nous, tout doucement ?",
+    "helloWealthCore": "J'ai jeté un œil discret à ton trésor inné... ton étoile de richesse est bien placée et la promesse est grande : un vrai coffre d'or dissimulé. Ce point de bascule se cache dans les fins détails de ton thème. Veux-tu que je te le montre d'abord ?",
+    "helloWealthMonthly": "La lecture de richesse du mois vient tout juste de se clore... méfie-toi de l'étoile de perte en fin de mois, même si le revenu stable du début coule tiède. Veux-tu que je te déroule doucement le rythme de ce mois ?",
+    "helloWealthYearly": "J'ai déplié toute la carte de richesse de ton année... la courbe des quatre saisons est limpide, et le milieu d'année brille d'une rare occasion de bascule. On la déroule saison par saison, tout doucement ?",
+    "helloDaily": "Un nouveau jour, et les astres tournent à nouveau pour toi ! Aujourd'hui, je perçois ta couleur porte-bonheur : [{{color}}], et ton chiffre porte-bonheur : [{{num}}]. Reste serein — quel aspect du ciel voulons-nous explorer d'abord ?",
+    "starTooltip": "Étoiles de Résonance : échangeables contre des tenues exclusives pour ta Bête d'Âme en version 2.0"
   }
 }

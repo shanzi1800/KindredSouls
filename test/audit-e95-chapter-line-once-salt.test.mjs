@@ -115,7 +115,7 @@ test('E95-⑤-1 闸门接线：test:astro 含本闸门（72 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e95-chapter-line-once-salt.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 87, `链段数异常（实得 ${parts.length}，基线 87（E112 升 87 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 88, `链段数异常（实得 ${parts.length}，基线 88（E113 升 88 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE95 = parts.findIndex((p) => p.includes('audit-e95-'));
   const iE94 = parts.findIndex((p) => p.includes('audit-e94-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

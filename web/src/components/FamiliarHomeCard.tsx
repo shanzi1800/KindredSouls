@@ -254,7 +254,11 @@ const FamiliarHomeCard: React.FC = () => {
   /* 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效调度器——
    * 🏆 E112-刀一（主公军令 2026-11-01）：初触发提前——旧 35~45s 区间用户视线
    * 早已移开（主公实机验收实锤「没看到踩奶拱背」），改**首触发 15~20s**（军令
-   * 钦定），之后每 30s 一次循环；动效时长 2.4s 不变。
+   * 钦定）；动效时长 2.4s 不变。
+   * 🏆 E113-刀一（主公军令 2026-11-01）：全工况常驻无限循环——后续循环 30s 改
+   * **25~30s 恒定区间**（军令钦定）；根治「只播一次即死」断链（回落计时器被
+   * 同步自调的 clearTimeout 掐死 ⇒ class 永驻动画熄火，见 scheduleIdle 内注）；
+   * 定时器与 isChatOpen / 锦囊气泡任何 UI 抽屉状态零依赖（开舱照常触发）。
      🔴 趴键几何铁律（E65g/E82）：.ks-fam-milo/.ks-fam-sophia 的 left/width/
      translateY 一概不动——动效全部叠加在 breathe/blink/尾层与新增光晕层，
      禁位移突变与组件卸载抖动；reduced-motion 用户静默不播。 */
@@ -264,22 +268,32 @@ const FamiliarHomeCard: React.FC = () => {
   const idleFirstRef = useRef(true); // E112：首触发标记（15~20s 后翻 false）
   const scheduleIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    if (idleOffTimer.current) clearTimeout(idleOffTimer.current);
+    // 🏆 E113-刀一（主公军令 2026-11-01）：循环计程移至 2.4s 回落终点——绝不在此
+    //    清 idleOffTimer（E112 断链根因实锤：旧版在触发回调里同步自调 scheduleIdle()，
+    //    其开头的 clearTimeout 把刚设的 2.4s 回落计时器当场掐死 ⇒ setIdleAct(false)
+    //    永不触发 ⇒ ks-fam-idle class 永驻 ⇒ CSS 动画（非 infinite）播完即静止，
+    //    后续每次触发全是 no-op——主公实机验收「动效只出现一次」实锤）。
+    //    现在 off 计时器生命周期独立，回落终点再自续下一轮，class 真实翻转
+    //    false→true 方可重启 CSS 动画。定时器与 chatOpen/锦囊气泡零状态依赖
+    //    （军令钦定：无论是否在聊天、气泡是否展开，一律按时间轴常驻触发）。
     try {
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         setIdleAct(false);
         return;
       }
     } catch { /* matchMedia 不可用 ⇒ 保持活体（降级判失败不阻断动效） */ }
-    // E112-刀一：首触发 15~20s（军令真值）；后续每 30s 一次（军令钦定）
+    // E113-刀一：首触发 15~20s（E112 军令真值保留）；后续循环 25~30s 恒定
+    //（军令钦定区间：25 秒 + 0~5s 随机相位，全工况无限循环）
     const delay = idleFirstRef.current
       ? 15000 + Math.floor(Math.random() * 5001)
-      : 30000 + Math.floor(Math.random() * 2001);
+      : 25000 + Math.floor(Math.random() * 5001);
     idleTimer.current = setTimeout(() => {
-      idleFirstRef.current = false; // E112：首触发已耗 ⇒ 后续按 30s 循环计程
+      idleFirstRef.current = false; // E112：首触发已耗 ⇒ 后续按 25~30s 循环计程
       setIdleAct(true);
-      idleOffTimer.current = setTimeout(() => setIdleAct(false), 2400); // 2.4s 循环后自然回落
-      scheduleIdle(); // 循环计程
+      idleOffTimer.current = setTimeout(() => {
+        setIdleAct(false);   // 2.4s 回落（class 摘除 ⇒ 下轮重挂重启 CSS 动画）
+        scheduleIdle();      // 🏆 E113：回落终点自续下一轮（循环计程唯一真源）
+      }, 2400);
     }, delay);
   }, []);
 

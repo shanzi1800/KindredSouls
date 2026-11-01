@@ -27,33 +27,38 @@ const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 /* ═══════════ 刀一：动效振幅增强 ═══════════ */
 
-test('E112 S1 刀一动效：初触发提前＋振幅增强＋Milo 星芒气泡（军令真值全家）', () => {
+test('E112 S1 刀一动效：初触发提前＋振幅增强＋Milo 星芒气泡（E113 后继：25~30s 循环·-10px·20/35px·22deg·斜上 25px）', () => {
   const card = read('web/src/components/FamiliarHomeCard.tsx');
   const css = read('web/src/App.css');
-  // ① 初触发提前：首触发 15~20s（军令钦定——35~45s 用户视线已移开实锤）
+  // ① 初触发提前：首触发 15~20s（军令钦定——35~45s 用户视线已移开实锤）；
+  //    E113 后继：后续循环 25~30s 恒定区间（军令钦定）
   assert.ok(/15000 \+ Math\.floor\(Math\.random\(\) \* 5001\)/.test(card), '首触发须 15~20s（军令钦定）');
-  assert.ok(/30000 \+ Math\.floor\(Math\.random\(\) \* 2001\)/.test(card), '后续循环须每 30s 一次（军令钦定）');
-  // ② Sophia 拱背增强：-7px（3px 肉眼不可辨实锤）＋skewY 双耳/肩背微动
+  assert.ok(/25000 \+ Math\.floor\(Math\.random\(\) \* 5001\)/.test(card), '后续循环须 25~30s（E113 军令钦定区间）');
+  // ② Sophia 拱背增强（E113 军令再强化）：-10px＋rotate 头颈仰角＋skewY ±1.4deg 双耳微摇
   const knead = (css.match(/@keyframes ksFamSophiaKnead \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/translateY\(-7px\)/.test(knead), '拱背位移须 -7px（军令钦定 3px→7px）');
-  assert.ok(/skewY\(-0\.8deg\)/.test(knead), '缺双耳/肩背 skewY 微动');
-  // ③ 宝石多层高光渐变光晕（军令钦定真值逐字）
+  assert.ok(/translateY\(-10px\)/.test(knead), '拱背位移须 -10px（E113 军令钦定 7px→10px）');
+  assert.ok(/skewY\(-1\.4deg\)/.test(knead), '缺双耳/肩背 skewY 微动');
+  assert.ok(/rotate\(1\.4deg\)/.test(knead), '缺头颈仰角微抬 rotate');
+  // ③ 宝石多层高光渐变光晕（E113 军令钦定真值逐字：20px 1＋35px 0.85）
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/drop-shadow\(0 0 16px rgba\(244, ?184, ?206, ?0\.95\)\)/.test(glow), '缺第一层 drop-shadow 16px 0.95');
-  assert.ok(/drop-shadow\(0 0 30px rgba\(232, ?199, ?154, ?0\.8\)\)/.test(glow), '缺第二层 drop-shadow 30px 0.8（粉金能量脉冲）');
-  // ④ Milo 尾巴有力欢快摆动 ±15deg＋坏笑挑眉（blink 眯眼帧）
-  assert.ok(/rotate\(15deg\)/.test(css) && /rotate\(-15deg\)/.test(css), '尾摆须 ±15deg（军令钦定）');
+  assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层 drop-shadow 20px 1（E113 军令真值）');
+  assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层 drop-shadow 35px 0.85（E113 军令真值·粉金能量脉冲）');
+  // ④ Milo 尾巴大弧度甩动 22deg＋弹性阻尼回弹＋坏笑挑眉（blink 眯眼帧＋smirk 层）
+  assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-img-blink'), '缺 Milo 坏笑眯眼帧');
-  // ⑤ 星芒气泡：14px 晶蓝带金边→上浮 20px→「啵」破裂→4 颗金尘消散
+  assert.ok(css.includes('ksFamMiloSmirk'), '缺 Milo 坏笑挑眉 smirk 层（E113 军令「必须注入」）');
+  // ⑤ 星芒气泡：14px 晶蓝带金边→斜上漂 25px→「啵」破裂→4 颗金尘消散
   assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 14px/.test(css), '气泡直径须 14px（军令钦定）');
   assert.ok(css.includes('ksFamPopBub'), '缺气泡动画 ksFamPopBub');
   assert.ok(css.includes('ksFamPopDust'), '缺金尘消散动画 ksFamPopDust');
   const bub = (css.match(/@keyframes ksFamPopBub \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/translateY\(-20px\)/.test(bub), '气泡须上浮 20px（军令钦定）');
+  assert.ok(/translate\([0-9]+px, -25px\)/.test(bub), '气泡须斜上漂 25px（E113 军令钦定）');
   const popCls = css.slice(css.indexOf('.ks-fam-pop {'), css.indexOf('.ks-fam-pop {') + 3000);
   assert.ok(popCls.includes('rgba(129, 216, 208'), '气泡须晶蓝底（军令钦定晶蓝）');
   assert.ok(popCls.includes('rgba(240, 208, 96, 0.75)'), '气泡须金边（军令钦定带金边）');
   assert.equal((read('web/src/components/FamiliarHomeCard.tsx').match(/ks-fam-pop-dust/g) || []).length, 4, '破裂金尘须 4 颗粒子节点');
+  // ⑥ E113 断链根治：循环计程在回落终点自续（scheduleIdle 内禁清 idleOffTimer）
+  assert.ok(/setIdleAct\(false\);[^\n]*\n\s*scheduleIdle\(\);/.test(card), '循环计程须在 2.4s 回落终点自续（E113 断链根治）');
 });
 
 /* ═══════════ 刀二：六档报告首语全域咬合 ═══════════ */
@@ -95,13 +100,18 @@ test('E112 S4 刀二首语引擎：六档报告第一击最优先＋「我在呢
     assert.ok(sheet.includes(`t('familiar.${k}'`), `首语六档缺 ${k}`);
   }
   assert.ok(/mode = `\$\{rr\.category\}_\$\{rr\.tier\}` as HelloMode/.test(sheet), '六档报告第一击映射缺失（category_tier）');
-  // ② 最优先契约：recentReport 在场 ⇒ 每次开舱都给报告关联首语（不受日标记约束）
+  // ② 最优先契约（E113 后继语义）：开舱判定链＝当日会话档复原优先（禁首语复读）→
+  //    当日新解锁报告（freshReport）⇒ 六档第一击 → 跨日锦囊流转（daily）→ E111 日标记链。
+  //    E112 旧「recentReport 长期有效不受日标记约束」由 E113 军令刀四收窄为「当日有效」。
   const openFx = sheet.slice(sheet.indexOf('useEffect(() => {', sheet.indexOf('helloFor = useCallback')), sheet.indexOf('}, [open]);', sheet.indexOf('helloFor = useCallback')));
-  const readIdx = openFx.indexOf('readRecentReport');
-  const rrIdx = openFx.indexOf('if (rr) mode');
-  assert.ok(readIdx !== -1 && rrIdx !== -1 && readIdx < rrIdx, '开舱判定缺 recentReport 最优先分支');
-  const elseIdx = openFx.indexOf('else {');
-  assert.ok(elseIdx !== -1 && rrIdx < elseIdx, '无报告档才走 E111 日标记链（recentReport 须最优先）');
+  const restoreIdx = openFx.indexOf('loadDailyChatSession');
+  const rrIdx = openFx.indexOf('readRecentReport');
+  const freshIdx = openFx.indexOf('freshReport');
+  assert.ok(rrIdx !== -1 && restoreIdx !== -1, '开舱判定缺 recentReport / 会话档读取分支');
+  assert.ok(freshIdx !== -1, '开舱判定缺当日新解锁 freshReport 判定（E113 军令刀四）');
+  assert.ok(/if \(sess && sess\.messages\.length > 0/.test(openFx), '开舱判定缺会话档复原优先分支（E113 军令刀三）');
+  assert.ok(openFx.includes('readLastChatDay'), '开舱判定缺跨日流转判定源 readLastChatDay（E113 军令刀四）');
+  assert.ok(/mode = 'daily'/.test(openFx), '开舱判定缺跨日锦囊流转 daily 分支（E113 军令刀四）');
   // ③ 「我在呢」空话禁令（军令断言）：有报告档时 mode ∈ 六档——helloFor 六档分支先于 plain
   const hf = sheet.slice(sheet.indexOf('helloFor = useCallback'), sheet.indexOf('}, [t, name];', sheet.indexOf('helloFor = useCallback')));
   const sixIdx = hf.indexOf("helloLoveCore");
@@ -215,5 +225,5 @@ test('E112 S8 六语六键＋链位自保（e111 后、e40-compat 前；全链 8
   assert.ok(i111 < i112 && i112 < iCap, 'E112 须按序排在 e111 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 87, `军规链段数须为 87（E112 入编后 86→87；实为 ${segs.length}）`);
+  assert.equal(segs.length, 88, `军规链段数须为 87（E112 入编后 86→87；实为 ${segs.length}）`);
 });
