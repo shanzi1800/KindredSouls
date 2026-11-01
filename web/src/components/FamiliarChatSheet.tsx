@@ -45,8 +45,10 @@ interface Props {
   lang: string;
   /** 🔒 E66：与服务端同源门禁；false/null ⇒ 不发起请求，直接提示解锁 */
   paidOk: boolean | null;
-  /** 开场问候真值（由首页 dailyFortune 注入；缺省则只问候不报运势） */
-  greetingVars?: { sun?: string; color?: string; num?: number | string } | null;
+  /** 🏆 E111-刀二：情境首语分支真值（首页 Context First-Strike 引擎判定：
+   *  sweet＝恋人牌/三合六合；soothe＝六冲/低分磨合；plain＝无报告数据）。
+   *  旧 greeting 通道（dailyFortune color/num 注入）已物理拔除——首语严禁复读锦囊。 */
+  greetingMode?: 'sweet' | 'soothe' | 'plain' | null;
 }
 
 const THROTTLE_MS = 90;
@@ -107,7 +109,7 @@ const ChatInputBar: React.FC<{
 };
 const MemoChatInputBar = React.memo(ChatInputBar);
 
-const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingVars }) => {
+const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode }) => {
   const { t } = useTranslation();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -124,36 +126,44 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /** 开场问候（🧩 E82 语言联动根治，主公亲令 2026-10-21 军令③）：
    * 旧「一生一次」ref 门闩＋ msgs 跨关闭不重置 ⇒ 首次 zh 开舱后，切 EN 重开永远中文旧句
    * （六语真机实锤）。现改为：每次唤醒都按当前语言重建干净会话（关闭即复位的既定语义）；
-   * 舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰，历史即历史）。 */
+   * 舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰，历史即历史）。
+   * 🏆 E111-刀二（主公军令 2026-11-01）：彻底拔除「幸运色/幸运数字」复读——
+   * 旧 chatHello 模板插 {{color}}/{{num}}（dailyFortune 注入）与锦囊气泡 100% 重合，
+   * 显得死板笨拙。军令钦定「合盘情境第一击」：
+   *   sweet（恋人牌/三合六合）⇒ chatHello 甜句（军令原文恒定）；
+   *   soothe（六冲/低分磨合）⇒ chatHelloSoothe 慰句（军令原文恒定）；
+   *   plain ⇒ chatHelloPlain 中性陪伴句（{{name}} 插值保留）。
+   * 首语只在「带路回首页后开舱」或「当日首次开舱」出现一次（sessionStorage
+   * ks_familiar_firststrike_day 日标记）；同日再开 ⇒ plain——随后进入自由多轮流式。 */
+  const [helloMode, setHelloMode] = useState<'sweet' | 'soothe' | 'plain'>('plain');
+  const helloFor = useCallback((mode: 'sweet' | 'soothe' | 'plain'): string => (
+    mode === 'sweet'
+      ? t('familiar.chatHello')
+      : mode === 'soothe'
+        ? t('familiar.chatHelloSoothe')
+        : t('familiar.chatHelloPlain', { name })
+  ), [t, name]);
   useEffect(() => {
     if (!open) return;
-    const hello = greetingVars && greetingVars.color
-      ? t('familiar.chatHello', {
-        name,
-        sun: greetingVars.sun || '',
-        color: greetingVars.color,
-        num: greetingVars.num ?? '',
-      })
-      : t('familiar.chatHelloPlain', { name });
-    setMsgs([{ id: 'hello', role: 'assistant', text: hello }]);
+    let mode: 'sweet' | 'soothe' | 'plain' = greetingMode || 'plain';
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      const key = 'ks_familiar_firststrike_day';
+      if (sessionStorage.getItem(key) === day) mode = 'plain'; // 当日已给过情境首语 ⇒ 不再给
+      else sessionStorage.setItem(key, day);
+    } catch { /* iOS 无痕模式 sessionStorage 抛错 ⇒ 首语照给（fail-soft） */ }
+    setHelloMode(mode);
+    setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   useEffect(() => {
     if (!open) return;
     setMsgs((prev) => {
       if (!(prev.length === 1 && prev[0].id === 'hello')) return prev;
-      const hello = greetingVars && greetingVars.color
-        ? t('familiar.chatHello', {
-          name,
-          sun: greetingVars.sun || '',
-          color: greetingVars.color,
-          num: greetingVars.num ?? '',
-        })
-        : t('familiar.chatHelloPlain', { name });
-      return [{ id: 'hello', role: 'assistant', text: hello }];
+      return [{ id: 'hello', role: 'assistant', text: helloFor(helloMode) }];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, name, greetingVars]);
+  }, [t, name, helloMode]);
 
   /** 关闭即复位（下次唤醒仍是干净会话，不残留上一次的私密内容） */
   useEffect(() => {

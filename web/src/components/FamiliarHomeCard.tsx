@@ -251,6 +251,59 @@ const FamiliarHomeCard: React.FC = () => {
      时序跳闪）；onLoad 即置位（任一帧到达 ⇒ 视为就绪，双宠未来同构）。 */
   const [petLoaded, setPetLoaded] = useState(false);
 
+  /* 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效调度器——35~45s 无灵宠
+     交互（军令区间）触发一次 2.4s 活体循环，随后自动回落并重新计程：
+     Sophia「踩奶微拱背」＝breathe 层覆盖动画（scale 0.96 轻压＋背抬 -3px）＋
+     闭眼月牙＋爱心宝石粉金呼吸光（.ks-fam-gemglow）；Milo「尾尖轻扬」＝尾层
+     覆盖动画＋头顶 12px 金色星芒粒子升腾消散（.ks-fam-spark）。
+     🔴 趴键几何铁律（E65g/E82）：.ks-fam-milo/.ks-fam-sophia 的 left/width/
+     translateY 一概不动——动效全部叠加在 breathe/blink/尾层与新增光晕层，
+     禁位移突变与组件卸载抖动；reduced-motion 用户静默不播。 */
+  const [idleAct, setIdleAct] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleIdle = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (idleOffTimer.current) clearTimeout(idleOffTimer.current);
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setIdleAct(false);
+        return;
+      }
+    } catch { /* matchMedia 不可用 ⇒ 保持活体（降级判失败不阻断动效） */ }
+    const delay = 35000 + Math.floor(Math.random() * 10001); // 35~45s（军令钦定区间）
+    idleTimer.current = setTimeout(() => {
+      setIdleAct(true);
+      idleOffTimer.current = setTimeout(() => setIdleAct(false), 2400); // 2.4s 循环后自然回落
+      scheduleIdle(); // 循环计程
+    }, delay);
+  }, []);
+
+  /* 💫 E111-刀三（主公军令 2026-11-01）：每日灵犀星打卡——每天用户首次访问首页
+     点灵宠 ⇒ 爱心宝石微光＋「✦ 获得灵犀星 +1」飘字，累计存
+     localStorage.ks_starlight_count（形状 {count, day}：count 累计数、day 当日
+     打卡标记——同日复点不加，跨日首点即 +1）；灵宠身侧常显徽章
+     「✦ 灵犀羁绊：N 星」（7 星解锁灵宠专属待机动作、30 星兑 2.0 专属装扮——
+     里程碑文案契约留在代码注释，2.0 兑换属未来版本）。
+     🔴「今日微运势卡」（E107 居中大 Modal 幸运卡）维持物理废除（E108 军令），
+     与宇宙命盘金卡＋锦囊气泡功能重叠，永不复活（闸门负向断言守备）。 */
+  const [starCount, setStarCount] = useState(0);
+  const [starFloat, setStarFloat] = useState(false);
+  const starFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readStarlight = useCallback((): { count: number; day: string } => {
+    try {
+      const raw = JSON.parse(window.localStorage.getItem('ks_starlight_count') || 'null');
+      if (raw && typeof raw === 'object' && Number.isInteger(raw.count) && raw.count >= 0 && typeof raw.day === 'string') {
+        return { count: raw.count, day: raw.day };
+      }
+    } catch { /* 坏档 ⇒ 视为零档重建（fail-soft） */ }
+    return { count: 0, day: '' };
+  }, []);
+  useEffect(() => {
+    setStarCount(readStarlight().count);
+    return () => { if (starFloatTimer.current) clearTimeout(starFloatTimer.current); };
+  }, [readStarlight]);
+
   /** 弹出气泡（统一收口：计时重置 + 6.5s 自动消散）
    * 🧩 E82 防遮挡动态解耦（主公亲令 2026-10-21 军令②「锚点与主标题外边界彻底解耦」）：
    * 旧 E71 静态 44px 位移只按中文 4 字标题标定，六语真页实测 EN 已重叠 947px²、fr 5580px²、vi 4019px²。
@@ -322,9 +375,24 @@ const FamiliarHomeCard: React.FC = () => {
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
     setFamBubble(null);
+    scheduleIdle(); // 🌟 E111-刀一：点触＝交互，待机计程重置
+    /* 💫 E111-刀三：每日灵犀星打卡（day 翻新即 +1；同日复点不加）——
+       宝石微光由 famPulse 承担，飘字 starFloat 上飘消散 2.2s。 */
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const st = readStarlight();
+      if (st.day !== today) {
+        const next = { count: st.count + 1, day: today };
+        window.localStorage.setItem('ks_starlight_count', JSON.stringify(next));
+        setStarCount(next.count);
+        setStarFloat(true);
+        if (starFloatTimer.current) clearTimeout(starFloatTimer.current);
+        starFloatTimer.current = setTimeout(() => setStarFloat(false), 2200);
+      }
+    } catch { /* iOS 无痕 localStorage 抛错 ⇒ 打卡静默降级（不飘字不阻断） */ }
     const p = luckPouch(rec0);
     showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
-  }, [luckPouch, showBubble, t]);
+  }, [luckPouch, showBubble, t, scheduleIdle, readStarlight]);
 
   /* 🛡️ E109-刀二（主公军令 2026-10-30）：E54-2「9s 主动锦囊气泡」定时器整段拔除——
      军令钦定「彻底拔除任何 useEffect 内的自动开舱/冒泡定时器」：锦囊气泡只可由
@@ -333,6 +401,17 @@ const FamiliarHomeCard: React.FC = () => {
   /* 💎 E53-2：骑键位装配（本期单档；双宠契约见文件头 —— 渲染核已按数组就位） */
   const recs: HomeRecord[] = rec ? [rec] : [];
   const showBreakout = paidOk === true; // 🔒 E50: fail-closed（判定中也不显）
+
+  /* 🌟 E111-刀一：待机调度接线——灵宠真上屏（anchor＋门禁放行）即计程；
+     卸载/下线即清双计时器。showBreakout 在此声明之后方可引用（TS 块作用域）。 */
+  useEffect(() => {
+    if (!anchorEl || !showBreakout) return;
+    scheduleIdle();
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      if (idleOffTimer.current) clearTimeout(idleOffTimer.current);
+    };
+  }, [anchorEl, showBreakout, scheduleIdle]);
 
   // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
   //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
@@ -353,11 +432,31 @@ const FamiliarHomeCard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rec]);
   const chatIp: FamiliarIp = (rec && (IP_OF_MODE[String(rec.profile.relation_mode || '')] === 'Milo')) ? 'Milo' : 'Sophia';
-  const chatGreeting = React.useMemo(() => {
-    const sun = rec ? String((triadTruth(rec) || {}).sun || '') : '';
-    const f = dailyFortune({ lang, sunSign: sun });
-    return { sun, color: f.color && f.color.name, num: f.luckyNumber };
-  }, [rec, lang]);
+  /* 🏆 E111-刀二（主公军令 2026-11-01）：对话舱首语情境破冰——彻底拔除「幸运色是
+   * 琥珀黄、幸运数字 54」复读（旧 chatGreeting 注入 dailyFortune color/num＝复读
+   * 病根，与锦囊气泡 100% 重合）。情境首语映射引擎（Context First-Strike）判定
+   * 真值（全部来自当次报告 sessionStorage，一盘一清同 E109 契约）：
+   *   sweet  ＝ 当次报告塔罗《恋人》（ks_compat_report_tarot id 6）或合盘三合局/
+   *            天干六合（ks_result.engines.bazi.meta 含 SANHE_ 前缀或 LIUHE_DAY_STEM）；
+   *   soothe ＝ 合盘六冲或日主相克（LIUCHONG_ 前缀或 DM_CONTROL）或低分磨合（overall<70）；
+   *   plain  ＝ 无报告数据 ⇒ 中性陪伴句（绝不复读数字颜色）。
+   * 首语何时给、给哪句＝FamiliarChatSheet 开舱时按「带路回首页或当日首开一次」
+   * 契约自决（ks_familiar_firststrike_day 日标记）；此处只供分支真值。 */
+  const chatGreetingMode: 'sweet' | 'soothe' | 'plain' = React.useMemo(() => {
+    try {
+      const rt = JSON.parse(sessionStorage.getItem('ks_compat_report_tarot') || 'null');
+      if (rt && typeof rt === 'object' && Number(rt.id) === 6) return 'sweet';
+      const r = JSON.parse(sessionStorage.getItem('ks_result') || 'null');
+      if (r && typeof r === 'object' && r.engines && r.engines.bazi && Array.isArray(r.engines.bazi.meta)) {
+        const meta: string[] = r.engines.bazi.meta;
+        if (meta.some((m) => typeof m === 'string' && (m.startsWith('SANHE_') || m === 'LIUHE_DAY_STEM'))) return 'sweet';
+        if (meta.some((m) => typeof m === 'string' && (m.startsWith('LIUCHONG_') || m === 'DM_CONTROL'))) return 'soothe';
+      }
+      if (r && typeof r === 'object' && typeof (r as { overall?: unknown }).overall === 'number'
+        && (r as { overall: number }).overall < 70) return 'soothe';
+    } catch { /* 坏档/无痕模式 ⇒ plain 中性句（fail-soft 不复读） */ }
+    return 'plain';
+  }, []);
 
   return (
     <div className="ks-pet-card" data-testid={FAMILIAR_HOME_TESTID}>
@@ -367,7 +466,7 @@ const FamiliarHomeCard: React.FC = () => {
         return createPortal(
           <div
             key={`${rec0.adoptedAt}-${mode}`}
-            className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}`}
+            className={`ks-fam-breakout ks-fam-${ip.toLowerCase()}${famPulse ? ' ks-fam-pulse' : ''}${idleAct ? ' ks-fam-idle' : ''}`}
             data-testid="familiar-breakout"
             data-ip={ip}
           >
@@ -382,6 +481,21 @@ const FamiliarHomeCard: React.FC = () => {
             {/* 仅头部 / 爱心宝石保留点击（tabIndex=-1 + aria-hidden：纯装饰，不入 a11y 树） */}
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
+            {/* 🌟 E111-刀一：待机光效层——Sophia 宝石粉金呼吸光（与 gem 命中区同框，E65 真值）；
+                Milo 头顶 12px 金色星芒粒子（升腾消散于星空）。纯装饰叠加层，
+                pointer-events:none 物理穿透铁律不破（CSS 已置）。 */}
+            {idleAct && ip === 'Sophia' && <span className="ks-fam-gemglow" aria-hidden="true" data-testid="familiar-gemglow" />}
+            {idleAct && ip === 'Milo' && <span className="ks-fam-spark" aria-hidden="true" data-testid="familiar-spark" />}
+            {/* 💫 E111-刀三：灵犀星常显徽章（灵宠身侧）＋每日首点 +1 飘字（宝石上方上飘消散）。
+                均纯展示层（pointer-events:none），物理穿透铁律不破。 */}
+            <div className="ks-fam-starbadge" data-testid="familiar-starlight">
+              {t('familiar.starBadge', { count: starCount })}
+            </div>
+            {starFloat && (
+              <span className="ks-fam-starfloat" aria-hidden="true" data-testid="familiar-star-gain">
+                {t('familiar.starGain')}
+              </span>
+            )}
             {/* 🛡️ E109-刀二：petLoaded 守卫——灵宠未解码就绪前气泡一律不出（点击驱动的显式气泡也可能被守卫延迟到首帧后） */}
             {famBubble && petLoaded && (
               <div
@@ -402,7 +516,7 @@ const FamiliarHomeCard: React.FC = () => {
                   type="button"
                   className="ks-fam-bubble-cta"
                   data-testid="familiar-chat-cta"
-                  onClick={() => { setFamBubble(null); setChatOpen(true); }}
+                  onClick={() => { setFamBubble(null); scheduleIdle(); setChatOpen(true); }}
                 >
                   {t('familiar.chatCta')}
                 </button>
@@ -434,7 +548,7 @@ const FamiliarHomeCard: React.FC = () => {
         relationMode={rec ? String(rec.profile.relation_mode || '') : ''}
         lang={lang}
         paidOk={paidOk}
-        greetingVars={chatGreeting}
+        greetingMode={chatGreetingMode}
       />
     </div>
   );

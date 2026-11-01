@@ -1061,14 +1061,120 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 }
 .ks-fam-chip:hover { opacity: 1; }
 .ks-fam-chip-test { top: auto; bottom: -3%; right: auto; left: 1%; color: #81D8D0; }
+
+/* ── 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效 ──
+   JS 调度器（FamiliarHomeCard）35~45s 无灵宠交互 ⇒ breakout 加 .ks-fam-idle
+   2.4s 后自动摘除。Sophia「踩奶微拱背」＝breathe 层覆盖动画（双爪微压宝石
+   scale 0.96 ＋背抬 -3px）＋闭眼月牙（blink 层中段常态显）＋爱心宝石粉金
+   呼吸光（.ks-fam-gemglow，与 gem 命中区同框 E65 真值）；Milo「尾尖欢快
+   轻扬」＝尾层覆盖动画＋头顶 12px 金色星芒粒子升腾消散（.ks-fam-spark）。
+   🔴 趴键几何铁律（E65g/E82）：.ks-fam-milo/.ks-fam-sophia 的 left/width/
+   translateY 一概不动——动效全部叠加在子层，禁位移突变与卸载抖动。 */
+.ks-fam-sophia.ks-fam-idle .ks-fam-breathe { animation: ksFamSophiaKnead 2.4s ease-in-out; }
+@keyframes ksFamSophiaKnead {
+  0%   { transform: scale(1) translateY(0); }
+  38%  { transform: scale(0.96) translateY(-3px); } /* 双爪踩奶微压宝石＋背微抬 3px（军令真值） */
+  62%  { transform: scale(0.975) translateY(-2px); }
+  100% { transform: scale(1) translateY(0); }
+}
+/* 闭眼月牙（军令「双眼闭合呈月牙状」）：idle 中段常态显眨眼帧，头尾平滑淡入淡出 */
+.ks-fam-sophia.ks-fam-idle .ks-fam-img-blink { animation: ksFamIdleBlink 2.4s ease-in-out; }
+@keyframes ksFamIdleBlink {
+  0%   { opacity: 0; }
+  18%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* 爱心宝石粉金呼吸光（军令 rgba(244,184,206,0.5~0.6)：由内而外荡漾一圈后归于平静） */
+.ks-fam-gemglow {
+  position: absolute;
+  left: 17.9%; top: 35.4%; width: 28.3%; height: 22.2%; /* Sophia gem 命中区同框（E65 真值） */
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ksFamGemGlow 2.4s ease-in-out;
+}
+@keyframes ksFamGemGlow {
+  0%   { box-shadow: 0 0 0 rgba(244, 184, 206, 0); transform: scale(0.96); }
+  40%  { box-shadow: 0 0 12px rgba(244, 184, 206, 0.6), 0 0 26px rgba(244, 184, 206, 0.32); transform: scale(1); }
+  100% { box-shadow: 0 0 0 rgba(244, 184, 206, 0); transform: scale(1); }
+}
+/* Milo 尾尖欢快轻扬（尾层常态 ksFamTailLeisurely 被 idle 覆盖 2.4s） */
+.ks-fam-milo.ks-fam-idle .ks-fam-tail { animation: ksFamMiloTailFlick 2.4s ease-in-out; }
+@keyframes ksFamMiloTailFlick {
+  0%, 100% { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
+  30%      { transform: rotate(6deg)    skewX(3deg)  translateY(-2px); }
+  55%      { transform: rotate(2.5deg)  skewX(1deg)  translateY(-1px); }
+}
+/* Milo 头顶 12px 金色星芒粒子：升起→闪耀→消散在星空（军令钦定尺寸 12px） */
+.ks-fam-spark {
+  position: absolute;
+  left: calc(68% - 6px); top: -8%; /* Milo 头顶（zone-head 中心 68.35%，E65 真值） */
+  width: 12px; height: 12px;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, #FFE9A8 0%, #F0D060 45%, rgba(240, 208, 96, 0) 72%);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  filter: drop-shadow(0 0 6px rgba(240, 208, 96, 0.8));
+  animation: ksFamSparkRise 2.4s ease-out forwards;
+}
+@keyframes ksFamSparkRise {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.4); }
+  25%  { opacity: 1; transform: translateY(-8px) scale(1); }
+  100% { opacity: 0; transform: translateY(-26px) scale(0.55); }
+}
+
+/* ── 💫 E111-刀三（主公军令 2026-11-01）：每日灵犀星打卡 ──
+   每天首次点灵宠 ⇒「✦ 获得灵犀星 +1」飘字（宝石上方上飘消散 2.2s）＋
+   累计存 localStorage.ks_starlight_count；灵宠身侧常显徽章「✦ 灵犀羁绊：N 星」
+   （7 星解锁专属待机动作 / 30 星兑 2.0 专属装扮——里程碑契约）。
+   🔴「今日微运势卡」维持物理废除（E108）——与金卡＋锦囊气泡功能重叠，永不复活。 */
+.ks-fam-starbadge {
+  position: absolute;
+  bottom: -3%;
+  right: 1%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(20, 16, 34, 0.72);
+  border: 1px solid rgba(240, 208, 96, 0.35);
+  color: #F0D060;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none; /* 纯展示，物理穿透铁律不破 */
+}
+.ks-fam-starfloat {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #FFE9A8;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 10px rgba(240, 208, 96, 0.65);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: ksFamStarFloat 2.2s ease-out forwards;
+}
+@keyframes ksFamStarFloat {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  18%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ks-fam-breathe,
-  .ks-fam-pulse .ks-fam-breathe { animation: none; }
+  .ks-fam-pulse .ks-fam-breathe,
+  .ks-fam-idle .ks-fam-breathe,
+  .ks-fam-idle .ks-fam-img-blink,
+  .ks-fam-idle .ks-fam-tail { animation: none; }
   /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
   .ks-fam-milo { transform: translateY(calc(38.9% + 6px)); }
   .ks-fam-sophia { transform: translateY(calc(39.2% + 6px)); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
+  /* 🌟 E111-刀一：待机光效层随降级静默不播（gemglow 无光晕 / spark 不升腾） */
+  .ks-fam-gemglow, .ks-fam-spark { display: none; }
 }
 
 /* ── Mode Selection Modal ── */

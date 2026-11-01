@@ -107,7 +107,11 @@ describe('V448 i18n Key 门禁', () => {
     // 🍀 E107（主公军令 2026-10-31 刀二）: 首页灵宠三阶动线 —— 今日幸运卡片三键入列
     //   （familiar.luckCardTitle/luckVibe/chatDeepCta），6 语种同步新增，键集合全等不变
     // 109 → 112
-    assert.strictEqual(p.total, 112, 'E107 幸运卡片三键入列后基准键数应为 112');
+    // 🌟 E111（主公军令 2026-11-01 刀二/刀三）: 对话舱情境首语＋灵犀星 —— 三键入列
+    //   （familiar.chatHelloSoothe 磨合规慰句 / starBadge 灵犀羁绊徽章 / starGain 灵犀星飘字），
+    //   6 语种同步新增，键集合全等不变
+    // 112 → 115
+    assert.strictEqual(p.total, 115, 'E111 情境首语＋灵犀星三键入列后基准键数应为 115');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

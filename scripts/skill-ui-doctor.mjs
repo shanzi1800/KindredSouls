@@ -250,13 +250,25 @@ function runViewport(base, vp) {
   check(`[${tag}] 首页灵宠入口唯一`, home.counts.pets <= 1, `pets=${home.counts.pets}`);
 
   if (!vp.device) {
-    openFlag(); ab('reload'); waitFor('.landing-start-btn'); sleep(1600);
+    // 🌟 E111 巡检同步（E108 三阶动线钦定）：带路令牌回首页已不自动弹舱（E107/E109
+    //    军令——仅 0.75s 微光脉冲静候点触），旧 openFlag+reload 期待自动开舱的判据
+    //    自 E107 起恒 4 红过期。改按钦定动线显式开舱：点灵宠唤锦囊气泡 → 点
+    //    「✦ 与TA聊聊」胶囊 CTA（petLoaded 守卫下气泡先于灵宠不可现 ⇒ 先点后等）。
+    tapPetHead();
+    try { ab('click', '[data-testid="familiar-chat-cta"]'); }
+    catch (_) { abEval(`(() => { const c=document.querySelector('[data-testid="familiar-chat-cta"]'); if(c) c.click(); return 'CTA'; })()`); }
+    sleep(1600);
     const cs = abEval(MEASURE_JS);
     check(`[${tag}] Sophia 舱在左下（gapLeft≈24）`, !!cs.chat && Math.abs(cs.chat.gapLeft - 24) <= 2, cs.chat && `gapLeft=${cs.chat.gapLeft} gapRight=${cs.chat.gapRight} ${cs.chat.w}×${cs.chat.h}`);
     check(`[${tag}] Sophia 舱 data-familiar=sophia`, !!cs.chat && cs.chat.mode === 'sophia', cs.chat && cs.chat.mode);
     shot(`chat-sophia-${tag}.png`);
 
-    seedFamiliar('Milo', 'buddy'); openFlag(); ab('reload'); waitFor('.landing-start-btn'); sleep(1600);
+    // 🌟 E111 巡检同步：同上——Milo 侧亦改气泡 CTA 显式开舱（钦定三阶动线第二阶）
+    seedFamiliar('Milo', 'buddy'); ab('reload'); waitFor('.landing-start-btn'); sleep(900);
+    tapPetHead();
+    try { ab('click', '[data-testid="familiar-chat-cta"]'); }
+    catch (_) { abEval(`(() => { const c=document.querySelector('[data-testid="familiar-chat-cta"]'); if(c) c.click(); return 'CTA'; })()`); }
+    sleep(1600);
     const cm = abEval(MEASURE_JS);
     check(`[${tag}] Milo 舱在右下（gapRight≈24）`, !!cm.chat && Math.abs(cm.chat.gapRight - 24) <= 2, cm.chat && `gapLeft=${cm.chat.gapLeft} gapRight=${cm.chat.gapRight}`);
     check(`[${tag}] Milo 舱 data-familiar=milo`, !!cm.chat && cm.chat.mode === 'milo', cm.chat && cm.chat.mode);
