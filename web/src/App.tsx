@@ -51,6 +51,10 @@ import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
 // 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
 //    已认领＝破框骑键 portal 至 #ks-familiar-anchor。
 import FamiliarHomeCard from './components/FamiliarHomeCard';
+// 🏆 E112-刀二（主公军令 2026-11-01）：最近解锁付费报告追踪凭证——姻缘三档
+//    生成成功即写入 localStorage（对话舱首语六档咬合真源）；纯逻辑核形状守卫。
+// @ts-ignore —— soulRecentReport.mjs 纯 JS 逻辑核（形状由 E112 闸门守备）
+import { markRecentReport } from './lib/soulRecentReport.mjs';
 // ✦ E84（主公军令 2026-10-22）：Emoji 退役令——模式弹窗图标由 💞/💰 换成
 //    星芒微光 SVG 神秘学矢量（双星交汇星环 / 先天星盘金库），真源 EsotericIcons.tsx。
 import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
@@ -1366,6 +1370,17 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         try {
           sessionStorage.setItem('ks_compat_report_tarot', JSON.stringify({ id: tarot.id, isReversed }));
         } catch { /* 无痕模式静默降级：chat 回退本命核 */ }
+        // 🏆 E112-刀二（主公军令 2026-11-01）：姻缘 $4.99 一次性核心报告生成成功 ⇒
+        //    写「最近解锁报告」凭证（沙盒与真实支付同链：付讫必触发生成）——
+        //    对话舱开舱首语第一击直接切入双方核心盘（恋人牌/三合情境）。
+        try {
+          markRecentReport(window.localStorage, {
+            category: 'love', tier: 'core',
+            title: lang === 'zh' ? '姻缘核心合盘报告' : 'Compatibility Core Report',
+            keyAspects: { tarotId: tarot.id, tarotReversed: isReversed, overall },
+            unlockedAt: Date.now(),
+          });
+        } catch { /* 无痕模式静默降级：首语回退 E111 情境链 */ }
         onTriggerInsight?.();
       }
       else if (res.status === 401 || res.status === 402 || data.error?.includes('authorization') || data.error?.includes('token')) {
@@ -1462,6 +1477,21 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
       if (data.insight) {
         setReportText(data.insight);
+        // 🏆 E112-刀二（主公军令 2026-11-01）：姻缘月报/年报生成成功 ⇒ 写「最近解锁
+        //    报告」凭证（tier 按 generateReport 的 type 落档：monthly→$2.99 月报 /
+        //    yearly→$29.99 年报）——对话舱首语第一击直接切入 30 天情感天气或
+        //    12 个月大局与三大十字路口。
+        try {
+          markRecentReport(window.localStorage, {
+            category: 'love',
+            tier: type === 'monthly' ? 'monthly' : 'annual',
+            title: type === 'monthly'
+              ? (lang === 'zh' ? '姻缘月报' : 'Love Monthly Report')
+              : (lang === 'zh' ? '姻缘年报' : 'Love Yearly Report'),
+            keyAspects: { reportType: type },
+            unlockedAt: Date.now(),
+          });
+        } catch { /* 无痕模式静默降级 */ }
         if (e96StreamedRef.current) {
           // 🔴 E96-②（主公军令 2026-10-26）：真流式已逐字呈现 ⇒ 终帧全文幂等收口、直显。
           setRevealedParas(Number.POSITIVE_INFINITY);

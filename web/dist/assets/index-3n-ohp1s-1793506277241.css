@@ -1325,19 +1325,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 .ks-fam-chip-test { top: auto; bottom: -3%; right: auto; left: 1%; color: #81D8D0; }
 
 /* ── 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效 ──
-   JS 调度器（FamiliarHomeCard）35~45s 无灵宠交互 ⇒ breakout 加 .ks-fam-idle
-   2.4s 后自动摘除。Sophia「踩奶微拱背」＝breathe 层覆盖动画（双爪微压宝石
-   scale 0.96 ＋背抬 -3px）＋闭眼月牙（blink 层中段常态显）＋爱心宝石粉金
-   呼吸光（.ks-fam-gemglow，与 gem 命中区同框 E65 真值）；Milo「尾尖欢快
-   轻扬」＝尾层覆盖动画＋头顶 12px 金色星芒粒子升腾消散（.ks-fam-spark）。
+   JS 调度器（FamiliarHomeCard）首触发 15~20s（E112 军令）⇒ breakout 加
+   .ks-fam-idle 2.4s 后自动摘除，之后每 30s 一次循环。
+   🏆 E112-刀一（主公军令 2026-11-01）：动效振幅大幅增强——主公实机验收
+   实锤「深空星云背景下 3px 位移肉眼完全无法察觉」，军令钦定：
+   Sophia 踩奶拱背位移 -3px→-7px＋skewY 双耳/肩背微动；
+   Milo 尾巴欢快摆动 rotate ±15deg＋坏笑挑眉（blink 眯眼帧）＋
+   嘴边 14px 晶蓝金边星芒气泡上浮 20px「啵」破裂成 4 颗金尘消散。
    🔴 趴键几何铁律（E65g/E82）：.ks-fam-milo/.ks-fam-sophia 的 left/width/
    translateY 一概不动——动效全部叠加在子层，禁位移突变与卸载抖动。 */
 .ks-fam-sophia.ks-fam-idle .ks-fam-breathe { animation: ksFamSophiaKnead 2.4s ease-in-out; }
 @keyframes ksFamSophiaKnead {
-  0%   { transform: scale(1) translateY(0); }
-  38%  { transform: scale(0.96) translateY(-3px); } /* 双爪踩奶微压宝石＋背微抬 3px（军令真值） */
-  62%  { transform: scale(0.975) translateY(-2px); }
-  100% { transform: scale(1) translateY(0); }
+  0%   { transform: scale(1) translateY(0) skewY(0deg); }
+  38%  { transform: scale(0.96) translateY(-7px) skewY(-0.8deg); } /* 双爪踩奶压宝石＋背抬 7px（E112 军令真值）＋肩背/双耳微动 */
+  62%  { transform: scale(0.975) translateY(-5px) skewY(0.5deg); }
+  100% { transform: scale(1) translateY(0) skewY(0deg); }
 }
 /* 闭眼月牙（军令「双眼闭合呈月牙状」）：idle 中段常态显眨眼帧，头尾平滑淡入淡出 */
 .ks-fam-sophia.ks-fam-idle .ks-fam-img-blink { animation: ksFamIdleBlink 2.4s ease-in-out; }
@@ -1346,64 +1348,97 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   18%, 82% { opacity: 1; }
   100% { opacity: 0; }
 }
-/* 爱心宝石粉金呼吸光（军令 rgba(244,184,206,0.5~0.6)：由内而外荡漾一圈后归于平静） */
+/* 🏆 E112-刀一：Milo 坏笑挑眉神态——idle 中段眯眼帧（无独立表情资产层，
+   眨眼帧眯眼＝坏笑挑眉的最近真值形态，禁过度工程化加表情层） */
+.ks-fam-milo.ks-fam-idle .ks-fam-img-blink { animation: ksFamIdleBlink 2.4s ease-in-out; }
+/* 爱心宝石微光（E112-刀一大幅增强）：多层高光渐变光晕（军令钦定真值
+   drop-shadow 16px rgba(244,184,206,0.95) + 30px rgba(232,199,154,0.8)），
+   踩奶顶点 40% 呈心跳般粉金能量脉冲（深空背景下肉眼可辨） */
 .ks-fam-gemglow {
   position: absolute;
   left: 17.9%; top: 35.4%; width: 28.3%; height: 22.2%; /* Sophia gem 命中区同框（E65 真值） */
   border-radius: 50%;
   pointer-events: none;
+  background: radial-gradient(circle at 50% 46%, rgba(244, 184, 206, 0.34) 0%, rgba(244, 184, 206, 0) 62%);
   animation: ksFamGemGlow 2.4s ease-in-out;
 }
 @keyframes ksFamGemGlow {
-  0%   { box-shadow: 0 0 0 rgba(244, 184, 206, 0); transform: scale(0.96); }
-  40%  { box-shadow: 0 0 12px rgba(244, 184, 206, 0.6), 0 0 26px rgba(244, 184, 206, 0.32); transform: scale(1); }
-  100% { box-shadow: 0 0 0 rgba(244, 184, 206, 0); transform: scale(1); }
+  0%   { box-shadow: 0 0 0 rgba(244, 184, 206, 0); filter: drop-shadow(0 0 0 rgba(244, 184, 206, 0)); transform: scale(0.96); }
+  40%  {
+    box-shadow: 0 0 18px rgba(244, 184, 206, 0.85), 0 0 38px rgba(244, 184, 206, 0.4);
+    filter: drop-shadow(0 0 16px rgba(244, 184, 206, 0.95)) drop-shadow(0 0 30px rgba(232, 199, 154, 0.8));
+    transform: scale(1.06);
+  }
+  70%  {
+    box-shadow: 0 0 10px rgba(244, 184, 206, 0.5), 0 0 22px rgba(232, 199, 154, 0.3);
+    filter: drop-shadow(0 0 8px rgba(244, 184, 206, 0.5));
+    transform: scale(1.02);
+  }
+  100% { box-shadow: 0 0 0 rgba(244, 184, 206, 0); filter: drop-shadow(0 0 0 rgba(244, 184, 206, 0)); transform: scale(1); }
 }
-/* Milo 尾尖欢快轻扬（尾层常态 ksFamTailLeisurely 被 idle 覆盖 2.4s） */
+/* Milo 尾巴有力欢快摆动（E112 军令钦定 rotate ±15deg，拔呆板木雕感） */
 .ks-fam-milo.ks-fam-idle .ks-fam-tail { animation: ksFamMiloTailFlick 2.4s ease-in-out; }
 @keyframes ksFamMiloTailFlick {
   0%, 100% { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
-  30%      { transform: rotate(6deg)    skewX(3deg)  translateY(-2px); }
-  55%      { transform: rotate(2.5deg)  skewX(1deg)  translateY(-1px); }
+  25%      { transform: rotate(15deg)   skewX(5deg)  translateY(-3px); }
+  55%      { transform: rotate(-15deg)  skewX(-5deg) translateY(-1px); }
+  80%      { transform: rotate(8deg)    skewX(3deg)  translateY(-2px); }
 }
-/* Milo 头顶 12px 金色星芒粒子：升起→闪耀→消散在星空（军令钦定尺寸 12px） */
-.ks-fam-spark {
+/* 🏆 E112-刀一（军令钦定）：Milo 星芒气泡——嘴边呼出 14px 晶蓝带金边小气泡
+   ⇒上浮 20px⇒「啵」破裂⇒化作 4 颗金色微尘粒子向星空四散消散（2.4s 全程）。 */
+.ks-fam-pop {
   position: absolute;
-  left: calc(68% - 6px); top: -8%; /* Milo 头顶（zone-head 中心 68.35%，E65 真值） */
-  width: 12px; height: 12px;
+  left: calc(68% - 7px); top: 2%; /* 嘴边/头顶右侧（zone-head 中心 68.35%，E65 真值） */
+  width: 14px;
+  height: 14px;
   pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, #FFE9A8 0%, #F0D060 45%, rgba(240, 208, 96, 0) 72%);
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-  filter: drop-shadow(0 0 6px rgba(240, 208, 96, 0.8));
-  animation: ksFamSparkRise 2.4s ease-out forwards;
 }
-@keyframes ksFamSparkRise {
-  0%   { opacity: 0; transform: translateY(4px) scale(0.4); }
-  25%  { opacity: 1; transform: translateY(-8px) scale(1); }
-  100% { opacity: 0; transform: translateY(-26px) scale(0.55); }
+.ks-fam-pop-bub {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, rgba(190, 236, 255, 0.92) 0%, rgba(129, 216, 208, 0.55) 45%, rgba(129, 216, 208, 0.12) 78%);
+  border: 1.5px solid rgba(240, 208, 96, 0.75);
+  box-shadow: 0 0 10px rgba(129, 216, 208, 0.55), 0 0 18px rgba(240, 208, 96, 0.3);
+  animation: ksFamPopBub 2.4s ease-out forwards;
+}
+@keyframes ksFamPopBub {
+  0%   { opacity: 0; transform: translateY(2px) scale(0.3); }
+  18%  { opacity: 1; transform: translateY(-4px) scale(1); }
+  50%  { opacity: 1; transform: translateY(-14px) scale(1.08); }
+  68%  { opacity: 1; transform: translateY(-20px) scale(1.18); } /* 上浮 20px＋鼓胀（破裂前兆） */
+  72%  { opacity: 0; transform: translateY(-22px) scale(1.5); }  /* 「啵」破裂 */
+  100% { opacity: 0; transform: translateY(-22px) scale(1.5); }
+}
+.ks-fam-pop-dust {
+  position: absolute;
+  left: 50%;
+  top: 0; /* 破裂点（气泡上浮后位置） */
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #FFE9A8 0%, #F0D060 70%);
+  filter: drop-shadow(0 0 4px rgba(240, 208, 96, 0.9));
+  opacity: 0;
+  animation: ksFamPopDust 2.4s ease-out forwards;
+}
+/* 4 颗金尘各奔一方（1 略偏早、其余 72% 破裂点齐发，散向星空消散） */
+.ks-fam-pop-dust:nth-child(2) { animation-delay: 1.68s; --dx: 10px;  --dy: -14px; }
+.ks-fam-pop-dust:nth-child(3) { animation-delay: 1.72s; --dx: -9px;  --dy: -17px; }
+.ks-fam-pop-dust:nth-child(4) { animation-delay: 1.72s; --dx: 5px;   --dy: -21px; }
+.ks-fam-pop-dust:nth-child(5) { animation-delay: 1.76s; --dx: -4px;  --dy: -16px; }
+@keyframes ksFamPopDust {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 6px)), var(--dy, -14px)) scale(0.75); }
 }
 
 /* ── 💫 E111-刀三（主公军令 2026-11-01）：每日灵犀星打卡 ──
    每天首次点灵宠 ⇒「✦ 获得灵犀星 +1」飘字（宝石上方上飘消散 2.2s）＋
-   累计存 localStorage.ks_starlight_count；灵宠身侧常显徽章「✦ 灵犀羁绊：N 星」
-   （7 星解锁专属待机动作 / 30 星兑 2.0 专属装扮——里程碑契约）。
-   🔴「今日微运势卡」维持物理废除（E108）——与金卡＋锦囊气泡功能重叠，永不复活。 */
-.ks-fam-starbadge {
-  position: absolute;
-  bottom: -3%;
-  right: 1%;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(20, 16, 34, 0.72);
-  border: 1px solid rgba(240, 208, 96, 0.35);
-  color: #F0D060;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.4;
-  white-space: nowrap;
-  pointer-events: none; /* 纯展示，物理穿透铁律不破 */
-}
+   累计存 localStorage.ks_starlight_count。
+   🏆 E112-刀三（主公军令 2026-11-01）：灵宠身侧常显徽章物理拆除（贴在
+   「开始测算」按钮下方破坏布局——主公实机验收实锤），迁移至对话舱 Header
+   右侧（.ks-chat-star，见 chat 区）；点击飘字保留。 */
 .ks-fam-starfloat {
   position: absolute;
   top: 18%;
@@ -1435,8 +1470,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-sophia { transform: translateY(calc(39.2% + 6px)); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
-  /* 🌟 E111-刀一：待机光效层随降级静默不播（gemglow 无光晕 / spark 不升腾） */
-  .ks-fam-gemglow, .ks-fam-spark { display: none; }
+  /* 🌟 E111/E112-刀一：待机光效层随降级静默不播（gemglow 无光晕 / 星芒气泡不升腾） */
+  .ks-fam-gemglow, .ks-fam-pop { display: none; }
 }
 
 /* ── Mode Selection Modal ── */
@@ -1992,6 +2027,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 0 0 auto;
 }
 .ks-chat-close:active { background: rgba(255, 255, 255, 0.14); }
+/* 🏆 E112-刀三（主公军令 2026-11-01）：灵犀星徽章归位对话舱 Header——
+   与标题行平行靠右（✕ 左侧）深空黑金轻奢胶囊 [ ✦ 灵犀星: N ] */
+.ks-chat-star {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(212, 175, 55, 0.1);
+  color: #D4AF37;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
 
 .ks-chat-flow {
   flex: 1 1 auto;

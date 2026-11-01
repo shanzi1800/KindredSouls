@@ -117,7 +117,7 @@
     "chatHello": "Acabo de leer vuestra sinastría: cuando salió Los Enamorados, se me encogió el corazón de ilusión por vosotros. ¿Quieres escuchar mi consejo sobre el momento que estáis viviendo?",
     "chatHelloSoothe": "¿Leíste la página sobre vuestras diferencias y las pruebas del mundo real? Tranquilo — pulirse el uno al otro es justo cómo se forja el oro. Cuando algo te inquiete, aquí estoy para hablarlo.",
     "chatHelloPlain": "{{name}}: aquí estoy. ¿De qué hablamos hoy?",
-    "starBadge": "✦ Vínculo estelar: {{count}} ★",
+    "starBadge": "✦ Estrellas: {{count}}",
     "starGain": "✦ Fragmento estelar +1",
     "chatClose": "Cerrar",
     "chatPlaceholder": "Dime lo que llevas dentro…",
@@ -130,6 +130,12 @@
     "chatTooFast": "Tranquilo, aquí estoy, sin prisa",
     "chatQ1": "💰 Suerte económica y trampas de hoy",
     "chatQ2": "🌙 Calma mi desgaste emocional",
-    "chatQ3": "🔮 Guía de hoy según mi carta"
+    "chatQ3": "🔮 Guía de hoy según mi carta",
+    "helloLoveCore": "Acabo de revisar vuestro informe de compatibilidad esencial: el momento en que las cartas y los mapas se entrelazaron me hizo ilusión por vosotros. ¿Quieres que te cuente hacia dónde va vuestra conexión?",
+    "helloLoveMonthly": "¡Tu informe de amor de 30 días ya está descifrado! El radar marca una pequeña onda emocional a mitad de mes, pero el punto de inflexión esconde una buena sorpresa. ¿Te destaco primero los días clave?",
+    "helloLoveYearly": "¡El informe anual de amor de 365 días está completo! El impulso del año es muy fuerte, aunque el examen de realidad del T3 merece planificarse pronto. ¿Por qué estación empezamos la revisión?",
+    "helloWealthCore": "He leído tu informe de riqueza natal de principio a fin: tus estrellas de riqueza están bien ubicadas, todo un tesoro oculto. ¿Quieres ver dónde está tu punto de breakthrough financiero?",
+    "helloWealthMonthly": "¡El pronóstico de riqueza de este mes ya está listo! Cuida con un grupo de estrellas de fuga a fin de mes, mientras el ingreso estable se mantiene fuerte al principio. ¿Te ordeno primero el ritmo de ganancias?",
+    "helloWealthYearly": "¡Tu panorama de riqueza del año entero está listo! Las curvas de los cuatro trimestres son clarísimas y hay una oportunidad única escondida a mitad de año. ¿Lo repasamos estación por estación?"
   }
 }

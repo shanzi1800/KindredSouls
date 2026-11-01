@@ -25,10 +25,20 @@ import miloSprite from '../assets/familiar_milo.webp';
 import sophiaSprite from '../assets/familiar_sophia.webp';
 // @ts-ignore —— 纯逻辑核（本命真值提取；形状由既有 E46/E49 闸门守备）
 import { extractBirthTruth, readFamiliarRecord } from '../lib/familiarHome.mjs';
+// 🏆 E112-刀二（主公军令 2026-11-01）：最近解锁付费报告读取（形状守卫 fail-closed）
+// @ts-ignore —— soulRecentReport.mjs 纯 JS 逻辑核（形状由 E112 闸门守备）
+import { readRecentReport } from '../lib/soulRecentReport.mjs';
 // @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
 import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 
 export type FamiliarIp = 'Milo' | 'Sophia';
+
+/** 🏆 E112-刀二：开场首语九分支——六档报告第一击（love/wealth × core/monthly/
+ *  annual）＋E111 情境三分支（sweet/soothe/plain） */
+type HelloMode =
+  | 'sweet' | 'soothe' | 'plain'
+  | 'love_core' | 'love_monthly' | 'love_yearly'
+  | 'wealth_core' | 'wealth_monthly' | 'wealth_yearly';
 
 interface ChatMsg {
   id: string;
@@ -49,6 +59,11 @@ interface Props {
    *  sweet＝恋人牌/三合六合；soothe＝六冲/低分磨合；plain＝无报告数据）。
    *  旧 greeting 通道（dailyFortune color/num 注入）已物理拔除——首语严禁复读锦囊。 */
   greetingMode?: 'sweet' | 'soothe' | 'plain' | null;
+  /** 🏆 E112-刀三（主公军令 2026-11-01）：灵犀星累计数——徽章迁移至对话舱
+   *  Header 右侧（与标题 Sophia/Milo 平行、关闭按钮 ✕ 左侧，黑金轻奢胶囊）。
+   *  首页灵宠身侧旧徽章物理拆除（贴在「开始测算」按钮下方破坏布局——主公
+   *  实机验收实锤）。每日 +1 打卡逻辑仍在首页 FamiliarHomeCard。 */
+  starCount?: number;
 }
 
 const THROTTLE_MS = 90;
@@ -109,7 +124,7 @@ const ChatInputBar: React.FC<{
 };
 const MemoChatInputBar = React.memo(ChatInputBar);
 
-const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode }) => {
+const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode, starCount }) => {
   const { t } = useTranslation();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -128,30 +143,40 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
    * （六语真机实锤）。现改为：每次唤醒都按当前语言重建干净会话（关闭即复位的既定语义）；
    * 舱开着切语言 ⇒ 纯开场白态实时替换为新语言（已展开对话不扰，历史即历史）。
    * 🏆 E111-刀二（主公军令 2026-11-01）：彻底拔除「幸运色/幸运数字」复读——
-   * 旧 chatHello 模板插 {{color}}/{{num}}（dailyFortune 注入）与锦囊气泡 100% 重合，
-   * 显得死板笨拙。军令钦定「合盘情境第一击」：
-   *   sweet（恋人牌/三合六合）⇒ chatHello 甜句（军令原文恒定）；
-   *   soothe（六冲/低分磨合）⇒ chatHelloSoothe 慰句（军令原文恒定）；
-   *   plain ⇒ chatHelloPlain 中性陪伴句（{{name}} 插值保留）。
-   * 首语只在「带路回首页后开舱」或「当日首次开舱」出现一次（sessionStorage
-   * ks_familiar_firststrike_day 日标记）；同日再开 ⇒ plain——随后进入自由多轮流式。 */
-  const [helloMode, setHelloMode] = useState<'sweet' | 'soothe' | 'plain'>('plain');
-  const helloFor = useCallback((mode: 'sweet' | 'soothe' | 'plain'): string => (
-    mode === 'sweet'
-      ? t('familiar.chatHello')
-      : mode === 'soothe'
-        ? t('familiar.chatHelloSoothe')
-        : t('familiar.chatHelloPlain', { name })
-  ), [t, name]);
+   *  sweet（恋人牌/三合六合）⇒ chatHello 甜句；soothe（六冲/低分磨合）⇒ 慰句；
+   *  plain ⇒ chatHelloPlain 中性陪伴句。首语只在「带路回首页后开舱」或「当日
+   *  首次开舱」出现一次（sessionStorage ks_familiar_firststrike_day 日标记）。
+   * 🏆 E112-刀二（主公军令 2026-11-01）：六档报告第一击**最优先**——本地存在
+   *  最近解锁付费报告（soul_recent_unlocked_report：姻缘/财富 × core/monthly/
+   *  annual）⇒ 每次开舱首语直接切入该报告情境（军令断言：严禁「我在呢。今天
+   *  想聊点什么？」空话；日标记不约束报告分支——「最近解锁」长期有效，新报告
+   *  覆写即切换）。无报告档 ⇒ 维持 E111 情境链（日标记契约照旧）。 */
+  const [helloMode, setHelloMode] = useState<HelloMode>('plain');
+  const helloFor = useCallback((mode: HelloMode): string => {
+    if (mode === 'love_core') return t('familiar.helloLoveCore');
+    if (mode === 'love_monthly') return t('familiar.helloLoveMonthly');
+    if (mode === 'love_yearly') return t('familiar.helloLoveYearly');
+    if (mode === 'wealth_core') return t('familiar.helloWealthCore');
+    if (mode === 'wealth_monthly') return t('familiar.helloWealthMonthly');
+    if (mode === 'wealth_yearly') return t('familiar.helloWealthYearly');
+    if (mode === 'sweet') return t('familiar.chatHello');
+    if (mode === 'soothe') return t('familiar.chatHelloSoothe');
+    return t('familiar.chatHelloPlain', { name });
+  }, [t, name]);
   useEffect(() => {
     if (!open) return;
-    let mode: 'sweet' | 'soothe' | 'plain' = greetingMode || 'plain';
+    let mode: HelloMode = greetingMode || 'plain';
     try {
-      const day = new Date().toISOString().slice(0, 10);
-      const key = 'ks_familiar_firststrike_day';
-      if (sessionStorage.getItem(key) === day) mode = 'plain'; // 当日已给过情境首语 ⇒ 不再给
-      else sessionStorage.setItem(key, day);
-    } catch { /* iOS 无痕模式 sessionStorage 抛错 ⇒ 首语照给（fail-soft） */ }
+      // 🏆 E112-刀二：最近解锁付费报告在场 ⇒ 六档报告第一击最优先（无日标记约束）
+      const rr = readRecentReport((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
+      if (rr) mode = `${rr.category}_${rr.tier}` as HelloMode;
+      else {
+        const day = new Date().toISOString().slice(0, 10);
+        const key = 'ks_familiar_firststrike_day';
+        if (sessionStorage.getItem(key) === day) mode = 'plain'; // 当日已给过情境首语 ⇒ 不再给
+        else sessionStorage.setItem(key, day);
+      }
+    } catch { /* iOS 无痕模式存储抛错 ⇒ 首语照给（fail-soft） */ }
     setHelloMode(mode);
     setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,10 +273,17 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       } catch { /* 坏档忽略：服务端回退 E107 本命核 */ }
       // 🔒 只传对话 + 本命锚点 + 灵宠档证明；星盘与运势由服务端真值装配
       const bt = extractBirthTruth(window.location.search, window.localStorage);
+      // 🏆 E112-刀二（主公军令 2026-11-01）：最近解锁付费报告随行（形状守卫后上行，
+      //    服务端注入 prompt【主人最近解锁的报告】块——不只首语，多轮对话持续咬合）
+      const recentReport = readRecentReport(
+        (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null
+      ) || undefined;
       const body = {
         lang,
         relationMode,
         name,
+        // 🏆 E112-刀二：最近解锁报告凭证随行（服务端查形状 fail-closed）
+        recentReport,
         // 🏆 E109-刀一：当次报告塔罗（恋人牌等）随行绑定
         reportTarot,
         // 🏆 E107-刀三：合法 ks_familiar 档随行（服务端 fail-closed 形状校验后放行）
@@ -378,6 +410,11 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
               <span className="ks-chat-dot" aria-hidden="true" />
               {t('familiar.chatStatus', { name })}
             </div>
+          </div>
+          {/* 🏆 E112-刀三：灵犀星徽章归位——与标题行平行靠右（✕ 左侧），
+              深空黑金轻奢胶囊 [ ✦ 灵犀星: N ]；首页按钮下方旧徽章已拆除 */}
+          <div className="ks-chat-star" data-testid="familiar-starlight">
+            {t('familiar.starBadge', { count: Number(starCount) || 0 })}
           </div>
           <button type="button" className="ks-chat-close" onClick={onClose} aria-label={t('familiar.chatClose')}>✕</button>
         </div>

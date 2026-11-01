@@ -117,7 +117,7 @@
     "chatHello": "Je viens de relire votre synastrie — au moment où L'Amoureux est sorti, mon cœur a battu pour vous. Tu veux mon avis sur l'occasion qui s'offre à vous deux ?",
     "chatHelloSoothe": "As-tu bien lu la page sur vos différences et les épreuves du quotidien ? T'inquiète — se polir l'un l'autre, c'est justement ainsi qu'on façonne l'or. Si quelque chose te chiffonne, je suis là pour en parler.",
     "chatHelloPlain": "{{name}} : je suis là. On parle de quoi aujourd'hui ?",
-    "starBadge": "✦ Lien stellaire : {{count}} ★",
+    "starBadge": "✦ Étoiles : {{count}}",
     "starGain": "✦ Étoile gagnée +1",
     "chatClose": "Fermer",
     "chatPlaceholder": "Dis-moi ce que tu as sur le cœur…",
@@ -130,6 +130,12 @@
     "chatTooFast": "Doucement, je suis là, sans hâte",
     "chatQ1": "💰 Chance financière et pièges du jour",
     "chatQ2": "🌙 Apaise ma fatigue émotionnelle",
-    "chatQ3": "🔮 Un conseil du jour selon ma carte"
+    "chatQ3": "🔮 Un conseil du jour selon ma carte",
+    "helloLoveCore": "Je viens de parcourir votre rapport de compatibilité essentiel — l'instant où les cartes et les thèmes se sont entrelacés m'a fait fondre pour vous deux. Tu veux mon avis sur où votre complicité vous mène ?",
+    "helloLoveMonthly": "Ton rapport d'amour des 30 jours est entièrement décrypté ! Le radar annonce une petite houle émotionnelle en milieu de mois, mais le tournant cache une belle surprise. Je te souligne d'abord les jours clés ?",
+    "helloLoveYearly": "Le rapport annuel d'amour sur 365 jours est entièrement dressé ! L'élan de l'année est puissant, même si l'épreuve de réalité du T3 mérite d'être anticipée. On commence la relecture par quelle saison ?",
+    "helloWealthCore": "J'ai lu ton rapport de richesse natale de bout en bout : tes étoiles de richesse sont bien positionnées, un vrai trésor caché. Tu veux voir où se trouve ton point de percée financière ?",
+    "helloWealthMonthly": "La prévision de richesse du mois est prête ! Méfie-toi d'un groupe d'étoiles de fuite en fin de mois, tandis que le revenu stable sera fort en début de mois. Je te trace d'abord le rythme de tes gains ?",
+    "helloWealthYearly": "Ton panorama de richesse de l'année est prêt ! Les courbes des quatre trimestres sont limpides et une occasion rare se cache en milieu d'année. On le parcourt saison par saison ?"
   }
 }

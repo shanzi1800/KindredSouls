@@ -32,6 +32,9 @@ import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; 
 import type { FamiliarProfile } from '../components/FamiliarPicker';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
 import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
+// 🏆 E112-刀二：最近解锁付费报告追踪凭证（财富三档 [DONE] 终稿收口写入）
+// @ts-ignore —— soulRecentReport.mjs 为纯 JS 逻辑核（形状由 E112 闸门守备）
+import { markRecentReport } from '../lib/soulRecentReport.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 // 💎 E59（主公雷霆军令 2026-10-16）: 财富「升阶」专属付费墙 —— $2.99 流月 / $29.99 宇宙生日年鉴
@@ -2349,6 +2352,23 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
                 //   ⚠️ 用 `..._bp` 展开而非逐键字面量：r11u 闸门钉死「请求体 birthTime: _bp.birthTime 恰 4 处」，
                 //   留痕调用若复用该字面量会污染计数（语义等价，_bp 本就是 URL 直读的唯一真源）。
                 _ksSaveLastReport(type, { birthDate: _stableBirth, lang: _stableLang, ..._bp });
+                // 🏆 E112-刀二（主公军令 2026-11-01）：财富三档报告终稿刻印成功 ⇒ 写
+                //    「最近解锁报告」凭证（once→core $4.99 先天财库 / monthly→$2.99 月报 /
+                //    yearly→$29.99 年报；沙盒与真实支付同链：付讫必触发生成）——
+                //    对话舱开舱首语第一击直接切入本命财格/流月避坑/四季大局。
+                try {
+                  markRecentReport(window.localStorage, {
+                    category: 'wealth',
+                    tier: type === 'monthly' ? 'monthly' : (type === 'yearly' ? 'annual' : 'core'),
+                    title: type === 'monthly'
+                      ? (lang === 'zh' ? '财富月报' : 'Wealth Monthly Report')
+                      : type === 'yearly'
+                        ? (lang === 'zh' ? '财富年报' : 'Wealth Yearly Report')
+                        : (lang === 'zh' ? '先天财库报告' : 'Natal Wealth Report'),
+                    keyAspects: { reportType: type },
+                    unlockedAt: Date.now(),
+                  });
+                } catch { /* 无痕模式静默降级：首语回退 E111 情境链 */ }
                 if (type === 'yearly') setYearlyCardsReady(true);
                 if (type === 'monthly') {
                   // 🛠️ V368-fix: 只在有有效内容时才挂载卡片，杜绝 [DONE] 时 _final=0 字符仍挂载空金属框架

@@ -251,17 +251,17 @@ const FamiliarHomeCard: React.FC = () => {
      时序跳闪）；onLoad 即置位（任一帧到达 ⇒ 视为就绪，双宠未来同构）。 */
   const [petLoaded, setPetLoaded] = useState(false);
 
-  /* 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效调度器——35~45s 无灵宠
-     交互（军令区间）触发一次 2.4s 活体循环，随后自动回落并重新计程：
-     Sophia「踩奶微拱背」＝breathe 层覆盖动画（scale 0.96 轻压＋背抬 -3px）＋
-     闭眼月牙＋爱心宝石粉金呼吸光（.ks-fam-gemglow）；Milo「尾尖轻扬」＝尾层
-     覆盖动画＋头顶 12px 金色星芒粒子升腾消散（.ks-fam-spark）。
+  /* 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效调度器——
+   * 🏆 E112-刀一（主公军令 2026-11-01）：初触发提前——旧 35~45s 区间用户视线
+   * 早已移开（主公实机验收实锤「没看到踩奶拱背」），改**首触发 15~20s**（军令
+   * 钦定），之后每 30s 一次循环；动效时长 2.4s 不变。
      🔴 趴键几何铁律（E65g/E82）：.ks-fam-milo/.ks-fam-sophia 的 left/width/
      translateY 一概不动——动效全部叠加在 breathe/blink/尾层与新增光晕层，
      禁位移突变与组件卸载抖动；reduced-motion 用户静默不播。 */
   const [idleAct, setIdleAct] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleFirstRef = useRef(true); // E112：首触发标记（15~20s 后翻 false）
   const scheduleIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     if (idleOffTimer.current) clearTimeout(idleOffTimer.current);
@@ -271,8 +271,12 @@ const FamiliarHomeCard: React.FC = () => {
         return;
       }
     } catch { /* matchMedia 不可用 ⇒ 保持活体（降级判失败不阻断动效） */ }
-    const delay = 35000 + Math.floor(Math.random() * 10001); // 35~45s（军令钦定区间）
+    // E112-刀一：首触发 15~20s（军令真值）；后续每 30s 一次（军令钦定）
+    const delay = idleFirstRef.current
+      ? 15000 + Math.floor(Math.random() * 5001)
+      : 30000 + Math.floor(Math.random() * 2001);
     idleTimer.current = setTimeout(() => {
+      idleFirstRef.current = false; // E112：首触发已耗 ⇒ 后续按 30s 循环计程
       setIdleAct(true);
       idleOffTimer.current = setTimeout(() => setIdleAct(false), 2400); // 2.4s 循环后自然回落
       scheduleIdle(); // 循环计程
@@ -482,15 +486,24 @@ const FamiliarHomeCard: React.FC = () => {
             <button type="button" className="ks-fam-zone ks-fam-zone-head" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             <button type="button" className="ks-fam-zone ks-fam-zone-gem" onClick={() => tapFamiliar(rec0)} aria-hidden="true" tabIndex={-1} />
             {/* 🌟 E111-刀一：待机光效层——Sophia 宝石粉金呼吸光（与 gem 命中区同框，E65 真值）；
-                Milo 头顶 12px 金色星芒粒子（升腾消散于星空）。纯装饰叠加层，
-                pointer-events:none 物理穿透铁律不破（CSS 已置）。 */}
+                🏆 E112-刀一（军令钦定）：Milo 升级为「星芒气泡」——14px 晶蓝带金边小气泡
+                嘴边呼出⇒上浮 20px⇒「啵」破裂⇒4 颗金色微尘向星空消散（少年活力神态，
+                消灭木雕感）。纯装饰叠加层，pointer-events:none 物理穿透铁律不破。 */}
             {idleAct && ip === 'Sophia' && <span className="ks-fam-gemglow" aria-hidden="true" data-testid="familiar-gemglow" />}
-            {idleAct && ip === 'Milo' && <span className="ks-fam-spark" aria-hidden="true" data-testid="familiar-spark" />}
-            {/* 💫 E111-刀三：灵犀星常显徽章（灵宠身侧）＋每日首点 +1 飘字（宝石上方上飘消散）。
-                均纯展示层（pointer-events:none），物理穿透铁律不破。 */}
-            <div className="ks-fam-starbadge" data-testid="familiar-starlight">
-              {t('familiar.starBadge', { count: starCount })}
-            </div>
+            {idleAct && ip === 'Milo' && (
+              <span className="ks-fam-pop" aria-hidden="true" data-testid="familiar-spark">
+                <i className="ks-fam-pop-bub" />
+                <i className="ks-fam-pop-dust" />
+                <i className="ks-fam-pop-dust" />
+                <i className="ks-fam-pop-dust" />
+                <i className="ks-fam-pop-dust" />
+              </span>
+            )}
+            {/* 💫 E111-刀三：每日灵犀星打卡＋首点 +1 飘字（宝石上方上飘消散）。
+                🏆 E112-刀三（主公军令 2026-11-01）：常显徽章物理拆除（旧灵宠身侧
+                「✦ 灵犀羁绊：N 星」贴在「开始测算」按钮下方破坏布局——主公实机
+                验收实锤），迁移至对话舱 Header 右侧（Sophia/Milo 标题行平行位）；
+                每日 +1 打卡逻辑不动（点击飘字保留，告知主人已获星）。 */}
             {starFloat && (
               <span className="ks-fam-starfloat" aria-hidden="true" data-testid="familiar-star-gain">
                 {t('familiar.starGain')}
@@ -549,6 +562,7 @@ const FamiliarHomeCard: React.FC = () => {
         lang={lang}
         paidOk={paidOk}
         greetingMode={chatGreetingMode}
+        starCount={starCount}
       />
     </div>
   );

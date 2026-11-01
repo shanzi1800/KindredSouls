@@ -227,7 +227,7 @@ test('E88-⑤-1 闸门接线：test:astro 含本闸门（66 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e88-compat-five-fix.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 86, `链段数异常（实得 ${parts.length}，基线 86（E111 升 86 段））`);   // 🌟 E111：85→86
+  assert.equal(parts.length, 87, `链段数异常（实得 ${parts.length}，基线 87（E112 升 87 段））`);   // 🌟 E111：85→86
   const iE88 = parts.findIndex((p) => p.includes('audit-e88-compat-five-fix'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));

@@ -26,11 +26,13 @@ const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 /* ═══════════ 刀一：待机活体微动效 ═══════════ */
 
-test('E111 S1 刀一调度器：35~45s 无交互触发 2.4s 活体循环（reduced-motion 静默）', () => {
+test('E111 S1 刀一调度器：待机触发活体循环 2.4s（E112 后继：首触发 15~20s、后续 30s；reduced-motion 静默）', () => {
   const s = read('web/src/components/FamiliarHomeCard.tsx');
-  // ① JS 调度器在场：区间真值 35000 + Math.random()*10001 ⇒ 35~45s（军令钦定区间）
+  // ① JS 调度器在场：E112-刀一 军令真值——首触发 15~20s（idleFirstRef），后续 30s 循环
   assert.ok(s.includes('scheduleIdle'), '缺待机调度器 scheduleIdle');
-  assert.ok(/35000 \+ Math\.floor\(Math\.random\(\) \* 10001\)/.test(s), '触发区间须为 35~45s（军令真值）');
+  assert.ok(/15000 \+ Math\.floor\(Math\.random\(\) \* 5001\)/.test(s), '首触发区间须为 15~20s（E112 军令真值）');
+  assert.ok(/30000 \+ Math\.floor\(Math\.random\(\) \* 2001\)/.test(s), '后续循环须为 30s（E112 军令钦定）');
+  assert.ok(s.includes('idleFirstRef'), '缺首触发标记 idleFirstRef');
   assert.ok(s.includes('2400'), '活体循环时长须为 2.4s（军令真值）');
   // ② 交互重置：点灵宠（tapFamiliar）与开舱 CTA 都重置计程
   assert.ok(/scheduleIdle\(\); \/\/ 🌟 E111-刀一：点触＝交互/.test(s), '点灵宠未重置待机计程');
@@ -41,34 +43,36 @@ test('E111 S1 刀一调度器：35~45s 无交互触发 2.4s 活体循环（reduc
   assert.ok(/\$\{idleAct \? ' ks-fam-idle' : ''\}/.test(s), 'idle class 未挂 breakout');
 });
 
-test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾尖轻扬＋星芒粒子（2.4s 全家）', () => {
+test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾摆＋星芒气泡（E112 后继：2.4s 全家·振幅增强版）', () => {
   const css = read('web/src/App.css');
-  // ① Sophia 踩奶微拱背：scale 0.96 ＋ 背抬 -3px（军令真值）覆盖 breathe 层
+  // ① Sophia 踩奶微拱背：scale 0.96 ＋ 背抬 -7px（E112 军令增强真值）覆盖 breathe 层
   assert.ok(css.includes('ksFamSophiaKnead'), '缺 Sophia 踩奶拱背动画');
   const knead = (css.match(/@keyframes ksFamSophiaKnead \{[\s\S]*?\n\}/) || [''])[0];
   assert.ok(/scale\(0\.96\)/.test(knead), '踩奶微压须 scale 0.96（双爪不离宝石）');
-  assert.ok(/translateY\(-3px\)/.test(knead), '背微抬须 -3px（军令真值）');
+  assert.ok(/translateY\(-7px\)/.test(knead), '背抬须 -7px（E112 军令增强真值——3px 肉眼不可辨实锤）');
   assert.ok(css.includes('.ks-fam-sophia.ks-fam-idle .ks-fam-breathe'), '踩奶动画未挂 breathe 层（禁动几何层）');
-  // ② 闭眼月牙：idle 期 blink 层常态显
+  // ② 闭眼月牙：idle 期 blink 层常态显（Sophia＋Milo 坏笑眯眼双挂）
   assert.ok(css.includes('ksFamIdleBlink'), '缺 idle 闭眼月牙动画');
   assert.ok(css.includes('.ks-fam-sophia.ks-fam-idle .ks-fam-img-blink'), '闭眼未挂 blink 叠加层');
-  // ③ 宝石粉金呼吸光：rgba(244,184,206,0.6)（军令色值）＋与 gem 命中区同框
+  assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-img-blink'), 'Milo 坏笑眯眼未挂 blink 叠加层（E112 少年气）');
+  // ③ 宝石微光（E112 增强）：多层 drop-shadow 高光脉冲＋与 gem 命中区同框
   assert.ok(css.includes('ksFamGemGlow'), '缺宝石呼吸光动画');
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/rgba\(244, ?184, ?206, ?0\.6\)/.test(glow), '粉金呼吸光色值须 rgba(244,184,206,0.6)（军令真值）');
+  assert.ok(/drop-shadow\(0 0 16px rgba\(244, ?184, ?206, ?0\.95\)\)/.test(glow), '缺第一层高光 drop-shadow 16px 0.95（E112 军令真值）');
+  assert.ok(/drop-shadow\(0 0 30px rgba\(232, ?199, ?154, ?0\.8\)\)/.test(glow), '缺第二层粉金光 drop-shadow 30px 0.8（E112 军令真值）');
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 35\.4%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值）');
-  // ④ Milo 尾尖轻扬＋星芒粒子 12px 升腾消散
-  assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾尖轻扬动画');
-  assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-tail'), '尾尖轻扬未挂尾层');
-  assert.ok(css.includes('ksFamSparkRise'), '缺星芒粒子升腾动画');
-  assert.ok(/\.ks-fam-spark\s*\{[^}]*width: 12px; height: 12px/.test(css), '星芒粒子须 12px（军令钦定）');
+  // ④ Milo 尾巴欢快摆动 ±15deg（E112 军令）＋星芒气泡 14px 晶蓝金边→破裂 4 金尘
+  assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾摆动画');
+  assert.ok(/rotate\(15deg\)/.test(css) && /rotate\(-15deg\)/.test(css), '尾摆须 ±15deg（E112 军令钦定）');
+  assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-tail'), '尾摆未挂尾层');
+  assert.ok(css.includes('ksFamPopBub'), '缺星芒气泡动画（E112 少年活力神态）');
+  assert.ok(css.includes('ksFamPopDust'), '缺气泡破裂金尘动画');
+  assert.ok(/\.ks-fam-pop\s*\{[^}]*width: 14px;[\s\S]{0,120}height: 14px/.test(css), '星芒气泡须 14px（E112 军令钦定）');
   // ⑤ 光效层物理穿透（pointer-events:none 铁律不破）
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*pointer-events: none/.test(css), 'gemglow 缺 pointer-events:none');
-  assert.ok(/\.ks-fam-spark\s*\{[^}]*pointer-events: none/.test(css), 'spark 缺 pointer-events:none');
-  // ⑥ reduced-motion：E111 层全部降级
-  const rm = (css.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.ks-fam-chip/, '') || [''])[0]
-    || (css.match(/@media \(prefers-reduced-motion: reduce\)[\s\S]{0,2000}?\.ks-fam-gemglow, \.ks-fam-spark \{ display: none; \}/) || [''])[0];
-  assert.ok(/\.ks-fam-gemglow, \.ks-fam-spark \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
+  assert.ok(/\.ks-fam-pop\s*\{[^}]*pointer-events: none/.test(css), 'pop 气泡缺 pointer-events:none');
+  // ⑥ reduced-motion：E111/E112 层全部降级
+  assert.ok(/\.ks-fam-gemglow, \.ks-fam-pop \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
 });
 
 test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动——idle 动效只叠加子层', () => {
@@ -83,10 +87,11 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   for (const m of css.match(/\.ks-fam-(?:milo|sophia)\.ks-fam-idle [^{]*\{[^}]*\}/g) || []) {
     assert.ok(!/[\s;](left|width|margin):/.test(m), `idle 规则禁改布局几何（只准动子层动画）：${m.slice(0, 80)}`);
   }
-  // ③ 组件侧：E111 渲染层为纯叠加（gemglow/spark/span），禁触碰 img/尾层结构
+  // ③ 组件侧：E111/E112 渲染层为纯叠加（gemglow/pop/span），禁触碰 img/尾层结构
   const s = read('web/src/components/FamiliarHomeCard.tsx');
   assert.ok(/idleAct && ip === 'Sophia' && <span className="ks-fam-gemglow"/.test(s), 'gemglow 渲染层缺失');
-  assert.ok(/idleAct && ip === 'Milo' && <span className="ks-fam-spark"/.test(s), 'spark 渲染层缺失');
+  assert.ok(/idleAct && ip === 'Milo' && \(\s*<span className="ks-fam-pop"/.test(s), 'Milo 星芒气泡渲染层缺失（E112）');
+  assert.ok(/ks-fam-pop-dust/.test(s), '气泡破裂金尘粒子层缺失（E112）');
 });
 
 /* ═══════════ 刀二：对话舱首语情境破冰 ═══════════ */
@@ -124,11 +129,11 @@ test('E111 S5 刀二引擎：Context First-Strike 判定真值（恋人牌/三�
   assert.ok(!card.includes('greetingVars='), 'greetingVars 传参回潮');
 });
 
-test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复读幸运数字/颜色（主人问才答）', () => {
+test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复读幸运数字/颜色（主人问才答；E112 后继：报告情境优先）', () => {
   const s = read('server.js');
   const promptFn = s.slice(s.indexOf('function buildFamiliarChatSystemPrompt'));
   const body = promptFn.slice(0, 6000);
-  assert.ok(/'8\. 开场与破冰优先结合合盘情境/.test(body), '缺输出铁律第 8 条（情境破冰）');
+  assert.ok(/'8\. 开场与破冰优先结合主人最近解锁的报告或合盘情境/.test(body), '缺输出铁律第 8 条（E112 后继：报告情境破冰）');
   assert.ok(body.includes('严禁主动复读幸运数字、幸运色或贵人方位'), '缺禁复读硬约束');
   assert.ok(body.includes('主人主动问运势时才回答'), '缺「问才答」边界');
   // E111 交付后 prompt 六层结构仍在（人设锁/身份/本命/运势/塔罗/三合）
@@ -139,8 +144,9 @@ test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复�
 
 /* ═══════════ 刀三：微运势卡负向闸门＋每日灵犀星 ═══════════ */
 
-test('E111 S7 刀三灵犀星：每日首点 +1（day 翻新）＋身侧徽章＋飘字（localStorage.ks_starlight_count）', () => {
+test('E111 S7 刀三灵犀星：每日首点 +1（day 翻新）＋徽章归位对话舱＋飘字（E112 后继：ks_starlight_count）', () => {
   const card = read('web/src/components/FamiliarHomeCard.tsx');
+  const sheet = read('web/src/components/FamiliarChatSheet.tsx');
   // ① 存储契约：军令钦定 key ＋ {count, day} 形状守卫
   assert.ok(card.includes('ks_starlight_count'), '缺灵犀星存储 key（军令钦定 ks_starlight_count）');
   assert.ok(/localStorage\.getItem\('ks_starlight_count'/.test(card) && /localStorage\.setItem\('ks_starlight_count'/.test(card), '灵犀星读写双通道缺失');
@@ -148,14 +154,18 @@ test('E111 S7 刀三灵犀星：每日首点 +1（day 翻新）＋身侧徽章�
   // ② 每日 +1：day !== today 才加（同日复点不加）
   assert.ok(/st\.day !== today/.test(card), '缺每日判定（同日复点不加）');
   assert.ok(/count: st\.count \+ 1/.test(card), '缺 +1 逻辑');
-  // ③ 渲染层：徽章（常显）＋飘字（+1 瞬时）
-  assert.ok(/data-testid="familiar-starlight"/.test(card), '缺灵犀星徽章（familiar-starlight）');
+  // ③ 渲染层（E112 后继）：徽章归位对话舱 Header（✕ 左侧）＋首页飘字保留；
+  //    首页身侧旧徽章物理拆除（主公实机验收「贴在开始测算按钮下方」实锤）
+  assert.ok(/className="ks-chat-star"[^>]*data-testid="familiar-starlight"/.test(sheet), '对话舱 Header 缺灵犀星徽章（familiar-starlight）');
+  assert.ok(sheet.includes("t('familiar.starBadge'"), '徽章未走 i18n 字典');
   assert.ok(/data-testid="familiar-star-gain"/.test(card), '缺 +1 飘字（familiar-star-gain）');
-  assert.ok(card.includes("t('familiar.starBadge'"), '徽章未走 i18n 字典');
   assert.ok(card.includes("t('familiar.starGain'"), '飘字未走 i18n 字典');
-  // ④ CSS：徽章身侧常显＋飘字上飘消散 2.2s（均 pointer-events:none）
+  assert.ok(!card.includes('ks-fam-starbadge'), '首页身侧旧徽章残留（E112-刀三 物理拆除令）');
+  assert.ok(/starCount=\{starCount\}/.test(card), 'starCount 未传对话舱（徽章真值断链）');
+  // ④ CSS（E112 后继）：对话舱胶囊徽章＋首页飘字上飘消散 2.2s（均 pointer-events:none）
   const css = read('web/src/App.css');
-  assert.ok(/\.ks-fam-starbadge\s*\{[^}]*pointer-events: none/.test(css), '徽章缺 pointer-events:none');
+  assert.ok(/\.ks-chat-star\s*\{[^}]*pointer-events: none/.test(css), '对话舱徽章缺 pointer-events:none');
+  assert.ok(css.includes('.ks-chat-star'), '缺对话舱灵犀星胶囊样式（E112-刀三 归位）');
   assert.ok(/\.ks-fam-starfloat\s*\{[^}]*pointer-events: none/.test(css), '飘字缺 pointer-events:none');
   assert.ok(css.includes('ksFamStarFloat'), '缺飘字上飘消散动画');
 });

@@ -117,7 +117,7 @@
     "chatHello": "Tôi vừa xem lại báo cáo cặp đôi của hai người — khoảnh khắc lá bài The Lovers xuất hiện, tim tôi cũng xao xuyến thay bạn. Muốn nghe gợi ý của tôi về cơ hội cho hai người bây giờ không?",
     "chatHelloSoothe": "Bạn đã đọc kỹ trang về sự khác biệt và những thử thách thực tế của hai người chưa? Đừng lo — mài giũa lẫn nhau chính là cách hai hòn đá thô trở thành vàng. Điều gì băn khoăn thì cứ kể tôi nghe bất cứ lúc nào.",
     "chatHelloPlain": "{{name}}: tôi đây. Hôm nay mình nói chuyện gì?",
-    "starBadge": "✦ Gắn kết tinh quang: {{count}} sao",
+    "starBadge": "✦ Tinh tú: {{count}}",
     "starGain": "✦ Nhận tinh quang +1",
     "chatClose": "Đóng",
     "chatPlaceholder": "Nói tôi nghe điều trong lòng bạn…",
@@ -130,6 +130,12 @@
     "chatTooFast": "Từ từ thôi, tôi ở đây, không vội",
     "chatQ1": "💰 Tài lộc hôm nay và điều nên tránh",
     "chatQ2": "🌙 Xoa dịu hao mòn cảm xúc của tôi",
-    "chatQ3": "🔮 Cho tôi chỉ dẫn hôm nay từ lá số"
+    "chatQ3": "🔮 Cho tôi chỉ dẫn hôm nay từ lá số",
+    "helloLoveCore": "Em vừa xem xong báo cáo hợp đôi cốt lõi của hai người rồi — khoảnh khắc lá bài và bản đồ sao đan xen vào nhau khiến em hồi hộp thay hai người. Muốn nghe gợi ý của em về cơ hội của mối quan hệ lúc này không?",
+    "helloLoveMonthly": "Báo cáo tình yêu 30 ngày của tháng này đã được em giải mã xong rồi! Ra-đa cho thấy giữa tháng có một đợt cảm xúc nhỏ, nhưng ngày bước ngoặt lại giấu bất ngờ lớn. Để em tô sáng các ngày trọng điểm trước nhé?",
+    "helloLoveYearly": "Báo cáo tình yêu trọn 365 ngày đã diễn xong hoàn chỉnh! Thế cả năm rất mạnh, riêng bài kiểm tra thực tế quý 3 cần tính trước. Chúng ta bắt đầu ôn lại từ mùa nào?",
+    "helloWealthCore": "Em đã đọc kỹ báo cáo kho bẩm sinh của bạn rồi — sao tài lộc nằm đúng vị trí, đúng là một kho báu tiềm ẩn. Muốn biết điểm bứt phá tài chính của mình nằm ở đâu không?",
+    "helloWealthMonthly": "Dự báo tài lộc tháng này đã có rồi! Cuối tháng có cụm sao hao tổn cần đặc biệt tránh, còn đầu tháng tài chính chính rất vượng. Để em sắp nhịp thu chi của tháng trước nhé?",
+    "helloWealthYearly": "Toàn cảnh tài lộc cả năm đã sẵn sàng! Đường cong bốn quý rõ nét, đặc biệt giữa năm còn giấu một cơ hội bứt phá hiếm có. Chúng ta đi qua từng mùa nhé?"
   }
 }

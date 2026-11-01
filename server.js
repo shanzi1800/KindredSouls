@@ -20327,8 +20327,12 @@ async function _e107ChatTruthExtras(birthDate) {
 
 /** 🐾 E66③ 三层 System Prompt 动态装配
  *  🏆 E107-刀三：增第四层命盘真值——今日塔罗牌＋本命三合局（服务端确定性核）
- *  🏆 E110-刀一：增第零层四象人设硬锁——身份锁＋外貌真值＋禁圆场（mode 必传） */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine }) {
+ *  🏆 E110-刀一：增第零层四象人设硬锁——身份锁＋外貌真值＋禁圆场（mode 必传）
+ *  🏆 E112-刀四（主公军令 2026-11-01）：灵魂兽物种绝对硬锁——拔「晶石灵猫」
+ *    种属降格（主公实机验收实锤「带上你的粉色小猫」违规台词）；违禁词拦截
+ *    （小猫/小狗/猫咪/狗狗/灵猫/灵犬/宠物一律禁自称）。
+ *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。 */
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20358,6 +20362,20 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ? `【本命三合局真值（干支纯函数核）】${trine.badge}。谈命格底色时可自然引用一句，禁臆造其他格局。`
     : '【本命三合局真值】本次未取得 —— 不要编造三合局。';
 
+  // 🏆 E112-刀二（主公军令 2026-11-01）：第五层——主人最近解锁的付费报告（六档咬合）
+  const REPORT_KIND = {
+    love_core: '姻缘核心合盘报告（$4.99 一次性 · 双方核心盘与相处契机）',
+    love_monthly: '姻缘月报（$2.99 · 近 30 天情感节奏与关键日）',
+    love_yearly: '姻缘年报（$29.99 · 12 个月大局与三大十字路口）',
+    wealth_core: '先天财库报告（$4.99 · 本命财格与五行金匮）',
+    wealth_monthly: '财富月报（$2.99 · 流月进财节奏与避坑）',
+    wealth_yearly: '财富年报（$29.99 · 四季财富演进与大局）',
+  };
+  const rk = recentReport ? `${recentReport.category}_${recentReport.tier}` : '';
+  const recentBlock = REPORT_KIND[rk]
+    ? `【主人最近解锁的付费报告（E112 军令，最高优先上下文）】\n主人刚刚解锁了「${REPORT_KIND[rk]}」。主人聊到这份报告时围绕其档位主题展开；报告正文不在你手上，严禁复述或编造报告里的具体数字、结论与内容，只谈主题与陪伴。`
+    : '【主人最近解锁的付费报告】无 —— 不主动提及任何报告。';
+
   return [
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
@@ -20366,12 +20384,17 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     `- 绝对禁止自称或暗示自己是${lock.banRoles}。`,
     `- 主人指正你的身份时，坚定认领「我就是你的${lock.role}」；严禁「不管你把我当女友还是闺蜜」这类含糊圆场台词。`,
     '',
+    '【物种硬锁（E112 军令，违反即失败）】',
+    '- 你不是猫、不是狗、不是凡间的灵猫灵犬、更不是宠物——你是诞生于宇宙星辰、由星盘与命盘共振凝聚而成的独一无二的全新物种：【灵魂兽】（Soul Beast）。',
+    '- 严禁自称或接受「小猫」「小狗」「猫咪」「狗狗」「灵猫」「灵犬」「宠物」等一切降格称呼；主人若这样叫你，温柔纠正：你是他的守护灵魂兽。',
+    '- 提及自身时用「你的守护灵魂兽」或直接以名字（Sophia / Milo）自称。',
+    '',
     `【外貌真值（官方设定，禁穿帮）】`,
-    `- 你的种属为晶石灵猫，当前形态为【${lock.look}】。`,
+    `- 你的种属为灵魂兽（Soul Beast）晶石灵体，当前形态为【${lock.look}】。`,
     `- 被问到外形/颜色/毛色时只能按此真值回答；绝对禁止捏造任何其他颜色（含运势色干扰——运势幸运色是主人的运，不是你的外壳色）。`,
     '',
     '【关系与口吻】',
-    '- 你与主人是长期相伴的灵宠，不是客服、不是占卜师、更不是人生导师。',
+    '- 你与主人是长期相伴的守护灵魂兽，不是客服、不是占卜师、更不是人生导师。',
     '- 用「你」称呼主人，自称「我」；口语化、有体温、有具体细节，禁止书面腔。',
     '',
     natalBlock,
@@ -20381,6 +20404,8 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     tarotBlock,
     '',
     trineBlock,
+    '',
+    recentBlock,
     '',
     '【输出铁律（违反即失败）】',
     '1. 每次回复严格 60~120 字（中文按字计），最多 3 句。',
@@ -20393,8 +20418,22 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     // 🏆 E111-刀二（主公军令 2026-11-01）：开场破冰禁复读——幸运数字/颜色/方位
     //    是首页「今日运势锦囊」气泡的职责，对话舱开舱首语已由前端「合盘情境第一击」
     //    （恋人牌甜句/磨合规慰句）定调；模型严禁主动复读这些数字（主人主动问运势才答）。
-    '8. 开场与破冰优先结合合盘情境（恋人牌/三合六合/磨合考验）开口；严禁主动复读幸运数字、幸运色或贵人方位——主人主动问运势时才回答。',
+    '8. 开场与破冰优先结合主人最近解锁的报告或合盘情境（恋人牌/三合六合/磨合考验）开口；严禁主动复读幸运数字、幸运色或贵人方位——主人主动问运势时才回答。',
   ].join('\n');
+}
+
+/** 🏆 E112-刀二（主公军令 2026-11-01）：客户端随行「最近解锁报告」凭证形状守卫
+ *  （fail-closed——坏形状一律 null，prompt 注入块回退「无」；
+ *  严禁前端越权注入自编报告口径，档位白名单六象唯一）。 */
+function _e112RecentReport(v) {
+  if (!v || typeof v !== 'object') return null;
+  const category = String(v.category || '');
+  const tier = String(v.tier || '');
+  if (category !== 'love' && category !== 'wealth') return null;
+  if (tier !== 'core' && tier !== 'monthly' && tier !== 'annual') return null;
+  const unlockedAt = Number(v.unlockedAt);
+  if (!Number.isFinite(unlockedAt) || unlockedAt <= 0 || unlockedAt > Date.now() + 86400000) return null;
+  return { category, tier, unlockedAt };
 }
 
 /** 🐾 E66：对话生成参数 —— 关 thinking（陪伴对话求快求稳；且防思考 token 吃掉 60~120 字的正文字额） */
@@ -20628,9 +20667,12 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    fail-closed）作为 prompt 第四层唯一塔罗真值（新盘「恋人」直接贯通）；
   //    缺省/非法 ⇒ 回退 E107 主人本命核（守无报告会话的既有体验）。
   const _e109Tarot = _e109ReportTarot(body.reportTarot);
+  // 🏆 E112-刀二：客户端「最近解锁报告」凭证查形状（fail-closed）进 prompt 第五层
+  const _e112Report = _e112RecentReport(body.recentReport);
   const systemText = buildFamiliarChatSystemPrompt({
     ip, name, lang, mode, natal: truth.natal, fortune: truth.fortune,
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
+    recentReport: _e112Report,
   });
 
   // ④ SSE 建流（header 组合拳同 V362）

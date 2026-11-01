@@ -92,7 +92,7 @@ test('①-2 girlfriend 模式 prompt 行为级（军令验收门禁：含善良�
   assert.ok(p.includes('含糊圆场台词'), '缺「禁圆场」铁律（不管当女友还是闺蜜）');
   assert.ok(p.includes('【外貌真值'), '缺外貌真值块');
   assert.ok(p.includes('#F4B8CE'), '外貌块缺主色 #F4B8CE');
-  assert.ok(p.includes('晶石灵猫'), '外貌块缺种属「晶石灵猫」');
+  assert.ok(p.includes('灵魂兽（Soul Beast）晶石灵体'), '外貌块缺种属「灵魂兽（Soul Beast）晶石灵体」（E112 物种硬锁）');
   assert.ok(p.includes('绝对禁止捏造任何其他颜色'), '缺颜色禁捏造令');
 });
 
@@ -158,10 +158,10 @@ test('③-1 ChatInputBar 焦点保活（input 无 disabled；发送后 focus；�
 
 test('④-1 军规链段数入编（E110 后继化：85 段／e110 居 e109 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 86, `军规链段数异常（实得 ${segs.length}，基线 86（E111 升 86 段））`);
+  assert.equal(segs.length, 87, `军规链段数异常（实得 ${segs.length}，基线 87（E112 升 87 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 4].includes('audit-e110'), 'e110 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 5].includes('audit-e109'), 'e109 须居 len-4（e110 后）');
-  assert.ok(segs[segs.length - 6].includes('audit-e108'), 'e108 须居 len-5');
+  assert.ok(segs[segs.length - 5].includes('audit-e110'), 'e110 须居 len-3（e40 前）');
+  assert.ok(segs[segs.length - 6].includes('audit-e109'), 'e109 须居 len-4（e110 后）');
+  assert.ok(segs[segs.length - 7].includes('audit-e108'), 'e108 须居 len-5');
 });
