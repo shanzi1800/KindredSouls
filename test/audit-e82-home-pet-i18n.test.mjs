@@ -34,7 +34,8 @@ test('E82 气泡动态解耦断言：showBubble 实测标题盒外推（≥24px 
 test('E82 开场白语言联动断言：每次唤醒按当前语言重建（openedRef 一生一次禁回潮）', () => {
   const s = read('web/src/components/FamiliarChatSheet.tsx');
   assert.ok(!s.includes('openedRef'), 'openedRef「一生一次」模式禁回潮（E82 军令③根因）');
-  assert.ok(s.includes("setMsgs([{ id: 'hello', role: 'assistant', text: hello }]);"), '开场白重建缺失');
+  // 🏆 E111-刀二同步：hello 模板拼装改为 helloFor(mode) 情境首语装配器（甜/慰/中性三分支）
+  assert.ok(s.includes("setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);"), '开场白重建缺失');
   assert.ok(s.includes("t('familiar.chatHello'"), '开场白未走 i18n 字典');
 });
 

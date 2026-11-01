@@ -22,13 +22,13 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 const CHAT_KEYS = [
-  'chatCta', 'chatStatus', 'chatHello', 'chatHelloPlain', 'chatClose',
+  'chatCta', 'chatStatus', 'chatHello', 'chatHelloSoothe', 'chatHelloPlain', 'chatClose',
   'chatPlaceholder', 'chatSend', 'chatThinking', 'chatMicSoon',
   'chatNetErr', 'chatNeedLogin', 'chatNeedUnlock', 'chatTooFast',
   'chatQ1', 'chatQ2', 'chatQ3',
 ];
 
-test('E66 A1 六语 familiar.chat* 16 键全部在场且非空（军令：六语对齐）', () => {
+test('E66 A1 六语 familiar.chat* 17 键全部在场且非空（军令：六语对齐；E111 增 chatHelloSoothe）', () => {
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
     assert.ok(o.familiar, `${l}.json 缺 familiar 命名空间`);
@@ -39,12 +39,18 @@ test('E66 A1 六语 familiar.chat* 16 键全部在场且非空（军令：六语
   }
 });
 
-test('E66 A2 占位符契约：chatStatus 带 {{name}}；chatHello 带 {{color}} 与 {{num}}', () => {
+test('E66 A2 占位符契约（E111-刀二重订）：chatStatus 带 {{name}}；chatHello/chatHelloSoothe 禁复读插值', () => {
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
     assert.ok(o.familiar.chatStatus.includes('{{name}}'), `${l} chatStatus 缺 {{name}}`);
-    assert.ok(o.familiar.chatHello.includes('{{color}}') && o.familiar.chatHello.includes('{{num}}'),
-      `${l} chatHello 缺运势插值`);
+    // 🏆 E111-刀二（主公军令 2026-11-01）：对话舱首语严禁复读锦囊（幸运色/数字）——
+    //    chatHello 改「合盘情境甜句」（恋人牌）、chatHelloSoothe 为「磨合规慰句」，
+    //    两者均不得再携带 {{color}}/{{num}} 运势插值（复读病根禁回潮）。
+    assert.ok(!o.familiar.chatHello.includes('{{color}}') && !o.familiar.chatHello.includes('{{num}}'),
+      `${l} chatHello 仍含运势复读插值（E111 禁回潮）`);
+    assert.ok(!o.familiar.chatHelloSoothe.includes('{{color}}') && !o.familiar.chatHelloSoothe.includes('{{num}}'),
+      `${l} chatHelloSoothe 含运势复读插值`);
+    assert.ok(o.familiar.chatHelloPlain.includes('{{name}}'), `${l} chatHelloPlain 缺 {{name}}`);
   }
 });
 
