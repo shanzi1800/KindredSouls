@@ -20332,7 +20332,7 @@ async function _e107ChatTruthExtras(birthDate) {
  *    种属降格（主公实机验收实锤「带上你的粉色小猫」违规台词）；违禁词拦截
  *    （小猫/小狗/猫咪/狗狗/灵猫/灵犬/宠物一律禁自称）。
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20377,14 +20377,16 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     : '【主人最近解锁的付费报告】无 —— 不主动提及任何报告。';
 
   // 🏆 E115-刀二（主公军令 2026-11-02）：性别代词红线宪法——置顶最优先层。
-  //    relation_mode 推导主人/伴侣性别（确定性核），六语代词硬锁＋Few-Shot 正反示范。
-  //    主公截图实锤：girlfriend 模式「你和他之间那道小裂缝」击碎陪伴代入感。
-  const g115 = _e115ResolveGenderContext(mode);
+  //    E115-FINAL 三阶口径：路由传入 genderCtx（overrides＞乾坤造＞relation_mode
+  //    三阶解析终值）优先；缺省 ⇒ 构造器内按 mode 第三阶兜底推导。
+  //    六语代词硬锁＋违禁词显令＋Few-Shot 正反示范。
+  const g115 = genderCtx || _e115ResolveGenderContext(mode);
   const p115 = g115 ? g115.pronouns : null;
+  const f115 = g115 ? g115.forbidden : null;
   const pronounBlock = g115 ? [
     '【绝对代词红线（E115 军令，违反即失败·置顶最高优先）】',
-    `- 主人选定的人格为「${lock.role}」⇒ 主人性别【${g115.userGender === 'male' ? '男' : '女'}】，主人探讨/合盘中的伴侣性别【${g115.partnerGender === 'female' ? '女' : '男'}】。`,
-    `- 提及主人的伴侣/对方/另一半时，代词必须严格按回复语种执行：中文恒用【${p115.zh}】（严禁使用错误性别的代词单字）；英文 ${p115.en}；法文 ${p115.fr}；西文 ${p115.es}；泰文 ${p115.th}；越文 ${p115.vi}。`,
+    `- 主人性别【${g115.userGender === 'male' ? '男' : '女'}】，主人探讨/合盘中的伴侣性别【${g115.partnerGender === 'female' ? '女' : '男'}】${g115.isSameSex ? '（同性伴侣——双方性别相同，代词照此执行）' : ''}。`,
+    `- 提及主人的伴侣/对方/另一半时，代词必须严格按回复语种执行：中文恒用【${p115.zh}】（严禁【${f115.zh}】单字）；英文 ${p115.en}（严禁 ${f115.en}）；法文 ${p115.fr}（严禁 ${f115.fr}）；西文 ${p115.es}（严禁 ${f115.es}）；泰文 ${p115.th}（严禁 ${f115.th}）；越文 ${p115.vi}。`,
     `- 错误示范（严禁出现）：「你${g115.partnerGender === 'female' ? '和他' : '和她'}之间那道小裂缝，先别急着补」；正确示范：「你${g115.partnerGender === 'female' ? '和她' : '和他'}之间那道小裂缝，先别急着补」。`,
     '- 违背此条将直接视为系统逻辑瘫痪，务必字字核准。',
     '',
@@ -20455,9 +20457,15 @@ function _e112RecentReport(v) {
  *  主公实机验收实锤：girlfriend（善良女友）模式下，合盘金卡明载用户乾造（男）、
  *  伴侣坤造（女），模型却用缺省代词「他」指代伴侣（「你和他之间那道小裂缝」）——
  *  性向与对象倒错，情感陪伴产品死罪。此为确定性推导核，不依赖模型自觉。
- *  四象映射矩阵（军令钦定）：
+ *  四象映射矩阵（军令钦定·第三阶兜底层）：
  *    girlfriend ⇒ 用户男 / 伴侣女；boyfriend ⇒ 用户女 / 伴侣男；
- *    bestie（闺蜜面向女性）⇒ 用户女 / 伴侣男；buddy（铁哥们面向男性）⇒ 用户男 / 伴侣女。 */
+ *    bestie（闺蜜面向女性）⇒ 用户女 / 伴侣男；buddy（铁哥们面向男性）⇒ 用户男 / 伴侣女。
+ *  E115-FINAL（主公军令 2026-11-02 午后）：三阶层级覆盖架构（高优先压制低优先）——
+ *    第一阶：显式手动覆盖 overrides（explicitUserGender/explicitPartnerGender，
+ *            预留同性伴侣/跨性别设定接口，未来个人中心开关即插即用）；
+ *    第二阶：合盘乾坤造真值 reportBazi（乾=男/坤=女——命盘管线真实性别字段
+ *            就绪后即插即用，prompt 与字典零重构）；
+ *    第三阶：relation_mode 启发式兜底（上方四象矩阵，游客无排盘默认推演）。 */
 const E115_GENDER_MATRIX = {
   girlfriend: { user: 'male', partner: 'female' },
   boyfriend: { user: 'female', partner: 'male' },
@@ -20475,13 +20483,78 @@ const E115_PARTNER_PRONOUNS = {
   vi: { female: 'cô ấy/nàng', male: 'anh ấy/chàng' },
 };
 
-/** 🏆 E115-刀一：resolveGenderContext 推导器（fail-closed——mode 非白名单四象 ⇒ null） */
-function _e115ResolveGenderContext(relationMode) {
+/** 🏆 E115-刀一：乾坤造字符串 → 性别（乾=男 / 坤=女；非法串 null fail-closed） */
+function _e115ZaoToGender(p) {
+  if (!p || typeof p !== 'object') return null;
+  const raw = String(p['造'] || '');
+  if (raw.includes('乾')) return 'male';
+  if (raw.includes('坤')) return 'female';
+  if (p.gender === 'male' || p.gender === 'female') return p.gender;
+  return null;
+}
+
+/** 🏆 E115-刀一：resolveGenderContext 三阶推导器（fail-closed——mode 非白名单四象 ⇒ null）
+ *  签名 (relationMode, reportBazi?, overrides?)：三阶层级＝overrides（显式，最高权）
+ *  ＞ reportBazi（乾坤造真值，次高权）＞ relation_mode 启发式（兜底）。
+ *  出参：{ userGender, partnerGender, isSameSex, pronouns, forbidden }。 */
+function _e115ResolveGenderContext(relationMode, reportBazi, overrides) {
   const m = E115_GENDER_MATRIX[relationMode];
   if (!m) return null;
+  // 第三阶：relation_mode 启发式兜底默认值
+  let userGender = m.user;
+  let partnerGender = m.partner;
+  // 第二阶：命盘排盘乾坤造物理真值覆盖（乾=男，坤=女；逐侧独立覆盖）
+  if (reportBazi && typeof reportBazi === 'object') {
+    const u2 = _e115ZaoToGender(reportBazi.userPillars);
+    const p2 = _e115ZaoToGender(reportBazi.partnerPillars);
+    if (u2) userGender = u2;
+    if (p2) partnerGender = p2;
+  }
+  // 第一阶：显式手动配置最高优先级穿透
+  if (overrides && typeof overrides === 'object') {
+    if (overrides.explicitUserGender === 'male' || overrides.explicitUserGender === 'female') {
+      userGender = overrides.explicitUserGender;
+    }
+    if (overrides.explicitPartnerGender === 'male' || overrides.explicitPartnerGender === 'female') {
+      partnerGender = overrides.explicitPartnerGender;
+    }
+  }
+  // 六语代词字典＋违禁词字典装配（按伴侣性别终值）
   const pronouns = {};
-  for (const lg of Object.keys(E115_PARTNER_PRONOUNS)) pronouns[lg] = E115_PARTNER_PRONOUNS[lg][m.partner];
-  return { userGender: m.user, partnerGender: m.partner, pronouns };
+  const forbidden = {};
+  const opp = partnerGender === 'female' ? 'male' : 'female';
+  for (const lg of Object.keys(E115_PARTNER_PRONOUNS)) {
+    pronouns[lg] = E115_PARTNER_PRONOUNS[lg][partnerGender];
+    forbidden[lg] = E115_PARTNER_PRONOUNS[lg][opp];
+  }
+  return { userGender, partnerGender, isSameSex: userGender === partnerGender, pronouns, forbidden };
+}
+
+/** 🏆 E115-FINAL-刀二：客户端三阶输入凭证形状守卫（fail-closed——坏形状一律 null；
+ *  前端只可上传自家命盘乾坤造标记与显式性别设定，禁自编接口穿透） */
+function _e115ReportBazi(v) {
+  if (!v || typeof v !== 'object') return null;
+  const zao = (p) => {
+    if (!p || typeof p !== 'object') return null;
+    const raw = String(p['造'] || '');
+    if (!/^[乾坤]造?$/.test(raw.trim())) {
+      return p.gender === 'male' || p.gender === 'female' ? { gender: p.gender } : null;
+    }
+    return { '造': raw.trim() };
+  };
+  const u = zao(v.userPillars);
+  const pt = zao(v.partnerPillars);
+  if (!u && !pt) return null;
+  return { userPillars: u, partnerPillars: pt };
+}
+
+function _e115Overrides(v) {
+  if (!v || typeof v !== 'object') return null;
+  const g = (x) => (x === 'male' || x === 'female' ? x : undefined);
+  const u = g(v.explicitUserGender);
+  const p = g(v.explicitPartnerGender);
+  if (!u && !p) return null;
+  return { explicitUserGender: u, explicitPartnerGender: p };
 }
 
 /** 🏆 E115-刀三：输出侧代词违规检测（流中增量调用，纯函数）
@@ -20747,16 +20820,22 @@ app.post('/api/familiar/chat', async (req, res) => {
   const _e109Tarot = _e109ReportTarot(body.reportTarot);
   // 🏆 E112-刀二：客户端「最近解锁报告」凭证查形状（fail-closed）进 prompt 第五层
   const _e112Report = _e112RecentReport(body.recentReport);
+  // 🏆 E115-FINAL-刀二（主公军令 2026-11-02 午后）：三阶层级解析性别上下文——
+  //    第一阶显式 overrides（body.overrides，同性/跨性别预留接口）＞第二阶乾坤造
+  //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
+  //    解析终值同时喂 prompt 红线块与输出侧 deltaGuard（fail-closed 坏形状逐层回退）。
+  const g115 = _e115ResolveGenderContext(mode, _e115ReportBazi(body.reportBazi), _e115Overrides(body.overrides));
   const systemText = buildFamiliarChatSystemPrompt({
     ip, name, lang, mode, natal: truth.natal, fortune: truth.fortune,
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
     recentReport: _e112Report,
+    genderCtx: g115,
   });
 
   // 🏆 E115-刀三（主公军令 2026-11-02）：输出侧代词守卫——流中增量检测，
   //    违规命中 ⇒ abort 上游＋发 reset 帧清空前端已显文本＋弃流重试一次
   //    （重试以 user 轮注入 _e115RetryHint 纠错铁令；一次为限防循环）。
-  const g115 = _e115ResolveGenderContext(mode);
+  //    g115 已于三阶解析处求值（见上）——此处直接消费终值。
   let pronViolated = false;
   let pronRetried = false;
   let pronAcc = '';
