@@ -114,7 +114,11 @@ export function saveDailyChatSession(store, chartSig, dateStr, msgs) {
     const sess = {
       chartSig: String(chartSig || 'anon'),
       dateStr: String(dateStr),
-      expireAt: dayEndTimestamp(),
+      // 🏆 E115 收口修正：expireAt 必须锚 dateStr（写哪天就哪天 24:00 失效）——
+      //    旧 dayEndTimestamp() 无参取系统当前日，与 dateStr 脱钩（写档日≠当日
+      //    即错位；E113 当日写当日测 = 巧合假绿，跨日即红）。ISO 本地时区锚定
+      //    用「dateStr + T00:00:00」无时区后缀形态（按本地解析，非 UTC）。
+      expireAt: dayEndTimestamp(new Date(`${dateStr}T00:00:00`)),
       messages: norm.slice(-MAX_MSGS),
     };
     store.setItem(chatSessionKey(chartSig, dateStr), JSON.stringify(sess));

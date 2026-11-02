@@ -20376,7 +20376,22 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ? `【主人最近解锁的付费报告（E112 军令，最高优先上下文）】\n主人刚刚解锁了「${REPORT_KIND[rk]}」。主人聊到这份报告时围绕其档位主题展开；报告正文不在你手上，严禁复述或编造报告里的具体数字、结论与内容，只谈主题与陪伴。`
     : '【主人最近解锁的付费报告】无 —— 不主动提及任何报告。';
 
+  // 🏆 E115-刀二（主公军令 2026-11-02）：性别代词红线宪法——置顶最优先层。
+  //    relation_mode 推导主人/伴侣性别（确定性核），六语代词硬锁＋Few-Shot 正反示范。
+  //    主公截图实锤：girlfriend 模式「你和他之间那道小裂缝」击碎陪伴代入感。
+  const g115 = _e115ResolveGenderContext(mode);
+  const p115 = g115 ? g115.pronouns : null;
+  const pronounBlock = g115 ? [
+    '【绝对代词红线（E115 军令，违反即失败·置顶最高优先）】',
+    `- 主人选定的人格为「${lock.role}」⇒ 主人性别【${g115.userGender === 'male' ? '男' : '女'}】，主人探讨/合盘中的伴侣性别【${g115.partnerGender === 'female' ? '女' : '男'}】。`,
+    `- 提及主人的伴侣/对方/另一半时，代词必须严格按回复语种执行：中文恒用【${p115.zh}】（严禁使用错误性别的代词单字）；英文 ${p115.en}；法文 ${p115.fr}；西文 ${p115.es}；泰文 ${p115.th}；越文 ${p115.vi}。`,
+    `- 错误示范（严禁出现）：「你${g115.partnerGender === 'female' ? '和他' : '和她'}之间那道小裂缝，先别急着补」；正确示范：「你${g115.partnerGender === 'female' ? '和她' : '和他'}之间那道小裂缝，先别急着补」。`,
+    '- 违背此条将直接视为系统逻辑瘫痪，务必字字核准。',
+    '',
+  ] : [];
+
   return [
+    ...pronounBlock,
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -20436,7 +20451,70 @@ function _e112RecentReport(v) {
   return { category, tier, unlockedAt };
 }
 
-/** 🐾 E66：对话生成参数 —— 关 thinking（陪伴对话求快求稳；且防思考 token 吃掉 60~120 字的正文字额） */
+/** 🏆 E115-刀一（主公军令 2026-11-02）：全语种性别映射推导器＋伴侣第三人称代词硬锁
+ *  主公实机验收实锤：girlfriend（善良女友）模式下，合盘金卡明载用户乾造（男）、
+ *  伴侣坤造（女），模型却用缺省代词「他」指代伴侣（「你和他之间那道小裂缝」）——
+ *  性向与对象倒错，情感陪伴产品死罪。此为确定性推导核，不依赖模型自觉。
+ *  四象映射矩阵（军令钦定）：
+ *    girlfriend ⇒ 用户男 / 伴侣女；boyfriend ⇒ 用户女 / 伴侣男；
+ *    bestie（闺蜜面向女性）⇒ 用户女 / 伴侣男；buddy（铁哥们面向男性）⇒ 用户男 / 伴侣女。 */
+const E115_GENDER_MATRIX = {
+  girlfriend: { user: 'male', partner: 'female' },
+  boyfriend: { user: 'female', partner: 'male' },
+  bestie: { user: 'female', partner: 'male' },
+  buddy: { user: 'male', partner: 'female' },
+};
+
+/** 🏆 E115-刀一：六语强类型伴侣代词字典（军令钦定真值） */
+const E115_PARTNER_PRONOUNS = {
+  zh: { female: '她', male: '他' },
+  en: { female: 'she/her', male: 'he/him' },
+  fr: { female: 'elle', male: 'lui/il' },
+  es: { female: 'ella', male: 'él' },
+  th: { female: 'เธอ', male: 'เขา' },
+  vi: { female: 'cô ấy/nàng', male: 'anh ấy/chàng' },
+};
+
+/** 🏆 E115-刀一：resolveGenderContext 推导器（fail-closed——mode 非白名单四象 ⇒ null） */
+function _e115ResolveGenderContext(relationMode) {
+  const m = E115_GENDER_MATRIX[relationMode];
+  if (!m) return null;
+  const pronouns = {};
+  for (const lg of Object.keys(E115_PARTNER_PRONOUNS)) pronouns[lg] = E115_PARTNER_PRONOUNS[lg][m.partner];
+  return { userGender: m.user, partnerGender: m.partner, pronouns };
+}
+
+/** 🏆 E115-刀三：输出侧代词违规检测（流中增量调用，纯函数）
+ *  zh＝全量检测（剥离「其他/他人/他乡/他们/她们」合法词后查违规单字）；
+ *  en＝词边界检测 he/him/himself ↔ she/her/herself；
+ *  fr/es/th/vi 词形歧义面大（fr「il」可作 it、th「เธอ」兼作第二人称「你」、
+ *  vi「anh」兼作兄长称呼）——只走 prompt 硬锁，不做流中阻断（防假阳重试风暴）。 */
+function _e115PronounViolation(text, partnerGender, lang) {
+  if (!text || (partnerGender !== 'female' && partnerGender !== 'male')) return false;
+  const raw = String(text);
+  if (lang === 'zh') {
+    const stripped = raw.replace(/其他|他人|他乡|他们|她们/g, '');
+    return partnerGender === 'female' ? stripped.includes('他') : stripped.includes('她');
+  }
+  if (lang === 'en') {
+    if (partnerGender === 'female') return /\b(he|him|himself)\b/i.test(raw);
+    return /\b(she|her|herself)\b/i.test(raw);
+  }
+  return false;
+}
+
+/** 🏆 E115-刀三：代词违规弃流重试的纠错铁令（按语种；以 user 轮注入） */
+function _e115RetryHint(lang, gender) {
+  const g = gender || _e115ResolveGenderContext('girlfriend');
+  const p = g.pronouns;
+  const partnerZh = g.partnerGender === 'female' ? '女' : '男';
+  const zh = `（系统纠错：你上一条回复指代主人的伴侣时代词性别用错了。主人探讨的伴侣是【${partnerZh}性】——中文恒用【${p.zh}】，严禁用错性别代词。请重新完整回答刚才的问题，所有代词字字核准：中文【${p.zh}】；英文 ${p.en}；法文 ${p.fr}；西文 ${p.es}；泰文 ${p.th}；越文 ${p.vi}。）`;
+  const en = `(System correction: your last reply used the wrong gender pronoun for the user's partner. The partner is ${g.partnerGender === 'female' ? 'FEMALE' : 'MALE'} — always use "${p.en}" in English. Re-answer the last question in full with every pronoun verified.)`;
+  const map = { zh, en };
+  return map[lang] || zh;
+}
+
+
 const FAMILIAR_CHAT_GEN_CONFIG = {
   temperature: 0.9,
   topP: 0.95,
@@ -20675,6 +20753,26 @@ app.post('/api/familiar/chat', async (req, res) => {
     recentReport: _e112Report,
   });
 
+  // 🏆 E115-刀三（主公军令 2026-11-02）：输出侧代词守卫——流中增量检测，
+  //    违规命中 ⇒ abort 上游＋发 reset 帧清空前端已显文本＋弃流重试一次
+  //    （重试以 user 轮注入 _e115RetryHint 纠错铁令；一次为限防循环）。
+  const g115 = _e115ResolveGenderContext(mode);
+  let pronViolated = false;
+  let pronRetried = false;
+  let pronAcc = '';
+  const emitDelta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } };
+  const deltaGuard = (t) => {
+    emitDelta(t);
+    if (g115 && !pronRetried) {
+      pronAcc += t;
+      if (!pronViolated && _e115PronounViolation(pronAcc, g115.partnerGender, lang)) {
+        pronViolated = true;
+        console.warn(`[E115] 代词违规命中（mode=${mode} lang=${lang}）⇒ 弃流重试`);
+        try { ctrl.abort(); } catch { /* noop */ }
+      }
+    }
+  };
+
   // ④ SSE 建流（header 组合拳同 V362）
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -20686,7 +20784,8 @@ app.post('/api/familiar/chat', async (req, res) => {
   const hb = setInterval(() => {
     try { res.write(': ' + ' '.repeat(512) + '\n\n'); if (typeof res.flush === 'function') res.flush(); } catch { /* closed */ }
   }, 8000);
-  const ctrl = new AbortController();
+  // E115-刀三：ctrl 须 let——代词违规弃流重试时替换新控制器（close 钩子闭包读最新引用）
+  let ctrl = new AbortController();
   let finished = false;
   res.on('close', () => {
     clearInterval(hb);
@@ -20718,10 +20817,31 @@ app.post('/api/familiar/chat', async (req, res) => {
     try {
       text = await streamFamiliarChatGemini({
         systemText, messages, signal: ctrl.signal,
-        onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+        onDelta: deltaGuard,
       });
     } catch (e1) {
-      if (ctrl.signal.aborted) throw e1;
+      // 🏆 E115-刀三：代词违规命中 ⇒ 弃流 reset 重试一次（先于「客户端断连」判定——
+      //    pronViolated 置位时 ctrl.abort 来自守卫而非断连；重试以 user 轮注入纠错铁令）
+      if (pronViolated && !pronRetried) {
+        pronRetried = true;
+        pronViolated = false;
+        pronAcc = '';
+        try { res.write(`data: ${JSON.stringify({ reset: true })}\n\n`); if (typeof res.flush === 'function') res.flush(); } catch { /* noop */ }
+        ctrl = new AbortController();
+        text = '';
+        try {
+          text = await streamFamiliarChatGemini({
+            systemText,
+            messages: [...messages, { role: 'user', content: _e115RetryHint(lang, g115) }],
+            signal: ctrl.signal,
+            onDelta: emitDelta,
+          });
+          model = 'gemini-3.5-flash:pronoun-retry';
+        } catch (e2) {
+          // 重试失败：不掩盖主链路（text 为空 ⇒ 走既有 EMPTY_COMPLETION 收口）
+          if (!ctrl.signal.aborted) console.warn('[E115] 代词重试失败:', e2 && e2.message);
+        }
+      } else if (ctrl.signal.aborted) throw e1;
       if (text) {
         // E69：流中断于半句（此前会直接 done ⇒ 用户看到句中截断）。续写一次补全。
         console.warn(`[E69] gemini 流中断于半句 len=${text.length}: ${e1 && e1.message}`);

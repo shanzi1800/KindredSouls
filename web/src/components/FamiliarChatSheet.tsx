@@ -430,6 +430,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           try {
             const j = JSON.parse(payload);
             if (j.delta) bufRef.current += j.delta;
+            // 🏆 E115-刀三（主公军令 2026-11-02）：服务端代词违规弃流重试——
+            //    reset 帧清空当前 assistant 流式文本（已显的违规代词文本整体作废，
+            //    重试流从空壳续写重建，杜绝「他/她」倒错文本残留屏上）
+            if (j.reset) {
+              bufRef.current = '';
+              setMsgs((prev) => {
+                const next = prev.slice();
+                const last = next[next.length - 1];
+                if (last && last.role === 'assistant') next[next.length - 1] = { ...last, text: '' };
+                return next;
+              });
+            }
             if (j.error) { setNotice(t('familiar.chatNetErr')); }
           } catch { /* 半包忽略 */ }
         }

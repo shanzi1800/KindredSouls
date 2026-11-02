@@ -216,12 +216,12 @@ test('④-2 E82 趴键几何真值回归锁（EN 基准 98px）', async () => {
 
 test('⑤-1 军规链 83 段入编（E108 后继化：e106 居 e107 后 e40 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  // 🛡️ E107 后继化：81→82（e107 插 e106 后 e40 前）⇒ e106 顺移至 len-4
-// 🛡️ E108 后继化：82→83（e108 插 e107 后 e40 前）⇒ e106 再顺移至 len-5
-  assert.equal(segs.length, 89, `军规链段数异常（实得 ${segs.length}，基线 89（E114 升 89 段））`);
+  // 🛡️ E107 后继化：81→82（e107 插 e106 后 e40 前）⇒ e106 顺移至 len-5
+// 🛡️ E108 后继化：82→83（e108 插 e107 后 e40 前）⇒ e106 再顺移至 len-6
+  assert.equal(segs.length, 90, `军规链段数异常（实得 ${segs.length}，基线 90（E115 升 90 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 10].includes('audit-e107'), 'e107 须居 len-6（e108 后）');
-  assert.ok(segs[segs.length - 11].includes('audit-e106'), 'e106 须居 len-7（e107 后）');
-  assert.ok(segs[segs.length - 12].includes('audit-e105'), 'e105 须居 len-8');
+  assert.ok(segs[segs.length - 11].includes('audit-e107'), 'e107 须居 len-7（e108 后）');
+  assert.ok(segs[segs.length - 12].includes('audit-e106'), 'e106 须居 len-8（e107 后）');
+  assert.ok(segs[segs.length - 13].includes('audit-e105'), 'e105 须居 len-9');
 });

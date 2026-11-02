@@ -44,13 +44,18 @@ function sliceBraced(src, marker, skipParams = false) {
 
 // 四依赖常量＋prompt 构造器整函数搬运（e100 VM 抽取式消费者铁律；
 // buildFamiliarChatSystemPrompt 为解构参数签名 ⇒ skipParams 跳参定位函数体）
+// 🏆 E115 后继：构造器新增依赖 _e115ResolveGenderContext（代词红线块）⇒ E115 区一并搬运
 const PERSONA_SRC = sliceBraced(SERVER, 'const FAMILIAR_CHAT_PERSONA =');
 const LOCK_SRC = sliceBraced(SERVER, 'const FAMILIAR_PERSONA_LOCK =');
 const SIGNZH_SRC = sliceBraced(SERVER, 'const FAM_SIGN_ZH =');
 const LANGNAME_SRC = sliceBraced(SERVER, 'const FAM_LANG_NAME =');
+const E115_SRC = SERVER.slice(
+  SERVER.indexOf('const E115_GENDER_MATRIX'),
+  SERVER.indexOf('function _e115RetryHint')
+);
 const PROMPTFN_SRC = sliceBraced(SERVER, 'function buildFamiliarChatSystemPrompt(', true);
 const vmFactory = new Function(
-  `${PERSONA_SRC}\n${LOCK_SRC}\n${SIGNZH_SRC}\n${LANGNAME_SRC}\n${PROMPTFN_SRC}\nreturn buildFamiliarChatSystemPrompt;`
+  `${PERSONA_SRC}\n${LOCK_SRC}\n${SIGNZH_SRC}\n${LANGNAME_SRC}\n${E115_SRC}\n${PROMPTFN_SRC}\nreturn buildFamiliarChatSystemPrompt;`
 );
 const buildPrompt = vmFactory();
 
@@ -158,10 +163,10 @@ test('③-1 ChatInputBar 焦点保活（input 无 disabled；发送后 focus；�
 
 test('④-1 军规链段数入编（E110 后继化：85 段／e110 居 e109 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 89, `军规链段数异常（实得 ${segs.length}，基线 89（E114 升 89 段））`);
+  assert.equal(segs.length, 90, `军规链段数异常（实得 ${segs.length}，基线 90（E115 升 90 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 7].includes('audit-e110'), 'e110 须居 len-3（e40 前）');
-  assert.ok(segs[segs.length - 8].includes('audit-e109'), 'e109 须居 len-4（e110 后）');
-  assert.ok(segs[segs.length - 9].includes('audit-e108'), 'e108 须居 len-5');
+  assert.ok(segs[segs.length - 8].includes('audit-e110'), 'e110 须居 len-4（e40 前）');
+  assert.ok(segs[segs.length - 9].includes('audit-e109'), 'e109 须居 len-5（e110 后）');
+  assert.ok(segs[segs.length - 10].includes('audit-e108'), 'e108 须居 len-6');
 });
