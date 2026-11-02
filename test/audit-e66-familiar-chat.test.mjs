@@ -62,7 +62,8 @@ test('E66 B1 后端端点骨架：/api/familiar/chat + Gemini 流式主通道 + 
   assert.ok(s.includes('streamFamiliarChatDeepSeek'), '缺 DeepSeek 降级通道');
   const epIdx = s.indexOf("app.post('/api/familiar/chat'");
   assert.ok(epIdx > -1, '缺端点注册');
-  const epBody = s.slice(epIdx, epIdx + 8000);
+  // 🏆 E118 后继化：端点内新增姓名守卫/云端双写接线 ⇒ 窗口 8000→9500
+  const epBody = s.slice(epIdx, epIdx + 9500);
   assert.ok(epBody.includes('streamFamiliarChatDeepSeek'), '端点内缺降级调用');
   assert.ok(/降级|fallback/.test(epBody), '端点内缺降级注释/逻辑');
 });

@@ -24,7 +24,7 @@ test('启动烟测：server.js 必须能加载并成功监听（拦顶层 TDZ/�
   child.stderr.on('data', (d) => { err += d; });
 
   const ok = await new Promise((res) => {
-    const hard = setTimeout(() => res(false), 25000);
+    const hard = setTimeout(() => res(false), 60000);   // 🏆 E118 后继化：boot 漂移（express 装载 15~20s）25s 窗口假红 → 升 60s
     const iv = setInterval(() => {
       if (out.includes(READY)) { clearInterval(iv); clearTimeout(hard); res(true); }
     }, 150);

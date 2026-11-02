@@ -20332,7 +20332,7 @@ async function _e107ChatTruthExtras(birthDate) {
  *    种属降格（主公实机验收实锤「带上你的粉色小猫」违规台词）；违禁词拦截
  *    （小猫/小狗/猫咪/狗狗/灵猫/灵犬/宠物一律禁自称）。
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20392,8 +20392,20 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '',
   ] : [];
 
+  // 🏆 E118-刀三（主公军令 2026-11-02）：身份永久锚定块——E115 代词红线正下方。
+  //    用户姓名经 _e118DisplayName 形状守卫后的唯一真值；无名字 ⇒ 块整体不注入
+  //    （回退今日现行为）。核心军规：**绝对严禁失忆问句**（怎么称呼你/你叫什么）。
+  const identityBlock = displayName ? [
+    '【IDENTITY PERMANENCE（E118 军令，违反即失败·代词红线同优先级）】',
+    `- 主人的名字/昵称：【${displayName}】（永久记忆，跨日/跨会话恒有效）。全程自然以此名或其亲密昵称称呼主人，融入口吻不生硬、禁止每句复读。`,
+    '- 绝对严禁再问「怎么称呼你」「你叫什么名字」「请问你的名字是」等任何询问名字的失忆问句——你已永久记住此名。',
+    '- 此记忆不受每日会话刷新/跨日重聊/换话题影响；主人主动告知新名字时以最新为准，其余情况一律沿用此名。',
+    '',
+  ] : [];
+
   return [
     ...pronounBlock,
+    ...identityBlock,
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -20451,6 +20463,54 @@ function _e112RecentReport(v) {
   const unlockedAt = Number(v.unlockedAt);
   if (!Number.isFinite(unlockedAt) || unlockedAt <= 0 || unlockedAt > Date.now() + 86400000) return null;
   return { category, tier, unlockedAt };
+}
+
+/** 🏆 E118-刀三（主公军令 2026-11-02）：客户端随行「用户姓名/昵称」凭证形状守卫
+ *  （fail-closed——trim 后 1~24 字符、无控制字符、假阳性黑名单二次拦截；
+ *  坏形状一律 null ⇒ prompt 不注入 IDENTITY 块（回退今日现行为）。
+ *  与前端 extractUserNameIntent 黑名单同口径的双保险：前端 regex 熔断可被绕过
+ *  （伪造 body），服务端守卫是唯一可信闸门——仿 _e112RecentReport 形制）。 */
+const E118_NAME_BLACKLIST = new Set([
+  '男生', '女生', '男人', '女人', '男孩', '女孩', '帅哥', '美女', '单身', '已婚',
+  '程序员', '工程师', '设计师', '老师', '医生', '学生', '老板', '星座',
+  '射手座', '天蝎座', '白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座',
+  '天秤座', '摩羯座', '水瓶座', '双鱼座', 'a', 'an', 'the', 'male', 'female',
+  'man', 'woman', 'boy', 'girl', 'single', 'married', 'student', 'teacher',
+  'doctor', 'engineer', 'programmer', 'master', 'admin', 'user', 'test', 'guest',
+]);
+function _e118DisplayName(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().replace(/\s+/g, ' ');
+  if (s.length < 1 || s.length > 24) return null;
+  // 控制字符/换行熔断（防 prompt 注入）
+  if (/[\x00-\x1f\x7f]/.test(s)) return null;
+  if (E118_NAME_BLACKLIST.has(s.toLowerCase())) return null;
+  if (/^\d+$/.test(s)) return null; // 纯数字（年龄冒充名字）熔断
+  return s;
+}
+
+/** 🏆 E118-刀二（主公军令 2026-11-02）：登录态云端双写——合法姓名 ⇒ user_profiles
+ *  display_name 列（fail-soft fire-and-forget：列未就绪/网络失败 ⇒ 静默跳过，
+ *  绝不阻断 SSE 对话流；列就绪后跨设备记忆即插即生效）。
+ *  PostgREST 军规：Prefer: return=representation 按返回行数判成败。 */
+async function _e118SyncDisplayName(userId, displayName) {
+  try {
+    const url = `${String(process.env.SUPABASE_URL || '')}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(String(userId))}`;
+    const res = await safeFetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': String(process.env.SUPABASE_SERVICE_KEY || ''),
+        'Authorization': `Bearer ${String(process.env.SUPABASE_SERVICE_KEY || '')}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({ display_name: String(displayName) }),
+    });
+    const rows = (res && res.ok) ? await res.json() : [];
+    console.log(`[E118] display_name 云端双写 ${Array.isArray(rows) && rows.length ? 'OK' : 'SKIP/无列'} user=${userId}`);
+  } catch (e) {
+    console.warn('[E118] display_name 云端双写失败（列未就绪或网络）:', e.message);
+  }
 }
 
 /** 🏆 E115-刀一（主公军令 2026-11-02）：全语种性别映射推导器＋伴侣第三人称代词硬锁
@@ -20820,6 +20880,10 @@ app.post('/api/familiar/chat', async (req, res) => {
   const _e109Tarot = _e109ReportTarot(body.reportTarot);
   // 🏆 E112-刀二：客户端「最近解锁报告」凭证查形状（fail-closed）进 prompt 第五层
   const _e112Report = _e112RecentReport(body.recentReport);
+  // 🆕 E118-刀三（主公军令 2026-11-02）：客户端随行「用户姓名/昵称」查形状
+  //    （fail-closed——黑名单二次拦截＋控制字符/纯数字熔断）⇒ prompt IDENTITY
+  //    PERMANENCE 块唯一真值；坏形状 ⇒ null ⇒ 块不注入（回退今日现行为）。
+  const _e118Name = _e118DisplayName(body.displayName);
   // 🏆 E115-FINAL-刀二（主公军令 2026-11-02 午后）：三阶层级解析性别上下文——
   //    第一阶显式 overrides（body.overrides，同性/跨性别预留接口）＞第二阶乾坤造
   //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
@@ -20830,7 +20894,13 @@ app.post('/api/familiar/chat', async (req, res) => {
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
     recentReport: _e112Report,
     genderCtx: g115,
+    displayName: _e118Name,
   });
+  // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
+  //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）
+  if (_e118Name && auth.userId) {
+    _e118SyncDisplayName(auth.userId, _e118Name).catch(() => { /* fail-soft */ });
+  }
 
   // 🏆 E115-刀三（主公军令 2026-11-02）：输出侧代词守卫——流中增量检测，
   //    违规命中 ⇒ abort 上游＋发 reset 帧清空前端已显文本＋弃流重试一次

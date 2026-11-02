@@ -37,6 +37,10 @@ import { dailyFortune } from '../lib/dailyFortune.mjs';
 //    {{tarotCard}}/{{trinePattern}} 的运行时变量（报告真值查表，禁硬编码牌名）
 // @ts-ignore —— greetingTruth.mjs 纯 JS 逻辑核（形状由 E114 闸门守备）
 import { readReportTarotId, readRecentTarotId, readTrineKey, resolveHelloVars } from '../lib/greetingTruth.mjs';
+// 🏆 E118-刀一/刀二/刀四（主公军令 2026-11-02）：用户姓名/昵称静默捕获＋
+//    跨日永久档案（ks_familiar_profile_${chartSig} 永不过期——根治跨日失忆）
+// @ts-ignore —— userNameMemory.mjs 纯 JS 逻辑核（形状由 E118 闸门守备）
+import { extractUserNameIntent, readUserNameProfile, writeUserNameProfile, prependUserName } from '../lib/userNameMemory.mjs';
 // @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
 import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 
@@ -176,6 +180,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
   const sessionSigRef = useRef('anon');
   const sessionDateRef = useRef('');
+  /* 🏆 E118-刀二：用户姓名档案锚（open 时读永久档一次；跨日首语带名真源——
+   *  档案 ks_familiar_profile_${chartSig} 永不过期，与当日 24:00 过期的会话档解耦） */
+  const profileNameRef = useRef('');
   /* 🏆 E114-刀一：首语插值真值锚（open 时读报告真值一次；helloFor 按当前
    * 语言即时查表——舱开着切语言 t 变更效应会用当前 lang 重渲染首语） */
   const helloTruthRef = useRef<{ tarotId: number | null; trineKey: string | null }>({ tarotId: null, trineKey: null });
@@ -193,8 +200,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     if (mode === 'daily') {
       // 🏆 E113-刀四：今日锦囊真值（dailyFortune 确定性核——与首页 luckPouch 同源，
       //    同日同盘恒定不抖动；无本命太阳 ⇒ 回落全池，绝不臆造）
+      // 🏆 E118-刀四（主公军令 2026-11-02）：跨日唤醒首语带名——永久档案有名字
+      //    ⇒ 六语前缀装配（「North，新的一天，星轨又为你转动啦！」同构）；
+      //    无名字 ⇒ 原样透传（今日现行为兜底，零 i18n 新键）
       const f = dailyFortune({ lang, sunSign: '' });
-      return t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) });
+      const base = t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) });
+      return prependUserName(lang, profileNameRef.current, base);
     }
     if (mode === 'sweet') return t('familiar.chatHello', { tarotCard: vars().tarotCard });
     if (mode === 'soothe') return t('familiar.chatHelloSoothe');
@@ -216,6 +227,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     } catch { /* 隐私模式 ⇒ anon 共享档兜底（fail-soft） */ }
     sessionSigRef.current = sig;
     sessionDateRef.current = today;
+    // 🏆 E118-刀二：永久姓名档案开舱即读（跨日首语带名真源；坏档/隐私 ⇒ 空名兜底）
+    try {
+      profileNameRef.current = (readUserNameProfile(store, sig) || null)?.displayName || '';
+    } catch { profileNameRef.current = ''; }
     // 🏆 E114-刀一：首语插值真值装配（开舱一次）——sessionStorage 当次报告塔罗
     //    （E109 一盘一清）→ localStorage 最近解锁报告 keyAspects（E112 跨会话）
     //    → null；三合/六合走 ks_result bazi.meta（E92 真值）。坏档 fail-soft。
@@ -371,10 +386,25 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       const recentReport = readRecentReport(
         (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null
       ) || undefined;
+      // 🏆 E118-刀一/刀二（主公军令 2026-11-02）：姓名意图静默捕获——发送每句话
+      //    先流经 extractUserNameIntent（中英正则＋假阳性黑名单熔断），命中即写
+      //    永久档案（ks_familiar_profile_${chartSig} 永不过期）；displayName 随行
+      //    上行，服务端 _e118DisplayName 形状守卫后注入 prompt IDENTITY 块。
+      let displayName: string | undefined;
+      try {
+        const ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+        const captured = extractUserNameIntent(text);
+        if (captured && ls && writeUserNameProfile(ls, sessionSigRef.current, captured)) {
+          profileNameRef.current = captured;
+        }
+        displayName = (readUserNameProfile(ls, sessionSigRef.current) || null)?.displayName || undefined;
+      } catch { /* 隐私模式 ⇒ 无名上行（服务端回退无 IDENTITY 块） */ }
       const body = {
         lang,
         relationMode,
         name,
+        // 🏆 E118-刀二：永久姓名档案随行（服务端查形状 fail-closed 后进 prompt）
+        displayName,
         // 🏆 E112-刀二：最近解锁报告凭证随行（服务端查形状 fail-closed）
         recentReport,
         // 🏆 E109-刀一：当次报告塔罗（恋人牌等）随行绑定

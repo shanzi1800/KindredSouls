@@ -257,7 +257,7 @@ describe('E30 clear-cache 端点强鉴权', () => {
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { err += d; });
     const ready = await new Promise((res) => {
-      const hard = setTimeout(() => res(false), 30000);
+      const hard = setTimeout(() => res(false), 60000);   // 🏆 E118 后继化：boot 漂移 30s 窗口贴边 → 升 60s
       const iv = setInterval(() => {
         if (out.includes('Railway server running on port')) { clearInterval(iv); clearTimeout(hard); res(true); }
       }, 150);

@@ -295,14 +295,14 @@ describe('V490 端到端（live server，Tier-3 在 LLM 之前返回故无副作
     let out = '';
     proc.stdout.on('data', (d) => { out += d; });
     const ready = await new Promise((res) => {
-      const hard = setTimeout(() => res(false), 25000);
+      const hard = setTimeout(() => res(false), 60000);   // 🏆 E118 后继化：boot 漂移（express 装载 15~20s）25s 窗口假红 → 升 60s
       const iv = setInterval(() => {
         if (out.includes('Railway server running on port')) { clearInterval(iv); clearTimeout(hard); res(true); }
       }, 150);
       proc.on('exit', () => { clearInterval(iv); clearTimeout(hard); res(false); });
     });
     try {
-      assert.ok(ready, 'server.js 未能在 25s 内监听（无法做端到端验证）');
+      assert.ok(ready, 'server.js 未能在 60s 内监听（无法做端到端验证）');
       const post = (p, body) => fetch(`http://127.0.0.1:${PORT}${p}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
