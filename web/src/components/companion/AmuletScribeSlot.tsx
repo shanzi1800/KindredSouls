@@ -219,6 +219,8 @@ export const AmuletPreviewModal: React.FC<AmuletPreviewModalProps> = ({ type, la
       data-testid="amulet-preview-modal"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
+        /* z-9700＋遮罩 0.9：E122-刀一合规（≥军令 bg-black/70 基线）；宿主
+           FamiliarChatSheet 本就 portal 至 document.body ⇒ 无层叠笼穿透之患 */
         position: 'fixed', inset: 0, zIndex: 9700,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',

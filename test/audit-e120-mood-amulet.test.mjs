@@ -223,10 +223,11 @@ test('E120-06 今日锦囊前置拦截与流转（未打卡优先唤罗盘；未
   assert.equal(POU.resolvePouchEntry(POU.readFusedPouch(badStore, 'SIG', '20261103')), 'MOOD_SELECTING', '坏档流转须回罗盘');
   // ③ 源码结构断言：controller 仅 MOOD_SELECTING 渲罗盘、仅 REVEALED 渲结果层
   //    （未选情绪前锦囊结果层不得渲染——军令断言 6 铁律）
+  //    🏆 E122：分支前缀升为 `{open && step === …`（body portal/Toast 宿主重构后锚点同步）
   const controller = read('web/src/components/companion/DailyPouchController.tsx');
   assert.ok(controller.includes('step === POUCH_STEPS.MOOD_SELECTING') && controller.includes('<MoodCompassModal'), '缺 MOOD_SELECTING⇒罗盘分支');
   assert.ok(controller.includes('step === POUCH_STEPS.REVEALED') && controller.includes('<CombinedPouchModal'), '缺 REVEALED⇒合璧笺分支');
-  const moodBranch = controller.split('{step === POUCH_STEPS.MOOD_SELECTING && (')[1]?.split('{/* 第二阶段')[0] || '';
+  const moodBranch = controller.split('{open && step === POUCH_STEPS.MOOD_SELECTING && (')[1]?.split('{/* 第二阶段')[0] || '';
   assert.ok(moodBranch.includes('MoodCompassModal') && !moodBranch.includes('CombinedPouchModal'), '罗盘阶段严禁渲染结果层（未选情绪不得见笺）');
   // ④ 首页唯一入口：严禁并列独立情绪气泡（mood-compass-open 微章物理拔除）
   const homeCard = read('web/src/components/FamiliarHomeCard.tsx');
@@ -354,8 +355,7 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
   console.log('  [PASS] E120 S6: 链位自保（92 段；e118 后 e40 前；i18n 零新键；前端三面接线）');
 });
 
-/* ═══════════ E121-10（军令 E121-SCRIBE-SLOT 断言 10）：ChatSheet 消费端插槽链路 ═══════════ */
-test('E121-10 ChatSheet 消费端密函插槽链路（意图命中/寒暄放行/Canvas 大图/接线四防）', async () => {
+/* ═══════════ E121-10（军令 E121-SCRIBE-SLOT 断言 10）：ChatSheet 消费端插槽链路 ═══════════ */test('E121-10 ChatSheet 消费端密函插槽链路（意图命中/寒暄放行/Canvas 大图/接线四防）', async () => {
   // ① 行为级：吵架语料 ⇒ 插槽数据结构严格为 apology（关键词优先级——解冻为第一诉求）
   const hit = SCR.detectScribeIntent('吵架了不知怎么开口');
   assert.ok(hit, '吵架语料须命中代写意图（E121 刀一触发器消费）');
@@ -396,4 +396,86 @@ test('E121-10 ChatSheet 消费端密函插槽链路（意图命中/寒暄放行/
   const i18nGate2 = read('test/audit-i18n-keys.test.js');
   assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 123'), 'V448 全站键数基准 123 须保持（E121 零新键）');
   console.log('  [PASS] E121-10: ChatSheet 消费端插槽链路（触发器/插槽/大图/单轮防刷/零 i18n）');
+});
+
+/* ═══════════ E122-11（军令 E122-EXPERIENCE-POLISH 断言 11）：五刀整肃 ═══════════ */
+test('E122-11 体验整肃五刀（破冰语料命中/命名解耦/z-index 归正/入袋闭环/prompt 人称与禁词）', () => {
+  // ══ 刀五：破冰语义网泛化——军令钦定语料 100% 命中插槽触发链 ══
+  const icebreakers = [
+    '不知道怎么跟他说第一句话',   // 军令钦定主公实弹语料（DoD 断言原文）
+    '不知道怎么开口',
+    '不知怎么说第一句话',
+    '想找他和好',
+    '想找她和好',
+    '想发消息又不敢',
+    '怎么破冰',
+    '怕尴尬',
+    '僵持不知道说什么',
+  ];
+  for (const s of icebreakers) {
+    const hit = SCR.detectScribeIntent(s);
+    assert.ok(hit, `破冰语料「${s}」必须命中（E122 刀五——严禁被当闲聊吞掉）`);
+    assert.equal(hit.type, 'apology', `「${s}」须映射 apology（破冰/和解为第一诉求）`);
+  }
+  // fail-closed 保真：寒暄语料扩充后仍严禁误触（打扰红线）
+  for (const s of ['你好呀', '今天天气不错', '早安，吃了吗']) {
+    assert.equal(SCR.detectScribeIntent(s), null, `寒暄语料「${s}」必须返回 null（词典扩充不得误伤）`);
+  }
+  // ══ 刀二：命名层级解耦——POUCH_UI 军令六语表逐字入典 ══
+  const zhUi = POU.POUCH_UI.zh;
+  assert.equal(zhUi.openCta, '✦ 今日星象气场', '外层浮窗须为「今日星象气场」（军令六语表 zh 逐字）');
+  assert.equal(zhUi.title, '✦ 今日星语灵犀 ✦', '内层弹窗须为「✦ 今日星语灵犀 ✦」');
+  assert.equal(zhUi.close, '收入星语袋', '按键初始态须为「收入星语袋」');
+  assert.equal(zhUi.stowDone, '✓ 已收入星语袋', '按键成功态须为「✓ 已收入星语袋」');
+  assert.equal(zhUi.stowDisabled, '今日已收入', '置灰态须为「今日已收入」');
+  assert.equal(zhUi.toast, '✦ 今日灵犀已入袋，可随时在个人中心查阅 ✦', '全局 Toast 军令文案逐字');
+  // 六语新键全字段非空（含六语弹性排版容器由消费端 overflowWrap 承担）
+  for (const l of LANGS) {
+    const u = POU.POUCH_UI[l];
+    assert.ok(u, `POUCH_UI ${l} 段缺失`);
+    for (const k of ['openCta', 'title', 'close', 'stowDone', 'stowDisabled', 'toast', 'pouchLead']) {
+      assert.ok(String(u[k] || '').trim(), `POUCH_UI ${l}.${k} 空缺（E122 刀二六语表）`);
+    }
+  }
+  // zh 命名面彻底去「锦囊」（双重套娃根治）
+  for (const k of ['openCta', 'title', 'close', 'pouchLead']) {
+    assert.ok(!zhUi[k].includes('锦囊'), `zh ${k} 残留「锦囊」字样（命名套娃未根除）`);
+  }
+  // ══ 刀一：z-index 归正——body portal 逃逸层叠笼＋遮罩加深＋Slogan 锁基底层 ══
+  const controller = read('web/src/components/companion/DailyPouchController.tsx');
+  assert.ok(controller.includes('createPortal'), '罗盘/合璧笺须 body portal（逃逸 .ks-pet-card z-2 层叠笼——穿透根因）');
+  assert.ok(controller.includes('document.body'), 'portal 落点须为 document.body');
+  const pouchModal = read('web/src/components/companion/CombinedPouchModal.tsx');
+  const compassModal = read('web/src/components/companion/MoodCompassModal.tsx');
+  assert.ok(pouchModal.includes('rgba(4,4,8,0.72)'), '合璧笺遮罩须加深至 0.72（军令 bg-black/70 语义）');
+  assert.ok(compassModal.includes('rgba(4,4,8,0.72)'), '罗盘遮罩须加深至 0.72');
+  // 首页 Slogan 及父容器锁死 z-0~z-10（军令背景降权域）
+  const appCss = read('web/src/App.css');
+  const petCardZ = Number((appCss.match(/\.ks-pet-card\s*\{[^}]*z-index:\s*(\d+)/) || [])[1]);
+  const titleZ = Number((appCss.match(/\.input-page \.title\s*\{[^}]*z-index:\s*(\d+)/) || [])[1]);
+  assert.ok(Number.isInteger(petCardZ) && petCardZ <= 10, `.ks-pet-card z-index 须 ≤10（实为 ${petCardZ}）`);
+  assert.ok(Number.isInteger(titleZ) && titleZ <= 10, `.input-page .title z-index 须 ≤10（实为 ${titleZ}）`);
+  // ══ 刀三：入袋微交互闭环——三态按钮＋shimmer＋淡出＋Toast（生硬 onClose 根除） ══
+  assert.ok(pouchModal.includes('pouch-stow-shimmer'), '缺 300ms 金色 shimmer 扫掠层（pouch-stow-shimmer）');
+  assert.ok(pouchModal.includes('ks-pouch-stow-shimmer'), '缺 shimmer keyframes（ks-pouch-stow-shimmer）');
+  assert.ok(/onClick=\{handleStow\}/.test(pouchModal), 'pouch-stow 按钮严禁生硬 onClick={onClose}（须走 handleStow 三态时序）');
+  assert.ok(pouchModal.includes('ui.stowDisabled') && pouchModal.includes('ui.stowDone'), '按钮缺置灰态/成功态文案接线');
+  assert.ok(pouchModal.includes('onStowed'), '缺 onStowed 上抛（全局 Toast 宿主链）');
+  assert.ok(controller.includes('pouch-stow-toast'), '控制器缺全局 Toast（pouch-stow-toast）');
+  assert.ok(/setTimeout\(\(\) => setToastOn\(false\), 2500\)/.test(controller), 'Toast 须停留 2.5s（军令钦定）');
+  assert.ok(/setFading\(true\), 400\)/.test(pouchModal), '须延迟 400ms 后平滑淡出（军令时序）');
+  // ══ 刀四：server prompt 第一人称锁＋合盘禁词（静态源断言——单句结论铁律） ══
+  const server = read('server.js');
+  assert.ok(server.includes('【人称与合盘禁词（E122 军令'), 'server 缺 E122 人称与合盘禁词宪法块');
+  assert.ok(server.includes('第一人称「我」'), '缺第一人称强制法则（日常陪伴恒以「我」自称）');
+  assert.ok(server.includes('我是陪伴在你身边的灵宠伙伴'), '缺元问题被动亮明身份句式（仅追问时挑明）');
+  assert.ok(server.includes('绝对禁词：「合盘」'), '缺合盘最高级负向禁词声明');
+  assert.ok(!server.includes('提及自身时用「你的守护灵魂兽」'), '旧第三人称自称病灶残留（E112 原句必须拔除）');
+  assert.ok(!server.includes('姻缘核心合盘报告'), 'REPORT_KIND 词面残留「合盘报告」（模型复读通道）');
+  // ══ i18n 零新键复核（E122 自容字典——全站 123/familiar 59 双基准） ══
+  for (const l of LANGS) {
+    const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
+    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E122 零新键）`);
+  }
+  console.log('  [PASS] E122-11: 体验整肃五刀（破冰命中/命名解耦/z-index/入袋闭环/人称与禁词）');
 });
