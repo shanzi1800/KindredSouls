@@ -44,6 +44,13 @@ import PolicyPage from './pages/PolicyPage';
 // 🧪 Gate 45-B：沙盘收银台（create-checkout 回执 sandbox:true ⇒ 截断外链、就地唤起）
 import SandboxCashier from './components/SandboxCashier';
 import SandboxPayPage from './pages/SandboxPayPage';
+// 🧪 E120-PLAYGROUND（主公军令 2026-11-03）：/dev/amulet-preview 开发路由——
+//    import.meta.env.DEV 守卫（生产构建 import.meta.env.DEV 静态替换为 false ⇒
+//    React.lazy 动态导入死码剔除，线上 bundle 零污染）；React.lazy＋Suspense
+//    惰性分片（开发态即用即载）。
+const AmuletPlayground = import.meta.env.DEV
+  ? React.lazy(() => import('./pages/dev/AmuletPlayground'))
+  : null;
 // 🐾 E55-3（主公亲令 2026-10-16）: /familiar/custom 路由**战略隐藏**（1.0 聚焦 $4.99 转化）——
 //    FamiliarCustomPage.tsx 底座与 $99.99 三常量静默保留待 2.0 激活，此处不再 import。
 // 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
@@ -1988,6 +1995,18 @@ export default function App() {
   // ── Policy page routing (terms-of-service / privacy-policy) ──
   const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
 
+  // ── 🧪 E120-PLAYGROUND：开发路由 /dev/amulet-preview（仅 DEV 态激活）──
+  const [devAmuletRoute, setDevAmuletRoute] = useState(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return; // 生产态恒不激活（死码剔除零污染）
+    const handleDevRoute = () => {
+      setDevAmuletRoute(window.location.pathname === '/dev/amulet-preview');
+    };
+    handleDevRoute();
+    window.addEventListener('popstate', handleDevRoute);
+    return () => window.removeEventListener('popstate', handleDevRoute);
+  }, []);
+
   useEffect(() => {
     const handlePolicyRoute = () => {
       const path = window.location.pathname;
@@ -2246,6 +2265,15 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
           {artefactNotice}
         </div>
       )}
+      {/* 🧪 E120-PLAYGROUND：密函走查工坊（DEV 态独占路由——排他渲染，主视口零叠加） */}
+      {import.meta.env.DEV && devAmuletRoute && AmuletPlayground ? (
+        <React.Suspense
+          fallback={<div style={{ background: '#08080A', minHeight: '100vh', color: '#71717a', padding: 32, fontSize: 13 }}>加载密函工坊中...</div>}
+        >
+          <AmuletPlayground />
+        </React.Suspense>
+      ) : (
+        <>
       {wealthPath === '/wealth' && <WealthPage onNavigate={navigate} />}
       {wealthPath?.startsWith('/wealth/report') && <WealthReportPage key="wealth-report" onNavigate={navigate} />}
       {/* 🧪 Gate 45-B：沙盘收银台直达路由页（挂载即由总线唤起模态） */}
@@ -2265,6 +2293,8 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
             window.history.pushState({}, '', '/');
           }}
         />
+      )}
+        </>
       )}
     </div>
   );

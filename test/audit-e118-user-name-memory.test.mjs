@@ -14,7 +14,7 @@
  *     块整体不注入；恒居 E115 代词红线正下方）＋云端双写 fire-and-forget。
  *   刀四（S7）：跨日唤醒首语带名六语前缀装配矩阵（zh「，」/en-fr-es「, 」/
  *     vi「 ơi, 」/th 空格；无名字原样透传＝今日现行为兜底）。
- *   链位（S8）：e118 入编（e115 后、e40-compat 前；全链 90→91 段；
+ *   链位（S8）：e118 入编（e115 后、e40-compat 前；全链 91→92 段；
  *     i18n 零新键）。
  *   执行命令：node --test test/audit-e118-user-name-memory.test.mjs
  * 🔴 纪律：模块导入一律 pathToFileURL（中文仓路径 percent-encode 防坑）；
@@ -314,7 +314,7 @@ test('E118 S7 刀四首语带名：prependUserName 六语分隔符矩阵＋无�
 
 /* ═══════════ 链位自保 ═══════════ */
 
-test('E118 S8 链位自保：e118 入编（e115 后、e40-compat 前；全链 90→91 段；i18n 零新键）', () => {
+test('E118 S8 链位自保：e118 入编（e115 后、e40-compat 前；全链 91→92 段；i18n 零新键）', () => {
   const pkg = JSON.parse(read('package.json'));
   const segs = pkg.scripts['test:astro'].split(' && ');
   const i118 = segs.findIndex((x) => x.includes('audit-e118-user-name-memory'));
@@ -325,7 +325,7 @@ test('E118 S8 链位自保：e118 入编（e115 后、e40-compat 前；全链 90
   assert.ok(i115 < i118 && i118 < iCap, 'E118 须按序排在 e115 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 91, `军规链段数须为 91（E118 入编后 90→91；实为 ${segs.length}）`);
+  assert.equal(segs.length, 92, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：59 键不变（刀四代码侧前缀拼接，零新键）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
