@@ -63,6 +63,9 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 import { dailyFortune } from '../lib/dailyFortune.mjs';
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
+// 🏆 E120-刀二（主公军令 2026-11-03）：五维情绪天象罗盘浮层（待机视窗轻量 Modal——
+// 360px 深空黑金＋五行微光徽章＋天象归因＋灵犀星原子入账；零 i18n 新键自容字典）
+import MoodCompassModal from './companion/MoodCompassModal';
 // 🎵 E114-刀四（主公军令 2026-11-01）：灵宠微音效——Web Audio 纯合成
 //    （Sophia 528/852Hz 空灵晶鸣；Milo 吐泡「啵」＋星尘碎裂；master 0.15 锁）
 import { playSophiaPurrChime, playMiloBubblePop } from '../lib/familiarSfx';
@@ -384,6 +387,9 @@ const FamiliarHomeCard: React.FC = () => {
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
 
+  /* 🧭 E120-刀二：情绪罗盘浮层开关（灵宠待机视窗轻量 Modal——☁️ 微章呼出） */
+  const [moodOpen, setMoodOpen] = useState(false);
+
   /** 🍀 E108-刀三：贴身锦囊真值（幸运数字/色/能量微语——dailyFortune 确定性核） */
   const luckPouch = useCallback((rec0: HomeRecord | null) => {
     const sun = rec0 ? String((triadTruth(rec0) || {}).sun || '') : '';
@@ -600,12 +606,31 @@ const FamiliarHomeCard: React.FC = () => {
                 🧪
               </button>
             )}
+            {/* 🧭 E120-刀二：五维情绪天象罗盘入口（☁️ 微章——待机视窗常驻轻入口；
+                军令钦定「点击待机气泡后的轻量浮层」，开罗盘＝交互 ⇒ 待机计程重置） */}
+            <button
+              type="button"
+              className="ks-fam-chip"
+              data-testid="mood-compass-open"
+              aria-label={lang === 'zh' ? '情绪天象罗盘' : 'Mood Compass'}
+              onClick={() => { scheduleIdle(); setMoodOpen(true); }}
+              title={lang === 'zh' ? '今天心里的天色如何？' : 'How does the sky inside you feel today?'}
+            >
+              ☁️
+            </button>
           </div>,
           anchorEl,
         );
       })}
       {/* 🍀 E108-刀三：居中大 Modal「今日幸运卡片」物理废除——贴身锦囊气泡即三阶动线
           第二阶（点灵宠呼出；气泡「✦ 与TA聊聊」胶囊才开舱） */}
+      {/* 🧭 E120-刀二：五维情绪天象罗盘浮层（portal 内联——360px 深空黑金 Modal；
+          天象归因六语真值＋灵犀星 DAILY_PULSE 原子入账） */}
+      <MoodCompassModal
+        open={moodOpen}
+        onClose={() => setMoodOpen(false)}
+        lang={lang as 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi'}
+      />
       {/* 🐾 E66：半屏毛玻璃抽屉舱（portal 到 body；零路由跳转，不破坏首页上下文） */}
       <FamiliarChatSheet
         open={chatOpen}
