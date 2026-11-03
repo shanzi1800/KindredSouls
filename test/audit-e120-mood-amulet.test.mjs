@@ -353,3 +353,47 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
   }
   console.log('  [PASS] E120 S6: 链位自保（92 段；e118 后 e40 前；i18n 零新键；前端三面接线）');
 });
+
+/* ═══════════ E121-10（军令 E121-SCRIBE-SLOT 断言 10）：ChatSheet 消费端插槽链路 ═══════════ */
+test('E121-10 ChatSheet 消费端密函插槽链路（意图命中/寒暄放行/Canvas 大图/接线四防）', async () => {
+  // ① 行为级：吵架语料 ⇒ 插槽数据结构严格为 apology（关键词优先级——解冻为第一诉求）
+  const hit = SCR.detectScribeIntent('吵架了不知怎么开口');
+  assert.ok(hit, '吵架语料须命中代写意图（E121 刀一触发器消费）');
+  assert.equal(hit.type, 'apology', '密函插槽类型须严格为 apology（实为 ' + String(hit.type) + '）');
+  // ② 行为级：寒暄 fail-closed——严禁无意图强推（打扰红线）
+  assert.equal(SCR.detectScribeIntent('你好呀'), null, '寒暄语料密函插槽须为 null（fail-closed）');
+  // ③ 桩级：插槽点击 ⇒ Canvas 渲染引擎调用并输出有效 1080×1748 Data URL
+  const canvas = mockCanvas();
+  canvas.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg'; // PNG 签名桩
+  const tpl = TPL.AMULET_TEMPLATES_24.apology.zh;
+  await REN.renderAmuletToCanvas(canvas, tpl, 'zh', { type: 'apology' });
+  assert.equal(canvas.width, 1080, '大图渲染宽度须锁 1080（军令刀二）');
+  assert.equal(canvas.height, 1748, '大图渲染高度须锁 1748（军令刀二）');
+  assert.ok(REN.isGoldenRatioCanvas(canvas), '大图须过黄金比例校验（1:1.618 容差 <0.001）');
+  const url = canvas.toDataURL('image/png');
+  assert.ok(String(url).startsWith('data:image/png'), '须输出有效 PNG Data URL（实为 ' + String(url).slice(0, 30) + '）');
+  // ④ 文本级：ChatSheet 消费端接线四防——触发器调用/插槽渲染/大图弹层/单轮防刷
+  const chat = read('web/src/components/FamiliarChatSheet.tsx');
+  assert.ok(chat.includes('detectScribeIntent'), 'ChatSheet 未消费意图探测器（E121 刀一——最后一公里病灶）');
+  assert.ok(chat.includes('AmuletScribeSlotCard'), 'ChatSheet 未挂载密函微缩插槽（刀一）');
+  assert.ok(chat.includes('AmuletPreviewModal'), 'ChatSheet 未挂载大图预览弹层（刀二）');
+  assert.ok(/setScribeSlot\(\s*scribeIntent\s*\?\s*\{\s*aid\b/.test(chat), '插槽未绑定本轮消息 ID（刀三单轮防刷）');
+  assert.ok(chat.includes("scribeSlot.aid"), '插槽渲染未做本轮 aid 精确匹配（防重绘重复追加）');
+  // ⑤ 插槽组件零 i18n 红线：文案自容字典＋模板真源；禁 t('familiar. 新键
+  const slot = read('web/src/components/companion/AmuletScribeSlot.tsx');
+  assert.ok(slot.length > 4000, '密函插槽组件缺失或过薄（E121 刀一/刀二载体）');
+  assert.ok(slot.includes('AMULET_TEMPLATES_24') || slot.includes('getAmuletTemplate'), '插槽文案未取模板真源（刀二零 i18n）');
+  assert.ok(!slot.includes("t('familiar."), '插槽严禁 i18n 新键（familiar 59 键红线）');
+  assert.ok(slot.includes('amulet-scribe-slot'), '微缩插槽缺 data-testid（amulet-scribe-slot）');
+  assert.ok(slot.includes('amulet-preview-modal'), '大图弹层缺 data-testid（amulet-preview-modal）');
+  assert.ok(slot.includes('renderAmuletToCanvas'), '插槽未复用渲染引擎单一事实源（军令刀二）');
+  assert.ok(slot.includes('isGoldenRatioCanvas'), '大图渲染后未做黄金比例校验（fail-closed）');
+  // ⑥ i18n 键数复验（S6 已锁——S7 复核防 E121 回归）：familiar 59＋全站 123
+  for (const l of LANGS) {
+    const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
+    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E121 零新键）`);
+  }
+  const i18nGate2 = read('test/audit-i18n-keys.test.js');
+  assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 123'), 'V448 全站键数基准 123 须保持（E121 零新键）');
+  console.log('  [PASS] E121-10: ChatSheet 消费端插槽链路（触发器/插槽/大图/单轮防刷/零 i18n）');
+});
