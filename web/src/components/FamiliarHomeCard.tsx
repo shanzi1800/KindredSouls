@@ -63,9 +63,12 @@ import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperI
 import { dailyFortune } from '../lib/dailyFortune.mjs';
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
-// 🏆 E120-刀二（主公军令 2026-11-03）：五维情绪天象罗盘浮层（待机视窗轻量 Modal——
-// 360px 深空黑金＋五行微光徽章＋天象归因＋灵犀星原子入账；零 i18n 新键自容字典）
-import MoodCompassModal from './companion/MoodCompassModal';
+// 🧭 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊前置罗盘状态机控制器——
+// 「以心启符 · 锦囊化药」：点锦囊 ⇒ 未打卡唤罗盘（MoodCompassModal 受控嵌入）
+// ⇒ 选情绪 ⇒ 合璧笺揭示（情绪解药＋幸运加持揉合）⇒ 灵犀星唯一入账。
+// 军令钦定：首页严禁并列独立情绪气泡——罗盘仅作锦囊前置启动器（原 ☁️ 微章拔除）。
+import DailyPouchController from './companion/DailyPouchController';
+import { POUCH_UI } from '../lib/dailyPouchStore.mjs';
 // 🎵 E114-刀四（主公军令 2026-11-01）：灵宠微音效——Web Audio 纯合成
 //    （Sophia 528/852Hz 空灵晶鸣；Milo 吐泡「啵」＋星尘碎裂；master 0.15 锁）
 import { playSophiaPurrChime, playMiloBubblePop } from '../lib/familiarSfx';
@@ -387,8 +390,10 @@ const FamiliarHomeCard: React.FC = () => {
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
 
-  /* 🧭 E120-刀二：情绪罗盘浮层开关（灵宠待机视窗轻量 Modal——☁️ 微章呼出） */
-  const [moodOpen, setMoodOpen] = useState(false);
+  /* 🧭 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊浮层开关（点灵宠气泡内
+     「✦ 今日感应锦囊」按钮 ⇒ DailyPouchController 入口拦截——未打卡唤罗盘/
+     已打卡直读合璧笺；原独立 ☁️ 罗盘微章按军令物理拔除，严禁并列入口） */
+  const [pouchOpen, setPouchOpen] = useState(false);
 
   /** 🍀 E108-刀三：贴身锦囊真值（幸运数字/色/能量微语——dailyFortune 确定性核） */
   const luckPouch = useCallback((rec0: HomeRecord | null) => {
@@ -404,14 +409,23 @@ const FamiliarHomeCard: React.FC = () => {
     /* 🏆 E108-刀三（主公军令 2026-11-01）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋
        贴身「今日运势锦囊」气泡（图 9 形态：幸运数字/色/能量微语＋「✦ 与TA聊聊」
        胶囊⇒气泡隐退开舱）。E107 居中大 Modal「今日幸运卡片」物理废除（遮挡灵宠
-       ＋交互割裂实锤）；对话舱只可经气泡 CTA 显式点开——禁直开。 */
+       ＋交互割裂实锤）；对话舱只可经气泡 CTA 显式点开——禁直开。
+       🧭 E120-CHAIN（军令 2026-11-03）：点灵宠的 +1 打卡迁移至合璧笺揭示唯一
+       入账点（claimPouchStarlight）——点击锦囊⇒罗盘⇒解药⇒入账单线闭环。 */
     setFamPulse(true);
     if (famPulseTimer.current) clearTimeout(famPulseTimer.current);
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
     setFamBubble(null);
     scheduleIdle(); // 🌟 E111-刀一：点触＝交互，待机计程重置
-    /* 💫 E111-刀三：每日灵犀星打卡（day 翻新即 +1；同日复点不加）——
-       宝石微光由 famPulse 承担，飘字 starFloat 上飘消散 2.2s。 */
+    const p = luckPouch(rec0);
+    showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
+  }, [luckPouch, showBubble, t, scheduleIdle]);
+
+  /* 💫 E111-刀三 → 🧭 E120-CHAIN 后继（军令 2026-11-03）：每日灵犀星打卡——
+     唯一入账点＝合璧感应笺首次揭示（DailyPouchController.onClaimStarlight）；
+     day 翻新即 +1（同日复看不加）；宝石微光由 famPulse 承担，飘字 starFloat
+     上飘消散 2.2s（E111 断言原文保真——读写双通道/形状守卫/同日判定零漂移）。 */
+  const claimPouchStarlight = useCallback((): boolean => {
     try {
       const today = new Date().toISOString().slice(0, 10);
       const st = readStarlight();
@@ -422,11 +436,11 @@ const FamiliarHomeCard: React.FC = () => {
         setStarFloat(true);
         if (starFloatTimer.current) clearTimeout(starFloatTimer.current);
         starFloatTimer.current = setTimeout(() => setStarFloat(false), 2200);
+        return true;
       }
     } catch { /* iOS 无痕 localStorage 抛错 ⇒ 打卡静默降级（不飘字不阻断） */ }
-    const p = luckPouch(rec0);
-    showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
-  }, [luckPouch, showBubble, t, scheduleIdle, readStarlight]);
+    return false;
+  }, [readStarlight]);
 
   /* 🛡️ E109-刀二（主公军令 2026-10-30）：E54-2「9s 主动锦囊气泡」定时器整段拔除——
      军令钦定「彻底拔除任何 useEffect 内的自动开舱/冒泡定时器」：锦囊气泡只可由
@@ -584,6 +598,16 @@ const FamiliarHomeCard: React.FC = () => {
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>
                 {famBubble.line && <span className="ks-fam-bubble-line" style={{ ...SAFE }}>{famBubble.line}</span>}
                 {famBubble.line2 && <span className="ks-fam-bubble-line" style={{ ...SAFE, color: 'rgba(240, 230, 200, 0.78)' }}>{famBubble.line2}</span>}
+                {/* 🧭 E120-CHAIN：今日感应锦囊开封按钮（唯一锦囊入口——未打卡唤罗盘
+                    「以心启符」，已打卡直读合璧笺；军令严禁并列独立情绪气泡） */}
+                <button
+                  type="button"
+                  className="ks-fam-bubble-cta"
+                  data-testid="pouch-open"
+                  onClick={() => { setFamBubble(null); scheduleIdle(); setPouchOpen(true); }}
+                >
+                  {(POUCH_UI[lang as 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi'] || POUCH_UI.en).openCta}
+                </button>
                 {/* 🐾 E66 衔接入口：气泡末尾的「与 TA 聊聊」引子 —— 平滑唤醒半屏抽屉舱 */}
                 <button
                   type="button"
@@ -606,30 +630,24 @@ const FamiliarHomeCard: React.FC = () => {
                 🧪
               </button>
             )}
-            {/* 🧭 E120-刀二：五维情绪天象罗盘入口（☁️ 微章——待机视窗常驻轻入口；
-                军令钦定「点击待机气泡后的轻量浮层」，开罗盘＝交互 ⇒ 待机计程重置） */}
-            <button
-              type="button"
-              className="ks-fam-chip"
-              data-testid="mood-compass-open"
-              aria-label={lang === 'zh' ? '情绪天象罗盘' : 'Mood Compass'}
-              onClick={() => { scheduleIdle(); setMoodOpen(true); }}
-              title={lang === 'zh' ? '今天心里的天色如何？' : 'How does the sky inside you feel today?'}
-            >
-              ☁️
-            </button>
+            {/* 🧭 E120-CHAIN：原独立 ☁️ 罗盘微章按军令物理拔除——首页严禁并列
+                独立情绪气泡（罗盘仅作锦囊前置启动器，经 pouch-open 呼出） */}
           </div>,
           anchorEl,
         );
       })}
       {/* 🍀 E108-刀三：居中大 Modal「今日幸运卡片」物理废除——贴身锦囊气泡即三阶动线
           第二阶（点灵宠呼出；气泡「✦ 与TA聊聊」胶囊才开舱） */}
-      {/* 🧭 E120-刀二：五维情绪天象罗盘浮层（portal 内联——360px 深空黑金 Modal；
-          天象归因六语真值＋灵犀星 DAILY_PULSE 原子入账） */}
-      <MoodCompassModal
-        open={moodOpen}
-        onClose={() => setMoodOpen(false)}
+      {/* 🧭 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊前置罗盘状态机——
+          「点击锦囊 ➔ 唤醒罗盘 ➔ 赋能解药 ➔ 灵犀星入账」单线闭环；当日已打卡 ⇒
+          直读合璧笺（只读复看零入账）；灵犀星唯一入账点＝合笺揭示（E111 真源账本） */}
+      <DailyPouchController
+        open={pouchOpen}
+        onClose={() => setPouchOpen(false)}
         lang={lang as 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi'}
+        chartSig={rec?.chartSig || ''}
+        sunSign={rec ? String((triadTruth(rec) || {}).sun || '') : ''}
+        onClaimStarlight={claimPouchStarlight}
       />
       {/* 🐾 E66：半屏毛玻璃抽屉舱（portal 到 body；零路由跳转，不破坏首页上下文） */}
       <FamiliarChatSheet

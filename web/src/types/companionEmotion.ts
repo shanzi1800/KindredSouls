@@ -79,3 +79,33 @@ export interface StarlightLedger {
   count: number;
   day: string;
 }
+
+/** ═══════════ 🏆 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊前置罗盘状态机 ═══════════ */
+
+/** 锦囊三态流转（点击锦囊 ⇒ 未打卡唤罗盘 ⇒ 选情绪合璧揭示 ⇒ 只读复看） */
+export type DailyPouchStep = 'IDLE' | 'MOOD_SELECTING' | 'REVEALED';
+
+/** 合璧感应笺契约（情绪解药＋命理幸运指引揉合的单一真值对象） */
+export interface CombinedDailyFortune {
+  /** 日历日键 YYYYMMDD（fortuneDateKey 同源——同日恒定） */
+  date: string;
+  /** 用户当日选定的心境原型（罗盘五维之一） */
+  mood: MoodArchetype;
+  /** 情绪天象归因（来自 E120 罗盘——语调铁律保证的正面抚慰） */
+  transitAttribution: {
+    summary: string;
+    companionComfort: string;
+    actionableAdvice: string;
+  };
+  /** 命理幸运指引（复用 E54-2 dailyFortune 确定性核资产） */
+  luckyAttributes: {
+    colorName: string;
+    colorHex: string;
+    bestWindow: string;
+    direction: string;
+  };
+  /** 今日能量箴言（dailyFortune.vibe——气场微语） */
+  vibe: string;
+  /** 灵犀星是否已随笺入账（单日原子——幂等标记） */
+  claimedStarlight: boolean;
+}

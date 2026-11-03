@@ -66,9 +66,17 @@ export interface MoodCompassModalProps {
   onClose: () => void;
   lang: Lang;
   hostName?: string;
+  /**
+   * 🏆 E120-CHAIN（军令 2026-11-03）：受控嵌入模式——罗盘作为今日感应锦囊的
+   * 前置启动器。提供回调时：确认提交仅上抛情绪原型（父级承担入账与合笺流转），
+   * 本组件不再自行入账/飘字；未提供时保留独立行为（E120 原样兼容）。
+   */
+  onMoodCommit?: (archetype: 'radiant' | 'longing' | 'melancholy' | 'agitated' | 'grateful') => void;
+  /** 锦囊前置引导语（军令钦定句式「锦囊随心而动。此刻你周围的气场偏向何方？」） */
+  pouchLead?: string;
 }
 
-export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClose, lang, hostName }) => {
+export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClose, lang, hostName, onMoodCommit, pouchLead }) => {
   const [selected, setSelected] = useState<MoodArchetype | null>(null);
   const [starFloat, setStarFloat] = useState<'gain' | 'done' | null>(null);
 
@@ -79,12 +87,19 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
     return row ? (row[lang] || row.en) : null;
   }, [selected, lang]);
 
-  /** 确认提交：语调铁律守卫＋灵犀星原子入账（DAILY_PULSE） */
+  /** 确认提交：语调铁律守卫＋灵犀星原子入账（DAILY_PULSE）
+   *  🏆 E120-CHAIN：受控嵌入模式（onMoodCommit 在场）⇒ 仅上抛情绪原型，
+   *  入账与合笺流转归父级 DailyPouchController（单日原子唯一入账点）。 */
   const handleConfirm = useCallback(() => {
     if (!selected || !attribution) return;
     // 语调铁律运行时守卫（fail-closed：恐慌词命中即不入账——军令断言 1 守卫面）
     const guard = toneGuard(attribution.companionComfort, lang);
     if (guard.bannedHit) return;
+    // 受控嵌入：情绪落定上抛父级（父级组装合璧笺＋唯一入账点）
+    if (onMoodCommit) {
+      onMoodCommit(selected);
+      return;
+    }
     try {
       const today = new Date().toISOString().slice(0, 10);
       const ledger = readStarlightStore();
@@ -97,7 +112,7 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
       }
       window.setTimeout(() => setStarFloat(null), 2400);
     } catch { /* iOS 无痕存储抛错 ⇒ 打卡静默降级（不阻断交互） */ }
-  }, [selected, attribution, lang]);
+  }, [selected, attribution, lang, onMoodCommit]);
 
   if (!open) return null;
 
@@ -168,7 +183,9 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
             ✦ {hostName}
           </p>
         ) : null}
-        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'rgba(232,220,192,0.75)' }}>{ui.lead}</p>
+        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'rgba(232,220,192,0.75)' }}>
+          {pouchLead || ui.lead}
+        </p>
 
         {/* 五维徽章横排（五行微光＋悬停光晕脉冲） */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginBottom: 14 }} data-testid="mood-archetype-row">

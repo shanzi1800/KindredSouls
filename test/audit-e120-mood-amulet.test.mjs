@@ -35,6 +35,7 @@ const TPL = await import(pathToFileURL(join(ROOT, 'web/src/lib/amuletTemplates.m
 const REN = await import(pathToFileURL(join(ROOT, 'web/src/lib/amuletCanvasRenderer.mjs')).href);
 const SCR = await import(pathToFileURL(join(ROOT, 'web/src/lib/companionScribeTrigger.mjs')).href);
 const LED = await import(pathToFileURL(join(ROOT, 'web/src/lib/starlightLedger.mjs')).href);
+const POU = await import(pathToFileURL(join(ROOT, 'web/src/lib/dailyPouchStore.mjs')).href);
 
 /** Mock Canvas Context（军师钦定语义断言方案——零图形环境依赖） */
 function mockCanvas() {
@@ -209,6 +210,103 @@ test('E120-05 单日打卡原子写入与灵犀星账本 DAILY_PULSE +1 校验',
   console.log('  [PASS] E120-05: 单日打卡原子写入与灵犀星账本 +1 校验');
 });
 
+/* ═══════════ E120-06（CHAIN 刀一断言）：前置拦截与流转 ═══════════ */
+test('E120-06 今日锦囊前置拦截与流转（未打卡优先唤罗盘；未选情绪结果层不得渲染）', () => {
+  // ① 未打卡 ⇒ MOOD_SELECTING（唤罗盘——军令断言 6 正例）
+  assert.equal(POU.resolvePouchEntry(null), 'MOOD_SELECTING', '未打卡必须唤起情绪罗盘');
+  assert.equal(POU.resolvePouchEntry(null), POU.POUCH_STEPS.MOOD_SELECTING, '未打卡流转字面量漂移');
+  // ② 坏档/跨日档视未打卡（fail-soft 重建）
+  const badStore = { __data: { [POU.pouchStorageKey('SIG', '20261103')]: '{"mood":"hacked","date":"20261103"}' } };
+  badStore.getItem = (k) => (k in badStore.__data ? badStore.__data[k] : null);
+  badStore.setItem = (k, v) => { badStore.__data[k] = v; };
+  assert.equal(POU.readFusedPouch(badStore, 'SIG', '20261103'), null, '坏档必须视未打卡（形状守卫 fail-soft）');
+  assert.equal(POU.resolvePouchEntry(POU.readFusedPouch(badStore, 'SIG', '20261103')), 'MOOD_SELECTING', '坏档流转须回罗盘');
+  // ③ 源码结构断言：controller 仅 MOOD_SELECTING 渲罗盘、仅 REVEALED 渲结果层
+  //    （未选情绪前锦囊结果层不得渲染——军令断言 6 铁律）
+  const controller = read('web/src/components/companion/DailyPouchController.tsx');
+  assert.ok(controller.includes('step === POUCH_STEPS.MOOD_SELECTING') && controller.includes('<MoodCompassModal'), '缺 MOOD_SELECTING⇒罗盘分支');
+  assert.ok(controller.includes('step === POUCH_STEPS.REVEALED') && controller.includes('<CombinedPouchModal'), '缺 REVEALED⇒合璧笺分支');
+  const moodBranch = controller.split('{step === POUCH_STEPS.MOOD_SELECTING && (')[1]?.split('{/* 第二阶段')[0] || '';
+  assert.ok(moodBranch.includes('MoodCompassModal') && !moodBranch.includes('CombinedPouchModal'), '罗盘阶段严禁渲染结果层（未选情绪不得见笺）');
+  // ④ 首页唯一入口：严禁并列独立情绪气泡（mood-compass-open 微章物理拔除）
+  const homeCard = read('web/src/components/FamiliarHomeCard.tsx');
+  assert.ok(!homeCard.includes('mood-compass-open'), '首页残留独立罗盘微章（军令严禁并列情绪气泡）');
+  assert.ok(homeCard.includes('pouch-open'), '缺今日感应锦囊入口按钮（pouch-open 唯一锦囊入口）');
+  console.log('  [PASS] E120-06: 前置拦截与流转（未打卡优先唤罗盘；结果层不得抢跑）');
+});
+
+/* ═══════════ E120-07（CHAIN 刀二断言）：合璧数据完整性 ═══════════ */
+test('E120-07 合璧数据完整性（transitAttribution 与 luckyAttributes 同对象在位）', () => {
+  const attr = MODD.moodAttribution('melancholy', 'zh');
+  assert.ok(attr, 'melancholy zh 归因缺失（上游真源断链）');
+  const combined = POU.composeCombinedFortune({
+    mood: 'melancholy', attribution: attr, lang: 'zh', sunSign: 'leo', dateKey: '20261103',
+  });
+  // ① 军令断言 7 双字段同对象：companionComfort 与 colorHex 必须同时在位
+  assert.ok(combined, '合璧组装 fail-closed（合法输入必须成笺）');
+  assert.ok(combined.transitAttribution.companionComfort.length > 0, '合璧笺缺 transitAttribution.companionComfort');
+  assert.ok(/^#[0-9A-Fa-f]{6}$/.test(combined.luckyAttributes.colorHex), `合璧笺 luckyAttributes.colorHex 非法（实得 ${combined.luckyAttributes.colorHex}）`);
+  for (const f of ['colorName', 'bestWindow', 'direction']) {
+    assert.ok(String(combined.luckyAttributes[f] || '').trim(), `合璧笺 luckyAttributes.${f} 空缺`);
+  }
+  assert.ok(/\d{2}:\d{2} - \d{2}:\d{2}/.test(combined.luckyAttributes.bestWindow), '助运吉时须为 HH:MM - HH:MM 确定性窗');
+  // ② 确定性：同输入 ⇒ 同输出（禁随机抖动）
+  const again = POU.composeCombinedFortune({
+    mood: 'melancholy', attribution: attr, lang: 'zh', sunSign: 'leo', dateKey: '20261103',
+  });
+  assert.equal(again.luckyAttributes.colorHex, combined.luckyAttributes.colorHex, '幸运色须确定性（同日恒定）');
+  // ③ fail-closed：mood 非白名单/归因缺失 ⇒ null（严禁默认回退）
+  assert.equal(POU.composeCombinedFortune({ mood: 'unknown', attribution: attr, lang: 'zh' }), null, '未知情绪必须 fail-closed');
+  assert.equal(POU.composeCombinedFortune({ mood: 'radiant', attribution: null, lang: 'zh' }), null, '归因缺失必须 fail-closed');
+  // ④ 持久化往返（军令键格式 ks_daily_fused_pouch_${chartSig}_${YYYYMMDD}）
+  const store = { __data: {} };
+  store.getItem = (k) => (k in store.__data ? store.__data[k] : null);
+  store.setItem = (k, v) => { store.__data[k] = v; };
+  assert.ok(POU.writeFusedPouch(store, 'SIG', combined), '合璧档落盘失败');
+  assert.ok(POU.pouchStorageKey('SIG', '20261103') in store.__data, `存储键须为军令格式（实得 ${Object.keys(store.__data)[0]}）`);
+  assert.ok(Object.keys(store.__data)[0].startsWith('ks_daily_fused_pouch_SIG_20261103'), '军令键前缀/签名/日期三段漂移');
+  const reread = POU.readFusedPouch(store, 'SIG', '20261103');
+  assert.ok(reread && reread.mood === 'melancholy' && reread.transitAttribution.companionComfort === combined.transitAttribution.companionComfort, '落盘往返失真（读档≠写档）');
+  // ⑤ 无盘纯首页会话兜底（E49 按盘隔离沿袭——空 sig 回落 home）
+  assert.equal(POU.normalizePouchSig(''), 'home', '空 chartSig 须回落 home 桶');
+  assert.ok(POU.pouchStorageKey('', '20261103').startsWith('ks_daily_fused_pouch_home_'), 'home 兜底键漂移');
+  console.log('  [PASS] E120-07: 合璧数据完整性（companionComfort 与 colorHex 同对象）');
+});
+
+/* ═══════════ E120-08（CHAIN 刀三断言）：跨次点击幂等只读 ═══════════ */
+test('E120-08 跨次点击幂等只读（已打卡直入 REVEALED 不唤罗盘；账本交易数不增）', () => {
+  // ① 已打卡当日档在位 ⇒ 直入 REVEALED（跳过情绪选择不唤罗盘——军令断言 8）
+  const attr = MODD.moodAttribution('radiant', 'zh');
+  const combined = POU.composeCombinedFortune({ mood: 'radiant', attribution: attr, lang: 'zh', sunSign: 'virgo', dateKey: '20261103' });
+  assert.ok(combined, '合璧笺组装失败（前置断链）');
+  const store = { __data: {} };
+  store.getItem = (k) => (k in store.__data ? store.__data[k] : null);
+  store.setItem = (k, v) => { store.__data[k] = v; };
+  POU.writeFusedPouch(store, 'SIG', combined);
+  const existing = POU.readFusedPouch(store, 'SIG', '20261103');
+  assert.equal(POU.resolvePouchEntry(existing), 'REVEALED', '已打卡必须直入 REVEALED（不唤罗盘）');
+  // ② 幂等只读：同档跨日残留 ⇒ 不串昨日心境（视未打卡）
+  assert.equal(POU.readFusedPouch(store, 'SIG', '20261104'), null, '跨日档必须失效（昨日心境不得串味）');
+  // ③ 账本交易数不增（E111 真源账本幂等——同日复记零交易）
+  const today = '2026-11-03';
+  const r1 = LED.claimDailyStarlight({ count: 9, day: '2026-11-02' }, today);
+  assert.equal(r1.transaction.balance, 10, '首次揭示须 +1（3→10 错例防呆：9→10）');
+  const r2 = LED.claimDailyStarlight(r1.ledger, today);
+  assert.equal(r2.granted, false, '同日复看必须拒绝发星');
+  assert.equal(r2.ledger.count, 10, '账本交易数不得增加');
+  // ④ 源码断言：controller 入账仅存在于 handleMoodCommit 路径（open 解析分支零入账）
+  const controller = read('web/src/components/companion/DailyPouchController.tsx');
+  const openBranch = controller.split('useEffect(() => {')[1]?.split('}, [open, chartSig]);')[0] || '';
+  assert.ok(!openBranch.includes('onClaimStarlight('), '入口解析分支严禁触发入账（只读复看零交易）');
+  const commitBranch = controller.split('const handleMoodCommit =')[1]?.split('}, [lang')[0] || '';
+  assert.ok(commitBranch.includes('onClaimStarlight('), '合笺揭示路径缺唯一入账点（onClaimStarlight）');
+  // ⑤ 首页唯一入账回调接线（E111 真源账本——同日判定原文在位）
+  const homeCard = read('web/src/components/FamiliarHomeCard.tsx');
+  assert.ok(homeCard.includes('claimPouchStarlight'), '首页缺 claimPouchStarlight 入账回调（E111 真源断链）');
+  assert.ok(/st\.day !== today/.test(homeCard) && /count: st\.count \+ 1/.test(homeCard), 'E111 同日判定/+1 逻辑漂移（断言原文保真铁律）');
+  console.log('  [PASS] E120-08: 跨次点击幂等只读（直入 REVEALED；账本交易数不增）');
+});
+
 /* ═══════════ S6：链位自保与前端接线 ═══════════ */
 test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91→92 段；i18n 零新键）', () => {
   const pkg = JSON.parse(read('package.json'));
@@ -229,13 +327,22 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
   }
   const i18nGate = read('test/audit-i18n-keys.test.js');
   assert.ok(i18nGate.includes('assert.strictEqual(p.total, 123'), 'V448 全站键数基准 123 须保持（E120 零新键）');
-  // 前端接线三面：DEV 守卫路由 / 罗盘挂载 / Playground 战报行
+  // 前端接线四面：DEV 守卫路由 / 锦囊前置罗盘控制器 / Playground 战报行 /
+  //    E120-CHAIN 入口收拢（罗盘微章拔除，唯一锦囊入口 pouch-open）
   const app = read('web/src/App.tsx');
   assert.ok(app.includes("import.meta.env.DEV"), 'App.tsx 缺 import.meta.env.DEV 环境守卫');
   assert.ok(app.includes('/dev/amulet-preview'), 'App.tsx 缺 /dev/amulet-preview 开发路由');
   const homeCard = read('web/src/components/FamiliarHomeCard.tsx');
-  assert.ok(homeCard.includes('MoodCompassModal'), '首页灵宠视窗未挂载 MoodCompassModal');
-  assert.ok(homeCard.includes('mood-compass-open'), '缺罗盘入口微章（mood-compass-open）');
+  assert.ok(homeCard.includes('DailyPouchController'), '首页灵宠视窗未挂载 DailyPouchController（E120-CHAIN 前置罗盘）');
+  assert.ok(homeCard.includes('pouch-open'), '缺今日感应锦囊入口按钮（pouch-open）');
+  assert.ok(!homeCard.includes('mood-compass-open'), '首页残留独立罗盘微章（军令严禁并列情绪气泡）');
+  const controller = read('web/src/components/companion/DailyPouchController.tsx');
+  assert.ok(controller.includes('MoodCompassModal') && controller.includes('CombinedPouchModal'), '控制器缺罗盘/合璧笺双模态组件');
+  assert.ok(read('web/src/components/companion/CombinedPouchModal.tsx').length > 0, '合璧笺弹层组件缺失（E120-CHAIN 刀二）');
+  const typesChain = read('web/src/types/companionEmotion.ts');
+  assert.ok(typesChain.includes('DailyPouchStep') && typesChain.includes('CombinedDailyFortune'), 'CHAIN 契约类型缺失（刀一状态机/合璧笺契约）');
+  const pouchStore = read('web/src/lib/dailyPouchStore.mjs');
+  assert.ok(pouchStore.includes('ks_daily_fused_pouch'), '合璧档存储键前缀漂移（军令钦定 ks_daily_fused_pouch）');
   const playground = read('web/src/pages/dev/AmuletPlayground.tsx');
   assert.ok(playground.includes('[AmuletPlayground] 24/24 templates rendered successfully'), 'Playground 缺战报确认行');
   assert.ok(!/(import|require)[^;\n]{0,120}(napi-rs|node-canvas)/.test(playground), 'Playground 严禁引入 C++ 原生 Canvas 依赖（import/require 级检测）');
