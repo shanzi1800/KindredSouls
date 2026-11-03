@@ -305,13 +305,15 @@ test('E 真实端点五档（health / 领养 / 降级 / 非法模式 / 非法坐
   });
 
   try {
-    // 等启动（最多 25s）
+    // 等启动（最多 60s——E118 boot 漂移实锤：import('express') 装载 15~20s＋
+    // server.js 21k 行顶层执行 ⇒ ready 可漂至 24.7~30s+，全链并发环境更慢；
+    // 25s 旧窗在本轮 E121 全量并发下假红（升窗照 v490/v490b/smoke-boot/e30/e31 五处先例）
     let up = false;
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 120; i++) {
       try { const r = await fetch(`${base}/api/health`); if (r.ok) { up = true; break; } } catch (_) {}
       await new Promise((r) => setTimeout(r, 500));
     }
-    assert.ok(up, `server.js 未在 25s 内就绪；日志尾部: ${boot.slice(-400)}`);
+    assert.ok(up, `server.js 未在 60s 内就绪；日志尾部: ${boot.slice(-400)}`);
 
     // E1 health
     const h = await fetch(`${base}/api/health`);

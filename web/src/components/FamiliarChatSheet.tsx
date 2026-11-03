@@ -43,6 +43,12 @@ import { readReportTarotId, readRecentTarotId, readTrineKey, resolveHelloVars } 
 import { extractUserNameIntent, readUserNameProfile, writeUserNameProfile, prependUserName } from '../lib/userNameMemory.mjs';
 // @ts-ignore —— FAMILIAR_LS_KEY 与 FamiliarHomeCard 同源唯一键
 import { FAMILIAR_LS_KEY } from './FamiliarPicker';
+// 🏆 E121-SCRIBE-SLOT（主公军令 2026-11-03 · 任务 #701 销项）：破冰密函插槽
+//    消费端接线——detectScribeIntent（E120-刀四触发器）＋微缩插槽/大图预览弹层。
+// @ts-ignore —— companionScribeTrigger.mjs 纯 JS 逻辑核（形状由 E120/E121 闸门守备）
+import { detectScribeIntent } from '../lib/companionScribeTrigger.mjs';
+import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
+import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 
 export type FamiliarIp = 'Milo' | 'Sophia';
 
@@ -151,6 +157,11 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   const [streaming, setStreaming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
+  /* 🏆 E121-SCRIBE-SLOT 刀一/刀三：密函插槽状态——绑定本轮 assistant 消息 ID
+   * （单轮防刷：state 单槽驱动，滚动/重绘不追加；新问答回合覆盖旧槽）＋
+   * 大图预览弹层开关（null=关；四型之一=开）。 */
+  const [scribeSlot, setScribeSlot] = useState<{ aid: string; type: ScribeAmuletType } | null>(null);
+  const [amuletPreview, setAmuletPreview] = useState<ScribeAmuletType | null>(null);
 
   const flowRef = useRef<HTMLDivElement | null>(null);
   const bufRef = useRef('');
@@ -495,6 +506,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       stopThrottle();
       setStreaming(false);
       setMsgs((prev) => prev.filter((m) => m.text || m.role === 'user'));
+      /* 🏆 E121-SCRIBE-SLOT 刀一：流式收口（!streaming）后意图探测——本轮用户
+       * 文本 detectScribeIntent 命中（apology 优先于 longing）⇒ 激活微缩密函
+       * 插槽（绑定本轮 aid，紧随该条 assistant 气泡下方渲染）；未命中 ⇒ null
+       * （fail-closed 严禁无意图强推——寒暄一律普通气泡）。 */
+      const scribeIntent = detectScribeIntent(text);
+      setScribeSlot(scribeIntent ? { aid, type: (scribeIntent.type as ScribeAmuletType) } : null);
       const el = flowRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
@@ -573,6 +590,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
               )}
             </div>
           ))}
+          {/* 🏆 E121-SCRIBE-SLOT 刀一：密函微缩插槽——仅在本轮 assistant 回复
+              完整落地（流结束＋文本非空＋id 精确匹配）时渲染；fail-closed：
+              白名单外 type / 模板缺失 ⇒ AmuletScribeSlotCard 自身返 null。 */}
+          {scribeSlot && !streaming && (() => {
+            const last = msgs[msgs.length - 1];
+            if (!last || last.role !== 'assistant' || last.id !== scribeSlot.aid || !last.text) return null;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <AmuletScribeSlotCard type={scribeSlot.type} lang={lang} onOpen={setAmuletPreview} />
+              </div>
+            );
+          })()}
           {notice && <div className="ks-chat-notice">{notice}</div>}
         </div>
 
@@ -591,6 +620,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           onSend={send}
         />
       </div>
+      {/* 🏆 E121-SCRIBE-SLOT 刀二：全屏 1080×1748 Canvas 大图预览弹层
+          （fixed 层独立于抽屉舱——遮罩点击/关闭钮收起；保存走 a[download]；
+          宿主落款取 E118 用户名档案——有名字才渲染，无名字零破坏） */}
+      <AmuletPreviewModal
+        type={amuletPreview}
+        lang={lang}
+        hostName={profileNameRef.current || undefined}
+        onClose={() => setAmuletPreview(null)}
+      />
     </div>,
     document.body
   );
