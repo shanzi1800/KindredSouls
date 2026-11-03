@@ -15,7 +15,8 @@
  *    罗盘仅作为锦囊前置启动器在本控制器内呈现。
  * ═══════════════════════════════════════════════════════════════════════════
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MOOD_ATTRIBUTIONS } from '../../lib/companionMoodData.mjs';
 import { POUCH_UI, composeCombinedFortune, readFusedPouch, resolvePouchEntry, writeFusedPouch, POUCH_STEPS } from '../../lib/dailyPouchStore.mjs';
 import { fortuneDateKey } from '../../lib/dailyFortune.mjs';
@@ -51,8 +52,7 @@ const DailyPouchController: React.FC<DailyPouchControllerProps> = ({
      未打卡/坏档/跨日 ⇒ 唤罗盘（MOOD_SELECTING）；已打卡 ⇒ 直读合璧笺（REVEALED
      只读，跳过情绪选择，不唤罗盘，零入账零交易）。 */
   useEffect(() => {
-    if (!open) { setStep(POUCH_STEPS.IDLE as DailyPouchStep); return; }
-    const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+    if (!open) { setStep(POUCH_STEPS.IDLE as DailyPouchStep); return; }    const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
     const dateKey = fortuneDateKey(new Date());
     const existing = readFusedPouch(store, chartSig, dateKey);
     setCombined(existing);
@@ -85,12 +85,30 @@ const DailyPouchController: React.FC<DailyPouchControllerProps> = ({
     setStep(POUCH_STEPS.REVEALED as DailyPouchStep); // 罗盘收拢 ⇒ 无缝过渡锦囊展开态
   }, [lang, sunSign, chartSig, onClaimStarlight]);
 
-  if (!open) return null;
+  /* 🏆 E122-刀三（主公军令 2026-11-03）：全局入袋 Toast 宿主——收入星语袋
+   * 完成后由合璧笺弹窗回调触发，屏幕顶部暗金横幅停留 2.5s（军令钦定）；
+   * Toast 生命周期归本控制器（弹窗本体淡出卸载后 Toast 仍须存活）。 */
+  const [toastOn, setToastOn] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  const handleStowed = useCallback(() => {
+    setToastOn(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastOn(false), 2500);
+  }, []);
 
-  return (
+  if (!open && !toastOn) return null;
+
+  /* 🏆 E122-刀一（主公军令 2026-11-03）：弹窗 portal 至 document.body——
+   * 病根实锤：本控制器宿主链 .ks-pet-card（position:relative;z-index:2）形成
+   * 独立层叠上下文，罗盘/合璧笺弹窗（z-index:9600）被困笼中，而首页 h1.title
+   * （z-index:5）同域更高 ⇒「缘分天定」金字穿透骑上弹窗。经 body portal 逃逸
+   * 后 z-9600 于根层叠域全局生效（军令 z-[100]/z-[101] 语义之等价履行——
+   * 全局遮罩须压过一切页面内容 z-0~z-10 基底层）。 */
+  return createPortal(
     <>
       {/* 第一阶段：以心启符（未打卡 ⇒ 拦截唤罗盘——结果层不得先渲染） */}
-      {step === POUCH_STEPS.MOOD_SELECTING && (
+      {open && step === POUCH_STEPS.MOOD_SELECTING && (
         <MoodCompassModal
           open={open}
           onClose={onClose}
@@ -100,16 +118,42 @@ const DailyPouchController: React.FC<DailyPouchControllerProps> = ({
         />
       )}
       {/* 第二阶段：锦囊开封（合璧揭示/只读复看——罗盘收拢后呈现） */}
-      {step === POUCH_STEPS.REVEALED && (
+      {open && step === POUCH_STEPS.REVEALED && (
         <CombinedPouchModal
           open={open}
           pouch={combined}
           lang={lang}
           onClose={onClose}
           justClaimed={justClaimed}
+          onStowed={handleStowed}
         />
       )}
-    </>
+      {/* 🏆 E122-刀三：全局暗金 Toast（屏幕顶部居中，2.5s 自动消散——军令钦定） */}
+      {toastOn && (
+        <div
+          data-testid="pouch-stow-toast"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+            zIndex: 9800,
+          }}
+        >
+          <div
+            style={{
+              marginTop: 14, padding: '9px 18px', borderRadius: 999,
+              background: 'rgba(19,16,10,0.94)', border: '1px solid #D4AF37',
+              color: '#F5E1A4', fontSize: 12.5, letterSpacing: 1,
+              fontFamily: '"Noto Serif SC","Songti SC",Georgia,serif',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.55), 0 0 18px rgba(212,175,55,0.18)',
+              overflowWrap: 'anywhere', maxWidth: 'calc(100vw - 32px)', textAlign: 'center',
+            }}
+          >
+            {ui.toast}
+          </div>
+        </div>
+      )}
+    </>,
+    typeof document !== 'undefined' ? document.body : null as unknown as HTMLElement,
   );
 };
 

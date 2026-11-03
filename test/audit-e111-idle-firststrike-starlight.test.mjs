@@ -135,7 +135,9 @@ test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复�
   const s = read('server.js');
   const promptFn = s.slice(s.indexOf('function buildFamiliarChatSystemPrompt'));
   const body = promptFn.slice(0, 6000);
-  assert.ok(/'8\. 开场与破冰优先结合主人最近解锁的报告或合盘情境/.test(body), '缺输出铁律第 8 条（E112 后继：报告情境破冰）');
+  // 🏆 E122-刀四锚点同步：词面「合盘情境」→「姻缘情境」（合盘禁词绝对查杀——
+  // 严禁模型随 prompt 内文复读禁词；断言语义不变：报告情境破冰优先）
+  assert.ok(/'8\. 开场与破冰优先结合主人最近解锁的报告或(合盘|姻缘)情境/.test(body), '缺输出铁律第 8 条（E112 后继：报告情境破冰）');
   assert.ok(body.includes('严禁主动复读幸运数字、幸运色或贵人方位'), '缺禁复读硬约束');
   assert.ok(body.includes('主人主动问运势时才回答'), '缺「问才答」边界');
   // E111 交付后 prompt 六层结构仍在（人设锁/身份/本命/运势/塔罗/三合）

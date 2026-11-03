@@ -125,7 +125,9 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
       style={{
         position: 'fixed', inset: 0, zIndex: 9600,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(4,4,8,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        /* 🏆 E122-刀一（军令 2026-11-03）：遮罩加深 0.55→0.72＋blur 8px
+           （bg-black/70 backdrop-blur-md 语义）——配合 body portal 绝断穿透 */
+        background: 'rgba(4,4,8,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
       }}
     >
       {/* 星尘飘字动画（组件自容 keyframes——零 App.css 改动） */}

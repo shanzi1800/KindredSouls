@@ -30,6 +30,10 @@ export interface PouchUiDict {
   starNote: string;
   starDone: string;
   close: string;
+  /** 🏆 E122-刀二（军令 2026-11-03）：入袋三态＋全局 Toast 新键（自容字典零 i18n） */
+  stowDone: string;
+  stowDisabled: string;
+  toast: string;
 }
 export interface ComposePouchOptions {
   mood: string;
