@@ -496,6 +496,11 @@ test('E123-12 体验四刀（置灰对比度/实体卡下载/✕关闭/情绪记
 
   /* ══ 刀二：Canvas 实体卡本地静默下载（社交裂变物料落盘）══ */
   assert.ok(pouchModal.includes('downloadStarWhisperCard(pouch, lang)'), '入袋须并行触发实体卡下载（fire-and-forget）');
+  // 🏆 E123-刀二补刀：PNG 编码须走 toBlob 异步通道（toDataURL 同步编码阻塞
+  // 主线程 5s+⇒三态时序整体推迟——实弹诊断实锤）
+  const swExport = read('web/src/lib/starWhisperCardExport.mjs');
+  assert.ok(swExport.includes('canvas.toBlob(resolve'), 'PNG 编码须 toBlob 异步通道（主线程零阻塞）');
+  assert.ok(!swExport.includes('toDataURL'), '严禁 toDataURL 同步编码回潮（主线程阻塞病灶）');
   assert.equal(SWE.STAR_WHISPER_FILENAME_PREFIX, 'KindredSouls-星语灵犀-', '文件名前缀军令钦定');
   assert.equal(SWE.starWhisperFileName('20261104'), 'KindredSouls-星语灵犀-20261104.png', '文件名格式军令钦定（YYYYMMDD）');
   const tplOk = SWE.buildStarWhisperTemplate({

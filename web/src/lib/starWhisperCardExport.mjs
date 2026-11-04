@@ -92,6 +92,11 @@ export function starWhisperFileName(dateKey) {
 
 /**
  * 实体卡渲染＋端侧静默下载（浏览器端——fire-and-forget，不阻断三态时序）
+ * 🏆 E123-刀二补刀（2026-11-04 实弹诊断）：PNG 编码改走 canvas.toBlob 异步
+ * 通道（Chrome 后台线程编码）——旧同步 dataURL 编码在软件渲染环境实测
+ * 阻塞主线程 5s+，三态微交互时序（400ms 淡出/700ms 收口/Toast 2.5s）被
+ * 整体推迟。toBlob 后 blob 直建 File（免 dataURL 中转 fetch），a[download]
+ * 走 objectURL＋延迟 revoke。
  * @param {object|null} pouch 合璧笺真值
  * @param {string} lang 六语之一
  * @returns {Promise<boolean>} 是否成功触发下载/分享（fail-soft：渲染失败 false）
@@ -105,25 +110,32 @@ export async function downloadStarWhisperCard(pouch, lang) {
     const mood = String(pouch.mood || '');
     const type = STAR_WHISPER_CARD_TYPE[mood];
     await renderAmuletToCanvas(canvas, tpl, lang, type ? { type } : {});
-    const url = canvas.toDataURL('image/png');
-    if (!url.startsWith('data:image/png')) return false;
+    // 🔴 toBlob 异步编码（编码移出主线程——三态时序零阻塞铁律）
+    const blob = await new Promise((resolve) => {
+      try { canvas.toBlob(resolve, 'image/png'); } catch { resolve(null); }
+    });
+    if (!blob || blob.type !== 'image/png') return false;
     const fileName = starWhisperFileName(pouch.date);
     // 移动端优先 Web Share API（系统原生分享面板——军令降级链）
     try {
-      const blob = await (await fetch(url)).blob();
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: tpl.title });
         return true;
       }
     } catch { /* share 失败/取消 ⇒ 回退 a[download] */ }
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const url = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setTimeout(() => { try { URL.revokeObjectURL(url); } catch { /* noop */ } }, 30000);
+    }
     return true;
   } catch { return false; } // 渲染异常 ⇒ fail-soft（不阻断入袋收口）
 }
