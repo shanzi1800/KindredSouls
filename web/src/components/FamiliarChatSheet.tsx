@@ -47,6 +47,10 @@ import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 //    消费端接线——detectScribeIntent（E120-刀四触发器）＋微缩插槽/大图预览弹层。
 // @ts-ignore —— companionScribeTrigger.mjs 纯 JS 逻辑核（形状由 E120/E121 闸门守备）
 import { detectScribeIntent } from '../lib/companionScribeTrigger.mjs';
+// 🏆 E123-刀四（主公军令 2026-11-04）：罗盘情绪记忆贯通——ks_active_mood
+//    读取（当日＋2h 时效）＋5 情绪×6 语第一人称共情首句字典（零 i18n 新键）。
+// @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
+import { readActiveMood, moodGreetingLine } from '../lib/companionMoodGreetings.mjs';
 import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
 import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 
@@ -55,9 +59,11 @@ export type FamiliarIp = 'Milo' | 'Sophia';
 /** 🏆 E112-刀二：开场首语九分支——六档报告第一击（love/wealth × core/monthly/
  *  annual）＋E111 情境三分支（sweet/soothe/plain）；
  *  🏆 E113-刀四：新增 daily 分支——跨自然日无当日新解锁 ⇒ 流转今日幸运锦囊
- *  问候（{{color}}/{{num}} 插值真值来自 dailyFortune 确定性核）。 */
+ *  问候（{{color}}/{{num}} 插值真值来自 dailyFortune 确定性核）。
+ *  🏆 E123-刀四：新增 mood 分支——罗盘情绪记忆（ks_active_mood 当日＋2h
+ *  时效命中）⇒ 5 情绪×6 语第一人称共情抚慰首句（军令钦定句式逐字）。 */
 type HelloMode =
-  | 'sweet' | 'soothe' | 'plain' | 'daily'
+  | 'sweet' | 'soothe' | 'plain' | 'daily' | 'mood'
   | 'love_core' | 'love_monthly' | 'love_yearly'
   | 'wealth_core' | 'wealth_monthly' | 'wealth_yearly';
 
@@ -191,6 +197,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
   const sessionSigRef = useRef('anon');
   const sessionDateRef = useRef('');
+  /* 🏆 E123-刀四：罗盘情绪记忆锚（open 时读一次；mood 分支首语查表真源——
+   *  舱开着切语言重渲染 effect 按 helloMode==='mood' 用当前 lang 重查字典） */
+  const activeMoodRef = useRef<string | null>(null);
   /* 🏆 E118-刀二：用户姓名档案锚（open 时读永久档一次；跨日首语带名真源——
    *  档案 ks_familiar_profile_${chartSig} 永不过期，与当日 24:00 过期的会话档解耦） */
   const profileNameRef = useRef('');
@@ -202,6 +211,17 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     //  走报告真值查表（tarotNames.mjs 单源），无真值 ⇒ 中性词（fail-closed，
     //  绝不臆造具体牌名——《恋人》写死病根物理拔除）
     const vars = () => resolveHelloVars(lang, helloTruthRef.current);
+    if (mode === 'mood') {
+      // 🏆 E123-刀四（军令 2026-11-04）：罗盘情绪记忆第一击——5 情绪×6 语
+      //  第一人称共情抚慰句（COMPANION_MOOD_GREETINGS 军令钦定句式逐字；
+      //  坏 key/坏 lang ⇒ moodGreetingLine null ⇒ 递归回落 plain 中性陪伴句
+      //  fail-closed，绝不臆造情绪）
+      const line = activeMoodRef.current
+        ? moodGreetingLine(activeMoodRef.current, lang)
+        : null;
+      if (line) return line;
+      return helloFor('plain');
+    }
     if (mode === 'love_core') return t('familiar.helloLoveCore', vars());
     if (mode === 'love_monthly') return t('familiar.helloLoveMonthly');
     if (mode === 'love_yearly') return t('familiar.helloLoveYearly');
@@ -263,8 +283,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         return;
       }
       let mode: HelloMode = greetingMode || 'plain';
+      // 🏆 E123-刀四（军令 2026-11-04）：罗盘情绪记忆首语拦截——当日有效
+      //  ks_active_mood（≤2h）命中 ⇒ 强制替换默认冷淡招呼为对应情绪的
+      //  第一人称共情抚慰句（军令验收：默认句「在的，今天有什么可以聊的」
+      //  命中率 0）。优先级：当日新解锁报告第一击（E112）＞罗盘情绪（E123）
+      //  ＞跨日锦囊问候（E113）＞E111 情境链。当日档复原分支已在上方 return。
+      let e123Mood: string | null = null;
+      try { e123Mood = readActiveMood(sessionStorage); } catch { e123Mood = null; }
+      activeMoodRef.current = e123Mood;
       if (rr && freshReport) {
         mode = `${rr.category}_${rr.tier}` as HelloMode; // 当日新解锁 ⇒ 报告第一击（军令刀四）
+      } else if (e123Mood) {
+        mode = 'mood'; // 罗盘情绪在场 ⇒ 情绪共情第一击（E123 军令刀四）
       } else {
         const lastDay = readLastChatDay(store);
         if (lastDay && lastDay < today) {
@@ -410,10 +440,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         }
         displayName = (readUserNameProfile(ls, sessionSigRef.current) || null)?.displayName || undefined;
       } catch { /* 隐私模式 ⇒ 无名上行（服务端回退无 IDENTITY 块） */ }
+      // 🏆 E123-刀四：罗盘情绪上下文随行（2h 时效内每轮上行——服务端
+      //  _e123ActiveMood 形状守卫后注入 prompt【User Emotional Context】块，
+      //  多轮回复持续扣紧该情绪底色绝不跳戏；失效/无档 ⇒ 不传）
+      let activeMood: string | undefined;
+      try {
+        const m = readActiveMood(sessionStorage);
+        if (m) activeMood = m;
+      } catch { /* 无痕 ⇒ 不传（服务端回退无情绪块） */ }
       const body = {
         lang,
         relationMode,
         name,
+        // 🏆 E123-刀四：罗盘情绪真值随行（服务端白名单 fail-closed）
+        activeMood,
         // 🏆 E118-刀二：永久姓名档案随行（服务端查形状 fail-closed 后进 prompt）
         displayName,
         // 🏆 E112-刀二：最近解锁报告凭证随行（服务端查形状 fail-closed）

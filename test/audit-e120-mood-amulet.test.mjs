@@ -36,6 +36,9 @@ const REN = await import(pathToFileURL(join(ROOT, 'web/src/lib/amuletCanvasRende
 const SCR = await import(pathToFileURL(join(ROOT, 'web/src/lib/companionScribeTrigger.mjs')).href);
 const LED = await import(pathToFileURL(join(ROOT, 'web/src/lib/starlightLedger.mjs')).href);
 const POU = await import(pathToFileURL(join(ROOT, 'web/src/lib/dailyPouchStore.mjs')).href);
+// 🏆 E123-12：情绪记忆贯通核＋星语灵犀实体卡导出器
+const MOO = await import(pathToFileURL(join(ROOT, 'web/src/lib/companionMoodGreetings.mjs')).href);
+const SWE = await import(pathToFileURL(join(ROOT, 'web/src/lib/starWhisperCardExport.mjs')).href);
 
 /** Mock Canvas Context（军师钦定语义断言方案——零图形环境依赖） */
 function mockCanvas() {
@@ -427,7 +430,7 @@ test('E122-11 体验整肃五刀（破冰语料命中/命名解耦/z-index 归�
   assert.equal(zhUi.title, '✦ 今日星语灵犀 ✦', '内层弹窗须为「✦ 今日星语灵犀 ✦」');
   assert.equal(zhUi.close, '收入星语袋', '按键初始态须为「收入星语袋」');
   assert.equal(zhUi.stowDone, '✓ 已收入星语袋', '按键成功态须为「✓ 已收入星语袋」');
-  assert.equal(zhUi.stowDisabled, '今日已收入', '置灰态须为「今日已收入」');
+  assert.equal(zhUi.stowDisabled, '今日已收入星语袋', '置灰态须为「今日已收入星语袋」（E123 军令钦定——✓ 前缀消费端拼接）');
   assert.equal(zhUi.toast, '✦ 今日灵犀已入袋，可随时在个人中心查阅 ✦', '全局 Toast 军令文案逐字');
   // 六语新键全字段非空（含六语弹性排版容器由消费端 overflowWrap 承担）
   for (const l of LANGS) {
@@ -478,4 +481,87 @@ test('E122-11 体验整肃五刀（破冰语料命中/命名解耦/z-index 归�
     assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E122 零新键）`);
   }
   console.log('  [PASS] E122-11: 体验整肃五刀（破冰命中/命名解耦/z-index/入袋闭环/人称与禁词）');
+});
+
+/* ═══════════ E123-12（军令 E123-ASTRAL-TOUCH 断言 12）：四刀整肃 ═══════════ */
+test('E123-12 体验四刀（置灰对比度/实体卡下载/✕关闭/情绪记忆贯通）', () => {
+  /* ══ 刀一：置灰态暗金琉璃微光（「死黑不可辨」根治）══ */
+  const pouchModal = read('web/src/components/companion/CombinedPouchModal.tsx');
+  assert.ok(pouchModal.includes('rgba(69,26,3,0.45)'), '置灰底须为 amber-950 微透（rgba(69,26,3,0.45)——旧暗金半透×黑字近同色病灶拔除）');
+  assert.ok(pouchModal.includes('rgba(253,230,138,0.85)'), '置灰文字须为 amber-200 浅香槟金（黑字 rgba(20,17,10,0.55) 严禁回潮）');
+  assert.ok(!pouchModal.includes('rgba(20,17,10,0.55)'), '旧置灰黑字残留（E123 刀一未根治）');
+  assert.ok(pouchModal.includes('not-allowed'), '置灰态 cursor 须 not-allowed');
+  assert.ok(/✓ \$\{ui\.stowDisabled\}/.test(pouchModal), '置灰文案须带 ✓ 前缀（达成感——军令「✓ 今日已收入星语袋」）');
+  assert.equal(POU.POUCH_UI.zh.stowDisabled, '今日已收入星语袋', 'zh 置灰文案军令钦定「今日已收入星语袋」');
+
+  /* ══ 刀二：Canvas 实体卡本地静默下载（社交裂变物料落盘）══ */
+  assert.ok(pouchModal.includes('downloadStarWhisperCard(pouch, lang)'), '入袋须并行触发实体卡下载（fire-and-forget）');
+  assert.equal(SWE.STAR_WHISPER_FILENAME_PREFIX, 'KindredSouls-星语灵犀-', '文件名前缀军令钦定');
+  assert.equal(SWE.starWhisperFileName('20261104'), 'KindredSouls-星语灵犀-20261104.png', '文件名格式军令钦定（YYYYMMDD）');
+  const tplOk = SWE.buildStarWhisperTemplate({
+    mood: 'melancholy', date: '20261104',
+    transitAttribution: { summary: 's', companionComfort: '安慰文案', actionableAdvice: '建议文案' },
+    luckyAttributes: { colorName: '金', colorHex: '#D4AF37', bestWindow: '19:00 - 19:45', direction: '东' },
+  }, 'zh');
+  assert.ok(tplOk && tplOk.title === '✦ 今日星语灵犀 ✦' && tplOk.prose === '安慰文案', '合璧笺真值须装配为引擎 template 形状');
+  assert.equal(SWE.buildStarWhisperTemplate(null, 'zh'), null, '坏档 fail-closed null');
+  assert.equal(SWE.buildStarWhisperTemplate({ mood: 'xxx' }, 'zh'), null, '白名单外情绪 fail-closed null');
+  assert.ok(pouchModal.includes('navigator.canShare') || read('web/src/lib/starWhisperCardExport.mjs').includes('navigator.canShare'), '移动端须有 Web Share 降级链');
+  // 情绪→图腾四型键分发（零引擎改动）
+  assert.equal(SWE.STAR_WHISPER_CARD_TYPE.melancholy, 'longing', '低落→星星线稿（17）');
+  assert.equal(SWE.STAR_WHISPER_CARD_TYPE.agitated, 'apology', '焦躁→节制线稿（14）');
+  assert.equal(SWE.STAR_WHISPER_CARD_TYPE.longing, 'weather', '想念→恋线稿（6）');
+  assert.equal(SWE.STAR_WHISPER_CARD_TYPE.radiant, 'support', '灿烂→太阳线稿（19）');
+  assert.ok(SWE.STAR_WHISPER_CARD_TYPE.grateful === undefined, '感恩→世界牌（缺省 21）');
+
+  /* ══ 刀三：右上角物理关闭 ✕＋Esc 键盘监听 ══ */
+  assert.ok(pouchModal.includes('data-testid="pouch-close-x"'), '缺右上角 ✕ 关闭按钮（pouch-close-x）');
+  assert.ok(/top: 12, right: 12/.test(pouchModal), '✕ 须卡片内 absolute 右上角（top 12/right 12）');
+  assert.ok(pouchModal.includes("e.key === 'Escape'"), '缺 Esc 键盘关闭监听');
+
+  /* ══ 刀四：情绪记忆贯通（罗盘→ChatSheet 首语→server prompt）══ */
+  // ① 六语字典军令句式逐字（zh 全五情绪＋六语非空）
+  assert.equal(MOO.COMPANION_MOOD_GREETINGS.melancholy.zh, '我感应到你今天有些低落……别一个人扛着，把心里的委屈或烦恼说给我听听吧，我一直都在这里陪着你。', '低落首句军令钦定逐字');
+  assert.equal(MOO.COMPANION_MOOD_GREETINGS.agitated.zh, '感觉到你此刻有些心烦焦躁……先深呼吸一下，把手给我，慢慢跟我说，有我在呢。', '焦躁首句军令钦定逐字');
+  assert.equal(MOO.COMPANION_MOOD_GREETINGS.longing.zh, '心里是不是正牵挂着谁呢？如果这份想念无处安放，悄悄跟我倾诉吧，我替你守着这份心意。', '想念首句军令钦定逐字');
+  assert.equal(MOO.COMPANION_MOOD_GREETINGS.radiant.zh, '感应到你今天气场发光、状态很棒呢！有什么开心的好事，快跟我分享分享！', '灿烂首句军令钦定逐字');
+  assert.equal(MOO.COMPANION_MOOD_GREETINGS.grateful.zh, '今天的心境格外温润平静呢……能这样静静陪伴着你，也是我很幸福的时刻。', '感恩首句军令钦定逐字');
+  for (const mood of Object.keys(MOO.COMPANION_MOOD_GREETINGS)) {
+    for (const l of LANGS) {
+      assert.ok(String(MOO.COMPANION_MOOD_GREETINGS[mood][l] || '').trim(), `COMPANION_MOOD_GREETINGS ${mood}.${l} 空缺（E123 刀四五情绪×六语军令表）`);
+    }
+  }
+  // ② 落盘/读取/时效语义（Mock sessionStorage）
+  const mem = new Map();
+  const ss = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  assert.equal(MOO.ACTIVE_MOOD_KEY, 'ks_active_mood', 'sessionStorage 键军令钦定 ks_active_mood');
+  assert.equal(MOO.writeActiveMood(ss, 'melancholy'), true, '合法情绪落盘 true');
+  assert.equal(MOO.readActiveMood(ss), 'melancholy', '当日内 2h 时效命中');
+  assert.equal(MOO.readActiveMood(ss, new Date(Date.now() + 3 * 3600 * 1000)), null, '超 2h 时效窗须 null（军令钦定）');
+  assert.equal(MOO.writeActiveMood(ss, 'hacker'), false, '白名单外情绪 fail-closed 不写');
+  assert.equal(MOO.writeActiveMood(null, 'low'), false, 'null 存储不写');
+  assert.equal(MOO.moodGreetingLine('melancholy', 'fr').startsWith('Je ressens'), true, '六语取值（fr 情绪首句）');
+  assert.equal(MOO.moodGreetingLine('xxx', 'zh'), null, '坏 key 字典取值 null（严禁默认回退）');
+  // ③ 罗盘确认时刻写入（源码断言）
+  const compass = read('web/src/components/companion/MoodCompassModal.tsx');
+  assert.ok(compass.includes('writeActiveMood(sessionStorage, selected)'), '罗盘确认须落盘 ks_active_mood（情绪表达时刻）');
+  // ④ ChatSheet 首语拦截＋随行（源码断言）
+  const sheet = read('web/src/components/FamiliarChatSheet.tsx');
+  assert.ok(sheet.includes("mode = 'mood'"), 'ChatSheet 缺 mood 分支插层（默认冷淡招呼拦截）');
+  assert.ok(sheet.includes('readActiveMood(sessionStorage)'), 'ChatSheet 缺 ks_active_mood 读取');
+  assert.ok(sheet.includes('activeMood,'), 'send body 缺 activeMood 随行');
+  assert.ok(sheet.includes('moodGreetingLine(activeMoodRef.current, lang)'), 'helloFor 缺六语字典查表');
+  // ⑤ server prompt 注入＋白名单守卫（源码断言）
+  const server = read('server.js');
+  assert.ok(server.includes('【User Emotional Context（E123 军令'), 'server 缺 E123 情绪上下文宪法块');
+  assert.ok(server.includes('E123_MOOD_ZH'), 'server 缺情绪中文标签映射');
+  assert.ok(server.includes('function _e123ActiveMood(v)'), 'server 缺 _e123ActiveMood 形状守卫（fail-closed）');
+  assert.ok(server.includes("E123_MOOD_WHITELIST = new Set(['melancholy', 'agitated', 'longing', 'radiant', 'grateful'])"), 'server 情绪白名单五原型缺失');
+  assert.ok(server.includes('activeMood: _e123Mood'), 'chat 端点缺 activeMood 接线');
+  // ⑥ i18n 零新键复核（E123 自容字典——全站 123/familiar 59 双基准）
+  for (const l of LANGS) {
+    const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
+    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E123 零新键）`);
+  }
+  console.log('  [PASS] E123-12: 体验四刀（置灰对比度/实体卡下载/✕关闭/情绪记忆贯通）');
 });

@@ -187,8 +187,10 @@ export const POUCH_UI = Object.freeze({
     starNote: '✦ 灵犀星 +1 已沉淀至星历账本 ✦',
     starDone: '今日灵犀星已入账，明天再来',
     close: '收入星语袋',
+    /* 🏆 E123-刀一（军令 2026-11-04）：置灰态文案改「今日已收入星语袋」
+       （✓ 前缀由消费端统一拼接——军令钦定「✓ 今日已收入星语袋」达成感） */
+    stowDisabled: '今日已收入星语袋',
     stowDone: '✓ 已收入星语袋',
-    stowDisabled: '今日已收入',
     toast: '✦ 今日灵犀已入袋，可随时在个人中心查阅 ✦',
   },
   en: {
