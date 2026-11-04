@@ -20332,7 +20332,7 @@ async function _e107ChatTruthExtras(birthDate) {
  *    种属降格（主公实机验收实锤「带上你的粉色小猫」违规台词）；违禁词拦截
  *    （小猫/小狗/猫咪/狗狗/灵猫/灵犬/宠物一律禁自称）。
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20404,9 +20404,25 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '',
   ] : [];
 
+  // 🏆 E123-刀四（主公军令 2026-11-04）：罗盘情绪记忆上下文块——E115 代词
+  //  红线/IDENTITY 块同优先级下方、报告第五层上方。用户刚在星象罗盘表达的
+  //  情绪真值（白名单五原型经 _e123ActiveMood 形状守卫）；无/失效 ⇒ 块整体
+  //  不注入（回退今日现行为，零破坏）。
+  const E123_MOOD_ZH = {
+    melancholy: '低落', agitated: '焦躁', longing: '想念', radiant: '灿烂', grateful: '感恩',
+  };
+  const moodBlock = activeMood ? [
+    `【User Emotional Context（E123 军令，违反即失败）】`,
+    `- 主人刚刚在星象罗盘表达了【${E123_MOOD_ZH[activeMood] || activeMood}】情绪。全程回复紧扣该情绪底色，绝不跳戏、绝不当没看见。`,
+    `- 保持第一人称共情陪伴口吻回应主人此刻的心境（低落⇒承接抚慰不评判；焦躁⇒先稳后谈；想念⇒温柔守护这份心意；灿烂⇒同频分享喜悦；感恩⇒静静温润相伴）。`,
+    '- 严禁机械复读情绪标签本身；也严禁主动提及「罗盘」「测评」等界面词汇——像一直陪伴在侧、自然感应到的那样开口。',
+    '',
+  ] : [];
+
   return [
     ...pronounBlock,
     ...identityBlock,
+    ...moodBlock,
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -20493,6 +20509,17 @@ function _e118DisplayName(v) {
   if (E118_NAME_BLACKLIST.has(s.toLowerCase())) return null;
   if (/^\d+$/.test(s)) return null; // 纯数字（年龄冒充名字）熔断
   return s;
+}
+
+/** 🏆 E123-刀四（主公军令 2026-11-04）：客户端随行「罗盘情绪」凭证形状守卫
+ *  （fail-closed——白名单五原型唯一，坏形状一律 null ⇒ prompt 不注入
+ *  【User Emotional Context】块（回退今日现行为）。仿 _e112RecentReport
+ *  形制：客户端情绪档可被伪造 body，服务端守卫是唯一可信闸门）。 */
+const E123_MOOD_WHITELIST = new Set(['melancholy', 'agitated', 'longing', 'radiant', 'grateful']);
+function _e123ActiveMood(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  return E123_MOOD_WHITELIST.has(s) ? s : null;
 }
 
 /** 🏆 E118-刀二（主公军令 2026-11-02）：登录态云端双写——合法姓名 ⇒ user_profiles
@@ -20890,6 +20917,10 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    （fail-closed——黑名单二次拦截＋控制字符/纯数字熔断）⇒ prompt IDENTITY
   //    PERMANENCE 块唯一真值；坏形状 ⇒ null ⇒ 块不注入（回退今日现行为）。
   const _e118Name = _e118DisplayName(body.displayName);
+  // 🆕 E123-刀四（主公军令 2026-11-04）：客户端随行「罗盘情绪」查形状
+  //  （fail-closed——白名单五原型）⇒ prompt【User Emotional Context】块
+  //  唯一真值；坏形状 ⇒ null ⇒ 块不注入（回退今日现行为）。
+  const _e123Mood = _e123ActiveMood(body.activeMood);
   // 🏆 E115-FINAL-刀二（主公军令 2026-11-02 午后）：三阶层级解析性别上下文——
   //    第一阶显式 overrides（body.overrides，同性/跨性别预留接口）＞第二阶乾坤造
   //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
@@ -20901,6 +20932,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     recentReport: _e112Report,
     genderCtx: g115,
     displayName: _e118Name,
+    activeMood: _e123Mood,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）

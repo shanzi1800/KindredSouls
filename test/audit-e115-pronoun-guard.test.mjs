@@ -375,7 +375,7 @@ test('E115 S11 FINAL-刀二三阶接线：genderCtx 贯通 prompt 红线与输�
     server.indexOf('function buildFamiliarChatSystemPrompt'),
     server.indexOf('\n}\n', server.indexOf('function buildFamiliarChatSystemPrompt'))
   );
-  assert.ok(fn.includes('recentReport, genderCtx, displayName }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName）');
+  assert.ok(fn.includes('recentReport, genderCtx, displayName, activeMood }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName；🏆 E123 后继化：+activeMood）');
   assert.ok(fn.includes('const g115 = genderCtx || _e115ResolveGenderContext(mode)'), '构造器须 genderCtx 优先、第三阶兜底');
   // ② 红线块含违禁词显令（六语 forbidden 注入）
   const p = build('girlfriend', 'zh');

@@ -134,7 +134,9 @@ test('E111 S5 刀二引擎：Context First-Strike 判定真值（恋人牌/三�
 test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复读幸运数字/颜色（主人问才答；E112 后继：报告情境优先）', () => {
   const s = read('server.js');
   const promptFn = s.slice(s.indexOf('function buildFamiliarChatSystemPrompt'));
-  const body = promptFn.slice(0, 6000);
+  // 🏆 E123-刀四窗同步：prompt 前部插入情绪上下文块（E123_MOOD_ZH+moodBlock
+  // ≈+800 字）⇒ 截窗 6000→8000 防铁律第 8 条被推出窗外（断言语义不变）
+  const body = promptFn.slice(0, 8000);
   // 🏆 E122-刀四锚点同步：词面「合盘情境」→「姻缘情境」（合盘禁词绝对查杀——
   // 严禁模型随 prompt 内文复读禁词；断言语义不变：报告情境破冰优先）
   assert.ok(/'8\. 开场与破冰优先结合主人最近解锁的报告或(合盘|姻缘)情境/.test(body), '缺输出铁律第 8 条（E112 后继：报告情境破冰）');

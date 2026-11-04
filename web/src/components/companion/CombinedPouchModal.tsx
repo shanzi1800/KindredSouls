@@ -17,12 +17,23 @@
  *     点击 ⇒ Loading/成功态「✓ 已收入星语袋」＋300ms 金色 shimmer 扫掠 ⇒
  *     400ms 后平滑淡出 ⇒ 全局暗金 Toast 2.5s（onStowed 上抛宿主渲染）；
  *     当日复看（justClaimed=false）⇒ 按钮置灰禁用「今日已收入」。
+ *
+ * 🏆 E123-ASTRAL-TOUCH 刀一/二/三（主公军令 2026-11-04）：
+ *   · 刀一：置灰态暗金琉璃微光——amber-950 微透底＋amber-500 金丝细边＋
+ *     amber-200 浅香槟金文字（主公实锤「死黑不可辨」根治；✓ 前缀达成感）。
+ *   · 刀二：入袋并行触发 Canvas 实体卡静默下载（starWhisperCardExport——
+ *     1080×1748 高清 PNG，KindredSouls-星语灵犀-YYYYMMDD.png 落本地）。
+ *   · 刀三：右上角物理关闭 ✕（absolute 常驻＋Esc 键盘监听——PC 鼠标
+ *     点击遮罩外才能关的交互病根治）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { MOOD_ARCHETYPES } from '../../lib/companionMoodData.mjs';
 import { POUCH_UI } from '../../lib/dailyPouchStore.mjs';
 import type { FusedPouchRecord } from '../../lib/dailyPouchStore.mjs';
+// 🏆 E123-刀二：星语灵犀实体卡导出器（复用 E120 密函渲染引擎）
+// @ts-ignore —— starWhisperCardExport.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
+import { downloadStarWhisperCard } from '../../lib/starWhisperCardExport.mjs';
 
 type Lang = 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
 
@@ -45,6 +56,14 @@ const CombinedPouchModal: React.FC<CombinedPouchModalProps> = ({ open, pouch, la
   useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
   useEffect(() => { if (!open) { setStowed(false); setFading(false); } }, [open]);
 
+  /* 🏆 E123-刀三：Esc 键盘关闭监听（物理关闭锚点之二——与右上角 ✕ 等价） */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open || !pouch) return null;
   const ui = POUCH_UI[lang] || POUCH_UI.en;
   const moodRow = (MOOD_ARCHETYPES as readonly { archetype: string; icon: string; label: Record<string, string> }[])
@@ -52,10 +71,15 @@ const CombinedPouchModal: React.FC<CombinedPouchModalProps> = ({ open, pouch, la
   /** 当日已入账（只读复看）⇒ 置灰禁用；首次揭示 ⇒ 三态微交互 */
   const alreadyStowedToday = !justClaimed;
 
-  /** 军令刀三时序：点击 ⇒ ✓＋300ms shimmer ⇒ 400ms 后淡出 ⇒ onClose＋Toast */
+  /** 军令刀三时序：点击 ⇒ ✓＋300ms shimmer ⇒ 400ms 后淡出 ⇒ onClose＋Toast
+   *  🏆 E123-刀二：并行触发 Canvas 实体卡静默下载（fire-and-forget——
+   *  不阻断三态收口时序；渲染失败 fail-soft 静默） */
   const handleStow = () => {
     if (stowed || alreadyStowedToday) return;
     setStowed(true);
+    try {
+      void downloadStarWhisperCard(pouch, lang).catch(() => { /* fail-soft */ });
+    } catch { /* fail-soft */ }
     timersRef.current.push(setTimeout(() => setFading(true), 400));
     timersRef.current.push(setTimeout(() => {
       try { if (onStowed) onStowed(); } catch { /* Toast 宿主异常不阻断收口 */ }
@@ -208,16 +232,23 @@ const CombinedPouchModal: React.FC<CombinedPouchModalProps> = ({ open, pouch, la
           onClick={handleStow}
           style={{
             marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10,
+            /* 🏆 E123-刀一：置灰态暗金琉璃微光（amber-950 微透底＋amber-500 金丝
+               细边＋amber-200 浅香槟金文字——主公实锤「死黑不可辨」根治：
+               旧置灰态深黑半透文字×暗金底近同色不可辨） */
             background: stowed
               ? 'linear-gradient(135deg, #B8962E, #D4AF37)'
               : alreadyStowedToday
-                ? 'linear-gradient(135deg, rgba(212,175,55,0.35), rgba(212,175,55,0.25))'
+                ? 'rgba(69,26,3,0.45)'
                 : 'linear-gradient(135deg, #D4AF37, #E5C158)',
-            color: alreadyStowedToday && !stowed ? 'rgba(20,17,10,0.55)' : '#14110A',
-            border: '1px solid #F5E6BE', fontSize: 13, letterSpacing: 2, fontWeight: 600,
-            cursor: alreadyStowedToday || stowed ? 'default' : 'pointer',
+            color: alreadyStowedToday && !stowed ? 'rgba(253,230,138,0.85)' : '#14110A',
+            border: alreadyStowedToday && !stowed
+              ? '1px solid rgba(245,158,11,0.35)'
+              : '1px solid #F5E6BE',
+            fontSize: 13, letterSpacing: 2, fontWeight: 600,
+            cursor: alreadyStowedToday || stowed ? 'not-allowed' : 'pointer',
             position: 'relative', overflow: 'hidden', overflowWrap: 'anywhere',
-            opacity: alreadyStowedToday && !stowed ? 0.85 : 1,
+            opacity: alreadyStowedToday && !stowed ? 0.95 : 1,
+            transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease',
           }}
         >
           {/* 300ms 金色高光扫掠（E122-刀三 shimmer——仅成功态播放一次） */}
@@ -233,7 +264,27 @@ const CombinedPouchModal: React.FC<CombinedPouchModalProps> = ({ open, pouch, la
               }}
             />
           )}
-          {alreadyStowedToday ? ui.stowDisabled : stowed ? ui.stowDone : `✦ ${ui.close}`}
+          {alreadyStowedToday ? `✓ ${ui.stowDisabled}` : stowed ? ui.stowDone : `✦ ${ui.close}`}
+        </button>
+        {/* 🏆 E123-刀三：卡片右上角常驻物理关闭 ✕（absolute top-3 right-3——
+            相对卡片定位（卡片 position:relative）；悬停浅香槟金＋微光背景；
+            zIndex 置内容之上绝不被遮挡；点击即关） */}
+        <button
+          type="button"
+          onClick={() => { if (!stowed) onClose(); }}
+          aria-label="close"
+          data-testid="pouch-close-x"
+          style={{
+            position: 'absolute', top: 12, right: 12, zIndex: 20,
+            width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.04)', border: 'none', borderRadius: '50%',
+            color: 'rgba(232,220,192,0.55)', fontSize: 17, lineHeight: 1, cursor: 'pointer',
+            transition: 'color .18s ease, background .18s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#F3E5AB'; e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(232,220,192,0.55)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+        >
+          ✕
         </button>
       </div>
     </div>

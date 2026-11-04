@@ -15,6 +15,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { MOOD_ARCHETYPES, MOOD_ATTRIBUTIONS, toneGuard } from '../../lib/companionMoodData.mjs';
 import { claimDailyStarlight, readStarlightStore, writeStarlightStore } from '../../lib/starlightLedger.mjs';
+// 🏆 E123-刀四：罗盘情绪落盘 sessionStorage（ChatSheet 首句拦截真源）
+// @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
+import { writeActiveMood } from '../../lib/companionMoodGreetings.mjs';
 import type { MoodArchetype } from '../../types/companionEmotion';
 
 type Lang = 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
@@ -89,12 +92,17 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
 
   /** 确认提交：语调铁律守卫＋灵犀星原子入账（DAILY_PULSE）
    *  🏆 E120-CHAIN：受控嵌入模式（onMoodCommit 在场）⇒ 仅上抛情绪原型，
-   *  入账与合笺流转归父级 DailyPouchController（单日原子唯一入账点）。 */
+   *  入账与合笺流转归父级 DailyPouchController（单日原子唯一入账点）。
+   *  🏆 E123-刀四（军令 2026-11-04）：确认时刻同步落盘 sessionStorage
+   *  ks_active_mood（当日＋2h 时效——ChatSheet 开舱首句情绪感知贯通真源）；
+   *  无痕模式抛错 ⇒ 静默降级（不阻断罗盘交互）。 */
   const handleConfirm = useCallback(() => {
     if (!selected || !attribution) return;
     // 语调铁律运行时守卫（fail-closed：恐慌词命中即不入账——军令断言 1 守卫面）
     const guard = toneGuard(attribution.companionComfort, lang);
     if (guard.bannedHit) return;
+    // E123-刀四：情绪落盘（白名单五原型——坏值不写 fail-closed）
+    try { writeActiveMood(sessionStorage, selected); } catch { /* 无痕 ⇒ 静默 */ }
     // 受控嵌入：情绪落定上抛父级（父级组装合璧笺＋唯一入账点）
     if (onMoodCommit) {
       onMoodCommit(selected);
