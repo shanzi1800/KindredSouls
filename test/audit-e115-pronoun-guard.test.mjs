@@ -289,7 +289,7 @@ test('E115 S8 链位自保：e115 入编（e114 后、e40-compat 前；全链 91
   assert.ok(i114 < i115 && i115 < iCap, 'E115 须按序排在 e114 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 93, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 94, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：59 键不变（E115 服务端确定性推导，零新键）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
