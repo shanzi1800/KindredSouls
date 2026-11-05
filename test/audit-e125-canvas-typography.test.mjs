@@ -25,6 +25,11 @@
  *   E125-12 垂直动态居中（clamp ≤120：短文下沉/长文贴顶/永不悬空）；
  *   E125-13 渲染端到端：mock 度量与折行同源自洽（管线 fillText 正文行
  *          全部落在安全区）。
+ *   E125-15 标牌宽度闸（热修 2026-11-05）：windowPlate（吉时/共振窗）
+ *          mono 直排穿透实锤（style-fr ink 至 x=988 距金边 62px＜军令
+ *          90px）⇒ shrinkPlateFontSize 缩字号＋折行兜底；mono 严格度量
+ *          模型（0.62×字号）全矩阵（密函 24＋生活 12 套）＋style-fr 管线
+ *          端到端全行 ≤800。
  *   S14 链位自保：e125 入编（e124 后、e40-compat 前；全链 93→94 段）。
  * 🔴 纪律：模块导入一律 pathToFileURL（中文仓路径 percent-encode 防坑）。
  * 执行命令：node --test test/audit-e125-canvas-typography.test.mjs
@@ -354,6 +359,130 @@ test('E125-13 渲染端到端：管线 fillText 正文行全部落在安全区�
     }
   }
   assert.deepEqual(violations, [], `渲染管线穿透：\n${violations.join('\n')}`);
+});
+
+/* ═══════════ E125-15：吉时/共振窗标牌宽度闸（热修 2026-11-05）═══════════ */
+test('E125-15 windowPlate 宽度闸：mono 严格模型下缩字号/折行恒 ≤800（真源全矩阵）', async () => {
+  const { shrinkPlateFontSize } = ENG;
+  // mono 严格度量模型（浏览器真实等宽 ≈0.62×字号/字符＋1px/字符字距——E125
+  // 实弹像素审计校准；旧 mock 0.55 低估致 style-fr 标牌 890px 穿透逃逸，
+  // 字距逃逸（度量不含 letterSpacing ⇒ 绘制增宽 ~50px）亦堵死，本闸以严格模型堵口）
+  const monoWidth = (t, fs) => {
+    let w = 0;
+    for (const ch of Array.from(String(t))) {
+      if (isCJKCode(ch)) w += fs;
+      else if (isThaiCode(ch)) w += fs * 0.92;
+      else w += fs * 0.62;
+      w += 1; // 标牌 letterSpacing 1px/字符（绘制真宽）
+    }
+    return w;
+  };
+  const monoCtxOf = () => {
+    const ctx = { _font: '28px mono' };
+    ctx.measureText = (t) => {
+      const m = /(\d+(?:\.\d+)?)px/.exec(ctx._font);
+      const size = m ? Number(m[1]) : 28;
+      return { width: monoWidth(t, size) };
+    };
+    Object.defineProperty(ctx, 'font', {
+      get: () => ctx._font,
+      set: (v) => { ctx._font = String(v); },
+    });
+    return ctx;
+  };
+  // ① 源码接线门禁：两渲染器均须接缩字号闸＋折行兜底
+  for (const src of ['web/src/lib/amuletCanvasRenderer.mjs', 'web/src/lib/lifestyleCanvasRenderer.mjs']) {
+    const s = read(src);
+    assert.ok(s.includes('shrinkPlateFontSize'), `${src} 须接标牌缩字号闸`);
+    assert.ok(s.includes('wrapCanvasText(ctx, windowPlate'), `${src} 须有折行兜底`);
+  }
+  // ② 真源全矩阵：密函 24 套＋生活 12 套（bestWindowPrefix＋defaultTiming 拼装）
+  const plates = [];
+  for (const type of TPL.AMULET_TYPES) {
+    for (const locale of TPL.AMULET_LOCALES) {
+      const t = TPL.getAmuletTemplate(type, locale);
+      if (t && t.bestWindowPrefix && t.defaultTiming) {
+        plates.push([`amulet/${type}/${locale}`, `${t.bestWindowPrefix}: ${t.defaultTiming}`]);
+      }
+    }
+  }
+  const LMD_TEMPLATES = LMD.LIFESTYLE_TEMPLATES_12 || LMD.LIFESTYLE_TEMPLATES;
+  for (const type of Object.keys(LMD_TEMPLATES || {})) {
+    for (const locale of LANGS) {
+      const t = LMD_TEMPLATES[type] && LMD_TEMPLATES[type][locale];
+      if (t && t.bestWindowPrefix && t.defaultTiming) {
+        plates.push([`lifestyle/${type}/${locale}`, `${t.bestWindowPrefix}: ${t.defaultTiming}`]);
+      }
+    }
+  }
+  assert.ok(plates.length >= 30, `标牌样本须 ≥30（实为 ${plates.length}——真源字段缺席须暴露）`);
+  const violations = [];
+  for (const [tag, plate] of plates) {
+    const ctx = monoCtxOf();
+    const fit = shrinkPlateFontSize(ctx, plate, 800, (s) => { ctx.font = `${s}px mono`; }, 28, 19);
+    if (fit.fits) {
+      if (monoWidth(plate, fit.size) > 800) {
+        violations.push(`${tag}: fits 谎报 ${Math.round(monoWidth(plate, fit.size))}px@${fit.size}px`);
+      }
+      continue;
+    }
+    const lines = wrapCanvasText(ctx, plate, 800, 'en');
+    for (const ln of lines) {
+      if (monoWidth(ln, 19) > 800) violations.push(`${tag}: 折行后仍超宽「${ln.slice(0, 20)}」`);
+    }
+  }
+  assert.deepEqual(violations, [], `标牌穿透：\n${violations.join('\n')}`);
+  // ③ 病灶复现根治：style-fr 法语标牌严格 mono 超宽 ⇒ 缩字号收纳（raw>800 触发）
+  const frPlate = plates.find(([tag]) => tag === 'lifestyle/style/fr');
+  if (frPlate) {
+    const raw = monoWidth(frPlate[1], 28);
+    const ctx = monoCtxOf();
+    const fit = shrinkPlateFontSize(ctx, frPlate[1], 800, (s) => { ctx.font = `${s}px mono`; }, 28, 19);
+    if (raw > 800) {
+      assert.ok(fit.fits && fit.size < 28, `style-fr 标牌须缩字号收纳（raw=${Math.round(raw)}px → ${fit.size}px）`);
+    } else {
+      assert.ok(fit.fits, 'style-fr 标牌恒须收纳');
+    }
+  }
+  // ④ 渲染端到端：style-fr 真管线（严格 mono 度量）全部居中 fillText 行 ≤800
+  const frTpl = LMD_TEMPLATES.style ? LMD_TEMPLATES.style.fr : null;
+  if (frTpl) {
+    const calls = [];
+    const ctx = { _font: '10px x' };
+    Object.assign(ctx, {
+      fillText: (text, x, y) => { calls.push({ text: String(text), x, y, font: ctx._font }); },
+      measureText: (t) => {
+        const m = /(\d+(?:\.\d+)?)px/.exec(ctx._font);
+        const size = m ? Number(m[1]) : 10;
+        return { width: monoWidth(t, size) };
+      },
+      fillRect: () => {}, strokeRect: () => {},
+      createRadialGradient: () => ({ addColorStop: () => {} }),
+      beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {}, fill: () => {},
+      arc: () => {}, closePath: () => {}, arcTo: () => {}, save: () => {}, restore: () => {},
+      roundRect: () => {}, drawImage: () => {},
+    });
+    Object.defineProperty(ctx, 'font', {
+      get: () => ctx._font,
+      set: (v) => { ctx._font = String(v); },
+    });
+    const canvas = { width: 0, height: 0, getContext: () => ctx };
+    await LIF.renderLifestyleToCanvas(canvas, frTpl, 'fr', { type: 'style' });
+    const e2eViolations = [];
+    for (const c of calls) {
+      // 只对标牌带（y∈[1500,1600] 居中行）施 mono+字距严格模型——正文行无字距，
+      // 由 E125-13 以同源度量覆盖（严禁混用口径致假红）
+      if (c.x !== 540 || c.y < 1500 || c.y > 1600) continue;
+      const m = /(\d+(?:\.\d+)?)px/.exec(c.font);
+      const size = m ? Number(m[1]) : 10;
+      const w = monoWidth(c.text, size);
+      if (w > 800) e2eViolations.push(`style-fr 标牌管线超宽(${Math.round(w)}px@${size}px)：「${c.text.slice(0, 26)}」`);
+    }
+    assert.deepEqual(e2eViolations, [], `style-fr 管线穿透：\n${e2eViolations.join('\n')}`);
+    // 标牌行必在（防「零调用假绿」）
+    const plateCalls = calls.filter((c) => c.x === 540 && c.y >= 1500 && c.y <= 1600);
+    assert.ok(plateCalls.length >= 1, 'style-fr 标牌行缺席（管线未绘制标牌须暴露）');
+  }
 });
 
 /* ═══════════ S14 链位自保 ═══════════ */
