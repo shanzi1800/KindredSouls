@@ -136,7 +136,9 @@ test('E111 S6 刀二服务端：prompt 输出铁律第 8 条——禁主动复�
   const promptFn = s.slice(s.indexOf('function buildFamiliarChatSystemPrompt'));
   // 🏆 E123-刀四窗同步：prompt 前部插入情绪上下文块（E123_MOOD_ZH+moodBlock
   // ≈+800 字）⇒ 截窗 6000→8000 防铁律第 8 条被推出窗外（断言语义不变）
-  const body = promptFn.slice(0, 8000);
+  // 🏆 E124-刀一窗同步（2026-11-05）：LIFESTYLE_GROUNDING 六语常量块
+  // （≈+15k 字）插 moodBlock 后 ⇒ 截窗 8000→30000（断言语义不变）
+  const body = promptFn.slice(0, 30000);
   // 🏆 E122-刀四锚点同步：词面「合盘情境」→「姻缘情境」（合盘禁词绝对查杀——
   // 严禁模型随 prompt 内文复读禁词；断言语义不变：报告情境破冰优先）
   assert.ok(/'8\. 开场与破冰优先结合主人最近解锁的报告或(合盘|姻缘)情境/.test(body), '缺输出铁律第 8 条（E112 后继：报告情境破冰）');

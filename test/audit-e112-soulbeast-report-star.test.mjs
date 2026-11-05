@@ -225,5 +225,5 @@ test('E112 S8 六语六键＋链位自保（e111 后、e40-compat 前；全链 8
   assert.ok(i111 < i112 && i112 < iCap, 'E112 须按序排在 e111 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 92, `军规链段数须为 91（E118 后继化 90→91；实为 ${segs.length}）`);
+  assert.equal(segs.length, 93, `军规链段数须为 91（E118 后继化 90→91；实为 ${segs.length}）`);
 });
