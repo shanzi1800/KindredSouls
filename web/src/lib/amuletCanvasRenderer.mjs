@@ -20,6 +20,7 @@
  */
 import { AMULET_CARD_ID, AMULET_TYPE_STAMP } from './amuletTemplates.mjs';
 import { goldCardTotemUri } from './goldCardTotems.mjs';
+import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY } from './canvasTypographyEngine.mjs';
 
 /** 画布绝对尺寸（军令锁死——1:1.618 黄金矩形；1748/1080=1.61852 容差 0.0005<0.001） */
 export const AMULET_DIMENSIONS = Object.freeze({ width: 1080, height: 1748 });
@@ -48,7 +49,7 @@ export const AMULET_LAYOUT_ANCHORS = Object.freeze({
   stampY: 1698,
   frameOuterInset: 28,
   frameInnerInset: 40,
-  textMaxWidth: 860,
+  textMaxWidth: CANVAS_TEXT_SAFE_BOUNDS.maxTextWidth, // E125 军令锁死 800（x∈[140,940]）
 });
 
 /**
@@ -102,42 +103,13 @@ function loadTotemImage(uri) {
   });
 }
 
-/** 折行引擎（拉丁词折行＋中泰字符折行；measureText 缺席 ⇒ 保守整段单行） */
-function wrapLines(ctx, text, maxWidth) {
-  const out = [];
-  const paragraphs = String(text || '').split('\n');
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) { out.push(''); continue; }
-    const hasSpaces = /\s/.test(trimmed);
-    if (!hasSpaces) {
-      // CJK/泰文逐字折行（泰文虽无空格，逐字断行配合 1.8 行高不切调号）
-      let line = '';
-      for (const ch of trimmed) {
-        const next = line + ch;
-        if (measureW(ctx, next) > maxWidth && line) { out.push(line); line = ch; }
-        else line = next;
-      }
-      if (line) out.push(line);
-    } else {
-      const words = trimmed.split(/\s+/);
-      let line = '';
-      for (const w of words) {
-        const next = line ? `${line} ${w}` : w;
-        if (measureW(ctx, next) > maxWidth && line) { out.push(line); line = w; }
-        else line = next;
-      }
-      if (line) out.push(line);
-    }
-  }
-  return out;
-}
-
-function measureW(ctx, text) {
-  try {
-    if (typeof ctx.measureText === 'function') return ctx.measureText(text).width;
-  } catch { /* fallthrough */ }
-  return text.length * 18; // 保守估宽（mock 环境仅影响分行走查，不影响语义断言）
+/**
+ * 折行引擎——E125 起统一走 canvasTypographyEngine（通用安全排字：中英混排
+ * 两级 token 化＋zh 18 字帽＋标点避头尾）。本函数保留为薄转发壳，防既有
+ * 内部调用点漂移；行为真源在 wrapCanvasText。
+ */
+function wrapLines(ctx, text, maxWidth, locale) {
+  return wrapCanvasText(ctx, text, maxWidth, locale || 'en');
 }
 
 /** 字体串装配（weight 省略——衬线优雅优先） */
@@ -275,25 +247,28 @@ export async function renderAmuletToCanvas(canvas, template, locale, options = {
   trySet(ctx, 'letterSpacing', '0px');
 
   // 诗意正文＋灵宠密语（安全区自适应：超界等比降字号，下限 0.72——防溢出重叠）
+  // 🏆 E125：折行走通用引擎（locale 感知）＋行宽军令 800；垂直方向动态居中
+  //   （轻量下沉 clamp≤120px——短文案不压顶、长文案不悬空）
   let proseSize = cfg.proseFontSize;
   let whisperSize = cfg.whisperFontSize;
   let proseLines;
   let whisperLines;
   let totalHeight;
   const gapBetween = 46;
-  const topY = A.proseTopY + cfg.topPaddingOffset;
+  const anchorTopY = A.proseTopY + cfg.topPaddingOffset;
   for (let attempt = 0; attempt < 8; attempt++) {
     ctx.font = fontOf(proseSize, cfg.stack);
-    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth);
+    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth, locale);
     ctx.font = fontOf(whisperSize, cfg.stack);
-    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth);
+    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth, locale);
     totalHeight = proseLines.length * proseSize * cfg.lineHeight
       + gapBetween
       + whisperLines.length * whisperSize * cfg.lineHeight;
-    if (topY + totalHeight <= A.textSafeBottomY) break;
+    if (anchorTopY + totalHeight <= A.textSafeBottomY) break;
     proseSize = Math.max(30, Math.round(proseSize * 0.94));
     whisperSize = Math.max(26, Math.round(whisperSize * 0.94));
   }
+  const topY = verticalCenteredStartY(totalHeight, anchorTopY, A.textSafeBottomY);
   ctx.font = fontOf(proseSize, cfg.stack);
   ctx.fillStyle = PROSE_COLOR;
   ctx.globalAlpha = 0.95;

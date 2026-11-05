@@ -15,6 +15,7 @@
  */
 import { AMULET_DIMENSIONS, GOLDEN_RATIO_TOLERANCE, AMULET_OFFICIAL_DOMAIN, LOCALE_CANVAS_CONFIG } from './amuletCanvasRenderer.mjs';
 import { LIFESTYLE_STAMP } from './lifestyleMuseData.mjs';
+import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY } from './canvasTypographyEngine.mjs';
 
 /** 版面绝对锚点（E120 同构——徽记区 Y:480 三分区） */
 export const LIFESTYLE_LAYOUT_ANCHORS = Object.freeze({
@@ -31,7 +32,7 @@ export const LIFESTYLE_LAYOUT_ANCHORS = Object.freeze({
   stampY: 1698,
   frameOuterInset: 28,
   frameInnerInset: 40,
-  textMaxWidth: 860,
+  textMaxWidth: CANVAS_TEXT_SAFE_BOUNDS.maxTextWidth, // E125 军令锁死 800（x∈[140,940]）
 });
 
 const GOLD = '#D4AF37';
@@ -52,41 +53,12 @@ function mulberry32(seed) {
   };
 }
 
-/** 折行引擎（E120 同款——CJK/泰文逐字＋拉丁按词） */
-function wrapLines(ctx, text, maxWidth) {
-  const out = [];
-  const paragraphs = String(text || '').split('\n');
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) { out.push(''); continue; }
-    const hasSpaces = /\s/.test(trimmed);
-    if (!hasSpaces) {
-      let line = '';
-      for (const ch of trimmed) {
-        const next = line + ch;
-        if (measureW(ctx, next) > maxWidth && line) { out.push(line); line = ch; }
-        else line = next;
-      }
-      if (line) out.push(line);
-    } else {
-      const words = trimmed.split(/\s+/);
-      let line = '';
-      for (const w of words) {
-        const next = line ? `${line} ${w}` : w;
-        if (measureW(ctx, next) > maxWidth && line) { out.push(line); line = w; }
-        else line = next;
-      }
-      if (line) out.push(line);
-    }
-  }
-  return out;
-}
-
-function measureW(ctx, text) {
-  try {
-    if (typeof ctx.measureText === 'function') return ctx.measureText(text).width;
-  } catch { /* fallthrough */ }
-  return text.length * 18;
+/**
+ * 折行引擎——E125 起统一走 canvasTypographyEngine（通用安全排字：中英混排
+ * 两级 token 化＋zh 18 字帽＋标点避头尾）。行为真源在 wrapCanvasText。
+ */
+function wrapLines(ctx, text, maxWidth, locale) {
+  return wrapCanvasText(ctx, text, maxWidth, locale || 'en');
 }
 
 function fontOf(sizePx, stack) { return `${sizePx}px ${stack}`; }
@@ -313,19 +285,20 @@ export async function renderLifestyleToCanvas(canvas, template, locale, options 
   let whisperLines;
   let totalHeight;
   const gapBetween = 46;
-  const topY = A.proseTopY + cfg.topPaddingOffset;
+  const anchorTopY = A.proseTopY + cfg.topPaddingOffset;
   for (let attempt = 0; attempt < 8; attempt++) {
     ctx.font = fontOf(proseSize, cfg.stack);
-    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth);
+    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth, locale);
     ctx.font = fontOf(whisperSize, cfg.stack);
-    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth);
+    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth, locale);
     totalHeight = proseLines.length * proseSize * cfg.lineHeight
       + gapBetween
       + whisperLines.length * whisperSize * cfg.lineHeight;
-    if (topY + totalHeight <= A.textSafeBottomY) break;
+    if (anchorTopY + totalHeight <= A.textSafeBottomY) break;
     proseSize = Math.max(30, Math.round(proseSize * 0.94));
     whisperSize = Math.max(26, Math.round(whisperSize * 0.94));
   }
+  const topY = verticalCenteredStartY(totalHeight, anchorTopY, A.textSafeBottomY);
   ctx.font = fontOf(proseSize, cfg.stack);
   ctx.fillStyle = PROSE_COLOR;
   ctx.globalAlpha = 0.95;
