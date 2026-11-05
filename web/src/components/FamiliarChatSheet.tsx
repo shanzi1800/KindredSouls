@@ -460,10 +460,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         const m = readActiveMood(sessionStorage);
         if (m) activeMood = m;
       } catch { /* 无痕 ⇒ 不传（服务端回退无情绪块） */ }
+      // 🆕 E126-刀三（主公军令 2026-11-05 晚）：Geo-Locale 解耦——客户端时区
+      //    随行（服务端 cf-ipcountry 缺席时兜底解析物理生活区；fail-soft：
+      //    Intl 不可用/无痕 ⇒ 不传 ⇒ 服务端回退 E124 语言生活区零破坏）
+      let timezone: string | undefined;
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) timezone = tz;
+      } catch { /* Intl 缺席 ⇒ 不传 */ }
       const body = {
         lang,
         relationMode,
         name,
+        // 🆕 E126-刀三：物理区域时区随行（服务端白名单 fail-closed）
+        timezone,
         // 🏆 E123-刀四：罗盘情绪真值随行（服务端白名单 fail-closed）
         activeMood,
         // 🏆 E118-刀二：永久姓名档案随行（服务端查形状 fail-closed 后进 prompt）
