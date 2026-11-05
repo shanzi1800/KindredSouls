@@ -231,6 +231,31 @@ export function measureLineExtremes(ctx, lines, centerX = CANVAS_TEXT_SAFE_BOUND
 }
 
 /**
+ * 单行标牌自适应字号（E125 热修 2026-11-05：吉时/共振窗标牌 mono 直排宽度闸）
+ * 病灶实录（style-fr 实弹像素审计实锤）：`${bestWindowPrefix}: ${defaultTiming}`
+ * 法语/西语/越语 48~52 字符 × mono 28px ≈ 840~890px，穿透 800 安全线
+ * （ink 至 x=988，距金边仅 62px < 军令 90px）。处方＝逐级缩字号至 ≤maxWidth；
+ * 触底（minSize）仍超宽 ⇒ 调用方走 wrapCanvasText 折行兜底（宽度守恒）。
+ * @param {object} ctx Canvas 2D 上下文（或 node mock 桩）
+ * @param {string} text 标牌整行文本
+ * @param {number} maxWidth 行宽上限（缺省军令锁死 800）
+ * @param {Function} setFont 字号装配回调 (size:number)=>void（渲染器侧 fontOf 接线）
+ * @param {number} [baseSize=28] 基准字号
+ * @param {number} [minSize=19] 字号下限
+ * @returns {{size:number, width:number, fits:boolean}} fits=false ⇒ 必须折行兜底
+ */
+export function shrinkPlateFontSize(ctx, text, maxWidth, setFont, baseSize = 28, minSize = 19) {
+  const limit = Number(maxWidth) > 0 ? Number(maxWidth) : CANVAS_TEXT_SAFE_BOUNDS.maxTextWidth;
+  let size = Math.round(baseSize);
+  for (;;) {
+    setFont(size);
+    const w = measureW(ctx, text);
+    if (w <= limit || size <= Math.round(minSize)) return { size, width: w, fits: w <= limit };
+    size -= 1;
+  }
+}
+
+/**
  * 垂直动态居中偏移（军令 Y 轴平衡——轻量下沉 clamp 防悬空/压顶）
  * @param {number} contentHeight 文本块总高（lines×lineHeight 等累加）
  * @param {number} availTop 可用区顶（proseTopY）

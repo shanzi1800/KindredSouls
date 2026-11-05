@@ -15,7 +15,7 @@
  */
 import { AMULET_DIMENSIONS, GOLDEN_RATIO_TOLERANCE, AMULET_OFFICIAL_DOMAIN, LOCALE_CANVAS_CONFIG } from './amuletCanvasRenderer.mjs';
 import { LIFESTYLE_STAMP } from './lifestyleMuseData.mjs';
-import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY } from './canvasTypographyEngine.mjs';
+import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY, shrinkPlateFontSize } from './canvasTypographyEngine.mjs';
 
 /** 版面绝对锚点（E120 同构——徽记区 Y:480 三分区） */
 export const LIFESTYLE_LAYOUT_ANCHORS = Object.freeze({
@@ -318,12 +318,27 @@ export async function renderLifestyleToCanvas(canvas, template, locale, options 
   ctx.globalAlpha = 1;
 
   // 吉时/共振窗标牌（Y:1540 等宽暗金）
+  // E125 热修：宽度闸——先置字距再度量（Chromium measureText 含 letterSpacing，
+  // 严防「度量不含字距、绘制增宽」逃逸），自适应缩字号，触底仍超宽走引擎折行兜底
   const windowPlate = `${template.bestWindowPrefix}: ${template.defaultTiming}`;
   ctx.font = fontOf(28, MONO_STACK);
+  trySet(ctx, 'letterSpacing', '1px');
+  const plateFit = shrinkPlateFontSize(
+    ctx, windowPlate, CANVAS_TEXT_SAFE_BOUNDS.maxTextWidth,
+    (s) => { ctx.font = fontOf(s, MONO_STACK); }
+  );
+  const plateLines = plateFit.fits
+    ? [windowPlate]
+    : wrapCanvasText(ctx, windowPlate, CANVAS_TEXT_SAFE_BOUNDS.maxTextWidth, locale || 'en');
   ctx.fillStyle = GOLD;
   ctx.globalAlpha = 0.92;
-  trySet(ctx, 'letterSpacing', '1px');
-  ctx.fillText(windowPlate, CX, A.windowPlateY);
+  if (plateLines.length === 1) {
+    ctx.fillText(plateLines[0], CX, A.windowPlateY);
+  } else {
+    const plateGap = 38;
+    const plateY0 = A.windowPlateY - Math.round(((plateLines.length - 1) * plateGap) / 2);
+    plateLines.forEach((ln, i) => ctx.fillText(ln, CX, plateY0 + i * plateGap));
+  }
   ctx.globalAlpha = 1;
   trySet(ctx, 'letterSpacing', '0px');
 

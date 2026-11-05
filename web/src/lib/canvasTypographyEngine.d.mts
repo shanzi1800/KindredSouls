@@ -24,3 +24,11 @@ export function verticalCenteredStartY(
   availTop: number,
   availBottom: number
 ): number;
+export function shrinkPlateFontSize(
+  ctx: CanvasRenderingContext2D | { measureText?: unknown },
+  text: string,
+  maxWidth?: number,
+  setFont: (size: number) => void,
+  baseSize?: number,
+  minSize?: number
+): { size: number; width: number; fits: boolean };
