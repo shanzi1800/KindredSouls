@@ -181,9 +181,69 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
   }),
 });
 
-/** 模板取值（fail-closed：坏类型/坏语种 ⇒ null，en 兜底沿 AMULET 先例） */
-export function getLifestyleTemplate(type, lang) {
+/**
+ * ═══════════ E126-GEO-LOCALE 变体库（主公军令 2026-11-05 晚）═══════════
+ * 军令钦定两大核心场景＋一反向场景的 roadtrip 卡 geo 变体（key＝`${lang}@${zone}`）：
+ *   · zh@NA —— 在美华人：加州一号公路＋Catskills 木屋（军令原文明示）；
+ *   · zh@AU —— 在澳华人：蓝山自驾＋莫宁顿半岛温泉（军令原文明示）；
+ *   · fr@AU —— 悉尼/墨尔本法语客：Mornington Peninsula＋Blue Mountains；
+ *   · en@SEA —— 欧美客亚太旅居：清迈环线（军令「符合当地地磁与气候」）。
+ * 🔴 红线沿袭：小众质感·极致性价比（禁奢侈大牌）；零恐慌词；0525 语调；
+ *   结构与 E124 基准模板同构（title/subtitle/prose/companionWhisper/
+ *   bestWindowPrefix/defaultTiming/heading 全字段——E125 排版引擎直消费）；
+ *   prose 长度与 E124 基准同量级（卡片排版安全余量）。
+ */
+export const LIFESTYLE_GEO_VARIANTS = Object.freeze({
+  roadtrip: Object.freeze({
+    'zh@NA': Object.freeze({
+      title: '✦ 漫游自驾避坑路书 ✦',
+      subtitle: 'SOUL ROADTRIP · WEST COAST GROUNDING',
+      prose: '本周末宜往「开阔」纳吉气：加州一号公路由南向北慢行，海崖换景；或东岸 Catskills 山间木屋听风，手机静音正合养心。\n补给点：Big Sur 路边一盏热美式，或山径口的家庭果园酒；黄昏前抵宿，夜里听得见潮声或林涛。',
+      companionWhisper: '避坑：避开长周末的网红观景台与十七哩人潮；行程留白半天，不赶路不打卡。预算参考：精品木屋 120~180 美元一晚，性价比远胜人挤人的连锁度假村。',
+      bestWindowPrefix: '出发吉时窗',
+      defaultTiming: '周六 09:00 - 10:30 出发',
+      heading: { deg: 270, name: '西 · 开阔纳气' },
+    }),
+    'zh@AU': Object.freeze({
+      title: '✦ 漫游自驾避坑路书 ✦',
+      subtitle: 'SOUL ROADTRIP · BLUE MOUNTAINS GROUNDING',
+      prose: '本周末宜往「山与海」纳吉气：蓝山自驾走观景公路，桉树林梢的蓝雾正安放心绪；或莫宁顿半岛温泉海岸慢行收尾。\n补给点：山间小镇现磨咖啡与手工果酱；黄昏前抵宿，夜里听得见桉叶沙沙。',
+      companionWhisper: '避坑：避开长周末观景台人潮与收费缆车排队；行程留白半天，不赶路不打卡。预算参考：山居酒馆民宿 150~220 澳元一晚，性价比远胜连锁度假村。',
+      bestWindowPrefix: '出发吉时窗',
+      defaultTiming: '周六 09:00 - 10:30 出发',
+      heading: { deg: 135, name: '东南 · 山海纳气' },
+    }),
+    'fr@AU': Object.freeze({
+      title: "✦ GUIDE D'ÉCHAPPÉE & SÉRÉNITÉ ✦",
+      subtitle: 'BLUE MOUNTAINS · MORNINGTON THERMAL',
+      prose: "Ce week-end, cap sur la nature australienne : les Blue Mountains et leur brume d'eucalyptus, lookouts tranquilles — ou la péninsule de Mornington et ses sources chaudes au bord de la mer.\nHaltes : un flat white dans un village de montagne ; arrivez avant la tombée du jour pour laisser le bush faire son œuvre apaisante.",
+      companionWhisper: "À éviter : les lookouts bondés les week-ends prolongés et les téléphériques à file d'attente. Gardez une demi-journée sans programme — le but est de souffler. Les lodges de caractère se trouvent autour de 150~220 $AU la nuit, un vrai luxe à prix juste.",
+      bestWindowPrefix: 'Fenêtre de départ',
+      defaultTiming: 'Samedi 09:00 - 10:30 départ',
+      heading: { deg: 270, name: 'Ouest · Brume Bleue' },
+    }),
+    'en@SEA': Object.freeze({
+      title: '✦ SOUL ROADTRIP GUIDE ✦',
+      subtitle: 'CHIANG MAI HIGHWAY · TROPICAL GROUNDING',
+      prose: "This weekend points 'north' for fresh mountain energy: the Chiang Mai highland loop — misty switchbacks, roadside stalls brewing slow coffee — or a quiet Andaman cove far from the crowds, phone on silent.\nRefuel stops: a wooden café halfway up the ridge; arrive before dusk so the mountain calm can settle your nervous system.",
+      companionWhisper: 'Avoid: long-weekend convoys on the main highway and cruise-ship beaches. Leave half a day unplanned — the point is exhaling, not checking boxes. Characterful mountain lodges run ~1,200–2,200 THB a night, far better value than any gated resort.',
+      bestWindowPrefix: 'Departure Window',
+      defaultTiming: 'Saturday 09:00 - 10:30 departure',
+      heading: { deg: 0, name: 'North · Mountain Air' },
+    }),
+  }),
+});
+
+/** 模板取值（fail-closed：坏类型/坏语种 ⇒ null，en 兜底沿 AMULET 先例）
+ *  🆕 E126 刀二：第三参 zone 可选——命中 `${lang}@${zone}` 变体则返回（语言不变、
+ *  地理实体锚定物理生活区）；未命中/坏 zone ⇒ 回退语言基准模板（现行为零破坏）。 */
+export function getLifestyleTemplate(type, lang, zone) {
   if (type !== 'style' && type !== 'roadtrip') return null;
+  if (zone) {
+    const variants = LIFESTYLE_GEO_VARIANTS[type];
+    const v = variants && variants[`${lang}@${zone}`];
+    if (v && v.prose && v.title) return v;
+  }
   const row = LIFESTYLE_TEMPLATES_12[type];
   const tpl = row && (row[lang] || row.en);
   if (!tpl || !tpl.prose || !tpl.title) return null;

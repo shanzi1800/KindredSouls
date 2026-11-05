@@ -20325,14 +20325,39 @@ async function _e107ChatTruthExtras(birthDate) {
   return { tarot, trine };
 }
 
+/**
+ * 🆕 E126-刀一（主公军令 2026-11-05 晚）：物理生活区解析 helper。
+ * P2a cf-ipcountry 标头（Cloudflare ISO-3166 两字母国家码，缺则 x-geo-country）
+ * ＞ P2b 客户端时区随行（body.timezone——前端 Intl resolvedOptions 上报）
+ * ＞ P3 null（回退 E124 语言生活区，现行为零破坏）。
+ * 单源映射表＝web/src/lib/geoLocaleResolver.mjs（E126 闸门锁双端同源）；
+ * 动态 import 模块级缓存；任何异常 ⇒ null fail-closed（geo 块不注入）。
+ */
+let _e126GeoMod = null;
+async function _e126ResolveGeoZone(req, body) {
+  try {
+    if (!_e126GeoMod) {
+      _e126GeoMod = await import('./web/src/lib/geoLocaleResolver.mjs');
+    }
+    const h = (req && req.headers) || {};
+    const country = h['cf-ipcountry'] || h['x-geo-country'] || null;
+    const timezone = (body && typeof body.timezone === 'string') ? body.timezone : null;
+    return _e126GeoMod.resolveLifestyleGeoZone({ country, timezone });
+  } catch {
+    return null;
+  }
+}
+
 /** 🐾 E66③ 三层 System Prompt 动态装配
  *  🏆 E107-刀三：增第四层命盘真值——今日塔罗牌＋本命三合局（服务端确定性核）
  *  🏆 E110-刀一：增第零层四象人设硬锁——身份锁＋外貌真值＋禁圆场（mode 必传）
  *  🏆 E112-刀四（主公军令 2026-11-01）：灵魂兽物种绝对硬锁——拔「晶石灵猫」
  *    种属降格（主公实机验收实锤「带上你的粉色小猫」违规台词）；违禁词拦截
  *    （小猫/小狗/猫咪/狗狗/灵猫/灵犬/宠物一律禁自称）。
- *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood }) {
+ *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
+ *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
+ *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20479,13 +20504,59 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
       '',
     ],
   };
+  // 🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 双轨解耦覆盖块——
+  //    [Language Mode]（上文 E124 六语块：语感/调性/审美，随语言走）＋
+  //    [Physical Location Context]（本块：实体锚定——路线/店/品牌/货币随
+  //    物理生活区走，并显式声明优先级覆盖语言块中的地区性示例）。
+  //    fail-closed：geoZone 非白名单 ⇒ 块不注入（回退纯语言区现行为）。
+  //    实体红线沿袭：小众质感·极致性价比（军令钦定实体为骨，禁奢侈大牌）。
+  const LIFESTYLE_GEO_CONTEXT = {
+    NA: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: North America (US/Canada). Unless the host explicitly names another destination, every concrete lifestyle recommendation — roadtrip routes, restaurants, cafés, stores, brand availability, price bands, currency — MUST anchor to the North American ecosystem: Pacific Coast Highway, Joshua Tree, Catskills cabins; COS US / Uniqlo US / Everlane / Aritzia; prices in USD.',
+      '- Reply language stays the current chat language unchanged: a Chinese-speaking host in San Francisco gets Chinese recommendations about Californian getaways; never switch language, never fall back to China-based examples.',
+      '',
+    ],
+    AU: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: Australia / New Zealand. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Blue Mountains, Mornington Peninsula hot springs, Byron Bay, Great Ocean Road; COS AU / Uniqlo AU; prices in AUD.',
+      '- Reply language stays the current chat language unchanged: a French-speaking host in Melbourne gets French recommendations about Victorian getaways; an English-speaking host in Sydney gets English ones.',
+      '',
+    ],
+    EU: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: Continental Europe (incl. UK & Ireland). Unless the host explicitly names another destination, every concrete recommendation must anchor to the European ecosystem: Provence, Val de Loire, the Dolomites, Andalusia, the Cotswolds; COS / & Other Stories / Mango / Uniqlo EU; prices in EUR (GBP in the UK).',
+      '- Reply language stays the current chat language unchanged: an English-speaking host living in Berlin gets English recommendations about German getaways, not American ones.',
+      '',
+    ],
+    CN: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: Greater China. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Moganshan bamboo forests, Anji mountain lodges, the Dali lakeside loop; COS China / Uniqlo China; prices in CNY.',
+      '- Reply language stays the current chat language unchanged: an English-speaking host living in Shanghai gets English recommendations about Jiangnan-Zhejiang getaways.',
+      '',
+    ],
+    SEA: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: Southeast Asia. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: the Chiang Mai highland loop, Mae Hong Son switchbacks, quiet Andaman coves, Đà Lạt pine hills, the Hải Vân pass; independent local designer brands; prices in THB/VND.',
+      '- Reply language stays the current chat language unchanged: an English-speaking expat in Bangkok gets English recommendations about Thai getaways.',
+      '',
+    ],
+    JP: [
+      '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
+      '- Detected physical region: Japan. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Karuizawa forest walks, the Kamakura coast, Hakone onsen towns; Uniqlo / Muji; prices in JPY.',
+      '- Reply language stays the current chat language unchanged: an English-speaking host living in Tokyo gets English recommendations about Kanto getaways.',
+      '',
+    ],
+  };
   const lifestyleBlock = (LIFESTYLE_GROUNDING[lang] || null);
+  const lifestyleGeoBlock = (geoZone && LIFESTYLE_GEO_CONTEXT[geoZone]) || null;
 
   return [
     ...pronounBlock,
     ...identityBlock,
     ...moodBlock,
     ...(lifestyleBlock || []),
+    ...(lifestyleGeoBlock || []),
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -20989,6 +21060,11 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
   //    解析终值同时喂 prompt 红线块与输出侧 deltaGuard（fail-closed 坏形状逐层回退）。
   const g115 = _e115ResolveGenderContext(mode, _e115ReportBazi(body.reportBazi), _e115Overrides(body.overrides));
+  // 🆕 E126-刀一（主公军令 2026-11-05 晚）：Geo-Locale 解耦——物理生活区三层
+  //    解析（cf-ipcountry 标头 ＞ 客户端时区随行 ＞ 不注入回退语言区）。语言轨
+  //    （怎么说话）与地理轨（推荐哪里的路/店/品牌/货币）彻底分离：在硅谷的
+  //    华人用中文聊天 ⇒ 中文推荐北美实体。fail-closed：白名单外 ⇒ null 零破坏。
+  const geoZone = await _e126ResolveGeoZone(req, body);
   const systemText = buildFamiliarChatSystemPrompt({
     ip, name, lang, mode, natal: truth.natal, fortune: truth.fortune,
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
@@ -20996,6 +21072,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     genderCtx: g115,
     displayName: _e118Name,
     activeMood: _e123Mood,
+    geoZone,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）

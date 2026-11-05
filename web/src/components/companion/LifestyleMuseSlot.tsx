@@ -16,10 +16,19 @@
  */
 import React, { useEffect, useState } from 'react';
 import { getLifestyleTemplate, LIFESTYLE_FILENAME } from '../../lib/lifestyleMuseData.mjs';
+// @ts-ignore —— geoLocaleResolver.mjs 纯 JS 逻辑核（形状由 E126 闸门守备）
+import { resolveBrowserGeoZone } from '../../lib/geoLocaleResolver.mjs';
 import { createLifestyleCanvas, renderLifestyleToCanvas, isLifestyleGoldenRatio } from '../../lib/lifestyleCanvasRenderer.mjs';
 
 type Lang = 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
 export type LifestyleCardType = 'style' | 'roadtrip';
+
+/**
+ * 🆕 E126-刀三（主公军令 2026-11-05 晚）：Geo-Locale 解耦——路书卡按物理生活区
+ * 选变体（「选中文 ≠ 人在中国」）。Intl 时区兜底解析（fail-closed：未知时区 ⇒
+ * null ⇒ 回退语言基准模板，现行为零破坏）；会话内物理位置不变 ⇒ 模块级一次求值。
+ */
+const GEO_ZONE: string | null = resolveBrowserGeoZone();
 
 /** 插槽自容六语字典（军令钦定 7 键对照表——逐字录入） */
 const LIFESTYLE_SLOT_UI: Record<Lang, { styleTitle: string; roadtripTitle: string; viewStyle: string; viewRoadtrip: string; auraColor: string; heading: string; save: string; close: string; renderFail: string }> = {
@@ -115,7 +124,7 @@ export interface LifestyleMuseSlotCardProps {
 export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ type, lang, onOpen }) => {
   if (!isLifestyleCardType(type)) return null; // fail-closed：白名单外不渲染
   const l = (LIFESTYLE_SLOT_UI as Record<string, (typeof LIFESTYLE_SLOT_UI)['zh']>)[lang] || LIFESTYLE_SLOT_UI.en;
-  const tpl = getLifestyleTemplate(type, (lang as Lang));
+  const tpl = getLifestyleTemplate(type, (lang as Lang), GEO_ZONE || undefined);
   if (!tpl) return null; // 模板缺失 fail-closed
   const isStyle = type === 'style';
   const title = isStyle ? l.styleTitle : l.roadtripTitle;
@@ -219,7 +228,7 @@ export const LifestylePreviewModal: React.FC<LifestylePreviewModalProps> = ({ ty
       setDataUrl(null); setRenderErr(false);
       if (!type || !isLifestyleCardType(type)) return; // fail-closed
       try {
-        const tpl = getLifestyleTemplate(type, (lang as Lang));
+        const tpl = getLifestyleTemplate(type, (lang as Lang), GEO_ZONE || undefined);
         if (!tpl) throw new Error('template missing');
         const canvas = createLifestyleCanvas();
         await renderLifestyleToCanvas(canvas, tpl, lang, {
@@ -240,7 +249,7 @@ export const LifestylePreviewModal: React.FC<LifestylePreviewModalProps> = ({ ty
 
   if (!type || !isLifestyleCardType(type)) return null;
   const l = (LIFESTYLE_SLOT_UI as Record<string, (typeof LIFESTYLE_SLOT_UI)['zh']>)[lang] || LIFESTYLE_SLOT_UI.en;
-  const tpl = getLifestyleTemplate(type, (lang as Lang));
+  const tpl = getLifestyleTemplate(type, (lang as Lang), GEO_ZONE || undefined);
   const stampName = tpl ? String(tpl.title || 'lifestyle') : 'lifestyle';
   const fileName = lifestyleFileName(type);
 
