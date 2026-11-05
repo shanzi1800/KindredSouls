@@ -47,12 +47,20 @@ import { FAMILIAR_LS_KEY } from './FamiliarPicker';
 //    消费端接线——detectScribeIntent（E120-刀四触发器）＋微缩插槽/大图预览弹层。
 // @ts-ignore —— companionScribeTrigger.mjs 纯 JS 逻辑核（形状由 E120/E121 闸门守备）
 import { detectScribeIntent } from '../lib/companionScribeTrigger.mjs';
+// 🏆 E124-LIFESTYLE-MUSE 刀二（主公军令 2026-11-05）：生活方式意图网——密函
+//    静默时接管（STYLE/ROADTRIP 六语捕获；fail-closed 寒暄一律 null）。
+// @ts-ignore —— detectLifestyleIntent.mjs 纯 JS 逻辑核（形状由 E124 闸门守备）
+import { detectLifestyleIntent } from '../lib/detectLifestyleIntent.mjs';
 // 🏆 E123-刀四（主公军令 2026-11-04）：罗盘情绪记忆贯通——ks_active_mood
 //    读取（当日＋2h 时效）＋5 情绪×6 语第一人称共情首句字典（零 i18n 新键）。
 // @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
 import { readActiveMood, moodGreetingLine } from '../lib/companionMoodGreetings.mjs';
 import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
 import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
+// 🏆 E124-LIFESTYLE-MUSE 刀四（主公军令 2026-11-05）：生活卡微缩插槽＋
+//    1080×1748 大图预览弹层（Aura Style Capsule / Soul Roadtrip Guide）。
+import { LifestyleMuseSlotCard, LifestylePreviewModal } from './companion/LifestyleMuseSlot';
+import type { LifestyleCardType } from './companion/LifestyleMuseSlot';
 
 export type FamiliarIp = 'Milo' | 'Sophia';
 
@@ -168,6 +176,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
    * 大图预览弹层开关（null=关；四型之一=开）。 */
   const [scribeSlot, setScribeSlot] = useState<{ aid: string; type: ScribeAmuletType } | null>(null);
   const [amuletPreview, setAmuletPreview] = useState<ScribeAmuletType | null>(null);
+  /* 🏆 E124-LIFESTYLE-MUSE：生活卡插槽状态（E121 同构单轮防刷——绑定本轮
+   * aid；密函命中时本槽恒 null 互斥）＋大图预览弹层开关（null=关）。 */
+  const [lifestyleSlot, setLifestyleSlot] = useState<{ aid: string; type: LifestyleCardType } | null>(null);
+  const [lifestylePreview, setLifestylePreview] = useState<LifestyleCardType | null>(null);
 
   const flowRef = useRef<HTMLDivElement | null>(null);
   const bufRef = useRef('');
@@ -552,6 +564,11 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
        * （fail-closed 严禁无意图强推——寒暄一律普通气泡）。 */
       const scribeIntent = detectScribeIntent(text);
       setScribeSlot(scribeIntent ? { aid, type: (scribeIntent.type as ScribeAmuletType) } : null);
+      /* 🏆 E124-LIFESTYLE-MUSE 刀二：密函静默 ⇒ 生活方式意图网接管（STYLE/
+       * ROADTRIP 六语捕获；fail-closed 未命中一律 null 严禁强推）。两槽互斥：
+       * 密函优先（吵架/破冰为第一诉求），生活卡仅在密函静默时挂载。 */
+      const lifestyleIntent = scribeIntent ? null : detectLifestyleIntent(text);
+      setLifestyleSlot(lifestyleIntent ? { aid, type: (lifestyleIntent.type as LifestyleCardType) } : null);
       const el = flowRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
@@ -642,6 +659,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
               </div>
             );
           })()}
+          {/* 🏆 E124-LIFESTYLE-MUSE 刀四：生活卡微缩插槽——E121 同构（本轮
+              assistant 落地＋id 精确匹配才渲染；fail-closed：白名单外 type /
+              模板缺失 ⇒ LifestyleMuseSlotCard 自身返 null；密函槽在场时互斥不渲）。 */}
+          {lifestyleSlot && !scribeSlot && !streaming && (() => {
+            const last = msgs[msgs.length - 1];
+            if (!last || last.role !== 'assistant' || last.id !== lifestyleSlot.aid || !last.text) return null;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <LifestyleMuseSlotCard type={lifestyleSlot.type} lang={lang} onOpen={setLifestylePreview} />
+              </div>
+            );
+          })()}
           {notice && <div className="ks-chat-notice">{notice}</div>}
         </div>
 
@@ -668,6 +697,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         lang={lang}
         hostName={profileNameRef.current || undefined}
         onClose={() => setAmuletPreview(null)}
+      />
+      {/* 🏆 E124-LIFESTYLE-MUSE 刀四：生活卡全屏 1080×1748 大图预览弹层
+          （E121 同构——保存走 a[download] 军令文件名
+          KindredSouls-Style/Roadtrip-YYYYMMDD.png；宿主落款取 E118 用户名档案） */}
+      <LifestylePreviewModal
+        type={lifestylePreview}
+        lang={lang}
+        hostName={profileNameRef.current || undefined}
+        onClose={() => setLifestylePreview(null)}
       />
     </div>,
     document.body

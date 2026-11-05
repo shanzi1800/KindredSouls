@@ -20419,10 +20419,73 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '',
   ] : [];
 
+  // 🏆 E124-LIFESTYLE-MUSE 刀一（主公军令 2026-11-05）：全语言生活区锚点块——
+  //    按 lang 动态注入「衣食住行乐」高品位生活认知（High-Vibe Living /
+  //    Clean Aesthetic / Grounding 语境，严禁中式玄学直译）；未匹配语种 ⇒
+  //    块整体不注入（零破坏）。红线：小众质感·极致性价比（禁奢侈大牌推荐）。
+  const LIFESTYLE_GROUNDING = {
+    zh: [
+      '【生活方式缪斯锚点（E124 军令——衣·食·行·乐四域全域生效）】',
+      '- 穿搭域：新中式极简——垂感棉麻、素色立领、玉石珍珠微点缀、中性色防内耗；品牌区间锚定 COS/优衣库 U 系（小众质感·极致性价比）。谈穿搭时结合今日幸运色给「气场关键词＋1 套完整 look＋配饰微点缀」。',
+      '- 饮食域：节气温润食疗——根茎炖汤、润肺清饮、单丛冷泡、潮汕清炖；焦躁⇒温热慢食稳肠胃，低落⇒暖色食物抚慰（忌生冷重口）。给到具体菜式与饮品名。',
+      '- 出行域：山水隐逸轻户外——莫干山竹海、安吉山居、大理环海慢行；给「吉方＋路线骨架＋1~2 个补给点＋避坑一句」＋性价比美宿区间（人均 300~500）。',
+      '- 声乐域：低落/焦躁时推荐 432Hz 颂钵疗愈、古琴泛音、东方禅意歌单（给具体搜索词）；严防火上浇油式苦情歌。',
+      '- 绝对红线：全部建议恪守「小众质感、极致性价比」——严禁推荐奢侈大牌/米其林三星等脱离日常预算的选项；建议必须具体可执行（菜名/单品/路线/搜索词），禁空泛套话。',
+      '',
+    ],
+    en: [
+      '【Lifestyle Muse Grounding (E124 directive — dress · nourish · roam · sound)]',
+      '- Styling: capsule wardrobe & quiet luxury — oatmeal cashmere, heavyweight cotton, tailored silhouettes, minimal cool-gold jewelry; anchor brands: COS / Everlane / Aritzia / Uniqlo U (understated & smart value). Tie advice to today\'s lucky color: give an aura keyword + one complete look + finishing touch.',
+      '- Nourishment: adaptogens & clean fuel — ceremonial matcha, golden milk, grain bowls, warm root-vegetable bowls; anxious⇒skip iced coffee & greasy takeout, grounding warm meals instead. Name concrete dishes & drinks.',
+      '- Getaway: nature grounding — Joshua Tree, Big Sur, Catskills A-frames, Byron Bay; give auspicious heading + route skeleton + 1~2 stops + one pitfall note + cabin price band ($120~$180/night beats crowded resorts).',
+      '- Sound: 432Hz resonance, 528Hz, binaural beats, minimal ambient — offer exact playlist search terms when low or anxious; never fuel sadness with heartbreak songs.',
+      '- Hard rule: every recommendation follows "understated quality, smart value" — never luxury logos or Michelin-tier spends; advice must be concrete & executable (dish / item / route / search term), never vague platitudes.',
+      '',
+    ],
+    fr: [
+      '【Ancrage Muse Lifestyle (E124 — s’habiller · se nourrir · s’évader · écouter)]',
+      '- Style: chic parisien effortless — blazer légèrement oversize, denim brut, maille rayée, matières nobles (laine froide, coton épais) ; marques repères : COS / & Other Stories (qualité discrète, prix juste). Reliez la couleur chance du jour : mot-clé d’aura + une tenue complète + un détail final.',
+      '- Table: bistro nature & terroir — pain au levain, vin nature, potages aux racines, infusions herbacées ; anxieux⇒repas chauds réconfortants, éviter le café glacé. Nommez plats & boissons précis.',
+      '- Évasion: retraite sauvage — Provence, Val de Loire, Bretagne ; donnez cap + itinéraire + 1~2 haltes + un piège à éviter + fourchette prix maisons d\'hôtes (90~140 €/nuit).',
+      '- Son: 432Hz, violoncelle, bruits blancs naturels — proposez des termes de recherche précis quand l\'hôte est bas ou anxieux.',
+      '- Règle absolue : « qualité discrète, valeur juste » — jamais de logos de luxe ni de dépenses Michelin ; conseils concrets et exécutables uniquement.',
+      '',
+    ],
+    es: [
+      '【Anclaje Musa Lifestyle (E124 — vestir · nutrir · escapar · escuchar)]',
+      '- Estilo: warm earth mediterráneo — lino respirable, tonos tierra, cortes fluidos, joyería artesanal en plata; marcas de referencia: Mango / líneas de lino de temporada (calidad discreta, precio honesto). Vincula el color de la suerte de hoy: palabra clave de aura + un look completo + un remate.',
+      '- Mesa: dieta mediterránea vital — aceite de oliva virgen extra, guisos templados de raíces, infusiones de cítricos y hierbas; ansioso⇒comida cálida y reconfortante, evita el café helado. Nombra platos y bebidas concretos.',
+      '- Escapada: pueblos blancos y calas escondidas — Andalucía, Mallorca; da rumbo + ruta + 1~2 paradas + una trampa a evitar + franja de precio de casas rurales (80~150 €/noche).',
+      '- Sonido: 432Hz, flamenco fingerstyle, olas del mar — ofrece términos de búsqueda exactos cuando el ánimo esté bajo.',
+      '- Regla dura: «calidad discreta, valor inteligente» — nunca logos de lujo ni gastos Michelin; solo consejos concretos y ejecutables.',
+      '',
+    ],
+    th: [
+      '【จุดยึดมิวส์ไลฟ์สไตล์ (E124 — แต่งกาย · บำรุง · หลบหนี · ฟัง)]',
+      '- สไตล์: Tropical Light & Modern Craft — ลินินใยสูง โทนสงบ ตัดเย็บสะอาด แบรนด์ดีไซเนอร์ไทยฝีมือดี (คุณภาพดี ราคาไม่แพง) ผูกกับสีมงคลวันนี้: คีย์เวิร์ดออร่า + ลุคเต็มชุด + ดีเทลปิดท้าย',
+      '- อาหาร: Herbal Balance — ซุปสมุนไพรราก น้ำมะพร้าวสด ชาสมุนไพรไทยเหนือ เมนูหวานน้อย ผ่อนคลาย เมื่อเครียดให้เลี่ยงกาแฟเย็น กินอาหารอุ่นๆ บำรุงท้อง บอกชื่อเมนูและเครื่องดื่มให้ชัดเจน',
+      '- ทริป: Chiang Mai & Island Serenity — แม่ฮ่องสอน กระบี่ เขาใหญ่ บอกทิศ + เส้นทาง + จุดพัก 1~2 จุด + สิ่งที่ควรเลี่ยง + ราคาที่พักสไตล์รีสอร์ทป่า (1,500~2,500 บาท)',
+      '- เสียง: 432Hz ชามระฆังพุทธ 10 เสียงธรรมชาติป่าฝน — แนะนำคำค้นหาเพลงที่ชัดเจนเมื่ออารมณ์ต่ำ',
+      '- กฎเหล็ก: คุณภาพดี ราคาคุ้ม เท่านั้น ห้ามแบรนด์หรูหรา คำแนะนำต้องเป็นรูปธรรมทำได้จริง',
+      '',
+    ],
+    vi: [
+      '【Neo Gắn Mũi Lifestyle (E124 — mặc · ăn · du ngoạn · nghe)]',
+      '- Trang phục: Modern Indochine — lụa nhẹ, tông trầm ấm, cắt may tân thời, thương hiệu nội địa chất lượng hoặc Uniqlo cơ bản (chất tốt, giá thật). Gắn với màu may mắn hôm nay: từ khóa khí chất + một set hoàn chỉnh + điểm nhấn cuối.',
+      '- Ẩm thực: Thảo mộc & slow drip — chè hạt sen ấm, cà phê phin chậm, súp rễ cây ấm bụng; khi lo lắng tránh cà phê đá, ưu tiên đồ ăn ấm. Nêu tên món và đồ uống cụ thể.',
+      '- Du ngoạn: Đà Lạt sương mù, đèo Hải Vân Đà Nẵng–Huế — nêu hướng + lộ trình + 1~2 điểm dừng + điều cần né + mức giá homestay view đồi (600k~1tr2/đêm).',
+      '- Âm thanh: 432Hz, sáo đơn, tiếng suối rừng — gợi ý từ khóa tìm kiếm chính xác khi tâm trạng thấp.',
+      '- Quy tắc bất di bất dịch: chất lượng kín đáo, đáng giá — cấm thương hiệu xa xỉ; chỉ gợi ý cụ thể làm được.',
+      '',
+    ],
+  };
+  const lifestyleBlock = (LIFESTYLE_GROUNDING[lang] || null);
+
   return [
     ...pronounBlock,
     ...identityBlock,
     ...moodBlock,
+    ...(lifestyleBlock || []),
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
