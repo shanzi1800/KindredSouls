@@ -5,6 +5,9 @@ import { CitySearchInput } from '../components/CitySearchInput';
 import { TimeInput } from '../components/TimeInput';
 import { slotNext } from '../components/TimeInput';
 import type { CityRecord } from '../hooks/useCitySearch';
+// ⚖️ E127-LEGAL-ROUTING-MODAL（主公军令 2026-11-08）：表单原位法律条款弹窗——
+//    财富模块同款接线（单人星盘表单；关闭后个人生日数据 100% 留存、零串流姻缘流程）。
+import LegalTermsModal from '../components/legal/LegalTermsModal';
 
 interface WealthPageProps {
   onNavigate: (path: string) => void;
@@ -130,6 +133,13 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
   const [shakeSeed, setShakeSeed] = useState(0);  // 每次错误自增1，强制重新动画
   const [birthTime, setBirthTime] = useState('12:00');
   const [birthCity, setBirthCity] = useState<CityRecord | null>(null);
+  // ⚖️ E127：法律条款原位弹窗状态（替代旧 `window.location.href` 整页跳转——
+  //    旧病灶：清空个人生日数据＋跨模块串流风险）。
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  const openLegal = (doc: 'terms' | 'privacy') => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setLegalModal(doc);
+  };
 
   // 从 URL 读回（替代 sessionStorage）
   useEffect(() => {
@@ -291,13 +301,15 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
         </div>
 
         <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
-          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('wealthInput.startBtn')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
-          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('wealthInput.startBtn')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
-          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('wealthInput.startBtn')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
-          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('wealthInput.startBtn')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
-          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('wealthInput.startBtn')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Chính Sách Bảo Mật</a>.</> : null}
-          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('wealthInput.startBtn')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Privacy Policy</a>.</> : null}
+          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('wealthInput.startBtn')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>隐私政策</a>。</> : null}
+          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('wealthInput.startBtn')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Política de Privacidad</a>.</> : null}
+          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('wealthInput.startBtn')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Politique de Confidentialité</a>.</> : null}
+          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('wealthInput.startBtn')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
+          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('wealthInput.startBtn')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Chính Sách Bảo Mật</a>.</> : null}
+          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('wealthInput.startBtn')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Privacy Policy</a>.</> : null}
         </p>
+        {/* ⚖️ E127：法律条款原位弹窗（含「非金融建议免责」章节；关闭后个人生日 100% 留存）。 */}
+        {legalModal && <LegalTermsModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       </div>
     </div>
   );
