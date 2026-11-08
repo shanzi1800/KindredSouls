@@ -1596,7 +1596,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
 /* ── Policy Pages ── */
 /* ⚖️ E127：独立路由页升 fixed 全屏覆盖（z-120）——与首页文档流互斥。
    旧病灶：position:relative 使条款纵向堆叠在首页 hero 下方，
-   直访 /privacy-policy 首屏只见首页（「跳回首页」视觉假象）。 */
+   直访 /privacy-policy 首屏只见首页（「跳回首页」视觉假象）。
+   ⚠️ E127 热修：.page 全局类 max-width:420px 会把 fixed inset-0 卡成
+   420px 竖条（实弹 elementFromPoint 实锤右侧透出首页 VIDEO/hero）——
+   须显式 max-width:none + width:100vw 覆盖。 */
 .policy-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #080810 0%, #0D0D1A 100%);
@@ -1606,6 +1609,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   padding: 56px 16px 60px;
   position: fixed;
   inset: 0;
+  width: 100vw;
+  max-width: none;
   z-index: 120;
   overflow-y: auto;
 }
