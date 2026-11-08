@@ -274,7 +274,7 @@ test('E98-⑤-1 闸门接线：test:astro 含本闸门（74 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e98-fr-agetap-orient.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 95, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 96, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE98 = parts.findIndex((p) => p.includes('audit-e98-'));
   const iE97 = parts.findIndex((p) => p.includes('audit-e97-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

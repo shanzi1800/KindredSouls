@@ -41,6 +41,9 @@ import { createSSEParser, classifySSEFrame, reduceSSEFrames } from './lib/ssePar
 import WealthPage from './pages/WealthPage';
 import WealthReportPage from './pages/WealthReportPage';
 import PolicyPage from './pages/PolicyPage';
+// ⚖️ E127-LEGAL-ROUTING-MODAL（主公军令 2026-11-08）：表单原位法律条款弹窗——
+//    点击「服务条款/隐私政策」零跳出查阅（z-150 毛玻璃＋暗金边框；表单数据 100% 留存）。
+import LegalTermsModal from './components/legal/LegalTermsModal';
 // 🧪 Gate 45-B：沙盘收银台（create-checkout 回执 sandbox:true ⇒ 截断外链、就地唤起）
 import SandboxCashier from './components/SandboxCashier';
 import SandboxPayPage from './pages/SandboxPayPage';
@@ -358,6 +361,13 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
   const d2Ref = React.useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
+  // ⚖️ E127：法律条款原位弹窗状态（'terms' | 'privacy' | null）——
+  //    替代旧 `window.location.href` 整页跳转（旧病灶：清空表单数据＋SPA 状态全丢）。
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  const openLegal = (doc: 'terms' | 'privacy') => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setLegalModal(doc);
+  };
   const jumpToD2 = () => { setD2Key(k => k + 1); setTimeout(() => d2FirstRef.current?.focus(), 80); };
   const shake = (which: 1 | 2) => {
     if (which === 1) { setShaking1(true); setTimeout(() => setShaking1(false), 300); }
@@ -553,13 +563,16 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       <button className="btn btn-primary" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{t('input.calculate')}</button>
       {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
       <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }}>
-          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>隐私政策</a>。</> : null}
-          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Política de Privacidad</a>.</> : null}
-          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Politique de Confidentialité</a>.</> : null}
-          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('input.calculate')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
-          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('input.calculate')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Chính Sách Bảo Mật</a>.</> : null}
-          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('input.calculate')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/terms-of-service'}}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={e=>{e.preventDefault();window.location.href='/privacy-policy'}}>Privacy Policy</a>.</> : null}
+          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>隐私政策</a>。</> : null}
+          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Política de Privacidad</a>.</> : null}
+          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Politique de Confidentialité</a>.</> : null}
+          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('input.calculate')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
+          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('input.calculate')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Chính Sách Bảo Mật</a>.</> : null}
+          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('input.calculate')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Privacy Policy</a>.</> : null}
         </p>
+        {/* ⚖️ E127：法律条款原位弹窗（z-150 毛玻璃＋暗金边框；关闭后表单数据 100% 留存）。
+            href 保留——中键/新标签直达独立路由页（/privacy-policy fixed 全屏渲染）。 */}
+        {legalModal && <LegalTermsModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       </div>
     </div>
   );
