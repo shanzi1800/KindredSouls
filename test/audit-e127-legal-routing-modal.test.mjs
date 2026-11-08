@@ -19,6 +19,11 @@
  *   E127-07 policy-page CSS fixed 全屏覆盖锚（z-120——条款页与首页文档流互斥）；
  *   E127-08 弹窗军令规格锚：z-[150] 毛玻璃遮罩＋暗金边框＋✕＋已阅读按钮＋Esc；
  *   E127-09 跨模块防串流锚：WealthPage 弹窗零姻缘组件引用＋弹窗纯展示零路由；
+ *   E127-10 退款政策 SKU 六语对齐：$29.99 年度报告补齐（4.99/2.99/29.99/99.99
+ *           全六语在位）＋支付联系句六语逐语对齐（主公「全语言对齐」红线）；
+ *   E127-11 邮箱域迁移锚：六语全文档 support@kindredsouls.online 在位、
+ *           旧域 .com.au 全绝迹；滚动槽黑金滑轨锚——.ks-legal-scroll 与
+ *           .policy-page 逐字对齐 .ks-report-scroll（E91-③ 封仓规格）；
  *   S10 链位自保：e127 入编（e126 后、e40-compat 前；全链 95→96 段）。
  * 🔴 纪律：模块导入一律 pathToFileURL（中文仓路径 percent-encode 防坑）。
  * 执行命令：node --test test/audit-e127-legal-routing-modal.test.mjs
@@ -175,6 +180,67 @@ test('E127-09 跨模块防串流锚：财富弹窗零姻缘引用＋弹窗纯展
   assert.ok(!MODAL.includes('navigate('), '弹窗严禁 navigate 跳转');
   // 弹窗 onClose 回调签名（父组件控制关闭——表单状态不卸载）
   assert.ok(MODAL.includes('onClose: () => void'), '弹窗须走 onClose 回调');
+});
+
+/* ═══════════ E127-10 退款政策 SKU 六语对齐（E128 军令）═══════════ */
+test('E127-10 退款政策 SKU 六语对齐：$29.99 年度报告补齐＋支付联系句全语在位', () => {
+  // 退款节标题锚（六语各取本语节名）
+  const REFUND_H = {
+    zh: '退款政策', en: 'Refund Policy', fr: 'remboursement',
+    es: 'reembolso', th: 'การคืนเงิน', vi: 'Hoàn tiền',
+  };
+  for (const [lang, hMark] of Object.entries(REFUND_H)) {
+    const terms = getLegalTermsDoc('terms', lang);
+    const sec = terms.sections.find((s) => s.h.includes(hMark));
+    assert.ok(sec, `terms[${lang}] 须有退款政策节`);
+    // SKU 面全量：fr 用逗号小数（4,99$），其余用点小数（4.99）
+    const amounts = lang === 'fr'
+      ? ['4,99$', '2,99$', '29,99$', '99,99$']
+      : ['4.99', '2.99', '29.99', '99.99'];
+    for (const a of amounts) {
+      assert.ok(sec.p.includes(a), `terms[${lang}] 退款政策须含 ${a}（SKU 面全量对齐）`);
+    }
+    // $29.99 年度报告专项军令锚（主公实锤漏报）
+    assert.ok(sec.p.includes('29.99') || sec.p.includes('29,99'), `terms[${lang}] 退款政策须含 $29.99 年度报告（主公军令）`);
+    // 支付联系句六语逐语对齐（杜绝只改单语的历史病）
+    assert.ok(sec.p.includes('support@kindredsouls.online'), `terms[${lang}] 退款政策须含支付联系邮箱`);
+  }
+});
+
+/* ═══════════ E127-11 邮箱域迁移＋滚动槽黑金滑轨（E128 军令）═══════════ */
+test('E127-11 邮箱域对齐（.online 在位/.com.au 绝迹）＋滚动槽对齐月报黑金滑轨', () => {
+  // ① 邮箱域六语全文档对齐
+  for (const lang of LANGS) {
+    for (const type of ['privacy', 'terms']) {
+      const doc = getLegalTermsDoc(type, lang);
+      const joined = doc.sections.map((s) => s.p).join('\n');
+      assert.ok(joined.includes('support@kindredsouls.online'), `${lang}/${type} 须含新邮箱域`);
+      assert.ok(!joined.includes('kindredsouls.com.au'), `${lang}/${type} 旧邮箱域须绝迹`);
+    }
+  }
+  const LT_SRC = read('web/src/i18n/legalTerms.mjs');
+  assert.ok(!LT_SRC.includes('kindredsouls.com.au'), 'legalTerms 真源零 .com.au 残留');
+
+  // ② 滚动槽：.ks-legal-scroll（弹窗）与 .policy-page（独立页）逐字对齐
+  //    .ks-report-scroll 黑金滑轨（E91-③ Sacred .dark-scrollbar 封仓规格）
+  const SELS = ['.ks-legal-scroll', '.policy-page'];
+  for (const sel of SELS) {
+    const esc = sel.replace('.', '\\.');
+    const base = new RegExp(esc + '\\s*\\{[^}]*\\}').exec(CSS);
+    assert.ok(base, `${sel} 基础规则须存在`);
+    assert.ok(base[0].includes('scrollbar-width: thin'), `${sel} Firefox 须 scrollbar-width: thin`);
+    assert.ok(base[0].includes('scrollbar-color: rgba(212, 175, 55, 0.3) rgba(255, 255, 255, 0.05)'), `${sel} Firefox 须 scrollbar-color 封仓规格`);
+    const wkb = new RegExp(esc + '::-webkit-scrollbar\\s*\\{[^}]*\\}').exec(CSS);
+    assert.ok(wkb, `${sel} webkit 滑轨规则须存在`);
+    assert.ok(wkb[0].includes('width: 5px'), `${sel} 滑轨宽须 5px（对齐月报金属框）`);
+    assert.ok(wkb[0].includes('border-radius: 4px'), `${sel} 滑轨须胶囊圆角`);
+    const tr = new RegExp(esc + '::-webkit-scrollbar-track\\s*\\{[^}]*\\}').exec(CSS);
+    assert.ok(tr && tr[0].includes('background: rgba(255, 255, 255, 0.05)'), `${sel} 轨道须 0.05 暗轨`);
+    const th = new RegExp(esc + '::-webkit-scrollbar-thumb\\s*\\{[^}]*\\}').exec(CSS);
+    assert.ok(th && th[0].includes('background: rgba(212, 175, 55, 0.3)'), `${sel} 滑块须哑光金 0.3`);
+    const hv = new RegExp(esc + '::-webkit-scrollbar-thumb:hover\\s*\\{[^}]*\\}').exec(CSS);
+    assert.ok(hv && hv[0].includes('background: rgba(212, 175, 55, 0.6)'), `${sel} hover 须 0.6 亮金`);
+  }
 });
 
 /* ═══════════ S10 链位自保 ═══════════ */

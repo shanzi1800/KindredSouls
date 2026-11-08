@@ -1875,7 +1875,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   max-width: none;
   z-index: 120;
   overflow-y: auto;
+  /* ⚖️ E128：滚动槽逐字对齐月报 .ks-report-scroll 黑金滑轨
+     （E91-③ Sacred .dark-scrollbar 封仓规格——主公实锤条款页滑轨不一致）。 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.3) rgba(255, 255, 255, 0.05);
 }
+.policy-page::-webkit-scrollbar { width: 5px; border-radius: 4px; }
+.policy-page::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.policy-page::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
+.policy-page::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
 .policy-container {
   position: relative;
   z-index: 1;
@@ -1987,7 +1995,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 1;
   padding: 2px 4px 8px 2px;
   border-top: 1px solid rgba(212, 175, 55, 0.18);
+  /* ⚖️ E128：滚动槽逐字对齐月报 .ks-report-scroll 黑金滑轨
+     （E91-③ Sacred .dark-scrollbar 封仓规格——主公实锤弹窗滑轨不一致）。 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.3) rgba(255, 255, 255, 0.05);
 }
+/* ⚖️ E128：黑金滑轨（5px 胶囊 · 逐字克隆 .ks-report-scroll E91-③ 封仓规格） */
+.ks-legal-scroll::-webkit-scrollbar { width: 5px; border-radius: 4px; }
+.ks-legal-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.ks-legal-scroll::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
+.ks-legal-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
 .ks-legal-section {
   margin-bottom: 14px;
 }
