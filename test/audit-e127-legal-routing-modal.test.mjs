@@ -140,6 +140,10 @@ test('E127-07 policy-page CSS fixed 全屏覆盖锚（与首页文档流互斥�
   assert.ok(m[0].includes('position: fixed'), '.policy-page 须 fixed（覆盖首页文档流）');
   assert.ok(m[0].includes('z-index: 120'), '.policy-page 须 z-120');
   assert.ok(m[0].includes('overflow-y: auto'), '.policy-page 须可滚动');
+  // ⚠️ E127 热修（生产实弹 elementFromPoint 实锤）：.page 全局类 max-width:420px
+  // 会把 fixed inset-0 卡成 420px 竖条（右侧透出首页 VIDEO/hero）——须显式覆盖。
+  assert.ok(m[0].includes('width: 100vw'), '.policy-page 须 width:100vw（覆盖 .page 420px 限宽）');
+  assert.ok(m[0].includes('max-width: none'), '.policy-page 须 max-width:none（覆盖 .page 420px 限宽）');
 });
 
 /* ═══════════ E127-08 弹窗军令规格 ═══════════ */
