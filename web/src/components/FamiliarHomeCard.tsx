@@ -169,6 +169,11 @@ const FamiliarHomeCard: React.FC = () => {
           const exp = (ap && (ap.expires_at || ap.all_pass_expires_at)) || planMap.all_pass_expires_at;
           ok = !exp || new Date(exp).getTime() > now;
         }
+        // 🆕 E129-刀五：全通月订（订阅期内全档可及，到期失效——与后端同源）
+        if (!ok && planMap.all_pass_monthly === true) {
+          const expM = planMap.all_pass_monthly_expires_at;
+          ok = !expM || new Date(expM).getTime() > now;
+        }
         if (!ok && planMap.star_monthly_vip) {
           const sv = typeof planMap.star_monthly_vip === 'object' ? planMap.star_monthly_vip : planMap;
           const used = Number(sv.star_monthly_wealth_used ?? 0) || 0;

@@ -194,9 +194,10 @@ test('E127-10 退款政策 SKU 六语对齐：$29.99 年度报告补齐＋支付
     const sec = terms.sections.find((s) => s.h.includes(hMark));
     assert.ok(sec, `terms[${lang}] 须有退款政策节`);
     // SKU 面全量：fr 用逗号小数（4,99$），其余用点小数（4.99）
+    //   🆕 E129-刀五（军令 2026-11-09）：$9.99 全通月订入 SKU 面（铁律 15 六语同步）
     const amounts = lang === 'fr'
-      ? ['4,99$', '2,99$', '29,99$', '99,99$']
-      : ['4.99', '2.99', '29.99', '99.99'];
+      ? ['4,99$', '2,99$', '29,99$', '9,99$', '99,99$']
+      : ['4.99', '2.99', '29.99', '9.99', '99.99'];
     for (const a of amounts) {
       assert.ok(sec.p.includes(a), `terms[${lang}] 退款政策须含 ${a}（SKU 面全量对齐）`);
     }
@@ -248,7 +249,7 @@ test('E127-S10 链位自保：e127 入编（e126 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 96, `军规链段数须为 96（E127 入编后 95→96；实为 ${segs.length}）`);
+  assert.equal(segs.length, 97, `军规链段数须为 96（E127 入编后 95→96；实为 ${segs.length}）`);
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iE126 = segs.findIndex((s) => s.includes('audit-e126-geo-locale'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

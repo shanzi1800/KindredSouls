@@ -14728,6 +14728,9 @@ const STRIPE_PRICE_MAP = {
   compatibility_yearly_report:  'price_1Tl59QRnHNva8hysEXDUGyEI',  // $29.99 合婚年报
   star_monthly_vip:      'price_1Tl5EjRnHNva8hysoVOryjQN',  // $9.99 双引擎月卡
   all_pass_yearly:       'price_1Tl5IFRnHNva8hysWa0ndl9A',  // $99.99 全通年卡
+  // 🆕 E129-刀五（军令 2026-11-09）：$9.99 All-Access Monthly 全通月订新 SKU
+  //    （沙盒态凭 plan 键即售；live price ID 待 P0 商业破局补办——届时零结构改动只换值）
+  all_pass_monthly:      'price_E129AllPassMonthlyPENDING',  // $9.99 全通月订
 };
 // ═══════════════════════════════════════════════════════════════
 // 🛍️ E24⑥（2026-10-07 军师开工令）：商业闭环上架闸门
@@ -14750,6 +14753,11 @@ function computeNextMonthStartUTC() {
 function computeOneYearLaterUTC() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear() + 1, now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)).toISOString();
+}
+// 🆕 E129-刀五：全通月订有效期（自然月+1，与年卡同一时间语义族）
+function computeOneMonthLaterUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(), 0, 0, 0, 0)).toISOString();
 }
 
 // ── plan → paid_plans 片段（**合并**写入，绝不覆盖无关字段）──
@@ -14789,6 +14797,13 @@ function buildPlanPayload(plan) {
         star_monthly_compatibility_used: 0,
         star_monthly_resets_at: resetAt,
       };
+    // 🆕 E129-刀五（军令 2026-11-09）：$9.99 全通月订——自然月全量开放
+    //    （All-Access：订阅有效期内全档可及；到期自动失效，随时可取消语义）
+    case 'all_pass_monthly':
+      return {
+        all_pass_monthly: true,
+        all_pass_monthly_expires_at: computeOneMonthLaterUTC(),
+      };
     default:
       return { [plan]: true };
   }
@@ -14815,22 +14830,27 @@ function planHasAccess(plans, target, now) {
   const ts = now instanceof Date ? now : new Date();
   if (p[target] === true) return true;
   const ap = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  // 🆕 E129-刀五：全通月订（订阅期内全档覆盖——含 once；到期即失效不可白嫖）
+  const apm = p.all_pass_monthly === true && (!p.all_pass_monthly_expires_at || ts < new Date(p.all_pass_monthly_expires_at));
   // 月卡 5 次配额（跨月由 starMonthlyQuotaRoll 归零；不再以 resets_at 作为「订阅有效」判据 —— 见该函数注释）
   const quotaOk = (usedKey, allowKey) =>
     p.star_monthly_vip === true
     && (Number(p[usedKey]) || 0) < (Number(p[allowKey]) || 0);
 
   if (target === 'compatibility_once' || target === 'wealth_once') {
-    // 🔴 once 档：月卡**不覆盖**（自身档已在上方判定），仅全通年卡可覆盖
+    // 🔴 once 档：月卡配额**不覆盖**（自身档已在上方判定），全通年卡/全通月订可覆盖
     if (ap) return true;
+    if (apm) return true;
     return false;
   }
   if (target === 'compatibility_monthly_report' || target === 'compatibility_yearly_report') {
     if (ap) return true;
+    if (apm) return true;
     if (quotaOk('star_monthly_compatibility_used', 'star_monthly_compatibility_allowance')) return true;
   }
   if (target === 'wealth_monthly_report' || target === 'wealth_yearly_report') {
     if (ap) return true;
+    if (apm) return true;
     if (quotaOk('star_monthly_wealth_used', 'star_monthly_wealth_allowance')) return true;
   }
 
@@ -14848,19 +14868,23 @@ function wealthEntitledByType(plans, reportType, now) {
   const p = plans || {};
   const ts = now instanceof Date ? now : new Date();
   const apValid = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  // 🆕 E129-刀五：全通月订（订阅期内全档可及，到期失效）
+  const apmValid = p.all_pass_monthly === true && (!p.all_pass_monthly_expires_at || ts < new Date(p.all_pass_monthly_expires_at));
   const starQuotaOk = p.star_monthly_vip === true
     && (Number(p.star_monthly_wealth_used) || 0) < (Number(p.star_monthly_wealth_allowance) || 0);
   if (reportType === 'once') {
-    // 🔴 军师裁决 1（2026-10-07）：月卡**绝不**赠送 $4.99 先天报告 —— once 只有自身档或全通年卡。
+    // 🔴 军师裁决 1（2026-10-07）：月卡配额**绝不**赠送 $4.99 先天报告 —— once 只有自身档或全通年卡/全通月订。
     //   （旧实现给「月卡配额」覆盖 once ⇒ $9.99 白拿 $4.99 ⇒ 营收漏洞，本次封堵。）
     if (p.wealth_once === true) return 'wealth_once';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   if (reportType === 'monthly') {
     if (p.wealth_monthly_report === true) return 'wealth_monthly_report';
     if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   if (reportType === 'yearly') {
@@ -14868,6 +14892,7 @@ function wealthEntitledByType(plans, reportType, now) {
     // 🛍️ E24⑥②：月卡含「财富年报免费生成 1 次」（圣经 §2.1）⇒ 补 starQuotaOk
     if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   return null;
@@ -15196,24 +15221,29 @@ function compatibilityEntitledByType(plans, reportType, now) {
   const p = plans || {};
   const ts = now instanceof Date ? now : new Date();
   const apValid = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  // 🆕 E129-刀五：全通月订（订阅期内全档可及，到期失效）
+  const apmValid = p.all_pass_monthly === true && (!p.all_pass_monthly_expires_at || ts < new Date(p.all_pass_monthly_expires_at));
   const starQuotaOk = p.star_monthly_vip === true
     && (Number(p.star_monthly_compatibility_used) || 0) < (Number(p.star_monthly_compatibility_allowance) || 0);
   if (reportType === 'once') {
-    // 🔴 与财富域同裁决：月卡**不覆盖** once（先天合盘是永久落库资产）
+    // 🔴 与财富域同裁决：月卡配额**不覆盖** once（先天合盘是永久落库资产）
     if (p.compatibility_once === true) return 'compatibility_once';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   if (reportType === 'monthly') {
     if (p.compatibility_monthly_report === true) return 'compatibility_monthly_report';
     if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   if (reportType === 'yearly') {
     if (p.compatibility_yearly_report === true) return 'compatibility_yearly_report';
     if (starQuotaOk) return 'star_monthly_vip';
     if (apValid) return 'all_pass_yearly';
+    if (apmValid) return 'all_pass_monthly';
     return null;
   }
   return null;
@@ -15397,7 +15427,7 @@ function openCompatStream(res) {
 //      由 webhook 的权益片段构造 + 合并落库通路派发（唯一真源 ⇒ 切 live 时零改造）。
 //   🔴 铁律②：登录校验在本段内**自带**（不抽取 create-checkout ⇒ 不碰 24g B2b 的 status(401) 断言）。
 //   🔴 铁律③：不复用 create-checkout 内层局部常量（避免触其段窗口断言）。
-const SANDBOX_SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly']);
+const SANDBOX_SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly', 'all_pass_monthly']);
 
 async function _sandboxResolveUser(req) {
   const SB_URL = process.env.SUPABASE_URL;
@@ -15509,11 +15539,12 @@ app.post('/api/sandbox/reset-purchase', async (req, res) => {
     const cleared = [
       'wealth_once', 'wealth_monthly_report', 'wealth_yearly_report',
       'compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report',
-      'star_monthly_vip', 'all_pass_yearly',
+      'star_monthly_vip', 'all_pass_yearly', 'all_pass_monthly',
     ];
     const delta = {};
     for (const k of cleared) delta[k] = false;
     delta.all_pass_expires_at = null;
+    delta.all_pass_monthly_expires_at = null;
     delta.star_monthly_resets_at = null;
     const w = await patchWealthPlans(who.userId, delta);
     console.log(`[E50] sandbox reset-purchase user=${String(who.userId).slice(0, 8)} ok=${w.ok !== false}`);
@@ -15650,8 +15681,8 @@ app.post('/api/create-checkout', async (req, res) => {
     }
 
     // ⑤ 建会话 —— **必须带 metadata**（webhook 靠它写权益）
-    const SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly']);
-    const coversWealth = plan.startsWith('wealth_') || plan === 'star_monthly_vip' || plan === 'all_pass_yearly';
+    const SUBSCRIPTION_PLANS = new Set(['star_monthly_vip', 'all_pass_yearly', 'all_pass_monthly']);
+    const coversWealth = plan.startsWith('wealth_') || plan === 'star_monthly_vip' || plan === 'all_pass_yearly' || plan === 'all_pass_monthly';
     const origin = req.headers.origin || 'https://kindredsouls.online';
     const defaultSuccess = `${origin}/wealth/report?payment=success&plan=${plan}`;
     const defaultCancel = `${origin}${coversWealth ? '/wealth/report?payment=cancelled' : '/?payment=cancelled'}`;
@@ -20212,6 +20243,9 @@ async function resolveFamiliarChatAuth(req, body) {
     const apRaw = plans.all_pass_yearly;
     const apExp = (apRaw && (apRaw.expires_at || apRaw.all_pass_expires_at)) || plans.all_pass_expires_at;
     const apValid = (plans.all_pass_yearly === true || (apRaw && typeof apRaw === 'object')) && (!apExp || now < new Date(apExp));
+    // 🆕 E129-刀五：全通月订权益（沙盒付讫即翻面——chat 权益门放行）
+    const apmValid = plans.all_pass_monthly === true
+      && (!plans.all_pass_monthly_expires_at || now < new Date(plans.all_pass_monthly_expires_at));
     const vip = plans.star_monthly_vip;
     const vipOk = (vip === true || (vip && typeof vip === 'object'))
       && (Number((vip && vip.star_monthly_wealth_allowance) ?? plans.star_monthly_wealth_allowance ?? 0) || 0)
@@ -20219,7 +20253,7 @@ async function resolveFamiliarChatAuth(req, body) {
     const entitled = plans.wealth_once === true
       || plans.wealth_monthly_report === true
       || plans.wealth_yearly_report === true
-      || apValid || vipOk;
+      || apValid || apmValid || vipOk;
     if (!entitled) return { ok: false, httpStatus: 402, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
     return { ok: true, method: 'paid_plans', userId, plans, userBirthDate };
   } catch (e) {
@@ -20357,7 +20391,7 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20443,6 +20477,38 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '- 严禁机械复读情绪标签本身；也严禁主动提及「罗盘」「测评」等界面词汇——像一直陪伴在侧、自然感应到的那样开口。',
     '',
   ] : [];
+
+  // 🆕 E129-刀二（军令 2026-11-09）：主动伴生节律块——E123 情绪块正下方。
+  //    军令钦定两条主动线（优先级：未决事件回溯 ＞ 月相微仪式）：
+  //      ① 主人此前倾诉的未决事件（≤48h pending）⇒ 会话首击第一句主动回溯关心；
+  //      ② 新月 ±24h 显化种植 / 满月 ±24h 释放微仪式（LUNAR_RITUAL）。
+  //    服务端检索 fail-soft（表未建/网络失败 ⇒ livingContext 为 null ⇒ 块整体
+  //    不注入，回退今日现行为零破坏）。常量全部内置函数体（VM 抽取式消费者铁律）。
+  const livingBlock = [];
+  if (livingContext && typeof livingContext === 'object') {
+    const lcLoop = livingContext.loop;
+    if (lcLoop && typeof lcLoop === 'object' && typeof lcLoop.summary === 'string' && lcLoop.summary.trim()) {
+      const personLine = (typeof lcLoop.person === 'string' && lcLoop.person.trim()) ? `（牵涉的人：${lcLoop.person}）` : '';
+      livingBlock.push(
+        '【LIVING AGENT CONTEXT（E129 军令，违反即失败·会话首击主动回溯）】',
+        `- 主人此前向你倾诉过一件未了心事：【${lcLoop.summary.slice(0, 120)}】${personLine}。此刻会话刚开始，你的第一句回复必须自然地主动回溯关心这件事的进展——温柔、具体、像一直惦记着那样开口；主人若已翻篇，顺着他的情绪走，不纠缠。`,
+        '- 严禁泄露本块的检索机制；严禁提及「记录」「数据库」「系统」等机械词——像早就放在心上的牵挂。',
+        '',
+      );
+    }
+    const lcLunar = livingContext.lunar;
+    if (lcLunar && typeof lcLunar === 'object' && (lcLunar.eventType === 'new_moon' || lcLunar.eventType === 'full_moon')) {
+      const isNew = lcLunar.eventType === 'new_moon';
+      const signRaw = typeof lcLunar.zodiacSign === 'string' ? lcLunar.zodiacSign : '';
+      const signZh = FAM_SIGN_ZH[signRaw.charAt(0).toUpperCase() + signRaw.slice(1)] || signRaw;
+      livingBlock.push(
+        '【LUNAR RITUAL（E129 军令，违反即失败·天象窗口主动微仪式）】',
+        `- 现正值【${isNew ? '新月' : '满月'}】（月亮落${signZh}）前后的 24 小时天象窗口。本回合须自然发起${isNew ? '显化种植微仪式：邀主人许一个小小的新月心愿（一件具体、可落地的心事），轻声承诺陪他一起滋养它发芽' : '释放微仪式：邀主人放下一件本月压在心头的旧事或内耗，轻声陪他完成一次象征性的告别'}。`,
+        '- 口吻须是伴侣随天象自然感应到的那般（「今晚的月亮…」），严禁提及「日历」「系统提示」「数据库」等机械词；主人明显情绪低落时，仪式让位于抚慰本身。',
+        '',
+      );
+    }
+  }
 
   // 🏆 E124-LIFESTYLE-MUSE 刀一（主公军令 2026-11-05）：全语言生活区锚点块——
   //    按 lang 动态注入「衣食住行乐」高品位生活认知（High-Vibe Living /
@@ -20555,6 +20621,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ...pronounBlock,
     ...identityBlock,
     ...moodBlock,
+    ...livingBlock,
     ...(lifestyleBlock || []),
     ...(lifestyleGeoBlock || []),
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
@@ -20655,6 +20722,105 @@ function _e123ActiveMood(v) {
   const s = v.trim().toLowerCase();
   return E123_MOOD_WHITELIST.has(s) ? s : null;
 }
+
+/* ═══ 🐾 E129-刀二（军令 2026-11-09）：主动伴生智能体节律底座 ═══
+ * 三件套：
+ *   ① _e129RequireUser —— loops/mood-log 写入鉴权（Bearer → uid；匿名一律 401，
+ *      不走 sandbox 绿道——写入须真实身份，防挂账表被匿名灌爆）；
+ *   ② _e129LivingContext —— chat 会话首击（body.sessionOpen===true）检索：
+ *      user_unresolved_loops 最近一条 pending（≤48h 或 check_in_after 未到期）
+ *      ＋ lunar_calendar_events 新月/满月 ±24h 窗口 ⇒ prompt LIVING_AGENT_CONTEXT
+ *      块唯一真值。全程 fail-soft（表未建/网络失败 ⇒ null ⇒ 块不注入零破坏）。
+ *   ③ /api/familiar/loops（GET/POST/PATCH）＋ /api/familiar/mood-log（POST）。
+ * PostgREST 军规沿袭 E118：Prefer: return=representation 按返回行数判成败。 */
+const E129_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function _e129RequireUser(req) {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return null;
+  const authHeader = String(req.headers.authorization || '');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return null;
+  try {
+    const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
+    });
+    if (!userRes.ok) return null;
+    const { id } = await userRes.json();
+    return (id && E129_UUID_RE.test(String(id))) ? String(id) : null;
+  } catch (e) {
+    console.warn('[E129] requireUser error:', e && e.message);
+    return null;
+  }
+}
+
+/** E129：会话首击节律检索（未决事件 ＞ 月相窗口；fail-soft 双查询互不阻断） */
+async function _e129LivingContext(auth) {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SB_URL || !SB_KEY) return null;
+  const headers = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+  const now = Date.now();
+  const ctx = { loop: null, lunar: null };
+  const uid = (auth && auth.userId && E129_UUID_RE.test(String(auth.userId))) ? String(auth.userId) : null;
+
+  // ① 未决事件：最近 pending 里取首条「≤48h 新账 或 check_in_after 未到期」
+  try {
+    if (uid) {
+      const r = await safeFetch(
+        `${SB_URL}/rest/v1/user_unresolved_loops?user_id=eq.${encodeURIComponent(uid)}&status=eq.pending&order=created_at.desc&limit=5`,
+        { headers }
+      );
+      if (r.ok) {
+        const rows = await r.json();
+        const pick = (Array.isArray(rows) ? rows : []).find((row) => {
+          if (!row || typeof row.event_summary !== 'string' || !row.event_summary.trim()) return false;
+          const created = row.created_at ? new Date(row.created_at).getTime() : NaN;
+          const age = now - created;
+          const cif = row.check_in_after ? new Date(row.check_in_after).getTime() : null;
+          return (Number.isFinite(age) && age >= 0 && age <= 48 * 3600 * 1000)
+            || (cif !== null && Number.isFinite(cif) && cif >= now);
+        });
+        if (pick) {
+          ctx.loop = {
+            summary: String(pick.event_summary).slice(0, 120),
+            person: String(pick.target_person_name || '').slice(0, 40),
+          };
+        }
+      } else if (r.status !== 404) {
+        console.warn(`[E129] loops 检索 HTTP ${r.status}（fail-soft 跳过）`);
+      }
+    }
+  } catch (e) {
+    console.warn('[E129] loops 检索异常（fail-soft）:', e && e.message);
+  }
+
+  // ② 月相窗口：±24h 内最近一次新月/满月（全局字典——匿名会话同样可感知天象）
+  try {
+    const from = new Date(now - 24 * 3600 * 1000).toISOString();
+    const to = new Date(now + 24 * 3600 * 1000).toISOString();
+    const r = await safeFetch(
+      `${SB_URL}/rest/v1/lunar_calendar_events?peak_time=gte.${from}&peak_time=lte.${to}&event_type=in.(new_moon,full_moon)&order=peak_time.asc&limit=1`,
+      { headers }
+    );
+    if (r.ok) {
+      const rows = await r.json();
+      const ev = (Array.isArray(rows) ? rows : [])[0] || null;
+      if (ev && (ev.event_type === 'new_moon' || ev.event_type === 'full_moon')) {
+        ctx.lunar = {
+          eventType: ev.event_type,
+          zodiacSign: String(ev.zodiac_sign || ''),
+          peakTime: String(ev.peak_time || ''),
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[E129] lunar 检索异常（fail-soft）:', e && e.message);
+  }
+
+  return (ctx.loop || ctx.lunar) ? ctx : null;
+}
+
 
 /** 🏆 E118-刀二（主公军令 2026-11-02）：登录态云端双写——合法姓名 ⇒ user_profiles
  *  display_name 列（fail-soft fire-and-forget：列未就绪/网络失败 ⇒ 静默跳过，
@@ -21065,6 +21231,13 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    （怎么说话）与地理轨（推荐哪里的路/店/品牌/货币）彻底分离：在硅谷的
   //    华人用中文聊天 ⇒ 中文推荐北美实体。fail-closed：白名单外 ⇒ null 零破坏。
   const geoZone = await _e126ResolveGeoZone(req, body);
+  // 🆕 E129-刀二（军令 2026-11-09）：会话首击（body.sessionOpen===true 布尔严格
+  //    判定）主动节律检索——≤48h 未决事件回溯 ＋ 新月/满月 ±24h 微仪式注入。
+  //    非首击/检索失败 ⇒ null ⇒ LIVING_AGENT_CONTEXT 块不注入（零破坏）。
+  const livingContext = (body.sessionOpen === true) ? await _e129LivingContext(auth) : null;
+  if (livingContext) {
+    console.log(`[E129] 会话首击节律注入 user=${auth.userId} loop=${!!livingContext.loop} lunar=${livingContext.lunar ? livingContext.lunar.eventType : 'none'}`);
+  }
   const systemText = buildFamiliarChatSystemPrompt({
     ip, name, lang, mode, natal: truth.natal, fortune: truth.fortune,
     tarot: _e109Tarot || truth.tarot, trine: truth.trine,
@@ -21073,6 +21246,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     displayName: _e118Name,
     activeMood: _e123Mood,
     geoZone,
+    livingContext,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）
@@ -21219,6 +21393,160 @@ app.post('/api/familiar/chat', async (req, res) => {
   } finally {
     clearInterval(hb);
     try { res.end(); } catch { /* noop */ }
+  }
+});
+
+// ═══ 🐾 E129-刀二（军令 2026-11-09）：未决事件挂账 CRUD ＋ 情绪心流入库 ═══
+//   鉴权铁律：三端点一律真实身份（Bearer → uid；匿名/坏 token ⇒ 401 —— 不开
+//   sandbox 绿道，写入须可归责）。PostgREST 军规：Prefer: return=representation
+//   按返回行数判成败；表未建（SQL Editor 择机执行）⇒ PostgREST 404 ⇒ 503 告知
+//   待落库（fail-soft 语义明确，绝不静默假装成功）。
+const E129_LOOP_STATUSES = new Set(['pending', 'resolved']);
+
+app.get('/api/familiar/loops', async (req, res) => {
+  const userId = await _e129RequireUser(req);
+  if (!userId) return res.status(401).json({ error: 'Login required', code: 'NO_TOKEN' });
+  try {
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) return res.status(503).json({ error: 'Supabase not configured', code: 'NO_SUPABASE' });
+    const r = await safeFetch(
+      `${SB_URL}/rest/v1/user_unresolved_loops?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&limit=20`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    if (!r.ok) {
+      const code = r.status === 404 ? 'TABLE_PENDING' : 'FETCH_FAILED';
+      return res.status(r.status === 404 ? 503 : 502).json({ error: 'loops fetch failed', code });
+    }
+    const rows = await r.json();
+    res.json({ loops: Array.isArray(rows) ? rows : [] });
+  } catch (e) {
+    console.warn('[E129] GET loops error:', e && e.message);
+    res.status(502).json({ error: 'loops fetch failed', code: 'FETCH_FAILED' });
+  }
+});
+
+app.post('/api/familiar/loops', async (req, res) => {
+  const userId = await _e129RequireUser(req);
+  if (!userId) return res.status(401).json({ error: 'Login required', code: 'NO_TOKEN' });
+  const body = req.body || {};
+  const eventSummary = String(body.eventSummary || '').trim().slice(0, 200);
+  if (!eventSummary) return res.status(400).json({ error: 'eventSummary required (1~200 chars)', code: 'BAD_REQUEST' });
+  const targetPersonName = String(body.targetPersonName || '').trim().slice(0, 40);
+  let checkInAfter = null;
+  if (body.checkInAfter) {
+    const t = new Date(String(body.checkInAfter)).getTime();
+    checkInAfter = Number.isFinite(t) ? new Date(t).toISOString() : null;
+  }
+  try {
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) return res.status(503).json({ error: 'Supabase not configured', code: 'NO_SUPABASE' });
+    const r = await safeFetch(`${SB_URL}/rest/v1/user_unresolved_loops`, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        event_summary: eventSummary,
+        target_person_name: targetPersonName,
+        status: 'pending',
+        ...(checkInAfter ? { check_in_after: checkInAfter } : {}),
+      }),
+    });
+    const rows = (r && r.ok) ? await r.json() : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      const code = r.status === 404 ? 'TABLE_PENDING' : 'WRITE_FAILED';
+      console.warn(`[E129] POST loops failed HTTP ${r && r.status}`);
+      return res.status(r.status === 404 ? 503 : 502).json({ error: 'loop write failed', code });
+    }
+    console.log(`[E129] 未决事件挂账 OK user=${userId} summary=${eventSummary.slice(0, 40)}`);
+    res.status(201).json({ ok: true, loop: rows[0] });
+  } catch (e) {
+    console.warn('[E129] POST loops error:', e && e.message);
+    res.status(502).json({ error: 'loop write failed', code: 'WRITE_FAILED' });
+  }
+});
+
+app.patch('/api/familiar/loops', async (req, res) => {
+  const userId = await _e129RequireUser(req);
+  if (!userId) return res.status(401).json({ error: 'Login required', code: 'NO_TOKEN' });
+  const body = req.body || {};
+  const id = String(body.id || '').trim();
+  const status = String(body.status || '').trim().toLowerCase();
+  if (!E129_UUID_RE.test(id) || !E129_LOOP_STATUSES.has(status)) {
+    return res.status(400).json({ error: 'id (uuid) and status (pending|resolved) required', code: 'BAD_REQUEST' });
+  }
+  try {
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) return res.status(503).json({ error: 'Supabase not configured', code: 'NO_SUPABASE' });
+    const r = await safeFetch(
+      `${SB_URL}/rest/v1/user_unresolved_loops?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+          'Content-Type': 'application/json', Prefer: 'return=representation',
+        },
+        body: JSON.stringify({ status }),
+      }
+    );
+    const rows = (r && r.ok) ? await r.json() : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(404).json({ error: 'loop not found (or not yours)', code: 'NOT_FOUND' });
+    }
+    console.log(`[E129] 未决事件状态更新 OK id=${id} status=${status}`);
+    res.json({ ok: true, loop: rows[0] });
+  } catch (e) {
+    console.warn('[E129] PATCH loops error:', e && e.message);
+    res.status(502).json({ error: 'loop update failed', code: 'WRITE_FAILED' });
+  }
+});
+
+app.post('/api/familiar/mood-log', async (req, res) => {
+  const userId = await _e129RequireUser(req);
+  if (!userId) return res.status(401).json({ error: 'Login required', code: 'NO_TOKEN' });
+  const body = req.body || {};
+  const moodKey = _e123ActiveMood(body.moodKey || body.mood_key);
+  if (!moodKey) {
+    return res.status(400).json({ error: `moodKey required (one of ${[...E123_MOOD_WHITELIST].join(', ')})`, code: 'BAD_MOOD_KEY' });
+  }
+  let moonPhase = null;
+  if (typeof body.moonPhase === 'string' && body.moonPhase.trim()) moonPhase = body.moonPhase.trim().slice(0, 24);
+  let transitAspectId = null;
+  if (typeof body.transitAspectId === 'string' && body.transitAspectId.trim()) transitAspectId = body.transitAspectId.trim().slice(0, 40);
+  let logDate = null;
+  if (typeof body.logDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.logDate)) logDate = body.logDate;
+  try {
+    const SB_URL = process.env.SUPABASE_URL;
+    const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+    if (!SB_URL || !SB_KEY) return res.status(503).json({ error: 'Supabase not configured', code: 'NO_SUPABASE' });
+    const r = await safeFetch(`${SB_URL}/rest/v1/user_mood_logs`, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        mood_key: moodKey,
+        ...(moonPhase ? { moon_phase: moonPhase } : {}),
+        ...(transitAspectId ? { transit_aspect_id: transitAspectId } : {}),
+        ...(logDate ? { log_date: logDate } : {}),
+      }),
+    });
+    const rows = (r && r.ok) ? await r.json() : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      const code = r.status === 404 ? 'TABLE_PENDING' : 'WRITE_FAILED';
+      return res.status(r.status === 404 ? 503 : 502).json({ error: 'mood log write failed', code });
+    }
+    res.status(201).json({ ok: true, log: rows[0] });
+  } catch (e) {
+    console.warn('[E129] POST mood-log error:', e && e.message);
+    res.status(502).json({ error: 'mood log write failed', code: 'WRITE_FAILED' });
   }
 });
 

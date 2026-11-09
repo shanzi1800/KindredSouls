@@ -1109,6 +1109,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           const expiresAt = ap.expires_at || ap.all_pass_expires_at;
           if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
         }
+        // 🆕 E129-刀五：all_pass_monthly 全通月订（订阅期内全档可及，到期失效）
+        if (planMap.all_pass_monthly === true) {
+          const expM = planMap.all_pass_monthly_expires_at;
+          if (!expM || new Date(expM).getTime() > now) return true;
+        }
         // star_monthly_vip (布尔值或对象)
         const sv = planMap.star_monthly_vip;
         if (sv) {
@@ -1208,6 +1213,12 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         if (ap) {
           const expiresAt = ap.expires_at || ap.all_pass_expires_at || (ap === true ? null : null);
           if (!expiresAt || new Date(expiresAt).getTime() > now) return true;
+        }
+
+        // 🆕 E129-刀五：all_pass_monthly 全通月订（订阅期内全档可及，到期失效）
+        if (planMap.all_pass_monthly === true) {
+          const expM = planMap.all_pass_monthly_expires_at;
+          if (!expM || new Date(expM).getTime() > now) return true;
         }
 
         // star_monthly_vip：检查兼容性配额
@@ -2133,7 +2144,7 @@ export default function App() {
  try {
  const r = JSON.parse(savedResult);
  const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
- const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly'];
+ const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly','all_pass_monthly'];
  if (wealthPlans.includes(pendingPlan || '')) {
    const birthDate = r?.birthDate || localStorage.getItem('wealth_birth') || '';
    const lang = r?.lang || localStorage.getItem('wealth_lang') || 'en';
@@ -2157,7 +2168,7 @@ export default function App() {
    // 🧪 兜底：reportData 未加载时，直接用 ks_oauth_back_url 回跳财富页
    const backUrl = localStorage.getItem('ks_oauth_back_url');
    const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
-   const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly'];
+   const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly','all_pass_monthly'];
    if (backUrl && wealthPlans.includes(pendingPlan || '')) {
      const sep = backUrl.includes('?') ? '&' : '?';
      window.location.href = backUrl + sep + 'intent=checkout&plan=' + pendingPlan;
