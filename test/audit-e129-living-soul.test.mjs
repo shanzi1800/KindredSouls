@@ -14,11 +14,11 @@
  *   E129-05 会话首击检索门：body.sessionOpen===true 严格判定＋_e129LivingContext
  *           ≤48h/check_in_after＋月相 ±24h event_type in.(new_moon,full_moon)；
  *   E129-06 前端接线：livingAgentClient 三函数＋罗盘静默入库＋ChatSheet
- *           firstStrikeRef/sessionOpen＋递卡＋两弹层渲染；
- *   E129-07 SacredScrollModal 军令规格：z-140＋三七开 FREE_RATIO=0.3＋blur(7px)
- *           ＋黑金滑轨 ks-report-scroll＋零跳转（无 location.href）；
- *   E129-08 InSituPaymentSheet 军令规格：z-141＋四档 SKU＋/api/sandbox/complete
- *           ＋live 态 fail-closed livePending；
+ *           firstStrikeRef/sessionOpen（⭕ E130 剥离后：递卡/两弹层改零引用断言）；
+ *   E129-07 SacredScrollModal（⭕ E130 主公军令 2026-11-09 清退：文件已删＋
+ *           ChatSheet 零挂载——对话舱神圣陪伴净土）；
+ *   E129-08 InSituPaymentSheet（⭕ E130 清退：文件已删＋ChatSheet 零挂载——
+ *           交易动作回归 WealthPaywall 专门付费墙）；
  *   E129-09 all_pass_monthly 状态机六面（server 五处＋前端三面＋沙盘价）；
  *   E129-10 退款政策六语 $9.99（铁律 15 逐语对齐；fr 逗号形态）；
  *   S10 链位自保：e129 入编（e127 后、e40-compat 前；全链 96→97 段）。
@@ -46,8 +46,9 @@ const server = read('server.js');
 const CLIENT = read('web/src/lib/livingAgentClient.ts');
 const MOOD = read('web/src/components/companion/MoodCompassModal.tsx');
 const SHEET = read('web/src/components/FamiliarChatSheet.tsx');
-const SCROLL = read('web/src/components/reports/SacredScrollModal.tsx');
-const TRAY = read('web/src/components/checkout/InSituPaymentSheet.tsx');
+/* ⭕ E130（主公军令 2026-11-09）：两功利组件文件已清退——改存在性断言 */
+const SCROLL_DELETED = !existsSync(join(ROOT, 'web/src/components/reports/SacredScrollModal.tsx'));
+const TRAY_DELETED = !existsSync(join(ROOT, 'web/src/components/checkout/InSituPaymentSheet.tsx'));
 const SANDBOX = read('web/src/lib/sandboxCheckout.mjs');
 const APP = read('web/src/App.tsx');
 const WEALTH_PAGE = read('web/src/pages/WealthReportPage.tsx');
@@ -182,8 +183,8 @@ test('E129-05 sessionOpen 严格判定＋_e129LivingContext 48h/±24h 检索窗'
   assert.ok(server.includes('const E129_UUID_RE'), 'UUID 形状守卫在位');
 });
 
-/* ═══════════ E129-06 前端接线 ═══════════ */
-test('E129-06 livingAgentClient 三函数＋罗盘静默入库＋ChatSheet 首击接线＋递卡＋双弹层', () => {
+/* ═══════════ E129-06 前端接线（⭕ E130 剥离后断言翻面） ═══════════ */
+test('E129-06 livingAgentClient 三函数＋罗盘静默入库＋ChatSheet 首击接线（E130 后零收银组件）', () => {
   for (const fn of ['logMoodSilently', 'postUnresolvedLoop', 'resolveUnresolvedLoop']) {
     assert.ok(CLIENT.includes(`export ${fn.includes('log') ? 'function' : 'async function'} ${fn}`) || CLIENT.includes(`function ${fn}`), `客户端 ${fn} 在位`);
   }
@@ -193,45 +194,24 @@ test('E129-06 livingAgentClient 三函数＋罗盘静默入库＋ChatSheet 首�
   assert.ok(SHEET.includes('const firstStrikeRef = useRef(true);'), 'firstStrikeRef 在位');
   assert.ok(SHEET.includes('sessionOpen: firstStrikeRef.current === true ? true : undefined'), '首击 body.sessionOpen 接线');
   assert.ok(SHEET.indexOf('firstStrikeRef.current = false;') > SHEET.indexOf("app.post") || SHEET.includes('firstStrikeRef.current = false;'), '首击消费即翻面');
-  // 递卡＋双弹层
-  assert.ok(SHEET.includes('data-testid="sacred-scroll-offer-card"'), '对话流递卡 testid');
-  assert.ok(SHEET.includes("import { SacredScrollModal } from './reports/SacredScrollModal'"), 'SacredScrollModal 挂载');
-  assert.ok(SHEET.includes("import { InSituPaymentSheet } from './checkout/InSituPaymentSheet'"), 'InSituPaymentSheet 挂载');
-  assert.ok(SHEET.includes('scrollUnlocked'), '解锁翻面态在位');
-  assert.ok(SHEET.includes('fetchMonthlySections'), '真月报流式拉取在位');
+  // ⭕ E130（主公军令 2026-11-09）：递卡/双弹层/付费拉取全数清退（神圣净土）
+  assert.ok(!SHEET.includes('sacred-scroll-offer-card'), '递卡 testid 已清退');
+  assert.ok(!SHEET.includes('SacredScrollModal'), 'ChatSheet 零 SacredScrollModal 引用');
+  assert.ok(!SHEET.includes('InSituPaymentSheet'), 'ChatSheet 零 InSituPaymentSheet 引用');
+  assert.ok(!SHEET.includes('scrollUnlocked'), '解锁翻面态已清退');
+  assert.ok(!SHEET.includes('fetchMonthlySections'), '真月报拉取已清退（付费动作回归付费墙）');
 });
 
-/* ═══════════ E129-07 SacredScrollModal 军令规格 ═══════════ */
-test('E129-07 长卷规格：z-140＋三七开 0.3＋blur(7px)＋黑金滑轨＋零跳转', () => {
-  assert.ok(SCROLL.includes('zIndex: 140'), '军令钦定 z-[140]');
-  assert.ok(SCROLL.includes('const FREE_RATIO = 0.3;'), '三七开阈值 30%（军令钦定）');
-  assert.ok(SCROLL.includes('filter: \'blur(7px)\''), '毛玻璃高级模糊锁');
-  assert.ok(SCROLL.includes('className="ks-report-scroll"'), '黑金滑轨复用（E91-③ 封仓规格零 CSS 改动）');
-  assert.ok(!SCROLL.includes('location.href') && !SCROLL.includes('window.open'), '零跳转死亡断言（神圣交互绝不跳离）');
-  assert.ok(SCROLL.includes('data-testid="sacred-scroll-modal"') && SCROLL.includes('data-testid="sacred-scroll-lock"') && SCROLL.includes('data-testid="sacred-scroll-unlock-btn"'), '验收 testid 三件套');
-  // 自容六语字典（零 i18n 新键铁律）
-  for (const lang of LANGS) {
-    assert.ok(new RegExp(`${lang}:\\s*\\{`).test(SCROLL), `SCROLL_UI 六语 ${lang}`);
-  }
-  // 卷轴动效（scaleY 展开）
-  assert.ok(SCROLL.includes('ks-sacred-unroll'), '卷轴 scaleY 展开动效');
+/* ═══════════ E129-07 SacredScrollModal（⭕ E130 清退断言） ═══════════ */
+test('E129-07 长卷组件清退（E130 主公军令）：文件已删＋全仓零引用（对话舱净土）', () => {
+  assert.ok(SCROLL_DELETED, 'SacredScrollModal.tsx 文件已删');
+  assert.ok(!SHEET.includes("from './reports/SacredScrollModal'"), 'ChatSheet 零挂载');
 });
 
-/* ═══════════ E129-08 InSituPaymentSheet 军令规格 ═══════════ */
-test('E129-08 支付托盘规格：z-141＋四档 SKU＋沙盘通道＋live fail-closed', () => {
-  assert.ok(TRAY.includes('zIndex: 141'), '长卷 z-140 下方叠加层 z-141');
-  assert.ok(TRAY.includes("plan: 'all_pass_yearly', tier: 'vip'"), '主推卡 A：$99.99 VIP');
-  assert.ok(TRAY.includes("plan: 'all_pass_monthly', tier: 'monthly'"), '主推卡 B：$9.99 全通月订');
-  assert.ok(TRAY.includes("plan: 'wealth_monthly_report', tier: 'once'"), '折叠档：$2.99 单份月报');
-  assert.ok(TRAY.includes("plan: 'wealth_yearly_report', tier: 'yearly'"), '折叠档：$29.99 年报买断');
-  assert.ok(TRAY.includes("'$9.99'") || TRAY.includes('$9.99'), '$9.99 月订价面在位');
-  assert.ok(TRAY.includes('BEST VALUE'), 'VIP ★ BEST VALUE 标牌');
-  assert.ok(TRAY.includes("fetch('/api/sandbox/complete'"), '沙盘模拟支付通道（sandbox 现行态）');
-  assert.ok(TRAY.includes("setMsg('livePending')"), 'live 态 fail-closed 如实告知');
-  assert.ok(!TRAY.includes('location.href') && !TRAY.includes('window.open'), '零跳出死亡断言');
-  for (const lang of LANGS) {
-    assert.ok(new RegExp(`${lang}:\\s*\\{`).test(TRAY), `PAY_UI 六语 ${lang}`);
-  }
+/* ═══════════ E129-08 InSituPaymentSheet（⭕ E130 清退断言） ═══════════ */
+test('E129-08 支付托盘清退（E130 主公军令）：文件已删＋全仓零引用（交易归付费墙）', () => {
+  assert.ok(TRAY_DELETED, 'InSituPaymentSheet.tsx 文件已删');
+  assert.ok(!SHEET.includes("from './checkout/InSituPaymentSheet'"), 'ChatSheet 零挂载');
 });
 
 /* ═══════════ E129-09 all_pass_monthly 状态机六面 ═══════════ */
@@ -270,7 +250,7 @@ test('E129-S10 链位自保：e129 入编（e127 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 97, `军规链段数须为 97（E129 入编后 96→97；实为 ${segs.length}）`);
+  assert.equal(segs.length, 98, `军规链段数须为 97（E129 入编后 96→97；实为 ${segs.length}）`);
   const iE129 = segs.findIndex((s) => s.includes('audit-e129-living-soul'));
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

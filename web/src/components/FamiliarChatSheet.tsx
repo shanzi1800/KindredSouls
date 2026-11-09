@@ -61,23 +61,12 @@ import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 //    1080×1748 大图预览弹层（Aura Style Capsule / Soul Roadtrip Guide）。
 import { LifestyleMuseSlotCard, LifestylePreviewModal } from './companion/LifestyleMuseSlot';
 import type { LifestyleCardType } from './companion/LifestyleMuseSlot';
-// 🆕 E129-刀四（军令 2026-11-09）：羊皮纸星轨长卷＋首页内嵌暗金支付托盘——
-//    对话流递卡（三七开剧透）⇒ 就地解锁（零跳出付费闭环＝军令最高原则）。
-import { SacredScrollModal } from './reports/SacredScrollModal';
-import type { SacredSection } from './reports/SacredScrollModal';
-import { InSituPaymentSheet } from './checkout/InSituPaymentSheet';
+// ⚖️ E130-PURE-SANCTUARY-RESTORE（主公军令 2026-11-09）：对话舱＝神圣陪伴净土——
+//    E129-刀四的羊皮卷长卷弹层（z-140）与内嵌收银托盘（z-141）整体清退；
+//    付费引导改为话语间含蓄点拨，交易动作回归 WealthPaywall 专门付费墙页面
+//    完成。删 imports + 递卡字典 + state + 函数 + JSX＝零残留。
 
 export type FamiliarIp = 'Milo' | 'Sophia';
-
-/** 🆕 E129-刀四：长卷递卡六语标签（自容字典——零 i18n 新键铁律） */
-const SCROLL_OFFER_LABEL: Record<string, string> = {
-  zh: '本月专属星轨长卷', en: 'Your Sacred Monthly Scroll', fr: 'Parchemin Sacré du Mois',
-  es: 'Pergamino Sagrado del Mes', th: 'ม้วนดวงดาวประจำเดือน', vi: 'Cuộn Thiên Kinh Tháng Này',
-};
-const SCROLL_OFFER_HINT: Record<string, string> = {
-  zh: '点开 · 前三成免费开卷', en: 'Tap · first 30% free', fr: 'Touchez · 30% offerts',
-  es: 'Toca · 30% gratis', th: 'แตะ · เปิดอ่านฟรี 30%', vi: 'Chạm · 30% đầu miễn phí',
-};
 
 /** 🏆 E112-刀二：开场首语九分支——六档报告第一击（love/wealth × core/monthly/
  *  annual）＋E111 情境三分支（sweet/soothe/plain）；
@@ -195,157 +184,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
    * aid；密函命中时本槽恒 null 互斥）＋大图预览弹层开关（null=关）。 */
   const [lifestyleSlot, setLifestyleSlot] = useState<{ aid: string; type: LifestyleCardType } | null>(null);
   const [lifestylePreview, setLifestylePreview] = useState<LifestyleCardType | null>(null);
-  /* 🆕 E129-刀四（军令 2026-11-09）：星轨长卷三态——递卡开卷 / 支付托盘 /
-   *  解锁态（本会话沙盒付讫 ⇒ 即刻翻面＝DoD 断言 3「状态机即刻生效」；
-   *  最近解锁凭证含财富月报 ⇒ 开舱即已解锁）。真月报文本经
-   *  /api/wealth-oracle/stream 拉取（付费态真值；拉取失败 ⇒ 六语预览兜底）。 */
-  const [scrollOpen, setScrollOpen] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
-  const [scrollUnlocked, setScrollUnlocked] = useState(false);
-  const [scrollSections, setScrollSections] = useState<SacredSection[]>([]);
-  const [scrollLoading, setScrollLoading] = useState(false);
+  /* ⚖️ E130：E129-刀四长卷/支付托盘五 state 全数清退（神圣净土零收银）。 */
 
   const flowRef = useRef<HTMLDivElement | null>(null);
-
-  /* ═══ 🆕 E129-刀四：星轨长卷内容核 ═══
-   * 预览段（未付费）：六语自容——只述长卷内含什么（总运气场/行星交角/
-   * 关键吉日/避坑时辰的章题导言），**绝不伪造任何占星断言**（真值纪律）。
-   * 付费解锁态：调 /api/wealth-oracle/stream（reportType=monthly，契约与
-   * WealthReportPage 同源）拉真实月报全文切分章节；402/异常 ⇒ 预览兜底。 */
-  const SCROLL_PREVIEW: Record<string, SacredSection[]> = {
-    zh: [
-      { title: '本月总运气场', body: '开卷即见本月整体能量流向：宇宙行星交角如何在你头顶织出这张星轨图——先读总览，再入细节。' },
-      { title: '行星交角趋势', body: '木星与土星的拉锯、金水的顺逆，每一组交角都对应你本月的一段呼吸节奏。' },
-      { title: '感情关键摊牌吉日', body: '哪几天适合把心里那句话说出口——章节已备好（待解锁）。' },
-      { title: '财务逆风避坑时辰', body: '本月最需要捂紧钱包的窗口，与你该出手捡漏的良辰（待解锁）。' },
-    ],
-    en: [
-      { title: 'Monthly Aura Field', body: 'The overall energy flow of your month — how the planetary angles weave this star-trail above you. Overview first, details after.' },
-      { title: 'Planetary Angle Trends', body: 'Jupiter and Saturn at tug-of-war, Venus and Mercury in spin — each angle maps to a rhythm of your month.' },
-      { title: 'Key Love Reckoning Days', body: 'The days to finally say what\'s in your heart — chapter awaits (sealed).' },
-      { title: 'Financial Headwind Windows', body: 'When to hold your purse tight, and when to strike — chapter awaits (sealed).' },
-    ],
-    fr: [
-      { title: 'Champ d\'énergie du mois', body: 'Le flux global de votre mois — comment les angles planétaires tissent ce ciel au-dessus de vous.' },
-      { title: 'Tendances des angles', body: 'Jupiter contre Saturne, Vénus et Mercure en danse — chaque angle épouse un rythme de votre mois.' },
-      { title: 'Jours-clés du cœur', body: 'Les jours où dire enfin ce que vous gardez au fond — chapitre scellé.' },
-      { title: 'Fenêtres financières à éviter', body: 'Quand serrer la bourse, quand saisir l\'aubaine — chapitre scellé.' },
-    ],
-    es: [
-      { title: 'Campo de energía mensual', body: 'El flujo general de tu mes — cómo los ángulos planetarios tejen este cielo sobre ti.' },
-      { title: 'Tendencias de los ángulos', body: 'Júpiter y Saturno en tensión, Venus y Mercurio en giro — cada ángulo marca un ritmo de tu mes.' },
-      { title: 'Días clave del corazón', body: 'Los días para decir por fin lo que callas — capítulo sellado.' },
-      { title: 'Ventanas financieras a vigilar', body: 'Cuándo cerrar la cartera y cuándo aprovechar — capítulo sellado.' },
-    ],
-    th: [
-      { title: 'พลังงานรวมประจำเดือน', body: 'ภาพรวมพลังงานของเดือนนี้ — มุมดาวเคราะห์ถักทอดั่งฟ้าเหนือคุณอย่างไร' },
-      { title: 'แนวโน้มมุมดาว', body: 'พฤหัสกับเสาร์เสี่ยงแรง ศุกร์กับพุธหมุนวน — ทุกมุมสัมพันธ์กับจังหวะชีวิตเดือนนี้' },
-      { title: 'วันสำคัญของหัวใจ', body: 'วันที่ควรพูดสิ่งที่เก็บไว้ในใจ — บทนี้ผนึกไว้' },
-      { title: 'ช่วงเวลาการเงินที่ต้องระวัง', body: 'เมื่อไรต้องรัดสายกระเป๋า เมื่อไรควรคว้าโอกาส — บทนี้ผนึกไว้' },
-    ],
-    vi: [
-      { title: 'Trường năng lượng tháng', body: 'Dòng chảy tổng thể của tháng — các góc hành tinh dệt nên bức thiên đồ trên đầu bạn ra sao.' },
-      { title: 'Xu hướng góc hành tinh', body: 'Mộc tinh với Thổ tinh giằng co, Kim tinh với Thủy tinh luân chuyển — mỗi góc ứng một nhịp tháng của bạn.' },
-      { title: 'Ngày then chốt của tim', body: 'Những ngày nên nói ra điều giấu kín — chương này còn niêm phong.' },
-      { title: 'Khung giờ tài chính cần né', body: 'Khi nào phải túm chặt ví, khi nào nên ra tay — chương này còn niêm phong.' },
-    ],
-  };
-
-  /** E129：真月报拉取（付费态）——流式契约与 WealthReportPage 同源
-   *  （data: {text} 快照/增量帧＋[DONE]；startsWith 快照对齐防阶梯重复）。 */
-  const fetchMonthlySections = async (): Promise<SacredSection[] | null> => {
-    try {
-      const bt = extractBirthTruth(window.location.search, window.localStorage);
-      if (!bt) return null;
-      let token: string | null = null;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        token = session?.access_token || null;
-      } catch { /* 匿名 ⇒ 服务端绿道/权益闸自判 */ }
-      const res = await fetch('/api/wealth-oracle/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          birthDate: bt.birthDate, birthTime: bt.birthTime || '',
-          lat: bt.lat, lon: bt.lon, tz: bt.tz,
-          lang, reportType: 'monthly',
-        }),
-      });
-      if (!res.ok || !res.body) return null; /* 402 权益不足/异常 ⇒ 预览兜底 */
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let full = '';
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const dataStr = trimmed.slice(6).trim();
-          if (dataStr === '[DONE]') continue;
-          let parsed: { text?: string; error?: unknown } | null = null;
-          try { parsed = JSON.parse(dataStr); } catch { continue; }
-          if (!parsed || typeof parsed.text !== 'string' || !parsed.text) continue;
-          if (full && parsed.text.startsWith(full)) full = parsed.text; /* 全量快照 */
-          else full += parsed.text;                                     /* 增量 */
-        }
-      }
-      if (full.trim().length < 200) return null; /* 终稿过短 ⇒ 视为失败兜底 */
-      /* 切分章节：'#'/'##' 标题行成章；无标题 ⇒ 按空行分段成块 */
-      const sections: SacredSection[] = [];
-      let curTitle = '';
-      let curBody: string[] = [];
-      const flush = () => {
-        const body = curBody.join('\n').trim();
-        if (curTitle || body) sections.push({ title: curTitle || '✦', body });
-        curTitle = ''; curBody = [];
-      };
-      for (const line of full.split('\n')) {
-        const t = line.trim();
-        const m = t.match(/^#{1,3}\s*(.+)$/);
-        if (m) { flush(); curTitle = m[1].trim().slice(0, 40); }
-        else if (t) curBody.push(t);
-      }
-      flush();
-      return sections.length ? sections : null;
-    } catch {
-      return null; /* fail-soft：预览兜底 */
-    }
-  };
-
-  /** E129：开卷——解锁态拉真月报（加载中指示）；未解锁 ⇒ 六语预览即卷。 */
-  const openScroll = async () => {
-    setScrollOpen(true);
-    if (scrollUnlocked) {
-      setScrollLoading(true);
-      setScrollSections(SCROLL_PREVIEW[lang] || SCROLL_PREVIEW.en);
-      const real = await fetchMonthlySections();
-      setScrollSections(real || (SCROLL_PREVIEW[lang] || SCROLL_PREVIEW.en));
-      setScrollLoading(false);
-    } else {
-      setScrollSections(SCROLL_PREVIEW[lang] || SCROLL_PREVIEW.en);
-    }
-  };
-
-  /** E129：沙盒付讫回调（InSituPaymentSheet onGranted）——状态机即刻翻面
-   *  （DoD 断言 3）；翻面即拉真月报（长卷金芒绽放全文解密）。 */
-  const handleScrollGranted = (plan: string) => {
-    console.log(`[E129] 长卷就地解锁 plan=${plan}（状态机即刻生效）`);
-    setScrollUnlocked(true);
-    setScrollLoading(true);
-    void (async () => {
-      const real = await fetchMonthlySections();
-      setScrollSections(real || (SCROLL_PREVIEW[lang] || SCROLL_PREVIEW.en));
-      setScrollLoading(false);
-    })();
-  };
 
   const bufRef = useRef('');
   const throttleRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -452,11 +293,6 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     } catch { /* 无痕模式 ⇒ 中性词兜底（fail-soft 不臆造） */ }
     try {
       const rr = readRecentReport(store);
-      // 🆕 E129-刀四：长卷开舱解锁判定——最近解锁凭证含财富月报/年报
-      //    （付费态真实持有）⇒ 长卷开卷即解锁（沙盒付讫本会话翻面另计）。
-      if (rr && rr.category === 'wealth' && (rr.tier === 'monthly' || rr.tier === 'yearly')) {
-        setScrollUnlocked(true);
-      }
       // E113-刀四：当日新解锁判定（unlockedAt 落今日本地日期）
       const freshReport = !!(rr && chatSessionDateKey(new Date(Number(rr.unlockedAt))) === today);
       // ① E113-刀三：当日未过期会话档在场 ⇒ 复原全部历史（禁重复首句）
@@ -861,31 +697,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
               </div>
             );
           })()}
-          {/* 🆕 E129-刀四（军令 2026-11-09）：星轨长卷递卡——灵宠在对话流里的
-              常设供奉（羊皮纸微缩卡：点击 ⇒ 首页正上方 z-140 长卷展开，绝不
-              跳转；三七开剧透⇒毛玻璃锁⇒就地支付托盘＝零跳出付费闭环）。 */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-            <button
-              type="button"
-              data-testid="sacred-scroll-offer-card"
-              onClick={openScroll}
-              style={{
-                maxWidth: 300, textAlign: 'left', cursor: 'pointer',
-                padding: '10px 14px', borderRadius: 12,
-                background: 'linear-gradient(175deg, rgba(29,22,8,0.95), rgba(13,10,4,0.95))',
-                border: '1px solid rgba(212,175,55,0.5)',
-                boxShadow: '0 6px 22px rgba(0,0,0,0.45)',
-                fontFamily: '"Noto Serif SC","Songti SC",Georgia,serif',
-              }}
-            >
-              <div style={{ fontSize: 12.5, letterSpacing: 1.5, color: '#F3E5AB', fontWeight: 600 }}>
-                ✦ {SCROLL_OFFER_LABEL[lang] || SCROLL_OFFER_LABEL.en} ✦
-              </div>
-              <div style={{ fontSize: 10.5, color: 'rgba(212,188,122,0.8)', marginTop: 3, letterSpacing: 0.5 }}>
-                {SCROLL_OFFER_HINT[lang] || SCROLL_OFFER_HINT.en}
-              </div>
-            </button>
-          </div>
+          {/* ⚖️ E130（主公军令 2026-11-09）：E129 递卡按钮整块清退——
+              对话流零付费卡零价格签（神圣陪伴净土）。 */}
           {notice && <div className="ks-chat-notice">{notice}</div>}
         </div>
 
@@ -904,25 +717,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           onSend={send}
         />
       </div>
-      {/* 🆕 E129-刀四：羊皮纸星轨长卷（z-140 就地展开；三七开剧透＋毛玻璃暗金
-          锁；解锁按钮 ⇒ 内嵌支付托盘——绝不跳离首页单窗口＝军令最高原则）。 */}
-      <SacredScrollModal
-        open={scrollOpen}
-        onClose={() => setScrollOpen(false)}
-        lang={lang as 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi'}
-        unlocked={scrollUnlocked}
-        onUnlockRequest={() => setPayOpen(true)}
-        sections={scrollSections}
-        loading={scrollLoading}
-      />
-      {/* 🆕 E129-刀四：内嵌暗金支付托盘（z-141 底部抽屉；沙盒态模拟支付——
-          Stripe Elements live 接线挂账 P0 商业破局后切换零重构）。 */}
-      <InSituPaymentSheet
-        open={payOpen}
-        onClose={() => setPayOpen(false)}
-        lang={lang as 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi'}
-        onGranted={handleScrollGranted}
-      />
+      {/* ⚖️ E130：羊皮卷长卷＋收银托盘两弹层 JSX 整块清退
+          （付费动作回归 WealthPaywall 专门付费墙页面）。 */}
       {/* 🏆 E121-SCRIBE-SLOT 刀二：全屏 1080×1748 Canvas 大图预览弹层
           （fixed 层独立于抽屉舱——遮罩点击/关闭钮收起；保存走 a[download]；
           宿主落款取 E118 用户名档案——有名字才渲染，无名字零破坏） */}
