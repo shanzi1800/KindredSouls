@@ -51,6 +51,8 @@ export const SANDBOX_PLAN_TERM_KEYS = Object.freeze({
   compatibility_once: 'SandboxPlanCompat',
   star_monthly_vip: 'SandboxPlanOther',
   all_pass_yearly: 'SandboxPlanOther',
+  // 🆕 E129-刀五（军令 2026-11-09）：$9.99 全通月订新 SKU（与 server STRIPE_PRICE_MAP 同集）
+  all_pass_monthly: 'SandboxPlanOther',
 });
 
 /* ── SKU ⇒ 标价（**仅供沙盘收银台展示**，绝不参与计价；真实金额由 Stripe Price 决定）──
@@ -66,6 +68,8 @@ export const SANDBOX_PLAN_PRICE = Object.freeze({
   compatibility_yearly_report: '$29.99',
   star_monthly_vip: '$9.99',
   all_pass_yearly: '$99.99',
+  // 🆕 E129-刀五：$9.99 全通月订（军令钦定价——退款政策六语已同步铁律 15）
+  all_pass_monthly: '$9.99',
 });
 
 /** SKU 标价取词：未知/畸形 ⇒ ''（空串，由调用方决定是否省略） */

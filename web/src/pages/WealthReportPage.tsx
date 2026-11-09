@@ -1075,12 +1075,15 @@ export const wealthEntitledFor = (
   const now = Date.now();
   const apValid = p.all_pass_yearly === true
     && (!p.all_pass_expires_at || new Date(p.all_pass_expires_at).getTime() > now);
+  // 🆕 E129-刀五（军令 2026-11-09）：全通月订（订阅期内全档可及，到期失效——与后端同源）
+  const apmValid = p.all_pass_monthly === true
+    && (!p.all_pass_monthly_expires_at || new Date(p.all_pass_monthly_expires_at).getTime() > now);
   // 月卡 5 次配额（与后端同源：只看余量，不再以 resets_at 判「订阅有效」—— 后端跨月自动归零）
   const starQuotaOk = p.star_monthly_vip === true
     && (Number(p.star_monthly_wealth_used) || 0) < (Number(p.star_monthly_wealth_allowance) || 0);
-  if (type === 'once') return p.wealth_once === true || apValid;
-  if (type === 'monthly') return p.wealth_monthly_report === true || starQuotaOk || apValid;
-  return p.wealth_yearly_report === true || starQuotaOk || apValid;
+  if (type === 'once') return p.wealth_once === true || apValid || apmValid;
+  if (type === 'monthly') return p.wealth_monthly_report === true || starQuotaOk || apValid || apmValid;
+  return p.wealth_yearly_report === true || starQuotaOk || apValid || apmValid;
 };
 
 // ── Component ──

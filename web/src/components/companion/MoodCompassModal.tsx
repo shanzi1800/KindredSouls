@@ -18,6 +18,9 @@ import { claimDailyStarlight, readStarlightStore, writeStarlightStore } from '..
 // 🏆 E123-刀四：罗盘情绪落盘 sessionStorage（ChatSheet 首句拦截真源）
 // @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
 import { writeActiveMood } from '../../lib/companionMoodGreetings.mjs';
+// 🆕 E129-刀三（军令 2026-11-09）：罗盘情绪心流静默入库（fire-and-forget——
+//    user_mood_logs 时间序列蓄水；未登录/网络失败一律静默零阻断）
+import { logMoodSilently } from '../../lib/livingAgentClient';
 import type { MoodArchetype } from '../../types/companionEmotion';
 
 type Lang = 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
@@ -103,6 +106,9 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
     if (guard.bannedHit) return;
     // E123-刀四：情绪落盘（白名单五原型——坏值不写 fail-closed）
     try { writeActiveMood(sessionStorage, selected); } catch { /* 无痕 ⇒ 静默 */ }
+    // 🆕 E129-刀三（军令 2026-11-09）：情绪心流静默入库（fire-and-forget 不 await；
+    //    服务端白名单复检＋未登录拒收——本地零感知零阻断）
+    logMoodSilently(selected);
     // 受控嵌入：情绪落定上抛父级（父级组装合璧笺＋唯一入账点）
     if (onMoodCommit) {
       onMoodCommit(selected);
