@@ -1867,7 +1867,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
+  // ⚖️ E130（主公军令 2026-11-09）：all_pass_monthly 入列——$9.99 全通月订挂回
+  //    本付费墙（后端 STRIPE_PRICE_MAP/沙盒分流 E129 已备，前端入口归位）。
+  const handlePurchase = async (plan: 'star_monthly_vip' | 'all_pass_monthly' | 'all_pass_yearly' | 'wealth_once' | 'wealth_monthly_report' | 'wealth_yearly_report', forceToken?: string) => {
 
     // ── 绿色通道:测试账号不走 OAuth / Stripe,直接跳免费报告页 ──
     if (new URLSearchParams(window.location.search).get('free_access') === '1') {
@@ -1944,6 +1946,15 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         });
         setTimeout(() => { checkPaidStatus(); }, 800);
         generateWealthReport(plan === 'wealth_yearly_report' ? 'yearly' : 'monthly', true);
+      } else if (plan === 'all_pass_monthly') {
+        // ⚖️ E130（主公军令 2026-11-09）：全通月订付讫——乐观合并权益快照＋800ms
+        //    权威回读（全通是权益卡非单报告，不自动生成；整页门
+        //    wealthEntitledFor('once') 已认 apmValid ⇒ 顶部 setIsUnlocked 生效）。
+        setPaidPlans((prev: any) => {
+          const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
+          return Object.assign({}, base, { all_pass_monthly: true });
+        });
+        setTimeout(() => { checkPaidStatus(); }, 800);
       } else if (reportData && !reportData.insight) {
         loadWealthData(birthDate, lang, token ?? undefined);
       }

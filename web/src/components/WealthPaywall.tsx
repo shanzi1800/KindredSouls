@@ -1,7 +1,10 @@
 import React from 'react';
 
 // ── Types ──
-export type WealthPlan = 'wealth_once' | 'star_monthly_vip' | 'all_pass_yearly';
+// ⚖️ E130-PURE-SANCTUARY-RESTORE（主公军令 2026-11-09）：E129 all_pass_monthly
+//    （$9.99 全通月订）前端入口从对话舱 InSituPaymentSheet 迁回本付费墙——
+//    「神圣归神圣，商业归商业」，交易动作全部在专门付费墙页面完成。
+export type WealthPlan = 'wealth_once' | 'star_monthly_vip' | 'all_pass_monthly' | 'all_pass_yearly';
 
 interface WealthPaywallProps {
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
@@ -19,6 +22,8 @@ const I18N = {
     onceDesc: '终身可看 · 深度透析你的底层搞钱基因',
     monthly: '$9.99 USD / 月 — 双引擎星运特权卡',
     monthlyDesc: '每月 5 次财富 AI 动态洞察 + 1 次合婚特权 · 锁定流月财运预警',
+    apm: '$9.99 USD / 月 — 全通月订',
+    apmDesc: '当月全部报告随心看 · 随时可取消',
     yearly: '$99.99 USD / 年',
     yearlyBadge: '省17%',
     vipLabel: '✨ 会员特享',
@@ -38,6 +43,8 @@ const I18N = {
     onceDesc: 'Lifetime access · Deep dive into your financial DNA',
     monthly: '$9.99 USD / month — Dual Engine Star VIP Card',
     monthlyDesc: '5 monthly wealth AI insights + 1 monthly compatibility · Monthly fortune alerts',
+    apm: '$9.99 USD / month — All-Access Monthly',
+    apmDesc: 'Full access this month, cancel anytime',
     yearly: '$99.99 USD / year',
     yearlyBadge: 'Save 17%',
     vipLabel: '✨ VIP Benefits',
@@ -57,6 +64,8 @@ const I18N = {
     onceDesc: 'Obtén tu informe completo',
     monthly: '$9.99 USD / mes',
     monthlyDesc: 'VIP ilimitado (incluye compatibilidad)',
+    apm: '$9.99 USD / mes — Acceso Total Mensual',
+    apmDesc: 'Todo este mes a tu alcance · cancela cuando quieras',
     yearly: '$99.99 USD / año',
     yearlyBadge: 'Ahorra 17%',
     vipLabel: '✨ Planes VIP',
@@ -76,6 +85,8 @@ const I18N = {
     onceDesc: 'Obtenez votre rapport complet',
     monthly: '$9.99 USD / mois',
     monthlyDesc: 'VIP illimité (inclut la compatibilité)',
+    apm: '$9.99 USD / mois — Accès Total Mensuel',
+    apmDesc: 'Tout voir ce mois-ci · résiliable à tout moment',
     yearly: '$99.99 USD / an',
     yearlyBadge: 'Économisez 17%',
     vipLabel: '✨ Forfaits VIP',
@@ -95,6 +106,8 @@ const I18N = {
     onceDesc: 'รับรายงานฉบับเต็ม',
     monthly: '$9.99 USD / เดือน',
     monthlyDesc: 'VIP ไม่จำกัด (รวมความเข้ากันได้)',
+    apm: '$9.99 USD / เดือน — รายเดือนเข้าถึงทั้งหมด',
+    apmDesc: 'ดูได้ทุกอย่างในเดือนนี้ · ยกเลิกได้ตลอด',
     yearly: '$99.99 USD / ปี',
     yearlyBadge: 'ประหยัด 17%',
     vipLabel: '✨ แผน VIP',
@@ -114,6 +127,8 @@ const I18N = {
     onceDesc: 'Nhận báo cáo đầy đủ',
     monthly: '$9.99 USD / tháng',
     monthlyDesc: 'VIP không giới hạn (bao gồm tương hợp)',
+    apm: '$9.99 USD / tháng — Truy Cập Toàn Bộ Tháng',
+    apmDesc: 'Xem tất cả trong tháng này · hủy bất cứ lúc nào',
     yearly: '$99.99 USD / năm',
     yearlyBadge: 'Tiết kiệm 17%',
     vipLabel: '✨ Gói VIP',
@@ -279,6 +294,40 @@ const WealthPaywall: React.FC<WealthPaywallProps> = ({ lang, onPurchase, loading
             >
               {loading ? '⏳ Processing...' : t.monthly}
             <div style={{ fontSize: '11px', fontWeight: 400, marginTop: '2px', color: '#b0b0d0' }}>{t.monthlyDesc}</div>
+            </button>
+
+            {/* ⚖️ E130（主公军令 2026-11-09）：$9.99 全通月订——E129 后端结算能力
+                挂回本付费墙（对话舱 InSituPaymentSheet 清退后的唯一前端入口）。 */}
+            <button
+              onClick={() => onPurchase('all_pass_monthly')}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '12px',
+                border: '2px solid rgba(212, 175, 55, 0.4)',
+                background: 'rgba(212, 175, 55, 0.08)',
+                color: '#E8E4D9',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginBottom: '8px',
+                transition: 'all 0.3s ease',
+                opacity: loading ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.borderColor = '#D4AF37';
+                  e.currentTarget.style.background = 'rgba(212, 175, 55, 0.15)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+                e.currentTarget.style.background = 'rgba(212, 175, 55, 0.08)';
+              }}
+            >
+              {loading ? '⏳ Processing...' : t.apm}
+            <div style={{ fontSize: '11px', fontWeight: 400, marginTop: '2px', color: '#b0b0d0' }}>{t.apmDesc}</div>
             </button>
 
             {/* Yearly VIP (recommended) */}
