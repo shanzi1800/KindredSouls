@@ -123,7 +123,10 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
 
   return (
     <div style={{
-      width: '94%', maxWidth: '380px',
+      /* 💠 E133-ROMANCE-PAYWALL-PARITY 刀三（主公军令 2026-11-10）：付费卡容器左右拉伸
+         ——width 100%（退役 94%/maxWidth 380px 挤压），外层宿主已负边距抵消 .ai-insight
+         内边距 ⇒ 左右物理边界与「重新测算」按钮外沿完全垂直对齐（390/1440 双视口）。 */
+      width: '100%',
       background: 'linear-gradient(170deg, #0e1028 0%, #0a0c1e 40%, #0D0D1A 100%)',
       borderRadius: '22px',
       padding: '28px 22px 14px',
@@ -153,6 +156,9 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
       {/* 水晶球图标 — 移到外层，这里不再渲染 */}
 
       {/* 标题 — 薄荷→青蓝渐变 */}
+      {/* 💠 E133-ROMANCE-PAYWALL-PARITY 刀二（主公军令 2026-11-10）：紫水晶球 🔮 左置
+          并入主标题一体化（🔮 解锁你们的灵魂密码）——付费卡上方孤立「✨ AI 深度洞察」
+          标牌行已在宿主 App.tsx 整行退役，视觉焦点归位于此单一主标题（六语同构）。 */}
       <div style={{
         fontSize: '18px',
         fontWeight: 800,
@@ -164,7 +170,7 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
         filter: 'drop-shadow(0 0 20px rgba(245,208,138,0.3))',
-      }}>{c.title}</div>
+      }}>🔮 {c.title}</div>
 
       {/* 副标题 — 紫色 */}
       <div style={{

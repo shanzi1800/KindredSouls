@@ -9,6 +9,10 @@ import { getTarot } from './lib/tarot';
 import type { CompatibilityResult } from './lib/algos/types';
 import CelestialBackground from './components/CelestialBackground';
 import PaywallCard from './components/PaywallCard';
+// 🐾 E133-ROMANCE-PAYWALL-PARITY（主公军令 2026-11-10）：姻缘付费墙「为你孵化专属灵宠」
+//    前置——与财富模块 E132 动线镜像（先缔结羁绊、后支付解锁）；复用 FamiliarPicker 单源
+//    （E48 门禁 locked=true 拦截＋Toast 引导＋平滑滚动至 $4.99，与 WealthReportPage 同款）。
+import FamiliarPicker from './components/FamiliarPicker';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import { TimeInput } from './components/TimeInput';
@@ -703,6 +707,19 @@ const L_ALMANAC_BTN: Record<string, { monthly: string; yearly: string }> = {
   vi: { monthly: '📅 Mở Khóa Báo Cáo Nhân Duyên Tháng $2.99', yearly: '👑 Mở Khóa Báo Cáo Nhân Duyên Năm $29.99' },
 };
 
+/* 🐾 E133-ROMANCE-PAYWALL-PARITY 刀一（主公军令 2026-11-10）：姻缘付费墙灵宠孵化前置
+ *    拦截 Toast 六语自容字典（E121+ 零新 i18n 键先例——familiar.needUnlock 为财富线
+ *    专文案「先天财富深度报告」，姻缘场景复用会误导，故本模块自持六语对齐副本；
+ *    金额口径与 PaywallCard 主档一致：fr/es 欧洲逗号形态）。 */
+const L_FAMILIAR_LOCK_TOAST: Record<string, string> = {
+  zh: '✨ 请先解锁 $4.99 灵魂密码深度报告，即可为你正式孵化契约专属灵宠',
+  en: '✨ Unlock the $4.99 Soul Code deep report first — then hatch & contract your exclusive familiar',
+  es: '✨ Desbloquea primero el informe profundo del Código Alma ($4,99) para incubar tu familiar exclusivo',
+  fr: '✨ Débloquez d\'abord le rapport profond du Code Âme (4,99 $) pour incuber votre familier exclusif',
+  th: '✨ ปลดล็อกรายงานรหัสวิญญาณเชิงลึก $4.99 ก่อน จึงจะฟักไข่และทำสัญญากับสัตว์วิญญาณประจำตัวของคุณได้',
+  vi: '✨ Hãy mở khóa báo cáo Mật mã Linh hồn chuyên sâu $4.99 trước, rồi bạn mới có thể ấp và ký kết linh thú độc quyền của mình',
+};
+
 function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, pendingReportTrigger, onReportConsumed, onLogout }: {
   d1: string; d2: string; overall: number;
   // 🌌 E40+：双人时空真值（可选；缺省 ⇒ 服务端如实降级，不伪造）
@@ -759,6 +776,22 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   //    「完成后回顶部」封仓设计零触碰（射程纪律）。
   const compatScrollRef = useRef<HTMLDivElement | null>(null);
   const compatAutoFollowRef = useRef(true);
+  // 🐾 E133-ROMANCE-PAYWALL-PARITY（主公军令 2026-11-10）：付费墙灵宠孵化前置 ——
+  //    未付费态 FamiliarPicker 全卡上锁（locked ⇒ Toast 引导 + 平滑滚动至 $4.99 主按钮），
+  //    与财富模块 WealthReportPage.handleFamiliarLockedTap 同源同款（E48 门禁纪律零变）；
+  //    Toast 文案走本模块六语自容字典 L_FAMILIAR_LOCK_TOAST（财富线 needUnlock 不跨线复用）。
+  const [familiarToast, setFamiliarToast] = useState<string | null>(null);
+  const familiarToastTimerRef = useRef<number | null>(null);
+  const compatPaywallRef = useRef<HTMLDivElement | null>(null);
+  const handleFamiliarLockedTap = React.useCallback(() => {
+    setFamiliarToast(L_FAMILIAR_LOCK_TOAST[lang] || L_FAMILIAR_LOCK_TOAST.en);
+    if (familiarToastTimerRef.current) clearTimeout(familiarToastTimerRef.current);
+    familiarToastTimerRef.current = setTimeout(() => setFamiliarToast(null), 5000);
+    // 视线平滑滚动至付费墙（下一帧执行，确保 Toast 已挂载）
+    requestAnimationFrame(() => {
+      try { compatPaywallRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    });
+  }, [lang]);
   // 监听器随容器存在性挂载（容器只在 reportText 非空时渲染 ⇒ 依赖其空/非空翻转）
   React.useEffect(() => {
     const el = compatScrollRef.current;
@@ -1635,20 +1668,36 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   if (showPaywall || !sessionUnlocked) {
     return (
       <div className="ai-insight ai-insight-dark">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
-          <div style={{
-            width: '36px', height: '36px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 38% 38%, rgba(129,216,208,0.35) 0%, rgba(26,31,75,0.6) 45%, rgba(13,13,26,0.9) 100%)',
-            border: '1.5px solid rgba(129,216,208,0.25)',
-            boxShadow: '0 0 20px rgba(129,216,208,0.2), 0 0 40px rgba(129,216,208,0.08)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '20px',
-            color: '#F5D08A', /* ✦ E84：图标色金辉（原继承 #222 在深底上 1.37:1 违 WCAG） */
-          }}>🔮</div>
-          <h3 style={{ marginBottom: 0 }}>✨ {TXT.aiTitle[lang] || TXT.aiTitle.en}</h3>
-        </div>
-        <div style={{ position: 'relative', borderRadius: '22px', overflow: 'visible', marginBottom: '20px' }}>
+        {/* 🧹 E133（主公军令 2026-11-10 刀二）：孤立的「🔮 ✨ AI 深度洞察」标牌行整行退役
+            ——紫水晶球 🔮 左置并入 PaywallCard 主标题（🔮 解锁你们的灵魂密码），
+            与财富模块付费墙版式镜像对称（付费卡上方零多余标牌）。 */}
+        {/* 🐾 E133 刀一：灵宠拦截 Toast（未付费点灵宠卡 ⇒ 引导解锁，5s 自动消隐） */}
+        {familiarToast && (
+          <div style={{ marginBottom: '14px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
+            {familiarToast}
+          </div>
+        )}
+        {/* 🐾 E133 刀一：「为你孵化专属灵宠」前置嵌入付费卡正上方（四宫格下方区域）——
+            未付费全卡上锁（E48 门禁：点击拦截 ⇒ Toast + 平滑滚动至 $4.99 主按钮）；
+            E34 D5 白名单纪律：须有真实出生城市（c1）才挂载，缺 c1 ⇒ 不挂载零伪造坐标。
+            容器 margin 0 -18px 抵消 .ai-insight 内边距 ⇒ 左右外沿与「重新测算」按钮齐平。 */}
+        {c1 && (
+          <div style={{ margin: '0 -18px 16px' }}>
+            <FamiliarPicker
+              birthDate={d1}
+              birthTime={t1 || ''}
+              lat={c1.lat}
+              lon={c1.lon}
+              tz={c1.tz}
+              locked={true}
+              onLockedTap={handleFamiliarLockedTap}
+            />
+          </div>
+        )}
+        {/* 💠 E133 刀三：付费卡容器左右拉伸与「重新测算」按钮两端齐平——外层
+            margin 0 -18px 抵消 .ai-insight 内边距（PaywallCard 自身 width:100%），
+            390/1440 双视口两侧呼吸留白对称一致。 */}
+        <div ref={compatPaywallRef} style={{ position: 'relative', borderRadius: '22px', overflow: 'visible', margin: '0 -18px 20px' }}>
           <div style={{
             filter: 'blur(6px)', opacity: 0.55, padding: '24px 18px',
             background: 'linear-gradient(135deg, rgba(129,216,208,0.08) 0%, rgba(168,85,247,0.06) 100%)', borderRadius: '22px',
@@ -1708,6 +1757,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         /* ✦ E84（主公军令 2026-10-22）：AI 洞察高定排版——分级段落＋金句高亮框：
            【】开头段＝金句铭牌（金框高亮），其余段落香槟白左对齐、行距 1.75 呼吸感。 */
         <div className="insight-result">
+          {/* 💎 E133-ROMANCE-PAYWALL-PARITY 刀四（主公军令 2026-11-10）：一次性姻缘深度报告
+              暗金金属框——付讫（per-session 解锁）后 AI 洞察全文＋实时塔罗在此金属框内
+              自动流式揭晓，质感与财富模块 SacredYearlyReportBox（曜黑渐变＋钛金描边）
+              同族同源；金卡导出/灵宠认领/生日年鉴保持框外独立模块（E85 纯净结构顺序零变）。 */}
+          <div data-testid="compat-once-metal-frame" style={{
+            marginTop: '4px', padding: '20px 16px', borderRadius: '22px',
+            background: 'linear-gradient(170deg, #0e1028 0%, #0a0c1e 40%, #0D0D1A 100%)',
+            border: '2px solid rgba(212,175,55,0.45)',
+            boxShadow: '0 0 80px rgba(129,216,208,0.06), 0 0 40px rgba(26,31,75,0.4), 0 20px 60px rgba(0,0,0,0.6)',
+          }}>
           {insight.split('\n\n').map((para, i) => {
             const trimmed = para.trim();
             if (/^【.+】$/.test(trimmed) || /^【/.test(trimmed)) {
@@ -1732,6 +1791,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                改挂 .ks-tarot-line——与上方报告正文同一亮度令牌单源。 */
             <p className="ks-tarot-line">{tarotLine}</p>
           )}
+          </div>{/* end 💎 E133 刀四 一次性姻缘深度报告金属框 */}
           {/* 🏆 E105-刀二（主公军令 2026-10-30）：深空黑金命盘金卡纯前端离线导出
               （Canvas 375×667×dpr3；桌面 a download 落盘／移动端长按保存弹层；
               金句决策树＝塔罗主牌命中→八字三合兜底，零异步） */}
