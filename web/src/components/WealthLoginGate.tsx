@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase';
 export type WealthGatePlan =
   | 'wealth_once'
   | 'star_monthly_vip'
+  | 'all_pass_monthly'   // 🆕 E129-刀五（补漏 E131）：$9.99 全通月订登录门可承接
   | 'all_pass_yearly'
   | 'wealth_monthly_report'
   | 'wealth_yearly_report';

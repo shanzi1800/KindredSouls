@@ -14899,6 +14899,43 @@ function wealthEntitledByType(plans, reportType, now) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 💳 E131-A（主公军令 2026-11-09）财富 once 档「按盘隔离」内核
+//   病灶：账号级 paid_plans.wealth_once 布尔对任意生日盘放行 ⇒ 新生日直接
+//   短路跳过 $4.99 付费墙（权限串流）。治法：付讫落库「盘签名名单」
+//   wealth_once_charts（封顶 50）；wealth_once 账号位自此只对名单内盘放行。
+//   🔴 与 web/src/lib/wealthChartSig.mjs **逐字镜像**（同输入同输出，e131 闸门双向锁定）；
+//      签名形态 birthDate|birthTime|lat|lon|tz（坐标 toFixed(4) 归一）。
+// ═══════════════════════════════════════════════════════════════
+const WEALTH_CHART_SIG_MAX = 50;
+function wealthChartSigOf(birthDate, birthTime, lat, lon, tz) {
+  const bd = String(birthDate == null ? '' : birthDate).trim().slice(0, 10);
+  const bt = String(birthTime == null ? '' : birthTime).trim().slice(0, 5);
+  const tzS = String(tz == null ? '' : tz).trim();
+  const r4 = (v) => { const n = Number(v); return Number.isFinite(n) ? n.toFixed(4) : ''; };
+  return [bd, bt, r4(lat), r4(lon), tzS].join('|');
+}
+function normalizeWealthChartSig(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!FAMILIAR_CHART_SIG_RE.test(s)) return '';
+  const parts = s.split('|');
+  return wealthChartSigOf(parts[0], parts[1], parts[2], parts[3], parts[4]);
+}
+function wealthOnceChartListed(plans, chartSig) {
+  if (!chartSig) return false;
+  const p = plans || {};
+  if (p.wealth_once !== true) return false;
+  const list = Array.isArray(p.wealth_once_charts) ? p.wealth_once_charts : [];
+  return list.indexOf(chartSig) !== -1;
+}
+function wealthAllPassActive(plans, now) {
+  const p = plans || {};
+  const ts = now instanceof Date ? now : new Date(now);
+  const ap = p.all_pass_yearly === true && (!p.all_pass_expires_at || ts < new Date(p.all_pass_expires_at));
+  const apm = p.all_pass_monthly === true && (!p.all_pass_monthly_expires_at || ts < new Date(p.all_pass_monthly_expires_at));
+  return ap || apm;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 🛡️ E24⑥②（2026-10-07 军师开工令）算力护栏内核 —— 纯函数＝单一真源
 //   落地圣经 V2.0：§2.1 生成周期 / §3 全局熔断 / §4 Solar Return 锚定 / §5 缓存分层。
 //   铁律：全部接受**可注入 now** ⇒ 闸门 test/audit-e24h-compute-guard-gate.test.mjs
@@ -15205,6 +15242,15 @@ async function resolveWealthEntitlement(req, reportType) {
     // 🛍️ E24⑥②：一并取 birth_date —— Solar Return 周期（年报死锁 / 缓存分层）的**唯一轴心**（圣经 §4）
     const userBirthDate = (Array.isArray(rows) && rows[0] && rows[0].birth_date) || null;
     const method = wealthEntitledByType(plans, reportType, new Date());
+    // 💳 E131-A（主公军令 2026-11-09）：once 档按盘隔离 —— 账号级 wealth_once 位
+    //   只对「付讫时落库的盘签名」（wealth_once_charts 名单）放行；全通（年卡/月订）
+    //   不受影响（method 为 all_pass_* 直接过）。未单独付讫的新生日盘 ⇒ 402 回付费墙。
+    if (reportType === 'once' && method === 'wealth_once') {
+      const _e131Sig = wealthChartSigOf(body.birthDate, body.birthTime, body.lat, body.lon, body.tz);
+      if (!wealthOnceChartListed(plans, _e131Sig)) {
+        return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
+      }
+    }
     if (method) return { ok: true, method, userId, plans, userBirthDate };
     return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
   } catch (e) {
@@ -15446,7 +15492,8 @@ async function _sandboxResolveUser(req) {
 }
 
 // 沙盘事件派发：**自环真打** —— 同 HTTP 通路、同验签、同落库（拒绝旁路分叉）
-async function _sandboxDispatch(req, plan, userId, email) {
+// 💳 E131-A：第 5 参 chartSig（可选）—— wealth_once 付讫盘签名随会话 metadata 入 webhook
+async function _sandboxDispatch(req, plan, userId, email, chartSig) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) return { error: 500, message: 'STRIPE_WEBHOOK_SECRET missing (sandbox self-post requires signature verification)' };
   const origin = req.headers.origin || 'https://kindredsouls.online';
@@ -15454,6 +15501,7 @@ async function _sandboxDispatch(req, plan, userId, email) {
   const d = buildSignedSandboxDispatch({
     secret, plan, userId, email, origin, now: new Date(), nonce,
     mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
+    chartSig: chartSig || undefined, // 💳 E131-A: 盘签名随事件 metadata 透传（缺省形态零变）
   });
   // 🔴 必用**原生 fetch**：safeFetch 内部是 `https.request` 硬编码（rejectUnauthorized:false），
   //    无法打 http:// 回环 —— 实测会抛 `EPROTO ... packet length too long`（Gate 45-A 血训）。
@@ -15543,6 +15591,7 @@ app.post('/api/sandbox/reset-purchase', async (req, res) => {
     ];
     const delta = {};
     for (const k of cleared) delta[k] = false;
+    delta.wealth_once_charts = []; // 💳 E131-A: 盘签名名单一并清空（回未付费付费墙形态）
     delta.all_pass_expires_at = null;
     delta.all_pass_monthly_expires_at = null;
     delta.star_monthly_resets_at = null;
@@ -15576,7 +15625,10 @@ app.post('/api/sandbox/complete', async (req, res) => {
     const rawPlan = (req.body || {}).plan;
     const plan = normalizePlanId(rawPlan);
     if (!STRIPE_PRICE_MAP[plan]) return res.status(400).json({ error: 'Unknown plan: ' + rawPlan });
-    const out = await _sandboxDispatch(req, plan, who.userId, who.email);
+    // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫按盘落库 —— 收银台上送
+    //   当前测算盘签名（畸形 ⇒ '' ⇒ 维持账号级旧形态，fail-closed 不炸链）
+    const _e131ChartSig = normalizeWealthChartSig((req.body || {}).chart_sig);
+    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig);
     if (out.error) return res.status(out.error).json({ error: out.message, detail: out.detail });
     return res.json({ ok: true, sandbox: true, plan, sessionId: out.sessionId, granted: out.received && !out.skipped, webhook: out.webhook });
   } catch (err) {
@@ -15611,7 +15663,10 @@ app.post('/api/create-checkout', async (req, res) => {
   try {
     const SB_URL = process.env.SUPABASE_URL;
     const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const { plan: rawPlan, successUrl, cancelUrl } = req.body || {};
+    // 💳 E131-A（主公军令 2026-11-09）：wealth_once 换盘重购合法化 —— 收银请求上送
+    //   当前测算盘签名（沙盒/Stripe 同一条通道；畸形 ⇒ '' 恒安全）
+    const { plan: rawPlan, successUrl, cancelUrl, chart_sig: _e131RawSig } = req.body || {};
+    const chartSig = normalizeWealthChartSig(_e131RawSig);
     const plan = normalizePlanId(rawPlan);
     const priceId = STRIPE_PRICE_MAP[plan];
     if (!priceId) {
@@ -15641,8 +15696,16 @@ app.post('/api/create-checkout', async (req, res) => {
     const profile = (Array.isArray(profiles) && profiles[0]) || null;
     const paidPlans = (profile && profile.paid_plans) || {};
     if (planHasAccess(paidPlans, plan, new Date())) {
-      console.log(`[create-checkout] ${plan} 已被现有权益覆盖 user=${String(userId).slice(0, 8)} → already_paid`);
-      return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
+      // 💳 E131-A（主公军令 2026-11-09）：once 档按盘隔离 —— 换盘重购是**合法新单**
+      //   （账号级 wealth_once 位对新盘不构成 already_paid；全通订阅期内才是真·已拥有）。
+      const _e131OnceRebuy = plan === 'wealth_once' && chartSig
+        && !wealthOnceChartListed(paidPlans, chartSig)
+        && !wealthAllPassActive(paidPlans, new Date());
+      if (!_e131OnceRebuy) {
+        console.log(`[create-checkout] ${plan} 已被现有权益覆盖 user=${String(userId).slice(0, 8)} → already_paid`);
+        return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
+      }
+      console.log(`[create-checkout] E131 once 换盘重购放行 user=${String(userId).slice(0, 8)} chartSig=${chartSig.slice(0, 24)}`);
     }
 
     // 🧪 Gate 45-A：沙盘分支 —— 仅在 PAYMENT_MODE=sandbox 时生效（缺省 live ⇒ 本段零执行、Stripe 路径逐字不变）
@@ -15653,6 +15716,7 @@ app.post('/api/create-checkout', async (req, res) => {
         origin: (req.headers.origin || 'https://kindredsouls.online'),
         mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
         nonce: String(Date.now()) + Math.random().toString(36).slice(2, 8),
+        chartSig, // 💳 E131-A: 盘签名随沙盘会话（付讫落名单的唯一钥匙）
       });
       console.log('[create-checkout] 🧪 sandbox session:', _sbSession.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
       return res.json({ url: _sbSession.url, sessionId: _sbSession.id, sandbox: true, plan });
@@ -15693,7 +15757,7 @@ app.post('/api/create-checkout', async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl || defaultSuccess,
       cancel_url: cancelUrl || defaultCancel,
-      metadata: { supabase_user_id: userId, plan },
+      metadata: Object.assign({ supabase_user_id: userId, plan }, chartSig ? { chart_sig: chartSig } : {}), // 💳 E131-A: once 盘签名随 Stripe 会话（live 同源）
     });
     console.log('[create-checkout] ✅ session:', session.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
     res.json({ url: session.url, sessionId: session.id });
@@ -15748,6 +15812,8 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     const session = event.data.object || {};
     const plan = normalizePlanId(session.metadata && session.metadata.plan);
     const userId = session.metadata && session.metadata.supabase_user_id;
+    // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫盘签名（畸形 ⇒ ''，零写入）
+    const _e131ChartSig = normalizeWealthChartSig(session.metadata && session.metadata.chart_sig);
     const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
     console.log('[webhook] 💰 支付成功 user:', userId, 'email:', email, 'plan:', plan);
 
@@ -15785,6 +15851,14 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     }
 
     const updatedPlans = Object.assign({}, currentPlans, buildPlanPayload(plan));
+    // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫 ⇒ 盘签名入名单
+    //   （并集去重，封顶 WEALTH_CHART_SIG_MAX=50 防 jsonb 膨胀；非 once 档零写入）
+    if (plan === 'wealth_once' && _e131ChartSig) {
+      const _e131List = (Array.isArray(currentPlans.wealth_once_charts) ? currentPlans.wealth_once_charts : [])
+        .filter((s) => typeof s === 'string');
+      if (_e131List.indexOf(_e131ChartSig) === -1) _e131List.push(_e131ChartSig);
+      updatedPlans.wealth_once_charts = _e131List.slice(-WEALTH_CHART_SIG_MAX);
+    }
     const rowPatch = {
       paid: true,
       paid_plans: updatedPlans,

@@ -46,6 +46,9 @@ import type { WealthGatePlan } from '../components/WealthLoginGate';
 // 🐾 E55-3（主公亲令 2026-10-16）: 2.0 定制殿堂路由接线已战略隐藏（FAMILIAR_CUSTOM_PATH 不再消费）
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, hasExplicitBirthCoords, buildSandboxCompleteRequest, describeSandboxOutcome, sandboxPlanPrice } from '../lib/sandboxCheckout.mjs';
+// 💳 E131-A（主公军令 2026-11-09）：财富 once 档「按盘隔离」纯核（前后端同源，e131 闸门守备）
+// @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核
+import { wealthChartSigFromSearch, wealthOnceChartListed, wealthAllPassActive } from '../lib/wealthChartSig.mjs';
 // @ts-ignore —— wealthRestore.mjs 为纯 JS 逻辑核（形状由 45-D2c 闸门守备）
 import { buildWealthRestoreUrl } from '../lib/wealthRestore.mjs';
 // @ts-ignore —— lastReportUrl.mjs 为纯 JS 逻辑核（形状由 P0 周期锁态闸门守备）
@@ -1192,6 +1195,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   const [paidPlans, setPaidPlans] = useState<any>(null);
   const wealthReportRef = useRef<string>('');
   const loadingRef = useRef(false); // 🔒 物理锁:防止重复调用
+  // 💳 E131-A（主公军令 2026-11-09）：once 档按盘付讫真值 ref —— 同步物理闸，
+  //    月报 402 回锁判定与付讫即直出（E131-B）共用；绝不因月报未购把付过 once 的整页锁死。
+  const onceChartUnlockedRef = useRef(false);
+  // 💎 E131-B：once 档自动直出一次性闩 —— 整页门翻绿后只自动发起一次（去抖由
+  //    _reportGen/_reportMemCache 单例锁与后端 once 永久缓存双兜底）。
+  const onceAutoGenRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null); // 🔒 中止悬挂流,防止反复 remount 叠加多份报告
   const mySubRef = useRef<((t: string) => void) | null>(null); // 🔒 V220b: 本实例的订阅者,cleanup 时从 gen.subs 移除,防止 stale 闭包重复写入
   const [wealthReportText, setWealthReportText] = useState<string>('');
@@ -1431,6 +1440,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   return () => window.removeEventListener('message', handler);
   }, []);
 
+  // 💎 E131-B（主公军令 2026-11-09）【付讫即直出】：整页门翻绿（isUnlocked）即自动发起
+  //   once 档金属框流式报告 —— 支付完成（沙盒 granted / payment=success 回跳 / 已购回访）
+  //   一律免二次点击；后端 once 永久缓存 HIT 直接回放正文。绿道行为零变（E130 纯净态：
+  //   loadWealthData 预告 + 手动生成按钮）。重试兜底＝无正文态下的「生成 AI 洞察」按钮。
+  useEffect(() => {
+    if (!isUnlocked || authChecking) return;
+    if (isGreenChannelRef.current) return;            // 绿道走原路径，行为零变
+    if (onceAutoGenRef.current) return;               // 一次性闩：每挂载至多自动一发
+    if (wealthReportText && wealthReportText.length > 100) return; // once 正文已在场（终稿/回放）
+    if (reportLoading || loadingRef.current) return;  // 生成中/物理锁占用中
+    onceAutoGenRef.current = true;
+    generateWealthReport('once');
+  }, [isUnlocked, authChecking]);
+
   const checkAuthAndLoad = async (birth: string, lang: string, forceRecheck = false, pendingPlan?: string) => {
     let token: string | undefined;
     try {
@@ -1566,7 +1589,16 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       //     单判，且内容渲染处**二次闸门** —— 三处必须同批改，否则出现「按钮可见但服务端 402」。
       const _upgradeGreen = isGreenChannelRef.current
         || new URLSearchParams(window.location.search).get('free_access') === '1';
-      const isWealthPaid = wealthEntitledFor('once', rawPlans, _upgradeGreen);
+      // 💳 E131-A（主公军令 2026-11-09）：once 档**按盘隔离** —— 权限串流根治。
+      //   铁则：只要当前测算的这组 birth+birthTime 坐标尚未**单独支付解锁**过先天财富报告
+      //   （或非有效期内全通订阅会员），哪怕已认领灵宠也禁跳付费墙。
+      //   组合式（保 e59「直取同源纯函数」锚）：wealthEntitledFor('once') 命中账号级
+      //   wealth_once 位时，必须叠加「盘签名已付讫名单 ∪ 有效全通」第二闸；
+      //   hasClaimedFamiliar / 姻缘模块权益与本门无涉（E59 阶梯语义原样保持）。
+      const _e131Sig = wealthChartSigFromSearch(window.location.search);
+      const isWealthPaid = wealthEntitledFor('once', rawPlans, _upgradeGreen)
+        && (_upgradeGreen || wealthOnceChartListed(rawPlans, _e131Sig) || wealthAllPassActive(rawPlans));
+      if (isWealthPaid) onceChartUnlockedRef.current = true;
 
       setPaidPlans(rawPlans);
 
@@ -1781,7 +1813,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         } catch (_) {}
         setError(null);
         // 🧪 绿色通道:402 不重置解锁状态,让月报/年报按钮保持显示
-        if (!isFreeAccess) {
+        // 💳 E131-A：月报 402 只是「该档未购」—— once 档已按盘付讫（含全通会员）时
+        //    绝不连带锁死整页（与 E59「绝不 setIsUnlocked(false)」铁则同源）。
+        if (!isFreeAccess && !onceChartUnlockedRef.current) {
           setIsUnlocked(false);
           setShowPaywall(true);
         }
@@ -1928,6 +1962,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
     const applyWealthGrant = () => {
       setIsUnlocked(true);
       setShowPaywall(false);
+      // 💳 E131-A：付讫即置按盘真值闩（乐观权益快照尚未回库，月报 402 回锁判定先认它）
+      onceChartUnlockedRef.current = true;
       // 💎 wealth_once: 支付成功后自动生成先天财富DNA报告
       if (plan === 'wealth_once') {
         generateWealthReport('once');
@@ -1964,7 +2000,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ plan }),
+        // 💳 E131-A：once 档按盘付讫 —— 当前测算盘签名随单上送（后端落会话 metadata；
+        //   非 wealth_once 档后端忽略此键，行为零变）
+        body: JSON.stringify({ plan, chart_sig: wealthChartSigFromSearch(window.location.search) || undefined }),
       });
       const data = await res.json();
       console.log('[WealthReport] Stripe response status:', res.status, 'data:', JSON.stringify(data));
@@ -2175,7 +2213,9 @@ const generateWealthReport = async (type: 'monthly' | 'yearly' | 'once', force =
       setWealthReport(t('wealthReport.loginFirst'));
       return;
     }
-    setReportLoading(type === 'monthly' ? 'wealth_monthly' : 'wealth_yearly');
+    // 💎 E131-B：once 档直出 —— loading 态必须置 'wealth_once'（金属框挂载判据
+    //   `reportLoading === 'wealth_once'` 由此点亮；流帧到 100 字后双保险接管）
+    setReportLoading(type === 'monthly' ? 'wealth_monthly' : (type === 'once' ? 'wealth_once' : 'wealth_yearly'));
     setWealthReport('');
     setStreamedOnce(false);
     setHlNotice(''); // 🛡️ E17/R11j ⑤: 每轮开始清空高纬告知，避免跨盘串味
@@ -3584,8 +3624,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           return null;
         })()}
 
-        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮,避免干扰阅读 */}
-        {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && reportLoading !== 'wealth_monthly' && !yearlyCardsReady && !monthlyCardsReady && (
+        {/* 🛠️ V48: 年报流式中/完成后隐藏生成AI洞察按钮,避免干扰阅读
+            💎 E131-B：once 生成中同样隐藏（自动直出期间它不是主 CTA，仅无正文时作兜底重试） */}
+        {isUnlocked && !reportData?.insight && reportLoading !== 'wealth_yearly' && reportLoading !== 'wealth_monthly' && reportLoading !== 'wealth_once' && !yearlyCardsReady && !monthlyCardsReady && (
           <button
             onClick={handleTriggerInsight}
             style={{

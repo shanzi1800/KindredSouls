@@ -145,8 +145,17 @@ export function isVoucherSubmittable(raw) {
   return c.length >= VOUCHER_MIN_LEN && c.length <= VOUCHER_MAX_LEN && VOUCHER_RE.test(c);
 }
 
-export function buildSandboxCompleteRequest(plan) {
-  return { path: SANDBOX_COMPLETE_PATH, method: 'POST', body: { plan: String(plan == null ? '' : plan) } };
+/**
+ * 一键模拟付款请求构造。
+ * 💳 E131-A（主公军令 2026-11-09）：可选第二参 chartSig —— wealth_once 付讫按盘落库；
+ *   缺省/空串 ⇒ body 只含 plan（旧形态逐字不变，gate45b deepEqual 契约零扰）。
+ *   ⚠️ 只认已规范化的签名（调用方传 wealthChartSigFromSearch/normalizeWealthChartSig 产物）。
+ */
+export function buildSandboxCompleteRequest(plan, chartSig) {
+  const body = { plan: String(plan == null ? '' : plan) };
+  const sig = typeof chartSig === 'string' ? chartSig.trim() : '';
+  if (sig) body.chart_sig = sig;
+  return { path: SANDBOX_COMPLETE_PATH, method: 'POST', body };
 }
 
 export function buildSandboxRedeemRequest(code) {
