@@ -311,9 +311,10 @@ test('C1 段位：Gate E59 已入编且居收口位之前（下界 ≥53，iCap 
 /* ═══════════ D 注入反漂移（判据对篡改必红）═══════════ */
 
 test('D1 注入：整页门改回「任一财富档」宽判 ⇒ B1 判据必红（阶梯穿透）', () => {
+  // 💳 E131-A：整页门改 AND 组合（首行无分号续 &&）——注入锚随手术同源演进
   const bad = PAGE_SRC.replace(
-    "const isWealthPaid = wealthEntitledFor('once', rawPlans, _upgradeGreen);",
-    "const isWealthPaid = (() => { if (planMap.wealth_monthly_report === true) return true; if (planMap.wealth_yearly_report === true) return true; return false; })();",
+    "const isWealthPaid = wealthEntitledFor('once', rawPlans, _upgradeGreen)",
+    "const isWealthPaid = (() => { if (planMap.wealth_monthly_report === true) return true; if (planMap.wealth_yearly_report === true) return true; return false; })()",
   );
   assert.notEqual(bad, PAGE_SRC, 'D1 注入锚点漂移');
   assert.equal(pageGateIsOnceOnly(bad), false, 'B1 判据必须能识破宽判回流');

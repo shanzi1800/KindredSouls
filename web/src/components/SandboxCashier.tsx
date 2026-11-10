@@ -19,6 +19,9 @@ import { ASTRO_TERMS } from '../lib/algos/astroTerms.generated';
 import { supabase } from '../lib/supabase';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { subscribeSandboxCashier, getSandboxCashier, closeSandboxCashier, buildSandboxCompleteRequest, buildSandboxRedeemRequest, describeSandboxOutcome, dictTerm, planTerm, sandboxPlanPrice, isVoucherSubmittable, SANDBOX_CASHIER_TESTID, SANDBOX_WATERMARK_TESTID, SANDBOX_PAY_BTN_TESTID, SANDBOX_CODE_INPUT_TESTID, SANDBOX_REDEEM_BTN_TESTID, SANDBOX_STATUS_TESTID } from '../lib/sandboxCheckout.mjs';
+// 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫按盘落库 —— 收银台就地取当前页盘签名
+// @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核（前后端同源，e131 闸门守备）
+import { wealthChartSigFromSearch } from '../lib/wealthChartSig.mjs';
 
 const GOLD = '#D4AF37';
 const TEAL = '#81D8D0';
@@ -107,7 +110,13 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
     setBusy('pay');
     setMsg(null);
     try {
-      const { data } = await post(buildSandboxCompleteRequest(req.plan));
+      // 💳 E131-A：wealth_once 付讫按盘落库 —— 签名源双回退：
+      //   ① 报告页唤起模态 ⇒ window.location 带 birth 全参（主漏斗）；
+      //   ② /sandbox-pay 直达兜底 ⇒ 从收银台 url 的 chart_sig query 提取；
+      //   双双落空（非报告页上下文）⇒ '' ⇒ body 只含 plan，旧行为零变。
+      const _e131Sig = wealthChartSigFromSearch(window.location.search)
+        || wealthChartSigFromSearch(((req.url || '').split('?')[1]) || '');
+      const { data } = await post(buildSandboxCompleteRequest(req.plan, _e131Sig));
       applyOutcome(describeSandboxOutcome(data));
     } catch (_) {
       setMsg({ granted: false, messageKey: 'SandboxFailed' });

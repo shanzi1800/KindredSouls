@@ -245,10 +245,10 @@ test('④-1 对话窗滚动槽与月报 .ks-report-scroll 形状颜色逐字一�
 
 test('⑤-1 军规链段数入编（E108 后继化：83 段／e108 居 e107 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 98, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 99, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 18].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
-  assert.ok(segs[segs.length - 19].includes('audit-e107'), 'e107 须居 len-12');
-  assert.ok(segs[segs.length - 20].includes('audit-e106'), 'e106 须居 len-13');
+  assert.ok(segs[segs.length - 19].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
+  assert.ok(segs[segs.length - 20].includes('audit-e107'), 'e107 须居 len-12');
+  assert.ok(segs[segs.length - 21].includes('audit-e106'), 'e106 须居 len-13');
 });
