@@ -196,7 +196,7 @@ test('E131-06 沙盒签名链：complete 可选 chart_sig＋收银台双回退�
 test('E131-S 链位自保：e131 入编（e130 后、e40-compat 前；全链 98→99 段）', () => {
   const chain = PKG.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.ok(segs.length >= 99, `链段下界 99（实际 ${segs.length}）`);
+  assert.ok(segs.length >= 100, `链段下界 100（实际 ${segs.length}）`);
   const iE131 = segs.findIndex((s) => s.includes('audit-e131-wealth-funnel-chart-frame'));
   const iE130 = segs.findIndex((s) => s.includes('audit-e130-sanctuary-restore'));
   const iCompat = segs.findIndex((s) => s.includes('e40-compat'));

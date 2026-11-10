@@ -74,11 +74,13 @@ test('E130-02 财富 $4.99 先天报告全链在位（E129 零误伤复核）', 
   assert.ok(PAYWALL.includes("onPurchase('wealth_once')"), '$4.99 主推卡按钮在位');
 });
 
-/* ═══════════ E130-03 $9.99 all_pass_monthly 挂回付费墙 ═══════════ */
-test('E130-03 $9.99 全通月订归位付费墙：WealthPaywall 第四档＋handlePurchase 通道', () => {
-  assert.ok(PAYWALL.includes("'wealth_once' | 'star_monthly_vip' | 'all_pass_monthly' | 'all_pass_yearly'"), 'WealthPlan 类型四档');
-  assert.ok(PAYWALL.includes("onPurchase('all_pass_monthly')"), '全通月订按钮接线');
-  assert.ok(PAYWALL.includes('apmDesc'), 'apm 文案键六语');
+/* ═══════════ E130-03 $9.99 all_pass_monthly 入口（E132 主公军令 2026-11-10 翻面：退役） ═══════════ */
+test('E130-03（E132 翻面）$9.99 全通月订前端入口退役：唯一 $9.99/月＝双引擎星运特权卡', () => {
+  assert.ok(PAYWALL.includes("'wealth_once' | 'star_monthly_vip' | 'all_pass_monthly' | 'all_pass_yearly'"), 'WealthPlan 类型四档（类型留存＝在期权益判定不破）');
+  // 🔄 E132（主公军令 2026-11-10）：与双引擎星运特权卡同价重复 ⇒ 入口退役（负向断言）
+  assert.ok(!PAYWALL.includes("onPurchase('all_pass_monthly')"), '全通月订按钮接线已退役（禁同价双卡）');
+  assert.ok(!PAYWALL.includes('apmDesc'), 'apm 文案键已随卡退役（六语同步）');
+  assert.ok((PAYWALL.match(/onPurchase\('star_monthly_vip'\)/g) || []).length === 1, '双引擎星运特权卡在位（保留钦定卡）');
   assert.ok(WEALTH_PAGE.includes("'star_monthly_vip' | 'all_pass_monthly' | 'all_pass_yearly'"), 'handlePurchase 类型含 all_pass_monthly');
   assert.ok(WEALTH_PAGE.includes("plan === 'all_pass_monthly'"), '付讫乐观合并分支');
   // 后端结算能力留存（E129-刀五 server 面——剥离仅及前端入口）
@@ -108,18 +110,18 @@ test('E130-05 Subtle Whisper：prompt 尾块三红线（追问才点/零价格�
   assert.ok(fnPrompt.indexOf('【SUBTLE WHISPER') > fnPrompt.indexOf('【输出铁律'), 'Whisper 居输出铁律之后');
 });
 
-/* ═══════════ E130-06 六语对齐（铁律 15） ═══════════ */
-test('E130-06 付费墙全通月订六语逐语对齐（apm/apmDesc 金额面 9.99）', () => {
-  const blocks = PAYWALL.split('\n  },');
+/* ═══════════ E130-06 六语对齐（铁律 15；E132 翻面：apm 键随卡退役） ═══════════ */
+test('E130-06（E132 翻面）付费墙六语零 apm 键残留＋双引擎卡六语 9.99 逐语在位', () => {
   const i18nBlock = PAYWALL.slice(PAYWALL.indexOf('const I18N'), PAYWALL.indexOf('} as const;'));
   for (const lang of LANGS) {
     const m = i18nBlock.match(new RegExp(`${lang}:\\s*\\{([\\s\\S]*?)\\n  \\},?`));
     assert.ok(m, `I18N[${lang}] 块命中`);
-    assert.ok(m[1].includes('apm:'), `I18N[${lang}] apm 键`);
-    assert.ok(m[1].includes('apmDesc:'), `I18N[${lang}] apmDesc 键`);
-    assert.ok(m[1].includes('9.99'), `I18N[${lang}] 金额面 9.99（USD 美元符恒形态）`);
+    // 🔄 E132：全通月订卡退役 ⇒ 六语零 apm/apmDesc 残留（单语漏删＝铁律 15 病）
+    assert.ok(!m[1].includes('apm:'), `I18N[${lang}] 零 apm 键残留`);
+    assert.ok(!m[1].includes('apmDesc:'), `I18N[${lang}] 零 apmDesc 键残留`);
+    // 保留卡（双引擎星运特权卡）六语 9.99 金额面仍在
+    assert.ok(m[1].includes('9.99'), `I18N[${lang}] 双引擎卡金额面 9.99（USD 美元符恒形态）`);
   }
-  assert.ok(blocks.length >= 0, 'noop');
 });
 
 /* ═══════════ S 链位自保 ═══════════ */
