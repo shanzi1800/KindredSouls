@@ -3289,10 +3289,25 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             生成 AI 洞察」的垂直转化动线）。唯一保留＝页尾 Gate 45-B 承接位；
             E76「带路即唤醒对话舱」意图标记已迁入 AdoptFamiliarCTA 的带路按钮。
             （历史沿革：E48 门禁＋E52 性别化文案＋E76 自动唤醒，均由页尾按钮继承） */}
-        {/* 🔓 E58（主公亲令 2026-10-16）: 付费墙必须先于灵宠选择卡呈现 ——
-            E58 前旧序＝锁定灵宠卡在上、付费墙压底，主公真机复测实锤「填完生辰没见付费墙、
-            直接落到选宠页」⇒ 商业漏斗首屏被灵宠卡抢占。新序＝免费预告 → 付费墙 → 灵宠卡。
-            付费墙挂 ref 仍是灵宠拦截 Toast 的平滑滚动落点（「🔒 AI 深度洞察 / 立即解锁」） */}
+        {/* 🔒 E48（主公亲令 2026-10-14）: 未付费态灵宠选择器 —— 卡片保留但**全部上锁**，
+            点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转。
+            🔄 E132（主公军令 2026-11-10）：**与付费墙对调** —— 「为你孵化专属灵宠」上移
+            至四宫格正下方（E58「付费墙在前」旧序由本军令废止）：灵宠孵化作情感钩子先呈现，
+            AI 深度洞察付费墙（三付费栏）下移至其后；付费墙挂 ref 仍是灵宠拦截 Toast 的
+            平滑滚动落点（「🔒 AI 深度洞察 / 立即解锁」，方向改为向下滚）。 */}
+        {!authChecking && !isUnlocked && showPaywall && reportData && (
+          <FamiliarPicker
+            birthDate={birthDate}
+            birthTime={_familiarBp.birthTime}
+            lat={_familiarBp.lat}
+            lon={_familiarBp.lon}
+            tz={_familiarBp.tz}
+            locked={true}
+            onLockedTap={handleFamiliarLockedTap}
+            onAdopted={(p) => setFamiliarLead(p)}
+          />
+        )}
+
         {!authChecking && !isUnlocked && showPaywall && (
           <div ref={paywallRef}>
             <WealthPaywall
@@ -3334,21 +3349,8 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           />
         )}
 
-        {/* 🔒 E48（主公亲令 2026-10-14）: 未付费态灵宠选择器 —— 卡片保留但**全部上锁**，
-            点击一律拦截 → Toast 引导 + 平滑滚动至解锁按钮；严禁写入领养状态、严禁跳转
-            （E58: 已移到付费墙下方，作付费墙次屏增值展示，不再抢占转化首屏） */}
-        {!authChecking && !isUnlocked && showPaywall && reportData && (
-          <FamiliarPicker
-            birthDate={birthDate}
-            birthTime={_familiarBp.birthTime}
-            lat={_familiarBp.lat}
-            lon={_familiarBp.lon}
-            tz={_familiarBp.tz}
-            locked={true}
-            onLockedTap={handleFamiliarLockedTap}
-            onAdopted={(p) => setFamiliarLead(p)}
-          />
-        )}
+        {/* 🐾 E132（主公军令 2026-11-10）：FamiliarPicker 已上移至四宫格正下方
+            （付费墙之前）——本位旧挂点退役，勿再在此挂载（防同屏双选择器）。 */}
 
         {isUnlocked && reportData?.insight && (
           <WealthInsightCard
