@@ -132,6 +132,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: '出发吉时窗',
       defaultTiming: '周六 09:00 - 10:30 出发',
       heading: { deg: 135, name: '东南 · 巽位纳气' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: '莫干山', query: 'Moganshan, Deqing, Huzhou', sponsor_badge: null, secret_code: null },
+        { name: '安吉大竹海', query: 'China Big Bamboo Sea, Anji', sponsor_badge: null, secret_code: null },
+        { name: '莫干山山居美宿', query: 'Moganshan lodge, Deqing', sponsor_badge: null, secret_code: null },
+      ],
     }),
     en: Object.freeze({
       title: '✦ SOUL ROADTRIP GUIDE ✦',
@@ -141,6 +148,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: 'Departure Window',
       defaultTiming: 'Saturday 09:00 - 10:30 departure',
       heading: { deg: 315, name: 'Northwest · Grounding' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Joshua Tree', query: 'Joshua Tree National Park', sponsor_badge: null, secret_code: null },
+        { name: 'Keys View', query: 'Keys View, Joshua Tree', sponsor_badge: null, secret_code: null },
+        { name: 'Pioneertown', query: 'Pioneertown, California', sponsor_badge: null, secret_code: null },
+      ],
     }),
     fr: Object.freeze({
       title: "✦ GUIDE D'ÉCHAPPÉE & SÉRÉNITÉ ✦",
@@ -150,6 +164,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: 'Fenêtre de départ',
       defaultTiming: 'Samedi 09:00 - 10:30 départ',
       heading: { deg: 180, name: 'Sud · Lumière' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Valensole', query: 'Plateau de Valensole', sponsor_badge: null, secret_code: null },
+        { name: 'Moustiers', query: 'Moustiers-Sainte-Marie', sponsor_badge: null, secret_code: null },
+        { name: 'Gorges du Verdon', query: 'Gorges du Verdon', sponsor_badge: null, secret_code: null },
+      ],
     }),
     es: Object.freeze({
       title: '✦ HOJA DE RUTA DE ESCAPE DEL ALMA ✦',
@@ -159,6 +180,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: 'Ventana de salida',
       defaultTiming: 'Sábado 09:00 - 10:30 salida',
       heading: { deg: 0, name: 'Norte · Claridad' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Ronda', query: 'Ronda, Andalusia', sponsor_badge: null, secret_code: null },
+        { name: 'Setenil', query: 'Setenil de las Bodegas', sponsor_badge: null, secret_code: null },
+        { name: 'Grazalema', query: 'Sierra de Grazalema', sponsor_badge: null, secret_code: null },
+      ],
     }),
     th: Object.freeze({
       title: '✦ บันทึกการเดินทางเพื่อการเยียวยา ✦',
@@ -168,6 +196,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: 'ช่วงเวลาออกเดินทาง',
       defaultTiming: 'เสาร์ 09:00 - 10:30 ออกเดินทาง',
       heading: { deg: 45, name: 'ตะวันออกเฉียงเหนือ · พลังใหม่' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'แม่ฮ่องสอน', query: 'Mae Hong Son', sponsor_badge: null, secret_code: null },
+        { name: 'หุบเขาไผ่ปาย', query: 'Pai Canyon', sponsor_badge: null, secret_code: null },
+        { name: 'อ่าวนาง กระบี่', query: 'Ao Nang, Krabi', sponsor_badge: null, secret_code: null },
+      ],
     }),
     vi: Object.freeze({
       title: '✦ CẨM NANG DU NGOẠN CHỮA LÀNH ✦',
@@ -177,6 +212,13 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       bestWindowPrefix: 'Khung giờ xuất phát',
       defaultTiming: 'Thứ Bảy 09:00 - 10:30 xuất phát',
       heading: { deg: 90, name: 'Đông · Khởi Động' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Đà Lạt', query: 'Da Lat, Vietnam', sponsor_badge: null, secret_code: null },
+        { name: 'Đèo Hải Vân', query: 'Hai Van Pass', sponsor_badge: null, secret_code: null },
+        { name: 'Vịnh Lăng Cô', query: 'Lang Co Beach', sponsor_badge: null, secret_code: null },
+      ],
     }),
   }),
 });
@@ -203,6 +245,13 @@ export const LIFESTYLE_GEO_VARIANTS = Object.freeze({
       bestWindowPrefix: '出发吉时窗',
       defaultTiming: '周六 09:00 - 10:30 出发',
       heading: { deg: 270, name: '西 · 开阔纳气' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Big Sur', query: 'Big Sur, California', sponsor_badge: null, secret_code: null },
+        { name: 'Nepenthe', query: 'Nepenthe, Big Sur', sponsor_badge: null, secret_code: null },
+        { name: 'Catskills', query: 'Catskills, New York', sponsor_badge: null, secret_code: null },
+      ],
     }),
     'zh@AU': Object.freeze({
       title: '✦ 漫游自驾避坑路书 ✦',
@@ -212,6 +261,13 @@ export const LIFESTYLE_GEO_VARIANTS = Object.freeze({
       bestWindowPrefix: '出发吉时窗',
       defaultTiming: '周六 09:00 - 10:30 出发',
       heading: { deg: 135, name: '东南 · 山海纳气' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: '蓝山', query: 'Blue Mountains, NSW', sponsor_badge: null, secret_code: null },
+        { name: 'Leura 小镇', query: 'Leura, NSW', sponsor_badge: null, secret_code: null },
+        { name: '莫宁顿温泉', query: 'Mornington Peninsula Hot Springs', sponsor_badge: null, secret_code: null },
+      ],
     }),
     'fr@AU': Object.freeze({
       title: "✦ GUIDE D'ÉCHAPPÉE & SÉRÉNITÉ ✦",
@@ -221,6 +277,13 @@ export const LIFESTYLE_GEO_VARIANTS = Object.freeze({
       bestWindowPrefix: 'Fenêtre de départ',
       defaultTiming: 'Samedi 09:00 - 10:30 départ',
       heading: { deg: 270, name: 'Ouest · Brume Bleue' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Blue Mountains', query: 'Blue Mountains, NSW', sponsor_badge: null, secret_code: null },
+        { name: 'Leura', query: 'Leura, NSW', sponsor_badge: null, secret_code: null },
+        { name: 'Mornington', query: 'Mornington Peninsula Hot Springs', sponsor_badge: null, secret_code: null },
+      ],
     }),
     'en@SEA': Object.freeze({
       title: '✦ SOUL ROADTRIP GUIDE ✦',
@@ -230,6 +293,13 @@ export const LIFESTYLE_GEO_VARIANTS = Object.freeze({
       bestWindowPrefix: 'Departure Window',
       defaultTiming: 'Saturday 09:00 - 10:30 departure',
       heading: { deg: 0, name: 'North · Mountain Air' },
+      // 🆕 E134（主公军令 2026-11-11）：三段式星轨路牌真实坐标（name 本地语显示 / query 原生地图导航串）；
+      //    100K 里程碑赞助槽位预埋（sponsor_badge/secret_code 默认 null——界面零渲染，未来后台直配）。
+      waypoints: [
+        { name: 'Chiang Mai', query: 'Chiang Mai', sponsor_badge: null, secret_code: null },
+        { name: 'Doi Inthanon', query: 'Doi Inthanon National Park', sponsor_badge: null, secret_code: null },
+        { name: 'Mae Hong Son', query: 'Mae Hong Son', sponsor_badge: null, secret_code: null },
+      ],
     }),
   }),
 });
@@ -249,3 +319,76 @@ export function getLifestyleTemplate(type, lang, zone) {
   if (!tpl || !tpl.prose || !tpl.title) return null;
   return tpl;
 }
+
+/**
+ * ═══════════ E134-AESTHETIC-25D-ROUTE-MAP（主公军令 2026-11-11）═══════════
+ * 军师钦定六语词表（5 键——逐字录入军令对照表；零 i18n 新键，自容字典先例 E121+）：
+ *   waypoint_1/2/3_tag 三段式星轨路牌、open_native_map 一键原生导航、
+ *   route_map_subtitle 2.5D 沙盘副题。消费方：RoadtripRouteMap.tsx（SVG 沙盘）
+ *   ＋lifestyleCanvasRenderer.mjs（1080×1748 画布沙盘）＋LifestyleMuseSlot.tsx。
+ */
+export const ROADTRIP_ROUTE_UI = Object.freeze({
+  zh: Object.freeze({
+    waypoint_1_tag: '启程·醒神',
+    waypoint_2_tag: '驻足·纳气',
+    waypoint_3_tag: '归宿·枕星',
+    open_native_map: '✦ 导入原生地图，开启导航',
+    route_map_subtitle: '2.5D 星轨气场漫游沙盘',
+  }),
+  en: Object.freeze({
+    waypoint_1_tag: 'Dawn Awakening',
+    waypoint_2_tag: 'Aura Absorption',
+    waypoint_3_tag: 'Starlit Sanctuary',
+    open_native_map: '✦ Open Route in Maps',
+    route_map_subtitle: '2.5D Celestial Aura Route',
+  }),
+  fr: Object.freeze({
+    waypoint_1_tag: "Éveil de l'Aube",
+    waypoint_2_tag: 'Immersion Astrale',
+    waypoint_3_tag: 'Sanctuaire Étoilé',
+    open_native_map: "✦ Ouvrir l'itinéraire dans Plans",
+    route_map_subtitle: "Carte Astrale d'Itinéraire 2.5D",
+  }),
+  es: Object.freeze({
+    waypoint_1_tag: 'Despertar del Alba',
+    waypoint_2_tag: 'Absorción de Aura',
+    waypoint_3_tag: 'Santuario Estelar',
+    open_native_map: '✦ Abrir ruta en Mapas',
+    route_map_subtitle: 'Mapa de Ruta Astral 2.5D',
+  }),
+  th: Object.freeze({
+    waypoint_1_tag: 'จุดเริ่มต้น·ปลุกพลัง',
+    waypoint_2_tag: 'จุดพัก·รับพลังจักรวาล',
+    waypoint_3_tag: 'จุดหมาย·พักพิงใต้ดาว',
+    open_native_map: '✦ เปิดเส้นทางในแอปแผนที่',
+    route_map_subtitle: 'แผนที่เส้นทางพลังงานดวงดาว 2.5D',
+  }),
+  vi: Object.freeze({
+    waypoint_1_tag: 'Khởi Hành · Tỉnh Thức',
+    waypoint_2_tag: 'Dừng Chân · Nạp Khí',
+    waypoint_3_tag: 'Điểm Đến · Gối Sao',
+    open_native_map: '✦ Mở lộ trình trong Bản đồ',
+    route_map_subtitle: 'Bản Đồ Lộ Trình Khí Trường 2.5D',
+  }),
+});
+
+/**
+ * 2.5D 暗金等高线星轨沙盘几何规格（军令钦定单源——SVG 与 Canvas 双渲染域同源）：
+ *   · viewBox 320×210（对话舱内嵌）；Canvas 域映射至徽记区 x∈[180,900]；
+ *   · 三节点归一化坐标（起点左下/转折中右/终点右上）；
+ *   · 等高线 stroke rgba(212,175,55,0.16)×5 层、航线金色三次贝塞尔＋呼吸光晕；
+ *   · 画布路牌文字安全区 x∈[141,933]（E125 800px 安全区同族扩展军令钦定）。
+ */
+export const ROADTRIP_MAP_SPEC = Object.freeze({
+  viewBoxWidth: 320,
+  viewBoxHeight: 210,
+  nodes: Object.freeze([
+    Object.freeze({ nx: 0.13, ny: 0.76 }),
+    Object.freeze({ nx: 0.60, ny: 0.47 }),
+    Object.freeze({ nx: 0.86, ny: 0.20 }),
+  ]),
+  contourColor: 'rgba(212,175,55,0.16)',
+  contourLayers: 5,
+  routeColor: '#D4AF37',
+  canvasSafeX: Object.freeze({ minX: 141, maxX: 933 }),
+});

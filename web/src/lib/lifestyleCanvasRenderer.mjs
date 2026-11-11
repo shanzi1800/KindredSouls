@@ -14,7 +14,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { AMULET_DIMENSIONS, GOLDEN_RATIO_TOLERANCE, AMULET_OFFICIAL_DOMAIN, LOCALE_CANVAS_CONFIG } from './amuletCanvasRenderer.mjs';
-import { LIFESTYLE_STAMP } from './lifestyleMuseData.mjs';
+import { LIFESTYLE_STAMP, ROADTRIP_MAP_SPEC, ROADTRIP_ROUTE_UI } from './lifestyleMuseData.mjs';
 import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY, shrinkPlateFontSize } from './canvasTypographyEngine.mjs';
 
 /** 版面绝对锚点（E120 同构——徽记区 Y:480 三分区） */
@@ -191,6 +191,160 @@ function drawCompassEmblem(ctx, W, template) {
   ctx.beginPath(); ctx.arc(CX, CY, 20, 0, Math.PI * 2); ctx.stroke();
 }
 
+/* ══ Layer 2 徽记区：roadtrip ⇒ 2.5D 暗金等高线星轨沙盘（E134 军令升级版）══
+ *    军令锚：深黑金渐变底＋4~5 层半透明暗金等高线（rgba(212,175,55,0.16)）＋
+ *    金色三次贝塞尔航线串联 3 气场节点＋三座暗金胶囊路牌（启程/驻足/归宿）；
+ *    路牌文字严格锁死 x∈[141,933] 安全区（军令钦定）；heading 金针保留为
+ *    沙盘右上角小罗盘（E124 罗盘语义承袭）。mock ctx 缺 bezierCurveTo/ellipse
+ *    ⇒ 能力降级（折线/圆弧），语义断言（fillText 路牌文字）不受影响。 */
+function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
+  const ZONE = { x0: 190, y0: 306, x1: 890, y1: 634 }; // 沙盘内框（1080 宽居中）
+  const ZW = ZONE.x1 - ZONE.x0;                          // 700
+  const ZH = ZONE.y1 - ZONE.y0;                          // 328
+  const ui = ROADTRIP_ROUTE_UI[locale] || ROADTRIP_ROUTE_UI.en;
+  const hasEllipse = typeof ctx.ellipse === 'function';
+  const hasBezier = typeof ctx.bezierCurveTo === 'function';
+
+  // 沙盘底：暗夜黑金渐变（2.5D 景深基底）
+  const bg = ctx.createLinearGradient
+    ? (() => { const g = ctx.createLinearGradient(ZONE.x0, ZONE.y0, ZONE.x0 + ZW * 0.35, ZONE.y1); g.addColorStop(0, '#14131c'); g.addColorStop(0.55, '#0e0d15'); g.addColorStop(1, '#0a0a12'); return g; })()
+    : '#0e0d15';
+  ctx.fillStyle = bg;
+  if (ctx.fillRect) ctx.fillRect(ZONE.x0, ZONE.y0, ZW, ZH);
+  ctx.strokeStyle = GOLD;
+  ctx.lineWidth = 1.4;
+  ctx.globalAlpha = 0.55;
+  if (ctx.strokeRect) ctx.strokeRect(ZONE.x0, ZONE.y0, ZW, ZH);
+  ctx.globalAlpha = 1;
+
+  // 等高线：5 层半透明暗金倾斜椭圆×两组（山海起伏景深；ellipse 缺席降级同心圆）
+  ctx.strokeStyle = ROADTRIP_MAP_SPEC.contourColor;
+  ctx.lineWidth = 1;
+  for (let k = 0; k < ROADTRIP_MAP_SPEC.contourLayers; k++) {
+    const cx = 595 - k * 8, cy = 470 + k * 6;
+    const rx = 60 + k * 46, ry = 34 + k * 26;
+    ctx.beginPath();
+    if (hasEllipse) ctx.ellipse(cx, cy, rx, ry, -0.28, 0, Math.PI * 2);
+    else ctx.arc(cx, cy, (rx + ry) / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (let k = 0; k < 4; k++) {
+    const cx = 400 + k * 10, cy = 560 - k * 8;
+    const rx = 44 + k * 34, ry = 24 + k * 18;
+    ctx.beginPath();
+    if (hasEllipse) ctx.ellipse(cx, cy, rx, ry, 0.19, 0, Math.PI * 2);
+    else ctx.arc(cx, cy, (rx + ry) / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 三气场节点（归一化真源 ROADTRIP_MAP_SPEC.nodes → 沙盘像素）
+  const P = ROADTRIP_MAP_SPEC.nodes.map((n) => ({
+    x: ZONE.x0 + n.nx * ZW,
+    y: ZONE.y0 + n.ny * ZH,
+  }));
+
+  // 星轨航线：金色三次贝塞尔（双层描模拟呼吸光晕；bezier 缺席降级折线）
+  const c1x = (P[0].x + P[1].x) / 2 + 52, c1y = (P[0].y + P[1].y) / 2 + 36;
+  const c2x = (P[1].x + P[2].x) / 2 - 36, c2y = (P[1].y + P[2].y) / 2 - 28;
+  const traceRoute = (width, alpha) => {
+    ctx.strokeStyle = ROADTRIP_MAP_SPEC.routeColor;
+    ctx.lineWidth = width;
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(P[0].x, P[0].y);
+    if (hasBezier) {
+      ctx.bezierCurveTo(c1x, c1y, P[1].x - 58, P[1].y + 12, P[1].x, P[1].y);
+      ctx.bezierCurveTo(c2x, c2y, P[2].x - 44, P[2].y + 20, P[2].x, P[2].y);
+    } else {
+      ctx.lineTo(P[1].x, P[1].y);
+      ctx.lineTo(P[2].x, P[2].y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  traceRoute(13, 0.16); // 光晕层
+  traceRoute(5, 0.92);  // 亮芯层
+
+  // 节点：金芯＋光晕外环
+  P.forEach((pt) => {
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 15, 0, Math.PI * 2);
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.globalAlpha = 0.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = CHAMPAGNE; ctx.globalAlpha = 1; ctx.fill();
+  });
+
+  // 三座暗金胶囊路牌（tag 军师词表＋地名 waypoints 真源；文字 x 锁 [141,933]）
+  const plateGeo = [
+    { cx: 281, y: 473 }, // ① 启程·醒神（左下节点上方）
+    { cx: 610, y: 500 }, // ② 驻足·纳气（中右节点下方）
+    { cx: 792, y: 306 }, // ③ 归宿·枕星（右上节点上方·沙盘顶）
+  ];
+  const tags = [ui.waypoint_1_tag, ui.waypoint_2_tag, ui.waypoint_3_tag];
+  const names = (Array.isArray(template.waypoints) ? template.waypoints : []).map((w) => String(w && w.name || ''));
+  for (let i = 0; i < 3; i++) {
+    const geo = plateGeo[i];
+    const pw = 240, ph = 54;
+    // 安全区军令锁死：胶囊 x 全体落 [141,933]（E125 800px 安全区同族扩展）
+    let px = geo.cx - pw / 2;
+    px = Math.max(ROADTRIP_MAP_SPEC.canvasSafeX.minX, Math.min(ROADTRIP_MAP_SPEC.canvasSafeX.maxX - pw, px));
+    ctx.beginPath();
+    roundRect(ctx, px, geo.y, pw, ph, 12);
+    ctx.fillStyle = 'rgba(13,13,26,0.92)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
+    // tag（香槟金·安全区内居中，超宽自适应缩字）
+    ctx.textAlign = 'center';
+    let tagSize = 27;
+    ctx.font = fontOf(tagSize, cfg.stack);
+    const plateFit = shrinkPlateFontSize(ctx, String(tags[i]), pw - 28, (s) => { ctx.font = fontOf(s, cfg.stack); tagSize = s; });
+    if (!plateFit.fits) tagSize = Math.max(16, tagSize - 4);
+    ctx.fillStyle = CHAMPAGNE;
+    ctx.globalAlpha = 0.96;
+    ctx.fillText(String(tags[i]), px + pw / 2, geo.y + 26);
+    // 地名（微光小字·≥14 字符截断加 …）
+    let nm = names[i] || '';
+    if ([...nm].length > 14) nm = [...nm].slice(0, 13).join('') + '…';
+    ctx.font = fontOf(21, cfg.stack);
+    ctx.fillStyle = WHISPER_COLOR;
+    ctx.globalAlpha = 0.88;
+    ctx.fillText(nm, px + pw / 2, geo.y + 46);
+    ctx.globalAlpha = 1;
+  }
+
+  // 沙盘副题（route_map_subtitle 底部居中）
+  ctx.textAlign = 'center';
+  ctx.font = fontOf(20, cfg.stack);
+  ctx.fillStyle = GOLD;
+  ctx.globalAlpha = 0.72;
+  ctx.fillText(ui.route_map_subtitle, W / 2, ZONE.y1 - 16);
+  ctx.globalAlpha = 1;
+
+  // 右上角小罗盘金针（E124 heading 语义承袭——纳气吉方向标）
+  const deg = Number(template.heading && template.heading.deg) || 0;
+  const rad = (deg * Math.PI) / 180 - Math.PI / 2;
+  const compX = 845, compY = 345;
+  ctx.strokeStyle = CHAMPAGNE;
+  ctx.lineWidth = 1.2;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.arc(compX, compY, 26, 0, Math.PI * 2); ctx.stroke();
+  for (let k = 0; k < 4; k++) {
+    const a = (Math.PI * 2 * k) / 4;
+    ctx.beginPath();
+    ctx.moveTo(compX + Math.sin(a) * 18, compY - Math.cos(a) * 18);
+    ctx.lineTo(compX + Math.sin(a) * 24, compY - Math.cos(a) * 24);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = GOLD;
+  ctx.fillStyle = GOLD;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(compX - Math.cos(rad) * 6, compY - Math.sin(rad) * 6);
+  ctx.lineTo(compX + Math.cos(rad) * 20, compY + Math.sin(rad) * 20);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(compX, compY, 4, 0, Math.PI * 2); ctx.fill();
+}
+
 /**
  * 生活方式卡渲染主入口（浏览器生产与批量导出单一事实源）
  * @param {object} canvas 目标画布
@@ -252,9 +406,9 @@ export async function renderLifestyleToCanvas(canvas, template, locale, options 
   drawCornerStar(ctx, A.frameOuterInset + 22, H - A.frameOuterInset - 22);
   drawCornerStar(ctx, W - A.frameOuterInset - 22, H - A.frameOuterInset - 22);
 
-  /* ══ Layer 2：徽记区（style 色盘 / roadtrip 罗盘）══ */
+  /* ══ Layer 2：徽记区（style 色盘 / roadtrip 2.5D 星轨沙盘——E134 升维）══ */
   if (type === 'style') drawPaletteEmblem(ctx, W, template, cfg);
-  else drawCompassEmblem(ctx, W, template);
+  else drawRouteMapEmblem(ctx, W, template, cfg, locale);
 
   /* ══ Layer 3：六语文案排版（E120 同构自适应降字号）══ */
   ctx.textAlign = 'center';
