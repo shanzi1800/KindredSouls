@@ -15,7 +15,7 @@
  */
 import { AMULET_DIMENSIONS, GOLDEN_RATIO_TOLERANCE, AMULET_OFFICIAL_DOMAIN, LOCALE_CANVAS_CONFIG } from './amuletCanvasRenderer.mjs';
 import { LIFESTYLE_STAMP, ROADTRIP_MAP_SPEC, ROADTRIP_ROUTE_UI } from './lifestyleMuseData.mjs';
-import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY, shrinkPlateFontSize } from './canvasTypographyEngine.mjs';
+import { CANVAS_TEXT_SAFE_BOUNDS, wrapCanvasText, verticalCenteredStartY, shrinkPlateFontSize, measureLineExtremes } from './canvasTypographyEngine.mjs';
 
 /** 版面绝对锚点（E120 同构——徽记区 Y:480 三分区） */
 export const LIFESTYLE_LAYOUT_ANCHORS = Object.freeze({
@@ -196,14 +196,37 @@ function drawCompassEmblem(ctx, W, template) {
  *    金色三次贝塞尔航线串联 3 气场节点＋三座暗金胶囊路牌（启程/驻足/归宿）；
  *    路牌文字严格锁死 x∈[141,933] 安全区（军令钦定）；heading 金针保留为
  *    沙盘右上角小罗盘（E124 罗盘语义承袭）。mock ctx 缺 bezierCurveTo/ellipse
- *    ⇒ 能力降级（折线/圆弧），语义断言（fillText 路牌文字）不受影响。 */
-function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
-  const ZONE = { x0: 190, y0: 306, x1: 890, y1: 634 }; // 沙盘内框（1080 宽居中）
-  const ZW = ZONE.x1 - ZONE.x0;                          // 700
-  const ZH = ZONE.y1 - ZONE.y0;                          // 328
+ *    ⇒ 能力降级（折线/圆弧），语义断言（fillText 路牌文字）不受影响。
+ * E136-ROADTRIP-MAP-FRAME-ALIGN（主公军令 2026-11-11）：
+ *    沙盘外框左右两翼锚定正文 ink 基准（measureLineExtremes 真源）像素齐平
+ *    （mapX = textLeft、mapWidth = textWidth，安全区 [141,933] 严守）；
+ *    上下等距纵向扩容（上呼吸 32px/下呼吸 32px——Y 带恒 [hostLineY+40, proseTopY-32]）；
+ *    内部等高线/三路牌/小罗盘全数 ZONE 相对化（新画幅自动重算缩放比）。 */
+export function computeRoadtripMapZone(textExtremes) {
+  const safe = ROADTRIP_MAP_SPEC.canvasSafeX;
+  const y0 = LIFESTYLE_LAYOUT_ANCHORS.hostLineY + 40;  // 298：host 行基线下 40（含字形底 ≈266 ⇒ 上呼吸 32px）
+  const y1 = LIFESTYLE_LAYOUT_ANCHORS.proseTopY - 32;  // 748：正文锚上 32（下呼吸留白——军令断言 3）
+  let x0 = safe.minX;
+  let x1 = safe.maxX;
+  if (textExtremes
+    && Number.isFinite(textExtremes.minX) && Number.isFinite(textExtremes.maxX)
+    && textExtremes.maxX > textExtremes.minX) {
+    x0 = Math.max(safe.minX, Math.min(safe.maxX, textExtremes.minX));
+    x1 = Math.min(safe.maxX, Math.max(safe.minX, textExtremes.maxX));
+  }
+  if (x1 - x0 < 1) { x0 = safe.minX; x1 = safe.maxX; } // 极端兜底（fail-closed 全幅安全区）
+  return { x0, y0, x1, y1 };
+}
+
+function drawRouteMapEmblem(ctx, W, template, cfg, locale, textExtremes) {
+  const Z = computeRoadtripMapZone(textExtremes);
+  const ZONE = { x0: Z.x0, y0: Z.y0, x1: Z.x1, y1: Z.y1 }; // 沙盘内框（E136：正文 ink 基准锚定）
+  const ZW = ZONE.x1 - ZONE.x0;                          // 六语自适应（≈700~792）
+  const ZH = ZONE.y1 - ZONE.y0;                          // E136 纵向扩容 328→450
   const ui = ROADTRIP_ROUTE_UI[locale] || ROADTRIP_ROUTE_UI.en;
   const hasEllipse = typeof ctx.ellipse === 'function';
   const hasBezier = typeof ctx.bezierCurveTo === 'function';
+  const sc = Math.min(ZW / 700, ZH / 328);               // E136 等高线缩放比（新画幅重算）
 
   // 沙盘底：暗夜黑金渐变（2.5D 景深基底）
   const bg = ctx.createLinearGradient
@@ -217,20 +240,25 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
   if (ctx.strokeRect) ctx.strokeRect(ZONE.x0, ZONE.y0, ZW, ZH);
   ctx.globalAlpha = 1;
 
-  // 等高线：5 层半透明暗金倾斜椭圆×两组（山海起伏景深；ellipse 缺席降级同心圆）
+  // 等高线：5 层半透明暗金倾斜椭圆×两组（山海起伏景深；E136 相对化——
+  // 中心 fx/fy 归一锚 ZONE，半径随 sc 新画幅缩放比重算；ellipse 缺席降级同心圆）
   ctx.strokeStyle = ROADTRIP_MAP_SPEC.contourColor;
   ctx.lineWidth = 1;
+  const conA = { fx: 0.579, fy: 0.5 };  // E134 绝对值(595,470) 归一承袭
+  const conB = { fx: 0.3, fy: 0.774 };  // E134 绝对值(400,560) 归一承袭
   for (let k = 0; k < ROADTRIP_MAP_SPEC.contourLayers; k++) {
-    const cx = 595 - k * 8, cy = 470 + k * 6;
-    const rx = 60 + k * 46, ry = 34 + k * 26;
+    const cx = ZONE.x0 + conA.fx * ZW - k * 8 * sc;
+    const cy = ZONE.y0 + conA.fy * ZH + k * 6 * sc;
+    const rx = (60 + k * 46) * sc, ry = (34 + k * 26) * sc;
     ctx.beginPath();
     if (hasEllipse) ctx.ellipse(cx, cy, rx, ry, -0.28, 0, Math.PI * 2);
     else ctx.arc(cx, cy, (rx + ry) / 2, 0, Math.PI * 2);
     ctx.stroke();
   }
   for (let k = 0; k < 4; k++) {
-    const cx = 400 + k * 10, cy = 560 - k * 8;
-    const rx = 44 + k * 34, ry = 24 + k * 18;
+    const cx = ZONE.x0 + conB.fx * ZW + k * 10 * sc;
+    const cy = ZONE.y0 + conB.fy * ZH - k * 8 * sc;
+    const rx = (44 + k * 34) * sc, ry = (24 + k * 18) * sc;
     ctx.beginPath();
     if (hasEllipse) ctx.ellipse(cx, cy, rx, ry, 0.19, 0, Math.PI * 2);
     else ctx.arc(cx, cy, (rx + ry) / 2, 0, Math.PI * 2);
@@ -275,21 +303,24 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
   });
 
   // 三座暗金胶囊路牌（tag 军师词表＋地名 waypoints 真源；文字 x 锁 [141,933]）
+  // E136 相对化：fx/fy 归一锚 ZONE（E134 绝对值 281/473·610/500·792/306 承袭）
   const plateGeo = [
-    { cx: 281, y: 473 }, // ① 启程·醒神（左下节点上方）
-    { cx: 610, y: 500 }, // ② 驻足·纳气（中右节点下方）
-    { cx: 792, y: 306 }, // ③ 归宿·枕星（右上节点上方·沙盘顶）
+    { fx: 0.13, fy: 0.509 }, // ① 启程·醒神（左下节点上方）
+    { fx: 0.60, fy: 0.591 }, // ② 驻足·纳气（中右节点下方）
+    { fx: 0.86, fy: 0.0 },   // ③ 归宿·枕星（右上节点上方·沙盘顶）
   ];
   const tags = [ui.waypoint_1_tag, ui.waypoint_2_tag, ui.waypoint_3_tag];
   const names = (Array.isArray(template.waypoints) ? template.waypoints : []).map((w) => String(w && w.name || ''));
   for (let i = 0; i < 3; i++) {
     const geo = plateGeo[i];
+    const geoCx = ZONE.x0 + geo.fx * ZW;
+    const geoY = ZONE.y0 + geo.fy * ZH;
     const pw = 240, ph = 54;
     // 安全区军令锁死：胶囊 x 全体落 [141,933]（E125 800px 安全区同族扩展）
-    let px = geo.cx - pw / 2;
+    let px = geoCx - pw / 2;
     px = Math.max(ROADTRIP_MAP_SPEC.canvasSafeX.minX, Math.min(ROADTRIP_MAP_SPEC.canvasSafeX.maxX - pw, px));
     ctx.beginPath();
-    roundRect(ctx, px, geo.y, pw, ph, 12);
+    roundRect(ctx, px, geoY, pw, ph, 12);
     ctx.fillStyle = 'rgba(13,13,26,0.92)'; ctx.fill();
     ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
     // tag（香槟金·安全区内居中，超宽自适应缩字）
@@ -300,14 +331,14 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
     if (!plateFit.fits) tagSize = Math.max(16, tagSize - 4);
     ctx.fillStyle = CHAMPAGNE;
     ctx.globalAlpha = 0.96;
-    ctx.fillText(String(tags[i]), px + pw / 2, geo.y + 26);
+    ctx.fillText(String(tags[i]), px + pw / 2, geoY + 26);
     // 地名（微光小字·≥14 字符截断加 …）
     let nm = names[i] || '';
     if ([...nm].length > 14) nm = [...nm].slice(0, 13).join('') + '…';
     ctx.font = fontOf(21, cfg.stack);
     ctx.fillStyle = WHISPER_COLOR;
     ctx.globalAlpha = 0.88;
-    ctx.fillText(nm, px + pw / 2, geo.y + 46);
+    ctx.fillText(nm, px + pw / 2, geoY + 46);
     ctx.globalAlpha = 1;
   }
 
@@ -322,7 +353,7 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale) {
   // 右上角小罗盘金针（E124 heading 语义承袭——纳气吉方向标）
   const deg = Number(template.heading && template.heading.deg) || 0;
   const rad = (deg * Math.PI) / 180 - Math.PI / 2;
-  const compX = 845, compY = 345;
+  const compX = ZONE.x1 - 45, compY = ZONE.y0 + 39; // E136 相对化（E134 绝对值 845/345 承袭）
   ctx.strokeStyle = CHAMPAGNE;
   ctx.lineWidth = 1.2;
   ctx.globalAlpha = 0.6;
@@ -406,9 +437,47 @@ export async function renderLifestyleToCanvas(canvas, template, locale, options 
   drawCornerStar(ctx, A.frameOuterInset + 22, H - A.frameOuterInset - 22);
   drawCornerStar(ctx, W - A.frameOuterInset - 22, H - A.frameOuterInset - 22);
 
+  /* ══ 正文排版预计算（E136 军令 2026-11-11：沙盘左右外框须锚定正文 ink
+   *    基准——折行/字号自适应提前至 Layer 2；字距先归零再度量（E125 血训：
+   *    Chromium measureText 含 letterSpacing，严防度量/绘制增宽逃逸））══ */
+  trySet(ctx, 'letterSpacing', '0px');
+  let proseSize = cfg.proseFontSize;
+  let whisperSize = cfg.whisperFontSize;
+  let proseLines;
+  let whisperLines;
+  let totalHeight;
+  const gapBetween = 46;
+  const anchorTopY = A.proseTopY + cfg.topPaddingOffset;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    ctx.font = fontOf(proseSize, cfg.stack);
+    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth, locale);
+    ctx.font = fontOf(whisperSize, cfg.stack);
+    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth, locale);
+    totalHeight = proseLines.length * proseSize * cfg.lineHeight
+      + gapBetween
+      + whisperLines.length * whisperSize * cfg.lineHeight;
+    if (anchorTopY + totalHeight <= A.textSafeBottomY) break;
+    proseSize = Math.max(30, Math.round(proseSize * 0.94));
+    whisperSize = Math.max(26, Math.round(whisperSize * 0.94));
+  }
+  const topY = verticalCenteredStartY(totalHeight, anchorTopY, A.textSafeBottomY);
+  // 正文 ink 基准（prose＋whisper 全行极值——沙盘外框对齐真源，E136 断言 1 直用）
+  let textExtremes = null;
+  if (type === 'roadtrip') {
+    ctx.font = fontOf(proseSize, cfg.stack);
+    const px = measureLineExtremes(ctx, proseLines);
+    ctx.font = fontOf(whisperSize, cfg.stack);
+    const wx = measureLineExtremes(ctx, whisperLines);
+    const minX = Math.min(px.minX, wx.minX);
+    const maxX = Math.max(px.maxX, wx.maxX);
+    if (Number.isFinite(minX) && Number.isFinite(maxX) && maxX > minX) {
+      textExtremes = { minX, maxX };
+    }
+  }
+
   /* ══ Layer 2：徽记区（style 色盘 / roadtrip 2.5D 星轨沙盘——E134 升维）══ */
   if (type === 'style') drawPaletteEmblem(ctx, W, template, cfg);
-  else drawRouteMapEmblem(ctx, W, template, cfg, locale);
+  else drawRouteMapEmblem(ctx, W, template, cfg, locale, textExtremes);
 
   /* ══ Layer 3：六语文案排版（E120 同构自适应降字号）══ */
   ctx.textAlign = 'center';
@@ -433,26 +502,7 @@ export async function renderLifestyleToCanvas(canvas, template, locale, options 
   ctx.globalAlpha = 1;
   trySet(ctx, 'letterSpacing', '0px');
 
-  let proseSize = cfg.proseFontSize;
-  let whisperSize = cfg.whisperFontSize;
-  let proseLines;
-  let whisperLines;
-  let totalHeight;
-  const gapBetween = 46;
-  const anchorTopY = A.proseTopY + cfg.topPaddingOffset;
-  for (let attempt = 0; attempt < 8; attempt++) {
-    ctx.font = fontOf(proseSize, cfg.stack);
-    proseLines = wrapLines(ctx, template.prose, A.textMaxWidth, locale);
-    ctx.font = fontOf(whisperSize, cfg.stack);
-    whisperLines = wrapLines(ctx, template.companionWhisper, A.textMaxWidth, locale);
-    totalHeight = proseLines.length * proseSize * cfg.lineHeight
-      + gapBetween
-      + whisperLines.length * whisperSize * cfg.lineHeight;
-    if (anchorTopY + totalHeight <= A.textSafeBottomY) break;
-    proseSize = Math.max(30, Math.round(proseSize * 0.94));
-    whisperSize = Math.max(26, Math.round(whisperSize * 0.94));
-  }
-  const topY = verticalCenteredStartY(totalHeight, anchorTopY, A.textSafeBottomY);
+  // E136：折行/字号自适应/topY 已提前至 Layer 2 预计算（沙盘 ink 锚定）——此处直接绘制
   ctx.font = fontOf(proseSize, cfg.stack);
   ctx.fillStyle = PROSE_COLOR;
   ctx.globalAlpha = 0.95;

@@ -192,7 +192,7 @@ test('E134-06 插槽升维锚：roadtrip 挂沙盘＋导航 <a>；style E124 版
 test('E134-07 画布沙盘：drawRouteMapEmblem 接线＋路牌语义落布＋安全区锁', () => {
   const src = read('web/src/lib/lifestyleCanvasRenderer.mjs');
   assert.ok(src.includes('function drawRouteMapEmblem'), '画布沙盘函数缺失');
-  assert.ok(src.includes('drawRouteMapEmblem(ctx, W, template, cfg, locale)'), '沙盘未接线 roadtrip 分支（Layer 2）');
+  assert.ok(src.includes('drawRouteMapEmblem(ctx, W, template, cfg, locale, textExtremes)'), '沙盘未接线 roadtrip 分支（Layer 2；E136 后继化：正文 ink 基准随行）');
   assert.ok(src.includes('bezierCurveTo'), '画布航线须三次贝塞尔（军令钦定）');
   assert.ok(src.includes('ROADTRIP_MAP_SPEC.canvasSafeX.minX'), '安全区 minX 锚缺失');
   assert.ok(src.includes('ROADTRIP_MAP_SPEC.canvasSafeX.maxX - pw'), '安全区 maxX clamp 锚缺失');
@@ -247,7 +247,7 @@ test('E134-S 链位自保：e134 入编（e133 后、e40-compat 前；全链 101
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 103, `军规链段数须为 102（E134 入编后 101→102；实为 ${segs.length}）`);
+  assert.equal(segs.length, 104, `军规链段数须为 102（E134 入编后 101→102；实为 ${segs.length}）`);
   const iE134 = segs.findIndex((s) => s.includes('audit-e134-aesthetic-25d-route-map'));
   const iE133 = segs.findIndex((s) => s.includes('audit-e133-romance-paywall-parity'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat'));
