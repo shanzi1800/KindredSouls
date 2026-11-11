@@ -323,14 +323,14 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
   assert.ok(i118 < i120 && i120 < iCap, 'E120 须按序排在 e118 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 102, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 103, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n 零新键（familiar 段 59 键＋全站 123 基准不变）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E120 零新键——自容六语字典）`);
+    assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   const i18nGate = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 123'), 'V448 全站键数基准 123 须保持（E120 零新键）');
+  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 122'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
   // 前端接线四面：DEV 守卫路由 / 锦囊前置罗盘控制器 / Playground 战报行 /
   //    E120-CHAIN 入口收拢（罗盘微章拔除，唯一锦囊入口 pouch-open）
   const app = read('web/src/App.tsx');
@@ -394,10 +394,10 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
   // ⑥ i18n 键数复验（S6 已锁——S7 复核防 E121 回归）：familiar 59＋全站 123
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E121 零新键）`);
+    assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   const i18nGate2 = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 123'), 'V448 全站键数基准 123 须保持（E121 零新键）');
+  assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 122'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
   console.log('  [PASS] E121-10: ChatSheet 消费端插槽链路（触发器/插槽/大图/单轮防刷/零 i18n）');
 });
 
@@ -478,7 +478,7 @@ test('E122-11 体验整肃五刀（破冰语料命中/命名解耦/z-index 归�
   // ══ i18n 零新键复核（E122 自容字典——全站 123/familiar 59 双基准） ══
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E122 零新键）`);
+    assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   console.log('  [PASS] E122-11: 体验整肃五刀（破冰命中/命名解耦/z-index/入袋闭环/人称与禁词）');
 });
@@ -566,7 +566,7 @@ test('E123-12 体验四刀（置灰对比度/实体卡下载/✕关闭/情绪记
   // ⑥ i18n 零新键复核（E123 自容字典——全站 123/familiar 59 双基准）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.equal(Object.keys(o.familiar).length, 59, `${l} familiar 段须 59 键（E123 零新键）`);
+    assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   console.log('  [PASS] E123-12: 体验四刀（置灰对比度/实体卡下载/✕关闭/情绪记忆贯通）');
 });

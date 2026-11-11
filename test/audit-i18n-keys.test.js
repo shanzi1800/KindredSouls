@@ -120,7 +120,11 @@ describe('V448 i18n Key 门禁', () => {
     //   两键入列（familiar.helloDaily 跨日首语 {{color}}/{{num}} 插值 /
     //    starTooltip 胶囊 title），6 语种同步新增，键集合全等不变
     // 121 → 123
-    assert.strictEqual(p.total, 123, 'E113 跨日锦囊流转＋灵犀星悬浮提示两键入列后基准键数应为 123');
+    // 🏆 E135（主公军令 2026-11-11）: 对话舱提示条三精二 —— familiar.chatQ2
+    //   「抚平我今天的情绪内耗」六语同步删除（chatQ1/chatQ3 词表凝练为军令钦定文案），
+    //   6 语种同步删除，键集合全等不变
+    // 123 → 122
+    assert.strictEqual(p.total, 122, 'E135 提示条三精二（chatQ2 六语退役）后基准键数应为 122');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {
@@ -148,6 +152,8 @@ describe('V448 i18n Key 门禁', () => {
       'input.legalFooter',
       'input.termsOfService',
       'input.privacyPolicy',
+      // 🏆 E135（主公军令 2026-11-11）：提示条退役键防回流
+      'familiar.chatQ2',
     ];
     for (const l of LANGS) {
       const paths = new Set(keyPaths(L[l]));

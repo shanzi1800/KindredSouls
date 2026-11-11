@@ -1939,9 +1939,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
     -webkit-backdrop-filter: none;
   }
   .ks-chat-sheet {
-    width: 420px;
+    /* 🏆 E135-刀一（主公军令 2026-11-11）：桌面悬浮舱扩容 —— 宽 420→477px（+15mm≈57px）、
+       高 600→638px（+10mm≈38px；96 DPI 换算 1mm≈3.78px）。仅 768px 断点生效；
+       移动端底部抽屉（100% × 55vh）零改动；Sophia/Milo 共用本块单源常量（E77 镜像铁律）。 */
+    width: 477px;
     max-width: 90vw;
-    height: 600px;
+    height: 638px;
     max-height: 75vh;
     border: 1px solid rgba(212, 175, 55, 0.3);
     border-radius: 20px;
@@ -2037,7 +2040,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 1 1 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 2px 8px;
+  /* 🏆 E135-刀二（主公军令 2026-11-11）：左缘垂线对齐 —— padding-x 2px→0，
+     对话流内框（路书卡/文本气泡）左沿与下方提示条胶囊左沿
+     getBoundingClientRect().left 恒等（Δ=0px；sheet padding 14px 单源）。 */
+  padding: 12px 0 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;

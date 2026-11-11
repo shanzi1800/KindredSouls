@@ -218,10 +218,10 @@ test('⑤-1 军规链 83 段入编（E108 后继化：e106 居 e107 后 e40 前�
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
   // 🛡️ E107 后继化：81→82（e107 插 e106 后 e40 前）⇒ e106 顺移至 len-5
 // 🛡️ E108 后继化：82→83（e108 插 e107 后 e40 前）⇒ e106 再顺移至 len-6
-  assert.equal(segs.length, 102, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 103, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 23].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
-  assert.ok(segs[segs.length - 24].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
-  assert.ok(segs[segs.length - 25].includes('audit-e105'), 'e105 须居 len-14');
+  assert.ok(segs[segs.length - 24].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
+  assert.ok(segs[segs.length - 25].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
+  assert.ok(segs[segs.length - 26].includes('audit-e105'), 'e105 须居 len-14');
 });

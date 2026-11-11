@@ -615,7 +615,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
 
   if (!open) return null;
 
-  const pills = [t('familiar.chatQ1'), t('familiar.chatQ2'), t('familiar.chatQ3')];
+  /* 🏆 E135-刀三（主公军令 2026-11-11）：提示条三精二——旧情绪安抚药丸（familiar.chatQ2）
+   *    六语退役；chatQ1（今日财运与破财避坑）原样保留；
+   *    chatQ3 凝练为「结合星盘的今日指引」（六语军令钦定词表逐字）。 */
+  const pills = [t('familiar.chatQ1'), t('familiar.chatQ3')];
   const avatar = ip === 'Milo' ? miloSprite : sophiaSprite;
 
   return createPortal(
@@ -680,7 +683,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
             const last = msgs[msgs.length - 1];
             if (!last || last.role !== 'assistant' || last.id !== scribeSlot.aid || !last.text) return null;
             return (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              /* 🏆 E135-刀二：密函内框卡左对齐——与路书卡/气泡/提示条同一左垂线（Δ=0px） */
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 8 }}>
                 <AmuletScribeSlotCard type={scribeSlot.type} lang={lang} onOpen={setAmuletPreview} />
               </div>
             );
@@ -692,7 +696,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
             const last = msgs[msgs.length - 1];
             if (!last || last.role !== 'assistant' || last.id !== lifestyleSlot.aid || !last.text) return null;
             return (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              /* 🏆 E135-刀二（主公军令 2026-11-11）：2.5D 路书卡左对齐——内框卡左沿
+                 与下方提示条胶囊左沿 getBoundingClientRect().left Δ=0px（拔 flex-end
+                 右挂造成的桌面端 89px 左豁口）。 */
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 8 }}>
                 <LifestyleMuseSlotCard type={lifestyleSlot.type} lang={lang} onOpen={setLifestylePreview} />
               </div>
             );
