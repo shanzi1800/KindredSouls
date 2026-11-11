@@ -25,10 +25,10 @@ const CHAT_KEYS = [
   'chatCta', 'chatStatus', 'chatHello', 'chatHelloSoothe', 'chatHelloPlain', 'chatClose',
   'chatPlaceholder', 'chatSend', 'chatThinking', 'chatMicSoon',
   'chatNetErr', 'chatNeedLogin', 'chatNeedUnlock', 'chatTooFast',
-  'chatQ1', 'chatQ2', 'chatQ3',
+  'chatQ1', 'chatQ3', // 🏆 E135（主公军令 2026-11-11）：chatQ2「抚平我今天的情绪内耗」六语退役
 ];
 
-test('E66 A1 六语 familiar.chat* 17 键全部在场且非空（军令：六语对齐；E111 增 chatHelloSoothe）', () => {
+test('E66 A1 六语 familiar.chat* 16 键全部在场且非空（军令：六语对齐；E111 增 chatHelloSoothe；E135 chatQ2 退役）', () => {
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
     assert.ok(o.familiar, `${l}.json 缺 familiar 命名空间`);
@@ -114,7 +114,7 @@ test('E66 C1 前端抽屉舱：CTA 衔接 + 90ms 节流 + 语音槽位 + 零路�
   // E68 军令②：移动端 55vh；桌面端右下角 420px 悬浮舱（768px 断点），背景视频透出
   assert.ok(css.includes('55vh'), '移动端抽屉高度应为 55vh（E68 军令②）');
   assert.ok(css.includes('min-width: 768px'), '缺桌面端断点（E68 悬浮舱分流）');
-  assert.ok(css.includes('420px'), '桌面端悬浮舱宽度应为 420px（E68 军令②）');
+  assert.ok(css.includes('477px'), '桌面端悬浮舱宽度应为 477px（E135 扩容 +15mm≈57px）');
   assert.ok(css.includes('contain: content'), '缺渲染隔离（E68 军令①）');
   assert.ok(css.includes('backdrop-filter'), '缺毛玻璃');
   // E70：药丸行必须换行完整显示（旧横滚方案在真机无滚动提示 ⇒ 第三条被裁半截）
@@ -213,8 +213,9 @@ test('E77 【视觉动线镜像】桌面悬浮舱按角色朝向左右分流（M
   assert.ok(/\.ks-chat-layer\[data-familiar="sophia"\]\s*\{[^}]*justify-content:\s*flex-start[^}]*padding:\s*0 0 20px 24px/.test(mediaBlock),
     'E77 Sophia 须镜像左下（flex-start ＋ 左右内边距对调）');
   // 镜像对称：舱体尺寸与底距不得另起一套（禁分角色改宽高/底距）
-  assert.ok(/\.ks-chat-sheet\s*\{[^}]*width:\s*420px[^}]*height:\s*600px/.test(mediaBlock),
-    'E77 两侧舱体须同尺寸（width 420 / height 600 单源）');
+  // 🏆 E135-刀一（主公军令 2026-11-11）：420×600 → 477×638（宽 +57px/高 +38px，桌面端独占）
+  assert.ok(/\.ks-chat-sheet\s*\{[^}]*width:\s*477px[^}]*height:\s*638px/.test(mediaBlock),
+    'E77 两侧舱体须同尺寸（width 477 / height 638 单源；E135 扩容后继化）');
   assert.ok(!/\.ks-chat-sheet\[data-familiar[^{]*\{[^}]*\b(left|right):/.test(css),
     'E77 禁给 sheet 加 left/right 绝对定位（须在流内保证严格镜像）');
 
