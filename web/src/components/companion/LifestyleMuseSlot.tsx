@@ -15,10 +15,14 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import React, { useEffect, useState } from 'react';
-import { getLifestyleTemplate, LIFESTYLE_FILENAME } from '../../lib/lifestyleMuseData.mjs';
+import { getLifestyleTemplate, LIFESTYLE_FILENAME, ROADTRIP_ROUTE_UI } from '../../lib/lifestyleMuseData.mjs';
 // @ts-ignore —— geoLocaleResolver.mjs 纯 JS 逻辑核（形状由 E126 闸门守备）
 import { resolveBrowserGeoZone } from '../../lib/geoLocaleResolver.mjs';
 import { createLifestyleCanvas, renderLifestyleToCanvas, isLifestyleGoldenRatio } from '../../lib/lifestyleCanvasRenderer.mjs';
+// 🆕 E134（主公军令 2026-11-11）：2.5D 暗金等高线星轨沙盘＋一键原生导航深链
+import RoadtripRouteMap from './RoadtripRouteMap';
+// @ts-ignore —— nativeMapDeepLink.mjs 纯 JS 逻辑核（形状由 E134 闸门守备）
+import { roadtripWaypointsOf, buildMultiStopMapsUrl } from '../../lib/nativeMapDeepLink.mjs';
 
 type Lang = 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
 export type LifestyleCardType = 'style' | 'roadtrip';
@@ -131,6 +135,95 @@ export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ ty
   const palette = isStyle ? (Array.isArray(tpl.palette) ? tpl.palette.slice(0, 3) : []) : [];
   const headingName = !isStyle && tpl.heading ? String(tpl.heading.name) : '';
 
+  /* 🐾 E134（主公军令 2026-11-11 刀一）：roadtrip 卡原位升维——上半 2.5D 暗金等高线
+   *    星轨沙盘（三路牌：启程·醒神/驻足·纳气/归宿·枕星），下半灵宠温润叮嘱＋
+   *    「✦ 导入原生地图，开启导航」杀手级实用按钮（多途经点 Deep Link 新标签页
+   *    安全打开——对话舱状态 100% 留存不刷新）。style 卡 E124 版式零改动。
+   *    🔴 零收银红线（E130）：路牌纯灵性推荐，sponsor 槽位在场不渲染。 */
+  if (!isStyle) {
+    const wp = roadtripWaypointsOf(tpl);
+    const mapUrl = wp ? buildMultiStopMapsUrl(wp) : null;
+    return (
+      <div
+        data-testid="lifestyle-muse-slot"
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(type)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(type); }}
+        style={{
+          width: '360px', maxWidth: '100%',
+          marginTop: 8, padding: '14px 14px 12px',
+          background: 'rgba(14,13,18,0.9)',
+          border: '1px solid rgba(212,175,55,0.4)',
+          borderRadius: 14, cursor: 'pointer',
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.5), 0 0 18px rgba(212,175,55,0.08)',
+          transition: 'border-color .2s ease, box-shadow .2s ease',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.85)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'; }}
+      >
+        {/* 标题行：路书铭题＋纳气吉方方位章 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontSize: 13, letterSpacing: 1.5, color: '#F3E5AB', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {title}
+          </div>
+          <span style={{ flexShrink: 0, fontSize: 9.5, color: 'rgba(212,188,122,0.85)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+            ✧ {headingName.slice(0, 14)}
+          </span>
+        </div>
+
+        {/* 上半部：2.5D 暗金等高线星轨沙盘（三路牌原位升维） */}
+        <RoadtripRouteMap lang={lang} waypoints={wp} height={200} />
+
+        {/* 下半部：灵宠温润叮嘱（三行省略）＋出发吉时 */}
+        <div style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.65, color: 'rgba(212,188,122,0.92)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {String(tpl.companionWhisper || '')}
+        </div>
+        <div style={{ marginTop: 6, fontSize: 9.5, color: 'rgba(159,199,232,0.65)' }}>
+          ✧ {String(tpl.bestWindowPrefix || '')}: {String(tpl.defaultTiming || '')}
+        </div>
+
+        {/* 杀手级实用按钮：一键拉起 Google Maps / Apple Maps 多途经点导航
+            （<a> 新标签页 noopener noreferrer——iOS WebKit 兼容，对话舱零跳出） */}
+        {mapUrl && (
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="roadtrip-native-nav-btn"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'block', marginTop: 10, padding: '9px 12px', borderRadius: 999,
+              textAlign: 'center', textDecoration: 'none',
+              background: 'linear-gradient(135deg, rgba(212,175,55,0.92), rgba(160,120,40,0.92))',
+              border: '1px solid #D4AF37', color: '#141310',
+              fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5, cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(212,175,55,0.25)',
+            }}
+          >
+            {(ROADTRIP_ROUTE_UI as Record<string, { open_native_map: string }>)[lang]?.open_native_map
+              || (ROADTRIP_ROUTE_UI as Record<string, { open_native_map: string }>).en.open_native_map}
+          </a>
+        )}
+
+        {/* 高清路书入口（E124 原链路保留） */}
+        <button
+          type="button"
+          data-testid="lifestyle-slot-open"
+          onClick={(e) => { e.stopPropagation(); onOpen(type); }}
+          style={{
+            display: 'block', width: '100%', marginTop: 8, padding: '8px 12px', borderRadius: 999, cursor: 'pointer',
+            background: 'rgba(19,16,10,0.85)', border: '1px solid rgba(212,175,55,0.5)',
+            color: '#E8D9A8', fontSize: 10.5, fontWeight: 700, letterSpacing: 1,
+          }}
+        >
+          {l.viewRoadtrip}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="lifestyle-muse-slot"
@@ -152,7 +245,7 @@ export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ ty
       onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.85)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'; }}
     >
-      {/* 左徽章：style ⇒ 三色盘小色块；roadtrip ⇒ 罗盘方位徽记 */}
+      {/* 左徽章：style ⇒ 三色盘小色块（E124 版式零改动） */}
       <div
         data-testid="lifestyle-slot-emblem"
         aria-hidden="true"
@@ -164,19 +257,12 @@ export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ ty
           color: '#F3E5AB', textAlign: 'center',
         }}
       >
-        {isStyle ? (
-          palette.map((p, i) => (
-            <span
-              key={i}
-              style={{ display: 'block', width: 30, height: 13, borderRadius: 3, background: p.hex, border: '1px solid rgba(255,255,255,0.25)' }}
-            />
-          ))
-        ) : (
-          <>
-            <span style={{ fontSize: 16, letterSpacing: 1 }}>✧</span>
-            <span style={{ fontSize: 9.5, color: 'rgba(212,188,122,0.8)', lineHeight: 1.4, padding: '0 3px' }}>{headingName.slice(0, 12)}</span>
-          </>
-        )}
+        {palette.map((p, i) => (
+          <span
+            key={i}
+            style={{ display: 'block', width: 30, height: 13, borderRadius: 3, background: p.hex, border: '1px solid rgba(255,255,255,0.25)' }}
+          />
+        ))}
       </div>
       {/* 中：卡片标题＋生活区标签 */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -184,7 +270,7 @@ export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ ty
           {title}
         </div>
         <div style={{ fontSize: 10.5, color: 'rgba(212,188,122,0.8)', marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          ✧ {isStyle ? l.auraColor : l.heading}
+          ✧ {l.auraColor}
         </div>
         <div style={{ fontSize: 9.5, color: 'rgba(159,199,232,0.65)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           ✧ {String(tpl.bestWindowPrefix || '')}: {String(tpl.defaultTiming || '')}
@@ -203,7 +289,7 @@ export const LifestyleMuseSlotCard: React.FC<LifestyleMuseSlotCardProps> = ({ ty
           whiteSpace: 'nowrap',
         }}
       >
-        {isStyle ? l.viewStyle : l.viewRoadtrip}
+        {l.viewStyle}
       </button>
     </div>
   );
