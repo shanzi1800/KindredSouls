@@ -307,7 +307,9 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale, textExtremes) {
   const plateGeo = [
     { fx: 0.13, fy: 0.509 }, // ① 启程·醒神（左下节点上方）
     { fx: 0.60, fy: 0.591 }, // ② 驻足·纳气（中右节点下方）
-    { fx: 0.86, fy: 0.0 },   // ③ 归宿·枕星（右上节点上方·沙盘顶）
+    { fx: 0.86, fy: 0.16 },  // ③ 归宿·枕星（右上节点下方·E136 二补：fy 0→0.16 下移
+                             // 出罗盘带 [y0+13, y0+65]——罗盘(873,y0+39,r26) 与顶排
+                             // 路牌 [y0,y0+54] 重叠穿模，视觉审计实锤）
   ];
   const tags = [ui.waypoint_1_tag, ui.waypoint_2_tag, ui.waypoint_3_tag];
   const names = (Array.isArray(template.waypoints) ? template.waypoints : []).map((w) => String(w && w.name || ''));
@@ -316,9 +318,13 @@ function drawRouteMapEmblem(ctx, W, template, cfg, locale, textExtremes) {
     const geoCx = ZONE.x0 + geo.fx * ZW;
     const geoY = ZONE.y0 + geo.fy * ZH;
     const pw = 240, ph = 54;
-    // 安全区军令锁死：胶囊 x 全体落 [141,933]（E125 800px 安全区同族扩展）
+    // 安全区军令锁死：胶囊 x 全体落 [141,933]（E125 800px 安全区同族扩展）；
+    // E136 实弹补刀：叠加沙盘框内界 ±8px——路牌严不穿框（「归宿」牌右缘超
+    // 沙盘右缘 13px 穿模，视觉审计实锤——军令「不挤压、不穿模」红线）
     let px = geoCx - pw / 2;
-    px = Math.max(ROADTRIP_MAP_SPEC.canvasSafeX.minX, Math.min(ROADTRIP_MAP_SPEC.canvasSafeX.maxX - pw, px));
+    const minPx = Math.max(ROADTRIP_MAP_SPEC.canvasSafeX.minX, ZONE.x0 + 8);
+    const maxPx = Math.min(ROADTRIP_MAP_SPEC.canvasSafeX.maxX - pw, ZONE.x1 - pw - 8);
+    px = Math.max(minPx, Math.min(maxPx, px));
     ctx.beginPath();
     roundRect(ctx, px, geoY, pw, ph, 12);
     ctx.fillStyle = 'rgba(13,13,26,0.92)'; ctx.fill();

@@ -79,6 +79,13 @@ test('E136-C 渲染器源级：旧 ZONE 硬编码拔除＋measureLineExtremes �
   assert.ok(/const sc = Math\.min\(ZW \/ 700, ZH \/ 328\)/.test(src), '等高线缩放比锚缺失（新画幅重算）');
   assert.ok(src.includes('ZONE.x0 + geo.fx * ZW'), '三路牌未 ZONE 相对化');
   assert.ok(src.includes('ZONE.x1 - 45'), '小罗盘未 ZONE 相对化');
+  // ④ 路牌框内界 clamp（E136 实弹补刀：穿框 13px 视觉审计实锤——「不穿模」红线）
+  assert.ok(src.includes('ZONE.x1 - pw - 8'), '路牌右缘框内界 clamp 缺失（穿框回潮）');
+  assert.ok(src.includes('ZONE.x0 + 8'), '路牌左缘框内界 clamp 缺失');
+  // ⑤ 罗盘/③ 路牌让位锁（E136 二补：罗盘 [y0+13,y0+65]×[x1-71,x1-19] 与顶排
+  //    路牌 [y0,y0+54] 重叠——③ fy 0→0.16 下移出罗盘带，防重叠回潮）
+  assert.ok(src.includes('fy: 0.16'), '③ 路牌未下移让位罗盘（重叠回潮）');
+  assert.ok(!src.includes('fy: 0.0,'), '③ 路牌顶排 fy:0.0 残留（罗盘碰撞）');
   // ④ 排版预计算提前（字距先归零——E125 血训锚承袭）
   assert.ok(src.indexOf('measureLineExtremes(ctx, proseLines)') < src.indexOf('else drawRouteMapEmblem('),
     'ink 基准须先于沙盘绘制算出（Layer 2 预计算）');
