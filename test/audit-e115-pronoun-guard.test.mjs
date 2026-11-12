@@ -289,7 +289,7 @@ test('E115 S8 链位自保：e115 入编（e114 后、e40-compat 前；全链 91
   assert.ok(i114 < i115 && i115 < iCap, 'E115 须按序排在 e114 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 104, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 105, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：59 键不变（E115 服务端确定性推导，零新键）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
@@ -297,7 +297,7 @@ test('E115 S8 链位自保：e115 入编（e114 后、e40-compat 前；全链 91
   }
   // V448 i18n 全站基准：123 不变（无新键）
   const i18nGate = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 122'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
+  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 128'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
 });
 
 /* ═══════════ E115-FINAL：三阶层级覆盖架构 ═══════════ */
@@ -375,7 +375,7 @@ test('E115 S11 FINAL-刀二三阶接线：genderCtx 贯通 prompt 红线与输�
     server.indexOf('function buildFamiliarChatSystemPrompt'),
     server.indexOf('\n}\n', server.indexOf('function buildFamiliarChatSystemPrompt'))
   );
-  assert.ok(fn.includes('recentReport, genderCtx, displayName, activeMood, geoZone, livingContext }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName；🏆 E123 后继化：+activeMood；🏆 E126 后继化：+geoZone；🏆 E129 后继化：+livingContext）');
+  assert.ok(fn.includes('recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName；🏆 E123 后继化：+activeMood；🏆 E126 后继化：+geoZone；🏆 E129 后继化：+livingContext；🏆 E137 后继化：+wellnessRx）');
   assert.ok(fn.includes('const g115 = genderCtx || _e115ResolveGenderContext(mode)'), '构造器须 genderCtx 优先、第三阶兜底');
   // ② 红线块含违禁词显令（六语 forbidden 注入）
   const p = build('girlfriend', 'zh');

@@ -138,5 +138,11 @@
     "helloWealthYearly": "Ya desplegué todo el mapa de riqueza de tu año... el vaivén de las cuatro estaciones se ve clarísimo, y en mitad del año brilla una oportunidad de quiebre única. ¿Lo recorremos estación por estación, sin prisa?",
     "helloDaily": "¡Un nuevo día, y los astros volvieron a girar para ti! Hoy percibo que tu color de la suerte es [{{color}}] y tu número de la suerte es [{{num}}]. Mantén la calma — ¿qué aspecto del cielo quieres explorar primero hoy?",
     "starTooltip": "Estrellas de Resonancia: canjeables por atuendos exclusivos de tu Bestia Alma en la versión 2.0"
-  }
+  },
+  "wellness_rx_title": "✦ Remedio Astral de Estación ✦",
+  "rx_functional_food": "Elixir Botánico y Nutrición",
+  "rx_aura_scent": "Aromaterapia del Aura",
+  "rx_mindful_move": "Movimiento Somático y Enraizamiento",
+  "rx_solar_harmony": "Armonía Solar y Biorritmo",
+  "rx_explore_cta": "✦ Explorar Fórmula Botánica"
 }

@@ -150,7 +150,7 @@ test('E136-S 链位自保：e136 入编（e135 后、e40-compat 前；全链 103
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 104, `军规链段数须为 104（E136 入编后 103→104；实为 ${segs.length}）`);
+  assert.equal(segs.length, 105, `军规链段数须为 104（E136 入编后 103→104；实为 ${segs.length}）`);
   const iE136 = segs.findIndex((s) => s.includes('audit-e136-roadtrip-map-frame-align'));
   const iE135 = segs.findIndex((s) => s.includes('audit-e135-chat-geometry-pills'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat'));

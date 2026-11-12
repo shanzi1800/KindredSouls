@@ -490,7 +490,7 @@ test('E125-S14 链位自保：e125 入编（e124 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 104, `军规链段数须为 94（E125 入编后 93→94；实为 ${segs.length}）`);
+  assert.equal(segs.length, 105, `军规链段数须为 94（E125 入编后 93→94；实为 ${segs.length}）`);
   const iE125 = segs.findIndex((s) => s.includes('audit-e125-canvas-typography'));
   const iE124 = segs.findIndex((s) => s.includes('audit-e124-lifestyle-muse'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

@@ -138,5 +138,11 @@
     "helloWealthYearly": "一整年的财富星图我全部铺开了……四季起伏的曲线很清晰，年中还亮着一次难得的破局机遇。咱们现在就逐季慢慢推演，好不好？",
     "helloDaily": "新的一天，星轨又为你转动啦！今天感应到你的幸运色是【{{color}}】，幸运数字【{{num}}】。保持从容，今天想先听听哪方面的星象指引？",
     "starTooltip": "灵犀星：累计可在 2.0 版本兑换专属灵魂兽装扮"
-  }
+  },
+  "wellness_rx_title": "✦ 星盘时令能量处方 ✦",
+  "rx_functional_food": "食愈 · 时令气场饮",
+  "rx_aura_scent": "嗅觉 · 星相结界",
+  "rx_mindful_move": "身形 · 能量疏通",
+  "rx_solar_harmony": "顺时调频 · 天人相应",
+  "rx_explore_cta": "✦ 探索时令能量配方"
 }

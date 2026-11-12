@@ -20465,7 +20465,7 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20691,6 +20691,28 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
   const lifestyleBlock = (LIFESTYLE_GROUNDING[lang] || null);
   const lifestyleGeoBlock = (geoZone && LIFESTYLE_GEO_CONTEXT[geoZone]) || null;
 
+  // 🆕 E137-刀二（主公军令 2026-11-12）：[ASTRO_SEASONAL_WELLNESS_RX] 顺时开方
+  //    块——触发链见 chat route（chatQ3 六语文本/养生语义 ⇒ 引擎四维处方）。
+  //    零商业红线：块内严禁价格符号与促销词（处方文案出自引擎六语严选模板，
+  //    e137 闸门全量扫杀）；wellnessRx 缺席 ⇒ 块整体不注入（零破坏）。
+  const E137_ELEMENT_ZH = { fire: '火', earth: '土', air: '风', water: '水', balanced: '中和（土枢）' };
+  const wellnessBlock = [];
+  if (wellnessRx && wellnessRx.ok && wellnessRx.rx) {
+    const w = wellnessRx;
+    wellnessBlock.push(
+      `【ASTRO_SEASONAL_WELLNESS_RX（E137 军令，违反即失败·顺时开方真值）】`,
+      `- 当前时令（${w.hemisphere === 'south' ? '南' : '北'}半球·${w.seasonName}）：${w.termLabel}。主人本命元素倾向：【${E137_ELEMENT_ZH[w.dominantElement] || '中和'}】。`,
+      `- 食愈茶饮（维度A）：${w.rx.functional_elixir.prescription}`,
+      `- 嗅觉结界（维度B）：${w.rx.aura_scent.prescription}`,
+      `- 身形疏通（维度C）：${w.rx.mindful_movement.prescription}`,
+      `- 顺时漫游（维度D）：${w.rx.seasonal_outing.prescription}`,
+      w.rx.skyNote ? `- 天象相位提醒：${w.rx.skyNote}` : null,
+      '- 开方铁律：先自然点明星盘相位与当前节气时令对身心的微妙牵引，再以知己叮嘱的温柔口吻给出一至两条处方（从上面四维里选最贴当下情绪的，融入回复，严禁四条全文复读）；按回复语种自然输出。',
+      '- 绝对零商业：回复严禁出现任何货币符号（美元/欧元/人民币等）与任何下单、折扣、特卖类商业推销字眼（各语种对应词一律禁绝）——你只递茶与星光，不递账单。',
+      '',
+    );
+  }
+
   return [
     ...pronounBlock,
     ...identityBlock,
@@ -20698,6 +20720,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ...livingBlock,
     ...(lifestyleBlock || []),
     ...(lifestyleGeoBlock || []),
+    ...wellnessBlock,
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -21245,6 +21268,36 @@ async function streamFamiliarChatDeepSeek({ systemText, messages, signal, onDelt
   return out;
 }
 
+// ═══ 🌿 E137-刀二（主公军令 2026-11-12）：三级供应链软植入承接路由 /go/:remedyId ═══
+//   白名单唯一真源＝astroSeasonalWellnessEngine.mjs WELLNESS_SUPPLY_SLOTS（23 枚
+//   rx-* 前缀处方 ID）。军令铁律：当前 sponsorBrand 恒 null（零外链品牌零佣金）
+//   ⇒ 全部 302 平滑落地至高品位健康生活方式指引页（站内首页 rx 锚，零死链零
+//   弹窗）；非白名单 slug ⇒ 404 fail-closed（严禁开放重定向）。安全合规响应头
+//   沿军规（Referrer-Policy no-referrer ＋ no-store）。
+let _e137WellnessMod = null;
+async function _e137WellnessEngine() {
+  try {
+    if (!_e137WellnessMod) _e137WellnessMod = await import('./web/src/lib/astroSeasonalWellnessEngine.mjs');
+    return _e137WellnessMod;
+  } catch {
+    return null;
+  }
+}
+app.get('/go/:remedyId', async (req, res) => {
+  const slug = String(req.params.remedyId || '').trim();
+  const eng = await _e137WellnessEngine();
+  const slots = (eng && eng.WELLNESS_SUPPLY_SLOTS) || [];
+  const hit = slots.find((s) => s.remedyId === slug);
+  if (!hit) {
+    return res.status(404).json({ error: 'Unknown remedy', code: 'UNKNOWN_REMEDY' });
+  }
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
+  // 302 平滑落地：高品位健康生活方式指引页（站内首页——零死链零弹窗）
+  return res.redirect(302, `/?rx=${encodeURIComponent(hit.remedyId)}`);
+});
+
 // ── POST /api/familiar/chat ── 灵魂兽流式对话（E66）
 app.post('/api/familiar/chat', async (req, res) => {
   const body = req.body || {};
@@ -21314,6 +21367,33 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    （怎么说话）与地理轨（推荐哪里的路/店/品牌/货币）彻底分离：在硅谷的
   //    华人用中文聊天 ⇒ 中文推荐北美实体。fail-closed：白名单外 ⇒ null 零破坏。
   const geoZone = await _e126ResolveGeoZone(req, body);
+  // 🆕 E137-刀二（主公军令 2026-11-12）：星盘×时令能量处方触发检测——末条
+  //    user message 命中 chatQ3 六语钦定文本或养生语义六语白名单（服务端
+  //    detectWellnessTrigger 单源）⇒ 引擎按本命元素众数＋南北半球镜像出四维
+  //    处方（fail-soft：引擎缺席/异常 ⇒ null ⇒ prompt 块不注入＋meta 帧不带
+  //    wellnessRx，现行为零破坏）。零货币符号零促销词铁律由 e137 闸门守备。
+  const _e137LastUser = [...messages].reverse().find((m) => m.role === 'user') || null;
+  let wellnessRx = null;
+  if (_e137LastUser) {
+    const _e137Eng = await _e137WellnessEngine();
+    if (_e137Eng && _e137Eng.detectWellnessTrigger(_e137LastUser.content)) {
+      try {
+        const _e137Signs = [truth.natal.sun, truth.natal.moon, truth.natal.asc, truth.natal.venus, truth.natal.mars]
+          .map((p) => (p && p.sign) || null)
+          .filter(Boolean);
+        wellnessRx = _e137Eng.resolveAstroSeasonalWellnessRx({
+          chartSignature: { dominantElement: _e137Eng.deriveDominantElement(_e137Signs) },
+          timestamp: Date.now(),
+          geoZone,
+          lang,
+        });
+        console.log(`[E137] wellness rx triggered user=${auth.userId} element=${wellnessRx.dominantElement} hemi=${wellnessRx.hemisphere} mode=${wellnessRx.mode}`);
+      } catch (e) {
+        console.warn('[E137] wellness rx failed:', e && e.message);
+        wellnessRx = null;
+      }
+    }
+  }
   // 🆕 E129-刀二（军令 2026-11-09）：会话首击（body.sessionOpen===true 布尔严格
   //    判定）主动节律检索——≤48h 未决事件回溯 ＋ 新月/满月 ±24h 微仪式注入。
   //    非首击/检索失败 ⇒ null ⇒ LIVING_AGENT_CONTEXT 块不注入（零破坏）。
@@ -21330,6 +21410,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     activeMood: _e123Mood,
     geoZone,
     livingContext,
+    wellnessRx,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）
@@ -21396,6 +21477,23 @@ app.post('/api/familiar/chat', async (req, res) => {
         ip, name, model,
         natal: !!(truth.natal && truth.natal.sun),
         fortune: !!(truth.fortune && truth.fortune.luckyNumber),
+        // 🆕 E137-刀二：处方卡投影（六语文案已按 lang 就绪；缺席 ⇒ 字段整体
+        // 不出场，前端卡不渲染零破坏）。exploreSlug＝主处方（食愈）承接暗槽。
+        ...(wellnessRx && wellnessRx.ok && wellnessRx.rx ? {
+          wellnessRx: {
+            seasonName: wellnessRx.seasonName,
+            termLabel: wellnessRx.termLabel,
+            hemisphere: wellnessRx.hemisphere,
+            rx: {
+              functional_elixir: wellnessRx.rx.functional_elixir,
+              aura_scent: wellnessRx.rx.aura_scent,
+              mindful_movement: wellnessRx.rx.mindful_movement,
+              seasonal_outing: wellnessRx.rx.seasonal_outing,
+            },
+            exploreSlug: (wellnessRx.supplyChainMeta && wellnessRx.supplyChainMeta[0]
+              && wellnessRx.supplyChainMeta[0].redirectSlug) || '/go/rx-elixir-ashwagandha-01',
+          },
+        } : {}),
       },
     })}\n\n`);
     try {
