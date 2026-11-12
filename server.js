@@ -17810,7 +17810,8 @@ if (existsSync(distPath)) {
   // SPA fallback: 所有非 /api 路由返回 index.html（包括 /）
   // 🛠️ V120-fix28: 使用正则表达式兼容新版 path-to-regexp
   app.get(/.*/, (req, res, next) => {
-    if (!req.path.startsWith('/api') && existsSync(join(distPath, 'index.html'))) {
+    // E137: /go 处方路由必须穿透 SPA fallback（否则 /go/:remedyId 被吞成 index.html 200）
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/go') && existsSync(join(distPath, 'index.html'))) {
       return res.sendFile(join(distPath, 'index.html'));
     }
     next();
