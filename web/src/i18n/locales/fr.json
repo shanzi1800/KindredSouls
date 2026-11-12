@@ -138,5 +138,11 @@
     "helloWealthYearly": "J'ai déplié toute la carte de richesse de ton année... la courbe des quatre saisons est limpide, et le milieu d'année brille d'une rare occasion de bascule. On la déroule saison par saison, tout doucement ?",
     "helloDaily": "Un nouveau jour, et les astres tournent à nouveau pour toi ! Aujourd'hui, je perçois ta couleur porte-bonheur : [{{color}}], et ton chiffre porte-bonheur : [{{num}}]. Reste serein — quel aspect du ciel voulons-nous explorer d'abord ?",
     "starTooltip": "Étoiles de Résonance : échangeables contre des tenues exclusives pour ta Bête d'Âme en version 2.0"
-  }
+  },
+  "wellness_rx_title": "✦ Élixir Astral de Saison ✦",
+  "rx_functional_food": "Infusion Botanique & Nutrition",
+  "rx_aura_scent": "Aromathérapie Astrale",
+  "rx_mindful_move": "Mouvement Somatique & Ancrage",
+  "rx_solar_harmony": "Harmonie Solaire & Biorythme",
+  "rx_explore_cta": "✦ Découvrir la Formule Botanique"
 }

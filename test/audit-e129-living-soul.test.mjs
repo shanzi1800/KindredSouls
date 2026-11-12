@@ -132,7 +132,8 @@ test('E129-02 预置 62 行 2026-2027 月相历＋锚点时刻（swisseph 真源
 test('E129-03 LIVING/LUNAR 双块内置函数体＋livingContext 签名尾参＋livingBlock 紧随 moodBlock', () => {
   const sigIdx = server.indexOf('function buildFamiliarChatSystemPrompt');
   const sigLine = server.slice(sigIdx, server.indexOf('\n', sigIdx));
-  assert.ok(/livingContext\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 livingContext（e115 后继化；实为 ${sigLine.trim()})`);
+  // 🆕 E137 后继化：wellnessRx（星盘时令处方）入签名 ⇒ 尾参 livingContext→wellnessRx
+  assert.ok(/wellnessRx\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 wellnessRx（e115/e129 后继化；实为 ${sigLine.trim()})`);
   // 双块内置函数体（VM 抽取式消费者铁律——块在 fnPrompt 切片内）
   assert.ok(fnPrompt.includes('【LIVING AGENT CONTEXT（E129 军令，违反即失败·会话首击主动回溯）】'), 'LIVING AGENT CONTEXT 块在函数体内');
   assert.ok(fnPrompt.includes('【LUNAR RITUAL（E129 军令，违反即失败·天象窗口主动微仪式）】'), 'LUNAR RITUAL 块在函数体内');
@@ -250,7 +251,7 @@ test('E129-S10 链位自保：e129 入编（e127 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 104, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);
+  assert.equal(segs.length, 105, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);
   const iE129 = segs.findIndex((s) => s.includes('audit-e129-living-soul'));
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

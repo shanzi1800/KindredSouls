@@ -138,5 +138,11 @@
     "helloWealthYearly": "I've spread out your entire year's wealth map... The rise and fall across the four seasons is clear, and mid-year glows with one rare breakthrough. Shall we unfold it season by season, nice and slow?",
     "helloDaily": "A new day, and the stars have turned for you again! Today I sense your lucky color is [{{color}}], and your lucky number is [{{num}}]. Stay at ease — which aspect of the stars shall we explore first today?",
     "starTooltip": "Soul Resonance Stars: redeemable for exclusive Soul Beast outfits in version 2.0"
-  }
+  },
+  "wellness_rx_title": "✦ Seasonal Astral Remedy ✦",
+  "rx_functional_food": "Botanical Elixir & Nourishment",
+  "rx_aura_scent": "Aura Aromatherapy",
+  "rx_mindful_move": "Somatic Grounding",
+  "rx_solar_harmony": "Bio-Rhythm & Solar Alignment",
+  "rx_explore_cta": "✦ Explore Botanical Formula"
 }

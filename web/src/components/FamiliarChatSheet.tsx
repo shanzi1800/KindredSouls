@@ -61,6 +61,10 @@ import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 //    1080×1748 大图预览弹层（Aura Style Capsule / Soul Roadtrip Guide）。
 import { LifestyleMuseSlotCard, LifestylePreviewModal } from './companion/LifestyleMuseSlot';
 import type { LifestyleCardType } from './companion/LifestyleMuseSlot';
+// 🆕 E137-刀二（军令 2026-11-12）：星盘时令能量处方卡（服务端 meta 帧 wellnessRx
+// 投影驱动——chatQ3/养生语义触发时随流下发，前端纯渲染零重算）
+import { WellnessRxSlotCard, isWellnessRxMeta } from './companion/WellnessRxSlot';
+import type { WellnessRxMeta } from './companion/WellnessRxSlot';
 // ⚖️ E130-PURE-SANCTUARY-RESTORE（主公军令 2026-11-09）：对话舱＝神圣陪伴净土——
 //    E129-刀四的羊皮卷长卷弹层（z-140）与内嵌收银托盘（z-141）整体清退；
 //    付费引导改为话语间含蓄点拨，交易动作回归 WealthPaywall 专门付费墙页面
@@ -183,6 +187,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E124-LIFESTYLE-MUSE：生活卡插槽状态（E121 同构单轮防刷——绑定本轮
    * aid；密函命中时本槽恒 null 互斥）＋大图预览弹层开关（null=关）。 */
   const [lifestyleSlot, setLifestyleSlot] = useState<{ aid: string; type: LifestyleCardType } | null>(null);
+  /* 🆕 E137-刀二（军令 2026-11-12）：星盘时令能量处方槽——SSE meta 帧 wellnessRx
+   * 投影（服务端引擎单源算好六语文案）；形状不全 ⇒ 不挂载（零破坏）。 */
+  const [wellnessSlot, setWellnessSlot] = useState<{ aid: string; rx: WellnessRxMeta } | null>(null);
   const [lifestylePreview, setLifestylePreview] = useState<LifestyleCardType | null>(null);
   /* ⚖️ E130：E129-刀四长卷/支付托盘五 state 全数清退（神圣净土零收银）。 */
 
@@ -404,6 +411,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const uid = `u-${Date.now()}`;
     const aid = `a-${Date.now()}`;
     setMsgs((prev) => [...prev, { id: uid, role: 'user', text }, { id: aid, role: 'assistant', text: '' }]);
+    setWellnessSlot(null); // 🆕 E137：新轮次先清处方槽（meta 帧命中即重挂）
     setStreaming(true);
     bufRef.current = '';
     startThrottle();
@@ -549,6 +557,11 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           try {
             const j = JSON.parse(payload);
             if (j.delta) bufRef.current += j.delta;
+            // 🆕 E137-刀二（军令 2026-11-12）：meta 帧 wellnessRx 投影——chatQ3/
+            //    养生语义触发时服务端引擎随流下发四维处方（形状守卫 fail-closed）。
+            if (j.meta && j.meta.wellnessRx && isWellnessRxMeta(j.meta.wellnessRx)) {
+              setWellnessSlot({ aid, rx: j.meta.wellnessRx });
+            }
             // 🏆 E115-刀三（主公军令 2026-11-02）：服务端代词违规弃流重试——
             //    reset 帧清空当前 assistant 流式文本（已显的违规代词文本整体作废，
             //    重试流从空壳续写重建，杜绝「他/她」倒错文本残留屏上）
@@ -701,6 +714,19 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                  右挂造成的桌面端 89px 左豁口）。 */
               <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 8 }}>
                 <LifestyleMuseSlotCard type={lifestyleSlot.type} lang={lang} onOpen={setLifestylePreview} />
+              </div>
+            );
+          })()}
+          {/* 🆕 E137-刀二（军令 2026-11-12）：星盘时令能量处方卡插槽——本轮
+              assistant 落地＋id 精确匹配才渲染（E124 同构；fail-closed：meta 帧
+              wellnessRx 形状不全 ⇒ 永不挂载零破坏）。零收银红线：卡内零价格符号
+              零促销词（e137 闸门全量扫杀）。 */}
+          {wellnessSlot && !streaming && (() => {
+            const last = msgs[msgs.length - 1];
+            if (!last || last.role !== 'assistant' || last.id !== wellnessSlot.aid || !last.text) return null;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 8 }}>
+                <WellnessRxSlotCard wellness={wellnessSlot.rx} />
               </div>
             );
           })()}

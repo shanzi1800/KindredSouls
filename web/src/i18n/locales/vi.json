@@ -138,5 +138,11 @@
     "helloWealthYearly": "Ta đã trải toàn bộ bản đồ tài lộc cả năm của bạn ra rồi... đường cong lên xuống bốn mùa rõ ràng, giữa năm còn sáng lên một cơ hội phá thế hiếm có. Chúng ta cứ từ từ đi từng mùa một, nhé?",
     "helloDaily": "Một ngày mới, và các vì sao lại chuyển động vì bạn rồi! Hôm nay ta cảm nhận màu may mắn của bạn là [{{color}}], con số may mắn là [{{num}}]. Hãy bình tĩnh nhé — hôm nay muốn nghe lời chỉ dẫn tinh tú ở phương diện nào trước?",
     "starTooltip": "Sao Lin Tâm: tích lũy để đổi trang phục riêng cho Thú Linh Hồn ở phiên bản 2.0"
-  }
+  },
+  "wellness_rx_title": "✦ Phương Thuốc Năng Lượng Theo Mùa ✦",
+  "rx_functional_food": "Thực Dưỡng · Trà Thảo Mộc Khí Trường",
+  "rx_aura_scent": "Khứu Giác · Tinh Dầu Hộ Mệnh",
+  "rx_mindful_move": "Thân Tâm · Khai Thông Năng Lượng",
+  "rx_solar_harmony": "Thuận Thời Điều Tần · Thiên Nhân Hợp Nhất",
+  "rx_explore_cta": "✦ Khám Phá Công Thức Thảo Mộc"
 }
