@@ -118,6 +118,10 @@ test('E137-04 /go/rx-* 路由：遍历全部 redirectSlug 白名单可解析，3
   assert.ok(route.includes('UNKNOWN_REMEDY'), '非白名单 slug 须 404 fail-closed（禁开放重定向）');
   assert.ok(route.includes("Referrer-Policy', 'no-referrer'"), '安全合规响应头在位');
   assert.ok(route.includes('/?rx='), '落地须站内指引页（零死链零弹窗）');
+  // E137 补刀：SPA fallback（app.get(/.*/)）注册在 /go 路由之前——必须放行 /go 前缀，
+  // 否则 /go/:remedyId 被吞成 index.html 200（产线首验实红，2026-11-12）
+  const fb = server.slice(server.indexOf('app.get(/.*/'), server.indexOf('app.get(/.*/') + 400);
+  assert.ok(fb.includes("startsWith('/go')"), 'SPA fallback 须放行 /go 前缀穿透至处方路由');
   // 白名单完备：全部 23+ redirectSlug 的 remedyId 均在引擎白名单（同源遍历）
   const ids = new Set(ENG.WELLNESS_SUPPLY_SLOTS.map((s) => s.remedyId));
   for (const s of ENG.WELLNESS_SUPPLY_SLOTS) {
