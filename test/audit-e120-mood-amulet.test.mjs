@@ -330,7 +330,7 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
     assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   const i18nGate = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 128'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
+  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 132'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
   // 前端接线四面：DEV 守卫路由 / 锦囊前置罗盘控制器 / Playground 战报行 /
   //    E120-CHAIN 入口收拢（罗盘微章拔除，唯一锦囊入口 pouch-open）
   const app = read('web/src/App.tsx');
@@ -397,7 +397,7 @@ test('E120 S6 链位自保：e120 入编（e118 后、e40-compat 前；全链 91
     assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E135 chatQ2 退役）`);
   }
   const i18nGate2 = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 128'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
+  assert.ok(i18nGate2.includes('assert.strictEqual(p.total, 132'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
   console.log('  [PASS] E121-10: ChatSheet 消费端插槽链路（触发器/插槽/大图/单轮防刷/零 i18n）');
 });
 

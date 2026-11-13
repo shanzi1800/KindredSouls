@@ -65,6 +65,9 @@ import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
 // 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
 //    已认领＝破框骑键 portal 至 #ks-familiar-anchor。
 import FamiliarHomeCard from './components/FamiliarHomeCard';
+// 🏆 E137.1-RX-MONOGRAPH-DRAWER：/go/rx-* 302 落地端 ?rx= 承接手札（引擎同源白名单）
+import { RxMonographModal } from './components/companion/RxMonographModal';
+import { getWellnessRemedyById } from './lib/astroSeasonalWellnessEngine.mjs';
 // 🏆 E112-刀二（主公军令 2026-11-01）：最近解锁付费报告追踪凭证——姻缘三档
 //    生成成功即写入 localStorage（对话舱首语六档咬合真源）；纯逻辑核形状守卫。
 // @ts-ignore —— soulRecentReport.mjs 纯 JS 逻辑核（形状由 E112 闸门守备）
@@ -2051,6 +2054,7 @@ export default function App() {
   //   统一兜底重定向回主站 + 极简「能量载体孕育中」Toast，确保路由不报错、不空白。
   //   未来商城上线时，仅需把这里换成真实的 ArtefactPage 即可。
   const [artefactNotice, setArtefactNotice] = useState<string | null>(null);
+
   useEffect(() => {
     const ARTEFACT_NOTICE: Record<string, string> = {
       zh: '能量载体孕育中',
@@ -2075,6 +2079,44 @@ export default function App() {
     window.addEventListener('popstate', handleArtefactRoute);
     return () => window.removeEventListener('popstate', handleArtefactRoute);
   }, [i18n.language]);
+
+  // ── 🏆 E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）：/?rx=<remedyId> 承接 ──
+  //   /go/rx-* 302 落地端：命中白名单 ⇒ 原位弹「时令能量配方手札」；非法/未知
+  //   slug ⇒ history.replaceState 静默清理（不报错不弹空框）；手札关闭/追问 ⇒ 清 ?rx=
+  //   （保留其余 query 参数——free_access 等绿道不连带误杀）。
+  const [rxRemedy, setRxRemedy] = useState<string | null>(null);
+  const _cleanRxParam = () => {
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has('rx')) {
+        u.searchParams.delete('rx');
+        const qs = u.searchParams.toString();
+        window.history.replaceState({}, '', u.pathname + (qs ? '?' + qs : ''));
+      }
+    } catch { /* noop */ }
+  };
+  useEffect(() => {
+    const _readRxParam = () => {
+      try {
+        const raw = new URLSearchParams(window.location.search).get('rx');
+        if (!raw) { setRxRemedy(null); return; }
+        const lang = String(i18n.language || 'zh').slice(0, 2).toLowerCase();
+        if (getWellnessRemedyById(raw, lang)) setRxRemedy(raw); // 白名单命中 ⇒ 原位手札
+        else { setRxRemedy(null); _cleanRxParam(); } // 非法 slug 静默降级（军令）
+      } catch { /* noop */ }
+    };
+    _readRxParam();
+    window.addEventListener('popstate', _readRxParam);
+    return () => window.removeEventListener('popstate', _readRxParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language]);
+  const _handleRxAsk = (message: string) => {
+    setRxRemedy(null);
+    _cleanRxParam();
+    // 追问联动：FamiliarHomeCard 监听 ks-rx-ask ⇒ 开舱＋注入用户消息（军令：
+    // 「让伴侣为我定制今日调理时辰」点击后自动向 Milo/Sophia 发起定制追问）
+    window.dispatchEvent(new CustomEvent('ks-rx-ask', { detail: { message } }));
+  };
 
   // ── Policy page routing (terms-of-service / privacy-policy) ──
   const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
@@ -2380,6 +2422,13 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
       )}
         </>
       )}
+      {/* 🏆 E137.1-RX-MONOGRAPH-DRAWER：?rx= 落地端原位手札（portal 挂 body；
+          非法 slug 已在 App 层 replaceState 静默清理） */}
+      <RxMonographModal
+        remedyId={rxRemedy}
+        onClose={() => { setRxRemedy(null); _cleanRxParam(); }}
+        onAskCompanion={_handleRxAsk}
+      />
     </div>
   );
 }

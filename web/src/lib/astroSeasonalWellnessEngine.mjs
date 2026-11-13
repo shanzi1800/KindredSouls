@@ -630,3 +630,97 @@ export function resolveAstroSeasonalWellnessRx(input) {
 
 /** 模板套数（军令 12 套下界自证——四元素 × 三季群） */
 export const WELLNESS_TEMPLATE_COUNT = 12;
+
+/* ═══════════════ E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）═══════════════
+ * /go/rx-* 302 落地端承接层——前端 ?rx=<remedyId> 白名单查询＋手札数据单源：
+ *   · getWellnessRemedyById(remedyId, lang)：WELLNESS_SUPPLY_SLOTS 同源反查
+ *     （四元素×季群模板溯源），未命中返回 null（fail-closed——非法 slug 静默
+ *     清理零弹框零报错）；
+ *   · RX_RITUAL_GUIDES：四类「顺时调频仪式与配比」六语（手札仪式区块单源）；
+ *   · RX_ASK_TEMPLATES：「让伴侣定制调理时辰」追问句六语模板（{ingredients}
+ *     占位——点击后注入对话舱作为用户消息）。
+ * 🔴 军规红线：sponsorBrand 恒 null；零货币符号零促销词；六语内嵌单源零 i18n 新键。 */
+
+export const RX_RITUAL_GUIDES = Object.freeze({
+  elixir: Object.freeze({
+    zh: '睡前 45 分钟以约 60℃ 温水冲服或温泡——夜收时段人体吸收节律最佳；忌与浓茶咖啡同饮，连服三晚更见沉稳。',
+    en: 'Steep or take with warm water (about 60°C) 45 minutes before bed — the body absorbs best in the night-rest window; avoid strong tea or coffee, and three consecutive evenings bring deeper steadiness.',
+    fr: 'À prendre infusé dans de l’eau tiède (environ 60 °C) 45 minutes avant le coucher — l’assimilation est optimale dans la fenêtre nocturne ; éviter thé et café serrés, trois soirs de suite ancrent l’apaisement.',
+    es: 'Tomar en infusión con agua tibia (unos 60 °C) 45 minutos antes de dormir — la asimilación es óptima en la ventana nocturna; evitar té y café fuertes, y tres noches seguidas asientan la calma.',
+    th: 'ชงหรือดื่มกับน้ำอุ่นประมาณ 60 องศา 45 นาทีก่อนนอน — ร่างกายดูดซึมได้ดีที่สุดในช่วงพักตามค่ำ หลีกเลี่ยงชาและกาแฟเข้ม ดื่มต่อเนื่องสามคืนจะรู้สึกนิ่งขึ้น',
+    vi: 'Pha với nước ấm khoảng 60°C và dùng 45 phút trước khi ngủ — cơ thể hấp thu tốt nhất trong khung nghỉ đêm; tránh trà và cà phê đậm, dùng liền ba tối sẽ thấy an định sâu hơn.',
+  }),
+  scent: Object.freeze({
+    zh: '晨间或入浴前 3 滴香薰扩散 15 分钟——嗅觉直连情绪脑区；配三息深呼吸，让香气先于思绪落定。',
+    en: 'Diffuse 3 drops for 15 minutes in the morning or before a bath — scent links straight to the emotional brain; pair with three deep breaths so the aroma settles before your thoughts do.',
+    fr: 'Diffusez 3 gouttes pendant 15 minutes le matin ou avant le bain — l’odorat rejoint directement le cerveau émotionnel ; accompagnez de trois respirations profondes pour que le parfum se pose avant les pensées.',
+    es: 'Difunde 3 gotas durante 15 minutos por la mañana o antes del baño — el olfato conecta directo con el cerebro emocional; acompaña con tres respiraciones profundas para que el aroma se asiente antes que los pensamientos.',
+    th: 'ฟุ้งน้ำมันหอม 3 หยดนาน 15 นาทีตอนเช้าหรือก่อนอาบน้ำ — กลิ่นเชื่อมตรงกับสมองส่วนอารมณ์ หายใจลึกสามครั้งให้กลิ่นตั้งตัวก่อนความคิด',
+    vi: 'Khuếch tán 3 giọt trong 15 phút vào buổi sáng hoặc trước khi tắm — khứu giác nối thẳng vùng não cảm xúc; kèm ba hơi thở sâu để hương thơm lắng lại trước dòng suy nghĩ.',
+  }),
+  movement: Object.freeze({
+    zh: '午后或日落时段练习 15 分钟——避开正午心火峰值；动作与呼吸同频，收势后静坐三息再起身。',
+    en: 'Practice for 15 minutes in the afternoon or at sunset — skip the noon heart-fire peak; move in rhythm with your breath, and sit still for three breaths before rising.',
+    fr: 'Pratiquez 15 minutes l’après-midi ou au coucher du soleil — évitez le pic de feu du cœur à midi ; accordez le mouvement au souffle, puis restez assis trois respirations avant de vous relever.',
+    es: 'Practica 15 minutos por la tarde o al atardecer — evita el pico de fuego del corazón del mediodía; mueve el cuerpo al ritmo del aliento y permanece sentado tres respiraciones antes de levantarte.',
+    th: 'ฝึก 15 นาทีช่วงบ่ายหรือพระอาทิตย์ตก — เลี่ยงช่วงเที่ยงที่ไฟในใจพุ่งสูง ขยับกายให้เข้าจังหวะลมหายใจ แล้วนั่งนิ่งสามลมหายใจก่อนลุก',
+    vi: 'Tập 15 phút vào buổi chiều hoặc khi mặt trời lặn — tránh đỉnh hỏa khí lúc trưa; chuyển động theo nhịp thở, kết thúc bằng ngồi tĩnh tại ba hơi thở rồi mới đứng dậy.',
+  }),
+  outing: Object.freeze({
+    zh: '清晨或黄昏外出 30 分钟——避开烈日当空；让皮肤接住柔和的日光节律，归途放缓步频收心。',
+    en: 'Go out for 30 minutes at dawn or dusk — avoid the blazing sun; let your skin catch the gentle light rhythm, and slow your pace on the way home to gather the mind.',
+    fr: 'Sortez 30 minutes à l’aube ou au crépuscule — évitez le soleil brûlant ; laissez la peau capter le doux rythme de la lumière et ralentissez le pas au retour pour rassembler l’esprit.',
+    es: 'Sal 30 minutos al amanecer o al anochecer — evita el sol intenso; deja que la piel reciba el ritmo suave de la luz y aminora el paso al regresar para recoger la mente.',
+    th: 'ออกไปข้างนอก 30 นาทีตอนเช้าตรู่หรือพลบค่ำ — เลี่ยงแดดแรง ให้ผิวรับจังหวะแสงอ่อนโยน และเดินช้าลงตอนกลับเพื่อรวมใจ',
+    vi: 'Ra ngoài 30 phút lúc bình minh hoặc hoàng hôn — tránh nắng gắt; để da đón nhịp ánh sáng dịu, và chậm bước trên đường về để thu tâm.',
+  }),
+});
+
+export const RX_ASK_TEMPLATES = Object.freeze({
+  zh: '请结合我的星盘，告诉我今天什么时辰服用「{ingredients}」效果最好？',
+  en: 'Please read my birth chart and tell me the best hour today to take "{ingredients}"?',
+  fr: 'Consulte mon thème natal et dis-moi à quelle heure aujourd’hui prendre « {ingredients} » pour un effet optimal ?',
+  es: 'Consulta mi carta natal y dime a qué hora de hoy conviene tomar «{ingredients}» para mayor efecto.',
+  th: 'ช่วยดูล่าดวงของฉันแล้วบอกว่าวันนี้ช่วงเวลาใดที่เหมาะที่สุดในการใช้ "{ingredients}"',
+  vi: 'Hãy xem lá số của em và nói hôm nay giờ nào dùng "{ingredients}" là hiệu quả nhất?',
+});
+
+/**
+ * E137.1 手札白名单查询（/go 302 落地端 ?rx=<remedyId> 唯一真源）。
+ * 遍历 _RX_SLOT_TABLES 同源反查——兼容三形表：
+ *   elixir（element→mode→dim 双层）／scent·movement（element→dim 直挂）／
+ *   outing（mode→dim 直挂）。
+ * @returns 命中返回 { remedyId, category, element, seasonKey, ingredients,
+ *   prescription, ritualGuide, askTemplate, affiliateTier, sponsorBrand }；
+ *   未命中（非法/未知 slug）返回 null——前端 replaceState 静默清理（军令）。 */
+export function getWellnessRemedyById(remedyId, lang) {
+  const L = WELLNESS_RX_LOCALES.includes(lang) ? lang : 'en';
+  if (typeof remedyId !== 'string' || !remedyId.startsWith('rx-')) return null;
+  for (const [category, table] of _RX_SLOT_TABLES) {
+    for (const [outerKey, sub] of Object.entries(table)) {
+      // 双形兼容：直挂表 sub 自带 remedyId；双层表 sub 仍是元素/季群字典
+      const entries = sub.remedyId
+        ? [{ key: null, dim: sub }]
+        : Object.entries(sub).map(([key, dim]) => ({ key, dim }));
+      for (const { key, dim } of entries) {
+        if (dim && typeof dim === 'object' && dim.remedyId === remedyId) {
+          const element = category === 'outing' ? null : outerKey;
+          const seasonKey = category === 'elixir' ? key : outerKey;
+          return Object.freeze({
+            remedyId,
+            category,
+            element,
+            seasonKey,
+            ingredients: (RX_INGREDIENTS[dim.ingredientsKey] || {})[L] || '',
+            prescription: (dim.prescription || {})[L] || '',
+            ritualGuide: (RX_RITUAL_GUIDES[category] || {})[L] || '',
+            askTemplate: RX_ASK_TEMPLATES[L],
+            affiliateTier: 'curated_free',
+            sponsorBrand: null,
+          });
+        }
+      }
+    }
+  }
+  return null;
+}

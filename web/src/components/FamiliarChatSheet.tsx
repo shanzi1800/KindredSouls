@@ -113,6 +113,12 @@ interface Props {
    *  回落待机趴键态。由 FamiliarHomeCard 注入 setChatLive（breakout 加
    *  .ks-fam-live class 驱动 CSS 姿态）。 */
   onStreamingChange?: (streaming: boolean) => void;
+  /** 🏆 E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）：手札追问注入通道——
+   *   RxMonographModal「让伴侣定制调理时辰」⇒ App 层 CustomEvent ⇒ HomeCard
+   *   开舱并置此 prop；ChatSheet 收到非空 pendingAsk（且非流式中）自动 send
+   *   发送，随后回调 onPendingAskConsumed 清空（单次单发防重复注入）。 */
+  pendingAsk?: string | null;
+  onPendingAskConsumed?: () => void;
 }
 
 const THROTTLE_MS = 90;
@@ -173,7 +179,7 @@ const ChatInputBar: React.FC<{
 };
 const MemoChatInputBar = React.memo(ChatInputBar);
 
-const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode, starCount, onStreamingChange }) => {
+const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationMode, lang, paidOk, greetingMode, starCount, onStreamingChange, pendingAsk, onPendingAskConsumed }) => {
   const { t } = useTranslation();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -612,6 +618,16 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       if (el) el.scrollTop = el.scrollHeight;
     }
   }, [paidOk, streaming, t, lang, relationMode, name, startThrottle, stopThrottle]);
+
+  /* 🏆 E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）：手札追问自动发送——
+   *   pendingAsk 非空且舱已开且非流式中 ⇒ 自动 send（追问句直接作为用户消息
+   *   上屏）随后回调清空（单次单发防重复）。舱未开/流式中挂起等待，不丢消息。 */
+  useEffect(() => {
+    const msg = String(pendingAsk || '').trim();
+    if (!msg || !open || streaming) return;
+    onPendingAskConsumed?.();
+    void send(msg);
+  }, [pendingAsk, open, streaming, send, onPendingAskConsumed]);
 
   /* ── 下滑手势收起（触屏；鼠标拖拽不接管，避免桌面误触） ── */
   const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0]?.clientY ?? null; };

@@ -199,7 +199,7 @@ test('E137-07 i18n 六键：六语对齐＋zh 军令词表逐字＋键集合含�
   assert.equal(KEYED.zh.rx_explore_cta, '✦ 探索时令能量配方', 'rx_explore_cta 军令逐字');
   // 元闸门真源同步：122 → 128
   const gate = read('test/audit-i18n-keys.test.js');
-  assert.ok(gate.includes('assert.strictEqual(p.total, 128'), 'i18n 元闸门基准须 128（E137 六键入列）');
+  assert.ok(gate.includes('assert.strictEqual(p.total, 132'), 'i18n 元闸门基准须 128（E137 六键入列）');
   // familiar 段键数不动（新六键居顶层——58 恒定）
   assert.equal(Object.keys(KEYED.zh.familiar).length, 58, 'familiar 段 58 键恒定（六新键在顶层）');
 });
@@ -250,4 +250,69 @@ test('E137-10 军规链段数：package.json test:astro 全链 105 段（e137 �
   // e40 恒 len-2（倒数第二）——python 链尾承袭
   assert.ok(segs[segs.length - 2].includes('e40-compat'), 'e40-compat 恒 len-2');
   assert.ok(segs[segs.length - 1].includes('python3'), 'python3 恒链尾');
+});
+
+/* ═══ E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）手札承接断言族 ═══ */
+test('E137-11 rx 手札承接：?rx= 白名单承接＋RxMonographModal 渲染链＋追问联动＋静默降级', async () => {
+  const app = read('web/src/App.tsx');
+  const modal = read('web/src/components/companion/RxMonographModal.tsx');
+  const home = read('web/src/components/FamiliarHomeCard.tsx');
+  const sheet = read('web/src/components/FamiliarChatSheet.tsx');
+
+  // ① 引擎手札层：getWellnessRemedyById 白名单 23/23 全命中＋非法三态 null
+  assert.strictEqual(typeof ENG.getWellnessRemedyById, 'function', 'getWellnessRemedyById 须导出');
+  for (const s of ENG.WELLNESS_SUPPLY_SLOTS) {
+    const hit = ENG.getWellnessRemedyById(s.remedyId, 'zh');
+    assert.ok(hit, `${s.remedyId} 手札白名单须命中`);
+    assert.ok(hit.ingredients.length > 0 && hit.prescription.length > 0 && hit.ritualGuide.length > 0,
+      `${s.remedyId} 手札三文（成分/处方/仪式）六语须非空`);
+    assert.strictEqual(hit.sponsorBrand, null, '手札 sponsorBrand 恒 null');
+  }
+  assert.strictEqual(ENG.getWellnessRemedyById('rx-invalid-xyz', 'zh'), null, '非法 slug 须 null fail-closed');
+  assert.strictEqual(ENG.getWellnessRemedyById(null, 'zh'), null, 'null 输入须 null');
+  assert.strictEqual(ENG.getWellnessRemedyById('../escape', 'zh'), null, '非 rx- 前缀须 null');
+  // 追问模板六语 {ingredients} 占位
+  for (const l of ['zh', 'en', 'fr', 'es', 'th', 'vi']) {
+    assert.ok(String(ENG.RX_ASK_TEMPLATES[l]).includes('{ingredients}'), `${l} 追问模板须含 {ingredients} 占位`);
+    assert.ok(ENG.RX_RITUAL_GUIDES.elixir[l].length > 10, `${l} 仪式指南四类须非空`);
+  }
+
+  // ② App 层 ?rx= 承接：白名单命中弹手札＋非法 replaceState 静默清理（零报错零空框）
+  assert.ok(app.includes("get('rx')"), 'App 须读 ?rx= 查询参数');
+  assert.ok(app.includes('getWellnessRemedyById(raw, lang)'), 'App 须引擎白名单校验');
+  assert.ok(app.includes('_cleanRxParam'), 'App 须 replaceState 清理 ?rx=（保留其余 query）');
+  assert.ok(app.includes('searchParams.delete(\'rx\')'), '清理须精确删 rx 参数（不误杀 free_access 绿道）');
+  assert.ok(app.includes('<RxMonographModal'), 'App 须挂载 RxMonographModal');
+  assert.ok(app.includes("dispatchEvent(new CustomEvent('ks-rx-ask'"), '追问联动须 CustomEvent 注入');
+
+  // ③ 手札组件：portal＋四键 t() 消费＋anywhere 防泰溢＋fail-closed 零弹框
+  assert.ok(modal.includes('data-testid="rx-monograph-modal"'), '手札卡 testid 在位');
+  assert.ok(modal.includes('data-testid="rx-monograph-ask"'), '追问按钮 testid 在位');
+  assert.ok(modal.includes("t('rx_drawer_title')"), '手札标题须 t() 消费（六语单源）');
+  for (const k of ['rx_ritual_guide', 'rx_ask_companion', 'rx_curated_status']) {
+    assert.ok(modal.includes(`t('${k}')`), `手札须消费 ${k}`);
+  }
+  assert.ok((modal.match(/overflowWrap: 'anywhere'/g) || []).length >= 5, '泰语长词防溢 anywhere 须全段覆盖');
+  assert.ok(modal.includes('getWellnessRemedyById(remedyId, lang)'), '手札数据须引擎同源反查');
+  assert.ok(modal.includes('createPortal'), '手札须 portal 挂 body（E120 先例）');
+  assert.ok(!/[$¥€]/.test(modal.replace(/\$\{[^}]*\}/g, '')), '手札零货币符号（E130 红线）');
+  for (const w of ['购买', '打折', '促销', '优惠券', 'buy', 'discount', 'promo']) {
+    assert.ok(!modal.toLowerCase().includes(w.toLowerCase()), `手札严禁促销词「${w}」`);
+  }
+
+  // ④ 联动链：HomeCard 监听 ks-rx-ask 开舱＋ChatSheet pendingAsk 自动发送
+  assert.ok(home.includes("addEventListener('ks-rx-ask'"), 'HomeCard 须监听 ks-rx-ask 开舱');
+  assert.ok(home.includes('pendingAsk={rxAsk}'), 'HomeCard 须传 pendingAsk 注入 ChatSheet');
+  assert.ok(sheet.includes('pendingAsk?: string | null'), 'ChatSheet 须有 pendingAsk prop');
+  assert.ok(sheet.includes('void send(msg)'), 'ChatSheet 须自动 send 追问消息');
+  assert.ok(sheet.includes('onPendingAskConsumed'), '发送后须回调清空（单次单发防重复）');
+
+  // ⑤ 六语 4 键逐字（军令词表）＋i18n 基准 132
+  const zh = JSON.parse(read('web/src/i18n/locales/zh.json'));
+  assert.strictEqual(zh.rx_drawer_title, '✦ 时令能量配方手札 ✦', 'zh rx_drawer_title 军令逐字');
+  assert.strictEqual(zh.rx_ritual_guide, '顺时调频仪式与配比', 'zh rx_ritual_guide 军令逐字');
+  assert.strictEqual(zh.rx_ask_companion, '✦ 让伴侣为我定制今日调理时辰', 'zh rx_ask_companion 军令逐字');
+  assert.strictEqual(zh.rx_curated_status, '全球严选天然植萃配方库 · 精选直达通道筹备中', 'zh rx_curated_status 军令逐字');
+  const gate = read('test/audit-i18n-keys.test.js');
+  assert.ok(gate.includes('assert.strictEqual(p.total, 132'), 'i18n 元闸门基准须 132（E137.1 四键入列 128→132）');
 });
