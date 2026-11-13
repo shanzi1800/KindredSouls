@@ -677,12 +677,13 @@ export const RX_RITUAL_GUIDES = Object.freeze({
 });
 
 export const RX_ASK_TEMPLATES = Object.freeze({
-  zh: '请结合我的星盘，告诉我今天什么时辰服用「{ingredients}」效果最好？',
-  en: 'Please read my birth chart and tell me the best hour today to take "{ingredients}"?',
-  fr: 'Consulte mon thème natal et dis-moi à quelle heure aujourd’hui prendre « {ingredients} » pour un effet optimal ?',
-  es: 'Consulta mi carta natal y dime a qué hora de hoy conviene tomar «{ingredients}» para mayor efecto.',
-  th: 'ช่วยดูล่าดวงของฉันแล้วบอกว่าวันนี้ช่วงเวลาใดที่เหมาะที่สุดในการใช้ "{ingredients}"',
-  vi: 'Hãy xem lá số của em và nói hôm nay giờ nào dùng "{ingredients}" là hiệu quả nhất?',
+  // E137.2：句首 {name}＝灵宠真名（Sophia/Milo——前端 companionDisplayName 注入）
+  zh: '{name}，请结合我的星盘，告诉我今天什么时辰服用「{ingredients}」效果最好？',
+  en: '{name}, please read my birth chart and tell me the best hour today to take "{ingredients}"?',
+  fr: '{name}, consulte mon thème natal et dis-moi à quelle heure aujourd’hui prendre « {ingredients} » pour un effet optimal ?',
+  es: '{name}, consulta mi carta natal y dime a qué hora de hoy conviene tomar «{ingredients}» para mayor efecto.',
+  th: '{name} ช่วยดูล่าดวงของฉันแล้วบอกว่าวันนี้ช่วงเวลาใดที่เหมาะที่สุดในการใช้ "{ingredients}"',
+  vi: '{name}, hãy xem lá số của em và nói hôm nay giờ nào dùng "{ingredients}" là hiệu quả nhất?',
 });
 
 /**

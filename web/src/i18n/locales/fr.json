@@ -147,6 +147,6 @@
   "rx_explore_cta": "✦ Découvrir la Formule Botanique",
   "rx_drawer_title": "✦ Grimoire Botanique de Saison ✦",
   "rx_ritual_guide": "Rituel d'Alignement & Dosage",
-  "rx_ask_companion": "✦ Demander l'Heure Idéale à mon Guide",
+  "rx_ask_companion": "✦ Demander à {name} l'Heure Idéale",
   "rx_curated_status": "Répertoire Botanique Sélectionné · Accès Direct Bientôt Disponible"
 }

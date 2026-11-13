@@ -56,6 +56,36 @@ export function isRelationMode(m) {
   return FAMILIAR_RELATION_MODES.indexOf(m) !== -1;
 }
 
+/* ═══ E137.2-COMPANION-NAME-CTA（主公军令 2026-11-13）：灵宠真名单源 ═══ */
+
+/**
+ * relation_mode ⇒ IP 名映射（与服务端 familiar_engine.IP_OF 同源白名单；
+ * 与 FamiliarHomeCard.IP_OF_MODE 同形——闸门断言同源）。全站唯二 IP 名：
+ * Sophia（girlfriend/bestie）· Milo（buddy/boyfriend）。
+ */
+export const FAMILIAR_IP_OF_MODE = Object.freeze({
+  girlfriend: 'Sophia', bestie: 'Sophia', buddy: 'Milo', boyfriend: 'Milo',
+});
+
+/**
+ * 灵宠真名解析（E137.2 军令：手札主按钮/追问句呼唤真名，永不残留占位符）。
+ *   ① 认领档 `ks_familiar` 命中且 `profile.name` 恰为 Sophia/Milo ⇒ 直接采用；
+ *   ② 否则按 `profile.relation_mode` 映射 IP 名；
+ *   ③ 无档/坏档/直链空降（未显式选宠）⇒ 首页默认守护灵 **Sophia**（军令钦定兜底）。
+ * 纯函数：storage 注入（Node 闸门可 mock 断言，零 DOM）。
+ * @returns 'Sophia' | 'Milo'（闭集，恒非空——按钮文案永不出现 {name} 字面量）
+ */
+export function companionDisplayName(storage, key = FAMILIAR_HOME_LS_KEY) {
+  const rec = readFamiliarRecord(storage, key);
+  if (rec) {
+    const n = String(rec.profile.name || '').trim();
+    if (n === 'Sophia' || n === 'Milo') return n;
+    const ip = FAMILIAR_IP_OF_MODE[String(rec.profile.relation_mode || '')];
+    if (ip) return ip;
+  }
+  return 'Sophia';
+}
+
 /* ═══════════ 一 · 认领档读写（形状守卫 · 坏档一概不认）═══════════ */
 
 /**

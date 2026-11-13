@@ -311,8 +311,58 @@ test('E137-11 rx 手札承接：?rx= 白名单承接＋RxMonographModal 渲染�
   const zh = JSON.parse(read('web/src/i18n/locales/zh.json'));
   assert.strictEqual(zh.rx_drawer_title, '✦ 时令能量配方手札 ✦', 'zh rx_drawer_title 军令逐字');
   assert.strictEqual(zh.rx_ritual_guide, '顺时调频仪式与配比', 'zh rx_ritual_guide 军令逐字');
-  assert.strictEqual(zh.rx_ask_companion, '✦ 让伴侣为我定制今日调理时辰', 'zh rx_ask_companion 军令逐字');
+  assert.strictEqual(zh.rx_ask_companion, '✦ 让 {name} 为我定制今日调理时辰', 'zh rx_ask_companion 军令逐字（E137.2 真名模板）');
   assert.strictEqual(zh.rx_curated_status, '全球严选天然植萃配方库 · 精选直达通道筹备中', 'zh rx_curated_status 军令逐字');
   const gate = read('test/audit-i18n-keys.test.js');
   assert.ok(gate.includes('assert.strictEqual(p.total, 132'), 'i18n 元闸门基准须 132（E137.1 四键入列 128→132）');
+});
+
+/* ═══ E137.2-COMPANION-NAME-CTA（主公军令 2026-11-13）灵宠真名动态呼唤断言族 ═══ */
+test('E137-12 companion 真名 CTA：{name} 六语模板＋companionDisplayName 单源＋双态渲染＋泛称清零', async () => {
+  const modal = read('web/src/components/companion/RxMonographModal.tsx');
+  const famHome = read('web/src/lib/familiarHome.mjs');
+
+  // ① 引擎追问句六语：句首 {name}＋{ingredients} 双占位（E137.2 军令）
+  for (const l of ['zh', 'en', 'fr', 'es', 'th', 'vi']) {
+    const tpl = String(ENG.RX_ASK_TEMPLATES[l]);
+    assert.ok(tpl.includes('{name}'), `${l} 追问句须含 {name} 真名占位`);
+    assert.ok(tpl.indexOf('{name}') < tpl.indexOf('{ingredients}'), `${l} 真名须居句首呼唤`);
+  }
+
+  // ② 真名单源 familiarHome.mjs：FAMILIAR_IP_OF_MODE 映射＋companionDisplayName 行为三态
+  assert.ok(famHome.includes('export const FAMILIAR_IP_OF_MODE'), 'IP 映射表须导出（与服务端 familiar_engine.IP_OF 同源白名单）');
+  assert.ok(famHome.includes('export function companionDisplayName'), 'companionDisplayName 须导出');
+  const FAM = await import(new URL('../web/src/lib/familiarHome.mjs', import.meta.url).href);
+  assert.strictEqual(FAM.FAMILIAR_IP_OF_MODE.girlfriend, 'Sophia', 'girlfriend ⇒ Sophia');
+  assert.strictEqual(FAM.FAMILIAR_IP_OF_MODE.bestie, 'Sophia', 'bestie ⇒ Sophia');
+  assert.strictEqual(FAM.FAMILIAR_IP_OF_MODE.buddy, 'Milo', 'buddy ⇒ Milo');
+  assert.strictEqual(FAM.FAMILIAR_IP_OF_MODE.boyfriend, 'Milo', 'boyfriend ⇒ Milo');
+  const mkStore = (rec) => ({ getItem: (k) => (k === 'ks_familiar' && rec ? JSON.stringify(rec) : null), setItem: () => {}, removeItem: () => {} });
+  assert.strictEqual(FAM.companionDisplayName(mkStore({ profile: { name: 'Milo', relation_mode: 'buddy' } })), 'Milo', '认领档 Milo ⇒ Milo');
+  assert.strictEqual(FAM.companionDisplayName(mkStore({ profile: { name: 'Sophia', relation_mode: 'girlfriend' } })), 'Sophia', '认领档 Sophia ⇒ Sophia');
+  assert.strictEqual(FAM.companionDisplayName(mkStore({ profile: { name: 'Sophia', relation_mode: 'bestie' } })), 'Sophia', '认领档 bestie ⇒ Sophia');
+  assert.strictEqual(FAM.companionDisplayName(mkStore({ profile: { name: '阿福', relation_mode: 'boyfriend' } })), 'Milo', '档名非 IP 名 ⇒ relation_mode 映射 Milo');
+  assert.strictEqual(FAM.companionDisplayName(mkStore(null)), 'Sophia', '无档直链空降 ⇒ 默认 Sophia（军令兜底）');
+  assert.strictEqual(FAM.companionDisplayName(null), 'Sophia', 'storage 不可用 ⇒ 默认 Sophia');
+
+  // ③ 手札组件：真名绑定＋双 replace 占位（按钮文案＋追问句同步呼唤）
+  assert.ok(modal.includes('companionDisplayName'), '手札须真名单源导入');
+  assert.ok(modal.includes(".replace('{name}', companionName)"), '追问句须注入真名');
+  assert.ok(modal.includes("t('rx_ask_companion').replace('{name}', companionName)"), '按钮文案须真名替换（永不残留占位符）');
+  assert.ok((modal.match(/\{name\}/g) || []).length >= 2, 'name 占位消费须双点（文案+追问）');
+
+  // ④ 六语 rx_ask_companion：{name} 模板逐语对齐＋zh 军令逐字＋泛称清零（E128 六语红线）
+  const banned = ['伴侣', 'Companion', 'mon Guide', 'mi Guía', 'คู่หู', 'Bạn Đồng Hành'];
+  for (const l of ['zh', 'en', 'fr', 'es', 'th', 'vi']) {
+    const d = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
+    const v = String(d.rx_ask_companion);
+    assert.ok(v.includes('{name}'), `${l} 按钮文案须含 {name} 模板`);
+    for (const b of banned) {
+      assert.ok(!v.includes(b), `${l} 严禁泛称残留「${b}」`);
+    }
+  }
+  const zh = JSON.parse(read('web/src/i18n/locales/zh.json'));
+  assert.strictEqual(zh.rx_ask_companion, '✦ 让 {name} 为我定制今日调理时辰', 'zh 军令词表逐字（E137.2）');
+  const en = JSON.parse(read('web/src/i18n/locales/en.json'));
+  assert.strictEqual(en.rx_ask_companion, '✦ Ask {name} for Today\'s Ideal Timing', 'en 军令词表逐字');
 });
