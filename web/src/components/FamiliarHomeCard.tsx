@@ -395,6 +395,23 @@ const FamiliarHomeCard: React.FC = () => {
   /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
   const [chatOpen, setChatOpen] = useState(false);
 
+  /* 🏆 E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）：手札追问联动通道。
+   *   RxMonographModal 主按钮「✦ 让伴侣为我定制今日调理时辰」⇒ App 层发
+   *   window CustomEvent 'ks-rx-ask'（detail.message 六语追问句）⇒ 此处接收：
+   *   开舱＋pendingAsk 注入 ChatSheet 自动发送（未认领灵宠⇒空壳收不到事件，
+   *   手札照常关闭零破坏）。 */
+  const [rxAsk, setRxAsk] = useState<string | null>(null);
+  useEffect(() => {
+    const onRxAsk = (e: Event) => {
+      const msg = String((e as CustomEvent<{ message?: string }>).detail?.message || '').trim();
+      if (!msg) return;
+      setChatOpen(true);
+      setRxAsk(msg);
+    };
+    window.addEventListener('ks-rx-ask', onRxAsk as EventListener);
+    return () => window.removeEventListener('ks-rx-ask', onRxAsk as EventListener);
+  }, []);
+
   /* 🧭 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊浮层开关（点灵宠气泡内
      「✦ 今日感应锦囊」按钮 ⇒ DailyPouchController 入口拦截——未打卡唤罗盘/
      已打卡直读合璧笺；原独立 ☁️ 罗盘微章按军令物理拔除，严禁并列入口） */
@@ -666,6 +683,8 @@ const FamiliarHomeCard: React.FC = () => {
         greetingMode={chatGreetingMode}
         starCount={starCount}
         onStreamingChange={setChatLive}
+        pendingAsk={rxAsk}
+        onPendingAskConsumed={() => setRxAsk(null)}
       />
     </div>
   );

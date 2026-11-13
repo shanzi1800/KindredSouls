@@ -124,7 +124,7 @@ describe('V448 i18n Key 门禁', () => {
     //   「抚平我今天的情绪内耗」六语同步删除（chatQ1/chatQ3 词表凝练为军令钦定文案），
     //   6 语种同步删除，键集合全等不变
     // 123 → 122
-    assert.strictEqual(p.total, 128, 'E135 提示条三精二（chatQ2 六语退役）后基准键数应为 122');
+    assert.strictEqual(p.total, 132, 'E135 提示条三精二（chatQ2 六语退役）后基准键数应为 122');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

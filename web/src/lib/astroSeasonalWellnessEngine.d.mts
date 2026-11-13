@@ -69,3 +69,23 @@ export function resolveAstroSeasonalWellnessRx(input: {
   geoZone?: string | null;
   lang?: string;
 } | null | undefined): WellnessRxResult;
+
+/* ═══ E137.1-RX-MONOGRAPH-DRAWER（手札数据层声明）═══ */
+/** 四类「顺时调频仪式与配比」六语单源（手札仪式区块） */
+export const RX_RITUAL_GUIDES: Readonly<Record<'elixir' | 'scent' | 'movement' | 'outing', Readonly<Record<'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi', string>>>>;
+/** 伴侣追问句六语模板（{ingredients} 占位） */
+export const RX_ASK_TEMPLATES: Readonly<Record<'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi', string>>;
+/** 手札白名单查询（?rx= 承接唯一真源；未命中 null fail-closed） */
+export interface WellnessRemedyMonograph {
+  remedyId: string;
+  category: string;
+  element: string | null;
+  seasonKey: string | null;
+  ingredients: string;
+  prescription: string;
+  ritualGuide: string;
+  askTemplate: string;
+  affiliateTier: string;
+  sponsorBrand: string | null;
+}
+export function getWellnessRemedyById(remedyId: string | null | undefined, lang?: string): WellnessRemedyMonograph | null;

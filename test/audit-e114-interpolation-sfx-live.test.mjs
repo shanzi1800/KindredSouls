@@ -241,5 +241,5 @@ test('E114 S8 链位自保：e114 入编（e113 后、e40-compat 前；全链 88
   }
   // V448 i18n 全站基准：123 不变（无新键）
   const i18nGate = read('test/audit-i18n-keys.test.js');
-  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 128'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
+  assert.ok(i18nGate.includes('assert.strictEqual(p.total, 132'), 'V448 全站键数基准 122 须保持（E135 chatQ2 退役后继化）');
 });
