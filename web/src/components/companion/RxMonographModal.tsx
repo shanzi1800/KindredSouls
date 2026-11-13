@@ -8,8 +8,10 @@
  *     未命中 null fail-closed ⇒ 父层 replaceState 静默清理，不弹空框零报错）；
  *   · 星盘×节气配伍解析：核心天然成分＋处方叙述（引擎六语内嵌单源）；
  *   · 顺时调频仪式与配比（rx_ritual_guide＋引擎 RX_RITUAL_GUIDES 六语）；
- *   · 主按钮（rx_ask_companion）：关手札＋清 URL ＋向当前伴侣（Milo/Sophia）
- *     发起定制追问（RX_ASK_TEMPLATES 六语模板——父层 CustomEvent 注入对话舱）；
+ *   · 主按钮（rx_ask_companion）：E137.2 升级为灵宠真名动态呼唤（Sophia/Milo——
+ *     认领档单源 companionDisplayName，直链空降回退默认 Sophia，永不残留
+ *     {name} 占位符）；关手札＋清 URL ＋向当前伴侣发起定制追问（追问句句首
+ *     同步呼唤真名；RX_ASK_TEMPLATES 六语模板——父层 CustomEvent 注入对话舱）；
  *   · 底部供应链预留槽（rx_curated_status 灰金静奢徽章；sponsorBrand 恒 null——
  *     未来 affiliateUrl 一键变外链）。
  * 🔴 军规红线：零货币符号零推销字眼（E130 神圣归神圣）；泰语长句
@@ -21,6 +23,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getWellnessRemedyById, type WellnessRemedyMonograph } from '../../lib/astroSeasonalWellnessEngine.mjs';
+// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源；形状由闸门守备）
+import { companionDisplayName } from '../../lib/familiarHome.mjs';
 
 /** 四维分类标签（军令钦定序同 WellnessRxSlot；图标列军规） */
 const RX_CATEGORY_BADGES: ReadonlyArray<{ cat: string; icon: string; labelKey: string }> = Object.freeze([
@@ -59,8 +63,14 @@ export const RxMonographModal: React.FC<RxMonographModalProps> = ({ remedyId, on
   const mono: WellnessRemedyMonograph | null = remedyId ? getWellnessRemedyById(remedyId, lang) : null;
   if (!remedyId || !mono) return null; // fail-closed：白名单未命中零弹框
 
+  // 🏆 E137.2：灵宠真名动态呼唤（认领档 ks_familiar 单源；直链空降回退默认 Sophia）
+  const companionName = companionDisplayName(
+    typeof window !== 'undefined' && window.localStorage ? window.localStorage : null,
+  );
   const badge = RX_CATEGORY_BADGES.find((b) => b.cat === mono.category);
-  const askMessage = mono.askTemplate.replace('{ingredients}', mono.ingredients || mono.remedyId);
+  const askMessage = mono.askTemplate
+    .replace('{name}', companionName)
+    .replace('{ingredients}', mono.ingredients || mono.remedyId);
 
   return createPortal(
     <div
@@ -115,20 +125,20 @@ export const RxMonographModal: React.FC<RxMonographModalProps> = ({ remedyId, on
           {mono.ritualGuide}
         </p>
 
-        {/* 主按钮：让伴侣为我定制今日调理时辰（追问联动） */}
+        {/* 主按钮：让 {name} 为我定制今日调理时辰（E137.2 真名动态呼唤；追问联动） */}
         <button
           type="button" data-testid="rx-monograph-ask"
           onClick={() => onAskCompanion(askMessage)}
           style={{
             display: 'block', width: '100%', marginTop: 20, padding: '12px 14px', borderRadius: 12,
             cursor: 'pointer', fontSize: 14, fontWeight: 600, letterSpacing: '0.04em',
-            color: 'rgba(20,16,10,0.96)', overflowWrap: 'anywhere',
+            color: 'rgba(20,16,10,0.96)', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.6,
             background: 'linear-gradient(135deg, rgba(212,175,55,0.95), rgba(180,140,40,0.95))',
             border: '1px solid rgba(255,220,140,0.5)',
             boxShadow: '0 6px 22px rgba(212,175,55,0.22)',
           }}
         >
-          {t('rx_ask_companion')}
+          {t('rx_ask_companion').replace('{name}', companionName)}
         </button>
 
         {/* 供应链预留槽：灰金静奢徽章（sponsorBrand 恒 null；未来 affiliateUrl 一键外链） */}
