@@ -148,5 +148,12 @@
   "rx_drawer_title": "✦ 时令能量配方手札 ✦",
   "rx_ritual_guide": "顺时调频仪式与配比",
   "rx_ask_companion": "✦ 让 {name} 为我定制今日调理时辰",
-  "rx_curated_status": "全球严选天然植萃配方库 · 精选直达通道筹备中"
+  "rx_curated_status": "全球严选天然植萃配方库 · 精选直达通道筹备中",
+  "wealth_rx_card_title": "✦ 星盘财商与守财罗盘 ✦",
+  "wealth_pillar_cashflow": "财库筑底 · 现金流与五阶律",
+  "wealth_pillar_allocation": "十维配置 · 跨周期资产光谱",
+  "wealth_pillar_credit": "杠杆金律 · 信用护盾与比率",
+  "wealth_pillar_cut_shield": "中年破局 · CUT法则与四护盾",
+  "wealth_ask_companion": "✦ 让 {name} 推演我的本命财库配比",
+  "wealth_edu_disclaimer": "✧ 本指引融合占星周期与经典财商教育框架，仅供个人财务认知启发，不构成任何持牌证券、税务或投资买卖建议。"
 }

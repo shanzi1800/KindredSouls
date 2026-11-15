@@ -148,5 +148,12 @@
   "rx_drawer_title": "✦ Grimoire Botanique de Saison ✦",
   "rx_ritual_guide": "Rituel d'Alignement & Dosage",
   "rx_ask_companion": "✦ Demander à {name} l'Heure Idéale",
-  "rx_curated_status": "Répertoire Botanique Sélectionné · Accès Direct Bientôt Disponible"
+  "rx_curated_status": "Répertoire Botanique Sélectionné · Accès Direct Bientôt Disponible",
+  "wealth_rx_card_title": "✦ Boussole Astro-Patrimoniale ✦",
+  "wealth_pillar_cashflow": "Socle du Trésor · Flux & Cycles de Vie",
+  "wealth_pillar_allocation": "Spectre à 10 Actifs · Équilibre Cyclique",
+  "wealth_pillar_credit": "Règles de Levier · Crédit & Ratios",
+  "wealth_pillar_cut_shield": "Maîtrise Médiane · Règle CUT & 4 Boucliers",
+  "wealth_ask_companion": "✦ Demander mon Allocation Natale à {name}",
+  "wealth_edu_disclaimer": "✧ Alliance de cycles astrologiques et d'éducation patrimoniale à titre purement informatif ; ne constitue aucun conseil financier, fiscal ou juridique agréé."
 }
