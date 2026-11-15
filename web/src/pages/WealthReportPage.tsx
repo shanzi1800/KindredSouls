@@ -46,6 +46,10 @@ import type { WealthGatePlan } from '../components/WealthLoginGate';
 // 🐾 E55-3（主公亲令 2026-10-16）: 2.0 定制殿堂路由接线已战略隐藏（FAMILIAR_CUSTOM_PATH 不再消费）
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, hasExplicitBirthCoords, buildSandboxCompleteRequest, describeSandboxOutcome, sandboxPlanPrice } from '../lib/sandboxCheckout.mjs';
+// 🧪 E138-TESTER-VIP-FULL-FUNNEL-SANDBOX（主公军令 2026-11-13）：双测试总监付费墙保留闸门
+//   ＋沙盒演练会话态（模块级、初始 false、刷新归零）＋一键重置微控件纯核。
+// @ts-ignore —— sandboxTester.mjs 为纯 JS 逻辑核（形状由 e138 闸门守备）
+import { SANDBOX_TESTER_STATUS_PATH, ROMANCE_SESSION_UNLOCK_KEY, L_SANDBOX_TESTER_RESET, setSandboxTester, testerPaywallGate, markSandboxSessionUnlocked, resetSandboxSession } from '../lib/sandboxTester.mjs';
 // 💳 E131-A（主公军令 2026-11-09）：财富 once 档「按盘隔离」纯核（前后端同源，e131 闸门守备）
 // @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核
 import { wealthChartSigFromSearch, wealthOnceChartListed, wealthAllPassActive } from '../lib/wealthChartSig.mjs';
@@ -1110,6 +1114,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
   // 🧪 E47（主公亲令 2026-10-14）: 沙箱测试态探测 + 「测试重置 / 重新推演」执行态
   const [sandboxMode, setSandboxMode] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // 🧪 E138（主公军令 2026-11-13）: 测试总监态（服务端 tester-status 真值；普通用户恒 false
+  //    ⇒ 付费墙保留闸门与重置微控件零激活、零渲染）。
+  const [testerMode, setTesterMode] = useState(false);
   // 🐾 E34-B5: 已领养灵宠（懒初始化自 localStorage ⇒ 刷新后仍显示「带路」状态）
   // 🔒 E49（主公亲令 2026-10-14）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
   //    ② 星盘绑定校验 —— 档案签名与当前盘不一致（或旧档无签名）⇒ 串味，即弃即清；
@@ -1559,6 +1566,20 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         return;
       }
 
+      // 🧪 E138-刀一（主公军令 2026-11-13）：测试总监身份探测 —— 服务端白名单判定
+      //    （名单零下发，普通用户只回 tester:false）；探测异常 ⇒ false fail-closed
+      //    （闸门只增不减：不启用演练闸门 ⇒ 旧 VIP 直通语义零变）。
+      try {
+        const _tsToken = currentToken || (await supabase.auth.getSession()).data.session?.access_token || '';
+        const _tsRes = await fetch(SANDBOX_TESTER_STATUS_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_tsToken}` },
+          body: '{}',
+        });
+        const _tsJ = _tsRes.ok ? await _tsRes.json().catch(() => ({})) : {};
+        setTesterMode(setSandboxTester(!!(_tsJ && _tsJ.tester)));
+      } catch (_) { setTesterMode(setSandboxTester(false)); }
+
       const { data: profiles, error: dbError } = await supabase
         .from('user_profiles')
         .select('paid_plans')
@@ -1602,7 +1623,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
       setPaidPlans(rawPlans);
 
-      if (isWealthPaid) {
+      // 🧪 E138-刀一（主公军令 2026-11-13）：测试总监付费墙保留闸门 —— 双测试账号库内
+      //   虽持 VIP 年卡，本次会话未走完沙盒闭环（拉起支付→模拟确认→回调→解锁）前
+      //   **不跳付费墙**；闭环 granted 后 markSandboxSessionUnlocked('wealth') 收闸。
+      //   普通用户 testerPaywallGate 恒 false ⇒ 旧 VIP 直通语义逐字不变。
+      const _e138TesterGate = testerPaywallGate('wealth');
+      if (isWealthPaid && !_e138TesterGate) {
         setIsUnlocked(true);
         setShowPaywall(false);
       } else {
@@ -1960,6 +1986,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
 
     // 🔓 解锁通路（already_paid 与沙盘 granted 共用同一条，禁两套语义）
     const applyWealthGrant = () => {
+      // 🧪 E138（主公军令 2026-11-13）：沙盒闭环走完 ⇒ wealth 模块本次会话解锁
+      //   （模块级作用域——romance 象独立，跨模块付费墙互不越权；刷新即回演练态）。
+      markSandboxSessionUnlocked('wealth');
       setIsUnlocked(true);
       setShowPaywall(false);
       // 💳 E131-A：付讫即置按盘真值闩（乐观权益快照尚未回库，月报 402 回锁判定先认它）
@@ -2068,6 +2097,8 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       const out = describeSandboxOutcome(data);
       if (out.granted) {
         // 🔓 granted 真值 ⇒ 复用与 already_paid / 真实 webhook 同一条解锁通路
+        // 🧪 E138：升阶档沙盒闭环走完 ⇒ wealth 模块解锁（与 applyWealthGrant 同源语义）
+        markSandboxSessionUnlocked('wealth');
         setUpgradePlan(null);
         setPaidPlans((prev: any) => {
           const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
@@ -3314,6 +3345,28 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
               lang={currentLang}
               onPurchase={handlePurchase}
             />
+            {/* 🧪 E138-刀三（主公军令 2026-11-13）：「🔄 重置沙盒演练」白名单专属微控件 ——
+                仅 testerMode（服务端 tester-status 真值）时渲染；普通用户 DOM 零渲染零泄漏。
+                点击 ⇒ 清 wealth/romance 两象会话态（romance 兼清 E85 键）＋刷新 ⇒ 双模块
+                付费墙全数恢复，供总监反复演练全链沙盒闭环。 */}
+            {testerMode && (
+              <button
+                data-testid="sandbox-tester-reset"
+                onClick={() => {
+                  resetSandboxSession();
+                  try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                  window.location.reload();
+                }}
+                style={{
+                  display: 'block', margin: '14px auto 8px', padding: '8px 18px',
+                  borderRadius: '999px', border: '1px solid rgba(129,216,208,0.45)',
+                  background: 'rgba(129,216,208,0.08)', color: '#81D8D0',
+                  fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'normal', lineHeight: 1.6,
+                }}
+              >
+                {L_SANDBOX_TESTER_RESET[currentLang] || L_SANDBOX_TESTER_RESET.en}
+              </button>
+            )}
           </div>
         )}
 

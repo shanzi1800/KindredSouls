@@ -14825,6 +14825,30 @@ function normalizePlanId(plan) {
 // ── 已购判定（防重复扣款）：宽档覆盖窄档。now 可注入 ⇒ 可测 ──
 //   🛍️ E24⑥②（军师裁决 2026-10-07）：月卡配额**只覆盖月报/年报**，绝不覆盖 $4.99 先天 once
 //   （once 是「永久落库死锁」核心资产，须单买或全通年卡解锁 ⇒ 否则 $9.99 可白嫖 $4.99）。
+
+// ── 🧪 E138-刀一（主公军令 2026-11-13）：双测试总监沙盒演练白名单 ──
+//   口径：双账号（主公 shanzi1800@gmail.com ＋ 合伙人 North northgu916@gmail.com）库内持
+//   VIP 年卡（all_pass_yearly），但**保留全链付费墙**——沙盒态下白名单账号不返回
+//   already_paid 短路，一律落沙盒收银台走「拉起支付→模拟确认（0 扣款）→webhook 回调
+//   →动画解锁」真实闭环；普通 VIP 维持免单直通（语义零变）。名单由环境变量
+//   SANDBOX_TESTER_EMAILS 覆写（逗号/分号分隔），缺省双总监；大小写不敏感。
+//   🔴 名单绝不下发前端（/api/sandbox/tester-status 只回布尔）——普通用户零泄漏。
+const DEFAULT_SANDBOX_TESTER_EMAILS = 'shanzi1800@gmail.com,northgu916@gmail.com';
+function parseSandboxTesterEmails(env) {
+  const raw = (env && env.SANDBOX_TESTER_EMAILS) || DEFAULT_SANDBOX_TESTER_EMAILS;
+  return String(raw).split(/[;,]/).map((s) => String(s || '').trim().toLowerCase()).filter(Boolean);
+}
+function isSandboxTesterEmail(email, env) {
+  if (typeof email !== 'string' || email === '') return false;
+  const list = parseSandboxTesterEmails(env || process.env);
+  return list.indexOf(email.trim().toLowerCase()) !== -1;
+}
+// 组合闸（create-checkout 消费面）：沙盒态＋白名单双条件——独立命名以保持
+// gate45-D2/D3 首个 isSandboxPaymentMode 锚点语义（沙盘分支仍为唯一字面量位）。
+function isSandboxTesterCheckoutBypass(email, env) {
+  return isSandboxPaymentMode(env || process.env) && isSandboxTesterEmail(email, env || process.env);
+}
+
 function planHasAccess(plans, target, now) {
   const p = plans || {};
   const ts = now instanceof Date ? now : new Date();
@@ -15695,7 +15719,10 @@ app.post('/api/create-checkout', async (req, res) => {
     const profiles = profileRes.ok ? await profileRes.json() : [];
     const profile = (Array.isArray(profiles) && profiles[0]) || null;
     const paidPlans = (profile && profile.paid_plans) || {};
-    if (planHasAccess(paidPlans, plan, new Date())) {
+    // 🧪 E138-刀一（主公军令 2026-11-13）：双测试总监白名单 —— 沙盒态下**不返回 already_paid
+    //   短路**（付费墙保留、沙盒收银台必现）；普通 VIP 免单直通语义逐字不变（live 态零执行）。
+    const _e138TesterGate = isSandboxTesterCheckoutBypass(email);
+    if (planHasAccess(paidPlans, plan, new Date()) && !_e138TesterGate) {
       // 💳 E131-A（主公军令 2026-11-09）：once 档按盘隔离 —— 换盘重购是**合法新单**
       //   （账号级 wealth_once 位对新盘不构成 already_paid；全通订阅期内才是真·已拥有）。
       const _e131OnceRebuy = plan === 'wealth_once' && chartSig
@@ -15771,6 +15798,19 @@ app.post('/api/create-checkout', async (req, res) => {
 //   🔴 上架前必办：Stripe Dashboard 的 webhook 端点须指向**本域** `/api/webhook`
 //      （旧 Vercel 域名已弃用）——否则本函数永远收不到回调，权益无从落库。
 //   ⚠️ 本路由用 express.raw 保持原始 body 供验签；**不可**改成 express.json。
+// ── 🧪 E138-刀一（主公军令 2026-11-13）：测试总监身份探测（前端付费墙保留闸门的数据源）──
+//   🔴 fail-closed：仅沙盒测试态开放（缺省 live ⇒ 404 端点视为不存在）。
+//   🔴 零泄漏：回执只含 `{ sandbox, tester }` 布尔——白名单名单、邮箱、userId 一律不下发；
+//      身份判定只在服务端完成，前端拿不到名单本身（普通用户只回 tester:false）。
+//   （段位：居 create-checkout 之后、webhook 之前——避开 Gate 45-A 沙盘端点窗，
+//     既有 G4 注入判据零扰动。）
+app.post('/api/sandbox/tester-status', async (req, res) => {
+  if (!isSandboxPaymentMode(process.env)) return res.status(SANDBOX_DISABLED_STATUS).json({ error: 'Not found' });
+  const who = await _sandboxResolveUser(req);
+  if (who.error) return res.status(who.error).json({ error: who.message });
+  return res.json({ sandbox: true, tester: isSandboxTesterEmail(who.email) });
+});
+
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const stripeSig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
