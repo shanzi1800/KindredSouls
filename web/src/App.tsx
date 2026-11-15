@@ -77,6 +77,11 @@ import { markRecentReport } from './lib/soulRecentReport.mjs';
 import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { dispatchCheckoutRoute, openSandboxCashier, SANDBOX_PAY_PATH } from './lib/sandboxCheckout.mjs';
+// 🧪 E138-TESTER-VIP-FULL-FUNNEL-SANDBOX（主公军令 2026-11-13）：双测试总监沙盒演练——
+//   身份探测（服务端白名单判定，名单零下发）＋「🔄 重置沙盒演练」白名单专属微控件。
+//   romance 付费墙保留闸门＝E85-① 既有 per-session 契约（sessionUnlocked，新测算必现墙）。
+// @ts-ignore —— sandboxTester.mjs 为纯 JS 逻辑核（形状由 e138 闸门守备）
+import { SANDBOX_TESTER_STATUS_PATH, ROMANCE_SESSION_UNLOCK_KEY, L_SANDBOX_TESTER_RESET, setSandboxTester, resetSandboxSession } from './lib/sandboxTester.mjs';
 // 🎨 E83：星际黑金设计令牌（深空曜石底 / 流光毛玻璃 / 星轨进度条 / 三级排版）——
 //    全站奢华重构唯一真源，先于 App.css 载入，供其覆盖具体页面样式。
 import './styles/celestial-tokens.css';
@@ -759,6 +764,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   const [sessionUnlocked, setSessionUnlocked] = useState<boolean>(() => {
     try { return sessionStorage.getItem('ks_compat_session_unlocked') === '1'; } catch { return false; }
   });
+  // 🧪 E138（主公军令 2026-11-13）：测试总监态（服务端 tester-status 真值；普通用户恒 false
+  //    ⇒ 重置微控件零渲染零泄漏）。
+  const [testerMode, setTesterMode] = useState(false);
   const [reportLoading, setReportLoading] = useState<string | false>(false);
   const [reportText, setReportText] = useState<string | null>(null);
   // 🔴 E90-①（主公军令 2026-10-25）：付费墙按钮加载态隔离——被点击的档位 plan
@@ -955,6 +963,17 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           sessionStorage.removeItem('ks_oauth_in_progress');
           setShowAuthWall(false);
           setIsAuthParsing(false);
+          // 🧪 E138-刀一（主公军令 2026-11-13）：测试总监身份探测——服务端白名单判定
+          //    （名单零下发，普通用户只回 tester:false）；探测异常 ⇒ false fail-closed。
+          //    姻缘付费墙保留由 E85-① per-session 契约保障（新测算必现墙，零改动）。
+          fetch(SANDBOX_TESTER_STATUS_PATH, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: '{}',
+          })
+            .then((r) => (r.ok ? r.json().catch(() => ({})) : Promise.resolve({} as any)))
+            .then((j: any) => setTesterMode(setSandboxTester(!!(j && j.tester))))
+            .catch(() => setTesterMode(setSandboxTester(false)));
           // 🛡️ 防呆：URL 带着 intent=checkout → 跳过 checkPaidStatus，等 Active Defense 触发 Stripe
           const urlParams_ = new URLSearchParams(window.location.search);
           const isPendingCheckout_ = urlParams_.get('intent') === 'checkout';
@@ -1717,6 +1736,28 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           }}>
             <PaywallCard lang={lang} loading={loading} activePlan={activePurchasePlan} onPurchase={handlePurchase} />
           </div>
+          {/* 🧪 E138-刀三（主公军令 2026-11-13）：「🔄 重置沙盒演练」白名单专属微控件 ——
+              仅 testerMode（服务端 tester-status 真值）时渲染；普通用户 DOM 零渲染零泄漏。
+              点击 ⇒ 清 wealth/romance 两象会话态（romance 兼清 E85 键）＋刷新 ⇒
+              双模块付费墙全数恢复，供总监反复演练全链沙盒闭环。 */}
+          {testerMode && (
+            <button
+              data-testid="sandbox-tester-reset"
+              onClick={() => {
+                resetSandboxSession();
+                try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                window.location.reload();
+              }}
+              style={{
+                display: 'block', margin: '0 auto 10px', padding: '8px 18px',
+                borderRadius: '999px', border: '1px solid rgba(129,216,208,0.45)',
+                background: 'rgba(129,216,208,0.08)', color: '#81D8D0',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'normal', lineHeight: 1.6,
+              }}
+            >
+              {L_SANDBOX_TESTER_RESET[lang] || L_SANDBOX_TESTER_RESET.en}
+            </button>
+          )}
         </div>
       </div>
     );
