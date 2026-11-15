@@ -29,6 +29,24 @@ export const FAMILIAR_HOME_AVATAR_TESTID = 'familiar-home-avatar';
 /** 认领档 localStorage 键 —— **必须**与 FamiliarPicker.FAMILIAR_LS_KEY 同值（闸门断言） */
 export const FAMILIAR_HOME_LS_KEY = 'ks_familiar';
 
+/* ═══ E140-FIX-HOMEPAGE-FAMILIAR-PERSISTENCE（主公军令 2026-11-15）：业务线溯源 ═══ */
+
+/**
+ * 认领业务线闭集：romance＝姻缘 /result（AdoptFamiliarCTA·d1/t1/c1）；
+ *   wealth＝财富报告页（AdoptFamiliarCTA·报告盘）。
+ * 🔴 病根（军令实测）：三处 E49 校验点全用「异线真值」清洗——首页拿**财富线留痕**
+ *   （ks_last_wealth_report/ks_oauth_back_url）校验**姻缘认领档**（compat 常无出生时间，
+ *   签名必然不匹配）⇒ 首页挂载即删档 ⇒ 灵宠消失。line 字段让校验线感知：
+ *   同线换盘清洗照旧（E49 保真），异线豁免不误杀。
+ */
+export const FAMILIAR_LINES = Object.freeze(['romance', 'wealth']);
+
+/** 档业务线判别（旧档无 line ⇒ '' ⇒ 沿袭 E49 旧行为全局校验，fail-closed 不臆造） */
+export function familiarRecordLine(rec) {
+  const r = normalizeFamiliarRecord(rec);
+  return r ? r.line : '';
+}
+
 /** 五维性格轴（顺序即契约；与 familiar_engine.calculate_familiar_profile 出参 personality 同键） */
 export const FAMILIAR_PERSONALITY_KEYS = Object.freeze([
   'talkative', 'clingy', 'moody', 'sarcastic', 'healing',
@@ -112,6 +130,9 @@ export function normalizeFamiliarRecord(raw) {
     // 🔒 E49（主公亲令 2026-10-14）: 星盘签名 —— 认领档必须与出生盘绑定；
     //   旧档无签名 ⇒ 空串（读取侧判为不匹配 ⇒ 清洗，见 recordMatchesChart）
     chartSig: typeof o.chartSig === 'string' ? o.chartSig : '',
+    // 🔒 E140（主公军令 2026-11-15）: 业务线溯源 —— romance/wealth 闭集之外一律
+    //   空串（旧档语义：沿袭 E49 全局校验行为，绝不臆造线属）
+    line: (o.line === 'romance' || o.line === 'wealth') ? o.line : '',
   };
 }
 
@@ -140,6 +161,44 @@ export function recordMatchesChart(rec, chart) {
   const r = normalizeFamiliarRecord(rec);
   if (!r || !r.chartSig) return false;
   return r.chartSig === familiarChartSig(chart);
+}
+
+/* ═══════════ E140 线感知校验（主公军令 2026-11-15 · 军令断言族真源）═══════════ */
+
+/**
+ * 报告页线感知去留：当前页（currentLine + 当前盘）是否应**保留**该认领档。
+ *   · 档无 line（旧档）⇒ E49 旧语义：recordMatchesChart 定去留；
+ *   · 档 line === currentLine ⇒ E49 同线换盘清洗：签名不匹配 ⇒ 弃；
+ *   · 档 line 异线 ⇒ **跨线豁免恒保留**（romance 认领档不被 wealth 盘误杀，
+ *     wealth 认领档不被 romance 盘误杀——E140 病根根治）。
+ * 纯函数（Node 闸门直接断言）。
+ */
+export function shouldKeepFamiliarRecord(rec, chart, currentLine) {
+  const r = normalizeFamiliarRecord(rec);
+  if (!r) return false;
+  const line = r.line;
+  if (line && FAMILIAR_LINES.indexOf(line) !== -1 && line !== String(currentLine || '')) {
+    return true; // 跨线豁免
+  }
+  return recordMatchesChart(r, chart);
+}
+
+/**
+ * 首页线感知去留（FamiliarHomeCard 挂载即判真源）：
+ *   · truth 为 null（纯首页会话）⇒ 恒保留（沿袭 E49「无真值可校验 ⇒ 保留呈现」）；
+ *   · truth.source === 'url'（当前页查询串——显式新盘信号）⇒ 全线生效，
+ *     recordMatchesChart 定去留（E49 最强语义保留）；
+ *   · truth.source 为 'lastReport'/'oauthBack'（**财富线留痕**）⇒ 仅对 wealth 档
+ *     与旧档生效；romance 线档豁免——姻缘认领灵宠严禁被异线留痕误杀（军令：
+ *     返回首页 100% 稳定常驻，直到测试总监点击「🔄 重置沙盒演练」）。
+ */
+export function shouldKeepFamiliarOnHome(rec, truth) {
+  const r = normalizeFamiliarRecord(rec);
+  if (!r) return false;
+  if (!truth) return true;
+  if (truth.source === 'url') return recordMatchesChart(r, truth);
+  if (r.line === 'romance') return true; // 跨线豁免（E140 根治位）
+  return recordMatchesChart(r, truth);
 }
 
 /** 读档（storage 注入；无档 / 坏档 / 隐私模式 ⇒ null） */
