@@ -124,7 +124,12 @@ describe('V448 i18n Key 门禁', () => {
     //   「抚平我今天的情绪内耗」六语同步删除（chatQ1/chatQ3 词表凝练为军令钦定文案），
     //   6 语种同步删除，键集合全等不变
     // 123 → 122
-    assert.strictEqual(p.total, 132, 'E135 提示条三精二（chatQ2 六语退役）后基准键数应为 122');
+    // 🏆 E139（主公军令 2026-11-15）: 星盘财商智库卡七键入列（顶层 wealth_rx_card_title /
+    //   wealth_pillar_cashflow / wealth_pillar_allocation / wealth_pillar_credit /
+    //   wealth_pillar_cut_shield / wealth_ask_companion / wealth_edu_disclaimer），
+    //   6 语种同步新增，键集合全等不变（军令原文写 138 系笔误——实列 7 键 ⇒ 139）
+    // 122 → 132 → 139
+    assert.strictEqual(p.total, 139, 'E139 星盘财商七键入列后基准键数应为 139');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

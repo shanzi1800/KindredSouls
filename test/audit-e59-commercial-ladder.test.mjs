@@ -136,7 +136,11 @@ test('A2 单买月报/年报**不得**反向解锁 once（SKU 严格解耦）', 
 });
 
 test('A3 月卡配额**不覆盖** once；全通年卡三档全开；前后端逐档同源', () => {
-  const NOW = new Date('2026-10-16T02:00:00Z');
+  // 🛡️ E139（2026-11-15）：时间炸弹根治——前端 feEntitled 用真实时钟判定
+  //   all_pass_expires_at，fixture 旧固定 NOW+30d 恰于 2026-11-15T02:00Z 过期
+  //   （E138 全链凌晨绿、上午即炸）。改为相对真实时钟 ±30 天——前后端断言
+  //   同源且永不过期（几 ms 竞差远小于 30 天窗）。
+  const NOW = new Date();
   const FUTURE = new Date(NOW.getTime() + 30 * 86400000).toISOString();
   const PAST = new Date(NOW.getTime() - 30 * 86400000).toISOString();
   const matrix = [

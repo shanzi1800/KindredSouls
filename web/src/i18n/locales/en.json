@@ -148,5 +148,12 @@
   "rx_drawer_title": "✦ Seasonal Botanical Monograph ✦",
   "rx_ritual_guide": "Solar Alignment & Ritual Dosage",
   "rx_ask_companion": "✦ Ask {name} for Today's Ideal Timing",
-  "rx_curated_status": "Global Curated Botanical Registry · Direct Sourcing Opening Soon"
+  "rx_curated_status": "Global Curated Botanical Registry · Direct Sourcing Opening Soon",
+  "wealth_rx_card_title": "✦ Astro-Wealth & Capital Compass ✦",
+  "wealth_pillar_cashflow": "Vault Foundation · Cashflow & Life Stages",
+  "wealth_pillar_allocation": "10-Class Spectrum · Multi-Asset Balance",
+  "wealth_pillar_credit": "Leverage Rules · Credit & Debt Ratios",
+  "wealth_pillar_cut_shield": "Midlife Mastery · CUT Rule & 4 Shields",
+  "wealth_ask_companion": "✦ Ask {name} for My Natal Wealth Allocation",
+  "wealth_edu_disclaimer": "✧ Combining astrological cycles with classic wealth literacy frameworks for educational insight only; does not constitute licensed investment, tax, or legal advice."
 }

@@ -20506,7 +20506,7 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20754,6 +20754,16 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     );
   }
 
+  // 🆕 E139-刀二（主公军令 2026-11-15）：[ASTRO_WEALTH_ADVISORY_RX] 星盘财商
+  //    智库块——触发链见 chat route（chatQ1 六语文本/财富语义 ⇒ 引擎五阶
+  //    四维处方；buildWealthSystemPromptBlock 引擎单源生成）。金融合规红线：
+  //    块内严禁个股代码、第三方银行品牌与持牌投资建议（铁律行随块下发）；
+  //    wealthBlockText 缺席 ⇒ 块整体不注入（零破坏）。
+  const wealthBlock = [];
+  if (typeof wealthBlockText === 'string' && wealthBlockText.trim()) {
+    wealthBlock.push(wealthBlockText);
+  }
+
   return [
     ...pronounBlock,
     ...identityBlock,
@@ -20762,6 +20772,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ...(lifestyleBlock || []),
     ...(lifestyleGeoBlock || []),
     ...wellnessBlock,
+    ...wealthBlock,
     `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
@@ -21324,6 +21335,17 @@ async function _e137WellnessEngine() {
     return null;
   }
 }
+// 🆕 E139-刀二（主公军令 2026-11-15）：星盘财商智库引擎懒加载（E137 同构形制
+//    ——模块级缓存一次加载；缺席/异常 ⇒ null ⇒ 触发链 fail-soft 零破坏）。
+let _e139WealthMod = null;
+async function _e139WealthEngine() {
+  try {
+    if (!_e139WealthMod) _e139WealthMod = await import('./web/src/lib/astroWealthAdvisoryEngine.mjs');
+    return _e139WealthMod;
+  } catch {
+    return null;
+  }
+}
 app.get('/go/:remedyId', async (req, res) => {
   const slug = String(req.params.remedyId || '').trim();
   const eng = await _e137WellnessEngine();
@@ -21435,6 +21457,35 @@ app.post('/api/familiar/chat', async (req, res) => {
       }
     }
   }
+  // 🆕 E139-刀二（主公军令 2026-11-15）：星盘财商智库与破财避坑触发链——末条
+  //    user message 命中 chatQ1 六语钦定文本或财富语义六语白名单（服务端
+  //    detectWealthIntent 单源）⇒ 引擎按出生年五阶定位＋本命元素众数出四维
+  //    处方（fail-soft：引擎缺席/异常 ⇒ null ⇒ prompt 块不注入＋meta 帧不带
+  //    wealthPrescription，现行为零破坏）。birthData 真值链：body.birth.date
+  //    ＞ auth.userBirthDate（YYYY-MM-DD——与 resolveFamiliarChatTruth 同源）。
+  //    金融合规红线（零银行品牌/零个股代码/零持牌投顾话术）由 e139 闸门守备。
+  let wealthRx = null;
+  let wealthBlockText = null;
+  if (_e137LastUser) {
+    const _e139Eng = await _e139WealthEngine();
+    if (_e139Eng && _e139Eng.detectWealthIntent(_e137LastUser.content)) {
+      try {
+        const _e139Birth = String((body.birth && body.birth.date) || auth.userBirthDate || '').slice(0, 10) || null;
+        wealthRx = _e139Eng.computeAstroWealthPrescription({
+          birthData: _e139Birth,
+          chartSummary: { natal: truth.natal },
+          locale: lang,
+        });
+        wealthBlockText = _e139Eng.buildWealthSystemPromptBlock(wealthRx, lang);
+        if (!wealthRx || !wealthRx.ok) { wealthRx = null; wealthBlockText = null; }
+        console.log(`[E139] wealth rx triggered user=${auth.userId} stage=${wealthRx ? wealthRx.stageKey : 'n/a'} age=${wealthRx ? wealthRx.age : 'n/a'} element=${wealthRx ? wealthRx.dominantElement : 'n/a'}`);
+      } catch (e) {
+        console.warn('[E139] wealth rx failed:', e && e.message);
+        wealthRx = null;
+        wealthBlockText = null;
+      }
+    }
+  }
   // 🆕 E129-刀二（军令 2026-11-09）：会话首击（body.sessionOpen===true 布尔严格
   //    判定）主动节律检索——≤48h 未决事件回溯 ＋ 新月/满月 ±24h 微仪式注入。
   //    非首击/检索失败 ⇒ null ⇒ LIVING_AGENT_CONTEXT 块不注入（零破坏）。
@@ -21452,6 +21503,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     geoZone,
     livingContext,
     wellnessRx,
+    wealthBlockText,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）
@@ -21533,6 +21585,24 @@ app.post('/api/familiar/chat', async (req, res) => {
             },
             exploreSlug: (wellnessRx.supplyChainMeta && wellnessRx.supplyChainMeta[0]
               && wellnessRx.supplyChainMeta[0].redirectSlug) || '/go/rx-elixir-ashwagandha-01',
+          },
+        } : {}),
+        // 🆕 E139-刀二（主公军令 2026-11-15）：星盘财商处方卡投影（六语文案
+        //    已按 lang 就绪；缺席 ⇒ 字段整体不出场，前端卡不渲染零破坏）。
+        //    前端 isWealthAdvisoryMeta 形状守卫 fail-closed 消费。
+        ...(wealthRx && wealthRx.ok && wealthRx.rx ? {
+          wealthPrescription: {
+            stageKey: wealthRx.stageKey,
+            stageName: wealthRx.stageName,
+            age: wealthRx.age,
+            ageSource: wealthRx.ageSource,
+            dominantElement: wealthRx.dominantElement,
+            rx: {
+              cashflow_stage: wealthRx.rx.cashflow_stage,
+              asset_spectrum: wealthRx.rx.asset_spectrum,
+              credit_leverage: wealthRx.rx.credit_leverage,
+              cut_and_legacy: wealthRx.rx.cut_and_legacy,
+            },
           },
         } : {}),
       },
