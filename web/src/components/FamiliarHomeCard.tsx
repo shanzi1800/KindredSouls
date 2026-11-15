@@ -56,7 +56,7 @@ import miloBlink from '../assets/familiar_milo_blink.webp';
 import sophiaTail from '../assets/familiar_sophia_tail.webp';
 import sophiaBlink from '../assets/familiar_sophia_blink.webp';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（形状由 E46 灵宠首页闸门守备）
-import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, recordMatchesChart, triadTruth } from '../lib/familiarHome.mjs';
+import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, shouldKeepFamiliarOnHome, triadTruth } from '../lib/familiarHome.mjs';
 // 🌟 E54-2（主公亲令 2026-10-15）：今日命理赋能真值核 —— 幸运数字/颜色/花朵/贵人方位
 //   （自 E53 撤下的 DailyDashboard 迁移而来；灵宠亲口轮播分享，首页零方框）
 // @ts-ignore —— dailyFortune.mjs 纯逻辑核（确定性/四象方位；见文件头契约）
@@ -100,6 +100,8 @@ interface HomeRecord {
   adoptedAt: string;
   /** 🔒 E49: 星盘签名（birthDate|birthTime|lat|lon|tz 归一）—— 按盘隔离 */
   chartSig?: string;
+  /** 🔒 E140: 业务线溯源（romance/wealth；空＝旧档沿袭全局校验语义） */
+  line?: string;
 }
 
 const FamiliarHomeCard: React.FC = () => {
@@ -203,7 +205,13 @@ const FamiliarHomeCard: React.FC = () => {
   /* ── 挂载：读认领档 ⇒ 有档即破框骑键 ──
      🔒 E49（沿袭）: ① URL ?reset=1 ⇒ 一进页自洁灵宠档；
         ② 星盘绑定校验 —— 有当前盘真值且签名不匹配（或旧档无签名）⇒ 即弃即清，
-        换生日后严禁串出上一张盘的灵宠；无真值可校验（纯首页会话）⇒ 保留呈现。 */
+        换生日后严禁串出上一张盘的灵宠；无真值可校验（纯首页会话）⇒ 保留呈现。
+     🏆 E140（主公军令 2026-11-15）: 校验升级线感知 shouldKeepFamiliarOnHome ——
+        病根＝首页拿**财富线留痕**（ks_last_wealth_report / ks_oauth_back_url）
+        校验**姻缘线认领档**（compat 常无出生时间 ⇒ 签名必然不匹配）⇒ 挂载即删档
+        ⇒ 「/result 解锁选宠回首页灵宠消失」。线感知后：URL 显式新盘信号全线生效
+        （E49 最强语义保留）；财富留痕仅对 wealth 档与旧档生效，romance 档跨线
+        豁免 ⇒ 付讫认领回首页 100% 稳定常驻（军令口径）。 */
   useEffect(() => {
     const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
     const search = (typeof window !== 'undefined' && window.location) ? window.location.search : '';
@@ -212,8 +220,8 @@ const FamiliarHomeCard: React.FC = () => {
     const r = readFamiliarRecord(store, FAMILIAR_LS_KEY);
     const tr = extractBirthTruth(search, store);
     if (r) {
-      if (tr && !recordMatchesChart(r, { birthDate: tr.birthDate, birthTime: tr.birthTime || '', lat: tr.lat, lon: tr.lon, tz: tr.tz })) {
-        clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗（认领收归报告页，首页不再补录）
+      if (!shouldKeepFamiliarOnHome(r, tr)) {
+        clearFamiliarRecord(store, FAMILIAR_LS_KEY); // 串味旧档 ⇒ 清洗（E140 线感知：异线档豁免不误杀）
       } else {
         setRec(r as HomeRecord);
       }

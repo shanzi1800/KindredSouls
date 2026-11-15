@@ -31,7 +31,7 @@ import WealthInsightCard from '../components/WealthInsightCard';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
 import type { FamiliarProfile } from '../components/FamiliarPicker';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
-import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
+import { shouldKeepFamiliarRecord } from '../lib/familiarHome.mjs';
 // 🏆 E112-刀二：最近解锁付费报告追踪凭证（财富三档 [DONE] 终稿收口写入）
 // @ts-ignore —— soulRecentReport.mjs 为纯 JS 逻辑核（形状由 E112 闸门守备）
 import { markRecentReport } from '../lib/soulRecentReport.mjs';
@@ -1131,7 +1131,9 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
       if (!o || !o.profile) return null;
       const _bd = new URLSearchParams(window.location.search).get('birth') || '';
       const _famSigBp = deriveWealthBirthParams(window.location.search, { birthTime: '12:00', lat: 13.75, lon: 100.5, tz: 'Asia/Bangkok' });
-      if (!recordMatchesChart(o, { birthDate: _bd, birthTime: _famSigBp.birthTime, lat: _famSigBp.lat, lon: _famSigBp.lon, tz: _famSigBp.tz })) {
+      // 🏆 E140（主公军令 2026-11-15）: 校验升级线感知 —— 姻缘线认领档（line 'romance'）
+      //   在财富报告页跨线豁免不被误杀；同线（wealth/旧档）换盘清洗照旧 E49 保真。
+      if (!shouldKeepFamiliarRecord(o, { birthDate: _bd, birthTime: _famSigBp.birthTime, lat: _famSigBp.lat, lon: _famSigBp.lon, tz: _famSigBp.tz }, 'wealth')) {
         localStorage.removeItem(FAMILIAR_LS_KEY);
         return null;
       }
@@ -3355,6 +3357,9 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                 onClick={() => {
                   resetSandboxSession();
                   try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                  // 🏆 E140（主公军令 2026-11-15）: 重置联动清灵宠档（与姻缘侧同步）——
+                  //    沙盒解锁态与本轮演练灵宠状态一并清空，供总监下一轮全链复测。
+                  try { localStorage.removeItem(FAMILIAR_LS_KEY); } catch (_) { /* noop */ }
                   window.location.reload();
                 }}
                 style={{
@@ -3715,6 +3720,7 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             lon={_familiarBp.lon}
             tz={_familiarBp.tz}
             lang={currentLang}
+            familiarLine="wealth"
             onLeadHome={() => onNavigate('/')}
           />
         )}

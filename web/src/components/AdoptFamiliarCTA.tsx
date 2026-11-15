@@ -22,8 +22,8 @@ import { supabase } from '../lib/supabase';
 import { RELATION_CARDS, FAMILIAR_LS_KEY, type FamiliarProfile } from './FamiliarPicker';
 // @ts-ignore —— sandboxCheckout.mjs 为纯 JS 逻辑核（形状由 Gate 45-B 闸门守备）
 import { buildFamiliarAdoptPayload, isCleanFamiliarAdoptPayload, dictTerm, FAMILIAR_ADOPT_PATH, ADOPT_CTA_TESTID } from '../lib/sandboxCheckout.mjs';
-// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
-import { familiarChartSig, recordMatchesChart } from '../lib/familiarHome.mjs';
+// @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源；E140 线感知校验真源）
+import { familiarChartSig, shouldKeepFamiliarRecord } from '../lib/familiarHome.mjs';
 
 const GOLD = '#D4AF37';
 
@@ -40,6 +40,10 @@ interface AdoptFamiliarCTAProps {
   lon: number;
   tz: string;
   lang?: string;
+  /** 🏆 E140（主公军令 2026-11-15）: 认领业务线 —— 'romance'（姻缘 /result·d1/t1/c1）
+      / 'wealth'（财富报告页·报告盘）。写档落 line 字段＋挂载校验线感知（异线档
+      跨线豁免，同线换盘清洗照旧 E49 保真）；缺省 '' ⇒ 旧档全局校验语义。 */
+  familiarLine?: string;
   /** 🐾 E52（主公亲令 2026-10-15）: 认领成功后「带路」直达回调 —— 宿主页注入 SPA 路由直跳；
       未注入时兜底 window.location.href='/'（同样是直达，严禁 history.back） */
   onLeadHome?: () => void;
@@ -54,7 +58,7 @@ interface AdoptFamiliarCTAProps {
    两个入口按钮随 E55 撤下（底座 FamiliarCustomPage.tsx 与 $99.99 常量静默保留待 2.0 激活），
    1.0 极致聚焦 $4.99 商业漏斗转化。 */
 
-const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', onLeadHome, onAdopted }) => {
+const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTime, lat, lon, tz, lang = 'zh', familiarLine = '', onLeadHome, onAdopted }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -66,6 +70,8 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
   // 跨刷新留存（灵宠档案是 localStorage 持久化铁律的**唯一例外**，与 FamiliarPicker 同源键）
   // 🔒 E49（主公亲令 2026-10-14）: 星盘绑定校验 —— 签名与当前盘不一致（或旧档无签名）⇒ 即弃即清，
   //   换生日重新生成报告后严禁串出上一张盘的灵宠。
+  // 🏆 E140（主公军令 2026-11-15）: 校验升级线感知 shouldKeepFamiliarRecord ——
+  //   异线档跨线豁免（wealth 线认领档不被姻缘盘误杀）；同线换盘清洗照旧。
   useEffect(() => {
     try {
       const raw = localStorage.getItem(FAMILIAR_LS_KEY);
@@ -73,7 +79,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
       const rec = JSON.parse(raw);
       const name = rec && rec.profile && rec.profile.name;
       if (typeof name === 'string' && name) {
-        if (!recordMatchesChart(rec, { birthDate, birthTime, lat, lon, tz })) {
+        if (!shouldKeepFamiliarRecord(rec, { birthDate, birthTime, lat, lon, tz }, familiarLine)) {
           localStorage.removeItem(FAMILIAR_LS_KEY);
           return;
         }
@@ -82,7 +88,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
         setPersisted(!!rec.persisted);
       }
     } catch (_) { /* 隐私模式忽略 */ }
-  }, [birthDate, birthTime, lat, lon, tz]);
+  }, [birthDate, birthTime, lat, lon, tz, familiarLine]);
 
   const term = (key: string) => {
     const t = dictTerm(ASTRO_TERMS, 'familiar', key, lang);
@@ -123,6 +129,7 @@ const AdoptFamiliarCTA: React.FC<AdoptFamiliarCTAProps> = ({ birthDate, birthTim
           persisted: !!data.persisted,
           adoptedAt: new Date().toISOString(),
           chartSig: familiarChartSig({ birthDate, birthTime, lat, lon, tz }), // 🔒 E49 按盘隔离
+          line: familiarLine, // 🔒 E140 业务线溯源（首页/报告页线感知校验真源）
         }));
       } catch (_) { /* 隐私模式忽略 */ }
       setAdopted(profile.name);

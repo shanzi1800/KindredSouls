@@ -12,7 +12,7 @@ import PaywallCard from './components/PaywallCard';
 // 🐾 E133-ROMANCE-PAYWALL-PARITY（主公军令 2026-11-10）：姻缘付费墙「为你孵化专属灵宠」
 //    前置——与财富模块 E132 动线镜像（先缔结羁绊、后支付解锁）；复用 FamiliarPicker 单源
 //    （E48 门禁 locked=true 拦截＋Toast 引导＋平滑滚动至 $4.99，与 WealthReportPage 同款）。
-import FamiliarPicker from './components/FamiliarPicker';
+import FamiliarPicker, { FAMILIAR_LS_KEY } from './components/FamiliarPicker';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import { TimeInput } from './components/TimeInput';
@@ -1746,6 +1746,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               onClick={() => {
                 resetSandboxSession();
                 try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                // 🏆 E140（主公军令 2026-11-15）: 重置联动清灵宠档 —— 「本轮演练灵宠
+                //    状态」与沙盒解锁态同步清空（军令口径：初始未解锁态＝灵宠亦回未
+                //    认领），供总监下一轮全链复测；iOS 无痕兜底不阻断刷新。
+                try { localStorage.removeItem(FAMILIAR_LS_KEY); } catch (_) { /* noop */ }
                 window.location.reload();
               }}
               style={{
@@ -1881,6 +1885,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               lon={c1.lon}
               tz={c1.tz}
               lang={lang}
+              familiarLine="romance"
             />
           )}
           {/* 🎂 E85-②/③（主公军令 2026-10-24）：宇宙生日年鉴（付费揭晓区纯净结构收尾）——
