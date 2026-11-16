@@ -20558,7 +20558,7 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20598,10 +20598,26 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     wealth_monthly: '财富月报（$2.99 · 流月进财节奏与避坑）',
     wealth_yearly: '财富年报（$29.99 · 四季财富演进与大局）',
   };
-  const rk = recentReport ? `${recentReport.category}_${recentReport.tier}` : '';
+  // 🆕 E142-刀一（主公军令 2026-11-16）：rk 归一化根修——客户端写入侧年报档
+  //  tier='annual'（soulRecentReport 白名单口径），本表恒用 '_yearly' 键。旧
+  //  错位曾致年报解锁后 recentBlock 整体落空（prompt 无报告块）。归一内联
+  //  （annual⇒yearly），与前端 normalizeReportTier 同构单源语义。
+  const _e142TierKey = (t) => (String(t) === 'annual' || String(t) === 'yearly') ? 'yearly' : String(t);
+  const rk = recentReport ? `${String(recentReport.category)}_${_e142TierKey(recentReport.tier)}` : '';
   const recentBlock = REPORT_KIND[rk]
     ? `【主人最近解锁的付费报告（E112 军令，最高优先上下文）】\n主人刚刚解锁了「${REPORT_KIND[rk]}」。主人聊到这份报告时围绕其档位主题展开；报告正文不在你手上，严禁复述或编造报告里的具体数字、结论与内容，只谈主题与陪伴。`
     : '【主人最近解锁的付费报告】无 —— 不主动提及任何报告。';
+
+  // 🆕 E142-刀三（主公军令 2026-11-16）：终端时钟同步块——代词红线块正上方
+  //  置顶注入（军令「System Prompt 顶部注入高优指令」）；坏形状 ⇒ 块整体
+  //  不注入（回退今日现行为零破坏）。拔「不知道时间/服务器 UTC」病灶③。
+  const timeBlock = clientTime ? [
+    '【CLIENT TIME SYNC（E142 军令，违反即失败·置顶高优）】',
+    `- 当前用户所在地精确时间：${clientTime.formattedLocalTime}（时区：${clientTime.timezone}）。`,
+    '- 主人问现在几点/今天星期几/今天几号/什么时辰时，必须按此精确时间作答（按回复语种自然表述，可带温情一句）；严禁回答不知道，严禁以服务器时区或云端 UTC 作答。',
+    '- 谈「今天/今晚/这个月/今年」等时间指代时一律以此时间为基准；问候开场可自然融入时段感（清晨/上午/午后/傍晚/深夜）。',
+    '',
+  ] : [];
 
   // 🏆 E115-刀二（主公军令 2026-11-02）：性别代词红线宪法——置顶最优先层。
   //    E115-FINAL 三阶口径：路由传入 genderCtx（overrides＞乾坤造＞relation_mode
@@ -20817,6 +20833,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
   }
 
   return [
+    ...timeBlock,
     ...pronounBlock,
     ...identityBlock,
     ...moodBlock,
@@ -20931,6 +20948,22 @@ function _e123ActiveMood(v) {
   if (typeof v !== 'string') return null;
   const s = v.trim().toLowerCase();
   return E123_MOOD_WHITELIST.has(s) ? s : null;
+}
+
+/** 🆕 E142-刀三（主公军令 2026-11-16）：客户端随行「终端时钟三件套」形状守卫
+ *  （fail-closed——localISO 严格 YYYY-MM-DDTHH:mm、timezone ≤64 字符、
+ *  formattedLocalTime ≤80 字符；坏形状一律 null ⇒ prompt 不注入【CLIENT
+ *  TIME SYNC】块（回退今日现行为零破坏）。仿 _e118/_e123 形制：客户端
+ *  载荷可被伪造 body，服务端守卫是唯一可信闸门；注入防长串攻击面。） */
+function _e142ClientTime(v) {
+  if (!v || typeof v !== 'object') return null;
+  const iso = typeof v.localISO === 'string' ? v.localISO : '';
+  const tz = typeof v.timezone === 'string' ? v.timezone.trim() : '';
+  const ft = typeof v.formattedLocalTime === 'string' ? v.formattedLocalTime.trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) return null;
+  if (!tz || tz.length > 64 || /[\r\n]/.test(tz)) return null;
+  if (!ft || ft.length > 80 || /[\r\n]/.test(ft)) return null;
+  return { localISO: iso, timezone: tz, formattedLocalTime: ft };
 }
 
 /* ═══ 🐾 E129-刀二（军令 2026-11-09）：主动伴生智能体节律底座 ═══
@@ -21472,6 +21505,10 @@ app.post('/api/familiar/chat', async (req, res) => {
   //  （fail-closed——白名单五原型）⇒ prompt【User Emotional Context】块
   //  唯一真值；坏形状 ⇒ null ⇒ 块不注入（回退今日现行为）。
   const _e123Mood = _e123ActiveMood(body.activeMood);
+  // 🆕 E142-刀三（军令 2026-11-16）：终端时钟三件套形状守卫（fail-closed）
+  //  ⇒ prompt 【CLIENT TIME SYNC】置顶高优块唯一真源；坏形状 ⇒ null
+  //  ⇒ 块不注入（回退今日现行为零破坏）。
+  const _e142Time = _e142ClientTime(body.clientTimeContext);
   // 🏆 E115-FINAL-刀二（主公军令 2026-11-02 午后）：三阶层级解析性别上下文——
   //    第一阶显式 overrides（body.overrides，同性/跨性别预留接口）＞第二阶乾坤造
   //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
@@ -21556,6 +21593,7 @@ app.post('/api/familiar/chat', async (req, res) => {
     livingContext,
     wellnessRx,
     wealthBlockText,
+    clientTime: _e142Time,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）

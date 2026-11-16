@@ -189,7 +189,8 @@ test('E113 S6 刀四流转：freshReport 当日判定＋跨日 helloDaily＋新�
   const sheet = read('web/src/components/FamiliarChatSheet.tsx');
   // ① 当日新解锁判定（unlockedAt 落今日 ⇒ 报告第一击）
   assert.ok(/freshReport = !!\(rr && chatSessionDateKey\(new Date\(Number\(rr\.unlockedAt\)\)\) === today\)/.test(sheet), '缺 freshReport 当日解锁判定');
-  assert.ok(/mode = `\$\{rr\.category\}_\$\{rr\.tier\}` as HelloMode/.test(sheet), '当日新解锁须映射六档第一击');
+  // 🆕 E142 后继化：tier 归一化（annual→yearly 根修）——写入侧 'annual' 与消费端 '_yearly' 错位病灶根治
+  assert.ok(/`\$\{rr\.category\}_\$\{normalizeReportTier\(rr\.tier\)\}` as HelloMode/.test(sheet), '当日新解锁须映射六档第一击（E142 归一化新形态）');
   // ② 新解锁晚于最后一条消息 ⇒ 重置（「立即重置为最新报告第一击」军令钦定）
   assert.ok(/freshReport && Number\(rr\.unlockedAt\) > lastTs/.test(sheet), '缺新解锁重置判定（解锁晚于末条消息⇒重置）');
   // ③ 跨自然日 ⇒ helloDaily 锦囊问候（lastChatDay < today）
@@ -239,7 +240,7 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 109, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 110, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));

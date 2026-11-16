@@ -92,8 +92,9 @@ test('E135-C 刀三：提示条三精二——chatQ2 六语退役＋chatQ1/Q3 �
   const sheet = read('web/src/components/FamiliarChatSheet.tsx');
 
   // ① 组件侧：药丸数组恰两颗（chatQ1/chatQ3），chatQ2 调用零引用（注释提及不算）
-  assert.ok(sheet.includes("const pills = [t('familiar.chatQ1'), t('familiar.chatQ3')];"),
-    'pills 数组须恰为 [chatQ1, chatQ3]');
+  // 🆕 E142 后继化：P1 话题胶囊前置（军令钦定有序展开）——基底仍恰两颗 chatQ1/chatQ3
+  assert.ok(/const pills = _e142P1Pill\s*\?\s*\[_e142P1Pill, t\('familiar\.chatQ1'\), t\('familiar\.chatQ3'\)\]\s*\n\s*: \[t\('familiar\.chatQ1'\), t\('familiar\.chatQ3'\)\]/.test(sheet),
+    'pills 数组基底须为 [chatQ1, chatQ3]（E142 P1 胶囊前置新形态）');
   assert.ok(!/t\('familiar\.chatQ2'\)/.test(sheet), 'ChatSheet 仍调用退役键 familiar.chatQ2');
 
   // ② 六语键契约：chatQ2 死键（六语全无）＋chatQ1/chatQ3 军令钦定逐字
@@ -133,7 +134,7 @@ test('E135-S 链位自保：e135 入编（e134 后、e40-compat 前；全链 102
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 109, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);
+  assert.equal(segs.length, 110, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);
   const iE135 = segs.findIndex((s) => s.includes('audit-e135-chat-geometry-pills'));
   const iE134 = segs.findIndex((s) => s.includes('audit-e134-aesthetic-25d-route-map'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat'));

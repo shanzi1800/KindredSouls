@@ -35,6 +35,11 @@ import { shouldKeepFamiliarRecord } from '../lib/familiarHome.mjs';
 // 🏆 E112-刀二：最近解锁付费报告追踪凭证（财富三档 [DONE] 终稿收口写入）
 // @ts-ignore —— soulRecentReport.mjs 为纯 JS 逻辑核（形状由 E112 闸门守备）
 import { markRecentReport } from '../lib/soulRecentReport.mjs';
+// 🆕 E142-刀二（主公军令 2026-11-16）：财富月/年报按钮文案与价格契约——
+//    军令钦定六语译表（未解锁含 $2.99/$29.99；已解锁「查看」）＋已解锁
+//    提示行，独立纯函数模块抽离（改 B 坏 A 工程病灶物理拔除；零 i18n 新键）。
+// @ts-ignore —— paywallPriceContract.mjs 为纯 JS 逻辑核（形状由 E142 闸门守备）
+import { wealthReportButtonLabel, vipUnlockedHintLabel } from '../lib/paywallPriceContract.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
 // 💎 E59（主公雷霆军令 2026-10-16）: 财富「升阶」专属付费墙 —— $2.99 流月 / $29.99 宇宙生日年鉴
@@ -3439,25 +3444,25 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', paddingTop: '2px' }}>
                     {_canMonthly ? (
                       <button onClick={() => generateWealthReport('monthly', true)} disabled={reportLoading === 'wealth_monthly'} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_monthly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_monthly' ? 'not-allowed' : 'pointer' }}>
-                        {reportLoading === 'wealth_monthly' ? '⏳...' : t('wealthReport.monthlyReport')}
+                        {reportLoading === 'wealth_monthly' ? '⏳...' : (wealthReportButtonLabel('wealth_monthly', currentLang, true) || t('wealthReport.monthlyReport'))}
                       </button>
                     ) : (
                       <button data-testid="wealth-upgrade-open-monthly" onClick={() => openUpgradePaywall('wealth_monthly_report')} disabled={!!reportLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                        📅 {t('wealthReport.unlockMonthly')}
+                        {wealthReportButtonLabel('wealth_monthly', currentLang, false) || t('wealthReport.unlockMonthly')}
                       </button>
                     )}
                     {_canYearly ? (
                       <button onClick={() => generateWealthReport('yearly', true)} disabled={reportLoading === 'wealth_yearly'} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading === 'wealth_yearly' ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '12px', fontWeight: 600, cursor: reportLoading === 'wealth_yearly' ? 'not-allowed' : 'pointer' }}>
-                        {reportLoading === 'wealth_yearly' ? '⏳...' : t('wealthReport.yearlyReport')}
+                        {reportLoading === 'wealth_yearly' ? '⏳...' : (wealthReportButtonLabel('wealth_yearly', currentLang, true) || t('wealthReport.yearlyReport'))}
                       </button>
                     ) : (
                       <button data-testid="wealth-upgrade-open-yearly" onClick={() => openUpgradePaywall('wealth_yearly_report')} disabled={!!reportLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(129,216,208,0.4)', background: reportLoading ? '#444' : 'rgba(129,216,208,0.1)', color: '#81D8D0', fontSize: '12px', fontWeight: 600, cursor: reportLoading ? 'not-allowed' : 'pointer' }}>
-                        📆 {t('wealthReport.unlockYearly')}
+                        {wealthReportButtonLabel('wealth_yearly', currentLang, false) || t('wealthReport.unlockYearly')}
                       </button>
                     )}
                   </div>
                   {(_canMonthly && _canYearly) ? (
-                    <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px', textAlign: 'center' }}>✨ {t('wealthReport.vipFree')}</div>
+                    <div style={{ fontSize: '10px', color: '#81D8D0', marginTop: '4px', textAlign: 'center' }}>✨ {vipUnlockedHintLabel(currentLang) || t('wealthReport.vipFree')}</div>
                   ) : (
                     <div style={{ fontSize: '10px', color: 'rgba(129,216,208,0.6)', marginTop: '4px', textAlign: 'center' }}>
                       💡 {UPGRADE_HINTS[currentLang] || UPGRADE_HINTS['en']}
