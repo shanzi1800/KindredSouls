@@ -55,6 +55,18 @@ import { detectLifestyleIntent } from '../lib/detectLifestyleIntent.mjs';
 //    读取（当日＋2h 时效）＋5 情绪×6 语第一人称共情首句字典（零 i18n 新键）。
 // @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
 import { readActiveMood, moodGreetingLine } from '../lib/companionMoodGreetings.mjs';
+// 🆕 E142-刀一（主公军令 2026-11-16）：灵宠有序话题记忆栈——P1 已解锁付费报告
+//    话题（隔日持久锚）＋P2 罗盘情绪串联合成器＋tier 归一化根修（写入侧年报档
+//    'annual' 与消费端 '_yearly' 错位曾致模式落空跌 plain 兜底——病灶①真根）
+//    ＋P1 话题胶囊前置（军令钦定「1. 塔罗/姻缘→2. 先天财富→3. 今日情绪」序）。
+// @ts-ignore —— companionTopicQueue.mjs 纯 JS 逻辑核（形状由 E142 闸门守备）
+import { resolveCompanionGreetingAndQueue, normalizeReportKey, normalizeReportTier, topicPillLabel } from '../lib/companionTopicQueue.mjs';
+// 🆕 E142-刀三（主公军令 2026-11-16）：用户终端时钟同步三件套——每次聊天
+//    请求实时构造随 body 上行（localISO/timezone/formattedLocalTime 含星期
+//    与时段）；服务端形状守卫后注入 System Prompt 顶部高优块（拔「不知道
+//    时间/服务器 UTC」病灶③；fail-soft：构造异常 ⇒ 不传 ⇒ 现行为零破坏）。
+// @ts-ignore —— clientTimeContext.mjs 纯 JS 逻辑核（形状由 E142 闸门守备）
+import { buildClientTimeContext } from '../lib/clientTimeContext.mjs';
 import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
 import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 // 🏆 E124-LIFESTYLE-MUSE 刀四（主公军令 2026-11-05）：生活卡微缩插槽＋
@@ -84,7 +96,7 @@ export type FamiliarIp = 'Milo' | 'Sophia';
  *  🏆 E123-刀四：新增 mood 分支——罗盘情绪记忆（ks_active_mood 当日＋2h
  *  时效命中）⇒ 5 情绪×6 语第一人称共情抚慰首句（军令钦定句式逐字）。 */
 type HelloMode =
-  | 'sweet' | 'soothe' | 'plain' | 'daily' | 'mood'
+  | 'sweet' | 'soothe' | 'plain' | 'daily' | 'mood' | 'p1queue'
   | 'love_core' | 'love_monthly' | 'love_yearly'
   | 'wealth_core' | 'wealth_monthly' | 'wealth_yearly';
 
@@ -239,6 +251,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E123-刀四：罗盘情绪记忆锚（open 时读一次；mood 分支首语查表真源——
    *  舱开着切语言重渲染 effect 按 helloMode==='mood' 用当前 lang 重查字典） */
   const activeMoodRef = useRef<string | null>(null);
+  /* 🆕 E142-刀一（军令 2026-11-16）：有序话题快照锚（open 时锚一次——p1queue
+   *  首句与 P1 话题胶囊消费真源；rr＝soul_recent_unlocked_report 持久档、
+   *  mood＝ks_active_mood 2h 窗——队列合成自两真源，不另立存储防双源漂移） */
+  const topicSnapshotRef = useRef<{ rr: { category?: string; tier?: string } | null; mood: string | null } | null>(null);
   /* 🏆 E118-刀二：用户姓名档案锚（open 时读永久档一次；跨日首语带名真源——
    *  档案 ks_familiar_profile_${chartSig} 永不过期，与当日 24:00 过期的会话档解耦） */
   const profileNameRef = useRef('');
@@ -254,6 +270,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     //  走报告真值查表（tarotNames.mjs 单源），无真值 ⇒ 中性词（fail-closed，
     //  绝不臆造具体牌名——《恋人》写死病根物理拔除）
     const vars = () => resolveHelloVars(lang, helloTruthRef.current);
+    if (mode === 'p1queue') {
+      // 🆕 E142-刀一（军令 2026-11-16）：有序话题队列首句——P1 已解锁报告话题
+      //  （六档六语自容字典，零 i18n 新键）＋P2 罗盘情绪丝滑串联；姓名档案在场
+      //  ⇒ 六语前缀带名（E118 装配同构）；合成器 fail-closed null ⇒ 现行为兜底。
+      //  严禁跌回「我在呢。今天想聊点什么？」冷启动兜底语（军令锁 1 红线——
+      //  合成器内部已双形态查杀，此处再兜一层）。舱开着切语言实时按当前 lang
+      //  重查字典（快照存输入不存产出——语言不锁死）。
+      const snap = topicSnapshotRef.current;
+      const q = snap ? resolveCompanionGreetingAndQueue({
+        recentReport: snap.rr, activeMood: snap.mood, lang, userName: profileNameRef.current,
+      }) : null;
+      if (q && q.firstLine) return q.firstLine;
+      return helloFor('plain');
+    }
     if (mode === 'mood') {
       // 🏆 E123-刀四（军令 2026-11-04）：罗盘情绪记忆第一击——5 情绪×6 语
       //  第一人称共情抚慰句（COMPANION_MOOD_GREETINGS 军令钦定句式逐字；
@@ -314,6 +344,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     } catch { /* 无痕模式 ⇒ 中性词兜底（fail-soft 不臆造） */ }
     try {
       const rr = readRecentReport(store);
+      // 🆕 E142-刀一（军令 2026-11-16）：P1/P2 话题快照锚＋罗盘情绪读取前置
+      //  （当日会话档复原分支同样供 P1 话题胶囊——多轮储备按军令钦定序展开）。
+      let _e142Mood: string | null = null;
+      try { _e142Mood = readActiveMood(sessionStorage); } catch { _e142Mood = null; }
+      activeMoodRef.current = _e142Mood;
+      topicSnapshotRef.current = { rr, mood: _e142Mood };
       // E113-刀四：当日新解锁判定（unlockedAt 落今日本地日期）
       const freshReport = !!(rr && chatSessionDateKey(new Date(Number(rr.unlockedAt))) === today);
       // ① E113-刀三：当日未过期会话档在场 ⇒ 复原全部历史（禁重复首句）
@@ -328,15 +364,22 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       let mode: HelloMode = greetingMode || 'plain';
       // 🏆 E123-刀四（军令 2026-11-04）：罗盘情绪记忆首语拦截——当日有效
       //  ks_active_mood（≤2h）命中 ⇒ 强制替换默认冷淡招呼为对应情绪的
-      //  第一人称共情抚慰句（军令验收：默认句「在的，今天有什么可以聊的」
-      //  命中率 0）。优先级：当日新解锁报告第一击（E112）＞罗盘情绪（E123）
-      //  ＞跨日锦囊问候（E113）＞E111 情境链。当日档复原分支已在上方 return。
-      let e123Mood: string | null = null;
-      try { e123Mood = readActiveMood(sessionStorage); } catch { e123Mood = null; }
-      activeMoodRef.current = e123Mood;
+      //  第一人称共情抚慰句。优先级（E142 升序重排）：当日新解锁报告第一击
+      //  （E112，情绪在场则 P1+P2 串联）＞ P1 持久话题锚（E142 新增）＞罗盘
+      //  情绪（E123）＞跨日锦囊问候（E113）＞E111 情境链。当日档复原分支已在上方 return。
       if (rr && freshReport) {
-        mode = `${rr.category}_${rr.tier}` as HelloMode; // 当日新解锁 ⇒ 报告第一击（军令刀四）
-      } else if (e123Mood) {
+        // 当日新解锁 ⇒ 报告第一击（军令刀四）；🆕 E142-刀一：罗盘情绪同时在
+        //  场 ⇒ 升级 P1+P2 串联首句（军令钦定「首句 P1+P2 丝滑串联」）；
+        //  tier 归一化根修——写入侧年报档 'annual' 与消费端 '_yearly' 错位
+        //  曾致模式落空跌 plain 兜底（主公产线实锤病灶①真根）。
+        mode = (_e142Mood && normalizeReportKey(rr)) ? 'p1queue'
+          : `${rr.category}_${normalizeReportTier(rr.tier)}` as HelloMode;
+      } else if (rr && normalizeReportKey(rr)) {
+        // 🆕 E142-刀一：P1 持久锚——报告解锁非当日（隔日回访），话题队列仍以
+        //  P1 报告话题为第一顺位（P2 情绪若在 2h 窗内随行串联），严禁跌回
+        //  冷启动兜底语（军令病灶①根治——队列非破坏性，情绪不覆盖报告锚）。
+        mode = 'p1queue';
+      } else if (_e142Mood) {
         mode = 'mood'; // 罗盘情绪在场 ⇒ 情绪共情第一击（E123 军令刀四）
       } else {
         const lastDay = readLastChatDay(store);
@@ -500,6 +543,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (tz) timezone = tz;
       } catch { /* Intl 缺席 ⇒ 不传 */ }
+      // 🆕 E142-刀三（军令 2026-11-16）：终端时钟三件套实时构造随行（每次
+      //  聊天请求都带——时钟同步不随轮次衰减；fail-soft 构造异常 ⇒ 不传）
+      let clientTimeContext: { localISO: string; timezone: string; formattedLocalTime: string } | undefined;
+      try {
+        clientTimeContext = buildClientTimeContext(undefined, timezone, lang);
+      } catch { clientTimeContext = undefined; }
       const body = {
         lang,
         relationMode,
@@ -509,6 +558,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         sessionOpen: firstStrikeRef.current === true ? true : undefined,
         // 🆕 E126-刀三：物理区域时区随行（服务端白名单 fail-closed）
         timezone,
+        // 🆕 E142-刀三：用户终端时钟三件套随行（服务端形状守卫后注入 prompt）
+        clientTimeContext,
         // 🏆 E123-刀四：罗盘情绪真值随行（服务端白名单 fail-closed）
         activeMood,
         // 🏆 E118-刀二：永久姓名档案随行（服务端查形状 fail-closed 后进 prompt）
@@ -660,8 +711,16 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
 
   /* 🏆 E135-刀三（主公军令 2026-11-11）：提示条三精二——旧情绪安抚药丸（familiar.chatQ2）
    *    六语退役；chatQ1（今日财运与破财避坑）原样保留；
-   *    chatQ3 凝练为「结合星盘的今日指引」（六语军令钦定词表逐字）。 */
-  const pills = [t('familiar.chatQ1'), t('familiar.chatQ3')];
+   *    chatQ3 凝练为「结合星盘的今日指引」（六语军令钦定词表逐字）。
+   * 🆕 E142-刀一（军令 2026-11-16）：P1 话题胶囊前置——最近解锁报告在场 ⇒
+   *    「1. 塔罗/姻缘→2. 先天财富」序位胶囊置首（军令钦定有序展开；六语自容
+   *    零 i18n 新键；chatQ1/Q3 原样保留——e133 钦定词表铁律；点击直发 send
+   *    ⇒ 服务端 recentReport 块＋话题语义持续咬合）。 */
+  const _e142P1Pill = (topicSnapshotRef.current && topicSnapshotRef.current.rr)
+    ? topicPillLabel(topicSnapshotRef.current.rr as { category?: string; tier?: string }, lang) : null;
+  const pills = _e142P1Pill
+    ? [_e142P1Pill, t('familiar.chatQ1'), t('familiar.chatQ3')]
+    : [t('familiar.chatQ1'), t('familiar.chatQ3')];
   const avatar = ip === 'Milo' ? miloSprite : sophiaSprite;
 
   return createPortal(

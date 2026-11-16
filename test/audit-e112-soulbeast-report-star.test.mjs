@@ -99,7 +99,8 @@ test('E112 S4 刀二首语引擎：六档报告第一击最优先＋「我在呢
   for (const k of ['helloLoveCore', 'helloLoveMonthly', 'helloLoveYearly', 'helloWealthCore', 'helloWealthMonthly', 'helloWealthYearly']) {
     assert.ok(sheet.includes(`t('familiar.${k}'`), `首语六档缺 ${k}`);
   }
-  assert.ok(/mode = `\$\{rr\.category\}_\$\{rr\.tier\}` as HelloMode/.test(sheet), '六档报告第一击映射缺失（category_tier）');
+  // 🆕 E142 后继化：tier 归一化（annual→yearly 根修）＋罗盘情绪在场升级 p1queue 串联
+  assert.ok(/mode = \(_e142Mood && normalizeReportKey\(rr\)\) \? 'p1queue'\s*\n\s*: `\$\{rr\.category\}_\$\{normalizeReportTier\(rr\.tier\)\}` as HelloMode/.test(sheet), '六档报告第一击映射缺失（E142 归一化新形态 category_normalizeReportTier）');
   // ② 最优先契约（E113 后继语义）：开舱判定链＝当日会话档复原优先（禁首语复读）→
   //    当日新解锁报告（freshReport）⇒ 六档第一击 → 跨日锦囊流转（daily）→ E111 日标记链。
   //    E112 旧「recentReport 长期有效不受日标记约束」由 E113 军令刀四收窄为「当日有效」。
@@ -225,5 +226,5 @@ test('E112 S8 六语六键＋链位自保（e111 后、e40-compat 前；全链 8
   assert.ok(i111 < i112 && i112 < iCap, 'E112 须按序排在 e111 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 109, `军规链段数须为 91（E118 后继化 90→91；实为 ${segs.length}）`);
+  assert.equal(segs.length, 110, `军规链段数须为 91（E118 后继化 90→91；实为 ${segs.length}）`);
 });
