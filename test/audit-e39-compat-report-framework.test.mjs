@@ -168,12 +168,17 @@ test('B2 动态月窗行为级：两态输入产出互异月窗（时间轴现�
   assert.ok(a.weeks[0].start.startsWith('2027-03'), `月窗起点漂移：${a.weeks[0].start}`);
   assert.ok(a.weeks[3].end.startsWith('2027-03-31'), `月窗终点漂移：${a.weeks[3].end}`);
 });
-test('B3 年报双态：宇宙生日锚定 Solar Return 与无生日自然年回退互异', () => {
+test('B3 年报双态：🔴 E141 前瞻窗（付费次月锚）——生月退役，有/无生日恒同窗', () => {
+  // 🔴 E141 基线化（主公军令 2026-11-16 修正版）：旧断言「有/无生日年报窗互异
+  //    （Solar Return 生日锚生效）」语义被军令推翻——姻缘年报窗锚＝付费测算次月，
+  //    生日月份退役不再参与取窗 ⇒ 有/无生日必须同窗（倒退窗病根即生日锚）。
   const mod = createRequire(path.join(ROOT, 'package.json'))(path.join(ROOT, 'api', 'ai-advisor.js'));
   const sr = mod.buildCompatTimeContext('yearly', new Date('2027-03-15T00:00:00Z'), '1990-08-05', 'zh');
   const nat = mod.buildCompatTimeContext('yearly', new Date('2027-03-15T00:00:00Z'), null, 'zh');
-  assert.notEqual(sr.timeText, nat.timeText, '有/无生日年报窗相同 ⇒ Solar Return 锚失效');
-  assert.ok(sr.solarReturnStart || sr.anchor, 'Solar Return 锚字段缺失');
+  assert.equal(sr.timeText, nat.timeText, '有/无生日年报窗必须同窗（E141 生月退役铁律违例）');
+  assert.equal(sr.windowStart, '2027-04-01', '2027-03 付费 ⇒ 次月 2027-04-01 起（前瞻窗锚）');
+  assert.equal(sr.windowEnd, '2028-03-31', '推演 12 个整月 ⇒ 2028-03-31 止');
+  assert.equal(sr.anchor, 'forward_next_month', '前瞻锚字段缺失');
 });
 test('B4 注入必红：把动态月窗替换为固定字面量 ⇒ B2 判据必红（同源判据）', () => {
   const require2 = createRequire(path.join(ROOT, 'package.json'));

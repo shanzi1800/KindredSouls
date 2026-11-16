@@ -1900,7 +1900,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
               </div>
               <div style={{ fontSize: '11px', color: '#E9D8A6', marginBottom: '8px', lineHeight: 1.5 }}>
-                {lang === 'zh' ? '基于您的 Solar Return（太阳返照日）生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจาก Solar Return ของคุณ พระตำหนักโชคชะตา 12 เดือนจะปรากฏ' : 'Dựa trên Solar Return, bản đồ 12 tháng được vẽ nên.'}
+                {/* 🔴 E141-六语单语纯净锁（主公军令 2026-11-16）：zh 副标题去 Solar Return 英文残留
+                    （钦定文案「基于您的太阳返照盘生成」）；th/vi 同步纯语化（原文内嵌 Solar Return 英文词）。 */}
+                {lang === 'zh' ? '基于您的太阳返照盘生成，推演未来12个月的命运蓝图' : lang === 'en' ? "Based on your Solar Return, a 12-month destiny blueprint unfolds." : lang === 'es' ? 'Basado en tu Retorno Solar, un mapa de 12 meses se despliega.' : lang === 'fr' ? 'Basé sur votre Retour Solaire, une carte de 12 mois se dévoile.' : lang === 'th' ? 'อิงจากวงรอบดวงอาทิตย์ของคุณ แผนชะตา 12 เดือนจะปรากฏ' : 'Dựa trên chu kỳ Mặt Trời của bạn, bản đồ 12 tháng được vẽ nên.'}
               </div>
               {/* 📅 月报按钮：E87-②（主公军令 2026-10-25）——账号级权益旁路退役
                   （曾致未付直调生成接口被后端按当次权益判定拒绝、报「生成报告失败」）。

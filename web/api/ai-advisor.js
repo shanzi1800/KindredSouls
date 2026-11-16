@@ -1477,23 +1477,22 @@ function _isoDate(d) { return `${d.getUTCFullYear()}-${_pad2(d.getUTCMonth() + 1
 
 // ── 年报宇宙周期窗（Solar Return 优先；缺出生日 ⇒ 当下起算 365 天，并如实标注锚点）──
 function _compatSolarWindow(birthDate, now) {
-  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(birthDate == null ? '' : birthDate).trim());
-  if (m) {
-    const bm = Number(m[2]), bd = Number(m[3]);
-    const y = now.getUTCFullYear();
-    let start = new Date(Date.UTC(y, bm - 1, bd));
-    if (now < start) start = new Date(Date.UTC(y - 1, bm - 1, bd));
-    const end = new Date(Date.UTC(start.getUTCFullYear() + 1, bm - 1, bd));
-    return { start: _isoDate(start), end: _isoDate(end), anchor: 'solar_return' };
-  }
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 365));
-  return { start: _isoDate(now), end: _isoDate(end), anchor: 'now_plus_365d' };
+  // 🔴 E141（主公军令 2026-11-16 · 修正版）：姻缘年报时间窗彻底前瞻化——
+  //   起点＝付费测算当日所在月的**下一个自然月** 1 日，推演 12 个整月；
+  //   生日月份（birthDate）自 E141 起退役不再参与取窗（旧「最近一次已发生的
+  //   太阳返照」锚在 12 月生人 2026-11 解锁时会倒退回 2025-12 生成过去回顾——
+  //   主公实锤病灶）。参数签名保留 birthDate 位（调用面零改动），体内不消费。
+  const d = (now instanceof Date && !isNaN(now.getTime())) ? now : new Date();
+  const y = d.getUTCFullYear(), m = d.getUTCMonth();
+  const start = new Date(Date.UTC(y, m + 1, 1));            // 付费次月 1 日
+  const end = new Date(Date.UTC(y, m + 13, 0));             // 次月起第 12 个月的月末
+  return { start: _isoDate(start), end: _isoDate(end), anchor: 'forward_next_month' };
 }
 
 /**
  * 🛡️ E39 动态时间轴真值（**唯一真源**，全仓不得另算一份）。
  *   monthly ⇒ 当下自然月 + 严格 4 周区间（1-7 / 8-14 / 15-21 / 22-月末，严丝合缝覆盖整月）；
- *   yearly  ⇒ 宇宙周期 12 个月（Solar Return 优先，回退当下起算 365 天）；
+ *   yearly  ⇒ 🔴 E141 前瞻 12 个月（付费测算次月起 12 个整月，生月退役——见 _compatSolarWindow）；
  *   once    ⇒ 贯穿全程（无时段切分）。
  * 缺真值（非法 now）⇒ 以当下回退，绝不伪造月份字面量。
  */

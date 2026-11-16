@@ -513,7 +513,8 @@ function checkStructure(serverSrc, pageSrc) {
     //    段距拉长（结构次序未变，闸门仍在 callAI 之前）⇒ 窗口 7000 → 11000 → 12000
     //    （🔴 E97 后继化：E92/E94/E96/E97 锁与流式注入拉长段距，实测 11042 ⇒ 12000 留余量）。
     //    （🔴 E103-③ 后继化：fr/es 排版 wash 层注入再拉长段距 ⇒ 12000 → 13000）。
-    const advSeg = serverSrc.slice(advIdx, advIdx + 13000);
+    //    （🔴 E141 后继化：Gate41 前瞻窗盐掺入拉长段距（实测 13535）⇒ 13000 → 14000）。
+    const advSeg = serverSrc.slice(advIdx, advIdx + 14000);
     need(advSeg.includes("resolveReportEntitlement(req, 'compatibility'"), 'B10b: 合婚端点缺 compatibility 域权益解析（匿名可烧 AI）');
     need(advSeg.includes('compatibilityPeriodLock('), 'B10c: 合婚端点缺周期死锁护栏');
     need(advSeg.includes('compatibilityDailyRateLimit('), 'B10d: 合婚端点缺每日熔断护栏');
@@ -741,8 +742,8 @@ test('C17 注入：合婚闸门挪到 callAI 之后（先烧后拦）⇒ B10f �
   const advIdx = SERVER_SRC.indexOf("app.use('/api/ai-advisor'");
   assert.ok(advIdx !== -1, '找不到合婚端点');
   // 🔴 E89 语义演进：同 B10f 窗口径（7000 → 11000 → 12000，E97 后继化拉长段距；
-  //    E103-③ fr/es wash 层再拉长 ⇒ 13000）。
-  const seg = SERVER_SRC.slice(advIdx, advIdx + 13000);
+  //    E103-③ fr/es wash 层再拉长 ⇒ 13000；🔴 E141 前瞻窗盐拉长（实测 13535）⇒ 14000）。
+  const seg = SERVER_SRC.slice(advIdx, advIdx + 14000);
   const rel = seg.indexOf('await callAI(');
   assert.ok(rel !== -1, '找不到合婚端点内的 callAI 锚点');
   const abs = advIdx + rel;

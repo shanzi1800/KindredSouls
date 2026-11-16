@@ -61,7 +61,8 @@ test('E95-②-1 行为级：deriveCompatReportId 版本盐分流（once 掺盐�
   assert.notEqual(idOld, idNew, 'once 掺盐后 ID 必须变化（旧存量未作废）');
   // 幂等：同盐同输入 ⇒ 同 ID
   assert.equal(idNew, deriveCompatReportId({ ...base, promptSalt: 'e95_bazi_lock' }), '盐幂等破坏');
-  // 月报/年报不掺盐 ⇒ 与旧口径同 ID（防 live 周期锁误伤已购用户）
+  // 月报不掺盐 ⇒ 与旧口径同 ID（防 live 周期锁误伤已购用户）；🔴 E141 起 yearly
+  // 新掺前瞻窗盐（e141_forward_<YYYY-MM>，见 E141 闸门）——月报口径恒不变。
   const mBase = { ...base, reportType: 'monthly' };
   assert.equal(
     deriveCompatReportId(mBase),
@@ -70,13 +71,18 @@ test('E95-②-1 行为级：deriveCompatReportId 版本盐分流（once 掺盐�
   );
 });
 
-test('E95-②-2 server 端接线：Gate41 调用处对 once 档传盐（月/年 null）', () => {
+test('E95-②-2 server 端接线：Gate41 调用处对 once 档传盐（月 null；年掺 E141 前瞻窗盐）', () => {
   const hStart = SERVER.indexOf("app.use('/api/ai-advisor'");
   const hEnd = SERVER.indexOf("app.use((req, res, next)", hStart);
   const handler = SERVER.slice(hStart, hEnd);
+  // 🔴 E141 基线化（主公军令 2026-11-16）：yearly 档新掺 `e141_forward_<YYYY-MM>`
+  //   前瞻窗盐（旧倒退窗缓存作废）；once 盐沿袭 e95_bazi_lock；monthly 恒 null。
   assert.ok(
-    handler.includes("promptSalt: reportType === 'once' ? 'e95_bazi_lock' : null"),
-    'once 版本盐未接线 Gate41 调用处',
+    handler.includes("promptSalt: reportType === 'once'")
+      && handler.includes("? 'e95_bazi_lock'")
+      && handler.includes("`e141_forward_${buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart.slice(0, 7)}`")
+      && handler.includes(': null'),
+    'once/yearly/monthly 版本盐三分流未接线 Gate41 调用处',
   );
 });
 
@@ -115,7 +121,7 @@ test('E95-⑤-1 闸门接线：test:astro 含本闸门（72 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e95-chapter-line-once-salt.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 108, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 109, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE95 = parts.findIndex((p) => p.includes('audit-e95-'));
   const iE94 = parts.findIndex((p) => p.includes('audit-e94-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
