@@ -13887,11 +13887,12 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
   const ch = _E88_YEARLY_CHAPTERS[L] || _E88_YEARLY_CHAPTERS.zh;
   const syn = x.synastry || null;
   const synBlock = (syn && syn.available) ? renderSynastryBlock(syn, L) : '';
-  // 🔴 E91-④（主公军令 2026-10-25）：第二章「未来12个月」时序疑惑根治——
-  //   在第二章标题下强制输出「太阳返照起点释义」一行（六语），锚定口径＝
-  //   年度能量周期以测算者公历出生月为宇宙新起点（太阳返照年，非公历自然年）。
+  // 🔴 E91-④（主公军令 2026-10-25）→ 🔴 E141 改版（主公军令 2026-11-16 修正版）：
+  //   第二章标题下强制输出「能量起点释义」一行（六语），锚定口径＝
+  //   年度能量周期以**解锁测算当月的下一个自然月**为新起点（E141 前瞻窗，
+  //   生日月退役），推演未来完整 12 个月。
   //   释义月＝timeCtx.windowStart 年月现算（VM 抽取消费者铁律：常量置函数体内，
-  //   零模块级新依赖；windowStart 真源＝_compatSolarWindow 生日锚）。
+  //   零模块级新依赖；windowStart 真源＝_compatSolarWindow 付费次月锚）。
   const _anchorYm = String(timeCtx.windowStart || '').slice(0, 7); // 'YYYY-MM'
   const _anchorMonthLabel = {
     zh: `${Number(_anchorYm.slice(5, 7))}月`,
@@ -13902,12 +13903,12 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     vi: `tháng ${Number(_anchorYm.slice(5, 7))}`,
   }[L] || _anchorYm;
   const _solarAnchorNote = {
-    zh: `✦ 能量起点释义：太阳返照年以您诞生日所在月份（${_anchorMonthLabel}）为宇宙能量新起点，推演未来完整一岁（12个月）的流年起伏。`,
-    en: `✦ Energy anchor: the solar-return year begins in your birth month (${_anchorMonthLabel}), unfolding a full 12 months from that cosmic new beginning.`,
-    es: `✦ Ancla de energía: el año de Revolución Solar comienza en tu mes de nacimiento (${_anchorMonthLabel}) y se despliega durante 12 meses completos.`,
-    fr: `✦ Ancrage énergétique\u00a0: l'année de Révolution Solaire débute le mois de votre naissance (${_anchorMonthLabel}) et se déploie sur 12 mois complets.`,
-    th: `✦ จุดยึดพลังงาน: ปี Solar Return เริ่มต้นในเดือนเกิดของคุณ (${_anchorMonthLabel}) แล้วไหลไปครบ 12 เดือน`,
-    vi: `✦ Neo năng lượng: năm Solar Return bắt đầu từ tháng sinh của bạn (${_anchorMonthLabel}) và trải dài trọn 12 tháng.`,
+    zh: `✦ 能量起点释义：您于解锁测算当月之后的第一个自然月（${_anchorMonthLabel}）开启全新的宇宙能量周期，自该月起推演未来完整 12 个月的流年起伏。`,
+    en: `✦ Energy anchor: a fresh 12-month cosmic cycle begins in ${_anchorMonthLabel}, the natural month right after your unlock month, unfolding a full year from that new beginning.`,
+    es: `✦ Ancla de energía: un nuevo ciclo cósmico de 12 meses comienza en ${_anchorMonthLabel}, el mes natural inmediatamente posterior a tu mes de desbloqueo, desplegándose durante 12 meses completos.`,
+    fr: `✦ Ancrage énergétique\u00a0: un nouveau cycle cosmique de 12 mois débute en ${_anchorMonthLabel}, le mois naturel qui suit votre mois de déblocage, et se déploie sur 12 mois complets.`,
+    th: `✦ จุดยึดพลังงาน: วัฏจักรจักรวาล 12 เดือนใหม่เริ่มต้นในเดือน ${_anchorMonthLabel} ซึ่งเป็นเดือนถัดไปจากเดือนที่คุณปลดล็อก แล้วไหลไปครบ 12 เดือน`,
+    vi: `✦ Neo năng lượng: chu kỳ vũ trụ 12 tháng mới bắt đầu từ tháng ${_anchorMonthLabel}, tháng tự nhiên liền sau tháng bạn mở khóa, và trải dài trọn 12 tháng.`,
   }[L] || '';
   // 🔴 E108-刀二（主公军令 2026-11-01）：第二章季度区间硬约束——根治「第4季度 7月-10月」
   //   历法算术溢出（4 个月跨度＝窗口外第 13 月硬伤）。四季严格各 3 个月、自窗口
@@ -13954,9 +13955,13 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     '',
     '[ANNUAL REPORT CONTRACT — MANDATORY]',
     `1. Write EXACTLY 5 chapters, in order, each starting with the exact title line: ${ch[0]} / ${ch[1]} / ${ch[2]} / ${ch[3]} / ${ch[4]}.`,
-    '1a. Immediately below the Chapter 2 title line, output VERBATIM (one line, do not paraphrase, do not translate, do not omit) the solar-return anchor note line provided in the user prompt.',
+    '1a. Immediately below the Chapter 2 title line, output VERBATIM (one line, do not paraphrase, do not translate, do not omit) the energy-anchor note line provided in the user prompt.',
     '2. Chapter 1 (600+ words): Solar Return overview — the year\'s keynote, core conclusion, and a relationship-axis score (0-100) with one-line justification.',
-    '3. Chapter 2 (900+ words): the full 12-month panorama — the 12 months run strictly from the FIRST month of the given time window (the solar-return birth month) through 12 consecutive months; analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
+    '3. Chapter 2 (900+ words): the full 12-month panorama — the 12 months run strictly from the FIRST month of the given forward time window (the natural month right after the unlock month) through 12 consecutive months; analyze quarter by quarter (Q1 to Q4, 3 months each), give the rise-and-fall rhythm across the 12 months, and end with one lucky keyword + one caution keyword for EVERY month.',
+    // 🔴 E141-六语单语纯净锁（主公军令 2026-11-16）：中文正文严禁 caution/Solar Return 等
+    //   英文单词串码——月度成对标签六语钦定；原始 Markdown 三连星号禁令（输出侧
+    //   另有 _e141ZhPurityWash 正则兜底清洗）。
+    '3b. [MONOLINGUAL PURITY — MANDATORY] The report body must contain ONLY the language locked in the system instruction — NEVER let any English word (e.g. caution, Solar Return) leak into a non-English body, and NEVER output raw Markdown emphasis markers (*** or **). The monthly paired labels must be native-language, verbatim: zh 「幸运关键词」＋「避坑关键词」; en lucky keyword + caution keyword; es «palabra clave de suerte» + «palabra clave de precaución»; fr «mot-clé chance» + «mot-clé de vigilance»; th "คีย์เวิร์ดโชคลาภ" + "คีย์เวิร์ดเฝ้าระวัง"; vi "từ khóa may mắn" + "từ khóa phòng tránh".',
     // 🛡️ E108-刀二：季度历法硬约束——四季严格各 3 个月、区间逐字声明、第 13 月禁令
     `3a. [QUARTER CALENDAR — strict 12-month quarters, MANDATORY] Chapter 2 divides the time window into EXACTLY four quarters of 3 months each, counted from the FIRST month of the window: Q1 (window months 1-3) = ${_e108Q[0]}; Q2 (window months 4-6) = ${_e108Q[1]}; Q3 (window months 7-9) = ${_e108Q[2]}; Q4 (window months 10-12) = ${_e108Q[3]}. When introducing each quarter, state its month range exactly as given here. NEVER let any quarter spill into a 4th month, and NEVER name any month outside the window: ${_e108M13} already belongs to the NEXT solar-return year — it may be mentioned only once in Chapter 5 as a new-year handover blessing, never inside Chapter 2. The whole report covers exactly 12 months — there is no 13th month.`,
     '4. Chapter 3 (900+ words): four hard-core dimensions, one sub-section each — ① daily communication & mental rapport, ② intimacy & attraction fluctuations, ③ material reality & family tests, ④ fated bond & soul growth.',
@@ -13979,7 +13984,7 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     `[DATA LOCK] Overall=${scores.overall}, Bazi=${scores.bazi}, Zodiac=${scores.zodiac}, IChing=${scores.iching}`,
     `Tarot=${tarot ? tarot.name : ''}, Orientation=${tarot ? (tarot.orientation || '') : ''}`,
     `Zodiac signs: ${sign1} and ${sign2}`,
-    `Time window (Solar Return, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
+    `Time window (E141 forward 12-month from unlock, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
     // 🛡️ E100-③：周易真值卦锁（确定性选卦：FNV d1|d2|windowStart——同对同窗恒定）
     `IChing Annual Hexagram (sole truth): ${_e100IchingHexLine(d1, d2, timeCtx.windowStart, L)}`,
@@ -14032,6 +14037,37 @@ function _e108LockQuarterRanges(text, windowStart) {
     out = out.replace(rx, (m, marker, mid, startLbl, sep, yr) =>
       `${marker}${mid}${startLbl}${sep}${yr ? yr + '年' : ''}${qe}月`);
   }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔴 E141-六语单语纯净锁（主公军令 2026-11-16）：中文正文英文串码清洗器。
+//   病根（主公实锤）：zh 年报正文偶发「caution关键词」串码（Prompt 契约英文
+//   指令 lucky keyword + caution keyword 的语种渗漏）＋形如 ***"水晶"*** 的
+//   原始 Markdown 三连星号直出前端卡片。
+//   治法＝输出侧正则兜底（Prompt 侧 3b MONOLINGUAL PURITY 硬约束为主治）：
+//   ① caution/Caution 标签串码（含变体空格/繁体/keyword 尾巴）⇒ 避坑关键词；
+//   ② lucky 标签串码对称防护 ⇒ 幸运关键词；
+//   ③ 三连及以上星号包裹的强调串（含可选引号对）⇒ 「」规范高亮，裸星号串
+//     就地删除；幂等（输出无 * 无英文标签串）。
+//   🔴 纯函数零外部依赖（VM 抽取消费者可整函数搬运）；仅施 zh 通路
+//   （en/es/fr/th/vi 各语 caution/lucky 为本语合法词，严禁误洗）。
+// ═══════════════════════════════════════════════════════════════
+function _e141ZhPurityWash(text) {
+  if (typeof text !== 'string' || !text) return text;
+  // 🛡️ CJK 语境门：纯外语文本零触碰（en/fr/es/th/vi 各语 caution/lucky 为本语
+  //   合法词——即便误接线也不误洗；zh 报告必含 CJK，串码清洗照常生效）。
+  if (!/[\u4e00-\u9fff\u3400-\u4dbf]/.test(text)) return text;
+  let out = text;
+  // ① caution 标签串码 ⇒ 避坑关键词（幂等：中文态不含该模式）
+  out = out.replace(/[Cc]aution\s*(?:关键[词詺]|keyword)/g, '避坑关键词');
+  // ② lucky 标签串码对称防护 ⇒ 幸运关键词
+  out = out.replace(/[Ll]ucky\s*(?:关键[词詺]|keyword)/g, '幸运关键词');
+  // ③ 三连星号强调串（含引号对变体）⇒ 「」规范高亮
+  out = out.replace(/\*{3,}\s*["“「『]([^\n*]{1,40})["”」』]\s*\*{3,}/g, '「$1」');
+  out = out.replace(/\*{3,}\s*([^\n*]{1,40})\s*\*{3,}/g, '「$1」');
+  // 裸星号残串（无内文）就地删除
+  out = out.replace(/\*{3,}/g, '');
   return out;
 }
 
@@ -17364,8 +17400,16 @@ app.use('/api/ai-advisor', async (req, res) => {
         reportType, lang, d1, d2,
         // 🔴 E95-②（主公军令 2026-10-26）：once 档版本盐——E92 锁前旧存量（八字地支幻觉回潮）
         //    reportId 一次性作废 ⇒ replay MISS ⇒ 强制走带 _E92CompatBaziLock 的新生成管道。
-        //    月报/年报不掺盐（长度守卫在位，防 live 周期锁误伤已购用户）。
-        promptSalt: reportType === 'once' ? 'e95_bazi_lock' : null,
+        //    月报不掺盐（长度守卫在位，防 live 周期锁误伤已购用户）。
+        // 🔴 E141-缓存键升级（主公军令 2026-11-16）：yearly 档掺前瞻窗盐
+        //    `e141_forward_<windowStartYYYYMM>`——起点锚入 reportId，旧版
+        //    2025-12 倒退窗历史缓存一次性作废（replay MISS ⇒ 重新生成前瞻年报）；
+        //    同窗月内幂等（盐含年月），跨窗月自动换 id。
+        promptSalt: reportType === 'once'
+          ? 'e95_bazi_lock'
+          : (reportType === 'yearly'
+            ? `e141_forward_${buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart.slice(0, 7)}`
+            : null),
         bazi: req.body.bazi || null,
         zodiac: req.body.zodiac || null,
         iching: req.body.iching || null,
@@ -17393,10 +17437,15 @@ app.use('/api/ai-advisor', async (req, res) => {
         //   「7月—10月」就地修复，复读零算力语义不变；窗口按 userBirthDate 现算，
         //   与生成期同源生日锚）。
         if (reportType === 'yearly' && typeof _g41Replay.insight === 'string') {
-          _g41Replay.insight = _e108LockQuarterRanges(
-            _g41Replay.insight,
-            buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart
+          // 🔴 E141：复读文本同施 zh 纯净清洗（幂等——新缓存已净，旧存串码就地修复）
+          _g41Replay.insight = _e141ZhPurityWash(
+            _e108LockQuarterRanges(
+              _g41Replay.insight,
+              buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart
+            )
           );
+        } else if (typeof _g41Replay.insight === 'string' && /^zh/i.test(String(lang || 'zh'))) {
+          _g41Replay.insight = _e141ZhPurityWash(_g41Replay.insight);
         }
         // 🛡️ Gate 43：流式模式下命中复读 ⇒ **单帧 ready 直出**（零算力、零阶段帧：如实反映"无推演发生"）
         if (_stream) {
@@ -17541,7 +17590,7 @@ app.use('/api/ai-advisor', async (req, res) => {
         const _e103EsLang = /^es$/i.test(String(lang || ''));
         // 🛡️ E108-刀二：zh 年报帧级季度溢出锁（帧级尽力而为——跨帧切断的跨度由终帧全文兜底；
         //    非 zh 通路零触碰，monthly/once 通路零触碰）。
-        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d)); } catch (e) { /* 单帧失败不断流 */ } };
+        if (_sse) _e96Opts.onText = (d) => { try { _sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly') ? _e141ZhPurityWash(_e108LockQuarterRanges(d, _compat.timeCtx.windowStart)) : _e141ZhPurityWash(d))); } catch (e) { /* 单帧失败不断流 */ } };
         let insight = await callAI(
           _compat.system,
           _compat.user,
@@ -17559,6 +17608,9 @@ app.use('/api/ai-advisor', async (req, res) => {
         // 🛡️ E108-刀二 终帧季度溢出锁（yearly：季度标记语境内 N月—(N+3)月 ⇒ 真实季末月；
         //    幂等——帧级已纠偏的文本再施一遍不变；流式终帧与 JSON 通路同一收口点）。
         if (reportType === 'yearly') insight = _e108LockQuarterRanges(insight, _compat.timeCtx.windowStart);
+        // 🛡️ E141-六语单语纯净锁 终帧收口（zh 通路：caution/lucky 标签串码 → 钦定中文
+        //    成对标签；三连星号原始 Markdown 泄漏 → 「」规范高亮。幂等；非 zh 零触碰）。
+        if (_e94IsZh) insight = _e141ZhPurityWash(insight);
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）

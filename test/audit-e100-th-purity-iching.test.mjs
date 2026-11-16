@@ -117,7 +117,9 @@ test('E100-②-3 输出侧清洗：_e100StripCjk 行为级＋交付层接入（�
   // 交付层：SSE 增量帧级＋终帧全文双保险（非 zh）；zh 零触碰
   // 🔴 E102-④ 后继化：vi 语种在 E100 CJK 剥离外再叠 _e102ViWash 英文/拼音清洗（双层）
   // 🛡️ E103-③ 后继化：SSE 帧级清洗链接入 fr/es 排版层（vi 层零改动，结构外扩）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d))"), 'SSE 帧级清洗缺失（E103 扩链形态）');
+  // 🔴 E141 后继化：zh 分支接入 _e141ZhPurityWash 单语纯净清洗（caution/lucky 串码＋三连星号；
+  //    yearly 叠 E108 季度锁形态不变——_e94IsZh 判定上移至 _e141ZhPurityWash 的 CJK 语境门）。
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly') ? _e141ZhPurityWash(_e108LockQuarterRanges(d, _compat.timeCtx.windowStart)) : _e141ZhPurityWash(d)))"), 'SSE 帧级清洗缺失（E103 扩链形态）');
   assert.ok(SERVER.includes("if (_e100NonZh) insight = _e102ViLang ? _e102ViWash(_e100StripCjk(insight)) : _e100StripCjk(insight);"), '终帧清洗缺失（E102 vi 双层后继形态）');
   assert.ok(SERVER.includes("const _e100NonZh = !/^zh/i.test(String(lang || 'zh'));"), '非 zh 判定缺失');
 });
@@ -188,13 +190,13 @@ test('E100-⑥ 存量作废：COMPAT_PERSIST_VERSION（后继化：E102-⑤ 已�
 // ── 军规链基线（后继化：E102 入编后 77 段；e40-compat 恒 len-2、python 恒链尾）──
 test('E100-⑤ 军规链基线（后继化：E102 升 77 段；e40-compat 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 108, '基线 92（E120 升 92 段）');   // 🛡️ E107 后继化：81→82；E106 后继化：80→81；E103/E104 后继化：77→79
-  assert.ok(parts[parts.length - 29].includes('e107'), 'e107 未居 e40-compat 前');   // 🛡️ E118 后继化：91 段链位置整体再顺移一位
-  assert.ok(parts[parts.length - 30].includes('e106'), 'e106 未居 e107 前');
-  assert.ok(parts[parts.length - 31].includes('e105'), 'e105 未居 e106 前');
-  assert.ok(parts[parts.length - 32].includes('e104'), 'e104 未居 e105 前');
-  assert.ok(parts[parts.length - 33].includes('e103'), 'e103 未居 e104 前');
-  assert.ok(parts[parts.length - 34].includes('e102'), 'e102 未居 e103 前');
+  assert.strictEqual(parts.length, 109, '基线 92（E120 升 92 段）');   // 🛡️ E107 后继化：81→82；E106 后继化：80→81；E103/E104 后继化：77→79
+  assert.ok(parts[parts.length - 30].includes('e107'), 'e107 未居 e40-compat 前');   // 🛡️ E118 后继化：91 段链位置整体再顺移一位
+  assert.ok(parts[parts.length - 31].includes('e106'), 'e106 未居 e107 前');
+  assert.ok(parts[parts.length - 32].includes('e105'), 'e105 未居 e106 前');
+  assert.ok(parts[parts.length - 33].includes('e104'), 'e104 未居 e105 前');
+  assert.ok(parts[parts.length - 34].includes('e103'), 'e103 未居 e104 前');
+  assert.ok(parts[parts.length - 35].includes('e102'), 'e102 未居 e103 前');
   assert.ok(parts[parts.length - 2].includes('e40-compat'), 'e40-compat 未居 len-2');
   assert.ok(parts[parts.length - 1].includes('python'), 'python 未居链尾');
 });

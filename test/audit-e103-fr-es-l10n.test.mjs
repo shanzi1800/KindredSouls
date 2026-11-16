@@ -107,8 +107,10 @@ test('E103-①-3 塔罗二号牌统一：tarot.ts/algos/AuthButton/财富催化�
   assert.ok(!WRPAGE.includes('La Papesse'), '财富催化剂 fr 马赛旧称残留');
   assert.ok(WRPAGE.includes('La Gran Sacerdotisa'), '财富催化剂 es 钦定译名缺失');
   // 年报术语：fr Révolution Solaire／es Revolución Solar（太阳返照军令钦定口径）
-  assert.ok(SERVER.includes("l'année de Révolution Solaire débute le mois de votre naissance"), 'fr 年报术语 Révolution Solaire 缺失');
-  assert.ok(SERVER.includes('el año de Revolución Solar comienza en tu mes de nacimiento'), 'es 年报术语 Revolución Solar 缺失');
+  // 🔴 E141 后继化：窗锚改付费次月（生月退役）⇒ fr 锚注措辞换「nouveau cycle cosmique」
+  assert.ok(SERVER.includes("un nouveau cycle cosmique de 12 mois débute"), 'fr 年报术语前瞻措辞缺失');
+  // 🔴 E141 后继化：es 锚注措辞随窗锚演进（付费次月；旧「mes de nacimiento」退役）
+  assert.ok(SERVER.includes('un nuevo ciclo cósmico de 12 meses comienza'), 'es 年报术语前瞻措辞缺失');
 });
 
 /* ═══════════ ② 地山谦 fr/es 卦体结构锁（行为级） ═══════════ */
@@ -185,7 +187,8 @@ test('E103-③-2 行为级：_e103FrWash NBSP＋小数逗号（幂等）／_e103
   assert.ok(outEs.includes('5,54°') && outEs.includes('69,4 %'), 'es wash 小数逗号化缺失');
   assert.strictEqual(E('El corazón puro'), 'El corazón puro', 'es wash 纯文本误触');
   // 交付层双保险：SSE 帧级＋终帧（fr/es 层与 vi 层并列；zh 通路零触碰）
-  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d))"), 'SSE 帧级 fr/es 排版清洗缺失');
+  // 🔴 E141 后继化：zh 分支接入 _e141ZhPurityWash 单语纯净清洗（onText 形态演进）。
+  assert.ok(SERVER.includes("_sse.text(_e100NonZh ? (_e102ViLang ? _e102ViWash(_e100StripCjk(d)) : _e103FrLang ? _e103FrWash(_e100StripCjk(d)) : _e103EsLang ? _e103EsWash(_e100StripCjk(d)) : _e100StripCjk(d)) : ((reportType === 'yearly') ? _e141ZhPurityWash(_e108LockQuarterRanges(d, _compat.timeCtx.windowStart)) : _e141ZhPurityWash(d)))"), 'SSE 帧级 fr/es 排版清洗缺失');
   assert.ok(SERVER.includes('if (_e103FrLang) insight = _e103FrWash(insight);'), '终帧 fr 排版收口缺失');
   assert.ok(SERVER.includes('if (_e103EsLang) insight = _e103EsWash(insight);'), '终帧 es 排版收口缺失');
 });
@@ -243,7 +246,8 @@ test('E103-④-1 ✦ SOUL OS 终章印章：月/年报双契约 ENDING SEAL GUAR
   assert.ok((SERVER.match(/✦ SOUL OS/g) || []).length >= 2, '终章印章签名行缺失（月＋年双契约）');
   assert.ok(SERVER.includes('[ENDING SEAL GUARD — MANDATORY]'), 'ENDING SEAL GUARD 契约缺失');
   // 法语冒号 NBSP 烘焙（年报锚注释 fr 行——源码以 \u00a0 转义序列烘焙，运行时解析为 NBSP）
-  assert.ok(SERVER.includes('✦ Ancrage énergétique\\u00a0: l\'année de Révolution Solaire'), 'fr 锚注 NBSP 冒号烘焙缺失');
+  // 🔴 E141 后继化：fr 锚注改前瞻措辞，NBSP 冒号烘焙恒守恒（E103 排版铁律不动）。
+  assert.ok(SERVER.includes("✦ Ancrage énergétique\\u00a0: un nouveau cycle cosmique"), 'fr 锚注 NBSP 冒号烘焙缺失');
 });
 
 test('E103-④-2 en/th/vi 契约逐字保全（fr/es 军令零外溢）', () => {
@@ -276,7 +280,7 @@ test('E103-⑤ 存量作废：COMPAT_PERSIST_VERSION v5（旧 fr/es 报告 Qian2
 
 test('E103-⑥ 军规链基线 79 段（e103/e104 居 e102 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 108, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
+  assert.strictEqual(parts.length, 109, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

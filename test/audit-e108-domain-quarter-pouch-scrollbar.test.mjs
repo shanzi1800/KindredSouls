@@ -56,11 +56,21 @@ const factory = new Function(
 );
 const VM = factory(computeCompatScores, buildCompatTimeContext, renderSynastryBlock);
 
-// 十月生日（1990-10-15）⇒ 太阳返照窗恒以 10 月为首月；Y＝窗口起始年（相对现算，测试任意时点皆稳）
+// 十月生日（1990-10-15）⇒ 🔴 E141 后继化（主公军令 2026-11-16 修正版）：窗锚从「生日月」
+//   退役 ⇒ 「付费测算次月」——生日仅作盘参数不再影响取窗。闸门全部相对现算
+//   （与真源 buildCompatTimeContext 同口径），测试任意时点皆稳。
 const ZH_P = VM.buildCompatYearlyFiveChapterPrompt('1990-10-15', '1997-10-18', 'zh', { userBirthDate: '1990-10-15' });
 const WS = String(ZH_P.timeCtx.windowStart || '');
 const Y = Number(WS.slice(0, 4));
 const YN = Y + 1;
+// 窗首月（付费次月）现算：M0＝1 基月号；mon/yr＝窗第 i 月（0 基）月号/年号
+const _NOW = new Date();
+const M0 = (_NOW.getUTCMonth() + 1) % 12 + 1;
+const _Y0 = _NOW.getUTCFullYear() + (_NOW.getUTCMonth() === 11 ? 1 : 0);
+const mon = (i) => ((M0 - 1 + i) % 12) + 1;
+const yr = (i) => _Y0 + Math.floor((M0 - 1 + i) / 12);
+const ENM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const THM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 // ═══════════════ 刀一 · 金卡域名防伪底栏 ═══════════════
 
@@ -78,23 +88,31 @@ test('①-1 域名底栏双层居中排版（✦ SOUL OS · kindredsouls.online 
 
 // ═══════════════ 刀二 · 年报四季历法规制（行为级 VM）═══════════════
 
-test('②-1 十月生日窗：Q4＝7月—9月（历法算术溢出根治，绝无 10 月）', () => {
-  assert.ok(/^\d{4}-10-\d{2}$/.test(WS), `十月生日窗首月须为 10 月（实得 ${WS}）`);
+test('②-1 E141 前瞻窗：首月＝付费测算次月（生月退役）；Q4 绝无溢出', () => {
+  // 首月须为运行时点的付费次月 1 日（Y-MM-01 形态）
+  assert.ok(WS.startsWith(`${_Y0}-${String(M0).padStart(2, '0')}-01`), `首月须为付费次月 ${_Y0}-${String(M0).padStart(2, '0')}（实得 ${WS}）`);
+  // 🔴 E141：生月退役——不同生日同窗（十月盘 vs 三月盘）
+  const P3 = VM.buildCompatYearlyFiveChapterPrompt('1990-03-05', '1997-10-18', 'zh', { userBirthDate: '1990-03-05' });
+  assert.equal(String(P3.timeCtx.windowStart || ''), WS, '生月仍参与取窗（E141 退役令违例）');
   const userTail = ZH_P.user.split('\n').pop() || '';
   assert.ok(userTail.includes('Quarter calendar (state each range verbatim when introducing the quarter)'), 'user 末行缺 Quarter calendar 逐字声明指令');
-  // zh Q4 标签：起始年 = Y+1（窗口第 10 月＝次年 7 月）；同年压缩形态「YN年7月—9月」
-  assert.ok(userTail.includes(`Q4 ${YN}年7月—9月`), `zh Q4 标签须为「${YN}年7月—9月」（实得尾行：${userTail.slice(-160)}）`);
-  assert.ok(!new RegExp(`Q4 [^/]{0,24}10月`).test(userTail), 'Q4 标签仍溢出到 10 月（刀二病根未除）');
+  // zh Q4 标签：窗口第 10~12 月（同年压缩形态 `${yr(9)}年${mon(9)}月—${mon(11)}月`）
+  assert.ok(userTail.includes(`Q4 ${yr(9)}年${mon(9)}月—${mon(11)}月`), `zh Q4 标签须为「Q4 ${yr(9)}年${mon(9)}月—${mon(11)}月」（实得尾行：${userTail.slice(-160)}）`);
+  assert.ok(!new RegExp(`Q4 [^/]{0,24}${mon(12)}月`).test(userTail), `Q4 标签仍溢出到窗第 13 月（${mon(12)}月）`);
 });
 
-test('②-2 四季严格各 3 个月＋全窗 12 个月无缝（Q1=10-12 / Q2=1-3 / Q3=4-6 / Q4=7-9）', () => {
+test('②-2 四季严格各 3 个月＋全窗 12 个月无缝（自窗首月相对现算）', () => {
   const userTail = ZH_P.user.split('\n').pop() || '';
-  const qs = [...userTail.matchAll(/Q([1-4]) (?:\d{4}年)?(\d{1,2})月—(\d{1,2})月/g)]
-    .map((m) => ({ q: Number(m[1]), a: Number(m[2]), b: Number(m[3]) }));
-  assert.equal(qs.length, 4, `user 末行须含 Q1~Q4 四个季度区间标签（实得 ${qs.length} 个）`);
-  // 首月序列 10→1→4→7：自窗口首月起算、每季 3 个月、四季首尾相扣无缝
-  assert.deepEqual(qs.map((x) => x.a), [10, 1, 4, 7], '四季首月序列须为 10/1/4/7（严格自窗口首月起算）');
-  for (const x of qs) {
+  // regex 拓容跨年双年标形态（Q1 2026年12月—2027年2月）
+  const qs = [...userTail.matchAll(/Q([1-4]) (?:\d{4}年)?(\d{1,2})月—(?:(?:\d{4}年)?(\d{1,2}))?月/g)]
+    .map((m) => ({ q: Number(m[1]), a: Number(m[2]), b: Number(m[3] || m[2]) }));
+  const qs2 = [...userTail.matchAll(/Q([1-4]) (\d{4}年)?(\d{1,2})月—(?:(\d{4}年)?(\d{1,2})月)/g)]
+    .map((m) => ({ q: Number(m[1]), a: Number(m[3]), b: Number(m[5]) }));
+  const rows = qs2.length === 4 ? qs2 : qs;
+  assert.equal(rows.length, 4, `user 末行须含 Q1~Q4 四个季度区间标签（实得 ${rows.length} 个）`);
+  // 首月序列：自窗口首月起算、每季 3 个月、四季首尾相扣无缝（相对现算 mon）
+  assert.deepEqual(rows.map((x) => x.a), [mon(0), mon(3), mon(6), mon(9)], `四季首月序列须为窗首月起算序列 ${[mon(0), mon(3), mon(6), mon(9)]}（实得 ${rows.map((x) => x.a)}）`);
+  for (const x of rows) {
     const span = ((x.b - x.a) + 12) % 12;
     assert.equal(span, 2, `Q${x.q}（${x.a}月—${x.b}月）跨度须恰 3 个月（首末差 2）`);
   }
@@ -107,21 +125,26 @@ test('②-2 四季严格各 3 个月＋全窗 12 个月无缝（Q1=10-12 / Q2=1-
 test('②-3 第 13 月禁令（窗口末月之后＝下一太阳返照年，唯一例外第五章新岁交接）', () => {
   const sys3a = ZH_P.system.split('\n').find((l) => l.startsWith('3a. [QUARTER CALENDAR')) || '';
   assert.ok(sys3a.length > 0, '3a QUARTER CALENDAR 行缺失');
-  // 十月窗第 13 月 = YN年10月
-  assert.ok(sys3a.includes(`${YN}年10月 already belongs to the NEXT solar-return year`), '第 13 月归属禁令缺失（下一太阳返照年声明）');
+  // 窗第 13 月 = `${yr(12)}年${mon(12)}月`（相对现算）
+  assert.ok(sys3a.includes(`${yr(12)}年${mon(12)}月 already belongs to the NEXT solar-return year`), '第 13 月归属禁令缺失（下一年声明）');
   assert.ok(sys3a.includes('only once in Chapter 5 as a new-year handover blessing'), '第五章新岁交接唯一例外声明缺失');
   assert.ok(sys3a.includes('there is no 13th month'), '「无第 13 月」终结声明缺失');
 });
 
-test('②-4 泛化（三月生日窗）：Q4 跨年区间形态（12月—次年2月）', () => {
+test('②-4 泛化（异生日同窗）：E141 生月退役；Q1 跨年双年标形态条件核验', () => {
   const P3 = VM.buildCompatYearlyFiveChapterPrompt('1990-03-05', '1997-10-18', 'zh', { userBirthDate: '1990-03-05' });
   const ws3 = String(P3.timeCtx.windowStart || '');
-  const y3 = Number(ws3.slice(0, 4));
+  assert.equal(ws3, WS, '异生日同窗（E141 生月退役铁律）');
   const tail3 = P3.user.split('\n').pop() || '';
-  // 三月窗：Q1=3—5 / Q2=6—8 / Q3=9—11 / Q4=12月—次年2月（zh 跨年双年标形态）
-  assert.ok(tail3.includes(`Q1 ${y3}年3月—5月`), `三月窗 Q1 标签异常（实得：${tail3.slice(-160)}）`);
-  assert.ok(tail3.includes(`Q4 ${y3}年12月—${y3 + 1}年2月`), '三月窗 Q4 跨年双年标形态异常');
+  const qLbl = (t) => (t.match(/Q1 [^\n]*Q4 [^\n]*/g) || [''])[0];
+  assert.equal(qLbl(tail3), qLbl(ZH_P.user.split('\n').pop() || ''), '异生日季度标签必须逐字一致（生月退役）');
   assert.ok(!/月[—\-]13月/.test(P3.user) && !/13月/.test(tail3), '窗口外第 13 月渗入 user 行');
+  // Q1 跨年双年标形态：窗首季跨年（yr(0)≠yr(2)）时必须双年标；同年时压缩单年标
+  if (yr(0) !== yr(2)) {
+    assert.ok(tail3.includes(`Q1 ${yr(0)}年${mon(0)}月—${yr(2)}年${mon(2)}月`), 'Q1 跨年双年标形态异常');
+  } else {
+    assert.ok(tail3.includes(`Q1 ${yr(0)}年${mon(0)}月—${mon(2)}月`), 'Q1 同年压缩形态异常');
+  }
 });
 
 test('②-5 六语季度历法注入（Quarter calendar 逐字声明六语全量）', () => {
@@ -133,10 +156,10 @@ test('②-5 六语季度历法注入（Quarter calendar 逐字声明六语全量
     const sys3a = P.system.split('\n').find((x) => x.startsWith('3a. [QUARTER CALENDAR')) || '';
     assert.ok(sys3a.length > 0, `${l} 缺 3a QUARTER CALENDAR 行`);
     assert.ok(sys3a.includes('there is no 13th month'), `${l} 缺第 13 月禁令`);
-    // 各语 Q4 末月（十月窗 ⇒ 窗口第 12 月＝次年 9 月）：Jul—Sep / tháng 7—9 / ก.ย. 等月表逐语命中
-    if (l === 'en') assert.ok(new RegExp(`Q4 Jul ${YN}—Sep ${YN}`).test(tail), `en Q4 标签异常：${tail.slice(-120)}`);
-    if (l === 'vi') assert.ok(new RegExp(`Q4 tháng 7/${YN}—tháng 9/${YN}`).test(tail), `vi Q4 标签异常：${tail.slice(-120)}`);
-    if (l === 'th') assert.ok(new RegExp(`Q4 ก\\.ค\\. ${YN}—ก\\.ย\\. ${YN}`).test(tail), `th Q4 标签异常：${tail.slice(-120)}`);
+    // 各语 Q4 标签（相对现算月表）：窗口第 10~12 月＝ENM/THM/tháng 逐语命中
+    if (l === 'en') assert.ok(new RegExp(`Q4 ${ENM[mon(9) - 1]} ${yr(9)}—${ENM[mon(11) - 1]} ${yr(11)}`).test(tail), `en Q4 标签异常：${tail.slice(-120)}`);
+    if (l === 'vi') assert.ok(new RegExp(`Q4 tháng ${mon(9)}/${yr(9)}—tháng ${mon(11)}/${yr(11)}`).test(tail), `vi Q4 标签异常：${tail.slice(-120)}`);
+    if (l === 'th') assert.ok(new RegExp(`Q4 ${THM[mon(9) - 1]} ${yr(9)}—${THM[mon(11) - 1]} ${yr(11)}`).test(tail), `th Q4 标签异常：${tail.slice(-120)}`);
   }
 });
 
@@ -177,14 +200,16 @@ test('②-6 溢出锁九案：季度标记语境内 N月—(N+3)月 ⇒ 真实�
 
 test('②-7 三接线点（Gate41 复读 HIT / onText 帧级 / 终帧全文）', () => {
   // ① HIT 复读：_g41ReplayUsable 块内 yearly 分支同施（旧缓存「7月—10月」零算力就地修复）
-  assert.ok(SERVER.includes('_g41Replay.insight = _e108LockQuarterRanges('), 'Gate41 复读 HIT 路径未施锁');
+  //   🔴 E141 后继化：复读锁外叠 _e141ZhPurityWash 单语纯净清洗（嵌套包裹形态）
+  assert.ok(SERVER.includes('_g41Replay.insight = _e141ZhPurityWash('), 'Gate41 复读 HIT 路径未施锁');
   const g41Seg = SERVER.split('const _g41ReplayUsable')[1]?.split('\n      const')[0] || '';
   assert.ok(g41Seg.includes('_e108LockQuarterRanges'), '锁不在 _g41ReplayUsable 块内');
   assert.ok(SERVER.includes("buildCompatTimeContext('yearly', new Date(), _cEnt.userBirthDate || null, lang).windowStart"), '复读窗口未按 userBirthDate 同源现算');
-  // ② onText 帧级（zh yearly 尽力而为；非 zh 走 E100/E102/E103 语种清洗链）
-  assert.ok(SERVER.includes("(reportType === 'yearly' && _e94IsZh) ? _e108LockQuarterRanges(d, _compat.timeCtx.windowStart) : d"), 'onText 帧级锁缺失');
-  // ③ 终帧全文硬收口（yearly 恒施）
+  // ② onText 帧级（zh yearly 尽力而为叠 E141 纯净洗；非 zh 走 E100/E102/E103 语种清洗链）
+  assert.ok(SERVER.includes("(reportType === 'yearly') ? _e141ZhPurityWash(_e108LockQuarterRanges(d, _compat.timeCtx.windowStart)) : _e141ZhPurityWash(d)"), 'onText 帧级锁缺失');
+  // ③ 终帧全文硬收口（yearly 恒施；E141 zh 纯净洗后置同点）
   assert.ok(SERVER.includes("if (reportType === 'yearly') insight = _e108LockQuarterRanges(insight, _compat.timeCtx.windowStart);"), '终帧全文锁缺失');
+  assert.ok(SERVER.includes('if (_e94IsZh) insight = _e141ZhPurityWash(insight);'), '终帧 E141 纯净洗缺失');
 });
 
 // ═══════════════ 刀三 · 贴身今日运势锦囊气泡 ═══════════════
@@ -245,10 +270,10 @@ test('④-1 对话窗滚动槽与月报 .ks-report-scroll 形状颜色逐字一�
 
 test('⑤-1 军规链段数入编（E108 后继化：83 段／e108 居 e107 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 108, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 109, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 28].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
-  assert.ok(segs[segs.length - 29].includes('audit-e107'), 'e107 须居 len-12');
-  assert.ok(segs[segs.length - 30].includes('audit-e106'), 'e106 须居 len-13');
+  assert.ok(segs[segs.length - 29].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
+  assert.ok(segs[segs.length - 30].includes('audit-e107'), 'e107 须居 len-12');
+  assert.ok(segs[segs.length - 31].includes('audit-e106'), 'e106 须居 len-13');
 });

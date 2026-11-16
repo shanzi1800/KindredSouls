@@ -71,7 +71,8 @@ test('E91-④-1 锚定文案六语齐备＋月份现算（零固定月份字面�
     assert.ok(seg.includes(key), `锚定文案 ${key} 缺失`);
   }
   assert.ok(seg.includes('能量起点释义'), 'zh 文案关键词缺失');
-  assert.ok(seg.includes('solar-return year begins in your birth month'), 'en 文案关键词缺失');
+  // 🔴 E141 后继化：en 锚注文案改「解锁次月」前瞻语义（旧「birth month」措辞随生月退役）
+  assert.ok(seg.includes('the natural month right after your unlock month'), 'en 文案关键词缺失');
   // 月份标签现算（windowStart 推导，禁固定月份字面量）
   const iYm = SERVER.indexOf('const _anchorYm = String(timeCtx.windowStart');
   assert.ok(iYm > 0, '月份现算链缺失（windowStart 真源）');
@@ -96,7 +97,7 @@ test('E91-⑤-1 闸门接线：test:astro 含本闸门（69 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e91-solar-metal-logout.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 108, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 109, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE91 = parts.findIndex((p) => p.includes('audit-e91-solar-metal-logout'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));

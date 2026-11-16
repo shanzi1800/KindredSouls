@@ -320,7 +320,7 @@ test('E139-10 军规链段数：package.json test:astro 全链 107 段（e139 �
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 108, `军规链段数须 107（E139 入编后 106→107；实 ${segs.length}）`);
+  assert.equal(segs.length, 109, `军规链段数须 107（E139 入编后 106→107；实 ${segs.length}）`);
   const joined = segs.join(' && ');
   const iE138 = joined.indexOf('audit-e138-tester-vip-funnel-sandbox');
   const iE139 = joined.indexOf('audit-e139-astro-wealth-advisory');
