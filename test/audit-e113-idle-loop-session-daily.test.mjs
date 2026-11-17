@@ -176,7 +176,9 @@ test('E113 S5 刀三接线：ChatSheet 实时落档＋chartSig 锚＋首语复�
   const saveFx = sheet.slice(sheet.indexOf('🏆 E113-刀三：消息变更实时落档'), sheet.indexOf('}, [msgs, open, helloMode]);', sheet.indexOf('🏆 E113-刀三：消息变更实时落档')) + 31);
   assert.ok(/useEffect\(\(\) => \{/.test(saveFx), '缺实时落档 effect');
   assert.ok(sheet.includes('}, [msgs, open, helloMode]);'), '落档 effect 须监听 msgs＋helloMode（E142.1 模式随档固化）');
-  assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode\)/.test(sheet), '存档须随行 helloMode（E142.1 刀一）');
+  // 🆕 E143 后继化：存档增第 6 参 badgeLog（星光微标会话去重集合随档——
+  //    E142.1 greetingMode 同形制；缺省兼容旧 5 参形态）
+  assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode(, badgeLogRef\.current)?\)/.test(sheet), '存档须随行 helloMode（E142.1 刀一）＋badgeLog（E143 刀三）');
   // ④ 复原优先：会话档在场且非新解锁 ⇒ 复原全部历史（禁重复首句）
   assert.ok(/if \(sess && sess\.messages\.length > 0/.test(sheet), '缺会话档复原分支');
   assert.ok(/setMsgs\(sessionToChatMsgs\(sess\)\)/.test(sheet), '复原须走 sessionToChatMsgs 转换');
@@ -241,7 +243,7 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 110, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 111, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));

@@ -3749,6 +3749,21 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           />
         )}
 
+        {/* 🆕 E143-刀四（军令 2026-11-17）：StarlightWatermark 星光金丝雀水印——
+            报告 DOM 渲染尾部的版权签名槽位植入零宽字符序列（\u200B\u200C\u200D
+            固定编码）；组件层独立挂载，严禁污染底层星历/八字算法函数原始返回值
+            （防误伤铁律 2：既有 110 段历史单测 100% 零报错）。视觉零占位。 */}
+        {isUnlocked && reportData && (
+          <div
+            className="ks-report-watermark"
+            data-testid="starlight-watermark"
+            aria-hidden="true"
+            style={{ height: 0, overflow: 'hidden', fontSize: 0, lineHeight: 0 }}
+          >
+            {'\u200B\u200C\u200D'}
+          </div>
+        )}
+
         {error && (
           <p style={{ color: '#E05C5C', fontSize: '12px', marginTop: '12px' }}>{error}</p>
         )}

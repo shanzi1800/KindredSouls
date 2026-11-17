@@ -36,6 +36,16 @@ function sanitizeHelloMode(v) {
   return (typeof v === 'string' && HELLO_MODES.indexOf(v) !== -1) ? v : undefined;
 }
 
+/* 🆕 E143-刀三（军令 2026-11-17）：显式记忆星光微标会话去重集合 —— 单会话
+ * 同一类型微标恰 1 次（存/读同源净化；白名单真源＝astralMemoryBadge.mjs
+ * ASTRAL_BADGE_TYPES——此处内联防循环依赖，e143 闸门同步锁死）。 */
+const E143_BADGE_TYPES = ['name_first', 'p1_first', 'mood_first'];
+function sanitizeBadgeLog(v) {
+  if (!Array.isArray(v)) return undefined;
+  const clean = v.filter((x) => typeof x === 'string' && E143_BADGE_TYPES.indexOf(x) !== -1);
+  return clean.length ? clean.slice(0, E143_BADGE_TYPES.length) : undefined;
+}
+
 const MAX_MSGS = 200;   // 写入条数上限（防 localStorage 无限膨胀）
 const MAX_TEXT = 4000;  // 单条文本截断护栏（长流式回复）
 
@@ -99,6 +109,8 @@ export function loadDailyChatSession(store, chartSig, dateStr, now = Date.now())
       messages: v.messages.filter(isMsgShape),
       // 🆕 E142.1-刀一：存档问候模式随行（旧档无字段 ⇒ undefined ⇒ 调用方模式链重算兑底）
       greetingMode: sanitizeHelloMode(v.greetingMode),
+      // 🆕 E143-刀三：微标去重集合随行（旧档无字段 ⇒ undefined ⇒ 调用方空集兑底）
+      badgeLog: sanitizeBadgeLog(v.badgeLog),
     };
   } catch {
     return null; // 坏 JSON/隐私模式 ⇒ 视同无档（fail-soft）
@@ -110,8 +122,10 @@ export function loadDailyChatSession(store, chartSig, dateStr, now = Date.now())
  * 空文本消息（流式空壳占位）不落档；写入顺带维护跨日判定标记 lastChatDay。
  * 🆕 E142.1-刀一（军令 2026-11-17）：可选 greetingMode 入参 —— 问候模式随档
  * 持久化（关窗重开复原不再跌 plain 兜底；白名单外坏值静默丢弃 fail-closed）。
+ * 🆕 E143-刀三（军令 2026-11-17）：可选 badgeLog 入参 —— 星光微标会话去重
+ * 集合随档持久化（同 greetingMode 形制：白名单净化，坏值字段不写）。
  */
-export function saveDailyChatSession(store, chartSig, dateStr, msgs, greetingMode) {
+export function saveDailyChatSession(store, chartSig, dateStr, msgs, greetingMode, badgeLog) {
   try {
     if (!store || typeof store.setItem !== 'function') return false;
     if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
@@ -139,6 +153,8 @@ export function saveDailyChatSession(store, chartSig, dateStr, msgs, greetingMod
       messages: norm.slice(-MAX_MSGS),
       // 🆕 E142.1-刀一：问候模式随档持久化（白名单净化；坏值 ⇒ 字段不写）
       ...(sanitizeHelloMode(greetingMode) ? { greetingMode: sanitizeHelloMode(greetingMode) } : {}),
+      // 🆕 E143-刀三：微标去重集合随档持久化（白名单净化；坏值 ⇒ 字段不写）
+      ...(sanitizeBadgeLog(badgeLog) ? { badgeLog: sanitizeBadgeLog(badgeLog) } : {}),
     };
     store.setItem(chatSessionKey(chartSig, dateStr), JSON.stringify(sess));
     // 🏆 E113-刀四：跨日判定真源（昨聊过、今无新解锁 ⇒ 首语流转锦囊问候）

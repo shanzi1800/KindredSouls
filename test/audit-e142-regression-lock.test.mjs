@@ -310,8 +310,9 @@ test('E142.1-锁A3 复原分支源码锚：吃档模式禁跌 plain 兜底＋存
   assert.ok(SHEET.includes("setHelloMode((sess && (sess as { greetingMode?: HelloMode }).greetingMode) || mode);"),
     '复原分支须吃档模式（严禁 setHelloMode(\'plain\') 兜底退场）');
   // ② 存档随行 helloMode（deps 三件套）
-  assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode\)/.test(SHEET),
-    '存档调用须随行 helloMode（E142.1-刀一）');
+  // 🆕 E143 后继化：存档增第 6 参 badgeLog（星光微标会话去重随档——E142.1 同形制）
+  assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode(, badgeLogRef\.current)?\)/.test(SHEET),
+    '存档调用须随行 helloMode（E142.1-刀一）＋badgeLog（E143-刀三）');
   assert.ok(SHEET.includes('}, [msgs, open, helloMode]);'), '落档 effect 须监听 helloMode');
   // ③ 单 hello 档重写效应须按 helloMode 重生（关窗重开同文本）
   assert.ok(/id === 'hello'/.test(SHEET) || /'hello'/.test(SHEET), 'hello 首条重写效应须在场');
@@ -418,7 +419,10 @@ test('E142.1-锁D2 源码零品牌锁：前端词库/组件零命中；server �
     }
   });
   // ④ emitDelta 唯一出流口前置清洗（主流/续写/降级/重试全路径覆盖）
-  assert.ok(SERVER.includes('delta: _e1421BrandWash(t)'), 'emitDelta 须前置品牌清洗（全路径收口）');
+  // 🆕 E143 后继化：品牌清洗后串联星灵封印清洗（机械腔＋内部标识脱敏——
+  //    E142.1 品牌清洗仍为首层，双空格归一收口不变）
+  assert.ok(/delta: _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)/.test(SERVER) || SERVER.includes('delta: _e1421BrandWash(t)'),
+    'emitDelta 须前置品牌清洗（全路径收口；E143 串联形态亦可）');
 });
 
 /* ── E142.1-锁E：零故障注入财富沙盒锁（会话档位解锁键）── */

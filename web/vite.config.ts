@@ -29,6 +29,19 @@ export default defineConfig({
   },
   build: {
     cssMinify: false,
+    // 🆕 E143-刀四（军令 2026-11-17）：BuildBlackboxLock 生产黑盒构建锁——
+    //    显式锁死零 sourcemap（现 dist 本就 0 个 .map，由 Vite 默认态升为
+    //    显式声明＋e143 闸门断言，防未来回归）＋terser 剥离 console/debugger
+    //    （Vite 8 rolldown 内核不吃 esbuild.drop——实测验残留 78 处，改走
+    //    terser drop_console/drop_debugger 官方稳定面；源码注释由 minify 剥离）。
+    sourcemap: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       output: {
         entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,

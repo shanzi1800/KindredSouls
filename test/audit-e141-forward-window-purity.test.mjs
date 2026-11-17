@@ -176,7 +176,7 @@ test('E141-07 财富年报零改动守恒：财年 7 月范式（V483）原样�
   assert.ok(!SERVER.includes('太阳返照年以您诞生日所在月份'), '旧生日锚注文案必须退役');
 });
 
-test('E141-08 链位与插链：110 总段（109 node＋python 链尾；E142 插链后继化）；e141 紧居 e140 后', () => {
+test('E141-08 链位与插链：111 总段（110 node＋python 链尾；E143 插链后继化）；e141 紧居 e140 后', () => {
   const script = String(PKG.scripts['test:astro'] || '');
   assert.ok(script.length > 100, 'test:astro 脚本缺失');
   const chain = script.split('&&').map(s => s.trim()).filter(Boolean);
@@ -189,9 +189,9 @@ test('E141-08 链位与插链：110 总段（109 node＋python 链尾；E142 插
   assert.ok(i141 > 0, 'e141 段未入链');
   assert.ok(i140 > 0 && i141 === i140 + 1, 'e141 须紧居 e140 之后（版本序铁律）');
   assert.ok(i40 > i141, 'e40-compat 须恒居 node 链尾（e141 不得插其后）');
-  // 总段计数（含 python 尾）＝110（E142 插链后继化）
-  assert.equal(all.length, 110, `链总段必须为 110（实际 ${all.length}）`);
+  // 总段计数（含 python 尾）＝111（E143 插链后继化）
+  assert.equal(all.length, 111, `链总段必须为 111（实际 ${all.length}）`);
   const nodeOnly = all.filter(s => !/python/.test(s));
-  assert.equal(nodeOnly.length, 109, `node-only 段必须为 109（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 110, `node-only 段必须为 110（实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(all[all.length - 1]), 'python 段须恒为总链尾');
 });
