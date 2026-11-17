@@ -462,8 +462,9 @@ function checkStructure(serverSrc, pageSrc) {
   const streamFetchIdx = pageSrc.indexOf("fetch('/api/wealth-oracle/stream'");
   const streamSeg = pageSrc.slice(streamFetchIdx, streamFetchIdx + 900);
   need(streamSeg.includes('Authorization'), 'B4c: 流式主请求必须携带 Authorization（端点权益闸门靠它换 paid_plans）');
-  need(pageSrc.includes("wealthEntitledFor('monthly', paidPlans"), 'B4d: 月报按钮未走分档门控');
-  need(pageSrc.includes("wealthEntitledFor('yearly', paidPlans"), 'B4e: 年报按钮未走分档门控');
+  // 🆕 E142.1 后继化：财富月/年报年鉴门改走会话档位键（废除 paid_plans 跨测算免付短路，对齐姻缘沙盒契约）
+  need(pageSrc.includes("isWealthTierSessionUnlocked(_e1421SessStore, 'monthly')"), 'B4d: 月报按钮未走会话档位门控（E142.1 刀三）');
+  need(pageSrc.includes("isWealthTierSessionUnlocked(_e1421SessStore, 'yearly')"), 'B4e: 年报按钮未走会话档位门控（E142.1 刀三）');
   need(!pageSrc.includes("paidPlans?.all_pass_yearly === true || new URLSearchParams"), 'B4f: 旧「仅认 all_pass_yearly」的按钮门控残留 ⇒ 单买月报/年报的用户没有生成入口');
   need(pageSrc.includes("res.status === 402"), 'B4g: 前端未处理流式 402（会把引导付费误报成「生成失败」）');
 
@@ -599,7 +600,9 @@ test('C4 注入：闸门被挪到 Cache Hit 之后 ⇒ B3c 必须报红（次序
 });
 
 test('C5 注入：前端年报按钮改成认月报档 ⇒ B6/A6 判定必须报红', () => {
-  const broken = PAGE_SRC.replace("wealthEntitledFor('yearly', paidPlans", "wealthEntitledFor('monthly', paidPlans");
+  // 🆕 E142.1 后继化：注入锚改会话档位键错档（年鉴门已不走 wealthEntitledFor 直调）
+  const broken = PAGE_SRC.replace("isWealthTierSessionUnlocked(_e1421SessStore, 'yearly')", "isWealthTierSessionUnlocked(_e1421SessStore, 'monthly')");
+  assert.notEqual(broken, PAGE_SRC, '注入锚点未命中（门控被改？请同步更新注入锚点）');
   const fails = checkStructure(SERVER_SRC, broken);
   assert.ok(fails.some(f => f.startsWith('B4e')), '年报按钮错档未报红。fails=' + JSON.stringify(fails));
 });

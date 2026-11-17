@@ -53,8 +53,8 @@ import type { WealthGatePlan } from '../components/WealthLoginGate';
 import { dispatchCheckoutRoute, hasExplicitBirthCoords, buildSandboxCompleteRequest, describeSandboxOutcome, sandboxPlanPrice } from '../lib/sandboxCheckout.mjs';
 // 🧪 E138-TESTER-VIP-FULL-FUNNEL-SANDBOX（主公军令 2026-11-13）：双测试总监付费墙保留闸门
 //   ＋沙盒演练会话态（模块级、初始 false、刷新归零）＋一键重置微控件纯核。
-// @ts-ignore —— sandboxTester.mjs 为纯 JS 逻辑核（形状由 e138 闸门守备）
-import { SANDBOX_TESTER_STATUS_PATH, ROMANCE_SESSION_UNLOCK_KEY, L_SANDBOX_TESTER_RESET, setSandboxTester, testerPaywallGate, markSandboxSessionUnlocked, resetSandboxSession } from '../lib/sandboxTester.mjs';
+// @ts-ignore —— sandboxTester.mjs 为纯 JS 逻辑核（形状由 e138/e142.1 闸门守备）
+import { SANDBOX_TESTER_STATUS_PATH, ROMANCE_SESSION_UNLOCK_KEY, L_SANDBOX_TESTER_RESET, setSandboxTester, testerPaywallGate, markSandboxSessionUnlocked, resetSandboxSession, isWealthTierSessionUnlocked, markWealthTierSessionUnlocked, resetWealthTierSessionUnlocks } from '../lib/sandboxTester.mjs';
 // 💳 E131-A（主公军令 2026-11-09）：财富 once 档「按盘隔离」纯核（前后端同源，e131 闸门守备）
 // @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核
 import { wealthChartSigFromSearch, wealthOnceChartListed, wealthAllPassActive } from '../lib/wealthChartSig.mjs';
@@ -2011,6 +2011,12 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         //   ④ 800ms 后权威回读一次（沙盘自环 webhook 已同步落库，留抖动余量）。
         //   ⚠️ 绝不在此处 setIsUnlocked(false)：整页门只认 $4.99 先天档（wealthEntitledFor('once')），
         //     用户本就持有 once，回读失败也不得把付过钱的人锁死（fail-open 于已购用户）。
+        //   🆕 E142.1-刀三（军令 2026-11-17）：paid_plans 免付短路废除——按钮态改
+        //     会话级解锁语义；此处另标记该档会话键（跨 reload 存续，对齐姻缘 E85 契约；
+        //     重置沙盒演练联动清）。
+        markWealthTierSessionUnlocked(
+          (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage : null,
+          plan === 'wealth_yearly_report' ? 'yearly' : 'monthly');
         setUpgradePlan(null);
         setPaidPlans((prev: any) => {
           const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
@@ -2106,6 +2112,10 @@ const WealthReportPage: React.FC<WealthReportPageProps> = ({ onNavigate }) => {
         // 🔓 granted 真值 ⇒ 复用与 already_paid / 真实 webhook 同一条解锁通路
         // 🧪 E138：升阶档沙盒闭环走完 ⇒ wealth 模块解锁（与 applyWealthGrant 同源语义）
         markSandboxSessionUnlocked('wealth');
+        // 🆕 E142.1-刀三：该档会话解锁键同步标记（年鉴按钮翻「生成/查看」态）
+        markWealthTierSessionUnlocked(
+          (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage : null,
+          plan === 'wealth_yearly_report' ? 'yearly' : 'monthly');
         setUpgradePlan(null);
         setPaidPlans((prev: any) => {
           const base = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
@@ -3359,9 +3369,12 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             {testerMode && (
               <button
                 data-testid="sandbox-tester-reset"
-                onClick={() => {
-                  resetSandboxSession();
-                  try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                  onClick={() => {
+                    resetSandboxSession();
+                    // 🆕 E142.1-刀三：月/年会话解锁键联动清（年鉴付费墙一并恢复）
+                    resetWealthTierSessionUnlocks(
+                      (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage : null);
+                    try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
                   // 🏆 E140（主公军令 2026-11-15）: 重置联动清灵宠档（与姻缘侧同步）——
                   //    沙盒解锁态与本轮演练灵宠状态一并清空，供总监下一轮全链复测。
                   try { localStorage.removeItem(FAMILIAR_LS_KEY); } catch (_) { /* noop */ }
@@ -3435,8 +3448,14 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             {/*   旧缺陷: 条件仅认 all_pass_yearly ⇒ 单买 $2.99/$29.99 的用户付完也进不了生成入口 */}
             {(() => {
               const _greenChannel = isGreenChannelRef.current || new URLSearchParams(window.location.search).get('free_access') === '1';
-              const _canMonthly = wealthEntitledFor('monthly', paidPlans, _greenChannel);
-              const _canYearly = wealthEntitledFor('yearly', paidPlans, _greenChannel);
+              // 🆕 E142.1-刀三（军令 2026-11-17）：paid_plans 跨会话免付短路废除——
+              //  月/年报按钮态改**会话级解锁**语义（对齐姻缘 E85 状态机）：初始
+              //  100% 直出「解锁 $2.99/$29.99」军令钦定按钮；付讫 granted（含
+              //  already_paid 复购免付重击）⇒ 会话键解锁（跨 reload 存续）；重置
+              //  沙盒演练联动清键。green channel 语义原样保留。
+              const _e1421SessStore = (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage : null;
+              const _canMonthly = _greenChannel || isWealthTierSessionUnlocked(_e1421SessStore, 'monthly');
+              const _canYearly = _greenChannel || isWealthTierSessionUnlocked(_e1421SessStore, 'yearly');
               return (
                 <>
                   {/* 🛡️ E74（主公亲令 2026-10-19）: 双按钮统一 flex 排版 —— PC 宽屏一行两颗、

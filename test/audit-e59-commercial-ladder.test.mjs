@@ -95,8 +95,11 @@ const pageGateIsOnceOnly = (src) => src.includes("wealthEntitledFor('once', rawP
  *  ⚠️ 权益闸门**后置**于 loading 子句 —— 前置会破坏 e24f 的画布主权门控锚点（C1/C2）。 */
 const contentIsEntitlementGated = (src) => src.includes("(reportLoading === 'wealth_monthly' || monthlyCardsReady) && _entMonthly")
   && src.includes("(reportLoading === 'wealth_yearly' || yearlyCardsReady) && _entYearly")
-  && src.includes("wealthEntitledFor('monthly', paidPlans")
-  && src.includes("wealthEntitledFor('yearly', paidPlans");
+  // 🆕 E142.1 后继化：年鉴门改会话档位键后，paid_plans 直调唯一存活点＝_upgradeEnt wrapper
+  //   （wealthEntitledFor 仍是内容渲染门真源——门控经 wrapper 间接调用防 e24g C5 注入假绿）
+  && src.includes("wealthEntitledFor(type, paidPlans, _renderGreen")
+  && /const _entMonthly = _upgradeEnt\('monthly'\)/.test(src)
+  && /const _entYearly = _upgradeEnt\('yearly'\)/.test(src);
 
 /** 【军令③核心】沙箱一键模拟闭环 —— 升阶弹窗须走纯核构造/判真值/带 SKU 金额 */
 const sandboxClosureWired = (src) => src.includes('buildSandboxCompleteRequest(')
@@ -188,13 +191,14 @@ test('B2 【军令②】月报/年报长卷渲染处**二次独立闸门**（支
   assert.ok(/const _entYearly = _upgradeEnt\('yearly'\)/.test(PAGE_SRC), '缺 _entYearly 二次闸门');
   assert.ok(/const _upgradeEnt = \(type: 'once' \| 'monthly' \| 'yearly'\) => wealthEntitledFor\(type, paidPlans, _renderGreen\)/.test(PAGE_SRC),
     '二次闸门未走同源纯函数 wealthEntitledFor（禁另起炉灶）');
-  // 🔴 锚点守恒：`wealthEntitledFor('yearly', paidPlans` 全文件**唯一**
-  //   —— 仓内 e24g 闸门 C5 的注入自测（String.replace 只换首处）以此为前提，
-  //     多写一处会让该注入自测静默失效（判据看似全绿、实则零防线）。
-  assert.equal((PAGE_SRC.match(/wealthEntitledFor\('yearly', paidPlans/g) || []).length, 1,
-    "wealthEntitledFor('yearly', paidPlans 出现多次 ⇒ e24g C5 注入自测锚点失效");
-  assert.equal((PAGE_SRC.match(/wealthEntitledFor\('monthly', paidPlans/g) || []).length, 1,
-    "wealthEntitledFor('monthly', paidPlans 出现多次 ⇒ e24g B4d 语义被稀释");
+  // 🔴 锚点守恒（🆕 E142.1 后继化）：`isWealthTierSessionUnlocked(_e1421SessStore, 'yearly')`
+  //   全文件**唯一** —— 仓内 e24g 闸门 C5 的注入自测（String.replace 只换首处）以
+  //     此为前提，多写一处会让该注入自测静默失效（判据看似全绿、实则零防线）。
+  //     旧 wealthEntitledFor('yearly'|'monthly', paidPlans 直调字面量已退役（wrapper 间接调用）。
+  assert.equal((PAGE_SRC.match(/isWealthTierSessionUnlocked\(_e1421SessStore, 'yearly'\)/g) || []).length, 1,
+    "isWealthTierSessionUnlocked(_e1421SessStore, 'yearly') 出现多次 ⇒ e24g C5 注入自测锚点失效");
+  assert.equal((PAGE_SRC.match(/isWealthTierSessionUnlocked\(_e1421SessStore, 'monthly'\)/g) || []).length, 1,
+    "isWealthTierSessionUnlocked(_e1421SessStore, 'monthly') 出现多次 ⇒ e24g B4d 语义被稀释");
 });
 
 test('B3 【军令②】年鉴两枚按钮 ⇒ 各弹**本档专属**升阶付费墙（禁直调 handlePurchase）', () => {

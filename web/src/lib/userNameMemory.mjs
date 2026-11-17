@@ -224,3 +224,82 @@ export function prependUserName(lang, userName, base) {
   const sep = LANG_PREFIX_SEP[lang] || ', ';
   return `${n}${sep}${b}`;
 }
+
+/* ═══════════ 🆕 E142.1-刀二（主公军令 2026-11-17）：唤名三重熔断客户端核 ═══════════
+ * 军令口径：①单条回复名字 ≤1 次；②每日最多 2 次配额（按用户本地自然日
+ *   YYYY-MM-DD 记 nameCallCount，本地+服务端双层记账）；③仅极值情绪（罗盘
+ *   五原型——非常失落/非常兴奋族）在场且配额未满才允许唤名；超配静默剥离。
+ * 🔴 纪律：纯逻辑核（storage 注入可单测；零 DOM/零网络）；fail-soft 写满额。 */
+
+/** 每日唤名配额上限（军令钦定 2 次） */
+export const NAME_CALL_LIMIT = 2;
+
+/** 当日唤名计数存档键（localStorage：{ date: 'YYYY-MM-DD', count: N }） */
+const NAME_CALLS_KEY = 'ks_familiar_name_calls';
+
+/** 极值情绪门：罗盘五原型（低落/焦躁/想念＝非常失落族；灿烂/感恩＝非常兴奋族）
+ *  ⇒ 允许唤名；无情绪/坏键 ⇒ false（平时常规问答禁喊名）。 */
+export function extremeMoodForName(mood) {
+  return ['melancholy', 'agitated', 'longing', 'radiant', 'grateful']
+    .indexOf(String(mood || '')) !== -1;
+}
+
+/**
+ * 读当日唤名计数（本地记账面；服务端权威面走 chat body 随行＋done 帧回传取 max）。
+ * @param {Storage|null} store localStorage 注入
+ * @param {string} dateKey 今日本地日期键 YYYY-MM-DD
+ * @returns {number} 当日已唤名次数（无档/坏档/异日档 ⇒ 0）
+ */
+export function readNameCallCount(store, dateKey) {
+  try {
+    if (!store || typeof store.getItem !== 'function') return 0;
+    if (typeof dateKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return 0;
+    const v = JSON.parse(store.getItem(NAME_CALLS_KEY) || 'null');
+    if (!v || typeof v !== 'object' || String(v.date) !== dateKey) return 0;
+    const c = Number(v.count);
+    return (Number.isFinite(c) && c >= 0 && c <= 99) ? Math.floor(c) : 0;
+  } catch {
+    return 0; // 坏 JSON/隐私模式 ⇒ 视同 0（fail-soft）
+  }
+}
+
+/**
+ * 唤名计数 +1（名字-bearing 首句/锦囊生成即计一次；服务端回复权威计数由
+ * syncNameCallCount 回写）。写满额/隐私 ⇒ 静默 false。
+ * @returns {number} 写后计数（失败 ⇒ 原值）
+ */
+export function bumpNameCallCount(store, dateKey) {
+  const cur = readNameCallCount(store, dateKey);
+  const next = Math.min(cur + 1, 99);
+  try {
+    if (!store || typeof store.setItem !== 'function') return cur;
+    if (typeof dateKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return cur;
+    store.setItem(NAME_CALLS_KEY, JSON.stringify({ date: dateKey, count: next }));
+    return next;
+  } catch {
+    return cur; // iOS 无痕/写满额 ⇒ 静默降级
+  }
+}
+
+/**
+ * 服务端权威计数回写（done 帧 nameQuota；仅向上取 max——防服务端重启清零
+ * 拉低本地记账）。
+ * @param {number} count 服务端有效计数
+ * @returns {number} 写后计数
+ */
+export function syncNameCallCount(store, dateKey, count) {
+  const cur = readNameCallCount(store, dateKey);
+  const incoming = (Number.isFinite(Number(count)) && Number(count) >= 0 && Number(count) <= 99)
+    ? Math.floor(Number(count)) : cur;
+  const next = Math.max(cur, incoming);
+  if (next === cur) return cur;
+  try {
+    if (!store || typeof store.setItem !== 'function') return cur;
+    if (typeof dateKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return cur;
+    store.setItem(NAME_CALLS_KEY, JSON.stringify({ date: dateKey, count: next }));
+    return next;
+  } catch {
+    return cur;
+  }
+}
+

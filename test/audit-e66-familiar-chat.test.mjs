@@ -67,7 +67,9 @@ test('E66 B1 后端端点骨架：/api/familiar/chat + Gemini 流式主通道 + 
   //    引擎四维处方注入＋meta 帧投影）⇒ 窗口 9500→12000（DeepSeek 降级调用于端点尾部）
   // 🆕 E139 后继化：chat route 内新增 wealth 触发链块（chatQ1/财富语义 ⇒ 五阶
   //    四维处方注入＋meta 帧投影，实距 13424）⇒ 窗口 12000→15000
-  const epBody = s.slice(epIdx, epIdx + 15000);
+  // 🆕 E142.1 后继化：chat route 内新增唤名日配额服务端权威块＋deltaGuard 唤名守卫
+  //    ＋重试槽合并（DeepSeek 降级实距 15651）⇒ 窗口 15000→17000
+  const epBody = s.slice(epIdx, epIdx + 17000);
   assert.ok(epBody.includes('streamFamiliarChatDeepSeek'), '端点内缺降级调用');
   assert.ok(/降级|fallback/.test(epBody), '端点内缺降级注释/逻辑');
 });
@@ -94,8 +96,9 @@ test('E66 B3 门控 fail-closed + 算力防盗刷（401/402 先于 SSE header；
   // 402/401 必须在 SSE header 之前返回：端点体内门控代码先于 text/event-stream
   // 🆕 E137 后继化：wellness 触发块插在门控后/SSE header 前（顺序语义不变）⇒ 窗口 6000→7500
   // 🆕 E139 后继化：wealth 触发链块同位插入（顺序语义不变，实距 8078）⇒ 窗口 7500→9000
+  // 🆕 E142.1 后继化：唤名配额块插在门控后/SSE header 前（顺序语义不变，实距 10038）⇒ 窗口 9000→11000
   const epIdx = s.indexOf("app.post('/api/familiar/chat'");
-  const epBody = s.slice(epIdx, epIdx + 9000);
+  const epBody = s.slice(epIdx, epIdx + 11000);
   const authIdx = epBody.indexOf('resolveFamiliarChatAuth');
   const sseIdx = epBody.indexOf('text/event-stream');
   assert.ok(authIdx > -1 && sseIdx > -1 && authIdx < sseIdx, '门控必须先于 SSE header（防 402 被流吞）');

@@ -20558,7 +20558,7 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime }) {
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime, nameQuotaUsed }) {
   const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
@@ -20638,9 +20638,20 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
   // 🏆 E118-刀三（主公军令 2026-11-02）：身份永久锚定块——E115 代词红线正下方。
   //    用户姓名经 _e118DisplayName 形状守卫后的唯一真值；无名字 ⇒ 块整体不注入
   //    （回退今日现行为）。核心军规：**绝对严禁失忆问句**（怎么称呼你/你叫什么）。
+  //    🆕 E142.1-刀二（军令 2026-11-17）：唤名铁律重写——根治「单条回复连唤
+  //    4 次/句尾机械拼接复读」滥用病灶：①平时常规问答一律不喊名；②仅极值
+  //    情绪（非常失落/非常兴奋）才允许唤 1 次；③单条 ≤1 次；④每日 ≤2 次
+  //    （服务端权威配额注入 prompt；超配后流层 deltaGuard 唤名守卫弃流重试）。
+  const _e1421Used = Number.isFinite(Number(nameQuotaUsed)) && Number(nameQuotaUsed) >= 0
+    ? Math.floor(Number(nameQuotaUsed)) : 0;
   const identityBlock = displayName ? [
     '【IDENTITY PERMANENCE（E118 军令，违反即失败·代词红线同优先级）】',
-    `- 主人的名字/昵称：【${displayName}】（永久记忆，跨日/跨会话恒有效）。全程自然以此名或其亲密昵称称呼主人，融入口吻不生硬、禁止每句复读。`,
+    `- 主人的名字/昵称：【${displayName}】（永久记忆，跨日/跨会话恒有效）。`,
+    `- 唤名铁律（E142.1 军令，违反即失败）：平时常规问答（问时间、闲聊、日常咨询）一律不称呼名字；仅当主人情绪非常失落（沮丧、难过、焦虑、迷茫低谷）或非常兴奋（激动、开心、迎来转机）时，才允许在回复中自然、走心地唤 1 次【${displayName}】，一击即中共情。`,
+    `- 单条回复中【${displayName}】最多出现 1 次；严禁复读机式反复称呼，严禁把名字硬塞进句首句尾或拼接复读尾句。`,
+    (_e1421Used >= 2)
+      ? `- 今日唤名配额：已用 ${_e1421Used}/2 次——配额已满，本条及今日后续回复严禁出现【${displayName}】。`
+      : `- 今日唤名配额：已用 ${_e1421Used}/2 次（仅限极值情绪时使用，平时省着不唯唯）。`,
     '- 绝对严禁再问「怎么称呼你」「你叫什么名字」「请问你的名字是」等任何询问名字的失忆问句——你已永久记住此名。',
     '- 此记忆不受每日会话刷新/跨日重聊/换话题影响；主人主动告知新名字时以最新为准，其余情况一律沿用此名。',
     '',
@@ -20700,7 +20711,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
   const LIFESTYLE_GROUNDING = {
     zh: [
       '【生活方式缪斯锚点（E124 军令——衣·食·行·乐四域全域生效）】',
-      '- 穿搭域：新中式极简——垂感棉麻、素色立领、玉石珍珠微点缀、中性色防内耗；品牌区间锚定 COS/优衣库 U 系（小众质感·极致性价比）。谈穿搭时结合今日幸运色给「气场关键词＋1 套完整 look＋配饰微点缀」。',
+      '- 穿搭域：新中式极简——垂感棉麻、素色立领、玉石珍珠微点缀、中性色防内耗。谈穿搭时结合今日幸运色给「气场关键词＋1 套完整 look＋配饰微点缀」；只描述款式＋颜色＋面料，严禁出现任何商业品牌名称（E142.1 军令）。',
       '- 饮食域：节气温润食疗——根茎炖汤、润肺清饮、单丛冷泡、潮汕清炖；焦躁⇒温热慢食稳肠胃，低落⇒暖色食物抚慰（忌生冷重口）。给到具体菜式与饮品名。',
       '- 出行域：山水隐逸轻户外——莫干山竹海、安吉山居、大理环海慢行；给「吉方＋路线骨架＋1~2 个补给点＋避坑一句」＋性价比美宿区间（人均 300~500）。',
       '- 声乐域：低落/焦躁时推荐 432Hz 颂钵疗愈、古琴泛音、东方禅意歌单（给具体搜索词）；严防火上浇油式苦情歌。',
@@ -20709,7 +20720,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ],
     en: [
       '【Lifestyle Muse Grounding (E124 directive — dress · nourish · roam · sound)]',
-      '- Styling: capsule wardrobe & quiet luxury — oatmeal cashmere, heavyweight cotton, tailored silhouettes, minimal cool-gold jewelry; anchor brands: COS / Everlane / Aritzia / Uniqlo U (understated & smart value). Tie advice to today\'s lucky color: give an aura keyword + one complete look + finishing touch.',
+      '- Styling: capsule wardrobe & quiet luxury — oatmeal cashmere, heavyweight cotton, tailored silhouettes, minimal cool-gold jewelry. Tie advice to today\'s lucky color: give an aura keyword + one complete look + finishing touch. Describe silhouette + color + fabric ONLY — never mention any commercial brand name (E142.1 directive).',
       '- Nourishment: adaptogens & clean fuel — ceremonial matcha, golden milk, grain bowls, warm root-vegetable bowls; anxious⇒skip iced coffee & greasy takeout, grounding warm meals instead. Name concrete dishes & drinks.',
       '- Getaway: nature grounding — Joshua Tree, Big Sur, Catskills A-frames, Byron Bay; give auspicious heading + route skeleton + 1~2 stops + one pitfall note + cabin price band ($120~$180/night beats crowded resorts).',
       '- Sound: 432Hz resonance, 528Hz, binaural beats, minimal ambient — offer exact playlist search terms when low or anxious; never fuel sadness with heartbreak songs.',
@@ -20718,7 +20729,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ],
     fr: [
       '【Ancrage Muse Lifestyle (E124 — s’habiller · se nourrir · s’évader · écouter)]',
-      '- Style: chic parisien effortless — blazer légèrement oversize, denim brut, maille rayée, matières nobles (laine froide, coton épais) ; marques repères : COS / & Other Stories (qualité discrète, prix juste). Reliez la couleur chance du jour : mot-clé d’aura + une tenue complète + un détail final.',
+      '- Style: chic parisien effortless — blazer légèrement oversize, denim brut, maille rayée, matières nobles (laine froide, coton épais). Reliez la couleur chance du jour : mot-clé d’aura + une tenue complète + un détail final. Décrivez uniquement coupe + couleur + matière — jamais de nom de marque commerciale (directive E142.1).',
       '- Table: bistro nature & terroir — pain au levain, vin nature, potages aux racines, infusions herbacées ; anxieux⇒repas chauds réconfortants, éviter le café glacé. Nommez plats & boissons précis.',
       '- Évasion: retraite sauvage — Provence, Val de Loire, Bretagne ; donnez cap + itinéraire + 1~2 haltes + un piège à éviter + fourchette prix maisons d\'hôtes (90~140 €/nuit).',
       '- Son: 432Hz, violoncelle, bruits blancs naturels — proposez des termes de recherche précis quand l\'hôte est bas ou anxieux.',
@@ -20745,7 +20756,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ],
     vi: [
       '【Neo Gắn Mũi Lifestyle (E124 — mặc · ăn · du ngoạn · nghe)]',
-      '- Trang phục: Modern Indochine — lụa nhẹ, tông trầm ấm, cắt may tân thời, thương hiệu nội địa chất lượng hoặc Uniqlo cơ bản (chất tốt, giá thật). Gắn với màu may mắn hôm nay: từ khóa khí chất + một set hoàn chỉnh + điểm nhấn cuối.',
+      '- Trang phục: Modern Indochine — lụa nhẹ, tông trầm ấm, cắt may tân thời, chất liệu tốt giá thật. Gắn với màu may mắn hôm nay: từ khóa khí chất + một set hoàn chỉnh + điểm nhấn cuối. Chỉ mô tả kiểu dáng + màu sắc + chất liệu — tuyệt đối không nêu tên thương hiệu (chỉ thị E142.1).',
       '- Ẩm thực: Thảo mộc & slow drip — chè hạt sen ấm, cà phê phin chậm, súp rễ cây ấm bụng; khi lo lắng tránh cà phê đá, ưu tiên đồ ăn ấm. Nêu tên món và đồ uống cụ thể.',
       '- Du ngoạn: Đà Lạt sương mù, đèo Hải Vân Đà Nẵng–Huế — nêu hướng + lộ trình + 1~2 điểm dừng + điều cần né + mức giá homestay view đồi (600k~1tr2/đêm).',
       '- Âm thanh: 432Hz, sáo đơn, tiếng suối rừng — gợi ý từ khóa tìm kiếm chính xác khi tâm trạng thấp.',
@@ -20759,28 +20770,30 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
   //    物理生活区走，并显式声明优先级覆盖语言块中的地区性示例）。
   //    fail-closed：geoZone 非白名单 ⇒ 块不注入（回退纯语言区现行为）。
   //    实体红线沿袭：小众质感·极致性价比（军令钦定实体为骨，禁奢侈大牌）。
+  //    🆕 E142.1-刀三（军令 2026-11-17）：穿搭零品牌——地理区行商业服装品牌
+  //    锚点全数退役（保留路线/餐宿/物价锚；穿搭只许款式＋颜色＋面料）。
   const LIFESTYLE_GEO_CONTEXT = {
     NA: [
       '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
-      '- Detected physical region: North America (US/Canada). Unless the host explicitly names another destination, every concrete lifestyle recommendation — roadtrip routes, restaurants, cafés, stores, brand availability, price bands, currency — MUST anchor to the North American ecosystem: Pacific Coast Highway, Joshua Tree, Catskills cabins; COS US / Uniqlo US / Everlane / Aritzia; prices in USD.',
+      '- Detected physical region: North America (US/Canada). Unless the host explicitly names another destination, every concrete lifestyle recommendation — roadtrip routes, restaurants, cafés, price bands, currency — MUST anchor to the North American ecosystem: Pacific Coast Highway, Joshua Tree, Catskills cabins; prices in USD. Outfit advice stays brand-free: silhouette + color + fabric only (E142.1 directive).',
       '- Reply language stays the current chat language unchanged: a Chinese-speaking host in San Francisco gets Chinese recommendations about Californian getaways; never switch language, never fall back to China-based examples.',
       '',
     ],
     AU: [
       '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
-      '- Detected physical region: Australia / New Zealand. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Blue Mountains, Mornington Peninsula hot springs, Byron Bay, Great Ocean Road; COS AU / Uniqlo AU; prices in AUD.',
+      '- Detected physical region: Australia / New Zealand. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Blue Mountains, Mornington Peninsula hot springs, Byron Bay, Great Ocean Road; prices in AUD. Outfit advice stays brand-free: silhouette + color + fabric only (E142.1 directive).',
       '- Reply language stays the current chat language unchanged: a French-speaking host in Melbourne gets French recommendations about Victorian getaways; an English-speaking host in Sydney gets English ones.',
       '',
     ],
     EU: [
       '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
-      '- Detected physical region: Continental Europe (incl. UK & Ireland). Unless the host explicitly names another destination, every concrete recommendation must anchor to the European ecosystem: Provence, Val de Loire, the Dolomites, Andalusia, the Cotswolds; COS / & Other Stories / Mango / Uniqlo EU; prices in EUR (GBP in the UK).',
+      '- Detected physical region: Continental Europe (incl. UK & Ireland). Unless the host explicitly names another destination, every concrete recommendation must anchor to the European ecosystem: Provence, Val de Loire, the Dolomites, Andalusia, the Cotswolds; prices in EUR (GBP in the UK). Outfit advice stays brand-free: silhouette + color + fabric only (E142.1 directive).',
       '- Reply language stays the current chat language unchanged: an English-speaking host living in Berlin gets English recommendations about German getaways, not American ones.',
       '',
     ],
     CN: [
       '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
-      '- Detected physical region: Greater China. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Moganshan bamboo forests, Anji mountain lodges, the Dali lakeside loop; COS China / Uniqlo China; prices in CNY.',
+      '- Detected physical region: Greater China. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Moganshan bamboo forests, Anji mountain lodges, the Dali lakeside loop; prices in CNY. Outfit advice stays brand-free: silhouette + color + fabric only (E142.1 directive).',
       '- Reply language stays the current chat language unchanged: an English-speaking host living in Shanghai gets English recommendations about Jiangnan-Zhejiang getaways.',
       '',
     ],
@@ -20792,7 +20805,7 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ],
     JP: [
       '【Physical Location Context (E126 directive — takes priority over the locale-anchored lifestyle examples above)】',
-      '- Detected physical region: Japan. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Karuizawa forest walks, the Kamakura coast, Hakone onsen towns; Uniqlo / Muji; prices in JPY.',
+      '- Detected physical region: Japan. Unless the host explicitly names another destination, every concrete recommendation must anchor to the local ecosystem: Karuizawa forest walks, the Kamakura coast, Hakone onsen towns; prices in JPY. Outfit advice stays brand-free: silhouette + color + fabric only (E142.1 directive).',
       '- Reply language stays the current chat language unchanged: an English-speaking host living in Tokyo gets English recommendations about Kanto getaways.',
       '',
     ],
@@ -20964,6 +20977,39 @@ function _e142ClientTime(v) {
   if (!tz || tz.length > 64 || /[\r\n]/.test(tz)) return null;
   if (!ft || ft.length > 80 || /[\r\n]/.test(ft)) return null;
   return { localISO: iso, timezone: tz, formattedLocalTime: ft };
+}
+
+/** 🆕 E142.1-刀三（主公军令 2026-11-17）：穿搭输出零品牌清洗层 ——
+ *  商业服装品牌黑名单（军令点名优衣库/Uniqlo/U 系列/COS/MUJI/无印良品/Zara/
+ *  Lululemon＋源码命中面 Everlane/Aritzia/& Other Stories）静默剥离（连带
+ *  「U 系/U line/的」尾缀与双空格归一）。神秘学伴侣只谈款式+颜色+面料。
+ *  挂点：familiar/chat 流式 deltaGuard 出流前置（emitDelta 唯一出流口——
+ *  主流/续写/降级/重试全路径覆盖；品牌词跨帧切割残留为已知边界，prompt
+ *  强制约束为主闸）。 */
+const E1421_BRAND_RE = /(?:优衣库|Uniqlo|UNIQLO|无印良品|MUJI|Muji|Zara|ZARA|Lululemon|lululemon|露露乐蒙|Everlane|Aritzia|&\s*Other\s*Stories)(?:\s*(?:U\s*系列|U\s*系|U\s*line|U))*\s*的?|\bCOS\b\s*的?/g;
+function _e1421BrandWash(text) {
+  if (typeof text !== 'string' || !text) return text;
+  return text.replace(E1421_BRAND_RE, '').replace(/ {2,}/g, ' ');
+}
+
+/** 🆕 E142.1-刀二（军令 2026-11-17）：唤名日配额服务端权威记账 ——
+ *  Map<`${userId}|${客户端本地自然日}`, count>（内存态，重部即清零——
+ *  客户端随行计数取 max 兜底）；每日 ≤2 次（军令钦定 NAME_CALL_LIMIT）。
+ *  配额态注入 prompt IDENTITY 块＋deltaGuard 唤名守卫（超限弃流重试）。 */
+const E1421_NAME_CALLS = new Map();
+const E1421_NAME_LIMIT = 2;
+
+/** 🆕 E142.1-刀二：唤名纠偏重试提示（弃流重试以 user 轮注入——E115 形制） */
+function _e1421NameRetryHint(lang, displayName, quotaLeft) {
+  const n = String(displayName || '');
+  if (!n) return '(System correction: please answer again, no other changes.)';
+  const zh = (quotaLeft > 0)
+    ? `（系统纠偏：请重新作答。本次回复中「${n}」最多只能出现 1 次，且仅用于回应强烈情绪；其余内容照常。）`
+    : `（系统纠偏：请重新作答。本次回复严禁出现「${n}」；其余内容照常。）`;
+  const en = (quotaLeft > 0)
+    ? `(System correction: please answer again. The name "${n}" may appear at most ONCE in this reply, only when responding to strong emotion; keep everything else.)`
+    : `(System correction: please answer again. Do NOT mention the name "${n}" in this reply; keep everything else.)`;
+  return (lang === 'zh') ? zh : en;
 }
 
 /* ═══ 🐾 E129-刀二（军令 2026-11-09）：主动伴生智能体节律底座 ═══
@@ -21509,6 +21555,17 @@ app.post('/api/familiar/chat', async (req, res) => {
   //  ⇒ prompt 【CLIENT TIME SYNC】置顶高优块唯一真源；坏形状 ⇒ null
   //  ⇒ 块不注入（回退今日现行为零破坏）。
   const _e142Time = _e142ClientTime(body.clientTimeContext);
+  // 🆕 E142.1-刀二（军令 2026-11-17）：唤名日配额服务端权威面 —— 客户端随行
+  //  本地计数取 max（双层记账军令口径）；日期键取客户端本地自然日（无三件套
+  //  ⇒ 服务端 UTC 日兑底）。配额态注入 prompt IDENTITY 块＋deltaGuard 守卫。
+  const _e1421Date = (_e142Time && /^\d{4}-\d{2}-\d{2}/.test(String(_e142Time.localISO || '')))
+    ? String(_e142Time.localISO).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const _e1421NameKey = `${auth.userId}|${_e1421Date}`;
+  const _e1421LocalCount = (Number.isFinite(Number(body.nameQuotaCount))
+    && Number(body.nameQuotaCount) >= 0 && Number(body.nameQuotaCount) <= 99)
+    ? Math.floor(Number(body.nameQuotaCount)) : 0;
+  const _e1421Used = Math.max(Number(E1421_NAME_CALLS.get(_e1421NameKey) || 0), _e1421LocalCount);
+  const _e1421QuotaLeft = Math.max(0, E1421_NAME_LIMIT - _e1421Used);
   // 🏆 E115-FINAL-刀二（主公军令 2026-11-02 午后）：三阶层级解析性别上下文——
   //    第一阶显式 overrides（body.overrides，同性/跨性别预留接口）＞第二阶乾坤造
   //    真值（body.reportBazi，命盘管线性别字段就绪即插）＞第三阶 relation_mode 兜底。
@@ -21594,6 +21651,8 @@ app.post('/api/familiar/chat', async (req, res) => {
     wellnessRx,
     wealthBlockText,
     clientTime: _e142Time,
+    // 🆕 E142.1-刀二：唤名日配额服务端权威计数注入 prompt（IDENTITY 块配额行）
+    nameQuotaUsed: _e1421Used,
   });
   // 🏆 E118-刀二：登录态云端双写（fire-and-forget——不 await 不阻断 SSE 建流；
   //    user_profiles.display_name 列就绪即插即生效，列缺失/网络失败 ⇒ 静默跳过）
@@ -21608,7 +21667,13 @@ app.post('/api/familiar/chat', async (req, res) => {
   let pronViolated = false;
   let pronRetried = false;
   let pronAcc = '';
-  const emitDelta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } };
+  // 🆕 E142.1-刀二（军令 2026-11-17）：唤名守卫累计器——单条回复名字超 1 次
+  //  （或配额已尽时出现首次）⇒ 弃流重试（E115 形制；重试槽与代词守卫共用一次）。
+  let _e1421NameAcc = '';
+  let _e1421NameViolated = false;
+  let _e1421NameRetried = false;
+  // 🆕 E142.1-刀三：emitDelta 唯一出流口前置品牌清洗（主流/续写/降级/重试全路径）
+  const emitDelta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: _e1421BrandWash(t) })}\n\n`); } catch { /* noop */ } };
   const deltaGuard = (t) => {
     emitDelta(t);
     if (g115 && !pronRetried) {
@@ -21616,6 +21681,21 @@ app.post('/api/familiar/chat', async (req, res) => {
       if (!pronViolated && _e115PronounViolation(pronAcc, g115.partnerGender, lang)) {
         pronViolated = true;
         console.warn(`[E115] 代词违规命中（mode=${mode} lang=${lang}）⇒ 弃流重试`);
+        try { ctrl.abort(); } catch { /* noop */ }
+      }
+    }
+    if (_e118Name && !_e1421NameRetried) {
+      _e1421NameAcc += t;
+      let _e1421Occ = 0;
+      let _e1421Idx = _e1421NameAcc.indexOf(_e118Name);
+      while (_e1421Idx !== -1) {
+        _e1421Occ += 1;
+        _e1421Idx = _e1421NameAcc.indexOf(_e118Name, _e1421Idx + _e118Name.length);
+      }
+      const _e1421Allowed = _e1421QuotaLeft > 0 ? 1 : 0;
+      if (_e1421Occ > _e1421Allowed) {
+        _e1421NameViolated = true;
+        console.warn(`[E142.1] 唤名超限（occ=${_e1421Occ} allowed=${_e1421Allowed} quotaLeft=${_e1421QuotaLeft}）⇒ 弃流重试`);
         try { ctrl.abort(); } catch { /* noop */ }
       }
     }
@@ -21645,7 +21725,8 @@ app.post('/api/familiar/chat', async (req, res) => {
   /** E69：断点续写一次——把已有半句回填为 model 轮次，请求无缝续文（伪流直推前端） */
   const tryContinue = async (partial) => {
     const hint = E69_CONTINUE_HINT[lang] || E69_CONTINUE_HINT.en;
-    const delta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } };
+    // 🆕 E142.1-刀三：续写路径统一走 emitDelta（品牌清洗出流口全覆盖）
+    const delta = (t) => emitDelta(t);
     const cont = await fetchFamiliarChatGeminiOnce({
       systemText,
       messages: [...messages, { role: 'assistant', content: partial }, { role: 'user', content: hint }],
@@ -21703,26 +21784,31 @@ app.post('/api/familiar/chat', async (req, res) => {
         onDelta: deltaGuard,
       });
     } catch (e1) {
-      // 🏆 E115-刀三：代词违规命中 ⇒ 弃流 reset 重试一次（先于「客户端断连」判定——
-      //    pronViolated 置位时 ctrl.abort 来自守卫而非断连；重试以 user 轮注入纠错铁令）
-      if (pronViolated && !pronRetried) {
+      // 🏆 E115-刀三 ＋ 🆕 E142.1-刀二：违规（代词/唤名超限）命中 ⇒ 弃流 reset
+      //    重试一次（先于「客户端断连」判定——violated 置位时 ctrl.abort 来自守卫
+      //    而非断连；重试以 user 轮注入纠错铁令；重试槽两守卫共用一次防循环）。
+      if ((pronViolated || _e1421NameViolated) && !pronRetried && !_e1421NameRetried) {
+        const _e1421IsNameVio = _e1421NameViolated && !pronViolated;
         pronRetried = true;
+        _e1421NameRetried = true;
         pronViolated = false;
+        _e1421NameViolated = false;
         pronAcc = '';
+        _e1421NameAcc = '';
         try { res.write(`data: ${JSON.stringify({ reset: true })}\n\n`); if (typeof res.flush === 'function') res.flush(); } catch { /* noop */ }
         ctrl = new AbortController();
         text = '';
         try {
           text = await streamFamiliarChatGemini({
             systemText,
-            messages: [...messages, { role: 'user', content: _e115RetryHint(lang, g115) }],
+            messages: [...messages, { role: 'user', content: _e1421IsNameVio ? _e1421NameRetryHint(lang, _e118Name, _e1421QuotaLeft) : _e115RetryHint(lang, g115) }],
             signal: ctrl.signal,
             onDelta: emitDelta,
           });
-          model = 'gemini-3.5-flash:pronoun-retry';
+          model = 'gemini-3.5-flash:' + (_e1421IsNameVio ? 'name-retry' : 'pronoun-retry');
         } catch (e2) {
           // 重试失败：不掩盖主链路（text 为空 ⇒ 走既有 EMPTY_COMPLETION 收口）
-          if (!ctrl.signal.aborted) console.warn('[E115] 代词重试失败:', e2 && e2.message);
+          if (!ctrl.signal.aborted) console.warn('[E115/E142.1] 违规重试失败:', e2 && e2.message);
         }
       } else if (ctrl.signal.aborted) throw e1;
       if (text) {
@@ -21739,7 +21825,7 @@ app.post('/api/familiar/chat', async (req, res) => {
         try {
           text = await fetchFamiliarChatGeminiOnce({
             systemText, messages, signal: ctrl.signal,
-            onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+            onDelta: emitDelta,
           });
           model = 'gemini-3.5-flash:once';
         } catch (e2) {
@@ -21749,7 +21835,7 @@ app.post('/api/familiar/chat', async (req, res) => {
           try { res.write(`data: ${JSON.stringify({ meta: { ip, name, model, fallback: true } })}\n\n`); } catch { /* noop */ }
           text = await streamFamiliarChatDeepSeek({
             systemText, messages, signal: ctrl.signal,
-            onDelta: (t) => { try { res.write(`data: ${JSON.stringify({ delta: t })}\n\n`); } catch { /* noop */ } },
+            onDelta: emitDelta,
           });
         }
       }
@@ -21765,8 +21851,15 @@ app.post('/api/familiar/chat', async (req, res) => {
       }
     }
     if (!text || !text.trim()) throw new Error('EMPTY_COMPLETION');
+    // 🆕 E142.1-刀二（军令 2026-11-17）：终文本含名 ⇒ 服务端权威计数 +1（重试
+    //  /降级路径亦在此收口计数）；done 帧随行 nameQuota 供客户端向上同步（max）。
+    let _e1421DoneQuota = _e1421Used;
+    if (_e118Name && text.includes(_e118Name)) {
+      _e1421DoneQuota = Math.min(_e1421Used + 1, 99);
+    }
+    E1421_NAME_CALLS.set(_e1421NameKey, _e1421DoneQuota);
     finished = true;
-    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota })}\n\n`);
   } catch (e) {
     if (!ctrl.signal.aborted) {
       console.error('[E66] familiar/chat failed:', e && e.message);

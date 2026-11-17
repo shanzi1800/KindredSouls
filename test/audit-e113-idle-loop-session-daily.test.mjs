@@ -173,9 +173,10 @@ test('E113 S5 刀三接线：ChatSheet 实时落档＋chartSig 锚＋首语复�
   assert.ok(/readFamiliarRecord\(store, FAMILIAR_LS_KEY\)/.test(sheet), 'chartSig 须认领档绑定签名优先');
   assert.ok(sheet.includes('familiarChartSig'), 'chartSig 须本命真值 familiarChartSig 兜底');
   // ③ 消息变更实时落档 effect（军令钦定）
-  const saveFx = sheet.slice(sheet.indexOf('🏆 E113-刀三：消息变更实时落档'), sheet.indexOf('}, [msgs, open]);', sheet.indexOf('🏆 E113-刀三：消息变更实时落档')) + 20);
+  const saveFx = sheet.slice(sheet.indexOf('🏆 E113-刀三：消息变更实时落档'), sheet.indexOf('}, [msgs, open, helloMode]);', sheet.indexOf('🏆 E113-刀三：消息变更实时落档')) + 31);
   assert.ok(/useEffect\(\(\) => \{/.test(saveFx), '缺实时落档 effect');
-  assert.ok(sheet.includes('}, [msgs, open]);'), '落档 effect 须监听 msgs 变更（实时写）');
+  assert.ok(sheet.includes('}, [msgs, open, helloMode]);'), '落档 effect 须监听 msgs＋helloMode（E142.1 模式随档固化）');
+  assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode\)/.test(sheet), '存档须随行 helloMode（E142.1 刀一）');
   // ④ 复原优先：会话档在场且非新解锁 ⇒ 复原全部历史（禁重复首句）
   assert.ok(/if \(sess && sess\.messages\.length > 0/.test(sheet), '缺会话档复原分支');
   assert.ok(/setMsgs\(sessionToChatMsgs\(sess\)\)/.test(sheet), '复原须走 sessionToChatMsgs 转换');

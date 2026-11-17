@@ -9,4 +9,3 @@ export function resolveCompanionGreetingAndQueue(p: {
   lang: string;
   userName?: string;
 }): { firstLine: string; queue: string[]; p1Key: string } | null;
-export function topicPillLabel(recentReport: RecentReportLike, lang: string): string | null;

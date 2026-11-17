@@ -135,7 +135,8 @@ test('E129-03 LIVING/LUNAR 双块内置函数体＋livingContext 签名尾参＋
   // 🆕 E137 后继化：wellnessRx（星盘时令处方）入签名 ⇒ 尾参 livingContext→wellnessRx
   // 🆕 E139 后继化：wealthBlockText（星盘财商块）入签名 ⇒ 尾参 wellnessRx→wealthBlockText
   // 🆕 E142 后继化：clientTime（终端时钟三件套）入签名 ⇒ 尾参 wealthBlockText→clientTime
-  assert.ok(/clientTime\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 clientTime（e115/e129/e137/e139/e142 后继化；实为 ${sigLine.trim()})`);
+  // 🆕 E142.1 后继化：nameQuotaUsed（唤名日配额）入签名 ⇒ 尾参 clientTime→nameQuotaUsed
+  assert.ok(/nameQuotaUsed\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 nameQuotaUsed（e115/e129/e137/e139/e142/e142.1 后继化；实为 ${sigLine.trim()})`);
   // 双块内置函数体（VM 抽取式消费者铁律——块在 fnPrompt 切片内）
   assert.ok(fnPrompt.includes('【LIVING AGENT CONTEXT（E129 军令，违反即失败·会话首击主动回溯）】'), 'LIVING AGENT CONTEXT 块在函数体内');
   assert.ok(fnPrompt.includes('【LUNAR RITUAL（E129 军令，违反即失败·天象窗口主动微仪式）】'), 'LUNAR RITUAL 块在函数体内');

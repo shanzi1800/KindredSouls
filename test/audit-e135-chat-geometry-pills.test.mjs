@@ -92,9 +92,10 @@ test('E135-C 刀三：提示条三精二——chatQ2 六语退役＋chatQ1/Q3 �
   const sheet = read('web/src/components/FamiliarChatSheet.tsx');
 
   // ① 组件侧：药丸数组恰两颗（chatQ1/chatQ3），chatQ2 调用零引用（注释提及不算）
-  // 🆕 E142 后继化：P1 话题胶囊前置（军令钦定有序展开）——基底仍恰两颗 chatQ1/chatQ3
-  assert.ok(/const pills = _e142P1Pill\s*\?\s*\[_e142P1Pill, t\('familiar\.chatQ1'\), t\('familiar\.chatQ3'\)\]\s*\n\s*: \[t\('familiar\.chatQ1'\), t\('familiar\.chatQ3'\)\]/.test(sheet),
-    'pills 数组基底须为 [chatQ1, chatQ3]（E142 P1 胶囊前置新形态）');
+  // 🆕 E142.1 后继化：P1 胶囊前置形态退役（军令刀二删冗余胶囊）——pills 恒恰两颗 chatQ1/chatQ3
+  assert.ok(/const pills = \[t\('familiar\.chatQ1'\), t\('familiar\.chatQ3'\)\];/.test(sheet),
+    'pills 数组须恰两颗 [chatQ1, chatQ3]（E142.1 P1 前置胶囊退役回退形态）');
+  assert.ok(!sheet.includes('_e142P1Pill'), 'P1 胶囊前置变量须退役（E142.1 刀二）');
   assert.ok(!/t\('familiar\.chatQ2'\)/.test(sheet), 'ChatSheet 仍调用退役键 familiar.chatQ2');
 
   // ② 六语键契约：chatQ2 死键（六语全无）＋chatQ1/chatQ3 军令钦定逐字
