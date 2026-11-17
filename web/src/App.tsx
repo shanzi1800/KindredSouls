@@ -1944,6 +1944,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                         : <p key={i} className="ks-report-para">{para}</p>;
                     })}
                   {reportTyping && <p className="ks-report-cursor" aria-hidden="true">✦ …</p>}
+                  {/* 🆕 E143-刀四（军令 2026-11-17）：StarlightWatermark 星光金丝雀
+                      水印——报告长卷渲染尾部版权签名槽位植入零宽字符序列（\u200B
+                      \u200C\u200D 固定编码）；组件层独立挂载（打字机完成后落位），
+                      严禁污染底层算法函数原始返回值（防误伤铁律 2）。视觉零占位。 */}
+                  {!reportTyping && reportParas.length > 0 && (
+                    <div
+                      className="ks-report-watermark"
+                      data-testid="starlight-watermark-romance"
+                      aria-hidden="true"
+                      style={{ height: 0, overflow: 'hidden', fontSize: 0, lineHeight: 0 }}
+                    >
+                      {'\u200B\u200C\u200D'}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

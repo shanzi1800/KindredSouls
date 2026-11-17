@@ -71,6 +71,13 @@ import { extractUserNameIntent, readUserNameProfile, writeUserNameProfile, prepe
 //    时间/服务器 UTC」病灶③；fail-soft：构造异常 ⇒ 不传 ⇒ 现行为零破坏）。
 // @ts-ignore —— clientTimeContext.mjs 纯 JS 逻辑核（形状由 E142 闸门守备）
 import { buildClientTimeContext } from '../lib/clientTimeContext.mjs';
+// 🆕 E143-刀一/刀三（军令 2026-11-17）：灵犀共生状态机＋显式记忆星光微标纯核
+//    （bondLevel 三档/resonanceScore 0-100/六语自容字典；微标三触发去重＋
+//    后台 ks_astral_resonance_log 共振日志零 PII——军令模块一）
+// @ts-ignore —— soulBondState.mjs 纯 JS 逻辑核（形状由 E143 闸门守备）
+import { readSoulBondState, applyBondDelta, resonanceGainFromUserText, bondStatusBarLabel, writeSoulBondState } from '../lib/soulBondState.mjs';
+// @ts-ignore —— astralMemoryBadge.mjs 纯 JS 逻辑核（形状由 E143 闸门守备）
+import { badgeLabel, shouldShowBadge, recordBadge, appendResonanceLog } from '../lib/astralMemoryBadge.mjs';
 import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
 import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 // 🏆 E124-LIFESTYLE-MUSE 刀四（主公军令 2026-11-05）：生活卡微缩插槽＋
@@ -249,6 +256,22 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
    *     今日幸运锦囊问候 helloDaily（{{color}}/{{num}} 真值插值）；
    *  ④ 其余 ⇒ 维持 E111 情境链（日标记契约照旧）。 */
   const [helloMode, setHelloMode] = useState<HelloMode>('plain');
+  /* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生状态——bondLevel 三档
+   *  （Lv.1 初识星伴→Lv.2 星轨同频→Lv.3 灵魂共生）＋resonanceScore 0-100；
+   *  开舱读档（ks_soul_bond_state 均档容错归零重建）＋send 埋点累加写档。 */
+  const [bondState, setBondState] = useState<{ resonanceScore: number; bondLevel: string; updatedAt: number }>(
+    () => readSoulBondState((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null));
+  /* 🆕 E143-刀三：灵犀状态 ref 镜像（send 闭包防陈旧——累加恒基于最新值） */
+  const bondStateRef = useRef<{ resonanceScore: number; bondLevel: string; updatedAt: number }>(
+    readSoulBondState((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null));
+  /* 🆕 E143-刀三：本轮回复气泡顶部星光微标（{id: assistantMsgId, type}——
+   *  流式落地渲染；fail-closed 坏类型永不挂） */
+  const [badgeOnMsg, setBadgeOnMsg] = useState<{ id: string; type: string } | null>(null);
+  /* 🆕 E143-刀三：星光呼吸（1.5s 金色光晕——默契跃迁/微标点亮时触发） */
+  const [avatarBreathe, setAvatarBreathe] = useState(false);
+  /* 🆕 E143-刀三：微标会话去重集合（随 dailyChatSession 档存/读——单会话
+   *  同类型恰 1 次；开舱复原时从档回填） */
+  const badgeLogRef = useRef<string[]>([]);
   /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
   const sessionSigRef = useRef('anon');
   const sessionDateRef = useRef('');
@@ -418,6 +441,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       if (sess && sess.messages.length > 0 && !(freshReport && Number(rr.unlockedAt) > lastTs)) {
         setHelloMode((sess && (sess as { greetingMode?: HelloMode }).greetingMode) || mode);
         setMsgs(sessionToChatMsgs(sess));
+        // 🆕 E143-刀三：微标去重集合随会话档回填（白名单净化；旧档无字段 ⇒ 空集）
+        const _e143Log = (sess as { badgeLog?: string[] }).badgeLog;
+        badgeLogRef.current = Array.isArray(_e143Log) ? _e143Log.filter((x) => typeof x === 'string') : [];
         return;
       }
       if (_e1421MarkFirststrike) {
@@ -446,7 +472,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const store = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
     // 🆕 E142.1-刀一（军令 2026-11-17）：问候模式随档固化——关窗重开复原吃档
     //  模式（单 hello 档重写效应重生同文本；严禁跌回 plain 兜底）。
-    saveDailyChatSession(store, sessionSigRef.current, sessionDateRef.current, msgs, helloMode);
+    // 🆕 E143-刀三（军令 2026-11-17）：微标去重集合随档固化（第 6 可选参——
+    //  会话内单类型恰 1 次的持久真源；空集合不写字段）。每轮 send 埋点后
+    //  badgeLogRef 即时更新 ⇒ 下次消息变更落档携带。
+    saveDailyChatSession(store, sessionSigRef.current, sessionDateRef.current, msgs, helloMode, badgeLogRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgs, open, helloMode]);
   /* 🏆 E114-刀五（主公军令 2026-11-01）：SSE 吐字流状态上行——streaming 翻转
@@ -559,9 +588,14 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       //    永久档案（ks_familiar_profile_${chartSig} 永不过期）；displayName 随行
       //    上行，服务端 _e118DisplayName 形状守卫后注入 prompt IDENTITY 块。
       let displayName: string | undefined;
+      let _e143NameFirst = false;
       try {
         const ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
         const captured = extractUserNameIntent(text);
+        // 🆕 E143-刀三（军令 2026-11-17）：name_first 首次捕获判定（落档前档案
+        //  为空＝首落档——先读 prev 再写，防复写误报首次）。
+        const _e143PrevProfile = readUserNameProfile(ls, sessionSigRef.current);
+        _e143NameFirst = !!(captured && ls && !_e143PrevProfile);
         if (captured && ls && writeUserNameProfile(ls, sessionSigRef.current, captured)) {
           profileNameRef.current = captured;
         }
@@ -575,6 +609,39 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         const m = readActiveMood(sessionStorage);
         if (m) activeMood = m;
       } catch { /* 无痕 ⇒ 不传（服务端回退无情绪块） */ }
+      // 🆕 E143-刀三（军令 2026-11-17）：显式记忆星光微标三触发判定——
+      //  name_first＝首次落档姓名；p1_first＝P1 报告底牌在场（normalizeReportKey
+      //  命中六档白名单）；mood_first＝罗盘情绪在场。单会话同类型恰 1 次
+      //  （badgeLogRef 去重随会话档固化）；命中挂本轮 assistant 气泡顶部。
+      let _e143BadgeType: 'name_first' | 'p1_first' | 'mood_first' | null = null;
+      if (_e143NameFirst && shouldShowBadge(badgeLogRef.current, 'name_first')) _e143BadgeType = 'name_first';
+      else if (recentReport && normalizeReportKey(recentReport) && shouldShowBadge(badgeLogRef.current, 'p1_first')) _e143BadgeType = 'p1_first';
+      else if (activeMood && shouldShowBadge(badgeLogRef.current, 'mood_first')) _e143BadgeType = 'mood_first';
+      if (_e143BadgeType) {
+        badgeLogRef.current = recordBadge(badgeLogRef.current, _e143BadgeType);
+        setBadgeOnMsg({ id: aid, type: _e143BadgeType });
+        setAvatarBreathe(true); // 微标点亮 ⇒ 星光呼吸 1.5s
+        try {
+          appendResonanceLog(
+            (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+            { kind: 'badge' });
+        } catch { /* 隐私模式 fail-soft */ }
+      }
+      // 🆕 E143-刀三：灵犀默契累加（走心回复/情绪在场增益——纯核启发）＋跃迁
+      //  星光呼吸；后台共振日志（chat_round＋followUp 非首击——仅计数零 PII）。
+      try {
+        const _e143Ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+        const _e143Gain = resonanceGainFromUserText(text) + (activeMood ? 1 : 0);
+        const _e143Applied = applyBondDelta(bondStateRef.current, _e143Gain);
+        bondStateRef.current = _e143Applied.state;
+        setBondState(_e143Applied.state);
+        writeSoulBondState(_e143Ls, _e143Applied.state);
+        appendResonanceLog(_e143Ls, { kind: 'chat_round', followUp: firstStrikeRef.current !== true });
+        if (_e143Applied.leveledUp) {
+          setAvatarBreathe(true); // 默契跃迁 ⇒ 星光呼吸 1.5s
+          appendResonanceLog(_e143Ls, { kind: 'bond' });
+        }
+      } catch { /* 隐私模式 fail-soft */ }
       // 🆕 E126-刀三（主公军令 2026-11-05 晚）：Geo-Locale 解耦——客户端时区
       //    随行（服务端 cf-ipcountry 缺席时兜底解析物理生活区；fail-soft：
       //    Intl 不可用/无痕 ⇒ 不传 ⇒ 服务端回退 E124 语言生活区零破坏）
@@ -753,6 +820,14 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   }, [pendingAsk, open, streaming, send, onPendingAskConsumed]);
 
   /* ── 下滑手势收起（触屏；鼠标拖拽不接管，避免桌面误触） ── */
+  /* 🆕 E143-刀三：星光呼吸复位（1.5s 动画＋100ms 缓冲自动熄灭——纯 CSS
+   *  关键帧零算力，App.css ksAstralBreathe） */
+  useEffect(() => {
+    if (!avatarBreathe) return;
+    const tm = window.setTimeout(() => setAvatarBreathe(false), 1600);
+    return () => window.clearTimeout(tm);
+  }, [avatarBreathe]);
+
   const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0]?.clientY ?? null; };
   const onTouchMove = (e: React.TouchEvent) => {
     if (touchStartY.current == null) return;
@@ -796,11 +871,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       >
         <div className="ks-chat-grab" aria-hidden="true" />
         <div className="ks-chat-head">
-          <img className="ks-chat-avatar" src={avatar} alt="" draggable={false} />
+          <img
+            className={`ks-chat-avatar${avatarBreathe ? ' ks-chat-avatar-breathe' : ''}`}
+            src={avatar} alt="" draggable={false}
+          />
           <div className="ks-chat-who">
             <div className="ks-chat-name">{name}</div>
             <div className="ks-chat-status">
               <span className="ks-chat-dot" aria-hidden="true" />
+              {/* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——
+                  六语自容（零 i18n 139 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
+                  Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。 */}
+              <span className="ks-chat-bond" data-testid="soul-bond-status">
+                {bondStatusBarLabel(lang, bondState)}
+              </span>
               {t('familiar.chatStatus', { name })}
             </div>
           </div>
@@ -823,6 +907,14 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         <div className="ks-chat-flow" ref={flowRef}>
           {msgs.map((m) => (
             <div key={m.id} className={`ks-chat-bubble ks-chat-${m.role}`}>
+              {/* 🆕 E143-刀三（军令 2026-11-17）：显式记忆星光微标——本轮回复
+                  气泡顶部 11px 毛玻璃星光胶囊（六语自容；单会话同类型恰 1 次；
+                  fail-closed 坏类型/白名单外永不挂）。 */}
+              {m.role === 'assistant' && badgeOnMsg && badgeOnMsg.id === m.id && (
+                <div className="ks-chat-badge" data-testid="astral-memory-badge">
+                  {badgeLabel(badgeOnMsg.type, lang)}
+                </div>
+              )}
               {m.text}
               {m.role === 'assistant' && m.text === '' && streaming && (
                 <span className="ks-chat-typing" aria-label={t('familiar.chatThinking')}>
