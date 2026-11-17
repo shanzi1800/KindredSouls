@@ -2267,10 +2267,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 0 0 auto;
 }
 /* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——六语自容
-   （零 i18n 139 键扰动）；金调胶囊轻量缀于状态行，超长截断不换行。 */
+   （零 i18n 139 键扰动）；金调前缀恒完整显示（390 宽实测不截断），
+   chatStatus 文本弹性截断（flex: 1 min-width: 0）。 */
 .ks-chat-bond {
   flex: 0 0 auto;
-  max-width: 46%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2278,6 +2278,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0.92;
+}
+.ks-chat-status-text {
+  flex: 1 1 40px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* 🆕 E143-刀三：星光呼吸微共鸣——默契跃升/极值情绪唤名/微标点亮时头像外圈
    1.5s 金色星光呼吸光晕（纯 CSS 关键帧零算力；组件态驱动 class 切换）。 */

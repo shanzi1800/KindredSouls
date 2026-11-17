@@ -881,11 +881,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
               <span className="ks-chat-dot" aria-hidden="true" />
               {/* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——
                   六语自容（零 i18n 139 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
-                  Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。 */}
+                  Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。
+                  几何：bond 恒完整显示（金字前缀不截断），chatStatus 弹性截断。 */}
               <span className="ks-chat-bond" data-testid="soul-bond-status">
                 {bondStatusBarLabel(lang, bondState)}
               </span>
-              {t('familiar.chatStatus', { name })}
+              <span className="ks-chat-status-text">{t('familiar.chatStatus', { name })}</span>
             </div>
           </div>
           {/* 🏆 E112-刀三：灵犀星徽章归位——与标题行平行靠右（✕ 左侧），
