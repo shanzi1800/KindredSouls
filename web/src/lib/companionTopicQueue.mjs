@@ -12,7 +12,9 @@
  *     牌面/姻缘报告核心洞察；财富进则先天财富：八字财库/五行金匮/四季）；
  *   · P2（Priority 2）＝今日星象气场情绪话题（罗盘 2h 时效窗内）；
  *   · 首句 P1+P2 丝滑串联；严禁跌回冷启动兜底语；
- *   · 快捷话题胶囊按「1. 塔罗/姻缘→2. 先天财富→3. 今日情绪」有序展开。
+ *   · 🆕 E142.1-刀一（军令 2026-11-17）：快捷话题胶囊 P1 前置退役（首句已自然
+ *     引导话题，胶囊画蛇添足）——本核 topicPillLabel/TOPIC_PILL_LABELS 彻底删除，
+ *     胶囊栏恒为 chatQ1/chatQ3 基底两颗。
  * 🔴 纪律：纯逻辑核（零 DOM/零 i18n/零网络）；六语自容字典（零 i18n 新键
  *   ——E120/E121/E122/E123 先例）；fail-closed：坏形状一律 null 绝不臆造。
  *   队列不另立存储（P1 真源＝soul_recent_unlocked_report 持久档；P2 真源＝
@@ -207,32 +209,4 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
   }
 
   return { firstLine, queue, p1Key };
-}
-
-/* ═══════════ 快捷话题胶囊（军令钦定三序位——P1 类别胶囊前置）═══════════ */
-
-/** P1 话题胶囊标签（六档 × 六语——按报告类别归并两序位：塔罗/姻缘 → 先天财富） */
-const TOPIC_PILL_LABELS = Object.freeze({
-  love: Object.freeze({
-    zh: '💑 姻缘与塔罗', en: '💑 Love & Tarot', fr: '💑 Amour & Tarot',
-    es: '💑 Amor y Tarot', th: '💑 ความรักและไพ่ทาโรต์', vi: '💑 Tình duyên & Tarot',
-  }),
-  wealth: Object.freeze({
-    zh: '💰 先天财库', en: '💰 Natal Wealth Vault', fr: '💰 Coffre de richesse natal',
-    es: '💰 Bóveda de riqueza natal', th: '💰 คลังทรัพย์แต่กำเนิด', vi: '💰 Kho tài bẩm sinh',
-  }),
-});
-
-/**
- * P1 话题胶囊标签取值（军令钦定序位 1 塔罗/姻缘 / 2 先天财富——报告类别归并）。
- * @param {object|null} recentReport 最近解锁报告档
- * @param {string} lang 六语之一
- * @returns {string|null} 胶囊标签；无合法 P1 ⇒ null（胶囊不出场，现行为零破坏）
- */
-export function topicPillLabel(recentReport, lang) {
-  const p1Key = normalizeReportKey(recentReport);
-  if (!p1Key) return null;
-  const l = ['zh', 'en', 'fr', 'es', 'th', 'vi'].includes(String(lang || '')) ? String(lang) : 'en';
-  const row = TOPIC_PILL_LABELS[p1Key.split('_')[0]];
-  return (row && row[l]) || null;
 }

@@ -23,6 +23,19 @@
 
 export const LASTCHAT_DAY_KEY = 'ks_familiar_lastchat_day';
 
+/* 🆕 E142.1-刀一（主公军令 2026-11-17）：问候模式持久化白名单 —— 关窗重开
+ *  禁跌冷启动兜底语（存档模式合法值闭集；存/读两侧同源净化）。 */
+export const HELLO_MODES = Object.freeze([
+  'sweet', 'soothe', 'plain', 'daily', 'mood', 'p1queue',
+  'love_core', 'love_monthly', 'love_yearly',
+  'wealth_core', 'wealth_monthly', 'wealth_yearly',
+]);
+
+/** 问候模式形状守卫（白名单唯一，坏值 ⇒ undefined——fail-closed） */
+function sanitizeHelloMode(v) {
+  return (typeof v === 'string' && HELLO_MODES.indexOf(v) !== -1) ? v : undefined;
+}
+
 const MAX_MSGS = 200;   // 写入条数上限（防 localStorage 无限膨胀）
 const MAX_TEXT = 4000;  // 单条文本截断护栏（长流式回复）
 
@@ -84,6 +97,8 @@ export function loadDailyChatSession(store, chartSig, dateStr, now = Date.now())
       dateStr: String(v.dateStr),
       expireAt: Number(v.expireAt),
       messages: v.messages.filter(isMsgShape),
+      // 🆕 E142.1-刀一：存档问候模式随行（旧档无字段 ⇒ undefined ⇒ 调用方模式链重算兑底）
+      greetingMode: sanitizeHelloMode(v.greetingMode),
     };
   } catch {
     return null; // 坏 JSON/隐私模式 ⇒ 视同无档（fail-soft）
@@ -93,8 +108,10 @@ export function loadDailyChatSession(store, chartSig, dateStr, now = Date.now())
 /**
  * 写档（消息变更实时写入；组件 role 'user'|'assistant' → 军令 sender 口径转换）。
  * 空文本消息（流式空壳占位）不落档；写入顺带维护跨日判定标记 lastChatDay。
+ * 🆕 E142.1-刀一（军令 2026-11-17）：可选 greetingMode 入参 —— 问候模式随档
+ * 持久化（关窗重开复原不再跌 plain 兜底；白名单外坏值静默丢弃 fail-closed）。
  */
-export function saveDailyChatSession(store, chartSig, dateStr, msgs) {
+export function saveDailyChatSession(store, chartSig, dateStr, msgs, greetingMode) {
   try {
     if (!store || typeof store.setItem !== 'function') return false;
     if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
@@ -120,6 +137,8 @@ export function saveDailyChatSession(store, chartSig, dateStr, msgs) {
       //    用「dateStr + T00:00:00」无时区后缀形态（按本地解析，非 UTC）。
       expireAt: dayEndTimestamp(new Date(`${dateStr}T00:00:00`)),
       messages: norm.slice(-MAX_MSGS),
+      // 🆕 E142.1-刀一：问候模式随档持久化（白名单净化；坏值 ⇒ 字段不写）
+      ...(sanitizeHelloMode(greetingMode) ? { greetingMode: sanitizeHelloMode(greetingMode) } : {}),
     };
     store.setItem(chatSessionKey(chartSig, dateStr), JSON.stringify(sess));
     // 🏆 E113-刀四：跨日判定真源（昨聊过、今无新解锁 ⇒ 首语流转锦囊问候）

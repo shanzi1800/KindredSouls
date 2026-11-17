@@ -261,7 +261,8 @@ test('E115 S7 刀三路由接线：deltaGuard 流中守卫＋reset 帧弃流重�
   assert.ok(route.includes('deltaGuard'), '主 Gemini 流 onDelta 须挂 deltaGuard 守卫');
   assert.ok(route.includes('_e115PronounViolation(pronAcc, g115.partnerGender, lang)'), 'deltaGuard 须流中增量检测');
   assert.ok(route.includes("{ reset: true }"), '须发 reset 帧清空前端已显违规文本');
-  assert.ok(route.includes('pronViolated && !pronRetried'), '重试须一次为限（防循环）');
+  // 🆕 E142.1 后继化：重试槽合并（代词/唤名违规共享一次重试槽，双闸防循环）
+  assert.ok(route.includes('(pronViolated || _e1421NameViolated) && !pronRetried && !_e1421NameRetried'), '重试须一次为限（防循环；E142.1 双闸合并槽）');
   assert.ok(route.includes('_e115RetryHint(lang, g115)'), '重试须以 user 轮注入纠错铁令');
   assert.ok(route.includes('pronoun-retry'), '重试 model 标记须留痕');
   // ② ctrl 替换（let）＋守卫 abort
@@ -375,7 +376,7 @@ test('E115 S11 FINAL-刀二三阶接线：genderCtx 贯通 prompt 红线与输�
     server.indexOf('function buildFamiliarChatSystemPrompt'),
     server.indexOf('\n}\n', server.indexOf('function buildFamiliarChatSystemPrompt'))
   );
-  assert.ok(fn.includes('recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName；🏆 E123 后继化：+activeMood；🏆 E126 后继化：+geoZone；🏆 E129 后继化：+livingContext；🏆 E137 后继化：+wellnessRx；🏆 E139 后继化：+wealthBlockText；🆕 E142 后继化：+clientTime）');
+  assert.ok(fn.includes('recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime, nameQuotaUsed }'), '构造器签名须带 genderCtx 三阶终值参数（🏆 E118 后继化：+displayName；🏆 E123 后继化：+activeMood；🏆 E126 后继化：+geoZone；🏆 E129 后继化：+livingContext；🏆 E137 后继化：+wellnessRx；🏆 E139 后继化：+wealthBlockText；🆕 E142 后继化：+clientTime）');
   assert.ok(fn.includes('const g115 = genderCtx || _e115ResolveGenderContext(mode)'), '构造器须 genderCtx 优先、第三阶兜底');
   // ② 红线块含违禁词显令（六语 forbidden 注入）
   const p = build('girlfriend', 'zh');

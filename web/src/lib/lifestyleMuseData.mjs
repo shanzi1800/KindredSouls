@@ -46,7 +46,7 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       title: '✦ 气场穿搭灵感笺 ✦',
       subtitle: 'AURA STYLE CAPSULE · GROUNDED ELEGANCE',
       prose: '今日气场关键词：松弛而有力量。垂感棉麻或厚磅针织承住心绪，中性色收敛内耗，剪裁利落处见分寸。\n一件素色立领衬衣配直筒长裤，玉石或珍珠微点缀即可——克制，是最高级的气场。',
-      companionWhisper: '小众质感胜过大牌logo：这类剪裁去翻 COS 或优衣库 U 系就足够体面。避开浮夸印花与褶皱；今日宜低调蓄势，不宜喧哗夺目。',
+      companionWhisper: '小众质感胜过大牌logo：这类剪裁找垂感棉麻或厚磅针织的素色款就足够体面。避开浮夸印花与褶皱；今日宜低调蓄势，不宜喧哗夺目。',
       bestWindowPrefix: '气场共振时段',
       defaultTiming: '08:00 - 10:30 · 出门前定调',
       palette: [
@@ -59,7 +59,7 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       title: '✦ AURA STYLE CAPSULE ✦',
       subtitle: 'GROUNDED ELEGANCE · QUIET LUXURY',
       prose: "Today's energy keyword: quiet strength. Reach for oatmeal cashmere or heavyweight cotton to steady your aura; neutral tones mute the inner noise, and a clean silhouette does the talking.\nA tailored shirt with straight-cut trousers needs nothing more — restraint is the most powerful statement.",
-      companionWhisper: 'Understated beats logo: COS or the Uniqlo U line carry this cut beautifully at honest prices. Skip loud prints and creases; today favors composed presence over attention-seeking.',
+      companionWhisper: 'Understated beats logo: a crisp tailored cut in breathable linen or heavyweight cotton carries this look beautifully at honest prices. Skip loud prints and creases; today favors composed presence over attention-seeking.',
       bestWindowPrefix: 'Aura Resonance Window',
       defaultTiming: '08:00 - 10:30 · set the tone before you leave',
       palette: [
@@ -72,7 +72,7 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       title: "✦ CAPSULE D'AURA & STYLE ✦",
       subtitle: 'CHIC EFFORTLESS · ÉLÉGANCE PARISIENNE',
       prose: "Mot-clé du jour : l'effortless. Un blazer légèrement oversize sur denim brut, une maille rayée : l'élégance à la française ne se force jamais.\nLes matières nobles — laine froide, coton épais — portent seules le raffinement.",
-      companionWhisper: "Le chic discret vaut mieux qu'une étiquette : fouillez les rayons COS ou & Other Stories pour ces coupes, sans surpayer. Évitez les imprimés criards ; aujourd'hui, la retenue est votre meilleure signature.",
+      companionWhisper: "Le chic discret vaut mieux qu'une étiquette : cherchez ces coupes en coton épais ou laine froide de qualité, sans surpayer. Évitez les imprimés criards ; aujourd'hui, la retenue est votre meilleure signature.",
       bestWindowPrefix: 'Fenêtre de résonance',
       defaultTiming: '08:00 - 10:30 · avant de sortir',
       palette: [
@@ -85,7 +85,7 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       title: '✦ CÁPSULA DE ESTILO Y AURA ✦',
       subtitle: 'WARM EARTH · LUJO SERENO',
       prose: 'Palabra clave de hoy: calidez serena. Lino respirable en tonos tierra, cortes fluidos y joyería artesanal en plata — la elegancia mediterránea no grita, respira.\nUn lino color arena con detalles en terracota sostiene tu aura sin esfuerzo.',
-      companionWhisper: 'Lo artesanal vale más que la etiqueta: busca estos cortes en Mango o líneas de lino de temporada sin pagar de más. Evita el sintético brillante; hoy la naturalidad es tu mejor aliada.',
+      companionWhisper: 'Lo artesanal vale más que la etiqueta: busca estos cortes en lino de temporada y tejidos naturales sin pagar de más. Evita el sintético brillante; hoy la naturalidad es tu mejor aliada.',
       bestWindowPrefix: 'Ventana de resonancia',
       defaultTiming: '08:00 - 10:30 · antes de salir',
       palette: [
@@ -111,7 +111,7 @@ export const LIFESTYLE_TEMPLATES_12 = Object.freeze({
       title: '✦ THẺ CẢM HỨNG TRANG PHỤC KHÍ CHẤT ✦',
       subtitle: 'MODERN INDOCHINE · SOFT SILK',
       prose: 'Từ khóa hôm nay: dịu dàng mà vững vàng. Lụa nhẹ hoặc vải dệt thô thanh lịch trong tông trầm ấm, đường cắt may Indochine tân thời giữ nét riêng của bạn.\nMột chiếc sơ mi lụa màu kem lạnh với quần âu suông đã đủ tinh tế.',
-      companionWhisper: 'Chất lượng tốt không cần đắt đỏ: các thương hiệu nội địa chairs cutting gọn hoặc dòng cơ bản của Uniqlo đều có những mẫu này. Tránh họa tiết rực rỡ và vải nhăn; hôm nay sự kín đáo chính là khí chất.',
+      companionWhisper: 'Chất lượng tốt không cần đắt đỏ: tìm những mẫu cắt may gọn bằng lụa nhẹ hoặc vải dệt thô thanh lịch đều có mặt ở khắp nơi. Tránh họa tiết rực rỡ và vải nhăn; hôm nay sự kín đáo chính là khí chất.',
       bestWindowPrefix: 'Khung giờ cộng hưởng',
       defaultTiming: '08:00 - 10:30 · trước khi ra cửa',
       palette: [

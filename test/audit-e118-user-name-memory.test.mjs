@@ -209,7 +209,8 @@ test('E118 S3 刀二跨日隔离铁证：会话档当日 24:00 过期清空、�
 test('E118 S4 刀三前端接线：import/开舱读档/send 拦截写入/body.displayName 随行（源码级）', () => {
   const sheet = read('web/src/components/FamiliarChatSheet.tsx');
   // ① 模块导入
-  assert.ok(sheet.includes("import { extractUserNameIntent, readUserNameProfile, writeUserNameProfile, prependUserName } from '../lib/userNameMemory.mjs'"), '缺 userNameMemory 四函数 import');
+  // 🆕 E142.1 后继化：import 扩四配额函数＋NAME_CALL_LIMIT（三重熔断刀二）
+  assert.ok(sheet.includes("import { extractUserNameIntent, readUserNameProfile, writeUserNameProfile, prependUserName, extremeMoodForName, readNameCallCount, bumpNameCallCount, syncNameCallCount, NAME_CALL_LIMIT } from '../lib/userNameMemory.mjs'"), '缺 userNameMemory 八成员 import（E118 四函数＋E142.1 四配额函数）');
   // ② 档案锚 ref
   assert.ok(sheet.includes("const profileNameRef = useRef('')"), '缺 profileNameRef 档案锚');
   // ③ open effect 开舱即读永久档
@@ -220,7 +221,8 @@ test('E118 S4 刀三前端接线：import/开舱读档/send 拦截写入/body.di
   assert.ok(sheet.includes("displayName = (readUserNameProfile(ls, sessionSigRef.current) || null)?.displayName || undefined;"), 'displayName 须从档案读出随行');
   assert.ok(sheet.includes('displayName,'), '请求 body 须含 displayName 字段');
   // ⑤ daily 分支带名装配（e113 闸门三锚保留）
-  assert.ok(sheet.includes('return prependUserName(lang, profileNameRef.current, base);'), 'daily 首语须 prependUserName 带名');
+  // 🆕 E142.1 后继化：daily 首语带名须过唤名门（极值情绪＋配额未满才带名）
+  assert.ok(sheet.includes('return nameGateRef.current\n        ? prependUserName(lang, profileNameRef.current, base) : base;'), 'daily 首语须门控 prependUserName（E142.1 唤名门三重熔断）');
   assert.ok(sheet.includes("dailyFortune({ lang, sunSign: '' })"), 'e113 锦囊真值锚须保留');
   assert.ok(sheet.includes("t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) })"), 'helloDaily 插值锚须保留');
 });

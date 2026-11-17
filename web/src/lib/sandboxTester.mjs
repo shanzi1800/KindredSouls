@@ -28,6 +28,49 @@ export const TESTER_SANDBOX_MODULES = Object.freeze(['romance', 'wealth']);
 /** romance 模块解锁真源键（E85-① 既有契约，重置微控件一并清除） */
 export const ROMANCE_SESSION_UNLOCK_KEY = 'ks_compat_session_unlocked';
 
+/* ── 🆕 E142.1-刀三（主公军令 2026-11-17）：财富月/年报会话档解锁键 ──
+ * paid_plans 跨会话免付短路废除——年鉴按钮态改「会话级解锁」语义（对齐
+ * 姻缘 E85 sessionStorage 契约：付讫跨 reload 存续、重置微控件联动清）。
+ * sessionStorage 注入纯函数（零 DOM；测试可 mock 注入）。 */
+export const WEALTH_TIER_SESSION_KEYS = Object.freeze({
+  monthly: 'ks_wealth_monthly_unlocked',
+  yearly: 'ks_wealth_yearly_unlocked',
+});
+
+/** 会话档档位形状守卫（'monthly' | 'yearly' 唯二合法） */
+function _e1421TierOk(tier) {
+  return tier === 'monthly' || tier === 'yearly';
+}
+
+/** 标记该档位本会话已解锁（沙盒/真实付讫 granted 后调用；写 '1'） */
+export function markWealthTierSessionUnlocked(store, tier) {
+  try {
+    if (!store || typeof store.setItem !== 'function' || !_e1421TierOk(tier)) return false;
+    store.setItem(WEALTH_TIER_SESSION_KEYS[tier], '1');
+    return true;
+  } catch {
+    return false; // iOS 无痕/写满额 ⇒ fail-soft
+  }
+}
+
+/** 该档位本会话是否已解锁（无档/坏档 ⇒ false fail-closed） */
+export function isWealthTierSessionUnlocked(store, tier) {
+  try {
+    if (!store || typeof store.getItem !== 'function' || !_e1421TierOk(tier)) return false;
+    return store.getItem(WEALTH_TIER_SESSION_KEYS[tier]) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** 清两档会话键（「🔄 重置沙盒演练」联动——恢复年鉴付费墙供总监复测） */
+export function resetWealthTierSessionUnlocks(store) {
+  for (const k of ['monthly', 'yearly']) {
+    try { if (store && typeof store.removeItem === 'function') store.removeItem(WEALTH_TIER_SESSION_KEYS[k]); } catch { /* noop */ }
+  }
+  return true;
+}
+
 /* ── 「🔄 重置沙盒演练」微控件文案（六语自容单源；E128 六语对齐红线——两模块共用）── */
 export const L_SANDBOX_TESTER_RESET = Object.freeze({
   zh: '🔄 重置沙盒演练（恢复付费墙）',
