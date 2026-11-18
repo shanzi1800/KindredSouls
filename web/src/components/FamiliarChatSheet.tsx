@@ -84,7 +84,8 @@ import { badgeLabel, shouldShowBadge, recordBadge, appendResonanceLog } from '..
 import {
   resolveCircadianPhase, composeCircadianStatus,
   readLastActiveTs, writeLastActiveTs, computeAstralReunionContext, astralReunionBadgeLabel,
-  detectAstralCalendarEvent, buildAstralCalendarICS, astralCalendarFilename,
+  detectAstralCalendarEvent, detectAstralCalendarIntent, defaultAstralWindow,
+  buildAstralCalendarICS, astralCalendarFilename,
   calendarLockPillLabel, calendarEventSummary,
   parseProxyLine, copyDoneLabel,
 } from '../lib/astralRhythmAction.mjs';
@@ -285,11 +286,13 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🆕 E144-刀五（军令 2026-11-18）：嘴替行轻点复制反馈锚（✓ 已复制 1.5s
    *  内联闪现——绑定 {msgId, lineIdx} 精确到行）。 */
   const [copiedProxy, setCopiedProxy] = useState<{ id: string; idx: number } | null>(null);
-  /* 🆕 E144-刀四（军令 2026-11-18）：天时日程锁槽——本轮 assistant 终文本含
-   *  吉时/避坑时窗 ⇒ 📅 内联微胶囊（复用 .ks-chat-badge 11px 形制零新增卡片）。 */
+  /* 🆕 E144-刀四（军令 2026-11-18）＋E144.1-刀二（补刀军令）：天时日程锁槽
+   * ——双保险触发（精确时窗/胶囊直通/语义宽域）⇒ 📅 内联微胶囊；note＝
+ * 本轮回复核心句（入 .ics DESCRIPTION 日历备注）。 */
   const [calSlot, setCalSlot] = useState<{
     aid: string;
     ev: { dateOffset: number; startHH: number; startMM: number; endHH: number; endMM: number; kind: string };
+    note: string;
     dateISO: string;
   } | null>(null);
   /* 🆕 E144-刀三（军令 2026-11-18）：跨日重逢微标锚（✨ 挂首条/末条 assistant
@@ -863,15 +866,32 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
        * 密函优先（吵架/破冰为第一诉求），生活卡仅在密函静默时挂载。 */
       const lifestyleIntent = scribeIntent ? null : detectLifestyleIntent(text);
       setLifestyleSlot(lifestyleIntent ? { aid, type: (lifestyleIntent.type as LifestyleCardType) } : null);
-      /* 🆕 E144-刀四（军令 2026-11-18）：天时日程锁探测——本轮回复终文本含
-       *  吉时/避坑时窗（detectAstralCalendarEvent fail-closed 宁窄勿宽）⇒ 📅
-       *  内联微胶囊绑定本轮 aid；未命中 ⇒ null 严禁强推（日常回复零误挂）。 */
+      /* 🆕 E144-刀四（军令 2026-11-18）＋E144.1-刀二（补刀军令 2026-11-18）：
+       * 天时日程锁双保险触发——①精确时窗优先（detectAstralCalendarEvent
+       * 有钟点时窗，原 fail-closed 逻辑不动）；②锁A 快捷胶囊直通：本轮用户
+       * 文本＝chatQ1「💰 今日财运与破财避坑」/ chatQ3「🔮 结合星盘的今日指引」
+       * 胶囊文案 ⇒ 100% 必出微胶囊（Q1 ⇒ caution / Q3 ⇒ lucky，lang 无关);
+       * ③锁B 语义宽域命中（用户或回复文本命中财运/破财/避坑/冲动消费/指引/
+       * 吉时/日程/约见等）——②③无钟点 ⇒ 纯核按当前本地时间推算默认提醒窗
+       * （defaultAstralWindow 午后 14-16/晚间 20-22 高发窗）；回复核心句入备注。 */
       try {
         const _e144LastA = [...listRef.current].reverse().find((x) => x.id === aid && x.role === 'assistant' && x.text);
-        const _e144CalEv = _e144LastA ? detectAstralCalendarEvent(_e144LastA.text) : null;
+        let _e144CalEv = _e144LastA ? detectAstralCalendarEvent(_e144LastA.text) : null;
+        if (!_e144CalEv) {
+          const _e144UserText = String(text || '').trim();
+          const _e144PillKind = _e144UserText === t('familiar.chatQ1') ? 'caution'
+            : _e144UserText === t('familiar.chatQ3') ? 'lucky' : null;
+          const _e144Intent = _e144PillKind
+            || detectAstralCalendarIntent(_e144UserText)
+            || (_e144LastA ? detectAstralCalendarIntent(_e144LastA.text) : null);
+          if (_e144PillKind || _e144Intent) {
+            _e144CalEv = { ...defaultAstralWindow(new Date().getHours()), kind: _e144Intent || 'lucky' };
+          }
+        }
         setCalSlot(_e144CalEv ? {
           aid,
           ev: _e144CalEv,
+          note: _e144LastA ? String(_e144LastA.text || '').slice(0, 200) : '',
           dateISO: chatSessionDateKey(new Date(Date.now() + _e144CalEv.dateOffset * 86400000)),
         } : null);
       } catch { setCalSlot(null); }
@@ -950,7 +970,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         dateISO: slot.dateISO,
         startHH: slot.ev.startHH, startMM: slot.ev.startMM,
         endHH: slot.ev.endHH, endMM: slot.ev.endMM,
-        summary, description: summary,
+        summary, description: (slot.note || summary),
         uidSalt: sessionSigRef.current,
       });
       if (!ics) return;
@@ -1015,41 +1035,47 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         onTouchEnd={onTouchEnd}
       >
         <div className="ks-chat-grab" aria-hidden="true" />
+        {/* 🆕 E144.1-刀一（补刀军令 2026-11-18）：头部双行彻底分层——
+            第一行 .ks-chat-head-row：头像＋灵宠名称（左）与 ✦灵犀星胶囊＋✕（右）
+            flex space-between 严格水平对齐；第二行 .ks-chat-status 独立整行
+            占满宽度——根治灵犀星下沉挤压第二行致「晨曦星轨」ellipsis 截断的
+            病灶（主公实测图实锤）；Sophia/Milo 共用同一结构零分叉。 */}
         <div className="ks-chat-head">
-          <img
-            className={`ks-chat-avatar${avatarBreathe ? ' ks-chat-avatar-breathe' : ''}`}
-            src={avatar} alt="" draggable={false}
-          />
-          <div className="ks-chat-who">
+          <div className="ks-chat-head-row">
+            <img
+              className={`ks-chat-avatar${avatarBreathe ? ' ks-chat-avatar-breathe' : ''}`}
+              src={avatar} alt="" draggable={false}
+            />
             <div className="ks-chat-name">{name}</div>
-            <div className="ks-chat-status">
-              <span className="ks-chat-dot" aria-hidden="true" />
-              {/* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——
-                  六语自容（零 i18n 139 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
-                  Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。
-                  几何：bond 恒完整显示（金字前缀不截断），chatStatus 弹性截断。 */}
-              <span className="ks-chat-bond" data-testid="soul-bond-status">
-                {/* 🆕 E144-刀二（军令 2026-11-18）：昼夜色温前缀拼接——
-                    「灵犀默契 Lv.2 星轨同频 · 78/100 · 🌙 星夜守护磁场」形态。 */}
-                {composeCircadianStatus(bondStatusBarLabel(lang, bondState), circadianClock.hour, circadianClock.minute, lang)}
-              </span>
-              <span className="ks-chat-status-text">{t('familiar.chatStatus', { name })}</span>
+            {/* 🏆 E112-刀三：灵犀星徽章归位——与标题行平行靠右（✕ 左侧），
+                深空黑金轻奢胶囊 [ ✦ 灵犀星: N ]；首页按钮下方旧徽章已拆除。
+                🏆 E113-刀五（军令钦定静默化）：2.0 兑换功能未就绪——胶囊零点击
+                绑定（pointer-events:none 物理穿透），cursor:default 拔手型指针，
+                悬浮提示 title 走 i18n（starTooltip：累计可在 2.0 版本兑换专属
+                灵魂兽装扮——锁定 2.0 空间伏笔，防误触空框）。 */}
+            <div
+              className="ks-chat-star"
+              data-testid="familiar-starlight"
+              title={t('familiar.starTooltip')}
+            >
+              {t('familiar.starBadge', { count: Number(starCount) || 0 })}
             </div>
+            <button type="button" className="ks-chat-close" onClick={onClose} aria-label={t('familiar.chatClose')}>✕</button>
           </div>
-          {/* 🏆 E112-刀三：灵犀星徽章归位——与标题行平行靠右（✕ 左侧），
-              深空黑金轻奢胶囊 [ ✦ 灵犀星: N ]；首页按钮下方旧徽章已拆除。
-              🏆 E113-刀五（军令钦定静默化）：2.0 兑换功能未就绪——胶囊零点击
-              绑定（pointer-events:none 物理穿透），cursor:default 拔手型指针，
-              悬浮提示 title 走 i18n（starTooltip：累计可在 2.0 版本兑换专属
-              灵魂兽装扮——锁定 2.0 空间伏笔，防误触空框）。 */}
-          <div
-            className="ks-chat-star"
-            data-testid="familiar-starlight"
-            title={t('familiar.starTooltip')}
-          >
-            {t('familiar.starBadge', { count: Number(starCount) || 0 })}
+          {/* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——
+              六语自容（零 i18n 139 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
+              Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。
+              几何：bond 恒完整显示（金字前缀不截断），chatStatus 弹性截断。
+              🆕 E144-刀二（军令 2026-11-18）：昼夜色温前缀拼接——
+              「灵犀默契 Lv.2 星轨同频 · 78/100 · 🌙 星夜守护磁场」形态。
+              🆕 E144.1-刀一：独立第二行整行宽度（零遮挡零截断）。 */}
+          <div className="ks-chat-status">
+            <span className="ks-chat-dot" aria-hidden="true" />
+            <span className="ks-chat-bond" data-testid="soul-bond-status">
+              {composeCircadianStatus(bondStatusBarLabel(lang, bondState), circadianClock.hour, circadianClock.minute, lang)}
+            </span>
+            <span className="ks-chat-status-text">{t('familiar.chatStatus', { name })}</span>
           </div>
-          <button type="button" className="ks-chat-close" onClick={onClose} aria-label={t('familiar.chatClose')}>✕</button>
         </div>
 
         <div className="ks-chat-flow" ref={flowRef}>

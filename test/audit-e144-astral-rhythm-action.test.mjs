@@ -268,6 +268,68 @@ test('E144-锁4b RFC-5545 .ics 五要素（VCALENDAR/VEVENT/VALARM 15min/DTSTART
     '摘要 lucky/caution 双形态须产出');
 });
 
+/* ═══ E144.1（补刀军令 2026-11-18）：双保险触发＋头部双行分层 ═══ */
+
+test('E144.1-锁4c 财运避坑必出日历锁：主公实测回复（无钟点）⇒ 意图命中＋兜底窗＋组件双保险挂点', () => {
+  // 主公产线实测真实回复文本（军令钦定断言语料——无任何具体钟点）
+  const REPLY = '今天太阳落第2宫，财库能量是充足的，但要提防冲动消费。\n\n月亮白羊容易情绪化买单，别因一时上头或赌气去花钱，暂时用不上的大件先放进购物车冷一冷。';
+  assert.equal(RA.detectAstralCalendarIntent(REPLY), 'caution',
+    '主公实测回复须命中 caution（防冲动消费/情绪化买单——锁B 语义宽域）');
+  // 锁B 语义宽域命中面（军令钦定关键词族）＋寒暄 fail-closed
+  assert.equal(RA.detectAstralCalendarIntent('今天财运怎么样'), 'lucky', '财运 ⇒ lucky');
+  assert.equal(RA.detectAstralCalendarIntent('帮我看看结合星盘的今日指引'), 'lucky', '指引 ⇒ lucky');
+  assert.equal(RA.detectAstralCalendarIntent('今晚吉时出门谈签约'), 'lucky', '吉时/约见 ⇒ lucky');
+  assert.equal(RA.detectAstralCalendarIntent('今天天气真不错呀'), null, '日常寒暄严禁误触');
+  assert.equal(RA.detectAstralCalendarIntent(''), null, '空文本 fail-closed');
+  assert.equal(RA.detectAstralCalendarIntent(null), null, 'null 零抛错');
+  // 智能时段兜底窗（军令钦定：午后 14:00-16:00 / 晚间 20:00-22:00 高发窗）
+  assert.deepEqual(RA.defaultAstralWindow(10), { dateOffset: 0, startHH: 14, startMM: 0, endHH: 16, endMM: 0 }, '上午 ⇒ 午后高发窗');
+  assert.deepEqual(RA.defaultAstralWindow(15), { dateOffset: 0, startHH: 20, startMM: 0, endHH: 22, endMM: 0 }, '午后 ⇒ 晚间高发窗');
+  const late = RA.defaultAstralWindow(21);
+  assert.ok(late.endHH > late.startHH, '深夜退化窗须守卫非零时长');
+  assert.equal(RA.defaultAstralWindow(99).startHH, 20, '非法小时 ⇒ fail-closed 晚间窗');
+  // 兜底窗 + 回复文本 ⇒ 合法 .ics（100% 必出闭环实锤）
+  const w = RA.defaultAstralWindow(11);
+  const ics = RA.buildAstralCalendarICS({
+    dateISO: '2026-11-18', startHH: w.startHH, startMM: w.startMM, endHH: w.endHH, endMM: w.endMM,
+    summary: RA.calendarEventSummary('zh', 'caution'), description: REPLY.slice(0, 200), uidSalt: 'sig-1',
+  });
+  assert.ok(ics.includes('BEGIN:VEVENT') && ics.includes('TRIGGER:-PT15M'), '兜底窗须产合法 VEVENT＋VALARM');
+  assert.ok(ics.includes('避坑'), '回复核心句须写入 DESCRIPTION（日历备注）');
+  // 组件双保险挂点（send 收口）：锁A 胶囊直通＋锁B 语义网＋兜底窗＋备注入历
+  assert.ok(SHEET.includes("_e144UserText === t('familiar.chatQ1')"), '锁A 须比对 chatQ1 胶囊文案（点击直通 100% 必出）');
+  assert.ok(SHEET.includes("=== t('familiar.chatQ3')"), '锁A 须比对 chatQ3 胶囊文案（Q3 ⇒ lucky）');
+  assert.ok(SHEET.includes('detectAstralCalendarIntent('), '锁B 语义网须挂 send 收口探测');
+  assert.ok(SHEET.includes('defaultAstralWindow(new Date().getHours())'), '无钟点须走本地时间智能兜底窗');
+  assert.ok(SHEET.includes('note: _e144LastA'), '回复核心句须随槽入历（note 字段）');
+  assert.ok(SHEET.includes('description: (slot.note || summary)'), '日历备注须优先回复核心句');
+});
+
+test('E144.1-锁7 头部双行分层锁：灵犀星与名称同排对齐＋状态栏独立整行（零遮挡零截断）', () => {
+  // 组件结构：row1（头像＋名称＋灵犀星＋✕）与 row2（状态栏）彻底分层
+  assert.ok(SHEET.includes('ks-chat-head-row'), '头部第一行须独立 .ks-chat-head-row 双行分层');
+  const headIdx = SHEET.indexOf('<div className="ks-chat-head">');
+  const rowIdx = SHEET.indexOf('ks-chat-head-row', headIdx);
+  const nameIdx = SHEET.indexOf('ks-chat-name', headIdx);
+  const starIdx = SHEET.indexOf('className="ks-chat-star"', headIdx);
+  const closeIdx = SHEET.indexOf('ks-chat-close', headIdx);
+  const statusIdx = SHEET.indexOf('ks-chat-status"', headIdx);
+  assert.ok(headIdx >= 0 && rowIdx > headIdx && nameIdx > rowIdx, 'row1 须含灵宠名称');
+  assert.ok(nameIdx < starIdx && starIdx < closeIdx, '名称（左）⇒灵犀星⇒✕（右）须同排次序');
+  assert.ok(statusIdx > closeIdx, '状态栏须独立第二行（row1 之后——与灵犀星零交集）');
+  assert.ok(!SHEET.includes('ks-chat-who'), '旧 .ks-chat-who 单行包裹结构须退役');
+  // CSS 军令钦定字面：row1 flex/space-between＋状态栏 width:100% 整行
+  const rowCss = CSS.slice(CSS.indexOf('.ks-chat-head-row'), CSS.indexOf('.ks-chat-head-row') + 280);
+  assert.ok(/display:\s*flex/.test(rowCss) && /align-items:\s*center/.test(rowCss)
+    && /justify-content:\s*space-between/.test(rowCss), 'row1 须 flex/center/space-between（军令钦定字面）');
+  const statusCss = CSS.slice(CSS.indexOf('.ks-chat-status {'), CSS.indexOf('.ks-chat-status {') + 260);
+  assert.ok(/width:\s*100%/.test(statusCss), '状态栏须占满头部可用宽度（width:100%——昼夜词条零截断）');
+  assert.ok(!CSS.includes('.ks-chat-who'), '旧 who 样式须同步退役');
+  // head 须 column 分层（双行彻底分层——禁回归单行 center）
+  const headCss = CSS.slice(CSS.indexOf('.ks-chat-head {'), CSS.indexOf('.ks-chat-head {') + 200);
+  assert.ok(/flex-direction:\s*column/.test(headCss), '.ks-chat-head 须 flex-direction:column 双行分层');
+});
+
 /* ═══ 锁5：情感高情商嘴替三档锁 ═══ */
 
 test('E144-锁5a 嘴替意图侦测六语命中/miss（fail-closed 寒暄零误触）＋服务端 prompt 分支', () => {

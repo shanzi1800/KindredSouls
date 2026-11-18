@@ -19,6 +19,10 @@ export function normalizeAstralBreathingChunk(text: string): string;
 export function splitAstralBreathingText(text: string, lang: string): string;
 export interface AstralCalendarEvent { dateOffset: 0 | 1; startHH: number; startMM: number; endHH: number; endMM: number; kind: 'lucky' | 'caution'; }
 export function detectAstralCalendarEvent(text: string): AstralCalendarEvent | null;
+/** E144.1-刀二：语义宽域日历意图（军令锁B——财运/避坑/指引等命中即触发）。 */
+export function detectAstralCalendarIntent(text: string): 'caution' | 'lucky' | null;
+/** E144.1-刀二：无钟点智能时段兜底窗（午后 14-16/晚间 20-22 高发窗）。 */
+export function defaultAstralWindow(nowHour: number): { dateOffset: 0; startHH: number; startMM: 0; endHH: number; endMM: 0 };
 export function calendarLockPillLabel(lang: string): string;
 export function calendarEventSummary(lang: string, kind: string): string;
 export function buildAstralCalendarICS(ev: {
