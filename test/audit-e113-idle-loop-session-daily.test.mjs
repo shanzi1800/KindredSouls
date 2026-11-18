@@ -181,7 +181,9 @@ test('E113 S5 刀三接线：ChatSheet 实时落档＋chartSig 锚＋首语复�
   assert.ok(/saveDailyChatSession\(store, sessionSigRef\.current, sessionDateRef\.current, msgs, helloMode(, badgeLogRef\.current)?\)/.test(sheet), '存档须随行 helloMode（E142.1 刀一）＋badgeLog（E143 刀三）');
   // ④ 复原优先：会话档在场且非新解锁 ⇒ 复原全部历史（禁重复首句）
   assert.ok(/if \(sess && sess\.messages\.length > 0/.test(sheet), '缺会话档复原分支');
-  assert.ok(/setMsgs\(sessionToChatMsgs\(sess\)\)/.test(sheet), '复原须走 sessionToChatMsgs 转换');
+  // 🆕 E144 后继化：复原数组提为 _e144Restored ref（跨日重逢微标挂历史末条
+  //    顶部——数据仍走 sessionToChatMsgs 单源转换，零改写历史文本）。
+  assert.ok(/setMsgs\((?:sessionToChatMsgs\(sess\)|_e144Restored)\)/.test(sheet), '复原须走 sessionToChatMsgs 转换（E144 ref 形态亦可——赋值源恒为 sessionToChatMsgs(sess)）');
   // ⑤ E112 六档随行上行不破（send body.recentReport 保留）
   assert.ok(/const recentReport = readRecentReport\(/.test(sheet), 'send 缺 recentReport 读取（E112 契约保留）');
 });
@@ -243,7 +245,7 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 111, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 112, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
