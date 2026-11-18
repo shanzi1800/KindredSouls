@@ -262,6 +262,58 @@ export function detectAstralCalendarEvent(text) {
   return { dateOffset, startHH: sh, startMM: sm, endHH: eh, endMM: em, kind };
 }
 
+/* ═══ E144.1-刀二（补刀军令 2026-11-18）：日历锁双保险触发 ═══ */
+
+/** 语义宽域意图网·避坑类（军令钦定关键词面——命中即 caution）。 */
+const CAL_INTENT_CAUTION = Object.freeze([
+  '破财', '避坑', '冲动消费', '冲动花钱', '情绪化买单', '不宜消费', '捂紧钱包',
+]);
+/** 语义宽域意图网·指引类（财运/指引/吉时/日程/约见——命中即 lucky）。 */
+const CAL_INTENT_LUCKY = Object.freeze([
+  '财运', '星盘指引', '今日指引', '指引', '吉时', '日程', '约见', '签约', '面试', '办事',
+]);
+/** en 核心网（小写匹配——非 zh 语系兜底；zh 主网六语自容零 i18n）。 */
+const CAL_INTENT_EN = Object.freeze([
+  'wealth', 'money', 'spending', 'impulse', 'avoid', 'lucky time', 'schedule', 'meeting',
+]);
+
+/**
+ * 语义宽域日历意图（E144.1 军令锁B）：用户问题或灵宠回复命中财运/破财/避坑/
+ * 冲动消费/买单/星盘指引/吉时/日程/约见等关键词 ⇒ 'caution'（避坑类）或
+ * 'lucky'（指引类）；未命中 ⇒ null。与 detectAstralCalendarEvent（精确时窗
+ * 提取）正交：本网为「该出必出」触发网，不要求钟点（无钟点走兜底窗）。
+ * @returns {'caution'|'lucky'|null}
+ */
+export function detectAstralCalendarIntent(text) {
+  const s = String(text || '');
+  if (!s.trim()) return null;
+  if (CAL_INTENT_CAUTION.some((k) => s.includes(k))) return 'caution';
+  if (CAL_INTENT_LUCKY.some((k) => s.includes(k))) return 'lucky';
+  const low = s.toLowerCase();
+  if (CAL_INTENT_EN.some((k) => low.includes(k))) return 'lucky';
+  return null;
+}
+
+/**
+ * 智能时段兜底窗（E144.1 军令锁B）：回复未提具体钟点 ⇒ 按当前本地小时推算
+ * 今日默认提醒窗——清晨/上午（<12）⇒ 午后冲动消费高发窗 14:00-16:00；
+ * 午后/傍晚（12-19）⇒ 晚间高发窗 20:00-22:00；夜间（≥20）⇒ 当前后移
+ * 2-4 小时（越界收敛 23 点内，零时长退化窗守卫 21:00-23:00）；非法输入
+ * fail-closed 晚间窗。
+ * @param {number} nowHour 0-23 本地小时
+ * @returns {{dateOffset: 0, startHH: number, startMM: 0, endHH: number, endMM: 0}}
+ */
+export function defaultAstralWindow(nowHour) {
+  const mk = (sh, eh) => ({ dateOffset: 0, startHH: sh, startMM: 0, endHH: eh, endMM: 0 });
+  const h = Number(nowHour);
+  if (!Number.isFinite(h) || h < 0 || h > 23) return mk(20, 22);
+  if (h < 12) return mk(14, 16);
+  if (h < 20) return mk(20, 22);
+  const s = Math.min(h + 2, 23);
+  const e = Math.min(h + 4, 23);
+  return e > s ? mk(s, e) : mk(21, 23);
+}
+
 /** 日历锁微胶囊词条（白名单外 lang ⇒ ''） */
 export function calendarLockPillLabel(lang) {
   return L_CALENDAR_LOCK_PILL[sanitizeLang(lang)] || '';
