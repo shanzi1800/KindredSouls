@@ -78,6 +78,16 @@ import { buildClientTimeContext } from '../lib/clientTimeContext.mjs';
 import { readSoulBondState, applyBondDelta, resonanceGainFromUserText, bondStatusBarLabel, writeSoulBondState } from '../lib/soulBondState.mjs';
 // @ts-ignore —— astralMemoryBadge.mjs 纯 JS 逻辑核（形状由 E143 闸门守备）
 import { badgeLabel, shouldShowBadge, recordBadge, appendResonanceLog } from '../lib/astralMemoryBadge.mjs';
+// 🆕 E144-刀一~刀五（军令 2026-11-18）：星灵律动纯核——昼夜色温/跨日重逢/
+// 短句留白消费/天时日历锁（.ics）/嘴替三档行内复制（六语自容字典零 i18n 扰动）。
+// @ts-ignore —— astralRhythmAction.mjs 纯 JS 逻辑核（形状由 e144 闸门守备）
+import {
+  resolveCircadianPhase, composeCircadianStatus,
+  readLastActiveTs, writeLastActiveTs, computeAstralReunionContext, astralReunionBadgeLabel,
+  detectAstralCalendarEvent, buildAstralCalendarICS, astralCalendarFilename,
+  calendarLockPillLabel, calendarEventSummary,
+  parseProxyLine, copyDoneLabel,
+} from '../lib/astralRhythmAction.mjs';
 import { AmuletScribeSlotCard, AmuletPreviewModal } from './companion/AmuletScribeSlot';
 import type { ScribeAmuletType } from './companion/AmuletScribeSlot';
 // 🏆 E124-LIFESTYLE-MUSE 刀四（主公军令 2026-11-05）：生活卡微缩插槽＋
@@ -272,6 +282,25 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🆕 E143-刀三：微标会话去重集合（随 dailyChatSession 档存/读——单会话
    *  同类型恰 1 次；开舱复原时从档回填） */
   const badgeLogRef = useRef<string[]>([]);
+  /* 🆕 E144-刀五（军令 2026-11-18）：嘴替行轻点复制反馈锚（✓ 已复制 1.5s
+   *  内联闪现——绑定 {msgId, lineIdx} 精确到行）。 */
+  const [copiedProxy, setCopiedProxy] = useState<{ id: string; idx: number } | null>(null);
+  /* 🆕 E144-刀四（军令 2026-11-18）：天时日程锁槽——本轮 assistant 终文本含
+   *  吉时/避坑时窗 ⇒ 📅 内联微胶囊（复用 .ks-chat-badge 11px 形制零新增卡片）。 */
+  const [calSlot, setCalSlot] = useState<{
+    aid: string;
+    ev: { dateOffset: number; startHH: number; startMM: number; endHH: number; endMM: number; kind: string };
+    dateISO: string;
+  } | null>(null);
+  /* 🆕 E144-刀三（军令 2026-11-18）：跨日重逢微标锚（✨ 挂首条/末条 assistant
+   *  气泡顶部——E143 微标同槽；单会话 1 次）。 */
+  const [reunionBadge, setReunionBadge] = useState<{ id: string } | null>(null);
+  /* 🆕 E144-刀二（军令 2026-11-18）：昼夜时钟快照（开舱锚定——状态栏色温
+   *  前缀＋舱体色温 class 单源；06:00–17:59 暖金 / 18:00–05:59 星夜紫）。 */
+  const [circadianClock, setCircadianClock] = useState<{ hour: number; minute: number }>(() => {
+    const d = new Date();
+    return { hour: d.getHours(), minute: d.getMinutes() };
+  });
   /* 🏆 E113-刀三：会话档锚（open 时算定，实时写 effect 复用——避免逐消息重算） */
   const sessionSigRef = useRef('anon');
   const sessionDateRef = useRef('');
@@ -365,6 +394,26 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     } catch { /* 隐私模式 ⇒ anon 共享档兜底（fail-soft） */ }
     sessionSigRef.current = sig;
     sessionDateRef.current = today;
+    /* 🆕 E144-刀三/刀二（军令 2026-11-18）：星象天时跨日重逢判定＋最后活跃
+     *  时刻写档（ks_last_active_ts——localStorage 白名单在册）。≥6h 或跨本地
+     *  自然日 ⇒ 重逢微标；写档/读档 fail-soft 零抛错外溢。 */
+    setReunionBadge(null); // 每次开舱先复位（防上次开舱残留）
+    let _e144Reunion = false;
+    try {
+      const _e144NowTs = Date.now();
+      const _e144Ctx = computeAstralReunionContext({
+        lastActiveTs: readLastActiveTs(store),
+        nowTs: _e144NowTs,
+        localISO: today,
+      });
+      _e144Reunion = _e144Ctx.reunion;
+      writeLastActiveTs(store, _e144NowTs);
+    } catch { /* 隐私模式 fail-soft */ }
+    /* 🆕 E144-刀二：昼夜时钟快照（状态栏色温前缀＋舱体色温 class 单源） */
+    try {
+      const _e144Now = new Date();
+      setCircadianClock({ hour: _e144Now.getHours(), minute: _e144Now.getMinutes() });
+    } catch { /* noop */ }
     // 🏆 E118-刀二：永久姓名档案开舱即读（跨日首语带名真源；坏档/隐私 ⇒ 空名兜底）
     try {
       profileNameRef.current = (readUserNameProfile(store, sig) || null)?.displayName || '';
@@ -440,10 +489,16 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         ? Number(sess.messages[sess.messages.length - 1].timestamp) : 0;
       if (sess && sess.messages.length > 0 && !(freshReport && Number(rr.unlockedAt) > lastTs)) {
         setHelloMode((sess && (sess as { greetingMode?: HelloMode }).greetingMode) || mode);
-        setMsgs(sessionToChatMsgs(sess));
+        const _e144Restored = sessionToChatMsgs(sess);
+        setMsgs(_e144Restored);
         // 🆕 E143-刀三：微标去重集合随会话档回填（白名单净化；旧档无字段 ⇒ 空集）
         const _e143Log = (sess as { badgeLog?: string[] }).badgeLog;
         badgeLogRef.current = Array.isArray(_e143Log) ? _e143Log.filter((x) => typeof x === 'string') : [];
+        // 🆕 E144-刀三：复原分支重逢（≥6h 同日回访）——微标挂历史末条顶部
+        //  （零改写历史文本零新增消息；E113「禁重复首句」铁律原样守备）。
+        if (_e144Reunion && _e144Restored.length) {
+          setReunionBadge({ id: _e144Restored[_e144Restored.length - 1].id });
+        }
         return;
       }
       if (_e1421MarkFirststrike) {
@@ -452,6 +507,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       setHelloMode(mode);
       const _e1421FirstLine = helloFor(mode);
       setMsgs([{ id: 'hello', role: 'assistant', text: _e1421FirstLine }]);
+      // 🆕 E144-刀三（军令 2026-11-18）：跨日/久别重逢 ⇒ ✨ 微标挂首语气泡
+      //  顶部（E143 同槽 11px 形制零新增卡片；首句语义骑 E113 问候链零破坏）。
+      if (_e144Reunion) setReunionBadge({ id: 'hello' });
       // 🆕 E142.1-刀二：首句带名即计一次日配额（重写效应重生同句不再计数）
       if (nameGateRef.current && profileNameRef.current
         && _e1421FirstLine.includes(profileNameRef.current)) {
@@ -538,6 +596,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const aid = `a-${Date.now()}`;
     setMsgs((prev) => [...prev, { id: uid, role: 'user', text }, { id: aid, role: 'assistant', text: '' }]);
     setWellnessSlot(null); // 🆕 E137：新轮次先清处方槽（meta 帧命中即重挂）
+    setCalSlot(null); // 🆕 E144：新轮次先清日历锁槽（收口探测命中即重挂）
     setStreaming(true);
     bufRef.current = '';
     startThrottle();
@@ -804,6 +863,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
        * 密函优先（吵架/破冰为第一诉求），生活卡仅在密函静默时挂载。 */
       const lifestyleIntent = scribeIntent ? null : detectLifestyleIntent(text);
       setLifestyleSlot(lifestyleIntent ? { aid, type: (lifestyleIntent.type as LifestyleCardType) } : null);
+      /* 🆕 E144-刀四（军令 2026-11-18）：天时日程锁探测——本轮回复终文本含
+       *  吉时/避坑时窗（detectAstralCalendarEvent fail-closed 宁窄勿宽）⇒ 📅
+       *  内联微胶囊绑定本轮 aid；未命中 ⇒ null 严禁强推（日常回复零误挂）。 */
+      try {
+        const _e144LastA = [...listRef.current].reverse().find((x) => x.id === aid && x.role === 'assistant' && x.text);
+        const _e144CalEv = _e144LastA ? detectAstralCalendarEvent(_e144LastA.text) : null;
+        setCalSlot(_e144CalEv ? {
+          aid,
+          ev: _e144CalEv,
+          dateISO: chatSessionDateKey(new Date(Date.now() + _e144CalEv.dateOffset * 86400000)),
+        } : null);
+      } catch { setCalSlot(null); }
       const el = flowRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
@@ -827,6 +898,80 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     const tm = window.setTimeout(() => setAvatarBreathe(false), 1600);
     return () => window.clearTimeout(tm);
   }, [avatarBreathe]);
+
+  /* 🆕 E144-刀五：✓ 已复制 1.5s 内联闪现复位 */
+  useEffect(() => {
+    if (!copiedProxy) return;
+    const tm = window.setTimeout(() => setCopiedProxy(null), 1500);
+    return () => window.clearTimeout(tm);
+  }, [copiedProxy]);
+  /* 🆕 E144-刀五（军令 2026-11-18）：嘴替行轻点复制——剥壳话术入剪贴板
+   *  （clipboard API 主＋execCommand 兜底 http 环境）＋默契 +5（星光呼吸）。 */
+  const handleProxyCopy = useCallback((msgId: string, idx: number, content: string) => {
+    const ok = ((): boolean => {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          void navigator.clipboard.writeText(content).catch(() => { /* noop */ });
+          return true;
+        }
+      } catch { /* fallthrough */ }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = content;
+        ta.setAttribute('style', 'position:fixed;top:0;left:0;opacity:0;');
+        document.body.appendChild(ta);
+        ta.select();
+        const r = document.execCommand('copy');
+        ta.remove();
+        return r;
+      } catch { return false; }
+    })();
+    if (!ok) return;
+    setCopiedProxy({ id: msgId, idx });
+    try {
+      const ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+      const applied = applyBondDelta(bondStateRef.current, 5);
+      bondStateRef.current = applied.state;
+      setBondState(applied.state);
+      writeSoulBondState(ls, applied.state);
+      setAvatarBreathe(true); // 默契 +5 ⇒ 星光呼吸 1.5s
+      appendResonanceLog(ls, { kind: 'bond' });
+    } catch { /* 隐私模式 fail-soft */ }
+  }, []);
+  /* 🆕 E144-刀四（军令 2026-11-18）：日历锁轻点——RFC-5545 .ics Blob 下载
+   *  （VALARM 15min 提前提醒；文件名钦定 KindredSouls-AstralLock-YYYYMMDD.ics）
+   *  ＋默契 +5。 */
+  const handleCalendarLock = useCallback(() => {
+    const slot = calSlot;
+    if (!slot || !slot.ev) return;
+    try {
+      const summary = calendarEventSummary(lang, slot.ev.kind);
+      const ics = buildAstralCalendarICS({
+        dateISO: slot.dateISO,
+        startHH: slot.ev.startHH, startMM: slot.ev.startMM,
+        endHH: slot.ev.endHH, endMM: slot.ev.endMM,
+        summary, description: summary,
+        uidSalt: sessionSigRef.current,
+      });
+      if (!ics) return;
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = astralCalendarFilename(slot.dateISO);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+      const ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+      const applied = applyBondDelta(bondStateRef.current, 5);
+      bondStateRef.current = applied.state;
+      setBondState(applied.state);
+      writeSoulBondState(ls, applied.state);
+      setAvatarBreathe(true);
+      appendResonanceLog(ls, { kind: 'bond' });
+    } catch { /* 下载/存储 fail-soft */ }
+  }, [calSlot, lang]);
 
   const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0]?.clientY ?? null; };
   const onTouchMove = (e: React.TouchEvent) => {
@@ -863,7 +1008,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     >
       <div className="ks-chat-mask" onClick={onClose} />
       <div
-        className="ks-chat-sheet"
+        className={`ks-chat-sheet${resolveCircadianPhase(circadianClock.hour, circadianClock.minute) === 'night' ? ' ks-circadian-night' : ''}`}
         style={dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -884,7 +1029,9 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                   Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。
                   几何：bond 恒完整显示（金字前缀不截断），chatStatus 弹性截断。 */}
               <span className="ks-chat-bond" data-testid="soul-bond-status">
-                {bondStatusBarLabel(lang, bondState)}
+                {/* 🆕 E144-刀二（军令 2026-11-18）：昼夜色温前缀拼接——
+                    「灵犀默契 Lv.2 星轨同频 · 78/100 · 🌙 星夜守护磁场」形态。 */}
+                {composeCircadianStatus(bondStatusBarLabel(lang, bondState), circadianClock.hour, circadianClock.minute, lang)}
               </span>
               <span className="ks-chat-status-text">{t('familiar.chatStatus', { name })}</span>
             </div>
@@ -916,7 +1063,48 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                   {badgeLabel(badgeOnMsg.type, lang)}
                 </div>
               )}
-              {m.text}
+              {/* 🆕 E144-刀三（军令 2026-11-18）：跨日/久别重逢微标（✨ 六语自容；
+                  E143 微标同槽同 11px 形制零新增卡片）。 */}
+              {m.role === 'assistant' && reunionBadge && reunionBadge.id === m.id && (
+                <div className="ks-chat-badge" data-testid="astral-reunion-badge">
+                  {astralReunionBadgeLabel(lang)}
+                </div>
+              )}
+              {/* 🆕 E144-刀五（军令 2026-11-18）：assistant 气泡逐行渲染——
+                  ▫️ 嘴替行（parseProxyLine 命中）⇒ 行级轻点复制（✓ 已复制
+                  1.5s 内联闪现＋默契 +5）；其余行原样（空行保白维持 \n\n 留白）；
+                  user 气泡仍走 pre-wrap 原文（零扰动）。 */}
+              {m.role === 'assistant' && m.text
+                ? m.text.replace(/\n+$/, '').split('\n').map((line, idx) => {
+                    const proxy = parseProxyLine(line);
+                    if (proxy) {
+                      const isCopied = !!(copiedProxy && copiedProxy.id === m.id && copiedProxy.idx === idx);
+                      return (
+                        <div
+                          key={`${m.id}-proxy-${idx}`}
+                          className="ks-chat-proxy-line"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleProxyCopy(m.id, idx, String(proxy.content))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleProxyCopy(m.id, idx, String(proxy.content));
+                            }
+                          }}
+                        >
+                          <span className="ks-chat-proxy-text">{line}</span>
+                          {isCopied && (
+                            <span className="ks-chat-copy-done" data-testid="proxy-copy-done">
+                              {copyDoneLabel(lang)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return <div key={`${m.id}-line-${idx}`}>{line || '\u00A0'}</div>;
+                  })
+                : m.text}
               {m.role === 'assistant' && m.text === '' && streaming && (
                 <span className="ks-chat-typing" aria-label={t('familiar.chatThinking')}>
                   <i /><i /><i />
@@ -980,6 +1168,25 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                   disabled={streaming}
                   onAsk={(msg) => { void send(msg); }}
                 />
+              </div>
+            );
+          })()}
+          {/* 🆕 E144-刀四（军令 2026-11-18）：天时日程锁内联微胶囊——本轮回复
+              落地＋id 精确匹配才渲染（复用 .ks-chat-badge 11px 毛玻璃形制零
+              新增卡片）；轻点 ⇒ RFC-5545 .ics 下载（VALARM 15min）＋默契 +5。 */}
+          {calSlot && !streaming && (() => {
+            const last = msgs[msgs.length - 1];
+            if (!last || last.role !== 'assistant' || last.id !== calSlot.aid || !last.text) return null;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="ks-chat-badge ks-chat-cal-pill"
+                  data-testid="astral-calendar-lock"
+                  onClick={handleCalendarLock}
+                >
+                  {calendarLockPillLabel(lang)}
+                </button>
               </div>
             );
           })()}

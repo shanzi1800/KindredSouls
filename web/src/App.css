@@ -1921,6 +1921,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   transform: translateZ(0); /* E68 军令①：图层提升，隔离合成避免打字全屏 Reflow */
   contain: content;         /* E68 军令①：渲染隔离，输入态变化不再外溢 */
 }
+/* 🆕 E144-刀二（军令 2026-11-18）：昼夜星轨色温呼吸——暖金 06:00–17:59 /
+   星夜紫 18:00–05:59（CSS 变量单源；组件开舱锚相位驱动 class 切换）。
+   ::after 柔光层 z-index:-1：舱体 transform 已建层叠上下文 ⇒ 光晕沉底
+   不遮字不截交互；6s 呼吸关键帧纯 CSS 零算力。 */
+.ks-chat-sheet { --ks-circadian: 232, 190, 90; }
+.ks-chat-sheet.ks-circadian-night { --ks-circadian: 158, 126, 255; }
+.ks-chat-sheet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(130% 55% at 50% 0%, rgba(var(--ks-circadian), 0.20), transparent 70%);
+  animation: ksCircadianBreath 6s ease-in-out infinite;
+}
+@keyframes ksCircadianBreath { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
 /* 🖥 E68 军令②：桌面端废除 100% 大通栏 ⇒ 右下角精致悬浮陪伴舱 */
 @media (min-width: 768px) {
@@ -2054,6 +2071,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .ks-chat-bubble { display: flex; flex-direction: column; }
+/* 🆕 E144-刀五（军令 2026-11-18）：嘴替三档行级轻点复制——hover 微亮金沿、
+   ✓ 已复制 11px 金字内联闪现 1.5s（零新增卡片——交互长在既有气泡行内）。 */
+.ks-chat-proxy-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border-radius: 8px;
+  margin: 1px -4px 0;
+  padding: 1px 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.ks-chat-proxy-line:hover { background: rgba(212, 175, 55, 0.10); }
+.ks-chat-proxy-line:active { background: rgba(212, 175, 55, 0.18); }
+.ks-chat-proxy-text { flex: 1 1 auto; min-width: 0; }
+.ks-chat-copy-done {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #D4AF37;
+  letter-spacing: 0.02em;
+}
+/* 🆕 E144-刀四（军令 2026-11-18）：日历锁内联微胶囊——复用 .ks-chat-badge
+   11px 毛玻璃形制（button 形态归零：字体继承＋手型＋金沿 hover 提亮）。 */
+.ks-chat-cal-pill {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ks-chat-cal-pill:hover { background: rgba(212, 175, 55, 0.22); border-color: rgba(212, 175, 55, 0.55); }
+.ks-chat-cal-pill:active { background: rgba(212, 175, 55, 0.32); }
 @keyframes ksChatPulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 .ks-chat-close {
   width: 30px;

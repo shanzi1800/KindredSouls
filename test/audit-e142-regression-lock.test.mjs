@@ -293,16 +293,20 @@ test('E142.1-锁A1 问候模式白名单闭集：HELLO_MODES 12 模式冻结（�
 test('E142.1-锁A2 存读 roundtrip：greetingMode 随档固化＋旧档无字段容错＋坏值剥除（fail-closed）', () => {
   const store = mockStorage();
   const msgs = [{ role: 'assistant', text: '首句', timestamp: 1 }];
+  // 🛡️ E144 时弹修复（铁律 19：断言消费真实时钟的 fixture 禁用绝对日期）：
+  //    loadDailyChatSession 第 4 参注入固定 now（档日当日正午）——旧实跑真实
+  //    时钟，2026-11-18 起 2026-11-17 档恒过期引爆（e59 A3 同型时间炸弹）。
+  const NOW = new Date('2026-11-17T12:00:00').getTime();
   // ① 写档带模式 ⇒ 回读还原
   DCS.saveDailyChatSession(store, 'sig1', '2026-11-17', msgs, 'p1queue');
-  const sess = DCS.loadDailyChatSession(store, 'sig1', '2026-11-17');
+  const sess = DCS.loadDailyChatSession(store, 'sig1', '2026-11-17', NOW);
   assert.equal(sess.greetingMode, 'p1queue', 'greetingMode 须随档持久（关窗重开吃档）');
   // ② 旧档无字段 ⇒ undefined（组件兜底本重算值，禁抛错）
   DCS.saveDailyChatSession(store, 'sig2', '2026-11-17', msgs);
-  assert.equal(DCS.loadDailyChatSession(store, 'sig2', '2026-11-17').greetingMode, undefined, '旧档无字段 ⇒ undefined 容错');
+  assert.equal(DCS.loadDailyChatSession(store, 'sig2', '2026-11-17', NOW).greetingMode, undefined, '旧档无字段 ⇒ undefined 容错');
   // ③ 坏模式写档 ⇒ 剥除不落档
   DCS.saveDailyChatSession(store, 'sig3', '2026-11-17', msgs, 'bogus');
-  assert.equal(DCS.loadDailyChatSession(store, 'sig3', '2026-11-17').greetingMode, undefined, '白名单外模式须剥除（fail-closed）');
+  assert.equal(DCS.loadDailyChatSession(store, 'sig3', '2026-11-17', NOW).greetingMode, undefined, '白名单外模式须剥除（fail-closed）');
 });
 
 test('E142.1-锁A3 复原分支源码锚：吃档模式禁跌 plain 兜底＋存档随行 helloMode＋单 hello 重写同模式', () => {
@@ -421,8 +425,9 @@ test('E142.1-锁D2 源码零品牌锁：前端词库/组件零命中；server �
   // ④ emitDelta 唯一出流口前置清洗（主流/续写/降级/重试全路径覆盖）
   // 🆕 E143 后继化：品牌清洗后串联星灵封印清洗（机械腔＋内部标识脱敏——
   //    E142.1 品牌清洗仍为首层，双空格归一收口不变）
-  assert.ok(/delta: _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)/.test(SERVER) || SERVER.includes('delta: _e1421BrandWash(t)'),
-    'emitDelta 须前置品牌清洗（全路径收口；E143 串联形态亦可）');
+  assert.ok(/delta: _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)/.test(SERVER) || SERVER.includes('delta: _e1421BrandWash(t)')
+    || /delta: _e144BreathingSplitSync\(_e144Rhythm, _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)\)/.test(SERVER),
+    'emitDelta 须前置品牌清洗（全路径收口；E143 串联形态亦可；E144 三层包裹形态亦可）');
 });
 
 /* ── E142.1-锁E：零故障注入财富沙盒锁（会话档位解锁键）── */
