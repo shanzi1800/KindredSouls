@@ -229,8 +229,8 @@ test('E140-07 链位：e140 居 e139 后 e40-compat 前＋全链 108 段＋dist 
   const script = PKG.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 113, '全链总段须 113（E145 插链后继化；含 python 链尾）');
-  assert.equal(segs.length, 112, 'node --test 段须 111（E144 插链后继化）');
+  assert.equal(all.length, 114, '全链总段须 113（E146 插链后继化；含 python 链尾）');
+  assert.equal(segs.length, 113, 'node --test 段须 112（E146 插链后继化）');
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i139 = names.indexOf('audit-e139-astro-wealth-advisory');

@@ -21603,6 +21603,24 @@ async function _e145ChronicleCore() {
 }
 /** E145-刀六：蒸馏画像内存仓（Map<userId, {l2, sessions, updatedAt}>；FIFO 封顶 500） */
 const E145_DISTILL_PROFILES = new Map();
+/* ═══ 🌟 E146-FOUR-FOLD-REC-ENGINE（军令 2026-11-19）：四维校准吃喝穿搭推荐 ═══
+ * 真源 web/src/lib/astralFourFoldRecEngine.mjs。军令「四维顺位＝①即时时令季节
+ * →②用户真实星盘 →③当下情绪/场景 →④时段」＋克制触发＋单次聚焦（吃喝或
+ * 穿搭二选一，禁同条消息全塞满）＋吃喝矩阵（时令寒热燥湿×星盘五行×时段
+ * 情绪）＋穿搭矩阵（日主锚定×场景版型微调＋解释）。季节/元素/意图/日主
+ * 锚定真源复用 E137/E145 纯核（单一真源不复制）。
+ * fail-soft 铁律同 E143/E144/E145：核 import 失败 ⇒ 块不注入（零破坏）；
+ * E146 核在座 ⇒ E145 smart-rec 块让位跳过（E146 块为其四维超集，防双块
+ * 锚定真值重复注入打架）。 */
+let _e146FourFoldMod = null;
+async function _e146FourFoldCore() {
+  try {
+    if (!_e146FourFoldMod) _e146FourFoldMod = await import('./web/src/lib/astralFourFoldRecEngine.mjs');
+    return _e146FourFoldMod;
+  } catch {
+    return null;
+  }
+}
 /** 流中留白归一（chunk-safe 幂等：\r\n→\n＋3+ 连续换行→\n\n；核缺席 ⇒ 透传零破坏）
  *  ——emitDelta 唯一挂点消费（E143 出流清洗同形制） */
 function _e144BreathingSplitSync(mod, t) {
@@ -21695,6 +21713,8 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    （fire-and-forget 异步蒸馏消费；核缺席 ⇒ 蒸馏静默不跑零破坏）
   const _e145Distill = await _e145DistillCore();
   const _e145Chronicle = await _e145ChronicleCore();
+  // 🆕 E146（军令 2026-11-19）：四维校准推荐引擎核加载（fire-and-forget 形制同 E145）
+  const _e146FourFold = await _e146FourFoldCore();
 
   // ① 权益门控（必须在 SSE header 之前）
   //    🏆 E107-刀三：沙盒匿名直通/合法灵宠档放行两条绿道在 resolveFamiliarChatAuth
@@ -21889,7 +21909,11 @@ app.post('/api/familiar/chat', async (req, res) => {
     //    时段匹配真值）；未命中 ⇒ 静默形态（纯克制铁令——根治「每句硬塞
     //    吃喝穿搭」复读机病灶）。日/时真源＝客户端时钟三件套（E142 localISO
     //    ⇒ dateISO/hour）；核缺席/异常 ⇒ 块不注入（零破坏）。
+    //    🆕 E146（军令 2026-11-19）：四维校准块在座 ⇒ 本块让位跳过（E146 为
+    //    其四维超集——时令×星盘×情绪场景×时段，防双块真值重复注入）；
+    //    E146 核缺席 ⇒ 本块兜底（fail-soft 链式降级）。
     + (function () {
+        if (_e146FourFold) return '';
         if (!_e145SmartRec) return '';
         try {
           const _e145LastUser = _e137LastUser && String(_e137LastUser.content || '');
@@ -21921,6 +21945,48 @@ app.post('/api/familiar/chat', async (req, res) => {
             return '\n\n' + _e145Gatekeeper.buildGatekeeperPromptBlock(lang);
           }
           return '';
+        } catch {
+          return '';
+        }
+      })()
+    // 🆕 E146（军令 2026-11-19）：四维校准吃喝穿搭推荐纪律块——路由内后缀
+    //    拼接（E143/E144/E145 同形制零锚破坏）。四维顺位＝①即时时令季节
+    //    （E137 真源 resolveFourFoldTruth：北/南半球镜像）→②真实星盘（natal
+    //    五星英文星座名→元素众数＋月亮单元素）→③情绪/场景（E145 意图网
+    //    单一真源）→④时段（军令四档 06-10:59/11-16:59/17-23:59/00-05:59）。
+    //    单次聚焦（吃喝或穿搭二选一）＋触发面四情形（日首破冰/胶囊/主动
+    //    意图/情绪波动）＋静默形态（默认零推荐）。本块在座 ⇒ E145-刀二块
+    //    让位（防双块真值重复）；E146 核缺席 ⇒ E145 块兜底（fail-soft 链式
+    //    降级）。日/时真源＝E142 客户端时钟三件套（localISO ⇒ hour）＋
+    //    _e1421Date（dateISO）。
+    + (function () {
+        if (!_e146FourFold) return '';
+        try {
+          const _e146LastUser = _e137LastUser && String(_e137LastUser.content || '');
+          const _e146Intent = _e146LastUser
+            ? _e146FourFold.detectFourFoldIntent(_e146LastUser, lang) : null;
+          const _e146ISO = (_e142Time && String(_e142Time.localISO || '')) || '';
+          const _e146Hour = (/T(\d{2}):/.test(_e146ISO) && Number(_e146ISO.match(/T(\d{2}):/)[1]) >= 0)
+            ? Number(_e146ISO.match(/T(\d{2}):/)[1]) : new Date().getUTCHours();
+          const _e146Signs = [truth.natal && truth.natal.sun, truth.natal && truth.natal.moon,
+            truth.natal && truth.natal.asc, truth.natal && truth.natal.venus, truth.natal && truth.natal.mars]
+            .map((p) => (p && p.sign) || null).filter(Boolean);
+          const _e146Truth = _e146FourFold.resolveFourFoldTruth({
+            timestamp: Date.now(),
+            geoZone: geoZone || null,
+            natalSigns: _e146Signs,
+            moonSign: (truth.natal && truth.natal.moon && truth.natal.moon.sign) || null,
+          });
+          if (_e146Intent || Number(quota && quota.used) === 1) {
+            console.log(`[E146] four-fold rec prompt block intent=${_e146Intent || 'dayFirst'} lang=${lang} slot=${_e146FourFold.fourFoldSlotOf(_e146Hour)} season=${_e146Truth.seasonMode} el=${_e146Truth.natalElement}`);
+          }
+          return '\n\n' + _e146FourFold.buildFourFoldPromptBlock(lang, {
+            dateISO: _e1421Date, hour: _e146Hour, intent: _e146Intent,
+            dayFirst: Number(quota && quota.used) === 1,
+            seasonMode: _e146Truth.seasonMode,
+            natalElement: _e146Truth.natalElement,
+            moonElement: _e146Truth.moonElement,
+          });
         } catch {
           return '';
         }

@@ -77,8 +77,8 @@ test('E66 B1 后端端点骨架：/api/familiar/chat + Gemini 流式主通道 + 
   // 🆕 E144 后继化：chat route 内新增星灵律动块（嘴替/呼吸戒律后缀＋终帧分段
   //    兜底；DeepSeek 降级实距 19256）⇒ 窗口 19000→21000
   // 🆕 E145 后继化：chat route 尾部新增 L0-L2 蒸馏 fire-and-forget 挂块
-  //    ＋路由头部三核加载（DeepSeek 降级实距 21794）⇒ 窗口 21000→22000
-  const epBody = s.slice(epIdx, epIdx + 22000);
+  //    ＋路由头部核加载＋E145 三块＋E146 四维块（DeepSeek 降级实距 24410）⇒ 窗口 24000→26000
+  const epBody = s.slice(epIdx, epIdx + 26000);
   assert.ok(epBody.includes('streamFamiliarChatDeepSeek'), '端点内缺降级调用');
   assert.ok(/降级|fallback/.test(epBody), '端点内缺降级注释/逻辑');
 });

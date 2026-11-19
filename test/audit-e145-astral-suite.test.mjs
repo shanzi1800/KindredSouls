@@ -10,7 +10,7 @@
 //   锁5 刀五 C2M（10 万阈值门控 dormant 锁死＋全仓零挂载预埋）；
 //   锁6 刀六 ics 富字段（SUMMARY 前缀/LOCATION/DESCRIPTION 三段＋回流/URL
 //     ＋降级兼容）＋蒸馏核（L0→L1→L2＋fold＋fail-closed）＋server fire-and-forget；
-//   锁7 链位与段数（112→113；e145 居 e144 后、e40-compat 前；node-only 112）。
+//   锁7 链位与段数（113→114；e145 层 e144 后、e40-compat 前；node-only 112）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -338,7 +338,7 @@ test('E145-锁6c 刀六：L0-L2 蒸馏核（管线纯函数＋fold 半衰＋fail
 
 /* ═══ 锁7：链位与段数（112→113）═══ */
 
-test('E145-锁7 链位：e145 居 e144 后、e40-compat 前；全链 113 段＋node-only 112＋python 恒总链尾', () => {
+test('E145-锁7 链位：e145 居 e144 后、e40-compat 前；全链 114 段＋node-only 112＋python 恒总链尾', () => {
   const script = String(PKG.scripts['test:astro'] || '');
   assert.ok(script.length > 100, 'test:astro 脚本须在册');
   const chain = script.split('&&').map((s) => s.trim()).filter(Boolean);
@@ -349,10 +349,10 @@ test('E145-锁7 链位：e145 居 e144 后、e40-compat 前；全链 113 段＋n
   assert.ok(i144 > 0, 'e144 段须在链');
   assert.ok(i145 === i144 + 1, 'e145 须紧居 e144 之后（版本序铁律）');
   assert.ok(i40 > i145, 'e40-compat 须恒居 node 链尾（e145 不得插其后）');
-  // 总段计数（含 python 尾）＝113（E145 插链后继化）
-  assert.equal(chain.length, 113, `链总段必须为 113（实际 ${chain.length}）`);
+  // 总段计数（含 python 尾）＝113（E146 插链后继化）
+  assert.equal(chain.length, 114, `链总段必须为 114（实际 ${chain.length}）`);
   const nodeOnly = chain.filter((s) => !/python/.test(s));
-  assert.equal(nodeOnly.length, 112, `node-only 段必须为 112（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 113, `node-only 段必须为 113（实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(chain[chain.length - 1]), 'python 段须恒为总链尾');
   assert.equal(i40, segs.length - 1, 'e40 须恒 node 链尾');
 });
