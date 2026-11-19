@@ -809,6 +809,27 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                   chatSessionDateKey(), Number(j.nameQuota));
               } catch { /* 隐私模式 fail-soft */ }
             }
+            // 🆕 E147-刀四（军令 2026-11-19）：done 帧年鉴双门槛档案随行回写
+            //  （服务端权威 {anchorAt, sessions}——懒回填锚＋蒸馏轨迹持久化；
+            //  SoulChronicleCard 直读 ks_chronicle_state 判蓄能/启封；fail-soft）。
+            if (j.done && j.chronicle && typeof j.chronicle === 'object') {
+              try {
+                const ls = (typeof window !== 'undefined' && window.localStorage)
+                  ? window.localStorage : null;
+                if (ls) {
+                  const aOk = typeof j.chronicle.anchorAt === 'string'
+                    && /^\d{4}-\d{2}-\d{2}/.test(j.chronicle.anchorAt);
+                  const sNum = Number(j.chronicle.sessions);
+                  const sOk = Number.isFinite(sNum) && sNum >= 0 && sNum <= 9999;
+                  if (aOk || sOk) {
+                    ls.setItem('ks_chronicle_state', JSON.stringify({
+                      anchorAt: aOk ? j.chronicle.anchorAt : null,
+                      sessions: sOk ? Math.floor(sNum) : 0,
+                    }));
+                  }
+                }
+              } catch { /* 隐私模式 fail-soft */ }
+            }
             // 🆕 E137-刀二（军令 2026-11-12）：meta 帧 wellnessRx 投影——chatQ3/
             //    养生语义触发时服务端引擎随流下发四维处方（形状守卫 fail-closed）。
             if (j.meta && j.meta.wellnessRx && isWellnessRxMeta(j.meta.wellnessRx)) {

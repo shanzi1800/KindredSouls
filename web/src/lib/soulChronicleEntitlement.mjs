@@ -80,6 +80,103 @@ export function chronicleEntitlementFor(paidPlans) {
   return none;
 }
 
+/* ═══ E147-刀四（军令 2026-11-19）：双门槛防空壳门控 ═══
+ * 军令：达到付费门槛后也须等对应时间节点（至少满 30 天蓄能周期）＋有效
+ * 轨迹 ≥5 条才启封——否则导出空壳。锚点真源＝paid_plans.chronicle_anchor_at
+ * （server 懒回填：首次权益命中时写入 now）；轨迹真源＝paid_plans.
+ * chronicle_sessions（E145 蒸馏 merge 后 fire-and-forget 持久化，随 done
+ * 帧同步前端 localStorage `ks_chronicle_state`）。
+ * 状态三档：locked（无权益）＞ charging（蓄能中）＞ unlocked（双门槛齐过）。 */
+
+/** 军令钦定门控常量：启封周期 ≥30 天；有效轨迹 ≥5 条 */
+export const CHRONICLE_RIPEN_DAYS = 30;
+export const CHRONICLE_MIN_TRAJECTORY = 5;
+
+/** localStorage 键（E143 白名单族新成员） */
+export const CHRONICLE_STATE_KEY = 'ks_chronicle_state';
+
+/** 蓄能态标准文案（军令钦定六语对照表逐字：⏳ 编纂蓄能中·已沉淀 N 条轨迹·预计 YYYY-MM-DD 启封） */
+export const L_CHRONICLE_CHARGING = Object.freeze({
+  zh: '⏳ 编纂蓄能中·已沉淀 {n} 条轨迹·预计 {date} 启封',
+  en: '⏳ Chronicle in the making · {n} trails gathered · opens {date}',
+  fr: '⏳ Chronique en préparation · {n} traces recueillies · ouverture {date}',
+  es: '⏳ Crónica en elaboración · {n} trazas reunidas · abre {date}',
+  th: '⏳ กำลังรวบรวม · มี {n} รอยเส้นทาง · เปิด {date}',
+  vi: '⏳ Đang biên soạn · đã tích lũy {n} dấu vết · mở khóa {date}',
+});
+
+/**
+ * 客户端蓄能态档案读取（done 帧随行回写——readSoulBondState 同形制）
+ * @param {Storage|null} ls window.localStorage（隐私模式 null ⇒ 全空）
+ * @returns {{anchorAt: string|null, sessions: number}}
+ */
+export function readChronicleState(ls) {
+  try {
+    const raw = (ls && typeof ls.getItem === 'function') ? ls.getItem(CHRONICLE_STATE_KEY) : null;
+    const j = raw ? JSON.parse(raw) : null;
+    const o = (j && typeof j === 'object') ? j : {};
+    const a = (typeof o.anchorAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(o.anchorAt))
+      ? o.anchorAt : null;
+    const s = (Number.isFinite(Number(o.sessions)) && Number(o.sessions) >= 0
+      && Number(o.sessions) <= 9999) ? Math.floor(Number(o.sessions)) : 0;
+    return { anchorAt: a, sessions: s };
+  } catch {
+    return { anchorAt: null, sessions: 0 };
+  }
+}
+
+/**
+ * E147-刀四双门槛门控（纯函数——组件与 server 共用判定真源）
+ * @param {object|null} paidPlans user_profiles.paid_plans（jsonb 原档）
+ * @param {'romance'|'wealth'} module 年鉴篇章
+ * @param {number} trajectoryCount 有效轨迹数（客户端随行/服务端持久档）
+ * @param {number} nowMs 当前毫秒（缺省 ⇒ Date.now）
+ * @returns {{status: 'locked'|'charging'|'unlocked', entitled: boolean,
+ *   unlockDateISO: string|null, trajectory: number, basis: string|null}}
+ */
+export function chronicleModuleGate(paidPlans, module, trajectoryCount, nowMs) {
+  const ent = chronicleEntitlementFor(paidPlans);
+  const entitled = module === 'romance' ? ent.romance : ent.wealth;
+  const p = (paidPlans && typeof paidPlans === 'object') ? paidPlans : {};
+  const traj = (Number.isFinite(Number(trajectoryCount)) && Number(trajectoryCount) >= 0)
+    ? Math.floor(Number(trajectoryCount)) : 0;
+  const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+  if (!entitled) {
+    return { status: 'locked', entitled: false, unlockDateISO: null, trajectory: traj, basis: ent.basis };
+  }
+  // 锚点解析（paid_plans.chronicle_anchor_at ISO；缺失 ⇒ 未锚定——预估
+  // now+30 天展示，server 将在下次聊天蒸馏时懒回填真锚）
+  const anchorRaw = String(p.chronicle_anchor_at || '');
+  const anchorMs = /^\d{4}-\d{2}-\d{2}/.test(anchorRaw) ? new Date(anchorRaw).getTime() : NaN;
+  const unlockMs = Number.isFinite(anchorMs) ? anchorMs + CHRONICLE_RIPEN_DAYS * 86400000
+    : now + CHRONICLE_RIPEN_DAYS * 86400000;
+  const unlockDateISO = new Date(unlockMs).toISOString().slice(0, 10);
+  const timeOk = now >= unlockMs;
+  const trajOk = traj >= CHRONICLE_MIN_TRAJECTORY;
+  return {
+    status: (timeOk && trajOk) ? 'unlocked' : 'charging',
+    entitled: true,
+    unlockDateISO,
+    trajectory: traj,
+    basis: ent.basis,
+  };
+}
+
+/**
+ * 蓄能态文案装配（六语自容——模板 {n}/{date} 填充）
+ * @param {string} lang 六语
+ * @param {{trajectory?: number, unlockDateISO?: string|null}} meta
+ * @returns {string}（''＝fail-closed）
+ */
+export function chronicleChargingLabel(lang, meta) {
+  const l = sanitizeLang(lang);
+  const tpl = L_CHRONICLE_CHARGING[l] || L_CHRONICLE_CHARGING.en;
+  const m = (meta && typeof meta === 'object') ? meta : {};
+  const n = Math.max(0, Math.floor(Number(m.trajectory) || 0));
+  const date = String(m.unlockDateISO || '').slice(0, 10) || '—';
+  return tpl.split('{n}').join(String(n)).split('{date}').join(date);
+}
+
 /**
  * 年鉴章节 HTML 装配（前端本地排版导出——零服务端渲染）
  * @param {{title?: string, lang?: string, companion?: string,

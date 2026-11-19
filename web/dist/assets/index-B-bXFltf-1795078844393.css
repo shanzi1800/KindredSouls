@@ -2701,6 +2701,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   font-weight: 700;
   cursor: pointer;
 }
+/* 🆕 E147-刀四（军令 2026-11-19）：蓄能态置灰——双门槛（≥30 天＋轨迹≥5）
+   未齐过前导出按钮禁用（防空壳导出）。 */
+.ks-chronicle-cta.is-charging {
+  border-color: rgba(138, 147, 166, 0.3);
+  background: rgba(138, 147, 166, 0.08);
+  color: #8A93A6;
+  cursor: not-allowed;
+}
+.ks-chronicle-charging {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: #C9B27C;
+  letter-spacing: 0.02em;
+}
 .ks-chronicle-locked {
   margin: 8px 0 0;
   font-size: 10.5px;

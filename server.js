@@ -21621,11 +21621,46 @@ async function _e146FourFoldCore() {
     return null;
   }
 }
+/* ═══ 🌟 E147-SEASONAL-GUARD-ENGINE（军令 2026-11-19）：餐饮零地名＋着装三维
+ * 硬锁＋反季面料拦截＋年鉴双门槛防空壳 ═══
+ * 真源 web/src/lib/astralSeasonalGuardEngine.mjs。军令三刀：
+ *   刀二 餐饮「零地名/零菜系前缀」：prompt 纪律块（buildE147GuardBlock
+ *     food 形态）＋出流清洗 washE147Outbound 剥离地域前缀保食材做法；
+ *   刀三 着装三维硬锁：resolveCurrentClimate 四级无感定位顺位（L1 当轮
+ *     user 文本城市词典 → L2 cf-ipcountry/x-geo-country 国家码 → L3 客户
+ *     端时区 → null 回退现行 geoZone 语义零破坏——不吃任何 birth 参数，
+ *     出生地/现居地解耦铁律）＋ageTierOf 出生年三档＋guardSeasonalFabric
+ *     凉季面料拦截（emitDelta 链兜底）；跨半球用例：出生宜昌现居墨尔本
+ *     ⇒ L3 Australia/Melbourne ⇒ south ⇒ 南半球暖季真值行注入——北半球
+ *     冬大衣被硬锁拦下；
+ *   刀四 年鉴双门槛：chronicleModuleGate（权益 × chronicle_anchor_at+30
+ *     天 × chronicle_sessions≥5）——done 帧随行 {anchorAt, sessions} 回写
+ *     前端 ks_chronicle_state；锚懒回填＋轨迹持久化挂蒸馏 setImmediate
+ *     （patchWealthPlans 读-合并-写）。
+ * fail-soft 铁律同 E143~E146：核 import 失败 ⇒ 块不注入＋清洗透传零破坏。 */
+let _e147GuardMod = null;
+async function _e147GuardCore() {
+  try {
+    if (!_e147GuardMod) _e147GuardMod = await import('./web/src/lib/astralSeasonalGuardEngine.mjs');
+    return _e147GuardMod;
+  } catch {
+    return null;
+  }
+}
 /** 流中留白归一（chunk-safe 幂等：\r\n→\n＋3+ 连续换行→\n\n；核缺席 ⇒ 透传零破坏）
  *  ——emitDelta 唯一挂点消费（E143 出流清洗同形制） */
 function _e144BreathingSplitSync(mod, t) {
   try {
     return (mod && typeof mod.normalizeAstralBreathingChunk === 'function') ? mod.normalizeAstralBreathingChunk(t) : t;
+  } catch {
+    return t;
+  }
+}
+/** 🆕 E147 出流守卫清洗（餐饮零地名剥离＋凉季反季面料拦截替换；核缺席 ⇒ 透传零破坏）
+ *  ——emitDelta 链消费（E144 留白归一外层内一层；cold 由路由级 _e147ColdClimate 随行） */
+function _e147OutWashSync(mod, t, cold) {
+  try {
+    return (mod && typeof mod.washE147Outbound === 'function') ? mod.washE147Outbound(t, cold === true) : t;
   } catch {
     return t;
   }
@@ -21715,6 +21750,9 @@ app.post('/api/familiar/chat', async (req, res) => {
   const _e145Chronicle = await _e145ChronicleCore();
   // 🆕 E146（军令 2026-11-19）：四维校准推荐引擎核加载（fire-and-forget 形制同 E145）
   const _e146FourFold = await _e146FourFoldCore();
+  // 🆕 E147（军令 2026-11-19）：餐饮零地名＋着装三维硬锁守卫核加载
+  //    （prompt 纪律块＋出流清洗链＋气候四级顺位；fire-and-forget 同形制）
+  const _e147Guard = await _e147GuardCore();
 
   // ① 权益门控（必须在 SSE header 之前）
   //    🏆 E107-刀三：沙盒匿名直通/合法灵宠档放行两条绿道在 resolveFamiliarChatAuth
@@ -21800,6 +21838,54 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    （怎么说话）与地理轨（推荐哪里的路/店/品牌/货币）彻底分离：在硅谷的
   //    华人用中文聊天 ⇒ 中文推荐北美实体。fail-closed：白名单外 ⇒ null 零破坏。
   const geoZone = await _e126ResolveGeoZone(req, body);
+  // 🆕 E147-刀三（军令 2026-11-19）：所在地气候四级无感顺位解析（路由级——
+  //    prompt 纪律块＋emitDelta 反季面料拦截＋E146 四维真值喂料三处共用）。
+  //    L1 当轮 user 文本城市词典 → L2 cf-ipcountry/x-geo-country 国家码 →
+  //    L3 客户端时区 → null（回退现行 geoZone 北半球语义零破坏）。出生地/
+  //    现居地彻底解耦：本解析不吃任何 birth 参数（季节判定真源恒为「此刻
+  //    所在」）；出生宜昌现居墨尔本 ⇒ L3 命中 Australia/Melbourne ⇒ south
+  //    ⇒ E146 季节镜像喂 'AU'——北半球冬大衣被硬锁拦下（军令跨半球用例）。
+  let _e147Climate = null;       // 'north'|'south'|'tropical'|null
+  let _e147ClimateSource = null; // 'L1-city'|'L2-country'|'L3-timezone'|null
+  let _e147ColdClimate = false;  // 寒季面料拦截开关（北/south 冬季 ⇒ true）
+  let _e147AgeTier = null;       // 'youth'|'prime'|'mature'|null（出生年推导）
+  let _e146GeoFeed = null;       // E146 季节真值喂料（south ⇒ 'AU' 镜像）
+  let _e146SeasonFeed = null;    // E146 季节真值喂料（tropical ⇒ 'warm'）
+  if (_e147Guard) {
+    try {
+      const _e147H = (req && req.headers) || {};
+      const _e147LastUserRaw = [...messages].reverse().find((m) => m.role === 'user') || null;
+      const _e147Loc = _e147Guard.resolveCurrentClimate({
+        locationText: _e147LastUserRaw ? String(_e147LastUserRaw.content || '') : null,
+        countryHeader: _e147H['cf-ipcountry'] || _e147H['x-geo-country'] || null,
+        timezone: (body && typeof body.timezone === 'string') ? body.timezone : null,
+      });
+      _e147Climate = _e147Loc.climate;
+      _e147ClimateSource = _e147Loc.source;
+      const _e147Ov = _e147Guard.climateSeasonOverride(_e147Climate);
+      _e146GeoFeed = _e147Ov.geoZoneOverride;      // south ⇒ 'AU'
+      _e146SeasonFeed = _e147Ov.seasonModeOverride; // tropical ⇒ 'warm'
+      // 寒季判定（tropical 恒 false；其余按气候镜像后的季节真值 mode==='cool'）
+      if (_e147Climate === 'tropical') {
+        _e147ColdClimate = false;
+      } else {
+        const _e147SeasonTruth = _e146FourFold
+          ? _e146FourFold.resolveFourFoldTruth({
+            timestamp: Date.now(), geoZone: geoZone || null, natalSigns: [],
+          }) : null;
+        const _e147SeasonEff = (_e146SeasonFeed
+          || (_e147SeasonTruth && _e147SeasonTruth.seasonMode)
+          || (_e147Climate === 'south' ? 'cool' : null));
+        _e147ColdClimate = _e147SeasonEff === 'cool';
+      }
+      // 年龄档（出生年推导——body.birth.date 随行；fail-closed 坏年份静默）
+      const _e147BirthDate = (body && body.birth && typeof body.birth.date === 'string')
+        ? body.birth.date : null;
+      const _e147Year = /^\d{4}/.test(_e1421Date) ? Number(_e1421Date.slice(0, 4))
+        : new Date().getUTCFullYear();
+      _e147AgeTier = _e147Guard.ageTierOf(_e147BirthDate, _e147Year);
+    } catch { /* fail-closed 零破坏 */ }
+  }
   // 🆕 E137-刀二（主公军令 2026-11-12）：星盘×时令能量处方触发检测——末条
   //    user message 命中 chatQ3 六语钦定文本或养生语义六语白名单（服务端
   //    detectWellnessTrigger 单源）⇒ 引擎按本命元素众数＋南北半球镜像出四维
@@ -21973,7 +22059,9 @@ app.post('/api/familiar/chat', async (req, res) => {
             .map((p) => (p && p.sign) || null).filter(Boolean);
           const _e146Truth = _e146FourFold.resolveFourFoldTruth({
             timestamp: Date.now(),
-            geoZone: geoZone || null,
+            // 🆕 E147-刀三喴料：所在地气候 south ⇒ 'AU' 镜像（跨半球防误判）；
+            //    tropical ⇒ seasonFeed 'warm'（常夏湿热）；其余沿用现行 geoZone
+            geoZone: _e146GeoFeed || geoZone || null,
             natalSigns: _e146Signs,
             moonSign: (truth.natal && truth.natal.moon && truth.natal.moon.sign) || null,
           });
@@ -21983,10 +22071,35 @@ app.post('/api/familiar/chat', async (req, res) => {
           return '\n\n' + _e146FourFold.buildFourFoldPromptBlock(lang, {
             dateISO: _e1421Date, hour: _e146Hour, intent: _e146Intent,
             dayFirst: Number(quota && quota.used) === 1,
-            seasonMode: _e146Truth.seasonMode,
+            // 🆕 E147-刀三喴料：tropical ⇒ 'warm' 常夏清润（季节真值随所在地）
+            seasonMode: _e146SeasonFeed || _e146Truth.seasonMode,
             natalElement: _e146Truth.natalElement,
             moonElement: _e146Truth.moonElement,
           });
+        } catch {
+          return '';
+        }
+      })()
+    // 🆕 E147（军令 2026-11-19）：餐饮零地名＋着装三维硬锁纪律块——E146 块
+    //    后并列挂载（路由内后缀拼接零锚破坏）。focus 复算（E146 纯函数单一
+    //    真源 detectFourFoldIntent/resolveRecFocus）⇒ food 形态注入零地名铁令
+    //    ／outfit 形态注入三维硬锁（所在地气候真值行＋年龄档锚＋反季面料黑
+    //    名单）；E146 未触发 ⇒ 本块同步静默零注入（fail-closed）。气候/年龄
+    //    真值＝路由级 _e147Climate/_e147AgeTier（四级顺位解析单一真源）。
+    + (function () {
+        if (!_e147Guard || !_e146FourFold) return '';
+        try {
+          const _e147LastUser = _e137LastUser && String(_e137LastUser.content || '');
+          const _e147Intent = _e147LastUser
+            ? _e146FourFold.detectFourFoldIntent(_e147LastUser, lang) : null;
+          const _e147Focus = _e146FourFold.resolveRecFocus(
+            _e147Intent, Number(quota && quota.used) === 1);
+          if (!_e147Focus) return '';
+          console.log(`[E147] guard prompt block focus=${_e147Focus} climate=${_e147Climate || 'default'} source=${_e147ClimateSource || 'none'} age=${_e147AgeTier || 'none'} cold=${_e147ColdClimate}`);
+          const _e147Block = _e147Guard.buildE147GuardBlock(lang, {
+            focus: _e147Focus, climate: _e147Climate, ageTier: _e147AgeTier,
+          });
+          return _e147Block ? '\n\n' + _e147Block : '';
         } catch {
           return '';
         }
@@ -22015,7 +22128,7 @@ app.post('/api/familiar/chat', async (req, res) => {
   //    断词残留为已知边界，prompt 戒律为主闸；核缺席 ⇒ 品牌清洗单跑透传零破坏）。
   // 🆕 E144-刀一（军令 2026-11-18）：星灵留白出流归一串联——三层清洗链
   //    （留白归一 ⇒ 品牌清洗 ⇒ 封印清洗；逐 delta 独立幂等，核缺席 ⇒ 透传零破坏）。
-  const emitDelta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: _e144BreathingSplitSync(_e144Rhythm, _e1421BrandWash(_e143VeilWashSync(_e143Veil, t))) })}\n\n`); } catch { /* noop */ } };
+  const emitDelta = (t) => { try { res.write(`data: ${JSON.stringify({ delta: _e144BreathingSplitSync(_e144Rhythm, _e147OutWashSync(_e147Guard, _e1421BrandWash(_e143VeilWashSync(_e143Veil, t)), _e147ColdClimate)) })}\n\n`); } catch { /* noop */ } };
   const deltaGuard = (t) => {
     emitDelta(t);
     if (g115 && !pronRetried) {
@@ -22217,31 +22330,70 @@ app.post('/api/familiar/chat', async (req, res) => {
       _e1421DoneQuota = Math.min(_e1421Used + 1, 99);
     }
     E1421_NAME_CALLS.set(_e1421NameKey, _e1421DoneQuota);
-    finished = true;
-    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota })}\n\n`);
-    // 🆕 E145-刀六（军令 2026-11-19）：L0-L2 记忆异步蒸馏——done 帧后
-    //  fire-and-forget（setImmediate 不阻塞出流；try/catch fail-closed 绝不
-    //  影响主链；原始文本不出日志——只落工程记号摘要，隐私零泄露）。
-    if (_e145Distill) {
-      setImmediate(() => {
-        try {
-          const _e145Ent = (_e145Chronicle && auth.plans && typeof auth.plans === 'object')
-            ? _e145Chronicle.chronicleEntitlementFor(auth.plans) : null;
-          const d = _e145Distill.distillSession(
-            [...messages, { role: 'assistant', content: text }],
-            { lang, mode, dayFirst: quota.used === 1, entitlement: _e145Ent, ts: Date.now() },
-          );
-          if (!d) return;
-          const merged = _e145Distill.mergeDistilledProfile(
-            E145_DISTILL_PROFILES.get(auth.userId) || null, d,
-          );
-          E145_DISTILL_PROFILES.set(auth.userId, merged);
+    // 🆕 E145-刀六（军令 2026-11-19）＋ E147-刀四（军令 2026-11-19）：L0-L2
+    //  记忆蒸馏——distillSession/merge 为纯函数极快，同步收口（done 帧须随行
+    //  年鉴双门槛档案 {anchorAt, sessions}）；PATCH 持久化（锚懒回填＋轨迹
+    //  写回）仍走 setImmediate fire-and-forget 不阻塞出流；原始文本不出日志
+    //  ——只落工程记号摘要，隐私零泄露。fail-closed 绝不影响主链。
+    let _e147ChronicleMeta = null;
+    let _e147DistillMerged = null;
+    if (_e145Distill && auth.userId) {
+      try {
+        const _e145Ent = (_e145Chronicle && auth.plans && typeof auth.plans === 'object')
+          ? _e145Chronicle.chronicleEntitlementFor(auth.plans) : null;
+        const d = _e145Distill.distillSession(
+          [...messages, { role: 'assistant', content: text }],
+          { lang, mode, dayFirst: quota.used === 1, entitlement: _e145Ent, ts: Date.now() },
+        );
+        if (d) {
+          // 重启恢复：内存仓缺席 ⇒ 以 paid_plans.chronicle_sessions 持久档为底
+          const _e147Prev = E145_DISTILL_PROFILES.get(auth.userId)
+            || (Number(auth.plans && auth.plans.chronicle_sessions) > 0
+              ? { sessions: Math.floor(Number(auth.plans.chronicle_sessions)) } : null);
+          _e147DistillMerged = _e145Distill.mergeDistilledProfile(_e147Prev, d);
+          E145_DISTILL_PROFILES.set(auth.userId, _e147DistillMerged);
           if (E145_DISTILL_PROFILES.size > 500) {
             const firstKey = E145_DISTILL_PROFILES.keys().next().value;
             if (firstKey !== undefined) E145_DISTILL_PROFILES.delete(firstKey);
           }
-          console.log(`[E145] astral distill uid=${auth.userId} ${_e145Distill.distillProfileSummary(merged)}`);
-        } catch { /* fail-closed：蒸馏失败绝不影响主链 */ }
+          console.log(`[E145] astral distill uid=${auth.userId} ${_e145Distill.distillProfileSummary(_e147DistillMerged)}`);
+        }
+      } catch { /* fail-closed：蒸馏失败绝不影响主链 */ }
+      // 🆕 E147-刀四：年鉴双门槛档案随行（锚真源＝paid_plans.chronicle_anchor_at
+      //  懒回填；轨迹＝蒸馏 sessions；前端 FamiliarChatSheet 存 ks_chronicle_state
+      //  ⇒ SoulChronicleCard 蓄能/启封判定单一真源）。
+      try {
+        _e147ChronicleMeta = {
+          anchorAt: (auth.plans && typeof auth.plans.chronicle_anchor_at === 'string')
+            ? auth.plans.chronicle_anchor_at : null,
+          sessions: (Number(_e147DistillMerged && _e147DistillMerged.sessions) || 0),
+        };
+      } catch { /* noop */ }
+    }
+    finished = true;
+    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota, chronicle: _e147ChronicleMeta })}\n\n`);
+    // 🆕 E147-刀四（军令 2026-11-19）：年鉴双门槛持久化——setImmediate
+    //  fire-and-forget（patchWealthPlans 读-合并-写；权益命中且锚缺失 ⇒ 懒
+    //  回填 chronicle_anchor_at＝now；蒸馏轨迹写回 chronicle_sessions）。
+    if (auth.userId) {
+      setImmediate(() => {
+        try {
+          const _e147Delta = {};
+          const _e147Plans = (auth.plans && typeof auth.plans === 'object') ? auth.plans : {};
+          const _e147EntOk = _e145Chronicle ? _e145Chronicle.chronicleEntitlementFor(_e147Plans) : null;
+          if (_e147EntOk && _e147EntOk.basis && !_e147Plans.chronicle_anchor_at) {
+            _e147Delta.chronicle_anchor_at = new Date().toISOString();
+          }
+          if (_e147DistillMerged && Number.isFinite(Number(_e147DistillMerged.sessions))) {
+            const _e147Sess = Math.max(0, Math.floor(Number(_e147DistillMerged.sessions)));
+            if (_e147Sess > (Number(_e147Plans.chronicle_sessions) || 0)) {
+              _e147Delta.chronicle_sessions = _e147Sess;
+            }
+          }
+          if (Object.keys(_e147Delta).length > 0) {
+            patchWealthPlans(auth.userId, _e147Delta).catch(() => { /* fail-soft */ });
+          }
+        } catch { /* fail-closed：持久化失败绝不影响主链 */ }
       });
     }
   } catch (e) {

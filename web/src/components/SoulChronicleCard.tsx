@@ -9,9 +9,12 @@
  * 🔴 纪律：六语自容（零 i18n 键扰动）；对话舱红线＝零价格字眼（权益态仅
  *   「已解锁/待解锁」中性词）；导出走 Blob text/html 本地排版。
  */
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 // @ts-ignore —— soulChronicleEntitlement.mjs 纯 JS 逻辑核（形状由 e145 闸门守备）
-import { chronicleEntitlementFor, buildSoulChronicleHTML, L_CHRONICLE_TITLE, L_CHRONICLE_STATE } from '../lib/soulChronicleEntitlement.mjs';
+import {
+  buildSoulChronicleHTML, L_CHRONICLE_TITLE, L_CHRONICLE_STATE,
+  chronicleModuleGate, readChronicleState, chronicleChargingLabel,
+} from '../lib/soulChronicleEntitlement.mjs';
 // @ts-ignore —— soulBondState.mjs 纯 JS 逻辑核（形状由 E143 闸门守备）
 import { readSoulBondState } from '../lib/soulBondState.mjs';
 
@@ -44,8 +47,17 @@ const SoulChronicleCard: React.FC<SoulChronicleCardProps> = ({
   const l = CHRONICLE_LANGS.includes(String(lang || '')) ? String(lang) : 'en';
   const ui = L_UI[l] || L_UI.en;
 
-  const ent = useMemo(() => chronicleEntitlementFor(paidPlans), [paidPlans]);
-  const unlocked = module === 'romance' ? ent.romance : ent.wealth;
+  // 🆕 E147-刀四：双门槛门控（权益 × 时间≥30 天 × 轨迹≥5）——轨迹档案直读
+  //    localStorage（done 帧随行回写；隐私模式 null ⇒ 全空 fail-closed）。
+  const chronMeta = readChronicleState(
+    (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null
+  );
+  const gate = chronicleModuleGate(paidPlans, module, chronMeta.sessions);
+  const unlocked = gate.status === 'unlocked';
+  const charging = gate.status === 'charging';
+  const chargingText = charging
+    ? chronicleChargingLabel(l, { trajectory: gate.trajectory, unlockDateISO: gate.unlockDateISO })
+    : '';
   const title = L_CHRONICLE_TITLE[l] || L_CHRONICLE_TITLE.en;
   const moduleName = L_CHRONICLE_STATE.module[module][l] || L_CHRONICLE_STATE.module[module].en;
   const stateWord = unlocked
@@ -104,6 +116,20 @@ const SoulChronicleCard: React.FC<SoulChronicleCardProps> = ({
         >
           {exported ? '✓' : cta}
         </button>
+      ) : charging ? (
+        <>
+          {/* 🆕 E147-刀四：蓄能态（⏳ 编纂蓄能中·已沉淀 N 条轨迹·预计启封日）
+              ——导出按钮置灰禁用，防空壳导出（军令钦定六语逐字）。 */}
+          <p className="ks-chronicle-charging" data-testid="soul-chronicle-charging">{chargingText}</p>
+          <button
+            type="button"
+            className="ks-chronicle-cta is-charging"
+            disabled
+            data-testid="soul-chronicle-export"
+          >
+            {cta}
+          </button>
+        </>
       ) : (
         <p className="ks-chronicle-locked">{ui.locked}</p>
       )}

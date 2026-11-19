@@ -80,8 +80,10 @@ test('E144-锁1b 流中留白归一（chunk-safe 幂等）：\\r\\n 归一＋3+ 
 
 test('E144-锁1c server emitDelta 三层串联＋终帧兜底（reset 清屏＋重发双段先于唤名计数）', () => {
   // 三层清洗链形制：留白归一 ⇒ 品牌清洗 ⇒ 封印清洗（军令钦定串联序）
-  assert.ok(SERVER.includes('_e144BreathingSplitSync(_e144Rhythm, _e1421BrandWash(_e143VeilWashSync(_e143Veil, t)))'),
-    'emitDelta 须三层串联（E144 留白归一外层 ⇒ E142.1 品牌 ⇒ E143 封印）');
+  // 🆕 E147-刀二/刀三（军令 2026-11-19）：E147 出流守卫清洗内一层（餐饮零
+  //    地名剥离＋凉季反季面料拦截）——四层串联，E144 留白归一仍恒外层。
+  assert.ok(SERVER.includes('_e144BreathingSplitSync(_e144Rhythm, _e147OutWashSync(_e147Guard, _e1421BrandWash(_e143VeilWashSync(_e143Veil, t)), _e147ColdClimate))'),
+    'emitDelta 须四层串联（E144 留白归一外层 ⇒ E147 出流守卫 ⇒ E142.1 品牌 ⇒ E143 封印）');
   // 模块缓存动态 import 纯核（fail-soft：核缺席 ⇒ 透传零破坏）
   assert.ok(SERVER.includes('_e144RhythmMod = await import(\'./web/src/lib/astralRhythmAction.mjs\')'),
     'server 须动态 import 纯核（E143 同形制模块缓存）');
@@ -411,9 +413,9 @@ test('E144-锁6 链位：e144 居 e143 后、e40-compat 前；全链 112 段＋n
   assert.ok(i144 === i143 + 1, 'e144 须紧居 e143 之后（版本序铁律）');
   assert.ok(i40 > i144, 'e40-compat 须恒居 node 链尾（e144 不得插其后）');
   // 总段计数（含 python 尾）＝113（E146 插链后继化）
-  assert.equal(chain.length, 114, `链总段必须为 114（实际 ${chain.length}）`);
+  assert.equal(chain.length, 115, `链总段必须为 115（实际 ${chain.length}）`);
   const nodeOnly = chain.filter((s) => !/python/.test(s));
-  assert.equal(nodeOnly.length, 113, `node-only 段必须为 113（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 114, `node-only 段必须为 114（实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(chain[chain.length - 1]), 'python 段须恒为总链尾');
   // e40 恒 node 链尾（len-2 断言族守恒，python 在其外）
   assert.equal(i40, segs.length - 1, 'e40 须恒 node 链尾');

@@ -426,8 +426,10 @@ test('E142.1-锁D2 源码零品牌锁：前端词库/组件零命中；server �
   // 🆕 E143 后继化：品牌清洗后串联星灵封印清洗（机械腔＋内部标识脱敏——
   //    E142.1 品牌清洗仍为首层，双空格归一收口不变）
   assert.ok(/delta: _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)/.test(SERVER) || SERVER.includes('delta: _e1421BrandWash(t)')
-    || /delta: _e144BreathingSplitSync\(_e144Rhythm, _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)\)/.test(SERVER),
-    'emitDelta 须前置品牌清洗（全路径收口；E143 串联形态亦可；E144 三层包裹形态亦可）');
+    || /delta: _e144BreathingSplitSync\(_e144Rhythm, _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\)\)/.test(SERVER)
+    // 🆕 E147 后继化：四层串联（E147 出流守卫插在品牌清洗外层——餐饮零地名/反季面料）
+    || /delta: _e144BreathingSplitSync\(_e144Rhythm, _e147OutWashSync\(_e147Guard, _e1421BrandWash\(_e143VeilWashSync\(_e143Veil, t\)\), _e147ColdClimate\)\)/.test(SERVER),
+    'emitDelta 须前置品牌清洗（全路径收口；E143 串联/E144 三层/E147 四层包裹形态亦可）');
 });
 
 /* ── E142.1-锁E：零故障注入财富沙盒锁（会话档位解锁键）── */
