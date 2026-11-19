@@ -85,7 +85,7 @@ import {
   resolveCircadianPhase, composeCircadianStatus,
   readLastActiveTs, writeLastActiveTs, computeAstralReunionContext, astralReunionBadgeLabel,
   detectAstralCalendarEvent, detectAstralCalendarIntent, defaultAstralWindow,
-  buildAstralCalendarICS, astralCalendarFilename,
+  buildAstralCalendarICS, astralCalendarFilename, buildAstralCalendarRichFields,
   calendarLockPillLabel, calendarEventSummary,
   parseProxyLine, copyDoneLabel,
 } from '../lib/astralRhythmAction.mjs';
@@ -966,12 +966,24 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     if (!slot || !slot.ev) return;
     try {
       const summary = calendarEventSummary(lang, slot.ev.kind);
+      // 🆕 E145-刀六（军令 2026-11-19）：锁屏日历富字段——标题带灵宠名与核心
+      // 动作／LOCATION 宜忌／DESCRIPTION 三段＋回流链接／URL 字段（纯核单源）。
+      const rich = buildAstralCalendarRichFields(lang, slot.ev.kind, slot.note, slot.ev);
       const ics = buildAstralCalendarICS({
         dateISO: slot.dateISO,
         startHH: slot.ev.startHH, startMM: slot.ev.startMM,
         endHH: slot.ev.endHH, endMM: slot.ev.endMM,
         summary, description: (slot.note || summary),
         uidSalt: sessionSigRef.current,
+        ...(rich ? {
+          lang,
+          whisperName: name,
+          actionCore: rich.actionCore,
+          fortuneLine: rich.fortuneLine,
+          tiLine: rich.tiLine,
+          actionLine: rich.actionLine,
+          whisperLine: rich.whisperLine,
+        } : {}),
       });
       if (!ics) return;
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
@@ -1063,18 +1075,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
             <button type="button" className="ks-chat-close" onClick={onClose} aria-label={t('familiar.chatClose')}>✕</button>
           </div>
           {/* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——
-              六语自容（零 i18n 139 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
+              六语自容（零 i18n 键扰动）；Lv.1/2＝灵犀默契 Lv.N 档位称号，
               Lv.3 满阶＝满阶共生称号（军令示例形态「● 灵犀默契 Lv.2 · …」）。
-              几何：bond 恒完整显示（金字前缀不截断），chatStatus 弹性截断。
               🆕 E144-刀二（军令 2026-11-18）：昼夜色温前缀拼接——
               「灵犀默契 Lv.2 星轨同频 · 78/100 · 🌙 星夜守护磁场」形态。
-              🆕 E144.1-刀一：独立第二行整行宽度（零遮挡零截断）。 */}
+              🆕 E144.1-刀一：独立第二行整行宽度（零遮挡零截断）。
+              🆕 E145-刀一（军令 2026-11-19）：状态栏精简去冗——右侧
+              「{{name}} 正在感应你的星盘磁场…」尾缀整行退役（主公三图
+              实锤截断病灶；灵宠名已在第一行左侧，第二行仅留默契分＋
+              昼夜词条，双视口零截断；chatStatus 六语键同批退役）。 */}
           <div className="ks-chat-status">
             <span className="ks-chat-dot" aria-hidden="true" />
             <span className="ks-chat-bond" data-testid="soul-bond-status">
               {composeCircadianStatus(bondStatusBarLabel(lang, bondState), circadianClock.hour, circadianClock.minute, lang)}
             </span>
-            <span className="ks-chat-status-text">{t('familiar.chatStatus', { name })}</span>
           </div>
         </div>
 

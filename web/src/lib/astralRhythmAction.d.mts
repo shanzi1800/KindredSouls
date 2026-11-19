@@ -28,8 +28,17 @@ export function calendarEventSummary(lang: string, kind: string): string;
 export function buildAstralCalendarICS(ev: {
   dateISO: string; startHH: number; startMM: number; endHH: number; endMM: number;
   summary: string; description?: string; uidSalt?: string;
+  /** 🆕 E145-刀六：锁屏日历富字段（四项微调——缺席 ⇒ 降级现行为零破坏） */
+  lang?: string; whisperName?: string; actionCore?: string; fortuneLine?: string;
+  tiLine?: string; actionLine?: string; whisperLine?: string;
 }): string;
 export function astralCalendarFilename(dateISO: string): string;
+/** 🆕 E145-刀六：日历富字段装配（标题前缀/宜忌/三段/回流链接——组件消费纯核单源）。 */
+export const L_ICS_PREFIX: Readonly<Record<string, string>>;
+export const L_ICS_BACK_LINK: Readonly<Record<string, string>>;
+export const ASTRAL_BACK_URL: string;
+export interface AstralCalendarRichFields { actionCore: string; fortuneLine: string; tiLine: string; actionLine: string; whisperLine: string; }
+export function buildAstralCalendarRichFields(lang: string, kind: string, note: string, win?: { startHH?: number; endHH?: number } | null): AstralCalendarRichFields | null;
 export interface ProxyIntentHit { lang: string; keyword: string; }
 export function detectReplyProxyIntent(text: string): ProxyIntentHit | null;
 export function proxyTierPrefix(lang: string, tier: string): string;

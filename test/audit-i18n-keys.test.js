@@ -129,7 +129,11 @@ describe('V448 i18n Key 门禁', () => {
     //   wealth_pillar_cut_shield / wealth_ask_companion / wealth_edu_disclaimer），
     //   6 语种同步新增，键集合全等不变（军令原文写 138 系笔误——实列 7 键 ⇒ 139）
     // 122 → 132 → 139
-    assert.strictEqual(p.total, 139, 'E139 星盘财商七键入列后基准键数应为 139');
+    // 🏆 E145-刀一（主公军令 2026-11-19）: 状态栏精简去冗——
+    //   familiar.chatStatus「{{name}} 正在感应你的星盘磁场…」尾缀六语同步
+    //   删除（主公三图实锤截断病灶；组件 span 同批退役），键集合全等不变
+    // 139 → 138
+    assert.strictEqual(p.total, 138, 'E145 状态栏精简 chatStatus 退役后基准键数应为 138');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {
@@ -159,6 +163,8 @@ describe('V448 i18n Key 门禁', () => {
       'input.privacyPolicy',
       // 🏆 E135（主公军令 2026-11-11）：提示条退役键防回流
       'familiar.chatQ2',
+      // 🏆 E145-刀一（军令 2026-11-19）：状态栏尾缀退役键防回流（chatStatus）
+      'familiar.chatStatus',
     ];
     for (const l of LANGS) {
       const paths = new Set(keyPaths(L[l]));

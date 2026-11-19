@@ -2044,8 +2044,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   flex: 0 0 auto;
 }
 /* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——六语自容
-   （零 i18n 139 键扰动）；金调前缀恒完整显示（390 宽实测不截断），
-   chatStatus 文本弹性截断（flex: 1 min-width: 0）。 */
+   （零 i18n 键扰动）；金调前缀恒完整显示（390 宽实测不截断）。
+   🆕 E145-刀一（军令 2026-11-19）：.ks-chat-status-text 弹性截断槽整体
+   退役（chatStatus 尾缀删除——昼夜词条恒完整零截断）。 */
 .ks-chat-bond {
   flex: 0 0 auto;
   overflow: hidden;
@@ -2055,13 +2056,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0.92;
-}
-.ks-chat-status-text {
-  flex: 1 1 40px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 /* 🆕 E143-刀三：星光呼吸微共鸣——默契跃升/极值情绪唤名/微标点亮时头像外圈
    1.5s 金色星光呼吸光晕（纯 CSS 关键帧零算力；组件态驱动 class 切换）。 */
@@ -2390,4 +2384,63 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-companion-milo, .ks-companion-sophia, .ks-companion-badge,
   .ks-companion-toast, .ks-companion-drawer, .ks-goldcard-modal,
   .ks-shimmer-line::after { animation: none; }
+}
+
+/* ═══ 🆕 E145-刀四（军令 2026-11-19）：灵魂成长年鉴卡（报告页/姻缘结果区）═══
+   黑金玻璃卡轻量形态：标题行（✦ 灵魂成长年鉴＋已解锁/待解锁状态胶囊）＋
+   提示行＋导出按钮（已解锁态）；零价格字眼（对话舱红线安全）。 */
+.ks-chronicle-card {
+  margin: 18px auto 0;
+  max-width: 560px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(18, 24, 38, 0.72);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+}
+.ks-chronicle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ks-chronicle-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #D4AF37;
+  letter-spacing: 0.04em;
+}
+.ks-chronicle-state {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #8A93A6;
+  background: rgba(138, 147, 166, 0.12);
+}
+.ks-chronicle-state.is-unlocked {
+  color: #81D8D0;
+  background: rgba(129, 216, 208, 0.12);
+}
+.ks-chronicle-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #CFE0E8;
+}
+.ks-chronicle-cta {
+  margin-top: 10px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.1);
+  color: #D4AF37;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ks-chronicle-locked {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  color: #8A93A6;
 }

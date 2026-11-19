@@ -410,10 +410,10 @@ test('E144-锁6 链位：e144 居 e143 后、e40-compat 前；全链 112 段＋n
   assert.ok(i143 > 0, 'e143 段须在链');
   assert.ok(i144 === i143 + 1, 'e144 须紧居 e143 之后（版本序铁律）');
   assert.ok(i40 > i144, 'e40-compat 须恒居 node 链尾（e144 不得插其后）');
-  // 总段计数（含 python 尾）＝112（E144 插链后继化）
-  assert.equal(chain.length, 112, `链总段必须为 112（实际 ${chain.length}）`);
+  // 总段计数（含 python 尾）＝113（E145 插链后继化）
+  assert.equal(chain.length, 113, `链总段必须为 113（实际 ${chain.length}）`);
   const nodeOnly = chain.filter((s) => !/python/.test(s));
-  assert.equal(nodeOnly.length, 111, `node-only 段必须为 111（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 112, `node-only 段必须为 112（实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(chain[chain.length - 1]), 'python 段须恒为总链尾');
   // e40 恒 node 链尾（len-2 断言族守恒，python 在其外）
   assert.equal(i40, segs.length - 1, 'e40 须恒 node 链尾');

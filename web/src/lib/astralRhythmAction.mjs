@@ -331,6 +331,65 @@ function icsEscape(v) {
   return String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
+/* ═══ 🆕 E145-刀六（军令 2026-11-19）：锁屏日历四项微调词条（军令六语对照表逐字）═══ */
+
+/** 日历标题前缀（军令译表逐字：✨ 灵宠叮嘱 / ✨ Astral Note …） */
+export const L_ICS_PREFIX = Object.freeze({
+  zh: '✨ 灵宠叮嘱', en: '✨ Astral Note', fr: '✨ Note Astrale',
+  es: '✨ Nota Astral', th: '✨ คำเตือนดวงดาว', vi: '✨ Lời Dặn Tinh Linh',
+});
+
+/** 回流链接文案（军令译表逐字：轻点返回星盘舱 …） */
+export const L_ICS_BACK_LINK = Object.freeze({
+  zh: '轻点返回星盘舱', en: 'Tap to Return', fr: 'Ouvrir le Sanctuaire',
+  es: 'Volver al Santuario', th: 'แตะเพื่อกลับสู่วิหาร', vi: 'Chạm Về Tinh Bàn',
+});
+
+/** 日历回流链接（URL 字段真源——军令钦定 kindredsouls.online） */
+export const ASTRAL_BACK_URL = 'https://kindredsouls.online';
+
+/** kind 双态核心动作/宜忌/寄语词条（六语×lucky/caution） */
+export const L_ICS_KIND_FIELDS = Object.freeze({
+  lucky: Object.freeze({
+    actionCore: Object.freeze({ zh: '乘吉时而动', en: 'Ride the auspicious hour', fr: 'Chevaucher l’heure faste', es: 'Cabalga la hora propicia', th: 'ลงมือตามเวลาดี', vi: 'Hành động theo giờ lành' }),
+    fortune: Object.freeze({ zh: '宜：顺时而进 · 忌：犹豫不决', en: 'Auspicious: timely action · Avoid: second-guessing', fr: 'Favorable : agir à temps · Éviter : hésiter', es: 'Propicio: actuar a tiempo · Evitar: dudar', th: 'ควร: ลงมือตามจังหวะ · เลี่ยง: ลังเล', vi: 'Nên: hành động đúng lúc · Tránh: do dự' }),
+    whisper: Object.freeze({ zh: '灵宠寄语：吉时我陪你一起踩点。', en: 'Companion whisper: I’ll walk the lucky hour with you.', fr: 'Mot du compagnon : je marcherai cette heure faste avec toi.', es: 'Susurro del compañero: caminaré esa hora propicia contigo.', th: 'ถ้อยทักทาย: ฉันจะไปด้วยกันในช่วงเวลาดี', vi: 'Lời dặn người bạn: mình cùng bước theo giờ lành.' }),
+  }),
+  caution: Object.freeze({
+    actionCore: Object.freeze({ zh: '守住财库缓买单', en: 'Hold the vault, ease the spend', fr: 'Garder le trésor, freiner la dépense', es: 'Custodia el tesoro, frena el gasto', th: 'รักษาคลัง ชะลอการจ่าย', vi: 'Giữ kho, chậm chi' }),
+    fortune: Object.freeze({ zh: '宜：稳步守财 · 忌：冲动买单', en: 'Auspicious: steady wealth · Avoid: impulse buys', fr: 'Favorable : richesse posée · Éviter : achats impulsifs', es: 'Propicio: riqueza firme · Evitar: compras impulsivas', th: 'ควร: รักษาการเงินมั่นคง · เลี่ยง: ใจร้อนซื้อ', vi: 'Nên: giữ tài vững · Tránh: mua bốc đồng' }),
+    whisper: Object.freeze({ zh: '灵宠寄语：有我在，稳住。', en: 'Companion whisper: I am here, stay steady.', fr: 'Mot du compagnon : je suis là, reste posé.', es: 'Susurro del compañero: aquí estoy, mantén la calma.', th: 'ถ้อยทักทาย: มีฉันอยู่ ใจเย็นไว้', vi: 'Lời dặn người bạn: có mình đây, giữ vững.' }),
+  }),
+});
+
+/**
+ * 🆕 E145-刀六：日历富字段装配（标题前缀/宜忌/三段/回流链接——组件消费）
+ * @param {string} lang 六语
+ * @param {'lucky'|'caution'} kind 事件性质
+ * @param {string} note 回复核心句（开运实操段素材；缺省 ⇒ kind 词条兜底）
+ * @returns {{actionCore: string, fortuneLine: string, tiLine: string,
+ *   actionLine: string, whisperLine: string}|null} fail-closed null
+ */
+export function buildAstralCalendarRichFields(lang, kind, note, win) {
+  const l = sanitizeLang(lang);
+  const row = L_ICS_KIND_FIELDS[kind === 'caution' ? 'caution' : 'lucky'];
+  const w = (win && typeof win === 'object') ? win : null;
+  const hh = (n) => String(Number(n) || 0).padStart(2, '0');
+  const winLine = w ? `${hh(w.startHH)}:00-${hh(w.endHH)}:00` : '';
+  const tiLine = l === 'zh'
+    ? `天时底牌：${winLine ? `提醒窗 ${winLine} · ` : ''}${row.fortune[l]}`
+    : `Timing: ${winLine ? `window ${winLine} · ` : ''}${row.fortune[l]}`;
+  const n = String(note || '').trim().slice(0, 160);
+  const actionLine = (l === 'zh' ? '开运实操：' : 'Guided move: ') + (n || row.actionCore[l]);
+  return {
+    actionCore: row.actionCore[l],
+    fortuneLine: row.fortune[l],
+    tiLine,
+    actionLine,
+    whisperLine: row.whisper[l],
+  };
+}
+
 /** 本地浮届时间戳（YYYYMMDDTHHMMSS——RFC 5545 浮届时区，随终端本地时区落历） */
 function icsLocalStamp(dateISO, hh, mm) {
   const d = String(dateISO || '').replace(/-/g, '');
@@ -342,8 +401,15 @@ function icsLocalStamp(dateISO, hh, mm) {
 /**
  * RFC-5545 .ics 载荷生成（军令模块四）：VALARM 15 分钟提前提醒＋星盘/财库
  * 叮嘱备注；CRLF 行尾（RFC 钦定）；UID 带 chartSig 盐防多设备撞车。
+ * 🆕 E145-刀六（军令 2026-11-19）：锁屏日历四项微调富字段形态——
+ *  ① SUMMARY 带灵宠名与核心动作（✨ 灵宠叮嘱 · Sophia：守住财库缓买单）；
+ *  ② LOCATION 一句话宜忌；③ DESCRIPTION 三段（天时底牌/开运实操/灵宠寄语）
+ *  ＋回流链接；④ URL 字段同步写入。富字段缺席 ⇒ 逐项降级现行为
+ *  （e144 锁4b/4c includes 断言零破坏）。
  * @param {{dateISO: string, startHH: number, startMM: number, endHH: number,
- *   endMM: number, summary: string, description?: string, uidSalt?: string}} ev
+ *   endMM: number, summary: string, description?: string, uidSalt?: string,
+ *   lang?: string, whisperName?: string, actionCore?: string, fortuneLine?: string,
+ *   tiLine?: string, actionLine?: string, whisperLine?: string}} ev
  */
 export function buildAstralCalendarICS(ev) {
   const e = (ev && typeof ev === 'object') ? ev : null;
@@ -353,8 +419,24 @@ export function buildAstralCalendarICS(ev) {
   const sh = Number(e.startHH); const sm = Number(e.startMM);
   const eh = Number(e.endHH); const em = Number(e.endMM);
   if (!(sh >= 0 && sh <= 23 && eh >= 0 && eh <= 23 && eh >= sh)) return '';
-  const summary = icsEscape(String(e.summary || '').slice(0, 80) || 'KindredSouls');
-  const desc = icsEscape(String(e.description || '').slice(0, 200));
+  // ── E145-刀六：富字段门（lang＋whisperName＋actionCore 三在场才升舱）──
+  const richLang = L_ICS_PREFIX[String(e.lang || '')] ? String(e.lang) : null;
+  const hasTitle = !!(richLang && String(e.whisperName || '').trim() && String(e.actionCore || '').trim());
+  const summary = hasTitle
+    ? icsEscape(`${L_ICS_PREFIX[richLang]} · ${String(e.whisperName).trim().slice(0, 24)}${richLang === 'zh' ? '：' : ': '}${String(e.actionCore).trim().slice(0, 60)}`)
+    : icsEscape(String(e.summary || '').slice(0, 80) || 'KindredSouls');
+  const hasFortune = !!(richLang && String(e.fortuneLine || '').trim());
+  const locationLines = hasFortune
+    ? [`LOCATION:${icsEscape(String(e.fortuneLine).trim().slice(0, 120))}`]
+    : [];
+  const hasSegs = !!(richLang && String(e.tiLine || '').trim() && String(e.actionLine || '').trim() && String(e.whisperLine || '').trim());
+  const descRich = hasSegs
+    ? `${String(e.tiLine).trim()}\n${String(e.actionLine).trim()}\n${String(e.whisperLine).trim()}\n\n${L_ICS_BACK_LINK[richLang]} ${ASTRAL_BACK_URL}`
+    : '';
+  const desc = descRich ? icsEscape(descRich) : icsEscape(String(e.description || '').slice(0, 200));
+  const urlLines = (hasTitle || hasFortune || hasSegs)
+    ? [`URL:${ASTRAL_BACK_URL}`]
+    : [];
   const salt = icsEscape(String(e.uidSalt || 'ks').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24) || 'ks');
   const stamp = `${dateISO.replace(/-/g, '')}T${String(sh).padStart(2, '0')}${String(sm).padStart(2, '0')}00`;
   const nowStamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
@@ -368,7 +450,9 @@ export function buildAstralCalendarICS(ev) {
     `DTSTART:${icsLocalStamp(dateISO, sh, sm)}`,
     `DTEND:${icsLocalStamp(dateISO, eh, em)}`,
     `SUMMARY:${summary}`,
+    ...locationLines,
     ...(desc ? [`DESCRIPTION:${desc}`] : []),
+    ...urlLines,
     'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
     `DESCRIPTION:${summary}`, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR',

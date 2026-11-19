@@ -22,13 +22,15 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 const CHAT_KEYS = [
-  'chatCta', 'chatStatus', 'chatHello', 'chatHelloSoothe', 'chatHelloPlain', 'chatClose',
+  'chatCta', 'chatHello', 'chatHelloSoothe', 'chatHelloPlain', 'chatClose',
   'chatPlaceholder', 'chatSend', 'chatThinking', 'chatMicSoon',
   'chatNetErr', 'chatNeedLogin', 'chatNeedUnlock', 'chatTooFast',
   'chatQ1', 'chatQ3', // 🏆 E135（主公军令 2026-11-11）：chatQ2「抚平我今天的情绪内耗」六语退役
+  // 🏆 E145-刀一（主公军令 2026-11-19）：chatStatus「正在感应你的星盘磁场…」
+  //   状态栏尾缀六语退役（16 键 → 15 键；A2 占位符契约同步重订）
 ];
 
-test('E66 A1 六语 familiar.chat* 16 键全部在场且非空（军令：六语对齐；E111 增 chatHelloSoothe；E135 chatQ2 退役）', () => {
+test('E66 A1 六语 familiar.chat* 15 键全部在场且非空（军令：六语对齐；E111 增 chatHelloSoothe；E135 chatQ2 退役；E145 chatStatus 退役）', () => {
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
     assert.ok(o.familiar, `${l}.json 缺 familiar 命名空间`);
@@ -39,10 +41,11 @@ test('E66 A1 六语 familiar.chat* 16 键全部在场且非空（军令：六语
   }
 });
 
-test('E66 A2 占位符契约（E111-刀二重订）：chatStatus 带 {{name}}；chatHello/chatHelloSoothe 禁复读插值', () => {
+test('E66 A2 占位符契约（E111-刀二重订＋E145-刀一）：chatHello/chatHelloSoothe 禁复读插值；chatHelloPlain 带 {{name}}', () => {
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.ok(o.familiar.chatStatus.includes('{{name}}'), `${l} chatStatus 缺 {{name}}`);
+    // 🏆 E145-刀一（军令 2026-11-19）：chatStatus 键整体退役（状态栏尾缀删除）——
+    //    键不得回流（死键断言在 audit-i18n-keys ⑥ 死键表）。
     // 🏆 E111-刀二（主公军令 2026-11-01）：对话舱首语严禁复读锦囊（幸运色/数字）——
     //    chatHello 改「合盘情境甜句」（恋人牌）、chatHelloSoothe 为「磨合规慰句」，
     //    两者均不得再携带 {{color}}/{{num}} 运势插值（复读病根禁回潮）。
@@ -73,7 +76,9 @@ test('E66 B1 后端端点骨架：/api/familiar/chat + Gemini 流式主通道 + 
   //    ＋systemText 戒律后缀拼接（DeepSeek 降级实距推出 17000）⇒ 窗口 17000→19000
   // 🆕 E144 后继化：chat route 内新增星灵律动块（嘴替/呼吸戒律后缀＋终帧分段
   //    兜底；DeepSeek 降级实距 19256）⇒ 窗口 19000→21000
-  const epBody = s.slice(epIdx, epIdx + 21000);
+  // 🆕 E145 后继化：chat route 尾部新增 L0-L2 蒸馏 fire-and-forget 挂块
+  //    ＋路由头部三核加载（DeepSeek 降级实距 21794）⇒ 窗口 21000→22000
+  const epBody = s.slice(epIdx, epIdx + 22000);
   assert.ok(epBody.includes('streamFamiliarChatDeepSeek'), '端点内缺降级调用');
   assert.ok(/降级|fallback/.test(epBody), '端点内缺降级注释/逻辑');
 });

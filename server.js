@@ -15937,6 +15937,18 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
       if (_e131List.indexOf(_e131ChartSig) === -1) _e131List.push(_e131ChartSig);
       updatedPlans.wealth_once_charts = _e131List.slice(-WEALTH_CHART_SIG_MAX);
     }
+    // 🆕 E145-刀四（军令 2026-11-19）：$9.99 全通月订连续支付月数记账——
+    //    webhook 续费时累加（存量 all_pass_monthly 在期 ⇒ streak+1；新订/断
+    //    订重开 ⇒ 重置 1）。灵魂成长年鉴定 4 月纯核读 all_pass_monthly_streak
+    //    ≥6 判「连续满 6 个月」双模块免费（fail-closed 缺省 0）。
+    if (plan === 'all_pass_monthly') {
+      const _e145PrevStreak = Number(currentPlans.all_pass_monthly_streak);
+      const _e145WasActive = currentPlans.all_pass_monthly === true
+        && (!currentPlans.all_pass_monthly_expires_at
+          || Date.now() < new Date(currentPlans.all_pass_monthly_expires_at).getTime());
+      updatedPlans.all_pass_monthly_streak = _e145WasActive && Number.isFinite(_e145PrevStreak) && _e145PrevStreak > 0
+        ? Math.floor(_e145PrevStreak) + 1 : 1;
+    }
     const rowPatch = {
       paid: true,
       paid_plans: updatedPlans,
@@ -20469,7 +20481,8 @@ function familiarChatQuota(userId) {
   if (now - rec.lastTs < FAMILIAR_CHAT_MIN_GAP_MS) return { ok: false, reason: 'TOO_FAST' };
   rec.count += 1; rec.lastTs = now;
   _famChatUsage.set(userId, rec);
-  return { ok: true, remaining: FAMILIAR_CHAT_DAILY_CAP - rec.count };
+  // 🆕 E145-刀二：used＝本日累计条数（含本条；＝1 ⇒ 当日首条破冰触发面）
+  return { ok: true, remaining: FAMILIAR_CHAT_DAILY_CAP - rec.count, used: rec.count };
 }
 
 /**
@@ -21536,6 +21549,60 @@ async function _e144RhythmCore() {
     return null;
   }
 }
+/* ═══ 🌟 E145-刀三 WEALTH-GATEKEEPER（军令 2026-11-19）：破财守门人纯核挂载 ═══
+ * 真源 web/src/lib/wealthGatekeeperAction.mjs。军令「立即开通」：财运避坑与
+ * 重大决策场景（大额消费/投资/合伙/签约/冲动剁手）命中 ⇒ 三步守财提醒
+ * （天时/识人/拦冲动）；双红线＝零合同审阅＋零法律建议。fail-soft 铁律
+ * 同 E143/E144/E145-刀二：核 import 失败 ⇒ 块不注入（零破坏）。 */
+let _e145GatekeeperMod = null;
+async function _e145GatekeeperCore() {
+  try {
+    if (!_e145GatekeeperMod) _e145GatekeeperMod = await import('./web/src/lib/wealthGatekeeperAction.mjs');
+    return _e145GatekeeperMod;
+  } catch {
+    return null;
+  }
+}
+/* ═══ 🌟 E145-刀二 SMART-REC-ENGINE（军令 2026-11-19）：智慧吃喝穿搭推荐纯核挂载 ═══
+ * 真源 web/src/lib/astralSmartRecEngine.mjs。根治「每句硬塞吃喝穿搭＋同一天
+ * 推荐乱跳」病灶：克制触发意图网（六语）＋穿搭日主锚定（五行轮转日内恒定）
+ * ＋吃喝时段匹配。fail-soft 铁律同 E143/E144：核 import 失败 ⇒ 纪律块不注入
+ * （回退今日现行为零破坏——对话流绝不因此中断）。 */
+let _e145SmartRecMod = null;
+async function _e145SmartRecCore() {
+  try {
+    if (!_e145SmartRecMod) _e145SmartRecMod = await import('./web/src/lib/astralSmartRecEngine.mjs');
+    return _e145SmartRecMod;
+  } catch {
+    return null;
+  }
+}
+/* ═══ 🌟 E145-刀六 ASTRAL-DISTILL-CORE（军令 2026-11-19）：L0-L2 记忆异步蒸馏 ═══
+ * 真源 web/src/lib/astralDistillCore.mjs。军令「落地 L0-L2 记忆异步蒸馏核」：
+ * L0 原始会话事件 → L1 结构化事实（话题×权益） → L2 共情与推荐偏好权重；
+ * 挂点＝chat done 帧后 setImmediate fire-and-forget（绝不阻塞出流/上流）；
+ * 画像＝单实例内存 Map（按 userId，封顶 500 条 FIFO 淘汰；fail-closed 绝不抛错）。
+ * fail-soft 铁律同 E143/E144/E145-刀二/三：核 import 失败 ⇒ 蒸馏静默不跑零破坏。 */
+let _e145DistillMod = null;
+async function _e145DistillCore() {
+  try {
+    if (!_e145DistillMod) _e145DistillMod = await import('./web/src/lib/astralDistillCore.mjs');
+    return _e145DistillMod;
+  } catch {
+    return null;
+  }
+}
+let _e145ChronicleMod = null;
+async function _e145ChronicleCore() {
+  try {
+    if (!_e145ChronicleMod) _e145ChronicleMod = await import('./web/src/lib/soulChronicleEntitlement.mjs');
+    return _e145ChronicleMod;
+  } catch {
+    return null;
+  }
+}
+/** E145-刀六：蒸馏画像内存仓（Map<userId, {l2, sessions, updatedAt}>；FIFO 封顶 500） */
+const E145_DISTILL_PROFILES = new Map();
 /** 流中留白归一（chunk-safe 幂等：\r\n→\n＋3+ 连续换行→\n\n；核缺席 ⇒ 透传零破坏）
  *  ——emitDelta 唯一挂点消费（E143 出流清洗同形制） */
 function _e144BreathingSplitSync(mod, t) {
@@ -21618,6 +21685,16 @@ app.post('/api/familiar/chat', async (req, res) => {
   const _e143Veil = await _e143VeilGuard();
   // 🆕 E144-刀二（军令 2026-11-18）：星灵律动纯核加载（留白归一/嘴替意图探测/终帧分段共用）
   const _e144Rhythm = await _e144RhythmCore();
+  // 🆕 E145-刀二（军令 2026-11-19）：智慧推荐纯核加载（克制触发意图网/日主
+  //    锚定/时段匹配——systemText 后缀拼接纪律块消费；末条 user 侦测触发形态）
+  const _e145SmartRec = await _e145SmartRecCore();
+  // 🆕 E145-刀三（军令 2026-11-19）：破财守门人纯核加载（重大决策触发 ⇒ 三步
+  //    守财提醒；systemText 后缀拼接消费）
+  const _e145Gatekeeper = await _e145GatekeeperCore();
+  // 🆕 E145-刀六（军令 2026-11-19）：L0-L2 蒸馏纯核＋年鉴权益核加载
+  //    （fire-and-forget 异步蒸馏消费；核缺席 ⇒ 蒸馏静默不跑零破坏）
+  const _e145Distill = await _e145DistillCore();
+  const _e145Chronicle = await _e145ChronicleCore();
 
   // ① 权益门控（必须在 SSE header 之前）
   //    🏆 E107-刀三：沙盒匿名直通/合法灵宠档放行两条绿道在 resolveFamiliarChatAuth
@@ -21801,6 +21878,49 @@ app.post('/api/familiar/chat', async (req, res) => {
             return '\n\n' + _e144Rhythm.buildAstralReplyProxyPromptBlock(lang);
           }
           return '\n\n' + _e144Rhythm.buildAstralBreathingPromptBlock(lang);
+        } catch {
+          return '';
+        }
+      })()
+    // 🆕 E145-刀二（军令 2026-11-19）：智慧吃喝穿搭推荐纪律块——路由内后缀
+    //    拼接（E143/E144 同形制：不碰 buildFamiliarChatSystemPrompt 函数签名，
+    //    e115 S11/e129-03 后继化锚零破坏）。末条 user 命中克制触发意图网
+    //    （outfit/food/social/mood）⇒ 触发形态（日主锚定真值＋场景解释律＋
+    //    时段匹配真值）；未命中 ⇒ 静默形态（纯克制铁令——根治「每句硬塞
+    //    吃喝穿搭」复读机病灶）。日/时真源＝客户端时钟三件套（E142 localISO
+    //    ⇒ dateISO/hour）；核缺席/异常 ⇒ 块不注入（零破坏）。
+    + (function () {
+        if (!_e145SmartRec) return '';
+        try {
+          const _e145LastUser = _e137LastUser && String(_e137LastUser.content || '');
+          const _e145Intent = _e145LastUser
+            ? _e145SmartRec.detectSmartRecIntent(_e145LastUser, lang) : null;
+          if (_e145Intent) console.log(`[E145] smart rec prompt block intent=${_e145Intent} lang=${lang}`);
+          const _e145ISO = (_e142Time && String(_e142Time.localISO || '')) || '';
+          const _e145Hour = (/T(\d{2}):/.test(_e145ISO) && Number(_e145ISO.match(/T(\d{2}):/)[1]) >= 0)
+            ? Number(_e145ISO.match(/T(\d{2}):/)[1]) : new Date().getUTCHours();
+          return '\n\n' + _e145SmartRec.buildSmartRecPromptBlock(lang, {
+            dateISO: _e1421Date, hour: _e145Hour, intent: _e145Intent,
+            // 日首破冰（军令触发面①：quota.used===1 ⇒ 本条为当日首条）
+            dayFirst: Number(quota && quota.used) === 1,
+          });
+        } catch {
+          return '';
+        }
+      })()
+    // 🆕 E145-刀三（军令 2026-11-19）：破财守门人纪律块——路由内后缀拼接
+    //    （E143/E144/E145-刀二同形制零锚破坏）。末条 user 命中财富决策触发
+    //    网（大额消费/投资/合伙/签约/冲动剁手）⇒ 三步守财提醒块（天时/识
+    //    人/拦冲动＋双红线零合同零法律）；未命中 ⇒ 零注入（静默）。
+    + (function () {
+        if (!_e145Gatekeeper) return '';
+        try {
+          const _e145GkUser = _e137LastUser && String(_e137LastUser.content || '');
+          if (_e145GkUser && _e145Gatekeeper.detectGatekeeperTrigger(_e145GkUser, lang)) {
+            console.log(`[E145] gatekeeper prompt block lang=${lang}`);
+            return '\n\n' + _e145Gatekeeper.buildGatekeeperPromptBlock(lang);
+          }
+          return '';
         } catch {
           return '';
         }
@@ -22033,6 +22153,31 @@ app.post('/api/familiar/chat', async (req, res) => {
     E1421_NAME_CALLS.set(_e1421NameKey, _e1421DoneQuota);
     finished = true;
     res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota })}\n\n`);
+    // 🆕 E145-刀六（军令 2026-11-19）：L0-L2 记忆异步蒸馏——done 帧后
+    //  fire-and-forget（setImmediate 不阻塞出流；try/catch fail-closed 绝不
+    //  影响主链；原始文本不出日志——只落工程记号摘要，隐私零泄露）。
+    if (_e145Distill) {
+      setImmediate(() => {
+        try {
+          const _e145Ent = (_e145Chronicle && auth.plans && typeof auth.plans === 'object')
+            ? _e145Chronicle.chronicleEntitlementFor(auth.plans) : null;
+          const d = _e145Distill.distillSession(
+            [...messages, { role: 'assistant', content: text }],
+            { lang, mode, dayFirst: quota.used === 1, entitlement: _e145Ent, ts: Date.now() },
+          );
+          if (!d) return;
+          const merged = _e145Distill.mergeDistilledProfile(
+            E145_DISTILL_PROFILES.get(auth.userId) || null, d,
+          );
+          E145_DISTILL_PROFILES.set(auth.userId, merged);
+          if (E145_DISTILL_PROFILES.size > 500) {
+            const firstKey = E145_DISTILL_PROFILES.keys().next().value;
+            if (firstKey !== undefined) E145_DISTILL_PROFILES.delete(firstKey);
+          }
+          console.log(`[E145] astral distill uid=${auth.userId} ${_e145Distill.distillProfileSummary(merged)}`);
+        } catch { /* fail-closed：蒸馏失败绝不影响主链 */ }
+      });
+    }
   } catch (e) {
     if (!ctrl.signal.aborted) {
       console.error('[E66] familiar/chat failed:', e && e.message);

@@ -42,6 +42,7 @@ import { markRecentReport } from '../lib/soulRecentReport.mjs';
 import { wealthReportButtonLabel, vipUnlockedHintLabel } from '../lib/paywallPriceContract.mjs';
 // 🐾 Gate 45-B：报告尾「灵宠认领」独立 CTA（E34 D5 白名单构造，禁业务线字段外泄）
 import AdoptFamiliarCTA from '../components/AdoptFamiliarCTA';
+import SoulChronicleCard from '../components/SoulChronicleCard'; // 🆕 E145-刀四：灵魂成长年鉴卡
 // 💎 E59（主公雷霆军令 2026-10-16）: 财富「升阶」专属付费墙 —— $2.99 流月 / $29.99 宇宙生日年鉴
 //   两档**各自独立**的付费墙弹窗（沙箱态内嵌「一键模拟支付 $X」测试按键）。
 import WealthUpgradePaywall from '../components/WealthUpgradePaywall';
@@ -3748,6 +3749,21 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
             onLeadHome={() => onNavigate('/')}
           />
         )}
+
+        {/* 🆕 E145-刀四（军令 2026-11-19）：灵魂成长年鉴卡（财富模块）——
+            权益四档判定（soulChronicleEntitlement 纯核）：$29.99 财富年报 ⇒
+            本模块免费；$29.99 姻缘年报 ⇒ 姻缘模块；月订连续满 6 月/$99.99
+            年度全通 ⇒ 双模块。前端本地排版导出（Blob HTML——零服务端渲染）；
+            六语自容零 i18n 键扰动；零价格字眼（权益态仅「已解锁/待解锁」）。 */}
+        <SoulChronicleCard
+          module="wealth"
+          lang={currentLang}
+          paidPlans={paidPlans}
+          companionName={familiarLead?.name || undefined}
+          summaryLines={reportData ? [
+            `${birthDate} · ${String((reportData as any)?.title || t('wealthReport.reportTitle')).slice(0, 40)}`,
+          ] : undefined}
+        />
 
         {/* 🆕 E143-刀四（军令 2026-11-17）：StarlightWatermark 星光金丝雀水印——
             报告 DOM 渲染尾部的版权签名槽位植入零宽字符序列（\u200B\u200C\u200D

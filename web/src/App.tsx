@@ -62,6 +62,7 @@ const AmuletPlayground = import.meta.env.DEV
 //    FamiliarCustomPage.tsx 底座与 $99.99 三常量静默保留待 2.0 激活，此处不再 import。
 // 🐾 Gate 45-B：报告尾「灵宠认领」承接位（E34 D5 白名单构造，禁业务线字段）
 import AdoptFamiliarCTA from './components/AdoptFamiliarCTA';
+import SoulChronicleCard from './components/SoulChronicleCard'; // 🆕 E145-刀四：灵魂成长年鉴卡
 // 🐾 E46→E53（主公亲令 2026-10-15）：首页灵宠宿主 —— 未认领＝空壳（认领全链路收归报告页付费流）；
 //    已认领＝破框骑键 portal 至 #ks-familiar-anchor。
 import FamiliarHomeCard from './components/FamiliarHomeCard';
@@ -1961,6 +1962,18 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 </div>
               )}
             </div>
+          )}
+          {/* 🆕 E145-刀四（军令 2026-11-19）：灵魂成长年鉴卡（姻缘模块）——
+              权益四档判定（soulChronicleEntitlement 纯核）：$29.99 姻缘年报 ⇒
+              本模块免费；月订连续满 6 月/$99.99 年度全通 ⇒ 双模块。前端本地
+              排版导出（Blob HTML）；六语自容零 i18n 键扰动；零价格字眼。 */}
+          {insight && (
+            <SoulChronicleCard
+              module="romance"
+              lang={lang}
+              paidPlans={paidPlansLocal}
+              summaryLines={[String(d1 || '').slice(0, 10)]}
+            />
           )}
           {/* 🔴 E91-①（主公军令 2026-10-25）：「退出登录」按钮退役——
              黑屏根因＝handleLogout 清数据后 reload ⇒ result 为空 ⇒ 渲染空白页；
