@@ -108,14 +108,14 @@ test('E92-②-1 塔罗 scope 掺盐（三档独立卡槽，财富塔罗零牵连
 test('E92-②-2 App 报告调用传档位盐＋洞察调用保持默认＋洞察请求补 t1/t2', () => {
   assert.ok(APP.includes('getTarot(d1, d2, lang, type)'), '报告调用未传档位盐');
   assert.ok(APP.includes('const tarot = getTarot(d1, d2, lang);\n      const res = await fetch'), '洞察调用形态被误改（应保持默认 insight）');
-  assert.ok(APP.includes('tarot, t1, t2 }'), '洞察请求未补 t1/t2 出生时辰');
+  assert.ok(APP.includes('tarot, t1, t2,'), '洞察请求未补 t1/t2 出生时辰');   // 🛡️ E148 后继化：刀二 combo_sig 续行 ⇒ 尾花括号形态退役（语义锚 t1/t2 不变）
 });
 
 test('E92-⑤-1 闸门接线：test:astro 含本闸门（69 段）＋入编位（e91 后、e40 前、python 链尾）', () => {
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e92-bazi-tarot-pronoun.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 115, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
+  assert.equal(parts.length, 116, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79
   const iE92 = parts.findIndex((p) => p.includes('audit-e92-'));
   const iE91 = parts.findIndex((p) => p.includes('audit-e91-'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));

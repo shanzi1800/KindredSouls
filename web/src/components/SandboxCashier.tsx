@@ -22,6 +22,7 @@ import { subscribeSandboxCashier, getSandboxCashier, closeSandboxCashier, buildS
 // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫按盘落库 —— 收银台就地取当前页盘签名
 // @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核（前后端同源，e131 闸门守备）
 import { wealthChartSigFromSearch } from '../lib/wealthChartSig.mjs';
+import { compatComboSigFromSearch } from '../lib/compatComboSig.mjs'; // 💳 E148-刀二: 组合签名提取（doPay 双回退）
 
 const GOLD = '#D4AF37';
 const TEAL = '#81D8D0';
@@ -116,7 +117,13 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
       //   双双落空（非报告页上下文）⇒ '' ⇒ body 只含 plan，旧行为零变。
       const _e131Sig = wealthChartSigFromSearch(window.location.search)
         || wealthChartSigFromSearch(((req.url || '').split('?')[1]) || '');
-      const { data } = await post(buildSandboxCompleteRequest(req.plan, _e131Sig));
+      // 💳 E148-刀二：compatibility_once 付讫按盘落库 —— 组合签名源双回退：
+      //   ① 收银台 url 的 combo_sig query（沙盘会话构造时随 path 透传——主漏斗）；
+      //   ② window.location.search 兜底；
+      //   双双落空 ⇒ '' ⇒ body 不挂 combo_sig 键，旧行为零变。
+      const _e148Combo = compatComboSigFromSearch(((req.url || '').split('?')[1]) || '')
+        || compatComboSigFromSearch(window.location.search);
+      const { data } = await post(buildSandboxCompleteRequest(req.plan, _e131Sig, _e148Combo));
       applyOutcome(describeSandboxOutcome(data));
     } catch (_) {
       setMsg({ granted: false, messageKey: 'SandboxFailed' });

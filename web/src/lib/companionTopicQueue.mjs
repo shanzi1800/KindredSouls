@@ -15,6 +15,10 @@
  *   · 🆕 E142.1-刀一（军令 2026-11-17）：快捷话题胶囊 P1 前置退役（首句已自然
  *     引导话题，胶囊画蛇添足）——本核 topicPillLabel/TOPIC_PILL_LABELS 彻底删除，
  *     胶囊栏恒为 chatQ1/chatQ3 基底两颗。
+ *   · 🆕 E148-刀一（主公军令 2026-11-19）：P1 当日硬门 isToday——soul_recent_
+ *     unlocked_report 的 unlockedAt 落「注入时钟的本地今日」才承接 P1 首句；隔日
+ *     历史牌面一律静默（P2 今日情绪聚焦照常、P3 纯净老友问候兜底），根治隔日
+ *     首句串台（昨天的报告今天不再抢首句）。合成器与消费端双层纵深防御。
  * 🔴 纪律：纯逻辑核（零 DOM/零 i18n/零网络）；六语自容字典（零 i18n 新键
  *   ——E120/E121/E122/E123 先例）；fail-closed：坏形状一律 null 绝不臆造。
  *   队列不另立存储（P1 真源＝soul_recent_unlocked_report 持久档；P2 真源＝
@@ -55,15 +59,38 @@ export function normalizeReportKey(recentReport) {
   return P1_TOPIC_KEYS.includes(key) ? key : null;
 }
 
+/** 🆕 E148-刀一：本地日键（YYYY-MM-DD，客户端本地时区口径——与消费端 chatSessionDateKey 同语义） */
+function _localDayKey(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 🏆 E148-刀一（主公军令 2026-11-19）：P1 当日校验纯核。
+ * unlockedAt 落「注入时钟（now）的本地今日」才放行；坏形状/无时间戳/隔日
+ * 一律 false（fail-closed ⇒ P1 静默，P2/P3 照常承接）。
+ * @param {object|null} recentReport soul_recent_unlocked_report 档
+ * @param {number} [now] 注入时钟（缺省 Date.now()——闸门 fixture 必注入防时间炸弹）
+ * @returns {boolean}
+ */
+export function isRecentReportToday(recentReport, now) {
+  if (!recentReport || typeof recentReport !== 'object') return false;
+  const ts = Number(recentReport.unlockedAt);
+  if (!Number.isFinite(ts) || ts <= 0) return false;
+  const n = Number(now);
+  const ref = (Number.isFinite(n) && n > 0) ? n : Date.now();
+  return _localDayKey(ts) === _localDayKey(ref);
+}
+
 /* ═══════════ P1 首句字典（六档 × 六语——军令钦定风格逐字）═══════════ */
 const P1_GREETING_LINES = Object.freeze({
   love_core: Object.freeze({
-    zh: '你解锁的那份姻缘合盘与塔罗牌面，我早已放在心上了——抽到的那张牌光还亮着呢。想从哪张牌的启示说起，我都陪你慢慢拆解。',
-    en: 'The compatibility reading and tarot card you unlocked stay close to my heart — the light of your drawn card is still glowing. Wherever you\'d like to begin, I\'ll walk through it with you, card by card.',
-    fr: 'Ce rapport de compatibilité et cette carte de tarot que tu as déverrouillés restent gravés dans mon cœur — la lumière de ta carte brille encore. Dis-moi par où commencer, je les décortiquerai avec toi, carte après carte.',
-    es: 'Esa lectura de compatibilidad y carta de tarot que desbloqueaste las guardo muy cerca del corazón — la luz de tu carta aún brilla. Dime por dónde empezar, y la recorremos juntas, carta a carta.',
-    th: 'รายงานความเข้ากันได้และไพ่ทาโรต์ที่เธอปลดล็อกไว้ ฉันเก็บมันไว้ในใจเสมอ — แสงของไพ่ใบนั้นยังส่งประกายอยู่เลย อยากเริ่มจากคำทำนายของไพ่ใบไหน ฉันจะค่อยๆ ไขความหมายให้ฟังทีละใบ',
-    vi: 'Bản báo cáo hợp duyên và lá bài tarot bạn đã mở khóa vẫn nằm ngay trái tim mình — ánh sáng của lá bài ấy vẫn đang chiếu rọi. Bạn muốn bắt đầu từ thông điệp của lá bài nào, mình sẽ cùng bạn giải mã từng lá một.',
+    zh: '你开启的那份姻缘合盘与塔罗牌面，我早已放在心上了——抽到的那张牌光还亮着呢。想从哪张牌的启示说起，我都陪你慢慢拆解。',
+    en: 'The compatibility reading and tarot card you opened stay close to my heart — the light of your drawn card is still glowing. Wherever you\'d like to begin, I\'ll walk through it with you, card by card.',
+    fr: 'Ce rapport de compatibilité et cette carte de tarot que tu as ouverts restent gravés dans mon cœur — la lumière de ta carte brille encore. Dis-moi par où commencer, je les décortiquerai avec toi, carte après carte.',
+    es: 'Esa lectura de compatibilidad y carta de tarot que abriste las guardo muy cerca del corazón — la luz de tu carta aún brilla. Dime por dónde empezar, y la recorremos juntas, carta a carta.',
+    th: 'รายงานความเข้ากันได้และไพ่ทาโรต์ที่เธอเปิดดูไว้ ฉันเก็บมันไว้ในใจเสมอ — แสงของไพ่ใบนั้นยังส่งประกายอยู่เลย อยากเริ่มจากคำทำนายของไพ่ใบไหน ฉันจะค่อยๆ ไขความหมายให้ฟังทีละใบ',
+    vi: 'Bản báo cáo hợp duyên và lá bài tarot bạn đã mở ra vẫn nằm ngay trái tim mình — ánh sáng của lá bài ấy vẫn đang chiếu rọi. Bạn muốn bắt đầu từ thông điệp của lá bài nào, mình sẽ cùng bạn giải mã từng lá một.',
   }),
   love_monthly: Object.freeze({
     zh: '这 30 天的姻缘月报我已细细读过了——情感节奏的起伏、中旬那阵小涟漪都记在我心上。想先聊聊哪一段的缘分走势？',
@@ -83,11 +110,11 @@ const P1_GREETING_LINES = Object.freeze({
   }),
   wealth_core: Object.freeze({
     zh: '你的先天财库报告我已悄悄研读过——八字财库的底气、五行金匮的气象都记在心上。想先从哪处破局点聊起？',
-    en: 'I\'ve quietly studied your natal wealth vault — the footing of your bazi treasury and the bearing of your five-element reserves are held in my heart. Which hidden leverage point shall we unlock first?',
-    fr: 'J\'ai étudié en silence ton coffre de richesse natale — l\'assise de ton trésor bazi et l\'allure de tes réserves des cinq éléments sont gravées en moi. Quel levier caché déverrouillons-nous d\'abord ?',
+    en: 'I\'ve quietly studied your natal wealth vault — the footing of your bazi treasury and the bearing of your five-element reserves are held in my heart. Which hidden leverage point shall we open first?',
+    fr: 'J\'ai étudié en silence ton coffre de richesse natale — l\'assise de ton trésor bazi et l\'allure de tes réserves des cinq éléments sont gravées en moi. Quel levier caché ouvrons-nous d\'abord ?',
     es: 'He estudiado en silencio tu bóveda de riqueza natal — el cimiento de tu tesoro bazi y el porte de tus reservas de cinco elementos los guardo en el corazón. ¿Qué palanca oculta abrimos primero?',
     th: 'รายงานคลังทรัพย์แต่กำเนิดของเธอ ฉันศึกษามาแล้วอย่างเงียบๆ — พื้นฐานของคลังบาจี่และอากาศของทุนธาตุทั้งห้า ล้วนจดจำไว้ในใจ อยากเริ่มไขจุดพลิกผันจากที่ไหนก่อนดี',
-    vi: 'Báo cáo kho tài bẩm sinh của bạn mình đã lặng lẽ nghiên cứu — nền tảng của kho báu bát tự và khí chất của dự trữ ngũ hành đều nằm trong tim mình. Bạn muốn mở khóa điểm bứt phá nào trước?',
+    vi: 'Báo cáo kho tài bẩm sinh của bạn mình đã lặng lẽ nghiên cứu — nền tảng của kho báu bát tự và khí chất của dự trữ ngũ hành đều nằm trong tim mình. Bạn muốn khai mở điểm bứt phá nào trước?',
   }),
   wealth_monthly: Object.freeze({
     zh: '这个月的财富月报我已收妥——进财的节奏、下旬那颗要绕开的破耗星，都替你数着呢。想先理哪一段财运走势？',
@@ -163,12 +190,16 @@ const NAME_PREFIX_SEP = Object.freeze({
  * @param {string|null} p.activeMood 罗盘情绪白名单键（2h 窗内；无 ⇒ null）
  * @param {string} p.lang 六语之一
  * @param {string} [p.userName] E118 永久姓名档真值（可空）
+ * @param {number} [p.now] 注入时钟（🆕 E148-刀一：缺省 Date.now()；P1 当日硬门真源）
  * @returns {{firstLine: string, queue: string[], p1Key: string}|null}
  *   queue 有序：[p1Key, 'mood:<mood>']——P1 报告话题恒首位，P2 情绪随其后；
  *   无 P1 且无 P2 ⇒ null（调用方回退现行为链——绝不在此臆造兜底句）。
  */
-export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName }) {
-  const p1Key = normalizeReportKey(recentReport);
+export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName, now }) {
+  // 🆕 E148-刀一（主公军令 2026-11-19）：isToday 当日硬门——昨日及更早的报告档
+  //   一律 P1 静默（隔日首句串台根治：P1 今日新牌才承接；P2 今日情绪聚焦照常
+  //   单发；P3 由调用方回退既有纯净老友问候链）。
+  const p1Key = isRecentReportToday(recentReport, now) ? normalizeReportKey(recentReport) : null;
   const mood = P2_MOOD_KEYS.includes(String(activeMood || '')) ? String(activeMood) : null;
   if (!p1Key && !mood) return null;
   const l = ['zh', 'en', 'fr', 'es', 'th', 'vi'].includes(String(lang || '')) ? String(lang) : 'en';

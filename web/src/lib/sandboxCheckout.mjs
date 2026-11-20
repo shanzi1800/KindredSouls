@@ -53,6 +53,8 @@ export const SANDBOX_PLAN_TERM_KEYS = Object.freeze({
   all_pass_yearly: 'SandboxPlanOther',
   // 🆕 E129-刀五（军令 2026-11-09）：$9.99 全通月订新 SKU（与 server STRIPE_PRICE_MAP 同集）
   all_pass_monthly: 'SandboxPlanOther',
+  // 🆕 E148-刀三（主公军令 2026-11-19）：$1.99 今日塔罗新 SKU（六语专属词条）
+  tarot_daily_once: 'SandboxPlanTarotDaily',
 });
 
 /* ── SKU ⇒ 标价（**仅供沙盘收银台展示**，绝不参与计价；真实金额由 Stripe Price 决定）──
@@ -70,6 +72,8 @@ export const SANDBOX_PLAN_PRICE = Object.freeze({
   all_pass_yearly: '$99.99',
   // 🆕 E129-刀五：$9.99 全通月订（军令钦定价——退款政策六语已同步铁律 15）
   all_pass_monthly: '$9.99',
+  // 🆕 E148-刀三（主公军令 2026-11-19）：$1.99 今日塔罗（军令钦定价；与 server STRIPE_PRICE_MAP 同集）
+  tarot_daily_once: '$1.99',
 });
 
 /** SKU 标价取词：未知/畸形 ⇒ ''（空串，由调用方决定是否省略） */
@@ -150,11 +154,15 @@ export function isVoucherSubmittable(raw) {
  * 💳 E131-A（主公军令 2026-11-09）：可选第二参 chartSig —— wealth_once 付讫按盘落库；
  *   缺省/空串 ⇒ body 只含 plan（旧形态逐字不变，gate45b deepEqual 契约零扰）。
  *   ⚠️ 只认已规范化的签名（调用方传 wealthChartSigFromSearch/normalizeWealthChartSig 产物）。
+ * 💳 E148-刀二（主公军令 2026-11-19）：可选第三参 comboSig —— compatibility_once
+ *   付讫按盘落库（E131 对称形制；缺省/空串 ⇒ 不挂键，旧形态零变）。
  */
-export function buildSandboxCompleteRequest(plan, chartSig) {
+export function buildSandboxCompleteRequest(plan, chartSig, comboSig) {
   const body = { plan: String(plan == null ? '' : plan) };
   const sig = typeof chartSig === 'string' ? chartSig.trim() : '';
   if (sig) body.chart_sig = sig;
+  const combo = typeof comboSig === 'string' ? comboSig.trim() : '';
+  if (combo) body.combo_sig = combo;
   return { path: SANDBOX_COMPLETE_PATH, method: 'POST', body };
 }
 

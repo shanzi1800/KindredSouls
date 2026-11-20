@@ -42,6 +42,11 @@ function mockStorage(initial) {
 
 const LANGS = ['zh', 'en', 'fr', 'es', 'th', 'vi'];
 
+// 🆕 E148-刀一后继化：注入式时钟（铁律 19：断言消费真实时钟的 fixture 禁用
+//    绝对日期——P1 当日硬门需 unlockedAt 落注入时钟今日，全部 fixture 携带）
+const NOW = Date.now();
+const TODAY_RR = (cat, tier) => ({ category: cat, tier, unlockedAt: NOW });
+
 /** VM 抽取式：从 server.js 源码抽 _e142ClientTime 函数体实跑（铁律：new Function 参数包裹） */
 function vmE142ClientTime() {
   const m = SERVER.match(/function _e142ClientTime\(v\) \{[\s\S]*?\n\}/);
@@ -53,7 +58,7 @@ function vmE142ClientTime() {
 
 test('E142-锁1a P1+P2 双串联：姻缘核心报告+低落情绪 ⇒ 首句含塔罗/姻缘特征词＋情绪特征词，非兜底语', () => {
   const q = TQ.resolveCompanionGreetingAndQueue({
-    recentReport: { category: 'love', tier: 'core' }, activeMood: 'melancholy', lang: 'zh',
+    recentReport: TODAY_RR('love', 'core'), activeMood: 'melancholy', lang: 'zh', now: NOW,
   });
   assert.ok(q && q.firstLine, '串联首句须产出');
   assert.ok(/合盘|塔罗|牌/.test(q.firstLine), '首句须含 P1 塔罗/姻缘特征词');
@@ -76,14 +81,30 @@ test('E142-锁1b tier 归一化根修：年报档 annual 与 yearly 双形态均
   assert.equal(TQ.normalizeReportKey(null), null, '坏形状 ⇒ null（fail-closed）');
 });
 
-test('E142-锁1c 隔日持久锚：报告档在场（不限当日）⇒ 首句恒含 P1 话题（六语全覆盖）', () => {
+test('E142-锁1c（🆕 E148 后继化）当日六档六语：unlockedAt 落注入时钟今日 ⇒ 首句恒含 P1 话题', () => {
   for (const lang of LANGS) {
     for (const [cat, tier] of [['love', 'core'], ['love', 'monthly'], ['love', 'annual'],
       ['wealth', 'core'], ['wealth', 'monthly'], ['wealth', 'annual']]) {
-      const q = TQ.resolveCompanionGreetingAndQueue({ recentReport: { category: cat, tier }, activeMood: null, lang });
+      const q = TQ.resolveCompanionGreetingAndQueue({ recentReport: TODAY_RR(cat, tier), activeMood: null, lang, now: NOW });
       assert.ok(q && q.firstLine && q.firstLine.length > 10, `六档六语首句须产出 lang=${lang} ${cat}_${tier}`);
     }
   }
+  // 🆕 E148-刀一新锁：隔日历史牌面 ⇒ P1 静默（合成器 fail-closed 防串台）
+  const stale = TQ.resolveCompanionGreetingAndQueue({
+    recentReport: { category: 'love', tier: 'core', unlockedAt: NOW - 26 * 3600 * 1000 },
+    activeMood: null, lang: 'zh', now: NOW,
+  });
+  assert.equal(stale, null, '隔日报告档无情绪 ⇒ 合成器 null（P3 兜底交还调用方）');
+  const staleMood = TQ.resolveCompanionGreetingAndQueue({
+    recentReport: { category: 'love', tier: 'core', unlockedAt: NOW - 26 * 3600 * 1000 },
+    activeMood: 'radiant', lang: 'zh', now: NOW,
+  });
+  assert.ok(staleMood && /发光|气色|气场|好事/.test(staleMood.firstLine) && !/合盘|塔罗|牌面/.test(staleMood.firstLine),
+    '隔日牌面静默：首句仅 P2 情绪特征词，严禁 P1 报告特征词（串台根治）');
+  assert.equal(TQ.isRecentReportToday(TODAY_RR('love', 'core'), NOW), true, '当日档 ⇒ true');
+  assert.equal(TQ.isRecentReportToday({ category: 'love', tier: 'core', unlockedAt: NOW - 26 * 3600 * 1000 }, NOW), false, '隔日档 ⇒ false');
+  assert.equal(TQ.isRecentReportToday({ category: 'love', tier: 'core' }, NOW), false, '无 unlockedAt ⇒ false（fail-closed）');
+  assert.equal(TQ.isRecentReportToday(null, NOW), false, '坏形状 ⇒ false');
 });
 
 test('E142-锁1d 合成器兜底红线：无 P1 无 P2 ⇒ null（绝不臆造兜底句）；纯 P2 亦可单发', () => {
@@ -93,18 +114,21 @@ test('E142-锁1d 合成器兜底红线：无 P1 无 P2 ⇒ null（绝不臆造�
   assert.ok(!q.firstLine.startsWith('...') && !q.firstLine.startsWith('…'), '纯 P2 不得带省略号前缀');
 });
 
-test('E142-锁1e 消费端源码锚：FamiliarChatSheet 挂 p1queue 模式＋隔日 P1 持久分支＋合成器消费', () => {
+test('E142-锁1e（🆕 E148 后继化）消费端源码锚：p1queue 仅当日承接＋隔日分支拆除＋合成器消费', () => {
   assert.ok(SHEET.includes("'p1queue'"), 'HelloMode 须含 p1queue');
   assert.ok(SHEET.includes('resolveCompanionGreetingAndQueue'), 'helloFor 须消费合成器');
-  assert.ok(/else if \(rr && normalizeReportKey\(rr\)\)/.test(SHEET), '须含隔日 P1 持久锚分支（严禁跌回兜底）');
+  // 🆕 E148-刀一：隔日 P1 持久锚分支已拆除（隔日首句串台根治——严禁复活）
+  assert.ok(!/else if \(rr && normalizeReportKey\(rr\)\)/.test(SHEET), '隔日 P1 持久锚分支须拆除（E148-刀一）');
+  assert.ok(!/mode = 'p1queue';\s*\n\s*} else if \(_e142Mood\)/.test(SHEET), 'p1queue 赋值严禁在隔日分支复活');
   assert.ok(SHEET.includes("mode = (_e142Mood && normalizeReportKey(rr)) ? 'p1queue'"), '当日新解锁+情绪 ⇒ 须升级 P1+P2 串联');
+  assert.ok(SHEET.includes('freshReport'), '当日判定锚 freshReport 须在场（E113 同源双保险）');
 });
 
 /* ═══ 锁2：跨模块话题序锁（P1 报告话题恒首位；财富进则先天财富话题）═══ */
 
 test('E142-锁2a 队列序：P1 恒首位、P2 情绪随其后（queue 数组契约）', () => {
   const q = TQ.resolveCompanionGreetingAndQueue({
-    recentReport: { category: 'wealth', tier: 'core' }, activeMood: 'agitated', lang: 'zh',
+    recentReport: TODAY_RR('wealth', 'core'), activeMood: 'agitated', lang: 'zh', now: NOW,
   });
   assert.deepEqual(q.queue, ['wealth_core', 'mood:agitated'], '财富进则队列首键=先天财富报告，情绪第二位');
   assert.ok(/财库/.test(q.firstLine), '财富 P1 首句须含先天财库特征词（八字财库）');
@@ -155,11 +179,11 @@ test('E142-锁3b 档案持久化＋唤醒：writeUserNameProfile ⇒ readUserNam
 
 test('E142-锁3c 首句带名：P1 串联句以用户名前缀开场（六语同构）', () => {
   const q = TQ.resolveCompanionGreetingAndQueue({
-    recentReport: { category: 'love', tier: 'core' }, activeMood: 'melancholy', lang: 'zh', userName: '江山',
+    recentReport: TODAY_RR('love', 'core'), activeMood: 'melancholy', lang: 'zh', userName: '江山', now: NOW,
   });
   assert.ok(q.firstLine.startsWith('江山，'), 'zh 姓名前缀「江山，」');
   const qEn = TQ.resolveCompanionGreetingAndQueue({
-    recentReport: { category: 'wealth', tier: 'core' }, activeMood: null, lang: 'en', userName: 'North',
+    recentReport: TODAY_RR('wealth', 'core'), activeMood: null, lang: 'en', userName: 'North', now: NOW,
   });
   assert.ok(qEn.firstLine.startsWith('North, '), 'en 姓名前缀同构');
   // 服务端 IDENTITY 永久记忆块链锚（E118 沿袭——姓名随行 prompt 注入）

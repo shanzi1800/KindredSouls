@@ -1086,6 +1086,14 @@ export const ASTRO_TERMS = {
         "th": "รายงานดวงสมพงษ์ชุดเดียว",
         "vi": "Báo cáo hợp duyên"
       },
+      "SandboxPlanTarotDaily": {
+        "zh": "今日塔罗单次",
+        "en": "Today's Tarot One-Time",
+        "es": "Tarot del Día",
+        "fr": "Tarot du Jour",
+        "th": "ไพ่ทาโรต์วันนี้",
+        "vi": "Tarot Hôm Nay"
+      },
       "SandboxPlanOther": {
         "zh": "会员权益",
         "en": "Membership Access",

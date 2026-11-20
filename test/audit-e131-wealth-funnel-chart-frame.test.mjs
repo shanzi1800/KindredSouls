@@ -176,7 +176,8 @@ test('E131-05 六语肃清：付费墙零合婚/合盘字样＋军令钦定新�
 /* ═══════════ E131-06 沙盒付讫签名链路 ═══════════ */
 test('E131-06 沙盒签名链：complete 可选 chart_sig＋收银台双回退＋session path/metadata 透传＋create-checkout 带盘', async () => {
   // complete 请求体可选签名（缺省旧形态逐字不变——gate45b deepEqual 契约零扰）
-  assert.ok(SB_CHECKOUT.includes('export function buildSandboxCompleteRequest(plan, chartSig)'), '双参签名');
+  // 🆕 E148-刀二后继化：buildSandboxCompleteRequest 增可选第三参 comboSig（合婚组合签名）
+  assert.ok(SB_CHECKOUT.includes('export function buildSandboxCompleteRequest(plan, chartSig, comboSig)'), '签名（双参＋E148 第三参）');
   const M = await import(pathToFileURL(join(ROOT, 'web/src/lib/sandboxCheckout.mjs')));
   assert.deepEqual(M.buildSandboxCompleteRequest('wealth_once'),
     { path: '/api/sandbox/complete', method: 'POST', body: { plan: 'wealth_once' } }, '单参旧形态零变（gate45b 契约）');
@@ -186,8 +187,11 @@ test('E131-06 沙盒签名链：complete 可选 chart_sig＋收银台双回退�
   assert.ok(CASHIER.includes("wealthChartSigFromSearch(window.location.search)"), '签名源①：页面 URL');
   assert.ok(CASHIER.includes("wealthChartSigFromSearch(((req.url || '').split('?')[1]) || '')"), '签名源②：收银台 url query 兜底');
   // 后端沙盘 session：path 追加 chart_sig（直达兜底链）＋metadata 三钥形态
+  // 🆕 E148-刀二后继化：metadata 改 Object.assign 增量形态（chart_sig/combo_sig 缺省零变）
   assert.ok(SB_PAYMENT.includes("'&chart_sig=' + encodeURIComponent(chartSig)"), 'path 追加 chart_sig');
-  assert.ok(SB_PAYMENT.includes('metadata: chartSig ? { supabase_user_id: userId, plan, chart_sig: chartSig }'), 'metadata 三钥形态（缺省双钥零变）');
+  assert.ok(SB_PAYMENT.includes("'&combo_sig=' + encodeURIComponent(comboSig)"), 'path 追加 combo_sig（E148-刀二）');
+  assert.ok(/metadata: Object\.assign\(\s*\{ supabase_user_id: userId, plan \},\s*chartSig \? \{ chart_sig: chartSig \} : \{\}/.test(SB_PAYMENT),
+    'metadata Object.assign 形态（缺省双钥零变；E148 增量第三键）');
   // 前端 create-checkout 请求体带盘签名
   assert.ok(WEALTH_PAGE.includes('chart_sig: wealthChartSigFromSearch(window.location.search) || undefined'), 'handlePurchase 上送盘签名');
 });

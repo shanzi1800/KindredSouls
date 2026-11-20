@@ -186,6 +186,7 @@
       "SandboxPlanMonthly":{ "zh": "流月财富报告",             "en": "Wealth Monthly Report",         "es": "Informe mensual",                 "fr": "Rapport mensuel",            "th": "รายงานรายเดือน",          "vi": "Báo cáo hàng tháng" },
       "SandboxPlanYearly":{ "zh": "年度财富年鉴",               "en": "Wealth Yearly Almanac",         "es": "Almanaque anual",                 "fr": "Almanach annuel",            "th": "ปฏิทินรายปี",              "vi": "Niên ký hàng năm" },
       "SandboxPlanCompat":{ "zh": "合盘一次性报告",           "en": "Compatibility One-Time Report", "es": "Informe de sinastría",            "fr": "Rapport de synastrie",       "th": "รายงานดวงสมพงษ์ชุดเดียว", "vi": "Báo cáo hợp duyên" },
+       "SandboxPlanTarotDaily":{ "zh": "今日塔罗单次",           "en": "Today's Tarot One-Time",        "es": "Tarot del Día",                   "fr": "Tarot du Jour",              "th": "ไพ่ทาโรต์วันนี้",          "vi": "Tarot Hôm Nay" },
       "SandboxPlanOther": { "zh": "会员权益",                 "en": "Membership Access",             "es": "Membresía",                       "fr": "Abonnement",                 "th": "สิทธิ์สมาชิก",            "vi": "Hội viên" }
     },
 

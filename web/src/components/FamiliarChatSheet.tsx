@@ -454,9 +454,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       let mode: HelloMode = greetingMode || 'plain';
       // 🏆 E123-刀四（军令 2026-11-04）：罗盘情绪记忆首语拦截——当日有效
       //  ks_active_mood（≤2h）命中 ⇒ 强制替换默认冷淡招呼为对应情绪的
-      //  第一人称共情抚慰句。优先级（E142 升序重排）：当日新解锁报告第一击
-      //  （E112，情绪在场则 P1+P2 串联）＞ P1 持久话题锚（E142 新增）＞罗盘
-      //  情绪（E123）＞跨日锦囊问候（E113）＞E111 情境链。
+      //  第一人称共情抚慰句。优先级（🆕 E148-刀一重排）：当日新解锁报告第一击
+      //  （E112 收窄为仅当日）＞罗盘情绪（E123，隔日历史牌面静默时为 P2 主承接
+      //  ）＞跨日锦囊问候（E113）＞E111 情境链。隔日报告档不再承接 P1 首句
+      //  （E148-刀一根治隔日首句串台：合成器 isToday 硬门＋此处分支拆除双保险）。
       if (rr && freshReport) {
         // 当日新解锁 ⇒ 报告第一击（军令刀四）；🆕 E142-刀一：罗盘情绪同时在
         //  场 ⇒ 升级 P1+P2 串联首句（军令钦定「首句 P1+P2 丝滑串联」）；
@@ -464,13 +465,8 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         //  曾致模式落空跌 plain 兜底（主公产线实锤病灶①真根）。
         mode = (_e142Mood && normalizeReportKey(rr)) ? 'p1queue'
           : `${rr.category}_${normalizeReportTier(rr.tier)}` as HelloMode;
-      } else if (rr && normalizeReportKey(rr)) {
-        // 🆕 E142-刀一：P1 持久锚——报告解锁非当日（隔日回访），话题队列仍以
-        //  P1 报告话题为第一顺位（P2 情绪若在 2h 窗内随行串联），严禁跌回
-        //  冷启动兜底语（军令病灶①根治——队列非破坏性，情绪不覆盖报告锚）。
-        mode = 'p1queue';
       } else if (_e142Mood) {
-        mode = 'mood'; // 罗盘情绪在场 ⇒ 情绪共情第一击（E123 军令刀四）
+        mode = 'mood'; // 罗盘情绪在场 ⇒ 情绪共情第一击（E123 军令刀四；隔日牌面静默）
       } else {
         const lastDay = readLastChatDay(store);
         if (lastDay && lastDay < today) {

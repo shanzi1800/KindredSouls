@@ -73,6 +73,12 @@ import { getWellnessRemedyById } from './lib/astroSeasonalWellnessEngine.mjs';
 //    生成成功即写入 localStorage（对话舱首语六档咬合真源）；纯逻辑核形状守卫。
 // @ts-ignore —— soulRecentReport.mjs 纯 JS 逻辑核（形状由 E112 闸门守备）
 import { markRecentReport } from './lib/soulRecentReport.mjs';
+import { compatComboSigOf } from './lib/compatComboSig.mjs'; // 💳 E148-刀二: 合婚 once 双盘组合签名（购买/洞察请求随行）
+// 💳 E148-刀三（主公军令 2026-11-19）：今日塔罗 $1.99 查看面＋单人盘签名
+//    （购买请求与查看请求同源同签——wealthChartSigOf 同一表达式，防付讫后 402 死锁）
+// @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核（前后端同源，e131/e148 闸门守备）
+import { wealthChartSigOf } from './lib/wealthChartSig.mjs';
+import TarotDailyCard from './components/TarotDailyCard';
 // ✦ E84（主公军令 2026-10-22）：Emoji 退役令——模式弹窗图标由 💞/💰 换成
 //    星芒微光 SVG 神秘学矢量（双星交汇星环 / 先天星盘金库），真源 EsotericIcons.tsx。
 import { IconTwinStars, IconNatalVault, IconStarYou, IconMoonTA } from './components/EsotericIcons';
@@ -232,12 +238,29 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
   // ── handlePurchaseWithToken: shared checkout helper ──
   //   🧪 Gate 45-B：回执分流统一交纯核 dispatchCheckoutRoute ——
   //      sandbox:true ⇒ **截断外链**、就地唤起沙盘收银台；url ⇒ 照旧外跳 Stripe；already_paid ⇒ 静默。
+  // 💳 E148-刀二/刀三（模块级铸签数据通道）：本助手为模块级共享函数，无法闭包
+  //    InputPage 的表单状态——由 InputPage 提交时镜像最近一次双盘真值进 _e148LastForm
+  //    （购买必经「开始测算」提交 ⇒ 镜像恒新鲜；未提交 ⇒ 空值 ⇒ 不挂键，旧行为零变）。
+  const _e148LastForm: {
+    d1: string; d2: string; t1: string; t2: string;
+    c1: { lat: number; lon: number; tz: string } | null;
+    c2: { lat: number; lon: number; tz: string } | null;
+  } = { d1: '', d2: '', t1: '', t2: '', c1: null, c2: null };
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan }),
+        // 💳 E148-刀二：compatibility_once 付讫按盘落库 —— 双盘组合签名随收银请求上送
+        //   （E131 对称形制；畸形 ⇒ '' ⇒ 不挂键，旧行为零变）
+        // 💳 E148-刀三：tarot_daily_once 付讫按盘落库 —— 单人盘签名随收银请求上送
+        //   （E131 同通道；铸签读模块级镜像 _e148LastForm——与 TarotDailyCard 查看请求
+        //    同源同签：镜像值即该卡 props 真源，防付讫后 402 死锁）
+        body: JSON.stringify(plan === 'compatibility_once'
+          ? Object.assign({ plan }, (() => { const c = compatComboSigOf(_e148LastForm.d1, _e148LastForm.d2, _e148LastForm.t1, _e148LastForm.t2, _e148LastForm.c1, _e148LastForm.c2); return c ? { combo_sig: c } : {}; })())
+          : plan === 'tarot_daily_once'
+          ? Object.assign({ plan }, (() => { const f = _e148LastForm; const s = f.c1 ? wealthChartSigOf(f.d1, f.t1 || '12:00', f.c1.lat, f.c1.lon, f.c1.tz) : ''; return s ? { chart_sig: s } : {}; })())
+          : { plan }),
       });
       const data = await res.json();
       // ✦ E84（主公军令 2026-10-22）「付费即刻呈现」：沙盒/兑换授予后落支付成功标志再刷新——
@@ -417,6 +440,10 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
     if (err1) { shake(1); return; }
     const err2 = validateDate(d2);
     if (err2) { shake(2); return; }
+    // 💳 E148：镜像最近一次双盘真值进模块级铸签通道（handlePurchaseWithToken 消费）
+    _e148LastForm.d1 = d1; _e148LastForm.d2 = d2;
+    _e148LastForm.t1 = t1; _e148LastForm.t2 = t2;
+    _e148LastForm.c1 = c1; _e148LastForm.c2 = c2;
     onSubmit(d1, d2, { t1, c1, t2, c2 });
   };
 
@@ -1442,7 +1469,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot, t1, t2 }),
+        // 💳 E148-刀二：once 档权益闸门吃双盘组合签名（服务端名单判定真源；
+        //   畸形 ⇒ '' ⇒ 不挂键⇒服务端回退 timeTruth 铸签，fail-closed）
+        body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot, t1, t2,
+          combo_sig: compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined }),
       });
       const data = await res.json();
       if (data.insight) {
@@ -1764,6 +1794,22 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             </button>
           )}
         </div>
+        {/* 🃏 E148-刀三（主公军令 2026-11-19）：今日塔罗 $1.99 独立查看面——付费墙态
+            挂载（权益判定全权在服务端：未购 ⇒ 购买按钮；已购/会员 ⇒ 直接呈牌）。
+            🔴 挂载条件＝真实出生城市在场（E34 D5 白名单同律，缺 c1 不挂载零伪造坐标）；
+            🔴 签名与购买请求同源同形（wealthChartSigOf 同一表达式——防付讫后 402 死锁）。 */}
+        {c1 && (
+          <TarotDailyCard
+            lang={lang}
+            accessToken={currentAccessToken}
+            birthDate={d1}
+            birthTime={t1 || ''}
+            lat={c1.lat}
+            lon={c1.lon}
+            tz={c1.tz}
+            onPurchase={handlePurchase}
+          />
+        )}
       </div>
     );
   }
@@ -1973,6 +2019,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               lang={lang}
               paidPlans={paidPlansLocal}
               summaryLines={[String(d1 || '').slice(0, 10)]}
+            />
+          )}
+          {/* 🃏 E148-刀三（主公军令 2026-11-19）：今日塔罗 $1.99 独立查看面——解锁态
+              挂载（与上方付费墙态同一组件同一 props；挂载条件＝真实出生城市在场）。 */}
+          {c1 && (
+            <TarotDailyCard
+              lang={lang}
+              accessToken={currentAccessToken}
+              birthDate={d1}
+              birthTime={t1 || ''}
+              lat={c1.lat}
+              lon={c1.lon}
+              tz={c1.tz}
+              onPurchase={handlePurchase}
             />
           )}
           {/* 🔴 E91-①（主公军令 2026-10-25）：「退出登录」按钮退役——
