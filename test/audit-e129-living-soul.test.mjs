@@ -136,7 +136,9 @@ test('E129-03 LIVING/LUNAR 双块内置函数体＋livingContext 签名尾参＋
   // 🆕 E139 后继化：wealthBlockText（星盘财商块）入签名 ⇒ 尾参 wellnessRx→wealthBlockText
   // 🆕 E142 后继化：clientTime（终端时钟三件套）入签名 ⇒ 尾参 wealthBlockText→clientTime
   // 🆕 E142.1 后继化：nameQuotaUsed（唤名日配额）入签名 ⇒ 尾参 clientTime→nameQuotaUsed
-  assert.ok(/nameQuotaUsed\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 nameQuotaUsed（e115/e129/e137/e139/e142/e142.1 后继化；实为 ${sigLine.trim()})`);
+  // 🆕 E149 后继化（2026-11-23）：emotionSignal（Plutchik 情绪信号）＋lastMicroAction
+  //  （L1 行动回访标记）入签名 ⇒ 尾参 nameQuotaUsed→emotionSignal→lastMicroAction
+  assert.ok(/lastMicroAction\s*\}\s*\)\s*\{?\s*$/.test(sigLine.trim()), `签名尾参 lastMicroAction（e115/e129/e137/e139/e142/e142.1/e149 后继化；实为 ${sigLine.trim()})`);
   // 双块内置函数体（VM 抽取式消费者铁律——块在 fnPrompt 切片内）
   assert.ok(fnPrompt.includes('【LIVING AGENT CONTEXT（E129 军令，违反即失败·会话首击主动回溯）】'), 'LIVING AGENT CONTEXT 块在函数体内');
   assert.ok(fnPrompt.includes('【LUNAR RITUAL（E129 军令，违反即失败·天象窗口主动微仪式）】'), 'LUNAR RITUAL 块在函数体内');
@@ -254,7 +256,7 @@ test('E129-S10 链位自保：e129 入编（e127 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 116, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);
+  assert.equal(segs.length, 117, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);
   const iE129 = segs.findIndex((s) => s.includes('audit-e129-living-soul'));
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

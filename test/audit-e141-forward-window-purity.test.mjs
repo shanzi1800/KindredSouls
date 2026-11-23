@@ -190,8 +190,8 @@ test('E141-08 链位与插链：111 总段（110 node＋python 链尾；E143 插
   assert.ok(i140 > 0 && i141 === i140 + 1, 'e141 须紧居 e140 之后（版本序铁律）');
   assert.ok(i40 > i141, 'e40-compat 须恒居 node 链尾（e141 不得插其后）');
   // 总段计数（含 python 尾）＝111（E143 插链后继化）
-  assert.equal(all.length, 116, `链总段必须为 115（E147 插链后继化；实际 ${all.length}）`);
+  assert.equal(all.length, 117, `链总段必须为 115（E147 插链后继化；实际 ${all.length}）`);
   const nodeOnly = all.filter(s => !/python/.test(s));
-  assert.equal(nodeOnly.length, 115, `node-only 段必须为 114（E146 插链后继化；实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 116, `node-only 段必须为 114（E146 插链后继化；实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(all[all.length - 1]), 'python 段须恒为总链尾');
 });

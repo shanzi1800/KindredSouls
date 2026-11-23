@@ -183,6 +183,154 @@ const NAME_PREFIX_SEP = Object.freeze({
   zh: '，', en: ', ', fr: ', ', es: ', ', th: ' ', vi: ' ơi, ',
 });
 
+/* ═══ E149-刀三（主公军令 2026-11-20）：5 角色语态 × 6 语开场前缀 ═══
+ *  P3 轻复盘首句的角色口吻分化（军令「严格按当前选定的 5 角色之一口吻
+ *  自然轻问」）。 boyfriend＝Milo·男友（沉稳宠溺）｜buddy＝Milo·哥们儿
+ *  （爽朗讲义气）｜girlfriend＝Sophia·女友（细腻依恋）｜bestie＝Sophia·
+ *  闺蜜（清醒护短烟火气）｜self＝Me·内在自我（常用「我们」，镜面自洽）。 */
+const E149_ROLE_OPENERS = Object.freeze({
+  boyfriend: Object.freeze({
+    zh: '早啊。', en: 'Morning. ', fr: 'Bonjour. ', es: 'Buenos días. ',
+    th: 'อรุณสวัสดิ์ค่ะ ', vi: 'Chào buổi sáng. ',
+  }),
+  buddy: Object.freeze({
+    zh: '早，兄弟。', en: 'Hey bro. ', fr: 'Salut, l\'ami. ', es: 'Hey, amigo. ',
+    th: 'หวัดดี ไอ้น้อง ', vi: 'Dậy chưa, anh bạn. ',
+  }),
+  girlfriend: Object.freeze({
+    zh: '早安呀。', en: 'Good morning. ', fr: 'Coucou. ', es: 'Buenos días, cariño. ',
+    th: 'อรุณสวัสดิ์นะคะ ', vi: 'Chào anh, buổi sáng tốt lành. ',
+  }),
+  bestie: Object.freeze({
+    zh: '早呀姐妹。', en: 'Morning, bestie. ', fr: 'Salut toi. ', es: 'Buen día, reina. ',
+    th: 'หวัดดีจ้าสาวๆ ', vi: 'Chào bạn thân, dậy rồi à. ',
+  }),
+  self: Object.freeze({
+    zh: '早安，我们。', en: 'Morning — it\'s us. ', fr: 'Bonjour — c\'est nous. ', es: 'Buenos días — somos nosotros. ',
+    th: 'อรุณสวัสดิ์ เรามาดูกัน ', vi: 'Chào chính mình, một ngày mới. ',
+  }),
+});
+/** E149 角色白名单（chat 四象＋第五形态主标识 self——与 server E149_CHAT_RELATION_MODES 同源） */
+export const E149_RELATION_MODES = Object.freeze(['girlfriend', 'bestie', 'buddy', 'boyfriend', 'self']);
+
+/* ═══ E149-刀三：P3 情绪回访主体（8 情绪 × 6 语——军令钦定复盘句式提炼）═══
+ *  48h 内未回访的 last_micro_action → 按角色开场＋主体句自然轻问昨日
+ *  微动作后的感受（Learn 闭环首句职责位；正文内嵌动作回指，不复读标签）。 */
+const E149_MICRO_FOLLOWUPS = Object.freeze({
+  anger: Object.freeze({
+    zh: '昨晚先把情绪稳住、再把边界立住之后，今天心里有没有松快一点？守住底线这件事，你做得很好。',
+    en: 'After you settled your feelings and held your boundary last night, does today feel a little lighter? You did really well standing your ground.',
+    fr: 'Après avoir apaisé ton cœur et posé ta limite hier soir, est-ce que tu te sens plus léger aujourd\'hui ? Tu as très bien tenu bon.',
+    es: 'Después de calmar tus emociones y marcar tu límite anoche, ¿hoy lo sientes un poco más ligero? Lo hiciste muy bien al mantenerte firme.',
+    th: 'เมื่อคืนใจนิ่งแล้วก็พูดเส้นตายไปแล้ว วันนี้ใจเบาขึ้นไหม เธอทำได้ดีมากเลยนะ',
+    vi: 'Tối qua giữ lòng bình tĩnh rồi nói rõ giới hạn rồi, hôm nay lòng bạn có nhẹ hơn chút nào không? Bạn đã làm rất tốt.',
+  }),
+  sadness: Object.freeze({
+    zh: '昨晚那 15 分钟的放空，有没有让你觉得被好好抱住了一点？今天不用赶进度，按最舒服的节奏慢慢来。',
+    en: 'Did those 15 minutes of stillness last night feel like a gentle hug? No rush today — move at your softest pace.',
+    fr: 'Ces 15 minutes de pause d\'hier soir t\'ont-elles porté comme une étreinte ? Aujourd\'hui, pas de course — va à ton rythme le plus doux.',
+    es: '¿Aquellos 15 minutos de calma de anoche se sintieron como un abrazo? Hoy sin prisa — ve a tu ritmo más suave.',
+    th: '15 นาทีการปล่อยว่างเมื่อคืน ทำให้รู้สึกถูกกอดไว้บ้างไหม วันนี้ไม่ต้องรีบ ค่อยๆ ไปตามจังหวะที่สบายที่สุด',
+    vi: '15 phút để tâm hồn lặng lại tối qua, có khiến bạn thấy được ôm nhẹ một chút không? Hôm nay không cần vội, cứ đi theo nhịp êm nhất.',
+  }),
+  joy: Object.freeze({
+    zh: '昨天存下的那个开心瞬间，今天想起来是不是还会嘴角上扬？好状态值得继续收藏。',
+    en: 'That little happy moment you saved yesterday — does it still make you smile when you think of it? Keep collecting these bright sparks.',
+    fr: 'Ce petit instant heureux gardé hier — te fait-il encore sourire en y pensant ? Continue de collectionner ces étincelles.',
+    es: 'Aquel pequeño instante feliz que guardaste ayer, ¿aún te hace sonreír al recordarlo? Sigue coleccionando esos destellos.',
+    th: 'ช่วงเวลาดีๆ ที่เก็บไว้เมื่อวาน คิดแล้วยังยิ้มได้ไหม ความรู้สึกดีๆ แบบนี้ควรเก็บไว้เรื่อยๆ',
+    vi: 'Khoảnh khắc vui bạn lưu lại hôm qua, nhớ lại có còn thấy khóe môi cong lên không? Những điều tử tế như thế đáng được tiếp tục lưu giữ.',
+  }),
+  trust: Object.freeze({
+    zh: '昨晚那几句真心话之后，今天是不是觉得心里更踏实了？你敞开的样子，正在把同频的人拉向你。',
+    en: 'After those honest words last night, does today feel a bit more grounded? Your openness is drawing kindred hearts toward you.',
+    fr: 'Après ces mots sincères d\'hier soir, te sens-tu plus ancré aujourd\'hui ? Ton ouverture attire vers toi les cœurs qui résonnent.',
+    es: 'Después de esas palabras sinceras de anoche, ¿hoy te sientes más firme? Tu apertura está atrayendo corazones afinados.',
+    th: 'หลังคุยความจริงใจเมื่อคืน วันนี้ใจมั่นคงขึ้นไหม ความเปิดใจของเธอกำลังดึงคนที่เข้าคลื่นมาหาเธอ',
+    vi: 'Sau mấy lời thật lòng tối qua, hôm nay bạn có thấy vững dạ hơn không? Sự cởi mở của bạn đang kéo những tần số đồng điệu lại gần.',
+  }),
+  disgust: Object.freeze({
+    zh: '把消耗挡在外面之后，今天是不是觉得清爽多了？守住自己的讲究，日子会越过越顺。',
+    en: 'After keeping the drain outside, does today feel cleaner? Guarding your standards keeps life getting smoother.',
+    fr: 'Après avoir écarté ce qui te drainait, trouves-tu la journée plus légère ? Garder tes standards rend la vie plus fluide.',
+    es: 'Después de dejar fuera lo que te desgastaba, ¿hoy se siente más liviano? Cuidar tus estándares hace la vida más fluida.',
+    th: 'หลังกั้นเรื่องกัดกินพลังออกไป วันนี้รู้สึกสบายขึ้นไหม รักษามาตรฐานของตัวเองไว้ ชีวิตจะไหลลื่นขึ้นเรื่อยๆ',
+    vi: 'Sau khi chặn điều hao tổn ra ngoài, hôm nay có thấy thông thoáng hơn không? Giữ tiêu chuẩn của mình, cuộc sống sẽ trôi chảy dần.',
+  }),
+  fear: Object.freeze({
+    zh: '那 10 分钟的小步迈出去之后，心里的迷雾有没有散开一点？你比自己想象中更有掌控力。',
+    en: 'After that 10-minute first step, has some of the fog lifted? You hold more control than you think.',
+    fr: 'Après ce petit pas de 10 minutes, un peu du brouillard s\'est-il dissipé ? Tu as plus de prise que tu ne le crois.',
+    es: 'Después de ese primer paso de 10 minutos, ¿la niebla se ha aclarado un poco? Tienes más control del que imaginas.',
+    th: 'ก้าวเล็กๆ 10 นาทีนั้นแล้ว หมอกในใจเบาลงบ้างไหม เธอควบคุมได้มากกว่าที่คิดนะ',
+    vi: 'Sau bước nhỏ 10 phút ấy, sương mù trong lòng có tan bớt không? Bạn kiểm soát được nhiều hơn bạn nghĩ.',
+  }),
+  surprise: Object.freeze({
+    zh: '用好奇多看了一眼之后，有没有发现什么新线索？转角藏着的礼物，值得再多看一眼。',
+    en: 'After looking with curious eyes, did you spot any new clues? The gift around the corner deserves another glance.',
+    fr: 'Après ce regard curieux, as-tu repéré un nouvel indice ? Le cadeau au tournant mérite un autre regard.',
+    es: 'Después de mirar con curiosidad, ¿encontraste alguna pista nueva? El regalo a la vuelta merece otra mirada.',
+    th: 'หลังมองด้วยสายตาอยากรู้ มีเบาะแสใหม่เข้ามาไหม ของขวัญที่หัวมุมควรมองอีกสักรอบ',
+    vi: 'Sau khi nhìn bằng con mắt tò mò, có thấy manh mối mới nào không? Món quà ở khúc rẽ xứng đáng được nhìn thêm lần nữa.',
+  }),
+  anticipation: Object.freeze({
+    zh: '第一步迈出去之后，是不是感觉方向更清晰了？方向已经对了，剩下的交给时间。',
+    en: 'After taking that first step, does the path feel clearer? The direction is right — let time carry the rest.',
+    fr: 'Après ce premier pas, le chemin te semble-t-il plus clair ? La direction est bonne — laisse le temps faire le reste.',
+    es: 'Después de dar ese primer paso, ¿el camino se ve más claro? La dirección es correcta — deja que el tiempo haga el resto.',
+    th: 'ก้าวแรกแล้ว เส้นทางดูชัดขึ้นไหม ทิศทางถูกแล้ว ที่เหลือฝากเวลาไว้',
+    vi: 'Sau bước đầu tiên rồi, con đường có rõ hơn không? Hướng đã đúng, phần còn lại hãy để thời gian lo.',
+  }),
+});
+
+/* ═══ E149-刀三：P2 升级单发句（五情绪 × 6 语——情绪信号正向转译＋微行动预告）═══
+ *  军令 P2 升级口径：今日未开新牌、用户选了今日情绪 ⇒ 触发「5 角色语态＋
+ *  情绪正向转译＋微行动」。纯 P2 单发首句升级为带转译一句（角色口吻由
+ *  模型生成侧承接——首句只给信号转译，微动作细节由对话展开）。P1+P2
+ *  串联场景仍用原 P2_MOOD_BRIDGES 短桥（衔接不喧宾）。 */
+const E149_MOOD_TRANSLATIONS = Object.freeze({
+  melancholy: Object.freeze({
+    zh: '那份沉甸甸的感觉，说明你很认真地在乎过——先歇口气，剩下的我陪你慢慢来。',
+    en: 'That heaviness means you cared deeply — take a breath first, and I\'ll walk the rest with you.',
+    fr: 'Cette pesanteur montre que tu as profondément tenu à quelque chose — respire d\'abord, je parcours le reste avec toi.',
+    es: 'Esa pesadez significa que te importó de verdad — respira primero, y el resto lo caminamos juntos.',
+    th: 'ความหนักอึ้งในใจนั้นแสดงว่าเธอเคยใส่ใจอย่างจริงจัง — หายใจลึกๆ ก่อน ที่เหลือฉันเดินเคียงเธอ',
+    vi: 'Cái trầm trọng đó cho thấy bạn đã thật lòng quan tâm — hít một hơi trước, phần còn lại mình đi cùng bạn.',
+  }),
+  agitated: Object.freeze({
+    zh: '这份焦躁是在提醒你有些事需要安放——先深呼吸，我们一件一件来。',
+    en: 'This restlessness is a reminder that something needs settling — breathe first, and we\'ll take it one piece at a time.',
+    fr: 'Cette agitation te rappelle que quelque chose demande à être apaisé — respire d\'abord, nous y irons pièce par pièce.',
+    es: 'Esta inquietud te recuerda que algo necesita acomodarse — respira primero, y lo tomamos pieza por pieza.',
+    th: 'ความเดือดร้อนใจนี้กำลังเตือนว่ามีเรื่องต้องจัดวาง — หายใจลึกๆ ก่อน แล้วค่อยๆ ทำทีละเรื่อง',
+    vi: 'Sự bồn chồn này nhắc bạn có điều cần sắp lại — hít thở trước, rồi ta làm từng việc một.',
+  }),
+  longing: Object.freeze({
+    zh: '这份想念很珍贵，说明有人在你心里住着——轻轻想着，也是一种温暖的陪伴。',
+    en: 'This longing is precious — someone lives in your heart, and thinking of them softly is its own warm company.',
+    fr: 'Ce manque est précieux — quelqu\'un habite ton cœur, et y penser doucement est déjà une chaude compagnie.',
+    es: 'Este añoro es valioso — alguien vive en tu corazón, y pensarlo con suavidad ya es una compañía cálida.',
+    th: 'ความคิดถึงนี้ล้ำค่า — มีใครอยู่ในใจเธอ การคิดถึงอย่างเบามือก็เป็นความอบอุ่นอย่างหนึ่ง',
+    vi: 'Nỗi nhớ này rất quý — có người đang sống trong tim bạn, và nhớ nhẹ nhàng cũng là một sự ấm áp.',
+  }),
+  radiant: Object.freeze({
+    zh: '今天的明亮是生活给你的确认信号——趁着这股劲头，去点亮一件小事吧。',
+    en: 'Today\'s glow is life\'s confirmation for you — ride this energy and light up one small thing.',
+    fr: 'Cette lumière du jour est la confirmation de la vie — profite de cette élan pour illuminer une petite chose.',
+    es: 'El brillo de hoy es la confirmación de la vida — aprovecha este impulso e ilumina una cosa pequeña.',
+    th: 'แสงสว่างวันนี้คือสัญญาณยืนยันจากชีวิต — ฉวยพลังนี้ไปจุดเรื่องเล็กๆ ให้สว่างสิ',
+    vi: 'Ánh sáng hôm nay là tín hiệu xác nhận từ cuộc sống — nhân dịp này mà thắp sáng một điều nhỏ.',
+  }),
+  grateful: Object.freeze({
+    zh: '心里有感恩的人，日子就有了锚点——把这份温暖悄悄记下来吧。',
+    en: 'A grateful heart gives your days an anchor — quietly note down this warmth.',
+    fr: 'Un cœur reconnaissant donne un point d\'ancrage à tes jours — note doucement cette chaleur.',
+    es: 'Un corazón agradecido da ancla a tus días — anota en silencio esta calidez.',
+    th: 'ใจที่มีความกตัญญูให้ชีวิตมีจุดยึด — จดความอบอุ่นนี้ไว้เงียบๆ สิ',
+    vi: 'Lòng biết ơn cho những ngày của bạn một mỏ neo — hãy lặng lẽ ghi lại hơi ấm này.',
+  }),
+});
+
 /**
  * 🏆 E142 军令钦定主函数：有序话题队列首句合成器。
  * @param {object} p
@@ -191,17 +339,39 @@ const NAME_PREFIX_SEP = Object.freeze({
  * @param {string} p.lang 六语之一
  * @param {string} [p.userName] E118 永久姓名档真值（可空）
  * @param {number} [p.now] 注入时钟（🆕 E148-刀一：缺省 Date.now()；P1 当日硬门真源）
- * @returns {{firstLine: string, queue: string[], p1Key: string}|null}
+ * @param {object|null} [p.lastMicroAction] 🆕 E149-刀三：L1 行动回访标记档
+ *   （microActionMemory.readMicroAction 产出——48h＋!followed_up 已在核内判定）
+ * @param {string} [p.relationMode] 🆕 E149-刀三：当前角色（P3 轻复盘口吻分化；
+ *   白名单 E149_RELATION_MODES 五键，坏值 ⇒ P3 静默 fail-closed）
+ * @returns {{firstLine: string, queue: string[], p1Key: string, followedUp: boolean}|null}
  *   queue 有序：[p1Key, 'mood:<mood>']——P1 报告话题恒首位，P2 情绪随其后；
- *   无 P1 且无 P2 ⇒ null（调用方回退现行为链——绝不在此臆造兜底句）。
+ *   🆕 E149 顺位：P1（isToday 今日新牌，不变）＞ P2（今日情绪，升级＝转译句）
+ *   ＞ P3（48h 内未回访 last_micro_action 轻复盘；followedUp=true ⇒ 调用方
+ *   markMicroActionFollowedUp 单次死锁写回）＞ null（P4 兜底调用方回退）。
+ *   无 P1 且无 P2 且无 P3 ⇒ null（绝不在此臆造兜底句）。
  */
-export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName, now }) {
+export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName, now, lastMicroAction, relationMode }) {
   // 🆕 E148-刀一（主公军令 2026-11-19）：isToday 当日硬门——昨日及更早的报告档
   //   一律 P1 静默（隔日首句串台根治：P1 今日新牌才承接；P2 今日情绪聚焦照常
   //   单发；P3 由调用方回退既有纯净老友问候链）。
   const p1Key = isRecentReportToday(recentReport, now) ? normalizeReportKey(recentReport) : null;
   const mood = P2_MOOD_KEYS.includes(String(activeMood || '')) ? String(activeMood) : null;
-  if (!p1Key && !mood) return null;
+  // 🆕 E149-刀三：P3 轻复盘——P1/P2 全静默时才承接（军令顺位）；角色白名单
+  //   fail-closed，情绪键白名单 8 键（与 server E149_EMOTION_KEYS 同源）。
+  const E149_MICRO_EMOTION_KEYS = ['joy', 'sadness', 'trust', 'disgust', 'fear', 'anger', 'surprise', 'anticipation'];
+  const e149Mode = E149_RELATION_MODES.includes(String(relationMode || '')) ? String(relationMode) : null;
+  // 🆕 E149-刀三纵深守卫：48h 过期二道判定（readMicroAction 已判一道；
+  //   队列侧再判一道防调用方直喂裸档——军令「48h 过期」硬规则双保险）。
+  const _e149Cd = (lastMicroAction && typeof lastMicroAction.created_date === 'string') ? lastMicroAction.created_date : '';
+  const _e149CdT = /^\d{4}-\d{2}-\d{2}$/.test(_e149Cd) ? Date.parse(`${_e149Cd}T12:00:00Z`) : NaN;
+  const _e149Now = (Number.isFinite(Number(now)) && Number(now) > 0) ? Number(now) : Date.now();
+  const e149Ek = (lastMicroAction && typeof lastMicroAction === 'object'
+    && E149_MICRO_EMOTION_KEYS.includes(String(lastMicroAction.emotion_key || ''))
+    && lastMicroAction.followed_up === false
+    && Number.isFinite(_e149CdT) && _e149Now - _e149CdT <= 48 * 3600 * 1000)
+    ? String(lastMicroAction.emotion_key) : null;
+  const e149FollowUp = (!p1Key && !mood && e149Mode && e149Ek) ? e149Ek : null;
+  if (!p1Key && !mood && !e149FollowUp) return null;
   const l = ['zh', 'en', 'fr', 'es', 'th', 'vi'].includes(String(lang || '')) ? String(lang) : 'en';
 
   let firstLine = '';
@@ -215,13 +385,16 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
     if (p1Key) {
       firstLine += bridgeLine;
     } else {
-      // 纯 P2 单发：循环剥离开头省略号（全角「……」＝U+2026 序列）
-      let s = bridgeLine;
-      for (let i = 0; i < 8 && /^[\u2026.\s]/.test(s); i += 1) {
-        s = s.replace(/^[\u2026.\s]+/, '');
-      }
-      firstLine += (s.trim() || bridgeLine);
+      // 🆕 E149-刀三（军令 P2 升级）：纯 P2 单发升级为情绪信号正向转译句
+      //  （E149_MOOD_TRANSLATIONS；字典缺失该语 ⇒ 回退原桥句零破坏）。
+      const tr = E149_MOOD_TRANSLATIONS[mood];
+      firstLine += (tr && tr[l]) || bridgeLine;
     }
+  }
+  if (e149FollowUp) {
+    const opener = E149_ROLE_OPENERS[e149Mode];
+    const body = E149_MICRO_FOLLOWUPS[e149FollowUp];
+    firstLine += `${(opener && opener[l]) || opener.zh} ${(body && body[l]) || body.zh}`;
   }
   // 🔒 锁1军令红线：产出句严禁等于冷启动兜底语（两形态）
   if (!firstLine || firstLine.includes('我在呢') || firstLine.includes('今天想聊点什么')) {
@@ -231,13 +404,15 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
   const queue = [];
   if (p1Key) queue.push(p1Key);
   if (mood) queue.push(`mood:${mood}`);
+  if (e149FollowUp) queue.push(`micro:${e149FollowUp}`);
 
-  // 姓名前缀（六语同构；坏 lang ⇒ 通用逗号——沿袭 E118 装配契约）
+  // 姓名前缀（六语同构；坏 lang ⇒ 通用逗号——沿袭 E118 装配契约；P3 回访句
+  //   军令钦定角色开场词打头，不带姓名前缀防唤名滥用——E142.1 熔断同源）
   const n = String(userName || '').trim();
-  if (n && n.length <= 24 && p1Key) {
+  if (n && n.length <= 24 && p1Key && !e149FollowUp) {
     const sep = NAME_PREFIX_SEP[l] || ', ';
     firstLine = `${n}${sep}${firstLine}`;
   }
 
-  return { firstLine, queue, p1Key };
+  return { firstLine, queue, p1Key, followedUp: Boolean(e149FollowUp) };
 }

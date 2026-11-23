@@ -99,7 +99,9 @@ test('E142-锁1c（🆕 E148 后继化）当日六档六语：unlockedAt 落注�
     recentReport: { category: 'love', tier: 'core', unlockedAt: NOW - 26 * 3600 * 1000 },
     activeMood: 'radiant', lang: 'zh', now: NOW,
   });
-  assert.ok(staleMood && /发光|气色|气场|好事/.test(staleMood.firstLine) && !/合盘|塔罗|牌面/.test(staleMood.firstLine),
+  // 🏆 E149-刀三后继化：纯 P2 升级为情绪正向转译句（E149_MOOD_TRANSLATIONS）——
+  //  特征词面同步升级（明亮/确认/点亮｜旧桥句词面 发光/气色/气场/好事 兼容保留）。
+  assert.ok(staleMood && /明亮|确认|点亮|发光|气色|气场|好事/.test(staleMood.firstLine) && !/合盘|塔罗|牌面/.test(staleMood.firstLine),
     '隔日牌面静默：首句仅 P2 情绪特征词，严禁 P1 报告特征词（串台根治）');
   assert.equal(TQ.isRecentReportToday(TODAY_RR('love', 'core'), NOW), true, '当日档 ⇒ true');
   assert.equal(TQ.isRecentReportToday({ category: 'love', tier: 'core', unlockedAt: NOW - 26 * 3600 * 1000 }, NOW), false, '隔日档 ⇒ false');

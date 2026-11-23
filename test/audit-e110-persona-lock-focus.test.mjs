@@ -127,7 +127,9 @@ test('①-4 persona 性格真源保留（剥离身份不丢陪伴温度；六语
 // ═══════════════ 刀二 · relation_mode 入参守卫（严禁默认回退）═══════════════
 
 test('②-1 端点 mode 白名单 400（BAD_RELATION_MODE；mode 显式入构造器）', () => {
-  const guard = "if (!FAMILIAR_RELATION_MODES.has(mode)) {";
+  // 🏆 E149 后继化：白名单升级为 E149_CHAT_RELATION_MODES（四象＋第五形态主标识
+  //    self——军令「me 独立路由命中，绝不静默降级」；adopt 通路四象锁零破坏）。
+  const guard = "if (!E149_CHAT_RELATION_MODES.has(mode)) {";
   assert.ok(SERVER.includes(guard), '端点缺 mode 白名单校验（严禁默认回退）');
   const seg400 = SERVER.split(guard)[1]?.split('const ip =')[0] || '';
   assert.ok(seg400.includes('BAD_RELATION_MODE'), '缺 BAD_RELATION_MODE 400 拒发');
@@ -163,10 +165,10 @@ test('③-1 ChatInputBar 焦点保活（input 无 disabled；发送后 focus；�
 
 test('④-1 军规链段数入编（E110 后继化：85 段／e110 居 e109 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 116, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 117, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 34].includes('audit-e110'), 'e110 须居 len-9（E120 后继化）');
-  assert.ok(segs[segs.length - 35].includes('audit-e109'), 'e109 须居 len-10');
-  assert.ok(segs[segs.length - 36].includes('audit-e108'), 'e108 须居 len-11');
+  assert.ok(segs[segs.length - 35].includes('audit-e110'), 'e110 须居 len-9（E120 后继化）');
+  assert.ok(segs[segs.length - 36].includes('audit-e109'), 'e109 须居 len-10');
+  assert.ok(segs[segs.length - 37].includes('audit-e108'), 'e108 须居 len-11');
 });

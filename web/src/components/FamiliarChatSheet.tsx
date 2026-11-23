@@ -61,6 +61,9 @@ import { readActiveMood, moodGreetingLine } from '../lib/companionMoodGreetings.
 //    胶囊画蛇添足——topicPillLabel 彻底删除，胶囊栏恒 chatQ1/Q3 基底两颗）。
 // @ts-ignore —— companionTopicQueue.mjs 纯 JS 逻辑核（形状由 E142 闸门守备）
 import { resolveCompanionGreetingAndQueue, normalizeReportKey, normalizeReportTier } from '../lib/companionTopicQueue.mjs';
+// 🆕 E149-刀二/刀三（主公军令 2026-11-20）：L1 行动回访标记——done 帧静默写入
+//  ＋body 随行＋P3 首句消费后单次死锁归档（microActionMemory 纯核）
+import { readMicroAction, writeMicroAction, markMicroActionFollowedUp } from '../lib/microActionMemory.mjs';
 // 🆕 E142.1-刀二（军令 2026-11-17）：唤名三重熔断客户端门——极值情绪在场且
 //    当日配额<2 才允许首句/锦囊带名；本地计数随行上行，done 帧权威计数回写。
 // @ts-ignore —— userNameMemory.mjs 纯 JS 逻辑核（形状由 E118/E142 闸门守备）
@@ -324,6 +327,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
    *  第一条用户消息 body 带 sessionOpen:true，服务端据此检索 ≤48h 未决事件
    *  ＋新月/满月 ±24h 注入 LIVING_AGENT_CONTEXT 块（主动伴生节律底座）。 */
   const firstStrikeRef = useRef(true);
+  /* 🆕 E149-刀三：P3 轻复盘已展示锚——首语产出 followedUp 时置位；用户发送
+   *  第一条消息时执行 markMicroActionFollowedUp 单次死锁归档（防翻旧账）。
+   *  归档延至发送期：切语言重渲染重合成首语时档仍在，不丢句不闪变。 */
+  const _e149P3ShownRef = useRef(false);
   /* 🏆 E114-刀一：首语插值真值锚（open 时读报告真值一次；helloFor 按当前
    * 语言即时查表——舱开着切语言 t 变更效应会用当前 lang 重渲染首语） */
   const helloTruthRef = useRef<{ tarotId: number | null; trineKey: string | null }>({ tarotId: null, trineKey: null });
@@ -343,8 +350,17 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       const q = snap ? resolveCompanionGreetingAndQueue({
         recentReport: snap.rr, activeMood: snap.mood, lang,
         userName: nameGateRef.current ? profileNameRef.current : undefined,
+        // 🆕 E149-刀三：P3 轻复盘——48h 内未回访微动作＋当前角色口吻（军令顺位
+        //  P1＞P2＞P3＞P4；fail-closed 白名单在核内）；followedUp ⇒ 发送期归档
+        lastMicroAction: readMicroAction(
+          (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+          sessionSigRef.current),
+        relationMode,
       }) : null;
-      if (q && q.firstLine) return q.firstLine;
+      if (q && q.firstLine) {
+        if (q.followedUp) _e149P3ShownRef.current = true; // 归档延至发送期（防切语言重渲染丢首句）
+        return q.firstLine;
+      }
       return helloFor('plain');
     }
     if (mode === 'mood') {
@@ -667,6 +683,10 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         const m = readActiveMood(sessionStorage);
         if (m) activeMood = m;
       } catch { /* 无痕 ⇒ 不传（服务端回退无情绪块） */ }
+      // 🆕 E149-刀二（主公军令 2026-11-20）：last_micro_action 随行（形状/48h
+      //  /死锁守卫在纯核内 fail-closed；服务端 _e149MicroAction 二次守卫后
+      //  进 prompt 回访上下文块）。发送期顺带执行 P3 单次死锁归档（若首语
+      //  曾产出 followedUp——军令「最多触发 1 次回访」）。
       // 🆕 E143-刀三（军令 2026-11-17）：显式记忆星光微标三触发判定——
       //  name_first＝首次落档姓名；p1_first＝P1 报告底牌在场（normalizeReportKey
       //  命中六档白名单）；mood_first＝罗盘情绪在场。单会话同类型恰 1 次
@@ -740,6 +760,18 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         displayName,
         // 🏆 E112-刀二：最近解锁报告凭证随行（服务端查形状 fail-closed）
         recentReport,
+        // 🆕 E149-刀二：L1 行动回访标记随行（48h 内且未归档才非空）
+        lastMicroAction: (() => {
+          try {
+            const ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+            if (_e149P3ShownRef.current) {
+              markMicroActionFollowedUp(ls, sessionSigRef.current);
+              _e149P3ShownRef.current = false;
+              return undefined;
+            }
+            return readMicroAction(ls, sessionSigRef.current) || undefined;
+          } catch { return undefined; }
+        })(),
         // 🏆 E109-刀一：当次报告塔罗（恋人牌等）随行绑定
         reportTarot,
         // 🏆 E107-刀三：合法 ks_familiar 档随行（服务端 fail-closed 形状校验后放行）
@@ -824,6 +856,17 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
                     }));
                   }
                 }
+              } catch { /* 隐私模式 fail-soft */ }
+            }
+            // 🆕 E149-刀二（主公军令 2026-11-20）：done 帧 microAction 静默写入
+            //  （emotionSignal 命中时服务端随行 {emotion_key, action_summary,
+            //  created_date}——异步写 localStorage 不阻塞流式、不渲染；
+            //  48h 过期＋followed_up 单次死锁在纯核内执行；fail-soft）。
+            if (j.done && j.microAction && typeof j.microAction === 'object') {
+              try {
+                writeMicroAction(
+                  (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+                  sessionSigRef.current, j.microAction);
               } catch { /* 隐私模式 fail-soft */ }
             }
             // 🆕 E137-刀二（军令 2026-11-12）：meta 帧 wellnessRx 投影——chatQ3/

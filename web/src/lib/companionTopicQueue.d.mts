@@ -12,4 +12,8 @@ export function resolveCompanionGreetingAndQueue(p: {
   userName?: string;
   /** 🆕 E148-刀一：注入时钟（缺省 Date.now()——P1 当日硬门真源） */
   now?: number;
-}): { firstLine: string; queue: string[]; p1Key: string } | null;
+  /** 🆕 E149-刀三：L1 行动回访标记档（48h＋!followed_up 已在核内判定） */
+  lastMicroAction?: { emotion_key?: unknown; action_summary?: unknown; created_date?: unknown; followed_up?: unknown } | null | undefined;
+  /** 🆕 E149-刀三：当前角色（P3 轻复盘口吻分化；白名单五键，坏值 ⇒ P3 静默） */
+  relationMode?: string;
+}): { firstLine: string; queue: string[]; p1Key: string; followedUp?: boolean } | null;

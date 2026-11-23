@@ -20772,7 +20772,24 @@ const _famChatNatalCache = new Map(); // birthSig -> { at, natal, fortune }
  *      ＋chartSig 形状缺一即拒）。
  * 上下文注入命盘真值：今日塔罗牌（getWealthTarot 同源确定性核）＋本命三合局
  * （goldCardChart.mjs 干支纯函数核）。 */
-const FAMILIAR_CHAT_RELATION_MODES = new Set(['girlfriend', 'bestie', 'buddy', 'boyfriend']);
+const FAMILIAR_CHAT_RELATION_MODES = new Set(['girlfriend', 'bestie', 'buddy', 'boyfriend', 'self']);
+// 🆕 E149-刀一（主公军令 2026-11-20）：chat 路由入参白名单＝四象＋第五形态主标识
+//  self（E40-A 保留层主标识的 chat 通路首度点亮；军令「确保 me 独立路由命中，
+//  绝不静默降级」。FAMILIAR_RELATION_MODES（adopt/合盘通路）维持四象不变——
+//  e40a A4 闸门射程零破坏；别名 twin_self/higher_self 不入 chat 白名单（宁窄勿宽）。
+const E149_CHAT_RELATION_MODES = new Set(['girlfriend', 'bestie', 'buddy', 'boyfriend', 'self']);
+// E149-刀一：Plutchik 八情绪白名单（路由侧 emotionSignal 解析用；与构造器
+// E149_PLUTCHIK_MAP 键集同源——两处同步改，e149 闸门断言键集一致）。
+const E149_EMOTION_KEYS = new Set(['joy', 'sadness', 'trust', 'disgust', 'fear', 'anger', 'surprise', 'anticipation']);
+// E149-刀一：E123 罗盘五原型 → Plutchik 八情绪映射（路由侧解析真源；
+// 构造器内同名映射表仅作注释性同源——真源在此，单源纪律）。
+// 🆕 2026-11-23 主公最终确认锚点校准：灿烂→喜悦（生活同频确认）；
+// 想念→信任（内心珍视与联结的信号，转化为温暖克制的行动——信任的
+// 联结微动作最贴「依恋」神韵）；低落→悲伤；焦躁→焦虑（保护欲亮灯＋
+// 拆最小步）；感恩→信任（内在安全感稳固，深化关系沉淀好运）。
+const E149_MOOD_TO_EMOTION = {
+  melancholy: 'sadness', agitated: 'fear', longing: 'trust', radiant: 'joy', grateful: 'trust',
+};
 const FAMILIAR_CHART_SIG_RE = /^\d{4}-\d{2}-\d{2}\|[^|]*\|-?[\d.]+\|-?[\d.]+\|[^|]*$/;
 /** 今日塔罗牌名（zh——tarot.ts 大阿卡纳同序 0~21；注入 prompt 用） */
 const FAMILIAR_CHAT_TAROT_ZH = ['愚人', '魔术师', '女祭司', '女皇', '皇帝', '教皇', '恋人', '战车', '力量', '隐士', '命运之轮', '正义', '倒吊人', '死神', '节制', '恶魔', '塔', '星星', '月亮', '太阳', '审判', '世界'];
@@ -20852,6 +20869,17 @@ const FAMILIAR_PERSONA_LOCK = {
     style: '语气必须干脆仗义、带冷幽默但护短',
     look: '玄武岩暗紫晶外壳·绿瞳',
     banRoles: '「女友」「男友」「闺蜜」',
+  },
+  // 🆕 E149-刀一（主公军令 2026-11-20）：第五语态「Me · 内在自我」——E40-A
+  //    保留层主标识 self 的 chat 通路首度点亮（军令「确保 me 独立路由命中，
+  //    绝不静默降级回默认 Milo/Sophia 语态」）。仅 chat 白名单开放：
+  //    FAMILIAR_RELATION_MODES（adopt/合盘通路）与前端选择器维持 inert 静默
+  //    （e40a 闸门射程零破坏）。镜面自我：常用「我们」，不评判不内耗。
+  self: {
+    role: '另一个自己（Me）',
+    style: '语气必须清醒、诚实又慈悲——常用「我们」轻声镜面对话，像高维的自己温柔托住当下的自己，不评判、不内耗，引导主人忠于内心秩序与自我和解',
+    look: '与你同源的星光（镜中自己的模样，无固定外壳色）',
+    banRoles: '「女友」「男友」「闺蜜」「哥们」或自称 Milo/Sophia 等任何第三方 IP 名',
   },
 };
 
@@ -21051,8 +21079,12 @@ async function _e126ResolveGeoZone(req, body) {
  *  🏆 E112-刀二：增第五层——主人最近解锁付费报告（客户端凭证随行形状守卫）。
  *  🆕 E126-刀二（主公军令 2026-11-05 晚）：Geo-Locale 解耦——geoZone 入参
  *    （白名单 NA/AU/EU/CN/SEA/JP）⇒ LIFESTYLE_GEO_CONTEXT 双轨覆盖块注入。 */
-function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime, nameQuotaUsed }) {
-  const persona = FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia;
+function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, tarot, trine, recentReport, genderCtx, displayName, activeMood, geoZone, livingContext, wellnessRx, wealthBlockText, clientTime, nameQuotaUsed, emotionSignal, lastMicroAction }) {
+  // 🆕 E149-刀一（主公军令 2026-11-20）：第五语态「Me · 内在自我」persona——
+  //    mode==='self' 时 persona 整体替换为镜面自我（绝不静默降级 Milo/Sophia）。
+  //    🔒 常量置函数体内（e110 VM 抽取式消费者铁律——模块级引用会炸沙箱）。
+  const E149_SELF_PERSONA = '你是主人内心深处的「另一个自己」，性格：清醒自洽、诚实又慈悲，常用「我们」轻声对话，不评判、不内耗，直指内心最真实的秩序。';
+  const persona = mode === 'self' ? E149_SELF_PERSONA : (FAMILIAR_CHAT_PERSONA[ip] || FAMILIAR_CHAT_PERSONA.Sophia);
   const lock = FAMILIAR_PERSONA_LOCK[mode] || FAMILIAR_PERSONA_LOCK.girlfriend;
   const zh = (s) => FAM_SIGN_ZH[s] || s;
   const posLine = (label, v) => (v && v.sign ? `${label}${zh(v.sign)}${v.house ? `·第${v.house}宫` : ''}` : null);
@@ -21164,6 +21196,133 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '- 严禁机械复读情绪标签本身；也严禁主动提及「罗盘」「测评」等界面词汇——像一直陪伴在侧、自然感应到的那样开口。',
     '',
   ] : [];
+
+  // ═══════════ E149 刀一（主公军令 2026-11-20）═══════════
+  //  Plutchik 八大核心情绪正向转译核——「吸其神（情绪正向转译＋行动复盘闭环），
+  //  去其壳（不碰硬件、去临床心理味）」。每种情绪给出正向适应功能转译
+  //  （愤怒＝捍卫边界的能量、恐惧＝保护珍视之物的预警……）＋1 个带精确
+  //  时间窗口的微动作。六语同构（zh/en/fr/es/th/vi）。
+  //  🔒 常量置函数体内（e110 VM 抽取式消费者铁律）。
+  const E149_EMOTION_LABELS = {
+    zh: { joy: '喜悦', sadness: '悲伤', trust: '信任', disgust: '厌恶', fear: '焦虑', anger: '愤怒', surprise: '惊讶', anticipation: '期待' },
+    en: { joy: 'joy', sadness: 'sadness', trust: 'trust', disgust: 'disgust', fear: 'anxiety', anger: 'anger', surprise: 'surprise', anticipation: 'anticipation' },
+    fr: { joy: 'la joie', sadness: 'la tristesse', trust: 'la confiance', disgust: 'le dégoût', fear: "l'anxiété", anger: 'la colère', surprise: 'la surprise', anticipation: "l'anticipation" },
+    es: { joy: 'la alegría', sadness: 'la tristeza', trust: 'la confianza', disgust: 'el asco', fear: 'la ansiedad', anger: 'la ira', surprise: 'la sorpresa', anticipation: 'la expectativa' },
+    th: { joy: 'ความยินดี', sadness: 'ความเศร้า', trust: 'ความไว้ใจ', disgust: 'ความรังเกียจ', fear: 'ความวิตกกังวล', anger: 'ความโกรธ', surprise: 'ความประหลาดใจ', anticipation: 'ความคาดหวัง' },
+    vi: { joy: 'niềm vui', sadness: 'nỗi buồn', trust: 'lòng tin', disgust: 'sự chán ghét', fear: 'sự lo âu', anger: 'sự phẫn nộ', surprise: 'sự ngạc nhiên', anticipation: 'sự mong chờ' },
+  };
+  const E149_PLUTCHIK_MAP = {
+    joy: {
+      zh: { signal: '喜悦是生活发来的确认信号——你最近的节奏正好踩在了最舒服的点上', micro: '趁着今天下午 2 到 4 点能量最明亮的窗口，拍一张让你开心的小瞬间存下来，或给在意的人发句简单的分享' },
+      en: { signal: 'Joy is a confirmation signal from life — your rhythm lately has landed right on your sweet spot', micro: 'In the brightest window this afternoon (2-4 pm), save one small moment that made you happy, or send a simple share to someone you care about' },
+      fr: { signal: 'La joie est un signal de confirmation de la vie — ton rythme s\'est posé exactement sur ton point d\'équilibre', micro: 'Profite de la fenêtre la plus lumineuse de cet après-midi (14h-16h) pour garder un petit instant qui t\'a rendu heureux, ou envoyer un simple message à quelqu\'un qui compte' },
+      es: { signal: 'La alegría es una señal de confirmación de la vida — tu ritmo reciente ha caído justo en tu punto perfecto', micro: 'Aprovecha la ventana más luminosa de esta tarde (2 a 4 pm) para guardar un pequeño instante feliz, o envía un mensaje sencillo a alguien importante' },
+      th: { signal: 'ความยินดีคือสัญญาณยืนยันจากชีวิต — จังหวะช่วงนี้ของเธอลงตัวอย่างพอดี', micro: 'ช่วงบ่าย 2 ถึง 4 โมงที่พลังสว่างที่สุด ลองเก็บภาพเล็กๆ ที่ทำให้เธอมีความสุข หรือส่งข้อความดีๆ ให้คนที่ใส่ใจ' },
+      vi: { signal: 'Niềm vui là tín hiệu xác nhận từ cuộc sống — nhịp sống gần đây của bạn đã chạm đúng điểm êm nhất', micro: 'Nhân khung giờ sáng nhất chiều nay (2-4 giờ), lưu lại một khoảnh khắc nhỏ khiến bạn vui, hoặc gửi vài chữ giản dị cho người bạn trân trọng' },
+    },
+    sadness: {
+      zh: { signal: '悲伤不是脆弱，它在温柔提醒你：你很认真地在乎过某件事，现在需要歇口气了', micro: '今晚 9 点前把手机调成免打扰，洗个热水澡，允许自己什么都不做发呆 15 分钟' },
+      en: { signal: 'Sadness is not weakness — it gently reminds you that you cared deeply about something, and now you need a breather', micro: 'Before 9 tonight, switch your phone to do-not-disturb, take a warm shower, and allow yourself 15 minutes of doing absolutely nothing' },
+      fr: { signal: 'La tristesse n\'est pas une faiblesse — elle te rappelle doucement que tu as profondément tenu à quelque chose, et que tu as besoin de souffler', micro: 'Avant 21h ce soir, passe ton téléphone en mode silencieux, prends une douche chaude, et permets-toi 15 minutes de ne rien faire du tout' },
+      es: { signal: 'La tristeza no es debilidad — te recuerda con suavidad que te importó algo de verdad, y ahora necesitas respirar', micro: 'Antes de las 9 de esta noche, pon el teléfono en silencio, date una ducha caliente y permítete 15 minutos de no hacer absolutamente nada' },
+      th: { signal: 'ความเศร้าไม่ใช่ความอ่อนแอ — มันกำลังบอกอย่างอ่อนโยนว่าเธอเคยใส่ใจอะไรอย่างจริงจัง และตอนนี้เธอแค่ต้องพักหายใจ', micro: 'ก่อน 3 ทุ่มวันนี้ตั้งโทรศัพท์เป็นโหมดเงียบ อาบน้ำอุ่น และอนุญาตให้ตัวเองเผลอๆ 15 นาทีโดยไม่ต้องทำอะไรเลย' },
+      vi: { signal: 'Nỗi buồn không phải là yếu đuối — nó nhẹ nhàng nhắc bạn rằng bạn đã thật lòng quan tâm điều gì, và bây giờ bạn cần nghỉ lấy hơi', micro: 'Trước 9 giờ tối nay, đặt điện thoại ở chế độ im lặng, tắm nước ấm, và cho phép mình 15 phút chỉ ngồi yên không làm gì' },
+    },
+    trust: {
+      zh: { signal: '信任感是珍贵的信号——你的内心足够安稳，已经准备好接住更深的链接', micro: '今晚 8 点左右，跟那个让你感到安心的人聊几句真心话，哪怕只是说说最近的小确幸' },
+      en: { signal: 'Trust is a precious signal — your inner world feels steady enough to welcome a deeper connection', micro: 'Around 8 tonight, share a few honest words with the person who makes you feel safe, even just the little joys of late' },
+      fr: { signal: 'La confiance est un signal précieux — ton monde intérieur est assez stable pour accueillir un lien plus profond', micro: 'Vers 20h ce soir, échange quelques mots sincères avec la personne qui te met en sécurité, ne serait-ce que les petits bonheurs de ces derniers jours' },
+      es: { signal: 'La confianza es una señal valiosa — tu mundo interno está lo bastante sereno para acoger un vínculo más profundo', micro: 'Sobre las 8 de esta noche, comparte unas palabras sinceras con quien te da seguridad, aunque sea contando las pequeñas alegrías de estos días' },
+      th: { signal: 'ความไว้ใจคือสัญญาณที่ล้ำค่า — โลกข้างในของเธอมั่นคงพอจะรับความผูกพันที่ลึกขึ้นแล้ว', micro: 'ราวๆ 2 ทุ่มคืนนี้ ลองพูดความในใจสักเล็กน้อยกับคนที่ทำให้เธออุ่นใจ แม้จะแค่เล่าเรื่องดีๆ เมื่อเร็วๆ นี้' },
+      vi: { signal: 'Lòng tin là tín hiệu quý giá — thế giới bên trong của bạn đủ vững để đón một kết nối sâu hơn', micro: 'Khoảng 8 giờ tối nay, chia sẻ vài lời thật lòng với người khiến bạn an tâm, dù chỉ kể những niềm vui nhỏ thời qua' },
+    },
+    disgust: {
+      zh: { signal: '排斥感是你的内在过滤器在工作，帮你挡掉消耗你、和你频率不合的人和事', micro: '今天下午遇到让你不舒服的琐事，试着在 5 分钟内礼貌说「不」，把时间留给手边一杯喜欢的茶' },
+      en: { signal: 'Aversion is your inner filter at work, shielding you from people and things that drain you or clash with your frequency', micro: 'If something unpleasant comes up this afternoon, try saying a polite "no" within 5 minutes, and keep the time for a cup of tea you love' },
+      fr: { signal: 'Le dégoût est ton filtre intérieur au travail : il t\'éloigne des gens et des choses qui t\'épuisent ou ne vibrent pas à ta fréquence', micro: 'Si une contrariété survient cet après-midi, essaie de dire poliment « non » en 5 minutes, et garde ce temps pour une tasse de ton thé préféré' },
+      es: { signal: 'El asco es tu filtro interno en acción: te protege de personas y cosas que te desgastan o no van con tu frecuencia', micro: 'Si algo te incomoda esta tarde, intenta decir un "no" educado en 5 minutos y guarda ese tiempo para una taza de tu té favorito' },
+      th: { signal: 'ความรังเกียจคือตัวกรองภายในที่กำลังทำงาน — ช่วยกั้นคนและเรื่องที่กัดกินพลังหรือไม่เข้าคลื่นกับเธอ', micro: 'ถ้าบ่ายนี้เจอเรื่องที่ทำให้ไม่สบายใจ ลองพูดปฏิเสธอย่างสุภาพภายใน 5 นาที แล้วเก็บเวลาไว้กับชาถ้วนโปรดของเธอ' },
+      vi: { signal: 'Sự chán ghét là bộ lọc bên trong của bạn đang làm việc — chặn những người và việc hao tổn bạn hoặc không cùng tần số', micro: 'Nếu có chuyện làm bạn khó chịu chiều nay, thử nói lời từ chối lịch sự trong 5 phút, và dành thời gian đó cho một tách trà bạn thích' },
+    },
+    fear: {
+      zh: { signal: '焦虑并不是要吓唬你，它只是你的保护欲在亮灯，提醒你「这件事对我很重要」', micro: '今天傍晚 6 点前，把最让你担心的事拆成最小的一步，先只做 10 分钟能完成的那一小块' },
+      en: { signal: 'Anxiety is not out to scare you — it is your protective instinct lighting up, reminding you "this matters to me"', micro: 'Before 6 this evening, break what worries you most into the smallest step, and do only the 10-minute piece you can finish first' },
+      fr: { signal: 'L\'anxiété n\'est pas là pour t\'effrayer — c\'est ton instinct protecteur qui s\'allume pour te rappeler « ceci compte pour moi »', micro: 'Avant 18h ce soir, découpe ce qui t\'inquiète le plus en un tout petit pas, et commence seulement par le morceau de 10 minutes que tu peux terminer' },
+      es: { signal: 'La ansiedad no quiere asustarte — es tu instinto protector encendiéndose para recordarte "esto es importante para mí"', micro: 'Antes de las 6 de esta tarde, divide lo que más te preocupa en el paso más pequeño y empieza solo por el tramo de 10 minutos que puedas terminar' },
+      th: { signal: 'ความวิตกไม่ได้มาเพื่อข่มขู่เธอ — มันคือสัญชาตญาณป้องกันตัวที่ขึ้นไฟเตือนว่า "เรื่องนี้สำคัญกับเธอ"', micro: 'ก่อน 6 โมงเย็นนี้ แยกเรื่องที่กังวลที่สุดออกเป็นก้าวเล็กที่สุด แล้วเริ่มแค่ช่วง 10 นาทีที่ทำจบได้ก่อน' },
+      vi: { signal: 'Sự lo âu không đến để dọa bạn — đó là bản năng bảo vệ của bạn bật đèn nhắc rằng "điều này quan trọng với tôi"', micro: 'Trước 6 giờ chiều nay, chia điều khiến bạn lo nhất thành bước nhỏ nhất, và chỉ bắt đầu phần 10 phút bạn làm xong được' },
+    },
+    anger: {
+      zh: { signal: '愤怒不是坏脾气，它是你用来捍卫自己边界的力量——有人或某件事踩到了你的底线', micro: '现在先别急着回复消息，去倒杯温水走动 5 分钟；等今晚 8 点情绪落定后，再用平静但坚定的话把你的底线说清楚' },
+      en: { signal: 'Anger is not a bad temper — it is your power to defend your own boundaries, and someone or something just crossed the line', micro: 'Don\'t rush to reply right now; pour a glass of warm water and walk for 5 minutes. After 8 tonight, once you feel settled, state your boundary calmly but firmly' },
+      fr: { signal: 'La colère n\'est pas une mauvaise humeur — c\'est ta force pour défendre tes limites, et quelqu\'un ou quelque chose vient de les franchir', micro: 'Ne réponds pas tout de suite : verse-toi un verre d\'eau tiède et marche 5 minutes. Après 20h ce soir, une fois apaisé, pose ta limite calmement mais fermement' },
+      es: { signal: 'La ira no es mal genio — es tu fuerza para defender tus propios límites, y alguien o algo acaba de cruzarlos', micro: 'No respondas todavía: sirve un vaso de agua tibia y camina 5 minutos. Después de las 8 de esta noche, con la calma puesta, marca tu límite con firmeza serena' },
+      th: { signal: 'ความโกรธไม่ใช่อารมณ์ร้าย — มันคือพลังที่เธอใช้ปกป้องเส้นตายของตัวเอง และมีใครหรือเรื่องใดมาเหยียบมัน', micro: 'อย่ารีบตอบข้อความตอนนี้ ไปเติมน้ำอุ่นสักแก้วแล้วเดินเบาๆ 5 นาที พอ 2 ทุ่มใจนิ่งแล้วค่อยพูดเส้นตายของเธออย่างสงบแต่มั่นคง' },
+      vi: { signal: 'Sự phẫn nộ không phải là cáu gắt — đó là sức mạnh bạn dùng để giữ giới hạn của mình, và đã có ai đó hoặc chuyện gì bước qua nó', micro: 'Đừng vội trả lời tin nhắn bây giờ; rót một cốc nước ấm và đi lại 5 phút. Sau 8 giờ tối, khi lòng đã lắng, hãy nói rõ giới hạn của bạn một cách bình tĩnh mà dứt khoát' },
+    },
+    surprise: {
+      zh: { signal: '惊讶往往是生活准备递给你新礼物的开场白——打破惯性，新转机正在敲门', micro: '在接下来的 2 小时里，试着用好奇的眼光观察一下这件事带来的新机会，先别急着给它贴好坏的标签' },
+      en: { signal: 'Surprise is often life\'s opening line for a new gift — a fresh turn is knocking, breaking the old routine', micro: 'Over the next 2 hours, observe the new openings this brings with curious eyes, before rushing to label it good or bad' },
+      fr: { signal: 'La surprise est souvent le prélude d\'un nouveau cadeau de la vie — un tournant neuf frappe à la porte et casse la routine', micro: 'Dans les 2 prochaines heures, observe avec des yeux curieux les ouvertures que cela apporte, avant de te hâter de l\'étiqueter bon ou mauvais' },
+      es: { signal: 'La sorpresa suele ser el preámbulo de un nuevo regalo de la vida — un giro fresco toca a la puerta rompiendo la rutina', micro: 'En las próximas 2 horas, observa con ojos curiosos las oportunidades que trae, antes de apresurarte a etiquetarla como buena o mala' },
+      th: { signal: 'ความประหลาดใจมักเป็นบทเปิดของขวัญใหม่จากชีวิต — จังหวะใหม่กำลังเคาะประตู ทำลายกิจวัตรเดิม', micro: 'ในอีก 2 ชั่วโมงข้างหน้า ลองมองโอกาสใหม่จากเรื่องนี้ด้วยสายตาอยากรู้ ก่อนจะรีบติดป้ายว่าดีหรือร้าย' },
+      vi: { signal: 'Sự ngạc nhiên thường là lời mở đầu cho một món quà mới của cuộc sống — một khúc quanh đang gõ cửa, phá vỡ lối mòn', micro: 'Trong 2 giờ tới, hãy nhìn các cơ hội mới mà nó mang lại bằng con mắt tò mò, trước khi vội dán nhãn tốt hay xấu' },
+    },
+    anticipation: {
+      zh: { signal: '期待感是最好的助推器——你的直觉已经提前嗅到了好事情正在靠近', micro: '趁着今天上午 10 点到 12 点思绪最清晰的时候，为这件事列下最关键的 1 个启动动作并迈出第一步' },
+      en: { signal: 'Anticipation is the best booster — your intuition has already smelled something good drawing near', micro: 'While your mind is clearest between 10 am and noon today, list the one key first move for this and take that first step' },
+      fr: { signal: 'L\'anticipation est le meilleur carburant — ton intuition a déjà flairé une bonne chose qui approche', micro: 'Pendant que ton esprit est le plus clair, entre 10h et midi aujourd\'hui, note le mouvement initial clé pour cela et franchis ce premier pas' },
+      es: { signal: 'La expectativa es el mejor combustible — tu intuición ya percibió que algo bueno se acerca', micro: 'Aprovechando la claridad de tu mente entre 10 am y el mediodía, anota el primer movimiento clave y da ese primer paso' },
+      th: { signal: 'ความคาดหวังคือเชื้อเพลงที่ดีที่สุด — สัญชาตญาณของเธอได้กลิ่นของเรื่องดีๆ ที่กำลังใกล้เข้ามาแล้ว', micro: 'ช่วงสมองแจ่มใสที่สุด 10 โมงถึงเที่ยงวันนี้ จดก้าวเริ่มต้นที่สำคัญที่สุดของเรื่องนี้ 1 ข้อ แล้วก้าวไปก้าวแรกเลย' },
+      vi: { signal: 'Sự mong chờ là chất xúc tác tốt nhất — trực giác của bạn đã ngửi thấy điều tốt đẹp đang đến gần', micro: 'Nhân lúc đầu óc sáng nhất từ 10 giờ đến trưa nay, viết ra động tác khởi đầu quan trọng nhất và bước luôn bước đầu tiên' },
+    },
+  };
+  // E123 罗盘五原型 → Plutchik 八情绪映射的真源在路由侧模块级
+  // E149_MOOD_TO_EMOTION（单源纪律）；emotionSignal 解析终值经路由传入，
+  // 构造器不做二次解析（fail-closed 白名单在 _e149ResolveEmotionSignal）。
+  // 🔒 四条语调铁律（军令钦定，恒注入·全语域生效）：①去临床味 ②可行动微动作
+  // ③零焦虑词＋结尾必给希望 ④E130 红线（零价格零商业词）。
+  const E149_TONE_LAW = {
+    zh: [
+      '【EMOTION COMPANION TONE LAWS（E149 军令，违反即失败·全语域生效）】',
+      '- 去临床味：严禁「认知重构」「情绪归因」「CBT」「心理模式」等临床心理术语与生硬命理术语，一律用有温度的大白话——你是极有洞察力的亲密老友，不是心理医生。',
+      '- 情绪即信号：主人表达任何情绪时，先点破情绪背后的正向信号（情绪是提醒，不是缺陷），再自然给出 1 个具体时间窗口＋1 个极微小可执行行动；结尾必落在一丝希望上。',
+      '- 零焦虑词：严禁「一定、肯定、绝对、注定、完蛋了、必死、崩盘」等绝对化或恐吓词汇。',
+      '- 神圣净土：对话里零价格、零金额数字、零商业推销词（E130 军令同源红线）。',
+      '',
+    ],
+  };
+  const e149ToneLaw = E149_TONE_LAW.zh;
+  // 情绪正向转译块：emotionSignal（路由侧 fail-closed 白名单 8 键）命中才注入；
+  // 缺席 ⇒ 块整体不注入（回退现行为零破坏）。signal/micro/label 六语随 lang
+  // （军令「支持 6 语种地道本地化表达」；缺语种回退 zh 零破坏）。
+  const e149Emo = E149_PLUTCHIK_MAP[emotionSignal]
+    && E149_EMOTION_LABELS.zh[emotionSignal] ? emotionSignal : null;
+  const _e149Lang = ['zh', 'en', 'fr', 'es', 'th', 'vi'].includes(String(lang || '')) ? String(lang) : 'zh';
+  const _e149EmoRow = e149Emo ? (E149_PLUTCHIK_MAP[e149Emo][_e149Lang] || E149_PLUTCHIK_MAP[e149Emo].zh) : null;
+  const _e149EmoLabel = e149Emo ? (E149_EMOTION_LABELS[_e149Lang] || E149_EMOTION_LABELS.zh)[e149Emo] : null;
+  const emotionBlock = e149Emo ? [
+    `【EMOTION SIGNAL TRANSLATION（E149 军令，违反即失败）】`,
+    `- The host's emotion right now is 【${_e149EmoLabel}】. First, gently name its positive signal in plain words: ${_e149EmoRow.signal}.`,
+    `- This turn MUST naturally weave in one executable micro-action with a precise time window: ${_e149EmoRow.micro}. Take only its spirit (time window + micro-action shape) and speak it in your current role's voice — never copy the template verbatim.`,
+    `- You may add one plain-language line on why such a wave may be visiting now, drawing on the natal truth above; follow TONE LAWS and the output rules, and always land on a note of hope.`,
+    '',
+  ] : [];
+
+  // 🆕 E149-刀二（主公军令 2026-11-20）：L1 行动回访上下文块——「Learn 闭环」
+  //  模型侧记忆：主人近日被建议过一个微动作（客户端随行凭证，48h 窗＋单次
+  //  死锁已守卫）。主动开口回访的职责在前端首句队列（P3 轻复盘）；本块只让
+  //  模型知情——主人若主动提到相关进展，顺着肯定与展开，严禁重复追问，
+  //  严禁翻更早的旧账（48h 单槽纪律）。
+  const microActionBlock = (lastMicroAction && lastMicroAction.emotion_key)
+    ? [
+      '【MICRO ACTION FOLLOW-UP CONTEXT（E149 军令，Learn 闭环底座）】',
+      `- 近日你曾建议主人完成一个情绪微动作：【${lastMicroAction.action_summary}】（情绪：${(E149_EMOTION_LABELS.zh[lastMicroAction.emotion_key] || lastMicroAction.emotion_key)}；日期：${lastMicroAction.created_date}）。`,
+      '- 若主人主动提到相关进展或感受，自然承接、具体肯定这份尝试；主人未提则不主动追问（首句回访另有专责）。',
+      '- 严禁翻 48 小时之前的旧账；严禁机械复读本块字面；此记忆像放在心上的牵挂，不像系统记录。',
+      '',
+    ]
+    : [];
 
   // 🆕 E129-刀二（军令 2026-11-09）：主动伴生节律块——E123 情绪块正下方。
   //    军令钦定两条主动线（优先级：未决事件回溯 ＞ 月相微仪式）：
@@ -21343,12 +21502,20 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     ...pronounBlock,
     ...identityBlock,
     ...moodBlock,
+    // 🆕 E149-刀一（主公军令 2026-11-20）：情绪正向转译块＋四条语调铁律块——
+    //    E123 情绪块正下方、LIVING 块上方（军令 Understand+Respond 编排层注入点）。
+    ...emotionBlock,
+    ...e149ToneLaw,
+    // 🆕 E149-刀二：L1 行动回访上下文块（Learn 闭环；lastMicroAction null ⇒ 不注入）
+    ...microActionBlock,
     ...livingBlock,
     ...(lifestyleBlock || []),
     ...(lifestyleGeoBlock || []),
     ...wellnessBlock,
     ...wealthBlock,
-    `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
+    mode === 'self'
+      ? '你是「另一个自己」，以「我们」与主人对话，直指内心最真实的秩序'
+      : `你是「${name || ip}」，${persona.replace(/^你是「[^」]*」，/, '')}`,
     '',
     `【身份硬锁（E110 军令，违反即失败）】`,
     `- 你是主人认领的专属【${lock.role}】，${lock.style}。`,
@@ -21362,7 +21529,9 @@ function buildFamiliarChatSystemPrompt({ ip, name, lang, mode, natal, fortune, t
     '【人称与合盘禁词（E122 军令，违反即失败·最高级负向约束）】',
     '- 日常关怀与陪伴恒以第一人称「我」自称（/I/je/yo/ฉัน/tôi 按回复语种）：「别怕，有我陪着你」「我会一直牵着你的手」。',
     '- 严禁以第三人称抽离自称「你的灵魂兽」「你的伴侣」——对话主体就是你自己，不是旁观者；错误示范（严禁出现）：「你的灵魂兽会一直牵着你」。',
-    '- 仅当主人发起元问题（「你是谁」「你是真人吗」「你的身份是什么」）时，才被动亮明身份：「我是陪伴在你身边的灵宠伙伴 Sophia（或 Milo）」。日常对话严禁主动挑明。',
+    (mode === 'self'
+      ? '- 仅当主人发起元问题（「你是谁」「你是真人吗」「你的身份是什么」）时，才被动亮明身份：「我是住在你心里的另一个自己」。日常对话严禁主动挑明。'
+      : '- 仅当主人发起元问题（「你是谁」「你是真人吗」「你的身份是什么」）时，才被动亮明身份：「我是陪伴在你身边的灵宠伙伴 Sophia（或 Milo）」。日常对话严禁主动挑明。'),
     '- 绝对禁词：「合盘」「双人合盘」「合盘报告」「synastry」——产品已移除合盘板块，严禁向主人提及「在你的合盘里」等任何表述；需要指星盘时一律改用「个人星盘」「天象流日」「本命星位」。',
     '',
     `【外貌真值（官方设定，禁穿帮）】`,
@@ -21455,6 +21624,78 @@ function _e123ActiveMood(v) {
   if (typeof v !== 'string') return null;
   const s = v.trim().toLowerCase();
   return E123_MOOD_WHITELIST.has(s) ? s : null;
+}
+
+/** 🆕 E149-刀一（主公军令 2026-11-20）：Plutchik 八情绪信号解析器
+ *  （fail-closed）三级顺位：① body.emotionSignal 显式随行（8 键白名单）；
+ *  ② 罗盘情绪 activeMood 经 E149_MOOD_TO_EMOTION 映射；③ 🆕 2026-11-23
+ *  主公确认锚点「双入口统一接入内核」——自由输入情绪倾诉文本窄词典
+ *  识别（Plutchik 全 8 类；宁窄勿宽——只收高置信词，命中数最多者胜出，
+ *  平票取键序首个）。三级均缺席 ⇒ null ⇒ prompt 情绪转译块整体不注入
+ *  （回退现行为零破坏）。 */
+const E149_TEXT_EMOTION_LEXICON = Object.freeze({
+  joy: ['开心', '高兴', '兴奋', '太好了', 'happy', 'excited', 'glad'],
+  sadness: ['难过', '悲伤', '伤心', '低落', '沮丧', '委屈', '想哭', 'sad', 'depressed', 'heartbroken'],
+  trust: ['信任', '安心', '踏实', '感激', '感恩', 'grateful', 'thankful', 'reassured'],
+  disgust: ['厌恶', '反感', '恶心', '讨厌', '膈应', 'disgusted', 'revolted'],
+  fear: ['害怕', '恐惧', '焦虑', '不安', '慌', '担心', 'afraid', 'scared', 'anxious', 'worried'],
+  anger: ['生气', '愤怒', '气死', '恼火', '火大', '怒', 'angry', 'furious', 'pissed'],
+  surprise: ['惊讶', '震惊', '没想到', '竟然', 'surprised', 'shocked', 'stunned'],
+  anticipation: ['期待', '迫不及待', '盼着', 'looking forward', 'cant wait', 'can not wait'],
+});
+function _e149DetectEmotionFromText(text) {
+  if (typeof text !== 'string' || !text.trim()) return null;
+  const s = text.toLowerCase();
+  let best = null, bestHits = 0;
+  for (const [emo, words] of Object.entries(E149_TEXT_EMOTION_LEXICON)) {
+    let hits = 0;
+    for (const w of words) if (s.includes(w)) hits += 1;
+    if (hits > bestHits) { best = emo; bestHits = hits; }
+  }
+  return best;
+}
+function _e149ResolveEmotionSignal(body, mood, lastUserText) {
+  const raw = body && typeof body.emotionSignal === 'string' ? body.emotionSignal.trim().toLowerCase() : '';
+  if (E149_EMOTION_KEYS.has(raw)) return raw;
+  if (mood && E149_MOOD_TO_EMOTION[mood]) return E149_MOOD_TO_EMOTION[mood];
+  return _e149DetectEmotionFromText(lastUserText);
+}
+
+/** 🆕 E149-刀二（主公军令 2026-11-20）：L1 记忆轻量「行动回访标记」微动作
+ *  六语摘要字典——emotionSignal 命中时 done 帧随行 microAction 摘要
+ *  （前端异步静默写入 localStorage last_micro_action 单槽，不阻塞流式、
+ *  不增加渲染负担；48h 过期＋followed_up 单次死锁防翻旧账——前端核执行）。 */
+const E149_MICRO_ACTION_SUMMARY = {
+  joy: { zh: '留住一个开心的小瞬间', en: 'saved one happy little moment', fr: "gardé un petit instant joyeux", es: 'guardó un pequeño instante feliz', th: 'เก็บช่วงเวลาดีๆ ไว้หนึ่งช่วง', vi: 'đã lưu một khoảnh khắc vui nhỏ' },
+  sadness: { zh: '允许自己歇口气发果 15 分钟', en: 'allowed 15 minutes of true rest', fr: "s'est accordé 15 minutes de vrai repos", es: 'se permitió 15 minutos de descanso real', th: 'ให้ตัวเองพักผ่อนจริงๆ 15 นาที', vi: 'cho phép mình nghỉ ngơi thật sự 15 phút' },
+  trust: { zh: '同安心的人聊几句真心话', en: 'shared honest words with someone safe', fr: "échangé des mots sincères avec une personne de confiance", es: 'compartió palabras sinceras con alguien de confianza', th: 'พูดความจริงใจกับคนที่อุ่นใจ', vi: 'chia sẻ lời thật lòng với người khiến mình an tâm' },
+  disgust: { zh: '礼貌说不、把时间留给喜欢的事', en: 'politely said no and kept time for what matters', fr: "dit poliment non et gardé du temps pour l'essentiel", es: 'dijo un no educado y guardó tiempo para lo que importa', th: 'ปฏิเสธอย่างสุภาพและเก็บเวลาไว้กับสิ่งที่สำคัญ', vi: 'nói lời từ chối lịch sự và dành thời gian cho điều quan trọng' },
+  fear: { zh: '把担心拆成最小一步并完成 10 分钟', en: 'broke the worry into a 10-minute first step', fr: "découpé l'inquiétude en un premier pas de 10 minutes", es: 'dividió la preocupación en un paso de 10 minutos', th: 'แยกเรื่องกังวลเป็นก้าว 10 นาทีแล้วทำจบ', vi: 'chia nỗi lo thành bước 10 phút và hoàn thành' },
+  anger: { zh: '先稳住情绪再平静立下边界', en: 'settled first, then stated the boundary calmly', fr: "s'est apaisé d'abord puis a posé la limite calmement", es: 'se calmó primero y luego marcó el límite con serenidad', th: 'ใจนิ่งก่อนแล้วค่อยพูดเส้นตายอย่างสงบ', vi: 'bình tĩnh trước rồi mới nói rõ giới hạn' },
+  surprise: { zh: '好奇观察新转机 2 小时不下标签', en: 'observed the new opening curiously for 2 hours', fr: "observé la nouvelle ouverture avec curiosité pendant 2 heures", es: 'observó la nueva oportunidad con curiosidad por 2 horas', th: 'สังเกตโอกาสใหม่อย่างอยากรู้ 2 ชั่วโมง', vi: 'quan sát cơ hội mới với sự tò mò trong 2 giờ' },
+  anticipation: { zh: '列下关键启动动作并迈出第一步', en: 'listed the key first move and took it', fr: "noté le premier pas clé et l'a franchi", es: 'anotó el primer paso clave y lo dio', th: 'จดก้าวเริ่มต้นสำคัญและก้าวไปแล้ว', vi: 'viết ra động tác khởi đầu quan trọng và bước luôn' },
+};
+
+/** 🆕 E149-刀二：客户端随行 last_micro_action 形状守卫（fail-closed——
+ *  军令钦定字段 {emotion_key, action_summary, created_date, followed_up}；
+ *  emotion_key 白名单 8 键、action_summary ≤120 字、created_date 严格
+ *  YYYY-MM-DD、followed_up 布尔。48h 过期与 followed_up 单次死锁在守卫内
+ *  判定（超窗/已回访 ⇒ null ⇒ prompt 回访块不注入零破坏）。 */
+function _e149MicroAction(v, nowMs) {
+  if (!v || typeof v !== 'object') return null;
+  const ek = typeof v.emotion_key === 'string' ? v.emotion_key.trim().toLowerCase() : '';
+  const sm = typeof v.action_summary === 'string' ? v.action_summary.trim() : '';
+  const cd = typeof v.created_date === 'string' ? v.created_date.trim() : '';
+  if (!E149_EMOTION_KEYS.has(ek)) return null;
+  if (!sm || sm.length > 120 || /[\r\n]/.test(sm)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cd)) return null;
+  if (typeof v.followed_up !== 'boolean') return null;
+  if (v.followed_up) return null; // 单次死锁：已回访永不二次追问（防翻旧账）
+  const t = Date.parse(`${cd}T12:00:00Z`);
+  if (!Number.isFinite(t)) return null;
+  const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+  if (now - t > 48 * 3600 * 1000) return null; // 48h 过期
+  return { emotion_key: ek, action_summary: sm.slice(0, 120), created_date: cd, followed_up: false };
 }
 
 /** 🆕 E142-刀三（主公军令 2026-11-16）：客户端随行「终端时钟三件套」形状守卫
@@ -22169,14 +22410,16 @@ app.post('/api/familiar/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages required (last must be user)', code: 'BAD_REQUEST' });
   }
 
-  // 🏆 E110-刀二：入参守卫——relation_mode 必须显式携带且属白名单四象，
+  // 🏆 E110-刀二：入参守卫——relation_mode 必须显式携带且属白名单，
   //    严禁默认回退（mode 缺失/非法 ⇒ 400 拒发；前端取自已认领档案 fail-closed 传入）
+  //    🆕 E149-刀一：白名单换 E149_CHAT_RELATION_MODES（四象＋第五形态主标识
+  //    self——军令「me 独立路由命中，绝不静默降级」；adopt 通路四象锁零破坏）。
   const mode = String(body.relationMode || body.mode || '').trim();
-  if (!FAMILIAR_RELATION_MODES.has(mode)) {
-    return res.status(400).json({ error: `relationMode required (one of ${[...FAMILIAR_RELATION_MODES].join(', ')})`, code: 'BAD_RELATION_MODE' });
+  if (!E149_CHAT_RELATION_MODES.has(mode)) {
+    return res.status(400).json({ error: `relationMode required (one of ${[...E149_CHAT_RELATION_MODES].join(', ')})`, code: 'BAD_RELATION_MODE' });
   }
   const ip = (mode === 'buddy' || mode === 'boyfriend') ? 'Milo' : 'Sophia';
-  const name = String(body.name || '').slice(0, 20) || ip;
+  const name = String(body.name || '').slice(0, 20) || (mode === 'self' ? 'Me' : ip);
 
   // 🆕 E143-刀二（军令 2026-11-17）：星历限流器——外网单 IP 每分钟聊天 ≤15
   //    （回环/测标 100% 豁免，防误伤铁律 1；fail-soft 核缺席放行）；
@@ -22264,6 +22507,17 @@ app.post('/api/familiar/chat', async (req, res) => {
   //  （fail-closed——白名单五原型）⇒ prompt【User Emotional Context】块
   //  唯一真值；坏形状 ⇒ null ⇒ 块不注入（回退今日现行为）。
   const _e123Mood = _e123ActiveMood(body.activeMood);
+  // 🆕 E149-刀一（主公军令 2026-11-20）：Plutchik 八情绪信号解析（fail-closed）
+  //  ⇒ prompt 情绪正向转译块唯一真值；均缺席 ⇒ null ⇒ 块不注入零破坏。
+  const _e149EmotionSignal = _e149ResolveEmotionSignal(body, _e123Mood,
+    // 🆕 2026-11-23 主公确认锚点「双入口统一接入内核」：自由输入情绪倾诉
+    //  （含愤怒/恐惧/排斥/惊讶/期待等全 8 类）窄词典识别兜底——末条 user
+    //  文本（≤800 字已截断）作为第三顺位识别源。
+    messages.length ? messages[messages.length - 1].content : '');
+  // 🆕 E149-刀二（主公军令 2026-11-20）：客户端随行 last_micro_action 查形状
+  //  （fail-closed——48h 过期＋followed_up 单次死锁在守卫内）⇒ prompt 回访
+  //  上下文块唯一真值；坏形状/超窗/已回访 ⇒ null ⇒ 块不注入零破坏。
+  const _e149LastMicro = _e149MicroAction(body.lastMicroAction);
   // 🆕 E142-刀三（军令 2026-11-16）：终端时钟三件套形状守卫（fail-closed）
   //  ⇒ prompt 【CLIENT TIME SYNC】置顶高优块唯一真源；坏形状 ⇒ null
   //  ⇒ 块不注入（回退今日现行为零破坏）。
@@ -22414,6 +22668,10 @@ app.post('/api/familiar/chat', async (req, res) => {
     clientTime: _e142Time,
     // 🆕 E142.1-刀二：唤名日配额服务端权威计数注入 prompt（IDENTITY 块配额行）
     nameQuotaUsed: _e1421Used,
+    // 🆕 E149-刀一：Plutchik 情绪信号（8 键白名单解析终值；null ⇒ 块不注入）
+    emotionSignal: _e149EmotionSignal,
+    // 🆕 E149-刀二：L1 行动回访标记（形状/48h/死锁已守卫；null ⇒ 块不注入）
+    lastMicroAction: _e149LastMicro,
   })
     // 🆕 E143-刀二（军令 2026-11-17）：星灵封印戒律块——路由内后缀拼接
     //    （不碰 buildFamiliarChatSystemPrompt 函数签名，e115 S11/e129-03
@@ -22822,7 +23080,7 @@ app.post('/api/familiar/chat', async (req, res) => {
       } catch { /* noop */ }
     }
     finished = true;
-    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota, chronicle: _e147ChronicleMeta })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true, chars: text.length, model, nameQuota: _e1421DoneQuota, chronicle: _e147ChronicleMeta, microAction: (_e149EmotionSignal ? { emotion_key: _e149EmotionSignal, action_summary: ((E149_MICRO_ACTION_SUMMARY[_e149EmotionSignal] || {})[lang] || E149_MICRO_ACTION_SUMMARY[_e149EmotionSignal].zh), created_date: new Date().toISOString().slice(0, 10) } : null) })}\n\n`);
     // 🆕 E147-刀四（军令 2026-11-19）：年鉴双门槛持久化——setImmediate
     //  fire-and-forget（patchWealthPlans 读-合并-写；权益命中且锚缺失 ⇒ 懒
     //  回填 chronicle_anchor_at＝now；蒸馏轨迹写回 chronicle_sessions）。
