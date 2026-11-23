@@ -21,6 +21,12 @@
 /** sessionStorage 落盘键（军令钦定 ks_active_mood） */
 export const ACTIVE_MOOD_KEY = 'ks_active_mood';
 
+/** 🆕 E150-刀二（主公军令 2026-11-23）：今日情绪当日档落盘键
+ *  （localStorage 白名单在册：E150 新增）——当日已提交罗盘情绪的
+ *  「跨刷新记忆」真源：sessionStorage 2h 窗刷新即丢＋下午超窗 ⇒ P2 掉线
+ *  失忆病灶根修。当日有效（date 校验跨天自动失效；当天刷新不丢）。 */
+export const MOOD_OF_DAY_KEY = 'ks_mood_of_day';
+
 /** 情绪时效窗（军令钦定 2 小时——毫秒） */
 export const ACTIVE_MOOD_TTL_MS = 2 * 60 * 60 * 1000;
 
@@ -130,6 +136,56 @@ export function readActiveMood(ss, now) {
     if (String(rec.date || '') !== localDateKey(base)) return null; // 跨日失忆
     if (base.getTime() - ts > ACTIVE_MOOD_TTL_MS) return null; // 2h 时效窗
     if (base.getTime() - ts < -ACTIVE_MOOD_TTL_MS) return null; // 未来时间戳熔断
+    return mood;
+  } catch { return null; }
+}
+
+/**
+ * 🆕 E150-刀二（主公军令 2026-11-23）：今日情绪当日档写入
+ *  （罗盘确认时刻同步双写之二——localStorage 侧；军令「当天刷新不丢」）。
+ *  形状 {mood, timestamp, date}；白名单外/无 storage 不写 fail-closed。
+ * @param {Storage|null} ls localStorage 实例（无痕 fail-soft）
+ * @param {string} mood 白名单五原型之一
+ * @param {number} [nowTs] 注入时钟（缺省 Date.now()）
+ * @returns {boolean} 是否真实落盘
+ */
+export function writeMoodOfDay(ls, mood, nowTs) {
+  if (!ls || typeof ls.setItem !== 'function') return false;
+  const m = String(mood || '');
+  if (!ACTIVE_MOOD_WHITELIST.includes(m)) return false;
+  try {
+    const now = (Number.isFinite(Number(nowTs)) && Number(nowTs) > 0) ? Number(nowTs) : Date.now();
+    ls.setItem(MOOD_OF_DAY_KEY, JSON.stringify({
+      mood: m,
+      timestamp: now,
+      date: localDateKey(new Date(now)),
+    }));
+    return true;
+  } catch { return false; } // iOS 无痕 ⇒ 静默降级
+}
+
+/**
+ * 🆕 E150-刀二：今日情绪当日档读取（当日有效——跨天自动失效；无 2h 窗）。
+ *  供 P2 回忆链：早间已选情绪、下午重进时灵宠「必须记得」的回访真源。
+ * @param {Storage|null} ls localStorage 实例
+ * @param {number} [nowTs] 注入时钟（缺省当前）
+ * @returns {string|null} 白名单情绪键；坏档/跨日/白名单外/未来时间戳 ⇒ null
+ */
+export function readMoodOfDay(ls, nowTs) {
+  if (!ls || typeof ls.getItem !== 'function') return null;
+  try {
+    const raw = ls.getItem(MOOD_OF_DAY_KEY);
+    if (!raw) return null;
+    const rec = JSON.parse(raw);
+    if (!rec || typeof rec !== 'object') return null;
+    const mood = String(rec.mood || '');
+    if (!ACTIVE_MOOD_WHITELIST.includes(mood)) return null;
+    const now = (Number.isFinite(Number(nowTs)) && Number(nowTs) > 0) ? Number(nowTs) : Date.now();
+    if (String(rec.date || '') !== localDateKey(new Date(now))) return null; // 跨天失效
+    const ts = Number(rec.timestamp);
+    if (!Number.isFinite(ts) || ts <= 0) return null;
+    if (now - ts > 24 * 3600 * 1000) return null; // 异常超窗防护（当日窗上限）
+    if (now - ts < -ACTIVE_MOOD_TTL_MS) return null; // 未来时间戳熔断
     return mood;
   } catch { return null; }
 }

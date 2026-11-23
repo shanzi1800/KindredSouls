@@ -39,6 +39,30 @@ export const L_CIRCADIAN = Object.freeze({
   }),
 });
 
+/* ═══ 🆕 E150-刀三（主公军令 2026-11-23）：时段四档词表——根治「白天一律
+ *  晨曦」粗档病灶（主公实锤：下午 15:15 状态栏仍显 ☀️ 晨曦）。四档窗：
+ *  morning 05:00–11:59 / afternoon 12:00–17:59 / dusk 18:00–19:59 /
+ *  night 20:00–04:59。morning/night 沿袭 L_CIRCADIAN 日/夜词面（e144 锁1
+ *  断言零后继化）；afternoon/dusk 新档新词。六语自容零 i18n 键。 */
+export const L_CIRCADIAN_BANDS = Object.freeze({
+  morning: Object.freeze({
+    zh: '☀️ 晨曦星轨同频', en: '☀️ Daylight Sync', fr: '☀️ Harmonie Diurne',
+    es: '☀️ Sincronía Diurna', th: '☀️ พลังยามเช้า', vi: '☀️ Đồng Điệu Ngày',
+  }),
+  afternoon: Object.freeze({
+    zh: '☀️ 午后暖阳共振', en: '☀️ Afternoon Warm Sync', fr: '☀️ Harmonie de l’Après-midi',
+    es: '☀️ Sincronía Vespertina', th: '☀️ พลังยามบ่าย', vi: '☀️ Đồng Điệu Chiều',
+  }),
+  dusk: Object.freeze({
+    zh: '🌆 暮色微光同频', en: '🌆 Dusk Glow Sync', fr: '🌆 Harmonie Crépusculaire',
+    es: '🌆 Sincronía del Atardecer', th: '🌆 พลังยามเย็น', vi: '🌆 Đồng Điệu Hoàng Hôn',
+  }),
+  night: Object.freeze({
+    zh: '🌙 星夜守护磁场', en: '🌙 Night Aura Guard', fr: '🌙 Veille Nocturne',
+    es: '🌙 Guardia Nocturna', th: '🌙 คุ้มครองค่ำคืน', vi: '🌙 Canh Giữ Đêm',
+  }),
+});
+
 /* ═══════════ 模块三：跨日重逢微标（军令译表表1逐字）═══════════ */
 export const L_ASTRAL_REUNION_BADGE = Object.freeze({
   zh: '✨ 跨日星轨重逢', en: '✨ Astral Reunion', fr: '✨ Retrouvailles',
@@ -96,9 +120,38 @@ export function circadianStatusLabel(lang, phase) {
   return (row && row[l]) || '';
 }
 
-/** 状态栏昼夜合成——「灵犀默契 Lv.x 星轨同频 · 78/100 · ☀️ 晨曦星轨同频」形态 */
+/**
+ * 🆕 E150-刀三：时段四档判定（客户端实时本地小时→四档 band）。
+ *  morning 05–11 / afternoon 12–17 / dusk 18–19 / night 20–04（非法 ⇒ night
+ *  fail-closed）。与 resolveCircadianPhase（二元昼夜 class，e144 锁1 恒定）
+ *  分工：band 控状态栏词面与 P4 问候时段句；phase 控舱体色温 class。
+ * @param {number} hour 本地小时 0–23
+ * @param {number} [minute] 本地分钟（未传按 0）
+ * @returns {'morning'|'afternoon'|'dusk'|'night'}
+ */
+export function circadianBandOf(hour, minute) {
+  const h = Number(hour);
+  const m = Number.isFinite(Number(minute)) ? Number(minute) : 0;
+  if (!Number.isFinite(h) || h < 0 || h > 23) return 'night';
+  const mins = h * 60 + (m >= 0 && m <= 59 ? m : 0);
+  if (mins >= 5 * 60 && mins < 12 * 60) return 'morning';
+  if (mins >= 12 * 60 && mins < 18 * 60) return 'afternoon';
+  if (mins >= 18 * 60 && mins < 20 * 60) return 'dusk';
+  return 'night';
+}
+
+/** 🆕 E150-刀三：时段四档词条（白名单外 lang ⇒ ''——fail-closed） */
+export function circadianBandLabel(lang, band) {
+  const l = sanitizeLang(lang);
+  const row = L_CIRCADIAN_BANDS[String(band)];
+  return (row && row[l]) || '';
+}
+
+/** 状态栏昼夜合成——「灵犀默契 Lv.x 星轨同频 · 78/100 · ☀️ 晨曦星轨同频」形态
+ *  🆕 E150-刀三：前缀改走时段四档词表（15:15 ⇒ ☀️ 午后暖阳共振——主公
+ *  实锤「白天一律晨曦」粗档根治；morning/night 词面不变，e144 断言零破坏）。 */
 export function composeCircadianStatus(bondLabel, hour, minute, lang) {
-  const prefix = circadianStatusLabel(lang, resolveCircadianPhase(hour, minute));
+  const prefix = circadianBandLabel(lang, circadianBandOf(hour, minute));
   const base = String(bondLabel || '').trim();
   if (!prefix) return base;
   return base ? `${base} · ${prefix}` : prefix;

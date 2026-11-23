@@ -53,7 +53,7 @@ import { detectLifestyleIntent } from '../lib/detectLifestyleIntent.mjs';
 // 🏆 E123-刀四（主公军令 2026-11-04）：罗盘情绪记忆贯通——ks_active_mood
 //    读取（当日＋2h 时效）＋5 情绪×6 语第一人称共情首句字典（零 i18n 新键）。
 // @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
-import { readActiveMood, moodGreetingLine } from '../lib/companionMoodGreetings.mjs';
+import { readActiveMood, readMoodOfDay, moodGreetingLine } from '../lib/companionMoodGreetings.mjs';
 // 🆕 E142-刀一（主公军令 2026-11-16）：灵宠有序话题记忆栈——P1 已解锁付费报告
 //    话题（隔日持久锚）＋P2 罗盘情绪串联合成器＋tier 归一化根修（写入侧年报档
 //    'annual' 与消费端 '_yearly' 错位曾致模式落空跌 plain 兜底——病灶①真根）。
@@ -313,10 +313,16 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
   /* 🏆 E123-刀四：罗盘情绪记忆锚（open 时读一次；mood 分支首语查表真源——
    *  舱开着切语言重渲染 effect 按 helloMode==='mood' 用当前 lang 重查字典） */
   const activeMoodRef = useRef<string | null>(null);
+  /* 🆕 E150-刀二/刀三（主公军令 2026-11-23）：今日情绪当日档锚（开舱时读
+   *  一次 localStorage ks_mood_of_day——刷新不丢＋跨天失效；2h 即时窗
+   *  miss 时的 P2 回忆层真源）＋回访用户判据锚（认领档/永久姓名/历史
+   *  聊天日/当日情绪档/L1 微动作任一在场 ⇒ 回访 ⇒ 首句永不静态占位）。 */
+  const todayMoodRef = useRef<string | null>(null);
+  const returningUserRef = useRef(false);
   /* 🆕 E142-刀一（军令 2026-11-16）：有序话题快照锚（open 时锚一次——p1queue
    *  首句与 P1 话题胶囊消费真源；rr＝soul_recent_unlocked_report 持久档、
    *  mood＝ks_active_mood 2h 窗——队列合成自两真源，不另立存储防双源漂移） */
-  const topicSnapshotRef = useRef<{ rr: { category?: string; tier?: string } | null; mood: string | null } | null>(null);
+  const topicSnapshotRef = useRef<{ rr: { category?: string; tier?: string } | null; mood: string | null; todayMood: string | null } | null>(null);
   /* 🆕 E142.1-刀二（军令 2026-11-17）：唤名门锚（open 时锚一次——首句/锦囊
    *  带名唯一准入真源；重写效应按锚重查保证切语言重生同形，不二次计数）。 */
   const nameGateRef = useRef<boolean>(false);
@@ -356,6 +362,15 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
           sessionSigRef.current),
         relationMode,
+        // 🆕 E150-刀三：P2 回忆层（今日早间已选情绪——超 2h 也记得）＋P4
+        //  回访上下文（军令「全静默时带记忆与人格温度的老友问候」；纯新客
+        //  p4 缺席 ⇒ queue null ⇒ 现行为 plain 兜底仅新客可触达）。
+        todayMood: snap.todayMood,
+        p4: (returningUserRef.current && relationMode) ? {
+          relationMode,
+          userName: nameGateRef.current ? profileNameRef.current : undefined,
+          hour: new Date().getHours(),
+        } : null,
       }) : null;
       if (q && q.firstLine) {
         if (q.followedUp) _e149P3ShownRef.current = true; // 归档延至发送期（防切语言重渲染丢首句）
@@ -451,7 +466,24 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       let _e142Mood: string | null = null;
       try { _e142Mood = readActiveMood(sessionStorage); } catch { _e142Mood = null; }
       activeMoodRef.current = _e142Mood;
-      topicSnapshotRef.current = { rr, mood: _e142Mood };
+      // 🆕 E150-刀二（主公军令 2026-11-23）：今日情绪当日档水合——2h 即时
+      //  窗（sessionStorage，刷新即丢）miss 时从 localStorage 当日档取回
+      //  「今日早间已提交情绪」（军令刀二：当天刷新不丢、跨天自动失效）。
+      //  供 P2 回忆层（「早上那份心情现在缓和了吗」）。
+      let _e150TodayMood: string | null = null;
+      try { _e150TodayMood = readMoodOfDay(store); } catch { _e150TodayMood = null; }
+      todayMoodRef.current = _e150TodayMood;
+      // 🆕 E150-刀二/刀三：回访用户判据（军令铁律「已有 L1 或本地档案的
+      //  回访用户严禁静态无记忆占位句」）——认领档/本命档（sig≠anon）/
+      //  永久姓名/历史聊天日/当日情绪档/L1 微动作档任一在场 ⇒ 回访。
+      let _e150Returning = false;
+      try {
+        _e150Returning = !!(sig !== 'anon' || profileNameRef.current
+          || readLastChatDay(store) || _e150TodayMood
+          || readMicroAction(store, sig));
+      } catch { _e150Returning = false; }
+      returningUserRef.current = _e150Returning;
+      topicSnapshotRef.current = { rr, mood: _e142Mood, todayMood: _e150TodayMood };
       // 🆕 E142.1-刀二（军令 2026-11-17）：唤名门锚——极值情绪（罗盘五原型＝
       //  非常失落/非常兴奋族）在场且当日配额 <2 且永久档案有名字 ⇒ 首句/锦囊
       //  才允许带名；平时常规问候一律中性不带名（军令三重熔断客户端面）。
@@ -487,6 +519,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
         const lastDay = readLastChatDay(store);
         if (lastDay && lastDay < today) {
           mode = 'daily'; // ③ 跨自然日无当日新解锁 ⇒ 流转今日锦囊问候（军令刀四）
+        } else if (_e150TodayMood || _e150Returning) {
+          // 🆕 E150-刀三（主公军令 2026-11-23）：回访用户（当日情绪档在/本地
+          //  档案在）⇒ 首句 100% 交 companionTopicQueue——P2 回忆/P3 轻复盘/
+          //  P4 带记忆老友问候（军令「绝不退回静态占位句」）。纯新客 ⇒ 现
+          //  firststrike 情境链（plain 兜底仅新客冷启动可触达）。
+          mode = 'p1queue';
         } else {
           const day = today;
           const key = 'ks_familiar_firststrike_day';
@@ -551,6 +589,17 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     saveDailyChatSession(store, sessionSigRef.current, sessionDateRef.current, msgs, helloMode, badgeLogRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgs, open, helloMode]);
+  /* 🆕 E150-刀三（主公军令 2026-11-23）：状态栏时段实时刷新——长开舱跨
+   *  时段不被开窗快照锁死（军令「按客户端实时本地小时刷新对应时段标签，
+   *  不被早间缓存锁死」）；60s 轻量重算，关窗清理零泄漏。 */
+  useEffect(() => {
+    if (!open) return;
+    const _e150Timer = window.setInterval(() => {
+      const d = new Date();
+      setCircadianClock({ hour: d.getHours(), minute: d.getMinutes() });
+    }, 60 * 1000);
+    return () => { window.clearInterval(_e150Timer); };
+  }, [open]);
   /* 🏆 E114-刀五（主公军令 2026-11-01）：SSE 吐字流状态上行——streaming 翻转
    * 即上报 HomeCard（灵宠切「共鸣倾听/欢快分享」姿态；关舱复位效应已把
    * streaming 归 false ⇒ 姿态平滑回落待机趴键态，禁常驻卡姿态） */

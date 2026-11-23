@@ -17,7 +17,7 @@ import { MOOD_ARCHETYPES, MOOD_ATTRIBUTIONS, toneGuard } from '../../lib/compani
 import { claimDailyStarlight, readStarlightStore, writeStarlightStore } from '../../lib/starlightLedger.mjs';
 // 🏆 E123-刀四：罗盘情绪落盘 sessionStorage（ChatSheet 首句拦截真源）
 // @ts-ignore —— companionMoodGreetings.mjs 纯 JS 逻辑核（形状由 E123 闸门守备）
-import { writeActiveMood } from '../../lib/companionMoodGreetings.mjs';
+import { writeActiveMood, writeMoodOfDay } from '../../lib/companionMoodGreetings.mjs';
 // 🆕 E129-刀三（军令 2026-11-09）：罗盘情绪心流静默入库（fire-and-forget——
 //    user_mood_logs 时间序列蓄水；未登录/网络失败一律静默零阻断）
 import { logMoodSilently } from '../../lib/livingAgentClient';
@@ -106,6 +106,14 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
     if (guard.bannedHit) return;
     // E123-刀四：情绪落盘（白名单五原型——坏值不写 fail-closed）
     try { writeActiveMood(sessionStorage, selected); } catch { /* 无痕 ⇒ 静默 */ }
+    // 🆕 E150-刀二（主公军令 2026-11-23）：双写之二——今日情绪当日档
+    //  ks_mood_of_day（localStorage 白名单在册，当天刷新不丢＋跨天失效）。
+    //  根治「刷新后下午直聊失忆」主病灶：sessionStorage 刷新即丢＋2h 窗
+    //  下午超时 ⇒ P2 掉线跌静态兜底句。当日档供 P2 回忆层（军令「严禁
+    //  装作没发生过」）。
+    try {
+      writeMoodOfDay((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null, selected);
+    } catch { /* 无痕 ⇒ 静默 */ }
     // 🆕 E129-刀三（军令 2026-11-09）：情绪心流静默入库（fire-and-forget 不 await；
     //    服务端白名单复检＋未登录拒收——本地零感知零阻断）
     logMoodSilently(selected);

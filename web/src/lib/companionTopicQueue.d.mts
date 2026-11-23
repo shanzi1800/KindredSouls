@@ -16,4 +16,8 @@ export function resolveCompanionGreetingAndQueue(p: {
   lastMicroAction?: { emotion_key?: unknown; action_summary?: unknown; created_date?: unknown; followed_up?: unknown } | null | undefined;
   /** 🆕 E149-刀三：当前角色（P3 轻复盘口吻分化；白名单五键，坏值 ⇒ P3 静默） */
   relationMode?: string;
-}): { firstLine: string; queue: string[]; p1Key: string; followedUp?: boolean } | null;
+  /** 🆕 E150-刀三：今日早间已选情绪（当日档——超 2h 也记得；P2 回忆层真源） */
+  todayMood?: string | null;
+  /** 🆕 E150-刀三：P4 回访上下文（在场才产出老友问候；缺席 ⇒ null 原契约不变） */
+  p4?: { relationMode?: string; userName?: string; hour?: number } | null;
+}): { firstLine: string; queue: string[]; p1Key: string; followedUp?: boolean; p4Band?: string } | null;

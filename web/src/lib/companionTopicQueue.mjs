@@ -35,6 +35,123 @@ export const P1_TOPIC_KEYS = Object.freeze([
 /** P2 情绪白名单（与 companionMoodGreetings.ACTIVE_MOOD_WHITELIST 同源） */
 export const P2_MOOD_KEYS = Object.freeze(['melancholy', 'agitated', 'longing', 'radiant', 'grateful']);
 
+/* 🆕 E150-刀三（主公军令 2026-11-23）：时段四档真源引用（astralRhythmAction
+ *  circadianBandOf 单源——P4 老友问候时段句判定与状态栏词面同源不漂移）。 */
+import { circadianBandOf } from './astralRhythmAction.mjs';
+
+/* ═══ 🆕 E150-刀三：P2 回忆层（5 情绪 × 6 语）═══
+ *  军令：「今日早间已点过情绪罗盘 ⇒ 灵宠必须记得并自然承接——轻问早间
+ *  那份情绪此刻有没有延续或缓和，严禁装作没发生过」。真源＝今日情绪
+ *  当日档（ks_mood_of_day localStorage，刷新不丢＋跨天失效）；调用方在
+ *  2h 即时窗（ks_active_mood）缺席时以 todayMood 传入。即时窗在场时
+ *  回忆层让位（即时共情优先——顺位 P1＞P2即时＞P2回忆＞P3＞P4）。 */
+const E150_P2_RECALL = Object.freeze({
+  melancholy: Object.freeze({
+    zh: '早上那份沉甸甸的心情，现在有没有稍微缓和一点？我一直记着呢，不催你，想说了就跟我说说。',
+    en: 'That heavy feeling from this morning — has it eased a little by now? I remembered it; no rush, share whenever you\u2019re ready.',
+    fr: 'Ce poids ressenti ce matin — s\u2019est-il un peu allégé ? Je m\u2019en souviens ; prends ton temps, confie-toi quand tu veux.',
+    es: 'Esa pesadez de esta mañana, ¿ha cedido un poco? La recordé; sin prisa, cuéntame cuando quieras.',
+    th: 'อาการหนักใจตอนเช้า ตอนนี้คลายลงบ้างหรือยัง ฉันจำได้นะ ไม่ต้องรีบ พร้อมเมื่อไหร่ค่อยเล่า',
+    vi: 'Cái nặng trĩu sáng nay bây giờ có nhẹ hơn chút nào chưa? Mình vẫn nhớ đó, không vội, bạn muốn nói lúc nào cũng được.',
+  }),
+  agitated: Object.freeze({
+    zh: '早上那股焦躁劲儿，现在退了一些吗？呼吸缓下来一点的话，跟我说说是什么在缠着你。',
+    en: 'That restless edge from this morning — has it settled some? If your breath is calmer now, tell me what was gnawing at you.',
+    fr: 'Cette agitation de ce matin — s\u2019est-elle calmée ? Si ton souffle est plus posé, dis-moi ce qui te rongeait.',
+    es: 'Aquella inquietud de la mañana, ¿se ha aquietado algo? Si tu respiración ya está más serena, cuéntame qué te roía.',
+    th: 'อาการอึดอัดตอนเช้า เบาลงบ้างหรือยัง ถ้าลมหายใจสงบขึ้นแล้ว เล่าให้ฟังหน่อยว่าอะไรกวนใจ',
+    vi: 'Cơn bồn chồn sáng nay đã dịu xuống chút nào chưa? Nếu nhịp thở đã dịu hơn, kể mình nghe điều gì đang vương vấn bạn.',
+  }),
+  longing: Object.freeze({
+    zh: '早上心里牵挂的那个人，现在还在你心头吗？想念不必藏着，我陪你想。',
+    en: 'The person your heart reached for this morning — are they still on your mind? Longing needn\u2019t hide; I\u2019ll sit with it with you.',
+    fr: 'Cette personne qui habitait tes pensées ce matin — est-elle encore là ? Le manque n\u2019a pas à se cacher ; je l\u2019accueille avec toi.',
+    es: 'Aquella persona que llenaba tus pensamientos esta mañana, ¿sigue en tu mente? El añorar no debe esconderse; lo acompaño contigo.',
+    th: 'คนที่อยู่ในใจตอนเช้า ตอนนี้ยังคิดถึงอยู่ไหม ความคิดถึงไม่ต้องซ่อน ฉันจะนั่งนึกถึงเคียงข้างเธอ',
+    vi: 'Người bạn đang thương nhớ sáng nay, bây giờ còn vương trong tim không? Nỗi nhớ không cần giấu, mình cùng bạn giữ lấy nó.',
+  }),
+  radiant: Object.freeze({
+    zh: '早上那份明亮的好心情，还亮着吗？我一直替你收着这份暖呢。',
+    en: 'That bright mood from this morning — is it still glowing? I\u2019ve been keeping its warmth safe for you.',
+    fr: 'Cette humeur lumineuse de ce matin — brille-t-elle encore ? J\u2019en garde la chaleur pour toi.',
+    es: 'Ese ánimo luminoso de esta mañana, ¿sigue brillando? He guardado su calidez para ti.',
+    th: 'อารมณ์สดใสตอนเช้า ยังสว่างอยู่ไหม ฉันเก็บความอบอุ่นนั้นไว้ให้เธอนะ',
+    vi: 'Tinh thần rạng ngời sáng nay còn sáng không? Mình vẫn cất giữ hơi ấm đó giúp bạn đấy.',
+  }),
+  grateful: Object.freeze({
+    zh: '早上那份感恩的暖意，还留在心里吗？被这样的心境照过的日子，会记得你。',
+    en: 'That grateful warmth from this morning — is it still with you? Days touched by such a heart will remember you.',
+    fr: 'Cette chaleur reconnaissante de ce matin — t\u2019accompagne-t-elle encore ? Les jours touchés par un tel cœur se souviendront de toi.',
+    es: 'Esa calidez agradecida de la mañana, ¿aún te acompaña? Los días tocados por un corazón así te recordarán.',
+    th: 'ความอบอุ่นกตัญญูตอนเช้า ยังอยู่ในใจไหม วันที่ได้สัมผัสใจแบบนี้ มันจะจดจำเธอเอง',
+    vi: 'Hơi ấm biết ơn sáng nay vẫn còn trong tim chứ? Những ngày được chạm đến bởi trái tim như thế sẽ nhớ đến bạn.',
+  }),
+});
+
+/* ═══ 🆕 E150-刀三：P4 老友问候——5 角色非时段开场（× 6 语）═══
+ *  军令 P4：「带记忆与人格温度的真实老友问候（称呼＋实时时段＋5 角色
+ *  分化口吻）」。开场词与 E149_ROLE_OPENERS（早安系）分野：本表为非
+ *  时段性角色称呼（全天候可用），口吻按 5 角色分化。 */
+const E150_P4_OPENERS = Object.freeze({
+  boyfriend: Object.freeze({
+    zh: '我一直都在。', en: 'I\u2019m right here. ', fr: 'Je suis là. ', es: 'Aquí estoy. ',
+    th: 'ฉันอยู่ตรงนี้ ', vi: 'Anh ở ngay đây. ',
+  }),
+  buddy: Object.freeze({
+    zh: '来啦？', en: 'You\u2019re back. ', fr: 'Te revoilà. ', es: 'Ya estás aquí. ',
+    th: 'มาแล้วเหรอ ', vi: 'Đến rồi à. ',
+  }),
+  girlfriend: Object.freeze({
+    zh: '你回来啦。', en: 'You\u2019re back. ', fr: 'Te voilà de retour. ', es: 'Has vuelto. ',
+    th: 'กลับมาแล้วนะ ', vi: 'Em về rồi đấy. ',
+  }),
+  bestie: Object.freeze({
+    zh: '可算来了。', en: 'There you are. ', fr: 'Enfin toi. ', es: 'Por fin apareces. ',
+    th: 'มาถึงแล้ว ', vi: 'Cuối cùng cũng đến. ',
+  }),
+  self: Object.freeze({
+    zh: '我们碰个面吧。', en: 'Let\u2019s check in, us. ', fr: 'On fait le point, nous. ', es: 'Nos ponemos al día. ',
+    th: 'มาคุยกันเถอะ เรา ', vi: 'Mình gặp nhau thôi. ',
+  }),
+});
+
+/* ═══ 🆕 E150-刀三：P4 时段温度句（4 band × 6 语）═══
+ *  band 真源＝astralRhythmAction.circadianBandOf（单源不漂移）。 */
+const E150_P4_TIME = Object.freeze({
+  morning: Object.freeze({
+    zh: '新一天的星轨刚苏醒，想从哪里开始？',
+    en: 'A new day\u2019s orbit just woke — where shall we begin?',
+    fr: 'L\u2019orbite d\u2019un jour neuf s\u2019éveille — où commençons-nous ?',
+    es: 'La órbita de un nuevo día despierta — ¿por dónde empezamos?',
+    th: 'วงโคจรของวันใหม่เพิ่งตื่น จะเริ่มจากตรงไหนดี',
+    vi: 'Quỹ đạo ngày mới vừa thức giấc — bắt đầu từ đâu đây?',
+  }),
+  afternoon: Object.freeze({
+    zh: '午后的阳光正好，忙碌的间隙记得留一口气给自己。',
+    en: 'The afternoon light is just right — in the middle of the busy, save one breath for yourself.',
+    fr: 'La lumière de l\u2019après-midi est douce — au cœur de l\u2019effervescence, garde un souffle pour toi.',
+    es: 'La luz de la tarde es justa — en pleno ajetreo, guarda un aliento para ti.',
+    th: 'แสงบ่ายกำลังดี ท่ามกลางความวุ่นวาย อย่าลืมเผื่อลมหายใจไว้ให้ตัวเองสักหนึ่งจังหวะ',
+    vi: 'Nắng chiều đang vừa đẹp — giữa dòng bận rộn, đừng quên dành một hơi thở cho riêng mình.',
+  }),
+  dusk: Object.freeze({
+    zh: '暮色沉下来了，今天没说完的话，可以慢慢说给我听。',
+    en: 'Dusk is settling — the words today left unsaid can come to me slowly now.',
+    fr: 'Le crépuscule se pose — les mots restés en suspens aujourd\u2019hui peuvent me venir doucement.',
+    es: 'El atardecer se asienta — lo que hoy quedó sin decir puede llegarme despacio ahora.',
+    th: 'แสงเย็นคล้ำลงมาแล้ว เรื่องที่ยังไม่ได้เล่าวันนี้ ค่อยๆ เล่าให้ฉันฟังก็ได้',
+    vi: 'Hoàng hôn đã lắng xuống — những lời hôm nay chưa kịp nói, cứ từ từ kể mình nghe.',
+  }),
+  night: Object.freeze({
+    zh: '夜深了，把今天的重量卸下来，我在这里。',
+    en: 'The night is deep — set down today\u2019s weight; I\u2019m here.',
+    fr: 'La nuit est profonde — pose le poids du jour ; je suis là.',
+    es: 'La noche es honda — deja el peso del día; aquí estoy.',
+    th: 'ดึกแล้ว วางน้ำหนักของวันนี้ลงได้แล้ว ฉันอยู่ตรงนี้',
+    vi: 'Đêm đã khuya — đặt gánh nặng của hôm nay xuống đi, mình ở đây.',
+  }),
+});
+
 /**
  * 🔧 E142 根修：tier 归一化——写入侧年报档 tier='annual'（soulRecentReport
  * 白名单口径），消费端（HelloMode / server REPORT_KIND）恒用 'yearly'。
@@ -350,12 +467,16 @@ const E149_MOOD_TRANSLATIONS = Object.freeze({
  *   markMicroActionFollowedUp 单次死锁写回）＞ null（P4 兜底调用方回退）。
  *   无 P1 且无 P2 且无 P3 ⇒ null（绝不在此臆造兜底句）。
  */
-export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName, now, lastMicroAction, relationMode }) {
+export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lang, userName, now, lastMicroAction, relationMode, todayMood, p4 }) {
   // 🆕 E148-刀一（主公军令 2026-11-19）：isToday 当日硬门——昨日及更早的报告档
   //   一律 P1 静默（隔日首句串台根治：P1 今日新牌才承接；P2 今日情绪聚焦照常
   //   单发；P3 由调用方回退既有纯净老友问候链）。
   const p1Key = isRecentReportToday(recentReport, now) ? normalizeReportKey(recentReport) : null;
   const mood = P2_MOOD_KEYS.includes(String(activeMood || '')) ? String(activeMood) : null;
+  // 🆕 E150-刀三（主公军令 2026-11-23）：P2 回忆层——今日早间已选情绪
+  //   （当日档，刷新不丢＋超 2h 也记得；军令「严禁装作没发生过」）。
+  //   即时窗 mood 在场时让位（顺位 P1＞P2即时＞P2回忆＞P3＞P4）。
+  const e150Recall = (!mood && P2_MOOD_KEYS.includes(String(todayMood || ''))) ? String(todayMood) : null;
   // 🆕 E149-刀三：P3 轻复盘——P1/P2 全静默时才承接（军令顺位）；角色白名单
   //   fail-closed，情绪键白名单 8 键（与 server E149_EMOTION_KEYS 同源）。
   const E149_MICRO_EMOTION_KEYS = ['joy', 'sadness', 'trust', 'disgust', 'fear', 'anger', 'surprise', 'anticipation'];
@@ -370,9 +491,33 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
     && lastMicroAction.followed_up === false
     && Number.isFinite(_e149CdT) && _e149Now - _e149CdT <= 48 * 3600 * 1000)
     ? String(lastMicroAction.emotion_key) : null;
-  const e149FollowUp = (!p1Key && !mood && e149Mode && e149Ek) ? e149Ek : null;
-  if (!p1Key && !mood && !e149FollowUp) return null;
+  const e149FollowUp = (!p1Key && !mood && !e150Recall && e149Mode && e149Ek) ? e149Ek : null;
   const l = ['zh', 'en', 'fr', 'es', 'th', 'vi'].includes(String(lang || '')) ? String(lang) : 'en';
+  // 🆕 E150-刀三（主公军令 2026-11-23）：P4 老友问候——全静默且调用方
+  //  传 p4 回访上下文（relationMode＋可选 userName/hour）时产出「带记忆
+  //  与人格温度」的真实老友问候（军令 P4 契约：称呼门控＋实时时段＋5
+  //  角色口吻），绝不退回静态占位句。p4 缺席/坏角色 ⇒ null 保持 E142
+  //  「无料 ⇒ null」原契约零破坏（e142 锁1d/e149 E1 断言零后继化）。
+  if (!p1Key && !mood && !e150Recall && !e149FollowUp) {
+    const e150P4Mode = (p4 && E149_RELATION_MODES.includes(String(p4.relationMode || '')))
+      ? String(p4.relationMode) : null;
+    if (!e150P4Mode) return null;
+    const opener = E150_P4_OPENERS[e150P4Mode];
+    const _e150Hour = (p4 && Number.isFinite(Number(p4.hour))) ? Number(p4.hour) : null;
+    const _e150NowTs = (Number.isFinite(Number(now)) && Number(now) > 0) ? Number(now) : Date.now();
+    const band = circadianBandOf(_e150Hour !== null ? _e150Hour : new Date(_e150NowTs).getHours());
+    const timeRow = E150_P4_TIME[band];
+    let p4Line = `${(opener && (opener[l] || opener.zh)) || ''}${(timeRow && (timeRow[l] || timeRow.zh)) || ''}`.trim();
+    if (!p4Line || p4Line.includes('我在呢') || p4Line.includes('今天想聊点什么')) {
+      return null; // 🔒 锁1军令红线：P4 亦严禁产出冷启动兜底语形态
+    }
+    const n4 = String(p4.userName || '').trim();
+    if (n4 && n4.length <= 24) {
+      const sep4 = NAME_PREFIX_SEP[l] || ', ';
+      p4Line = `${n4}${sep4}${p4Line}`;
+    }
+    return { firstLine: p4Line, queue: [], p1Key: null, followedUp: false, p4Band: band };
+  }
 
   let firstLine = '';
   if (p1Key) {
@@ -396,6 +541,12 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
     const body = E149_MICRO_FOLLOWUPS[e149FollowUp];
     firstLine += `${(opener && opener[l]) || opener.zh} ${(body && body[l]) || body.zh}`;
   }
+  // 🆕 E150-刀三：P2 回忆层拼装——P1 在场则串联（P1+回忆同 P1+P2 串联形制），
+  //  无 P1 则单发（军令「轻问早间那份情绪此刻有没有延续或缓和」）。
+  if (e150Recall) {
+    const recallRow = E150_P2_RECALL[e150Recall];
+    firstLine += (recallRow && (recallRow[l] || recallRow.zh)) || '';
+  }
   // 🔒 锁1军令红线：产出句严禁等于冷启动兜底语（两形态）
   if (!firstLine || firstLine.includes('我在呢') || firstLine.includes('今天想聊点什么')) {
     return null;
@@ -404,6 +555,7 @@ export function resolveCompanionGreetingAndQueue({ recentReport, activeMood, lan
   const queue = [];
   if (p1Key) queue.push(p1Key);
   if (mood) queue.push(`mood:${mood}`);
+  if (e150Recall) queue.push(`mood:${e150Recall}`);
   if (e149FollowUp) queue.push(`micro:${e149FollowUp}`);
 
   // 姓名前缀（六语同构；坏 lang ⇒ 通用逗号——沿袭 E118 装配契约；P3 回访句

@@ -8,6 +8,10 @@ export const L_COPY_DONE: Readonly<Record<string, string>>;
 export function resolveCircadianPhase(hour: number, minute?: number): 'day' | 'night';
 export function circadianStatusLabel(lang: string, phase: string): string;
 export function composeCircadianStatus(bondLabel: string, hour: number, minute: number | undefined, lang: string): string;
+/** 🆕 E150-刀三：时段四档（状态栏词面与 P4 问候时段句真源） */
+export const L_CIRCADIAN_BANDS: Readonly<Record<string, Readonly<Record<string, string>>>>;
+export function circadianBandOf(hour: number, minute?: number): 'morning' | 'afternoon' | 'dusk' | 'night';
+export function circadianBandLabel(lang: string, band: string): string;
 export const ASTRAL_REUNION_GAP_MS: number;
 export const ASTRAL_LAST_ACTIVE_KEY: string;
 export function readLastActiveTs(store: unknown): number | null;
