@@ -946,19 +946,27 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
   height: auto;
 }
 .ks-fam-milo .ks-fam-tail {
-  /* 🥂 E153-刀二：尾层收纳入座——尾梢（层底 ≈ 本体图底）上提至可见轮廓底
-     （E152 图盒底锚时尾梢垂到按钮沿；军令「含猫尾落座按钮上方 10-14px」）。
-     top 46.41%→13.5%（尾高 59.6px ⇒ 尾底恰及 0.671H 可见底）。 */
-  left: 0%; top: 13.5%; width: 37.88%;
-  transform-origin: 86.2% 26.4%;
-  animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
+  /* 🐈 E153-P2 刀三（军令 2026-11-24「平摊翘尾」）：新尾素材 942×460 横构图
+     （旧 720×1156 竖构图「尾连耳朵」病灶源全退役）。锚定真值（PIL alpha 60）：
+     尾根接口在尾画布右端 (94.8%, 61.5%)——落盒内 (89.8%, 65.6%) 右臀低位
+     （远低于耳区 0~20%H，军令「严禁与耳齐平」）；尾身下沿 y 0.976H ⇒ 盒内
+     78.3px 压按钮顶 3.6px（P1 贴沿区间 [-2,+6] 内，「沿按钮上沿平摊」）；
+     尾尖螺旋 (5%, 49%) ⇒ 盒内 (-61.7, 38.8) 伸盒左外 61.7px 上扬。
+     width 170% ＝ 166.6px，尾臂 ~158px ⇒ 摆动 ±4deg 位移 ±11px 全帧
+     停留按钮上表面之上（零遮挡六语文字）。 */
+  left: -71.4%; top: -9%; width: 170%;
+  transform-origin: 94.8% 61.5%;
+  animation: ksFamTailLeisurely 4.8s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
-  /* 🥂 E153-刀二：Sophia 尾高 70px ≈ 可见身高 ⇒ 尾根上提至球顶后（z 序藏
-     球后，E65e 铁律），尾身沿球右侧垂下、尾梢及爪沿落座。 */
-  left: 58.42%; top: 1.8%; width: 41.58%;
-  transform-origin: 20.8% 38.6%;
-  animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
+  /* 🐈 E153-P2 刀三：Sophia 镜像锚（尾画布同 942×460，尾根接口在左端
+  (5%, 61.3%) 平切）——落盒内左侧低位（藏身体后 z 序）；与 Milo 完全镜像
+  对称（军令钦定构图）。真页校准（e153-p2-verify）：羽化透明边拖底实测
+  静止压 6~7px ⇒ top 整体上收至轻触 1px 内（fr/es/vi mobile 双行文字
+  bbox 顶距按钮顶仅 4px，预留零遮挡摆动余量）。 */
+  left: 3.8%; top: -7.1%; width: 170%;
+  transform-origin: 5% 61.3%;
+  animation: ksFamTailLeisurely 4.8s ease-in-out infinite alternate;
   animation-delay: 0.9s; /* E63: 与 4.7s/5.3s 瞬目错峰的相位差 */
 }
 /* 🐾 E63（主公钦定终版 keyframes 2026-10-17 · 「慢速悠闲轻旋/画圆微动」总令）:
@@ -966,11 +974,17 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
    4.5s ease-in-out infinite alternate（0%≡100%，alternate 正反往复＝连续小圈）。
    军令即单组 keyframes 双宠共用（.ks-tail-sophia/.ks-tail-milo ⇒ 本仓类名
    .ks-fam-milo/.ks-fam-tail 与 .ks-fam-sophia/.ks-fam-tail）；Sophia +0.9s 相位差与瞬目错峰。 */
+/* 🐈 E153-P2 刀三（军令 2026-11-24「缓动呼吸摆」终版）：摆角 -3deg↔+4deg、
+   4.8s ease-in-out infinite alternate——单组 keyframes 双宠共用契约（E63）
+   保留；镜像构图（Milo 尾向左/Sophia 向右）⇒ 同角度天然互补呼吸。
+   translateY(-10px)＝包围盒膨胀镜像补偿：-3deg 左端下压 8.2px（Milo 0% 帧）、
+   +4deg 右端下压 10.4px（Sophia 100% 帧）——双帧同挂，静止帧（animation
+   none 无 transform）贴沿轻触不受影响；真页实测 mobile 折行语（fr/es/vi
+   文字顶距按钮顶仅 4px）最坏帧补偿后全帧 bbox 底≈静止位，任意帧零遮挡
+   六语文字。尾梢轨迹＝轻盈上提 10px 呼吸摆（静态贴沿、动态微扬）。 */
 @keyframes ksFamTailLeisurely {
-  0%   { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
-  33%  { transform: rotate(1.8deg)  skewX(1deg)  translateY(0.5px); }
-  66%  { transform: rotate(-1.5deg) skewX(-1deg) translateY(-0.5px); }
-  100% { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
+  0%   { transform: rotate(-3deg) translateY(-10px); }
+  100% { transform: rotate(4deg) translateY(-10px); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }
@@ -1181,11 +1195,11 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
 /* Milo 尾巴大弧度欢快甩动（E113 军令钦定 rotate 22deg＋弹性阻尼回弹） */
 .ks-fam-milo.ks-fam-idle .ks-fam-tail { animation: ksFamMiloTailFlick 2.4s ease-in-out; }
 @keyframes ksFamMiloTailFlick {
-  0%, 100% { transform: rotate(0deg)    skewX(0deg)  translateY(0); }
-  28%      { transform: rotate(22deg)   skewX(6deg)  translateY(-4px); }  /* 大弧度欢快甩尾（E113 军令 22deg） */
-  48%      { transform: rotate(-9deg)   skewX(-3deg) translateY(-2px); }  /* 弹性阻尼回弹 */
-  66%      { transform: rotate(12deg)   skewX(4deg)  translateY(-3px); }  /* 二次衰减摆动 */
-  84%      { transform: rotate(-4deg)   skewX(-2deg) translateY(-1px); }  /* 收敛回正 */
+  0%, 100% { transform: rotate(0deg)    skewX(0deg)   translateY(0); }
+  28%      { transform: rotate(7deg)    skewX(2deg)   translateY(-4px); }  /* 欢快甩尾（E113 弹性序列 E153-P2 换横尾后角度等比收敛 22→7deg：尾臂 37→158px 等位移换算） */
+  48%      { transform: rotate(-3deg)   skewX(-1deg)  translateY(-2px); }  /* 弹性阻尼回弹 */
+  66%      { transform: rotate(4deg)    skewX(1.5deg) translateY(-3px); }  /* 二次衰减摆动 */
+  84%      { transform: rotate(-1.5deg) skewX(-0.7deg) translateY(-1px); }  /* 收敛回正 */
 }
 /* 🏆 E112-刀一（军令钦定）：Milo 星芒气泡——嘴边呼出晶蓝带金边小气泡
    ⇒斜上漂移⇒「啵」破裂⇒化作金色微尘粒子向星空四散消散（2.4s 全程）。
@@ -1303,11 +1317,13 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
   0%, 100% { transform: rotate(0deg) translateY(0); }
   50%      { transform: rotate(3deg) translateY(-1.5px); }
 }
-/* Milo「欢快分享」：尾巴大幅欢快摆（军令摆动周期 1.8s） */
+/* Milo「欢快分享」：尾巴欢快摆（军令摆动周期 1.8s；E153-P2 横尾角度收敛
+   ±13→±4deg：尾臂 158px×sin13°=35.6px 会穿按钮 padding 区，收敛后全帧
+   |dy|≤11px 安全） */
 .ks-fam-milo.ks-fam-live .ks-fam-tail { animation: ksFamMiloLiveTail 1.8s ease-in-out infinite; }
 @keyframes ksFamMiloLiveTail {
-  0%, 100% { transform: rotate(-13deg) skewX(-4deg) translateY(-2px); }
-  50%      { transform: rotate(13deg) skewX(4deg) translateY(-4px); }
+  0%, 100% { transform: rotate(-4deg) skewX(-1.5deg) translateY(-2px); }
+  50%      { transform: rotate(4deg)  skewX(1.5deg)  translateY(-4px); }
 }
 /* Milo 头顶 1~2 颗金色微缩星尘周期性上飘（错相位） */
 .ks-fam-live-dust {

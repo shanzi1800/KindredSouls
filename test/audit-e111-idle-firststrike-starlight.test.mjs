@@ -62,9 +62,9 @@ test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾
   assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层高光 drop-shadow 20px 1（E113 军令真值）');
   assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层粉金光 drop-shadow 35px 0.85（E113 军令真值）');
   assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 55\.0%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值；🥂 E153-刀二 裁切盒重标定）');
-  // ④ Milo 尾巴大弧度甩动 22deg 弹性阻尼回弹（E113 军令）＋星芒气泡 22px 晶蓝金边→斜上漂 50px 破裂 5 金尘（E114-刀三 后继）
+  // ④ Milo 尾巴欢快甩尾 7deg 弹性阻尼回弹（E113 军令；E153-P2 换横尾后等位移换算 22→7deg）＋星芒气泡 22px 晶蓝金边→斜上漂 50px 破裂 5 金尘（E114-刀三 后继）
   assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾摆动画');
-  assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
+  assert.ok(/rotate\(7deg\)/.test(css) && /rotate\(-3deg\)/.test(css), '尾摆须 7deg＋弹性回弹（E113 军令；E153-P2 横尾尾臂 158px 等位移收敛）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-tail'), '尾摆未挂尾层');
   assert.ok(css.includes('ksFamPopBub'), '缺星芒气泡动画（E112 少年活力神态）');
   assert.ok(css.includes('ksFamPopDust'), '缺气泡破裂金尘动画');

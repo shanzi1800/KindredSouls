@@ -43,8 +43,8 @@ test('E112 S1 刀一动效：初触发提前＋振幅增强＋Milo 星芒气泡�
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
   assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层 drop-shadow 20px 1（E113 军令真值）');
   assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层 drop-shadow 35px 0.85（E113 军令真值·粉金能量脉冲）');
-  // ④ Milo 尾巴大弧度甩动 22deg＋弹性阻尼回弹＋坏笑挑眉（blink 眯眼帧＋smirk 层）
-  assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
+  // ④ Milo 尾巴欢快甩尾 7deg＋弹性阻尼回弹＋坏笑挑眉（blink 眯眼帧＋smirk 层；E153-P2 横尾角度等位移收敛）
+  assert.ok(/rotate\(7deg\)/.test(css) && /rotate\(-3deg\)/.test(css), '尾摆须 7deg＋弹性回弹（E113 军令；E153-P2 换横尾后继）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-img-blink'), '缺 Milo 坏笑眯眼帧');
   assert.ok(css.includes('ksFamMiloSmirk'), '缺 Milo 坏笑挑眉 smirk 层（E113 军令「必须注入」）');
   // ⑤ 星芒气泡：22px 晶蓝带金边→斜上漂 50px→「啵」破裂→5 颗金尘消散（E114-刀三）

@@ -58,10 +58,11 @@ test('E113 S2 刀一振幅再强化：-10px 拱背＋rotate 仰角＋20px35px �
   // ② 宝石光晕军令钦定真值逐字：20px rgba(244,184,206,1) + 35px rgba(232,199,154,0.85)
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
   assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\) drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '光晕须军令钦定双层 20px/35px 逐字');
-  // ③ Milo 尾 22deg＋弹性阻尼回弹序列
+  // ③ Milo 尾 7deg＋弹性阻尼回弹序列（E113 军令 22deg；E153-P2 换横构图尾
+  //    （942×460，尾臂 37→158px）等位移换算收敛：22/-9/12/-4 → 7/-3/4/-1.5）
   const tail = (css.match(/@keyframes ksFamMiloTailFlick \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/rotate\(22deg\)/.test(tail), '尾摆须 22deg（军令钦定）');
-  assert.ok(/rotate\(-9deg\)/.test(tail) && /rotate\(12deg\)/.test(tail) && /rotate\(-4deg\)/.test(tail), '缺弹性阻尼回弹衰减序列');
+  assert.ok(/rotate\(7deg\)/.test(tail), '尾摆须 7deg（E113 军令；E153-P2 横尾等位移收敛）');
+  assert.ok(/rotate\(-3deg\)/.test(tail) && /rotate\(4deg\)/.test(tail) && /rotate\(-1\.5deg\)/.test(tail), '缺弹性阻尼回弹衰减序列（E153-P2 后继）');
   // ④ Milo 坏笑/自信挑眉微表情 smirk 层（军令「必须注入」）
   assert.ok(css.includes('ksFamMiloSmirk'), '缺 Milo smirk 坏笑挑眉层（E113 军令）');
   assert.ok(css.includes('.ks-fam-milo.ks-fam-idle .ks-fam-breathe'), 'smirk 须挂 breathe 叠加层（禁动几何）');

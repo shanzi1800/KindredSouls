@@ -7,6 +7,8 @@
  *   A3 气泡防溢出＋清 Lucky（刀三）：容器/按钮防溢出死锁＋六语换血＋状态栏折行
  *   A4 P2 优先权＋纯净锁（刀四）：模式链 P2 压 daily＋only-hello 重水合＋lang deps
  *   A5 冻结项零回归＋链位自保（120→121 段）
+ *   A6 E153-P2 平摊翘尾（刀三·军令 2026-11-24）：尾层新锚（942×460 横构图双宠镜像）
+ *      ＋-3↔+4deg/4.8s 呼吸摆＋idle/live 角度等位移收敛（任意帧零遮挡）＋DOM 序契约
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -204,4 +206,52 @@ test('A5-③ 链位自保：e153 入编（e152 后、e40-compat 前；全链 120
   assert.ok(i152 < i153 && i153 < i40, 'e153 须居 e152 后、e40-compat 前（python3 恒链尾）');
   const segs = chain.split('&&');
   assert.equal(segs.length, 121, `军规链段数须为 121（E153 入编后 120→121；实为 ${segs.length}）`);
+});
+
+/* ═══════════ A6 E153-P2 平摊翘尾（刀三·军令 2026-11-24「独立尾层素材替换」）═══════════ */
+
+test('A6-① 尾层新锚字面（双宠平摊翘尾·横构图 942×460）', () => {
+  assert.ok(/\.ks-fam-milo \.ks-fam-tail\s*\{[^}]*left: -71\.4%[^}]*top: -9%[^}]*width: 170%/.test(APP_CSS)
+    && /transform-origin: 94\.8% 61\.5%/.test((APP_CSS.match(/\.ks-fam-milo \.ks-fam-tail\s*\{[\s\S]*?\n\}/) || [''])[0]),
+    'Milo 尾层须新锚（尾根右端 94.8%/61.5% 落右臀低位）');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*left: 3\.8%[^}]*top: -7\.1%[^}]*width: 170%/.test(APP_CSS)
+    && /transform-origin: 5% 61\.3%/.test((APP_CSS.match(/\.ks-fam-sophia \.ks-fam-tail\s*\{[\s\S]*?\n\}/) || [''])[0]),
+    'Sophia 尾层须镜像新锚（尾根左端 5%/61.3%）');
+  // 旧竖构图锚全族禁回潮（含转义正则族防静默复活）
+  for (const stale of ['13.5%', '58.42%', '41.58%', '37.88%', '86.2%', '26.4%', '20.8%', '38.6%']) {
+    assert.ok(!APP_CSS.includes(stale), `旧尾锚字面 ${stale} 禁回潮（E153-P2 换尾后全退役）`);
+  }
+});
+
+test('A6-② 尾摆军令钦定：-3deg↔+4deg、4.8s 缓动呼吸摆（单组双宠共用）', () => {
+  const kf = (APP_CSS.match(/@keyframes ksFamTailLeisurely \{[\s\S]*?\n\}/) || [''])[0];
+  assert.ok(/rotate\(-3deg\)/.test(kf) && /rotate\(4deg\)/.test(kf), '尾摆须 -3deg↔+4deg（军令钦定）');
+  assert.ok(/rotate\(-3deg\) translateY\(-10px\)/.test(kf) && /rotate\(4deg\) translateY\(-10px\)/.test(kf), '双帧须 translateY(-10px) 包围盒膨胀镜像补偿（镜像构图 +4deg 对 Sophia 右端下压 10.4px；任意帧零遮挡硬约束）');
+  assert.ok(/\.ks-fam-milo \.ks-fam-tail\s*\{[^}]*animation: ksFamTailLeisurely 4\.8s/.test(APP_CSS)
+    && /\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*animation: ksFamTailLeisurely 4\.8s/.test(APP_CSS),
+    '双宠主摆须 4.8s（旧 4.5s 退役）');
+  assert.ok(!APP_CSS.includes('ksFamTailLeisurely 4.5s'), '旧 4.5s 字面禁回潮');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*animation-delay: 0\.9s/.test(APP_CSS), 'Sophia 0.9s 错峰相位差契约保留');
+});
+
+test('A6-③ 任意帧零遮挡收敛：idle/live 尾动画横构图等位移换算（尾臂 37→158px）', () => {
+  // idle 甩尾 22→7deg（e111/e112/e113 已后继）；live ±13→±4deg；tap 3deg×150px≈8px 安全不动
+  assert.ok(!/rotate\(22deg\)|rotate\(-9deg\)|rotate\(12deg\)|rotate\(-13deg\)|rotate\(13deg\)/.test(APP_CSS),
+    '旧大弧度尾摆角度全族禁回潮（横尾臂 158px 会穿按钮 padding 区）');
+  const live = (APP_CSS.match(/@keyframes ksFamMiloLiveTail \{[\s\S]*?\n\}/) || [''])[0];
+  assert.ok(/rotate\(-4deg\)/.test(live) && /rotate\(4deg\)/.test(live), 'live 摇尾须收敛 ±4deg');
+  const tap = (APP_CSS.match(/@keyframes ksFamTailTap \{[\s\S]*?\n\}/) || [''])[0];
+  assert.ok(/rotate\(3deg\)/.test(tap), 'TailTap 3deg 小幅打拍契约保留（位移 8px 安全）');
+  assert.ok(/\.ks-fam-tail, \.ks-fam-ears \{ transition: transform 0\.45s ease; \}/.test(APP_CSS), 'live 摘除平滑回落 transition 契约保留（e114）');
+});
+
+test('A6-④ 尾层素材与 DOM 序契约（z 序低于本体＋新素材在位）', () => {
+  // DOM 序即视觉序：尾层 img 在本体 img 之前（E65e 铁律——尾根藏身体后）
+  const iTail = HOME.indexOf('className="ks-fam-tail"');
+  const iBody = HOME.indexOf('className="ks-fam-img"');
+  assert.ok(iTail > -1 && iBody > -1 && iTail < iBody, '尾层须居本体之前（z 序低于本体）');
+  // 新素材 WebP 在位（942×460 横构图；旧 720×1156 竖构图退役）
+  assert.ok(existsSync(path.join(REPO, 'web/src/assets/familiar_milo_tail.webp')), 'Milo 新尾 WebP 须在位');
+  assert.ok(existsSync(path.join(REPO, 'web/src/assets/familiar_sophia_tail.webp')), 'Sophia 新尾 WebP 须在位');
+  assert.ok(existsSync(path.join(REPO, 'scripts/e153-p2-verify.mjs')), 'P2 真页验真脚本须在位（双视口×双朝向×六语）');
 });
