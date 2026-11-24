@@ -74,7 +74,7 @@ test('E113 S2 刀一振幅再强化：-10px 拱背＋rotate 仰角＋20px35px �
   assert.ok(/\.ks-fam-gemglow, \.ks-fam-pop \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
   // ⑦ 趴键几何铁律（E65g/E82）零漂移（🥂 E153-刀二：aspect-ratio 裁切盒落座）
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(css)
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*550/s.test(css)
     && /\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(css), 'E153 裁切盒双宠主位锚（translateY 位移退役）');
 });
 

@@ -8,6 +8,9 @@
  *   ⑤ 尾底轻贴按钮上沿（视觉零悬空）＋尾根藏臀（origin 落本体横向范围内且下半身低位）。
  *   ⑥ P1 守成复验：水平严格居中 |Δ|≤4px＋宠底贴沿 [−2,+6]＋宠盒宽 98 契约。
  * 引擎：agent-browser；目标 KS_BASE（默认本地 dist 静态服务 4180，产线可切换）。
+ * ⚠️ E153-P4 后继：尾底锚（bottom:2px→0）、尾摆（−3↔+4deg 双向摆→平放↔上扬单向摆）与
+ *    translate 补偿已由 P4「强制落地」军令改写——尾底/尾摆/压字三项以 scripts/e153-p4-verify.mjs
+ *    （实像素判据）为准；本脚本保留作 P3 图层序/尾宽/藏臀锚的历史验真，尾底与 bbox 项不再具约束力。
  */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';

@@ -806,7 +806,11 @@ body.ks-fam-ridden #ks-familiar-anchor { display: block; }
 body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
 .ks-fam-breakout {
   position: absolute;
-  top: 0;                /* 🥂 E153-刀二：锚点容器 in-flow 落座（旧 bottom:100% 图底锚退役） */
+  bottom: -3px;           /* 🛬 E153-P4 刀二（军令 2026-11-24 终结军令「强制落地」）：根容器锚
+                            按钮外层定位容器（.landing-start-wrap）的按钮上沿——in-flow 锚
+                            #ks-familiar-anchor 底边恒＝按钮顶边，故 bottom:-3px ≡ 军令
+                            「bottom:100%; margin-bottom:-3px」：实像素爪踩按钮上边框 3px
+                            零缝隙（与宠高/朝向/视口/语种全解耦）。旧盒顶锚退役。 */
   pointer-events: none;  /* 🔒 物理穿透（军令铁律）：身体/爪子 100% 让路，按钮点击 100% 命中 */
   z-index: 6;
   isolation: isolate;    /* 🛡️ E153-P3（军令 2026-11-24 纠偏）：根容器独立层叠上下文——
@@ -882,7 +886,9 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
      Milo 可见底 0.6711H ⇒ 720×549 裁切比）——translateY 位移全退役（锚点
      容器 in-flow 落座）；breathe 层绝对化防内容撑高盒身（E152 血训：图盒底
      对齐≠视觉落座）。e152-verify 守卫退役，e153-verify 宠位区间断言守备。 */
-  aspect-ratio: 720 / 549;
+  /* 🛬 E153-P4 刀一（军令 2026-11-24）：本体/眨眼图已物理裁除底部透明空气
+     （720×818/817→720×550，阈 60 可见底）——图盒＝实像素盒，盒底即爪尖。 */
+  aspect-ratio: 720 / 550;
 }
 .ks-fam-sophia {
   /* 🎯 E153-P1 刀一：56%→50% 严格居中（PIL cx=0.3597，画布 720×822，可见 x[2,515]） */
@@ -899,7 +905,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
   left: 0;
   /* 🛡️ E153-P3（军令 2026-11-24 纠偏·breathe 盒几何收敛）：盒宽高收敛到宠盒
      100%（本体图自然高 818 系底 33% 透明死区照旧溢出渲染，视觉零变化）——
-     病根：breathe 盒原为 img 自然高 111px ⇒ 尾层军令锚 bottom:2px 落死区底
+     病根：breathe 盒原为 img 自然高 111px ⇒ 尾层旧 bottom 偏移锚落死区底
      沿＝爪线下 36px（P2 top 锚校准曾掩盖此层）。收敛后 bottom 锚＝盒底＝
      爪线/按钮顶，军令「尾底轻贴按钮上沿零悬空」语义成立。 */
   width: 100%;
@@ -964,19 +970,19 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
      侧向 top 锚＝「长猫头的毛毛虫」事故源，全数退役。死数字照抄军令：
      尾宽 108%（1.05W–1.15W 区间，W=本体 98px ⇒ 105.8px）；right:55% ⇒
      尾层右缘落盒 45%、尾根（origin 88%）落盒 32% 藏进 Milo 左下臀后
-     （可见轮廓左缘 27.6% ⇒ 根际残片被球体遮蔽）；bottom:2px ⇒ 尾底
+     （可见轮廓左缘 27.6% ⇒ 根际残片被球体遮蔽）；bottom:0（P4 落地）⇒ 尾底
      轻贴按钮上边框（视觉零悬空）；尾身顺按钮上沿向左平摊、尾尖上扬。 */
-  right: 55%; bottom: 2px; width: 108%;
+  right: 55%; bottom: 0; width: 108%;   /* 🛬 E153-P4 刀二：bottom:0 尾底与裁后爪线齐平（旧 2px 偏移退役） */
   transform-origin: 88% 85%;
   animation: ksFamTailLeisurely 4.8s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
   /* 🐈 E153-P3：Sophia 镜像死数字照抄军令——尾宽 108%；left:55% ⇒ 尾根
      （origin 12%）落盒 68% 藏进 Sophia 右下臀后（可见轮廓右缘 71.5%）；
-     bottom:2px 轻贴按钮上沿；尾身顺按钮上沿向右平摊、尾尖上扬。 */
-  left: 55%; bottom: 2px; width: 108%;
+     bottom:0（P4 落地）轻贴按钮上沿；尾身顺按钮上沿向右平摊、尾尖上扬。 */
+  left: 55%; bottom: 0; width: 108%;    /* 🛬 E153-P4 刀二：bottom:0 尾底与裁后爪线齐平（旧 2px 偏移退役） */
   transform-origin: 12% 85%;
-  animation: ksFamTailLeisurely 4.8s ease-in-out infinite alternate;
+  animation: ksFamTailLeisurelyMirror 4.8s ease-in-out infinite alternate;
   animation-delay: 0.9s; /* E63: 与 4.7s/5.3s 瞬目错峰的相位差 */
 }
 /* 🐾 E63（主公钦定终版 keyframes 2026-10-17 · 「慢速悠闲轻旋/画圆微动」总令）:
@@ -984,15 +990,23 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
    4.5s ease-in-out infinite alternate（0%≡100%，alternate 正反往复＝连续小圈）。
    军令即单组 keyframes 双宠共用（.ks-tail-sophia/.ks-tail-milo ⇒ 本仓类名
    .ks-fam-milo/.ks-fam-tail 与 .ks-fam-sophia/.ks-fam-tail）；Sophia +0.9s 相位差与瞬目错峰。 */
-/* 🐈 E153-P3（军令 2026-11-24 纠偏）：摆角 -3deg↔+4deg、4.8s ease-in-out
-   infinite alternate——单组 keyframes 双宠共用契约（E63）保留。translateY(-5px)
-   ＝108% 小尾等位移补偿（等比换算：P2 巨尾臂 158px 补 −10px ⇒ 小尾臂 93px
-   补 −5px；旋转 bbox 膨胀下移 ~4.8px 对 fr/es/vi mobile 双行文字顶距 4px
-   临界）——静止帧（animation:none 无 transform）零悬空贴沿＝军令静态形态；
-   动画帧尾梢微扬 5px 呼吸感（E52~E63 活体传统），bbox 全帧零重叠六语文字。 */
-@keyframes ksFamTailLeisurely {
-  0%   { transform: rotate(-3deg) translateY(-5px); }
-  100% { transform: rotate(4deg) translateY(-5px); }
+/* 🐈 E153-P3（军令 2026-11-24 纠偏）：4.8s ease-in-out infinite alternate 节奏
+   保留。P3 的 −3deg↔+4deg 双向摆与 translateY 双帧补偿，E153-P4 起按下文「平放↔尾梢
+   上扬」单向摆全数退役（尾平躺按钮后下压半程会钻进键面）。 */
+/* 🛬 E153-P4 刀二（军令 2026-11-24「还是悬空着」终结）：P3 的 translateY(-5px) 补偿全退役——
+   P3 的等位移补偿把整条尾巴抬离按钮上沿 5px（尾图最底 7 行为 600~737px 宽的
+   实像素平边 ⇒ 尾底悬空＝主公肉眼「悬空」真凶）。现尾层 bottom:0＝尾底与爪线
+   齐平、平搭按钮上沿。摆向改「平放 ↔ 尾梢上扬」单向摆（P4 实像素验收修正）：
+   尾既平躺按钮，下压摆（Milo −3deg / Sophia +4deg）会让尾梢钻进键面 2.9px，
+   mobile 越南语双行长文（文字顶距按钮顶仅 4px）尾实像素压进文字 bbox——
+   故退役下压半程，任意帧尾底不低于静止爪线。4.8s alternate 原样保留。 */
+@keyframes ksFamTailLeisurely {        /* Milo：尾在左、根在右 ⇒ 正角＝尾梢上扬 */
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(4deg); }
+}
+@keyframes ksFamTailLeisurelyMirror {  /* Sophia：尾在右、根在左 ⇒ 负角＝尾梢上扬 */
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-3deg); }
 }
 @keyframes ksFamBreatheMilo {
   0%, 100% { transform: scale(1) rotate(0deg); }

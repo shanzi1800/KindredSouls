@@ -84,7 +84,7 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   assert.ok(css.includes('left: calc(50% - 0.3597 * min(98px, 70%))'), 'Sophia 视觉重心锚 50% 居中（E153-P1）');
   // 🥂 E153-刀二（军令 2026-11-24）：E65f 趴键深压退役 ⇒ aspect-ratio 裁切盒落座
   //    （灵宠可见轮廓底缘精确落座按钮顶沿上方 10-14px；translateY 位移全退役）
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(css)
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*550/s.test(css)
     && /\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(css)
     && /\.ks-fam-breathe\s*\{[^}]*position:\s*absolute/s.test(css), '双宠主位 aspect-ratio 裁切盒＋breathe 绝对化（E153-刀二）');
   // ② E111 新增规则禁触碰 breakout 顶层几何：idle 规则块内禁 left/width/translateY 布局改写

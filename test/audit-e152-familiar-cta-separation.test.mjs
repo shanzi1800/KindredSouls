@@ -43,8 +43,8 @@ const block1024 = APP_CSS.slice(APP_CSS.indexOf('@media (min-width: 1024px)'), A
 test('A1 纵列落座几何：aspect-ratio 裁切盒＋in-flow 锚点容器＋条件间距类（E153-刀二）', () => {
   // ① 双宠主位（🥂 E153-刀二：translateY(-2px) 位移全退役——aspect-ratio 裁切盒
   //    锁定可见轮廓真值（PIL alpha 实测：Milo 可见底 0.6711H / Sophia 0.6436H））
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(APP_CSS),
-    'Milo 须 aspect-ratio 720/549（裁切盒真值）');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*550/s.test(APP_CSS),
+    'Milo 须 aspect-ratio 720/550（裁切盒真值；E153-P4 物理裁图后 549→550）');
   assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APP_CSS),
     'Sophia 须 aspect-ratio 720/530（裁切盒真值）');
   assert.ok(!/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\)/s.test(APP_CSS)
@@ -54,9 +54,9 @@ test('A1 纵列落座几何：aspect-ratio 裁切盒＋in-flow 锚点容器＋�
   assert.ok(/position:\s*absolute/.test(br), 'breathe 层须绝对化（盒高唯一真源 aspect-ratio，防内容撑高）');
   assert.ok(!APP_CSS.includes('translateY(calc(38.9% + 6px))') && !APP_CSS.includes('translateY(calc(39.2% + 6px))'),
     '旧 E65f 趴键深压 calc 形态须全数退役');
-  // ② breakout 锚定（🥂 E153-刀二：top:0 锚 in-flow 锚点容器顶沿，旧 bottom:100% 退役）＋z6＋穿透
+  // ② breakout 锚定（🛬 E153-P4：bottom:-3px 锚 in-flow 锚点容器底边＝按钮顶边，旧 top:0 盒顶锚退役）＋z6＋穿透
   const bo = (APP_CSS.match(/\.ks-fam-breakout\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/top:\s*0/.test(bo), 'breakout 须 top:0 锚 in-flow 容器（E153-刀二）');
+  assert.ok(/bottom:\s*-3px/.test(bo), 'breakout 须 bottom:-3px 锚按钮上沿（E153-P4 强制落地）');
   assert.ok(/z-index:\s*6/.test(bo), 'breakout z6 须冻结（e106 契约）');
   assert.ok(/pointer-events:\s*none/.test(bo), 'breakout 须物理穿透（按钮点击 100% 命中）');
   // ③ 锚点容器 in-flow（72px 贴沿宠位；匿名 display:none 零占位）＋条件间距档

@@ -7,6 +7,7 @@
  *   A3 气泡防溢出＋清 Lucky（刀三）：容器/按钮防溢出死锁＋六语换血＋状态栏折行
  *   A4 P2 优先权＋纯净锁（刀四）：模式链 P2 压 daily＋only-hello 重水合＋lang deps
  *   A5 冻结项零回归＋链位自保（120→121 段）
+ *   A7 E153-P4 强制落地（军令 2026-11-24「还是悬空」终结）：6 图物理裁底透明行=0＋breakout bottom:-3px 锚按钮上沿＋尾底 bottom:0
  *   A6 E153-P3 尾层纠偏（军令 2026-11-24「盖脸事故」）：严锁图层前后（尾 z1/本体 z2/眨眼 z3＋根容器 isolation）
  *      ＋尾宽 108%（1.05W–1.15W）＋尾根藏臀（Milo right:55%/origin 88% 85%；Sophia left:55%/origin 12% 85%）
  *      ＋-3↔+4deg/4.8s 呼吸摆（translateY 补偿随巨尾退役）＋DOM 序契约
@@ -14,6 +15,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -80,7 +82,7 @@ test('A2-① in-flow 锚点容器（relative/72px 贴沿/匿名零占位）', ()
 });
 
 test('A2-② aspect-ratio 裁切盒＋translateY 退役＋breathe 绝对化', () => {
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(APP_CSS), 'Milo 须 720/549 裁切盒');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*550/s.test(APP_CSS), 'Milo 须 720/550 裁切盒（E153-P4 物理裁图后图盒＝实像素盒）');
   assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APP_CSS), 'Sophia 须 720/530 裁切盒');
   assert.ok(!/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\)/s.test(APP_CSS)
     && !/\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\)/s.test(APP_CSS),
@@ -88,7 +90,8 @@ test('A2-② aspect-ratio 裁切盒＋translateY 退役＋breathe 绝对化', ()
   const br = (APP_CSS.match(/\.ks-fam-breathe\s*\{[^}]*\}/) || [''])[0];
   assert.ok(/position:\s*absolute/.test(br), 'breathe 层须绝对化（防内容撑高盒身）');
   const bo = (APP_CSS.match(/\.ks-fam-breakout\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/top:\s*0/.test(bo), 'breakout 须 top:0（in-flow 容器顶沿锚定）');
+  assert.ok(/bottom:\s*-3px/.test(bo), 'breakout 须 bottom:-3px（E153-P4：爪踩按钮上边框 3px；旧 top:0 盒顶锚退役）');
+  assert.ok(!/\btop:\s*0\b/.test(bo), 'breakout 盒顶锚 top:0 禁回潮（E153-P4）');
 });
 
 test('A2-③ DOM 序即视觉序：锚点容器在 CTA 按钮之前', () => {
@@ -219,12 +222,12 @@ test('A6-① P3 死数字：图层严锁＋尾宽 108%＋尾根藏臀锚（Milo 
   assert.ok(/\.ks-fam-breakout\s*\{[^}]*isolation: isolate;/.test(APP_CSS), '根容器须 isolation:isolate（独立层叠上下文）');
   assert.ok(/\.ks-fam-breathe\s*\{[^}]*width: 100%;\s*\n\s*height: 100%;/.test(APP_CSS), 'breathe 盒须收敛宠盒 100%（尾层 bottom 锚＝爪线；img 自然高 818 系死区溢出曾致 bottom 锚深陷 36px）');
   // 尾宽 1.05W–1.15W 死锁（W=本体 98px ⇒ 108%）
-  assert.ok(/\.ks-fam-milo \.ks-fam-tail\s*\{[^}]*right: 55%; bottom: 2px; width: 108%;/.test(APP_CSS)
+  assert.ok(/\.ks-fam-milo \.ks-fam-tail\s*\{[^}]*right: 55%; bottom: 0; width: 108%;/.test(APP_CSS)
     && /transform-origin: 88% 85%;/.test((APP_CSS.match(/\.ks-fam-milo \.ks-fam-tail\s*\{[\s\S]*?\n\}/) || [''])[0]),
-    'Milo 尾层须军令死数字（right:55%/bottom:2px/108%/origin 88% 85%——尾根藏左下臀后）');
-  assert.ok(/\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*left: 55%; bottom: 2px; width: 108%;/.test(APP_CSS)
+    'Milo 尾层须军令死数字（right:55%/bottom:0（P4 落地）/108%/origin 88% 85%——尾根藏左下臀后）');
+  assert.ok(/\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*left: 55%; bottom: 0; width: 108%;/.test(APP_CSS)
     && /transform-origin: 12% 85%;/.test((APP_CSS.match(/\.ks-fam-sophia \.ks-fam-tail\s*\{[\s\S]*?\n\}/) || [''])[0]),
-    'Sophia 尾层须镜像死数字（left:55%/bottom:2px/108%/origin 12% 85%——尾根藏右下臀后）');
+    'Sophia 尾层须镜像死数字（left:55%/bottom:0（P4 落地）/108%/origin 12% 85%——尾根藏右下臀后）');
   // P2 巨尾锚全族禁回潮（170% 巨尾＝「长猫头的毛毛虫」事故源）
   for (const stale of ['-71.4%', 'width: 170%', '94.8% 61.5%', '5% 61.3%']) {
     assert.ok(!APP_CSS.includes(stale), `P2 巨尾锚字面 ${stale} 禁回潮（E153-P3 纠偏后全退役）`);
@@ -235,13 +238,22 @@ test('A6-① P3 死数字：图层严锁＋尾宽 108%＋尾根藏臀锚（Milo 
   }
 });
 
-test('A6-② 尾摆军令钦定：-3deg↔+4deg、4.8s 缓动呼吸摆（单组双宠共用）', () => {
+test('A6-② 尾摆 4.8s 缓动呼吸摆：平放↔尾梢上扬单向摆（E153-P4 落地修正；双宠镜像）', () => {
   const kf = (APP_CSS.match(/@keyframes ksFamTailLeisurely \{[\s\S]*?\n\}/) || [''])[0];
-  assert.ok(/rotate\(-3deg\)/.test(kf) && /rotate\(4deg\)/.test(kf), '尾摆须 -3deg↔+4deg（军令钦定）');
-  assert.ok(!/translateY\(-10px\)/.test(kf), 'P2 巨尾 −10px 补偿禁回潮（108% 小尾等比补偿为 −5px）');
-  assert.ok(/rotate\(-3deg\) translateY\(-5px\)/.test(kf) && /rotate\(4deg\) translateY\(-5px\)/.test(kf), '双帧须 translateY(-5px) 等位移补偿（尾臂 93px×sin3°≈4.8px bbox 膨胀 vs fr/es/vi mobile 双行文字顶距 4px 临界；静止帧 animation:none 零悬空贴沿不受影响）');
+  const kfm = (APP_CSS.match(/@keyframes ksFamTailLeisurelyMirror \{[\s\S]*?\n\}/) || [''])[0];
+  // P3 的 −3deg↔+4deg 双向摆（Milo 下压半程 −3deg / Sophia 下压半程 +4deg）E153-P4 起退役：
+  // 尾平躺按钮后下压摆会让尾梢实像素钻进键面 2.9px，压 mobile 越南语双行文字 bbox。
+  // 单向摆：低点＝平放（0deg，尾底贴按钮上沿），高点＝尾梢上扬。
+  assert.ok(/0%\s*\{ transform: rotate\(0deg\); \}/.test(kf) && /100%\s*\{ transform: rotate\(4deg\); \}/.test(kf), 'Milo 尾摆须 0deg↔+4deg（尾在左·根在右 ⇒ 正角上扬）');
+  assert.ok(/0%\s*\{ transform: rotate\(0deg\); \}/.test(kfm) && /100%\s*\{ transform: rotate\(-3deg\); \}/.test(kfm), 'Sophia 尾摆须 0deg↔−3deg（尾在右·根在左 ⇒ 负角上扬）');
+  for (const [nm, blk] of [['ksFamTailLeisurely', kf], ['ksFamTailLeisurelyMirror', kfm]]) {
+    assert.ok(!/translate/.test(blk), `${nm} 禁一切位移补偿（P3 −5px 等位移补偿把整条尾巴抬离按钮 5px＝「还是悬空」真凶）`);
+    const degs = [...blk.matchAll(/rotate\((-?[\d.]+)deg\)/g)].map((m) => Number(m[1]));
+    if (nm === 'ksFamTailLeisurely') assert.ok(degs.every((d) => d >= 0), 'Milo 禁负角（下压摆）');
+    else assert.ok(degs.every((d) => d <= 0), 'Sophia 禁正角（下压摆）');
+  }
   assert.ok(/\.ks-fam-milo \.ks-fam-tail\s*\{[^}]*animation: ksFamTailLeisurely 4\.8s/.test(APP_CSS)
-    && /\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*animation: ksFamTailLeisurely 4\.8s/.test(APP_CSS),
+    && /\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*animation: ksFamTailLeisurelyMirror 4\.8s/.test(APP_CSS),
     '双宠主摆须 4.8s（旧 4.5s 退役）');
   assert.ok(!APP_CSS.includes('ksFamTailLeisurely 4.5s'), '旧 4.5s 字面禁回潮');
   assert.ok(/\.ks-fam-sophia \.ks-fam-tail\s*\{[^}]*animation-delay: 0\.9s/.test(APP_CSS), 'Sophia 0.9s 错峰相位差契约保留');
@@ -268,3 +280,63 @@ test('A6-④ 尾层素材与 DOM 序契约（z 序低于本体＋新素材在位
   assert.ok(existsSync(path.join(REPO, 'web/src/assets/familiar_sophia_tail.webp')), 'Sophia 新尾 WebP 须在位');
   assert.ok(existsSync(path.join(REPO, 'scripts/e153-p3-verify.mjs')), 'P3 真页验真脚本须在位（双视口×双朝向×六语）');
 });
+
+/* ═══════════ A7 E153-P4 强制落地（军令 2026-11-24「还是悬空着」终结：物理裁图×锚按钮上沿）═══════════ */
+
+test('A7-① 刀一物证：6 张灵宠 WebP 底透明行===0（字面 alpha>0 与真值阈 60 双口径）＋本体/眨眼尺寸完全一致', () => {
+  const py = `
+import json
+from PIL import Image
+import numpy as np
+base = 'web/src/assets/'
+out = {}
+for n in ['familiar_milo','familiar_milo_blink','familiar_sophia','familiar_sophia_blink','familiar_milo_tail','familiar_sophia_tail']:
+    a = np.array(Image.open(base + n + '.webp').convert('RGBA'))[:, :, 3]
+    def tail_rows(mask):
+        rows = np.where(mask.any(axis=1))[0]
+        return int(a.shape[0] - 1 - rows.max()) if len(rows) else int(a.shape[0])
+    out[n] = {'w': int(a.shape[1]), 'h': int(a.shape[0]),
+              'transparent_tail_rows': tail_rows(a > 0),      # 军令字面口径（alpha>0）
+              'transparent_tail_rows_t60': tail_rows(a > 60)}  # 真值口径（近透明杂像素不算实像素）
+print(json.dumps(out))
+`;
+  const res = spawnSync('python3', ['-c', py], { cwd: REPO, encoding: 'utf8' });
+  assert.ok(res.status === 0, `PIL 解码灵宠 WebP 失败（需 venv python＋Pillow）：${(res.stderr || res.error || '').toString().slice(0, 300)}`);
+  const dims = JSON.parse(res.stdout);
+  const EXPECT = {
+    familiar_milo: [720, 550], familiar_milo_blink: [720, 550],
+    familiar_sophia: [720, 530], familiar_sophia_blink: [720, 530],
+    familiar_milo_tail: [942, 460], familiar_sophia_tail: [942, 460],
+  };
+  for (const [n, [w, h]] of Object.entries(EXPECT)) {
+    assert.deepEqual([dims[n].w, dims[n].h], [w, h], `${n} 须 ${w}×${h}（E153-P4 刀一物理裁图真值）`);
+    assert.equal(dims[n].transparent_tail_rows, 0, `${n} 底透明行须 ===0（军令字面口径 alpha>0）`);
+    assert.equal(dims[n].transparent_tail_rows_t60, 0, `${n} 底透明行须 ===0（真值口径 alpha>60：旧图底部 35% 是 alpha 1–59 杂像素）`);
+  }
+  // 本体与眨眼帧尺寸完全一致（眨眼层 inset:0 叠加，尺寸错位＝闭眼帧五官漂移）
+  assert.deepEqual([dims.familiar_milo.w, dims.familiar_milo.h], [dims.familiar_milo_blink.w, dims.familiar_milo_blink.h], 'Milo 本体/眨眼须同尺寸（旧 818/817 错位退役）');
+  assert.deepEqual([dims.familiar_sophia.w, dims.familiar_sophia.h], [dims.familiar_sophia_blink.w, dims.familiar_sophia_blink.h], 'Sophia 本体/眨眼须同尺寸');
+  assert.ok(existsSync(path.join(REPO, 'scripts/e153-p4-crop.py')), 'P4 物理裁图脚本须在位（可重入：恒读 dev-artifacts/e153-p4-backup 原件）');
+});
+
+test('A7-② 刀二落地死数字：breakout 锚按钮上沿 bottom:-3px＋图盒＝裁后实像素盒＋尾底 bottom:0 与爪线齐平', () => {
+  // ① 根容器底边锚＝按钮顶边＋3px（in-flow 锚 #ks-familiar-anchor 底边恒＝按钮顶边）
+  const bo = (APP_CSS.match(/\.ks-fam-breakout\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/position:\s*absolute/.test(bo) && /bottom:\s*-3px/.test(bo), 'breakout 须 absolute＋bottom:-3px（爪踩按钮上边框 3px 零缝隙）');
+  assert.ok(!/[\s/]top:\s*-?\d/.test(bo), 'breakout 盒顶锚禁回潮（盒顶锚下 Sophia 仅 0.1px 搭线＝视觉悬空）');
+  // ② 图盒＝实像素盒：裁后图自然高与 aspect-ratio 盒高一致（img height:auto 不再溢出盒底）
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*550/s.test(APP_CSS), 'Milo 盒比须＝裁后图比 720/550');
+  assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APP_CSS), 'Sophia 盒比须＝裁后图比 720/530');
+  // ③ 尾底与爪线齐平：bottom:0（尾图最底 7 行为 600~737px 宽实像素平边，抬离 1px 即肉眼悬空）
+  for (const pet of ['milo', 'sophia']) {
+    const tb = (APP_CSS.match(new RegExp(`\\.ks-fam-${pet} \\.ks-fam-tail\\s*\\{[^}]*\\}`)) || [''])[0];
+    assert.ok(/bottom:\s*0;/.test(tb), `${pet} 尾层须 bottom:0（尾底与爪线齐平，平搭按钮上沿）`);
+    assert.ok(!/bottom:\s*-?\d+(\.\d+)?px/.test(tb), `${pet} 尾层非零 bottom 偏移禁回潮`);
+  }
+  const kf = (APP_CSS.match(/@keyframes ksFamTailLeisurely \{[\s\S]*?\n\}/) || [''])[0];
+  const kfm = (APP_CSS.match(/@keyframes ksFamTailLeisurelyMirror \{[\s\S]*?\n\}/) || [''])[0];
+  assert.ok(!/translate/.test(kf) && !/translate/.test(kfm), '尾摆 keyframes（双宠镜像组）禁位移补偿（抬尾即悬空）');
+  assert.ok(!/0%\s*\{ transform: rotate\(-3deg\)/.test(kf), 'P3 下压双向摆起点 −3deg 禁回潮（mobile 越南语文字 bbox 实像素压字）');
+  assert.ok(existsSync(path.join(REPO, 'scripts/e153-p4-verify.mjs')), 'P4 真页验真脚本须在位（petBox.bottom∈[ctaTop,ctaTop+6] 双视口×双朝向×六语）');
+});
+
