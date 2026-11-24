@@ -778,25 +778,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   margin-top: 72px;
 }
 #ks-familiar-anchor {
-  position: absolute;
-  left: 0;
-  top: 0;
+  /* 🥂 E153-刀二（军令 2026-11-24）：灵宠锚点容器改「干净标准纵列」——
+     relative 真实占位（76px 宠位＋12px 落座间距＝军令钦定 CTA 上方 10-14px），
+     废除 E65 零高锚＋E152 全高 124px 让位（主公实拍病灶②真根：身体 sprite
+     底部 33-36% 全透明死区——图盒底对齐≠视觉落座，可见猫身悬空 39-42px）。
+     匿名访客 display:none 零占位（E52 72px 基线零扰动）。 */
+  position: relative;
   width: 100%;
-  height: 0;
+  height: 76px;
+  margin: 0 0 12px;
+  display: none;
   pointer-events: none;
   /* 🐾 E65g: z2 > 按钮 z1 —— 灵宠锚定层明确高于按钮（WebKit 实机物证修复） */
   z-index: 2;
 }
-/* 🥂 E152-刀一（军令 2026-11-24）：灵宠骑乘间距条件档——灵宠换血为「纵向分离」
-   形制（translateY(-2px)：底缘含尾梢完全位于按钮顶沿之上）后，灵宠全高
-   （98px 宽 ⇒ 画布比高 ≈ 112px）须由 wrap 顶距全额让位：灵宠在场
-   （body.ks-fam-ridden——FamiliarHomeCard 挂载态条件类）⇒ margin-top 124px；
-   匿名访客无灵宠 ⇒ E52 钦定 72px 基线零扰动。选择器 specificity 压
-   1024 块 84px 覆写（双视口通吃）。 */
-body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
+body.ks-fam-ridden #ks-familiar-anchor { display: block; }
+/* 🥂 E153-刀二（军令 2026-11-24）：灵宠骑乘间距条件档——锚点容器 in-flow
+   真实占位（76px 宠位＋12px 落座间距）后，灵宠在场（body.ks-fam-ridden
+   ——FamiliarHomeCard 挂载态条件类）⇒ wrap 顶距 18px（实测 subToFam 32px 入
+   军令 28-34px 档）；匿名访客无灵宠 ⇒ E52 钦定 72px 基线零扰动。选择器
+   specificity 压 1024 块 84px 覆写（双视口通吃）。 */
+body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
 .ks-fam-breakout {
   position: absolute;
-  bottom: 100%;          /* 灵宠底边先对齐按钮顶沿，再按自身高百分比下垂复现「搭键爪垫」 */
+  top: 0;                /* 🥂 E153-刀二：锚点容器 in-flow 落座（旧 bottom:100% 图底锚退役） */
   pointer-events: none;  /* 🔒 物理穿透（军令铁律）：身体/爪子 100% 让路，按钮点击 100% 命中 */
   z-index: 6;
   filter: drop-shadow(0 10px 24px rgba(20, 10, 40, 0.45));
@@ -860,18 +865,24 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
      ⇒ 灵宠渲染宽 98→143px 跳变。锁定 EN 基准 98px（138.5×70%），窄屏回 70% 适配；
      left 改 calc 保球心恒落键面 44%/56%（0.636/0.360 = E65d 资产球心占比真值）。 */
   left: calc(44% - 62.3px); width: min(98px, 70%);
-  /* 🥂 E152-刀一（军令 2026-11-24）：E65f 趴键深压退役——主公线上实拍实锤
-     「尾巴遮挡『定位我的坐标』末字『标』」。灵宠与主按钮纵向分离：底缘（含
-     尾梢/爪尖）抬至按钮顶沿之上 2px，六语长文案零像素遮挡（e152-verify 真页
-     DOM 断言守备）；wrap 顶距让位走 body.ks-fam-ridden 条件档（见下）。 */
-  transform: translateY(-2px);
+  /* 🥂 E153-刀二（军令 2026-11-24）：盒高裁至可见轮廓真值（PIL alpha 实测：
+     Milo 可见底 0.6711H ⇒ 720×549 裁切比）——translateY 位移全退役（锚点
+     容器 in-flow 落座）；breathe 层绝对化防内容撑高盒身（E152 血训：图盒底
+     对齐≠视觉落座）。e152-verify 守卫退役，e153-verify 宠位区间断言守备。 */
+  aspect-ratio: 720 / 549;
 }
 .ks-fam-sophia {
   left: calc(56% - 35.3px); width: min(98px, 70%);
-  /* 🥂 E152-刀一：同 Milo 纵向分离（旧 calc(39.2% + 6px) 趴键深压退役） */
-  transform: translateY(-2px);
+  /* 🥂 E153-刀二：同 Milo 裁切落座（Sophia 可见底 0.6436H ⇒ 720×530） */
+  aspect-ratio: 720 / 530;
 }
 .ks-fam-breathe {
+  /* 🥂 E153-刀二：绝对化＝内容不撑高 breakout 盒身（盒高唯一真源 aspect-ratio
+     裁切比）；本层自身尺寸＝本体图自然高（宽 100%×高 auto），子层 % 坐标
+     像素语义零漂移。 */
+  position: absolute;
+  top: 0;
+  left: 0;
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
   transform-origin: 50% 88%;
 }
@@ -923,12 +934,17 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   height: auto;
 }
 .ks-fam-milo .ks-fam-tail {
-  left: 0%; top: 46.41%; width: 37.88%;
+  /* 🥂 E153-刀二：尾层收纳入座——尾梢（层底 ≈ 本体图底）上提至可见轮廓底
+     （E152 图盒底锚时尾梢垂到按钮沿；军令「含猫尾落座按钮上方 10-14px」）。
+     top 46.41%→13.5%（尾高 59.6px ⇒ 尾底恰及 0.671H 可见底）。 */
+  left: 0%; top: 13.5%; width: 37.88%;
   transform-origin: 86.2% 26.4%;
   animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
 }
 .ks-fam-sophia .ks-fam-tail {
-  left: 58.42%; top: 37.49%; width: 41.58%;
+  /* 🥂 E153-刀二：Sophia 尾高 70px ≈ 可见身高 ⇒ 尾根上提至球顶后（z 序藏
+     球后，E65e 铁律），尾身沿球右侧垂下、尾梢及爪沿落座。 */
+  left: 58.42%; top: 1.8%; width: 41.58%;
   transform-origin: 20.8% 38.6%;
   animation: ksFamTailLeisurely 4.5s ease-in-out infinite alternate;
   animation-delay: 0.9s; /* E63: 与 4.7s/5.3s 瞬目错峰的相位差 */
@@ -968,10 +984,12 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
 .ks-fam-zone-head { left: 24%; top: 1%; width: 46%; height: 34%; border-radius: 46% 54% 50% 50%; }
 .ks-fam-zone-gem  { left: 30%; top: 38%; width: 42%; height: 32%; border-radius: 50%; }
 /* 🛡️ E65：新画布（945×1073 / 962×1099）命中区真值（脸部/蓝心宝石实测框） */
-.ks-fam-milo .ks-fam-zone-head { left: 45.6%; top: 0%; width: 45.3%; height: 30.1%; }
-.ks-fam-milo .ks-fam-zone-gem  { left: 54.7%; top: 35.4%; width: 28.1%; height: 22.1%; }
-.ks-fam-sophia .ks-fam-zone-head { left: 9.8%; top: 0%; width: 45.5%; height: 29.2%; }
-.ks-fam-sophia .ks-fam-zone-gem  { left: 17.9%; top: 35.4%; width: 28.3%; height: 22.2%; }
+/* 🥂 E153-刀二：命中区 % 高度随裁切盒重标定（盒高 111.3→74.7 ⇒ ×1.4908；
+   Sophia ×1.5538）——像素位零漂移（left/width 横向系零改动）。 */
+.ks-fam-milo .ks-fam-zone-head { left: 45.6%; top: 0%; width: 45.3%; height: 44.9%; }
+.ks-fam-milo .ks-fam-zone-gem  { left: 54.7%; top: 52.7%; width: 28.1%; height: 32.9%; }
+.ks-fam-sophia .ks-fam-zone-head { left: 9.8%; top: 0%; width: 45.5%; height: 45.4%; }
+.ks-fam-sophia .ks-fam-zone-gem  { left: 17.9%; top: 55.0%; width: 28.3%; height: 34.5%; }
 /* 呼吸微光脉冲（点中头部/宝石时） */
 .ks-fam-pulse .ks-fam-breathe { animation: ksFamPulse 0.75s ease-in-out 2; }
 @keyframes ksFamPulse {
@@ -981,22 +999,28 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
 /* 命理气泡轻语（纯展示，pointer-events:none 绝不挡操作）
    🐾 E65h（主公亲令 2026-10-18「气泡调整到 Sophia 左侧空间/Milo 右侧空间」）：
    旧位 bottom:106% 正上方在 390 视口实测压住「缘分天定」标题（气泡 y399~453 vs 标题 y402~450），
-   且标题群底(450)到球顶(460)仅 10px —— 垂直无解 ⇒ 移到灵宠**侧面**、与球体中上部同高：
-   bottom:56%（气泡 y≈447~519，副标题下/按钮上，球顶侧旁）；Milo（右侧宠区右缘 390 屏）
-   ⇒ left:100% 向右展开；Sophia ⇒ right:100% 向左展开（左侧空间 155px）。
-   max-width 收至 min(150px,40vw) 保两侧不溢出屏。真页实测：不遮标题/脸/按钮 ✓。 */
+   且标题群底(450)到球顶(460)仅 10px —— 垂直无解 ⇒ 移到灵宠**侧面**、与球体中上部同高；
+   Milo（右侧宠区右缘 390 屏）⇒ left:100% 向右展开；Sophia ⇒ right:100% 向左展开。
+   🧭 E153-刀三（主公军令 2026-11-24「全语种清剿」）：气泡防溢出死锁——
+   ① 容器放宽：min-width:224px / max-width:min(312px,86vw) / padding:14px 16px / box-sizing:border-box
+     （旧 150px 窄卡＝外语按钮破框溢出病灶）；
+   ② 垂直口径像素守恒换算：旧 56%×111.3px(图盒) → 新 34.4%×74.7px(裁切盒)
+     （E152 aspect-ratio 裁切盒后 56% 会抬太高；34.4% 保持原 62.3px 上移量零漂移）；
+   ③ E82 动态解耦公式 0.56→0.344 同步（FamiliarHomeCard vRaise）。 */
 .ks-fam-bubble {
   position: absolute;
-  bottom: 56%;
+  bottom: 34.4%;
   left: 100%;
   margin-left: 44px; /* 🧩 E71：右移 10mm（≈38px＋原 6px 间隙），让出中央标题右缘 */
   transform: none;
   width: max-content;
-  max-width: min(150px, calc(40vw - 44px)); /* 🧩 E71：限宽须扣 44px 位移，防 390 屏气泡出屏被裁 */
+  min-width: 224px; /* 🧭 E153-刀三：轻奢卡下限（六语顶标＋节奏行优雅占位） */
+  max-width: min(312px, 86vw); /* 🧭 E153-刀三：防溢出上限（泰/越长文安全折行） */
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 12px;
+  padding: 14px 16px; /* 🧭 E153-刀三：军令钦定轻奢内距 */
+  box-sizing: border-box; /* 🧭 E153-刀三：内距不撑破限宽 */
   background: rgba(24, 18, 38, 0.94);
   border: 1px solid rgba(212, 175, 55, 0.55);
   border-radius: 14px;
@@ -1073,7 +1097,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   padding: 0;
 }
 .ks-fam-chip:hover { opacity: 1; }
-.ks-fam-chip-test { top: auto; bottom: -3%; right: auto; left: 1%; color: #81D8D0; }
+.ks-fam-chip-test { top: auto; bottom: -4.5%; right: auto; left: 1%; color: #81D8D0; }
 
 /* ── 🌟 E111-刀一（主公军令 2026-11-01）：待机活体微动效 ──
    JS 调度器（FamiliarHomeCard）首触发 15~20s（E112 军令）⇒ breakout 加
@@ -1122,7 +1146,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
    0s~2.4s 与踩奶拱背完全同步——军令钦定时间轴） */
 .ks-fam-gemglow {
   position: absolute;
-  left: 17.9%; top: 35.4%; width: 28.3%; height: 22.2%; /* Sophia gem 命中区同框（E65 真值） */
+  left: 17.9%; top: 55.0%; width: 28.3%; height: 34.5%; /* Sophia gem 命中区同框（E65 真值；🥂 E153-刀二 裁切盒重标定 ×1.5538） */
   border-radius: 50%;
   pointer-events: none;
   background: radial-gradient(circle at 50% 46%, rgba(244, 184, 206, 0.34) 0%, rgba(244, 184, 206, 0) 62%);
@@ -1157,7 +1181,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
    （dx 28 / dy -41）；末端 scale(1.25) 轻盈膨胀后爆裂成 5 颗金色星尘。 */
 .ks-fam-pop {
   position: absolute;
-  left: calc(68% - 11px); top: 2%; /* 嘴边/头顶右侧（zone-head 中心 68.35%，E65 真值；22px 气泡半径居中） */
+  left: calc(68% - 11px); top: 3%; /* 嘴边/头顶右侧（zone-head 中心 68.35%，E65 真值；22px 气泡半径居中；🥂 E153-刀二 裁切盒重标定） */
   width: 22px;
   height: 22px;
   pointer-events: none;
@@ -1232,7 +1256,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
 .ks-fam-gempulse {
   position: absolute;
   left: calc(32.05% - 48px);  /* gem 命中区中心（17.9%+14.15%，E65 真值）——48px 半径层 */
-  top: calc(46.5% - 48px);    /* gem 纵向中心（35.4%+11.1%） */
+  top: calc(72.25% - 48px);    /* gem 纵向中心（🥂 E153-刀二 裁切盒重标定：55.0%+17.25%） */
   width: 96px;
   height: 96px;
   border-radius: 50%;
@@ -1277,7 +1301,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
 .ks-fam-live-dust {
   position: absolute;
   left: 55%;
-  top: -4%;
+  top: -6%;  /* 🥂 E153-刀二：裁切盒重标定 */
   width: 30px;
   height: 34px;
   pointer-events: none;
@@ -1313,7 +1337,7 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
    右侧（.ks-chat-star，见 chat 区）；点击飘字保留。 */
 .ks-fam-starfloat {
   position: absolute;
-  top: 18%;
+  top: 27%;  /* 🥂 E153-刀二：裁切盒重标定（宝石上方旧像素位守恒） */
   left: 50%;
   transform: translateX(-50%);
   color: #FFE9A8;
@@ -1337,9 +1361,8 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   .ks-fam-idle .ks-fam-breathe,
   .ks-fam-idle .ks-fam-img-blink,
   .ks-fam-idle .ks-fam-tail { animation: none; }
-  /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（E152-刀一 纵向分离位保持） */
-  .ks-fam-milo { transform: translateY(-2px); }
-  .ks-fam-sophia { transform: translateY(-2px); }
+  /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（🥂 E153-刀二：纵向落座
+     改锚点容器 in-flow 占位——translateY 位移形态全退役，无降级位可守） */
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
   /* 🌟 E111/E112-刀一：待机光效层随降级静默不播（gemglow 无光晕 / 星芒气泡不升腾） */
@@ -1881,7 +1904,13 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
    ══════════════════════════════════════════════════════════════════════════ */
 .ks-fam-bubble-cta {
   pointer-events: auto;
-  align-self: flex-start;
+  /* 🧭 E153-刀三（主公军令 2026-11-24）：卡片内按钮防溢出死锁——块级全宽＋
+     受控换行，杜绝任何非中文语种按钮撑破卡片右边框（旧「flex-start 自对齐
+     ＋ nowrap」＝en「Celestial Aura Today」破框溢出病灶）。 */
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 3px;
   background: rgba(212, 175, 55, 0.18);
   border: 1px solid rgba(212, 175, 55, 0.55);
@@ -1893,7 +1922,9 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.18s ease, transform 0.18s ease;
-  white-space: nowrap;
+  line-height: 1.35; /* 🧭 E153-刀三：军令钦定行高 */
+  white-space: normal; /* 退役 nowrap：长语种按钮优雅折行 */
+  overflow-wrap: anywhere; /* 泰/越长词安全断词 */
 }
 .ks-fam-bubble-cta:hover { background: rgba(212, 175, 55, 0.3); transform: translateY(-1px); }
 
@@ -1991,22 +2022,35 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   .landing-container {
     background: radial-gradient(ellipse at center, rgba(12, 8, 24, 0.56) 0%, rgba(12, 8, 24, 0) 72%);
   }
-  /* ① Hero 主标/副标：衬线轻奢字距＋象牙金白＋暗影托底（E152-刀二 放大改版）
+  /* 🥂 E153-刀一（军令 2026-11-24）：Hero 文本区桌面放宽——解除 420px 窄列束缚
+     （主公实拍病灶①：zh 孤字「故」折行重叠＋en/fr 三行挤脸，真根＝E152 字号放大
+     未配套放宽容器）。六语排版分流：zh clamp(30px,2.5vw,38px)/1.32 单行；拉丁泰越
+     clamp(26px,2.2vw,34px)/1.28＋text-wrap:balance 优雅 1-2 行（泰 anywhere 防截断）。
+     语种落 DOM＝documentElement.lang（App.tsx languageChanged 同步）。
      ⚠️ 血训（E152 实测）：选择器须 `.input-page .title`（0-2-0）——单类 `.title`
-     被 line 88 `.input-page .title`（青辉光老款）specificity 压死，E151 的 ① 换血
-     块从上线起即为死代码（主公「副标融进星云不可读」真根）。 */
+     被 line 88 老款青辉光 specificity 压死（E151 ① 死代码血训）。 */
+  .page.input-page { max-width: min(740px, 84vw); }
   .input-page .title {
     font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
-    font-size: clamp(30px, 2.6vw, 40px);
+    font-size: clamp(26px, 2.2vw, 34px);
+    line-height: 1.28;
     letter-spacing: 0.1em;
     color: #FAF4E8;
     text-shadow: 0 2px 16px rgba(10, 6, 22, 0.85);
+    text-wrap: balance;
   }
+  html[lang="zh"] .input-page .title {
+    font-size: clamp(30px, 2.5vw, 38px);
+    line-height: 1.32;
+  }
+  html[lang="th"] .input-page .title { overflow-wrap: anywhere; }
   .input-page .subtitle {
     color: rgba(246, 240, 228, 0.86);
     font-weight: 500;
     font-size: 15px;
-    margin-top: 10px;
+    margin-top: 12px;
+    line-height: 1.5;
+    max-width: min(620px, 88vw);
     letter-spacing: 0.04em;
     text-shadow: 0 2px 16px rgba(10, 6, 22, 0.85);
   }
@@ -2029,8 +2073,9 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
     background: linear-gradient(135deg, #F6E4AD 0%, #E2C268 52%, #CBA64C 100%);
     box-shadow: 0 10px 32px rgba(217, 180, 91, 0.46), inset 0 1px 0 rgba(255, 251, 235, 0.78);
   }
-  /* ③ 灵宠×按钮呼吸感：E152-刀一 纵向分离后灵宠全高让位改走 body.ks-fam-ridden
-     条件档（124px，specificity 压本行）；本 84px 仅匿名访客（无灵宠）基线。 */
+  /* ③ 灵宠×按钮呼吸感：🥂 E153-刀二 纵列落座——锚点容器 in-flow 真实占位
+     （76px 宠位＋12px 落座间距）后，本 84px 仅匿名访客（无灵宠）基线；
+     灵宠在场走 body.ks-fam-ridden 32px 档（specificity 压本行）。 */
   .landing-start-wrap { margin-top: 84px; }
   /* ④ 语言切换器：右上角安全区归位（fixed 锚定视口 top 24 / right 28）＋暗夜磨砂玻璃融入星云 */
   .lang-switch {
@@ -2125,17 +2170,19 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   letter-spacing: 0.02em;
 }
 /* 🆕 E144.1-刀一：状态栏独立第二行占满整行宽度（width:100% 军令钦定）——
-   彻底消除与 ✦灵犀星胶囊的水平挤压（「晨曦星轨」零截断零遮挡）。 */
+   彻底消除与 ✦灵犀星胶囊的水平挤压（「晨曦星轨」零截断零遮挡）。
+   🧭 E153-刀三（主公军令 2026-11-24）：外语长状态优雅折行——退役强制三截断
+   （nowrap/overflow:hidden/text-overflow:ellipsis），改 flex-wrap:wrap＋row-gap:4px
+   （fr「Harmonie de l'Après-mi」被硬截半个词的病灶根治；es/th/vi 长状态同理）。 */
 .ks-chat-status {
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-wrap: wrap; /* 🧭 E153-刀三：长状态折行不截断 */
+  row-gap: 4px; /* 🧭 E153-刀三：军令钦定行距 */
   width: 100%;
   font-size: 11px;
   color: rgba(237, 232, 220, 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .ks-chat-dot {
   width: 6px;
@@ -2147,14 +2194,16 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
   flex: 0 0 auto;
 }
 /* 🆕 E143-刀三（军令 2026-11-17）：灵犀共生默契状态栏前缀——六语自容
-   （零 i18n 键扰动）；金调前缀恒完整显示（390 宽实测不截断）。
+   （零 i18n 键扰动）；金调前缀恒完整显示。
    🆕 E145-刀一（军令 2026-11-19）：.ks-chat-status-text 弹性截断槽整体
-   退役（chatStatus 尾缀删除——昼夜词条恒完整零截断）。 */
+   退役（chatStatus 尾缀删除——昼夜词条恒完整零截断）。
+   🧭 E153-刀三（军令 2026-11-24）：bond 与状态栏同折行——退役 nowrap/ellipsis
+   三截断（vi「Tâm Linh Tương Thông…」实测溢出 14px 病灶；军令钦定优雅折行）。 */
 .ks-chat-bond {
-  flex: 0 0 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere; /* 泰文无空格长词安全断词 */
   color: #D4AF37;
   font-weight: 700;
   letter-spacing: 0.02em;

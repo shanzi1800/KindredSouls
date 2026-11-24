@@ -215,7 +215,7 @@
     },
     {
       "id": "L12",
-      "title": "气泡限宽未扣位移 ⇒ 390 屏出屏被裁",
+      "title": "气泡窄宽未防溢出 ⇒ 非中文语种按钮破框（E153 后继）",
       "modules": [
         "bubble",
         "css",
@@ -223,12 +223,13 @@
         "layout"
       ],
       "trigger": "改灵宠气泡宽度/位移或换视口",
-      "rootCause": "E71：max-width 只按 40vw 算，没扣 44px 横向位移，390 屏气泡右缘出屏被祖先裁切链吃掉。",
-      "ironRule": "气泡限宽必扣位移：max-width: min(150px, calc(40vw - 44px))；验收必查祖先裁切链（.page 禁 overflow 滚动值），双侧位移必双端复验。",
+      "rootCause": "E71 旧案：max-width 只按 40vw 算未扣 44px 位移出屏；E153 复发变体：150px 窄卡＋nowrap 按钮在拉丁/泰/越长文案下破框溢出（en「Celestial Aura Today」实锤）。",
+      "ironRule": "气泡容器 min-width:224px/max-width:min(312px,86vw)/box-sizing:border-box；卡内按钮强制 display:block/width:100%/white-space:normal/line-height:1.35/overflow-wrap:anywhere；E82 位移解耦 BUB 上限须与容器上限同源同步。",
       "gate": "test/audit-e81-self-evolve.test.mjs",
-      "gateAnchor": "E71 限宽扣位移断言",
+      "gateAnchor": "E71/E153 限宽防溢出断言",
       "episodes": [
-        "E71"
+        "E71",
+        "E153"
       ],
       "date": "2026-10-21"
     },

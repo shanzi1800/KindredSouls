@@ -199,9 +199,9 @@ test('E137-07 i18n 六键：六语对齐＋zh 军令词表逐字＋键集合含�
   assert.equal(KEYED.zh.rx_explore_cta, '✦ 探索时令能量配方', 'rx_explore_cta 军令逐字');
   // 元闸门真源同步：122 → 128
   const gate = read('test/audit-i18n-keys.test.js');
-  assert.ok(gate.includes('assert.strictEqual(p.total, 141'), 'i18n 元闸门基准须 128（E137 六键入列）');
+  assert.ok(gate.includes('assert.strictEqual(p.total, 142'), 'i18n 元闸门基准须 128（E137 六键入列）');
   // familiar 段键数不动（新六键居顶层——58 恒定）
-  assert.equal(Object.keys(KEYED.zh.familiar).length, 57, 'familiar 段 57 键（E145 chatStatus 退役；六新键在顶层）');
+  assert.equal(Object.keys(KEYED.zh.familiar).length, 58, 'familiar 段 58 键（E153 alignRhythm 入列；六新键在顶层）');
 });
 
 /* ═══ E137-08 前端处方卡：挂载＋泰语防溢出军规（图标列恒 48px）═══ */
@@ -240,7 +240,7 @@ test('E137-10 军规链段数：package.json test:astro 全链 105 段（e137 �
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 120, `军规链段数须 105（E137 入编后 104→105；实 ${segs.length}）`);
+  assert.equal(segs.length, 121, `军规链段数须 105（E137 入编后 104→105；实 ${segs.length}）`);
   const joined = segs.join(' && ');
   const iE136 = joined.indexOf('audit-e136');
   const iE137 = joined.indexOf('audit-e137-astro-seasonal-wellness');
@@ -314,7 +314,7 @@ test('E137-11 rx 手札承接：?rx= 白名单承接＋RxMonographModal 渲染�
   assert.strictEqual(zh.rx_ask_companion, '✦ 让 {name} 为我定制今日调理时辰', 'zh rx_ask_companion 军令逐字（E137.2 真名模板）');
   assert.strictEqual(zh.rx_curated_status, '全球严选天然植萃配方库 · 精选直达通道筹备中', 'zh rx_curated_status 军令逐字');
   const gate = read('test/audit-i18n-keys.test.js');
-  assert.ok(gate.includes('assert.strictEqual(p.total, 141'), 'i18n 元闸门基准须 132（E137.1 四键入列 128→132）');
+  assert.ok(gate.includes('assert.strictEqual(p.total, 142'), 'i18n 元闸门基准须 132（E137.1 四键入列 128→132）');
 });
 
 /* ═══ E137.2-COMPANION-NAME-CTA（主公军令 2026-11-13）灵宠真名动态呼唤断言族 ═══ */

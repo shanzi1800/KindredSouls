@@ -176,10 +176,12 @@ export function composeCombinedFortune(opts) {
  *  锦囊」套「今日感应锦囊」双重套娃：外层浮窗＝「今日星象气场」（天象基调
  *  概览）；内层弹窗＝「✦ 今日星语灵犀 ✦」（私人指引）；按键三态＝收入星语袋
  *  /✓已收入/今日已收入＋全局入袋 Toast（军令六语对照表逐字入典）。
- *  军令排版规约：overflow-wrap:anywhere 容器弹性自适应（消费端 SAFE 沿袭）。 */
+ *  军令排版规约：overflow-wrap:anywhere 容器弹性自适应（消费端 SAFE 沿袭）。
+ *  🧭 E153-刀三（主公军令 2026-11-24）：openCta 六语换血——悬浮卡按钮一精炼为
+ *  「情绪罗盘」语义（en「Celestial Aura Today」过长破框病灶；军令定稿表逐字）。 */
 export const POUCH_UI = Object.freeze({
   zh: {
-    openCta: '✦ 今日星象气场',
+    openCta: '✦ 今日情绪天象',
     title: '✦ 今日星语灵犀 ✦',
     pouchLead: '灵犀随心而动。此刻你周围的气场偏向何方？',
     moodLead: '心绪指引', luckyLead: '星轨助运',
@@ -194,7 +196,7 @@ export const POUCH_UI = Object.freeze({
     toast: '✦ 今日灵犀已入袋，可随时在个人中心查阅 ✦',
   },
   en: {
-    openCta: '✦ Celestial Aura Today',
+    openCta: '✦ Mood Compass',
     title: '✦ Astral Whispers ✦',
     pouchLead: 'The whispers follow your heart. Which way does your inner sky lean right now?',
     moodLead: 'Mood Guidance', luckyLead: 'Starlit Fortune',
@@ -207,7 +209,7 @@ export const POUCH_UI = Object.freeze({
     toast: '✦ Daily whispers stored. Revisit anytime in your profile. ✦',
   },
   fr: {
-    openCta: '✦ Aura Céleste du Jour',
+    openCta: '✦ Boussole d\'Humeur',
     title: '✦ Murmures Astraux ✦',
     pouchLead: 'Les murmures suivent votre cœur. Vers quel ciel intérieur penchez-vous en ce moment ?',
     moodLead: 'Guidance du Cœur', luckyLead: 'Fortune Stellaire',
@@ -220,7 +222,7 @@ export const POUCH_UI = Object.freeze({
     toast: '✦ Murmures conservés. Retrouvez-les dans votre profil. ✦',
   },
   es: {
-    openCta: '✦ Aura Celeste de Hoy',
+    openCta: '✦ Brújula Emocional',
     title: '✦ Susurros Astrales ✦',
     pouchLead: 'Los susurros siguen a tu corazón. ¿Hacia dónde se inclina tu cielo interior ahora?',
     moodLead: 'Guía del Ánimo', luckyLead: 'Fortuna Estelar',
@@ -233,7 +235,7 @@ export const POUCH_UI = Object.freeze({
     toast: '✦ Susurros guardados. Consúltalos en tu perfil. ✦',
   },
   th: {
-    openCta: '✦ คลื่นพลังดวงดาวประจำวัน',
+    openCta: '✦ เข็มทิศอารมณ์วันนี้',
     title: '✦ สารนำทางแห่งดวงดาว ✦',
     pouchLead: 'สารแห่งดวงดาวเปลี่ยนตามใจคุณ ตอนนี้ท้องฟ้าในใจคุณเอนไปทางไหน?',
     moodLead: 'คำแนะนำจิตใจ', luckyLead: 'พลังจากดวงดาว',
@@ -246,7 +248,7 @@ export const POUCH_UI = Object.freeze({
     toast: '✦ บันทึกสารแห่งดวงดาวแล้ว สามารถดูย้อนหลังได้ตลอดเวลา ✦',
   },
   vi: {
-    openCta: '✦ Trường Khí Thiên Tượng',
+    openCta: '✦ La Bàn Tâm Trạng',
     title: '✦ Tinh Ngữ Linh Tê ✦',
     pouchLead: 'Tinh ngữ theo tim bạn. Bầu trời trong tim bạn đang nghiêng về phía nào?',
     moodLead: 'Dẫn Dắt Tâm Tư', luckyLead: 'Phúc Tinh Trợ Vận',

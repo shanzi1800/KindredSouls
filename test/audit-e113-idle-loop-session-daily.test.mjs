@@ -71,10 +71,10 @@ test('E113 S2 刀一振幅再强化：-10px 拱背＋rotate 仰角＋20px35px �
   assert.ok(/top: -41px;/.test(css), '金尘破裂点须随迁 -41px（斜上漂 50px 终点）');
   // ⑥ reduced-motion 降级守备不破（E111/E112 层全静默）
   assert.ok(/\.ks-fam-gemglow, \.ks-fam-pop \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
-  // ⑦ 趴键几何铁律（E65g/E82）零漂移（🥂 E152-刀一：translateY 换血纵向分离）
+  // ⑦ 趴键几何铁律（E65g/E82）零漂移（🥂 E153-刀二：aspect-ratio 裁切盒落座）
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
-    && /\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css), 'E152 纵向分离 translateY(-2px) 双宠主位锚');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(css)
+    && /\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(css), 'E153 裁切盒双宠主位锚（translateY 位移退役）');
 });
 
 /* ═══════════ 刀二：六语首语灵魂兽共情润色 ═══════════ */
@@ -248,10 +248,10 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 120, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 121, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）→ 58（E135 chatQ2 退役）→ 57（E145 chatStatus 退役）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));
-    assert.equal(Object.keys(o.familiar).length, 57, `${l} familiar 段须 57 键（E145 chatStatus 退役）`);
+    assert.equal(Object.keys(o.familiar).length, 58, `${l} familiar 段须 58 键（E153 alignRhythm 入列）`);
   }
 });

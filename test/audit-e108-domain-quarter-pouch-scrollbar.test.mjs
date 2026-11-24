@@ -220,13 +220,15 @@ test('③-1 居中大 Modal 物理废除（FamiliarLuckCard 退场，贴身气�
   assert.ok(!HOME.includes('luckCardOpen'), 'luckCardOpen 状态残留');
 });
 
-test('③-2 锦囊三宝真值＋第二行能量微语＋胶囊 CTA 开舱', () => {
-  assert.ok(HOME.includes('const luckPouch ='), '缺 luckPouch 锦囊真值核');
-  const pouchSeg = HOME.split('const luckPouch =')[1]?.split('}, [')[0] || '';
-  assert.ok(/luckyNumber/.test(pouchSeg) && /luckNum/.test(pouchSeg), '锦囊缺幸运数字');
-  assert.ok(/luckColor/.test(pouchSeg) && /color\.name/.test(pouchSeg), '锦囊缺幸运色');
-  assert.ok(/vibe/.test(pouchSeg), '锦囊缺能量微语（f.vibe）');
-  assert.ok(HOME.includes('famBubble.line2'), '气泡缺第二行渲染（能量微语行）');
+test('③-2 锦囊换血真值＋六语节奏行单源＋胶囊 CTA 开舱（E153-刀三）', () => {
+  // 🧭 E153-刀三 后继化（主公军令 2026-11-24）：悬浮卡去日运词换血——幸运数/色/
+  //    能量微语旧核退役，节奏行改六语 i18n 单源 familiar.alignRhythm。
+  assert.ok(HOME.includes('const luckPouch ='), '缺 luckPouch 锦囊核（E153 换血形态）');
+  assert.ok(HOME.includes("t('familiar.alignRhythm')"), '节奏行须走 i18n 单源 familiar.alignRhythm');
+  assert.ok(!HOME.includes('f.luckyNumber'), '悬浮卡残留幸运数字真值（E153 军令违例）');
+  assert.ok(!HOME.includes("t('familiar.luckNum')"), '悬浮卡残留 luckNum 旧词');
+  assert.ok(!HOME.includes("t('familiar.luckColor')"), '悬浮卡残留 luckColor 旧词');
+  assert.ok(!HOME.includes('f.vibe'), '悬浮卡残留能量微语旧核');
   assert.ok(HOME.includes('line2?'), 'famBubble state 缺 line2 可选字段');
   assert.ok(HOME.includes('ks-fam-bubble-cta') || HOME.includes('familiar-chat-cta'), '气泡缺「与TA聊聊」胶囊 CTA');
   // 点灵宠 ⇒ 贴身气泡＋微光脉冲，禁直开舱（开舱权只属气泡 CTA）
@@ -270,10 +272,10 @@ test('④-1 对话窗滚动槽与月报 .ks-report-scroll 形状颜色逐字一�
 
 test('⑤-1 军规链段数入编（E108 后继化：83 段／e108 居 e107 前、e40 前）', () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 120, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 121, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 40].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
-  assert.ok(segs[segs.length - 41].includes('audit-e107'), 'e107 须居 len-12');
-  assert.ok(segs[segs.length - 42].includes('audit-e106'), 'e106 须居 len-13');
+  assert.ok(segs[segs.length - 41].includes('audit-e108'), 'e108 须居 len-11（E120 后继化）');
+  assert.ok(segs[segs.length - 42].includes('audit-e107'), 'e107 须居 len-12');
+  assert.ok(segs[segs.length - 43].includes('audit-e106'), 'e106 须居 len-13');
 });

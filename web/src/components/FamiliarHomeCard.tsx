@@ -59,8 +59,8 @@ import sophiaBlink from '../assets/familiar_sophia_blink.webp';
 import { FAMILIAR_HOME_TESTID, readFamiliarRecord, clearFamiliarRecord, whisperIndex, localDateKey, extractBirthTruth, shouldKeepFamiliarOnHome, triadTruth } from '../lib/familiarHome.mjs';
 // 🌟 E54-2（主公亲令 2026-10-15）：今日命理赋能真值核 —— 幸运数字/颜色/花朵/贵人方位
 //   （自 E53 撤下的 DailyDashboard 迁移而来；灵宠亲口轮播分享，首页零方框）
-// @ts-ignore —— dailyFortune.mjs 纯逻辑核（确定性/四象方位；见文件头契约）
-import { dailyFortune } from '../lib/dailyFortune.mjs';
+// 🧭 E153-刀三（主公军令 2026-11-24）：dailyFortune 核从首页气泡拔除——悬浮卡
+//   全量清除幸运数/色旧日运词（DailyPouch 弹窗核不受波及，独立消费）。
 // 🐾 E66（主公军令 2026-10-18）：灵魂兽半屏毛玻璃抽屉舱（Gemini 流式对话容器）
 import FamiliarChatSheet, { type FamiliarIp } from './FamiliarChatSheet';
 // 🧭 E120-CHAIN（主公军令 2026-11-03）：今日感应锦囊前置罗盘状态机控制器——
@@ -367,16 +367,17 @@ const FamiliarHomeCard: React.FC = () => {
         const b = breakout.getBoundingClientRect();
         const tr = titleEl.getBoundingClientRect();
         const vw = document.documentElement.clientWidth;
-        const BUB = 150; // 气泡 max-width 上限（App.css）
+        const BUB = 312; // 气泡 max-width 上限（App.css · 🧭 E153-刀三放宽）
         const GAP = 24;  // 军令：与标题文字边缘恒 ≥24px
         const MARGIN = 44; // E71 基础位移
+        // 🧭 E153-刀三：垂直口径同步 0.56→0.344（App.css bottom 34.4% 像素守恒换算）
         if (breakout.classList.contains('ks-fam-sophia')) {
           const curOuter = b.left - MARGIN;               // 气泡右缘现值
           const need = curOuter - (tr.left - GAP);        // >0 ⇒ 标题左缘入侵，需左移
           const room = curOuter - 8 - BUB;                // 屏内可移空间（留 8px 安全边）
           if (need > 0) {
             if (need <= room) hShift = Math.ceil(need);
-            else vRaise = Math.ceil((b.bottom - 0.56 * b.height) - (tr.top - GAP));
+            else vRaise = Math.ceil((b.bottom - 0.344 * b.height) - (tr.top - GAP));
           }
         } else {
           const curOuter = b.right + MARGIN;              // 气泡左缘现值
@@ -384,7 +385,7 @@ const FamiliarHomeCard: React.FC = () => {
           const room = vw - 8 - BUB - curOuter;
           if (need > 0) {
             if (need <= room) hShift = Math.ceil(need);
-            else vRaise = Math.ceil((b.bottom - 0.56 * b.height) - (tr.top - GAP));
+            else vRaise = Math.ceil((b.bottom - 0.344 * b.height) - (tr.top - GAP));
           }
         }
         if (vRaise < 0) vRaise = 0;
@@ -400,7 +401,7 @@ const FamiliarHomeCard: React.FC = () => {
     return String(rec0.profile.name || '') || (IP_OF_MODE[mode] ?? 'Sophia');
   };
 
-  /* 🐾 E66：抽屉舱开关 + 开场问候真值（今日运势来自 dailyFortune 确定性核，零伪造） */
+  /* 🐾 E66：抽屉舱开关 + 开场问候（E152 起日常问候与 dailyFortune 核解耦） */
   const [chatOpen, setChatOpen] = useState(false);
 
   /* 🏆 E137.1-RX-MONOGRAPH-DRAWER（主公军令 2026-11-13）：手札追问联动通道。
@@ -425,15 +426,14 @@ const FamiliarHomeCard: React.FC = () => {
      已打卡直读合璧笺；原独立 ☁️ 罗盘微章按军令物理拔除，严禁并列入口） */
   const [pouchOpen, setPouchOpen] = useState(false);
 
-  /** 🍀 E108-刀三：贴身锦囊真值（幸运数字/色/能量微语——dailyFortune 确定性核） */
-  const luckPouch = useCallback((rec0: HomeRecord | null) => {
-    const sun = rec0 ? String((triadTruth(rec0) || {}).sun || '') : '';
-    const f = dailyFortune({ lang, sunSign: sun });
-    return {
-      line: `🔢 ${t('familiar.luckNum')} ${f.luckyNumber} · 🎨 ${t('familiar.luckColor')} ${f.color.name}`,
-      line2: String(f.vibe || ''),
-    };
-  }, [lang, t]);
+  /** 🧭 E153-刀三（主公军令 2026-11-24）：悬浮卡去日运换血——全量清除
+   *  幸运数/色旧日运词（luckyNumber/luckColor/vibe 退役），节奏行改
+   *  六语 i18n 单源 familiar.alignRhythm（军令定稿表逐字）；dailyFortune
+   *  确定性核保留于 DailyPouch 弹窗（首页气泡零消费）。 */
+  const luckPouch = useCallback(() => ({
+    line: String(t('familiar.alignRhythm') || ''),
+    line2: '',
+  }), [t]);
 
   const tapFamiliar = useCallback((rec0: HomeRecord) => {
     /* 🏆 E108-刀三（主公军令 2026-11-01）：头部/宝石点击区 ⇒ 0.75s 微光脉冲＋
@@ -447,7 +447,7 @@ const FamiliarHomeCard: React.FC = () => {
     famPulseTimer.current = setTimeout(() => setFamPulse(false), 750);
     setFamBubble(null);
     scheduleIdle(); // 🌟 E111-刀一：点触＝交互，待机计程重置
-    const p = luckPouch(rec0);
+    const p = luckPouch();
     showBubble(nameOf(rec0), t('familiar.luckLead'), p.line, p.line2);
   }, [luckPouch, showBubble, t, scheduleIdle]);
 
@@ -633,7 +633,7 @@ const FamiliarHomeCard: React.FC = () => {
                   ...(ip === 'Sophia'
                     ? { marginRight: 44 + famBubble.hShift }
                     : { marginLeft: 44 + famBubble.hShift }),
-                  ...(famBubble.vRaise ? { bottom: `calc(56% + ${famBubble.vRaise}px)` } : null),
+                  ...(famBubble.vRaise ? { bottom: `calc(34.4% + ${famBubble.vRaise}px)` } : null),
                 } as React.CSSProperties}
               >
                 <span className="ks-fam-bubble-name" style={{ ...SAFE }}>{famBubble.name} · {famBubble.sub}</span>

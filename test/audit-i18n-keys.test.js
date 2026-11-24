@@ -137,7 +137,10 @@ describe('V448 i18n Key 门禁', () => {
     //   input.clearDataBtn / input.clearDataConfirm（生辰隐私承诺＋一键清除入口
     //   ＋二次确认；6 语种同步新增，键集合全等不变）
     // 138 → 141
-    assert.strictEqual(p.total, 141, 'E151 合规三键入列后基准键数应为 141');
+    // 🆕 E153-刀三（军令 2026-11-24）: 悬浮卡节奏行单源 familiar.alignRhythm 入列
+    //   （六语同步新增，键集合全等不变；luckLead/chatCta 值换血零键数增减）
+    // 141 → 142
+    assert.strictEqual(p.total, 142, 'E153 悬浮卡节奏行键入列后基准键数应为 142');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

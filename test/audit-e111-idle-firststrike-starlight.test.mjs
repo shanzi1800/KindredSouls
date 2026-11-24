@@ -61,7 +61,7 @@ test('E111 S2 刀一动效层：Sophia 踩奶拱背＋宝石粉金光 / Milo 尾
   const glow = (css.match(/@keyframes ksFamGemGlow \{[\s\S]*?\n\}/) || [''])[0];
   assert.ok(/drop-shadow\(0 0 20px rgba\(244, ?184, ?206, ?1\)\)/.test(glow), '缺第一层高光 drop-shadow 20px 1（E113 军令真值）');
   assert.ok(/drop-shadow\(0 0 35px rgba\(232, ?199, ?154, ?0\.85\)\)/.test(glow), '缺第二层粉金光 drop-shadow 35px 0.85（E113 军令真值）');
-  assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 35\.4%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值）');
+  assert.ok(/\.ks-fam-gemglow\s*\{[^}]*left: 17\.9%[^}]*top: 55\.0%[^}]*width: 28\.3%/.test(css), 'gemglow 须与 gem 命中区同框（E65 真值；🥂 E153-刀二 裁切盒重标定）');
   // ④ Milo 尾巴大弧度甩动 22deg 弹性阻尼回弹（E113 军令）＋星芒气泡 22px 晶蓝金边→斜上漂 50px 破裂 5 金尘（E114-刀三 后继）
   assert.ok(css.includes('ksFamMiloTailFlick'), '缺 Milo 尾摆动画');
   assert.ok(/rotate\(22deg\)/.test(css) && /rotate\(-9deg\)/.test(css), '尾摆须 22deg＋弹性回弹（E113 军令钦定）');
@@ -82,12 +82,11 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
   assert.ok(css.includes('left: calc(44% - 62.3px)'), 'Milo 球心锚漂移');
   assert.ok(css.includes('left: calc(56% - 35.3px)'), 'Sophia 球心锚漂移');
-  // 🥂 E152-刀一（军令 2026-11-24）：E65f 趴键深压退役 ⇒ 纵向分离 translateY(-2px)
-  //    （灵宠底缘含尾梢位于按钮顶沿之上，零像素遮挡 CTA 六语文案；e152 闸门+verify 守备）
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
-    && /\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
-    && /\.ks-fam-milo \{ transform: translateY\(-2px\); \}/.test(css)
-    && /\.ks-fam-sophia \{ transform: translateY\(-2px\); \}/.test(css), '双宠主位+降级位 translateY(-2px) 纵向分离（E152）');
+  // 🥂 E153-刀二（军令 2026-11-24）：E65f 趴键深压退役 ⇒ aspect-ratio 裁切盒落座
+  //    （灵宠可见轮廓底缘精确落座按钮顶沿上方 10-14px；translateY 位移全退役）
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(css)
+    && /\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(css)
+    && /\.ks-fam-breathe\s*\{[^}]*position:\s*absolute/s.test(css), '双宠主位 aspect-ratio 裁切盒＋breathe 绝对化（E153-刀二）');
   // ② E111 新增规则禁触碰 breakout 顶层几何：idle 规则块内禁 left/width/translateY 布局改写
   for (const m of css.match(/\.ks-fam-(?:milo|sophia)\.ks-fam-idle [^{]*\{[^}]*\}/g) || []) {
     assert.ok(!/[\s;](left|width|margin):/.test(m), `idle 规则禁改布局几何（只准动子层动画）：${m.slice(0, 80)}`);

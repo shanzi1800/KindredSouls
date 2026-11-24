@@ -40,24 +40,33 @@ const block1024 = APP_CSS.slice(APP_CSS.indexOf('@media (min-width: 1024px)'), A
 
 // ═══════════════ A1. 灵宠×CTA 纵向分离（刀一 几何） ═══════════════
 
-test('A1 纵向分离几何：translateY(-2px) 四锚＋条件间距 124px＋骑键坐标系冻结', () => {
-  // ① 双宠主位＋reduced-motion 降级位（精确锚——CTA hover/typing 帧同字面不计数）
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(APP_CSS)
-    && /\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(APP_CSS),
-    '双宠主位须纵向分离 translateY(-2px)');
-  assert.ok(APP_CSS.includes('.ks-fam-milo { transform: translateY(-2px); }')
-    && APP_CSS.includes('.ks-fam-sophia { transform: translateY(-2px); }'),
-    '降级位须纵向分离 translateY(-2px)');
+test('A1 纵列落座几何：aspect-ratio 裁切盒＋in-flow 锚点容器＋条件间距类（E153-刀二）', () => {
+  // ① 双宠主位（🥂 E153-刀二：translateY(-2px) 位移全退役——aspect-ratio 裁切盒
+  //    锁定可见轮廓真值（PIL alpha 实测：Milo 可见底 0.6711H / Sophia 0.6436H））
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(APP_CSS),
+    'Milo 须 aspect-ratio 720/549（裁切盒真值）');
+  assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APP_CSS),
+    'Sophia 须 aspect-ratio 720/530（裁切盒真值）');
+  assert.ok(!/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\)/s.test(APP_CSS)
+    && !/\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\)/s.test(APP_CSS),
+    'translateY(-2px) 主位位移须全退役（E153 裁切盒落座）');
+  const br = (APP_CSS.match(/\.ks-fam-breathe\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/position:\s*absolute/.test(br), 'breathe 层须绝对化（盒高唯一真源 aspect-ratio，防内容撑高）');
   assert.ok(!APP_CSS.includes('translateY(calc(38.9% + 6px))') && !APP_CSS.includes('translateY(calc(39.2% + 6px))'),
     '旧 E65f 趴键深压 calc 形态须全数退役');
-  // ② breakout 锚定坐标系不动：bottom:100%（图底缘对齐按钮顶沿）＋z6＋pointer-events 穿透
+  // ② breakout 锚定（🥂 E153-刀二：top:0 锚 in-flow 锚点容器顶沿，旧 bottom:100% 退役）＋z6＋穿透
   const bo = (APP_CSS.match(/\.ks-fam-breakout\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/bottom:\s*100%/.test(bo), 'breakout 须 bottom:100% 锚按钮顶沿');
+  assert.ok(/top:\s*0/.test(bo), 'breakout 须 top:0 锚 in-flow 容器（E153-刀二）');
   assert.ok(/z-index:\s*6/.test(bo), 'breakout z6 须冻结（e106 契约）');
   assert.ok(/pointer-events:\s*none/.test(bo), 'breakout 须物理穿透（按钮点击 100% 命中）');
-  // ③ 条件间距档：灵宠在场才让位全高（body.ks-fam-ridden）——匿名访客 72px 基线零扰动
-  assert.ok(APP_CSS.includes('body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }'),
-    '灵宠骑乘间距条件档须 124px 精确字面');
+  // ③ 锚点容器 in-flow（76px 宠位；匿名 display:none 零占位）＋条件间距档
+  const an = (APP_CSS.match(/#ks-familiar-anchor\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/position:\s*relative/.test(an) && /height:\s*76px/.test(an) && /display:\s*none/.test(an),
+    '锚点容器须 relative/76px/匿名 none（E153 in-flow 落座）');
+  assert.ok(APP_CSS.includes('body.ks-fam-ridden #ks-familiar-anchor { display: block; }'),
+    '灵宠在场须 display:block');
+  assert.ok(APP_CSS.includes('body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }'),
+    '灵宠骑乘间距条件档须 18px 精确字面（实测 subToFam 32px 入军令 28-34px 档）');
   assert.ok(HOME_SRC.includes("document.body.classList.add('ks-fam-ridden')"),
     'FamiliarHomeCard 须挂 ks-fam-ridden 条件类（灵宠上屏）');
   assert.ok(/useEffect\(\(\) => \{\s*\n\s*const on = !!\(anchorEl && showBreakout && recs\.length > 0\);/.test(HOME_SRC),
@@ -99,19 +108,30 @@ test('A2 CTA 丝缎香槟金：三段缎面渐变＋曜石黑字＋顶缘高光�
 
 // ═══════════════ A3. Hero 可读性（刀二，1024 块） ═══════════════
 
-test('A3 Hero 可读性：径向暗晕托底＋主标 clamp 放大＋暗影＋副标增亮', () => {
+test('A3 Hero 可读性：径向暗晕托底＋主标 clamp 分流＋暗影＋副标增亮（E153-刀一）', () => {
   const cont = (block1024.match(/\.landing-container\s*\{[^}]*\}/) || [''])[0];
   assert.ok(/radial-gradient\(ellipse at center,\s*rgba\(12,\s*8,\s*24,\s*0\.56\) 0%,\s*rgba\(12,\s*8,\s*24,\s*0\) 72%\)/.test(cont),
     'Hero 文本容器须径向暗晕托底（0.56→0/72% 军令钦定）');
-  const title = (block1024.match(/\.title\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/font-size:\s*clamp\(30px,\s*2\.6vw,\s*40px\)/.test(title), '主标须 clamp(30px,2.6vw,40px)（宽屏体量）');
+  // 🥂 E153-刀一：解除 420px 窄列束缚＋六语排版分流（zh 单行 / 拉丁泰越 balance 折行）
+  assert.ok(block1024.includes('.page.input-page { max-width: min(740px, 84vw); }'),
+    'Hero 文本区须桌面放宽 min(740px, 84vw)（E153 军令）');
+  const title = (block1024.match(/\.input-page \.title\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/font-size:\s*clamp\(26px,\s*2\.2vw,\s*34px\)/.test(title), '拉丁/泰/越主标须 clamp(26px,2.2vw,34px)');
+  assert.ok(/line-height:\s*1\.28/.test(title), '主标须 1.28 行高');
+  assert.ok(/text-wrap:\s*balance/.test(title), '主标须 text-wrap:balance 优雅折行');
+  const zhT = (block1024.match(/html\[lang="zh"\] \.input-page \.title\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/font-size:\s*clamp\(30px,\s*2\.5vw,\s*38px\)/.test(zhT) && /line-height:\s*1\.32/.test(zhT),
+    'zh 主标须 clamp(30px,2.5vw,38px)/1.32（单行不折）');
+  const thT = (block1024.match(/html\[lang="th"\] \.input-page \.title\s*\{[^}]*\}/) || [''])[0];
+  assert.ok(/overflow-wrap:\s*anywhere/.test(thT), '泰语主标须 overflow-wrap:anywhere 防截断');
   assert.ok(/color:\s*#FAF4E8/.test(title), '主标须象牙金白 #FAF4E8');
   assert.ok(/letter-spacing:\s*0\.1em/.test(title), '主标须 0.1em 字距');
   assert.ok(/text-shadow:\s*0 2px 16px rgba\(10,\s*6,\s*22,\s*0\.85\)/.test(title), '主标须暗影托底');
-  const sub = (block1024.match(/\.subtitle\s*\{[^}]*\}/) || [''])[0];
+  const sub = (block1024.match(/\.input-page \.subtitle\s*\{[^}]*\}/) || [''])[0];
   assert.ok(/rgba\(246,\s*240,\s*228,\s*0\.86\)/.test(sub), '副标须 0.86 增亮');
   assert.ok(/font-size:\s*15px/.test(sub), '副标须 15px');
-  assert.ok(/margin-top:\s*10px/.test(sub), '副标须 margin-top 10px');
+  assert.ok(/margin-top:\s*12px/.test(sub) && /line-height:\s*1\.5/.test(sub), '副标须 12px 顶距＋1.5 行高（E153 军令）');
+  assert.ok(/max-width:\s*min\(620px,\s*88vw\)/.test(sub), '副标须 max-width min(620px,88vw)（E153 军令）');
   assert.ok(/text-shadow:\s*0 2px 16px rgba\(10,\s*6,\s*22,\s*0\.85\)/.test(sub), '副标须暗影托底');
   // 落地页结构零回归（E151 重影根治位）
   const landing = APP_SRC.slice(APP_SRC.indexOf('landing-container'), APP_SRC.indexOf('<FamiliarHomeCard />'));
@@ -151,8 +171,10 @@ test('A4 helloDaily 六语换血：零占位零套话＋坐标与心境校准口
   assert.ok(!SHEET_SRC.includes("import { dailyFortune } from '../lib/dailyFortune.mjs';"), 'dailyFortune import 须拔除');
   assert.ok(SHEET_SRC.includes('return nameGateRef.current\n        ? prependUserName(lang, profileNameRef.current, base) : base;'),
     'E118/E142.1 唤名门控链须零改动');
-  // 首页锦囊 luckPouch 同源核不受波及（E108 契约）
-  assert.ok(HOME_SRC.includes('const luckPouch ='), '首页 luckPouch 锦囊核须保留（E108 契约）');
+  // 首页锦囊 luckPouch 核保留但换血（E153-刀三推翻 E108 旧契约：悬浮卡去日运词）
+  assert.ok(HOME_SRC.includes('const luckPouch ='), '首页 luckPouch 锦囊核须保留（E153 换血形态）');
+  assert.ok(HOME_SRC.includes("t('familiar.alignRhythm')"), '节奏行须走 i18n 单源（E153-刀三）');
+  assert.ok(!HOME_SRC.includes('f.luckyNumber'), '悬浮卡不得残留幸运数/色（E153 军令）');
 });
 
 // ═══════════════ A5. 冻结项零回归（军令冻结边界） ═══════════════
@@ -197,8 +219,8 @@ test('G1 链位：e152 居 e151 后 e40-compat 前＋全链 120 段＋node-only 
   const script = pkg.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 120, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
-  assert.equal(segs.length, 119, `node --test 段须 119（实得 ${segs.length}）`);
+  assert.equal(all.length, 121, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
+  assert.equal(segs.length, 120, `node --test 段须 119（实得 ${segs.length}）`);
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i151 = names.indexOf('audit-e151-luxe-rebrand');

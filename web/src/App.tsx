@@ -496,8 +496,11 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
               经 portal 把灵宠（主公钦定原画）骑到按钮上沿 —— 外层 pointer-events:none
               物理穿透，按钮点击 100% 命中（军令铁律）。 */}
           <div className="landing-start-wrap">
-            <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
+            {/* 🥂 E153-刀二（军令 2026-11-24）：灵宠锚点容器 in-flow 真实占位——
+                DOM 序须「宠位在前·按钮在后」（军令纵列：副标→28-34px→灵宠锚→
+                10-14px→CTA）；旧零高绝对锚位序无所谓，in-flow 后序即视觉序。 */}
             <div id="ks-familiar-anchor" aria-hidden="true" />
+            <button className="btn btn-primary landing-start-btn" onClick={() => setShowModeModal(true)}>{t('input.start')}</button>
           </div>
         </div>
         {/* 🐾 E53（主公亲令 2026-10-15）首页净化白名单：星空背景＋缘分天定＋骑键灵宠＋极简切换语言。
@@ -2430,7 +2433,13 @@ export default function App() {
  }, []);
 
   React.useEffect(() => {
-    const handler = (lng: string) => setCurrentLang(lng as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi');
+    // 🥂 E153-刀一（军令 2026-11-24）：语种落 documentElement.lang——供 1024 块
+    // html[lang="zh"/"th"] Hero 分语种字号/行高选择器消费（切语言实时生效）。
+    const applyDocLang = (lng: string) => {
+      try { document.documentElement.lang = String(lng || 'en').split('-')[0]; } catch { /* noop */ }
+    };
+    applyDocLang(i18n.language);
+    const handler = (lng: string) => { setCurrentLang(lng as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'); applyDocLang(lng); };
     i18n.on('languageChanged', handler);
     return () => { i18n.off('languageChanged', handler); };
   }, [i18n]);

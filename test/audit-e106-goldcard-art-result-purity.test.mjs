@@ -202,8 +202,8 @@ test('④-2 E82 趴键几何真值回归锁（EN 基准 98px）', async () => {
   assert.ok(/\.ks-fam-milo\s*\{[^}]*left:\s*calc\(44%\s*-\s*62\.3px\)/s.test(APPCSS), 'Milo E82 几何漂移');
   assert.ok(/\.ks-fam-sophia\s*\{[^}]*left:\s*calc\(56%\s*-\s*35\.3px\)/s.test(APPCSS), 'Sophia E82 几何漂移');
   assert.ok(/\.ks-fam-milo\s*\{[^}]*width:\s*min\(98px,\s*70%\)/s.test(APPCSS), 'E82 体型锁漂移');
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(APPCSS), 'Milo 纵向分离垂距（E152）');
-  assert.ok(/\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(APPCSS), 'Sophia 纵向分离垂距（E152）');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(APPCSS), 'Milo 裁切盒落座（E153-刀二，translateY 退役）');
+  assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APPCSS), 'Sophia 裁切盒落座（E153-刀二，translateY 退役）');
   // 4 帧 WebP 全量挂载（本体/眨眼/尾梢）
   assert.ok(HOME.includes('miloBlink') && HOME.includes('sophiaBlink'), '眨眼帧未挂');
   assert.ok(HOME.includes('miloTail') && HOME.includes('sophiaTail'), '尾梢帧未挂');
@@ -218,10 +218,10 @@ test('⑤-1 军规链 83 段入编（E108 后继化：e106 居 e107 后 e40 前�
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
   // 🛡️ E107 后继化：81→82（e107 插 e106 后 e40 前）⇒ e106 顺移至 len-5
 // 🛡️ E108 后继化：82→83（e108 插 e107 后 e40 前）⇒ e106 再顺移至 len-6
-  assert.equal(segs.length, 120, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 121, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 41].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
-  assert.ok(segs[segs.length - 42].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
-  assert.ok(segs[segs.length - 43].includes('audit-e105'), 'e105 须居 len-14');
+  assert.ok(segs[segs.length - 42].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
+  assert.ok(segs[segs.length - 43].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
+  assert.ok(segs[segs.length - 44].includes('audit-e105'), 'e105 须居 len-14');
 });

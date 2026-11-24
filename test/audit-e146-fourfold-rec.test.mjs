@@ -216,9 +216,9 @@ test('E146-锁7 server 挂载（三挂＋E145-刀二让位守卫）＋链位（1
   assert.ok(i145 > 0, 'e145 段须在链');
   assert.ok(i146 === i145 + 1, 'e146 须紧居 e145 之后（版本序铁律）');
   assert.ok(i40 > i146, 'e40-compat 须恒居 node 链尾');
-  assert.equal(chain.length, 120, `链总段必须为 115（实际 ${chain.length}）`);
+  assert.equal(chain.length, 121, `链总段必须为 115（实际 ${chain.length}）`);
   const nodeOnly = chain.filter((s) => !/python/.test(s));
-  assert.equal(nodeOnly.length, 119, `node-only 段必须为 114（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 120, `node-only 段必须为 114（实际 ${nodeOnly.length}）`);
   assert.ok(/python/.test(chain[chain.length - 1]), 'python 段须恒为总链尾');
   assert.equal(i40, segs.length - 1, 'e40 须恒 node 链尾');
 });

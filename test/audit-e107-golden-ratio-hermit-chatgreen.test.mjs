@@ -115,16 +115,17 @@ test('③-2 E76 带路令牌改微光提示（回首页禁自动弹舱）', asyn
   assert.ok(!e76Seg.includes('setChatOpen(true)'), 'E76 仍自动弹舱（军令刀二违例）');
 });
 
-test('③-3 贴身锦囊气泡三宝真值承接（幸运数字/色/能量微语＋聊聊胶囊 CTA）', async () => {
-  // 🍀 E108-刀三 后继化：锦囊真值随气泡复活（dailyFortune 确定性核；塔罗真值层
-  //    已由 /api/familiar/chat 服务端 prompt 第四层命盘真值承载，前端缩略图随
-  //    居中 Modal 一并退场）。
-  assert.ok(HOME.includes('dailyFortune'), '首页未接 dailyFortune 真值核');
-  const pouchSeg = HOME.split('const luckPouch =')[1]?.split('}, [')[0] || '';
-  assert.ok(/luckyNumber/.test(pouchSeg) && /luckNum/.test(pouchSeg), '锦囊缺幸运数字');
-  assert.ok(/luckColor/.test(pouchSeg) && /color\.name/.test(pouchSeg), '锦囊缺幸运色');
-  assert.ok(/vibe/.test(pouchSeg), '锦囊缺能量微语（f.vibe）');
-  assert.ok(HOME.includes("famBubble.line2"), '气泡缺第二行渲染（能量微语行）');
+test('③-3 贴身锦囊气泡换血承接（E153-刀三：去日运词＋六语节奏行单源）', async () => {
+  // 🧭 E153-刀三 后继化（主公军令 2026-11-24）：悬浮卡全量清除幸运数/色旧日运词，
+  //    节奏行改六语 i18n 单源 familiar.alignRhythm；dailyFortune 核从首页气泡拔除
+  //    （DailyPouch 弹窗层真值核不受波及——E108 锦囊契约由弹窗继承）。
+  assert.ok(HOME.includes('const luckPouch ='), '缺 luckPouch 锦囊核（E153 换血形态）');
+  assert.ok(HOME.includes("t('familiar.alignRhythm')"), '节奏行须走 i18n 单源 familiar.alignRhythm');
+  assert.ok(!HOME.includes('f.luckyNumber'), '悬浮卡残留幸运数字真值（E153 军令违例）');
+  assert.ok(!HOME.includes("t('familiar.luckNum')"), '悬浮卡残留 luckNum 旧词');
+  assert.ok(!HOME.includes("t('familiar.luckColor')"), '悬浮卡残留 luckColor 旧词');
+  assert.ok(!HOME.includes('f.vibe'), '悬浮卡残留能量微语旧核');
+  assert.ok(!HOME.includes("import { dailyFortune } from '../lib/dailyFortune.mjs';"), '首页气泡不得消费 dailyFortune 核（E153 拔除）');
   // 开舱胶囊：气泡 CTA「✦ 与TA聊聊」⇒ 气泡隐退开舱
   assert.ok(HOME.includes('ks-fam-bubble-cta') || HOME.includes('familiar-chat-cta'), '气泡缺「与TA聊聊」胶囊 CTA');
 });
@@ -177,10 +178,10 @@ test('④-4 前端零登录拦阻（无 token 亦发流——灵宠档随行证�
 
 test('⑤-1 军规链段数入编（E108 后继化：83 段／e107 居 e106 前、e40 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 120, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
+  assert.equal(segs.length, 121, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 41].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
-  assert.ok(segs[segs.length - 42].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
-  assert.ok(segs[segs.length - 43].includes('audit-e105'), 'e105 须居 len-14');
+  assert.ok(segs[segs.length - 42].includes('audit-e107'), 'e107 须居 len-12（E120 后继化）');
+  assert.ok(segs[segs.length - 43].includes('audit-e106'), 'e106 须居 len-13（e107 后）');
+  assert.ok(segs[segs.length - 44].includes('audit-e105'), 'e105 须居 len-14');
 });

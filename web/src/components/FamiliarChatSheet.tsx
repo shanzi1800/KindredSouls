@@ -512,6 +512,12 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
           : `${rr.category}_${normalizeReportTier(rr.tier)}` as HelloMode;
       } else if (_e142Mood) {
         mode = 'mood'; // 罗盘情绪在场 ⇒ 情绪共情第一击（E123 军令刀四；隔日牌面静默）
+      } else if (_e150TodayMood) {
+        // 🆕 E153-刀四（主公军令 2026-11-24）：P2 今日情绪优先权焊死——当日
+        //  ks_mood_of_day 在场（isToday 真值）且尚未承接 ⇒ 必命中 P2 情绪首句
+        //  （队列 P1＞P2回忆 顺位内决出），严禁被跨日 daily 星图问候压盖（主公
+        //  实拍病灶③「已选灿烂仍吐通用开场白」根：旧序 daily 分支在 P2 之前）。
+        mode = 'p1queue';
       } else {
         const lastDay = readLastChatDay(store);
         if (lastDay && lastDay < today) {
@@ -538,6 +544,20 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       const lastTs = (sess && sess.messages.length)
         ? Number(sess.messages[sess.messages.length - 1].timestamp) : 0;
       if (sess && sess.messages.length > 0 && !(freshReport && Number(rr.unlockedAt) > lastTs)) {
+        // 🆕 E153-刀四（主公军令 2026-11-24）：only-hello 重水合——存档内用户从未
+        //  发过消息（every sender !== 'user'）⇒ 按前置重算模式＋当前语言重生
+        //  首句（三场景一刀全覆盖：早间预存旧开场白＋罗盘新选情绪 ⇒ P2 情绪
+        //  首句刷新替换未回复旧开场白；切语言重开 ⇒ 新语种重生零 CJK 残留；
+        //  同语言同情绪 ⇒ helloFor 确定性同文本免扰动）。多条历史（用户已回）
+        //  ⇒ 存档原样复原零改写（E113「禁重复首句」铁律原样守备）。
+        const _e153OnlyHello = sess.messages.every(
+          (m: { sender?: string }) => m.sender !== 'user');
+        if (_e153OnlyHello) {
+          setHelloMode(mode);
+          setMsgs([{ id: 'hello', role: 'assistant', text: helloFor(mode) }]);
+          if (_e144Reunion) setReunionBadge({ id: 'hello' });
+          return;
+        }
         setHelloMode((sess && (sess as { greetingMode?: HelloMode }).greetingMode) || mode);
         const _e144Restored = sessionToChatMsgs(sess);
         setMsgs(_e144Restored);
@@ -610,7 +630,7 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
       return [{ id: 'hello', role: 'assistant', text: helloFor(helloMode) }];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, name, helloMode]);
+  }, [t, name, helloMode, lang]); // 🆕 E153-刀四：显式 lang 入 deps（军令「切语言即时重水合未回复首句」）
 
   /** 关舱复位（仅交互态； msgs 历史保留——🏆 E113-刀三 军令：重开按当日
    *  会话档复原全部聊天记录，禁首语复读；私密内容随当日 24:00 过期自动清理） */

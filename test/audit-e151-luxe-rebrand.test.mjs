@@ -98,7 +98,7 @@ test('A4 引擎镜像同源（E139 Q1 / E137 Q3 触发锚与 locales 逐字）',
 
 test('A5 i18n 基准 141（E151 合规三键入列）＋六语键集合全等', () => {
   const gateSrc = read('test/audit-i18n-keys.test.js');
-  assert.ok(gateSrc.includes('assert.strictEqual(p.total, 141'), 'V448 基准未后继化 141');
+  assert.ok(gateSrc.includes('assert.strictEqual(p.total, 142'), 'V448 基准未后继化 141');
   const base = Object.keys(flatten(loc('zh'))).sort().join(',');
   for (const l of LANGS.slice(1)) {
     assert.equal(Object.keys(flatten(loc(l))).sort().join(','), base,
@@ -147,9 +147,10 @@ test('C1 1024 块在位＋关键钦定声明逐字（CTA/切换器/舱/胶囊/�
   // ⑥ 胶囊受控换行＋泰语防截断
   assert.ok(/\.ks-chat-pill\s*\{[^}]*overflow-wrap:\s*anywhere/.test(block), '胶囊须 overflow-wrap anywhere');
   // ① 主标衬线轻奢字距（🥂 E152-刀二：0.1em＋#FAF4E8＋clamp 放大＋暗影）
-  assert.ok(/\.title\s*\{[^}]*letter-spacing:\s*0\.1em/.test(block), '主标须字距 0.1em（E152）');
-  assert.ok(/\.title\s*\{[^}]*#FAF4E8/.test(block), '主标须象牙金白 #FAF4E8（E152）');
-  assert.ok(/\.title\s*\{[^}]*font-size:\s*clamp\(30px,\s*2\.6vw,\s*40px\)/.test(block), '主标须 clamp(30px,2.6vw,40px)（E152）');
+  assert.ok(/\.input-page \.title\s*\{[^}]*letter-spacing:\s*0\.1em/.test(block), '主标须字距 0.1em（E153）');
+  assert.ok(/\.input-page \.title\s*\{[^}]*#FAF4E8/.test(block), '主标须象牙金白 #FAF4E8（E153）');
+  assert.ok(/\.input-page \.title\s*\{[^}]*font-size:\s*clamp\(26px,\s*2\.2vw,\s*34px\)/.test(block), '主标须 clamp(26px,2.2vw,34px)（E153-刀一 分流）');
+  assert.ok(/html\[lang="zh"\] \.input-page \.title\s*\{[^}]*font-size:\s*clamp\(30px,\s*2\.5vw,\s*38px\)/.test(block), 'zh 主标须 clamp(30px,2.5vw,38px)（E153-刀一 单行档）');
 });
 
 test('C2 768 基线零破坏（E135 477×638 仍在位＋E77 流内镜像零触碰）', () => {
@@ -245,8 +246,8 @@ test('G1 链位：e151 居 e150 后 e40-compat 前＋全链 120 段＋node-only 
   const script = pkg.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 120, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
-  assert.equal(segs.length, 119, `node --test 段须 119（E152 插链后继化；实得 ${segs.length}）`);
+  assert.equal(all.length, 121, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
+  assert.equal(segs.length, 120, `node --test 段须 119（E152 插链后继化；实得 ${segs.length}）`);
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i150 = names.indexOf('audit-e150-refresh-amnesia-gate');

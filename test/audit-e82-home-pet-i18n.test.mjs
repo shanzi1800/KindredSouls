@@ -25,7 +25,7 @@ test('E82 体型语言不变式断言：灵宠渲染宽锁 98px（EN 基准）�
 test('E82 气泡动态解耦断言：showBubble 实测标题盒外推（≥24px 间隙＋屏内钳制＋垂直兜底）', () => {
   const s = read('web/src/components/FamiliarHomeCard.tsx');
   assert.ok(s.includes('const GAP = 24'), '军令间隙常量 24 缺失');
-  assert.ok(s.includes('const BUB = 150'), '气泡宽度上限常量缺失（屏内钳制依赖）');
+  assert.ok(s.includes('const BUB = 312'), '气泡宽度上限常量缺失（屏内钳制依赖；E153-刀三放宽 150→312）');
   assert.ok(s.includes('hShift') && s.includes('vRaise'), '横向外推/垂直兜底双策略缺失');
   assert.ok(s.includes("querySelector('.title')"), '未实测主标题盒（锚点解耦必须运行时量测）');
   assert.ok(s.includes("getBoundingClientRect"), '未用真页几何量测');

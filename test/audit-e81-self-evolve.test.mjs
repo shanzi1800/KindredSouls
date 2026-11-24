@@ -88,10 +88,12 @@ test('E67 关 thinking 断言：GenConfig thinkingBudget 0 根除空气泡', () 
   assert.match(srv, /thinkingBudget:\s*0/, 'GenConfig 须 thinkingBudget: 0（thinking 空气泡根源）');
 });
 
-test('E71 限宽扣位移断言：气泡 max-width 必扣 44px 位移（390 屏不出屏）', () => {
+test('E71/E153 限宽防溢出断言：气泡 max-width 军令钦定口径（非中文语种按钮零破框）', () => {
   const css = read('web/src/App.css');
-  assert.ok(css.includes('max-width: min(150px, calc(40vw - 44px))'), '气泡限宽须扣位移：max-width: min(150px, calc(40vw - 44px))');
-  assert.ok(css.includes('bottom: 56%'), '气泡垂直口径漂移（应为 bottom: 56%）');
+  // 🧭 E153-刀三（主公军令 2026-11-24）：150px 窄卡退役——容器放宽＋受控换行死锁。
+  assert.ok(css.includes('max-width: min(312px, 86vw)'), '气泡限宽须为军令钦定：max-width: min(312px, 86vw)');
+  assert.ok(css.includes('min-width: 224px'), '气泡须有 min-width: 224px 轻奢下限');
+  assert.ok(css.includes('bottom: 34.4%'), '气泡垂直口径漂移（应为 bottom: 34.4%——E152 裁切盒像素守恒换算）');
 });
 
 /* ---------- 链位自保（同 E80 口径：收口位契约） ---------- */
