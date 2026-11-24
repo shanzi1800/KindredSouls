@@ -21,12 +21,12 @@ const LANGS = ['zh', 'en', 'fr', 'es', 'th', 'vi'];
 
 /* 🏆 E135-刀三：军令钦定六语词表（chatQ1/chatQ3 逐字；emoji 前缀沿 E66 既版保留） */
 const PILLS = {
-  zh: { q1: '💰 今日财运与破财避坑', q3: '🔮 结合星盘的今日指引' },
-  en: { q1: "💰 Today's Wealth & Pitfall Guide", q3: '🔮 Today\'s Astral Chart Guidance' },
-  fr: { q1: '💰 Fortune & Pièges Financiers du Jour', q3: '🔮 Conseils Astraux selon mon Thème' },
-  es: { q1: '💰 Fortuna de Hoy y Trampas Financieras', q3: '🔮 Guía Astral según mi Carta Natal' },
-  th: { q1: '💰 โชคลาภวันนี้และจุดระวังเสียทรัพย์', q3: '🔮 คำชี้แนะดวงดาวประจำวันตามลัคนา' },
-  vi: { q1: '💰 Tài Vận Hôm Nay & Tránh Tiêu Hao', q3: '🔮 Chỉ Dẫn Tinh Bàn Hôm Nay' },
+  zh: { q1: '💰 今日财富节奏校准', q3: '🔮 今日坐标与心境校准' },
+  en: { q1: "💰 Today's Wealth Rhythm", q3: '🔮 Today\'s Coordinate Alignment' },
+  fr: { q1: '💰 Rythme financier du jour', q3: '🔮 Alignement du jour' },
+  es: { q1: '💰 Ritmo de abundancia de hoy', q3: '🔮 Calibración astral de hoy' },
+  th: { q1: '💰 ปรับจังหวะการเงินวันนี้', q3: '🔮 ปรับพิกัดและใจวันนี้' },
+  vi: { q1: '💰 Hiệu Chỉnh Nhịp Tài Lộc Hôm Nay', q3: '🔮 Hiệu Chỉnh Tọa Độ & Tâm Cảnh Hôm Nay' },
 };
 
 test('E135-A 刀一：桌面舱扩容 477×638（+57/+38px）仅 768px 断点生效，移动端零扰动', () => {
@@ -135,7 +135,7 @@ test('E135-S 链位自保：e135 入编（e134 后、e40-compat 前；全链 102
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 118, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);
+  assert.equal(segs.length, 119, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);
   const iE135 = segs.findIndex((s) => s.includes('audit-e135-chat-geometry-pills'));
   const iE134 = segs.findIndex((s) => s.includes('audit-e134-aesthetic-25d-route-map'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat'));

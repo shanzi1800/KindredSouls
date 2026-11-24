@@ -2231,6 +2231,81 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
     animation: ksChatPop 0.28s cubic-bezier(0.22, 0.9, 0.24, 1);
   }
 }
+
+/* ═══ 🖥 E151-刀一（军令 2026-11-24）：PC 端（≥1024px）国际轻奢精修 ═══
+   基线：暗夜黑金轻奢（香槟金 #D4AF37 族＋象牙白 #F6F0E4）。移动端（<1024px）零扰动；
+   E77 朝向镜像（Milo 右锚/Sophia 左锚）与 E65 趴键几何钦定红线零触碰——仅尺寸/材质/间距。 */
+@media (min-width: 1024px) {
+  /* ① Hero 主标/副标：衬线轻奢字距＋象牙金白 */
+  .title {
+    font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+    letter-spacing: 0.08em;
+    color: #F6F0E4;
+  }
+  .subtitle {
+    color: rgba(246, 240, 228, 0.78);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  /* ② 主 CTA：暗夜香槟金轻奢胶囊（曜石玻璃底＋细金描边＋微外辉光＋hover 浮起） */
+  .landing-start-btn {
+    min-width: 220px;
+    padding: 14px 36px;
+    color: #F6F0E4;
+    font-weight: 600;
+    background:
+      linear-gradient(135deg, rgba(212, 175, 55, 0.34) 0%, rgba(240, 208, 96, 0.16) 60%, rgba(212, 175, 55, 0.10) 100%),
+      linear-gradient(180deg, rgba(22, 18, 34, 0.94) 0%, rgba(12, 9, 20, 0.97) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.58);
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    text-shadow: none;
+  }
+  .landing-start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(212, 175, 55, 0.32), 0 0 26px rgba(212, 175, 55, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  }
+  /* ③ 灵宠×按钮呼吸感：E65 趴键几何钦定不动，整体间距 72→84px 扩容供灵宠区呼吸 */
+  .landing-start-wrap { margin-top: 84px; }
+  /* ④ 语言切换器：右上角安全区归位（fixed 锚定视口 top 24 / right 28）＋暗夜磨砂玻璃融入星云 */
+  .lang-switch {
+    position: fixed;
+    top: 24px;
+    right: 28px;
+    background: rgba(15, 12, 24, 0.58) !important;
+    border: 1px solid rgba(212, 175, 55, 0.28) !important;
+    color: #F5EFE6;
+    font-weight: 600;
+    border-radius: 999px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.38);
+  }
+  .lang-switch:hover {
+    background: rgba(26, 21, 40, 0.74) !important;
+    border-color: rgba(212, 175, 55, 0.5) !important;
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.28);
+  }
+  /* ⑤ 对话舱：深邃毛玻璃＋宽屏比例舒展（仅尺寸/材质；E77 流内镜像定位零触碰） */
+  .ks-chat-sheet {
+    width: clamp(400px, 30vw, 460px);
+    height: min(680px, 76vh);
+    max-height: 76vh;
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgba(120, 90, 200, 0.20), transparent 70%),
+      linear-gradient(180deg, rgba(16, 13, 26, 0.80) 0%, rgba(11, 8, 18, 0.92) 100%);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border: 1px solid rgba(212, 175, 55, 0.24);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  /* ⑥ 快捷胶囊：受控换行＋泰语/长词防截断防撑爆（emoji 图标位天然锁定） */
+  .ks-chat-pill {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+}
 @keyframes ksChatPop { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateZ(0) scale(1); } }
 @keyframes ksChatUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes ksChatFade { from { opacity: 0; } to { opacity: 1; } }

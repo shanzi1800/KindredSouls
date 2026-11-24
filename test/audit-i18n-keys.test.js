@@ -133,7 +133,11 @@ describe('V448 i18n Key 门禁', () => {
     //   familiar.chatStatus「{{name}} 正在感应你的星盘磁场…」尾缀六语同步
     //   删除（主公三图实锤截断病灶；组件 span 同批退役），键集合全等不变
     // 139 → 138
-    assert.strictEqual(p.total, 138, 'E145 状态栏精简 chatStatus 退役后基准键数应为 138');
+    // 🆕 E151-刀三（军令 2026-11-24）: 信任合规三键入列——input.privacyNote /
+    //   input.clearDataBtn / input.clearDataConfirm（生辰隐私承诺＋一键清除入口
+    //   ＋二次确认；6 语种同步新增，键集合全等不变）
+    // 138 → 141
+    assert.strictEqual(p.total, 141, 'E151 合规三键入列后基准键数应为 141');
   });
 
   test('⑥ 死键已彻底清除（防回流）', () => {

@@ -496,12 +496,12 @@ export const WELLNESS_SUPPLY_SLOTS = Object.freeze(
 
 /** chatQ3 六语钦定文本（军令触发锚——与 locales/*.json familiar.chatQ3 逐字同源） */
 export const WELLNESS_CHATQ3_TEXTS = Object.freeze([
-  '🔮 结合星盘的今日指引',
-  "🔮 Today's Astral Chart Guidance",
-  '🔮 Conseils Astraux selon mon Thème',
-  '🔮 Guía Astral según mi Carta Natal',
-  '🔮 คำชี้แนะดวงดาวประจำวันตามลัคนา',
-  '🔮 Chỉ Dẫn Tinh Bàn Hôm Nay',
+  '🔮 今日坐标与心境校准',
+  "🔮 Today's Coordinate Alignment",
+  '🔮 Alignement du jour',
+  '🔮 Calibración astral de hoy',
+  '🔮 ปรับพิกัดและใจวันนี้',
+  '🔮 Hiệu Chỉnh Tọa Độ & Tâm Cảnh Hôm Nay',
 ]);
 
 /** 养生语义关键词（六语白名单——疲惫/失眠/焦躁/换季/茶饮/吃喝玩乐语义族） */

@@ -159,8 +159,30 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
           18% { opacity: 1; }
           100% { opacity: 0; transform: translateX(-50%) translateY(-26px); }
         }
+        /* 🖥 E151-刀一（军令 2026-11-24）：PC 端（≥1024px）罗盘弹窗比例舒展——
+           宽 clamp(480px, 38vw, 560px)＋内边距 32px 36px＋五情绪卡热区放大与
+           细金边 hover 微光（5 情绪枚举与文案零变动——E149 冻结铁律）。
+           !important 压过内联宽 360px（移动端基线）；组件自容零 App.css 改动。 */
+        @media (min-width: 1024px) {
+          .ks-mood-card {
+            width: clamp(480px, 38vw, 560px) !important;
+            padding: 32px 36px !important;
+          }
+          .ks-mood-badge {
+            padding: 14px 4px 12px !important;
+            border-radius: 14px !important;
+          }
+          .ks-mood-badge span { font-size: 13px !important; }
+          .ks-mood-badge .ks-mood-icon { font-size: 26px !important; }
+          .ks-mood-badge:hover {
+            border-color: #D4AF37 !important;
+            box-shadow: 0 0 18px rgba(212, 175, 55, 0.35) !important;
+            background: rgba(212, 175, 55, 0.14) !important;
+          }
+        }
       `}</style>
       <div
+        className="ks-mood-card"
         style={{
           width: '360px', maxWidth: 'calc(100vw - 32px)',
           background: 'rgba(11,11,14,0.95)',
@@ -220,6 +242,7 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
               <button
                 key={m.archetype}
                 type="button"
+                className="ks-mood-badge"
                 onClick={() => { setSelected(m.archetype); setStarFloat(null); }}
                 aria-pressed={active}
                 data-testid={`mood-badge-${m.archetype}`}
@@ -233,7 +256,7 @@ export const MoodCompassModal: React.FC<MoodCompassModalProps> = ({ open, onClos
                 onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 14px ${glow}55`; }}
                 onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <span style={{ fontSize: 20, filter: `drop-shadow(0 0 6px ${glow}88)` }}>{m.icon}</span>
+                <span className="ks-mood-icon" style={{ fontSize: 20, filter: `drop-shadow(0 0 6px ${glow}88)` }}>{m.icon}</span>
                 <span style={{ fontSize: 11, color: active ? '#F3E5AB' : 'rgba(232,220,192,0.8)', letterSpacing: 0.5 }}>
                   {m.label[lang] || m.label.en}
                 </span>

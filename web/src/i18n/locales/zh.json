@@ -1,14 +1,17 @@
 {
   "app": {
-    "name": "缘分天定"
+    "name": "一见如故"
   },
   "input": {
-    "title": "缘分天定",
-    "subtitle": "输入双方生日，测算缘分指数",
+    "title": "何时何地，一见如故",
+    "subtitle": "用你的出生坐标，定位幸福的方位",
     "yourBirthday": "你的生日",
     "theirBirthday": "TA的生日",
     "calculate": "测算缘分",
-    "start": "开始测算",
+    "start": "定位我的坐标",
+    "privacyNote": "出生时间与地点仅用于生成个人坐标，加密存储、随时可一键清除，不用于广告画像。",
+    "clearDataBtn": "一键清除我的生辰坐标与本地档案",
+    "clearDataConfirm": "确认清除？本地生辰坐标、灵宠档案与对话记忆将一并移除，且无法恢复。",
     "selectMode": "选择模式",
     "compatibilityMode": "姻缘密码",
     "compatibilityModeDesc": "解锁双人关系密码",
@@ -127,8 +130,8 @@
     "chatNeedLogin": "先登录，我才能听见你说话",
     "chatNeedUnlock": "解锁报告后，我就能天天陪你了",
     "chatTooFast": "慢一点，我一直在，不用急",
-    "chatQ1": "💰 今日财运与破财避坑",
-    "chatQ3": "🔮 结合星盘的今日指引",
+    "chatQ1": "💰 今日财富节奏校准",
+    "chatQ3": "🔮 今日坐标与心境校准",
     "helloLoveCore": "星轨的微光还在我手心跳动呢……刚才这份合盘里，那张《{{tarotCard}}》牌与{{trinePattern}}映在一起的光芒，连我都悄悄替你们心动了。当下两颗心最微妙的契机，想先听我慢慢说给你听吗？",
     "helloLoveMonthly": "月轨的潮汐我才刚刚数完呢……这 30 天里，中旬有一阵情绪的小涟漪，可转过那个弯，藏着你们的一次惊喜。要我把这月光的温柔重点，先轻声讲给你听吗？",
     "helloLoveYearly": "我把整整 365 天的星路都替你们走了一遍……全年的缘分聚得很暖很足，只是第三季有个现实的路口，想早点陪你把伞备好。我们从哪一季开始慢慢聊？",

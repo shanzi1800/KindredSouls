@@ -15,6 +15,7 @@ import PaywallCard from './components/PaywallCard';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from './components/FamiliarPicker';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
+import BirthPrivacyNote from './components/BirthPrivacyNote';
 import { TimeInput } from './components/TimeInput';
 import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
@@ -488,7 +489,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
         )}
         <div className="landing-container">
           <h1 className="title">{t('input.title')}</h1>
-          <p className="subtitle">{t('app.name')}</p>
+          {/* 🆕 E151-刀二（军令 2026-11-24）：Hero 副标换血 input.subtitle（坐标轻奢语系）
+              —— 根治「缘分天定」双层重影（旧 subtitle 消费 app.name 与 title 同文叠排）。 */}
+          <p className="subtitle">{t('input.subtitle')}</p>
           {/* 🐾 E51 破框骑键：wrap 提供定位坐标系（宽=按钮宽）；FamiliarHomeCard 认领后
               经 portal 把灵宠（主公钦定原画）骑到按钮上沿 —— 外层 pointer-events:none
               物理穿透，按钮点击 100% 命中（军令铁律）。 */}
@@ -599,6 +602,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <span style={{ marginRight: '6px' }}>🔮</span>{t('wealthInput.birthTip')}
         </div>
       </div>
+      {/* 🆕 E151-刀三（军令 2026-11-24）：数据最小化信任护栏——隐私承诺小字＋一键清除（两击确认） */}
+      <BirthPrivacyNote />
       {/* 🌌 45-B5：CTA 移出蓝框 · 框下方（对齐财富按钮规格；压平 .btn 自带 40px 下边距使条款紧贴） */}
       <button className="btn btn-primary" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{t('input.calculate')}</button>
       {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}

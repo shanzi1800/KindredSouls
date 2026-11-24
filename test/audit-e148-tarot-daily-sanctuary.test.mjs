@@ -273,8 +273,8 @@ test('E148-锁4b whisper 钦定权益名词＋指路句（E130 含蓄点拨唯�
   for (const noun of ['月度星轨长卷', '年度宿命年鉴', '星际会员畅享']) {
     assert.ok(fnPrompt.includes(noun), `钦定权益名词「${noun}」缺失`);
   }
-  assert.ok(fnPrompt.includes('在首页『开始测算』中开启'), '指路句「开启」形态缺失');
-  assert.ok(fnPrompt.includes('在首页『开始测算』中查看'), '指路句「查看」形态缺失');
+  assert.ok(fnPrompt.includes('在首页『定位我的坐标』中开启'), '指路句「开启」形态缺失');
+  assert.ok(fnPrompt.includes('在首页『定位我的坐标』中查看'), '指路句「查看」形态缺失');
   assert.ok(fnPrompt.includes('绝不出现任何价格、金额'), 'E130 零价格红线原句保持');
 });
 
@@ -287,14 +287,14 @@ test('E148-锁4c E112 层内句清洗：「主人刚刚开启了」＋旧「解�
 test('E148-锁5 链位：e148 紧居 e147 后、e40-compat 前；全链 116＋node-only 115＋python 恒尾', () => {
   const chain = PKG.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 118, `链总段必须为 116（实际 ${segs.length}）`);
+  assert.equal(segs.length, 119, `链总段必须为 116（实际 ${segs.length}）`);
   const iE148 = segs.findIndex((s) => s.includes('audit-e148-tarot-daily-sanctuary'));
   const iE147 = segs.findIndex((s) => s.includes('audit-e147-seasonal-guard'));
   const iCompat = segs.findIndex((s) => s.includes('e40-compat'));
   const nodeOnly = segs.filter((s) => !/python/i.test(s));
   assert.ok(iE147 >= 0 && iE148 === iE147 + 1, `e148 紧居 e147 后（iE147=${iE147}, iE148=${iE148}）`);
   assert.ok(iE148 < iCompat, 'e148 居 e40-compat 前');
-  assert.equal(nodeOnly.length, 117, `node-only 段必须为 115（实际 ${nodeOnly.length}）`);
+  assert.equal(nodeOnly.length, 118, `node-only 段必须为 115（实际 ${nodeOnly.length}）`);
   assert.ok(iCompat === segs.length - 2, `e40-compat 恒 len-2（iCompat=${iCompat}, len=${segs.length}）`);
   assert.ok(segs[segs.length - 1].includes('.py') || segs[segs.length - 1].includes('python'), 'python 恒链尾');
 });

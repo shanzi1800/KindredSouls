@@ -44,12 +44,12 @@ export const WEALTH_ELEMENTS = Object.freeze(['fire', 'earth', 'air', 'water', '
 
 /** chatQ1 六语钦定文本（军令触发锚——与 locales/*.json familiar.chatQ1 逐字同源） */
 export const WEALTH_CHATQ1_TEXTS = Object.freeze([
-  '💰 今日财运与破财避坑',
-  "💰 Today's Wealth & Pitfall Guide",
-  '💰 Fortune & Pièges Financiers du Jour',
-  '💰 Fortuna de Hoy y Trampas Financieras',
-  '💰 โชคลาภวันนี้และจุดระวังเสียทรัพย์',
-  '💰 Tài Vận Hôm Nay & Tránh Tiêu Hao',
+  '💰 今日财富节奏校准',
+  "💰 Today's Wealth Rhythm",
+  '💰 Rythme financier du jour',
+  '💰 Ritmo de abundancia de hoy',
+  '💰 ปรับจังหวะการเงินวันนี้',
+  '💰 Hiệu Chỉnh Nhịp Tài Lộc Hôm Nay',
 ]);
 
 /** 财富语义关键词（六语白名单——军令钦定词族＋常见衍生） */

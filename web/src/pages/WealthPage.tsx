@@ -8,6 +8,7 @@ import type { CityRecord } from '../hooks/useCitySearch';
 // ⚖️ E127-LEGAL-ROUTING-MODAL（主公军令 2026-11-08）：表单原位法律条款弹窗——
 //    财富模块同款接线（单人星盘表单；关闭后个人生日数据 100% 留存、零串流姻缘流程）。
 import LegalTermsModal from '../components/legal/LegalTermsModal';
+import BirthPrivacyNote from '../components/BirthPrivacyNote';
 
 interface WealthPageProps {
   onNavigate: (path: string) => void;
@@ -282,6 +283,9 @@ const WealthPage: React.FC<WealthPageProps> = ({ onNavigate }) => {
             <span style={{ marginRight: '6px' }}>🔮</span>
             {t('wealthInput.birthTip')}
           </div>
+
+          {/* 🆕 E151-刀三（军令 2026-11-24）：数据最小化信任护栏——隐私承诺小字＋一键清除（两击确认） */}
+          <BirthPrivacyNote />
 
           <button
             onClick={handleSubmit}
