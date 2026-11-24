@@ -31,8 +31,9 @@ import { readRecentReport } from '../lib/soulRecentReport.mjs';
 // 🏆 E113-刀三/刀四（主公军令 2026-11-01）：按日会话固化核（24:00 失效＋跨日判定）
 // @ts-ignore —— dailyChatSession.mjs 纯 JS 逻辑核（形状由 E113 闸门守备）
 import { loadDailyChatSession, saveDailyChatSession, readLastChatDay, chatSessionDateKey, sessionToChatMsgs } from '../lib/dailyChatSession.mjs';
-// @ts-ignore —— dailyFortune.mjs 确定性今日运势核（helloDaily 插值真值·与首页锦囊同源）
-import { dailyFortune } from '../lib/dailyFortune.mjs';
+// 🥂 E152-刀三（军令 2026-11-24）：dailyFortune import 退役——跨日首语 helloDaily
+//    换血为「坐标与心境校准」老友口吻，零插值零占位，确定性运势核从舱内拔除
+//    （首页锦囊 luckPouch 同源核不受影响）。
 // 🏆 E114-刀一（主公军令 2026-11-01）：首语插值真值核——六语模板占位符
 //    {{tarotCard}}/{{trinePattern}} 的运行时变量（报告真值查表，禁硬编码牌名）
 // @ts-ignore —— greetingTruth.mjs 纯 JS 逻辑核（形状由 E114 闸门守备）
@@ -116,8 +117,8 @@ export type FamiliarIp = 'Milo' | 'Sophia';
 
 /** 🏆 E112-刀二：开场首语九分支——六档报告第一击（love/wealth × core/monthly/
  *  annual）＋E111 情境三分支（sweet/soothe/plain）；
- *  🏆 E113-刀四：新增 daily 分支——跨自然日无当日新解锁 ⇒ 流转今日幸运锦囊
- *  问候（{{color}}/{{num}} 插值真值来自 dailyFortune 确定性核）。
+ *  🏆 E113-刀四：新增 daily 分支——跨自然日无当日新解锁 ⇒ 流转跨日问候
+ *  （🥂 E152-刀三：helloDaily 换血「坐标与心境校准」老友口吻，按除幸运色/数字套话）。
  *  🏆 E123-刀四：新增 mood 分支——罗盘情绪记忆（ks_active_mood 当日＋2h
  *  时效命中）⇒ 5 情绪×6 语第一人称共情抚慰首句（军令钦定句式逐字）。 */
 type HelloMode =
@@ -396,15 +397,11 @@ const FamiliarChatSheet: React.FC<Props> = ({ open, onClose, ip, name, relationM
     if (mode === 'wealth_monthly') return t('familiar.helloWealthMonthly');
     if (mode === 'wealth_yearly') return t('familiar.helloWealthYearly');
     if (mode === 'daily') {
-      // 🏆 E113-刀四：今日锦囊真值（dailyFortune 确定性核——与首页 luckPouch 同源，
-      //    同日同盘恒定不抖动；无本命太阳 ⇒ 回落全池，绝不臆造）
-      // 🏆 E118-刀四（主公军令 2026-11-02）：跨日唤醒首语带名——永久档案有名字
-      //    ⇒ 六语前缀装配（「North，新的一天，星轨又为你转动啦！」同构）；
-      //    无名字 ⇒ 原样透传（今日现行为兜底，零 i18n 新键）
-      //    🆕 E142.1-刀二（军令 2026-11-17）：前缀改唤名门控供应——极值情绪
-      //    在场且日配额未满才带名（军令「次日晨间问候连喊 2 次」病灶根治）。
-      const f = dailyFortune({ lang, sunSign: '' });
-      const base = t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) });
+      // 🥂 E152-刀三（军令 2026-11-24）：跨日首语换血——拔除「幸运色【星云紫】、
+      //    幸运数字【29】」旧日运套话（主公线上实拍否决），改为「坐标与心境校准」
+      //    老友口吻（六语 locales 同步换血，零插值零占位）；
+      //    E118-刀四跨日带名＋E142.1-刀二唤名门控链路零改动。
+      const base = t('familiar.helloDaily');
       return nameGateRef.current
         ? prependUserName(lang, profileNameRef.current, base) : base;
     }

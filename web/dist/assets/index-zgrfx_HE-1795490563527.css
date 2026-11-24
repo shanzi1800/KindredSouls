@@ -1019,6 +1019,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   align-items: center;
   justify-content: center;
   line-height: 1;
+  overflow-wrap: anywhere; /* 🥂 E152-刀一：六语长文案受控换行（泰语防截断）——仅文本超宽时生效 */
 }
 
 .landing-start-btn:hover {
@@ -1048,6 +1049,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   /* 🐾 E65g: z2 > 按钮 z1 —— 灵宠锚定层明确高于按钮（WebKit 实机物证修复） */
   z-index: 2;
 }
+/* 🥂 E152-刀一（军令 2026-11-24）：灵宠骑乘间距条件档——灵宠换血为「纵向分离」
+   形制（translateY(-2px)：底缘含尾梢完全位于按钮顶沿之上）后，灵宠全高
+   （98px 宽 ⇒ 画布比高 ≈ 112px）须由 wrap 顶距全额让位：灵宠在场
+   （body.ks-fam-ridden——FamiliarHomeCard 挂载态条件类）⇒ margin-top 124px；
+   匿名访客无灵宠 ⇒ E52 钦定 72px 基线零扰动。选择器 specificity 压
+   1024 块 84px 覆写（双视口通吃）。 */
+body.ks-fam-ridden .landing-start-wrap { margin-top: 124px; }
 .ks-fam-breakout {
   position: absolute;
   bottom: 100%;          /* 灵宠底边先对齐按钮顶沿，再按自身高百分比下垂复现「搭键爪垫」 */
@@ -1114,11 +1122,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
      ⇒ 灵宠渲染宽 98→143px 跳变。锁定 EN 基准 98px（138.5×70%），窄屏回 70% 适配；
      left 改 calc 保球心恒落键面 44%/56%（0.636/0.360 = E65d 资产球心占比真值）。 */
   left: calc(44% - 62.3px); width: min(98px, 70%);
-  transform: translateY(calc(38.9% + 6px));
+  /* 🥂 E152-刀一（军令 2026-11-24）：E65f 趴键深压退役——主公线上实拍实锤
+     「尾巴遮挡『定位我的坐标』末字『标』」。灵宠与主按钮纵向分离：底缘（含
+     尾梢/爪尖）抬至按钮顶沿之上 2px，六语长文案零像素遮挡（e152-verify 真页
+     DOM 断言守备）；wrap 顶距让位走 body.ks-fam-ridden 条件档（见下）。 */
+  transform: translateY(-2px);
 }
 .ks-fam-sophia {
   left: calc(56% - 35.3px); width: min(98px, 70%);
-  transform: translateY(calc(39.2% + 6px));
+  /* 🥂 E152-刀一：同 Milo 纵向分离（旧 calc(39.2% + 6px) 趴键深压退役） */
+  transform: translateY(-2px);
 }
 .ks-fam-breathe {
   animation: ksFamBreatheMilo 4.6s ease-in-out infinite;
@@ -1586,9 +1599,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   .ks-fam-idle .ks-fam-breathe,
   .ks-fam-idle .ks-fam-img-blink,
   .ks-fam-idle .ks-fam-tail { animation: none; }
-  /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（趴键位保持 —— E65d 参照稿同款真值） */
-  .ks-fam-milo { transform: translateY(calc(38.9% + 6px)); }
-  .ks-fam-sophia { transform: translateY(calc(39.2% + 6px)); }
+  /* 🐾 E52/E54/E65d: 眨眼 / 慢旋尾 / 呼吸降级为静帧（E152-刀一 纵向分离位保持） */
+  .ks-fam-milo { transform: translateY(-2px); }
+  .ks-fam-sophia { transform: translateY(-2px); }
   .ks-fam-img-blink { animation: none; opacity: 0; }
   .ks-fam-tail { animation: none; transform: none; }
   /* 🌟 E111/E112-刀一：待机光效层随降级静默不播（gemglow 无光晕 / 星芒气泡不升腾） */
@@ -2236,35 +2249,50 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
    基线：暗夜黑金轻奢（香槟金 #D4AF37 族＋象牙白 #F6F0E4）。移动端（<1024px）零扰动；
    E77 朝向镜像（Milo 右锚/Sophia 左锚）与 E65 趴键几何钦定红线零触碰——仅尺寸/材质/间距。 */
 @media (min-width: 1024px) {
-  /* ① Hero 主标/副标：衬线轻奢字距＋象牙金白 */
-  .title {
+  /* ⓪ Hero 托底：极柔和暗色径向渐变（星云亮区可读性——E152-刀二） */
+  .landing-container {
+    background: radial-gradient(ellipse at center, rgba(12, 8, 24, 0.56) 0%, rgba(12, 8, 24, 0) 72%);
+  }
+  /* ① Hero 主标/副标：衬线轻奢字距＋象牙金白＋暗影托底（E152-刀二 放大改版）
+     ⚠️ 血训（E152 实测）：选择器须 `.input-page .title`（0-2-0）——单类 `.title`
+     被 line 88 `.input-page .title`（青辉光老款）specificity 压死，E151 的 ① 换血
+     块从上线起即为死代码（主公「副标融进星云不可读」真根）。 */
+  .input-page .title {
     font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
-    letter-spacing: 0.08em;
-    color: #F6F0E4;
+    font-size: clamp(30px, 2.6vw, 40px);
+    letter-spacing: 0.1em;
+    color: #FAF4E8;
+    text-shadow: 0 2px 16px rgba(10, 6, 22, 0.85);
   }
-  .subtitle {
-    color: rgba(246, 240, 228, 0.78);
+  .input-page .subtitle {
+    color: rgba(246, 240, 228, 0.86);
     font-weight: 500;
+    font-size: 15px;
+    margin-top: 10px;
     letter-spacing: 0.04em;
+    text-shadow: 0 2px 16px rgba(10, 6, 22, 0.85);
   }
-  /* ② 主 CTA：暗夜香槟金轻奢胶囊（曜石玻璃底＋细金描边＋微外辉光＋hover 浮起） */
+  /* ② 主 CTA：丝缎香槟金轻奢胶囊（E152-刀一 军令换血——旧暗浊褐半透明曜石底被
+     主公线上实拍否决「颜色没有之前的协调」；缎面三段金渐变＋深曜石黑字＋顶缘
+     微高光＋暖金外辉光＋hover 柔和增亮浮起） */
   .landing-start-btn {
-    min-width: 220px;
-    padding: 14px 36px;
-    color: #F6F0E4;
+    min-width: 248px;
+    padding: 14px 40px;
+    color: #181324;
     font-weight: 600;
-    background:
-      linear-gradient(135deg, rgba(212, 175, 55, 0.34) 0%, rgba(240, 208, 96, 0.16) 60%, rgba(212, 175, 55, 0.10) 100%),
-      linear-gradient(180deg, rgba(22, 18, 34, 0.94) 0%, rgba(12, 9, 20, 0.97) 100%);
-    border: 1px solid rgba(212, 175, 55, 0.58);
-    box-shadow: 0 0 18px rgba(212, 175, 55, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.06em;
+    background: linear-gradient(135deg, #F0D99C 0%, #D9B45B 52%, #C59B3E 100%);
+    border: none;
+    box-shadow: 0 8px 28px rgba(217, 180, 91, 0.34), inset 0 1px 0 rgba(255, 251, 235, 0.65);
     text-shadow: none;
   }
   .landing-start-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(212, 175, 55, 0.32), 0 0 26px rgba(212, 175, 55, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    background: linear-gradient(135deg, #F6E4AD 0%, #E2C268 52%, #CBA64C 100%);
+    box-shadow: 0 10px 32px rgba(217, 180, 91, 0.46), inset 0 1px 0 rgba(255, 251, 235, 0.78);
   }
-  /* ③ 灵宠×按钮呼吸感：E65 趴键几何钦定不动，整体间距 72→84px 扩容供灵宠区呼吸 */
+  /* ③ 灵宠×按钮呼吸感：E152-刀一 纵向分离后灵宠全高让位改走 body.ks-fam-ridden
+     条件档（124px，specificity 压本行）；本 84px 仅匿名访客（无灵宠）基线。 */
   .landing-start-wrap { margin-top: 84px; }
   /* ④ 语言切换器：右上角安全区归位（fixed 锚定视口 top 24 / right 28）＋暗夜磨砂玻璃融入星云 */
   .lang-switch {

@@ -220,11 +220,11 @@ test('E118 S4 刀三前端接线：import/开舱读档/send 拦截写入/body.di
   assert.ok(sheet.includes('writeUserNameProfile(ls, sessionSigRef.current, captured)'), '命中须静默写永久档');
   assert.ok(sheet.includes("displayName = (readUserNameProfile(ls, sessionSigRef.current) || null)?.displayName || undefined;"), 'displayName 须从档案读出随行');
   assert.ok(sheet.includes('displayName,'), '请求 body 须含 displayName 字段');
-  // ⑤ daily 分支带名装配（e113 闸门三锚保留）
+  // ⑤ daily 分支带名装配（e113 闸门三锚保留；🥂 E152-刀三：helloDaily 换血零插值）
   // 🆕 E142.1 后继化：daily 首语带名须过唤名门（极值情绪＋配额未满才带名）
   assert.ok(sheet.includes('return nameGateRef.current\n        ? prependUserName(lang, profileNameRef.current, base) : base;'), 'daily 首语须门控 prependUserName（E142.1 唤名门三重熔断）');
-  assert.ok(sheet.includes("dailyFortune({ lang, sunSign: '' })"), 'e113 锦囊真值锚须保留');
-  assert.ok(sheet.includes("t('familiar.helloDaily', { color: String(f.color.name), num: String(f.luckyNumber) })"), 'helloDaily 插值锚须保留');
+  assert.ok(sheet.includes("const base = t('familiar.helloDaily');"), 'helloDaily 零插值直取锚（E152-刀三 换血）');
+  assert.ok(!sheet.includes("import { dailyFortune } from '../lib/dailyFortune.mjs';"), 'dailyFortune import 须拔除（E152-刀三）');
 });
 
 test('E118 S5 刀三服务端守卫：_e118DisplayName 形状守卫 fail-closed＋路由接线＋云端双写 fire-and-forget', () => {
@@ -327,7 +327,7 @@ test('E118 S8 链位自保：e118 入编（e115 后、e40-compat 前；全链 91
   assert.ok(i115 < i118 && i118 < iCap, 'E118 须按序排在 e115 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 119, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 120, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：59 键不变（刀四代码侧前缀拼接，零新键）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));

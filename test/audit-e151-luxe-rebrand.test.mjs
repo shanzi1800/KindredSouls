@@ -131,10 +131,12 @@ test('C1 1024 块在位＋关键钦定声明逐字（CTA/切换器/舱/胶囊/�
   const i = CSS_SRC.indexOf('@media (min-width: 1024px)');
   assert.ok(i > -1, '缺 1024px 轻奢断点块');
   const block = CSS_SRC.slice(i, i + 4200);
-  // ② CTA 暗夜香槟金胶囊
-  assert.ok(/\.landing-start-btn\s*\{[^}]*min-width:\s*220px/.test(block), 'CTA 须 min-width 220px');
-  assert.ok(/\.landing-start-btn\s*\{[^}]*padding:\s*14px 36px/.test(block), 'CTA 须 padding 14px 36px');
-  assert.ok(/\.landing-start-btn\s*\{[^}]*border:\s*1px solid rgba\(212,\s*175,\s*55,\s*0\.58\)/.test(block), 'CTA 须细金描边 0.58');
+  // ② CTA 丝缎香槟金胶囊（🥂 E152-刀一 换血：缎面三段金渐变＋曜石黑字＋顶缘高光）
+  assert.ok(/\.landing-start-btn\s*\{[^}]*min-width:\s*248px/.test(block), 'CTA 须 min-width 248px（E152）');
+  assert.ok(/\.landing-start-btn\s*\{[^}]*padding:\s*14px 40px/.test(block), 'CTA 须 padding 14px 40px（E152）');
+  assert.ok(/\.landing-start-btn\s*\{[^}]*linear-gradient\(135deg,\s*#F0D99C 0%,\s*#D9B45B 52%,\s*#C59B3E 100%\)/.test(block), 'CTA 须丝缎香槟金三段渐变（E152）');
+  assert.ok(/\.landing-start-btn\s*\{[^}]*color:\s*#181324/.test(block), 'CTA 须深曜石黑字 #181324（E152）');
+  assert.ok(/\.landing-start-btn\s*\{[^}]*inset 0 1px 0 rgba\(255,\s*251,\s*235,\s*0\.65\)/.test(block), 'CTA 须顶缘微高光（E152）');
   // ④ 语言切换器右上角安全区＋磨砂玻璃
   assert.ok(/\.lang-switch\s*\{[^}]*top:\s*24px[^}]*right:\s*28px/.test(block), '切换器须 top24/right28 归位');
   assert.ok(/\.lang-switch\s*\{[^}]*rgba\(15,\s*12,\s*24,\s*0\.58\)/.test(block), '切换器须暗夜磨砂底');
@@ -144,9 +146,10 @@ test('C1 1024 块在位＋关键钦定声明逐字（CTA/切换器/舱/胶囊/�
   assert.ok(/\.ks-chat-sheet\s*\{[^}]*rgba\(16,\s*13,\s*26,\s*0\.80\)/.test(block), '舱底须深空毛玻璃 0.80');
   // ⑥ 胶囊受控换行＋泰语防截断
   assert.ok(/\.ks-chat-pill\s*\{[^}]*overflow-wrap:\s*anywhere/.test(block), '胶囊须 overflow-wrap anywhere');
-  // ① 主标衬线轻奢字距
-  assert.ok(/\.title\s*\{[^}]*letter-spacing:\s*0\.08em/.test(block), '主标须字距 0.08em');
-  assert.ok(/\.title\s*\{[^}]*#F6F0E4/.test(block), '主标须象牙金白');
+  // ① 主标衬线轻奢字距（🥂 E152-刀二：0.1em＋#FAF4E8＋clamp 放大＋暗影）
+  assert.ok(/\.title\s*\{[^}]*letter-spacing:\s*0\.1em/.test(block), '主标须字距 0.1em（E152）');
+  assert.ok(/\.title\s*\{[^}]*#FAF4E8/.test(block), '主标须象牙金白 #FAF4E8（E152）');
+  assert.ok(/\.title\s*\{[^}]*font-size:\s*clamp\(30px,\s*2\.6vw,\s*40px\)/.test(block), '主标须 clamp(30px,2.6vw,40px)（E152）');
 });
 
 test('C2 768 基线零破坏（E135 477×638 仍在位＋E77 流内镜像零触碰）', () => {
@@ -237,13 +240,13 @@ test('F1 零回归抽锚（E130 红线／E149 闭环／E150 水合在位）', ()
 
 // ═══════════════ G. 链位自保 ═══════════════
 
-test('G1 链位：e151 居 e150 后 e40-compat 前＋全链 119 段＋node-only 118', () => {
+test('G1 链位：e151 居 e150 后 e40-compat 前＋全链 120 段＋node-only 119', () => {
   const pkg = JSON.parse(read('package.json'));
   const script = pkg.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 119, `全链总段须 119（实得 ${all.length}）`);
-  assert.equal(segs.length, 118, `node --test 段须 118（实得 ${segs.length}）`);
+  assert.equal(all.length, 120, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
+  assert.equal(segs.length, 119, `node --test 段须 119（E152 插链后继化；实得 ${segs.length}）`);
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i150 = names.indexOf('audit-e150-refresh-amnesia-gate');

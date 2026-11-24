@@ -138,7 +138,7 @@
     "helloWealthCore": "I quietly peeked into your innate treasury... your wealth star sits strong and the promise is grand — a true hidden golden vault. That breakthrough point is tucked into the fine details of your chart. Shall I point it out to you first?",
     "helloWealthMonthly": "This month's wealth reading has just come to a close... mind the loss star in the last ten days, though the steady income early on flows warm. Shall I gently walk you through this month's rhythm of gain?",
     "helloWealthYearly": "I've spread out your entire year's wealth map... The rise and fall across the four seasons is clear, and mid-year glows with one rare breakthrough. Shall we unfold it season by season, nice and slow?",
-    "helloDaily": "A new day, and the stars have turned for you again! Today I sense your lucky color is [{{color}}], and your lucky number is [{{num}}]. Stay at ease — which aspect of the stars shall we explore first today?",
+    "helloDaily": "A new day, and the stars have turned for you again! I've just spread out today's star map and calibrated your coordinates and state of mind. Right now — would you rather talk about how you're feeling, or hear a gentle note from the stars?",
     "starTooltip": "Soul Resonance Stars: redeemable for exclusive Soul Beast outfits in version 2.0"
   },
   "wellness_rx_title": "✦ Seasonal Astral Remedy ✦",

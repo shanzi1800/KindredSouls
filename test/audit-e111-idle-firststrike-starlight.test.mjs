@@ -82,8 +82,12 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
   assert.ok(css.includes('left: calc(44% - 62.3px)'), 'Milo 球心锚漂移');
   assert.ok(css.includes('left: calc(56% - 35.3px)'), 'Sophia 球心锚漂移');
-  assert.ok(css.includes('translateY(calc(38.9% + 6px))'), 'Milo 趴键 translateY 漂移');
-  assert.ok(css.includes('translateY(calc(39.2% + 6px))'), 'Sophia 趴键 translateY 漂移');
+  // 🥂 E152-刀一（军令 2026-11-24）：E65f 趴键深压退役 ⇒ 纵向分离 translateY(-2px)
+  //    （灵宠底缘含尾梢位于按钮顶沿之上，零像素遮挡 CTA 六语文案；e152 闸门+verify 守备）
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
+    && /\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
+    && /\.ks-fam-milo \{ transform: translateY\(-2px\); \}/.test(css)
+    && /\.ks-fam-sophia \{ transform: translateY\(-2px\); \}/.test(css), '双宠主位+降级位 translateY(-2px) 纵向分离（E152）');
   // ② E111 新增规则禁触碰 breakout 顶层几何：idle 规则块内禁 left/width/translateY 布局改写
   for (const m of css.match(/\.ks-fam-(?:milo|sophia)\.ks-fam-idle [^{]*\{[^}]*\}/g) || []) {
     assert.ok(!/[\s;](left|width|margin):/.test(m), `idle 规则禁改布局几何（只准动子层动画）：${m.slice(0, 80)}`);

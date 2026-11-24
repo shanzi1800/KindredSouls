@@ -491,6 +491,17 @@ const FamiliarHomeCard: React.FC = () => {
     };
   }, [anchorEl, showBreakout, scheduleIdle]);
 
+  /* 🥂 E152-刀一（军令 2026-11-24）：灵宠骑乘间距条件档——灵宠换血为「纵向分离」
+   * 形式（底缘含尾梢位于按钮顶沿之上，零像素遮挡 CTA 文字）后，灵宠全高须由
+   * wrap 顶距全额让位：灵宠上屏 ⇒ body 挂 ks-fam-ridden（CSS 提距 124px）；
+   * 匿名访客/门禁未放行 ⇒ 类摘除，E52 钦定 72px 基线零扰动。卸载即摘，防类残留。 */
+  useEffect(() => {
+    const on = !!(anchorEl && showBreakout && recs.length > 0);
+    if (on) document.body.classList.add('ks-fam-ridden');
+    else document.body.classList.remove('ks-fam-ridden');
+    return () => { document.body.classList.remove('ks-fam-ridden'); };
+  }, [anchorEl, showBreakout, recs.length]);
+
   // 🐾 E76（主公亲令 2026-10-20）: 报告页「由她/他带路开始互动吧」→ 回首页即唤醒对话舱。
   //   标记由 WealthReportPage 的带路按钮写入（一次性意图）；此处**消费即删**，防刷新重复弹。
   //   🍀 E107-刀二：回首页禁自动弹舱改微光提示；🛡️ E109-刀二（主公军令 2026-10-30）

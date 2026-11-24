@@ -71,9 +71,10 @@ test('E113 S2 刀一振幅再强化：-10px 拱背＋rotate 仰角＋20px35px �
   assert.ok(/top: -41px;/.test(css), '金尘破裂点须随迁 -41px（斜上漂 50px 终点）');
   // ⑥ reduced-motion 降级守备不破（E111/E112 层全静默）
   assert.ok(/\.ks-fam-gemglow, \.ks-fam-pop \{ display: none; \}/.test(css), 'reduced-motion 缺光效层静默');
-  // ⑦ 趴键几何铁律（E65g/E82）零漂移
+  // ⑦ 趴键几何铁律（E65g/E82）零漂移（🥂 E152-刀一：translateY 换血纵向分离）
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
-  assert.ok(css.includes('translateY(calc(38.9% + 6px))') && css.includes('translateY(calc(39.2% + 6px))'), '趴键 translateY 漂移');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css)
+    && /\.ks-fam-sophia\s*\{[^}]*transform:\s*translateY\(-2px\);/s.test(css), 'E152 纵向分离 translateY(-2px) 双宠主位锚');
 });
 
 /* ═══════════ 刀二：六语首语灵魂兽共情润色 ═══════════ */
@@ -87,7 +88,8 @@ test('E113 S3 刀二润色：helloLoveCore 军令定版逐字核＋六语六档�
     }
     // 🏆 E113-刀四新键：helloDaily（锦囊流转）＋starTooltip（灵犀星悬浮提示）
     assert.ok(typeof f.helloDaily === 'string' && f.helloDaily.length > 0, `${l}.json 缺 familiar.helloDaily`);
-    assert.ok(f.helloDaily.includes('{{color}}') && f.helloDaily.includes('{{num}}'), `${l} helloDaily 缺 {{color}}/{{num}} 插值`);
+    // 🥂 E152-刀三（军令 2026-11-24）：helloDaily 换血零插值（拔幸运色/数字套话）
+    assert.ok(!f.helloDaily.includes('{{color}}') && !f.helloDaily.includes('{{num}}'), `${l} helloDaily 禁 {{color}}/{{num}} 占位（E152 换血零插值）`);
     assert.ok(typeof f.starTooltip === 'string' && f.starTooltip.length > 0, `${l}.json 缺 familiar.starTooltip`);
   }
   const zh = JSON.parse(read('web/src/i18n/locales/zh.json')).familiar;
@@ -102,9 +104,10 @@ test('E113 S3 刀二润色：helloLoveCore 军令定版逐字核＋六语六档�
   assert.ok(zh.helloWealthCore.includes('财库'), 'zh helloWealthCore 须含先天财库口径');
   assert.ok(zh.helloWealthMonthly.includes('破耗'), 'zh helloWealthMonthly 须含破耗口径');
   assert.ok(zh.helloWealthYearly.includes('四季') && zh.helloWealthYearly.includes('逐季'), 'zh helloWealthYearly 须含四季/逐季口径');
-  // zh helloDaily 军令定版（跨日锦囊流转）
+  // zh helloDaily 军令定版（🥂 E152-刀三 换血：坐标与心境校准老友口吻，拔幸运色/数字套话）
   assert.ok(zh.helloDaily.includes('新的一天，星轨又为你转动啦'), 'zh helloDaily 须军令定版句首');
-  assert.ok(zh.helloDaily.includes('幸运色') && zh.helloDaily.includes('幸运数字'), 'zh helloDaily 须幸运色/数字锦囊口径');
+  assert.ok(zh.helloDaily.includes('坐标') && zh.helloDaily.includes('心境') && zh.helloDaily.includes('校准'), 'zh helloDaily 须坐标/心境校准口径（E152 换血）');
+  assert.ok(!zh.helloDaily.includes('幸运色') && !zh.helloDaily.includes('幸运数字') && !zh.helloDaily.includes('{{'), 'zh helloDaily 禁幸运色/数字套话与占位符（E152）');
   // zh starTooltip 军令定版
   assert.ok(zh.starTooltip === '灵犀星：累计可在 2.0 版本兑换专属灵魂兽装扮', 'zh starTooltip 须军令钦定原文');
   // 🔴 chatHello 复读禁令不破（e66 A2 反向断言守备的键不动）
@@ -200,10 +203,10 @@ test('E113 S6 刀四流转：freshReport 当日判定＋跨日 helloDaily＋新�
   assert.ok(/freshReport && Number\(rr\.unlockedAt\) > lastTs/.test(sheet), '缺新解锁重置判定（解锁晚于末条消息⇒重置）');
   // ③ 跨自然日 ⇒ helloDaily 锦囊问候（lastChatDay < today）
   assert.ok(/if \(lastDay && lastDay < today\) \{\s*\n\s*mode = 'daily'/.test(sheet), '缺跨日流转 daily 分支');
-  // ④ helloFor daily 分支：dailyFortune 真值插值（与首页锦囊同源）
+  // ④ helloFor daily 分支（🥂 E152-刀三：helloDaily 换血零插值，dailyFortune 核拔除）
   const dailyFn = sheet.slice(sheet.indexOf("if (mode === 'daily')"), sheet.indexOf("if (mode === 'sweet')"));
-  assert.ok(dailyFn.includes('dailyFortune({ lang, sunSign: \'\' })'), 'daily 分支须 dailyFortune 确定性核真值');
-  assert.ok(dailyFn.includes("t('familiar.helloDaily', { color:") && dailyFn.includes('num: String(f.luckyNumber)'), 'daily 分支须 {{color}}/{{num}} 插值装配');
+  assert.ok(dailyFn.includes("const base = t('familiar.helloDaily');"), 'daily 分支须 helloDaily 零插值直取（E152 换血）');
+  assert.ok(!dailyFn.includes('dailyFortune') && !dailyFn.includes('{{color}}'), 'daily 分支禁 dailyFortune 真值核/占位符回潮（E152）');
   // ⑤ 日期口径＝本地自然日（chatSessionDateKey，非 UTC toISOString）
   const openFx = sheet.slice(sheet.indexOf('useEffect(() => {\n    if (!open) return;'), sheet.indexOf('}, [open];'));
   assert.ok(!openFx.includes('toISOString().slice(0, 10)'), '开舱判定禁 UTC 日期口径（军令自然日=本地）');
@@ -245,7 +248,7 @@ test('E113 S8 链位自保：e113 入编（e112 后、e40-compat 前；全链 87
   assert.ok(i112 < i113 && i113 < iCap, 'E113 须按序排在 e112 之后、收口位之前（E 版本序铁律）');
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);
   assert.equal(iPy, segs.length - 1, 'python 峰值审计须恒为链尾');
-  assert.equal(segs.length, 119, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
+  assert.equal(segs.length, 120, `军规链段数须为 92（E120 入编后 91→92；实为 ${segs.length}）`);
   // i18n familiar 段键数基准：57（E112）→ 59（helloDaily＋starTooltip）→ 58（E135 chatQ2 退役）→ 57（E145 chatStatus 退役）
   for (const l of LANGS) {
     const o = JSON.parse(read(`web/src/i18n/locales/${l}.json`));

@@ -156,9 +156,9 @@ test('E140-04 骑键锚位冻结守恒：Milo 左 44% / Sophia 右 56%（E54/E82
   const iS = CSS.indexOf('.ks-fam-sophia {');
   const segS = CSS.slice(iS, iS + 900);
   assert.ok(segS.includes('left: calc(56% - 35.3px)'), 'Sophia 球心须锚键面 56%（E65d 真值，冻结）');
-  assert.ok(segS.includes('transform: translateY(calc(39.2% + 6px))'), 'Sophia 趴键 translateY 须冻结');
+  assert.ok(segS.includes('transform: translateY(-2px);'), 'Sophia 纵向分离 translateY 须冻结（E152）');
   // 降级媒体查询守恒（reduced-motion 静帧不破坏锚位）
-  assert.ok(CSS.includes('.ks-fam-milo { transform: translateY(calc(38.9% + 6px)); }'), '降级锚位须守恒');
+  assert.ok(CSS.includes('.ks-fam-milo { transform: translateY(-2px); }'), '降级锚位须守恒（E152 纵向分离）');
 });
 
 /* ═══ E140-05 E49 同线换盘清洗保真（异线豁免禁放松同线纪律）═══ */
@@ -229,8 +229,8 @@ test('E140-07 链位：e140 居 e139 后 e40-compat 前＋全链 108 段＋dist 
   const script = PKG.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 119, '全链总段须 114（E147 插链后继化；含 python 链尾）');
-  assert.equal(segs.length, 118, 'node --test 段须 114（E147 插链后继化）');
+  assert.equal(all.length, 120, '全链总段须 114（E147 插链后继化；含 python 链尾）');
+  assert.equal(segs.length, 119, 'node --test 段须 114（E147 插链后继化）');
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i139 = names.indexOf('audit-e139-astro-wealth-advisory');
