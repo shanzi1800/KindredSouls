@@ -199,8 +199,8 @@ test('④-1 趴键点击脉冲 0.75s＋联动呼出对话舱', async () => {
 });
 
 test('④-2 E82 趴键几何真值回归锁（EN 基准 98px）', async () => {
-  assert.ok(/\.ks-fam-milo\s*\{[^}]*left:\s*calc\(44%\s*-\s*62\.3px\)/s.test(APPCSS), 'Milo E82 几何漂移');
-  assert.ok(/\.ks-fam-sophia\s*\{[^}]*left:\s*calc\(56%\s*-\s*35\.3px\)/s.test(APPCSS), 'Sophia E82 几何漂移');
+  assert.ok(/\.ks-fam-milo\s*\{[^}]*left:\s*calc\(50%\s*-\s*0\.6368\s*\*\s*min\(98px,\s*70%\)\)/s.test(APPCSS), 'Milo E82 几何漂移（E153-P1 50% 严格居中）');
+  assert.ok(/\.ks-fam-sophia\s*\{[^}]*left:\s*calc\(50%\s*-\s*0\.3597\s*\*\s*min\(98px,\s*70%\)\)/s.test(APPCSS), 'Sophia E82 几何漂移（E153-P1 50% 严格居中）');
   assert.ok(/\.ks-fam-milo\s*\{[^}]*width:\s*min\(98px,\s*70%\)/s.test(APPCSS), 'E82 体型锁漂移');
   assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(APPCSS), 'Milo 裁切盒落座（E153-刀二，translateY 退役）');
   assert.ok(/\.ks-fam-sophia\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*530/s.test(APPCSS), 'Sophia 裁切盒落座（E153-刀二，translateY 退役）');

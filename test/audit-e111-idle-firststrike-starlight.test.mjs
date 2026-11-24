@@ -80,8 +80,8 @@ test('E111 S3 刀一几何不变式：趴键基准（E65g/E82）绝对不动—�
   const css = read('web/src/App.css');
   // ① 趴键几何真值逐字在位（E111 前后零漂移）
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
-  assert.ok(css.includes('left: calc(44% - 62.3px)'), 'Milo 球心锚漂移');
-  assert.ok(css.includes('left: calc(56% - 35.3px)'), 'Sophia 球心锚漂移');
+  assert.ok(css.includes('left: calc(50% - 0.6368 * min(98px, 70%))'), 'Milo 视觉重心锚 50% 居中（E153-P1）');
+  assert.ok(css.includes('left: calc(50% - 0.3597 * min(98px, 70%))'), 'Sophia 视觉重心锚 50% 居中（E153-P1）');
   // 🥂 E153-刀二（军令 2026-11-24）：E65f 趴键深压退役 ⇒ aspect-ratio 裁切盒落座
   //    （灵宠可见轮廓底缘精确落座按钮顶沿上方 10-14px；translateY 位移全退役）
   assert.ok(/\.ks-fam-milo\s*\{[^}]*aspect-ratio:\s*720\s*\/\s*549/s.test(css)

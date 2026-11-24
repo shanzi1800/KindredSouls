@@ -151,11 +151,11 @@ test('E140-04 骑键锚位冻结守恒：Milo 左 44% / Sophia 右 56%（E54/E82
   assert.ok(CSS.includes('.ks-fam-milo {'), 'Milo 骑键锚须在');
   const iM = CSS.indexOf('.ks-fam-milo {');
   const segM = CSS.slice(iM, iM + 900);
-  assert.ok(segM.includes('left: calc(44% - 62.3px)'), 'Milo 球心须锚键面 44%（E65d 真值，冻结）');
+  assert.ok(segM.includes('left: calc(50% - 0.6368 * min(98px, 70%))'), 'Milo 视觉重心须锚 50% 严格居中（E153-P1 热补丁，PIL cx=0.6368）');
   assert.ok(segM.includes('width: min(98px, 70%)'), 'Milo 渲染宽须 EN 基准 98px（E82 冻结）');
   const iS = CSS.indexOf('.ks-fam-sophia {');
   const segS = CSS.slice(iS, iS + 900);
-  assert.ok(segS.includes('left: calc(56% - 35.3px)'), 'Sophia 球心须锚键面 56%（E65d 真值，冻结）');
+  assert.ok(segS.includes('left: calc(50% - 0.3597 * min(98px, 70%))'), 'Sophia 视觉重心须锚 50% 严格居中（E153-P1 热补丁，PIL cx=0.3597）');
   assert.ok(/aspect-ratio:\s*720\s*\/\s*530/.test(segS), 'Sophia 裁切盒落座须冻结（E153-刀二，translateY 退役）');
   // 🥂 E153-刀二：translateY 纵向分离全退役（aspect-ratio 裁切盒＝新落座真源；
   //    reduced-motion 静帧同步退役旧锚——盒高由裁切比恒定，无位移可降级）。

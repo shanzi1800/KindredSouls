@@ -1040,15 +1040,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', 'Apple
   margin-top: 72px;
 }
 #ks-familiar-anchor {
-  /* 🥂 E153-刀二（军令 2026-11-24）：灵宠锚点容器改「干净标准纵列」——
-     relative 真实占位（76px 宠位＋12px 落座间距＝军令钦定 CTA 上方 10-14px），
+  /* 🥂 E153-刀二（军令 2026-11-24）：灵宠锚点容器改「干净标准纵列」——relative 真实占位，
      废除 E65 零高锚＋E152 全高 124px 让位（主公实拍病灶②真根：身体 sprite
-     底部 33-36% 全透明死区——图盒底对齐≠视觉落座，可见猫身悬空 39-42px）。
-     匿名访客 display:none 零占位（E52 72px 基线零扰动）。 */
+     底部 33-36% 全透明死区——图盒底对齐≠视觉落座）。
+     匿名访客 display:none 零占位（E52 72px 基线零扰动）。
+     🎯 E153-P1 刀二（军令 2026-11-24 热补丁「落座贴沿」）：盒高 76px→72px＋
+     margin-bottom 12px→0——旧形制的 12px 间距＋盒高富余 = 主公实拍「垂直悬空」
+     病灶（实测缝隙 Milo 13.3px / Sophia 15.9px）。新盒高真值 = Sophia 裁切盒
+     98×530/720 = 72.1px（取整 72）：Sophia 盒底 0.1px 恰好贴合按钮上边框；
+     Milo 盒高 74.7px ⇒ 爪底轻压边框 2.7px（军令「轻贴」形态）。按钮
+     padding-top 16px/14px（基线/PC 档）⇒ 灵宠底缘零侵入文字盒（p1 脚本硬断言）。 */
   position: relative;
   width: 100%;
-  height: 76px;
-  margin: 0 0 12px;
+  height: 72px;
+  margin: 0;
   display: none;
   pointer-events: none;
   /* 🐾 E65g: z2 > 按钮 z1 —— 灵宠锚定层明确高于按钮（WebKit 实机物证修复） */
@@ -1126,7 +1131,13 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
      旧 width:70% 绑定按钮宽坐标系，按钮宽随语言伸缩（六语真页实测 138.5~202.8px）
      ⇒ 灵宠渲染宽 98→143px 跳变。锁定 EN 基准 98px（138.5×70%），窄屏回 70% 适配；
      left 改 calc 保球心恒落键面 44%/56%（0.636/0.360 = E65d 资产球心占比真值）。 */
-  left: calc(44% - 62.3px); width: min(98px, 70%);
+  /* 🎯 E153-P1 刀一（军令 2026-11-24 热补丁「严格居中」）：left 锦 44%→50%——
+     旧 44%/56% 偏置是 E65d 参照稿时代故意非对称（球心落键面 44/56），主公
+     实拍裁军令「水平偏左未沿中轴对齐」⇒ 视觉重心锚 50% 严格居中。补偿真值
+     = PIL alpha 阈值 60 实测可见轮廓 x 中心：Milo cx=0.6368（画布 720×818，
+     可见 x[199,717]）；乘法形制 min(98px,70%) 两分支数学精确（E82 窄屏适配
+     契约不破）。 */
+  left: calc(50% - 0.6368 * min(98px, 70%)); width: min(98px, 70%);
   /* 🥂 E153-刀二（军令 2026-11-24）：盒高裁至可见轮廓真值（PIL alpha 实测：
      Milo 可见底 0.6711H ⇒ 720×549 裁切比）——translateY 位移全退役（锚点
      容器 in-flow 落座）；breathe 层绝对化防内容撑高盒身（E152 血训：图盒底
@@ -1134,7 +1145,8 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
   aspect-ratio: 720 / 549;
 }
 .ks-fam-sophia {
-  left: calc(56% - 35.3px); width: min(98px, 70%);
+  /* 🎯 E153-P1 刀一：56%→50% 严格居中（PIL cx=0.3597，画布 720×822，可见 x[2,515]） */
+  left: calc(50% - 0.3597 * min(98px, 70%)); width: min(98px, 70%);
   /* 🥂 E153-刀二：同 Milo 裁切落座（Sophia 可见底 0.6436H ⇒ 720×530） */
   aspect-ratio: 720 / 530;
 }

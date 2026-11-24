@@ -68,11 +68,11 @@ test('A1-② documentElement.lang 接线（html[lang] 分流真源）', () => {
 
 /* ═══════════ A2 灵宠归位（刀二）═══════════ */
 
-test('A2-① in-flow 锚点容器（relative/76px/匿名零占位）', () => {
+test('A2-① in-flow 锚点容器（relative/72px 贴沿/匿名零占位）', () => {
   const an = (APP_CSS.match(/#ks-familiar-anchor\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/position:\s*relative/.test(an) && /height:\s*76px/.test(an), '锚点容器须 relative/76px 真实占位');
+  assert.ok(/position:\s*relative/.test(an) && /height:\s*72px/.test(an), '锚点容器须 relative/72px 贴沿真实占位（E153-P1 刀二）');
   assert.ok(/display:\s*none/.test(an), '匿名访客须 display:none 零占位');
-  assert.ok(/margin[^;]*12px/.test(an), '锚点容器须 12px 落座间距');
+  assert.ok(/margin:\s*0\s*;/.test(an), '锚点容器须零间距贴沿（旧 12px 悬空缝隙退役）');
   assert.ok(APP_CSS.includes('body.ks-fam-ridden #ks-familiar-anchor { display: block; }'), '灵宠在场须 block');
 });
 
@@ -92,6 +92,17 @@ test('A2-③ DOM 序即视觉序：锚点容器在 CTA 按钮之前', () => {
   const iAnchor = APP_TSX.indexOf('id="ks-familiar-anchor"');
   const iBtn = APP_TSX.indexOf('landing-start-btn"');
   assert.ok(iAnchor > -1 && iBtn > -1 && iAnchor < iBtn, 'anchor 必须先于 CTA 按钮（in-flow 序即视觉序）');
+});
+
+test('A2-④ E153-P1 热补丁：灵宠水平严格居中＋贴沿落座（双朝向硬断言）', () => {
+  /* 军令 E153-P1（2026-11-24）：主公实拍两病灶——水平偏左（旧 44%/56% 偏置）
+     ＋垂直悬空（旧 76px+12px 缝隙）。本断言锁新形态：PIL 可见轮廓 cx 真值
+     锦 50% 严格居中；锚点 72px 零间距贴沿。真页几何（|petCenterX−ctaCenterX|
+     ≤4px＋文字零重叠）由 scripts/e153-p1-verify.mjs 实弹承担。 */
+  assert.ok(APP_CSS.includes('left: calc(50% - 0.6368 * min(98px, 70%))'), 'Milo 视觉重心须锢 50% 严格居中（PIL cx=0.6368）');
+  assert.ok(APP_CSS.includes('left: calc(50% - 0.3597 * min(98px, 70%))'), 'Sophia 视觉重心须锢 50% 严格居中（PIL cx=0.3597）');
+  assert.ok(!APP_CSS.includes('left: calc(44% - 62.3px)') && !APP_CSS.includes('left: calc(56% - 35.3px)'), '旧 44%/56% 偏置锚禁回潮');
+  assert.ok(existsSync(path.join(REPO, 'scripts/e153-p1-verify.mjs')), 'P1 真页验收脚本须在位（双视口×双朝向×六语）');
 });
 
 /* ═══════════ A3 气泡防溢出＋清 Lucky＋状态栏折行（刀三）═══════════ */

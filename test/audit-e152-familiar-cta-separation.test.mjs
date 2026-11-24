@@ -59,10 +59,10 @@ test('A1 纵列落座几何：aspect-ratio 裁切盒＋in-flow 锚点容器＋�
   assert.ok(/top:\s*0/.test(bo), 'breakout 须 top:0 锚 in-flow 容器（E153-刀二）');
   assert.ok(/z-index:\s*6/.test(bo), 'breakout z6 须冻结（e106 契约）');
   assert.ok(/pointer-events:\s*none/.test(bo), 'breakout 须物理穿透（按钮点击 100% 命中）');
-  // ③ 锚点容器 in-flow（76px 宠位；匿名 display:none 零占位）＋条件间距档
+  // ③ 锚点容器 in-flow（72px 贴沿宠位；匿名 display:none 零占位）＋条件间距档
   const an = (APP_CSS.match(/#ks-familiar-anchor\s*\{[^}]*\}/) || [''])[0];
-  assert.ok(/position:\s*relative/.test(an) && /height:\s*76px/.test(an) && /display:\s*none/.test(an),
-    '锚点容器须 relative/76px/匿名 none（E153 in-flow 落座）');
+  assert.ok(/position:\s*relative/.test(an) && /height:\s*72px/.test(an) && /display:\s*none/.test(an),
+    '锚点容器须 relative/72px 贴沿/匿名 none（E153 in-flow 落座＋E153-P1 刀二）');
   assert.ok(APP_CSS.includes('body.ks-fam-ridden #ks-familiar-anchor { display: block; }'),
     '灵宠在场须 display:block');
   assert.ok(APP_CSS.includes('body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }'),
@@ -73,8 +73,8 @@ test('A1 纵列落座几何：aspect-ratio 裁切盒＋in-flow 锚点容器＋�
     '条件类 effect 须以 anchorEl&&showBreakout&&recs 三真值为门');
   // ④ E82 体型/球心冻结（图标宽锁死）
   assert.equal((APP_CSS.match(/width: min\(98px, 70%\)/g) || []).length, 2, '体型锁 98px 双在（E82 契约）');
-  assert.ok(APP_CSS.includes('left: calc(44% - 62.3px)') && APP_CSS.includes('left: calc(56% - 35.3px)'),
-    '双宠球心锚须冻结（E65d 真值）');
+  assert.ok(APP_CSS.includes('left: calc(50% - 0.6368 * min(98px, 70%))') && APP_CSS.includes('left: calc(50% - 0.3597 * min(98px, 70%))'),
+    '双宠视觉重心锚 50% 严格居中（E153-P1 热补丁，PIL 真值）');
   // ⑤ 六语长文案受控换行（泰语防截断）——基线安全网
   const btnBase = (APP_CSS.match(/\.landing-start-btn\s*\{[^}]*\}/) || [''])[0];
   assert.ok(/overflow-wrap:\s*anywhere/.test(btnBase), 'CTA 基线须 overflow-wrap: anywhere');

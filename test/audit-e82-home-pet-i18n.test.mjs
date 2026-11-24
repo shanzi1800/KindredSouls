@@ -16,8 +16,8 @@ const read = (p) => readFileSync(path.join(REPO, p), 'utf8');
 test('E82 体型语言不变式断言：灵宠渲染宽锁 98px（EN 基准）＋calc 保球心落位', () => {
   const css = read('web/src/App.css');
   assert.equal((css.match(/width: min\(98px, 70%\)/g) || []).length, 2, 'Milo/Sophia 体型锁须双在（min(98px, 70%)）');
-  assert.ok(css.includes('left: calc(44% - 62.3px)'), 'Milo 球心锚 calc 漂移（44% − 0.636×98px）');
-  assert.ok(css.includes('left: calc(56% - 35.3px)'), 'Sophia 球心锚 calc 漂移（56% − 0.360×98px）');
+  assert.ok(css.includes('left: calc(50% - 0.6368 * min(98px, 70%))'), 'Milo 视觉重心锚 50% 严格居中（E153-P1，PIL cx=0.6368）');
+  assert.ok(css.includes('left: calc(50% - 0.3597 * min(98px, 70%))'), 'Sophia 视觉重心锚 50% 严格居中（E153-P1，PIL cx=0.3597）');
   assert.ok(!css.includes('left: -0.5%'), '旧 Milo % 锚禁回潮（会随按钮宽缩放）');
   assert.ok(!/\.ks-fam-sophia \{\s*\n\s*left: 30\.8%/.test(css), '旧 Sophia % 锚禁回潮');
 });
