@@ -430,7 +430,7 @@ test('E155-17 六语权威字典：军令钦定 13 键逐字在内联单源；�
   }
 });
 
-test('E155-18 前端军令：新页面零 window.open、零独立对话窗/抽屉；整页重定向；排他路由；泰语防溢出；图标列 48px', () => {
+test('E155-18 前端军令：新页面零 window.open、零独立对话窗/抽屉；整页重定向；排他路由；泰语防溢出；图标列 48px', async () => {
   const dir = ['ResonancePage.tsx', 'ResonanceInvitePage.tsx', 'PersonBirthForm.tsx', 'HappinessCardActions.tsx', 'resonanceCheckoutFlow.ts'];
   for (const f of dir) {
     const s = stripJs(read('web/src/components/resonance/' + f));
@@ -444,6 +444,12 @@ test('E155-18 前端军令：新页面零 window.open、零独立对话窗/抽�
   assert.ok(page.includes('saveResonanceIntent('), '建单意图先行');
   const inv = stripJs(read('web/src/components/resonance/ResonanceInvitePage.tsx'));
   assert.ok(inv.includes("startResonanceLogin('/invite/' + token)"), '认领意图：回场即原邀请函');
+  // E155 热修（产线冒烟实锤）：信封请求非 2xx/断网时必须落定 ⇒ 未找到态；禁止永远「…」
+  assert.equal((inv.match(/setEnvDone\(true\)/g) || []).length, 2, '信封请求：成功与非 2xx/断网两路都必须落定 envDone');
+  assert.ok(inv.includes('const notFound = envelope ? envelope.found === false : envDone;'), '未找到态单源派生：有信封看 found，无信封看是否落定');
+  assert.ok(inv.includes('!notFound && <p className="rs-lede">'), '加载态「…」必须受落定门控');
+  assert.ok(inv.includes('data-testid="rs-invite-not-found"'), '落定而无信封 ⇒ 未找到态（fail-closed）');
+  assert.ok(inv.includes('return () => { alive = false; };'), '卸载后禁止写状态（令牌切换竞态）');
   const APP = read('web/src/App.tsx');
   assert.ok(APP.includes('parseResonancePath(window.location.pathname)'), 'App 排他路由接线');
   assert.ok(APP.indexOf('resonanceRoute ? (') < APP.indexOf('devAmuletRoute && AmuletPlayground ? ('), 'E155 路由先于 DEV 块');
@@ -459,6 +465,19 @@ test('E155-18 前端军令：新页面零 window.open、零独立对话窗/抽�
   assert.ok(!/fetch\(|XMLHttpRequest/.test(stripJs(CARD)), '坐标卡纯离线');
   assert.equal(stripJs(read('web/src/components/resonance/HappinessCardActions.tsx')).includes('document.fonts.ready'), true, '绘制前等字体就绪');
   assert.ok(CARD.includes("const quoteTop = qy - 70 - quote.lines.length * quote.lineHeight"), '金句自二维码上沿向上排版（零碰撞）');
+  // E155 热修（行为级）：畸形令牌归一化为空 ⇒ 客户端不得发请求，直接判未找到（防空路径被 SPA 回退吞成「通用信封」）
+  const { createResonanceApi } = await import('../web/src/lib/resonanceClient.mjs');
+  let fetched = 0;
+  const api = createResonanceApi(async () => { fetched += 1; return { ok: true, status: 200, json: async () => ({ found: true }) }; }, async () => null);
+  for (const bad of ['abCD-_12abCD-_1', '', 'abc', 'abCD-_12abCD-_12abCD-_1']) {
+    const r = await api.envelope(bad);
+    assert.equal(r.ok, false, `畸形令牌须判未找到：${JSON.stringify(bad)}`);
+    assert.equal(r.data && r.data.error, 'not_found');
+  }
+  assert.equal(fetched, 0, '畸形令牌：零网络请求');
+  const good = await api.envelope('abCD-_12abCD-_12abCD-_12');
+  assert.equal(good.ok, true, '合法令牌照常请求');
+  assert.equal(fetched, 1, '合法令牌：恰一次请求');
 });
 
 test('E155-19 E139-P2：财富报告 System Prompt 共享守卫尾注 GROUNDED ABUNDANCE LAYER（双通道单点；样本零禁用词）', async () => {

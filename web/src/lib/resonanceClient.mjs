@@ -88,7 +88,12 @@ export function createResonanceApi(fetchImpl, getToken) {
     return { status: r.status, ok: r.ok, data };
   };
   return {
-    envelope: (token) => call(`/api/resonance/invite/${normalizeInviteToken(token)}`),
+    // E155 热修：令牌不合法（归一化后为空）⇒ 不发请求、直接判未找到。
+    // 否则会请求空路径 /api/resonance/invite/，凡把未知路径回退成 200 的环境都会把它变成「通用信封」。
+    envelope: (token) => {
+      const t = normalizeInviteToken(token);
+      return t ? call(`/api/resonance/invite/${t}`) : Promise.resolve({ status: 404, ok: false, data: { error: 'not_found' } });
+    },
     order: (body) => call('/api/resonance/order', { method: 'POST', body: JSON.stringify(body) }),
     view: (token) => call(`/api/resonance/order/${normalizeInviteToken(token)}`),
     claim: (token, personB) => call('/api/resonance/claim', { method: 'POST', body: JSON.stringify({ token, personB: personB || undefined }) }),

@@ -24,6 +24,9 @@ export default function ResonanceInvitePage({ token, onBackHome }: { token: stri
   const lang = useResonanceLang();
   const [session] = useResonanceSession();
   const [envelope, setEnvelope] = useState<View | null>(null);
+  // E155 热修：信封请求无论成功/非 2xx/断网都必须「落定」——未落定前显示「…」，落定而无信封 ⇒ 未找到态
+  // （产线冒烟实测：404 时 envelope 恒 null ⇒ 页面永远停在「…」，fail-closed 失效）。
+  const [envDone, setEnvDone] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const [formB, setFormB] = useState<PersonDraft>(emptyPerson);
   const [busy, setBusy] = useState(false);
@@ -40,10 +43,15 @@ export default function ResonanceInvitePage({ token, onBackHome }: { token: stri
   }, [api, session, token]);
 
   useEffect(() => {
-    api.envelope(token).then((r: { ok: boolean; data: unknown }) => { if (r.ok && r.data && typeof r.data === 'object') setEnvelope(r.data as View); });
+    let alive = true;
+    api.envelope(token).then(
+      (r: { ok: boolean; data: unknown }) => { if (!alive) return; if (r.ok && r.data && typeof r.data === 'object') setEnvelope(r.data as View); setEnvDone(true); },
+      () => { if (alive) setEnvDone(true); },
+    );
     const u = new URL(window.location.href);
     paidArrival.current = u.searchParams.get('payment') === 'success';
     if (u.searchParams.has('payment')) { u.searchParams.delete('payment'); window.history.replaceState({}, '', u.pathname + u.search); }
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -64,6 +72,8 @@ export default function ResonanceInvitePage({ token, onBackHome }: { token: stri
   }, [session, view, loadView]);
 
   const scene = (envelope && envelope.scene) || (view && view.scene) || '';
+  // 未找到态（fail-closed）：有信封 ⇒ 看 found 标志；无信封 ⇒ 请求已落定即为未找到；未落定 ⇒ 仍显示「…」
+  const notFound = envelope ? envelope.found === false : envDone;
   const role = view && view.role ? view.role : (session ? '' : 'anonymous');
   const shareUrl = resonanceInviteUrl(window.location.origin, token);
 
@@ -105,9 +115,9 @@ export default function ResonanceInvitePage({ token, onBackHome }: { token: stri
         <span className="rs-brand">KINDREDSOULS</span>
       </header>
 
-      {!envelope && <p className="rs-lede">…</p>}
-      {envelope && envelope.found === false && (
-        <main className="rs-form"><p className="rs-lede">{resT(lang, 'invite_not_found')}</p></main>
+      {!notFound && <p className="rs-lede">…</p>}
+      {notFound && (
+        <main className="rs-form" data-testid="rs-invite-not-found"><p className="rs-lede">{resT(lang, 'invite_not_found')}</p></main>
       )}
 
       {envelope && envelope.found !== false && role === 'anonymous' && (

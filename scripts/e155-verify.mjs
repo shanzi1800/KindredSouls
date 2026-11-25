@@ -53,7 +53,8 @@ http.createServer((req, res) => {
   const body = () => new Promise((r) => { let b = ''; req.on('data', (d) => b += d); req.on('end', () => { try { r(JSON.parse(b || '{}')); } catch (e) { r({}); } }); });
   if (p === '/api/resonance/order' && req.method === 'POST') { body().then((b) => json(res, { ok: true, token: T.ready, order: { ...base, role: 'payer', paymentStatus: 'pending', reportStatus: 'awaiting_payment', self: b.personA } })); return; }
   const m = /^\\/api\\/resonance\\/invite\\/(.+)$/.exec(p);
-  if (m) { json(res, { found: true, scene: 'romance', locale: lang, claimable: m[1] !== T.third, paid: m[1] !== T.unpaid }, m[1].length === 24 ? 200 : 404); return; }
+  const KNOWN = new Set(Object.values(T));
+  if (m) { if (!KNOWN.has(m[1])) return json(res, { error: 'not_found' }, 404); json(res, { found: true, scene: 'romance', locale: lang, claimable: m[1] !== T.third, paid: m[1] !== T.unpaid }); return; }
   const v = /^\\/api\\/resonance\\/order\\/(.+)$/.exec(p);
   if (v && req.method === 'GET') {
     const t = v[1];
@@ -204,6 +205,18 @@ async function main() {
     const anonTxt = abEval('document.body.innerText');
     check('匿名：信封＋「免费领取」＋登录 CTA，零隐私', typeof anonTxt === 'string' && anonTxt.includes('免费领取') && anonTxt.includes('有人为你解锁') && !anonTxt.includes('林川'));
     ab('screenshot', path.join(OUT, 'e155-invite-envelope-mobile-zh.png')); shot++;
+    /* ⑤b 热修回归：无效令牌（404）⇒ 未找到态，禁止永远「…」（产线冒烟实锤的缺陷） */
+    clearSession();
+    for (const [tok, tname] of [['abCD-_12abCD-_1', '畸形令牌'], ['zzzz-_12zzzz-_12zzzz-_12', '格式合法但不存在']]) {
+      for (const [vw, vh, vname] of VIEWPORTS) {
+        openPage(BASE, `/invite/${tok}?free_access=1&lang=zh`, vw, vh);
+        abEval('location.reload(); "R"');
+        const nf = waitFor(() => abEval(`!!document.querySelector('[data-testid="rs-invite-not-found"]')`), 10000);
+        const nfTxt = abEval(`(document.querySelector('.rs-root') || document.body).innerText`);
+        check(`${tname} ${vname}：落定「邀请函不存在或已失效」而非永远「…」`, !!nf && typeof nfTxt === 'string' && nfTxt.includes('邀请函不存在或已失效') && !/…/.test(nfTxt.replace(/KINDREDSOULS/g, '')), typeof nfTxt === 'string' ? nfTxt.replace(/\s+/g, ' ').slice(0, 80) : 'n/a');
+        check(`${tname} ${vname}：零信封零登录 CTA 零隐私`, !!nf && abEval(NO_CHAT) === 0 && abEval(`document.querySelectorAll('[data-testid="rs-envelope"], [data-testid="rs-invite-login"], [data-testid="rs-claim"]').length`) === 0 && !(typeof nfTxt === 'string' && nfTxt.includes('林川')));
+      }
+    }
     /* ⑥ 报告页六语双视口零溢出（A 视角） */
     for (const [vw, vh, vname] of VIEWPORTS) {
       for (const lang of LANGS) {
