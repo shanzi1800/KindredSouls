@@ -177,7 +177,8 @@ test('E131-05 六语肃清：付费墙零合婚/合盘字样＋军令钦定新�
 test('E131-06 沙盒签名链：complete 可选 chart_sig＋收银台双回退＋session path/metadata 透传＋create-checkout 带盘', async () => {
   // complete 请求体可选签名（缺省旧形态逐字不变——gate45b deepEqual 契约零扰）
   // 🆕 E148-刀二后继化：buildSandboxCompleteRequest 增可选第三参 comboSig（合婚组合签名）
-  assert.ok(SB_CHECKOUT.includes('export function buildSandboxCompleteRequest(plan, chartSig, comboSig)'), '签名（双参＋E148 第三参）');
+  // 🤝 E155 后继化：增可选第四参 resonanceToken（缘分密码邀请令牌；缺省不挂键 ⇒ 旧形态零变）
+  assert.ok(SB_CHECKOUT.includes('export function buildSandboxCompleteRequest(plan, chartSig, comboSig, resonanceToken)'), '签名（双参＋E148 第三参＋E155 第四参）');
   const M = await import(pathToFileURL(join(ROOT, 'web/src/lib/sandboxCheckout.mjs')));
   assert.deepEqual(M.buildSandboxCompleteRequest('wealth_once'),
     { path: '/api/sandbox/complete', method: 'POST', body: { plan: 'wealth_once' } }, '单参旧形态零变（gate45b 契约）');

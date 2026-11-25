@@ -16,6 +16,13 @@ import FamiliarPicker, { FAMILIAR_LS_KEY } from './components/FamiliarPicker';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import BirthPrivacyNote from './components/BirthPrivacyNote';
+// 🤝 E155：Resonance Code 三场景页 / 受邀页（React.lazy —— 首页主包零扰动）
+const ResonancePage = React.lazy(() => import('./components/resonance/ResonancePage'));
+const ResonanceInvitePage = React.lazy(() => import('./components/resonance/ResonanceInvitePage'));
+// @ts-ignore —— resonanceClient.mjs 为纯 JS 逻辑核（E155 闸门守备）
+import { parseResonancePath } from './lib/resonanceClient.mjs';
+// @ts-ignore —— resonanceI18n.mjs 为六语字典单源（E155）
+import { resT } from './lib/resonanceI18n.mjs';
 import { TimeInput } from './components/TimeInput';
 import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
@@ -607,6 +614,12 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       </div>
       {/* 🆕 E151-刀三（军令 2026-11-24）：数据最小化信任护栏——隐私承诺小字＋一键清除（两击确认） */}
       <BirthPrivacyNote />
+      {/* 🤝 E155：缘分密码入口（三场景 · 一人解锁双方各得专属坐标报告）—— 整页路由 /resonance */}
+      <button type="button" id="rs-entry-link" className="btn btn-link" data-testid="rs-entry-link"
+        style={{ display: 'block', margin: '10px auto 0', fontSize: '12px', color: '#F0D060', letterSpacing: '0.04em', background: 'none', border: 0, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' }}
+        onClick={() => { window.history.pushState({}, '', '/resonance'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
+        ✦ {resT(String(i18n.language || 'zh').split('-')[0], 'res_title')} →
+      </button>
       {/* 🌌 45-B5：CTA 移出蓝框 · 框下方（对齐财富按钮规格；压平 .btn 自带 40px 下边距使条款紧贴） */}
       <button className="btn btn-primary" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{t('input.calculate')}</button>
       {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
@@ -2264,6 +2277,18 @@ export default function App() {
   // ── Policy page routing (terms-of-service / privacy-policy) ──
   const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
 
+  // ── 🤝 E155：Resonance Code 排他路由（/resonance 三场景页 · /invite/:token 受邀页）──
+  const [resonanceRoute, setResonanceRoute] = useState<{ kind: string; token: string } | null>(null);
+  useEffect(() => {
+    const handleResonanceRoute = () => {
+      const r = parseResonancePath(window.location.pathname);
+      setResonanceRoute(r ? { kind: r.kind, token: r.token || '' } : null);
+    };
+    handleResonanceRoute();
+    window.addEventListener('popstate', handleResonanceRoute);
+    return () => window.removeEventListener('popstate', handleResonanceRoute);
+  }, []);
+
   // ── 🧪 E120-PLAYGROUND：开发路由 /dev/amulet-preview（仅 DEV 态激活）──
   const [devAmuletRoute, setDevAmuletRoute] = useState(false);
   useEffect(() => {
@@ -2541,7 +2566,14 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
         </div>
       )}
       {/* 🧪 E120-PLAYGROUND：密函走查工坊（DEV 态独占路由——排他渲染，主视口零叠加） */}
-      {import.meta.env.DEV && devAmuletRoute && AmuletPlayground ? (
+      {/* 🤝 E155：Resonance Code 排他路由（三场景页 / 受邀页；主视口零叠加；沙盘收银台就地可用） */}
+      {resonanceRoute ? (
+        <React.Suspense fallback={<div style={{ background: '#05050a', minHeight: '100vh' }} />}>
+          <SandboxCashier lang={currentLang} />
+          {resonanceRoute.kind === 'resonance' && <ResonancePage onBackHome={() => navigate('/')} />}
+          {resonanceRoute.kind === 'invite' && <ResonanceInvitePage key={resonanceRoute.token} token={resonanceRoute.token} onBackHome={() => navigate('/')} />}
+        </React.Suspense>
+      ) : import.meta.env.DEV && devAmuletRoute && AmuletPlayground ? (
         <React.Suspense
           fallback={<div style={{ background: '#08080A', minHeight: '100vh', color: '#71717a', padding: 32, fontSize: 13 }}>加载密函工坊中...</div>}
         >
