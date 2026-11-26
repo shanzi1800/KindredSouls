@@ -142,11 +142,11 @@ test('E80-D asset：真尺寸 / 禁放大 / 质量阶梯', () => {
 test('E80-E smoke：六语 12 条抽检 + TTFT 未测即 SKIP', () => {
   const s = read(SMOKE);
   const markers = [
-    '姻缘密码', '财富密码',
-    'Destiny Love Code', 'Wealth Code',
-    'Clé du Destin Amoureux', 'Clé de la Richesse',
-    'Código del Destino Amoroso', 'Código de la Riqueza',
-    'รหัสลับบุพเพสันนิวาส', 'รหัสลับความมั่งคั่ง',
+    '缘分密码', '财富密码',
+    'Resonance Code', 'Wealth Code',
+    'Code de Résonance', 'Clé de la Richesse',
+    'Código de Resonancia', 'Código de la Riqueza',
+    'รหัสคลื่นชะตา', 'รหัสลับความมั่งคั่ง',
     'Mật Mã Nhân Duyên', 'Mật Mã Tài Lộc',
   ];
   // 🧯 必须带引号匹配完整字面量：裸 includes 会被「加后缀」（Mật Mã Tài Lộc_PROBE）骗过 —— 探针实测

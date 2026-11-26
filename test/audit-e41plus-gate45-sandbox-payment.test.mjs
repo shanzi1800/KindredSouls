@@ -322,10 +322,9 @@ test('G2 注入：签名忽略密钥 ⇒ B2 判据必红', async () => {
 test('G3 注入：沙盘段直写权益 ⇒ D4 判据必红', () => {
   // 💳 E131-A：_sandboxDispatch 增第 5 参 chartSig（按盘付讫）——注入锚随手术同源演进
   // 💳 E148-刀二：增第 6 参 comboSig（合婚组合签名）——注入锚同源演进
-  // 🤝 E155：增第 7 参 resonanceToken（缘分密码邀请令牌）——注入锚同源演进
   const bad = SERVER.replace(
-    "    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig, _e155Token);",
-    "    const _leak = { paid_plans: {} };\n    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig, _e155Token);");
+    "    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig);",
+    "    const _leak = { paid_plans: {} };\n    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig);");
   assert.notEqual(bad, SERVER, 'G3 注入锚点漂移');
   const badSeg = between(bad, '// ── 🧪 Gate 45-A：沙盘支付端点', '// ── /api/create-checkout ──');
   assert.ok(sandboxWritesEntitlement(badSeg), 'D4 必须能识破沙盘段直写 paid_plans');

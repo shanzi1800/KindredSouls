@@ -133,7 +133,7 @@
       "rootCause": "E79 主公指出：『合婚密码』生硬、玄学词被机翻成 login Password 类失真；法/西/泰/越长副标题还会挤压图标。",
       "ironRule": "六语一律母语级玄学黑话（zh 四字对仗 / en Destiny Love Code / fr Clé du Destin Amoureux 注意性数配合 / es Código del Destino Amoroso / th บุพเพสันนิวาส / vi Mật Mã Nhân Duyên 汉越词），icon 恒 48px + mode-text 文字列（flex:1 + min-width:0）受控换行。",
       "gate": "test/audit-e66-familiar-chat.test.mjs",
-      "gateAnchor": "姻缘密码",
+      "gateAnchor": "缘分密码",
       "episodes": [
         "E79"
       ],

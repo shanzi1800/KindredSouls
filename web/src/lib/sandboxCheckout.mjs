@@ -55,8 +55,6 @@ export const SANDBOX_PLAN_TERM_KEYS = Object.freeze({
   all_pass_monthly: 'SandboxPlanOther',
   // 🆕 E148-刀三（主公军令 2026-11-19）：$1.99 今日塔罗新 SKU（六语专属词条）
   tarot_daily_once: 'SandboxPlanTarotDaily',
-  // 🤝 E155（主公军令 2026-11-25）：$9.99 缘分密码新 SKU（收银台标签由唤起方 label 覆写；零 i18n 键数扰动）
-  resonance: 'SandboxPlanOther',
 });
 
 /* ── SKU ⇒ 标价（**仅供沙盘收银台展示**，绝不参与计价；真实金额由 Stripe Price 决定）──
@@ -76,8 +74,6 @@ export const SANDBOX_PLAN_PRICE = Object.freeze({
   all_pass_monthly: '$9.99',
   // 🆕 E148-刀三（主公军令 2026-11-19）：$1.99 今日塔罗（军令钦定价；与 server STRIPE_PRICE_MAP 同集）
   tarot_daily_once: '$1.99',
-  // 🤝 E155（主公军令 2026-11-25）：$9.99 缘分密码双人报告（与 server STRIPE_PRICE_MAP 同集）
-  resonance: '$9.99',
 });
 
 /** SKU 标价取词：未知/畸形 ⇒ ''（空串，由调用方决定是否省略） */
@@ -161,15 +157,12 @@ export function isVoucherSubmittable(raw) {
  * 💳 E148-刀二（主公军令 2026-11-19）：可选第三参 comboSig —— compatibility_once
  *   付讫按盘落库（E131 对称形制；缺省/空串 ⇒ 不挂键，旧形态零变）。
  */
-export function buildSandboxCompleteRequest(plan, chartSig, comboSig, resonanceToken) {
+export function buildSandboxCompleteRequest(plan, chartSig, comboSig) {
   const body = { plan: String(plan == null ? '' : plan) };
   const sig = typeof chartSig === 'string' ? chartSig.trim() : '';
   if (sig) body.chart_sig = sig;
   const combo = typeof comboSig === 'string' ? comboSig.trim() : '';
   if (combo) body.combo_sig = combo;
-  // 🤝 E155：缘分密码邀请令牌（收银台 url 的 resonance_token query 提取；缺省不挂键）
-  const rtok = typeof resonanceToken === 'string' ? resonanceToken.trim() : '';
-  if (rtok) body.resonance_token = rtok;
   return { path: SANDBOX_COMPLETE_PATH, method: 'POST', body };
 }
 
@@ -345,7 +338,6 @@ export function openSandboxCashier(payload) {
     lang: (typeof payload.lang === 'string' && payload.lang !== '') ? payload.lang : null,
     onGranted: (typeof payload.onGranted === 'function') ? payload.onGranted : null,
     onClose: (typeof payload.onClose === 'function') ? payload.onClose : null,
-    label: (typeof payload.label === 'string' && payload.label !== '') ? payload.label : null,
   };
   _emit();
   return _current;

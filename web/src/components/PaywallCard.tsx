@@ -1,3 +1,6 @@
+// @ts-ignore —— 六语字典单源（E156 场景卖点/按钮换词）
+import { resT } from '../lib/resonanceI18n.mjs';
+
 interface PaywallCardProps {
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
   loading: boolean;
@@ -6,9 +9,12 @@ interface PaywallCardProps {
   //    点 $4.99「立即解锁」连带年报按钮同现 ⏳＋灰底（状态污染，主公截图实锤）。
   //    治法：按 plan 精确隔离——仅被点击档位进入加载态，其余按钮文案/可点击态原样。
   activePlan?: string | false;
+  // 🤝 E156（主公军令 2026-11-25）：关系坐标场景——romance（缺省）＝六语词条逐字不变、一像素不改；
+  //    business / friendship ⇒ 仅换 4 条卖点＋月报/年报按钮场景名（价格/加赠/主按钮/布局零变）。
+  scene?: string;
 }
 
-const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallCardProps) => {
+const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: PaywallCardProps) => {
   const t = {
     zh: {
       title: '解锁你们的灵魂密码',
@@ -120,6 +126,21 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
     },
   };
   const c = t[lang as keyof typeof t] || t.en;
+  // 🤝 E156：商道/挚友卖点与月报年报按钮换词（字典单源 resonanceI18n.mjs；缺行 ⇒ 回落情爱词条）
+  const e156Scene = scene === 'business' || scene === 'friendship' ? scene : 'romance';
+  const e156Row = (key: string): string[] | null => {
+    if (e156Scene === 'romance') return null;
+    try {
+      // @ts-ignore —— 纯 JS 六语字典单源
+      const row = resT(lang, key);
+      return Array.isArray(row) ? (row as string[]) : null;
+    } catch { return null; }
+  };
+  const e156Feat = e156Row(`feat_${e156Scene}`);
+  const features = (e156Feat && e156Feat.length === 4) ? e156Feat : c.features;
+  const e156IsScene = e156Scene !== 'romance';
+  const monthlyBtn = e156IsScene ? resT(lang, 'btn_monthly_scene') : c.monthlyBtn;
+  const yearlyBtn = e156IsScene ? resT(lang, 'btn_yearly_scene') : c.yearlyBtn;
 
   return (
     <div style={{
@@ -203,7 +224,7 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
 
       {/* 价值点 — 薄荷绿发光点 */}
       <div style={{ textAlign: 'left', marginBottom: '16px' }}>
-        {c.features.map((item: string, i: number) => (
+        {features.map((item: string, i: number) => (
           <div key={i} style={{
             fontSize: '13px',
             color: 'rgba(255,255,255,0.82)',
@@ -301,7 +322,7 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
           marginBottom: '12px',
         }}
       >
-        {(loading && activePlan === 'compatibility_monthly_report') ? '⏳ ...' : `📅 ${c.monthlyBtn}`}
+        {(loading && activePlan === 'compatibility_monthly_report') ? '⏳ ...' : `📅 ${monthlyBtn}`}
       </button>
 
       {/* 年报档 — 金色渐变（E86-③：旧全通年卡档退役 → E85 姻缘年报 $29.99） */}
@@ -335,7 +356,7 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false }: PaywallC
         onMouseEnter={e => { if (!(loading && activePlan === 'compatibility_yearly_report')) (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { (e.target as HTMLButtonElement).style.transform = 'translateY(0)'; }}
       >
-        {(loading && activePlan === 'compatibility_yearly_report') ? '⏳ ...' : `👑 ${c.yearlyBtn}`}
+        {(loading && activePlan === 'compatibility_yearly_report') ? '⏳ ...' : `👑 ${yearlyBtn}`}
       </button>
 
       {/* 信任标识 — 提亮与bonusDetail同色 */}

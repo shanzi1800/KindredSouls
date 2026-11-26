@@ -31,7 +31,8 @@ const PKG = JSON.parse(read('package.json'));
 
 test('E90-①-1 PaywallCard 接收 activePlan 档位枚举（状态隔离契约）', () => {
   assert.ok(PW.includes('activePlan?: string | false'), 'activePlan prop 契约缺失');
-  assert.ok(PW.includes("activePlan = false }: PaywallCardProps"), 'activePlan 缺省 false 形态异常');
+  // E156 后继化：组件签名追加可选 scene 入参（商道/挚友换词），缺省 false 契约不变
+  assert.ok(/activePlan = false(, scene)? \}: PaywallCardProps/.test(PW), 'activePlan 缺省 false 形态异常');
 });
 
 test('E90-①-2 三按钮各按档位判加载（零连带）', () => {

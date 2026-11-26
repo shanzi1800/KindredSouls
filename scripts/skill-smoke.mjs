@@ -42,11 +42,11 @@ async function timed(url, init) {
 
 /* 六语抽检词：各语 2 条——1 条模式弹窗（E79）＋1 条品牌/报告核心词 */
 const I18N_MARKERS = {
-  zh: ['姻缘密码', '财富密码'],
-  en: ['Destiny Love Code', 'Wealth Code'],
-  fr: ['Clé du Destin Amoureux', 'Clé de la Richesse'],
-  es: ['Código del Destino Amoroso', 'Código de la Riqueza'],
-  th: ['รหัสลับบุพเพสันนิวาส', 'รหัสลับความมั่งคั่ง'],
+  zh: ['缘分密码', '财富密码'],
+  en: ['Resonance Code', 'Wealth Code'],
+  fr: ['Code de Résonance', 'Clé de la Richesse'],
+  es: ['Código de Resonancia', 'Código de la Riqueza'],
+  th: ['รหัสคลื่นชะตา', 'รหัสลับความมั่งคั่ง'],
   vi: ['Mật Mã Nhân Duyên', 'Mật Mã Tài Lộc'],
 };
 

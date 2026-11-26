@@ -16,12 +16,11 @@ import FamiliarPicker, { FAMILIAR_LS_KEY } from './components/FamiliarPicker';
 import AuthWallCard from './components/AuthWallCard';
 import LangModal from './components/LangModal';
 import BirthPrivacyNote from './components/BirthPrivacyNote';
-// 🤝 E155：Resonance Code 三场景页 / 受邀页（React.lazy —— 首页主包零扰动）
-const ResonancePage = React.lazy(() => import('./components/resonance/ResonancePage'));
-const ResonanceInvitePage = React.lazy(() => import('./components/resonance/ResonanceInvitePage'));
-// @ts-ignore —— resonanceClient.mjs 为纯 JS 逻辑核（E155 闸门守备）
-import { parseResonancePath } from './lib/resonanceClient.mjs';
-// @ts-ignore —— resonanceI18n.mjs 为六语字典单源（E155）
+// 🤝 E156（主公军令 2026-11-25）：幸福坐标卡嵌入块（三场景报告底部＋财富报告底部；主动权在付费用户）
+import HappinessCard from './components/HappinessCard';
+// @ts-ignore —— 纯 JS 装配核
+import { buildSceneCardPayload, normalizeCardScene, sanitizeCardName } from './lib/happinessCardPayload.mjs';
+// @ts-ignore —— resonanceI18n.mjs 为六语字典单源（E155 立 / E156 扩）
 import { resT } from './lib/resonanceI18n.mjs';
 import { TimeInput } from './components/TimeInput';
 import { slotNext } from './components/TimeInput';
@@ -340,9 +339,62 @@ export type CompatTimeTruth = {
   t1: string; c1: CityRecord | null;
   t2: string; c2: CityRecord | null;
 };
+// 🤝 E156：关系坐标场景＋双方称呼（随结果下传：输入页 → /result 三处换词 → /api/ai-advisor 叠加层）
+export type CompatSceneMeta = { scene: string; nameA: string; nameB: string };
+export const E156_SCENES = ['romance', 'business', 'friendship'] as const;
+const e156SceneOf = (r: { _scene?: string } | null | undefined): string => normalizeCardScene(r && r._scene);
+
+/** 🤝 E156：关系坐标三选一胶囊（黑金；输入页与解锁后切换位共用） */
+function E156ScenePills({ lang, value, onChange, testId }: { lang: string; value: string; onChange: (s: string) => void; testId: string }) {
+  const L = String(lang || 'zh').split('-')[0];
+  const items: [string, string][] = [['romance', resT(L, 'pill_romance')], ['business', resT(L, 'pill_business')], ['friendship', resT(L, 'pill_friendship')]];
+  return (
+    <div role="radiogroup" aria-label={resT(L, 'pill_group')} data-testid={testId} lang={L}
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', width: '100%', minWidth: 0 }}>
+      {items.map(([k, label]) => {
+        const on = k === value;
+        return (
+          <button key={k} type="button" role="radio" aria-checked={on} data-testid={`${testId}-${k}`} data-on={on ? 'true' : 'false'}
+            onClick={() => onChange(k)}
+            style={{
+              minWidth: 0, minHeight: '44px', padding: '8px 6px', borderRadius: '999px', font: 'inherit',
+              fontSize: '13px', fontWeight: 700, lineHeight: L === 'th' ? 1.55 : 1.3, cursor: 'pointer',
+              overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', textAlign: 'center',
+              transition: 'all .2s ease',
+              border: on ? '1.5px solid #F0D060' : '1px solid rgba(212,175,55,.45)',
+              background: on ? 'linear-gradient(135deg, rgba(212,175,55,.34), rgba(212,175,55,.12))' : 'rgba(13,13,26,.6)',
+              color: on ? '#FAF4E4' : 'rgba(246,240,228,.72)',
+              boxShadow: on ? '0 0 16px rgba(212,175,55,.28)' : 'none',
+            }}>
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 🤝 E156：选填称呼输入（星卡顶部；空 ⇒ 服务端/卡片兜底「我 / TA」） */
+function E156NameInput({ id, lang, value, onChange, labelKey, phKey }: {
+  id: string; lang: string; value: string; onChange: (v: string) => void; labelKey: string; phKey: string;
+}) {
+  const L = String(lang || 'zh').split('-')[0];
+  return (
+    <>
+      <label className="ks-field-label" htmlFor={id} style={{ marginTop: '10px' }}>{resT(L, labelKey)}</label>
+      <input id={id} data-testid={id} name={id} value={value} maxLength={24} autoComplete="off"
+        onChange={(e) => onChange(e.target.value)} placeholder={resT(L, phKey)}
+        style={{
+          width: '100%', padding: '10px 12px', font: 'inherit', fontSize: '15px', color: '#FAF4E4',
+          background: 'rgba(13,13,26,.6)', border: '1px solid rgba(212,175,55,.35)', borderRadius: '10px',
+          outline: 'none', overflowWrap: 'anywhere', lineHeight: L === 'th' ? 1.55 : 1.3,
+        }} />
+    </>
+  );
+}
 
 function InputPage({ onSubmit, onNavigateToWealth }: {
-  onSubmit: (d1: string, d2: string, tt: CompatTimeTruth) => void,
+  onSubmit: (d1: string, d2: string, tt: CompatTimeTruth, meta?: CompatSceneMeta) => void,
   onNavigateToWealth: () => void
 }) {
   const { t, i18n } = useTranslation();
@@ -354,7 +406,18 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
   const [c1, setC1] = useState<CityRecord | null>(null);
   const [t2, setT2] = useState('');
   const [c2, setC2] = useState<CityRecord | null>(null);
+  // 🤝 E156（主公军令 2026-11-25）：双方称呼（选填）＋关系坐标场景（情爱默认）——
+  //    三场景长在本输入页与现有 /result 黄金漏斗上；独立 /resonance、/invite 页已退役。
+  const [name1, setName1] = useState('');
+  const [name2, setName2] = useState('');
+  const [scene, setScene] = useState<string>('romance');
   const lang = ((i18n.language || 'en').split('-')[0] || 'en') as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+  const L_PILL = ({
+    zh: '关系坐标', en: 'Relationship coordinate', fr: 'Coordonnée du lien',
+    es: 'Coordenada del vínculo', th: 'พิกัดความสัมพันธ์', vi: 'Tọa độ mối quan hệ',
+  } as Record<string, string>)[lang] || 'Relationship coordinate';
+  // 主按钮随场景切换（情爱＝既有 input.calculate 词条逐字不变）
+  const ctaLabel = scene === 'romance' ? t('input.calculate') : resT(lang, scene === 'business' ? 'cta_business' : 'cta_friendship');
   const L_TIME = ({
     zh: '出生时间（可选）', en: 'Birth Time (optional)', es: 'Hora de nacimiento (opcional)',
     fr: 'Heure de naissance (optionnel)', th: 'เวลาเกิด (เลือกได้)', vi: 'Giờ sinh (tùy chọn)',
@@ -452,7 +515,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
     _e148LastForm.d1 = d1; _e148LastForm.d2 = d2;
     _e148LastForm.t1 = t1; _e148LastForm.t2 = t2;
     _e148LastForm.c1 = c1; _e148LastForm.c2 = c2;
-    onSubmit(d1, d2, { t1, c1, t2, c2 });
+    onSubmit(d1, d2, { t1, c1, t2, c2 }, { scene, nameA: name1, nameB: name2 });
   };
 
   const toggleModal = () => setModalOpen(v => !v);
@@ -565,6 +628,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <IconStarYou />
           <span className="ks-starcard-title">{L_CARD1}</span>
         </div>
+        {/* 🤝 E156：选填称呼（卡片顶部；默认「我」） */}
+        <E156NameInput id="e156-name-a" lang={lang} value={name1} onChange={setName1} labelKey="name_you" phKey="name_you_ph" />
         {/* 必填置顶：出生年月日 */}
         <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
         <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
@@ -590,6 +655,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <IconMoonTA />
           <span className="ks-starcard-title">{L_CARD2}</span>
         </div>
+        {/* 🤝 E156：选填称呼（卡片顶部；默认「TA」） */}
+        <E156NameInput id="e156-name-b" lang={lang} value={name2} onChange={setName2} labelKey="name_ta" phKey="name_ta_ph" />
         <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
         <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         <button type="button" className="ks-fold-trigger" onClick={() => setFold2(v => !v)} aria-expanded={fold2}>
@@ -606,6 +673,12 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           </div>
         </div>
       </div>
+      {/* 🤝 E156（主公军令 2026-11-25）：关系坐标三选一胶囊（TA 卡下方 · 主按钮上方；情爱默认）
+          三场景长在现有黄金漏斗上——独立 /resonance 场景页与 /invite 中转页已退役。 */}
+      <div style={{ marginTop: '14px', padding: '12px 12px 12px', borderRadius: '16px', border: '1px solid rgba(212,175,55,.3)', background: 'rgba(13,13,26,.45)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', letterSpacing: '.08em', color: '#F0D060', fontWeight: 600, overflowWrap: 'anywhere' }}>{L_PILL}</span>
+        <E156ScenePills lang={lang} value={scene} onChange={setScene} testId="e156-pills-input" />
+      </div>
       <div className="ks-dual-stack">
         {/* 🔮 财富同款金牌提示（复用六语文案键 wealthInput.birthTip；间距/内边距与财富框内一致） */}
         <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.10) 100%)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '12px', fontSize: '11px', color: '#F0D060', fontWeight: 400, lineHeight: 1.6, boxShadow: '0 2px 8px rgba(212,175,55,0.15)', textShadow: '0 1px 2px rgba(0,0,0,0.4)', textAlign: 'left' }}>
@@ -614,14 +687,9 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       </div>
       {/* 🆕 E151-刀三（军令 2026-11-24）：数据最小化信任护栏——隐私承诺小字＋一键清除（两击确认） */}
       <BirthPrivacyNote />
-      {/* 🤝 E155：缘分密码入口（三场景 · 一人解锁双方各得专属坐标报告）—— 整页路由 /resonance */}
-      <button type="button" id="rs-entry-link" className="btn btn-link" data-testid="rs-entry-link"
-        style={{ display: 'block', margin: '10px auto 0', fontSize: '12px', color: '#F0D060', letterSpacing: '0.04em', background: 'none', border: 0, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' }}
-        onClick={() => { window.history.pushState({}, '', '/resonance'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
-        ✦ {resT(String(i18n.language || 'zh').split('-')[0], 'res_title')} →
-      </button>
       {/* 🌌 45-B5：CTA 移出蓝框 · 框下方（对齐财富按钮规格；压平 .btn 自带 40px 下边距使条款紧贴） */}
-      <button className="btn btn-primary" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{t('input.calculate')}</button>
+      {/* 🤝 E156：单一主按钮，文案随胶囊切换（情爱＝测算缘分） */}
+      <button className="btn btn-primary" data-testid="e156-cta" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{ctaLabel}</button>
       {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
       <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }}>
           {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>隐私政策</a>。</> : null}
@@ -689,8 +757,11 @@ const DIM_LABELS: Record<string, string[]> = {
 };
 const DIM_KEYS = ['love', 'communication', 'chemistry', 'stability'] as const;
 
-function DimensionBars({ dims, lang }: { dims: CompatibilityResult['dimensions']; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi' }) {
-  const labels = DIM_LABELS[lang] || DIM_LABELS.en;
+function DimensionBars({ dims, lang, scene }: { dims: CompatibilityResult['dimensions']; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; scene?: string }) {
+  // 🤝 E156：四维标签随关系坐标场景切换（情爱＝既有 DIM_LABELS 逐字不变；商道/挚友＝字典 dim_<scene>）
+  const e156Scene = normalizeCardScene(scene);
+  const e156SceneLabels = e156Scene === 'romance' ? null : (resT(lang, `dim_${e156Scene}`) as unknown as string[] | undefined);
+  const labels = (e156SceneLabels && e156SceneLabels.length === 4) ? e156SceneLabels : (DIM_LABELS[lang] || DIM_LABELS.en);
   return (
     <div className="dim-section">
       <h4 className="section-title">{TXT.sectionTitle?.[lang] || TXT.sectionTitle?.en || 'Four-Dimension Breakdown'}</h4>
@@ -777,7 +848,7 @@ const L_FAMILIAR_LOCK_TOAST: Record<string, string> = {
   vi: '✨ Hãy mở khóa báo cáo Mật mã Linh hồn chuyên sâu $4.99 trước, rồi bạn mới có thể ấp và ký kết linh thú độc quyền của mình',
 };
 
-function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, pendingReportTrigger, onReportConsumed, onLogout }: {
+function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, iching, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, lang, onTriggerInsight, pendingInsightTrigger, pendingReportTrigger, onReportConsumed, onLogout, scene, nameA, nameB, onSceneChange }: {
   d1: string; d2: string; overall: number;
   // 🌌 E40+：双人时空真值（可选；缺省 ⇒ 服务端如实降级，不伪造）
   t1?: string; c1?: { key: string; tz: string; lat: number; lon: number } | null;
@@ -793,8 +864,30 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   pendingReportTrigger?: 'monthly' | 'yearly' | null;
   onReportConsumed?: () => void;
   onLogout?: () => void;
+  // 🤝 E156：关系坐标场景＋双方称呼＋解锁后切换回调（romance＝既有链逐字不变）
+  scene?: string; nameA?: string; nameB?: string; onSceneChange?: (s: string) => void;
 }) {
   const [insight, setInsight] = useState<string | null>(null);
+  // 🤝 E156：场景/称呼派生量（称呼白名单清洗；四维标签六语随场景）
+  const e156Scene = normalizeCardScene(scene);
+  const e156IsScene = e156Scene !== 'romance';
+  const e156NameA = sanitizeCardName(nameA);
+  const e156NameB = sanitizeCardName(nameB);
+  const e156DimRow = e156IsScene ? (resT(lang, `dim_${e156Scene}`) as unknown as string[] | undefined) : undefined;
+  const e156DimLabels = (Array.isArray(e156DimRow) ? e156DimRow : []).slice(0, 4);
+  const e156CardPayload = React.useMemo(() => buildSceneCardPayload({
+    lang, scene: e156Scene, nameA: e156NameA, nameB: e156NameB, birthA: d1, birthB: d2, dims, overall,
+    origin: typeof window !== 'undefined' ? window.location.origin : '',
+  }), [lang, e156Scene, e156NameA, e156NameB, d1, d2, overall, dims]);
+  // 🤝 E156：解锁后原地切换场景 ⇒ 清旧报告并按新场景重生（同一权益位，不二次收费）
+  const e156SceneRef = React.useRef(e156Scene);
+  React.useEffect(() => {
+    if (e156SceneRef.current === e156Scene) return;
+    e156SceneRef.current = e156Scene;
+    setInsight(null); setTarotLine(null); setTarotCard(null); setError(null);
+    triggerInsight();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e156Scene]);
   const [tarotLine, setTarotLine] = useState<string | null>(null);
   const [tarotCard, setTarotCard] = useState<{id:number,name:string,emoji:string,isReversed:boolean,orientation:string} | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1493,7 +1586,16 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         // 💳 E148-刀二：once 档权益闸门吃双盘组合签名（服务端名单判定真源；
         //   畸形 ⇒ '' ⇒ 不挂键⇒服务端回退 timeTruth 铸签，fail-closed）
         body: JSON.stringify({ d1, d2, overall, dims, bazi, zodiac, iching, lang, baziMeta, zodiacMeta, ichingMeta, luckyAspects, challengingAspects, tarot, t1, t2,
-          combo_sig: compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined }),
+          combo_sig: compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined,
+          // 🤝 E156：商道/挚友 ⇒ 上送场景＋称呼＋四维标签＋时空真值（情爱不挂键 ⇒ 旧请求形态零变）
+          ...(e156IsScene ? {
+            scene: e156Scene, nameA: e156NameA, nameB: e156NameB, dimLabels: e156DimLabels,
+            timeTruth: {
+              a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
+              b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '' },
+            },
+          } : {}),
+        }),
       });
       const data = await res.json();
       if (data.insight) {
@@ -1580,6 +1682,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           d1, d2, lang,
           bazi, zodiac, iching, tarot,
           reportType: type,
+          // 🤝 E156：场景＋称呼随三档报告上送（romance ⇒ 服务端叠加层为空 ⇒ prompt 逐字节不变）
+          scene: e156Scene, nameA: e156NameA, nameB: e156NameB,
           // 🛡️ Gate 43：请求推演进度帧（服务端不支持/中间件拦截 ⇒ 自动回退 JSON，前端无缝降级）
           stream: true,
           // 🌌 E40+：瑞士星历双人时空真值（全空 ⇒ 服务端零引擎调用 + 显式未知声明）
@@ -1786,7 +1890,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '20px 0',
           }}>
-            <PaywallCard lang={lang} loading={loading} activePlan={activePurchasePlan} onPurchase={handlePurchase} />
+            <PaywallCard lang={lang} loading={loading} activePlan={activePurchasePlan} onPurchase={handlePurchase} scene={e156Scene} />
           </div>
           {/* 🧪 E138-刀三（主公军令 2026-11-13）：「🔄 重置沙盒演练」白名单专属微控件 ——
               仅 testerMode（服务端 tester-status 真值）时渲染；普通用户 DOM 零渲染零泄漏。
@@ -1908,6 +2012,20 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             <p className="ks-tarot-line">{tarotLine}</p>
           )}
           </div>{/* end 💎 E133 刀四 一次性姻缘深度报告金属框 */}
+          {/* 🤝 E156（主公军令 2026-11-25）：解锁后原地切换关系坐标——同一对双人信息一次解锁三场景，
+              切换＝按新场景重生报告（同一权益位，不二次收费；零新页面、零独立对话窗）。 */}
+          {insight && onSceneChange && (
+            <div data-testid="e156-scene-switch" style={{ marginTop: '14px', padding: '12px', borderRadius: '16px', border: '1px solid rgba(212,175,55,.3)', background: 'rgba(13,13,26,.45)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', letterSpacing: '.08em', color: '#F0D060', fontWeight: 600, overflowWrap: 'anywhere' }}>{resT(lang, 'scene_switch')}</span>
+              <E156ScenePills lang={lang} value={e156Scene} onChange={(s) => { if (s !== e156Scene) onSceneChange(s); }} testId="e156-pills-result" />
+            </div>
+          )}
+          {/* 🤝 E156：幸福坐标卡（三场景报告底部；预览＋单一保存/分享按钮；二维码恒指首页） */}
+          {insight && (
+            <div style={{ marginTop: '14px' }}>
+              <HappinessCard payload={e156CardPayload} lang={lang} fileStem={`kindredsouls-${e156Scene}-card`} mount="result" />
+            </div>
+          )}
           {/* 🏆 E105-刀二（主公军令 2026-10-30）：深空黑金命盘金卡纯前端离线导出
               （Canvas 375×667×dpr3；桌面 a download 落盘／移动端长按保存弹层；
               金句决策树＝塔罗主牌命中→八字三合兜底，零异步） */}
@@ -1981,7 +2099,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', marginBottom: '8px', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'monthly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly}
+                {reportLoading === 'monthly' ? '⏳...' : (e156IsScene ? resT(lang, 'al_monthly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)}
               </button>
               {/* 👑 年报按钮：E87-② 同令——购买先行，付讫回场自动生成年报 */}
               <button
@@ -1989,7 +2107,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'yearly' ? '⏳...' : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly}
+                {reportLoading === 'yearly' ? '⏳...' : (e156IsScene ? resT(lang, 'al_yearly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)}
               </button>
               {reportText && (
                 /* 🔴 E88-②（主公军令 2026-10-26）：黑金长卷渲染容器——
@@ -2075,6 +2193,10 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
 function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, pendingReportTrigger = null, setPendingReportTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; pendingReportTrigger?: 'monthly' | 'yearly' | null; setPendingReportTrigger?: (v: 'monthly' | 'yearly' | null) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
   const { overall, engines, dimensions, luckyAspects, challengingAspects } = result;
+  // 🤝 E156：关系坐标场景（输入页胶囊随结果下传；解锁后可原地切换 ⇒ 四维/付费墙/报告同频换词）
+  const e156BaseScene = e156SceneOf(result as unknown as { _scene?: string });
+  const [liveScene, setLiveScene] = useState<string>(e156BaseScene);
+  const _e156Names = result as typeof result & { _nameA?: string; _nameB?: string };
 
   const engineList = [
     { key: 'bazi', label: t('result.engines.bazi'), e: engines.bazi },
@@ -2108,7 +2230,7 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
       <ScoreRing score={overall} />
       <p className="score-label">{t('result.overall')}</p>
 
-      <DimensionBars dims={dimensions} lang={lang} />
+      <DimensionBars dims={dimensions} lang={lang} scene={liveScene} />
 
       {/* ── Collapsible Details (Engine Cards + Aspects) ── */}
       {/* ✦ E84：折叠开关黑金化（原内联 #fff 白底退役，改 ks-detail-toggle 毛玻璃触发条） */}
@@ -2170,6 +2292,10 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
         pendingReportTrigger={pendingReportTrigger}
         onReportConsumed={() => setPendingReportTrigger && setPendingReportTrigger(null)}
         onLogout={onLogout}
+        scene={liveScene}
+        nameA={_e156Names._nameA || ''}
+        nameB={_e156Names._nameB || ''}
+        onSceneChange={setLiveScene}
       />
 
       <button className="btn btn-secondary" onClick={onBack} style={{ marginTop: '20px' }}>{t('result.back')}</button>
@@ -2276,18 +2402,6 @@ export default function App() {
 
   // ── Policy page routing (terms-of-service / privacy-policy) ──
   const [policyPage, setPolicyPage] = useState<'terms' | 'privacy' | null>(null);
-
-  // ── 🤝 E155：Resonance Code 排他路由（/resonance 三场景页 · /invite/:token 受邀页）──
-  const [resonanceRoute, setResonanceRoute] = useState<{ kind: string; token: string } | null>(null);
-  useEffect(() => {
-    const handleResonanceRoute = () => {
-      const r = parseResonancePath(window.location.pathname);
-      setResonanceRoute(r ? { kind: r.kind, token: r.token || '' } : null);
-    };
-    handleResonanceRoute();
-    window.addEventListener('popstate', handleResonanceRoute);
-    return () => window.removeEventListener('popstate', handleResonanceRoute);
-  }, []);
 
   // ── 🧪 E120-PLAYGROUND：开发路由 /dev/amulet-preview（仅 DEV 态激活）──
   const [devAmuletRoute, setDevAmuletRoute] = useState(false);
@@ -2499,7 +2613,7 @@ export default function App() {
   }, []);
 
 
-  const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth) => {
+  const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth, meta?: CompatSceneMeta) => {
     setErr('');
     _setPage('loading');
     // 🔴 E85-①（主公军令 2026-10-24）：$4.99 按次消费品——每次新测算（开始测算/重新测算）
@@ -2530,6 +2644,11 @@ export default function App() {
         r._c1 = tt.c1 || null;
         r._t2 = tt.t2 || '';
         r._c2 = tt.c2 || null;
+        // 🤝 E156：关系坐标场景＋双方称呼（清洗后）随结果下传并持久化（OAuth/Stripe 回场同源）
+        const _r156 = r as typeof r & { _scene: string; _nameA: string; _nameB: string };
+        _r156._scene = normalizeCardScene(meta && meta.scene);
+        _r156._nameA = sanitizeCardName(meta && meta.nameA);
+        _r156._nameB = sanitizeCardName(meta && meta.nameB);
         setResult(r);
         _setPage('result');
         // ✅ 更新 URL hash，确保 OAuth 回调后能跳回正确页面
@@ -2566,14 +2685,7 @@ sessionStorage.setItem('ks_result', JSON.stringify(r));
         </div>
       )}
       {/* 🧪 E120-PLAYGROUND：密函走查工坊（DEV 态独占路由——排他渲染，主视口零叠加） */}
-      {/* 🤝 E155：Resonance Code 排他路由（三场景页 / 受邀页；主视口零叠加；沙盘收银台就地可用） */}
-      {resonanceRoute ? (
-        <React.Suspense fallback={<div style={{ background: '#05050a', minHeight: '100vh' }} />}>
-          <SandboxCashier lang={currentLang} />
-          {resonanceRoute.kind === 'resonance' && <ResonancePage onBackHome={() => navigate('/')} />}
-          {resonanceRoute.kind === 'invite' && <ResonanceInvitePage key={resonanceRoute.token} token={resonanceRoute.token} onBackHome={() => navigate('/')} />}
-        </React.Suspense>
-      ) : import.meta.env.DEV && devAmuletRoute && AmuletPlayground ? (
+      {import.meta.env.DEV && devAmuletRoute && AmuletPlayground ? (
         <React.Suspense
           fallback={<div style={{ background: '#08080A', minHeight: '100vh', color: '#71717a', padding: 32, fontSize: 13 }}>加载密函工坊中...</div>}
         >

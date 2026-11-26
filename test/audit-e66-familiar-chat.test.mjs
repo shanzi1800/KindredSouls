@@ -249,15 +249,15 @@ test('E77 【视觉动线镜像】桌面悬浮舱按角色朝向左右分流（M
     'E77 镜像规则误落在桌面断点之外（会污染移动端）');
 });
 
-test('E79 【六语词条焕新】模式弹窗「姻缘密码/财富密码」母语级黑话＋icon 文字列排版', () => {
+test('E79→E156 【六语词条焕新】模式弹窗「缘分密码/财富密码」母语级黑话＋icon 文字列排版', () => {
   // ① 六语 24 键值逐字对齐军令总表（禁机翻；泰语บุพเพสันนิวาส/越语Mật Mã 汉越词根必须原样）
   const TABLE = {
-    zh: { compatibilityMode: '姻缘密码', compatibilityModeDesc: '解锁双人关系密码', wealthMode: '财富密码', wealthModeDesc: '解锁先天财库密码' },
-    en: { compatibilityMode: 'Destiny Love Code', compatibilityModeDesc: 'Unlock Your Relationship Blueprint', wealthMode: 'Wealth Code', wealthModeDesc: 'Unlock Your Natal Wealth Vault' },
-    fr: { compatibilityMode: 'Clé du Destin Amoureux', compatibilityModeDesc: 'Déverrouillez le secret de votre relation', wealthMode: 'Clé de la Richesse', wealthModeDesc: 'Déverrouillez votre trésor de richesse inné' },
-    es: { compatibilityMode: 'Código del Destino Amoroso', compatibilityModeDesc: 'Desbloquea el código de tu relación', wealthMode: 'Código de la Riqueza', wealthModeDesc: 'Desbloquea tu bóveda de riqueza natal' },
-    th: { compatibilityMode: 'รหัสลับบุพเพสันนิวาส', compatibilityModeDesc: 'ปลดล็อกรหัสลับความสัมพันธ์คู่', wealthMode: 'รหัสลับความมั่งคั่ง', wealthModeDesc: 'ปลดล็อกรหัสลับคลังสมบัติพื้นดวง' },
-    vi: { compatibilityMode: 'Mật Mã Nhân Duyên', compatibilityModeDesc: 'Mở khóa mật mã mối quan hệ đôi lứa', wealthMode: 'Mật Mã Tài Lộc', wealthModeDesc: 'Mở khóa mật mã kho tài lộc bẩm sinh' },
+    zh: { compatibilityMode: '缘分密码', compatibilityModeDesc: '情爱 · 商道 · 挚友，解锁双人关系坐标', wealthMode: '财富密码', wealthModeDesc: '解锁先天财库密码' },
+    en: { compatibilityMode: 'Resonance Code', compatibilityModeDesc: 'Romance · Business · Friendship — unlock your two-person coordinates', wealthMode: 'Wealth Code', wealthModeDesc: 'Unlock Your Natal Wealth Vault' },
+    fr: { compatibilityMode: 'Code de Résonance', compatibilityModeDesc: 'Amour · Affaires · Amitié — débloquez vos coordonnées à deux', wealthMode: 'Clé de la Richesse', wealthModeDesc: 'Déverrouillez votre trésor de richesse inné' },
+    es: { compatibilityMode: 'Código de Resonancia', compatibilityModeDesc: 'Amor · Negocios · Amistad — desbloquea sus coordenadas en pareja', wealthMode: 'Código de la Riqueza', wealthModeDesc: 'Desbloquea tu bóveda de riqueza natal' },
+    th: { compatibilityMode: 'รหัสคลื่นชะตา', compatibilityModeDesc: 'รัก · ธุรกิจ · มิตรภาพ — ปลดล็อกพิกัดของคุณทั้งสอง', wealthMode: 'รหัสลับความมั่งคั่ง', wealthModeDesc: 'ปลดล็อกรหัสลับคลังสมบัติพื้นดวง' },
+    vi: { compatibilityMode: 'Mật Mã Nhân Duyên', compatibilityModeDesc: 'Tình Ái · Sự Nghiệp · Hữu Nghị — mở khóa tọa độ của hai người', wealthMode: 'Mật Mã Tài Lộc', wealthModeDesc: 'Mở khóa mật mã kho tài lộc bẩm sinh' },
   };
   for (const [lang, kv] of Object.entries(TABLE)) {
     const d = JSON.parse(read(`web/src/i18n/locales/${lang}.json`));

@@ -28,6 +28,10 @@ import { useTranslation } from 'react-i18next';
 import WealthDataGrid from '../components/WealthDataGrid';
 import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
+// 🤝 E156：幸福坐标卡（财富报告底部；wealth_abundance 主题）
+import HappinessCard from '../components/HappinessCard';
+// @ts-ignore —— 纯 JS 装配核
+import { buildWealthCardPayload, sunSignOfDate } from '../lib/happinessCardPayload.mjs';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
 import type { FamiliarProfile } from '../components/FamiliarPicker';
 // @ts-ignore —— familiarHome.mjs 为纯 JS 逻辑核（E49 星盘签名真源）
@@ -2768,6 +2772,11 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
   };
 
   const currentLang = (lang || 'en').split('-')[0] as 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
+  // 🤝 E156：财富幸福坐标卡入参（memo ⇒ 父级重渲染不重绘 Canvas；个人称呼缺省「我」）
+  const e156WealthCard = React.useMemo(() => buildWealthCardPayload({
+    lang: currentLang, name: '', sunSign: sunSignOfDate(birthDate),
+    origin: typeof window !== 'undefined' ? window.location.origin : '',
+  }), [currentLang, birthDate]);
 
   if (loading) {
     return (
@@ -3729,6 +3738,15 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
           >
             ✨ {t('wealthReport.generateAI')}
           </button>
+        )}
+
+        {/* 🤝 E156（主公军令 2026-11-25）：幸福坐标卡（财富报告底部 · wealth_abundance 主题；
+            个人星历印记＋丰盛四词＋二维码恒指首页；主动权 100% 在付费用户本人）。
+            🔴 挂报告尾（报告正文已出即在场）——不绑 AI 洞察（洞察须用户另点生成，绑它＝多数付费用户永远见不到卡）。 */}
+        {isUnlocked && reportData && (
+          <div style={{ marginTop: '14px' }}>
+            <HappinessCard payload={e156WealthCard} lang={currentLang} fileStem="kindredsouls-wealth-card" mount="wealth" />
+          </div>
         )}
 
         {/* 🐾 Gate 45-B：报告尾「灵宠认领」独立承接位（报告解锁后呈现）

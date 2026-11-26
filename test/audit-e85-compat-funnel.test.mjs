@@ -22,7 +22,8 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 test('E85-①-1 新测算重置当次解锁状态（per-session unpaid）', () => {
   const app = read('web/src/App.tsx');
   // handleCalculate：每次新测算强制清 per-session 解锁标记
-  const iCalc = app.indexOf('const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth) => {');
+  // 🤝 E156 后继化：增可选第四参 meta（关系坐标场景＋双方称呼；E85 重置语义零变）
+  const iCalc = app.indexOf('const handleCalculate = (d1: string, d2: string, tt: CompatTimeTruth, meta?: CompatSceneMeta) => {');
   assert.ok(iCalc > 0, 'handleCalculate 缺失');
   const calcSeg = app.slice(iCalc, iCalc + 900);
   assert.ok(calcSeg.includes("sessionStorage.removeItem('ks_compat_session_unlocked')"), '新测算未重置 per-session 解锁状态（付费墙可被跨次白送）');

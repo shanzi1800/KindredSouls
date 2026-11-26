@@ -22,8 +22,6 @@ import { subscribeSandboxCashier, getSandboxCashier, closeSandboxCashier, buildS
 // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫按盘落库 —— 收银台就地取当前页盘签名
 // @ts-ignore —— wealthChartSig.mjs 为纯 JS 逻辑核（前后端同源，e131 闸门守备）
 import { wealthChartSigFromSearch } from '../lib/wealthChartSig.mjs';
-// @ts-ignore —— resonanceClient.mjs 为纯 JS 逻辑核（E155 闸门守备）
-import { resonanceTokenFromSearch } from '../lib/resonanceClient.mjs';
 import { compatComboSigFromSearch } from '../lib/compatComboSig.mjs'; // 💳 E148-刀二: 组合签名提取（doPay 双回退）
 
 const GOLD = '#D4AF37';
@@ -42,8 +40,6 @@ type SandboxRequest = {
   lang: string | null;
   onGranted: ((plan: string) => void) | null;
   onClose: (() => void) | null;
-  // 🤝 E155：唤起方覆写商品标签（缘分密码专属词条；缺省 null ⇒ 走字典取词）
-  label: string | null;
 };
 
 const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
@@ -72,7 +68,7 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
     const t = dictTerm(ASTRO_TERMS, 'sandbox', key, L);
     return t ? clampToSlot(t.label, t.slot || 'labelCard') : '';
   };
-  const planLabel = req.label || (() => {
+  const planLabel = (() => {
     const t = planTerm(ASTRO_TERMS, req.plan, L);
     return t ? clampToSlot(t.label, t.slot || 'labelCard') : req.plan;
   })();
@@ -127,10 +123,7 @@ const SandboxCashier: React.FC<{ lang?: string }> = ({ lang }) => {
       //   双双落空 ⇒ '' ⇒ body 不挂 combo_sig 键，旧行为零变。
       const _e148Combo = compatComboSigFromSearch(((req.url || '').split('?')[1]) || '')
         || compatComboSigFromSearch(window.location.search);
-      // 🤝 E155：缘分密码邀请令牌（收银台 url 的 resonance_token query；缺省 ⇒ 不挂键，旧行为零变）
-      const _e155Token = resonanceTokenFromSearch(((req.url || '').split('?')[1]) || '')
-        || resonanceTokenFromSearch(window.location.search);
-      const { data } = await post(buildSandboxCompleteRequest(req.plan, _e131Sig, _e148Combo, _e155Token));
+      const { data } = await post(buildSandboxCompleteRequest(req.plan, _e131Sig, _e148Combo));
       applyOutcome(describeSandboxOutcome(data));
     } catch (_) {
       setMsg({ granted: false, messageKey: 'SandboxFailed' });

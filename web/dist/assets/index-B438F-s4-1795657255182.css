@@ -126,6 +126,81 @@ code {
   0% { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* 🤝 E156（主公军令 2026-11-25）：幸福坐标卡嵌入块 —— /result 三场景报告底部 ＋ 财富报告页底部
+   黑金同母版；预览缩略＋单一「保存 / 分享」主按钮；主动权 100% 在付费用户本人。
+   🔴 泰语强制 anywhere + 1.55（容器自带 lang 属性 ⇒ 不依赖 html[lang] 接线）。 */
+.ks-hcard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(212,175,55,.4);
+  background: linear-gradient(160deg, rgba(212,175,55,.12) 0%, rgba(20,16,30,.55) 60%, rgba(13,13,26,.85) 100%);
+  box-shadow: 0 0 26px rgba(212,175,55,.08) inset;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ks-hcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #F3E5AB;
+  letter-spacing: .04em;
+  text-align: center;
+}
+.ks-hcard-preview {
+  align-self: center;
+  width: min(216px, 58vw);
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  border: 1px solid rgba(212,175,55,.55);
+  box-shadow: 0 10px 30px rgba(0,0,0,.55), 0 0 24px rgba(212,175,55,.14);
+  overflow: hidden;
+  background: #05050A;
+}
+.ks-hcard-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ks-hcard-preview--pending { display: flex; align-items: center; justify-content: center; color: rgba(243,229,171,.6); font-size: 12px; }
+.ks-hcard-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(212,175,55,.6);
+  background: linear-gradient(135deg, #D4AF37 0%, #F0D060 50%, #D4AF37 100%);
+  color: #0D0D1A;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  cursor: pointer;
+  transition: transform .25s ease, filter .25s ease;
+}
+.ks-hcard-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.ks-hcard-btn:disabled { opacity: .6; cursor: default; transform: none; }
+.ks-hcard-err { margin: 0; color: #ffb4b4; font-size: 12px; text-align: center; line-height: 1.5; }
+.ks-hcard-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(5,5,10,.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+}
+.ks-hcard-layer img { max-width: 100%; max-height: calc(100% - 48px); object-fit: contain; border-radius: 12px; }
+.ks-hcard-layer-hint { color: rgba(243,229,171,.78); font-size: 12px; text-align: center; }
+.ks-hcard[lang="th"], .ks-hcard[lang="th"] * { line-height: 1.55; overflow-wrap: anywhere; }
 /* ═══════════════════════════════════════════════════════════════════════════
  * Celestial Obsidian Design Tokens —— 星际黑金奢华设计令牌（E83 军令铸造）
  * ═══════════════════════════════════════════════════════════════════════════

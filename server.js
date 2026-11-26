@@ -491,7 +491,7 @@ import { assessYearlyReportIntegrity } from './lib/yearly_integrity.mjs';  // �
 // 🤖 E36: 具身智能开放协议（逻辑物理归仓 embodied/ · 专利取证与 SDK 分发隔离）
 //   本模块零依赖、零密钥；server.js 只做薄胶水（路由注册），出参装配一律委托给它。
 import { embodiedReservedExtras } from './embodied/core/embodied_gateway.js';
-import { createResonanceService, createResonanceTruthCalc, mountResonance, handleResonanceWebhook, normalizeInviteToken } from './api/resonance.js';  // 🤝 E155: 缘分密码服务层（订单/邀请/认领/双视角生成；纯核在 lib/resonance）
+import { buildSceneOverlay, washSceneReport, normalizeOverlayScene, sanitizeDisplayName, nameLockViolations, resolveSceneNames } from './lib/resonance/resonancePrompt.mjs';  // 🤝 E156: 场景叠加层（商道/挚友长在 /api/ai-advisor 黄金漏斗上；纯核在 lib/resonance）
 
 // ─────────────────────────────────────────────────────────
 // 🛠️ V332-fix: StringDecoder 字节级安全分块
@@ -14786,9 +14786,6 @@ const STRIPE_PRICE_MAP = {
   //    STRIPE_PRICE_TAROT_DAILY env（未配置 ⇒ PENDING 占位 ⇒ create-checkout live
   //    路径友好 400 优雅降级，绝不携占位价下单；沙盒态凭 plan 键即售同链）。
   tarot_daily_once:      process.env.STRIPE_PRICE_TAROT_DAILY || 'price_E148TarotDailyPENDING',  // $1.99 今日塔罗
-  // 🆕 E155-刀一（主公军令 2026-11-25）：$9.99 缘分密码双人报告——按**订单**隔离（不占账号权益位）；
-  //    live price ID 走 STRIPE_PRICE_RESONANCE env（未配置 ⇒ PENDING 占位 ⇒ create-checkout live 友好 400）。
-  resonance:             process.env.STRIPE_PRICE_RESONANCE || 'price_E155ResonancePENDING',  // $9.99 缘分密码
 };
 // ═══════════════════════════════════════════════════════════════
 // 🛍️ E24⑥（2026-10-07 军师开工令）：商业闭环上架闸门
@@ -15816,7 +15813,7 @@ async function _sandboxResolveUser(req) {
 // 沙盘事件派发：**自环真打** —— 同 HTTP 通路、同验签、同落库（拒绝旁路分叉）
 // 💳 E131-A：第 5 参 chartSig（可选）—— wealth_once 付讫盘签名随会话 metadata 入 webhook
 // 💳 E148-刀二：第 6 参 comboSig（可选）—— compatibility_once 付讫双盘组合签名同通道
-async function _sandboxDispatch(req, plan, userId, email, chartSig, comboSig, resonanceToken) {
+async function _sandboxDispatch(req, plan, userId, email, chartSig, comboSig) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) return { error: 500, message: 'STRIPE_WEBHOOK_SECRET missing (sandbox self-post requires signature verification)' };
   const origin = req.headers.origin || 'https://kindredsouls.online';
@@ -15826,7 +15823,6 @@ async function _sandboxDispatch(req, plan, userId, email, chartSig, comboSig, re
     mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
     chartSig: chartSig || undefined, // 💳 E131-A: 盘签名随事件 metadata 透传（缺省形态零变）
     comboSig: comboSig || undefined, // 💳 E148-刀二: 组合签名随事件 metadata 透传（缺省形态零变）
-    resonanceToken: resonanceToken || undefined, // 🤝 E155: 缘分密码邀请令牌随事件 metadata 透传（订单唯一钥匙）
   });
   // 🔴 必用**原生 fetch**：safeFetch 内部是 `https.request` 硬编码（rejectUnauthorized:false），
   //    无法打 http:// 回环 —— 实测会抛 `EPROTO ... packet length too long`（Gate 45-A 血训）。
@@ -15959,8 +15955,7 @@ app.post('/api/sandbox/complete', async (req, res) => {
     // 💳 E148-刀二（2026-11-19）：compatibility_once 付讫按盘落库 —— 双盘组合签名同通道
     const _e131ChartSig = normalizeWealthChartSig((req.body || {}).chart_sig);
     const _e148ComboSig = normalizeCompatComboSig((req.body || {}).combo_sig);
-    const _e155Token = normalizeInviteToken((req.body || {}).resonance_token); // 🤝 E155: 缘分密码令牌（畸形 ⇒ ''）
-    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig, _e155Token);
+    const out = await _sandboxDispatch(req, plan, who.userId, who.email, _e131ChartSig, _e148ComboSig);
     if (out.error) return res.status(out.error).json({ error: out.message, detail: out.detail });
     return res.json({ ok: true, sandbox: true, plan, sessionId: out.sessionId, granted: out.received && !out.skipped, webhook: out.webhook });
   } catch (err) {
@@ -15999,18 +15994,15 @@ app.post('/api/create-checkout', async (req, res) => {
     //   当前测算盘签名（沙盒/Stripe 同一条通道；畸形 ⇒ '' 恒安全）
     // 💳 E148-刀二（主公军令 2026-11-19）：compatibility_once 换盘重购合法化 ——
     //   双盘组合签名同通道上送（E131 对称形制；畸形 ⇒ '' 恒安全）
-    const { plan: rawPlan, successUrl, cancelUrl, chart_sig: _e131RawSig, combo_sig: _e148RawComboSig, resonance_token: _e155RawToken } = req.body || {};
+    const { plan: rawPlan, successUrl, cancelUrl, chart_sig: _e131RawSig, combo_sig: _e148RawComboSig } = req.body || {};
     const chartSig = normalizeWealthChartSig(_e131RawSig);
     const comboSig = normalizeCompatComboSig(_e148RawComboSig);
-    const resonanceToken = normalizeInviteToken(_e155RawToken); // 🤝 E155: 订单唯一钥匙（畸形 ⇒ ''）
     const plan = normalizePlanId(rawPlan);
     const priceId = STRIPE_PRICE_MAP[plan];
     if (!priceId) {
       console.error('[create-checkout] Unknown plan:', rawPlan);
       return res.status(400).json({ error: 'Unknown plan: ' + rawPlan });
     }
-    // 🤝 E155-刀一：缘分密码按订单隔离 —— 必携 24 位邀请令牌（缺/畸形 ⇒ 400，绝不裸下单）
-    if (plan === 'resonance' && !resonanceToken) return res.status(400).json({ error: 'resonance_token required' });
     if (!SB_URL || !SB_KEY) return res.status(500).json({ error: 'Supabase env missing' });
 
     // ① 登录校验：必须带 Bearer（与 Vercel 版同语义）
@@ -16072,7 +16064,6 @@ app.post('/api/create-checkout', async (req, res) => {
         nonce: String(Date.now()) + Math.random().toString(36).slice(2, 8),
         chartSig, // 💳 E131-A: 盘签名随沙盘会话（付讫落名单的唯一钥匙）
         comboSig, // 💳 E148-刀二: 双盘组合签名随沙盘会话（compat once 落名单的唯一钥匙）
-        resonanceToken, // 🤝 E155: 邀请令牌随沙盘会话 path query + metadata（收银台 doPay 回传）
       });
       console.log('[create-checkout] 🧪 sandbox session:', _sbSession.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
       return res.json({ url: _sbSession.url, sessionId: _sbSession.id, sandbox: true, plan });
@@ -16084,11 +16075,6 @@ app.post('/api/create-checkout', async (req, res) => {
     if (plan === 'tarot_daily_once' && String(priceId).indexOf('PENDING') !== -1) {
       console.warn('[create-checkout] tarot_daily_once live price not configured (set STRIPE_PRICE_TAROT_DAILY)');
       return res.status(400).json({ error: 'Tarot daily pricing is not configured yet. Please try again later.' });
-    }
-    // 🤝 E155-刀一：缘分密码 live 未配置真实价格 ⇒ 同律友好 400（PENDING 占位绝不携单下单）
-    if (plan === 'resonance' && String(priceId).indexOf('PENDING') !== -1) {
-      console.warn('[create-checkout] resonance live price not configured (set STRIPE_PRICE_RESONANCE)');
-      return res.status(400).json({ error: 'Resonance pricing is not configured yet. Please try again later.' });
     }
 
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY));
@@ -16119,19 +16105,16 @@ app.post('/api/create-checkout', async (req, res) => {
     const origin = req.headers.origin || 'https://kindredsouls.online';
     const defaultSuccess = `${origin}/wealth/report?payment=success&plan=${plan}`;
       const defaultCancel = `${origin}${coversWealth ? '/wealth/report?payment=cancelled' : '/?payment=cancelled'}`;
-      // 🤝 E155：缘分密码成功回跳恒定受邀页（整页重定向；不信任任意 successUrl）
-      const _e155Success = plan === 'resonance' ? `${origin}/invite/${resonanceToken}?payment=success` : null;
       const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: _e155Success || successUrl || defaultSuccess,
+      success_url: successUrl || defaultSuccess,
       cancel_url: cancelUrl || defaultCancel,
       metadata: Object.assign({ supabase_user_id: userId, plan },
         chartSig ? { chart_sig: chartSig } : {},
-        comboSig ? { combo_sig: comboSig } : {},
-        resonanceToken ? { resonance_token: resonanceToken } : {}), // 💳 E131-A/E148-刀二: once 盘签名/组合签名随 Stripe 会话（live 同源）
+        comboSig ? { combo_sig: comboSig } : {}), // 💳 E131-A/E148-刀二: once 盘签名/组合签名随 Stripe 会话（live 同源）
     });
     console.log('[create-checkout] ✅ session:', session.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
     res.json({ url: session.url, sessionId: session.id });
@@ -16353,8 +16336,6 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     const session = event.data.object || {};
     const plan = normalizePlanId(session.metadata && session.metadata.plan);
     const userId = session.metadata && session.metadata.supabase_user_id;
-    // 🤝 E155-刀一：缘分密码按订单隔离（不写 paid_plans 位）—— 订单级幂等置 paid + 触发双视角生成
-    if (plan === 'resonance') return handleResonanceWebhook(res, session, _e155Service);
     // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫盘签名（畸形 ⇒ ''，零写入）
     // 💳 E148-刀二（主公军令 2026-11-19）：compatibility_once 付讫双盘组合签名（畸形 ⇒ ''，零写入）
     const _e131ChartSig = normalizeWealthChartSig(session.metadata && session.metadata.chart_sig);
@@ -17879,36 +17860,19 @@ app.get('/api/test-gemini', e30AdminGuard, async (req, res) => {
   }
 });
 
-// 🤝 E155（主公军令 2026-11-25）：Resonance Code 缘分密码路由挂载 —— 订单/受邀函/认领三端点。
-//   鉴权沿 Supabase auth/v1/user 内联形制（Bearer ⇒ userId/email）；星历真源 getAstroMatrix；
-//   LLM 走 callAI 单通道。🔴 位于 ai-advisor 之前（其与下一中间件之间禁插）。
-const _e155Service = createResonanceService({
-  computeTruth: createResonanceTruthCalc({
-    getAstroMatrix, extractNatalTriad, buildCompatSynastryTruth, renderSynastryBlock, resolveTimeZone, resolveCoordinates,
-  }),
-  callAI,
-});
-async function _e155ResolveUser(req) {
-  const SB_URL = process.env.SUPABASE_URL;
-  const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-  if (!SB_URL || !SB_KEY) return { error: 500, message: 'Supabase env missing' };
-  const authHeader = String(req.headers.authorization || '');
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token) return { error: 401, message: 'Not authenticated' };
-  const userRes = await safeFetch(`${SB_URL}/auth/v1/user`, {
-    headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || SB_KEY },
-  });
-  if (!userRes.ok) return { error: 401, message: 'Invalid or expired token' };
-  const { id: userId, email } = await userRes.json();
-  if (!userId) return { error: 401, message: 'Invalid or expired token' };
-  return { userId, email: email || null };
-}
-mountResonance(app, _e155Service, { auth: _e155ResolveUser });
 
 // ── /api/ai-advisor (REST API版,无Supabase客户端依赖) ──
 app.use('/api/ai-advisor', async (req, res) => {
   try {
     const { d1, d2, lang = 'zh', reportType = 'compatibility' } = req.body || {};
+    // 🤝 E156（主公军令 2026-11-25）：场景白名单＋称呼白名单清洗（非法 ⇒ 情爱/空；绝不回显原始入参）
+    const _e156Scene = normalizeOverlayScene(req.body && req.body.scene);
+    //   （'compatibility' ＝ $4.99 洞察档 ⇒ 叠加层按 once 四模块契约生成）
+    const _e156Overlay = buildSceneOverlay({
+      scene: _e156Scene, locale: lang,
+      reportType: reportType === 'monthly' || reportType === 'yearly' || reportType === 'once' ? reportType : 'once',
+      nameA: req.body && req.body.nameA, nameB: req.body && req.body.nameB,
+    });
 
     // ── 付费报告生成（monthly / yearly / once · E39-B 三档分流；免费层 'compatibility' 不入此分支）──
     if (reportType === 'monthly' || reportType === 'yearly' || reportType === 'once') {
@@ -17934,7 +17898,7 @@ app.use('/api/ai-advisor', async (req, res) => {
       //   🔴 次序铁律：位于权益闸门之后（401/402 fail-closed 守恒）、周期锁/日限流/配额递增**之前**
       //      （复读是零成本读取，绝不重复扣减算力）。
       //   🔴 绿道/无 Supabase 配置（无 userId）⇒ 无归属可查 ⇒ 自然走 MISS 生成链路。
-      const _g41ReportId = deriveCompatReportId({
+      const _g41ReportIdBase = deriveCompatReportId({
         reportType, lang, d1, d2,
         // 🔴 E95-②（主公军令 2026-10-26）：once 档版本盐——E92 锁前旧存量（八字地支幻觉回潮）
         //    reportId 一次性作废 ⇒ replay MISS ⇒ 强制走带 _E92CompatBaziLock 的新生成管道。
@@ -17955,6 +17919,8 @@ app.use('/api/ai-advisor', async (req, res) => {
         zodiacMeta: Array.isArray(req.body.zodiacMeta) ? req.body.zodiacMeta : null,
         userBirthDate: _cEnt.userBirthDate || null,
       });
+      // 🤝 E156：非情爱场景 ⇒ 复读键掺场景盐（情爱键逐字节不变 ⇒ 存量复读零扰动）
+      const _g41ReportId = _e156Scene === 'romance' ? _g41ReportIdBase : `${_g41ReportIdBase}_e156_${_e156Scene}`;
       const _g41Replay = await replayCompatReportRow({ userId: _cEnt.userId || null, reportId: _g41ReportId });
       // 🔴 E88-②（主公军令 2026-10-26）：年报旧短壳守卫——E39 四段骨架时代的年报缓存
       //    （≤200 词短壳）会经 Gate41 复读命中，挡死新五章长卷交付。口径：yearly 复读
@@ -18083,6 +18049,8 @@ app.use('/api/ai-advisor', async (req, res) => {
                 synastry: _compatSyn,
                 baziLock: _e92BL,
               }));
+        // 🤝 E156：商道/挚友 ⇒ system 尾部追加场景叠加层（情爱 ⇒ 空串 ⇒ prompt 逐字节不变）
+        if (_e156Overlay) _compat.system = `${_compat.system}\n${_e156Overlay}`;
 
         // 🛡️ Gate 43：Stage 2 —— 真值里程碑③「解析灵宠羁绊契约能量」（AI 正文生成中，最长的真实等待段）
         if (_sse) _sse.stage(2, lang);
@@ -18149,6 +18117,12 @@ app.use('/api/ai-advisor', async (req, res) => {
         // 🛡️ E141-六语单语纯净锁 终帧收口（zh 通路：caution/lucky 标签串码 → 钦定中文
         //    成对标签；三连星号原始 Markdown 泄漏 → 「」规范高亮。幂等；非 zh 零触碰）。
         if (_e94IsZh) insight = _e141ZhPurityWash(insight);
+        // 🤝 E156：商道/挚友 终帧纯净锁（禁词/单语确定性清洗；情爱零触碰）
+        if (_e156Overlay) {
+          const _e156Washed = washSceneReport(insight, lang);
+          if (_e156Washed.violations.length) console.warn('[E156] scene purity wash applied:', _e156Washed.violations.join(' | '));
+          insight = _e156Washed.text;
+        }
 
         console.log('[AI Advisor] Report generated, length:', insight.length);
         // 🛡️ Gate 40：装配「多语言标准化报告 Payload」（schemaVersion='report_payload.v1'）
@@ -18223,6 +18197,107 @@ app.use('/api/ai-advisor', async (req, res) => {
         if (_sse) return _sse.fail('AI_GENERATION_FAILED', aiError.message);
         return res.status(500).json({ error: 'AI generation failed: ' + aiError.message });
       }
+    }
+
+    // 🤝 E156（主公军令 2026-11-25）：商道 / 挚友 场景深度报告 —— 与情爱洞察同一入口、同一权益位
+    //   （同一对双人信息一次 $4.99 解锁三场景）。走 callAI 单通道（DeepSeek 主＋Gemini 兜底）：
+    //   真值块（SwissEph 双盘相位张量；缺时辰 ⇒ date_level 显式降级，上升/宫位一律不写）
+    //   ＋ 场景叠加层（四模块契约＋称呼＋纯净红线）⇒ 终帧确定性纯净清洗 ⇒ 24h 场景缓存。
+    //   🔴 情爱（_e156Overlay 为空）零触碰 —— 下方旧逻辑逐字节不变。
+    if (_e156Overlay && reportType === 'compatibility') {
+      const _e156A = sanitizeDisplayName(req.body && req.body.nameA);
+      const _e156B = sanitizeDisplayName(req.body && req.body.nameB);
+      const _e156Lang = String(lang || 'zh').toLowerCase().split('-')[0];
+      const _e156NameH = (a, b) => { let h = 5381; const t = `${a}\u0000${b}`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+      const cacheKey = `${d1 || ''}|${d2 || ''}|${lang}|${reportType}|e156v2_${_e156Scene}_${_e156NameH(_e156A, _e156B)}`;
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const SB_URL_E156 = process.env.SUPABASE_URL;
+      const SB_KEY_E156 = process.env.SUPABASE_SERVICE_KEY;
+      if (SB_URL_E156 && SB_KEY_E156) {
+        try {
+          const cacheRes = await safeFetch(
+            `${SB_URL_E156}/rest/v1/ai_insights_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&created_at=gte.${since}&select=insight`,
+            { headers: { 'apikey': SB_KEY_E156, 'Authorization': `Bearer ${SB_KEY_E156}` } }
+          );
+          const cachedRows = await cacheRes.json();
+          // 🔴 复读守卫：仅全文（≥200 字符）才复用；旧短壳/空串一律 MISS 重新生成
+          if (Array.isArray(cachedRows) && cachedRows[0] && typeof cachedRows[0].insight === 'string' && cachedRows[0].insight.trim().length >= 200) {
+            return res.json({ insight: cachedRows[0].insight, cached: true });
+          }
+        } catch (e) { console.warn('[E156] cache read skipped:', e.message); }
+      }
+      // 🔴 真值块：双盘相位张量（有出生时辰/坐标才算；否则显式降级，绝不伪造上升/宫位）
+      let _e156Syn = null;
+      try { _e156Syn = await buildCompatSynastryTruth(req.body || {}, d1, d2); } catch (e) { _e156Syn = { available: false, reason: 'astro_error' }; }
+      const _e156SynBlock = (_e156Syn && _e156Syn.available) ? renderSynastryBlock(_e156Syn, lang) : '';
+      const _e156Degraded = !(_e156Syn && _e156Syn.available && _e156Syn.precision === 'timed');
+      const _e156Clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+      const _e156Dims = (req.body && req.body.dims && typeof req.body.dims === 'object') ? req.body.dims : {};
+      const _e156DimLabels = Array.isArray(req.body && req.body.dimLabels) ? req.body.dimLabels.slice(0, 4).map((x) => sanitizeDisplayName(x)) : [];
+      const _e156DimKeys = ['love', 'communication', 'chemistry', 'stability'];
+      const _e156DimsLine = _e156DimKeys.map((k, i) => `${_e156DimLabels[i] || k}=${Number.isFinite(Number(_e156Dims[k])) ? Math.round(Number(_e156Dims[k])) : '?'}`).join(', ');
+      const _e156Tarot = (req.body && req.body.tarot && typeof req.body.tarot.name === 'string') ? req.body.tarot : null;
+      const _e156Lucky = Array.isArray(req.body && req.body.luckyAspects) ? req.body.luckyAspects.filter((x) => typeof x === 'string').slice(0, 12) : [];
+      const _e156Hard = Array.isArray(req.body && req.body.challengingAspects) ? req.body.challengingAspects.filter((x) => typeof x === 'string').slice(0, 12) : [];
+      const _e156RN = resolveSceneNames(_e156Lang, req.body && req.body.nameA, req.body && req.body.nameB); // 未填称呼 ⇒ 缺省（与叠加层同源）
+      const _e156LangName = { zh: 'Simplified Chinese (简体中文)', en: 'English', fr: 'French', es: 'Spanish', th: 'Thai', vi: 'Vietnamese' }[_e156Lang] || 'English';
+      const _e156User = [
+        '[DATA LOCK — treat as ground truth; cite nothing beyond it]',
+        `Reader (address as "you"): ${_e156RN.nameA}. Other person (third person, by name): ${_e156RN.nameB}.`,
+        `Birth dates: reader=${_e156Clip(d1, 10)}, other=${_e156Clip(d2, 10)}.`,
+        `Overall score: ${Number.isFinite(Number(req.body && req.body.overall)) ? Math.round(Number(req.body.overall)) : '?'} / 100. Four dimension scores: ${_e156DimsLine}.`,
+        `Bazi reading: ${_e156Clip(req.body && req.body.bazi, 1500)}`,
+        `Zodiac reading: ${_e156Clip(req.body && req.body.zodiac, 1500)}`,
+        `I Ching reading: ${_e156Clip(req.body && req.body.iching, 1500)}`,
+        `Harmonious aspects: ${_e156Lucky.length ? _e156Lucky.join('; ') : '(none listed)'}`,
+        `Challenging aspects: ${_e156Hard.length ? _e156Hard.join('; ') : '(none listed)'}`,
+        _e156Tarot
+          ? `Tarot card drawn for this reading: ${_e156Clip(_e156Tarot.name, 40)} — orientation: ${_e156Clip(_e156Tarot.orientation, 24)}. Name it with its orientation and never contradict it.`
+          : 'Tarot: (no card — do not invent one)',
+        _e156SynBlock ? `Synastry tensor (Swiss Ephemeris):\n${_e156SynBlock}` : 'Synastry tensor: unavailable — do NOT cite any planetary aspect, sign, Ascendant or house.',
+        _e156Degraded
+          ? 'DEGRADATION NOTICE: at least one birth time is unknown, so the Ascendant and houses are UNKNOWN and the Moon is a date-level estimate. You MUST state this openly in one plain sentence and MUST NOT mention an Ascendant or any house placement.'
+          : 'Both birth times are known: Ascendant/houses may be referenced ONLY if present in the synastry tensor above.',
+        `Now write the report in ${_e156LangName}, following the SCENE OVERRIDE contract exactly.`,
+      ].join('\n');
+      let _e156Text = '';
+      try {
+        _e156Text = await callAI(`${_e156Overlay}`, _e156User, process.env, { maxTokens: 4000, reportType: 'once' });
+      } catch (e) {
+        console.error('[E156] scene report generation failed:', e.message);
+        return res.status(500).json({ error: 'AI generation failed: ' + e.message });
+      }
+      _e156Text = String(_e156Text || '').trim();
+      // 🤝 E156 称呼原样锁（主公裁决 2026-11-26）：用户亲填的称呼若未逐字出现（被音译/意译/改写）⇒ 带违规点名重试恰一次；
+      //    重试稿须不劣于初稿才替换；仍不达标则如实告警后照常交付（绝不因称呼丢整篇付费报告）。
+      const _e156Typed = !!(_e156A && _e156B);
+      const _e156LockMiss = (t) => (_e156Typed ? nameLockViolations(t, _e156A, _e156B) : []);
+      if (_e156Text.length >= 200 && _e156LockMiss(_e156Text).length) {
+        console.warn('[E156] name lock violated on first draft — retrying once:', _e156LockMiss(_e156Text).join(' / '));
+        try {
+          const _e156Retry = String(await callAI(`${_e156Overlay}`, `${_e156User}\n\n[NAME LOCK VIOLATION — FIX] A previous draft altered the names. Every occurrence of the names must be copied character-for-character from the lines above; no transliteration, no translation, no respelling. Rewrite the full report now.`, process.env, { maxTokens: 4000, reportType: 'once' }) || '').trim();
+          if (_e156Retry.length >= 200 && _e156LockMiss(_e156Retry).length < _e156LockMiss(_e156Text).length) _e156Text = _e156Retry;
+        } catch (e) { console.warn('[E156] name lock retry skipped:', e.message); }
+        if (_e156LockMiss(_e156Text).length) console.warn('[E156] name lock still violated after retry:', _e156LockMiss(_e156Text).join(' / '));
+      }
+      if (_e156Text.length < 200) {
+        // 🔴 失败即失败（零伪造）：空文/截断壳 ⇒ 500，前端走既有失败提示
+        console.error('[E156] scene report too short / empty — fail closed');
+        return res.status(500).json({ error: 'AI generation failed: empty report' });
+      }
+      const _e156Washed = washSceneReport(_e156Text, lang, _e156Typed ? [_e156A, _e156B] : []);
+      if (_e156Washed.violations.length) console.warn('[E156] scene purity wash applied:', _e156Washed.violations.join(' | '));
+      _e156Text = _e156Washed.text;
+      if (SB_URL_E156 && SB_KEY_E156) {
+        try {
+          await safeFetch(`${SB_URL_E156}/rest/v1/ai_insights_cache`, {
+            method: 'POST',
+            headers: { 'apikey': SB_KEY_E156, 'Authorization': `Bearer ${SB_KEY_E156}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ cache_key: cacheKey, insight: _e156Text, prompt_version: `v1.0.0-e156_${_e156Scene}-${lang}` }),
+          });
+        } catch (e) { console.warn('[E156] cache write skipped:', e.message); }
+      }
+      return res.json({ insight: _e156Text, cached: false });
     }
 
     // ── 普通合盘洞察(旧逻辑)──
