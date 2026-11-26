@@ -382,7 +382,7 @@ function E156NameInput({ id, lang, value, onChange, labelKey, phKey }: {
   return (
     <>
       <label className="ks-field-label" htmlFor={id} style={{ marginTop: '10px' }}>{resT(L, labelKey)}</label>
-      <input id={id} data-testid={id} name={id} value={value} maxLength={24} autoComplete="off"
+      <input id={id} data-testid={id} name={id} value={value} maxLength={24} autoComplete="off" data-purpose="nickname"
         onChange={(e) => onChange(e.target.value)} placeholder={resT(L, phKey)}
         style={{
           width: '100%', padding: '10px 12px', font: 'inherit', fontSize: '15px', color: '#FAF4E4',
@@ -629,7 +629,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <span className="ks-starcard-title">{L_CARD1}</span>
         </div>
         {/* 🤝 E156：选填称呼（卡片顶部；默认「我」） */}
-        <E156NameInput id="e156-name-a" lang={lang} value={name1} onChange={setName1} labelKey="name_you" phKey="name_you_ph" />
+        <E156NameInput id="e156-name-a" lang={lang} value={name1} onChange={setName1} labelKey="name_you" phKey="nickname_self_placeholder" />
         {/* 必填置顶：出生年月日 */}
         <label className="date-label" htmlFor="d1">{t('input.yourBirthday')}</label>
         <DateInput value={d1} onChange={setD1} onLastFilled={jumpToD2} autoFocus containerRef={d1Ref} shake={shaking1} hasError={!!dateError && shaking1} />
@@ -656,7 +656,7 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           <span className="ks-starcard-title">{L_CARD2}</span>
         </div>
         {/* 🤝 E156：选填称呼（卡片顶部；默认「TA」） */}
-        <E156NameInput id="e156-name-b" lang={lang} value={name2} onChange={setName2} labelKey="name_ta" phKey="name_ta_ph" />
+        <E156NameInput id="e156-name-b" lang={lang} value={name2} onChange={setName2} labelKey="name_ta" phKey="nickname_partner_placeholder" />
         <label className="date-label" htmlFor="d2">{t('input.theirBirthday')}</label>
         <DateInput value={d2} onChange={setD2} firstFieldRef={d2FirstRef} key={d2Key} containerRef={d2Ref} shake={shaking2} hasError={!!dateError && shaking2} />
         <button type="button" className="ks-fold-trigger" onClick={() => setFold2(v => !v)} aria-expanded={fold2}>
@@ -690,6 +690,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       {/* 🌌 45-B5：CTA 移出蓝框 · 框下方（对齐财富按钮规格；压平 .btn 自带 40px 下边距使条款紧贴） */}
       {/* 🤝 E156：单一主按钮，文案随胶囊切换（情爱＝测算缘分） */}
       <button className="btn btn-primary" data-testid="e156-cta" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{ctaLabel}</button>
+      {/* ⚖️ E157（主公军令 2026-11-26）：合规定位声明——主提交按钮正下方常驻（12px 浅香槟灰；绝不隐藏；泰语 1.55/anywhere） */}
+      <p className="ks-compliance-note" data-testid="e157-disclaimer-input" lang={lang}>{resT(lang, 'compliance_disclaimer_short')}</p>
       {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
       <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }}>
           {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>隐私政策</a>。</> : null}
@@ -2024,6 +2026,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           {insight && (
             <div style={{ marginTop: '14px' }}>
               <HappinessCard payload={e156CardPayload} lang={lang} fileStem={`kindredsouls-${e156Scene}-card`} mount="result" />
+              {/* ⚖️ E157：合规定位声明——幸福坐标卡区块下方常驻（三场景报告页尾） */}
+              <p className="ks-compliance-note" data-testid="e157-disclaimer-result" lang={lang}>{resT(lang, 'compliance_disclaimer_short')}</p>
             </div>
           )}
           {/* 🏆 E105-刀二（主公军令 2026-10-30）：深空黑金命盘金卡纯前端离线导出

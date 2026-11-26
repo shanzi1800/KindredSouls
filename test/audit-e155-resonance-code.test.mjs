@@ -156,7 +156,8 @@ test('E156-5 server.js：场景/称呼白名单解析＋复读键掺场景盐＋
   assert.ok(d.includes('DEGRADATION NOTICE: at least one birth time is unknown'), '缺时辰显式降级（不伪造上升/宫位）');
   assert.ok(d.includes("callAI(`${_e156Overlay}`, _e156User, process.env, { maxTokens: 4000, reportType: 'once' })"), '单通道生成');
   assert.ok(d.includes("if (_e156Text.length < 200) {"), '空文/截断壳 fail-closed');
-  assert.ok(d.includes("|e156v2_${_e156Scene}_${_e156NameH(_e156A, _e156B)}`"), '缓存键掺场景＋称呼哈希（不落明文称呼；v2＝称呼原样锁换版）');
+  // 🔴 后继化（E157 合规护栏入 prompt ⇒ 场景缓存键换版 e156v2→e157v3，旧缓存不复用）
+  assert.ok(d.includes("|e157v3_${_e156Scene}_${_e156NameH(_e156A, _e156B)}`"), '缓存键掺场景＋称呼哈希（不落明文称呼；v2＝称呼原样锁换版；v3＝E157 合规护栏换版）');
   // 称呼原样锁重试：恰一次、仅用户亲填称呼时生效、重试稿不劣才替换、仍不达标照常交付
   const rl = between(d, 'const _e156Typed = !!(_e156A && _e156B);', 'if (_e156Text.length < 200) {');
   assert.equal((rl.match(/await callAI\(/g) || []).length, 1, '重试恰一次');

@@ -209,7 +209,7 @@ test('A5-③ 链位自保：e153 入编（e152 后、e40-compat 前；全链 120
   assert.ok(i152 > -1 && i153 > -1 && i40 > -1, 'e153 须入编');
   assert.ok(i152 < i153 && i153 < i40, 'e153 须居 e152 后、e40-compat 前（python3 恒链尾）');
   const segs = chain.split('&&');
-  assert.equal(segs.length, 122, `军规链段数须为 121（E153 入编后 120→121；实为 ${segs.length}）`);
+  assert.equal(segs.length, 123, `军规链段数须为 121（E153 入编后 120→121；实为 ${segs.length}）`);
 });
 
 /* ═══════════ A6 E153-P3 尾层纠偏（军令 2026-11-24「严锁图层/缩正比例/精准藏臀」）═══════════ */

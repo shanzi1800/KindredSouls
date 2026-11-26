@@ -2662,3 +2662,27 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
   font-size: 10.5px;
   color: #8A93A6;
 }
+
+/* ⚖️ E157（主公军令 2026-11-26）：合规定位声明——输入页主按钮下 / 三场景报告尾 / 财富报告尾 三处常驻。
+   12px 浅香槟灰高可读；行高宽松；绝不隐藏（零 opacity / display / visibility 花招）；
+   多语防溢出：fr/es/th/vi 受控多行（anywhere 断词，不撑破容器）；泰语强制 1.55。 */
+.ks-compliance-note,
+.ks-compliance-note.ks-compliance-note {
+  margin: 10px 0 0;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #D9CFB8;
+  font-style: normal;
+  text-align: center;
+  opacity: 1;
+  visibility: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+.ks-compliance-note:lang(th),
+.ks-compliance-note.ks-compliance-note:lang(th) {
+  line-height: 1.55;
+}

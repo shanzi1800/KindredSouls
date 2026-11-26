@@ -219,8 +219,8 @@ test('G1 链位：e152 居 e151 后 e40-compat 前＋全链 120 段＋node-only 
   const script = pkg.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 122, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
-  assert.equal(segs.length, 121, `node --test 段须 119（实得 ${segs.length}）`);
+  assert.equal(all.length, 123, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);
+  assert.equal(segs.length, 122, `node --test 段须 119（实得 ${segs.length}）`);
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i151 = names.indexOf('audit-e151-luxe-rebrand');

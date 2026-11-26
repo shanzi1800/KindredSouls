@@ -225,7 +225,7 @@ test('E137-09 免责专章：六语 terms 第 4 节身心健康免责含 FDA/TGA
   for (const l of ['zh', 'en', 'fr', 'es', 'th', 'vi']) {
     const doc = LT.getLegalTermsDoc('terms', l);
     assert.ok(doc, `terms[${l}] 命中`);
-    assert.equal(doc.sections.length, 8, `terms[${l}] 须 8 节（E137 身心健康免责入列）`);
+    assert.equal(doc.sections.length, 9, `terms[${l}] 须 9 节（E137 身心健康免责入列；E157 禁止用途章入列 8→9）`);
     const sec = doc.sections[3];
     assert.ok(sec && sec.h && sec.p.length > 80, `terms[${l}] 第 4 节须身心健康免责专章`);
     assert.ok(sec.p.includes('FDA'), `terms[${l}] 须含 FDA 合规锚`);
@@ -240,7 +240,7 @@ test('E137-10 军规链段数：package.json test:astro 全链 105 段（e137 �
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 122, `军规链段数须 105（E137 入编后 104→105；实 ${segs.length}）`);
+  assert.equal(segs.length, 123, `军规链段数须 105（E137 入编后 104→105；实 ${segs.length}）`);
   const joined = segs.join(' && ');
   const iE136 = joined.indexOf('audit-e136');
   const iE137 = joined.indexOf('audit-e137-astro-seasonal-wellness');

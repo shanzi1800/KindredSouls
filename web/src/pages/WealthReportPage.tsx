@@ -30,6 +30,9 @@ import WealthPaywall from '../components/WealthPaywall';
 import WealthInsightCard from '../components/WealthInsightCard';
 // 🤝 E156：幸福坐标卡（财富报告底部；wealth_abundance 主题）
 import HappinessCard from '../components/HappinessCard';
+// ⚖️ E157：合规定位声明六语字典（页尾常驻小字）
+// @ts-ignore —— 纯 JS 六语字典单源
+import { resT } from '../lib/resonanceI18n.mjs';
 // @ts-ignore —— 纯 JS 装配核
 import { buildWealthCardPayload, sunSignOfDate } from '../lib/happinessCardPayload.mjs';
 import FamiliarPicker, { FAMILIAR_LS_KEY } from '../components/FamiliarPicker'; // 🐾 E34-B5
@@ -3746,6 +3749,8 @@ smoothAppendText(fbText, (t: string) => { if (canvasOwnerRef.current === type) s
         {isUnlocked && reportData && (
           <div style={{ marginTop: '14px' }}>
             <HappinessCard payload={e156WealthCard} lang={currentLang} fileStem="kindredsouls-wealth-card" mount="wealth" />
+            {/* ⚖️ E157（主公军令 2026-11-26）：合规定位声明——财富报告尾·坐标卡下方常驻（12px 浅香槟灰；绝不隐藏） */}
+            <p className="ks-compliance-note" data-testid="e157-disclaimer-wealth" lang={currentLang}>{resT(currentLang, 'compliance_disclaimer_short')}</p>
           </div>
         )}
 

@@ -52,7 +52,7 @@ const CSS = read('web/src/App.css');
 const LANGS = ['zh', 'en', 'es', 'fr', 'th', 'vi'];
 
 /* ═══════════ E127-01 legalTerms 真源形状 ═══════════ */
-test('E127-01 法律条款六语真源形状：privacy 5 节 / terms 8 节全字段非空', () => {
+test('E127-01 法律条款六语真源形状：privacy 5 节 / terms 9 节全字段非空（E157 后继化 8→9）', () => {
   assert.deepEqual([...LEGAL_TERMS_LANGS], LANGS, '六语白名单');
   for (const lang of LANGS) {
     const privacy = getLegalTermsDoc('privacy', lang);
@@ -61,7 +61,8 @@ test('E127-01 法律条款六语真源形状：privacy 5 节 / terms 8 节全字
     assert.ok(terms, `terms[${lang}] 须命中`);
     assert.equal(privacy.sections.length, 5, `privacy[${lang}] 须 5 节`);
     // 🆕 E137（军令 2026-11-12）：terms 六语增补「身心健康免责」专章 ⇒ 7→8 节
-    assert.equal(terms.sections.length, 8, `terms[${lang}] 须 8 节（非金融＋身心健康双免责章）`);
+    // ⚖️ E157（军令 2026-11-26）：terms 六语增补「禁止用途与分享责任」末章 ⇒ 8→9 节
+    assert.equal(terms.sections.length, 9, `terms[${lang}] 须 9 节（非金融＋身心健康＋禁止用途三章）`);
     for (const doc of [privacy, terms]) {
       assert.ok(doc.title && doc.title.length > 0, `${lang} title 非空`);
       assert.ok(doc.lastUpdated && doc.lastUpdated.length > 0, `${lang} lastUpdated 非空`);
@@ -250,7 +251,7 @@ test('E127-S10 链位自保：e127 入编（e126 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 122, `军规链段数须为 96（E127 入编后 95→96；实为 ${segs.length}）`);
+  assert.equal(segs.length, 123, `军规链段数须为 96（E127 入编后 95→96；实为 ${segs.length}）`);
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iE126 = segs.findIndex((s) => s.includes('audit-e126-geo-locale'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

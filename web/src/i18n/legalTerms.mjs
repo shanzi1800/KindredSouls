@@ -20,6 +20,8 @@
  *   （SKU 面全量对齐 4.99/2.99/29.99/9.99/99.99——铁律 15 六语同步）。
  */
 
+import { resT } from '../lib/resonanceI18n.mjs';
+
 /** @typedef {'privacy' | 'terms'} LegalDocType */
 /** @typedef {'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'} LegalLang */
 /** @typedef {{ h: string, p: string }} LegalSection */
@@ -102,6 +104,11 @@ const PRIVACY = {
 
 /* ═══════════════════ Terms of Service（7 节 × 六语，含非金融建议免责）═══════════════════ */
 
+/* ⚖️ E157（主公军令 2026-11-26）：协议禁限条款增补——「禁止用途与分享责任」末章（六语）。
+   🔴 字典单源：正文逐字取 resonanceI18n.mjs 的 tos_prohibited_use_notice（主公钦定；严禁机翻）；
+      严禁用于招聘筛选 / 解雇 / 绩效 / 信贷评估 / 尽调；对外分享责任自担。 */
+const PROHIBITED_USE_SECTION = (lang) => ({ h: resT(lang, 'tos_prohibited_use_title'), p: resT(lang, 'tos_prohibited_use_notice') });
+
 /** @type {Record<LegalLang, LegalTermsDoc>} */
 const TERMS = {
   zh: {
@@ -116,6 +123,7 @@ const TERMS = {
       { h: '知识产权', p: 'KindredSouls 的所有内容、设计、标识和软件均为本公司财产，受版权法保护。未经授权，禁止复制、分发或衍生任何内容。' },
       { h: '服务变更', p: '我们保留随时修改服务条款的权利。修改后的条款将在本页发布。继续使用服务即表示您接受修改后的条款。' },
       { h: '联系我们', p: '如有任何疑问，请联系：support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('zh'),
     ],
   },
   en: {
@@ -130,6 +138,7 @@ const TERMS = {
       { h: 'Intellectual Property', p: 'All content, design, logos, and software of KindredSouls are company property protected by copyright law. Reproduction, distribution, or creation of derivative works without authorization is prohibited.' },
       { h: 'Changes to Service', p: 'We reserve the right to modify these terms at any time. Modified terms will be posted on this page. Continued use of the service constitutes acceptance of the modified terms.' },
       { h: 'Contact Us', p: 'For questions, contact: support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('en'),
     ],
   },
   es: {
@@ -144,6 +153,7 @@ const TERMS = {
       { h: 'Propiedad intelectual', p: 'Todo el contenido, diseño, logotipos y software de KindredSouls son propiedad de la empresa protegidos por la ley de derechos de autor. Se prohíbe la reproducción, distribución o creación de obras derivadas sin autorización.' },
       { h: 'Cambios al servicio', p: 'Nos reservamos el derecho de modificar estos términos en cualquier momento. Los términos modificados se publicarán en esta página. El uso continuado del servicio constituye la aceptación de los términos modificados.' },
       { h: 'Contáctenos', p: 'Para preguntas, contacte a: support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('es'),
     ],
   },
   fr: {
@@ -158,6 +168,7 @@ const TERMS = {
       { h: 'Propriété intellectuelle', p: "Tout le contenu, design, logos et logiciels de KindredSouls sont la propriété de l'entreprise protégés par le droit d'auteur. La reproduction, la distribution ou la création d'œuvres dérivées sans autorisation est interdite." },
       { h: 'Modifications du service', p: "Nous nous réservons le droit de modifier ces conditions à tout moment. Les conditions modifiées seront publiées sur cette page. L'utilisation continue du service constitue l'acceptation des conditions modifiées." },
       { h: 'Nous contacter', p: 'Pour toute question, contactez : support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('fr'),
     ],
   },
   th: {
@@ -172,6 +183,7 @@ const TERMS = {
       { h: 'ทรัพย์สินทางปัญญา', p: 'เนื้อหา การออกแบบ โลโก้ และซอฟต์แวร์ทั้งหมดของ KindredSouls เป็นทรัพย์สินของบริษัทที่ได้รับความคุ้มครองตามกฎหมายลิขสิทธิ์ ห้ามทำซ้ำ เผยแพร่ หรือสร้างงานดัดแปลงโดยไม่ได้รับอนุญาต' },
       { h: 'การเปลี่ยนแปลงบริการ', p: 'เราขอสงวนสิทธิ์ในการเปลี่ยนแปลงข้อกำหนดเหล่านี้ได้ตลอดเวลา ข้อกำหนดที่แก้ไขจะโพสต์ในหน้านี้ การใช้บริการต่อไปถือว่ายอมรับข้อกำหนดที่แก้ไขแล้ว' },
       { h: 'ติดต่อเรา', p: 'สำหรับคำถาม ติดต่อ: support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('th'),
     ],
   },
   vi: {
@@ -186,6 +198,7 @@ const TERMS = {
       { h: 'Sở hữu trí tuệ', p: 'Tất cả nội dung, thiết kế, logo và phần mềm của KindredSouls đều là tài sản của công ty được bảo vệ bởi luật bản quyền. Nghiêm cấm sao chép, phân phối hoặc tạo tác phẩm phái sinh khi chưa được ủy quyền.' },
       { h: 'Thay đổi Dịch vụ', p: 'Chúng tôi bảo lưu quyền thay đổi các điều khoản này bất cứ lúc nào. Các điều khoản sửa đổi sẽ được đăng trên trang này. Việc tiếp tục sử dụng dịch vụ đồng nghĩa với việc bạn chấp nhận các điều khoản đã sửa đổi.' },
       { h: 'Liên hệ', p: 'Nếu có câu hỏi, liên hệ: support@kindredsouls.online' },
+      PROHIBITED_USE_SECTION('vi'),
     ],
   },
 };
