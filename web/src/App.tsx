@@ -18,10 +18,11 @@ import LangModal from './components/LangModal';
 import BirthPrivacyNote from './components/BirthPrivacyNote';
 // 🤝 E156（主公军令 2026-11-25）：幸福坐标卡嵌入块（三场景报告底部＋财富报告底部；主动权在付费用户）
 import HappinessCard from './components/HappinessCard';
+import E158Fold from './components/E158Fold';
 // @ts-ignore —— 纯 JS 装配核
 import { buildSceneCardPayload, normalizeCardScene, sanitizeCardName } from './lib/happinessCardPayload.mjs';
 // @ts-ignore —— resonanceI18n.mjs 为六语字典单源（E155 立 / E156 扩）
-import { resT } from './lib/resonanceI18n.mjs';
+import { resT, resAlmanacBtn, resReportTitle, splitConsentNote, splitReopenLabel } from './lib/resonanceI18n.mjs';
 import { TimeInput } from './components/TimeInput';
 import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
@@ -416,8 +417,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
     zh: '关系坐标', en: 'Relationship coordinate', fr: 'Coordonnée du lien',
     es: 'Coordenada del vínculo', th: 'พิกัดความสัมพันธ์', vi: 'Tọa độ mối quan hệ',
   } as Record<string, string>)[lang] || 'Relationship coordinate';
-  // 主按钮随场景切换（情爱＝既有 input.calculate 词条逐字不变）
-  const ctaLabel = scene === 'romance' ? t('input.calculate') : resT(lang, scene === 'business' ? 'cta_business' : 'cta_friendship');
+  // 主按钮随场景切换（✦ E158 军令 2026-11-26：三场景统一「解锁 …」语系，刀八字典逐字）
+  const ctaLabel = resT(lang, `cta_unlock_${scene === 'business' || scene === 'friendship' ? scene : 'romance'}`);
   const L_TIME = ({
     zh: '出生时间（可选）', en: 'Birth Time (optional)', es: 'Hora de nacimiento (opcional)',
     fr: 'Heure de naissance (optionnel)', th: 'เวลาเกิด (เลือกได้)', vi: 'Giờ sinh (tùy chọn)',
@@ -618,7 +619,8 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
           ← {t('input.back')}
         </button>
         <h1 className="title" style={{ textAlign: 'center' }}>{t('input.title')}</h1>
-        <p className="subtitle" style={{ textAlign: 'center' }}>{t('app.name')}</p>
+        {/* ✦ E158-刀一（主公军令 2026-11-26）：原 subtitle 副标段（app.name「一见如故」）与大标题尾句重影 ⇒ 删除；
+            说明与表单按原间距比例自然上移（subtitle 自身行高即让出的空间）。 */}
         <p className="desc" style={{ textAlign: 'center' }}>{t('input.subtitle')}</p>
       {/* ✦ E84（主公军令 2026-10-22）：双星分卡架构——两张深空曜石星卡（你 / TA），
               必填生日绝对置顶，选填时辰＋城市折叠收纳（.ks-fold 丝滑披露，默认收起）。
@@ -692,15 +694,23 @@ function InputPage({ onSubmit, onNavigateToWealth }: {
       <button className="btn btn-primary" data-testid="e156-cta" onClick={submit} style={{ marginTop: '16px', marginBottom: 0 }}>{ctaLabel}</button>
       {/* ⚖️ E157（主公军令 2026-11-26）：合规定位声明——主提交按钮正下方常驻（12px 浅香槟灰；绝不隐藏；泰语 1.55/anywhere） */}
       <p className="ks-compliance-note" data-testid="e157-disclaimer-input" lang={lang}>{resT(lang, 'compliance_disclaimer_short')}</p>
-      {/* ⚖️ 对齐财富模块：法律合规条款（六语；紧贴测算缘分按钮） */}
-      <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }}>
-          {i18n.language?.startsWith('zh') ? <>点击&ldquo;{t('input.calculate')}&rdquo;即表示你同意<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>服务条款</a>和<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>隐私政策</a>。</> : null}
-          {i18n.language?.startsWith('es') ? <>Al hacer clic en &ldquo;{t('input.calculate')}&rdquo;, aceptas nuestros <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Términos de Servicio</a> y <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Política de Privacidad</a>.</> : null}
-          {i18n.language?.startsWith('fr') ? <>En cliquant sur &ldquo;{t('input.calculate')}&rdquo;, vous acceptez nos <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Conditions d'Utilisation</a> et <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Politique de Confidentialité</a>.</> : null}
-          {i18n.language?.startsWith('th') ? <>การคลิก &ldquo;{t('input.calculate')}&rdquo; แสดงว่าคุณยอมรับ<a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>ข้อกำหนดในการให้บริการ</a>และ<a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>นโยบายความเป็นส่วนตัว</a>ของเรา</> : null}
-          {i18n.language?.startsWith('vi') ? <>Bằng cách nhấp vào &ldquo;{t('input.calculate')}&rdquo;, bạn đồng ý với <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Điều Khoản Dịch Vụ</a> và <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Chính Sách Bảo Mật</a>.</> : null}
-          {!i18n.language?.startsWith('zh') && !i18n.language?.startsWith('es') && !i18n.language?.startsWith('fr') && !i18n.language?.startsWith('th') && !i18n.language?.startsWith('vi') ? <>By clicking &ldquo;{t('input.calculate')}&rdquo;, you agree to our <a href="/terms-of-service" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('terms')}>Terms of Service</a> and <a href="/privacy-policy" style={{color:'#FFFFFF',textDecoration:'underline'}} onClick={openLegal('privacy')}>Privacy Policy</a>.</> : null}
-        </p>
+      {/* ⚖️ ✦ E158-刀一（主公军令 2026-11-26）：法律合规条款——写死的「点击“测算缘分”」随主按钮换词后前后打架
+          ⇒ 改为刀八字典泛化句 consent_continue_note（六语单源），条款/隐私两枚链接按语种在句中原位切出；
+          href 保留（中键/新标签直达独立路由页）＋ openLegal 原位弹窗拦截（E127 铁律）。 */}
+      <p style={{ fontSize: '11px', color: '#FFFFFF', textAlign: 'center', marginTop: '12px', lineHeight: 1.5 }} data-testid="e158-consent-note">
+        {(() => {
+          const parts = splitConsentNote(lang);
+          if (!parts) return resT(lang, 'consent_continue_note');
+          const linkStyle = { color: '#FFFFFF', textDecoration: 'underline' } as React.CSSProperties;
+          return (
+            <>
+              {parts[0]}<a href="/terms-of-service" style={linkStyle} onClick={openLegal('terms')}>{parts[1]}</a>
+              {parts[2]}<a href="/privacy-policy" style={linkStyle} onClick={openLegal('privacy')}>{parts[3]}</a>
+              {parts[4]}
+            </>
+          );
+        })()}
+      </p>
         {/* ⚖️ E127：法律条款原位弹窗（z-150 毛玻璃＋暗金边框；关闭后表单数据 100% 留存）。
             href 保留——中键/新标签直达独立路由页（/privacy-policy fixed 全屏渲染）。 */}
         {legalModal && <LegalTermsModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
@@ -824,17 +834,18 @@ function EngineCard({ item }: { item: { key: string; label: string; e: Compatibi
 }
 
 /* ── AI Insight (button-triggered + Auth + Stripe Paywall) ── */
-/* 🎂 E85-②（主公军令 2026-10-24）：宇宙生日年鉴双按钮六语统一词条——
-   「解锁姻缘月报 $2.99 / 解锁姻缘年报 $29.99」永久带金额呈现；
+/* 🎂 E85-②（主公军令 2026-10-24）：宇宙生日年鉴双按钮六语统一词条——永久带金额呈现；
+   ✦ E158-刀五（主公军令 2026-11-26）：「姻缘月报/年报」退役 ⇒ 情爱档改「解锁情爱月报 / 解锁情爱年报」
+   （与字典 btn_monthly_romance / btn_annual_romance 同文，E158 闸门逐语对账）；商道/挚友走 resAlmanacBtn；
    取消「(已解锁)」覆盖态与「生成情感月报/年报」免费文案态（军令原文给定，
    行为按权益分流：已购/VIP 点击＝生成，未购点击＝购买）。 */
 const L_ALMANAC_BTN: Record<string, { monthly: string; yearly: string }> = {
-  zh: { monthly: '📅 解锁姻缘月报 $2.99', yearly: '👑 解锁姻缘年报 $29.99' },
-  en: { monthly: '📅 Unlock Monthly Love Report $2.99', yearly: '👑 Unlock Annual Love Report $29.99' },
-  fr: { monthly: "📅 Débloquer le Rapport Mensuel d'Amour $2.99", yearly: "👑 Débloquer le Rapport Annuel d'Amour $29.99" },
-  es: { monthly: '📅 Desbloquear Informe Mensual de Amor $2.99', yearly: '👑 Desbloquear Informe Anual de Amor $29.99' },
-  th: { monthly: '📅 ปลดล็อกรายงานดวงความรักรายเดือน $2.99', yearly: '👑 ปลดล็อกรายงานดวงความรักรายปี $29.99' },
-  vi: { monthly: '📅 Mở Khóa Báo Cáo Nhân Duyên Tháng $2.99', yearly: '👑 Mở Khóa Báo Cáo Nhân Duyên Năm $29.99' },
+  zh: { monthly: '📅 解锁情爱月报 $2.99', yearly: '👑 解锁情爱年报 $29.99' },
+  en: { monthly: '📅 Unlock Romance Monthly $2.99', yearly: '👑 Unlock Romance Annual $29.99' },
+  fr: { monthly: '📅 Mensuel · Amour $2,99', yearly: '👑 Annuel · Amour $29,99' },
+  es: { monthly: '📅 Mensual · Amor $2,99', yearly: '👑 Anual · Amor $29,99' },
+  th: { monthly: '📅 ปลดล็อกรายเดือนความรัก $2.99', yearly: '👑 ปลดล็อกรายปีความรัก $29.99' },
+  vi: { monthly: '📅 Báo Cáo Tháng Tình Ái $2.99', yearly: '👑 Báo Cáo Năm Tình Ái $29.99' },
 };
 
 /* 🐾 E133-ROMANCE-PAYWALL-PARITY 刀一（主公军令 2026-11-10）：姻缘付费墙灵宠孵化前置
@@ -1004,6 +1015,71 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportText, reportParas.length]);
+  // ✦ E158-刀七（主公军令 2026-11-26）：单活手风琴——四付费报告区互斥展开；收起＝黑金折叠条（DOM 常驻、
+  //    零重复计费/零重复请求、绝不重新上锁）。reportText 管线原样保留（E90/E96/E97/E98 状态机不动），仅叠加
+  //    e158ReportKind（当前长卷档位）＋归档（按场景存月/年报全文；刷新/付讫回场原样回填）＋ e158Active。
+  const [e158ReportKind, setE158ReportKind] = useState<'monthly' | 'yearly'>('monthly');
+  const [e158Active, setE158Active] = useState<'once' | 'tarot' | 'monthly' | 'yearly'>(() => {
+    // 今日塔罗付讫回场 ⇒ 焦点落塔罗（一次性信号，读后即焚）
+    try { const v = sessionStorage.getItem('ks_e158_focus_panel'); sessionStorage.removeItem('ks_e158_focus_panel'); if (v === 'tarot') return 'tarot'; } catch { /* 无痕模式 */ }
+    return 'once';
+  });
+  const [e158TarotDone, setE158TarotDone] = useState(false);
+  // 已归档档位（渲染用；月/年报各自独立折叠条——四付费报告区恒可逐一重温）
+  const [e158Archived, setE158Archived] = useState<{ monthly: boolean; yearly: boolean }>({ monthly: false, yearly: false });
+  const e158ArchiveRef = useRef<{ scene: string; monthly?: string; yearly?: string; last: 'monthly' | 'yearly' }>({ scene: e156Scene, last: 'monthly' });
+  const e158ReopenParts = React.useMemo(() => splitReopenLabel(lang), [lang]);
+  // 今日塔罗未呈牌（未购/探测中）⇒ 焦点回落单次深度报告（塔罗保持购买引导态，不进折叠）
+  const e158Panel: 'once' | 'tarot' | 'monthly' | 'yearly' = (e158Active === 'tarot' && !e158TarotDone) ? 'once' : e158Active;
+  React.useEffect(() => {
+    // 刷新/付讫回场：本场景已生成的月/年报原样回填（零请求）
+    try {
+      const raw = sessionStorage.getItem('ks_e158_report_archive');
+      if (!raw) return;
+      const a = JSON.parse(raw);
+      if (!a || a.scene !== e156Scene) return;
+      const kind: 'monthly' | 'yearly' = a.last === 'yearly' ? 'yearly' : 'monthly';
+      const text = typeof a[kind] === 'string' ? a[kind] : '';
+      if (!text) return;
+      e158ArchiveRef.current = { scene: e156Scene, monthly: a.monthly, yearly: a.yearly, last: kind };
+      setE158Archived({ monthly: !!a.monthly, yearly: !!a.yearly });
+      setE158ReportKind(kind);
+      setReportText(text);
+      setRevealedParas(Number.POSITIVE_INFINITY);
+    } catch { /* 无痕/配额 ⇒ 静默降级 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    // 长卷落定（非加载、非打字中）⇒ 归档（内存＋sessionStorage；配额溢出 ⇒ 仅内存）
+    if (!reportText || reportLoading || reportTyping) return;
+    const a = e158ArchiveRef.current;
+    if (a.scene !== e156Scene) { a.scene = e156Scene; a.monthly = undefined; a.yearly = undefined; setE158Archived({ monthly: false, yearly: false }); }
+    a[e158ReportKind] = reportText;
+    a.last = e158ReportKind;
+    if (!e158Archived[e158ReportKind]) setE158Archived((p) => ({ ...p, [e158ReportKind]: true }));
+    try { sessionStorage.setItem('ks_e158_report_archive', JSON.stringify(a)); } catch { /* 配额 ⇒ 内存归档兜底 */ }
+  }, [reportText, reportLoading, reportTyping, e158ReportKind, e158Archived]);
+  const e158HasArchive = (kind: 'monthly' | 'yearly') => {
+    const a = e158ArchiveRef.current;
+    return e158Archived[kind] && a.scene === e156Scene && typeof a[kind] === 'string' && !!a[kind];
+  };
+  const e158Reopen = (panel: 'once' | 'tarot' | 'monthly' | 'yearly') => {
+    if ((panel === 'monthly' || panel === 'yearly') && panel !== e158ReportKind) {
+      if (reportLoading) return; // 生成中不切档（流式管线不被打断）
+      const a = e158ArchiveRef.current;
+      const text = a.scene === e156Scene ? a[panel] : undefined;
+      if (typeof text !== 'string' || !text) return;
+      setE158ReportKind(panel);
+      setReportText(text);
+      setRevealedParas(Number.POSITIVE_INFINITY);
+    }
+    setE158Active(panel);
+  };
+  /** 年鉴按钮：本页已生成的同档报告 ⇒ 原地重开（true）；否则走购买链（false） */
+  const e158AlmanacClick = (kind: 'monthly' | 'yearly') => {
+    if (!reportLoading && e158HasArchive(kind)) { e158Reopen(kind); return true; }
+    return false;
+  };
   // const [showPricePreview, setShowPricePreview] = useState(false);
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
@@ -1581,7 +1657,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       if (useToken) headers['Authorization'] = `Bearer ${useToken}`;
       // Compute tarot card deterministically (same logic as AuthButton)
       // 🔴 E92-①：洞察请求补 t1/t2 出生时辰（服务端八字硬锁算时柱用；缺省 ⇒ 三柱如实）
-      const tarot = getTarot(d1, d2, lang);
+      const tarot = getTarot(d1, d2, lang, 'insight', e156Scene);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers,
@@ -1596,6 +1672,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
               b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '' },
             },
+          } : (e156Scene === 'romance' && (e156NameA || e156NameB)) ? {
+            // ✦ E158-刀六：情爱 ⇒ 亲填称呼随洞察上送（服务端逐字原样锁＋重试恰一次；未填 ⇒ 请求形态零变）
+            nameA: e156NameA, nameB: e156NameB,
           } : {}),
         }),
       });
@@ -1649,6 +1728,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     setReportLoading(type);
     setReportText(null);
     e96StreamedRef.current = false;  // 🛡️ E96-②：增量帧标志复位（每次生成独立判定）
+    // ✦ E158-刀七：新报告开跑 ⇒ 月/年报面板抢焦点（其余已解锁报告收起为折叠条；数据不卸载）
+    setE158ReportKind(type);
+    setE158Active(type);
     try {
       // 强制刷新 session 获取最新 token
       let token: string | null = null;
@@ -1674,7 +1756,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       }
       // 🔴 E92-②：三档抽卡解耦——报告档掺档位盐（monthly/yearly 独立卡槽，
       //    与 $4.99 洞察的默认 'insight' 互不覆盖，终结「全盘女皇逆位」撞车）。
-      const tarot = getTarot(d1, d2, lang, type);
+      const tarot = getTarot(d1, d2, lang, type, e156Scene);
       const res = await fetch('/api/ai-advisor', {
         method: 'POST',
         headers: token
@@ -1935,6 +2017,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
             lon={c1.lon}
             tz={c1.tz}
             onPurchase={handlePurchase}
+            scene={e156Scene}
+            // ✦ E158-刀二：$4.99 未解锁 ⇒ 门禁（置灰＋🔒＋tarot_gate_hint；零探测零请求）
+            gate={{ hint: resT(lang, 'tarot_gate_hint') }}
           />
         )}
       </div>
@@ -1983,6 +2068,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               暗金金属框——付讫（per-session 解锁）后 AI 洞察全文＋实时塔罗在此金属框内
               自动流式揭晓，质感与财富模块 SacredYearlyReportBox（曜黑渐变＋钛金描边）
               同族同源；金卡导出/灵宠认领/生日年鉴保持框外独立模块（E85 纯净结构顺序零变）。 */}
+          {/* ✦ E158-刀七（主公军令 2026-11-26）：单活手风琴——单次深度报告区（金属框＋场景切换＋坐标卡＋
+              合规声明＋金卡导出＋灵宠认领）整体入折；收起态＝黑金折叠条，重开零请求零重复计费。 */}
+          <E158Fold id="once" active={e158Panel === 'once'} onReopen={() => e158Reopen('once')} title={TXT.aiTitle[lang] || TXT.aiTitle.en} reopenLabel={e158ReopenParts[1]} unlockedLabel={e158ReopenParts[0]} lang={lang}>
           <div data-testid="compat-once-metal-frame" style={{
             marginTop: '4px', padding: '20px 16px', borderRadius: '22px',
             background: 'linear-gradient(170deg, #0e1028 0%, #0a0c1e 40%, #0D0D1A 100%)',
@@ -2042,6 +2130,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 旧调试串直通通道物理拔除（主公核验截图①病根）。 */
             <GoldCardExporter
               locale={lang}
+              // ✦ E158-刀三④：更名「保存 / 分享幸福坐标卡」——幸福坐标卡一键高清 PNG＋原生分享（星语灵犀卡同交互）
+              share={{ payload: e156CardPayload, fileStem: `kindredsouls-${e156Scene}-card`, title: String(e156CardPayload.cardTitle || 'KindredSouls') }}
+              ctaLabel={resT(lang, 'btn_save_share_card')}
               payload={{
                 locale: lang,
                 cardId: tarotCard ? tarotCard.id : null,
@@ -2078,14 +2169,15 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               familiarLine="romance"
             />
           )}
+          </E158Fold>
           {/* 🎂 E85-②/③（主公军令 2026-10-24）：宇宙生日年鉴（付费揭晓区纯净结构收尾）——
-              双按钮六语统一「解锁姻缘月报 $2.99 / 解锁姻缘年报 $29.99」永久带金额呈现，
+              双按钮六语统一「解锁情爱月报 $2.99 / 解锁情爱年报 $29.99」永久带金额呈现（✦ E158-刀五场景命名），
               取消「(已解锁)」覆盖态与「生成情感月报/年报」文案态；行为按权益分流
               （已购/VIP 点击＝生成，未购点击＝购买）。
               🧹 合盘张量画布（CompatReportCanvas）与推演进度卡（SynastryProgress）渲染退役，
               月报/年报交付＝纯文本段落呈现（服务端 payload 契约不动，后端封仓零改动）。 */}
           {insight && (
-            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }}>
+            <div className="ks-glass-card" style={{ marginTop: '20px', padding: '16px' }} data-testid="e158-almanac">
               <div style={{ fontSize: '13px', color: 'var(--ks-text-gold, #F5D08A)', fontWeight: 700, marginBottom: '8px' }}>
                 🎂 {lang === 'zh' ? '宇宙生日年鉴' : lang === 'en' ? 'Your Solar Return Almanac' : lang === 'es' ? 'Tu Almanaque Solar' : lang === 'fr' ? 'Ton Almanach Solaire' : lang === 'th' ? 'ปฏิทินสุริยะของคุณ' : 'Nhật Ký Mặt Trời'}
               </div>
@@ -2099,20 +2191,34 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                   点击一律先走购买链：沙盒收银台/already_paid 由 handlePurchaseWithToken
                   统一收口，付讫回场经 ks_paid_report_type 自动生成对应报告。 */}
               <button
-                onClick={() => { handlePurchase('compatibility_monthly_report'); }}
+                onClick={() => { if (e158AlmanacClick('monthly')) return; handlePurchase('compatibility_monthly_report'); }}
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', marginBottom: '8px', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'monthly' ? '⏳...' : (e156IsScene ? resT(lang, 'al_monthly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)}
+                {reportLoading === 'monthly' ? '⏳...' : (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'monthly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)}
               </button>
               {/* 👑 年报按钮：E87-② 同令——购买先行，付讫回场自动生成年报 */}
               <button
-                onClick={() => { handlePurchase('compatibility_yearly_report'); }}
+                onClick={() => { if (e158AlmanacClick('yearly')) return; handlePurchase('compatibility_yearly_report'); }}
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'yearly' ? '⏳...' : (e156IsScene ? resT(lang, 'al_yearly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)}
+                {reportLoading === 'yearly' ? '⏳...' : (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'yearly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)}
               </button>
+              {/* ✦ E158-刀七：场景月/年报收起态——黑金折叠条（全文已在本页生成 ⇒ 点击原地重开，零请求零重复计费） */}
+              {(['monthly', 'yearly'] as const).filter((k) => k !== e158ReportKind && e158Archived[k]).map((k) => (
+                <button key={k} type="button" className="ks-e158-bar" lang={lang} data-testid={`e158-bar-${k}`} onClick={() => e158Reopen(k)} aria-expanded="false">
+                  <span className="ks-e158-bar-title">✦ {resReportTitle(lang, e156Scene, k)} · <span className="ks-e158-bar-unlocked">{e158ReopenParts[0]}</span></span>
+                  <span className="ks-e158-bar-reopen">{e158ReopenParts[1]}</span>
+                </button>
+              ))}
+              {reportText && e158Panel !== e158ReportKind && (
+                <button type="button" className="ks-e158-bar" lang={lang} data-testid={`e158-bar-${e158ReportKind}`} onClick={() => e158Reopen(e158ReportKind)} aria-expanded="false">
+                  <span className="ks-e158-bar-title">✦ {resReportTitle(lang, e156Scene, e158ReportKind)} · <span className="ks-e158-bar-unlocked">{e158ReopenParts[0]}</span></span>
+                  <span className="ks-e158-bar-reopen">{e158ReopenParts[1]}</span>
+                </button>
+              )}
+              <div data-testid="e158-fold-report" style={e158Panel === e158ReportKind ? undefined : { display: 'none' }}>
               {reportText && (
                 /* 🔴 E88-②（主公军令 2026-10-26）：黑金长卷渲染容器——
                    · 章节头（第X章/Chapter N 六语形态）＝金标题铭牌（.ks-report-chapter）；
@@ -2150,6 +2256,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                   )}
                 </div>
               )}
+              </div>
             </div>
           )}
           {/* 🆕 E145-刀四（军令 2026-11-19）：灵魂成长年鉴卡（姻缘模块）——
@@ -2175,7 +2282,11 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               lat={c1.lat}
               lon={c1.lon}
               tz={c1.tz}
-              onPurchase={handlePurchase}
+              onPurchase={(plan) => { try { sessionStorage.setItem('ks_e158_focus_panel', 'tarot'); } catch { /* 无痕模式 */ } handlePurchase(plan); }}
+              scene={e156Scene}
+              onPhaseChange={(p) => setE158TarotDone(p === 'done')}
+              // ✦ E158-刀七：已呈牌且他区抢焦点 ⇒ 黑金折叠条（✦ 今日塔罗 · 牌名 · 正/逆位 · 已解锁）
+              accordion={{ collapsed: e158Panel !== 'tarot', onReopen: () => e158Reopen('tarot'), reopenLabel: e158ReopenParts[1] }}
             />
           )}
           {/* 🔴 E91-①（主公军令 2026-10-25）：「退出登录」按钮退役——

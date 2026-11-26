@@ -188,7 +188,9 @@ test('E156-6 输入页：模式弹窗改「缘分密码」；选填称呼；三�
   assert.ok(ip.includes('<E156NameInput id="e156-name-a"'), '你的称呼（选填）');
   assert.ok(ip.includes('<E156NameInput id="e156-name-b"'), 'TA 的称呼（选填）');
   assert.ok(ip.includes("{ctaLabel}</button>"), '单主按钮随场景换词');
-  assert.ok(ip.includes("const ctaLabel = scene === 'romance' ? t('input.calculate')"), '情爱＝测算缘分词条不变');
+  // 🔴 后继化（E158-刀一，主公军令 2026-11-26）：情爱「测算缘分」退役 ⇒ 三场景统一字典 cta_unlock_{scene}
+  assert.ok(ip.includes("const ctaLabel = resT(lang, `cta_unlock_${scene === 'business' || scene === 'friendship' ? scene : 'romance'}`);"), '三场景 CTA 统一走刀八字典（E158-刀一）');
+  assert.equal(ip.includes("{t('app.name')}"), false, '输入页重复副标「一见如故」退役（E158-刀一）');
   assert.ok(ip.includes('onSubmit(d1, d2, { t1, c1, t2, c2 }, { scene, nameA: name1, nameB: name2 });'), '场景＋称呼随提交下传');
   assert.ok(ip.indexOf('<E156NameInput id="e156-name-a"') < ip.indexOf('<E156NameInput id="e156-name-b"'), '你卡在前 TA 卡在后');
   const pills = between(APP, 'function E156ScenePills(', 'function E156NameInput(');
@@ -212,14 +214,15 @@ test('E156-7 /result 黄金漏斗零破坏＋三处场景换词＋解锁后原�
   assert.ok(APP.includes('...(e156IsScene ? {'), '洞察请求：商道/挚友才挂场景键（情爱请求形态零变）');
   assert.ok(APP.includes('scene: e156Scene, nameA: e156NameA, nameB: e156NameB,'), '月报年报请求带场景＋称呼');
   assert.ok(APP.includes("<HappinessCard payload={e156CardPayload} lang={lang} fileStem={`kindredsouls-${e156Scene}-card`} mount=\"result\" />"), '幸福坐标卡嵌入报告底部');
-  assert.ok(APP.includes("(e156IsScene ? resT(lang, 'al_monthly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)"), '年鉴月报按钮场景换词（情爱词条逐字保留）');
-  assert.ok(APP.includes("(e156IsScene ? resT(lang, 'al_yearly_scene') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)"), '年鉴年报按钮场景换词');
-  assert.ok(APP.includes("zh: { monthly: '📅 解锁姻缘月报 $2.99', yearly: '👑 解锁姻缘年报 $29.99' },"), '情爱年鉴词条不变');
+  // 🔴 后继化（E158-刀五）：「姻缘月报/年报」退役 ⇒ 三场景一对一（情爱档走 L_ALMANAC_BTN 新词条、商道/挚友走 resAlmanacBtn）
+  assert.ok(APP.includes("(e156IsScene ? resAlmanacBtn(lang, e156Scene, 'monthly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)"), '年鉴月报按钮场景换词（E158-刀五）');
+  assert.ok(APP.includes("(e156IsScene ? resAlmanacBtn(lang, e156Scene, 'yearly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)"), '年鉴年报按钮场景换词（E158-刀五）');
+  assert.ok(APP.includes("zh: { monthly: '📅 解锁情爱月报 $2.99', yearly: '👑 解锁情爱年报 $29.99' },"), '情爱年鉴词条（E158-刀五）');
   assert.ok(APP.includes('_r156._scene = normalizeCardScene(meta && meta.scene);'), '场景随结果持久化（回场同源）');
 });
 
-test('E156-8 PaywallCard：情爱六语词条与价格逐字不变；商道/挚友仅换 4 条卖点＋月报年报按钮场景名', () => {
-  for (const keep of ["'🌑 灵魂共鸣深度分析'", "'🔥 情感能量流动图谱'", "'🌟 未来6个月关系走向'", "'💫 专属提升建议（3条）'", "monthlyBtn: '解锁姻缘月报 $2.99/月',", "yearlyBtn: '解锁姻缘年报 $29.99/年',", "['fr', 'es'].includes(lang) ? '$4,99' : '$4.99'", "onPurchase('compatibility_once')", "onPurchase('compatibility_monthly_report')", "onPurchase('compatibility_yearly_report')", "bonusDesc: '额外解锁【实时塔罗牌阵】'"]) {
+test('E156-8 PaywallCard：情爱六语词条与价格逐字不变；商道/挚友仅换 4 条卖点＋月报年报按钮场景名（E158-刀五：月/年报命名三场景走字典）', () => {
+  for (const keep of ["'🌑 灵魂共鸣深度分析'", "'🔥 情感能量流动图谱'", "'🌟 未来6个月关系走向'", "'💫 专属提升建议（3条）'", "['fr', 'es'].includes(lang) ? '$4,99' : '$4.99'", "onPurchase('compatibility_once')", "onPurchase('compatibility_monthly_report')", "onPurchase('compatibility_yearly_report')", "bonusDesc: '额外解锁【实时塔罗牌阵】'"]) {
     assert.ok(PAYWALL.includes(keep), `付费墙既有词条/价格缺失：${keep}`);
   }
   assert.ok(PAYWALL.includes('scene?: string;'), 'scene 可选 prop');
@@ -237,17 +240,24 @@ test('E156-8 PaywallCard：情爱六语词条与价格逐字不变；商道/挚�
       const feats = DICT.resT(L, `feat_${scene}`);
       assert.equal(dims.length, 4, `${L} dim_${scene} 四维`);
       if (scene !== 'romance') assert.equal(feats.length, 4, `${L} feat_${scene} 四卖点`);
-      assert.ok(DICT.resT(L, `pill_${scene}`) && DICT.resT(L, 'btn_monthly_scene') && DICT.resT(L, 'btn_yearly_scene'), `${L} 场景词条齐`);
-      assert.ok(DICT.resT(L, 'al_monthly_scene').includes('$2.99') && DICT.resT(L, 'al_yearly_scene').includes('$29.99'), `${L} 年鉴按钮带金额`);
+      // 🔴 后继化（E158-刀五）：btn_*_scene / al_*_scene 退役 ⇒ btn_{monthly|annual}_{scene}
+      assert.ok(DICT.resT(L, `pill_${scene}`) && DICT.resT(L, `btn_monthly_${scene}`) && DICT.resT(L, `btn_annual_${scene}`), `${L} 场景词条齐`);
+      assert.ok(/\$2[.,]99/.test(DICT.resReportBtn(L, scene, 'monthly')) && /\$29[.,]99/.test(DICT.resReportBtn(L, scene, 'yearly')), `${L} 月/年报按钮带金额`);
     }
   }
+  assert.equal(DICT.resT('zh', 'btn_monthly_scene'), 'btn_monthly_scene', '旧键 btn_monthly_scene 退役（E158-刀五；resT 缺键回落键名）');
   assert.deepEqual(DICT.resT('zh', 'dim_business'), ['共振', '互补', '决策', '稳健'], '军令钦定四维（商道）');
   assert.deepEqual(DICT.resT('zh', 'dim_friendship'), ['默契', '信任', '松弛', '长久'], '军令钦定四维（挚友）');
   assert.deepEqual(DICT.resT('zh', 'feat_business').map((s) => s.replace(/^\S+\s/, '')), ['事业磁极共振分析', '角色分工与决策互补', '未来6个月合作窗口', '共赢避坑校准建议（3条）'], '军令钦定四卖点（商道）');
   assert.deepEqual(DICT.resT('zh', 'feat_friendship').map((s) => s.replace(/^\S+\s/, '')), ['灵魂松弛与同频解析', '精神共鸣与情绪托底', '未来6个月相处气象', '长久同频校准建议（3条）'], '军令钦定四卖点（挚友）');
-  assert.equal(DICT.resT('zh', 'btn_monthly_scene'), '解锁关系月报 $2.99/月');
-  assert.equal(DICT.resT('zh', 'btn_yearly_scene'), '解锁关系年报 $29.99/年');
-  for (const L of LANGS) assert.ok(!DICT.resT(L, 'btn_monthly_scene').includes('姻缘') && !/情爱|Love Report/.test(DICT.resT(L, 'btn_monthly_scene')), `${L} 场景月报按钮不得出现姻缘/情爱字眼`);
+  for (const L of LANGS) {
+    for (const scene of ['business', 'friendship']) {
+      for (const k of ['monthly', 'annual']) {
+        const v = DICT.resT(L, `btn_${k}_${scene}`);
+        assert.ok(!v.includes('姻缘') && !/情爱|Love Report/.test(v), `${L} ${scene} ${k} 按钮不得出现姻缘/情爱字眼`);
+      }
+    }
+  }
 });
 
 /* ═══════ 六 · 六语字典单源（沿用＋扩展） ═══════ */

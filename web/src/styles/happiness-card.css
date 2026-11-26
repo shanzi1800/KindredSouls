@@ -1,5 +1,6 @@
 /* 🤝 E156（主公军令 2026-11-25）：幸福坐标卡嵌入块 —— /result 三场景报告底部 ＋ 财富报告页底部
-   黑金同母版；预览缩略＋单一「保存 / 分享」主按钮；主动权 100% 在付费用户本人。
+   黑金同母版；预览缩略＋单一「保存 / 分享」主按钮（财富页）；主动权 100% 在付费用户本人。
+   ✦ E158-刀三（主公军令 2026-11-26）：标题缩字 13px；/result 预览框正下方重复按钮退役 ⇒ 预览等比放大。
    🔴 泰语强制 anywhere + 1.55（容器自带 lang 属性 ⇒ 不依赖 html[lang] 接线）。 */
 .ks-hcard {
   display: flex;
@@ -18,7 +19,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: #F3E5AB;
   letter-spacing: .04em;
@@ -26,7 +27,8 @@
 }
 .ks-hcard-preview {
   align-self: center;
-  width: min(216px, 58vw);
+  /* ✦ E158-刀三：预览等比放大（E157 为 min(216px, 58vw)）；以坐标卡内容盒为上限 ⇒ 窄屏不挤占内边距、不贴边框 */
+  width: min(300px, 100%);
   aspect-ratio: 9 / 16;
   border-radius: 12px;
   border: 1px solid rgba(212,175,55,.55);

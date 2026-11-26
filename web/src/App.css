@@ -2686,3 +2686,55 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
 .ks-compliance-note.ks-compliance-note:lang(th) {
   line-height: 1.55;
 }
+
+/* ✦ E158-刀一（主公军令 2026-11-26）：双人坐标输入页主按钮——亮青 #2ECBF7 退役，换站点高定
+   丝缎香槟金渐变＋深黑高对比字（与 /result 金主按钮同一视觉语系；E152 PC 首屏 CTA 同源色）。
+   选择器叠 data-testid ⇒ specificity 压过 .btn-primary / :hover，不动被闸门钉死的 className 字面。 */
+.btn-primary[data-testid="e156-cta"] {
+  background: linear-gradient(135deg, #F0D99C 0%, #D9B45B 52%, #C59B3E 100%);
+  color: #0D0D1A;
+  text-shadow: none;
+  box-shadow: 0 6px 22px rgba(217, 180, 91, 0.28);
+}
+.btn-primary[data-testid="e156-cta"]:hover,
+.btn-primary[data-testid="e156-cta"]:active {
+  background: linear-gradient(135deg, #F6E3AE 0%, #E3BF69 52%, #CFA64A 100%);
+  color: #0D0D1A;
+  box-shadow: 0 8px 26px rgba(217, 180, 91, 0.4);
+}
+
+/* ✦ E158-刀七：单活手风琴折叠条（黑金；✦ 标题 · 已 unlocked ｜ 右侧香槟金「展开重温 ▼」胶囊） */
+.ks-e158-bar {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 10px 10px 14px;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.14) 0%, rgba(13, 13, 26, 0.85) 60%);
+  color: #F3E5AB;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ks-e158-bar-title { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.ks-e158-bar-unlocked { color: rgba(243, 229, 171, 0.72); font-weight: 600; }
+.ks-e158-bar-reopen {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #F0D99C 0%, #D9B45B 60%, #C59B3E 100%);
+  color: #0D0D1A;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ks-e158-bar[lang="th"], .ks-e158-bar[lang="th"] * { line-height: 1.55; overflow-wrap: anywhere; }
+.ks-e158-fold { min-width: 0; }

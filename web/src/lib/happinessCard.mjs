@@ -2,14 +2,16 @@
 //   同一母版兼容四主题：romance / business / friendship / wealth_abundance。
 //   规格：1080×1920（9:16 @2x）PNG；深空暗奢丝绒黑金＋金缮刻度＋动态主题徽标；
 //   要素：顶部场景坐标标 → 双人/个人星历坐标印记 → 核心契合关键词 → 底部印刻金句
-//        → 品牌水印 → 动态二维码（裂变卡 /invite/:token，个人财富卡首页）。
+//        → 品牌水印 → 底栏（卡片名 / 防伪哈希 / 品牌网址）。
 //   🔴 折行复用金卡引擎 wrapCardText（zh 逐字避头尾 / 空格语种按词 / 泰语 Intl.Segmenter
-//      字簇折行）；金句块自二维码上沿向上排版 ⇒ 永不撞二维码区。
-//   🔴 纯离线：零 fetch/XHR/远程图（Canvas 永不 Tainted）。QR 由 qrcode-generator（零依赖）本地生成。
+//      字簇折行）；金句块自底栏上沿向上排版 ⇒ 永不撞底栏。
+//   🔴 纯离线：零 fetch/XHR/远程图（Canvas 永不 Tainted）。
+// ✦ E158-刀三（主公军令 2026-11-26）：二维码绘制与其排版区整体退役（卡片底栏已印品牌网址
+//   kindredsouls.online）⇒ 下半部重排：金句块放宽（safe 全宽、至多 5 行）锚于底栏上方，
+//   品牌网址右下对齐铭刻；payload.qrUrl 字段保留（E156 payload 双向锁零扰动；不再入画）。
 
 import { wrapCardText, chartHash } from './goldCardLayout.mjs';
 import { RES_SIGNS } from './resonanceI18n.mjs';
-import qrcode from 'qrcode-generator';
 
 export const HAPPINESS_CARD_WIDTH = 1080;
 export const HAPPINESS_CARD_HEIGHT = 1920;
@@ -155,7 +157,7 @@ function resSign(t, signEn) {
  * 绘制主入口。
  * @param {HTMLCanvasElement} canvas 1080×1920
  * @param {object} p {theme, lang, sceneTitle, sceneSub, self:{label,name,sunSign}, partner:{label,name,sunSign}|null,
- *                    keywordsLabel, keywords:[], quote, qrUrl, cardTitle, brand, degraded:boolean}
+ *                    keywordsLabel, keywords:[], quote, qrUrl, cardTitle, brand, degraded:boolean}（qrUrl：E158 起仅留档不入画）
  */
 export function drawHappinessCard(canvas, p) {
   const W = HAPPINESS_CARD_WIDTH, H = HAPPINESS_CARD_HEIGHT;
@@ -219,15 +221,14 @@ export function drawHappinessCard(canvas, p) {
     if (sg) ny = drawWrapped(ctx, [`☉ ${sg}`], cx, ny + 6, 48, `38px ${SERIF[lang]}`, CHAMPAGNE);
   }
 
-  // ⑥ 二维码区（右下固定；金句自其上沿向上排版 ⇒ 零碰撞）
-  const QR = 250, qx = W - 120 - QR, qy = H - 130 - QR;
-  ctx.fillStyle = '#FAF4E4';
-  roundRect(ctx, qx - 14, qy - 14, QR + 28, QR + 28, 14); ctx.fill();
-  drawQr(ctx, String(p.qrUrl || ''), qx, qy, QR);
+  // ⑥ 底栏（✦ E158-刀三：二维码退役 ⇒ 左列卡片名＋防伪哈希、右列品牌网址；发丝金线压顶）
+  const footTop = H - 300;
+  ctx.strokeStyle = 'rgba(212,175,55,0.35)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(120, footTop); ctx.lineTo(W - 120, footTop); ctx.stroke();
 
-  // ⑦ 底部印刻金句（自 qrTop-70 向上）
-  const quote = wrap(ctx, p.quote, lang, { fontSize: 36, lineHeight: 54, maxLines: 4, maxWidth: safe - 40, minFontSize: 26 });
-  const quoteTop = qy - 70 - quote.lines.length * quote.lineHeight;
+  // ⑦ 底部印刻金句（自底栏上沿 -64 向上；safe 全宽、至多 5 行 ⇒ 下半部呼吸留白）
+  const quote = wrap(ctx, p.quote, lang, { fontSize: 40, lineHeight: 58, maxLines: 5, maxWidth: safe, minFontSize: 28 });
+  const quoteTop = footTop - 64 - quote.lines.length * quote.lineHeight;
   drawWrapped(ctx, quote.lines, cx, quoteTop, quote.lineHeight, `${quote.fontSize}px ${SERIF[lang]}`, IVORY);
 
   // ⑧ 核心关键词（金句上方；至多 3 行）
@@ -241,39 +242,19 @@ export function drawHappinessCard(canvas, p) {
     if (p.keywordsLabel) drawWrapped(ctx, [String(p.keywordsLabel)], cx, ky - 46, 34, `22px ${SERIF[lang]}`, MUTED);
   }
 
-  // ⑨ 左下防伪底栏
+  // ⑨ 底栏（qrUrl 不再入画——品牌网址取 p.brand，右下对齐）
   const hash = chartHash(`${theme}|${p.sceneTitle}|${self.sunSign || ''}|${partner && partner.sunSign}|${p.qrUrl || ''}`);
-  ctx.font = `22px ${SERIF[lang]}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillStyle = MUTED;
-  ctx.fillText(String(p.cardTitle || ''), 120, H - 130 - 96);
-  ctx.fillText('✦ ' + String(p.brand || '') + ' ✦', 120, H - 130 - 60);
-  ctx.fillStyle = GOLD;
-  ctx.fillText('HASH · ' + hash, 120, H - 130 - 24);
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.font = `22px ${SERIF[lang]}`; ctx.fillStyle = MUTED;
+  ctx.fillText(String(p.cardTitle || ''), 120, footTop + 38);
+  ctx.font = `20px ${SERIF[lang]}`; ctx.fillStyle = 'rgba(243,229,171,0.5)';
+  ctx.fillText('HASH · ' + hash, 120, footTop + 80);
+  ctx.textAlign = 'right';
+  ctx.font = `36px ${SERIF[lang]}`; ctx.fillStyle = CHAMPAGNE;
+  ctx.fillText(String(p.brand || ''), W - 120, footTop + 46);
+  ctx.textAlign = 'left';
   return { width: W, height: H, hash };
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
-}
-
-function drawQr(ctx, url, x, y, size) {
-  if (!url) { // 无链接 ⇒ 画一枚金缮菱形占位（绝不画伪码）
-    ctx.strokeStyle = GOLD; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(x + size / 2, y + 30); ctx.lineTo(x + size - 30, y + size / 2); ctx.lineTo(x + size / 2, y + size - 30); ctx.lineTo(x + 30, y + size / 2); ctx.closePath(); ctx.stroke();
-    return false;
-  }
-  const qr = qrcode(0, 'M');
-  qr.addData(url);
-  qr.make();
-  const n = qr.getModuleCount();
-  const cell = size / n;
-  ctx.fillStyle = '#0B0A10';
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(x + c * cell, y + r * cell, Math.ceil(cell), Math.ceil(cell));
-  return true;
 }
 
 /** 导出 PNG Blob（调用前须 `await document.fonts.ready`） */

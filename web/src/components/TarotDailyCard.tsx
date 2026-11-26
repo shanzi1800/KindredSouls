@@ -9,6 +9,10 @@
  *     ('tarot_daily_once')（登录门/沙盒收银台/Stripe 全链复用 App handlePurchase 单源）；
  *   · 403/429 ⇒ 会员日限/全局熔断六语提示（明日再来）；
  *   · 其余 ⇒ 错误态＋重试。
+ * ✦ E158-刀二（主公军令 2026-11-26）：前置门禁——gate 在场（$4.99 深度报告未解锁）⇒ 零探测、
+ *   购买按钮置灰＋🔒 锁标＋tarot_gate_hint 提示（与灵宠门禁同语系）；解锁后 gate 撤除 ⇒ 即刻放行探测。
+ * ✦ E158-刀七：单活手风琴——accordion.collapsed 且已呈牌 ⇒ 收起为黑金折叠条（数据留组件 state，
+ *   重开零请求、零重复计费；绝不重新上锁）。
  * 纪律：六语自容 L_ 字典（零 i18n 键扰动——i18n 基线 138 不动）；牌面/牌名/
  * 正逆位一切真值来自服务端回执（E109「隐士幽灵」血训：前端绝不自抽牌）；
  * fr/es 标价小数逗号（E103-③ 铁律沿袭）。
@@ -28,12 +32,25 @@ interface TarotDailyCardProps {
   lon: number;
   tz: string;
   onPurchase: (plan: string) => void;
+  /** ✦ E158-刀二：前置门禁（在场 ⇒ 不探测、购买按钮锁定并显示 hint） */
+  gate?: { hint: string } | null;
+  /** ✦ E158-刀七：单活手风琴（collapsed ⇒ 收起为折叠条；onReopen ⇒ 原地重开） */
+  accordion?: { collapsed: boolean; onReopen: () => void; reopenLabel: string } | null;
+  /** ✦ E158-刀四：场景（business / friendship ⇒ 服务端读牌走场景语境；缺省 romance 零变） */
+  scene?: string;
+  /** ✦ E158-刀七：相位外报（父组件据此判定「今日塔罗已呈牌」⇒ 可折叠） */
+  onPhaseChange?: (phase: 'probe' | 'locked' | 'limit' | 'error' | 'done' | 'gate') => void;
 }
 
 /** 六语自容词典（title/buy/limit/err/load/again） */
 const L_TITLE: Record<Lang, string> = {
   zh: '🃏 今日塔罗', en: '🃏 Today’s Tarot', fr: '🃏 Tarot du Jour',
   es: '🃏 Tarot del Día', th: '🃏 ไพ่ทาโรต์วันนี้', vi: '🃏 Tarot Hôm Nay',
+};
+/** ✦ E158-刀七：折叠条标题（去 emoji 的纯标题） */
+const L_TITLE_TEXT: Record<Lang, string> = {
+  zh: '今日塔罗', en: 'Today’s Tarot', fr: 'Tarot du Jour',
+  es: 'Tarot del Día', th: 'ไพ่ทาโรต์วันนี้', vi: 'Tarot Hôm Nay',
 };
 const L_BUY: Record<Lang, string> = {
   zh: '开启今日塔罗 $1.99', en: 'Open Today’s Tarot $1.99',
@@ -69,8 +86,8 @@ interface TarotDailyData {
   cached?: boolean;
 }
 
-const TarotDailyCard = ({ lang, accessToken, birthDate, birthTime, lat, lon, tz, onPurchase }: TarotDailyCardProps) => {
-  const [phase, setPhase] = useState<'probe' | 'locked' | 'limit' | 'error' | 'done'>('probe');
+const TarotDailyCard = ({ lang, accessToken, birthDate, birthTime, lat, lon, tz, onPurchase, gate = null, accordion = null, scene = 'romance', onPhaseChange }: TarotDailyCardProps) => {
+  const [phase, setPhase] = useState<'probe' | 'locked' | 'limit' | 'error' | 'done' | 'gate'>('probe');
   const [data, setData] = useState<TarotDailyData | null>(null);
   const probingRef = useRef(false);
 
@@ -89,7 +106,8 @@ const TarotDailyCard = ({ lang, accessToken, birthDate, birthTime, lat, lon, tz,
         headers: accessToken
           ? { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }
           : { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lang, chart_sig: chartSig }),
+        // ✦ E158-刀四：场景随探测上送（romance 缺省不占位 ⇒ 服务端缓存键逐字节不变）
+        body: JSON.stringify(scene === 'romance' ? { lang, chart_sig: chartSig } : { lang, chart_sig: chartSig, scene }),
       });
       if (res.ok) {
         const j = await res.json();
@@ -114,16 +132,30 @@ const TarotDailyCard = ({ lang, accessToken, birthDate, birthTime, lat, lon, tz,
   }, [accessToken, chartSig, lang]);
 
   // 挂载即静默探测（登录态 + 合法签名为前置；未登录/未购 ⇒ locked 态买按钮）
+  // ✦ E158-刀二：gate 在场 ⇒ 门禁态（零探测零请求）；gate 撤除 ⇒ 同一挂载内即刻放行探测
   useEffect(() => {
+    if (gate) { setPhase('gate'); return; }
     if (accessToken && chartSig) void probe();
     else setPhase('locked');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, chartSig]);
+  }, [accessToken, chartSig, !!gate]);
+  useEffect(() => { if (onPhaseChange) onPhaseChange(phase); }, [phase]);
 
   if (!chartSig) return null;
 
   const orient = L_ORIENT[lang] || L_ORIENT.en;
   const cardName = data?.card.name || data?.card.nameZh || '';
+  const orientLabel = data ? (data.card.reversed ? orient[1] : orient[0]) : '';
+
+  // ✦ E158-刀七：已呈牌且被其它报告抢焦点 ⇒ 黑金折叠条（✦ 今日塔罗 · 力量 · 正位 ｜ 已解锁 · 点击展开重温 ▼）
+  if (accordion && accordion.collapsed && phase === 'done' && data) {
+    return (
+      <button type="button" className="ks-e158-bar" lang={lang} data-testid="e158-bar-tarot" onClick={accordion.onReopen} aria-expanded="false">
+        <span className="ks-e158-bar-title">✦ {L_TITLE_TEXT[lang] || L_TITLE_TEXT.en} · <span className="ks-e158-bar-sum">{cardName} · {orientLabel}</span></span>
+        <span className="ks-e158-bar-reopen">{accordion.reopenLabel}</span>
+      </button>
+    );
+  }
 
   return (
     <div
@@ -155,6 +187,29 @@ const TarotDailyCard = ({ lang, accessToken, birthDate, birthTime, lat, lon, tz,
         >
           {L_BUY[lang] || L_BUY.en}
         </button>
+      )}
+
+      {phase === 'gate' && gate && (
+        <div>
+          <button
+            type="button"
+            data-testid="tarot-daily-buy"
+            disabled
+            aria-disabled="true"
+            style={{
+              display: 'block', width: '100%', padding: '10px 14px', borderRadius: '10px',
+              border: '1px solid rgba(154,154,184,0.35)', background: 'rgba(154,154,184,0.08)',
+              color: 'rgba(201,201,224,0.75)', fontSize: '13px', fontWeight: 700, cursor: 'not-allowed',
+              minHeight: '44px', textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.4,
+              filter: 'grayscale(1)', opacity: 0.72,
+            }}
+          >
+            🔒 {L_BUY[lang] || L_BUY.en}
+          </button>
+          <div data-testid="e158-tarot-gate-hint" style={{ marginTop: '8px', fontSize: '12px', color: '#c9b98a', lineHeight: lang === 'th' ? 1.55 : 1.5, overflowWrap: 'anywhere' }}>
+            ✦ {gate.hint}
+          </div>
+        </div>
       )}
 
       {phase === 'limit' && (

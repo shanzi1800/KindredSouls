@@ -5,6 +5,9 @@ type L = Record<string, string>;
 //    已随后继化指向新真源）——本文件只留 emoji/牌意/抽卡哈希/朝向后缀。
 // @ts-ignore —— tarotNames.mjs 纯 JS 单源（goldCardTotems.d.mts 先例声明）
 import { tarotCardName } from './tarotNames.mjs';
+// ✦ E158-刀四（主公军令 2026-11-26）：牌义三场景语境映射（商道/挚友零情感穿帮词；情爱＝本文件既有牌义逐字不动）
+// @ts-ignore —— tarotScenes.mjs 纯 JS 六语字典单源
+import { tarotSceneMeaning } from './tarotScenes.mjs';
 // 🔴 E92-②（主公军令 2026-10-25）：三档报告抽卡解耦——同一天内 $4.99 洞察 /
 //    $2.99 月报 / $29.99 年报曾共用同一 hash（生日+今日）⇒ 数学上必然同卡
 //    （主公实测「全盘女皇逆位」连环撞车根因）。治法＝hash 掺入档位盐 scope：
@@ -221,7 +224,7 @@ const ORIENT_SUFFIX: Record<string, (reversed: boolean, name?: string) => string
   vi: (r) => r ? ' (Ngược)' : ' (Thuận)',
 };
 
-export function getTarot(d1: string, d2: string, lang: string = 'en', scope: string = 'insight'): TarotCard {
+export function getTarot(d1: string, d2: string, lang: string = 'en', scope: string = 'insight', scene: string = 'romance'): TarotCard {
   const today = new Date().toISOString().slice(0, 10);
   let hash = 0;
   const sorted = [d1, d2].sort();
@@ -237,10 +240,12 @@ export function getTarot(d1: string, d2: string, lang: string = 'en', scope: str
   // 🏆 E114-刀一：牌名走 tarotNames.mjs 单源查表（fail-closed ⇒ en 愚人兜底，
   //    id 恒为 0~21 合法域，查表失败仅语言缺页场景）
   const name = tarotCardName(cardId, L) || 'The Fool';
+  // ✦ E158-刀四：抽牌哈希零变；仅牌义按场景分流（business / friendship ⇒ 场景语境；缺行回落情爱牌义）
+  const sceneMeaning = tarotSceneMeaning(card.id, L, scene);
   return {
     id: card.id,
     name,
-    meaning: card.meaning[L] || card.meaning.en,
+    meaning: sceneMeaning || card.meaning[L] || card.meaning.en,
     emoji: card.emoji,
     orientation: (ORIENT_SUFFIX[L] || ORIENT_SUFFIX['en'])(reversed, name),
   };

@@ -68,7 +68,9 @@ test('E157-1 四引擎 System Prompt 均完整注入 GLOBAL & AUSTRALIAN LEGAL C
   assert.ok(h.indexOf('if (_e156Overlay) _compat.system = `${_compat.system}\\n${_e156Overlay}`;') < h.indexOf('if (!_e156Overlay) _compat.system ='), '叠加层在前、护栏在后');
   assert.equal(PR.buildSceneOverlay({ scene: 'romance', locale: 'en', reportType: 'once' }), '', '情爱叠加层仍为空串（既有链零注入）');
   // 情爱免费四句洞察：system 位同受护栏
-  assert.ok(h.includes("messages: [{ role: 'system', content: LEGAL_COMPLIANCE_GUARDRAILS }, { role: 'user', content: prompt }]"), '免费洞察 system 位注入');
+  // 🔴 后继化（E158-刀六）：免费洞察 user 位改吃 e158Prompt（未填称呼时与 prompt 逐字节相等）——system 位护栏不动
+  assert.ok(h.includes("messages: [{ role: 'system', content: LEGAL_COMPLIANCE_GUARDRAILS }, { role: 'user', content: e158Prompt }]"), '免费洞察 system 位注入');
+  assert.ok(h.includes("contents: [{ parts: [{ text: e158Prompt }] }],"), '免费洞察 Gemini 兜底同吃 e158Prompt');
   // ③ 财富：applyWealthReportPromptGuards 单点（双通道两处调用）＋ 逐字内联镜像
   const fn = between(SERVER, 'function applyWealthReportPromptGuards(', '\nfunction buildWealthReportPrompt(');
   assert.equal((SERVER.match(/^[ \t]+applyWealthReportPromptGuards\(\s*prompt\s*,\s*lang\s*,\s*reportType\s*,\s*astroMatrix\s*,\s*birthDate\s*\)/gm) || []).length, 2, '财富双通道单点调用');
@@ -161,12 +163,13 @@ test('E157-3 称呼原样锁 / SwissEph 真理锁 / 缺时辰显式降级 / 单�
 test('E157-4 称呼去真名化引导：placeholder 六语逐字＝昵称/代号；选填；前后端不标记实名身份字段', () => {
   const MANDATED = {
     nickname_self_placeholder: {
-      zh: '你的昵称或代号（选填，默认“我”）', en: 'Your nickname or initials (optional)', fr: 'Votre surnom ou initiales (facultatif)',
-      es: 'Tu apodo o iniciales (opcional)', th: 'ชื่อเล่นหรือนามแฝงของคุณ (ไม่บังคับ)', vi: 'Biệt danh hoặc ký hiệu của bạn (không bắt buộc)',
+      // 🔴 后继化（E158-刀一/刀八，主公裁决 placeholder 裁切 ⇒ 刀八精简字典逐字）
+      zh: '你的昵称或代号（选填）', en: 'Your nickname (optional)', fr: 'Votre surnom (facultatif)',
+      es: 'Tu apodo (opcional)', th: 'ชื่อเล่นของคุณ (ไม่บังคับ)', vi: 'Biệt danh của bạn (tùy chọn)',
     },
     nickname_partner_placeholder: {
-      zh: 'TA 的昵称或代号（选填，建议使用昵称）', en: "Partner's nickname or initials (optional; nickname recommended)", fr: "Surnom ou initiales de l'autre (facultatif, surnom conseillé)",
-      es: 'Apodo o iniciales de la otra persona (opcional, se recomienda apodo)', th: 'ชื่อเล่นหรือนามแฝงของอีกฝ่าย (ไม่บังคับ แนะนำให้ใช้ชื่อเล่น)', vi: 'Biệt danh hoặc ký hiệu của đối phương (không bắt buộc, khuyên dùng biệt danh)',
+      zh: 'TA 的昵称或代号（选填）', en: 'Partner nickname (optional)', fr: "Surnom de l'autre (facultatif)",
+      es: 'Apodo del otro (opcional)', th: 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', vi: 'Biệt danh đối phương (tùy chọn)',
     },
     compliance_disclaimer_short: {
       zh: '仅供文化探索、娱乐与自我觉察参考，不构成任何商业决策、金融、法律或人力资源建议。',
@@ -267,16 +270,17 @@ test('E157-5 三处 compliance_disclaimer_short 常驻（输入页主按钮下 /
 });
 
 /* ═══════ 六 · 零越界：付费流 / 定价 / E158 封存 ═══════ */
-test('E157-6 零越界：$4.99 统一定价与手动点击生成不变；E158 支付回跳自动生成封存未执行；零独立对话窗', async () => {
+test('E157-6 零越界：$4.99 统一定价与手动点击生成不变；支付回跳自动生成封存未执行（E158 已用于全站视觉精修 ⇒ 封存顺延 E159）；零独立对话窗', async () => {
   const SB = await mod('web/src/lib/sandboxCheckout.mjs');
   assert.equal(SB.SANDBOX_PLAN_PRICE.compatibility_once, '$4.99', '沙盒一次解锁 $4.99 不变：' + JSON.stringify(SB.SANDBOX_PLAN_PRICE));
-  assert.equal(DICT.resT('en', 'btn_monthly_scene'), 'Relationship Monthly $2.99/mo', '月报 $2.99 文案不变');
-  assert.equal(DICT.resT('en', 'btn_yearly_scene'), 'Relationship Annual $29.99/yr', '年报 $29.99 文案不变');
+  // 🔴 后继化（E158-刀五）：月/年报命名三场景走字典；价格永驻
+  assert.equal(DICT.resReportBtn('en', 'business', 'monthly'), 'Unlock Alliance Monthly $2.99/mo', '月报 $2.99 文案不变');
+  assert.equal(DICT.resReportBtn('en', 'business', 'yearly'), 'Unlock Alliance Annual $29.99/yr', '年报 $29.99 文案不变');
   const ip = between(APP, 'function InputPage(', '/* ── Loading Page ── */');
   assert.equal((ip.match(/data-testid="e156-cta"/g) || []).length, 1, '单一主按钮（手动点击）');
   const h = between(SERVER, "app.use('/api/ai-advisor', async (req, res) => {", '// ── Serve static frontend (dist/) ──');
-  assert.ok(SERVER.includes("success_url: successUrl || defaultSuccess,"), 'create-checkout 成功回跳复原（E158 未动）');
-  for (const bad of ["'/resonance'", '/invite/', 'e158', 'E158']) {
+  assert.ok(SERVER.includes("success_url: successUrl || defaultSuccess,"), 'create-checkout 成功回跳复原（E159 未动）');
+  for (const bad of ["'/resonance'", '/invite/', 'e159', 'E159']) {
     assert.equal(APP.includes(bad), false, `App.tsx 不得出现：${bad}`);
     assert.equal(SERVER.includes(bad), false, `server.js 不得出现：${bad}`);
   }
@@ -288,7 +292,7 @@ test('E157-7 【链位自保】闸门挂入 test:astro 且不顶飞收口位（�
   const segs = pkg.scripts['test:astro'].split(/\s*&&\s*|\s*\|\|\s*/).map((x) => x.trim()).filter(Boolean);
   const me = segs.findIndex((x) => x.includes('audit-e157-compliance-guardrails'));
   assert.ok(me !== -1, '未入编 test:astro');
-  assert.ok(segs.length >= 123, `链段数下界（实为 ${segs.length}）`);
+  assert.ok(segs.length >= 124, `链段数下界（实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124
   const i155 = segs.findIndex((x) => x.includes('audit-e155-resonance-code'));
   const iCap = segs.findIndex((x) => x.includes('audit-e40-compat-synastry-tensor-fusion'));
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);

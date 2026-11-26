@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import { resT } from '../web/src/lib/resonanceI18n.mjs';
+import { resT, resAlmanacBtn } from '../web/src/lib/resonanceI18n.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(REPO, 'dev-artifacts', 'e156-verify');
@@ -29,9 +29,6 @@ const VIEWPORTS = QUICK ? [['1440', '900', 'desktop', 'zh'], ['390', '844', 'mob
   : [['1440', '900', 'desktop'], ['390', '844', 'mobile']];
 const MODE_LABEL = {
   zh: '缘分密码', en: 'Resonance Code', fr: 'Code de Résonance', es: 'Código de Resonancia', th: 'รหัสคลื่นชะตา', vi: 'Mật Mã Nhân Duyên',
-};
-const CTA_ROMANCE = {
-  zh: '测算缘分', en: 'Reveal Compatibility', fr: 'Dévoiler notre destin', es: 'Revelar nuestro destino', th: 'ทำนายดวงสมพงษ์ของเรา', vi: 'Giải mã duyên phận',
 };
 const DIM_ROMANCE = {
   zh: ['爱情', '沟通', '默契', '稳定'], en: ['Love', 'Communication', 'Chemistry', 'Stability'],
@@ -130,7 +127,7 @@ function pngInfo(buf) {
 }
 /* 一键保存高清 PNG 物证：真点击「保存 / 分享」⇒ 截获 blob（渲染真产出）＋下载锚点（blob:＋download 文件名）＋真下载落盘；零 window.open 计数。
    移动端（≤768px）下载后另开大图浮层供长按保存 ⇒ 验收在场即关闭（不遮挡后续操作）。 */
-function grabPng(stem) {
+function grabPng(stem, sel = '[data-testid="ks-hcard-save"]') {
   // 挂钩幂等：同页多次保存只装一次（重复包装 ⇒ 锚点重复计数的假红）；每次仅重置计数
   abEval(`(() => { window.__e156blob = null; window.__e156dl = []; window.__e156open = 0;
     if (!window.__e156hooked) {
@@ -143,7 +140,7 @@ function grabPng(stem) {
     return 'ARMED'; })()`);
   const pngs = () => (fs.existsSync(DL_DIR) ? fs.readdirSync(DL_DIR).filter((f) => f.endsWith('.png')) : []);
   const before = pngs().length;
-  click('[data-testid="ks-hcard-save"]');
+  click(sel); // ✦ E158-刀三：/result 改点合规声明下方唯一「保存 / 分享幸福坐标卡」（goldcard-export-cta）；财富页仍为 ks-hcard-save
   const dataUrl = waitForFn(() => {
     const r = abEval(`(async () => { const b = window.__e156blob; if (!b) return 'NOBLOB'; const u = await new Promise((res) => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(b); }); return u; })()`);
     return typeof r === 'string' && r.startsWith('data:image/png') ? r : null;
@@ -155,6 +152,13 @@ function grabPng(stem) {
   waitForFn(() => (pngs().length > before ? true : null), 45000, 500);
   const layer = !!has('[data-testid="ks-hcard-layer-img"]', 2500);
   if (layer) click('.ks-hcard-layer');
+  /* ✦ E158-刀三后继化：/result 幸福坐标卡改走 GoldCardExporter（移动端＝下载锚点＋全屏黑金浮层 .ks-goldcard-modal）。
+     浮层不关 ⇒ 遮挡其后「切挚友」真点击（点击落浮层＝只关浮层，场景不变 ⇒ 假红，mobile/th 实锤）。 */
+  const goldModal = !!has('.ks-goldcard-modal', 2500);
+  if (goldModal) {
+    abEval(`(() => { const m = document.querySelector('.ks-goldcard-modal'); if (m) m.click(); return 'CLOSED'; })()`);
+    waitForFn(() => abEval(`!document.querySelector('.ks-goldcard-modal')`) === true ? true : null, 6000, 300);
+  }
   const dl = abEval('JSON.stringify(window.__e156dl || [])');
   const real = pngs();
   const realOk = real.length - before >= 1 && real.some((f) => Math.abs(fs.statSync(path.join(DL_DIR, f)).size - (buf ? buf.length : 0)) <= 64);
@@ -208,13 +212,13 @@ function inputPageChecks(lang, tag) {
   const pills = abEval(`[...document.querySelectorAll('[data-testid="e156-pills-input"] button')].map((b) => b.getAttribute('data-testid').replace('e156-pills-input-', '') + ':' + b.getAttribute('aria-checked'))`);
   check(`${tag} 三选一胶囊（情爱默认）`, eq(pills, ['romance:true', 'business:false', 'friendship:false']), `${pills}`);
   const cta0 = abEval(CTA);
-  check(`${tag} 情爱主按钮＝既有「测算」词条`, cta0.includes(CTA_ROMANCE[lang]), cta0);
+  check(`${tag} 情爱主按钮＝刀八字典 cta_unlock_romance（E158-刀一：「测算缘分」退役，三场景同构）`, cta0.includes(resT(lang, 'cta_unlock_romance')), cta0);
   const names = NAMES(lang);
   ab('fill', '[data-testid="e156-name-a"]', names[0]);
   ab('fill', '[data-testid="e156-name-b"]', names[1]);
   const got = abEval(`[document.querySelector('[data-testid="e156-name-a"]').value, document.querySelector('[data-testid="e156-name-b"]').value]`);
   check(`${tag} 选填称呼输入`, eq(got, names), `${got}`);
-  const ctaB = resT(lang, 'cta_business'), ctaF = resT(lang, 'cta_friendship');
+  const ctaB = resT(lang, 'cta_unlock_business'), ctaF = resT(lang, 'cta_unlock_friendship'); // ✦ E158-刀一/刀八：三场景 CTA 字典
   click('[data-testid="e156-pills-input-business"]');
   const c1 = abEval(CTA);
   check(`${tag} 商道 ⇒ 主按钮换词`, c1.includes(ctaB) && c1 !== cta0, c1);
@@ -275,7 +279,7 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
     const bodyB = abEval(`(document.body.innerText || '')`);
     check(`${tag} S 付费墙 4 条卖点随商道换词`, typeof bodyB === 'string' && resT(lang, 'feat_business').every((f) => bodyB.includes(f.replace(/^\S+\s/, ''))) && !resT(lang, 'feat_friendship').some((f) => bodyB.includes(f.replace(/^\S+\s/, ''))));
     check(`${tag} S 付费墙三档在场（$4.99/$2.99/$29.99）`, typeof bodyB === 'string' && /\$4[.,]99/.test(bodyB) && /\$2[.,]99/.test(bodyB) && /\$29[.,]99/.test(bodyB));
-    check(`${tag} S 月报/年报按钮随商道换词`, abEval(BTN_HAS(resT(lang, 'btn_monthly_scene'))) === true && abEval(BTN_HAS(resT(lang, 'btn_yearly_scene'))) === true);
+    check(`${tag} S 月报/年报按钮随商道换词`, abEval(BTN_HAS(resT(lang, 'btn_monthly_business'))) === true && abEval(BTN_HAS(resT(lang, 'btn_annual_business'))) === true);
     overflowChecks(`${tag} S 付费墙（商道）`, abEval(OVERFLOW));
     if (desktop ? lang === 'zh' || lang === 'fr' : lang === 'th' || lang === 'fr') {
       shot(`e156-${vname}-${lang}-paywall-business.png`); shotsTaken.add(`paywall-${vname}`);
@@ -303,7 +307,7 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
       check(`${tag} S 单语纯净（零 CJK${lang !== 'th' ? '/零泰文' : ''}）`, cjk === 0, `异种字符=${cjk}`);
     }
     check(`${tag} S 解锁后切换坐标条在场`, has('[data-testid="e156-scene-switch"]', 8000));
-    check(`${tag} S 年鉴按钮随商道换词`, abEval(BTN_HAS(resT(lang, 'al_monthly_scene'))) === true && abEval(BTN_HAS(resT(lang, 'al_yearly_scene'))) === true);
+    check(`${tag} S 年鉴按钮随商道换词`, abEval(BTN_HAS(resAlmanacBtn(lang, 'business', 'monthly'))) === true && abEval(BTN_HAS(resAlmanacBtn(lang, 'business', 'yearly'))) === true);
     check(`${tag} S 付费墙已退场`, !/\$4[.,]99/.test(String(abEval(`(document.querySelector('[data-testid="compat-once-metal-frame"]') || document.body).innerText.slice(0, 400)`))));
 
     /* 坐标卡（商道） */
@@ -314,7 +318,7 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
     if (desktop ? lang === 'zh' || lang === 'fr' : lang === 'th' || lang === 'fr') {
       shot(`e156-${vname}-${lang}-report-business.png`); shotsTaken.add(`report-${vname}`);
     }
-    pngChecks(`${tag} S 商道`, grabPng(`e156-card-${vname}-${lang}-business`), 'kindredsouls-business-card');
+    pngChecks(`${tag} S 商道`, grabPng(`e156-card-${vname}-${lang}-business`, '[data-testid="goldcard-export-cta"]'), 'kindredsouls-business-card');
 
     /* 原地切换：挚友 */
     click('[data-testid="e156-pills-result-friendship"]');
@@ -325,7 +329,7 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
     check(`${tag} S 挚友报告称呼融入＋零占位`, hasName(frText, names[0], lang) && hasName(frText, names[1], lang) && !/undefined|\[object Object\]/.test(frText));
     check(`${tag} S 挚友四维标签`, eq(abEval(DIMS), resT(lang, 'dim_friendship')));
     overflowChecks(`${tag} S 报告（挚友）`, abEval(OVERFLOW));
-    pngChecks(`${tag} S 挚友`, grabPng(`e156-card-${vname}-${lang}-friendship`), 'kindredsouls-friendship-card');
+    pngChecks(`${tag} S 挚友`, grabPng(`e156-card-${vname}-${lang}-friendship`, '[data-testid="goldcard-export-cta"]'), 'kindredsouls-friendship-card');
     if (desktop ? lang === 'en' : lang === 'fr') { shot(`e156-${vname}-${lang}-report-friendship.png`); shotsTaken.add(`friend-${vname}`); }
 
     /* 原地切换：情爱（既有链回归；桌面全语种） */
@@ -334,7 +338,7 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
       const roText = waitForFn(() => { const t = abEval(REPORT); return typeof t === 'string' && t.length > 150 && t !== frText ? t : null; }, 240000, 1500);
       check(`${tag} S 切情爱 ⇒ 既有报告链回归`, !!roText, roText ? `${roText.length} 字` : 'TIMEOUT');
       check(`${tag} S 情爱四维＝既有标签`, eq(abEval(DIMS), DIM_ROMANCE[lang]), `${abEval(DIMS)}`);
-      check(`${tag} S 情爱年鉴按钮复原（非场景词条）`, abEval(BTN_HAS(resT(lang, 'al_monthly_scene'))) === false);
+      check(`${tag} S 情爱年鉴按钮复原（非场景词条）`, abEval(BTN_HAS(resAlmanacBtn(lang, 'business', 'monthly'))) === false);
     }
   }
 }

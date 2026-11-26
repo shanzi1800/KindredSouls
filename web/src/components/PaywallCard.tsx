@@ -1,5 +1,5 @@
 // @ts-ignore —— 六语字典单源（E156 场景卖点/按钮换词）
-import { resT } from '../lib/resonanceI18n.mjs';
+import { resT, resReportBtn } from '../lib/resonanceI18n.mjs';
 
 interface PaywallCardProps {
   lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
@@ -30,8 +30,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: '看透TA此时此刻对你的真实想法',
       priceLabel: '单次',
       unlock: '立即解锁',
-      monthlyBtn: '解锁姻缘月报 $2.99/月',
-      yearlyBtn: '解锁姻缘年报 $29.99/年',
       secure: '安全支付 · 即时生成 · 支持退款',
     },
     en: {
@@ -48,8 +46,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: 'See what they truly think about you now',
       priceLabel: 'one-time',
       unlock: 'Unlock Now',
-      monthlyBtn: 'Love Monthly $2.99/mo',
-      yearlyBtn: 'Love Annual $29.99/yr',
       secure: 'Secure Payment · Instant AI · Refundable',
     },
     es: {
@@ -66,8 +62,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: 'Descubre qué piensan realmente de ti ahora',
       priceLabel: 'una vez',
       unlock: 'Desbloquear Ahora',
-      monthlyBtn: 'Informe Mensual $2,99/mes',
-      yearlyBtn: 'Informe Anual $29,99/año',
       secure: 'Pago · IA Instantánea · Reembolsable',
     },
     fr: {
@@ -84,8 +78,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: 'Découvrez ce qu\'ils pensent vraiment de vous maintenant',
       priceLabel: 'une fois',
       unlock: 'Débloquer Maintenant',
-      monthlyBtn: 'Rapport Mensuel $2,99/mois',
-      yearlyBtn: 'Rapport Annuel $29,99/an',
       secure: 'Paiement Sécurisé · IA Instantanée · Remboursable',
     },
     th: {
@@ -102,8 +94,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: 'ดูสิ่งที่พวกเขาคิดเกี่ยวกับคุณตอนนี้',
       priceLabel: 'ครั้งเดียว',
       unlock: 'ปลดล็อกเลย',
-      monthlyBtn: 'รายงานรายเดือน $2.99/เดือน',
-      yearlyBtn: 'รายงานรายปี $29.99/ปี',
       secure: 'ชำระเงินปลอดภัย · AI ทันที · คืนเงินได้',
     },
     vi: {
@@ -120,8 +110,6 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
       bonusDetail: 'Xem họ thực sự nghĩ gì về bạn ngay bây giờ',
       priceLabel: 'lần dùng',
       unlock: 'Mở khóa ngay',
-      monthlyBtn: 'Báo Cáo Tháng $2.99/tháng',
-      yearlyBtn: 'Báo Cáo Năm $29.99/năm',
       secure: 'Thanh toán An toàn · AI Tức thì · Hoàn tiền được',
     },
   };
@@ -139,8 +127,12 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
   const e156Feat = e156Row(`feat_${e156Scene}`);
   const features = (e156Feat && e156Feat.length === 4) ? e156Feat : c.features;
   const e156IsScene = e156Scene !== 'romance';
-  const monthlyBtn = e156IsScene ? resT(lang, 'btn_monthly_scene') : c.monthlyBtn;
-  const yearlyBtn = e156IsScene ? resT(lang, 'btn_yearly_scene') : c.yearlyBtn;
+  // ✦ E158-刀五（主公军令 2026-11-26）：月/年报命名三场景一对一对齐（「姻缘月报/年报」「关系月报/年报」全站退役）
+  //    ⇒ 六语统一走字典 btn_{monthly|annual}_{scene} ＋ 价格后缀（fr/es 小数逗号）；价格永驻（E85-② 沿革）。
+  const monthlyBtn = resReportBtn(lang, e156Scene, 'monthly');
+  const yearlyBtn = resReportBtn(lang, e156Scene, 'yearly');
+  // ✦ E158-刀四：限时加赠副标题按场景微调（商道/挚友不再写情感读心文案；情爱沿用既有词条逐字）
+  const bonusDetail = e156IsScene ? resT(lang, `tarot_bonus_detail_${e156Scene}`) : c.bonusDetail;
 
   return (
     <div style={{
@@ -217,8 +209,8 @@ const PaywallCard = ({ lang, loading, onPurchase, activePlan = false, scene }: P
         <div style={{ fontSize: '12px', color: '#e0e0f0', fontWeight: 600, marginBottom: '1px' }}>
           {c.bonusDesc}
         </div>
-        <div style={{ fontSize: '10px', color: '#8888aa', lineHeight: 1.5 }}>
-          {c.bonusDetail}
+        <div style={{ fontSize: '10px', color: '#8888aa', lineHeight: 1.5 }} data-testid="e158-tarot-bonus-detail">
+          {bonusDetail}
         </div>
       </div>
 

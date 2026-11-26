@@ -234,8 +234,10 @@ test('E103-③-5 数字本地化：fr/es locales 价格全逗号＋无点号价�
   assert.ok(ES_JSON.familiar.needUnlock.includes('$4,99'), 'es 灵宠锁档价格逗号缺失');
   // 组件侧 fr/es 价格逗号（军令例：$4,99）
   assert.ok(PAYWALL.includes("['fr', 'es'].includes(lang) ? '$4,99' : '$4.99'"), 'PaywallCard 主档标价 fr/es 逗号分流缺失');
-  assert.ok(PAYWALL.includes('Rapport Mensuel $2,99/mois') && PAYWALL.includes('Rapport Annuel $29,99/an'), 'fr 月/年 CTA 价格逗号缺失');
-  assert.ok(PAYWALL.includes('Informe Mensual $2,99/mes') && PAYWALL.includes('Informe Anual $29,99/año'), 'es 月/年 CTA 价格逗号缺失');
+  // 🔴 后继化（E158-刀五）：月/年报按钮文案迁入字典单源 resonanceI18n.mjs（价格后缀同表）
+  const RES_I18N = read('web/src/lib/resonanceI18n.mjs');
+  assert.ok(RES_I18N.includes("fr: ' $2,99/mois'") && RES_I18N.includes("fr: ' $29,99/an'"), 'fr 月/年 CTA 价格逗号缺失');
+  assert.ok(RES_I18N.includes("es: ' $2,99/mes'") && RES_I18N.includes("es: ' $29,99/año'"), 'es 月/年 CTA 价格逗号缺失');
   assert.ok(UPGRADE.includes("priceLabel = (price && (lang === 'fr' || lang === 'es')) ? String(price).replace('.', ',') : price"), '升阶弹窗标价 fr/es 逗号分流缺失');
   assert.ok(CASHIER.includes("L === 'fr' || L === 'es'"), '收银台标价 fr/es 逗号分流缺失');
 });
@@ -280,7 +282,7 @@ test('E103-⑤ 存量作废：COMPAT_PERSIST_VERSION v5（旧 fr/es 报告 Qian2
 
 test('E103-⑥ 军规链基线 79 段（e103/e104 居 e102 后 e40 前、e40 恒 len-2、python 恒链尾）', () => {
   const parts = PKG.scripts['test:astro'].split('&&').map(s => s.trim()).filter(Boolean);
-  assert.strictEqual(parts.length, 123, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80
+  assert.strictEqual(parts.length, 124, '军规链段数漂移：' + parts.length);   // 🛡️ E105 后继化：79→80   // 🔴 后继化（E158 入编）：123→124
   const e40 = parts.findIndex(p => p.includes('e40-compat'));
   assert.strictEqual(e40, parts.length - 2, 'e40-compat 须恒为 len-2');
   assert.ok(parts[parts.length - 1].includes('python3'), 'python 须恒为链尾');

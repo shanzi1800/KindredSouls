@@ -219,7 +219,8 @@ for (const [w, h, vname, onlyLang] of VIEWPORTS) {
     const pm = abEval(PH_MEASURE);
     for (const x of (Array.isArray(pm) ? pm : [])) if (x) info(`${tag} A placeholder 量宽（${x.textW > x.innerW ? '⚠️ 可能被原生 input 裁切' : '完整可显'}）`, `"${x.ph.slice(0, 28)}…" 字宽=${x.textW}px 内宽=${x.innerW}px`);
     const dIn = disclaimerChecks(`${tag} A`, '输入页（主按钮正下方）', abEval(PROBE('[data-testid="e157-disclaimer-input"]')), lang);
-    if (dIn) check(`${tag} A 输入页声明位置＝主按钮之后、条款同意句之前`, dIn.before === 'BUTTON:e156-cta' && /^P:点击|^P:By clicking|^P:Al hacer|^P:En cliquant|^P:การคลิก|^P:Bằng/.test(String(dIn.after)), `before=${dIn.before} after=${String(dIn.after).slice(0, 18)}`);
+    // ✦ E158-刀一/刀八：同意句改通用表述 consent_continue_note（zh「点击上方按钮…」/en「By continuing…」等）
+    if (dIn) check(`${tag} A 输入页声明位置＝主按钮之后、条款同意句之前`, dIn.before === 'BUTTON:e156-cta' && /^P:点击上方按钮|^P:By continuing|^P:Al continuar|^P:En continuant|^P:การดำเนินการต่อ|^P:Tiếp tục/.test(String(dIn.after)), `before=${dIn.before} after=${String(dIn.after).slice(0, 18)}`);
     overflowChecks(`${tag} A 输入页`, abEval(OVERFLOW));
     shot(`e157-${vname}-${lang}-input.png`, '[data-testid="e157-disclaimer-input"]'); shotsTaken.add(`input-${vname}`);
     termsChecks(lang, `${tag} A`, '服务条款弹窗', '.ks-legal-modal', () => {

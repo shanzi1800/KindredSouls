@@ -7,11 +7,16 @@
  *   · 移动端（≤768px）：唤起全屏黑金 Modal 展示 <img src="blob:..." />，
  *     提示「长按图片保存至相册」；弹层关闭强制 revokeObjectURL 释放显存。
  * 🔴 离线铁律：绘制与导出全程零 fetch/XHR（闸门 ④-2 断言锁定）。
+ * ✦ E158-刀三④（主公军令 2026-11-26）：share 在场 ⇒ 幸福坐标卡接管本按钮（按钮文案随 ctaLabel；
+ *   移动端支持环境 ⇒ 原生分享高清 PNG，否则长按浮层；桌面 ⇒ a download 落盘）——与星语灵犀卡
+ *   同一交互；share 缺省 ⇒ 命盘金卡原路径逐字保留（备复活）。Blob 直取 happinessCardToBlob（零 fetch）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { drawGoldCard, goldCardToBlob } from '../../lib/drawGoldCard';
 import type { GoldCardPayload } from '../../lib/drawGoldCard';
+// @ts-ignore —— 幸福坐标卡纯 JS Canvas 核
+import { happinessCardToBlob } from '../../lib/happinessCard.mjs';
 
 /** 六语文案（组件内联字典——App.tsx TXT 惯例，零 i18n 键数扰动） */
 const L_EXPORT = {
@@ -35,9 +40,13 @@ const L_EXPORT = {
 export interface GoldCardExporterProps {
   locale: 'zh' | 'en' | 'fr' | 'es' | 'th' | 'vi';
   payload: GoldCardPayload;
+  /** ✦ E158-刀三④：幸福坐标卡接管（在场 ⇒ 导出/分享该卡；缺省 ⇒ 命盘金卡原路径） */
+  share?: { payload: Record<string, unknown>; fileStem: string; title: string } | null;
+  /** ✦ E158-刀三④：按钮文案覆盖（六语字典 btn_save_share_card） */
+  ctaLabel?: string | null;
 }
 
-export default function GoldCardExporter({ locale, payload }: GoldCardExporterProps) {
+export default function GoldCardExporter({ locale, payload, share = null, ctaLabel = null }: GoldCardExporterProps) {
   const [busy, setBusy] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -74,10 +83,38 @@ export default function GoldCardExporter({ locale, payload }: GoldCardExporterPr
     if (busy) return;
     setBusy(true);
     try {
-      const canvas = document.createElement('canvas');
-      await drawGoldCard(canvas, payload);
-      const blob = await goldCardToBlob(canvas);
+      // ✦ E158-刀三④：share 在场 ⇒ 幸福坐标卡 Blob 直取（纯前端离线，零请求）
+      let blob: Blob | null = null;
+      if (share) {
+        const hb = await happinessCardToBlob(share.payload);
+        if (hb && hb.size >= 1024) blob = hb;
+      } else {
+        const canvas = document.createElement('canvas');
+        await drawGoldCard(canvas, payload);
+        blob = await goldCardToBlob(canvas);
+      }
+      if (!blob) return;
+      const stem = share ? share.fileStem : `kindredsouls-goldcard-${payload.d1 || 'chart'}`;
+      if (share) {
+        const nav = (typeof navigator !== 'undefined' ? navigator : {}) as Navigator & { canShare?: (d?: ShareData) => boolean };
+        if (isMobile && nav.share && nav.canShare) {
+          const file = new File([blob], `${stem}.png`, { type: 'image/png' });
+          if (nav.canShare({ files: [file] })) {
+            await nav.share({ files: [file], title: share.title });
+            return;
+          }
+        }
+      }
       if (isMobile) {
+        // ✦ E158-刀三：坐标卡（share 在场）移动端沿用 E156 坐标卡同款交互——先走下载锚点，再开浮层长按双保险
+        //（部分 WebView 下载属性失效时浮层兜底）；命盘金卡原路径（无 share）保持不动。
+        if (share) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `${stem}.png`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        }
         if (blobRef.current) URL.revokeObjectURL(blobRef.current);
         const url = URL.createObjectURL(blob);
         blobRef.current = url;
@@ -87,7 +124,7 @@ export default function GoldCardExporter({ locale, payload }: GoldCardExporterPr
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `kindredsouls-goldcard-${payload.d1 || 'chart'}.png`;
+        a.download = `${stem}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -96,7 +133,7 @@ export default function GoldCardExporter({ locale, payload }: GoldCardExporterPr
     } finally {
       setBusy(false);
     }
-  }, [busy, isMobile, payload]);
+  }, [busy, isMobile, payload, share]);
 
   const t = (k: keyof typeof L_EXPORT) => (L_EXPORT[k][locale] || L_EXPORT[k].en);
 
@@ -114,7 +151,7 @@ export default function GoldCardExporter({ locale, payload }: GoldCardExporterPr
           minWidth: '200px', minHeight: '44px',
         }}
       >
-        {busy ? t('forging') : t('cta')}
+        {busy ? t('forging') : (ctaLabel || t('cta'))}
       </button>
 
       {blobUrl && isMobile && (

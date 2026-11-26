@@ -16165,6 +16165,8 @@ app.post('/api/tarot/daily', async (req, res) => {
     // ② 入参归一：lang 六语白名单；chart_sig 显式优先、body 五参就地铸签兜底
     const b = req.body || {};
     const lang = TAROT_DAILY_LANGS.indexOf(String(b.lang || 'zh')) >= 0 ? String(b.lang) : 'zh';
+    // ✦ E158-刀四：场景白名单（business / friendship ⇒ 牌义走场景语境；romance 缺省零变）
+    const tarotScene = (b.scene === 'business' || b.scene === 'friendship') ? b.scene : 'romance';
     let chartSig = normalizeWealthChartSig(b.chart_sig);
     if (!chartSig) {
       const _cast = wealthChartSigOf(b.birthDate, b.birthTime, b.lat, b.lon, b.tz);
@@ -16206,14 +16208,14 @@ app.post('/api/tarot/daily', async (req, res) => {
     if (!draw) return res.status(400).json({ error: 'INVALID_CHART' });
 
     // ⑥ 内容：进程内当日缓存优先（复读零 LLM 零计数）；缓存失守 ⇒ 重生成（不重复计数）
-    const cacheKey = dayKey + '|' + chartSig;
+    const cacheKey = dayKey + '|' + chartSig + '|' + lang + (tarotScene === 'romance' ? '' : '|' + tarotScene);
     let out = _e148TarotDailyCache.get(cacheKey) || null;
     let servedFromCache = !!out;
     if (!out) {
       const namesMod = await _e148TarotNamesCore();
       const nameL = namesMod.tarotCardName ? namesMod.tarotCardName(draw.id, lang) : null;
       const nameZh = namesMod.tarotCardName ? namesMod.tarotCardName(draw.id, 'zh') : null;
-      const reading = await _e148TarotDailyReading(draw, bd, lang);
+      const reading = await _e148TarotDailyReading(draw, bd, lang, tarotScene);
       out = {
         card: { id: draw.id, name: nameL, nameZh, reversed: draw.reversed },
         reading,
@@ -16257,7 +16259,7 @@ app.post('/api/tarot/daily', async (req, res) => {
  * 即便本端点非对话舱，文案仍守 E130 克制令）。失败 ⇒ 六语确定性兜底行（零 LLM 依赖
  * 也不断交付）。牌名走 tarotNames.mjs 单源查表（禁臆造其他牌名——E109 血训）。
  */
-async function _e148TarotDailyReading(draw, birthDate, lang) {
+async function _e148TarotDailyReading(draw, birthDate, lang, tarotScene = 'romance') {
   const namesMod = await _e148TarotNamesCore();
   const nameL = namesMod.tarotCardName ? namesMod.tarotCardName(draw.id, lang) : null;
   const nameZh = namesMod.tarotCardName ? namesMod.tarotCardName(draw.id, 'zh') : null;
@@ -16271,7 +16273,22 @@ async function _e148TarotDailyReading(draw, birthDate, lang) {
     vi: 'Chỉ viết bằng tiếng Việt.',
   }[lang] || 'Write in English only.';
   const systemText = 'You are the daily tarot reader of KindredSouls. Write ONE warm, grounded, encouraging short daily reading (3 sentences max). Base it only on the given card and orientation. Never mention prices, payments, purchases, or subscriptions. Never invent other card names. Never predict death, breakups, or disasters.';
-  const userText = `Today's tarot card for a person born on ${birthDate}: "${nameForPrompt}" (${draw.reversed ? 'Reversed' : 'Upright'}). ${langLine}`;
+  // ✦ E158-刀四（主公军令 2026-11-26）：商道/挚友 ⇒ 牌义走场景语境（tarotScenes.mjs 六语权威字典）；
+  //    Prompt 显式声明「this is never a romance reading」⇒ 零情感穿帮词；情爱（缺省）逐字节不变。
+  let _e158SceneLine = '';
+  if (tarotScene === 'business' || tarotScene === 'friendship') {
+    try {
+      const sceneMod = await import('./web/src/lib/tarotScenes.mjs');
+      const sceneMeaning = sceneMod.tarotSceneMeaning ? sceneMod.tarotSceneMeaning(draw.id, lang, tarotScene) : '';
+      if (sceneMeaning) {
+        _e158SceneLine = (tarotScene === 'business'
+          ? ' Context: this is a business partnership reading (focus: collaboration resilience, decisiveness, boundaries of the bigger picture). It is never a romance reading — never use romance wording. '
+          : ' Context: this is a close friendship reading (focus: sincere support, emotional ease, long-lasting mutual understanding). It is never a romance reading — never use romance wording. ')
+          + `Base your reading on this card meaning for the context (authoritative): "${sceneMeaning}"`;
+      }
+    } catch (e) { console.warn('[E158] tarot scene meaning unavailable:', (e && e.message) || e); }
+  }
+  const userText = `Today's tarot card for a person born on ${birthDate}: "${nameForPrompt}" (${draw.reversed ? 'Reversed' : 'Upright'}). ${langLine}${_e158SceneLine}`;
   try {
     const out = await callAI(systemText, userText, process.env, { maxTokens: 700, reportType: 'tarot_daily' });
     if (out && String(out).trim()) return String(out).trim();
@@ -18269,6 +18286,10 @@ app.use('/api/ai-advisor', async (req, res) => {
         _e156Tarot
           ? `Tarot card drawn for this reading: ${_e156Clip(_e156Tarot.name, 40)} — orientation: ${_e156Clip(_e156Tarot.orientation, 24)}. Name it with its orientation and never contradict it.`
           : 'Tarot: (no card — do not invent one)',
+        // ✦ E158-刀四：场景牌义（权威；绝不改写成情爱解读）
+        (_e156Tarot && typeof _e156Tarot.meaning === 'string' && _e156Tarot.meaning.trim().length >= 20)
+          ? `Tarot meaning for THIS scene (authoritative; never reframe it as a romance reading): ${_e156Clip(_e156Tarot.meaning, 900)}`
+          : '',
         _e156SynBlock ? `Synastry tensor (Swiss Ephemeris):\n${_e156SynBlock}` : 'Synastry tensor: unavailable — do NOT cite any planetary aspect, sign, Ascendant or house.',
         _e156Degraded
           ? 'DEGRADATION NOTICE: at least one birth time is unknown, so the Ascendant and houses are UNKNOWN and the Moon is a date-level estimate. You MUST state this openly in one plain sentence and MUST NOT mention an Ascendant or any house placement.'
@@ -18318,7 +18339,14 @@ app.use('/api/ai-advisor', async (req, res) => {
     }
 
     // ── 普通合盘洞察(旧逻辑)──
-    const cacheKey = `${d1 || ''}|${d2 || ''}|${lang}|${reportType}`;
+    // ✦ E158-刀六（主公军令 2026-11-26）：情爱深度报告称呼代入——用户亲填称呼 ⇒ 缓存键掺称呼哈希盐
+    //    （与无称呼旧缓存隔离）；未填 ⇒ 后缀为空、缓存键与请求形态逐字节不变。
+    const _e158A = (reportType === 'compatibility') ? sanitizeDisplayName(req.body && req.body.nameA) : '';
+    const _e158B = (reportType === 'compatibility') ? sanitizeDisplayName(req.body && req.body.nameB) : '';
+    const _e158Typed = [_e158A, _e158B].filter(Boolean);
+    const _e158NameH = (a, b) => { let h = 5381; const t = `${a}\u0000${b}`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+    const _e158Salt = _e158Typed.length ? `|e158_${_e158NameH(_e158A, _e158B)}` : '';
+    const cacheKey = `${d1 || ''}|${d2 || ''}|${lang}|${reportType}${_e158Salt}`;
     const since = new Date(Date.now() - 24*3600*1000).toISOString();
 
     const SB_URL = process.env.SUPABASE_URL;
@@ -18367,6 +18395,12 @@ app.use('/api/ai-advisor', async (req, res) => {
         lang === 'vi' ? `${tarotLock}${tarotLock ? ' ' : ''}Bạn là cố vấn mối quan hệ AI của KindredSouls. Dựa trên: Bazi=${bazi}, Zodiac=${zodiac}, I Ching=${iching}. Đưa ra 4 câu ấm áp, tích cực về mối quan hệ giữa ${d1} và ${d2}. Chỉ tiếng Việt. Không dự đoán chia tay.` :
         `分析 ${d1} 和 ${d2} 的命理合盘。温暖、积极的情感解读。`)
       : `分析 ${d1} 的财富格局。专业财富建议,禁止输出其他语言。`;
+    // ✦ E158-刀六：称呼原样锁（沿用 E156 规则——严禁音译/意译/改写）：亲填称呼逐条点名写入 Prompt；
+    //    未填称呼 ⇒ e158Prompt === prompt（旧 Prompt 逐字节不变）。
+    const e158Prompt = _e158Typed.length
+      ? `${prompt}\n\n[NAME LOCK — MANDATORY] Weave each of these names naturally into the insight at least once, exactly as written — character-for-character; never transliterated, translated, respelled or shortened: ${_e158Typed.join(' ; ')}. The first name is the reader; the second (if present) is their partner. Address the reader as "you" and refer to the partner by name.`
+      : prompt;
+    const _e158NameMiss = (t) => _e158Typed.filter((n) => !String(t || '').includes(n));
 
 
     // ── DeepSeek 直连,失败自动切 Gemini 免费层 ──
@@ -18379,7 +18413,8 @@ app.use('/api/ai-advisor', async (req, res) => {
         const aiRes = await safeFetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
-          body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: LEGAL_COMPLIANCE_GUARDRAILS }, { role: 'user', content: prompt }], max_tokens: 800, temperature: 0.35 }),
+          // ✦ E158-刀六：🔴 后继化——旧 user 消息字面（content 取 prompt）改吃 e158Prompt（无称呼时二者逐字节相等）
+          body: JSON.stringify({ model: 'deepseek-flash', thinking: { type: 'disabled' }, messages: [{ role: 'system', content: LEGAL_COMPLIANCE_GUARDRAILS }, { role: 'user', content: e158Prompt }], max_tokens: 800, temperature: 0.35 }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json();
@@ -18401,7 +18436,7 @@ app.use('/api/ai-advisor', async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
+              contents: [{ parts: [{ text: e158Prompt }] }],
               systemInstruction: { parts: [{ text: LEGAL_COMPLIANCE_GUARDRAILS + '\n\n' + '你是一个财富月报生成器。绝对禁止输出任何英文指令、自我纠错记录、思考过程或指令摘要。你的输出必须直接以报告正文开头，第一个字符必须是「✦」。禁止输出任何类似"No English"、"Self-Correction"、instruction summary 等元文本。' }] },
               generationConfig: { maxOutputTokens: 800, temperature: 0.3 },
             }),
@@ -18417,6 +18452,17 @@ app.use('/api/ai-advisor', async (req, res) => {
     }
 
     if (!insight) return res.status(500).json({ error: 'All AI providers failed' });
+
+    // ✦ E158-刀六：称呼原样锁——亲填称呼未逐字出现（被音译/意译/改写）⇒ 带违规点名重试恰一次（callAI 单通道）；
+    //    重试稿须更优才替换；仍不达标如实告警后照常交付（绝不因称呼丢整篇付费报告）。
+    if (_e158Typed.length && _e158NameMiss(insight).length) {
+      console.warn('[E158] romance name lock violated on first draft — retrying once:', _e158NameMiss(insight).join(' / '));
+      try {
+        const _e158Retry = String(await callAI(LEGAL_COMPLIANCE_GUARDRAILS, `${e158Prompt}\n\n[NAME LOCK VIOLATION — FIX] A previous draft altered the names. Every occurrence of the names must be copied character-for-character from the lines above; no transliteration, no translation, no respelling. Rewrite the full insight now.`, process.env, { maxTokens: 800, reportType: 'once' }) || '').trim();
+        if (_e158Retry.length >= 60 && _e158Retry.length >= insight.length * 0.6 && _e158NameMiss(_e158Retry).length < _e158NameMiss(insight).length) insight = _e158Retry;
+      } catch (e) { console.warn('[E158] romance name lock retry skipped:', e.message); }
+      if (_e158NameMiss(insight).length) console.warn('[E158] romance name lock still violated after retry:', _e158NameMiss(insight).join(' / '));
+    }
 
     // ── 写入缓存(直接 REST)──
     await safeFetch(

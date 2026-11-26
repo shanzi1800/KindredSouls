@@ -63,14 +63,17 @@ test('E85-②-1 年鉴六语统一词条（军令原文给定，永久带金额�
     assert.ok(dict.includes(k), `年鉴字典缺 ${k}`);
   }
   // 军令给定锚点抽检（zh 全锁＋en/th 抽检）
-  assert.ok(dict.includes("'📅 解锁姻缘月报 $2.99'"), 'zh 月报词条漂移违令');
-  assert.ok(dict.includes("'👑 解锁姻缘年报 $29.99'"), 'zh 年报词条漂移违令');
-  assert.ok(dict.includes('Unlock Monthly Love Report $2.99'), 'en 月报词条漂移违令');
-  assert.ok(dict.includes('Unlock Annual Love Report $29.99'), 'en 年报词条漂移违令');
-  assert.ok(dict.includes('ปลดล็อกรายงานดวงความรักรายเดือน $2.99'), 'th 月报词条漂移违令');
-  // 金额永久呈现：12 键全带 $2.99 / $29.99
-  const moneyCount = (dict.match(/\$2\.99/g) || []).length;
-  const yearCount = (dict.match(/\$29\.99/g) || []).length;
+  // 🔴 后继化（E158-刀五，主公军令 2026-11-26）：「姻缘月报/年报」全站退役 ⇒ 情爱档「解锁情爱月报/年报」；
+  //    fr/es 金额改欧洲小数逗号（与 paywallPriceContract 同口径）
+  assert.ok(dict.includes("'📅 解锁情爱月报 $2.99'"), 'zh 月报词条漂移违令');
+  assert.ok(dict.includes("'👑 解锁情爱年报 $29.99'"), 'zh 年报词条漂移违令');
+  assert.ok(dict.includes('Unlock Romance Monthly $2.99'), 'en 月报词条漂移违令');
+  assert.ok(dict.includes('Unlock Romance Annual $29.99'), 'en 年报词条漂移违令');
+  assert.ok(dict.includes('ปลดล็อกรายเดือนความรัก $2.99'), 'th 月报词条漂移违令');
+  assert.equal(dict.split('\n').filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l)).join('\n').includes('姻缘'), false, '「姻缘」字眼退役（E158-刀五；注释不计）');
+  // 金额永久呈现：12 键全带 $2.99 / $29.99（fr/es 为 $2,99 / $29,99）
+  const moneyCount = (dict.match(/\$2[.,]99/g) || []).length;
+  const yearCount = (dict.match(/\$29[.,]99/g) || []).length;
   assert.ok(moneyCount >= 6 && yearCount >= 6, '六语月报/年报金额未全覆盖');
 });
 

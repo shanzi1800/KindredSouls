@@ -14,12 +14,20 @@ type Props = {
 };
 
 const MOBILE_QUERY = '(max-width: 768px)';
+/** 六语自容：移动端长按浮层提示（与 GoldCardExporter 同文） */
+const L_LONG_PRESS: Record<string, string> = {
+  zh: '长按图片保存至相册', en: 'Long-press the image to save it', fr: 'Appui long sur l\u2019image pour enregistrer',
+  es: 'Mantén pulsada la imagen para guardarla', th: 'กดค้างที่ภาพเพื่อบันทึกลงอัลบั้ม', vi: 'Nhấn giữ ảnh để lưu vào thư viện',
+};
 
 /**
- * 幸福坐标卡嵌入块（E156）：预览缩略 ＋ 单一「保存 / 分享」按钮。
+ * 幸福坐标卡嵌入块（E156）：预览缩略 ＋ 单一「保存 / 分享」按钮（财富页）。
+ *   ✦ E158-刀三（主公军令 2026-11-26）：/result 挂载位预览框正下方的重复按钮退役（与下方
+ *   合规声明后的「保存 / 分享幸福坐标卡」二选一重复）⇒ mount === 'result' 只留预览；
+ *   财富页（mount === 'wealth'）保留唯一主按钮，文案同字典 btn_save_share_card。
  *   · 移动端且系统分享支持文件 ⇒ 直接唤起系统分享（带高清 PNG）。
  *   · 其余 ⇒ 下载高清 PNG；移动端另开大图浮层供长按保存（部分 WebView 下载属性失效）。
- *   🔴 零 window.open、零独立对话窗；卡片二维码恒指首页。
+ *   🔴 零 window.open、零独立对话窗。
  */
 export default function HappinessCard({ payload, lang, fileStem, mount = 'result' }: Props) {
   const [preview, setPreview] = useState<string>('');
@@ -27,6 +35,8 @@ export default function HappinessCard({ payload, lang, fileStem, mount = 'result
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
   const L = String(lang || 'zh').split('-')[0];
+  // ✦ E158-刀三：result 挂载位不渲染保存按钮（唯一按钮＝合规声明下方「保存 / 分享幸福坐标卡」）
+  const showSave = mount !== 'result';
 
   useEffect(() => {
     let alive = true;
@@ -80,12 +90,12 @@ export default function HappinessCard({ payload, lang, fileStem, mount = 'result
       <div className={`ks-hcard-preview${preview ? '' : ' ks-hcard-preview--pending'}`} data-testid="ks-hcard-preview" style={{ backgroundColor: '#05050A' }}>
         {preview ? <img src={preview} alt={resT(L, 'card_preview_title')} data-testid="ks-hcard-preview-img" /> : '…'}
       </div>
-      <button className="ks-hcard-btn" onClick={onSave} disabled={busy} data-testid="ks-hcard-save">{busy ? '…' : resT(L, 'card_save_share')}</button>
+      {showSave && <button className="ks-hcard-btn" onClick={onSave} disabled={busy} data-testid="ks-hcard-save">{busy ? '…' : resT(L, 'btn_save_share_card')}</button>}
       {err && <p className="ks-hcard-err" role="alert">{resT(L, 'err_generic')}</p>}
       {layer && (
         <div className="ks-hcard-layer" role="dialog" aria-label="card preview" onClick={closeLayer}>
           <img src={layer} alt="" data-testid="ks-hcard-layer-img" />
-          <p className="ks-hcard-layer-hint">{resT(L, 'card_save_share')}</p>
+          <p className="ks-hcard-layer-hint">{L_LONG_PRESS[L] || L_LONG_PRESS.en}</p>
         </div>
       )}
     </div>
