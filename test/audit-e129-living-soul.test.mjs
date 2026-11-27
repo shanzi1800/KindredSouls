@@ -256,7 +256,7 @@ test('E129-S10 链位自保：e129 入编（e127 后、e40-compat 前；全链 9
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 124, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124
+  assert.equal(segs.length, 125, `军规链段数下界（E131 入编后 98→99；实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
   const iE129 = segs.findIndex((s) => s.includes('audit-e129-living-soul'));
   const iE127 = segs.findIndex((s) => s.includes('audit-e127-legal-routing-modal'));
   const iCompat = segs.findIndex((s) => s.includes('audit-e40-compat'));

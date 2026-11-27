@@ -85,7 +85,12 @@ const D = {
      🔴 称呼去真名化引导（placeholder 专用；坐标卡缺省称呼仍取 name_you_ph / name_ta_ph ＝「我 / TA」）、
         合规定位声明（三处常驻小字）、协议禁限条款（Terms 末章；正文取 tos_prohibited_use_notice）。 */
   nickname_self_placeholder: ['你的昵称或代号（选填）', 'Your nickname (optional)', 'Votre surnom (facultatif)', 'Tu apodo (opcional)', 'ชื่อเล่นของคุณ (ไม่บังคับ)', 'Biệt danh của bạn (tùy chọn)'],
-  nickname_partner_placeholder: ['TA 的昵称或代号（选填）', 'Partner nickname (optional)', "Surnom de l'autre (facultatif)", 'Apodo del otro (opcional)', 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', 'Biệt danh đối phương (tùy chọn)'],
+  nickname_partner_placeholder: ['TA 的昵称或代号（选填）', 'Their nickname (opt.)', 'Surnom (facultatif)', 'Su apodo (opc.)', 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', 'Biệt danh họ (tùy chọn)'],
+  // ✦ E159-刀六（主公军令 2026-11-27）：三场景易经标题 ＋ 年鉴已解锁直达态（六语逐字，严禁机翻）
+  iching_heading_romance: ['姻缘解读', 'Romance Reading', 'Lecture Amour', 'Lectura de Amor', 'คำทำนายความรัก', 'Luận Giải Tình Ái'],
+  iching_heading_business: ['商道解读', 'Alliance Reading', 'Lecture Alliance', 'Lectura de Alianza', 'คำทำนายพันธมิตร', 'Luận Giải Đồng Hành'],
+  iching_heading_friendship: ['挚友解读', 'Kindred Reading', 'Lecture Complicité', 'Lectura de Afinidad', 'คำทำนายกัลยาณมิตร', 'Luận Giải Tri Kỷ'],
+  btn_unlocked_view: ['已解锁 · 点击查看', 'Unlocked · View', 'Débloqué · Voir', 'Desbloqueado · Ver', 'ปลดล็อกแล้ว · เปิดอ่าน', 'Đã mở khóa · Xem'],
   /* ✦ E158（主公军令 2026-11-26 裁决）：placeholder 缩短措辞（不撑宽输入框）——六语零截断且保留「昵称/选填」引导 */
   consent_continue_note: ['点击上方按钮即表示你同意服务条款和隐私政策。', 'By continuing, you agree to our Terms of Service and Privacy Policy.', 'En continuant, vous acceptez nos Conditions et notre Politique de confidentialité.', 'Al continuar, aceptas nuestros Términos y Política de Privacidad.', 'การดำเนินการต่อถือว่าคุณยอมรับข้อกำหนดและนโยบายความเป็นส่วนตัว', 'Tiếp tục đồng nghĩa bạn đồng ý với Điều khoản và Chính sách bảo mật.'],
   tarot_gate_hint: ['请先解锁 $4.99 深度坐标报告，即可开启今日塔罗', 'Unlock the $4.99 full report first to access Today\'s Tarot', 'Débloquez d\'abord le rapport à 4,99 $ pour le Tarot du jour', 'Desbloquea primero el informe de $4.99 para el Tarot de hoy', 'ปลดล็อกรายงาน $4.99 ก่อน เพื่อเปิดไพ่ทาโรต์ประจำวัน', 'Mở khóa báo cáo $4.99 trước để xem Tarot hôm nay'],

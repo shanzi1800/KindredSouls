@@ -135,7 +135,7 @@ test('E135-S 链位自保：e135 入编（e134 后、e40-compat 前；全链 102
   const pkg = JSON.parse(read('package.json'));
   const chain = pkg.scripts['test:astro'];
   const segs = chain.split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 124, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124
+  assert.equal(segs.length, 125, `军规链段数须为 103（E135 入编后 102→103；实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
   const iE135 = segs.findIndex((s) => s.includes('audit-e135-chat-geometry-pills'));
   const iE134 = segs.findIndex((s) => s.includes('audit-e134-aesthetic-25d-route-map'));
   const iCap = segs.findIndex((s) => s.includes('audit-e40-compat'));

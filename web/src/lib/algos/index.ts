@@ -7,6 +7,7 @@ import { calcIChing, getIndividualIChingProfile } from './iching';
 import type { IndividualIChingProfile } from './iching';
 import { normalizeLang, t as at } from './i18n';
 import type { AlgLang } from './i18n';
+import { normalizeCompatScene, sceneText } from './sceneI18n';
 
 // ═════════════════════════════════════════
 // 综合合盘引擎
@@ -218,30 +219,35 @@ function generateAspects(
   bazi: EngineResult,
   zodiac: EngineResult,
   iching: EngineResult,
-  lang: AlgLang
+  lang: AlgLang,
+  scene: unknown = 'romance'
 ): { lucky: string[]; challenging: string[] } {
+  // 🤝 E159-刀二：商道/挚友下四个情爱向提示词换场景词
+  const _sc = normalizeCompatScene(scene);
+  const SX = _sc !== 'romance' ? sceneText(_sc, lang) : null;
+  const asp = (key: 'deep_fate' | 'attraction_strong' | 'chemistry_cultivate' | 'freshness') => (SX ? SX.aspect(key) : at(key, lang));
   const lucky: string[] = [];
   const challenging: string[] = [];
 
   // 基于整体分
-  if (overall >= 80) lucky.push(at('deep_fate', lang));
+  if (overall >= 80) lucky.push(asp('deep_fate'));
   if (bazi.score >= 78) lucky.push(at('wuxing_potential', lang));
   if (zodiac.score >= 78) lucky.push(at('zodiac_harmony', lang));
   if (iching.score >= 78) lucky.push(at('iching_trend', lang));
 
-  if (dims.love >= 80) lucky.push(at('attraction_strong', lang));
+  if (dims.love >= 80) lucky.push(asp('attraction_strong'));
   if (dims.communication >= 80) lucky.push(at('comm_low_cost', lang));
   if (dims.stability >= 80) lucky.push(at('stability_good', lang));
 
   if (dims.communication <= 62) challenging.push(at('comm_patience', lang));
   if (dims.stability <= 62) challenging.push(at('stability_goal', lang));
-  if (dims.chemistry <= 62) challenging.push(at('chemistry_cultivate', lang));
+  if (dims.chemistry <= 62) challenging.push(asp('chemistry_cultivate'));
   if (bazi.score <= 58) challenging.push(at('bazi_polish', lang));
   if (zodiac.score <= 58) challenging.push(at('zodiac_misalign', lang));
 
   // 保证至少各有一条
   if (lucky.length === 0) lucky.push(at('growth_will', lang));
-  if (challenging.length === 0) challenging.push(at('freshness', lang));
+  if (challenging.length === 0) challenging.push(asp('freshness'));
 
   return { lucky: lucky.slice(0, 4), challenging: challenging.slice(0, 3) };
 }
@@ -251,7 +257,8 @@ function generateAspects(
 export function calculateCompatibility(
   date1: string,
   date2: string,
-  lang?: string
+  lang?: string,
+  scene?: unknown
 ): CompatibilityResult | { error: string } {
   const p1 = parseBirthday(date1);
   const p2 = parseBirthday(date2);
@@ -262,9 +269,9 @@ export function calculateCompatibility(
   }
 
   // ── 三引擎计算 ──
-  const baziResult = calcBaZi(p1, p2, algLang);
-  const zodiacResult = calcZodiac(p1, p2, algLang);
-  const ichingResult = calcIChing(p1, p2, algLang);
+  const baziResult = calcBaZi(p1, p2, algLang, scene);
+  const zodiacResult = calcZodiac(p1, p2, algLang, scene);
+  const ichingResult = calcIChing(p1, p2, algLang, scene);
 
   // ── 加权总分（八字40% + 星座40% + 易经20%）──
   const overall = Math.round(
@@ -280,7 +287,7 @@ export function calculateCompatibility(
   const aiInsight = generateAIInsight(overall, dims, baziResult, zodiacResult, ichingResult, algLang);
 
   // ── 有利/需注意方面 ──
-  const { lucky, challenging } = generateAspects(overall, dims, baziResult, zodiacResult, ichingResult, algLang);
+  const { lucky, challenging } = generateAspects(overall, dims, baziResult, zodiacResult, ichingResult, algLang, scene);
 
   return {
     overall,

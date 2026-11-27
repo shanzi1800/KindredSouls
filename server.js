@@ -14013,6 +14013,8 @@ function buildCompatYearlyFiveChapterPrompt(d1, d2, lang, extras) {
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (E141 forward 12-month from unlock, month 1 = the first month of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
+    // 🤝 E159-刀四：出生时空真值行（城市/经纬度/时区/时辰全参透传＋显式降级声明；缺 ⇒ 空串剔除）
+    (syn && typeof syn.birthTruthLine === 'string') ? syn.birthTruthLine : '',
     // 🛡️ E100-③：周易真值卦锁（确定性选卦：FNV d1|d2|windowStart——同对同窗恒定）
     `IChing Annual Hexagram (sole truth): ${_e100IchingHexLine(d1, d2, timeCtx.windowStart, L)}`,
   ];
@@ -14230,6 +14232,8 @@ function buildCompatMonthlyFourModulePrompt(d1, d2, lang, extras) {
     `Zodiac signs: ${sign1} and ${sign2}`,
     `Time window (monthly, day 1 = the first day of the window): ${timeCtx.windowStart} ~ ${timeCtx.windowEnd} (anchor=${timeCtx.anchor})`,
     `Partners: ${d1} and ${d2}`,
+    // 🤝 E159-刀四：出生时空真值行（城市/经纬度/时区/时辰全参透传＋显式降级声明；缺 ⇒ 空串剔除）
+    (syn && typeof syn.birthTruthLine === 'string') ? syn.birthTruthLine : '',
     // 🛡️ E100-③：周易真值卦锁（确定性选卦：FNV d1|d2|windowStart——同对同窗恒定）
     `IChing Monthly Hexagram (sole truth): ${_e100IchingHexLine(d1, d2, timeCtx.windowStart, L)}`,
   ];
@@ -14720,6 +14724,7 @@ async function buildCompatSynastryTruth(body, d1, d2) {
   }
   try {
     const sides = [];
+    const _e159TruthLines = []; // 🤝 E159-刀四：出生时空真值行（注入月报/年报 DATA LOCK）
     for (const pair of [[specA, d1], [specB, d2]]) {
       const spec = pair[0] || {};
       const bd = pair[1];
@@ -14730,12 +14735,37 @@ async function buildCompatSynastryTruth(body, d1, d2) {
       const tzUsable = tzr.ok && tzr.tier >= 1;     // tier 0 = 空值默认（不算真值）
       const coordExplicit = coord.ok && coord.tier === 'explicit';
       const timed = bt !== '' && (tzUsable || coordExplicit);
-      const matrix = timed
-        ? await getAstroMatrix(bd, bt, coord.lat, coord.lon, tzr.tz, {})
-        : await getAstroMatrix(bd, undefined, undefined, undefined, undefined, {});
+      // 🤝 E159-刀四（主公军令 2026-11-27）：月报/年报出生时空**全参透传**——
+      //   ① 时辰：timeTruth 优先、请求体 t1/t2 兜底（洞察/报告同源）；
+      //   ② 经纬度/时区：用户显式给出 ⇒ 原值（校验后）进引擎；**未给出才**交引擎签名默认，
+      //      并在真值行显式声明（杜绝「时辰缺 ⇒ 整盘静默回退曼谷」）；
+      //   ③ 未填时辰 ⇒ date_level 显式降级（bt 仍为 undefined ⇒ 绝不伪造精度）。
+      //   🔴 VM 抽取式消费者铁律：零外部 helper、常量置函数体内。
+      const _e159Idx = pair[0] === specA ? 0 : 1;
+      const _e159Tt = bt || String((body && typeof (body[_e159Idx === 0 ? 't1' : 't2']) === 'string') ? body[_e159Idx === 0 ? 't1' : 't2'] : '' || '').trim();
+      const _e159Timed = _e159Tt !== '' && (tzUsable || coordExplicit);
+      const _e159Lat = coordExplicit ? coord.lat : undefined;
+      const _e159Lon = coordExplicit ? coord.lon : undefined;
+      const _e159Tz = tzUsable ? tzr.tz : undefined;
+      const _e159City = String((spec && spec.city) || '').trim();
+      const _e159Flags = [];
+      if (_e159Tt === '') _e159Flags.push('birth time missing => date_level (noon reference only; Moon and houses excluded)');
+      else if (!_e159Timed) _e159Flags.push('birth place unresolvable => date_level');
+      if (!coordExplicit) _e159Flags.push('coordinates not provided => default reference place (NOT the real birthplace)');
+      if (!tzUsable) _e159Flags.push('time zone not provided => default reference zone');
+      console.log('[E159] compat timeTruth side=' + (_e159Idx === 0 ? 'A' : 'B') + ' date=' + bd + ' time=' + (_e159Timed ? _e159Tt : 'missing') + ' city=' + (_e159City || 'n/a') + ' lat=' + (_e159Lat == null ? 'default' : _e159Lat) + ' lon=' + (_e159Lon == null ? 'default' : _e159Lon) + ' tz=' + (_e159Tz || 'default') + ' precision=' + (_e159Timed ? 'timed' : 'date_level') + (_e159Flags.length ? ' degrade=[' + _e159Flags.join('; ') + ']' : ''));
+      _e159TruthLines.push('[BIRTH TIME-SPACE TRUTH ' + (_e159Idx === 0 ? 'A' : 'B') + '] date=' + bd
+        + ' time=' + (_e159Timed ? _e159Tt : 'unknown') + ' city=' + (_e159City || 'n/a')
+        + ' tz=' + (_e159Tz || 'default-reference') + ' lat=' + (_e159Lat == null ? 'default-reference' : _e159Lat)
+        + ' lon=' + (_e159Lon == null ? 'default-reference' : _e159Lon)
+        + (_e159Flags.length ? ' | EXPLICIT DEGRADATION: ' + _e159Flags.join('; ') : '')
+        + ' | NEVER invent, rename, translate, or substitute a birthplace, coordinate, time zone, or birth time.');
+      const matrix = _e159Timed
+        ? await getAstroMatrix(bd, _e159Tt, _e159Lat, _e159Lon, _e159Tz, {})
+        : await getAstroMatrix(bd, undefined, _e159Lat, _e159Lon, _e159Tz, {});
       if (!matrix) return { available: false, reason: 'astro_unavailable' };
       const triad = extractNatalTriad(matrix);
-      sides.push({ longitudes: triad.planetLongitudes || {}, timed, houses: _houseOf(matrix) });
+      sides.push({ longitudes: triad.planetLongitudes || {}, timed: _e159Timed, houses: _houseOf(matrix) });
     }
     if (Object.keys(sides[0].longitudes).length === 0 || Object.keys(sides[1].longitudes).length === 0) {
       return { available: false, reason: 'insufficient_longitudes' };
@@ -14766,6 +14796,8 @@ async function buildCompatSynastryTruth(body, d1, d2) {
       // 🛡️ Gate 40：五相位计数逐字透传自引擎张量（counts），供标准化 Payload 结构化映射
       counts: (dual.tensor && dual.tensor.counts && typeof dual.tensor.counts === 'object') ? dual.tensor.counts : {},
       unknown: Array.isArray(dual.unknown) ? dual.unknown : [],
+      // 🤝 E159-刀四：出生时空真值行（月报/年报 DATA LOCK 逐字注入；显式降级声明随行）
+      birthTruthLine: _e159TruthLines.join('\n'),
       bonds: Array.isArray(summ.bonds) ? summ.bonds : [],
       frictions: Array.isArray(summ.frictions) ? summ.frictions : [],
       signatures: (summ.signatures && typeof summ.signatures === 'object') ? summ.signatures : {},
@@ -15077,12 +15109,13 @@ function normalizeCompatComboSig(raw) {
   if (!blocks.every((b) => FAMILIAR_CHART_SIG_RE.test(b))) return '';
   return blocks[0] + '~' + blocks[1];
 }
-function compatOnceComboListed(plans, comboSig) {
+function compatOnceComboListed(plans, comboSig, scene) {
   if (!comboSig) return false;
   const p = plans || {};
   if (p.compatibility_once !== true) return false;
   const list = Array.isArray(p.compatibility_once_charts) ? p.compatibility_once_charts : [];
-  return list.indexOf(comboSig) !== -1;
+  // 🤝 E159-刀一: 情爱裸签名；商道/挚友「签名#场景」
+  return list.indexOf(compatKeyFor(comboSig, scene)) !== -1;
 }
 /** 请求体 ⇒ 组合签名：客户端显式 combo_sig 优先（收银台同链真源），回退由
  *  d1/d2/timeTruth.a/b 就地铸签（monthly/yearly 形态兼容；once 旧客户端无
@@ -15142,17 +15175,41 @@ async function _e148BackfillCompatCombo(userId, plans, comboSig) {
 //   🔴 纯函数全部 now 可注入（铁律 19：断言消费真实时钟禁绝对日期）。
 // ═══════════════════════════════════════════════════════════════════════════
 const TAROT_DAILY_ONCE_SIG_MAX = 50;
+// 🤝 E159-刀一（主公军令 2026-11-27）：三场景权益按「签名 + scene」物理隔离（romance / business / friendship）
+//   · 情爱＝裸签名/裸位（存量数据逐字节兼容）；商道/挚友＝「签名#场景」落同一名单（'#' 不在签名字符域内）。
+//   · 月报/年报＝paid_plans.compatibility_monthly_scenes / compatibility_yearly_scenes 场景名单；
+//     旧账号布尔位 true 且名单空 ⇒ 仅覆盖情爱；全通（年卡/月订）不受场景限制。
+function compatSceneOf(raw) {
+  return raw === 'business' || raw === 'friendship' ? raw : 'romance';
+}
+function compatKeyFor(sig, scene) {
+  if (!sig) return sig;
+  return compatSceneOf(scene) === 'romance' ? sig : sig + '#' + compatSceneOf(scene);
+}
+function compatSceneListed(plans, listKey, scene) {
+  const p = plans || {};
+  const list = Array.isArray(p[listKey]) ? p[listKey] : [];
+  const sc = compatSceneOf(scene);
+  if (sc === 'romance') return list.indexOf('romance') !== -1 || list.length === 0;
+  return list.indexOf(sc) !== -1;
+}
+function compatSceneListPush(list, scene) {
+  const out = (Array.isArray(list) ? list : []).filter((s) => typeof s === 'string');
+  if (out.indexOf(compatSceneOf(scene)) === -1) out.push(compatSceneOf(scene));
+  return out.slice(-3);
+}
 const TAROT_DAILY_GLOBAL_CAP = 10;
 const TAROT_MEMBER_DAILY_COMBOS = { all_pass_yearly: 3, all_pass_monthly: 2, star_monthly_vip: 2 };
 function tarotDailyDayKey(now) {
   return _mkDate(now).toISOString().slice(0, 10);
 }
-function tarotDailyOnceChartListed(plans, chartSig) {
+function tarotDailyOnceChartListed(plans, chartSig, scene) {
   if (!chartSig) return false;
   const p = plans || {};
   if (p.tarot_daily_once !== true) return false;
   const list = Array.isArray(p.tarot_daily_once_charts) ? p.tarot_daily_once_charts : [];
-  return list.indexOf(chartSig) !== -1;
+  // 🤝 E159-刀一: 情爱裸签名；商道/挚友「签名#场景」
+  return list.indexOf(compatKeyFor(chartSig, scene)) !== -1;
 }
 function tarotDailyMemberLimit(plans, now) {
   const p = plans || {};
@@ -15176,7 +15233,7 @@ function tarotDailyLogEntries(plans, dayKey) {
  *   · 失败态：400 NO_CHART_SIG / 402 NO_ENTITLEMENT / 403 MEMBER_DAILY_COMBO_LIMIT
  *     / 429 DAILY_GLOBAL_CAP
  */
-function tarotDailyEntitlement(plans, chartSig, now) {
+function tarotDailyEntitlement(plans, chartSig, now, scene) {
   const _no = (status, reason, memberLimit = 0, memberUsed = 0, globalLeft = 0) =>
     ({ ok: false, status, reason, method: null, cached: false, memberLimit, memberUsed, globalLeft });
   if (!chartSig) return _no(400, 'NO_CHART_SIG');
@@ -15184,7 +15241,7 @@ function tarotDailyEntitlement(plans, chartSig, now) {
   const entries = tarotDailyLogEntries(plans, dayKey);
   const globalLeft = TAROT_DAILY_GLOBAL_CAP - entries.length;
   const cached = entries.some((e) => e.s === chartSig);
-  if (tarotDailyOnceChartListed(plans, chartSig)) {
+  if (tarotDailyOnceChartListed(plans, chartSig, scene)) {
     if (cached) return { ok: true, status: 200, reason: 'ONCE_CACHED', method: 'tarot_daily_once', cached: true, memberLimit: 0, memberUsed: 0, globalLeft };
     if (globalLeft <= 0) return _no(429, 'DAILY_GLOBAL_CAP');
     return { ok: true, status: 200, reason: 'ONCE_NEW', method: 'tarot_daily_once', cached: false, memberLimit: 0, memberUsed: 0, globalLeft: globalLeft - 1 };
@@ -15606,6 +15663,15 @@ function compatibilityEntitledByType(plans, reportType, now) {
   }
   return null;
 }
+/** 🤝 E159-刀一：场景化权益层——在 compatibilityEntitledByType 之上叠加「场景名单」闸
+ *  （once 名单闸在 resolveReportEntitlement 内按组合签名判定；全通/星卡不设场景限制）。 */
+function compatSceneEntitledByType(plans, reportType, now, scene) {
+  const method = compatibilityEntitledByType(plans, reportType, now);
+  if (!method) return null;
+  if (method === 'compatibility_monthly_report' && !compatSceneListed(plans, 'compatibility_monthly_scenes', scene)) return null;
+  if (method === 'compatibility_yearly_report' && !compatSceneListed(plans, 'compatibility_yearly_scenes', scene)) return null;
+  return method;
+}
 function requiredPlanForCompat(reportType) {
   if (reportType === 'yearly') return 'compatibility_yearly_report';
   if (reportType === 'once') return 'compatibility_once';
@@ -15696,6 +15762,13 @@ async function resolveReportEntitlement(req, domain, reportType) {
     const plans = (Array.isArray(rows) && rows[0] && rows[0].paid_plans) || {};
     const userBirthDate = (Array.isArray(rows) && rows[0] && rows[0].birth_date) || null;
     const method = compatibilityEntitledByType(plans, reportType, new Date());
+    // 🤝 E159-刀一：权益按「双盘签名 + 场景」隔离——月/年报查场景名单；once 名单按「签名#场景」比对
+    const _e159Scene = compatSceneOf(body.scene);
+    const _e159Method = compatSceneEntitledByType(plans, reportType, new Date(), _e159Scene);
+    if (method && !_e159Method) {
+      console.log('[E159] compat scene NOT listed => NO_ENTITLEMENT type=' + reportType + ' scene=' + _e159Scene);
+      return { ok: false, method: null, reason: 'NO_ENTITLEMENT', userId, plans, userBirthDate };
+    }
     // 💳 E148-刀二（主公军令 2026-11-19）：合婚 once 按盘隔离（E131 对称形制）——
     //   账号级 compatibility_once 位只对「付讫时落库的双盘组合签名」
     //   （compatibility_once_charts 名单）放行；全通（年卡/月订）不受影响。
@@ -15704,8 +15777,8 @@ async function resolveReportEntitlement(req, domain, reportType) {
     if (reportType === 'once' && method === 'compatibility_once') {
       const _e148Combo = _e148ResolveComboSig(req.body || {});
       const _e148List = Array.isArray(plans.compatibility_once_charts) ? plans.compatibility_once_charts : [];
-      if (!_e148Combo || _e148List.indexOf(_e148Combo) === -1) {
-        if (_e148Combo && _e148List.length === 0) {
+      if (!_e148Combo || _e148List.indexOf(compatKeyFor(_e148Combo, _e159Scene)) === -1) {
+        if (_e148Combo && _e159Scene === 'romance' && _e148List.length === 0) {
           const _e148Backfilled = await _e148BackfillCompatCombo(userId, plans, _e148Combo);
           if (_e148Backfilled) plans.compatibility_once_charts = _e148Backfilled;
           // 回填尽力而为（含写失败）均放行——读取侧 once 位已确权（老用户契约不动）
@@ -15835,6 +15908,7 @@ async function _sandboxDispatch(req, plan, userId, email, chartSig, comboSig) {
     mode: SANDBOX_SUBSCRIPTION_PLANS.has(plan) ? 'subscription' : 'payment',
     chartSig: chartSig || undefined, // 💳 E131-A: 盘签名随事件 metadata 透传（缺省形态零变）
     comboSig: comboSig || undefined, // 💳 E148-刀二: 组合签名随事件 metadata 透传（缺省形态零变）
+    scene: compatSceneOf((req.body || {}).scene) === 'romance' ? undefined : compatSceneOf((req.body || {}).scene), // 🤝 E159-刀一: 场景随事件 metadata 透传
   });
   // 🔴 必用**原生 fetch**：safeFetch 内部是 `https.request` 硬编码（rejectUnauthorized:false），
   //    无法打 http:// 回环 —— 实测会抛 `EPROTO ... packet length too long`（Gate 45-A 血训）。
@@ -15929,6 +16003,8 @@ app.post('/api/sandbox/reset-purchase', async (req, res) => {
     delta.compatibility_once_charts = []; // 💳 E148-刀二: 合婚组合签名名单一并清空（对称形制）
     delta.tarot_daily_once_charts = []; // 💳 E148-刀三: 今日塔罗盘签名名单一并清空
     delta.tarot_daily_combo_log = []; // 💳 E148-刀三: 当日组合日志一并清空（重测日限/熔断口径）
+    delta.compatibility_monthly_scenes = []; // 🤝 E159-刀一: 场景月报名单一并清空
+    delta.compatibility_yearly_scenes = []; // 🤝 E159-刀一: 场景年报名单一并清空
     delta.all_pass_expires_at = null;
     delta.all_pass_monthly_expires_at = null;
     delta.star_monthly_resets_at = null;
@@ -16009,6 +16085,8 @@ app.post('/api/create-checkout', async (req, res) => {
     const { plan: rawPlan, successUrl, cancelUrl, chart_sig: _e131RawSig, combo_sig: _e148RawComboSig } = req.body || {};
     const chartSig = normalizeWealthChartSig(_e131RawSig);
     const comboSig = normalizeCompatComboSig(_e148RawComboSig);
+    // 🤝 E159-刀一：场景随单上送（权益按「签名+场景」隔离；缺省/非法 ⇒ 情爱，旧请求形态零变）
+    const _e159Scene = compatSceneOf((req.body || {}).scene);
     const plan = normalizePlanId(rawPlan);
     const priceId = STRIPE_PRICE_MAP[plan];
     if (!priceId) {
@@ -16050,18 +16128,24 @@ app.post('/api/create-checkout', async (req, res) => {
       //   （名单空＝老用户未锚定 ⇒ already_paid 挡死，先走权益闸门懒回填路径）
       const _e148CompatOnceRebuy = plan === 'compatibility_once' && comboSig
         && (Array.isArray(paidPlans.compatibility_once_charts) ? paidPlans.compatibility_once_charts.length : 0) > 0
-        && !compatOnceComboListed(paidPlans, comboSig)
+        && !compatOnceComboListed(paidPlans, comboSig, _e159Scene)
         && !wealthAllPassActive(paidPlans, new Date());
       // 💳 E148-刀三（主公军令 2026-11-19）：今日塔罗 once 换盘重购——名单非空且
       //   新盘不在名单 ⇒ 合法新单（E131/E148-刀二 同律；名单空＝位 true 老形态 ⇒
       //   already_paid 挡死，不误放行）
       const _e148TarotOnceRebuy = plan === 'tarot_daily_once' && chartSig
         && (Array.isArray(paidPlans.tarot_daily_once_charts) ? paidPlans.tarot_daily_once_charts.length : 0) > 0
-        && !tarotDailyOnceChartListed(paidPlans, chartSig)
+        && !tarotDailyOnceChartListed(paidPlans, chartSig, _e159Scene)
         && !wealthAllPassActive(paidPlans, new Date());
+      // 🤝 E159-刀一：场景月报/年报换场景重购＝合法新单（账号级布尔位对其他场景不构成 already_paid）
+      const _e159SceneRebuy = (plan === 'compatibility_monthly_report' || plan === 'compatibility_yearly_report')
+        && !compatSceneListed(paidPlans, plan === 'compatibility_yearly_report' ? 'compatibility_yearly_scenes' : 'compatibility_monthly_scenes', _e159Scene)
+        && !wealthAllPassActive(paidPlans, new Date());
+      if (!_e159SceneRebuy) {
       if (!_e131OnceRebuy && !_e148CompatOnceRebuy && !_e148TarotOnceRebuy) {
         console.log(`[create-checkout] ${plan} 已被现有权益覆盖 user=${String(userId).slice(0, 8)} → already_paid`);
         return res.status(200).json({ already_paid: true, message: 'Already subscribed' });
+      }
       }
       console.log(`[create-checkout] E131 once 换盘重购放行 user=${String(userId).slice(0, 8)} chartSig=${chartSig.slice(0, 24)}`);
     }
@@ -16076,6 +16160,7 @@ app.post('/api/create-checkout', async (req, res) => {
         nonce: String(Date.now()) + Math.random().toString(36).slice(2, 8),
         chartSig, // 💳 E131-A: 盘签名随沙盘会话（付讫落名单的唯一钥匙）
         comboSig, // 💳 E148-刀二: 双盘组合签名随沙盘会话（compat once 落名单的唯一钥匙）
+        scene: _e159Scene, // 🤝 E159-刀一: 场景随沙盘会话（权益按「签名+场景」隔离的唯一钥匙）
       });
       console.log('[create-checkout] 🧪 sandbox session:', _sbSession.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
       return res.json({ url: _sbSession.url, sessionId: _sbSession.id, sandbox: true, plan });
@@ -16126,7 +16211,8 @@ app.post('/api/create-checkout', async (req, res) => {
       cancel_url: cancelUrl || defaultCancel,
       metadata: Object.assign({ supabase_user_id: userId, plan },
         chartSig ? { chart_sig: chartSig } : {},
-        comboSig ? { combo_sig: comboSig } : {}), // 💳 E131-A/E148-刀二: once 盘签名/组合签名随 Stripe 会话（live 同源）
+        comboSig ? { combo_sig: comboSig } : {},
+        _e159Scene !== 'romance' ? { scene: _e159Scene } : {}), // 💳 E131-A/E148-刀二: once 盘签名/组合签名随 Stripe 会话（live 同源）；🤝 E159-刀一: 场景
     });
     console.log('[create-checkout] ✅ session:', session.id, 'plan:', plan, 'user:', String(userId).slice(0, 8));
     res.json({ url: session.url, sessionId: session.id });
@@ -16192,7 +16278,7 @@ app.post('/api/tarot/daily', async (req, res) => {
 
     // ④ 权益判定（once 名单 / 会员日限 / 全局熔断）
     const now = new Date();
-    const ent = tarotDailyEntitlement(plans, chartSig, now);
+    const ent = tarotDailyEntitlement(plans, chartSig, now, tarotScene); // 🤝 E159-刀一: 名单按「签名#场景」
     if (!ent.ok) {
       console.log(`[E148] tarot daily deny user=${String(userId).slice(0, 8)} reason=${ent.reason} memberUsed=${ent.memberUsed}/${ent.memberLimit}`);
       return res.status(ent.status).json({
@@ -16280,11 +16366,14 @@ async function _e148TarotDailyReading(draw, birthDate, lang, tarotScene = 'roman
     try {
       const sceneMod = await import('./web/src/lib/tarotScenes.mjs');
       const sceneMeaning = sceneMod.tarotSceneMeaning ? sceneMod.tarotSceneMeaning(draw.id, lang, tarotScene) : '';
+      // ✦ E159-刀五：只喂与实抽方位一致的半句牌义（逆位牌下绝不再混排正位指令）
+      const _e159OrientMeaning = sceneMeaning && sceneMod.tarotOrientSlice ? (sceneMod.tarotOrientSlice(sceneMeaning, lang, draw.reversed) || sceneMeaning) : sceneMeaning;
       if (sceneMeaning) {
         _e158SceneLine = (tarotScene === 'business'
           ? ' Context: this is a business partnership reading (focus: collaboration resilience, decisiveness, boundaries of the bigger picture). It is never a romance reading — never use romance wording. '
           : ' Context: this is a close friendship reading (focus: sincere support, emotional ease, long-lasting mutual understanding). It is never a romance reading — never use romance wording. ')
-          + `Base your reading on this card meaning for the context (authoritative): "${sceneMeaning}"`;
+          + `The card is drawn ${draw.reversed ? 'REVERSED' : 'UPRIGHT'} — use ONLY the ${draw.reversed ? 'reversed' : 'upright'} meaning below and never mix in the other orientation. `
+          + `Base your reading on this card meaning for the context (authoritative): "${_e159OrientMeaning}"`;
       }
     } catch (e) { console.warn('[E158] tarot scene meaning unavailable:', (e && e.message) || e); }
   }
@@ -16369,6 +16458,8 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     // 💳 E148-刀二（主公军令 2026-11-19）：compatibility_once 付讫双盘组合签名（畸形 ⇒ ''，零写入）
     const _e131ChartSig = normalizeWealthChartSig(session.metadata && session.metadata.chart_sig);
     const _e148ComboSig = normalizeCompatComboSig(session.metadata && session.metadata.combo_sig);
+    // 🤝 E159-刀一：付讫场景（旧会话无此键 ⇒ 情爱，存量链路零变）
+    const _e159Scene = compatSceneOf(session.metadata && session.metadata.scene);
     const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
     console.log('[webhook] 💰 支付成功 user:', userId, 'email:', email, 'plan:', plan);
 
@@ -16406,6 +16497,9 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     }
 
     const updatedPlans = Object.assign({}, currentPlans, buildPlanPayload(plan));
+    // 🤝 E159-刀一：场景月报/年报付讫 ⇒ 场景入名单（情爱同样落名 ⇒ 换场景重购＝合法新单）
+    if (plan === 'compatibility_monthly_report') updatedPlans.compatibility_monthly_scenes = compatSceneListPush(currentPlans.compatibility_monthly_scenes, _e159Scene);
+    if (plan === 'compatibility_yearly_report') updatedPlans.compatibility_yearly_scenes = compatSceneListPush(currentPlans.compatibility_yearly_scenes, _e159Scene);
     // 💳 E131-A（主公军令 2026-11-09）：wealth_once 付讫 ⇒ 盘签名入名单
     //   （并集去重，封顶 WEALTH_CHART_SIG_MAX=50 防 jsonb 膨胀；非 once 档零写入）
     if (plan === 'wealth_once' && _e131ChartSig) {
@@ -16419,17 +16513,27 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     if (plan === 'compatibility_once' && _e148ComboSig) {
       const _e148List = (Array.isArray(currentPlans.compatibility_once_charts) ? currentPlans.compatibility_once_charts : [])
         .filter((s) => typeof s === 'string');
-      if (_e148List.indexOf(_e148ComboSig) === -1) _e148List.push(_e148ComboSig);
+      // 🤝 E159-刀一：情爱裸签名；商道/挚友「签名#场景」
+      const _e159ComboKey = compatKeyFor(_e148ComboSig, _e159Scene);
+      if (_e148List.indexOf(_e159ComboKey) === -1) _e148List.push(_e159ComboKey);
       updatedPlans.compatibility_once_charts = _e148List.slice(-COMPAT_COMBO_SIG_MAX);
     }
     // 💳 E148-刀三（主公军令 2026-11-19）：tarot_daily_once 付讫 ⇒ 盘签名入名单
     //   （并集去重，封顶 TAROT_DAILY_ONCE_SIG_MAX=50 防 jsonb 膨胀；非本档零写入；
     //    单人盘走 chart_sig 通道——与 wealth_once 同源，收银/沙盒/webhook 零新通道）
-    if (plan === 'tarot_daily_once' && _e131ChartSig) {
+    if (plan === 'tarot_daily_once' && _e131ChartSig && _e159Scene === 'romance') {
       const _e148tList = (Array.isArray(currentPlans.tarot_daily_once_charts) ? currentPlans.tarot_daily_once_charts : [])
         .filter((s) => typeof s === 'string');
       if (_e148tList.indexOf(_e131ChartSig) === -1) _e148tList.push(_e131ChartSig);
       updatedPlans.tarot_daily_once_charts = _e148tList.slice(-TAROT_DAILY_ONCE_SIG_MAX);
+    }
+    // 🤝 E159-刀一：商道/挚友今日塔罗付讫 ⇒ 「签名#场景」入名单（该场景塔罗独立计费）
+    if (plan === 'tarot_daily_once' && _e131ChartSig && _e159Scene !== 'romance') {
+      const _e159tList = (Array.isArray(currentPlans.tarot_daily_once_charts) ? currentPlans.tarot_daily_once_charts : [])
+        .filter((s) => typeof s === 'string');
+      const _e159tKey = compatKeyFor(_e131ChartSig, _e159Scene);
+      if (_e159tList.indexOf(_e159tKey) === -1) _e159tList.push(_e159tKey);
+      updatedPlans.tarot_daily_once_charts = _e159tList.slice(-TAROT_DAILY_ONCE_SIG_MAX);
     }
     // 🆕 E145-刀四（军令 2026-11-19）：$9.99 全通月订连续支付月数记账——
     //    webhook 续费时累加（存量 all_pass_monthly 在期 ⇒ streak+1；新订/断
@@ -18328,10 +18432,12 @@ app.use('/api/ai-advisor', async (req, res) => {
       { const _e157Hits = detectComplianceViolations(_e156Text); if (_e157Hits.length) console.warn('[E157] compliance scan hits:', _e157Hits.map((h) => `${h.kind}:${h.hit}`).join(' | ')); }
       if (SB_URL_E156 && SB_KEY_E156) {
         try {
+          // ✦ E159-刀三（主公军令 2026-11-27）：缓存写改 upsert＋显式刷新 created_at——旧写法纯 POST 插入，键已存在即唯一冲突
+          //   静默失败 ⇒ 同键超 24h 后永不再命中（每次刷新/切回都重生成、报告漂移、白烧 AI）。
           await safeFetch(`${SB_URL_E156}/rest/v1/ai_insights_cache`, {
             method: 'POST',
-            headers: { 'apikey': SB_KEY_E156, 'Authorization': `Bearer ${SB_KEY_E156}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ cache_key: cacheKey, insight: _e156Text, prompt_version: `v1.0.0-e156_${_e156Scene}-${lang}` }),
+            headers: { 'apikey': SB_KEY_E156, 'Authorization': `Bearer ${SB_KEY_E156}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+            body: JSON.stringify({ cache_key: cacheKey, insight: _e156Text, prompt_version: `v1.0.0-e156_${_e156Scene}-${lang}`, created_at: new Date().toISOString() }),
           });
         } catch (e) { console.warn('[E156] cache write skipped:', e.message); }
       }
@@ -18465,6 +18571,7 @@ app.use('/api/ai-advisor', async (req, res) => {
     }
 
     // ── 写入缓存(直接 REST)──
+    // ✦ E159-刀三（主公军令 2026-11-27）：upsert＋显式刷新 created_at（纯插入遇已存在键静默失败 ⇒ 24h 后永不命中）。
     await safeFetch(
       `${SB_URL}/rest/v1/ai_insights_cache`,
       {
@@ -18473,9 +18580,9 @@ app.use('/api/ai-advisor', async (req, res) => {
           'apikey': SB_KEY,
           'Authorization': `Bearer ${SB_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Prefer': 'resolution=merge-duplicates'
         },
-        body: JSON.stringify({ cache_key: cacheKey, insight, prompt_version: `v1.0.0-${reportType || 'single'}-${lang}` })
+        body: JSON.stringify({ cache_key: cacheKey, insight, prompt_version: `v1.0.0-${reportType || 'single'}-${lang}`, created_at: new Date().toISOString() })
       }
     );
 

@@ -47,7 +47,7 @@ const between = (src, from, to) => {
 /* ═══════ 一 · 刀八：14 键六语权威字典逐字 ═══════ */
 const MANDATED = {
   nickname_self_placeholder: ['你的昵称或代号（选填）', 'Your nickname (optional)', 'Votre surnom (facultatif)', 'Tu apodo (opcional)', 'ชื่อเล่นของคุณ (ไม่บังคับ)', 'Biệt danh của bạn (tùy chọn)'],
-  nickname_partner_placeholder: ['TA 的昵称或代号（选填）', 'Partner nickname (optional)', "Surnom de l'autre (facultatif)", 'Apodo del otro (opcional)', 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', 'Biệt danh đối phương (tùy chọn)'],
+  nickname_partner_placeholder: ['TA 的昵称或代号（选填）', 'Their nickname (opt.)', 'Surnom (facultatif)', 'Su apodo (opc.)', 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', 'Biệt danh họ (tùy chọn)'], // 🔴 后继化 E159-刀六
   cta_unlock_romance: ['解锁情爱坐标', 'Unlock Romance Code', 'Déverrouiller Éros · Amour', 'Desbloquear Eros · Amor', 'ปลดล็อกพิกัดความรัก', 'Mở Khóa Tọa Độ Tình Ái'],
   cta_unlock_business: ['解锁商道共频', 'Unlock Alliance Code', 'Déverrouiller Philia · Alliance', 'Desbloquear Philia · Alianza', 'ปลดล็อกคลื่นพันธมิตร', 'Mở Khóa Tọa Độ Đồng Hành'],
   cta_unlock_friendship: ['解锁挚友同频', 'Unlock Kindred Code', 'Déverrouiller Storgê · Complicité', 'Desbloquear Storgé · Afinidad', 'ปลดล็อกคลื่นกัลยาณมิตร', 'Mở Khóa Tọa Độ Tri Kỷ'],
@@ -225,6 +225,8 @@ test('E158-5 刀四：22 张 × 商道/挚友 × 六语牌义独立语境（零�
   assert.equal(SCENES.tarotSceneMeaning(8, 'zh', 'business'), SCENES.TAROT_SCENE_MEANING.business[8].zh);
   assert.equal(SCENES.tarotSceneMeaning(8, 'xx', 'business'), SCENES.TAROT_SCENE_MEANING.business[8].en, '非法语种回落 en');
   // getTarot：抽牌零变、仅牌义分流
+  // 🔴 后继化（E159-刀五）：TarotCard 不带布尔正逆位字段 ⇒ 由牌名后缀（ORIENT_SUFFIX 六语）反推实抽方位
+  const isRev = (c) => /逆位|\(Reversed\)|Invertid|Invers|กลับด้าน|\(Ngược\)/.test(String(c.orientation || ''));
   assert.ok(TAROT_LIB.includes("import { tarotSceneMeaning } from './tarotScenes.mjs';"), 'tarot.ts 引渡场景牌义');
   assert.ok(TAROT_LIB.includes("export function getTarot(d1: string, d2: string, lang: string = 'en', scope: string = 'insight', scene: string = 'romance'): TarotCard {"), 'getTarot 第五参＝场景（缺省情爱）');
   for (const [d1, d2] of [['1992-08-21', '1994-02-09'], ['1988-01-01', '2000-12-31']]) {
@@ -235,11 +237,12 @@ test('E158-5 刀四：22 张 × 商道/挚友 × 六语牌义独立语境（零�
     assert.deepEqual(r, r5, '情爱：五参缺省与显式等价（逐字节不变）');
     assert.equal(b.id, r.id); assert.equal(f.id, r.id);
     assert.equal(b.name, r.name); assert.equal(b.orientation, r.orientation);
-    assert.equal(b.meaning, SCENES.TAROT_SCENE_MEANING.business[r.id].zh, '商道牌义走场景表');
-    assert.equal(f.meaning, SCENES.TAROT_SCENE_MEANING.friendship[r.id].zh, '挚友牌义走场景表');
+    // 🔴 后继化（E159-刀五，主公军令 2026-11-27）：按实抽正/逆位只展示对应启示 ⇒ 期望值＝权威牌义经 tarotOrientSlice 截取
+    assert.equal(b.meaning, SCENES.tarotOrientSlice(SCENES.TAROT_SCENE_MEANING.business[r.id].zh, 'zh', isRev(r)), '商道牌义走场景表（正/逆位对应启示）');
+    assert.equal(f.meaning, SCENES.tarotOrientSlice(SCENES.TAROT_SCENE_MEANING.friendship[r.id].zh, 'zh', isRev(r)), '挚友牌义走场景表（正/逆位对应启示）');
     for (const L of LANGS) {
       const bm = TAROT.getTarot(d1, d2, L, 'monthly', 'business'); // 月报档独立卡槽（scope 盐）
-      assert.equal(bm.meaning, SCENES.TAROT_SCENE_MEANING.business[bm.id][L], `${L} 月报档商道牌义`);
+      assert.equal(bm.meaning, SCENES.tarotOrientSlice(SCENES.TAROT_SCENE_MEANING.business[bm.id][L], L, isRev(bm)), `${L} 月报档商道牌义`); // 🔴 后继化 E159-刀五
     }
   }
   // 宿主：两处 getTarot 均传场景；今日塔罗探测上送 scene
@@ -396,10 +399,11 @@ test('E158-9 零越界：沙盒态与定价不动；E159 支付回跳自动生�
   assert.equal(SB.SANDBOX_PLAN_PRICE.compatibility_monthly_report, '$2.99', '月报 $2.99 不变');
   assert.equal(SB.SANDBOX_PLAN_PRICE.compatibility_yearly_report, '$29.99', '年报 $29.99 不变');
   assert.equal(SB.SANDBOX_PLAN_PRICE.tarot_daily_once, '$1.99', '今日塔罗 $1.99 不变');
-  for (const bad of ['e159', 'E159', "'/resonance'", '/invite/', "window.open("]) {
+  // 🔴 后继化（E159 实施于「三场景隔离/黑屏/经纬度」军令 2026-11-27；「支付回跳零点击自动生成」顺延 E160 封存）
+  for (const bad of ['e160', 'E160', "'/resonance'", '/invite/', "window.open("]) {
     assert.equal(APP.includes(bad), false, `App.tsx 不得出现：${bad}`);
   }
-  for (const bad of ['e159', 'E159', "'/resonance'", '/invite/']) {
+  for (const bad of ['e160', 'E160', "'/resonance'", '/invite/']) {
     assert.equal(SERVER.includes(bad), false, `server.js 不得出现：${bad}`);
   }
   // 既有管线不动（钉死字面抽检）
@@ -417,7 +421,7 @@ test('E158-10 【链位自保】闸门挂入 test:astro 且不顶飞收口位（
   const segs = pkg.scripts['test:astro'].split(/\s*&&\s*|\s*\|\|\s*/).map((x) => x.trim()).filter(Boolean);
   const me = segs.findIndex((x) => x.includes('audit-e158-visual-consistency'));
   assert.ok(me !== -1, '未入编 test:astro');
-  assert.ok(segs.length >= 124, `链段数下界（实为 ${segs.length}）`);
+  assert.ok(segs.length >= 125, `链段数下界（实为 ${segs.length}）`);   // 🔴 后继化（E159 入编）：124→125
   const i157 = segs.findIndex((x) => x.includes('audit-e157-compliance-guardrails'));
   const iCap = segs.findIndex((x) => x.includes('audit-e40-compat-synastry-tensor-fusion'));
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);

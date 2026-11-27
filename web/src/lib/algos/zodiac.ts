@@ -2,6 +2,8 @@ import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
 // 🛡️ E41+ Gate 39 归正：多语言术语唯一真值源 = astro/astro_terms_dict.json（经生成物）
 import { ASTRO_TERMS } from './astroTerms.generated';
+// 🤝 E159-刀二：场景词典（商道/挚友解读；情爱不走）
+import { normalizeCompatScene, sceneText } from './sceneI18n';
 
 // ═════════════════════════════════════════
 // 星座合盘引擎(真实算法)
@@ -315,7 +317,7 @@ const UI_LABELS = {
   },
   you: { zh: '你', en: 'You', es: 'Tú', fr: 'Vous', th: 'คุณ', vi: 'Bạn' },
   ta: { zh: 'TA', en: 'Partner', es: 'Pareja', fr: 'Partenaire', th: 'คู่ครอง', vi: 'Người ấy' },
-  element: { zh: '', en: 'element', es: 'elemento', fr: 'élément', th: 'ธาตุ', vi: 'nguyên tố' },
+  element: { zh: '元素', en: 'element', es: 'elemento', fr: 'élément', th: 'ธาตุ', vi: 'nguyên tố' },
   ruler: { zh: '守护星', en: 'ruler', es: 'regente', fr: 'maître', th: 'ดาวพิทักษ์', vi: 'sao bảo hộ' },
   meetVerb: { zh: '遇上', en: 'meets', es: 'se encuentra con', fr: 'rencontre', th: 'พบกับ', vi: 'gặp' },
   phaseTitle: {
@@ -374,7 +376,10 @@ const UI_LABELS = {
 
 // ── 核心算法 ──
 
-export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh', scene: unknown = 'romance'): EngineResult {
+  // 🤝 E159-刀二：情爱＝既有文案逐字节不变；商道/挚友＝场景词典（相位/评分真理不变）
+  const _sc = normalizeCompatScene(scene);
+  const S = _sc !== 'romance' ? sceneText(_sc, lang) : null;
   const meta: string[] = [];
   const z1 = getZodiac(p1.month, p1.day);
   const z2 = getZodiac(p2.month, p2.day);
@@ -463,6 +468,12 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     phaseTag = 'PHASE_OTHER';
   }
 
+  // E159-刀二：商道/挚友下对宫/特殊相位去「吸引力」
+  if (S) {
+    if (phaseTag === 'PHASE_OPPOSITION') phaseDesc = S.zodiac.phaseOpposition(z1Name, z2Name);
+    else if (phaseTag === 'PHASE_OTHER') phaseDesc = S.zodiac.phaseSpecial(phaseDist * 30);
+  }
+
   // ── Meta 注入（phaseTag 赋值完毕后）──
   meta.push(phaseTag);
   if (phaseTag === 'PHASE_OPPOSITION' || phaseTag === 'PHASE_SQUARE') {
@@ -523,6 +534,14 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     summary = t(SUMMARY_DESCS.opposite, lang);
   }
 
+  // E159-刀二：商道/挚友摘要去「黄金配对/化学反应/吸引力」
+  if (S) {
+    summary = score >= 82 ? S.zodiac.golden(z1Name, z2Name)
+      : score >= 70 ? S.zodiac.chemistry(z1Name, z2Name)
+      : score >= 58 ? S.zodiac.understanding(z1Name, z2Name)
+      : S.zodiac.opposite;
+  }
+
   // ── 构建详情 ──
   const labels = {
     sunSign: t(UI_LABELS.sunSign, lang),
@@ -543,7 +562,18 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     meetVerb: t(UI_LABELS.meetVerb, lang),
   };
 
+  if (S) {
+    labels.ta = S.zodiac.ta;
+    labels.bestMatch = S.zodiac.bestMatch(z1Name, z2Name);
+    labels.oppositeMatch = S.zodiac.oppositeMatch(z1Name, z2Name);
+    labels.scoreHigh = S.zodiac.scoreHigh;
+    labels.scoreMid = S.zodiac.scoreMid;
+    labels.scoreLow = S.zodiac.scoreLow;
+  }
+
   const needsSpace = lang !== 'zh' && lang !== 'th';
+  // E159-刀二：中文「火象元素」无空格连写（其余语种保留空格）
+  const elemGap = lang === 'zh' ? '' : ' ';
 
   // 日期格式：越南/法国/泰国/西班牙用DD/MM，英语/中文用MM/DD
   const fmtDate = (m: number, d: number) => (lang === 'vi' || lang === 'fr' || lang === 'th' || lang === 'es')
@@ -552,8 +582,8 @@ export function calcZodiac(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
 
   const detail = [
     `${labels.sunSign}`,
-    `${labels.you}：${z1Name}${needsSpace ? ' ' : ''}(${fmtDate(p1.month, p1.day)})${needsSpace ? ' — ' : '—'}${elem1Name} ${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
-    `${labels.ta}：${z2Name}${needsSpace ? ' ' : ''}(${fmtDate(p2.month, p2.day)})${needsSpace ? ' — ' : '—'}${elem2Name} ${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
+    `${labels.you}：${z1Name}${needsSpace ? ' ' : ''}(${fmtDate(p1.month, p1.day)})${needsSpace ? ' — ' : '—'}${elem1Name}${elemGap}${labels.element} · ${mode1Name} · ${labels.ruler} ${ruler1Name}`,
+    `${labels.ta}：${z2Name}${needsSpace ? ' ' : ''}(${fmtDate(p2.month, p2.day)})${needsSpace ? ' — ' : '—'}${elem2Name}${elemGap}${labels.element} · ${mode2Name} · ${labels.ruler} ${ruler2Name}`,
     ``,
     `${labels.phaseTitle}`,
     phaseDesc,

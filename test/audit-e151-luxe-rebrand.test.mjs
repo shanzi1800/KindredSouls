@@ -246,8 +246,8 @@ test('G1 链位：e151 居 e150 后 e40-compat 前＋全链 120 段＋node-only 
   const script = pkg.scripts['test:astro'];
   const all = script.split('&&').map((s) => s.trim());
   const segs = all.filter((s) => s.startsWith('node --test'));
-  assert.equal(all.length, 124, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);   // 🔴 后继化（E158 入编）：123→124
-  assert.equal(segs.length, 123, `node --test 段须 119（E152 插链后继化；实得 ${segs.length}）`);   // 🔴 后继化（E158 入编）：122→123
+  assert.equal(all.length, 125, `全链总段须 120（E152 插链后继化；实得 ${all.length}）`);   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
+  assert.equal(segs.length, 124, `node --test 段须 119（E152 插链后继化；实得 ${segs.length}）`);   // 🔴 后继化（E158 入编）：122→123   // 🔴 后继化（E159 入编）：124→125
   assert.ok(all[all.length - 1].startsWith('python3 '), 'python3 恒链尾');
   const names = segs.map((s) => (s.match(/test\/([\w.-]+)\.test\.mjs/) || [])[1] || '');
   const i150 = names.indexOf('audit-e150-refresh-amnesia-gate');

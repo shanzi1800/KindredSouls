@@ -127,7 +127,7 @@ test('E87-③-4 付讫报告自动生成全链接线（分诊→信号→消费�
   const iConsume = app.indexOf('generateReport(pendingReportTrigger)');
   assert.ok(iConsume > 0, '报告自动生成消费效应缺失');
   const consumeSeg = app.slice(Math.max(0, iConsume - 700), iConsume + 200);
-  assert.ok(consumeSeg.includes("sessionStorage.setItem('ks_compat_session_unlocked', '1')"), '消费效应未落会话解锁');
+  assert.ok(consumeSeg.includes("markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156Scene)"), '消费效应未落会话解锁');   // 🔴 后继化（E159-刀一）：旧字面（无条件写情爱键）由 markSessionSceneUnlocked(购买场景) 接替——一次付费只解锁购买的那个场景
   assert.ok(consumeSeg.includes('onReportConsumed'), '消费效应无清零回调（重触风险）');
   // ResultPage 渲染链把信号下传 AIInsightBlock
   assert.ok(app.includes('pendingReportTrigger={pendingReportTrigger}'), 'ResultPage 未下传报告信号');
@@ -147,7 +147,7 @@ test('E87-④-1 App 冷启动通用 backUrl 盲跳退役（劫持总闸）', () 
   // 纯冷启动清陈年劫持源（else 分支逐字定位）
   const iPlain = app.indexOf("} else if (!isOAuthCallback && !justLoggedIn && !paymentSuccess) {", iEffect);
   assert.ok(iPlain > 0, '纯冷启动分支定位失败');
-  assert.ok(app.slice(iPlain, iPlain + 400).includes("localStorage.removeItem('ks_oauth_back_url')"), '纯冷启动未清陈年回跳劫持源');
+  assert.ok(app.slice(iPlain, iPlain + 700).includes("localStorage.removeItem('ks_oauth_back_url')"), '纯冷启动未清陈年回跳劫持源');   // 🔴 后继化（E159-刀三）：/result 无档回输入页两行插入 ⇒ 锚窗 400→700
 });
 
 test('E87-④-2 callback 纯登录一律回首页（backUrl 仅财富意图且用后即清）', () => {

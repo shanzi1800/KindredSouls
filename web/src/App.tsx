@@ -28,6 +28,9 @@ import { slotNext } from './components/TimeInput';
 import { CitySearchInput } from './components/CitySearchInput';
 import type { CityRecord } from './hooks/useCitySearch';
 import { supabase } from './lib/supabase';
+import { SUPABASE_REST_URL } from './lib/supabase';
+// 🤝 E159-刀一：三场景权益纯逻辑核（会话解锁/购买场景/归档槽位/账号级镜像判定）
+import { sessionSceneUnlocked, markSessionSceneUnlocked, clearSessionScenes, rememberPurchaseScene, readPurchaseScene, readSceneArchive, writeSceneArchive, sceneArchiveKey, accountSceneEntitled, normalizePairScene, COMPAT_SCENES } from './lib/compatSceneEntitlement.mjs';
 /* 🏆 E105→E106（主公军令 2026-10-30）：命盘金卡导出＋骨架承接。
    🧹 E106-刀二（主公军令 2026-10-30）：E105 伴读共鸣状态机 import 物理拔除——
    全站交互收拢铁律（主公钦定）：所有交流/专业解答/互动信息全部归首页与选定灵宠，
@@ -177,8 +180,8 @@ async function readCompatSSEStream(
     blurredPreview: { zh:'🌙 你们的关系中存在一种罕见的灵魂共振……月亮与金星的相位暗示着深刻的情感连接，这种配置在人群中仅占 3%。', en:'🌙 A rare soul resonance exists between you two… The Moon-Venus aspect suggests a profound emotional connection found in only 3% of couples.', es:'🌙 Existe una resonancia de alma rara entre ustedes dos… El aspecto Luna-Venus sugiere una conexión emocional profunda que solo el 3% de las parejas tienen.', fr:"🌙 Une résonnance d'âme rare existe entre vous deux… L'aspect Lune-Vénus suggère une connexion émotionnelle profonde que seul 3% des couples ont.", th:'🌙 มีการจับคลื่นวิญญาณที่หายากระหว่างคุณทั้งสอง… มุมจันทร์-ศุกร์บ่งบอกถึงการเชื่อมต่อทางอารมณ์ที่ลึกซึ้งที่พบได้ในเพียง 3% ของคู่รัก', vi:'🌙 Có một cộng hưởng linh hồn hiếm thấy giữa hai bạn… Khía cạnh Mặt trăng-Sao Kim gợi ý một kết nối cảm xúc sâu sắc chỉ có ở 3% các cặp đôi.' },
     genBtn: { zh:'生成 AI 洞察', en:'Generate AI Insight', es:'Generar Perspectiva AI', fr:'Générer Perspective IA', th:'วิเคราะห์ AI', vi:'Xem Luận giải AI' },
     // 🔴 E91-①：signOut 词条随「退出登录」按钮一并退役（渲染区结束锚已迁 ks-report-cursor）。
-    detailHide: { zh:'收起详情 ▲', en:'Hide Details ▲', es:'Ocultar ▲', fr:'Masquer ▲', th:'ซ่อนรายละเอียด ▲', vi:'Thu gọn ▲' },
-    detailShow: { zh:'查看完整分析 ▼', en:'View Full Analysis ▼', es:'Ver Análisis Completo ▼', fr:'Voir Analyse Complète ▼', th:'ดูการวิเคราะห์เต็ม ▼', vi:'Xem chi tiết ▼' },
+    detailHide: { zh:'收起详情', en:'Hide Details', es:'Ocultar', fr:'Masquer', th:'ซ่อนรายละเอียด', vi:'Thu gọn' },
+    detailShow: { zh:'查看完整分析', en:'View Full Analysis', es:'Ver Análisis Completo', fr:'Voir Analyse Complète', th:'ดูการวิเคราะห์เต็ม', vi:'Xem chi tiết' },
   } as const;
 
 
@@ -254,6 +257,11 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
     c1: { lat: number; lon: number; tz: string } | null;
     c2: { lat: number; lon: number; tz: string } | null;
   } = { d1: '', d2: '', t1: '', t2: '', c1: null, c2: null };
+  // 🤝 E159-刀一：购买请求随单上送场景（仅商道/挚友挂键 ⇒ 情爱/旧请求形态零变）
+  const _e159BodyScene = (): Record<string, string> => {
+    const s = readPurchaseScene(sessionStorage);
+    return s === 'business' || s === 'friendship' ? { scene: s } : {};
+  };
   const handlePurchaseWithToken = async (token: string, plan: string) => {
     try {
       const res = await fetch('/api/create-checkout', {
@@ -264,11 +272,11 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
         // 💳 E148-刀三：tarot_daily_once 付讫按盘落库 —— 单人盘签名随收银请求上送
         //   （E131 同通道；铸签读模块级镜像 _e148LastForm——与 TarotDailyCard 查看请求
         //    同源同签：镜像值即该卡 props 真源，防付讫后 402 死锁）
-        body: JSON.stringify(plan === 'compatibility_once'
+        body: JSON.stringify(Object.assign(plan === 'compatibility_once'
           ? Object.assign({ plan }, (() => { const c = compatComboSigOf(_e148LastForm.d1, _e148LastForm.d2, _e148LastForm.t1, _e148LastForm.t2, _e148LastForm.c1, _e148LastForm.c2); return c ? { combo_sig: c } : {}; })())
           : plan === 'tarot_daily_once'
           ? Object.assign({ plan }, (() => { const f = _e148LastForm; const s = f.c1 ? wealthChartSigOf(f.d1, f.t1 || '12:00', f.c1.lat, f.c1.lon, f.c1.tz) : ''; return s ? { chart_sig: s } : {}; })())
-          : { plan }),
+          : { plan }, _e159BodyScene())),
       });
       const data = await res.json();
       // ✦ E84（主公军令 2026-10-22）「付费即刻呈现」：沙盒/兑换授予后落支付成功标志再刷新——
@@ -318,6 +326,8 @@ function DateInput({ value, onChange, onLastFilled, firstFieldRef, autoFocus, co
           try {
             sessionStorage.setItem('ks_payment_success', '1');
             if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
+            // 🤝 E159-刀一：只标记本次购买所属场景（情爱同写 E85 旧键；商道/挚友 ⇒ 撤回上一行旧字面误写的情爱键）
+            try { if (plan === 'compatibility_once') markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156SceneOfSavedResult()); } catch { /* noop */ }
           } catch { /* noop */ }
           window.location.reload();
         }
@@ -383,7 +393,7 @@ function E156NameInput({ id, lang, value, onChange, labelKey, phKey }: {
   return (
     <>
       <label className="ks-field-label" htmlFor={id} style={{ marginTop: '10px' }}>{resT(L, labelKey)}</label>
-      <input id={id} data-testid={id} name={id} value={value} maxLength={24} autoComplete="off" data-purpose="nickname"
+      <input id={id} className="ks-e159-nickname-input" data-testid={id} name={id} value={value} maxLength={24} autoComplete="off" data-purpose="nickname"
         onChange={(e) => onChange(e.target.value)} placeholder={resT(L, phKey)}
         style={{
           width: '100%', padding: '10px 12px', font: 'inherit', fontSize: '15px', color: '#FAF4E4',
@@ -894,11 +904,26 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   }), [lang, e156Scene, e156NameA, e156NameB, d1, d2, overall, dims]);
   // 🤝 E156：解锁后原地切换场景 ⇒ 清旧报告并按新场景重生（同一权益位，不二次收费）
   const e156SceneRef = React.useRef(e156Scene);
+  // 🤝 E159-刀一：场景切换轮归档让位标志（见下方 E158 归档 effect）
+  const e159SwitchGuardRef = React.useRef(false);
   React.useEffect(() => {
     if (e156SceneRef.current === e156Scene) return;
     e156SceneRef.current = e156Scene;
     setInsight(null); setTarotLine(null); setTarotCard(null); setError(null);
-    triggerInsight();
+    // 🤝 E159-刀一（主公军令 2026-11-27）：切换场景 ⇒ 报告归档按场景槽位换装（绝不串用其他场景报告）；
+    //   未解锁 ⇒ 落该场景专属付费墙（今日塔罗随墙锁定）；已解锁 ⇒ 只还原该场景自己的报告与折叠态并重生洞察。
+    //   当前场景随 ks_result 持久化（刷新/回场落回同一场景）。
+    e159PersistScene(e156Scene);
+    e159SwitchGuardRef.current = true; // 归档 effect 本轮让位：绝不把旧场景长卷写进新场景槽位
+    const _slot = readSceneArchive(sessionStorage, e156Scene) as { monthly?: string; yearly?: string; last?: string } | null;
+    const _kind: 'monthly' | 'yearly' = _slot && _slot.last === 'yearly' ? 'yearly' : 'monthly';
+    const _text = _slot && typeof _slot[_kind] === 'string' ? _slot[_kind] : '';
+    e158ArchiveRef.current = { scene: e156Scene, monthly: _slot?.monthly, yearly: _slot?.yearly, last: _kind };
+    setE158Archived({ monthly: !!(_slot && _slot.monthly), yearly: !!(_slot && _slot.yearly) });
+    if (_text) { setE158ReportKind(_kind); setReportText(_text); setRevealedParas(Number.POSITIVE_INFINITY); }
+    else setReportText(null);
+    setE158Active('once');
+    if (sessionSceneUnlocked(sessionStorage, e156Scene)) { setShowPaywall(false); triggerInsight(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [e156Scene]);
   const [tarotLine, setTarotLine] = useState<string | null>(null);
@@ -916,9 +941,17 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   // 🔴 E85-①（主公军令 2026-10-24）：$4.99 按次消费品——per-session 解锁状态。
   //    每次新测算（handleCalculate/重新测算）重置为 unpaid；账号级旧权益（测试残留 paid 标记）
   //    不得跨次白送。当次支付返回（pendingInsightTrigger）才置 unlocked ⇒ 付费墙 100% 必现。
-  const [sessionUnlocked, setSessionUnlocked] = useState<boolean>(() => {
+  const [sessionUnlockedTick, setSessionUnlocked] = useState<boolean>(() => {
     try { return sessionStorage.getItem('ks_compat_session_unlocked') === '1'; } catch { return false; }
   });
+  // 🤝 E159-刀一（主公军令 2026-11-27）：解锁态按「当前场景」判定——一次付费只解锁当时购买的那个场景；
+  //   情爱沿用 E85-① 键（存量契约逐字节兼容），商道/挚友走场景数组键（compatSceneEntitlement.mjs）。
+  void sessionUnlockedTick;
+  const sessionUnlocked = React.useMemo(
+    () => sessionSceneUnlocked(sessionStorage, e156Scene),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionUnlockedTick, e156Scene],
+  );
   // 🧪 E138（主公军令 2026-11-13）：测试总监态（服务端 tester-status 真值；普通用户恒 false
   //    ⇒ 重置微控件零渲染零泄漏）。
   const [testerMode, setTesterMode] = useState(false);
@@ -1051,6 +1084,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   }, []);
   React.useEffect(() => {
     // 长卷落定（非加载、非打字中）⇒ 归档（内存＋sessionStorage；配额溢出 ⇒ 仅内存）
+    if (e159SwitchGuardRef.current) { e159SwitchGuardRef.current = false; return; } // 🤝 E159-刀一: 场景切换轮让位，旧场景长卷绝不写入新场景槽位
     if (!reportText || reportLoading || reportTyping) return;
     const a = e158ArchiveRef.current;
     if (a.scene !== e156Scene) { a.scene = e156Scene; a.monthly = undefined; a.yearly = undefined; setE158Archived({ monthly: false, yearly: false }); }
@@ -1058,6 +1092,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     a.last = e158ReportKind;
     if (!e158Archived[e158ReportKind]) setE158Archived((p) => ({ ...p, [e158ReportKind]: true }));
     try { sessionStorage.setItem('ks_e158_report_archive', JSON.stringify(a)); } catch { /* 配额 ⇒ 内存归档兜底 */ }
+    try { writeSceneArchive(sessionStorage, a); } catch { /* 配额 ⇒ 内存归档兜底 */ } // 🤝 E159-刀一: 每场景一槽（切换场景只还原本场景报告）
   }, [reportText, reportLoading, reportTyping, e158ReportKind, e158Archived]);
   const e158HasArchive = (kind: 'monthly' | 'yearly') => {
     const a = e158ArchiveRef.current;
@@ -1077,10 +1112,24 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   };
   /** 年鉴按钮：本页已生成的同档报告 ⇒ 原地重开（true）；否则走购买链（false） */
   const e158AlmanacClick = (kind: 'monthly' | 'yearly') => {
+    // ✦ E159-刀五：账号级该场景该档已解锁而本页无归档 ⇒ 缓存复读生成（绝不二次收费入口）
+    if (!reportLoading && e159KindUnlocked(kind)) { generateReport(kind); return true; }
     if (!reportLoading && e158HasArchive(kind)) { e158Reopen(kind); return true; }
     return false;
   };
   // const [showPricePreview, setShowPricePreview] = useState(false);
+  // ✦ E159-刀五（主公军令 2026-11-27）：年鉴区已解锁档位 ⇒ 「✓ <场景报告名> · 已解锁 · 点击查看」直达态（撤价签）
+  //    判定＝本页已归档 或 账号级该场景该档权益（paid_plans 镜像，与服务端场景名单同口径）。
+  const e159KindUnlocked = (kind: 'monthly' | 'yearly'): boolean => {
+    if (e158HasArchive(kind)) return true;
+    try {
+      return accountSceneEntitled(paidPlansLocal, kind, e156Scene, { comboSig: compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined });
+    } catch { return false; }
+  };
+  const e159OwnedLabel = (kind: 'monthly' | 'yearly'): string | null => {
+    if (!e159KindUnlocked(kind)) return null;
+    return '✓ ' + resReportTitle(lang, e156Scene, kind) + ' · ' + resT(lang, 'btn_unlocked_view');
+  };
   // 🎯 军师方案：防止重复触发 checkout 的 ref
   const hasTriggeredCheckout = useRef(false);
   const insightLockRef = useRef(false);
@@ -1091,7 +1140,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   //    🧹 E85-③：旧「支付后自动生成 once 合盘四段深报」的二段链随合盘板块退役。
   useEffect(() => {
     if (pendingInsightTrigger) {
-      try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
+      // 🤝 E159-刀一：只解锁「本次购买所属场景」（购买场景键优先，回落当前场景；情爱同写 E85 旧键）
+      try { markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156Scene); } catch { /* noop */ }
       setSessionUnlocked(true);
       // 🔴 E99-① 补刀（主公军令 2026-10-28）：付讫回场收墙——匿名沙盒链无 checkPaidStatus
       //    权益回查（无 session ⇒ INITIAL_SESSION 落 showPaywall=true 恒立），若不在此
@@ -1242,7 +1292,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           //    （既免 797 effect 复拉、又免 paidStatus=null 卡 1476 骨架分支）。
           //    live 模式无匿名付讫链 ⇒ ks_compat_session_unlocked 恒空 ⇒ 旧明牌流逐字不变。
           let _e99AnonUnlocked = false;
-          try { _e99AnonUnlocked = sessionStorage.getItem('ks_compat_session_unlocked') === '1'; } catch { /* noop */ }
+          try { _e99AnonUnlocked = sessionSceneUnlocked(sessionStorage, e156SceneOfSavedResult()); } catch { /* noop */ }
           if (_e99AnonUnlocked) {
             console.log('[KindredSouls] 🧪 E99 anon session-unlocked on INITIAL_SESSION — paywall bypass');
             setPaidStatus(true);
@@ -1337,7 +1387,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   // ── 查询付费状态（使用 Supabase JS 客户端，受 RLS 保护）──
   // ── 快速检查：用户是否已有某个计划覆盖当前付费功能（不设 state，只返回 bool）──
   const checkCoverageInline = async (token: string, plan: string): Promise<boolean> => {
-    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    const supabaseUrl = SUPABASE_REST_URL;
     const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
     try {
       // 1. 获取用户 ID
@@ -1374,10 +1424,18 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
 
       // 4. 检查兼容性覆盖
       const isCompatibilityCovered = (() => {
-        const directKeys = ['compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report', 'compatibility_free_coupon'];
-        for (const k of directKeys) {
-          if (planMap[k] === true || planMap[k] === k) return true;
-        }
+        // 🤝 E159-刀一（主公军令 2026-11-27）：直通键改按「场景 + 双盘签名」判定（情爱裸签名/裸位兼容存量；
+        //    商道/挚友须名单命中）——一次付费只解锁购买的那个场景；全通/星月卡配额仍走下方既有分支。
+        if (planMap.compatibility_free_coupon === true || planMap.compatibility_free_coupon === 'compatibility_free_coupon') return true;
+        const _e159CompatOnly = {
+          compatibility_once: planMap.compatibility_once, compatibility_once_charts: planMap.compatibility_once_charts,
+          compatibility_monthly_report: planMap.compatibility_monthly_report, compatibility_monthly_scenes: planMap.compatibility_monthly_scenes,
+          compatibility_yearly_report: planMap.compatibility_yearly_report, compatibility_yearly_scenes: planMap.compatibility_yearly_scenes,
+        };
+        const _e159ComboSig = compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined;
+        if (accountSceneEntitled(_e159CompatOnly, 'once', e156Scene, { comboSig: _e159ComboSig })) return true;
+        if (accountSceneEntitled(_e159CompatOnly, 'monthly', e156Scene)) return true;
+        if (accountSceneEntitled(_e159CompatOnly, 'yearly', e156Scene)) return true;
         // all_pass_yearly
         const ap = planMap.all_pass_yearly;
         if (ap) {
@@ -1422,7 +1480,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     if (hasTriggeredCheckout.current) {
       return;
     }
-    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    const supabaseUrl = SUPABASE_REST_URL;
     const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
     try {
       // 1. 用 Auth REST API 获取当前用户
@@ -1478,10 +1536,18 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       // 兼容性检查（与 create-checkout 服务端逻辑一致）
       const isCompatibilityPaid = (() => {
         // 直接放行：key === true 或字符串形式
-        const directKeys = ['compatibility_once', 'compatibility_monthly_report', 'compatibility_yearly_report', 'compatibility_free_coupon'];
-        for (const k of directKeys) {
-          if (planMap[k] === true || planMap[k] === k) return true;
-        }
+        // 🤝 E159-刀一（主公军令 2026-11-27）：直通键改按「场景 + 双盘签名」判定（情爱裸签名/裸位兼容存量；
+        //    商道/挚友须名单命中）——一次付费只解锁购买的那个场景；全通/星月卡配额仍走下方既有分支。
+        if (planMap.compatibility_free_coupon === true || planMap.compatibility_free_coupon === 'compatibility_free_coupon') return true;
+        const _e159CompatOnly = {
+          compatibility_once: planMap.compatibility_once, compatibility_once_charts: planMap.compatibility_once_charts,
+          compatibility_monthly_report: planMap.compatibility_monthly_report, compatibility_monthly_scenes: planMap.compatibility_monthly_scenes,
+          compatibility_yearly_report: planMap.compatibility_yearly_report, compatibility_yearly_scenes: planMap.compatibility_yearly_scenes,
+        };
+        const _e159ComboSig = compatComboSigOf(d1, d2, t1, t2, c1, c2) || undefined;
+        if (accountSceneEntitled(_e159CompatOnly, 'once', e156Scene, { comboSig: _e159ComboSig })) return true;
+        if (accountSceneEntitled(_e159CompatOnly, 'monthly', e156Scene)) return true;
+        if (accountSceneEntitled(_e159CompatOnly, 'yearly', e156Scene)) return true;
 
         // all_pass_yearly：检查不过期
         const ap = planMap.all_pass_yearly;
@@ -1516,7 +1582,9 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       })();
 
       setPaidPlansLocal(rawPlans);
-      if (isCompatibilityPaid) {
+      // 🤝 E159-刀三：本场景会话已解锁（付讫跨 reload 存续）⇒ 视作已付费、绝不拉墙（登录态重载稳定同步权益）
+      const _e159SessUnlocked = (() => { try { return sessionSceneUnlocked(sessionStorage, e156Scene); } catch { return false; } })();
+      if (isCompatibilityPaid || _e159SessUnlocked) {
         setPaidStatus(true);
         setShowPaywall(false);
       } else {
@@ -1588,6 +1656,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
     // 🔴 E90-①（主公军令 2026-10-25）：付费墙按钮加载态按档位隔离——记下被点击的
     //    plan ⇒ PaywallCard 仅该档位按钮转 ⏳，其余按钮文案/可点击态原样（互不干扰）。
     setActivePurchasePlan(plan);
+    // 🤝 E159-刀一：记下本次购买所属场景（付讫回场按此落解锁）
+    try { rememberPurchaseScene(sessionStorage, e156Scene); } catch { /* noop */ }
     // 先检查是否已登录
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
@@ -1622,6 +1692,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                     if (plan === 'compatibility_once') sessionStorage.setItem('ks_compat_session_unlocked', '1');
                     else if (plan === 'compatibility_monthly_report') sessionStorage.setItem('ks_paid_report_type', 'monthly');
                     else if (plan === 'compatibility_yearly_report') sessionStorage.setItem('ks_paid_report_type', 'yearly');
+                    // 🤝 E159-刀一：只标记本次购买所属场景（情爱同写 E85 旧键；商道/挚友 ⇒ 撤回上方旧字面误写的情爱键）
+                    try { if (plan === 'compatibility_once') markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156SceneOfSavedResult()); } catch { /* noop */ }
                   } catch { /* noop */ }
                   window.location.reload();
                 },
@@ -1669,8 +1741,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           ...(e156IsScene ? {
             scene: e156Scene, nameA: e156NameA, nameB: e156NameB, dimLabels: e156DimLabels,
             timeTruth: {
-              a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
-              b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '' },
+              a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '', city: e159CityName(c1, lang) },
+              b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '', city: e159CityName(c2, lang) },
             },
           } : (e156Scene === 'romance' && (e156NameA || e156NameB)) ? {
             // ✦ E158-刀六：情爱 ⇒ 亲填称呼随洞察上送（服务端逐字原样锁＋重试恰一次；未填 ⇒ 请求形态零变）
@@ -1772,8 +1844,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           stream: true,
           // 🌌 E40+：瑞士星历双人时空真值（全空 ⇒ 服务端零引擎调用 + 显式未知声明）
           timeTruth: {
-            a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '' },
-            b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '' },
+            a: { birthTime: t1 || '', tz: c1?.tz || '', lat: c1 ? c1.lat : '', lon: c1 ? c1.lon : '', city: e159CityName(c1, lang) },
+            b: { birthTime: t2 || '', tz: c2?.tz || '', lat: c2 ? c2.lat : '', lon: c2 ? c2.lon : '', city: e159CityName(c2, lang) },
           },
         }),
       });
@@ -1854,7 +1926,8 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   //    （服务端 Gate41 缓存秒回）＋自动生成对应报告；消费即清防重触。
   useEffect(() => {
     if (pendingReportTrigger === 'monthly' || pendingReportTrigger === 'yearly') {
-      try { sessionStorage.setItem('ks_compat_session_unlocked', '1'); } catch { /* noop */ }
+      // 🤝 E159-刀一：只解锁「本次购买所属场景」（情爱同写 E85 旧键）
+      try { markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156Scene); } catch { /* noop */ }
       setSessionUnlocked(true);
       // 🔴 E99-① 补刀（主公军令 2026-10-28）：同 once 链——匿名沙盒付讫回场收墙
       //    （无 session ⇒ showPaywall=true 恒立，不收墙则报告渲染被付费墙分支顶死）。
@@ -1864,6 +1937,34 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
       onReportConsumed?.();
     }
   }, [pendingReportTrigger]);
+
+  // ✦ E159-刀三（主公军令 2026-11-27）：登录态直接重载 /result ⇒ 权益/报告/塔罗稳定同步——
+  //    本场景会话已解锁而洞察缺失（刷新丢局部 state）⇒ 自动重拉洞察＋塔罗（服务端 Gate41/e157v3 缓存秒回）。
+  //    每场景仅触发一次；新测算（未解锁）恒落付费墙（E85-① 必现墙零变）。
+  const e159AutoRef = useRef<string>('');
+  useEffect(() => {
+    if (!sessionUnlocked || loading || insight || error) return;
+    if (pendingInsightTrigger || pendingReportTrigger) return;
+    if (e159AutoRef.current === e156Scene) return;
+    e159AutoRef.current = e156Scene;
+    triggerInsight();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionUnlocked, loading, insight, error, e156Scene, pendingInsightTrigger, pendingReportTrigger]);
+  React.useEffect(() => {
+    // 🤝 E159-刀一：刷新/付讫回场 ⇒ 商道/挚友场景槽位回填（情爱由上方 E158 旧键 effect 回填，零重复）
+    if (e156Scene === 'romance') return;
+    const _slot = readSceneArchive(sessionStorage, e156Scene) as { monthly?: string; yearly?: string; last?: string } | null;
+    if (!_slot) return;
+    const kind: 'monthly' | 'yearly' = _slot.last === 'yearly' ? 'yearly' : 'monthly';
+    const text = typeof _slot[kind] === 'string' ? _slot[kind] : '';
+    if (!text) return;
+    e158ArchiveRef.current = { scene: e156Scene, monthly: _slot.monthly, yearly: _slot.yearly, last: kind };
+    setE158Archived({ monthly: !!_slot.monthly, yearly: !!_slot.yearly });
+    setE158ReportKind(kind);
+    setReportText(text);
+    setRevealedParas(Number.POSITIVE_INFINITY);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // ── 体验兜底：OAuth 回调解析期间显示优雅加载状态，不弹登录墙 ──
   const urlHasToken = typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || sessionStorage.getItem('ks_oauth_in_progress') === '1');
   if (!sessionChecked || (paidStatus === null && !showAuthWall) || isAuthParsing) {
@@ -1959,6 +2060,14 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
         {/* 💠 E133 刀三：付费卡容器左右拉伸与「重新测算」按钮两端齐平——外层
             margin 0 -18px 抵消 .ai-insight 内边距（PaywallCard 自身 width:100%），
             390/1440 双视口两侧呼吸留白对称一致。 */}
+        {/* 🤝 E159-刀一（主公军令 2026-11-27）：付费墙态切换条——切到未解锁场景即落该场景专属付费墙；
+            已解锁场景可随时切回（绝不串用其他场景报告/塔罗）；生成中禁切（防旧场景流串台）。 */}
+        {onSceneChange && (
+          <div data-testid="e159-scene-switch-paywall" style={{ margin: '0 0 14px', padding: '12px', borderRadius: '16px', border: '1px solid rgba(212,175,55,.3)', background: 'rgba(13,13,26,.45)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', letterSpacing: '.08em', color: '#F0D060', fontWeight: 600, overflowWrap: 'anywhere' }}>{resT(lang, 'scene_switch')}</span>
+            <E156ScenePills lang={lang} value={e156Scene} onChange={(s) => { if (s !== e156Scene && !loading && !reportLoading) onSceneChange(s); }} testId="e156-pills-paywall" />
+          </div>
+        )}
         <div ref={compatPaywallRef} style={{ position: 'relative', borderRadius: '22px', overflow: 'visible', margin: '0 -18px 20px' }}>
           <div style={{
             filter: 'blur(6px)', opacity: 0.55, padding: '24px 18px',
@@ -1986,6 +2095,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
               onClick={() => {
                 resetSandboxSession();
                 try { sessionStorage.removeItem(ROMANCE_SESSION_UNLOCK_KEY); } catch (_) { /* noop */ }
+                try { clearSessionScenes(sessionStorage); } catch (_) { /* noop */ } // 🤝 E159-刀一: 场景解锁键/购买场景键一并清
                 // 🏆 E140（主公军令 2026-11-15）: 重置联动清灵宠档 —— 「本轮演练灵宠
                 //    状态」与沙盒解锁态同步清空（军令口径：初始未解锁态＝灵宠亦回未
                 //    认领），供总监下一轮全链复测；iOS 无痕兜底不阻断刷新。
@@ -2107,7 +2217,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
           {insight && onSceneChange && (
             <div data-testid="e156-scene-switch" style={{ marginTop: '14px', padding: '12px', borderRadius: '16px', border: '1px solid rgba(212,175,55,.3)', background: 'rgba(13,13,26,.45)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '12px', letterSpacing: '.08em', color: '#F0D060', fontWeight: 600, overflowWrap: 'anywhere' }}>{resT(lang, 'scene_switch')}</span>
-              <E156ScenePills lang={lang} value={e156Scene} onChange={(s) => { if (s !== e156Scene) onSceneChange(s); }} testId="e156-pills-result" />
+              <E156ScenePills lang={lang} value={e156Scene} onChange={(s) => { if (s !== e156Scene && !reportLoading) onSceneChange(s); }} testId="e156-pills-result" />
             </div>
           )}
           {/* 🤝 E156：幸福坐标卡（三场景报告底部；预览＋单一保存/分享按钮；二维码恒指首页） */}
@@ -2195,7 +2305,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', marginBottom: '8px', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.4)', background: reportLoading ? '#444' : 'rgba(212,175,55,0.1)', color: '#D4AF37', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'monthly' ? '⏳...' : (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'monthly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly)}
+                {reportLoading === 'monthly' ? '⏳...' : (e159OwnedLabel('monthly') || (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'monthly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).monthly))}
               </button>
               {/* 👑 年报按钮：E87-② 同令——购买先行，付讫回场自动生成年报 */}
               <button
@@ -2203,7 +2313,7 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
                 disabled={!!reportLoading}
                 style={{ display: 'block', width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(192,132,252,0.45)', background: reportLoading ? '#444' : 'rgba(192,132,252,0.1)', color: '#D8B4FE', fontSize: '13px', fontWeight: 700, cursor: reportLoading ? 'not-allowed' : 'pointer' }}
               >
-                {reportLoading === 'yearly' ? '⏳...' : (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'yearly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly)}
+                {reportLoading === 'yearly' ? '⏳...' : (e159OwnedLabel('yearly') || (e156IsScene ? resAlmanacBtn(lang, e156Scene, 'yearly') : (L_ALMANAC_BTN[lang] || L_ALMANAC_BTN.en).yearly))}
               </button>
               {/* ✦ E158-刀七：场景月/年报收起态——黑金折叠条（全文已在本页生成 ⇒ 点击原地重开，零请求零重复计费） */}
               {(['monthly', 'yearly'] as const).filter((k) => k !== e158ReportKind && e158Archived[k]).map((k) => (
@@ -2304,19 +2414,55 @@ function AIInsightBlock({ d1, d2, t1, c1, t2, c2, overall, dims, bazi, zodiac, i
   );
 }
 
+/** 🤝 E159-刀四：出生城市名随 timeTruth 上送（报告语种本地名 ⇒ 英文名 ⇒ 空；缺城市 ⇒ 空串绝不伪造） */
+function e159CityName(c: { key?: string; names?: Record<string, string> } | null | undefined, lang: string): string {
+  try {
+    const names = (c && c.names) || undefined;
+    return String((names && (names[lang] || names.en)) || '').trim();
+  } catch { return ''; }
+}
+/** 🤝 E159：已落盘测算的场景（ks_result._scene；坏档 ⇒ 情爱） */
+function e156SceneOfSavedResult(): string {
+  try {
+    const r = JSON.parse(sessionStorage.getItem('ks_result') || localStorage.getItem('ks_result') || 'null');
+    return normalizePairScene(r && r._scene);
+  } catch { return 'romance'; }
+}
+/** 🤝 E159-刀三：当前场景随 ks_result 持久化（刷新/回场后落回同一场景 ⇒ 权益/报告/塔罗同步） */
+function e159PersistScene(scene: string) {
+  try {
+    const sc = normalizePairScene(scene);
+    for (const st of [sessionStorage, localStorage]) {
+      const raw = st.getItem('ks_result');
+      if (!raw) continue;
+      const r = JSON.parse(raw);
+      r._scene = sc;
+      st.setItem('ks_result', JSON.stringify(r));
+    }
+  } catch { /* 坏档/无痕 ⇒ 静默 */ }
+}
+
 /* ── Result Page ── */
 function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPendingInsightTrigger, pendingReportTrigger = null, setPendingReportTrigger, onLogout }: { result: CompatibilityResult; onBack: () => void; lang: 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi'; pendingInsightTrigger?: boolean; setPendingInsightTrigger?: (v: boolean) => void; pendingReportTrigger?: 'monthly' | 'yearly' | null; setPendingReportTrigger?: (v: 'monthly' | 'yearly' | null) => void; onLogout?: () => void }) {
   const { t } = useTranslation();
-  const { overall, engines, dimensions, luckyAspects, challengingAspects } = result;
   // 🤝 E156：关系坐标场景（输入页胶囊随结果下传；解锁后可原地切换 ⇒ 四维/付费墙/报告同频换词）
   const e156BaseScene = e156SceneOf(result as unknown as { _scene?: string });
   const [liveScene, setLiveScene] = useState<string>(e156BaseScene);
+  // 🤝 E159-刀二：场景切换 ⇒ 三模块解读按当前场景重算（排盘真理不变；初值场景与测算时一致 ⇒ 零重算）
+  const e159Result = React.useMemo(() => {
+    if (normalizeCardScene(liveScene) === e156BaseScene) return result;
+    const _d1 = (result as unknown as { _d1?: string })._d1;
+    const _d2 = (result as unknown as { _d2?: string })._d2;
+    const res = _d1 && _d2 ? calculateCompatibility(_d1, _d2, lang, liveScene) : null;
+    return res && !('error' in res) ? Object.assign({}, result, res) : result;
+  }, [result, liveScene, e156BaseScene, lang]);
+  const { overall, engines, dimensions, luckyAspects, challengingAspects } = e159Result;
   const _e156Names = result as typeof result & { _nameA?: string; _nameB?: string };
 
   const engineList = [
     { key: 'bazi', label: t('result.engines.bazi'), e: engines.bazi },
     { key: 'zodiac', label: t('result.engines.zodiac'), e: engines.zodiac },
-    { key: 'iching', label: t('result.engines.iching'), e: engines.iching },
+    { key: 'iching', label: resT(lang, 'iching_heading_' + normalizeCardScene(liveScene)), e: engines.iching }, // ✦ E159-刀六：易经标题按场景分流（姻缘/商道/挚友解读）
   ];
 
   // ── Collapsible state for mobile ──
@@ -2365,18 +2511,18 @@ function ResultPage({ result, onBack, lang, pendingInsightTrigger = false, setPe
               ))}
             </div>
 
-            {(result.luckyAspects.length > 0 || result.challengingAspects.length > 0) && (
+            {(e159Result.luckyAspects.length > 0 || e159Result.challengingAspects.length > 0) && (
               <div className="aspects" style={{ marginTop: '20px' }}>
-                {result.luckyAspects.length > 0 && (
+                {e159Result.luckyAspects.length > 0 && (
                   <div className="aspect-group">
                     <h4>🌟 {t('result.luckyAspects')}</h4>
-                    {result.luckyAspects.map((a, i) => <span className="tag tag-good" key={i}>{a}</span>)}
+                    {e159Result.luckyAspects.map((a, i) => <span className="tag tag-good" key={i}>{a}</span>)}
                   </div>
                 )}
-                {result.challengingAspects.length > 0 && (
+                {e159Result.challengingAspects.length > 0 && (
                   <div className="aspect-group">
                     <h4>⚡ {t('result.challengingAspects')}</h4>
-                    {result.challengingAspects.map((a, i) => <span className="tag tag-warn" key={i}>{a}</span>)}
+                    {e159Result.challengingAspects.map((a, i) => <span className="tag tag-warn" key={i}>{a}</span>)}
                   </div>
                 )}
               </div>
@@ -2630,6 +2776,10 @@ export default function App() {
  const isOAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('type=') || search.includes('code=');
  const justLoggedIn = localStorage.getItem('ks_just_logged_in');
  const savedResult = localStorage.getItem('ks_result') || sessionStorage.getItem('ks_result');
+
+// ✦ E159-刀三（主公军令 2026-11-27）：/result 路由＋有存档 ⇒ 恒恢复（N 次刷新稳定渲染；不再「消费一次即删」）
+const _e159OnResultRoute = /^\/result\/?$/.test(window.location.pathname);
+const _e159PlainRestore = _e159OnResultRoute && !isOAuthCallback && !justLoggedIn && !paymentSuccess;
  // Restore result page if returning from OAuth or payment
  if (paymentSuccess) {
  // Stripe payment callback — set flag for auto-trigger, then clean URL
@@ -2639,12 +2789,12 @@ export default function App() {
  // Hash will be cleaned after SIGNED_IN event fires (line ~347).
  // Only clean search params (not hash) here.
  }
- if ((isOAuthCallback || justLoggedIn || paymentSuccess) && savedResult) {
+ if (savedResult && (isOAuthCallback || justLoggedIn || paymentSuccess || _e159OnResultRoute)) {
  try {
  const r = JSON.parse(savedResult);
  const pendingPlan = localStorage.getItem('ks_pending_checkout_plan');
  const wealthPlans = ['wealth_once','wealth_monthly_report','wealth_yearly_report','star_monthly_vip','all_pass_yearly','all_pass_monthly'];
- if (wealthPlans.includes(pendingPlan || '')) {
+ if (wealthPlans.includes(pendingPlan || '') && !_e159PlainRestore) {
    const birthDate = r?.birthDate || localStorage.getItem('wealth_birth') || '';
    const lang = r?.lang || localStorage.getItem('wealth_lang') || 'en';
    // 🛡️ 45-D2c:「现场秒级恢复」优先复用**全参**回跳 URL（time/城市/经纬度/时区齐备）。
@@ -2662,6 +2812,8 @@ export default function App() {
  } catch (e) {
  console.error('[KindredSouls Debug] Failed to parse ks_result:', e);
  localStorage.removeItem('ks_result');
+ try { sessionStorage.removeItem('ks_result'); } catch { /* noop */ }
+ if (_e159OnResultRoute) { _setPage('input'); window.history.replaceState({}, '', '/'); } // 🤝 E159-刀三: 坏档 ⇒ 优雅回输入页，绝不黑屏
  }
  } else if ((isOAuthCallback || justLoggedIn || paymentSuccess) && !savedResult) {
    // 🧪 兜底：reportData 未加载时，直接用 ks_oauth_back_url 回跳财富页
@@ -2680,6 +2832,8 @@ export default function App() {
  } else if (!isOAuthCallback && !justLoggedIn && !paymentSuccess) {
  // Only clear ks_result if NOT returning from OAuth/payment
  localStorage.removeItem('ks_result');
+ // 🤝 E159-刀三：/result 无存档（手输 URL/存档已清）⇒ 优雅回输入页，绝不黑屏
+ if (_e159OnResultRoute) { _setPage('input'); window.history.replaceState({}, '', '/'); }
  // 🔴 E87-④：纯冷启动（无 OAuth/支付/回场上下文）⇒ 同步清陈年回跳劫持源，
  //    '/' 永不被旧 wealth 现场污染。
  try { localStorage.removeItem('ks_oauth_back_url'); } catch { /* noop */ }
@@ -2734,6 +2888,9 @@ export default function App() {
     // 🔴 E85-①（主公军令 2026-10-24）：$4.99 按次消费品——每次新测算（开始测算/重新测算）
     //    强制重置当次会话解锁状态为 unpaid ⇒ /result 必现付费墙，账号级旧权益不得跨次白送。
     try { sessionStorage.removeItem('ks_compat_session_unlocked'); } catch { /* noop */ }
+    // 🤝 E159-刀一：场景解锁键/购买场景键/场景归档槽位一并清（三场景付费墙全数恢复）
+    try { clearSessionScenes(sessionStorage); } catch { /* noop */ }
+    for (const _s of COMPAT_SCENES) { try { sessionStorage.removeItem(sceneArchiveKey(_s)); } catch { /* noop */ } }
     // Ensure we have a user_id
     let uid = userId;
     if (!uid) {
@@ -2745,7 +2902,7 @@ export default function App() {
     const rawLang = (i18n.language || 'en').split('-')[0];
     const lang = normalizeLang(rawLang);
     setTimeout(() => {
-      const res = calculateCompatibility(d1, d2, lang);
+      const res = calculateCompatibility(d1, d2, lang, normalizeCardScene(meta && meta.scene)); // 🤝 E159-刀二: 三模块解读按场景分流
       if ('error' in res) {
         setErr(t('common.errorFormat'));
         _setPage('input');

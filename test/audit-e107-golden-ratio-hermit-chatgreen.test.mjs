@@ -178,10 +178,10 @@ test('④-4 前端零登录拦阻（无 token 亦发流——灵宠档随行证�
 
 test('⑤-1 军规链段数入编（E108 后继化：83 段／e107 居 e106 前、e40 前）', async () => {
   const segs = PKG.scripts['test:astro'].split('&&').map((s) => s.trim()).filter(Boolean);
-  assert.equal(segs.length, 124, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);   // 🔴 后继化（E158 入编）：123→124
+  assert.equal(segs.length, 125, `军规链段数异常（实得 ${segs.length}，基线 92（E120 升 92 段））`);   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
   assert.ok(segs[segs.length - 1].includes('audit_v492_peak_window.py'), 'python 恒链尾被破');
   assert.ok(segs[segs.length - 2].includes('audit-e40-compat'), 'e40-compat 恒 len-2 被破');
-  assert.ok(segs[segs.length - 45].includes('audit-e107'), 'audit-e107 须居 len-44（E157 插链后继化）');
-  assert.ok(segs[segs.length - 46].includes('audit-e106'), 'audit-e106 须居 len-45（E157 插链后继化）');
-  assert.ok(segs[segs.length - 47].includes('audit-e105'), 'audit-e105 须居 len-46（E157 插链后继化）');
+  assert.ok(segs[segs.length - 46 ].includes('audit-e107'), 'audit-e107 须居 len-44（E157 插链后继化）');
+  assert.ok(segs[segs.length - 47 ].includes('audit-e106'), 'audit-e106 须居 len-45（E157 插链后继化）');
+  assert.ok(segs[segs.length - 48 ].includes('audit-e105'), 'audit-e105 须居 len-46（E157 插链后继化）');
 });

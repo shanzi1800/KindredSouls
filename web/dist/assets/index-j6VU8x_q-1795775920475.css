@@ -3077,3 +3077,10 @@ body.ks-fam-ridden .landing-start-wrap { margin-top: 18px; }
 }
 .ks-e158-bar[lang="th"], .ks-e158-bar[lang="th"] * { line-height: 1.55; overflow-wrap: anywhere; }
 .ks-e158-fold { min-width: 0; }
+
+/* ✦ E159-刀五（主公军令 2026-11-27）：昵称输入框 placeholder 零裁切——
+   en/es/vi 精简措辞＋字号 12px（移动端 11.5px），259px 内宽六语 100% 完整展示。 */
+.ks-e159-nickname-input::placeholder { font-size: 12px; letter-spacing: 0; }
+@media (max-width: 480px) {
+  .ks-e159-nickname-input::placeholder { font-size: 11.5px; }
+}

@@ -1,5 +1,7 @@
 import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
+// 🤝 E159-刀二：场景词典（商道/挚友解读；情爱不走）
+import { normalizeCompatScene, sceneText } from './sceneI18n';
 
 // ═════════════════════════════════════════
 // 八字合婚引擎（真实算法）
@@ -225,7 +227,10 @@ export function getIndividualBaZiProfile(birthInfo: BirthInfo): IndividualBaZiPr
   };
 }
 
-export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh', scene: unknown = 'romance'): EngineResult {
+  // 🤝 E159-刀二：情爱＝既有文案逐字节不变；商道/挚友＝场景词典（四柱/评分真理不变）
+  const _sc = normalizeCompatScene(scene);
+  const S = _sc !== 'romance' ? sceneText(_sc, lang) : null;
   // Helper: translate gan/zhi/wuxing for target lang
   const tg = (g: string) => lang === 'zh' ? (TIAN_GAN_NAMES[g]?.[lang] || g) : `${TIAN_GAN_NAMES[g]?.[lang] || g} (${WU_XING_NAMES[TG_WUXING[g]]?.[lang] || ''})`;
   const dz_ = (z: string) => lang === 'zh' ? (DI_ZHI_NAMES[z]?.[lang] || z) : `${DI_ZHI_NAMES[z]?.[lang] || z} (${WU_XING_NAMES[DZ_WUXING[z]]?.[lang] || ''})`;
@@ -285,6 +290,11 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       const wxNourish: Record<string,string> = { zh:'滋养', en:', nourishes ', es:', nutre a ', fr:', nourrit ', th:', ช่วยเลี้ยงดู', vi:', tương hỗ và điều hòa với ' };
       // vi 说明："tương hỗ và điều hòa" 为中性表述，同时适用于相生与相克关系，避免在同性元素（如 Thổ-Thủy）时用错“滋养”
       const wxTaBare: Record<string,string> = { zh:wxLabels.ta.zh, en:wxLabels.ta.en, es:wxLabels.ta.es, fr:wxLabels.ta.fr, th: diff > 0 ? 'คู่ครอง' : 'คู่ครอง', vi: diff > 0 ? 'người ấy' : 'bạn' };
+      if (S) {
+        wxLabels.you = { ...wxLabels.you, [lang]: diff > 0 ? S.wxYou : S.othersCap };
+        wxLabels.ta = { ...wxLabels.ta, [lang]: diff > 0 ? S.others : S.wxYouLower };
+        wxTaBare[lang] = diff > 0 ? S.other : S.wxYouBare;
+      }
       wuxingDetails.push(`${wxLabels.you[lang]} ${wx(w)}${wxQi[lang]}${wxNourish[lang]}${wxTaBare[lang]}`);
       meta.push(`ELEMENT_EXCESS_${w}`);
       wuxingBonus += 3;
@@ -300,12 +310,12 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
   if (TIANGAN_LIUHE[sz1.dayMaster] === sz2.dayMaster) {
     hehunBonus += 12;
     meta.push('LIUHE_DAY_STEM');
-    const liuheLabel = { zh:`日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强`,
+    const liuheLabel = (S ? S.bazi.liuhe(tg(sz1.dayMaster), tg(sz2.dayMaster)) : { zh:`日干${sz1.dayMaster}与${sz2.dayMaster}形成【天干六合】，情感纽带极强`,
       en:`Day Stems ${tg(sz1.dayMaster)} & ${tg(sz2.dayMaster)} form a Six Harmony — powerful emotional bond`,
       es:`Tallos ${tg(sz1.dayMaster)} y ${tg(sz2.dayMaster)} forman Seis Armonías — vínculo emocional poderoso`,
       fr:`Tiges ${tg(sz1.dayMaster)} et ${tg(sz2.dayMaster)} forment Six Harmonies — lien émotionnel puissant`,
       th:`ธาตุ ${tg(sz1.dayMaster)} และ ${tg(sz2.dayMaster)} สร้างหกสามัคคี — พันธะอารมณ์ที่ทรงพลัง`,
-      vi:`Ngày ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} tạo Ngũ Hợp — liên kết cảm xúc mạnh mẽ` }[lang] || '';
+      vi:`Ngày ${tg(sz1.dayMaster)} và ${tg(sz2.dayMaster)} tạo Ngũ Hợp — liên kết cảm xúc mạnh mẽ` }[lang]) || '';
     hehunDetails.push(liuheLabel);
   }
 
@@ -382,14 +392,14 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
         meta.push('CROSS_LIUCHONG');
         const p1Lbl = PILLAR_LABELS_MAP[pLabels[i]]?.[lang] || pLabels[i];
         const p2Lbl = PILLAR_LABELS_MAP[pLabels[j]]?.[lang] || pLabels[j];
-        const detail = {
+        const detail = (S ? S.bazi.crossClash(p1Lbl, dz_(p1Dz[i]), p2Lbl, dz_(p2Dz[j])) : {
           zh:`跨柱${p1Lbl}支${p1Dz[i]}与对方${p2Lbl}支${p2Dz[j]}形成【六冲】，爱恨交织需加倍包容`,
           en:`Cross-pillar: Your ${p1Lbl} Branch ${dz_(p1Dz[i])} & their ${p2Lbl} Branch ${dz_(p2Dz[j])} form a Six Clash — intense passion with hidden friction`,
           vi:`Xuyên trụ: ${p1Lbl} Trụ ${dz_(p1Dz[i])} của bạn xung với ${p2Lbl} Trụ ${dz_(p2Dz[j])} của người ấy — sức hút mãnh liệt nhưng dễ tổn thương lẫn nhau`,
           es:`Choque entre tu Rama ${p1Lbl} ${dz_(p1Dz[i])} y su Rama ${p2Lbl} ${dz_(p2Dz[j])} — pasión intensa con fricción oculta`,
           fr:`Choc entre ta Branche ${p1Lbl} ${dz_(p1Dz[i])} et sa Branche ${p2Lbl} ${dz_(p2Dz[j])} — passion intense mais friction cachée`,
           th:`ขัดแย้งระหว่าง ${p1Lbl} สาขา ${dz_(p1Dz[i])} ของคุณกับ ${p2Lbl} สาขา ${dz_(p2Dz[j])} ของคู่ครอง — แรงดึงดูดรุนแรงแต่แอบมีความขัดแย้ง`,
-        }[lang] || '';
+        }[lang]) || '';
         if (detail) hehunDetails.push(detail);
       }
     }
@@ -405,14 +415,14 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     if (total >= 2) {
       hehunBonus -= 4;
       meta.push(`ZIXING_${b}`);
-      const selfLabel = {
+      const selfLabel = (S ? S.bazi.zixing(dz_(b), total) : {
         zh:`八字中${b}出现${total}次，形成【${b}${b}自刑】，情感敏感需用心呵护`,
         en:`${b} appears ${total}x in both charts — self-punishment pattern, emotional sensitivity needs nurturing`,
         vi:`Địa chi ${dz_(b)} xuất hiện ${total} lần — tạo ${dz_(b)} Tự Hình, cảm xúc dễ tổn thương, cần nâng niu`,
         es:`${b} aparece ${total} veces — patrón de auto-castigo, sensibilidad emocional necesita cuidado`,
         fr:`${b} apparaît ${total} fois — motif d'auto-punition, sensibilité émotionnelle à choyer`,
         th:`${b} ปรากฏ ${total} ครั้ง — รูปแบบการลงโทษตัวเอง ความอ่อนไหวทางอารมณ์ต้องการการดูแล`,
-      }[lang] || '';
+      }[lang]) || '';
       if (selfLabel) hehunDetails.push(selfLabel);
     }
   }
@@ -445,6 +455,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     detailYou: { zh:'你', en:'Your', es:'Tu', fr:'Votre', th:'ของคุณ', vi:'của bạn' },
     detailTa: { zh:'TA', en:"Partner's", es:'Pareja', fr:'Partenaire', th:'ของคู่ครอง', vi:'của người ấy' },
   };
+  if (S) { BAZI_LABELS.ta[lang] = S.bazi.ta; BAZI_LABELS.detailTa[lang] = S.bazi.detailTa; }
 
   // 根据分数段选择 summary 模板
   let summary: string;
@@ -459,7 +470,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       th:`เจ้า ${tg(sz1.dayMaster)} พบ ${tg(sz2.dayMaster)} — กิ่งฟ้าปรองดอง กิ่งดินลงรอย ชะตาชีวิตระดับสูง`,
       vi:`Nhật Chủ ${tg(sz1.dayMaster)} gặp ${tg(sz2.dayMaster)} — thiên can hòa hợp địa chi thuận duyên duyên phần trời`,
     };
-    summary = SUMMARY_85[lang] || SUMMARY_85['en'];
+    summary = S ? S.bazi.summary85(tg(sz1.dayMaster), tg(sz2.dayMaster)) : (SUMMARY_85[lang] || SUMMARY_85['en']);
   } else if (score >= 72) {
     const dp1 = `${tg(sz1.day[0])} ${dz_(sz1.day[1])}`;
     const dp2 = `${tg(sz2.day[0])} ${dz_(sz2.day[1])}`;
@@ -481,7 +492,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
       th:`แผนชะตาส่งเสริมกันอย่างดี — หากใส่ใจกัน ความรักจะยิ่งหวานชื่น`,
       vi:`Lá số cho thấy tiềm năng tương hợp cao — cùng nhau vun đắp, tình yêu sẽ kết trái ngọt`,
     };
-    summary = SUMMARY_60[lang] || SUMMARY_60['en'];
+    summary = S ? S.bazi.summary60 : (SUMMARY_60[lang] || SUMMARY_60['en']);
   } else {
     const SUMMARY_LT: Record<string,string> = {
       zh:`五行配置差异较大，但差异正是成长契机，关键在包容。`,
@@ -520,7 +531,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     th:'ธาตุต่างแต่หกสามัคคี — แรงดึงดูดตามธรรมชาติที่ทรงพลัง',
     vi:'Thiên Can Ngũ Hợp — mang lại sức hút tự nhiên và duyên phận sâu sắc',
   };
-  const rishiPhrase = hasLiuHe ? (RISHI_LIUHE[lang] || RISHI_LIUHE['en']) :
+  const rishiPhrase = hasLiuHe ? (S ? S.bazi.rishiLiuhe : (RISHI_LIUHE[lang] || RISHI_LIUHE['en'])) :
     rishiBase >= 88 ? (RISHI_HI[lang] || RISHI_HI['en']) :
     rishiBase >= 70 ? (RISHI_MED[lang] || RISHI_MED['en']) :
     (RISHI_LO[lang] || RISHI_LO['en']);
@@ -541,7 +552,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     es:'Requiere trabajo, pero vale la pena', fr:'Nécessite du travail, mais en vaut la peine',
     th:'ต้องปรับตัว แต่คุ้มค่าที่จะพยายาม', vi:'Cần điều chỉnh, nhưng đáng để cố gắng',
   };
-  const scorePhrase = score >= 80 ? (SCORE_HI[lang] || SCORE_HI['en']) :
+  const scorePhrase = score >= 80 ? (S ? S.bazi.scoreHi : (SCORE_HI[lang] || SCORE_HI['en'])) :
     score >= 65 ? (SCORE_MED[lang] || SCORE_MED['en']) :
     (SCORE_LO[lang] || SCORE_LO['en']);
 
@@ -556,6 +567,7 @@ export function calcBaZi(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): En
     hehunTitle: { zh:'合婚分析', en:'Marriage Compatibility', es:'Compatibilidad', fr:'Compatibilité', th:'การวิเคราะห์การสมรส', vi:'Phân tích Hợp Hôn' },
     scoreLabel: { zh:'综合评分', en:'Overall Score', es:'Puntuación Total', fr:'Score Global', th:'คะแนนรวม', vi:'Chỉ số hòa hợp' },
   };
+  if (S) { labels.ta[lang] = S.bazi.ta; labels.hehunTitle[lang] = S.bazi.hehunPlain; }
 
   const detail = [
     `${labels.sipanTitle[lang]}`,

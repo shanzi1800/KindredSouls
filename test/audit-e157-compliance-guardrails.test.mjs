@@ -168,8 +168,9 @@ test('E157-4 称呼去真名化引导：placeholder 六语逐字＝昵称/代号
       es: 'Tu apodo (opcional)', th: 'ชื่อเล่นของคุณ (ไม่บังคับ)', vi: 'Biệt danh của bạn (tùy chọn)',
     },
     nickname_partner_placeholder: {
-      zh: 'TA 的昵称或代号（选填）', en: 'Partner nickname (optional)', fr: "Surnom de l'autre (facultatif)",
-      es: 'Apodo del otro (opcional)', th: 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', vi: 'Biệt danh đối phương (tùy chọn)',
+      // 🔴 后继化（E159-刀六，主公军令 2026-11-27 精简措辞 ⇒ placeholder 零裁切）
+      zh: 'TA 的昵称或代号（选填）', en: 'Their nickname (opt.)', fr: 'Surnom (facultatif)',
+      es: 'Su apodo (opc.)', th: 'ชื่อเล่นอีกฝ่าย (ไม่บังคับ)', vi: 'Biệt danh họ (tùy chọn)',
     },
     compliance_disclaimer_short: {
       zh: '仅供文化探索、娱乐与自我觉察参考，不构成任何商业决策、金融、法律或人力资源建议。',
@@ -280,7 +281,8 @@ test('E157-6 零越界：$4.99 统一定价与手动点击生成不变；支付�
   assert.equal((ip.match(/data-testid="e156-cta"/g) || []).length, 1, '单一主按钮（手动点击）');
   const h = between(SERVER, "app.use('/api/ai-advisor', async (req, res) => {", '// ── Serve static frontend (dist/) ──');
   assert.ok(SERVER.includes("success_url: successUrl || defaultSuccess,"), 'create-checkout 成功回跳复原（E159 未动）');
-  for (const bad of ["'/resonance'", '/invite/', 'e159', 'E159']) {
+  // 🔴 后继化（E159 实施于「三场景隔离/黑屏/经纬度」军令 2026-11-27；「支付回跳零点击自动生成」顺延 E160 封存）
+  for (const bad of ["'/resonance'", '/invite/', 'e160', 'E160']) {
     assert.equal(APP.includes(bad), false, `App.tsx 不得出现：${bad}`);
     assert.equal(SERVER.includes(bad), false, `server.js 不得出现：${bad}`);
   }
@@ -292,7 +294,7 @@ test('E157-7 【链位自保】闸门挂入 test:astro 且不顶飞收口位（�
   const segs = pkg.scripts['test:astro'].split(/\s*&&\s*|\s*\|\|\s*/).map((x) => x.trim()).filter(Boolean);
   const me = segs.findIndex((x) => x.includes('audit-e157-compliance-guardrails'));
   assert.ok(me !== -1, '未入编 test:astro');
-  assert.ok(segs.length >= 124, `链段数下界（实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124
+  assert.ok(segs.length >= 125, `链段数下界（实为 ${segs.length}）`);   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
   const i155 = segs.findIndex((x) => x.includes('audit-e155-resonance-code'));
   const iCap = segs.findIndex((x) => x.includes('audit-e40-compat-synastry-tensor-fusion'));
   assert.equal(iCap, segs.length - 2, `收口位漂移：e40-compat 应为 len-2（实为 ${iCap}/${segs.length}）`);

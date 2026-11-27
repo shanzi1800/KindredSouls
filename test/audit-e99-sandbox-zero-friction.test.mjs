@@ -135,7 +135,7 @@ test('E99-③-5 INITIAL_SESSION 墙复活守卫（匿名付讫回场不被异步
   // 补刀2：INITIAL_SESSION 未登录分支尊重 per-session 解锁态（paidStatus=true 免 797 复拉＋免骨架卡）
   assert.ok(APP.includes('E99 anon session-unlocked on INITIAL_SESSION — paywall bypass'), 'INITIAL_SESSION 墙复活守卫缺失');
   const seg = APP.slice(APP.indexOf('E99-① 补刀2（主公军令 2026-10-28）'), APP.indexOf('E99-① 补刀2（主公军令 2026-10-28）') + 900);
-  assert.ok(seg.includes("sessionStorage.getItem('ks_compat_session_unlocked') === '1'"), '守卫须直读 sessionStorage（闭包 state 时序不可靠）');
+  assert.ok(seg.includes("_e99AnonUnlocked = sessionSceneUnlocked(sessionStorage, e156SceneOfSavedResult());"), '守卫须直读 sessionStorage（闭包 state 时序不可靠）');   // 🔴 后继化（E159-刀一）：直读改经纯核按「已落盘场景」判定（仍直读 storage，不经闭包 state）
   assert.ok(seg.includes('setPaidStatus(true);'), '解锁态须设 paidStatus=true（免骨架卡/797 复拉）');
   // live 明牌流语义保全：未解锁仍走旧双置位
   assert.ok(seg.includes('setPaidStatus(false);') && seg.includes('setShowPaywall(true);'), 'live 明牌流旧语义须逐字保留');

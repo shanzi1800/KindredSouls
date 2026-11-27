@@ -2,6 +2,8 @@ import type { BirthInfo, EngineResult } from './types';
 import type { AlgLang } from './i18n';
 import ICHING_JUDGMENT_VI_OVERRIDE from './iching-judgment-vi-override';
 import ICHING_JUDGMENT_TH_OVERRIDE from './iching-judgment-th-override';
+// 🤝 E159-刀二：场景词典（商道/挚友解读；情爱不走）
+import { normalizeCompatScene, sceneText } from './sceneI18n';
 
 // 卦分类多语言映射（字典方案）
 type LangKey = 'zh' | 'en' | 'es' | 'fr' | 'th' | 'vi';
@@ -1734,7 +1736,10 @@ function deriveHexagram(p1: BirthInfo, p2: BirthInfo): {
 
 // ── 核心计算 ──
 
-export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): EngineResult {
+export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh', scene: unknown = 'romance'): EngineResult {
+  // 🤝 E159-刀二：情爱（romance）＝既有文案逐字节不变；商道/挚友＝场景词典 sceneI18n.ts（排盘真理不变）
+  const _sc = normalizeCompatScene(scene);
+  const S = _sc !== 'romance' ? sceneText(_sc, lang) : null;
   const meta: string[] = [];
   const { hexNum, hex, changingLine, transformedHex } = deriveHexagram(p1, p2);
 
@@ -1782,7 +1787,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   const tName = getHexField(hex, 'name', lang);
   const tNature = getHexField(hex, 'nature', lang);
   const tJudgment = getHexField(hex, 'judgment', lang);
-  const tRelation = getHexField(hex, 'relationshipMeaning', lang);
+  const tRelation = S ? S.ich.reading(hex.category) : getHexField(hex, 'relationshipMeaning', lang);
 
   // ── 基础分数 ──
   const [minScore, maxScore] = hex.scoreRange;
@@ -1796,7 +1801,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   if (transformedHex && transformedHex !== hex) {
     const tCategory = transformedHex.category;
     const tNameTr = getHexField(transformedHex, 'name', lang);
-    const tRelTr = getHexField(transformedHex, 'relationshipMeaning', lang);
+    const tRelTr = S ? S.ich.reading(transformedHex.category) : getHexField(transformedHex, 'relationshipMeaning', lang);
     if (tCategory === '大吉' || tCategory === '吉') {
       score += 3;
       const T_DESC_HI: Record<string,string> = {
@@ -1856,7 +1861,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     '小凶': { zh:'虽遇波折但有转机', en:'bumps ahead but turning points follow', es:'baches pero llegan puntos de inflexión', fr:'des bosses mais des tournants suivent', th:'มีอุปสรรคแต่จุดเปลี่ยนตามมา', vi:'có thử thách nhưng bước ngoặt sẽ đến' },
     '待变': { zh:'待变之象，静候转机', en:'pending change, await turning points', es:'cambio pendiente, esperen puntos de inflexión', fr:'changement en attente', th:'รอการเปลี่ยนแปลง', vi:'đang chờ biến chuyển, hãy kiên nhẫn' },
   };
-  const tail = SUMMARY_68_TAIL[hex.category]?.[lang] || SUMMARY_68_TAIL[hex.category]?.['en'] || SUMMARY_68_TAIL['中']?.[lang] || '';
+  const tail = S ? S.ich.tail(hex.category) : (SUMMARY_68_TAIL[hex.category]?.[lang] || SUMMARY_68_TAIL[hex.category]?.['en'] || SUMMARY_68_TAIL['中']?.[lang] || '');
   const SUMMARY_68: Record<string,string> = {
     zh: `占得「${tName}」，${tNature}之卦，${tail}。`,
     en: `Hexagram ${hexNum}: ${tName} (${tNature}). Your connection has ${tail}.`,
@@ -1885,7 +1890,7 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
   let summary: string;
   if (score >= 82) { summary = SUMMARY_82[lang] || SUMMARY_82['en']; }
   else if (score >= 68) { summary = SUMMARY_68[lang] || SUMMARY_68['en']; }
-  else if (score >= 55) { summary = SUMMARY_55[lang] || SUMMARY_55['en']; }
+  else if (score >= 55) { summary = S ? S.ich.summary55(tName, hexNum) : (SUMMARY_55[lang] || SUMMARY_55['en']); }
   else { summary = SUMMARY_LO[lang] || SUMMARY_LO['en']; }
 
   // ── 多语言 detail（6 语言标签映射） ──
@@ -1913,11 +1918,11 @@ export function calcIChing(p1: BirthInfo, p2: BirthInfo, lang: AlgLang = 'zh'): 
     `${D_LABEL.grade[lang] || D_LABEL.grade['en']}: ${categoryEmoji[hex.category] || ''}${tCategory}`,
     `${D_LABEL.score[lang] || D_LABEL.score['en']}: ${score}/100`,
     ``,
-    D_LABEL.relation[lang] || D_LABEL.relation['en'],
+    S ? S.ich.heading : (D_LABEL.relation[lang] || D_LABEL.relation['en']),
     tRelation,
     ``,
     D_LABEL.lineAnalysis[lang] || D_LABEL.lineAnalysis['en'],
-    changingLine ? (D_LABEL.changing[lang] || D_LABEL.changing['en']) : (D_LABEL.stable[lang] || D_LABEL.stable['en']),
+    changingLine ? (S ? S.ich.changing(changingLine) : (D_LABEL.changing[lang] || D_LABEL.changing['en'])) : (S ? S.ich.stable : (D_LABEL.stable[lang] || D_LABEL.stable['en'])),
     tTransform,
     ``,
     score >= 80 ? (D_LABEL.scoreHi[lang] || D_LABEL.scoreHi['en']) : score >= 65 ? (D_LABEL.scoreMid[lang] || D_LABEL.scoreMid['en']) : (D_LABEL.scoreLo[lang] || D_LABEL.scoreLo['en']),

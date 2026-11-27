@@ -95,7 +95,7 @@ test('E84-④→E85-① 付费即刻呈现：沙盒授予落支付标志＋per-s
   // （E99-① 扩容锚窗 420→700：pendingInsightTrigger 承接位增付讫收墙补刀后
   //  triggerInsight() 被旧窗挤出——同 E87-③ 锚窗先例）
   const seg = app.slice(app.indexOf('if (pendingInsightTrigger) {'), app.indexOf('if (pendingInsightTrigger) {') + 700);
-  assert.ok(seg.includes("sessionStorage.setItem('ks_compat_session_unlocked', '1')"), 'E85 支付返回未落 per-session 解锁标志');
+  assert.ok(seg.includes("markSessionSceneUnlocked(sessionStorage, readPurchaseScene(sessionStorage) || e156Scene)"), 'E85 支付返回未落 per-session 解锁标志');   // 🔴 后继化（E159-刀一）：旧字面（无条件写情爱键）由 markSessionSceneUnlocked(购买场景) 接替——一次付费只解锁购买的那个场景
   assert.ok(seg.includes('setSessionUnlocked(true)'), 'E85 支付返回未解锁当次会话');
   assert.ok(seg.includes('triggerInsight()'), 'E85 支付返回未自动流式揭晓 AI 洞察');
 });

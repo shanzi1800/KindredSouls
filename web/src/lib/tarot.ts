@@ -8,6 +8,7 @@ import { tarotCardName } from './tarotNames.mjs';
 // ✦ E158-刀四（主公军令 2026-11-26）：牌义三场景语境映射（商道/挚友零情感穿帮词；情爱＝本文件既有牌义逐字不动）
 // @ts-ignore —— tarotScenes.mjs 纯 JS 六语字典单源
 import { tarotSceneMeaning } from './tarotScenes.mjs';
+import { tarotOrientSlice } from './tarotScenes.mjs';
 // 🔴 E92-②（主公军令 2026-10-25）：三档报告抽卡解耦——同一天内 $4.99 洞察 /
 //    $2.99 月报 / $29.99 年报曾共用同一 hash（生日+今日）⇒ 数学上必然同卡
 //    （主公实测「全盘女皇逆位」连环撞车根因）。治法＝hash 掺入档位盐 scope：
@@ -241,7 +242,8 @@ export function getTarot(d1: string, d2: string, lang: string = 'en', scope: str
   //    id 恒为 0~21 合法域，查表失败仅语言缺页场景）
   const name = tarotCardName(cardId, L) || 'The Fool';
   // ✦ E158-刀四：抽牌哈希零变；仅牌义按场景分流（business / friendship ⇒ 场景语境；缺行回落情爱牌义）
-  const sceneMeaning = tarotSceneMeaning(card.id, L, scene);
+  // ✦ E159-刀五：只取与实抽方位一致的半句牌义（逆位牌下绝不混排正位指令）
+  const sceneMeaning = tarotOrientSlice(tarotSceneMeaning(card.id, L, scene), L, reversed);
   return {
     id: card.id,
     name,

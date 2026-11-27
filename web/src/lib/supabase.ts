@@ -12,7 +12,10 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+// ✦ E159-刀三：REST 地址硬兜底（与 anon key 同款）——构建环境缺 VITE_SUPABASE_URL 时 URL 为空串 ⇒
+//   checkPaidStatus/checkCoverageInline 打相对路径 404 ⇒ paidStatus=null（登录态重载掉态真因之一）。
+export const SUPABASE_REST_URL = import.meta.env.VITE_SUPABASE_URL || 'https://wfkxqhlcgrikxoofjvas.supabase.co';
+const supabaseUrl = SUPABASE_REST_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_v4T_OvG7eZp48NJH4ALQzA_GVd0SsJv';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

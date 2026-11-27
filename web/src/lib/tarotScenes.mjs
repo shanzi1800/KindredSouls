@@ -379,3 +379,27 @@ export function tarotSceneMeaning(cardId, lang, scene) {
   const L = String(lang || 'en').split('-')[0];
   return row[L] || row.en || '';
 }
+
+/* ── ✦ E159-刀五（主公军令 2026-11-27）：正/逆位分离 —— 场景牌义每条含「正位/逆位」两段启示，
+      旧实现整段喂给模型 ⇒ 逆位牌下混排正位指令。按实抽方位只截取对应半句（264 条六语标记全量校验）。
+      reversed 未传 ⇒ 整段原样（旧调用形态零变）；无方位标记 ⇒ 整段 fail-soft。 ── */
+const ORIENT_MARK = Object.freeze({
+  zh: [/正位[时]?[，,:：]/, /逆位[时]?[，,:：]/],
+  en: [/Upright:/, /Reversed:/],
+  fr: [/À l'endroit :/, /Sens inverse :/],
+  es: [/Al derecho:/, /En sentido inverso:/],
+  th: [/ตำแหน่งตรง:/, /ตำแหน่งกลับด้าน:/],
+  vi: [/Thuận:/, /Ngược:/],
+});
+export function tarotOrientSlice(text, lang, reversed) {
+  const t = String(text || '');
+  const L = String(lang || 'en').split('-')[0];
+  const M = ORIENT_MARK[L] || ORIENT_MARK.en;
+  const r = t.search(M[1]);
+  if (reversed !== true && reversed !== false) return t;
+  if (r < 0) return t;
+  if (reversed === true) return t.slice(r).replace(M[1], '').trim();
+  const u = t.search(M[0]);
+  if (u >= 0 && u < r) return (t.slice(0, u) + t.slice(u, r)).trim();
+  return t.slice(0, r).trim();
+}

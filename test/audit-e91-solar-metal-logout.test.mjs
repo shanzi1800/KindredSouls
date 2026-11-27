@@ -97,7 +97,7 @@ test('E91-⑤-1 闸门接线：test:astro 含本闸门（69 段）＋入编位�
   const chain = PKG.scripts['test:astro'] || '';
   assert.ok(chain.includes('audit-e91-solar-metal-logout.test.mjs'), '本闸门未接线 test:astro');
   const parts = chain.split('&&').map((s) => s.trim());
-  assert.equal(parts.length, 124, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79   // 🔴 后继化（E158 入编）：123→124
+  assert.equal(parts.length, 125, `链段数异常（实得 ${parts.length}，基线 92（E120 升 92 段））`);   // 🛡️ E103/E104 后继化：77→79   // 🔴 后继化（E158 入编）：123→124   // 🔴 后继化（E159 入编）：124→125
   const iE91 = parts.findIndex((p) => p.includes('audit-e91-solar-metal-logout'));
   const iE40 = parts.findIndex((p) => p.includes('audit-e40-compat-synastry-tensor-fusion'));
   const iPy = parts.findIndex((p) => p.includes('python3'));
